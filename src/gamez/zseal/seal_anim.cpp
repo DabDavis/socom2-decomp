@@ -7,11 +7,13 @@
 
 #include "zseal.h"
 
-extern "C" {
-/* AnimSet::BaseAnim: an anim type's base anim, or -1 (SOCOM 1's BaseAnim__7AnimSetF8AnimType, called
- * here where SOCOM 1's IsCurrentBlend calls it; OVL2 0x5E1A90, the kit lane's range) */
-AnimType func_005E1A90(AnimSet *set, AnimType type);
-}
+/* the animation set (anim.cpp's, the kit lane's, which declares the whole class): only AnimSet::BaseAnim,
+ * an anim type's base anim or -1 (SOCOM 1's BaseAnim__7AnimSetF8AnimType, called here where SOCOM 1's
+ * IsCurrentBlend calls it; OVL2 0x5E1A90) */
+class AnimSet {
+public:
+    AnimType BaseAnim(AnimType type);
+};
 
 /* a part's pose as the blender keeps it (SOCOM 1's records, 0x20 bytes: a position, the part's id
  * -- below zero for none -- and a rotation; the names ours) */
@@ -211,7 +213,7 @@ bool CZSealBody::IsCurrentBlend(AnimType type) const
 {
     if (type == m_curblend)
         return true;
-    return m_curblend == func_005E1A90(m_animset, type);
+    return m_curblend == m_animset->BaseAnim(type);
 }
 
 /* CBody::SmoothPart (OVL1 0x28E040, body.cpp's) TAKES THE FRACTION FIRST: every call here loads it

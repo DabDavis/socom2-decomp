@@ -527,6 +527,9 @@ struct _zrdr {
 
     /* the value's storage let go of (zrdr.h's, 0x32F350) */
     void DeleteChildren();
+    /* the type as a byte (zrdr.h's: read through it, the value is seen as a const _zrdr, so a
+     * derived class's inline reading the same field re-reads it -- UIClearUIVar's setters) */
+    unsigned char Type() const { return type; }
     /* (ours; the count unsigned: LoadNodeNames' walk compares with sltu) */
     unsigned int Count() { return type == 4 ? length : 0; }
     _zrdr *Item(int i) { return i < Count() ? &array[i] : 0; }

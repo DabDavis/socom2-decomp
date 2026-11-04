@@ -1904,8 +1904,8 @@
 0x00213590 0x8 clear__Q23std64__vector_deleter<11nav_package,Q23std24allocator<11nav_package>>Fv  # OVL1; by hand (the deleter's clear, whole: vector<nav_package>::clear's copy calls it out of line)
 0x002135A0 0x68 __dt__Q23std64__vector_deleter<11nav_package,Q23std24allocator<11nav_package>>Fv  # OVL1; by hand (the vector's destructor's last level)
 0x00213610 0x70 HideTimer__14BitmapReticuleFv  # OVL1; ours by hand (the HUD lane, round 24: hud_bitmapreticule.cpp's first in the image, so defined last -- the timer's four bitmaps (0x4290, 0x4310, 0x43A0, 0x4420) faded out through their tables' SetTrans; CHUD::ReInit_Init calls it; new in SOCOM II)
-0x00213680 0x1BC func_00213680  # OVL1
-0x00213840 0x220 func_00213840  # OVL1
+0x00213680 0x1BC TimerProgressTick__14BitmapReticuleFf  # OVL1; s1:order by hand (the HUD lane, round 41: hud_bitmapreticule.cpp -- SOCOM 1's TimerProgressTick, the code alike: the bomb timer's bar from m_pCurval, m_maxval_frac and m_bIncrTimer, faded out at 400 a second without one; SOCOM II takes the frame time, SOCOM 1 read a global) 
+0x00213840 0x220 ReloadTimerTick__14BitmapReticuleFfP10CZSealBody  # OVL1; ours by hand (the HUD lane, round 41: hud_bitmapreticule.cpp -- SOCOM II's second bar, TimerProgressTick's sibling on the 0x43A0/0x4420 bitmaps and the second timer 0x44A0-0x44A8, shown while the seal reloads at a turret (IsReloading and its +0xEB8); 0x216770 calls it after TimerProgressTick)
 0x00213A60 0x3C0 func_00213A60  # OVL1
 0x00213E20 0x1354 func_00213E20  # OVL1
 0x00215180 0x14 OnPauseTest__14BitmapReticuleFv  # OVL1; split by hand (the HUD lane: a tail call through a member's vtable, padded to 0x2151A0); by hand (the HUD lane, round 16): BitmapReticule's (this+0x34, the second of the three plain C2D groups its constructor builds at 0x1C/0x34/0x4C, turned on through its vtable); CHUD::Off calls it on its reticle (+0x...) only in the pause test menu state -- SOCOM II's, the name ours
@@ -2196,7 +2196,7 @@
 0x00232950 0x14 Clear__10CTCMSoundsFv  # OVL1; ours by hand (the HUD lane, round 27: hud_tcmtree.cpp -- the loaded flag and the three sounds cleared; CTCM::Reset calls it)
 0x00232970 0x58 Load__10CTCMSoundsFv  # OVL1; ours by hand (the HUD lane, round 27: hud_tcmtree.cpp -- .TCM_SLIDE, .TCM_SELECT twice by CSnd::GetSoundByName)
 0x002329D0 0x18 __ct__10CTCMSoundsFv  # OVL1; by hand (the HUD lane, round 24: the menu tree unit's -- the menu's sounds' constructor, called out of line by CTCM's constructor 0x237390 on CTCM+0xDB8, as round 23's notes had it)
-0x002329F0 0x1CC func_002329F0  # OVL1
+0x002329F0 0x1CC tcmAddKindItems__FUc  # OVL1; ours by hand (the HUD lane, round 41: hud_tcmtree.cpp -- one kind's items for the cache builder 0x232BC0, which calls it twenty times with byte constants: the kind's item under the first three groups' parents (0x58DD70(1..3)), then its entries (0x58DF20 to 0x58DEB0) under the third one's caption)
 0x00232BC0 0x1918 func_00232BC0  # OVL1
 0x002344E0 0xA54 func_002344E0  # OVL1
 0x00234F40 0x25C Select__4CTCMFPCc  # OVL1; ours by hand (the HUD lane, round 27: hud_tcmtree.cpp -- the recogniser's word: the open column's child of that name (+0x698) put on the path and run through its entry's command at +0x60 between tcmSetCurNode/tcmClearCurNode, a submenu opened (tcmOpenNode) or the menu closed with the back sound; a hidden item's command in the recogniser's mode; cbrecoResult calls it)
@@ -2217,8 +2217,8 @@
 0x00236AA0 0x80 GetColumn__4CTCMFUi  # OVL1; ours by hand (the HUD lane, round 23: hud_tcm.cpp -- the node of a depth's column, the path at +0x754 walked down from the root; the layout and the tree call it)
 0x00236B20 0x180 GetSelected__4CTCMFv  # OVL1; ours by hand (the HUD lane, round 39: hud_tcm.cpp -- the node the menu's path selects, the path started at the first child when empty; Layout and the tree's pad handlers call it; byte-exact)
 0x00236CA0 0x78 SetCache__4CTCMFP9CTCMCache  # OVL1; ours by hand (the HUD lane, round 23: hud_tcm.cpp -- the item cache at +0x760 and its name at +0x764, "No Cache Available" without one; inlined into Reset)
-0x00236D20 0x2E0 func_00236D20  # OVL1
-0x00237000 0xCC tcmAddItem__FPCciPCcPCcPCci  # OVL1; ours by hand (the HUD lane, round 23: hud_tcm.cpp -- an item's node from theTCM's cache entry of that name (Find), the captions defaulting to the name; the menu builders 0x2329F0/0x232BC0 call it)
+0x00236D20 0x2E0 tcmCreateItem__FP9CTCMEntryPCcPCcPCcPCcb  # OVL1; ours by hand (the HUD lane, round 41: hud_tcm.cpp -- tcmAddItem's only callee: the item's node made under each node its parent name finds, theTCM itself without one, for a non-null cache entry; 0 returned on every path)
+0x00237000 0xCC tcmAddItem__FPCcPCcPCcPCcPCcb  # OVL1; ours by hand (the HUD lane, round 23: hud_tcm.cpp -- an item's node from theTCM's cache entry of that name (Find), the captions defaulting to the name; the menu builders 0x2329F0/0x232BC0 call it); retyped (the HUD lane, round 41): the second parameter a parent's name (the cache builders pass string literals such as "RADIO" and the builder hands it to CTCMNode::Find), the last a bool (every one of the ~100 calls passes a constant 0 or 1)
 0x002370D0 0xCC Reset__4CTCMFv  # OVL1; ours by hand (the HUD lane, round 23: hud_tcm.cpp -- the tree emptied, the cache cleared, the strings wiped, the lists cleared; CHUD calls it on theTCM)
 0x002371A0 0x170 SetupItemBars__4CTCMFv  # OVL1; ours by hand (the HUD lane, round 39: hud_tcm.cpp -- the item list's two backing bars set up and listed, the closing clock cleared; CHUD::ReInit_Init and the builder 0x232BC0 call it; byte-exact)
 0x00237310 0x38 ClearItems__4CTCMFv  # OVL1; tu: node_world.cpp~ (1.0 beta); ours by hand (the HUD lane, round 23: hud_tcm.cpp -- the item list bitmap's list at +0xDE0 cleared; CHUD calls it)
@@ -2744,7 +2744,7 @@
 0x00259230 0xC func_00259230  # OVL1
 0x00259240 0xC func_00259240  # OVL1
 0x00259250 0x558 insert__Q23std58__vector_imp<Q23zar4CKey,Q23std22allocator<Q23zar4CKey>,0>FPQ23zar4CKeyUiRCQ23zar4CKey  # OVL1; SOCOM 1 name, the core lane round 5 (NewKey calls it twice with (end, 1, key) where SOCOM 1 calls its insert at 0x1D9ED0: the key buffer's class insert, zar_main.cpp's template tail)
-0x002597B0 0x1F4 func_002597B0  # OVL1
+0x002597B0 0x1F4 reserve__Q23std58__vector_imp<Q23zar4CKey,Q23std22allocator<Q23zar4CKey>,0>FUi  # OVL1; by hand, the core lane round 12 (the key buffer's class reserve: ReadDirectory 0x258000 calls it with the tail's key count right after the buffer's clear 0x2599B0; include/vector's class reserve for the 24-byte CKey, byte-exact as zar_main.cpp's copy, emitted by ReadDirectory); zar_main.cpp
 0x002599B0 0x7C clear__Q23std60__vector_deleter<Q23zar4CKey,Q23std22allocator<Q23zar4CKey>>Fv  # OVL1; the core lane round 5 (SOCOM 1 name: the key buffer's clear, ~CKey with -1 from the back; zar_main.cpp's template tail)
 0x00259A30 0xB8 __dt__Q23std60__vector_deleter<Q23zar4CKey,Q23std22allocator<Q23zar4CKey>>Fv  # OVL1; the core lane round 5 (SOCOM 1 name: the key buffer's deleter destructor, its clear inlined: zar_main.cpp's template tail)
 0x00259AF0 0x4C __as__Q23std38__vector_pod<Ui,Q23std13allocator<Ui>>FRCQ23std38__vector_pod<Ui,Q23std13allocator<Ui>>  # OVL1; the MSL headers round 10: include/vector's 4-byte pod operator= (out of class, the char pod's: assign over the other's words unless this one), byte-exact as a probe (build/p10/e/podas.cpp); calls 0x259D20
@@ -2755,7 +2755,7 @@
 0x0025A000 0x11C Fetch__Q23zar4CZARFPQ23zar4CKeyPviUi  # OVL1; s1:calls (CRdrFile::Load calls it with SOCOM 1's (key, buf, size, 0)) -- the rdr lane
 0x0025A120 0x1C4 Insert__Q23zar4CZARFPQ23zar4CKeyPCvi  # OVL1; s1:calls (CRdrFile::Insert calls it where SOCOM 1's calls zar::CZAR::Insert) -- the rdr lane
 0x0025A2F0 0x98 Insert__Q23zar4CZARFPCcPCvi  # OVL1; s1:order by hand (SOCOM 1's Insert(const char *, const void *, int) 0x1DB680 step for step: NewKey, the open key, Insert(CKey *, ...), then InsertKey or the key deleted -- SOCOM II's through the out-of-line ~CKey 0x25BB50)
-0x0025A390 0x23C func_0025A390  # OVL1
+0x0025A390 0x23C FetchAll__Q23zar4CZARFPFRQ23zar4CZARPCcPviPv_iPv  # OVL1; s1:calls by hand, the core lane round 12 (SOCOM 1's zar::CZAR::FetchAll(int (*)(CZAR &, const char *, void *, int, void *), void *) 0x1DB880: CScriptArchive::LoadAll 0x288710 calls it with CZSIScript::CreateAndReadIt and the archive where SOCOM 1's LoadAll calls FetchAll; the same walk -- each key of the open one opened, sought, fetched in place and handed to the callback, the ones it takes counted -- SOCOM II's returning the count and inlining the in-place fetch); zar_search.cpp
 0x0025A5D0 0x144 Fetch__Q23zar4CZARFPCcPvi  # OVL1; s1:callee
 0x0025A720 0x1C4 Fetch__Q23zar4CZARFPCcPPc  # OVL1; s1:calls by hand (the zdb-world lane: the string fetch, at SOCOM 1's call sites)
 0x0025A8F0 0x138 Fetch__Q23zar4CZARFPCcPf  # OVL1; s1:calls by hand (the zdb-world lane: the float fetch, at SOCOM 1's call sites)
@@ -4958,15 +4958,15 @@
 0x002F5EF0 0x60 __dt__Q23std65deque<17MediusChatMessage,Q23std30allocator<17MediusChatMessage>>Fv  # OVL1; ours, the online lane round 10 (the chat deque's destructor: the initialiser destroys the queue's Container() temporary through it, with -1)
 0x002F5F50 0x28 __ct__Q23std100queue<17MediusChatMessage,Q23std65deque<17MediusChatMessage,Q23std30allocator<17MediusChatMessage>>>FRCQ23std65deque<17MediusChatMessage,Q23std30allocator<17MediusChatMessage>>  # OVL1; tu: vis_mesh.cpp~ (1.0 beta); ours, the online lane round 10 (the chat queue's constructor from its container, `c(x)`, out of line from the initialiser)
 0x002F5F80 0x68 __ct__Q23std65deque<17MediusChatMessage,Q23std30allocator<17MediusChatMessage>>FRCQ23std65deque<17MediusChatMessage,Q23std30allocator<17MediusChatMessage>>  # OVL1; ours, the online lane round 10 (the chat deque's copy constructor, called by the queue's 0x2F5F50: open in include/deque -- 0x70 against 0x68, the image's chain runs 0x2F5FF0, 0x2F6060, 0x2F6090 below it, not the lobby queue's begin/end/init)
-0x002F5FF0 0x68 func_002F5FF0  # OVL1
-0x002F6060 0x2C func_002F6060  # OVL1
-0x002F6090 0x19C func_002F6090  # OVL1
+0x002F5FF0 0x68 __ct__Q23std71__deque_buf<17MediusChatMessage,Q23std30allocator<17MediusChatMessage>>FRCQ23std30allocator<17MediusChatMessage>  # OVL1; the online lane round 19: the chat queue's block buffer built from an allocator, the lobby queue's 0x2E09A0 in role -- the deque's copy constructor 0x2F5F80 calls it first, as 0x2E07B0 calls 0x2E09A0; it calls the pair's constructor 0x2F6060 and frees the temporary's block (the name the chat unit emits for it)
+0x002F6060 0x2C __ct__Q210Metrowerks146__compressed_pair_imp<Q23std30allocator<17MediusChatMessage>,Q210Metrowerks68cdeque<P17MediusChatMessage,Q23std31allocator<P17MediusChatMessage>>>FRCQ23std30allocator<17MediusChatMessage>RCQ210Metrowerks68cdeque<P17MediusChatMessage,Q23std31allocator<P17MediusChatMessage>>  # OVL1; the online lane round 19: the chat queue's allocator-and-circular-buffer pair copied, the lobby's 0x2E0A80 in role (called by 0x2F5FF0, it calls the circular buffer's copy 0x2F6090; the name the chat unit emits)
+0x002F6090 0x19C __ct__Q210Metrowerks68cdeque<P17MediusChatMessage,Q23std31allocator<P17MediusChatMessage>>FRCQ210Metrowerks68cdeque<P17MediusChatMessage,Q23std31allocator<P17MediusChatMessage>>  # OVL1; the online lane round 19: the chat queue's circular buffer of line pointers copied, the lobby's 0x2E0AC0 in role (called by the pair's constructor 0x2F6060, it calls the range init 0x2F6340; begin/end inlined, where the lobby's calls 0x2E0CB0/0x2E0C10; the name the chat unit emits)
 0x002F6230 0x28 __ct__Q23std65deque<17MediusChatMessage,Q23std30allocator<17MediusChatMessage>>Fv  # OVL1; tu: vis_mesh.cpp~ (1.0 beta); ours, the online lane round 10 (the chat deque's default constructor: the initialiser builds the queue's Container() temporary with it; the draft stands, this unit's copy 0x30 against 0x28 as the lobby queue's)
 0x002F6260 0x30 func_002F6260  # OVL1
 0x002F6290 0x18 func_002F6290  # OVL1
 0x002F62B0 0x88 __dt__Q23std75__deque_destroy<17MediusChatMessage,Q23std30allocator<17MediusChatMessage>>Fv  # OVL1; ours, the online lane round 10 (the chat deque's block buffer's out-of-class destructor: the chat queues' destructors 0x2F5E50 and 0x2F5EF0 call it -- the chat unit's tail, not the lobby unit's first function; it walks the elements through 0x2F5D10 and destroys them with 0x2F5B10; open in include/deque, 0x110 against 0x88); the MSL headers round 19: a class element's teardown level between __deque_imp and __deque_buf (include/deque's __deque_destroy, picked by has_trivial_dtor): destroy(begin(), end()) -- end's make_iterator first -- then ~__deque_buf 0x2F6BC0 with 0; byte-exact from the chat unit's tail (was ~__deque_buf's name)
-0x002F6340 0x2BC func_002F6340  # OVL1
-0x002F6600 0x444 func_002F6600  # OVL1
+0x002F6340 0x2BC init<Q310Metrowerks68cdeque<P17MediusChatMessage,Q23std31allocator<P17MediusChatMessage>>8iterator>__Q210Metrowerks68cdeque<P17MediusChatMessage,Q23std31allocator<P17MediusChatMessage>>FQ310Metrowerks68cdeque<P17MediusChatMessage,Q23std31allocator<P17MediusChatMessage>>8iteratorQ310Metrowerks68cdeque<P17MediusChatMessage,Q23std31allocator<P17MediusChatMessage>>8iteratorQ23std20forward_iterator_tag_v  # OVL1; the online lane round 19: the chat queue's circular buffer's range init, the lobby's 0x2E0B40 in role (called by 0x2F6090; the do_assign the lobby's calls out of line, 0x2E0E10, inlined: the length and allocation errors, new; the name the chat unit emits)
+0x002F6600 0x444 init<Q33std71__deque_imp<17MediusChatMessage,Q23std30allocator<17MediusChatMessage>>8iterator>__Q23std65deque<17MediusChatMessage,Q23std30allocator<17MediusChatMessage>>FQ33std71__deque_imp<17MediusChatMessage,Q23std30allocator<17MediusChatMessage>>8iteratorQ33std71__deque_imp<17MediusChatMessage,Q23std30allocator<17MediusChatMessage>>8iteratorQ23std20forward_iterator_tag_v  # OVL1; the online lane round 19: the chat deque's range init over its own iterators, the lobby's 0x2E0830 in role (the deque's copy constructor 0x2F5F80 calls it last, as 0x2E07B0 calls 0x2E0830; the do_assign the lobby's calls out of line, 0x2E1090, inlined: reserve, push_back; the name the chat unit emits)
 0x002F6A50 0x8 func_002F6A50  # OVL1
 0x002F6A60 0x8 func_002F6A60  # OVL1
 0x002F6A70 0x144 make_iterator__Q23std71__deque_imp<17MediusChatMessage,Q23std30allocator<17MediusChatMessage>>CFUi  # OVL1; the MSL headers round 13: the chat deque's iterator to an element, const (the copy constructor 0x2F5F80 calls it for x's end and begin); include/deque's make_iterator, open as every instance's
@@ -6895,12 +6895,12 @@
 0x003742F0 0x2E8 func_003742F0  # OVL1
 0x003745E0 0x46C HandlePad__10CUIListBoxFPC4CPadi  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00374A50 0x100 func_00374A50  # OVL1
-0x00374B50 0x15C func_00374B50  # OVL1
+0x00374B50 0x15C GetItemText__10CUIListBoxFi  # OVL1; ours by hand (the HUD lane, round 41: zui_2d.cpp -- an item's text by index: none out of range, else its action's argument, its own string or its look's GetString; the walk AddItem's; the lobby's 0x2F0EA0 calls it)
 0x00374CB0 0x388 func_00374CB0  # OVL1
 0x00375040 0x488 Tick__10CUIListBoxFf  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x003754D0 0x238 UpdateUIVar__10CUIListBoxFP11CUIVariable  # OVL1; by hand (the HUD lane, round 16): CUIListBox's secondary table (0x4076E0: RTTI, -128, @128@__dt__10CUIListBoxFv, the thunk 0x37D060, then this) holds it where CSliderBar's holds UpdateUIVar__10CSliderBarFP11CUIVariable; it reads the variable's type byte (4, a list) as the other UpdateUIVars do
 0x00375710 0x554 __dt__10CUIListBoxFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x00375C70 0x1A8 func_00375C70  # OVL1
+0x00375C70 0x1A8 RemoveAllItems__10CUIListBoxFv  # OVL1; ours by hand (the HUD lane, round 41: zui_2d.cpp -- every item's node erased and the item deleted (ListItem's inline destructor), then the box's own font at 0xBC deleted and cleared; UpdateUIVar 0x3754D0 and 0x372980 call it)
 0x00375E20 0x5F8 func_00375E20  # OVL1
 0x00376420 0x110 SetNormal__10CUIListBoxFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00376530 0x68 func_00376530  # OVL1
@@ -7363,15 +7363,15 @@
 0x00391DE0 0x8 func_00391DE0  # OVL1
 0x00391DF0 0xC func_00391DF0  # OVL1
 0x00391E00 0x14 func_00391E00  # OVL1
-0x00391E20 0x10 func_00391E20  # OVL1
+0x00391E20 0x10 SkbSeqJamo__FP6SKBSEQi  # OVL1; the UI lane round 23: ours, by its body and its caller (zui_hangul.cpp: a SKBSEQ's jamo byte i, sign-extended -- the composer 0x391670 calls it with the sequence from SKBRULE::Seq and compares it with the jamo string's byte; byte-exact)
 0x00391E30 0xC func_00391E30  # OVL1
 0x00391E40 0x8 func_00391E40  # OVL1
-0x00391E50 0x14 func_00391E50  # OVL1; tu: zui_cleanup.cpp~ (1.0 beta)
+0x00391E50 0x14 Part__9CSkbSplitFi  # OVL1; tu: zui_cleanup.cpp~ (1.0 beta); the UI lane round 23: ours, by its body and its caller (zui_hangul.cpp: the composer's split, a total and a vector of parts at 4 -- its part i; the composer 0x391670 calls it with the split built by 0x391F80 at sp+256; byte-exact)
 0x00391E70 0xD0 func_00391E70  # OVL1
 0x00391F40 0x8 func_00391F40  # OVL1
 0x00391F50 0x10 func_00391F50  # OVL1
 0x00391F60 0x20 func_00391F60  # OVL1
-0x00391F80 0x190 func_00391F80  # OVL1
+0x00391F80 0x190 __ct__9CSkbSplitFii  # OVL1; the UI lane round 23: ours, by its body and its callers (zui_hangul.cpp: the composer's split of n jamo into k parts -- k-1 parts of 1 and the rest last, through OVL1's pod resize 0x28B0E0 and a reverse iterator; the composer 0x391670 builds one at sp+256 and at sp+240; byte-exact)
 0x00392110 0x14 func_00392110  # OVL1
 0x00392130 0x2A4 SkbParseComplete__FP15CSkbCompleteVecP5_zrdrPCc  # OVL1; the UI lane round 10: ours, by its body (zui_hangul.cpp: CompleteCharacter's entries -- each Seq's production names by their index in s_rules, pushed onto the entry's index vector, and a Val2 flag -- the vector grown to each index through 0x392770; 0x390C40 calls it with s_complete); the UI lane round 10: ours, by its body (zui_hangul.cpp: CompleteCharacter's entries, each Seq's production names by index in s_rules pushed onto the entry's index vector, a Val2 flag; the vector grown through 0x392770; 0x390C40 calls it with s_complete)
 0x003923E0 0x220 insert__Q23std36__vector_pod<c,Q23std12allocator<c>>FPcUiRCc  # OVL1; the MSL headers round 9: include/vector's 1-byte pod insert (memmove, memset, memcpy), byte-exact as a probe (build/p9/vc1.cpp); zui_hangul.cpp's template tail, the composition's push_backs call it
@@ -9954,7 +9954,7 @@
 0x00544C30 0xC CurrentPickup__10CZSealBodyFv  # OVL2; s1:order (after CurrentPickupSecondary); FindPickup of m_control's pickup id (SOCOM 1's 0x148, now 0x14C)
 0x00544C40 0x18 CompassAnchor_MPBase__10CZSealBodyFP14CCompassAnchor  # OVL2; s1:order (SOCOM 1's CompassAnchor_Hostage, the one before it, is gone); the anchor at 0xEC4 (SOCOM 1's 0xDB8) swapped in, whether there was none returned
 0x00544C60 0x18 CompassAnchor_MPBomb__10CZSealBodyFP14CCompassAnchor  # OVL2; s1:order (after CompassAnchor_MPBase); the anchor at 0xEC0 (SOCOM 1's 0xDB4)
-0x00544C80 0x14 func_00544C80  # OVL2
+0x00544C80 0x14 ActionSelectionMask__10CZSealBodyFUc  # OVL2; by hand (the SEALs, round 33): SOCOM 1's CZSealBody::ActionSelectionMask (Uib, the selection word at 0xdc4 -- SOCOM II's 0xED4, after ActionAvailableMask's 0xED0, as SOCOM 1's 0xdc4 after 0xdc0) reshaped to take the action alone, its bit stored (1 << id), the HUD's round 39 reading by hud_actionbitmap.cpp's call; the byte narrowed in the callee (andi 0xff) as ActionAvailableMask's unsigned char next to it; seal.cpp
 0x00544CA0 0x50 ActionAvailableMask__10CZSealBodyFUcb  # OVL2; size 0x50 (the seed split it after its first branch: 0x544CA8 was its body): a bit (1 << id) set in or cleared from the mask at 0xED0 by a bool, SOCOM 1's ActionSelectionMask or ActionAvailableMask reshaped (which one unproven); s1:calls by hand (CSealCtrl::PerformReticleActions calls it with (14, true) and (15, true) where SOCOM 1's calls ActionAvailableMask__10CZSealBodyFUib; SOCOM II's narrows the id to a byte, andi 0xff, so an unsigned char parameter); the seed's cut (0x544ca8): jal target of OVL1's DNAS client, which calls DNAS.BIN loaded in the OVL2 slot (README)
 0x00544CF0 0x64 func_00544CF0  # OVL2
 0x00544D60 0x260 func_00544D60  # OVL2
@@ -10184,7 +10184,7 @@
 0x00561D20 0xF4 GetTop__9CSealUnitFv  # OVL2; by hand (the SEAL lane, round 14): CSealUnit's top squad, m_parent (0x60, SOCOM 1's 0x3C) ? m_parent->GetTop() : this -- an inline's out-of-line copy (recursive: inlined into itself eight times), right after 0x561B90 its first caller; the name ours
 0x00561E20 0xD4 func_00561E20  # OVL2
 0x00561F00 0x12C ActivateEx__11CSealCtrlAiF9SEAL_TASKbe  # OVL2; s1:calls (CSealCtrlAi::OnMissionStart calls it twice with (task, flag, 1, the body's TASK_SELECT, 3, the node, 0), as SOCOM 1's calls ActivateEx__11CSealCtrlAiF9SEAL_TASKbe; variadic: it stores a3-t3 to its frame) -- the SEAL lane, round 4
-0x00562030 0x180 func_00562030  # OVL2
+0x00562030 0x180 AnimSignal__11CSealCtrlAiFP6CZAnim9AI_SIGNAL  # OVL2; s1:order by hand (the SEALs, round 33): SOCOM 1's CSealCtrlAi::AnimSignal(CZAnim *, AI_SIGNAL) -- the same seven-case byte switch on a2 (andi 0xff, sltiu 7 where SOCOM 1's 6), its signals 4 and 5 SOCOM 1's PushAiState/PopAiState of state 18; SOCOM II's walks the state stack backwards (the MSL lane's round 22 reading: include/list's reverse iterator) handing each state anim, signal and this through slot 0xC, then calls the stack's flag update 0x5F7470; seal_ai.cpp
 0x005621B0 0x8 func_005621B0  # OVL2
 0x005621C0 0x2C GetValve__11CSealCtrlAiCF10SEAL_VALVE  # OVL2; s1:order (SOCOM 1's GetValve__11CSealCtrlAiCF10SEAL_VALVE word for word but the bound, 3, and the array, 0x750: the valve of a kind or 0) -- the SEAL lane, round 4
 0x005621F0 0x8 func_005621F0  # OVL2
@@ -11592,7 +11592,7 @@
 0x005FD620 0xC8 func_005FD620  # OVL2
 0x005FD6F0 0x94 func_005FD6F0  # OVL2
 0x005FD790 0x33C func_005FD790  # OVL2
-0x005FDAD0 0x224 func_005FDAD0  # OVL2
+0x005FDAD0 0x224 SetHideLook__10CAiSFollowFP11CSealCtrlAi  # OVL2; by hand (the kit lane, round 34; the name ours): the follower's look while the follow hides, set once (flag 2 at +0x6C) -- an escortee (team bit 0x20000) looks along +0xE8, a follower of an AI master holding (state 2, flags bit 5) at the hold's point, else the squad's look (GetMyLookDir) through 0x559580; HideCheck's one call (a0 the state)
 0x005FDD00 0x38 Virtual3C__10CAiSFollowFP11CSealCtrlAi  # OVL2; by hand: CAiSFollow's vtable slot +0x3C, one of SOCOM II's six new CAiState slots (the name ours, by its slot): a float at +0xF4 under the variable at 0x650C38 and flag bit 3 of +0x6C; by hand (the kit lane, round 29): slot +0x3C takes the AI -- both callers (0x5FDE30, 0x5586E8) pass it in a1 after testing its bit 13; the code reads none of it
 0x005FDD40 0x180 CheckMaster__10CAiSFollowFP11CSealCtrlAi  # OVL2; by hand (the kit lane, round 29; the name ours): CAiSFollow::Tick's first call (0x5FB220) -- the AI's follow master (+0x5D4) made the state's (+0x58; a new one restarts the step, UpdatePhase(0) inlined), true while it lives (CEntity's m_isAlive), flag 8 (+0x6C) set when a navy SEAL's AI-driven master's AI has bit 13 and its state's +0x3C answers, else SetFollowMaster(0); open, 0x178 against 0x180
 0x005FDEC0 0xB8 GetStatus__10CAiSFollowCFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)

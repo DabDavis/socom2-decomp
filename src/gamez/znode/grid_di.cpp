@@ -62,31 +62,36 @@ void SetCameraCollideFlagRequired(bool on)
     cameraCollideFlagRequired = on;
 }
 
+/* a hit set's ray tail (an inline accessor, the name ours: read through it inside a loop, the
+ * tail's address is a loop invariant MW hoists -- into a preheader laid after the function's last
+ * block, the loop entered with a `b` to it and the entry test repeated there) */
+static inline const CPnt3D &RayTail(const DiIntersect *di)
+{
+    return di->m_Tail;
+}
+
 /* the hits' indices sorted by their squared distance from the ray's tail, the distances kept
- * (SOCOM 1's).
- * OPEN, 0x148 of 0x158: the frame, the loop and the sort are the target's (the tail through a
- * reference, so its address is hoisted and spilled to 160(sp)); the target places the loop's
- * preheader -- the entry test and the hoisted addresses -- after the function's last block,
- * jumping to it from the top and back to the loop test (two `b`s and their slots). Tried: an early
- * return, a while loop, the counter declared before the loop, the reference inside the loop */
+ * (SOCOM 1's). The tail is read through RayTail() each pass (the target's hoisted address,
+ * spilled to 160(sp), in a preheader after the sort's block: a reference local declared ahead of
+ * the loop computes it before the entry test instead, the preheader inline); the count test an
+ * early return (an `if` around the body sends its false edge to the body's closing `b`, not the
+ * epilogue) */
 void DiIntersect::SortNearToFar(int *idx, float *dist)
 {
-    if (m_Cnt > 0) {
-        const CPnt3D &tail = m_Tail;
+    if (m_Cnt <= 0)
+        return;
+    for (int i = 0; i < m_Cnt; i++) {
+        idx[i] = i;
+        CPnt3D d = PntMinus(m_Intersects[i].m_pos, RayTail(this));
 
-        for (int i = 0; i < m_Cnt; i++) {
-            idx[i] = i;
-            CPnt3D d = PntMinus(m_Intersects[i].m_pos, tail);
-
-            dist[i] = d.x * d.x + d.y * d.y + d.z * d.z;
-        }
-        if (m_Cnt > 1) {
-            _cmpdi_rs = dist;
-            _cmpdi_di = this;
-            qsort(idx, m_Cnt, 4, _cmpdi);
-            _cmpdi_di = 0;
-            _cmpdi_rs = 0;
-        }
+        dist[i] = d.x * d.x + d.y * d.y + d.z * d.z;
+    }
+    if (m_Cnt > 1) {
+        _cmpdi_rs = dist;
+        _cmpdi_di = this;
+        qsort(idx, m_Cnt, 4, _cmpdi);
+        _cmpdi_di = 0;
+        _cmpdi_rs = 0;
     }
 }
 

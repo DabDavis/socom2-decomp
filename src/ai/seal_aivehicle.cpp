@@ -23,18 +23,19 @@ struct CSealVehicleView {
     bool InVehicle() const { return m_eb8 != 0; }
 };
 
-/* the SEAL in a vehicle, read off the controller (the target reloads the SEAL after the test, as
- * an inline accessor's load is not reused) */
+/* the SEAL in a vehicle, read off the controller through a const view: the caller's own read of
+ * the SEAL, taken into a local ahead of the test, is then not merged with this one (the kit lane's
+ * round 34) */
 inline bool InVehicle(CSealCtrlAi *ai)
 {
-    return ((CSealVehicleView *)ai->m_entity)->InVehicle();
+    return ((CSealVehicleView *)((const CSealCtrlAi *)ai)->m_entity)->InVehicle();
 }
 
-/* the state's events: reset, a vehicle state left (1, 2) or ended (3) (OVL2 0x60F5E0).
- * OPEN, 4 instructions: the target loads ai->m_entity again for the first call (lw a0,4(s0) in
- * the test's delay slot) where MW here reuses the test's load (lw a0 first, li a1,1 in the delay
- * slot) -- written out, through an inline bool accessor on the SEAL or on the controller, the
- * same; the call may be a member call on the SEAL (its row, 0x545EE0, the SEAL lane's, unnamed) */
+/* the state's events: reset, a vehicle state left (1, 2) or ended (3) (OVL2 0x60F5E0; byte-exact
+ * in the kit lane's round 34, open since round 32: the target loads ai->m_entity twice, the second
+ * load in the test's delay slot -- the SEAL a local taken in the case ahead of the test, which reads
+ * the SEAL through a const view of the AI; plain reads are merged, a local at the top keeps its own
+ * register across the switch) */
 /* the controller's look as the vehicle helpers set it (0x7A4: a direction, 0x7B0: its kind) and
  * the SEAL's flag byte at 0x105C (zseal.h keeps those flags in an unsigned int, but the target
  * stores the byte) -- the names ours */
@@ -94,11 +95,15 @@ void CAiSUseVehicle::OnSignal(SIGNAL sig, CSealCtrlAi *ai)
         break;
     case SIGNAL_1:
     case SIGNAL_2:
-        if (InVehicle(ai)) {
-            func_00545EE0(ai->m_entity, 1);
-            ai->ClearLook(AIL_10);
-            ai->SetDoAiMapCollide(true);
-            ai->RestoreAiMode();
+        {
+            CEntity *seal = ai->m_entity;
+
+            if (InVehicle(ai)) {
+                func_00545EE0(seal, 1);
+                ai->ClearLook(AIL_10);
+                ai->SetDoAiMapCollide(true);
+                ai->RestoreAiMode();
+            }
         }
         break;
     case SIGNAL_3:

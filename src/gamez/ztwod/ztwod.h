@@ -371,6 +371,9 @@ public:
     void SetUV(float u1, float v1, float u2, float v2, float u3, float v3, float u4, float v4);
     void SetUV(float u0, float v0, float u1, float v1);
     void SetColor(float r, float g, float b);
+    /* textured from a handle, both triangles with it (SOCOM II's; the name ours: hud_tcm.cpp's item
+     * builder inlines it three times, defined there) */
+    void SetTexture(zdb::CTexHandle *h);
     /* one corner's alpha (SOCOM II's; the name ours) */
     void SetTrans(int corner, float trans);
     float GetTrans();

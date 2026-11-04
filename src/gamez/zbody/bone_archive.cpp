@@ -9,9 +9,6 @@
 #include "zbody.h"
 #include "../zrdr/zrdr.h"
 
-/* the ZAR's walk over its keys with a callback (zar's, not named yet) */
-extern "C" unsigned short func_0025A390(zar::CZAR *zar, int (*f)(zar::CZAR &, const char *, void *, int, void *),
-                                        void *user);
 /* the SEAL's anim tables: an archive's anim filed under its index, and every one of an index
  * taken out (OVL2's CAnimTypeRec, by its map rows: only the two statics the archives call) */
 class CAnimTypeRec {
@@ -42,7 +39,7 @@ CScriptArchive::~CScriptArchive()
 
 bool CScriptArchive::LoadAll()
 {
-    m_nScripts = func_0025A390(&m_zar, CZSIScript::CreateAndReadIt, this);
+    m_nScripts = m_zar.FetchAll(CZSIScript::CreateAndReadIt, this);
     return m_nScripts > 0;
 }
 

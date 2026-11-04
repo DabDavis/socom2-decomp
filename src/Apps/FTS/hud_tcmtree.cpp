@@ -10,8 +10,8 @@
  * shallower, so their ten out-of-line copies 0x231DD0-0x231E30 and 0x232460-0x232480 name the
  * chains' levels -- CTCMNode's accessor, CTCMNodeList's, the vector's), the sounds, and CTCM's
  * tick, push-to-talk, close, open, root, next and the item searches. OPEN: RemoveChild,
- * ShowRoot, Select (registers). Not yet: the voice items' adder 0x2329F0 (its loop passes the
- * third block's caption register as the item's argument -- an uninitialised local?), the cache
+ * ShowRoot, Select (registers). Written in round 41: one kind's items, tcmAddKindItems 0x2329F0 (its
+ * entries go under the third group item's caption, which an inline returns). Not yet: the cache
  * builders 0x232BC0/0x2344E0, the open menu's and closed menu's pad handlers 0x235D40/0x2359A0.
  * Defined in reverse of their image order (-inline deferred). */
 
@@ -436,6 +436,64 @@ void CTCM::TalkTick(float dt)
                 func_0030E6E0(data_0045B718, 0);
             }
         }
+    }
+}
+
+/* the item tables of OVL2 the kind builder reads (no rows named yet): a group's parent name, a
+ * kind's name, caption, node name and second line, the kind's first and end entry, and an entry's
+ * name, caption, node name and second line -- each a byte argument (the callees narrow it) */
+/* an entry of the kinds' table (ours: a byte enum -- the kind's first and end entries come back
+ * unnarrowed and are zero-extended where they are compared as ints) */
+enum TCM_ENTRY { TCM_ENTRY_NONE = 0, TCM_ENTRY_LAST = 0xff };
+
+extern "C" {
+const char *func_0058DD70(unsigned char group);
+const char *func_0058EF80(unsigned char kind);
+const char *func_0058E950(unsigned char kind);
+const char *func_0058E900(unsigned char kind);
+const char *func_0058E750(unsigned char kind);
+TCM_ENTRY func_0058DF20(unsigned char kind);
+TCM_ENTRY func_0058DEB0(unsigned char kind);
+const char *func_0058EB00(TCM_ENTRY entry);
+const char *func_0058E4D0(TCM_ENTRY entry);
+const char *func_0058E360(TCM_ENTRY entry);
+const char *func_0058E120(TCM_ENTRY entry);
+}
+
+/* the kind's item under a group's parent, its caption returned (ours) */
+static inline const char *tcmAddGroupItem(unsigned char group, unsigned char kind)
+{
+    const char *parent = func_0058DD70(group);
+    const char *name = func_0058EF80(kind);
+    const char *caption = func_0058E950(kind);
+    const char *nodename = func_0058E900(kind);
+
+    tcmAddItem(name, parent, caption, nodename, func_0058E750(kind), false);
+    return caption;
+}
+
+/* one kind's items: under each of the first three groups' parents the kind's own item, then the
+ * kind's entries under the third one's caption (0x2329F0: the cache builder 0x232BC0 calls it for
+ * twenty kinds; the name ours). Each item's strings are named locals, fetched in argument order --
+ * written as tcmAddItem's arguments MW calls them last to first; the group item an inline returning
+ * its caption; the entries a byte enum, which gives the target's unnarrowed first entry and its
+ * registers (as unsigned char locals MW narrows the first at the call and swaps two pairs) */
+void tcmAddKindItems(unsigned char kind)
+{
+    tcmAddGroupItem(1, kind);
+    tcmAddGroupItem(2, kind);
+
+    const char *gcaption = tcmAddGroupItem(3, kind);
+    TCM_ENTRY first = func_0058DF20(kind);
+    TCM_ENTRY end = func_0058DEB0(kind);
+
+    for (int i = first; i < end; i++) {
+        TCM_ENTRY e = (TCM_ENTRY)i;
+        const char *ename = func_0058EB00(e);
+        const char *ecaption = func_0058E4D0(e);
+        const char *enodename = func_0058E360(e);
+
+        tcmAddItem(ename, gcaption, ecaption, enodename, func_0058E120(e), false);
     }
 }
 

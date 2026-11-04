@@ -534,20 +534,19 @@ void CZOnlineLobby::GetCurrentGameInfo()
 
 /* the game's missions pass the menu's type filter (0x44F528): all of one type, and the type the
  * filter names -- 248-252 a game type, anything else the one mission (SOCOM 1's took the type;
- * OVL1 0x2E31E0).
- * OPEN, 0x204 against 0x1EC: the target keeps five saved registers (the first mission s0, mixed
- * s1, the cursor s2, ok s3, the type s4) and calls GetMultiValue on the cursor's byte before the
- * first's; this keeps the sequence's start apart from the cursor (s5, s6 more). The chain's calls
- * re-extend the first mission (`andi a1,s0,0xff`) where the loop's pass it straight -- two values
- * in the source, perhaps. Tried: do/while, `*++seq`, for over the pointer and over an index */
+ * OVL1 0x2E31E0). Round 19, byte-exact: the first mission an `int` (an unsigned char kept three
+ * copies of it, s5 and s6 more), defined after `mixed` (first s0, mixed s1: defined first, it took
+ * s1); the chain's calls narrow it back (`andi a1,s0,0xff`, the loop's pass it straight); the step
+ * `*++seq` in the do-while's test (`seq++; while (*seq)` or a while loop forward the test's load into
+ * the next pass's first read, where the target reloads the cursor's byte at the top) */
 bool GamePassesTypeFilter(RoomGame *game)
 {
     bool ok = true;
 
     if (data_0044F528) {
         unsigned char *seq = game->GetMissionSequence();
-        unsigned char first = *seq;
         bool mixed = false;
+        int first = *seq;
 
         if (first) {
             do {
@@ -557,24 +556,23 @@ bool GamePassesTypeFilter(RoomGame *game)
                     ok = false;
                 if (*seq != first)
                     mixed = true;
-                seq++;
-            } while (*seq);
+            } while (*++seq);
         }
         if (ok) {
             if (data_0044F528 == 252) {
-                if ((unsigned char)data_00441650.GetMultiValue(first) != 5)
+                if ((unsigned char)data_00441650.GetMultiValue((unsigned char)first) != 5)
                     ok = false;
             } else if (data_0044F528 == 251) {
-                if ((unsigned char)data_00441650.GetMultiValue(first) != 2)
+                if ((unsigned char)data_00441650.GetMultiValue((unsigned char)first) != 2)
                     ok = false;
             } else if (data_0044F528 == 250) {
-                if ((unsigned char)data_00441650.GetMultiValue(first) != 4)
+                if ((unsigned char)data_00441650.GetMultiValue((unsigned char)first) != 4)
                     ok = false;
             } else if (data_0044F528 == 249) {
-                if ((unsigned char)data_00441650.GetMultiValue(first) != 3)
+                if ((unsigned char)data_00441650.GetMultiValue((unsigned char)first) != 3)
                     ok = false;
             } else if (data_0044F528 == 248) {
-                if ((unsigned char)data_00441650.GetMultiValue(first) != 1)
+                if ((unsigned char)data_00441650.GetMultiValue((unsigned char)first) != 1)
                     ok = false;
             } else if (mixed)
                 ok = false;
