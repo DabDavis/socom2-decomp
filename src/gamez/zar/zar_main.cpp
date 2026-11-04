@@ -231,6 +231,32 @@ int CZAR::ReadString(char **str)
     return n;
 }
 
+}
+
+/* the keys under a key, itself included (SOCOM 1's: recursive, WriteDirectory's tail count).
+ * OPEN, 0x1C4 against 0x294: the target self-inlines four levels, each cutting vector<CKey *>'s
+ * walk a level more -- its second level calls a raw begin and end (0x257CB0, 0x257BA0), an
+ * iterator constructor taking the raw pointer BY REFERENCE (0x257CA0, __iter inlined around it)
+ * and, inside the inlined ==, an accessor on each iterator (0x257B90); the third calls __iter
+ * (0x257C90), end() and ==; the fourth every piece (begin 0x257C80, end 0x257C30, != 0x257C10,
+ * * 0x257C70, ++(int) 0x257C50). include/vector's pointer iterator (== a leaf, __iter building it
+ * by value) is a level too short and self-inlines three levels. And 0x257CB0/0x257BA0 repeat
+ * __vector_pod<Ui>'s begin/end words (0x1EA8C0/0x1EA890) in the same overlay, so they are other
+ * instances: the key ring's base is not __vector_pod<unsigned int> in the original. The copies
+ * are cut by inline_max_size, not the level (levels 6-8 change nothing; `#pragma
+ * inline_max_size(320)` gives four copies, 0x274, with the second level calling data() and the
+ * iterator's pointer constructor by value): the original's pieces cost fewer units */
+int _countKeys(zar::CKey *key)
+{
+    int count = 1;
+
+    for (zar::CKeyRing::iterator i = key->begin(); i != key->end(); i++)
+        count += _countKeys(*i);
+    return count;
+}
+
+namespace zar {
+
 /* a fresh key: put in the key buffer when the file is read (its mode's bit 0), the name made a
  * string of the table's -- else allocated on its own (SOCOM 1's, the same code; SOCOM II's
  * nameless key built by CKey(), its temporary destroyed out of line; one result for both paths,
@@ -255,6 +281,90 @@ CKey *CZAR::NewKey(const char *name)
     return key;
 }
 
+/* Byte-exact: the pad through `if (rem) pad = ...; else pad = 0;` -- a ternary's result is a
+ * temporary numbered after the buffer, coloured ahead of it (s1, the buffer s2); a named pad
+ * declared before the buffer is coloured after it, as the target's (pad s2, buffer s1). The size
+ * read in a statement of its own ahead of the calls, the sum then reduced (`%=` on a named
+ * local): the remainder's divisor is loaded after the calls as the target's (`x % m` in one
+ * expression loads m first, into a saved register). The divisions are signed (div), the fills
+ * signed chars (li -81) */
+/* the directory written at the file's end: the tail (versioned, the key count, the string table's
+ * size and buffer, the padding and the buffer's bytes), the string table, the keys' records, the
+ * data padded to m_data_padded with 0xAF -- then the second file's data copied over in 16 MB
+ * blocks, or the buffer's -- and the file padded with 0xBD to the size at 0x2C (SOCOM 1's grown:
+ * no Securify; it never returns true) */
+bool CZAR::WriteDirectory()
+{
+    if (IsOpen()) {
+        m_tail.version = 0x20002;
+        m_tail.key_count = _countKeys(m_root);
+        m_stable->Pack(CKey::fixupKey, m_root);
+        m_tail.reserved[0] = m_data_padded;
+        m_tail.stable_size = m_stable->m_bytes;
+        m_tail.stable_ofs = (int)m_stable->m_buffer;
+        m_tail.crc = m_34 ? m_34->m_used : 0;
+        m_pFile->fwrite(&m_tail, sizeof(m_tail));
+        m_pFile->fwrite(m_stable->m_buffer, m_stable->m_bytes);
+        m_root->Write(this);
+
+        int size = m_stable->m_bytes;
+        int rem = size + 100 + m_root->CountKeys(true) * CKey::RecordSize();
+        int pad;
+
+        rem %= (int)m_data_padded;
+        if (rem)
+            pad = (int)m_data_padded - rem;
+        else
+            pad = 0;
+        if (pad) {
+            char *buf = (char *)_malloc(pad, 0, 0);
+
+            memset(buf, (char)0xAF, pad);
+            m_pFile->fwrite(buf, pad);
+            if (buf)
+                _free(buf, 0, 0);
+        }
+        if (m_pDataFile) {
+            int left = m_pDataFile->fseek(0, 2);
+            char *buf = (char *)_calloc(0x1000000, 1, 0, 0);
+
+            m_pDataFile->fseek(0, 0);
+            if (left > 0) {
+                do {
+                    unsigned int n = left;
+
+                    if (n > 0x1000000)
+                        n = 0x1000000;
+                    m_pDataFile->fread(buf, n);
+                    m_pFile->fwrite(buf, n);
+                    left -= 0x1000000;
+                } while (left > 0);
+            }
+        } else if (m_34 && m_34->m_data)
+            m_pFile->fwrite(m_34->m_data, m_34->m_used);
+        if (m_2c) {
+            int size = m_stable->m_bytes;
+            int used = size + 100 + m_root->CountKeys(true) * CKey::RecordSize();
+
+            if (m_34 && m_34->m_data)
+                used += m_34->m_used;
+
+            int pad = m_2c - used;
+
+            if (pad > 0) {
+                char *buf = (char *)_malloc(pad, 0, 0);
+
+                memset(buf, (char)0xBD, pad);
+                m_pFile->fwrite(buf, pad);
+                if (buf)
+                    _free(buf, 0, 0);
+            }
+        }
+        m_modified = 0;
+    }
+    return false;
+}
+
 #pragma auto_inline off
 void CZAR::FreeDirectory()
 {
@@ -271,25 +381,24 @@ void CZAR::FreeDirectory()
 }
 #pragma auto_inline reset
 
-/* OPEN, 13 instructions (right size): the target keeps the block's size in a3 and the fresh flag in
- * a1 where this has a1 and a2, and leaves the first growth's join label unpadded (a nop at the
- * first block's end instead). Measured: `!m_data` materialises the flag as the target's sltu/xori/
- * andi (`== 0` gives xor/sltiu); the base taken before `n += size` gives its li/addu pair; `end`
- * declared ahead of `at` gives at s0 and end s1; the second growth as a ternary unpads its join as
- * the target's -- the first as a ternary is 8 bytes short (the realloc's size moved into the test's
- * delay slot, a1 being free here); the flag's and the base's declaration orders change nothing */
+/* The block's size in a CONST local: it survives copy propagation as a named variable numbered
+ * before the fresh flag, so the flag is coloured first (a1) and the size after it (a3), as the
+ * target's -- read as the member, the size is a CSE temporary numbered after the flag (a1/a2, 13
+ * instructions). With a1 taken, both growths as ternaries unpad their joins as the target's.
+ * Measured: `!m_data` materialises the flag as the target's sltu/xori/andi (`== 0` gives
+ * xor/sltiu); the base taken before `n += size` gives its li/addu pair; `end` declared ahead of `at`
+ * gives at s0 and end s1 */
 unsigned int CZARBuffer::Write(const void *data, unsigned int size)
 {
-    if (m_size < m_used + size) {
+    const unsigned int cur = m_size;
+
+    if (cur < m_used + size) {
         bool fresh = !m_data;
-        unsigned int n = fresh ? 4096 : m_size * m_grows + 0x80000;
+        unsigned int n = fresh ? 4096 : cur * m_grows + 0x80000;
 
         n += size;
-        if (m_size < n) {
-            if (fresh)
-                m_data = (char *)_calloc(n, 1, 0, 0);
-            else
-                m_data = (char *)_realloc(m_data, n, 0, 0);
+        if (cur < n) {
+            m_data = fresh ? (char *)_calloc(n, 1, 0, 0) : (char *)_realloc(m_data, n, 0, 0);
             m_size = n;
             m_grows++;
         }

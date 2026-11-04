@@ -287,7 +287,10 @@ CAiEvent::iterator CAiEvent::GetFirstEvent(EVENT_CLASS c)
  * operand orders, the mask or the word in locals first, if/else on a bool, an early-return
  * inline taking the kind (build/scratch/ai/spec_gne.py) -- so it is structural, not the test; the
  * AI core round 19 added the inverted ternary (`type != AIE_ENTITY ? Test : false`, with and without
- * an inner `? true : false`) and a `seen` bool local (if-assigned or a ternary): the same 0x19C */
+ * an inner `? true : false`) and a `seen` bool local (if-assigned or a ternary): the same 0x19C; the
+ * round 24 the bit test as an inline of its own with a result local (round 22's rand() rule: an arm
+ * that is an inline's body ends on a padded label), assigned or if/else, and the whole seen test as an
+ * inline taking the kind with an if/else result: the same 0x19C (build/scratch/ai/v_gne.py) */
 CAiEvent *CAiEvent::GetNextEvent(const CPnt3D *pos, iterator &it, float scale)
 {
     CAiEvent *found = 0;

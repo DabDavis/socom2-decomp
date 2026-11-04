@@ -5,7 +5,10 @@
  * (file and line by `#line`, as in sase_encsc.c). Written (GCC round 18a): the de-interleave
  * 0x24E8D0, k <-> ASK 0x24E918/0x24E9C0, the step-up 0x24EA68, the FFT driver 0x24EB60 and its
  * bit reversal 0x24EC40 (Numerical Recipes' four1 shape, 0-based: the pair swapped at [j], [j-1]).
- * The passes before them (0x24D8B8-0x24E788) are not written.
+ * The passes before them (0x24D8B8-0x24E788) are not written but the inverse driver 0x24DA70 (GCC
+ * round 27a, as first written: the real-input merge, the bit reversal, the passes, the 1/N scale
+ * unless the flags' bit 3 is set; its asserts at lines 819-822, after the forward driver's 758 though
+ * it links first).
  *
  * Shapes read off the target: a count tested `!= 0` (bnez after the step) is `while (n != 0) {
  * ...; n--; }` -- `while (n--)`, a for loop or a do-while each give other code; the copy loop's
@@ -27,7 +30,31 @@ extern float sinf(float);
 
 extern void func_0024DBB8(float *pfInOut, int log2N);
 extern void func_0024E408(float *pfInOut, int log2N);
+extern void func_0024DFB8(float *pfInOut, int log2N);
+extern void func_0024E5B0(float *pfInOut, int log2N);
 void func_0024EC40(float *pfData, int nn);
+
+/* the inverse FFT of 2^log2N points: the real-input merge, the bit reversal, the passes, and
+ * the 1/N scale unless iFlags' bit 3 asks for none */
+void func_0024DA70(float *pfInOut, int log2N, int iFlags)
+{
+	float fScale;
+	int i, N = 1 << log2N;
+
+#line 819 "../../SaseEncVad/source/libtran.c"
+	assert(pfInOut != NellyNull);
+	assert(N >= 8);
+	assert(N <= TWIDDLE_PERIOD);
+	assert(log2N >= 3);
+	func_0024E5B0(pfInOut, log2N);
+	func_0024EC40(pfInOut, N >> 1);
+	func_0024DFB8(pfInOut, log2N - 1);
+	if (!(iFlags & 8)) {
+		fScale = 1.0F / N;
+		for (i = 0; i < N; i++)
+			pfInOut[i] *= fScale;
+	}
+}
 
 /* an interleaved complex vector split into its two halves */
 void func_0024E8D0(const float *pfIn, float *pfRe, float *pfIm, int iLength)

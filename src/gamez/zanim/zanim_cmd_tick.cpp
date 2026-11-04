@@ -13,19 +13,6 @@
 #include "../znode/vis_ripple.h"
 #include "../znode/vis_texfx.h"
 
-/* the GS ALPHA register (sceGsAlpha's layout): (A - B) * C + D, C or D the FIX alpha */
-struct GsAlpha {
-    unsigned long A : 2;
-    unsigned long B : 2;
-    unsigned long C : 2;
-    unsigned long D : 2;
-    unsigned long pad8 : 24;
-    unsigned long FIX : 8;
-    unsigned long pad40 : 24;
-};
-
-/* an alpha driven by an expression (not named yet) */
-extern "C" void func_0025C5F0(GsAlpha *alpha, char *expr, int len, float t);
 
 /* OBJECT_AIM's tick: turn a node from one orientation to another over a time on the
  * command's clock */
@@ -1007,7 +994,7 @@ bool zAnimLightTick(_zanim_cmd_hdr *hdr, float *dT)
         }
     }
     if ((cmd->flags & 0x200) && map) {
-        func_0025C5F0((GsAlpha *)&blend, (char *)cmd + cmd->expr_off, cmd->expr_len, *dT + ZAnim.m_CurSeq->cmd_timer);
+        zAnimAlphaExpr((GsAlpha *)&blend, (char *)cmd + cmd->expr_off, cmd->expr_len, *dT + ZAnim.m_CurSeq->cmd_timer);
         map->m_blendmode = blend;
     }
     float time = cmd->time;
@@ -1044,8 +1031,6 @@ struct BlurEffect {
 };
 
 extern BlurEffect data_00488EA0;
-/* a float driven by an expression (not named yet) */
-extern "C" void func_0025C880(float *out, char *expr, int len, float t);
 
 /* BLUR3D: set the blur's level (flag 1) and amount (2), or drive the amount by an expression;
  * its blend from the record's selectors and alpha (4) or an expression (8); over a time */
@@ -1086,7 +1071,7 @@ extern "C" bool func_00264A40(_zanim_cmd_hdr *hdr, float *dT)
     if (cmd->expr_len > 0) {
         float f;
 
-        func_0025C880(&f, (char *)cmd + cmd->expr_off, cmd->expr_len, *dT + ZAnim.m_CurSeq->cmd_timer);
+        zAnimRGBAExpr((unsigned char *)&f, (char *)cmd + cmd->expr_off, cmd->expr_len, *dT + ZAnim.m_CurSeq->cmd_timer);
         int v;
 
         memcpy(&v, &f, sizeof v);
@@ -1115,7 +1100,7 @@ extern "C" bool func_00264A40(_zanim_cmd_hdr *hdr, float *dT)
         data_00488EA0.alpha = v;
     }
     if (cmd->flags & 8) {
-        func_0025C5F0(&alpha, (char *)cmd + cmd->alpha_expr_off, cmd->alpha_expr_len, *dT + ZAnim.m_CurSeq->cmd_timer);
+        zAnimAlphaExpr(&alpha, (char *)cmd + cmd->alpha_expr_off, cmd->alpha_expr_len, *dT + ZAnim.m_CurSeq->cmd_timer);
         unsigned long v;
 
         memcpy(&v, &alpha, sizeof v);
@@ -1252,7 +1237,7 @@ extern "C" bool func_00264610(_zanim_cmd_hdr *hdr, float *dT)
         data_00488E48.alpha = v;
     }
     if (cmd->flags & 0x10000) {
-        func_0025C5F0(&alpha, (char *)cmd + cmd->expr_off, cmd->expr_len, *dT + ZAnim.m_CurSeq->cmd_timer);
+        zAnimAlphaExpr(&alpha, (char *)cmd + cmd->expr_off, cmd->expr_len, *dT + ZAnim.m_CurSeq->cmd_timer);
         unsigned long v;
 
         memcpy(&v, &alpha, sizeof v);
@@ -1299,7 +1284,6 @@ static inline void SetRGB(PNT4D *c, float r, float g, float b)
     c->y = g;
     c->z = b;
 }
-extern "C" void func_0025C6E0(PNT4D *color, char *expr, int len, int channel, float t);
 
 extern "C" bool func_002642F0(_zanim_cmd_hdr *hdr, float *dT)
 {
@@ -1337,7 +1321,7 @@ extern "C" bool func_002642F0(_zanim_cmd_hdr *hdr, float *dT)
 
             c = from;
         }
-        func_0025C6E0(&c, expr, cmd->expr_len, first, t);
+        zAnimColorExpr(&c, expr, cmd->expr_len, first, t);
         for (int i = 0; i < 4; i++)
             if (cmd->channels & (1 << i))
                 (PNT4D &)zdb::CVisual::m_lensColor[i] = c;
@@ -1582,7 +1566,7 @@ bool zAnimObjectBlendModeTick(_zanim_cmd_hdr *hdr, float *dT)
     alpha.C = c;
     alpha.D = d;
     if (cmd->flags & 8)
-        func_0025C5F0(&alpha, (char *)cmd + cmd->expr_off, cmd->expr_len, step + ZAnim.m_CurSeq->cmd_timer);
+        zAnimAlphaExpr(&alpha, (char *)cmd + cmd->expr_off, cmd->expr_len, step + ZAnim.m_CurSeq->cmd_timer);
     node->SetBlendMode(*(const zdb::BLENDMODE *)&alpha, b1, b2, b3);
     return done;
 }
@@ -2304,7 +2288,8 @@ void zAnimObjectOpacityFromToBegin(_zanim_cmd_hdr *hdr)
         node->m_Opacity = cmd->from;
 }
 
-/* OPEN, 5 instructions: the blend's two registers swapped. */
+/* the faded opacity taken into a local, stepped and stored back: `node->m_Opacity += ...` swaps the
+ * blend's two FPRs (5 instructions), a cast on the sum keeps only the product's */
 bool zAnimObjectOpacityFromToTick(_zanim_cmd_hdr *hdr, float *dT)
 {
     zanim_cmd_opacity *cmd = (zanim_cmd_opacity *)hdr;
@@ -2323,10 +2308,14 @@ bool zAnimObjectOpacityFromToTick(_zanim_cmd_hdr *hdr, float *dT)
         *dT = 0.0f;
         done = false;
     }
-    if (done)
+    if (done) {
         node->m_Opacity = cmd->to;
-    else
-        node->m_Opacity += cmd->rate * step;
+    } else {
+        float o = node->m_Opacity;
+
+        o += cmd->rate * step;
+        node->m_Opacity = o;
+    }
     return done;
 }
 
@@ -2749,29 +2738,30 @@ struct zanim_cmd_lod {
     unsigned char level;
 };
 
-/* OPEN, 8 bytes short, in the tail only: the last test's branch carries `return false` in its
- * delay slot where the target leaves a nop and a block of its own (then a pad). The four ordered
- * tests read the level first (`cmd->level > lod` for lod < level): the level's load is then made
- * before the narrowed LOD and coloured after it, the LOD in v0 and the level in v1 as the target's;
- * the equality keeps the LOD first (its xor's operand order). Not else-if, `return 0`, a test
- * inverted to an early `return false`, nor a bool local in the last arm; one result variable for
- * all of them is 42 off */
+/* the command's tests on a level of detail (ours: the tick's body is an inline's -- its `return
+ * false` an assignment falling into the inline's end, so the last test's branch keeps a nop and
+ * the false a block of its own, then a pad, where written in the tick MW moves the false into the
+ * delay slot, 8 bytes short); the enum compared with the byte as it is, no casts */
+static inline bool LodTest(zanim_cmd_lod *cmd, LOD lod)
+{
+    if (cmd->flags & 1)
+        return lod == cmd->level;
+    if (cmd->flags & 2)
+        return lod < cmd->level;
+    if (cmd->flags & 4)
+        return lod <= cmd->level;
+    if (cmd->flags & 8)
+        return lod > cmd->level;
+    if (cmd->flags & 0x10)
+        return lod >= cmd->level;
+    return false;
+}
+
 bool zAnimLODTestTick(_zanim_cmd_hdr *hdr, float *dT)
 {
     zanim_cmd_lod *cmd = (zanim_cmd_lod *)hdr;
-    LOD lod = ZAnim.m_Lod;
 
-    if (cmd->flags & 1)
-        return (unsigned char)lod == cmd->level;
-    if (cmd->flags & 2)
-        return cmd->level > (unsigned char)lod;
-    if (cmd->flags & 4)
-        return cmd->level >= (unsigned char)lod;
-    if (cmd->flags & 8)
-        return cmd->level < (unsigned char)lod;
-    if (cmd->flags & 0x10)
-        return cmd->level <= (unsigned char)lod;
-    return false;
+    return LodTest(cmd, ZAnim.m_Lod);
 }
 
 /* call an anim by its call-anim reference, unless it is still running from the last call */
