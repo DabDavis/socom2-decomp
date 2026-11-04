@@ -297,7 +297,12 @@ void FillLanguageVirtualTable(void **vt)
  * the result are two values in the target. The square's reload SOCOM 1's copy has as well (its
  * own compiler), so it is the source's; an inlined helper (a static inline probe), the gastone
  * term added in each arm and seven statement shapes (build/scratch/gcc/lang/v_cbs*.py, v_sm.py,
- * the same on _cdbGetpSmoothMatrix) leave both. */
+ * the same on _cdbGetpSmoothMatrix) leave both. Round 19c: the walkers' reload (below) was a
+ * second read after a join through another base register; here the base is the parameter, and
+ * _cdbGetProbMatrixSize and _cdbGetSmoothMatrixSize as `__inline__` helpers above it (both are
+ * small rows near the object's end, as deferred copies would be) reorder the sum (0x84-0x98) or,
+ * the smoothing size alone inlined, leave the read merged by CSE1 (build/scratch/gcc/r19c/
+ * gen_cbs*.py). */
 static int _cdbGetCodeBookSize(LANG *l, CDB *cdb)
 {
     int bits = l->data->bits;

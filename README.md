@@ -6774,6 +6774,51 @@ _FreeTree, CalcNrNodes@ctxtree, CalcNrNodes10, CalcAccuracyCtxTree, _CountWordsI
 -- 13 rows new to the map's byte-exact rows (3,580 bytes), none superseding a draft; `src/lib/asr` 483 of
 522 (470 of 514 before). 7 rows named. No tool changed.
 
+**Round 19c: the language walkers' reload, an inline's frame, the VAD's tests.**
+
+- **A second read of a field survives when it follows a join and reaches GCSE through another base
+  register.** The five codebook walkers load `nbr_codebook` twice (the count and the gastone term; SOCOM
+  1's copies too) and pick the count with a movn: the count is read and incremented in place FIRST
+  (`n = d->nbr_codebook; if (d->bits & 4) n++;`), then the codebooks' base from `l->data` read again.
+  The count's `if` is still a branch at CSE (jump1 does not convert an in-place increment, where it turns
+  `if (c) n = m + 1; else n = m;` into a conditional move before CSE1 and puts both loads in one block),
+  so the sum after its join starts a new extended block for CSE1 and CSE2; GCSE's one pass hashes the
+  sum's load against the second `l->data` load's register -- another expression -- and PRE merges only
+  the `l->data` loads. The if-conversion after combine then makes the movn. Round 18c's "the source keeps
+  two reads" was right, and needs no volatile: order and a re-read base. (`_cdbGetCodeBookSize`'s reload
+  is not this: its base is the parameter, still OPEN.)
+- **An int aligned in place gives the `+ 3` a register of its own**: the walkers' `off = ALIGN4(off)`
+  (the target's `addiu v1,v0,3; and v0,v1,a0`) -- a variable set twice is not tied to the sum's input.
+- **An inline's locals take their frame block where the call is expanded** (SetIsolatedWordDpActiveWords,
+  round 18c's 6-word frame OPEN): CreateActiveWordsCtxTree is an `__inline__` the function inlines, so
+  its accessor table sits above the caller's own locals (sp+16 over sp+0) and each `&vt` is formed at
+  each call; its copy, with CompareIDs' (qsort's comparator), is deferred to the object's end -- the
+  context-tree object now holds CreateCtxTree and both (moved from ctxutil.c, which keeps
+  MakeUserWordsActiveDist).
+- **An inline's results reach the caller's test as values**: CheckForAbnormalConditions' hold is
+  `StartHold(v, 0xBFFF)` -- the constant argument copied into a register at the call (the target's `li
+  0xbfff` before the hold test), its zero results materialised and tested (`move v1,zero` ... `bnez v1`)
+  where a constant 0 known in the caller is threaded to the exit. ChangeMike inlines the same helper
+  (an aside of 0 starts no hold: the test folds away for 0xBFFF).
+- **Measured**: `abs()` is GCC's builtin branch around the negation (the target's `bgez`; `if (d < 0)
+  d = -d` is if-converted to a movn); a limit `c ? 2 : 1` in its own variable (`li 2; movz`; in the
+  comparison fold splits it into two tests); `x < 0` and `x > MAX` as two tests (an `||` folds them into
+  one unsigned compare); a flag stored before the local takes it (`d->pruning = 1; pruning = 1;`: the
+  store's own constant); SOCOM II's float constants are its own decimals (0.69077546f, -6.9077545f,
+  correctly rounded, SOCOM 1's an ulp and two above), and the VAD's doubles float constants promoted
+  (float-precision bits in .rodata; `dconst.py` finds 5.7564623653888703 for the one compared in double).
+- **Open, diagnosed in place**: PrunDynProg (17 words, registers: global-alloc takes x before the old
+  level), ChangeMike (4 bytes short: the starting level's mask, two register pairs, the hold's
+  registers), `_cdbGetCodeBookSize` and `_cdbGetpSmoothMatrix` (inline size helpers tried).
+
+Hand-written in round 19c: `asr/ctxtree.c` (+4: SetIsolatedWordDpActiveWords closed, CreateCtxTree and
+CreateActiveWordsCtxTree moved in, CompareIDs over its draft; 11 of 11), `asr/ctxutil.c` (1 of 1),
+`asr/language.c` (+5: the five walkers; 74 of 76), `asr/nbestdp.c` (+2: InitNBestDynProgProcess,
+PrunDynProg OPEN; 4 of 5), `asr/vad.c` (+3: TestChangeMike, CheckForAbnormalConditions, ChangeMike OPEN;
+5 of 6) -- 9 rows new to the map's byte-exact rows (4,160 bytes), one matched draft superseded
+(CompareIDs); `src/lib/asr` 493 of 528 (483 of 522 before). 1 row named (PrunDynProg `s1:order`: SOCOM
+1's N-best object holds it after CleanUpParBTProc at the same 0x1F4). No tool changed.
+
 **Round 14b: the "toolchain" opens were SCEA's shapes; LargeInt's core is assembly.**
 
 - **LargeInt's EE primitives are hand-written assembly** (0x628B48-0x629A44, between LargeInt.c's C and
