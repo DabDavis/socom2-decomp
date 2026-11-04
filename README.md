@@ -1776,6 +1776,44 @@ templates next), and the earlier rounds' opens; 3.0b38/b50/b52 still untold.
   - ztex_manager.cpp's share from 0x357000 (CGSTexBuffer's Setup/Add/RelocateAll, CDynTexList's
     Adds) is SOCOM 1's order; the unit itself starts near 0x3557xx, so the two halves become one
     file once the rest is written.
+- **Tells from completing the MSL headers, round 17** (the instances other lanes waited on; probes build/p17/, untracked):
+  - THE CLASS VECTOR'S COPY CONSTRUCTOR IS SOCOM 1's MSL (its Props::Branch 0x237ED0 calls every piece out of line): the
+    deleter built from the other's `alloc() const`, then init over the other's RAW `begin()/end() const` (a pointer in v0).
+    So include/vector's deleter has alloc() const and a constructor from an allocator, __vector_imp's const ends are SOCOM
+    1's raw pair, and vector<T> takes the base's ends by using-declarations and keeps a class-returning const pair of its own
+    (SOCOM II's const walks return a class: the AI core's 0x52F3E0/0x52F310, renamed vector's). Where the copy is itself a
+    cut level -- c2dfont.cpp's tail, the glyph pair's copy calling the piece vector's -- each piece is called as the
+    target's (0x35D420 and 0x35D490-0x35D4E0 byte-exact, +5); every other copy inlines them as before;
+  - A TEMPLATE TAIL GENERATES WHAT ITS OWN FUNCTIONS FREE FIRST: seal_env.cpp's UninitDatabaseHandles written
+    FreeVector(m_blooddriptexhandles) (its four pieces were placeholders) generates the deleter's clear and destructor in the
+    unit's first round, so InitDecalHandles' reserve 0x5B71B0 and insert 0x5B6CE0 inline the temporary's destructor with its
+    clear as the target's; with CZDecalDef's empty user constructor (zwep_weapon.cpp's: member-by-member copies) the unit
+    gains seven rows;
+  - ~basic_string reads the long text as a POINTER through the words (`((charT **)w_)[2]`): inlined on a member at a
+    non-zero offset of a frame object (its `this` tests kept), MW then reads both words through the member's address
+    (`lw a0,8(a0)`), where the word cast to a pointer let it fold the second read into the frame -- the UI's resize<
+    CDesignDlgObj> 0x383960 and resize<CDlgDesignModel> 0x383AA0 byte-exact; a long-form struct member, `this` or w_ in a
+    local, is_long() and an early return each keep one of the four resizes wrong;
+  - A POINTER-VECTOR WALK WHOSE ITERATORS LIVE IN THE FRAME IS std::transform: CZKit::UnInit 0x5C7CE0 is
+    `transform(begin(), end(), begin(), op)` -- the three by-value parameters (first 48, last 44, result 40, above their
+    arguments' temporaries 52-60) stay in memory, copied in through $f0 and re-read and re-stored at every step (measured in
+    the kit's seal_kit.cpp, 104 -> 105, the kit lane's to apply). Declared iterators never do it: a wrapper holding the base
+    iterator by value with the walk's three iterators ASSIGNED gives every instruction but the six slots, mirrored
+    (build/p17/uninit.cpp);
+  - THE IMAGE'S 4D POINT COPIES TAKE THREE SHAPES, no one class (build/p17/fpu4scan.py: every callee copying a 16-byte
+    argument through four FPRs): SeeFarther's lq/sq (16-aligned implicit: zmath.h's CPnt4D), Props::Branch's out-of-line
+    copy constructor 0x328D60 (written: zparticle.h's), RenderLineWorld's callee copies through the FPRs (4-aligned
+    implicit) -- the last is zmath.h's own PNT4D: RenderLineWorld over PNT4D parameters is byte-exact (zmath.h's comment);
+    c2dfont.cpp's glyph colour is the same 4-aligned block at a 16-aligned member (four ints with a member-level
+    `aligned(16)`, or `int m_20[4] aligned(16)`, make the pair's copy 0x35D370 byte-exact: the HUD lane's c2dfont.h);
+  - A WALK'S end() REUSES begin()'s DATA LOAD WHEN EVERY PATH TO THE TEST HAS ONE: MSL's pointer-vector insert(position,
+    x) -- the offset taken first, the pod's insert, `begin() + n` returned -- re-loads the data pointer right after its call,
+    so the world's CSnd::AddNewCSnd 0x343F90, calling it with the result unused, keeps the pointer in one register for
+    every test (byte-exact, zsnd_csnd.cpp 57 of 57 with `m_soundlist.insert(i, sound)`: the world lane's to write); no form
+    of the pod's end() changes it (build/p17/podend.py). include/vector has the member now;
+  - not reached: the class insert's end register (insert<CLadderData> 0x2B0260, the delayed nodes' 0x33C5C0: no new
+    shape), AddKeyProps' pair temporary, GetSealCount's outer copy, the deques' make_iterator; 0x359740 is __list_imp<PCv>::
+    advance_to, placed right after C2DBitmapPoly() 0x359640 -- the unit before c2dfont.cpp emitted it first.
 - **Tells from completing the MSL headers, round 16** (the instances other lanes waited on; probes build/p16/, untracked):
   - THE 2-BYTE POD IS THE CHAR POD OVER HALVES: include/vector's `__vector_pod<unsigned short>` (a partial
     specialisation beside the char pod) gives seal_env.cpp's tail insert<Us> 0x5B68E0 and reserve<Us> 0x5B6BD0
