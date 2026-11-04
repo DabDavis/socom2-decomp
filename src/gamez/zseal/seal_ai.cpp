@@ -1521,7 +1521,7 @@ extern "C" void func_0056C080(CSealCtrlAi *ai, CAiPath *path, const CAiMapLoc *l
 {
     CEntity *e = ai->m_entity;
 
-    ai->m_614 = 0;
+    ai->m_strafe = 0.0f;
     if (!path->m_points.size() || !path->HasPoints() || path->IsPlanning()) {
         ai->m_60c = 0;
         loc = loc->x == CAiMapLoc::invalid.x && loc->y == CAiMapLoc::invalid.y ? &e->m_mapLocValid : loc;
@@ -1535,10 +1535,10 @@ extern "C" void func_0056C080(CSealCtrlAi *ai, CAiPath *path, const CAiMapLoc *l
         ai->m_leg_from.y = 0.0f;
         ai->m_leg_dir = ai->m_leg_to - ai->m_leg_from;
         ai->m_leg_len = ai->m_leg_dir.Normalize();
-        ai->m_608 = 0;
+        ai->m_leg_done = 0.0f;
         ai->m_60c = 0;
-        ai->m_614 = 0;
-        ai->m_610 = 0;
+        ai->m_strafe = 0.0f;
+        ai->m_strafe_time = 0.0f;
     }
 }
 
@@ -1984,6 +1984,52 @@ Rfloat::operator float() const
 extern "C" bool func_005608B0(const float &chance)
 {
     return Rfloat(0.0f, 1.0f) <= chance;
+}
+
+/* a random value between two bounds (an inline over Rfloat: through it the bounds' registers are the
+ * target's -- the Rfloat built in place swaps them; the name ours) */
+static inline float RandRange(float lo, float hi)
+{
+    return Rfloat(lo, hi - lo);
+}
+
+/* whether a chance comes up, the chance by value read through a reference (seal_control.cpp's
+ * inline: the target stores the chance in a stack slot and reads it back after rand()) */
+static inline bool Chance(float chance)
+{
+    const float &c = chance;
+
+    return Rfloat(0.0f, 1.0f) <= c;
+}
+
+extern "C" {
+/* the side step's limits (OVL2 data: the leg's length left under which it stops, the time between
+ * picks, and its least and greatest size) */
+extern float data_00650180;
+extern float data_00650188;
+extern float data_00650190;
+extern float data_00650198;
+}
+
+/* the side step off the leg being walked: none near the leg's end; picked again once the time since
+ * the last pick passes its limit -- from none, the greatest either way at even chances; else even
+ * chances of none or a random size the other way -- the time restarted (OVL2 0x5698A0, new in SOCOM
+ * II: 0x567900 calls it; the name ours) */
+extern "C" float func_005698A0(CSealCtrlAi *ai)
+{
+    if (!(ai->m_leg_len - ai->m_leg_done <= data_00650180)) {
+        if (!(ai->m_strafe_time <= data_00650188)) {
+            float side = ai->m_strafe >= 0.0f ? 1.0f : -1.0f;
+
+            if (ai->m_strafe == 0.0f)
+                ai->m_strafe = data_00650198 * (Chance(0.5f) ? -1.0f : 1.0f);
+            else
+                ai->m_strafe = Chance(0.5f) ? 0.0f : -side * RandRange(data_00650190, data_00650198);
+            ai->m_strafe_time = 0.0f;
+        }
+    } else
+        ai->m_strafe = 0.0f;
+    return ai->m_strafe;
 }
 
 /* a direction to look in from a map spot (OVL2 0x559580, not written: its arguments are what

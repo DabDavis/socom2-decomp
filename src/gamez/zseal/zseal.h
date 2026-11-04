@@ -840,10 +840,12 @@ public:
     CPnt3D m_leg_to;   // 0x5ec
     CPnt3D m_leg_dir;   // 0x5f8
     float m_leg_len;   // 0x604
-    unsigned int m_608;   // 0x608
+    /* the walk along the leg: how far is done, a word, the time since the side step was last picked
+     * and the side step itself (0x5698A0 reads them as floats, 0x56C080 clears them; the names ours) */
+    float m_leg_done;   // 0x608
     unsigned int m_60c;   // 0x60c
-    unsigned int m_610;   // 0x610
-    unsigned int m_614;   // 0x614
+    float m_strafe_time;   // 0x610
+    float m_strafe;   // 0x614
     CAiMapLoc m_leg_cell;   // 0x618
     unsigned char _61c[0x628 - 0x61c];
     unsigned char m_event[0x28];   // 0x628: a CAiEvent (SOCOM 1's m_event, 0x480)
