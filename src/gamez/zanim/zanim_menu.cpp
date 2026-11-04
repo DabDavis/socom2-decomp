@@ -482,6 +482,32 @@ bool ExecuteChooseDefaultEquipment(C2DAnimCmdHdr *hdr, float *dT)
 
 }
 
+/* "ChooseDefaultEquipmentOnly" (SOCOM II's command 0x8F, the UI command table's record at 0x3DDDB0;
+ * the name ours, after the table's): each selected character carrying two weapons or more given its
+ * type's default weapons -- the vector's assignment inlined, as ExecuteChooseDefaultEquipment's --
+ * its own primary and secondary set up again in the first two slots */
+bool UIChooseDefaultEquipmentOnly(C2DAnimCmdHdr *hdr, float *dT)
+{
+    for (CSelectedCharsItr it("UiCharSet"); it.Valid(); it.Advance()) {
+        if (((CCharacterWeapList *)it.m_weapons)->size() < 2)
+            continue;
+        EQUIP_ITEM primary = (*(CCharacterWeapList *)it.m_weapons)[0].m_wepId;
+        EQUIP_ITEM secondary = (*(CCharacterWeapList *)it.m_weapons)[1].m_wepId;
+        CCharacterType *type = CCharacterType::GetByNameMod(GetDefCharTypeName(it.m_index));
+        CCharacterWeapList *def = type ? (CCharacterWeapList *)type->m_weapons : 0;
+
+        if (def) {
+            *(CCharacterWeapList *)it.m_weapons = *def;
+            if (((CCharacterWeapList *)it.m_weapons)->size() >= 2) {
+                (*(CCharacterWeapList *)it.m_weapons)[0].SetupCharacterWeapon(primary);
+                (*(CCharacterWeapList *)it.m_weapons)[1].SetupCharacterWeapon(secondary);
+                UpdateCharWeaponUiVars(it.m_index);
+            }
+        }
+    }
+    return true;
+}
+
 /* the primary the argument names given to every selected character: whether all took it (SOCOM II's;
  * the name ours by the command's) */
 bool UIChoosePrimary(C2DAnimCmdHdr *hdr, float *dT)
