@@ -46,28 +46,6 @@ void CSealCtrlAi::OpenDiPool()
 {
 }
 
-void CDiPool::dirlist::Free(dir *d)
-{
-    d->m_state = 0;
-    d->m_2c = 0;
-    push_back(d);
-}
-
-/* The walking iterator the target keeps in the frame (copied in from begin()'s temporary through $f0,
- * re-read and re-stored at each step) is one ASSIGNED from begin() -- the wrapper iterator's implicit
- * assignment is a bitwise copy, which keeps both ends of it in memory -- with the end taken into a
- * local first (held in s1). Not for_each: its by-value `first` is built by the iterator's user-declared
- * copy constructor and scalarised (0x90); a plain walk `i != end()` is 0xA0 */
-void CDiPool::dirlist::DeleteAll()
-{
-    iterator i;
-    iterator e = end();
-
-    for (i = begin(); i != e; ++i)
-        delete *i;
-    clear();
-}
-
 /* the pool emptied at the mission's end (SOCOM 1's; OVL2 0x5CC5F0) */
 void CSealCtrlAi::CloseDiPool()
 {
