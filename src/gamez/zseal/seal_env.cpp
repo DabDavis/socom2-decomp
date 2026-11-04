@@ -1705,8 +1705,7 @@ int CZSealBody::OnWeaponHit(zdb::IntersectStruct *hit, CZProjectile *proj)
         CSealCtrlAi *ai = ((CSealCtrl *)m_control)->GetSealCtrlAi();
 
         if (ai) {
-            /* (the bit compared as a bool: its sltu) */
-            if ((bool)ai->m_navyseal != false && (item == 121 || item == 126) && (ai->m_stateStack.m_10 & (1 << 10))) {
+            if (ai->IsNavySeal() && (item == 121 || item == 126) && (ai->m_stateStack.m_10 & (1 << 10))) {
                 CEntity *e = CEntity::m_list.GetEntityById(proj->m_shooterID);
 
                 if (e && (e == this || (m_team & e->m_team)))

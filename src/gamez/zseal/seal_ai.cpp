@@ -500,7 +500,7 @@ extern "C" void func_00570D90(CSealCtrlAi *ai, bool on)
     if (on && !NoShoot(e))
         SetRange6F4(ai, data_0064FE48);
     else
-        SetRange6F4(ai, ai->m_d8);
+        SetRange6F4(ai, ai->m_aiParams.courage);
 }
 
 /* the valve of a name, or none (OVL2 0x574730; SOCOM 1's, without its fourth valve and the alias) */

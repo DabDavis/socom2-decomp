@@ -111,6 +111,54 @@ CZSealBody *CZSealBody::CreateRemoteSeal(int index, int id, const char *name, in
     return seal;
 }
 
+/* a SEAL brought back: an AI one at a random start of its vehicle entry's respawning set -- the
+ * location's cell centre, turned the start's way -- made over, put there, its controller marked
+ * respawned, the entry's AI parameters taken but the respawn count, the entry kept and the brain
+ * restarted; with no start to be had the count cleared; any other made over where it stands; the
+ * respawn asked no more (OVL2 0x5994A0; SOCOM 1's DoRespawn, the start the entry's now, not one out
+ * of the player's sight) */
+void CZSealBody::DoRespawn()
+{
+    /* (the controller's test written out as a ternary: IsAi()'s if-assign threads the zero past the
+     * andi; the entry and the flag declared before the controller, the flag set after it -- the
+     * target's s2/s1/s0) */
+    if (m_control ? ((CSealCtrl *)m_control)->IsAi() : false) {
+        CVehicleRdrEntry *entry;
+        bool failed;
+        CSealCtrlAi *ai = ((CSealCtrl *)m_control)->GetSealCtrlAi();
+
+        entry = ai->m_aiParams.m_veh;
+        failed = true;
+
+        entry->Randomize(false);
+        if (entry->m_respawn.m_count) {
+            const char *name = entry->GetRespawnPos();
+            int dir = entry->GetRespawnDir();
+            CAiMapLoc loc;
+            CPnt3D pos;
+            CQuat q;
+
+            if (AiMaps.GetLocation(name, loc) && AiMaps.GetCellCenter(loc, &pos)) {
+                CAiMap::GetDirQuat((CAiMap::DIR)dir, q, true);
+                ReCreate(this, 0);
+                TeleportTo(&pos, &q);
+                ai->m_has_respawned = true;
+                unsigned int respawn = ai->m_aiParams.respawn;
+
+                ai->m_aiParams = entry->m_aiParams;
+                ai->m_aiParams.m_veh = entry;
+                ai->m_aiParams.respawn = respawn;
+                ai->InitAiBrain();
+                failed = false;
+            }
+        }
+        if (failed)
+            ai->m_aiParams.respawn = 0;
+    } else
+        ReCreate(this, 0);
+    m_needs_respawn = 0;
+}
+
 /* a node's tree counted (OVL2 0x59A450: a walk of the child vector; the map's FindGear was SOCOM
  * 1's by position only) */
 extern "C" int func_0059A450(zdb::CNode *node);

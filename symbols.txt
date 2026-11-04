@@ -10304,7 +10304,7 @@
 0x00572D70 0x228 UpdateEventMask__11CSealCtrlAiFv  # OVL2; s1:order by hand (the SEALs, round 22, the kit lane's round-23 lead: CTTeam::Tick calls it in its join and leave cases where SOCOM 1's CTTeam::Tick calls UpdateEventMask; between OnWeaponEvent's and CreateAiEvent's places as in SOCOM 1; the same three MakeMaskEx statics plus a fourth, the mask at 0x65C as SOCOM 1's m_eventMask at 0x4B8, the team bits 26/28/17 and bits 8/9 as SOCOM 1's m_sleeping/m_snoozing, cleared online)
 0x00572FA0 0x164 CreateAiEvent__9CSealCtrlFQ28CAiEvent5EVENTffbPC6CPnt3DUi  # OVL2; s1:order (seal_ai.cpp: after OnWeaponEvent and the event-mask update, before the AI brain's set-up, as SOCOM 1's CreateAiEvent__9CSealCtrlFQ28CAiEvent5EVENTffbPC6CPnt3DUi; the voice's caller 0x55FEE0 passes its arguments in that order: the kind in a1, two floats, false in a2, the position in a3, an id in t0) -- the SEAL lane, round 4
 0x00573110 0x20 func_00573110  # OVL2
-0x00573130 0xA4C func_00573130  # OVL2
+0x00573130 0xA4C InitAiBrain__11CSealCtrlAiFv  # OVL2; s1:order by hand (the SEALs, round 29): SOCOM 1's InitAiBrain__11CSealCtrlAiFv, between CreateAiEvent and OnMissionEnd in both builds (SOCOM II's new 0x573110 between); CMission::LoadVehicle, RemoteRespawn and DoRespawn call it as SOCOM 1's three call InitAiBrain
 0x00573B80 0x4C OnMissionEnd__11CSealCtrlAiFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00573BD0 0x144 OnMissionStart__11CSealCtrlAiFv  # OVL2; slot 0x5C of __vt__11CSealCtrlAi (CSealCtrl's OnMissionStart slot)
 0x00573D20 0x134 Initalize__11CSealCtrlAiFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)

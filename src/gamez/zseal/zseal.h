@@ -256,6 +256,8 @@ public:
 class CAiMaps {
 public:
     bool GetCellCenter(const CAiMapLoc &loc, CPnt3D *center);
+    /* a named location's cell (ai_maps.h's, OVL2 0x52DB70) */
+    bool GetLocation(const char *name, CAiMapLoc &loc);
     /* a point's cell (ai_maps.h's, OVL2 0x52DC70) */
     bool GetLocation(const CPnt3D *pos, CAiMapLoc &loc);
     /* a cell's map (ai_maps.h's, OVL2 0x52E6B0) */
@@ -615,11 +617,12 @@ public:
     float m_scan_limits;   // 0x60
     unsigned char _64[0xa8 - 0x64];
     CAiDecay m_visrange;   // 0xa8 (as SOCOM 1's)
-    unsigned char _b4[0xd8 - 0xb4];
-    float m_d8;   // 0xd8: a range 0x570D90 falls back to (the name ours)
-    unsigned char _dc[0xec - 0xdc];
-    float m_ec;   // 0xec: the view range again (new in SOCOM II; the name ours)
-    unsigned char _f0[0x10c - 0xf0];
+    unsigned char _b4[0xd0 - 0xb4];
+    /* the character's AI parameters (new in SOCOM II, the vehicle entry's own type, zchar.h's: the
+     * constructor builds AI_PARAMS() in place, DoRespawn copies the entry's in but the respawn count
+     * and keeps the entry as m_veh, 0x570D90 falls back to the courage, the view range's setter
+     * stores visual_range; the name ours) */
+    AI_PARAMS m_aiParams;   // 0xd0
     CSealUnit *m_unit;   // 0x10c: the squad (SOCOM 1's 0xdc)
     unsigned char _110[0x114 - 0x110];
     unsigned int m_padid;   // 0x114 (SOCOM 1's 0xe8: SOCOM II dropped the ten button readings)
@@ -1087,6 +1090,9 @@ public:
      * kit lane's seal_kit.cpp defines it) */
     virtual void PerturbAimVector(CPnt3D *v);
     virtual void Initalize();
+    /* the brain started over: the states, the goals and the senses (SOCOM 1's; OVL2 0x573130 -- not
+     * written: CMission::LoadVehicle, RemoteRespawn and DoRespawn call it as SOCOM 1's do) */
+    void InitAiBrain();
     /* a Navy SEAL (SOCOM 1's bit; the accessor ours, as the code tests it materialised) */
     bool IsNavySeal() const { return m_navyseal ? true : false; }
     /* the planner a new route takes (SOCOM 1's; OVL2 0x5627E0, seal_ai.cpp's) and its bias (SOCOM 1's,
@@ -1264,6 +1270,9 @@ public:
     /* a SEAL made from a character type with a controller (SOCOM 1's; OVL2 0x5999E0), and the local
      * player's made for a network game (SOCOM 1's; OVL2 0x5442C0) */
     static CZSealBody *Create(const CCharacterType *type, const char *name, CSealCtrl *ctrl);
+    /* a SEAL made over in place, of its own character when given none (SOCOM 1's; OVL2 0x599B60 --
+     * not written; true always) */
+    static bool ReCreate(CZSealBody *seal, const CCharacterType *type);
     /* the SEAL a node belongs to (OVL2 0x59ACD0, seal_create.cpp's) */
     static CZSealBody *GetSeal(zdb::CNode *node);
     /* (OVL2 0x553EA0, not written yet) and the controller fitted after (OVL2 0x599F00) */
