@@ -528,6 +528,9 @@ public:
  * 0x3812B0; SOCOM II's 0x74 bytes, the members' names ours from the tags) */
 class CGameDlgDesign {
 public:
+    /* only the background type set (zui.cpp's 0x367430 stores it between the third string and the
+     * script libraries; the two flags are left) */
+    CGameDlgDesign() : m_backgroundType(0) {}
     void LoadFromRdr(_zrdr *rdr);
     void LoadModels(_zrdr *rdr);
 

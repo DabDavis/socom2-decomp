@@ -96,26 +96,23 @@ typedef struct RTTIVTableHeader {
 } RTTIVTableHeader;
 
 /* inlined at every use: equal names give 1 (the PowerPC's returns the difference) */
+/* the increments inside the tests (round 6): MW then steps each pointer in a branch's delay slot and
+ * loops back on the first name's byte -- the target's top-tested compare, inlined four times into
+ * __dynamic_cast; the PowerPC's `s1++; s2++;` after both tests gives a rotated loop 0x10 longer */
 static int strequal(const char *s1, const char *s2)
 {
     for (;;) {
-        if (*s1 != *s2)
+        if (*s1 != *s2++)
             return 0;
-        if (*s1 == 0)
+        if (*s1++ == 0)
             return 1;
-        s1++;
-        s2++;
     }
 }
 
-/* OPEN, 143 instructions (0x23C; this draft 0x27C): MWRTTI.cp's __dynamic_cast, the PowerPC's adapted.
- * What holds: the s8 frame (the throw), the offset sign-extended to a long before the add
+/* MWRTTI.cp's __dynamic_cast, the PowerPC's adapted (byte-exact since round 6, the name compare
+ * respelled above): the s8 frame (the throw), the offset sign-extended to a long before the add
  * (`(long)offset`), the 32-bit table fields (lw), the 64-bit `temp` sum (daddu), the throw
- * (`__throw("!std::exception!!std::bad_cast!!", &obj, ~bad_cast)` at s8+44). What does not: the
- * inlined name compare -- the target's is TOP-tested (the two loads, `beq`, the second pointer
- * stepped in its delay slot, `b out; move a0,zero`, then `bnez` on the first name's byte with its
- * step in the slot, `li a0,1`) and returns 1 on equal; the PowerPC's for-loop (rotated, entered at
- * its bottom test) and a `for (;;)` with two returns both come out 0x40 bytes longer. */
+ * (`__throw("!std::exception!!std::bad_cast!!", &obj, ~bad_cast)` at s8+44). */
 extern "C" void *__dynamic_cast(void *obj, int offset, type_info_struct *typeInfo, type_info_struct *subtypeInfo,
                                 bool isReference)
 {

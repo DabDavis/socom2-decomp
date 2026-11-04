@@ -807,8 +807,9 @@ struct MediusChannelListResponse {
     char EndOfList;   // 0x6c
 };   // 0x70
 
-/* a player in a room (the SDK's MediusLobbyWorldPlayerListResponse, 0xD0 bytes) */
-struct RoomPlayer {
+/* a player in a room: the SDK's MediusLobbyWorldPlayerListResponse (0xD0 bytes), a page's record kept
+ * as it came (SOCOM 1's cbRoomPlayerList__FiiiP34MediusLobbyWorldPlayerListResponse names it) */
+struct MediusLobbyWorldPlayerListResponse {
     char MessageID[MEDIUS_MESSAGEID_MAXLEN];   // 0x0
     MediusCallbackStatus StatusCode;   // 0x18
     int AccountID;   // 0x1c
@@ -848,7 +849,7 @@ public:
     ~BriefingRoom();
     void Set(MediusChannelListResponse *resp) { *(MediusChannelListResponse *)this = *resp; }
     void SetPassword(const char *password);
-    RoomPlayer *FindPlayer(const char *name);
+    MediusLobbyWorldPlayerListResponse *FindPlayer(const char *name);
     /* the game types the room allows include this one, or it names none (CanJoinRoom inlines it;
      * RoomGame::AllowsType is the same test of a game's byte) */
     bool AllowsType(int type)
@@ -871,7 +872,7 @@ public:
     void RemoveUncheckedGames();
     void SortGames();
 
-    std::vector<RoomPlayer> m_players;   // 0x7c
+    std::vector<MediusLobbyWorldPlayerListResponse> m_players;   // 0x7c
     std::vector<MediusChatFwdMessage> m_chat;   // 0x88
     char *m_password;   // 0x94
 };   // 0x98

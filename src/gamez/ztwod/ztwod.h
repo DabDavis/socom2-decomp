@@ -165,7 +165,7 @@ enum tag_string_type {
 
 /* a text string: 0x98 bytes in SOCOM II (an array's stride; SOCOM 1's 0x88), laid out from its
  * constructor against SOCOM 1's DWARF -- the members SOCOM 1 has, four bytes earlier with C2D, but
- * SOCOM 1's m_length and m_height gone and words of SOCOM II's own after m_numChars, at 0x6A and
+ * SOCOM 1's m_charheight and m_height gone (the float at 0x3C is its m_length) and words of SOCOM II's own after m_numChars, at 0x6A and
  * from 0x78; the position two floats at 0x90 (SOCOM 1's IPNT2D at 0x80). Its vtable has 34 slots
  * (0x406DF0): C2D's 26, then SOCOM 1's eight with SOCOM II's changes -- slot 27 sets a string by
  * its id in the string table, slot 29 takes a scale and a float position and calls slot 30 with
@@ -220,7 +220,7 @@ public:
     int m_Ustringlen_max;   // 0x30
     int m_numUChars;   // 0x34
     float m_charwidth;   // 0x38
-    float m_charheight;   // 0x3c: the text's LENGTH in pixels -- SOCOM 1's m_length (AddCharacter adds each character's advance to it, the HUD right-aligns by it); the name kept for its users in other lanes' units
+    float m_length;   // 0x3c: the text's LENGTH in pixels -- SOCOM 1's m_length (AddCharacter adds each character's advance to it, the HUD right-aligns by it); m_charheight until the integrator's rename after the UI's round 18 (the game states' round 29 proved it over every unit)
     float m_scale;   // 0x40
     int m_numLines;   // 0x44
     float m_color[4];   // 0x48 (SOCOM 1's CPnt4D at 0x50; the HUD writes it a float at a time)
