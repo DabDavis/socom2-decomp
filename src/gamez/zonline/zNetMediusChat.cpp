@@ -13,17 +13,19 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <algorithm>
 #include "zonline.h"
+#include "../zmath/zmath.h"
 #include "../znet/znet.h"
 
-/* The unit's inline size limit, lowered (measured, round 10): the target's initialiser inlines the
- * chat queues' constructor one level -- its own body, the queue's members called out of line
- * (0x2F5EE0, 0x2F5EC0, 0x2F5ED0, the queue's constructor 0x2F5F50) -- the size cut of an expanded
- * body past the limit. With these MSL headers that constructor expands to between 100 and 200
- * units, under the default 256, where the original's (deeper) MSL put it over; every other
- * function of the unit compiles the same at 100. The pragma acts through its state at the unit's
- * end, so it is set here, once. */
-#pragma inline_max_size(100)
+/* The unit's inline size limit was lowered to 100 in round 10 (`#pragma inline_max_size(100)`):
+ * the target's initialiser inlines the chat queues' constructor one level -- its own body, the
+ * queue's members called out of line (0x2F5EE0, 0x2F5EC0, 0x2F5ED0, the queue's constructor
+ * 0x2F5F50) -- and the round-10 headers expanded it under the default 256. Round 15: with today's
+ * deeper include/deque the initialiser and the queue's pieces come out the same at the default,
+ * while at 100 the room players' std::sort (0x2F1980, its __sort132 and __selection_sort) calls
+ * the iterator's operator* and swap<RoomPlayer> out of line -- so the pragma is gone (58 -> 61
+ * of the unit's rows, nothing lost). */
 
 /* --- the Medius requests the state handlers make (SOCOM 1's; only what is passed) ----------- */
 
@@ -713,7 +715,6 @@ void func_00621F90(int conn, int clients, void (*cb)(int, int));   /* (the DME's
 void func_002EFA60(int, int);   /* its callback */
 void func_002F7C40(void *rules);   /* the game's rules filled in (the lobby unit's) */
 int func_002E99F0();   /* (the clan unit's) */
-extern int data_0066A5C8;
 extern int data_0066A838;   /* our performance figure */
 extern char *data_004364FC;
 extern LANMissionRules *data_00437CE8;
@@ -738,7 +739,16 @@ inline int MissionNumber()
  * sp_wr*.py, 25 spellings): the ternary either way round, `== 0`/`!`, if/else chains and early
  * returns in the inline, the expression written in the caller, an out-parameter (pointer,
  * reference, returned reference), the delay's test as ==/ternary/if-else, a pointer or reference
- * to the field -- 9 at best (SOCOM 1's inlined report has the target's shape exactly, 0x32CFB0) */
+ * to the field -- 9 at best (SOCOM 1's inlined report has the target's shape exactly, 0x32CFB0).
+ * Round 15: the miss is jump threading -- the inner zero arm must branch to the final join, so the
+ * inner and outer arms assign ONE variable (no inner-ternary temporary left at an inner join): an
+ * if/else chain into one local does thread (12: the `b`s go straight to the join) but schedules
+ * `p + 2` into atoi's delay slot where the nested ternary leaves it for the bnez's; `p + 2` taken
+ * into a local first, the per-arm stores, `&&`/`||` forms and ten more inline spellings are no
+ * nearer. GetGameInfo 0x303780 inlines the same expression and its target threads the same way
+ * (written `== 0` there it misses exactly as here); CreateGame 0x303F40's target merges the two
+ * zero arms instead. The report's GenericField1 is LobbyWorldID (0x66A538: the source said
+ * 0x66A5C8 until round 15, a wrong reference the instruction count did not show) */
 extern "C" int func_002EF590(CValve *locked)
 {
     MediusWorldReport rep;
@@ -771,7 +781,7 @@ extern "C" int func_002EF590(CValve *locked)
     rep.GameLevel = MissionNumber();
     if (!rep.GameLevel)
         delay = 5000;
-    rep.GenericField1 = data_0066A5C8;
+    rep.GenericField1 = LobbyWorldID;
     rep.GenericField2 = data_0066A838;
     rep.GenericField3 = func_002E99F0();
     if (locked->m_value)
@@ -1317,12 +1327,83 @@ bool CZOnlineLobby::SendChat(const char *text, const char *to)
     return true;
 }
 
+/* the room's players in name order (the sort's comparator; OVL1 0x2F1950, the name ours) */
+static bool PlayerNameLess(RoomPlayer &a, RoomPlayer &b)
+{
+    return strcmp(a.AccountName, b.AccountName) <= 0;
+}
+
+/* the room's players shown: sorted by name, each a row of its account id, its name, its state --
+ * "Disconnecting", "Logging In", "In Lobby" in the lobby's colour or the game it is in -- and its
+ * clan's tag (MessageID: "[tag]", or 1 in its first byte for none) in the tag colour, handed to
+ * the room player list (SOCOM 1's UpdateRoomPlayerListDisplay, grown: the sort and the tags SOCOM
+ * II's; OVL1 0x2F1670: the players' pages and their infos call it;
+ * std::sort's instance follows it, 0x2F1980-0x2F3EEF with its two helpers) */
+void UpdateRoomPlayerListDisplay()
+{
+    BriefingRoom *room = data_0044F568.FindRoom(ZString(theLobby.uiv_LobbyWorldNameVar));
+
+    if (room)
+        std::sort(room->m_players.begin(), room->m_players.end(), PlayerNameLess);
+    PNT3D tagColor;
+    PNT3D lobbyColor;
+
+    tagColor.x = 128.0f;
+    tagColor.y = 64.0f;
+    tagColor.z = 32.0f;
+    lobbyColor.x = 91.0f;
+    lobbyColor.y = 72.0f;
+    lobbyColor.z = 36.0f;
+    CRdrEditor ed;
+
+    ed.push(0);
+    if (room) {
+        for (std::vector<RoomPlayer>::iterator i = room->m_players.begin(); i != room->m_players.end(); ++i) {
+            char id[32];
+
+            ed.push(0);
+            sprintf(id, "%d", (*i).AccountID);
+            ed.addstringnode(id);
+            ed.addstringnode((*i).AccountName);
+            switch ((*i).OnlineState.ConnectStatus) {
+            case 0:
+                ed.addstringnode("Disconnecting");
+                break;
+            case 1:
+                ed.addstringnode("Logging In");
+                break;
+            case 2:
+                ed.push(0);
+                ed.addSTRING("VALUE", "In Lobby");
+                ed.addPNT3D("COLOR", lobbyColor);
+                ed.pop();
+                break;
+            case 3:
+                ed.addstringnode((*i).OnlineState.GameName);
+                break;
+            }
+            ed.push(0);
+            if ((*i).MessageID[0] != 1)
+                ed.addSTRING("VALUE", (*i).MessageID);
+            else
+                ed.addSTRING("VALUE", "");
+            ed.addPNT3D("COLOR", tagColor);
+            ed.pop();
+            ed.pop();
+        }
+    }
+    ed.pop();
+    theLobby.uiv_RoomPlayerList->Set(&ed);
+}
+
 /* the room's players asked for (the SDK's MediusLobbyWorldPlayerListRequest: no session key) */
 struct MediusLobbyWorldPlayerListRequest {
     char MessageID[MEDIUS_MESSAGEID_MAXLEN];   // 0x0
     int MediusWorldID;   // 0x18
 };   // 0x1c
-struct MediusLobbyWorldPlayerListResponse;
+/* a page's player (zonline.h's RoomPlayer is the SDK's record: the room keeps the pages' copies) */
+struct MediusLobbyWorldPlayerListResponse : public RoomPlayer {
+};
 
 extern "C" {
 extern unsigned char data_0044F9F0;   /* the room's player list being asked for */
@@ -1330,6 +1411,68 @@ extern float data_0044F9F8;   /* when it may next be asked */
 MediusErrorCode func_0064AF78(MediusLobbyWorldPlayerListRequest *req,
                               void (*cb)(int, int, int, MediusLobbyWorldPlayerListResponse *));
 void func_002F13F0(int, int, int, MediusLobbyWorldPlayerListResponse *);   /* a page of them (below) */
+
+/* a player's whereabouts as the page's update copies them -- member by member (three words, then
+ * each 64-byte name in a two-byte loop): the copy of a class with a user-declared constructor, where
+ * the SDK's MediusPlayerOnlineState is a plain struct copied as words (a layout-identical stand-in,
+ * the name ours) */
+struct PlayerWhereabouts {
+    PlayerWhereabouts() {}
+
+    int ConnectStatus;   // 0x0
+    int MediusLobbyWorldID;   // 0x4
+    int MediusGameWorldID;   // 0x8
+    char LobbyName[64];   // 0xc
+    char GameName[64];   // 0x4c
+};   // 0x8c
+
+/* a page of the room's players come in: a player already listed has its whereabouts brought up to
+ * date, a new one is added; on the last page the players not seen again (state 0, cleared by the
+ * request) are dropped and the list shown; a failed answer shows the list as it is -- either way
+ * the next request may go (SOCOM 1's cbRoomPlayerList, which only added; OVL1 0x2F13F0).
+ * OPEN, 34 instructions, all in the last page's walk: the target keeps the iterator's value in v0
+ * from each store (begin's, the step's) for the entry test and the step, stores it once at the
+ * arms' join, and reloads it only for the dereference -- include/vector's iterator reads m_p
+ * through its const operator* and == and steps it non-const, so MW here reloads for the test and
+ * steps the dereference's load (`i->` 40 -> 34; `(*i).`, an initialised or for-scoped iterator,
+ * `i++`, `i = i + 1`, a ternary of the two arms, `!(i == end())` no nearer). The first walk, the
+ * whereabouts copy and the push are the target's */
+void func_002F13F0(int, int, int, MediusLobbyWorldPlayerListResponse *resp)
+{
+    if (resp->StatusCode == 0) {
+        BriefingRoom *room = data_0044F568.FindRoom(ZString(theLobby.uiv_LobbyWorldNameVar));
+
+        if (!room)
+            return;
+        bool found = false;
+
+        for (std::vector<RoomPlayer>::iterator i = room->m_players.begin(); i != room->m_players.end(); ++i) {
+            if (resp->AccountID == (*i).AccountID) {
+                *(PlayerWhereabouts *)&(*i).OnlineState = *(PlayerWhereabouts *)&resp->OnlineState;
+                found = true;
+                break;
+            }
+        }
+        if (!found)
+            room->m_players.push_back(*resp);
+        if (resp->EndOfList) {
+            std::vector<RoomPlayer>::iterator i;
+
+            i = room->m_players.begin();
+            while (i != room->m_players.end()) {
+                if (i->OnlineState.ConnectStatus == 0)
+                    i = room->m_players.erase(i);
+                else
+                    ++i;
+            }
+            UpdateRoomPlayerListDisplay();
+            data_0044F9F0 = 0;
+        }
+    } else {
+        UpdateRoomPlayerListDisplay();
+        data_0044F9F0 = 0;
+    }
+}
 
 /* the room's players asked for again, at most every ten seconds and one answer at a time: each
  * player's state cleared, the page told it is waiting while it is empty (SOCOM II's; OVL1
@@ -1366,7 +1509,6 @@ void func_002F1240(C2D *page)
 }
 }
 
-extern "C" void func_002F1670();   /* the room's players shown (below) */
 
 /* a room player's info come in (the 'PlayerListInfo' requests 0x2F0EA0 makes, the account in the
  * message id): the player found in the room we are in, its clan's tag shown in its record's
@@ -1390,7 +1532,7 @@ extern "C" void func_002F10B0(int, int, int, MediusPlayerInfoResponse *resp)
 
                         sprintf(tag, "[%s]", stats.m_clan);
                         CopyTo((*i).MessageID, tag, MEDIUS_MESSAGEID_MAXLEN);
-                        func_002F1670();
+                        UpdateRoomPlayerListDisplay();
                     } else {
                         (*i).MessageID[0] = 1;
                     }
