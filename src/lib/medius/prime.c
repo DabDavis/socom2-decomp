@@ -18,7 +18,7 @@ typedef struct LINT {
 extern void *memcpy(void *d, const void *s, unsigned int n);
 extern void setNewSeed(unsigned int seed);
 extern unsigned int randomMT(void);
-extern void func_00626D28(LINT *p, unsigned int n);                 /* LargeInt.c: p += n */
+extern void lintIncrement(LINT *p, unsigned int n);                 /* LargeInt.c: p += n */
 
 extern LINT data_006514A8;                      /* the base */
 extern unsigned short data_00651528[8192];      /* the gaps */
@@ -39,7 +39,7 @@ LINT *func_0062A3B0(LINT *pPrime)
     nSum = 0;
     for (; n != 0; n--)
         nSum += data_00651528[n];
-    func_00626D28(&p, nSum);
+    lintIncrement(&p, nSum);
     memcpy(pPrime, &p, sizeof p);
     return pPrime;
 }

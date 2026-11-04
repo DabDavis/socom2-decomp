@@ -1775,6 +1775,44 @@ templates next), and the earlier rounds' opens; 3.0b38/b50/b52 still untold.
   - ztex_manager.cpp's share from 0x357000 (CGSTexBuffer's Setup/Add/RelocateAll, CDynTexList's
     Adds) is SOCOM 1's order; the unit itself starts near 0x3557xx, so the two halves become one
     file once the rest is written.
+- **Tells from completing the MSL headers, round 16** (the instances other lanes waited on; probes build/p16/, untracked):
+  - THE 2-BYTE POD IS THE CHAR POD OVER HALVES: include/vector's `__vector_pod<unsigned short>` (a partial
+    specialisation beside the char pod) gives seal_env.cpp's tail insert<Us> 0x5B68E0 and reserve<Us> 0x5B6BD0
+    byte-exact (+2, nothing lost) -- memmove for the shift, memcpy for the runs and for the reserve's copy, a
+    counted fill loop where the char pod calls memset; MW does not fold a 2-byte pointer difference back to the
+    count, so each copy divides the byte length by two (bgez/sra) and shifts it back. The fill re-reads its value
+    as a SIGNED half (lh) where SOCOM 1's insert of the same pod (the demo's 0x2CD740, otherwise this one
+    instruction for instruction) has lhu: written `*(const short *)&value`;
+  - AN INLINE FUNCTION'S STRING LITERAL is a deduplicated `@STRING@<function>` symbol (bind 13, one copy kept
+    at link), an out-of-class member's a unit-local `@N` the unit reuses for identical strings -- and an inline
+    function's literal is merged into an identical unit-local one when the unit has it. So the image's
+    "Memory allocation failure" copies map MSL's allocators: ONE copy (0x3E2220) serves every pod and deque
+    function in OVL1, across units (0x1EEBA0, 0x1FE340, 0x259B90, 0x259D20, 0x3C45B0, the deques' 0x2858B0,
+    0x2CF970, 0x2E0E10, 0x3341C0, 0x3A6490 ...), one per class serves the class vectors' deleters (four in
+    fts_mission.cpp); build/p16/strrefs.py lists a string's copies and every function addressing each;
+  - AN OUT-OF-CLASS TEMPLATE MEMBER INLINES INTO AN INLINE FUNCTION'S OUT-OF-LINE COPY ONLY UNDER
+    `#pragma inline_max_auto_size`, and only once generated first (the states' round 22 request): at the default
+    limit a reserve forwarder's copy is an 8-byte `j` whatever its form, however the copy is forced, at any
+    inline_max_size; at 17 and up it inlines the pod's reserve whole -- 0x2B1600 (renamed
+    reserve__Q23std54vector<P10UIVarMixin,...>FUi). include/vector's vector<T *>::reserve forwarder (neutral:
+    8460 before and after) plus, in fts_mission.cpp, `#pragma inline_max_auto_size(17)` (it cuts CUIVariable()
+    in resize as well: no inline_max_size(180) needed) and an own function reserving a pointer vector ahead of
+    the tail (CMission::Open 0x2AC410 does) make resize<CUIVariable> 0x2B1390, 0x2B1600 and CUIVariable()'s
+    three pieces byte-exact as a probe (a stand-in appended at the file's end costs two of the unit's own, so
+    the real Open belongs at its place); the auto limit set project-wide is -104 (the original kept the default for its own code), and
+    the pod's reserve made inline and five high under the forwarder does it by height but cuts every inline
+    helper holding a reserve (8460 -> 8459, not applied);
+  - A BY-VALUE ARGUMENT IS COPIED THROUGH A USER-DECLARED COPY CONSTRUCTOR, BITWISE ONLY WHEN THE COPY IS
+    IMPLICIT (lh/sh through an address register), and an implicit copy reads each anonymous union as its FIRST
+    member (the UI's round 15 request): AddKeyProps' key copy and value come out the target's word for word with
+    std::make_pair by value and CSkbKey's copy implicit, its m_row/m_code views first and its assignment written
+    (zui_skb.cpp keeps its 98) -- 0x10C against 0x124: the pair temporary between them folds in every form
+    (include/utility's comment), so nothing is applied; SOCOM 1's soft keyboard has the same three temporaries
+    (make_pair by value, its pair constructor 0x3A8E40 out of line);
+  - the AI core's lead (a walk re-reads size and data when end() reads the count through a reference accessor):
+    the class vector's end() over `unsigned int &sz()` loses six walks that keep size*k hoisted (GetRouteIndex,
+    GetRegionContaining, GetClosestRegion, CMesh::SetLOD, FindPlayer, 0x2F10B0) and gains none -- the plain
+    `size_` read stays; the deques' make_iterator objects are the same in-memory question as the pair's.
 - **Tells from completing the MSL headers, round 15** (the instances other lanes waited on; probes build/p15/, untracked):
   - AN ITERATOR ASSIGNED FROM begin() STAYS IN ITS STACK SLOT, re-read and re-stored at each step with the base iterator
     copied in through $f0 (the wrapper's implicit assignment); initialised from begin() it lives in a register. That is
@@ -1888,6 +1926,32 @@ templates next), and the earlier rounds' opens; 3.0b38/b50/b52 still untold.
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the world, rdr and sound, round 7** (__sinit_zsnd_csnd.cpp, the headset queue, the pipe's atoms, the
+  scheduler, the subtitle list):
+  - 0x402FF0 IS __sinit_zsnd_csnd.cpp (the unit's header had said it has none): its statics in build order -- four
+    vector<int> reverb tables, a vector of 24-byte bank records (CSndBank, ours), CSnd::m_soundlist, the subtitle table,
+    m_bnkArchive, CSnd::m_listenermatrix, the subtitles' CSTable(0, 1024), a CSoundBufferIO (the RTTI's name; a plain
+    CBufferIO), the vocal queue; zsnd_csnd.cpp's tail runs 0x345F70-0x346260 with UnloadAllSounds' FreeVector copies
+    0x342090-0x342230 after it;
+  - a class iterator is a scalariser temporary numbered after named locals, a plain pointer compared through
+    `iterator(p) != end()` is a named local and takes the higher register (Find); binding a call's returned iterator to a
+    const reference, then assigning from it, gives the temporary its slot ahead of a later pushed copy (Tick); an
+    iterator assigned from begin() before `iterator e = end()` loads the first node while `this` is still live
+    (RemoveTask); a value re-read in a loop test (`k <= *skip[0]`) is hoisted into a temporary numbered after the
+    induction temporaries (DeQueue);
+  - `p = t; p++;` as separate statements keeps the offset as its own addiu after the relocation, `&t[1]` folds it
+    (zSysUnloadMcIRX); a member vector walked through a reference taken after an intervening call moves every saved
+    register (SaveDelayedNode); a constant argument shares its register with a byte store of the same constant just
+    before it (CSnd::Init's "flag in a2" was the 1 shared with Open(name, 1)); an element with a member-wise copy
+    constructor makes a class vector's reserve copy word by word through v0, not the FPU; three this-tests per member
+    before the deleter's destructor mean the members are a class derived from std::vector; `ref = idx != -1 ? idx : (idx
+    = f())` keeps the call's result in the index's saved register before the store;
+  - Find and Dump belong to the subtitle record vector (CSubtitleList: the table's lookup 0x34D480 calls Find on this+0xC
+    and then this; zsnd_subtitles.h); renamed at integration: 0x360030 Draw3DLine, 0x2721C0 CZAnimArgList::GetValve,
+    0x354470 CValve::RegisterCommands, 0x353D00 CmdTickCmp, 0x353FD0 VALVE_CMD_DATA::Compare;
+  - open: RenderLineWorld 0x33B5F0 (0xD4 vs 0x12C: the four by-value points copied through FPU registers in the target --
+    zmath.h's 16-byte-aligned CPnt4D copies with quadwords, a written copy constructor copies nothing: it needs a
+    4-aligned CPnt4D without one -- the MSL lane's call), CValveOpDelete (6), PostTick (3), CHeap::Alloc (7), PlayNext (17).
 - **Tells from the game states, round 23** (the ladder table, the multi-mission list, the persona names' packer):
   - MW evaluates a `new T(arg)` argument after the allocation, inside the null test -- the target's earlier evaluation
     means the argument was a local; an inline constructor's parameter order numbers the inlined temporaries, so it
@@ -1964,9 +2028,9 @@ templates next), and the earlier rounds' opens; 3.0b38/b50/b52 still untold.
     target).
 - **Tells from the SEALs, round 19** (seal_env.cpp's death and flinch readers, the footfall pair, the stun pair):
   - SOCOM II's MSL runs a 2-byte vector (vector<AnimType>) on `__vector_pod<unsigned short>`: elements read back with `lh`,
-    and its reserve (0x5B6BD0, named by behaviour) copies with memcpy where the 4-byte pod loops -- include/vector's
-    generic reserve does not model it yet; the 2-byte pod's insert/reserve sit mid-range (0x5B68E0, 0x5B6BD0): a unit
-    boundary near 0x5B6BE0 is a candidate;
+    and its reserve (0x5B6BD0, named by behaviour) copies with memcpy where the 4-byte pod loops -- modelled since
+    the MSL headers' round 16 (include/vector's 2-byte pod: both byte-exact in seal_env.cpp's tail); the 2-byte pod's
+    insert/reserve sit mid-range (0x5B68E0, 0x5B6BD0): a unit boundary near 0x5B6BE0 is a candidate;
   - saved registers follow declaration order, not first assignment (0x5A3280); float locals initialised in order take
     $f4/$f3/$f2 (the later-declared the lower) and load before the tests, written straight into the condition each loads
     lazily (HandleFootfallSound); `case 2: case 1:` sharing a body closes the compare chain with a `b` where `||` inverts
@@ -7003,6 +7067,49 @@ MOD, QRMOD; 12 of 14) -- 14 functions byte-exact, 12 rows new to the map's byte-
 moved to 0x62B168, 0x62B548 back to its placeholder; KM_GenerateRSAKeyPair `s1:order`; lintPrime,
 lintRandomize, MOD, GCD, lintIsbSPRP, LucasTest, QRMOD, MODIP `s1:calls`; lintAdd, lintSub `s1:order`).
 No tool changed.
+
+**Round 19b: LargeInt.c's C by SOCOM 1's bodies, MediusConnect, rt_msg_client's channel send step.**
+
+- **0x627AF0 is EMOD, not XMOD** (the brief's prediction): its body is SOCOM 1's EMOD -- the exponent's bits
+  from the bottom, the base squared by XMOD each step, the result multiplied where the bit is set -- at
+  EMOD's place after GCD (SOCOM 1's MULT and XMOD between them are now in largeint_asm.s: 0x6296A0 and
+  0x629868 are MULT and XMOD by their bodies, their order and EMOD's and RSAGenerateKeyPair's calls),
+  grown by an `assert(0)` on a zero modulus (LargeInt.c:663). EMOD's old call sites (RSADecryptBlock,
+  lintIsbSPRP, LucasTest) call **0x6283F8 instead**, a new exponentiation by Montgomery products that
+  asserts a nonzero modulus (:975) and falls back on EMOD for an even one (:985) -- body and position
+  name 0x627AF0, the call sites a function SOCOM 1 never had; 0x6283F8 keeps its placeholder (`s1~`).
+  The carry pair 0x626D28/0x626D78 are lintIncrement and lintDecrement (position and calls). SOCOM 1's
+  three tables, byte-identical, take their names in data.txt (gCommonPrimes, gCommonPrimes2,
+  gPrimeSearchDeltas), lintRandomize's flag `bHasInitialized.0@largeint` (rt_crypt.c holds the bare name).
+- **An exit test is copied above a loop only when the rotated region holds no call or label**
+  (jump.c's duplicate_loop_exit_test after 2.96's rotation): QUO's divisor-length exit written
+  `if (...) break;` before the shift lies within expand_end_loop's 30-insn scan, so the loop was rotated
+  up to it, call and all, and its test never copied; the shift in the then-arm and the `break` in an else
+  put the exit past the scan, and the target's copied test follows. lintIsbSPRP is the converse, OPEN: the
+  target enters its squaring loop by a jump to an uncopied two-insn test, which no spelling here leaves
+  uncopied.
+- **2.96 makes an index walk the target's pointer**: lintPrime's delta table is indexed in the source
+  (SOCOM 1's index, reset to 0 after an odd delta); written as a pointer, its first assignment lands
+  before the counter's first test, the target's after it.
+- **Each guard stores the status before the index** (MediusConnect, as SOCOM 1's): the other order leaves
+  the two failure blocks a two-insn common tail and jump.c cross-jumps them, the status store sharing
+  the return value's register.
+- **A message byte initialised at its declaration is a scalar**: 0x634DD8's keep-alive byte is `li 165;
+  sb` at the entry in the frame's first slot (SOCOM 1's update_connection alike); a one-byte array's
+  element is `li -91` (the QImode constant) with its slot after the first scalar whose address is taken.
+- **A load order is register weight, read off sched1's dump**: rt_udp's 0x6419E8 loads tie on priority and
+  rank_for_schedule takes the one whose base pseudo dies there (INSN_REG_WEIGHT, ccdump's -f); the
+  target's order needs another death point, not yet found (OPEN, with the dump's reading).
+- **Open, diagnosed in place**: lintIsbSPRP (above), 0x635E60 (the type-22 message: the target keeps the
+  write pointer in one register to the end, here CSE folds the increments after the software id into
+  offsets), 0x6419E8 (above), and the earlier opens.
+
+Hand-written in round 19b: `medius/largeint.c` (+7: QUO, GCD, EMOD, lintIsbSPRP, LucasTest, lintRandomize,
+lintPrime -- 18 of 21, the whole C part but the Montgomery exponentiation and its helper), `medius/mediusapi.c`
+(+1, MediusConnect: 110 of 110, whole), `medius/rt_msg_client.c` (+2: the channel send step 0x634DD8, the
+type-22 message 0x635E60 OPEN; 89 of 95) -- 8 rows new to the map's byte-exact rows (`src/lib/medius` 926 ->
+934 of 992), none superseding a draft; 6 rows named (QUO, EMOD, MULT, XMOD, lintIncrement, lintDecrement by
+SOCOM 1's bodies, order and calls; 0x6283F8's `s1~` noted), 4 data rows. No tool changed.
 
 ## Open, and next
 

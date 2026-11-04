@@ -149,6 +149,69 @@ void Headset::ResetStream()
     }
 }
 
+/* SOCOM 1's: a channel's sound queued in the last free entry (none free, none queued); SOCOM II
+ * plays nothing unless the headset is idle or the sound a dialog or bit 6 one (true, unqueued).
+ * A mode-2 or mode-3 sound drops the channel's older entries (SOCOM 1's Remove, 0x34AAC0) */
+bool Headset::Queue(unsigned int id, CSnd *sound, int vol)
+{
+    int idx = -1;
+
+    if (m_free.size() == 0)
+        return false;
+    if (!m_b && sound->m_mode != 3 && !sound->m_socom2_bit6)
+        return true;
+    idx = m_free.back();
+    if (idx == -1)
+        return false;
+    m_free.erase(m_free.end() - 1);
+    m_entries[idx * 3] = id;
+    m_entries[idx * 3 + 1] = (unsigned int)sound;
+    m_entries[idx * 3 + 2] = vol;
+    m_queue.push_back(idx);
+    if (sound->m_mode == 2)
+        Remove(id, true, false);
+    else if (sound->m_mode == 3)
+        Remove(id, true, true);
+    return true;
+}
+
+/* SOCOM 1's: the first queued entry whose channel the skip list (a count, then pointers to the
+ * channels) does not hold -- its channel, sound and volume given back, the entry taken off the
+ * queue and its index freed; false when none is left. SOCOM II stops at the first such entry */
+bool Headset::DeQueue(int **skip, unsigned int *id, CSnd **sound, int *vol)
+{
+    bool found = false;
+    std::vector<int>::iterator i;
+
+    for (i = m_queue.begin(); i != m_queue.end() && !found;) {
+        bool skipped = false;
+
+        /* the count re-read in the loop test (hoisted by MW: a temporary numbered after the
+         * walk's, as the target's registers need; a named local swaps three of them) */
+        if (skip) {
+            if (*skip[0] > 0) {
+                for (int k = 1; k <= *skip[0]; k++) {
+                    if (*skip[k] == (int)m_entries[*i * 3]) {
+                        skipped = true;
+                        break;
+                    }
+                }
+            }
+        }
+        if (!skipped) {
+            int idx = *i;
+
+            *id = m_entries[idx * 3];
+            *sound = (CSnd *)m_entries[idx * 3 + 1];
+            *vol = m_entries[idx * 3 + 2];
+            i = m_queue.erase(i);
+            m_free.push_back(idx);
+            found = true;
+        }
+    }
+    return found;
+}
+
 void Headset::StaticSoundSysCallback(unsigned int handle, unsigned long user_data)
 {
     if ((Headset *)user_data)
@@ -192,6 +255,51 @@ void Headset::Tick(float dT)
 }
 
 #include "../zsys/zsys.h"
+
+/* SOCOM 1's: every queued entry of this channel and sound dropped (its index back to the free
+ * ones), and the stream stopped if it is this one and its request is not yet done */
+void Headset::StopSound(int channel, CSnd *sound)
+{
+    std::vector<int>::iterator i;
+
+    for (i = m_queue.begin(); i != m_queue.end();) {
+        int idx = *i;
+        unsigned int *e = &m_entries[idx * 3];
+        bool erased = false;
+
+        if (channel == e[0] && (CSnd *)e[1] == sound) {
+            i = m_queue.erase(i);
+            m_free.push_back(idx);
+            erased = true;
+        }
+        if (!erased)
+            ++i;
+    }
+    if (m_c == channel && m_sound == sound && (m_state == 0 || m_state == 1 || m_state == 2))
+        m_stop = 1;
+}
+
+/* a group's members asked first (recursing); then the queued entries (each entry three words, its
+ * sound the second) and the sound streaming while its request is not yet done */
+bool Headset::IsQueued(CSnd *sound)
+{
+    if (!sound)
+        return false;
+    int n = sound->GetNumSounds();
+
+    for (int i = 0; i < n; i++) {
+        CSnd *member = sound->GetSound(i);
+
+        if (member && IsQueued(member))
+            return true;
+    }
+    for (std::vector<int>::iterator i = m_queue.begin(); i != m_queue.end(); ++i)
+        if ((CSnd *)m_entries[*i * 3 + 1] == sound)
+            return true;
+    if (m_sound == sound && (m_state == 0 || m_state == 1 || m_state == 2))
+        return true;
+    return false;
+}
 
 /* the stream stopped and the queue emptied (SOCOM II's; name ours: CCinematicState::Init calls it).
  * Byte-exact since the map named its four callees: FreeVector's pieces are vector<int>'s

@@ -24,13 +24,11 @@ int zrdr_free(CRdrFile *file);
 
 /* zar::CZAR's members zar.h does not declare (placeholders, the archive first): the archive
  * opened (SOCOM 1's Open(const char *, int, unsigned, unsigned), a word more in SOCOM II), a key
- * made under the open key, the archive written out, its data buffer handed over (0x257F90, named
- * ReleaseDataBuffer: zar.h, another lane's, has no declaration) */
+ * made under the open key, the archive written out */
 extern "C" bool func_00258920(zar::CZAR *zar, const char *name, int flags, unsigned int mode, unsigned int align,
                               int a);
 extern "C" zar::CKey *func_00258740(zar::CZAR *zar, const char *name);
 extern "C" void func_00258BD0(zar::CZAR *zar);
-extern "C" void *func_00257F90(zar::CZAR *zar);
 
 /* the module list sorted (SOCOM 1's sort<less<const void *> > of the pointer list, this unit's
  * template tail: not written yet) */
@@ -181,7 +179,7 @@ bool CSaveManager::Save(const char *name, int flags, int version, char *desc, ch
             m_pFile->Close();
         }
         buf.Close();
-        void *p = func_00257F90(&archive);
+        void *p = archive.ReleaseDataBuffer();
         if (p)
             delete p;
         archive.Close();
@@ -303,7 +301,7 @@ bool CSaveManager::Load(const char *name, int flags)
         }
         ok = true;
         buf.Close();
-        void *p = func_00257F90(&archive);
+        void *p = archive.ReleaseDataBuffer();
         if (p)
             _free(p, 0, 0);
         archive.Close();
@@ -335,7 +333,7 @@ bool CSaveManager::GetHeader(const char *name, int flags, CSaveHeader *header)
             archive.CloseKey(key);
         }
         buf.Close();
-        void *p = func_00257F90(&archive);
+        void *p = archive.ReleaseDataBuffer();
         if (p)
             _free(p, 0, 0);
         archive.Close();
