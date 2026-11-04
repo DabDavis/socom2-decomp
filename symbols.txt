@@ -2876,7 +2876,7 @@
 0x00267E70 0x124 OpenZAR__10CZAnimMainFPCc  # OVL1; s1:calls
 0x00267FA0 0x21C LoadZAR__10CZAnimMainFP9CZAnimZARPCc  # OVL1; s1:align
 0x002681C0 0x84 func_002681C0  # OVL1
-0x00268250 0x8 func_00268250  # OVL1
+0x00268250 0x8 Load__10CZAnimMainFPCcPCc  # OVL1; the core lane round 2: SOCOM 1's CZAnimMain::Load(name, set) as a return-true stub -- CMission::ZAnimLoad 0x2ABAD0 calls it twice with (&ZAnim, "data/common/zrdr/czanim.rdr", "common") and (&ZAnim, rdr, "mission") where SOCOM 1's ZAnimLoad calls Load__10CZAnimMainFPCcPCc 0x1C2200; also CGameMenu::LoadFromDesign 0x367950
 0x00268260 0xFC UnloadCmdSet__10CZAnimMainFi  # OVL1; s1:align
 0x00268360 0x48 UnloadSIScript__10CZAnimMainFP16_zanim_si_script  # OVL1; s1:align
 0x002683B0 0x118 Unload__10CZAnimMainFv  # OVL1; s1:align
@@ -3303,11 +3303,11 @@
 0x00281060 0xC func_00281060  # OVL1
 0x00281070 0xC func_00281070  # OVL1
 0x00281080 0xC func_00281080  # OVL1
-0x00281090 0xD0 func_00281090  # OVL1
+0x00281090 0xD0 UICopyUIVar__FP13C2DAnimCmdHdrPf  # OVL1; ours, the core lane round 2: the handler registered as "CopyUIVar" (id 0xBD, the UI command table's record 187, its second function UICopyUIVarParse 0x27FD70); SOCOM 1's table has no CopyUIVar, so UI<command> by its convention
 0x00281160 0x468 func_00281160  # OVL1
 0x002815D0 0x37C func_002815D0  # OVL1
 0x00281950 0x11C func_00281950  # OVL1
-0x00281A70 0x14C func_00281A70  # OVL1
+0x00281A70 0x14C OnCloseAndSwitch__24@unnamed@zanim_menu_cpp@FP13C2DAnimCmdHdrPf  # OVL1; s1:table by hand, the core lane round 2 (registered as "CloseAndSwitch" in both builds' UI command tables: SOCOM 1's handler OnCloseAndSwitch, zanim_menu.cpp's anonymous namespace, the same tests, Pop/Switch and MPMajorGameState(5); SOCOM II adds the loading image's restore)
 0x00281BC0 0x20 func_00281BC0  # OVL1
 0x00281BE0 0x158 func_00281BE0  # OVL1
 0x00281D40 0x400 func_00281D40  # OVL1

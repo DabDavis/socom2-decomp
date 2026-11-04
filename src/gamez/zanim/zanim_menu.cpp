@@ -112,6 +112,66 @@ zdb::CNode *g_menuRootNode;
 /* the saved game's name the memory card handlers build (0x414E50) */
 static char s_savename[64];
 
+/* the video's still images (zvid's CVideo: only the restore), and what follows it (not named yet) */
+class CVideo {
+public:
+    static void RestoreImage(char *name);   /* 0x3B1A70 (SOCOM 1's) */
+};
+extern "C" void func_003B0C00(int on);
+
+/* ---- the handlers from 0x280000 to the deque's instances that close the unit (SOCOM 1 keeps the
+ * ones it has -- RemoveEquipment, ListSavedGames, IsEquipmentSelected, CloseAndSwitch, the equipment
+ * choices -- in zanim_menu.cpp's anonymous namespace, so the stretch is this unit's) ---- */
+
+namespace {
+
+/* the menu closed for the screen the argument names: the front end's state switched back to -- a
+ * session's master instead moves the game on to the scores, unless it is over -- or, off the
+ * network, switched back to with the loading image restored (SOCOM 1's; SOCOM II restores the
+ * image) */
+bool OnCloseAndSwitch(C2DAnimCmdHdr *hdr, float *dT)
+{
+    theGame.m_menuState.SetDefaultMenu(ArgText(ArgName(hdr)));
+    if (theNetwork.m_bNetwork) {
+        if (theNetwork.m_bSessionMaster) {
+            CZNetGame *game = theMission.m_pNetGame;
+
+            if (game->m_game_over) {
+                theGame.Pop(0);
+                theGame.Switch((CGameState *)&theGame.m_menuState, 0);
+            } else
+                game->MPMajorGameState((CZNetGame::MP_MAJOR_GAME_STATE)5);
+            CZGameState::UpdateLocalGame(game);
+        }
+    } else {
+        theGame.Pop(0);
+        theGame.Switch((CGameState *)&theGame.m_menuState, 0);
+        CVideo::RestoreImage("RUN\\RAW\\LOADING.RAW");
+        func_003B0C00(1);
+    }
+    return true;
+}
+
+}
+
+/* a UI variable's value given to another: the first named variable, when it exists, copied into
+ * the second, made if need be (SOCOM II's; the name ours by the command's) */
+bool UICopyUIVar(C2DAnimCmdHdr *hdr, float *dT)
+{
+    UICopyUIVarCmd *cmd = (UICopyUIVarCmd *)hdr;
+    CZAnim *anim = ZAnim.m_CurAnim;
+    const char *from = cmd->m_from >= 0 ? anim->GetName(cmd->m_from) : 0;
+    CUIVariable *src = from ? theUIVarManager.Find(from) : 0;
+
+    if (!src)
+        return true;
+    const char *to = cmd->m_to >= 0 ? anim->GetName(cmd->m_to) : 0;
+
+    if (to)
+        theUIVarManager.Add(to, 0, UIVAR_SESSION)->Set(src);
+    return true;
+}
+
 namespace {
 
 bool OnSetCounterSpeedFactor(C2DAnimCmdHdr *hdr, float *dT)

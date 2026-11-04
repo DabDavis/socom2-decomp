@@ -401,6 +401,7 @@ public:
     void TenSecondLaunch(bool on);
     void MyMajorGameState(MP_MAJOR_GAME_STATE state);
     void MyMinorGameState(MP_MINOR_GAME_STATE state);
+    void MPMajorGameState(MP_MAJOR_GAME_STATE state);   /* 0x2A7490 (SOCOM 1's) */
 
     unsigned char _0[0x10];
     CValve *m_10;   // 0x10: a valve AdvanceMPMission tests (a longer wait when on)
@@ -411,7 +412,9 @@ public:
     unsigned char _b0[0xc8 - 0xb0];
     unsigned int m_c8;   // 0xc8: when the next mission launches (AdvanceMPMission)
     unsigned char m_late_joiner;   // 0xcc (SOCOM 1's at 0x94)
-    unsigned char _cd[0xd8 - 0xcd];
+    unsigned char _cd[0xd4 - 0xcd];
+    unsigned char m_game_over;   // 0xd4 (SOCOM 1's at 0x9B, four before the launch flag in both)
+    unsigned char _d5[0xd8 - 0xd5];
     unsigned char m_ten_second_launch;   // 0xd8 (SOCOM 1's at 0x9F)
     unsigned char m_joined;   // 0xd9: CheckJoinMP sets it (SOCOM II's; the name ours)
     unsigned char _da[0xe4 - 0xda];

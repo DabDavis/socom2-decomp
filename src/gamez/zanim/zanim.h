@@ -603,6 +603,8 @@ public:
     bool SequenceRunning(const char *name);
     void PauseSequence(const char *name);
     int UnloadCmdSet(int index);
+    /* a sequence file loaded into a set: SOCOM 1's reader path, a stub in SOCOM II (0x268250) */
+    bool Load(const char *name, const char *set);
     bool CmdTick(float *dT);
     zdb::CNode *GetDatabaseNode(const char *name, int scope);
     int GetNodeSearchScope(const char *name, int *scope);
