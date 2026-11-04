@@ -18,10 +18,13 @@
  * 30 insns 2.96's expand_end_loop scans, so the loop was rotated up to it and its test never copied
  * above the loop -- the target's test is); lintPrime's delta walk is an index (2.96 makes it the
  * target's pointer; a pointer in the source is set before the counter's first test).
- * OPEN: lintIncrement (17 words, the right size with the nonzero words' case written first and a
- * walking pointer: the target lays word 0's case at the loop's head -- entered straight from the
- * initialisation -- and the others' after the test, this one the other way about),
- * lintDecrement (28s: the same layout question, indexed). */
+ * The carry and borrow runs (round 20b) are for loops rotated only up to the nonzero words' `break`:
+ * expand_end_loop moves the loop's head to its end up to the last exit within 30 insns, so word 0's
+ * exit must lie past it -- a `return` (lintIncrement) or a `break` in an else after the borrow case
+ * (lintDecrement); within the scan, word 0's case is moved too and lands after the test. The moved
+ * region then holds the arm's labels, so its test is not copied; the entry, i known 0, is threaded
+ * straight into word 0's case in the loop's middle, and loop.c leaves a loop entered twice alone --
+ * the index is recomputed (sll; addu) and -1 loaded inside, as the target has them. */
 
 #define LINT_WORDS  32
 
@@ -105,7 +108,7 @@ void lintIncrement(LINT *p, unsigned int n)
         } else {
             *pd += n;
             if (*pd >= n)
-                break;
+                return;
         }
     }
 }
@@ -124,11 +127,12 @@ void lintDecrement(LINT *p, unsigned int n)
             }
             pd[i] = 0xFFFFFFFF;
         } else {
-            if (pd[i] >= n) {
+            if (pd[i] < n) {
+                pd[i] -= n;
+            } else {
                 pd[i] -= n;
                 break;
             }
-            pd[i] -= n;
         }
     }
 }
