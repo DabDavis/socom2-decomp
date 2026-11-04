@@ -11,8 +11,11 @@
  *
  * Round 11 wrote the locks and shift test (bitmaps 0 and 5, CPad's L1), the six sounds, the cursor,
  * the pair and bitmap-4 toggles, the bitmap loader, the caps' text look and the key props' spec.
- * OPEN, not written yet: the tick 0x3949C0, the display's builders 0x394520, 0x394DA0, 0x395140,
- * 0x395540, 0x3958D0, 0x397070, 0x397950, the cap look reader 0x397D30.
+ * OPEN, not written yet: the tick 0x3949C0, the display's builders 0x394520, 0x395140, 0x395540,
+ * 0x3958D0, 0x397070, 0x397950, the cap look reader 0x397D30.
+ * Round 21: the scaling step SkbScale 0x394DA0 (its state an unsigned char, tested `== 0` first: `!`
+ * re-extends the byte for the next test; the t >= 1 block written as the if's body, the return 0
+ * after it) and SkbLoadUiParams 0x3943E0 (from zui_hangul.cpp), byte-exact.
  * Round 20: the key props' SetShown 0x3941D0 and destructor 0x394370 (the unit's stretch opens at
  * 0x3941D0), the set-up from the open command SkbSetPurpose 0x397640 (SOCOM 1's UiSetSkbPurpose its
  * first part) and its two flags' readers 0x395110 and 0x396ED0, byte-exact.
@@ -120,6 +123,40 @@ static float s_bmp4Timer = -1.0f;
  * 0x4A10B8, the tick's repeat timer; the names ours) */
 static signed char s_keyEvent;
 static float s_keyHeld;
+/* the keyboard's scaling: up as it opens (0x395540 starts it), down as it closes (0x394420), and
+ * the time it has run (0x4A1078, an unsigned char -- a byte enum adds an `andi 0xff` at the scaling
+ * step's `== SKBSCALE_UP`; 0x4A10C0; the names ours) */
+enum SKBSCALE { SKBSCALE_NONE, SKBSCALE_UP, SKBSCALE_DOWN };
+static unsigned char s_scaling;
+static float s_scaleTime;
+/* the cursor's blink: the tick steps it, wrapping at a second, the cursor bitmap (1) shown for its
+ * first half (0x4A1090; the name ours) */
+static float s_blinkTime;
+
+/* the valves (zanim.h has CValve whole: the scaling's done valve here) */
+enum VALVE_STATE { VALVE_SAME, VALVE_ON, VALVE_OFF };
+class CValve {
+public:
+    static CValve *GetByName(const char *name);
+    void MakeCallbacks(VALVE_STATE state);
+    /* (zanim.h's inline) */
+    bool SetValue(int value)
+    {
+        VALVE_STATE state = VALVE_SAME;
+
+        if (m_value != value)
+            state = value == 0 ? VALVE_OFF : VALVE_ON;
+        m_value = value;
+        if (state != VALVE_SAME) {
+            MakeCallbacks(state);
+            return true;
+        }
+        return false;
+    }
+
+    char *m_name;   // 0x0
+    unsigned int m_value : 16;   // 0x4
+};
 
 /* which way the menus' stick is pushed (zui.cpp's STICK_DIR: a byte enum) */
 enum STICK_DIR { STICK_NONE, STICK_RIGHT, STICK_LEFT, STICK_UP, STICK_DOWN, STICK_CENTERED };
@@ -182,6 +219,48 @@ SKBKEY SkbPadKeyEvent(CPad *pad)
     if (released)
         s_keyEvent = 0;
     return SKBKEY_NONE;
+}
+
+/* the display scaled to a fraction of its size (0x397950, not written yet) */
+extern "C" void func_00397950(float scale);
+/* the current menu's float at 0x9C set (zui.cpp's 0x36A210) */
+extern "C" void func_0036A210(float f);
+
+/* the keyboard's scaling stepped by dT, the display scaled to it: 0 while it runs (or with none),
+ * 1 once scaled up -- the cursor, the caret and the caption shown, the blink restarted -- and 2 once
+ * scaled down -- the skb_done valve set (0x394DA0; SkbTick's, the name ours) */
+unsigned char SkbScale(CSoftKeyboard *skb, float dT)
+{
+    if (s_scaling == SKBSCALE_NONE)
+        return 0;
+    bool up = s_scaling == SKBSCALE_UP;
+
+    s_scaleTime += dT;
+    float t = s_scaleTime / (up ? skb->m_scaleUpSec : skb->m_scaleDownSec);
+    float scale = up ? t : 1.0f - t;
+
+    if (scale > 1.0f)
+        scale = 1.0f;
+    func_00397950(scale);
+    if (t >= 1.0f) {
+        s_scaling = SKBSCALE_NONE;
+        if (up) {
+            if (s_bmp2.m_node)
+                s_bmp2.m_node->SetActive(true);
+            if (s_bmp1.m_node)
+                s_bmp1.m_node->SetActive(true);
+            s_captionNode->SetActive(true);
+            s_blinkTime = 0.0f;
+            return 1;
+        }
+        CValve *done = CValve::GetByName("skb_done");
+
+        if (done)
+            done->SetValue(1);
+        func_0036A210(0.0f);
+        return 2;
+    }
+    return 0;
 }
 
 /* a 2D object given a node of its own under a parent (zui.cpp's, 0x36AB20) */
@@ -643,8 +722,8 @@ void CSoftKeyboard::ParseLook(_zrdr *rdr)
     SetRect(3, r3);
     ReadSkbRect(&r4, SkbFindTag(rdr, "UsbKbdMode"));
     SetRect(4, r4);
-    *(float *)&m_d8 = SkbFindReal(rdr, "ScaleUpSec", 0.25f);
-    *(float *)&m_dc = SkbFindReal(rdr, "ScaleDownSec", 0.25f);
+    m_scaleUpSec = SkbFindReal(rdr, "ScaleUpSec", 0.25f);
+    m_scaleDownSec = SkbFindReal(rdr, "ScaleDownSec", 0.25f);
     CSkbRdrIter it(rdr, "SwitchTargets");
 
     if (it.More()) {

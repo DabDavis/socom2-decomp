@@ -375,15 +375,16 @@ bool KeyboardAttached();
 
 extern "C" {
 /* the display unit's: the display ticked, its count of key events (0x3949C0); the next event's key
- * (0x3978C0); whether the display is busy (0x396EC0); the keyboard's scaling stepped, 1 grown, 2
- * shrunk away (0x394DA0); the scaled-in hook (0x398BB0). This unit's key handler (0x38DFE0) */
+ * (0x3978C0); whether the display is busy (0x396EC0); the scaled-in hook (0x398BB0). This unit's
+ * key handler (0x38DFE0) */
 int func_003949C0(CSoftKeyboard *skb);
 int func_003978C0();
 int func_00396EC0();
-unsigned char func_00394DA0(CSoftKeyboard *skb, float dT);
 void func_00398BB0();
 
 }
+/* the keyboard's scaling stepped, 1 scaled up, 2 scaled down (the display unit's SkbScale) */
+unsigned char SkbScale(CSoftKeyboard *skb, float dT);
 
 extern "C" {
 /* the cursor moved in a direction (0x38DFC0: through 0x38CB80, SkbMoveCursor's jump); the cursor's
@@ -448,7 +449,7 @@ void SkbTick(CGameMenu *menu, bool input, float dT)
                 skb->m_530.m_node->SetActive(on);
         }
         /* an if chain: a switch tests 2 first */
-        unsigned char scaled = func_00394DA0(skb, dT);
+        unsigned char scaled = SkbScale(skb, dT);
 
         if (scaled == 1) {
             skb->ShowElements(1);
