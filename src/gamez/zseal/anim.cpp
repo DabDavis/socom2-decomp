@@ -595,15 +595,17 @@ bool AnimSet::TypeBit1(AnimType type)
 /* a rifle anim type's pistol variant (OVL2 0x5E1CF0), first-person rifle variant (0x5E1BF0) and
  * first-person pistol variant (0x5E1AF0) set, when both have anims: the group's types and the
  * variant's base.
- * OPEN, all three, 0xF8 against 0x100: the target extends each type once inside each inlined
- * AnimId (the extension dies in the index) and again from the parameter for the stores; MW keeps
- * the first extension here and reuses it. Two locals for the AnimIds (computed before both `> -1`
- * tests, slti as the target's) and AnimId's if-returns (each arm its own `b`) give the rest; tried
- * int parameters with casts (20 off), `(int)` arguments, the stores written out */
+ * The target extends each type once inside each inlined AnimId (the extension dies in the index)
+ * and again from the parameter for the stores: AnimId's argument cast to its own type
+ * (`AnimId((AnimType)rifle)`, a macro's spelling, likely) makes it an expression of its own, which
+ * MW does not share with the stores' -- written plainly, MW kept the first extension and reused it
+ * (0xF8 against 0x100; a local copy of the parameter does as well as the cast). Two locals for the
+ * AnimIds (computed before both `> -1` tests, slti as the target's) and AnimId's if-returns (each
+ * arm its own `b`) give the rest */
 void AnimSet::SetPistolAnim(AnimType rifle, AnimType pistol)
 {
-    int a = AnimId(rifle);
-    int b = AnimId(pistol);
+    int a = AnimId((AnimType)rifle);
+    int b = AnimId((AnimType)pistol);
 
     if (a > -1 && b > -1) {
         m_animsbyfp->SetPistolAnim(rifle, pistol);
@@ -613,8 +615,8 @@ void AnimSet::SetPistolAnim(AnimType rifle, AnimType pistol)
 
 void AnimSet::SetRifleFPAnim(AnimType rifle, AnimType fp)
 {
-    int a = AnimId(rifle);
-    int b = AnimId(fp);
+    int a = AnimId((AnimType)rifle);
+    int b = AnimId((AnimType)fp);
 
     if (a > -1 && b > -1) {
         m_animsbyfp->SetRifleFPAnim(rifle, fp);
@@ -624,8 +626,8 @@ void AnimSet::SetRifleFPAnim(AnimType rifle, AnimType fp)
 
 void AnimSet::SetPistolFPAnim(AnimType rifle, AnimType fp)
 {
-    int a = AnimId(rifle);
-    int b = AnimId(fp);
+    int a = AnimId((AnimType)rifle);
+    int b = AnimId((AnimType)fp);
 
     if (a > -1 && b > -1) {
         m_animsbyfp->SetPistolFPAnim(rifle, fp);
