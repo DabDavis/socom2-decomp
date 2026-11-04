@@ -236,10 +236,6 @@ extern CWaterRippleManager theWaterRippleManager;   /* 0x4B5170 */
 
 extern CPipe thePipe;
 
-namespace zdb {
-class CTextureRelocMgr;
-}
-
 class CGameMenu {
 public:
     unsigned char _0[0xc4];
@@ -247,8 +243,6 @@ public:
     unsigned char _c8[0x910 - 0xc8];
 
     CGameMenu();
-    /* the menu's controls loaded from its design (SOCOM 1's; 0x368570, zui.cpp's) */
-    bool Init(zdb::CTextureRelocMgr *mgr, CZAnimZAR *zar);
     virtual ~CGameMenu();
     virtual void MyTick(float dT);
     virtual const char *GetReaderFileName();
