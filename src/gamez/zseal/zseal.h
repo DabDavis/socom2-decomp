@@ -169,6 +169,10 @@ public:
     bool SetItemAmmo(unsigned int index, void *ammo, int rounds, int count);
     /* the item at an index let go with its ammunition (SOCOM 1's; OVL2 0x5B9BB0, the kit lane's) */
     void RemoveItemAndAmmo(int index);
+    /* the first item whose ammunition is of a kind with the rounds, and the ammunition at an index
+     * let go (SOCOM 1's; OVL2 0x5C8750, 0x5B9F00, the kit lane's -- CreateNetAmmoPickup asks them) */
+    int GetAmmoIndex(EQUIP_AMMO ammo, int rounds);
+    void RemoveAmmo(int index);
     /* the items' set-up finished (SOCOM 1's; OVL2 0x5C7840, the kit lane's -- the SEAL's OnMissionStart
      * calls it) */
     void PostSetupItems();
@@ -1770,8 +1774,11 @@ public:
     /* another console's dropped weapon made here as a network pickup (SOCOM 1's; OVL2 0x59EC60 --
      * WeaponPUPacketHandler calls it with the packet's item, id and place) */
     void CreateNetWeaponPickup(unsigned short item, int netid, CPnt3D *pos, CQuat *rot);
-    /* another console's dropped ammunition made here (SOCOM 1's; OVL2 0x59E9E0 -- not written) */
+    /* another console's dropped ammunition made here (SOCOM 1's; OVL2 0x59E9E0) and this SEAL's own
+     * dropped, all of it (-1) or so many rounds (SOCOM 1's DropAmmo; OVL2 0x59FD50 -- PickupItem and
+     * 0x5A0040 call it) */
     void CreateNetAmmoPickup(unsigned short count, unsigned short *items, unsigned short *rounds, int id, CPnt3D *pos);
+    void DropAmmo(int rounds);
     /* a kill credited to the killer, with whether the weapon was one of five (SOCOM 1's, the flag
      * new; OVL2 0x59EE20 -- not written) */
     void HandleKiller(int killer, bool b);
