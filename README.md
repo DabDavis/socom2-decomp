@@ -1927,6 +1927,56 @@ templates next), and the earlier rounds' opens; 3.0b38/b50/b52 still untold.
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the SEALs, round 22** (UpdateEventMask, CreateAiEvent, the sleep pair, seal_cfg.cpp's cell search):
+  - a float parameter's place in the signature shows only in the caller's load order (MW evaluates arguments left to
+    right; an inline wrapper cannot change it): CBody::SmoothPart takes the fraction first -- the SEALs' 0x576700 (twenty
+    body parts eased toward their saved poses) matches only so;
+  - `s = s && s->m_state == K ? s : 0;` leaves the target's two delay slots empty, an if or a cast through an inline fills
+    them; a materialised `!(a || b)` over two bits (sltu, bnez, sltu, xori) is `int r = a != 0; if (!r) r = b != 0;
+    return r ^ 1;` -- a bool local adds a second sltu at the join;
+  - a switch inlined from a function in the same unit reuses the outer switch's case constants in its compare chain (the
+    radio order's addressee 0x58DBB0 and its group-name switch 0x58DD70); a constructor's `m_loc(CAiMapLoc::invalid)`
+    copies the cell's bit-fields one by one, the same field assigned later from a local copies as one word;
+  - UpdateEventMask 0x572D70 is SOCOM 1's, in SOCOM 1's place (its MakeMaskEx statics, the team bits, bits 8/9 SOCOM 1's
+    m_sleeping/m_snoozing; SOCOM II adds a fourth guarded static); CreateAiEvent 0x572FA0 returns the event where SOCOM
+    1's returned a bool; the round-23 numbering rule did not close Crouch/InStateHang or InitDecalHandles;
+  - open: CombineRotations 0x576E30 (0x1C0 vs 0x1CC: AnimPop's miss -- the target loads the record count once before
+    the loop and re-reads the global only for the entry test; opt_common_subs off gives the size, 75 off).
+- **Tells from the AI core, round 21** (ExtendPath, FindDetour, the reverse walks):
+  - `(i = i0) <= i1` loads the right operand first; `T i = i0;` before the compare loads i0 first, and `i = i0;` after an
+    if/else reloads it (CAiMaps::ExtendPath 0x52BDF0);
+  - writing into an out-parameter (`negate(&p, &p)`) folds the input's loads into sp offsets while the stores keep MW's
+    field-address registers, written in place both go through the registers (FindDetour 0x524170's turned side); an `&&`
+    spelled `b = A; if (b) b = B;` with a bool local narrows A (andi 0xff) and materialises B into the same register, an
+    inline bool gives the `daddiu 1` form (FindDetour's head test);
+  - a reverse walk with end()/begin() stored and copied through $f0 at each test is a reverse_iterator with
+    rbegin()/rend() as inlines (UpdatePathWidth 0x525340 and the points' flags pass 0x525520 -- c2dfont.cpp's shape); a
+    postfix `&*i++` gives `move a0,s4; addiu s4,s4,-8; addiu s2,a0,-8`; an `||` chain of `==` on one value folds into a bit
+    test (range check, sllv, mask) held in a bool, a switch gives a compare chain; a local declared ahead of another and
+    assigned after it takes the earlier register number;
+  - 0x510110 is the const-void pointer list deleter's destructor (ai_events.cpp's and ai_astar.cpp's copies byte-exact);
+  - open: CopyPlan (21; a reference local to the visited cells gets 8), plan_legcomplete (0x7C vs 0xAC), remove_if<_tick>
+    (4), SetRegionType (10: a non-const region local gives the registers, then MW reuses the loaded byte), GetNextEvent (2).
+- **Tells from the game states, round 26** (the zoom getters, the byte-enum family, ~CMission, CMsgEditor):
+  - THE BYTE-ENUM FAMILY's `lb; andi 0xff` comes from reading the stored button at each use through a one-byte temporary
+    of its own (a wrapper around a char: CByteEnum, the name ours), so each function reads it twice -- the two loads
+    merge, but the two zero-extensions merge only after the peephole that would fold a single-use pair into `lbu` has run
+    (`#pragma opt_common_subs off` shows the two andi, `#pragma peephole off` keeps the pair but drops label alignment); a
+    wrapper temporary on the right of a built-in `==` keeps a constant's narrowing at runtime (`li` in the delay slot,
+    `andi` at the join): fts_controller.cpp 28 of 30;
+  - an `inline` function's string literal is pooled and MW keeps null tests on its address; a non-inline function
+    auto-inlined from the same unit keeps its literal local, the tests fold and the vanished arm leaves a `b` to the next
+    instruction (~CMessageQueue); a class whose only own virtual is its destructor emits its vtable and copies of the
+    base's inline virtuals wherever that destructor is defined (CMsgEditor); a member of a class derived from a vector or
+    list costs one extra this-test (CObjAnchorVec); a global read into a local before a parameter's null test loads in
+    the test's delay slot;
+  - the zoom getters: 0x2AF860 ftsGetTacMapZoomNear, 0x2AF870 ftsGetTacMapZoomFar, 0x2AF880 ftsGetTacMapZoom -- SOCOM 1's
+    order, their globals' order, PreOpen 0x2ACC10 reading "TacMapZoom" items 0-2 (1.0, 2.2, 0.55) into them and the
+    callers agree (SOCOM II's SwitchMapToFullScreen is 0x20A780 and calls the zoom, the zoom step 0x20A330 and
+    FrameObjective the far one) -- the HUD's round-29 reading was the call site's, not the map's;
+  - fts_controller.cpp's initialiser is 0x400730; ~CMission 0x2AD940 shows CMission derives from CSaveModule (vtable
+    0x406290; Serialize/UnSerialize 0x2A6340/0x2A54E0 from its slots 3 and 4);
+  - open: 0x2C60C0 (2: the two andi at the join in the other order), 0x2C6290 (6: two registers trade).
 - **Tells from the world, rdr and sound, round 9** (the jukebox, the sound banks, include/string's substrings, zrdr's stack):
   - a container accessor used as the object of an inline call (`s.top()->push_back(x)`) is checked one level deeper and
     calls its callee out of line; used as an initialiser it inlines whole -- zrdr.h's stack is the real include/stack now
