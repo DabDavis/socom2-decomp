@@ -13,6 +13,7 @@
 
 #include "../zar/zar.h"
 #include <deque>
+#include <stack>
 
 class CSTable;
 class CRdrFile;
@@ -186,35 +187,6 @@ public:
 _zrdr *zrdr_read(const char *name, const char *path, int flags);
 int zrdr_free(CRdrFile *file);
 
-/* the deque's back() the editor's stack calls out of line, in zrdr_edit.cpp's template tail
- * (0x3335C0, a placeholder, the deque first: include/deque's back() is in class, so inline):
- * SOCOM 1's back__Q23std33deque<PCv,...>Fv. Its pop_back() (0x3349C0) is include/deque's
- * __deque_imp<const void *>::pop_back, out of class (the tail emits it: OPEN, include/deque's
- * comment) */
-extern "C" const void **func_003335C0(void *deque);
-
-namespace std {
-
-/* <stack>, not in include/ yet: SOCOM 1's DWARF gives CRdrEditor a `stack m_stack` holding its
- * deque as `c` (0x1c bytes there; SOCOM II's deque is 0x18). The members MSL's would forward to
- * the deque's back() and pop_back() call them out of line, as every SOCOM II caller does but
- * CRdrEditor::pop's first top() (see there) */
-template <class T, class Container = deque<T> >
-class stack {
-public:
-    /* MSL's: the container copied from a default one (CRdrEditor(), the MSL headers' round 7) */
-    explicit stack(const Container &x = Container()) : c(x) {}
-    bool empty() const { return c.empty(); }
-    unsigned int size() const { return c.size(); }
-    T &top() { return (T &)*func_003335C0(&c); }
-    void push(const T &x) { c.push_back(x); }
-    void pop() { c.pop_back(); }
-
-    Container c;   // 0x0
-};
-
-}
-
 /* an .rdr built in memory (zrdr_edit.cpp): SOCOM 1's CRdrEditor, a CRdrFile with a stack of the
  * open lists' values; push opens a list (its tag the first value), pop closes it into an array
  * of the enclosing list, or of the file itself at the bottom */
@@ -237,6 +209,9 @@ public:
     bool addbool(const char *tag, bool b);
     bool addSTRING(const char *tag, const char *s);
 
+    /* MSL's stack over the pointer deque (include/stack; SOCOM 1's DWARF holds the deque as `c`):
+     * its top() calls the deque's back() out of line wherever it is checked a level deeper
+     * (0x3335C0), its pop() the base's pop_back (0x3349C0, include/deque's: OPEN there) */
     std::stack<CRDRNodeVec *> m_stack;   // 0x34
 };   // 0x4c bytes
 

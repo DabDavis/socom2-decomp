@@ -5894,7 +5894,7 @@
 0x00333490 0x60 addPNT3D__10CRdrEditorFPCcRC5PNT3D  # OVL1; s1:order by hand (SOCOM 1's addPNT3D: push, three reals added (0x333690) from the point's x, y, z, pop) -- the rdr lane
 0x003334F0 0x48 addint__10CRdrEditorFPCci  # OVL1; s1:order by hand (SOCOM 1's addint: push, addintnode (0x333700), pop) -- the rdr lane
 0x00333540 0x80 addrdrnode__10CRdrEditorFP5_zrdr  # OVL1; s1:order by hand (SOCOM 1's addrdrnode: a value _calloc'ed, cloned into the file's string table at this+8, pushed on the stack top's vector) -- the rdr lane
-0x003335C0 0x4C func_003335C0  # OVL1
+0x003335C0 0x4C back__Q23std83deque<PQ210CRdrEditor11CRDRNodeVec,Q23std39allocator<PQ210CRdrEditor11CRDRNodeVec>>Fv  # OVL1; the world lane round 9: the pointer deque's back() out of line -- include/stack's top() over it, as MSL's: CRdrEditor's add*node and pop's second top() call it (the top() as push_back's object is checked a level deeper), pop's first inlines it whole; byte-exact from zrdr_edit.cpp
 0x00333610 0x7C addstringnode__10CRdrEditorFPCc  # OVL1; s1:order by hand (SOCOM 1's addstringnode: a string value (0x335BC0 with 3), its text through CSTable::CreateString, pushed on the stack top's vector; push calls it with the tag) -- the rdr lane
 0x00333690 0x70 addrealnode__10CRdrEditorFf  # OVL1; the rdr lane: SOCOM II's, addPNT3D's helper: a real value (0x335BC0 with 2) pushed on the stack top's vector -- the name ours (zrdr's word for a float)
 0x00333700 0x70 addintnode__10CRdrEditorFi  # OVL1; s1:order by hand (SOCOM 1's addintnode: an integer value (0x335BC0 with 1) pushed on the stack top's vector; addint and addbool call it) -- the rdr lane

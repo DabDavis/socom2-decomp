@@ -16,15 +16,6 @@ struct PNT3D {
 /* the values allocator (zrdr_pack.cpp's unit, 0x335BC0): `n` zeroed values, the first typed */
 extern "C" _zrdr *func_00335BC0(unsigned char type, int n);
 
-/* the top of the stack read in place: MSL's deque back(), the element before start_ + size_
- * (0x3335C0's body) -- pop's first top() inlines it whole, every other caller calls it */
-static inline CRdrEditor::CRDRNodeVec *&top_of(std::deque<CRdrEditor::CRDRNodeVec *> &d)
-{
-    unsigned int n = d.start_ + d.size_ - 1;
-
-    return (CRdrEditor::CRDRNodeVec *&)d.buf_.second_[n / 128][n % 128];
-}
-
 /* a value made an array of `n` zeroed values (SOCOM II's; the name ours): defined first, so its
  * code follows the deque copy constructor's out-of-line pieces; pop inlines it and _zrdr::Clone
  * (zrdr_main.cpp) calls it */
@@ -65,12 +56,15 @@ bool CRdrEditor::push(const char *tag)
 }
 
 /* SOCOM 1's: the open list closed, its values copied into an array and freed; the array added to
- * the enclosing list, or at the bottom made the file's own value */
+ * the enclosing list, or at the bottom made the file's own value. The stack's top() is MSL's
+ * (include/stack): the first, an initialiser, inlines the deque's back() whole; the second, the
+ * object of push_back, is checked a level deeper and calls back() out of line (0x3335C0), as the
+ * add*node members do */
 bool CRdrEditor::pop()
 {
     if (m_stack.empty())
         return true;
-    CRDRNodeVec *v = top_of(m_stack.c);
+    CRDRNodeVec *v = m_stack.top();
     _zrdr *array = func_00335BC0(ZRDR_ARRAY, 1);
 
     zrdr_newarray(array, v->size());
