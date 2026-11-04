@@ -9,7 +9,6 @@
 extern "C" {
 void func_003654C0(CGameMenu *menu, float dT);   /* CGameMenu::Tick */
 void func_003AFF30(bool a, bool b);              /* zVid_Swap */
-void func_00368570(CGameMenu *menu, void *reloc, CZAnimZAR *zar);   /* CGameMenu::Init */
 
 }
 
@@ -187,7 +186,7 @@ bool CExitState::Init()
     CStringTables *tables = GetStringTables();
 
     tables->Load("UIX", GetLanguage());
-    func_00368570(m_menu, 0, animfile);
+    m_menu->Init(0, animfile);
     CVideo::Clear(false, 0, 0, 0, 0);
     zVid.m_91 = 1;
     zVid_Sync0();
