@@ -41,9 +41,16 @@ public:
 struct LINE_DATA;
 
 /* a wide line's polygons (SOCOM II's; the name ours): coloured and faded all at once -- the colour
- * read through its reference for each one, the fade's 0-128 scale taken once */
+ * read through its reference for each one, the fade's 0-128 scale taken once -- and deleted with
+ * the set (~CZLineMap's delete of a set: the null test merged with the set's own this-test, its
+ * walk, then the vector's three) */
 class CPolySet : public std::vector<C2DBitmapPoly *> {
 public:
+    ~CPolySet()
+    {
+        for (int i = 0; i < size(); i++)
+            delete (*this)[i];
+    }
     void SetColor(const PNT3D &c)
     {
         for (int i = 0; i < size(); i++)
@@ -60,6 +67,7 @@ public:
  * 0x14BC8, where its polygon sets are) */
 class CZLineMap : public CZMapItem {
 public:
+    CZLineMap();
     virtual ~CZLineMap();
     virtual bool Tick(CZNewHudMap *map, float dT);
     virtual void Draw(zdb::CCamera *camera);
@@ -68,6 +76,12 @@ public:
     /* a line's polygons, built along its cells (SOCOM II's; SOCOM 1's SetupPolygon built them
      * itself) */
     void SetupPolygon(const CAiMap::line &line, const LINE_DATA &data);
+    /* the pen put on a cell, and a line drawn to a point or a cell (SOCOM 1's LineTo, the cell's
+     * forms SOCOM II's; the line drawn back, none when the cell has no point) */
+    void MoveTo(const CAiMapLoc &loc);
+    C2DLine *LineTo(const CPnt3D *p);
+    C2DLine *LineTo(const CAiMapLoc &loc);
+    C2DLine *NewLine();
     /* a world point as the map draws it (SOCOM 1's WorldToDraw; out of line at 0x20F210) */
     CPnt3D WorldToDraw(const CPnt3D *p) const { return m_hudmap->MapPoint(p); }
     /* a cell's drawn point, false for a cell off the map (the name ours: the iterator's walks;
@@ -91,8 +105,15 @@ public:
     CPnt3D m_pointB;   // 0x10
     CAiMap *m_map;   // 0x1c
     CZNewHudMap *m_hudmap;   // 0x20
-    unsigned char _24[0x14bc8 - 0x24];
-    std::vector<CPolySet *> m_polys;   // 0x14bc8: SOCOM II's polygon sets
+    C2DLine m_linelist[500];   // 0x30 (SOCOM 1's 400)
+    unsigned int m_lastline;   // 0x138b0
+    C2DString m_stringlist[32];   // 0x138b4
+    unsigned int m_laststring;   // 0x14bb4
+    std::vector<C2DPoly *> m_vecTriangles;   // 0x14bb8
+    int m_iNumActiveTriangles;   // 0x14bc4
+    std::vector<CPolySet *> m_vecWideLines;   // 0x14bc8: SOCOM II's wide lines' polygon sets
+    std::vector<C2DBitmap *> m_vecBitmaps;   // 0x14bd4
+    zdb::CTexture *m_texture;   // 0x14be0 (SOCOM 1's at 0x10b60)
 };
 
 namespace {
@@ -128,32 +149,6 @@ public:
     CZLineMap &_map;   // 0xc
     CPnt3D _pt;   // 0x10
 };
-
-/* whether the walk is still on the line (SOCOM 1's line 38, an inline there; SOCOM II's vtable
- * slot 2, the iterators' `!=` written as `!(==)`) */
-bool CAiLinePtItr::IsValid() const
-{
-    return !(_it == _line.end());
-}
-
-/* the next cell that has a point (SOCOM 1's line 36: the step, then FindValid -- inlined one level
- * here, its point, * and postfix ++ called) */
-void CAiLinePtItr::Advance()
-{
-    ++_it;
-    FindValid();
-}
-
-/* the point's first two coordinates as a 2D point (SOCOM 1's: through a local, assigned -- a brace
- * initialiser zeroes it first) */
-PNT2D CAiLinePtItr::GetPt() const
-{
-    PNT2D pt;
-
-    pt.x = _pt.x;
-    pt.y = _pt.y;
-    return pt;
-}
 
 }
 
@@ -200,6 +195,10 @@ namespace {
 std::map<int, LINE_DATA> g_mapLineProps;
 std::map<int, LINE_DATA> g_mapPolyProps;
 
+/* the line map there is (SOCOM II's, the name ours: OVL1 bss 0x40BF70, set by the constructor and
+ * cleared by the destructor) */
+CZLineMap *g_pLineMap;
+
 }
 
 /* the default looks, nine (SOCOM 1's file static _linedata, 180 bytes; OVL1 .data 0x3E42D0-0x3E4383,
@@ -216,24 +215,6 @@ static LINE_DATA _linedata[9] = {
     LINE_DATA(0.0f, 255.0f, 0.0f, 100.0f, 1.0f),
 };
 
-/* the wide line's polygons along a point walk (the C2D library's, OVL1 0x357F30; unwritten) */
-extern "C" void func_00357F30(CPolySet *polys, CPtItr *itr, float width);
-
-/* a line's polygons: a new set kept, built along the line's cells, coloured and faded as the type
- * says (SOCOM II's; the name SOCOM 1's, whose SetupPolygon built them itself) */
-void CZLineMap::SetupPolygon(const CAiMap::line &line, const LINE_DATA &data)
-{
-    CPolySet *polys = new CPolySet;
-
-    m_polys.push_back(polys);
-
-    CAiLinePtItr itr(line, *this);
-
-    func_00357F30(polys, &itr, data._fWidth);
-    polys->SetColor(data.color);
-    polys->SetTrans((1.0f / 128.0f) * data.opacity);
-}
-
 /* the line map's clip buffers (SOCOM 1's statics: m_pi, m_rgbi, m_uvi, m_po, m_rgbo, m_uvo, two
  * CPnt4Ds each -- the points, colours and UVs in and out of the clipper; OVL1 bss 0x40BF80-0x40C03F,
  * built by the initialiser through __construct_array with CPnt4D's empty constructor, 0x2110E0) */
@@ -243,6 +224,58 @@ CPnt4D CZLineMap::m_uvi[2];
 CPnt4D CZLineMap::m_po[2];
 CPnt4D CZLineMap::m_rgbo[2];
 CPnt4D CZLineMap::m_uvo[2];
+
+namespace {
+
+/* the point's first two coordinates as a 2D point (SOCOM 1's: through a local, assigned -- a brace
+ * initialiser zeroes it first) */
+PNT2D CAiLinePtItr::GetPt() const
+{
+    PNT2D pt;
+
+    pt.x = _pt.x;
+    pt.y = _pt.y;
+    return pt;
+}
+
+/* the next cell that has a point (SOCOM 1's line 36: the step, then FindValid -- inlined one level
+ * here, its point, * and postfix ++ called) */
+void CAiLinePtItr::Advance()
+{
+    ++_it;
+    FindValid();
+}
+
+}
+
+/* the map's box, by value (the name ours: the cell's fallback reads it from a copy on the stack) */
+static inline CBBox GetMapBox(const CAiMap *map)
+{
+    return map->m_bbox;
+}
+
+/* a cell's point in the world: its centre, or for a cell with none its corner plus half a cell on
+ * the ground; none for no map or the invalid cell (SOCOM II's, the name ours: GetCellCenter inlined
+ * one level -- GetCell, GetAltitude, HasAction, GetDir, CPnt3D(), Scale and Add called, their copies
+ * after this, 0x2105E0-0x2106A0, in reverse of first use) */
+CPnt3D *GetLocPoint(const CAiMap *map, const CAiMapLoc &loc, CPnt3D *pt)
+{
+    CPnt3D *r = 0;
+
+    if (map && loc != CAiMapLoc::invalid) {
+        if (!((CAiMap *)map)->GetCellCenter(loc, pt)) {
+            CBBox box = GetMapBox(map);
+            float dx = map->m_dx;
+            float dy = map->m_dy;
+
+            pt->x = box.m_min.x + (loc.x * dx + 0.5f * dx);
+            pt->y = 0.0f;
+            pt->z = box.m_min.z + (loc.y * dy + 0.5f * dy);
+        }
+        r = pt;
+    }
+    return r;
+}
 
 /* a type's colour, opacity (0-1, kept as 0-127) and width out of the reader (SOCOM 1's one line:
  * an inline) */
@@ -291,4 +324,116 @@ float g_fPulseTrans = 60.0f;
 float hudGetTacMapPulseTrans()
 {
     return g_fPulseTrans;
+}
+
+/* no map, no lines yet; the line map registered (SOCOM 1's, SOCOM II's 500 lines, 32 strings of its
+ * own size and the global) */
+CZLineMap::CZLineMap() : m_map(0), m_hudmap(0), m_iNumActiveTriangles(0)
+{
+    g_pLineMap = this;
+}
+
+/* every triangle, wide line and bitmap deleted, the line map unregistered (SOCOM 1's; the wide
+ * lines' sets SOCOM II's) */
+CZLineMap::~CZLineMap()
+{
+    for (int i = 0; i < m_vecTriangles.size(); i++)
+        delete m_vecTriangles[i];
+    for (int i = 0; i < m_vecWideLines.size(); i++)
+        delete m_vecWideLines[i];
+    for (int i = 0; i < m_vecBitmaps.size(); i++)
+        delete m_vecBitmaps[i];
+    g_pLineMap = 0;
+}
+
+/* a line to a cell's point, none for a cell without one (SOCOM II's) */
+C2DLine *CZLineMap::LineTo(const CAiMapLoc &loc)
+{
+    CPnt3D pt;
+
+    if (GetLocPoint(m_map, loc, &pt))
+        return LineTo(&pt);
+    return 0;
+}
+
+/* whether a line between two drawn points can show: not both ends past the same side of the map's
+ * screen box (SOCOM 1's four tests, each pair materialised before the next) */
+static inline bool IsLineVisible(const CZNewHudMap *map, const CPnt3D &a, const CPnt3D &b)
+{
+    return !((a.x < map->m_screenx1 && b.x < map->m_screenx1) || (a.x > map->m_screenx2 && b.x > map->m_screenx2)
+             || (a.y < map->m_screeny1 && b.y < map->m_screeny1) || (a.y > map->m_screeny2 && b.y > map->m_screeny2));
+}
+
+/* the next of the line list's lines, none once all 500 are out (SOCOM 1's, its 400) */
+inline C2DLine *CZLineMap::NewLine()
+{
+    if (m_lastline < 500) {
+        m_lastline++;
+        return &m_linelist[m_lastline - 1];
+    }
+    return 0;
+}
+
+/* a line from the pen to a point, the pen moved there; kept only when it can show (SOCOM 1's, the
+ * point through MapPoint in SOCOM II).
+ * OPEN, 8 bytes long (0x230 vs 0x228) and this/line swapped (the target keeps this in s0, the line
+ * in s1): the target zeroes the line in the visibility test's delay slot, and its 500-line test's
+ * true arm ends `b join` over a lone nop while the false arm adds nothing -- NewLine with an early
+ * return gives the b but a `move s0,zero; nop` false arm, a result variable (or the test written
+ * here) drops both (0x220); a ternary, an if/else with `line = line`, a switch, the inverted early
+ * return, an else-arm zero and the ternary of the visibility all miss (round 35) */
+C2DLine *CZLineMap::LineTo(const CPnt3D *p)
+{
+    m_pointB = WorldToDraw(p);
+
+    C2DLine *line = 0;
+
+    if (IsLineVisible(m_hudmap, m_pointA, m_pointB)) {
+        line = NewLine();
+        if (line) {
+            line->Load(m_pointA.x, m_pointA.y, m_pointB.x, m_pointB.y, m_texture);
+            line->SetUV(0.5f, 0.9375f, 0.5f, 0.9375f);
+            line->On();
+        }
+    }
+    m_pointA = m_pointB;
+    return line;
+}
+
+/* the pen on a cell's drawn point (SOCOM II's) */
+void CZLineMap::MoveTo(const CAiMapLoc &loc)
+{
+    CPnt3D pt;
+
+    if (GetLocPoint(m_map, loc, &pt))
+        m_pointA = WorldToDraw(&pt);
+}
+
+namespace {
+
+/* whether the walk is still on the line (SOCOM 1's line 38, an inline there; SOCOM II's vtable
+ * slot 2, the iterators' `!=` written as `!(==)`) */
+bool CAiLinePtItr::IsValid() const
+{
+    return !(_it == _line.end());
+}
+
+}
+
+/* the wide line's polygons along a point walk (the C2D library's, OVL1 0x357F30; unwritten) */
+extern "C" void func_00357F30(CPolySet *polys, CPtItr *itr, float width);
+
+/* a line's polygons: a new set kept, built along the line's cells, coloured and faded as the type
+ * says (SOCOM II's; the name SOCOM 1's, whose SetupPolygon built them itself) */
+void CZLineMap::SetupPolygon(const CAiMap::line &line, const LINE_DATA &data)
+{
+    CPolySet *polys = new CPolySet;
+
+    m_vecWideLines.push_back(polys);
+
+    CAiLinePtItr itr(line, *this);
+
+    func_00357F30(polys, &itr, data._fWidth);
+    polys->SetColor(data.color);
+    polys->SetTrans((1.0f / 128.0f) * data.opacity);
 }
