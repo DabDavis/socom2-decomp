@@ -59,24 +59,37 @@ void func_00252AB0(void *h, short v);
 /* the radio's channel slots (only what is read here) */
 struct VoiceSlot {
     int m_client;   // 0x0: 256, none
-    int m_4;   // 0x4: the time it is held until
+    unsigned int m_4;   // 0x4: the time it is held until (the master's tick compares it unsigned)
 };
 struct VoiceRadio {
-    unsigned char m_state;   // 0x0: 3, talking
+    unsigned char m_state;   // 0x0: 1 idle, 2 a slot asked for, 3 talking, 4 closing
     unsigned char _1[0x24 - 1];
     int m_slot;   // 0x24
     int m_channel;   // 0x28
     int m_team;   // 0x2c
-    unsigned char _30[0x34 - 0x30];
+    int m_talklen;   // 0x30: how long a talk may last (VoiceChat's m_port: the set-up's argument)
     int m_talktime;   // 0x34: how long a slot is held from the time it is given (VoiceChat's
                       //   m_port2: the set-up's argument + 5000)
-    unsigned char _38[0x4a - 0x38];
-    unsigned char m_quiet;   // 0x4a
-    unsigned char _4b[0x60 - 0x4b];
+    int m_handle;   // 0x38: the headset's (VoiceDevice's), -1 none
+    unsigned char _3c[0x44 - 0x3c];
+    int m_hint;   // 0x44: the headset's enumeration hint (1 a change seen, 2 handled)
+    unsigned char m_recording;   // 0x48: the headset recording (VoiceDevice's m_48)
+    unsigned char _49;
+    unsigned char m_quiet;   // 0x4a: set, the talk key served; cleared (a channel change), the slot given back
+    unsigned char _4b;
+    unsigned char m_open;   // 0x4c: the set-up done (VoiceChat's)
+    unsigned char _4d[0x54 - 0x4d];
+    unsigned char m_status[8];   // 0x54: our channel's state, as the DME reports it
+    int m_5c;   // 0x5c
     int m_radio_msg;   // 0x60: the "Radio" message
     int m_msg;   // 0x64: the radio's application message
-    unsigned char _68[0x70 - 0x68];
+    unsigned int m_retry;   // 0x68: when a slot is asked for again
+    unsigned int m_until;   // 0x6c: when the talk (or its closing) ends
     VoiceSlot m_slots[12];   // 0x70
+    unsigned char *m_tone;   // 0xd0: the open and close tone's samples (data_003DF540 at rest)
+    short m_tonebuf[2000];   // 0xd4: the tone as the headset plays it
+    unsigned char _1074[0x1078 - 0x1074];
+    int m_usecodec;   // 0x1078 (VoiceChat's)
 };
 struct VoiceTalk {
     unsigned char m_state;   // 0x0
@@ -489,15 +502,6 @@ int func_00310750(VoiceEncoder *e, const void *samples, void *out)
 }
 #pragma auto_inline reset
 
-/* the channel status packet: the twelve slots' clients, the bytes read returned (OVL1 0x30EB70:
- * registered as "Channel Status" with the radio's messages) */
-int func_0030EB70(int, int, int, short *data)
-{
-    for (int i = 0; i < 12; i++)
-        data_0045B718->m_slots[i].m_client = data[i];
-    return 24;
-}
-
 /* the channel status sent to everyone: the twelve slots' clients as halfwords (inlined in the
  * "Radio" handler's two master cases; the name ours) */
 inline void SendChannelStatus(VoiceRadio *r)
@@ -508,6 +512,240 @@ inline void SendChannelStatus(VoiceRadio *r)
         data[i] = r->m_slots[i].m_client;
     theNetwork.zNetSendApplicationMessage(64, theNetwork.m_GameConnectionIndex, -1, r->m_msg, 24,
                                           (unsigned char *)data, false);
+}
+
+extern "C" {
+int func_00623AE8(int conn, int slot, void *status);   /* (the DME: our channel's state read) */
+int func_00623D00(int conn, int *talk);   /* (the DME: the talk key held) */
+int func_00623C58(int conn, int codec);   /* (the DME: the talk over) */
+int lgAudEnumHint(int *hint);   /* (lgAud: the devices' change hint, and its async form) */
+int lgAudAEnumHint(int *hint);
+int lgAudASync(int wait);
+int lgAudClose(int handle);
+int lgAudStartRecording(int handle);
+int lgAudStopRecording(int handle);
+extern unsigned char data_003DF540[];   /* the radio's open and close tone, at rest */
+extern int data_0045C290;   /* the ticks without a headset */
+}
+
+/* our channel's state as the DME has it (the name ours) */
+inline int GetChannelState(int slot, void *status)
+{
+    return func_00623AE8(theNetwork.m_GameConnectionIndex, slot, status);
+}
+
+/* our request to the session master as a "Radio" message (us, the slot, 1 asked for or 2 given
+ * back): handled here when we are the master or there is none, sent to the master when it is
+ * another (inlined four times in the radio's tick, a message of its own each; the name ours) */
+inline void SendRadioRequest(VoiceRadio *r, unsigned char req)
+{
+    int master = theNetwork.zNetGetGameSessionMasterClientIndex();
+    int slot = r->m_slot;
+    unsigned char msg[3];
+
+    msg[0] = theNetwork.zNetGetMyGameClientIndex();
+    msg[1] = slot;
+    msg[2] = req;
+    if (master == theNetwork.zNetGetMyGameClientIndex() || master == -1)
+        func_0030E8E0(0, 0, master, msg);
+    if (master != theNetwork.zNetGetMyGameClientIndex())
+        theNetwork.zNetSendApplicationMessage(64, theNetwork.m_GameConnectionIndex, master, r->m_radio_msg, 3, msg,
+                                              false);
+}
+
+/* the slot we hold given back (the name ours) */
+inline void SendRadioRelease(VoiceRadio *r, int slot)
+{
+    int master = theNetwork.zNetGetGameSessionMasterClientIndex();
+    unsigned char msg[3];
+
+    msg[0] = theNetwork.zNetGetMyGameClientIndex();
+    msg[1] = slot;
+    msg[2] = 2;
+    if (master == theNetwork.zNetGetMyGameClientIndex() || master == -1)
+        func_0030E8E0(0, 0, master, msg);
+    if (master != theNetwork.zNetGetMyGameClientIndex())
+        theNetwork.zNetSendApplicationMessage(64, theNetwork.m_GameConnectionIndex, master, r->m_radio_msg, 3, msg,
+                                              false);
+}
+
+/* one of the slots ours (the name ours) */
+inline bool HoldsSlot(VoiceRadio *r)
+{
+    for (int i = 0; i < 12; i++)
+        if (r->m_slots[i].m_client == theNetwork.zNetGetMyGameClientIndex())
+            return true;
+    return false;
+}
+
+/* and which (the name ours) */
+inline bool FindSlot(VoiceRadio *r, int &slot)
+{
+    for (int i = 0; i < 12; i++)
+        if (r->m_slots[i].m_client == theNetwork.zNetGetMyGameClientIndex()) {
+            slot = i;
+            return true;
+        }
+    return false;
+}
+
+/* a slot held by another client (the name ours). The slot reached as the radio stepped by i
+ * slots, its client then at +0x70: the target keeps r + 8i across the call and reads 0x70(s0)
+ * twice (a stand-in spelling -- `r->m_slots[i]` read twice keeps the whole address instead) */
+inline bool SlotTaken(VoiceRadio *r, int i)
+{
+    VoiceRadio *p = (VoiceRadio *)(i + (VoiceSlot *)r);
+    bool b = p->m_slots[0].m_client != 256;
+
+    if (b)
+        b = p->m_slots[0].m_client != theNetwork.zNetGetMyGameClientIndex();
+    return b;
+}
+
+/* the headset's recording started, 0 when it is (the name ours) */
+inline int StartRecording(VoiceRadio *r)
+{
+    if (r->m_handle == -1)
+        return 0x80000000;
+    if (r->m_recording == 1)
+        return 0;
+    int err = lgAudStartRecording(r->m_handle);
+
+    if (err == 0)
+        r->m_recording = 1;
+    else
+        err = 0x80000000;
+    return err;
+}
+
+/* and stopped (the name ours) */
+inline void StopRecording(VoiceRadio *r)
+{
+    if (r->m_recording && r->m_handle != -1) {
+        lgAudStopRecording(r->m_handle);
+        r->m_recording = 0;
+    }
+}
+
+/* the radio's tick: the headset looked for again when the devices change (closed and opened
+ * afresh); while it is there, the talk key asks the session master for our channel's slot (1),
+ * a slot given plays the opening tone and starts the recording (2), the talk ends when the slot
+ * goes or its time is up -- the closing tone, the slot given back (3) -- and the radio rests a
+ * while (4); a channel change gives the slot back at once. The master frees the slots whose time
+ * is up, telling everyone. The state returned (OVL1 0x30EC10; 0x30F990 ticks it).
+ * OPEN, 13 instructions (round 19, first written: every block, call and frame slot the target's,
+ * r in s3, slot s2, err s1): (1) the five sends load the connection (a2) ahead of the message id
+ * (t0), and func_00623AE8's a0 ahead of a1, where the target loads the other argument first (10 + 2)
+ * -- the same SendChannelStatus gives the target's order inside func_0030E8E0; an accessor, a
+ * wrapper inline, change nothing; (2) SlotTaken's step adds r + 8i where the target adds 8i + r (1:
+ * every spelling of the stand-in alike). SlotTaken itself: `r->m_slots[i]` read twice keeps the
+ * whole address (r + 8i + 0x70, the extra addiu and an alignment nop: 0x9E8), a getter CSEs the
+ * value across the call, by reference, const views, a VoiceSlot accessor, a member: the same; only
+ * the stepped radio (`(VoiceRadio *)(i + (VoiceSlot *)r)`, its slot 0) keeps r + 8i. Settled on the
+ * way: the clocks compared `GetLocalTime() > field` (the call first, the field loaded after it),
+ * the master asked for inside the request before the slot is read, the tone loops `*s++` / `*s--`
+ * (MW unrolls them in pairs, the target's), StartRecording's result kept, its zero arm first */
+unsigned char func_0030EC10(VoiceRadio *r)
+{
+    if (!r->m_open)
+        return 0;
+    GetChannelState(r->m_slot, r->m_status);
+    int slot = 0;
+    int err = 0;
+
+    if (r->m_recording || SlotTaken(r, r->m_slot))
+        err = lgAudEnumHint(&r->m_hint);
+    else {
+        lgAudASync(0);
+        if (r->m_hint != 1)
+            err = lgAudAEnumHint(&r->m_hint);
+    }
+    if (!err && r->m_hint == 1) {
+        r->m_hint = 2;
+        if (r->m_handle != -1)
+            lgAudClose(r->m_handle);
+        func_0030FEF0((VoiceDevice *)r);
+    }
+    if (r->m_handle != -1) {
+        data_0045C290 = 0;
+        if (r->m_quiet) {
+            int talk;
+
+            func_00623D00(theNetwork.m_GameConnectionIndex, &talk);
+            if (r->m_state == 1 && talk) {
+                r->m_state = 2;
+                SendRadioRequest(r, 1);
+                r->m_retry = theNetwork.zNetGetLocalTime() + 1000;
+            } else if (r->m_state == 2) {
+                if (HoldsSlot(r)) {
+                    unsigned char *s = r->m_tone;
+
+                    for (int i = 0; i < 2000; i++)
+                        r->m_tonebuf[i] = *s++ << 8;
+                    func_0030F5F0((VoicePlayer *)r, r->m_tonebuf, 4000);
+                    if (!StartRecording(r)) {
+                        r->m_state = 3;
+                        r->m_until = r->m_talklen + theNetwork.zNetGetLocalTime();
+                    }
+                } else if (theNetwork.zNetGetLocalTime() > r->m_retry) {
+                    SendRadioRequest(r, 1);
+                    r->m_retry = theNetwork.zNetGetLocalTime() + 1000;
+                }
+            } else if (r->m_state == 3) {
+                if (!HoldsSlot(r) || theNetwork.zNetGetLocalTime() > r->m_until) {
+                    func_00623C58(theNetwork.m_GameConnectionIndex, r->m_usecodec);
+                    StopRecording(r);
+                    unsigned char *s = r->m_tone + 2000;
+
+                    for (int i = 0; i < 2000; i++)
+                        r->m_tonebuf[i] = *s-- << 8;
+                    func_0030F5F0((VoicePlayer *)r, r->m_tonebuf, 4000);
+                    r->m_tone = data_003DF540;
+                    SendRadioRequest(r, 2);
+                    r->m_until = r->m_talklen + theNetwork.zNetGetLocalTime();
+                    r->m_state = 4;
+                }
+            } else if (r->m_state == 4 && theNetwork.zNetGetLocalTime() > r->m_until)
+                r->m_state = 1;
+        } else {
+            if (FindSlot(r, slot)) {
+                SendRadioRelease(r, slot);
+                r->m_slots[slot].m_client = 256;
+            }
+            if (r->m_state == 3) {
+                func_00623C58(theNetwork.m_GameConnectionIndex, r->m_usecodec);
+                StopRecording(r);
+                unsigned char *s = r->m_tone + 2000;
+
+                for (int i = 0; i < 2000; i++)
+                    r->m_tonebuf[i] = *s-- << 8;
+                func_0030F5F0((VoicePlayer *)r, r->m_tonebuf, 4000);
+                r->m_tone = data_003DF540;
+                r->m_state = 1;
+            } else if (r->m_state == 2)
+                r->m_state = 1;
+        }
+    } else
+        data_0045C290++;
+    if (theNetwork.m_bSessionMaster) {
+        for (int i = 0; i < 12; i++) {
+            if (r->m_slots[i].m_client != 256 && theNetwork.zNetGetTime() > r->m_slots[i].m_4) {
+                r->m_slots[i].m_client = 256;
+                r->m_slots[i].m_4 = 0;
+                SendChannelStatus(r);
+            }
+        }
+    }
+    return r->m_state;
+}
+
+/* the channel status packet: the twelve slots' clients, the bytes read returned (OVL1 0x30EB70:
+ * registered as "Channel Status" with the radio's messages) */
+int func_0030EB70(int, int, int, short *data)
+{
+    for (int i = 0; i < 12; i++)
+        data_0045B718->m_slots[i].m_client = data[i];
+    return 24;
 }
 
 /* a "Radio" message (three bytes: a client, a slot, the request): the session master gives a free
@@ -786,7 +1024,7 @@ inline void VoiceDevice::SetRecordingVolume(int vol)
 }
 
 extern "C" {
-void func_0030EC10(VoiceChat *v);   /* (the radio's own tick) */
+unsigned char func_0030EC10(VoiceRadio *r);   /* (the radio's own tick) */
 int func_00310750(VoiceEncoder *e, const void *samples, void *out);
 int func_003103D0(VoiceEcho *e);
 extern int data_0045B870;   /* the frames sent, counted */
@@ -802,7 +1040,7 @@ void func_0030F990(VoiceRecord *rec)
     if (rec) {
         rec->m_got = 0;
         rec->m_type = Voice()->m_usecodec;
-        func_0030EC10(Voice());
+        func_0030EC10((VoiceRadio *)Voice());
         if (Voice()->m_state == 3) {
             if (rec->m_type == 1) {
                 if (Voice()->m_codec) {
