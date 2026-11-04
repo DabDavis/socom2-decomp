@@ -39,6 +39,7 @@ public:
     int zNetJoin(void (*joins)(int, int), void (*leaves)(int, int));
     int zNetConnect(void (*connects)(ClientConnectArgs *), void (*disconnects)(ClientConnectArgs *));
     struct NetObject *zNetGetObject(int index);
+    void zNetSetMyClientObject(int object);   /* 0x30CDE0: this console's client object set */
 
     /* an action the network put off to its next update (only what zRemoteDelayedAction reads:
      * its kind, a byte, and the client) */
@@ -1815,7 +1816,6 @@ public:
 };
 
 extern "C" {
-void func_0030CDE0(CZNetwork *net, int object);   /* (zNet's: this console's client object set) */
 bool func_002C30B0(CZSealBody *body);
 void func_002B8100(CZSealBody *body, CPnt3D *pos, CMatrix *m, int flags);   /* (the spawn point) */
 void func_00543D50(CZSealBody *body);   /* (OVL2) */
@@ -1832,7 +1832,7 @@ void ftsNetworkPlayerInit()
     CZSealBody *player = ftsGetPlayer();
 
     player->m_4 = CZSealState::CreateLocalSeal(player, true);
-    func_0030CDE0(&theNetwork, player->m_4);
+    theNetwork.zNetSetMyClientObject(player->m_4);
     CPnt3D pos = CPnt3D::zero;
     CMatrix m;
 
