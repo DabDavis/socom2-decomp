@@ -2060,6 +2060,22 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the UI, round 22** (the soft keyboard's key textures and display, closed by the core's preheader rule):
+  - a 2-D walk through nested reference-returning `operator[]`s leaves the inner loop entered at its bottom test -- the row
+    reference is computed inside the body and hoisted, so MW lays the preheader after the return (the engine core's round
+    11) -- while one accessor alone, or the members spelled out, rotate it (a one-loop probe over `g[2][j]` rotates too):
+    SkbSetKeyTextures 0x395140 (open since round 21) and SkbForgetDisplay 0x396F30 (open since round 11) walk
+    `s_keyRows[i][j]` through operator[]s on CSkbBmpRow / CSkbBmpRows;
+  - two bools compared with `^` inline as a separate xor plus a conversion, `!=` as one set-not-equal whose xor writes the
+    result's register (out of line both alike); `T *s = obj->m_arr; return s[i];` in a free inline adds the index first,
+    `obj->m_arr[i]` and an inline member add the object first; MW folds a literal `1.0f * x` or `0.0f + x` but not a
+    constant that comes through an inline's parameter;
+  - a copy-constructed local read through a pointer local stays in the frame with its field addresses hoisted into saved
+    registers, read by name it is scalarised; int fields read into locals before a call ahead of a `c_str()` argument load
+    before the c_str's branch; `arr[k]->f(g(arr[k]))` reloads the element after the call, a local keeps it saved;
+  - SkbShowKeyRows 0x394520, SkbReadUiParams 0x397070 (UiParams.rdr's reader), SkbPrepDisplay 0x3958D0 (SkbFindSounds
+    pinned out of line), CSoftKeyboard::HandlePad 0x38C990 (the pad half of SOCOM 1's HandleInput); zui_var.cpp calls
+    zrdr_equal and util_loc.cpp CSubtitleTable::Load by name (it includes zsnd_subtitles.h, its own LANGUAGE dropped).
 - **Tells from the SEALs, round 32** (the big three written to the target's sizes; their pieces byte-exact):
   - a list value type with a user-declared constructor is copied member by member in the list's insert (the float through
     an FPR, the words through GPRs), a plain struct as one FPR block (the ANIM_TIMED_CALL / ANIM_SPAN_CALL inserts
