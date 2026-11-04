@@ -133,6 +133,9 @@ public:
      * OVL2 0x5C8870, 0x5BDA10 -- both const in SOCOM II, kit.h's) */
     int GetItemIndex(EQUIP_ITEM item) const;
     bool ItemHasAmmo(int index) const;
+    /* whether an item has room for rounds (SOCOM 1's; OVL2 0x5BA5B0, kit.h's -- the AI's ammunition
+     * search asks it) */
+    bool CanAddAmmo(int index, int rounds);
     /* the item in hand (kit.h's: const in SOCOM II; OVL2 0x5C3780) */
     class CZFTSWeapon *GetCurItem() const;
     /* whether the item in hand has rounds left (kit.h's; OVL2 0x5BDB00) */
@@ -921,6 +924,8 @@ public:
     virtual void OnStateChange(SEAL_STATE from, SEAL_STATE to);
     /* a target seen to fall called out (SOCOM 1's; OVL2 0x5C9B10, the kit lane's seal_sensors.cpp) */
     virtual void NotifyTargetDown(CZSealBody *seal);
+    /* the view cone set from the head (SOCOM 1's; OVL2 0x5C9400, the kit lane's seal_sensors.cpp) */
+    virtual void UpdateViewCone();
     /* the AI's own event set: its kind, its duration and where (SOCOM 1's, the same words with the
      * event at 0x628; OVL2 0x5FAD00, the kit lane's seal_aievent.cpp) */
     CAiEvent::EVENT SetAiEvent(CAiEvent::EVENT e, float duration, const CPnt3D *pos);

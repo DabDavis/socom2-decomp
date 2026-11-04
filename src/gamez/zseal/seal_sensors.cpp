@@ -149,3 +149,64 @@ void CSealCtrlAi::NotifyTargetDown(CZSealBody *seal)
 {
     PlayAiSound(CHRSND_TANGO_DOWN, 1.0f, -1);
 }
+
+/* the view cone as the controller keeps it (SOCOM 1's DWARF: CSealCtrl's m_fov, m_fovtan, m_fovcos,
+ * m_view_cone -- a CAiCone, 0x38 bytes -- and m_visrange at 0x64-0xA8, the same offsets in SOCOM II;
+ * zseal.h's CSealCtrl pads them: a view) */
+struct CSensorCone {
+    float m_dot;   // 0x0
+    CPnt3D vec;   // 0x4
+    float m_height;   // 0x10
+    float m_radius;   // 0x14
+    float m_point_radius;   // 0x18
+    float m_inv_height;   // 0x1c
+    CPnt3D m_cone_pos;   // 0x20
+    CPnt3D m_cone_dir;   // 0x2c
+};
+
+/* (SOCOM 1's CAiDecay, its value read through an inline: the cone's products load it before the
+ * other factor) */
+struct CSensorDecay {
+    float Get() const { return m_value; }
+
+    float m_value;   // 0x0
+    float m_goal;   // 0x4
+    float m_8;   // 0x8
+};
+
+struct CSensorConeCtrl {
+    unsigned char _0[0x64];
+    float m_fov;   // 0x64
+    float m_fovtan;   // 0x68
+    float m_fovcos;   // 0x6c
+    CSensorCone m_view_cone;   // 0x70
+    CSensorDecay m_visrange;   // 0xa8
+};
+
+/* the view cone set from the SEAL's head: its point the eye, its direction halfway between the
+ * head's and the body's back (the node's third row negated -- new in SOCOM II), its height the view
+ * range, its radius the range at the field of view's tangent (OVL2 0x5C9400; SOCOM 1's, whose
+ * height a scope's zoom stretched -- SOCOM II keeps the factor at 1) */
+void CSealCtrlAi::UpdateViewCone()
+{
+    CZSealBody *seal = (CZSealBody *)m_entity;
+    CSensorConeCtrl *c = (CSensorConeCtrl *)this;
+    CPnt3D pos, dir;
+
+    seal->GetHeadParams(&pos, &dir);
+    const CMatrix &m = seal->m_node->m_matrix;
+    CPnt3D back;
+
+    back.x = -m.m_matrix[2][0];
+    back.y = -m.m_matrix[2][1];
+    back.z = -m.m_matrix[2][2];
+    CPnt3D d = (dir + back) * 0.5f;
+    float zoom = 1.0f;
+
+    c->m_view_cone.m_height = zoom * c->m_visrange.Get();
+    c->m_view_cone.m_inv_height = 1.0f / c->m_view_cone.m_height;
+    c->m_view_cone.m_radius = c->m_fovtan * c->m_visrange.Get();
+    c->m_view_cone.m_point_radius = 25.0f;
+    c->m_view_cone.m_cone_pos = pos;
+    c->m_view_cone.m_cone_dir = d;
+}
