@@ -340,7 +340,9 @@ static inline void SetCaption(const char *text)
     s_caption.SetString(text, true);
 }
 
-/* the display's sounds found by the names the look gave (0x397BC0, from 0x3958D0; the name ours) */
+/* the display's sounds found by the names the look gave (0x397BC0, from 0x3958D0; the name ours;
+ * its one caller calls it out of line: pinned) */
+#pragma auto_inline off
 void SkbFindSounds()
 {
     /* three names taken first: the target holds them in saved registers across the first call */
@@ -353,6 +355,7 @@ void SkbFindSounds()
     s_sound0 = CSnd::GetSoundByName(s_str6.c_str());
     s_sound4 = CSnd::GetSoundByName(s_str1.c_str());
 }
+#pragma auto_inline reset
 
 /* the text: the edited buffer, or the one the keyboard opened with (0x3998A0 and 0x399D20 ask) */
 const char *SkbGetText(bool edited)
@@ -1113,5 +1116,52 @@ void SkbStartDisplay(CSoftKeyboard *skb, C2DFont *font)
         SkbPlaceNode(bmp->m_node, p->m_pos[0], p->m_pos[1], 0.0f);
         if (bmp->m_node)
             bmp->m_node->SetActive(false);
+    }
+}
+
+/* the keyboards' shared display built under the menu's node: the sounds found, the display's root
+ * node (hidden), the legend (bitmap 3: its texture and the legend rectangle's size, hidden), the
+ * cursor's highlight (bitmap 2), bitmaps 6 and 7 and the forty keys untextured, the default font
+ * kept, the key units' own pieces made through the callback, the caption's node, the caret (bitmap
+ * 1: no texture, white, its node hidden) and the three toggles' highlights (0x3958D0;
+ * PrepSkbsForDisplay calls it; the name ours). Byte-exact (the UI's round 22): SkbLoadBitmap inlined
+ * (SkbFindSounds pinned: called out of line), the legend's size read into int locals first (the
+ * target loads it ahead of the texture name's c_str()), each toggle taken into a local (kept in a
+ * saved register for the SetNode slot's call) */
+void SkbPrepDisplay(zdb::CNode *parent, zdb::CTextureRelocMgr *mgr, C2DFont *font,
+                    void (*prep)(zdb::CNode *node, zdb::CTextureRelocMgr *mgr))
+{
+    SkbFindSounds();
+    g_skbDisplayNode = zdb::CNode::Create("AllSkbsRoot");
+    parent->AddChild(g_skbDisplayNode);
+    g_skbDisplayNode->SetActive(false);
+    int w = s_rect.m_size[0], h = s_rect.m_size[1];
+
+    s_bmp3.Slot10(SkbLoadBitmap(&s_bmp3, g_skbDisplayNode, w, h, s_str0.c_str(), mgr));
+    if (s_bmp3.m_node)
+        s_bmp3.m_node->SetActive(false);
+    s_bmp2.Slot10(SkbLoadBitmap(&s_bmp2, g_skbDisplayNode, 0, 0, "SkbHighlight.tif", mgr));
+    s_bmp6.Slot10(SkbLoadBitmap(&s_bmp6, g_skbDisplayNode, 0, 0, 0, mgr));
+    s_bmp7.Slot10(SkbLoadBitmap(&s_bmp7, g_skbDisplayNode, 0, 0, 0, mgr));
+    for (int i = 0; i < 4; i++)
+        for (int j = 0; j < 10; j++) {
+            CBmpWithNode &bmp = s_keyRows[i][j];
+
+            bmp.Slot10(SkbLoadBitmap(&bmp, g_skbDisplayNode, 0, 0, 0, mgr));
+        }
+    s_defaultFont = font;
+    prep(g_skbDisplayNode, mgr);
+    s_captionNode = func_0036AB20(&s_caption, mgr, g_skbDisplayNode);
+    s_bmp1.SetHasTexture(false);
+    s_bmp1.SetColor(255.0f, 255.0f, 255.0f);
+    s_bmp1.m_node = func_0036AB20(&s_bmp1, mgr, g_skbDisplayNode);
+    if (s_bmp1.m_node)
+        s_bmp1.m_node->SetActive(false);
+    CBmpWithNode *toggles[3] = {&s_bmp0, &s_bmp5, &s_bmp4};
+
+    for (unsigned int k = 0; k < 3; k++) {
+        CBmpWithNode *bmp = toggles[k];
+
+        bmp->Slot10(SkbLoadBitmap(bmp, g_skbDisplayNode, 0, 0, "SkbHighlight.tif", mgr));
     }
 }

@@ -25,11 +25,13 @@
 unsigned int SkbRdrCount(_zrdr *rdr);
 void SkbForgetDisplay();
 extern "C" {
-void func_00398FC0();
-void func_003958D0(zdb::CNode *node, zdb::CTextureRelocMgr *mgr, C2DFont *font, void (*callback)());
+void func_00398FC0(zdb::CNode *node, zdb::CTextureRelocMgr *mgr);
 void func_003997F0();
 void func_0039AD10();
 }
+/* the keyboards' shared display built with the key units' callback (zui_skbview.cpp's, 0x3958D0) */
+void SkbPrepDisplay(zdb::CNode *parent, zdb::CTextureRelocMgr *mgr, C2DFont *font,
+                    void (*prep)(zdb::CNode *node, zdb::CTextureRelocMgr *mgr));
 
 namespace {
 
@@ -95,7 +97,7 @@ void InvalidateSkbsDisplay()
 void PrepSkbsForDisplay(zdb::CNode *node, zdb::CTextureRelocMgr *mgr, C2DFont *font)
 {
     g_pActiveSkb = 0;
-    func_003958D0(node, mgr, font, func_00398FC0);
+    SkbPrepDisplay(node, mgr, font, func_00398FC0);
     for (int i = 0; i < g_arrSkbs.size(); i++)
         g_arrSkbs[i]->PrepForDisplay(mgr, font);
 }
