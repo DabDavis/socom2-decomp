@@ -4,6 +4,8 @@
  * manager's vector, pairs with __sinit_zsys_init.cpp). Defined in reverse of their image order
  * (-inline deferred). */
 
+#include <vector>
+
 #include "zsys_public.h"
 #include "../zvid/zvid.h"
 /* CFileIO (zutil.h): its static PS2FileName (SOCOM 1's) builds the module paths */
@@ -26,7 +28,8 @@ int sceUmount(const char *name);
 void func_0034BCA0(void);                                  /* SOCOM II's, a sound flag cleared */
 }
 
-/* the IOP's manager (SOCOM 1's class; SOCOM II adds reboot modes 4-6, names ours) */
+/* the IOP's manager (SOCOM 1's class; SOCOM II adds reboot modes 4-6, names ours, and the mode
+ * last rebooted into at 0xC, which RebootIOP tests first) */
 class CIOPManager {
 public:
     enum RebootPhase { PreReboot = 0, PostReboot = 1 };
@@ -39,10 +42,39 @@ public:
         RebootMode5 = 5,
         Shutdown = 6
     };
+    typedef bool (*RebootCallback)(RebootPhase phase, RebootMode mode, void *data);
+
+    /* a registered callback (SOCOM 1's CRegistrant, its DWARF's members). Its user-declared
+     * constructor builds nothing, but makes the implicit copy member by member: the reserve
+     * 0x3506B0 copies the three words through v0 and the flag with lbu/sb, as SOCOM 1's does --
+     * implicit (a trivial class), the copy is the FPU's four-word block */
+    class CRegistrant {
+    public:
+        CRegistrant() {}
+
+        RebootCallback m_pcb;           // 0x0
+        void *m_userdata;               // 0x4
+        int m_id;                       // 0x8
+        bool m_flag_for_deletion;       // 0xc
+    };   // 0x10 bytes
+
+    /* room for sixteen callbacks, the first boot's mode (SOCOM 1's reserve; inline: the unit's
+     * initialiser 0x403460 zeroes the vector itself, calls the reserve 0x3506B0, then clears the
+     * mode) */
+    CIOPManager()
+    {
+        m_reboot_callback_vec.reserve(16);
+        m_mode = FirstBoot;
+    }
     void RebootIOP(RebootMode mode);
+
+    std::vector<CRegistrant> m_reboot_callback_vec;   // 0x0 (SOCOM 1's)
+    RebootMode m_mode;                                // 0xc (SOCOM II's; the name ours)
 };
 
-extern CIOPManager theIOPManager;   /* 0x49E2A0 */
+/* SOCOM 1's (its __sinit_zsys_init.cpp builds it, as SOCOM II's 0x403460 does; ~CIOPManager
+ * 0x3508C0 closes the unit's tail) */
+CIOPManager theIOPManager;   /* 0x49E2A0 */
 
 /* an IOP module and how to load it (SOCOM II's table rows; names ours) */
 struct IRX_MODULE {

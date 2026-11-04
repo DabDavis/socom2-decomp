@@ -26,9 +26,10 @@ extern "C" float sinf(float);
 extern "C" float atan2f(float, float);
 extern "C" float fabsf(float);
 extern "C" float sqrtf(float);
-/* a value held within two bounds, whether it moved (SOCOM 1's template _saturate<float>; the
- * out-of-line instance an earlier unit's, not named yet) */
-extern "C" bool func_00267A60(float *v, const float &lo, const float &hi);
+/* a value held within two bounds, whether it moved (zmath.h's template, SOCOM 1's _saturate<float>):
+ * declared only, so the call is to the instance an earlier unit emits (zanim_cmd_tick.cpp's, OVL1
+ * 0x267A60) */
+template <class T> bool _saturate(T *v, const T &lo, const T &hi);
 
 /* the pads' DMA buffers, 256 bytes each, and the time step the pad code runs on (SOCOM 1's
  * globals, by name) */
@@ -306,8 +307,8 @@ void CPad::Dilate(float &x, float &y, int stick)
         }
         x *= k;
         y *= k;
-        func_00267A60(&x, -1.0f, 1.0f);
-        func_00267A60(&y, -1.0f, 1.0f);
+        _saturate(&x, -1.0f, 1.0f);
+        _saturate(&y, -1.0f, 1.0f);
     }
 }
 

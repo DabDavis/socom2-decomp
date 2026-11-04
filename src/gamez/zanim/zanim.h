@@ -498,6 +498,8 @@ struct _zrdr {
         _zrdr *array;
     };   // 0x4
 
+    /* the value's storage let go of (zrdr.h's, 0x32F350) */
+    void DeleteChildren();
     /* (ours; the count unsigned: LoadNodeNames' walk compares with sltu) */
     unsigned int Count() { return type == 4 ? length : 0; }
     _zrdr *Item(int i) { return i < Count() ? &array[i] : 0; }
@@ -601,6 +603,8 @@ public:
     bool SequenceRunning(const char *name);
     void PauseSequence(const char *name);
     int UnloadCmdSet(int index);
+    /* a sequence file loaded into a set: SOCOM 1's reader path, a stub in SOCOM II (0x268250) */
+    bool Load(const char *name, const char *set);
     bool CmdTick(float *dT);
     zdb::CNode *GetDatabaseNode(const char *name, int scope);
     int GetNodeSearchScope(const char *name, int *scope);
@@ -680,6 +684,8 @@ namespace Particle {
 class Source {
 public:
     ~Source();
+    /* a free source taken from the pool (zparticle.h's, 0x32B120) */
+    static Source *Create();
 
     unsigned char m_active;   // 0x0
     unsigned char _1[0x12C - 0x1];   // 0x1: m_goodPos .. m_particleEx, grown by 4

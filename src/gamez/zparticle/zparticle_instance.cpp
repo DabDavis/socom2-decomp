@@ -6,12 +6,17 @@
  * recycling and purge, Instance::List's walks, Destruction_Instance's destructor and Render.
  * Its range starts at 0x326F50 at the latest (Destruction_Instance::Recycle). */
 
+#include <iostream>
 #include "zparticle.h"
 
 /* Sony's libvu0 (MAIN): v0 = v1 * t + v2 * (1 - t) */
 extern "C" void sceVu0InterVector(float *v0, float *v1, float *v2, float t);
 
 namespace Particle {
+
+/* the live instances (SOCOM 1's Instance::list: the unit's initialiser 0x402C40 builds it after
+ * <iostream>'s pair and registers ~List 0x3285F0) */
+Instance::List Instance::list;
 
 /* SOCOM II's: a dying source's instances unlinked and recycled, the head's run first */
 void Instance::List::RemoveSource(Source *source)

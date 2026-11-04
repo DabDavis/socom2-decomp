@@ -698,6 +698,8 @@ public:
     CNode();
     void SetName(const char *name);
     CGridAtom *GetAtom(int i);
+    /* the atoms' count set (0x3149D0: the grid's removal sets it to none) */
+    void SetAtomCnt(int n);
     void InsertAtom(CGridAtom *atom);
     void FreeAtom();
     int Release();

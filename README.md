@@ -1965,6 +1965,51 @@ templates next), and the earlier rounds' opens; 3.0b38/b50/b52 still untold.
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the online lobby, round 14** (the voice's handlers, zNetLoadIRX, the reports, the account gender):
+  - the caller's code for a ternary shows the parameter's type: an enum gives a bare `movz`, an int `sltu`, an int fed an
+    enum ternary `movz` plus `andi` -- the account gender is an int-sized enum (ACCT_GENDER, extent 0x7FFFFFFF: a one-byte
+    enum costs Add and UnSerialize their sb/lb and lbu), and Add 0x2FBCE0 and SetAcctInfo 0x2FD0D0 take it;
+  - a field tested and reloaded inside one inline: testing it through a const accessor stops MW sharing the field's address
+    (the recording read 0x30F990, with its two callees pinned); a value that must take a lower saved register than an
+    inlined member call's `this` is the caller's own local, passed in;
+  - a short return assigned to an int local is re-extended at the call (dsll32/dsra32): the target's callee returns int; a
+    truth test of a byte field before a switch on it makes the switch re-extend the byte with `andi 0xff`, `!= 0` does not;
+    copy-initialising a struct with odd-length arrays (`GamePlayerStats old = g;`) block-copies, and a pointer declared
+    after it is computed after the copy loop (the player report 0x2EF7F0);
+  - one cursor and one count reused for two argument lists reproduce MW's register sharing; separate locals uninitialised
+    on a default path are live from entry and take extra saved registers (zNetLoadIRX 0x30DEE0, SOCOM 1's); an assignment
+    written before a call lands in its delay slot;
+  - the deque's two operator++ copies 0x2E1480/0x2E14E0 (called for `++first` and `++i` in 0x2E1090) say the original's
+    const_iterator and iterator are separate classes where include/deque has a typedef; 0x2E0E10 is cdeque<PCv>'s
+    do_assign over the convert_iterator, 0x2E1090 the class deque's (unnamed: 0x1C4 vs 0x27C, 0x36C vs 0x384);
+  - open: the world report 0x2EF590 (9: the mission number's joins), the deque's begin 0x2E0CB0 (14: the numbering rule
+    leaves the permutation) and init 0x2E0B40 (0xC0 vs 0xC8: the iterators copied as FPU blocks).
+- **Tells from the engine core, round 2** (zanim_menu.cpp's equipment handlers, three initialisers, 249 respells):
+  - a function template declared but not defined gives a call to the instance an earlier unit emits, and emits no copy of
+    its own (zin_pad.cpp's `_saturate<f>`);
+  - passing an int to a parameter of a single-enumerator byte enum adds a conversion, a local of the enum type removes it
+    (UIRebootIOP); for an int `x ? 1 : 0` folds to sltu -- the target's li/movz select comes from a byte-enum ternary
+    passed straight;
+  - an auto-inline helper with no caller in its unit inlines the moment a caller is written: pin it where the target calls
+    it (CSelectedCharsItr::Advance);
+  - 0x2800C0 up to the deques is zanim_menu.cpp's own tail (SOCOM 1 names six of its handlers in the unit's anonymous
+    namespace); camera.cpp's statics (SOCOM 1's dilr0-dilr3 and tetherPos, three new points) bring __sinit_camera.cpp
+    0x3FFDD0 once camera.h's DiIntersect declares DiIntersect(int) and ~DiIntersect(); CZAnimMain::Load 0x268250 is SOCOM
+    1's Load(name, set) reduced to `return true`; CBody::SmoothPart takes the fraction first (the SEALs' round 22);
+  - placeholders left raw: SetAcctInfo 0x2FD0D0 (the row's int gender loses the caller's li/movz select), GetUsedSpace
+    0x3A1060 (the call passes an argument the row's name does not take);
+  - open: UINetGetInterfaceList (12: the CRdrEditor takes the lowest frame slot under every declaration order), ThisFoot
+    (2: the FPR pair).
+- **Tells from the kit and AI states, round 24** (CZKit::UnInit by std::transform, isSelectableItem):
+  - CZKit::UnInit 0x5C7CE0 is `std::transform(v.begin(), v.end(), v.begin(), op)` over a function object (an empty user
+    constructor; its `operator()` deletes an unparented node and returns 0): the target's frame-resident iterators are the
+    algorithm's by-value parameters (found by the MSL lane's round 17);
+  - CZKit::isSelectableItem 0x5BDC30 (SOCOM 1's with SOCOM II's launcher test): `r = true` assigned after the early return,
+    not at its declaration; the range test written `id > 201` gives the `slti at` form;
+  - MW folds a lone `if (!p) return 0; return p->f();` into a beqz to the end; only a return-0 block shared by two tests
+    (an `||`) keeps its own block (GetMaxAmmoCount 0x5C3CF0, 4 off);
+  - open: CurMagHasAmmo 0x5BD530 (named by SOCOM 1's order; 31, right size: the inlined FindItemWithAmmo's counter and
+    temporaries swap v0/v1), 0x607830 (6, now the right size), GetTimeSinceLastSighting (3), RemoveMember (6).
 - **Tells from the HUD, round 30** (zui_2d.cpp's ListItem and ZAnim commands, CZNewHudMap::Draw):
   - stack slots follow the front end's creation order: a walk's iterator below its begin() temporary is an inline taking
     begin() by const reference and assigning it into its own local (a by-value iterator parameter goes to a register);

@@ -29,9 +29,14 @@ struct IntersectStruct {
     CNode *m_node;   // 0x1c
 };
 
-/* a ray's intersection set (SOCOM 1's DWARF; SOCOM II's hits are 4 bytes further on) */
+/* a ray's intersection set (SOCOM 1's DWARF; SOCOM II's hits are 4 bytes further on; its
+ * constructor taking the hits' buffer size, 0x2DC6E0, and its destructor, 0x2DC680: node_world.h's
+ * real class has both) */
 class DiIntersect {
 public:
+    DiIntersect(int n);
+    ~DiIntersect();
+
     unsigned int m_Type : 16;   // 0x0
     unsigned int m_IntersectCharacters : 1;
     unsigned int m_AltitudeCharacters : 1;

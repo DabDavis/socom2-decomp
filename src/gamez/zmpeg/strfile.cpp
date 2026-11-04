@@ -28,7 +28,7 @@ int func_0018F7D8(unsigned int bufmax, unsigned int bankmax, void *buffer);   /*
 int func_0018F808(unsigned int lbn, sceCdRMode *mode);   /* sceCdStStart */
 int func_0018F870(unsigned int lbn);   /* sceCdStSeek */
 int func_0018F8A0(void);   /* sceCdStStop */
-int func_0018F8D8(unsigned int size, void *buf, unsigned int mode, unsigned int *err);   /* sceCdStRead */
+int sceCdStRead(unsigned int size, void *buf, unsigned int mode, unsigned int *err);
 }
 
 /* a file in the disc's table of contents (only what is read here) */
@@ -141,7 +141,7 @@ int strFileRead(void *buff, int size)
     int status;
 
     if (infile.isOnCD)
-        return func_0018F8D8(size >> 11, buff, 0, &err) << 11;
+        return sceCdStRead(size >> 11, buff, 0, &err) << 11;
     if (!nonBlockReadReq) {
         sceRead(infile.fd, buff, size);
         nonBlockReadReq = 1;
