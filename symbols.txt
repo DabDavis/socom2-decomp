@@ -7371,7 +7371,7 @@
 0x00391F40 0x8 func_00391F40  # OVL1
 0x00391F50 0x10 func_00391F50  # OVL1
 0x00391F60 0x20 func_00391F60  # OVL1
-0x00391F80 0x190 func_00391F80  # OVL1
+0x00391F80 0x190 __ct__9CSkbSplitFii  # OVL1; the UI lane round 23: ours, by its body and its callers (zui_hangul.cpp: the composer's split of n jamo into k parts -- k-1 parts of 1 and the rest last, through OVL1's pod resize 0x28B0E0 and a reverse iterator; the composer 0x391670 builds one at sp+256 and at sp+240; byte-exact)
 0x00392110 0x14 func_00392110  # OVL1
 0x00392130 0x2A4 SkbParseComplete__FP15CSkbCompleteVecP5_zrdrPCc  # OVL1; the UI lane round 10: ours, by its body (zui_hangul.cpp: CompleteCharacter's entries -- each Seq's production names by their index in s_rules, pushed onto the entry's index vector, and a Val2 flag -- the vector grown to each index through 0x392770; 0x390C40 calls it with s_complete); the UI lane round 10: ours, by its body (zui_hangul.cpp: CompleteCharacter's entries, each Seq's production names by index in s_rules pushed onto the entry's index vector, a Val2 flag; the vector grown through 0x392770; 0x390C40 calls it with s_complete)
 0x003923E0 0x220 insert__Q23std36__vector_pod<c,Q23std12allocator<c>>FPcUiRCc  # OVL1; the MSL headers round 9: include/vector's 1-byte pod insert (memmove, memset, memcpy), byte-exact as a probe (build/p9/vc1.cpp); zui_hangul.cpp's template tail, the composition's push_backs call it

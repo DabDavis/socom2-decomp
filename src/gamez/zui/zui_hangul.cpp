@@ -235,25 +235,58 @@ void SkbParseComplete(CSkbCompleteVec *complete, _zrdr *rdr, const char *tag)
 }
 
 /* a split of n jamo into k consecutive parts, the composer's walk over every split (ours, 16
- * bytes: the total, then the parts). Its members, not written but these: the constructor 0x391F80
- * (k-1 parts of 1, the last n-k+1, the parts resized through OVL1's pod resize 0x28B0E0 with a
- * pooled 0), the stepper 0x3903A0 (recursive), the sum of the first n parts 0x391E70 (unrolled by
+ * bytes: the total, then the parts). Its members not written yet: the stepper 0x3903A0 (recursive), the sum of the first n parts 0x391E70 (unrolled by
  * 8), the destructor 0x390690 (its draft matches) and the test that a split is left 0x391DF0 (the
  * parts' size). Measured (the UI's round 23): the sum reaches the target's 0xD0 only with the parts
  * read through a reference-returning accessor in the body (`Parts()[i]`: the vector's address
  * hoisted into the test block laid after the remainder loop, the round-22 preheader rule), 12
  * instructions off then in a t3/t4/t5 rotation of the unroller's temporaries (the counter's
- * declaration, the sum's form, a while loop, CSkbVec or unsigned parts: no change); the
- * constructor is 0x178 of 0x190, its last part stored through two class iterators (an FPR copy
- * between stack temporaries: include/vector's class end() and back()) where the pod vector the
- * resize names has raw pointers */
+ * declaration, the sum's form, a while loop, CSkbVec or unsigned parts: no change) */
+/* the last element through a reverse iterator over the parts (ours: MSL's rbegin()/reverse_iterator,
+ * which include/vector lacks -- its operator* copies the base and steps the copy back; the matcher
+ * 0x3919D0 calls end() 0x391D40 and this 0x391D30 out of line, the constructor inlines both) */
+template <class It>
+class CSkbRevIter {
+public:
+    CSkbRevIter(It i) : current(i) {}
+    typename It::value_type &operator*() const
+    {
+        It tmp = current;
+
+        return *--tmp;
+    }
+
+    It current;
+};
+
 class CSkbSplit {
 public:
+    CSkbSplit(int n, int k);
     unsigned int Part(int i);
+    /* the parts through a reference: the walks' vector address hoisted (ours) */
+    std::vector<unsigned int> &Parts() { return m_parts; }
+    CSkbRevIter<std::vector<unsigned int>::iterator> RBegin()
+    {
+        return CSkbRevIter<std::vector<unsigned int>::iterator>(m_parts.end());
+    }
 
     int m_n;   // 0x0
     std::vector<unsigned int> m_parts;   // 0x4
 };
+
+/* the first split of n into k parts: k - 1 of one and the rest last, none when k is out of 1..n
+ * (0x391F80; ours). Byte-exact (the UI's round 23): the test `k > n || k <= 0` (`n < k` puts the
+ * compare in v0), the last part stored through the reverse iterator (two stack temporaries and an
+ * FPR copy, as the scalar vector's class end() and __iter give) */
+CSkbSplit::CSkbSplit(int n, int k) : m_n(n)
+{
+    if (k > n || k <= 0)
+        return;
+    Parts().resize(k, 0);
+    for (int i = 0; i < k - 1; i++)
+        Parts()[i] = 1;
+    *RBegin() = n - k + 1;
+}
 
 /* a split's part i (0x391E50; the composer calls it out of line; ours) */
 unsigned int CSkbSplit::Part(int i)
