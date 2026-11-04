@@ -7,8 +7,10 @@
  * IdleProcess, all but the constructor and FindBestRecognised LOCAL there), ScanSoft's speech
  * recogniser, prebuilt with ee-gcc 2.96 at -O2 -G0 -fno-strict-aliasing -funroll-loops (README
  * "The GCC front"). Names are SOCOM 1's. Only the functions written so far are here, in image
- * order: FindBestRecognised (round 17c), ExtendBacktraceStack, ScoreCompare (NAME@nbestdp in the
- * map: the iso-word object has its own). The backtrace stack is a list of three-word records from the
+ * order: InitNBestDynProgProcess and PrunDynProg (OPEN) (round 19c), FindBestRecognised (round
+ * 17c), ExtendBacktraceStack, ScoreCompare (NAME@nbestdp in the map: the iso-word object has its
+ * own). SOCOM II's rows hold SOCOM 1's in order: 0x4EB5E8 is CollectDummyMemory's position,
+ * 0x4EB7D8 InitViterbi's, 0x4EBCB0 InitDynprogContext's, 0x4EC130 new. The backtrace stack is a list of three-word records from the
  * scheduler's small-block allocator (fastallo.c), a recycled one first. */
 
 /* the scheduler's small-block allocator, as fastallo.c keeps it */
@@ -48,20 +50,142 @@ typedef struct NBTRACE {
     short score;                        /* +4 */
 } NBTRACE;
 
+/* a block's reader in an input queue (tosblk.h's QIN) */
+typedef struct NBQIN {
+    void *q;
+    unsigned short reader;              /* +4 */
+    unsigned short size;                /* +6 */
+} NBQIN;
+
 typedef struct NBESTDP {
     DPTOS *tos;                         /* +0: the block's head (tosblk.h) */
-    char pad4[84];
+    char pad4[8];
+    NBQIN *inputs;                      /* +12 */
+    char pad16[72];
     BTSTACK *stack;                     /* +88: the stack's first record */
     NBRESULT *results;                  /* +92 */
-    char pad96[88];
-    unsigned int nresults;              /* +184: the sequences asked for */
+    char pad96[12];
+    unsigned int frame;                 /* +108: the frames so far */
+    char pad112[60];
+    int f172;                           /* +172 */
+    unsigned short f176;                /* +176 */
+    char pad178[6];
+    unsigned int nresults;              /* +184: the sequences asked for (profile 7) */
+    char pad188[8];
+    unsigned int beam;                  /* +196: profile 6 */
+    unsigned int beam10;                /* +200: ten times it */
+    char pad204[4];
+    unsigned int maxframes;             /* +208: profile 9 */
+    unsigned char pruning;              /* +212 */
+    char pad213;
+    short level;                        /* +214 */
+    short maxlevel;                     /* +216: profile 11 */
+    char pad218[6];
+    unsigned int rate;                  /* +224 */
+    unsigned int f228;                  /* +228: profile 10's fraction, in 128ths */
+    unsigned int hist[5];               /* +232 */
+    unsigned int hist2[5];              /* +252 */
+    unsigned char nhist;                /* +272 */
+    char pad273[7];
+    short f280;                         /* +280: profile 14 */
 } NBESTDP;
 
 extern int *fastallo_AllocateMemoryFromChunk(FASTALLO *fa, unsigned short n);
+extern unsigned int _tosGetProfileU32(void *b, unsigned short key, unsigned int def);
+extern float _tosGetProfileFloat(void *b, unsigned short key, float def);
 
 extern unsigned int FindBestBacktraces(NBESTDP *d, NBTRACE ***bt);
 extern NBRESULT *BacktraceWordsParBT(NBESTDP *d, NBTRACE *bt);
 extern void heap_Free(void *heap, void *p);
+
+/* the block's profile: SOCOM 1's body, its fraction converted inline where SOCOM 1 called fptoui
+ * (0.2f lands an ulp low through 2.96's parser, on the target's 0x3E4CCCCC); the inputs' frame
+ * sizes last */
+static int InitNBestDynProgProcess(NBESTDP *d)
+{
+    d->f172 = 0;
+    d->beam = _tosGetProfileU32(d, 6, 50);
+    d->beam10 = d->beam * 10;
+    d->nresults = _tosGetProfileU32(d, 7, 10);
+    d->maxframes = _tosGetProfileU32(d, 9, 300);
+    d->f228 = _tosGetProfileFloat(d, 10, 0.2f) * 128.0f;
+    d->maxlevel = _tosGetProfileU32(d, 11, 5500);
+    d->f280 = _tosGetProfileU32(d, 14, 0);
+    d->results = 0;
+    d->inputs[1].size = _tosGetProfileU32(d, 15, 4);
+    d->inputs[0].size = 1;
+    return 0;
+}
+
+/* the pruning level's update, once the pass has run a while (or has seen 11 ...): the rate of the
+ * last five frames' sums, a saturating fixed-point product, the level moved by it within the
+ * maximum and not below a third of where it was; then this frame into the five-entry history.
+ * SOCOM 1's body (0x1F4 in both builds). Measured: the flag's store before the flag (`d->pruning
+ * = 1; pruning = 1;` -- the store takes a constant of its own, the target's v0), the ring index an
+ * int (no `andi` after its increment), `x < 0` and `x > MAX` two tests (one `||` folds into an
+ * unsigned compare), the sum an int, the rate read into a local before the product (its load
+ * first, the product in f228's register).
+ * OPEN (17 words, the right size, registers only): global-alloc takes x (a dozen references over
+ * the clamps) first, into a0, and the old level after it into a1; the target has old in a0 and x
+ * in a1. The sum and shift spelled four ways, the declarations reordered, the product through a
+ * variable and the clamp as an inline helper leave it (build/scratch/gcc/r19c/v_prun*.py). */
+static void PrunDynProg(NBESTDP *d)
+{
+    unsigned char pruning = d->pruning;
+
+    if (pruning) {
+        unsigned int s1 = 0, s2 = 1;
+        int i, diff, x, t;
+        short old;
+
+        for (i = 0; i < 5; i++) {
+            s1 += d->hist[i];
+            s2 += d->hist2[i];
+        }
+        if (s1 > 0x1FFFFFF)
+            d->rate = s1 / (s2 >> 7);
+        else
+            d->rate = (s1 << 7) / s2;
+        {
+            unsigned int r = d->rate;
+
+            diff = d->maxframes - d->frame;
+            x = diff * (d->f228 * r);
+        }
+        if (diff > 0) {
+            if (x < 0)
+                x = 0x1FFFC000;
+            else if (x > 0x1FFFC000)
+                x = 0x1FFFC000;
+        } else {
+            if (x > 0)
+                x = -0x1FFFC000;
+            else if (x < -0x1FFFC000)
+                x = -0x1FFFC000;
+        }
+        old = d->level;
+        t = (x >> 14) + old;
+        if (t > d->maxlevel)
+            d->level = d->maxlevel;
+        else
+            d->level = t;
+        if (d->level < old / 3)
+            d->level = old / 3;
+    } else if (d->f176 >= 11 || (d->maxframes >> 2) < d->frame) {
+        d->pruning = 1;
+        pruning = 1;
+    }
+    if (pruning) {
+        int n = d->nhist;
+
+        d->hist[n] = (d->frame * (unsigned short)d->level) >> 3;
+        d->hist2[n] = (d->frame * d->frame) >> 3;
+        n++;
+        if (n == 5)
+            n = 0;
+        d->nhist = n;
+    }
+}
 
 /* the N best word sequences: the best backtraces (sorted, best first) made relative to the best,
  * each turn's best backtraced into a result and moved back past the ones now better (its trace
