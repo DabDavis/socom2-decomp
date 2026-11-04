@@ -73,6 +73,8 @@ public:
      * and IsRemote; the name ours) -- an inline whose out-of-line copy follows IssueCommand (OVL2
      * 0x5EA880), defined here until IssueCommand is written */
     bool IsAi();
+    /* an order given to the SEAL (OVL2 0x590AC0, zseal.h's) */
+    void IssueCommand(CZSealBody *from, FT_COMMAND cmd, void *data, bool b);
 
     unsigned char _170[0x1060 - sizeof(CEntity)];
     unsigned int m_do_drop_weapons : 1;   // 0x1060 (zseal.h's bits)
@@ -268,7 +270,7 @@ public:
     clist m_commands;   // 0x94 (SOCOM 1's at 0x70): the squad's orders
     unsigned char m_a0;   // 0xa0: set when an escortee joins so (SOCOM 1's m_issue_unit_follow, 0x7c)
     unsigned char m_a1;   // 0xa1 (SOCOM 1's m_issue_sub_unit_follow)
-    unsigned char _a2;
+    unsigned char m_a2;   // 0xa2 (new in SOCOM II: set when the squad is told to follow a SEAL -- 0x5EB580; the name ours)
     unsigned char m_a3;   // 0xa3 (SOCOM 1's m_member_died)
     unsigned char m_a4;   // 0xa4 (SOCOM 1's m_ambush)
     unsigned char _a5[0xa8 - 0xa5];
@@ -303,6 +305,11 @@ public:
      * commands ask and an int no caller sets but 0 */
     bool ConfirmCommand(FT_COMMAND cmd, unsigned char item, int flags);
     bool AcknowledgeCommand(FT_COMMAND cmd, unsigned char item, int flags);
+    /* the squad told to follow a SEAL: it made the follow's source, every other SEAL of the squad,
+     * the escortees with the first of them, and every squad under it given the follow (4) -- with no
+     * SEAL to give it the escortees are seen to at once (0x5E7830); the SEAL handed back (OVL2
+     * 0x5EB580, IssueCommand's four calls; new in SOCOM II, the name ours) */
+    CZSealBody *FollowSeal(CZSealBody *seal);
 };
 
 bool CSealUnit::m_created_units_test;
@@ -847,6 +854,34 @@ const char *func_0058EB00(unsigned char item);
  * there: its ConfirmCommand reads it first; SOCOM II's OVL1 data 0x3DF1D0, which UIStoreOptions sets
  * from the ORDER_RESPONSE_CONTROLLER valve -- ConfirmCommand and AcknowledgeCommand read it first) */
 extern bool ShouldConfirmVoiceCommands;
+
+/* (OVL2 0x5EB580: the walks' ends taken into locals first -- the end before the iterator in each:
+ * the iterators s0/s4, the ends s1/s5, as the target's; tested against end() the two swap) */
+CZSealBody *CSealUnit::FollowSeal(CZSealBody *seal)
+{
+    m_follow_source = seal;
+    m_a2 = 1;
+    bool escort = !m_escortees.empty();
+
+    slist::iterator end = m_seals.end();
+
+    for (slist::iterator i = m_seals.begin(); i != end; ++i) {
+        if (*i != seal)
+            (*i)->IssueCommand(seal, (FT_COMMAND)4, 0, true);
+        if (escort) {
+            for (slist::iterator ee = m_escortees.end(), e = m_escortees.begin(); e != ee; ++e)
+                (*e)->IssueCommand(seal, (FT_COMMAND)4, 0, true);
+            escort = false;
+        }
+    }
+    if (escort)
+        func_005E7830(this);
+    ulist::iterator uend = m_sub_units.end();
+
+    for (ulist::iterator u = m_sub_units.begin(); u != uend; ++u)
+        (*u)->IssueCommand(seal, (FT_COMMAND)4, 0, true);
+    return seal;
+}
 
 /* an AI mode as GetAiModes hands it back (zseal.h's AI_MODE, a byte enum: loaded with lb, widened with
  * andi for sprintf) */

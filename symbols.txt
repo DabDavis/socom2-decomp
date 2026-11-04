@@ -11380,7 +11380,7 @@
 0x005EAEB0 0x68 func_005EAEB0  # OVL2
 0x005EAF20 0x270 func_005EAF20  # OVL2
 0x005EB190 0x3E8 func_005EB190  # OVL2
-0x005EB580 0x148 func_005EB580  # OVL2
+0x005EB580 0x148 FollowSeal__9CSealUnitFP10CZSealBody  # OVL2; by hand (the kit lane, round 29; the name ours): new in SOCOM II -- IssueCommand's four calls (0x5E97B8, 0x5E9A48, 0x5E9BF8, 0x5E9C90): the SEAL made the follow's source (+0xB4, SOCOM 1's m_follow_source), the new byte +0xA2 set, the follow (4) given every other SEAL, the escortees with the first and every squad under it (their table's IssueCommand), 0x5E7830 when no SEAL took the escortees; the SEAL returned
 0x005EB6D0 0x1CC func_005EB6D0  # OVL2
 0x005EB8A0 0x70 func_005EB8A0  # OVL2
 0x005EB910 0x240 func_005EB910  # OVL2
