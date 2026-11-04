@@ -472,6 +472,7 @@ public:
     ActionItem() : Type(0), Animation(0), Argument(0), State(1), Event(16) {}
     ~ActionItem();
     void Run() const;
+    bool Start() const;
     ActionItem &operator=(const ActionItem &a);   // zui.cpp's, 0x369FA0
 
     unsigned char Type;   // 0x0: ACTION_TYPE
@@ -1797,6 +1798,7 @@ public:
     void OnPan(const CUIMapCtrlAnimCmdHdr &cmd, float dT) const;
     void ZoomIn(float scale, zdb::CNode *node, float dT);
     void ZoomOut(float scale, zdb::CNode *node, float dT);
+    virtual bool HandlePad(const CPad *pad, int port);
 
     ActionItem m_actions[30];   // 0x18
     int m_numActions;   // 0x1f8 (the destructor zeroes it)
@@ -1805,6 +1807,7 @@ public:
     int m_top;   // 0x200
     int m_right;   // 0x204
     int m_bottom;   // 0x208
+    zdb::CNode *m_node;   // 0x20c: the map's node (the pad's zooms move it)
 };
 
 /* the children deleted, each taken off the list first, the actions forgotten (SOCOM 1's, its count
@@ -2921,6 +2924,8 @@ class CPad {
 public:
     unsigned char m_0;   // 0x0
     unsigned char m_state[16];   // 0x1
+    unsigned char _11[0x21c - 0x11];
+    float m_zoom;   // 0x21c: a stick's axis (the map control zooms by it)
 };
 
 /* an action's animation started, handed its argument if it has one (the check box's two arms:
@@ -2938,6 +2943,80 @@ inline void ActionItem::Run() const
         else
             anim->Activate(0);
     }
+}
+
+/* the same, whether the animation was found (the map control's walk ors the answers: an inline
+ * bool, its `return true` an assignment; the name ours) */
+inline bool ActionItem::Start() const
+{
+    CZAnim *anim = ZAnim.GetAnim(Animation, 0);
+
+    if (!anim)
+        return false;
+    if (Argument)
+        anim->ActivateArg(1, 8, Argument, 0);
+    else
+        anim->Activate(0);
+    return true;
+}
+
+/* the menus' stick (zui.cpp's: whether it is within a radius of the centre, and the side it is
+ * pushed to, 1-4) and the menus' frame time (zui.cpp's bss, by address) */
+bool IsStickNearCenter(float r);
+unsigned char GetStickDir();
+
+/* the pad event a stick push stands for, by the side it is pushed to (ours: a byte enum -- its
+ * constant stores need no masking, its compare with the action's event byte zero-extends) */
+enum STICK_EVENT { STICK_EV_2 = 2, STICK_EV_3 = 3, STICK_EV_4 = 4, STICK_EV_5 = 5, STICK_EV_NONE = 16 };
+extern float data_0049EBE8;
+
+/* the actions run on their pad events -- a stick action (state 2) when the stick is pushed out of
+ * the centre toward its button's side -- whether any ran; then the map zoomed in or out by the
+ * pad's stick (SOCOM 1's CUIMapCtrl::HandlePad, slot 15) */
+bool CUIMapCtrl::HandlePad(const CPad *pad, int port)
+{
+    bool handled = false;
+
+    if (!CanHandleInput())
+        return false;
+    for (int i = 0; i < m_numActions; i++) {
+        const ActionItem *a = &m_actions[i];
+
+        if (!m_actions[i].Event)
+            continue;
+        if (a->State != pad->m_state[a->Event]) {
+            if (a->State != 2)
+                continue;
+            if (IsStickNearCenter(0.6f))
+                continue;
+            STICK_EVENT dir = STICK_EV_NONE;
+
+            switch (GetStickDir()) {
+            case 3:
+                dir = STICK_EV_4;
+                break;
+            case 1:
+                dir = STICK_EV_3;
+                break;
+            case 2:
+                dir = STICK_EV_2;
+                break;
+            case 4:
+                dir = STICK_EV_5;
+                break;
+            }
+            if (dir != a->Event)
+                continue;
+        }
+        handled |= a->Start();
+    }
+    float z = pad->m_zoom;
+
+    if (z > 0.0f)
+        ZoomIn(z, m_node, data_0049EBE8);
+    else
+        ZoomOut(-z, m_node, data_0049EBE8);
+    return handled;
 }
 
 /* set up from its spec: the button's own (SOCOM 1's CHandlerButton::LoadSpec, 0x38EC90 there,
