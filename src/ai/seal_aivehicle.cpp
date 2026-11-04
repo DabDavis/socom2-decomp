@@ -147,6 +147,99 @@ inline float CAiSUseVehicle::Draw() const
     return f;
 }
 
+/* the AI's target (CAiTarget, ai_target.cpp's: the controller's at 0x67C) -- held (OVL2 0x60A850)
+ * and the time since it was last seen (OVL2 0x60A590) */
+extern "C" bool func_0060A850(const void *target);
+class CAiTarget {
+public:
+    float GetTimeSinceLastSighting() const;
+};
+
+/* a held target that may interrupt (the target's flags' bit 9 at 0x6A8: a materialised `&&`) and
+ * no target worth staying for: none held, or one not seen for three seconds (inline bools; the
+ * names ours) */
+inline bool TargetEngaged(CSealCtrlAi *ai)
+{
+    return func_0060A850(ai->m_67c) && (ai->m_6a8 & 0x200);
+}
+inline bool TargetLost(CSealCtrlAi *ai)
+{
+    bool r = true;
+
+    if (func_0060A850(ai->m_67c)) {
+        if (!TargetEngaged(ai))
+            r = ((const CAiTarget *)ai->m_67c)->GetTimeSinceLastSighting() > 3.0f;
+        else
+            r = false;
+    }
+    return r;
+}
+
+/* a turret's flag word (0x3A4: bit 1 keeps an AI off it -- the name ours) */
+struct CTurretFlagsView {
+    unsigned char _0[0x3a4];
+    unsigned int m_3a4;   // 0x3a4
+};
+
+/* an entity driven by something (an inline bool: the target materialises the test) */
+inline bool Driven(const CEntity *e)
+{
+    return e->m_control ? true : false;
+}
+
+/* the nearest turret among targets within a squared range with no driver and its flag clear, or 0
+ * (an inline: the walk re-reads the list's end through the pointer each pass, as the target does;
+ * the name ours) */
+inline CEntity *FreeTurret(CTargetList *l, float range)
+{
+    CEntity *r = 0;
+
+    for (CTargetList::iterator i = l->begin(); i != l->end(); ++i) {
+        if (!(i->m_distSq <= range))
+            break;
+        CEntity *e = i->m_ent;
+        CEntity *t = e && e->m_type == CEntity::ENT_TYPE_TURRET ? e : 0;
+
+        if (t && !(((CTurretFlagsView *)t)->m_3a4 & 2) && !Driven(t)) {
+            r = t;
+            break;
+        }
+    }
+    return r;
+}
+
+/* a free turret among the SEAL's targets within 500 units taken: in the AI's mode 2, not already
+ * in the vehicle state and with no target to stay for, the nearest turret with no driver and its
+ * flag clear is used (func_0060F6C0's body inlined) (OVL2 0x60F760: CSealCtrlAi::PreTick calls it
+ * each frame; the name ours).
+ * OPEN, 0x228 against 0x240: the walk's end. The target holds &m_targets in a0 (set in the entry
+ * test's delay slot) and re-reads the size and the data through it every pass (`lw t0,4(a0); lw
+ * a2,8(a0)`, the end rebuilt), the entry test reading them off the SEAL; MW here keeps size * 48
+ * from the entry test and reloads only the data -- the walk written in place, through a pointer or
+ * a reference local, in an inline taking the pointer (returning from the loop or through a result,
+ * as here), `&&` in the loop test, i++ -- all hoist it. The rest is the target's (TargetLost's
+ * else-arm order, Driven's `? true : false` keeping the sltu, the 0x60F6C0 body) */
+extern "C" void func_0060F760(CSealCtrlAi *ai)
+{
+    static float range = 250000.0f;
+    CEntity *seal = ai->m_entity;
+
+    if (ai->m_26e != 2 || ai->AiStateIs(AI_STATE_USEVEHICLE) || !TargetLost(ai))
+        return;
+    CEntity *found = FreeTurret(&seal->m_targets, range);
+
+    if (found) {
+        unsigned int id = found->m_id;
+
+        if (CEntity::m_list.GetEntityById(id) && ai->PushAiState(AI_STATE_USEVEHICLE, 0)) {
+            CAiState *s = ai->GetAiState();
+            CAiSUseVehicle *v = s && s->m_state == AI_STATE_USEVEHICLE ? (CAiSUseVehicle *)s : 0;
+
+            v->m_5c = id;
+        }
+    }
+}
+
 /* the vehicle boarded: when it exists and the SEAL takes it (0x546210), the look set at its
  * position (or unit_nz), the AI-map collision off, the AI's mode 2, the goal dropped, the timer
  * drawn (OVL2 0x60F470, the Tick's; the name ours) */

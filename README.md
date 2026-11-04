@@ -54,6 +54,7 @@ and data reference resolved to the address the shipped code uses.
 | `tools/ccperm.py` | every order of a marked block of statements, for GCC's scheduled stores: which source order gives the target's |
 | `tools/ccflags.py` | a GCC range's drafts recompiled with a flag added: a flag the vendor used loses none (how strict aliasing was told apart) |
 | `tools/ccdump.py` | a GCC unit compiled under its own `sc:` toolchain and flags with cc1's register-allocation and scheduler dumps (`-dl -dg -dS -dR -fsched-verbose=4`, the 2.9-991111 builds' spellings handled); `-f FUNC` splits one function's sections and prints its allocation order and each pseudo's final register -- for register-only misses (GCC round 14c's harness, promoted in 15a) |
+| `tools/treesearch.py` | which source trees of a sum give the target's: every tree over a spec's leaves compiled under its GCC directive, each function's dataflow read back from cc1's RTL dump (2.96's fold regroups sums; the recogniser lane's round 18c, promoted in GCC round 20a) |
 | `tools/asmunit.py` | an assembler unit (`.s`) for a library object that was assembly: the rows transcribed (canonical instructions, labels, map names, %hi/%lo of the symbols the code addresses, the unit's own `.bss` labels), assembled by the toolchain named and scored until every function matches |
 | `symbols.txt` | **the map** — `0xADDR SIZE name  # note`, kept by hand from here on |
 | `data.txt` | the map of global data, the same format and namespace |
@@ -1926,6 +1927,60 @@ templates next), and the earlier rounds' opens; 3.0b38/b50/b52 still untold.
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the HUD, round 27** (a new hud_tcmtree.cpp: the radio command menu's tree):
+  - IN A SELF-INLINED RECURSIVE FUNCTION THE OUT-OF-LINE ACCESSOR COPIES EACH COPY CALLS SHOW THE ACCESSOR CHAIN'S LEVELS:
+    each deeper copy calls a level shallower, and a call made as the receiver of the recursive call is cut one level more
+    -- giving the chains those levels made HideAll and Tick byte-exact (the ten accessors' split is reconstructed);
+  - four this-tests before a member vector's delete mean a class derived from the pointer vector (CTCMNodeList), a plain
+    member gives three; ~CTCMNode calls RemoveChild(this) on the node itself (a0 still `this` at the call); a signed inner
+    loop counter (`int j < unsigned n`) stops MW unrolling a copy loop 8x; pushing an unsigned counter onto a vector<int>
+    makes a converted temporary, so the counter stays in a register -- a counter living in memory, as the target's, is an
+    int; a jump-table switch lays its case blocks out in source order;
+  - hud_tcmtree.cpp is 0x231A30-0x23624F (the name ours): CTCMNode's UpdateState, HideAll, Find, AddChild,
+    DeleteChildren, SetText2, SetCaption, Tick, constructor and destructor, CTCM's TalkTick, Close, Open, Next, FindPrev,
+    FindNext and Tick (17 new), the accessor copies and CTCMSounds from source (17 more); its float pool 0x3DCAF0-0x3DCB20,
+    its bss push-to-talk statics 0x4130A0/0x4130A8/0x4130B8; CTCMColumn::m_4 and CTCM::m_dc8 are floats;
+  - a function-local static in a non-inline function is `@GUARD@s_grey$N` / `s_grey$N` in the object (N a per-unit
+    counter), so `@GUARD@<fn>@<name>` rows cannot resolve it -- ShowArrows' guard and object stay unchecked (a tools
+    request: map `name$N` to the diffed function's rows);
+  - open: RemoveChild 0x232030 (5), ShowRoot 0x235560 (4), Select 0x234F40 (21), all registers; not written: the
+    voice-item adder 0x2329F0, the builders 0x232BC0 and 0x2344E0, the pad handlers 0x235D40 and 0x2359A0.
+- **Tells from the weapons, round 17** (four initialisers, UVCompare, the weapon accessors, the callback list's destructor):
+  - AN UNNAMED INITIALISER CAN BE PLACED IN A UNIT BY WHERE ITS OBJECTS SIT IN BSS, beside which unit's statics:
+    __sinit_vis_decal.cpp 0x404A10, __sinit_vis_data.cpp 0x4049E0 (CMaterial_band::m_defaultColor a CPnt4D (0, 1, 0, 0)),
+    __sinit_zvid_init.cpp 0x404490 (its <iostream> pair beside zvid_init.cpp's statics), __sinit_zwep_global.cpp
+    0x404B70; 0x404500, the same pair beside vis_vu.cpp's statics, belongs to a third unit between zvid_init.cpp and
+    vis_vu.cpp;
+  - a static object's registered destructor names its class's destructor, and when MW's implicit destructor calls
+    something out of line that call names the base's -- 0x3C6880 is the callback list's __list_imp destructor (renamed:
+    ~CWepCallbackList 0x3C6920 compiles word for word and calls it; our copy 0xB8 vs 0x80 is include/list's open teardown
+    shape); look for a SOCOM II function at the same position between two SOCOM 1 anchors (zdb::UVCompare 0x3BF290);
+  - a min of three written `m = a; m = m < b ? m : b; m = m < c ? m : c;` loads a before b, `a < b ? a : b` loads b
+    first; a variable declared ahead of another and assigned after it takes the delay slot and swaps the two FPRs
+    (GetDamage's over/span: now 3 off); a byte enum held in a real variable (a join, or live across calls) is `lb` plus
+    `andi 0xff` at its compare, a plain single-assigned local folds to `lbu`;
+  - the sixteen accessors InitializeWeapons calls written in zwep_weapon.cpp (the pass sounds, the decal set and icon
+    names, the hit/special anim allocators and names); 0x2DE440 is CMaterialExArray::GetWeaponAnimMaterialEx (renamed at
+    integration: SOCOM 1's InitializeWeapons calls it at the same two places); open: InitializeWeapons 0x3C4700 (right
+    size, 51: the weapon-list walk's colouring), GetDamage (3), UnpackItemAndAmmoEnums, 0x3C5C20, CTurret::Fire.
+- **Tells from the kit and AI states, round 21** (AiStateIs where GetState is called, the unit's queries, CTPursue::Tick):
+  - CSealCtrlAi::AiStateIs (the SEALs' round 18 shape) closes EVERY Is() whose target calls the const GetState 0x5F8330
+    out of line: ShouldAvoid 0x602B20, CSealUnit::FindRescuedNear 0x5EEDB0, CAiGroup::AddMember 0x60D020 (open since round
+    17), CTPursue::Tick 0x5D4190 -- 24 more such rows wait in the SEALs' range (PrePostTick 0x5506A0, PlayAiSound
+    0x55FF60, SetAiMode 0x56CBF0, PreTick 0x56DE10, Tick 0x56FD00, OnStunDamage 0x571B10, OnCommand 0x58FBE0, the
+    AllowCommand family ...);
+  - taking a walk's end into a local before the iterator numbers the iterator after it (0x5EEDB0: iterator s0, end s1); a
+    byte-enum field read into a local before an `&&` loads first and is narrowed again at its compare inside an inline
+    taking it by value; a bool declared first but assigned after an early return keeps its early number while its zero
+    lands after the return; an inline `m_control ? ...->IsAi() : false` narrows the bool in each arm, zseal.h's if-form
+    IsAi once at the join; SOCOM II's GetMyLookDir uses the literals 0.7071f and 0.866f, not the exact roots -- check a
+    float constant's low mantissa bits;
+  - seal_unit.cpp follows SOCOM 1's order there (AllowCommand, the new 0x5EEDB0, GetMyLookDir, GetData and run_anim -- new
+    --, GetUnitByTeam); a lead: 0x5E7030 (0x1F8) sits where SOCOM 1's CheckPathProximity (0x1F8) would be;
+  - open: 0x60F760 (0x228 vs 0x240: the target re-reads the target list's size and data through its address each pass --
+    the AI core's round-18 reference-accessor rule), 0x5CB450 (8: the bit index masked before the shift in the target),
+    CAiGroup::Tick (AiStateIs at its GOING test moves it to 0x6EC vs 0x6E4; 285 register shifts), is_goal 0x5F8570,
+    GetTimeSinceLastSighting 0x60A590, 0x5F6270, CAiDodge::Destroy 0x5FAD50.
 - **Tells from the world, rdr and sound, round 7** (__sinit_zsnd_csnd.cpp, the headset queue, the pipe's atoms, the
   scheduler, the subtitle list):
   - 0x402FF0 IS __sinit_zsnd_csnd.cpp (the unit's header had said it has none): its statics in build order -- four
@@ -5510,6 +5565,64 @@ hits (13 build failures, 16 m2c refusals), `1CCD78 1CE2A4` 6 tried, 0 hits (5 re
 1E8FD4` 2 tried, 0 hits, `243000 256FD0` 96 tried, 0 hits (22, 8): 247 tried, none byte-exact (round
 18a: 288, 0) -- the drafts that build all miss; the 35 that do not are round 16a's kinds.
 
+**Round 20a** (2026-11-04, by hand, libmpeg's macroblock layer first): 31 functions written byte-exact
+of 35 -- 25 rows newly byte-exact, 6 matched drafts superseded -- the lane's `src/lib`
+sdk/libc/libgcc/libm/ovl1 rows 1,071 -> 1,102 of 1,166 scored, none lost -- and 1 row named. libmpeg's
+slice and macroblock layers (`sdk/mpeg_dec.c` +10: _waitBdecOut, _mbAddressIncrement, _pictureData0,
+_sliceA0, _slice0, _skipMB0, _decMB0, _motionVectors, _motionVector, and _ipuVdec, open since round 10a;
+libmpeg 113 of 119; `sdk/libmpeg.h` types the two 0x140-byte macroblock records at 0x590 and names
+Fault_Flag, dcr, quantizer_scale_code), a new `sdk/inet_sock.c` (the socket layer over libinet,
+0x1C1CD0-0x1C4CC0, not in SOCOM 1: 13 of 17 written -- the lock, the socket lookup, libinet's error
+map, the free descriptor, three option setters, and six matched drafts' functions; its allocator and
+thread context OPEN) and a new `sdk/libpad2.c` (Sony's libpad2 over libdbc, 0x1BD588-: 8 of 8). Named:
+_waitBdecOut (func_001B6ED0, `s1:order`: the demo's 0x154CD0 at the same place in the decoder object,
+called from the same two functions). What they showed:
+
+- **libmpeg's slice and macroblock layers are mpeg2decode's text over the IPU**: getpic.c's picture_data,
+  start_of_slice and slice, macroblock.c's decode_macroblock (its macroblock_modes in line, writing
+  through the caller's pointers) and skipped_macroblock, motion.c's motion_vector(s) -- byte-exact as
+  that text reads wherever the IPU did not change it (VDEC tables for the VLCs, BDEC for the blocks and
+  the DC predictors, Fault_Flag kept, the slice's return codes renumbered). The demo's copy is a release
+  older (_pictureData0 0x108, _slice0 0x1F0, _waitBdecOut 0x1FC): SOCOM II's adds a stop request
+  (`_10a0`, set by func_001BBA70) that stops both IPU channels mid-picture.
+- **A register read through a plain pointer keeps its constant address**: GCC folds a non-volatile
+  access's address into the instruction (`ld $4,0x10002030`), which GNU as expands through the
+  destination register (`lui a0,0x1000; ld a0,0x2030(a0)`) -- or `$at` for a store (`sw
+  v1,0x2010($at)`, BDEC's error reset) -- where a volatile one is formed in a register (`lui; ori; ld
+  0(reg)`). The target's IPU_TOP reads are the plain kind (`IPU_TOP_NV`): round 10a's "lui; ld
+  0x2030(reg)" open, read after IPU_BP.
+- **This cc1 truncates DImode to HImode with `andi 0xffff`** (mips.md's truncdihi2): `return r & 0xFFFF;`
+  from a `short` function is two andis, the target's one `return r;`.
+- **A store in each arm sits at the join's head**: cross-jumping merges the two after reload, so through
+  allocation and scheduling there were two (`if (top < 0) d->nbits = ...; else d->nbits = 32;`, where
+  the conditional expression's one store is scheduled late) -- and each store is a reference, which
+  moves global-alloc's priority (refs x log2(refs) / live length): _waitBdecOut's nested third store
+  gives `d` s1, two give the target's s2, one the demo's s3.
+- **A case tree compares unsigned when the switch's operand is** (`sltiu` in _mbAddressIncrement's {0,
+  34, 35} tree: `u_int code`), and a case body's last statement decides what cross-jumping merges (case
+  35's `cont = 1` before `val += 33`, so case 34 shares the flush's tail).
+- **A loop's int counter keeps a signed compare after strength reduction** (libpad2's port loops test
+  the address giv with `slt`); a pair of buffers returned as `b[b[0]->count < b[1]->count]` is the
+  target's two-word stack array indexed by a compare; a frame test is guard clauses returning 0 first.
+- **Open, diagnosed in place**: inet_sock.c's first-fit allocation (0x1C1D40, a word short: the
+  remainder from the loop's own load of the block size), its release and set-up (0x1C1E90, 0x1C2028)
+  and the thread context (0x1C2160, right size: an unsigned mask loaded before the buffer's allocation
+  into the thread id's freed s1). Not reached: libmpeg's picture output (_updateRefImage ...
+  dmaRefImage) and colour conversion, the demux, libmrpc (sifrpc's aliasing cause), the socket calls
+  0x1C28F8-0x1C4C20, OVL1's codec.
+
+**The tools, round 20a**: `tools/treesearch.py`, the recogniser lane's tsearch2.py (round 18c)
+promoted: SPEC.py's leaves, every tree compiled under the spec's directive (`DIRECTIVE`, default the
+recogniser's) with cc1's RTL dump through tools/ccdump.py, each function's dataflow rebuilt and compared
+with `WANT`; the prelude from the spec (`PRELUDE`, `PRELUDE_FILE`), the batches under
+build/scratch/gcc/treesearch/. Proved: over round 18c's own spec (t_pm2.py, 30,240 trees, 59 s) it gives
+the 128 source trees of round 18c's pm2_hits.txt, line for line. It scores nothing: scdiff.py,
+sccheck.py, scdecomp.py and `include/` are master's, so no MW or GCC unit can score differently.
+automatch over the lane's four ranges (`--max-size 0x400 --emit --no-prune --jobs 2 --obj-dir` the
+lane's `src/lib` build): MAIN `18DB90 1C4CC0` 116 tried, 0 hits (12 build failures, 16 m2c refusals),
+`1CCD78 1CE2A4` 6 tried, 0 hits (5 refusals), OVL1 `1E7F58 1E8FD4` 2 tried, 0 hits, `243000 256FD0` 96
+tried, 0 hits (22, 8): 220 tried, none byte-exact (round 19a: 247, 0).
+
 **Next**: the libraries by hand, module by module, as their vendors wrote them (each `src/lib`
 unit's header says what it covers); GCC's scheduler moves independent stores, and which source
 order gives the target's is easier measured than predicted (`tools/ccperm.py PROBE
@@ -6837,6 +6950,51 @@ Hand-written in round 18c: `asr/isowdp.c` (InitNewUtterance closed: 8 of 8), `as
 _FreeTree, CalcNrNodes@ctxtree, CalcNrNodes10, CalcAccuracyCtxTree, _CountWordsInTree, _GetWordsInTree)
 -- 13 rows new to the map's byte-exact rows (3,580 bytes), none superseding a draft; `src/lib/asr` 483 of
 522 (470 of 514 before). 7 rows named. No tool changed.
+
+**Round 19c: the language walkers' reload, an inline's frame, the VAD's tests.**
+
+- **A second read of a field survives when it follows a join and reaches GCSE through another base
+  register.** The five codebook walkers load `nbr_codebook` twice (the count and the gastone term; SOCOM
+  1's copies too) and pick the count with a movn: the count is read and incremented in place FIRST
+  (`n = d->nbr_codebook; if (d->bits & 4) n++;`), then the codebooks' base from `l->data` read again.
+  The count's `if` is still a branch at CSE (jump1 does not convert an in-place increment, where it turns
+  `if (c) n = m + 1; else n = m;` into a conditional move before CSE1 and puts both loads in one block),
+  so the sum after its join starts a new extended block for CSE1 and CSE2; GCSE's one pass hashes the
+  sum's load against the second `l->data` load's register -- another expression -- and PRE merges only
+  the `l->data` loads. The if-conversion after combine then makes the movn. Round 18c's "the source keeps
+  two reads" was right, and needs no volatile: order and a re-read base. (`_cdbGetCodeBookSize`'s reload
+  is not this: its base is the parameter, still OPEN.)
+- **An int aligned in place gives the `+ 3` a register of its own**: the walkers' `off = ALIGN4(off)`
+  (the target's `addiu v1,v0,3; and v0,v1,a0`) -- a variable set twice is not tied to the sum's input.
+- **An inline's locals take their frame block where the call is expanded** (SetIsolatedWordDpActiveWords,
+  round 18c's 6-word frame OPEN): CreateActiveWordsCtxTree is an `__inline__` the function inlines, so
+  its accessor table sits above the caller's own locals (sp+16 over sp+0) and each `&vt` is formed at
+  each call; its copy, with CompareIDs' (qsort's comparator), is deferred to the object's end -- the
+  context-tree object now holds CreateCtxTree and both (moved from ctxutil.c, which keeps
+  MakeUserWordsActiveDist).
+- **An inline's results reach the caller's test as values**: CheckForAbnormalConditions' hold is
+  `StartHold(v, 0xBFFF)` -- the constant argument copied into a register at the call (the target's `li
+  0xbfff` before the hold test), its zero results materialised and tested (`move v1,zero` ... `bnez v1`)
+  where a constant 0 known in the caller is threaded to the exit. ChangeMike inlines the same helper
+  (an aside of 0 starts no hold: the test folds away for 0xBFFF).
+- **Measured**: `abs()` is GCC's builtin branch around the negation (the target's `bgez`; `if (d < 0)
+  d = -d` is if-converted to a movn); a limit `c ? 2 : 1` in its own variable (`li 2; movz`; in the
+  comparison fold splits it into two tests); `x < 0` and `x > MAX` as two tests (an `||` folds them into
+  one unsigned compare); a flag stored before the local takes it (`d->pruning = 1; pruning = 1;`: the
+  store's own constant); SOCOM II's float constants are its own decimals (0.69077546f, -6.9077545f,
+  correctly rounded, SOCOM 1's an ulp and two above), and the VAD's doubles float constants promoted
+  (float-precision bits in .rodata; `dconst.py` finds 5.7564623653888703 for the one compared in double).
+- **Open, diagnosed in place**: PrunDynProg (17 words, registers: global-alloc takes x before the old
+  level), ChangeMike (4 bytes short: the starting level's mask, two register pairs, the hold's
+  registers), `_cdbGetCodeBookSize` and `_cdbGetpSmoothMatrix` (inline size helpers tried).
+
+Hand-written in round 19c: `asr/ctxtree.c` (+4: SetIsolatedWordDpActiveWords closed, CreateCtxTree and
+CreateActiveWordsCtxTree moved in, CompareIDs over its draft; 11 of 11), `asr/ctxutil.c` (1 of 1),
+`asr/language.c` (+5: the five walkers; 74 of 76), `asr/nbestdp.c` (+2: InitNBestDynProgProcess,
+PrunDynProg OPEN; 4 of 5), `asr/vad.c` (+3: TestChangeMike, CheckForAbnormalConditions, ChangeMike OPEN;
+5 of 6) -- 9 rows new to the map's byte-exact rows (4,160 bytes), one matched draft superseded
+(CompareIDs); `src/lib/asr` 493 of 528 (483 of 522 before). 1 row named (PrunDynProg `s1:order`: SOCOM
+1's N-best object holds it after CleanUpParBTProc at the same 0x1F4). No tool changed.
 
 **Round 14b: the "toolchain" opens were SCEA's shapes; LargeInt's core is assembly.**
 

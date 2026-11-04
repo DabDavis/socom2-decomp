@@ -17,6 +17,11 @@ typedef int u_long128 __attribute__((mode(TI)));
 #define IPU_CTRL	((volatile u_int *)0x10002010)
 #define IPU_BP		((volatile u_int *)0x10002020)
 #define IPU_TOP		((volatile u_long *)0x10002030)
+/* the same registers through plain pointers: GCC folds a non-volatile access's constant address into
+ * the instruction, which GNU as expands (`ld $4,0x10002030` -> `lui $4,0x1000; ld $4,0x2030($4)`, a
+ * store through $at) -- the target's IPU_TOP reads and the BDEC error's IPU reset (GCC round 20a) */
+#define IPU_TOP_NV	((u_long *)0x10002030)
+#define IPU_CTRL_NV	((u_int *)0x10002010)
 #define D3_CHCR		((volatile u_int *)0x1000B000)
 #define D3_MADR		((volatile u_int *)0x1000B010)
 #define D3_QWC		((volatile u_int *)0x1000B020)
@@ -27,6 +32,7 @@ typedef int u_long128 __attribute__((mode(TI)));
 #define D9_CHCR		((volatile u_int *)0x1000D400)
 #define D9_QWC		((volatile u_int *)0x1000D420)
 #define D_ENABLER	((volatile u_int *)0x1000F520)
+
 #define D_ENABLEW	((volatile u_int *)0x1000F590)
 
 typedef struct {
@@ -119,6 +125,15 @@ typedef struct {
 	char pad2c[0x68 - 0x2C];
 } MpegRef;
 
+/* a macroblock's record (0x140 bytes, two of them from 0x590): BDEC's output and what the motion
+ * compensation reads (GCC round 20a) */
+typedef struct {
+	u_int mc;		/* 0x000: a 6 KB scratchpad buffer (uncached) */
+	u_int coef;		/* 0x004: BDEC's 384 coefficients, 768 bytes of scratchpad */
+	char pad008[0x13C - 0x008];
+	int noCoef;		/* 0x13C: neither intra nor coded: the prediction alone */
+} MpegMB;
+
 typedef struct {
 	int isEnd;		/* 0x000 */
 	int nFrames;		/* 0x004: frames decoded and not yet output */
@@ -160,7 +175,7 @@ typedef struct {
 	u_int frameBuf[3];	/* 0x0FC: the three pictures' memory */
 	MpegAlloc alloc;	/* 0x108 */
 	int frameNo;		/* 0x118 */
-	int ipuEnd;		/* 0x11C */
+	int Fault_Flag;		/* 0x11C: mpeg2decode's: a VLC the IPU could not decode, an error */
 	int secondField;	/* 0x120 */
 	int horizontal_size;	/* 0x124 */
 	int vertical_size;	/* 0x128 */
@@ -190,16 +205,11 @@ typedef struct {
 	int closed_gop;			/* 0x1A4 */
 	int broken_link;		/* 0x1A8 */
 	int _1ac;			/* 0x1AC */
-	int _1b0;			/* 0x1B0 */
-	int _1b4;			/* 0x1B4 */
+	int dcr;			/* 0x1B0: BDEC's DC reset (the intra DC predictors' reset) */
+	int quantizer_scale_code;	/* 0x1B4: BDEC's QSC, the slice's or the macroblock's */
 	MpegRef *ref[3][4];		/* 0x1B8 */
 	MpegRef refs[9];		/* 0x1E8 */
-	u_int _590;		/* 0x590 */
-	u_int _594;		/* 0x594 */
-	char pad598[0x6D0 - 0x598];
-	u_int _6d0;		/* 0x6D0 */
-	u_int _6d4;		/* 0x6D4 */
-	char pad6d8[0x810 - 0x6D8];
+	MpegMB mb[2];		/* 0x590: the current one mb[_810] */
 	int _810;		/* 0x810 */
 	int _814;		/* 0x814 */
 	int dirty;		/* 0x818: the last IPU command leaves the bit buffer stale */
@@ -231,7 +241,9 @@ MPEG_AT(MpegDec, alloc, 0x108);
 MPEG_AT(MpegDec, picture_coding_type, 0x150);
 MPEG_AT(MpegDec, picture_structure, 0x174);
 MPEG_AT(MpegDec, ref, 0x1B8);
-MPEG_AT(MpegDec, _590, 0x590);
+MPEG_AT(MpegDec, mb, 0x590);
+MPEG_AT(MpegDec, _810, 0x810);
+typedef char _at_MpegMB_size[sizeof(MpegMB) == 0x140 ? 1 : -1];
 MPEG_AT(MpegDec, dirty, 0x818);
 MPEG_AT(MpegDec, mp, 0x858);
 MPEG_AT(MpegDec, _10a0, 0x10A0);
