@@ -237,6 +237,11 @@ extern "C" {
 /* the least value at 0x240 the ladder check waits for (OVL1 data, 0.03: a variable, as SOCOM 1's) */
 extern float data_003F3428;
 }
+extern "C" {
+/* an anim's reference point, or the origin (OVL2 0x58C2F0, seal_cfg.cpp's) */
+bool func_0058C2F0(CZSealBody *seal, CZSIScriptCommon *anim, CPnt3D *out);
+}
+
 
 /* the ladder check taken only for a SEAL this console drives and past the threshold; otherwise
  * passed (OVL2 0x5B10B0; SOCOM 1's took three float references and tested the first, SOCOM II's
@@ -290,6 +295,8 @@ public:
     static CAnimTypeVector pistoldamageanim[6][3];
     /* every set (SOCOM 1's AnimSet::List, a pointer vector; OVL1 bss 0x44D430) */
     static std::vector<AnimSet *> list;
+    /* a type's motion script with no weapon (anim.cpp's, OVL2 0x5E3D90) */
+    CZSIScriptCommon *GetScript(AnimType type);
 
     unsigned char _0[0x5c];
     CAnimsByFP *m_animsbyfp;   // 0x5c (SOCOM 1's m_animgps at 0x60)
@@ -297,6 +304,38 @@ public:
 
 char *zrdr_findstring(const _zrdr *rdr, const char *tag);
 AnimType FindAnimType(const char *name);
+
+/* a ladder ahead: a probe from the root part's height on the SEAL's spot, raised to the climb's (anim
+ * 46's) reference point less one, eleven forward along the node's facing, the SEAL's node switched off
+ * for it -- a ladder polygon hit (application flags 2) or not (OVL2 0x5B0EB0; SOCOM 1's, PostCheckDILadder
+ * calls it) */
+bool CZSealBody::CheckDILadder()
+{
+    CPnt3D fwd(0.0f, 0.0f, -11.0f);
+    const CPnt3D *pos = &m_posW;
+    CPnt3D root;
+    CPnt3D from;
+    CPnt3D to;
+    CPnt3D ref;
+
+    root = *(CPnt3D *)GetRootPart()->m_node->m_matrix.m_matrix[3];
+    func_0058C2F0(this, m_animset->GetScript((AnimType)46), &ref);
+    ref.y -= 1.0f;
+    root.y += ref.y;
+    from = *pos;
+    from.Add(&root, &from);
+    TransformVectors(&m_node->m_matrix, &fwd, &to, 1);
+    to.Add(&from, &to);
+    bool active = GetNode()->m_active;
+
+    GetNode()->SetActive(false);
+    zdb::IntersectStruct *hit = zdb::CWorld::m_world->GetIntersect(&from, &to);
+
+    GetNode()->SetActive(active);
+    if (!hit || ((unsigned char)hit->m_poly->m_flags.m_appflags & 7) != 2)
+        return false;
+    return true;
+}
 
 /* an array's item by an unsigned index (zrdr.h's Item, which this unit cannot include beside
  * zanim.h's _zrdr: the index unsigned keeps MW from strength-reducing an int counter's walk) */

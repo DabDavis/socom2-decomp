@@ -10608,7 +10608,7 @@
 0x00592030 0x20 SetDoAiMapCollide__9CSealCtrlFb  # OVL2; slot 0xB4 of __vt__9CSealCtrl, CSealCtrlAi's and CRemoteCtrl's (the inline setter zseal.h declares: the bool into bit 15 of 0x170, (b & 1) << 7 in the byte at 0x171); the OVL1 copy is 0x2B3C70, slot 0xB4 of __vt__13CSealCtrlCopy (the SEAL lane, round 3)
 0x00592050 0x48 func_00592050  # OVL2
 0x005920A0 0x20 MPBomb_TimerAvailable__9CSealCtrlFb  # OVL2; s1:order; bit 12 of the flag word (m_mpbomb_bTimerAvailable) as SOCOM 1's
-0x005920C0 0x19C func_005920C0  # OVL2
+0x005920C0 0x19C TickMPBomb__9CSealCtrlFf  # OVL2; s1:order by hand (the SEALs, round 28): SOCOM 1's TickMPBomb__9CSealCtrlFf, after MPBomb_TimerAvailable (SOCOM II's InitMPBomb gone, before PerturbAimVector as SOCOM 1's); PreTick calls it, the same AttemptBombDefuse/ExecuteAction/HandlePlacingExlosive calls on the same members (0x158-0x160, 0x238)
 0x00592260 0x1A0 PerturbAimVector__9CSealCtrlFP6CPnt3D  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00592400 0xA4 Cross__6CPnt3DCFPC6CPnt3DP6CPnt3Db  # OVL2; s1:calls
 0x005924B0 0xAC SetViewRange__9CSealCtrlFf  # OVL2; s1:order (after PerturbAimVector and its Cross copy, before PostMortemPreTick, as SOCOM 1's SetViewRange__9CSealCtrlFf: the range to the view-range decay at 0xA8 and 0xAC, the camera's far plane times 0.95 for none; SOCOM II's clamps a given one) -- the SEAL lane, round 4
@@ -10830,8 +10830,8 @@
 0x005A9C70 0x2C8 func_005A9C70  # OVL2
 0x005A9F40 0x1C8 func_005A9F40  # OVL2
 0x005AA110 0x130 func_005AA110  # OVL2
-0x005AA240 0x230 func_005AA240  # OVL2
-0x005AA470 0x184 func_005AA470  # OVL2
+0x005AA240 0x230 GetReticuleAction__10CZSealBodyFb  # OVL2; s1:order by hand (the SEALs, round 28): SOCOM 1's GetReticuleAction__10CZSealBodyFb, after the pickup tests 0x5A9C70/0x5A9F40/0x5AA110 (GetReticuleWeapon, GetProximityWeapon, GetProximityMPBomb in SOCOM 1's order) and before CNodeAction::GetAction 0x5AA470, which it calls with (node, true) after a __dynamic_cast as SOCOM 1's does; every caller passes (seal, 0 or 1) and reads a CNodeAction
+0x005AA470 0x184 GetAction__11CNodeActionFPQ23zdb5CNodeb  # OVL2; s1:order by hand (the SEALs, round 28): SOCOM 1's GetAction__11CNodeActionFPQ23zdb5CNodeb, after GetReticuleAction (which calls it) and recursive with the same __dynamic_cast chain as SOCOM 1's
 0x005AA600 0x8 func_005AA600  # OVL2
 0x005AA610 0x8 func_005AA610  # OVL2
 0x005AA620 0x70 func_005AA620  # OVL2
