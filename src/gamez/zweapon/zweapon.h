@@ -494,6 +494,40 @@ public:
     void SetWiggleReport(float r);
     float GetWiggleReport();
     void SetTarget_DilateUponMovement(float d);
+    /* SOCOM 1's accessors and SOCOM II's three (zwep_ftsweapon.cpp, 0x3C5F80-0x3C61A0) */
+    float GetFireRifle_KickReturnRate() const;
+    float GetFireRifle_KickRate() const;
+    void SetFireRifle_KickRandomDist(float v);
+    void SetFireRifle_KickBaseDist(float v);
+    void SetFireRifle_KickReturnRate(float v);
+    void SetFireRifle_KickRate(float v);
+    float GetSniper_DecayRate() const;
+    void SetSniper_DecayRate(float v);
+    float GetSniper_DistLimit_PosY() const;
+    float GetSniper_DistLimit_PosX() const;
+    void SetSniper_DistLimit_PosY(float v);
+    void SetSniper_DistLimit_PosX(float v);
+    float GetSniper_DistPPFrame_PosY() const;
+    float GetSniper_DistPPFrame_PosX() const;
+    void SetSniper_DistPPFrame_PosY(float v);
+    void SetSniper_DistPPFrame_PosX(float v);
+    float GetTarget_Max() const;
+    float GetTarget_Min() const;
+    float GetTarget_Constrict() const;
+    float GetTarget_DilateUponMovementMult() const;
+    float GetTarget_DilateUponMovement() const;
+    float GetTarget_DilateUponFire() const;
+    void SetTarget_Max(float v);
+    void SetTarget_Min(float v);
+    void SetTarget_Constrict(float v);
+    void SetTarget_DilateUponMovementMult(float v);
+    void SetTarget_DilateUponFire(float v);
+    float GetReticuleKnock_Max() const;
+    float GetReticuleKnock_Return() const;
+    float GetReticuleKnock() const;
+    void SetReticuleKnock_Max(float v);
+    void SetReticuleKnock_Return(float v);
+    void SetReticuleKnock(float v);
     /* the rifle kick's random and base distances (SOCOM 1's getters, in its order: 0x3C5F60,
      * 0x3C5F70 -- the kit's fire code reads them) */
     float GetFireRifle_KickRandomDist() const;
@@ -509,7 +543,8 @@ public:
     float m_sniper_decayrate;   // 0x1c
     float m_target_dilateuponfire;   // 0x20
     float m_target_dilateuponmovement;   // 0x24
-    float m_socom2_28;   // 0x28 (SOCOM II's: the constructor sets 1)
+    float m_target_dilateuponmovementmult;   // 0x28 (SOCOM II's: the constructor sets 1; ReadWeapon's
+                                              // TargetDilateUponMovementMult)
     float m_target_dilateuponmovementSqrt;   // 0x2c (SOCOM 1: 0x28)
     float m_target_constrict;   // 0x30 (SOCOM 1's from here, 4 bytes later)
     float m_target_min;   // 0x34
@@ -546,6 +581,15 @@ public:
     virtual void Recoil();
     float GetZoomRange(unsigned int i);
     CTargetMods *TargetMods(int i);
+    /* the rumbles' (SOCOM 1's accessors, zwep_ftsweapon.cpp 0x3C5EB0-0x3C5F40) */
+    float GetRumbleLow_Power() const;
+    float GetRumbleLow_Time() const;
+    unsigned char GetRumbleLow_Enable() const;
+    void SetRumbleLow_Power(float v);
+    void SetRumbleLow_Time(float v);
+    float GetRumbleHigh_Time() const;
+    unsigned char GetRumbleHigh_Enable() const;
+    void SetRumbleHigh_Time(float v);
     /* the damage scaled for FTS (x14; static: CZProjectile::GetDamage calls it with no `this` in
      * a0, and the body never reads one) */
     static float ResolveFTSDamage(float damage);
