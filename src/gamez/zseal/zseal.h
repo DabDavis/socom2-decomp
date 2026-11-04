@@ -211,6 +211,12 @@ public:
     bool GetLocation(const CPnt3D *pos, CAiMapLoc &loc);
     /* a cell's map (ai_maps.h's, OVL2 0x52E6B0) */
     class CAiMap *GetMapByIndex(unsigned int i) const;
+    /* a location's cell (ai_maps.h's, OVL2 0x52D6A0) */
+    CAiCell *GetCell(const CAiMapLoc &loc);
+    /* the cells between two points walked over the maps, each handed to a callback (ai_maps.h's,
+     * OVL2 0x5352D0) */
+    bool WalkLine(const CPnt3D *from, const CPnt3D *to, bool (*f)(const MAP_LINEWALK_STRUCT &s, void *data),
+        void *data, float step);
 };
 
 extern CAiMaps AiMaps;
