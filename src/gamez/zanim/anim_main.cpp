@@ -72,8 +72,11 @@ int CZAnimMain::UnloadCmdSet(int index)
 
 
 /* a command by name in a set, made when asked; not made, it is looked for in the other sets.
- * OPEN, 8 instructions: the second search's set, command and index registers permuted (s2/s3/s0
- * against the target's s3/s2/s0); reusing s and cmd, or hoisting its locals, is further off. */
+ * OPEN, 6 instructions: the second search's command and the sets' strength-reduced offset trade
+ * s3/s0 (the command declared ahead of its set fixes the set's s2, round 12: 8 -> 6; the offset
+ * is an optimiser temporary, numbered after every named local, so it colours first). Reusing s
+ * and cmd, hoisting the locals, the index declared first (10), the set a reference (8), the
+ * command indexed (0x1F4) or the set read in place (0x1F0) are further off */
 int CZAnimMain::GetCmd(int set, char *name, bool create)
 {
     _zanim_cmd_set *s = &m_cmdset_list[set];
@@ -93,9 +96,10 @@ int CZAnimMain::GetCmd(int set, char *name, bool create)
     }
     for (int j = 0; j < m_cmdset_count; j++) {
         if (j != set) {
+            zanim_cmd *c;
             _zanim_cmd_set *o = &m_cmdset_list[j];
-            zanim_cmd *c = o->cmd_list;
 
+            c = o->cmd_list;
             for (int i = 0; i < o->count; i++, c++)
                 if (!strcmp(name, c->name))
                     return i;

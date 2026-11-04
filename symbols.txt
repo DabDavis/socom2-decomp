@@ -2744,7 +2744,7 @@
 0x00259230 0xC func_00259230  # OVL1
 0x00259240 0xC func_00259240  # OVL1
 0x00259250 0x558 insert__Q23std58__vector_imp<Q23zar4CKey,Q23std22allocator<Q23zar4CKey>,0>FPQ23zar4CKeyUiRCQ23zar4CKey  # OVL1; SOCOM 1 name, the core lane round 5 (NewKey calls it twice with (end, 1, key) where SOCOM 1 calls its insert at 0x1D9ED0: the key buffer's class insert, zar_main.cpp's template tail)
-0x002597B0 0x1F4 func_002597B0  # OVL1
+0x002597B0 0x1F4 reserve__Q23std58__vector_imp<Q23zar4CKey,Q23std22allocator<Q23zar4CKey>,0>FUi  # OVL1; by hand, the core lane round 12 (the key buffer's class reserve: ReadDirectory 0x258000 calls it with the tail's key count right after the buffer's clear 0x2599B0; include/vector's class reserve for the 24-byte CKey, byte-exact as zar_main.cpp's copy, emitted by ReadDirectory); zar_main.cpp
 0x002599B0 0x7C clear__Q23std60__vector_deleter<Q23zar4CKey,Q23std22allocator<Q23zar4CKey>>Fv  # OVL1; the core lane round 5 (SOCOM 1 name: the key buffer's clear, ~CKey with -1 from the back; zar_main.cpp's template tail)
 0x00259A30 0xB8 __dt__Q23std60__vector_deleter<Q23zar4CKey,Q23std22allocator<Q23zar4CKey>>Fv  # OVL1; the core lane round 5 (SOCOM 1 name: the key buffer's deleter destructor, its clear inlined: zar_main.cpp's template tail)
 0x00259AF0 0x4C __as__Q23std38__vector_pod<Ui,Q23std13allocator<Ui>>FRCQ23std38__vector_pod<Ui,Q23std13allocator<Ui>>  # OVL1; the MSL headers round 10: include/vector's 4-byte pod operator= (out of class, the char pod's: assign over the other's words unless this one), byte-exact as a probe (build/p10/e/podas.cpp); calls 0x259D20
