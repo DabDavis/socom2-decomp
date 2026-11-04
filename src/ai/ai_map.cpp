@@ -7,8 +7,7 @@
  * SOCOM II adds the cell layers (CAiMapLayer, whose own code sits after vehicle_rdr.cpp, from
  * ~0x53A730). Its initialiser (0x668630) builds the dummy cell (0x66A198) and the cosine of 45
  * degrees (0x65AB38). Defined here in reverse of the image's order (-inline deferred).
- * Not written yet: 0x515750 (the cell's altitude?, called from the fcosts), the vehicle's cell
- * marking 0x515880 and its helpers 0x515900-0x5168DF (copies 0x515DE0, 0x515F80, 0x516180), the
+ * Not written yet: the footprint rows' scan 0x516180 (BuildFootprint's last call), the
  * repel parameters 0x5169B0/0x516F10, 0x517050, ValidateCells 0x517850 (the walk with
  * _validate_cell plus GetCell inlined one level -- IsCell 0x512140, IsLayer 0x512120 and the
  * pieces after them -- and out of line, 0x511F80), ~CAiMap 0x5181F0, GetClosestDir(cell, point)
@@ -541,12 +540,14 @@ inline bool _over_box(const CBBox &b, const CPnt3D *pos)
 /* the cell under a point (SOCOM 1's GetLocation(CPnt3D *, loc), the demo's 0x19B0F0: the box test
  * in x and z, the offsets scaled by the inverse cell sizes and truncated on VU0 in place, the cell
  * stored field by field -- SOCOM II gives it the map's id where SOCOM 1 gave 0 -- and whether the
- * cell is on the map; 0x515F80, after SetCorners, which 0x515900 calls twice). The row (the
+ * cell is on the map; 0x515F80, after SetCorners, which 0x515900 calls twice -- both inlines: their
+ * copies follow BuildFootprint, their only caller, in reverse of first use with CAiMapLoc(), GetBBox
+ * and the box's copy, 0x515DE0-0x516177, the AI core round 24). The row (the
  * halfword bitfield compared signed) and column tests each set a bool local of their own, the
  * _over_box shape written in place: byte-exact since the AI core's round 23 -- the row test through
  * an inline loaded m_ny ahead of the `bltz` and narrowed its bool (0x1A0 against 0x198, round 22),
  * one result local (`on && ...` returned) was 0x190 */
-bool CAiMap::GetLocation(const CPnt3D *pos, CAiMapLoc &loc) const
+inline bool CAiMap::GetLocation(const CPnt3D *pos, CAiMapLoc &loc) const
 {
     bool inside = _over_box(m_bbox, pos);
 
@@ -580,8 +581,9 @@ bool CAiMap::GetLocation(const CPnt3D *pos, CAiMapLoc &loc) const
  * as the corner, the spans inclusive (new in SOCOM II, the name ours: 0x515DE0, which 0x515900 calls
  * after the footprint's two corner cells). The tests `a <= b` (`b >= a` lays the arms out 8 bytes
  * short); x compares unsigned off the word, y signed off the halfword, as the target's (the AI core
- * round 22; were 0x515900 written here, -inline auto would want this pinned: the target calls it) */
-void CAiMap::region::SetCorners(const CAiMapLoc &a, const CAiMapLoc &b)
+ * round 22; an inline since round 24, called out of line by the region fit BuildFootprint inlines
+ * one level) */
+inline void CAiMap::region::SetCorners(const CAiMapLoc &a, const CAiMapLoc &b)
 {
     m_loc.m_mapid = a.m_mapid;
     if (a.x <= b.x) {
@@ -600,16 +602,89 @@ void CAiMap::region::SetCorners(const CAiMapLoc &a, const CAiMapLoc &b)
     }
 }
 
-/* the region rebuilt from a footprint's corners (0x515900, unwritten: GetLocation for corners, the
- * region from two cells 0x515DE0) */
-extern "C" void func_00515900(CAiMap *map, const CPnt3D *corners, CAiMap::region *r);
+/* each row's run of cells whose centres lie inside a footprint's four edges, the region copied into
+ * the overlay first (0x516180, unwritten: GetCellCenter inlined one level twice, a row's first cell
+ * inside, then its first cell outside) */
+extern "C" bool func_00516180(CAiMap *map, const CPnt3D *corners, const CAiMap::region &r, CAiOverlay *o);
+
+/* a box over points (CBBox's layout, the name ours): both corners at the first point, then grown by
+ * each -- a coordinate beyond a corner taken (`p <= min ? p : min`, `p >= max ? p : max`: the target's
+ * compare and arm order) -- and a written copy constructor, called out of line where the region fit
+ * below is inlined one level (0x516140). MW COPIES A CLASS-TYPE MEMBER AS A BLOCK (three loads, then
+ * three stores) where CPnt3D's own assignment interleaves its floats' loads and stores through a
+ * pointer: the target's corners are blocks, so each is assigned as a struct holding a CPnt3D (W; a
+ * float[3] does the same), the copy as one CBBox assignment (blocks per corner). zmath.h's CBBox has
+ * no constructors, and giving it these would change every unit's CBBox -- hence the stand-in */
+class CAiBox : public CBBox {
+public:
+    struct W { CPnt3D p; };
+    CAiBox(const CPnt3D &p)
+    {
+        *(W *)&m_min = *(const W *)&p;
+        *(W *)&m_max = *(const W *)&p;
+    }
+    CAiBox(const CAiBox &b) { *(CBBox *)this = b; }
+    void Grow(const CPnt3D &p)
+    {
+        m_min.x = p.x <= m_min.x ? p.x : m_min.x;
+        m_min.y = p.y <= m_min.y ? p.y : m_min.y;
+        m_min.z = p.z <= m_min.z ? p.z : m_min.z;
+        m_max.x = p.x >= m_max.x ? p.x : m_max.x;
+        m_max.y = p.y >= m_max.y ? p.y : m_max.y;
+        m_max.z = p.z >= m_max.z ? p.z : m_max.z;
+    }
+};
+
+/* the region of cells under a box: the box clipped to the map's in x and z, its corners' cells, the
+ * rectangle between them (the name ours: too big to inline whole -- GetLocation twice -- so the box's
+ * copy, GetBBox, CAiMapLoc(), GetLocation and SetCorners are called out of line, their copies
+ * 0x515DE0-0x516177 after 0x515900 in reverse of their first use) */
+inline bool _box_region(const CAiMap *map, const CAiBox &box, CAiMap::region &r)
+{
+    CAiBox b(box);
+    const CBBox &mb = map->GetBBox();
+
+    if (b.m_min.x < mb.m_min.x)
+        b.m_min.x = mb.m_min.x;
+    if (b.m_max.x > mb.m_max.x)
+        b.m_max.x = mb.m_max.x;
+    if (b.m_min.z < mb.m_min.z)
+        b.m_min.z = mb.m_min.z;
+    if (b.m_max.z > mb.m_max.z)
+        b.m_max.z = mb.m_max.z;
+    bool ok = false;
+    CAiMapLoc lo, hi;
+
+    if (map->GetLocation(&b.m_min, lo) && map->GetLocation(&b.m_max, hi)) {
+        r.SetCorners(lo, hi);
+        ok = true;
+    }
+    return ok;
+}
+
+/* the overlay from a footprint's four corners (new in SOCOM II, the name ours: 0x515900,
+ * TileFootprint's) */
+bool CAiMap::BuildFootprint(const CPnt3D *corners, CAiOverlay *o)
+{
+    bool ok = false;
+    CAiBox box(corners[0]);
+
+    box.Grow(corners[1]);
+    box.Grow(corners[2]);
+    box.Grow(corners[3]);
+    region r;
+
+    if (_box_region(this, box, r))
+        ok = func_00516180(this, corners, r, o);
+    return ok;
+}
 
 /* the footprint's old cells cleared, the region rebuilt, the new ones set (new in SOCOM II, the name
  * ours) */
 bool CAiMap::TileFootprint(const CPnt3D *corners, region *r)
 {
     Tile(r, 0, 32, 0);
-    func_00515900(this, corners, r);
+    BuildFootprint(corners, (CAiOverlay *)r);
     Tile(r, 1, 32, 0);
     return true;
 }

@@ -334,6 +334,7 @@ public:
 };
 
 class CAiMap;
+class CAiOverlay;
 
 /* a cell handed to a walk's callback (below CAiMap: it points at a CAiMap::region) */
 struct MAP_FOREACH_STRUCT;
@@ -901,10 +902,18 @@ public:
      * Tile(region, value, flags); the layer new: the walker unit's 0x536230) */
     bool Tile(const region *r, unsigned int value, unsigned int flags, int layer);
     /* a vehicle's footprint moved: the region's cells cleared of the occupied bit (flags 32), the
-     * region rebuilt from the four corners (0x515900, not written yet), its cells set again; true
-     * (new in SOCOM II, the name ours: 0x515880, CVehicle::Tick's call with the vehicle's four
-     * transformed corners at +408 and its region at +368) */
+     * region rebuilt from the four corners (0x515900), its cells set again; true (new in SOCOM II,
+     * the name ours: 0x515880, CVehicle::Tick's call with the vehicle's four transformed corners at
+     * +408 and its region at +368 -- an overlay: the region, then each row's run) */
     bool TileFootprint(const CPnt3D *corners, region *r);
+    /* the overlay rebuilt from a footprint's four corners: their box, clipped to the map's in x and
+     * z, as a region of cells, then each row's run of cells whose centres lie inside the four
+     * edges; false when the box misses the map (new in SOCOM II, the names ours: 0x515900 and the
+     * rows' scan 0x516180) */
+    bool BuildFootprint(const CPnt3D *corners, CAiOverlay *o);
+    /* the map's box (new in SOCOM II, the name ours: out of line where the footprint's region is
+     * fitted, inlined one level -- 0x516130) */
+    const CBBox &GetBBox() const { return m_bbox; }
     bool ResetCells();
     static CPnt3D &GetDirVec(DIR dir, CPnt3D &v);
     /* each direction's step in cells, x then y, N to NW (SOCOM 1's CAiMap::neighbor, the demo's
