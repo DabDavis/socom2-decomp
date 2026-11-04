@@ -10915,8 +10915,8 @@
 0x005B6490 0x360 func_005B6490  # OVL2
 0x005B67F0 0xA0 func_005B67F0  # OVL2
 0x005B6890 0x4C func_005B6890  # OVL2; the same words as __ct__Q23std38__vector_pod<Ui,Q23std13allocator<Ui>>FRCQ23std38__vector_pod<Ui,Q23std13allocator<Ui>> (0x259b40) bar the link's addresses (tools/ovlcopies.py) -- identical code, not proven the same instance (template instances for different types and look-alike accessors share bodies)
-0x005B68E0 0x2E8 insert__Q23std38__vector_pod<Us,Q23std13allocator<Us>>FPUsUiRCUs  # OVL2; s1:calls
-0x005B6BD0 0x110 reserve__Q23std38__vector_pod<Us,Q23std13allocator<Us>>FUi  # OVL2; by hand (the SEAL lane, round 19): the pod vector's reserve for a 2-byte element (new(n * 2), the old block memcpy'd over and deleted, 'vector::reserve length error'): InitDeathAndFlinchAnimations reserves 8 in each anim-type table with it, as SOCOM 1's reserves its vector<AnimType>s; beside insert__...<Us> (0x5B68E0)
+0x005B68E0 0x2E8 insert__Q23std38__vector_pod<Us,Q23std13allocator<Us>>FPUsUiRCUs  # OVL2; s1:calls; the MSL headers round 16: include/vector's 2-byte pod insert (the char pod's, memmove/memcpy, the fill re-reading the value as a signed half -- lh, where SOCOM 1's 0x2CD740 has lhu), byte-exact in seal_env.cpp's template tail (push_back's, the death and flinch readers)
+0x005B6BD0 0x110 reserve__Q23std38__vector_pod<Us,Q23std13allocator<Us>>FUi  # OVL2; by hand (the SEAL lane, round 19): the pod vector's reserve for a 2-byte element (new(n * 2), the old block memcpy'd over and deleted, 'vector::reserve length error'): InitDeathAndFlinchAnimations reserves 8 in each anim-type table with it, as SOCOM 1's reserves its vector<AnimType>s; beside insert__...<Us> (0x5B68E0); the MSL headers round 16: include/vector's 2-byte pod reserve (the 4-byte pod's with memcpy), byte-exact in seal_env.cpp's template tail
 0x005B6CE0 0x4C4 func_005B6CE0  # OVL2
 0x005B71B0 0x198 func_005B71B0  # OVL2
 0x005B7350 0x5BC func_005B7350  # OVL2
