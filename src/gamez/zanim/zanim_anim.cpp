@@ -19,6 +19,7 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include <string.h>
+#include <iostream>   /* (its pair is all __sinit_zanim_anim.cpp builds, 0x3FFC30) */
 
 #include "zanim.h"
 

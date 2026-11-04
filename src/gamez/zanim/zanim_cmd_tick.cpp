@@ -6,6 +6,7 @@
 
 #include <stdio.h>
 #include <string.h>
+#include <iostream>   /* (its pair is all __sinit_zanim_cmd_tick.cpp builds, 0x3FFB70) */
 
 #include "zanim.h"
 #include "../zcamera/zcamera.h"
