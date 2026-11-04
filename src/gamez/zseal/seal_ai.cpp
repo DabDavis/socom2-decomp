@@ -85,12 +85,22 @@ class CAiSAnimate;
 typedef bool (*ANIM_CALL)(CAiSAnimate *state, CSealCtrlAi *ai, unsigned int data);
 
 struct ANIM_TIMED_CALL {
+    /* (a constructor of its own: the list's insert, 0x575E30, copies the value member by member --
+     * the time through an FPR, the call and the word through GPRs -- where a plain struct is one
+     * block through the FPRs) */
+    ANIM_TIMED_CALL(float time, ANIM_CALL func, unsigned int data) : m_time(time), m_func(func), m_data(data) {}
+
     float m_time;   // 0x0
     ANIM_CALL m_func;   // 0x4
     unsigned int m_data;   // 0x8
 };
 
 struct ANIM_SPAN_CALL {
+    ANIM_SPAN_CALL(float start, float end, ANIM_CALL func, unsigned int data)
+        : m_start(start), m_end(end), m_func(func), m_data(data)
+    {
+    }
+
     float m_start;   // 0x0
     float m_end;   // 0x4
     ANIM_CALL m_func;   // 0x8
@@ -132,16 +142,23 @@ public:
     virtual bool Virtual3C(CSealCtrlAi *ai) { return false; }
     virtual ~CAiSGrenade();
 
+    virtual int Tick(CSealCtrlAi *ai);
+
     /* (the names ours: what OnSignal's reset clears) */
-    unsigned int m_58;   // 0x58
-    unsigned int m_5c;   // 0x5c
+    unsigned int m_58;   // 0x58: the grenade's pickup
+    unsigned int m_5c;   // 0x5c: its network id when taken
     unsigned char m_60;   // 0x60
     unsigned char _61[0x6c - 0x61];
+    /* where the grenade will land, once 0x55CDC0 has found it, and its cell (Tick; the names ours) */
     unsigned char m_6c;   // 0x6c
-    unsigned char _6d[0x7c - 0x6d];
+    unsigned char _6d[0x70 - 0x6d];
+    CPnt3D m_70;   // 0x70
     CAiMapLoc m_7c;   // 0x7c
-    CAiMapLoc m_80;   // 0x80
-    unsigned char _84[0xa0 - 0x84];
+    CAiMapLoc m_80;   // 0x80: the cell the dodge's plan heads for
+    /* the step after the run to the grenade: 4 the kick, 5 the throw back, 6 none (a signed byte:
+     * Tick copies it to its step with lb; the name ours) */
+    signed char m_84;   // 0x84
+    unsigned char _85[0xa0 - 0x85];
     /* the throw's velocity in the SEAL's frame (0x55C480 turns it by the body's matrix; the name
      * ours) */
     CPnt3D m_vel;   // 0xa0
@@ -2541,7 +2558,8 @@ extern "C" float func_005698A0(CSealCtrlAi *ai)
 
 /* a direction to look in from a map spot (OVL2 0x559580, not written: its arguments are what
  * 0x567690 passes) */
-extern "C" CAiMap::DIR func_00559580(const CAiMapLoc *loc, int a, unsigned int mask, int b, int n, int c);
+extern "C" CAiMap::DIR func_00559580(const CAiMapLoc *loc, const CPnt3D *dir, unsigned int mask, CAiMapLoc *out,
+                                      int n, int *got);
 
 /* the AI's glance around before it creeps: while it has a target or acts the countdown is held at 0;
  * else run down, and on expiry restarted at a random 10 to 15 (a guarded function-local Rfloat,
@@ -3604,6 +3622,404 @@ int CAiSGrenade::Virtual14(CSealCtrlAi *ai, CAiState *sub)
         if (proj->m_time < 0.5f && ai->IsNavySeal())
             func_0057E540(seal);
     }
+    return Result();
+}
+
+extern "C" {
+/* the grenade's landing point solved from its flight, whether found (OVL2 0x55CDC0, not written
+ * yet), the dodge's look and sound (0x55C870, not written yet) and a path planned to a cell (the AI
+ * core's 0x526C10) */
+bool func_0055CDC0(CZProjectile *proj, CPnt3D *pos, float *fuse);
+void func_0055C870(CAiSGrenade *g, CSealCtrlAi *ai);
+bool func_00526C10(CAiPath *path, const CAiMapLoc *loc, int flags);
+/* (below: a map's cell inside; the AI states' range: a plan pushed to a cell) */
+bool func_005561C0(const CAiMap *map, const CAiMapLoc &loc);
+bool func_005F0830(CSealCtrlAi *ai, void *loc, unsigned int mode, int kind, int step);
+}
+
+/* an anim type by its name (anim.cpp's, OVL2 0x5E5000) */
+AnimType FindAnimType(const char *name);
+
+/* the AI's path dropped: its plan aborted, emptied, the default planner kind set and the search
+ * limit cleared -- whether it could be emptied (an inline: the grenade state's Tick, three times;
+ * the name ours) */
+static inline bool ResetPath(CSealCtrlAi *ai)
+{
+    ai::AbortPathPlan((CAiPath *)&ai->m_path);
+    if (((CAiPath *)&ai->m_path)->Clear()) {
+        if (((CAiPath *)&ai->m_path)->SetPathType((CAiPath::PATH_TYPE)0))
+            ai->m_path.m_type_bias = 1.0f;
+        ai->m_path.m_search_limit = 0;
+        return true;
+    }
+    return false;
+}
+
+/* the path neither holding points nor planning (an inline bool: the target materialises it) */
+static inline bool PathIdle(CSealCtrlAi *ai)
+{
+    if (((CAiPath *)&ai->m_path)->HasPoints() || ((CAiPath *)&ai->m_path)->IsPlanning())
+        return false;
+    return true;
+}
+
+/* a point turned about (the three loaded, negated and stored: a value built by the three-float
+ * constructor) */
+static inline CPnt3D Neg(const CPnt3D &p)
+{
+    return CPnt3D(-p.x, -p.y, -p.z);
+}
+
+/* the plan the dodge pushed (its own stack's top, a plan state) told to hurry, and a Navy SEAL's
+ * to preempt (an inline: three times in Tick; the name ours) */
+static inline void HurryPlan(CAiSGrenade *g, CSealCtrlAi *ai)
+{
+    CAiState *top = g->m_stack.GetState();
+    CAiSPlan *plan = top ? (top && top->m_state == AI_STATE_PLAN ? (CAiSPlan *)top : 0) : 0;
+
+    plan->m_12c = 1.0f;
+    if (ai->IsNavySeal())
+        *(float *)&plan->m_path[0x18] = ai::s_preemptPriority;
+}
+
+/* whether a cell's map holds it (the map's own test, none for no map), and whether it can be
+ * walked (the names ours) */
+static inline bool CellInside(const CAiMapLoc &loc)
+{
+    CAiMap *map = AiMaps.GetMap(loc);
+
+    return map ? func_005561C0(map, loc) : false;
+}
+
+static inline bool CellTraversable(const CAiMapLoc &loc)
+{
+    CAiMap *map = AiMaps.GetMap(loc);
+
+    return map ? map->IsTraversable(loc) : false;
+}
+
+/* the grenade state's tick (OVL2 0x55AC20, slot 0x10; SOCOM 1's Tick__11CAiSGrenadeFfP11CSealCtrlAi
+ * without its dT, 0x191C there). With its grenade gone the state waits a random while -- shorter
+ * for an untrained SEAL -- and ends. Else the grenade's landing point is found once; step 0 alerts
+ * the AI to it and, when it may (a launcher's round not yet taken, outside the map, its owner no
+ * friend, time left over the run to it), runs to it for a kick (4) or a throw back (5), else dodges
+ * (3); step 2 runs, and once there pushes step 4 or 5, or gives up; step 3 pushes a plan away from
+ * the blast; 4 and 5 push the animate state with its timed calls (the lists' inserts, 0x575E30 and
+ * 0x576000, this function's alone); 6 goes prone or crouches by the blast's radius; 9 ends */
+int CAiSGrenade::Tick(CSealCtrlAi *ai)
+{
+    static float s_pick_time = 0.26f;
+    static float s_throw_time = 0.76f;
+    static float s_kick_time = 0.4f;
+    static float s_fuse_margin = 1.5f;
+    static float s_timer_slack = 3.3f;
+    static float s_close_sq = 2500.0f;
+    static bool s_throw_back = true;
+    static float s_kick_range = 120.0f;
+    static int s_cell_slack = 2;
+    static float s_cover_radius = 10.0f;
+    static bool s_none_friendly;
+
+    CPickup *p = (CPickup *)m_58;
+    CEntity *seal = ai->m_entity;
+    STEP step = (STEP)m_phase;
+    CZProjectile *proj = p ? (CZProjectile *)p->m_data : 0;
+    CEntity *owner;
+
+    if (proj)
+        owner = CEntity::m_list.GetEntityById(proj->m_shooterID);
+    else
+        owner = 0;
+    float *training = &ai->m_aiParams.training;
+    bool navy = ai->IsNavySeal();
+    float hurry = 2.0f * (1.0f - *training);
+
+    if (navy || (seal->m_team & 0x20000))
+        hurry = 0.0f;
+    if (!p || m_5c != p->GetPickupNetEntityID() || !proj || !owner) {
+        if (!m_60) {
+            m_60 = 1;
+            float h;
+
+            if (navy)
+                h = 0.0f;
+            else
+                h = 2.0f * (1.0f - *training);
+            if (step == STEP_8)
+                m_time = RandRange(1.0f, 1.8f + h);
+            else
+                m_time = RandRange(2.1f, 2.9f + 1.5f * h);
+        } else {
+            m_time -= m_dT;
+            if (m_time < 0.0f)
+                SetActive(false);
+        }
+        return Result();
+    }
+
+    CZAmmo *ammo = proj->m_ammo;
+    CPnt3D *pos = &seal->m_posW;
+    CAiMapLoc *loc = &seal->m_mapLocValid;
+    CPnt3D away = proj->m_framestartpos - *pos;
+
+    away.y = 0.0f;
+    float dist = away.Normalize();
+    bool self = seal == owner;
+    float fuse = proj->m_time;
+    bool friendly = (owner->m_team & seal->m_team) != 0;
+    float radius = ammo ? ammo->GetExplosionRadius() : 200.0f;
+    const AI_PARAMS &params = ai->m_aiParams;
+    static float s_flee = 1.3f + s_fuse_margin;
+
+    p->m_bits.m_vec[seal->m_index >> 5] |= 1 << (seal->m_index & 31);
+    float spare = fuse - s_fuse_margin;
+    float k;
+
+    if (friendly)
+        k = 1.2f;
+    else
+        k = 0.5f * (1.0f - params.training) + 1.2f * params.training;
+    int cells = (int)(0.1f * (radius * k));
+
+    if (!m_6c) {
+        m_6c = func_0055CDC0(proj, &m_70, &fuse);
+        if (m_6c)
+            AiMaps.GetLocation(&m_70, m_7c);
+    }
+
+    switch (step) {
+    case STEP_0:
+        if (m_6c) {
+            if (m_6c)
+                ai->SetAiAware(AIA_DIRECTION, &m_70, -1.0f);
+            bool thrown = p->m_locked;
+            bool launcher = proj->m_weapon->GetIDType() == (EQUIP_ITEM)121;
+            bool close = false;
+            STEP next;
+
+            ai->ChangeStanceDelayed(STANCE_PRONE, STANCE_STAND, -1.0f);
+            if (self) {
+                CPnt3D d = m_70 - ai->m_774;
+
+                if (Dot(d, d) <= s_close_sq)
+                    close = false;
+            }
+            if (m_7c != CAiMapLoc::invalid) {
+                CPnt3D d = m_70 - *pos;
+                float len = d.Length();
+                float t = len / ai->GetSpeedFromThrottle(0.25f, 0);
+
+                if (s_throw_back && launcher && !thrown && !CellInside(m_7c) &&
+                    (!friendly || s_none_friendly || close) && !(fuse - t <= spare + hurry) &&
+                    !(seal->m_team & 2) && !(seal->m_team & 0x20000) && !(seal->m_team & 0x40000) &&
+                    !(seal->m_team & 0x10000000) && !data_0045A0C1 && AiMaps.CanTravelLine(*loc, m_7c, 0)) {
+                    func_00570F90(ai, 1.0f);
+                    if (*training > 0.8f) {
+                        if (len > s_kick_range)
+                            next = STEP_4;
+                        else
+                            next = STEP_5;
+                    } else {
+                        if (Chance(0.5f))
+                            next = STEP_4;
+                        else
+                            next = STEP_5;
+                    }
+                    p->SetLocked(true);
+                    ai->PlayAiSound((CHARACTER_SOUND)52, 1.0f, -1);
+                    func_0055C870(this, ai);
+                    if (ResetPath(ai) && func_00526C10((CAiPath *)&ai->m_path, &m_7c, 0)) {
+                        ai->SetAiMode((AI_MODE)3);
+                        step = STEP_2;
+                    } else {
+                        step = STEP_3;
+                        next = STEP_6;
+                        p->SetLocked(false);
+                    }
+                } else {
+                    if (navy && thrown) {
+                        step = STEP_6;
+                        SetFlags(1, 0);
+                    } else
+                        step = STEP_3;
+                    next = STEP_6;
+                }
+            } else {
+                step = STEP_3;
+                next = STEP_6;
+            }
+            m_84 = next;
+        } else {
+            ai->ChangeStanceDelayed(STANCE_PRONE, STANCE_STAND, -1.0f);
+            step = STEP_3;
+        }
+        if (step != STEP_3)
+            break;
+    case STEP_3: {
+        bool found = false;
+        CPnt3D dir;
+        CAiMapLoc cell;
+        int got;
+        CAiMap::DIR side;
+
+        ai->ChangeStanceDelayed(STANCE_PRONE, STANCE_STAND, -1.0f);
+        step = STEP_6;
+        if (m_6c) {
+            dir = *pos - m_70;
+            dir.y = 0.0f;
+            dir.Normalize();
+        } else {
+            dir = Neg(away);
+            CPnt3D vel = proj->m_vel;
+
+            vel.Normalize();
+            CPnt3D t = vel * Dot(dir, vel);
+
+            dir.Sub(&t, &dir);
+            dir.y = 0.0f;
+            dir.Normalize();
+        }
+        got = 0;
+        unsigned int mask = 0x10000;
+
+        if (!func_005664F0(proj->m_weapon->m_ID))
+            mask |= 0x20000;
+        func_00559580(loc, &dir, mask, &cell, cells + s_cell_slack, &got);
+        if (CellTraversable(cell) && got >= cells - s_cell_slack && func_005F0830(ai, &cell, 12, -1, -1)) {
+            HurryPlan(this, ai);
+            found = true;
+            m_80 = cell;
+        }
+        if (!found) {
+            CAiMap *map = AiMaps.GetMapByIndex(loc->m_mapid);
+
+            if (map && map->FindCoverLoc(*loc, &m_70, cell, side, (int)s_cover_radius) &&
+                func_005F0830(ai, &cell, 4, -1, -1)) {
+                HurryPlan(this, ai);
+                found = true;
+                m_80 = cell;
+            }
+        }
+        if (!found) {
+            if (CellTraversable(cell) && func_005F0830(ai, &cell, 12, -1, -1)) {
+                HurryPlan(this, ai);
+                found = true;
+                m_80 = cell;
+            }
+        }
+        if (!found) {
+            step = STEP_6;
+            ai->PlayAiSound((CHARACTER_SOUND)53, 1.0f, -1);
+        }
+        break;
+    }
+    case STEP_2: {
+        bool throwing = m_84 == 4 || m_84 == 5;
+
+        func_00570F90(ai, 1.0f);
+        if (navy && throwing && (ai->m_stamp.m_8 & 5)) {
+            m_84 = 6;
+            p->SetLocked(false);
+            step = STEP_3;
+            ResetPath(ai);
+            if (!data_0045A0C1) {
+                CZProjectile *g = GrenadeOf(this);
+
+                if (g)
+                    g->m_time += 1.0f;
+            }
+        } else {
+            if (PathIdle(ai)) {
+                CEntity *o = proj ? CEntity::m_list.GetEntityById(proj->m_shooterID) : 0;
+
+                if (navy && o && (m_84 == 4 || m_84 == 5)) {
+                    CPnt3D d = o->m_posW - seal->m_posW;
+
+                    d = Neg(d);
+                    if (ai->SetLookDirW((AI_LOOK)3, &d, true)) {
+                        ai->ModifyLookFlags(1, 0);
+                        ai->SetLookTimer(3.0f);
+                    }
+                }
+                step = (STEP)m_84;
+            } else {
+                if (!((CAiPath *)&ai->m_path)->IsPlanning() && throwing && navy && fuse < s_flee) {
+                    m_84 = 6;
+                    p->SetLocked(false);
+                    step = STEP_3;
+                    ResetPath(ai);
+                    if (!data_0045A0C1) {
+                        CZProjectile *g = GrenadeOf(this);
+
+                        if (g)
+                            g->m_time += 1.0f;
+                    }
+                }
+                hurry = navy || hurry <= 0.2f ? 0.2f : hurry;
+                if (ai->m_stateStack.m_timer > s_timer_slack + hurry || (navy && proj->m_time < 0.3f)) {
+                    if (m_84 == 6)
+                        step = (STEP)m_84;
+                }
+            }
+        }
+        break;
+    }
+    case STEP_4:
+        step = STEP_6;
+        if (ai->PushAiState(AI_STATE_ANIMATE, 0)) {
+            CAiState *s = ai->GetAiState();
+            CAiSAnimate *a = s && s->m_state == AI_STATE_ANIMATE ? (CAiSAnimate *)s : 0;
+
+            a->m_anim = (AnimType)AnimTypes::KickGrenade;
+            a->m_5a = 0;
+            ANIM_TIMED_CALL kick(s_kick_time, func_0055C740, (unsigned int)this);
+
+            a->m_timed.push_back(kick);
+            a->SetActive(true);
+        }
+        break;
+    case STEP_5:
+        step = STEP_6;
+        if (ai->PushAiState(AI_STATE_ANIMATE, 0)) {
+            CAiState *s = ai->GetAiState();
+            CAiSAnimate *a = s && s->m_state == AI_STATE_ANIMATE ? (CAiSAnimate *)s : 0;
+
+            a->m_anim = FindAnimType("Return throw grenade");
+            a->m_5a = 0;
+            ANIM_TIMED_CALL pick(s_pick_time, func_0055C690, (unsigned int)this);
+
+            a->m_timed.push_back(pick);
+            ANIM_TIMED_CALL thr(s_throw_time, func_0055C480, (unsigned int)this);
+
+            a->m_timed.push_back(thr);
+            ANIM_SPAN_CALL hold(s_pick_time, s_throw_time, func_0055C5E0, (unsigned int)this);
+
+            a->m_spans.push_back(hold);
+            a->SetActive(true);
+        }
+        break;
+    case STEP_6:
+        if (dist >= radius)
+            step = STEP_8;
+        else
+            step = STEP_7;
+        if (navy && step == STEP_7 && !p->m_locked && (m_flags & 1)) {
+            SetFlags(0, 1);
+            if (proj->m_time > 1.0f)
+                step = STEP_3;
+        }
+        break;
+    case STEP_7:
+        ai->SetStanceDelayed(STANCE_PRONE, -1.0f);
+        break;
+    case STEP_8:
+        ai->SetStanceDelayed(STANCE_CROUCH, -1.0f);
+        break;
+    case STEP_9:
+        SetActive(false);
+        break;
+    }
+    UpdatePhase(step);
     return Result();
 }
 
