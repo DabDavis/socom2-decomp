@@ -1,83 +1,12 @@
 /* seal_sensors.cpp -- what an AI SEAL senses: its view cone, the visibility tests, the targets it
  * sees fall (SOCOM 1's unit, __sinit_seal_sensors.cpp: UpdateViewCone, SetViewFOV, ComputeVisibility,
  * RegisterCanSee ... NotifyTargetDown). OVL2 0x5C9400-0x5CDBCF, after seal_kit.cpp's CAiWepHint and
- * before seal_tasks.cpp. So far NotifyTargetDown. Defined in reverse of their image order (-inline
- * deferred). */
+ * before seal_tasks.cpp. So far NotifyTargetDown, a pickup's sighting and the request pool's end:
+ * CloseDiPool, OpenDiPool, CleanupDiPool and the free list's members (seal_dipool.h). Defined in
+ * reverse of their image order (-inline deferred). */
 
 #include "zseal.h"
-#include <list>
-
-/* SOCOM 1's CDiPool (_diPool, 0x28 bytes there): the visibility tests' DiIntersects and the requests
- * that use them, a used list and a free list of SOCOM 1's CDiPool::dir records. SOCOM II's pool is
- * 0x3C bytes at 0x44D5E0 (OVL1's __sinit_fts_ovl2statics.cpp builds it: six DiIntersects of 76 bytes
- * at +0, the count 6 at +4, 2 and 1 at +8/+0xC, the lists at +0x10 and +0x1C, a counter at +0x38) --
- * only what a written function touches */
-class CDiPool {
-public:
-    /* a request (SOCOM 1's CDiPool::dir; its constructor zeroes 0x0, 0x20, 0x28, 0x2C and 0x30) */
-    struct dir {
-        unsigned char m_state;   // 0x0 (0 free, 1 dropped, 2 pending, 4 registered)
-        unsigned char _1[0x1c - 0x1];
-        int m_index;   // 0x1C: its DiIntersect's, -1 for none
-        unsigned char _20[0x28 - 0x20];
-        CEntity *m_ent;   // 0x28: whose test it is
-        int m_2c;   // 0x2C
-
-        /* dropped: marked for the pool's next pass, its DiIntersect let go (inline; the name ours) */
-        void Drop()
-        {
-            m_state = 1;
-            m_index = -1;
-        }
-    };
-    /* the free list (a class over the pointer list: SOCOM 1's ~CDiPool tests the member before the
-     * deletion walk its destructor inlines; the names ours) */
-    class dirlist : public std::list<dir *> {
-    public:
-        /* a request reset and put back (OVL2 0x5CC800: CloseDiPool and ai_target.cpp's 0x60B8F0 call
-         * it -- SOCOM 1's CloseDiPool did it inline, the record re-read from the frame for each store,
-         * its address handed to the insert) */
-        void Free(dir *d);
-        /* every request deleted, the list emptied (OVL2 0x5CC6C0: CloseDiPool calls it on the free
-         * list -- SOCOM 1's did it inline, as its ~CDiPool does) */
-        void DeleteAll();
-    };
-
-    /* every used request put back on the free list, then all of them deleted (inline: CloseDiPool's) */
-    void Close()
-    {
-        dirlist::iterator i;
-
-        for (i = m_used.begin(); i != m_used.end(); i++)
-            m_free.Free(*i);
-        m_used.clear();
-        m_free.DeleteAll();
-    }
-    /* an entity's pending requests dropped (inline: CleanupDiPool's) */
-    void Release(CEntity *e)
-    {
-        dirlist::iterator i;
-
-        for (i = m_used.begin(); i != m_used.end(); i++) {
-            dir *d = *i;
-
-            if (d->m_ent == e && d->m_state) {
-                d->m_state = 1;
-                d->m_index = -1;
-            }
-        }
-    }
-
-    void *m_pool;   // 0x0: the DiIntersects
-    int m_count;   // 0x4
-    int m_8;   // 0x8
-    int m_c;   // 0xc
-    dirlist m_used;   // 0x10
-    dirlist m_free;   // 0x1c
-    unsigned char _28[0x3c - 0x28];
-};
-
-extern CDiPool _diPool;
+#include "seal_dipool.h"
 
 /* what an entity knows of another, or 0 (inline: the ternary inside it keeps the call's result in
  * both arms, `b; move v1,v0` / `move v1,zero`, and pads no label -- written in the caller it pads

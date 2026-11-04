@@ -11096,7 +11096,7 @@
 0x005C9400 0x118 UpdateViewCone__11CSealCtrlAiFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x005C9520 0x200 func_005C9520  # OVL2
 0x005C9720 0x78 SetViewFOV__9CSealCtrlFf  # OVL2; s1:calls
-0x005C97A0 0x30 func_005C97A0  # OVL2
+0x005C97A0 0x30 push_back__Q23std56list<PQ27CDiPool3dir,Q23std26allocator<PQ27CDiPool3dir>>FRCPQ27CDiPool3dir  # OVL2; by hand (the kit lane, round 25): the request list's push_back (include/list's: the base's insert at the sentinel), out of line -- target_post_tick's cut of CDiPool::PostTick calls it (and 0x5CC120); seal_sensors.cpp's copy, the first
 0x005C97D0 0x58 func_005C97D0  # OVL2
 0x005C9830 0x74 func_005C9830  # OVL2
 0x005C98B0 0x7C func_005C98B0  # OVL2
@@ -11747,15 +11747,15 @@
 0x0060B470 0x37C func_0060B470  # OVL2
 0x0060B7F0 0xF8 func_0060B7F0  # OVL2
 0x0060B8F0 0x1FC func_0060B8F0  # OVL2
-0x0060BAF0 0x88 func_0060BAF0  # OVL2
-0x0060BB80 0x10 func_0060BB80  # OVL2
-0x0060BB90 0x48 func_0060BB90  # OVL2
-0x0060BBE0 0x14 func_0060BBE0  # OVL2
-0x0060BC00 0x10 func_0060BC00  # OVL2; tu: char_type.cpp~ (1.0 beta)
-0x0060BC10 0x28 func_0060BC10  # OVL2; tu: vis_mesh.cpp~ (1.0 beta)
+0x0060BAF0 0x88 __dt__Q27CDiPool7dirlistFv  # OVL2; by hand (the kit lane, round 25; the class ours): the request list class's implicit destructor (four this-tests, the range erase), out of line behind target_post_tick's cut -- its local list, destroyed with -1
+0x0060BB80 0x10 HasIntersect__Q27CDiPool3dirCFv  # OVL2; by hand (the kit lane, round 25; the name ours): a request holds a DiIntersect (its index at 0x1C not negative), out of line behind target_post_tick's cut
+0x0060BB90 0x48 erase__Q27CDiPool7dirlistFQ33std56list<PQ27CDiPool3dir,Q23std26allocator<PQ27CDiPool3dir>>19generic_iterator<0>Q33std56list<PQ27CDiPool3dir,Q23std26allocator<PQ27CDiPool3dir>>19generic_iterator<0>  # OVL2; by hand (the kit lane, round 25; the member ours): a range of the request list unlinked, the wrapper iterators handed to the base's erase (0x50F990), out of line behind target_post_tick's cut
+0x0060BBE0 0x14 __pp__Q33std56list<PQ27CDiPool3dir,Q23std26allocator<PQ27CDiPool3dir>>19generic_iterator<0>Fv  # OVL2; by hand (the kit lane, round 25): the request list iterator's prefix ++, out of line behind target_post_tick's cut (the erase's end, ++next)
+0x0060BC00 0x10 __ct__Q33std56list<PQ27CDiPool3dir,Q23std26allocator<PQ27CDiPool3dir>>19generic_iterator<0>FRCQ33std56list<PQ27CDiPool3dir,Q23std26allocator<PQ27CDiPool3dir>>19generic_iterator<0>  # OVL2; tu: char_type.cpp~ (1.0 beta); by hand (the kit lane, round 25): the request list iterator's user-declared copy constructor (include/list's, as OVL2's 0x510BD0 for the path list), out of line behind target_post_tick's cut
+0x0060BC10 0x28 __ct__Q27CDiPool7dirlistFv  # OVL2; tu: vis_mesh.cpp~ (1.0 beta); by hand (the kit lane, round 25; the class ours): the request list class's implicit constructor (the deleter's constructor called), out of line behind target_post_tick's one-level cut of CDiPool::PostTick -- its local list; the copy after its caller
 0x0060BC40 0x2CC func_0060BC40  # OVL2
-0x0060BF10 0x1C func_0060BF10  # OVL2
-0x0060BF30 0xC func_0060BF30  # OVL2
+0x0060BF10 0x1C SetCharacterHits__Q23zdb11DiIntersectFb  # OVL2; by hand (the kit lane, round 25; the name ours): DiIntersect's m_IntersectCharacters (byte 2 bit 0) set, nothing given back -- an inline (node_world.h) out of line behind target_pretick's one-level cut of CDiPool::PreTick, which clears it on each ray it registers; its only caller 0x60BC40, the copy after it
+0x0060BF30 0xC World__7CDiPoolFv  # OVL2; by hand (the kit lane, round 25; the name ours): the world the visibility pool registers its rays with (zdb::CWorld::m_world), an inline accessor out of line behind target_pretick's one-level cut of CDiPool::PreTick (seal_dipool.h) -- its only caller 0x60BC40, the copy after it
 0x0060BF40 0x224 __ct__14SEAL_AI_PARAMSFv  # OVL2; by hand (the kit lane, round 6): SEAL_AI_PARAMS's constructor -- CSealCtrlAi's constructor (0x5740A4) calls it on this + 0x250, the second base CSealCtrlAi's RTTI lists there, before its table store; it builds the state stack at +0x1CC (0x5F8520), two CAiPaths, the CAiEvent, the event queue, the CAiTarget (0x60A940) and the trigger
 0x0060C170 0x18 func_0060C170  # OVL2
 0x0060C190 0x78 __dt__Q28CAiGroup10act_cameraFv  # OVL2; by hand (the kit lane, round 16): slot +8 of CAiGroup::act_camera's vtable (0x669EC0) -- its table, then action's destructor inlined
