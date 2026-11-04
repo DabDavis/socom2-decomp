@@ -879,12 +879,6 @@ CPipe::CAlpha::~CAlpha()
 }
 #pragma auto_inline reset
 
-/* the free view ids' stack (znode.h's CVisual::m_stack_vid; vis_vu.cpp's class) */
-namespace zdb {
-class CVidStack : public std::stack<void *> {
-};
-}
-
 /* the view id in use, the stack's top -- a `break` if the stack is empty (vis_vu.cpp's inline,
  * CVisual::GetVid: six levels high, so Add inlines it one level and calls empty() and top()) */
 inline unsigned int zdb::CVisual::GetVid()
