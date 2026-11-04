@@ -645,6 +645,9 @@ public:
      * written) */
     void HandleDelayedDetonate();
     void Cleanup();
+    /* the fuse and the removal timer run out, unless a network game's copy of another machine's
+     * shot (SOCOM 1's, 0x3C99A0: always false now) */
+    bool HandleTimers();
     /* the node shown along the frame's travel: a stretched tracer flown every fourth frame when
      * asked, or the shot's own orientation (SOCOM 1's; nothing returned -- no path sets v0) */
     void SetModelOrientation(bool b, const CPnt3D *dir);

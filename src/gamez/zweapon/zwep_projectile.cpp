@@ -202,6 +202,42 @@ void CZProjectile::SetVelW(const CPnt3D *vel)
     m_intersecthandle = -1;
 }
 
+/* the fuse and the removal timer run out (SOCOM 1's HandleTimers, 0x3C99A0: a network game's copy of
+ * another machine's shot -- neither the player's nor a person hit's -- leaves them to its owner,
+ * the test written out each time (an inline bool predicate materialises its value); the fuse out, it is to be detonated -- done, and with the removal time out too
+ * flagged (bit 17) unless remote; the removal time out once done, removed (7) unless remote and
+ * no longer done. SOCOM 1's called the explosive's anim and returned true on a removal).
+ * OPEN, 2 instructions: 0x1C8 against 0x1D0 -- the same blocks and the same reuse of the first
+ * network load in the last test (a reload after the stores, as the target's), but the target sets
+ * v0 = 0 in the fuse test's delay slot (its temporaries move to v1/a1/a2) and pads two more labels
+ * (ahead of the flag-17 store and of the else arm's SetDone). Tried: a bool/int result variable
+ * (top, after the test, returned everywhere), an else-if chain with one return, the m_done test
+ * nested, the timers or the "never" constant in locals, the network flag in a bool/uchar/int local
+ * (a bool used first and last gives the size, 92 off: MW then reuses it in the middle) */
+bool CZProjectile::HandleTimers()
+{
+    if (theNetwork.m_bNetwork && !m_isplayer && !m_lastHitWasPerson)
+        return false;
+    if (m_time <= 0.0f && m_time != 9999999.0f && !m_done) {
+        m_state = PROJECTILE_TO_BE_DETONATED;
+        m_grenadestate = DETONATE;
+        if (m_removaltime <= 0.0f && m_removaltime != 9999999.0f) {
+            SetDone(true);
+            if (!theNetwork.m_bNetwork || m_isplayer || m_lastHitWasPerson)
+                SetFlag17(true);
+        } else
+            SetDone(true);
+        return false;
+    }
+    if (m_done && m_removaltime <= 0.0f && m_removaltime != 9999999.0f) {
+        if (!theNetwork.m_bNetwork || m_isplayer || m_lastHitWasPerson)
+            m_state = (PROJECTILE_STATE)7;
+        SetDone(false);
+        m_grenadestate = REMOVE;
+    }
+    return false;
+}
+
 /* a material's extension (int_material.cpp's, SOCOM 1's class): its resistance to a blast only */
 struct CMaterialEx {
     unsigned char _0[0x24];
