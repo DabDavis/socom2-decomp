@@ -475,6 +475,40 @@ def code_label(elf: E.Elf, sec_index: int, off: int, st: E.SymbolTable) -> tuple
     return None
 
 
+# A TU-local function the map cannot name -- Metrowerks' `__arraydtor$N`, the array destructor a
+# static initialiser registers for each static array (N a per-unit counter that shifts with any
+# header edit before the static, so no row can carry it), or a GNU static the map does not name --
+# is resolved by its code: the candidate's function against the target's function at the address
+# the reference implies, its bytes with its own relocation fields masked and each of its relocations
+# resolved in turn (reloc_check, one level deeper). How deep that may go: the compared function ->
+# its local callee -> that one's local callee.
+LOCAL_CODE_DEPTH = 2
+BAD_STATUS = ("MISMATCH", "CONTENT-MISMATCH", "UNKNOWN")
+
+
+def function_at(elf: E.Elf, sec_index: int, off: int) -> E.ElfSymbol | None:
+    """The candidate's function starting at `sec_index`+`off`, or None."""
+    return next((f for f in elf.functions() if f.shndx == sec_index and f.value == off and f.size), None)
+
+
+def local_code_ok(elf: E.Elf, f: E.ElfSymbol, want: int, st: E.SymbolTable, img: E.Image,
+                  depth: int) -> bool | None:
+    """Is the candidate's TU-local function `f` the target's function at `want`? Its bytes, with its
+    own relocation fields masked, must equal the target's there and each of its relocations resolve
+    (none MISMATCH, CONTENT-MISMATCH or UNKNOWN). None when it cannot be said: no map row of `f`'s
+    size starting at `want`, the image not holding it, or LOCAL_CODE_DEPTH reached."""
+    row = st.at_addr(want)
+    if depth >= LOCAL_CODE_DEPTH or row is None or row.size != f.size or not img.covers(want, f.size):
+        return None
+    body = elf.sections[f.shndx].data[f.value:f.value + f.size]
+    rel = [E.Reloc(r.offset - f.value, r.type, r.sym, r.addend)
+           for r in elf.relocs_for(f.shndx) if f.value <= r.offset < f.value + f.size]
+    target = img.read(want, f.size)
+    if mask(target, rel) != mask(body, rel):
+        return False
+    return not any(x.status in BAD_STATUS for x in reloc_check(elf, f, rel, target, want, body, st, img, depth + 1))
+
+
 def gnu_hi_partners(elf: E.Elf, fsym: E.ElfSymbol, cand: bytes) -> dict[int, int]:
     """In a GNU object, each R_MIPS_LO16's R_MIPS_HI16 (offsets from the function's start).
 
@@ -516,7 +550,8 @@ def gnu_hi_partners(elf: E.Elf, fsym: E.ElfSymbol, cand: bytes) -> dict[int, int
 
 
 def reloc_check(elf: E.Elf, fsym: E.ElfSymbol, relocs: list[E.Reloc], target: bytes,
-                taddr: int, cand: bytes, st: E.SymbolTable, img: E.Image) -> list[RelocFinding]:
+                taddr: int, cand: bytes, st: E.SymbolTable, img: E.Image,
+                depth: int = 0) -> list[RelocFinding]:
     out: list[RelocFinding] = []
     hi_pending: dict[str, tuple[int, int]] = {}   # symbol -> (target hi, cand hi field)
     gnu = is_gnu(elf)
@@ -531,11 +566,26 @@ def reloc_check(elf: E.Elf, fsym: E.ElfSymbol, relocs: list[E.Reloc], target: by
                 return s.name
         return None
 
+    def by_code(r: E.Reloc, sec_index: int, value: int, want: int) -> RelocFinding | None:
+        # a TU-local function no name resolves (MW's `__arraydtor$N`): content-ok when its code is
+        # the target's at `want`, relocations resolved (local_code_ok); else None -- the reference
+        # then stays as the other rules leave it, so this can turn nothing into a miss
+        f = function_at(elf, sec_index, value) if 0 < sec_index < len(elf.sections) else None
+        if f is None or not elf.sections[sec_index].flags & SHF_EXECINSTR:
+            return None
+        if local_code_ok(elf, f, want, st, img, depth):
+            return RelocFinding(r.offset, r.type, f.name, want, None, "content-ok")
+        return None
+
     def local_code(r: E.Reloc, name: str, sec_index: int, value: int, want: int) -> RelocFinding | None:
         # a static callee (or a function's address) relocated against the section: resolved by
         # the function at that offset -- through the map when it names it (a placeholder by
-        # the address in its name), else by the same distance from this function as in the target
-        if not gnu or sec_index != fsym.shndx:
+        # the address in its name), else by the same distance from this function as in the target,
+        # else by its code (by_code). Metrowerks gives each function a section of its own and
+        # relocates against the function's symbol: one no name resolves, by its code alone
+        if not gnu:
+            return by_code(r, sec_index, value, want)
+        if sec_index != fsym.shndx:
             return None
         callee = code_symbol(sec_index, value)
         a = _sym_address(st, callee, taddr) if callee else None
@@ -548,7 +598,8 @@ def reloc_check(elf: E.Elf, fsym: E.ElfSymbol, relocs: list[E.Reloc], target: by
             return RelocFinding(r.offset, r.type, lab[0], want, lab[1], "ok" if lab[1] == want else "MISMATCH")
         if want - taddr == value - fsym.value:
             return RelocFinding(r.offset, r.type, callee or name, want, want, "ok")
-        return RelocFinding(r.offset, r.type, callee or name, want, None, "unchecked")
+        return by_code(r, sec_index, value, want) or RelocFinding(r.offset, r.type, callee or name, want, None,
+                                                                  "unchecked")
 
     def symbol_addr(r: E.Reloc) -> tuple[str, int | None, int | None, int]:
         """(display name, map address or None, the local object's section index or None,

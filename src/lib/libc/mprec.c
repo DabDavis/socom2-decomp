@@ -10,7 +10,11 @@
  * two instructions, so reorg leaves a slot whose only candidate is one to GNU as, which fills it --
  * but not under -g, which GNU as reads as -O0 on MIPS; the runtime's objects were built with GCC's
  * CFLAGS_FOR_TARGET, -g -O2 (SCE's patch appends -G0). cc1's output is the same with and without
- * -g. Every integer helper is byte-exact as written. OPEN: _d2b (below). */
+ * -g. Every integer helper is byte-exact as written. _d2b is newlib 1.9.0's text (GCC round 24a; open
+ * since round 6a): `if (d1) { y = d1; k = lo0bits (&y); if (k) ...` tests the word before storing
+ * it, so the store to y's slot follows the branch (the target's `sw a1,0(sp)` in lo0bits' delay slot,
+ * y's value in a1); 1.8.2's `if (y = d1)`, written first, stores before the test -- y in v0, its
+ * store in the branch's slot, 5 words off. */
 
 #include "newlib.h"
 
@@ -635,9 +639,11 @@ d2b (ptr, _d, e, bits)
   d0 &= 0x7fffffff;		/* clear sign bit, which we ignore */
   if ((de = (int) (d0 >> Exp_shift)) != 0)
     z |= Exp_msk1;
-  if ((y = d1) != 0)
+  if (d1)
     {
-      if ((k = lo0bits (&y)) != 0)
+      y = d1;
+      k = lo0bits (&y);
+      if (k)
 	{
 	  x[0] = y | z << (32 - k);
 	  z >>= k;

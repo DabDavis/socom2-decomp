@@ -10,7 +10,7 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 M2C_UNK Add__10LadderListFP24MediusLadderListResponse(M2C_UNK *, char *); /* extern */
 s32 CheckMediusCallbackStatus__FPCc20MediusCallbackStatus(M2C_UNK *, s32); /* extern */
 M2C_UNK UpdateLadderBestDisplay__Fv();              /* extern */
-M2C_UNK func_002EB900();                            /* extern */
+M2C_UNK UpdateLadderListDisplay__Fv();              /* extern */
 s32 strcasecmp(char *, M2C_UNK *);                  /* extern */
 extern M2C_UNK LadderLeaders;
 extern M2C_UNK LadderRanking;
@@ -25,7 +25,7 @@ void func_002EB6A0(s32 arg0, s32 arg1, s32 arg2, char *arg3) {
             Add__10LadderListFP24MediusLadderListResponse(&LadderLeaders, arg3);
             if (SC_MEMBER(arg3, s8 *, 0x1D0) != 0) {
                 data_0044F878 = 0;
-                func_002EB900();
+                UpdateLadderListDisplay__Fv();
             }
         } else if (strcasecmp(arg3, &data_003F4730) == 0) {
             Add__10LadderListFP24MediusLadderListResponse(&LadderRanking, arg3);

@@ -228,16 +228,12 @@ def main(argv=None) -> int:
     scored_at: set[int] = set()                  # the addresses scored (match or WRONG)
     auto_at: set[int] = set()                    # matched by a generated draft
     hand_at: set[int] = set()                    # matched by hand-written source
-    auto_names: set[str] = set()
     hand_names: set[str] = set()     # what hand-written source defines as its own (not inline copies)
+    superseded: set[str] = set()     # the drafts hand-written source supersedes, by the two rules below
     for src, obj, err in built:
-        if obj is not None:
+        if obj is not None and "auto" not in src.relative_to(SRC).parts:
             elf = E.Elf.read(obj)
-            fns = elf.functions()
-            if "auto" in src.relative_to(SRC).parts:
-                auto_names.update(f.name for f in fns)
-            else:
-                hand_names.update(f.name for f in fns if not is_copy(elf, f))
+            hand_names.update(f.name for f in elf.functions() if not is_copy(elf, f))
     # hand-written source supersedes the generated tier where it defines a function, or emits a
     # byte-exact inline copy of it -- a copy that misses does not: the linker keeps a strong
     # definition over every unit's copy, so the draft's match stands (zsnd_csndsequence.cpp's
@@ -261,6 +257,7 @@ def main(argv=None) -> int:
             if rx and not rx.search(fs.name):
                 continue
             if is_auto and fs.name in hand_names:
+                superseded.add(fs.name)
                 continue                     # superseded by hand-written source
             if fs.name in absent:
                 rows.append(("absent", src.name, fs.name, ""))
@@ -282,6 +279,7 @@ def main(argv=None) -> int:
             # its draft in the other (seal_env.cpp's ~vector<CZDecalDef> is OVL2's 0x5A3C60; OVL1's
             # 0x2CDB30 stays its draft's -- the integrator, 2026-11-04)
             if is_auto and fs.name in hand_copies and sym.addr in hand_at:
+                superseded.add(fs.name)
                 continue                     # superseded by a hand-written copy at this address
             res = D.compare(obj, fs.name, sym, img, st)
             if not res.match and is_copy(elf, fs) and span and not span[0] <= sym.addr < span[1]:
@@ -327,7 +325,10 @@ def main(argv=None) -> int:
     # count addresses: a template instance two units emit (an MSL vector's reserve) is one
     # function, and one name can be matched once per overlay (its copies)
     matched_bytes = sum(st.at_addr(a).size for a in now)
-    superseded = sorted(auto_names & (hand_names | hand_copies))
+    # what --emit would drop, by the rules the scoring applied: a strong hand-written definition by
+    # name, a byte-exact copy only at its own address (by name, OVL1's ~vector<CZDecalDef> draft
+    # 0x2CDB30 was listed though seal_env.cpp's copy matched OVL2's row -- automatch keeps it)
+    superseded = sorted(superseded)
     n_auto = len(auto_at - hand_at)
     print(f"\n{len(now)} byte-exact of {len(scored_at)} scored"
           f" ({matched_bytes:,} of {total_code:,} bytes in the map, {100 * matched_bytes / max(total_code, 1):.2f} %)")

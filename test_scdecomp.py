@@ -381,6 +381,39 @@ def test_mw_function_static_resolves_by_its_function():
         rows.unlink()
 
 
+def test_mw_local_function_resolves_by_its_code():
+    """A Metrowerks static initialiser registers each static array's destructor, a local function
+    `__arraydtor$N` -- N a per-unit counter that shifts with any header edit, so no map row can carry
+    it. hud_newhudmap.cpp's __sinit_hud_newhudmap.cpp (0x3FDE80) takes four such addresses; compared
+    as a local object (raw bytes, relocation fields included) each was a CONTENT-MISMATCH and the
+    code-exact initialiser WRONG REFERENCE (the HUD lane's round 30). Each resolves by its code now:
+    the candidate's destructor against the target's function at the referenced address, masked, its
+    own relocations resolved. The target's destructor with another count (an unrelocated word) must
+    fail, so must its array's %lo pointing 16 bytes on (masked alike, so only the destructor's own
+    relocation check can see it) -- and with the resolution switched off the four fail again."""
+    img, st = E.image(), E.symbols()
+    unit = HERE / "src" / "Apps" / "FTS" / "hud_newhudmap.cpp"
+    obj = BUILD / "hud_newhudmap.o"
+    D.compile_obj(unit, obj, includes=[HERE / "include", HERE / "src"])
+    sym = st.get("__sinit_hud_newhudmap.cpp")
+    dtors = lambda r: [f for f in r.relocs if f.symbol.startswith("__arraydtor$")]
+    r = D.compare(obj, sym.name, sym, img, st)
+    ck(r.match and len(dtors(r)) == 4 and all(f.status == "content-ok" for f in dtors(r)),
+       f"the four array destructors resolve by their code: {r.verdict}")
+    ck(sorted(f.want for f in dtors(r)) == [0x20CD30, 0x20CE10, 0x20CE30, 0x20CE50], "at their own rows")
+    for addr, word, what in ((0x20CE68, 0x24070008, "another count"), (0x20CE58, 0x24849F30, "the array 16 bytes on")):
+        bad = _image_with_word(img, addr, word)
+        r = D.compare(obj, sym.name, sym, bad, st)
+        ck(not r.match and any(f.want == 0x20CE50 and f.status == "CONTENT-MISMATCH" for f in r.relocs),
+           f"a destructor with {what} fails: {r.verdict}")
+    depth, D.LOCAL_CODE_DEPTH = D.LOCAL_CODE_DEPTH, 0
+    try:
+        r = D.compare(obj, sym.name, sym, img, st)
+    finally:
+        D.LOCAL_CODE_DEPTH = depth
+    ck(not r.match and sum(f.status == "CONTENT-MISMATCH" for f in r.relocs) == 4, "switched off, the four fail")
+
+
 def test_padding_after_a_function_must_be_zero():
     """A candidate one instruction short of a function whose next word is code fails."""
     img, st = E.image(), E.symbols()
@@ -455,6 +488,51 @@ def test_vtables_are_found_by_their_rtti():
 
 
 # --- the tree ---------------------------------------------------------------------
+
+def test_copy_supersedes_a_draft_only_where_it_matched():
+    """A hand-written inline copy that matches supersedes a generated draft only at the address it
+    matched (the integrator's fix, 2026-11-04): each overlay links its own template copies, so
+    seal_env.cpp's ~vector<CZDecalDef> scores against OVL2's row 0x5A3C60 (`ovl-copy:`), while
+    OVL1's 0x2CDB30, the named row, is its draft's. By name, the copy had dropped the draft from
+    scoring (a false regression) and the summary listed it superseded. Built together, both must
+    match and nothing be listed superseded; with the rows' roles swapped in the map (the name at
+    0x5A3C60, so the draft's home is OVL2 and its address the copy's), the same draft is superseded
+    and listed so."""
+    import contextlib
+    import io
+    import re
+
+    files = r"^(gamez/zseal/seal_env\.cpp|auto/ovl1/002CDB30\.c)$"
+    name = "__dt__Q23std52vector<10CZDecalDef,Q23std23allocator<10CZDecalDef>>Fv"
+
+    def run(st):
+        orig, E.symbols = E.symbols, (lambda: st)
+        out = io.StringIO()
+        try:
+            with contextlib.redirect_stdout(out):
+                rc = C.main(["--files", files, "--build-dir", str(BUILD / "supersede"), "-j", "2", "-v"])
+        finally:
+            E.symbols = orig
+        return rc, out.getvalue()
+
+    rc, out = run(E.symbols())
+    row = lambda unit: re.search(rf"^match\s+{re.escape(unit)}\s+{re.escape(name)}\s", out, re.M)
+    ck(rc == 0 and row("002CDB30.c") and row("seal_env.cpp"), "the OVL1 draft and the OVL2 copy each match")
+    ck("superseded" not in out, "and no draft is listed superseded")
+    swapped = HERE / "build" / "tmp" / f"syms_swapped.{os.getpid()}.txt"
+    swapped.parent.mkdir(parents=True, exist_ok=True)
+    text = E.SYMBOLS.read_text()
+    a = next(l for l in text.splitlines(True) if l.startswith(f"0x002CDB30 0x78 {name} "))
+    b = next(l for l in text.splitlines(True) if l.startswith("0x005A3C60 0x60 func_005A3C60 "))
+    swapped.write_text(text.replace(a, f"0x002CDB30 0x78 func_002CDB30  # ovl-copy: {name}\n")
+                       .replace(b, f"0x005A3C60 0x60 {name}  # swapped by the canary\n"))
+    try:
+        rc, out = run(E.SymbolTable(swapped, E.DATA))
+    finally:
+        swapped.unlink()
+    ck(row("seal_env.cpp") and not row("002CDB30.c"), "swapped, the copy matches at the draft's address")
+    ck(re.search(rf"1 generated function\(s\) superseded .*{re.escape(name)}", out), "and the draft is superseded")
+
 
 def test_everything_baselined_still_matches():
     rc = C.main([])
