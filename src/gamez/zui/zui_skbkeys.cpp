@@ -303,13 +303,14 @@ void SkbUsbDigit(const SKBUSBKEY *key, int arg)
     func_00399040((key->m_shift ? s_shiftDigitChars : s_digitChars)[key->m_usage - 30], arg);
 }
 
-/* (the keyboard units' functions not yet written, by address: the text set and laid out, the
- * cursor drawn, the composition flushed, the keyboard's state; the edit mode switched, the text's
- * fields placed; a jamo typed; whether shift composes) */
+/* (the keyboard units' functions not yet written, by address: the cursor drawn, the composition
+ * flushed, the keyboard's state; the edit mode switched, the text's fields placed; a jamo typed;
+ * whether shift composes) */
 extern "C" {
-void func_0039A5B0(const char *text, CSoftKeyboard *skb);
 void func_0039A1D0(int a, CSoftKeyboard *skb, int b);
 }
+/* the text set and laid out (0x39A5B0), the cursor put after it (0x39A400) */
+bool SkbSetText(const char *text, CSoftKeyboard *skb);
 void SkbCursorToEnd(CSoftKeyboard *skb);
 void SkbPlaySound(unsigned char which);
 bool SkbToggleCaption1(CSoftKeyboard *skb);
@@ -426,7 +427,7 @@ bool SkbClearText(CSoftKeyboard *skb)
 
     if (ShownText(EditString()) && *ShownText(EditString()))
         had = true;
-    func_0039A5B0("", skb);
+    SkbSetText("", skb);
     func_0039A1D0(0, skb, 0);
     SkbHangulClear();
     SkbPlaySound(3);
@@ -540,6 +541,34 @@ static inline float LineOffset(const CSoftKeyboard *skb)
     float h = skb->m_c4;
 
     return (float)s_textCount1 * h;
+}
+
+/* the text set into the strings (0x39A5B0; the name ours: SkbClearText sets ""): wrapped to the
+ * look's width at the edited string's scale and its font's, refused when it takes more lines than
+ * there are -- one while string 0 is edited, else two when the look has a line height --, the first
+ * line the edited string's and the second string 2's */
+bool SkbSetText(const char *text, CSoftKeyboard *skb)
+{
+    float width = skb->m_c0;
+    C2DString *s = EditString();
+    C2DFont *font = s->m_font;
+    float scale = s->m_scale * (font ? font->m_scale_factor : 1.0f);
+    std::vector<CSaferStr> lines;
+
+    if (!SkbWrapText(lines, text, font, true, scale, width))
+        return false;
+    int n = lines.size();
+    int max = s_textSel ? 1 : (!skb->m_c4 ? 1 : 2);
+
+    if (max < n)
+        return false;
+    s->SetString(n ? lines[0].c_str() : "", true);
+    s->UpdatePos();
+    if (!s_textSel) {
+        s_textString2.SetString(n >= 2 ? lines[1].c_str() : "", true);
+        s_textString2.UpdatePos();
+    }
+    return true;
 }
 
 /* the cursor put after the text (0x39A400; the name ours: SkbCloseText0 and SkbSwitchText call it,
