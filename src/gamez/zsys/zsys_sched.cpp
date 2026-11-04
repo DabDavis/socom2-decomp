@@ -192,48 +192,77 @@ bool _task_cleanup(CSched_Task *t)
     return false;
 }
 
+/* std::remove_if's instance for this list (0x34E8C0) is include/algorithm's: the world's round 14
+ * matched it through a stand-in specialisation here in the MSL headers' round-8 shape C (the
+ * search by const reference, its two copies made in order, first s5 then last s4), which the MSL
+ * headers' round 20 made the header's own for every bidirectional iterator (include/algorithm's
+ * remove_if) -- the specialisation retired, remove_if and remove_copy_if 0x34E9B0 byte-exact as
+ * before */
+
+/* ClearFreeList's three list operations, each one inline level deeper than include/list's (STAND-INS
+ * for SOCOM II's own MSL, whose list<T *> forwards to the base a level further; what they reproduce
+ * is the frame and the registers): the range erase through an inline giving back the wrapper's
+ * iterator (list<T *>'s erase over the base's -- one returning the base's iterator makes the result
+ * one of the caller's own temporaries, created ahead of the walks' begin() temporaries, where the
+ * target creates it with the erase's two by-value iterators), and the base's push_back (insert(end(),
+ * x)), whose result and position so come at depth 2, after the clear()s */
+typedef std::__list_imp<const void *, std::allocator<const void *> > SchedBase;
+
+inline CSched_Manager::iterator SchedErase(CSched_Manager *m, CSched_Manager::iterator first,
+                                           CSched_Manager::iterator last)
+{
+    return CSched_Manager::iterator(m->base::erase(first, last));
+}
+
+inline void SchedPushBack(std::list<CSched_Task *> *l, CSched_Task *const &t)
+{
+    ((SchedBase *)l)->push_back((const void *const &)t);
+}
+
+/* the same through a pointer local: the copy-back's end, this+4, is then recomputed at each pass, as
+ * the target's is (through the cast MW hoists it into a saved register, and `this` moves from s2 to
+ * s3) */
+inline void SchedPushBackTo(std::list<CSched_Task *> *l, CSched_Task *const &t)
+{
+    SchedBase *b = (SchedBase *)l;
+
+    b->push_back((const void *const &)t);
+}
+
 /* with `all`, the removed tasks deleted and taken off the list (SOCOM 1's), the list then copied
  * out and back (SOCOM II's); the free list's tasks deleted and the free list emptied (SOCOM 1's).
- * Brings remove_copy_if 0x34E9B0 byte-exact (remove_if 0x34E8C0 is include/algorithm's open list
- * instance, 6 instructions).
- * OPEN, 67 instructions (the target's size): every call, test and loop is the target's, the misses
- * are `this` (s3 here, s2 there: the copy-back loop's push_back end, this+4, is hoisted into s2 --
- * the target recomputes it each pass) and the frame. The target's slots, top down: the remove_if
- * result, the element (both loops' -- one slot), the first loop's iterator, remove_if's two
- * arguments, both loops' begin() temporaries, then the three erases' triples (the remove_if
- * erase's, clear()'s, the free list's), then both push_backs' pairs, the local list's destructor's
- * erase, the second loop's iterator and the local list at the bottom. By AddTask's frame rule
- * (zsys_sched.cpp's SchedInsert) that is: the erases one inline level down (the wrapper's own
- * erase over the base's), the push_backs two (the base's push_back), and the copy-back loop a deep
- * inline's by-value iterator (a range insert's `first`?) -- the source here makes them in source
- * order. Tried: the end kept in a local for the first erase (`iterator e`, kept: it gives the
- * target's s0), the iterators declared together or apart, the copy-back loop as for or as
- * `if (j != end) do ... while (++j != end)` (kept: the target's top test), the free list's walk as
- * for_each (adds the functor's zero byte) or a loop (kept) */
+ * Brings remove_copy_if 0x34E9B0 byte-exact (remove_if 0x34E8C0 through the specialisation above).
+ * One iterator for both copy loops: MW splits it into two webs and the
+ * second, made last, takes the frame's bottom slot above the local list (112), as the target's
+ * does -- two iterators, or one per loop, are numbered with the named locals at the top. The frame
+ * then follows round 13's creation order: the named locals (the remove_if result, the element, the
+ * iterator), the function's temporaries (remove_if's two arguments, the walks' begin()s), the depth-1
+ * expansions in source order (the erase's triple, clear()'s, the free list's), the depth-2 ones (the
+ * two push_backs' pairs, the local list's destructor's erase) and the split web */
 void CSched_Manager::ClearFreeList(bool all)
 {
     if (all) {
         iterator e = end();
         iterator r = std::remove_if(begin(), e, _task_cleanup);
 
-        erase(r, e);
+        SchedErase(this, r, e);
     }
     if (all) {
         std::list<CSched_Task *> tmp;
         CSched_Task *t;
-        iterator i, j;
+        iterator i;
 
         for (i = begin(); i != end(); ++i) {
             t = *i;
-            tmp.push_back(t);
+            SchedPushBack(&tmp, t);
         }
         clear();
-        j = tmp.begin();
-        if (j != tmp.end())
+        i = tmp.begin();
+        if (i != tmp.end())
             do {
-                t = *j;
-                push_back(t);
-            } while (++j != tmp.end());
+                t = *i;
+                SchedPushBackTo(this, t);
+            } while (++i != tmp.end());
     }
     if (m_FreeList.size()) {
         iterator e = m_FreeList.end();

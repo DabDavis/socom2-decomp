@@ -158,7 +158,12 @@ CCell *CGrid::SetCellBoundary(CPnt3D min, CPnt3D max)
 }
 
 /* the box's next cell, row by row, or none past its last (SOCOM 1's).
- * OPEN, 9 instructions (right size): SetCellBoundary's register pair, in both lookups */
+ * OPEN, 9 instructions (right size): SetCellBoundary's register pair, in the first lookup only (the
+ * second is the target's). MW's colouring (build/scratch/core/ig, igsteps.py): in the first lookup
+ * z's load is a temporary numbered before the clamped x's (v35, v39), so x is coloured first and
+ * takes a2; in the second the clamp's comes first (v43, v44), as the target wants for both. Round 9
+ * tried: x and z through locals in either order or const, a pre-increment test, z read ahead of
+ * the cell, the pointer ahead of the cell, a copy inside gridGetAtomBasePtr -- 9 or more each */
 CCell *CGrid::GetNextCell()
 {
     xCurCell++;
@@ -221,7 +226,8 @@ inline int GridCellIndex(float v, float o, float inv, const int &n)
  * store-to-load wait after m_PntCnt's store); here the loads go first. Tried: the index written
  * out, the constant in a local (declared first or at the use), the operands reordered, reference
  * parameters, the store moved; the clamp's MAX/MIN forms, the const reference count and the
- * indexed loop fixed everything else */
+ * indexed loop fixed everything else. Round 9: GridCellIndex taking the coordinate, the origin,
+ * the scale (each, pairs, all three) by const reference -- the same 4 */
 void CGrid::SetTraversalExtents(const CPnt3D *pnts, int n, bool b)
 {
     m_LineWalk = b;

@@ -17,9 +17,9 @@
  * destructors, erase, insert; ~CFlareSystem 0x33CCD0 last). 0x33CD50-0x33D22F is another unit,
  * zrndr_postfx.cpp (CPipeEffect's: the template tail closes this one, and its initialiser 0x402F80
  * follows this unit's).
- * OPEN: the delayed nodes' insert 0x33C5C0 (109 instructions, registers only: the in-place end
- * pointer in s6 against the target's s0, so every register after it shifts -- include/vector's
- * class insert end register, open for the MSL lane: its comment lists the shapes tried);
+ * The delayed nodes' insert 0x33C5C0 is byte-exact since include/vector's class insert takes its
+ * end as an iterator object (the MSL headers' round 19; 109 instructions off before, the in-place
+ * end pointer in s6 against the target's s0);
  * CDynTexList::Free 0x33BAA0 is byte-exact once 0x1FB3D0/0x1FB300 carry vector<CTexHandle *>'s
  * constructor and destructor names (they carry vector<CAssetLib *>'s) and 0x1FDDA0 vector<CTexPalette
  * *>'s destructor -- measured with the map so renamed: the pipe's Free and hud_main.cpp's own copies
@@ -1025,9 +1025,8 @@ void CPipe::PushOpacity(float opacity)
 }
 #pragma auto_inline reset
 
-/* zcamera's: a world point projected to the screen, false behind the camera (0x290450, not named)
- * -- and zvid_init.cpp's depth under a screen point, false off the screen */
-extern "C" bool func_00290450(zdb::CCamera *camera, const CPnt3D *p, CPnt4D *out);
+/* zvid_init.cpp's: the depth under a screen point, false off the screen (the point's projection is
+ * zdb::CCamera::GetScreenPosPers, 0x290450: false behind the camera) */
 extern "C" bool func_003B0E70(const float *p, unsigned int *z);
 
 /* SOCOM II's (the name ours; pinned: CFlareSystem::Tick calls it out of line): whether a point is in
@@ -1051,7 +1050,7 @@ bool CPipe::TestFlare(const CPnt3D *pos, CPnt4D *out, float pull)
         moved = p;
         pos = &moved;
     }
-    if (func_00290450(m_camera, pos, o)) {
+    if (m_camera->GetScreenPosPers(pos, o)) {
         unsigned int z;
 
         if (func_003B0E70((float *)o, &z))

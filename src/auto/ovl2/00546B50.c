@@ -7,9 +7,9 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
+M2C_UNK HandleKiller__10CZSealBodyFib(char *, s32, M2C_UNK); /* extern */
 M2C_UNK StabBuddy__10CZSealBodyFP10CZSealBody();    /* extern */
 M2C_UNK func_00547860(char *);                      /* extern */
-M2C_UNK func_0059EE20(char *, s32, M2C_UNK);        /* extern */
 extern s32 data_0044D400;
 
 s32 ExecuteAction_KnifeAttack__10CZSealBodyFP10CZSealBody(char *arg0, char *arg1) {
@@ -22,7 +22,7 @@ s32 ExecuteAction_KnifeAttack__10CZSealBodyFP10CZSealBody(char *arg0, char *arg1
     temp_s1 = SC_MEMBER(arg0, s32 *, 4);
     SC_MEMBER(arg1, s32 *, 0xFBC) = temp_s1;
     func_00547860(arg1);
-    func_0059EE20(arg1, temp_s1, 0);
+    HandleKiller__10CZSealBodyFib(arg1, temp_s1, 0);
     if (SC_MEMBER(arg0, s32 *, 0x528) != data_0044D400) {
         SC_MEMBER(arg0, u16 *, 0x5AE) = (u16) (SC_MEMBER(arg0, u16 *, 0x5AE) + 1);
         SC_MEMBER(arg0, u16 *, 0x5B8) = (u16) (SC_MEMBER(arg0, u16 *, 0x5B8) + 1);

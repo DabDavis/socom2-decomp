@@ -326,7 +326,7 @@ void CSealCtrl::SetViewRange(float range)
     else
         _saturate(&range, data_006506A0, far);
     m_visrange.m_goal = m_visrange.m_value = range;
-    m_ec = range;
+    m_aiParams.visual_range = range;
 }
 
 /* the cross product through VU0, normalised when asked (OVL2 0x592400, SOCOM 1's: after its

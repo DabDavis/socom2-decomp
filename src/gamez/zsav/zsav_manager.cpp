@@ -200,7 +200,9 @@ void SaveDecrypt(char *buf, int size)
  * the raw key register for the store (`andi t3,t1; dsll32 t1,t1`); with the old key in a local, as
  * here, the sign extension reads the masked copy (`dsll32 t1,t3`), and every form that xors with
  * the key itself (`buf[i] ^= key` before the update, a temporary for the new key, casts) orders the
- * sign extension first, which re-colours the unrolled loop (84 differing) */
+ * sign extension first, which re-colours the unrolled loop (84 differing); the old key a plain or
+ * signed char (17), an int or an explicit (char) cast at the xor (7: the same) -- the world lane's
+ * round 14 */
 void SaveEncrypt(char *buf, int size)
 {
     unsigned char key = 150;

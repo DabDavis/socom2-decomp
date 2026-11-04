@@ -1541,10 +1541,33 @@ def auto_files():
     return [f for f in AUTO.rglob("*") if f.suffix in (".c", ".cpp")]
 
 
-def stale(st: E.SymbolTable) -> set[int]:
-    """Drafts that define a name other than their row's, or call/reference a placeholder
-    the map renamed since."""
+def map_history_names(root: Path = HERE) -> set[str]:
+    """Every name symbols.txt and data.txt have held, read off git's history of the two files (each
+    row a commit removed or rewrote: a rename removes the old row). Empty when there is no history
+    to read (no git, a shallow clone or an export) -- the placeholder rule below still applies."""
+    try:
+        out = subprocess.run(["git", "-C", str(root), "log", "--format=", "-p", "-U0", "--no-renames",
+                              "--", "symbols.txt", "data.txt"],
+                             capture_output=True, text=True, check=True).stdout
+    except (OSError, subprocess.CalledProcessError):
+        return set()
+    return {m.group(3) for m in (E.SymbolTable._LINE.match(l[1:]) for l in out.splitlines()
+                                  if l.startswith("-0x")) if m}
+
+
+# a draft's code with its comments and string literals taken out: the names it spells as code
+_COMMENT_OR_STRING = re.compile(r"/\*.*?\*/|//[^\n]*|\"(?:[^\"\\\n]|\\.)*\"", re.S)
+
+
+def stale(st: E.SymbolTable, history: set[str] | None = None) -> set[int]:
+    """Drafts that define a name other than their row's, or call/reference a name the map renamed
+    since: a placeholder its row no longer carries, or a real name the map held once and holds no
+    longer (`history`, map_history_names() by default) -- the UI's round 20 integration: 0x2808D0's
+    draft went on calling SkbOpen__Fv after the row took its signature (SkbOpen__FP13C2DAnimCmdHdrPf),
+    a call no row resolves, which only the full check caught (GCC round 28a)."""
     names = {s.name for s in st.symbols}
+    current = names | {s.name for s in st.data}
+    left = (map_history_names() if history is None else history) - current
     ident = re.compile(r"[A-Za-z_]\w*$")
 
     def renamed(r: str) -> bool:
@@ -1560,6 +1583,11 @@ def stale(st: E.SymbolTable) -> set[int]:
         own = f"func_{a:08X}"
         gone = any(r not in names and r != own and renamed(r)
                    for r in re.findall(r"\b(func_[0-9A-F]{8})\b", txt))
+        # a real name the map no longer has (placeholders are the rule above's: one whose row took
+        # a template's name is still called by address); the draft's own row's names are its own
+        code = _COMMENT_OR_STRING.sub(" ", txt)
+        gone = gone or any(r in left and not E.is_placeholder(r) and r != own
+                           for r in set(re.findall(r"\b[A-Za-z_]\w*\b", code)))
         # a template-named row's draft defines its placeholder and renames it in the object
         # (`/* sc: as=OLD NEW */`, last in a GCC draft's directive): stale when NEW is no longer
         # the map's name

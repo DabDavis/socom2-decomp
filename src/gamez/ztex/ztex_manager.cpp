@@ -244,7 +244,9 @@ bool CTexture::HasMipLevel(CTexture *tex)
  * SOCOM II's mip walk).
  * OPEN, register-only (42 instructions, the size right): the target keeps this in s2, lib s1, tex
  * s0, the walk i s4, the asset walk and the mip walk s3, the list's end s5; this gives i s0, tex s1,
- * lib s2, this s3, the walks s4. Settled on the way: FindPalette is called out of line (pinned), the
+ * lib s2, this s3, the walks s4 (MW's colouring, the world lane's round 14: the walk's iterator is a
+ * scalariser temporary of degree 86, deferred with this, lib and tex and so coloured first of them;
+ * the target colours it after this, which no numbering of a temporary gives). Settled on the way: FindPalette is called out of line (pinned), the
  * first find's result a bool local (andi), the second `lib && ...` a value, the asset list's end a
  * local kept in s5, the mip tests written out in the if (an inline bool helper materialises them),
  * and the pushed texture a copy made at the push (the target stores it to the stack only then; t

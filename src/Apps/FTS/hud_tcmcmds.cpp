@@ -94,10 +94,19 @@ public:
     bool IsEnabled() const { return m_enabled; }
 };
 
+/* a command's id (zseal.h's; SOCOM 1's DWARF: a byte, 0..66) -- a SIGNED byte here: the calls load the
+ * member with lb, where an unsigned byte enum (0..66, or zseal.h's CMD_LAST 255) folds the narrowing
+ * into an lbu (the respell's measurement, the HUD lane round 37) */
+enum FT_COMMAND { CMD_NONE = -1, CMD_UNKNOWN = 0, CMD_ACTION = 1, CMD_MAX = 66 };
+
 /* a squad of SEALs (zseal.h's CSealUnit: its orders) */
 class CSealUnit {
 public:
     static CSealUnit *GetUnitByTeam(unsigned int team);
+    /* the order confirmed, and the squad's canned answer to a voice order (the kit's, OVL2
+     * 0x5EABA0 and 0x5EAD70, named in its round 29) */
+    bool ConfirmCommand(FT_COMMAND cmd, unsigned char item, int flags);
+    bool AcknowledgeCommand(FT_COMMAND cmd, unsigned char item, int flags);
     void *GetDataPtr();
     CEntity *GetLeader() const;   // OVL2 0x5E8A90 (SOCOM 1's const GetLeader)
 
@@ -183,8 +192,6 @@ extern "C" {
 /* the SEAL lane's, no names yet */
 void func_005EAF20(CSealUnit *unit, int msg, int flags, float rate);
 void func_005EAEB0(CSealUnit *unit);
-void func_005EAD70(CSealUnit *unit, int member, unsigned char cmd, int flags);
-void func_005EABA0(CSealUnit *unit, int member, unsigned char cmd, int flags);
 bool func_0058DFA0(unsigned char member);
 /* the mission's */
 void func_002B6530(void *queue, const char *name, int a, int b, int c, float delay);
@@ -248,6 +255,262 @@ static inline const std::list<CEntity *> &tcmEntities()
 
 /* -------------------------------------------------------------------------------------------- */
 
+/* the layout's statics (OVL1 data 0x3DC9F0 on: 8-byte-spaced file statics, the target loads them
+ * with lwc1) -- the two the initialiser reads */
+static float s_tcmColumnX = 20.0f;   // 0x3DC9F0
+/* the cursor bar's place and size, its text's offsets in it, the part the highlight covers */
+static float s_tcmCursorY = 20.0f;   // 0x3DC9F8
+static float s_tcmCursorW = 600.0f;   // 0x3DCA00
+static float s_tcmCursorH = 27.0f;   // 0x3DCA08
+static float s_tcmCursorTextX = 10.0f;   // 0x3DCA10
+static float s_tcmCursorTextY = 21.0f;   // 0x3DCA18
+static float s_tcmCursorSplit = 0.6f;   // 0x3DCA20
+static float s_tcmLeftX = -256.0f;   // 0x3DCA80
+/* the root column's slide rates, in and out (0x3DCA88, 0x3DCA90: pixels a second) */
+static float s_tcmSlideIn = 1200.0f;   // 0x3DCA88
+static float s_tcmSlideOut = 1000.0f;   // 0x3DCA90
+/* the cursor's fade rates, in and out (0x3DCA98, 0x3DCAA0: alpha a second) */
+static float s_tcmFadeIn = 450.0f;   // 0x3DCA98
+static float s_tcmFadeOut = 600.0f;   // 0x3DCAA0
+/* the closing menu's hold, and its pulse: the rate and the direction it swings (0x3DCAA8-0x3DCAB8) */
+static float s_tcmCloseHold = 1.0f;   // 0x3DCAA8
+static float s_tcmPulseRate = 12.0f;   // 0x3DCAB0
+static float s_tcmPulseDir = 1.0f;   // 0x3DCAB8
+/* computed by the unit's initialiser (0x3FF430), in this order: the first column's left, the
+ * columns' span, the cursor's colour (the layout reads its three components, the slide its alpha) */
+static float s_tcmLeft = s_tcmColumnX;   // 0x413020
+static float s_tcmSpan = s_tcmColumnX - s_tcmLeftX;   // 0x413028
+static CPnt4D s_tcmCursorColor(160.0f, 250.0f, 250.0f, 100.0f);   // 0x413030
+
+/* the menu's columns (constructed by the initialiser 0x3FF430) */
+CTCMColumn g_tcmColumns[8];
+/* the closing menu's pulse, 0 to 1 and back (OVL1 bss 0x413080) */
+static float s_tcmPulse;
+
+/* the screen's size (zVid's, OVL1 bss 0x4A44C4/0x4A44C8; no rows) */
+extern unsigned int data_004A44C4;
+extern unsigned int data_004A44C8;
+
+/* the HUD: its font and its text colour (hud_main.cpp's) */
+class CHUD {
+public:
+    static CPnt4D m_hud_textcolor;
+
+    unsigned char _0[0x498];
+    C2DFont *m_myfont;   // 0x498
+};
+
+extern CHUD *theHUD;
+
+/* the layout of one column and its children from a depth on (0x230870, not written yet: recursive;
+ * the parameter order is the call's set-up order) */
+extern "C" void func_00230870(CTCM *tcm, CTCMNode *cur, float x, float y, float dir, unsigned int depth,
+                              bool b);
+
+
+/* the node the menu's path selects (0x236B20, hud_tcm.cpp's, not written yet) */
+extern "C" CTCMNode *func_00236B20(CTCM *tcm);
+
+/* the menu laid out for its mode (0x231690; the tree's Open and ShowRoot call it with 0, the menu
+ * object's tick with the frame's time; the name ours): opening, the cursor fades in as the root
+ * slides in, then the menu is open (1); open, the cursor and the columns placed, and closed when the
+ * selected item hides; closing (2, 3), the columns settle, then the closing pulse runs out or the
+ * cursor fades as the root slides out, and the menu waits (3) or is shut (4: the path emptied, every
+ * node hidden); shut, the root kept at the left edge; listening (5, 6), the cursor and the columns */
+void CTCM::Layout(float t)
+{
+    CTCMNode *cur = func_00236B20(this);
+
+    switch (m_mode.m_mode) {
+    case 0: {
+        bool faded = FadeCursor(cur, true, t);
+        bool slid = SlideRoot(cur, false, t);
+
+        if (faded && slid)
+            m_mode.Set(1);
+        break;
+    }
+    case 2:
+    case 3: {
+        bool settled = true;
+
+        for (unsigned int i = 0; i < 8 && settled; i++) {
+            if (0.0f != g_tcmColumns[i].m_4)
+                settled = false;
+        }
+        if (!settled) {
+            func_00230870(this, cur, s_tcmLeft, 1.0f, -1.0f, 0, false);
+        } else if (m_dce) {
+            m_dd0 += t;
+            if (m_dd0 > s_tcmCloseHold) {
+                m_dce = 0;
+                m_dd0 = s_tcmCloseHold;
+            }
+            s_tcmPulse += s_tcmPulseDir * (t * s_tcmPulseRate);
+            if (s_tcmPulse > 1.0f) {
+                s_tcmPulse = 1.0f;
+                s_tcmPulseDir *= -1.0f;
+            } else if (s_tcmPulse < 0.0f) {
+                s_tcmPulse = 0.0f;
+                s_tcmPulseDir *= -1.0f;
+            }
+            func_00230870(this, cur, s_tcmLeft, 1.0f, s_tcmPulse, 0, false);
+        } else {
+            bool faded = FadeCursor(cur, false, t);
+            bool slid = SlideRoot(cur, true, t);
+
+            if (faded && slid) {
+                if (m_mode.m_mode == 2) {
+                    m_mode.Set(3);
+                } else {
+                    m_mode.Set(4);
+                    m_path.clear();
+                    HideAll();
+                }
+            }
+        }
+        break;
+    }
+    case 1:
+        PlaceCursor(cur);
+        func_00230870(this, cur, s_tcmLeft, 1.0f, -1.0f, 0, false);
+        if (cur->m_state == TCM_HIDDEN) {
+            m_sounds.Play(TCM_SND_SLIDE);
+            Close(false);
+        }
+        break;
+    case 5:
+    case 6:
+        PlaceCursor(cur);
+        func_00230870(this, cur, s_tcmLeft, 1.0f, -1.0f, 0, false);
+        break;
+    case 4:
+        AlignRoot(cur);
+        break;
+    }
+}
+
+/* the cursor faded in or out by a frame: its three bitmaps' alpha moved at the fade's rate and
+ * clamped, true once it is fully in or out (0x231540, the menu layout 0x231690's; the name ours) */
+bool CTCM::FadeCursor(CTCMNode *cur, bool in, float dt)
+{
+    bool done = false;
+    float a = m_9c0.GetTrans();
+
+    a += (in ? 1.0f : -1.0f) * (dt * (in ? s_tcmFadeIn : s_tcmFadeOut));
+    if (!in && a < 0.0f) {
+        a = 0.0f;
+        done = true;
+    } else if (in && a > s_tcmCursorColor.w) {
+        a = s_tcmCursorColor.w;
+        done = true;
+    }
+    m_7d0.SetTrans(0, a);
+    m_7d0.SetTrans(3, a);
+    m_9c0.SetTrans(a);
+    m_bb0.SetTrans(0, a);
+    m_bb0.SetTrans(1, a);
+    PlaceCursor(cur);
+    return done;
+}
+
+/* the cursor laid out on the selected item: its two bars coloured and placed, the screen's dimmer
+ * stretched over the screen, the item's second text set in the HUD's font and colour at the bar's
+ * corner, faded with the menu (0x231310, FadeCursor's last call; the name ours). Pinned: fourteen
+ * statements, so -inline auto takes it into FadeCursor, which the target calls it from */
+#pragma auto_inline off
+void CTCM::PlaceCursor(CTCMNode *cur)
+{
+    m_9c0.SetColor(s_tcmCursorColor.x, s_tcmCursorColor.y, s_tcmCursorColor.z);
+    m_bb0.SetColor(s_tcmCursorColor.x, s_tcmCursorColor.y, s_tcmCursorColor.z);
+    m_7d0.SetPos(0.0f, 0.0f, (float)data_004A44C4, (float)data_004A44C8);
+    m_9c0.SetPos(s_tcmColumnX, s_tcmCursorY, s_tcmColumnX, s_tcmCursorY + s_tcmCursorH,
+                 s_tcmColumnX + s_tcmCursorW * s_tcmCursorSplit, s_tcmCursorY + s_tcmCursorH,
+                 s_tcmColumnX + s_tcmCursorW * s_tcmCursorSplit, s_tcmCursorY);
+    m_bb0.SetPos(s_tcmColumnX + s_tcmCursorW * s_tcmCursorSplit, s_tcmCursorY,
+                 s_tcmColumnX + s_tcmCursorW * s_tcmCursorSplit, s_tcmCursorY + s_tcmCursorH,
+                 s_tcmColumnX + s_tcmCursorW, s_tcmCursorY + s_tcmCursorH, s_tcmColumnX + s_tcmCursorW,
+                 s_tcmCursorY);
+    cur->m_text2.SetFont(theHUD->m_myfont);
+    cur->m_text2.m_scale = 1.0f;
+    cur->m_text2.m_color[0] = CHUD::m_hud_textcolor.x;
+    cur->m_text2.m_color[1] = CHUD::m_hud_textcolor.y;
+    cur->m_text2.m_color[2] = CHUD::m_hud_textcolor.z;
+    cur->m_text2.m_color[3] = CHUD::m_hud_textcolor.w;
+    cur->m_text2.SetPos((int)(s_tcmColumnX + s_tcmCursorTextX), (int)(s_tcmCursorY + s_tcmCursorTextY));
+    cur->m_text2.SetTrans(80.0f * m_da0);
+}
+#pragma auto_inline reset
+
+/* the root column slid a frame, out to the left edge or in to the first column's place, from its
+ * first shown item's x, and laid out there; true once it arrives or has no shown item (0x231150,
+ * the menu layout 0x231690's; the name ours) */
+bool CTCM::SlideRoot(CTCMNode *cur, bool out, float dt)
+{
+    bool done = false;
+    float x = s_tcmLeftX - 99.9f;
+    CTCMNode *column = GetColumn(0);
+    /* cleared after the lookup: a scratch register, not a saved one */
+    bool found = false;
+
+    if (column && !column->NoChildren()) {
+        CTCMNode *node;
+        unsigned int n = column->GetNumChildren();
+
+        for (unsigned int i = 0; i < n; i++) {
+            node = column->GetChild(i);
+
+            if (node->m_state == TCM_SHOWN && !node->m_741) {
+                x = node->m_back.m_tris[0].m_vertex[0][0];
+                x +=(out ? -1.0f : 1.0f) * (dt * (out ? s_tcmSlideOut : s_tcmSlideIn));
+                found = true;
+                break;
+            }
+        }
+    }
+    if (!found) {
+        done = true;
+    } else if (out && x < s_tcmLeftX) {
+        x = s_tcmLeftX;
+        done = true;
+    } else if (!out && x > s_tcmLeft) {
+        x = s_tcmLeft;
+        done = true;
+    }
+
+    /* a ternary: the division's block padded to its latency before the join (an if/else leaves one
+     * nop and schedules the call's set-up into the shadow) */
+    float t = x - s_tcmLeftX > 0.0f ? x / s_tcmSpan : 0.0f;
+
+    func_00230870(this, cur, x, t, -1.0f, 0, true);
+    return done;
+}
+
+/* the root column laid out again at the left edge unless its first shown item is there already
+ * (0x231060, the menu layout 0x231690's last call; the name ours) */
+void CTCM::AlignRoot(CTCMNode *cur)
+{
+    float x = s_tcmLeftX - 99.9f;
+    CTCMNode *column = GetColumn(0);
+
+    /* the node declared ahead of the count and the index (the index takes the lower register) */
+    if (column && !column->NoChildren()) {
+        CTCMNode *node;
+        unsigned int n = column->GetNumChildren();
+
+        for (unsigned int i = 0; i < n; i++) {
+            node = column->GetChild(i);
+
+            if (node->m_state == TCM_SHOWN && !node->m_741) {
+                x = node->m_back.m_tris[0].m_vertex[0][0];
+                break;
+            }
+        }
+    }
+    if (x != s_tcmLeftX)
+        func_00230870(this, cur, s_tcmLeftX, 0.0f, -1.0f, 0, false);
+}
+
 /* an item made and kept, unless the name is too long or already held (its out-of-line Find is
  * inlined here; the entry lives in memory: push_back takes its address) */
 CTCMEntry *CTCMCache::Add(const char *name, TCMFunc action, int actionArg, TCMFunc update, int updateArg)
@@ -293,19 +556,6 @@ CTCMEntry *CTCMCache::Find(const char *name)
     }
     return found;
 }
-
-/* the layout's statics (OVL1 data 0x3DC9F0 on: 8-byte-spaced file statics, the target loads them
- * with lwc1) -- the two the initialiser reads */
-static float s_tcmColumnX = 20.0f;   // 0x3DC9F0
-static float s_tcmLeftX = -256.0f;   // 0x3DCA80
-/* computed by the unit's initialiser (0x3FF430), in this order: the first column's left, the
- * columns' span, the cursor's colour (the layout reads its three components, the slide its alpha) */
-static float s_tcmLeft = s_tcmColumnX;   // 0x413020
-static float s_tcmSpan = s_tcmColumnX - s_tcmLeftX;   // 0x413028
-static CPnt4D s_tcmCursorColor(160.0f, 250.0f, 250.0f, 100.0f);   // 0x413030
-
-/* the menu's columns (constructed by the initialiser 0x3FF430) */
-CTCMColumn g_tcmColumns[8];
 
 /* a node opened: its children shown in a new column, which slides in as the last slides out (an
  * item's command that returns 1 opens its node so: the tree's 0x234F40 calls it with no player) */
@@ -453,14 +703,14 @@ int tcmTeamMember(CZSealBody *player, int member)
         CSealUnit *unit = CSealUnit::GetUnitByTeam(s_tcmTeam);
 
         if (unit && player && player->m_socom2_e1_4)
-            func_005EAD70(unit, s_tcmMember, 0, 0);
+            unit->AcknowledgeCommand((FT_COMMAND)s_tcmMember, 0, 0);
         return 1;
     }
     if (!func_0058DFA0(m)) {
         CSealUnit *unit = CSealUnit::GetUnitByTeam(s_tcmTeam);
 
         if (unit && player && player->m_socom2_e1_4) {
-            func_005EABA0(unit, s_tcmMember, 0, 0);
+            unit->ConfirmCommand((FT_COMMAND)s_tcmMember, 0, 0);
             unit->Order(player, s_tcmMember, 0, 0);
             r = 0;
         }
@@ -492,13 +742,13 @@ int tcmTeamCommand(CZSealBody *player, int cmd)
         CSealUnit *unit = CSealUnit::GetUnitByTeam(s_tcmTeam);
 
         if (unit && player && player->m_socom2_e1_4)
-            func_005EAD70(unit, s_tcmMember, c, 0);
+            unit->AcknowledgeCommand((FT_COMMAND)s_tcmMember, c, 0);
         return 1;
     }
     CSealUnit *unit = CSealUnit::GetUnitByTeam(s_tcmTeam);
 
     if (unit && player && player->m_socom2_e1_4) {
-        func_005EABA0(unit, s_tcmMember, c, 0);
+        unit->ConfirmCommand((FT_COMMAND)s_tcmMember, c, 0);
         unit->Order(player, s_tcmMember, c, 0);
         r = 0;
     }
@@ -772,7 +1022,7 @@ void tcmRecoCancel()
     CSealUnit *unit = CSealUnit::GetUnitByTeam(s_tcmTeam);
 
     if (unit && player && player->m_socom2_e1_4)
-        func_005EAD70(unit, 0, 0, 0);
+        unit->AcknowledgeCommand(CMD_UNKNOWN, 0, 0);
 }
 
 int tcmUpdateVoteAll(CZSealBody *player, int arg)
@@ -821,7 +1071,7 @@ int tcmNodeAction(CZSealBody *player, int arg)
         CSealUnit *unit = CSealUnit::GetUnitByTeam(s_tcmTeam);
 
         if (unit && player && player->m_socom2_e1_4)
-            func_005EAD70(unit, 1, 0, 0);
+            unit->AcknowledgeCommand(CMD_ACTION, 0, 0);
         return 1;
     }
     CNodeAction *action = s_tcmCurNode->m_action;

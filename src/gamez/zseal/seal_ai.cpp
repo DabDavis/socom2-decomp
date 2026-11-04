@@ -123,6 +123,9 @@ class CAiSGrenade : public CAiState {
 public:
     virtual void OnSignal(SIGNAL sig, CSealCtrlAi *ctrl);
     virtual int Virtual14(CSealCtrlAi *ai, CAiState *sub);
+    /* slots 0x2C and 0x3C of its table, both false (OVL2 0x575B30, 0x575B40: the tail's stubs) */
+    virtual bool CanPursue(CSealCtrlAi *ai) const { return false; }
+    virtual bool Virtual3C(CSealCtrlAi *ai) { return false; }
     virtual ~CAiSGrenade();
 
     /* (the names ours: what OnSignal's reset clears) */
@@ -142,6 +145,9 @@ public:
 
 class CAiSDeploy : public CAiState {
 public:
+    /* slots 0x24 and 0x3C of its table, both false (OVL2 0x575BE0, 0x575BD0: the tail's stubs) */
+    virtual bool CanAttack() const { return false; }
+    virtual bool Virtual3C(CSealCtrlAi *ai) { return false; }
     virtual ~CAiSDeploy();
 };
 
@@ -500,7 +506,7 @@ extern "C" void func_00570D90(CSealCtrlAi *ai, bool on)
     if (on && !NoShoot(e))
         SetRange6F4(ai, data_0064FE48);
     else
-        SetRange6F4(ai, ai->m_d8);
+        SetRange6F4(ai, ai->m_aiParams.courage);
 }
 
 /* the valve of a name, or none (OVL2 0x574730; SOCOM 1's, without its fourth valve and the alias) */
@@ -954,17 +960,95 @@ struct CAlertness {
     float m_alert;   // 0xb4
 };
 
-extern "C" unsigned char func_00560A60(CAlertness *a)
+/* (OVL2 0x560A60: SOCOM 1's GetAiAware() const -- the band an enum: `li 4` where it is inlined) */
+AI_AWARE CSealCtrlAi::GetAiAware() const
 {
     for (int i = 0; i <= 4; i++)
-        if (InBand(a->m_alert, i))
-            return i;
-    return 4;
+        if (InBand(m_aware.m_value, i))
+            return (AI_AWARE)i;
+    return AIA_SPECIFIC;
+}
+
+/* the bands' floors (OVL2 data 0x65C6E0: 0, 0.05, 0.4, 0.6, 0.8) */
+extern "C" float data_0065C6E0[5];
+
+/* the alertness's value and goal set by the flags -- 1 the value, 2 the goal, 4 the goal added to
+ * the given one first -- each held within [0, 1], the band the value left kept and a change of band
+ * noted; past GENERAL the goal is kept at GENERAL's floor (OVL2 0x5612F0: SOCOM 1's SetAiAware(float,
+ * unsigned int), the sleeper's test, the dead SEAL's zero and the bands new) */
+void CSealCtrlAi::SetAiAware(float value, unsigned int flags)
+{
+    if (IsSleeping() && IsAiBit15())
+        return;
+
+    AI_AWARE old = GetAiAware();
+
+    if (!m_entity->m_isAlive)
+        value = 0.0f;
+    if (flags & 1) {
+        float v = value;
+
+        if (flags & 4)
+            v += m_aware.m_goal;
+        _saturate(&v, 0.0f, 1.0f);
+        m_5c4 = GetAiAware();
+        m_aware.m_value = v;
+    }
+    if (flags & 2) {
+        float v = value;
+
+        if (flags & 4)
+            v += m_aware.m_goal;
+        _saturate(&v, 0.0f, 1.0f);
+        m_aware.m_goal = v;
+    }
+
+    AI_AWARE now = GetAiAware();
+
+    if (old != now)
+        m_5c8 = 0;
+    if (now >= AIA_GENERAL && m_aware.m_goal < data_0065C700[AIA_GENERAL])
+        m_aware.m_goal = data_0065C6E0[AIA_GENERAL];
+}
+
+/* the alertness raised to a band's top (less a thousandth): a dead SEAL's to none; at DIRECTION with
+ * a point, an event of kind 10 made there unless already SPECIFIC; a time of -1 asks the difficulty's
+ * delay for GENERAL and above (none when that band already waits); a delay, for any but a Navy SEAL,
+ * leaves the band waiting with it, otherwise the value is raised at once and nothing waits (OVL2
+ * 0x561110: SOCOM 1's SetAiAware(AI_AWARE, const CPnt3D *), its event kind 2 for 1.5 seconds, the
+ * time new) */
+void CSealCtrlAi::SetAiAware(AI_AWARE aware, const CPnt3D *pos, float time)
+{
+    if (IsSleeping() && IsAiBit15())
+        return;
+    if (!m_entity->m_isAlive)
+        aware = AIA_UNAWARE;
+
+    float level = data_0065C700[aware] - 0.001f;
+
+    if (pos && aware == AIA_DIRECTION) {
+        if (GetAiAware() < AIA_SPECIFIC)
+            SetAiEvent((CAiEvent::EVENT)10, 3.0f, pos);
+    }
+    if (time == -1.0f && aware >= AIA_GENERAL) {
+        if (m_awarePending == aware)
+            return;
+        time = data_0064FE60[data_0066AFD8][5];
+    }
+    if (time > 0.0f && !IsNavySeal()) {
+        m_awareTimer = time;
+        m_awarePending = aware;
+        return;
+    }
+    if (level > m_aware.m_value)
+        SetAiAware(level, 1);
+    m_awareTimer = 0.0f;
+    m_awarePending = AIA_UNAWARE;
 }
 
 extern "C" {
-/* (OVL2 0x571150, not written yet: the sound made, or not, by the stance -- 11 for the SEAL's own) */
-bool func_00571150(CSealCtrlAi *ai, short sound, unsigned char stance);
+/* (OVL2 0x571150, below: the anim played, or not, in the state -- 11 for the SEAL's own) */
+bool func_00571150(CSealCtrlAi *ai, short sound, SEAL_STATE stance);
 /* (OVL2 data: how long a sound holds before another) */
 extern float data_0064FE50;
 /* (OVL1 data: the game's clock, as this unit reads it) */
@@ -983,11 +1067,11 @@ extern float data_004365C0;
  * level`, the struct's level a plain byte (0x100). */
 extern "C" bool func_00571010(CSealCtrlAi *ai, short sound, AI_SOUND_PRIORITY pri, unsigned char stance)
 {
-    unsigned char band = func_00560A60((CAlertness *)ai);
+    unsigned char band = ai->GetAiAware();
     bool made = false;
 
     if (pri.m_level >= band) {
-        made = func_00571150(ai, sound, stance);
+        made = func_00571150(ai, sound, (SEAL_STATE)stance);
         if (made) {
             ai->m_sound = sound;
             ai->m_sound_time = data_0064FE50 + data_004365C0;
@@ -1425,6 +1509,55 @@ extern "C" bool func_005712F0(CSealCtrlAi *ai, short anim)
     return r;
 }
 
+extern "C" {
+/* the anims the SEAL may be held in (OVL1 data: AnimTypes statics 8 bytes apart -- by SOCOM 1's
+ * order, after its DefuseBombEnd pair, likely Ladder2Slide and PistolLadder2Slide) */
+extern short data_003DEED0;
+extern short data_003DEED8;
+/* (OVL2 0x54F6E0, seal.cpp's span: a test of the body's top blend, asked with three trues) */
+bool func_0054F6E0(CZSealBody *seal, bool a, bool b, bool c);
+/* (seal_body.cpp's: a blend pushed for an anim type in a state, OVL2 0x588BC0) */
+void *func_00588BC0(CZSealBody *seal, AnimType type, int state, int flag, int kind);
+}
+
+/* an anim the AI plays: the sound's anim forgotten first; the state 11 the SEAL's own stance; never
+ * while held in either of two anims, while the top blend says so, by a dead SEAL, for none, or when
+ * it already plays -- the three CQB falls (76, 79, 80) pushed in the state 8 with the SEAL killed
+ * (DEATH_CQB), any other after the body cleared to its base, in the state; whether it was played
+ * (OVL2 0x571150, new in SOCOM II: 0x571010 and the AI states call it; the name unknown) */
+extern "C" bool func_00571150(CSealCtrlAi *ai, short anim, SEAL_STATE state)
+{
+    bool r = false;
+    CZSealBody *seal = (CZSealBody *)ai->m_entity;
+
+    ai->m_sound = -1;
+    if (state == stateDone)
+        state = seal->GetStance(true);
+
+    bool held = seal->IsCurrentBlend((AnimType)data_003DEED0) || seal->IsCurrentBlend((AnimType)data_003DEED8);
+    bool top = func_0054F6E0(seal, true, true, true);
+
+    if (seal->m_isAlive && !top && !held) {
+        if (anim != -1 && !func_005712F0(ai, anim)) {
+            switch (anim) {
+            case 79:
+            case 80:
+            case 76:
+                func_00588BC0(seal, (AnimType)anim, 8, 0, 0);
+                seal->SetHealth(0.0f, DEATH_CQB);
+                r = true;
+                break;
+            default:
+                seal->ClearToBase(false);
+                func_00588BC0(seal, (AnimType)anim, state, 0, 0);
+                r = true;
+                break;
+            }
+        }
+    }
+    return r;
+}
+
 
 /* the AI's turn: at its own rate, slowed by the speed (between 0.35 and the whole, OVL2 data
  * 0x650100/0x650108 -- this function's statics) when the alertness is low or the look deploys,
@@ -1641,8 +1774,23 @@ bool CSealCtrlAi::ChangeStanceDelayed(SEAL_STANCE from, SEAL_STANCE to, float de
     return true;
 }
 
-/* the mission (theMission, OVL1 bss 0x4364E0) -- only its clock (remote_control.cpp's reading), and
- * the team valves refreshed and the fade to the mission's end (SOCOM 1's; OVL1 0x2B23A0, 0x2A97C0) */
+/* a ladder and the mission's list of them (seal_env.cpp's stand-ins: SOCOM 1's CLadderData and
+ * CLadderList, its GetLadderByIndex OVL1 0x2A9210) */
+class CLadderData {
+public:
+    unsigned char _0[0x1c];
+    int m_users;   // 0x1c: the SEALs on it
+    unsigned char _20[0x28 - 0x20];
+};
+
+class CLadderList {
+public:
+    CLadderData *GetLadderByIndex(int index);
+};
+
+/* the mission (theMission, OVL1 bss 0x4364E0) -- only its clock (remote_control.cpp's reading), its
+ * ladders (seal_env.cpp's reading), and the team valves refreshed and the fade to the mission's end
+ * (SOCOM 1's; OVL1 0x2B23A0, 0x2A97C0) */
 class CMission {
 public:
     void RefreshTeamValves();
@@ -1650,6 +1798,8 @@ public:
 
     unsigned char _0[0xe0];
     float m_time;   // 0xe0
+    unsigned char _e4[0x1804 - 0xe4];
+    CLadderList *m_ladders;   // 0x1804
 };
 
 extern CMission theMission;
@@ -1762,6 +1912,49 @@ void CSealCtrlAi::SetDesiredStance(SEAL_STANCE stance, float delay, bool force)
         ((CZSealBody *)m_entity)->m_desiredStance = stance;
         m_stance_timer.Set(delay);
     }
+}
+
+/* two bytes of OVL2 bss either of which keeps the duck off (debug switches? the names unknown) */
+extern "C" unsigned char data_0066B040;
+extern "C" unsigned char data_0066B038;
+
+/* whether to duck for the squad's leader -- or the leader given: a Navy SEAL's, within the reach
+ * (100 in the CQB state 9, else 75) and in front of the leader's facing (a cosine of 0.9), the stance
+ * taken a crouch when the leader's stands, prone otherwise (OVL2 0x5632A0: SOCOM 1's GetDuckStance,
+ * after SetStance in both builds -- SOCOM II adds the switches, the Navy SEAL's test and the CQB
+ * reach, and reads the positions and the leader's matrix straight where SOCOM 1 called virtuals) */
+bool CSealCtrlAi::GetDuckStance(CZSealBody *leader, SEAL_STANCE &stance) const
+{
+    static float reach_cqb = 100.0f;
+    static float reach = 75.0f;
+    static float facing = 0.9f;
+    bool ok = false;
+    CEntity *e = m_entity;
+
+    if (!data_0066B040 && !data_0066B038 && IsNavySeal()) {
+        if (!leader)
+            leader = m_unit->GetTop()->GetLeader();
+        if (leader) {
+            CPnt3D d;
+
+            e->m_posW.Sub(&leader->m_posW, &d);
+
+            float dist = d.Normalize();
+
+            if (dist < (AiStateIs((AI_STATE)9) ? reach_cqb : reach)) {
+                const CMatrix &m = leader->m_node->m_matrix;
+
+                if (-m.m_matrix[2][0] * d.x + -m.m_matrix[2][1] * d.y + -m.m_matrix[2][2] * d.z > facing) {
+                    if (CZSealBody::GetStanceFromState(leader->GetStance(false), stance) == STANCE_STAND)
+                        stance = STANCE_CROUCH;
+                    else
+                        stance = STANCE_PRONE;
+                    ok = true;
+                }
+            }
+        }
+    }
+    return ok;
 }
 
 extern "C" {
@@ -1978,6 +2171,44 @@ Rfloat::operator float() const
     float r = 4.656613e-10f * (float)rand();
 
     return m_min + m_range * r;
+}
+
+extern "C" {
+/* whether the SEAL is in a turret (its body's 0xEB8; OVL2 0x60F9A0) and the aim's point set, or for
+ * none dropped (OVL2 0x60FA90) -- the AI states' range */
+bool func_0060F9A0(CSealCtrlAi *ai);
+void func_0060FA90(CSealCtrlAi *ai, const CPnt3D *point);
+}
+
+/* an Rfloat's roll read through a float pointer (its min, then its range): the target recomputes each
+ * field's address off the controller across rand(), which this view gives -- the class's operator, a
+ * `const Rfloat &` helper or the members written out keep the range's address in a saved register
+ * (16 off) or lose the join (0x10 short) */
+static inline float RollTime(const float *r)
+{
+    if (r[1] == 0.0f)
+        return r[0];
+    float x = 4.656613e-10f * (float)rand();
+
+    return r[0] + r[1] * x;
+}
+
+/* an attack let go: out of a turret the weapon put in the state given and the aim's point dropped,
+ * the two times rolled again -- the first's, then the first's plus the second's -- the shooting goal
+ * cleared and the trigger released (OVL2 0x565B80, new in SOCOM II after SetSprayTimer: AttackTick
+ * calls it four times, CAiGroup's 0x60D22C with 2; the name unknown) */
+extern "C" void func_00565B80(CSealCtrlAi *ai, WEAPON_STATE state)
+{
+    CZSealBody *seal = (CZSealBody *)ai->m_entity;
+
+    if (!func_0060F9A0(ai)) {
+        seal->SetWeaponState(state);
+        func_0060FA90(ai, 0);
+    }
+    ai->m_748 = RollTime(ai->m_734);
+    ai->m_744 = ai->m_748 + RollTime(ai->m_73c);
+    ai->ClearGoal(GOAL_SHOOT);
+    ai->SetTrigger(false);
 }
 
 /* whether a chance comes up (OVL2 0x5608B0; 0x5605A0 calls it) */
@@ -2258,6 +2489,61 @@ extern "C" void func_0056BEF0(CSealCtrlAi *ai)
     ai->ClearGoal(GOAL_MOVE);
     func_00570F90(ai, 1.0f);
     func_005B3890(e, 1);
+}
+
+extern "C" {
+/* whether the SEAL is on the ladder (OVL2 0x59D6C0, seal_env.cpp's span: its index converted and
+ * looked up) */
+bool func_0059D6C0(CZSealBody *seal, CLadderData *ladder);
+}
+
+/* the ladder's index the AI's climbing leg names, 0xFFFF for none, and the ladder (inlines, each a
+ * ternary in place, its false arm a block of its own: the index is computed whole ahead of the
+ * lookup's test, as an argument of the second inline -- called inside its true arm it adds a third
+ * test) */
+static inline int LegLadderIndex(const CSealCtrlAi *ai)
+{
+    return ai->m_444 ? ai->m_444->m_ladder : 0xFFFF;
+}
+
+static inline CLadderData *LegLadder(const CSealCtrlAi *ai, int index)
+{
+    return ai->m_444 ? theMission.m_ladders->GetLadderByIndex(index) : 0;
+}
+
+/* whether the SEAL must wait at a ladder: not when it is on it already; when someone uses it, or an
+ * AI SEAL of a lower id climbs it (mode 7) -- the list walked by its ids, stopping at the first SEAL
+ * of an id not below its own (OVL2 0x56BD10, new in SOCOM II: 0x56AF50 asks it; the name unknown) */
+extern "C" bool func_0056BD10(CZSealBody *seal, CLadderData *ladder)
+{
+    bool r = false;
+
+    /* (the redundant false keeps the arm a block of its own, a branch to the shared return: `return
+     * r;` returns a constant zero, an empty arm or a goto inverts the test) */
+    if (func_0059D6C0(seal, ladder))
+        r = false;
+    else if (ladder->m_users > 0)
+        r = true;
+    else {
+        const CEntityList &list = CEntity::m_list;
+
+        for (CEntityList::const_iterator i = list.begin(); i != list.end(); ++i) {
+            CZSealBody *other = AsSeal(*i);
+
+            if (other && (other->m_control ? ((CSealCtrl *)other->m_control)->IsAi() : false)) {
+                if (!(other->m_id < seal->m_id))
+                    break;
+
+                CSealCtrlAi *ai = other->GetSealCtrlAi();
+
+                if (ai->m_3f4 == 7 && LegLadder(ai, LegLadderIndex(ai)) == ladder) {
+                    r = true;
+                    break;
+                }
+            }
+        }
+    }
+    return r;
 }
 
 extern "C" {
@@ -2694,6 +2980,71 @@ float CSealCtrl::SetGoalDir(GOAL_TYPE type, const CPnt3D *dir, bool flat)
             m_goal_type = GOAL_NONE;
     }
     return dot;
+}
+
+/* the state the other console sends for its SEAL, as a word's bits (seal.cpp's SEAL_NET_STATE read
+ * whole: a code -- 17 a kill to credit -- the entity it names, the node's fade in fifteenths, the
+ * restraint, a friend's compass marker; the names ours) */
+struct REMOTE_NET_STATE {
+    unsigned int m_code : 8;   // 0x0
+    unsigned int m_id : 16;   // 0x1
+    unsigned int m_fade : 4;   // 0x3
+    unsigned int m_restrained : 1;
+    unsigned int m_friend : 1;
+    unsigned int m_bit6 : 1;
+    unsigned int m_bit7 : 1;
+};
+
+extern "C" {
+/* a kill credited to a SEAL's stats (OVL2 0x545480, seal.cpp's span) */
+void func_00545480(CSealStats *stats);
+}
+
+/* the restraint taken from the state when it changes (an inline: both bits made bools) */
+static inline void SetRestrained(CZSealBody *seal, bool on)
+{
+    if (on != (bool)seal->m_restrained)
+        seal->m_restrained = on;
+}
+
+/* the other console's state taken: kept, the node faded and shown by it, the friend's marker made or
+ * dropped, a new kill credited to the SEAL it names, the restraint (OVL2 0x56F4C0: SOCOM 1's
+ * CRemoteCtrl::SetAiNetState, its hostage anchor and its credit to the player SOCOM II's marker and
+ * stats). The registers want the node declared ahead of the SEAL and the state copied into a local
+ * between the two memcpys (the copy numbered last: s0; the parameter's own address taken instead
+ * homes it on the stack) */
+void CRemoteCtrl::SetAiNetState(unsigned int state)
+{
+    zdb::CNode *node;
+    CZSealBody *seal = (CZSealBody *)m_entity;
+
+    node = seal->GetNode();
+    REMOTE_NET_STATE old;
+    REMOTE_NET_STATE cur;
+    unsigned int prev = GetAiNetState();
+    unsigned int now;
+
+    memcpy(&old, &prev, sizeof(old));
+    now = state;
+    memcpy(&cur, &now, sizeof(cur));
+    m_ai_net_state = state;
+    node->m_Opacity = 1.0f - cur.m_fade / 15.0f;
+    node->SetActive(cur.m_fade != 15);
+    if (seal->m_isAlive && (cur.m_friend ? true : false))
+        seal->CreateCompassAnchor(4, 0);
+    else
+        func_00543480(seal);
+    if (old.m_code != cur.m_code) {
+        switch (cur.m_code) {
+        case 17: {
+            CZSealBody *killer = AsSeal(CEntity::m_list.GetEntityById(cur.m_id));
+
+            if (killer)
+                func_00545480(&killer->m_stats);
+        }
+        }
+    }
+    SetRestrained(seal, cur.m_restrained);
 }
 
 /* the destructor of the network's controller (OVL2 0x56F460: CSealCtrl's called as a base) */

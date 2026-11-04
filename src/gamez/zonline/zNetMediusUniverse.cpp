@@ -431,16 +431,9 @@ class CZUniversInformationServer {
 public:
     class CAcctDB : public std::vector<AcctRecord>, public CSaveModule, public CLobbySaveModule {
     public:
-        /* a module of the game save and of the lobby's, room for 48 accounts (theAcctDB's, built
-         * by the unit's initialiser 0x4022D0). The reserve 0x2FECB0 is OPEN, 0x194 against 0x19C:
-         * the target cuts its construct() to one level -- the placement new 0x2FECA0 and the copy
-         * constructor both called, as the accounts' insert 0x2FE3E0 does -- where here the reserve
-         * inlines the placement new and calls only the copy constructor (an own-code stand-in that
-         * copy-constructs an account first, before or after the unit's functions, changes nothing) */
-        CAcctDB() : CSaveModule("CAcctDB", theMemCard.m_gameSave), CLobbySaveModule("CAcctDB", GetLobbySaveManager())
-        {
-            reserve(48);
-        }
+        /* a module of the game save and of the lobby's, room for 48 accounts (defined below, out of
+         * class: the unit's own function) */
+        CAcctDB();
         void Serialize(int flags);
         void UnSerialize(const char *name, CRdrFile *file, int flags);
         void Save(int flags);
@@ -530,6 +523,20 @@ CLobbySaveModule::~CLobbySaveModule()
     const char *name = theUIVarManager.Add("PLAYERNAMEVAR", 0, UIVL_TEMPORARY)->String()
 
 /* --- the lobby's blob (CLobbySaveModule) and the profile file (CSaveModule) ------------------ */
+
+/* a module of the game save and of the lobby's, room for 48 accounts (theAcctDB's, built by the
+ * unit's initialiser 0x4022D0). Defined OUT OF CLASS, an own function of the unit (its out-of-line
+ * copy dead-stripped by the link: no-target here): reserve<AcctRecord> 0x2FECB0 is then requested
+ * by the unit's own code, so generated in the tail's first round with the accounts' insert -- before
+ * the deleter's clear, which it calls out of line (0x2FFFA0), and with placement new's null test on
+ * v0 -- byte-exact, and ~vector<AcctRecord> 0x2FD070 from source (only its draft matched). In the
+ * class, the constructor requested the reserve only from the initialiser, after the clear: 0x194
+ * against 0x19C (round 18; build/scratch/onl/v_rsv2.py: an own-code `reserve(48)` stand-in anywhere
+ * in the unit matched it first) */
+CAcctDB::CAcctDB() : CSaveModule("CAcctDB", theMemCard.m_gameSave), CLobbySaveModule("CAcctDB", GetLobbySaveManager())
+{
+    reserve(48);
+}
 
 /* the current account's missions' equipment written as the lobby's blob: a count byte, then the
  * named entries as they are. The order of a call's argument moves follows where their variables

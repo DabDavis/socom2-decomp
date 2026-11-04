@@ -7,8 +7,8 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
-M2C_UNK SkbOpen__Fv();                              /* extern */
+M2C_UNK SkbOpen__FP13C2DAnimCmdHdrPf();             /* extern */
 
 void func_002808D0(void) {
-    SkbOpen__Fv();
+    SkbOpen__FP13C2DAnimCmdHdrPf();
 }

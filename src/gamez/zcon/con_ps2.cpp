@@ -497,7 +497,10 @@ unsigned int CPacketMsg::GetArgCount() const
  * in the target's order -- `void *r; if (m_data) { if (index >= m_data->argc) return 0; r =
  * m_args[index]; } else r = 0; return r;` -- but the variable pads three labels to 8 bytes (0x50:
  * README, "MW pads a function's labels ... when a separate variable holds an intermediate value");
- * without it (ternaries in either arm, if/else arms, a goto to the null's return) 0x48-0x50 */
+ * without it (ternaries in either arm, if/else arms, a goto to the null's return) 0x48-0x50. Round 9:
+ * `index >= argc ? 0 : m_args[index]` nested in either ternary or if, the count test written `<`
+ * with the return inside, `!(index < argc)`, the test through a bool local, the count in a local,
+ * GetArgCount() inlined, a goto to a trailing return 0 -- 0x48 to 0x74 */
 void *CPacketMsg::GetArg(unsigned int index) const
 {
     if (!m_data)
