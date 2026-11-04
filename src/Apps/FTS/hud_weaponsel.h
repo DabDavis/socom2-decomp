@@ -296,7 +296,16 @@ public:
     SlotList m_list;   // 0x960
     CategorySlot m_categories[4];   // 0x9a0
     C2DBitmap m_bitmap3;   // 0xea0
-    unsigned char _f20[0xf30 - 0xf20];
+    /* the weapon shown: its class (GetIDType, 255 none), its kind (0 primary, 1 secondary, 2 other)
+     * and its index in the weapons' list (0x23D540; the names ours) */
+    void SetWeapon(CZWeapon *weapon);
+    /* the four arrows off, or grey (0x23D460; the name ours) */
+    void ShowArrows();
+
+    EQUIP_ITEM m_type;   // 0xf20
+    unsigned char m_kind;   // 0xf21
+    int m_index;   // 0xf24
+    unsigned char _f28[0xf30 - 0xf28];
     class CMPWeaponSel *m_owner;   // 0xf30: the selector (its Init sets it)
     unsigned char _f34[0xf40 - 0xf34];
 } __attribute__((aligned(16)));   // 0xf40 bytes
@@ -312,6 +321,9 @@ public:
     void UnInit();
     void Off();
     void On();
+    /* the cursor moved a slot on (2) or back (-2), round the five, on past the slots its test
+     * refuses; the category page shows the slot's weapon (0x23EAE0; the name ours) */
+    void Scroll(signed char dir);
     inline void Set203(bool on);
     inline void SetGL(bool on);
     inline void SetF2000(bool on);

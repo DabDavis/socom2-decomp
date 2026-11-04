@@ -2306,8 +2306,8 @@
 0x0023D060 0x144 func_0023D060  # OVL1
 0x0023D1B0 0xF8 func_0023D1B0  # OVL1
 0x0023D2B0 0x1A4 func_0023D2B0  # OVL1
-0x0023D460 0xD4 func_0023D460  # OVL1
-0x0023D540 0xC8 func_0023D540  # OVL1
+0x0023D460 0xD4 ShowArrows__19CMPWeaponCategoriesFv  # OVL1; by hand (the HUD lane, round 26): the category page's (the selector's Tick 0x240600 calls it on +0x220) -- its four arrow polys (0x1A0, stride 0x1F0) off while the byte 0x4147C0 is set, else coloured from a guarded static CPnt3D (100, 100, 100; guard 0x4147C8, object 0x4147D0); the name ours; hud_mpweaponsel.cpp, byte-exact
+0x0023D540 0xC8 SetWeapon__19CMPWeaponCategoriesFP8CZWeapon  # OVL1; by hand (the HUD lane, round 26): the category page's (the selector's state switch 0x240B90 and 0x23E370/0x23EAE0 call it on CMPWeaponSel+0x220) -- the weapon's index in CZWeapon::m_listWeapons, its GetIDType and its kind (0 primary, 1 secondary, 2 neither) at 0xF20-0xF27, item 255 shown as item 121; the name ours; hud_mpweaponsel.cpp, byte-exact
 0x0023D610 0x1F8 func_0023D610  # OVL1
 0x0023D810 0x50 SetTrans__12CategorySlotFf  # OVL1; by hand (the HUD lane: slot 11 of CategorySlot's vtable 0x405D80 -- its name's and bitmap's SetTrans through their tables)
 0x0023D860 0x714 func_0023D860  # OVL1
@@ -2319,7 +2319,7 @@
 0x0023E700 0xF8 Off__12CMPWeaponSelFv  # OVL1; by hand (CHUD::Off calls it on the network weapon selector at CHUD+0x38E0 in a network game, among the other selectors' Off; it calls slot 4, Off, of each list and bitmap it holds)
 0x0023E800 0x108 On__12CMPWeaponSelFv  # OVL1; by hand (CHUD::On calls it on CHUD+0x38E0 in a network game, as Off its pair; slot 5, On, of each list and bitmap)
 0x0023E910 0x1C4 func_0023E910  # OVL1
-0x0023EAE0 0xE0 func_0023EAE0  # OVL1
+0x0023EAE0 0xE0 Scroll__12CMPWeaponSelFSc  # OVL1; by hand (the HUD lane, round 26): the selector's (its signed-char step, re-extended in the callee): the cursor m_list.m_34 a slot on (2) or back (-2) round the five, itself again while 0x23E910 refuses the slot, then the category page's SetWeapon with the slot's weapon and the update 0x23E030; the name ours; hud_mpweaponsel.cpp
 0x0023EBC0 0xD4 func_0023EBC0  # OVL1
 0x0023ECA0 0x1250 func_0023ECA0  # OVL1
 0x0023FEF0 0x690 func_0023FEF0  # OVL1

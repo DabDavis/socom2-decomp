@@ -50,12 +50,27 @@ public:
 
 extern CHUD *theHUD;
 
-/* a weapon as its slot shows it: its description and its icon (zweapon's CZWeapon) */
+/* the weapons' list (zweapon's CZWeaponList: a weapon's index, the weapon of an item) */
+class CZWeaponList {
+public:
+    int GetWeaponIndex(CZWeapon *weapon);
+    CZWeapon *GetWeapon(EQUIP_ITEM item);
+};
+
+/* a weapon as its slot shows it: its description and its icon, its item and its class
+ * (zweapon's CZWeapon) */
 class CZWeapon {
 public:
     const char *GetDescription() const;
+    EQUIP_ITEM GetIDType();
+    static bool IsPrimary(EQUIP_ITEM item);
+    static bool IsSecondary(EQUIP_ITEM item);
 
-    unsigned char _0[0xbc];
+    static CZWeaponList m_listWeapons;
+
+    unsigned char _0[0x7c];
+    EQUIP_ITEM m_item;   // 0x7c
+    unsigned char _7d[0xbc - 0x7d];
     zdb::CTexHandle *m_icon;   // 0xbc
 };
 
@@ -248,6 +263,35 @@ void SlotList::SetTrans(float trans)
             m_slots[i]->SetTrans(trans);
 }
 
+/* whether the list's slot can be chosen (0x23E910; no row named yet) */
+extern "C" bool func_0023E910(CMPWeaponSel *sel, int index);
+
+/* the cursor a slot on or back, round the five, again while the slot is refused; the page then
+ * shows the slot's weapon, updated. Pinned: the target calls itself and the page's SetWeapon out
+ * of line (unpinned it inlines itself once, 0x224 bytes) */
+#pragma auto_inline off
+void CMPWeaponSel::Scroll(signed char dir)
+{
+    if (dir == 2) {
+        m_list.m_34++;
+        if (m_list.m_34 >= 5)
+            m_list.m_34 = 0;
+    } else if (dir == -2) {
+        m_list.m_34--;
+        if (m_list.m_34 < 0)
+            m_list.m_34 = 4;
+    }
+    if (!func_0023E910(this, m_list.m_34))
+        Scroll(dir);
+
+    /* through a slot pointer (indexed straight, MW adds the offset to `this` the other way round) */
+    SelectedSlot *slot = &m_selected[m_list.m_34];
+
+    m_categories.SetWeapon(slot->m_weapon);
+    func_0023E030(this, 0.0f);
+}
+#pragma auto_inline reset
+
 /* while up: the lists, the page, the title and the backdrops on, then updated */
 void CMPWeaponSel::On()
 {
@@ -278,6 +322,47 @@ void CategorySlot::SetTrans(float trans)
 {
     m_name.SetTrans(trans);
     m_bitmap.SetTrans(trans);
+}
+
+/* the weapon's index and class, and whether it is a primary (0), a secondary (1) or neither (2);
+ * none (item 255) shows item 121's index as neither */
+#pragma auto_inline off
+void CMPWeaponCategories::SetWeapon(CZWeapon *weapon)
+{
+    CZWeaponList &list = CZWeapon::m_listWeapons;
+
+    m_index = list.GetWeaponIndex(weapon);
+    m_type = weapon->GetIDType();
+    if (CZWeapon::IsPrimary(weapon->m_item))
+        m_kind = 0;
+    else if (CZWeapon::IsSecondary(weapon->m_item))
+        m_kind = 1;
+    else
+        m_kind = 2;
+    if (weapon->m_item == EQUIP_NONE) {
+        m_type = EQUIP_NONE;
+        m_index = list.GetWeaponIndex(list.GetWeapon((EQUIP_ITEM)121));
+        m_kind = 2;
+    }
+}
+#pragma auto_inline reset
+
+/* whether the page's arrows are hidden (bss 0x4147C0, a byte; the name ours) */
+static bool s_noarrows;
+
+/* the page's four arrows off when hidden, else grey (a guarded static, 100 each) */
+void CMPWeaponCategories::ShowArrows()
+{
+    if (s_noarrows) {
+        for (int i = 0; i < 4; i++)
+            m_polys[i].Off();
+        return;
+    }
+
+    static CPnt3D s_grey(100.0f, 100.0f, 100.0f);
+
+    for (int i = 0; i < 4; i++)
+        m_polys[i].SetColor(s_grey.x, s_grey.y, s_grey.z);
 }
 
 /* the slots drawn while the list is on */
