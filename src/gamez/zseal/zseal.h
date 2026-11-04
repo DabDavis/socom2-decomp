@@ -323,6 +323,8 @@ public:
     CZSealBody *GetSealByIndex(int index, int depth);
     /* the squad's leader (SOCOM 1's const GetLeader; OVL2 0x5E8A90, the kit lane's) */
     CZSealBody *GetLeader() const;
+    /* a SEAL's look out of a direction (SOCOM 1's; OVL2 0x5EEF80, the kit lane's seal_unit.cpp) */
+    void GetMyLookDir(CPnt3D *out, CPnt3D *dir, CZSealBody *seal);
     /* the squad's order data as a pointer, and set to one (OVL2 0x5E6D60, 0x5E6DD0: the kit lane's
      * seal_unit.cpp, which declares them alike) */
     void *GetDataPtr();
