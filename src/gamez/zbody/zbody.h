@@ -235,7 +235,7 @@ public:
     void Push(T *item);
     T *Pop();
     /* the top item, none when empty (SOCOM 1's): out of class and defined in another unit, whose
-     * tail holds the one copy (OVL1 0x219390), so body.cpp calls it (func_00219390 below) */
+     * tail holds the one copy (OVL1 0x219390), so body.cpp calls it */
     T *Top();
 
     T **m_stack;   // 0x0
@@ -569,7 +569,6 @@ public:
 
 /* the stack's top: its out-of-line copy is an earlier unit's (OVL1 0x219390), which the linker
  * kept over body.cpp's */
-extern "C" CZBodyAnimBlend *func_00219390(CBodyAnimBlendStack *stack);
 
 /* an anim laid over the body's blends for a while (SOCOM 1's DWARF, 0x1c bytes) */
 class CBlendOverlay {

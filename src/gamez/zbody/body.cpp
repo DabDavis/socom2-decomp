@@ -420,7 +420,7 @@ CZBodyAnimBlend *CBody::PushBlend(CZSIScriptCommon *anim, short id, char state)
  * through ActiveAnimPool(), the target's hoisted address in a preheader after each loop's test */
 CZBodyAnimBlend *CBody::PopBlend()
 {
-    CZBodyAnimBlend *blend = func_00219390(&m_blends);
+    CZBodyAnimBlend *blend = m_blends.Top();
 
     if (m_interp1 > 0.0f)
         SaveParts();
@@ -437,7 +437,7 @@ CZBodyAnimBlend *CBody::PopBlend()
     }
     m_blend_pool.PutBack(blend);
     m_blends.Pop();
-    CZBodyAnimBlend *top = func_00219390(&m_blends);
+    CZBodyAnimBlend *top = m_blends.Top();
 
     if (!top)
         return 0;
@@ -618,7 +618,7 @@ bool CBlendOverlay::Tick(CBody *body, float dT)
     float frac = m_ovlyT / anim->m_10;
     float done = m_ovlyT / (anim->m_10 * anim->TrueLoopTime());
 
-    func_00219390(&body->m_blends);
+    body->m_blends.Top();
     if (m_state == -1) {
         if (done <= 0.0f) {
             body->m_active_anim_pool.PutBack(m_anim);
@@ -1131,7 +1131,7 @@ CBody::~CBody()
 void CBody::Destroy()
 {
     ClearBlendOverlay();
-    func_00219390(&m_blends);
+    m_blends.Top();
     while (m_blends.Size())
         PopBlend();
     std::transform(m_body_parts.begin(), m_body_parts.end(), m_body_parts.begin(), DeleteBodyPart());

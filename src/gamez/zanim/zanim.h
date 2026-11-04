@@ -682,6 +682,8 @@ namespace Particle {
 class Source {
 public:
     ~Source();
+    /* a free source taken from the pool (zparticle.h's, 0x32B120) */
+    static Source *Create();
 
     unsigned char m_active;   // 0x0
     unsigned char _1[0x12C - 0x1];   // 0x1: m_goodPos .. m_particleEx, grown by 4

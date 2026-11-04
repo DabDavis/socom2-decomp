@@ -374,7 +374,15 @@ struct zanim_cmd_shadowlight {
     float time;
 };
 
-extern char AiMaps[];
+/* the AI maps (ai_maps.h's CAiMaps: only the two lookups the light tick makes; the location a word on
+ * the tick's stack, ai.h's CAiMapLoc) */
+class CAiMapLoc;
+class CAiMaps {
+public:
+    int GetLocation(const CPnt3D *p, CAiMapLoc &loc);                           /* 0x52DC70 */
+    float GetInterpolatedShadow(const CAiMapLoc &loc, const CPnt3D *p, bool b);   /* 0x52CE10 */
+};
+extern CAiMaps AiMaps;
 extern const float data_003DD018;
 extern const float data_003DD020;
 /* CAMERA: the world camera's view, clip planes and fog colour, each moved from a start to an
@@ -705,10 +713,6 @@ bool zAnimSoundTick(_zanim_cmd_hdr *hdr, float *dT)
     return true;
 }
 
-extern "C" void func_00314540(zdb::CNode *node, int on, int a);
-extern "C" void func_00314320(zdb::CNode *node, int on, int a);
-extern "C" int func_0052DC70(char *maps, CPnt3D *p, int *cell);
-extern "C" float func_0052CE10(char *maps, int *cell, CPnt3D *p, int a);
 
 /* the light's clamp is zmath.h's _saturate<float>, whose instance (0x267A60) this unit links */
 
@@ -721,15 +725,15 @@ extern "C" bool func_002656F0(_zanim_cmd_hdr *hdr, float *dT)
     if (node) {
         if (cmd->flags & 1) {
             if (cmd->flags & 2)
-                func_00314540(node, 1, 1);
+                node->SetDynamicMotion(true, true);
             else
-                func_00314540(node, 0, 1);
+                node->SetDynamicMotion(false, true);
         }
         if (cmd->flags & 4) {
             if (cmd->flags & 8)
-                func_00314320(node, 1, 1);
+                node->SetDynamicLight(true, true);
             else
-                func_00314320(node, 0, 1);
+                node->SetDynamicLight(false, true);
         }
         if (cmd->flags & 0x10)
             NodeLight(node) = 127 - cmd->level;
@@ -738,8 +742,8 @@ extern "C" bool func_002656F0(_zanim_cmd_hdr *hdr, float *dT)
             int cell;
 
             node->m_matrix.Transform(&p, 1);
-            if (func_0052DC70(AiMaps, &p, &cell)) {
-                float light = func_0052CE10(AiMaps, &cell, &p, 0);
+            if (AiMaps.GetLocation(&p, *(CAiMapLoc *)&cell)) {
+                float light = AiMaps.GetInterpolatedShadow(*(CAiMapLoc *)&cell, &p, false);
 
                 _saturate(&light, data_003DD018, data_003DD020);
                 NodeLight(node) = (int)(127.0f * (1.0f - light));
@@ -802,7 +806,7 @@ struct zanim_cmd_message {
 };
 
 extern char data_004366A0[];
-extern "C" const char *func_00361B40(int id);
+const char *GetString(int id);   /* 0x361B40 */
 extern "C" void func_002B6530(char *queue, const char *text, int a, int style, int b, float time);
 
 bool zAnimMessageTick(_zanim_cmd_hdr *hdr, float *dT)
@@ -812,7 +816,7 @@ bool zAnimMessageTick(_zanim_cmd_hdr *hdr, float *dT)
     const char *text;
 
     if (cmd->text > 0)
-        text = func_00361B40(cmd->text);
+        text = GetString(cmd->text);
     else
         text = anim->GetName(cmd->name);
     func_002B6530(data_004366A0, text, 0, cmd->style, 0, cmd->time);
@@ -1132,8 +1136,14 @@ extern "C" bool func_00264A40(_zanim_cmd_hdr *hdr, float *dT)
     return done;
 }
 
-/* the screen's iris effect (one global; its two functions not named yet) */
-struct IrisEffect {
+/* a render-pipe effect (zrender's CPipeEffect: only its switch) */
+class CPipeEffect {
+public:
+    void SetOn(bool on);   /* 0x33D100 */
+};
+
+/* the screen's iris effect (one global, a pipe effect) */
+struct IrisEffect : public CPipeEffect {
     int mode;                       /* 0x0 */
     float f4;
     float f8;
@@ -1151,7 +1161,6 @@ struct IrisEffect {
 };
 
 extern IrisEffect data_00488E48;
-extern "C" void func_0033D100(IrisEffect *iris, int on);
 
 /* IRIS_EFFECT: set the iris effect's fields the flags name, its blend from the record's
  * selectors and alpha (0x8000) or an expression (0x10000), over a time */
@@ -1184,9 +1193,9 @@ extern "C" bool func_00264610(_zanim_cmd_hdr *hdr, float *dT)
 
     if (cmd->flags & 1) {
         if (cmd->flags & 2)
-            func_0033D100(&data_00488E48, 1);
+            data_00488E48.SetOn(true);
         else
-            func_0033D100(&data_00488E48, 0);
+            data_00488E48.SetOn(false);
     }
     if (cmd->flags & 4)
         data_00488E48.i20 = cmd->i20;
@@ -1522,7 +1531,6 @@ struct zanim_cmd_blendmode {
     float time;
 };
 
-extern "C" void func_00312860(zdb::CNode *node, GsAlpha *alpha, bool a, bool b, bool c);
 
 bool zAnimObjectBlendModeTick(_zanim_cmd_hdr *hdr, float *dT)
 {
@@ -1576,7 +1584,7 @@ bool zAnimObjectBlendModeTick(_zanim_cmd_hdr *hdr, float *dT)
     alpha.D = d;
     if (cmd->flags & 8)
         func_0025C5F0(&alpha, (char *)cmd + cmd->expr_off, cmd->expr_len, step + ZAnim.m_CurSeq->cmd_timer);
-    func_00312860(node, &alpha, b1, b2, b3);
+    node->SetBlendMode(*(const zdb::BLENDMODE *)&alpha, b1, b2, b3);
     return done;
 }
 
@@ -1633,7 +1641,6 @@ struct zanim_cmd_scroll {
     int handle;                     /* 0x40 */
 };
 
-extern "C" int func_003134C0(zdb::CNode *node, int a, int b, int c, float d, float e);
 
 extern "C" void func_00260FB0(_zanim_cmd_hdr *hdr)
 {
@@ -1648,7 +1655,7 @@ extern "C" void func_00260FB0(_zanim_cmd_hdr *hdr)
         if (ref) {
             cmd->pos = CPnt3D::zero;
             ref->TransformToWorld(cmd->pos);
-            cmd->handle = func_003134C0(node, 0, 1, -1, 0.0f, 0.0f);
+            cmd->handle = node->ScrollTexture(0, 0.0f, 0.0f, true, -1);
             zdb::theTextureFXManager.SetSpeed(cmd->handle, 0.0f, 0.0f);
         }
     }
