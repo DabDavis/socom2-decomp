@@ -649,6 +649,9 @@ public:
     /* the next hit handed to its node's extension, unless there is no second intersection
      * (SOCOM II's; the name ours) */
     bool HandleNextHit();
+    /* the next hit on a node extension not reached yet given a delayed ray to its node's centre,
+     * true when none is left (SOCOM II's, 0x3C7EE0; the name ours) */
+    bool RegisterNextHit();
     void Detonate();
     /* the detonation's damage dealt once its proximity test has run (SOCOM 1's, 0x3C8330 -- not
      * written) */

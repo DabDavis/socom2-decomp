@@ -221,17 +221,17 @@ void CZProjectile::SetVelW(const CPnt3D *vel)
  * the test written out each time (an inline bool predicate materialises its value); the fuse out, it is to be detonated -- done, and with the removal time out too
  * flagged (bit 17) unless remote; the removal time out once done, removed (7) unless remote and
  * no longer done. SOCOM 1's called the explosive's anim and returned true on a removal).
- * OPEN, 2 instructions: 0x1C8 against 0x1D0 -- the same blocks and the same reuse of the first
- * network load in the last test (a reload after the stores, as the target's), but the target sets
- * v0 = 0 in the fuse test's delay slot (its temporaries move to v1/a1/a2) and pads two more labels
- * (ahead of the flag-17 store and of the else arm's SetDone). Tried: a bool/int result variable
- * (top, after the test, returned everywhere), an else-if chain with one return, the m_done test
- * nested, the timers or the "never" constant in locals, the network flag in a bool/uchar/int local
- * (a bool used first and last gives the size, 92 off: MW then reuses it in the middle) */
+ * SOCOM 1's shape: a result local (SOCOM 1's `move v0,zero` at the top), the fuse's no-removal arm
+ * returning false itself, the removal arm falling through to `return r`, and the done arm ASSIGNING
+ * the result -- SOCOM 1's `= true` (daddiu) is `= false` in SOCOM II, which keeps the variable and so
+ * the target's early `v0 = 0` and its two padded labels (round 21: the result declared after the
+ * network test or numbered there; at the top, or without the done arm's assignment, 8 bytes short) */
 bool CZProjectile::HandleTimers()
 {
     if (theNetwork.m_bNetwork && !m_isplayer && !m_lastHitWasPerson)
         return false;
+    bool r = false;
+
     if (m_time <= 0.0f && m_time != 9999999.0f && !m_done) {
         m_state = PROJECTILE_TO_BE_DETONATED;
         m_grenadestate = DETONATE;
@@ -239,17 +239,18 @@ bool CZProjectile::HandleTimers()
             SetDone(true);
             if (!theNetwork.m_bNetwork || m_isplayer || m_lastHitWasPerson)
                 SetFlag17(true);
-        } else
+        } else {
             SetDone(true);
-        return false;
-    }
-    if (m_done && m_removaltime <= 0.0f && m_removaltime != 9999999.0f) {
+            return false;
+        }
+    } else if (m_done && m_removaltime <= 0.0f && m_removaltime != 9999999.0f) {
         if (!theNetwork.m_bNetwork || m_isplayer || m_lastHitWasPerson)
             m_state = (PROJECTILE_STATE)7;
         SetDone(false);
         m_grenadestate = REMOVE;
+        r = false;
     }
-    return false;
+    return r;
 }
 
 /* (a material's resistance to a blast is int_material.h's CMaterialEx::m_penetration, PENETRATION) */
@@ -306,6 +307,59 @@ bool CZProjectile::CheckHit(DiIntersect *di, IntersectStruct *hit)
             if (reach < len)
                 return false;
         }
+    }
+    return true;
+}
+
+/* the detonation's next hit on a node extension no earlier hit reached, a delayed ray registered
+ * from the explosion's point to the centre of its node's box, the second intersection taken from
+ * the direct-fire table for it and told to hit characters; true once no hit is left (the second
+ * intersection given back) or none can be had (SOCOM II's, 0x3C7EE0: both PreTicks call it ahead
+ * of HandleNextHit; the name ours) */
+bool CZProjectile::RegisterNextHit()
+{
+    while (m_di && m_hitindex < m_di->m_Cnt && m_hitindex < 127) {
+        /* the index a local of its own, numbered ahead of the extension (in the bitfield's place
+         * the index takes another register), and the backward search guarded by it: the
+         * target's `blez i` ahead of the loop's bottom-tested entry */
+        int i = m_hitindex;
+
+        IntersectStruct *hit = &m_di->m_Intersects[i];
+        CNode *node = hit->m_node;
+
+        if (node && node->m_nodeEx) {
+            CNodeEx *ex = node->m_nodeEx;
+            bool first = true;
+
+            if (i > 0) {
+                for (int j = i - 1; j >= 0 && first; j--) {
+                    CNode *n = m_di->m_Intersects[j].m_node;
+
+                    if (n && n->m_nodeEx == ex)
+                        first = false;
+                }
+            }
+            if (first) {
+                CPnt3D center;
+
+                if (hit->m_node) {
+                    hit->m_node->GetBBox()->GetCenter(&center);
+                    hit->m_node->TransformToWorld(center);
+                }
+                if (!m_di2 && !CZWeapon::m_pProjectilelist->GetNextDirectFireDI(&m_di2, &m_di2_handle))
+                    return true;
+                CWorld::m_world->RegIntersectDelayed(m_di2, &m_framestartpos, &center, -1);
+                m_di2->m_Node = hit->m_node;
+                m_di2->SetCharacterHits(true);
+                return false;
+            }
+        }
+        m_hitindex++;
+    }
+    if (m_di2) {
+        CZWeapon::m_pProjectilelist->ReleaseDirectFireDI(&m_di2, &m_di2_handle);
+        m_di2 = 0;
+        m_di2_handle = -1;
     }
     return true;
 }
