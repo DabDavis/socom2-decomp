@@ -160,10 +160,10 @@ public:
 
 void ZuiInit();   /* 0x38D3C0 */
 void HookupLib(zdb::CAssetLib *lib);
-/* the count sound looked up (zui.cpp's UiLoadCountSound 0x369880, its row `__Fv`: the target loads
+/* the count sound looked up (zui.cpp's UiLoadCountSound 0x369880: the target loads
  * the menu into a0 for the test and the call -- the menu is its argument, which its body never
- * reads; spelled by the row's address until the row is renamed) */
-extern "C" void func_00369880(CGameMenu *menu);
+ * reads; the row renamed __FP9CGameMenu at integration) */
+void UiLoadCountSound(CGameMenu *menu);   /* zui.cpp's (0x369880) */
 bool LoadWorld(const char *database);
 
 struct _zrdr;
@@ -289,7 +289,7 @@ bool CMenuState::Init()
     if (rdr2)
         zrdr_free((CRdrFile *)rdr2);
     if (m_menu)
-        func_00369880(m_menu);
+        UiLoadCountSound(m_menu);
     thePipe.m_714 = 1;
     zSysFifoSetSync(true);
     zVid.m_7d = 0;

@@ -483,9 +483,10 @@ void ActionItem::operator=(const ActionItem &a)
 }
 
 /* the count sound looked up again by the menu state's teletype sound name (SOCOM II's: CMenuState::
- * Init calls it; the name ours). Through a reference: the string's address built once, its words
- * read off it (written out, MW addresses each absolutely) */
-void UiLoadCountSound()
+ * Init calls it; the name ours). It takes the menu, unread: the caller loads m_menu into a0 for
+ * the call (the game states' round 35). Through a reference: the string's address built once, its
+ * words read off it (written out, MW addresses each absolutely) */
+void UiLoadCountSound(CGameMenu *)
 {
     CSaferStr &name = theGame.m_ttySoundString;
 
