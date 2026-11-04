@@ -201,7 +201,11 @@ extern "C" float func_0060B7F0(const CEntity *self, const CTarget *t)
  * both in named locals in either order, `d -= field`, the plain member, both through accessors, a
  * static inline Since(t) / Elapsed(now, then) by value and by reference, and the unit built by
  * 3.0b50, 3.0b38 and 3.0b22-020926 through an `sc: compiler=` line -- MW loads the field first in
- * every form, but always colours the clock $f0 */
+ * every form, but always colours the clock $f0. Round 28: MW's float colouring (the igdump tools)
+ * has three vregs, coloured highest-numbered first -- the result, then the clock (f0), then the field
+ * (f1): the field is numbered before the clock in every spelling, the clock through a static inline
+ * MissionNow() with the field read in place or through its accessor and a Since(t) taking the field
+ * by value included (all 3 off) */
 float CAiTarget::GetTimeSinceLastSighting() const
 {
     return theMission.m_time - GetTimeLostSight();
