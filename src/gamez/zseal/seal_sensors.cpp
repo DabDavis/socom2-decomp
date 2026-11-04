@@ -66,10 +66,16 @@ inline void SetSensorBit(CBits *bits, unsigned int i)
 }
 
 /* and tested, the mask first (the target builds it before the word's address, as the set does --
- * CBits::Test indexes first; the name ours) */
+ * CBits::Test indexes first; the name ours). The mask a local ANDed in place: MW folds a mask local
+ * read once back into the expression and then evaluates the word's index first, whatever the order
+ * written (13 spellings, inlined helpers for either side included); `m &= word` (or `m = m & word`)
+ * keeps the mask first and every register but the result's (the kit's round 35: 8 -> 2) */
 inline bool TestSensorBit(const CBits *bits, unsigned int i)
 {
-    return (1 << (i & 31)) & bits->m_vec[i >> 5];
+    unsigned int m = 1 << (i & 31);
+
+    m &= bits->m_vec[i >> 5];
+    return m;
 }
 
 /* a weapon pickup seen: unless the AI already goes for a pickup or this SEAL has marked it, a Navy
@@ -77,11 +83,12 @@ inline bool TestSensorBit(const CBits *bits, unsigned int i)
  * pushed and handed it, flag 1); any other item is marked seen by this SEAL. Whether it went
  * (OVL2 0x5CB450: 0x5CB870 asks it; new in SOCOM II -- the name ours). `go` declared first and
  * assigned after the early return: the target numbers it before the SEAL (s2 to its s1).
- * OPEN, 8 instructions, the seen-bit test's registers only: the target masks the index first
- * (`andi a1,v1,0x1f` before `srl v1,v1,5`, the 1 in a0, the words in v0 -- the set below, which
- * matches, has the same allocation); every spelling here shifts first (srl a1, andi in place, the
- * 1 in v0): CBits::Test, the mask first or last, either in a local, the word's address in a local,
- * `(w >> s) & 1` (10) */
+ * OPEN, 2 instructions, the seen-bit test's AND only: the target's `and v0,a0,v0` puts the result in
+ * the word's register, TestSensorBit's `m &= word` in the mask's (`and a0,a0,v0`, the branch on a0).
+ * Every other way round MW evaluates the word's index first (8: CBits::Test, the mask first or last,
+ * in a local, the word's address in a local, `(w >> s) & 1`, inlined mask or word helpers, a
+ * reference to the word); `m = 1; m <<= i & 31; return m & word;` puts the AND in v0 but swaps the 1
+ * and the shift amount (4). 0x5CB630 below shares it */
 extern "C" bool func_005CB450(CSealCtrlAi *ai, CPickup *p, CZWeapon *w)
 {
     bool go;
@@ -115,6 +122,132 @@ extern "C" bool func_005CB450(CSealCtrlAi *ai, CPickup *p, CZWeapon *w)
     return go;
 }
 
+/* an ammunition pickup's contents: the weapons' stash (zwep_weapon.cpp's CZItemStash, three parallel
+ * lists of words -- a weapon, an ammunition and a count per entry -- out of line in OVL1; only what
+ * the scan calls) and the pickup's view of it (zseal.h's CPickupAmmo; seal_env.cpp's spelling) */
+class CZItemStash {
+public:
+    int Count();
+    bool Get(int i, int *a, int *b, int *c);
+};
+
+class CPickupAmmo : public CZItemStash {
+};
+
+/* an ammunition pickup seen: unless the AI already goes for a pickup or this SEAL has marked it, a
+ * Navy SEAL goes for it when it holds item 152 and the kit has none of that or none with ammunition
+ * (the pickup state pushed and handed it, flag 1); every other entry marks it seen by this SEAL.
+ * Whether it went (OVL2 0x5CB630: 0x5CB450's sibling for the stash, new in SOCOM II -- the name ours).
+ * OPEN, 2 instructions: the seen-bit test's AND, 0x5CB450's (TestSensorBit's note) */
+extern "C" bool func_005CB630(CSealCtrlAi *ai, CPickup *p, CPickupAmmo *a)
+{
+    CZSealBody *seal = (CZSealBody *)ai->m_entity;
+
+    if (ai->AiStateIs(AI_STATE_PICKUP) || TestSensorBit((CBits *)p->m_bits, seal->m_index))
+        return false;
+    bool go = false;
+    CZKit *kit = &seal->m_kit;
+    int n = a->Count();
+
+    for (int i = 0; i < n; i++) {
+        int w = 0;
+        int b = 0;
+        int c = 0;
+
+        a->Get(i, &w, &b, &c);
+        EQUIP_ITEM item = w ? ((CSensorWeaponView *)w)->m_ID : (EQUIP_ITEM)255;
+
+        if (item == 152 && ai->IsNavySeal()) {
+            int k = kit->GetItemIndex(item);
+
+            if (k == -1 || !kit->ItemHasAmmo(k))
+                go = true;
+        } else
+            SetSensorBit((CBits *)p->m_bits, seal->m_index);
+    }
+    if (go && ai->PushAiState(AI_STATE_PICKUP, 0)) {
+        CAiState *s = ai->GetAiState();
+        CAiSPickup *pick = s && s->m_state == AI_STATE_PICKUP ? (CAiSPickup *)s : 0;
+
+        pick->SetPickup(p, 1);
+    }
+    return go;
+}
+
+/* a thrown grenade's pickup seen (OVL2 0x5CAC00) -- unwritten */
+extern "C" bool func_005CAC00(CSealCtrlAi *ai, CPickup *p, CZProjectile *proj);
+
+/* a projectile's fuse (zweapon.h's CZProjectile, which zseal.h declares only by name) */
+struct CSensorProjView {
+    unsigned char _0[0x8c];
+    float m_fuse;   // 0x8c
+};
+
+/* a grenade-like pickup's projectile, or none (inline: the null test of the pickup kept) */
+static inline CZProjectile *PickupProjectile(CPickup *p)
+{
+    return p ? (CZProjectile *)p->m_data : 0;
+}
+
+/* the pickup scan's view of the SEAL's team */
+struct CSensorTeamView {
+    unsigned char _0[0xc8];
+    unsigned int m_team;   // 0xc8
+};
+
+/* the pickups within 200 of the SEAL looked at in turn until one is taken up: a weapon (0x5CB450),
+ * ammunition (0x5CB630), or a grenade-like pickup whose fuse has 16 or less to run, when the AI may
+ * push the grenade state and -- breaching -- its thrower is no team-mate (0x5CAC00) (OVL2 0x5CB870:
+ * the pickup loop SOCOM 1's CSealCtrlAi::SensorPreTick held inline, split out; its one caller
+ * 0x5CBA20 -- the name ours). The pickup's dead first definition numbers it before the flag (the
+ * target's s3 to its s2); the team read through a view, so MW keeps its address in a saved register
+ * across the loop as the target does (s0: a member read in place folds its offset into the load) */
+extern "C" void func_005CB870(CSealCtrlAi *ai)
+{
+    static float range = 200.0f;
+    static float fuse = 16.0f;
+    CZSealBody *seal = (CZSealBody *)ai->m_entity;
+    CPickup::iterator it = CPickup::GetFirst();
+    CPickup *p = 0;
+    bool found = false;
+
+    while (!found && (p = CPickup::GetNext(it, &seal->m_posW, range, CPickup::PU_NONE)) != 0) {
+        switch (p->m_type) {
+        case CPickup::PU_TYPE_4:
+        case CPickup::PU_TYPE_5:
+        case CPickup::PU_TYPE_1:
+            if (ai->CanPushAiState(AI_STATE_GRENADE, 0)) {
+                CZProjectile *proj = PickupProjectile(p);
+
+                if (proj && ((CSensorProjView *)proj)->m_fuse <= fuse) {
+                    if (ai->m_stateStack.m_10 & (1 << AI_STATE_BREACH)) {
+                        CEntity *thrower = CEntity::m_list.GetEntityById(p->m_owner);
+
+                        if (thrower && (((CSensorTeamView *)seal)->m_team & thrower->m_team))
+                            break;
+                    }
+                    found = func_005CAC00(ai, p, proj);
+                }
+            }
+            break;
+        case CPickup::PU_AMMO: {
+            CPickupAmmo *a = p->GetAmmo();
+
+            if (a)
+                found = func_005CB630(ai, p, a);
+            break;
+        }
+        case CPickup::PU_WEAPON: {
+            CZWeapon *w = p->GetWeapon();
+
+            if (w)
+                found = func_005CB450(ai, p, w);
+            break;
+        }
+        }
+    }
+}
+
 /* the "ai_posttick" task (CCoreState::Init adds it at 10.7, after target_post_tick): three slices
  * (zseal.h's CAiSlice) moved on over the entity list, by the function's three static sizes
  * (8-byte-spaced data in definition order: 6, 5, 1) (OVL2 0x5CCA30, new in SOCOM II -- SOCOM 1's
@@ -141,6 +274,77 @@ extern "C" bool func_005CCA30(float dT, void *data)
     ai_slice1.Next(n, size1);
     ai_slice4.Next(n, size4);
     return false;
+}
+
+/* the AI's current state a hold with its bit 7 set (OVL2 0x559000, the SEALs' seal_ai.cpp: unnamed) */
+extern "C" bool func_00559000(CSealCtrlAi *ai);
+
+/* a squad's bit in the entities' m_UnitsSeenBy (zseal.h's CSealUnit pads it) */
+struct CSensorUnitView {
+    unsigned char _0[0x5c];
+    unsigned int m_seen_bit;   // 0x5c
+};
+
+/* an enemy the squad had not seen called out: the squad told, then -- unless the AI holds with bit
+ * 7 -- a SEAL's sighting by its place on the player's clock ("high" above 0.15 of the way up), moving
+ * when the player's own target for it says so, a plain sighting with no player; nothing for an
+ * entity not of kind 2 (OVL2 0x5C9930, called by OnSetTargetVisible with ftsGetPlayer(); SOCOM 1's
+ * EnemyCallout took the CTarget and tested the SEAL's team bits). The squad and its bit into locals and
+ * the first read of m_UnitsSeenBy through a const view (the target reads the word twice, the squad
+ * once: a plain read is merged); the sighting preset and replaced for an entity not of kind 2 (the
+ * target's beq takes the 62 in its delay slot, the -1 in the b's) */
+void CSealCtrlAi::EnemyCallout(CEntity *e, CEntity *player)
+{
+    static float moving_speed = 800.0f;
+    static float high_y = 0.15f;
+    CZSealBody *seal = (CZSealBody *)m_entity;
+
+    if (!e || e == player)
+        return;
+    CSealUnit *unit = m_unit;
+    unsigned int bit = ((CSensorUnitView *)unit)->m_seen_bit;
+    bool seen = (((const CEntity *)e)->m_UnitsSeenBy & bit) != 0;
+
+    if (!seen)
+        e->m_UnitsSeenBy |= bit;
+    if (seen)
+        return;
+    unit->Notify(seal, UNIT_MESSAGE_0, e);
+    if (func_00559000(this))
+        return;
+    bool moving = ai::is_moving(&e->m_velW, moving_speed);
+    CHARACTER_SOUND snd = CHRSND_ENEMY_SIGHTED;
+
+    if (e->m_type != 2)
+        snd = CHRSND_NONE;
+    else {
+        if (player) {
+            if (player->m_targets.FindTarget(e)->m_flags & 0x200) {
+                snd = moving ? CHRSND_TANGO_MOVING : CHRSND_ENEMY_SIGHTED;
+            } else {
+                CPnt3D d;
+                CQuat q;
+
+                e->m_posW.Sub(&player->m_posW, &d);
+                d.Normalize();
+                q.w = player->m_quat.w;
+                q.vec.x = -player->m_quat.vec.x;
+                q.vec.y = -player->m_quat.vec.y;
+                q.vec.z = -player->m_quat.vec.z;
+                q.Apply(&d, &d, 1);
+                bool high = d.y > high_y;
+
+                d.y = 0.0f;
+                d.Normalize();
+                int clock = ai::get_clock_direction(&d) + 14;
+
+                if (high)
+                    clock += 12;
+                snd = (CHARACTER_SOUND)clock;
+            }
+        }
+    }
+    PlayAiSound(snd, 1.0f, 0);
 }
 
 /* a target seen to fall: the AI calls it, "tango down", at full chance (OVL2 0x5C9B10; SOCOM 1's
@@ -182,6 +386,67 @@ struct CSensorConeCtrl {
     CSensorCone m_view_cone;   // 0x70
     CSensorDecay m_visrange;   // 0xa8
 };
+
+/* the application's camera (camera.h's CAppCamera, OVL1 bss 0x415FF0: its zdb camera, whose matrix
+ * the node's first member, and the SEAL it shows -- seal.cpp's view) */
+class CAppCamera {
+public:
+    unsigned char _0[0xb4];
+    zdb::CCamera *m_camera;   // 0xb4
+    zdb::CNode *m_camera_effects;   // 0xb8
+    CZSealBody *m_bc;   // 0xbc: the SEAL the camera shows
+};
+
+extern CAppCamera *appCamera;
+
+/* the SEAL's aim point (SOCOM 1's m_aim_goal and m_aim_point at 0x10AC/0x10B8, SOCOM II's 0x3A0 on:
+ * zseal.h pads them) */
+struct CSensorAimView {
+    unsigned char _0[0x144c];
+    CPnt3D m_aim_goal;   // 0x144c
+    CPnt3D m_aim_point;   // 0x1458
+};
+
+/* a player's view cone: the camera's when it shows this SEAL (its point and its forward axis), the
+ * head's otherwise, turned at the aim point while the SEAL has one; its height the view range
+ * stretched by the zoom, its radius the range at the field of view's tangent, narrowed by the zoom
+ * (OVL2 0x5C9520, CSealCtrl's slot +0xA8 -- SOCOM 1's took the zoom off the kit and looked from the
+ * head alone; the three tuning statics are 8-byte-spaced data at 0x650A78). The range read in place
+ * (through CSensorDecay::Get the products take the other operand first), the height defined before
+ * the radius: MW numbers them so (radius $f20, height $f21) */
+void CSealCtrl::UpdateViewCone()
+{
+    static float range_scale = 1.0f;
+    static float point_radius = 25.0f;
+    static float zoom_scale = 1.0f;
+    CSensorConeCtrl *c = (CSensorConeCtrl *)this;
+    CZSealBody *seal = (CZSealBody *)m_entity;
+    float zoom = seal->m_zoom_range;
+    float height = c->m_visrange.m_value * zoom;
+    float radius = c->m_visrange.m_value * c->m_fovtan / range_scale;
+    CPnt3D pos, dir;
+
+    if (zoom > 1.0f)
+        radius /= zoom * zoom_scale;
+    if (appCamera && appCamera->m_bc == seal) {
+        const CMatrix *m = &appCamera->m_camera->m_matrix;
+
+        pos = *(const CPnt3D *)m->m_matrix[3];
+        TransformVectors(m, &CPnt3D::unit_nz, &dir, 1);
+    } else {
+        seal->GetHeadParams(&pos, &dir);
+        if (seal->m_aim_point_valid) {
+            dir = ((CSensorAimView *)seal)->m_aim_point - pos;
+            dir.Normalize();
+        }
+    }
+    c->m_view_cone.m_height = height;
+    c->m_view_cone.m_inv_height = 1.0f / height;
+    c->m_view_cone.m_radius = radius;
+    c->m_view_cone.m_point_radius = point_radius;
+    c->m_view_cone.m_cone_pos = pos;
+    c->m_view_cone.m_cone_dir = dir;
+}
 
 /* the view cone set from the SEAL's head: its point the eye, its direction halfway between the
  * head's and the body's back (the node's third row negated -- new in SOCOM II), its height the view

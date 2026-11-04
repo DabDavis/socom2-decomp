@@ -276,7 +276,9 @@ void CUIVarManager::Reset()
  * the buffer in s5, and computes the packed flag's byte address (s2 + 1) into s1 in the delay slot
  * of the flag's test, reading and writing the flag through it after DeleteChildren; written so
  * (or with the locals declared at the top in that order), MW keeps `this` in s4, saves five and
- * addresses the flag at 1(s2) */
+ * addresses the flag at 1(s2). Round 23: a reference or pointer local on the variable for the
+ * whole block, a free inline setting the flag through a reference or a pointer (and one testing
+ * it), `packed == false`, the packed buffer through a local: no change (50 lines in all) */
 void CUIVarManager::CollectGarbage()
 {
     int old = m_currtab;

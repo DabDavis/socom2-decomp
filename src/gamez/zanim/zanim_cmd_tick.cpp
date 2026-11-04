@@ -1264,10 +1264,11 @@ extern "C" bool func_00264610(_zanim_cmd_hdr *hdr, float *dT)
  * (flag 0x10) and/or their a (0x20) -- and/or drive them by an expression, seeded from the
  * first chosen channel, over a time (the four are zdb::CVisual::m_lensColor, the zoom's lens
  * colours; the expression's function is not named yet).
- * OPEN, 8 bytes short, in the channel search alone: the target enters it through a jump to
- * the `i < 4` test and reloads `channels` each pass, where this hoists the load, converts the
- * bit to a bool (sltu/xori) and runs the first pass straight. Tried: while, no-break with
- * `first < 0` in the test (right size, 31 off), continue, an inline helper returning i. */
+ * The loops test `i <= 3` (the target's `slti at` branches; `i < 4` puts the test in v0); the
+ * channel search tests `first < 0` too and breaks (SequenceRunning's shape: entered at its test,
+ * `channels` reloaded each pass, the found path threaded out), its counter shared with the last
+ * loop (one variable: the last loop's i takes a1, the cursor a2, as the target's); the tail is
+ * the sibling handlers' (the time in a local, the timer read before the step, `*dT -=`). */
 struct zanim_cmd_truecolor {
     _zanim_cmd_hdr hdr;
     unsigned char channels;
@@ -1291,7 +1292,7 @@ extern "C" bool func_002642F0(_zanim_cmd_hdr *hdr, float *dT)
     zanim_cmd_truecolor *cmd = (zanim_cmd_truecolor *)hdr;
 
     if ((cmd->channels & 0x10) || (cmd->channels & 0x20)) {
-        for (int i = 0; i < 4; i++) {
+        for (int i = 0; i <= 3; i++) {
             if (cmd->channels & (1 << i)) {
                 if (cmd->channels & 0x10)
                     SetRGB(&zdb::CVisual::m_lensColor[i], cmd->r, cmd->g, cmd->b);
@@ -1307,8 +1308,9 @@ extern "C" bool func_002642F0(_zanim_cmd_hdr *hdr, float *dT)
         if (!(cmd->time <= 0.0f) && !(t <= cmd->time))
             t = cmd->time;
         int first = -1;
+        int i;
 
-        for (int i = 0; i < 4; i++) {
+        for (i = 0; first < 0 && i <= 3; i++) {
             if (cmd->channels & (1 << i)) {
                 first = i;
                 break;
@@ -1322,17 +1324,19 @@ extern "C" bool func_002642F0(_zanim_cmd_hdr *hdr, float *dT)
             c = from;
         }
         zAnimColorExpr(&c, expr, cmd->expr_len, first, t);
-        for (int i = 0; i < 4; i++)
+        for (i = 0; i <= 3; i++)
             if (cmd->channels & (1 << i))
                 (PNT4D &)zdb::CVisual::m_lensColor[i] = c;
     }
-    if (!(cmd->time <= 0.0f)) {
-        float step = *dT;
-        float t = ZAnim.m_CurSeq->cmd_timer;
+    float time = cmd->time;
 
-        if (!(step + t <= cmd->time)) {
+    if (!(time <= 0.0f)) {
+        float t = ZAnim.m_CurSeq->cmd_timer;
+        float step = *dT;
+
+        if (!(step + t <= time)) {
             done = true;
-            *dT = step - (cmd->time - t);
+            *dT -= time - t;
         } else {
             done = false;
             *dT = 0.0f;

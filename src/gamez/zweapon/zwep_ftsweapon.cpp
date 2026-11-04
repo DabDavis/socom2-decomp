@@ -72,10 +72,180 @@ void CZFTSWeapon::Recoil()
 {
 }
 
+/* CTargetMods' and the rumble's accessors, SOCOM 1's in its order (0x3159C0-0x315CD0 there), at
+ * SOCOM II's offsets of the same DWARF members: 0x3C5EB0-0x3C61A0, defined in reverse. Two getters
+ * and a setter are SOCOM II's own, for 0x28 and 0x20 (ReadWeapon's TargetDilateUponMovementMult and
+ * TargetDilateUponFire keys; the names ours). A rumble's time or power set enables it when above
+ * zero */
+void CTargetMods::SetReticuleKnock(float v)
+{
+    m_reticuleknock = v;
+}
+
+void CTargetMods::SetReticuleKnock_Return(float v)
+{
+    m_reticuleknock_return = v;
+}
+
+void CTargetMods::SetReticuleKnock_Max(float v)
+{
+    m_reticuleknock_max = v;
+}
+
+float CTargetMods::GetReticuleKnock() const
+{
+    return m_reticuleknock;
+}
+
+float CTargetMods::GetReticuleKnock_Return() const
+{
+    return m_reticuleknock_return;
+}
+
+float CTargetMods::GetReticuleKnock_Max() const
+{
+    return m_reticuleknock_max;
+}
+
+void CTargetMods::SetTarget_DilateUponFire(float v)
+{
+    m_target_dilateuponfire = v;
+}
+
 void CTargetMods::SetTarget_DilateUponMovement(float d)
 {
     m_target_dilateuponmovement = d;
     m_target_dilateuponmovementSqrt = sqrtf(d);
+}
+
+void CTargetMods::SetTarget_DilateUponMovementMult(float v)
+{
+    m_target_dilateuponmovementmult = v;
+}
+
+void CTargetMods::SetTarget_Constrict(float v)
+{
+    m_target_constrict = v;
+}
+
+void CTargetMods::SetTarget_Min(float v)
+{
+    m_target_min = v;
+}
+
+void CTargetMods::SetTarget_Max(float v)
+{
+    m_target_max = v;
+}
+
+float CTargetMods::GetTarget_DilateUponFire() const
+{
+    return m_target_dilateuponfire;
+}
+
+float CTargetMods::GetTarget_DilateUponMovement() const
+{
+    return m_target_dilateuponmovement;
+}
+
+float CTargetMods::GetTarget_DilateUponMovementMult() const
+{
+    return m_target_dilateuponmovementmult;
+}
+
+float CTargetMods::GetTarget_Constrict() const
+{
+    return m_target_constrict;
+}
+
+float CTargetMods::GetTarget_Min() const
+{
+    return m_target_min;
+}
+
+float CTargetMods::GetTarget_Max() const
+{
+    return m_target_max;
+}
+
+void CTargetMods::SetSniper_DistPPFrame_PosX(float v)
+{
+    m_distppframe_posx = v;
+}
+
+void CTargetMods::SetSniper_DistPPFrame_PosY(float v)
+{
+    m_distppframe_posy = v;
+}
+
+float CTargetMods::GetSniper_DistPPFrame_PosX() const
+{
+    return m_distppframe_posx;
+}
+
+float CTargetMods::GetSniper_DistPPFrame_PosY() const
+{
+    return m_distppframe_posy;
+}
+
+void CTargetMods::SetSniper_DistLimit_PosX(float v)
+{
+    m_distlimit_posx = v;
+}
+
+void CTargetMods::SetSniper_DistLimit_PosY(float v)
+{
+    m_distlimit_posy = v;
+}
+
+float CTargetMods::GetSniper_DistLimit_PosX() const
+{
+    return m_distlimit_posx;
+}
+
+float CTargetMods::GetSniper_DistLimit_PosY() const
+{
+    return m_distlimit_posy;
+}
+
+void CTargetMods::SetSniper_DecayRate(float v)
+{
+    m_sniper_decayrate = v;
+}
+
+float CTargetMods::GetSniper_DecayRate() const
+{
+    return m_sniper_decayrate;
+}
+
+void CTargetMods::SetFireRifle_KickRate(float v)
+{
+    m_firerifle_kickrate = v;
+}
+
+void CTargetMods::SetFireRifle_KickReturnRate(float v)
+{
+    m_firerifle_kickreturnrate = v;
+}
+
+void CTargetMods::SetFireRifle_KickBaseDist(float v)
+{
+    m_firerifle_kickbasedist = v;
+}
+
+void CTargetMods::SetFireRifle_KickRandomDist(float v)
+{
+    m_firerifle_kickrandomdist = v;
+}
+
+float CTargetMods::GetFireRifle_KickRate() const
+{
+    return m_firerifle_kickrate;
+}
+
+float CTargetMods::GetFireRifle_KickReturnRate() const
+{
+    return m_firerifle_kickreturnrate;
 }
 
 float CTargetMods::GetFireRifle_KickBaseDist() const
@@ -86,6 +256,49 @@ float CTargetMods::GetFireRifle_KickBaseDist() const
 float CTargetMods::GetFireRifle_KickRandomDist() const
 {
     return m_firerifle_kickrandomdist;
+}
+
+void CZFTSWeapon::SetRumbleHigh_Time(float v)
+{
+    m_rumblehigh_time = v;
+    m_rumblehigh_enable = v > 0.0f;
+}
+
+unsigned char CZFTSWeapon::GetRumbleHigh_Enable() const
+{
+    return m_rumblehigh_enable;
+}
+
+float CZFTSWeapon::GetRumbleHigh_Time() const
+{
+    return m_rumblehigh_time;
+}
+
+void CZFTSWeapon::SetRumbleLow_Time(float v)
+{
+    m_rumblelow_time = v;
+    m_rumblelow_enable = v > 0.0f;
+}
+
+void CZFTSWeapon::SetRumbleLow_Power(float v)
+{
+    m_rumblelow_power = v;
+    m_rumblelow_enable = v > 0.0f;
+}
+
+unsigned char CZFTSWeapon::GetRumbleLow_Enable() const
+{
+    return m_rumblelow_enable;
+}
+
+float CZFTSWeapon::GetRumbleLow_Time() const
+{
+    return m_rumblelow_time;
+}
+
+float CZFTSWeapon::GetRumbleLow_Power() const
+{
+    return m_rumblelow_power;
 }
 
 void CZFTSWeapon::AddZoommode(float zoom)
@@ -125,20 +338,19 @@ bool CZFTSWeapon::IsGrenadeLauncherAmmo()
     return false;
 }
 
-/* the class 185 (new in SOCOM II, not named). OPEN, 3 instructions (the target's size): the target
- * calls GetIDType twice and tests only the second result -- a first test MW folded away, its call
- * kept. Round 21: `(unsigned int)f() > 0xFFFFFFFFu` folds the test and keeps the call, the target's
- * size, but the folded branch leaves its label (the return-true block's) padded where the target
- * pads the return-false block's -- an if/else, a negated test, a result local set in each arm or a
- * ternary move nothing; `< 0u`, `!(>= 0u)` and an unsigned-char cast fold the call away too (0x38).
- * Earlier: an out-of-range class (0x1B9) is compared, not folded (0x60); `< 0` and `>= 0 &&` fold
- * but keep a branch (0x58); the call as a statement of its own materialises the test (0x38); a dead
- * local holding the first result (initialised, re-assigned, assigned in the test) gives 0x38 too,
- * as do `(f() && false) ||`, `(f(), false) ||`, `(f() * 0) ||`; `> 255`, `>= 256`, `== -1`,
- * `== 0x100`, `(f() & 0)` are compared, not folded (0x60) */
+/* the class 185 (new in SOCOM II, not named): the target calls GetIDType twice and tests only the
+ * second result -- a first test MW folds away, its call kept. The first test always TRUE and
+ * `&&`-joined (round 23): its folded branch went to the return-false block, which the second test
+ * labels anyway, so only that block is padded, as the target's. Always false and `||`-joined
+ * (round 21's `(unsigned int)f() > 0xFFFFFFFFu ||`) the folded branch left the return-true block a
+ * label, padded (3 off); an if/else, a negated test, a result local or a ternary moved nothing.
+ * `>= 0u` folds the call away too (0x38); an out-of-range class (0x1B9) is compared, not folded
+ * (0x60); `< 0` and `>= 0 &&` fold but keep a branch (0x58); the call as a statement of its own
+ * materialises the test (0x38), as does a dead local holding the first result; `> 255`, `>= 256`,
+ * `== -1`, `== 0x100`, `(f() & 0)` are compared (0x60) */
 extern "C" bool func_003C5C20(CZFTSWeapon *w)
 {
-    if ((unsigned int)w->GetIDType() > 0xFFFFFFFFu || w->GetIDType() == 185)
+    if ((unsigned int)w->GetIDType() <= 0xFFFFFFFFu && w->GetIDType() == 185)
         return true;
     return false;
 }
@@ -226,7 +438,7 @@ CTargetMods::CTargetMods()
     m_sniper_decayrate = 0.0f;
     m_target_dilateuponfire = 0.0f;
     m_target_dilateuponmovement = 0.0f;
-    m_socom2_28 = 1.0f;
+    m_target_dilateuponmovementmult = 1.0f;
     m_target_dilateuponmovementSqrt = 0.0f;
     m_target_constrict = 0.0f;
     m_target_min = 0.0f;

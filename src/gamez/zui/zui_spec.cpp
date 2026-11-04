@@ -450,7 +450,12 @@ namespace {
  * the same inlines, come out the target's). getSpec's `move a1,type` goes into the jalr's delay
  * slot there, into the null test's here. Tried: the item assigned after its declaration, the spec
  * through a ternary, an `&&`, `(*getSpec)(...)`, the spec declared first; declared `inline` the
- * function is absorbed into LoadFromRdr (0x954) */
+ * function is absorbed into LoadFromRdr (0x954). Round 23: LoadModels' target lays out the same
+ * Count() diamond (its delay slot filled from above, so the else block stays live) and its Item()
+ * as a triangle -- there the else's instruction went into the slot and the dead block and its
+ * `b` were removed, as here; the target's LoadDlgObjects alone keeps the dead blocks. Measured:
+ * `#pragma optimization_level 3` around it gives 0x2A4, optimize_for_size 0x28C, levels 1 and 2
+ * far off. (fseek's orphaned else is a different shape: a plain if/else, its beqz not retargeted.) */
 void LoadDlgObjects(std::vector<CDesignDlgObj> *objs, _zrdr *rdr, const char *tag,
                     CDlgObjSpec *(*getSpec)(_zrdr *, const char *))
 {
