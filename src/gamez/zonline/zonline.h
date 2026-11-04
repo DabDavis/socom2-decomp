@@ -1017,6 +1017,8 @@ public:
     void GetMissionSequence(unsigned char *idx, unsigned char *seq);
     /* our game's details for the menus (the room unit's, 0x2E24D0; the name ours) */
     void GetCurrentGameInfo();
+    /* a game of the room's (the room unit's, 0x2E1F20; the name ours) */
+    void GetGameInfo(const char *name);
     void SetMissionSequence(unsigned char idx, unsigned char *seq);
     void ResetMissionSequence();
     int AdvanceMissionSequence();
