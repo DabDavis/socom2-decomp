@@ -346,15 +346,17 @@ void CEntity::SetTeamMask(unsigned int mask)
     m_team = mask;
 }
 
-/* OPEN, 5 instructions: the registers. The target loads m_team into a2 and builds the bit in v1
- * (`li v1,1; sllv v1,v1,a1`), MW here the other way round (`lw v1; li a2,1; sllv a1,a2,a1`) --
- * whatever the form: |=, `m = m | bit`, a local for either, an inline setter or bit helper, 1U,
- * `bit <<= team`, an early return, int m_team; 3.0b22/b38/b50 alike. SOCOM 1's (0x1EE760) is the
- * target's code word for word */
+/* the mask read into a local, the bit or'ed into it, stored back: the local, read-modify-written,
+ * survives MW's copy propagation as a named variable numbered before the bit's temporaries -- the
+ * target's a2 for the mask, v1 for the bit (`m_team |= 1 << team` swaps them, 5 instructions) */
 void CEntity::JoinTeam(unsigned int team)
 {
-    if (team < 32)
-        m_team |= 1 << team;
+    if (team < 32) {
+        unsigned int m = m_team;
+
+        m |= 1 << team;
+        m_team = m;
+    }
 }
 
 void CEntity::SetDisplayName(const char *name)
