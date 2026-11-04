@@ -7,17 +7,17 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
+M2C_UNK LoadSpec__10CUIMapCtrlFRC14CUIMapCtrlSpecP7C2DFontPQ23zdb9CAssetLibPQ23zdb16CTextureRelocMgr(s32, s32, s32, M2C_UNK, s32); /* extern */
+s32 __ct__10CUIMapCtrlFv(s32);                      /* extern */
 s32 __nw__FUi(M2C_UNK);                             /* extern */
-M2C_UNK func_0036D140(s32, s32, s32, M2C_UNK, s32); /* extern */
-s32 func_0036D850(s32);                             /* extern */
 
 s32 CreateDisplayObj__14CUIMapCtrlSpecCFP7C2DFontPQ23zdb16CTextureRelocMgr(s32 arg0, s32 arg1, s32 arg2) {
     s32 var_s0;
 
     var_s0 = __nw__FUi(0x210);
     if (var_s0 != 0) {
-        var_s0 = func_0036D850(var_s0);
+        var_s0 = __ct__10CUIMapCtrlFv(var_s0);
     }
-    func_0036D140(var_s0, arg0, arg1, 0, arg2);
+    LoadSpec__10CUIMapCtrlFRC14CUIMapCtrlSpecP7C2DFontPQ23zdb9CAssetLibPQ23zdb16CTextureRelocMgr(var_s0, arg0, arg1, 0, arg2);
     return var_s0;
 }
