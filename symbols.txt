@@ -8600,7 +8600,7 @@
 0x00404490 0x64 func_00404490  # OVL1 data area; a static initialiser; s1~ valve_list.cpp (shape 0.48, a hint)
 0x00404500 0x64 func_00404500  # OVL1 data area; a static initialiser; s1~ zvid_init.cpp (shape 0.46, a hint)
 0x00404570 0x470 func_00404570  # OVL1 data area; a static initialiser
-0x004049E0 0x28 func_004049E0  # OVL1 data area; a static initialiser
+0x004049E0 0x28 __sinit_vis_data.cpp  # OVL1 data area; a static initialiser; by hand (the wep lane, round 17: vis_data.cpp's initialiser -- CMaterial_band::m_defaultColor (0x4B5020) built as CPnt4D(0, 1, 0, 0); between vis_vu.cpp's 0x404570 and vis_decal.cpp's 0x404A10, as the units; SOCOM 1's vis_data.cpp had none)
 0x00404A10 0x94 __sinit_vis_decal.cpp  # OVL1 data area; a static initialiser; by hand (the wep lane, round 17: vis_decal.cpp's initialiser -- the four decal pools (CDecal's and CMeshDecal's temporary and permanent, 0x4B5030-0x4B50B3) zeroed, then UVCompare's bounds 0x4B5068/0x4B5070 set from the float 0x3E14C8; between vis_vu.cpp's 0x404570 and vis_texfx.cpp's, as the units)
 0x00404AB0 0x80 __sinit_vis_texfx.cpp  # OVL1 data area; a static initialiser; s1:unit by hand (the wep lane: SOCOM 1's __sinit_vis_texfx.cpp builds the effects' list and clears zdb::vdata, registering both; SOCOM II's builds the manager 0x4B50D0 in the list's place, then vdata 0x4B5100)
 0x00404B30 0x3C __sinit_vis_ripple.cpp  # OVL1 data area; a static initialiser; s1~ zwep_explosive.cpp (shape 0.45, a hint); by hand (the wep lane: vis_ripple.cpp's static initialiser -- builds the ripple manager 0x4B5170 with 0x3C3420 and registers its destructor 0x3C34B0; the unit's name ours)
