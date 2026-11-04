@@ -431,15 +431,24 @@ public:
     static class CPlacedExplosiveList m_placedExplosives;
 };   // 0xf8 bytes (CZFTSWeapon's targetmods start there)
 
-/* the materials' table (int_material.cpp's, SOCOM 1's class): only the extension list, whose size
- * the weapons' per-material animations are bounded by (SOCOM 1's static; 0x44F350 here) */
-struct MATERIALEX;
+/* the materials' table (int_material.h's CMaterialExArray, SOCOM 1's class, over its element
+ * CMaterialEx): a stand-in for the units that do not include int_material.h -- only the extension
+ * list, whose size the weapons' per-material animations are bounded by (SOCOM 1's static; 0x44F350
+ * here), and the lookups the weapons call. A unit including int_material.h first (zwep_list.cpp,
+ * zwep_projectile.cpp) sees the real class instead; the names agree, so every mangled name does */
+class CMaterialEx;
+#ifndef INT_MATERIAL_H
 class CMaterialExArray {
 public:
-    static std::vector<void *> m_materialex_list;
+    static std::vector<CMaterialEx *> m_materialex_list;
     /* a material's extension by index (SOCOM 1's static, 0x2DE440: InitializeWeapons calls it) */
-    static MATERIALEX *GetWeaponAnimMaterialEx(unsigned int i);
+    static CMaterialEx *GetWeaponAnimMaterialEx(unsigned int i);
+    /* a material's index by name, and the next one of a decal's name after an index, 0 past the
+     * last (int_material.cpp's, 0x2DE9E0 and 0x2DE970) */
+    static int ResolveMaterialIndex(const char *name);
+    static int ResolveDecalMaterialIndex(const char *name, int index);
 };
+#endif
 
 /* a weapon's per-stance reticle and recoil tuning (SOCOM 1's DWARF: 0x4c bytes; SOCOM II's is 0x74,
  * a float inserted at 0x28 and more members after SOCOM 1's -- only what the matched code reads is
@@ -664,6 +673,13 @@ public:
     void SetLastHitWasPerson(bool on);
     void SetFlag9(bool on);
     bool GetFlag9();
+    /* the last delayed detonation's point, handed out once (SOCOM II's: HandleDelayedDetonate
+     * stores it, CZSealBody::Tick shakes the camera by the player's distance to it, CHUD::ReInit_Init
+     * forgets it; 0x3C6990 and 0x3C6980, the names ours) */
+    static CPnt3D *GetNewExplosion();
+    static void ClearNewExplosion();
+    static CPnt3D m_explosionPos;   // 0x4B51C8 (built from CPnt3D::zero by the initialiser)
+    static bool m_newExplosion;   // 0x4B51D8
     /* inline: the bool's `& 1` survives a constant argument, as SetVelW's and Init's stores show
      * (the names ours) */
     void SetDone(bool on) { m_done = on; }

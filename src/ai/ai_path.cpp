@@ -17,8 +17,13 @@ const T &_min(const T &a, const T &b)
 }
 }
 
+/* the cell no map has: every field's bits set (SOCOM 1's invalid__9CAiMapLoc). This unit's static
+ * (OVL2 .data 0x65AED0, just ahead of s_preemptPriority and PrintPath's strings), built by
+ * __sinit_ai_path.cpp (0x668680) through the three-field constructor -- the mem-initializers' word
+ * read-mask-writes, the map id first */
+const CAiMapLoc CAiMapLoc::invalid(0x1FFF, 0x1FFF, 0x3F);
+
 /* what the path's functions call that is not written yet (this unit's) */
-extern "C" void func_00525520(CAiPath *path);   /* SOCOM 1's UpdateTurnAngles, by position */
 extern "C" void func_00525810(CAiPath *path, unsigned int leg);   /* SOCOM 1's SmoothPathLeg */
 /* a cell put into the path on its map (FindDetour's last call: SOCOM 1's InsertPathLoc or
  * AppendPathLoc, by its place after PostProcess) */
@@ -234,7 +239,12 @@ void CAiPath::IncrementPathId()
  * whole as well; an inline taking a CONST path, declared before this function and defined after it,
  * keeps both branches and the reloads of m_planleg after them -- but calls the pointer vector's const
  * operator[] out of line inside them (0xC8): the shape the target's is, with the access inlined away
- * after the branches were built (build/scratch/ai/v_plc.py) */
+ * after the branches were built (build/scratch/ai/v_plc.py). The AI core round 22 (v_plc*.py): with
+ * the const operator[] instantiated by an own function first, that inline takes it and the whole is
+ * deleted again (0x7C), as are raw `data_[i]` loads in it (const or not, by value or pointer) and
+ * empty asm statements (`asm {}`, `asm volatile ("")`); `asm volatile { nop }` as each body gives the
+ * target's size and branches, the nop the only difference -- the target's bodies are empty after a
+ * front end that could not see them so */
 bool CAiPath::plan_legcomplete(PATH_STATE state)
 {
     bool more = false;
@@ -289,7 +299,7 @@ void CAiPath::SetTemplatePath(CAiPath *path)
 void CAiPath::PostProcess()
 {
     SmoothPath(false);
-    func_00525520(this);
+    UpdatePointFlags();
     if (m_flags & 4)
         UpdatePathWidth(5);
     if (m_flags & 0x40)
@@ -348,32 +358,32 @@ inline bool operator!=(const CPointRevIter &x, const CPointRevIter &y)
  * cross maps; the first point closes the last leg, and the path is smoothed when asked. The walk is
  * UpdatePathWidth's reverse iterator; each map pushed straight from the lookup (two call
  * temporaries) */
-extern "C" void func_00526540(CAiPath *path, CAiMaps *maps, bool smooth)
+void CAiPath::RebuildLegs(CAiMaps *maps, bool smooth)
 {
     if (!maps)
         return;
-    if (!path->HasPoints())
+    if (!HasPoints())
         return;
-    path->m_waypts.clear();
-    path->m_maps.clear();
-    path->m_legcount = 1;
-    CPointRevIter i = rbegin(path->m_points);
+    m_waypts.clear();
+    m_maps.clear();
+    m_legcount = 1;
+    CPointRevIter i = rbegin(m_points);
     CAiPath::point *prev = &*i;
 
-    path->m_waypts.push_back(prev->m_loc);
-    path->m_maps.push_back(maps->GetMapByIndex((*i).m_loc.m_mapid));
-    for (++i; i != rend(path->m_points); ++i) {
-        if ((*i).m_loc.m_mapid != path->m_waypts.back().m_mapid) {
-            path->m_waypts.push_back(prev->m_loc);
-            path->m_waypts.push_back((*i).m_loc);
-            path->m_maps.push_back(maps->GetMapByIndex((*i).m_loc.m_mapid));
-            path->m_legcount++;
+    m_waypts.push_back(prev->m_loc);
+    m_maps.push_back(maps->GetMapByIndex((*i).m_loc.m_mapid));
+    for (++i; i != rend(m_points); ++i) {
+        if ((*i).m_loc.m_mapid != m_waypts.back().m_mapid) {
+            m_waypts.push_back(prev->m_loc);
+            m_waypts.push_back((*i).m_loc);
+            m_maps.push_back(maps->GetMapByIndex((*i).m_loc.m_mapid));
+            m_legcount++;
         }
         prev = &*i;
     }
-    path->m_waypts.push_back(prev->m_loc);
+    m_waypts.push_back(prev->m_loc);
     if (smooth)
-        path->SmoothPath(true);
+        SmoothPath(true);
 }
 
 /* each leg smoothed, the invalid points dropped and the points' storage trimmed, when there are
@@ -412,35 +422,36 @@ bool CAiPath::IsPreferredCell(const CAiCell *cell) const
 }
 #pragma auto_inline reset
 
-/* the points' flags, last to first (0x525520, by position SOCOM 1's UpdateTurnAngles -- SOCOM II's
- * points carry no angle: the same reverse walk over the legs as UpdatePathWidth's): at each leg's goal
+/* the points' flags, last to first (SOCOM 1's UpdatePointFlags by its place and body, the demo's
+ * 0x1940A0 right after UpdatePathWidth -- its UpdateTurnAngles, next, is gone: SOCOM II's points carry
+ * no angle; the same reverse walk over the legs as UpdatePathWidth's): at each leg's goal
  * the leg moves on, the goal and the point after it flagged 2 when the leg crosses maps; elsewhere the
  * point before a cell holding an action is flagged 1, one before cover (water, brush, forest, grass)
  * 4. The first point through the reverse iterator's postfix ++ (the old position copied, then
  * stepped), the size test `<= 2` (sltiu at), the soils an `||` chain MW folds into a bit test, held
  * in a bool (a switch gives a compare chain) */
-extern "C" void func_00525520(CAiPath *path)
+void CAiPath::UpdatePointFlags()
 {
-    if (path->m_points.size() <= 2)
+    if (m_points.size() <= 2)
         return;
-    CPointRevIter i = rbegin(path->m_points);
+    CPointRevIter i = rbegin(m_points);
     CAiPath::point *prev = &*i++;
     CAiMap *map;
     int leg = 0;
     CAiMapLoc start;
     CAiMapLoc goal;
 
-    map = path->GetLegMap(leg);
-    path->GetLegPoints(start, goal, leg);
-    for (; i != rend(path->m_points); ++i) {
+    map = GetLegMap(leg);
+    GetLegPoints(start, goal, leg);
+    for (; i != rend(m_points); ++i) {
         if (prev->m_loc == goal) {
             leg++;
             if (prev->m_loc.m_mapid != goal.m_mapid) {
                 prev->m_flags |= 2;
                 (*i).m_flags |= 2;
             }
-            map = path->GetLegMap(leg);
-            path->GetLegPoints(start, goal, leg);
+            map = GetLegMap(leg);
+            GetLegPoints(start, goal, leg);
         } else if (map) {
             CAiCell *cell = map->GetCell((*i).m_loc, 0);
 
