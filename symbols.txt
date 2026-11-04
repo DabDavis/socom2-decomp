@@ -2722,7 +2722,7 @@
 0x00257CC0 0x1F8 func_00257CC0  # OVL1
 0x00257EC0 0x10 func_00257EC0  # OVL1; tu: char_type.cpp~ (1.0 beta)
 0x00257ED0 0x8 func_00257ED0  # OVL1
-0x00257EE0 0xAC func_00257EE0  # OVL1
+0x00257EE0 0xAC ReadString__Q23zar4CZARFPPc  # OVL1; ours, the core lane round 4 (SOCOM II's: a length word read through m_pFile's fread, then when 4 bytes came and the length is positive a _malloc'd zeroed copy of length+1 filled by a second fread; the bytes read returned -- CIO::fwrite(const char *)'s record read back; CZSIObject::Read calls it for the object's name)
 0x00257F90 0x70 ReleaseDataBuffer__Q23zar4CZARFv  # OVL1; s1:calls by hand (the zdb-world lane: at SOCOM 1's call site)
 0x00258000 0x510 func_00258000  # OVL1
 0x00258510 0x58 GetSize__Q23zar4CZARFPCc  # OVL1; s1:order by hand (SOCOM 1's GetSize 0x1D8CD0, between ReadDirectory and GetOpenKey there as here: the open key's FindKey, its size or -1; Fetch(const char *, char **) calls it where SOCOM 1's does)

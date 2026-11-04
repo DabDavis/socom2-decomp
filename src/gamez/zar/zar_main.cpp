@@ -105,4 +105,17 @@ int CZAR::GetSize(const char *name)
     return key ? key->m_size : -1;
 }
 
+int CZAR::ReadString(char **str)
+{
+    int len = 0;
+    int n;
+
+    if ((n = m_pFile->fread(&len, 4)) == 4 && len > 0) {
+        *str = (char *)_malloc(len + 1, 0, 0);
+        memset(*str, 0, len + 1);
+        n += m_pFile->fread(*str, len);
+    }
+    return n;
+}
+
 }

@@ -93,6 +93,10 @@ public:
     /* the in-memory data buffer handed to the caller (0x257F90): the CBufferIO under m_pFile
      * releases it and the archive forgets it (the word at 0x1C, the byte at 0x24) -- 0 when none */
     void *ReleaseDataBuffer();
+    /* a string off the file at its position: its length, then a fresh zeroed copy of its
+     * characters (CIO::fwrite(const char *)'s record read back; the bytes read; SOCOM II's -- the
+     * name ours: CZSIObject::Read reads the object's name with it) */
+    int ReadString(char **str);
     /* the file reopened unless it still is (0x258B40, SOCOM 1's ReOpen; both callers pass 1, 1) */
     bool ReOpen(int, unsigned int);
     bool IsOpen() { return m_pFile ? m_pFile->IsOpen() : false; }
