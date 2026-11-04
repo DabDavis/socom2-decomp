@@ -945,11 +945,6 @@ public:
 extern CMission theMission;
 
 extern "C" {
-/* the kit's two words at +0x20 zeroed (OVL2 0x5B9020, seal_kit.cpp's first row, the kit lane's) */
-void func_005B9020(CZKit *kit);
-}
-
-extern "C" {
 /* a ZAnim let go (OVL1 0x2707C0, unowned: seal_ai.cpp's reading) */
 void func_002707C0(CZAnim *anim, bool now);
 /* the night-vision goggles' sounds (OVL1 bss 0x44CE30, 0x44CE38: seal_env.cpp's
@@ -1068,7 +1063,7 @@ ZOOMSTATE CZSealBody::DecrZoomState()
         break;
     case ZOOMSTATE_BINOCS:
         zs = ZOOMSTATE_1STPERSON;
-        func_005B9020(&m_kit);
+        m_kit.ResetRetOffsetXY();
         break;
     case ZOOMSTATE_WEAPONDEF1:
     case ZOOMSTATE_WEAPONDEF2:
@@ -1088,7 +1083,7 @@ ZOOMSTATE CZSealBody::DecrZoomState()
                     zs = ZOOMSTATE_NVG;
                 else
                     zs = ZOOMSTATE_1STPERSON;
-                func_005B9020(&m_kit);
+                m_kit.ResetRetOffsetXY();
             } else if (level - 1 < (int)w->m_zoommode.size())
                 zs = (ZOOMSTATE)(m_zoomstate - 1);
         }
@@ -1099,13 +1094,20 @@ ZOOMSTATE CZSealBody::DecrZoomState()
     return zs;
 }
 
-extern "C" {
-/* the turret's six nodes' +0x9C set to 1 or 0 (OVL1 0x3AA020, unowned: a CTurret member), and the
- * kit's weapon in its launcher mode (OVL2 0x5BD7E0, the kit lane's: WeaponIsLauncherMode of the
- * current item) */
-void func_003AA020(CTurret *t, bool on);
-bool func_005BD7E0(CZKit *kit);
-}
+/* a turret (zveh.h's CTurret, whose header clashes with zseal.h's stand-ins: only its thermal look,
+ * at zveh.h's offset, and the six nodes' opacity and visibility -- SetOpacity and SetVisible, OVL1
+ * 0x3A9FB0 and 0x3AA020, the weapons' veh_turret.cpp) */
+class CTurret : public CEntity {
+public:
+    virtual ~CTurret();
+    void SetThermal(zdb::CNode *node, bool thermal);
+    void SetOpacity(float f);
+    void SetVisible(bool on);
+
+    unsigned char _170[0x298 - 0x170];
+    bool m_thermal;   // 0x298
+};
+
 
 /* the view stepped in one place (OVL2 0x5445B0; SOCOM 1's switch with SOCOM II's states: out of the
  * third person a turret's thermal view (2) when it has one; out of the first person, nothing while a
@@ -1131,7 +1133,7 @@ ZOOMSTATE CZSealBody::IncrZoomState()
     case ZOOMSTATE_3RDPERSON:
         if (TurretHasThermal()) {
             zs = ZOOMSTATE_THERMAL;
-            func_003AA020(GetTurret(), false);
+            GetTurret()->SetVisible(false);
         } else
             zs = ZOOMSTATE_1STPERSON;
         break;
@@ -1140,7 +1142,7 @@ ZOOMSTATE CZSealBody::IncrZoomState()
             break;
         if (item && CZWeapon::IsLauncher(item->m_ID))
             break;
-        if (func_005BD7E0(&m_kit))
+        if (m_kit.CurWeaponIsLauncherMode())
             break;
         if ((!pref && zdb::CWorld::m_world->m_night_mission) || nvg)
             zs = ZOOMSTATE_NVG;
@@ -1235,6 +1237,52 @@ bool CZSealBody::Virtual60(CPnt3D *out)
 bool CZSealBody::Virtual5C(CZSealBody *seal, CTurret *turret)
 {
     return false;
+}
+
+extern "C" {
+/* whether the SEAL may take a state now (OVL2 0x552EC0, new in SOCOM II: UpdateStance asks it with
+ * the desired state; not written yet), and an empty kit stub (OVL2 0x5BE2F0, the kit lane's) */
+bool func_00552EC0(CZSealBody *seal, SEAL_STATE state);
+void func_005BE2F0(CZKit *kit);
+/* (OVL2 0x584B00, seal_body.cpp's, and 0x57E540, not written yet) */
+bool func_00584B00(CZSealBody *seal);
+void func_0057E540(CZSealBody *seal);
+}
+
+/* the desired state taken when the SEAL may take it: the stance's change flagged, the stance's blend
+ * asked for -- in state 2 an AI SEAL that 0x584B00 allows takes 0x57E540's instead of Prone -- and the
+ * state set, then the kit told (OVL2 0x552D60; SOCOM 1's UpdateStance, in the same place -- after
+ * UpdateLODFlags, before AddWeapon -- with SOCOM II's state test ahead of the switch) */
+void CZSealBody::UpdateStance()
+{
+    if (func_00552EC0(this, m_desiredState)) {
+        switch (m_desiredState) {
+        case stateStand:
+            m_stancechanged = true;
+            Stand(1);
+            SetStance(stateStand);
+            break;
+        case stateCrouch:
+            m_stancechanged = true;
+            Crouch();
+            SetStance(stateCrouch);
+            break;
+        case stateProne:
+            m_stancechanged = true;
+            /* (the AI test as IsPlayer's ternary: the bool narrowed once, in v0 -- the IsAi inline's
+             * result local takes a1) */
+            if (m_control ? ((CSealCtrl *)m_control)->IsAi() : false) {
+                if (func_00584B00(this))
+                    func_0057E540(this);
+                else
+                    Prone();
+            } else
+                Prone();
+            SetStance(stateProne);
+            break;
+        }
+        func_005BE2F0(&m_kit);
+    }
 }
 
 /* a fade of the SEAL's opacity asked for, unless a higher priority's runs: the target and rate kept,
@@ -1705,17 +1753,6 @@ extern "C" void func_00543B90(CZSealBody *seal)
         unit->IssueCommand(seal, (FT_COMMAND)31, 0, false);
 }
 
-/* a turret (zveh.h's CTurret, whose header clashes with zseal.h's stand-ins: only its thermal look
- * here, at zveh.h's offset) */
-class CTurret : public CEntity {
-public:
-    virtual ~CTurret();
-    void SetThermal(zdb::CNode *node, bool thermal);
-
-    unsigned char _170[0x298 - 0x170];
-    bool m_thermal;   // 0x298
-};
-
 /* the entity the SEAL works as a turret, if it is one */
 static inline CTurret *AsTurret(CEntity *e)
 {
@@ -1833,11 +1870,6 @@ bool CZSealBody::TurretHasThermal()
     return r;
 }
 
-extern "C" {
-/* the turret's six nodes given a value at +0x9C (OVL1 0x3A9FB0, unowned) */
-void func_003A9FB0(CTurret *t, float f);
-}
-
 /* the turret the SEAL works given the value, its scope's look set by the SEAL's thermal vision
  * (OVL2 0x543200; HandleNewZoom passes 1) */
 void CZSealBody::UpdateTurretScope(float f)
@@ -1845,7 +1877,7 @@ void CZSealBody::UpdateTurretScope(float f)
     CTurret *t = GetTurret();
 
     if (t) {
-        func_003A9FB0(t, f);
+        t->SetOpacity(f);
         t->SetThermal(0, HasThermal(m_eb8));
     }
 }

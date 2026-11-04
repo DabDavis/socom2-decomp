@@ -209,6 +209,19 @@ const CCharacterType *CZSealBody::PreCreateSeal(const CCharacterType *type, cons
 }
 #pragma auto_inline reset
 
+/* the SEAL a node belongs to: its extension's, when that is a SEAL's (SOCOM 1's, the unit's last;
+ * OVL2 0x59ACD0 -- the body-part commands' ticks below inline it) */
+CZSealBody *CZSealBody::GetSeal(zdb::CNode *node)
+{
+    if (node) {
+        CSealEx *ex = dynamic_cast<CSealEx *>(node->m_nodeEx);
+
+        if (ex)
+            return ex->m_seal;
+    }
+    return 0;
+}
+
 /* the body-part commands (new in SOCOM II, ZAnim commands this unit registers at 0x59AC60:
  * RESET_BODY_PARTS, parsed at 0x59ABC0 and ticked at 0x59AB30, and BODY_FALL_ON_MATERIAL_SOUND,
  * parsed at 0x59AA60 and ticked at 0x59A8E0; the functions' names unknown) -- a timeless command
@@ -217,6 +230,22 @@ struct _body_node_cmd {
     _zanim_cmd_hdr hdr;   // 0x0
     unsigned char node;   // 0x4: the node's reference in the current anim
 };
+
+extern "C" {
+_zanim_cmd_hdr *func_0059ABC0(_zrdr *rdr);
+bool func_0059AB30(_zanim_cmd_hdr *hdr, float *dT);
+_zanim_cmd_hdr *func_0059AA60(_zrdr *rdr);
+bool func_0059A8E0(_zanim_cmd_hdr *hdr, float *dT);
+}
+
+/* the two commands registered, neither with a begin or an end (OVL2 0x59AC60: CMission::Init calls
+ * it) */
+extern "C" bool func_0059AC60()
+{
+    ZAnim.AddCmd("RESET_BODY_PARTS", func_0059ABC0, 0, func_0059AB30, 0);
+    ZAnim.AddCmd("BODY_FALL_ON_MATERIAL_SOUND", func_0059AA60, 0, func_0059A8E0, 0);
+    return true;
+}
 
 /* (OVL1 0x26E2D0, zanim_anim.cpp's: a ZRDR path's node reference, searched as the current anim
  * searches) */
@@ -234,6 +263,21 @@ extern "C" _zanim_cmd_hdr *func_0059ABC0(_zrdr *rdr)
     cmd->hdr.timeless = 1;
     cmd->node = func_0026E2D0(ZAnim.m_CurAnim, rdr);
     return (_zanim_cmd_hdr *)cmd;
+}
+
+/* RESET_BODY_PARTS run: the auxiliary parts of the node's SEAL oriented, if the node is a SEAL's
+ * (OVL2 0x59AB30) */
+extern "C" bool func_0059AB30(_zanim_cmd_hdr *hdr, float *dT)
+{
+    zdb::CNode *node = ZAnim.m_CurAnim->GetNode(((_body_node_cmd *)hdr)->node, false);
+
+    if (node) {
+        CZSealBody *seal = CZSealBody::GetSeal(node);
+
+        if (seal)
+            seal->OrientAuxParts();
+    }
+    return true;
 }
 
 /* BODY_FALL_ON_MATERIAL_SOUND: the node under the BODY_NODE tag, the command dropped without one
@@ -258,4 +302,54 @@ extern "C" _zanim_cmd_hdr *func_0059AA60(_zrdr *rdr)
         cmd = 0;
     }
     return (_zanim_cmd_hdr *)cmd;
+}
+
+/* a material's extension (int_material.h's CMaterialEx, which zweapon.h's stand-in of the table
+ * leaves incomplete -- seal_env.cpp's view, with the fall sound): only the sounds */
+struct CMaterialEx {
+    char *m_name;   // 0x0
+    unsigned char _4[0x18 - 0x4];
+    CSnd *m_fallsound;   // 0x18: FALLSOUND
+};
+
+/* a material's extension, the first one for an index past the table (seal_env.cpp's) */
+static inline CMaterialEx *MaterialEx(unsigned int i)
+{
+    if (i >= CMaterialExArray::m_materialex_list.size())
+        i = 0;
+    return (CMaterialEx *)CMaterialExArray::m_materialex_list[i];
+}
+
+/* BODY_FALL_ON_MATERIAL_SOUND run: the fall sound of the material under the node's SEAL, or
+ * ".FALL_GROUND", heard flat by the player looking through his own eyes, else at the SEAL (OVL2
+ * 0x59A8E0: HandleFootfallSound's shape, 0x5A39B0) */
+extern "C" bool func_0059A8E0(_zanim_cmd_hdr *hdr, float *dT)
+{
+    zdb::CNode *node = ZAnim.m_CurAnim->GetNode(((_body_node_cmd *)hdr)->node, false);
+
+    if (node) {
+        CZSealBody *seal = CZSealBody::GetSeal(node);
+
+        if (seal) {
+            int mat = seal->m_onMaterial;
+
+            if (mat < (int)CMaterialExArray::m_materialex_list.size()) {
+                CMaterialEx *ex = MaterialEx(mat);
+
+                if (ex) {
+                    CSnd *snd = ex->m_fallsound;
+
+                    if (!snd)
+                        snd = CSnd::GetSoundByName(".FALL_GROUND");
+                    if (snd) {
+                        if (seal->IsPlayer() && seal->m_zoomstate > ZOOMSTATE_3RDPERSON)
+                            snd->PlaySound((CSndInstance *)0, 255);
+                        else
+                            snd->PlaySound3D(&seal->m_posW, 1.0f, 0, 0, 255);
+                    }
+                }
+            }
+        }
+    }
+    return true;
 }
