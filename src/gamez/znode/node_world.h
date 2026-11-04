@@ -369,7 +369,8 @@ class CShadowCaster {
 public:
     CShadowCaster(CNode *node);
 
-    unsigned char _0[0x4c];   // 0x0: a matrix (the constructor makes it the unit one), a size
+    CMatrix m_matrix;   // 0x0: the unit matrix at first
+    CPnt3D m_size;   // 0x40: the node's box's size
     CNode *m_node;   // 0x4c: the node casting the shadow (the constructor's argument)
     CTexture *m_texture;   // 0x50: its first visual's first dynamic texture (UpdateShadowCasters)
     CBBox m_bbox;   // 0x54: the box a node's sphere must meet to take its projection (the pipe's

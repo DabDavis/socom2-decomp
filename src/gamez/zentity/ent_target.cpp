@@ -10,6 +10,54 @@
 CEntityList CEntity::m_target_inc;
 CEntityList CEntity::m_target_add;
 CEntityList CEntity::m_target_rem;
+int CEntity::rrTargetListFirst;
+int CEntity::rrTargetListCount = 3;
+
+/* SOCOM 1's round robin over the entities (its setup(first, count, size) out of line there, 0x1F0180;
+ * SOCOM II's inline, its fields scalarised into registers): the slice runs from m_first for m_count
+ * entities, the part past the end wrapping to the list's front (m_wrap of them) */
+class CRobin {
+public:
+    void setup(int first, int count, int size)
+    {
+        m_first = first;
+        m_count = count;
+        m_size = size;
+        m_last = m_first + m_count;
+        if (count >= size)
+            m_wrap = count;
+        else if (m_last > size)
+            m_wrap = m_last - size;
+        else
+            m_wrap = 0;
+    }
+    bool InSlice(int i) const
+    {
+        if (i < m_wrap || (i >= m_first && i < m_last))
+            return true;
+        return false;
+    }
+    /* where the next slice starts */
+    int Next() const
+    {
+        int n = m_first + m_count;
+
+        if (m_wrap > 0)
+            n = 0;
+        else if (n >= m_size)
+            if (m_size == 0)
+                n = 0;
+            else
+                n %= m_size;
+        return n;
+    }
+
+    int m_first;
+    int m_last;
+    int m_count;
+    int m_size;
+    int m_wrap;
+};
 
 /* the nearer target first (SOCOM 1's, std::sort's predicate) */
 bool _sort_target(const CTarget &a, const CTarget &b)
@@ -54,6 +102,77 @@ void CEntity::SetIncludeInTargetList(bool on)
     m_include_in_targetlist = on;
 }
 
+/* an entity's place in the others' target lists handed to its stand-in: every target on it, in
+ * each live entity's list, seen again as the new one (SOCOM 1's ReplaceTargetList, 0x1F0930;
+ * DoRecycleEntity's). The walk assigns its iterator, which lives in memory, the end taken first */
+void CEntity::ReplaceTargetList(CEntity *from, CEntity *to)
+{
+    CEntityList::iterator it, e = m_list.end();
+
+    for (it = m_list.begin(); it != e; ++it) {
+        CEntity *ent = *it;
+
+        if (ent->m_type == ENT_TYPE_RECYCLE || ent == from)
+            continue;
+
+        CTargetList &targets = ent->m_targets;
+
+        for (CTargetList::iterator t = targets.begin(); t != targets.end(); ++t)
+            if ((*t).m_ent == from)
+                (*t).Update(ent, to);
+    }
+}
+
+/* the entity's targets brought up to date (SOCOM 1's OnUpdateTargetList(bool, bool), 0x1F0380:
+ * rebuilt from the others when forced or when their count changed, else each seen again and the
+ * run that fell out of order marked for the sort; SOCOM II's Update reads the positions straight) */
+bool CEntity::OnUpdateTargetList(bool force, bool sort)
+{
+    CTargetList &targets = m_targets;
+    CTargetList::iterator last = targets.end();
+    unsigned int n = m_include_in_targetlist ? m_target_inc.size() - 1 : m_target_inc.size();
+    bool rebuild = force || n != targets.size();
+    bool changed = false;
+
+    if (rebuild) {
+        targets.resize(n);
+        CTargetList::iterator t = targets.begin();
+        last = targets.end();
+        CEntityList::iterator e = m_target_inc.end();
+        for (CEntityList::iterator i = m_target_inc.begin(); i != e; ++i)
+            if (*i != this)
+                (*t++).Update(this, *i);
+        changed = true;
+    } else {
+        static float range_tolerance = 100.0f;
+        float prev = 0.0f;
+        CTargetList::iterator t = targets.begin();
+        while (t != targets.end()) {
+            (*t).Update(this, (*t).m_ent);
+            float d = (*t).m_distSq;
+            changed = d < prev && d < m_max_target_range_sq;
+            if (changed) {
+                ++t;
+                last = t;
+                break;
+            }
+            prev = (*t).m_distSq - range_tolerance;
+            ++t;
+        }
+        while (t != targets.end()) {
+            CTarget &c = *t++;
+            c.Update(this, c.m_ent);
+            if (c.m_distSq < prev && c.m_distSq < m_max_target_range_sq)
+                last = t;
+        }
+    }
+    if (sort && changed) {
+        std::sort(targets.begin(), last, _sort_target);
+        return true;
+    }
+    return false;
+}
+
 /* how many enemies are aware of each entity: every live entity that keeps a target list counts
  * itself against each target it is aware of (flag 0x200) that shares none of its teams (new in
  * SOCOM II, called from OVL2; the names are ours). The const walk initialises its iterator from
@@ -79,6 +198,94 @@ void CEntity::CountAwareness()
                         te->m_aware_counter++;
                 }
     }
+}
+
+/* every entity's target list kept: the entities dropped from the lists first, then the ones added
+ * (each a tick of its own), else a slice of the entities seen again -- rrTargetListCount of them from
+ * rrTargetListFirst on, and the first SEAL every tick; an entity whose list needed no sort lets the
+ * slice run one further (SOCOM 1's UpdateTargetList, 0x1EFBF0; the bool is read by neither build).
+ * The m_list walks initialise their iterators (in registers); the clears are written as erases of the
+ * whole list (clear() puts their temporaries in other frame slots); InSlice's test returns true or
+ * false (the jump form the target materialises), the next start's modulo an if/else (its label
+ * padded as the target's).
+ * OPEN, 28 instructions, registers only: (1) the first inner walk's end -- the target computes the
+ * sentinel once per outer pass into s2 and tests it twice; written in the test MW rematerialises it
+ * at both tests, taken into any local MW hoists it out of the outer loop, whose preheader then lands
+ * after the function's end, the loop entered with a `b` (the zdb world round 6's unexplained shape is
+ * a loop invariant MW hoisted); (2) the slice loop's entity, last and count trade s0/s1/s3 -- the
+ * target's colouring wants in < count < size < last < entity in MW's numbering, where the scalarised
+ * CRobin makes size and count inliner temporaries (setup's arguments, right to left), last a
+ * scalariser one and the entity a named local numbered before them all (as a CSE temporary, (*it)->
+ * at each use, its load moves into the conditional SEAL test); plain named locals for the robin are
+ * the shape to try next */
+void CEntity::UpdateTargetList(bool b)
+{
+    if (m_target_rem.size()) {
+        for (CEntityList::iterator it = m_list.begin(); it != m_list.end(); ++it) {
+            CEntity *e = *it;
+
+            e->UpdateAiMapLoc();
+
+            CTargetList &targets = e->m_targets;
+
+            for (CEntityList::iterator j = m_target_rem.begin(); j != m_target_rem.end(); ++j)
+                targets.RemoveTarget(*j);
+        }
+        CEntityList::iterator re = m_target_rem.end();
+
+        for (CEntityList::iterator j = m_target_rem.begin(); j != re; ++j)
+            m_target_inc.list_imp::remove((const void *const &)*j);
+        m_target_rem.erase(m_target_rem.begin(), m_target_rem.end());
+        return;
+    }
+    if (m_target_add.size()) {
+        CEntityList::iterator e = m_list.end();
+
+        for (CEntityList::iterator it = m_list.begin(); it != e; ++it) {
+            CEntity *ent = *it;
+
+            ent->UpdateAiMapLoc();
+            if (ent->m_update_targetlist) {
+                CTargetList &targets = ent->m_targets;
+                CEntityList::iterator ae = m_target_add.end();
+
+                for (CEntityList::iterator j = m_target_add.begin(); j != ae; ++j)
+                    if (ent != *j)
+                        targets.AddTarget(ent, *j);
+            }
+        }
+        for (CEntityList::iterator j = m_target_add.begin(); j != m_target_add.end(); ++j)
+            m_target_inc.push_back(*j);
+        m_target_add.erase(m_target_add.begin(), m_target_add.end());
+        return;
+    }
+
+    CRobin robin;
+
+    robin.setup(rrTargetListFirst, rrTargetListCount, m_list.size());
+
+    bool seal_seen = false;
+    int i = 0;
+    CEntityList::iterator e = m_list.end();
+
+    for (CEntityList::iterator it = m_list.begin(); it != e; ++it, ++i) {
+        bool in;
+        CEntity *ent = *it;
+
+        in = robin.InSlice(i);
+
+        if (!in && !seal_seen && ent->m_type == ENT_TYPE_SEAL)
+            seal_seen = in = true;
+
+        bool sorted = false;
+
+        ent->UpdateAiMapLoc();
+        if (ent->m_update_targetlist)
+            sorted = ent->OnUpdateTargetList(false, in);
+        if (in && !sorted)
+            robin.setup(robin.m_first, robin.m_count + 1, robin.m_size);
+    }
+    rrTargetListFirst = robin.Next();
 }
 
 /* the targets on an entity dropped (new in SOCOM II, UpdateTargetList's: std::remove inlined,

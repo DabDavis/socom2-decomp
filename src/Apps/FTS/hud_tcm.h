@@ -172,6 +172,8 @@ public:
 
     void Hold(bool reset, float t);
     CTCMNode *GetColumn(unsigned int depth);
+    /* the node the path selects (0x236B20: the layout and the pad handlers call it; the name ours) */
+    CTCMNode *GetSelected();
     /* hud_tcmcmds.cpp's layout (the names ours) */
     void AlignRoot(CTCMNode *cur);
     bool FadeCursor(CTCMNode *cur, bool in, float dt);
@@ -190,6 +192,9 @@ public:
     int FindNext(CTCMNode *column, bool wrap);
     void SetCache(CTCMCache *cache);
     void Reset();
+    /* the item list's two backing bars made and listed (0x2371A0: CHUD::ReInit_Init and the tree's
+     * builder call it; the name ours) */
+    void SetupItemBars();
     void ClearItems();
     void Init();
 

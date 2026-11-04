@@ -153,6 +153,8 @@ public:
     static void SetSubtitles(bool on);
 
     static bool m_isDisabled;           /* 0x48DD28 */
+    static bool m_listenerIsValid;      /* 0x48DB50: SOCOM 1's, beside m_listener (CalcVolPan gives
+                                           no volume and no pan while it is clear) */
     static CSnd *m_errorsound;          /* 0x48DD90 */
     static int m_max_num_vags;          /* 0x48DD98 */
     static int m_numStreams;            /* 0x48DD80: streamed voices playing (name ours) */
@@ -525,6 +527,8 @@ public:
     /* SOCOM 1's: a channel's sound queued (0x34B6C0), a channel's entries dropped (0x34AAC0) */
     bool Queue(unsigned int id, CSnd *sound, int vol);
     void Remove(int id, bool a, bool b);
+    /* the stream stopped unless it is a dialog's (SOCOM II's, 0x34AA70, unreferenced; name ours) */
+    void Interrupt();
     /* the device found (ours: ftsGetHeadset's arguments load before the stores, as an inline's) */
     void SetDevice(int device, int format, unsigned char channels)
     {
