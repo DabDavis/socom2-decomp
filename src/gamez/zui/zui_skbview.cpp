@@ -54,8 +54,11 @@ static inline int GetRdrArrayInt(_zrdr *rdr, int i)
  * CBmpWithNode copies). The rows are walked `s_keyRows[i][j]`, through the two reference-returning
  * operator[]s (the UI's round 22): the nested accessors are what make MW enter each inner loop at its
  * bottom test through a preheader laid after the return path -- the shape of every row walk in the
- * unit (0x394520, 0x395140, 0x395540, 0x3958D0, 0x396F30, 0x397070); the members spelled out, MW
- * rotates the loop knowing j = 0 (round 21's forms, all short) */
+ * unit (0x394520, 0x395140, 0x395540, 0x3958D0, 0x396F30, 0x397070); the members spelled out, or one
+ * accessor alone, MW rotates the loop knowing j = 0 (round 21's forms, all short). It is the engine
+ * core's round-11 rule: the row reference the outer operator[] returns is computed inside the inner
+ * body and hoisted as an invariant, and MW lays such a preheader after the function's last block and
+ * enters the loop with a `b` to it (a probe: one loop over `g[2][j]`, the row constant, rotates) */
 struct CSkbBmpRow {
     CBmpWithNode &operator[](int j) { return m_bmps[j]; }
 
@@ -597,18 +600,22 @@ static inline bool SkbPadShift(const CPad *pad)
 }
 
 /* whether the keys type shifted: L1 against the shift lock (bitmap 5); 0x399070 asks (0x396E60;
- * the names ours) */
+ * the names ours). The two bools are compared with `^`, which MW keeps an xor of its own and converts
+ * after: inlined (0x394520's two arms) the xor writes its second operand's register and the sltu the
+ * result's, where `!=` is one set-not-equal whose xor writes the result's (the out-of-line copies
+ * are the same code either way) */
 bool SkbShifted(CPad *pad)
 {
     bool shift = SkbPadShift(pad);
 
-    return shift != SkbShown(s_bmp5);
+    return shift ^ SkbShown(s_bmp5);
 }
 
-/* the same, against the second lock (bitmap 0) as well (0x38D200 asks; 0x396CB0, ours) */
+/* the same, against the second lock (bitmap 0) as well (0x38D200 asks; 0x396CB0, ours; `^` as
+ * above) */
 bool SkbShifted2(CPad *pad)
 {
-    return SkbShifted(pad) != SkbShown(s_bmp0);
+    return SkbShifted(pad) ^ SkbShown(s_bmp0);
 }
 
 /* a string given cap i's look -- the default font when the cap names none, its colour and scale --
@@ -930,4 +937,48 @@ void SkbToggleShiftLock(bool toggle)
         s_bmp5.m_node->SetActive(!s_bmp5.m_node->m_active);
     else if (s_bmp5.m_node)
         s_bmp5.m_node->SetActive(false);
+}
+
+/* the background piece lists, as the look names them: BackgroundPieces, ShiftBgPieces,
+ * TwoEditsBgPieces, TwoEditsShiftBgPieces (a byte enum: the choice below is assigned with `li`, an
+ * unsigned char's with `daddiu`; the names ours) */
+enum SKBLIST { SKBLIST_PLAIN, SKBLIST_SHIFT, SKBLIST_TWO, SKBLIST_TWOSHIFT };
+
+/* the key rows shown for the background piece list in use: 3 the two edits' shifted list, 2 the
+ * two edits' list (caption mode 1 with a list), 1 the shifted list (shifted, with a shift background
+ * or a list), else 0; bitmaps 6 and 7 shown with lists 0 and 1, and row i's keys j shown while i is
+ * the list's index and j under its count -- the shift by the pad and the shift lock alone when the
+ * keyboard has a row-2 key, else against the second lock too (0x394520: 0x38C990 and 0x38D200 call it
+ * after the locks toggle, with the keyboard's 0x174; the name ours). Byte-exact (the UI's round 22):
+ * the last list's test a bool local (its load and compare ahead of the first branch), declared before
+ * `two`; the counts compared as ints (slt/blez); the key's flag a ternary (slt into v1, no branch),
+ * `list == i` (the list first in the bne); the rows walked through their operator[]s */
+
+void SkbShowKeyRows(CPad *pad, CSoftKeyboard *skb, bool row2)
+{
+    bool shifted = row2 ? SkbShifted(pad) : SkbShifted2(pad);
+    SKBLIST list = SKBLIST_PLAIN;
+    bool has3 = (int)skb->m_sources[3].size() > 0;
+    bool two = s_captionMode == CAPTION_1;
+
+    if (two && shifted && has3)
+        list = SKBLIST_TWOSHIFT;
+    else if (two && (int)skb->m_sources[2].size() > 0)
+        list = SKBLIST_TWO;
+    else if (shifted && (*skb->m_shiftBackground.c_str() || (int)skb->m_sources[1].size() > 0))
+        list = SKBLIST_SHIFT;
+    if (s_bmp6.m_node)
+        s_bmp6.m_node->SetActive(list == 0);
+    if (s_bmp7.m_node)
+        s_bmp7.m_node->SetActive(list == 1);
+    int count = SkbPieces(skb, list).size();
+
+    for (int i = 0; i < 4; i++)
+        for (int j = 0; j < 10; j++) {
+            CBmpWithNode &bmp = s_keyRows[i][j];
+            bool on = list == i ? j < count : false;
+
+            if (bmp.m_node)
+                bmp.m_node->SetActive(on);
+        }
 }
