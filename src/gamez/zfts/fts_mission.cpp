@@ -476,7 +476,7 @@ public:
     ~CMission();   /* 0x2AD940: its vtable's slot 2 (0x406290) */
     void Serialize(int flags);   /* 0x2A6340: slot 3 */
     void UnSerialize(const char *name, CRdrFile *file, int flags);   /* 0x2A54E0: slot 4 */
-    bool Open(const char *name, int load_ai);
+    bool Open(const char *name);
     static bool tick(float dT, void *data);   /* 0x2AAB00 */
     bool ZAnimLoad();
     bool LoadMissionCams(CRdrFile *rdr);
@@ -1650,7 +1650,7 @@ CMission::~CMission()
  * vehicles, the weapons, the AI events, the pickups, the units, the AI maps fixed up, the world's
  * descendants, the bomb shacks of a network game, the extraction point (SOCOM 1's Open, its sounds
  * SOCOM II's own loaders; OVL1 0x2AC410) */
-bool CMission::Open(const char *name, int load_ai)
+bool CMission::Open(const char *name)
 {
     m_wait_before_falling = 10.0f;
     zdb::CWorld *world = zdb::CWorld::m_world;
