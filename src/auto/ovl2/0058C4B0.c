@@ -8,11 +8,11 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_ERROR(x) 0
 #define NULL 0
 M2C_UNK BindAnimSet__10CZSealBodyFP7AnimSet8AnimType10SEAL_STATEb(s32, s32, M2C_UNK, M2C_UNK, M2C_UNK); /* extern */
+s32 GetName__7AnimSetFv(s32);                       /* extern */
 s32 func_005788C0(M2C_UNK *, M2C_UNK *);            /* extern */
 M2C_UNK func_005788E0(M2C_UNK *, M2C_UNK *);        /* extern */
 M2C_UNK func_00578900(M2C_UNK *, M2C_UNK *, M2C_UNK); /* extern */
 s32 func_00578920(s32);                             /* extern */
-s32 func_00578940(s32);                             /* extern */
 s32 *func_00578950(M2C_UNK *);                      /* extern */
 M2C_UNK func_00578960(M2C_UNK *, M2C_UNK *);        /* extern */
 M2C_UNK func_00578970(M2C_UNK *, M2C_UNK *);        /* extern */
@@ -33,7 +33,7 @@ s32 func_0058C4B0(s32 arg0, s32 arg1) {
     func_005788E0(&sp30, &list__7AnimSet);
     if (func_005788C0(&sp3C, &sp30) != 0) {
 loop_1:
-        if (strcmp(arg1, func_00578920(func_00578940(*func_00578950(&sp3C)))) == 0) {
+        if (strcmp(arg1, func_00578920(GetName__7AnimSetFv(*func_00578950(&sp3C)))) == 0) {
             var_a1 = *func_00578950(&sp3C);
         } else {
             func_00578900(&sp34, &sp3C, 0);
