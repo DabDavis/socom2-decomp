@@ -926,6 +926,22 @@ class __vector_imp<T *, Allocator, true> : public __vector_pod<unsigned int, all
     {
         __vector_pod<unsigned int, allocator<unsigned int> >::push_back((const unsigned int &)x);
     }
+    /* one pointer inserted before position, the iterator to it handed back: MSL's insert(position, x),
+     * the iterator by value (copied through $f0), its offset taken first, the pod's insert, then
+     * begin() + n. Its begin() after the call is what a walk calling it reuses: the world's
+     * CSnd::AddNewCSnd 0x343F90 (the insert's result unused) re-loads the data pointer right after
+     * the call and every end() test adds the size to that register -- byte-exact so (the MSL headers
+     * round 17: measured in zsnd_csnd.cpp, the world lane's to write; its static insert_sound, the
+     * pod's insert alone, re-read the data pointer at every test). The pod's sized insert stays
+     * visible beside it */
+    using __base::insert;
+    iterator insert(iterator position, T *const &x)
+    {
+        int n = position - begin();
+
+        __base::insert((unsigned int *)position.m_p, 1, (const unsigned int &)x);
+        return begin() + n;
+    }
 };
 
 /* A vector of a 4-byte scalar (float, int, unsigned int) runs on __vector_pod<unsigned int> too,
