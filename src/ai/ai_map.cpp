@@ -10,7 +10,7 @@
  * Not written yet: the footprint rows' scan 0x516180 (BuildFootprint's last call), the
  * repel parameters 0x5169B0/0x516F10, 0x517050, ValidateCells 0x517850 (the walk with
  * _validate_cell plus GetCell inlined one level -- IsCell 0x512140, IsLayer 0x512120 and the
- * pieces after them -- and out of line, 0x511F80), ~CAiMap 0x5181F0, GetClosestDir(cell, point)
+ * pieces after them -- and out of line, 0x511F80), GetClosestDir(cell, point)
  * 0x518900, GetDirByName 0x518D80 (its draft matches), the scanlines' resize/insert/erase
  * (0x519700, 0x519DB0, 0x519B90) and the pod insert copy 0x5192E0. */
 
@@ -294,9 +294,13 @@ extern unsigned int s_aimap_version;
 
 /* a box with both corners at one point (CBBox has no constructor in zmath.h: this stand-in of the
  * same layout builds the same temporary -- the point copied by value, the first corner
- * copy-constructed from it, the second assigned -- for a CBBox to be assigned from) */
+ * copy-constructed from it, the second assigned as a block, through W: MW copies a class-type
+ * member as a block, three loads then three stores through the two corners' addresses, where a
+ * CPnt3D assignment is the fields' one by one -- for a CBBox to be assigned from, the temporary
+ * named: the assignment reads the second corner back through the register it was stored through) */
 struct CBBoxInit {
-    CBBoxInit(CPnt3D p) : m_min(p) { m_max = p; }
+    struct W { CPnt3D p; };
+    CBBoxInit(CPnt3D p) : m_min(p) { *(W *)&m_max = *(const W *)&p; }
 
     CPnt3D m_min;
     CPnt3D m_max;
@@ -304,19 +308,20 @@ struct CBBoxInit {
 
 /* the map with its first layer pushed onto the layers and nothing read: an empty box, no size,
  * floor -1, resolution 0.5 and slope pi/4 (SOCOM 1's, the id and the layers new); the dummy
- * cell's soil set to noalt again.
- * OPEN (0x1D8 against 0x1DC): the box's temporaries. Every store and call is the target's, in its
- * order; the target addresses the point's copy (sp+80) and the second corner (sp+60) through
- * registers for the field-by-field copy between them, as an inlined assignment taking references
- * would (SOCOM 1's PNT3D had a written operator=, 0x17FC00), where MW folds this stand-in's to
- * sp offsets -- one register and one instruction fewer. A setter taking `const CPnt3D &` and one
- * copying the fields through a `const PNT3D &` fold the same; the real spelling likely needs
- * zmath.h's CBBox constructor (and CPnt3D's assignment) as SOCOM II wrote them. ~CAiMap (0x5181F0)
+ * cell's soil set to noalt again. Byte-exact since the AI core's round 24 (open from round 16 at
+ * 0x1D8 against 0x1DC: the target addresses the point's copy (sp+80) and the second corner (sp+60)
+ * through registers -- the block copy of a class-type member, CBBoxInit's W -- and m_bbox is
+ * assigned from the named temporary, its second corner read back through sp+60's register; a
+ * temporary assigned straight from the cast reads it at +12 off the first's). ~CAiMap (0x5181F0)
  * opens with the same box */
 CAiMap::CAiMap(int mapid) : m_layer0(0)
 {
     s_dummy_cell.m_soil = SOIL_NOALT;
-    m_bbox = (const CBBox &)CBBoxInit(CPnt3D::zero);
+    {
+        CBBoxInit t(CPnt3D::zero);
+
+        m_bbox = (const CBBox &)t;
+    }
     m_ny = 0;
     m_nx = 0;
     m_dy = 0.0f;
@@ -341,13 +346,14 @@ CAiMap::CAiMap(int mapid) : m_layer0(0)
 
 /* the map emptied: the box and the size back to nothing, the first layer's cells, the extra data,
  * the other layers and the graph given up, then the tables destroyed (SOCOM 1's, the layers new).
- * OPEN (0x250 against 0x258): only the box, CAiMap(int)'s question above -- the target copies the
- * point into the second corner and that corner into m_bbox through registers (sp+80 in a2, sp+60
- * in v0), where MW folds the stand-in's to sp offsets; every call and member destructor after it
- * is the target's, in its order */
+ * Byte-exact since the AI core's round 24 with CAiMap(int)'s box (0x250 against 0x258 before) */
 CAiMap::~CAiMap()
 {
-    m_bbox = (const CBBox &)CBBoxInit(CPnt3D::zero);
+    {
+        CBBoxInit t(CPnt3D::zero);
+
+        m_bbox = (const CBBox &)t;
+    }
     m_ny = 0;
     m_nx = 0;
     m_dy = 0.0f;
