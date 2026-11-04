@@ -138,7 +138,7 @@ OutputIterator remove_copy_if(InputIterator first, InputIterator last, OutputIte
  * one (both list iterators) is copied into remove_if's own locals in order, first then last -- the
  * target's parameter order -- and searched by reference. +3 over every hand-written unit: the
  * entity list's 0x29FE70, the callback list's 0x3C6560, the AI groups' 0x60E9A0 (with 0x34E8C0
- * through the header), the vectors' eight unchanged. The copies belong to remove_if, not to the
+ * through the header), the vectors' seven unchanged. The copies belong to remove_if, not to the
  * search: where the predicate is too tall for the search to inline whole (valve_list.cpp's 0x352500,
  * ai_events.cpp's 0x50F670 call ++, !=, * and the return's copy out of line) the target still makes
  * them inline -- copies inside the search (shape C) are calls there, 8 bytes long. OPEN in those
