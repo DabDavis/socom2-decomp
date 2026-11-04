@@ -17,9 +17,9 @@
  * destructors, erase, insert; ~CFlareSystem 0x33CCD0 last). 0x33CD50-0x33D22F is another unit,
  * zrndr_postfx.cpp (CPipeEffect's: the template tail closes this one, and its initialiser 0x402F80
  * follows this unit's).
- * OPEN: the delayed nodes' insert 0x33C5C0 (109 instructions, registers only: the in-place end
- * pointer in s6 against the target's s0, so every register after it shifts -- include/vector's
- * class insert end register, open for the MSL lane: its comment lists the shapes tried);
+ * The delayed nodes' insert 0x33C5C0 is byte-exact since include/vector's class insert takes its
+ * end as an iterator object (the MSL headers' round 19; 109 instructions off before, the in-place
+ * end pointer in s6 against the target's s0);
  * CDynTexList::Free 0x33BAA0 is byte-exact once 0x1FB3D0/0x1FB300 carry vector<CTexHandle *>'s
  * constructor and destructor names (they carry vector<CAssetLib *>'s) and 0x1FDDA0 vector<CTexPalette
  * *>'s destructor -- measured with the map so renamed: the pipe's Free and hud_main.cpp's own copies

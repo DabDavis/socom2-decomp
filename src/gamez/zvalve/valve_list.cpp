@@ -281,12 +281,11 @@ struct CValveCBDelete {
     }
 };
 
-/* OPEN, 3 instructions short (0x8C of 0x98): the walk and the delete match (the functor needs its
- * empty constructor, or it stores a zero byte); the target keeps &end_.next_ (this+16) in a fifth
- * saved register from before the loop and reads clear()'s begin through it, where include/list's
- * clear reads it off `this` -- a list-header shape (cf. the mission lane's "&end_.next_ in a saved
- * register"). Tried: erase(begin(), end()) written out, the list through a reference, end() in a
- * local. Pinned: Destroy calls it, and MW would inline it there */
+/* the callbacks deleted and the list emptied (SOCOM 1's). Byte-exact since include/list's begin()
+ * reads the first node through a reference to the sentinel (&end_.next_ kept in a saved register
+ * from the walk on, clear()'s begin read through it); it was 3 instructions short when clear read it
+ * off `this`. The functor needs its empty constructor (or it stores a zero byte). Pinned: Destroy
+ * calls it, and MW would inline it there */
 #pragma auto_inline off
 void CValve::DeleteCallbacks()
 {
