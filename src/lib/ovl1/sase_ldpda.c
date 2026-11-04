@@ -2,7 +2,12 @@
 /* Nellymoser's encoder, LDPDA.c (OVL1 0x249FA8-0x24AB48): the pitch detector's small entry points --
  * its pitch table (89 lags in sixteenths, a .rodata table compared whole), its 8-byte block made,
  * freed and set. The asserts carry the codec's own expressions, file and line by `#line` (as in
- * sase_encsc.c). The analysis functions (0x249FA8-0x24A5A8, 0x24A908, 0x24A9F0) are not written.
+ * sase_encsc.c). GCC round 18a: the band edge 0x24A908 (its count decremented in place, the
+ * total scaled in its own variable) and the voicing candidate 0x24A9F0 (its thresholds a static
+ * const table, compared whole; `if (c) r = last; else r = index;` is if-converted after the
+ * compare -- the target's `move` in the branch's slot -- where `r = index; if (c) r = last;`
+ * assigns first and re-forms the address from it, 2 words long). The analysis functions
+ * (0x249FA8-0x24A5A8) are not written.
  * Placeholders: the codec's names are not in SOCOM 1. Built as nelly.c is (ee-gcc 2.96, -O2 -G8). */
 
 #define NellyNull 0
@@ -70,4 +75,54 @@ void func_0024AAE8(LdPdaMblk *hLD_PDA_mblk, float x, float y)
 	assert(hLD_PDA_mblk != NellyNull);
 	hLD_PDA_mblk->f0 = x;
 	hLD_PDA_mblk->f4 = y;
+}
+
+/* the band edge: from the top, the bin where the power summed downward first reaches 5 % of
+ * the whole, two bins up, at least 76 */
+int func_0024A908(const float *pfPower, int iLength)
+{
+	float fSum, fAcc;
+	int i;
+
+#line 357 "../../SaseEncVad/source/LDPDA.c"
+	assert(pfPower != NellyNull);
+	iLength--;
+	fSum = 0.0F;
+	for (i = iLength; i >= 0; i--)
+		fSum += pfPower[i];
+	fSum *= 0x1.999998p-5F;				/* 0.05, one ulp short */
+	fAcc = 0.0F;
+	for (i = iLength; i >= 0; i--) {
+		fAcc += pfPower[i];
+		if (fAcc >= fSum)
+			break;
+	}
+	i += 2;
+	if (i < 76)
+		i = 76;
+	return i;
+}
+
+/* the voicing candidate: iIndex kept when its value holds 0.75 of the first, the last bin taken
+ * over it when that holds its own share (1.1 of the candidate's, 0.88 of the first's) */
+static const float afPvThres[3] = { 0x1.8p-1F, 0x1.199998p+0F, 0x1.c28f5cp-1F };
+
+int func_0024A9F0(const float *pfPv, int iLength, int iIndex)
+{
+	int iLast = iLength - 1;
+	int iRet;
+
+#line 425 "../../SaseEncVad/source/LDPDA.c"
+	assert(pfPv != NellyNull);
+	iRet = 0;
+	if (iIndex < iLast) {
+		if (iIndex == 0 || pfPv[iIndex] >= afPvThres[0] * pfPv[0]) {
+			if (pfPv[iLast] >= afPvThres[1] * pfPv[iIndex])
+				iRet = iLast;
+			else
+				iRet = iIndex;
+		}
+	} else if (pfPv[iLast] >= afPvThres[2] * pfPv[0])
+		iRet = iLast;
+	return iRet;
 }

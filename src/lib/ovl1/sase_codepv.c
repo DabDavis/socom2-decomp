@@ -3,8 +3,8 @@
  * (64 levels, and the 8-level midpoint book right after it in .rodata, each compared whole) and the
  * coder's quantise, dequantise and two-stage index over libquan.c (sase_libquan.c). The tables are
  * hex floats: this GCC's decimal conversion is not the vendor's (sase_misc.c), so a decimal of the
- * vendor's precision need not give the target's bits; the hex form does exactly. 0x2487E8 is not
- * written. Placeholders: the codec's names are not in SOCOM 1. Built as nelly.c is (ee-gcc 2.96,
+ * vendor's precision need not give the target's bits; the hex form does exactly. 0x2487E8, the
+ * two-stage index's decode, is OPEN (GCC round 18a, below). Placeholders: the codec's names are not in SOCOM 1. Built as nelly.c is (ee-gcc 2.96,
  * -O2 -G8). */
 
 extern int func_0024B720(const float *pfCodeBook, int iLength, float fValue);
@@ -56,4 +56,28 @@ int func_00248760(float fPv, float fRef, float fMid)
 	if (fErr1 < fErr0)
 		iFlag = 1;
 	return iIndex + iFlag * 8;
+}
+
+#define NellyNull 0
+extern void __assert(const char *file, int line, const char *expr);
+#define assert(e) ((e) ? (void)0 : __assert(__FILE__, __LINE__, #e))
+
+/* the two-stage index decoded: the midpoint book's level, and the midpoint itself either that
+ * level (the index's flag bit set) or the reference passed in.
+ * OPEN (6 words, right size, every instruction but two saved registers): the target gives Pv s2
+ * and the flag s3, here the other way round. `if (iFlag == 0)` first is the target's block order
+ * (`if (iFlag)` first: 8 words); the dequantised value kept in a local or reread through Pv
+ * compiles alike. */
+void func_002487E8(int iIndex, float *Pv_Mid, float *Pv, float fRef)
+{
+	int iFlag = iIndex & 8;
+
+#line 137 "../../SaseEncVad/source/CodePv.c"
+	assert(Pv_Mid != NellyNull);
+	assert(Pv != NellyNull);
+	*Pv = func_0024B7E8(fPvMidTable, 8, iIndex - iFlag);
+	if (iFlag == 0)
+		*Pv_Mid = fRef;
+	else
+		*Pv_Mid = *Pv;
 }
