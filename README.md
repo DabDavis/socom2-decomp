@@ -2032,6 +2032,25 @@ exists); 3.0b38/b50/b52 still untold.
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the HUD, round 35** (the CZLineMap unit hud_linemap.cpp, 60 of 61):
+  - a function a shared header declares out of line can be made inline in one unit by an `inline` out-of-class definition
+    placed before use -- it reproduces another overlay's copy without touching the header (ai.h's
+    CAiMap::GetAltitude(cell): OVL1 has a copy and OVL1's GetCellCenter copy 0x20F220 inlines it whole);
+  - deleting a vector-derived class with a user destructor merges the delete's null test with the derived class's
+    this-test, deleting a plain vector keeps the null test (~CZLineMap 0x20FCF0); `x = c ? k * x : x;` gives `mul.s
+    x,k,x`, constant first -- `x = k * x`, `x = x * k` and `x *= k` under an `if` all give the operands the other way
+    round;
+  - a bitfield `||` materialised into one register comes from a bool local, a lone `sltu; beqz` from `(bool)field !=
+    false`; an inline taking the record by reference re-reads its bitfield after a call, passed by value the field stays
+    in an extra saved register;
+  - when an inline is cut one level, an argument evaluated at the caller's level still inlines (`*_it`): FindValid
+    0x20F100's copy inlines `*_it` while Advance, which inlines FindValid one level, calls it out of line; the unit's image
+    order is known and the file is laid out in its reverse (GetLocPoint between Advance and hudAddLineType, the
+    constructor and destructor between hudGetTacMapPulseTrans and LineTo, IsValid after MoveTo);
+  - TickLine 0x20E470 and SetupPolygon 0x20F5C0 carry SOCOM 1's names by their call positions in TickLines (0x20EF50 is
+    SetupWideLine); open: LineTo(const CPnt3D *) 0x20FA70 (8 bytes: `this` and the line swap saved registers -- the
+    target's 500-line test ends its true arm with a `b` over a lone nop), and the unit's unwritten Draw 0x20D390, Clip
+    0x20D5F0, Tick 0x20EBD0, SetupPolygon and four more; the C2D wide-line builder 0x357F30 (0x670).
 - **Tells from the game states, round 30** (the player's team, the CTickLight FreeVector, the respells):
   - a `PNT4D` local passed by value goes as its own address with no copy, a sliced `CPnt4D` is copied first (10
     instructions in each of thezoom.cpp's three SetLightTints callers); a bool inline compared `!= false` keeps the
