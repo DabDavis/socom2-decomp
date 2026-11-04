@@ -404,13 +404,24 @@ class SymbolTable:
         a = self.address_of(name)
         if a is None or self.overlay_of(a) == self.overlay_of(near):
             return a
+        return self._copy_index().get((self.overlay_of(near), name), a)
+
+    def _copy_index(self) -> dict[tuple[str, str], int]:
+        """(overlay, name) -> the address of `name`'s copy there, by the `ovl-copy:` marks."""
         if not hasattr(self, "_copies"):
             self._copies = {}
             for s in self.symbols + self.data:     # data rows too: an RTTI's overlay copy
                 m = self._OVL_COPY.search(s.note or "")
                 if m:
                     self._copies[(self.overlay_of(s.addr), m.group(1))] = s.addr
-        return self._copies.get((self.overlay_of(near), name), a)
+        return self._copies
+
+    def overlays_of(self, name: str) -> set[str]:
+        """The overlays holding a row of `name`: its own row's, and each copy's (`ovl-copy:`)."""
+        a = self.address_of(name)
+        if a is None:
+            return set()
+        return {self.overlay_of(a)} | {o for (o, n) in self._copy_index() if n == name}
 
     def data_containing(self, addr: int) -> Symbol | None:
         import bisect

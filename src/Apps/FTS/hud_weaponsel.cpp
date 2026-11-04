@@ -54,7 +54,8 @@ public:
 extern float data_0040C100;
 
 /* a string-table string formatted with a number (hud_main.cpp's tail, 0x1FE120; no row named) */
-extern "C" void func_001FE120(char *buf, int size, int id, int n);
+/* hud_main.cpp's: a number as a string table entry's one argument */
+void FormatStringInt(char *out, int size, int id, int value);
 
 
 /* the seal's controller as the selector reads it: the pad it reads (SOCOM 1's at 0xE8) */
@@ -1256,7 +1257,7 @@ void CWeaponSel::PlaceWeaponText()
             const char *text;
 
             if (mags > 1) {
-                func_001FE120(tempstr, 80, 0xEC42, mags);
+                FormatStringInt(tempstr, 80, 0xEC42, mags);
                 text = tempstr;
             } else {
                 text = GetString(0xEC43);

@@ -78,10 +78,16 @@ class CNode;
  * __sinit_zparticle.cpp registering ~CNodeVector for it, SOCOM II's 0x1EA340 four this-tests deep) */
 class CNodeVector : public std::vector<CNode *> {
 };
+class CDI;
+/* a node's collision pieces (znode.h's class: PullVisuals gathers them) */
+class CDIVector : public std::vector<CDI *> {
+};
 /* zdb::CNode, as much as the particles call (znode.h would bring zmath.h's CPnt4D with it) */
 class CNode {
 public:
-    unsigned char _0[0x5c];   // 0x0: tag_NODE_PARAMS
+    unsigned char _0[0x58];   // 0x0: tag_NODE_PARAMS
+    unsigned short m_type;   // 0x58: 2 for an instance of a model (znode.h's)
+    unsigned char _5a[2];   // 0x5a
     unsigned int _5c : 7;   // 0x5c
     unsigned int m_transparent : 1;   // 0x5c: bit 7
     unsigned int _5c_8 : 24;
@@ -107,8 +113,18 @@ public:
     void DeleteVisuals();
     void AddVisual(CVisual *vis);
 
-    unsigned char _64[0x9c - 0x64];
+    CNodeVector &GetChildren() { return m_child; }
+    /* the collision pieces by reference (ours: PullVisuals' walk keeps the vector's address in a
+     * saved register, as through GetChildren()) */
+    CDIVector &GetDIs() { return m_di; }
+
+    unsigned char _64[4];   // 0x64
+    CNodeVector m_child;   // 0x68 (znode.h's)
+    CDIVector m_di;   // 0x74
+    unsigned char _80[0x9c - 0x80];
     float m_Opacity;   // 0x9c
+    unsigned char _a0[0xb4 - 0xa0];
+    CNode *m_model;   // 0xb4: an instance's model (znode.h's CModel *)
 };
 
 class CCamera {
@@ -120,7 +136,7 @@ class CWorld : public CNode {
 public:
     static CWorld *m_world;
 
-    unsigned char _a0[0x128 - 0xa0];
+    unsigned char _b8[0x128 - 0xb8];
     CCamera *m_camera;   // 0x128
 };
 }
@@ -277,13 +293,26 @@ public:
     /* whether its source ages it at the LOD's rate (SOCOM 1's test of m_doAgeLOD; the name ours) */
     bool AgeLOD() const;
 
+    /* SOCOM 1's (0x327CD0; Source::Tick calls it): the CPnt3D is unused in SOCOM II */
+    Instance(const CPnt4D &pos, const CPnt4D &vel, const CPnt3D &unused, float f, float life, float age,
+             zdb::CTexHandle *tex, Props *props, Source *source);
+    /* SOCOM 1's constructor's common part (inline: Destruction_Instance's constructor inlines it):
+     * no properties, no source, not linked -- stored in this order, as the target's */
+    Instance()
+    {
+        m_props = 0;
+        m_source = 0;
+        m_listNext = 0;
+    }
     /* inline: its table stored and the virtual Expire, in every destructor that inlines it (no
      * out-of-line copy in the image) */
     ~Instance() { Expire(); }
 
     virtual void Expire();   // +0x08
     virtual void Tick(float dT);   // +0x0c
-    virtual void Render(const CMatrix &m);   // +0x10
+    /* SOCOM 1's Render(const CMatrix &): SOCOM II's takes no matrix -- neither override reads a1,
+     * and Particle::Render's call (0x328040) sets none */
+    virtual void Render();   // +0x10
     /* SOCOM II's: expired and given back to the class's pool (the name ours) */
     virtual void Recycle();   // +0x14
 
@@ -298,15 +327,15 @@ public:
         Source *m_source;   // 0x4: the emitter (SOCOM 1's; Expire drops its count)
         Instance *m_next;   // 0x4: the next free instance, in a pool
     };
-    unsigned char _8[0x4];   // 0x8
+    zdb::CTexHandle *m_texture;   // 0x8 (the constructor's; the name ours)
     float m_age;   // 0xc
-    unsigned char _10[0x10];   // 0x10
-    float m_pos[3];   // 0x20
-    unsigned char _2c[0x14];   // 0x2c
+    float m_10[4];   // 0x10: a streak's start (its position), a rotated one's angle (0x14) and spin (0x18)
+    float m_pos[4];   // 0x20 (SOCOM 1's constructor copies a CPnt4D in)
+    float m_vel[4];   // 0x30: the velocity (a CPnt4D copied in; the name ours)
     Props *m_props;   // 0x40
-    unsigned char _44[4];   // 0x44
+    float m_44;   // 0x44: the constructor's first float (the name ours)
     float m_lifespan;   // 0x48
-    unsigned char _4c[4];   // 0x4c
+    float m_invLifespan;   // 0x4c: 1 / the life (ours)
     Instance *m_listNext;   // 0x50: the next live instance (List's link), cleared when recycled
     float m_opacity;   // 0x54 (Destruction_Instance::SetVisual hands it to the node; the name ours)
 };   // 0x58 bytes
@@ -315,10 +344,19 @@ public:
  * node it moves at 0x58 */
 class Destruction_Instance : public Instance {
 public:
+    /* SOCOM 1's, the visual dropped (SetVisual hands it over): the position and velocity, the
+     * spin, the first float, the life and the opacity, the axis (by value) and the properties,
+     * whose count it takes (0x327800) */
+    Destruction_Instance(const CPnt4D &pos, const CPnt4D &vel, const CPnt3D &spin, float f, float life,
+                         float opacity, CPnt3D axis, Props *props);
     ~Destruction_Instance();
+    /* SOCOM 1's: one off the pool, built in place, else a new one; linked at the live list's
+     * head (0x327620) */
+    static Destruction_Instance *Create(const CPnt4D &pos, const CPnt4D &vel, const CPnt3D &spin, float f,
+                                        float life, float opacity, CPnt3D axis, Props *props);
     void Expire();
     void Tick(float dT);
-    void Render(const CMatrix &m);
+    void Render();
     void Recycle();
     /* SOCOM II's: the piece's visual handed to its node (SOCOM 1 passed it to Create; the name
      * ours) */
@@ -327,11 +365,15 @@ public:
     static InstancePool<Destruction_Instance> m_instance_pool;   // 0x488468
 
     zdb::CNode *m_node;   // 0x58
-};
+    float m_spin[3];   // 0x5c (the names ours)
+    float m_axis[3];   // 0x68
+};   // 0x74 bytes (Create's new)
 
 /* SOCOM II's: the dead instances recycled and both pools emptied (zparticle_instance.cpp; the
  * name ours) */
 void FreeInstances();
+/* a node for an instance, off the pool or new (zparticle.cpp) */
+zdb::CNode *GetFreeInstance();
 
 
 /* the textures a particle draws with, registered with the draw buffer (0x324A10) */
@@ -377,7 +419,11 @@ public:
 
     unsigned char _0[0x19];   // 0x0: SOCOM 1's m_active .. m_landmark, and SOCOM II's word
     unsigned char m_doAgeLOD;   // 0x19 (SOCOM 1: 0x15)
-    unsigned char _1a[0x3c - 0x1a];   // 0x1a: SOCOM 1's m_doSpawnLOD .. m_maxRotAcc
+    unsigned char _1a[0x2c - 0x1a];   // 0x1a: SOCOM 1's m_doSpawnLOD .. m_streakFade
+    float m_minRot;   // 0x2c (SOCOM 1's names, 4 bytes later: the instance constructor's ranges)
+    float m_maxRot;   // 0x30
+    float m_minRotAcc;   // 0x34
+    float m_maxRotAcc;   // 0x38
     PARTICLE_TYPE m_drawType;   // 0x3c (SOCOM 1: 0x38)
     unsigned char _3d[0xdc - 0x3d];   // 0x3d: SOCOM 1's m_numPeriods .. m_initialAgeRange
     std::vector<zdb::CTexHandle *> m_textures;   // 0xdc

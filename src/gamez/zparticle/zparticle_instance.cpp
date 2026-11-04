@@ -7,10 +7,14 @@
  * Its range starts at 0x326F50 at the latest (Destruction_Instance::Recycle). */
 
 #include <iostream>
+#include <stdlib.h>
 #include "zparticle.h"
 
 /* Sony's libvu0 (MAIN): v0 = v1 * t + v2 * (1 - t) */
 extern "C" void sceVu0InterVector(float *v0, float *v1, float *v2, float t);
+
+/* the draw buffer's count (zparticle_buf.cpp's unit; unnamed) */
+extern "C" int data_0045C4C0;
 
 namespace Particle {
 
@@ -125,6 +129,16 @@ void Destruction_Instance::SetVisual(zdb::CVisual *vis)
 }
 
 /* SOCOM II's: the dead instances recycled, then every pooled instance and piece deleted */
+/* SOCOM 1's Render(): the draw buffer emptied (its count, 0x45C4C0), then every live instance
+ * rendered -- SOCOM 1 handed each the camera's matrix, SOCOM II's Render takes none (RenderWorld
+ * calls this after its pass) */
+void Render()
+{
+    data_0045C4C0 = 0;
+    for (Instance *p = Instance::list.m_head; p; p = p->m_listNext)
+        p->Render();
+}
+
 void FreeInstances()
 {
     Instance *p;
@@ -153,14 +167,99 @@ void Instance::Recycle()
     m_instance_pool.Push(this);
 }
 
+/* SOCOM 1's: the instance's links, texture, age, properties and life set, its position and
+ * velocity copied; a rotated one given a random angle and spin from its source, a streak its start;
+ * the properties counted */
+Instance::Instance(const CPnt4D &pos, const CPnt4D &vel, const CPnt3D &unused, float f, float life, float age,
+                   zdb::CTexHandle *tex, Props *props, Source *source)
+{
+    m_source = source;
+    m_texture = tex;
+    m_age = age;
+    m_props = props;
+    m_44 = f;
+    m_lifespan = life;
+    m_invLifespan = 1.0f / life;
+    m_listNext = 0;
+    m_pos[0] = pos.x;
+    m_pos[1] = pos.y;
+    m_pos[2] = pos.z;
+    m_pos[3] = pos.w;
+    m_vel[0] = vel.x;
+    m_vel[1] = vel.y;
+    m_vel[2] = vel.z;
+    m_vel[3] = vel.w;
+    if (m_source->m_drawType == PT_ROTATED) {
+        m_10[1] = m_source->m_minRot + (m_source->m_maxRot - m_source->m_minRot) * (rand() * 4.656613e-10f);
+        m_10[2] = m_source->m_minRotAcc + (m_source->m_maxRotAcc - m_source->m_minRotAcc) * (rand() * 4.656613e-10f);
+    } else if (m_source->m_drawType == PT_STREAKED) {
+        m_10[0] = pos.x;
+        m_10[1] = pos.y;
+        m_10[2] = pos.z;
+        m_10[3] = pos.w;
+    }
+    m_props->m_refCount++;
+}
+
+/* SOCOM 1's, the visual left to SetVisual: the base's three links cleared, the properties
+ * counted, the piece's motion copied in field by field, its node taken off the pool */
+Destruction_Instance::Destruction_Instance(const CPnt4D &pos, const CPnt4D &vel, const CPnt3D &spin, float f,
+                                           float life, float opacity, CPnt3D axis, Props *props)
+{
+    props->m_refCount++;
+    m_pos[0] = pos.x;
+    m_pos[1] = pos.y;
+    m_pos[2] = pos.z;
+    m_pos[3] = pos.w;
+    m_vel[0] = vel.x;
+    m_vel[1] = vel.y;
+    m_vel[2] = vel.z;
+    m_vel[3] = vel.w;
+    m_age = 0.0f;
+    m_spin[0] = spin.x;
+    m_spin[1] = spin.y;
+    m_spin[2] = spin.z;
+    m_props = props;
+    m_opacity = opacity;
+    m_44 = f;
+    m_lifespan = life;
+    m_invLifespan = 1.0f / life;
+    m_node = GetFreeInstance();
+    m_axis[0] = axis.x;
+    m_axis[1] = axis.y;
+    m_axis[2] = axis.z;
+}
+
 /* the piece's node taken out of the world (SOCOM II's) */
 Destruction_Instance::~Destruction_Instance()
 {
     zdb::CWorld::m_world->DeleteChild(m_node);
 }
 
+/* SOCOM 1's: a piece off the pool, built in place, else a new one; linked in at the live list's
+ * head */
+Destruction_Instance *Destruction_Instance::Create(const CPnt4D &pos, const CPnt4D &vel, const CPnt3D &spin,
+                                                   float f, float life, float opacity, CPnt3D axis,
+                                                   Props *props)
+{
+    Destruction_Instance *p = m_instance_pool.m_head;
+
+    if (p) {
+        m_instance_pool.m_head = (Destruction_Instance *)p->m_next;
+        p->m_next = 0;
+    } else
+        p = 0;
+    if (p)
+        new (p) Destruction_Instance(pos, vel, spin, f, life, opacity, axis, props);
+    else
+        p = new Destruction_Instance(pos, vel, spin, f, life, opacity, axis, props);
+    p->m_listNext = Instance::list.m_head;
+    Instance::list.m_head = p;
+    return p;
+}
+
 /* the piece's node moved to it while it lives */
-void Destruction_Instance::Render(const CMatrix &m)
+void Destruction_Instance::Render()
 {
     if (m_age < m_lifespan && m_node) {
         m_node->SetPosition(m_pos[0], m_pos[1], m_pos[2]);

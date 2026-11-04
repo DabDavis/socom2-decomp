@@ -89,12 +89,12 @@ public:
     EQUIP_IDTYPE GetCurItemIDType();
     bool NVG_Enabled() const;
     int GetAmmoItemIndex(FIREMODE mode);
+    /* the current item's rounds: its magazine's size, and what is left (kit.h's; the kit lane's round 25) */
+    int GetCurMaxAmmoCount();
+    int GetCurAmmoCount();
 };
 
-/* the kit's rounds left in the clip and in all (both pass the current item's index on; no names
- * yet), the index of a fire mode's graphic, and two tests of an item's type */
-extern "C" int func_005C3CE0(CZKit *kit);
-extern "C" int func_005C3890(CZKit *kit);
+/* the index of a fire mode's graphic, and two tests of an item's type */
 
 /* the weapons' class tests (zwep_weapon.cpp's statics, 0x3D1DA0 and 0x3D1DB0: their parameter is
  * zweapon.h's EQUIP_ITEM, a byte enum, handed the item's class) */
@@ -289,8 +289,8 @@ void CAmmoDisplay::Update()
     CZSealBody *owner = CHUD::GetHUDOwner();
     CZKit *kit = owner ? &owner->m_kit : 0;
     CZFTSWeapon *item = kit ? kit->GetCurItem() : 0;
-    int clip = func_005C3CE0(kit);
-    int rounds = func_005C3890(kit);
+    int clip = kit->GetCurMaxAmmoCount();
+    int rounds = kit->GetCurAmmoCount();
     int mags = kit->GetCurNumMags();
     char text[32] = {0};
     bool hide = !kit;
