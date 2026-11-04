@@ -207,17 +207,6 @@ struct AccountInfoType {
     char AccountPassword[32];   // 0x24
 };
 
-/* our stats (0x66A750, the lobby unit's GamePlayerStats: the side's two bits in byte 2, the
- * ladder figure at 4 -- only what Open sets) */
-struct OpenStats {
-    unsigned int _0 : 15;
-    unsigned int _late : 1;
-    signed char _2 : 5;
-    signed char m_side : 2;   // byte 2, bits 5-6
-    unsigned char _3;
-    int m_rating;   // 0x4
-};
-
 extern "C" {
 extern int MediusWorldID;   /* the game joined (SOCOM 1's) */
 extern int LobbyWorldID;   /* the room we are in (SOCOM 1's) */
@@ -226,9 +215,9 @@ extern unsigned char data_0066A8E0;   /* logged in (the chat unit's) */
 extern unsigned char data_0044F470;
 extern char data_0066A9B0[256];   /* the lobby server's host */
 extern int data_0066AAB0;   /* and port */
-extern OpenStats data_0066A750;   /* our stats */
-extern char data_0066A7EF[];   /* our description, in them (0x9F) */
-extern int data_0066A838;   /* our performance figure, in them (0xE8; SOCOM 1's
+extern GamePlayerStats data_0066A750;   /* our stats (zonline.h's: the side's two bits in byte 2, the
+                                           ladder figure at 4, the description at 0x9F) */
+extern int data_0066A838;   /* our performance figure, after them (0xE8; SOCOM 1's
                                UniversalGamePerformanceMetric) */
 extern NetConnectionInfo data_0066A540;   /* the lobby server (OVL2 bss) */
 void func_002ED460(CZOnlineLobby *lobby);   /* the state handlers registered (the chat unit's table) */
@@ -264,7 +253,7 @@ bool CZOnlineLobby::Open(const char *host, int port)
     LobbyWorldID = -1;
     data_0066A750.m_rating = 99;
     data_0066A750.m_side = 0;
-    sprintf(data_0066A7EF, "Description Not Set");
+    sprintf(data_0066A750.m_desc, "Description Not Set");
     data_0066A838 = 65000;
     func_002E9920();
     AccountInfo.AccountID = -1;

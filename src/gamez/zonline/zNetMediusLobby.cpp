@@ -338,6 +338,27 @@ bool CZOnlineLobby::Logout()
     return true;
 }
 
+extern "C" {
+/* our stats read out: a copy of them, put in order (SOCOM II's; OVL1 0x2F98F0: st_mpexit.cpp's
+ * career record and the persona's figures read them; the copy is the record's implicit one,
+ * member by member -- zonline.h's GamePlayerStats) */
+void func_002F98F0(GamePlayerStats *stats)
+{
+    *stats = data_0066A750;
+    func_002F3EE0(stats);
+}
+
+/* our stats replaced: put in order and kept, and sent to the server when asked (SOCOM II's; OVL1
+ * 0x2F96F0: st_mpexit.cpp's end of game writes the career record back with 1) */
+void func_002F96F0(GamePlayerStats *stats, int send)
+{
+    func_002F3EE0(stats);
+    data_0066A750 = *stats;
+    if (send)
+        func_002FAA80(&theLobby);
+}
+}
+
 /* we leave the game for good: banned from it for two hours (SOCOM 1's; OVL1 0x2F95F0) */
 void CZOnlineLobby::BanSelfFromGame()
 {
