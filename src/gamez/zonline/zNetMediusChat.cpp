@@ -1400,7 +1400,9 @@ struct MediusLobbyWorldPlayerListRequest {
     char MessageID[MEDIUS_MESSAGEID_MAXLEN];   // 0x0
     int MediusWorldID;   // 0x18
 };   // 0x1c
-struct MediusLobbyWorldPlayerListResponse;
+/* a page's player (zonline.h's RoomPlayer is the SDK's record: the room keeps the pages' copies) */
+struct MediusLobbyWorldPlayerListResponse : public RoomPlayer {
+};
 
 extern "C" {
 extern unsigned char data_0044F9F0;   /* the room's player list being asked for */
@@ -1408,6 +1410,68 @@ extern float data_0044F9F8;   /* when it may next be asked */
 MediusErrorCode func_0064AF78(MediusLobbyWorldPlayerListRequest *req,
                               void (*cb)(int, int, int, MediusLobbyWorldPlayerListResponse *));
 void func_002F13F0(int, int, int, MediusLobbyWorldPlayerListResponse *);   /* a page of them (below) */
+
+/* a player's whereabouts as the page's update copies them -- member by member (three words, then
+ * each 64-byte name in a two-byte loop): the copy of a class with a user-declared constructor, where
+ * the SDK's MediusPlayerOnlineState is a plain struct copied as words (a layout-identical stand-in,
+ * the name ours) */
+struct PlayerWhereabouts {
+    PlayerWhereabouts() {}
+
+    int ConnectStatus;   // 0x0
+    int MediusLobbyWorldID;   // 0x4
+    int MediusGameWorldID;   // 0x8
+    char LobbyName[64];   // 0xc
+    char GameName[64];   // 0x4c
+};   // 0x8c
+
+/* a page of the room's players come in: a player already listed has its whereabouts brought up to
+ * date, a new one is added; on the last page the players not seen again (state 0, cleared by the
+ * request) are dropped and the list shown; a failed answer shows the list as it is -- either way
+ * the next request may go (SOCOM 1's cbRoomPlayerList, which only added; OVL1 0x2F13F0).
+ * OPEN, 34 instructions, all in the last page's walk: the target keeps the iterator's value in v0
+ * from each store (begin's, the step's) for the entry test and the step, stores it once at the
+ * arms' join, and reloads it only for the dereference -- include/vector's iterator reads m_p
+ * through its const operator* and == and steps it non-const, so MW here reloads for the test and
+ * steps the dereference's load (`i->` 40 -> 34; `(*i).`, an initialised or for-scoped iterator,
+ * `i++`, `i = i + 1`, a ternary of the two arms, `!(i == end())` no nearer). The first walk, the
+ * whereabouts copy and the push are the target's */
+void func_002F13F0(int, int, int, MediusLobbyWorldPlayerListResponse *resp)
+{
+    if (resp->StatusCode == 0) {
+        BriefingRoom *room = data_0044F568.FindRoom(ZString(theLobby.uiv_LobbyWorldNameVar));
+
+        if (!room)
+            return;
+        bool found = false;
+
+        for (std::vector<RoomPlayer>::iterator i = room->m_players.begin(); i != room->m_players.end(); ++i) {
+            if (resp->AccountID == (*i).AccountID) {
+                *(PlayerWhereabouts *)&(*i).OnlineState = *(PlayerWhereabouts *)&resp->OnlineState;
+                found = true;
+                break;
+            }
+        }
+        if (!found)
+            room->m_players.push_back(*resp);
+        if (resp->EndOfList) {
+            std::vector<RoomPlayer>::iterator i;
+
+            i = room->m_players.begin();
+            while (i != room->m_players.end()) {
+                if (i->OnlineState.ConnectStatus == 0)
+                    i = room->m_players.erase(i);
+                else
+                    ++i;
+            }
+            func_002F1670();
+            data_0044F9F0 = 0;
+        }
+    } else {
+        func_002F1670();
+        data_0044F9F0 = 0;
+    }
+}
 
 /* the room's players asked for again, at most every ten seconds and one answer at a time: each
  * player's state cleared, the page told it is waiting while it is empty (SOCOM II's; OVL1
