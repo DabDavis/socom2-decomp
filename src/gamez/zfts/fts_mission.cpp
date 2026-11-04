@@ -1347,6 +1347,7 @@ void Close();   /* 0x324820 */
 void Open();   /* 0x324B20 */
 void FlushDynTexList();   /* 0x3246F0 */
 void FreeNodePool();   /* 0x3248E0 */
+void ReserveNodePool();   /* 0x3249D0 (SOCOM 1's, at ReOpen_Load's call) */
 void FreeInstances();   /* 0x326FF0 */
 }
 
@@ -1445,6 +1446,7 @@ public:
     static void InitDatabaseHandles();   /* OVL2 0x5A4CE0 */
     static void ReInitDatabaseHandles();   /* OVL2 0x5A49F0 */
     static void InitDecalHandles();   /* OVL2 0x5A4CF0 */
+    static void Uninit_ReInitDatabaseHandles();   /* OVL2 0x5A3B50 (SOCOM 1's) */
 
     unsigned char _0[0x4];
     unsigned int m_id;   // 0x4 (zentity.h's CEntity)
@@ -1456,6 +1458,13 @@ public:
 };
 
 CZSealBody *ftsGetPlayer();
+
+/* the SEALs' AI controller (zseal.h's CSealCtrlAi: only its database-handle statics, SOCOM 1's) */
+class CSealCtrlAi {
+public:
+    static void ReleaseDatabaseHandles();   /* OVL2 0x574BD0 */
+    static void AcquireDatabaseHandles();   /* OVL2 0x574C30 */
+};
 
 /* the SEALs' units (zkit's CSealUnit: only its statics) */
 class CSealUnit {
@@ -1492,7 +1501,6 @@ void func_00344450(const char *db);   /* (the mission's sounds loaded) */
 void func_00344910(const char *db);
 void func_003448D0(const char *name);   /* (the jukebox's lists) */
 extern const char *data_0064F950;   /* (OVL2: "aimaps.mps") */
-void func_00574C30();   /* (OVL2) */
 void func_002B2E50(CMission *mission);   /* (SOCOM 1's CMission::LoadVehicles) */
 void func_00295660();
 }
@@ -1595,7 +1603,7 @@ bool CMission::Open(const char *name, int load_ai)
     if (theNetwork.m_bNetwork)
         CZSealBody::NetworkPlayerCreate();
     CZSealBody::InitDecalHandles();
-    func_00574C30();
+    CSealCtrlAi::AcquireDatabaseHandles();
     func_002B2E50(this);
     CCharacterType::AcquireSoundHandles();
     CZWeapon::Open();
@@ -1685,7 +1693,6 @@ bool CMission::ReOpen_Unload2()
 }
 
 extern "C" {
-void func_003249D0();   /* (SOCOM 1's Particle::ReserveNodePool at the same place) */
 void func_002B6430(C2DMessage_Q *q, float dT);   /* (fts_message.cpp's: SOCOM 1's ScrollUp here) */
 }
 
@@ -1723,7 +1730,7 @@ bool CMission::ReOpen_Load()
     AiMaps.Reset();
     Sample_ExtractionLoc();
     CZWeapon::Open();
-    func_00574C30();
+    CSealCtrlAi::AcquireDatabaseHandles();
     func_002B2E50(this);
     world->AddCustomCharacters();
     m_chars_loaded = 1;
@@ -1748,7 +1755,7 @@ bool CMission::ReOpen_Load()
 
     for (i = AiMaps.begin(); i != e; ++i)
         ftsFixupAiMap(*i);
-    func_003249D0();
+    Particle::ReserveNodePool();
     appCamera->AttachTo(ftsGetPlayer());
     CRdrArchive::CloseAll();
     /* each queue through a pointer of its own, declared where it is used: MW keeps each in a saved
@@ -1954,8 +1961,6 @@ public:
 
 extern "C" {
 CZAnimSet *GetAnimSet__10CZAnimMainFPCc(CZAnimMain *main, const char *name);
-void func_00574BD0();   /* (OVL2: SOCOM 1's CSealCtrlAi::ReleaseDatabaseHandles here) */
-void func_005A3B50();   /* (OVL2: SOCOM 1's CZSealBody::Uninit_ReInitDatabaseHandles here) */
 void func_00295610();
 void func_005B61A0();   /* (OVL2) */
 }
@@ -2021,7 +2026,7 @@ bool CMission::ReOpen_Unload1()
     ai::FlushPlannerQueue();
     world->m_grid.m_ClutterAnimManager->ClearEffectors();
     world->m_grid.m_ClutterAnimManager->ClearAnimations(true);
-    func_005A3B50();
+    CZSealBody::Uninit_ReInitDatabaseHandles();
     func_00295610();
     CZWeapon::Close();
     CPickup::Close(true);
@@ -2044,7 +2049,7 @@ bool CMission::ReOpen_Unload1()
         set->Reset();
     zdb::theWaterRippleManager.Clear();
     CAiDodge::Destroy();
-    func_00574BD0();
+    CSealCtrlAi::ReleaseDatabaseHandles();
     spawners.Clear();
     zBoneResetCallbacks();
     CSealUnit::UnInit();
@@ -2126,7 +2131,7 @@ void CMission::Close()
     CCharacterType::ClearMultiplayerMessageSounds();
     CMaterialExArray::UnInit();
     CZSealBody::UninitDatabaseHandles();
-    func_00574BD0();
+    CSealCtrlAi::ReleaseDatabaseHandles();
     CZDecalSet::DestroyDecalSet();
     Particle::Close();
     CAiDodge::Destroy();
