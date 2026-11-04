@@ -4884,6 +4884,7 @@
 0x0032FC10 begin__Q23std54__vector_imp<8zrdr_sym,Q23std20allocator<8zrdr_sym>,0>Fv
 0x0032FC20 size__Q23std54__vector_imp<8zrdr_sym,Q23std20allocator<8zrdr_sym>,0>CFv
 0x0032FC30 __ct__Q33std54__vector_imp<8zrdr_sym,Q23std20allocator<8zrdr_sym>,0>8iteratorFv
+0x0032FC40 substr__Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>CFUiUi
 0x0032FC50 __dt__8zrdr_symFv
 0x0032FCC0 push_back__Q23std54__vector_imp<8zrdr_sym,Q23std20allocator<8zrdr_sym>,0>FRC8zrdr_sym
 0x0032FCF0 __ct__8zrdr_symFRCQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>RCQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>i
@@ -4906,11 +4907,14 @@
 0x003320E0 remove_if<Q33std54__vector_imp<8zrdr_sym,Q23std20allocator<8zrdr_sym>,0>8iterator,PFRC8zrdr_sym_b>__3stdFQ33std54__vector_imp<8zrdr_sym,Q23std20allocator<8zrdr_sym>,0>8iteratorQ33std54__vector_imp<8zrdr_sym,Q23std20allocator<8zrdr_sym>,0>8iteratorPFRC8zrdr_sym_b_Q33std54__vector_imp<8zrdr_sym,Q23std20allocator<8zrdr_sym>,0>8iterator
 0x003321D0 find_first_not_of__Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>CFRCQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>Ui
 0x00332210 find_first_of__Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>CFRCQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>Ui
+0x00332250 __ct__Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>FRCQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>UiUiRCQ23std12allocator<c>
+0x00332320 __ct__Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>FRCQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>UiUi
 0x00332560 __copy<P8zrdr_sym,P8zrdr_sym>__3stdFP8zrdr_symP8zrdr_symP8zrdr_sym_P8zrdr_sym
 0x003325E0 insert__Q23std54__vector_imp<8zrdr_sym,Q23std20allocator<8zrdr_sym>,0>FP8zrdr_symUiRC8zrdr_sym
 0x00332A60 __fill_n<P8zrdr_sym,Ui,8zrdr_sym>__3stdFP8zrdr_symUiRC8zrdr_sym_v
 0x00332AD0 __copy_backward<P8zrdr_sym,P8zrdr_sym>__3stdFP8zrdr_symP8zrdr_symP8zrdr_sym_P8zrdr_sym
 0x00332B50 __ct__8zrdr_symFRC8zrdr_sym
+0x00332CF0 replace__Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>FUiUiRCQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>UiUi
 0x00332DF0 find_first_of__Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>CFPCcUiUi
 0x00332EB0 find_last_of__Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>CFPCcUiUi
 0x00332F80 find_first_not_of__Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>CFPCcUiUi
@@ -4925,6 +4929,7 @@
 0x00333490 addPNT3D__10CRdrEditorFPCcRC5PNT3D
 0x003334F0 addint__10CRdrEditorFPCci
 0x00333540 addrdrnode__10CRdrEditorFP5_zrdr
+0x003335C0 back__Q23std83deque<PQ210CRdrEditor11CRDRNodeVec,Q23std39allocator<PQ210CRdrEditor11CRDRNodeVec>>Fv
 0x00333610 addstringnode__10CRdrEditorFPCc
 0x00333690 addrealnode__10CRdrEditorFf
 0x00333700 addintnode__10CRdrEditorFi
@@ -5109,7 +5114,9 @@
 0x00340FA0 func_00340FA0
 0x00341010 func_00341010
 0x00341060 func_00341060
+0x003410D0 ResetGroupVolTemp__4CSndFf
 0x00341250 func_00341250
+0x003412F0 SetGroupVolTemp__4CSndFffiiiiiii
 0x003414B0 func_003414B0
 0x003414C0 func_003414C0
 0x003414D0 SetGroupVol__4CSndFif
@@ -5143,6 +5150,7 @@
 0x00343550 PlaySound__4CSndFP12CSndInstanceUi
 0x003435A0 GetSubtitles__4CSndFv
 0x003435B0 SetSubtitles__4CSndFb
+0x00343DD0 LoadBank__4CSndFPCc
 0x003443C0 CopyUpper__FPCcPci
 0x003448D0 func_003448D0
 0x003448E0 func_003448E0
@@ -5163,6 +5171,7 @@
 0x003455D0 __dt__4CSndFv
 0x00345620 __ct__4CSndFv
 0x00345800 GetSoundRdrFile__Fv
+0x00345810 insert__Q23std54__vector_imp<8CSndBank,Q23std20allocator<8CSndBank>,0>FP8CSndBankUiRC8CSndBank
 0x00345DC0 reserve__Q23std54__vector_imp<8CSndBank,Q23std20allocator<8CSndBank>,0>FUi
 0x00345F70 clear__Q23std56__vector_deleter<8CSndBank,Q23std20allocator<8CSndBank>>Fv
 0x00345F80 __dt__Q23std56__vector_deleter<8CSndBank,Q23std20allocator<8CSndBank>>Fv
@@ -5220,8 +5229,11 @@
 0x00348860 Stop__11CSndJukeboxFv
 0x003488E0 Start__11CSndJukeboxFv
 0x00348CE0 SetIntensity__11CSndJukeboxFf
+0x00348DC0 Play__11CSndJukeboxF10MUSIC_MODEP4CSnd
 0x00349060 ClearQueue__11CSndJukeboxFv
 0x00349080 FadeOut__11CSndJukeboxFv
+0x00349100 PlayQueued__11CSndJukeboxFv
+0x003492B0 Tick__11CSndJukeboxFf
 0x00349490 LoadMusicLists__11CSndJukeboxFP5_zrdri
 0x00349670 LoadPlaylists__11CSndJukeboxFPCc
 0x00349790 Cleanup__11CSndJukeboxFv

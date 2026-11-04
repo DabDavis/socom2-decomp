@@ -1960,6 +1960,25 @@ templates next), and the earlier rounds' opens; 3.0b38/b50/b52 still untold.
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the world, rdr and sound, round 9** (the jukebox, the sound banks, include/string's substrings, zrdr's stack):
+  - a container accessor used as the object of an inline call (`s.top()->push_back(x)`) is checked one level deeper and
+    calls its callee out of line; used as an initialiser it inlines whole -- zrdr.h's stack is the real include/stack now
+    (deque<CRDRNodeVec *>::back() 0x3335C0 byte-exact);
+  - MW orders a commutative float operation's operands its own way (the global's load first, the converted int last),
+    whatever the source writes: the target's other order needs the operands as named locals;
+  - a plain `char` static assigned from an unsigned-char enum parameter is stored from the raw argument register; with
+    `signed char` the conversion is CSE'd with the sign-extended copy the compares use (one saved register fewer); a bool
+    inline's result kept in an `int` local gives the target's second `andi 0xff` at the join, a `bool` local does not;
+  - include/string gained an in-class substr 0x32FC40, the two substring constructors 0x332250/0x332320 and replace(pos1,
+    n1, str, pos2, n2) 0x332CF0 -- MSL's `min` temporary sits above the iterator-category byte only when the remainder is
+    a named local; vector<CSndBank>::insert 0x345810 (0x5A4 bytes) matched straight from include/vector;
+  - CSndJukebox's Play 0x348DC0, Tick 0x3492B0 and PlayQueued 0x349100 (our name: SOCOM 1 inlined it five times; two
+    stand-ins -- `(signed char)m_mode` where the target uses lb, `*(MUSIC_MODE *)&m_queuedMode` where a cast would add an
+    andi), CSnd::SetGroupVolTemp, ResetGroupVolTemp(float) (SOCOM II added a step) and LoadBank;
+  - open: PlayRandom 0x348B20 (11: the target computes `&m_playlists[mode]` and then adds 8 for `.data_`, this source
+    folds the 8 into the relocation), AddNewCSnd 0x343F90 (20: a pod walk's end() reusing begin()'s data load -- the MSL
+    headers' question); CFlareSystem::Tick's CPnt4D() call is hud_linemap.cpp's weak copy (0x104 vs 0x10C in every inline
+    spelling: a stand-in).
 - **Tells from the kit and AI states, round 23** (the CT* task handlers: seal_tasks.cpp 33 -> 60 of 62):
   - AN INLINE'S VARIABLES ARE NUMBERED AFTER ALL THE CALLER'S NAMED LOCALS, an outer inline's locals before its inner
     inlines -- so no inline version of the parameter find could place the block between its counter and the list, and the
