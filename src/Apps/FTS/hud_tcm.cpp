@@ -119,6 +119,26 @@ void CTCM::SetCache(CTCMCache *cache)
     m_cache = cache;
 }
 
+/* the node the path selects, walked down from the root -- the path started at the first child when
+ * there is none yet and the root has children; none for an empty path (the walk's count taken once,
+ * so MW unrolls it 8x as the target does) */
+CTCMNode *CTCM::GetSelected()
+{
+    CTCMNode *node = 0;
+
+    if (!m_path.size() && GetNumChildren())
+        m_path.push_back(0);
+
+    unsigned int n = m_path.size();
+
+    if (n) {
+        node = this;
+        for (unsigned int i = 0; i < n; i++)
+            node = node->m_children[m_path[i]];
+    }
+    return node;
+}
+
 /* the node of a depth's column: the path walked down from the root */
 CTCMNode *CTCM::GetColumn(unsigned int depth)
 {

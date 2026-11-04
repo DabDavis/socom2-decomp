@@ -172,6 +172,8 @@ public:
 
     void Hold(bool reset, float t);
     CTCMNode *GetColumn(unsigned int depth);
+    /* the node the path selects (0x236B20: the layout and the pad handlers call it; the name ours) */
+    CTCMNode *GetSelected();
     /* hud_tcmcmds.cpp's layout (the names ours) */
     void AlignRoot(CTCMNode *cur);
     bool FadeCursor(CTCMNode *cur, bool in, float dt);

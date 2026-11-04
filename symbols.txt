@@ -2215,7 +2215,7 @@
 0x00236430 0x618 func_00236430  # OVL1
 0x00236A50 0x50 Hold__4CTCMFbf  # OVL1; ours by hand (the HUD lane, round 23: hud_tcm.cpp -- the menu's input hold at +0xDB4: added to unless reset, cleared for t <= 0)
 0x00236AA0 0x80 GetColumn__4CTCMFUi  # OVL1; ours by hand (the HUD lane, round 23: hud_tcm.cpp -- the node of a depth's column, the path at +0x754 walked down from the root; the layout and the tree call it)
-0x00236B20 0x180 func_00236B20  # OVL1
+0x00236B20 0x180 GetSelected__4CTCMFv  # OVL1; ours by hand (the HUD lane, round 39: hud_tcm.cpp -- the node the menu's path selects, the path started at the first child when empty; Layout and the tree's pad handlers call it; byte-exact)
 0x00236CA0 0x78 SetCache__4CTCMFP9CTCMCache  # OVL1; ours by hand (the HUD lane, round 23: hud_tcm.cpp -- the item cache at +0x760 and its name at +0x764, "No Cache Available" without one; inlined into Reset)
 0x00236D20 0x2E0 func_00236D20  # OVL1
 0x00237000 0xCC tcmAddItem__FPCciPCcPCcPCci  # OVL1; ours by hand (the HUD lane, round 23: hud_tcm.cpp -- an item's node from theTCM's cache entry of that name (Find), the captions defaulting to the name; the menu builders 0x2329F0/0x232BC0 call it)
