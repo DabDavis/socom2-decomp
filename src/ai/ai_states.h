@@ -460,6 +460,9 @@ public:
     bool ActivateSequence(const char *name, unsigned int flags);
     /* not held, and free to be pursued from (inlined in CanPushAiState; the names ours) */
     bool NotHeld() const { return !m_hold; }
+    /* held (ActivateSequence's test: the bit materialised, sltu, then branched on -- `? true :
+     * false`, as the HUD's round 43 measured; the name ours) */
+    bool Held() const { return m_hold ? true : false; }
     /* the hold bit set through a bool (the target's `daddiu 1` for true, `andi zero,1` for false;
      * the name ours) */
     void SetHold(bool b) { m_hold = b; }
@@ -484,10 +487,13 @@ public:
     unsigned char m_bit3 : 1;   // bit 3 (set through 0x5F3FC0)
     unsigned char m_5c_4 : 4;
     unsigned char m_mode;   // 0x5d: the AI's mode the script runs in (the name ours)
-    unsigned char _5e;
+    /* 0x5e: the AI sequence ActivateSequence pauses first (get_aiseq's index, SOCOM 1's +0x2F) */
+    unsigned char m_seq;
     unsigned char m_5f;   // 0x5f: 255 once the sequence holds or lets go (slot 0x0C)
     float m_60;   // 0x60
-    unsigned char _64[0x84 - 0x64];   // 0x84 bytes, Create's new
+    unsigned char _64;
+    char m_seqName[16];   // 0x65: the sequence's name (ActivateSequence's strncpy; SOCOM 1's +0x35)
+    unsigned char _75[0x84 - 0x75];   // 0x84 bytes, Create's new
 };
 
 class CAiSGoto : public CAiState {

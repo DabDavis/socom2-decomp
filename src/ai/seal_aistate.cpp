@@ -245,6 +245,48 @@ extern "C" bool func_005F43B0(CSealCtrlAi *ai, const char *name, unsigned int fl
     return false;
 }
 
+extern "C" char *strncpy(char *dst, const char *src, unsigned int n);
+
+/* an anim paused (the byte at 2 as a bool: materialised, sltu, then branched on -- zanim.h's CZAnim
+ * has no accessor; the name ours) */
+static inline bool AnimPaused(const CZAnim *anim)
+{
+    return anim->m_paused ? true : false;
+}
+
+/* the AI's sequence names (SOCOM 1's namespace sealai; OVL2 0x575210, seal_ai.cpp's) */
+namespace sealai {
+const char *get_aiseq(unsigned int i);
+}
+
+/* a response sequence run on the script's anim (m_58: ActivateEx stores it): with a name, while the
+ * state runs, unheld (or flags bit 3), when the anim has the sequence -- bit 2 resumes a paused anim
+ * first (false when it is not paused) and marks the flags' bit 2; the AI's own sequence paused, this
+ * one activated, held by bit 0, the mode cleared (255) by bit 1, the name kept; whether it began
+ * (OVL2 0x5F41F0; SOCOM 1's, with SOCOM II's bit 3 and Resume's new argument) */
+bool CAiSScript::ActivateSequence(const char *name, unsigned int flags)
+{
+    bool r = false;
+
+    if (name && m_active && ((flags & 8) || !Held()) && m_58
+        && ((CZAnim *)m_58)->SequenceExists(name)) {
+        if (flags & 4) {
+            if (!AnimPaused((CZAnim *)m_58))
+                return false;
+            func_002709B0((CZAnim *)m_58, 0);
+            SetFlags(4, 0);
+        }
+        ((CZAnim *)m_58)->PauseSequence(sealai::get_aiseq(m_seq));
+        ((CZAnim *)m_58)->ActivateSequence(name);
+        SetHold(flags & 1);
+        if (flags & 2)
+            m_mode = 255;
+        strncpy(m_seqName, name, 16);
+        r = true;
+    }
+    return r;
+}
+
 /* (OVL2 0x5F4080) */
 bool CAiSScript::CanAttack() const
 {

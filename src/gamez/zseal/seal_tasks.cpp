@@ -58,6 +58,8 @@ bool zrdr_toRfloat(const _zrdr *rdr, Rfloat *out);
 bool zrdr_findreal(const _zrdr *rdr, const char *tag, float *out, int n);
 bool zrdr_tobool(const _zrdr *rdr, bool *out);
 char *zrdr_findstring(const _zrdr *rdr, const char *tag);
+bool zrdr_findint(const _zrdr *rdr, const char *tag, int *out, int n);
+bool zrdr_findPNT2D(const _zrdr *rdr, const char *tag, PNT2D *out);
 bool zrdr_isitemtype(const _zrdr *rdr, int index, int type);
 bool zrdr_findbool(const _zrdr *rdr, const char *tag, bool *out);
 bool zrdr_findPNT3D(const _zrdr *rdr, const char *tag, PNT3D *out);
@@ -903,10 +905,78 @@ struct CTFireWeapon : TASK_HDR {
     static void Begin(_zanim_cmd_hdr *hdr);
 };
 
+/* a fire mode as an AI takes it (the 8 bytes at a CTFireMode's 0x8, handed whole to the AI by
+ * Begin -- OVL2 0x563470, the SEALs' row; the names ours, after Parse's tags). The fields Parse
+ * clears through a setter keep MW's unfolded inserts (`andi zero,3`, `andi zero,1` shared by bits 8
+ * and 9, the 18-bit field's dsll32/dsrl32 of zero), the ones it sets straight fold to constants */
+struct TASK_FIREMODE {
+    void SetMode(unsigned int m) { m_mode = m; }
+    void SetBit8(bool b) { m_bit8 = b; }
+    void SetHasWeapon(bool b) { m_hasWeapon = b; }
+    void SetHigh(unsigned int n) { m_high = n; }
+
+    unsigned int m_mode : 2;   // 0x8 bits 0-1
+    unsigned int m_2 : 2;   // bits 2-3 (2)
+    unsigned int m_auto : 2;   // bits 4-5 (1; "fullauto" 3)
+    unsigned int m_burst : 2;   // bits 6-7 (1; "burst" 3)
+    unsigned int m_bit8 : 1;   // 0x9 bit 0
+    unsigned int m_hasWeapon : 1;   // bit 1: "weapon" given
+    unsigned int m_weapon : 4;   // bits 2-5: "weapon"
+    unsigned int m_high : 18;   // bits 14-31 (new in SOCOM II)
+    unsigned int m_c;   // 0xc
+};
+
 /* ai::FIREMODE (SOCOM 1's CTFireMode) */
 struct CTFireMode : TASK_HDR {
+    TASK_FIREMODE m_fire;   // 0x8
+    PNT2D m_trigger;   // 0x10: "trigger" (0.1, 0.8 by default)
+    unsigned char m_hasTrigger : 1;   // 0x18 bit 0: "trigger" given
+    unsigned char _19[0x1c - 0x19];   // 0x1c bytes
+
+    static _zanim_cmd_hdr *Parse(_zrdr *rdr);
+    static void Begin(_zanim_cmd_hdr *hdr);
     static bool Tick(_zanim_cmd_hdr *hdr, float *dT);
 };
+
+/* the AI's weapon picked for a fire mode (OVL2 0x563470, the SEALs' row: SOCOM 1's CTFireMode::Begin
+ * calls ChooseWeapon(CAiWepHint &) with the task's 0x8 there -- so TASK_FIREMODE is SOCOM 1's
+ * CAiWepHint) */
+extern "C" void func_00563470(CSealCtrlAi *ai, TASK_FIREMODE *hint);
+
+/* the AI's two trigger times as one struct (zseal.h's m_734, m_73c, m_744 and m_748: Rfloats and what
+ * they rolled), set and rolled through an inline member called on a REFERENCE local -- its address
+ * kept in one saved register across the rolls' rand() calls, every field at an offset from it (the
+ * target's s2); called through the cast pointer, MW hoists each field's address into a register of
+ * its own (s1-s3) instead; the rolls Rfloat's operator (its locals pad the joins). The names ours */
+struct TASK_AITRIGGER {
+    void Set(float b, float a)
+    {
+        m_b = b;
+        m_a = a;
+        Roll();
+    }
+    void Roll()
+    {
+        m_first = m_a;
+        m_sum = m_first + m_b;
+    }
+
+    Rfloat m_a;   // 0x734
+    Rfloat m_b;   // 0x73c
+    float m_sum;   // 0x744
+    float m_first;   // 0x748
+};
+
+/* the AI's bits 16 and 17 set through a bool (SOCOM 1's CTFireMode::Begin calls SetHoldFire(false)
+ * where SOCOM II clears both: the `andi zero,1` the two share; the names ours) */
+inline void SetAiBit16(CSealCtrlAi *ai, bool b)
+{
+    ai->m_aibit16 = b;
+}
+inline void SetAiBit17(CSealCtrlAi *ai, bool b)
+{
+    ai->m_aibit17 = b;
+}
 
 /* a valve command's data as a task holds it (SOCOM 1's VALVE_CMD_DATA, zvalve/valve.h's, which this
  * unit does not include): the valve set before the compare and cleared after (OVL1 0x353FD0) */
@@ -1278,6 +1348,59 @@ bool CTEvent::Tick(_zanim_cmd_hdr *hdr, float *dT)
     e->m_type = (CAiEvent::EVENT)cmd->m_type;
     CAiEvent::Create(e);
     return true;
+}
+
+/* a fire mode: its defaults (mode 2, single auto and burst steps, the trigger 0.1 to 0.8), a
+ * weapon slot, the trigger, full auto or burst (OVL2 0x5DCC00; SOCOM 1's, the 18-bit field new) */
+_zanim_cmd_hdr *CTFireMode::Parse(_zrdr *rdr)
+{
+    CTFireMode *cmd = NewTask<CTFireMode>();
+    int weapon;
+    PNT2D trigger;
+
+    cmd->m_trigger.x = 0.1f;
+    cmd->m_trigger.y = 0.8f;
+    cmd->m_fire.SetMode(0);
+    cmd->m_fire.m_2 = 2;
+    cmd->m_fire.m_auto = 1;
+    cmd->m_fire.m_burst = 1;
+    cmd->m_fire.SetBit8(false);
+    cmd->m_fire.m_c = 0;
+    cmd->m_fire.SetHasWeapon(false);
+    cmd->m_fire.SetHigh(0);
+    if (zrdr_findint(rdr, "weapon", &weapon, 1)) {
+        cmd->m_fire.m_weapon = weapon;
+        cmd->m_fire.m_hasWeapon = 1;
+    }
+    if (zrdr_findPNT2D(rdr, "trigger", &trigger)) {
+        cmd->m_hasTrigger = 1;
+        cmd->m_trigger = trigger;
+    }
+    if (zrdr_findtag(rdr, "fullauto"))
+        cmd->m_fire.m_auto = 3;
+    else if (zrdr_findtag(rdr, "burst"))
+        cmd->m_fire.m_burst = 3;
+    return &cmd->hdr;
+}
+
+/* the fire mode given the AI's weapon choice; with a trigger its two trigger times (zseal.h's m_734
+ * and m_73c, Rfloats) set to the trigger's ends and rolled, as an attack's reset rolls them (0x565B80);
+ * the AI's bits 16 and 17 cleared (OVL2 0x5DC9D0; SOCOM 1's, its fire-mode switch to the kit gone) */
+void CTFireMode::Begin(_zanim_cmd_hdr *hdr)
+{
+    TASK_SEAL(CTFireMode);
+    CSealCtrlAi *ai = seal ? SealAi(seal) : 0;
+
+    if (ai) {
+        func_00563470(ai, &cmd->m_fire);
+        if (cmd->m_hasTrigger) {
+            TASK_AITRIGGER &t = *(TASK_AITRIGGER *)ai->m_734;
+
+            t.Set(cmd->m_trigger.x, cmd->m_trigger.y);
+        }
+        SetAiBit16(ai, false);
+        SetAiBit17(ai, false);
+    }
 }
 
 /* done at once, the time kept unless there is no AI (OVL2 0x5DC8A0) */
