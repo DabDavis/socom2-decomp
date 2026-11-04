@@ -8661,6 +8661,8 @@
 0x005B4F30 SealGetAltitude__10CZSealBodyFP6CPnt3Df
 0x005B61A0 func_005B61A0
 0x005B67F0 func_005B67F0
+0x005B68E0 insert__Q23std38__vector_pod<Us,Q23std13allocator<Us>>FPUsUiRCUs
+0x005B6BD0 reserve__Q23std38__vector_pod<Us,Q23std13allocator<Us>>FUi
 0x005B7910 func_005B7910
 0x005B7920 func_005B7920
 0x005B7B20 func_005B7B20
