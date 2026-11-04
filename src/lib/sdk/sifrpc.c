@@ -8,19 +8,26 @@
  * object's .bss: _packet_buffer, _free_buffer, _free_buffer2, _data_table); the layouts are
  * Sony's sifrpc.h, checked by the code.
  *
- * OPEN, ten, one cause first: the target never schedules a load above a store through another
- * structure -- _request_call's copies are load, store, load, store in source order, _request_bind
- * keeps rend->client's copy ahead of the call, _request_end its bind case's -- where this build,
- * strict aliasing on, hoists the loads (26, 32s, 9 words). Without strict aliasing _request_bind
- * comes to 9 and _request_rdata to 8 (from 10), but four matched functions are lost
- * (sceSifSetRpcQueue, sceSifRegisterRpc, sceSifGetNextRequest 4-13 words) and the clients grow:
- * the unit keeps strict aliasing, and the vendor's packet field types are not yet these (void,
- * int and struct-pointer reply fields all miss alike). The clients that share the shape --
- * sceSifGetOtherData, sceSifBindRpc (46 each), sceSifCallRpc (101s) -- and sceSifExecRequest
- * (112s) are the same written shape, unfitted. sceSifInitRpc (14s): the table stores and the four
- * handler registrations interleave in the target. _sceRpcGetPacket (21s): the id counter -- the
- * target stores pid + 1, and on 1 stores the old pid + 2 and hands out 1; the spellings tried
- * (here, and four others) miss by size. */
+ * GCC r25a, round 24a's lead: strict aliasing reads the vendor's field types off the schedule. Under
+ * it GCC moves a load above a store only when their types' alias sets differ (signed and unsigned
+ * share one, every pointer type has its own), and the target keeps some pairs in source order and
+ * hoists others -- so the types below are the ones whose sets give the target's order, swept field
+ * by field (build/scratch/gcc/v_sifrpc.py: a variants file of every combination, the functions
+ * scored under each): the reply packets' words are u_int (their client, pkt_addr, receive, src
+ * and dest), the client's serve and the queue's end are void *, the serve data's paddr and
+ * receive u_int, the call packet's client void *. They are not Sony's sifrpc.h types where that
+ * header is public -- another assignment with the same partition into sets schedules the same --
+ * but they are the partition the vendor's code had: nine of round 11a's ten open close
+ * with them (_request_end, _request_bind, _request_call, _request_rdata at once), with the layout
+ * read off the target -- the wait path first in the clients (`if (!(mode & 1)) {...}`, the
+ * no-wait one laid out last), sceSifExecRequest and sceSifCallRpc a newer release's (the reply
+ * DMA'd with sceSifSetDma in two descriptors and retried in a do-while; one write-back when the
+ * send and receive buffers are one), sceSifInitRpc's early return (991111's void-context sibling
+ * call into sceSifSetReg), _sceRpcGetPacket's counter tested in memory (`d->pid++; if (d->pid ==
+ * 1)`: one of fifteen spellings). The packet buffers have data rows (`_packet_buffer@sifrpc`, the
+ * demo's labels). OPEN: sceSifCallRpc (17 words, right size): the client's four stores and the
+ * packet's seven schedule otherwise (the packet's in every order, and jointly with the client's,
+ * miss: the nearest 16). */
 
 typedef unsigned int u_int;
 typedef unsigned short u_short;
@@ -51,7 +58,7 @@ typedef struct _sif_client_data {
 	void *cbuff;			/* 0x18 */
 	sceSifEndFunc func;		/* 0x1C */
 	void *para;			/* 0x20 */
-	struct _sif_serve_data *serve;	/* 0x24 */
+	void *serve;			/* 0x24 */
 } sceSifClientData;
 
 typedef struct _sif_receive_data {
@@ -70,9 +77,9 @@ typedef struct _sif_serve_data {
 	void *cbuff;			/* 0x14 */
 	int csize;			/* 0x18 */
 	sceSifClientData *client;	/* 0x1C */
-	void *paddr;			/* 0x20 */
+	u_int paddr;			/* 0x20 */
 	u_int fno;			/* 0x24 */
-	void *receive;			/* 0x28 */
+	u_int receive;			/* 0x28 */
 	int rsize;			/* 0x2C */
 	int rmode;			/* 0x30 */
 	u_int rid;			/* 0x34 */
@@ -86,7 +93,7 @@ typedef struct _sif_queue_data {
 	int active;			/* 0x04 */
 	struct _sif_serve_data *link;	/* 0x08 */
 	struct _sif_serve_data *start;	/* 0x0C */
-	struct _sif_serve_data *end;	/* 0x10 */
+	void *end;			/* 0x10 */
 	struct _sif_queue_data *next;	/* 0x14 */
 } sceSifQueueData;
 
@@ -101,11 +108,11 @@ typedef struct {
 typedef struct {
 	sceSifCmdHdr hdr;
 	u_int rec_id;
-	void *pkt_addr;
+	u_int pkt_addr;
 	u_int rpc_id;
-	sceSifClientData *client;	/* 0x1C */
+	u_int client;			/* 0x1C */
 	u_int cid;			/* 0x20: the command answered */
-	sceSifServeData *serve;		/* 0x24 */
+	void *serve;			/* 0x24 */
 	void *buff;			/* 0x28 */
 	void *cbuff;			/* 0x2C */
 } sceSifRpcRendPkt;
@@ -116,8 +123,8 @@ typedef struct {
 	void *pkt_addr;
 	u_int rpc_id;
 	sceSifReceiveData *receive;	/* 0x1C */
-	void *src;			/* 0x20 */
-	void *dest;			/* 0x24 */
+	u_int src;			/* 0x20 */
+	u_int dest;			/* 0x24 */
 	int size;			/* 0x28 */
 } sceSifRpcOtherDataPkt;
 
@@ -135,12 +142,12 @@ typedef struct {
 typedef struct {
 	sceSifCmdHdr hdr;
 	u_int rec_id;
-	void *pkt_addr;
+	u_int pkt_addr;
 	u_int rpc_id;
-	sceSifReceiveData *receive;	/* 0x1C */
+	u_int receive;			/* 0x1C */
 	u_int cid;			/* 0x20 */
-	void *src;			/* 0x24 */
-	void *dest;			/* 0x28 */
+	u_int src;			/* 0x24 */
+	u_int dest;			/* 0x28 */
 	int size;			/* 0x2C */
 } sceSifRpcRdataRendPkt;
 
@@ -149,10 +156,10 @@ typedef struct {
 	u_int rec_id;
 	void *pkt_addr;
 	u_int rpc_id;
-	sceSifClientData *client;	/* 0x1C */
+	void *client;			/* 0x1C */
 	u_int fno;			/* 0x20 */
 	int size;			/* 0x24 */
-	void *receive;			/* 0x28 */
+	u_int receive;			/* 0x28 */
 	int rsize;			/* 0x2C */
 	int rmode;			/* 0x30 */
 	sceSifServeData *serve;		/* 0x34 */
@@ -196,6 +203,15 @@ extern void sceSifExitCmd(void);
 extern void sceSifAddCmdHandler(u_int, void *, void *);
 extern u_int sceSifSendCmd(u_int, void *, int, void *, void *, int);
 extern u_int isceSifSendCmd(u_int, void *, int, void *, void *, int);
+
+typedef struct {
+	u_int data;
+	u_int addr;
+	int size;
+	int mode;
+} sceSifDmaData;
+
+extern u_int sceSifSetDma(sceSifDmaData *, int);
 extern void sceSifWriteBackDCache(void *, int);
 extern int sceSifGetSreg(int);
 extern u_int sceSifGetReg(u_int);
@@ -241,14 +257,14 @@ void sceSifInitRpc(u_int mode)
 	sceSifAddCmdHandler(0x8000000A, (void *)_request_call, &_data_table);
 	sceSifAddCmdHandler(0x8000000C, (void *)_request_rdata, &_data_table);
 	EIntr();
-	if (sceSifGetReg(0x80000002) == 0) {
-		cmd = (u_int *)&_packet_buffer[64];
-		cmd[3] = 1;
-		sceSifSendCmd(0x80000002, cmd, 16, 0, 0, 0);
-		while (sceSifGetSreg(0) == 0)
-			;
-		sceSifSetReg(0x80000002, 1);
-	}
+	if (sceSifGetReg(0x80000002))
+		return;
+	cmd = (u_int *)&_packet_buffer[64];
+	cmd[3] = 1;
+	sceSifSendCmd(0x80000002, cmd, 16, 0, 0, 0);
+	while (sceSifGetSreg(0) == 0)
+		;
+	sceSifSetReg(0x80000002, 1);
 }
 
 void sceSifExitRpc(void)
@@ -267,9 +283,12 @@ static void *_sceRpcGetPacket(sceSifRpcState *d)
 	for (i = 0; i < d->pkt_table_len; i++, p = (sceSifRpcPkt *)((char *)p + 64)) {
 		if (!(p->rec_id & 1)) {
 			p->rec_id = (i << 16) | 5;
-			pid = ++d->pid;
-			if (pid == 1)
-				d->pid = pid + 1;
+			d->pid++;
+			if (d->pid == 1) {
+				d->pid++;
+				pid = 1;
+			} else
+				pid = d->pid;
 			p->pkt_addr = p;
 			p->rpc_id = pid;
 			EIntr();
@@ -318,12 +337,12 @@ static void _request_end(sceSifRpcRendPkt *rend, void *data)
 
 	switch (rend->cid) {
 	case 0x8000000A:
-		cd = rend->client;
+		cd = (sceSifClientData *)rend->client;
 		if (cd->func)
 			cd->func(cd->para);
 		break;
 	case 0x80000009:
-		cd = rend->client;
+		cd = (sceSifClientData *)rend->client;
 		cd->serve = rend->serve;
 		cd->buff = rend->buff;
 		cd->cbuff = rend->cbuff;
@@ -331,7 +350,7 @@ static void _request_end(sceSifRpcRendPkt *rend, void *data)
 	case 0x8000000C:
 		break;
 	}
-	cd = rend->client;
+	cd = (sceSifClientData *)rend->client;
 	if (cd->rpcd.tid >= 0)
 		iSignalSema(cd->rpcd.tid);
 	_sceRpcFreePacket(cd->rpcd.paddr);
@@ -380,28 +399,28 @@ int sceSifGetOtherData(sceSifReceiveData *rd, void *src, void *dest, int size, u
 	other->size = size;
 	other->pkt_addr = other;
 	other->receive = rd;
-	if (mode & 1) {
-		rd->rpcd.tid = -1;
+	if (!(mode & 1)) {
+		sema.initCount = 0;
+		sema.maxCount = 1;
+		rd->rpcd.tid = CreateSema(&sema);
+		if (rd->rpcd.tid < 0) {
+			_sceRpcFreePacket((sceSifRpcPkt *)other);
+			return -3;
+		}
 		if (sceSifSendCmd(0x8000000C, other, 64, 0, 0, 0) == 0) {
 			_sceRpcFreePacket((sceSifRpcPkt *)other);
+			DeleteSema(rd->rpcd.tid);
 			return -2;
 		}
+		WaitSema(rd->rpcd.tid);
+		DeleteSema(rd->rpcd.tid);
 		return 0;
 	}
-	sema.initCount = 0;
-	sema.maxCount = 1;
-	rd->rpcd.tid = CreateSema(&sema);
-	if (rd->rpcd.tid < 0) {
-		_sceRpcFreePacket((sceSifRpcPkt *)other);
-		return -3;
-	}
+	rd->rpcd.tid = -1;
 	if (sceSifSendCmd(0x8000000C, other, 64, 0, 0, 0) == 0) {
 		_sceRpcFreePacket((sceSifRpcPkt *)other);
-		DeleteSema(rd->rpcd.tid);
 		return -2;
 	}
-	WaitSema(rd->rpcd.tid);
-	DeleteSema(rd->rpcd.tid);
 	return 0;
 }
 
@@ -425,8 +444,8 @@ static void _request_bind(sceSifRpcBindPkt *bind, void *data)
 	sceSifServeData *sd;
 
 	rend = _sceRpcGetFPacket(data);
-	rend->pkt_addr = bind->pkt_addr;
-	rend->client = bind->client;
+	rend->pkt_addr = (u_int)bind->pkt_addr;
+	rend->client = (u_int)bind->client;
 	rend->cid = 0x80000009;
 	sd = _search_svdata(bind->sid, data);
 	if (sd == 0) {
@@ -456,28 +475,28 @@ int sceSifBindRpc(sceSifClientData *bd, u_int command, u_int mode)
 	bind->sid = command;
 	bind->pkt_addr = bind;
 	bind->client = bd;
-	if (mode & 1) {
-		bd->rpcd.tid = -1;
+	if (!(mode & 1)) {
+		sema.initCount = 0;
+		sema.maxCount = 1;
+		bd->rpcd.tid = CreateSema(&sema);
+		if (bd->rpcd.tid < 0) {
+			_sceRpcFreePacket((sceSifRpcPkt *)bind);
+			return -3;
+		}
 		if (sceSifSendCmd(0x80000009, bind, 64, 0, 0, 0) == 0) {
 			_sceRpcFreePacket((sceSifRpcPkt *)bind);
+			DeleteSema(bd->rpcd.tid);
 			return -2;
 		}
+		WaitSema(bd->rpcd.tid);
+		DeleteSema(bd->rpcd.tid);
 		return 0;
 	}
-	sema.initCount = 0;
-	sema.maxCount = 1;
-	bd->rpcd.tid = CreateSema(&sema);
-	if (bd->rpcd.tid < 0) {
-		_sceRpcFreePacket((sceSifRpcPkt *)bind);
-		return -3;
-	}
+	bd->rpcd.tid = -1;
 	if (sceSifSendCmd(0x80000009, bind, 64, 0, 0, 0) == 0) {
 		_sceRpcFreePacket((sceSifRpcPkt *)bind);
-		DeleteSema(bd->rpcd.tid);
 		return -2;
 	}
-	WaitSema(bd->rpcd.tid);
-	DeleteSema(bd->rpcd.tid);
 	return 0;
 }
 
@@ -486,10 +505,10 @@ static void _request_call(sceSifRpcCallPkt *call, void *data)
 	sceSifServeData *sd = call->serve;
 	sceSifQueueData *base = sd->base;
 
-	if (base->start)
-		base->end->next = sd;
-	else
+	if (base->start == 0)
 		base->start = sd;
+	else
+		((sceSifServeData *)base->end)->next = sd;
 	base->end = sd;
 	sd->paddr = call->pkt_addr;
 	sd->client = call->client;
@@ -514,34 +533,36 @@ int sceSifCallRpc(sceSifClientData *bd, u_int fno, u_int mode, void *send, int s
 		return -1;
 	bd->rpcd.paddr = call;
 	bd->rpcd.pid = call->rpc_id;
+	bd->func = end_function;
+	bd->para = end_param;
 	call->fno = fno;
 	call->size = ssize;
-	call->receive = receive;
+	call->receive = (u_int)receive;
 	call->rsize = rsize;
-	call->rmode = 1;
 	call->pkt_addr = call;
 	call->client = bd;
 	call->serve = bd->serve;
 	if (!(mode & 2)) {
-		if (ssize > 0)
-			sceSifWriteBackDCache(send, ssize);
-		if (rsize > 0)
-			sceSifWriteBackDCache(receive, rsize);
+		if (send == receive) {
+			sceSifWriteBackDCache(send, ssize < rsize ? rsize : ssize);
+		} else {
+			if (ssize > 0)
+				sceSifWriteBackDCache(send, ssize);
+			if (rsize > 0)
+				sceSifWriteBackDCache(receive, rsize);
+		}
 	}
 	if (mode & 1) {
-		bd->rpcd.tid = -1;
-		bd->func = end_function;
-		bd->para = end_param;
 		if (end_function == 0)
 			call->rmode = 0;
-		if (sceSifSendCmd(0x8000000A, call, 64, send, bd->buff, ssize) == 0) {
-			_sceRpcFreePacket((sceSifRpcPkt *)call);
-			return -2;
-		}
-		return 0;
+		else
+			call->rmode = 1;
+		bd->rpcd.tid = -1;
+		if (sceSifSendCmd(0x8000000A, call, 64, send, bd->buff, ssize) != 0)
+			return 0;
+		_sceRpcFreePacket((sceSifRpcPkt *)call);
+		return -2;
 	}
-	bd->func = 0;
-	bd->para = 0;
 	sema.initCount = 0;
 	sema.maxCount = 1;
 	bd->rpcd.tid = CreateSema(&sema);
@@ -549,9 +570,10 @@ int sceSifCallRpc(sceSifClientData *bd, u_int fno, u_int mode, void *send, int s
 		_sceRpcFreePacket((sceSifRpcPkt *)call);
 		return -3;
 	}
+	call->rmode = 1;
 	if (sceSifSendCmd(0x8000000A, call, 64, send, bd->buff, ssize) == 0) {
-		_sceRpcFreePacket((sceSifRpcPkt *)call);
 		DeleteSema(bd->rpcd.tid);
+		_sceRpcFreePacket((sceSifRpcPkt *)call);
 		return -2;
 	}
 	WaitSema(bd->rpcd.tid);
@@ -669,25 +691,56 @@ sceSifServeData *sceSifGetNextRequest(sceSifQueueData *qd)
 
 void sceSifExecRequest(sceSifServeData *sd)
 {
+	sceSifDmaData dmat[2];
 	sceSifRpcRendPkt *rend;
-	void *rec = 0;
-	u_int size, id;
+	void *rec;
+	int size, n, i;
+	u_int id;
 
+	size = 0;
 	rec = sd->func(sd->fno, sd->buff, sd->size);
 	if (rec)
-		sceSifWriteBackDCache(rec, sd->rsize);
+		size = sd->rsize;
+	if (sd->size > 0)
+		sceSifWriteBackDCache(sd->buff, sd->size);
+	if (size > 0)
+		sceSifWriteBackDCache(rec, size);
 	DIntr();
 	if (sd->rid & 4)
 		rend = _sceRpcGetFPacket2(&_data_table, sd->rid >> 16);
 	else
 		rend = _sceRpcGetFPacket(&_data_table);
-	rend->client = sd->client;
-	rend->cid = 0x8000000A;
-	if (sd->rmode) {
-		while ((id = isceSifSendCmd(0x80000008, rend, 64, rec, sd->receive, sd->rsize)) == 0)
-			;
-	}
 	EIntr();
+	rend->cid = 0x8000000A;
+	rend->client = (u_int)sd->client;
+	if (sd->rmode) {
+		while (sceSifSendCmd(0x80000008, rend, 64, rec, (void *)sd->receive, size) == 0)
+			;
+		return;
+	}
+	rend->rpc_id = 0;
+	rend->rec_id = 0;
+	n = 0;
+	if (size > 0) {
+		dmat[0].data = (u_int)rec;
+		dmat[0].addr = (u_int)sd->receive;
+		dmat[0].size = size;
+		dmat[0].mode = 0;
+		n = 1;
+	}
+	dmat[n].data = (u_int)rend;
+	dmat[n].addr = (u_int)sd->paddr;
+	dmat[n].size = 64;
+	dmat[n].mode = 0;
+	n++;
+	do {
+		id = sceSifSetDma(dmat, n);
+		if (id == 0) {
+			i = 0x100000;
+			while (i--)
+				;
+		}
+	} while (id == 0);
 }
 
 void sceSifRpcLoop(sceSifQueueData *qd)
@@ -700,3 +753,6 @@ void sceSifRpcLoop(sceSifQueueData *qd)
 		SleepThread();
 	}
 }
+
+
+
