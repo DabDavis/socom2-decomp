@@ -208,7 +208,6 @@ public:
 };
 void UpdateCharWeaponUiVars(int index);   /* 0x2AF190 */
 const char *GetDefCharTypeName(int index);   /* 0x2AF760 */
-
 namespace {
 
 /* whether any selected character carries the item the argument names (SOCOM 1's). OPEN, 6
@@ -291,6 +290,26 @@ bool OnRemoveEquipment(C2DAnimCmdHdr *hdr, float *dT)
     for (CSelectedCharsItr it("UiCharSet"); it.Valid(); it.Advance())
         if (((CCharacterWeapList *)it.m_weapons)->RemoveWeapon(item))
             UpdateCharWeaponUiVars(it.m_index);
+    return true;
+}
+
+}
+
+namespace {
+
+/* the mission played again: off the network the state popped back to it, on it the session's master
+ * moves the game on (SOCOM 1's, as OnCloseAndSwitch's network arm) */
+bool OnReplayMission(C2DAnimCmdHdr *hdr, float *dT)
+{
+    if (theNetwork.m_bNetwork) {
+        if (theNetwork.m_bSessionMaster) {
+            CZNetGame *game = theMission.m_pNetGame;
+
+            game->MPMajorGameState((CZNetGame::MP_MAJOR_GAME_STATE)5);
+            CZGameState::UpdateLocalGame(game);
+        }
+    } else
+        theGame.Pop(1);
     return true;
 }
 
