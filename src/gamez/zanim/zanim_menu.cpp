@@ -3277,6 +3277,48 @@ _zanim_cmd_hdr *UICompareValuesParse(const char *name, _zrdr *rdr)
     return (_zanim_cmd_hdr *)cmd;
 }
 
+/* CompareValues: the two values -- each a name, the typed text for INPUT_STRING, or the string of
+ * the UI variable it names -- compared as strings, case-insensitively when asked and after each is
+ * formatted when asked: whether they are the same (SOCOM II's; the name ours) */
+bool UICompareValues(C2DAnimCmdHdr *hdr, float *dT)
+{
+    UICompareValuesCmd *cmd = (UICompareValuesCmd *)hdr;
+    bool same = false;
+    C2DString s1, s2;
+    const char *a = CurAnim()->GetName(cmd->m_value1);
+    const char *b = CurAnim()->GetName(cmd->m_value2);
+
+    if (a && !strcmp(a, "INPUT_STRING"))
+        a = CurAnim()->m_arg_list->GetCharP(0);
+    if (b && !strcmp(b, "INPUT_STRING"))
+        b = CurAnim()->m_arg_list->GetCharP(0);
+    if (cmd->m_uivar1 == 1) {
+        CUIVariable *v = theUIVarManager.Add(a, 0, UIVAR_SESSION);
+
+        if (v->type == 3)
+            a = v->String();
+    }
+    if (cmd->m_uivar2 == 1) {
+        CUIVariable *v = theUIVarManager.Add(b, 0, UIVAR_SESSION);
+
+        if (v->type == 3)
+            b = v->String();
+    }
+    if (a && b && cmd->m_after_formatting) {
+        s1.Format(a);
+        a = s1.m_string + s1.m_firstCharPos;
+        s2.Format(b);
+        b = s2.m_string + s2.m_firstCharPos;
+    }
+    if (a && b) {
+        if (cmd->m_case_insensitive)
+            same = !strcasecmp(a, b);
+        else
+            same = !strcmp(a, b);
+    }
+    return same;
+}
+
 bool UILobbyDisconnect(C2DAnimCmdHdr *hdr, float *dT)
 {
     if (data_0044FE10.IsActive())
