@@ -1888,6 +1888,23 @@ templates next), and the earlier rounds' opens; 3.0b38/b50/b52 still untold.
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the HUD, round 26** (CSecureText, C2DClock, the MP weapon selector's slots):
+  - a loop test that materialises `!p` (sltu/xori) and then the whole `&&` into v1 is an inline `bool More(p) { return
+    !IsNull(p) && *p; }` over an inline `IsNull(p) { return !p; }` (CSecureText::SetString); a switch inside an inlined
+    bool function materialises its answer (`move v1,zero` ... `daddiu v1,1`) only when it assigns a result local --
+    `return true/false` branches straight out (NextClass); `x > 254` gives the target's `slti at`, `x >= 255` gives `slti
+    v0`, in a plain `if` too;
+  - `m_arr[i].f` adds the offset as `addu v0,v0,this`, through a pointer local (`T *p = &m_arr[i]; p->f`) it is the
+    target's `addu v0,this,v0` (Scroll); a pointer declared ahead of ints computed before its value is assigned takes the
+    lower number (both SetWeapons); a small recursive member (about ten statements) inlines itself once at level 5
+    unless pinned -- a target that calls itself out of line wants `#pragma auto_inline off` (Scroll, NextWeapon);
+  - MW rejects `template T *C<T>::f();` for a class template not yet instantiated ("illegal explicit template
+    specialization"); `template class C<T>;` works and the member lands in the unit's tail (RTStack<CZBodyAnimBlend>::Top
+    0x219390 from hud_bitmapreticule.cpp); non-inline virtual overrides defined in the unit sit mid-unit in reverse
+    definition order, inline copies go to the tail (the slot virtuals 0x23BF10-0x23C387);
+  - 0x36AF30 is ~CSecureText (slot 0 of its table 0x406FA0: renamed at integration); the inline copies at
+    0x36AFA0-0x36AFEF are referenced by CSecureText's table, so they may be zui.cpp's tail, moving the unit cut to
+    0x36AFF0 (unchecked); open: SlotList::NextWeapon 0x23C6F0 (28, registers: the target gives the index the last number).
 - **Tells from the kit and AI states, round 20** (CZKit's ammo, the fire-class index, the Is() shape where GetState inlines):
   - THE Is() FALSE ARM HOLDS ONLY WHERE GetState IS A CALL (the SEALs' 0x572190): in seal_aistate.cpp the target inlines
     GetState and MW then turns the ternary's first operand into a plain branch -- probes show it stays materialised only

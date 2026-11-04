@@ -6797,7 +6797,7 @@
 0x0036AD60 0x6C clear__Q23std62__vector_deleter<10ActionItem,Q23std23allocator<10ActionItem>>Fv  # OVL1; by its body (16-byte elements destroyed from the end through ~ActionItem 0x3890C0, the size zeroed; the ActionItem deleter's destructor 0x36AC10 beside it) -- zui.cpp's template tail
 0x0036ADD0 0x7C clear__Q23std68__vector_deleter<13CDesignDlgObj,Q23std26allocator<13CDesignDlgObj>>Fv  # OVL1; by its body (40-byte elements destroyed from the end through ~CDesignDlgObj 0x37D9B0, the size zeroed: include/vector's deleter clear) -- zui.cpp's template tail
 0x0036AE50 0xD4 clear__Q23std70__vector_deleter<15CDlgDesignModel,Q23std28allocator<15CDlgDesignModel>>Fv  # OVL1; by its body (52-byte elements destroyed from the end, each model's two strings (0, 0xC) freed inline: the CDlgDesignModel deleter's clear, called by 0x36ACF0) -- zui.cpp's template tail
-0x0036AF30 0x70 func_0036AF30  # OVL1
+0x0036AF30 0x70 __dt__11CSecureTextFv  # OVL1; the integrator 2026-11-04, by the HUD lane round 26: slot 0 of CSecureText's table 0x406FA0; it stores that table and its mixin's 0x407030, calls ~CRenderableString with 0 and deletes when asked
 0x0036AFA0 0x8 Tick__17CRenderableStringFf  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0036AFB0 0x8 func_0036AFB0  # OVL1
 0x0036AFC0 0x24 SetMapOffset__17CRenderableStringFii  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
