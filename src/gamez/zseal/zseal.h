@@ -791,6 +791,30 @@ public:
     unsigned char _21[0x24 - 0x21];
 };
 
+/* the fire parameters (SOCOM 1's DWARF AI_FIREPARAMS, 0x60 bytes; SOCOM II's are 0x70, the flags
+ * at 0x6C -- the kit lane's seal_aiparams.cpp zeroes them there before the reset 0x55F6F0). Only
+ * the members SOCOM II's code shows at SOCOM 1's offsets are named */
+class AI_FIREPARAMS {
+public:
+    unsigned char _0[8];   // SOCOM 1: m_weapon, m_ammo
+    CPnt3D m_targetPos;   // 0x8
+    CPnt3D m_targetVel;   // 0x14
+    CPnt3D m_lookDirW;   // 0x20
+    CPnt3D m_aimPointW;   // 0x2c
+    CPnt3D m_aimDirM;   // 0x38
+    unsigned char _44[0x58 - 0x44];   // SOCOM 1: m_throwVec, m_throwPower
+    float m_timeout;   // 0x58: run up by FireWhenReady (0x563BD0; SOCOM 1's 0x54)
+    float m_dist;   // 0x5c: the target's distance (0x55EBE0; SOCOM 1's flags were here)
+    /* the spray's spread, zeroed with each burst (0x5659E0; the kit lane's ModifyAimDir call reads
+     * it -- the name ours) */
+    float m_spread;   // 0x60
+    /* under flag 0x40, the time left before the shot -- run down by FireWhenReady (new in SOCOM II;
+     * the name ours) */
+    float m_delay;   // 0x64
+    unsigned char _68[0x6c - 0x68];
+    unsigned int m_flags;   // 0x6c
+};
+
 /* the AI's data, CSealCtrlAi's second base (new in SOCOM II: CSealCtrlAi's RTTI, OVL2 0x65C6D0,
  * lists SEAL_AI_PARAMS at 0x250 -- after CEntityCtrl and CSealCtrl at 0 -- and SEAL_AI_PARAMS's own,
  * 0x65C660, no bases). It holds what SOCOM 1's CSealCtrlAi held, in the same order: its
@@ -861,9 +885,9 @@ public:
     CAiStamp m_stamp;   // 0x324 (restarted by the sleep setters, the avoid and path-recover states)
     unsigned char _348[0x364 - 0x348];
     CAiTimer m_stance_timer;   // 0x364: restarted with each desired stance (0x5631B0; the name ours)
-    unsigned char _370[0x3d0 - 0x370];
-    unsigned int m_3d0;   // 0x3d0: zeroed with each burst of the spray (0x5659E0; the name ours)
-    unsigned char _3d4[0x3e0 - 0x3d4];
+    /* the fire's parameters (the AI states hand them to FireWhenReady, 0x5B8920 its 0x55EAA0; the
+     * deploy's signals drop their aim) */
+    AI_FIREPARAMS m_fire;   // 0x370
     /* what 0x561E20 stores as it sets bit 7: a byte and 16 bytes zeroed (the names ours) */
     signed char m_3e0;   // 0x3e0
     unsigned char _3e1[0x3e4 - 0x3e1];
@@ -975,28 +999,6 @@ public:
     unsigned char _768[0x76c - 0x768];
     unsigned char m_weapon_kind;   // 0x76c: the kind 0x560540 reads off the body's weapon (the name ours)
     unsigned char _76d[0x7c0 - 0x76d];
-};
-
-/* the fire parameters (SOCOM 1's DWARF AI_FIREPARAMS, 0x60 bytes; SOCOM II's are 0x70, the flags
- * at 0x6C -- the kit lane's seal_aiparams.cpp zeroes them there before the reset 0x55F6F0). Only
- * the members SOCOM II's code shows at SOCOM 1's offsets are named */
-class AI_FIREPARAMS {
-public:
-    unsigned char _0[8];   // SOCOM 1: m_weapon, m_ammo
-    CPnt3D m_targetPos;   // 0x8
-    CPnt3D m_targetVel;   // 0x14
-    CPnt3D m_lookDirW;   // 0x20
-    CPnt3D m_aimPointW;   // 0x2c
-    CPnt3D m_aimDirM;   // 0x38
-    unsigned char _44[0x58 - 0x44];   // SOCOM 1: m_throwVec, m_throwPower
-    float m_timeout;   // 0x58: run up by FireWhenReady (0x563BD0; SOCOM 1's 0x54)
-    float m_dist;   // 0x5c: the target's distance (0x55EBE0; SOCOM 1's flags were here)
-    unsigned char _60[0x64 - 0x60];
-    /* under flag 0x40, the time left before the shot -- run down by FireWhenReady (new in SOCOM II;
-     * the name ours) */
-    float m_delay;   // 0x64
-    unsigned char _68[0x6c - 0x68];
-    unsigned int m_flags;   // 0x6c
 };
 
 class CSealCtrlAi : public CSealCtrl, public SEAL_AI_PARAMS {

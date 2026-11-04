@@ -149,10 +149,29 @@ public:
 
 class CAiSDeploy : public CAiState {
 public:
+    virtual void OnSignal(SIGNAL sig, CSealCtrlAi *ai);
     /* slots 0x24 and 0x3C of its table, both false (OVL2 0x575BE0, 0x575BD0: the tail's stubs) */
     virtual bool CanAttack() const { return false; }
     virtual bool Virtual3C(CSealCtrlAi *ai) { return false; }
+    /* slot 0x1C: no state pushed over a deploy (OVL2 0x55E660, out of line: mid-unit, after
+     * OnSignal) */
+    virtual bool CanPushAiState(AI_STATE state, CSealCtrlAi *ai);
     virtual ~CAiSDeploy();
+
+    /* what signal 4 resets (the names ours) */
+    unsigned char _58[0x70 - 0x58];
+    unsigned int m_70;   // 0x70
+    CAiMapLoc m_74;   // 0x74: a cell, the invalid one when reset
+    unsigned char _78[0x7c - 0x78];
+    unsigned char m_7c;   // 0x7c: 2 when reset
+    unsigned char _7d[0x80 - 0x7d];
+    unsigned int m_80;   // 0x80
+    unsigned int m_84;   // 0x84
+    unsigned char _88[0x8c - 0x88];
+    unsigned int m_8c;   // 0x8c
+    float m_timer;   // 0x90: a weapon timer (CZWeapon::ClearTimer clears it)
+    unsigned int m_94;   // 0x94
+    unsigned int m_98;   // 0x98
 };
 
 /* (OVL2 0x543480, seal.cpp's: the hostage's compass anchor deleted, as SOCOM 1's OnSignal did here
@@ -281,7 +300,7 @@ extern "C" bool func_005659E0(CSealCtrlAi *ai, float dT)
             ai->m_spraytimer = 0.0f;
         else {
             ai->m_spraytimer -= dT;
-            ai->m_3d0 = 0;
+            ai->m_fire.m_spread = 0;
             func_0060A2D0(ai->m_67c, true);
             func_005C37B0(kit, AUTOFIRE);
             ai->SetTrigger(true, 0.0f);
@@ -742,6 +761,105 @@ extern "C" CAiEvent *func_0055FEE0(CSealCtrl *ctrl, CAiEvent::EVENT event)
  * __dt__13CAiStateStackFv (verified with that name aliased: build/scratch/seal/adiff.py). */
 CAiSDeploy::~CAiSDeploy()
 {
+}
+
+extern "C" {
+/* (below: the route walked on along a path, and the AI's state brought up to date, the route's
+ * state returned -- OVL2 0x5556A0, 0x5558A0) */
+bool func_005556A0(CSealCtrlAi *ai, const CAiPathBytes *path, CAiRouteBytes *route);
+AI_ROUTE func_005558A0(CSealCtrlAi *ai);
+/* the kit's current item by its index (CZKit::SetCurItemByIndex, OVL2 0x5C4B10: zseal.h's kit is a
+ * stand-in) and its fire mode (0x5C37B0, declared below) */
+void func_005C4B10(CZKit *kit, int index);
+bool func_005C37B0(CZKit *kit, FIREMODE mode);
+}
+
+/* the fire's aim dropped: the two aim flags off, its time restarted (an inline both FireWhenReady and
+ * the deploy's signals show; the name ours) */
+static inline void DropAim(AI_FIREPARAMS &p)
+{
+    p.m_flags &= ~0x4200000;
+    p.m_timeout = 0.0f;
+}
+
+/* the deploy told: signal 4 resets it; 1 starts it -- the kit's first item on full auto, the look of
+ * mode 11 cleared, the SEAL to go prone at once, the aim dropped, the weapon to state 2 and the
+ * timer cleared; 2 stops it -- in the first three steps the route walked on (0x5556A0), in steps 3-5
+ * the step back to 0, in step 8 the timer cleared and the step back to 0, past them the state no
+ * longer running -- and drops the aim and the look; 3 ends a route under way: brought up to date
+ * (the step back to 0 when it is a route of kind 2), its path cleared and a running one ended (OVL2
+ * 0x55E3B0: SOCOM 1's OnSignal, its signal 1 alone -- the stance, the timer and signals 2 and 3 new) */
+static inline int PhaseOf(const CAiState *s)
+{
+    return s->m_phase;
+}
+
+void CAiSDeploy::OnSignal(SIGNAL sig, CSealCtrlAi *ai)
+{
+    CZSealBody *seal = ai ? (CZSealBody *)ai->m_entity : 0;
+
+    switch (sig) {
+    case SIGNAL_4:
+        m_80 = 0;
+        m_84 = 0;
+        m_98 = 0;
+        m_94 = 0;
+        m_70 = 0;
+        m_timer = 0.0f;
+        m_8c = 0;
+        *(unsigned int *)&m_74 = *(unsigned int *)&CAiMapLoc::invalid;
+        m_7c = 2;
+        break;
+    case SIGNAL_0:
+        break;
+    case SIGNAL_1: {
+        CZKit *kit = &seal->m_kit;
+
+        func_005C4B10(kit, 0);
+        func_005C37B0(kit, (FIREMODE)2);
+        ai->ClearLook(AIL_11);
+        ai->SetDesiredStance(STANCE_PRONE, 0.0f, false);
+        DropAim(ai->m_fire);
+        seal->SetWeaponState((WEAPON_STATE)2);
+        CZWeapon::ClearTimer(&m_timer);
+        break;
+    }
+    case SIGNAL_2: {
+        int step = PhaseOf(this);
+
+        if (step < 3)
+            func_005556A0(ai, &ai->m_path, &ai->m_route);
+        else if (step < 6)
+            UpdatePhase(0);
+        else if (step == 8) {
+            CZWeapon::ClearTimer(&m_timer);
+            UpdatePhase(0);
+        } else
+            SetActive(false);
+        DropAim(ai->m_fire);
+        ai->ClearLook(AIL_11);
+        break;
+    }
+    case SIGNAL_3:
+        if (ai->m_route.m_state != ROUTE_NONE) {
+            if (func_005558A0(ai) == ROUTE_2)
+                UpdatePhase(0);
+            ((CAiPath *)&ai->m_route.m_path)->Clear();
+            switch (ai->m_route.m_state) {
+            case ROUTE_1:
+            case ROUTE_2:
+                ai->m_route.m_state = ROUTE_NONE;
+                break;
+            }
+        }
+        break;
+    }
+}
+
+/* (OVL2 0x55E660: slot 0x1C of __vt__10CAiSDeploy) */
+bool CAiSDeploy::CanPushAiState(AI_STATE state, CSealCtrlAi *ai)
+{
+    return false;
 }
 
 CAiSGrenade::~CAiSGrenade()
