@@ -7367,7 +7367,7 @@
 0x00391E30 0xC func_00391E30  # OVL1
 0x00391E40 0x8 func_00391E40  # OVL1
 0x00391E50 0x14 Part__9CSkbSplitFi  # OVL1; tu: zui_cleanup.cpp~ (1.0 beta); the UI lane round 23: ours, by its body and its caller (zui_hangul.cpp: the composer's split, a total and a vector of parts at 4 -- its part i; the composer 0x391670 calls it with the split built by 0x391F80 at sp+256; byte-exact)
-0x00391E70 0xD0 func_00391E70  # OVL1
+0x00391E70 0xD0 Sum__9CSkbSplitFi  # OVL1; the UI lane round 24: ours, by its body (zui_hangul.cpp, OPEN 12: the sum of a CSkbSplit's first n parts, unrolled by 8, through the parts vector at this+4; the composer calls it out of line)
 0x00391F40 0x8 func_00391F40  # OVL1
 0x00391F50 0x10 func_00391F50  # OVL1
 0x00391F60 0x20 func_00391F60  # OVL1

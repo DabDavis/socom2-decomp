@@ -204,11 +204,17 @@ static SKBPADKEY s_padKeys[4] = {{1, 3, 2}, {2, 2, 3}, {3, 4, 1}, {4, 5, 4}};
  * kept, its hold time restarted; with none, the kept event cleared once the stick is centred or
  * one of those keys is let go (0x394F60; the name ours). The release test is a bool accumulated
  * with `|=` (the target's branch-free sltu/or chain; `||` branches, `|` of the compares differs).
- * OPEN, 16 bytes short (0x198 against 0x1A8): the event. The target loads the table's event with
- * `lb`, keeps it in v0 (the return value's register) and narrows it with `andi 0xff` at each test;
- * a byte-enum local folds the narrowing into an `lbu` and drops the tests' andi, a char local gives
- * the lb but no andi (0x1A0), an int local tested through a byte cast reaches the size but takes a3
- * and moves every volatile register (35 off): the shape that keeps all three is not found */
+ * OPEN, 1 instruction (the target's size since the UI's round 24): the table's event is loaded
+ * with `lbu` where the target has `lb`. The tests written `== SKBKEY_NONE` / `!= SKBKEY_NONE`
+ * narrow the byte enum with `andi 0xff` at each read as the target does (`!event` / `if (event)`
+ * test the loaded byte directly: 16 bytes short); but MW folds the signed char's conversion to the
+ * unsigned byte enum into the load whatever its form -- `(SKBKEY)(signed char)`, `(SKBKEY)(int)`,
+ * a signed char or int local first, the field a plain char, a pointer read, an inline returning
+ * it (round 24) -- where a 2-byte enum keeps `lb` with `andi 0xffff` at the reads and a signed byte
+ * enum (an enumerator -1) keeps `lb` with a sign-extension at each read. A signed char local tested
+ * through `(SKBKEY)` casts gives every instruction but holds the event in a3: only a byte-enum
+ * local is coalesced with the return register (35 off). The search as an inline returning the event
+ * (int, signed char or SKBKEY) is 24-29 off. */
 SKBKEY SkbPadKeyEvent(CPad *pad)
 {
     STICK_DIR dir = UiGetDirStickMoved();
@@ -220,7 +226,7 @@ SKBKEY SkbPadKeyEvent(CPad *pad)
             break;
         }
     }
-    if (!event) {
+    if (event == SKBKEY_NONE) {
         if (pad->m_state[PAD_CROSS] == KEY_FALLING)
             event = SKBKEY_5;
         else if (pad->m_state[PAD_TRIGGER_L2] == KEY_FALLING)
@@ -228,7 +234,7 @@ SKBKEY SkbPadKeyEvent(CPad *pad)
         else if (pad->m_state[PAD_TRIGGER_R2] == KEY_FALLING)
             event = SKBKEY_7;
     }
-    if (event) {
+    if (event != SKBKEY_NONE) {
         s_keyEvent = event;
         s_keyHeld = 0.0f;
         return event;
@@ -1079,7 +1085,17 @@ struct SKBTOGGLE {
  * place; the font choice `font = name.size() == 0 ? s_defaultFont : font` leaves the join unpadded
  * as the target (`if (!name.size())` pads it: the game states' round-34 ternary rule; `!size() ?`
  * gives two arms); the node read into a local first (the target keeps it in s1 across the calls).
- * Round 23: 0x398 -> 0x390, 18 lines off -> 1. */
+ * Round 23: 0x398 -> 0x390, 18 lines off -> 1.
+ * Round 24, read off MW's float colouring (igdump): MW numbers the product's operands in TREE order
+ * and the colouring follows the numbers -- the target's registers (x f2, width f1, the 1.0 f0) are
+ * exactly `x - w * t`'s numbering, yet its product reads `t * w`, so the 1.0 is materialised after
+ * the width although it is the left operand; the tick 0x3949C0 places the same legend as `x - t *
+ * w` with a variable t in f21. Every `t * w` form numbers the 1.0 first (4 off), every `w * t` form
+ * keeps the swap (1 off): the width or x as int, float or dead-first-defined locals, an implicit
+ * int-to-float conversion, a product local, a by-value or by-reference t (by reference 0x398), an
+ * int, double or self-cast argument, `1.0f - 0.0f`, an extra inline level, x / w / t as the inline's
+ * three parameters (int or float), a multiply inline, the node in a local, t a caller local defined
+ * before the calls (the constant is propagated before numbering in each). */
 /* the legend (bitmap 3) placed slid in by t, a fraction of its width (ours: the 1.0f a caller
  * passes is still multiplied; the width written first gives the target's registers -- the 1.0 then
  * numbered after it, so coloured first into f0 -- with the product's operands the wrong way round,
