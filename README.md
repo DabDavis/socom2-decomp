@@ -306,6 +306,33 @@ and assign(first, last) 0x18DB40 (MSL's string internals are modelled nowhere ye
 game's versions of the same pieces) -- and ~out_of_range 0x18D830 (the replace's throw: emitted once the replace
 exists); 3.0b38/b50/b52 still untold.
 
+Round 7 (244 of 244: the range is whole) wrote the library string's template replace 0x18D3E0, ~out_of_range 0x18D830,
+reserve 0x18D8C0 and assign(first, last) 0x18DB40, the pod vector's insert copy 0x18B810 and both range_map class
+inserts 0x18BE10 / 0x18C510 (one set of statements in msl/msl.h). THE BUILDS, TOLD APART: the runtime and the MSL library
+are 3.0b50 or 3.0b52, not 3.0b38 -- __PopStackFrame 0x184340 is byte-exact under b50/b52 only (b38 0x2A8 against
+0x2B8), and six iostream.cpp rows (xsputn/xsgetn<wchar_t>, the pod insert and erase copies, both class inserts) match only
+under b50/b52: b38 folds each unrolled step's `p + 4` into the load offsets, b50 and b52 keep a register per step; the
+game's MAIN units score alike under all three (zlib's huft_build still rules out b38). b50 AGAINST b52 -- OPEN: all 289
+hand-written MW units and the 1,285 MW drafts compiled under both (build/scratch/rt-r7/cmpbuilds.py) differ in three
+functions only, pointing opposite ways: seal_tasks.cpp's CTDrain::Tick 0x5DD3C0 is exact only under b52 (b50 drops a
+pointer's null test once it has been dereferenced; the target keeps it), seal_aistate.cpp's breach side test 0x5F3270
+(16 off under b52) is exact under b50 (only b50 forms the shared `0 * v.y` product; nothing else in the unit changes),
+SetGoalDir 0x56D920 misses under both -- a mixed-build link or a coincidence; the units stay on b52 until more evidence.
+Measured: MW narrows a bitfield access to a byte only when the field's declared type is not template-dependent (a
+`typename Allocator::size_type` field stays lw/sw); locals declared uninitialised at a function's top are numbered at
+their declaration there (a bool declared after them takes s0 though defined first -- against the world's round 12 rule:
+which wins depends on the shape); `while (newsize > newcap)` gives a fused sltu at / bnez at loop test, `while (newcap <
+newsize)` computes the bottom test into v0; MW evaluates call arguments right to left (a value the target computes
+before a later argument needs its own local ahead of the call); `*p++ = x` over a class element copies the old pointer
+first, `for (...; --k, ++p) *p = x;` stores through p and steps it in the delay slot; an inlined ternary accessor leaves
+an empty join block that takes the next block's alignment nop (the `b` lands a word early: an if/else assigning in each
+arm avoids it); inside an inline `!x ? a : b` compiles as `x ? b : a`, `x == false ? a : b` keeps the short-first
+layout; a reference local to a stack object keeps its address in a register for field accesses; an empty-struct
+argument is passed as a byte loaded off the stack, never as zero. The same string source at the game's flags
+(exceptions off) reproduces six game rows word for word (build/scratch/rt-r7/g1.cpp): OVL1's reserve 0x1E7C90, template
+replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 and 0x541240 -- include/string's to write
+(the MSL lane's).
+
 ## What the source has to reproduce
 
 - **Function order inside a TU is REVERSE definition order** (`-inline deferred`): the image's
@@ -2033,6 +2060,88 @@ exists); 3.0b38/b50/b52 still untold.
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the HUD, round 38** (hud_mpweaponsel.cpp's selector and categories, zui_2d.cpp's radio strip):
+  - a member pointer read straight each time (`m_selected[i].m_weapon->...`) becomes a CSE temporary numbered after the
+    inlines' variables, a named local, slot pointer or reference swaps its register with an inline parameter's
+    (CMPWeaponSel::CanSelect 0x23E910); a byte enum passed by value to two inlines from one read gives one `lb` and an
+    `andi` at each compare, held in a named local MW folds it into `lbu`; a caller copying a byte-enum field with `lb`
+    means the callee's parameter is that enum (an int parameter makes it `lbu`: SlotList::NextWeapon's two last);
+  - a one-case switch gives `beq` to the case with the preset in the delay slot and a `b` over it, the `if` form branches
+    the other way; two list walks -- an iterator initialised for the first and reassigned for the second -- live in two
+    frame slots (two webs), and each walk needs an end local of its own for its saved register (CRadioStrip::PressActive
+    0x370DB0);
+  - a lookup over C2D's inline base must go through an inline for every count and for the fallback -- calling
+    `GetUICommandType(0)` directly flips the last test's block layout (CUIListBox::GetZAnimCmdType 0x373640); a store
+    ending in a call's delay slot was last in program order (SlotList's m_owner zeroed after its slot loop);
+  - CMPWeaponSel's SetCharacterWeapons 0x23E5E0, SetState 0x240B90, Open 0x23E370 (On inlined) and constructor 0x241A90,
+    CMPWeaponCategories' Move 0x23D060 and TickArrows 0x23D2B0 (its two static colours guarded), CRadioStrip::HandlePad,
+    CHProgressBar::LoadSpec (SOCOM 1's); hud_weaponsel.h's inline constructors renumbered hud_scorepopup.cpp's
+    __arraydtor$N statics (no-target before and after).
+- **Tells from the kit and AI states, round 31** (Revive, the AI-state list's remove_if, ShareTarget, RadioCommand, a build):
+  - a variable whose address is taken, read through a `T *const *` view of its slot, is not merged with the plain reads
+    but is still hoisted out of the loop, the address folding into the load (CSealUnit::Revive 0x5EDE40: each walk reloads
+    `lw a0,36(sp)` as the target does); a `volatile` view is merged like a plain read;
+  - when a search takes its predicate by reference, a functor member read into a local is re-read at every step (the
+    loop's call kills it) while the by-value copy is still hoisted -- remove_if / remove_copy_if<list<CAiState *>,
+    CAiStateDeleteKind> 0x5F8AF0 / 0x5F8C40 close in the functor (`AI_STATE k = m_state; if (k == s->m_state)`), not in
+    include/algorithm;
+  - dead first definitions before the real assignments fix the saved registers inside a loop body; if one of two reads of
+    a field across a call goes through `((const T *)p)->f`, the other reload is done in place (`lw a0,4(s2)`); an if/else-if
+    chain over one member keeps each test before its body, a switch tests every case first; an unsigned byte enum passed to
+    a signed char parameter is sign-extended even straight from a parameter -- a target passing it on unconverted means the
+    callee takes the same enum (UNIT_FORMATION moved into ai_states.h: CAiSFollow::SetFormation takes it);
+  - SEAL_AISTATE.CPP IS BUILT WITH 3.0b50 (its first line, at integration): the breach side test 0x5F3270 is b50's own Dot
+    form -- b52 fuses the second dot product's x and y terms into mula/madd and computes `0 * v.y` again, b50 once; 72
+    spellings under b52 stay 16-22 off -- and nothing else in the unit changes under b50; seal_tasks.cpp's CTDrain::Tick
+    needs b52, so the link is mixed (MAIN's runtime round 7 measured every unit under both builds).
+- **Tells from the game states, round 33** (LoadVehicles and the box corners at last, the exit state's ratings):
+  - A CBBox PASSED BY VALUE IS COPIED AS ONE 24-BYTE BLOCK, a local or explicit temporary copy (`CBBox(x)`) as two 12-byte
+    blocks, min and max -- func_002A8C90 0x2A8C90 (104 off since round 29) passes `CBBox(*node->GetBBox())` to a corners
+    helper taking `const CBBox &`; a call that is the copy constructor's argument inside an inline call's argument stays a
+    call; a point's three fields stored into a matrix on the point itself keep a field's address in a register, read
+    through a pointer parameter they do not (a new SetTranslation(CMatrix *, const CPnt3D *) inline);
+  - an inline's variables are numbered after the caller's named locals AND after the caller's scalarised class-iterator
+    temporaries -- moving a block into an inline renumbers it; frame slots follow inline depth: `push_back(x)` puts insert's
+    iterator temporaries one level below the argument's temporary, `insert(end(), x)` at the same level -- together they
+    closed CMission::LoadVehicles 0x2B2E50 (41 off since round 29: the player-grid placement in an inline, `int cols,
+    rows;` in that order, the spawn through two inline levels);
+  - a loop end taken once into a local stays in a saved register, `it != l->end()` recomputes it every pass (LoadWorld's
+    list emptied 0x1EA4B0, the erase 0x1EAAF0 from source with it); float constants held in named locals change how a
+    weighted sum's registers are coloured (the objectives rating 0x1F3550; CExitState::Init's objective count 0x1F38F0
+    first try); CMission+0xE0 is SOCOM 1's float m_timer;
+  - open: the stealth rating 0x1F3290 (48, scheduling only), AddMission (MW computes each percentage at its use, the target
+    early -- all 720 orders alike), RemoteSealPostUpdateCallback (t at degree 25 = K: spill-cost order).
+- **Tells from the engine core, round 10** (the edge intersections, intersect2d, the CKey vector's iterator pieces):
+  - an int local holding a bitfield read adds `andi 0xffff`, reading the field in place does not (CDI::GetEdgeIntersects
+    0x2DD4D0 -- it returns the count: znode.h's declaration is int now); a count loop with no entry test after an early
+    return is a do/while that re-reads the member (GetEdgeIntersectsY 0x2DD2B0);
+  - a float local used by two later expressions keeps its load ahead of an intervening call, used once MW sinks the load to
+    its use (intersect2d 0x2DD690's `e.z`, SOCOM 1's); floats declared uninitialised at the top (`float s, t;`) reorder the
+    saved FPRs as a dead first definition does;
+  - in GCC-style asm the order of the operand list picks the address registers (DiIntersect::LoadTipAndTail 0x2DD210: 5 off,
+    the mask load and the 1.0f constant swap v1/a1); MW hoists a float zero's `mtc1` above a following `lwc1` whether the
+    load sits in C, in GCC asm or in an asm block (CDIPoly::GetIntersect 0x2DD150, 0xB0 vs 0xC0);
+  - the nine out-of-line pieces of vector<zar::CKey *> 0x257BC0-0x257C90 come out of zar_main.cpp in the image's exact
+    order right after _countKeys (0x257C10 new), with three target pieces between them (0x257B90, 0x257BA0, 0x257CA0)
+    include/vector's shapes do not give; CValve gains `unsigned int GetValue() const`; the one-byte pod vector local in
+    SelCharsHaveLockedEquip is no class vector<EQUIP_ITEM> (12 bytes more).
+- **Tells from the SEALs, round 30** (the alertness setters, GetDuckStance, an attack's reset, the ladder wait and hold):
+  - a random value read through a `const float *` view recomputes each field's address off the controller across rand();
+    the class's own operator, a `const Rfloat &` helper or the fields written out keep the range's address in a saved
+    register (an attack's reset 0x565B80); an inline passed as an argument to another inline is expanded whole ahead of
+    that inline's test (the ladder wait 0x56BD10's ladder index);
+  - a redundant `r = false;` in an if's then-arm keeps it a separate block that branches to the shared return, `return r;`
+    returns a constant zero instead, and an empty arm or a goto inverts the test (0x56BD10); a byte flag tested by a
+    one-case switch gives `beq` to the case over a `b` out where an `if` branches straight past (the ladder hold's tick
+    0x5B1570);
+  - a by-value parameter copied into a local assigned between two memcpys takes s0, taking the parameter's own address
+    homes it on the stack (CRemoteCtrl::SetAiNetState 0x56F4C0); an inlined `return 4` assigned to an enum-typed local is
+    `li`, to an unsigned char local `daddiu` plus an extra `andi` (SetAiAware(float, unsigned) 0x5612F0; its sibling
+    0x561110 takes an AI_AWARE, a point and a float -- the AI_AWARE enum and CSealCtrl's m_aware CAiDecay at 0xB4 new);
+  - CSealCtrlAi's slot 0xA4 (0x574800, mapped GetJumpFlag) has SOCOM 1's GetAiStateEnum body, so GetAiNetState 0x56F6C0
+    (it compares the result with 17 and 9) waits on the slot's type; the OVL2 stash holds three different 4-byte vector
+    types (the three identical pod destructors 0x5427E0 / 0x542850 / 0x5428C0); open: 0x5B3890 (16: the flattened d.y
+    stored late, d.x loaded twice).
 - **Tells from the HUD, round 37** (the pause test, CTCM's layout functions, the hud_pausemenu boundary):
   - an `-enum min` enum with no negative value is unsigned (0..66 behaves as 0..255), so a signed-char argument becomes
     `lbu` -- hud_tcmcmds.cpp's FT_COMMAND must be a signed byte for the target's `lb` (its AcknowledgeCommand /

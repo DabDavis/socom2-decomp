@@ -1550,8 +1550,10 @@ const T &_min(const T &a, const T &b)
 
 /* the eight corners of a box, round the bottom from the minimum's x and y at the far z, then the
  * top (ours; round 30's probe): too big for inline_max_size, inlined one level where it is used,
- * the corners' CPnt3D(fff) and assignments called (0x2A8F30, and an earlier unit's 0x20F1F0) */
-inline CPnt3D *BoxCorners(CPnt3D *p, CBBox b)
+ * the corners' CPnt3D(fff) and assignments called (0x2A8F30, and an earlier unit's 0x20F1F0). By
+ * reference, as its out-of-line copy 0x2A96B0 reads the box (CreateLadderTable passes GetBBox's
+ * result straight in) */
+inline CPnt3D *BoxCorners(CPnt3D *p, const CBBox &b)
 {
     p[0] = CPnt3D(b.m_min.x, b.m_min.y, b.m_max.z);
     p[1] = b.m_min;
@@ -1564,20 +1566,29 @@ inline CPnt3D *BoxCorners(CPnt3D *p, CBBox b)
     return p;
 }
 
+/* a matrix's translation set from a point, read through the pointer (ours: the three stores
+ * written on the point itself keep its y's address in a register, an instruction longer) */
+inline void SetTranslation(CMatrix *m, const CPnt3D *p)
+{
+    m->m_matrix[3][0] = p->x;
+    m->m_matrix[3][1] = p->y;
+    m->m_matrix[3][2] = p->z;
+}
+
 extern "C" float *func_002A2EB0(const CPnt3D *pos, int a, float range);   /* (fts_main.cpp's: the ground under a point) */
 
 /* a node set down on the ground: the point dropped to the floor found under it, the node's box
  * turned by the rotation and its lowest corner on the axis asked for put on the floor, an offset
  * added, the node lit (SOCOM II's; OVL1 0x2A8C90, ftsFixupAiMap calls it twice -- the names ours).
- * The box goes BY VALUE to the corners (the target calls GetBBox out of line, as an inline call's
- * argument -- a local copy inlines it a level -- and copies it into the argument's slot; the corners
- * helper is cut one level by its size, its sixteen leaves called and their copies emitted:
- * CPnt3D(fff) 0x2A8F30 and _min<f>'s OVL1 copy 0x2AFC60 byte-exact from here).
- * OPEN, 104 instructions, at the target's size: the target copies the box's min and max as two
- * 12-byte copies through two address registers ($f2-$f0 each) where MW copies the CBBox as one
- * 24-byte block ($f3-$f0) -- every later register and slot follows. Tried: the box by reference or
- * pointer (GetBBox inlined a level, 0x23C), min and max as two by-value points (0x2A4), a local box
- * assigned member by member (0x2A8) */
+ * The box goes to the corners as an explicit TEMPORARY copy, `BoxCorners(pts, CBBox(*GetBBox()))`
+ * (the states' round 33): a temporary or a local copy-constructed from a CBBox copies min and max as
+ * two 12-byte blocks ($f2-$f0 each, the target's), where a by-value parameter's copy is one 24-byte
+ * word copy ($f3-$f0, 104 instructions off); and GetBBox, the copy constructor's argument inside the
+ * inline call's, sits two levels down and stays a call (a local `CBBox b(*node->GetBBox())`, an
+ * assignment, or a copy helper inlines it a level: 0x2B0). The corners helper is cut one level by
+ * its size, its sixteen leaves called and their copies emitted (CPnt3D(fff) 0x2A8F30 and _min<f>'s
+ * OVL1 copy 0x2AFC60 byte-exact from here); the translation is stored through a pointer
+ * (SetTranslation above: written on the point in place, y's address is kept in a register). */
 extern "C" void func_002A8C90(zdb::CNode *node, const CPnt3D *at, int axis, const CPnt3D *offset,
                               const CPnt3D *rot)
 {
@@ -1593,7 +1604,7 @@ extern "C" void func_002A8C90(zdb::CNode *node, const CPnt3D *at, int axis, cons
         m.SetRotate(rot);
     CPnt3D pts[8];
 
-    BoxCorners(pts, *node->GetBBox());
+    BoxCorners(pts, CBBox(*node->GetBBox()));
     m.Transform(pts, 8);
     float lowest = (&pts[0].x)[axis];
 
@@ -1602,9 +1613,7 @@ extern "C" void func_002A8C90(zdb::CNode *node, const CPnt3D *at, int axis, cons
     pos.y -= lowest;
     if (offset)
         pos.Add(offset, &pos);
-    m.m_matrix[3][0] = pos.x;
-    m.m_matrix[3][1] = pos.y;
-    m.m_matrix[3][2] = pos.z;
+    SetTranslation(&m, &pos);
     node->SetMatrix(&m);
     node->SetDynamicLight(true, true);
 }

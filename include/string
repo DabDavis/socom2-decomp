@@ -27,12 +27,27 @@
  *     header's out-of-class members since the MSL headers round 5 (body.cpp's, fts_patch.cpp's and
  *     five more units' tails emit them byte-exact; OVL2's copies 0x53FAA0 and 0x540B50), the
  *     placeholders kept for the units that still call them by address;
+ *   - reserve, the template replace and assign(first, last) are MSL 3.0's own statements (the MSL
+ *     headers round 21, from MAIN's runtime round 7: src/main/msl/msl.h builds the prebuilt library's
+ *     copies, exceptions on, from the same source): out of class, each user's tail emits them --
+ *     OVL1 0x1E7C90 / 0x1EE780 / 0x1EF400 and OVL2 0x541290 / 0x540D00 / 0x541240 byte-exact from 25
+ *     units' tails (+5 over every hand-written unit, nothing lost by address; build/p21/s1.cpp, a
+ *     probe of one string built and destroyed, gives all six). They need the class's MSL shape: the
+ *     allocator a private (empty) base -- allocate/deallocate through `this` --, size_type
+ *     `typename Allocator::size_type`, and the long form a struct of size_type bit-fields in the
+ *     union (a dependent bit-field keeps word access: the mark's stores are lw/and/or/sw, where an
+ *     `unsigned int` field narrows them to bytes). The replace inlines its temporary's destructor only
+ *     where the unit generated the destructor first: hud_scorepopup.cpp's and util_stable.cpp's
+ *     copies, requested before anything there destroys a string, call it (`elsewhere`: OVL1's linked
+ *     copy is another unit's), and hud_scorepopup.cpp's ~CSaferStr, generated after, inlines it
+ *     (`elsewhere` too: 0x1E7A50 is main.cpp's, which still matches);
  *   - fts_state.h keeps its own basic_string (the MSL headers round 5): its default constructor is
  *     four inline levels high (init, clear_words, zero), as the states fitted it, and include/string's
  *     at four (zero() a member looping over a reference local) cost nothing over every hand-written
  *     unit until the UI lane's round 6 -- then zui_spec.cpp's GetControlSpec 0x382890 (0x2CC against
  *     0x304) -- so this header stays two high and fts_state.h apart; st_core.cpp's stand-ins under
- *     the placeholders still score the three members' rows by address;
+ *     the placeholders scored the members' rows by address (its func_001EF400 has no row since round
+ *     21 named 0x1EF400: the other units' copies match it);
  *   - erase() is that template replace over (0, npos) with an empty range of const char *, inline
  *     (SetString__16C2DMessageStringFPCc, the menu's string handlers);
  *   - the copies, out of class (the MSL lane, 2026-10-25; each byte-exact): the copy constructor
@@ -58,9 +73,9 @@
  *     inlines it for its temporary's two strings): an out-of-class member is never inlined into the
  *     units' own functions anyway, and removing `#pragma auto_inline off` moved nothing over every
  *     hand-written unit (the MSL headers round 5).
- * The pieces the map has not named yet are called through their placeholders, C functions under
- * the address's name (they resolve by address whatever the row is later named); reserve and the
- * destructor are the map's names. */
+ * Every member calls the map's names now; func_001EE780 stays declared for the units that call the
+ * template replace by its placeholder (zrdr_parse.cpp: a call resolves by address whatever the row is
+ * later named). */
 
 #ifndef _MSL_STRING
 #define _MSL_STRING
@@ -74,13 +89,29 @@ namespace std {
 
 template <class charT> struct char_traits {};
 
-/* the character compare the string's compare runs (memcmp, called out of line) */
+/* the character compare the string's compare runs (memcmp, called out of line), and the copies,
+ * moves and stores reserve and the template replace make (memcpy, memmove, a plain store) */
 template <>
 struct char_traits<char> {
+    typedef char char_type;
+
     static int compare(const char *s1, const char *s2, unsigned int n) { return memcmp(s1, s2, n); }
+    static void assign(char_type &c1, const char_type &c2) { c1 = c2; }
+    static char_type *copy(char_type *s1, const char_type *s2, unsigned int n)
+    {
+        memcpy(s1, s2, n);
+        return s1;
+    }
+    static char_type *move(char_type *s1, const char_type *s2, unsigned int n)
+    {
+        memmove(s1, s2, n);
+        return s1;
+    }
 };
 
-/* the out-of-line members not named in the map yet (`this` first) */
+/* the template replace's placeholder, for the units that still call it by address (zrdr_parse.cpp's
+ * string_erase, found through the tag's namespace): the header's own members call the member
+ * template, replace<const char *> (OVL1 0x1EE780) */
 extern "C" {
 void *func_001EEB40(void *str, const char *s);   /* assign(const char *) */
 void *func_001EEB70(void *str, const char *s);   /* append(const char *) */
@@ -89,9 +120,13 @@ void *func_001EE780(void *str, unsigned int pos, unsigned int n1, const char *fi
 }
 
 template <class charT, class traits = char_traits<charT>, class Allocator = allocator<charT> >
-class basic_string {
+class basic_string : private Allocator {
 public:
-    typedef unsigned int size_type;
+    /* dependent, as MSL's: the long form's bit-fields are declared size_type, and MW narrows a
+     * bit-field's access to a byte only when its declared type is not template-dependent -- the
+     * mark's tests and stores in reserve and the template replace are words (lw/sw), the short
+     * form's `unsigned char` size a byte (MAIN's runtime round 7, build/scratch/rt-r7/bf4.cpp) */
+    typedef typename Allocator::size_type size_type;
     enum { npos = -1 };
 
     basic_string() { init(); }
@@ -120,10 +155,22 @@ public:
     {
         forward_iterator_tag category;
 
-        return *(basic_string *)func_001EE780(this, 0, (size_type)npos, 0, 0, category);
+        return replace(0, (size_type)npos, (const charT *)0, (const charT *)0, category);
     }
 
-    void reserve(size_type n);
+    size_type max_size() const { return 0x7FFFFFFE; }
+    void reserve(size_type res_arg = 0);
+    /* the whole text replaced by a range (OVL1 0x1EF400, OVL2 0x541240): the template replace over
+     * (0, size()), a tail call through a 32-byte frame. The pointer is MSL's restriction to
+     * iterator types (its type unknown: Pv in the image's name), passed 0 and never read */
+    template <class InputIterator>
+    basic_string &assign(InputIterator first, InputIterator last, void * = 0);
+    /* n1 characters at pos replaced by the range j1..j2, the range's category an empty class by
+     * value (OVL1 0x1EE780, OVL2 0x540D00) -- every replace, assign, append, push_back, erase and
+     * constructor of the string comes here */
+    template <class ForwardIterator>
+    basic_string &replace(size_type pos, size_type n1, ForwardIterator j1, ForwardIterator j2,
+                          forward_iterator_tag);
     basic_string &replace(size_type pos, size_type n1, const basic_string &str);
     basic_string &replace(size_type pos, size_type n1, const charT *s);
     basic_string &replace(size_type pos1, size_type n1, const basic_string &str, size_type pos2, size_type n2);
@@ -191,6 +238,14 @@ private:
             a[i] = 0;
     }
 
+    /* the long form: the mark in bit 0 of the capacity's word, the size, the text (reserve and the
+     * template replace read and write it through these; the older members through w_) */
+    struct long_rep {
+        size_type is_long_ : 1;
+        size_type cap_ : 31;
+        size_type size_;
+        charT *data_;
+    };
     /* the short form: the mark and the size in the first byte, the text after it */
     struct short_rep {
         unsigned char is_long_ : 1;
@@ -200,9 +255,156 @@ private:
 
     union {
         unsigned int w_[3];   /* the long form: capacity | 1, size, text */
+        long_rep l_;
         short_rep s_;
     };
 };
+
+/* MSL 3.0's string internals, the game's build of them (exceptions off: the checks report through
+ * __msl_error where the prebuilt library throws -- src/main/msl/msl.h holds the library's build of the
+ * same statements, MAIN 0x18D8C0 / 0x18D3E0 / 0x18DB40). Out of class: each user's template tail
+ * emits them, OVL1's copies 0x1E7C90 / 0x1EE780 / 0x1EF400 (main.cpp's and st_core.cpp's: those units
+ * hold fts_state.h's string, so other units' copies score them), OVL2's 0x541290 / 0x540D00 / 0x541240
+ * (char_type.cpp's tail). The replace inlines its temporary's destructor where the unit generated the
+ * destructor first, as every string user does (0x1EE780's `jal __dl__FPv` on the frame's long text) */
+
+/* room for res_arg characters (OVL1 0x1E7C90): the capacity rounded up to a multiple of 16, or the
+ * short form's 11, the text moved to the new room -- shrinking, an allocation that fails leaves the
+ * string as it was (the library's try: the game's build tests the result) */
+template <class charT, class traits, class Allocator>
+void basic_string<charT, traits, Allocator>::reserve(size_type res_arg)
+{
+    if (res_arg > max_size())
+        __msl_error("basic_string::reserve length_error");
+    size_type cap, sz;
+    charT *new_data, *old_data;
+    bool now_long;
+    bool is_long = w_[0] & 1;
+    if (!is_long) {
+        cap = 11;
+        sz = (unsigned char)s_.size_;
+    } else {
+        sz = l_.size_;
+        cap = l_.cap_;
+    }
+    if (res_arg < sz)
+        res_arg = sz;
+    if (res_arg + 1 < 12)
+        res_arg = 11;
+    else
+        res_arg = (res_arg + 16) & ~15;
+    if (res_arg == cap)
+        return;
+    if (res_arg == 11) {
+        old_data = l_.data_;
+        new_data = s_.data_;
+        now_long = false;
+    } else {
+        if (cap < res_arg)
+            new_data = this->allocate(res_arg);
+        else {
+            new_data = this->allocate(res_arg);
+            if (new_data == 0)
+                return;
+        }
+        now_long = true;
+        old_data = is_long ? l_.data_ : s_.data_;
+    }
+    traits::copy(new_data, old_data, sz);
+    new_data[sz] = charT();
+    if (is_long)
+        this->deallocate(old_data, cap);
+    l_.is_long_ = now_long;
+    if (!now_long)
+        s_.size_ = sz;
+    else {
+        l_.data_ = new_data;
+        l_.size_ = sz;
+        l_.cap_ = res_arg;
+    }
+}
+
+template <class charT, class traits, class Allocator>
+template <class InputIterator>
+basic_string<charT, traits, Allocator> &basic_string<charT, traits, Allocator>::assign(InputIterator first,
+                                                                                       InputIterator last, void *)
+{
+    forward_iterator_tag category;
+
+    return replace(0, l_.is_long_ ? l_.size_ : (unsigned char)s_.size_, first, last, category);
+}
+
+/* the checks (a start past the end, a length past max_size()), then either a new buffer -- the head,
+ * the range and the tail copied in, the capacity doubled from the old one's 16-rounding until the text
+ * fits -- or the text moved in place, the range first copied out into a temporary when the tail's move
+ * would overwrite it. Each piece measured in the library's build (msl.h's comment): the locals at the
+ * top with the mark's bool last, the short size read before the capacity, n2 through distance by
+ * value, the temporary's text read through a reference to it in an if/else */
+template <class charT, class traits, class Allocator>
+template <class ForwardIterator>
+basic_string<charT, traits, Allocator> &basic_string<charT, traits, Allocator>::replace(size_type pos,
+    size_type n1, ForwardIterator j1, ForwardIterator j2, forward_iterator_tag)
+{
+    charT *data;
+    size_type sz, cap, xlen, n2, new_size, tail;
+    bool is_long = l_.is_long_;
+    if (!is_long) {
+        data = s_.data_;
+        sz = (unsigned char)s_.size_;
+        cap = 11;
+    } else {
+        data = l_.data_;
+        sz = l_.size_;
+        cap = l_.cap_;
+    }
+    if (pos > sz)
+        __msl_error("basic_string: out_of_range");
+    xlen = min(n1, sz - pos);
+    n2 = (size_type)distance(j1, j2);
+    if (n2 > max_size() || sz - xlen > max_size() - n2)
+        __msl_error("basic_string: length_error");
+    new_size = n2 + (sz - xlen);
+    tail = sz - (pos + xlen);
+    if (new_size >= cap) {
+        size_type newcap = (cap + 15) & ~15;
+        while (newcap < new_size + 1)
+            newcap = (2 * newcap + 15) & ~15;
+        charT *new_data = this->allocate(newcap);
+        if (pos != 0)
+            traits::copy(new_data, data, pos);
+        charT *p = new_data + pos;
+        traits::copy(p, j1, (size_type)(j2 - j1));
+        if (tail != 0)
+            traits::copy(p + n2, data + pos + xlen, tail);
+        traits::assign(new_data[new_size], charT());
+        if (is_long)
+            this->deallocate(data, cap);
+        else
+            l_.is_long_ = true;
+        l_.data_ = new_data;
+        l_.size_ = new_size;
+        l_.cap_ = newcap;
+    } else {
+        basic_string temp;
+        if (tail != 0 && data + pos + n2 < j2 && j2 <= data + sz) {
+            temp.assign(j1, j2);
+            const basic_string &t = temp;
+            if (!t.l_.is_long_)
+                j1 = t.s_.data_;
+            else
+                j1 = t.l_.data_;
+        }
+        if (tail != 0)
+            traits::move(data + pos + n2, data + pos + xlen, tail);
+        traits::move(data + pos, j1, n2);
+        traits::assign(data[new_size], charT());
+        if (!is_long)
+            s_.size_ = new_size;
+        else
+            l_.size_ = new_size;
+    }
+    return *this;
+}
 
 /* from a C string (0x2396F0, the copy closing the HUD's info box unit): the words zeroed, the
  * length taken, the room reserved, the text replaced in through the template replace with its
@@ -215,7 +417,7 @@ basic_string<charT, traits, Allocator>::basic_string(const charT *s)
     forward_iterator_tag category;
 
     reserve(n);
-    func_001EE780(this, 0, 0, s, s + n, category);
+    replace(0, 0, s, s + n, category);
 }
 
 /* from n characters (0x39B5B0, zui_skbkeys.cpp's tail: the keyboard's text wrap builds each word's
@@ -227,7 +429,7 @@ basic_string<charT, traits, Allocator>::basic_string(const charT *s, size_type n
     forward_iterator_tag category;
 
     reserve(n);
-    func_001EE780(this, 0, 0, s, s + n, category);
+    replace(0, 0, s, s + n, category);
 }
 
 /* a copy (0x22E560): the short form's words copied whole, the long form's text reserved and
@@ -242,7 +444,7 @@ basic_string<charT, traits, Allocator>::basic_string(const basic_string &str)
         reserve(str.long_size());
         forward_iterator_tag category;
 
-        func_001EE780(this, 0, 0, (const charT *)str.w_[2], (const charT *)str.w_[2] + str.long_size(), category);
+        replace(0, 0, (const charT *)str.w_[2], (const charT *)str.w_[2] + str.long_size(), category);
     }
 }
 
@@ -299,7 +501,7 @@ basic_string<charT, traits, Allocator> &basic_string<charT, traits, Allocator>::
         p = (const charT *)str.w_[2];
         n = str.w_[1];
     }
-    return *(basic_string *)func_001EE780(this, pos, n1, p, p + n, category);
+    return replace(pos, n1, p, p + n, category);
 }
 
 /* a range replaced by part of another string (the world lane's round 9: 0x332CF0, zrdr_parse.cpp's
@@ -328,7 +530,7 @@ basic_string<charT, traits, Allocator> &basic_string<charT, traits, Allocator>::
     n2 = min(n2, rlen);
     forward_iterator_tag category;
 
-    return *(basic_string *)func_001EE780(this, pos1, n1, p, p + n2, category);
+    return replace(pos1, n1, p, p + n2, category);
 }
 
 /* the text replaced by a C string (0x1EEB40: replace(0, size(), s), a tail call) */
@@ -345,7 +547,7 @@ basic_string<charT, traits, Allocator> &basic_string<charT, traits, Allocator>::
 {
     forward_iterator_tag category;
 
-    return *(basic_string *)func_001EE780(this, 0, size(), s, s + n, category);
+    return replace(0, size(), s, s + n, category);
 }
 
 /* a C string appended (0x1EEB70: replace(size(), 0, s), a tail call) */
@@ -362,7 +564,7 @@ basic_string<charT, traits, Allocator> &basic_string<charT, traits, Allocator>::
 {
     forward_iterator_tag category;
 
-    return *(basic_string *)func_001EE780(this, pos, n1, s, s + strlen(s), category);
+    return replace(pos, n1, s, s + strlen(s), category);
 }
 
 /* a character appended (0x284B40): the template replace at the end, over the character itself */
@@ -371,7 +573,7 @@ void basic_string<charT, traits, Allocator>::push_back(charT c)
 {
     forward_iterator_tag category;
 
-    func_001EE780(this, size(), 0, &c, &c + 1, category);
+    replace(size(), 0, (const charT *)&c, (const charT *)&c + 1, category);
 }
 
 template <class charT, class traits, class Allocator>

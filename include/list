@@ -88,6 +88,12 @@ public:
             node_ = (node *)node_->next_;
             return *this;
         }
+        /* (advance_to walks back with it) */
+        generic_iterator &operator--()
+        {
+            node_ = (node *)node_->prev_;
+            return *this;
+        }
         /* the copy, the step, the copy given back (graph_tree.cpp's queue walks: OVL1 0x2D1EB0 out
          * of line, `lw a2,0(a1); lw v1,4(a2); sw v1,0(a1); sw a2,0(a0)`) */
         generic_iterator operator++(int)
@@ -496,6 +502,27 @@ public:
     void insert(typename __list_deleter<T, Allocator>::iterator position, unsigned int n, const T &x);
     void init(unsigned int n, const T &x);
     typename __list_deleter<T, Allocator>::iterator advance_to(unsigned int n);
+
+    /* MSL's assignment (SOCOM 1's __as__Q23std38__list_imp<PCv,...> 0x1DA440 out of line, SOCOM II's
+     * inlined into CAiState's implicit operator= 0x5EBDC0): the source's end, then the node at the
+     * shorter length found from its nearer end, and the three handed to do_assign -- the arguments
+     * evaluated right to left, so x.end() is taken first and min()'s two temporaries x.size() before
+     * size() */
+    __list_imp &operator=(const __list_imp &x)
+    {
+        typedef typename __list_deleter<T, Allocator>::const_iterator const_iterator;
+
+        if (this != &x)
+            do_assign(x.begin(), const_iterator(((__list_imp &)x).advance_to(min(this->size(), x.size()))),
+                      x.end());
+        return *this;
+    }
+    /* [first, last) assigned, mid the source's node at this list's length: past it a temporary list
+     * built on this one's allocator, the overlap copied over the front and the temporary spliced in
+     * after it, else the overlap copied and the rest erased (SOCOM 1's do_assign<generic_iterator<1>>
+     * 0x1DA930; SOCOM II's 0x5EF470) */
+    template <class InputIterator>
+    void do_assign(InputIterator first, InputIterator mid, InputIterator last);
 };
 
 template <class T, class Allocator>
@@ -528,32 +555,61 @@ void __list_imp<T, Allocator>::init(unsigned int n, const T &x)
         while (--n);
 }
 
+/* MSL's advance over a bidirectional iterator: forward for a count above zero, back for one below */
+template <class BidirectionalIterator>
+inline void __list_advance(BidirectionalIterator &i, int n)
+{
+    if (n >= 0)
+        for (; n > 0; --n)
+            ++i;
+    else
+        for (; n < 0; ++n)
+            --i;
+}
+
 /* the n-th node's iterator, walked from the nearer end (SOCOM II's for the pointer lists is
- * 0x359740) */
+ * 0x359740, OVL2's 0x5EF7F0): ONE iterator, assigned from begin() or end() in each arm and advanced in
+ * place by a count that is int, one return -- each arm inlines its own two-way advance, the walker in
+ * v1 and the count in n's register in both (byte-exact, the MSL headers round 21; the iterator
+ * initialised in each arm with a return each is 8 bytes longer, a shared node pointer and count
+ * colour them a1/v1) */
 template <class T, class Allocator>
 typename __list_deleter<T, Allocator>::iterator __list_imp<T, Allocator>::advance_to(unsigned int n)
 {
-    typedef typename __list_deleter<T, Allocator>::node_base node_base;
-    node_base *p;
-    int k;
+    typename __list_deleter<T, Allocator>::iterator i;
 
-    if (n > this->size_ / 2) {
-        p = &this->end_;
-        k = n - this->size_;
+    if (n <= this->size_ / 2) {
+        i = this->begin();
+        __list_advance(i, n);
     } else {
-        p = this->end_.next_;
-        k = n;
+        i = this->end();
+        __list_advance(i, n - this->size_);
     }
-    if (k < 0) {
-        do
-            p = p->prev_;
-        while (++k < 0);
-    } else if (k > 0) {
-        do
-            p = p->next_;
-        while (--k > 0);
-    }
-    return typename __list_deleter<T, Allocator>::iterator(p);
+    return i;
+}
+
+/* std::copy over list iterators (include/algorithm's __copy walks a random-access range with `<`):
+ * the source iterators by value -- bitwise const_iterator copies the walk re-reads off the frame --
+ * the destination in a register */
+template <class InputIterator, class OutputIterator>
+inline OutputIterator __list_copy(InputIterator first, InputIterator last, OutputIterator result)
+{
+    for (; first != last; ++first, ++result)
+        *result = *first;
+    return result;
+}
+
+template <class T, class Allocator>
+template <class InputIterator>
+void __list_imp<T, Allocator>::do_assign(InputIterator first, InputIterator mid, InputIterator last)
+{
+    if (mid != last) {
+        __list_deleter<T, Allocator> tmp(*(const Allocator *)this);
+
+        tmp.init(mid, last);
+        this->splice(__list_copy(first, mid, this->begin()), tmp);
+    } else
+        this->erase(__list_copy(first, mid, this->begin()), this->end());
 }
 
 /* the runs that satisfy the predicate erased, one after another, the range erase inlined: SOCOM II's

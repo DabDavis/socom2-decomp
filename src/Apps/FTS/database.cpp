@@ -131,6 +131,37 @@ bool testUnload()
     return true;
 }
 
+#include <list>
+
+void _free(void *p, const char *file, int line);   /* (zsys_public.h's) */
+
+/* an entry of LoadWorld's local list (only its block at +0x14, freed with it: the names ours) */
+struct CLoadEntry {
+    ~CLoadEntry()
+    {
+        if (m_block)
+            _free(m_block, 0, 0);
+    }
+
+    unsigned char _0[0x14];
+    void *m_block;   // 0x14
+};
+
+/* LoadWorld's local list emptied: every entry deleted, then the list cleared (OVL1 0x1EA4B0, out
+ * of line after LoadWorld, its only caller; the iterator assigned, so it lives in memory -- two
+ * begin() copies --, the end taken once into a local, kept in s1 (end() in the test recomputes it
+ * each pass, 4 bytes short), and the clear's begin() read through &end_.next_ kept in s0; the name
+ * ours) */
+extern "C" void func_001EA4B0(std::list<CLoadEntry *> *entries)
+{
+    std::list<CLoadEntry *>::iterator it;
+    std::list<CLoadEntry *>::iterator end = entries->end();
+
+    for (it = entries->begin(); it != end; ++it)
+        delete *it;
+    entries->clear();
+}
+
 /* the world torn down (SOCOM 1's): the app camera deleted, the world's landmark and light lists
  * released, the map's motions unloaded (SOCOM II's), the world deleted, the recycle bin emptied,
  * the asset list cleared, the map textures forgotten, the tick lights' storage given up (FreeVector
