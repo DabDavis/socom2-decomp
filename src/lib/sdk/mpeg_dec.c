@@ -1388,6 +1388,63 @@ void _copyrightExtension(MpegDec *d)
 	_nextBit(d, 22);
 }
 
+/* a motion vector component from its code and residual: the MPEG Software Simulation Group's
+ * mpeg2decode text (motion.c's decode_motion_vector), as written there (GCC round 19a) */
+void _decode_motion_vector(int *pred, int r_size, int motion_code, int motion_residual,
+			   int full_pel_vector)
+{
+	int lim, vec;
+
+	lim = 16 << r_size;
+	vec = full_pel_vector ? (*pred >> 1) : (*pred);
+
+	if (motion_code > 0) {
+		vec += ((motion_code - 1) << r_size) + motion_residual + 1;
+		if (vec >= lim)
+			vec -= lim + lim;
+	} else if (motion_code < 0) {
+		vec -= ((-motion_code - 1) << r_size) + motion_residual + 1;
+		if (vec < -lim)
+			vec += lim + lim;
+	}
+	*pred = full_pel_vector ? (vec << 1) : vec;
+}
+
+/* dual-prime's derived vectors: mpeg2decode's Dual_Prime_Arithmetic (motion.c) over the decoder's
+ * own picture_structure and top_field_first (GCC round 19a) */
+void _dualPrimeVector(MpegDec *d, int DMV[][2], int *dmvector, int mvx, int mvy)
+{
+	if (d->picture_structure == 3) {
+		if (d->top_field_first) {
+			/* vector for prediction of top field from bottom field */
+			DMV[0][0] = ((mvx + (mvx > 0)) >> 1) + dmvector[0];
+			DMV[0][1] = ((mvy + (mvy > 0)) >> 1) + dmvector[1] - 1;
+
+			/* vector for prediction of bottom field from top field */
+			DMV[1][0] = ((3 * mvx + (mvx > 0)) >> 1) + dmvector[0];
+			DMV[1][1] = ((3 * mvy + (mvy > 0)) >> 1) + dmvector[1] + 1;
+		} else {
+			/* vector for prediction of top field from bottom field */
+			DMV[0][0] = ((3 * mvx + (mvx > 0)) >> 1) + dmvector[0];
+			DMV[0][1] = ((3 * mvy + (mvy > 0)) >> 1) + dmvector[1] - 1;
+
+			/* vector for prediction of bottom field from top field */
+			DMV[1][0] = ((mvx + (mvx > 0)) >> 1) + dmvector[0];
+			DMV[1][1] = ((mvy + (mvy > 0)) >> 1) + dmvector[1] + 1;
+		}
+	} else {
+		/* vector for prediction from field of opposite 'parity' */
+		DMV[0][0] = ((mvx + (mvx > 0)) >> 1) + dmvector[0];
+		DMV[0][1] = ((mvy + (mvy > 0)) >> 1) + dmvector[1];
+
+		/* correct for vertical field shift */
+		if (d->picture_structure == 1)
+			DMV[0][1]--;
+		else
+			DMV[0][1]++;
+	}
+}
+
 /* The picture layer (GCC round 19a): a picture decoded into its structure's reference (the
  * frame's or a field's third slot), marked valid on success; a frame output, or a field pair. */
 extern int _pictureData0(MpegDec *d);
