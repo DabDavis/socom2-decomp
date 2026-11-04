@@ -102,6 +102,15 @@ public:
     CSkbKey() : m_row(0), m_code(0) {}
     CSkbKey(signed char row, unsigned short code) : m_row(row), m_code(code) {}
     CSkbKey(const CSkbKey &k) : m_row(k.m_row), m_code(k.m_code) {}
+    /* a jamo's key (row 2), the null key for none -- jamo 33 (ours: StrToSkbKey's last case, built
+     * in its result: the zeroing stores, then the test) */
+    explicit CSkbKey(unsigned char jamo) : m_row(0), m_code(0)
+    {
+        if (jamo != 33) {
+            m_row = 2;
+            m_code = jamo;
+        }
+    }
     bool operator<(const CSkbKey &k) const
     {
         if ((unsigned char)m_row != (unsigned char)k.m_row)
@@ -112,6 +121,12 @@ public:
     bool operator!=(const CSkbKey &k) const { return *this < k || k < *this; }
     /* a key there, not the null key (ours: the bare conversions -- `m_row != 0` re-extends the row byte) */
     bool IsSet() const { return m_row || m_code; }
+    /* (ours: StrToSkbKey sets its keys so, the arguments evaluated before either store) */
+    void Set(signed char row, unsigned short code)
+    {
+        m_row = row;
+        m_code = code;
+    }
 
     union {
         unsigned char m_urow;
@@ -129,6 +144,8 @@ class CSoftKeyboard;
  * destructor is the Korean input unit's (0x394370) */
 class CSkbKeyProps {
 public:
+    /* (ours: AddKeyProps 0x38B770 news one, every word zeroed) */
+    CSkbKeyProps() : m_x(0), m_y(0), m_w(0), m_h(0), m_spec(0), m_button(0), m_node(0) {}
     ~CSkbKeyProps();
     void SetButtonState(void (C2DButton::*state)());
     /* its button's spec replaced by one read from an rdr block, or none (0x394210; ours) */
@@ -384,6 +401,9 @@ public:
     inline void SetCurKeyState(void (C2DButton::*state)());
     void ParseLook(_zrdr *rdr);
     void ParseKeyProps(_zrdr *rdr);
+    /* a key's props found, or made and mapped, then placed (0x38B770; ParseKeyProps', the name
+     * ours) */
+    void AddKeyProps(const CSkbKey &key, const CSkbRect &r);
     void SwitchTo(CSoftKeyboard *to);
     void SwitchToNamed(int i);
     void ShowSkb(const char *text);

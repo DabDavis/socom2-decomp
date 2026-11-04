@@ -6758,7 +6758,7 @@
 0x003677B0 0x14 func_003677B0  # OVL1
 0x003677D0 0x14 func_003677D0  # OVL1
 0x003677F0 0x14 func_003677F0  # OVL1
-0x00367810 0x138 func_00367810  # OVL1
+0x00367810 0x138 RunEventAnim__9CGameMenuFQ210ActionItem5EVENTPCc  # OVL1; the UI lane round 15: SOCOM 1's RunEventAnim__9CGameMenuFQ210ActionItem5EVENTPCc by its body (the 30 commands at 0x6F8 walked to m_numCommands 0x8D8 as SOCOM 1's at 0x68C/0x86C, each event action of the event started through CZAnim::ActivateArg(1, 8, arg) or Activate(0); TickMPEG passes ONMPEGEND), byte-exact from zui.cpp
 0x00367950 0xBE8 LoadFromDesign__9CGameMenuFRC14CGameDlgDesignP9CZAnimZAR  # OVL1; s1:calls by hand (the menu's design loader: this, the design and the ZAR in a0-a2 as SOCOM 1's; its first call 0x369210 at +0x34 as SOCOM 1's Clear, then UiSetCounterSpeedFactor and UiSetTtySpeedFactor with 1.0 in that order, as SOCOM 1's at +0x44/+0x54; SOCOM II adds a flag block between; 0xBE8 against 0xBA4)
 0x00368540 0x8 NumChildren__11CDlgObjSpecCFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00368550 0x8 GetChild__11CDlgObjSpecCFi  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
@@ -7255,7 +7255,7 @@
 0x0038B550 0x18 func_0038B550  # OVL1
 0x0038B570 0x8 func_0038B570  # OVL1
 0x0038B580 0x1EC func_0038B580  # OVL1
-0x0038B770 0x124 func_0038B770  # OVL1
+0x0038B770 0x124 AddKeyProps__13CSoftKeyboardFRC7CSkbKeyRC8CSkbRect  # OVL1; the UI lane round 15: ours, by its body (zui_skb.cpp: the key's props found through the inlined FindKeyProps, else newed zeroed and inserted into the key map at 0x164 -- the map's insert_one 0x38EC10 and insert_node_at 0x38EF50 byte-exact through it -- a row-2 key setting 0x174; then the place and size copied from the rectangle; ParseKeyProps 0x38DCB0 calls it)
 0x0038B8A0 0x48 func_0038B8A0  # OVL1
 0x0038B8F0 0x1B8 func_0038B8F0  # OVL1
 0x0038BAB0 0x8 func_0038BAB0  # OVL1
@@ -7287,9 +7287,9 @@
 0x0038D6A0 0xC4 ZuiInit__Fv  # OVL1; s1:calls by hand (SOCOM 1's ZuiInit: UiParams.rdr from data/common read, each of its SoftKeyboards made by CreateSoftKeyboard, the file freed; CMenuState::Init calls it) -- zui_skb.cpp
 0x0038D770 0x174 SkbOpen__Fv  # OVL1; by hand (the UI lane, round 12, ours: the UI command opening the keyboard the display unit names (0x397640; KEYBOARD when empty) with the empty text 0x49EC70 through ShowSkb, the display root g_skbDisplayNode on, the valve skb_done set to whether none was found, the sound 0 played; returns true -- the command table handler 0x2808D0 jumps here; zui_skb.cpp)
 0x0038D8F0 0x17C SkbTick__FP9CGameMenubf  # OVL1; the UI lane round 14: ours, by its body (zui_skb.cpp: the showing keyboard g_pActiveSkb ticked -- the display tick 0x3949C0's events handled through 0x38DFE0 with CInput::m_pads[0] and the menu when a1 is set, the USB bitmaps 0x520/0x5D0 shown by KeyboardAttached, the scaling 0x394DA0's result 1 or 2 handled; CGameMenu's tick 0x3654C0 calls it)
-0x0038DA70 0x184 func_0038DA70  # OVL1
+0x0038DA70 0x184 StrToSkbKey__21@unnamed@zui_skb_cpp@FPCc  # OVL1; the UI lane round 15: SOCOM 1's StrToSkbKey__21@unnamed@zui_skb_cpp@FPCc by its body (zui_skb.cpp: SOCOM II's adds the Switch<n> keys and the jamo; the key a name in the rdr gives -- none, a single character, Switch<n> (row 3), the five named characters, the fourteen action keys (row 1), else a jamo through FindJamo (row 2); ParseKeyProps and CreateSoftKeyboard call it), byte-exact
 0x0038DC00 0xA4 func_0038DC00  # OVL1
-0x0038DCB0 0x1F0 func_0038DCB0  # OVL1
+0x0038DCB0 0x1F0 ParseKeyProps__13CSoftKeyboardFP5_zrdr  # OVL1; the UI lane round 15: ours, by its body (zui_skb.cpp: CreateSoftKeyboard calls it after ParseLook, as the source has; each KeyProps item's Key through StrToSkbKey or as a code, its Pos and Size to AddKeyProps 0x38B770, its ButtonSpec to the key's props' SetSpec 0x394210)
 0x0038DEA0 0x98 PrepSkbsForDisplay__FPQ23zdb5CNodePQ23zdb16CTextureRelocMgrP7C2DFont  # OVL1; s1:calls by hand (SOCOM 1's PrepSkbsForDisplay: g_pActiveSkb cleared, each keyboard's PrepForDisplay with the manager and font; CGameMenu::LoadFromDesign calls it) -- zui_skb.cpp
 0x0038DF40 0x80 InvalidateSkbsDisplay__Fv  # OVL1; s1:calls by hand (SOCOM 1's InvalidateSkbsDisplay: g_pActiveSkb cleared, each keyboard's InvalidateDisplay; CGameMenu::Clear calls it) -- zui_skb.cpp
 0x0038DFC0 0x18 func_0038DFC0  # OVL1
