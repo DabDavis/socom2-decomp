@@ -10134,7 +10134,7 @@
 0x0055A8D0 0x50 OnSignal__10CAiSPursueFQ28CAiState6SIGNALP11CSealCtrlAi  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0055A920 0x298 Tick__11CAiSAnimateFP11CSealCtrlAi  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike); the kit lane, round 6: slot 0x10 takes no frame time -- CAiStateStack::Tick (0x5F8030) never sets $f12 for it and no override reads $f12 before writing it (they read the m_dT static) -- and returns an int
 0x0055ABC0 0x58 OnSignal__11CAiSAnimateFQ28CAiState6SIGNALP11CSealCtrlAi  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x0055AC20 0x1710 func_0055AC20  # OVL2
+0x0055AC20 0x1710 Tick__11CAiSGrenadeFP11CSealCtrlAi  # OVL2; by hand (the SEALs, round 30): slot 0x10 of __vt__11CAiSGrenade (ai_states.h's int Tick(CSealCtrlAi *)), SOCOM 1's Tick__11CAiSGrenadeFfP11CSealCtrlAi (0x191C there; SOCOM II's Tick takes no float); unwritten
 0x0055C330 0x148 Virtual14__11CAiSGrenadeFP11CSealCtrlAiP8CAiState  # OVL2; slot 0x14 of __vt__11CAiSGrenade (0x669364; the slot's signature ai_states.h's): done once the grenade is gone, the path's first cell kept, a Navy SEAL told under half a second of fuse (the SEAL lane, round 15)
 0x0055C480 0x154 func_0055C480  # OVL2
 0x0055C5E0 0xAC func_0055C5E0  # OVL2
@@ -10145,8 +10145,8 @@
 0x0055CCD0 0xF0 OnSignal__11CAiSGrenadeFQ28CAiState6SIGNALP11CSealCtrlAi  # OVL2; s1:vtable by hand (the SEALs, round 13): slot 0x8 of __vt__11CAiSGrenade (0x669358), OnSignal's slot in every state table (CAiSPursue's 0x55A8D0, CAiSAnimate's 0x55ABC0); SOCOM 1's CAiSGrenade::OnSignal (0x25D0C0) clears a byte on signal 0 as this one clears 0x60 -- SOCOM II adds the reset and signal 1's inlined ChangeStanceDelayed
 0x0055CDC0 0x35C func_0055CDC0  # OVL2
 0x0055D120 0x1288 Tick__10CAiSDeployFP11CSealCtrlAi  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike); the kit lane, round 6: slot 0x10 takes no frame time -- CAiStateStack::Tick (0x5F8030) never sets $f12 for it and no override reads $f12 before writing it (they read the m_dT static) -- and returns an int
-0x0055E3B0 0x2AC func_0055E3B0  # OVL2
-0x0055E660 0x8 func_0055E660  # OVL2
+0x0055E3B0 0x2AC OnSignal__10CAiSDeployFQ28CAiState6SIGNALP11CSealCtrlAi  # OVL2; by hand (the SEALs, round 30): slot 0x8 of __vt__10CAiSDeploy, SOCOM 1's OnSignal__10CAiSDeployFQ28CAiState6SIGNALP11CSealCtrlAi; unwritten
+0x0055E660 0x8 CanPushAiState__10CAiSDeployF8AI_STATEP11CSealCtrlAi  # OVL2; by hand (the SEALs, round 30): slot 0x1C of __vt__10CAiSDeploy -- s1vtables proposed the base's name (blocked): CAiSDeploy's own override; unwritten
 0x0055E670 0x430 func_0055E670  # OVL2
 0x0055EAA0 0x138 func_0055EAA0  # OVL2
 0x0055EBE0 0xDC func_0055EBE0  # OVL2
@@ -10341,11 +10341,11 @@
 0x005759A0 0xF8 __dt__11CAiSAnimateFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00575AA0 0x8 CanAttack__8CAiStateCFv  # OVL2; slot 0x24 of __vt__8CAiState, SOCOM 1's slot 0x1C (CAiSRescued and CAiSPursue override it in both builds: CanAttack__11CAiSRescuedCFv, CanAttack__10CAiSPursueCFv); returns true as SOCOM 1's
 0x00575AB0 0x78 __dt__11CAiSGrenadeFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x00575B30 0x8 func_00575B30  # OVL2
-0x00575B40 0x8 func_00575B40  # OVL2
+0x00575B30 0x8 CanPursue__11CAiSGrenadeCFP11CSealCtrlAi  # OVL2; s1:vtable (the SEALs, round 30: s1vtables' proposal, slot 0x2C of __vt__11CAiSGrenade -- CanPursue in ai_states.h's CAiState table -- as SOCOM 1's CanPursue__11CAiSGrenadeCFP11CSealCtrlAi 0x26C740; returns false; seal_ai.cpp's class defines it)
+0x00575B40 0x8 Virtual3C__11CAiSGrenadeFP11CSealCtrlAi  # OVL2; by hand (the SEALs, round 30): slot 0x3C of __vt__11CAiSGrenade, ai_states.h's Virtual3C(CSealCtrlAi *) overridden; returns false
 0x00575B50 0x78 __dt__10CAiSDeployFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x00575BD0 0x8 func_00575BD0  # OVL2
-0x00575BE0 0x8 func_00575BE0  # OVL2
+0x00575BD0 0x8 Virtual3C__10CAiSDeployFP11CSealCtrlAi  # OVL2; by hand (the SEALs, round 30): slot 0x3C of __vt__10CAiSDeploy, ai_states.h's Virtual3C(CSealCtrlAi *) overridden; returns false
+0x00575BE0 0x8 CanAttack__10CAiSDeployCFv  # OVL2; s1:vtable (the SEALs, round 30: s1vtables' proposal, slot 0x24 of __vt__10CAiSDeploy -- CanAttack in CAiState's table; returns false; seal_ai.cpp's class defines it)
 0x00575BF0 0x8 GetSealCtrlAi__11CSealCtrlAiFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00575C00 0x8 OnActionButton__11CSealCtrlAiFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00575C10 0x8 func_00575C10  # OVL2

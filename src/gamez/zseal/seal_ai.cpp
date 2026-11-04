@@ -123,6 +123,9 @@ class CAiSGrenade : public CAiState {
 public:
     virtual void OnSignal(SIGNAL sig, CSealCtrlAi *ctrl);
     virtual int Virtual14(CSealCtrlAi *ai, CAiState *sub);
+    /* slots 0x2C and 0x3C of its table, both false (OVL2 0x575B30, 0x575B40: the tail's stubs) */
+    virtual bool CanPursue(CSealCtrlAi *ai) const { return false; }
+    virtual bool Virtual3C(CSealCtrlAi *ai) { return false; }
     virtual ~CAiSGrenade();
 
     /* (the names ours: what OnSignal's reset clears) */
@@ -142,6 +145,9 @@ public:
 
 class CAiSDeploy : public CAiState {
 public:
+    /* slots 0x24 and 0x3C of its table, both false (OVL2 0x575BE0, 0x575BD0: the tail's stubs) */
+    virtual bool CanAttack() const { return false; }
+    virtual bool Virtual3C(CSealCtrlAi *ai) { return false; }
     virtual ~CAiSDeploy();
 };
 
