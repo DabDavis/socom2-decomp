@@ -7,11 +7,15 @@
  * IdleProcess, all but the constructor and FindBestRecognised LOCAL there), ScanSoft's speech
  * recogniser, prebuilt with ee-gcc 2.96 at -O2 -G0 -fno-strict-aliasing -funroll-loops (README
  * "The GCC front"). Names are SOCOM 1's. Only the functions written so far are here, in image
- * order: CollectDummyMemory and InitViterbi (OPEN) (round 20c), InitNBestDynProgProcess and PrunDynProg (round 19c; PrunDynProg closed in 20c), FindBestRecognised (round
- * 17c), ExtendBacktraceStack, ScoreCompare (NAME@nbestdp in the map: the iso-word object has its
- * own). SOCOM II's rows hold SOCOM 1's in order: 0x4EB5E8 is CollectDummyMemory's position,
- * 0x4EB7D8 InitViterbi's, 0x4EBCB0 InitDynprogContext's, 0x4EC130 new. The backtrace stack is a list of three-word records from the
- * scheduler's small-block allocator (fastallo.c), a recycled one first. */
+ * order: CollectDummyMemory and InitViterbi (OPEN) (round 20c), InitNBestDynProgProcess and
+ * PrunDynProg (round 19c; PrunDynProg closed in 20c), InitDynprogContext and SOCOM II's
+ * func_004EC130 (round 21c), FindBestRecognised (round 17c), ExtendBacktraceStack, ScoreCompare
+ * (NAME@nbestdp in the map: the iso-word object has its own). SOCOM II's rows hold SOCOM 1's in
+ * order: 0x4EB5E8 is CollectDummyMemory's position, 0x4EB7D8 InitViterbi's, 0x4EBCB0
+ * InitDynprogContext's, 0x4EC130 new (the context's release, which SOCOM 1's
+ * ControlNBestDynProgProcess does in place), 0x4EC598 and 0x4ED6E0 the two DP passes. The
+ * backtrace stack is a list of three-word records from the scheduler's small-block allocator
+ * (fastallo.c), a recycled one first. */
 
 /* the scheduler's small-block allocator, as fastallo.c keeps it */
 typedef struct FASTALLO {
@@ -103,30 +107,43 @@ typedef struct NBESTDP {
     DPTOS *tos;                         /* +0: the block's head (tosblk.h) */
     char pad4[8];
     NBQIN *inputs;                      /* +12 */
-    char pad16[48];
+    char pad16[8];
+    int (*process)();                   /* +24: the scheduler's process slot */
+    char pad28[12];
+    void *f40;                          /* +40 */
+    char pad44[8];
+    int (*f52)(void *);                 /* +52 */
+    int f56;                            /* +56 */
+    char pad60[4];
     int f64;                            /* +64 */
-    unsigned int f68;                   /* +68: f144's last index */
-    char pad72[8];
+    unsigned int f68;                   /* +68: the context's words; f144's last index */
+    unsigned int f72;                   /* +72: a bit per word, in bytes */
+    int f76;                            /* +76 */
     int *states;                        /* +80: per word an offset into it, then the states */
     short *f84;                         /* +84: a short per state */
     BTSTACK *stack;                     /* +88: the stack's first record */
     NBRESULT *results;                  /* +92 */
-    char pad96[12];
+    int f96;                            /* +96 */
+    void *f100;                         /* +100 */
+    void *f104;                         /* +104 */
     unsigned int frame;                 /* +108: the frames so far */
     NBTOKEN *tok7;                      /* +112 */
     NBTOKEN *tok5;                      /* +116 */
     NBWORD *words;                      /* +120 */
-    char pad124[4];
+    int *offsets;                       /* +124: as +80, the context's other table */
     unsigned char *active;              /* +128: a bit per word id, the high bit first */
-    char pad132[8];
+    int **wstates;                      /* +132: per word, its first active state in f136 */
+    int *f136;                          /* +136: the active states, word by word */
     int f140;                           /* +140 */
     int *f144;                          /* +144 */
     int *f148;                          /* +148: a word per word, and f152 more */
     unsigned int f152;                  /* +152 */
-    char pad156[16];
+    unsigned short *flags;              /* +156: a word's flags (bit 0: in the pass) */
+    char pad160[12];
     int f172;                           /* +172 */
     unsigned short f176;                /* +176 */
-    char pad178[6];
+    char pad178[2];
+    int (*pass)();                      /* +180: the DP pass, with or without optional silence */
     unsigned int nresults;              /* +184: the sequences asked for (profile 7) */
     unsigned int nwords;                /* +188 */
     int *wordids;                       /* +192 */
@@ -150,7 +167,22 @@ typedef struct NBESTDP {
     short f280;                         /* +280: profile 14 */
     char pad282[2];
     int f284;                           /* +284 */
+    int f288;                           /* +288 */
 } NBESTDP;
+
+/* the context the pass runs on (ControlNBestDynProgProcess's command): its words' flags and
+ * the two state tables (per word an offset into the table, then the states) */
+typedef struct NBCTX {
+    int optsil;                         /* +0: optional silence between words */
+    unsigned int nwords;                /* +4 */
+    int f8;                             /* +8 */
+    unsigned short *flags;              /* +12 */
+    short *f16;                         /* +16 */
+    int f20;                            /* +20 */
+    int *offsets;                       /* +24 */
+    int *states;                        /* +28 */
+    unsigned char *active;              /* +32: a bit per state, the high bit first */
+} NBCTX;
 
 extern int *fastallo_AllocateMemoryFromChunk(FASTALLO *fa, unsigned short n);
 extern unsigned int _tosGetProfileU32(void *b, unsigned short key, unsigned int def);
@@ -161,6 +193,11 @@ extern void CleanUpParBTProc(NBESTDP *d, BTREC *bt);
 static void ExtendBacktraceStack(NBESTDP *d, BTSTACK *top);
 extern NBRESULT *BacktraceWordsParBT(NBESTDP *d, NBTRACE *bt);
 extern void heap_Free(void *heap, void *p);
+extern void *heap_Alloc(void *heap, unsigned int size);
+extern unsigned char _tosErrorLog(void *log, unsigned short code);
+extern int DynProgAccNBestNoOptSil();
+extern int DynProgAccNBestOptSil();
+extern int NBestDynProgProcess();
 
 /* a record given back to the scheduler's free list of its size, its first word the link. The
  * list's address is a pointer of the push's own (`fl_`): loop.c hoists each as an invariant of its
@@ -336,6 +373,117 @@ static int InitNBestDynProgProcess(NBESTDP *d)
     d->inputs[1].size = _tosGetProfileU32(d, 15, 4);
     d->inputs[0].size = 1;
     return 0;
+}
+
+/* a context's tables taken for the pass: the DP pass chosen by its silence option, the ids of
+ * the words flagged for it, and per word the states the active bitmap keeps; the block then
+ * processes. SOCOM 1's body (0x2B0), which SOCOM II's compile unrolls (0x47C). Measured: the
+ * flags walked by a pointer taken before the count loop (the target's load in the entry test's
+ * slot; indexed, loop.c hoists it after the test), the ids' loop a counter of its own (one counter
+ * for both moves its register), and the filter's out pointer declared before the per-word table
+ * (30 of the 120 declaration orders, each with out before ws: the target's `move a2,v0` in the
+ * test's slot). The five failures are one `return _tosErrorLog(d, 113)` each, cross-jumped into
+ * the last one's place */
+static int InitDynprogContext(NBESTDP *d, NBCTX *ctx)
+{
+    DPTOS *tos = d->tos;
+    unsigned int cnt = 0;
+    unsigned int nw = 0;
+    unsigned int i, j;
+    unsigned short *f;
+
+    if (ctx->optsil != 0)
+        d->pass = DynProgAccNBestOptSil;
+    else
+        d->pass = DynProgAccNBestNoOptSil;
+    d->f68 = ctx->nwords;
+    d->f72 = (d->f68 - 1) / 8 + 1;
+    f = ctx->flags;
+    for (i = 0; i < d->f68; i++)
+        cnt += *f++ & 1;
+    d->nwords = cnt;
+    d->f76 = ctx->f8;
+    d->wordids = heap_Alloc(tos->heap, cnt * sizeof(int));
+    d->f288 = ctx->f20;
+    d->states = ctx->states;
+    d->f84 = ctx->f16;
+    if (d->wordids == 0)
+        return _tosErrorLog(d, 113);
+    d->offsets = ctx->offsets;
+    d->flags = ctx->flags;
+    for (j = 0; j < d->f68; j++)
+        if (d->flags[j] & 1)
+            d->wordids[nw++] = j;
+    d->wstates = heap_Alloc(tos->heap, (d->f68 + 1) * sizeof(int *));
+    d->active = ctx->active;
+    d->f152 = d->offsets[d->f68] - d->offsets[0];
+    d->f136 = heap_Alloc(tos->heap, (d->f152 + 1) * sizeof(int));
+    if (d->wstates == 0 || d->f136 == 0)
+        return _tosErrorLog(d, 113);
+    {
+        int *out = d->f136;
+        int **ws = d->wstates;
+        int *offs = d->offsets, *o = offs;
+        unsigned char *bits = d->active;
+        unsigned int n = d->f68;
+        unsigned int w, k, end;
+
+        for (w = 0; w < n; w++) {
+            *ws++ = out;
+            k = *o++;
+            end = *o;
+            for (; k < end; k++) {
+                int s = offs[k];
+
+                if (bits[s >> 3] & (128 >> (s & 7)))
+                    *out++ = s;
+            }
+        }
+        *ws = out;
+    }
+    d->f144 = heap_Alloc(tos->heap, (d->f68 + 1) * sizeof(int));
+    if (d->f144 == 0)
+        return _tosErrorLog(d, 113);
+    d->f148 = heap_Alloc(tos->heap, (d->nwords + d->f152) * sizeof(int));
+    if (d->f148 == 0)
+        return _tosErrorLog(d, 113);
+    d->f56 = d->f52(d->f40);
+    d->process = NBestDynProgProcess;
+    return 0;
+}
+
+/* new in SOCOM II: InitDynprogContext's tables given back (SOCOM 1's ControlNBestDynProgProcess
+ * frees them in place before each new context and when the block is destroyed; SOCOM II calls this
+ * at both places), and the two tables at +100/+104 that +96 says are held */
+void func_004EC130(NBESTDP *d)
+{
+    DPTOS *tos = d->tos;
+
+    if (d->wordids != 0) {
+        heap_Free(tos->heap, d->wordids);
+        d->wordids = 0;
+    }
+    if (d->wstates != 0) {
+        heap_Free(tos->heap, d->wstates);
+        d->wstates = 0;
+    }
+    if (d->f136 != 0) {
+        heap_Free(tos->heap, d->f136);
+        d->f136 = 0;
+    }
+    if (d->f144 != 0) {
+        heap_Free(tos->heap, d->f144);
+        d->f144 = 0;
+    }
+    if (d->f148 != 0) {
+        heap_Free(tos->heap, d->f148);
+        d->f148 = 0;
+    }
+    if (d->f96 != 0) {
+        heap_Free(tos->heap, d->f100);
+        heap_Free(tos->heap, d->f104);
+        d->f96 = 0;
+    }
 }
 
 /* the pruning level's update, once the pass has run a while (or has seen 11 ...): the rate of the
