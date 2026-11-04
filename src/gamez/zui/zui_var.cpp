@@ -5,13 +5,15 @@
  * then the thunks) between zui_spec.cpp's tail and zui_cleanup.cpp; no assert names the file, so
  * zui_var.cpp is ours (the press beta's zui.cpp may be it).
  *
- * OPEN, not written yet: the manager's Serialize (it saves through CRdrEditor and CValve), the
- * variable's assignment from a string, its formatting (0x3860F0), _Refresh (0x385E50-0x3860EF) and
+ * Round 19: the manager's Serialize and the variable's Format (0x3860F0, SOCOM 1's) byte-exact.
+ * OPEN, not written yet: _Refresh (0x385E50-0x3860EF) and
  * 0x3866F0; DetachUIVar, ~CUIVarManager, the revival 0x386B80, the watcher vector's iterator pieces
  * (0x386910-0x3869EF, 0x386AB0) and the thunks stand as generated drafts. Round 13: CUIVariable's
  * copy constructor 0x386BF0 byte-exact (zui.h's CUIVariable : _zrdr, UIVarMixin); Attach written,
  * open (below). */
 
+#include <stdio.h>
+#include <string.h>
 #include "zui.h"
 
 /* an rdr value packed into a buffer, its size returned (zrdr_pack, 0x334DB0); by address: two values the
@@ -164,6 +166,43 @@ void CUIVariable::UpdateDependents()
         (*i)->UpdateUIVar(this);
 }
 
+/* a value written as text into a buffer of that size -- a number when 16 bytes are left, a string
+ * when it fits with two to spare (an empty one for none), an array's items one after another when 6
+ * are left; the buffer returned (SOCOM 1's Format: SOCOM II's array is its items in place, and no
+ * separator follows each). `size > 15` branches on `slti at` (`size >= 16` computes v0 first); the
+ * counter an int, so `i * 8` is recomputed each pass (unsigned, it is strength-reduced into a
+ * fifth saved register) */
+char *CUIVariable::Format(_zrdr *value, char *buf, int size)
+{
+    switch (value->type) {
+    case 1:
+        if (size > 15)
+            sprintf(buf, "%d", value->integer);
+        break;
+    case 2:
+        if (size > 15)
+            sprintf(buf, "%f", value->real);
+        break;
+    case 3:
+        if (value->string) {
+            if (strlen(value->string) + 2 < size)
+                sprintf(buf, "%s", value->string);
+        } else
+            sprintf(buf, "");
+        break;
+    case 4:
+        if (size > 5) {
+            for (int i = 0; i < value->Count(); i++) {
+                int len = strlen(buf);
+
+                Format(value->Item(i), buf + len, size - len);
+            }
+        }
+        break;
+    }
+    return buf;
+}
+
 /* the mixin made a watcher of the variable, its old one detached first (SOCOM 1's AttachUIVar
  * pushed itself; SOCOM II's leaves that to CUIVariable::Attach, which calls it back out of line:
  * pinned) */
@@ -280,20 +319,19 @@ CUIVariable *CUIVarManager::Add(const char *name, _zrdr *value, UIVAR_LONGEVITY 
 
 /* each persistent variable saved, as an rdr of its own value -- the player's password and the
  * flag to store it only when the SecurePassword valve is on (SOCOM 1's, the password SOCOM II's).
- *
- * OPEN, 2 instructions (one swapped pair): the target computes the name's address (s3) in the
- * delay slot of the name's null test and loads the first string after it; here the two trade
- * places. The flag as `!(bool)value` gives the target's sltu/xori/andi, and the name reached
- * through a reference after the null test its reload for the second compare; the reference
- * declared ahead of the test is 2 instructions longer */
+ * The flag as `!(bool)value` gives the target's sltu/xori/andi; the name is a reference bound
+ * between the longevity test and its own null test (`if (!name) continue;`), which puts its
+ * address (s3) in the null test's delay slot -- the `a && b` test with the reference inside the
+ * block left it two instructions late, the reference ahead of both tests is 13 off (round 19) */
 void CUIVarManager::Serialize(int flags)
 {
     bool nopassword = !(bool)CValve::Create("SecurePassword", (VALVE_TYPE)1)->m_value;
     iterator i;
 
     for (i = begin(); i != end(); ++i) {
-        if ((*i).m_longevity == UIVL_PERSISTENT && (*i).m_name) {
+        if ((*i).m_longevity == UIVL_PERSISTENT) {
             char *&name = (*i).m_name;
+            if (!name) continue;
 
             if ((strcasecmp("PLAYERPASSWORD", name) && strcasecmp("STORE_PASSWORD", name)) || !nopassword) {
                 CRdrEditor rdr;

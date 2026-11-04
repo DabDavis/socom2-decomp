@@ -382,10 +382,12 @@ SKBSEQ *SKBRULE::Seq(int i)
 /* a sequence's jamo appended to the last piece, its value (or its second) added to the code
  * (0x3908A0). Each jamo pushed as a copy (`(char)`: the target stores it to a stack byte of its own
  * after the piece's address is made, through a reference local), the code updated through one
- * reference to the last piece, its value narrowed (lhu).
- * OPEN, 1 instruction: the add's operands -- the target's `addu v1,v1,a1` puts the code (v1) first,
- * this build the value (a1) whichever side either is written on, through a local, with casts or
- * the conversion called by name (CInit's operator T(), an inline, is expanded ahead of the sum) */
+ * reference to the last piece, its value narrowed (lhu). The code is added to through CInit's
+ * `operator+=(const T &)`: the value converted and bound first, then `this`, then `m_val + x` --
+ * the target's `addu v1,v1,a1`, the code first with the value numbered ahead of it (round 19; a
+ * sum through the conversion operator T() makes the code a bare temporary, so the value came
+ * first in the add whichever side it was written on, and a by-value `operator+=(T)` numbers the
+ * value after the code) */
 void CSkbPieces::Append(SKBSEQ &seq, bool second)
 {
     for (int i = 0; i < (int)seq.m_jamo.size(); i++) {
@@ -396,7 +398,7 @@ void CSkbPieces::Append(SKBSEQ &seq, bool second)
     const int &val = second ? seq.m_val2 : seq.m_val;
     SKBPIECE &last = *SkbPrev(end());
 
-    last.m_code = last.m_code + (unsigned short)val;
+    last.m_code += val;
 }
 
 /* the last piece's jamo i (0x390860; SkbHangulRestart, its one caller, calls it out of line:

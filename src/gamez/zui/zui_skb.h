@@ -82,6 +82,13 @@ public:
         return *this;
     }
     operator T() const { return m_val; }
+    /* (ours: CSkbPieces::Append adds a sequence's value through it -- the argument converted and
+     * read before `this`, then `m_val + x` in written order: the target's add, round 19) */
+    CInit &operator+=(const T &x)
+    {
+        m_val += x;
+        return *this;
+    }
 
     T m_val;
 };
@@ -219,6 +226,11 @@ public:
 class CBmpWithNode : public CPlainBmp {
 public:
     CBmpWithNode() : m_node(0) {}
+    /* its node shown or hidden, if it has one (ours: zui_skb.cpp defines it, beside znode.h's
+     * CNode) */
+    inline void SetShown(bool on);
+    /* (ours: a test through it leaves the node to be read again, as SkbTogglePair's) */
+    bool HasNode() const { return m_node != 0; }
 
     zdb::CNode *m_node;   // 0xa0
 } __attribute__((aligned(16)));   // 0xb0 bytes
@@ -409,6 +421,16 @@ public:
     void SwitchTo(CSoftKeyboard *to);
     void SwitchToNamed(int i);
     void ShowSkb(const char *text);
+    /* its elements shown or hidden (0x38B580; ours) */
+    void ShowElements(bool on);
+    /* the recipient key's state bitmap: state 1 while a chat recipient is set (ours) */
+    CBmpWithNode &RecipState(int set) { return set ? m_270 : m_1c0; }
+    /* the key cap the display's flag picks, wide or narrow (ours: its unsigned char narrows the
+     * flag at the call, `andi 0xff`) */
+    CBmpWithNode &KeyCap(unsigned char wide) { return wide ? m_320 : m_3d0; }
+    /* two bitmaps of a key loaded and placed on its props (0x38B8F0; ours) */
+    void PrepKeyBitmaps(CBmpWithNode *a, CBmpWithNode *b, unsigned char code, const char *texA,
+                        const char *texB, zdb::CTextureRelocMgr *mgr);
     void ShutdownBegin(CGameMenu *menu);
     void OnEnterKey(CGameMenu *menu);
 
@@ -420,10 +442,10 @@ public:
     int m_17c;   // 0x17c
     int m_180;   // 0x180
     CSkbTexLists m_texLists;   // 0x184
-    CBmpWithNode m_1c0;   // 0x1c0
-    CBmpWithNode m_270;   // 0x270
-    CBmpWithNode m_320;   // 0x320
-    CBmpWithNode m_3d0;   // 0x3d0
+    CBmpWithNode m_1c0;   // 0x1c0: the recipient key's state 0 (SkbRecipState0.tif)
+    CBmpWithNode m_270;   // 0x270: and its state 1 (SkbRecipState1.tif)
+    CBmpWithNode m_320;   // 0x320: key 11's wide cap (JapWideKeyCap.tif)
+    CBmpWithNode m_3d0;   // 0x3d0: and its narrow cap (JapNarrowKeyCap.tif)
     CBmpWithNode m_480;   // 0x480
     CBmpWithNode m_530;   // 0x530
     CSkbFonts m_fonts;   // 0x5e0

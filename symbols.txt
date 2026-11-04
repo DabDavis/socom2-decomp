@@ -6762,7 +6762,7 @@
 0x00369170 0x48 DrawForeplane__9CGameMenuFv  # OVL1; s1:exact
 0x003691C0 0x44 Draw2dOnly__9CGameMenuFv  # OVL1; s1:exact
 0x00369210 0x4BC Clear__9CGameMenuFv  # OVL1; s1:calls by hand (called at LoadFromDesign+0x34 and ~CGameMenu+0x24, the offsets of SOCOM 1's calls to CGameMenu::Clear in both; 0x4BC against 0x51C)
-0x003696D0 0x1A4 func_003696D0  # OVL1
+0x003696D0 0x1A4 Add2dNode__9CGameMenuFP13CDesignDlgObj  # OVL1; ours (the UI lane round 19: LoadFromDesign calls it for each design object and each child a spec holds, pushing the control it returns; its node is created as "Add2dNode" -- SOCOM 1's LoadFromDesign inlined the same block)
 0x00369880 0x40 UiLoadCountSound__Fv  # OVL1; ours (SOCOM II's: CMenuState::Init and 0x1F53D0 call it; the count sound PlayCountSound plays, 0x49EA88, looked up by name from theGame's menu state's TtySoundString, +0x8C) -- zui.cpp
 0x003698C0 0x2A0 __dt__9CGameMenuFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00369B60 0x348 __ct__9CGameMenuFv  # OVL1; s1:calls
@@ -7124,7 +7124,7 @@
 0x00385DF0 0x5C AttachUIVar__10UIVarMixinFP11CUIVariable  # OVL1; s1:calls (SystemTuner's constructor calls it with the new variable where SOCOM 1's calls AttachUIVar; detaches the old variable first, as SOCOM 1's)
 0x00385E50 0x48 func_00385E50  # OVL1
 0x00385EA0 0x248 func_00385EA0  # OVL1
-0x003860F0 0x1B0 func_003860F0  # OVL1
+0x003860F0 0x1B0 Format__11CUIVariableFP5_zrdrPci  # OVL1; s1:order by hand (the UI lane round 19: SOCOM 1's Format__11CUIVariableFP5_zrdrPci between _Refresh and operator=(const char *) as here, its switch, sprintf formats and recursion over an array the same -- SOCOM II drops the strcat of a separator after each item)
 0x003862A0 0x124 __as__11CUIVariableFPCc  # OVL1; s1:calls (the lobby callbacks' (variable, string) setter, as SOCOM 1's) -- the online lane
 0x003863D0 0x8C UpdateDependents__11CUIVariableFv  # OVL1; s1:calls (SyncGameClock calls it third, as SOCOM 1's) -- the online lane
 0x00386460 0x1F8 Set__11CUIVariableFP5_zrdr  # OVL1; s1:order by hand (SOCOM 1's Set__11CUIVariableFP5_zrdr after UpdateDependents: the value cloned into the manager's current table, copied in, the watchers told) -- zui_var.cpp
@@ -7247,10 +7247,10 @@
 0x0038B540 0x8 func_0038B540  # OVL1
 0x0038B550 0x18 func_0038B550  # OVL1
 0x0038B570 0x8 func_0038B570  # OVL1
-0x0038B580 0x1EC func_0038B580  # OVL1
+0x0038B580 0x1EC ShowElements__13CSoftKeyboardFb  # OVL1; ours (the UI lane round 19: the keyboard's background bitmaps -- the ChatRecipient valve's choice -- its caption bitmaps by 0x397840's flag, the USB pair hidden, every key's node through 0x3941D0; ShowSkb, SwitchTo, ShutdownBegin and SkbTick call it)
 0x0038B770 0x124 AddKeyProps__13CSoftKeyboardFRC7CSkbKeyRC8CSkbRect  # OVL1; the UI lane round 15: ours, by its body (zui_skb.cpp: the key's props found through the inlined FindKeyProps, else newed zeroed and inserted into the key map at 0x164 -- the map's insert_one 0x38EC10 and insert_node_at 0x38EF50 byte-exact through it -- a row-2 key setting 0x174; then the place and size copied from the rectangle; ParseKeyProps 0x38DCB0 calls it)
 0x0038B8A0 0x48 func_0038B8A0  # OVL1
-0x0038B8F0 0x1B8 func_0038B8F0  # OVL1
+0x0038B8F0 0x1B8 PrepKeyBitmaps__13CSoftKeyboardFP12CBmpWithNodeP12CBmpWithNodeUcPCcPCcPQ23zdb16CTextureRelocMgr  # OVL1; ours (the UI lane round 19: PrepForDisplay calls it for the recipient key 1 -- SkbRecipState0/1.tif into 0x1C0/0x270 -- and key 11 -- JapWideKeyCap/JapNarrowKeyCap.tif into 0x320/0x3D0; FindKeyProps inlined three times)
 0x0038BAB0 0x8 func_0038BAB0  # OVL1
 0x0038BAC0 0x374 PrepForDisplay__13CSoftKeyboardFPQ23zdb16CTextureRelocMgrP7C2DFont  # OVL1; s1:calls by hand (SOCOM 1's CSoftKeyboard::PrepForDisplay, its textures SkbRecipState0/1.tif and the key caps; PrepSkbsForDisplay calls it per keyboard with the manager and font) -- zui_skb.cpp; the UI lane round 9: out of zui_skb.cpp's unnamed namespace with the keyboard's classes, now zui_skb.h's (SOCOM II's RTTI string is plain "CBmpWithNode" where SOCOM 1's is "@unnamed@zui_skb_cpp@::CBmpWithNode"; the display unit takes zui_skb.cpp's CBmpWithNode copies, 0x398AA0/0x398A40/0x403800; ~CSkbKeyProps 0x394370 is the Korean unit's, called from here): byte-identical code under the new name
 0x0038BE40 0x34 func_0038BE40  # OVL1
@@ -7416,7 +7416,7 @@
 0x00394920 0x94 SkbToggleCaption2__FP13CSoftKeyboard  # OVL1; the UI lane round 9: ours, by its body (the caption's mode toggled between 2 and 0, its text 0x4A09B0 or 0x4A08F0, its node placed at the second cap's position)
 0x003949C0 0x3D4 func_003949C0  # OVL1
 0x00394DA0 0x1B4 func_00394DA0  # OVL1
-0x00394F60 0x1A8 func_00394F60  # OVL1
+0x00394F60 0x1A8 SkbPadKeyEvent__FP4CPad  # OVL1; ours (the UI lane round 19: the pad's key event through a {dir, button, event} table, then cross/L2/R2 as 5-7; 0x38DC00 hands a nonzero one to SkbHandleKey)
 0x00395110 0xC func_00395110  # OVL1
 0x00395120 0x14 func_00395120  # OVL1
 0x00395140 0x1B0 func_00395140  # OVL1
