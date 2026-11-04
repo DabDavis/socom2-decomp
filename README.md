@@ -2032,6 +2032,44 @@ exists); 3.0b38/b50/b52 still untold.
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the UI, round 19** (Serialize, Append, CGameMenu::Add2dNode, the soft keyboard's elements and bitmaps):
+  - a reference bound between two tests, followed by `if (!x) continue;`, puts its address in the second test's delay slot
+    (CUIVarManager::Serialize 0x385670); `a += b` through a class's `operator+=(const T &)` converts and binds the argument
+    before `this`, then adds in written order -- through the conversion operator the other operand always came first, and
+    a by-value `operator+=(T)` numbers the value after the code (CSkbPieces::Append 0x3908A0: a new CInit::operator+=);
+  - to keep a found pointer in v0 through a fallback and copy it afterwards, write `found ? found : fallback` into a
+    second variable -- `if (!p) p = fallback` holds one variable in a saved register (CGameMenu::Add2dNode 0x3696D0, the
+    block SOCOM 1's LoadFromDesign inlined; CGameMenu now has SOCOM 1's DWARF members to 0x210);
+  - a byte passed to an inline's `unsigned char` parameter is masked with `andi 0xff` at the call, tested directly it is
+    not, and a test through a bool inline makes the body load the pointer again (CSoftKeyboard::ShowElements 0x38B580);
+    written out with a named key, a find puts the key's frame slot, then the iterator's, above later temporaries, and a
+    reassigned variable presets the null in the delay slot where a second variable gives each arm its own block
+    (PrepKeyBitmaps 0x38B8F0); a branch-free chain of compares (`sltu`/`or`) comes from a bool built with `|=`, `||`
+    branches;
+  - CUIVariable::Format 0x3860F0 is SOCOM 1's without its separator between array items; open: SkbPadKeyEvent 0x394F60
+    (16 bytes short: the target loads the event with `lb`, keeps it in v0 and masks it at each test), SkbWrapText (3) and
+    SkbWrapTokens (5: the igdump records show MW's scheduler places wordChar's zero and the index arithmetic where the
+    target does not, whatever the declaration order).
+- **Tells from the weapons, round 21** (the projectile's detonation and timers, the turret's two setters, zVid_Assert's home):
+  - a result local that an arm assigns again keeps the early return-value set-up and the padded labels
+    (CZProjectile::HandleTimers 0x3C99A0, open since round 18: SOCOM 1's shape with its `= true` turned `= false`); an
+    inlined parameter given an expression (a ternary) is re-evaluated at every use, a local computes it once;
+  - `if (i > 0)` around `for (j = i - 1; j >= 0 && f; j--)` gives the target's `blez` ahead of the loop's bottom-tested
+    entry; `while (again)` against `do {} while (again)` swaps the saved registers of the two strength-reduced offsets; an
+    `unsigned int` counter over `v[i]` is strength-reduced (one more saved register), an `int` counter is not;
+  - inline bool predicates materialise their values -- written out, even with a doubled null test, they branch directly;
+    a switch's compare chain fills no delay slots, `||` and `!=` chains fill them and `||` folds consecutive constants into
+    range tests; an inline's pointer parameter copied into a local keeps the loads going through the pointer register; a
+    local zeroed before an out-of-line copy is live across it and takes a saved register; `(unsigned int)f() >
+    0xFFFFFFFFu` folds the test but keeps the call;
+  - RegisterNextHit 0x3C7EE0 (SOCOM II's: the detonation's next hit on a node extension no earlier hit reached, a delayed
+    ray to its box centre), HandleDetonateExplosion 0x3C7AF0 (SOCOM 1's ground mark, then the hits reordered so instanced
+    nodes come first, swapped through memcpy), HandleDelayedDetonate 0x3C8330, PreFireProjectile 0x3CAF60 (a launcher
+    fire animation before SOCOM 1's body, a volatile round's collision-piece copy after); zVid_Assert is zvid_init.cpp's
+    last function in OVL1 too (src/gamez/zvid/zvid.cpp, which held nothing else, is gone);
+  - leads: 0x3C9B70 is SOCOM 1's HandleIntersections in place, 0x3BECA0 CDecal::AddDecal (a new point parameter),
+    0x3CB1A0 SetProjectile; open: func_003C5C20 (3), UnpackItemAndAmmoEnums (1: dsra32 vs dsrl32), GetDamage (3),
+    CZProjectileList::Clear (4 short).
 - **Tells from the HUD, round 35** (the CZLineMap unit hud_linemap.cpp, 60 of 61):
   - a function a shared header declares out of line can be made inline in one unit by an `inline` out-of-class definition
     placed before use -- it reproduces another overlay's copy without touching the header (ai.h's
