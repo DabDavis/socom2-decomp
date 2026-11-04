@@ -1409,8 +1409,8 @@ void CZSealBody::ReInitDatabaseHandles()
     data_0044CE48 = CSnd::GetSoundByName(".GUNTOBACK");
 }
 
-/* the database's handles let go: the buffers freed, the blood decals' vector emptied, the counts
- * cleared, the weapon-event callback removed (OVL2 0x5A3BB0; SOCOM 1's with two more counts). The
+/* the database's handles let go: the buffers freed, the blood decals' vector emptied, then ReInit's
+ * (Uninit_ReInitDatabaseHandles, inlined) (OVL2 0x5A3BB0; SOCOM 1's with two more counts). The
  * vector goes through FreeVector (zsys.h), inlined one level: the class vector's pieces follow this
  * function out of line in reverse of their first use (0x5A3C60 the temporary's ~vector, 0x5A3CC0 the
  * deleter's swap, 0x5A3D00 clear(), 0x5A3D10 the temporary's constructor) -- and, generated in the
@@ -1423,6 +1423,15 @@ void CZSealBody::UninitDatabaseHandles()
         _free(data_0044D550, 0, 0);
     data_0044D550 = 0;
     FreeVector(m_blooddriptexhandles);
+    Uninit_ReInitDatabaseHandles();
+}
+
+/* ReInitDatabaseHandles' handles let go: the drop anims' words cleared, the footfall anims' buffer
+ * freed, the weapon-event callback removed (OVL2 0x5A3B50; SOCOM 1's Uninit_ReInitDatabaseHandles,
+ * the integrator's lead from the game states' round 28: CMission::ReOpen_Unload1 calls it where SOCOM
+ * 1's does -- SOCOM II clears three words where SOCOM 1 cleared one, and frees without a file and line) */
+void CZSealBody::Uninit_ReInitDatabaseHandles()
+{
     data_0044D508 = 0;
     data_0044D510 = 0;
     data_0044D518 = 0;

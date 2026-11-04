@@ -1343,6 +1343,10 @@ public:
      * and footfall anims, the sounds (SOCOM 1's statics; OVL2 0x5A49F0, 0x5A4CE0 -- which CMission::
      * Open calls --, and the decal textures 0x5A4CF0) */
     static void ReInitDatabaseHandles();
+    /* ReInit's handles let go: the drop anims' words cleared, the footfall anims' buffer freed, the
+     * weapon-event callback removed (SOCOM 1's static; OVL2 0x5A3B50 -- UninitDatabaseHandles inlines
+     * it, CMission::ReOpen_Unload1 calls it) */
+    static void Uninit_ReInitDatabaseHandles();
     static void InitDatabaseHandles();
     static void InitDecalHandles();
     /* a weapon's event handed to every SEAL's controller (SOCOM 1's static callback; OVL2 0x5A4F80) */
