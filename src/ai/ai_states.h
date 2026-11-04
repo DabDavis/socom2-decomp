@@ -548,6 +548,12 @@ public:
     int m_84;   // 0x84: the object waited on (an id: slot 0x0C's event 1 drops it; 0x88 bytes)
 };
 
+/* a squad's formation (CSealUnit's byte at 8, seal_unit.cpp's: 1 when made; the names ours). An
+ * unsigned byte enum: the squad's own formation setter 0x5EB6D0 hands it to CAiSFollow::SetFormation
+ * unconverted, and 0x5EB8A0 compares it unsigned (lbu, andi) -- as a signed char MW sign-extends it
+ * at both */
+enum UNIT_FORMATION { FORMATION_0 = 0, FORMATION_1 = 1, FORMATION_2 = 2, FORMATION_LAST = 255 };
+
 class CAiSFollow : public CAiState {
 public:
     /* its members built by hand in order, the first two of types not known yet (Create's copies
@@ -577,7 +583,7 @@ public:
     /* the offset from the leader set: as cells, and from a formation's slot (OVL2 0x5FD0E0, 0x5FD050;
      * seal_aifollow.cpp's, the names ours) */
     void SetOffset(const int *cells);
-    void SetFormation(signed char formation, int slot);
+    void SetFormation(UNIT_FORMATION formation, int slot);
     /* the offset's length in the world (inline: both setters end on it; the name ours) */
     void UpdateOffsetLength();
     /* the hide flag at 0x79 brought to `hide`; when hiding and not `b`, a hide cell (0xC0) further

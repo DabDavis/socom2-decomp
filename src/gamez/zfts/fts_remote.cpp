@@ -133,6 +133,10 @@ public:
     /* a console's request for a pickup answered (OVL2 0x59E830; SOCOM 1's, the id and the asker
      * ints in SOCOM II) */
     void CanPickupNetItem(unsigned short count, int id, unsigned short *items, int client);
+    /* a pickup another client made, made here (OVL2 0x59EC60, 0x59E9E0: zseal.h's) */
+    void CreateNetWeaponPickup(unsigned short item, int netid, CPnt3D *pos, CQuat *rot);
+    void CreateNetAmmoPickup(unsigned short count, unsigned short *items, unsigned short *rounds, int id,
+                             CPnt3D *pos);
 };
 
 class CZVehicle {
@@ -318,7 +322,6 @@ int func_00273950(CZAnimMain *zanim, void *data);
 void func_00273780(CZAnimMain *zanim, void *data, int who);
 void func_00545530(void *list, CZSealBody *body, int arg);
 void func_005880E0(CZSealBody *body, short a, unsigned char b, bool c, unsigned short d);
-void func_0059E9E0(CZSealBody *body, unsigned char a, void *b, void *c, int d, CPnt3D *pos);
 void func_002B6530(void *queue, const char *text, int a, int b, int c, float d);   /* C2DMessage_Q::Add_Message */
 bool func_002C2FA0();
 void func_002A47B0(CMission *mission, const char *dialog);
@@ -1260,7 +1263,6 @@ struct WeaponPUPacket {
 
 extern "C" {
 extern unsigned int data_00440E48;   /* PacketTypeWeaponPU */
-void func_0059EC60(CZSealBody *body, unsigned short who, int id, CPnt3D *pos, CQuat *q);
 }
 
 /* an angle in [-pi, pi] as 10 bits (the name ours) */
@@ -1310,7 +1312,7 @@ int WeaponPUPacketHandler(int, int, int, void *data)
     CZSealBody *body = CZSealState::GetBodyFromObjectIndex(CPickup::GetEntityIDFromNetID(p->id));
 
     if (body)
-        func_0059EC60(body, p->who, p->id, &pos, &q);
+        body->CreateNetWeaponPickup(p->who, p->id, &pos, &q);
     return 24;
 }
 
@@ -1342,8 +1344,8 @@ extern "C" void func_002BA3F0(int who, const unsigned short *a, const unsigned s
 /* an ammo pickup from another client (OVL1 0x2BA370) */
 struct AmmoPUPacket {
     int id;   // 0x0
-    unsigned char m_4[0x10];   // 0x4
-    unsigned char m_14[0x10];   // 0x14
+    unsigned short m_4[8];   // 0x4
+    unsigned short m_14[8];   // 0x14
     float x, y, z;   // 0x24
     unsigned char who;   // 0x30
 };
@@ -1355,7 +1357,7 @@ int AmmoPUPacketHandler(int, int, int, void *data)
     CZSealBody *body = CZSealState::GetBodyFromObjectIndex(CPickup::GetEntityIDFromNetID(p->id));
 
     if (body)
-        func_0059E9E0(body, p->who, p->m_4, p->m_14, p->id, &pos);
+        body->CreateNetAmmoPickup(p->who, p->m_4, p->m_14, p->id, &pos);
     return 52;
 }
 

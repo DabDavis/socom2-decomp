@@ -761,7 +761,9 @@ public:
     unsigned char m_18;   // 0x18: 4 in an online game (SOCOM 1's too); at 1 the core state's fade waits
     unsigned char _19[0x1c - 0x19];
     const char *m_1c;   // 0x1c: the mission's database name
-    unsigned char _20[0xe8 - 0x20];
+    unsigned char _20[0xe0 - 0x20];
+    float m_timer;   // 0xe0: the mission's time in seconds (SOCOM 1's at 0x60)
+    unsigned char _e4[0xe8 - 0xe4];
     float m_e8;   // 0xe8 (-1 when the mission starts; SOCOM 1's at 0x68)
     unsigned char _ec[0xfc - 0xec];
     unsigned char m_fc;   // 0xfc: bit 0 holds the core state's fade too
