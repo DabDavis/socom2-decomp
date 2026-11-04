@@ -565,6 +565,61 @@ void SkbEraseBack(CSoftKeyboard *skb)
     SkbCursorTo(pos - 1, skb, true);
 }
 
+/* a character's UTF-8 appended to a string (util_stable.cpp's), whether a text keeps within the
+ * look's limits (the display unit's), the display told the text has none (0x3952F0) */
+void UTF8Append(std::string &s, unsigned short c);
+bool SkbTextFits(const std::string &s, bool second);
+extern "C" void func_003952F0();
+
+/* a character typed into the text at the cursor (0x399EC0; the name ours: 0x399040 calls it): a
+ * double quote made an apostrophe unless quotes are allowed, the text rebuilt as SkbEraseBack does
+ * and the character inserted at the cursor's place, the text set again if it keeps within the
+ * limits -- else the error sound and the display told -- and the cursor moved past it */
+bool SkbInsertChar(unsigned short c, CSoftKeyboard *skb)
+{
+    if (c == '"' && !SkbQuotesAllowed())
+        c = '\'';
+    /* a CSaferStr: its destructor is basic_string's with 0, a std::string's -1 */
+    CSaferStr ch;
+
+    UTF8Append(ch, c);
+    CSaferStr text;
+
+    text = ShownText(EditString());
+    bool more2 = s_textSel ? false : HasChar(ShownText(&s_textString2));
+
+    if (more2)
+        text += ShownText(&s_textString2);
+    int n;
+
+    if (s_textCount1) {
+        bool more;
+
+        SkbCountChars(n, more, ShownText(&s_textString1));
+    } else {
+        n = 0;
+    }
+    int pos = s_textCount0 + n;
+    const char *s = text.c_str();
+    int off = 0;
+
+    for (int i = 0; i < pos; i++)
+        off += CharLen(s + off);
+    text.replace(off, 0, ch);
+    bool fits = SkbTextFits(text, s_textSel);
+    bool ok = fits ? SkbSetText(text.c_str(), skb) : false;
+
+    if (!ok) {
+        SkbPlaySound(5);
+        func_003952F0();
+    }
+    if (!ok)
+        return false;
+    SkbCursorTo(pos + 1, skb, false);
+    SkbPlaySound(3);
+    return true;
+}
+
 /* the text cursor put at a place (0x395120, the display unit's: its node's position) */
 extern "C" void func_00395120(float x, float y);
 
