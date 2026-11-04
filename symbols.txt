@@ -1425,7 +1425,7 @@
 0x001E91C0 0x1090 func_001E91C0  # OVL1
 0x001EA250 0x78 __dt__Q23std38__list_imp<PCv,Q23std14allocator<PCv>>Fv  # OVL1; the pointer lists' __list_imp destructor out of line (include/list's: its this test, the deleter's inlined -- a second this test and the range erase over end_.next_..&end_ -- then delete): ~CEntityList (0x2A00C0) calls it through the implicit ~list<CEntity *>
 0x001EA2D0 0x70 func_001EA2D0  # OVL1; the pointer lists' deleter destructor out of line (__dt__Q23std42__list_deleter<PCv,Q23std14allocator<PCv>>Fv: the range erase over end_.next_..&end_, then delete; 0x3177C0 calls it) -- left unnamed so the generated drafts calling it can spell it
-0x001EA340 0x78 func_001EA340  # OVL1
+0x001EA340 0x78 __dt__Q23zdb11CNodeVectorFv  # OVL1; ~CNodeVector: SOCOM 1's __sinit_zparticle.cpp registers it for the node pool; four this-tests; node_world.cpp's copy byte-exact against it (the world lane's round 10, renamed at integration)
 0x001EA3C0 0x70 __dt__Q23std54vector<PQ23zdb5CNode,Q23std24allocator<PQ23zdb5CNode>>Fv  # OVL1; by hand (Unload destroys the save's parents at 0x24 with it: the one copy linked, an earlier unit's)
 0x001EA430 0x80 func_001EA430  # OVL1
 0x001EA4B0 0xD0 func_001EA4B0  # OVL1
@@ -1651,7 +1651,7 @@
 0x001FDA10 0x1D0 __dt__10CWeaponSelFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x001FDBE0 0xA0 __dt__9CPlainBmpFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x001FDC80 0x60 __dt__10UIVarMixinFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x001FDCE0 0xC0 func_001FDCE0  # OVL1
+0x001FDCE0 0xC0 __dt__Q23zdb11CDynTexListFv  # OVL1; ~CDynTexList: registered for m_dyntexlist; zparticle.cpp's copy byte-exact against it (the world lane's round 10, renamed at integration)
 0x001FDDA0 0x70 __dt__Q23std68vector<PQ23zdb11CTexPalette,Q23std31allocator<PQ23zdb11CTexPalette>>Fv  # OVL1; the integrator (the world lane r3's request, vetted): vector<CTexPalette *>'s destructor -- CDynTexList::Free 0x33BAA0 calls it for the palette list; hud_main.cpp's own copy matches here with the name
 0x001FDE10 0x20 SetCanHandleInput__3C2DFb  # OVL1; s1:vtable by hand (C2D's slot 17, inline: the flag's top bit set)
 0x001FDE30 0x74 func_001FDE30  # OVL1
@@ -5623,7 +5623,7 @@
 0x0031FD20 0xDC Initalize__Q23zdb6CWorldFv  # OVL1; s1:align
 0x0031FE00 0x50C __dt__Q23zdb6CWorldFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00320310 0x344 func_00320310  # OVL1
-0x00320660 0x78 func_00320660  # OVL1
+0x00320660 0x78 __dt__Q23zdb19CProjectedMapVectorFv  # OVL1; ~CProjectedMapVector: the world lane's round 10 by the initialiser research (0x3206E0, the same code, is ~CLightMapVector); renamed at integration
 0x003206E0 0x78 __dt__Q23zdb15CLightMapVectorFv  # OVL1; the world lane r10: the destructor vis_vu.cpp's initialiser 0x404570 registers for CVisual's m_specMapList, m_lightMapList and m_shadowMapList (the sinit research; SOCOM 1's __sinit_vis_main.cpp registers __dt__Q23zdb15CLightMapVectorFv there), a class over the pointer vector (four this-tests); like SOCOM 1's (0x2304B0) it follows CWorld's constructor in node_world.cpp
 0x00320760 0x8 Uninit__Q23zdb6CWorldFv  # OVL1; s1:order by hand (SOCOM 1's Uninit, Init, GetVersion in that order, each as empty)
 0x00320770 0x8 Init__Q23zdb6CWorldFv  # OVL1; s1:order by hand (SOCOM 1's Init, between Uninit and GetVersion)
@@ -7889,8 +7889,8 @@
 0x003B7B90 0x100 DrawLOD__Q23zdb7CVisualFPQ23zdb9CLOD_bandfPf  # OVL1; s1:align
 0x003B7C90 0x60 __dt__8CVisBaseFv  # OVL1; s1:align
 0x003B7CF0 0x58 __ct__Q23zdb10AddonPointFv  # OVL1; s1:exact
-0x003B7D50 0x60 __dt__Q23zdb19CProjectedMapVectorFv  # OVL1; s1:align
-0x003B7DB0 0x78 __dt__Q23std49stack<Ui,Q23std31deque<Ui,Q23std13allocator<Ui>>>Fv  # OVL1; s1:align
+0x003B7D50 0x60 __dt__Q23std49stack<Ui,Q23std31deque<Ui,Q23std13allocator<Ui>>>Fv  # OVL1; s1:align; renamed at integration 2026-11-04: the stack's destructor -- __sinit_vis_vu.cpp 0x404570 registers it for m_stack_vid (the initialiser research); the s1:align name ~CProjectedMapVector moved to 0x320660
+0x003B7DB0 0x78 func_003B7DB0  # OVL1; s1:align; renamed at integration 2026-11-04: NOT the stack's destructor -- the deque copy (__sinit_vis_vu.cpp 0x404570 copies a temporary deque into m_stack_vid through it; the integrator's initialiser research, build/scratch/sinit/report.txt); its real name is the weapons lane's to give
 0x003B7E30 0xB0 func_003B7E30  # OVL1
 0x003B7EE0 0x5C func_003B7EE0  # OVL1
 0x003B7F40 0x5C func_003B7F40  # OVL1

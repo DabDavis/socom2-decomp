@@ -1965,6 +1965,30 @@ templates next), and the earlier rounds' opens; 3.0b38/b50/b52 still untold.
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the world, rdr and sound, round 10** (eight initialisers, AddNewCSnd, ~CValvePool, the rdr packers):
+  - a user-declared constructor, even an empty one, makes the implicit copy member by member (words through v0, a bool with
+    lbu/sb); a trivial class copies as an FPU block (the CRegistrant vector's reserve 0x3506B0);
+  - in tail code, an own function whose body holds a list clear is too tall to inline: Source::~List 0x32BFD0 calls Uninit
+    out of line where an own-code ~List inlines it;
+  - MW computes the same product twice only for two different expressions (`n * sizeof(T)` and `n * 8` stay separate); a
+    one-case switch gives the target's beq/b pair where an `if` gives bne; `off += (int)base` emits the offset first in the
+    addu, a pointer sum puts the base first whatever the source order;
+  - a unit's __sinit row stretches sccheck's unit span into the data area, so its template-instance misses show as WRONG
+    instead of elsewhere (a scoring artifact: the counts do not change);
+  - by the integrator's initialiser research: node_shadow.cpp's (SOCOM 1's file-static boxAdjust, (5, 5, 5)),
+    node_world.cpp's and zrndr_init.cpp's (each needed <iostream> included first), the three zparticle units' (with
+    BufferElement() and Source::~List), zsnd_positions.cpp's, zsys_init.cpp's (with the CRegistrant reserve, ~CIOPManager
+    and the deleter's pieces from source) and a new zsys_overlay.cpp's (0x3515D0-0x3518BF, the name ours); at integration
+    0x1EA340 ~CNodeVector and 0x1FDCE0 ~CDynTexList named (closing __sinit_zparticle.cpp), and 0x3B7D50, 0x3B7DB0 and
+    0x320660 set right (the stack's destructor, the deque copy, ~CProjectedMapVector -- an s1:align name had sat on the
+    stack's destructor);
+  - AddNewCSnd by the MSL lane's insert(iterator, x) (zsnd_csnd.cpp 57 of 57), RenderLineWorld on zmath.h's PNT4D,
+    ~CValvePool (the pool's vector a derived class, Free pinned), CAssetList::FindMipLevel (end() re-derived each pass),
+    _resolveB, zrdr_pack and zrdr_packarray;
+  - waiting on zanim.h (the engine core's): CValveList as a class (__sinit_valve_list.cpp, ~CValveList 0x352900),
+    CSched_Manager() declared (__sinit_zsys_sched.cpp and its constructor and destructor), AddTask;
+  - open: PlayRandom (11), PostTick (3), ~CAssetLib (0x2D8 of 0x2E8: the pod reusing begin()'s data address), _resolveA
+    (inlined three deep).
 - **Tells from the online lobby, round 14** (the voice's handlers, zNetLoadIRX, the reports, the account gender):
   - the caller's code for a ternary shows the parameter's type: an enum gives a bare `movz`, an int `sltu`, an int fed an
     enum ternary `movz` plus `andi` -- the account gender is an int-sized enum (ACCT_GENDER, extent 0x7FFFFFFF: a one-byte
