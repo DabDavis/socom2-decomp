@@ -40,6 +40,7 @@
 #define _MSL_LIST
 
 #include <functional>
+#include <iterator>
 #include <memory>
 #include <msl_utility>
 #include <new>
@@ -70,6 +71,10 @@ public:
     template <bool IsConst>
     class generic_iterator {
     public:
+        /* (iterator_traits': remove_if's search dispatches on the category, include/algorithm) */
+        typedef T value_type;
+        typedef int difference_type;
+        typedef bidirectional_iterator_tag iterator_category;
         generic_iterator() {}
         generic_iterator(node_base *n) : node_((node *)n) {}
         generic_iterator(const node_base *n) : node_((node *)n) {}
@@ -664,6 +669,10 @@ public:
                                 typename base::iterator>::type base_iterator;
 
     public:
+        /* (iterator_traits': remove_if's search dispatches on the category, include/algorithm) */
+        typedef T *value_type;
+        typedef int difference_type;
+        typedef bidirectional_iterator_tag iterator_category;
         generic_iterator() {}
         generic_iterator(base_iterator i) : i_(i) {}
         /* user-declared (SOCOM II's 0x510BD0: `lw v1,0(a1); move v0,a0; sw v1,0(a0)`, the copy
