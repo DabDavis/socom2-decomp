@@ -250,7 +250,7 @@ public:
     ~CMission();   /* 0x2AD940 */
     bool Open(const char *name, int load_ai);
     static bool tick(float dT, void *data);   /* 0x2AAB00 */
-    void ZAnimLoad();   /* 0x2ABAD0 */
+    bool ZAnimLoad();
     void InitalizeTeamValves();   /* 0x2B2840 */
     void RefreshTeamValves();   /* 0x2B23A0 */
     void CreateCompassNavPoints();
@@ -1515,6 +1515,54 @@ bool CMission::ReOpen_Unload2()
     ClearFreeList__14CSched_ManagerFb(&zTaskScheduler, true);
     Headset::Reset();
     CSndInstance::PostTick(0.0f, 0);
+    return true;
+}
+
+extern "C" bool func_00268250(CZAnimMain *main, const char *name, const char *set);   /* (SOCOM 1's
+                                                  CZAnimMain::Load(rdr, set): `return true` in SOCOM II) */
+
+/* the mission's anims: from the data directories' rdrs (the paths added first), or from the
+ * mission's mzanim.zar -- with the common czanim.zar when that loads, else its zanim.zar (SOCOM 1's,
+ * the archives' choice SOCOM II's; OVL1 0x2ABAD0) */
+bool CMission::ZAnimLoad()
+{
+    char path[1024];
+    char zar[1024];
+    char rdr[1024];
+
+    if (!ZAnim.m_LoadFromZAR) {
+        sprintf(path, "data/");
+        ZAnim.AddPath(path);
+        sprintf(path, "data/common/");
+        ZAnim.AddPath(path);
+        sprintf(path, "data/%s/", m_database);
+        ZAnim.AddPath(path);
+    }
+    if (ZAnim.m_LoadFromZAR) {
+        if (!strncmp(m_database, "mp", 2))
+            sprintf(zar, "/run/mp/%s/mzanim.zar", m_database);
+        else if (!strncmp(m_database, "m", 1))
+            sprintf(zar, "/run/sp/%s/mzanim.zar", m_database);
+        else
+            sprintf(zar, "/run/%s/mzanim.zar", m_database);
+        if (ZAnim.LoadZAR(zar, 0)) {
+            sprintf(zar, "run/czanim.zar");
+            ZAnim.LoadZAR(zar, 0);
+        } else {
+            if (!strncmp(m_database, "mp", 2))
+                sprintf(zar, "/run/mp/%s/zanim.zar", m_database);
+            else if (!strncmp(m_database, "m", 1))
+                sprintf(zar, "/run/sp/%s/zanim.zar", m_database);
+            else
+                sprintf(zar, "/run/%s/zanim.zar", m_database);
+            ZAnim.LoadZAR(zar, 0);
+        }
+    }
+    if (!ZAnim.m_LoadFromZAR) {
+        func_00268250(&ZAnim, "data/common/zrdr/czanim.rdr", "common");
+        sprintf(rdr, "data/%s/zrdr/zanim.rdr", m_database);
+        func_00268250(&ZAnim, rdr, "mission");
+    }
     return true;
 }
 
