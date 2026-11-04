@@ -1573,11 +1573,6 @@ void CZSealBody::Uninit_ReInitDatabaseHandles()
     CZWeapon::RemoveWeaponEventCallback(HandleWeaponEvent);
 }
 
-extern "C" {
-/* one of the six values started, with a kind (OVL2 0x5A54D0, not written yet) */
-void func_005A54D0(CZSealBody *seal, unsigned char i, int kind);
-}
-
 /* the six values' average weighted by their rates, the first counted three times, for a living SEAL
  * (OVL2 0x5A56D0, new in SOCOM II; the names ours) */
 extern "C" float func_005A56D0(CZSealBody *seal)
@@ -1618,16 +1613,24 @@ extern "C" void func_005A5790(CZSealBody *seal, unsigned char i, float f)
             *p = 0.0f;
         switch (i) {
         case 3:
-            func_005A54D0(seal, i, 5);
+            seal->UpdateHealth((DAMAGE_LOCATION)i, DEATH_BULLET);
             break;
         case 0:
-            func_005A54D0(seal, i, 3);
+            seal->UpdateHealth((DAMAGE_LOCATION)i, DEATH_HEADSHOT);
             break;
         default:
-            func_005A54D0(seal, i, 0);
+            seal->UpdateHealth((DAMAGE_LOCATION)i, DEATH_NONE);
             break;
         }
     }
+}
+
+/* the last weapon hit forgotten, the blend stack's top taken (OVL2 0x5AC660; SOCOM 1's HandleWepHit
+ * word for word, the hit held now) */
+void CZSealBody::HandleWepHit()
+{
+    m_wephit.m_node = 0;
+    TopBlend();
 }
 
 /* six values run down at their rates, none below zero (OVL2 0x5AC620, new in SOCOM II: the arrays at
@@ -1666,6 +1669,185 @@ void CZSealBody::HandleDamageExplosive(CZProjectile *proj, CZBodyPart *part, DAM
 
             world->RegIgnoreNodeDelayed(m_projectiledi, GetNode());
         }
+    }
+}
+
+extern "C" {
+/* a location's damage taken from a projectile (OVL2 0x5A5A80, new in SOCOM II: SOCOM 1's DamageHead,
+ * DamageBody and the limbs' in one, the location first), a damage and an armour pierce dealt to a
+ * location (OVL2 0x5A5830), the pellets of a shot from a point that reach the SEAL (OVL2 0x5A1620)
+ * and the blowback from a point (OVL2 0x57ED10, seal_body.cpp's) -- the first three not written; the
+ * names unknown */
+void func_005A5A80(CZSealBody *seal, DAMAGE_LOCATION where, CZProjectile *proj);
+void func_005A5830(CZSealBody *seal, DAMAGE_LOCATION where, float damage, float pierce);
+int func_005A1620(CZSealBody *seal, const CPnt3D *from);
+bool func_0057ED10(CZSealBody *seal, const CPnt3D *p, float a, float b);
+}
+
+/* one pellet's damage, at a location picked at random by the odds -- the body when none is picked
+ * (an inline: 0x5A0E70 and HandleDamageNonExplosive share its tables, OVL2 data 0x6508D0 and
+ * 0x6508E0; the name ours) */
+static inline void PelletDamage(CZSealBody *seal, CZProjectile *proj, DAMAGE_LOCATION &where)
+{
+    static const DAMAGE_LOCATION locs[6] = {
+        (DAMAGE_LOCATION)0, (DAMAGE_LOCATION)3, (DAMAGE_LOCATION)2,
+        (DAMAGE_LOCATION)1, (DAMAGE_LOCATION)5, (DAMAGE_LOCATION)4
+    };
+    static const float odds[6] = { 0.3f, 0.6f, 0.7f, 0.8f, 0.9f, 1.0f };
+    float damage = proj->GetDamage(&seal->m_posW, 0.0f);
+    float pierce = proj->m_ammo->GetArmorPierce();
+    float r = Rand01();
+
+    where = (DAMAGE_LOCATION)3;
+    for (int i = 0; i < 6; i++) {
+        if (r < odds[i]) {
+            where = locs[i];
+            break;
+        }
+    }
+    func_005A5830(seal, where, damage, pierce);
+}
+
+/* a bullet's damage on a part: online only a player's projectile counts; not twice from the last
+ * grenade; a shotgun's (kind 81) pellets each at a random location -- online the body taken whole --
+ * unless the last projectile was one too; else the part's location, handed back; then, offline or
+ * for this console's SEAL, a shotgun's blowback from its shooter (OVL2 0x5ABBC0; SOCOM 1's
+ * HandleDamageNonExplosive with its six Damage calls one, the shotgun and the blowback new) */
+void CZSealBody::HandleDamageNonExplosive(CZProjectile *proj, CZBodyPart *part, DAMAGE_LOCATION *where)
+{
+    /* (the bit as a bool, compared: SOCOM 1's sltu too) */
+    if (theNetwork.m_9 && (bool)proj->m_isplayer == false)
+        return;
+    EQUIP_ITEM type = proj->m_weapon->GetIDType();
+
+    if (m_lastprojectile == proj && (type == 171 || type == 121))
+        return;
+    if (proj->m_weapon->GetIDType() == 81) {
+        if (!m_lastprojectile || m_lastprojectile->m_weapon->GetIDType() != 81) {
+            if (theNetwork.m_9)
+                func_005A5A80(this, (DAMAGE_LOCATION)3, proj);
+            else {
+                DAMAGE_LOCATION loc = (DAMAGE_LOCATION)6;
+                int n = func_005A1620(this, &proj->m_framestartpos);
+
+                for (int i = 0; i < n; i++)
+                    PelletDamage(this, proj, loc);
+                if (loc != 6)
+                    UpdateHealth(loc, DEATH_BULLET);
+            }
+            m_lastprojectile = proj;
+        }
+    } else if (part == m_head || part == m_neck) {
+        func_005A5A80(this, (DAMAGE_LOCATION)0, proj);
+        *where = (DAMAGE_LOCATION)0;
+        m_lastprojectile = proj;
+    } else if (part == m_lbicep || part == m_lforearm) {
+        *where = (DAMAGE_LOCATION)2;
+        func_005A5A80(this, (DAMAGE_LOCATION)2, proj);
+    } else if (part == m_rbicep || part == m_rforearm) {
+        *where = (DAMAGE_LOCATION)1;
+        func_005A5A80(this, (DAMAGE_LOCATION)1, proj);
+    } else if (part == m_spinehi || part == m_spinelo || part == m_hips) {
+        *where = (DAMAGE_LOCATION)3;
+        func_005A5A80(this, (DAMAGE_LOCATION)3, proj);
+        m_lastprojectile = proj;
+    } else if (part == m_lthigh || part == m_lcalf) {
+        *where = (DAMAGE_LOCATION)5;
+        func_005A5A80(this, (DAMAGE_LOCATION)5, proj);
+    } else if (part == m_rthigh || part == m_rcalf) {
+        *where = (DAMAGE_LOCATION)4;
+        func_005A5A80(this, (DAMAGE_LOCATION)4, proj);
+    }
+    CZWeapon *weapon = proj->m_weapon;
+    CZAmmo *ammo = proj->m_ammo;
+
+    if (theNetwork.m_9 && IsRemote())
+        return;
+    if (!ammo)
+        return;
+    if (!weapon)
+        return;
+    if (weapon->GetIDType() != 81)
+        return;
+    float damage = proj->GetDamage(&m_posW, 0.0f);
+    CEntity *e = CEntity::m_list.GetEntityById(proj->m_shooterID);
+    CZSealBody *shooter = 0;
+
+    if (e)
+        shooter = AsSeal(e);
+    if (!shooter)
+        return;
+    CPnt3D d = shooter->m_posW - m_posW;
+
+    func_0057ED10(this, &shooter->m_posW, damage * ammo->GetBlowbackScale(d.x * d.x + d.y * d.y + d.z * d.z), 100.0f);
+}
+
+extern "C" {
+/* the kill credited to its shooter, with whether the weapon was one of five (OVL2 0x547AA0,
+ * seal.cpp's: the id kept, then 0x547860 and 0x59EE20 -- ExecuteAction_CQBAttack inlines it), the
+ * five items (OVL1 0x3C5AC0, zwep_ftsweapon.cpp's) and the stats' death (OVL2 0x545D10, seal.cpp's) */
+void func_00547AA0(CZSealBody *seal, unsigned int id, bool b);
+bool func_003C5AC0(EQUIP_ITEM id);
+void func_00545D10(CSealStats *s, const CZSealBody *seal);
+}
+
+/* a projectile's damage: none from no ammunition or from the explosive already taken (a detonated
+ * one with damage is kept); the part the last weapon hit names takes it, explosive when the
+ * ammunition has a radius and went off; the health updated -- online, only for a hit no SEAL of
+ * another console scored -- and a death this made credited to the shooter, its kind the weapon's
+ * (OVL2 0x5AB850; SOCOM 1's HandleDamage, the location now handed back by address, the projectile's
+ * detonation asked as well, and the kill's credit through 0x547AA0) */
+void CZSealBody::HandleDamage(CZProjectile *proj)
+{
+    bool alive = m_isAlive;
+
+    if (!(proj && proj->m_ammo && proj != m_lastprojectile))
+        return;
+    if (proj->m_ammo->GetExplosionDamage() > 0.0f && proj->WasDetonated())
+        m_lastprojectile = proj;
+    std::vector<CZBodyPart *> parts(m_body_parts);
+    zdb::IntersectStruct *hit = m_wephit.m_node ? &m_wephit : 0;
+    DAMAGE_LOCATION where = (DAMAGE_LOCATION)0;
+    bool searching = true;
+
+    for (std::vector<CZBodyPart *>::iterator it = parts.begin(); searching && it != parts.end(); ++it) {
+        CZBodyPart *part = *it;
+
+        if (part && part->m_id >= 0 && part->m_node == hit->m_node) {
+            if (proj->m_ammo->GetExplosionRadius() > 0.0f && proj->WasDetonated())
+                HandleDamageExplosive(proj, part, &where);
+            else
+                HandleDamageNonExplosive(proj, part, &where);
+            searching = false;
+        }
+    }
+    if (theNetwork.m_9) {
+        unsigned int id = proj->m_shooterID;
+        CEntity *e = CEntity::m_list.GetEntityById(id);
+        CZSealBody *shooter = 0;
+
+        if (e)
+            shooter = AsSeal(e);
+        if (!id || (shooter && !shooter->IsRemote()))
+            UpdateHealth(where, DEATH_BULLET);
+    } else
+        UpdateHealth(where, DEATH_BULLET);
+    if (alive && !m_isAlive) {
+        unsigned int id = proj->m_shooterID;
+        CEntity *e = CEntity::m_list.GetEntityById(id);
+        CZSealBody *killer = 0;
+
+        if (e)
+            killer = AsSeal(e);
+        if (killer) {
+            ((CSealCtrl *)killer->m_control)->NotifyTargetDown(this);
+            bool b = false;
+
+            if (func_003C5AC0(proj->m_weapon->m_ID))
+                b = true;
+            func_00547AA0(this, id, b);
+        } else
+            func_00545D10(&m_stats, this);
     }
 }
 

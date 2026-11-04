@@ -10060,7 +10060,7 @@
 0x00555140 0x8 func_00555140  # OVL2; s1~ OnWeaponHit__Q23zdb7CNodeExFPQ23zdb5CNodePQ23zdb15IntersectStructP12CZProjectile (one of 2 out-of-line copies of an inline, by s1:vtable); ovl-copy: OnWeaponHit__Q23zdb7CNodeExFPQ23zdb5CNodePQ23zdb15IntersectStructP12CZProjectile (OVL2's copy, li v0,-1 as OVL1's 0x2742F0)
 0x00555150 0x8 func_00555150  # OVL2; s1~ OnAction__Q23zdb7CNodeExFPQ23zdb5CNodePv (one of 2 out-of-line copies of an inline, by s1:vtable); ovl-copy: Slot0C__Q23zdb7CNodeExFv (OVL2's copy: slot 0xC of __vt__7CSealEx, returns 0 as OVL1's 0x274300)
 0x00555160 0x8 func_00555160  # OVL2; ovl-copy: Slot10__Q23zdb7CNodeExFf (OVL2's copy: slot 0x10 of __vt__7CSealEx, returns false as OVL1's 0x216760)
-0x00555170 0x28 func_00555170  # OVL2; the same words as Top__26RTStack<15CZBodyAnimBlend>Fv (0x219390) bar the link's addresses (tools/ovlcopies.py) -- identical code, not proven the same instance (template instances for different types and look-alike accessors share bodies)
+0x00555170 0x28 func_00555170  # OVL2; the same words as Top__26RTStack<15CZBodyAnimBlend>Fv (0x219390) bar the link's addresses (tools/ovlcopies.py) -- identical code, not proven the same instance (template instances for different types and look-alike accessors share bodies); ovl-copy: Top__26RTStack<15CZBodyAnimBlend>Fv (the SEALs, round 29: HandleWepHit 0x5AC660, SOCOM 1's word for word, tail-calls it on CBody+0x50, the blend stack, where SOCOM 1's HandleWepHit calls Top__26RTStack<15CZBodyAnimBlend>Fv)
 0x005551A0 0x14 func_005551A0  # OVL2
 0x005551C0 0x4C func_005551C0  # OVL2
 0x00555210 0x68 func_00555210  # OVL2
@@ -10788,7 +10788,7 @@
 0x005A5430 0x1C SetHudHitFlag__10CZSealBodyFv  # OVL2; tu: seal_env.cpp~ (1.0 beta); s1:order (SOCOM 1's SetHudHitFlag__10CZSealBodyFv word for word, first of the three: bit 1 of the flag byte set, 0x105C here against 0xF58) (the SEAL lane, round 3)
 0x005A5450 0x38 HudUpdateViewCone__10CZSealBodyFv  # OVL2; s1:order (SOCOM 1's HudUpdateViewCone__10CZSealBodyFv, second of the three: bit 0 of 0x105C taken once) (the SEAL lane, round 3)
 0x005A5490 0x40 GetHudHitFlag__10CZSealBodyFv  # OVL2; s1:order (SOCOM 1's GetHudHitFlag__10CZSealBodyFv, third of the three: bit 1 of 0x105C taken once) (the SEAL lane, round 3)
-0x005A54D0 0x1F8 func_005A54D0  # OVL2
+0x005A54D0 0x1F8 UpdateHealth__10CZSealBodyF15DAMAGE_LOCATION15SEAL_DEATH_TYPE  # OVL2; s1:calls by hand (the SEALs, round 29): HandleDamage calls it with (location, 5) in both arms where SOCOM 1's calls UpdateHealth__10CZSealBodyF15DAMAGE_LOCATION15SEAL_DEATH_TYPE with (0, 5); it calls SetHealth(0, type) as SOCOM 1's does, the type compared with 5 (andi) and the location narrowed inside (andi): two byte enums
 0x005A56D0 0xC0 func_005A56D0  # OVL2
 0x005A5790 0x9C func_005A5790  # OVL2
 0x005A5830 0x250 func_005A5830  # OVL2
@@ -10840,12 +10840,12 @@
 0x005AA6E0 0xAD4 func_005AA6E0  # OVL2
 0x005AB1C0 0x3CC func_005AB1C0  # OVL2
 0x005AB590 0x2B4 func_005AB590  # OVL2
-0x005AB850 0x364 func_005AB850  # OVL2
-0x005ABBC0 0x4B0 func_005ABBC0  # OVL2
+0x005AB850 0x364 HandleDamage__10CZSealBodyFP12CZProjectile  # OVL2; s1:order by hand (the SEALs, round 29): SOCOM 1's HandleDamage__10CZSealBodyFP12CZProjectile, before HandleDamageNonExplosive and HandleDamageExplosive in both builds and calling them from the same arms of the same body-part walk (the alive bit first, the last projectile kept, CBody::m_body_parts copied into a local vector, UpdateHealth(loc, 5) online and off, NotifyTargetDown and the stats' death) -- SOCOM II passes the location by address
+0x005ABBC0 0x4B0 HandleDamageNonExplosive__10CZSealBodyFP12CZProjectileP10CZBodyPartP15DAMAGE_LOCATION  # OVL2; s1:order by hand (the SEALs, round 29): SOCOM 1's HandleDamageNonExplosive, between HandleDamage and HandleDamageExplosive in both builds; HandleDamage's non-explosive arm calls it where SOCOM 1's does, the location by address as HandleDamageExplosive's (0x5AC070)
 0x005AC070 0x17C HandleDamageExplosive__10CZSealBodyFP12CZProjectileP10CZBodyPartP15DAMAGE_LOCATION  # OVL2; s1:order by hand (the SEALs, round 27): SOCOM 1's HandleDamageExplosive, after HandleDamageNonExplosive (0x5ABBC0) in both builds, called first from HandleDamage (0x5AB850) as SOCOM 1's is; the same body -- the projectile's bit cleared, a delayed intersection from it to the head (PartInSpace, Apply, Add) and the node ignored -- the location an out-parameter, as the caller's &sp+159 shows
 0x005AC1F0 0x424 func_005AC1F0  # OVL2
 0x005AC620 0x40 func_005AC620  # OVL2
-0x005AC660 0xC func_005AC660  # OVL2
+0x005AC660 0xC HandleWepHit__10CZSealBodyFv  # OVL2; s1:order by hand (the SEALs, round 29): SOCOM 1's HandleWepHit__10CZSealBodyFv word for word -- the weapon hit's node cleared (SOCOM II holds the IntersectStruct at 0x10E0: m_wephit.m_node 0x10FC) and a tail call to the blend stack's Top (OVL2's copy 0x555170 on CBody+0x50), after HandleFallingDamage in both builds
 0x005AC670 0x394 func_005AC670  # OVL2
 0x005ACA10 0x5C func_005ACA10  # OVL2
 0x005ACA70 0x98C func_005ACA70  # OVL2
@@ -10907,7 +10907,7 @@
 0x005B6240 0x250 func_005B6240  # OVL2
 0x005B6490 0x360 func_005B6490  # OVL2
 0x005B67F0 0xA0 func_005B67F0  # OVL2
-0x005B6890 0x4C func_005B6890  # OVL2; the same words as __ct__Q23std38__vector_pod<Ui,Q23std13allocator<Ui>>FRCQ23std38__vector_pod<Ui,Q23std13allocator<Ui>> (0x259b40) bar the link's addresses (tools/ovlcopies.py) -- identical code, not proven the same instance (template instances for different types and look-alike accessors share bodies)
+0x005B6890 0x4C func_005B6890  # OVL2; the same words as __ct__Q23std38__vector_pod<Ui,Q23std13allocator<Ui>>FRCQ23std38__vector_pod<Ui,Q23std13allocator<Ui>> (0x259b40) bar the link's addresses (tools/ovlcopies.py) -- identical code, not proven the same instance (template instances for different types and look-alike accessors share bodies); ovl-copy: __ct__Q23std38__vector_pod<Ui,Q23std13allocator<Ui>>FRCQ23std38__vector_pod<Ui,Q23std13allocator<Ui>> (the SEALs, round 29: HandleDamage 0x5AB850 copies CBody::m_body_parts into a local vector through it, where SOCOM 1's HandleDamage calls the pod vector's copy constructor; seal_env.cpp emits it)
 0x005B68E0 0x2E8 insert__Q23std38__vector_pod<Us,Q23std13allocator<Us>>FPUsUiRCUs  # OVL2; s1:calls; the MSL headers round 16: include/vector's 2-byte pod insert (the char pod's, memmove/memcpy, the fill re-reading the value as a signed half -- lh, where SOCOM 1's 0x2CD740 has lhu), byte-exact in seal_env.cpp's template tail (push_back's, the death and flinch readers)
 0x005B6BD0 0x110 reserve__Q23std38__vector_pod<Us,Q23std13allocator<Us>>FUi  # OVL2; by hand (the SEAL lane, round 19): the pod vector's reserve for a 2-byte element (new(n * 2), the old block memcpy'd over and deleted, 'vector::reserve length error'): InitDeathAndFlinchAnimations reserves 8 in each anim-type table with it, as SOCOM 1's reserves its vector<AnimType>s; beside insert__...<Us> (0x5B68E0); the MSL headers round 16: include/vector's 2-byte pod reserve (the 4-byte pod's with memcpy), byte-exact in seal_env.cpp's template tail
 0x005B6CE0 0x4C4 func_005B6CE0  # OVL2; the SEAL lane, round 21: the class vector<CZDecalDef>'s insert, OVL2's copy (OVL1's 0x3D3D90 is 0x4CC): InitDecalHandles pushes each blood decal through it (end(), 1, the def) where SOCOM 1's calls insert__Q23std60__vector_imp<10CZDecalDef,...>; ovl-copy: insert__Q23std60__vector_imp<10CZDecalDef,Q23std23allocator<10CZDecalDef>,0>FP10CZDecalDefUiRC10CZDecalDef
@@ -10915,7 +10915,7 @@
 0x005B7350 0x5BC func_005B7350  # OVL2
 0x005B7910 0x8 func_005B7910  # OVL2; the MSL headers round 17: OVL2's copy of the deleter's clear (the size zeroed) -- vector::clear() 0x5A3D00 jumps to it; ovl-copy: clear__Q23std62__vector_deleter<10CZDecalDef,Q23std23allocator<10CZDecalDef>>Fv
 0x005B7920 0x68 __dt__Q23std62__vector_deleter<10CZDecalDef,Q23std23allocator<10CZDecalDef>>Fv  # OVL2; by hand (the MSL headers round 17): the deleter's destructor, clear inlined (the size zeroed, the data freed) -- OVL2's ~vector<CZDecalDef> 0x5A3C60 calls it; seal_env.cpp's tail emits it byte-exact once UninitDatabaseHandles' FreeVector generates clear and it ahead of the reserve 0x5B71B0 and insert 0x5B6CE0, which then inline it
-0x005B7990 0x190 func_005B7990  # OVL2; the same words as init<PCUi>__Q23std38__vector_pod<Ui,Q23std13allocator<Ui>>FPCUiPCUiQ23std20forward_iterator_tag_v (0x259b90) bar the link's addresses (tools/ovlcopies.py) -- identical code, not proven the same instance (template instances for different types and look-alike accessors share bodies)
+0x005B7990 0x190 func_005B7990  # OVL2; the same words as init<PCUi>__Q23std38__vector_pod<Ui,Q23std13allocator<Ui>>FPCUiPCUiQ23std20forward_iterator_tag_v (0x259b90) bar the link's addresses (tools/ovlcopies.py) -- identical code, not proven the same instance (template instances for different types and look-alike accessors share bodies); ovl-copy: init<PCUi>__Q23std38__vector_pod<Ui,Q23std13allocator<Ui>>FPCUiPCUiQ23std20forward_iterator_tag_v (the SEALs, round 29: the OVL2 pod copy constructor 0x5B6890 calls it, as OVL1's 0x259B40 calls 0x259B90; seal_env.cpp emits it)
 0x005B7B20 0x74 func_005B7B20  # OVL2; the same words as __dt__6CStackFv (0x2d4fe0) bar the link's addresses (tools/ovlcopies.py) -- identical code, not proven the same instance (template instances for different types and look-alike accessors share bodies)
 0x005B7BA0 0x5EC UpdateAiMapLoc__10CZSealBodyFv  # OVL2; slot 0x48 of __vt__10CZSealBody (CEntity's UpdateAiMapLoc slot; SOCOM II's takes no argument, as UpdateAiMapLoc__7CEntityFv)
 0x005B8190 0xC8 ftmask_create__FP5_zrdr  # OVL2; s1:order by hand (the kit lane, round 10): SOCOM 1's ftmask_create__FP5_zrdr sits right before CSealEx::OnWeaponHit as this does before 0x5B8260 -- the same array walk, a bit per number (SOCOM II's arrays count in length, items from 0)

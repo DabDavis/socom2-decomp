@@ -1564,6 +1564,18 @@ public:
      * location by value; SOCOM II's caller, HandleDamage 0x5AB850, passes it by address, and the
      * part and location go unread; OVL2 0x5AC070, seal_env.cpp) */
     void HandleDamageExplosive(CZProjectile *proj, CZBodyPart *part, DAMAGE_LOCATION *where);
+    /* a bullet's damage on a part, the location handed back (SOCOM 1's took it by value; OVL2
+     * 0x5ABBC0, after HandleDamageExplosive in both builds -- not written) */
+    void HandleDamageNonExplosive(CZProjectile *proj, CZBodyPart *part, DAMAGE_LOCATION *where);
+    /* a projectile's damage: the part its last hit names, explosive or not, the health updated and a
+     * death credited (SOCOM 1's; OVL2 0x5AB850) */
+    void HandleDamage(CZProjectile *proj);
+    /* the last weapon hit forgotten and the blend stack's top taken (SOCOM 1's; OVL2 0x5AC660) */
+    void HandleWepHit();
+    /* the health taken from the six locations' values: dead when the head's or the body's runs out
+     * (a bullet in the head a head shot), else their weighted average (SOCOM 1's; OVL2 0x5A54D0 --
+     * not written; the six values' setter 0x5A5790 calls it too) */
+    void UpdateHealth(DAMAGE_LOCATION where, SEAL_DEATH_TYPE type);
     /* a stun taken: the kind's highest kept, the controller told (SOCOM 1's; OVL2 0x5A53D0) */
     void HandleStunDamage(STUN_TYPE type, float amount, const CPnt3D *from);
     /* the stuns run down by the character's recovery (SOCOM 1's; OVL2 0x5A50A0), each kind's
@@ -1867,7 +1879,9 @@ public:
     float m_1014[6];   // 0x1014
     unsigned char _102c[0x1044 - 0x102c];
     float m_health;   // 0x1044 (SOCOM 1's 0xea0)
-    unsigned char _1048[0x104c - 0x1048];
+    /* the last explosive whose damage was taken (SOCOM 1's DWARF m_lastprojectile, 0xf44 right
+     * before m_tempprojectile as here: HandleDamage keeps a detonated one) */
+    CZProjectile *m_lastprojectile;   // 0x1048
     /* the explosive whose sight from the head is being checked, the check's handle and its
      * intersection (SOCOM 1's DWARF: m_tempprojectile, m_projectileintersecthandle, m_projectiledi,
      * 0xf48-0xf50, right before m_lastregion as here: HandleDamageExplosive sets them) */
@@ -1931,7 +1945,11 @@ public:
     CQuat m_fwdlook;   // 0x1070 (SOCOM 1's 0xf60: RotateHead sets it, the app camera's transitions call that)
     unsigned char _1080[0x10d0 - 0x1080];
     float m_10d0;   // 0x10d0: set to 0.4 when the overlay plays out (0x579EF0)
-    unsigned char _10d4[0x1190 - 0x10d4];
+    unsigned char _10d4[0x10e0 - 0x10d4];
+    /* the last weapon hit (SOCOM 1's m_wephit, an IntersectStruct * at 0xf84; SOCOM II holds it:
+     * HandleDamage takes this + 0x10E0 when its node is set, HandleWepHit clears the node) */
+    zdb::IntersectStruct m_wephit;   // 0x10e0
+    unsigned char _1100[0x1190 - 0x1100];
     /* the head's look, the eyes' and the lids' blink (SOCOM 1's m_look, m_eyelook, m_blink were
      * pointers at 0xf90-0xf98; SOCOM II's are held: GetLookDir returns this + 0x11A0, SetLookDir
      * hands this + 0x1190 on, the eyes and lids align to 0x1210 and 0x1280) */
