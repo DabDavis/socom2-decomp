@@ -58,7 +58,7 @@ extern int func_006437E0(void *p);
 extern int func_00618B38();
 extern int func_0061BC68(int);
 extern int func_0061CCA8(int);
-extern int func_00614888(void **ppMemory);
+extern void func_00614888(void **ppMemory);
 extern char *strncpy(char *dst, const char *src, unsigned int n);
 
 extern int data_00651178;               /* the world this client is in */
@@ -405,6 +405,16 @@ void *DMEmalloc(unsigned int nSize)
     if (rt_memory_allocate_init_zero(&pMemory, nSize) != 0)
         printf("rt_memory_allocate failed \n");
     return pMemory;
+}
+
+extern int rt_memory_free(void **ppMemory);
+
+/* SOCOM 1's DmeFree (0x614888, round 5b's name by the handlers' calls): the block freed when there
+ * is one -- a sibling call under the frame it keeps for the other path */
+void func_00614888(void **ppMemory)
+{
+    if (*ppMemory != 0)
+        rt_memory_free(ppMemory);
 }
 
 extern unsigned int strlen(const char *s);
@@ -907,6 +917,66 @@ void RemoteObjectDelete(unsigned int nClient, unsigned int nIndex)
         return;
     if (data_0067A768[pObject->nClass] != 0)
         data_0067A768[pObject->nClass](nClient, nIndex);
+}
+
+/* an object's allocated parts (0x1C-0x37), freed with it */
+typedef struct DmeObjectParts {
+    char field_00[0x1C];
+    void *pPart1C;                      /* 0x1C */
+    void *pPart20;                      /* 0x20 */
+    char field_24[0x0C];
+    void *pPart30;                      /* 0x30 */
+    void *pPart34;                      /* 0x34 */
+} DmeObjectParts;
+
+extern int func_006126E8(void **ppClient, unsigned int nWorld, unsigned int nClient);
+
+/* SOCOM 1's NetFreeRemoteObject grown (0x615FC8): the deletion callback, then the object looked up
+ * again; its status 1, back to 0 unless the index lies in its creator's block; four parts freed where
+ * SOCOM 1 freed two unconditionally, then the table's slot and the record */
+int NetFreeRemoteObject(int nIndex)
+{
+    DmeObjectParts *pObject;
+    DmeClient *pClient = 0;
+
+    if (nIndex < 0 || nIndex >= DME_MAX_OBJECTS)
+        return DME_ERR_ARGUMENT;
+    if ((unsigned int)data_00651178 >= DME_MAX_WORLDS)
+        return DME_ERR_RANGE;
+    func_00614EC8((void **)&pObject, nIndex);
+    if (pObject == 0)
+        return DME_ERR_RANGE;
+    RemoteObjectDelete(((DmeObject *)pObject)->nCreator, nIndex);
+    func_00614EC8((void **)&pObject, nIndex);
+    if (pObject != 0) {
+        NetObjectStatus[nIndex] = 1;
+        if (data_00651178 < DME_MAX_WORLDS) {
+            func_006126E8((void **)&pClient, data_00651178, ((DmeObject *)pObject)->nCreator);
+            if (pClient != 0) {
+                if (nIndex < pClient->nFirstObject || nIndex >= pClient->nFirstObject + pClient->nObjects)
+                    NetObjectStatus[nIndex] = 0;
+            }
+        }
+        if (pObject->pPart20 != 0) {
+            func_00614888(&pObject->pPart20);
+            pObject->pPart20 = 0;
+        }
+        if (pObject->pPart1C != 0) {
+            func_00614888(&pObject->pPart1C);
+            pObject->pPart1C = 0;
+        }
+        if (pObject->pPart30 != 0) {
+            func_00614888(&pObject->pPart30);
+            pObject->pPart30 = 0;
+        }
+        if (pObject->pPart34 != 0) {
+            func_00614888(&pObject->pPart34);
+            pObject->pPart34 = 0;
+        }
+        data_006766E0[nIndex] = 0;
+        func_00614888((void **)&pObject);
+    }
+    return DME_OK;
 }
 
 int NetFreeLocalObject(unsigned int nIndex)
