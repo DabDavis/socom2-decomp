@@ -119,9 +119,26 @@ enum FT_COMMAND {
     CMD_LAST = 255
 };
 
+class CQuat;
 class CZSealBody {
 public:
-    unsigned char _0[4];
+    /* zentity.h's virtual functions up to the matrix teleport (+0x40): ftsNetworkPlayerInit's */
+    virtual ~CZSealBody();                                      /* +0x08 */
+    virtual const CMatrix *GetPosW() const;
+    virtual void UpdatePosW();
+    virtual void PreTick(float dT);
+    virtual void Tick(float dT);
+    virtual void PostPreTick(float dT);                         /* +0x1C */
+    virtual void PrePostTick(float dT);
+    virtual void PostTick(float dT);
+    virtual void ComputeNextPosition(float dT);
+    virtual void UpdateNextPosition();                          /* +0x2C */
+    virtual CPnt3D *GetTargetPosW(CPnt3D *out);
+    virtual CPnt3D *GetHeadPosW(CPnt3D *out);
+    virtual CPnt3D *GetNeckPosW(CPnt3D *out);
+    virtual void TeleportTo(const CPnt3D *pos, const CQuat *quat);   /* +0x3C */
+    virtual void TeleportTo(const CMatrix *m);                  /* +0x40 */
+
     int m_4;   // 0x4: the body's network object (SOCOM 1's m_NetObjectIndex)
     unsigned char _8[0x28 - 0x8];
     CNodeName *m_node;   // 0x28 (CEntity's)
@@ -181,9 +198,13 @@ public:
     bool m_late_joiner;   // 0xcc (SOCOM 1's at 0x94)
     unsigned char _cd[0xcf - 0xcd];
     unsigned char m_persona_created;   // 0xcf (SOCOM 1's at 0x97)
-    unsigned char _d0[0xda - 0xd0];
+    unsigned char _d0[0xd2 - 0xd0];
+    unsigned char m_d2;   // 0xd2: the player's SEAL made anew at its start (SOCOM II's; the name ours)
+    unsigned char _d3[0xda - 0xd3];
     unsigned char m_da;   // 0xda: set while held actions are handled at once (SOCOM II's)
-    unsigned char _db[0xde - 0xdb];
+    unsigned char _db[0xdc - 0xdb];
+    unsigned char m_respawn;   // 0xdc: respawning on (fts_mission.cpp's)
+    unsigned char _dd[0xde - 0xdd];
     unsigned char m_de;   // 0xde: no hits sent while set (SOCOM II's)
     unsigned char _df[0x111 - 0xdf];
     char m_111;   // 0x111 (SOCOM 1's at 0xd9: m_game_type)
@@ -1653,6 +1674,61 @@ bool DMEJoinGameServer()
     func_00310080(data_0045B718, 10000);
     func_0030FD90(data_0045B718, 11);
     return true;
+}
+
+/* a squad (zseal.h's CSealUnit: its first word, then its table -- IssueCommand first) */
+class CSealUnit {
+public:
+    static CSealUnit *GetUnitByTeam(unsigned int team);   /* OVL2 0x5EF2F0 */
+
+    unsigned int m_0;   // 0x0
+    virtual void IssueCommand(CZSealBody *seal, FT_COMMAND cmd, void *data, bool b);
+};
+
+extern "C" {
+void func_0030CDE0(CZNetwork *net, int object);   /* (zNet's: this console's client object set) */
+bool func_002C30B0(CZSealBody *body);
+void func_002B8100(CZSealBody *body, CPnt3D *pos, CMatrix *m, int flags);   /* (the spawn point) */
+void func_00543D50(CZSealBody *body);   /* (OVL2) */
+}
+
+/* the player's SEAL put into a network game: its network object made and set as this console's,
+ * moved to its spawn point (SOCOM II's finder where SOCOM 1 asked the AI maps for a spore), given
+ * the squad's order 31, made anew at the game's start when the game says so, and sent (SOCOM 1's
+ * ftsNetworkPlayerInit, rebuilt; OVL1 0x2B7D60) */
+void ftsNetworkPlayerInit()
+{
+    if (!theNetwork.m_bNetwork)
+        return;
+    CZSealBody *player = ftsGetPlayer();
+
+    player->m_4 = CZSealState::CreateLocalSeal(player, true);
+    func_0030CDE0(&theNetwork, player->m_4);
+    CPnt3D pos = CPnt3D::zero;
+    CMatrix m;
+
+    m.SetIdentity();
+    func_002B8100(player, &pos, &m, func_002C30B0(player) ? 2 : 0);
+    m.m_matrix[3][0] = pos.x;
+    m.m_matrix[3][1] = pos.y;
+    m.m_matrix[3][2] = pos.z;
+    player->TeleportTo(&m);
+    CSealUnit *unit = CSealUnit::GetUnitByTeam(24);
+
+    if (unit)
+        unit->IssueCommand(player, (FT_COMMAND)31, 0, false);
+    CZNetGame *game = theMission.m_pNetGame;
+
+    if (func_002C2FA0())
+        func_00543D50(player);
+    else if (game->m_d2) {
+        if (game->m_respawn) {
+            func_00543D50(player);
+            game->m_d2 = 0;
+        } else
+            func_00543D50(player);
+    }
+    func_002BD640(player, 1);
 }
 
 /* the local SEAL's network object (SOCOM II's piece of SOCOM 1's ftsNetworkSealInit; also called

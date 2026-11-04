@@ -1176,11 +1176,6 @@ static inline unsigned int FadeLevel(bool active, float opacity)
     return active ? (unsigned int)floorf(15.0f * (1.0f - opacity)) : 0;
 }
 
-extern "C" {
-/* a team's squad (SOCOM 1's CSealUnit::GetUnitByTeam, by its use; OVL2 0x5EF2F0) */
-CSealUnit *func_005EF2F0(unsigned int team);
-}
-
 /* the SEAL shown again, whole: its node opaque and active, the state sent with it, and order 31 given
  * to team 24's squad (OVL2 0x543B90, new in SOCOM II: CMPExitState::UnInit calls it for the player
  * once the ghost flag is cleared; the name unknown) */
@@ -1207,7 +1202,7 @@ extern "C" void func_00543B90(CZSealBody *seal)
     memcpy(&state, &st, sizeof(st));
     ((CSealCtrl *)seal->m_control)->SetAiNetState(state);
 
-    CSealUnit *unit = func_005EF2F0(24);
+    CSealUnit *unit = CSealUnit::GetUnitByTeam(24);
 
     if (unit)
         unit->IssueCommand(seal, (FT_COMMAND)31, 0, false);

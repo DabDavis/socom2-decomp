@@ -6,6 +6,7 @@
  * (-inline deferred). */
 
 #include <iostream>
+#include <new>
 #include <vector>
 
 /* the UI variables first: zui.h's _zrdr is the one the unit sees (zanim.h leaves its own out
@@ -17,6 +18,15 @@
 #include "../../Apps/FTS/hud_letterbox.h"
 #include "../../Apps/FTS/hud_missioncams.h"
 
+/* the HUD's map (hud_newhudmap.h's CZNewHudMap, 0x830 bytes: only its objective list's selection,
+ * at SOCOM 1's m_objectivelist.m_cur_selected_objective -- Close clears it with the objectives) */
+class CMissionObjectiveCam;
+class CZNewHudMap {
+public:
+    unsigned char _0[0x7fc];
+    CMissionObjectiveCam *m_cur_selected_objective;   // 0x7fc
+};
+
 /* the HUD: only what the commands touch (SOCOM 1's CHUD at SOCOM II's offsets; its On and Off
  * inline here, out of line in SOCOM 1) */
 class CHUD {
@@ -24,7 +34,9 @@ public:
     void On() { m_ison = true; }
     void Off() { m_ison = false; }
 
-    unsigned char _0[0x15ef4];
+    unsigned char _0[0x11c90];
+    CZNewHudMap *m_newmap;   // 0x11c90 (SOCOM 1's map embedded, at 0xe370)
+    unsigned char _11c94[0x15ef4 - 0x11c94];
     float m_nvg_noise;   // 0x15ef4: SOCOM II's night vision noise, 0 to 128 (NVG_NOISE sets it; the name ours)
     unsigned char _15ef8[0x1a100 - 0x15ef8];
     CLetterBox m_letterbox;   // 0x1a100 (SOCOM 1's at 0x14280)
@@ -191,6 +203,8 @@ public:
 class CCompass {
 public:
     static CCompassAnchor *CreateAnchor(const CPnt3D &pos, const char *name);
+    static void DeleteAnchor(CCompassAnchor *anchor);   /* 0x2A27E0 */
+    void Close();   /* 0x2A2AC0 */
     void Open();   /* 0x2A2BF0 */
 
     unsigned char _0[0xc];
@@ -210,6 +224,7 @@ class CAiMap;
 class CAiMaps : public std::list<CAiMap *> {
 public:
     bool GetCellCenter(const CAiMapLoc &loc, CPnt3D *center);
+    void Close();   /* OVL2 0x52E780 */
     void ReadMapSet(const char *file, const char *path);   /* OVL2 0x52B0D0 */
 
     unsigned char _c[0x48 - 0xc];
@@ -261,6 +276,20 @@ class CMissionCamList : public std::list<CMissionCam *> {
 class CMissionObjectiveCamList : public std::list<CMissionObjectiveCam *> {
 };
 
+/* a point of a camera path (the names ours): where, which way, and its name -- 0x98 bytes, the
+ * stride of the mission's path at 0x437DF0 (theMission's +0x1910: Close clears it, ~CMission tears
+ * it down; its only other user, 0x295260, steps through it) */
+struct SCamPathPoint {
+    CPnt3D m_pos;   // 0x0
+    CPnt3D m_dir;   // 0xc
+    char m_name[0x80];   // 0x18
+};
+
+class CCamPath : public std::vector<SCamPathPoint> {
+public:
+    int GetPoint(int index, int step, CPnt3D *pos, CPnt3D *dir, const char **name);
+};
+
 /* the mission (only what this unit touches, at SOCOM II's offsets) */
 class CMission {
 public:
@@ -274,6 +303,7 @@ public:
     void Sample_ExtractionLoc();   /* 0x2A42B0 */
     void Close();   /* 0x2AB3F0 */
     void InitalizeTeamValves();   /* 0x2B2840 */
+    void CloseVehicleRdr();   /* 0x2B3430 */
     void RefreshTeamValves();   /* 0x2B23A0 */
     void CreateCompassNavPoints();
     CZNetGame *CreateNetGame();
@@ -292,7 +322,8 @@ public:
     unsigned char _0[0x18];
     MISSION_STATE m_state;   // 0x18 (SOCOM 1's)
     char *m_database;   // 0x1c (SOCOM 1's)
-    unsigned char _20[0x60 - 0x20];
+    unsigned char m_20;   // 0x20: SOCOM II's, Close clears it last (the name ours)
+    unsigned char _21[0x60 - 0x21];
     char m_db_string[0x80];   // 0x60 (SOCOM 1's at 0x20)
     int m_timer;   // 0xe0: cleared by Open and before the second unload (SOCOM 1's at 0x60)
     unsigned char _e4[0xe8 - 0xe4];
@@ -326,6 +357,8 @@ public:
     unsigned char _1864[0x18ec - 0x1864];
     zdb::CNode *m_sealbombshack;   // 0x18ec (SOCOM 1's at 0x658)
     zdb::CNode *m_terroristbombshack;   // 0x18f0 (SOCOM 1's at 0x65c)
+    unsigned char _18f4[0x1910 - 0x18f4];
+    CCamPath m_campath;   // 0x1910: SOCOM II's camera path (the name ours)
 };
 
 /* ---- the unit's statics with constructors, in the order its initialiser (0x400160) builds them,
@@ -362,13 +395,11 @@ CValveSaveManager theValveSaveManager;      // 0x43FF00
  * 0x2B1600 called, the last the pointer vector's reserve forwarder with the pod's reserve inlined --
  * byte-exact under the unit's closing `#pragma inline_max_auto_size(17)` with Open's reserve of a
  * pointer vector generating the pod's first (the MSL headers round 16, the states round 24).
- * OPEN, reserve<SObjectiveCam_Anchor> 0x2B00E0 (0x178 against 0x180; Open's m_objanchor_vec.reserve(16)
- * brings it): the element's copy is the target's (lw/sw, SObjectiveCam_Anchor's empty constructor), but
- * the temporary's teardown calls ~__vector_deleter out of line where the target inlines it (`sw zero`,
- * the free) -- the deleter's clear and destructor must be generated first, as CMission::Close 0x2AB3F0
- * does through FreeVector(m_objanchor_vec) (its copies 0x2ABA00-0x2ABAB0, ~__vector_deleter 0x2B1220
- * and the clear 0x2AFBB0 follow it): it waits on Close, whose Resize(0) of the extra string tables has
- * func_002AF410's two empty arms.
+ * reserve<SObjectiveCam_Anchor> 0x2B00E0 (Open's m_objanchor_vec.reserve(16) brings it) inlines its
+ * temporary's teardown (`sw zero`, the free) only with the deleter's clear and destructor generated
+ * first: CMission::Close 0x2AB3F0 does that (its FreeVector(m_objanchor_vec) copies 0x2ABA00-0x2ABAB0,
+ * m_ladders' clear 0x2B1290 called from its own code), and with Close written both deleter
+ * destructors (0x2B1220, 0x2B12A0) inline their clears as the target's (the states round 25).
  * OPEN, insert<CUIVariable> 0x2B1BD0 (0x510, 46 instructions, registers only): the copy loops'
  * end pointer takes s6 where the target's takes s0 (and the cursors s1/s6 against s0/s1) -- the
  * class insert's end register, as the cue vector's 0x1EED40 (include/vector's, the MSL lane's) */
@@ -1243,12 +1274,14 @@ LANGUAGE GetLanguage();   /* 0x3A4460 */
 
 class CStringTables {
 public:
+    void Unload(const char *name);   /* 0x3A3740 */
     void Load(const char *name, LANGUAGE language);   /* 0x3A3900 */
 };
 CStringTables *GetStringTables();   /* 0x361BC0 */
 
 /* the particles (zparticle.h's namespace: only its open) */
 namespace Particle {
+void Close();   /* 0x324820 */
 void Open();   /* 0x324B20 */
 }
 
@@ -1274,6 +1307,7 @@ class CZWeaponList;
 class CZProjectileList;
 class CZWeapon {
 public:
+    static void Close();   /* 0x3D0350 */
     static void Open();   /* 0x3D03D0 */
     static void ClearTimer(float *pCurval);
 
@@ -1314,6 +1348,9 @@ public:
     static const CCharacterType *GetByNameMod(const char *name);
     static CCharacterType *Create(const char *name, const CCharacterType *base, bool temporary);
     static void AcquireSoundHandles();   /* OVL2 0x53C200 */
+    static void ClearMultiplayerMessageSounds();   /* OVL2 0x53BB00 */
+    static void CleanupTemporary();   /* OVL2 0x53DF50 */
+    static void ResetGears();   /* OVL2 0x53F0B0 */
 
     char *m_name;   // 0x0
     unsigned char _4[0x2e8 - 0x4];
@@ -1335,6 +1372,7 @@ public:
 class CZSealBody {
 public:
     static void NetworkPlayerCreate();   /* OVL2 0x5442C0 */
+    static void UninitDatabaseHandles();   /* OVL2 0x5A3BB0 */
 
     unsigned char _0[0x4];
     unsigned int m_id;   // 0x4 (zentity.h's CEntity)
@@ -1352,6 +1390,7 @@ CZSealBody *ftsGetPlayer();
 class CNodeAction {
 public:
     static void Open(zdb::CWorld *world, const char *name);   /* 0x2B4F40 */
+    static void Close();   /* 0x2B55E0 */
 };
 
 void ftsFixupAiMap(CAiMap *map);   /* 0x2A8140 */
@@ -1637,18 +1676,248 @@ bool CMission::ZAnimLoad()
     return true;
 }
 
-/* a point of a camera path (the names ours): where, which way, and its name -- 0x98 bytes, the
- * stride of the list at 0x437DF0 (whose only user, 0x295260, steps through it) */
-struct SCamPathPoint {
-    CPnt3D m_pos;   // 0x0
-    CPnt3D m_dir;   // 0xc
-    char m_name[0x80];   // 0x18
+/* the mission's extra string tables: their count, then their names, ten characters each (the
+ * names ours) */
+struct MissionBank {
+    char m_name[10];
 };
 
-class CCamPath : public std::vector<SCamPathPoint> {
-public:
-    int GetPoint(int index, int step, CPnt3D *pos, CPnt3D *dir, const char **name);
+struct MissionBankList {
+    /* the i'th table's name (the index unsigned: the target recomputes the address every pass) */
+    const char *GetBank(unsigned int i) const { return m_banks[i].m_name; }
+    char *GetBank(unsigned int i) { return m_banks[i].m_name; }
+
+    /* the i'th slot (the names ours) */
+    MissionBank *At(int i) { return &m_banks[i]; }
+
+    /* the count changed: the slots past the new count destroyed, or the new ones built in place --
+     * a fixed array's resize. Both loops vanish for a name, but reached through At() (an inline
+     * returning a member's address) MW leaves their arms' shells: the test kept, the build loop's
+     * arm a lone jump back placed after the function's body, as the target's (func_002AF410,
+     * Close). Without At() (round 23's loops over the array itself) MW folds both arms away */
+    void Resize(int n)
+    {
+        if (n < m_count) {
+            for (int i = n; i < m_count; i++)
+                At(i)->~MissionBank();
+        } else {
+            for (int i = m_count; i < n; i++)
+                new (At(i)) MissionBank;
+        }
+        m_count = n;
+    }
+
+    /* (none to begin with: the unit's initialiser clears the count last) */
+    MissionBankList() : m_count(0) {}
+
+    int m_count;
+    MissionBank m_banks[7];   /* (the most 0x440B84-0x440BCF holds) */
 };
+
+/* (defined below, with the unit's static initialiser's statics) */
+extern "C" MissionBankList data_00440B80;
+
+namespace {
+void UpdateMissionArchive(const char *olddb, const char *newdb);
+}
+
+/* the zoom (thezoom.cpp's CameraZoom: only its lens effects' reset), the bone callbacks, the
+ * world's ripples and texture effects (vis_ripple.h's and vis_texfx.h's managers: only their
+ * clears), the decal set, the dodge, the SEAL units, the spawners and the projectiles (only what
+ * Close calls) */
+class CameraZoom {
+public:
+    static void ClearLensFx();   /* 0x1EFF90 */
+};
+
+void zBoneResetCallbacks();   /* 0x2875D0 */
+
+namespace zdb {
+class CWaterRippleManager {
+public:
+    void Clear();   /* 0x3C2C80 */
+};
+
+class CTextureFXManager {
+public:
+    void Clear(bool all);   /* 0x3C0660 */
+};
+
+extern CWaterRippleManager theWaterRippleManager;   /* 0x4B5170 */
+extern CTextureFXManager theTextureFXManager;   /* 0x4B50D0 */
+}
+
+class CZDecalSet {
+public:
+    static void DestroyDecalSet();   /* 0x3D09D0 */
+};
+
+class CAiDodge {
+public:
+    static void Destroy();   /* OVL2 0x5FAD50 */
+};
+
+class CSealUnit {
+public:
+    static void UnInit();   /* OVL2 0x5ECEF0 */
+};
+
+class CSpawners {
+public:
+    void Clear();   /* 0x2B2190 */
+};
+
+extern CSpawners spawners;   /* 0x440C10 */
+
+/* the projectiles in flight (zweapon.h's CZProjectileList: only the three the mission calls) */
+class CZProjectileList {
+public:
+    void Dump();   /* 0x3CBB30 */
+    void Clear(int owner, EQUIP_ITEM item);   /* 0x3CCEB0 */
+    void SetAllFlag18();   /* 0x3CCC90 */
+};
+
+/* an objective (fts_objectivecam.cpp's: only its destructor, deleted here) */
+class CMissionObjectiveCam : public CMissionCam {
+public:
+    ~CMissionObjectiveCam();   /* 0x2C7490 */
+};
+
+extern "C" {
+CZAnimSet *GetAnimSet__10CZAnimMainFPCc(CZAnimMain *main, const char *name);
+void func_002DE750();
+void func_00574BD0();   /* (OVL2: SOCOM 1's CSealCtrlAi::ReleaseDatabaseHandles here) */
+}
+
+/* the mission closed: its sounds, decals and archive, the extra string tables, the objective and
+ * mission cameras, the camera path, the pickups, the zoom's lens effects, the anim sets, the bone
+ * callbacks, the ripples, the HUD map's selection, the models, materials, decals, particles, dodges,
+ * spawners and entities, the jukebox and the sounds, the ladders, the gears, the vehicles, the AI
+ * events, the weapons, the texture effects, the SEAL units, the actions, the AI maps, the valves,
+ * the world's lists, the scheduler's three tasks, the online game's character type, the headset, the
+ * bomb shacks, every compass anchor and the anchor vectors freed, the temporary types, the
+ * projectiles and the UI variables (SOCOM 1's Close with SOCOM II's additions; OVL1 0x2AB3F0) */
+void CMission::Close()
+{
+    m_state = MISSION_UNLOADED;
+    if (theNetwork.m_bNetwork)
+        data_0044F3CC = 0;
+    CSndInstance::StopAllSounds();
+    zdb::CWorld *world = zdb::CWorld::m_world;
+
+    if (world) {
+        world->m_diIntDelayCnt = 0;
+        world->RemoveDecals();
+        world->WipeoutTextureAssetCharacters();
+    }
+    m_chars_loaded = 0;
+    UpdateMissionArchive(m_database, 0);
+    if (m_database)
+        GetStringTables()->Unload(m_database);
+    int n = data_00440B80.m_count;
+
+    for (int i = 0; i < n; i++)
+        GetStringTables()->Unload(data_00440B80.GetBank(i));
+    data_00440B80.Resize(0);
+    m_database = 0;
+    for (CMissionObjectiveCamList::iterator e = m_objectivecams.end(), i = m_objectivecams.begin(); i != e; ++i)
+        delete *i;
+    m_objectivecams.erase(m_objectivecams.begin(), m_objectivecams.end());
+    for (CMissionCamList::iterator e = m_missioncams.end(), i = m_missioncams.begin(); i != e; ++i)
+        delete *i;
+    m_missioncams.erase(m_missioncams.begin(), m_missioncams.end());
+    m_campath.clear();
+    CPickup::Close(true);
+    CameraZoom::ClearLensFx();
+    CZAnimSet *set = GetAnimSet__10CZAnimMainFPCc(&ZAnim, "common");
+
+    if (set) {
+        set->Stop();
+        set->Unload();
+    }
+    set = GetAnimSet__10CZAnimMainFPCc(&ZAnim, "mission");
+    if (set) {
+        set->Stop();
+        set->Unload();
+    }
+    ZAnim.FreeNetworkPacketBuffer();
+    zBoneResetCallbacks();
+    zdb::theWaterRippleManager.Clear();
+    if (theHUD && !theNetwork.m_bNetwork)
+        theHUD->m_newmap->m_cur_selected_objective = 0;
+    CCharacterModelCache::m_ModelCache.clear();
+    CCharacterType::ClearMultiplayerMessageSounds();
+    func_002DE750();
+    CZSealBody::UninitDatabaseHandles();
+    func_00574BD0();
+    CZDecalSet::DestroyDecalSet();
+    Particle::Close();
+    CAiDodge::Destroy();
+    spawners.Clear();
+    CEntity::RemoveAll();
+    CSndJukebox::Stop();
+    CSnd::UnloadAllSounds();
+    CSndJukebox::Cleanup();
+    CSndInstance::DebugSoundList();
+    CSnd::Close();
+    if (m_ladders) {
+        m_ladders->clear();
+        delete m_ladders;
+        m_ladders = 0;
+    }
+    CCharacterType::ResetGears();
+    CloseVehicleRdr();
+    CAiEvent::Close();
+    CZWeapon::Close();
+    zdb::theTextureFXManager.Clear(true);
+    CSealUnit::UnInit();
+    CNodeAction::Close();
+    AiMaps.Close();
+    CValve::Close();
+    world = zdb::CWorld::m_world;
+    if (world) {
+        world->ClearLightMapList();
+        world->ClearShadowList();
+    }
+    zTaskScheduler.RemoveTask("Mission", false);
+    zTaskScheduler.RemoveTask("Update visual effects", false);
+    zTaskScheduler.RemoveTask("diTick", false);
+    ClearFreeList__14CSched_ManagerFb(&zTaskScheduler, true);
+    if (theNetwork.m_bNetwork) {
+        CZNetGame *game = m_pNetGame;
+
+        strncpy(game->m_12c, "0", 31);
+        game->m_12c[30] = 0;
+    }
+    Headset::Reset();
+    m_sealbombshack = 0;
+    m_terroristbombshack = 0;
+    while (m_anchor_extraction.size()) {
+        CCompass::DeleteAnchor(m_anchor_extraction.back());
+        m_anchor_extraction.pop_back();
+    }
+    while (m_anchors.size()) {
+        CCompass::DeleteAnchor(m_anchors.back());
+        m_anchors.pop_back();
+    }
+    while (m_objanchor_vec.size()) {
+        CCompass::DeleteAnchor(m_objanchor_vec.back().m_anchor);
+        m_objanchor_vec.pop_back();
+    }
+    if (m_whoistalking) {
+        CCompass::DeleteAnchor(m_whoistalking);
+        m_whoistalking = 0;
+    }
+    theCompass.Close();
+    FreeVector(m_anchor_extraction);
+    FreeVector(m_anchors);
+    FreeVector(m_objanchor_vec);
+    CCharacterType::CleanupTemporary();
+    if (CZWeapon::m_pProjectilelist)
+        CZWeapon::m_pProjectilelist->Dump();
+    theUIVarManager.CollectGarbage();
+    m_20 = 0;
+}
 
 /* the point `step` on from `index`, wrapping both ways, read out through at(); the index it lands
  * on (OVL1 0x2AB260; the names ours) */
@@ -2017,60 +2286,26 @@ void LoadMissionMapVisibilities(CRdrFile *rdr)
 }
 }
 
-/* the mission's extra string tables: their count, then their names, ten characters each (the
- * names ours) */
-struct MissionBankList {
-    /* the i'th table's name (the index unsigned: the target recomputes the address every pass) */
-    const char *GetBank(unsigned int i) const { return m_banks[i]; }
-    char *GetBank(unsigned int i) { return m_banks[i]; }
-
-    /* the count changed: a fixed array's resize, its element loops empty for names -- the target
-     * keeps both empty arms of the test (the names ours) */
-    static void Destroy(int first, int last) {}
-    static void Construct(int first, int last) {}
-    void Resize(int n)
-    {
-        if (n < m_count)
-            Destroy(n, m_count);
-        else
-            Construct(m_count, n);
-        m_count = n;
-    }
-
-    /* (none to begin with: the unit's initialiser clears the count last) */
-    MissionBankList() : m_count(0) {}
-
-    int m_count;
-    char m_banks[1][10];
-};
-
 extern "C" {
 MissionBankList data_00440B80;
 }
 
 /* the extra string tables the mission's rdr lists, by name (SOCOM II's; PreOpen calls it; OVL1
  * 0x2AF410).
- * OPEN, 0x100 against 0x140: the target keeps two empty if/else tests on the count -- `0 < count`
- * before it is cleared, `count + 1 < count` before each increment -- both arms empty, the else arm
- * a jump placed after the epilogue: a fixed array's resize(n) whose element loops vanish for char
- * names. MW folds every empty arm tried away: empty inline helpers (plain or template), empty for
- * loops; round 23 added the resize as a ternary over the two helpers, int loops over a 10-byte
- * struct with a pseudo-destructor and a placement new (all folded), and loops MW cannot delete
- * (pointer loops with a user-declared empty destructor 0x280, a dead `while (k-- > 0)` 0x1C0). The
- * rest (the list's Count/Item/String, the name's address recomputed each pass) is written as the
- * target reads; the count is an `unsigned short` here where the target's lhu has no andi (an int
- * there, once the arms are found) */
+ * The two empty if/else tests on the count (`0 < count` before it is cleared, `count + 1 < count`
+ * before each increment, the else arms jumps placed after the body) are MissionBankList::Resize's
+ * loops reached through At(); the count a ternary, the name's address taken ahead of the copy */
 extern "C" void func_002AF410(const _zrdr *rdr)
 {
     data_00440B80.Resize(0);
     _zrdr *list = zrdr_findtag(rdr, "ExtraStringTables");
-    unsigned short n = 0;
+    int n = list ? list->Count() : 0;
 
-    if (list)
-        n = list->Count();
     for (int i = 0; i < n; i++) {
         data_00440B80.Resize(data_00440B80.m_count + 1);
-        strcpy(data_00440B80.GetBank(i), list->Item(i)->String());
+        char *bank = data_00440B80.GetBank(i);
+
+        strcpy(bank, list->Item(i)->String());
     }
 }
 
@@ -2177,13 +2412,6 @@ void UpdateMissionArchive(const char *olddb, const char *newdb)
     }
 }
 }
-
-/* the projectiles in flight (zweapon.h's CZProjectileList: only the two the mission's end calls) */
-class CZProjectileList {
-public:
-    void Clear(int owner, EQUIP_ITEM item);   /* 0x3CCEB0 */
-    void SetAllFlag18();   /* 0x3CCC90 */
-};
 
 /* the input (zinput's CInput: only the flush) and the application's camera (camera.h's CAppCamera:
  * only the zoom and the controlled view) */

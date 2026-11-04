@@ -178,6 +178,7 @@ struct TexBufferVector {
 class CPipe {
 public:
     void RenderUiNode(zdb::CNode *node);
+    int RenderWorld(zdb::CWorld *world);   /* 0x339DE0 (its result CCoreState::Tick's oddeven) */
     void RandomizeOverlay();   /* 0x33B370 */
     void SetOverlayTexture(zdb::CTexHandle *tex);   /* 0x33B420 */
     void KickOverlay();   /* 0x33B500 */

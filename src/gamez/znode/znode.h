@@ -465,6 +465,15 @@ public:
      * each, just ahead of m_GlobalLightScale: OVL1 0x3E1468, 0x3E1470) */
     static bool m_fogEnable;
     static bool m_lightingEnable;
+    /* the landmark switch: its flag (0x4B4A58, VuObjectSetup's fog choice) set and the lighting
+     * switched the other way (SOCOM 1's static, the same code) */
+    static void LandmarkEnable(bool on);
+    /* a node's render set-up: the matrix and its inverse, the lighting switch and scale (SOCOM 1's,
+     * its fourth argument gone) */
+    static void NodeSetup(CNode *atom, CNode *node, CMatrix *m);
+    /* the alpha switch: its flag (an int, 0x4B4A20) and the z buffer's writes off while it is on
+     * (SOCOM 1's static; SOCOM 1 passed the flag itself to the z-write switch) */
+    static void AlphaEnable(bool on);
     /* the decals of one view let go of (SOCOM 1's, by name) */
     void DereferenceDecals(unsigned int vid);
     /* a light added to the local lights the VU code reads: its position and range, its colour and

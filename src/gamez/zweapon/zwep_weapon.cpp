@@ -659,9 +659,13 @@ CZDecalSet *CZDecalSet::GetDecalSetByName(const char *name)
     return 0;
 }
 
-/* each list entry of the decals rdr a set (SOCOM 1's; the rdr is a global the mark list's
- * ReadDecalNames and OVL2 share, 0x437D00 -- not named) */
-void CZWeapon::OpenDecals()
+/* each list entry of the decals rdr a set (SOCOM 1's OpenDecals body; the rdr is a global the mark
+ * list's ReadDecalNames and OVL2 share, 0x437D00 -- not named). SOCOM II's takes the file's name and
+ * never reads it (a0 is overwritten before any use). Pinned: OpenDecals() calls it out of line, a
+ * tail call -- likely compiled-out code counted in the original (compiled-out statements still count
+ * toward the inline limit) */
+#pragma auto_inline off
+void CZWeapon::OpenDecals(const char *)
 {
     if (data_00437D00) {
         _zrdr *list = zrdr_findtag(data_00437D00, "DECAL_SETS");
@@ -674,6 +678,7 @@ void CZWeapon::OpenDecals()
         }
     }
 }
+#pragma auto_inline reset
 
 /* (called, never inlined: OpenDecals calls it out of line; an int counter against the unsigned
  * count keeps Item's address recomputed each pass, as the target's) */
@@ -737,6 +742,15 @@ void CZDecalSet::ReadDecalEntry(_zrdr *entry)
         CWorld::m_world->AddTextureAssetCharacterAll(tex);
     else
         CWorld::m_world->AddTextureAssetDecals(tex);
+}
+
+/* (the image's 0x3D0420 and Open, 0x3D03D0, sit here: generated drafts still) */
+
+/* the decal sets (SOCOM 1's OpenDecals, CMission::Open's call): the overload above, given the file's
+ * name, called out of line (a tail call) */
+void CZWeapon::OpenDecals()
+{
+    OpenDecals("decals.rdr");
 }
 
 /* an item's name: the weapon list's, or "falling damage" for the fall's id 253 (SOCOM 1's, which
