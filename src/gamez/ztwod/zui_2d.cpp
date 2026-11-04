@@ -312,12 +312,35 @@ class CZAnim {
 public:
     CZAnim *ActivateArg(int type, ...);
     void Activate(CZAnim *parent);
+    /* the animation's name table: a name added, its index; a name by index (the button's
+     * commands keep their caption or valve so) */
+    int AddName(const char *name);
+    const char *GetName(int index);
 };
 
 class CZAnimMain {
 public:
     CZAnim *GetAnim(const char *name, const char *set);
+
+    unsigned char _0[0x38];
+    CZAnim *m_CurAnim;   // 0x38: the animation being parsed or run (zanim.h's)
 };
+
+/* a valve (zanim.h's CValve: only the button's VALVE command's reach -- the valve by name, made if
+ * new, and its value, 16 bits at 4) */
+enum VALVE_TYPE { VALVE_ANY = 0, VALVE_PERM = 1, VALVE_TEMP = 2, VALVE_PERSIST = 3 };
+
+class CValve {
+public:
+    static CValve *Create(const char *name, VALVE_TYPE type);
+
+    char *m_name;   // 0x0
+    unsigned int m_value : 16;   // 0x4
+    unsigned int m_type : 8;
+    unsigned int m_flags : 8;
+};
+
+const char *zrdr_findstring(const _zrdr *rdr, const char *tag);
 
 extern CZAnimMain ZAnim;
 
@@ -853,6 +876,67 @@ void CPlainBmp::SetPulse(float period)
     }
 }
 #pragma auto_inline reset
+
+/* CAPTION: the caption taken from the animation's names (SOCOM 1's); VALVE (SOCOM II's): the
+ * valve's value printed as the caption, "0" when the name is empty -- into a buffer on the stack,
+ * which the caption pointer is left holding, as the target does. Both done at once; anything else
+ * not the button's */
+bool C2DButton::TickZAnimCmd(_zanim_cmd_hdr *hdr, float *dT, bool *done)
+{
+    C2DAnimCmdHdr *cmd = (C2DAnimCmdHdr *)hdr;
+    CZAnim *anim = ZAnim.m_CurAnim;
+
+    switch (cmd->m_type - C2D::GetZAnimCmdType(0)) {
+    case 1: {
+        const char *s = anim->GetName(cmd->m_arg);
+
+        _szCaption = (char *)s;
+        if (s) {
+            _strCaption.SetString(s, true);
+            _strCaption.UpdatePos();
+        }
+        return true;
+    }
+    case 2: {
+        char buf[64] = "0";
+        const char *name = anim->GetName(cmd->m_arg);
+
+        if (name && *name)
+            sprintf(buf, "%d", CValve::Create(name, VALVE_PERM)->m_value);
+        _szCaption = buf;
+        _strCaption.SetString(buf, true);
+        _strCaption.UpdatePos();
+        return true;
+    }
+    default:
+        return false;
+    }
+}
+
+/* CAPTION or VALVE as a command, the name added to the animation's and its index kept (SOCOM 1's
+ * took CAPTION alone); anything else none -- the base's parser is not asked */
+C2DAnimCmdHdr *C2DButton::ParseZAnimCmd(_zrdr *rdr)
+{
+    C2DAnimCmdHdr *cmd;
+    const char *caption = zrdr_findstring(rdr, "CAPTION");
+    const char *valve = zrdr_findstring(rdr, "VALVE");
+
+    if (caption) {
+        cmd = (C2DAnimCmdHdr *)_calloc(1, sizeof(C2DAnimCmdHdr), 0, 0);
+        cmd->header.timeless = 1;
+        cmd->header.data_size = sizeof(C2DAnimCmdHdr);
+        cmd->m_type = GetZAnimCmdType("CAPTION");
+        cmd->m_arg = ZAnim.m_CurAnim->AddName(caption);
+    } else if (valve) {
+        cmd = (C2DAnimCmdHdr *)_calloc(1, sizeof(C2DAnimCmdHdr), 0, 0);
+        cmd->header.timeless = 1;
+        cmd->header.data_size = sizeof(C2DAnimCmdHdr);
+        cmd->m_type = GetZAnimCmdType("VALVE");
+        cmd->m_arg = ZAnim.m_CurAnim->AddName(valve);
+    } else
+        cmd = 0;
+    return cmd;
+}
 
 /* SETVALUE's value as a command (SOCOM 1's; SOCOM II's record is 16 bytes and keeps the value as a
  * halfword), anything else the button's */
