@@ -5,10 +5,18 @@
 
 #include "zseal.h"
 
-/* a blend's anims (anim.cpp's CBlendable, the kit lane's: only the test here) */
+/* a blend's anims (anim.cpp's CBlendable, the kit lane's: only the test here) and its four speed
+ * bands, each an anim and the speeds it covers, the first unused band's type -1 (MixAnims reads
+ * them; the names ours) */
 class CBlendable {
 public:
     bool Contains(AnimType type);
+
+    struct BAND {
+        float m_min;   // 0x0
+        float m_max;   // 0x4
+        short m_type;   // 0x8
+    } m_band[4];
 };
 
 /* the animation set's per-weapon tables (anim.cpp's CAnimsByFP, the kit lane's: only the pistol's
@@ -315,6 +323,7 @@ public:
     /* a type's motion script with no weapon (anim.cpp's GetScript(type), OVL2 0x5E3D90: the 3-argument
      * GetScript tail-called with kind 0 -- the kit lane's round 19) */
     CZSIScriptCommon *GetScript(AnimType type);
+    CZSIScriptCommon *GetScript(AnimType type, int kind);
     /* a type's base type, and whether it carries bit 1 (anim.cpp's, OVL2 0x5E1A90 and 0x5E3AC0) */
     AnimType BaseAnim(AnimType type);
     bool TypeBit1(AnimType type);
@@ -420,6 +429,119 @@ void CZSealBody::BindAnimSet(AnimSet *set, AnimType type, SEAL_STATE state, bool
 static inline float Factor(CZSIScriptCommon *a)
 {
     return a->m_1c;
+}
+
+/* the anims of the speed bands a speed falls in mixed into a list (OVL2 0x58BDF0: SOCOM 1's MixAnims,
+ * 0x4C8 there, by its place after SetMaxMotion and its body; SOCOM II's has no flag): each band the
+ * speed (100 times its magnitude, by the band's first script's scale) lies in takes its anim -- the top
+ * blend's own, taken off its list, else a new one of the set's script for the weapon -- played at the
+ * speed's rate; none, the nearest band's end anim at the edge's rate (negated for a reversed speed);
+ * two, weighed between them by where the speed lies, the unused one put back. The anims taken
+ * (RTList<ACTIVE_ANIM>::Remove: its OVL2 copy 0x58D190 in this unit's tail, byte-exact).
+ * OPEN, the size right (304 instructions; round 32), registers and frame: the target spills the list
+ * (252) and keeps the two edge types in the frame (224, 208: the max's copied from the min's -1),
+ * with a 304-byte frame against 256 here, where MW keeps the list in s8; its blendable test is a
+ * `slti; movn` on the parameter's register (the ternary assigned back to the parameter still
+ * branches here); the float registers follow the frame (minEnd f21, maxEnd f22 in the target) */
+int CZSealBody::MixAnims(CActiveAnimList *list, CBlendable *blendable, float scale, float wt)
+{
+    if (wt <= 0.0f)
+        return 0;
+    blendable = blendable->m_band[0].m_type < 0 ? 0 : blendable;
+    if (!blendable)
+        return 0;
+    CBlendable::BAND *band = blendable->m_band;
+    int n = 0;
+    float speed = fabsf(scale);
+    float lo = 100.0f;
+    float hi = 0.0f;
+    short minType, maxType;
+
+    maxType = minType = -1;
+    float minEnd = lo;
+    float maxEnd = hi;
+    ACTIVE_ANIM *taken[4];
+    CActiveAnimPool *pool = &m_active_anim_pool;
+    float s = 100.0f * speed * m_animset->GetScript((AnimType)band->m_type)->m_1c;
+
+    for (int i = 0; i < 4; i++, band++) {
+        short type = band->m_type;
+
+        if (type == -1)
+            break;
+        CZSIScriptCommon *script = m_animset->GetScript((AnimType)type);
+        float min = band->m_min;
+        float max = band->m_max;
+
+        if (min < minEnd) {
+            minEnd = min;
+            minType = type;
+        }
+        if (max > maxEnd) {
+            maxEnd = max;
+            maxType = type;
+        }
+        if (min <= s && s <= max) {
+            ACTIVE_ANIM *a = ((CZBodyAnimBlend *)func_00555170(&m_blends))->FindAnim(type);
+
+            if (a) {
+                ((CZBodyAnimBlend *)func_00555170(&m_blends))->m_anims.Remove(a);
+                taken[n++] = a;
+                a->ClearOverlays(this);
+            } else {
+                CZSIScriptCommon *sc = m_animset->GetScript((AnimType)type, m_weapon_id);
+
+                if (!sc)
+                    sc = m_animset->GetScript((AnimType)type, 0);
+                if (sc)
+                    a = pool->GetActiveAnim(sc, -1);
+                a->m_id = type;
+                taken[n++] = a;
+            }
+            a->SetPlayback(scale * script->m_1c);
+            if (max < lo)
+                lo = max;
+            if (min > hi)
+                hi = min;
+        }
+    }
+    if (n == 0) {
+        if (s < minEnd) {
+            if (speed != scale)
+                minEnd = -minEnd;
+            ACTIVE_ANIM *a = pool->GetActiveAnim(m_animset->GetScript((AnimType)minType), -1);
+
+            taken[n++] = a;
+            a->SetPlayback(minEnd / 100.0f);
+        } else if (s > maxEnd) {
+            if (speed != scale)
+                maxEnd = -maxEnd;
+            ACTIVE_ANIM *a = pool->GetActiveAnim(m_animset->GetScript((AnimType)maxType), -1);
+
+            taken[n++] = a;
+            a->SetPlayback(maxEnd / 100.0f);
+        }
+    }
+    if (n <= 0)
+        return 0;
+    if (wt < 1.0f)
+        RenormAnims(list, 1.0f - wt);
+    if (n == 2) {
+        float t = (s - hi) / (lo - hi);
+
+        if (t >= 1.0f) {
+            PushAnim(list, taken[1], wt);
+            pool->PutBack(taken[0]);
+        } else if (t > 0.0f) {
+            PushAnim(list, taken[0], (1.0f - t) * wt);
+            PushAnim(list, taken[1], t * wt);
+        } else {
+            PushAnim(list, taken[0], wt);
+            pool->PutBack(taken[1]);
+        }
+    } else
+        PushAnim(list, taken[0], wt);
+    return n;
 }
 
 /* the anim set's speeds set, then the prone crawl's forward and back, its two strafes and the ladder's

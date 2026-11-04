@@ -698,9 +698,9 @@ extern "C" void func_005B61A0()
 }
 
 extern "C" {
-/* (a pickup taken offline is CZSealBody::PickupItem, OVL2 0x59F0C0) told to the network as this
- * console's own or another's (OVL2 0x59E830; OVL1 0x2BA2C0, the net code's) */
-void func_0059E830(CZSealBody *seal, int a, unsigned int netid, short *ids, unsigned int id);
+/* (a pickup taken offline is CZSealBody::PickupItem, OVL2 0x59F0C0, one online
+ * CZSealBody::CanPickupNetItem, OVL2 0x59E830) told to the network as another console's (OVL1
+ * 0x2BA2C0, the net code's) */
 void func_002BA2C0(int a, unsigned int netid, short *ids, unsigned int id, unsigned int owner);
 }
 
@@ -722,7 +722,7 @@ extern "C" void func_0059F610(CZSealBody *seal, CPickup *pickup)
         unsigned int id = seal->m_id;
 
         if (owner == id)
-            func_0059E830(seal, 1, pickup->GetPickupNetEntityID(), ids, id);
+            seal->CanPickupNetItem(1, pickup->GetPickupNetEntityID(), (unsigned short *)ids, id);
         else
             func_002BA2C0(1, pickup->GetPickupNetEntityID(), ids, id, owner);
     } else
@@ -733,11 +733,8 @@ extern "C" {
 /* the body-part ids of the rifle and the pistol (OVL1 data, read as variables) */
 extern int data_003DF148;
 extern int data_003DF150;
-/* a third id, cleared as either weapon is taken (OVL1 data, read as a variable) and the kit's two
- * selections the takes start with (OVL2 0x5C6A40, 0x5C6DA0: the kit lane's range) */
+/* a third id, cleared as either weapon is taken (OVL1 data, read as a variable) */
 extern int data_003DF160;
-void func_005C6A40(CZKit *kit);
-void func_005C6DA0(CZKit *kit);
 }
 
 /* The weapons moved between the hand and where they are worn: the part's node taken from its parent's
@@ -846,7 +843,7 @@ void ParentPistolToRHandCallback(void *data, void *arg)
  * in the same place, after ChangeToRifleMode as here) */
 void CZSealBody::ChangeToPistolMode(bool hand)
 {
-    func_005C6DA0(&m_kit);
+    m_kit.ReParentToPistol();
     if (hand)
         func_005A7690(this);
     if (m_rifle->m_node) {
@@ -867,7 +864,7 @@ void CZSealBody::ChangeToPistolMode(bool hand)
  * 0x5C6A40 -- in the same place) */
 void CZSealBody::ChangeToRifleMode(bool holster)
 {
-    func_005C6A40(&m_kit);
+    m_kit.ReParentToRifle();
     func_005A7480(this);
     if (holster) {
         if (m_pistol->m_node) {
@@ -2618,14 +2615,6 @@ bool func_00564CF0(CSealCtrlAi *ai, float t);
 extern AnimSet *data_0044D400;
 }
 
-/* a valve's value read through a const pointer (an inline: the step re-reads the field for SetValue's
- * test, as a const accessor of CValve's would make it -- read plainly, MW shares the one load; the
- * name ours) */
-static inline unsigned int ValveValue(const CValve *v)
-{
-    return v->m_value;
-}
-
 /* a kill credited: the killer kept and, a SEAL, given a hostage's kill (online the side's valve
  * stepped), a suicide, a team-mate's or -- unless the victim's animation set is the skipped one --
  * an enemy's, a head shot offline and, against an AI, a kill of note: within ten seconds of its
@@ -2656,7 +2645,7 @@ void CZSealBody::HandleKiller(int killer, bool b)
                 else if (func_002C31D0(k))
                     v = g->m_38;
                 if (v)
-                    v->SetValue(ValveValue(v) + 1);
+                    v->SetValue(v->GetValue() + 1);   /* (CValve's const accessor: the step re-reads the field for SetValue's test) */
             }
             func_00545390(&k->m_stats, k);
         } else if (this == k)
