@@ -3783,8 +3783,8 @@
 0x002A3B20 0x8 LoadTipAndTail__8CDIDummyFPQ23zdb11DiIntersect  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x002A3B30 0x60 __dt__8CDIDummyFv  # OVL1; s1:align
 0x002A3B90 0x24 TestFlags__11CSaveModuleCFi  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x002A3BC0 0x25C func_002A3BC0  # OVL1
-0x002A3E20 0x38 func_002A3E20  # OVL1
+0x002A3BC0 0x25C SetUIVars__12CCareerStatsFv  # OVL1; by hand (the states lane, round 24): the single-player career's stats (theMission +0x1950, thirteen ints) made the UI variable SPCareerStats -- an rdr list of their numbers built through CRdrEditor -- and the kills (+0x1C) the valve sp_career_kills; zanim_menu.cpp's UISetCareerStatsUIVars calls it. The names ours
+0x002A3E20 0x38 Clear__12CCareerStatsFv  # OVL1; by hand (the states lane, round 24): the career stats' thirteen words zeroed (zanim_menu.cpp's UIClearCareerStats calls it on theMission +0x1950). The names ours
 0x002A3E60 0x1F0 Dequeue__13CMessageQueueFP14CQueuedMessage  # OVL1; by hand (the states lane, round 24): the message ring's head copied into a CQueuedMessage (text, sender, type) and its slot cleared with "QHEAD RETRIEVED (strdup)"; CMenuState::Tick and CHUD::Tick call it while 0x2A4270 says one waits. The names ours
 0x002A4050 0x194 Enqueue__13CMessageQueueFPCc7MSGTYPEPCc  # OVL1; by hand (the states lane, round 24): theMission's message ring at +0x11B0 (fts_state.h's m_netQueue: 10 entries of 0xA1 bytes after a head and a tail) -- a line added at the tail unless full; the chat's cbChatMessage and the core state's alert call it with the text, a type and a sender. SOCOM II's, the class and member names ours
 0x002A41F0 0x78 func_002A41F0  # OVL1

@@ -663,6 +663,104 @@ extern "C" void func_002A41F0(bool on)
     data_003DE620 = on;
 }
 
+/* ---- the single-player career's stats (theMission's at 0x1950, the UI's CLEAR_CAREER_STATS and
+ * SET_CAREER_STATS_UI_VARS commands; SOCOM II's, the names ours) ---- */
+
+/* the rdr editor (zrdr.h's CRdrEditor : CRdrFile : _zrdr, 0x4C bytes: an rdr built in memory -- only
+ * what the stats call) */
+class CRdrEditor : public _zrdr {
+public:
+    CRdrEditor();   /* 0x333AE0 */
+    ~CRdrEditor();   /* 0x333A20 */
+    bool push(const char *tag);   /* 0x3339B0 */
+    bool pop();   /* 0x333770 */
+    bool addstringnode(const char *s);   /* 0x333610 */
+
+    unsigned char _8[0x4c - 0x8];
+};
+
+extern "C" int sprintf(char *buf, const char *fmt, ...);
+
+class CCareerStats {
+public:
+    void Clear();
+    void SetUIVars();
+
+    int m_0;   // 0x0
+    int m_4;   // 0x4
+    int m_8;   // 0x8
+    int m_c;   // 0xc
+    int m_10;   // 0x10
+    int m_14;   // 0x14
+    int m_18;   // 0x18
+    int m_kills;   // 0x1c: the valve sp_career_kills mirrors it (the name ours)
+    int m_20;   // 0x20
+    int m_24;   // 0x24
+    int m_28;   // 0x28
+    int m_2c;   // 0x2c
+    int m_30;   // 0x30
+};
+
+/* the stats made the UI variable SPCareerStats, a list of their thirteen numbers as strings, and
+ * the kills the valve sp_career_kills (OVL1 0x2A3BC0) */
+void CCareerStats::SetUIVars()
+{
+    CRdrEditor rdr;
+    char s0[16], s1[16], s2[16], s3[16], s4[16], s5[16], s6[16], s7[16], s8[16], s9[16], s10[16], s11[16], s12[16];
+
+    rdr.push(0);
+    sprintf(s0, "%d", m_0);
+    rdr.addstringnode(s0);
+    sprintf(s1, "%d", m_4);
+    rdr.addstringnode(s1);
+    sprintf(s2, "%d", m_8);
+    rdr.addstringnode(s2);
+    sprintf(s3, "%d", m_c);
+    rdr.addstringnode(s3);
+    sprintf(s4, "%d", m_10);
+    rdr.addstringnode(s4);
+    sprintf(s5, "%d", m_14);
+    rdr.addstringnode(s5);
+    sprintf(s6, "%d", m_kills);
+    rdr.addstringnode(s6);
+    sprintf(s7, "%d", m_18);
+    rdr.addstringnode(s7);
+    sprintf(s8, "%d", m_2c);
+    rdr.addstringnode(s8);
+    sprintf(s9, "%d", m_30);
+    rdr.addstringnode(s9);
+    sprintf(s10, "%d", m_24);
+    rdr.addstringnode(s10);
+    sprintf(s11, "%d", m_28);
+    rdr.addstringnode(s11);
+    sprintf(s12, "%d", m_20);
+    rdr.addstringnode(s12);
+    rdr.pop();
+    theUIVarManager.Add("SPCareerStats", 0, UIVL_TEMPORARY)->Set(&rdr);
+    CValve *valve = CValve::GetByName("sp_career_kills");
+
+    if (valve)
+        SetValveValue(valve, m_kills);
+}
+
+/* every stat back to 0 (OVL1 0x2A3E20) */
+void CCareerStats::Clear()
+{
+    m_0 = 0;
+    m_4 = 0;
+    m_8 = 0;
+    m_c = 0;
+    m_10 = 0;
+    m_14 = 0;
+    m_kills = 0;
+    m_18 = 0;
+    m_20 = 0;
+    m_24 = 0;
+    m_28 = 0;
+    m_2c = 0;
+    m_30 = 0;
+}
+
 /* ---- the player's message queue (theMission's at 0x11B0, fts_state.h's m_netQueue: the chat's and
  * the core state's lines, shown by the menu state and the HUD; SOCOM II's, the names ours) ---- */
 

@@ -639,6 +639,13 @@ unsigned int func_0030D540(CZNetwork *net);
 /* the career stats (an object at 0x437E30) */
 void func_002A3BC0(void *stats);
 void func_002A3E20(void *stats);
+/* the single-player career's stats (fts_mission.cpp's CCareerStats, theMission's at 0x1950: only the
+ * two the UI commands call) */
+class CCareerStats {
+public:
+    void Clear();   /* 0x2A3E20 */
+    void SetUIVars();   /* 0x2A3BC0 */
+};
 
 /* the sounds' stop (SOCOM 1's StopAllSounds) */
 void func_00346C00();
