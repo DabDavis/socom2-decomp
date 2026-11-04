@@ -523,7 +523,9 @@ static inline void HangDeathCallback(CZBodyAnimBlend *b)
  * a static inline accessor, a CMission::GetLadder(i) wrapper, a pointer local and an index local, the
  * hold through a pointer or a reference local or an inline returning it; a ternary over the index
  * (`climb == &seal->m_climb ? ... : ...`) matches 0x5B14E0 alone -- the inlined copy folds it -- and
- * is not a real spelling */
+ * is not a real spelling. Round 26 (build/scratch/seal/v_5b14e0.py): the release as an inline taking
+ * the index, the SEAL or the list, and a Ladder(list, index) inline in either parameter order -- all
+ * still the 2 */
 extern "C" CZBodyAnimBlend *func_005A2490(CZSealBody *seal, AnimType type)
 {
     func_005781C0(seal);
