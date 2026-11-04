@@ -99,6 +99,19 @@ static std::vector<CIOPManager::CRegistrant> s_registrants;
 
 CFileIO CPackage::s_file;
 
+/* the utilities started (SOCOM 1's zUtilInit, which made its log, `new COutput(name, true)`: empty in
+ * SOCOM II -- main calls it with 0, as SOCOM 1's main calls zUtilInit) */
+void zUtilInit(const char *name)
+{
+}
+
+/* the utilities stopped (SOCOM 1's zUtilUninit, which deleted the log: empty in SOCOM II --
+ * CGame::StopEngine calls it after the video's uninit and before the state pool's, where SOCOM 1's
+ * calls zUtilUninit) */
+void zUtilUninit()
+{
+}
+
 /* the next registration's id (0x49E2F0; ours) */
 extern int data_0049E2F0;
 

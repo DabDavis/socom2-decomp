@@ -403,9 +403,8 @@ C2D *CHProgressBarSpec::CreateDisplayObj(C2DFont *font, zdb::CTextureRelocMgr *m
     return bar;
 }
 
-/* a slider of the spec's knob (SOCOM 1's) *
- * OPEN until a row outside the lane is named: byte-exact with 0x377800 (zui_2d.cpp's) as
- * __ct__9C2DButtonFv -- C2DButton's constructor, out of line (measured with the row renamed) */
+/* a slider of the spec's knob (SOCOM 1's): C2DButton's constructor out of line (0x377800,
+ * zui_2d.cpp's; byte-exact since the HUD's round 31 named it) */
 C2D *CSliderBarSpec::CreateDisplayObj(C2DFont *font, zdb::CTextureRelocMgr *mgr) const
 {
     CSliderBar *slider = new CSliderBar;
@@ -542,9 +541,8 @@ CCheckBoxSpec::CCheckBoxSpec(CCheckBoxSpec &spec) : CButtonSpec(spec)
     m_onUncheck = new ActionItem(*spec.m_onUncheck);
 }
 
-/* a check box of the spec's check (SOCOM 1's) *
- * OPEN until a row outside the lane is named: byte-exact with 0x377800 (zui_2d.cpp's) as
- * __ct__9C2DButtonFv -- C2DButton's constructor, out of line (measured with the row renamed) */
+/* a check box of the spec's check (SOCOM 1's): C2DButton's constructor out of line (0x377800,
+ * zui_2d.cpp's; byte-exact since the HUD's round 31 named it) */
 C2D *CCheckBoxSpec::CreateDisplayObj(C2DFont *font, zdb::CTextureRelocMgr *mgr) const
 {
     CCheckBox *box = new CCheckBox;

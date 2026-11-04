@@ -99,10 +99,9 @@ CDlgObjSpec *CWrapSpec::Copy()
     return new CWrapSpec(*this);
 }
 
-/* wrapped text of the spec's (SOCOM 1's) *
- * OPEN until a row outside the lane is named: byte-exact with 0x20CD50 (hud_newhudmap.cpp's tail)
- * as __ct__9CPlainBmpFv -- CPlainBmp's inline constructor out of line, which CWrappedText's body
- * calls for its two arrows (measured with the row renamed) */
+/* wrapped text of the spec's (SOCOM 1's): CWrappedText's body calls CPlainBmp's inline
+ * constructor out of line for its two arrows (0x20CD50, hud_newhudmap.cpp's tail; byte-exact since
+ * the HUD's round 31 named it) */
 C2D *CWrapSpec::CreateDisplayObj(C2DFont *font, zdb::CTextureRelocMgr *mgr) const
 {
     CWrappedText *text = new CWrappedText;
@@ -200,9 +199,8 @@ C2D *CRadioStripSpec::CreateDisplayObj(C2DFont *font, zdb::CTextureRelocMgr *mgr
     return strip;
 }
 
-/* a handler button (SOCOM 1's) *
- * OPEN until a row outside the lane is named: byte-exact with 0x377800 (zui_2d.cpp's) as
- * __ct__9C2DButtonFv -- C2DButton's constructor, out of line (measured with the row renamed) */
+/* a handler button (SOCOM 1's): C2DButton's constructor out of line (0x377800,
+ * zui_2d.cpp's; byte-exact since the HUD's round 31 named it) */
 C2D *CHandlerButtonSpec::CreateDisplayObj(C2DFont *font, zdb::CTextureRelocMgr *mgr) const
 {
     CHandlerButton *button = new CHandlerButton;
