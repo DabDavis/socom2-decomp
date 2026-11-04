@@ -2821,6 +2821,8 @@ public:
     virtual C2DAnimCmdHdr *ParseZAnimCmd(_zrdr *rdr);
     /* slot 24 of its table 0x407670: the box's eleven commands after C2D's (0x373640) */
     virtual int GetZAnimCmdType(const char *name);
+    /* slot 18: the box made active (0x374CB0) */
+    virtual void SetActive();
     /* slot 19: the rows shown normal (0x376420, its m2c draft matches) */
     virtual void SetNormal();
     /* set up from its spec (0x375E20: CUIListBoxSpec::CreateDisplayObj's call) */
@@ -2859,7 +2861,7 @@ public:
     int m_a8;   // 0xa8 (the spec's 0x30)
     int m_lineHeight;   // 0xac: a row's height (the spec's)
     int m_offset;   // 0xb0: the highlighted row's offset in the list
-    unsigned char _b4[0xb8 - 0xb4];
+    float m_scrollY;   // 0xb4: the window's offset, negative
     int m_scroll;   // 0xb8
     C2DFont *m_ownFont;   // 0xbc: a font of the box's own, deleted with its items
     std::list<ListItem *> m_items;   // 0xc0
@@ -2874,7 +2876,7 @@ public:
     zdb::CTexHandle *m_texEC;   // 0xec: the spec's textures, by their names at 0x50, 0x5C, 0x44
     zdb::CTexHandle *m_texF0;   // 0xf0
     zdb::CTexHandle *m_texF4;   // 0xf4
-    unsigned char _f8[0xfc - 0xf8];
+    zdb::CTexHandle *m_texF8;   // 0xf8: the highlight's texture (0xF4's, SetActive's)
     zdb::CTexHandle *m_texFC;   // 0xfc: and 0x68
     IRECT m_rect100;   // 0x100 (the spec's 0x8C)
     IRECT m_rect110;   // 0x110 (the spec's 0xAC)
@@ -2897,10 +2899,83 @@ public:
     zdb::CTexHandle *m_tex18c;   // 0x18c
     int m_190;   // 0x190 (the spec's 0x11C)
     int m_highlighted;   // 0x194
-    unsigned char _198[0x420 - 0x198];
+    unsigned char _198[0x1a0 - 0x198];
+    CPlainBmp m_highlight;   // 0x1a0: the highlight's bitmap
+    CPlainBmp m_bar;   // 0x240
+    unsigned char _2e0[0x420 - 0x2e0];
     ActionItem m_actions[30];   // 0x420: the box's actions (the spec's ANIMATIONS)
     int m_numActions;   // 0x600
 };
+
+/* made active (SOCOM 1's CUIListBox::SetActive, 0x393D60 there; SOCOM II's body): the highlight's
+ * colour, the bar on and loaded, the highlight's bitmap textured, white and at 100, the pulse's
+ * limits and time taken from the spec's; with rows, the highlighted one found (no further than
+ * the last), the window scrolled to it, its own action run, then the box's actions on event 2 --
+ * each given its own argument, else the row's text when the row passes it on. One counter for the
+ * search and the actions' walk (each its own swaps the walk's two saved registers); the row's
+ * animation tested through a const view (the target reads it twice); the scroll's difference a
+ * local (in the product MW puts the height first) */
+void CUIListBox::SetActive()
+{
+    m_highlightColor = m_color13c;
+    m_bar.On();
+    m_bar.Load(0.0f, 0.0f, m_rect100.r, m_rect100.b, m_texFC);
+
+    zdb::CTexHandle *t = m_texF4;
+
+    m_texF8 = t;
+    m_highlight.Load(0.0f, 0.0f, 10.0f, 10.0f, m_texF8);
+    if (!t)
+        m_highlight.SetHasTexture(false);
+    else
+        m_highlight.SetHasTexture(true);
+    m_highlight.SetColor(255.0f, 255.0f, 255.0f);
+    m_highlight.SetTrans(m_highlightAlpha);
+    m_highlight.SetTrans(100.0f);
+    m_highlightAlpha = 100;
+    m_pulseTime = m_pulseTime0;
+    m_pulseMin = m_pulseMin0;
+    m_pulseMax = m_pulseMax0;
+    if (m_items.size()) {
+        std::list<ListItem *>::iterator it;
+        int i;
+
+        it = m_items.begin();
+        for (i = 0; i < m_highlighted && i < m_items.size() - 1; i++)
+            ++it;
+        m_highlighted = i;
+        if (m_highlighted < m_scroll)
+            m_scroll = m_highlighted;
+        int d = m_highlighted - m_scroll;
+
+        m_offset = d * m_lineHeight;
+        m_scrollY = -(m_scroll * m_lineHeight);
+
+        ListItem *item = *it;
+
+        if (((const ListItem *)item)->m_action2.Animation) {
+            CZAnim *anim = ZAnim.GetAnim(item->m_action2.Animation, 0);
+
+            if (anim) {
+                if (item->m_action2.Argument)
+                    anim->ActivateArg(1, 8, item->m_action2.Argument, 0);
+                else
+                    anim->Activate(0);
+            }
+        }
+        for (i = 0; i < m_numActions; i++)
+            if (m_actions[i].Type == 1 && m_actions[i].Event == 2) {
+                CZAnim *anim = ZAnim.GetAnim(m_actions[i].Animation, 0);
+
+                if (m_actions[i].Argument)
+                    anim->ActivateArg(1, 8, m_actions[i].Argument, 0);
+                else if (item->m_text && item->m_24)
+                    anim->ActivateArg(1, 8, item->m_text, 0);
+                else if (item->m_24)
+                    anim->ActivateArg(1, 8, item->GetString(), 0);
+            }
+    }
+}
 
 /* a list variable shown (nothing else): every item removed, one made from each of its values with
  * the box's columns, font and scale -- a string's own text set -- and added at the end; the last
