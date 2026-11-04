@@ -792,11 +792,11 @@ extern "C" void func_002EF7F0()
     int now = theNetwork.zNetGetLocalTime();
 
     if (func_002C31A0())
-        data_0066A750.m_side = 0;
+        data_0066A750.m_side = STATS_SEALS;
     else if (func_002C3080())
-        data_0066A750.m_side = 1;
+        data_0066A750.m_side = STATS_TERRORISTS;
     else
-        data_0066A750.m_side = 2;
+        data_0066A750.m_side = STATS_SPECTATOR;
     func_002FAB80(data_0066A648);
     MediusPlayerReport rep;
 

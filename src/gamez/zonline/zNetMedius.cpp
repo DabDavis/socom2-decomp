@@ -252,7 +252,7 @@ bool CZOnlineLobby::Open(const char *host, int port)
     data_0066AAB0 = port;
     LobbyWorldID = -1;
     data_0066A750.m_rating = 99;
-    data_0066A750.m_side = 0;
+    data_0066A750.m_side = STATS_SEALS;
     sprintf(data_0066A750.m_desc, "Description Not Set");
     data_0066A838 = 65000;
     func_002E9920();
