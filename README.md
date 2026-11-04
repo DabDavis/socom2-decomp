@@ -2060,6 +2060,19 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the kit and AI states, round 35** (the view cone, the enemy callout, the pickup scan, slot 0xC retyped):
+  - MW folds a mask local read only once back into the expression, and an `&` then evaluates the word's index first
+    whatever order is written; redefining the local (`m &= word`) keeps the mask first (0x5CB450 / 0x5CB630 at 2: which
+    register the seen-bit AND writes);
+  - a float field read in place keeps the source's `mul.s` operand order, through an inline accessor the other operand
+    comes first; a dead first definition orders the numbering (the pickup before the flag in the pickup scan 0x5CB870,
+    new in SOCOM II; the record before the list reference in AnimSet::Inherit 0x5E3740, SOCOM 1's);
+  - on short fields `> -1` gives `slti`/`bnez` and `>= 0` gives `bltz`; `x = K; if (c != 2) x = -1; else {...}` puts K in
+    the beq's delay slot and -1 in the following b's; a 2-byte enum call result passed to a `void *` parameter is
+    re-extended (dsll32/dsra32), to a 2-byte enum parameter it goes through unconverted (0x571010 takes an AnimType);
+  - CSealCtrl::UpdateViewCone 0x5C9520 (slot +0xA8) and CSealCtrlAi::EnemyCallout 0x5C9930 (SOCOM 1's; SOCOM II passes
+    the entity, not the CTarget) in SOCOM 1's seal_sensors.cpp order; CAiState's slot 0xC takes (CZAnim *, AI_SIGNAL,
+    CSealCtrlAi *), AI_SIGNAL in ai_states.h, its three overriders renamed and byte-exact.
 - **Tells from the weapons, round 23** (ZWepReader::ReadWeapon, the projectile list's Clear(), the item stash typed):
   - a call whose result MW folds away: write it `(unsigned int)f() <= 0xFFFFFFFFu && ...` (always true) and the folded
     branch targets the false block, so only that block is padded; the always-false `|| ...` form leaves the true block
