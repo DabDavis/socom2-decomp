@@ -5925,7 +5925,7 @@
 0x00334AA0 0x13C make_iterator__Q23std39__deque_imp<PCv,Q23std14allocator<PCv>>CFUi  # OVL1; the MSL headers round 7: include/deque -- the iterator to element n: n plus start_, the block buffer's begin() stepped by n / 128 (wrapping), the block or 0 when the buffer is empty; begin()/end() of every pointer deque call it (0x333D30, 0x333CD0, the vis unit's 0x3B7F40/0x3B7EE0); OPEN (the target inlines the buffer's begin() into a local, its fields addressed through registers)
 0x00334BE0 0x134 make_iterator__Q23std39__deque_imp<PCv,Q23std14allocator<PCv>>FUi  # OVL1; the MSL headers round 7: include/deque -- the same, non-const: the range inits' destination (0x334440, the vis unit's 0x3B8000); OPEN as 0x334AA0
 0x00334D20 0x88 zrdr_IsComplex__FP5_zrdr  # OVL1; s1:calls by hand (SOCOM 1's zrdr_IsComplex: true when any item of the array is an array, the walk over Count()/Item(i) as SOCOM 1's, its items from 0)
-0x00334DB0 0xBC func_00334DB0  # OVL1
+0x00334DB0 0xBC zrdr_pack__FP5_zrdrPvUi  # OVL1; the world lane r10: SOCOM 1's zrdr_pack(_zrdr *, void *, unsigned) after the editor's unit as there (the same signature: CUIVarManager::CollectGarbage calls it with the root, a buffer and its size): the values counted (0x335C00), 0 when the buffer is short, else the root copied and marked packed, its arrays copied by 0x3359C0, the bytes used returned
 0x00334E70 0x30 func_00334E70  # OVL1
 0x00334EA0 0x16C func_00334EA0  # OVL1
 0x00335010 0x288 func_00335010  # OVL1
@@ -5939,7 +5939,7 @@
 0x003357A0 0xC func_003357A0  # OVL1
 0x003357B0 0xC func_003357B0  # OVL1
 0x003357C0 0x1FC func_003357C0  # OVL1
-0x003359C0 0xE0 func_003359C0  # OVL1
+0x003359C0 0xE0 zrdr_packarray__FP5_zrdrPc  # OVL1; the world lane r10: SOCOM II's, the name ours -- zrdr_pack's helper (0x334DB0 calls it on the copied root with the buffer after it, and it calls itself): an array's items memcpy'd into the buffer, the array pointed at them, each item that is an array marked packed and copied after them
 0x00335AA0 0x118 zrdr_freearray__FP5_zrdr  # OVL1; s1:calls by hand (SOCOM 1's zrdr_freearray: a string's pointer cleared, an array's values freed recursively then the array (_free), the value made integer 0; DeleteChildren, zrdr_free and CRdrFile's destructor call it where SOCOM 1's inline or call it; SOCOM II skips packed arrays)
 0x00335BC0 0x40 func_00335BC0  # OVL1
 0x00335C00 0x214 func_00335C00  # OVL1
