@@ -3016,23 +3016,27 @@ struct CAiMover {
 /* whether a mover's path ahead passes within reach of a point, flat on the ground: the turn away
  * handed back -- the way across the path, or turned about by the side the point lies on. An inline
  * past inline_max_size, expanded one level: its own body only, its vector pieces called out of line
- * (their copies 0x557D90-0x557E90 after 0x557190, in reverse first use; the names ours) */
-static inline bool AvoidPoint(const CAiMover &m, const CPnt3D &pt, CPnt3D &out, bool turn)
+ * (their copies 0x557D90-0x557E90 after 0x557190, in reverse first use; the names ours). The mover's
+ * fields come in as references (the round 33 fix): their addresses, bound as the inline's
+ * parameters, are what the mover's own stores and the Normalize go through -- the target's s1/s2 held
+ * from before each mover is built */
+static inline bool AvoidPoint(const CPnt3D &pos, const CPnt3D &dir, const float &radius, const CPnt3D &pt,
+                              CPnt3D &out, bool turn)
 {
     static float s_reach = 20.0f;
     static float s_side = 0.45f;
     bool found = false;
     float reach = s_reach;
-    CPnt3D side(-m.m_dir.z, 0.0f, m.m_dir.x);
+    CPnt3D side(-dir.z, 0.0f, dir.x);
     CPnt3D p(pt.x, 0.0f, pt.z);
-    CPnt3D q(m.m_pos.x, 0.0f, m.m_pos.z);
+    CPnt3D q(pos.x, 0.0f, pos.z);
     CPnt3D d = p - q;
 
     d.y = 0.0f;
     d.Normalize();
     float dot = Dot(d, side);
-    CPnt3D ahead = q + m.m_dir * m.m_radius;
-    CPnt3D aside = q + side * (s_side * (m.m_radius * func_00557D90(dot)));
+    CPnt3D ahead = q + dir * radius;
+    CPnt3D aside = q + side * (s_side * (radius * func_00557D90(dot)));
 
     aside.y = 0.0f;
     ahead.y = 0.0f;
@@ -3058,14 +3062,10 @@ static inline bool AvoidPoint(const CAiMover &m, const CPnt3D &pt, CPnt3D &out, 
  * slows (the forward throttle by 0.95), else the same tests as with the player.
  * The copies it leaves out of line match: CPnt3D's +, * and - (0x557DC0, 0x557E10, 0x557E90 -- the
  * round 24 names) and the sign, 0x557D90 (the stand-in below).
- * OPEN, 2 instructions short (765 of 767; round 32): the calls to CPnt3D's constructors (OVL2's
- * copies 0x5414F0, 0x516900) and to its assignment (0x539E90) need ovl-copy marks on those rows (the
- * char_type.cpp tail's and the AI core's range: the integrator's) before any relocation can resolve;
- * the code itself misses on registers -- the target keeps &m.m_dir and &m.m_radius in s1/s2 from
- * before each mover is built (its stores go through them) and the AI in s0, the other entity in s4,
- * where MW here computes the two addresses after the Normalize and gives the AI s4. Tried: the four
- * copies assigned, copy-constructed (the target's ld-free three-and-three shape) and through a PNT3D
- * cast (the same) */
+ * Byte-exact since round 33: the slowing product its own statement (`t *= s_slow;` -- the target's
+ * `mul.s $f20` then `mov.s $f12`, the two instructions round 32 was short), and AvoidPoint taking the
+ * mover's fields by reference: the two addresses held across the Normalize add the neighbours that
+ * keep the AI deferred past the other four (igdump: all five over K), so it colours first, s0 */
 extern "C" bool func_00557190(CSealCtrlAi *ai, CEntity *other)
 {
     static float s_still = 25.0f;
@@ -3087,7 +3087,7 @@ extern "C" bool func_00557190(CSealCtrlAi *ai, CEntity *other)
             result = true;
         else if (meMoving) {
             CAiMover m(myPos, myVel, s_radius);
-            bool found = AvoidPoint(m, otherPos, myVel, false);
+            bool found = AvoidPoint(m.m_pos, m.m_dir, m.m_radius, otherPos, myVel, false);
 
             result = found;
             if (found) {
@@ -3097,7 +3097,7 @@ extern "C" bool func_00557190(CSealCtrlAi *ai, CEntity *other)
             }
         } else if (otherMoving) {
             CAiMover m(otherPos, otherVel, s_radius);
-            bool found = AvoidPoint(m, myPos, myVel, true);
+            bool found = AvoidPoint(m.m_pos, m.m_dir, m.m_radius, myPos, myVel, true);
 
             result = found;
             if (found) {
@@ -3114,12 +3114,14 @@ extern "C" bool func_00557190(CSealCtrlAi *ai, CEntity *other)
                 if (Dot(d, myVel) > 0.0f) {
                     float t = ai->m_throttle[0];
 
-                    if (t > fabsf(other->m_control->m_throttle[0]))
-                        ai->SetThrottle(0, t * s_slow);
+                    if (t > fabsf(other->m_control->m_throttle[0])) {
+                        t *= s_slow;
+                        ai->SetThrottle(0, t);
+                    }
                 }
             } else {
                 CAiMover m(otherPos, otherVel, s_radius);
-                bool found = AvoidPoint(m, myPos, myVel, true);
+                bool found = AvoidPoint(m.m_pos, m.m_dir, m.m_radius, myPos, myVel, true);
 
                 result = found;
                 if (found) {
@@ -3129,7 +3131,7 @@ extern "C" bool func_00557190(CSealCtrlAi *ai, CEntity *other)
             }
         } else if (meMoving) {
             CAiMover m(myPos, myVel, s_radius);
-            bool found = AvoidPoint(m, otherPos, myVel, false);
+            bool found = AvoidPoint(m.m_pos, m.m_dir, m.m_radius, otherPos, myVel, false);
 
             result = found;
             if (found) {
@@ -3138,7 +3140,7 @@ extern "C" bool func_00557190(CSealCtrlAi *ai, CEntity *other)
             }
         } else if (otherMoving) {
             CAiMover m(otherPos, otherVel, s_radius);
-            bool found = AvoidPoint(m, myPos, myVel, true);
+            bool found = AvoidPoint(m.m_pos, m.m_dir, m.m_radius, myPos, myVel, true);
 
             result = found;
             if (found) {
