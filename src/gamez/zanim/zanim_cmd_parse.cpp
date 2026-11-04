@@ -41,6 +41,49 @@ bool zAnimDebugTick(_zanim_cmd_hdr *hdr, float *dT)
     return true;
 }
 
+/* a key of an expression track: a time and the value there (SOCOM II's tracks; the names ours) */
+struct ZANIM_EXPR_KEY {
+    float t;
+    float v;
+};
+
+/* Byte-exact: the key test a bool local (the target materialises it, li/move then xori, before
+ * the branch; `if (t <= ...)` branches on the compare), the bound `n - 1` in the loop's test (a
+ * hoisted temporary, coloured first: a3) */
+/* an alpha track at a time: past its first key, the value interpolated between the keys about the
+ * time (the last key's past them) made the FIX alpha, 128 for 1 and clamped to a byte (SOCOM II's,
+ * the blend-mode, light and particle ticks' -- the name ours) */
+void zAnimAlphaExpr(GsAlpha *alpha, char *expr, int n, float t)
+{
+    ZANIM_EXPR_KEY *keys = (ZANIM_EXPR_KEY *)expr;
+
+    if (t <= keys[0].t)
+        return;
+
+    float v;
+    bool found = false;
+
+    for (int i = 0; i < n - 1; i++) {
+        bool in = t <= keys[i + 1].t;
+
+        if (in) {
+            v = keys[i].v + (t - keys[i].t) / (keys[i + 1].t - keys[i].t) * (keys[i + 1].v - keys[i].v);
+            found = true;
+            break;
+        }
+    }
+    if (!found)
+        v = keys[n - 1].v;
+
+    int a = (int)(128.0f * v);
+
+    if (a < 0)
+        a = 0;
+    if (a > 255)
+        a = 255;
+    alpha->FIX = a;
+}
+
 /* the record grown by the bytes given, which are copied onto its end, its size updated: the record
  * it now is (SOCOM 1's; the parsers append their keys through it) */
 _zanim_cmd_hdr *zAnimCmdAddData(_zanim_cmd_hdr *hdr, void *data, int size)

@@ -2789,7 +2789,7 @@
 0x0025BBE0 0x20 __ct__Q23zar4CKeyFv  # OVL1; SOCOM 1 name, the core lane round 5 (NewKey builds its nameless key with it where SOCOM 1 calls CKey() 0x1DC4A0: the ring and the three fields zeroed; before CKey(const char *) as in SOCOM 1)
 0x0025BC00 0x20 __ct__Q23zar4CKeyFPCc  # OVL1; s1:order by hand (SOCOM 1's CKey(const char *) 0x1DC4E0, last of its zar_search.cpp: the list (here the vector) built, the name stored, size and offset zeroed; CZAR's constructor calls it with "" for the root)
 0x0025BC20 0x9D0 InitCommands__10CZAnimMainFv  # OVL1; s1:calls by hand (registers the core ZAnim commands through AddCmd, as SOCOM 1's InitCommands does; SOCOM II adds 11 to its 49)
-0x0025C5F0 0xE8 func_0025C5F0  # OVL1
+0x0025C5F0 0xE8 zAnimAlphaExpr__FP7GsAlphaPcif  # OVL1; ours, the core lane round 8 (SOCOM II's, zanim_cmd_parse.cpp: an alpha key track -- pairs of time and value, the count -- at a time: nothing at or before the first key, else the value interpolated between the keys about it (the last's past them), times 128, clamped to a byte into the GS ALPHA's FIX; the blend-mode, light and two particle ticks call it)
 0x0025C6E0 0x198 func_0025C6E0  # OVL1
 0x0025C880 0x280 func_0025C880  # OVL1
 0x0025CB00 0xD0 func_0025CB00  # OVL1
