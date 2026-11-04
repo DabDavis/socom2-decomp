@@ -461,6 +461,10 @@ public:
      * SaveDelayedNode keeps both with a delayed node) */
     static CPnt3D m_addColor;
     static float m_GlobalLightScale;
+    /* the fog and lighting switches a translucent visual is kept with (SOCOM 1's statics, 1 byte
+     * each, just ahead of m_GlobalLightScale: OVL1 0x3E1468, 0x3E1470) */
+    static bool m_fogEnable;
+    static bool m_lightingEnable;
     /* the decals of one view let go of (SOCOM 1's, by name) */
     void DereferenceDecals(unsigned int vid);
     /* a light added to the local lights the VU code reads: its position and range, its colour and
@@ -1750,6 +1754,14 @@ public:
     CLOD_Object();
     ~CLOD_Object();
     void Read(CSaveLoad *io);
+    /* a band by its 1-based index, none for 0 or past the end (inline: the pipe's RenderNodeShadow
+     * tests the index twice, as GetMaterial; the name ours) */
+    CLOD_band *GetBand(unsigned int i)
+    {
+        if (i == 0)
+            return 0;
+        return i <= size_ ? &data_[i - 1] : 0;
+    }
 
     int m_bandMax;   // 0xc: 256
 };

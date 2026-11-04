@@ -48,6 +48,7 @@ struct MediusBanPlayerResponse { MEDIUS_RESPONSE_HEAD };
 struct AccountInfoType {
     int AccountID;   // 0x0
     char AccountName[32];   // 0x4
+    char AccountPassword[32];   // 0x24
 };
 
 void cbGetAnnouncements(int, int, int, MediusGetAnnouncementsResponse *);
@@ -71,7 +72,15 @@ MediusErrorCode MediusBanPlayer(MediusBanPlayerRequest *req,
 /* a valve: a named 16-bit value (SOCOM 1's CValve; only what is read here) */
 enum VALVE_TYPE {
     VALVE_TYPE_0,
-    VALVE_TYPE_1
+    VALVE_TYPE_1,
+    VALVE_TYPE_2,
+    VALVE_TYPE_3
+};
+
+enum VALVE_STATE {
+    VALVE_SAME,
+    VALVE_ON,
+    VALVE_OFF
 };
 
 class CValve {
@@ -80,6 +89,21 @@ public:
     /* off (the name ours: the test is materialised, sltu and xori, before the branch -- an
      * inline bool returning the negation) */
     bool IsOff() { return !m_value; }
+    void MakeCallbacks(VALVE_STATE state);
+    /* the value set, the callbacks told when it turns on or off (zanim.h's, as the chat unit's) */
+    bool SetValue(int value)
+    {
+        VALVE_STATE state = VALVE_SAME;
+
+        if (m_value != value)
+            state = value == 0 ? VALVE_OFF : VALVE_ON;
+        m_value = value;
+        if (state != VALVE_SAME) {
+            MakeCallbacks(state);
+            return true;
+        }
+        return false;
+    }
 
     char *m_name;   // 0x0
     unsigned int m_value : 16;   // 0x4
@@ -328,6 +352,48 @@ extern "C" void func_002FA870(CZOnlineLobby *lobby)
     }
 }
 
+extern "C" GamePlayerStats data_0044FB60;   /* a new account's stats (the unit's bss) */
+
+/* a new account's stats made: the 'E' record, a rating of 1000, no side, not counted, the gender
+ * the menu's valve holds (SOCOM II's; the name ours: inline -- Login and Register build it twice,
+ * once for the copy's test of its source and once for the copy). The valve taken into a local
+ * (or tested through IsOff(), or the ternary cast to the enum) numbers the select after the
+ * value's load: straight off Create() the two swap a1/a2 */
+inline GamePlayerStats *NewAccountStats()
+{
+    memset(&data_0044FB60, 0, sizeof(data_0044FB60));
+    data_0044FB60.m_format = 'E';
+    data_0044FB60.m_rating = 1000;
+    data_0044FB60.m_side = 0;
+    data_0044FB60.m_late = 0;
+    CValve *gender = CValve::Create("PLAYERGENDER", VALVE_TYPE_3);
+
+    data_0044FB60.m_gender = gender->m_value ? GENDER_FEMALE : GENDER_MALE;
+    return &data_0044FB60;
+}
+
+/* a field copied when both ends are there, its source evaluated twice -- a macro, where zonline.h's
+ * CopyField is a function (SOCOM 1's Login copied a constant source the same way) */
+#define COPY_FIELD(dst, src, n) \
+    if ((dst) && (src))         \
+    memcpy((dst), (src), (n))
+
+/* logged in as an existing account: the account's name and password kept, our stats' text reset to
+ * a new account's, and the login state entered (SOCOM 1's, which pushed the state itself and copied
+ * a constant record; OVL1 0x2FA5A0: the UI's LobbyLogin calls it) */
+bool CZOnlineLobby::Login(const char *name, const char *password)
+{
+    if (!m_isopen)
+        return false;
+    AccountInfo.AccountID = -1;
+    CopyField(AccountInfo.AccountName, name, sizeof(AccountInfo.AccountName));
+    CopyField(AccountInfo.AccountPassword, password, sizeof(AccountInfo.AccountPassword));
+    memset(data_0066A648, 0, sizeof(data_0066A648));
+    COPY_FIELD(data_0066A648, NewAccountStats(), sizeof(data_0066A648));
+    ChangeState(ACCOUNT_LOGIN);
+    return true;
+}
+
 /* the session ended: the lobby's queue told to end it (SOCOM 1's, which ran the Medius calls
  * itself; OVL1 0x2FA560) */
 bool CZOnlineLobby::Logout()
@@ -336,6 +402,42 @@ bool CZOnlineLobby::Logout()
         return false;
     ChangeState(END_SESSION);
     return true;
+}
+
+/* a new account registered: as Login, the registration state entered (SOCOM 1's; OVL1 0x2FA320: the
+ * UI's LobbyRegister calls it) */
+bool CZOnlineLobby::Register(const char *name, const char *password)
+{
+    if (!m_isopen)
+        return false;
+    AccountInfo.AccountID = -1;
+    CopyField(AccountInfo.AccountName, name, sizeof(AccountInfo.AccountName));
+    CopyField(AccountInfo.AccountPassword, password, sizeof(AccountInfo.AccountPassword));
+    memset(data_0066A648, 0, sizeof(data_0066A648));
+    COPY_FIELD(data_0066A648, NewAccountStats(), sizeof(data_0066A648));
+    ChangeState(ACCOUNT_REGISTRATION);
+    return true;
+}
+
+extern "C" {
+/* our stats read out: a copy of them, put in order (SOCOM II's; OVL1 0x2F98F0: st_mpexit.cpp's
+ * career record and the persona's figures read them; the copy is the record's implicit one,
+ * member by member -- zonline.h's GamePlayerStats) */
+void func_002F98F0(GamePlayerStats *stats)
+{
+    *stats = data_0066A750;
+    func_002F3EE0(stats);
+}
+
+/* our stats replaced: put in order and kept, and sent to the server when asked (SOCOM II's; OVL1
+ * 0x2F96F0: st_mpexit.cpp's end of game writes the career record back with 1) */
+void func_002F96F0(GamePlayerStats *stats, int send)
+{
+    func_002F3EE0(stats);
+    data_0066A750 = *stats;
+    if (send)
+        func_002FAA80(&theLobby);
+}
 }
 
 /* we leave the game for good: banned from it for two hours (SOCOM 1's; OVL1 0x2F95F0) */
@@ -352,6 +454,39 @@ void CZOnlineLobby::BanSelfFromGame()
         req.MediusWorldID = MediusWorldID;
         CheckMediusError(MediusBanPlayer(&req, cbBanSelfFromGame));
     }
+}
+
+extern "C" void (*data_0044F3C8)(const char *msg, int arg);   /* the lobby's message box (the UI's) */
+extern "C" BriefingRoomDB data_0044F568;   /* the room list (the rooms' unit's) */
+
+/* a game of ours asked for, in the lobby proper: its name made unique to the room ("$~" and the
+ * room's name after the player's), refused when the room already has a game so named, the next
+ * game's valves reset and the creation state entered (SOCOM 1's, which pushed the state itself;
+ * OVL1 0x2F9410: the UI's CreateMPGame calls it) */
+bool CZOnlineLobby::CreateGame()
+{
+    if (!m_isopen)
+        return false;
+    if (m_current_state != LOBBY_ACTIVE)
+        return false;
+    std::string name(ZString(uiv_GameNameVar));
+
+    name.append("$~");
+    const char *world = ZString(uiv_LobbyWorldNameVar);
+
+    name.append(world);
+    *uiv_GameNameVar = name.c_str();
+    BriefingRoom *room = data_0044F568.FindRoom(world);
+
+    if (!room || room->FindGame(name.c_str())) {
+        if (data_0044F3C8)
+            data_0044F3C8("MP_GAME_NAME_EXISTS", 0);
+        return false;
+    }
+    CValve::Create("mp_persistent", VALVE_TYPE_1)->SetValue(0);
+    CValve::Create("mp_game_sort_order", VALVE_TYPE_1)->SetValue(127);
+    ChangeState(CREATE_NEW_GAME);
+    return true;
 }
 
 void SetClanTeam(unsigned int team);   /* (the clan unit's) */

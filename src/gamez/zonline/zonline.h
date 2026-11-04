@@ -585,15 +585,51 @@ struct LadderPlayerInfo {
     char m_4c[64];   // 0x4c
 };   // 0x8c
 
-/* a player's stats unpacked (the stats parser 0x2F9AC0's output, the layout ours: the lobby unit
- * reads the flag, the ladder's items the clan tag; 0xEC bytes by LadderList::Add's frame -- the
- * parser copies 228 of them whole from a packed form) */
+/* a player's stats unpacked (the stats parser 0x2F9AC0's output: 0xE4 bytes, which it copies whole
+ * from an 'E' record, the format letter in byte 0, and converts from the older 'A'-'D', 'N' and 'Q'
+ * texts; the names ours). The layout is the one its implicit copy reads, member by member (the
+ * odd-length array), as our stats' copies 0x2F96F0/0x2F98F0 do (round 13): a char (lb), byte 1's
+ * and byte 2's bit-fields each copied by their group's first type (lbu, though m_side is a signed
+ * char: Open's store reads it with lb), byte 3's unsigned int bit-field as an UNALIGNED word
+ * (lwr/lwl 3..6, overlapping the next word's copy), eight words, eight unsigned shorts and four
+ * char arrays (two bytes a pass where the length is even) */
+enum PLAYER_GENDER {
+    GENDER_MALE,
+    GENDER_FEMALE
+};
+
 struct GamePlayerStats {
-    unsigned int _0 : 15;
-    unsigned int m_late : 1;   // byte 1, bit 7: counted
-    unsigned char _2[0x34 - 2];   // (the two bit-fields take two bytes)
-    char m_clan[0xb8];   // 0x34
-};   // 0xec
+    char m_format;   // 0x0: 'E'
+    unsigned char m_1 : 7;   // 0x1
+    unsigned char m_late : 1;   // byte 1, bit 7: counted
+    unsigned char m_2 : 5;   // 0x2
+    signed char m_side : 2;   // byte 2, bits 5-6
+    unsigned char m_2_7 : 1;
+    PLAYER_GENDER m_gender : 2;   // 0x3: the PLAYERGENDER valve's (a byte enum: stored through lb,
+                                  //   a ternary of its two enumerators `li 1; movz`)
+    int m_3_2 : 6;
+    int m_rating;   // 0x4: the ladder figure
+    int m_8;   // 0x8
+    int m_c;   // 0xc
+    unsigned int m_time;   // 0x10: the seconds played (st_mpexit.cpp's)
+    int m_14;   // 0x14
+    int m_18;   // 0x18
+    int m_kills;   // 0x1c
+    unsigned int m_games : 22;   // 0x20
+    unsigned int m_20_22 : 10;
+    unsigned short m_24;   // 0x24
+    unsigned short m_26;   // 0x26
+    unsigned short m_28;   // 0x28
+    unsigned short m_deaths;   // 0x2a
+    unsigned short m_2c;   // 0x2c
+    unsigned short m_2e;   // 0x2e
+    unsigned short m_30;   // 0x30
+    unsigned short m_32;   // 0x32
+    char m_clan[12];   // 0x34: the clan's tag
+    char m_40[32];   // 0x40
+    char m_town[63];   // 0x60: the home town
+    char m_desc[66];   // 0x9f: the description
+};   // 0xe4
 
 /* a page of the player ladder (no session key: the message id names the list, TheBest or
  * TheRest) */
@@ -972,6 +1008,9 @@ public:
     void CreateClan(const char *name);
     void TransferLeadership(const char *name);
     void ChangeState(LOBBY_STATE state);
+    bool CreateGame();
+    bool Login(const char *name, const char *password);
+    bool Register(const char *name, const char *password);
     bool Logout();
     void BanSelfFromGame();
     void SetConnectionInfo(struct NetConnectionInfo *info);

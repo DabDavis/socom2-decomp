@@ -58,6 +58,9 @@ public:
      * three-argument RegisterPathPlan, 0x52C5B0: the goal passed as a run of one) */
     bool RegisterPathPlan(const CAiMapLoc &start, const CAiMapLoc *goals, int count, CAiPath *path);
     bool RegisterPathPlan(const CAiMapLoc &start, const CAiMapLoc &goal, CAiPath *path);
+    /* a path stretched from a cell to another: the cell appended when the feet reach it, or a
+     * template path's points between them (SOCOM 1's ExtendPath took the goal alone: 0x52BDF0) */
+    bool ExtendPath(CAiPath &path, const CAiMapLoc &from, const CAiMapLoc &to);
     /* a line between two points walked over the maps, each cell handed to a callback (new in
      * SOCOM II, the name ours: the visibility tests' walk, 0x5352D0, the step 0.2 as the maps'
      * own WalkLines take it) */

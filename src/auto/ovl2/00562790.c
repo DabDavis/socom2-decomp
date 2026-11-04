@@ -7,13 +7,13 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
+s32 CopyPlan__7CAiPathFPC7CAiPath(s32);             /* extern */
 M2C_UNK SetAiMode__11CSealCtrlAiF7AI_MODE(s32, M2C_UNK); /* extern */
-s32 func_00527FD0(s32);                             /* extern */
 
 s32 func_00562790(s32 arg0) {
     s32 temp_s0;
 
-    temp_s0 = func_00527FD0(arg0 + 0x46C) & 0xFF;
+    temp_s0 = CopyPlan__7CAiPathFPC7CAiPath(arg0 + 0x46C) & 0xFF;
     if (temp_s0 != 0) {
         SetAiMode__11CSealCtrlAiF7AI_MODE(arg0, 3);
     }
