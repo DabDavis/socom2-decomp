@@ -1589,6 +1589,8 @@ public:
     static void AcquireRemoteAi(CZSealBody *seal);
     /* an action offered or withdrawn (SOCOM 1's took an unsigned int id) */
     void ActionAvailableMask(unsigned char id, bool on);
+    /* the action shown selected, its bit alone (OVL2 0x544C80, seal.cpp; SOCOM 1's took a flag too) */
+    void ActionSelectionMask(unsigned char id);
     /* the restraint flag set (an inline: its bool is stored as `(b & 1)`) */
     void SetRestrained(bool on) { m_restrained = on; }
     /* the squad-joined flag set (an inline: `(b & 1) << 6` even for a constant) */
@@ -1981,7 +1983,8 @@ public:
      * new in SOCOM II, the name ours) */
     CCompassAnchor *m_hostile_anchor;   // 0xecc
     unsigned int m_action_available;   // 0xed0: a bit per action (SOCOM 1's ActionAvailableMask word, 0xdc0)
-    unsigned char _ed4[0xee0 - 0xed4];
+    unsigned int m_action_selection;   // 0xed4: the selected action's bit (SOCOM 1's m_action_selection_mask, 0xdc4)
+    unsigned char _ed8[0xee0 - 0xed8];
     float m_wep_upT;   // 0xee0 (SOCOM 1's 0xdd0)
     unsigned char _ee4[0xf44 - 0xee4];
     /* a motion the position code keeps (ComputeNextPosition and PostPreTick read and write it; the

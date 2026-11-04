@@ -853,6 +853,14 @@ void CZSealBody::ActionAvailableMask(unsigned char id, bool on)
         m_action_available &= ~(1 << id);
 }
 
+/* the action the HUD shows selected: its bit alone in the selection mask (OVL2 0x544C80; SOCOM 1's
+ * ActionSelectionMask(unsigned int, bool) cleared or added a bit, SOCOM II's takes the action alone,
+ * a byte narrowed here as ActionAvailableMask's -- hud_actionbitmap.cpp's call, the HUD's round 39) */
+void CZSealBody::ActionSelectionMask(unsigned char id)
+{
+    m_action_selection = 1 << id;
+}
+
 /* a UI variable's value (SOCOM 1's _zrdr through CUIVarManager::Find: a type byte, a string for type
  * 3) and the variables (OVL1 bss 0x437E80) */
 struct CUIVarValue {
