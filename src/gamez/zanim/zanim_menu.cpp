@@ -1173,6 +1173,15 @@ void CMenuStack::AddToHistory(const char *name)
     strcpy(slot, name);
 }
 
+/* the pop-up, made when there is none (SOCOM 1's, 0xBF0 bytes here: its constructor inlined, the
+ * bitmap's and the text's constructors called) */
+CPopUpDialog *CMenuStack::GetPopUp()
+{
+    if (!m_popup)
+        m_popup = new CPopUpDialog;
+    return m_popup;
+}
+
 /* the pop-up put on the stack with its argument (the text typed when the name says INPUT_STRING),
  * its node shown and the menu's sound played (SOCOM 1's, the sound SOCOM II's) */
 void CMenuStack::PopUpDialog(const char *name)

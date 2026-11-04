@@ -11,6 +11,7 @@
 #include "zanim.h"
 #include "../ztwod/ztwod.h"
 #include "../zinput/zinput.h"
+#include "../zui/zui_uivar.h"
 
 /* a string that is never null (SOCOM 1's zutil.h: MSL's basic_string, a null pointer assigned as
  * the empty string -- its operator=, lines 546-551, inlined in the menu's string handlers in both
@@ -523,11 +524,77 @@ extern COurGame theGame;
 
 zdb::CNode *GetMenuNode();
 
-/* the menu's pop-up (SOCOM 1's CPopUpDialog, a C2D: its table's first slot the destructor) */
-class CPopUpDialog : public C2D {
+/* ---- the pop-up's classes, as GetPopUp builds it and its destructor tears it down (zui_2d.h's,
+ * which this header cannot include: its zui.h stand-ins clash with zanim.h's). Each keeps one
+ * non-inline virtual, so this unit emits none of their tables (zui_2d.cpp does: the pop-up's at
+ * 0x4073A0 sits among its tables, with the destructor's thunk 0x37D110) ---- */
+
+/* a plain bitmap (SOCOM 1's CPlainBmp; zui_2d.h's): its constructor called out of line -- the copy
+ * an earlier unit links, 0x20CD50 -- and its destructor inline, ~UIVarMixin and the bitmap's with it */
+class CPlainBmp : public C2DBitmap, public UIVarMixin {
 public:
-    virtual ~CPopUpDialog();
-};
+    CPlainBmp();
+    virtual ~CPlainBmp() {}
+    virtual void UpdateUIVar(CUIVariable *var);
+
+    bool m_pulsing;     // 0x88
+    float m_period;     // 0x8c
+    float m_curtrans;   // 0x90
+} __attribute__((aligned(16)));   // 0xa0 bytes
+
+/* text wrapped to a width (SOCOM 1's CWrappedText; zui_2d.h's: a renderable string, 0x250 bytes, its
+ * inline constructor's out-of-line copy 0x27F250 -- called here, by name) */
+class CWrappedText : public C2DString {
+public:
+    CWrappedText();
+    virtual ~CWrappedText();
+
+    unsigned char _98[0x250 - 0x98];
+} __attribute__((aligned(16)));   // 0x250 bytes
+
+/* a button (zui_2d.h's C2DButton, 0x440 bytes: its constructor 0x377800 and destructor 0x377510
+ * out of line) */
+class C2DButton {
+public:
+    C2DButton();
+    ~C2DButton();
+
+    unsigned char _0[0x440];
+} __attribute__((aligned(16)));
+
+/* the menu's pop-up (SOCOM 1's CPopUpDialog: a plain bitmap with its text, a 2D object, two buttons;
+ * SOCOM II's 0xBF0 bytes, made by GetPopUp. Its members by its constructor, inlined there, and its
+ * destructor, whose out-of-line copy this unit emits (0x27C8D0, after UIFlushMenuHistory: the first
+ * function to delete one, through FlushHistory); the rest of the class is zui_2d.cpp's -- the
+ * members' names follow its model, the 2D object at 0x314 and the word at 0xBE4 ours) */
+class CPopUpDialog : public CPlainBmp {
+public:
+    CPopUpDialog() : m_32c(0), m_330(0), m_be4(0) { m_text.SetString("", true); }
+    virtual ~CPopUpDialog()
+    {
+        if (m_32c) {
+            delete m_32c;
+            m_32c = 0;
+        }
+    }
+    virtual void Draw(const CMatrix &m, zdb::CTextureRelocMgr *mgr);
+    virtual void Tick(float dT);
+    virtual bool HandlePad(const CPad *pad, int port);
+    virtual int GetZAnimCmdType(const char *name);
+
+    unsigned char _a0[0xb0 - 0xa0];
+    CWrappedText m_text;   // 0xb0
+    unsigned char _300[0x314 - 0x300];
+    C2D m_314;   // 0x314
+    C2D *m_32c;   // 0x32c: drawn instead of it all when set
+    CValve *m_330;   // 0x330: the valve the answer is set in
+    unsigned char _334[0x340 - 0x334];
+    C2DButton m_340;   // 0x340: the first button
+    unsigned char _780[0x790 - 0x780];
+    C2DButton m_790;   // 0x790: the second
+    unsigned char _bd0[0xbe4 - 0xbd0];
+    int m_be4;   // 0xbe4
+} __attribute__((aligned(16)));   // 0xbf0 bytes
 
 /* the default name of a stack entry and of a history slot (SOCOM 1's DEFAULT_ARGNAME and
  * MENUHISTORY_STRPOOL: "NO_ARG" and "POOL") */
@@ -572,6 +639,7 @@ public:
     void KillPopUp();
     void CleanPopup();
     void AddToHistory(const char *name);
+    CPopUpDialog *GetPopUp();
     void PopUpDialog(const char *name);
     void FlushHistory(bool all);
     void HandleCommand(const char *name);
