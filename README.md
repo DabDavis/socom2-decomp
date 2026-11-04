@@ -2060,6 +2060,21 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the kit and AI states, round 34** (SetHideLook, CAiSTarget::Tick, three long opens):
+  - a member the target loads twice with nothing between: read one of the two through a const view,
+    `((const T *)p)->m` -- plain reads are merged -- and take the second as a local before the test (CAiSFollow::SetHideLook
+    0x5FDAD0, new in SOCOM II; CAiSUseVehicle::OnSignal 0x60F5E0, open since round 32; the SEALs' SetAiBit2 0x56D890);
+  - a stack ternary through a const local (`const CSealCtrlAi *c = ai;`) keeps the target's delay-slot copy and its
+    left-behind original, read through the parameter MW moves or hoists the stack's address instead; `return a || b;` of
+    two bools in an inline gives MW's value select -- the target's preset-then-clear `||` and set-under-test `&&` are a
+    preset bool with nested ifs and `else r = r;`, and a `!m_flag` the target computes into a value (sltu/xori) is an
+    inline of its own (CAiSTarget::Tick 0x604880, its vtable slot +0x10 now declared);
+  - the HUD's round 33 same-type cast works on float clocks too: `(float)clock` changes MW's float load order and
+    colouring (0x5F6270, open since round 13; CAiTarget::GetTimeSinceLastSighting 0x60A590, open since round 7), but not
+    an integer add's operand order; an object reached through a const local pointer keeps its field reads through the
+    pointer and shares one size read between the test and the index, a plain pointer folds every field into the outer
+    object's offsets and reloads the size; a null-tested element pointer needs an if of its own, not a ternary (0x5FD460);
+  - seal_aistate.cpp re-tested under 3.0b52: only 0x5F3270 moves, and matches only under b50 -- the unit's b50 line holds.
 - **Tells from completing the MSL headers, round 22** (the cdeque iterator, reverse_iterator, OVL2's map inserts; probes
   build/scratch/msl-r22-p22/, untracked):
   - cdeque<T *>::iterator's constructor as an initialiser list (the world's round 16 measurement, applied): end() 0x333F90
