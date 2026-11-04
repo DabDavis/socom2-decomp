@@ -185,6 +185,12 @@ public:
     enum FIRE_CLASS { FIRE_CLASS_NONE = 0, FIRE_CLASS_RIFLE = 1, FIRE_CLASS_PISTOL = 2,
                       FIRE_CLASS_THROWN = 3, FIRE_CLASS_145 = 4, FIRE_CLASS_LAST = 255 };
     FIRE_CLASS GetCurItemFireClass();
+    /* an item's fire class, no kit asked (the kit lane's round 32 name: a static member, the item in
+     * a0; OVL2 0x5B8820 -- seal_env.cpp compares it with the pistol's 2) */
+    static FIRE_CLASS GetItemFireClass(EQUIP_ITEM item);
+    /* a weapon's ammunition taken in, the rounds read and handed back (SOCOM 1's PickupAmmo by its
+     * arguments, the kit lane's round 32; OVL2 0x5BB000 -- HandlePickupAck's eight takes call it) */
+    void PickupAmmo(class CZFTSWeapon *weapon, class CZAmmo *ammo, int *rounds);
     /* the frame's kit work before the SEAL's (SOCOM 1's PreTick; OVL2 0x5C1660, seal_kit.cpp's range:
      * WeaponsTick calls it last, as SOCOM 1's does) */
     void PreTick(float dT);
