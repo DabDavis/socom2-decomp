@@ -1409,8 +1409,8 @@ void CZSealBody::ReInitDatabaseHandles()
     data_0044CE48 = CSnd::GetSoundByName(".GUNTOBACK");
 }
 
-/* the database's handles let go: the buffers freed, the blood decals' vector emptied, the counts
- * cleared, the weapon-event callback removed (OVL2 0x5A3BB0; SOCOM 1's with two more counts). The
+/* the database's handles let go: the buffers freed, the blood decals' vector emptied, then ReInit's
+ * (Uninit_ReInitDatabaseHandles, inlined) (OVL2 0x5A3BB0; SOCOM 1's with two more counts). The
  * vector goes through FreeVector (zsys.h), inlined one level: the class vector's pieces follow this
  * function out of line in reverse of their first use (0x5A3C60 the temporary's ~vector, 0x5A3CC0 the
  * deleter's swap, 0x5A3D00 clear(), 0x5A3D10 the temporary's constructor) -- and, generated in the
@@ -1423,6 +1423,15 @@ void CZSealBody::UninitDatabaseHandles()
         _free(data_0044D550, 0, 0);
     data_0044D550 = 0;
     FreeVector(m_blooddriptexhandles);
+    Uninit_ReInitDatabaseHandles();
+}
+
+/* ReInitDatabaseHandles' handles let go: the drop anims' words cleared, the footfall anims' buffer
+ * freed, the weapon-event callback removed (OVL2 0x5A3B50; SOCOM 1's Uninit_ReInitDatabaseHandles,
+ * the integrator's lead from the game states' round 28: CMission::ReOpen_Unload1 calls it where SOCOM
+ * 1's does -- SOCOM II clears three words where SOCOM 1 cleared one, and frees without a file and line) */
+void CZSealBody::Uninit_ReInitDatabaseHandles()
+{
     data_0044D508 = 0;
     data_0044D510 = 0;
     data_0044D518 = 0;
@@ -1987,6 +1996,63 @@ extern "C" void func_005B14E0(CZSealBody::CSealClimb *climb, CZSealBody *seal)
     }
     climb->m_state = 0;
     climb->m_active = 0;
+}
+
+extern "C" {
+/* (OVL1 0x2B9E50, the game states': a SEAL's taking of a ladder passed on, with a byte and the index) */
+void func_002B9E50(CZSealBody *seal, unsigned char b, int index);
+}
+
+/* whether a ladder has no SEAL on it (an inline bool, the ladder looked up again) */
+static inline bool LadderFree(int index)
+{
+    CLadderData *ladder = theMission.m_ladders->GetLadderByIndex(index);
+
+    return ladder ? !(ladder->m_users > 0) : false;
+}
+
+/* whether a SEAL may take a ladder: the one it is on, or with none a free one -- an AI's only in the
+ * ladder mode (7) with a leg of its climb to go (an inline bool: its `return true` the target's
+ * `daddiu 1`) */
+static inline bool CanTakeLadder(CZSealBody *seal, int index)
+{
+    if (seal->m_ladder == index)
+        return true;
+    if (seal->m_ladder != data_003F3438)
+        return false;
+
+    bool free = LadderFree(index);
+
+    if (free) {
+        /* (the bool tested `!= false`: the target narrows it at the if-form's join, `move v1,v0`
+         * then `andi`) */
+        if (seal->IsAi() != false) {
+            CSealCtrlAi *c = seal->GetSealCtrlAi();
+
+            free = c->m_3f4 == 7 && (c->m_448 & 7) != 0;
+        }
+    }
+    return free;
+}
+
+/* a ladder taken by the SEAL when it may and no one holds it: the SEAL its owner, the taking passed on
+ * (OVL2 0x5B1350, new in SOCOM II: OVL1's 0x2B9F10 and 0x2B9F60 call it; the name unknown). The byte
+ * an int here, narrowed at the call (`andi a1,s2,0xff`).
+ * OPEN, 1 instruction (the size right): in the inlined IsAi the target keeps the call's bool with a
+ * `move v1,v0` and narrows it once at the join; here MW narrows it in the call's arm too (`andi
+ * v1,v0,0xff`). Tried: IsAi in the `&&`, in its own if, into a bool, unsigned char or int local, the
+ * if-form written out over a bool, unsigned char or int result, `== true`, `(bool)x != false`; only
+ * `!= false` gives the join's andi and the size. */
+extern "C" void func_005B1350(CZSealBody *seal, int b, int index)
+{
+    CLadderData *ladder = theMission.m_ladders->GetLadderByIndex(index);
+
+    if (ladder) {
+        if (CanTakeLadder(seal, index) && ladder->m_owner == CEntity::invalidId) {
+            ladder->m_owner = seal->m_id;
+            func_002B9E50(seal, b, index);
+        }
+    }
 }
 
 extern "C" {
