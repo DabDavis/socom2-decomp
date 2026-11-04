@@ -575,6 +575,21 @@ public:
 
 class CZAnimMain : public _zanim_main_params {
 public:
+    /* not open, loading from ZARs, no network packet or activation callback (SOCOM 1's inline
+     * constructor: its __sinit_anim_main.cpp stores the same four fields on ZAnim; SOCOM II clears
+     * its four new bytes too -- 0x3FFBE0's stores, in this order) */
+    CZAnimMain()
+    {
+        m_IsOpen = 0;
+        m_network_activation_callback = 0;
+        m_LoadFromZAR = true;
+        m_NetworkPacket = 0;
+        m_NetworkPacketMaxSize = 0;
+        m_socom2_1bc = 0;
+        m_socom2_1bd = 0;
+        m_socom2_42 = 0;
+        m_socom2_11 = 0;
+    }
     void StopSequence(const char *name);
     void ActivateSequence(const char *name);
     void CmdSet(int index);
