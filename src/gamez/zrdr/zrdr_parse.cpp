@@ -24,12 +24,13 @@ extern "C" double strtod(const char *s, char **end);   /* newlib (MAIN) */
 /* the values allocator (zrdr_pack.cpp's unit, 0x335BC0): `n` zeroed values, the first typed */
 extern "C" _zrdr *func_00335BC0(unsigned char type, int n);
 
-/* basic_string's erase(pos, n) and operator[] (inline; include/string has neither) */
+/* basic_string's erase(pos, n) -- the template replace over (pos, n) with an empty range, as
+ * include/string's erase(pos, n) -- and operator[] (inline; include/string has no operator[]) */
 static inline std::string &string_erase(std::string &s, unsigned int pos, unsigned int n)
 {
     std::forward_iterator_tag category;
 
-    return *(std::string *)func_001EE780(&s, pos, n, 0, 0, category);
+    return s.replace(pos, n, (const char *)0, (const char *)0, category);
 }
 static inline char &string_at(std::string &s, unsigned int pos)
 {

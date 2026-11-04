@@ -768,9 +768,13 @@ void CWorld::DeleteTextureAssetCharacter(_RenderPhase phase, CNode *node)
  * OPEN, 0x11C of 0x144: `delete c` inlines the destructor and the nodes' vector teardown whole in
  * the target (the set's null test, doDelBuffer, then four this-tests of &m_nodes and the block
  * freed) -- five destructor levels under the delete, where include/vector's pointer vector makes
- * ~CNodeVector a call (-1) here; it turns on the vector remodel. Apart from that the target keeps
- * the set in s0 across the remove (loaded from its stack home before the size test), where this
- * reloads it after the call */
+ * ~CNodeVector a call (-1) here; it turns on the vector remodel. MEASURED (the world lane's round
+ * 16, build/scratch/wld/podsub.py): with the pointer pod's destructor deleting its block directly
+ * (`operator delete(data_)`, the pointer vector's destructor three high, not four) this source is
+ * byte-exact -- the set read into a second local, `p`, which the target keeps in s0 across the
+ * remove while `c`, whose address the remove's binder takes, stays in its stack home (one local,
+ * reloaded after the call, is 0x14C). Not applied: the same header change loses six destructors
+ * that need the deallocate level (README "Level 6, or 8?") */
 void CWorld::RemoveEmptyTextureAssetCharacters()
 {
     CTextureAssetCharacterList::iterator it = m_TextureAssetCharacters.begin(),
@@ -778,10 +782,11 @@ void CWorld::RemoveEmptyTextureAssetCharacters()
 
     while (it != e) {
         CTextureAssetCharacters *c = *it;
+        CTextureAssetCharacters *p = c;
 
-        if (c->m_nodes.size() == 0) {
+        if (p->m_nodes.size() == 0) {
             m_TextureAssetCharacters.remove(c);
-            delete c;
+            delete p;
             it = m_TextureAssetCharacters.begin();
             e = m_TextureAssetCharacters.end();
         } else
@@ -802,7 +807,11 @@ void CWorld::ReleaseTextureAssetCharacters()
 /* every character set's nodes let go of and the set deleted, the list emptied (SOCOM 1's).
  * OPEN, 0xF0 of 0x124: as RemoveEmptyTextureAssetCharacters, `delete c` inlines ~CNodeVector's four
  * this-tested levels in the target and calls it here (the vector remodel); FreeVector's
- * constructor, clear, swap and destructor calls and the list's clear already line up */
+ * constructor, clear, swap and destructor calls and the list's clear already line up. MEASURED
+ * (round 16): byte-exact as it stands once the pointer pod's destructor deletes its block directly
+ * (the pointer vector's destructor three high) -- which also closes ClearGroups 0x3C2A10 and
+ * vector<SKBCOMPLETE>'s resize and loses ~CNodeVector (database.cpp's copy), ~CCell, ~CHUD,
+ * ~CVisual, CPipe::~CAlpha and ~CGSTexBuffer: level 6's split, so not applied */
 void CWorld::WipeoutTextureAssetCharacters()
 {
     CTextureAssetCharacterList::iterator it, e = m_TextureAssetCharacters.end();
