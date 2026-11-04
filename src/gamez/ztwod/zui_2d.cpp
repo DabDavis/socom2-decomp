@@ -182,21 +182,8 @@ public:
 
 /* a text's spec and a teletype's (zui_spec.h's CTextSpec, 0x34 bytes, and CTtySpec: INTERVAL,
  * MAXLENGTH, SPACING, PULSERATE, MAXHEIGHT and the cursor's two flags) */
-class CTextSpec : public CDlgObjSpec {
-public:
-    unsigned char _8[0x34 - 0x8];
-};
-
-class CTtySpec : public CTextSpec {
-public:
-    float m_interval;   // 0x34
-    float m_maxLength;   // 0x38
-    float m_spacing;   // 0x3c
-    float m_pulseRate;   // 0x40
-    int m_maxHeight;   // 0x44
-    bool m_noCursor;   // 0x48
-    bool m_fadeCursor;   // 0x49
-};
+class CTextSpec;   // after CSaferStr, below
+class CTtySpec;
 
 /* a wrapped text's spec (zui_spec.h's CWrapSpec: WIDTH, SPACING, HEIGHT, DISPLAY_ONE_LINE, the two
  * arrows' textures, offsets and sizes, AUTOSCROLL) */
@@ -321,6 +308,31 @@ public:
         else
             erase();
     }
+};
+
+class CTextSpec : public CDlgObjSpec {
+public:
+    /* the colour by value (ours: the target copies it through a return slot on the stack) */
+    CPnt3D GetColor() const { return m_color; }
+
+    CSaferStr m_caption;   // 0x8: CAPTION
+    float m_scale;   // 0x14: SCALE
+    bool m_hasFont;   // 0x18: a FONT named
+    bool m_hcentered;   // 0x19: HCENTERED
+    bool m_rightJustified;   // 0x1a: RIGHT_JUSTIFIED
+    CSaferStr m_font;   // 0x1c: FONT
+    CPnt3D m_color;   // 0x28: COLOR
+};
+
+class CTtySpec : public CTextSpec {
+public:
+    float m_interval;   // 0x34
+    float m_maxLength;   // 0x38
+    float m_spacing;   // 0x3c
+    float m_pulseRate;   // 0x40
+    int m_maxHeight;   // 0x44
+    bool m_noCursor;   // 0x48
+    bool m_fadeCursor;   // 0x49
 };
 
 class CWrapSpec : public CTextSpec {
@@ -1404,6 +1416,33 @@ bool C2DCounter::TickZAnimCmd(_zanim_cmd_hdr *hdr, float *dT, bool *done)
 /* Scroll_Up a line while above the top, Scroll_Down a line while the lines below the window
  * last; anything else the renderable string's (SOCOM II's; the compare chain tests the cases in
  * reverse, the bool through a local -- the base's result masked, true assigned) */
+_zrdr *FetchMissionFontsRdr();
+
+/* set up from its spec (SOCOM 1's CRenderableString::LoadSpec, 0x390FB0 there): the scale and the
+ * caption, the justification, the colour, a font of its own when the spec names one (made and
+ * loaded from the mission's fonts), deaf to the pad, the spec's variable watched */
+void CRenderableString::LoadSpec(const CTextSpec &spec)
+{
+    m_scale = spec.m_scale;
+    SetString(spec.m_caption.c_str(), true);
+    m_isCentered = spec.m_hcentered;
+    m_socom2_6a = spec.m_rightJustified;
+    m_Color = spec.GetColor();
+    SetColor(m_Color.x, m_Color.y, m_Color.z);
+    if (spec.m_hasFont) {
+        const char *name = spec.m_font.c_str();
+
+        m_alternateFont = new C2DFont;
+        m_alternateFont->Load(FetchMissionFontsRdr(), name);
+        SetFont(m_alternateFont);
+    }
+    SetCanHandleInput(false);
+    CUIVariable *var = spec.GetUIVar();
+
+    if (var)
+        WatchUIVar(var);
+}
+
 /* set up from its spec (SOCOM 1's CWrappedText::LoadSpec): the width, the spacing and the window's
  * height first, then the string's own, the arrows' textures made, their places, the scroll and
  * the arrows pulsing once a second, and the one-line display */
