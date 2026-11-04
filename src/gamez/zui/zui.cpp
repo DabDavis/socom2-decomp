@@ -17,6 +17,25 @@
  * CDblBufTextureRelocator's PreGetSprPacket (0x365210), both byte-exact. */
 
 #include "zui_2d.h"
+#include <iostream>   /* (its pair opens __sinit_zui.cpp, 0x403620) */
+
+/* the menus' task scheduler (zanim.h's CSched_Manager, 0x20 bytes: a list of tasks; only its
+ * constructor and destructor here, both out of line, 0x34E860/0x34EA70) */
+class CSched_Manager {
+public:
+    CSched_Manager();
+    ~CSched_Manager();
+
+    unsigned char _0[0x20];
+};
+
+/* the menus' scheduler (SOCOM 1's zUIScheduler, a file static: 0x49EA50) -- __sinit_zui.cpp builds it
+ * after <iostream>'s pair and registers its destructor; LoadFromDesign, Clear and 0x3654C0 run it */
+static CSched_Manager zUIScheduler;
+
+/* the batch relocator the menus prepare their controls with (SOCOM 1's g_relocBatch, 0x49EAA8: only
+ * its vtable pointer, stored by __sinit_zui.cpp; no destructor registered) */
+zdb::CBatchRelocator g_relocBatch;
 
 /* the asset manager's texture lookup (zdb's; SOCOM 1's DWARF layouts) */
 namespace zdb {

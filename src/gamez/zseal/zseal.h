@@ -66,6 +66,10 @@ enum SEAL_HANDSIGNAL {
     HANDSIGNAL_DEPLOY = 4, HANDSIGNAL_POINT = 5, HANDSIGNAL_COUNT = 6, HANDSIGNAL_LAST = 255
 };
 
+/* where a hit lands (SOCOM 1's DAMAGE_LOCATION, a byte: 0 the head -- ReportWeaponHitDamage counts
+ * a head shot so; the other names not needed) */
+enum DAMAGE_LOCATION { DAMAGE_LOCATION_0 = 0, DAMAGE_LOCATION_LAST = 255 };
+
 /* a kind of collision polygon (SOCOM 1's CDIType; no DWARF, only the size matters here) */
 enum CDIType { CDI_TYPE_0 = 0, CDI_TYPE_LAST = 255 };
 
@@ -547,7 +551,11 @@ public:
     /* SOCOM 1's AI_LOOK, a signed byte (AIL_ALL is -1: compared with `lb`); the enum is
      * seal_look.cpp's (the kit lane's), so a plain signed char here -- 9 is AIL_DEPLOY */
     signed char m_look_mode;   // 0x24 (SOCOM 1's 0x20)
-    unsigned char _25[0xa8 - 0x25];
+    unsigned char _25[0x60 - 0x25];
+    /* the scan's reach, scaling the yaw throttle's look in Tick (SOCOM 1's m_scan_limits, at 0x60 in
+     * both builds: the scan timer ends there in each) */
+    float m_scan_limits;   // 0x60
+    unsigned char _64[0xa8 - 0x64];
     CAiDecay m_visrange;   // 0xa8 (as SOCOM 1's)
     unsigned char _b4[0xd8 - 0xb4];
     float m_d8;   // 0xd8: a range 0x570D90 falls back to (the name ours)
@@ -1252,6 +1260,7 @@ public:
 
     /* (0x5533E0, not written yet: declared so no unit emits an implicit one) */
     virtual ~CZSealBody();
+    virtual void PostTick(float dT);                                        /* +0x24 */
     virtual void OnMissionStart();                                          /* +0x4C */
     virtual void OnMissionEnd();
     virtual void OnRecycleEntity(CEntity *e);                               /* +0x54 */
@@ -1444,6 +1453,10 @@ public:
      * item dropped (SOCOM 1's; OVL2 0x59DDB0) */
     static class CPickup *CreateMPBombPickup(const CPnt3D *pos, bool b);
     void DropAllItems();
+    /* online, a hit on the SEAL reported to the network and the stats (SOCOM 1's, a projectile
+     * first; OVL2 0x5A1FF0) */
+    void ReportWeaponHitDamage(CZProjectile *proj, int shooter_id, int victim_id, DAMAGE_LOCATION where,
+                               float damage, float pierce, bool hit, unsigned char weapon);
     /* the regions entered: each new one's OnEnterRegion anim run (SOCOM 1's; OVL2 0x5A2F90) */
     void CheckForRegionTrigger(unsigned int regions);
     /* the ground under a point found, the SEAL's own node off for it (SOCOM 1's; OVL2 0x5B4F30,
@@ -1489,6 +1502,16 @@ public:
      * what it holds (SOCOM 1's; OVL2 0x5A8CB0) */
     bool IsThrowing(bool started);
     bool CanFire(bool a, bool b);
+    /* a weapon's node made and parented: the rifle's to the right hand when it is the item in hand,
+     * else the back, the pistol's to the hand or the hips, a throwable's to the hand -- the part
+     * kept as the item's and whether one was made (SOCOM 1's AddWeapon(SEAL_ITEM): zweapon.h's
+     * word-sized SEAL_ITEM stand-in takes that name, so the byte enum here; OVL2 0x553290) */
+    bool AddWeapon(SEAL_ITEM_BYTE item);
+    /* the rifle, or the pistol, taken into the hand: the kit's own reparenting, the weapon into the
+     * right hand (the pistol only when asked), the other worn (the pistol holstered only when asked),
+     * the item in hand set (SOCOM 1's; OVL2 0x5A70F0, 0x5A7260) */
+    void ChangeToRifleMode(bool holster);
+    void ChangeToPistolMode(bool hand);
     /* whether a weapon change, or a reload, is under way (SOCOM 1's; OVL2 0x5A7980, and 0x5A7AB0 not
      * written yet) */
     bool IsChangingWeapons(bool kit);
@@ -1574,7 +1597,9 @@ public:
     CZBodyPart *m_leyeball;   // 0x35c
     CZBodyPart *m_reyelid;   // 0x360
     CZBodyPart *m_leyelid;   // 0x364
-    unsigned char _368[0x374 - 0x368];
+    /* the nodes the SEAL made for itself, freed with it (SOCOM 1's m_deallocList, 0x2f0: AddWeapon
+     * pushes each weapon's node) */
+    std::vector<zdb::CNode *> m_deallocList;   // 0x368
     SEAL_STATE m_desiredState;   // 0x374 (SOCOM 1's 0x304; the HUD's pose bitmap reads it)
     SEAL_STANCE m_desiredStance;   // 0x375: the stance the AI asks for (0x5631B0; the name ours)
     unsigned char _376[0x37c - 0x376];
@@ -1762,9 +1787,15 @@ public:
     CPnt3D m_1350;   // 0x1350: the velocity kept as 0x57DF20/0x57E050 set bit 9 (the name ours)
     unsigned char _135c[0x1440 - 0x135c];
     CPnt3D m_aim_dir;   // 0x1440 (SOCOM 1's 0x10a0: AimWeapon sets it)
-    unsigned char _144c[0x14b0 - 0x144c];
+    unsigned char _144c[0x14a0 - 0x144c];
+    /* the aim and fire points and their positions (SOCOM 1's m_curr_aimpos, m_curr_aimpt,
+     * m_curr_firepos and m_curr_firept, 0x1100-0x111F there: the weapon takes look the points up by
+     * name again, seal_weapon.cpp's UpdateAimParams through a view of its own) */
+    CPnt3D m_curr_aimpos;   // 0x14a0
+    zdb::CNode *m_curr_aimpt;   // 0x14ac
     CPnt3D m_curr_firepos;   // 0x14b0 (SOCOM 1's 0x1110, m_aim_dir's 0x3a0 on as here)
-    unsigned char _14bc[0x14cc - 0x14bc];
+    zdb::CNode *m_curr_firept;   // 0x14bc
+    unsigned char _14c0[0x14cc - 0x14c0];
     short m_last_foot;   // 0x14cc (SOCOM 1's 0x112c: Prone_0 sets it to 2, as SOCOM 1's does)
     unsigned char _14ce[0x14e0 - 0x14ce];   // (0x14E0 bytes: Create news 5344)
 };

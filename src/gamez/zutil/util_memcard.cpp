@@ -253,7 +253,7 @@ bool CMemCard::CreateReserveFiles()
 
     if (!Exists("*.zdb"))
         CreateReserveFile("PATCHFILE.DAT", 2000);
-    kb = 2999 - GetUsedSpace();
+    kb = 2999 - GetUsedSpace(0);
     if (kb > 0)
         CreateReserveFile("SCRATCHPAD.DAT", kb);
     return true;
@@ -407,7 +407,7 @@ int CMemCard::GetFreeSpace()
  * sp+0x40 and the inlined Exists' one-entry table above it at sp+0x570; MW here puts Exists'
  * table at the bottom and the array above it. Tried: the array declared first, after the
  * Exists test, in a nested block, inside a struct, 16-aligned. */
-int CMemCard::GetUsedSpace()
+int CMemCard::GetUsedSpace(int)
 {
     int n = -1;
     int cmd;

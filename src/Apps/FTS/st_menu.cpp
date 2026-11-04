@@ -3,6 +3,8 @@
 
 #include "fts_state.h"
 
+#include <iostream>
+
 /* unnamed yet (SOCOM 1's names in the comments) */
 extern "C" {
 void func_0030E300(void *net);
@@ -66,23 +68,43 @@ extern CIOPManager theIOPManager;
 void ZuiUnInit();   /* 0x38D4E0 */
 void zSysFifoSetSync(bool on);   /* 0x350CC0 */
 
-namespace {
-/* the menus' double-buffered texture relocation (SOCOM 1's CDblBufTextureRelocator, 0x1C bytes:
- * its saved packet, size and palette; SOCOM II's are three words at 0x14, cleared after each
- * texture load -- the name of the clear ours) */
-struct CRelocDblBuf {
-    unsigned char _0[0x14];
-    int m_saved[3];   // 0x14
+/* the menus' double-buffered texture relocator (zui.cpp's CDblBufTextureRelocator, its vtable
+ * 0x406F60 there: SOCOM 1's 0x1C bytes with three GS buffers at 0x8 and each buffer's last texture
+ * at 0x14, cleared after each texture load -- the name of the clear ours). Only its inline
+ * constructor, which builds the unit's static in __sinit_st_menu.cpp 0x3FD940 (the buffer index
+ * and the palette cleared, then the six words by zui.cpp's 0x3654A0), and the slots: declared,
+ * not defined, so the unit emits no table */
+class CDblBufTextureRelocator {
+public:
+    CDblBufTextureRelocator()
+    {
+        _iGsBufToFill = 0;
+        _pSavedPalette = 0;
+        func_003654A0(this);
+    }
+
+    virtual void AddToBatch(zdb::CTexHandle *tex) const;
+    virtual void EndBatchReloc() const;
+    virtual void PreGetSprPacket(zdb::CTexHandle *tex);
+    virtual void StartBatchReloc() const;
+    virtual void TakeDrawPacket(u_long128 *packet, unsigned int qwc);
+    virtual void ClearAll();
 
     void ClearSaved()
     {
         for (int i = 0; i < 3; i++)
-            m_saved[i] = 0;
+            _arrLastTex[i] = 0;
     }
+
+    int _iGsBufToFill;                 // 0x4
+    void *_arrGsBufs[3];               // 0x8
+    zdb::CTexHandle *_arrLastTex[3];   // 0x14
+    void *_pSavedPalette;              // 0x20
 };
 
+namespace {
 zdb::CAssetLib *g_pSkbLib;
-CRelocDblBuf g_relocDblBuf;
+CDblBufTextureRelocator g_relocDblBuf;
 CZAnimZAR *animfile;
 }
 
