@@ -59,7 +59,7 @@ struct AI_NET_STATE {
 
 /* jumping, as the other console says -- only while in a vehicle's seat? (OVL2 0x5E6A50; SOCOM
  * II's GetJumpFlag, moved into CSealCtrl's table) */
-bool CRemoteCtrl::GetJumpFlag() const
+AI_STATE CRemoteCtrl::GetJumpFlag() const
 {
     bool jump = false;
 
@@ -70,7 +70,7 @@ bool CRemoteCtrl::GetJumpFlag() const
         memcpy(&s, &state, sizeof(s));
         jump = s.m_jump;
     }
-    return jump;
+    return (AI_STATE)jump;
 }
 
 /* an order to follow or to hold, passed on to the console that drives the SEAL (OVL2 0x5E6A00) */
