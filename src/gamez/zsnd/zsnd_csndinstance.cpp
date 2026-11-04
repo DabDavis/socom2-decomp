@@ -173,14 +173,13 @@ void CSndInstance::AwarenessUpgrade(unsigned int entityID)
 extern "C" void snd_StartCaching(void);
 extern "C" int snd_SendCache(void);
 
-/* SOCOM 1's: every voice ticked under one batch of commands, the finished ones let go.
- * OPEN, 3 instructions: the end iterator's address is built before snd_StartCaching here (lui
- * ahead of the call, addiu in its delay slot), after it in the target (begin's load in the delay
- * slot). The begin is read before the call in both builds (SOCOM 1 builds its iterator there);
- * declared after begin, the end gets the target's schedule but begin and end trade s0/s1 (the
- * later-defined iterator takes the lower register). Tried: end in the loop test (recomputed each
- * pass), end assigned after the call (copied through memory), begin copied through another
- * iterator, a const end. The arms each step on (three copies of the step, as SOCOM 1's) */
+/* SOCOM 1's: every voice ticked under one batch of commands, the finished ones let go. The begin
+ * is read before snd_StartCaching (SOCOM 1 builds its iterator there), the end after it, yet the
+ * end takes the lower saved register (s1, begin s0): MW numbers a variable at its FIRST
+ * definition, so the end is defined first and its base iterator overwritten after the call (the
+ * dead first value costs nothing) -- a stand-in for the original's spelling (declared after the
+ * call, the end took s0; assigned through the wrapper's implicit assignment it stays in memory).
+ * The arms each step on (three copies of the step, as SOCOM 1's) */
 bool CSndInstance::PostTick(float dT, void *data)
 {
     if (CSnd::m_isDisabled)
@@ -190,6 +189,7 @@ bool CSndInstance::PostTick(float dT, void *data)
     std::list<CSndInstance *>::iterator i = m_list.begin();
 
     snd_StartCaching();
+    e.i_ = m_list.end().i_;
 
     /* each arm steps on by itself (SOCOM 1's too: an erasing walk's shape) */
     while (i != e) {
