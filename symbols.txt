@@ -8494,7 +8494,7 @@
 0x003FDAB0 0x64 func_003FDAB0  # OVL1 data area; a static initialiser; s1~ zanim_cmd_tick.cpp (shape 0.46, a hint)
 0x003FDB20 0xA0 func_003FDB20  # OVL1 data area; a static initialiser
 0x003FDBC0 0x2BC func_003FDBC0  # OVL1 data area; a static initialiser
-0x003FDE80 0x308 func_003FDE80  # OVL1 data area; a static initialiser
+0x003FDE80 0x308 __sinit_hud_newhudmap.cpp  # OVL1 data area; a static initialiser; by hand (the HUD lane, round 30: hud_newhudmap.cpp's initialiser -- it builds the unit's statics in SOCOM 1's order, each __construct_array/__register_global_object pair at its record (0x409F10 ...), the four scroll C2DBitmapPolys, the north lines with COverlayLine's colour, then the three computed .data floats 0x3E4090-0x3E40A0 from hud_main.cpp's 365 and 60: CODE-EXACT from source, the four __arraydtor$N references compared by content fail on their relocation fields (scdiff has no mapping for a unit's numbered array destructors: see the HUD lane's round-30 report))
 0x003FE190 0x2B4 func_003FE190  # OVL1 data area; a static initialiser
 0x003FE450 0x34 __sinit_hud_mapcompass.cpp  # OVL1 data area; a static initialiser; hud_mapcompass.cpp by hand (it builds navpoint_vec, this unit's global, and registers its destructor)
 0x003FE490 0x64 __sinit_hud_bitmapreticule.cpp  # OVL1 data area; a static initialiser; by hand (the HUD lane, round 17): hud_bitmapreticule.cpp's initialiser (between hud_mapcompass.cpp's and hud_weaponsel.cpp's, as the code): SOCOM 1's color_base (86, 63, 27), then two CPnt3D colours of SOCOM II's that 0x215C10 reads (24, 200, 44 and 24, 24, 24)
