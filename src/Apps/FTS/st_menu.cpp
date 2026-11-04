@@ -47,9 +47,13 @@ void func_003AFF30(bool a, bool b);              /* zVid_Swap */
 
 /* the localised string tables, the menu history, the IOP's reboot callbacks, the UI and the GS
  * FIFO's sync (their units'; only what is called) */
+enum LANGUAGE { LANGUAGE_0 };
+LANGUAGE GetLanguage();   /* 0x3A4460 */
+
 class CStringTables {
 public:
     void Unload(const char *name);   /* 0x3A3740 */
+    void Load(const char *name, LANGUAGE lang);   /* 0x3A3900 */
 };
 CStringTables *GetStringTables();   /* 0x361BC0 */
 
@@ -61,6 +65,9 @@ CMenuStack *GetMenuStack();   /* 0x274930 */
 
 class CIOPManager {
 public:
+    enum RebootPhase { REBOOT_PHASE_0 };
+    enum RebootMode { REBOOT_MODE_0 };
+    int RegisterRebootCallback(bool (*cb)(RebootPhase phase, RebootMode mode, void *data), void *data);
     void UnRegisterRebootCallback(int handle);   /* 0x39C590 */
 };
 extern CIOPManager theIOPManager;
@@ -95,6 +102,7 @@ public:
         for (int i = 0; i < 3; i++)
             _arrLastTex[i] = 0;
     }
+    void Init();
 
     int _iGsBufToFill;                 // 0x4
     void *_arrGsBufs[3];               // 0x8
@@ -123,6 +131,174 @@ extern unsigned char data_0044F3D0;
 const char *CMenuStateMenu::GetReaderFileName()
 {
     return theGame.m_menuState.m_DefaultMenu;
+}
+
+/* CMenuState::Init's callees (their units'; only what is called) */
+namespace zar {
+class CZAR {
+public:
+    bool ReOpen(int dir, unsigned int mode);   /* 0x258B40 */
+};
+}
+
+class CRdrArchive {
+public:
+    static zar::CZAR *AddArchive(const char *name, const char *path);   /* 0x32C1E0 */
+};
+
+/* the reader archive's directory number (OVL1 data) */
+extern "C" int data_003F7020;
+
+
+namespace zdb {
+/* the camera's node (znode.h's CNode: only the placement) */
+class CNode {
+public:
+    void SetPosition(float x, float y, float z);   /* 0x313A00 */
+};
+}
+
+void ZuiInit();   /* 0x38D3C0 */
+void HookupLib(zdb::CAssetLib *lib);
+/* the count sound looked up (zui.cpp's UiLoadCountSound 0x369880, its row `__Fv`: the target loads
+ * the menu into a0 for the test and the call -- the menu is its argument, which its body never
+ * reads; spelled by the row's address until the row is renamed) */
+extern "C" void func_00369880(CGameMenu *menu);
+bool LoadWorld(const char *database);
+
+struct _zrdr;
+class CRdrFile;
+_zrdr *zrdr_read(const char *name, const char *path, int flags);
+_zrdr *zrdr_findtag(const _zrdr *rdr, const char *tag);
+char *zrdr_findstring(const _zrdr *rdr, const char *tag);
+int zrdr_free(CRdrFile *file);
+
+extern "C" {
+void func_0030E340(void *net);
+void func_00344090(const char *file, const char *bank);
+void func_003448E0(const char *bank);
+void func_0039D8C0();
+bool func_001F53D0(CIOPManager::RebootPhase phase, CIOPManager::RebootMode mode, void *data);
+}
+
+/* a valve (zanim.h's CValve: only its creation and value) */
+enum VALVE_TYPE { VALVE_ANY = 0, VALVE_PERM = 1, VALVE_TEMP = 2, VALVE_PERSIST = 3 };
+enum VALVE_STATE { VALVE_SAME = 0, VALVE_ON = 1, VALVE_OFF = 2 };
+
+class CValve {
+public:
+    static CValve *Create(const char *name, VALVE_TYPE type);
+    void MakeCallbacks(VALVE_STATE state);
+    bool SetValue(int value)
+    {
+        VALVE_STATE state = VALVE_SAME;
+
+        if (m_value != value)
+            state = value == 0 ? VALVE_OFF : VALVE_ON;
+        m_value = value;
+        if (state != VALVE_SAME) {
+            MakeCallbacks(state);
+            return true;
+        }
+        return false;
+    }
+
+    char *m_name;   // 0x0
+    unsigned int m_value : 16;   // 0x4
+};
+
+/* the network's byte at 0x109: whether its configuration is required (the name ours) */
+extern "C" unsigned char data_0045A1C9;
+
+/* the front end set up (OVL1 0x1F4860: SOCOM 1's, grown): skipped straight to the load state when
+ * asked; the reader archive opened, the menu strings, the texture buffers, the "ui" world and its
+ * camera, the UI, the keyboard and font libraries, the menu, the relocator, the sounds and banks,
+ * the UI's ZAnim archive; the frame's sync set, the IOP's reboot callback registered and the
+ * NETCNF_REQUIRED valve set from the network's flag. Byte-exact (round 35): the sound file read
+ * twice, the second time into a reader of its own (rdr2, s3) with the selection defined after it
+ * (s2) -- reusing the first reader's variable trades the three saved registers */
+bool CMenuState::Init()
+{
+    func_0030E340(&theNetwork);
+    CInput::Flush();
+    if (m_skip) {
+        theGame.Switch(&theGame.m_loadState, 0);
+        return true;
+    }
+
+    zar::CZAR *zar = CRdrArchive::AddArchive("readerc.zar", "run/ui");
+
+    if (zar)
+        zar->ReOpen(data_003F7020, 1);
+    GetStringTables()->Load("UIMn", GetLanguage());
+    zdb::CTexManager::m_texmanager.doSetupBuffers();
+    LoadWorld("ui");
+
+    zdb::CWorld *world = zdb::CWorld::m_world;
+
+    if (world) {
+        zdb::CCamera *camera = world->m_camera;
+
+        if (camera) {
+            ((zdb::CNode *)camera)->SetPosition(320.0f, 0.0f, 320.0f);
+            camera->GetLandmarkFarPlane(world);
+            camera->Update(zdb::ZCAM_TYPE_0);
+            thePipe.m_camera = camera;
+            zdb::CVisual::m_camera = camera;
+        }
+    }
+    ZuiInit();
+    g_pSkbLib = zdb::CAssetMgr::GetLoadedLibRef("ui/assetlib/uisk");
+    HookupLib(g_pSkbLib);
+    zdb::CAssetMgr::GetLoadedLibRef("common/assetlib/font");
+    m_menu = new CMenuStateMenu;
+    g_relocDblBuf.Init();
+
+    _zrdr *rdr = zrdr_read("uisounds.rdr", "data/common/dialog", 0);
+
+    if (rdr) {
+        _zrdr *sounds = zrdr_findtag(rdr, "SOUNDS");
+
+        if (sounds) {
+            TtySoundString = zrdr_findstring(sounds, "TELETYPE");
+            BackSoundString = zrdr_findstring(sounds, "BACK");
+        }
+        zrdr_free((CRdrFile *)rdr);
+    }
+    func_00344090("sounds.rdr", "HUDUI");
+    func_00344090("sounds.rdr", "SMUS");
+    func_00344090("sounds.rdr", "UIVOICE");
+    func_003448E0("UI");
+    animfile = 0;
+    animfile = ZAnim.OpenZAR("run/uizanim.zar");
+    m_menu->Init((zdb::CTextureRelocMgr *)&g_relocDblBuf, animfile);
+
+    _zrdr *rdr2 = zrdr_read("uisounds.rdr", "data/common/dialog", 0);
+    const char *selection = 0;
+
+    if (rdr2) {
+        _zrdr *sounds = zrdr_findtag(rdr2, "SOUNDS");
+
+        if (sounds) {
+            TtySoundString = zrdr_findstring(sounds, "TELETYPE");
+            BackSoundString = zrdr_findstring(sounds, "BACK");
+            selection = zrdr_findstring(sounds, "SELECTION");
+        }
+    }
+    SelectionSound = CSnd::GetSoundByName(selection ? selection : "");
+    if (rdr2)
+        zrdr_free((CRdrFile *)rdr2);
+    if (m_menu)
+        func_00369880(m_menu);
+    thePipe.m_714 = 1;
+    zSysFifoSetSync(true);
+    zVid.m_7d = 0;
+    zVid_Sync0();
+    m_skip_swap = 0;
+    func_0039D8C0();
+    m_iopregh = theIOPManager.RegisterRebootCallback(func_001F53D0, 0);
+    CValve::Create("NETCNF_REQUIRED", VALVE_TEMP)->SetValue(data_0045A1C9);
+    return true;
 }
 
 /* a frame of the menus: the film, input, sound, the menu ticked, the network's messages shown,
