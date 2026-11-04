@@ -51,14 +51,22 @@ static inline int GetRdrArrayInt(_zrdr *rdr, int i)
 
 /* ten bitmaps with their nodes: a row of the keyboards' shared keys (the name ours: its implicit
  * constructor and destructor, 0x398AA0 and 0x398A40, build and destroy the ten through zui_skb.cpp's
- * CBmpWithNode copies) */
+ * CBmpWithNode copies). The rows are walked `s_keyRows[i][j]`, through the two reference-returning
+ * operator[]s (the UI's round 22): the nested accessors are what make MW enter each inner loop at its
+ * bottom test through a preheader laid after the return path -- the shape of every row walk in the
+ * unit (0x394520, 0x395140, 0x395540, 0x3958D0, 0x396F30, 0x397070); the members spelled out, MW
+ * rotates the loop knowing j = 0 (round 21's forms, all short) */
 struct CSkbBmpRow {
+    CBmpWithNode &operator[](int j) { return m_bmps[j]; }
+
     CBmpWithNode m_bmps[10];
 };   // 0x6e0 bytes
 
 /* the four rows (the name ours: the initialiser inlines the implicit constructor, __construct_array
  * over the rows, and registers the implicit destructor 0x3989E0) */
 struct CSkbBmpRows {
+    CSkbBmpRow &operator[](int i) { return m_rows[i]; }
+
     CSkbBmpRow m_rows[4];
 };   // 0x1b80 bytes
 
@@ -221,44 +229,48 @@ SKBKEY SkbPadKeyEvent(CPad *pad)
     return SKBKEY_NONE;
 }
 
-/* a look's piece list by index (ours: the look's lists read through a byte index) */
+/* a look's piece list by index (ours: the look's lists read through a byte index; through a pointer
+ * to the lists, so the index is added before the look -- `look->m_sources[i]` adds the look first, as
+ * an inline CSkbLook member does too) */
 static inline CSkbBgPieces &SkbPieces(CSkbLook *look, unsigned char i)
 {
-    return look->m_sources[i];
+    CSkbBgPieces *s = look->m_sources;
+
+    return s[i];
 }
 
 /* the shared key bitmaps given their textures: the two bitmaps 6 and 7 theirs, and row i's ten keys
  * list i's handles in turn, each key's UVs the part of its texture that piece i of the look's list i
- * takes (0x395140; the name ours).
- * OPEN, 0x194 against 0x1B0 (written round 21): SkbForgetDisplay's loop shape -- the target enters
- * the inner loop at its bottom test (`b` to a preheader MW lays out after the return path, holding
- * the hoisted piece list's address -- the inline's second `andi` -- and the bitmap pointer's start,
- * then `b` to the test), the counter zeroed in the outer body's first block; every form here is
- * rotated (MW threads the entry jump knowing j = 0): a while loop, the counter declared outside or
- * first, ++j, an explicit `goto test; do ... while`, the bound through an inline, the piece list
- * read inside the inner loop (hoisted) -- all 0x194. The texture's sizes convert as ints, the height
- * first, as the target's; the target also steps `lists` by 12 in s4 where this indexes it */
+ * takes (0x395140; the name ours). Byte-exact since the UI's round 22: the bitmap read `s_keyRows[i][j]`
+ * (the rows' operator[]s: the inner loop entered at its bottom test, as SkbForgetDisplay's), list i a
+ * reference local (the s4 stepped by 12 numbered between i and j), the row index narrowed into a byte
+ * local in the outer body (its `andi`, then the piece list's own in the hoisted preheader), the piece a
+ * reference local read in place -- a reference to its rectangle renumbers the address and the two
+ * positions (a3/a1/a2) -- and the texture's sizes converted in each argument (named float locals take
+ * $f2/$f3 the other way round, or load the width first) */
 void SkbSetKeyTextures(zdb::CTexHandle *tex6, zdb::CTexHandle *tex7, std::vector<zdb::CTexHandle *> *lists,
                        CSkbLook *look)
 {
     s_bmp6.m_pTexHandle = tex6;
     s_bmp7.m_pTexHandle = tex7;
     for (int i = 0; i < 4; i++) {
-        CSkbBgPieces &pieces = SkbPieces(look, i);
+        std::vector<zdb::CTexHandle *> &list = lists[i];
+        unsigned char k = i;
 
         for (int j = 0; j < 10; j++) {
-            CBmpWithNode &bmp = s_keyRows.m_rows[i].m_bmps[j];
-            zdb::CTexHandle *h = j < lists[i].size() ? lists[i][j] : 0;
+            CBmpWithNode &bmp = s_keyRows[i][j];
+            zdb::CTexHandle *h = j < list.size() ? list[j] : 0;
 
             bmp.m_pTexHandle = h;
             zdb::CTexture *tex = h ? h->m_texture : 0;
 
             if (tex) {
-                const CSkbRect &r = pieces[j].m_source;
-                float ht = (int)tex->m_height, w = (int)tex->m_width;
+                CSkbBgPiece &piece = SkbPieces(look, k)[j];
 
-                bmp.SetUV(r.m_pos[0] / w, r.m_pos[1] / ht, (r.m_pos[0] + r.m_size[0]) / w,
-                          (r.m_pos[1] + r.m_size[1]) / ht);
+                bmp.SetUV(piece.m_source.m_pos[0] / (float)(int)tex->m_width,
+                          piece.m_source.m_pos[1] / (float)(int)tex->m_height,
+                          (piece.m_source.m_pos[0] + piece.m_source.m_size[0]) / (float)(int)tex->m_width,
+                          (piece.m_source.m_pos[1] + piece.m_source.m_size[1]) / (float)(int)tex->m_height);
             }
         }
     }
@@ -485,13 +497,9 @@ void SkbPlaceCursor(CSkbKeyProps *props)
 
 /* every node the display holds forgotten: the bitmaps', the key rows' (through the bitmaps'
  * SetNode), the sounds, the display's root node, the caption's node and text (0x396F30, from
- * InvalidateSkbsDisplay; the name ours).
- * OPEN, 6 instructions short (0x11C of 0x134): the target enters the inner loop at its bottom test
- * through two jumps -- the counter zeroed in the outer body's first block, the bitmap pointer set in
- * a block MW put after the return path -- with two delay slots left empty, where every form here
- * rotates it into a do-while (the trip count known). Tried: a reference local for the row, a while
- * loop, the counter declared outside, `&m_bmps[0] + j`, the row's loop as an inline member, an
- * inline taking the count as a parameter: all 0x11C */
+ * InvalidateSkbsDisplay; the name ours). Byte-exact since the UI's round 22: the key rows walked
+ * through both rows' operator[]s, which keep the inner loop's entry at its bottom test (one accessor
+ * alone, a row reference, a while loop or the counter declared outside all rotate it: 0x11C) */
 void SkbForgetDisplay()
 {
     s_bmp1.m_node = 0;
@@ -501,7 +509,7 @@ void SkbForgetDisplay()
     s_bmp7.m_node = 0;
     for (int i = 0; i < 4; i++)
         for (int j = 0; j < 10; j++)
-            s_keyRows.m_rows[i].m_bmps[j].Slot10(0);
+            s_keyRows[i][j].Slot10(0);
     s_bmp0.m_node = 0;
     s_bmp5.m_node = 0;
     s_bmp4.m_node = 0;
