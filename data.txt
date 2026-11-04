@@ -687,6 +687,8 @@
 0x00405440 0x70 __vt__11CZNewHudMap  # vtable of CZNewHudMap: found by its RTTI's name
 0x00405520 0x1C __vt__15CZMPBombMapItem  # vtable of CZMPBombMapItem: found by its RTTI's name
 0x00405540 0x1C __vt__9CZLineMap  # vtable of CZLineMap: found by its RTTI's name
+0x00405560 0x14 __vt__6CPtItr  # OVL1 data; the HUD lane round 35: SOCOM 1's CPtItr's vtable (RTTI 0x3E4420, three pure slots: Advance, GetPt, IsValid), stored by its constructor 0x20F5A0 (1 reference); hud_linemap.cpp
+0x00405580 0x14 __vt__Q225@unnamed@hud_linemap_cpp@12CAiLinePtItr  # OVL1 data; the HUD lane round 35: CAiLinePtItr's vtable (RTTI 0x3E4468: Advance 0x2107C0, GetPt 0x210A70, IsValid 0x20F1C0), stored by its inlined constructor in SetupPolygon 0x20EF50; hud_linemap.cpp
 0x004055A0 0x70 __vt__14BitmapReticule  # vtable of BitmapReticule: found by its RTTI's name
 0x00405610 0x70 __vt__10CWeaponSel  # vtable of CWeaponSel: found by its RTTI's name
 0x00405680 0x70 __vt__10CTeamNames  # vtable of CTeamNames: found by its RTTI's name
@@ -934,6 +936,7 @@
 0x0040BEF0 0x4 m_mpbombtex__15CZMPBombMapItem  # OVL1 bss; SOCOM 1's static (gp-25036 in the demo, which SOCOM 1's CHUD::ReleaseHUD zeroes last, after m_claymoretex, as SOCOM II's does here): 3 references in 3 functions (CHUD::ReleaseHUD, CZNewHudMap::InitMap, CZMPBombMapItem::Tick)
 0x0040BF40 0x10 g_mapLineProps__25@unnamed@hud_linemap_cpp@  # OVL1 bss; SOCOM 1's static (its symbol table: hud_linemap.cpp's unnamed namespace, a std::map<int, LINE_DATA>): the line types by id -- hudAddLineType reads it through operator[], the unit's initialiser 0x3FE190 builds it and registers ~map (0x2110F0)
 0x0040BF60 0x10 g_mapPolyProps__25@unnamed@hud_linemap_cpp@  # OVL1 bss; SOCOM 1's static (its symbol table: hud_linemap.cpp's unnamed namespace, a std::map<int, LINE_DATA>): the polygon types by id -- hudAddPolyType reads it through operator[], built and registered by 0x3FE190 after the line types
+0x0040BF70 0x4 g_pLineMap__25@unnamed@hud_linemap_cpp@  # OVL1 bss; the HUD lane round 35: the line map there is (SOCOM II's, the name ours): set by CZLineMap's constructor 0x210030, cleared by its destructor 0x20FCF0 (2 references); hud_linemap.cpp
 0x0040BF80 0x20 m_pi__9CZLineMap  # OVL1 bss; SOCOM 1's static member (its symbol table: CZLineMap::m_pi, 32 bytes: two CPnt4Ds, the clipper's points in), built by __sinit_hud_linemap.cpp through __construct_array (the HUD lane, round 31) -- 18 references in 2 functions: Clip x17, the initialiser
 0x0040BFA0 0x20 m_rgbi__9CZLineMap  # OVL1 bss; SOCOM 1's static member (CZLineMap::m_rgbi, two CPnt4Ds: the colours in), built by __sinit_hud_linemap.cpp (the HUD lane, round 31) -- 19 references in 2 functions: Clip x18, the initialiser
 0x0040BFC0 0x20 m_uvi__9CZLineMap  # OVL1 bss; SOCOM 1's static member (CZLineMap::m_uvi, two CPnt4Ds: the UVs in), built by __sinit_hud_linemap.cpp (the HUD lane, round 31) -- 20 references in 2 functions: Clip x19, the initialiser
