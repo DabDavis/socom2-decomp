@@ -5700,7 +5700,7 @@
 0x00326F50 0x58 Recycle__Q28Particle20Destruction_InstanceFv  # OVL1; the rdr lane: slot 0x14 of Destruction_Instance's table (0x4069E0), the same onto its own pool (0x488468)
 0x00326FB0 0x40 func_00326FB0  # OVL1
 0x00326FF0 0x140 FreeInstances__8ParticleFv  # OVL1; the rdr lane: SOCOM II's (the name ours): Instance::list's dead recycled (0x3280A0), then both pools popped and deleted, ~Instance and ~Destruction_Instance inlined; Particle::Close calls it after the two Uninits
-0x00327130 0x9C func_00327130  # OVL1
+0x00327130 0x9C SetVisual__Q28Particle20Destruction_InstanceFPQ23zdb7CVisual  # OVL1; by hand (the world lane r11, zparticle_instance.cpp: SOCOM II's -- the two callers (DestructionManager 0x322800 and 0x322DF0) call it on the piece Create 0x327620 returns, with the visual SOCOM 1's Create took as an argument; it adds the visual to the piece's node, sets the node's transparent bit from the visual's flags, copies the opacity and activates the node; the name ours)
 0x003271D0 0x38C Tick__Q28Particle20Destruction_InstanceFf  # OVL1; s1:align
 0x00327560 0x4C Render__Q28Particle20Destruction_InstanceFRC7CMatrix  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x003275B0 0x70 func_003275B0  # OVL1
