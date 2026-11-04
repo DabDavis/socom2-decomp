@@ -27,7 +27,7 @@
  *
  *  - the BSD calls (GCC round 21a): socket 0x1C2B90, bind 0x1C2CD8, connect 0x1C2DD0, listen 0x1C3120
  *    (a libinet listener per backlog slot, 0x1C2F38), send/recv 0x1C3660/0x1C3810, sendto/recvfrom
- *    0x1C39B0/0x1C3B20, close 0x1C3CE8, and around them the thread's buffer resize 0x1C2648, its
+ *    0x1C39B0/0x1C3B20, close 0x1C3CE8, accept 0x1C32A8 (OPEN), and around them the thread's buffer resize 0x1C2648, its
  *    context's drop 0x1C2A98, the send side's lazy open 0x1C35A0, an option setter 0x1C4088, the
  *    abort 0x1C4C20; each takes the thread's context with the lock,
  *    releases the lock around every libinet call (func_001C2140 ... func_001C20D8) and returns
@@ -61,6 +61,9 @@
  *   size held from the start, the merges reuse the adjacency sums -- the walk's shape is not yet the
  *   target's); func_001C2028, the heap's set-up (right size, 34: the first `return -1` is the one
  *   the second test jumps back to, and nine stores in another order -- not yet permuted);
+ *   func_001C32A8, accept (10 words, right size: the peer address's pointer and libnet's client
+ *   address trade s5/s6 -- global-alloc's priorities; four spellings alike, gen_accept.py; the
+ *   lists' pushes and unlinks, the gotos' layout and every store as the target's);
  *   func_001C46D0, getsockname/getpeername (4 words, right size: the target materialises the 16
  *   for *namelen in v0 after the port's sh, this compile in v1 before it; two spellings alike);
  *   func_001C48A0, gethostbyname (0x178 against 0x180: the target keeps each error path's
@@ -360,8 +363,8 @@ typedef struct _sock {
 	sceInetParam_t param;	/* 0x10 */
 	struct _sock *conn;	/* 0x50: its connections */
 	struct _sock *ctail;	/* 0x54: the last of them */
-	struct _sock *pend;	/* 0x58 */
-	int pad5c;
+	struct _sock *pend;	/* 0x58: accepted, not yet open */
+	struct _sock *ptail;	/* 0x5C */
 	int opt60;		/* 0x60 */
 	int opt64;		/* 0x64 */
 	int opt68;		/* 0x68 */
@@ -1263,4 +1266,119 @@ int func_001C46D0(int id, struct sockaddr_in *name, int *namelen, int peer)
 	name->sin_port = func_001C24B0(port);
 	*namelen = sizeof(struct sockaddr_in);
 	return func_001C2310(c, 0);
+}
+
+/* accept(): the first slot taken off the listening socket's list and opened (-507 is no error),
+ * a new slot made in its place, the peer's address read back; a failure unlinks it again */
+int func_001C32A8(int id, struct sockaddr_in *addr, int *addrlen)
+{
+	CTX *c;
+	SOCK *s, *t;
+	int r;
+	sceInetInfo_t info;
+
+	c = func_001C2160(0);
+	if (c == 0)
+		return -1;
+	if (*addrlen < sizeof(struct sockaddr_in))
+		return func_001C2310(c, 22);
+	s = func_001C23D8(id);
+	if (s == 0)
+		return func_001C2310(c, 9);
+	if (s->param.type != 2)
+		return func_001C2310(c, 95);
+	t = s->conn;
+	if (t == 0)
+		return func_001C2310(c, -1);
+	s->conn = t->next;
+	if (s->conn)
+		t->next->prev = 0;
+	else
+		s->ctail = 0;
+	t->next = s->pend;
+	if (t->next)
+		t->next->prev = t;
+	else
+		s->ptail = t;
+	t->prev = 0;
+	s->pend = t;
+	func_001C2140();
+	r = sceInetOpen(c->client, c->abuf, t->cid, -1);
+	if (func_001C20D8() < 0) {
+		r = -1;
+		goto unpend;
+	}
+	if (r < 0 && r != -507) {
+		r = func_001C24D0(r);
+		goto unpend;
+	}
+	{
+		SOCK *n = t->next;
+
+		if (t->prev)
+			t->prev->next = n;
+		else
+			s->pend = n;
+	}
+	if (t->next)
+		t->next->prev = t->prev;
+	else
+		s->ptail = t->prev;
+	t->next = data_001CE630;
+	if (data_001CE630)
+		data_001CE630->prev = t;
+	else
+		data_001CE634 = t;
+	t->prev = 0;
+	data_001CE630 = t;
+	r = func_001C2F38(c, s);
+	if (r)
+		goto unlist;
+	func_001C2140();
+	r = sceInetControl(c->client, c->abuf, t->cid, 1, &info, sizeof(info));
+	if (func_001C20D8() < 0) {
+		r = -1;
+		goto unlist;
+	}
+	if (r < 0) {
+		r = func_001C24D0(r);
+		goto unlist;
+	}
+	addr->sin_family = 2;
+	func_001C2458(&addr->sin_addr, &info.remote_adr);
+	addr->sin_port = func_001C24B0(info.remote_port);
+	*addrlen = sizeof(struct sockaddr_in);
+	func_001C2310(c, 0);
+	return t->id;
+unpend:
+	{
+		SOCK *n = t->next;
+
+		if (t->prev)
+			t->prev->next = n;
+		else
+			s->pend = n;
+	}
+	if (t->next)
+		t->next->prev = t->prev;
+	else
+		s->ptail = t->prev;
+	goto close;
+unlist:
+	{
+		SOCK *n = t->next;
+
+		if (t->prev)
+			t->prev->next = n;
+		else
+			data_001CE630 = n;
+	}
+	if (t->next)
+		t->next->prev = t->prev;
+	else
+		data_001CE634 = t->prev;
+close:
+	sceInetClose(c->client, c->abuf, t->cid, 0);
+	func_001C1D08(t);
+	return func_001C2310(c, r);
 }
