@@ -8,8 +8,12 @@
  * The client data and the buffer are the object's own .bss, spelled by address here (data_<VA>).
  * Its init (0x18FD10: the three binds and the version check), end (0x18FF50) and version query
  * (0x18FCB8) keep placeholders (they print no name; sceDbcInit/sceDbcEnd by the API, not proven).
- * Not written: sceDbcGetDepNumber and 0x1902B0 (interrupts off around a cache sync), the send and
- * receive-and-send calls (sceDbcSRData, sceDbcSendData, SendData2, SendData3). */
+ * Not written: sceDbcGetDepNumber and 0x1902B0 (interrupts off around a cache sync), the
+ * receive-and-send call and the two later sends (sceDbcSRData, SendData2, SendData3).
+ * GCC r24a: a copy loop's base is assigned inside the loop (loop.c hoists it into the preheader,
+ * where combine cannot fold it into the store), and the create request's two buffers are pointers
+ * (their stores alias no int load under strict aliasing): CreateSocket, SendData and ReceiveData,
+ * open since r12a/r22a, are byte-exact so. */
 
 typedef struct { int a[10]; } sceSifClientData;
 extern int sceSifCallRpc(sceSifClientData *cd, unsigned int fno, unsigned int mode, void *send, int ssize,
@@ -134,31 +138,44 @@ int sceDbcSetWorkAddr(int addr)
 	return data_001D62C0[0];
 }
 
-/* OPEN (40 words, the size short): the target keeps the buffer's base in s0 from its first store,
- * copies the parameter's five words with a1 and a2 stored between and the name byte by byte through
- * base pointers made before the loop; neither the buffer indexed nor a struct pointer over it (as
- * here) gives that allocation. */
-int sceDbcCreateSocket(sceDbcSocketParam *p, int a1, int a2)
+/* Function 0x80001301's request: the socket's parameters, the reply word, and the caller's two
+ * buffers -- DMA addresses (libpad2's 0x1BD630 passes one it checks for 64-byte alignment, and that
+ * one + 128). */
+typedef struct {
+	sceDbcSocketParam param;	/* 0: copied in, its name byte by byte */
+	int result;			/* 36: the reply */
+	void *buf0;			/* 40 */
+	void *buf1;			/* 44 */
+} sceDbcCreateRequest;
+
+/* The request built in the buffer through a pointer taken after the init test, which also reads
+ * the reply (it holds the base in s0 from its first store, the name copied through bases loop.c
+ * hoists). GCC r24a, open since r12a (40 words, then 2): the two buffers are POINTERS -- under strict
+ * aliasing their stores alias no int load, so the parameter's second word is loaded right after the
+ * first buffer's store (an int store there makes that load wait two cycles behind it, and i = 0
+ * takes its place). */
+int sceDbcCreateSocket(sceDbcSocketParam *p, void *buf0, void *buf1)
 {
-	sceDbcSocketParam *s = (sceDbcSocketParam *)data_001D62C0;
+	sceDbcCreateRequest *r;
 	int i;
 
 	if (data_001CC410 == 0)
 		return 0;
-	s->f0 = p->f0;
-	data_001D62C0[10] = a1;
-	data_001D62C0[11] = a2;
-	s->f4 = p->f4;
-	s->f8 = p->f8;
-	s->f12 = p->f12;
-	s->f16 = p->f16;
+	r = (sceDbcCreateRequest *)data_001D62C0;
+	r->param.f0 = p->f0;
+	r->buf0 = buf0;
+	r->buf1 = buf1;
+	r->param.f4 = p->f4;
+	r->param.f8 = p->f8;
+	r->param.f12 = p->f12;
+	r->param.f16 = p->f16;
 	for (i = 0; i < 16; i++)
-		s->name[i] = p->name[i];
+		r->param.name[i] = p->name[i];
 	if (sceSifCallRpc(&data_001D6248, 0x80001301, 0, data_001D62C0, 640, data_001D62C0, 640, 0, 0) < 0) {
 		func_00190BA0("sceDbcCreateSocket: rpc error\n");
 		return 0;
 	}
-	return data_001D62C0[9];
+	return r->result;
 }
 
 int sceDbcDeleteSocket(int s)
@@ -223,11 +240,12 @@ extern int SignalSema(int sema);
 /* Function 0x80001319, under the library's semaphore: the data copied in after the size; the size
  * written back from the reply when its result is not negative. The buffer's address is taken
  * after the wait (its first store goes through the %lo, the rest through the register: as a local
- * initialised at its declaration it is held across WaitSema).
- * OPEN (right size, 21 words; GCC r22a): the buffer's base takes s3 and the size pointer s2 here,
- * the other way round in the target, whose `i = 0` sits in the size test's delay slot and whose
- * copy runs through a base made in the loop's preheader (`addiu a2,s2,12`); copying through
- * `((char *)&p[3])[i]` instead folds the 12 into the store (`sb v1,12(a0)`, 0x124). */
+ * initialised at its declaration it is held across WaitSema). The copy's base is assigned inside
+ * the loop (GCC r24a; open since r22a, 21 words): loop.c hoists it into the preheader -- the
+ * target's `addiu a2,s2,12` after the size test, whose delay slot then takes `i = 0` -- where
+ * combine, which runs after loop.c, cannot fold it into the store; assigned before the loop it is
+ * the test's delay slot and the buffer's base and the size pointer swap s2/s3, and copying
+ * through `((char *)&p[3])[i]` folds the 12 into the store (`sb v1,12(a0)`, 0x124). */
 int sceDbcSendData(int s, int a1, int *size, char *buf)
 {
 	unsigned int *p;
@@ -239,9 +257,10 @@ int sceDbcSendData(int s, int a1, int *size, char *buf)
 	p[0] = s;
 	p[1] = a1;
 	p[2] = *size;
-	d = (char *)&p[3];
-	for (i = 0; i < *size; i++)
+	for (i = 0; i < *size; i++) {
+		d = (char *)&p[3];
 		d[i] = buf[i];
+	}
 	if (sceSifCallRpc(&data_001D6248, 0x80001319, 0, data_001D62C0, 640, data_001D62C0, 640, 0, 0) < 0) {
 		func_00190BA0("sceDbcSendData: rpc error\n");
 		SignalSema(data_001D9800);
@@ -258,21 +277,26 @@ int sceDbcSendData(int s, int a1, int *size, char *buf)
  * keeps the buffer's %hi in a fourth saved register. */
 int sceDbcReceiveData(int s, int a1, int *size, char *buf)
 {
+	unsigned int *p;
+	char *d;
 	int i;
 
-	data_001D62C0[0] = s;
-	data_001D62C0[1] = a1;
-	data_001D62C0[2] = *size;
-	if (sceSifCallRpc(&data_001D6248, 0x8000131A, 0, data_001D62C0, 640, data_001D62C0, 640, 0, 0) < 0) {
+	p = data_001D62C0;
+	p[0] = s;
+	p[1] = a1;
+	p[2] = *size;
+	if (sceSifCallRpc(&data_001D6248, 0x8000131A, 0, p, 640, p, 640, 0, 0) < 0) {
 		func_00190BA0("sceDbcReceiveData: rpc error\n");
 		return 0;
 	}
-	if ((int)data_001D62C0[131] >= 0) {
-		*size = data_001D62C0[2];
-		for (i = 0; i < (int)data_001D62C0[2]; i++)
-			buf[i] = ((char *)&data_001D62C0[3])[i];
+	if ((int)p[131] >= 0) {
+		*size = p[2];
+		for (i = 0; i < (int)p[2]; i++) {
+			d = (char *)&p[3];
+			buf[i] = d[i];
+		}
 	}
-	return data_001D62C0[131];
+	return p[131];
 }
 
 void func_00190BA0(const char *fmt, ...)
