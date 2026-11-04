@@ -664,20 +664,20 @@ int CZNetwork::zNetJoin(NetCreateObjectCallback join, NetCreateObjectCallback le
     return err;
 }
 
-/* the connection's object count, -1 when it cannot be had (the name ours) */
+/* the connection's object count, -1 when it cannot be had (the name ours). The success arm first:
+ * MW lays the count's load on the fall-through and retargets the branch past the -1, which goes
+ * into its delay slot (`bnez v0,join; li v1,-1; lw v1,n`) -- `f() ? -1 : n` lays the -1 arm first
+ * (beqz, b: 8 bytes longer), and `!f() ? n : -1` does too: only `f() == 0` gives the target's (the
+ * online lane's round 17) */
 inline int ObjectCount(int conn)
 {
     int n = -1;
 
-    return func_00622CC0(&n, conn) ? -1 : n;
+    return func_00622CC0(&n, conn) == 0 ? n : -1;
 }
 
 /* a network object made, unless the game connection holds 256 already (8 then); a failure
- * handed to the lobby's recovery (SOCOM 1's; OVL1 0x30D670).
- * OPEN, 2 instructions long: the target counts in the if-assign shape (`li v1,-1` in the branch's
- * delay slot, the count loaded on the fall-through), where every spelling tried -- the inline's
- * early return, a ternary returned or assigned to a declared local, `r = -1; if (!f()) r = n;`,
- * the same written in place -- gives the ternary's two arms (beqz, b) or longer */
+ * handed to the lobby's recovery (SOCOM 1's; OVL1 0x30D670) */
 int CZNetwork::zNetCreateObject(int *index, NetOwnershipStatus own, NetObjectLifespan life,
                                 unsigned int a, int b, unsigned int c, int d, void *data, char *name,
                                 int e)
