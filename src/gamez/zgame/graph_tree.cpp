@@ -128,6 +128,14 @@ CGEdge *CGraph::m_treeEdge;
 CGNode *CGraph::m_treeNode;
 CGTree *CGraph::m_leafTree;
 
+/* the trees' pool (SOCOM 1's CGTreePool and its file static _pool, a 12-byte list): nothing in
+ * SOCOM II reads it -- its initialiser __sinit_graph_tree.cpp 0x401C80 builds the list in place
+ * and registers ~CGTreePool 0x2D2830, the unit's last function, as SOCOM 1's does */
+class CGTreePool : public std::list<CGTree *> {
+};
+
+static CGTreePool _pool;
+
 /* a child destroyed, its slot left null (SOCOM 1's _release_tree, std::transform's operation;
  * absent from SOCOM II's image, inlined wherever it is used) */
 static CGTree *_release_tree(CGTree *tree)

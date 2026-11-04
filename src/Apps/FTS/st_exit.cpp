@@ -3,6 +3,8 @@
 
 #include "fts_state.h"
 
+#include <iostream>
+
 /* unnamed yet (SOCOM 1's names in the comments) */
 extern "C" {
 void func_003654C0(CGameMenu *menu, float dT);   /* CGameMenu::Tick */
