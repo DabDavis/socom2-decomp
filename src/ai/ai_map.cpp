@@ -546,22 +546,14 @@ inline bool _over_box(const CBBox &b, const CPnt3D *pos)
     return r;
 }
 
-/* whether the cell's row is on the map: the halfword bitfield compared signed (the name ours) */
-inline bool _on_rows(const CAiMapLoc &loc, unsigned int ny)
-{
-    return loc.y >= 0 && loc.y < ny;
-}
-
 /* the cell under a point (SOCOM 1's GetLocation(CPnt3D *, loc), the demo's 0x19B0F0: the box test
  * in x and z, the offsets scaled by the inverse cell sizes and truncated on VU0 in place, the cell
  * stored field by field -- SOCOM II gives it the map's id where SOCOM 1 gave 0 -- and whether the
- * cell is on the map; 0x515F80, after SetCorners, which 0x515900 calls twice).
- * OPEN, 2 instructions long (0x1A0 against 0x198; the AI core round 22, build/scratch/ai/v_gl*.py):
- * the box tests, the VU0 truncation and the cell's stores are the target's; the row test is not --
- * MW loads m_ny ahead of the `bltz` and narrows the materialised bool (andi 0xff) before the column
- * test, where the target loads m_ny at its compare and branches on the bool unnarrowed. Tried: the
- * count by value, by reference and through the map; the y store narrowed or not; the box tests
- * by value (0x1B0), `lo <= v` (loads swap), `!(v < lo)` (0x1D0) */
+ * cell is on the map; 0x515F80, after SetCorners, which 0x515900 calls twice). The row (the
+ * halfword bitfield compared signed) and column tests each set a bool local of their own, the
+ * _over_box shape written in place: byte-exact since the AI core's round 23 -- the row test through
+ * an inline loaded m_ny ahead of the `bltz` and narrowed its bool (0x1A0 against 0x198, round 22),
+ * one result local (`on && ...` returned) was 0x190 */
 bool CAiMap::GetLocation(const CPnt3D *pos, CAiMapLoc &loc) const
 {
     bool inside = _over_box(m_bbox, pos);
@@ -580,7 +572,14 @@ bool CAiMap::GetLocation(const CPnt3D *pos, CAiMapLoc &loc) const
         loc.x = ((int *)p)[0];
         loc.y = (unsigned short)((int *)p)[1];
         loc.m_mapid = (unsigned char)GetMapId();
-        return _on_rows(loc, m_ny) && loc.x < m_nx;
+        bool on = false;
+        bool ret = false;
+
+        if (loc.y >= 0 && loc.y < m_ny)
+            on = true;
+        if (on && loc.x < m_nx)
+            ret = true;
+        return ret;
     }
     return false;
 }

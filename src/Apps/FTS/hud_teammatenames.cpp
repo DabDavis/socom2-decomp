@@ -96,7 +96,7 @@ public:
  * the width the sum's right operand while it is loaded first, as the target has it */
 static inline float StringWidth(const C2DString *s)
 {
-    return s->m_charheight;
+    return s->m_length;
 }
 
 /* whether a rectangle overlaps a string's: its corner the position (12.4 fixed point) moved by

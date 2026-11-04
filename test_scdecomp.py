@@ -131,6 +131,9 @@ def test_mangled_names_spell_their_lengths():
     ck(MC.parses("what__Q23std9bad_castCFv") and MC.suspects("what__Q23std9bad_castCFv", voc),
        "a length one too long that swallows `C` is suspect")
     ck(not MC.parses("__dt__Q23std14length_errorFv"), "a destructor is no static datum")
+    ck(MC.parses("@GUARD@id__Q23std8ctype<w>") and not MC.parses("@GUARD@id__Q23std9ctype<w>"),
+       "a class template static member's guard parses, and its length is still checked")
+    ck(not MC.parses("@LOCAL@id__Q23std8ctype<w>"), "a function-local static still needs its function and name")
 
 
 def test_sweep_finds_the_hard_boundaries():

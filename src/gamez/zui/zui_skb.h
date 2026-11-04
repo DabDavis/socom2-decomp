@@ -373,7 +373,9 @@ struct CSkbLook {
     CSkbBgPieces m_sources[4];   // 0x24: the four background piece lists
     int m_54, m_58, m_5c, m_60, m_64, m_68, m_6c;   // 0x54
     CSkbRect m_rects[5];   // 0x70
-    int m_c0, m_c4, m_c8, m_cc, m_d0, m_d4, m_d8, m_dc;   // 0xc0
+    int m_c0;   // 0xc0
+    float m_c4;   // 0xc4: UserStringLineHeight (a float member: SkbCursorBack 0x399530 reads it plainly)
+    int m_c8, m_cc, m_d0, m_d4, m_d8, m_dc;   // 0xc8
     CSkbCapLook m_caps[3];   // 0xe0
     std::vector<CSaferStr> m_strings;   // 0x14c
 

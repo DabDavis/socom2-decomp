@@ -460,7 +460,7 @@ void CMPInfoBox::Tick(float dT)
         strcpy(text, name);
     m_text.SetString(text, true);
     m_text.UpdatePos();
-    if (m_text.m_charheight > s_namewidth - 4.0f) {
+    if (m_text.m_length > s_namewidth - 4.0f) {
         char cut[64];
 
         strcpy(cut, m_text.m_string + m_text.m_firstCharPos);
