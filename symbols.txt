@@ -1117,10 +1117,10 @@
 0x001BCD30 0x24 _defStopDMA  # MAIN; s1:order (the demo's object 0x15AA18, its first: sceIpuStopDMA(&sys->dmaEnv); the callback sceMpegCreate installs for sceMpegCbStopDMA)
 0x001BCD58 0x24 _defRestartDMA  # MAIN unaligned; s1:order (the demo's object 0x15AA18, its second: sceIpuRestartDMA(&sys->dmaEnv); installed for sceMpegCbRestartDMA)
 0x001BCD80 0xC4 sceSifMInitRpc  # MAIN; s1:exact
-0x001BCE48 0xC func_001BCE48  # MAIN unaligned
-0x001BCE58 0xA8 func_001BCE58  # MAIN unaligned; s1~ _sceRpcGetPacket (one of 2)
-0x001BCF00 0x1C func_001BCF00  # MAIN; s1~ _sceRpcFreePacket (one of 2)
-0x001BCF20 0x108 func_001BCF20  # MAIN; s1~ _request_end (one of 2)
+0x001BCE48 0xC sceSifMExitRpc  # MAIN unaligned; s1:order (the GCC lane r25a: the demo's libmrpc object 0x379AB0 holds sceSifMExitRpc, 0xC, second, after sceSifMInitRpc, as here; clears _sceSifMInitCheck; src/lib/sdk/libmrpc.c)
+0x001BCE58 0xA8 _sceRpcGetPacket@libmrpc  # MAIN unaligned; s1~ _sceRpcGetPacket (one of 2); s1:order (the GCC lane r25a: the demo's libmrpc object's LOCAL _sceRpcGetPacket, 0xA8, third, as here -- sifrpc.c's text over libmrpc's own table; qualified: sifrpc's row holds the bare name; src/lib/sdk/libmrpc.c)
+0x001BCF00 0x1C _sceRpcFreePacket@libmrpc  # MAIN; s1~ _sceRpcFreePacket (one of 2); s1:order (the GCC lane r25a: the demo's libmrpc LOCAL _sceRpcFreePacket, 0x1C, fourth, as here; qualified as sifrpc's; src/lib/sdk/libmrpc.c)
+0x001BCF20 0x108 _request_end@libmrpc  # MAIN; s1~ _request_end (one of 2); s1:order (the GCC lane r25a: the demo's libmrpc LOCAL _request_end, 0x108, fifth, as here: command 0x80000018's handler, which sceSifMInitRpc registers; qualified as sifrpc's; src/lib/sdk/libmrpc.c)
 0x001BD028 0x24 sceSifMBindRpc  # MAIN unaligned; s1:exact
 0x001BD050 0x1AC sceSifMBindRpcParam  # MAIN; s1:callee
 0x001BD200 0x11C sceSifMUnBindRpc  # MAIN; s1:exact
@@ -1654,10 +1654,10 @@
 0x001FDCE0 0xC0 __dt__Q23zdb11CDynTexListFv  # OVL1; ~CDynTexList: registered for m_dyntexlist; zparticle.cpp's copy byte-exact against it (the world lane's round 10, renamed at integration)
 0x001FDDA0 0x70 __dt__Q23std68vector<PQ23zdb11CTexPalette,Q23std31allocator<PQ23zdb11CTexPalette>>Fv  # OVL1; the integrator (the world lane r3's request, vetted): vector<CTexPalette *>'s destructor -- CDynTexList::Free 0x33BAA0 calls it for the palette list; hud_main.cpp's own copy matches here with the name
 0x001FDE10 0x20 SetCanHandleInput__3C2DFb  # OVL1; s1:vtable by hand (C2D's slot 17, inline: the flag's top bit set)
-0x001FDE30 0x74 func_001FDE30  # OVL1
-0x001FDEB0 0x28 func_001FDEB0  # OVL1
-0x001FDEE0 0x240 func_001FDEE0  # OVL1
-0x001FE120 0x6C func_001FE120  # OVL1
+0x001FDE30 0x74 hudToggleHelpWindows__Fv  # OVL1; ours (the HUD lane, round 33: hud_main.cpp -- SOCOM II's: the HelpWindowsEnabled valve set to the other of hudHelpWindowsEnabled (inlined), through the valve's inline setter; the pause menu's call (0x2041E0))
+0x001FDEB0 0x28 hudHelpWindowsEnabled__Fv  # OVL1; ours (the HUD lane, round 33: hud_main.cpp -- SOCOM II's: true unless the HelpWindowsEnabled valve (0x408E30) is there and 0; the pause menu (0x2041E0, 0x204A40) and the score popup (0x22B4A0) call it)
+0x001FDEE0 0x240 hudInit__Fv  # OVL1; s1:calls by hand (the HUD lane, round 33: hud_main.cpp -- SOCOM 1's hudInit, hud.rdr read from data/common and its TacMap's Polygons and Lines fed to hudAddPolyType/hudAddLineType as SOCOM 1's, then SOCOM II's EventPopups/Common to 0x22D3F0, each PopupDefinitions entry to 0x22D660, the file freed, and the HelpWindowsEnabled valve kept at 0x408E30; CMission::Init's call)
+0x001FE120 0x6C FormatStringInt__FPciii  # OVL1; ours (the HUD lane, round 33: hud_main.cpp's last function -- an int printed with "%d" into a 16-byte local and passed as the one argument of c2dstring.cpp's FormatString for a string table id; CWeaponSel::PlaceWeaponText's magazine count calls it with 80 and 0xEC42)
 0x001FE190 0x8 Draw__9C2DStringFRC7CMatrixPQ23zdb16CTextureRelocMgr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x001FE1A0 0xC GetSpacing__9C2DStringFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x001FE1B0 0x20 SetHasTexture__3C2DFb  # OVL1; by hand (C2D's slot 6, inline: the flag's bit 3; the name ours)
@@ -2080,9 +2080,9 @@
 0x0022CC10 0x558 func_0022CC10  # OVL1
 0x0022D170 0x8 func_0022D170  # OVL1
 0x0022D180 0x8 func_0022D180  # OVL1
-0x0022D190 0xE0 func_0022D190  # OVL1
-0x0022D270 0x180 func_0022D270  # OVL1
-0x0022D3F0 0x198 func_0022D3F0  # OVL1
+0x0022D190 0xE0 hudResetPopupTriggers__Fv  # OVL1; ours (the HUD lane, round 33: hud_scorepopup.cpp -- SOCOM II's: the done flags of the by-name (0x412DB0, at 0xC), plain (0x412DD0) and by-map (0x412DF0) message triggers cleared; CHUD::Init and ReInit_Init call it)
+0x0022D270 0x180 hudTriggerPopup__FP12CNamedObject  # OVL1; ours (the HUD lane, round 33: hud_scorepopup.cpp -- SOCOM II's third pop-up trigger, over the by-names records 0x412D90: none in a network game or without an object; a record for this map (GetDatabase) naming the object (the name its first word) opens its message through 0x22B4A0 once; the action icons' 24 calls, 0x21F850; the parameter's type name ours)
+0x0022D3F0 0x198 hudReadPopupCommon__FP5_zrdr  # OVL1; ours (the HUD lane, round 33: hud_scorepopup.cpp -- SOCOM II's: hud.rdr's EventPopups/Common read for the message pop-ups -- TopMargin, LeftMargin, BottomMargin (OVL1 .data 0x3DC8B8, 0x3DC8B0, 0x3DC8A8), PromptText into the CSaferStr 0x412D50, BackgroundOpacity (0x3DC8C0), ForceOpenTime (bss 0x40F618), OpeningSound and ClosingSound into 0x412D10 and 0x412D30; hudInit's one call)
 0x0022D590 0x6C func_0022D590  # OVL1
 0x0022D600 0x60 __dt__Q228@unnamed@hud_scorepopup_cpp@10CHudPopupsFv  # OVL1; by hand (the HUD lane: slot 0 of CHudPopups' vtable 0x405A08, its RTTI's name)
 0x0022D660 0x5E0 func_0022D660  # OVL1
@@ -5702,18 +5702,18 @@
 0x00326FF0 0x140 FreeInstances__8ParticleFv  # OVL1; the rdr lane: SOCOM II's (the name ours): Instance::list's dead recycled (0x3280A0), then both pools popped and deleted, ~Instance and ~Destruction_Instance inlined; Particle::Close calls it after the two Uninits
 0x00327130 0x9C SetVisual__Q28Particle20Destruction_InstanceFPQ23zdb7CVisual  # OVL1; by hand (the world lane r11, zparticle_instance.cpp: SOCOM II's -- the two callers (DestructionManager 0x322800 and 0x322DF0) call it on the piece Create 0x327620 returns, with the visual SOCOM 1's Create took as an argument; it adds the visual to the piece's node, sets the node's transparent bit from the visual's flags, copies the opacity and activates the node; the name ours)
 0x003271D0 0x38C Tick__Q28Particle20Destruction_InstanceFf  # OVL1; s1:align
-0x00327560 0x4C Render__Q28Particle20Destruction_InstanceFRC7CMatrix  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x00327560 0x4C Render__Q28Particle20Destruction_InstanceFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike); the world lane round 12: the signature SOCOM II's (no matrix, as Instance::Render's)
 0x003275B0 0x70 func_003275B0  # OVL1
-0x00327620 0x14C func_00327620  # OVL1
+0x00327620 0x14C Create__Q28Particle20Destruction_InstanceFRC6CPnt4DRC6CPnt4DRC6CPnt3Dfff6CPnt3DPQ28Particle5Props  # OVL1; the world lane round 12: SOCOM 1's Destruction_Instance::Create without its CVisual * -- one off the class pool (0x488468) built in place, else new (116); linked at Instance::list's head (0x48848C); called from the destruction managers 0x322800/0x322DF0; byte-exact from zparticle_instance.cpp
 0x00327770 0x90 __dt__Q28Particle20Destruction_InstanceFv  # OVL1; the rdr lane: Destruction_Instance's destructor (its table stored, the world's DeleteChild on the node at 0x58, then Instance's: its table and the virtual Expire, deleted when the flag is positive); Particle::Close deletes the pooled pieces through it with 1
-0x00327800 0x10C func_00327800  # OVL1
-0x00327910 0x35C Render__Q28Particle8InstanceFRC7CMatrix  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x00327800 0x10C __ct__Q28Particle20Destruction_InstanceFRC6CPnt4DRC6CPnt4DRC6CPnt3Dfff6CPnt3DPQ28Particle5Props  # OVL1; the world lane round 12: SOCOM 1's Destruction_Instance constructor without its CVisual * (SOCOM II hands the visual over in SetVisual): Instance's and Destruction_Instance's tables stored, the base's three links cleared, the props counted, the position/velocity/spin copied, the life's inverse, GetFreeInstance's node, the by-value axis last (116 bytes, Create's new); byte-exact from zparticle_instance.cpp
+0x00327910 0x35C Render__Q28Particle8InstanceFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike); the world lane round 12: the signature SOCOM II's (no matrix: the body never reads a1 and Particle::Render 0x328040, the only caller, sets none -- SOCOM 1's took const CMatrix &)
 0x00327C70 0x58 Expire__Q28Particle8InstanceFv  # OVL1; s1:align (slot 0x08 of Particle::Instance's table 0x406A00; SOCOM 1's Expire calls DecRefCount as this does, and ReleaseInstance, which SOCOM II's leaves to the pool)
-0x00327CD0 0x16C func_00327CD0  # OVL1
+0x00327CD0 0x16C __ct__Q28Particle8InstanceFRC6CPnt4DRC6CPnt4DRC6CPnt3DfffPQ23zdb10CTexHandlePQ28Particle5PropsPQ28Particle6Source  # OVL1; the world lane round 12: SOCOM 1's Particle::Instance constructor (the demo's 0x236F20, the same signature; SOCOM II leaves the CPnt3D unused): Source::Tick calls it twice; the links, texture (8), age (0xC), props (0x40), the first float, the life and its inverse set, position and velocity copied, a rotated source's random angle/spin (its minRot..maxRotAcc at 0x2C-0x38), a streak's start, the props counted; byte-exact from zparticle_instance.cpp
 0x00327E40 0xCC func_00327E40  # OVL1
 0x00327F10 0x58 Recycle__Q28Particle8InstanceFv  # OVL1; the rdr lane: slot 0x14 of Instance's table (0x406A00), new in SOCOM II (the name ours): the virtual Expire, 0x50 cleared, the instance pushed onto m_instance_pool (0x488460)
 0x00327F70 0xC8 RemoveSource__Q38Particle8Instance4ListFPQ28Particle6Source  # OVL1; the rdr lane: SOCOM II's (the name ours): Source's destructor calls it on Instance::list with the dying source, before its properties go
-0x00328040 0x58 func_00328040  # OVL1
+0x00328040 0x58 Render__8ParticleFv  # OVL1; the world lane round 12: SOCOM 1's Particle::Render() (the demo's 0x237130: the draw buffer's count zeroed, each live instance's Render through the vtable) -- SOCOM II walks its own instance links and passes no matrix; RenderWorld calls it; from zparticle_instance.cpp
 0x003280A0 0xCC RemoveDead__Q38Particle8Instance4ListFv  # OVL1; the rdr lane: SOCOM II's (the name ours): the list (head at +0xC, linked through +0x50) walked, every instance whose age (+0xC) has reached its life (+0x48) unlinked and recycled through slot 0x14
 0x00328170 0x140 Tick__Q38Particle8Instance4ListFf  # OVL1; s1:calls by hand (Particle::Tick calls it on Instance::list (0x488480) with dT, right after copying the camera's position, as SOCOM 1's Tick calls Instance::List::Tick) -- the rdr lane
 0x003282B0 0x2C0 Tick__Q28Particle8InstanceFf  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
@@ -6048,8 +6048,8 @@
 0x0033E3D0 0x60 RegisterModule__12CSaveManagerFP11CSaveModule  # OVL1; s1:callee (CSaveModule's constructor calls it where SOCOM 1's calls RegisterModule; pushes the module unless one of its name is there, and sets its manager)
 0x0033E430 0xA0 __dt__12CSaveManagerFv  # OVL1; the UI-widgets/file lane's lead, checked: SOCOM 1's ~CSaveManager -- m_TempBuffer (0x18) deleted and cleared, the list base's three this-tests and range erase, the deleting flag; CMemCard's destructor calls it with 1
 0x0033E4D0 0x40 __ct__12CSaveManagerFP3CIO  # OVL1; s1:exact
-0x0033E510 0x178 func_0033E510  # OVL1
-0x0033E690 0xF4 func_0033E690  # OVL1
+0x0033E510 0x178 sort<Q23std9less<PCv>>__Q23std42__list_deleter<PCv,Q23std14allocator<PCv>>FQ23std9less<PCv>_v  # OVL1; the world lane round 12: SOCOM 1's sort<less<const void *> > of the pointer lists (the demo's 0x3F7D20: two elements swapped in place, more split at the middle, both halves sorted (itself, twice) and merged (0x33E690), the second list's teardown through begin()/end()/erase out of line); the save manager sorts its modules with it; include/list's out-of-class member (OPEN: the teardown)
+0x0033E690 0xF4 merge<Q23std9less<PCv>>__Q23std42__list_deleter<PCv,Q23std14allocator<PCv>>FRQ23std42__list_deleter<PCv,Q23std14allocator<PCv>>Q23std9less<PCv>_v  # OVL1; the world lane round 12: SOCOM 1's merge<less<const void *> > of the pointer lists (the demo's 0x3F7EC0, the same code but its sentinels through the end pair's second() out of line): sort (0x33E510) calls it, it calls splice (0x33E790); include/list's out-of-class member, byte-exact from zsav_manager.cpp's tail
 0x0033E790 0x58 splice__Q23std42__list_deleter<PCv,Q23std14allocator<PCv>>FQ33std42__list_deleter<PCv,Q23std14allocator<PCv>>19generic_iterator<0>RQ23std42__list_deleter<PCv,Q23std14allocator<PCv>>  # OVL1; the MSL headers round 13: the pointer lists' splice(position, x), include/list's (SOCOM 1's 0x1DAF10 shape); vis_texfx.cpp's tail emits it byte-exact (its insert(position, n, x) calls it), 0x33E690 calls this copy
 0x0033E7F0 0x58 Pending__17CLobbySaveManagerFv  # OVL1; ours (the world lane r5, zsav_lobby.cpp: the lobby save manager's transfer test -- the file there and Medius's transfer map 0x450070 empty drops the blob and answers false, else whether there is a file; UICharacterProfile negates it)
 0x0033E850 0x1B4 Load__17CLobbySaveManagerFPCci  # OVL1; ours (the world lane r5, zsav_lobby.cpp: once fsyncAsync(0) is idle, the fetched blob's header version checked against a2, each 40-byte entry handed to the list's modules of its name -- vtable 0xC with the data and size, 0x10 with the file's GetChecksum -- the blob freed and the file closed; UICharacterProfile calls it with (name, 0))
@@ -6690,13 +6690,13 @@
 0x00363B30 0xC8 Tick__9C2DStringFf  # OVL1; s1:align
 0x00363C00 0x8 On__9C2DStringFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00363C10 0x8 Off__9C2DStringFv  # OVL1; s1:callee
-0x00363C20 0x124 func_00363C20  # OVL1
+0x00363C20 0x124 GetCharWidth__9C2DStringFUs  # OVL1; ours (the HUD lane, round 33: c2dstring.cpp -- SOCOM II's, between Off and ClearAndWipe: the font's glyph for a character through a two-word glyph reference on the stack, its width less one at the string's two scales (0x40, 0x78) and the font's (0x34), rounded, plus the font's padding (0x28); 0 without a glyph; 0x3625E0's one call)
 0x00363D50 0x60 ClearAndWipe__9C2DStringFv  # OVL1; s1:align
 0x00363DB0 0x98 __dt__9C2DStringFv  # OVL1; s1:align
 0x00363E50 0xC func_00363E50  # OVL1
 0x00363E60 0xC func_00363E60  # OVL1
 0x00363E70 0xF0 __ct__9C2DStringFv  # OVL1; s1:callee (it calls C2D's constructor and stores __vt__9C2DString; CZHudMissionCams constructs its strings with it)
-0x00363F60 0x210 func_00363F60  # OVL1
+0x00363F60 0x210 FormatString__FPciiPPCci  # OVL1; ours (the HUD lane, round 33: c2dstring.cpp -- SOCOM II's, after C2DString's constructor: the string table's entry for an id copied into a buffer of a size, each $<n>s (n 1-9 below the count) replaced by the n'th of the argument strings (none: empty, 0x3F8BE0), stopping where the next would not fit; an unknown id empties the buffer -- the HUD's number formatter 0x1FE120 calls it with one argument, the score popup, DNASErrorString and 0x30C090 too)
 0x00364170 0x78 __dt__13CStringTablesFv  # OVL1; by hand (the HUD lane, round 31: c2dstring.cpp's template tail -- CStringTables' implicit destructor (util_loc.cpp's class, derived from the pointer vector: four this-tests), registered by __sinit_c2dstring.cpp)
 0x003641F0 0xD8 GetAssetLibs__9C2DBitmapFRQ23C2D8CLibList  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x003642D0 0xB4 TickFade__9C2DBitmapFv  # OVL1; s1:align
@@ -11017,7 +11017,7 @@
 0x005C0AD0 0x8 func_005C0AD0  # OVL2
 0x005C0AE0 0x4EC func_005C0AE0  # OVL2
 0x005C0FD0 0x690 func_005C0FD0  # OVL2
-0x005C1660 0x1A0 func_005C1660  # OVL2
+0x005C1660 0x1A0 PreTick__5CZKitFf  # OVL2; s1:callee by hand (the kit lane, round 26): CZSealBody::WeaponsTick (0x5DFC80) calls it last with the frame time, from the same instruction as SOCOM 1's WeaponsTick calls PreTick__5CZKitFf (0x2AA190, 0x17C there)
 0x005C1800 0x170 func_005C1800  # OVL2
 0x005C1970 0xA8C func_005C1970  # OVL2
 0x005C2400 0x24 IsFireDelayed__5CZKitFv  # OVL2; by hand: the float at 0x820 (SOCOM 1's m_fire_delay at 0x804, before m_selected_item as there) above zero (the name ours)
@@ -11117,12 +11117,12 @@
 0x005CC100 0x1C func_005CC100  # OVL2
 0x005CC120 0x4D0 func_005CC120  # OVL2
 0x005CC5F0 0xC4 CloseDiPool__11CSealCtrlAiFv  # OVL2; s1:calls by hand (the kit lane, round 25): SOCOM 1's ReleaseDatabaseHandles (two 8-byte memsets, then CloseDiPool) is SOCOM II's 0x574BD0 (the memsets, a new call, then 0x5CC5F0, then CAiGroup::DeleteAll); the same walk -- the used list's requests reset onto the free list, the used list cleared, the free list's requests deleted -- in SOCOM 1's order before OpenDiPool and CleanupDiPool
-0x005CC6C0 0xA4 DeleteAll__Q27CDiPool7dirlistFv  # OVL2; by hand (the kit lane, round 25; the names ours): the free list (0x44D5FC) emptied -- each request deleted (for_each over an inline deleter: the first iterator in the frame, copied in through $f0), then clear(); CloseDiPool 0x5CC5F0 calls it last, where SOCOM 1's CloseDiPool did it inline
+0x005CC6C0 0xA4 func_005CC6C0  # OVL2; by hand (the kit lane, round 25; the names ours): the free list (0x44D5FC) emptied -- each request deleted (for_each over an inline deleter: the first iterator in the frame, copied in through $f0), then clear(); CloseDiPool 0x5CC5F0 calls it last, where SOCOM 1's CloseDiPool did it inline; ovl-copy: DeleteAll__Q27CDiPool8CDirListFv (the kit lane, round 26: the pool's classes settled with the game states' -- the free list at +0x1C is CDiPool::CDirList, an inline member whose OVL1 copy 0x2CD9F0 has the same words; this OVL2 copy follows its first caller CloseDiPool, byte-exact from seal_sensors.cpp)
 0x005CC770 0x38 clear__Q23std42__list_deleter<PCv,Q23std14allocator<PCv>>Fv  # OVL2; the same words as Clear__7CGRouteFv (0x2d1190) bar the link's addresses (tools/ovlcopies.py) -- identical code, not proven the same instance (template instances for different types and look-alike accessors share bodies); by hand (the kit lane, round 25): the pointer lists' clear() (erase(begin(), end()) with both inlined), out of line -- CloseDiPool's inlined Close calls it on the used list
 0x005CC7B0 0x14 __ne__Q33std56list<PQ27CDiPool3dir,Q23std26allocator<PQ27CDiPool3dir>>19generic_iterator<0>CFRCQ33std56list<PQ27CDiPool3dir,Q23std26allocator<PQ27CDiPool3dir>>19generic_iterator<0>  # OVL2; by hand (the kit lane, round 25): the request list iterator's !=, out of line (the walk tests)
 0x005CC7D0 0xC end__Q23std56list<PQ27CDiPool3dir,Q23std26allocator<PQ27CDiPool3dir>>Fv  # OVL2; by hand (the kit lane, round 25): the request list's end(), out of line (CloseDiPool's and CleanupDiPool's walk tests)
 0x005CC7E0 0x14 __pp__Q33std56list<PQ27CDiPool3dir,Q23std26allocator<PQ27CDiPool3dir>>19generic_iterator<0>Fi  # OVL2; by hand (the kit lane, round 25): the request list iterator's postfix ++, out of line (the walks' step, i++)
-0x005CC800 0x44 Free__Q27CDiPool7dirlistFPQ27CDiPool3dir  # OVL2; by hand (the kit lane, round 25; the names ours): a request reset (its state byte and +0x2C zeroed, the record re-read from the frame for each store) and pushed onto the free list (0x44D5FC, this) -- CloseDiPool 0x5CC5F0 for each used request and ai_target.cpp's 0x60B8F0 call it, where SOCOM 1's CloseDiPool did it inline
+0x005CC800 0x44 Free__Q27CDiPool8CDirListFPQ27CDiPool3dir  # OVL2; by hand (the kit lane, round 25; the names ours): a request reset (its state byte and +0x2C zeroed, the record re-read from the frame for each store) and pushed onto the free list (0x44D5FC, this) -- CloseDiPool 0x5CC5F0 for each used request and ai_target.cpp's 0x60B8F0 call it, where SOCOM 1's CloseDiPool did it inline; (the kit lane, round 26: the free list's class is CDiPool::CDirList, the game states' name -- an inline member, this its OVL2 copy after CloseDiPool)
 0x005CC850 0xC __ml__Q33std56list<PQ27CDiPool3dir,Q23std26allocator<PQ27CDiPool3dir>>19generic_iterator<0>CFv  # OVL2; by hand (the kit lane, round 25): the request list iterator's *, out of line (the element's address)
 0x005CC860 0x10 __as__Q33std56list<PQ27CDiPool3dir,Q23std26allocator<PQ27CDiPool3dir>>19generic_iterator<0>FRCQ33std56list<PQ27CDiPool3dir,Q23std26allocator<PQ27CDiPool3dir>>19generic_iterator<0>  # OVL2; by hand (the kit lane, round 25): the request list iterator's implicit assignment (a bitwise copy through $f0), out of line -- the walks assign begin() to their iterator
 0x005CC870 0xC begin__Q23std56list<PQ27CDiPool3dir,Q23std26allocator<PQ27CDiPool3dir>>Fv  # OVL2; by hand (the kit lane, round 25): the request list's begin(), out of line (CloseDiPool's and CleanupDiPool's walks: CDiPool's Close/Release inlined one level)
@@ -11262,9 +11262,9 @@
 0x005DF4E0 0x11C SetAimPointW__10CZSealBodyFPC6CPnt3DPC6CPnt3Db  # OVL2; s1:order by hand (the kit lane, round 15): SOCOM 1's SetAimPointW in the same place (after UpdateAimParams, before CalcAimGoal), the same code with the fields 0x3A0 on (the point 0x10B8 -> 0x1458, the reticle's 0x10C4 -> 0x1464, the normal 0x10D0 -> 0x1470; the bits at 0xF58/0xF5B -> 0x105C/0x105F), UpdateAimDir (0x5DEEC0) called last, CalcAimGoal toward CPnt3D::unit_nz without a point
 0x005DF600 0x2AC CalcAimGoal__10CZSealBodyFPC6CPnt3DPC6CPnt3DP6CPnt3D  # OVL2; s1:callee by hand (the kit lane, round 13): SetAimDirR (0x5DF8B0) calls it from the same instruction as SOCOM 1's SetAimDirR calls CalcAimGoal (0x2BFBA0, 0x2B8 against 0x2AC here), with this, the aim point (0x1440), the direction and the goal (0x144C), and tests its bool -- between SetAimPointW's place and SetAimDirR's as in SOCOM 1's order
 0x005DF8B0 0x74 SetAimDirR__10CZSealBodyFPC6CPnt3Db  # OVL2; s1:order by hand (the kit lane, round 13): SOCOM 1's SetAimDirR (0x2BFE60, 0x70), the same code with the aim's fields 0x3A0 on (0x10A0/0x10AC -> 0x1440/0x144C), after CalcAimGoal as there; byte-exact from seal_weapon.cpp
-0x005DF930 0x198 func_005DF930  # OVL2
+0x005DF930 0x198 GetNodePos__10CZSealBodyFPCQ23zdb5CNodeR6CPnt3Db  # OVL2; s1:order by hand (the kit lane, round 26): SOCOM 1's GetNodePos__10CZSealBodyFPCQ23zdb5CNodeR6CPnt3Db (0x2BFED0) in the same place, before GetFirepointNode -- the node's translation through the worn item's part, the world transform or the rotation alone by the bool; UpdateAimParams calls it twice as SOCOM 1's does (seal_weapon.cpp, open on two registers)
 0x005DFAD0 0x94 GetFirepointNode__10CZSealBodyFPCc  # OVL2; by hand (CZSealBody's vtable slot 0x64; the name ours, as the lane's Virtual5C/60/68) -- the SEAL lane; by hand (the SEAL lane, round 14, the kit lane's request): SOCOM 1's GetFirepointNode__10CZSealBodyFPCc, virtual in SOCOM II (CEntity's slot 0x64): UpdateAimParams (0x5DF450) and CZKit::ShowProjectile (0x5B85A0) pass a name in a1 and it hands a1 to FindChild
-0x005DFB70 0x108 func_005DFB70  # OVL2
+0x005DFB70 0x108 GetFirepointPos__10CZSealBodyFR6CPnt3DPCc  # OVL2; s1:order by hand (the kit lane, round 26): SOCOM 1's GetFirepointPos__10CZSealBodyFR6CPnt3DPCc (0x2C0140) in the same place, right after GetFirepointNode -- the same walk by the fire class here, the world transform a call; byte-exact from seal_weapon.cpp
 0x005DFC80 0x1AC WeaponsTick__10CZSealBodyFf  # OVL2; s1:calls
 0x005DFE30 0x188 SetWeaponState__10CZSealBodyF12WEAPON_STATE  # OVL2; s1:order (the same ~0x10 state mask, 0x184 -> 0x188)
 0x005DFFC0 0x2C WepWaitOn__10CZSealBodyFv  # OVL2; s1:order (the same four constants, the fields 276 bytes on)
@@ -11747,12 +11747,12 @@
 0x0060B470 0x37C func_0060B470  # OVL2
 0x0060B7F0 0xF8 func_0060B7F0  # OVL2
 0x0060B8F0 0x1FC func_0060B8F0  # OVL2; by hand (the kit lane, round 25): the target_post_tick task -- SOCOM 1's ai_post_tick, PostTick__11CSealCtrlAiFfPv (0x2B33B0: the same walk, states 2 and 1 freed, 4 settled), moved to ai_target.cpp in SOCOM II; kept a placeholder (the static would hide CSealCtrl::PostTick in CSealCtrlAi)
-0x0060BAF0 0x88 __dt__Q27CDiPool7dirlistFv  # OVL2; by hand (the kit lane, round 25; the class ours): the request list class's implicit destructor (four this-tests, the range erase), out of line behind target_post_tick's cut -- its local list, destroyed with -1
+0x0060BAF0 0x88 __dt__Q27CDiPool7CDiListFv  # OVL2; by hand (the kit lane, round 25; the class ours): the request list class's implicit destructor (four this-tests, the range erase), out of line behind target_post_tick's cut -- its local list, destroyed with -1; (the kit lane, round 26: the used list's class is CDiPool::CDiList, the game states' name for the list at +0x10 -- OVL1's ~CDiPool inlines this implicit destructor whole for that member)
 0x0060BB80 0x10 HasIntersect__Q27CDiPool3dirCFv  # OVL2; by hand (the kit lane, round 25; the name ours): a request holds a DiIntersect (its index at 0x1C not negative), out of line behind target_post_tick's cut
-0x0060BB90 0x48 erase__Q27CDiPool7dirlistFQ33std56list<PQ27CDiPool3dir,Q23std26allocator<PQ27CDiPool3dir>>19generic_iterator<0>Q33std56list<PQ27CDiPool3dir,Q23std26allocator<PQ27CDiPool3dir>>19generic_iterator<0>  # OVL2; by hand (the kit lane, round 25; the member ours): a range of the request list unlinked, the wrapper iterators handed to the base's erase (0x50F990), out of line behind target_post_tick's cut
+0x0060BB90 0x48 erase__Q27CDiPool7CDiListFQ33std56list<PQ27CDiPool3dir,Q23std26allocator<PQ27CDiPool3dir>>19generic_iterator<0>Q33std56list<PQ27CDiPool3dir,Q23std26allocator<PQ27CDiPool3dir>>19generic_iterator<0>  # OVL2; by hand (the kit lane, round 25; the member ours): a range of the request list unlinked, the wrapper iterators handed to the base's erase (0x50F990), out of line behind target_post_tick's cut; (the kit lane, round 26: the used list's class is CDiPool::CDiList, the game states' name)
 0x0060BBE0 0x14 __pp__Q33std56list<PQ27CDiPool3dir,Q23std26allocator<PQ27CDiPool3dir>>19generic_iterator<0>Fv  # OVL2; by hand (the kit lane, round 25): the request list iterator's prefix ++, out of line behind target_post_tick's cut (the erase's end, ++next)
 0x0060BC00 0x10 __ct__Q33std56list<PQ27CDiPool3dir,Q23std26allocator<PQ27CDiPool3dir>>19generic_iterator<0>FRCQ33std56list<PQ27CDiPool3dir,Q23std26allocator<PQ27CDiPool3dir>>19generic_iterator<0>  # OVL2; tu: char_type.cpp~ (1.0 beta); by hand (the kit lane, round 25): the request list iterator's user-declared copy constructor (include/list's, as OVL2's 0x510BD0 for the path list), out of line behind target_post_tick's cut
-0x0060BC10 0x28 __ct__Q27CDiPool7dirlistFv  # OVL2; tu: vis_mesh.cpp~ (1.0 beta); by hand (the kit lane, round 25; the class ours): the request list class's implicit constructor (the deleter's constructor called), out of line behind target_post_tick's one-level cut of CDiPool::PostTick -- its local list; the copy after its caller
+0x0060BC10 0x28 __ct__Q27CDiPool7CDiListFv  # OVL2; tu: vis_mesh.cpp~ (1.0 beta); by hand (the kit lane, round 25; the class ours): the request list class's implicit constructor (the deleter's constructor called), out of line behind target_post_tick's one-level cut of CDiPool::PostTick -- its local list; the copy after its caller; (the kit lane, round 26: the used list's class is CDiPool::CDiList, the game states' name)
 0x0060BC40 0x2CC func_0060BC40  # OVL2; by hand (the kit lane, round 25): the target_pretick task -- SOCOM 1's ai_direg_tick, PrePostTick__11CSealCtrlAiFfPv (0x2B3600: the same walk of the pool's used list, states 1 and 4 skipped, the limited ones within the frame's budget, each ray registered with RegIntersectDelayed and its node ignored), moved to ai_target.cpp in SOCOM II; kept a placeholder: a static PrePostTick(float, void *) in zseal.h's CSealCtrlAi would hide CSealCtrl's virtual ticks in the SEALs' units
 0x0060BF10 0x1C SetCharacterHits__Q23zdb11DiIntersectFb  # OVL2; by hand (the kit lane, round 25; the name ours): DiIntersect's m_IntersectCharacters (byte 2 bit 0) set, nothing given back -- an inline (node_world.h) out of line behind target_pretick's one-level cut of CDiPool::PreTick, which clears it on each ray it registers; its only caller 0x60BC40, the copy after it
 0x0060BF30 0xC World__7CDiPoolFv  # OVL2; by hand (the kit lane, round 25; the name ours): the world the visibility pool registers its rays with (zdb::CWorld::m_world), an inline accessor out of line behind target_pretick's one-level cut of CDiPool::PreTick (seal_dipool.h) -- its only caller 0x60BC40, the copy after it

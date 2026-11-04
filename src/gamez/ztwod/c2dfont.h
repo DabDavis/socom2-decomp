@@ -106,7 +106,8 @@ public:
 class C2DGlyphRef {
 public:
     C2DGlyphRef() : m_glyph(0), m_owned(0) {}
-    ~C2DGlyphRef() { Release(); }
+    /* the owned glyph freed (no store: c2dstring.cpp's GetCharWidth deletes it and nothing more) */
+    ~C2DGlyphRef() { delete m_owned; }
 
     /* the owned glyph freed (c2dfont.cpp's GetGlyph does it before every answer) */
     void Release()
@@ -114,6 +115,10 @@ public:
         delete m_owned;
         m_owned = 0;
     }
+    /* the glyph handed back, the font's or the owned (const: its reads fold into the frame's offsets,
+     * where a non-const accessor shares the address register the constructor and destructor keep for
+     * the owned word -- C2DString's GetCharWidth and AddCharacter) */
+    C2DGlyph *Get() const { return m_glyph ? m_glyph : m_owned; }
     /* a glyph of the font's handed out */
     void Set(C2DGlyph *g)
     {
@@ -157,6 +162,9 @@ public:
         return m_textures[i];
     }
 
+    /* the font's scale (inline: c2dstring.cpp's Load multiplies by it last) */
+    float GetScaleFactor() { return m_scale_factor; }
+
     /* the scalars zeroed, the opacity and the two scales 1 (stored in this order: the target's) */
     void Reset()
     {
@@ -182,7 +190,9 @@ public:
     zdb::CTexHandle *m_1c;   // 0x1c: the glow texture
     int m_displaytop;   // 0x20
     int m_displaybottom;   // 0x24
-    int XPadding;   // 0x28
+    /* unsigned in SOCOM II (SOCOM 1's DWARF: int): C2DString's GetCharWidth and UpdatePos add it
+     * after the sum they add it to, AddCharacter converts it ahead of the kerning it adds */
+    unsigned int XPadding;   // 0x28
     float m_avgWidth;   // 0x2c
     float m_opacity;   // 0x30
     float m_scale_factor;   // 0x34

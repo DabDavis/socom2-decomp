@@ -158,7 +158,12 @@ CLensFlare::CLensFlare()
  * node_main.cpp's ~list<CVisual *> 0x3177C0 does; here MW inlines the whole chain with the range
  * erase. A deleter destructor one level taller (`clear()` for its erase) gives the target's 0x60
  * but costs this unit's ~RTPool and Clear (0x68, 0xAC) -- an include/list question (the drafts'
- * matches stand: 00322370.c carries an `sc: as=` line) */
+ * matches stand: 00322370.c carries an `sc: as=` line). The world lane's round 12: written
+ * `~__list_deleter() { erase(begin(), end()); }` (the "Level 6, or 8?" form) the copy is the
+ * target's code at 0x60 -- its one call resolving by name to OVL2's 0x510110 until 0x1EA2D0 is
+ * marked that destructor's OVL1 copy -- with ~RTPool, Clear, Tick and the initialiser unchanged;
+ * zsav_manager.cpp's sort teardown (0x33E510) wants the same destructor cut one level (begin(),
+ * end() and erase called), which level 5 does not give it: the MSL lane's to weigh */
 template <class T>
 RTPool<T>::~RTPool()
 {

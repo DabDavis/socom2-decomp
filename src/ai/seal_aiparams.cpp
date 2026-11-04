@@ -26,7 +26,7 @@ void reset__13AI_FIREPARAMSFv(void *p);
 void *func_0060C170(void *list);
 class Rfloat;
 Rfloat *func_005F6F30(Rfloat *r, float f);
-Rfloat *func_005609D0(Rfloat *r, float min, float max);
+Rfloat *__ct__6RfloatFff(Rfloat *r, float min, float max);
 class CAiTrigger;
 void SetTimes__10CAiTriggerFRC6RfloatRC6Rfloat(CAiTrigger *t, const Rfloat *a, const Rfloat *b);
 }
@@ -207,5 +207,5 @@ SEAL_AI_PARAMS::SEAL_AI_PARAMS()
     Rfloat a;
     Rfloat b;
 
-    SetTimes__10CAiTriggerFRC6RfloatRC6Rfloat(&m_trigger, func_005609D0(&a, 0.5f, 1.2f), func_005609D0(&b, 0.1f, 0.5f));
+    SetTimes__10CAiTriggerFRC6RfloatRC6Rfloat(&m_trigger, __ct__6RfloatFff(&a, 0.5f, 1.2f), __ct__6RfloatFff(&b, 0.1f, 0.5f));
 }

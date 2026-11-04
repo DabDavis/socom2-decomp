@@ -252,6 +252,9 @@ public:
     enum FIRE_CLASS { FIRE_CLASS_NONE = 0, FIRE_CLASS_RIFLE = 1, FIRE_CLASS_PISTOL = 2,
                       FIRE_CLASS_THROWN = 3, FIRE_CLASS_145 = 4, FIRE_CLASS_LAST = 255 };
     FIRE_CLASS GetCurItemFireClass();
+    /* the frame's kit work: the first frame's set-up, or an asked-for item handed to the body (OVL2
+     * 0x5C1660: SOCOM 1's PreTick, CZSealBody::WeaponsTick calls it last) */
+    void PreTick(float dT);
     /* an item's fire class (inline: GetFireClassIndex's -- GetCurItemFireClass's tests, the class
      * zeroed after the call, as the target schedules it; the name ours) and the first item of one, or -1 (OVL2 0x5B8630, new in SOCOM II: the name ours) */
     static FIRE_CLASS FireClassOf(CZFTSWeapon *w)

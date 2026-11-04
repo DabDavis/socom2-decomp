@@ -11,7 +11,8 @@
  * triggers (0x22BC40, 0x22BD50), the tick (0x22BE20, SOCOM 1's hudTickScorePopup by its place),
  * hudIsScorePopupOn (0x22CBF0) and 0x22CC10. Written, all byte-exact: CScorePopup's destructor
  * and Draw, CHudPopups' Draw and destructor, hudTurnOffScorePopup, the triggers and
- * hudIsScorePopupOn. The unit's statics are anonymous-namespace globals in SOCOM 1 (g_bOn,
+ * hudIsScorePopupOn; and (round 33) the message pop-ups' third trigger (0x22D270, by names), their
+ * reset (0x22D190) and hud.rdr's common look (0x22D3F0). The unit's statics are anonymous-namespace globals in SOCOM 1 (g_bOn,
  * g_oSeals2Ds, g_oTerrs2Ds, the box's ten CScoreBmps); its initialiser (0x3FE980, 0x9D0 bytes)
  * builds every one, byte-exact with the objects defined in their address order (round 32; the
  * flags and the frame's ints, which it does not build, still by address). Defined in reverse
@@ -111,6 +112,14 @@ public:
 class CSaferStr : public std::string {
 public:
     CSaferStr() {}
+    /* SOCOM 1's zutil.h: a null text empties it (0x22DCC0 is an out-of-line copy) */
+    void operator=(const char *sz)
+    {
+        if (sz)
+            assign(sz);
+        else
+            erase();
+    }
 };
 
 class CHUD {
@@ -237,6 +246,24 @@ struct CMessageTriggerByName {
 extern "C" bool func_0022B4A0(void *message);
 
 /* what a trigger is given: an object with its name at 0x20 (no name yet) */
+/* a message keyed by the map and any of several objects' names (0x22D270's records: the done flag,
+ * the names, the map, the message) and one keyed by the map alone (0x22D190 clears its flag) */
+struct CMessageTriggerByNames {
+    bool m_done;   // 0x0
+    std::vector<CSaferStr> m_names;   // 0x4
+    std::string m_map;   // 0x10
+    int m_message[1];   // 0x1c
+};
+
+struct CMessageTriggerByMap {
+    bool m_done;   // 0x0
+};
+
+/* what the action icons hand the by-names trigger: an object with its name first (ours) */
+struct CNamedObject {
+    const char *m_name;   // 0x0
+};
+
 struct CTriggerSource {
     unsigned char _0[0x20];
     const char *m_name;   // 0x20
@@ -316,6 +343,74 @@ int GetTeamMembers(CZSealBody **arrSeals, int *arrKills, bool bTeam0)
     }
     return iNumSeals;
 }
+}
+
+/* the message for this map and any of these objects' names shown, once -- never in a network game
+ * (SOCOM II's; the action icons call it, 0x21F850; the name ours) */
+void hudTriggerPopup(CNamedObject *source)
+{
+    if (theNetwork.m_bNetwork)
+        return;
+    if (!source)
+        return;
+    for (int i = 0; i < g_vecTriggersByNames.size(); i++) {
+        CMessageTriggerByNames *t = g_vecTriggersByNames[i];
+        bool here = !strcasecmp(t->m_map.c_str(), GetDatabase());
+
+        if (here) {
+            bool found = false;
+
+            if (source) {
+                for (int j = 0; j < t->m_names.size(); j++) {
+                    const char *n = t->m_names[j].c_str();
+
+                    if (n && !strcasecmp(n, source->m_name))
+                        found = true;
+                }
+            }
+            if (found) {
+                if (t->m_done)
+                    return;
+                if (!func_0022B4A0(t->m_message))
+                    return;
+                t->m_done = true;
+                return;
+            }
+        }
+    }
+}
+
+/* every message to be shown again (SOCOM II's: CHUD::Init and ReInit_Init call it; the name ours) */
+void hudResetPopupTriggers()
+{
+    for (int i = 0; i < g_vecTriggersByName.size(); i++)
+        g_vecTriggersByName[i]->m_done = false;
+    for (int i = 0; i < g_vecTriggers.size(); i++)
+        g_vecTriggers[i]->m_done = false;
+    for (int i = 0; i < g_vecTriggersByMap.size(); i++)
+        g_vecTriggersByMap[i]->m_done = false;
+}
+
+/* the message pop-ups' common look (OVL1 .data, by address: its margins 10, 20 and 20 and the
+ * backdrop's opacity 1, 8 bytes apart; the forced-open time in bss) */
+extern float data_003DC8B8;
+extern float data_003DC8B0;
+extern float data_003DC8A8;
+extern float data_003DC8C0;
+extern float data_0040F618;
+
+/* hud.rdr's EventPopups/Common (SOCOM II's, hudInit's call; the name ours): the margins, the prompt,
+ * the backdrop's opacity, the forced-open time and the opening and closing sounds */
+void hudReadPopupCommon(_zrdr *rdr)
+{
+    zrdr_findreal(rdr, "TopMargin", &data_003DC8B8, 1);
+    zrdr_findreal(rdr, "LeftMargin", &data_003DC8B0, 1);
+    zrdr_findreal(rdr, "BottomMargin", &data_003DC8A8, 1);
+    g_strPopup2 = zrdr_findstring(rdr, "PromptText");
+    zrdr_findreal(rdr, "BackgroundOpacity", &data_003DC8C0, 1);
+    zrdr_findreal(rdr, "ForceOpenTime", &data_0040F618, 1);
+    g_strPopup0 = zrdr_findstring(rdr, "OpeningSound");
+    g_strPopup1 = zrdr_findstring(rdr, "ClosingSound");
 }
 
 /* whether the pop-up is up (only in a network game; the name ours) */

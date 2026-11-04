@@ -173,6 +173,8 @@
 0x001D61D0 0x0 cddr  # MAIN bss; s1:data-exact (size SOCOM 1's; via sceCdDiskReady)
 0x001D6200 0x0 _i_mode  # MAIN bss; s1:data-exact (size SOCOM 1's; via sceCdInit)
 0x001D6210 0x0 _dr_mode  # MAIN bss; s1:data-exact (size SOCOM 1's; via sceCdDiskReady)
+0x001D6540 0x1100 dbcSendData2Buf  # MAIN bss; ours (libdbc is not in SOCOM 1's demo, which links libpad): sceDbcSendData2's RPC buffer -- the socket, a1 and the size, then at most 4224 bytes of data, sent and received in 4240 bytes on the second client (0x8000131B); 0x1100 to SendData3's buffer, the object's next; 1 reference (sceDbcSendData2, src/lib/sdk/libdbc.c) -- the GCC lane r25a
+0x001D7640 0x2100 dbcSendData3Buf  # MAIN bss; ours (as dbcSendData2Buf): sceDbcSendData3's RPC buffer -- the same header, at most 8320 bytes, 8336 sent and received on the third client (0x8000131C); 0x2100 to the work area at 0x1D9740, the object's next; 1 reference (sceDbcSendData3, src/lib/sdk/libdbc.c) -- the GCC lane r25a
 0x001D9808 0x0 sceDmaCurrentEnv  # MAIN bss; s1:data-exact (size SOCOM 1's; via sceDmaGetEnv +1)
 0x001D9C20 0x0 topSema  # MAIN bss; s1:data-exact (size SOCOM 1's; via InitThread +4)
 0x001D9C28 0x0 topArg  # MAIN bss; s1:data-exact (size SOCOM 1's; via InitThread +3)
@@ -189,6 +191,9 @@
 0x001DA598 0x20 _data_table@sifcmd  # MAIN bss; s1:label (the GCC lane r14a: the demo's sifcmd object's _data_table, 4 after sif0_handleid, as here -- the command state ps2sdk calls struct cmd_data: receive buffer, IOP buffer, the two handler tables, soft registers; qualified: sifrpc's _data_table is 0x1DBF40; src/lib/sdk/sifcmd.c)
 0x001DA5C0 0x0 _sys_buffer  # MAIN bss; s1:data-exact (size SOCOM 1's; via sceSifInitCmd)
 0x001DA6C0 0x0 soft_reg  # MAIN bss; s1:data-exact (size SOCOM 1's; via sceSifGetSreg +2)
+0x001DA740 0x800 _packet_buffer@sifrpc  # MAIN bss; s1:label (the GCC lane r25a: the demo's sifrpc object's LOCAL _packet_buffer 0x4789C0, 0x800 before its _free_buffer as here; sceSifInitRpc's packet table, handed out uncached, its slot 1 the init command; qualified: libmrpc's copy holds the bare name, 0x1E0640; src/lib/sdk/sifrpc.c)
+0x001DAF40 0x800 _free_buffer  # MAIN bss; s1:label (the GCC lane r25a: the demo's sifrpc LOCAL _free_buffer 0x4791C0, 0x800 after its _packet_buffer as here; the reply ring _sceRpcGetFPacket hands out; src/lib/sdk/sifrpc.c)
+0x001DB740 0x800 _free_buffer2  # MAIN bss; s1:label (the GCC lane r25a: the demo's sifrpc LOCAL _free_buffer2 0x4799C0, 0x800 after _free_buffer as here; the replies by the client's slot, _sceRpcGetFPacket2; src/lib/sdk/sifrpc.c)
 0x001DBF40 0x40 _data_table  # MAIN bss; s1:label (the GCC lane r11a: the sifrpc object's state, the demo's _data_table at sceSifSetRpcQueue's reference, its .bss after _packet_buffer, _free_buffer and _free_buffer2 0x800 apart and 0x80 before _send_data, as here -- those three unnamed: libmrpc's copy holds _packet_buffer; the demo's sifcmd and libmrpc objects hold a _data_table of their own; src/lib/sdk/sifrpc.c)
 0x001DBFC0 0x0 _send_data  # MAIN bss; s1:data-exact (size SOCOM 1's; via _sceCallCode +19)
 0x001DCC00 0x0 _rcv_data_rpc  # MAIN bss; s1:data-exact (size SOCOM 1's; via _sceCallCode +19)
@@ -226,6 +231,7 @@
 0x001E0400 0x0 retval  # MAIN bss; s1:data-exact (size SOCOM 1's; via _lmcGetClientPtr +2)
 0x001E0440 0x200 _sprtagdata.24  # MAIN bss; s1:data-exact (size SOCOM 1's; via dmaRefImage)
 0x001E0640 0x0 _packet_buffer  # MAIN bss; s1:data-exact (size SOCOM 1's; via sceSifMInitRpc)
+0x001E0E40 0x18 _data_table@libmrpc  # MAIN bss; s1:label (the GCC lane r25a: the demo's libmrpc object's LOCAL _data_table 0x53B1C0, 0x800 after its _packet_buffer as here, 0x18 to the next object there; sceSifMInitRpc's packet state -- the id counter, the uncached table, its length; qualified: sifrpc's row holds the bare name; src/lib/sdk/libmrpc.c)
 0x001E6640 0x4 errno  # MAIN bss; by use (the GCC lane): the system layer's global errno that newlib's reent wrappers (_close_r, _read_r, _write_r ... reent/*.c, which undefine the errno macro) zero before the call and copy into ptr->_errno after a failure
 0x003D7540 0x0 vu0_CodeSegment  # OVL1; s1:data-seq (size SOCOM 1's; via zMath_Init__Fv)
 0x003D8270 0x0 vu1_CodeSegment1  # OVL1; SOCOM 1's (vu1_CodeSegment1, the VU1 microcode's DMA chain, .vutext): zRndrInit sends it second, by physical address, as SOCOM 1's; 1 reference in 1 function -- the rdr lane
@@ -869,6 +875,7 @@
 0x00408DC0 0x24 g_relocDblBuf__21@unnamed@st_menu_cpp@  # OVL1 bss; the size 0x24 by the states lane, round 27 (__sinit_st_menu.cpp 0x3FD940 stores +0x20, the palette, and zui.cpp's 0x3654A0 clears 0x8-0x1F: zui.cpp's CDblBufTextureRelocator); SOCOM 1's static (0x1C bytes; SOCOM II's menu tick clears its words at 0x14-0x1C, UnInit hands it to func_003654A0): 10 references in 4 functions take 0x408DC0-0x408DDC
 0x00408DE8 0x4 animfile__21@unnamed@st_menu_cpp@  # OVL1 bss; SOCOM 1's static (CMenuState::UnInit closes it, as SOCOM 1's): 5 references in 2 functions take 0x408DE8 (CMenuState's Init and UnInit)
 0x00408E28 0x4 g_pMissionLoadingLib__21@unnamed@st_load_cpp@  # OVL1 bss; SOCOM 1's static (the load screen's asset library: CLoadState::Init loads it, UnInit releases it, as SOCOM 1's): 4 references in 2 functions take 0x408E28
+0x00408E30 0x4 s_helpWindowsValve  # OVL1 bss; ours (the HUD lane, round 33: hud_main.cpp's file static, the HelpWindowsEnabled valve hudInit finds) -- 4 references in 3 functions: hudInit 0x1FDEE0 (the store), hudHelpWindowsEnabled 0x1FDEB0, hudToggleHelpWindows 0x1FDE30 x2
 0x00408E40 0x10 m_hud_textcolor__4CHUD  # OVL1 bss; SOCOM 1's static (16 bytes; PoseBitmap's Init and ReInit copy it into the stance text's colour, as SOCOM 1's Init did): 32 references in 18 functions take 0x408E40, about as many again each of its other three floats
 0x00408E58 0x4 theHUD  # OVL1 bss; s1:data-seq (size SOCOM 1's; via HUDLetterBoxCmdTick__FP14_zanim_cmd_hdrPf +2)
 0x00408E70 0x80 X_WeaponBackground  # OVL1 bss; SOCOM 1's file static (its symbol table: hud_main.cpp's X_WeaponBackground, a 0x80-byte C2DBitmap in both), built by __sinit_hud_main.cpp with C2DBitmap() and ~C2DBitmap 0x1FCB10 registered (the HUD lane, round 31) -- 9 references in 2 functions: CHUD::Init x7, the initialiser x2
