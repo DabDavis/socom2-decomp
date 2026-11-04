@@ -351,12 +351,13 @@ public:
         typedef int difference_type;
         typedef std::random_access_iterator_tag iterator_category;
 
+        /* the fields built by an initialiser list (the zdb world's round 16, measured for this lane:
+         * assigned in the body, a const-qualified element type loses the address sharing in the
+         * iterator's copy -- cdeque<const void **>'s end() 0x333F90 byte-exact so, begin() 0x334030
+         * the target's size; nothing else in 633 units moves) */
         iterator(T **p, T **data, const unsigned int &start, const unsigned int &cap)
+            : p_(p), data_(data), first_(data_ + start), last_(data_ + cap)
         {
-            p_ = p;
-            data_ = data;
-            first_ = data_ + start;
-            last_ = data_ + cap;
         }
         iterator(const iterator &x) { p_ = x.p(); data_ = x.data(); first_ = x.first(); last_ = x.last(); }
         T **const &p() const { return p_; }
