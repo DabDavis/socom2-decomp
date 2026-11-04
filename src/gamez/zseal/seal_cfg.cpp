@@ -430,7 +430,9 @@ static inline float Factor(CZSIScriptCommon *a)
  * (252) and keeps the two edge types in the frame (224, 208: the max's copied from the min's -1),
  * with a 304-byte frame against 256 here, where MW keeps the list in s8; its blendable test is a
  * `slti; movn` on the parameter's register (the ternary assigned back to the parameter still
- * branches here); the float registers follow the frame (minEnd f21, maxEnd f22 in the target) */
+ * branches here); the float registers follow the frame (minEnd f21, maxEnd f22 in the target).
+ * Round 33: the edge types set through an inline taking a short reference, or through `*&`, change
+ * nothing (MW folds both); the blendable test as an if-assign loses 6 */
 int CZSealBody::MixAnims(CActiveAnimList *list, CBlendable *blendable, float scale, float wt)
 {
     if (wt <= 0.0f)

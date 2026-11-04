@@ -263,7 +263,9 @@ bool CSealCtrl::CanPlaceBomb(CNodeAction *action)
  * OPEN, 13 instructions: the target reads the bomb's state again for the 1-or-3 test, through its
  * address built in the first test's delay slot (lbu 0(a3)); MW here reuses the first load (SOCOM
  * 1's code has the same reload). Tried: the first test through inline accessors (a parameter, an
- * int, a ternary), the second as inline calls, a reference, a pointer, a switch. */
+ * int, a ternary), the second as inline calls, a reference, a pointer, a switch. Round 33: the kit's
+ * const-view rule on either test or both (0x12C, or the same 13), the second test as a member inline of
+ * the status (`Is13()`, `Is(1) || Is(3)`) or a static inline over its address (0x134 or 13). */
 static inline bool IsBombState(unsigned char state)
 {
     return CZBombState::m_BombStatus.m_state == state;
