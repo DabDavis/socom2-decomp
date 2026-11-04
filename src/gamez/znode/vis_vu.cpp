@@ -39,6 +39,21 @@ namespace zdb {
 class CVidStack : public std::stack<void *> {
 };
 
+/* the free view ids (0x4B4A40): __sinit_vis_vu.cpp 0x404570 builds it second, after a static
+ * tag_GlobalLight[4] (0x4B4820) -- a temporary deque<void *> default-built (0x3B7FA0), copied in
+ * (0x3B7DB0) and torn down to ~__deque_buf with 0, the stack's destructor registered (0x3B7D50).
+ * Defined here, the unit's tail emits the stack's chain (the MSL headers round 18): ~deque<PCv>
+ * 0x3B7C90 (one this-tested level, then ~__deque_buf: the pointer deque's base, not CVisBase), the
+ * deque<void *> copy 0x3B7DB0 with its begin/end 0x3B7F40/0x3B7EE0, byte-exact. The stack is
+ * std::stack<void *> itself in the target: 0x3B7D50, the destructor the initialiser registers, is
+ * ~stack<Pv> inlining ~deque<Pv> and calling ~deque<PCv> -- a plain stack static compiles to it
+ * byte for byte (build/p18/vis/stk.cpp), where this CVidStack wrapper registers its own destructor
+ * and cuts the chain a level higher (znode.h declares the wrapper; the integrator's to change). OPEN
+ * here: the initialiser's other statics, deque<void *>() 0x3B7FA0 (0x30 vs 0x28: the default
+ * constructors' middle level 0x334120) and init 0x3B7E30 (0x88 vs 0xB0: its iterators copied once
+ * more in the target, around two empty converters) */
+CVidStack CVisual::m_stack_vid;
+
 /* the view id in use, the stack's top -- a `break` if the stack is empty (the wep lane, round 13:
  * SOCOM 1's GetChainData and VuUpdate test the size and break the same way ahead of the top; the
  * name ours). The trap is MW's break and nop intrinsics, two instructions: inlined one level
