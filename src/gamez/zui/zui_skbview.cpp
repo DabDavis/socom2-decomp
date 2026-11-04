@@ -221,6 +221,49 @@ SKBKEY SkbPadKeyEvent(CPad *pad)
     return SKBKEY_NONE;
 }
 
+/* a look's piece list by index (ours: the look's lists read through a byte index) */
+static inline CSkbBgPieces &SkbPieces(CSkbLook *look, unsigned char i)
+{
+    return look->m_sources[i];
+}
+
+/* the shared key bitmaps given their textures: the two bitmaps 6 and 7 theirs, and row i's ten keys
+ * list i's handles in turn, each key's UVs the part of its texture that piece i of the look's list i
+ * takes (0x395140; the name ours).
+ * OPEN, 0x194 against 0x1B0 (written round 21): SkbForgetDisplay's loop shape -- the target enters
+ * the inner loop at its bottom test (`b` to a preheader MW lays out after the return path, holding
+ * the hoisted piece list's address -- the inline's second `andi` -- and the bitmap pointer's start,
+ * then `b` to the test), the counter zeroed in the outer body's first block; every form here is
+ * rotated (MW threads the entry jump knowing j = 0): a while loop, the counter declared outside or
+ * first, ++j, an explicit `goto test; do ... while`, the bound through an inline, the piece list
+ * read inside the inner loop (hoisted) -- all 0x194. The texture's sizes convert as ints, the height
+ * first, as the target's; the target also steps `lists` by 12 in s4 where this indexes it */
+void SkbSetKeyTextures(zdb::CTexHandle *tex6, zdb::CTexHandle *tex7, std::vector<zdb::CTexHandle *> *lists,
+                       CSkbLook *look)
+{
+    s_bmp6.m_pTexHandle = tex6;
+    s_bmp7.m_pTexHandle = tex7;
+    for (int i = 0; i < 4; i++) {
+        CSkbBgPieces &pieces = SkbPieces(look, i);
+
+        for (int j = 0; j < 10; j++) {
+            CBmpWithNode &bmp = s_keyRows.m_rows[i].m_bmps[j];
+            zdb::CTexHandle *h = j < lists[i].size() ? lists[i][j] : 0;
+
+            bmp.m_pTexHandle = h;
+            zdb::CTexture *tex = h ? h->m_texture : 0;
+
+            if (tex) {
+                const CSkbRect &r = pieces[j].m_source;
+                float ht = (int)tex->m_height, w = (int)tex->m_width;
+
+                bmp.SetUV(r.m_pos[0] / w, r.m_pos[1] / ht, (r.m_pos[0] + r.m_size[0]) / w,
+                          (r.m_pos[1] + r.m_size[1]) / ht);
+            }
+        }
+    }
+}
+
 /* the display scaled to a fraction of its size (0x397950, not written yet) */
 extern "C" void func_00397950(float scale);
 /* the current menu's float at 0x9C set (zui.cpp's 0x36A210) */

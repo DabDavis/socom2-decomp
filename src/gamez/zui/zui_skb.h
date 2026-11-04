@@ -487,8 +487,9 @@ public:
     CInit<bool, 0> m_174;   // 0x174
     CInit<bool, 0> m_ignoreUnchangedString;   // 0x175: IgnoreUnchangedString
     zdb::CNode *m_node;   // 0x178
-    int m_17c;   // 0x17c
-    int m_180;   // 0x180
+    /* the shared bitmaps 6 and 7's texture handles (the display unit's SkbSetKeyTextures sets them) */
+    zdb::CTexHandle *m_17c;   // 0x17c
+    zdb::CTexHandle *m_180;   // 0x180
     CSkbTexLists m_texLists;   // 0x184
     CBmpWithNode m_1c0;   // 0x1c0: the recipient key's state 0 (SkbRecipState0.tif)
     CBmpWithNode m_270;   // 0x270: and its state 1 (SkbRecipState1.tif)

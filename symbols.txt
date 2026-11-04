@@ -7419,7 +7419,7 @@
 0x00394F60 0x1A8 SkbPadKeyEvent__FP4CPad  # OVL1; ours (the UI lane round 19: the pad's key event through a {dir, button, event} table, then cross/L2/R2 as 5-7; 0x38DC00 hands a nonzero one to SkbHandleKey)
 0x00395110 0xC SkbEmptyAllowed__Fv  # OVL1; the UI lane round 20: ours, by its body (zui_skbview.cpp: s_allowEmpty 0x4A0A50 returned -- the set-up command's byte at 0xA9; OnEnterKey 0x38C040 counts an empty text only when it is clear)
 0x00395120 0x14 func_00395120  # OVL1
-0x00395140 0x1B0 func_00395140  # OVL1
+0x00395140 0x1B0 SkbSetKeyTextures__FPQ23zdb10CTexHandlePQ23zdb10CTexHandlePQ23std66vector<PQ23zdb10CTexHandle,Q23std30allocator<PQ23zdb10CTexHandle>>P8CSkbLook  # OVL1; the UI lane round 21: ours, by its body (zui_skbview.cpp: s_bmp6/s_bmp7's texture handles set, then each of the 4x10 key bitmaps given list i's handle j and, with a texture, the UVs of the look's piece list i entry j's source rectangle over the texture's size)
 0x003952F0 0xC func_003952F0  # OVL1
 0x00395300 0x140 ReadIntPair__FP5_zrdrPCc  # OVL1; SOCOM 1's name by its body (zui_skbview.cpp: SOCOM 1's zui_skb.cpp ReadIntPair -- the tag's array items 0 and 1 as ints through GetRdrArrayInt's shape, a CIntPair returned; the look parser 0x3963F0 calls it seven times, zui_skb.cpp's 0x38DCB0 twice)
 0x00395440 0xF8 SkbApplyCapLook__FP9C2DStringPQ23zdb5CNodeP13CSoftKeyboardUcP7C2DFontf  # OVL1; the UI lane round 11: ours, by its body (zui_skbview.cpp: a C2DString given cap i's look -- the font at 0x4A1120 when the cap's name at 8 is empty, its colour and scale -- its node placed at the cap's x, y + dy and hidden; 0x398EA0 calls it three times)

@@ -193,10 +193,9 @@ int SkbTypedTextNotBlank();
 int SkbEnterKana(CSoftKeyboard *skb);
 void SkbTakeText(CGameMenu *menu);
 
-/* (the next unit's node lists' layout from a grid size, 0x395140) */
-extern "C" {
-void func_00395140(int w, int h, CSkbTexLists *lists, CSoftKeyboard *skb);
-}
+/* the shared key bitmaps given the keyboard's textures (the display unit's, 0x395140) */
+void SkbSetKeyTextures(zdb::CTexHandle *tex6, zdb::CTexHandle *tex7, std::vector<zdb::CTexHandle *> *lists,
+                       CSkbLook *look);
 
 /* (this unit's out-of-line copies of SOCOM 1's CIntPair members and the look's start position,
  * after their first caller 0x38B440 -- SOCOM 1's zui_skb.cpp called its CIntPair's members out of
@@ -237,7 +236,7 @@ void CSoftKeyboard::ShowSkb(const char *text)
         func_0038B550(&pos, func_0038B570(this));
         int x = func_0038B540(&pos) - 1;
         func_0038B8A0(this, x, func_0038B530(&pos) - 1);
-        func_00395140(m_17c, m_180, &m_texLists, this);
+        SkbSetKeyTextures(m_17c, m_180, m_texLists.m_lists, this);
         func_00398EA0(this, &m_fonts, text);
         func_00395540(this, &m_fonts.m_fonts[1]);
         m_node->SetActive(true);
@@ -614,7 +613,7 @@ void CSoftKeyboard::ShutdownBegin(CGameMenu *menu)
  * active one and its two element sets shown (SOCOM II's; the name ours) */
 void CSoftKeyboard::SwitchTo(CSoftKeyboard *to)
 {
-    func_00395140(to->m_17c, to->m_180, &to->m_texLists, to);
+    SkbSetKeyTextures(to->m_17c, to->m_180, to->m_texLists.m_lists, to);
     void (C2DButton::*normal)() = &C2DButton::SetNormal;
 
     SetCurKeyState(normal);
