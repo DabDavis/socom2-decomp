@@ -1888,6 +1888,24 @@ templates next), and the earlier rounds' opens; 3.0b38/b50/b52 still untold.
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the game states, round 23** (the ladder table, the multi-mission list, the persona names' packer):
+  - MW evaluates a `new T(arg)` argument after the allocation, inside the null test -- the target's earlier evaluation
+    means the argument was a local; an inline constructor's parameter order numbers the inlined temporaries, so it
+    permutes saved registers (0x2C91A0: 4 of the 24 orders give the target's); a nested inline bool such as `p ?
+    IsTerroristTeam(p->m_team) : false` keeps a separate false arm (`move v0,zero; nop`), a single-level ternary puts the
+    zero in the delay slot;
+  - an int counter compared against an unsigned Count() keeps the per-pass `sll`, an unsigned counter is strength-reduced
+    into a register of its own; `andi 0xff; andi 7` after a byte bitfield extract comes from `(unsigned char)field & 7`
+    (no enum bitfield, cast or accessor gives it); bounds written `p <= min ? p : min` / `p >= max ? p : max` match
+    (MIN/MAX's operand order compares the other way round); `iterator i = begin()` declared ahead of an unused CMatrix
+    loads begin() before sceVu0UnitMatrix in both builds (GetClosestLadder);
+  - CreateLadderTable 0x2A9260 is SOCOM 1's body on SOCOM II's helpers (GetClosestLadder, GetLadderByNode -- the node or
+    one of its children down to a depth --, the eight-point box 0x2A9550); CMultiMission(const _zrdr *) and
+    CMultiMissionList's Read, GetRandom(bool), Add (MissionDesc's name ours); 0x2C4B50 packs the persona names (its local
+    order from tools/perm.py); DecrementRoundClockSec is SOCOM 1's without its saved copy;
+  - open: the box-corners helper's copy 0x2A96B0 (the target calls CPnt3D(fff) and operator= out of line; MW expands both
+    into a 0xC8 copy in every shape probed), insert<CLadderData> 0x2B0260 (the class insert's end register),
+    func_002AF410 (0x100 vs 0x140); not written: 0x2C8DB0 (find's iterator copies through the FPRs), 0x2B55E0, 0x2CE5B0.
 - **Tells from the AI core, round 19** (CAiStar::find_path, the event queue, the map's lines and spores):
   - WRAPPING A CALL IN ONE MORE INLINE LEVEL EXPANDS IT LATER, so its temporaries take the frame's lowest slots: what
     looks like "one 8-byte temporary more" can be every other temporary shifted up -- find_path 0x510FF0 (0xF48) closed
