@@ -9,7 +9,7 @@
  * themselves twice and CZAnim::Running (10) into the first copy, then call -- which is where
  * the out-of-line copies of the sibling accessor (0x270BB0) and the Source test (0x270BC0)
  * come from. CZAnim::Start (11 by that count), StopAnims (12) and ExecuteSpecialSequence (15)
- * are never inlined (RestartClones and func_00271110; State; Tick and State), while
+ * are never inlined (RestartClones and FindClones; State; Tick and State), while
  * GetNodeRef (11) is, into GetNodes: no one limit separates them, so the original's three had
  * more statements than these -- debug code compiled to nothing still counts (`if (0) f();`
  * is two) -- or a pin. A pragma around each definition reproduces that (the pragma state at

@@ -17,7 +17,7 @@ extern "C" int sceDeci2Close(int s);
 extern "C" int sceDeci2ReqSend(int s, char dest);
 extern "C" int printf(const char *fmt, ...);
 /* MSL's vsprintf (MAIN 0x19E7E8: SOCOM 1's Debug, the same code, calls vsprintf there) */
-extern "C" int func_0019E7E8(char *buf, const char *fmt, va_list ap);
+extern "C" int vsprintf(char *buf, const char *fmt, va_list ap);
 
 class CPacketMsg;
 class CConsole;
@@ -408,7 +408,7 @@ void CConsole::Debug(int level, const char *fmt, ...)
         va_list ap;
 
         va_start(ap, fmt);
-        func_0019E7E8(buf, fmt, ap);
+        vsprintf(buf, fmt, ap);
         printf(buf);
     }
 }
