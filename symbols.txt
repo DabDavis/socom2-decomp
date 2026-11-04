@@ -9083,13 +9083,13 @@
 0x00501958 0x54 ControlMedian  # OVL2 unaligned; s1:align
 0x005019B0 0x18 Median_Reset  # OVL2; s1:exact
 0x005019C8 0xC4 InitMedian  # OVL2 unaligned; s1:align
-0x00501A90 0x38C func_00501A90  # OVL2
+0x00501A90 0x38C LogPitchProcessing  # OVL2; s1:order -- the gcc lane, round 22c: the pitch combiner object's first, before NormE_Processing, as SOCOM 1's object 0x36CE48 holds it (0x38C here, 0x384 there)
 0x00501E20 0x114 NormE_Processing  # OVL2; s1:align
 0x00501F38 0x35C FlushPitchCombiner  # OVL2 unaligned; s1:calls
-0x00502298 0x3BC func_00502298  # OVL2 unaligned
-0x00502658 0x298 func_00502658  # OVL2 unaligned
-0x005028F0 0x114 func_005028F0  # OVL2
-0x00502A08 0x508 func_00502A08  # OVL2 unaligned
+0x00502298 0x3BC ProcessPitchCombiner  # OVL2 unaligned; s1:slot -- the gcc lane, round 22c: ConstructPitchCombiner's process slot (t0), as SOCOM 1's constructor passes ProcessPitchCombiner
+0x00502658 0x298 PitchCombinerReset  # OVL2 unaligned; s1:calls -- the gcc lane, round 22c: ControlPitchCombiner's command 200 calls it where SOCOM 1's calls PitchCombinerReset; the object's fifth, as SOCOM 1's
+0x005028F0 0x114 ControlPitchCombiner  # OVL2; s1:slot -- the gcc lane, round 22c: ConstructPitchCombiner's control slot (t2), as SOCOM 1's constructor passes ControlPitchCombiner; SOCOM 1's body (cases 200, 201, 255), moved before InitPitchCombiner in SOCOM II
+0x00502A08 0x508 InitPitchCombiner  # OVL2 unaligned; s1:slot -- the gcc lane, round 22c: ConstructPitchCombiner's init slot (t1), as SOCOM 1's constructor passes InitPitchCombiner
 0x00502F10 0x3C ConstructPitchCombiner  # OVL2; s1:align
 0x00502F50 0x4C0 spline2  # OVL2; s1:calls (SOCOM 1's Lin_2_Log calls spline2 where ours call this row, 1 call site; the same position in SOCOM 1's object)
 0x00503410 0x398 Lin_2_Log  # OVL2; s1:calls
