@@ -81,6 +81,69 @@ void CSndJukebox::LoadMusicLists(_zrdr *rdr, int mode)
         m_weights[mode].push_back(1.0f / m_playlists[mode].size());
 }
 
+/* SOCOM 1's: the music ticked -- a finished sequence or instance let go and the next started, then
+ * the next started when the music's state no longer suits the mode (SOCOM II's states: 1 and 2 the
+ * fight music, 0 the calm, -1 none). The sequence's verdict is kept in a bool (its `andi`); the
+ * mode is read as a signed byte here (`lb`, where SetIntensity and PlayQueued read it `lbu`) --
+ * the casts are stand-ins for whatever the original read it through */
+void CSndJukebox::Tick(float dT)
+{
+    if (m_jukebox_stopped)
+        return;
+    if (m_sequence) {
+        bool done = m_sequence->Tick(dT);
+
+        if (done) {
+            m_sequence = 0;
+            m_currentmode = -1;
+            PlayQueued();
+        }
+    } else if (m_instance && !m_instance->IsPlaying()) {
+        m_currentmode = -1;
+        CSndInstance::ReleaseSoundInstance(m_instance);
+        m_instance = 0;
+        PlayQueued();
+    } else if (!m_instance) {
+        m_currentmode = -1;
+        PlayQueued();
+    }
+    if (m_currentmode == 1 && (signed char)m_mode != MUSIC_MODE_0)
+        PlayQueued();
+    if ((m_currentmode == -1 || m_currentmode == 0 || (m_currentmode == 2 && m_modeChanged)) &&
+        (signed char)m_mode != MUSIC_MODE_0) {
+        PlayQueued();
+        m_modeChanged = false;
+    } else if ((m_currentmode == 2 || m_currentmode == -1) && (signed char)m_mode == MUSIC_MODE_0) {
+        FadeOut();
+        PlayQueued();
+    }
+}
+
+/* the queued music played (the heaviest at once, the medium dropped, the rest faded in), else the
+ * fight music for a fight mode or the calm music faded in for the calm one (SOCOM II's; SOCOM 1's
+ * Tick inlined its own five times, the name ours). The queued mode, a plain char, is compared as
+ * a signed byte (lb, slti) and handed to Play unconverted -- no `andi`, which `(MUSIC_MODE)` adds:
+ * the reinterpreting read is a stand-in (SOCOM 1's Tick passes it the same way) */
+void CSndJukebox::PlayQueued()
+{
+    if (m_queuedMode > MUSIC_MODE_2) {
+        Play(*(MUSIC_MODE *)&m_queuedMode, (CSnd *)m_queued);
+        ClearQueue();
+    } else if (m_mode > MUSIC_MODE_0)
+        Play(MUSIC_MODE_2, 0);
+    else if (m_queuedMode > MUSIC_MODE_0) {
+        if (m_queuedMode != MUSIC_MODE_2) {
+            FadeOut();
+            Play(*(MUSIC_MODE *)&m_queuedMode, (CSnd *)m_queued);
+            ClearQueue();
+        } else
+            ClearQueue();
+    } else if (m_mode == MUSIC_MODE_0) {
+        FadeOut();
+        Play(MUSIC_MODE_0, 0);
+    }
+}
+
 void CSndJukebox::FadeOut()
 {
     if (m_sequence) {
@@ -101,6 +164,68 @@ void CSndJukebox::ClearQueue()
     m_queuedMode = -1;
 }
 
+/* SOCOM 1's: music asked for -- what plays faded out first for a higher mode; while anything plays
+ * it fades and the request is queued unless a higher one is; else the mode's music started: the
+ * calm and medium playlists at random, the sound itself for the fight and heavy modes (SOCOM II's
+ * modes 0-3, the mode taken as a signed byte against the state) */
+void CSndJukebox::Play(MUSIC_MODE mode, CSnd *sound)
+{
+    signed char m = mode;
+
+    if (m_currentmode < m)
+        FadeOut();
+    if (m_sequence) {
+        if (!m_sequence->IsFading())
+            m_sequence->FadeOut();
+        if (m >= m_queuedMode) {
+            m_queuedMode = mode;
+            m_queued = (int)sound;
+        }
+        return;
+    }
+    if (m_instance) {
+        if (!m_instance->IsFading())
+            m_instance->FadeOut(2.0f);
+        if (m >= m_queuedMode) {
+            m_queuedMode = mode;
+            m_queued = (int)sound;
+        }
+        return;
+    }
+    switch (m) {
+    case MUSIC_MODE_0:
+        if (m_currentmode < 0)
+            PlayRandom(MUSIC_MODE_0);
+        break;
+    case MUSIC_MODE_1:
+        if (m_currentmode <= 0) {
+            if (m_sequence) {
+                m_sequence->Stop();
+                m_sequence = 0;
+            }
+            if (m_instance)
+                CSndInstance::ReleaseSoundInstance(m_instance);
+            m_instance = sound->PlaySound(false, 0, 255);
+            m_currentmode = mode;
+        }
+        break;
+    case MUSIC_MODE_2:
+        if (m_currentmode < 2)
+            PlayRandom(m_mode);
+        break;
+    case MUSIC_MODE_3:
+        if (m_sequence) {
+            m_sequence->Stop();
+            m_sequence = 0;
+        }
+        if (m_instance)
+            CSndInstance::ReleaseSoundInstance(m_instance);
+        m_instance = sound->PlaySound(false, 0, 255);
+        m_currentmode = mode;
+        break;
+    }
+}
+
 /* the intensity stepped by a level: under 1 calm, up to 1 under 3, up to 2 under 5, 3 above
  * (SOCOM II's; name ours) */
 void CSndJukebox::SetIntensity(float level)
@@ -116,6 +241,44 @@ void CSndJukebox::SetIntensity(float level)
     else if (level >= 5.0f)
         m_mode = MUSIC_MODE_3;
     m_modeChanged = m_mode != old;
+}
+
+/* SOCOM 1's: a sequence of the mode picked at random by weight -- its weight cut to a tenth and the
+ * weights normalised again -- and played in place of the instance; SOCOM II's music state is 2 for
+ * a fight mode, 0 for the calm one.
+ * OPEN, 11 instructions (the target's size): the playlist read inside the found block -- the target
+ * builds &m_playlists[mode] and keeps &...data_ (+8 added after) in s0 for the second read, where
+ * this folds the 8 into the relocation (`(base + 8) + off`); the same size, one nop moved. Tried:
+ * a reference to the playlist inside the block or before the loop (both weights and playlist),
+ * a pointer, the pod's data() reference, begin() + i, begin().m_p[i] (0x1A4-0x1C8). The counter
+ * an int (unsigned strength-reduces the element address), `sum` declared ahead of `r` ($f21/$f20),
+ * `return` (a `break` drops the block's exit, 0x1B8) */
+void CSndJukebox::PlayRandom(MUSIC_MODE mode)
+{
+    float sum;
+    float r = 4.656613e-10f * (float)rand();
+
+    sum = 0.0f;
+
+    for (int i = 0; i < m_weights[mode].size(); i++) {
+        sum += m_weights[mode][i];
+        if (sum > r) {
+            m_weights[mode][i] *= 0.1f;
+            NormalizeWeights(mode);
+            if (i < m_playlists[mode].size()) {
+                m_playlists[mode][i]->Play();
+                if (m_instance)
+                    CSndInstance::ReleaseSoundInstance(m_instance);
+                m_instance = 0;
+                m_sequence = m_playlists[mode][i];
+                if (mode > MUSIC_MODE_0)
+                    m_currentmode = 2;
+                else if (mode == MUSIC_MODE_0)
+                    m_currentmode = 0;
+                return;
+            }
+        }
+    }
 }
 
 /* SOCOM 1's: an intensity's weights scaled to sum to one, or made equal when they sum to 0.

@@ -446,16 +446,26 @@ public:
     static void Start();
     static void SetIntensity(float level);
     static void NormalizeWeights(MUSIC_MODE mode);
+    /* SOCOM 1's: a sequence of the mode picked at random by weight and played (0x348B20) */
+    static void PlayRandom(MUSIC_MODE mode);
     static void Play(MUSIC_MODE mode, CSnd *sound);
     static void ClearQueue();
     static void FadeOut();
+    /* the queued music started, or the mode's own (SOCOM 1's Tick inlined this five times; SOCOM
+     * II's calls it, 0x349100 -- the name ours) and the music ticked (SOCOM 1's, 0x3492B0) */
+    static void PlayQueued();
+    static void Tick(float dT);
     static void LoadPlaylists(const char *name);
     static void LoadMusicLists(_zrdr *rdr, int mode);
     static void Cleanup();
 
     static std::vector<CSndSequence *> m_playlists[4];  /* 0x48E010: by intensity (SOCOM 1 had two) */
     static std::vector<float> m_weights[4];             /* 0x48E050 */
-    static signed char m_currentmode;                   /* 0x48E090 (SOCOM 1's) */
+    /* the music's state and the queued mode are plain chars (signed: lb, compared as signed bytes):
+     * Play stores its MUSIC_MODE into them unconverted, from the raw argument register, where a
+     * signed char's conversion CSEs with the sign-extended copy the compares use (the world lane's
+     * round 9: Play, Tick and PlayQueued byte-exact so) */
+    static char m_currentmode;                          /* 0x48E090 (SOCOM 1's) */
     static bool m_playlists_loaded;                     /* 0x48E098 (SOCOM 1's) */
 
     static CSndInstance *m_instance;    /* 0x48E080 (names ours) */
@@ -463,7 +473,7 @@ public:
     static MUSIC_MODE m_mode;           /* 0x48E0A0 */
     static bool m_modeChanged;          /* 0x48E0A8 */
     static int m_queued;                /* 0x48E0B0 */
-    static signed char m_queuedMode;    /* 0x48E0B4 */
+    static char m_queuedMode;           /* 0x48E0B4 */
     static bool m_jukebox_stopped;      /* 0x3E0080 (SOCOM 1's: Start clears it, Cleanup sets it) */
 };
 

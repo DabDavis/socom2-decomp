@@ -6251,13 +6251,13 @@
 0x00348860 0x80 Stop__11CSndJukeboxFv  # OVL1; s1:align
 0x003488E0 0x20 Start__11CSndJukeboxFv  # OVL1; s1:order by hand (SOCOM 1's Start, after Stop in both builds: a flag byte cleared, the queue emptied as ClearQueue does)
 0x00348900 0x218 NormalizeWeights__11CSndJukeboxF10MUSIC_MODE  # OVL1; s1:order by hand (right after Start as SOCOM 1's NormalizeWeights(MUSIC_MODE): the mode's weights summed (unrolled 8x) and scaled to one, or set equal when they sum to 0 -- CSndGroup::NormalizeWeights' code over m_weights[mode])
-0x00348B20 0x1C0 func_00348B20  # OVL1
+0x00348B20 0x1C0 PlayRandom__11CSndJukeboxF10MUSIC_MODE  # OVL1; s1:order by hand, the world lane round 9 (SOCOM 1's PlayRandom, between NormalizeWeights and Play in both builds -- SOCOM II's SetIntensity new between them: rand() scaled by 2^-31, the mode's weights summed until past it, that weight cut to a tenth and NormalizeWeights called, the playlist's sequence played in place of the instance; SOCOM II sets the music state 2 for a fight mode, 0 for the calm one) -- zsnd_jukebox.cpp
 0x00348CE0 0xE0 SetIntensity__11CSndJukeboxFf  # OVL1; SOCOM II's, name ours (the music mode, a byte enum, stepped 0-3 by a level's thresholds 1, 3, 5; whether it changed kept beside it)
 0x00348DC0 0x2A0 Play__11CSndJukeboxF10MUSIC_MODEP4CSnd  # OVL1; s1:calls by hand (SOCOM 1's CSndJukebox::Play: the SOUND tick calls it with mode 1 or 3 and the sound where SOCOM 1's does; the mode a signed byte compared with the jukebox's own)
 0x00349060 0x18 ClearQueue__11CSndJukeboxFv  # OVL1; s1:order by hand (SOCOM 1's ClearQueue, between Play and FadeOut in both builds, the same two stores: the count zeroed, the queued mode -1)
 0x00349080 0x7C FadeOut__11CSndJukeboxFv  # OVL1; s1:calls
-0x00349100 0x1A4 func_00349100  # OVL1
-0x003492B0 0x1DC func_003492B0  # OVL1
+0x00349100 0x1A4 PlayQueued__11CSndJukeboxFv  # OVL1; ours, the world lane round 9 (SOCOM 1's Tick inlined this five times -- the queued music played, else a mode's own; SOCOM II's grew past the auto-inline limit and Tick calls it six times: a queued mode over 2 played at once, a fight mode's music 2, a queued 1 faded in, a queued 2 dropped, the calm music faded in) -- zsnd_jukebox.cpp
+0x003492B0 0x1DC Tick__11CSndJukeboxFf  # OVL1; s1:order by hand, the world lane round 9 (SOCOM 1's Tick, after FadeOut in both builds; CSnd::PostTick calls it: a finished sequence or instance let go and the next started, then the next started when the music's state no longer suits the mode) -- zsnd_jukebox.cpp
 0x00349490 0x1DC LoadMusicLists__11CSndJukeboxFP5_zrdri  # OVL1; s1:calls by hand (LoadPlaylists calls it with each intensity's record and its index, as SOCOM 1's calls LoadMusicLists; four where SOCOM 1 had two) -- the sound lane
 0x00349670 0x114 LoadPlaylists__11CSndJukeboxFPCc  # OVL1; s1:align
 0x00349790 0x148 Cleanup__11CSndJukeboxFv  # OVL1; s1:calls by hand (SOCOM 1's CSndJukebox::Cleanup: LoadPlaylists calls it when the playlists are loaded, as SOCOM 1's; the same body -- each list's sequences deleted and the lists and weights freed, the current sound, mode and sequence reset, m_jukebox_stopped set; four lists where SOCOM 1 had two) -- the sound lane
