@@ -154,14 +154,6 @@ extern CIOPManager theIOPManager;
 static bool bnkArchiveIsOpen;           /* SOCOM 1's static */
 extern char data_003E0520[];            /* CFileIO's root path ("host0:.\\") */
 extern unsigned char data_0048DE48;     /* the subtitles' string table wanted (name not known) */
-/* a file in the CD's table of contents (SOCOM 1's DWARF, as util_sonyio.cpp's) */
-struct _FILECD {
-    char *name;                 // 0x0
-    unsigned int startSector;   // 0x4
-    unsigned int endSector;     // 0x8
-    unsigned int sectorSize;    // 0xc
-};
-extern "C" void func_0034D180(void *p);
 extern "C" void func_0034C4A0();
 
 /* The initialised flag's 1 is the subtitles' file Open's mode argument too (a2, loaded once for
@@ -190,7 +182,7 @@ void CSnd::Init()
         CFileIO::SetRootPath(path);
         m_bnkArchive.CloseKeepDir();
     }
-    func_0034D180(&data_0048DC30);
+    data_0048DC30.Init();
     snd_StartSoundSystem(0);
     CSndInstance::Init();
     func_0034C4A0();

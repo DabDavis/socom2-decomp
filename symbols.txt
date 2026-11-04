@@ -6340,14 +6340,14 @@
 0x0034D070 0x3C __ct__14CSndVocalQueueFv  # OVL1; SOCOM II's: stores CSndVocalQueue's vtable (0x406BC0) after the CSndQueue constructor, the id -1 (zsnd_queue.cpp)
 0x0034D0B0 0x5C CanPlay__19CSndVocalQueueEntryFv  # OVL1; SOCOM II's, name ours: CSndVocalQueueEntry's vtable slot 0x0C -- a 3D entry the listener cannot hear (CalcVolPan's volume 0) cannot play (zsnd_queue.cpp)
 0x0034D110 0x6C Play__19CSndVocalQueueEntryFv  # OVL1; SOCOM II's, name ours: CSndVocalQueueEntry's vtable (0x406BE0) slot 0x08 -- plays its sound in 3D at its position or by volume, the entry's id as the entity (zsnd_queue.cpp)
-0x0034D180 0x8 func_0034D180  # OVL1
-0x0034D190 0x2CC func_0034D190  # OVL1
+0x0034D180 0x8 Init__14CSubtitleTableFv  # OVL1; the world lane round 15: ours -- CSnd::Init's first load of the subtitle table (0x48DC30): Load(LANG_STATES) as a tail call (j 0x34D190, a1 zero) -- zsnd_subtitles.cpp
+0x0034D190 0x2CC Load__14CSubtitleTableF8LANGUAGE  # OVL1; the world lane round 15: ours -- the language's VAG index (VAGS_KOR/FRN/GER/SPN/ITL/JPN/ENG.ZAR, the strings at 0x3F7BA0) and VAGSTORE.ZAR: each archive's start sector off CFileCD::Find (0x18, 0x1C), its files listed by CSubtitleList::Load; CSnd::Init (through 0x34D180, the English default) and SetLanguage call it -- zsnd_subtitles.cpp
 0x0034D460 0x8 func_0034D460  # OVL1
 0x0034D470 0x8 func_0034D470  # OVL1
 0x0034D480 0x7C func_0034D480  # OVL1
 0x0034D500 0x54 __ct__14CSubtitleTableFv  # OVL1; the world lane r6, zsnd_subtitles.cpp (names ours): the subtitle table's constructor -- two 12-byte-record vectors (three zero words each), the byte at 0x20 cleared, reserve(10) and reserve(11500) through 0x34DED0; zsnd_csnd.cpp's initialiser 0x402FF0 builds the global 0x48DC30 with it
 0x0034D560 0x68 Dump__13CSubtitleListFv  # OVL1; the world lane r6, zsnd_subtitles.cpp (names ours): an empty walk of the first vector's 12-byte records (its print compiled out), called by Find 0x34D940 when no record matches; the world lane r7: the record vector class's (Find calls it on its own this)
-0x0034D5D0 0x168 func_0034D5D0  # OVL1
+0x0034D5D0 0x168 Load__13CSubtitleListFPQ23zar4CZAR  # OVL1; the world lane round 15: ours -- CSubtitleTable::Load 0x34D190 calls it with each list (this, this + 0xC) and the opened archive: the open key's files walked (its key ring's vector iterator through zar's pieces 0x257B90-0x257CB0, directories descended by 0x34D740), each file's data offset, size and its upper-cased name's hash pushed as a 12-byte record; true
 0x0034D740 0x1D8 func_0034D740  # OVL1
 0x0034D920 0x14 func_0034D920  # OVL1; tu: ztex_manager.cpp~ (1.0 beta)
 0x0034D940 0xB8 Find__13CSubtitleListFPCcPiPi  # OVL1; the world lane r6, zsnd_subtitles.cpp (names ours): the first vector's record whose word at 8 is the name's hash (0x3A59C0) gives its words 0 and 4 back through a2/a3, true; else Dump 0x34D560 and false; the world lane r7: a member of the record vector class (ours, a class over std::vector<CSubtitleEntry>): the table's lookup 0x34D480 calls it on this+0xC, then this
