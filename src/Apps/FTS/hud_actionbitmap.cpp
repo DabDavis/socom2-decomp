@@ -8,6 +8,7 @@
  * (0x3FE550) builds. Defined in reverse of their image order (-inline deferred). */
 
 #include "../../gamez/ztwod/ztwod.h"
+#include "../../gamez/zvid/zvid.h"
 
 #include <string.h>
 
@@ -102,6 +103,12 @@ extern "C" void func_00544C80(CZSealBody *seal, signed char action);
  * at 0x14 -- the texture machine at 0x40D550 -- and the driver, SOCOM II's at 0x1F4) */
 class CActionTxtrMachine : public std::vector<CActionTxtr *> {
 public:
+    void TickTransparencyFade(bool b);
+    /* the prompt and the timer's bitmaps by reference (ours: the fade calls their virtuals through
+     * them) */
+    C2DString &ActionString() { return m_action_string; }
+    C2DBitmap &TimerImage() { return m_timer_IMAGE; }
+    C2DBitmap &TimerBkgrd() { return m_timer_BKGRD; }
     bool UpdateDriverPickup();
     unsigned int Add(CActionTxtr *pActionTxtr);
 
@@ -118,6 +125,74 @@ public:
 /* the HUD's machine (SOCOM 1's ActionTxtrMachine_HUD; OVL1 bss 0x40D550): the unit's initialiser
  * builds it and registers its implicit destructor (0x220B50) */
 CActionTxtrMachine ActionTxtrMachine_HUD;
+
+/* the icons faded out by 400 a second (SOCOM 1's CActionTxtrMachine::TickTransparencyFade, 0x3D7930
+ * there): with b, the prompt set to 80 and every icon but the first and the active ones faded; else
+ * the prompt, the timer's two bitmaps and every icon but the first, each turned off at nothing --
+ * the prompt with any icon. The HUD's machine is read by name, its members through accessors
+ * returning references (on the members themselves MW calls the bitmaps' and the string's virtuals
+ * directly, the target through their vtables; a reference local is kept in a saved register, the
+ * target rebuilds the address at each use) */
+void CActionTxtrMachine::TickTransparencyFade(bool b)
+{
+    float fade = 400.0f * zVid.frameTime;
+
+    if (b) {
+        ActionTxtrMachine_HUD.ActionString().SetTrans(80.0f);
+        for (unsigned int i = 1; i < 22; i++) {
+            if (g_arrActionTxtrs[i].m_2DBitmap.IsOn() && !g_arrActionTxtrs[i].m_active) {
+                float trans = g_arrActionTxtrs[i].m_2DBitmap.GetTrans();
+
+                if (trans != 0.0f) {
+                    trans -= fade;
+                    if (trans < 0.0f) {
+                        trans = 0.0f;
+                        ActionTxtrMachine_HUD.ActionString().Off();
+                    }
+                    g_arrActionTxtrs[i].m_2DBitmap.SetTrans(trans);
+                }
+            }
+        }
+        return;
+    }
+
+    if (ActionTxtrMachine_HUD.ActionString().IsOn()) {
+        float trans = ActionTxtrMachine_HUD.ActionString().m_color[3];
+
+        trans -= fade;
+        if (trans < 0.0f) {
+            trans = 0.0f;
+            ActionTxtrMachine_HUD.ActionString().Off();
+        }
+        ActionTxtrMachine_HUD.ActionString().SetTrans(trans);
+    }
+
+    if (ActionTxtrMachine_HUD.TimerImage().IsOn()) {
+        float trans = ActionTxtrMachine_HUD.TimerImage().GetTrans() - fade;
+
+        if (trans < 0.0f) {
+            trans = 0.0f;
+            ActionTxtrMachine_HUD.TimerImage().Off();
+            ActionTxtrMachine_HUD.TimerBkgrd().Off();
+        }
+        ActionTxtrMachine_HUD.TimerImage().SetTrans(trans);
+        ActionTxtrMachine_HUD.TimerBkgrd().SetTrans(trans);
+    }
+    for (unsigned int i = 1; i < 22; i++) {
+        if (g_arrActionTxtrs[i].m_2DBitmap.IsOn()) {
+            float trans = g_arrActionTxtrs[i].m_2DBitmap.GetTrans();
+
+            if (trans != 0.0f) {
+                trans -= fade;
+                if (trans < 0.0f) {
+                    trans = 0.0f;
+                    ActionTxtrMachine_HUD.ActionString().Off();
+                }
+                g_arrActionTxtrs[i].m_2DBitmap.SetTrans(trans);
+            }
+        }
+    }
+}
 
 /* the driver's pickup when the HUD's first icon is a pickup's (4, the primary; 5, the secondary):
  * its node, and its weapon's name or "UNKNOWN" -- whether there is one (SOCOM 1's

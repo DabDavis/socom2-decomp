@@ -1957,7 +1957,7 @@
 0x0021F120 0xE8 func_0021F120  # OVL1
 0x0021F210 0x638 func_0021F210  # OVL1
 0x0021F850 0x870 func_0021F850  # OVL1
-0x002200C0 0x284 func_002200C0  # OVL1
+0x002200C0 0x284 TickTransparencyFade__18CActionTxtrMachineFb  # OVL1; s1:calls by hand (the HUD lane, round 39: hud_actionbitmap.cpp -- SOCOM 1's CActionTxtrMachine::TickTransparencyFade 0x3D7930, the same two fades of the icons, the prompt and the timer; SOCOM II's prompt set to 80 through the vtable; byte-exact)
 0x00220350 0x518 func_00220350  # OVL1
 0x00220870 0x144 UpdateDriverPickup__18CActionTxtrMachineFv  # OVL1; s1:calls by hand (the HUD lane, round 39: hud_actionbitmap.cpp -- SOCOM 1's CActionTxtrMachine::UpdateDriverPickup 0x3D7F40: the same two pickup cases on the HUD machine's first icon, SOCOM II's pickup through GetWeapon and GetDescription; byte-exact)
 0x002209C0 0x18C Add__18CActionTxtrMachineFP11CActionTxtr  # OVL1; s1:calls by hand (the HUD lane, round 39: hud_actionbitmap.cpp -- SOCOM 1's CActionTxtrMachine::Add 0x3D8070, the same tests, calls and push_back, SOCOM II's action a byte and its driver at 0x1F4; byte-exact)
