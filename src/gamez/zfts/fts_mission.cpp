@@ -486,6 +486,7 @@ public:
     void InitalizeTeamValves();   /* 0x2B2840 */
     void CloseVehicleRdr();   /* 0x2B3430 */
     void RefreshTeamValves();   /* 0x2B23A0 */
+    bool LoadVehicles();   /* 0x2B2E50 (fts_player.cpp's) */
     void CreateCompassNavPoints();
     CZNetGame *CreateNetGame();
     bool ReOpen_Unload2();
@@ -1586,7 +1587,6 @@ void func_00344450(const char *db);   /* (the mission's sounds loaded) */
 void func_00344910(const char *db);
 void func_003448D0(const char *name);   /* (the jukebox's lists) */
 extern const char *data_0064F950;   /* (OVL2: "aimaps.mps") */
-void func_002B2E50(CMission *mission);   /* (SOCOM 1's CMission::LoadVehicles) */
 void func_00295660();
 }
 
@@ -1736,7 +1736,7 @@ bool CMission::Open(const char *name)
         CZSealBody::NetworkPlayerCreate();
     CZSealBody::InitDecalHandles();
     CSealCtrlAi::AcquireDatabaseHandles();
-    func_002B2E50(this);
+    LoadVehicles();
     CCharacterType::AcquireSoundHandles();
     CZWeapon::Open();
     world->AddCustomCharacters();
@@ -1863,7 +1863,7 @@ bool CMission::ReOpen_Load()
     Sample_ExtractionLoc();
     CZWeapon::Open();
     CSealCtrlAi::AcquireDatabaseHandles();
-    func_002B2E50(this);
+    LoadVehicles();
     world->AddCustomCharacters();
     m_chars_loaded = 1;
     CCharacterType::AcquireSoundHandles();
