@@ -65,7 +65,12 @@ bool audioBuffAlloc;   /* 0x451D28 */
  * and in both arms (no common subexpression across the branch), never folds the size's 0x176C and
  * the alignment's 64 into one add, and stores the pointer once after the join (a local or an
  * inline's result); the macro here, a cast to unsigned in the test, and an inline taking the block
- * and its size by reference (0x308) all fold and share. */
+ * and its size by reference (0x308) all fold and share. Round 19: an inline taking the size by
+ * value (0x308), the sizes as inline functions of the height (0x370), unsigned casts on the macros,
+ * in the test and the arms (0x370-0x378), `int left`, `left > size + 64`, the size or the need in a
+ * block local (0x330), `left - 64 > size` (0x388); `#pragma optimization_level 3/2/1`,
+ * `opt_common_subs off`, `opt_propagation off` (0x3C8, 0x430, 0x580, 0x508, 0x398): none keeps the
+ * +64 apart and the size unshared. */
 int CMPEG::Init(void *buf, int size)
 {
     unsigned char *block = (unsigned char *)buf;
