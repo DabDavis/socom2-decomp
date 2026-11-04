@@ -573,14 +573,13 @@ void CAiSHold::OnSignal(SIGNAL sig, CSealCtrlAi *ai)
 /* a hold with its flags' bit 5 or 7 set (an inline bool: its true is daddiu, the result narrowed) */
 inline bool HoldBroken(const CAiState *s)
 {
-    if (s->m_state == AI_STATE_HOLD && (s->m_flags & 0xa0))
-        return true;
-    return false;
+    return s->m_state == AI_STATE_HOLD ? ((s->m_flags & 0xa0) ? true : false) : false;
 }
 
 /* whether the AI's current state is a hold with its flags' bit 5 or 7 set (OVL2 0x607830: the SEAL
  * lane's 0x558AE0 and 0x563E10 call it; the name ours).
- * OPEN, 0x7C against 0x6C: the target keeps the hold test in a1 -- zero in the state compare's
+ * OPEN, 6 instructions at the right size (round 24; 0x7C against 0x6C before -- the earlier notes
+ * follow): the target keeps the hold test in a1 -- zero in the state compare's
  * delay slot, `daddiu a1,zero,1` for true, `b; andi v0,a1,0xff` at the join, and a separate
  * `move v0,zero` for no state. The ternary over the inline (here) puts the andi on a block of its
  * own; `if (s) return HoldBroken(s); return false;` is 0x68, the true in v0 and no andi; a bool
@@ -588,13 +587,19 @@ inline bool HoldBroken(const CAiState *s)
  * sltu; `? true : false` and `HoldBroken(s) != false` miss further; the materialised `&&` written
  * in the ternary's arm is 0x68 with the test in v1 (the kit lane, round 12). The stack is read
  * through a const reference: the target calls its const GetState (0x5F8330), the non-const copy
- * 0x5F8360 otherwise. */
-extern "C" bool func_00607830(CSealCtrlAi *ai)
+ * 0x5F8360 otherwise. Round 24: the AI taken as `const CSealCtrlAi *` with the stack read in place
+ * gives the target's head (the size read at ai+0x41C, the address formed in the call's delay slot)
+ * and, with the hold test a ternary over a `? true : false`, the right size -- 6 off: the flags test
+ * if-converts into `sltu v0` where the target keeps r in a1 (`move a1,zero` in the state compare's
+ * delay slot, `daddiu a1,zero,1`, `andi v0,a1,0xff` at the join); the `&&` forms materialise the
+ * state compare (xori/sltiu), nested ifs with a bool local and a one-case switch fold too */
+extern "C" bool func_00607830(const CSealCtrlAi *ai)
 {
-    const CAiStateStack &st = ai->m_stateStack;
-    const CAiState *s = st.size() == 0 ? 0 : st.GetState();
+    const CAiState *s = ai->m_stateStack.size() == 0 ? 0 : ai->m_stateStack.GetState();
 
-    return s ? HoldBroken(s) : false;
+    if (s)
+        return HoldBroken(s);
+    return false;
 }
 
 /* the response states' callouts, looked up by name once the sounds are open: forty-three cue
