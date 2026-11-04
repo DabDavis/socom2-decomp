@@ -477,26 +477,26 @@ int CZKit::GetCurNumMags()
     return 0;
 }
 
-/* (OVL2 0x5C7CE0; SOCOM 1's UnInit over its m_items_avail -- SOCOM II's item pointers -- and its
- * light map).
- * OPEN, 0xCC against 0x120: the target keeps the three iterators in the frame -- out, end and the
- * walk's, in that order, each copied through $f0 from a begin()/end() temporary (40 from 52, 44 from
- * 56, 48 from 60) and re-read and re-stored at every step, as list<T *>'s assigned wrapper iterators
- * are -- where include/vector's pointer-vector iterator (one raw pointer) is scalarised here in every
- * form tried: initialised, assigned in each declaration order, postfix steps. Likely the original
- * MSL's iterator over a nested base iterator (the MSL lane's); the rest of the body is SOCOM 1's */
-void CZKit::UnInit()
-{
-    std::vector<void *>::iterator out = m_itemptr.begin();
-    std::vector<void *>::iterator e = m_itemptr.end();
-
-    for (std::vector<void *>::iterator i = m_itemptr.begin(); i != e; ++i, ++out) {
-        zdb::CNode *n = (zdb::CNode *)*i;
+/* an item's node deleted unless something holds it, its slot zeroed (std::transform's function
+ * object: an empty user constructor, so it is built with no stores; the name ours) */
+struct DeleteUnparented {
+    DeleteUnparented() {}
+    void *operator()(void *p) const
+    {
+        zdb::CNode *n = (zdb::CNode *)p;
 
         if (n && !n->GetParent())
             zdb::CNode::Delete(n);
-        *out = 0;
+        return 0;
     }
+};
+
+/* (OVL2 0x5C7CE0; SOCOM 1's UnInit over its m_items_avail -- SOCOM II's item pointers -- and its
+ * light map). The three iterators the target keeps in the frame, copied through $f0, are
+ * std::transform's by-value parameters (the MSL lane's round 17: no header change) */
+void CZKit::UnInit()
+{
+    std::transform(m_itemptr.begin(), m_itemptr.end(), m_itemptr.begin(), DeleteUnparented());
     m_itemptr.clear();
     if (m_lightMap) {
         delete m_lightMap;

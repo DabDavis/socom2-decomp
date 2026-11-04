@@ -97,9 +97,7 @@ void *GetClosestRegion__7CAiMapsFRC9CAiMapLocQ36CAiMap6region4TYPEb(CAiMaps *map
 bool GetRandomLoc__7CAiMapsFPCQ26CAiMap6regionR9CAiMapLoc(CAiMaps *maps, void *cell, unsigned int *loc);
 /* the goto pushed to a cell (OVL2 0x5F0830, seal_aistate.cpp's) */
 void func_005F0830(CSealCtrlAi *ai, unsigned int *loc, int mode, int kind, int step);
-/* (OVL2 0x558590: the SEAL lane's row, on the controller's object at 0x324; 0x563050, a goal
- * set with a float) */
-void func_00558590(void *obj);
+/* (OVL2 0x563050, a goal set with a float) */
 void ChangeStanceDelayed__11CSealCtrlAiF11SEAL_STANCE11SEAL_STANCEf(CSealCtrlAi *ai, int a, int b, float f);
 /* a look or a goal at a point (OVL2 0x561110, the SEAL lane's row) */
 void func_00561110(CSealCtrlAi *ai, int kind, const CPnt3D *pos, float t);
@@ -657,7 +655,7 @@ void CAiSPathRecover::OnSignal(SIGNAL sig, CSealCtrlAi *ai)
     case SIGNAL_0:
         ai->SetAiMode((AI_MODE)4);
         StopThrottles__11CSealCtrlAiFb(ai, 0);
-        func_00558590((char *)ai + 0x324);
+        ai->m_stamp.Reset();
         ChangeStanceDelayed__11CSealCtrlAiF11SEAL_STANCE11SEAL_STANCEf(ai, 2, 0, 0.1f);
         SetBit17(ai, false);
         m_58 = 0;
@@ -744,12 +742,12 @@ void CAiSAvoid::OnSignal(SIGNAL sig, CSealCtrlAi *ai)
         break;
     case SIGNAL_2:
         ai->ClearGoal(GOAL_AVOID);
-        func_00558590((char *)ai + 0x324);
+        ai->m_stamp.Reset();
         m_active = false;
         break;
     case SIGNAL_1:
         ai->ClearGoal(GOAL_AVOID);
-        func_00558590((char *)ai + 0x324);
+        ai->m_stamp.Reset();
         break;
     case SIGNAL_3:
         if (ai->m_stance == STANCE_PRONE)
