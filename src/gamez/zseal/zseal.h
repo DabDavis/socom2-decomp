@@ -39,6 +39,16 @@ enum MENU_STATE {
     stateLast = 6
 };
 
+/* the view the player looks through (SOCOM 1's DWARF, a signed byte: SetCurZoomState's argument) */
+enum ZOOMSTATE {
+    ZOOMSTATE_UNKNOWN = -1, ZOOMSTATE_3RDPERSON = 0, ZOOMSTATE_1STPERSON = 1, ZOOMSTATE_NVG = 2,
+    ZOOMSTATE_BINOCS = 3, ZOOMSTATE_WEAPONDEF1 = 4, NUM_ZOOMSTATES = 12
+};
+
+/* what a SEAL holds (SOCOM 1's SEAL_ITEM, a byte enum: zweapon.h keeps a word-sized stand-in of
+ * that name, so this one's name is ours) */
+enum SEAL_ITEM_BYTE { ITEM_NONE = 0, ITEM_RIFLE = 1, ITEM_PISTOL = 2, ITEM_THROWABLE = 3, ITEM_DONE = 4 };
+
 /* the fire trigger's edge state (SOCOM 1's DWARF, a byte) */
 enum TRIGGER { TRIGGER_UP = 0, TRIGGER_DOWN = 1, TRIGGER_FALLING = 2, TRIGGER_RISING = 3, TRIGGER_FINISH = 4 };
 
@@ -1200,6 +1210,8 @@ public:
     void Slide(zdb::IntersectStruct *hit);
     /* a wounded SEAL's blood dripped on the ground now and then (SOCOM 1's; OVL2 0x5A33B0) */
     void HandleBloodDrip(float dT);
+    /* a footfall's sound at a point (SOCOM 1's; OVL2 0x5A39B0) */
+    void HandleFootfallSound(CPnt3D *pos);
     /* the blood decals, one picked at random (SOCOM 1's static vector<CZDecalDef>; OVL1 bss
      * 0x44D568) */
     static std::vector<class CZDecalDef> m_blooddriptexhandles;
@@ -1309,6 +1321,12 @@ public:
     void DropBody();
     /* a stun taken: the kind's highest kept, the controller told (SOCOM 1's; OVL2 0x5A53D0) */
     void HandleStunDamage(STUN_TYPE type, float amount, const CPnt3D *from);
+    /* the stuns run down by the character's recovery (SOCOM 1's; OVL2 0x5A50A0), each kind's
+     * recovery as it reaches zero (SOCOM 1's; SOCOM II inlines it, seal_env.cpp) and the stunned
+     * bit set (an inline: its bool is not folded, `andi zero,1`; the name ours) */
+    void TickStun(float dT);
+    inline void HandleStunRecovery(STUN_TYPE type);
+    void SetAmStunned(bool on) { m_am_stunned = on; }
     /* the HUD's flags: the hit set, and each taken once (seal_env.cpp, SOCOM 1's) */
     void SetHudHitFlag();
     bool HudUpdateViewCone();
@@ -1389,7 +1407,14 @@ public:
     static class CSndInstance *m_heartbeat_sndisnt;
     static int m_heartbeat_curindex;
 
-    unsigned char _200[0x214 - 0x200];
+    ZOOMSTATE m_zoomstate;   // 0x200 (SOCOM 1's 0x160: DecrZoomState reads it, lb)
+    unsigned char _201[0x20c - 0x201];
+    /* the material underfoot and the feet's step flags (SOCOM 1's 0x168-0x16D; HandleSealStep and
+     * HandleFootfallSound read them) */
+    int m_onMaterial;   // 0x20c
+    unsigned char m_didrstep;   // 0x210
+    unsigned char m_didlstep;   // 0x211
+    unsigned char _212[0x214 - 0x212];
     float m_blooddriptimer;   // 0x214 (SOCOM 1's 0x170)
     /* the SEAL whose node 0x3DC holds, kept while bit 0 of 0x21C is set (0x5AA620, the radio menu's
      * toggle; the names ours) */
@@ -1466,7 +1491,9 @@ public:
     class AnimSet *m_default_animset;   // 0x52c (SOCOM 1's 0x460: BindAnimSet keeps the set it replaces)
     unsigned char _530[0x534 - 0x530];
     AnimType m_curblend;   // 0x534: the anim type on top of the blends (SOCOM 1's short at 0x464)
-    unsigned char _536[0x58c - 0x536];
+    unsigned char _536[0x540 - 0x536];
+    class CCharacterType *m_charType;   // 0x540 (SOCOM 1's 0x468: TickStun reads its recovery factor)
+    unsigned char _544[0x58c - 0x544];
     /* (SOCOM 1's m_stats, 0x4c0, right before m_accuracy as here: the stats' events step its
      * counters -- the CQB attack two of them -- and 0x545890 returns its address) */
     CSealStats m_stats;   // 0x58c
@@ -1496,7 +1523,9 @@ public:
     unsigned char _ee4[0xf74 - 0xee4];
     /* the weapon's state, bit 4 a flag GetWeaponState masks off (SOCOM 1's m_weapon_state, 0xe54) */
     unsigned int m_weapon_state;   // 0xf74
-    unsigned char _f78[0xf79 - 0xf78];
+    /* an item the anim choice falls back on with no base blend (0x58C820 copies it with lb, tests it
+     * with lbu: a byte enum; new in SOCOM II, the name ours) */
+    SEAL_ITEM_BYTE m_lastitem;   // 0xf78
     /* the item in hand (SOCOM 1's m_item, a SEAL_ITEM byte at 0xe58: 1 the rifle, 2 the pistol, 3 a
      * throwable; zweapon.h's SEAL_ITEM is a word-sized stand-in, so a byte here) */
     unsigned char m_item;   // 0xf79
@@ -1613,7 +1642,9 @@ public:
     CPnt3D m_1350;   // 0x1350: the velocity kept as 0x57DF20/0x57E050 set bit 9 (the name ours)
     unsigned char _135c[0x1440 - 0x135c];
     CPnt3D m_aim_dir;   // 0x1440 (SOCOM 1's 0x10a0: AimWeapon sets it)
-    unsigned char _144c[0x14cc - 0x144c];
+    unsigned char _144c[0x14b0 - 0x144c];
+    CPnt3D m_curr_firepos;   // 0x14b0 (SOCOM 1's 0x1110, m_aim_dir's 0x3a0 on as here)
+    unsigned char _14bc[0x14cc - 0x14bc];
     short m_last_foot;   // 0x14cc (SOCOM 1's 0x112c: Prone_0 sets it to 2, as SOCOM 1's does)
     unsigned char _14ce[0x14e0 - 0x14ce];   // (0x14E0 bytes: Create news 5344)
 };

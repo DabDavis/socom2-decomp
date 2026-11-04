@@ -175,9 +175,13 @@ extern "C" {
 void func_00394420();
 void func_00398B50();
 void func_00399C10(CSoftKeyboard *skb);
-/* CGameMenu::RunEventAnim (zui.cpp's 0x367810: the menu, an event, a flag) */
-void func_00367810(CGameMenu *menu, int event, int flag);
 }
+
+/* the game menu (zui.cpp's: only its event runner) */
+class CGameMenu {
+public:
+    bool RunEventAnim(ActionItem::EVENT event, const char *arg);
+};
 void SkbPlaySound(unsigned char which);
 
 extern "C" {
@@ -553,7 +557,7 @@ void CSoftKeyboard::ShutdownBegin(CGameMenu *menu)
     func_00394420();
     func_00398B50();
     func_00399C10(this);
-    func_00367810(menu, 16, 0);
+    menu->RunEventAnim(ActionItem::ON_SKB_CLOSE, 0);
     SkbPlaySound(1);
 }
 
@@ -596,6 +600,129 @@ inline void CSoftKeyboard::SetCurKeyState(void (C2DButton::*state)())
 {
     if (GetCurKeyProps())
         GetCurKeyProps()->SetButtonState(state);
+}
+
+/* the keys named in a keyboard's rdr beside the letters (0x3FACC0, 0x3FACE0 and 0x3FAC60; the names
+ * ours): the five characters' names and the characters, and the fourteen action keys */
+static const char *s_charKeyNames[5] = {"Quote1", "Quote2", "ParenL", "ParenR", "Space"};
+static const char *s_charKeyChars = "'\"() ";
+static const char *s_actionKeyNames[14] = {"CapsLock", "Recip", "BackSpace", "Clear", "Enter", "Exit", "Apply",
+                                           "Shift", "Legend", "Dakuten", "Handakuten", "WideNarrow",
+                                           "MsgPlayer", "Action2"};
+
+extern "C" int strncasecmp(const char *a, const char *b, size_t n);
+/* zui_hangul.cpp's jamo by name (its JAMO: JAMO_COUNT for none) */
+enum JAMO { JAMO_COUNT = 33 };
+JAMO FindJamo(const char *name);
+
+
+namespace {
+
+/* the key a name in the rdr gives (0x38DA70, SOCOM 1's StrToSkbKey; ParseKeyProps and
+ * CreateSoftKeyboard call it): none for no name, a single character as itself, "Switch<n>" the
+ * switch key n (row 3, SOCOM II's), a named character, an action key (row 1, by its index) or a
+ * jamo (row 2, SOCOM II's), else none. The switch key is built in a frame slot and copied out (a
+ * local returned through a reference: returned by name, MW scalarises it), the jamo's in the
+ * result itself (a constructor: a named local is scalarised and stored at the end) */
+CSkbKey StrToSkbKey(const char *name)
+{
+    if (!name)
+        return CSkbKey();
+    if (strlen(name) == 1)
+        return CSkbKey(0, (unsigned char)name[0]);
+    if (!strncasecmp(name, "Switch", 6)) {
+        CSkbKey k;
+        CSkbKey &r = k;
+
+        k.Set(3, atoi(name + 6));
+        return r;
+    }
+    for (unsigned int i = 0; i < 5; i++) {
+        if (!strcasecmp(name, s_charKeyNames[i]))
+            return CSkbKey(0, (unsigned char)s_charKeyChars[i]);
+    }
+    for (unsigned int i = 0; i < 14; i++) {
+        if (!strcasecmp(name, s_actionKeyNames[i]))
+            return CSkbKey(1, (unsigned char)i);
+    }
+    return CSkbKey((unsigned char)FindJamo(name));
+}
+
+}
+
+/* a key and its props paired for the map, the key taken by value (ours: as SOCOM 1's make_pair,
+ * whose key parameter is a copy -- the target block-copies it, then copies it into the pair and
+ * that into the map's value) */
+static inline std::pair<CSkbKey, CSkbKeyProps *> SkbKeyPair(CSkbKey key, CSkbKeyProps *props)
+{
+    return std::pair<CSkbKey, CSkbKeyProps *>(key, props);
+}
+
+/* an int the rdr may give, else the default (ours: as the display unit's) */
+static inline int SkbFindInt(_zrdr *rdr, const char *tag, int def)
+{
+    int i = def;
+
+    zrdr_findint(rdr, tag, &i, 1);
+    return i;
+}
+
+/* a rectangle from a place and a size (ours: built in place, as the display unit's out-of-line
+ * 0x396C80 builds it) */
+static inline CSkbRect SkbRect(const CIntPair &pos, const CIntPair &size)
+{
+    CSkbRect r;
+
+    r.Set(pos, size);
+    return r;
+}
+
+/* the keys' props a keyboard's KeyProps list gives: each item's Key (a name, or a code), its Pos and
+ * Size and its ButtonSpec (0x38DCB0; CreateSoftKeyboard calls it; the name ours).
+ * OPEN, 0x220 against 0x1F0 (written round 15, untuned): the calls and their order are the target's
+ * (SkbRdrCount each pass, Size read before Pos, the ButtonSpec tag before the inlined FindKeyProps);
+ * the frame differs -- the target keeps the code path's key at 212, StrToSkbKey's at 216, the key at
+ * 220, the pairs at 184/192 and the rectangle at 160, with sp+214, 222, 196 and 164 hoisted into
+ * s4/s6/s7/s8, `this` in s2 and this+360 in s3; here the rectangle's own addresses are hoisted and
+ * `this` is s5 (SkbRect's named result, and the ternary key, are the first suspects) */
+void CSoftKeyboard::ParseKeyProps(_zrdr *rdr)
+{
+    _zrdr *list = zrdr_findtag(rdr, "KeyProps");
+
+    for (int i = 0; i < (int)SkbRdrCount(list); i++) {
+        _zrdr *item = list->Item(i);
+        const char *name = zrdr_findstring(item, "Key");
+        CSkbKey key = name ? StrToSkbKey(name) : CSkbKey(0, SkbFindInt(item, "Key", 0));
+
+        AddKeyProps(key, SkbRect(ReadIntPair(item, "Pos"), ReadIntPair(item, "Size")));
+        FindKeyProps(key)->SetSpec(zrdr_findtag(item, "ButtonSpec"));
+    }
+}
+
+/* a key's props found, or made and mapped -- a key of row 2 sets 0x174 -- then given the key's
+ * place and size (0x38B770; ParseKeyProps calls it; the name ours). Written round 15 for the map's
+ * insert_one 0x38EC10 and insert_node_at 0x38EF50, byte-exact through it.
+ * OPEN, 0xFC against 0x124: the target keeps the insert's three temporaries in memory -- the key
+ * block-copied (lh/sh, lh/sh) to 104, a pair<CSkbKey, CSkbKeyProps *> at 80 copy-constructed from
+ * it (lb/lhu) with the props stored and reloaded, the map's value at 88 copied from that -- where
+ * MW scalarises every form tried: this by-value helper (SOCOM 1's make_pair takes its key by value:
+ * its pair constructor 0x3A8E40 is out of line there), include/utility's make_pair, a named pair,
+ * value_type(pair), a local key copy. Fields kept in memory point at MSL's pair holding them in a
+ * base class (the deque iterator's tell, round 14 of the MSL headers) -- not tried */
+void CSoftKeyboard::AddKeyProps(const CSkbKey &key, const CSkbRect &r)
+{
+    CSkbKeyProps *props = FindKeyProps(key);
+
+    if (!props) {
+        props = new CSkbKeyProps;
+        m_keyProps.insert(SkbKeyPair(key, props));
+        if (key.m_urow == 2)
+            m_174 = true;
+    }
+    props->m_x = r.m_pos[0];
+    props->m_y = r.m_pos[1];
+    props->m_w = r.m_size[0];
+    props->m_h = r.m_size[1];
 }
 
 /* a key's properties, or none (SOCOM 1's): the found branch first -- `i == end() ? 0 : ...` and
