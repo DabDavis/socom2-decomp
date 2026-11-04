@@ -968,10 +968,10 @@ void CZSealBody::SetCurZoomState(ZOOMSTATE zs)
     m_zoomstate_prev = m_zoomstate;
     m_zoomstate = zs;
     m_zoomstate_echo = 1;
-    if (m_zoomstate_prev == 3) {
+    if (m_zoomstate_prev == ZOOMSTATE_NVG) {
         if (data_0044CE38)
             data_0044CE38->PlaySound((CSndInstance *)0, 255);
-    } else if (m_zoomstate == 3) {
+    } else if (m_zoomstate == ZOOMSTATE_NVG) {
         if (data_0044CE30)
             data_0044CE30->PlaySound((CSndInstance *)0, 255);
     }
@@ -982,22 +982,22 @@ void CZSealBody::SetCurZoomState(ZOOMSTATE zs)
         appCamera->m_camera->SetScreenOffsetY(0.0f);
     }
     switch (m_zoomstate) {
-    case 0:
+    case ZOOMSTATE_3RDPERSON:
         m_zoom_range = 1.0f;
         if (m_zoom_anim) {
             func_002707C0(m_zoom_anim, false);
             m_zoom_anim = 0;
         }
         break;
-    case 1:
-    case 2:
+    case ZOOMSTATE_1STPERSON:
+    case ZOOMSTATE_THERMAL:
         m_zoom_range = 1.01f;
         if (m_zoom_anim) {
             func_002707C0(m_zoom_anim, false);
             m_zoom_anim = 0;
         }
         break;
-    case 3:
+    case ZOOMSTATE_NVG:
         m_zoom_range = 1.01f;
         ResetTargetsSeen();
         if (m_zoom_anim) {
@@ -1005,7 +1005,7 @@ void CZSealBody::SetCurZoomState(ZOOMSTATE zs)
             m_zoom_anim = 0;
         }
         break;
-    case 4:
+    case ZOOMSTATE_BINOCS:
         m_zoom_range = 9.0f;
         ResetTargetsSeen();
         if (!m_zoom_anim) {
@@ -1015,19 +1015,19 @@ void CZSealBody::SetCurZoomState(ZOOMSTATE zs)
         }
         m_kit.InitializeSniperKick();
         break;
-    case 5:
-    case 6:
-    case 7:
-    case 8:
-    case 9:
-    case 10:
-    case 11:
-    case 12: {
+    case ZOOMSTATE_WEAPONDEF1:
+    case ZOOMSTATE_WEAPONDEF2:
+    case ZOOMSTATE_WEAPONDEF3:
+    case ZOOMSTATE_WEAPONDEF4:
+    case ZOOMSTATE_WEAPONDEF5:
+    case ZOOMSTATE_WEAPONDEF6:
+    case ZOOMSTATE_WEAPONDEF7:
+    case ZOOMSTATE_WEAPONDEF8: {
         CZFTSWeapon *w = m_kit.GetCurItem();
 
         if (w && m_zoomstate - 4 < w->m_zoommode.size())
             m_zoom_range = w->GetZoomRange(m_zoomstate - 4);
-        if (m_zoomstate_prev != 6)
+        if (m_zoomstate_prev != ZOOMSTATE_WEAPONDEF2)
             m_kit.InitializeSniperKick();
         if (!m_zoom_anim) {
             m_zoom_anim = ZAnim.GetAnim("zoom_control", 0);
@@ -1057,27 +1057,27 @@ ZOOMSTATE CZSealBody::DecrZoomState()
         nvg = theMission.m_secondary_zoom.m_nvg;
     }
     switch (m_zoomstate) {
-    case 1:
+    case ZOOMSTATE_1STPERSON:
         zs = ZOOMSTATE_3RDPERSON;
         break;
-    case 2:
+    case ZOOMSTATE_THERMAL:
         zs = ZOOMSTATE_3RDPERSON;
         break;
-    case 3:
+    case ZOOMSTATE_NVG:
         zs = ZOOMSTATE_1STPERSON;
         break;
-    case 4:
+    case ZOOMSTATE_BINOCS:
         zs = ZOOMSTATE_1STPERSON;
         func_005B9020(&m_kit);
         break;
-    case 5:
-    case 6:
-    case 7:
-    case 8:
-    case 9:
-    case 10:
-    case 11:
-    case 12: {
+    case ZOOMSTATE_WEAPONDEF1:
+    case ZOOMSTATE_WEAPONDEF2:
+    case ZOOMSTATE_WEAPONDEF3:
+    case ZOOMSTATE_WEAPONDEF4:
+    case ZOOMSTATE_WEAPONDEF5:
+    case ZOOMSTATE_WEAPONDEF6:
+    case ZOOMSTATE_WEAPONDEF7:
+    case ZOOMSTATE_WEAPONDEF8: {
         CZFTSWeapon *w = m_kit.GetCurItem();
 
         if (w) {
@@ -1085,7 +1085,7 @@ ZOOMSTATE CZSealBody::DecrZoomState()
 
             if (level - 1 <= 0) {
                 if ((!pref && zdb::CWorld::m_world->m_night_mission) || nvg)
-                    zs = (ZOOMSTATE)3;
+                    zs = ZOOMSTATE_NVG;
                 else
                     zs = ZOOMSTATE_1STPERSON;
                 func_005B9020(&m_kit);
@@ -1128,14 +1128,14 @@ ZOOMSTATE CZSealBody::IncrZoomState()
     CZFTSWeapon *w = m_kit.GetCurItem();
 
     switch (m_zoomstate) {
-    case 0:
+    case ZOOMSTATE_3RDPERSON:
         if (TurretHasThermal()) {
-            zs = (ZOOMSTATE)2;
+            zs = ZOOMSTATE_THERMAL;
             func_003AA020(GetTurret(), false);
         } else
             zs = ZOOMSTATE_1STPERSON;
         break;
-    case 1:
+    case ZOOMSTATE_1STPERSON:
         if (m_eb8)
             break;
         if (item && CZWeapon::IsLauncher(item->m_ID))
@@ -1143,24 +1143,24 @@ ZOOMSTATE CZSealBody::IncrZoomState()
         if (func_005BD7E0(&m_kit))
             break;
         if ((!pref && zdb::CWorld::m_world->m_night_mission) || nvg)
-            zs = (ZOOMSTATE)3;
+            zs = ZOOMSTATE_NVG;
         else if (w && w->m_zoommode.size() > 1)
-            zs = (ZOOMSTATE)5;
+            zs = ZOOMSTATE_WEAPONDEF1;
         else
-            zs = (ZOOMSTATE)4;
+            zs = ZOOMSTATE_BINOCS;
         break;
-    case 3:
-    case 4:
+    case ZOOMSTATE_NVG:
+    case ZOOMSTATE_BINOCS:
         if (w && w->m_zoommode.size() > 1)
-            zs = (ZOOMSTATE)5;
+            zs = ZOOMSTATE_WEAPONDEF1;
         break;
-    case 5:
-    case 6:
-    case 7:
-    case 8:
-    case 9:
-    case 10:
-    case 11:
+    case ZOOMSTATE_WEAPONDEF1:
+    case ZOOMSTATE_WEAPONDEF2:
+    case ZOOMSTATE_WEAPONDEF3:
+    case ZOOMSTATE_WEAPONDEF4:
+    case ZOOMSTATE_WEAPONDEF5:
+    case ZOOMSTATE_WEAPONDEF6:
+    case ZOOMSTATE_WEAPONDEF7:
         if (w) {
             /* (unsigned: an int folds the two steps into one `addiu -3`, as the target does not) */
             unsigned int level = m_zoomstate - 4;
@@ -1169,7 +1169,7 @@ ZOOMSTATE CZSealBody::IncrZoomState()
                 zs = (ZOOMSTATE)(m_zoomstate + 1);
         }
         break;
-    case 12:
+    case ZOOMSTATE_WEAPONDEF8:
         break;
     }
     SetCurZoomState(zs);

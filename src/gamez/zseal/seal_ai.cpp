@@ -1521,7 +1521,7 @@ extern "C" void func_0056C080(CSealCtrlAi *ai, CAiPath *path, const CAiMapLoc *l
 {
     CEntity *e = ai->m_entity;
 
-    ai->m_614 = 0;
+    ai->m_strafe = 0.0f;
     if (!path->m_points.size() || !path->HasPoints() || path->IsPlanning()) {
         ai->m_60c = 0;
         loc = loc->x == CAiMapLoc::invalid.x && loc->y == CAiMapLoc::invalid.y ? &e->m_mapLocValid : loc;
@@ -1535,10 +1535,10 @@ extern "C" void func_0056C080(CSealCtrlAi *ai, CAiPath *path, const CAiMapLoc *l
         ai->m_leg_from.y = 0.0f;
         ai->m_leg_dir = ai->m_leg_to - ai->m_leg_from;
         ai->m_leg_len = ai->m_leg_dir.Normalize();
-        ai->m_608 = 0;
+        ai->m_leg_done = 0.0f;
         ai->m_60c = 0;
-        ai->m_614 = 0;
-        ai->m_610 = 0;
+        ai->m_strafe = 0.0f;
+        ai->m_strafe_time = 0.0f;
     }
 }
 
@@ -1984,6 +1984,132 @@ Rfloat::operator float() const
 extern "C" bool func_005608B0(const float &chance)
 {
     return Rfloat(0.0f, 1.0f) <= chance;
+}
+
+/* a random value between two bounds (an inline over Rfloat: through it the bounds' registers are the
+ * target's -- the Rfloat built in place swaps them; the name ours) */
+static inline float RandRange(float lo, float hi)
+{
+    return Rfloat(lo, hi - lo);
+}
+
+/* whether a chance comes up, the chance by value read through a reference (seal_control.cpp's
+ * inline: the target stores the chance in a stack slot and reads it back after rand()) */
+static inline bool Chance(float chance)
+{
+    const float &c = chance;
+
+    return Rfloat(0.0f, 1.0f) <= c;
+}
+
+/* neither of SOCOM 1's m_snoozing and m_sleeping set, as a bool -- the `||` MW's own (its join no
+ * aligned label: the target's in 0x569AA0 and 0x569C60, where AiAwake's if pads one; the name ours) */
+static inline bool AiAwakeNow(const CSealCtrlAi *ai)
+{
+    return !(ai->m_aibit9 || ai->m_aibit8);
+}
+
+/* whether two cells are the same place, the map aside (an inline bool: the target materialises each
+ * compare; the name ours) */
+static inline bool SameCell(const CAiMapLoc &a, const CAiMapLoc &b)
+{
+    return a.x == b.x && a.y == b.y;
+}
+
+/* whether the AI drives a SEAL (IsPlayer's ternary shape: the bool narrowed in each arm here) */
+static inline bool AiDriven(CZSealBody *seal)
+{
+    return seal->m_control ? ((CSealCtrl *)seal->m_control)->IsAi() : false;
+}
+
+/* the nearest SEAL among an entity's targets within a range: alive, awake when the AI drives it, on a
+ * team the mask meets or not as asked, and with the flag one whose target bit 9 is set -- the range
+ * handed back as the target's. The targets are kept nearest first, so the first past the range ends
+ * the walk (OVL2 0x569C60, new in SOCOM II: CAiSHostage::Tick and CAiSSurrender::Tick ask it, and
+ * 0x569C50 for the entity's own enemies; the names ours) */
+extern "C" CEntity *func_00569C60(CEntity *e, float *range, unsigned int mask, bool member, bool flagged)
+{
+    CTargetList &targets = e->m_targets;
+    float r2 = *range * *range;
+
+    for (CTargetList::iterator i = targets.begin(); i != targets.end(); ++i) {
+        CZSealBody *seal = AsSeal(i->m_ent);
+
+        if (!seal || !seal->m_isAlive)
+            continue;
+        if (AiDriven(seal) && !AiAwakeNow(seal->GetSealCtrlAi()))
+            continue;
+        if (member != ((mask & seal->m_team) != 0))
+            continue;
+        if (flagged && !(i->m_flags & 0x200))
+            continue;
+        if (!(i->m_distSq < r2))
+            break;
+        *range = i->GetRange();
+        return seal;
+    }
+    return 0;
+}
+
+/* the nearest enemy SEAL among an entity's targets within a range (OVL2 0x569C50: 0x569C60 for a
+ * team the entity's own does not meet) */
+extern "C" CEntity *func_00569C50(CEntity *e, float *range, bool flagged)
+{
+    return func_00569C60(e, range, e->m_team, false, flagged);
+}
+
+/* the SEAL among an entity's targets standing in a cell: alive, and when the AI drives it awake
+ * (OVL2 0x569AA0, new in SOCOM II: 0x56A130's line walk and 0x567900 ask it for what they met; the
+ * name ours). The SEAL's cell through CZSealBody::MapLocValid(): the member accessor gives the
+ * target's `addiu a0,s1,232` for the y read, the field read straight or a static accessor folds it.
+ * Both callers call it out of line (short enough for -inline auto here: pinned) */
+#pragma auto_inline off
+extern "C" CEntity *func_00569AA0(CEntity *e, const CAiMapLoc *loc)
+{
+    CTargetList &targets = e->m_targets;
+
+    for (CTargetList::iterator i = targets.begin(); i != targets.end(); ++i) {
+        CZSealBody *seal = AsSeal(i->m_ent);
+
+        if (!seal || !seal->m_isAlive)
+            continue;
+        if (AiDriven(seal) && !AiAwakeNow(seal->GetSealCtrlAi()))
+            continue;
+        if (SameCell(seal->MapLocValid(), *loc))
+            return seal;
+    }
+    return 0;
+}
+#pragma auto_inline reset
+
+extern "C" {
+/* the side step's limits (OVL2 data: the leg's length left under which it stops, the time between
+ * picks, and its least and greatest size) */
+extern float data_00650180;
+extern float data_00650188;
+extern float data_00650190;
+extern float data_00650198;
+}
+
+/* the side step off the leg being walked: none near the leg's end; picked again once the time since
+ * the last pick passes its limit -- from none, the greatest either way at even chances; else even
+ * chances of none or a random size the other way -- the time restarted (OVL2 0x5698A0, new in SOCOM
+ * II: 0x567900 calls it; the name ours) */
+extern "C" float func_005698A0(CSealCtrlAi *ai)
+{
+    if (!(ai->m_leg_len - ai->m_leg_done <= data_00650180)) {
+        if (!(ai->m_strafe_time <= data_00650188)) {
+            float side = ai->m_strafe >= 0.0f ? 1.0f : -1.0f;
+
+            if (ai->m_strafe == 0.0f)
+                ai->m_strafe = data_00650198 * (Chance(0.5f) ? -1.0f : 1.0f);
+            else
+                ai->m_strafe = Chance(0.5f) ? 0.0f : -side * RandRange(data_00650190, data_00650198);
+            ai->m_strafe_time = 0.0f;
+        }
+    } else
+        ai->m_strafe = 0.0f;
+    return ai->m_strafe;
 }
 
 /* a direction to look in from a map spot (OVL2 0x559580, not written: its arguments are what

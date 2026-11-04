@@ -71,6 +71,15 @@ struct CMaterialEx {
     CSnd *m_runsound;   // 0x8
     CSnd *m_walksound;   // 0xc
     CSnd *m_pronesound;   // 0x10
+    unsigned char _14[0x3c - 0x14];
+    /* int_material.h's flags: only PICKUP here (bit 4) */
+    unsigned int m_flags0 : 4;   // 0x3c
+    unsigned int m_pickup : 1;   // bit 4: PICKUP
+    unsigned int m_flags5 : 27;
+
+    /* (an inline written `? true : false`: the target converts the bit, sltu, before its test --
+     * `!= 0`, a plain return or a cast fold it away) */
+    bool IsPickup() { return m_pickup ? true : false; }
 };
 
 /* a material's extension, the first one for an index past the table (SOCOM 1's bounds-checked
@@ -514,7 +523,9 @@ static inline void HangDeathCallback(CZBodyAnimBlend *b)
  * a static inline accessor, a CMission::GetLadder(i) wrapper, a pointer local and an index local, the
  * hold through a pointer or a reference local or an inline returning it; a ternary over the index
  * (`climb == &seal->m_climb ? ... : ...`) matches 0x5B14E0 alone -- the inlined copy folds it -- and
- * is not a real spelling */
+ * is not a real spelling. Round 26 (build/scratch/seal/v_5b14e0.py): the release as an inline taking
+ * the index, the SEAL or the list, and a Ladder(list, index) inline in either parameter order -- all
+ * still the 2 */
 extern "C" CZBodyAnimBlend *func_005A2490(CZSealBody *seal, AnimType type)
 {
     func_005781C0(seal);
@@ -1002,34 +1013,116 @@ extern "C" void func_005AA620(CZSealBody *seal, bool on)
 {
     if (on) {
         SetBit21c0(seal, true);
-        seal->m_218 = CZSealBody::GetSeal(seal->m_3dc);
+        seal->m_218 = CZSealBody::GetSeal(seal->m_last_reticule.m_node);
     } else {
         SetBit21c0(seal, false);
         seal->m_218 = 0;
     }
 }
 
-/* the fire point's offset, none while it is unset (an inline: its three compares with zero) */
-static inline const CPnt3D *FireOffset(const CZSealBody *seal)
+/* whether the fire point's offset is set: any of its fields off zero (a macro: the zero is a local,
+ * because MW puts a float literal first in `c.eq.s` whichever way the test is written while a
+ * variable keeps the field first; and the offset is picked by a ternary in place, each arm its own
+ * block -- through an inline function, a pointer result or an if/else, MW presets the field's address
+ * and drops its block) */
+#define FIREPOS_SET(seal, zero) \
+    ((seal)->m_curr_firepos.x != (zero) || (seal)->m_curr_firepos.y != (zero) || (seal)->m_curr_firepos.z != (zero))
+
+/* the pickup under the reticule: a weapon within 20 of the hit, when the hit's material is a pickup's
+ * -- the next nearest handed back too when asked -- or online the MP bomb there, whichever lies
+ * nearer the SEAL's fire point, that within 20 of it (OVL2 0x5A9C70: TickPickups 0x593DA0 asks it
+ * before 0x5A9F40; new in SOCOM II, the name ours) */
+extern "C" CPickup *func_005A9C70(CZSealBody *seal, CPickup **secondary)
 {
-    if (seal->m_curr_firepos.x == 0.0f && seal->m_curr_firepos.y == 0.0f && seal->m_curr_firepos.z == 0.0f)
-        return &CPnt3D::zero;
-    return &seal->m_curr_firepos;
+    zdb::IntersectStruct *hit = &seal->m_last_reticule;
+
+    if (!hit)
+        return 0;
+    CMaterialEx *mat = MaterialEx(hit->GetMaterial());
+
+    if (!mat || !mat->IsPickup())
+        return 0;
+    float d = 9999.0f;
+    bool full = !seal->m_kit.HasPickupSlot();
+    float zero = 0.0f;
+    CPnt3D pos = seal->m_posW + (FIREPOS_SET(seal, zero) ? seal->m_curr_firepos : CPnt3D::zero);
+    CPickup *other = 0;
+    CPickup *p = CPickup::GetClosest(&hit->m_pos, 20.0f, CPickup::PU_WEAPON, secondary ? &other : 0, full);
+
+    if (p) {
+        CPnt3D v;
+
+        pos.Sub(p->GetPosW(), &v);
+        d = v.x * v.x + v.y * v.y + v.z * v.z;
+    }
+    if (other && secondary) {
+        CPnt3D v;
+
+        pos.Sub(other->GetPosW(), &v);
+        d = v.x * v.x + v.y * v.y + v.z * v.z;
+        if (d < 400.0f)
+            *secondary = other;
+    }
+    if (theNetwork.m_9) {
+        CPickup *bomb = CPickup::GetClosest(&hit->m_pos, 20.0f, CPickup::PU_MPBOMB, 0, true);
+
+        if (bomb) {
+            CPnt3D v;
+
+            pos.Sub(bomb->GetPosW(), &v);
+            float b = v.x * v.x + v.y * v.y + v.z * v.z;
+
+            if (b < d) {
+                d = b;
+                p = bomb;
+            }
+        }
+    }
+    if (!(d <= 400.0f))
+        p = 0;
+    return p;
+}
+
+/* the weapon lying nearest the SEAL's fire point within 20, if any -- the next nearest handed back
+ * too when asked and within 20 -- a weapon the kit has no slot for offered only as that (OVL2
+ * 0x5A9F40: TickPickups 0x593DA0 asks it; new in SOCOM II, the name ours). The distance is one
+ * variable: the second weapon's replaces the first's before the last test, as the target's $f20 */
+extern "C" CPickup *func_005A9F40(CZSealBody *seal, CPickup **secondary)
+{
+    float d = 9999.0f;
+    bool full = !seal->m_kit.HasPickupSlot();
+    float zero = 0.0f;
+    CPnt3D pos = seal->m_posW + (FIREPOS_SET(seal, zero) ? seal->m_curr_firepos : CPnt3D::zero);
+    CPickup *other = 0;
+    CPickup *p = CPickup::GetClosest(&pos, 20.0f, CPickup::PU_WEAPON, secondary ? &other : 0, full);
+
+    if (p) {
+        CPnt3D v;
+
+        pos.Sub(p->GetPosW(), &v);
+        d = v.x * v.x + v.y * v.y + v.z * v.z;
+    }
+    if (other && secondary) {
+        CPnt3D v;
+
+        pos.Sub(other->GetPosW(), &v);
+        d = v.x * v.x + v.y * v.y + v.z * v.z;
+        if (d < 400.0f)
+            *secondary = other;
+    }
+    if (!(d <= 400.0f))
+        p = 0;
+    return p;
 }
 
 /* online, the MP bomb lying within 20 of the SEAL's fire point, if any (OVL2 0x5AA110: TickPickups
- * 0x593DA0 asks it; new in SOCOM II, the name ours).
- * OPEN, 0x128 against 0x130, ~12 instructions: (1) the target compares each field with zero as
- * `c.eq.s field,zero`, MW here always puts the literal first (`c.eq.s zero,field`) -- `x == 0.0f`,
- * `0.0f == x` and `!=` alike; (2) after the three tests the target branches over the offset's
- * &field block to the &zero block (`b`), the early-return inline here falls into &zero (the `==`
- * forms) or inverts the last test (`!=`); the ternary materialises the &&; (3) the network test's
- * return 0 is its own `b epilogue; move v0,zero` in the target, merged with the last return here */
+ * 0x593DA0 asks it; new in SOCOM II, the name ours) */
 extern "C" CPickup *func_005AA110(CZSealBody *seal)
 {
     if (!theNetwork.m_9)
         return 0;
-    CPnt3D pos = seal->m_posW + *FireOffset(seal);
+    float zero = 0.0f;
+    CPnt3D pos = seal->m_posW + (FIREPOS_SET(seal, zero) ? seal->m_curr_firepos : CPnt3D::zero);
     CPickup *bomb = CPickup::GetClosest(&pos, 20.0f, CPickup::PU_MPBOMB, 0, true);
 
     if (bomb) {
