@@ -1918,6 +1918,80 @@ void CSealCtrlAi::SetDesiredStance(SEAL_STANCE stance, float delay, bool force)
     }
 }
 
+extern "C" {
+/* the AI states' range (the kit lane's): the aim's direction in the SEAL's frame set, or for none
+ * the reference direction (0x60F9F0, seal_aivehicle.cpp's), the aim's point set (0x60FA90) -- each
+ * whether the body took it -- and the aim's cosine, 1 in a turret (0x60F9B0) */
+bool func_0060F9F0(CSealCtrlAi *ai, const CPnt3D *dir);
+bool func_0060FA90(CSealCtrlAi *ai, const CPnt3D *point);
+float func_0060F9B0(CSealCtrlAi *ai);
+}
+
+namespace ai {
+/* a clear line from the SEAL to its target, within a slack (SOCOM 1's; OVL2 0x609DF0, ai_target.cpp's) */
+int CheckLineOfFire(const CEntity *e, const CTarget *target, float slack);
+}
+
+/* the shot taken once it may be: the time run up; under 0x2000000 the look turned onto the fire's
+ * direction (11) and no shot until the body faces within acos 0.92 of it; the body able to fire and,
+ * under 0x800000, a clear line to the target (8 of slack); then the aim set -- in the SEAL's frame
+ * (0x100000) or at a point (0x400000), else the two aim flags dropped and the time restarted -- and,
+ * under 0x1000000, the weapon raised and the shot only once the aim is within acos 0.98 with the
+ * weapon's state 1; under 0x40 a delay run down first (OVL2 0x563BD0: SOCOM 1's FireWhenReady, its
+ * flags a bit higher, the static cosine 0.92 where SOCOM 1's was 0.98, the slack 8 where SOCOM 1's
+ * was 10, the aim through the AI states' helpers, and the delay new). What the target fixes: the
+ * fire test one `&&`/`||` expression, CanFire's bool taken through `(int)` (the target's andi before
+ * the sltu: unconverted, MW gives the sltu alone), the aim's two flag tests through an inline (one load
+ * for both, the drop's own load after them, as the target has it -- tested in place, MW reuses the
+ * first load for the drop and fills no delay slot), `dot > 0.98f` (bc1f, the 1 in its delay slot) */
+static inline unsigned int Flag(const AI_FIREPARAMS &q, unsigned int f)
+{
+    return q.m_flags & f;
+}
+
+bool CSealCtrlAi::FireWhenReady(AI_FIREPARAMS &p, float dT)
+{
+    CZSealBody *seal = (CZSealBody *)m_entity;
+    static float s_cos = 0.92f;
+    static float s_slack = 8.0f;
+
+    p.m_timeout += dT;
+    if (p.m_flags & 0x2000000) {
+        if (m_look_mode != AIL_11)
+            SetLookDirW(AIL_11, &p.m_lookDirW, true);
+
+        const CMatrix &m = seal->m_node->m_matrix;
+
+        if (-m.m_matrix[2][0] * p.m_lookDirW.x + -m.m_matrix[2][1] * p.m_lookDirW.y +
+            -m.m_matrix[2][2] * p.m_lookDirW.z < s_cos)
+            return false;
+    }
+
+    bool fire = (int)seal->CanFire(true, true) &&
+                (!(p.m_flags & 0x800000) || ai::CheckLineOfFire(seal, (const CTarget *)m_67c, s_slack));
+
+    if (fire) {
+        if (Flag(p, 0x100000))
+            fire = func_0060F9F0(this, &p.m_aimDirM);
+        else if (Flag(p, 0x400000))
+            fire = func_0060FA90(this, &p.m_aimPointW);
+        else {
+            p.m_flags &= ~0x4200000;
+            p.m_timeout = 0.0f;
+            fire = false;
+        }
+        if (fire && (p.m_flags & 0x1000000)) {
+            seal->SetWeaponState((WEAPON_STATE)1);
+            fire = func_0060F9B0(this) > 0.98f && seal->m_weapon_state == 1;
+        }
+        if (fire && (p.m_flags & 0x40)) {
+            p.m_delay -= dT;
+            fire = p.m_delay <= 0.0f;
+        }
+    }
+    return fire;
+}
+
 /* two bytes of OVL2 bss either of which keeps the duck off (debug switches? the names unknown) */
 extern "C" unsigned char data_0066B040;
 extern "C" unsigned char data_0066B038;
@@ -2181,7 +2255,7 @@ extern "C" {
 /* whether the SEAL is in a turret (its body's 0xEB8; OVL2 0x60F9A0) and the aim's point set, or for
  * none dropped (OVL2 0x60FA90) -- the AI states' range */
 bool func_0060F9A0(CSealCtrlAi *ai);
-void func_0060FA90(CSealCtrlAi *ai, const CPnt3D *point);
+bool func_0060FA90(CSealCtrlAi *ai, const CPnt3D *point);
 }
 
 /* an Rfloat's roll read through a float pointer (its min, then its range): the target recomputes each
@@ -3159,7 +3233,14 @@ void CAiSAnimate::OnSignal(SIGNAL sig, CSealCtrlAi *ctrl)
  * steps 0 and 1 push the anim unless it is on top already, step 2 runs the timed calls the anim's
  * fraction has reached -- each erased once it answers true, the step done when one answers false --
  * and every span call the fraction is inside, then ends once the anim is off the top or, under flag
- * 1, the state has held its time; done, the state stops running */
+ * 1, the state has held its time; done, the state stops running. The shapes the target fixes: the
+ * timed list's front read through the CONST begin() (front() and erase(begin()) both through the
+ * sentinel's reference make MW keep &end_.next_ in a saved register and renumber s0-s5); the top
+ * blend's anim type through an inline (loaded ahead of m_anim, compared second) where steps 0/1 and
+ * the hold test read it, plainly in step 2; the call's bool tested `== false` (its `andi 0xff`); the
+ * step defined before the SEAL; the span walk's end a declared local (s5); and the hold test as
+ * `if (step != STEP_3) {...} else step = STEP_3;` -- the arm that sets the 3 again (`move s2,v0`,
+ * the compare's constant) laid last */
 static inline short TypeOf(const CZBodyAnimBlend *b)
 {
     return b->m_animType;

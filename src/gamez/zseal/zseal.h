@@ -988,9 +988,14 @@ public:
     CPnt3D m_lookDirW;   // 0x20
     CPnt3D m_aimPointW;   // 0x2c
     CPnt3D m_aimDirM;   // 0x38
-    unsigned char _44[0x5c - 0x44];   // SOCOM 1: m_throwVec, m_throwPower, m_timeout, m_stance
+    unsigned char _44[0x58 - 0x44];   // SOCOM 1: m_throwVec, m_throwPower
+    float m_timeout;   // 0x58: run up by FireWhenReady (0x563BD0; SOCOM 1's 0x54)
     float m_dist;   // 0x5c: the target's distance (0x55EBE0; SOCOM 1's flags were here)
-    unsigned char _60[0x6c - 0x60];
+    unsigned char _60[0x64 - 0x60];
+    /* under flag 0x40, the time left before the shot -- run down by FireWhenReady (new in SOCOM II;
+     * the name ours) */
+    float m_delay;   // 0x64
+    unsigned char _68[0x6c - 0x68];
     unsigned int m_flags;   // 0x6c
 };
 
