@@ -9,17 +9,17 @@
  * recogniser and Medius by hand", round 18c).
  *
  * SOCOM II's object inlines: SetIsolatedWordDpActiveWords holds FreeTree's body, and FreeTree
- * _FreeTree's first level (its children's loop, calling _FreeTree for theirs); GetIsolatedWord-
- * DpActiveWords holds the first levels of _CountWordsInTree and _GetWordsInTree. 2.96 inlines only
- * a body it has seen and defers an inline's own copy to the object's end, in declaration order --
- * the image's FreeTree, _FreeTree, CalcNrNodes, _CountWordsInTree, _GetWordsInTree, CompareIDs,
- * CreateActiveWordsCtxTree after SetIsolatedWordDpActiveWords (CalcNrNodes is called only from
- * CalcNrNodes10, defined before it: an inline never inlined). Only the functions written so far are
- * here: FreeTree and _FreeTree as the inlines they are, SetIsolatedWordDpActiveWords (OPEN),
- * CalcAccuracyCtxTree, CalcNrNodes, _CountWordsInTree and _GetWordsInTree (as plain statics
- * until their inliners are written -- a static inline with no caller has no copy: CalcNrNodes is
- * then a static inline defined after CalcNrNodes10, and the two word walks inlines defined above
- * GetIsolatedWordDpActiveWords); CreateCtxTree and CreateActiveWordsCtxTree are in ctxutil.c. */
+ * _FreeTree's first level (its children's loop, calling _FreeTree for theirs); CalcNrNodes10 holds
+ * CalcNrNodes' first level at a budget of 12 (aNodesFr[12] read directly -- SOCOM 1's at 14);
+ * GetIsolatedWordDpActiveWords holds the first levels of _CountWordsInTree and _GetWordsInTree. 2.96
+ * inlines only a body it has seen and defers an inline's own copy to the object's end, in
+ * declaration order -- the image's FreeTree, _FreeTree, CalcNrNodes, _CountWordsInTree,
+ * _GetWordsInTree, CompareIDs, CreateActiveWordsCtxTree after SetIsolatedWordDpActiveWords. Only the
+ * functions written so far are here: FreeTree, _FreeTree and CalcNrNodes as the inlines they are,
+ * CalcNrNodes10, SetIsolatedWordDpActiveWords (OPEN), CalcAccuracyCtxTree, and _CountWordsInTree and
+ * _GetWordsInTree as plain statics until GetIsolatedWordDpActiveWords, their inliner, is written (a
+ * static inline with no caller has no copy); CreateCtxTree and CreateActiveWordsCtxTree are in
+ * ctxutil.c. */
 
 #include "casr.h"
 
@@ -52,14 +52,14 @@ extern int _tosControl(CASRLOG *log, int cmd, int arg, void *data);
 extern void FillContextV2VirtualTable(CTXVT *vt);
 extern int intCreateCtxTree(CASR *c, CTXVT *vt, unsigned int *ids, unsigned int n);
 extern void FreeCtxInfo(CASR *c);
-extern float CalcNrNodes10(int *tab, int *uwtab, unsigned short n, TNODE *node, float best,
-                           unsigned int *maxc);
 
 int SetIsolatedWordDpActiveWords(CASR *c, unsigned int *ids, unsigned int n);
 int CalcAccuracyCtxTree(CASR *c);
 void FreeTree(CASR *c);
 static void _FreeTree(CASR *c, TNODE *n);
 static float CalcNrNodes(int *tab, int *uwtab, unsigned short n, TNODE *node, int budget);
+static float CalcNrNodes10(int *tab, int *uwtab, unsigned short n, TNODE *node, float best,
+                           unsigned int *maxc);
 static int _CountWordsInTree(WORDREC *tab, TNODE *n);
 static void _GetWordsInTree(WORDREC *tab, TNODE *n, int **out);
 
@@ -114,6 +114,59 @@ __inline__ void FreeTree(CASR *c)
     c->uw_n = 0;
 }
 
+/* a subtree's weight within a budget of states: the node's phoneme takes its states off the budget
+ * (a speech unit's less its two boundary states, a user-word phoneme's all), and while any is left
+ * each child adds its own */
+static __inline__ float CalcNrNodes(int *tab, int *uwtab, unsigned short n, TNODE *node, int budget)
+{
+    float sum = aNodesFr[budget];
+    TNODE *ch, *end;
+    int k;
+
+    if (node->ph < n)
+        k = tab[node->ph + 1] - tab[node->ph] - 2;
+    else {
+        unsigned short u = node->ph - n - 1;
+
+        k = uwtab[u + 1] - uwtab[u];
+    }
+    budget -= k;
+    if (budget > 0) {
+        ch = node->children;
+        end = ch + node->nchildren;
+        for (; ch < end; ch++)
+            sum += CalcNrNodes(tab, uwtab, n, ch, budget);
+    }
+    return sum;
+}
+
+/* the tree's weight: the largest of its nodes' weights within 12 states, taken at every node with
+ * more children than a tenth of the most yet seen (that maximum kept at *maxc) -- CalcNrNodes' body
+ * inlined there, each node's children after it. The child count is compared through its integer
+ * promotion (`lhu`, litodp; a cast to double converts the unsigned short itself: `lh` and a 65536
+ * fixup), and re-read after the store to *maxc (the target's reload: the store may alias it);
+ * 0.1 lands an ulp low through 2.96's parser, on the target's 0x3FB9999999999999 */
+static float CalcNrNodes10(int *tab, int *uwtab, unsigned short n, TNODE *node, float best,
+                           unsigned int *maxc)
+{
+    TNODE *ch, *end;
+
+    if (node->nchildren > *maxc * 0.1) {
+        float sum;
+
+        if (*maxc < node->nchildren)
+            *maxc = node->nchildren;
+        sum = CalcNrNodes(tab, uwtab, n, node, 12);
+        if (best < sum)
+            best = sum;
+    }
+    ch = node->children;
+    end = ch + node->nchildren;
+    for (; ch < end; ch++)
+        best = CalcNrNodes10(tab, uwtab, n, ch, best, maxc);
+    return best;
+}
+
 /* a new list of active words for the isolated-word context: the old tree freed, a new one built
  * from the context and handed to the scheduler with the user words' tables (a null list stands for
  * none: the handle is passed for it -- SOCOM 1's movz too). The tree test is positive, its error
@@ -166,32 +219,6 @@ int CalcAccuracyCtxTree(CASR *c)
     tab = c->lng->GetpSpeechUnit(c->lng);
     n = c->lng->GetNbrSpeechUnit(c->lng);
     return (unsigned int)(CalcNrNodes10(tab, c->uw_offsets, n, root, 0.0f, &maxc) + 0.5f) + 135;
-}
-
-/* a subtree's weight within a budget of states: the node's phoneme takes its states off the budget
- * (a speech unit's less its two boundary states, a user-word phoneme's all), and while any is left
- * each child adds its own */
-static float CalcNrNodes(int *tab, int *uwtab, unsigned short n, TNODE *node, int budget)
-{
-    float sum = aNodesFr[budget];
-    TNODE *ch, *end;
-    int k;
-
-    if (node->ph < n)
-        k = tab[node->ph + 1] - tab[node->ph] - 2;
-    else {
-        unsigned short u = node->ph - n - 1;
-
-        k = uwtab[u + 1] - uwtab[u];
-    }
-    budget -= k;
-    if (budget > 0) {
-        ch = node->children;
-        end = ch + node->nchildren;
-        for (; ch < end; ch++)
-            sum += CalcNrNodes(tab, uwtab, n, ch, budget);
-    }
-    return sum;
 }
 
 /* the words under a node: a leaf holds a word (its index) or a list of them (~ its first entry).
