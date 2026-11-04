@@ -1927,6 +1927,22 @@ templates next), and the earlier rounds' opens; 3.0b38/b50/b52 still untold.
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the SEALs, round 20** (seal.cpp's probes and tasks, the glance timer, the line walk, ActivateEx):
+  - reading a bit through an inline bool accessor is never merged with a setter's read-modify-write of the same byte (the
+    byte loads twice); read in place, or through an accessor returning `!= 0`, the loads merge (0x54F570); GetWeapon's
+    walk (`iterator i; i = begin(); for (iterator e = end(); i != e; ++i)`) gives the one-copy, iterator-in-memory,
+    end-in-a-saved-register shape; a bool holding an `&&` followed by `if (b) { if (c) b = false; if (b) call(); }` lets MW
+    thread the false branch to the loop step;
+  - an inline taking the bound by reference and the value last (`LowerTo(float &bound, float v)`) reads the value first, a
+    ternary in place reads the bound first (0x56ACE0); `if (!a && !b) {...} else x = 0;` lays the zero block last; `slt`
+    then `bnez` comes from an inline bool `look >= m_look_mode`, `m_look_mode <= 0` gives `bgtz`; a bitfield stored into
+    a `bool` member adds `sltu`, into an `unsigned char` member it does not; the three-float CPnt3D constructor for a local
+    difference reproduces the `mov.s` copies and the late stores (0x54ECD0);
+  - AiStateIs closed two farm hits open since round 18 (0x567690 the glance timer with its guarded Rfloat static,
+    0x56A130 the line walk); CSealCtrlAi::ActivateEx 0x561F00 is variadic (stdarg.h); SOCOM II's CreepTick takes a second
+    argument, a bool (0x566DC0/0x567350 renamed); 0x54F7E0 (0xB50) is likely SOCOM 1's CollidePlayers (unnamed);
+  - 13 farm hits where GetState is called out of line remain, all large (0x250-0x1064: 0x591520 worked out, unwritten; the
+    dispatcher 0x55F0A0 read).
 - **Tells from the HUD, round 27** (a new hud_tcmtree.cpp: the radio command menu's tree):
   - IN A SELF-INLINED RECURSIVE FUNCTION THE OUT-OF-LINE ACCESSOR COPIES EACH COPY CALLS SHOW THE ACCESSOR CHAIN'S LEVELS:
     each deeper copy calls a level shallower, and a call made as the receiver of the recursive call is cut one level more
