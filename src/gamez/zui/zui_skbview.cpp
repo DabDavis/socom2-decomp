@@ -143,6 +143,15 @@ static float s_scaleTime;
 /* the cursor's blink: the tick steps it, wrapping at a second, the cursor bitmap (1) shown for its
  * first half (0x4A1090; the name ours) */
 static float s_blinkTime;
+/* the key repeat (UiParams.rdr's RepeatDelay, RepeatSpeedStart, RepeatAccelTime, RepeatSpeedEnd:
+ * 0x4A10A0, 0x4A10B0, 0x4A1098, 0x4A10A8) and the legend's slide times (SlideInSec, SlideOutSec:
+ * 0x4A1080, 0x4A1088), read by 0x397070 (the names ours) */
+static float s_repeatDelay;
+static float s_repeatSpeedStart;
+static float s_repeatAccelTime;
+static float s_repeatSpeedEnd;
+static float s_slideInSec;
+static float s_slideOutSec;
 
 /* the valves (zanim.h has CValve whole: the scaling's done valve here) */
 enum VALVE_STATE { VALVE_SAME, VALVE_ON, VALVE_OFF };
@@ -351,8 +360,8 @@ const char *SkbGetText(bool edited)
     return edited ? s_editText : s_openText.c_str();
 }
 
-/* the display unit's reader of UiParams.rdr (0x397070, not written yet) */
-extern "C" void func_00397070(CRdrFile *file);
+/* the display unit's reader of UiParams.rdr (0x397070, below) */
+void SkbReadUiParams(CRdrFile *file);
 
 /* the keyboards' display read again from UiParams.rdr (0x3943E0; CMission::Init calls it). This
  * unit's: it lies between ~CSkbKeyProps and 0x394420, and its two strings between s_padKeys and
@@ -361,7 +370,7 @@ void SkbLoadUiParams()
 {
     CRdrFileHolder file("UiParams.rdr", "data/common");
 
-    func_00397070(file);
+    SkbReadUiParams(file);
 }
 
 /* the key's spec deleted through its virtual destructor (0x394370; ours: ~CSoftKeyboard deletes
@@ -981,4 +990,46 @@ void SkbShowKeyRows(CPad *pad, CSoftKeyboard *skb, bool row2)
             if (bmp.m_node)
                 bmp.m_node->SetActive(on);
         }
+}
+
+/* the Korean input's rules, read from the same file (zui_hangul.cpp's) */
+void SkbParseKoreanRules(_zrdr *rdr);
+
+/* the soft keyboards' common props, UiParams.rdr's CommonSoftKeyboardProps: the key repeat's delay
+ * and speeds, the six sounds' names (the scaling's two, the key presses', the navigation's and the
+ * refusal's), the legend's texture, rectangle and slide times, the USB keyboard's icon, room for
+ * the typed text, the Korean rules, and the backgrounds' opacity given to bitmaps 6 and 7 and every
+ * key (0x397070; SkbLoadUiParams calls it with the file; the name ours) */
+void SkbReadUiParams(CRdrFile *file)
+{
+    _zrdr *props = zrdr_findtag(file, "CommonSoftKeyboardProps");
+
+    s_repeatDelay = SkbFindReal(props, "RepeatDelay", 0.0f);
+    s_repeatSpeedStart = SkbFindReal(props, "RepeatSpeedStart", 0.0f);
+    s_repeatAccelTime = SkbFindReal(props, "RepeatAccelTime", 0.0f);
+    s_repeatSpeedEnd = SkbFindReal(props, "RepeatSpeedEnd", 0.0f);
+    s_str6 = zrdr_findstring(props, "ScaleUpSound");
+    s_str5 = zrdr_findstring(props, "ScaleDownSound");
+    s_str2 = zrdr_findstring(props, "KeyPressSound");
+    s_str1 = zrdr_findstring(props, "KeyPressEnterSound");
+    s_str3 = zrdr_findstring(props, "NavigationSound");
+    s_str4 = zrdr_findstring(props, "NegativeSound");
+    _zrdr *legend = zrdr_findtag(props, "Legend");
+
+    s_str0 = zrdr_findstring(legend, "Texture");
+    s_rect = SkbReadRect(legend);
+    s_slideInSec = SkbFindReal(legend, "SlideInSec", 0.0f);
+    s_slideOutSec = SkbFindReal(legend, "SlideOutSec", 0.0f);
+    s_str8 = zrdr_findstring(props, "UsbKbdOnIcon");
+    s_openText.reserve(800);
+    SkbParseKoreanRules(file);
+    float opacity = SkbFindReal(props, "BackgroundsOpacity", 1.0f);
+
+    s_bmp6.SetTrans(128.0f * opacity);
+    float trans = 128.0f * opacity;
+
+    s_bmp7.SetTrans(trans);
+    for (int i = 0; i < 4; i++)
+        for (int j = 0; j < 10; j++)
+            s_keyRows[i][j].SetTrans(trans);
 }
