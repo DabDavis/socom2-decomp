@@ -137,6 +137,49 @@ extern void func_0024C458(float *pfWindow, int iLength);
 extern void func_002518E8(const float *pfSig, int iLength, float *pfSpec, int iLog2N);
 extern void func_0024E8D0(const float *pfIn, float *pfRe, float *pfIm, int iLength);
 
+/* the pitch's conversion (GCC round 26a): its two mode flags, and the three estimators' scales
+ * (0x249C50 0x38, 0x249C60 0x30/0x34, 0x249C78 0x1C) */
+typedef struct {
+	char ac00[0x2A];
+	unsigned short usLinear;	/* 0x2A */
+	unsigned short usDirect;	/* 0x2C */
+} PITCH_CONV;
+
+extern float func_00249C50(PITCH_CONV *p, float *pf);
+extern float func_00249C60(PITCH_CONV *p, float *pf);
+extern float func_00249C78(PITCH_CONV *p, float *pf);
+
+/* the period in samples to a pitch at 8 kHz, re-estimated by the block's mode, clamped to 50-1000
+ * Hz and turned back into a period (the constants locals initialised at the top: the target loads
+ * all three into f20-f22 at the entry; the two estimators' results meet in one store after the
+ * join -- a store in each arm is 29s).
+ * OPEN (GCC round 26a, 7 words, registers only): fFs and fMin trade f22/f21 -- global-alloc ranks
+ * fFs (four references) first here; all six declaration orders tried (7-12 words,
+ * build/scratch/gcc/v_pconv.py). */
+void func_00249B58(PITCH_CONV *p, float *pfOut, float *pfPeriod)
+{
+	float fFs = 8000.0F, fMin = 50.0F, fMax = 1000.0F;
+	float fP;
+
+	if (p->usDirect) {
+		*pfOut = func_00249C50(p, pfOut);
+		return;
+	}
+	if (p->usLinear) {
+		*pfPeriod = fFs / *pfPeriod;
+		fP = func_00249C60(p, pfPeriod);
+	} else {
+		*pfPeriod = fFs / *pfPeriod;
+		fP = func_00249C78(p, pfPeriod);
+	}
+	*pfPeriod = fP;
+	if (*pfPeriod < fMin)
+		*pfPeriod = fMin;
+	if (*pfPeriod > fMax)
+		*pfPeriod = fMax;
+	*pfPeriod = fFs / *pfPeriod;
+}
+
 /* the long frame's analysis (GCC round 26a): 291 samples out of the input ring, windowed by the
  * 291-point table at 0x3E7C00, its mean energy kept, transformed (512 points: the 514-float
  * buffer holds the packed spectrum) and handed to the pitch analysis (LDPDA.c's 0x249FA8) */
@@ -174,3 +217,4 @@ void func_00249A38(void *pvState, CircMblk *pvCircMblk, float *pfRe, float *pfIm
 	func_0024E8D0(pfRe, pfRe, pfIm, 256);
 	*piLength = iLength;
 }
+

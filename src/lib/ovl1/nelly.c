@@ -163,6 +163,15 @@ void func_00251678(const float *pfIn, float *pfOut)
 	}
 }
 
+/* Not written (GCC round 26a, measured): the fast log2 0x2517D8 and exp2 0x251850 after the warp
+ * (the float's exponent and mantissa split and rebuilt by bits). The target reads the bits with
+ * mfc1 and widens them with an `and` of 0xFFFFFFFF -- an unsigned 32-bit field extracted from a
+ * 64-bit word, as the codec's `union { float f; long l; }` (its own asserts name `union_x.l`) is
+ * on the EE, where long is 64 bits -- and passes the rebuilt mantissa and the exponent through
+ * one stack word (sw, lwc1; cvt.s.w from memory). Eighteen spellings (pointer casts, unions of
+ * float and int or long, volatile, BLKmode unions: build/scratch/gcc/v_flog*.c) reach neither: a
+ * register union ORs in the undefined upper word, a pointer cast stays in registers (ADDRESSOF). */
+
 float func_00251700(float x)                    /* a frequency warp (the .lit4 constants) */
 {
     if (x > 97.0f)

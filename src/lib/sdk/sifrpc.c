@@ -27,7 +27,14 @@
  * 1)`: one of fifteen spellings). The packet buffers have data rows (`_packet_buffer@sifrpc`, the
  * demo's labels). OPEN: sceSifCallRpc (17 words, right size): the client's four stores and the
  * packet's seven schedule otherwise (the packet's in every order, and jointly with the client's,
- * miss: the nearest 16). */
+ * miss: the nearest 16). GCC r26a, the field types swept over the function's own view of the
+ * client and the packet (build/scratch/gcc/v_calltypes.py, v_ct3.py: 2,916 + 3,456 + 5,184
+ * variants): 17 -> 2 words with the client's paddr, func, para, serve and buff ints (buff's load
+ * then waits two cycles behind the rmode store -- a true dependence, so int-set -- as the target's
+ * does) and `pid = rpc_id` stored first; what is left is the client's paddr and pid stores in
+ * the other order, and sched1 decides it: pid's store is the last use of the loaded rpc_id, so it
+ * outranks paddr's on register pressure as soon as the load's latency allows, in every order and
+ * type tried. Not adopted (the unit's types are the other functions' too). */
 
 typedef unsigned int u_int;
 typedef unsigned short u_short;
