@@ -2601,6 +2601,89 @@ char *func_003D2750(CZWeapon *w);
 SEAL_ITEM_BYTE func_005B8820(EQUIP_ITEM item);
 }
 
+extern "C" {
+/* the stats' events (seal.cpp's: a hostage killed, a suicide, a team-mate killed, an enemy killed,
+ * and two tallies by a count -- OVL2 0x545390, 0x545C90, 0x545C10, 0x545290, 0x5451A0, 0x5451C0),
+ * the network game's side test (OVL1 0x2C30B0, unowned), whether a time of the AI's lies within a
+ * span of now (OVL2 0x564CF0, seal_ai.cpp's) and the animation set the stats skip (OVL1 bss
+ * 0x44D400, seal.cpp's) */
+unsigned short func_00545390(CSealStats *s, const CZSealBody *seal);
+void func_00545C90(CSealStats *s, const CZSealBody *seal);
+void func_00545C10(CSealStats *s, const CZSealBody *seal);
+void func_00545290(CSealStats *s, const CZSealBody *seal);
+void func_005451A0(CSealStats *s, int n);
+void func_005451C0(CSealStats *s, int n);
+int func_002C30B0(const CZSealBody *seal);
+bool func_00564CF0(CSealCtrlAi *ai, float t);
+extern AnimSet *data_0044D400;
+}
+
+/* a valve's value read through a const pointer (an inline: the step re-reads the field for SetValue's
+ * test, as a const accessor of CValve's would make it -- read plainly, MW shares the one load; the
+ * name ours) */
+static inline unsigned int ValveValue(const CValve *v)
+{
+    return v->m_value;
+}
+
+/* a kill credited: the killer kept and, a SEAL, given a hostage's kill (online the side's valve
+ * stepped), a suicide, a team-mate's or -- unless the victim's animation set is the skipped one --
+ * an enemy's, a head shot offline and, against an AI, a kill of note: within ten seconds of its
+ * mark when the flag is set, under four otherwise; the victim's death counted (OVL2 0x59EE20; SOCOM
+ * 1's HandleKiller, the flag and the AI's tallies new) */
+void CZSealBody::HandleKiller(int killer, bool b)
+{
+    if (m_fc4 == killer || killer == 255)
+        return;
+    CEntity *e = CEntity::m_list.GetEntityById(killer);
+
+    m_fc4 = killer;
+    CZSealBody *k = 0;
+
+    if (e)
+        k = AsSeal(e);
+    bool hostage = (m_team & 0x20000) != 0;
+
+    if (k) {
+        if (hostage) {
+            CNetGameState *g = data_00437CE8;
+
+            if (g && theNetwork.m_9) {
+                CValve *v = 0;
+
+                if (func_002C30B0(k))
+                    v = g->m_3c;
+                else if (func_002C31D0(k))
+                    v = g->m_38;
+                if (v)
+                    v->SetValue(ValveValue(v) + 1);
+            }
+            func_00545390(&k->m_stats, k);
+        } else if (this == k)
+            func_00545C90(&m_stats, this);
+        else if (k->m_team & m_team)
+            func_00545C10(&k->m_stats, k);
+        else if (m_animset != data_0044D400) {
+            if (k && !(k->m_team & m_team))
+                func_00545290(&k->m_stats, k);
+            if (!theNetwork.m_9 && m_deathType == DEATH_HEADSHOT)
+                func_005459C0(&k->m_stats, k);
+            CSealCtrlAi *ai = ((CSealCtrl *)m_control)->GetSealCtrlAi();
+
+            if (ai) {
+                if (b) {
+                    if (!func_00564CF0(ai, 10.0f)) {
+                        func_005451A0(&k->m_stats, 1);
+                        func_005451C0(&k->m_stats, 3);
+                    }
+                } else if (ai->m_5c4 < 4)
+                    func_005451C0(&k->m_stats, 1);
+            }
+        }
+    }
+    func_00545D10(&m_stats, this);
+}
+
 /* another console's dropped weapon made here, with the pickups open, unless this SEAL is a player:
  * the weapon's model instanced at the point and turned, made dynamic and a character node with its
  * textures and polygons, then a network pickup of kind 8 of that id -- a pistol's secondary -- and

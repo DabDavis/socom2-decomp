@@ -335,7 +335,11 @@ extern CZNetwork theNetwork;
 
 class CNetGameState {
 public:
-    unsigned char _0[0x70];
+    unsigned char _0[0x38];
+    /* the valves a hostage's death steps, by the killer's side (HandleKiller; the names ours) */
+    CValve *m_38;   // 0x38
+    CValve *m_3c;   // 0x3c
+    unsigned char _40[0x70 - 0x40];
     CValve *m_70;   // 0x70: a valve each kill steps (0x545290; the name ours)
     unsigned char _74[0xd2 - 0x74];
     unsigned char m_ghost;   // 0xd2
@@ -874,7 +878,9 @@ public:
     CAiPathBytes m_path;   // 0x46c: a CAiPath (SOCOM 1's m_path, 0x36c)
     CAiRouteBytes m_route;   // 0x514: a route (its path reset at 0x527310, its state read after
                              // the update at 0x555420)
-    unsigned char _5c0[0x5d4 - 0x5c0];
+    float m_5c0;   // 0x5c0: a time 0x564CF0 measures a span from (the name ours)
+    unsigned char m_5c4;   // 0x5c4: a count HandleKiller tests under 4 (the name ours)
+    unsigned char _5c5[0x5d4 - 0x5c5];
     /* the SEAL followed and its entity id (SOCOM 1's SetFollowMaster sets them; SetFollowMaster
      * counts the master's followers -- the kit lane, round 19, the names ours) */
     class CZSealBody *m_follow_master;   // 0x5d4
@@ -1642,7 +1648,7 @@ public:
      * WeaponPUPacketHandler calls it with the packet's item, id and place) */
     void CreateNetWeaponPickup(unsigned short item, int netid, CPnt3D *pos, CQuat *rot);
     /* another console's dropped ammunition made here (SOCOM 1's; OVL2 0x59E9E0 -- not written) */
-    void CreateNetAmmoPickup(unsigned char who, unsigned short *a, unsigned short *b, int id, CPnt3D *pos);
+    void CreateNetAmmoPickup(unsigned short count, unsigned short *items, unsigned short *rounds, int id, CPnt3D *pos);
     /* a kill credited to the killer, with whether the weapon was one of five (SOCOM 1's, the flag
      * new; OVL2 0x59EE20 -- not written) */
     void HandleKiller(int killer, bool b);
@@ -1901,7 +1907,8 @@ public:
     float m_time_of_death;   // 0xfb4 (SOCOM 1's 0xea8)
     unsigned int m_lastshooter_id;   // 0xfb8: the last hit's shooter (OnWeaponHit keeps it; the name ours)
     unsigned int m_lastkiller_id;   // 0xfbc: the killer's entity id (SOCOM 1's 0xeb4)
-    unsigned char _fc0[0xfc8 - 0xfc0];
+    int m_fc0;   // 0xfc0: the death's kind (0x547A90 sets it -- 253 a fall's -- before 0x547860 reads it; the name ours)
+    int m_fc4;   // 0xfc4: the killer's id HandleKiller keeps (the name ours)
     int m_ClientIndex;   // 0xfc8 (SOCOM 1's 0xeb8: CreateRemoteSeal stores its first argument in both)
     unsigned char _fcc;
     /* the spectator's next and previous SEAL asked for (new in SOCOM II: Virtual8C walks to them;
