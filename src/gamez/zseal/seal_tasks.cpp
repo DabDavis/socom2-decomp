@@ -100,11 +100,10 @@ void func_005628F0(CSealCtrlAi *ai);
  * at 0x508 in state 4, or 1 to 3 (OVL2 0x5629B0): the SEAL lane's rows, CTGoto::Tick's */
 unsigned char func_00555890(CSealCtrlAi *ai);
 bool func_005629B0(CSealCtrlAi *ai);
-/* the AI's event mask brought up to its team (OVL2 0x572D70, the SEAL lane's row: CTTeam::Tick calls
- * it where SOCOM 1's called CSealCtrlAi::UpdateEventMask) and a squad's member set up again
+/* a squad's member set up again (CTTeam::Tick calls it after CSealCtrlAi::UpdateEventMask, OVL2 0x572D70,
+ * as SOCOM 1's does -- respelled from its placeholder, the kit lane round 25)
  * (CSealUnit::InitalizeSealUnit, OVL2 0x5EC9F0: seal_unit.cpp's, which zseal.h's CSealUnit does not
  * declare) */
-void func_00572D70(CSealCtrlAi *ai);
 void InitalizeSealUnit__9CSealUnitFP10CZSealBodyP9CSealUnit(CZSealBody *seal, CSealUnit *unit);
 /* the goto's move set up (OVL2 0x5DB8F0, this unit's: the AI, the command, a flag; whether it
  * began -- not written yet) */
@@ -1639,14 +1638,14 @@ bool CTTeam::Tick(_zanim_cmd_hdr *hdr, float *dT)
     case 0:
         seal->SetTeamMask(team | cmd->m_mask);
         if (ai)
-            func_00572D70(ai);
+            ai->UpdateEventMask();
         InitalizeSealUnit__9CSealUnitFP10CZSealBodyP9CSealUnit(seal, 0);
         theMission.RefreshTeamValves();
         break;
     case 1:
         seal->SetTeamMask(team & ~cmd->m_mask);
         if (ai)
-            func_00572D70(ai);
+            ai->UpdateEventMask();
         InitalizeSealUnit__9CSealUnitFP10CZSealBodyP9CSealUnit(seal, 0);
         theMission.RefreshTeamValves();
         break;
