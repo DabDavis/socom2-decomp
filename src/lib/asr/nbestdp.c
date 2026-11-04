@@ -42,14 +42,24 @@ typedef struct BTSTACK {
     int entry;                          /* +8 */
 } BTSTACK;
 
-/* a backtrace record the tokens share: its count of users at +12 */
+/* a backtrace record the tokens share (five words): the backtrace it continues, the chain of
+ * links to the others it joins (BTLINK), its count of users at +12 */
 typedef struct BTREC {
-    int f0;                             /* +0 */
-    int f4;                             /* +4 */
-    int pad8;
+    struct BTREC *prev;                 /* +0 */
+    struct BTLINK *links;               /* +4 */
+    int f8;                             /* +8 */
     unsigned short users;               /* +12 */
+    unsigned short f14;                 /* +14 */
     int f16;                            /* +16 */
 } BTREC;
+
+/* a link of a backtrace's chain (three words): the backtrace it holds and the next link; a
+ * backtrace record heads its own chain with the same two fields */
+typedef struct BTLINK {
+    BTREC *bt;                          /* +0 */
+    struct BTLINK *next;                /* +4 */
+    int f8;                             /* +8 */
+} BTLINK;
 
 /* a token on the active lists at +112 (seven words) and +116 (five) */
 typedef struct NBTOKEN {
@@ -188,7 +198,9 @@ extern int *fastallo_AllocateMemoryFromChunk(FASTALLO *fa, unsigned short n);
 extern unsigned int _tosGetProfileU32(void *b, unsigned short key, unsigned int def);
 extern float _tosGetProfileFloat(void *b, unsigned short key, float def);
 
-extern unsigned int FindBestBacktraces(NBESTDP *d, NBTRACE ***bt);
+static unsigned int FindBestBacktraces(NBESTDP *d, NBTRACE ***bt);
+static int ScoreCompare();
+extern void qsort(void *base, unsigned int n, unsigned int size, int (*cmp)());
 static void CleanUpParBTProc(NBESTDP *d, BTREC *bt);
 static void ExtendBacktraceStack(NBESTDP *d, BTSTACK *top);
 extern NBRESULT *BacktraceWordsParBT(NBESTDP *d, NBTRACE *bt);
@@ -318,8 +330,8 @@ static void InitViterbi(NBESTDP *d)
         d->f148[k] = 0;
     ALLOC_REC(tos, 5, bt);
     bt->f16 = 0;
-    bt->f4 = 0;
-    bt->f0 = 0;
+    bt->links = 0;
+    bt->prev = 0;
     n = 0;
     for (i = 0; i < d->nwords; i++) {
         int w = d->wordids[i];
@@ -511,14 +523,6 @@ static __inline__ void ExtendBacktraceStack(NBESTDP *d, BTSTACK *top)
     e->next = 0;
 }
 
-/* a link of a backtrace's chain (three words): the backtrace it holds and the next link; a
- * backtrace record (five words) heads its own chain with the same two fields */
-typedef struct BTLINK {
-    BTREC *bt;                          /* +0 */
-    struct BTLINK *next;                /* +4 */
-    int f8;
-} BTLINK;
-
 /* a backtrace with no user left given back, and every backtrace its chain held that this leaves
  * without users, through the stack of records at +88 (an explicit recursion: each record's entry
  * the backtrace to clean, the stack extended as it deepens); the chain's links to the scheduler's
@@ -627,6 +631,120 @@ static void PrunDynProg(NBESTDP *d)
             n = 0;
         d->nhist = n;
     }
+}
+
+/* a backtrace copied (five words, its user count left 0) with its chain of links (three words
+ * each), every backtrace they hold gaining a user. SOCOM 1's body (0x110): the users' store after
+ * the first copy (the target loads +16 before it; a store may alias the source's fields) */
+static BTREC *CopyParBT(NBESTDP *d, BTREC *src)
+{
+    DPTOS *tos = d->tos;
+    BTREC *n;
+    BTLINK *s, *l, *prev;
+
+    ALLOC_REC(tos, 5, n);
+    n->f16 = src->f16;
+    n->users = 1;
+    n->f8 = src->f8;
+    n->f14 = src->f14;
+    n->prev = src->prev;
+    n->prev->users++;
+    n->links = 0;
+    prev = (BTLINK *)n;
+    for (s = src->links; s != 0; s = s->next) {
+        ALLOC_REC(tos, 3, l);
+        l->f8 = s->f8;
+        l->bt = s->bt;
+        l->bt->users++;
+        l->next = 0;
+        if (prev != 0)
+            prev->next = l;
+        prev = l;
+    }
+    n->users = 0;
+    return n;
+}
+
+/* the backtraces the pass can end on: every seven-word token whose state ends a word the context
+ * flags as an end (bit 1) kept and counted, the others given back; the five-word tokens and the
+ * word records given back as SOCOM 1's CollectDummyMemory does (SOCOM II's own CollectDummyMemory
+ * gives back the seven-word tokens too, so the block is written here); the kept ones in a table
+ * from the heap, sorted by score. SOCOM 1's body (0x180) with its call's middle inline (0x288).
+ * Measured: the block's token pointer its own (one `t` for the three loops is live across the
+ * block's call: a saved register where the target's first loop has a1), and the state's word id
+ * summed low half first (`st[1] + (st[2] << 16)`: the target's operands; the shift first swaps
+ * the two halves' registers) */
+static unsigned int FindBestBacktraces(NBESTDP *d, NBTRACE ***bt)
+{
+    DPTOS *tos = d->tos;
+    NBTOKEN *t, *prev = 0, *r;
+    unsigned int n = 0;
+    NBTRACE **p;
+
+    for (t = d->tok7; t != 0; ) {
+        unsigned short *st = (unsigned short *)t->state;
+
+        r = 0;
+        if (st[0] & 1) {
+            if (d->flags[st[1] + (st[2] << 16)] & 2)
+                n++;
+            else
+                r = t;
+        } else
+            r = t;
+        if (r != 0) {
+            if (--r->bt->users == 0)
+                CleanUpParBTProc(d, r->bt);
+            t = r->next;
+            if (prev != 0)
+                prev->next = t;
+            else
+                d->tok7 = t;
+            FREE_REC(tos, 7, r);
+        } else {
+            prev = t;
+            t = t->next;
+        }
+    }
+    {
+        DPTOS *tos = d->tos;
+        NBTOKEN *t, *pt;
+        NBWORD *w, *pw;
+
+        for (t = d->tok5; t != 0; ) {
+            pt = t;
+            if (t->bt != 0 && --t->bt->users == 0)
+                CleanUpParBTProc(d, t->bt);
+            t = t->next;
+            FREE_REC(tos, 5, pt);
+        }
+        for (w = d->words; w != 0; ) {
+            NBLINK *l = w->links;
+
+            pw = w;
+            if (w->bt != 0 && --w->bt->users == 0)
+                CleanUpParBTProc(d, w->bt);
+            while (l != 0) {
+                NBLINK *pl = l;
+
+                l = l->next;
+                FREE_REC(tos, 2, pl);
+            }
+            w = w->next;
+            FREE_REC(tos, 5, pw);
+        }
+        d->tok5 = 0;
+        d->words = 0;
+    }
+    if (n != 0) {
+        *bt = heap_Alloc(tos->heap, n * sizeof(NBTRACE *));
+        p = *bt;
+        for (t = d->tok7; t != 0; t = t->next)
+            *p++ = (NBTRACE *)t;
+        qsort(*bt, n, sizeof(NBTRACE *), ScoreCompare);
+    } else
+        *bt = 0;
+    return n;
 }
 
 /* the N best word sequences: the best backtraces (sorted, best first) made relative to the best,
