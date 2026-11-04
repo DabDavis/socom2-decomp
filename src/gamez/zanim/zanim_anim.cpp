@@ -474,7 +474,6 @@ void CZAnim::RestartClones()
 /* SOCOM II's: a particle source stopped by the particle manager (0x329AB0), and a world call on
  * a node it held (0x31D0A0) -- not named */
 extern "C" void func_00329AB0(Particle::Source *source);
-extern "C" void func_0031D0A0(zdb::CWorld *world, int what, zdb::CNode *node);
 
 /* a new state: stopping (5) a running anim runs its cleanup; stopping or resetting (1) lets go
  * of its sources, sounds, lights and called anims and takes a root it added out of the world;
@@ -501,7 +500,7 @@ void CZAnim::State(int state)
                 zdb::CWorld::m_world->DeleteChild(root);
                 m_added_to_world_internally = 0;
                 if (root->m_socom2_a1 & 4)
-                    func_0031D0A0(zdb::CWorld::m_world, 2, root);
+                    zdb::CWorld::m_world->DeleteTextureAssetCharacter((zdb::_RenderPhase)2, root);
             }
         }
     case 2:
@@ -948,22 +947,22 @@ void CZAnim::StopSounds()
         if (m_sound_ref_list[i].sound_instance) {
             if (m_sound_ref_list[i].stop_on_exit) {
                 if (m_sound_ref_list[i].fade > 0.0f) {
-                    func_00346DD0(m_sound_ref_list[i].sound_instance, m_sound_ref_list[i].fade);
+                    m_sound_ref_list[i].sound_instance->FadeOut(m_sound_ref_list[i].fade);
                     m_sound_ref_list[i].sound_instance->TerminateOnFinish();
                 } else {
                     m_sound_ref_list[i].sound_instance->Stop();
                     CSndInstance::ReleaseSoundInstance(m_sound_ref_list[i].sound_instance);
                 }
-            } else if (!func_00346D70(m_sound_ref_list[i].sound_instance))
+            } else if (!m_sound_ref_list[i].sound_instance->IsPlaying())
                 CSndInstance::ReleaseSoundInstance(m_sound_ref_list[i].sound_instance);
             else
                 m_sound_ref_list[i].sound_instance->TerminateOnFinish();
             m_sound_ref_list[i].sound_instance = 0;
         } else if (m_sound_ref_list[i].sound_handle && m_sound_ref_list[i].sound_handle->m_socom2_bit3) {
-            void *manager = func_0034BB80();
+            Headset *manager = Headset::ftsGetHeadset();
 
             if (manager)
-                func_0034A910(manager, 255, m_sound_ref_list[i].sound_handle);
+                manager->StopSound(255, m_sound_ref_list[i].sound_handle);
         }
         m_sound_ref_list[i].stop_on_exit = 0;
     }
@@ -1055,10 +1054,9 @@ void CZAnim::Priority(float priority)
     m_priority = priority;
 }
 
-/* SOCOM 1's Particle::Source::Create and CWorld::GetTexHandle, both matched in units of their
- * own under their addresses' names */
+/* SOCOM 1's Particle::Source::Create, matched in its own unit under its address's name
+ * (CWorld::GetTexHandle is znode.h's) */
 extern "C" Particle::Source *func_0032B120();
-extern "C" CTexHandle *func_001EC940(const char *name);
 
 /* a node reference by name under a parent, made when missing (ours; inline in both
  * branches of LoadNodeNames -- its returns are their jumps on) */
@@ -1093,7 +1091,7 @@ int CZAnim::LoadNodeNames(_zrdr *rdr, const char *name, int parent, int search)
             return 249;
         return FindNodeRef(name, parent, search);
     }
-    _zrdr *path = func_0032F0D0(rdr, "NAME");
+    _zrdr *path = zrdr_findtag(rdr, "NAME");
 
     if (!path)
         path = rdr;
@@ -1268,7 +1266,7 @@ CTexHandle *CZAnim::GetTexture(int name_index)
         m_tex_ref_count++;
     }
     if (ref && !ref->texh)
-        ref->texh = func_001EC940(GetName(name_index));
+        ref->texh = zdb::CWorld::GetTexHandle(GetName(name_index));
     return ref->texh;
 }
 

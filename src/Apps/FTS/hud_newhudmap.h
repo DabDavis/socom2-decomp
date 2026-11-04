@@ -15,6 +15,7 @@ class CWorld;
 
 class CCircleClip {
 public:
+    CCircleClip() : m_Cx(0), m_Cy(0), m_Radius(0) {}
     /* the circle placed at once: its centre and radius computed before any is stored (the name
      * is ours) */
     void Set(float cx, float cy, float radius)
@@ -31,6 +32,22 @@ public:
     float m_Radius;   // 0x10
 };
 
+/* the map's objective list (hud_objectives.cpp defines the class): a stand-in, as far as the map
+ * reaches into it -- 0x730 bytes (its last member a byte at 0x72C, the class 16-aligned) */
+class CMissionObjectiveCam;
+
+class CZObjectiveList {
+public:
+    CZObjectiveList();
+    CMissionObjectiveCam *GetCurrentObjective() const;
+    void MissionEndCleanup();
+
+    unsigned char _0[0x730];
+};
+
+class CHUD;
+class CSnd;
+
 class CZClaymoreMapItem;
 class CZMPBombMapItem;
 class CZProjectile;
@@ -38,6 +55,9 @@ class CZProjectile;
 class CZNewHudMap : public C2D {
 public:
     CZNewHudMap();
+    /* declared, not defined here: its draft (0x20BA00) inlines the real objective list's destructor,
+     * which the stand-in above cannot give -- defined, the unit's implicit copy would replace it */
+    virtual ~CZNewHudMap();
     CPnt3D MapPoint(const CPnt3D *p) const;
     CZClaymoreMapItem *FindClaymoreItem(CZProjectile *projectile);
     CZMPBombMapItem *FindMPBombItem();
@@ -47,14 +67,16 @@ public:
     void SetWorldWidth(float width);
     void SetMapScreenPos(float x1, float y1, float x2, float y2);
     void ReInit();
+    CZMapItem *RemoveItem(CZMapItem *item);
     void UninitMap();
     void InitMap(zdb::CWorld *world);
     float GetZoomOut() const;
+    void FrameObjective();
     void SwitchToCompassMap();
     void CalcNewMatrix();
-    /* the world window, its width (no narrower than the minimum) and centre at once: the width's
+    /* the world window, its centre and width (no narrower than the minimum) at once: the width's
      * setter passes the centre back in, read before the clamp (the name is ours) */
-    void SetWorldView(float width, float cx, float cy);
+    void SetWorldView(float cx, float cy, float width);
 
     std::list<CZMapItem *> m_itemlist;   // 0x18
     CZSealBody *m_viewer;   // 0x24
@@ -78,7 +100,16 @@ public:
     float m_centerx;   // 0xd4
     float m_centerz;   // 0xd8
     bool m_isFullScreen;   // 0xdc
-    unsigned char _dd[0x830 - 0xdd];
+    unsigned char m_oldmenustate;   // 0xdd (SOCOM 1's MENU_STATE)
+    unsigned char _de[0xe0 - 0xde];
+    CZObjectiveList m_objectivelist;   // 0xe0 (SOCOM 1's, at 0x4d0)
+    CHUD *m_parent;   // 0x810 (SOCOM 1's last three, after the list as there)
+    CSnd *m_zoominsound;   // 0x814
+    CSnd *m_zoomoutsound;   // 0x818
+    int m_socom2_81c;   // 0x81c: SOCOM II's three, zeroed by the constructor
+    int m_socom2_820;   // 0x820
+    int m_socom2_824;   // 0x824
+    unsigned char _828[0x830 - 0x828];
 };   // 0x830 bytes (CHUD's constructor news it)
 
 #endif

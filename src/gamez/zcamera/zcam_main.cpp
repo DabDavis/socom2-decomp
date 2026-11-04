@@ -235,7 +235,7 @@ _zanim_cmd_hdr *CCamera::CmdParseSetRegions(_zrdr *rdr)
     cmd = (_camera_set_regions_cmd *)_calloc(1, sizeof(_camera_set_regions_cmd), 0, 0);
     cmd->hdr.data_size = sizeof(_camera_set_regions_cmd);
     cmd->hdr.timeless = 1;
-    if (func_0032F0D0(rdr, "ON"))
+    if (zrdr_findtag(rdr, "ON"))
         cmd->set_on = 1;
     else
         cmd->set_on = 0;
@@ -300,25 +300,25 @@ _zanim_cmd_hdr *CCamera::CmdParseParams(_zrdr *rdr)
     cmd->hdr.data_size = sizeof(_camera_params_cmd);
     cmd->hdr.timeless = 1;
     cmd->run_time = 0.0f;
-    if (func_0032F0D0(rdr, "SAVE_PARAMS"))
+    if (zrdr_findtag(rdr, "SAVE_PARAMS"))
         cmd->save_params = 1;
-    if (func_0032F0D0(rdr, "RESTORE_PARAMS"))
+    if (zrdr_findtag(rdr, "RESTORE_PARAMS"))
         cmd->restore_params = 1;
-    if (func_0032F0D0(rdr, "FOG_ON")) {
+    if (zrdr_findtag(rdr, "FOG_ON")) {
         cmd->fog_enabled_set = 1;
         cmd->fog_enabled = 1;
-    } else if (func_0032F0D0(rdr, "FOG_OFF")) {
+    } else if (zrdr_findtag(rdr, "FOG_OFF")) {
         cmd->fog_enabled_set = 1;
         cmd->fog_enabled = 0;
     }
-    if (func_0032F0D0(rdr, "FOG_ALTITUDE_ON")) {
+    if (zrdr_findtag(rdr, "FOG_ALTITUDE_ON")) {
         cmd->fog_altitude_enabled_set = 1;
         cmd->fog_altitude_enabled = 1;
-    } else if (func_0032F0D0(rdr, "FOG_ALTITUDE_OFF")) {
+    } else if (zrdr_findtag(rdr, "FOG_ALTITUDE_OFF")) {
         cmd->fog_altitude_enabled_set = 1;
         cmd->fog_altitude_enabled = 0;
     }
-    tag = func_0032F0D0(rdr, "FOV");
+    tag = zrdr_findtag(rdr, "FOV");
     if (tag) {
         for (unsigned int i = 0; i < tag->Count(); i += 3) {
             _camera_param_2d_data data;
@@ -334,7 +334,7 @@ _zanim_cmd_hdr *CCamera::CmdParseParams(_zrdr *rdr)
             cmd = (_camera_params_cmd *)zAnimCmdAddData(&cmd->hdr, &data, sizeof(data));
         }
     }
-    tag = func_0032F0D0(rdr, "CLIP");
+    tag = zrdr_findtag(rdr, "CLIP");
     if (tag) {
         for (unsigned int i = 0; i < tag->Count(); i += 3) {
             _camera_param_2d_data data;
@@ -350,7 +350,7 @@ _zanim_cmd_hdr *CCamera::CmdParseParams(_zrdr *rdr)
             cmd = (_camera_params_cmd *)zAnimCmdAddData(&cmd->hdr, &data, sizeof(data));
         }
     }
-    tag = func_0032F0D0(rdr, "CLIP_ALL");
+    tag = zrdr_findtag(rdr, "CLIP_ALL");
     if (tag) {
         for (unsigned int i = 0; i < tag->Count(); i += 4) {
             _camera_param_3d_data data;
@@ -367,7 +367,7 @@ _zanim_cmd_hdr *CCamera::CmdParseParams(_zrdr *rdr)
             cmd = (_camera_params_cmd *)zAnimCmdAddData(&cmd->hdr, &data, sizeof(data));
         }
     }
-    tag = func_0032F0D0(rdr, "FOG_COLOR");
+    tag = zrdr_findtag(rdr, "FOG_COLOR");
     if (tag) {
         for (unsigned int i = 0; i < tag->Count(); i += 4) {
             _camera_param_3d_data data;
@@ -391,7 +391,7 @@ _zanim_cmd_hdr *CCamera::CmdParseParams(_zrdr *rdr)
             cmd = (_camera_params_cmd *)zAnimCmdAddData(&cmd->hdr, &data, sizeof(data));
         }
     }
-    tag = func_0032F0D0(rdr, "FOG_RANGE");
+    tag = zrdr_findtag(rdr, "FOG_RANGE");
     if (tag) {
         for (unsigned int i = 0; i < tag->Count(); i += 3) {
             _camera_param_2d_data data;
@@ -407,7 +407,7 @@ _zanim_cmd_hdr *CCamera::CmdParseParams(_zrdr *rdr)
             cmd = (_camera_params_cmd *)zAnimCmdAddData(&cmd->hdr, &data, sizeof(data));
         }
     }
-    tag = func_0032F0D0(rdr, "FOG_ALTITUDE");
+    tag = zrdr_findtag(rdr, "FOG_ALTITUDE");
     if (tag) {
         for (unsigned int i = 0; i < tag->Count(); i += 3) {
             _camera_param_2d_data data;
@@ -423,7 +423,7 @@ _zanim_cmd_hdr *CCamera::CmdParseParams(_zrdr *rdr)
             cmd = (_camera_params_cmd *)zAnimCmdAddData(&cmd->hdr, &data, sizeof(data));
         }
     }
-    tag = func_0032F0D0(rdr, "LOD_MULTIPLIER");
+    tag = zrdr_findtag(rdr, "LOD_MULTIPLIER");
     if (tag) {
         for (unsigned int i = 0; i < tag->Count(); i += 2) {
             _camera_param_1d_data data;

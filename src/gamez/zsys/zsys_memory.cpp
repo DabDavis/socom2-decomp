@@ -12,7 +12,7 @@
 
 extern "C" {
 void *realloc(void *p, unsigned int size);        /* newlib (MAIN) */
-void *func_00194A00(unsigned int align, unsigned int size); /* newlib's memalign (MAIN) */
+void *memalign(unsigned int align, unsigned int size); /* newlib (MAIN) */
 }
 
 /* SOCOM 1's assert, its file and line dropped */
@@ -52,7 +52,7 @@ void *_memalign(unsigned int align, unsigned int size, const char *file, int lin
     void *p;
 
     DIntr();
-    p = func_00194A00(align, size);
+    p = memalign(align, size);
     EIntr();
     zsys_Assert(size ? p != 0 : true);
     return p;

@@ -124,10 +124,13 @@ public:
 
 extern CZNetwork theNetwork;
 
-/* the radio command menu (OVL1 0x413120; only what the recogniser touches -- its listening states
- * 1 and 6, the column path whose depth picks the context, a heard word handled, the menu closed) */
-class CRadioMenu {
+/* the radio command menu (hud_tcm.h's CTCM, theTCM at OVL1 0x413120; only what the recogniser
+ * touches -- its listening states 1 and 6, the column path whose depth picks the context, a heard
+ * word handled (Select, 0x234F40), the menu closed (Close, 0x235300)) */
+class CTCM {
 public:
+    bool Select(const char *word);
+    void Close(bool b);
     int GetDepth() { return m_path.size(); }
     std::vector<int> &GetPath() { return m_path; }
 
@@ -136,11 +139,7 @@ public:
     std::vector<int> m_path;   // 0x754
 };
 
-extern CRadioMenu data_00413120;
-extern "C" {
-bool func_00234F40(CRadioMenu *menu, const char *word);   /* a heard word handled */
-void func_00235300(CRadioMenu *menu, int arg);   /* the menu closed */
-}
+extern CTCM theTCM;
 
 /* the radio command menu's (hud_tcmcmds.cpp): the team's order cleared once a heard command was handled */
 void tcmRecoCancel();
@@ -450,7 +449,7 @@ void CReco::Tick(float dT)
         m_stopReq = 0;
         s_quiet = 0;
     } else if (m_contextReq) {
-        int depth = data_00413120.GetDepth();
+        int depth = theTCM.GetDepth();
 
         if (depth > 0)
             theReco.SetContext(depth - 1);
@@ -461,7 +460,7 @@ void CReco::Tick(float dT)
         s_quiet = 0;
     }
     if (m_init || m_contextReq) {
-        if (data_00413120.m_state == 1 || data_00413120.m_state == 6)
+        if (theTCM.m_state == 1 || theTCM.m_state == 6)
             s_quiet++;
         if (s_quiet > s_quietMax) {
             s_quiet = 0;
@@ -534,7 +533,7 @@ void cbrecoResult(void *hEngine, unsigned int action, _GSAPI_RESULT *pResult, un
     bool heard;
     unsigned int i;
 
-    if (data_00413120.m_state != 1 && data_00413120.m_state != 6)
+    if (theTCM.m_state != 1 && theTCM.m_state != 6)
         closed = 1;
     PrintResult(hEngine, pResult, action);
     n = pResult->u16NbrWords;
@@ -547,26 +546,26 @@ void cbrecoResult(void *hEngine, unsigned int action, _GSAPI_RESULT *pResult, un
     while (i < n && more) {
         if (func_004C82F0(hEngine, pResult->pWordIds[i], &word) >= 0 && word && strlen(word)) {
             heard = true;
-            more = func_00234F40(&data_00413120, word);
+            more = theTCM.Select(word);
         }
         i++;
     }
     if (closed) {
         if ((!more || n < 3) && heard)
             tcmRecoCancel();
-        func_00235300(&data_00413120, 0);
+        theTCM.Close(false);
         theReco.Suspend(true);
-    } else if (data_00413120.m_state == 1) {
+    } else if (theTCM.m_state == 1) {
         theReco.Resume();
-    } else if (data_00413120.m_state == 6) {
+    } else if (theTCM.m_state == 6) {
         if (more && n > 2) {
-            func_00235300(&data_00413120, 0);
+            theTCM.Close(false);
         } else if (heard) {
             tcmRecoCancel();
-            func_00235300(&data_00413120, 0);
+            theTCM.Close(false);
         } else {
-            data_00413120.m_path.clear();
-            data_00413120.GetPath().push_back(s_root);
+            theTCM.m_path.clear();
+            theTCM.GetPath().push_back(s_root);
             theReco.Resume();
         }
     }

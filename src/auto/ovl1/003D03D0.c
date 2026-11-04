@@ -9,15 +9,15 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define NULL 0
 M2C_UNK HookupReset__14CFlyoutMachineFv(M2C_UNK *); /* extern */
 M2C_UNK InitializeWeapons__12CZWeaponListFv(M2C_UNK *); /* extern */
-s32 func_002DE9E0(M2C_UNK *);                       /* extern */
+s32 ResolveMaterialIndex__16CMaterialExArrayFPCc(M2C_UNK *); /* extern */
 extern M2C_UNK data_003FD328;
-extern M2C_UNK data_004B5260;
+extern M2C_UNK m_flyout_machine__8CZWeapon;
 extern M2C_UNK m_listWeapons__8CZWeapon;
 extern s32 personMaterialId__4zwep;
 
 s32 Open__8CZWeaponFv(void) {
     InitializeWeapons__12CZWeaponListFv(&m_listWeapons__8CZWeapon);
-    HookupReset__14CFlyoutMachineFv(&data_004B5260);
-    personMaterialId__4zwep = func_002DE9E0(&data_003FD328);
+    HookupReset__14CFlyoutMachineFv(&m_flyout_machine__8CZWeapon);
+    personMaterialId__4zwep = ResolveMaterialIndex__16CMaterialExArrayFPCc(&data_003FD328);
     return 1;
 }
