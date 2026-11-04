@@ -139,7 +139,13 @@ static bool bnkArchiveIsOpen;           /* SOCOM 1's static */
 extern char data_003E0520[];            /* CFileIO's root path ("host0:.\\") */
 extern char data_0048DC30[];
 extern unsigned char data_0048DE48;     /* the subtitles' string table wanted (name not known) */
-extern "C" int *func_0039DEF0(const char *name);    /* CFileCD::Find (SOCOM 1's), by its placeholder */
+/* a file in the CD's table of contents (SOCOM 1's DWARF, as util_sonyio.cpp's) */
+struct _FILECD {
+    char *name;                 // 0x0
+    unsigned int startSector;   // 0x4
+    unsigned int endSector;     // 0x8
+    unsigned int sectorSize;    // 0xc
+};
 extern "C" void func_00258920(void *zar, const char *name, int a, unsigned int b, unsigned int c,
                               int d);   /* zar::CZAR::Open, a fifth argument added */
 extern "C" void func_00258E60(void *zar);           /* zar::CZAR::CloseKeepDir */
@@ -181,10 +187,10 @@ void CSnd::Init()
     func_00345DC0(&data_0048DBE8, 10);
     if (!m_isDisabled && !bnkArchiveIsOpen) {
         bnkArchiveIsOpen = true;
-        int *entry = func_0039DEF0("RUN\\SOUNDS\\BNKSTORE.ZAR;1");
+        _FILECD *entry = CFileCD::Find("RUN\\SOUNDS\\BNKSTORE.ZAR;1");
 
         if (entry)
-            m_bnkoffset = entry[1];
+            m_bnkoffset = entry->startSector;
         char path[256];
 
         strcpy(path, data_003E0520);

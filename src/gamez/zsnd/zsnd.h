@@ -233,6 +233,9 @@ public:
 };   /* 0x58 bytes */
 
 /* the CD file system's flag that a sound stream owns the drive (SOCOM 1's static) */
+/* a file in the CD's table of contents (SOCOM 1's DWARF; util_sonyio.cpp defines it) */
+struct _FILECD;
+
 class CFileCD {
 public:
     /* (util_sonyio.cpp's real class, out of line there: the DNAS client reads its file so) */
@@ -240,6 +243,8 @@ public:
     ~CFileCD();
     int Read(char *buf, int size);
     bool OpenSector(unsigned int sector);
+    /* a file's TOC entry by name, 0 when the TOC has none (0x39DEF0, SOCOM 1's) */
+    static _FILECD *Find(const char *name);
 
     static bool m_streamingSndActive;
 

@@ -17,17 +17,12 @@ public:
 
 CRdrArchiveList CRdrArchive::m_list;
 
-/* zar::CZAR::ReOpen(int, unsigned int) (0x258B40, named: zar.h, another lane's, does not declare
- * it): the archive opened again by its name unless it is open (SOCOM 1's OpenAll and FindRdr call
- * ReOpen there) */
-extern "C" bool func_00258B40(zar::CZAR *zar, int a, unsigned int b);
-
 void CRdrArchive::OpenAll()
 {
     CRdrArchiveList::iterator i, e = m_list.end();
 
     for (i = m_list.begin(); i != e; ++i)
-        func_00258B40(*i, 1, 1);
+        (*i)->ReOpen(1, 1);
 }
 
 void CRdrArchive::CloseAll()
@@ -128,7 +123,7 @@ CRdrFile *CRdrArchive::FindRdr(const char *path, int flags)
         CRdrArchive *archive = *i;
         bool opened = false;
         if (!archive->IsOpen()) {
-            func_00258B40(archive, 1, 1);
+            archive->ReOpen(1, 1);
             opened = true;
         }
         file = 0;
