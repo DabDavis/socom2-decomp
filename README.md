@@ -1965,6 +1965,25 @@ templates next), and the earlier rounds' opens; 3.0b38/b50/b52 still untold.
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the SEALs, round 23** (PostTick, AddWeapon, the damage report, the rifle/pistol swaps, the homings, Tick):
+  - an out-parameter negate, `NegateInto(&d, &d)` writing `out->x = -in->x` and so on, loads the fields straight off sp and
+    keeps one field-address register for the stores (the AI core's round-21 rule again): the carry's homing 0x5B1750 went
+    from 55 words off to byte-exact, and FindDeathAnimTypeCQB to the right size; the in-place pointer form renumbers every
+    saved register;
+  - an inline returning `unsigned char` 1 or 0 from several arms narrows the shared compare-constant register (`andi
+    v0,a0,0xff`), a member read inside the inline rather than passed in keeps its load lazy (0x5A6B70); a helper written as
+    an inline member keeps its `this` (a member's address) in a saved register across calls, a static inline taking the
+    pointer folds it into offsets (the goal's homing 0x5B1890);
+  - a byte parameter tested `== 0` keeps its `andi 0xff` before the branch, `!x` drops it (ReportWeaponHitDamage 0x5A1FF0:
+    SOCOM 1's with SOCOM II's projectile parameter in front); `T x; x = *p;` copies in load/store pairs where `T x = *p`
+    loads all three fields first;
+  - declaration order fixed the saved registers twice: Dump's target list ahead of the AI pointer, Tick's `bool turning;`
+    ahead of the SEAL pointer (CSealCtrl::Tick 0x596F10, its `_close_enough<f>` scored against OVL2's copy 0x52EB60);
+    CZSealBody::PostTick 0x550570 inlines SOCOM 1's GetMaxRegionShift as a unit-local helper;
+  - CBody::AddBodyPart 0x28EBE0 returns the part it made (AddWeapon 0x553290 uses v0; zbody.h declares it void -- queued
+    for the engine core);
+  - open: 0x5A2490 (2: 0x5B14E0's miss inlined -- the target loads the list before the index), FindDeathAnimTypeCQB
+    0x5A9420 (10: the SEAL's node loaded before the facing's stores in the target).
 - **Tells from the game states, round 27** (sixteen static initialisers, CGame's engine pair, fts_msgeditor.cpp):
   - a static whose class's implicit constructor only runs a member's empty inline constructor emits an empty `__sinit`
     (`jr ra; nop`): CZBombState::m_BombStatus with its CPnt3D -- 0x4006B0 is __sinit_fts_net_bomb.cpp; an initialiser whose
