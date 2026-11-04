@@ -98,6 +98,9 @@ public:
 class CZKit {
 public:
     void ResetScreenOffsetXY();
+    /* the reticle's offsets zeroed (OVL2 0x5B9020, new in SOCOM II beside ResetScreenOffsetXY:
+     * DecrZoomState calls it where SOCOM 1's called InitializeSniperKick -- the name ours) */
+    void ResetRetOffsetXY();
     void Binocs_Enabled(bool on);
     void SetCurReticule(bool force);
     bool CurReticuleTypeChanged();
@@ -122,6 +125,9 @@ public:
      * CurWeaponIsM203Mode; the middle one new -- its name ours) */
     bool WeaponIsGrenadeLauncherMode(int index);
     bool WeaponIsLauncherMode(int index);
+    /* the item in hand in its launcher's mode (OVL2 0x5BD7E0, a tail call on m_selected_item as
+     * SOCOM 1's CurWeaponIsM203Mode was its test's; the name ours) */
+    bool CurWeaponIsLauncherMode();
     bool WeaponIsM203Mode(int index);
     bool SetItem(unsigned int index, CZWeapon *w, void *ammo, int rounds);
     void SetItemByIndex(int index, CZWeapon *w);
@@ -452,7 +458,9 @@ public:
     unsigned int m_second_hand : 1;   // bit 18: the hand's fire mode slot 1, not 0 (0x5C48B0)
     unsigned int m_unused : 13;
     bool m_hotswap;   // 0x4: new in SOCOM II, CWeaponSel::CheckHotSwap's (the name ours)
-    unsigned char _5[0x28 - 0x5];
+    unsigned char _5[0x20 - 0x5];
+    float m_retoffsetx;   // 0x20 (SOCOM 1's 0xc: its TickReticule's)
+    float m_retoffsety;   // 0x24 (SOCOM 1's 0x10)
     float m_sniper_posx;   // 0x28 (SOCOM 1's 0x14)
     float m_sniper_posy;   // 0x2c (SOCOM 1's 0x18)
     unsigned char _30[0x38 - 0x30];

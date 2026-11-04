@@ -22,23 +22,16 @@ enum LENS_FX {
     lens_fx_9 = 9
 };
 
-/* the zoom's statics, unnamed yet in data.txt (SOCOM 1's names in the comments) */
+/* the clip and fog bases SeeFarther scales (SOCOM 1's globals) */
+extern float BaseFarClip;
+extern float BaseMidClip;
+extern float BaseFogFar;
+
+/* the zoom's other statics (the names ours) */
 extern "C" {
-extern float data_003DC340;                      /* CameraZoom::m_goal */
-extern float data_003DC338;                      /* CameraZoom::m_current */
-extern float data_00408C48;                      /* CameraZoom::m_increment */
-extern unsigned char data_00408C68;              /* CameraZoom::m_isGoalHit */
-extern CHUD *data_00408C60;                      /* CameraZoom::m_hud */
-extern CZSealBody *data_00408C58;                /* CameraZoom::m_seal */
-extern float data_00408C70;                      /* BaseFarClip */
-extern float data_00408C78;                      /* BaseMidClip */
-extern float data_00408C80;                      /* BaseFogFar */
 extern bool data_00408CD8;                       /* SeeFarther's last switch */
 extern float data_00408CE0;                      /* and its factor */
 extern int data_00408CF0;                        /* (set: SeeFarther does not note them) */
-extern CPnt4D data_004B4AB0;                     /* zdb::CVisual::m_basefog_color */
-extern unsigned char data_00408C50;              /* CameraZoom::m_iszoom */
-extern CAMVIEW data_003DC348;                    /* CameraZoom::m_oldview */
 /* SOCOM II's lens effects (the names ours) */
 extern CZAnim *data_00408CA0[9];                 /* the effects' anims: init_lens_fx, to_no_lens_fx ... */
 extern CZAnim *data_00408C88[3];                 /* blindplayer01..03 */
@@ -61,7 +54,7 @@ public:
 extern unsigned char gopt[0x1b];
 
 /* the base fog colour by value (the name ours: SeeFarther copies it out twice) */
-static inline CPnt4D BaseFogColor() { return data_004B4AB0; }
+static inline CPnt4D BaseFogColor() { return zdb::CVisual::m_basefog_color; }
 
 /* a camera's fog colour set from a colour passed by value (the name ours) */
 static inline void SetFogColorBy(zdb::CCamera *cam, CPnt4D c) { cam->SetFogColor(c); }
@@ -85,6 +78,16 @@ public:
     static void SetLensFx(unsigned char fx);
     static unsigned char LensFxOn();
     static void SetLensFxAnim(CZAnim *anim);
+
+    /* SOCOM 1's statics */
+    static float m_current;
+    static float m_goal;
+    static CAMVIEW m_oldview;
+    static float m_increment;
+    static unsigned char m_iszoom;
+    static CZSealBody *m_seal;
+    static CHUD *m_hud;
+    static unsigned char m_isGoalHit;
 };
 
 /* the zoom put back to none: no step, not zooming, at 1 and aiming for it, the old view first
@@ -93,15 +96,15 @@ public:
  * name ours) */
 void CameraZoom::Reset()
 {
-    data_00408C48 = 0.0f;
-    data_00408C50 = 0;
-    data_003DC338 = 1.0f;
-    data_003DC340 = 1.0f;
-    data_003DC348 = cam_view_first;
-    data_00408C68 = 0;
-    data_00408C70 = 0.0f;
-    data_00408C78 = 0.0f;
-    data_00408C80 = 0.0f;
+    CameraZoom::m_increment = 0.0f;
+    CameraZoom::m_iszoom = 0;
+    CameraZoom::m_current = 1.0f;
+    CameraZoom::m_goal = 1.0f;
+    CameraZoom::m_oldview = cam_view_first;
+    CameraZoom::m_isGoalHit = 0;
+    BaseFarClip = 0.0f;
+    BaseMidClip = 0.0f;
+    BaseFogFar = 0.0f;
     if (appCamera) {
         appCamera->m_ctrl_view = cam_view_third;
         appCamera->SetZoom(1.0f);
@@ -121,22 +124,22 @@ void CameraZoom::Reset()
 
 void CameraZoom::AttachSeal(CZSealBody *seal)
 {
-    data_00408C58 = seal;
+    CameraZoom::m_seal = seal;
 }
 
 /* the HUD the zoom draws on; the clip and fog bases forgotten (SOCOM II's) */
 void CameraZoom::AttachHud(CHUD *hud)
 {
-    data_00408C60 = hud;
-    data_00408C70 = 0.0f;
-    data_00408C78 = 0.0f;
-    data_00408C80 = 0.0f;
+    CameraZoom::m_hud = hud;
+    BaseFarClip = 0.0f;
+    BaseMidClip = 0.0f;
+    BaseFogFar = 0.0f;
 }
 
 void CameraZoom::SetGoal(float goal)
 {
-    data_003DC340 = goal;
-    data_00408C68 = 1;
+    CameraZoom::m_goal = goal;
+    CameraZoom::m_isGoalHit = 1;
 }
 
 /* a zoom in asked for: back at 1 from 1 (SOCOM II's), only the view put back to the third person
@@ -145,27 +148,27 @@ void CameraZoom::SetGoal(float goal)
  * person; 1.01 the same, the HUD zoomed in only with night vision on (SOCOM 1's HandleZoomIn) */
 void CameraZoom::HandleZoomIn(float newzoom, float current)
 {
-    if (data_003DC340 == 1.0f && newzoom == 1.0f) {
-        if (!data_00408C50 && data_003DC338 == 1.0f) {
-            data_003DC348 = appCamera->SetCtrlView(cam_view_third);
+    if (CameraZoom::m_goal == 1.0f && newzoom == 1.0f) {
+        if (!CameraZoom::m_iszoom && CameraZoom::m_current == 1.0f) {
+            CameraZoom::m_oldview = appCamera->SetCtrlView(cam_view_third);
         }
     } else if (newzoom && newzoom != 1.01f) {
         SetGoal(newzoom);
-        data_00408C48 = 3.0f * newzoom;
+        CameraZoom::m_increment = 3.0f * newzoom;
         if (gopt[0])
-            data_00408C60->ZoomIn();
-        if (!data_00408C50 && data_003DC338 == 1.0f) {
-            data_00408C50 = 1;
-            data_003DC348 = appCamera->SetCtrlView(cam_view_first);
+            CameraZoom::m_hud->ZoomIn();
+        if (!CameraZoom::m_iszoom && CameraZoom::m_current == 1.0f) {
+            CameraZoom::m_iszoom = 1;
+            CameraZoom::m_oldview = appCamera->SetCtrlView(cam_view_first);
         }
     } else if (newzoom == 1.01f) {
         SetGoal(newzoom);
-        data_00408C48 = 3.0f * newzoom;
-        if (gopt[0] && data_00408C58->m_kit.NVG_Enabled())
-            data_00408C60->ZoomIn();
-        if (!data_00408C50 && data_003DC338 == 1.0f) {
-            data_00408C50 = 1;
-            data_003DC348 = appCamera->SetCtrlView(cam_view_first);
+        CameraZoom::m_increment = 3.0f * newzoom;
+        if (gopt[0] && CameraZoom::m_seal->m_kit.NVG_Enabled())
+            CameraZoom::m_hud->ZoomIn();
+        if (!CameraZoom::m_iszoom && CameraZoom::m_current == 1.0f) {
+            CameraZoom::m_iszoom = 1;
+            CameraZoom::m_oldview = appCamera->SetCtrlView(cam_view_first);
         }
     }
 }
@@ -183,24 +186,24 @@ void SeeFarther(bool bEnable, float SeeFartherFactor)
         data_00408CD8 = bEnable;
     }
     if (!bEnable) {
-        if (data_00408C78 == 0.0f)
-            data_00408C78 = cam->m_mid_plane;
-        if (data_00408C70 == 0.0f)
-            data_00408C70 = cam->m_far_plane;
-        cam->SetMidClip(data_00408C78);
-        cam->SetFarClip(data_00408C70);
+        if (BaseMidClip == 0.0f)
+            BaseMidClip = cam->m_mid_plane;
+        if (BaseFarClip == 0.0f)
+            BaseFarClip = cam->m_far_plane;
+        cam->SetMidClip(BaseMidClip);
+        cam->SetFarClip(BaseFarClip);
         cam->Update(zdb::ZCAM_NORMAL);
-        if (data_00408C80 == 0.0f)
-            data_00408C80 = cam->m_fog_far;
-        cam->m_fog_far = data_00408C80;
+        if (BaseFogFar == 0.0f)
+            BaseFogFar = cam->m_fog_far;
+        cam->m_fog_far = BaseFogFar;
         SetFogColorBy(cam, BaseFogColor());
     } else {
-        data_00408C80 = cam->m_fog_far;
-        cam->m_fog_far = data_00408C80 + SeeFartherFactor;
-        data_00408C70 = cam->m_far_plane;
-        cam->SetFarClip(data_00408C70 + SeeFartherFactor);
-        data_00408C78 = cam->m_mid_plane;
-        cam->SetMidClip(data_00408C78 + SeeFartherFactor);
+        BaseFogFar = cam->m_fog_far;
+        cam->m_fog_far = BaseFogFar + SeeFartherFactor;
+        BaseFarClip = cam->m_far_plane;
+        cam->SetFarClip(BaseFarClip + SeeFartherFactor);
+        BaseMidClip = cam->m_mid_plane;
+        cam->SetMidClip(BaseMidClip + SeeFartherFactor);
         cam->Update(zdb::ZCAM_NORMAL);
     }
 }
@@ -210,23 +213,23 @@ void SeeFarther(bool bEnable, float SeeFartherFactor)
  * in with night vision on; anywhere else zoomed in unless night vision is on (SOCOM 1's OnGoal) */
 void CameraZoom::OnGoal()
 {
-    if (data_00408C50) {
-        data_00408C58->m_kit.SetCurReticule(false);
-        if (data_003DC340 == 1.0f) {
+    if (CameraZoom::m_iszoom) {
+        CameraZoom::m_seal->m_kit.SetCurReticule(false);
+        if (CameraZoom::m_goal == 1.0f) {
             if (gopt[0])
-                data_00408C60->ZoomOut();
+                CameraZoom::m_hud->ZoomOut();
             appCamera->m_ctrl_view = cam_view_third;
-            data_00408C50 = 0;
-        } else if (data_003DC340 == 1.01f || data_003DC340 == 1.01f) {
-            if (gopt[0] && data_00408C58->m_kit.NVG_Enabled()) {
-                data_00408C60->ZoomOut();
-                data_00408C60->ZoomIn();
+            CameraZoom::m_iszoom = 0;
+        } else if (CameraZoom::m_goal == 1.01f || CameraZoom::m_goal == 1.01f) {
+            if (gopt[0] && CameraZoom::m_seal->m_kit.NVG_Enabled()) {
+                CameraZoom::m_hud->ZoomOut();
+                CameraZoom::m_hud->ZoomIn();
                 return;
             }
-            data_00408C60->ZoomOut();
+            CameraZoom::m_hud->ZoomOut();
         } else {
-            if (gopt[0] && !data_00408C58->m_kit.NVG_Enabled())
-                data_00408C60->ZoomIn();
+            if (gopt[0] && !CameraZoom::m_seal->m_kit.NVG_Enabled())
+                CameraZoom::m_hud->ZoomIn();
         }
     }
 }
@@ -237,47 +240,42 @@ void CameraZoom::OnGoal()
 bool CameraZoom::Tick(float dT)
 {
     HandleNewZoom();
-    if (data_003DC340 == data_003DC338 && data_00408C68) {
+    if (CameraZoom::m_goal == CameraZoom::m_current && CameraZoom::m_isGoalHit) {
         OnGoal();
-        data_00408C68 = 0;
-        data_00408C58->m_zooming = 0;
+        CameraZoom::m_isGoalHit = 0;
+        CameraZoom::m_seal->m_zooming = 0;
         return true;
     }
-    CEntityCtrl *control = data_00408C58 ? data_00408C58->m_control : 0;
+    CEntityCtrl *control = CameraZoom::m_seal ? CameraZoom::m_seal->m_control : 0;
 
     if (control && control->m_221 == 5) {
-        data_003DC338 = appCamera->m_camera->m_screenAspect[0];
+        CameraZoom::m_current = appCamera->m_camera->m_screenAspect[0];
     } else {
         float cur = appCamera->m_camera->m_screenAspect[0];
-        float step = dT * data_00408C48;
+        float step = dT * CameraZoom::m_increment;
 
-        data_003DC338 = cur;
-        if (data_003DC340 >= cur) {
-            data_003DC338 += step;
-            if (data_003DC338 > data_003DC340) {
-                data_003DC338 = data_003DC340;
-                data_00408C48 = 0.0f;
+        CameraZoom::m_current = cur;
+        if (CameraZoom::m_goal >= cur) {
+            CameraZoom::m_current += step;
+            if (CameraZoom::m_current > CameraZoom::m_goal) {
+                CameraZoom::m_current = CameraZoom::m_goal;
+                CameraZoom::m_increment = 0.0f;
             }
         } else {
-            data_003DC338 -= step;
-            if (data_003DC338 < data_003DC340) {
-                data_003DC338 = data_003DC340;
-                data_00408C48 = 0.0f;
+            CameraZoom::m_current -= step;
+            if (CameraZoom::m_current < CameraZoom::m_goal) {
+                CameraZoom::m_current = CameraZoom::m_goal;
+                CameraZoom::m_increment = 0.0f;
             }
         }
     }
-    appCamera->SetZoom(data_003DC338);
+    appCamera->SetZoom(CameraZoom::m_current);
     return false;
 }
 
-/* the lens effects' colours kept (SOCOM II's: four taken from a struct of them at 0x4B4D40, one
- * made; unnamed) */
-struct CLensColors {
-    PNT4D m_c[4];
-};
-
+/* the lens effects' colours kept (SOCOM II's: four taken from zdb::CVisual::m_lensColor, 0x4B4D40,
+ * one made; unnamed) */
 extern "C" {
-extern CLensColors data_004B4D40;
 /* the first colour kept, the unit's only dynamically initialised static (from CPnt4D::zero:
  * __sinit_thezoom.cpp 0x3FD850 copies it after <iostream>'s pair) */
 PNT4D data_00408D00 = CPnt4D::zero;
@@ -288,8 +286,8 @@ extern PNT4D data_00408D40;
 PNT4D func_003B7620(int arg);
 }
 
-/* a colour by value (the name ours): the struct's first copied by quadword, the others element by
- * element (MW trusts only the struct's start to be 16-aligned) */
+/* a colour by value (the name ours): the array's first copied by quadword, the others element by
+ * element (MW trusts only the array's start to be 16-aligned) */
 static inline PNT4D LensColor(const PNT4D &c) { return c; }
 
 /* the lens effects loaded (SOCOM II's; the name ours): the effects before and now the third
@@ -325,10 +323,10 @@ void CameraZoom::LoadLensFx()
         data_00408CA0[lens_fx_third_person] = 0;
     }
     SetLensFx(lens_fx_third_person);
-    data_00408D00 = LensColor(data_004B4D40.m_c[0]);
-    data_00408D10 = LensColor(data_004B4D40.m_c[1]);
-    data_00408D20 = LensColor(data_004B4D40.m_c[2]);
-    data_00408D30 = LensColor(data_004B4D40.m_c[3]);
+    data_00408D00 = LensColor(zdb::CVisual::m_lensColor[0]);
+    data_00408D10 = LensColor(zdb::CVisual::m_lensColor[1]);
+    data_00408D20 = LensColor(zdb::CVisual::m_lensColor[2]);
+    data_00408D30 = LensColor(zdb::CVisual::m_lensColor[3]);
     data_00408D40 = func_003B7620(0);
 }
 
@@ -397,11 +395,10 @@ void CameraZoom::SetLensFxAnim(CZAnim *anim)
     data_00408CD0 = anim;
 }
 
-/* the lens effects' colours put back to white with no alpha, the screen's tint handed white
- * (0x3B78D0, unnamed) and two words of thePipe cleared (an inline both callers share; the names
- * ours) */
+/* the lens effects' colours put back to white with no alpha, the light maps' tints handed white at
+ * once (CVisual::SetLightTints, 0x3B78D0: the colour by value, its copy's address passed) and two
+ * words of thePipe cleared (an inline both callers share; the names ours) */
 extern "C" {
-void func_003B78D0(CPnt4D *color, float t);
 void func_00270960(CZAnim *anim, bool now);
 void func_005C1800(void *kit, int a, int b);
 extern int data_00488E90;                       /* thePipe + 0x6D0 */
@@ -411,14 +408,20 @@ extern int data_00488EA0;                       /* thePipe + 0x6E0 */
 static inline void ResetLensColorsOnly()
 {
     for (int i = 0; i < 4; i++) {
-        data_004B4D40.m_c[i].x = 1.0f;
-        data_004B4D40.m_c[i].y = 1.0f;
-        data_004B4D40.m_c[i].z = 1.0f;
-        data_004B4D40.m_c[i].w = 0.0f;
+        zdb::CVisual::m_lensColor[i].x = 1.0f;
+        zdb::CVisual::m_lensColor[i].y = 1.0f;
+        zdb::CVisual::m_lensColor[i].z = 1.0f;
+        zdb::CVisual::m_lensColor[i].w = 0.0f;
     }
-    CPnt4D white(1.0f, 1.0f, 1.0f, 0.0f);
+    /* a plain PNT4D: its address is passed for the by-value colour as it stands (a CPnt4D -- the
+     * constructor's -- is sliced into a copy first, ten instructions more in each caller) */
+    PNT4D white;
 
-    func_003B78D0(&white, 0.0f);
+    white.x = 1.0f;
+    white.y = 1.0f;
+    white.z = 1.0f;
+    white.w = 0.0f;
+    zdb::CVisual::SetLightTints(white, 0.0f);
 }
 
 /* SetLensFx's body taking the effect as the enum itself (the restore below copies the effect before
@@ -483,7 +486,7 @@ void CameraZoom::HoldLensFx(unsigned char hold)
 {
     data_00408CF0 |= hold;
     if (data_00408CF0) {
-        func_005C1800(&data_00408C58->m_kit, 0, 0);
+        func_005C1800(&CameraZoom::m_seal->m_kit, 0, 0);
         data_00408CD0 = 0;
         if (data_00408CC8) {
             func_002707C0(data_00408CC8, false);

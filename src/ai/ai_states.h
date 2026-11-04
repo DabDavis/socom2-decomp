@@ -483,7 +483,24 @@ public:
     virtual void OnSignal(SIGNAL sig, CSealCtrlAi *ai);
     virtual ~CAiSPlan();
 
-    unsigned char _58[0x64 - 0x58];   // 0x58: a vector (Create zeroes its three words, 0x52EB00)
+    union {
+        unsigned char _58[0x64 - 0x58];   // 0x58: a vector (Create zeroes its three words, 0x52EB00)
+        /* (its goal cells as 0x5F15A0 reads them: MSL's capacity, size and data -- the names ours) */
+        struct CAiSPlanGoals {
+            /* (inline: the data taken into a const local, as include/vector's operator[] takes it
+             * -- read straight, MW strength-reduces the loop's index) */
+            CAiMapLoc &operator[](unsigned int n)
+            {
+                CAiMapLoc *const p = m_data;
+
+                return p[n];
+            }
+
+            unsigned int m_capacity;
+            unsigned int m_size;   // 0x5c
+            CAiMapLoc *m_data;   // 0x60
+        } m_goals;
+    };
     unsigned char m_path[0x80];   // 0x64: a CAiPath (built by 0x528340; 0xA8 bytes, to 0x10C)
     unsigned char m_pathState;   // 0xe4: its state (1-3 failed, 4 arrived)
     unsigned char _e5[0x100 - 0xe5];

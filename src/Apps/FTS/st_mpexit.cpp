@@ -537,7 +537,6 @@ void func_00545B10(CSealStats *stats, CZSealBody *seal);   /* (the SEAL lane's: 
 void func_00545B90(CSealStats *stats, CZSealBody *seal);   /* (a round survived) */
 void func_002BD640(CZSealBody *seal, int arg);
 void func_005B61A0();
-void func_00368570(CGameMenu *menu, int arg, CZAnimZAR *zar);   /* (the menu loaded from its zar) */
 void func_002B7950();
 }
 
@@ -1159,7 +1158,7 @@ bool CMPExitState::Init()
     CStringTables *pTables = GetStringTables();
 
     pTables->Load("UIMPX", GetLanguage());
-    func_00368570(m_menu, 0, data_0040DBC0);
+    m_menu->Init(0, data_0040DBC0);
     for (CEntityItr it; it.More(); it.Advance()) {
         if (it.IsSeal()) {
             CZSealBody *pSeal = &it.GetSeal();
