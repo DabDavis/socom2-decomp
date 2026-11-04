@@ -2286,17 +2286,17 @@
 0x0023B990 0x14 SetTrans__12SelectedSlotFf  # OVL1; size 0x14 (a tail call through t9; the seed ran on into the padding); by hand (the HUD lane: slot 11 of SelectedSlot's vtable 0x405D00 -- its name's SetTrans)
 0x0023B9B0 0x2A0 func_0023B9B0  # OVL1
 0x0023BC50 0x2B4 func_0023BC50  # OVL1
-0x0023BF10 0x10 func_0023BF10  # OVL1; tu: zui_2d.cpp~ (1.0 beta)
-0x0023BF20 0x34 func_0023BF20  # OVL1
-0x0023BF60 0x10C func_0023BF60  # OVL1
-0x0023C070 0x54 func_0023C070  # OVL1
-0x0023C0D0 0x14C func_0023C0D0  # OVL1
-0x0023C220 0x7C func_0023C220  # OVL1
-0x0023C2A0 0x10 func_0023C2A0  # OVL1; tu: zui_2d.cpp~ (1.0 beta)
-0x0023C2B0 0xA4 func_0023C2B0  # OVL1
-0x0023C360 0x8 func_0023C360  # OVL1
-0x0023C370 0x8 func_0023C370  # OVL1
-0x0023C380 0x8 func_0023C380  # OVL1
+0x0023BF10 0x10 SetColor__12SelectedSlotFfff  # OVL1; tu: zui_2d.cpp~ (1.0 beta); by hand (the HUD lane, round 26): slot +0x78 of SelectedSlot's table 0x405D00, a slot of its own (the name ours) -- the name's colour (m_name's three floats at 0x68); hud_mpweaponsel.cpp, byte-exact
+0x0023BF20 0x34 SetPos__12SelectedSlotFff  # OVL1; by hand (the HUD lane, round 26): slot +0x74 of SelectedSlot's table 0x405D00, CWeaponSlot's SetPos (the name ours) -- the name placed at the slot's offset (two 2.0 statics); hud_mpweaponsel.cpp, byte-exact
+0x0023BF60 0x10C SetWeapon__12SelectedSlotFP8CZWeapon  # OVL1; by hand (the HUD lane, round 26): slot +0x70 of SelectedSlot's table 0x405D00, CWeaponSlot's SetWeapon (the name ours) -- the weapon kept at 0x18, the name off for none, else the weapon's GetDescription upper-cased into a static 80-byte buffer and loaded at 0.9; hud_mpweaponsel.cpp, byte-exact
+0x0023C070 0x54 Draw__12SelectedSlotFPQ23zdb7CCamera  # OVL1; by hand (the HUD lane, round 26): slot 1 of SelectedSlot's table 0x405D00 -- the name drawn while on; hud_mpweaponsel.cpp, byte-exact
+0x0023C0D0 0x14C SetWeapon__12CategorySlotFP8CZWeapon  # OVL1; by hand (the HUD lane, round 26): slot +0x70 of CategorySlot's table 0x405D80 (the name ours) -- the weapon kept, the bitmap and name off for none, else the weapon's icon (CZWeapon+0xBC) loaded and its description shown as SelectedSlot's; hud_mpweaponsel.cpp, byte-exact
+0x0023C220 0x7C Draw__12CategorySlotFPQ23zdb7CCamera  # OVL1; by hand (the HUD lane, round 26): slot 1 of CategorySlot's table 0x405D80 -- the bitmap and the name drawn, each while on; hud_mpweaponsel.cpp, byte-exact
+0x0023C2A0 0x10 SetColor__12CategorySlotFfff  # OVL1; tu: zui_2d.cpp~ (1.0 beta); by hand (the HUD lane, round 26): slot +0x78 of CategorySlot's table 0x405D80, a slot of its own (the name ours) -- the name's colour (0xE8); hud_mpweaponsel.cpp, byte-exact
+0x0023C2B0 0xA4 SetPos__12CategorySlotFff  # OVL1; by hand (the HUD lane, round 26): slot +0x74 of CategorySlot's table 0x405D80 (the name ours) -- the bitmap at the slot's offset (4, 2 statics), the name 4 above; hud_mpweaponsel.cpp, byte-exact
+0x0023C360 0x8 SetPos__11CWeaponSlotFff  # OVL1; by hand (the HUD lane, round 26): slot +0x74 of CWeaponSlot's table 0x405E00, the class's second own slot (the name ours) -- empty; hud_mpweaponsel.cpp, byte-exact
+0x0023C370 0x8 SetWeapon__11CWeaponSlotFP8CZWeapon  # OVL1; by hand (the HUD lane, round 26): slot +0x70 of CWeaponSlot's table 0x405E00, the class's first own slot (the name ours) -- the weapon kept at 0x18; hud_mpweaponsel.cpp, byte-exact
+0x0023C380 0x8 Draw__11CWeaponSlotFPQ23zdb7CCamera  # OVL1; by hand (the HUD lane, round 26): slot 1 of CWeaponSlot's table 0x405E00 -- empty; hud_mpweaponsel.cpp, byte-exact
 0x0023C390 0x354 func_0023C390  # OVL1
 0x0023C6F0 0x144 func_0023C6F0  # OVL1
 0x0023C840 0x344 func_0023C840  # OVL1

@@ -196,18 +196,35 @@ public:
 
 /* the network selector's slots (their vtables found by their RTTI names: CWeaponSlot 0x405E00,
  * CategorySlot 0x405D80, SelectedSlot 0x405D00, SlotList 0x405E80) */
+class CZWeapon;
+
 class CWeaponSlot : public C2D {
 public:
     /* slot 11: nothing to fade (0x2405F0, after SlotList::SetTrans) */
     virtual void SetTrans(float trans);
+    /* slot 1: nothing drawn (0x23C380) */
+    virtual void Draw(zdb::CCamera *cam);
+    /* the class's own slots, +0x70 and +0x74 (the names ours): the weapon shown, kept at 0x18
+     * (0x23C370), and the slot placed, nothing here (0x23C360) */
+    virtual void SetWeapon(CZWeapon *weapon);
+    virtual void SetPos(float x, float y);
 
-    unsigned char _18[0x20 - 0x18];
+    CZWeapon *m_weapon;   // 0x18
+    unsigned char _1c[0x20 - 0x1c];
 };   // 0x20 bytes
 
 class CategorySlot : public CWeaponSlot {
 public:
     /* slot 11: the name and the bitmap faded together (0x23D810) */
     virtual void SetTrans(float trans);
+    /* the bitmap and the name drawn while on (0x23C220) */
+    virtual void Draw(zdb::CCamera *cam);
+    /* the weapon's icon and its description shown, or both off (0x23C0D0) */
+    virtual void SetWeapon(CZWeapon *weapon);
+    /* the bitmap at the place, the name 4 above it (0x23C2B0) */
+    virtual void SetPos(float x, float y);
+    /* a slot of its own, +0x78 (the name ours): the name's colour (0x23C2A0) */
+    virtual void SetColor(float r, float g, float b);
 
     C2DBitmap m_bitmap;   // 0x20
     C2DString m_name;   // 0xa0
@@ -217,6 +234,14 @@ class SelectedSlot : public CWeaponSlot {
 public:
     /* slot 11: the name faded (0x23B990) */
     virtual void SetTrans(float trans);
+    /* the name drawn while on (0x23C070) */
+    virtual void Draw(zdb::CCamera *cam);
+    /* the weapon's description shown, or the name off (0x23BF60) */
+    virtual void SetWeapon(CZWeapon *weapon);
+    /* the name at the place (0x23BF20) */
+    virtual void SetPos(float x, float y);
+    /* a slot of its own, +0x78 (the name ours): the name's colour (0x23BF10) */
+    virtual void SetColor(float r, float g, float b);
 
     C2DString m_name;   // 0x20
 };   // 0xb8 bytes

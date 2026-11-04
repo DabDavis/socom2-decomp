@@ -42,9 +42,22 @@ class CHUD {
 public:
     static CZSealBody *GetHUDOwner();
     void Add2D(C2D *p2d, int phase, bool add_to_back);
+    static void HudText_to_upper(char *instr);
+
+    unsigned char _0[0x498];
+    C2DFont *m_myfont;   // 0x498
 };
 
 extern CHUD *theHUD;
+
+/* a weapon as its slot shows it: its description and its icon (zweapon's CZWeapon) */
+class CZWeapon {
+public:
+    const char *GetDescription() const;
+
+    unsigned char _0[0xbc];
+    zdb::CTexHandle *m_icon;   // 0xbc
+};
 
 class CZFTSWeapon {
 public:
@@ -274,6 +287,120 @@ void SlotList::Draw(zdb::CCamera *cam)
         for (int i = 0; i < 5; i++)
             if (m_slots[i])
                 m_slots[i]->Draw(cam);
+}
+
+/* the slots' text: the weapon's description, upper-cased into a buffer of its own, at 0.9 (each slot
+ * class its buffer, bss 0x414810 and 0x414860), and the slots' offsets (the unit's 8-byte-spaced
+ * .data, 0x3DCE28 and 0x3DCEB8-0x3DCED0: variables, loaded with lwc1; the names ours) */
+static float s_slotscale = 0.9f;
+static float s_catslotx = 4.0f;
+static float s_catsloty = 2.0f;
+static float s_selslotx = 2.0f;
+static float s_selsloty = 2.0f;
+static char s_catname[80];
+static char s_selname[80];
+
+/* nothing drawn */
+void CWeaponSlot::Draw(zdb::CCamera *cam)
+{
+}
+
+/* the weapon kept */
+void CWeaponSlot::SetWeapon(CZWeapon *weapon)
+{
+    m_weapon = weapon;
+}
+
+/* nothing to place */
+void CWeaponSlot::SetPos(float x, float y)
+{
+}
+
+/* the bitmap at the place and the name 4 above it, both at the slot's offset */
+void CategorySlot::SetPos(float x, float y)
+{
+    m_bitmap.SetPos((int)(x + s_catslotx), (int)(y + s_catsloty));
+    m_name.SetPos((int)(x + s_catslotx), (int)(y + s_catsloty - 4.0f));
+}
+
+/* the name's colour */
+void CategorySlot::SetColor(float r, float g, float b)
+{
+    m_name.SetColor(r, g, b);
+}
+
+/* the bitmap and the name, each while on */
+void CategorySlot::Draw(zdb::CCamera *cam)
+{
+    if (m_bitmap.IsOn())
+        m_bitmap.Draw(cam);
+    if (m_name.IsOn())
+        m_name.Draw(cam);
+}
+
+/* the weapon kept; none, the bitmap and the name off; else both on, the bitmap the weapon's icon
+ * where it is, the name its description where the name is (its place taken before the text) */
+void CategorySlot::SetWeapon(CZWeapon *weapon)
+{
+    m_weapon = weapon;
+    if (!weapon) {
+        m_bitmap.Off();
+        m_name.Off();
+    } else {
+        m_name.On();
+        m_bitmap.On();
+        m_bitmap.Load((float)m_bitmap.m_x, (float)m_bitmap.m_y, weapon->m_icon);
+
+        const char *desc;
+        int x = (int)(m_name.m_posx + m_name.m_socom2_7c);
+        int y = (int)(m_name.m_posy + m_name.m_socom2_80);
+        desc = weapon->GetDescription();
+
+        strlen(desc);
+        strncpy(s_catname, desc, 80);
+        CHUD::HudText_to_upper(s_catname);
+        m_name.Load(s_slotscale, s_catname, theHUD->m_myfont, (float)x, (float)y, true);
+    }
+}
+
+/* the name, while on */
+void SelectedSlot::Draw(zdb::CCamera *cam)
+{
+    if (m_name.IsOn())
+        m_name.Draw(cam);
+}
+
+/* the weapon kept; none, the name off; else on, the weapon's description where the name is */
+void SelectedSlot::SetWeapon(CZWeapon *weapon)
+{
+    m_weapon = weapon;
+    if (!weapon) {
+        m_name.Off();
+    } else {
+        m_name.On();
+
+        const char *desc;
+        int x = (int)(m_name.m_posx + m_name.m_socom2_7c);
+        int y = (int)(m_name.m_posy + m_name.m_socom2_80);
+        desc = weapon->GetDescription();
+
+        strlen(desc);
+        strncpy(s_selname, desc, 80);
+        CHUD::HudText_to_upper(s_selname);
+        m_name.Load(s_slotscale, s_selname, theHUD->m_myfont, (float)x, (float)y, true);
+    }
+}
+
+/* the name at the place, at the slot's offset */
+void SelectedSlot::SetPos(float x, float y)
+{
+    m_name.SetPos((int)(x + s_selslotx), (int)(y + s_selsloty));
+}
+
+/* the name's colour */
+void SelectedSlot::SetColor(float r, float g, float b)
+{
+    m_name.SetColor(r, g, b);
 }
 
 /* the name faded */
