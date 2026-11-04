@@ -1124,6 +1124,16 @@ extern "C" bool func_005A81D0(CZSealBody *seal)
     return seal->CanFire(true, false);
 }
 
+/* a point turned round into another (an inline: written into an out-parameter, the input's loads
+ * fold into sp offsets while the stores keep their field-address registers -- the AI core's
+ * negate(&p, &p) in ai_path.cpp; the name ours) */
+static inline void NegateInto(const CPnt3D *in, CPnt3D *out)
+{
+    out->x = -in->x;
+    out->y = -in->y;
+    out->z = -in->z;
+}
+
 extern "C" {
 /* the CQB deaths, from in front and from behind (OVL1 data, anim types; SOCOM 1's small-data pair) */
 extern AnimType data_003DEE30;
@@ -1133,18 +1143,18 @@ extern AnimType data_003DEE38;
 /* the death a CQB attack gives its victim: from behind or in front, by the attacker's offset against
  * the victim's facing, flattened (OVL2 0x5A9420; SOCOM 1's FindDeathAnimTypeCQB, after CanUseRestraint
  * in both builds, the same arithmetic).
- * OPEN, 0xDC against 0xD8: the target loads both nodes before the facing's three stores (the last in
- * the call's delay slot) and holds only &fwd.y in a register; MW here loads this node after the stores
- * and keeps &fwd.z in a register too. Tried: the nodes in locals first, the offset computed first, the
- * facing assigned after it, y through a pointer, Negate(fwd.y). */
+ * OPEN, 10 instructions (the size right since round 23): the target loads both nodes before the
+ * facing's three stores (the last in the call's delay slot); MW here loads this node after them. The
+ * negation is NegateInto(&fwd, &fwd) -- the out-parameter form folds the loads into sp offsets and keeps
+ * only &fwd.y in a register, as the target. Tried since: the nodes in locals (either order), the
+ * positions in pointer locals, the offset computed first, both points assigned, GetNode(). Before: the
+ * offset computed first, the facing assigned after it, y through a pointer, Negate(fwd.y). */
 AnimType CZSealBody::FindDeathAnimTypeCQB(CZSealBody *victim)
 {
     CPnt3D fwd(*(const CPnt3D *)victim->m_node->m_matrix.m_matrix[2]);
     CPnt3D d = *(const CPnt3D *)m_node->m_matrix.m_matrix[3] - *(const CPnt3D *)victim->m_node->m_matrix.m_matrix[3];
 
-    fwd.x = -fwd.x;
-    fwd.y = -fwd.y;
-    fwd.z = -fwd.z;
+    NegateInto(&fwd, &fwd);
     fwd.y = 0.0f;
     d.y = 0.0f;
     if (Dot(d, fwd) < 0.0f)
@@ -2012,24 +2022,11 @@ static inline CHomingAim *HomingOf(CZBodyAnimBlend *b)
     return (CHomingAim *)&b->m_homing;
 }
 
-/* a point turned about, in place (an inline, the name ours) */
-static inline void Negate(CPnt3D *p)
-{
-    p->x = -p->x;
-    p->y = -p->y;
-    p->z = -p->z;
-}
-
 /* a body carried: the top blend homed onto a point, along the flat reverse of a direction, its target
  * the reference point itself; a carried body working an entity told so with 1 (OVL2 0x5B1750, new in
- * SOCOM II: RestrainBuddy, StabBuddy and 0x579A30 call it; the name unknown).
- * OPEN, the size right, registers only (55 words; 39 with Aim a static inline taking the homing, which
- * 0x5B1890 refuses): the target gives the parameters s4-s1 in order, the blend s0, the homing's `this`
- * dir's s1 once dir is dead, and the y's address (kept across Normalize) s5; MW here numbers the
- * inline's parameters with the SEAL's -- refpt and intpt take s1/s0. Tried (build/scratch/seal/
- * v_hom*.py, tools/perm.py 2444 steps, best 41): the direction copied before the blend, assigned, by
- * value, its y through a reference or a pointer, the homing pointer declared first or written out, the
- * negation written out */
+ * SOCOM II: RestrainBuddy, StabBuddy and 0x579A30 call it; the name unknown). The direction is turned
+ * round by NegateInto(&d, &d): the in-place pointer form gives the y and z their own address registers
+ * and renumbers every saved register (55 words off) */
 extern "C" void func_005B1750(CZSealBody *seal, const CPnt3D *refpt, const CPnt3D *intpt, const CPnt3D *dir)
 {
     if (seal->m_carry) {
@@ -2038,7 +2035,7 @@ extern "C" void func_005B1750(CZSealBody *seal, const CPnt3D *refpt, const CPnt3
 
         d.y = 0.0f;
         d.Normalize();
-        Negate(&d);
+        NegateInto(&d, &d);
         HomingOf(top)->Aim(top, refpt, &d, intpt);
         top->m_homing.m_target_refpt_m = *refpt;
         if (seal->m_carry->m_eb8)
@@ -2066,7 +2063,7 @@ extern "C" CZBodyAnimBlend *func_005B1890(CZSealBody *seal)
     off.y -= 11.4869995f;
     off.y += h;
     off.y += 0.5f;
-    Negate(&info.m_goal_norm);
+    NegateInto(&info.m_goal_norm, &info.m_goal_norm);
     HomingOf(top)->Aim(top, &off, &info.m_goal_norm, &goal);
     top->m_homing.m_refvec_m = CPnt3D::unit_z;
     return top;
