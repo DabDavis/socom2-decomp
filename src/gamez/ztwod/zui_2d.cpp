@@ -1375,6 +1375,11 @@ public:
 
     ActionItem m_actions[30];   // 0x18
     int m_numActions;   // 0x1f8 (the destructor zeroes it)
+    /* the control's rectangle on screen (SOCOM II's; the zooms centre on it; the names ours) */
+    int m_left;   // 0x1fc
+    int m_top;   // 0x200
+    int m_right;   // 0x204
+    int m_bottom;   // 0x208
 };
 
 /* the children deleted, each taken off the list first, the actions forgotten (SOCOM 1's, its count
@@ -1406,6 +1411,58 @@ public:
     int m_accel;   // 0x18
     int m_limit;   // 0x1c
 };   // 0x20 bytes
+
+/* the map's node as the zooms move it (znode.h's CNode: its matrix's translation row, the
+ * position and scale accessors) */
+namespace zdb {
+class CNode {
+public:
+    float GetScale();
+    void SetScale(float s);
+    void SetPosition(float x, float y, float z);
+    void SetPosition(const CPnt3D &p) { SetPosition(p.x, p.y, p.z); }
+    /* ours, a probe of ZoomIn's copies (by value, then into a local): see its OPEN note */
+    void SetPositionV(CPnt3D p)
+    {
+        CPnt3D q;
+
+        q = p;
+        SetPosition(q.x, q.y, q.z);
+    }
+    CPnt3D GetPosition() const { return *(const CPnt3D *)m_matrix.m_matrix[3]; }
+
+    CMatrix m_matrix;   // 0x0
+};
+}
+
+/* the node zoomed in about the control's centre, by half the time's step at the given rate, no
+ * further than twice its unit scale: its position pulled out from the centre by the step, its
+ * scale multiplied by it (SOCOM II's; the name ours).
+ * OPEN, 0x160 against 0x174: everything to the clamp is the target's (the clamp a MIN ternary --
+ * `if (!(z < m)) z = m;` inverts the branch); the position's copies are not. The target stores
+ * GetPosition's value through one pointer into a temporary (sp+80), block-copies it (ld/sd,
+ * lwc1/swc1) into the point (sp+48), computes x and y from the TEMPORARY's fields into the point,
+ * block-copies the point again (sp+64), copies that field by field back into sp+80 and passes
+ * those three to SetPosition(fff). Tried: `CPnt3D pos = node->GetPosition();` with
+ * SetPosition(const CPnt3D &) (the value built in place: 0x12C), an assigned point and a by-value
+ * SetPosition copying into a local (this, 0x160) */
+void CUIMapCtrl::ZoomIn(float scale, zdb::CNode *node, float dT)
+{
+    float cx = 0.5f * (m_left + m_right);
+    float cy = 0.5f * (m_top + m_bottom);
+    float zoom = 1.0f + 0.5f * dT * scale;
+    float maxzoom = 2.0f / node->GetScale();
+
+    zoom = zoom < maxzoom ? zoom : maxzoom;
+
+    CPnt3D pos;
+
+    pos = node->GetPosition();
+    pos.x = cx - zoom * (cx - pos.x);
+    pos.y = cy - zoom * (cy - pos.y);
+    node->SetPositionV(pos);
+    node->SetScale(zoom * node->GetScale());
+}
 
 /* PAN: a step of the pan; ZOOM_IN and ZOOM_OUT: the current animation refreshed and the zoom made
  * towards the command's node; each done at once (SOCOM 1's PAN; the zooms SOCOM II's) */
