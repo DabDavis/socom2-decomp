@@ -689,7 +689,9 @@ typedef struct rt_msg_client_connection {
     char pad02[2];
     unsigned int nConnectKind;          /* 0x04: the connect message's kind (0x635940: 0 or 1) */
     rt_msg_client_state nState;         /* 0x08 */
-    char pad0C[0x16];
+    char pad0C[4];
+    char szLocalAddress[16];            /* 0x10: sent in the type-22 message (0x635E60) */
+    unsigned short nLocalPort;          /* 0x20: with it */
     unsigned short nPort;               /* 0x22: the connect message's port */
     char pad24[0x18];
     void *pConnectData;                 /* 0x3C: the data the connect message carries */
@@ -1674,6 +1676,76 @@ unsigned char func_00635D98(rt_msg_client_comm *pComm, unsigned short nTarget)
 extern unsigned char rt_msg_client_tcp_aggregate_msg(rt_msg_client_comm *pComm);
 extern void *memcpy(void *dst, const void *src, unsigned int n);
 unsigned char rt_msg_client_is_valid_outgoing_msg(int nType);
+
+extern unsigned char func_00635CF0(unsigned short *pnSize);
+unsigned char func_006387E0(unsigned int nType, char *pa, char *pb, char *pc);
+extern int rt_msg_set_u4byte(unsigned char *msg, unsigned int value);
+extern int KM_GetSoftwareID(void);
+extern unsigned char data_006763C0[32];  /* the type-22 message, built in place */
+
+/* the type-22 message (0x635E60, state 6's resend from 0x634DD8): 29 bytes in a static buffer -- the
+ * three bytes 0x6387E0 gives for the connect kind, the connect port, the title's software id, the
+ * connection's local address and port and this client's id -- stored for the channel at once (the
+ * flag 1) and the resend timer restarted; 0x635CF0 must give the message's size as 29.
+ * OPEN (0x1D8 against 0x1E0, and pMsg in s1 for the target's s0): the target keeps the write pointer in
+ * one register to the end, each `pMsg += n` in place (the last message's base `pMsg - 27`); here CSE
+ * folds the increments after the software id into offsets from a second register (+16, +18, -9) --
+ * a temporary for the id, a cast-off result, sizeof, `pMsg = pMsg + 16` change nothing */
+unsigned char func_00635E60(rt_msg_client_connection *pConnection, rt_msg_client_comm *pComm)
+{
+    unsigned short nSize = 0;
+    unsigned char *pMsg = data_006763C0;
+    char b0;
+    char b1;
+    char b2;
+    unsigned char result;
+
+    if (data_00655614 != 1)
+        return 5;
+    if (rt_msg_client_is_valid_connection(pConnection) != 1)
+        return 2;
+    if (func_00635898(pComm) != 1)
+        return 2;
+    if (pComm->bKind != 1)
+        return 2;
+    if (pConnection->nId != pComm->nId)
+        return 2;
+    result = func_00635CF0(&nSize);
+    if (result != 0)
+        return result;
+    if (nSize != 29)
+        return 1;
+    result = func_006387E0(pConnection->nConnectKind, &b0, &b1, &b2);
+    if (result != 0)
+        return result;
+    if (rt_msg_set_ubyte(pMsg, b0) != 0)
+        return 7;
+    pMsg++;
+    if (rt_msg_set_ubyte(pMsg, b1) != 0)
+        return 7;
+    pMsg++;
+    if (rt_msg_set_ubyte(pMsg, b2) != 0)
+        return 7;
+    pMsg++;
+    if (rt_msg_set_u2byte(pMsg, pConnection->nPort) != 0)
+        return 7;
+    pMsg += 2;
+    rt_msg_set_u4byte(pMsg, KM_GetSoftwareID());
+    pMsg += 4;
+    memcpy(pMsg, pConnection->szLocalAddress, 16);
+    pMsg += 16;
+    if (rt_msg_set_u2byte(pMsg, pConnection->nLocalPort) != 0)
+        return 7;
+    pMsg += 2;
+    if (rt_msg_set_u2byte(pMsg, pConnection->nClientId) != 0)
+        return 7;
+    result = rt_msg_client_store_msg_in_send_buf(pComm, 22, 0xFFFF, data_006763C0, 29, 1);
+    if (result != 0)
+        return result;
+    if (rt_time_start(&pConnection->tResend) != 0)
+        return 24;
+    return 0;
+}
 
 /* SOCOM 1's store_msg_in_send_buf, grown: an application message (type 2 or 3) joins the pending
  * ones when it has their type and target and still fits in 512 bytes, else the pending ones are sent
