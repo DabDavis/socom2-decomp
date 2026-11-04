@@ -2033,6 +2033,22 @@ exists); 3.0b38/b50/b52 still untold.
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the UI, round 20** (CDesignDlgObj's helpers, SkbSetPurpose, insert<SKBSEQ>, _Refresh's accessors):
+  - REFUSAL PROPAGATION REACHES MSL'S HELPERS: pinning an element's assignment with `auto_inline off` makes copy / fill_n /
+    copy_backward's helpers inline whole; left unpinned, MW refuses the assignment itself, and the helpers and the copy
+    constructor come out of line as in the target (__copy<CDesignDlgObj *> 0x3845B0, __fill_n 0x384AA0, __copy_backward
+    0x384B00, CDesignDlgObj's copy constructor 0x384B70);
+  - CInit<int, 0> members copy-construct word by word (lw/sw) and assign through one FPR each (lwc1/swc1), plain ints give
+    lw/sw both ways, an int[2] block-copies both ways; a recursive function's self-copies are set by the inline_max_size
+    cut, not the level -- taller accessors let a third copy fit, an int counter against an unsigned count (recomputing
+    i*8) stops it at the target's two (_Refresh 0x385EA0, SOCOM 1's);
+  - a derived record's fields start after the base's padded size, so a parsed command's halfword must be modelled as a base
+    class (UIParsedCmd, fields from 0x10: SkbSetPurpose 0x397640); MW reloads a field across an inlined bool accessor --
+    LoadFromRdr's shared type load needs a flat non-const String(), _Refresh reaches the const one over IsString through a
+    cast (0x32C650 IsString and 0x335700 String named at integration: zrdr.h's, out of line);
+  - 0x3941D0-0x39441F is zui_skbview.cpp's, not zui_hangul.cpp's (CSkbKeyProps::SetShown and its destructor); SkbOpen
+    0x38D770 takes the handler's (command, time step); open: erase<CDesignDlgObj> 0x384410 (19: two saved registers),
+    insert<CDesignDlgObj> 0x384620 (the construct cut -- the class-insert trade's second population), SkbPadKeyEvent.
 - **Tells from the kit and AI states, round 29** (DrawOctahedron, a target's visibility, the squad's three orders):
   - a dead first definition of each variable fixes MW's numbering, so the real assignments can then be ordered to fix the
     schedule without moving registers (DrawOctahedron 0x5FF2F0, 0xAB8: twelve lines with DrawLine's body written out each
