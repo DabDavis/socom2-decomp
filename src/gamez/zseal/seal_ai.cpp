@@ -2002,6 +2002,86 @@ static inline bool Chance(float chance)
     return Rfloat(0.0f, 1.0f) <= c;
 }
 
+/* neither of SOCOM 1's m_snoozing and m_sleeping set, as a bool -- the `||` MW's own (its join no
+ * aligned label: the target's in 0x569AA0 and 0x569C60, where AiAwake's if pads one; the name ours) */
+static inline bool AiAwakeNow(const CSealCtrlAi *ai)
+{
+    return !(ai->m_aibit9 || ai->m_aibit8);
+}
+
+/* whether two cells are the same place, the map aside (an inline bool: the target materialises each
+ * compare; the name ours) */
+static inline bool SameCell(const CAiMapLoc &a, const CAiMapLoc &b)
+{
+    return a.x == b.x && a.y == b.y;
+}
+
+/* whether the AI drives a SEAL (IsPlayer's ternary shape: the bool narrowed in each arm here) */
+static inline bool AiDriven(CZSealBody *seal)
+{
+    return seal->m_control ? ((CSealCtrl *)seal->m_control)->IsAi() : false;
+}
+
+/* the nearest SEAL among an entity's targets within a range: alive, awake when the AI drives it, on a
+ * team the mask meets or not as asked, and with the flag one whose target bit 9 is set -- the range
+ * handed back as the target's. The targets are kept nearest first, so the first past the range ends
+ * the walk (OVL2 0x569C60, new in SOCOM II: CAiSHostage::Tick and CAiSSurrender::Tick ask it, and
+ * 0x569C50 for the entity's own enemies; the names ours) */
+extern "C" CEntity *func_00569C60(CEntity *e, float *range, unsigned int mask, bool member, bool flagged)
+{
+    CTargetList &targets = e->m_targets;
+    float r2 = *range * *range;
+
+    for (CTargetList::iterator i = targets.begin(); i != targets.end(); ++i) {
+        CZSealBody *seal = AsSeal(i->m_ent);
+
+        if (!seal || !seal->m_isAlive)
+            continue;
+        if (AiDriven(seal) && !AiAwakeNow(seal->GetSealCtrlAi()))
+            continue;
+        if (member != ((mask & seal->m_team) != 0))
+            continue;
+        if (flagged && !(i->m_flags & 0x200))
+            continue;
+        if (!(i->m_distSq < r2))
+            break;
+        *range = i->GetRange();
+        return seal;
+    }
+    return 0;
+}
+
+/* the nearest enemy SEAL among an entity's targets within a range (OVL2 0x569C50: 0x569C60 for a
+ * team the entity's own does not meet) */
+extern "C" CEntity *func_00569C50(CEntity *e, float *range, bool flagged)
+{
+    return func_00569C60(e, range, e->m_team, false, flagged);
+}
+
+/* the SEAL among an entity's targets standing in a cell: alive, and when the AI drives it awake
+ * (OVL2 0x569AA0, new in SOCOM II: 0x56A130's line walk and 0x567900 ask it for what they met; the
+ * name ours). The SEAL's cell through CZSealBody::MapLocValid(): the member accessor gives the
+ * target's `addiu a0,s1,232` for the y read, the field read straight or a static accessor folds it.
+ * Both callers call it out of line (short enough for -inline auto here: pinned) */
+#pragma auto_inline off
+extern "C" CEntity *func_00569AA0(CEntity *e, const CAiMapLoc *loc)
+{
+    CTargetList &targets = e->m_targets;
+
+    for (CTargetList::iterator i = targets.begin(); i != targets.end(); ++i) {
+        CZSealBody *seal = AsSeal(i->m_ent);
+
+        if (!seal || !seal->m_isAlive)
+            continue;
+        if (AiDriven(seal) && !AiAwakeNow(seal->GetSealCtrlAi()))
+            continue;
+        if (SameCell(seal->MapLocValid(), *loc))
+            return seal;
+    }
+    return 0;
+}
+#pragma auto_inline reset
+
 extern "C" {
 /* the side step's limits (OVL2 data: the leg's length left under which it stops, the time between
  * picks, and its least and greatest size) */

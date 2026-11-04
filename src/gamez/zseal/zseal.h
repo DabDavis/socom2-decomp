@@ -1396,6 +1396,8 @@ public:
     /* the SEAL's controller, and its AI (inline: the follow chain's walk calls their copies at its
      * bottom -- OVL2 0x5FCF00, 0x5EA7C0; the names ours) */
     CEntityCtrl *GetControl() { return m_control; }
+    /* CEntity's last valid cell (an inline: 0x569AA0 reads it through one -- the name ours) */
+    const CAiMapLoc &MapLocValid() const { return m_mapLocValid; }
     class CSealCtrlAi *GetSealCtrlAi() { return ((CSealCtrl *)GetControl())->GetSealCtrlAi(); }
     void RemoveFollower()
     {
