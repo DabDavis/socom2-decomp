@@ -5254,10 +5254,12 @@ lane's four ranges (`--max-size 0x400 --emit --no-prune --jobs 1 --obj-dir` the 
 hits (5 refusals), OVL1 `1E7F58 1E8FD4` 2 tried, 0 hits, `243000 256FD0` 137 tried, 0 hits (23, 8): 290
 tried, none byte-exact (round 16a: 349, 0).
 
-**Round 18a** (2026-11-04, by hand, OVL1's codec first): 26 rows newly byte-exact (5,628 bytes), two
+**Round 18a** (2026-11-04, by hand, OVL1's codec first): 27 rows newly byte-exact (5,908 bytes), two
 matched drafts superseded (0x24C5D0, 0x24C8C0) -- the lane's `src/lib` sdk/libc/libgcc/libm/ovl1 rows
-1,021 -> 1,049 of 1,108 scored, none lost -- 28 functions written byte-exact of 30. Nellymoser's
-encoder, a unit per source file its asserts name: `ovl1/sase_libquan.c` (+7: the codebook readers, the
+1,021 -> 1,050 of 1,109 scored, none lost -- 29 functions written byte-exact of 31. Nellymoser's
+codec, a unit per source file its asserts name -- the decoder's `ovl1/sase_swsynth.c` (new: the
+high-frequency regeneration's onset phase 0x256AB0, its rounded turn count an int of its own), and in
+the encoder `sase_libquan.c` (+7: the codebook readers, the
 nearest 2-D codeword, the prediction, the rotate-and-scale pair, the outer-cell test), `sase_libtran.c`
 (new, 6 of 6 written: the de-interleave, k <-> ASK, the step-up recursion, the FFT driver and its bit
 reversal -- Numerical Recipes' four1 shape), `sase_libvect.c` whole (+2), `sase_libsnd.c` (new, the
