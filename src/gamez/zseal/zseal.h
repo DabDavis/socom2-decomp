@@ -648,13 +648,13 @@ enum AI_ROUTE { ROUTE_NONE = 0, ROUTE_1 = 1, ROUTE_2 = 2 };
 
 /* the destructors the AI's data runs by hand (its members' own, out of line: a route's (OVL2
  * 0x573F20, the implicit destructor of a CAiPath plus a byte), CAiEvent's (0x573F80) and
- * CAiEventQ's (0x573FF0) -- seal_ai.cpp's copies, after ~CSealCtrlAi -- and CAiPath's (0x5281B0,
- * which ai.h does not declare: its implicit one would be inlined) */
+ * CAiEventQ's (0x573FF0) -- seal_ai.cpp's copies, after ~CSealCtrlAi -- by their mangled names, and
+ * CAiPath's (0x5281B0, ai_states.h's __dt__7CAiPathFv: ai.h does not declare it, its implicit one
+ * would be inlined) */
 extern "C" {
-void *func_00573FF0(void *queue, int flags);
-void *func_00573F80(void *event, int flags);
+void *__dt__9CAiEventQFv(void *queue, int flags);
+void *__dt__8CAiEventFv(void *event, int flags);
 void *func_00573F20(void *route, int flags);
-void *func_005281B0(void *path, int flags);
 }
 
 /* a CAiPath's bytes (ai.h's class, 0xA8: built and destroyed by hand here, as ai.h does not
@@ -716,10 +716,10 @@ public:
      * (CAiPath's is undeclared), the state stack last as a real member */
     ~SEAL_AI_PARAMS()
     {
-        func_00573FF0(m_eventQueue, -1);
-        func_00573F80(m_event, -1);
+        __dt__9CAiEventQFv(m_eventQueue, -1);
+        __dt__8CAiEventFv(m_event, -1);
         func_00573F20(&m_route, -1);
-        func_005281B0(&m_path, -1);
+        __dt__7CAiPathFv(&m_path, -1);
     }
 
     unsigned char _250[0x254 - 0x250];
