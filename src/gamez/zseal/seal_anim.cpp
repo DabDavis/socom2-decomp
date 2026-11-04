@@ -215,39 +215,36 @@ bool CZSealBody::IsCurrentBlend(AnimType type) const
 }
 
 /* CBody::SmoothPart (OVL1 0x28E040, body.cpp's) TAKES THE FRACTION FIRST: every call here loads it
- * before the part (MW evaluates the arguments left to right), and the member call through zbody.h's
- * (part, t) declaration gives the same 0x160 bytes with each pair of loads swapped -- written (t,
- * part) the code is the target's to the word. SOCOM II's own SetPartActive(int, part) has the same
- * shape; the row's name, `SmoothPart__5CBodyFP10CZBodyPartf`, was ours. Until zbody.h, body.cpp and
- * the row say `SmoothPart__5CBodyFfP10CZBodyPart` (the engine core's files: asked of the integrator)
- * the call goes by address, the body by reference so no null test is made */
-extern "C" void func_0028E040(CBody &body, float t, CZBodyPart *part);
+ * before the part (MW evaluates the arguments left to right) -- the (part, t) declaration gave the
+ * same 0x160 bytes with each pair of loads swapped. SOCOM II's own SetPartActive(int, part) has the
+ * same shape. zbody.h and the row say `SmoothPart__5CBodyFfP10CZBodyPart` since the engine core's
+ * round 2, so the calls are member calls (the CBody base at 0x170 reached without a null test) */
 
 /* twenty of the SEAL's parts eased toward their saved poses by the overlay's time left (OVL2 0x576700,
  * new in SOCOM II: 0x576860 calls it while the overlay runs out; the name unknown) -- the parts
  * 0x5765F0 saves, in its order */
 extern "C" void func_00576700(CZSealBody *seal)
 {
-    func_0028E040(*seal, seal->m_10d0, seal->m_root);
-    func_0028E040(*seal, seal->m_10d0, seal->m_aimnodes);
-    func_0028E040(*seal, seal->m_10d0, seal->m_lhand);
-    func_0028E040(*seal, seal->m_10d0, seal->m_rhand);
-    func_0028E040(*seal, seal->m_10d0, seal->m_hips);
-    func_0028E040(*seal, seal->m_10d0, seal->m_head);
-    func_0028E040(*seal, seal->m_10d0, seal->m_neck);
-    func_0028E040(*seal, seal->m_10d0, seal->m_spinehi);
-    func_0028E040(*seal, seal->m_10d0, seal->m_spinelo);
-    func_0028E040(*seal, seal->m_10d0, seal->m_rbicep);
-    func_0028E040(*seal, seal->m_10d0, seal->m_rforearm);
-    func_0028E040(*seal, seal->m_10d0, seal->m_lbicep);
-    func_0028E040(*seal, seal->m_10d0, seal->m_lforearm);
-    func_0028E040(*seal, seal->m_10d0, seal->m_lscap);
-    func_0028E040(*seal, seal->m_10d0, seal->m_rscap);
-    func_0028E040(*seal, seal->m_10d0, seal->m_lshoulder_wgt);
-    func_0028E040(*seal, seal->m_10d0, seal->m_rshoulder_wgt);
-    func_0028E040(*seal, seal->m_10d0, seal->m_rifle);
-    func_0028E040(*seal, seal->m_10d0, seal->m_pistol);
-    func_0028E040(*seal, seal->m_10d0, seal->m_weapon);
+    seal->SmoothPart(seal->m_10d0, seal->m_root);
+    seal->SmoothPart(seal->m_10d0, seal->m_aimnodes);
+    seal->SmoothPart(seal->m_10d0, seal->m_lhand);
+    seal->SmoothPart(seal->m_10d0, seal->m_rhand);
+    seal->SmoothPart(seal->m_10d0, seal->m_hips);
+    seal->SmoothPart(seal->m_10d0, seal->m_head);
+    seal->SmoothPart(seal->m_10d0, seal->m_neck);
+    seal->SmoothPart(seal->m_10d0, seal->m_spinehi);
+    seal->SmoothPart(seal->m_10d0, seal->m_spinelo);
+    seal->SmoothPart(seal->m_10d0, seal->m_rbicep);
+    seal->SmoothPart(seal->m_10d0, seal->m_rforearm);
+    seal->SmoothPart(seal->m_10d0, seal->m_lbicep);
+    seal->SmoothPart(seal->m_10d0, seal->m_lforearm);
+    seal->SmoothPart(seal->m_10d0, seal->m_lscap);
+    seal->SmoothPart(seal->m_10d0, seal->m_rscap);
+    seal->SmoothPart(seal->m_10d0, seal->m_lshoulder_wgt);
+    seal->SmoothPart(seal->m_10d0, seal->m_rshoulder_wgt);
+    seal->SmoothPart(seal->m_10d0, seal->m_rifle);
+    seal->SmoothPart(seal->m_10d0, seal->m_pistol);
+    seal->SmoothPart(seal->m_10d0, seal->m_weapon);
 }
 
 /* and the same twenty saved (OVL2 0x5765F0, new in SOCOM II: the overlay's starts call it,

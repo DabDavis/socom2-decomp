@@ -42,14 +42,15 @@ static inline const char *ShownText(const C2DString *s)
     return s->m_string + s->m_firstCharPos;
 }
 
-/* the text typed: string 1's, then string 2's (ours: built in the caller's temporary) */
-static inline CSaferStr TypedText()
-{
-    CSaferStr text(ShownText(&s_textString1));
-
-    text += ShownText(&s_textString2);
-    return text;
-}
+/* the text typed: string 1's, then string 2's, built in place by a constructor (the class ours, the
+ * UI lane's round 17): its `this` is a variable of the caller's, so the object's address sits in a
+ * saved register from before the words' zeroing through the assign and the append, as the target's
+ * SkbTakeText 0x399D20 and 0x3996B0 keep it -- an inline returning the string by value, which MW
+ * never inlines (warn_notinlined gives no reason), and a local built and appended to in the caller
+ * (the address folded into each use) both miss it */
+struct CTypedText : public CSaferStr {
+    CTypedText() : CSaferStr(ShownText(&s_textString1)) { *this += ShownText(&s_textString2); }
+};
 
 /* the keyboard's text variables' names (zui_skbview.cpp's): the edited one's, or the opened one's */
 const char *SkbGetText(bool edited);
@@ -164,6 +165,34 @@ bool SkbWrapTokens(std::vector<CSaferStr> &lines, std::vector<SKBTOKEN> &tokens,
         SkbPrev(lines.end())->assign(start, end - start);
     }
     return true;
+}
+
+int UTF8CharLen(const char *&s);
+
+/* the width a string's first n characters take as shown (0x39B1D0; the name ours -- 0x399320,
+ * 0x399530, 0x39A1D0 and 0x39A400 call it with one of the three text strings): its text from the
+ * first shown character copied, the first n UTF-8 characters' bytes counted, the string set to that
+ * substring (include/string's (str, pos, n) constructor, 0x332320) and measured, then set back */
+float SkbTextWidth(C2DString *s, int n)
+{
+    CSaferStr text(ShownText(s));
+    const char *p = text.c_str();
+    int len = 0;
+
+    for (int i = 0; i < n; i++) {
+        const char *q = p + len;
+
+        len += UTF8CharLen(q);
+    }
+    std::string sub(text, 0, len);
+
+    s->SetString(sub.c_str(), true);
+    s->UpdatePos();
+    float w = StringWidth(*s);
+
+    s->SetString(text.c_str(), true);
+    s->UpdatePos();
+    return w;
 }
 
 /* a flag's negation (ours: materialised, sltu and xori, before each test branches on it) */
@@ -291,23 +320,23 @@ public:
 
 /* the text taken: the typed text into the variable SkbGetText(false) names, string 0's into the
  * other's, the menu's ON_SKB_APPLY2 (or ON_SKB_APPLY, by 0x396EF0) run with it (0x399D20, OnEnterKey's; the name
- * ours).
- * OPEN, 2 instructions long: the target keeps the string's address in s1 from before its zeroing
- * through the assign and the append (and SkbTextUnchanged builds the same text the same way in a
- * conditional temporary), the shape of an inlined function returning the string by value, its
- * hidden result pointer a variable; MW folds the local's address into each use here. TypedText()
- * as such an inline is never inlined (static or not; warn_notinlined gives no reason), and the
- * local written out loses the register */
+ * ours). The typed text built in place (CTypedText); the second name fetched before string 0's text
+ * is read, the empty string an if-assign (the ternary lays its arms out the other way), and the event
+ * chosen into a local ahead of the run (in the argument list c_str() is computed before the call) */
 void SkbTakeText(CGameMenu *menu)
 {
-    CSaferStr text(ShownText(&s_textString1));
+    CTypedText text;
 
-    text += ShownText(&s_textString2);
     *theUIVarManager.Add(SkbGetText(false), 0, UIVL_TEMPORARY) = text.c_str();
+    const char *name = SkbGetText(true);
     const char *s = ShownText(&s_textString0);
 
-    *theUIVarManager.Add(SkbGetText(true), 0, UIVL_TEMPORARY) = s ? s : "";
-    menu->RunEventAnim(func_00396EF0() ? ActionItem::ON_SKB_APPLY2 : ActionItem::ON_SKB_APPLY, text.c_str());
+    if (!s)
+        s = "";
+    *theUIVarManager.Add(name, 0, UIVL_TEMPORARY) = s;
+    ActionItem::EVENT e = func_00396EF0() ? ActionItem::ON_SKB_APPLY2 : ActionItem::ON_SKB_APPLY;
+
+    menu->RunEventAnim(e, text.c_str());
 }
 
 extern "C" {
@@ -382,17 +411,158 @@ bool SkbClearText(CSoftKeyboard *skb)
 }
 
 /* whether the typed text is the string variable SkbGetText(false) names already holds (0x3998A0,
- * OnEnterKey's IgnoreUnchangedString test; the name ours).
- * OPEN, 0x60 bytes short: the target builds the typed text in a temporary only when the variable
- * is a string (a flag in s1 guards its destructor), its address held in s1 through the assign and
- * the append and c_str() read off the temporary, not append's result -- TypedText() inlined, which
- * MW refuses here (see SkbTakeText) */
+ * OnEnterKey's IgnoreUnchangedString test; the name ours): the typed text a conditional temporary,
+ * built only when the variable is a string (a flag in s1 guards its destructor), CTypedText's
+ * constructor keeping its address in s1 through the assign and the append */
 bool SkbTextUnchanged()
 {
     CUIVariable *v = theUIVarManager.Find(SkbGetText(false));
     const char *val = v ? v->String() : 0;
 
-    return val && !strcmp(val, TypedText().c_str());
+    return val && !strcmp(val, CTypedText().c_str());
+}
+
+unsigned short UTF8GetChar(const char *&s);
+
+/* two more words of the text's (0x4A1338: the kana entry enabled while positive, never written in
+ * OVL1; 0x4A1340: the entry's mode, 1 kana, 0x399C00 clears it; the names ours) */
+static int s_kanaEnabled;
+static int s_kanaMode;
+
+/* the string the cursor is in (ours): string 0 while it is edited, else string 2 when string 1
+ * counts, else string 1 */
+static inline C2DString *CursorString()
+{
+    return s_textSel ? &s_textString0 : (s_textCount1 ? &s_textString2 : &s_textString1);
+}
+
+/* a text's n-th UTF-8 character, or none for a negative n (ours) */
+static inline const char *NthChar(const char *text, int n)
+{
+    if (n >= 0) {
+        int len = 0;
+
+        for (int i = 0; i < n; i++)
+            len += CharLen(text + len);
+        return text + len;
+    }
+    return 0;
+}
+
+/* the character at p, 0 for none (ours: read off a copy of the cursor declared in the arm -- the
+ * store stays out of the test's delay slot, both labels padded, as the target's) */
+static inline unsigned short CharCode(const char *p)
+{
+    if (p) {
+        const char *q = p;
+
+        return UTF8GetChar(q);
+    }
+    return 0;
+}
+
+/* the enter key's kana step (0x3999D0, OnEnterKey's first test; the name ours): nothing while the
+ * kana entry is off; in kana mode an `n` before the cursor typed as the syllabic n (U+3093) first;
+ * then the composition cleared */
+int SkbEnterKana(CSoftKeyboard *skb)
+{
+    if (!(s_kanaEnabled > 0))
+        return 0;
+    if (s_kanaMode == 1) {
+        int n = s_textCount0 - 1;
+        const char *p = NthChar(ShownText(CursorString()), n);
+
+        if (CharCode(p) == 'n')
+            func_00398C00(0x3093, skb);
+    }
+    SkbHangulClear();
+    return 1;
+}
+
+/* the byte length of the character at a byte offset of the text being edited -- string 0's while it
+ * is edited, else string 1's with string 2's after it when string 2 has any (0x39A790; the name
+ * ours: 0x398C40 calls it) -- the string default-built, then assigned (the target zeroes its words
+ * before it reads the text), the test a ternary into a bool local (materialised, andi at the join) */
+int SkbEditCharLen(int pos)
+{
+    CSaferStr text;
+
+    text = ShownText(EditString());
+    bool more = s_textSel ? false : HasChar(ShownText(&s_textString2));
+
+    if (more)
+        text += ShownText(&s_textString2);
+    return CharLen(text.c_str() + pos);
+}
+
+/* the text cursor put at a place (0x395120, the display unit's: its node's position) */
+extern "C" void func_00395120(float x, float y);
+
+/* which string props a cursor follows (ours: the look's three, User 0, Purpose 1, MsgPlayer 2) */
+enum SKBPROPS { SKB_PROPS_USER, SKB_PROPS_PURPOSE, SKB_PROPS_MSGPLAYER };
+
+/* the cursor's y (ours: CursorY2nd while string 0 is edited, else CursorY -- by reference, so the
+ * address is selected and then read, as the target's) */
+static inline const int &CursorY(const CSoftKeyboard *skb)
+{
+    return s_textSel ? skb->m_cc : skb->m_c8;
+}
+
+/* a text's characters counted (ours) */
+static inline int CountChars(const char *p)
+{
+    int n = 0;
+
+    for (; HasChar(p); p += CharLen(p))
+        n++;
+    return n;
+}
+
+/* the cursor stepped back a character (0x399530; the name ours: 0x38C630's left key and
+ * SkbHandleKey call it with the showing keyboard): string 1's count down by one, or at its start,
+ * while string 1 counts, string 1 given up and its characters counted into the count; then the
+ * cursor placed after that many characters of the cursor's string -- the props' x plus their width,
+ * the cursor's y plus a line height per counted string -- and the composition cleared.
+ * OPEN, 13 instructions (same size): SkbTypeOrBack's numbering -- the target keeps the count in s0,
+ * skb in s1 and the pointer in s2 (here the pointer s1, skb s2) -- and the line offset's product
+ * takes the converted count in $f0 and the height in $f1, added after the y (here the other way).
+ * Tried: the count loop in the function (p s0), p declared first, a while loop, the global counted
+ * directly, the count's text a parameter or a local of the inline; the y's terms as locals (one,
+ * both, the product, the height), a cast on the product. The count read into a local before the
+ * width call gives the target's argument order (the count loaded ahead of the string's ternary) */
+void SkbCursorBack(CSoftKeyboard *skb)
+{
+    if (s_textCount0 > 0) {
+        s_textCount0--;
+    } else if (s_textCount1) {
+        s_textCount1 = 0;
+        s_textCount0 = CountChars(ShownText(&s_textString1));
+    }
+    int count = s_textCount0;
+    float w = SkbTextWidth(CursorString(), count);
+    SKBPROPS props = s_textSel ? SKB_PROPS_MSGPLAYER : SKB_PROPS_USER;
+    float x = w + (float)skb->m_caps[props].m_0;
+    float y = (float)CursorY(skb) + *(float *)&skb->m_c4 * (float)s_textCount1;
+
+    func_00395120(x, y);
+    SkbHangulClear();
+}
+
+/* the typed text holds a character other than white space (0x3996B0; the name ours: OnEnterKey takes
+ * the text only when this or 0x395110 finds one) -- the typed text built in place, each UTF-8
+ * character read off a copy of the cursor and tested against the SDK's table, the cursor stepped by
+ * the character's length; an int (OnEnterKey's test of it needs one) */
+int SkbTypedTextNotBlank()
+{
+    CTypedText text;
+
+    for (const char *p = text.c_str(); HasChar(p); p += CharLen(p)) {
+        const char *q = p;
+
+        if (!rdr_isspace(UTF8GetChar(q)))
+            return true;
+    }
+    return false;
 }
 
 /* string 0's edit closed: its node hidden, its text emptied, the text laid out again if it was the
