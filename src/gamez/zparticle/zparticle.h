@@ -336,6 +336,8 @@ enum PARTICLE_TYPE {
  * so the members ahead of the list are opaque here */
 class Source {
 public:
+    /* a free source taken from the pool (0x32B120; ZAnim's particle commands call it) */
+    static Source *Create();
     /* the live sources (SOCOM 1's Source::List, a list of them) */
     class List : public std::list<Source *> {
     public:

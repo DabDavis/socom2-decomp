@@ -24,6 +24,19 @@
 #include "../zsav/zsav_lobby.h"
 #include "../znet/znet.h"
 
+/* an account's gender (the menus' ACCT_GENDER, zanim_menu.h's name): INT-SIZED -- UIUpdateAcctInfo
+ * 0x2752BC hands SetAcctInfo a ternary of its two enumerators as `li 1; movz` straight into the
+ * argument register (an int parameter would be `sltu`, an int one taking a byte enum's ternary adds
+ * `andi 0xff`), while SetAcctInfo passes it to Add untouched, Add spills it as a word (sw/lw) and
+ * UnSerialize loads its int-read local with lw: a one-byte enum costs SetAcctInfo an andi
+ * (0x3C against 0x34), or Add an sb/lb spill and UnSerialize an lbu (2 instructions each) -- the
+ * online lane, round 14) */
+enum ACCT_GENDER {
+    ACCT_MALE = 0,
+    ACCT_FEMALE = 1,
+    ACCT_GENDER_EXTENT = 0x7FFFFFFF
+};
+
 /* ---- what the unit calls in other units ---- */
 
 /* the UI's variables (zui.h's CUIVarManager, declared again here: zui.h's _zrdr cannot sit beside
@@ -427,9 +440,9 @@ public:
         void SetChecksum(const unsigned char *sum);
 
         void Add(const char *host, int port, const char *name, const char *password,
-                 const char *town, int gender, _zrdr *profiles, bool savepassword);
+                 const char *town, ACCT_GENDER gender, _zrdr *profiles, bool savepassword);
         void SetAcctInfo(const char *host, int port, const char *name, const char *password,
-                         const char *town, int gender, bool savepassword);
+                         const char *town, ACCT_GENDER gender, bool savepassword);
         const char *GetChecksum();
         AcctRecord *Find(const char *host, int port, const char *name);
         AcctLoadout *GetLoadout(const char *host, int port, const char *name, const char *mission,
@@ -604,14 +617,14 @@ void CAcctDB::UnSerialize(const char *name, CRdrFile *file, int flags)
         if (acct) {
             bool savepassword = true;
             int port = 0;
-            int gender = 0;
+            ACCT_GENDER gender = ACCT_MALE;
             const char *host = zrdr_findstring(acct, "HOST");
             const char *pname = zrdr_findstring(acct, "NAME");
             const char *town = zrdr_findstring(acct, "TOWN");
             const char *password = zrdr_findstring(acct, "PASSWORD");
 
             zrdr_findint(acct, "PORT", &port, 1);
-            zrdr_findint(acct, "GENDER", &gender, 1);
+            zrdr_findint(acct, "GENDER", (int *)&gender, 1);
             _zrdr *profiles = zrdr_findtag(acct, "PROFILES");
 
             zrdr_findbool(acct, "SAVEPASSWORD", &savepassword);
@@ -887,7 +900,7 @@ int CAcctDB::GetGender(const char *host, int port, int index)
 /* an account added or updated: its details, then the profile's checksum and each mission's
  * equipment from the profile file's PROFILES list */
 void CAcctDB::Add(const char *host, int port, const char *name, const char *password,
-                  const char *town, int gender, _zrdr *profiles, bool savepassword)
+                  const char *town, ACCT_GENDER gender, _zrdr *profiles, bool savepassword)
 {
     AcctRecord blank;
     AcctRecord *r = FindAcct(host, port, name);
@@ -1053,7 +1066,7 @@ AcctRecord *CAcctDB::Find(const char *host, int port, const char *name)
 /* an account's details set, the account added when the lobby server has none of its name (the
  * password kept only when it is to be saved) */
 void CAcctDB::SetAcctInfo(const char *host, int port, const char *name, const char *password,
-                          const char *town, int gender, bool savepassword)
+                          const char *town, ACCT_GENDER gender, bool savepassword)
 {
     if (name && *name)
         Add(host, port, name, savepassword ? password : 0, town, gender, 0, savepassword);
