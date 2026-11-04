@@ -1441,7 +1441,7 @@ void CAiSBreach::OnSignal(SIGNAL sig, CSealCtrlAi *ai)
 extern "C" int func_005F3270(CAiSBreach *b, CSealCtrlAi *ai)
 {
     int r = 2;
-    CAiMap::DIR dir = (CAiMap::DIR)((CAiMap::action *)b->m_78)->m_direction;
+    CAiMap::DIR dir = (CAiMap::DIR)b->m_78->m_direction;
 
     if (dir != CAiMap::DIR_COUNT) {
         if (b->m_flags & 1)
@@ -1466,6 +1466,35 @@ extern "C" int func_005F3270(CAiSBreach *b, CSealCtrlAi *ai)
             r = 1;
     }
     return r;
+}
+
+/* an action's extra cell i, or the invalid cell past the six (the name ours: an unsigned test) */
+static inline const CAiMapLoc &BreachLocEx(const CAiMap::action *a, unsigned int i)
+{
+    return i < 6 ? a->m_locEx[i] : CAiMapLoc::invalid;
+}
+
+/* the cell at the middle of the door's three cells on the breach's side -- 0-2 with the flag bit
+ * 0, 3-5 without -- its coordinates their averages, its map the last one's (OVL2 0x5F3100:
+ * CAiSBreach::Tick calls it, a member -- the state in a0 -- and takes the cell's centre; the name
+ * unknown) */
+extern "C" void func_005F3100(CAiSBreach *b, CAiMapLoc *out)
+{
+    float x = 0.0f;
+    float y = 0.0f;
+    unsigned int mapid = 0;
+    int start = (b->m_flags & 1) ? 0 : 3;
+
+    for (int i = 0; i < 3; i++) {
+        const CAiMapLoc &loc = BreachLocEx(b->m_78, i + start);
+
+        x += loc.x;
+        y += loc.y;
+        mapid = loc.m_mapid;
+    }
+    out->x = (int)(x / 3.0f);
+    out->y = (int)(y / 3.0f);
+    out->m_mapid = mapid;
 }
 
 /* what a breach lets be pushed: no avoiding in its steps 4-9, no grenade in steps 6 and 7 -- a
