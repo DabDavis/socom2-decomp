@@ -684,6 +684,8 @@
 0x00405440 0x70 __vt__11CZNewHudMap  # vtable of CZNewHudMap: found by its RTTI's name
 0x00405520 0x1C __vt__15CZMPBombMapItem  # vtable of CZMPBombMapItem: found by its RTTI's name
 0x00405540 0x1C __vt__9CZLineMap  # vtable of CZLineMap: found by its RTTI's name
+0x00405560 0x14 __vt__6CPtItr  # OVL1 data; the HUD lane round 35: SOCOM 1's CPtItr's vtable (RTTI 0x3E4420, three pure slots: Advance, GetPt, IsValid), stored by its constructor 0x20F5A0 (1 reference); hud_linemap.cpp
+0x00405580 0x14 __vt__Q225@unnamed@hud_linemap_cpp@12CAiLinePtItr  # OVL1 data; the HUD lane round 35: CAiLinePtItr's vtable (RTTI 0x3E4468: Advance 0x2107C0, GetPt 0x210A70, IsValid 0x20F1C0), stored by its inlined constructor in SetupPolygon 0x20EF50; hud_linemap.cpp
 0x004055A0 0x70 __vt__14BitmapReticule  # vtable of BitmapReticule: found by its RTTI's name
 0x00405610 0x70 __vt__10CWeaponSel  # vtable of CWeaponSel: found by its RTTI's name
 0x00405680 0x70 __vt__10CTeamNames  # vtable of CTeamNames: found by its RTTI's name

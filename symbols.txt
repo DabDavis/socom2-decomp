@@ -1829,20 +1829,20 @@
 0x0020E470 0x2DC func_0020E470  # OVL1
 0x0020E750 0x474 func_0020E750  # OVL1
 0x0020EBD0 0x374 Tick__9CZLineMapFP11CZNewHudMapf  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x0020EF50 0x1AC func_0020EF50  # OVL1
-0x0020F100 0xB4 func_0020F100  # OVL1
+0x0020EF50 0x1AC SetupPolygon__9CZLineMapFRCQ26CAiMap4lineRC9LINE_DATA  # OVL1; the HUD lane round 35: SOCOM 1's name (a line's polygons) on SOCOM II's body -- a new vector of C2DBitmapPoly pushed on the set at 0x14BC8, a CAiLinePtItr over the line, the C2D library's wide-line builder 0x357F30, each poly's colour and fade from the type's LINE_DATA; hud_linemap.cpp
+0x0020F100 0xB4 FindValid__Q225@unnamed@hud_linemap_cpp@12CAiLinePtItrFv  # OVL1; the HUD lane round 35: SOCOM 1's FindValid (the same body: IsValid through slot 2, the centre and WorldToDraw, the point assigned, the cell stepped), out of line where CAiLinePtItr's constructor is inlined one level in SetupPolygon 0x20EF50; hud_linemap.cpp
 0x0020F1C0 0x28 IsValid__Q225@unnamed@hud_linemap_cpp@12CAiLinePtItrCFv  # OVL1; s1:name by hand (the HUD lane: slot 2 of CAiLinePtItr's vtable 0x405580, after GetPt; SOCOM 1's IsValid, the same loads, its != now !(==))
 0x0020F1F0 0x20 __as__6CPnt3DFRC6CPnt3D  # OVL1; by its body (a field-by-field copy returning this: CPnt3D's implicit assignment out of line; CHoming's reset and the widget specs go through it) -- the UI-widgets and body lanes
-0x0020F210 0x8 func_0020F210  # OVL1
-0x0020F220 0x244 func_0020F220  # OVL1
-0x0020F470 0x10 func_0020F470  # OVL1
+0x0020F210 0x8 WorldToDraw__9CZLineMapCFPC6CPnt3D  # OVL1; the HUD lane round 35: SOCOM 1's CZLineMap::WorldToDraw (m_hudmap at 0x20 through the map's MapPoint), out of line in FindValid 0x20F100; hud_linemap.cpp
+0x0020F220 0x244 GetCellCenter__6CAiMapFRC9CAiMapLocP6CPnt3D  # OVL1; the HUD lane round 35: CAiMap::GetCellCenter's out-of-line copy (ai.h's inline: GetCell inlined one level -- IsMapCell, IsLayer, the scanlines' and layers' [] and GetIndex called -- GetAltitude, HasAction and GetDir whole), FindValid's call 0x20F100; OVL2 inlines it everywhere; hud_linemap.cpp
+0x0020F470 0x10 func_0020F470  # OVL1; the HUD lane round 35: OVL1's copy of the layers' const operator[] (0x5120B0), GetCell's in GetCellCenter's copy 0x20F220; ovl-copy: __vc__Q23std64__vector_imp<P11CAiMapLayer,Q23std25allocator<P11CAiMapLayer>,1>CFUi
 0x0020F480 0x38 func_0020F480  # OVL1; OVL1's copy of GetIndex__Q26CAiMap8scanlineCFUi (0x5120c0, the same words bar the link's addresses -- tools/ovlcopies.py); ovl-copy: GetIndex__Q26CAiMap8scanlineCFUi
-0x0020F4C0 0x18 func_0020F4C0  # OVL1; the same words as __vc__Q23std72__vector_imp<Q26CAiMap8scanline,Q23std29allocator<Q26CAiMap8scanline>,0>FUi (0x5176e0) bar the link's addresses (tools/ovlcopies.py) -- identical code, not proven the same instance (template instances for different types and look-alike accessors share bodies)
+0x0020F4C0 0x18 func_0020F4C0  # OVL1; the same words as __vc__Q23std72__vector_imp<Q26CAiMap8scanline,Q23std29allocator<Q26CAiMap8scanline>,0>FUi (0x5176e0) bar the link's addresses (tools/ovlcopies.py) -- identical code, not proven the same instance (template instances for different types and look-alike accessors share bodies); the HUD lane round 35: OVL1's copy of the scanlines' CONST operator[] (0x512100), GetCell's in GetCellCenter's copy 0x20F220; ovl-copy: __vc__Q23std72__vector_imp<Q26CAiMap8scanline,Q23std29allocator<Q26CAiMap8scanline>,0>CFUi
 0x0020F4E0 0x20 func_0020F4E0  # OVL1; OVL1's copy of IsLayer__6CAiMapCFi (0x512120, the same words bar the link's addresses -- tools/ovlcopies.py); ovl-copy: IsLayer__6CAiMapCFi
 0x0020F500 0x80 func_0020F500  # OVL1; OVL1's copy of IsMapCell__6CAiMapCFRC9CAiMapLoc (0x512140, the same words bar the link's addresses -- tools/ovlcopies.py); ovl-copy: IsMapCell__6CAiMapCFRC9CAiMapLoc
-0x0020F580 0x10 func_0020F580  # OVL1; tu: char_type.cpp~ (1.0 beta)
-0x0020F590 0xC func_0020F590  # OVL1
-0x0020F5A0 0x14 func_0020F5A0  # OVL1
+0x0020F580 0x10 __ct__Q33std56__vector_imp<9CAiMapLoc,Q23std21allocator<9CAiMapLoc>,0>14const_iteratorFRCQ33std56__vector_imp<9CAiMapLoc,Q23std21allocator<9CAiMapLoc>,0>14const_iterator  # OVL1; tu: char_type.cpp~ (1.0 beta); the HUD lane round 35: vector<CAiMapLoc>'s const iterator copied (include/vector), CAiLinePtItr's constructor's in SetupPolygon 0x20EF50; hud_linemap.cpp
+0x0020F590 0xC func_0020F590  # OVL1; the HUD lane round 35: OVL1's copy of vector<CAiMapLoc>'s begin() const (0x52F3E0), CAiLinePtItr's constructor's in SetupPolygon 0x20EF50; ovl-copy: begin__Q23std48vector<9CAiMapLoc,Q23std21allocator<9CAiMapLoc>>CFv
+0x0020F5A0 0x14 __ct__6CPtItrFv  # OVL1; the HUD lane round 35: SOCOM 1's CPtItr (its table 0x405560, three pure slots), the base of CAiLinePtItr's constructor in SetupPolygon 0x20EF50; hud_linemap.cpp
 0x0020F5C0 0x444 func_0020F5C0  # OVL1
 0x0020FA10 0x60 func_0020FA10  # OVL1
 0x0020FA70 0x228 func_0020FA70  # OVL1
@@ -1856,14 +1856,14 @@
 0x002102E0 0x2FC func_002102E0  # OVL1
 0x002105E0 0x8 func_002105E0  # OVL1; OVL1's copy of Add__6CPnt3DFPC6CPnt3D (0x5168e0: the same tail call into CPnt3D::Add(b, this) at 0x309240, among CAiMap's GetCellCenter copies in OVL1's map code -- the AI core lane's find, vetted by the integrator); ovl-copy: Add__6CPnt3DFPC6CPnt3D
 0x002105F0 0x8 func_002105F0  # OVL1; OVL1's copy of Scale__6CPnt3DFf (0x5168f0: the same tail call into CPnt3D::Scale(s, this) at 0x309180, among CAiMap's GetCellCenter copies in OVL1's map code -- the AI core lane's find, vetted by the integrator); ovl-copy: Scale__6CPnt3DFf
-0x00210600 0xC func_00210600  # OVL1
-0x00210610 0x14 func_00210610  # OVL1
+0x00210600 0xC func_00210600  # OVL1; the HUD lane round 35: OVL1's copy of CAiMap::action::GetDir (0x516910), GetCellCenter's inlined one level in CalcPoint 0x210870 and 0x2102E0; ovl-copy: GetDir__Q26CAiMap6actionCFv
+0x00210610 0x14 func_00210610  # OVL1; the HUD lane round 35: OVL1's copy of CAiCell::HasAction (0x516920), GetCellCenter's inlined one level in CalcPoint 0x210870 and 0x2102E0; ovl-copy: HasAction__7CAiCellCFv
 0x00210630 0x70 func_00210630  # OVL1; OVL1's copy of GetAltitude__6CAiMapCFPC7CAiCellRf (0x516940, the same words bar the link's addresses -- tools/ovlcopies.py); ovl-copy: GetAltitude__6CAiMapCFPC7CAiCellRf
 0x002106A0 0x120 func_002106A0  # OVL1; OVL1's copy of GetCell__6CAiMapCFRC9CAiMapLoci (0x511f80, the same words bar the link's addresses -- tools/ovlcopies.py); ovl-copy: GetCell__6CAiMapCFRC9CAiMapLoci
-0x002107C0 0x88 func_002107C0  # OVL1
-0x00210850 0x14 func_00210850  # OVL1
-0x00210870 0x1E8 func_00210870  # OVL1
-0x00210A60 0x8 func_00210A60  # OVL1
+0x002107C0 0x88 Advance__Q225@unnamed@hud_linemap_cpp@12CAiLinePtItrFv  # OVL1; the HUD lane round 35: slot 0 of CAiLinePtItr's vtable 0x405580 -- SOCOM 1's Advance (the step, then FindValid), FindValid inlined one level in SOCOM II (its point 0x210870, the iterator's * and postfix ++ called); hud_linemap.cpp
+0x00210850 0x14 func_00210850  # OVL1; the HUD lane round 35: OVL1's copy of the const iterator's postfix ++ (0x52F3A0), FindValid's inlined one level in CAiLinePtItr::Advance 0x2107C0; ovl-copy: __pp__Q33std56__vector_imp<9CAiMapLoc,Q23std21allocator<9CAiMapLoc>,0>14const_iteratorFi
+0x00210870 0x1E8 CalcPoint__9CZLineMapFP6CPnt3DRC9CAiMapLoc  # OVL1; the HUD lane round 35: ours (a cell's drawn point: the AI map's centre, inlined one level, through the map's MapPoint; false off the map), FindValid's, out of line in Advance 0x2107C0 and inlined one level in FindValid 0x20F100; hud_linemap.cpp
+0x00210A60 0x8 func_00210A60  # OVL1; the HUD lane round 35: OVL1's copy of the const iterator's * (0x52F3D0), FindValid's inlined one level in CAiLinePtItr::Advance 0x2107C0; ovl-copy: __ml__Q33std56__vector_imp<9CAiMapLoc,Q23std21allocator<9CAiMapLoc>,0>14const_iteratorCFv
 0x00210A70 0x30 GetPt__Q225@unnamed@hud_linemap_cpp@12CAiLinePtItrCFv  # OVL1; s1:exact
 0x00210AA0 0x104 find_or_insert<i,9LINE_DATA>__Q23std185__tree<Q23std19pair<Ci,9LINE_DATA>,Q33std79map<i,9LINE_DATA,Q23std7less<i>,Q23std38allocator<Q23std19pair<Ci,9LINE_DATA>>>13value_compare,Q23std38allocator<Q23std19pair<Ci,9LINE_DATA>>>FRCi_RQ23std19pair<Ci,9LINE_DATA>  # OVL1; include/tree (map<int, LINE_DATA>::operator[]'s out-of-line half, SOCOM 1's find_or_insert<i,9LINE_DATA> 0x3CAC10 the same code; hud_linemap.cpp's tail; byte-exact)
 0x00210BB0 0x80 find<i>__Q23std185__tree<Q23std19pair<Ci,9LINE_DATA>,Q33std79map<i,9LINE_DATA,Q23std7less<i>,Q23std38allocator<Q23std19pair<Ci,9LINE_DATA>>>13value_compare,Q23std38allocator<Q23std19pair<Ci,9LINE_DATA>>>FRCi_Q33std185__tree<Q23std19pair<Ci,9LINE_DATA>,Q33std79map<i,9LINE_DATA,Q23std7less<i>,Q23std38allocator<Q23std19pair<Ci,9LINE_DATA>>>13value_compare,Q23std38allocator<Q23std19pair<Ci,9LINE_DATA>>>8iterator  # OVL1; include/tree (map<int, LINE_DATA>::find: the lower bound, then end() unless the key is not less -- SOCOM 1's find<i> 0x3CAD10 the same code; the line map's 0x20E470 and 0x20F5C0 call it; byte-exact as a probe, build/tree/p1.cpp)
