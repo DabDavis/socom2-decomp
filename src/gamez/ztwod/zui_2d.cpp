@@ -443,6 +443,30 @@ public:
     int m_last;   // 0xd4
 };   // 0xd8 bytes
 
+/* a clock (SOCOM 1's C2DClock; zui_2d.h's layout: 0xC0 bytes), its destructor declared first so
+ * that this unit does not take its table (0x407190, its mixin's 0x407220) */
+class C2DClock : public CRenderableString {
+public:
+    virtual ~C2DClock();
+    virtual void UpdateUIVar(CUIVariable *var);
+};
+
+/* a password's stars (SOCOM II's CSecureText; zui_2d.h's layout: 0xC0 bytes); its table 0x406FA0
+ * goes with its destructor, zui.cpp's 0x36AF30 */
+class CSecureText : public CRenderableString {
+public:
+    virtual ~CSecureText();
+    virtual void SetString(const char *s, bool translate);
+};
+
+/* a UTF-8 character's length in bytes (zutil's; the string not advanced) */
+int UTF8CharLen(const char *&s);
+
+/* whether a text pointer is null, and whether it has a character left (the secure text's walk;
+ * the names ours) */
+inline bool SecureNull(const char *s) { return !s; }
+inline bool SecureMore(const char *s) { return !SecureNull(s) && *s; }
+
 /* a button showing a spec of its own (SOCOM 1's CHandlerButton; SOCOM II's 0x440 bytes, zui_2d.h's
  * layout). It keeps C2DButton's UpdateUIVar, so its vtable (0x407700) is one of the three that take
  * the button's thunk 0x37D0E0 -- defining its destructor here is what emits that thunk, since
@@ -2102,4 +2126,49 @@ CHProgressBar::~CHProgressBar()
  * reached only through the thunk 0x37D0D0, the UIVarMixin's table's) */
 CCheckBox::~CCheckBox()
 {
+}
+
+/* the variable's seconds as minutes and seconds (SOCOM 1's C2DClock::UpdateUIVar, the same code:
+ * the value read as a real or an integer, "%02d:%02d" set through the table's SetString, the
+ * extent measured again) */
+void C2DClock::UpdateUIVar(CUIVariable *var)
+{
+    if (UIVarMixin::m_uivar && UIVarMixin::m_uivar == var) {
+        char buf[800];
+        int secs = 0;
+        const CUIVariable *v = var;
+
+        buf[0] = 0;
+        if (v->m_type == 2)
+            secs = (int)v->Real();
+        else if (v->m_type == 1)
+            secs = v->Int();
+        sprintf(buf, "%02d:%02d", secs / 60, secs % 60);
+        SetString(buf, true);
+        UpdatePos();
+    }
+}
+
+/* a star for every character of the text (a UTF-8 character's bytes one star), set untranslated
+ * (slot 26 of CSecureText's table, the image's first function of the unit: defined last). The
+ * walk's test is an inline bool over an inline `!p` (the target materialises `!t` with sltu/xori,
+ * then the whole test into v1); the walk is a copy of the text declared after the count, the stars
+ * indexed by the count, and each character's pointer copied for UTF8CharLen's reference after the
+ * star is stored (each other order or a walking star pointer moves the saved registers) */
+void CSecureText::SetString(const char *s, bool translate)
+{
+    if (s) {
+        char stars[256];
+        int n = 0;
+        const char *t = s;
+
+        while (SecureMore(t)) {
+            stars[n] = '*';
+            n++;
+            const char *c = t;
+            t += UTF8CharLen(c);
+        }
+        stars[n] = 0;
+        C2DString::SetString(stars, false);
+    }
 }

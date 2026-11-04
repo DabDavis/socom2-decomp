@@ -97,6 +97,7 @@ class CSealUnit {
 public:
     static CSealUnit *GetUnitByTeam(unsigned int team);
     void *GetDataPtr();
+    CEntity *GetLeader() const;   // OVL2 0x5E8A90 (SOCOM 1's const GetLeader)
 
     unsigned char _0[0x4];
     /* the vtable pointer after the first word */
@@ -183,7 +184,6 @@ void func_005EAEB0(CSealUnit *unit);
 void func_005EAD70(CSealUnit *unit, int member, unsigned char cmd, int flags);
 void func_005EABA0(CSealUnit *unit, int member, unsigned char cmd, int flags);
 CNodeAction *func_005AA240(CZSealBody *seal, int which);
-CEntity *func_005E8A90(CSealUnit *unit);
 bool func_0058DFA0(unsigned char member);
 /* the mission's */
 void func_002B6530(void *queue, const char *name, int a, int b, int c, float delay);
@@ -375,7 +375,7 @@ int tcmUpdateTeam(CZSealBody *player, int team)
         s_tcmTeam = team;
         r = 0;
         if (s_tcmTeam == 18) {
-            CEntity *leader = func_005E8A90(unit);
+            CEntity *leader = unit->GetLeader();
 
             if (leader) {
                 const char *name = leader->m_name;

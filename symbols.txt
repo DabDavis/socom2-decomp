@@ -6801,8 +6801,8 @@
 0x0036AFA0 0x8 Tick__17CRenderableStringFf  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0036AFB0 0x8 func_0036AFB0  # OVL1
 0x0036AFC0 0x24 SetMapOffset__17CRenderableStringFii  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x0036AFF0 0xAC func_0036AFF0  # OVL1
-0x0036B0A0 0x128 func_0036B0A0  # OVL1
+0x0036AFF0 0xAC SetString__11CSecureTextFPCcb  # OVL1; by hand (the HUD lane, round 26): slot 26 (+0x70) of CSecureText's table 0x406FA0, C2DString's SetString slot -- a star per UTF-8 character of the text (UTF8CharLen), set through C2DString::SetString untranslated; byte-exact from zui_2d.cpp
+0x0036B0A0 0x128 UpdateUIVar__8C2DClockFP11CUIVariable  # OVL1; by hand (the HUD lane, round 26): slot 5 (+0x14) of C2DClock's mixin table 0x407220 and its thunk 0x37D130's target -- SOCOM 1's C2DClock::UpdateUIVar (0x3853F0 in the demo, the same code): the variable's seconds as "%02d:%02d"; byte-exact from zui_2d.cpp
 0x0036B1D0 0x14 AddToRdr__8ListItemFP10CRdrEditor  # OVL1; split by hand (the HUD lane, round 16): the row ran 0x28 over two functions -- this one, ListItem's vtable slot 0 (0x407248), its look's slot 14 (lw t9,64) tail-called with the argument passed on, five words, then MW's pad and a separate `jr ra` at 0x36B1F0; the slot is SOCOM II's (SOCOM 1's ListItem has no vtable): the string look's copy (0x37BF40) writes the item's text into the CRdrEditor it is given as an int, real or string node -- the name ours
 0x0036B1F0 0x8 AddToRdr__17CListItemTypeImplFP10CRdrEditor  # OVL1; split by hand (the HUD lane, round 16) from 0x36B1D0's row: an empty function of its own, CListItemTypeImpl's vtable (0x4070F0) slot 14 (0x407130 holds it), the slot ListItem::AddToRdr calls; SOCOM II's (SOCOM 1's 13-slot table has none) -- the name ours, after the string look's override (0x37BF40)
 0x0036B200 0x8 Tick__17CListItemTypeImplFf  # OVL1; by hand (the HUD lane, round 25): slot 11 of CListItemTypeImpl's table, SOCOM 1's Tick default (empty); zui_2d.cpp
