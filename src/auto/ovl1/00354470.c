@@ -9,10 +9,10 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define NULL 0
 M2C_UNK AddCmd__10CZAnimMainFPCcPFP5_zrdr_P14_zanim_cmd_hdrPFP14_zanim_cmd_hdr_vPFP14_zanim_cmd_hdrPf_bPFP14_zanim_cmd_hdr_v(M2C_UNK *, M2C_UNK *, M2C_UNK *, M2C_UNK, M2C_UNK *, M2C_UNK); /* extern */
 extern M2C_UNK CmdParseCmp__6CValveFP5_zrdr;
-extern M2C_UNK CmdParseVBit__FP5_zrdr;
+extern M2C_UNK CmdParseVBit__6CValveFP5_zrdr;
 extern M2C_UNK CmdParseVWatch__6CValveFP5_zrdr;
 extern M2C_UNK CmdTickCmp__6CValveFP14_zanim_cmd_hdrPf;
-extern M2C_UNK CmdTickVBit__FP14_zanim_cmd_hdrPf;
+extern M2C_UNK CmdTickVBit__6CValveFP14_zanim_cmd_hdrPf;
 extern M2C_UNK CmdTickVWatch__6CValveFP14_zanim_cmd_hdrPf;
 extern M2C_UNK ZAnim;
 extern M2C_UNK data_003F82C0;
@@ -21,6 +21,6 @@ extern M2C_UNK data_003F82D0;
 
 void RegisterCommands__6CValveFv(void) {
     AddCmd__10CZAnimMainFPCcPFP5_zrdr_P14_zanim_cmd_hdrPFP14_zanim_cmd_hdr_vPFP14_zanim_cmd_hdrPf_bPFP14_zanim_cmd_hdr_v(&ZAnim, &data_003F82C0, &CmdParseCmp__6CValveFP5_zrdr, 0, &CmdTickCmp__6CValveFP14_zanim_cmd_hdrPf, 0);
-    AddCmd__10CZAnimMainFPCcPFP5_zrdr_P14_zanim_cmd_hdrPFP14_zanim_cmd_hdr_vPFP14_zanim_cmd_hdrPf_bPFP14_zanim_cmd_hdr_v(&ZAnim, &data_003F82C8, &CmdParseVBit__FP5_zrdr, 0, &CmdTickVBit__FP14_zanim_cmd_hdrPf, 0);
+    AddCmd__10CZAnimMainFPCcPFP5_zrdr_P14_zanim_cmd_hdrPFP14_zanim_cmd_hdr_vPFP14_zanim_cmd_hdrPf_bPFP14_zanim_cmd_hdr_v(&ZAnim, &data_003F82C8, &CmdParseVBit__6CValveFP5_zrdr, 0, &CmdTickVBit__6CValveFP14_zanim_cmd_hdrPf, 0);
     AddCmd__10CZAnimMainFPCcPFP5_zrdr_P14_zanim_cmd_hdrPFP14_zanim_cmd_hdr_vPFP14_zanim_cmd_hdrPf_bPFP14_zanim_cmd_hdr_v(&ZAnim, &data_003F82D0, &CmdParseVWatch__6CValveFP5_zrdr, 0, &CmdTickVWatch__6CValveFP14_zanim_cmd_hdrPf, 0);
 }

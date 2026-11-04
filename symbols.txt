@@ -2705,7 +2705,7 @@
 0x00257560 0x8 clear__Q23std50vector<Q23zar4CKey,Q23std22allocator<Q23zar4CKey>>Fv  # OVL1; the core lane round 5 (FreeVector<vector<CKey> >'s clear, a j to the deleter's clear: zar_main.cpp's inline copy)
 0x00257570 0x14 __ct__Q23std50vector<Q23zar4CKey,Q23std22allocator<Q23zar4CKey>>Fv  # OVL1; the core lane round 5 (FreeVector<vector<CKey> >'s temporary in ~CZAR and FreeDirectory: zar_main.cpp's inline copy)
 0x00257590 0x358 WriteDirectory__Q23zar4CZARFv  # OVL1; s1:callee by hand, the core lane round 4 (Close() 0x258CE0 calls it at +0x90 where SOCOM 1's Close() calls WriteDirectory at +0x8C; the new flush 0x258BD0 calls it when the modified byte 0x25 is set, clearing it after)
-0x002578F0 0x294 func_002578F0  # OVL1
+0x002578F0 0x294 _countKeys__FPQ23zar4CKey  # OVL1; s1:calls by hand, the core lane round 7 (SOCOM 1's _countKeys 0x1D8480: WriteDirectory 0x257590 calls it on m_root and stores the count at +0x3C, the tail's key count, where SOCOM 1's WriteDirectory inlines it into the same slot; recursive as SOCOM 1's -- it self-inlines three levels, the deeper ones calling vector<CKey *>'s iterator pieces 0x257B90-0x257CB0 out of line)
 0x00257B90 0x8 func_00257B90  # OVL1
 0x00257BA0 0x14 func_00257BA0  # OVL1; tu: ztex_manager.cpp~ (1.0 beta)
 0x00257BC0 0x14 func_00257BC0  # OVL1
@@ -2719,7 +2719,7 @@
 0x00257C90 0xC func_00257C90  # OVL1
 0x00257CA0 0x10 func_00257CA0  # OVL1; tu: char_type.cpp~ (1.0 beta)
 0x00257CB0 0x8 func_00257CB0  # OVL1
-0x00257CC0 0x1F8 func_00257CC0  # OVL1
+0x00257CC0 0x1F8 fixupKey__Q23zar4CKeyFP7CSTablePv  # OVL1; s1:calls by hand, the core lane round 7 (SOCOM 1's CKey::fixupKey 0x1D8600: WriteDirectory 0x257590 hands it to CSTable::Pack 0x39F6F0 with m_root, as SOCOM 1's WriteDirectory hands 0x1D8600 to Pack; recursive, calling itself at 0x257DEC)
 0x00257EC0 0x10 func_00257EC0  # OVL1; tu: char_type.cpp~ (1.0 beta)
 0x00257ED0 0x8 func_00257ED0  # OVL1
 0x00257EE0 0xAC ReadString__Q23zar4CZARFPPc  # OVL1; ours, the core lane round 4 (SOCOM II's: a length word read through m_pFile's fread, then when 4 bytes came and the length is positive a _malloc'd zeroed copy of length+1 filled by a second fread; the bytes read returned -- CIO::fwrite(const char *)'s record read back; CZSIObject::Read calls it for the object's name)
@@ -3295,8 +3295,8 @@
 0x00280790 0x138 OnIsEquipmentSelected__24@unnamed@zanim_menu_cpp@FP13C2DAnimCmdHdrPf  # OVL1; s1:table by hand, the core lane round 3 (registered as "IsEquipmentSelected" in both builds' UI command tables: SOCOM 1's OnIsEquipmentSelected, zanim_menu.cpp's anonymous namespace -- the same walk of the selected characters' weapons for the item, Advance called out of line)
 0x002808D0 0x8 func_002808D0  # OVL1
 0x002808E0 0x47C func_002808E0  # OVL1
-0x00280D60 0x130 func_00280D60  # OVL1
-0x00280E90 0x1A0 func_00280E90  # OVL1
+0x00280D60 0x130 UICanCharactersSelectUIWeapon__FP13C2DAnimCmdHdrPf  # OVL1; ours, the core lane round 7: the handler registered as "CanCharactersSelectUIWeapon" (id 0xCF, the UI command table's record at 0x3DE1A0) -- the item whose menu value (0x3D3230) the UiWeapon valve holds, and whether every UiCharSet character may take it (CanTakeItem 0x280E90)
+0x00280E90 0x1A0 CanTakeItem__24@unnamed@zanim_menu_cpp@F10EQUIP_ITEMRCQ224@unnamed@zanim_menu_cpp@17CSelectedCharsItr  # OVL1; ours, the core lane round 7 (SOCOM II's: whether a selected character may take an item with the weapons it has -- the class-195 item only on a class-101 primary, 186 beside a 146, 146/145 once, the M203 items, 176-179 on a 143, 181-183 on a 63; 0x280D60 and 0x283E60 call it; the name ours)
 0x00281030 0xC func_00281030  # OVL1
 0x00281040 0xC func_00281040  # OVL1
 0x00281050 0xC func_00281050  # OVL1
@@ -3306,10 +3306,10 @@
 0x00281090 0xD0 UICopyUIVar__FP13C2DAnimCmdHdrPf  # OVL1; ours, the core lane round 2: the handler registered as "CopyUIVar" (id 0xBD, the UI command table's record 187, its second function UICopyUIVarParse 0x27FD70); SOCOM 1's table has no CopyUIVar, so UI<command> by its convention
 0x00281160 0x468 func_00281160  # OVL1
 0x002815D0 0x37C func_002815D0  # OVL1
-0x00281950 0x11C func_00281950  # OVL1
+0x00281950 0x11C IsSlotLocked__24@unnamed@zanim_menu_cpp@FQ224@unnamed@zanim_menu_cpp@17CSelectedCharsItri10EQUIP_ITEM  # OVL1; ours, the core lane round 7 (SOCOM II's: whether a selected character's slot keeps what it holds against an item -- items 141/185, a lone 186, a weapon's padding, an item whose definition 0x3CF1F0 flags 0x30; the slot pickers 0x284640, 0x2815D0, 0x282F20 and 0x284120 call it; the name ours)
 0x00281A70 0x14C OnCloseAndSwitch__24@unnamed@zanim_menu_cpp@FP13C2DAnimCmdHdrPf  # OVL1; s1:table by hand, the core lane round 2 (registered as "CloseAndSwitch" in both builds' UI command tables: SOCOM 1's handler OnCloseAndSwitch, zanim_menu.cpp's anonymous namespace, the same tests, Pop/Switch and MPMajorGameState(5); SOCOM II adds the loading image's restore)
 0x00281BC0 0x20 func_00281BC0  # OVL1
-0x00281BE0 0x158 func_00281BE0  # OVL1
+0x00281BE0 0x158 UIChooseDefaultEquipmentOnly__FP13C2DAnimCmdHdrPf  # OVL1; ours, the core lane round 7: the handler registered as "ChooseDefaultEquipmentOnly" (id 0x8F, the UI command table's record at 0x3DDDB0; not in SOCOM 1's table) -- each selected character with two weapons given its type's defaults, its own primary and secondary set up again
 0x00281D40 0x400 func_00281D40  # OVL1
 0x00282140 0x2C8 func_00282140  # OVL1
 0x00282410 0x8 func_00282410  # OVL1
@@ -3322,14 +3322,14 @@
 0x00282980 0x108 ExecuteChooseDefaultEquipment__24@unnamed@zanim_menu_cpp@FP13C2DAnimCmdHdrPf  # OVL1; s1:table by hand, the core lane round 3 (registered as "ChooseDefaultEquipment" in both builds' UI command tables: SOCOM 1's ExecuteChooseDefaultEquipment, zanim_menu.cpp's anonymous namespace -- the type's default weapons assigned, or the list cleared; SOCOM II pads the slots)
 0x00282A90 0x184 ChooseEquipmentForCharacter__24@unnamed@zanim_menu_cpp@FRCQ224@unnamed@zanim_menu_cpp@17CSelectedCharsItr10EQUIP_ITEM  # OVL1; s1:callee by hand, the core lane round 2 (ExecuteChooseEquipment calls it with the iterator and the item in its loop where SOCOM 1's calls ChooseEquipmentForCharacter, 0x1D74B0)
 0x00282C20 0x290 func_00282C20  # OVL1
-0x00282EB0 0x70 func_00282EB0  # OVL1
+0x00282EB0 0x70 FindItemSlot__24@unnamed@zanim_menu_cpp@FRCQ224@unnamed@zanim_menu_cpp@17CSelectedCharsItr10EQUIP_ITEMi  # OVL1; ours, the core lane round 7 (SOCOM II's: a selected character's first weapon slot holding the item, past the one to skip, among the first five, else -1 -- the new choosers 0x280E90, 0x283170 and six more call it; the name ours, in the unit's anonymous namespace beside ChooseEquipmentForCharacter)
 0x00282F20 0x248 func_00282F20  # OVL1
 0x00283170 0x9D8 func_00283170  # OVL1
 0x00283B50 0x304 func_00283B50  # OVL1
 0x00283E60 0x2C0 func_00283E60  # OVL1
 0x00284120 0x238 func_00284120  # OVL1
 0x00284360 0x2DC func_00284360  # OVL1
-0x00284640 0xB0 func_00284640  # OVL1
+0x00284640 0xB0 NextFreeSlot__24@unnamed@zanim_menu_cpp@FRCQ224@unnamed@zanim_menu_cpp@17CSelectedCharsItri  # OVL1; ours, the core lane round 7 (SOCOM II's: the slot an item goes into -- the first empty one past the given (FindItemSlot), else the next unlocked of slots 2-4, round; 0x284360 calls it five times; the name ours)
 0x002846F0 0x30 func_002846F0  # OVL1
 0x00284720 0x420 func_00284720  # OVL1; the core lane round 3: OVL1's copy of do_assign<PC14CCharacterWeap>__Q23std68__vector_imp<14CCharacterWeap,Q23std27allocator<14CCharacterWeap>,0>FPC14CCharacterWeapPC14CCharacterWeapQ23std20forward_iterator_tag_v (0x53f370), zanim_menu.cpp's template tail -- ExecuteChooseDefaultEquipment 0x282980 calls it for the vector's inlined operator= where SOCOM 1's calls do_assign<PC14CCharacterWeap> 0x1D7700 (not OVL2's words: CCharacterWeap's constructor and destructor are out of line in this unit); ovl-copy: do_assign<PC14CCharacterWeap>__Q23std68__vector_imp<14CCharacterWeap,Q23std27allocator<14CCharacterWeap>,0>FPC14CCharacterWeapPC14CCharacterWeapQ23std20forward_iterator_tag_v
 0x00284B40 0x54 push_back__Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>Fc  # OVL1; the character stored to a stack temporary and replaced in at the end through the template replace (0x1EE780) -- basic_string::push_back(char), zanim_menu.cpp's template tail -- the UI-widgets lane
@@ -6447,8 +6447,8 @@
 0x00352EA0 0x184 __ct__6CValveFPCcUi10VALVE_TYPE  # OVL1; s1:calls by hand (Open news 20 bytes and calls it with (0, 0, 2) to fill the pool, as SOCOM 1's Open calls its constructor)
 0x00353030 0xA0 CmdTickVWatch__6CValveFP14_zanim_cmd_hdrPf  # OVL1; the world lane r7: SOCOM II's VWATCH command's tick (RegisterCommands, 0x354470, registers it with the parser 0x3530D0 under "VWATCH"; the names ours, after SOCOM 1's CmdTickCmp): the valve the block names -- an argument's, the anim's or itself -- gets its bit 26 set
 0x003530D0 0x184 CmdParseVWatch__6CValveFP5_zrdr  # OVL1; the world lane r7: SOCOM II's VWATCH command's parser (RegisterCommands' third AddCmd; the names ours, after SOCOM 1's CmdParseCmp): ParseValveName inlined, a 16-byte block naming the valve by the anim's index (an INPUT_VALVE name makes none)
-0x00353260 0x8 CmdTickVBit__FP14_zanim_cmd_hdrPf  # OVL1; the world lane r13: SOCOM II's VBIT command's tick (RegisterCommands, 0x354470, registers it with the parser 0x353270 under "VBIT"; the names ours, after the VWATCH pair): VALVE_CMD_DATA::Compare on the block from +4, as CmdTickCmp
-0x00353270 0x360 CmdParseVBit__FP5_zrdr  # OVL1; the world lane r13: SOCOM II's VBIT command's parser (RegisterCommands' second AddCmd; the name ours): ParseValveName inlined, a 16-byte block -- the valve's ref, the OR of 1 << each bit item, ParseOperator's code for get/set/clr (8, 15, 18)
+0x00353260 0x8 CmdTickVBit__6CValveFP14_zanim_cmd_hdrPf  # OVL1; the world lane r13: SOCOM II's VBIT command's tick (RegisterCommands, 0x354470, registers it with the parser 0x353270 under "VBIT"; the names ours, after the VWATCH pair): VALVE_CMD_DATA::Compare on the block from +4, as CmdTickCmp; the engine core r7: a CValve static as the VWATCH and CMP pairs beside it (RegisterCommands registers all three; CmdTickCmp 0x353D00 is its 8-byte twin)
+0x00353270 0x360 CmdParseVBit__6CValveFP5_zrdr  # OVL1; the world lane r13: SOCOM II's VBIT command's parser (RegisterCommands' second AddCmd; the name ours): ParseValveName inlined, a 16-byte block -- the valve's ref, the OR of 1 << each bit item, ParseOperator's code for get/set/clr (8, 15, 18); the engine core r7: a CValve static as the VWATCH and CMP parsers beside it (RegisterCommands registers all three)
 0x003535D0 0x69C CmdParseCmp__6CValveFP5_zrdr  # OVL1; s1:align
 0x00353C70 0x8C ParseValveName__14VALVE_CMD_DATAFPCcRi  # OVL1; s1:align
 0x00353D00 0x8 CmdTickCmp__6CValveFP14_zanim_cmd_hdrPf  # OVL1; the integrator 2026-11-04, by the world lane round 7: the CMP command's tick (8 bytes), registered beside its parser as SOCOM 1's
