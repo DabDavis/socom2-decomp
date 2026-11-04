@@ -295,8 +295,8 @@ void func_002EFE10(int, int, int, MediusSetGameListFilterResponse *);   /* its c
 void func_002F3FF0(struct ChatSlot *slots);   /* a free slot looked for (below) */
 void func_002F7690();   /* (the lobby unit's) */
 void func_002F4FC0(int ready);   /* our readiness told the server */
-void func_002EF7F0();   /* the game's details sent to the lobby (below) */
-int func_002EF590(CValve *locked);   /* the game's world updated, the delay to the next returned */
+void func_002EF7F0();   /* our stats reported (below) */
+int func_002EF590(CValve *locked);   /* the game's world reported, the delay to the next returned (below) */
 extern CValve *data_0044F9D0;   /* the game's lock, while it is up */
 extern unsigned int data_0044F9D8;   /* when the game's details next go to the lobby */
 extern unsigned char data_0066A5F8;   /* the details to go at once */
@@ -663,6 +663,164 @@ extern "C" int func_002EF9F0()
     if (ff->m_value)
         flags |= 1;
     return flags;
+}
+
+/* a player's report to the server: our stats' record in the game joined (the SDK's; 0x118 bytes) */
+struct MediusPlayerReport {
+    char SessionKey[MEDIUS_SESSIONKEY_MAXLEN];   // 0x0
+    int MediusWorldID;   // 0x14
+    char Stats[256];   // 0x18
+};   // 0x118
+
+extern "C" {
+MediusErrorCode MediusSendPlayerReport(MediusPlayerReport *rep);   /* MediusSendPlayerReport */
+bool func_002C31A0();   /* we play on the game's first side (the states lane's) */
+bool func_002C3080();   /* or on its second (the states lane's) */
+void func_002FAB80(char *stats);   /* our stats as a text (the lobby unit's) */
+extern char data_0066A648[256];   /* our stats' text kept */
+extern GamePlayerStats data_0066A750;   /* and unpacked (OVL2 bss) */
+extern GamePlayerStats data_0044F8E0;   /* the stats last reported */
+extern int data_0044F9C8;   /* and when */
+}
+
+/* a game world's report to the server (the SDK's MediusWorldReport; 0x180 bytes) */
+struct MediusWorldReport {
+    char SessionKey[MEDIUS_SESSIONKEY_MAXLEN];   // 0x0
+    int MediusWorldID;   // 0x14
+    int PlayerCount;   // 0x18
+    char GameName[64];   // 0x1c
+    char GameStats[256];   // 0x5c: the game's rules
+    int MinPlayers;   // 0x15c
+    int MaxPlayers;   // 0x160
+    int GameLevel;   // 0x164: the mission's number
+    int PlayerSkillLevel;   // 0x168
+    int RulesSet;   // 0x16c
+    int GenericField1;   // 0x170
+    int GenericField2;   // 0x174
+    int GenericField3;   // 0x178
+    int WorldStatus;   // 0x17c: 3 locked, 1 staging, 2 active
+};   // 0x180
+
+/* the mission running (theMission's name, "mpNN", and its rules' record: the LAN lobby's) */
+struct LANMissionRules {
+    unsigned char _0[0x113];
+    unsigned char m_113;   // 0x113
+};
+
+extern "C" {
+MediusErrorCode MediusSendWorldReport(MediusWorldReport *rep);   /* MediusSendWorldReport */
+void func_00621F90(int conn, int clients, void (*cb)(int, int));   /* (the DME's NetPing) */
+void func_002EFA60(int, int);   /* its callback */
+void func_002F7C40(void *rules);   /* the game's rules filled in (the lobby unit's) */
+int func_002E99F0();   /* (the clan unit's) */
+extern int data_0066A5C8;
+extern int data_0066A838;   /* our performance figure */
+extern char *data_004364FC;
+extern LANMissionRules *data_00437CE8;
+}
+
+/* the running mission's number, 0 none (the LAN lobby's inline, its first-byte test written
+ * `== 0` here: that lays the zero arm out before atoi's as the world report's target does) */
+inline int MissionNumber()
+{
+    return data_004364FC ? (*data_004364FC == 0 ? 0 : atoi(data_004364FC + 2)) : 0;
+}
+
+/* the game's world reported to the server, the time to the next report returned -- 25 seconds,
+ * 5 with no mission: its name (the lobby's game-name variable, else "testgame"), rules, players'
+ * and spectators' room, the rules' flags and mission, our three figures and its state, the game's
+ * clients pinged (SOCOM 1's report, inlined in its READY_TO_CONNECT tick; OVL1 0x2EF590).
+ * OPEN, 9 instructions, all at the mission number's joins: the blocks are the target's (the inner
+ * zero arm, atoi's, the outer zero falling into the store through &rep.GameLevel), but the target
+ * threads the inner zero arm's branch straight to the store and fills atoi's `b` from it (`b +4;
+ * addiu v1,sp,452`), where MW here keeps the inner ternary's join (`b` to atoi's `b; nop`) and pads
+ * the outer zero with a nop (the target's nop follows `li s3,5000` instead). Tried (hv.py specs
+ * sp_wr*.py, 25 spellings): the ternary either way round, `== 0`/`!`, if/else chains and early
+ * returns in the inline, the expression written in the caller, an out-parameter (pointer,
+ * reference, returned reference), the delay's test as ==/ternary/if-else, a pointer or reference
+ * to the field -- 9 at best (SOCOM 1's inlined report has the target's shape exactly, 0x32CFB0) */
+extern "C" int func_002EF590(CValve *locked)
+{
+    MediusWorldReport rep;
+    int delay = 25000;
+    const char *name = "testgame";
+    int maxPlayers = 8;
+
+    memset(&rep, 0, sizeof(rep));
+    SetSessionKey(rep.SessionKey);
+    CValve *players = CValve::GetByName("MaxPlayersValve");
+    CValve *spectators = CValve::GetByName("MaxSpectatorsValve");
+    CUIVariable *var = theLobby.uiv_GameNameVar;
+
+    if (var && var->type == 3)
+        name = ZString(var);
+    if (players)
+        maxPlayers = players->m_value;
+    if (spectators)
+        maxPlayers += spectators->m_value;
+    func_002F7C40(rep.GameStats);
+    SetSessionKey(rep.SessionKey);
+    rep.MediusWorldID = MediusWorldID;
+    rep.PlayerCount = 0;
+    if (name)
+        memcpy(rep.GameName, name, sizeof(rep.GameName));
+    rep.MinPlayers = 2;
+    rep.MaxPlayers = maxPlayers;
+    rep.RulesSet = func_002EF9F0();
+    rep.PlayerSkillLevel = 0;
+    rep.GameLevel = MissionNumber();
+    if (!rep.GameLevel)
+        delay = 5000;
+    rep.GenericField1 = data_0066A5C8;
+    rep.GenericField2 = data_0066A838;
+    rep.GenericField3 = func_002E99F0();
+    if (locked->m_value)
+        rep.WorldStatus = 3;
+    else if (data_00437CE8->m_113 == 1)
+        rep.WorldStatus = 1;
+    else
+        rep.WorldStatus = 2;
+    func_00621F90(theNetwork.m_GameConnectionIndex, 0xFFFF, func_002EFA60);
+    MediusSendWorldReport(&rep);
+    return delay;
+}
+
+/* our stats reported to the server for the game we are in: our side put in them first (0 the
+ * first, 1 the second, 2 none), the report sent when they changed -- the time played, two counts
+ * and byte 1's low bits not counted -- or five minutes after the last (SOCOM II's; OVL1 0x2EF7F0:
+ * the READY_TO_CONNECT tick's) */
+extern "C" void func_002EF7F0()
+{
+    int now = theNetwork.zNetGetLocalTime();
+
+    if (func_002C31A0())
+        data_0066A750.m_side = 0;
+    else if (func_002C3080())
+        data_0066A750.m_side = 1;
+    else
+        data_0066A750.m_side = 2;
+    func_002FAB80(data_0066A648);
+    MediusPlayerReport rep;
+
+    memset(&rep, 0, sizeof(rep));
+    SetSessionKey(rep.SessionKey);
+    rep.MediusWorldID = MediusWorldID;
+    if (data_0066A648)
+        memcpy(rep.Stats, data_0066A648, sizeof(rep.Stats));
+    bool changed = false;
+    GamePlayerStats old = data_0044F8E0;
+    GamePlayerStats *stats = (GamePlayerStats *)rep.Stats;
+
+    old.m_c = stats->m_c;
+    old.m_time = stats->m_time;
+    old.m_1 = stats->m_1;
+    if (memcmp(stats, &old, sizeof(old)))
+        changed = true;
+    if (changed || data_0044F9C8 + 300000 < now) {
+        MediusSendPlayerReport(&rep);
+        memcpy(&data_0044F8E0, stats, sizeof(data_0044F8E0));
+        data_0044F9C8 = now;
+    }
 }
 
 /* READY_TO_CONNECT: the game's lobby state -- set up on entry, its details sent to the lobby
