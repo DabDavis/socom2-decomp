@@ -4,7 +4,7 @@
  * regions and lines, the point iterator, Tick, the polygon set-up, LineTo, the constructor and the
  * line and polygon types' readers, as SOCOM 1's. Written: the polygon and line types' readers
  * (0x210140, 0x210210), the point iterator's IsValid (0x20F1C0) and GetPt (0x210A70), as SOCOM 1's (its lines 37-38:
- * inlines of the class's, their copies linked from here); (round 35) SetupPolygon (0x20EF50, SOCOM
+ * inlines of the class's, their copies linked from here); (round 35) SetupWideLine (0x20EF50, SOCOM
  * II's body: the C2D library builds the wide line), the iterator's FindValid (0x20F100) and Advance
  * (0x2107C0), CalcPoint (0x210870), and with them every copy they leave out of line -- ai.h's
  * CAiMap::GetCellCenter (0x20F220), GetCell (0x2106A0), GetAltitude (0x210630, made inline here),
@@ -73,9 +73,14 @@ public:
     virtual void Draw(zdb::CCamera *camera);
     virtual void Clip(CZNewHudMap *map);
 
-    /* a line's polygons, built along its cells (SOCOM II's; SOCOM 1's SetupPolygon built them
-     * itself) */
-    void SetupPolygon(const CAiMap::line &line, const LINE_DATA &data);
+    /* a wide line's polygons, built along its cells (SOCOM II's, the name ours: TickLine's 0x20EF50) */
+    void SetupWideLine(const CAiMap::line &line, const LINE_DATA &data);
+    /* the map's lines ticked: each drawn as a line unless a polygon without its outline, each
+     * polygon filled with triangles (SOCOM 1's TickLines, TickLine and SetupPolygon, 0x20E370,
+     * 0x20E470, 0x20F5C0) */
+    void TickLines(const CAiMap &map, float fPulseTrans, bool bDim);
+    void TickLine(const CAiMap::line &line, float fPulseTrans, bool bDim);
+    void SetupPolygon(const CAiMap::line &line, float fPulseTrans, bool bDim);
     /* the pen put on a cell, and a line drawn to a point or a cell (SOCOM 1's LineTo, the cell's
      * forms SOCOM II's; the line drawn back, none when the cell has no point) */
     void MoveTo(const CAiMapLoc &loc);
@@ -423,9 +428,9 @@ bool CAiLinePtItr::IsValid() const
 /* the wide line's polygons along a point walk (the C2D library's, OVL1 0x357F30; unwritten) */
 extern "C" void func_00357F30(CPolySet *polys, CPtItr *itr, float width);
 
-/* a line's polygons: a new set kept, built along the line's cells, coloured and faded as the type
- * says (SOCOM II's; the name SOCOM 1's, whose SetupPolygon built them itself) */
-void CZLineMap::SetupPolygon(const CAiMap::line &line, const LINE_DATA &data)
+/* a wide line's polygons: a new set kept, built along the line's cells, coloured and faded as the type
+ * says (SOCOM II's; the name ours -- SOCOM 1's SetupPolygon is the polygon fill, 0x20F5C0) */
+void CZLineMap::SetupWideLine(const CAiMap::line &line, const LINE_DATA &data)
 {
     CPolySet *polys = new CPolySet;
 
@@ -436,4 +441,20 @@ void CZLineMap::SetupPolygon(const CAiMap::line &line, const LINE_DATA &data)
     func_00357F30(polys, &itr, data._fWidth);
     polys->SetColor(data.color);
     polys->SetTrans((1.0f / 128.0f) * data.opacity);
+}
+
+/* each of the map's lines: drawn as a line unless it is a polygon without its outline, and a
+ * polygon filled (SOCOM 1's TickLines; the polygon's own tick, 0x20F5C0, SOCOM II's) */
+void CZLineMap::TickLines(const CAiMap &map, float fPulseTrans, bool bDim)
+{
+    const CAiMap::lines &lines = map.m_lineTable;
+
+    for (CAiMap::lines::const_iterator i = lines.begin(); i != lines.end(); ++i) {
+        bool drawn = !(bool)(*i).m_polygon || (bool)(*i).m_outline;
+
+        if (drawn)
+            TickLine(*i, fPulseTrans, bDim);
+        if ((bool)(*i).m_polygon != false)
+            SetupPolygon(*i, fPulseTrans, bDim);
+    }
 }
