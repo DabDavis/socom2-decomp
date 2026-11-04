@@ -2060,6 +2060,22 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the kit and AI states, round 37** (seal_tasks.cpp's fire-mode, signal, create and in-state tasks):
+  - the type test `e && e->m_type == t ? e : 0` stays a value (sltu, beqz, xori/sltiu, movz) only inside an inline that
+    also holds the switch producing `e` -- written in the caller every spelling folds it back into branches (CTTurret's
+    test reproduced; the Tick stays 8 bytes long on a block boundary);
+  - an inline member called through a reference or pointer local keeps the object's address in one saved register across
+    calls with every field at an offset from it; called as `cmd->m.f()` MW folds the address into the outer object's
+    offsets; through a cast pointer it hoists each field's address into a register of its own; locals declared ahead of
+    TASK_SEAL's renumber the saved registers (CTSignal::Tick 0x5D16E0 needed a copy of the SEAL and the controller both
+    declared first);
+  - a 1-bit field tested `== 1` compiles to andi, xori, sltiu into the bool's register; a bit or byte tested through an
+    inline `? true : false` is materialised with sltu before the branch; compares read through a const view share one
+    load and a following inline reloads the member, a switch on the same member makes a jump table instead;
+  - `x &= ~0` written in place folds away, through an inline with a `clear` parameter it stays a dsll32/dsrl32 zero
+    extension; assigning inside an inline's by-value argument, `f(s = g())`, keeps v0 for the inline's use with the copy in
+    the delay slot; a jump table's length shows the highest case label (CAiSFollow::OnSignal 0x5FDF80's runs to 7: an
+    empty `case 7:`); CTFireMode's +0x8 block is SOCOM 1's CAiWepHint; seal_tasks.cpp 72 of 76.
 - **Tells from the HUD, round 44** (zui_2d.cpp's list box on its real base, the teletype's commands):
   - a list walk's end() in a local declared before the iterator gives the iterator s0, end() in the test swaps the two
     (CUIListBox::UpdateUIVar 0x3754D0, TickZAnimCmd 0x372980 twice); sequential loops sharing one function-level `int i`
