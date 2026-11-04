@@ -2060,6 +2060,23 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the SEALs, round 31** (the AI controller's net state and fire timing, the animate and deploy states):
+  - `switch (st.m_code = f())` gives the target's `andi v1,v0,0xff`; switching on `st.m_code` after the store re-reads the
+    byte with `lbu` (CSealCtrlAi::GetAiNetState 0x56F6C0); a bool call's result inside a materialised `&&` gets only
+    `sltu`, `(int)f() && ...` the target's `andi 0xff` and `sltu` (FireWhenReady 0x563BD0);
+  - two flag tests through an inline accessor share one load and leave the later read-modify-write its own reload; written
+    in place, MW reuses the first load and fills no delay slot; `x > k` materialises with `bc1f` and the 1 in its delay
+    slot, `!(x <= k)` adds an `xori`;
+  - include/list's non-const `front()` and `erase(begin())` in one loop make MW keep `&end_.next_` in a saved register;
+    reading the front through the const `begin()` gives the target's plain loads (CAiSAnimate::Tick 0x55A920); `if (s != 3)
+    {...} else s = 3;` gives `move s,v0` (the compare's constant register) with that arm laid last;
+  - an if-chain value read through an inline (`PhaseOf(this)`) makes the callee's own test reload the member, `int step =
+    m_phase` lets MW reuse the load (CAiSDeploy::OnSignal 0x55E3B0); uninitialised declarations at the top in one
+    particular order fixed the static CZSealBody::AcquireRemoteAi 0x56F210 (the six orders of three locals 2-12 off,
+    declaring them where defined 37 off);
+  - zseal.h's AI_FIREPARAMS is embedded at the controller's 0x370 (m_spread at +0x60, m_timeout, m_delay); slot 0xA4's
+    real type is AI_STATE (0x574800 has SOCOM 1's GetAiStateEnum body, GetAiNetState sends it as the state's code) --
+    the retype needs the kit's remote_control.cpp (`AI_STATE CRemoteCtrl::GetJumpFlag() const`), measured neutral there.
 - **Tells from the UI, round 21** (the soft keyboard's text and display units):
   - for a byte, `!x` followed by `x == k` re-extends the loaded byte with `andi 0xff`, `x == 0` reuses it as loaded
     (SkbScale 0x394DA0: its state an unsigned char tested `== 0` first, the "done" block the if's body with `return 0`

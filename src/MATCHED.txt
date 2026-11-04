@@ -7906,6 +7906,7 @@
 0x004E5960 AllocateBacktrace@dpscoreuw
 0x004E5B38 InitViterbi@dpscoreuw
 0x004E5D70 SendResultScoreUserWords
+0x004E6000 DynProgScoreUserWords
 0x004E64E0 DpScoreUwProcess
 0x004E6610 InitScoreUserWords
 0x004E67B0 ControlDpScoreUw
@@ -7932,10 +7933,15 @@
 0x004EB5C8 ScoreCompare@isowdp
 0x004EB5E8 CollectDummyMemory
 0x004EBB98 InitNBestDynProgProcess
+0x004EBCB0 InitDynprogContext
 0x004EC130 func_004EC130
+0x004EC1F8 CleanUpParBTProc
 0x004EC3A0 PrunDynProg
+0x004EF070 CopyParBT
+0x004EF6C8 FindBestBacktraces
 0x004EF950 FindBestRecognised
 0x004EFB18 ExpandGarbageArrays
+0x004EFC60 NBestDynProgProcess
 0x004F0BC0 ConstructNBestDynProg
 0x004F0C00 ExtendBacktraceStack
 0x004F0C80 ScoreCompare@nbestdp
@@ -8021,6 +8027,8 @@
 0x004FD2E8 CombinerInit
 0x004FD3E8 CombinerControl
 0x004FD4E8 ResizeQueues
+0x004FF158 FreeLanguage
+0x004FFAC0 NormCorrection
 0x00500DF8 ConstructDistCalc
 0x00500EB8 GetpCachedDistances
 0x00500EC0 GetDistanceOffset
@@ -8964,6 +8972,7 @@
 0x0055A7D0 Virtual48__10CAiSPursueFiP8CAiState
 0x0055A810 GetStatus__10CAiSPursueCFv
 0x0055A8D0 OnSignal__10CAiSPursueFQ28CAiState6SIGNALP11CSealCtrlAi
+0x0055A920 Tick__11CAiSAnimateFP11CSealCtrlAi
 0x0055ABC0 OnSignal__11CAiSAnimateFQ28CAiState6SIGNALP11CSealCtrlAi
 0x0055C330 Virtual14__11CAiSGrenadeFP11CSealCtrlAiP8CAiState
 0x0055C480 func_0055C480
@@ -8972,6 +8981,7 @@
 0x0055C740 func_0055C740
 0x0055CCA0 func_0055CCA0
 0x0055CCD0 OnSignal__11CAiSGrenadeFQ28CAiState6SIGNALP11CSealCtrlAi
+0x0055E3B0 OnSignal__10CAiSDeployFQ28CAiState6SIGNALP11CSealCtrlAi
 0x0055E660 CanPushAiState__10CAiSDeployF8AI_STATEP11CSealCtrlAi
 0x0055EAA0 func_0055EAA0
 0x0055EBE0 func_0055EBE0
@@ -9017,6 +9027,7 @@
 0x005632A0 GetDuckStance__11CSealCtrlAiCFP10CZSealBodyR11SEAL_STANCE
 0x00563BB0 func_00563BB0
 0x00563BC0 func_00563BC0
+0x00563BD0 FireWhenReady__11CSealCtrlAiFR13AI_FIREPARAMSf
 0x00564CF0 func_00564CF0
 0x005657C0 func_005657C0
 0x005658D0 func_005658D0
@@ -9057,8 +9068,10 @@
 0x0056DCA0 ClearGoal__9CSealCtrlF9GOAL_TYPE
 0x0056DD50 ResetToInitialState__11CSealCtrlAiFv
 0x0056DDC0 OnRecycleEntity__11CSealCtrlAiFP7CEntity
+0x0056F210 AcquireRemoteAi__10CZSealBodyFP10CZSealBody
 0x0056F460 __dt__11CRemoteCtrlFv
 0x0056F4C0 SetAiNetState__11CRemoteCtrlFUi
+0x0056F6C0 GetAiNetState__11CSealCtrlAiCFv
 0x0056F960 GetAiNetState__9CSealCtrlCFv
 0x00570D10 CanScan__8CAiStateCFv
 0x00570D20 func_00570D20
@@ -9127,7 +9140,7 @@
 0x00575C80 _min<f>__2aiFRCfRCf_RCf
 0x00575CB0 _close_enough<i>__FRCiRCiRCi_b
 0x00575CF0 erase__Q23std70__list_deleter<15ANIM_TIMED_CALL,Q23std28allocator<15ANIM_TIMED_CALL>>FQ33std70__list_deleter<15ANIM_TIMED_CALL,Q23std28allocator<15ANIM_TIMED_CALL>>19generic_iterator<0>Q33std70__list_deleter<15ANIM_TIMED_CALL,Q23std28allocator<15ANIM_TIMED_CALL>>19generic_iterator<0>
-0x00575DB0 func_00575DB0
+0x00575DB0 erase__Q23std70__list_deleter<15ANIM_TIMED_CALL,Q23std28allocator<15ANIM_TIMED_CALL>>FQ33std70__list_deleter<15ANIM_TIMED_CALL,Q23std28allocator<15ANIM_TIMED_CALL>>19generic_iterator<0>
 0x00575F40 erase__Q23std68__list_deleter<14ANIM_SPAN_CALL,Q23std27allocator<14ANIM_SPAN_CALL>>FQ33std68__list_deleter<14ANIM_SPAN_CALL,Q23std27allocator<14ANIM_SPAN_CALL>>19generic_iterator<0>Q33std68__list_deleter<14ANIM_SPAN_CALL,Q23std27allocator<14ANIM_SPAN_CALL>>19generic_iterator<0>
 0x00576120 func_00576120
 0x005761B0 func_005761B0
