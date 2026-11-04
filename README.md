@@ -2032,6 +2032,23 @@ exists); 3.0b38/b50/b52 still untold.
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the kit and AI states, round 28** (seal_ailines.cpp whole, CAiTarget's tick and setters, the breach door):
+  - IN DEFERRED MODE `#pragma dont_inline` ACTS BY ITS STATE AT THE UNIT'S END: set around two functions and reset, or
+    flushed with `defer_codegen` off/on, every inline still expands; left on, every inline stays a call -- the implicit
+    CPnt3D assignment and the static initialiser's constructors included; so a unit whose functions call tiny inline
+    constructors and accessors out of line, the copies right after their first caller, is a dont_inline unit: write its
+    struct copies field by field (seal_ailines.cpp 16 of 16: DrawLine 0x5FFDF0 and LineTo 0x5FFF40, SOCOM 1's; MoveTo and
+    the copies StackTop 0x5FFDB0, LineColor 0x5FFDC0, CPnt4D(ffff) 0x5FFDD0 -- the two names ours);
+  - an inline's final `return a == b;` compiles to xor/sltiu, `if (a == b) return true; return false;` gives the target's
+    branching form (SOCOM 1's compare_target); a member of a class nested in another header's class needs that header
+    included -- ai_states.h includes ai.h now (neutral over 30 units), CAiSBreach::m_78 being a CAiMap::action *;
+  - CAiTarget::OnSetVisible 0x60A2F0 (SOCOM 1's, the validity test inlined), Tick(CEntity *, float) 0x60A460 (the caller
+    puts dT back into f12: the float argument is real), SetTarget(CTarget *) 0x60A5F0 (pinned: Tick calls it out of line;
+    SOCOM 1's took a threat float too), the target-change test 0x60A6A0, the breach door's centre cell 0x5F3100;
+  - open: the breach side test 0x5F3270 (16: the 0 in the dots is the points' literal), CAiSScript::CanPushAiState (0x84
+    vs 0x80), GetTimeSinceLastSighting (3: the igdump colouring shows the field numbered before the clock in every
+    spelling); __sinit_seal_ailines.cpp 0x668FB0 stays unnamed -- named, it scores WRONG, our initialiser calling CStack()
+    out of line under the unit's pragma where the target inlines it.
 - **Tells from the SEALs, round 27** (UpdateStance, the standing and turning set, the explosive damage, the net pickup):
   - any assignment to a variable at a loop's exit, even `sum = +sum;`, gives the exit its own label, so MW does not jump
     the loop's first test straight past it (StandStill 0x586240; `(void)0;` and `*= 1.0f` do not); a `short` local set in
