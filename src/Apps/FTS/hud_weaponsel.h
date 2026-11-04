@@ -330,6 +330,13 @@ public:
     /* the cursor moved a slot on (2) or back (-2), round the five, on past the slots its test
      * refuses; the category page shows the slot's weapon (0x23EAE0; the name ours) */
     void Scroll(signed char dir);
+    /* the five selected slots' weapons given to the HUD owner's character (0x23E5E0; the name ours) */
+    void SetCharacterWeapons();
+    /* whether a slot can be chosen (0x23E910; the name ours), the equipment slot holding an item
+     * (the one asked about skipped) and the item's own test (inline) */
+    bool CanSelect(int index);
+    inline int FindEquipment(EQUIP_ITEM item, int skip);
+    inline void CheckItem(EQUIP_ITEM item, int index, bool &ok);
     inline void Set203(bool on);
     inline void SetGL(bool on);
     inline void SetF2000(bool on);

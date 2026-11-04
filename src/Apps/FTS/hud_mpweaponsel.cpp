@@ -36,8 +36,34 @@ public:
     EQUIP_ITEM GetPrimaryEnum() const;
 };
 
+/* a character type's weapons (zchar.h's CCharacterWeap and CCharacterWeapList: a 12-byte weapon
+ * and its ammunition, the vector of them; the AI core's header reaches zweapon.h, whose CZWeapon
+ * this unit stands in for) */
+class CCharacterWeap {
+public:
+    void SetupCharacterWeapon(EQUIP_ITEM item);
+
+    EQUIP_ITEM m_wepId;   // 0x0
+    unsigned char m_ammoId;   // 0x1
+    int m_ammoCount;   // 0x4
+    int m_magCount;   // 0x8
+};
+
+class CCharacterWeapList : public std::vector<CCharacterWeap> {
+public:
+    void AddWeapon(EQUIP_ITEM item);
+};
+
+class CCharacterType {
+public:
+    unsigned char _0[0x2e8];
+    CCharacterWeapList m_weapons;   // 0x2e8
+};
+
 class CZSealBody {
 public:
+    CCharacterType *GetCharacter();
+
     unsigned char _0[0x5e0];
     CZKit m_kit;   // 0x5e0
 };
@@ -270,8 +296,6 @@ void SlotList::SetTrans(float trans)
             m_slots[i]->SetTrans(trans);
 }
 
-/* whether the list's slot can be chosen (0x23E910; no row named yet) */
-extern "C" bool func_0023E910(CMPWeaponSel *sel, int index);
 
 /* the cursor a slot on or back, round the five, again while the slot is refused; the page then
  * shows the slot's weapon, updated. Pinned: the target calls itself and the page's SetWeapon out
@@ -288,7 +312,7 @@ void CMPWeaponSel::Scroll(signed char dir)
         if (m_list.m_34 < 0)
             m_list.m_34 = 4;
     }
-    if (!func_0023E910(this, m_list.m_34))
+    if (!CanSelect(m_list.m_34))
         Scroll(dir);
 
     /* through a slot pointer (indexed straight, MW adds the offset to `this` the other way round) */
@@ -298,6 +322,75 @@ void CMPWeaponSel::Scroll(signed char dir)
     func_0023E030(this, 0.0f);
 }
 #pragma auto_inline reset
+
+/* the HUD owner's side (fts code, 0x2C30B0: a null-tested seal; no row named yet) */
+extern "C" bool func_002C30B0(CZSealBody *seal);
+
+/* the item in one of the equipment slots (2-4) but the one asked about, its index, or -1 */
+inline int CMPWeaponSel::FindEquipment(EQUIP_ITEM item, int skip)
+{
+    for (int i = 2; i < 5; i++) {
+        if (i != skip && m_selected[i].m_weapon && m_selected[i].m_weapon->m_item == item)
+            return i;
+    }
+    return -1;
+}
+
+/* items 141 and 254 never chosen, 185 and 186 only when another equipment slot holds the same
+ * (by value: the item's one `lb` serves this switch and IsLocked's, each masking it) */
+inline void CMPWeaponSel::CheckItem(EQUIP_ITEM item, int index, bool &ok)
+{
+    switch (item) {
+    case 254:
+    case 141:
+        ok = false;
+        break;
+    case 186:
+        ok = FindEquipment((EQUIP_ITEM)186, index) != -1;
+        break;
+    case 185:
+        ok = FindEquipment((EQUIP_ITEM)185, index) != -1;
+        break;
+    }
+}
+
+/* the C4 locked out for the owner's side by the server's valve (16 one side, 32 the other; the
+ * one-case switch is the target's layout: the null preset in the compare's delay slot, a `b` over
+ * the case) */
+static inline bool IsLocked(CZWeapon *weapon, EQUIP_ITEM item)
+{
+    if (!weapon)
+        return false;
+    CValve *valve = 0;
+
+    switch (item) {
+    case 151:
+        valve = CValve::GetByName("Enable_c4");
+        break;
+    }
+    CZSealBody *owner = CHUD::GetHUDOwner();
+    int bit = 16;
+    if (func_002C30B0(owner))
+        bit = 32;
+    return (valve ? bit & valve->m_value : 0) != 0;
+}
+
+/* whether a slot can be chosen: an empty one can; items 141 and 254 never; 185 and 186 only
+ * when another equipment slot holds the same; the C4 not while its valve locks it out
+ * (0x23E910; the name ours -- Scroll and the selector's update 0x23E030 call it). The slot's
+ * weapon is read straight each time: a CSE temporary, numbered after the inlines' item, takes a3
+ * where a named `CZWeapon *weapon` (or a slot pointer or reference) swaps it with the item's t0 */
+bool CMPWeaponSel::CanSelect(int index)
+{
+    bool ok = true;
+
+    if (m_selected[index].m_weapon) {
+        CheckItem(m_selected[index].m_weapon->m_item, index, ok);
+        if (IsLocked(m_selected[index].m_weapon, m_selected[index].m_weapon->m_item))
+            ok = false;
+    }
+    return ok;
+}
 
 /* while up: the lists, the page, the title and the backdrops on, then updated */
 void CMPWeaponSel::On()
@@ -322,6 +415,30 @@ void CMPWeaponSel::Off()
     m_bitmap1.Off();
     m_bitmap2.Off();
     m_bitmap3.Off();
+}
+
+/* the five selected slots' weapons given to the HUD owner's character: the weapons it has set up
+ * again, the rest pushed and set up unless empty (0x23E5E0; the name ours -- its one caller,
+ * 0x240600, is unwritten) */
+void CMPWeaponSel::SetCharacterWeapons()
+{
+    CCharacterWeapList &weapons = CHUD::GetHUDOwner()->GetCharacter()->m_weapons;
+    int i;
+
+    for (i = 0; i < 5; i++) {
+        if (i >= weapons.size())
+            break;
+        weapons[i].SetupCharacterWeapon(m_selected[i].m_weapon->m_item);
+    }
+    for (; i < 5; i++) {
+        CZWeapon *weapon = m_selected[i].m_weapon;
+        EQUIP_ITEM item;
+
+        weapons.AddWeapon(weapon->m_item);
+        item = weapon->m_item;
+        if (item != EQUIP_NONE)
+            weapons[i].SetupCharacterWeapon(item);
+    }
 }
 
 /* the name and the bitmap faded together */
