@@ -417,6 +417,7 @@ public:
     virtual ~CTeleType();
     virtual int GetZAnimCmdType(const char *name);
     virtual void Tick(float dT);
+    virtual C2DAnimCmdHdr *ParseZAnimCmd(_zrdr *rdr);
     virtual bool TickZAnimCmd(_zanim_cmd_hdr *hdr, float *dT, bool *done);
     virtual void SetString(const char *s, bool translate);
     void LoadSpec(const CTtySpec &spec);
@@ -1531,6 +1532,42 @@ bool CSliderBar::TickZAnimCmd(_zanim_cmd_hdr *hdr, float *dT, bool *done)
     default:
         return C2DButton::TickZAnimCmd(hdr, dT, done);
     }
+}
+
+/* CONTINUE, SCROLL_UP, SCROLL_DOWN and FINISH as commands of their own, no argument -- all four
+ * tags looked up first; anything else the renderable string's (slot 22 of CTeleType's vtable
+ * 0x4078A0, after TickZAnimCmd as SOCOM 1's ParseZAnimCmd 0x3904E0, which parsed the same four) */
+C2DAnimCmdHdr *CTeleType::ParseZAnimCmd(_zrdr *rdr)
+{
+    C2DAnimCmdHdr *cmd;
+    _zrdr *cont = zrdr_findtag(rdr, "CONTINUE");
+    _zrdr *up = zrdr_findtag(rdr, "SCROLL_UP");
+    _zrdr *down = zrdr_findtag(rdr, "SCROLL_DOWN");
+    _zrdr *finish = zrdr_findtag(rdr, "FINISH");
+
+    if (cont) {
+        cmd = (C2DAnimCmdHdr *)_calloc(1, sizeof(C2DAnimCmdHdr), 0, 0);
+        cmd->header.timeless = 1;
+        cmd->header.data_size = sizeof(C2DAnimCmdHdr);
+        cmd->m_type = GetZAnimCmdType("CONTINUE");
+    } else if (up) {
+        cmd = (C2DAnimCmdHdr *)_calloc(1, sizeof(C2DAnimCmdHdr), 0, 0);
+        cmd->header.timeless = 1;
+        cmd->header.data_size = sizeof(C2DAnimCmdHdr);
+        cmd->m_type = GetZAnimCmdType("SCROLL_UP");
+    } else if (down) {
+        cmd = (C2DAnimCmdHdr *)_calloc(1, sizeof(C2DAnimCmdHdr), 0, 0);
+        cmd->header.timeless = 1;
+        cmd->header.data_size = sizeof(C2DAnimCmdHdr);
+        cmd->m_type = GetZAnimCmdType("SCROLL_DOWN");
+    } else if (finish) {
+        cmd = (C2DAnimCmdHdr *)_calloc(1, sizeof(C2DAnimCmdHdr), 0, 0);
+        cmd->header.timeless = 1;
+        cmd->header.data_size = sizeof(C2DAnimCmdHdr);
+        cmd->m_type = GetZAnimCmdType("FINISH");
+    } else
+        cmd = CRenderableString::ParseZAnimCmd(rdr);
+    return cmd;
 }
 
 /* Continue (1) restarts the pause; scroll up/down (2, 3) move the window a line once all is typed;
