@@ -737,9 +737,13 @@ const char *ZAnimWildcardNext()
 
 /* a name with stars given the search's current digits, in a buffer of its own; the name as it
  * is without a search or a star.
- * OPEN (0x268520), 14 instructions: the name and the digit index take each other's registers
- * (s0/s4), and the target recomputes &name[i] in the second loop where this steps it -- as if
- * MW could not hold the name invariant there; no declaration order or position changes either */
+ * OPEN (0x268520), 10 instructions, the saved registers alone: the name and the digit index take
+ * each other's (s0/s4). Round 9: the second loop over a local copy of the buffer (`s`, then `name
+ * = s`) gives the target's &s[i] recomputed each pass (14 -> 10). MW's colouring
+ * (build/scratch/core/ig, igsteps.py): the name, the buffer coalesced into it, stays over K longest
+ * and is pushed last, so it takes s0; the target colours the index first. Tried: the index first
+ * defined before the second loop (0x158), declared first, the buffer returned from the branch
+ * (0x168), a const copy of the name */
 const char *ZAnimWildcardApply(const char *name)
 {
     int len;
@@ -760,17 +764,19 @@ const char *ZAnimWildcardApply(const char *name)
     if (found) {
         _local_wildcard_str = (char *)_realloc(_local_wildcard_str, len + 1, 0, 0);
         strcpy(_local_wildcard_str, name);
-        name = _local_wildcard_str;
+        char *s = _local_wildcard_str;
+
         for (i = len - 1; i >= 0; i--) {
-            if (name[i] == '*') {
+            if (s[i] == '*') {
                 char digit[4];
 
                 sprintf(digit, "%d", _digit_val[n]);
-                ((char *)name)[i] = digit[0];
+                s[i] = digit[0];
                 if (n < _digit_count)
                     n++;
             }
         }
+        name = s;
     }
     return name;
 }
