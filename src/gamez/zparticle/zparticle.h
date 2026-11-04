@@ -78,10 +78,16 @@ class CNode;
  * __sinit_zparticle.cpp registering ~CNodeVector for it, SOCOM II's 0x1EA340 four this-tests deep) */
 class CNodeVector : public std::vector<CNode *> {
 };
+class CDI;
+/* a node's collision pieces (znode.h's class: PullVisuals gathers them) */
+class CDIVector : public std::vector<CDI *> {
+};
 /* zdb::CNode, as much as the particles call (znode.h would bring zmath.h's CPnt4D with it) */
 class CNode {
 public:
-    unsigned char _0[0x5c];   // 0x0: tag_NODE_PARAMS
+    unsigned char _0[0x58];   // 0x0: tag_NODE_PARAMS
+    unsigned short m_type;   // 0x58: 2 for an instance of a model (znode.h's)
+    unsigned char _5a[2];   // 0x5a
     unsigned int _5c : 7;   // 0x5c
     unsigned int m_transparent : 1;   // 0x5c: bit 7
     unsigned int _5c_8 : 24;
@@ -107,8 +113,18 @@ public:
     void DeleteVisuals();
     void AddVisual(CVisual *vis);
 
-    unsigned char _64[0x9c - 0x64];
+    CNodeVector &GetChildren() { return m_child; }
+    /* the collision pieces by reference (ours: PullVisuals' walk keeps the vector's address in a
+     * saved register, as through GetChildren()) */
+    CDIVector &GetDIs() { return m_di; }
+
+    unsigned char _64[4];   // 0x64
+    CNodeVector m_child;   // 0x68 (znode.h's)
+    CDIVector m_di;   // 0x74
+    unsigned char _80[0x9c - 0x80];
     float m_Opacity;   // 0x9c
+    unsigned char _a0[0xb4 - 0xa0];
+    CNode *m_model;   // 0xb4: an instance's model (znode.h's CModel *)
 };
 
 class CCamera {
@@ -120,7 +136,7 @@ class CWorld : public CNode {
 public:
     static CWorld *m_world;
 
-    unsigned char _a0[0x128 - 0xa0];
+    unsigned char _b8[0x128 - 0xb8];
     CCamera *m_camera;   // 0x128
 };
 }
