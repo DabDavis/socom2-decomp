@@ -66,6 +66,9 @@ struct _zrdr {
 class CUIVariable : public _zrdr {
 public:
     void UpdateDependents();
+    /* a value written out as text into a buffer of that size (zui.h's static, zui_var.cpp's
+     * 0x3860F0) */
+    static char *Format(_zrdr *value, char *buf, int size);
     /* a real set, the watchers told, unless it already holds it (zui.h's operator=(float)) */
     void SetReal(float f)
     {
@@ -118,9 +121,6 @@ public:
 zdb::CTexHandle *PrepTexture(const char *name, zdb::CTextureRelocMgr *mgr);
 
 
-/* a UI variable's value written out as text into a buffer (zui_var.cpp's, 0x3860F0; no row
- * named yet) */
-extern "C" char *func_003860F0(CUIVariable *var, char *buf, int size);
 
 /* a UI variable's hook (SOCOM 1's DWARF; the vtable pointer first) */
 class UIVarMixin {
@@ -757,7 +757,7 @@ void CRenderableString::UpdateUIVar(CUIVariable *var)
     char buf[10500] = {0};
 
     if (UIVarMixin::m_uivar && UIVarMixin::m_uivar == var) {
-        Format(func_003860F0(UIVarMixin::m_uivar, buf, 10499));
+        Format(CUIVariable::Format(UIVarMixin::m_uivar, buf, 10499));
         Update();
     }
 }
@@ -945,7 +945,7 @@ void C2DButton::UpdateUIVar(CUIVariable *var)
     char buf[10500] = {0};
 
     if (UIVarMixin::m_uivar && UIVarMixin::m_uivar == var) {
-        char *caption = func_003860F0(UIVarMixin::m_uivar, buf, 10499);
+        char *caption = CUIVariable::Format(UIVarMixin::m_uivar, buf, 10499);
 
         _szCaption = caption;
         if (caption) {

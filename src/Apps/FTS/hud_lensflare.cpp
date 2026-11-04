@@ -15,6 +15,7 @@
 #include <string.h>
 
 #include "../../gamez/znode/znode.h"
+#include "../../gamez/zcamera/zcamera.h"
 #include "../../gamez/zrdr/zrdr.h"
 #include "hud_lensflare.h"
 
@@ -110,7 +111,6 @@ class CAssetMgr {
 public:
     static CAssetList m_assets;
 };
-class CCamera;
 }
 
 /* the HUD the elements' bitmaps are added to */
@@ -169,15 +169,14 @@ bool CFlareElement::Load(_zrdr *rdr)
 }
 
 /* the app camera: only its world camera (camera.h's CAppCamera, +0xB4), which the flare's points
- * are projected through -- a point to its screen offsets (a 12-byte point: the target's frame keeps
- * it at sp+48), false when off screen */
+ * are projected through by CCamera::GetScreenPos -- a point to its screen offsets (a 12-byte point:
+ * the target's frame keeps it at sp+48), false when off screen */
 class CAppCamera {
 public:
     unsigned char _0[0xb4];
     zdb::CCamera *m_camera;   // 0xb4
 };
 extern CAppCamera *appCamera;
-extern "C" bool func_00290370(zdb::CCamera *cam, const CPnt3D *pos, CPnt3D *screen);
 
 /* shown on screen at the point, centred on the screen less the point's offset scaled by the position
  * scale, sized and faded by `t` through the ranges -- or hidden, when not visible or off screen. The
@@ -187,7 +186,7 @@ void CFlareElement::Place(float t, bool visible, const CPnt3D *pos)
     if (visible) {
         CPnt3D xy;
 
-        if (func_00290370(appCamera->m_camera, pos, &xy)) {
+        if (appCamera->m_camera->GetScreenPos(pos, &xy)) {
             m_bmp.On();
             float s = m_scale + t * m_scaleRange;
             float w = s * m_halfWidth;

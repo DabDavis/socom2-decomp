@@ -70,6 +70,8 @@ public:
     /* (ours: the node action's test reads the player's sides through it -- expanded ahead of the
      * AND, the right operand is loaded first) */
     unsigned int GetTeamFlags() const { return m_teamflags; }
+    /* the action under the reticule, or near it (zseal.h's, SOCOM 1's; 0x5AA240) */
+    class CNodeAction *GetReticuleAction(bool b);
 };
 
 /* a node's action (zseal.h's) */
@@ -183,7 +185,6 @@ void func_005EAF20(CSealUnit *unit, int msg, int flags, float rate);
 void func_005EAEB0(CSealUnit *unit);
 void func_005EAD70(CSealUnit *unit, int member, unsigned char cmd, int flags);
 void func_005EABA0(CSealUnit *unit, int member, unsigned char cmd, int flags);
-CNodeAction *func_005AA240(CZSealBody *seal, int which);
 bool func_0058DFA0(unsigned char member);
 /* the mission's */
 void func_002B6530(void *queue, const char *name, int a, int b, int c, float delay);
@@ -834,7 +835,7 @@ int tcmUpdateNodeAction(CZSealBody *player, int arg)
 {
     int r = 1;
     CNodeAction *action = s_tcmCurNode->m_action;
-    CNodeAction *avail = func_005AA240(player, 0);
+    CNodeAction *avail = player->GetReticuleAction(false);
 
     if (avail && action && avail->IsEnabled() != false && action->IsEnabled() != false) {
         CSealCtrl *ctrl = player ? player->m_ctrl : 0;
