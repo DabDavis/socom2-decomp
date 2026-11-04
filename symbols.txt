@@ -6871,7 +6871,7 @@
 0x003711A0 0xE8 ParseZAnimCmd__11CRadioStripFP5_zrdr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00371290 0x108 GetZAnimCmdType__11CRadioStripFPCc  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x003713A0 0x1A8 Draw__9CCheckBoxFRC7CMatrixPQ23zdb16CTextureRelocMgr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x00371550 0x128 func_00371550  # OVL1
+0x00371550 0x128 LoadSpec__9CCheckBoxFRC13CCheckBoxSpecPQ23zdb10CTexHandle  # OVL1; by hand (the HUD lane, round 31: zui_2d.cpp -- SOCOM 1's CCheckBox::LoadSpec (0x38B380 there): CCheckBoxSpec::CreateDisplayObj's call)
 0x00371680 0x134 HandlePad__9CCheckBoxFPC4CPadi  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x003717C0 0x21C Draw__13CHProgressBarFRC7CMatrixPQ23zdb16CTextureRelocMgr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x003719E0 0x30 Tick__13CHProgressBarFf  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
@@ -6882,7 +6882,7 @@
 0x003721E0 0x3C func_003721E0  # OVL1
 0x00372220 0x18C Draw__10CSliderBarFRC7CMatrixPQ23zdb16CTextureRelocMgr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x003723B0 0x13C Tick__9C2DButtonFf  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x003724F0 0x148 func_003724F0  # OVL1
+0x003724F0 0x148 LoadSpec__10CSliderBarFRC14CSliderBarSpecPQ23zdb10CTexHandle  # OVL1; by hand (the HUD lane, round 31: zui_2d.cpp -- SOCOM 1's CSliderBar::LoadSpec (0x38C0A0 there): CSliderBarSpec::CreateDisplayObj's call, C2DButton::LoadSpec first)
 0x00372640 0x138 TickZAnimCmd__10CSliderBarFP14_zanim_cmd_hdrPfPb  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00372780 0xE8 ParseZAnimCmd__10CSliderBarFP5_zrdr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00372870 0x108 GetZAnimCmdType__10CSliderBarFPCc  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
@@ -6911,7 +6911,7 @@
 0x00376870 0x150 TickZAnimCmd__9C2DButtonFP14_zanim_cmd_hdrPfPb  # OVL1; by hand (the HUD lane, round 22: slot +0x64 of C2DButton's table 0x407790; CRadioStrip::TickZAnimCmd 0x3710D0 falls through to it)
 0x003769C0 0x180 ParseZAnimCmd__9C2DButtonFP5_zrdr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00376B40 0x90 UpdateUIVar__9C2DButtonFP11CUIVariable  # OVL1; by hand (the HUD lane: the thunk 0x37D0E0 (-192, C2DButton's UIVarMixin table) jumps to it; its own variable's text (0x3860F0 into a 10500-byte buffer) made the caption, as SOCOM 1's C2DButton::UpdateUIVar)
-0x00376BD0 0x464 func_00376BD0  # OVL1
+0x00376BD0 0x464 LoadSpec__9C2DButtonFRC11CButtonSpec  # OVL1; by hand (the HUD lane, round 31: SOCOM 1's C2DButton::LoadSpec -- CCheckBox::LoadSpec 0x371550 calls it first, as SOCOM 1's 0x38B380 calls 0x38F090; not written yet, zui_2d.cpp's)
 0x00377040 0x338 HandlePad__9C2DButtonFPC4CPadi  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00377380 0x6C SetCanHandleInput__9C2DButtonFb  # OVL1; by hand (the HUD lane, round 20: zui_2d.cpp -- C2DButton's table +0x4C, C2D's SetCanHandleInput slot, in all five button tables: the C2D flag (byte 0x14 bit 7) set, then SetNormal unless pressed (0xFC) or active (0xC8), or the disabled state (0x164) applied through 0x3773F0 -- SOCOM 1's SetCanHandleInput's shape)
 0x003773F0 0x114 ShowState__9C2DButtonFP11ButtonState  # OVL1; ours by hand (the HUD lane, round 29: zui_2d.cpp -- SetCanHandleInput(false)'s call with the disabled state: the state made current, the background loaded with its texture, the caption's scale and style and the pulse -- SetNormal's body with its four helpers inlined)
@@ -6938,7 +6938,7 @@
 0x00379C50 0x140 ParseZAnimCmd__12CWrappedTextFP5_zrdr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike); by hand (the HUD lane, round 22: SOCOM 1's vtable names slid one class here -- slot +0x60 of CWrappedText's table 0x4079E0 (and CScrollText's 0x4072F0) holds 0x379C50, CRenderableString's own 0x407A90 holds 0x36FE40; it parses SCROLL_UP and SCROLL_DOWN, the wrapped text's commands, and calls 0x36FE40 as its base; zui_2d.cpp, byte-exact)
 0x00379D90 0x1E0 __dt__12CWrappedTextFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00379F70 0x4C0 SetString__12CWrappedTextFPCc  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x0037A430 0x108 func_0037A430  # OVL1
+0x0037A430 0x108 LoadSpec__12CWrappedTextFRC9CWrapSpecPQ23zdb16CTextureRelocMgr  # OVL1; by hand (the HUD lane, round 31: zui_2d.cpp -- SOCOM 1's CWrappedText::LoadSpec: CWrapSpec::CreateDisplayObj's call; the width, spacing and height, CRenderableString::LoadSpec 0x3792F0, the arrows' textures, places and pulses)
 0x0037A540 0xF0 Draw__17CRenderableStringFRC7CMatrixPQ23zdb16CTextureRelocMgr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0037A630 0x8 Update__17CRenderableStringFv  # OVL1; s1:order by hand (the HUD lane, round 22: SOCOM 1's empty Update sits between CRenderableString's Draw and destructor, as 0x37A630 does between 0x37A540 and 0x37A640; it is the slot at +0xA0 of CTeleType's and CRenderableString's tables -- the first after the UIVarMixin part -- which CTeleType::SetString calls last, as SOCOM 1's calls Update)
 0x0037A640 0x12C __dt__17CRenderableStringFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
