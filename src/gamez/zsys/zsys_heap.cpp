@@ -98,10 +98,12 @@ void *CHeap::Alloc(unsigned int size)
     return _malloc(size, 0, 0);
 }
 
-/* OPEN, 2 instructions short (0x1A4 of 0x1AC), the same blocks: the target materialises the
- * address test (sltu, xori, bnez) where MW here branches on sltu, and gives prev v1 and cur a1
- * (here the other way round). Tried: `!(b < cur)`, this inline bool (== false too), a bool local,
- * cur declared first */
+/* the block given back to the free list in address order, merged with its neighbours when they
+ * touch; a pointer outside the heap freed by the allocator. The walk's cursor is
+ * defined ahead of `prev`: MW numbers a variable at its first definition, so cur then takes a1 and
+ * prev v1, as the target's (declared first but assigned in the for, cur is numbered after prev);
+ * and the skip test is a bool local, which keeps the target's materialised sltu/xori -- either
+ * alone leaves the function 2 instructions short (the world lane's round 14) */
 unsigned int CHeap::Free(void *p)
 {
     if ((char *)p < m_base || (char *)p > m_end) {
@@ -112,11 +114,13 @@ unsigned int CHeap::Free(void *p)
 
     unsigned int size = *(unsigned int *)((char *)p - 4);
     Block *b = (Block *)((char *)p - 4);
+    Block *cur = m_free;
     Block *prev = 0;
-    Block *cur;
 
-    for (cur = m_free; cur; prev = cur, cur = cur->next) {
-        if (b >= cur)
+    for (; cur; prev = cur, cur = cur->next) {
+        bool after = !(b < cur);
+
+        if (after)
             continue;
         if (prev) {
             if ((char *)prev + prev->size == (char *)b) {
