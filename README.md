@@ -2001,6 +2001,19 @@ templates next), and the earlier rounds' opens; 3.0b38/b50/b52 still untold.
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the kit and AI states, round 26** (the firepoint accessors, SetWeaponState, CZKit::PreTick, the CDiPool names):
+  - `ok = true; if (!a || !b) ok = false;` gives the target's `daddiu 1` preset with branch-and-zero (`a && b`, `a != 0 && b !=
+    0` and an if/else all give the wrong code); an empty `case K: return;` keeps its own `b end` block, `case K: break;`
+    folds the compare straight into the end;
+  - a MIN-style ternary of a call put in a local before the multiply gives the target's `mul.s` operand order (written
+    inline, MW puts the field first whichever way it is written); an index from a byte-enum call stored in an `int` local
+    gives `li` for constants and no re-narrowing (an `unsigned char` local gives daddiu plus andi; an inline helper's
+    parameter type must match); putting the use inside the table-test block makes that test's failure jump straight to
+    the return;
+  - CDiPool settled with the game states: CDiList over list<dir *> is the used list (+0x10, implicit destructor), CDirList
+    the free list (+0x1C: a user destructor calling DeleteAll, a count word at +0xC, inline Free/DeleteAll -- DeleteAll has a
+    copy in each overlay, 0x2CD9F0 and 0x5CC6C0, which only an inline gives); one CAiSlice in zseal.h;
+  - open: WeaponsTick 0x5DFC80 (5: case 1's hold test's float registers), GetNodePos 0x5DF930 (5: two temporaries swapped).
 - **Tells from the HUD, round 33** (C2DString's text functions, hud_main.cpp's help windows and hudInit, the popup triggers):
   - a const inline accessor reading a local object's member folds into a frame offset, a non-const one shares the saved
     address register the object's inline constructor and destructor keep (GetCharWidth 0x363C20, AddCharacter 0x362E00);
@@ -2074,7 +2087,8 @@ templates next), and the earlier rounds' opens; 3.0b38/b50/b52 still untold.
 - **Tells from the kit and AI states, round 25** (SOCOM 1's request pool CDiPool, the target ticks, the Cur ammo wrappers):
   - when every small piece of a walk (begin, end, !=, *, the assignment, postfix ++) is a separate call, the walk is an
     inline member inlined only one level: write it inside an inline and call that -- SOCOM 1's CDiPool in a new
-    seal_dipool.h (shared by seal_sensors.cpp and ai_target.cpp) brought dirlist's DeleteAll and Free, CleanupDiPool,
+    seal_dipool.h (shared by seal_sensors.cpp and ai_target.cpp) brought the free list's DeleteAll and Free (CDirList since
+    round 26), CleanupDiPool,
     target_pretick/target_post_tick and their pieces;
   - an iterator kept in memory and re-stored at each step was assigned from begin() (the wrapper's implicit, bitwise
     assignment) with the end taken into a local first -- not for_each, whose by-value parameter goes to a register;

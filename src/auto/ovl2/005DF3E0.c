@@ -4,19 +4,22 @@ typedef signed char s8; typedef unsigned char u8; typedef short s16; typedef uns
 typedef int s32; typedef unsigned int u32; typedef long s64; typedef unsigned long u64;
 typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK32;
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
+#define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
+#pragma mpwc_relax on
+s32 GetAP__10CZSealBodyFR6CPnt3D(char * arg0, char * arg1);
 M2C_UNK Add__6CPnt3DCFPC6CPnt3DP6CPnt3D(char * arg0, char * arg1, char * arg2);
-s32 func_005DFB70(s32 arg0, s32 arg1, s32 arg2);
+s32 GetFirepointPos__10CZSealBodyFR6CPnt3DPCc(char * arg0, char * arg1, char * arg2);
 extern M2C_UNK data_006603F0;
 
 s32 GetAP__10CZSealBodyFR6CPnt3D(char *arg0, char *arg1) {
-    if (M2C_FIELD(arg0, s32 *, 0x14AC) != 0) {
-        M2C_FIELD(arg1, f32 *, 0) = (f32) M2C_FIELD(arg0, f32 *, 0x14A0);
-        M2C_FIELD(arg1, f32 *, 4) = (f32) M2C_FIELD(arg0, f32 *, 0x14A4);
-        M2C_FIELD(arg1, f32 *, 8) = (f32) M2C_FIELD(arg0, f32 *, 0x14A8);
+    if (SC_MEMBER(arg0, s32 *, 0x14AC) != 0) {
+        SC_MEMBER(arg1, f32 *, 0) = (f32) SC_MEMBER(arg0, f32 *, 0x14A0);
+        SC_MEMBER(arg1, f32 *, 4) = (f32) SC_MEMBER(arg0, f32 *, 0x14A4);
+        SC_MEMBER(arg1, f32 *, 8) = (f32) SC_MEMBER(arg0, f32 *, 0x14A8);
         Add__6CPnt3DCFPC6CPnt3DP6CPnt3D(arg1, arg0 + 0x1C, arg1);
         return 1;
     }
-    return func_005DFB70((s32) arg0, (s32) arg1, (s32) &data_006603F0);
+    return GetFirepointPos__10CZSealBodyFR6CPnt3DPCc(arg0, arg1, &data_006603F0);
 }
