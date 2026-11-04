@@ -208,9 +208,6 @@ struct IntersectStruct {
 };
 }
 
-extern "C" int func_002DE9E0(const char *name);
-/* the next material of a name after an index, 0 past the last (0x2DE970) -- not named */
-extern "C" int func_002DE970(const char *name, int index);
 
 /* everything cleared, one fire mode, a tenth of a second between shots, no impact radius (SOCOM
  * 1's, with SOCOM II's members) */
@@ -731,7 +728,7 @@ void CZDecalSet::ReadDecalEntry(_zrdr *entry)
 
     if (!zrdr_findSTRING(entry, "MATERIALNAME", &material))
         return;
-    int index = func_002DE9E0(material);
+    int index = CMaterialExArray::ResolveMaterialIndex(material);
     const char *texture = 0;
 
     if (!zrdr_findSTRING(entry, "TEXTURENAME", &texture))
@@ -924,7 +921,8 @@ void CZMarkList::ReadWeaponDecals(_zrdr *rdr)
 
         texture = 0;
         material = 0;
-        for (int index = func_002DE970(material, 0); index; index = func_002DE970(material, index)) {
+        for (int index = CMaterialExArray::ResolveDecalMaterialIndex(material, 0); index;
+             index = CMaterialExArray::ResolveDecalMaterialIndex(material, index)) {
             m_decalminsize[index] = minsize;
             m_decalmaxsize[index] = maxsize;
             m_decalTexture[index] = tex;
@@ -1008,7 +1006,6 @@ CNode *GetVisualNode(CNode *node)
  * hit -- at half size, and only where the person takes it (0x5ACA10). The decal is sized between
  * its range at random and faces the shot, or the surface for the weapons that throw (SOCOM 1's,
  * with SOCOM II's blood) */
-extern "C" int func_002DE9E0(const char *name);
 extern "C" int func_005ACA10(CNode *node);
 
 /* one of the decals at random, or the given one when there are none */
@@ -1058,7 +1055,7 @@ void CZMarkList::AddNewMark(IntersectStruct *is, CZProjectile *proj, float size)
     float depth = 100.0f;
     unsigned char permanent = 0;
 
-    if (proj->m_echo && mat != func_002DE9E0("PERSON")) {
+    if (proj->m_echo && mat != CMaterialExArray::ResolveMaterialIndex("PERSON")) {
         CPnt3D d = proj->m_lastPlayerHitPos - is->m_pos;
         float dist = Dot(d, d);
 

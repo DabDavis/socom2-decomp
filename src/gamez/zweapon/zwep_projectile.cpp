@@ -9,6 +9,7 @@
 
 #include "../znode/znode.h"
 #include "../znode/node_world.h"
+#include "../znode/int_material.h"
 #include "zweapon.h"
 #include "../zsys/zsys.h"
 
@@ -251,11 +252,7 @@ bool CZProjectile::HandleTimers()
     return false;
 }
 
-/* a material's extension (int_material.cpp's, SOCOM 1's class): its resistance to a blast only */
-struct CMaterialEx {
-    unsigned char _0[0x24];
-    float m_blastResist;   // 0x24 (the name ours)
-};
+/* (a material's resistance to a blast is int_material.h's CMaterialEx::m_penetration, PENETRATION) */
 
 /* whether an explosion reaches past the other intersection's hits: none counts for a flag-9
  * projectile, nor a hit on the node (or node extension) of the given one; a material that stops
@@ -289,12 +286,12 @@ bool CZProjectile::CheckHit(DiIntersect *di, IntersectStruct *hit)
             if (mat >= CMaterialExArray::m_materialex_list.size())
                 mat = 0;
 
-            CMaterialEx *ex = (CMaterialEx *)CMaterialExArray::m_materialex_list[mat];
+            CMaterialEx *ex = CMaterialExArray::m_materialex_list[mat];
 
             if (!ex)
                 continue;
 
-            float resist = ex->m_blastResist;
+            float resist = ex->m_penetration;
 
             if (resist < 0.0001f)
                 return false;
