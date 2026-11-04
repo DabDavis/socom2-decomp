@@ -2,8 +2,8 @@
  * seal_airesponse.cpp, OVL2 0x609DF0-0x60BF3F (CAiTarget's constructor at 0x60A940; SEAL_AI_PARAMS's
  * at 0x60BF40 follows, seal_aiparams.cpp). SOCOM 1 had the same functions in the same place, right
  * after the response states' destructors; the unit's name is ours. So far the validity test, a
- * target's worth (0x60B7F0) and one getter. Defined in reverse of their image order (-inline
- * deferred). */
+ * target's worth (0x60B7F0), one getter and, round 29, the visibility update 0x60AFA0. Defined in
+ * reverse of their image order (-inline deferred). */
 
 #include "../gamez/zentity/zentity.h"
 #include "../gamez/zseal/seal_dipool.h"
@@ -190,6 +190,69 @@ extern "C" float func_0060B7F0(const CEntity *self, const CTarget *t)
         r *= 1.0f - distScale * t->m_distSq;
     }
     return r;
+}
+
+extern "C" {
+/* how well a viewer sees a target through its finished ray (OVL2 0x60AA20, this unit's, not written:
+ * SOCOM 1's CSealCtrl::ComputeVisibility(DiIntersect *, CTarget *) by its place in the same stretch,
+ * with the viewer's context (a stack record the OVL1 turret code and the sensors build) first) */
+float func_0060AA20(void *viewer, zdb::DiIntersect *di, CTarget *t);
+}
+
+/* a request registered with the world (inline: the visibility update tests it, materialised -- the
+ * null arm first: `d ? ... : false` lays it out after; the name ours) */
+static inline bool DirRegistered(const CDiPool::dir *d)
+{
+    return d == 0 ? false : d->m_state == 4;
+}
+
+/* a registered request's result taken: the request dropped, its DiIntersect handed back, or none
+ * (inline; the name ours) */
+static inline zdb::DiIntersect *DirTake(CDiPool::dir *d)
+{
+    if (d && d->m_state == 4) {
+        d->m_state = 1;
+        return d->m_index >= 0 ? &_diPool.m_pool[d->m_index] : 0;
+    }
+    return 0;
+}
+
+/* how long a request waited, none without one (inline; the name ours) */
+static inline float DirAge(const CDiPool::dir *d)
+{
+    return d ? d->m_age : 0.0f;
+}
+
+/* the target's visibility updated from its finished ray (OVL2 0x60AFA0, new in SOCOM II where SOCOM 1's
+ * CSealCtrl::SensorTick did it inline -- the OVL1 turret code 0x3A82C0 calls it; the name unknown): with
+ * the request registered and its DiIntersect back, how well the viewer sees it (0x60AA20) blended
+ * between the limits, scaled by the time the ray waited, added to the visibility, seen at 1, held within
+ * the limits; else the visible bit (0x200) as it was */
+extern "C" bool func_0060AFA0(void *viewer, CTarget *t)
+{
+    static float vis_min = -0.15f;
+    static float vis_max = 1.15f;
+    static float vis_seen = 1.0f;
+    bool visible = (t->m_flags & 0x200) != 0;
+    CDiPool::dir *d = (CDiPool::dir *)t->m_unk28;
+
+    if (DirRegistered(d)) {
+        t->m_unk28 = 0;
+        zdb::DiIntersect *di = DirTake(d);
+
+        if (di) {
+            float age = DirAge(d);
+            float x = func_0060AA20(viewer, di, t);
+
+            x = vis_min * (1.0f - x) + vis_max * x;
+            x *= age;
+            x += t->m_visibility;
+            visible = x >= vis_seen;
+            _saturate(&x, vis_min, vis_max);
+            t->m_visibility = x;
+        }
+    }
+    return visible;
 }
 
 /* the time since the target was last seen (OVL2 0x60A590; SOCOM 1's, the same 0x14 bytes with the

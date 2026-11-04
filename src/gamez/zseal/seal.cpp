@@ -782,10 +782,9 @@ void CZSealBody::OnRecycleEntity(CEntity *e)
 }
 
 extern "C" {
-/* the victim struck down (OVL2 0x547860, seal.cpp's) and the killer's credit (OVL2 0x59EE20,
- * seal_env.cpp's) -- not written yet */
+/* the victim struck down (OVL2 0x547860, seal.cpp's) -- not written yet; the killer's credit is
+ * CZSealBody::HandleKiller (OVL2 0x59EE20, seal_env.cpp's) */
 void func_00547860(CZSealBody *victim);
-void func_0059EE20(CZSealBody *victim, unsigned int killer, int a);
 /* (OVL1 bss 0x44D400: an animation set the stats skip) */
 extern AnimSet *data_0044D400;
 }
@@ -806,7 +805,7 @@ bool CZSealBody::ExecuteAction_CQBAttack(CZSealBody *victim)
 
             victim->m_lastkiller_id = id;
             func_00547860(victim);
-            func_0059EE20(victim, id, 0);
+            victim->HandleKiller(id, false);
         }
         CZAnim *anim = ZAnim.GetAnim("ai_cqb_attack", 0);
         CZAnim *act = anim ? anim->ActivateEx(2, m_select, victim->m_select, 0) : 0;

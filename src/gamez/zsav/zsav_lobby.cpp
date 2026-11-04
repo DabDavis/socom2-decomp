@@ -138,8 +138,8 @@ bool CLobbySaveManager::Fetch(const char *name, int a, int b)
 
 /* the fetched blob handed out: each entry to the modules of its name, with the file's checksum,
  * when the header's version is the one asked for; the blob dropped and the file closed.
- * OPEN, 0x1C8 of 0x1B4 here -- BYTE-EXACT once include/list's iterator holds SOCOM 1's `node *`
- * (measured, the world lane r6, build/scratch/wld/v_load*.py, list_iter.patch). Two causes, both
+ * Byte-exact since include/list's iterator holds SOCOM 1's `node *` (the world lane r6 measured it,
+ * the integrator applied it; 0x1C8 of 0x1B4 before). Two causes, both
  * include/list's: (1) the target hoists the walk's end (this + 4) out of both loops into a
  * preheader placed after the function's return -- the outer loop entered by a `b` to it, its
  * `0 < count` guard there, then a `b` to the bottom test. The wrapper's end(), built from
@@ -150,10 +150,8 @@ bool CLobbySaveManager::Fetch(const char *name, int a, int b)
  * `*i.i_`, the node read directly, through an inline by value and even a volatile read all keep
  * it; a walk through an uncast node pointer folds all three loads and if-converts the name's
  * c_str() ternary as the target does. SOCOM 1's DWARF has exactly that: list's node_base links are
- * `node *prev_, *next_` and generic_iterator holds `node *node_` (include/list holds node_base *
- * and casts). With the iterator so (node_ a node *, `*` reading node_->data_) every hand-written
- * unit scores as before plus this and SerializeValves (valve_main.cpp), Uninit's end declared
- * first -- a non-additive include/list change, the MSL lane's to adopt. The wrapper's end() itself
+ * `node *prev_, *next_` and generic_iterator holds `node *node_` -- as include/list now does. The
+ * wrapper's end() itself
  * through end_node() trades this for CGraph::BuildTree (graph_tree.cpp), so the end is built here.
  * The name is read through CLobbySaveModule::GetName(), which folds the string's offset into the
  * module's as the target's c_str() does */

@@ -417,7 +417,7 @@ void *CPickup::GetData123()
 /* an ammunition pickup's kinds walked, their printing gone (OVL2 0x541910; new in SOCOM II, its
  * name unknown: seal_env.cpp calls it eight times) */
 #pragma auto_inline off
-extern "C" void func_00541910(CPickup *p)
+extern "C" void func_00541910(CPickup *p, const char *label)
 {
     switch (p->m_type) {
     case CPickup::PU_AMMO: {

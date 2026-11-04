@@ -327,7 +327,10 @@ found:
  * loop counter (t1) and the data pointer in t1, where here the index shares t1 with the counter
  * and the data takes t0 (GetScale's identical search allocates as the target; tried: the two
  * declaration orders, `int k, i`, a copy of the index, break/for-scoped forms, a found test after
- * the loop) */
+ * the loop). MW's colouring (the world lane's round 14, the MSL lane's igdump): the interpolation's
+ * data-pointer temporary is coloured before k and takes t0, so k falls to i's t1; tried there: `b`
+ * as a second reference (0x1E4), `a` a pointer, k + 1 in a local (15), a named data pointer with a
+ * dead first definition ahead of k (0x1D4: the element addresses change) */
 void Props::GetColor(float age, CPnt4D &color) const
 {
     int n = m_colorSeq.size();

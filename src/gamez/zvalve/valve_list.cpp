@@ -5,7 +5,15 @@
  * tail follows: remove_if (0x352500), the pieces it calls out of line in reverse of first use (the
  * iterator's copy, CValveOpDelete's operator(), *, !=, ++), remove_copy_if (0x352710), then the
  * statics' destructors (~CValvePool 0x352870, ~CValveList 0x352900). Defined in reverse of their
- * image order (-inline deferred). */
+ * image order (-inline deferred).
+ * OPEN, remove_if 0x352500 (4 instructions: include/algorithm's list instance -- the target copies
+ * find_if's first, then its last, into 88 and 84; ours last, then first). Measured in the world
+ * lane's round 14 through a unit-local specialisation (build/scratch/wld/v_vrif.py): the MSL lane's
+ * shape C (the search by const reference, its copies made in order), which closes the scheduler's
+ * own-code instance 0x34E8C0, costs 8 bytes here -- in tail code the iterator's copy constructor is
+ * out of line, so the two copies become calls; by-value parameters declared last-first give the
+ * order but swap the slots (the slots follow the declaration, the copies the right-to-left
+ * evaluation); copies by assignment, or built from the base iterator or the node, are 0x20 longer. */
 
 #include <algorithm>
 #include <string.h>
@@ -273,12 +281,11 @@ struct CValveCBDelete {
     }
 };
 
-/* OPEN, 3 instructions short (0x8C of 0x98): the walk and the delete match (the functor needs its
- * empty constructor, or it stores a zero byte); the target keeps &end_.next_ (this+16) in a fifth
- * saved register from before the loop and reads clear()'s begin through it, where include/list's
- * clear reads it off `this` -- a list-header shape (cf. the mission lane's "&end_.next_ in a saved
- * register"). Tried: erase(begin(), end()) written out, the list through a reference, end() in a
- * local. Pinned: Destroy calls it, and MW would inline it there */
+/* the callbacks deleted and the list emptied (SOCOM 1's). Byte-exact since include/list's begin()
+ * reads the first node through a reference to the sentinel (&end_.next_ kept in a saved register
+ * from the walk on, clear()'s begin read through it); it was 3 instructions short when clear read it
+ * off `this`. The functor needs its empty constructor (or it stores a zero byte). Pinned: Destroy
+ * calls it, and MW would inline it there */
 #pragma auto_inline off
 void CValve::DeleteCallbacks()
 {

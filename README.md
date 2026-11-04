@@ -2033,6 +2033,99 @@ exists); 3.0b38/b50/b52 still untold.
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the engine core, round 9** (zanim_menu.cpp's equipment slots, ChoosePrimaryForCharacter under K):
+  - an inline taking a switch's value by value colours the index computation into v0 ahead of the switch's constant, by
+    const reference or written out it is the target's (HasSlotsForItem 0x284120: both item-slot switches written out in
+    the body); a field read through a by-reference inline accessor is not merged with SetValue's own read of it, which
+    reproduces the target's double `lhu` of a valve's value (SelCharsHaveLockedEquip 0x2815D0);
+  - locals declared at the top and first defined inside a branch (`int s; ... s = FindItemSlot(...)`) give the parameters
+    the lower saved registers, and a byte-enum item read once into a local gives `lb` plus `andi` with the argument
+    register kept for the later call (PutInSlot 0x282F20: 55 -> 23 -> match); a loop over a local copy of a global buffer
+    recomputes `&s[i]` each pass as the target does, reassigning the parameter makes MW step a pointer instead;
+  - the UI's round 18 under-K rule held again: a `const EQUIP_ITEM first = (*weapons)[0].m_wepId;` numbered just below the
+    narrowed item's temporary (26 neighbours, K = 25) drops it under K -- ChoosePrimaryForCharacter 0x284360, 36 off before;
+    the slot helpers are defined in reverse image order (generation order decides which callees' registers a caller
+    knows); the UI commands 199-201 are UIDoAllSelCharsHaveLockedEquip1-3 (the command table's records);
+  - open: ZAnimWildcardApply (10), GetNextCell / SetCellBoundary (9), ChooseEquipmentForCharacter (0x154 vs 0x184).
+- **Tells from the SEALs, round 29** (HandleDamage's family, UpdateHealth, DoRespawn, the net pickups, HandleKiller):
+  - a pointer local's field passed into an inline that re-reads it is shared as one load, read through a const-pointer
+    inline MW loads it again (HandleKiller 0x59EE20's `SetValue(v + 1)`); `IsAi()`'s if-assign form lets MW skip the zero
+    past the `andi`, `m_control ? ...->IsAi() : false` keeps the join on the `andi` (DoRespawn 0x5994A0 -- CSealCtrl holds
+    an AI_PARAMS at 0xD0, built in place by its constructor);
+  - loading two globals into locals of an `else` arm moves the second load into the first compare's delay slot, read inline
+    it is not moved (HandleFallingDamage 0x5AC1F0); a helper inlined once per bit gives each copy its own stack slots
+    (HandlePickupAck 0x59DFB0's eight); `(bool)bit == false` and an inline `? true : false` accessor both keep the sltu
+    before the branch (HandleDamageNonExplosive 0x5ABBC0, OnWeaponHit 0x5AC670);
+  - HandleDamage 0x5AB850's early return is a negated `&&`; its local copy of m_body_parts emits the pod vector's copy
+    constructor 0x5B6890 and init<PCUi> 0x5B7990 (marked ovl-copies of OVL1's 0x259B40 / 0x259B90); CreateNetWeaponPickup
+    0x59EC60 takes (the SEAL, an item byte, a net id, a position, a rotation); data m_allow_friendly_fire 0x44CDB8 (SOCOM
+    1's, from the mp_friendly_fire valve); open: CreateNetAmmoPickup 0x59E9E0 (its stash's three vector types).
+- **Tells from the world, rdr and sound, round 14** (ClearFreeList, the list remove_if, PlayNext, CHeap::Free, DrawRange):
+  - MW SPLITS A VARIABLE REUSED FOR AN UNRELATED SECOND PURPOSE INTO A NEW WEB, made after every inline expansion -- it
+    takes the frame's bottom slot: CSched_Manager::ClearFreeList 0x34E1D0 (both copy loops share one iterator) and
+    CSndQueue::PlayNext 0x34C650 (the walk's iterator reused for the front entry; open since round 2) -- a lead for other
+    lanes' stack-slot misses;
+  - a join inside an inlined function's if/else is left unpadded, the same if/else written in the caller pads both labels
+    to 8 (Particle::DrawRange 0x324C70: the depth select through an inline, ElementDepth -- ours); in tail code find_if's
+    copies follow the by-value parameters' declaration order for slots but right-to-left argument evaluation for
+    instructions;
+  - remove_if<list<CSched_Task *>> 0x34E8C0 matches as a labelled explicit specialisation in the MSL lane's round 8 shape C
+    (copies in parameter order) -- a header dispatch would close the other list remove_ifs (queued for the MSL lane); a
+    byte-enum local copy of a functor's byte member gives both its out-of-line branch form and its inlined loop's
+    preheader (CValveOpDelete::operator() 0x352610, remove_copy_if<list<CValve *>> 0x352710); CHeap::Free 0x34ED00 by the
+    first-definition rule;
+  - _zrdr's Int 0x335720 and Real 0x335760 named (String's siblings); zrdr_pack.cpp 0x334EA0-0x335E20 is SOCOM II's deep
+    equality and lookup over rdr values, the subtitle loader 0x34D190 loads the VAGS_xxx.ZAR / VAGSTORE.ZAR indexes
+    (CSubtitleTable is a VAG location table) -- mapped, unwritten.
+- **Tells from the UI, round 20** (CDesignDlgObj's helpers, SkbSetPurpose, insert<SKBSEQ>, _Refresh's accessors):
+  - REFUSAL PROPAGATION REACHES MSL'S HELPERS: pinning an element's assignment with `auto_inline off` makes copy / fill_n /
+    copy_backward's helpers inline whole; left unpinned, MW refuses the assignment itself, and the helpers and the copy
+    constructor come out of line as in the target (__copy<CDesignDlgObj *> 0x3845B0, __fill_n 0x384AA0, __copy_backward
+    0x384B00, CDesignDlgObj's copy constructor 0x384B70);
+  - CInit<int, 0> members copy-construct word by word (lw/sw) and assign through one FPR each (lwc1/swc1), plain ints give
+    lw/sw both ways, an int[2] block-copies both ways; a recursive function's self-copies are set by the inline_max_size
+    cut, not the level -- taller accessors let a third copy fit, an int counter against an unsigned count (recomputing
+    i*8) stops it at the target's two (_Refresh 0x385EA0, SOCOM 1's);
+  - a derived record's fields start after the base's padded size, so a parsed command's halfword must be modelled as a base
+    class (UIParsedCmd, fields from 0x10: SkbSetPurpose 0x397640); MW reloads a field across an inlined bool accessor --
+    LoadFromRdr's shared type load needs a flat non-const String(), _Refresh reaches the const one over IsString through a
+    cast (0x32C650 IsString and 0x335700 String named at integration: zrdr.h's, out of line);
+  - 0x3941D0-0x39441F is zui_skbview.cpp's, not zui_hangul.cpp's (CSkbKeyProps::SetShown and its destructor); SkbOpen
+    0x38D770 takes the handler's (command, time step); open: erase<CDesignDlgObj> 0x384410 (19: two saved registers),
+    insert<CDesignDlgObj> 0x384620 (the construct cut -- the class-insert trade's second population), SkbPadKeyEvent.
+- **Tells from the kit and AI states, round 29** (DrawOctahedron, a target's visibility, the squad's three orders):
+  - a dead first definition of each variable fixes MW's numbering, so the real assignments can then be ordered to fix the
+    schedule without moving registers (DrawOctahedron 0x5FF2F0, 0xAB8: twelve lines with DrawLine's body written out each
+    time under seal_ailines.cpp's dont_inline -- its two corner-to-corner lines are diagonals); a coordinate both line
+    ends share, folded into its own local, takes that local's number, written as a repeated expression the temporary takes
+    the highest number and pushes the other values up;
+  - in an inline, `return d == 0 ? false : d->m_state == 4;` lays out the null arm first, `d ? ... : false` and an early
+    return put it after (0x60AFA0: a target's visibility from its finished ray, which SOCOM 1 did inline in
+    CSealCtrl::SensorTick; it brings _saturate<f>'s OVL2 copy 0x539B70); `bool r = !flag;` returned on the early path gives
+    the target's `andi v0,a2,0xff`, `if (!flag) return true;` gives `li v0,1`; an unsigned char parameter tested `== 0` is
+    re-extended before the branch, `!x` branches on the register directly;
+  - byte-enum copies declared first and assigned in reverse order give the target's load order and registers (initialised
+    in place they load the other way); a list walk with its end taken into a local declared before the iterator gives the
+    iterator s0 and the end s1, testing against end() swaps them (CSealUnit::FollowSeal 0x5EB580);
+  - CSealUnit::ConfirmCommand 0x5EABA0 (SOCOM 1's: the confirm-orders flag ShouldConfirmVoiceCommands 0x3DF1D0 first, the
+    sound name by sprintf) and AcknowledgeCommand 0x5EAD70 (SOCOM II's canned radio answer); CAiState's slot +0x3C takes
+    the AI (both callers pass it in a1: the four Virtual3C rows renamed); open: CheckMaster 0x5FDD40 (0x178 vs 0x180: the
+    target turns both bit tests into a value before branching), GetFiremodeGraphic (0x70 vs 0x68).
+- **Tells from the game states, round 32** (the danger level, the spawners' insert, SendPickupAckMessage's int, znet.h):
+  - an iterator INITIALISED from `GetEntityList().begin()` gives one copy and lives in a register, ASSIGNED it gives two
+    copies and lives in memory (LoadVehicles 0x2B2E50 against 0x2B7A90); a push_back made inside an inline helper puts its
+    iterator temporaries below the caller's frame objects -- that fixed all of LoadVehicles' stack slots (it stays 41 off
+    in the colouring: the entry iterator wanted after c, r, rows and cols, which no declaration order reaches -- best of
+    9,000 orders searched offline with build/scratch/states-r32/ig/search.py: 4 off);
+  - a same-team test written as a positive inline used as a plain truth test, the other entity the inline's parameter,
+    keeps that member's address hoisted (spelled `!IsEnemy(...)` it keeps a sltu/xori pair); a local assigned from an
+    inline accessor's result is absorbed into the inline's temporary, numbered after later named locals; a byte read
+    through `*_max<Uc>()` into an int local is compared directly, an unsigned char local gets an `andi 0xff` (the danger
+    around the player 0x2A4A10, its tail emitting _max<Uc> 0x2AFC40);
+  - a box passed by value to an inline keeps GetBBox, written as that call's argument, out of line, a local copy inlines it
+    one level; the grid's base point is stored z, x, y field by field as in SOCOM 1 (the three-float constructor evaluates
+    x first, 8 bytes longer); SendPickupAckMessage 0x2BA1F0 takes an int first (renamed __Fiii8AckUnion, seal_env.cpp
+    respelled at integration); fts_remote.cpp and fts_net_seal.cpp include znet.h now (the online lobby's transform).
 - **Tells from the HUD, round 36** (hud_lensflare.cpp's loaders and entries, CUIMapCtrl::Tick, a unit boundary):
   - a `const _zrdr *` lets MW read the type byte once for every inline test, a plain pointer reloads it after an
     intervening null test (CLensFlareManager::LoadLightSource 0x1FF630 and LoadRdr 0x1FF4F0); the loader's first name is
@@ -5751,8 +5844,9 @@ matches reports as a regression there (0x32C5F0, ~CRdrArchiveList's copy, 0x3340
 constructor -- zrdr_edit.cpp's copy is 0x30 against 0x28 since the MSL headers' round 7 -- 0x1EF8C0, st_core.cpp's
 ~vector<CMovieCue> (0x60 against 0x80: generated early by FreeVector's temporary), 0x510080, OVL2's
 __list_imp destructor that seal_aistate.cpp's missing copy now reports "elsewhere", and, since the
-online lane's round 10 renamed their rows, the lobby and chat queues' 0x2E0D90, 0x2E0DC0, 0x2F6230
-and ~CLobbySaveModule's copy 0x2FD070 (each draft carries an `sc: as=` line), and since the UI lane's round 12 the hangul pieces' clear 0x3929C0 (its element's destructor one inline level deeper in the original; a draft with an `sc: as=` line -- the keyboard grid's clear 0x38FEF0, listed with it, matches from source since the UI's round 13), and since the integrator's renames after the MSL headers' round 14 ~__vector_imp<zrdr_sym> 0x333330 (zrdr_parse.cpp's copy inlines the deleter's destructor, 0x108 against 0x58; its draft carries an `sc: as=` line), and since the weapons lane's round 17 renamed it, the callback list's ~__list_imp<WEAPON_CALLBACK_STRUCT> 0x3C6880 (zwep_global.cpp's copy 0xB8 against 0x80: include/list's open teardown shape), since the world's round 11 ~list<CRipple *> 0x322370 (node_wave.cpp's copy 0xD4 against 0x60: the deleter destructor one level taller), and since the weapons' round 20 deque<void *>() 0x3B7FA0 (vis_vu.cpp's copy 0x30 against 0x28: include/deque's middle level; its draft carries an `sc: as=` line) -- THIRTEEN rows in all -- 0x29FF60 and
+online lane's round 10 renamed their rows, the lobby and chat queues' 0x2E0D90, 0x2E0DC0 and 0x2F6230
+(each draft carries an `sc: as=` line; ~CLobbySaveModule's copy 0x2FD070, once listed with them, matches from source
+since the online lane's round 18), and since the UI lane's round 12 the hangul pieces' clear 0x3929C0 (its element's destructor one inline level deeper in the original; a draft with an `sc: as=` line -- the keyboard grid's clear 0x38FEF0, listed with it, matches from source since the UI's round 13), and since the integrator's renames after the MSL headers' round 14 ~__vector_imp<zrdr_sym> 0x333330 (zrdr_parse.cpp's copy inlines the deleter's destructor, 0x108 against 0x58; its draft carries an `sc: as=` line), and since the weapons lane's round 17 renamed it, the callback list's ~__list_imp<WEAPON_CALLBACK_STRUCT> 0x3C6880 (zwep_global.cpp's copy 0xB8 against 0x80: include/list's open teardown shape), since the world's round 11 ~list<CRipple *> 0x322370 (node_wave.cpp's copy 0xD4 against 0x60: the deleter destructor one level taller), and since the weapons' round 20 deque<void *>() 0x3B7FA0 (vis_vu.cpp's copy 0x30 against 0x28: include/deque's middle level; its draft carries an `sc: as=` line) -- TWELVE rows in all -- 0x29FF60 and
 0x2D02B0 match from hand source since the MSL headers' completion): rerun with that draft's file
 included before believing one.
 
