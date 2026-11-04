@@ -47,8 +47,7 @@ CAiSBreach *GetBreachState(CSealCtrlAi *ai)
 /* what a squad is told of its SEALs (SOCOM 1's UNIT_MESSAGE, a byte; the names ours) */
 enum UNIT_MESSAGE { UNIT_MSG_0 = 0, UNIT_MSG_1 = 1, UNIT_MSG_2 = 2, UNIT_MSG_3 = 3, UNIT_MSG_4 = 4 };
 
-/* the squad's formation (the byte at 8: 1 when made; the names ours) */
-enum UNIT_FORMATION { FORMATION_0 = 0, FORMATION_1 = 1, FORMATION_2 = 2, FORMATION_LAST = 255 };
+/* the squad's formation is ai_states.h's UNIT_FORMATION (the byte at 8) */
 
 /* a squad command (zseal.h's FT_COMMAND, which this unit does not include: the same byte enum) */
 enum FT_COMMAND { CMD_UNKNOWN = 0, CMD_ACTION = 1, CMD_LAST = 255 };
@@ -59,7 +58,7 @@ class CUnitSealCtrl : public CEntityCtrl {
 public:
     virtual void Virtual24();
     virtual void Virtual28();
-    virtual void Virtual2C();
+    virtual bool IsPlayer() const;   /* +0x2C */
     virtual bool IsAi() const;   /* +0x30 */
     virtual void Virtual34();
     virtual class CSealCtrlAi *GetSealCtrlAi();
@@ -73,6 +72,8 @@ public:
      * and IsRemote; the name ours) -- an inline whose out-of-line copy follows IssueCommand (OVL2
      * 0x5EA880), defined here until IssueCommand is written */
     bool IsAi();
+    /* whether the player drives it (zseal.h's IsPlayer: the controller tested, slot 0x2C called) */
+    bool IsPlayer() { return m_control ? ((CUnitSealCtrl *)m_control)->IsPlayer() : false; }
     /* an order given to the SEAL (OVL2 0x590AC0, zseal.h's) */
     void IssueCommand(CZSealBody *from, FT_COMMAND cmd, void *data, bool b);
 
@@ -117,6 +118,8 @@ public:
 class CAiMaps {
 public:
     unsigned int GetLocationDelta(const CAiMapLoc &a, const CAiMapLoc &b);
+    /* an action found by its id, with its cell (ai_maps.h's, OVL2 0x52DAA0) */
+    bool GetActionById(unsigned int id, CAiMapLoc &loc, CAiMap::action **pa);
 };
 extern CAiMaps AiMaps;
 
@@ -203,6 +206,14 @@ public:
      * follower's (the second), when the squad is pointing and the AI is a SEAL's (SOCOM 1's; OVL2
      * 0x5E7580) */
     bool GetMyPointOutTurnDir(CZSealBody *seal, CPnt3D **dir);
+    /* a formation given the squad, slots counted on from an index; the next one returned (OVL2
+     * 0x5EB6D0; the name ours) */
+    int SetFormation(UNIT_FORMATION f, int index);
+    /* an order the network squads take as radio traffic (OVL2 0x5E6E40; the name ours) */
+    bool RadioCommand(CZSealBody *seal, FT_COMMAND cmd);
+    /* a target handed to the squad's AI SEALs, the SEAL's place in the squad returned (OVL2
+     * 0x5ECF90; the name ours) */
+    int ShareTarget(CZSealBody *seal, CEntity *target, bool force, int unused);
     /* the SEAL's point-out anim started, taken once: the leader's or the follower's start byte, when
      * the squad is pointing, the AI is a SEAL's and the player stands within 200 and faces away from
      * it (SOCOM 1's, its guarded statics plain data here -- 0x650B10, 0x650B18; OVL2 0x5E7390) */
@@ -727,18 +738,17 @@ done:
 
 /* (OVL2 0x5EDE40; SOCOM 1's: the two walks after the dead list's look for the SEAL and do nothing
  * -- compiled-out code. Each walk's end taken into a local ahead of its iterator: the target's
- * iterator in a1, the end in a2.)
- * OPEN, 3 instructions: the SEAL lives in its home (push_back takes its address) and the target reads
- * it there again ahead of the second and third walks (`lw a0,36(sp)` in each loop's entry) -- written
- * plainly MW keeps the entry's load in a register through all three walks (0x140 bytes); read through
- * the reference local below the reloads are the target's but through an address register of their
- * own (`addiu a3,sp,36` at entry, `lw a0,0(a3)`). Tried: a reference per walk (4), a pointer local
- * (3), `*&seal`, an inline taking it by reference (both folded: 0x140), std::find, an inline Has()
- * over a reference parameter (0x170), gotos for the returns, the compare's operands swapped */
+ * iterator in a1, the end in a2.) The SEAL lives in its home (push_back takes its address) and the
+ * target reads it there again ahead of the second and third walks (`lw a0,36(sp)` in each loop's
+ * preheader): those two walks read it through a `CZSealBody *const *` view of the home -- an
+ * expression of its own, which CSE does not merge with the entry's load while loop-invariant motion
+ * still hoists it, and the address folds into the load (round 31; a const view, `void **` and a
+ * cast through `unsigned int *` all match; an `int *` view does not: 2). Written plainly MW keeps
+ * the entry's load through all three walks (0x140 bytes); through a reference local the reloads are
+ * the target's but through an address register (`addiu a3,sp,36`); `opt_common_subs off` reloads in
+ * the first walk too; a `volatile` view folds like the plain read */
 void CSealUnit::Revive(CZSealBody *seal)
 {
-    CZSealBody *const &s = seal;
-
     if (!seal->m_isAlive)
         return;
     for (std::list<CZSealBody *>::iterator e = m_dead_guys.end(), i = m_dead_guys.begin(); i != e; ++i)
@@ -751,10 +761,10 @@ void CSealUnit::Revive(CZSealBody *seal)
             return;
         }
     for (std::list<CZSealBody *>::iterator e = m_seals.end(), i = m_seals.begin(); i != e; ++i)
-        if (*i == s)
+        if (*i == *(CZSealBody *const *)&seal)
             return;
     for (std::list<CZSealBody *>::iterator e = m_escortees.end(), i = m_escortees.begin(); i != e; ++i)
-        if (*i == s)
+        if (*i == *(CZSealBody *const *)&seal)
             return;
 }
 
@@ -1218,10 +1228,6 @@ bool CSealUnit::AcknowledgeCommand(FT_COMMAND cmd, unsigned char item, int flags
     return r;
 }
 
-extern "C" {
-void func_005EB6D0(CSealUnit *unit, UNIT_FORMATION f, int b);
-}
-
 /* the formation set to the leader's: 2 inside, else 1, when it differs (OVL2 0x5EB8A0; the
  * formation byte and the name ours) */
 extern "C" void func_005EB8A0(CSealUnit *unit)
@@ -1236,9 +1242,73 @@ extern "C" void func_005EB8A0(CSealUnit *unit)
         else
             f = FORMATION_1;
         if (f != unit->m_8)
-            func_005EB6D0(unit, f, 0);
+            unit->SetFormation(f, 0);
     }
 }
+
+/* the controller's current state if it is a follow (kind 9), else 0 (GetBreachState's twin, inlined
+ * here; the name ours) */
+static inline CAiSFollow *GetFollowState(CSealCtrlAi *ai)
+{
+    CAiState *s = ai->GetAiState();
+
+    return s && s->m_state == 9 ? (CAiSFollow *)s : 0;
+}
+
+/* a formation given the squad: each AI SEAL that follows takes its slot in it, counted on from
+ * `index` -- the SEALs in order, the escortees after the first of them (seen to at once when the
+ * squad has no SEAL, 0x5E7830), then the squads under it in turn; the formation kept at 8 and the
+ * flag at 0xA2 cleared; the next slot returned (OVL2 0x5EB6D0, new in SOCOM II: the leader asked for
+ * and not used; the name ours -- SOCOM 1's SetFormation took a SEAL and a point). Pinned: the
+ * target's callers and its own recursion call it. The formation goes to CAiSFollow::SetFormation
+ * unconverted: both take UNIT_FORMATION (round 31: with CAiSFollow's as a signed char MW
+ * sign-extends it into a register of its own, 0x1E0; with this one's 0x5EB8A0 does).
+ * OPEN, 12 instructions, registers and one placement: the escortees' end taken first (numbered
+ * before the SEALs' walk: s6, the target's) is computed at the top, the target's after the walk's
+ * guard; and the squads' walk takes the iterator s4 and the end s3, the target's the other way --
+ * in all three loop forms. Tried: the three forms of each walk (27: best 14, the SEALs' end
+ * first), the escortees' end declared at the top (12) or in the loop body (0x1E0), reassigned in
+ * the body (0x1EC), the list through a reference (46), the leader kept, `esc` assigned later or
+ * by a ternary, postfix steps */
+#pragma auto_inline off
+int CSealUnit::SetFormation(UNIT_FORMATION f, int index)
+{
+    GetLeader();
+    slist::iterator f2 = m_escortees.end();
+    bool esc = !m_escortees.empty();
+
+    for (slist::iterator e = m_seals.end(), i = m_seals.begin(); i != e; ++i) {
+        CSealCtrlAi *ai = ((CUnitSealCtrl *)((CEntity *)*i)->m_control)->GetSealCtrlAi();
+
+        if (ai) {
+            CAiSFollow *fs = GetFollowState(ai);
+
+            if (fs)
+                fs->SetFormation(f, index++);
+        }
+        if (esc) {
+            for (slist::iterator j = m_escortees.begin(); j != f2; ++j) {
+                CSealCtrlAi *ai = ((CUnitSealCtrl *)((CEntity *)*j)->m_control)->GetSealCtrlAi();
+
+                if (ai) {
+                    CAiSFollow *fs = GetFollowState(ai);
+
+                    if (fs)
+                        fs->SetFormation(f, index++);
+                }
+            }
+            esc = false;
+        }
+    }
+    if (esc)
+        func_005E7830(this);
+    for (ulist::iterator u = m_sub_units.begin(); u != m_sub_units.end(); ++u)
+        index = (*u)->SetFormation(f, index);
+    m_a2 = 0;
+    m_8 = f;
+    return index;
+}
+#pragma auto_inline reset
 
 /* (OVL2 0x5E76D0; pinned: -inline auto takes it, and the target's recursion is a call) */
 #pragma auto_inline off
@@ -1356,6 +1426,93 @@ void CSealUnit::Notify(CZSealBody *seal, UNIT_MESSAGE msg, void *data)
         func_005ED140(this, seal, msg, data);
         break;
     }
+}
+
+/* the AI's target (ai_target.cpp's CAiTarget: only its entity here), the test the AI's code makes
+ * of it (OVL2 0x60A850: an entity, alive, and an AI's unless it holds bit 8 or 9), its sighting
+ * clock (0x60A590) and its setter (0x60A5F0) */
+class CAiTarget {
+public:
+    float GetTimeSinceLastSighting() const;
+    void SetTarget(CTarget *t);
+
+    CEntity *m_ent;   // 0x0
+};
+
+extern "C" bool func_0060A850(const CAiTarget *t);
+
+/* the AI controller as a squad hands it a target (zseal.h's CSealCtrlAi): its target at 0x67C, the
+ * flags word at 0x6A8 (bit 9 lets a held target interrupt) and the virtual SetTarget (+0xB0) -- a
+ * view, the 42 slots before it unnamed here */
+class CUnitAiView {
+public:
+    virtual void v08(); virtual void v0c(); virtual void v10(); virtual void v14(); virtual void v18();
+    virtual void v1c(); virtual void v20(); virtual void v24(); virtual void v28(); virtual void v2c();
+    virtual void v30(); virtual void v34(); virtual void v38(); virtual void v3c(); virtual void v40();
+    virtual void v44(); virtual void v48(); virtual void v4c(); virtual void v50(); virtual void v54();
+    virtual void v58(); virtual void v5c(); virtual void v60(); virtual void v64(); virtual void v68();
+    virtual void v6c(); virtual void v70(); virtual void v74(); virtual void v78(); virtual void v7c();
+    virtual void v80(); virtual void v84(); virtual void v88(); virtual void v8c(); virtual void v90();
+    virtual void v94(); virtual void v98(); virtual void v9c(); virtual void va0(); virtual void va4();
+    virtual void va8(); virtual void vac();
+    virtual void SetTarget(CTarget *t);   /* +0xB0 */
+
+    unsigned char _4[0x67c - 4];
+    CAiTarget m_target;   // 0x67c
+    unsigned char _680[0x6a8 - 0x680];
+    unsigned int m_6a8;   // 0x6a8
+};
+
+/* a held target that may interrupt (an inline bool, seal_aivehicle.cpp's shape: the `&&`
+ * materialised) */
+static inline bool TargetEngaged(CUnitAiView *ai)
+{
+    return func_0060A850(&ai->m_target) && (ai->m_6a8 & 0x200);
+}
+
+/* a target handed to the squad's AI SEALs that know it: each one's entry for it marked (bit 8 of
+ * the target's flags), the AI's own target refreshed when it is the one, else given it when the AI
+ * has none worth keeping or `force` says so; the SEAL's place in the squad returned, -1 when it is
+ * not in it (OVL2 0x5ECF90, new in SOCOM II: the squad's private news 0x5ED140 calls it twice,
+ * passing a fifth argument, 0, that it never reads; the name ours). The loop's locals numbered by
+ * dead first definitions -- the target, the lost flag, then the AI -- and the lost test written
+ * out (seal_aivehicle.cpp's TargetLost as an inline numbers its flag after the AI and the target:
+ * the three trade s1-s3); the AI's own target tested `!=` with its refresh in the else (`==`
+ * lays the refresh out first: 8 bytes short) */
+int CSealUnit::ShareTarget(CZSealBody *seal, CEntity *target, bool force, int unused)
+{
+    int idx = -1;
+    int n = 0;
+
+    for (slist::iterator i = m_seals.begin(); i != m_seals.end(); ++i, n++) {
+        CZSealBody *s = *i;
+        CTarget *t = 0;
+        bool lost = false;
+        CUnitAiView *ai = (CUnitAiView *)((CUnitSealCtrl *)((CEntity *)s)->m_control)->GetSealCtrlAi();
+
+        if (!ai)
+            continue;
+        t = ((CEntity *)s)->m_targets.FindTarget(target);
+
+        if (t) {
+            t->m_flags |= 0x100;
+            if (ai->m_target.m_ent != target) {
+                lost = true;
+                if (func_0060A850(&ai->m_target)) {
+                    if (!TargetEngaged(ai))
+                        lost = ai->m_target.GetTimeSinceLastSighting() > 3.0f;
+                    else
+                        lost = false;
+                }
+                if (lost || force)
+                    ai->SetTarget(t);
+            } else
+                ai->m_target.SetTarget(t);
+        }
+        if (s == seal)
+            idx = n;
+    }
+    return idx;
 }
 
 /* (OVL2 0x5ECEF0; SOCOM 1's, the list emptied from the front) */
@@ -1512,7 +1669,7 @@ void CSealUnit::CreateSinglePlayerUnits()
     default:
         alpha->IssueCommand(player, cmd, 0, true);
     }
-    func_005EB6D0(alpha, alpha->m_8, 0);
+    alpha->SetFormation(alpha->m_8, 0);
     m_created_units_test = true;
     UpdateUnits();
 }
@@ -1582,5 +1739,125 @@ void *CSealUnit::GetDataPtr()
 
     if (GetData(&p, 4))
         r = p;
+    return r;
+}
+
+/* the network game (OVL1 bss 0x437CE8, hud_tcmcmds.cpp's CZNetGame): its byte at 0xD2 (the name
+ * ours) */
+struct CUnitNetGame {
+    unsigned char _0[0xd2];
+    unsigned char m_d2;   // 0xd2
+};
+extern CUnitNetGame *data_00437CE8;
+
+extern "C" {
+/* whether the game is online (OVL2 0x5750A0, seal_ai.cpp's: theNetwork's second byte) and the voice
+ * chat put in a mode (OVL1 0x2C2C20, fts_net_persona.cpp's) */
+int func_005750A0(void);
+int func_002C2C20(int mode);
+}
+
+/* an order the network squads take as radio traffic, online only: squad 26 sends it to everyone and
+ * plays it (PlayRemoteMsg inlined), squads 31 and 30 send it to their two sides, squad 24 switches
+ * the voice chat -- the four channel orders (31-34) the modes 0-3, the first three kept at 0xC4,
+ * the on/off order (35) mode 3 or the kept one -- whether the squad was one of them (OVL2 0x5E6E40,
+ * new in SOCOM II: IssueCommand asks it first and stops when it says so; the name ours). An
+ * if/else chain (a switch tests every number first); squad 26's id read through a const view, so
+ * the inlined PlayRemoteMsg reads it afresh (`lw a0,4(s2)`) -- through the plain pointer MW keeps
+ * the field's address in a saved register across the call (4 off) */
+bool CSealUnit::RadioCommand(CZSealBody *seal, FT_COMMAND cmd)
+{
+    bool r = false;
+
+    if (func_005750A0()) {
+        if (m_unit_num == 26) {
+            r = true;
+            SendMessageMessage(((const CEntity *)seal)->m_id, R_SEND_TO_ALL, cmd);
+            PlayRemoteMsg(seal, cmd, 0);
+        } else if (m_unit_num == 31) {
+            r = true;
+            SendMessageMessage(((CEntity *)seal)->m_id, R_SEND_TO_3, cmd);
+        } else if (m_unit_num == 30) {
+            r = true;
+            SendMessageMessage(((CEntity *)seal)->m_id, R_SEND_TO_2, cmd);
+        } else if (m_unit_num == 24) {
+            r = true;
+            switch (cmd) {
+            case 31:
+                func_002C2C20(0);
+                m_c4 = 0;
+                break;
+            case 32:
+                func_002C2C20(1);
+                m_c4 = 1;
+                break;
+            case 33:
+                func_002C2C20(2);
+                m_c4 = 2;
+                break;
+            case 34:
+                func_002C2C20(3);
+                break;
+            case 35:
+                if (data_00437CE8->m_d2)
+                    func_002C2C20(3);
+                else
+                    func_002C2C20(m_c4);
+                break;
+            case 36:
+                break;
+            }
+        }
+    }
+    return r;
+}
+
+/* a node action as far as this unit reads it (zseal.h's CNodeAction, fts_action.cpp's, which this
+ * unit does not include: a word at 8, its type at 0x24, its AI action's id at 0x3C) */
+class CNodeAction {
+public:
+    unsigned char _0[8];
+    unsigned int m_8;   // 0x8
+    unsigned char _c[0x24 - 0xc];
+    unsigned char m_type;   // 0x24 (zseal.h's NODEACTION_TYPE)
+    unsigned char _25[0x3c - 0x25];
+    unsigned short m_id;   // 0x3c
+};
+
+/* whether a SEAL -- the player, or an AI that is a SEAL -- may take a door action from where it
+ * stands: the action's word at 8 at least 2, its type 0, the range at least a half, and the AI map's
+ * action of its id a door, closed (state 0), facing the SEAL's side (the cosine between the door's
+ * direction and the SEAL's from its cell positive) (OVL2 0x5EC4E0, new in SOCOM II: CSealCtrl's
+ * OnActionButton and CAiSAction::Tick ask it; the name ours). The SEAL's cell taken by reference
+ * first (the target computes its address into s0 right after GetSealCtrlAi), the bit through a
+ * ternary (the target's sltu).
+ * OPEN, 0x1B0 against 0x1B8: the type and range tests' early returns -- the target jumps from both
+ * to the shared `return r` (move v0,s1), MW folds r's false into a `return 0` of their own; and the
+ * result, the action and the SEAL's cell take s2/s0/s1 where the target has s1/s2/s0. Tried: one
+ * nested if (0x17C), `(bool)` and `!= 0` for the bit (0x1A8), the cell read in place (0x19C), the
+ * two tests as one `||` (0x1A0) */
+bool CanUseDoorAction(CZSealBody *seal, CNodeAction *a, float range)
+{
+    bool r = false;
+
+    if (a->m_8 < 2)
+        return false;
+    static float minRange = 0.5f;
+
+    if (a->m_type)
+        return r;
+    if (range < minRange)
+        return r;
+    CSealCtrlAi *ai = ((CUnitSealCtrl *)((CEntity *)seal)->m_control)->GetSealCtrlAi();
+    const CAiMapLoc &from = ((CEntity *)seal)->m_mapLocValid;
+
+    if (seal->IsPlayer() || ai && (ai->m_navyseal ? true : false)) {
+        CAiMap::action *act = 0;
+        CAiMapLoc loc;
+
+        if (AiMaps.GetActionById(a->m_id, loc, &act) && act->GetType() == CAiMap::action::DOOR && !act->m_state
+            && CAiMap::GetDirCos(CAiMap::GetClosestDir(from, loc), (CAiMap::DIR)act->m_direction) > 0.0f)
+            r = true;
+    }
     return r;
 }
