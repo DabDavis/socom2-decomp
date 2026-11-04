@@ -52,10 +52,40 @@ public:
     bool Read(CZAR *zar, CIO *io, int base);
     CKey *InsertKey(CKey *key);
 
+    /* the children forgotten, each deleted too when asked (SOCOM II's, 0x25B580: FreeDirectory
+     * deletes them when the key buffer holds none of the keys -- the keys then their own
+     * allocations; the name ours) */
+    void DeleteChildren(bool del);
+
     char* m_name;   // 0xc
     int m_size;   // 0x10
     int m_offset;   // 0x14
 };   // 0x18 bytes
+
+/* the archive's key buffer: the directory's keys held by value, 24 bytes each (SOCOM 1's CKeyVec,
+ * a vector<CKey>: ~CZAR destroys it three this-tests deep, its FreeVector's temporary two, as
+ * SOCOM II's FreeVector over the base std::vector gives) */
+class CKeyVec : public std::vector<CKey> {
+};
+
+/* SOCOM II's: a 16-byte buffer the archive owns at 0x34 (Close frees its block and zeroes its
+ * words before deleting it; the names ours) */
+struct CZARBuffer {
+    ~CZARBuffer()
+    {
+        if (m_data)
+            _free(m_data, 0, 0);
+        m_data = 0;
+        m_4 = 0;
+        m_8 = 0;
+        m_c = 0;
+    }
+
+    void *m_data;   // 0x0
+    int m_4;   // 0x4
+    int m_8;   // 0x8
+    int m_c;   // 0xc
+};   // 0x10 bytes
 
 class CZAR {
 public:
@@ -84,7 +114,16 @@ public:
     CKey *OpenKey(const char *name);
     CKey *FindKey(const char *name);
     void CloseKey(CKey *key);
+    /* the directory written if the file is open for writing, then closed (Close(bool)) and the
+     * buffer at 0x34 deleted (SOCOM 1's, grown) */
     void Close();
+    /* the files closed, the second deleted, the directory freed (SOCOM 1's Close(bool): SOCOM II's
+     * callers pass true, its body never reads the flag -- as SOCOM 1's) */
+    void Close(bool);
+    /* the directory forgotten: the root's children (deleted when the key buffer holds none of
+     * the keys), the key buffer, the open keys, the string table (SOCOM II's, 0x257320: the
+     * closes' common tail; the name ours) */
+    void FreeDirectory();
     /* the file closed, the directory kept (SOCOM 1's: the file's Close, a tail call) */
     void CloseKeepDir();
     /* the archive's file name: a copy of the name given, or DEFAULT_ZAR_NAME's own pointer for
@@ -109,20 +148,21 @@ public:
     CKeyRing m_keys;   // 0x4: the open keys, innermost last
     CIO* m_pFileAlloc;   // 0x10
     CIO* m_pFile;   // 0x14
-    void* m_databuffer;   // 0x18
-    unsigned int m_databuffer_size;   // 0x1c
+    CIO* m_pDataFile;   // 0x18 (SOCOM 1: m_databuffer): SOCOM II's second file, Open's name with
+                        // another extension, a CFileIO the archive owns (the name ours)
+    void* m_databuffer;   // 0x1c (SOCOM 1: m_databuffer_size): what ReleaseDataBuffer hands over
     int m_data_size;   // 0x20: SOCOM II's (the name ours): the buffer's size the bone loaders take with it
     unsigned char m_24;   // 0x24: SOCOM II's (ReleaseDataBuffer clears it)
     unsigned char m_modified;   // 0x25 (SOCOM 1: 0x20): the directory to be written (0x258BD0)
     unsigned int m_data_padded;   // 0x28 (SOCOM 1: 0x24)
     int m_2c;   // 0x2c: SOCOM II's
     int m_data_start;   // 0x30 (new in SOCOM II, the name ours): the file offset the keys' offsets count from
-    int m_34;   // 0x34: SOCOM II's
+    CZARBuffer* m_34;   // 0x34: SOCOM II's (Close deletes it)
     TAIL m_tail;   // 0x38 (SOCOM 1: 0x28)
     CKey* m_root;   // 0x9c (SOCOM 1: 0x88)
     CSTable* m_stable;   // 0xa0 (SOCOM 1: 0x8c)
     char* m_filename;   // 0xa4 (SOCOM 1: 0x90): CRdrArchive's walks compare their names with it
-    std::vector<CKey *> m_key_buffer;   // 0xa8 (SOCOM 1's CKeyVec, a vector<CKey>: the element type here not settled)
+    CKeyVec m_key_buffer;   // 0xa8 (SOCOM 1: 0x94)
     unsigned char m_bCompress;   // 0xb4
     unsigned char m_bSecure;   // 0xb5
 };   // 0xb8 bytes (OpenZAR's new; SOCOM 1's 0xA4)

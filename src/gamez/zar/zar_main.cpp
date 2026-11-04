@@ -1,15 +1,16 @@
 /* zar_main.cpp -- zar::CZAR, the archive (OVL1 0x256FD0-0x259EDF, the README's zar units): its
  * file, its stack of open keys and what it fetches. The unit name is SOCOM 1's (the press beta's
  * asserts name it). Defined in reverse of their image order (-inline deferred). Written: the
- * constructor, SetFilename, CloseKeepDir, Flush, the key stack's six (CloseKey .. GetSize) and
- * ReadString. Not yet: ~CZAR 0x258F20 (it frees m_key_buffer, a vector<CKey> -- NewKey's 24-byte
- * pushes -- through four out-of-line pieces at 0x2574C0-0x257570, whose element type include/vector
- * must carry first), Close, the 0x258C40 close (SOCOM 1's Close(bool) without the flag), Open
- * 0x258920, NewKey, WriteDirectory, the buffer writers below 0x257590 and the CKey vector's class
- * insert 0x259250. */
+ * constructor, the destructor, SetFilename, both Closes, CloseKeepDir, Flush, the key stack's six
+ * (CloseKey .. GetSize), ReadString and FreeDirectory -- whose FreeVectors give the vector<CKey>
+ * and vector<CKey *> pieces 0x2573E0-0x25757F right after it, and the key buffer's clear and
+ * deleter 0x2599B0/0x259A30 in the tail. Not yet: Open 0x258920, NewKey, WriteDirectory, the
+ * buffer writers below 0x257320, the directory reader 0x258000 and the CKey vector's class insert
+ * 0x259250. */
 
 #include "zar.h"
 #include "../zutil/util_stable.h"
+#include "../zsys/zsys.h"
 
 /* the root key's name and a deleted key's (SOCOM 1's file statics, "ROOT" and "DELETED"; OVL1
  * 0x3DD000 and 0x3DD008, 8 bytes apart as MW 3.0 lays such statics out) */
@@ -23,7 +24,7 @@ namespace zar {
  * data padded to 16, a root key named DEFAULT_ZAR_NAME). Byte-exact: the file is a ternary (both
  * builds branch to the allocation and jump over an empty arm, which an `if (!io)` turns round) */
 CZAR::CZAR(const char *name, CIO *io)
-    : m_pFileAlloc(0), m_databuffer(0), m_databuffer_size(0), m_24(0), m_2c(0), m_root(0), m_stable(0),
+    : m_pFileAlloc(0), m_pDataFile(0), m_databuffer(0), m_24(0), m_2c(0), m_root(0), m_stable(0),
       m_filename(0), m_bCompress(0)
 {
     memset(&m_tail, 0, sizeof(m_tail));
@@ -35,6 +36,50 @@ CZAR::CZAR(const char *name, CIO *io)
     m_pFile = io ? io : (m_pFileAlloc = new CFileIO);
     m_data_padded = 16;
     m_root = new CKey(DEFAULT_ZAR_NAME);
+}
+
+/* (SOCOM 1's: closed, the string table deleted, the key buffer freed, the name set back to the
+ * default's and then to DELETED_ZAR_NAME, the root deleted -- SOCOM II calls Close out of line) */
+CZAR::~CZAR()
+{
+    Close();
+    delete m_stable;
+    FreeVector<std::vector<CKey> >(m_key_buffer);
+    SetFilename(DEFAULT_ZAR_NAME);
+    m_filename = (char *)DELETED_ZAR_NAME;
+    delete m_root;
+    m_root = 0;
+}
+
+/* called out of line by ~CZAR and Open (pinned: MW would inline it) */
+#pragma auto_inline off
+void CZAR::Close()
+{
+    if (IsOpen() && (m_pFile->GetMode() & 6))
+        Flush();
+    Close(true);
+    if (m_34) {
+        delete m_34;
+        m_34 = 0;
+    }
+}
+#pragma auto_inline reset
+
+void CZAR::Close(bool)
+{
+    if (m_pFileAlloc) {
+        m_pFileAlloc->Close();
+        delete m_pFileAlloc;
+        m_pFileAlloc = 0;
+        m_pFile = 0;
+    } else if (m_pFile)
+        m_pFile->Close();
+    if (m_pDataFile) {
+        m_pDataFile->Close();
+        delete m_pDataFile;
+        m_pDataFile = 0;
+    }
+    FreeDirectory();
 }
 
 bool CZAR::Flush()
@@ -134,5 +179,21 @@ int CZAR::ReadString(char **str)
     }
     return n;
 }
+
+#pragma auto_inline off
+void CZAR::FreeDirectory()
+{
+    if (m_key_buffer.size() == 0)
+        m_root->DeleteChildren(true);
+    else {
+        m_root->DeleteChildren(false);
+        m_key_buffer.clear();
+        FreeVector<std::vector<CKey> >(m_key_buffer);
+    }
+    m_keys.clear();
+    FreeVector<std::vector<CKey *> >(m_keys);
+    m_stable->Destroy();
+}
+#pragma auto_inline reset
 
 }
