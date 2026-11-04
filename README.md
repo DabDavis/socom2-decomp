@@ -2060,6 +2060,20 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the engine core, round 13** (the pop-up dialog's model, the network packet arguments, the mission title):
+  - a jump table that starts at 0 needs its empty cases written, otherwise MW builds a compare chain
+    (CZAnimArgList::AddNetworkPacketArgs 0x271EE0, SOCOM 1's); a `li a3,1` shared by a `== 1` compare and the call's third
+    argument means the argument really is 1 (UICompareValues 0x274DB0: UIVAR_SESSION); a `signed char` return compared as
+    `(unsigned char)` gives the target's `andi 0xff` instead of a sign extension;
+  - a member read twice, once for a test and once as a call argument: take the test's read into a local through a const
+    view, ahead of the unrelated `index = -1` store -- the load comes first and the store fills the branch's delay slot;
+  - zanim_menu.h's minimal CPopUpDialog (a CPlainBmp base, the text at 0xB0, a C2D at 0x314, two buttons; 0xBF0 bytes) with
+    its destructor inline in the class and a later virtual out of line reproduces the image: zanim_menu.cpp emits no
+    vtable (zui_2d.cpp's at 0x4073A0 is the real one) and the destructor's copy lands after UIFlushMenuHistory
+    (~CPopUpDialog 0x27C8D0, CMenuStack::GetPopUp 0x27F190);
+  - renaming a row that only a draft matches makes that draft no-target until automatch --stale runs: write the function
+    from source first, or keep the placeholder; 0x2A2EB0-0x2A3AF8 is a unit of its own (ftsGetAltitudeApprox, SOCOM II's,
+    and OVL1's copy of CAiMap::GetLocation 0x2A3950).
 - **Tells from the HUD, round 42** (the TCM builder, the root's show, the button's and wrapped text's destructors):
   - calling a virtual through a local copy of `this` defined in the block where it is used computes the object ahead of
     the argument and puts the argument in the call's delay slot; copied at the top of the function the copy becomes the
