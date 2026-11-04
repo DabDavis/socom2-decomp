@@ -7487,9 +7487,9 @@
 0x00399D20 0x16C SkbTakeText__FP9CGameMenu  # OVL1; the UI lane round 9: ours, by its body (string 1's text then string 2's into the UI variable SkbGetText(false) names, string 0's into SkbGetText(true)'s, the menu's event 15 or 14 by 0x396EF0 run with the text: OnEnterKey's taking of the text)
 0x00399E90 0x30 func_00399E90  # OVL1
 0x00399EC0 0x310 func_00399EC0  # OVL1
-0x0039A1D0 0x20C func_0039A1D0  # OVL1
-0x0039A3E0 0xC func_0039A3E0  # OVL1
-0x0039A3F0 0x8 func_0039A3F0  # OVL1
+0x0039A1D0 0x20C SkbCursorTo__FiP13CSoftKeyboardb  # OVL1; the UI lane round 21: ours, by its body (zui_skbkeys.cpp: string 1's characters counted, the cursor put into string 2 when it holds any and the place passes string 1's end -- by SkbBefore or SkbAtOrBefore, taken by address --, the count set and the cursor placed as SkbCursorBack does; SkbClearText puts it at 0)
+0x0039A3E0 0xC SkbAtOrBefore__Fii  # OVL1; the UI lane round 21: ours, by its body (zui_skbkeys.cpp: pos <= n, SkbCursorTo's test of a place against string 1's length, taken by address)
+0x0039A3F0 0x8 SkbBefore__Fii  # OVL1; the UI lane round 21: ours, by its body (zui_skbkeys.cpp: pos < n, SkbCursorTo's other test, taken by address)
 0x0039A400 0x1B0 SkbCursorToEnd__FP13CSoftKeyboard  # OVL1; the UI lane round 21: ours, by its body (zui_skbkeys.cpp: s_textCount1 set from string 2 holding characters, the cursor's string's characters counted into s_textCount0, the cursor placed after them as SkbCursorBack 0x399530 places it; SkbCloseText0 and SkbSwitchText call it)
 0x0039A5B0 0x1DC SkbSetText__FPCcP13CSoftKeyboard  # OVL1; the UI lane round 21: ours, by its body (zui_skbkeys.cpp: the text wrapped by SkbWrapText 0x39AE50 to the look's width at the edited string's scale times its font's, refused past one line while string 0 is edited or two when the look has a line height; line 0 set into the edited string, line 1 into string 2; SkbClearText calls it with "")
 0x0039A790 0x138 SkbEditCharLen__Fi  # OVL1; ours (the UI lane round 17: the byte length (UTF8CharLen) of the character at a byte offset of the edited text -- string 0's while it is edited (0x4A1330), else string 1's with string 2's appended when it has any; 0x398C40 calls it; zui_skbkeys.cpp)

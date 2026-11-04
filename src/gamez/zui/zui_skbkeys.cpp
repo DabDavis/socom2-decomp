@@ -303,14 +303,10 @@ void SkbUsbDigit(const SKBUSBKEY *key, int arg)
     func_00399040((key->m_shift ? s_shiftDigitChars : s_digitChars)[key->m_usage - 30], arg);
 }
 
-/* (the keyboard units' functions not yet written, by address: the cursor drawn, the composition
- * flushed, the keyboard's state; the edit mode switched, the text's fields placed; a jamo typed;
- * whether shift composes) */
-extern "C" {
-void func_0039A1D0(int a, CSoftKeyboard *skb, int b);
-}
-/* the text set and laid out (0x39A5B0), the cursor put after it (0x39A400) */
+/* the text set and laid out (0x39A5B0), the cursor put at a character (0x39A1D0) and after the
+ * text (0x39A400) */
 bool SkbSetText(const char *text, CSoftKeyboard *skb);
+void SkbCursorTo(int pos, CSoftKeyboard *skb, bool before);
 void SkbCursorToEnd(CSoftKeyboard *skb);
 void SkbPlaySound(unsigned char which);
 bool SkbToggleCaption1(CSoftKeyboard *skb);
@@ -428,7 +424,7 @@ bool SkbClearText(CSoftKeyboard *skb)
     if (ShownText(EditString()) && *ShownText(EditString()))
         had = true;
     SkbSetText("", skb);
-    func_0039A1D0(0, skb, 0);
+    SkbCursorTo(0, skb, false);
     SkbHangulClear();
     SkbPlaySound(3);
     return had;
@@ -541,6 +537,53 @@ static inline float LineOffset(const CSoftKeyboard *skb)
     float h = skb->m_c4;
 
     return (float)s_textCount1 * h;
+}
+
+/* the cursor's two tests of a place against string 1's length, taken by address (0x39A3F0,
+ * 0x39A3E0; the names ours) */
+bool SkbBefore(int pos, int n)
+{
+    return pos < n;
+}
+
+bool SkbAtOrBefore(int pos, int n)
+{
+    return pos <= n;
+}
+
+/* the cursor put at a character of the text (0x39A1D0; the name ours: SkbClearText puts it at 0):
+ * past string 1's characters -- after them, or at their end too when not `before` -- and with string
+ * 2 holding any, it goes into string 2, the count taken from string 1's length; then placed as
+ * SkbCursorBack places it */
+void SkbCursorTo(int pos, CSoftKeyboard *skb, bool before)
+{
+    int n1 = -1;
+
+    if (!s_textSel) {
+        bool more;
+
+        n1 = 0;
+        const char *p = ShownText(&s_textString1);
+        while (TestChar(more, p)) {
+            n1++;
+            p += CharLen(p);
+        }
+    }
+    bool (*cmp)(int, int) = before ? SkbBefore : SkbAtOrBefore;
+
+    /* string 2's test a bool of its own (SkbEditCharLen's ternary): in one expression the && is
+     * made a flag of its own, 8 bytes longer */
+    bool more2 = s_textSel ? false : HasChar(ShownText(&s_textString2));
+
+    s_textCount1 = more2 && !cmp(pos, n1);
+    s_textCount0 = pos - (s_textCount1 ? n1 : 0);
+    int count = s_textCount0;
+    float w = SkbTextWidth(CursorString(), count);
+    SKBPROPS props = s_textSel ? SKB_PROPS_MSGPLAYER : SKB_PROPS_USER;
+    float x = w + (float)skb->m_caps[props].m_0;
+    float y = (float)CursorY(skb) + LineOffset(skb);
+
+    func_00395120(x, y);
 }
 
 /* the text set into the strings (0x39A5B0; the name ours: SkbClearText sets ""): wrapped to the
