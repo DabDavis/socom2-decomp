@@ -333,6 +333,71 @@ bool CAiPath::IsPreferredCell(const CAiCell *cell) const
 }
 #pragma auto_inline reset
 
+/* MSL's reverse_iterator over the points (ours: include/vector has none; the HUD's c2dfont.cpp
+ * carries the same shape) -- the base iterator held, `current - 1` at each access */
+class CPointRevIter {
+public:
+    typedef CAiPath::points::iterator It;
+
+    explicit CPointRevIter(It x) : current(x) {}
+    CAiPath::point &operator*() const
+    {
+        It tmp = current;
+
+        return *--tmp;
+    }
+    CAiPath::point *operator->() const { return &(operator*()); }
+    CPointRevIter &operator++()
+    {
+        --current;
+        return *this;
+    }
+
+    It current;
+};
+
+inline CPointRevIter rbegin(CAiPath::points &v)
+{
+    return CPointRevIter(v.end());
+}
+
+inline CPointRevIter rend(CAiPath::points &v)
+{
+    return CPointRevIter(v.begin());
+}
+
+inline bool operator!=(const CPointRevIter &x, const CPointRevIter &y)
+{
+    return x.current != y.current;
+}
+
+/* each point's width on its leg's map, last to first, the leg moving on at each leg's goal (SOCOM 1's,
+ * the demo's 0x193E80, after SetSnakeLength in both builds; SOCOM II's walk a reverse iterator: the end
+ * stored and copied into the iterator through $f0, the begin likewise at each test). The cell compared
+ * through CAiMapLoc's == (the point's x loaded first), the map declared ahead of the leg and assigned
+ * after it (the map s4, the leg s3, the leg's zero in the first test's delay slot), rbegin()/rend()
+ * inlines of their own (the iterator then takes the slot above rend's temporary) */
+void CAiPath::UpdatePathWidth(unsigned int width)
+{
+    CPointRevIter i = rbegin(m_points);
+    CAiMap *map;
+    int leg = 0;
+
+    map = GetLegMap(leg);
+    CAiMapLoc start;
+    CAiMapLoc goal;
+
+    GetLegPoints(start, goal, leg);
+    for (; i != rend(m_points); ++i) {
+        (*i).m_width = map->GetLocationWidth((*i).m_loc, width);
+        if ((*i).m_loc == goal) {
+            leg++;
+            map = GetLegMap(leg);
+            GetLegPoints(start, goal, leg);
+        }
+    }
+}
+
 /* the snake's length: none (when one was set) clears flag 2 and empties the path, Clear inlined;
  * a new one cuts the points to it, reserves them, sets flag 2 and completes the plan (SOCOM 1's) */
 void CAiPath::SetSnakeLength(unsigned int len)
