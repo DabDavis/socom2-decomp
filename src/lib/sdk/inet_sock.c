@@ -26,9 +26,10 @@
  * held across the call) where the aligned pointer's mask is a plain -64.
  *
  *  - the BSD calls (GCC round 21a): socket 0x1C2B90, bind 0x1C2CD8, connect 0x1C2DD0, listen 0x1C3120
- *    (a libinet listener per backlog slot, 0x1C2F38), close 0x1C3CE8, and around them the thread's
- *    buffer resize 0x1C2648, its context's drop 0x1C2A98, the send side's lazy open 0x1C35A0, an
- *    option setter 0x1C4088, the abort 0x1C4C20; each takes the thread's context with the lock,
+ *    (a libinet listener per backlog slot, 0x1C2F38), send/recv 0x1C3660/0x1C3810, sendto/recvfrom
+ *    0x1C39B0/0x1C3B20, close 0x1C3CE8, and around them the thread's buffer resize 0x1C2648, its
+ *    context's drop 0x1C2A98, the send side's lazy open 0x1C35A0, an option setter 0x1C4088, the
+ *    abort 0x1C4C20; each takes the thread's context with the lock,
  *    releases the lock around every libinet call (func_001C2140 ... func_001C20D8) and returns
  *    through func_001C2310 with an errno.
  *
@@ -43,7 +44,14 @@
  * constant, which CSE then reuses). socket()'s case 2 is written first (its body follows the case
  * tree, so the tree's last test is `beq 3 -> the allocation; b default`), its record filled in field
  * order (one of three orders of 120). The send side's open nests its body under `if (s->cid ==
- * 0)`, its final `return 0` laid out last.
+ * 0)`, its final `return 0` laid out last, and so does the listener slot's (`if (r < 0 && r != -500)
+ * return func_001C24D0(r); return 0;`: its error call jumps over the epilogue's first word); the
+ * slot's new tail is tested through the copy just stored (`t->prev = s->ctail; if (t->prev)`), its
+ * -1 options in field order (one of 24). THE DATA CALLS RETURN A LONG: each `return
+ * func_001C2310(c, X)` widens the int with a register move (extendsidi2's `move v0,v0`, which
+ * survives as no no-op move would), so the error paths' tails are two insns and cross-jump into one
+ * call site as the target's (as int: each its own call, 86 words); their piece size is an if/else
+ * (`n = len < ... ? ... : len` folds to a signed MIN: `slt` for the target's `sltu`).
  *
  * OPEN: func_001C1D40, the first-fit allocation (0x14C against 0x150: the target computes the
  *   remainder as (size' - 12) - size from the loop's own load of the block's size, and after a split
@@ -53,6 +61,8 @@
  *   size held from the start, the merges reuse the adjacency sums -- the walk's shape is not yet the
  *   target's); func_001C2028, the heap's set-up (right size, 34: the first `return -1` is the one
  *   the second test jumps back to, and nine stores in another order -- not yet permuted);
+ *   func_001C46D0, getsockname/getpeername (4 words, right size: the target materialises the 16
+ *   for *namelen in v0 after the port's sh, this compile in v1 before it; two spellings alike);
  *   func_001C48A0, gethostbyname (0x178 against 0x180: the target keeps each error path's
  *   `func_001C2310(c, X); return 0;` apart -- three calls, each `b epilogue; move v0,zero` -- where
  *   this compile cross-jumps them into one call; the h_errno chain's value through one store as
@@ -81,10 +91,17 @@ extern int sceLibnetInitialize(void *client, u_int bufsize, int a, int b);
 extern int sceLibnetTerminate(void *client);
 extern int DeleteSema(int sema);
 extern void *memset(void *p, int c, size_t n);
+extern void *memcpy(void *d, const void *s, size_t n);
 extern int sceInetCreate(void *cd, void *buf, void *param);
 extern int sceInetOpen(void *cd, void *buf, int s, int ms);
 extern int sceInetAbort(void *cd, void *buf, int s, int flags);
 extern int sceInetClose(void *cd, void *buf, int s, int ms);
+extern int sceInetSend(void *cd, void *buf, int s, void *ptr, int count, int *pflags, int ms);
+extern int sceInetRecv(void *cd, void *buf, int s, void *ptr, int count, int *pflags, int ms);
+extern int sceInetSendTo(void *cd, void *buf, int s, void *ptr, int count, int *pflags, void *paddr,
+			 int port, int ms);
+extern int sceInetRecvFrom(void *cd, void *buf, int s, void *ptr, int count, int *pflags, void *paddr,
+			   int *pport, int ms);
 extern int sceInetControl(void *cd, void *buf, int s, int code, void *ptr, int len);
 extern int sceInetName2Address(void *cd, void *buf, int flags, void *paddr, const char *name, int ms,
 			       int nretry);
@@ -342,7 +359,7 @@ typedef struct _sock {
 	int cid;		/* 0x0C: libinet's connection */
 	sceInetParam_t param;	/* 0x10 */
 	struct _sock *conn;	/* 0x50: its connections */
-	int pad54;
+	struct _sock *ctail;	/* 0x54: the last of them */
 	struct _sock *pend;	/* 0x58 */
 	int pad5c;
 	int opt60;		/* 0x60 */
@@ -980,5 +997,270 @@ int func_001C4088(int id, int val)
 		return func_001C2310(c, -1);
 	if (r < 0)
 		return func_001C2310(c, func_001C24D0(r));
+	return func_001C2310(c, 0);
+}
+
+/* send(): the data in pieces of at most the thread's buffer, until one is short; nothing sent at all
+ * with a timeout set is EAGAIN */
+long func_001C3660(int id, char *buf, u_int len, int flags)
+{
+	CTX *c;
+	SOCK *s;
+	int r, n, total = 0;
+	int fl;
+
+	c = func_001C2160(0);
+	if (c == 0)
+		return -1;
+	s = func_001C23D8(id);
+	if (s == 0)
+		return func_001C2310(c, 9);
+	if ((s->param.type == 0 || s->param.type == 3) && c->bufsize < len)
+		return func_001C2310(c, 22);
+	r = func_001C35A0(c, s);
+	if (r)
+		return func_001C2310(c, r);
+	if (flags & 1)
+		fl = 2;
+	else
+		fl = 0;
+	while (len) {
+		if (c->bufsize < len)
+			n = c->bufsize;
+		else
+			n = len;
+		func_001C2140();
+		r = sceInetSend(c->client, c->abuf, s->cid, buf, n, &fl, s->opt64);
+		if (func_001C20D8() < 0)
+			return func_001C2310(c, -1);
+		if (r < 0)
+			return func_001C2310(c, func_001C24D0(r));
+		buf += r;
+		len -= r;
+		total += r;
+		if (r < n)
+			break;
+	}
+	if (total == 0 && s->opt64 >= 0)
+		return func_001C2310(c, 11);
+	func_001C2310(c, 0);
+	return total;
+}
+
+/* recv(): as send, the receive timeout the socket's own; EAGAIN unless the peer finished */
+long func_001C3810(int id, char *buf, u_int len, int flags)
+{
+	CTX *c;
+	SOCK *s;
+	int r, n, total = 0;
+	int fl;
+
+	c = func_001C2160(0);
+	if (c == 0)
+		return -1;
+	s = func_001C23D8(id);
+	if (s == 0)
+		return func_001C2310(c, 9);
+	if ((s->param.type == 0 || s->param.type == 3) && c->bufsize < len)
+		return func_001C2310(c, 22);
+	r = func_001C35A0(c, s);
+	if (r)
+		return func_001C2310(c, r);
+	fl = 0;
+	while (len) {
+		if (c->bufsize < len)
+			n = c->bufsize;
+		else
+			n = len;
+		func_001C2140();
+		r = sceInetRecv(c->client, c->abuf, s->cid, buf, n, &fl, s->opt60);
+		if (func_001C20D8() < 0)
+			return func_001C2310(c, -1);
+		if (r < 0)
+			return func_001C2310(c, func_001C24D0(r));
+		buf += r;
+		len -= r;
+		total += r;
+		if (r < n)
+			break;
+	}
+	if (total == 0 && s->opt60 >= 0 && !(fl & 4))
+		return func_001C2310(c, 11);
+	func_001C2310(c, 0);
+	return total;
+}
+
+extern int func_001C24B0(int port);
+
+/* sendto(): a datagram or raw socket's one datagram, at most the thread's buffer */
+long func_001C39B0(int id, char *buf, u_int len, int flags, struct sockaddr_in *to, int tolen)
+{
+	CTX *c;
+	SOCK *s;
+	int r, port;
+	int fl;
+	sceInetAddress_t addr;
+
+	c = func_001C2160(0);
+	if (c == 0)
+		return -1;
+	s = func_001C23D8(id);
+	if (s == 0)
+		return func_001C2310(c, 9);
+	if (s->param.type != 0 && s->param.type != 3)
+		return func_001C2310(c, 95);
+	if (c->bufsize < len)
+		return func_001C2310(c, 22);
+	r = func_001C35A0(c, s);
+	if (r)
+		return func_001C2310(c, r);
+	fl = 0;
+	func_001C2410(&addr, &to->sin_addr);
+	port = func_001C2488(to->sin_port);
+	func_001C2140();
+	r = sceInetSendTo(c->client, c->abuf, s->cid, buf, len, &fl, &addr, port, s->opt64);
+	if (func_001C20D8() < 0)
+		return func_001C2310(c, -1);
+	if (r < 0)
+		return func_001C2310(c, func_001C24D0(r));
+	func_001C2310(c, 0);
+	return r;
+}
+
+/* recvfrom(): one datagram, its sender written back */
+long func_001C3B20(int id, char *buf, u_int len, int flags, struct sockaddr_in *from, int *fromlen)
+{
+	CTX *c;
+	SOCK *s;
+	int r, port;
+	int fl;
+	sceInetAddress_t addr;
+
+	c = func_001C2160(0);
+	if (c == 0)
+		return -1;
+	if (*fromlen < sizeof(struct sockaddr_in))
+		return func_001C2310(c, 22);
+	s = func_001C23D8(id);
+	if (s == 0)
+		return func_001C2310(c, 9);
+	if (s->param.type != 0 && s->param.type != 3)
+		return func_001C2310(c, 95);
+	if (c->bufsize < len)
+		return func_001C2310(c, 22);
+	r = func_001C35A0(c, s);
+	if (r)
+		return func_001C2310(c, r);
+	fl = 0;
+	func_001C2410(&addr, &from->sin_addr);
+	port = func_001C2488(from->sin_port);
+	func_001C2140();
+	r = sceInetRecvFrom(c->client, c->abuf, s->cid, buf, len, &fl, &addr, &port, s->opt60);
+	if (func_001C20D8() < 0)
+		return func_001C2310(c, -1);
+	if (r < 0)
+		return func_001C2310(c, func_001C24D0(r));
+	from->sin_family = 2;
+	func_001C2458(&from->sin_addr, &addr);
+	from->sin_port = func_001C24B0(port);
+	*fromlen = sizeof(struct sockaddr_in);
+	func_001C2310(c, 0);
+	return r;
+}
+
+/* a listening socket's next slot: a record for the connection to come, on the socket's list, its
+ * libinet listener created and opened (-500, nothing to accept yet, is no error) */
+int func_001C2F38(CTX *c, SOCK *s)
+{
+	SOCK *t;
+	int id, r;
+
+	id = func_001C25D0();
+	t = func_001C1CD0(sizeof(SOCK));
+	if (t == 0)
+		return 12;
+	memset(t, 0, sizeof(SOCK));
+	t->id = id;
+	memcpy(&t->param, &s->param, sizeof(t->param));
+	t->opt60 = -1;
+	t->opt64 = -1;
+	t->opt68 = -1;
+	t->prev = s->ctail;
+	if (t->prev)
+		t->prev->next = t;
+	else
+		s->conn = t;
+	t->next = 0;
+	s->ctail = t;
+	func_001C2140();
+	r = sceInetCreate(c->client, c->abuf, &t->param);
+	if (func_001C20D8() < 0)
+		return -1;
+	if (r <= 0) {
+		{
+			SOCK *p = t->prev;
+
+			if (t->next)
+				t->next->prev = p;
+			else
+				s->ctail = p;
+		}
+		if (t->prev)
+			t->prev->next = t->next;
+		else
+			s->conn = t->next;
+		func_001C1D08(t);
+		return func_001C24D0(r);
+	}
+	t->cid = r;
+	func_001C2140();
+	r = sceInetOpen(c->client, c->abuf, t->cid, 0);
+	if (func_001C20D8() < 0)
+		return -1;
+	if (r < 0 && r != -500)
+		return func_001C24D0(r);
+	return 0;
+}
+
+/* getsockname() and getpeername() (peer): from libinet's connection information; a listening
+ * socket answers through its first slot */
+int func_001C46D0(int id, struct sockaddr_in *name, int *namelen, int peer)
+{
+	CTX *c;
+	SOCK *s;
+	int r, port;
+	sceInetInfo_t info;
+
+	c = func_001C2160(0);
+	if (c == 0)
+		return -1;
+	if (*namelen < sizeof(struct sockaddr_in))
+		return func_001C2310(c, 22);
+	s = func_001C23D8(id);
+	if (s == 0)
+		return func_001C2310(c, 9);
+	if (s->cid == 0) {
+		if (peer)
+			return func_001C2310(c, 22);
+		if (s->param.type != 2 || s->conn == 0 || s->conn->cid == 0)
+			return func_001C2310(c, 9);
+		s = s->conn;
+	}
+	func_001C2140();
+	r = sceInetControl(c->client, c->abuf, s->cid, 1, &info, sizeof(info));
+	if (func_001C20D8() < 0)
+		return func_001C2310(c, -1);
+	if (r < 0)
+		return func_001C2310(c, func_001C24D0(r));
+	name->sin_family = 2;
+	if (peer) {
+		func_001C2458(&name->sin_addr, &info.remote_adr);
+		port = info.remote_port;
+	} else {
+		func_001C2458(&name->sin_addr, &info.local_adr);
+		port = info.local_port;
+	}
+	name->sin_port = func_001C24B0(port);
+	*namelen = sizeof(struct sockaddr_in);
 	return func_001C2310(c, 0);
 }
