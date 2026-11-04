@@ -58,6 +58,9 @@ struct _zrdr {
     /* out of line in every unit (0x32C650/0x32C660): the file and pack units call them */
     bool IsString() const;
     bool IsArray() const;
+    /* the packed flag set (ours, inline: zrdr_pack and its array copier set it with `true`, which
+     * MW folds to a daddiu constant ORed into the masked byte) */
+    void SetPacked(bool b) { packed = b; }
 
     /* an array's count, its items, a value read as a string or a number (ours, inline) */
     unsigned int Count() const { return type == ZRDR_ARRAY ? length : 0; }

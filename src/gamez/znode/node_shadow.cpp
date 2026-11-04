@@ -6,6 +6,11 @@
 
 #include "node_world.h"
 
+/* the margin a shadow caster's box is grown by (SOCOM 1's file-static boxAdjust; its
+ * __sinit_node_shadow.cpp builds it as SOCOM II's 0x402940 does, 0x45C338) -- read by the shadow's
+ * set-up 0x31A180 */
+static CPnt3D boxAdjust(5.0f, 5.0f, 5.0f);
+
 namespace zdb {
 
 /* the light taken off the world's list and the packet freed (SOCOM 1's) */

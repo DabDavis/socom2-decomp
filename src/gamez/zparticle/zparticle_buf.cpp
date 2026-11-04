@@ -1,10 +1,11 @@
 /* zparticle_buf.cpp -- the particle draw buffer (OVL1 0x324C70-0x326F4F): the frame's particles
  * gathered as buffer elements, sorted back to front and drawn as GS packets. The unit name is
- * SOCOM 1's (its __sinit_zparticle_buf.cpp; SOCOM II's 0x402BB0 builds the 5000 32-byte elements
- * at 0x45C4B0 with the constructor 0x326F40). SOCOM 1's demo holds DrawRange to the element's
+ * SOCOM 1's (its __sinit_zparticle_buf.cpp; SOCOM II's 0x402BB0 builds <iostream>'s pair and the
+ * 5000 32-byte elements at 0x45C4D0 with the constructor 0x326F40). SOCOM 1's demo holds DrawRange to the element's
  * constructor in this order. Defined in reverse of their image order (-inline deferred). Written
  * so far: DrawRange, DrawFlush and the sort's comparison. */
 
+#include <iostream>
 #include "zparticle.h"
 
 /* the renderer's pipe, as much as the buffer reads: its camera (zrndr_pipe.cpp's class; the
@@ -31,6 +32,9 @@ namespace Particle {
  * its depth at 0x1C (the members' names ours) */
 class BufferElement {
 public:
+    /* nothing built (SOCOM 1's: the initialiser constructs the buffer through it, its out-of-line
+     * copy 0x326F40 the unit's last function) */
+    BufferElement() {}
     void Draw(float (&m)[4][4]);
     void DrawRotated(float (&m)[4][4]);
     void DrawXZ(float (&m)[4][4]);
@@ -41,6 +45,10 @@ public:
     unsigned char _14[0x8];   // 0x14
     float m_depth;   // 0x1c
 };   // 0x20 bytes
+
+/* the frame's elements (SOCOM 1's buffer, 5000 of them: the unit's initialiser 0x402BB0 constructs
+ * them in place, 0x45C4D0) */
+BufferElement buffer[5000];
 
 /* the sorted elements, drawn from the last back to the first (SOCOM 1's) */
 extern BufferElement *bufferPtr[5000];   // 0x4835F0

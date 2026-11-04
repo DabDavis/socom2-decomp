@@ -19,7 +19,7 @@ extern unsigned short data_003DFF58;
 
 /* the resolvers (not written yet): the tree's offsets into pointers (A) and back (B) */
 extern "C" void func_0032CCB0(_zrdr *rdr, _zrdr *root, char *strings);
-extern "C" void func_0032CB90(_zrdr *rdr, _zrdr *root, char *strings);
+void _resolveB(_zrdr *rdr, const _zrdr *root, const char *strings);
 /* zrdr_freearray (0x335AA0) */
 void zrdr_freearray(_zrdr *rdr);
 
@@ -62,6 +62,36 @@ struct RdrHeader {
     int root;   // 0x8
 };
 
+/* SOCOM 1's _resolveB, after Resolve as there: a packed tree's offsets made pointers -- a string's
+ * into the string table (a negative offset makes the value the integer 0), an array's into the
+ * tree, its items in turn unless the array lives in the buffer (SOCOM II's count in the value's
+ * length, its items from 0; SOCOM 1 kept the count in the first item). The array case written
+ * first: the compare chain tests the string's type first, as the target's; each offset made a pointer by
+ * adding its base to the word (written as pointer sums, MW puts the base first in the addu) and
+ * the item index an int (the address recomputed each pass, as the target's) */
+void _resolveB(_zrdr *rdr, const _zrdr *root, const char *strings)
+{
+    switch (rdr->type) {
+    case ZRDR_ARRAY:
+        rdr->integer += (int)root;
+        if (!rdr->nofree) {
+            unsigned int n = rdr->Count();
+
+            for (int i = 0; i < n; i++)
+                _resolveB(rdr->Item(i), root, strings);
+        }
+        break;
+    case ZRDR_STRING:
+        if (rdr->integer >= 0)
+            rdr->integer += (int)strings;
+        else {
+            rdr->integer = 0;
+            rdr->type = ZRDR_INTEGER;
+        }
+        break;
+    }
+}
+
 /* SOCOM 1's: a packed buffer's offsets made pointers (or, packing, made offsets again), the
  * root's value and count copied into the file's own. The header is read through the const
  * Buffer() (a second load, as the target's), the ternaries' tests reuse the first; root declared
@@ -88,7 +118,7 @@ bool CRdrFile::Resolve(bool pack)
         h->flags &= ~1;
     } else {
         if (!(h->flags & 1)) {
-            func_0032CB90(root, root, strings);
+            _resolveB(root, root, strings);
             *(volatile unsigned short *)&h->flags = h->flags;
             h->flags |= 1;
         } else {
