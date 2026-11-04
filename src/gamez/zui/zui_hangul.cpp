@@ -2,8 +2,8 @@
  * 0x403770 building two vectors and a word at 0x49ED08-0x49ED40; its template tail ends on the two
  * vectors' destructors the initialiser registers, 0x3940F0 and 0x394170, so 0x3941D0-0x39441F --
  * CSkbKeyProps' members zui_skb.cpp calls, ~CSkbKeyProps 0x394370, SkbLoadUiParams -- open the
- * next unit, whichever file that is: SkbLoadUiParams stays here until its unit is written, as
- * nothing inlines it): the 33 jamo by name, the 2-set
+ * next unit: the members are zui_skbview.cpp's since the UI lane's round 20; SkbLoadUiParams stays
+ * here until that is measured, as nothing inlines it): the 33 jamo by name, the 2-set
  * keyboard's letters mapped to jamo (shifted and not), the syllable being composed, and the rdr
  * helpers the keyboard units share (an rdr array's count, an rdr array walked by index). SOCOM 1 has
  * none of it: the file's name and every name here are ours. Defined in reverse of their image order

@@ -26,13 +26,16 @@ struct SKBPIECE {
 };
 
 /* a sequence of a production: the jamo it reads and the two values it adds (KoreanInputRules'
- * Seq/Val/Val2; ours, 20 bytes) */
+ * Seq/Val/Val2; ours, 20 bytes). The values are CInit<int, 0>s, as SKBPIECE's code is (the UI
+ * lane's round 20): the vector's insert 0x393790 copy-constructs them word by word with lw/sw and
+ * assigns them through an FPR each (lwc1/swc1), which plain ints (lw/sw both ways) and an int[2]
+ * (block copies at both, a user copy constructor still pairing the loads) do not give */
 struct SKBSEQ {
-    SKBSEQ() : m_val(0), m_val2(0) {}
+    SKBSEQ() {}
 
     std::vector<char> m_jamo;   // 0x0
-    int m_val;   // 0xc
-    int m_val2;   // 0x10
+    CInit<int, 0> m_val;   // 0xc
+    CInit<int, 0> m_val2;   // 0x10
 };
 
 /* the pieces composed so far (a vector of SKBPIECE; the members ours) */

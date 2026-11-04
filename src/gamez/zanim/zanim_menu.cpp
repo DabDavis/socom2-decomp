@@ -27,10 +27,10 @@ public:
     bool RefreshGameList(C2D *list);          /* 0x3042B0 */
     void Disconnect();                        /* 0x3043E0 */
     bool IsActive();                          /* 0x3045B0: whether the LAN lobby is the one in use */
+    bool JoinGame(const char *game);          /* 0x3039B0 */
 };
 extern "C" {
 extern CZLANLobby data_0044FE10;           /* a second lobby: the LAN game's */
-bool func_003039B0(CZLANLobby *lan, const char *game);
 void func_0030D770(CZNetwork *net);
 void func_0030E3A0(CZNetwork *net, int arg);
 extern int data_00441470;
@@ -252,7 +252,9 @@ bool OnRemoveEquipment(C2DAnimCmdHdr *hdr, float *dT)
 /* the per-character picks the new choosers make (SOCOM II's, not named yet): a primary weapon, an
  * item into one of the three equipment slots (2 to 4) */
 bool ChoosePrimaryForCharacter(const CSelectedCharsItr &it, EQUIP_ITEM item);
-extern "C" bool func_00282C20(const CSelectedCharsItr &it, EQUIP_ITEM item, int slot);
+namespace {
+bool ChooseSlotForCharacter(const CSelectedCharsItr &it, EQUIP_ITEM item, int slot);
+}
 /* the selection's item valves brought up to date (SOCOM II's, not named yet: UpdateSelItemValves
  * 0x282410 is a jump to it) */
 extern "C" void func_00282140();
@@ -272,10 +274,11 @@ inline bool ChooseSecondaryForCharacter(const CSelectedCharsItr &it, EQUIP_ITEM 
     return true;
 }
 
-/* the new choosers' checks and moves (SOCOM II's, not named yet): whether a character may take the
- * item (0x284120), and the item set into a slot after its old one is let go (0x283170) */
-extern "C" bool func_00284120(const CSelectedCharsItr &it, EQUIP_ITEM item, int slot);
+/* the item set into a slot after its old one is let go (SOCOM II's, 0x283170: not named yet) */
 extern "C" void func_00283170(const CSelectedCharsItr &it, int slot, EQUIP_ITEM item);
+/* the equipment slots a weapon takes in a loadout, 1 for an unknown item (zwep_weapon.cpp's 0x3D3750,
+ * not named yet: char_type.cpp declares it alike) */
+extern "C" int func_003D3750(EQUIP_ITEM item);
 /* what each selected character's equipment slots held before a primary's own items went in (SOCOM
  * II's, two items a character; not named yet) */
 struct CHAR_SLOT_PICKS {
@@ -292,15 +295,17 @@ struct CItemDefFlags {
 };
 extern "C" CItemDefFlags *func_003CF1F0(EQUIP_ITEM item);
 
-/* the new choosers' slot helpers (SOCOM II's, the names ours), each called out of line: pinned. Their
- * image order (IsSlotLocked 0x281950, FindItemSlot 0x282EB0, NextFreeSlot 0x284640) is their
- * generation order, the reverse of this definition order -- which is load-bearing: a caller
- * generated after its callee knows the registers it writes, so NextFreeSlot keeps `slot` in a2
- * across FindItemSlot (defined ahead of its callees here, it saved the slot in s1: 12 bytes long) */
+/* the new choosers' slot helpers (SOCOM II's, the names ours), each called out of line: pinned. They
+ * are defined in the reverse of their image order (IsSlotLocked 0x281950, FindItemSlot 0x282EB0,
+ * HasSlotsForItem 0x284120, ChoosePrimaryForCharacter 0x284360, NextFreeSlot 0x284640), which is
+ * their generation order -- load-bearing: a caller generated after its callee knows the registers it
+ * writes, so NextFreeSlot keeps `slot` in a2 across FindItemSlot (defined ahead of its callees here,
+ * it saved the slot in s1: 12 bytes long) */
 namespace {
 
 int FindItemSlot(const CSelectedCharsItr &it, EQUIP_ITEM item, int skip);
 bool IsSlotLocked(CSelectedCharsItr it, int slot, EQUIP_ITEM item);
+bool HasSlotsForItem(const CSelectedCharsItr &it, EQUIP_ITEM item, int slot);
 
 #pragma auto_inline off
 /* the slot an item goes into: the first empty one past the given, else the next of the equipment
@@ -323,6 +328,195 @@ int NextFreeSlot(const CSelectedCharsItr &it, int slot)
     }
     return s;
 }
+#pragma auto_inline reset
+
+}
+
+/* the primary weapon given to one selected character, when it may take it: its first weapon set up
+ * as the item unless it is that already, then the primary's own items into free equipment slots --
+ * an M203 rifle's two grenades (141, 175), 143's 179, 142's 175, 63's 183 -- what each slot held
+ * kept, the UI variables and the selection's valves updated (SOCOM II's, 0x284360; the name ours,
+ * after ChooseEquipmentForCharacter). The first weapon's item a const local: the narrowed item's
+ * temporary has 26 neighbours, one over K (25) once the item is pushed, so MW deferred it and
+ * coloured it first (s0, the list s1, the character s2: 36 off); the const local, numbered just
+ * below it and pushed first, drops it under K and gives the target's list s0, character s1,
+ * narrowed item s2 and item s3 (the UI's round 18 rule; a const weapon pointer, the list through a
+ * reference, the compare's operands swapped, a switch and dead first definitions did not) */
+bool ChoosePrimaryForCharacter(const CSelectedCharsItr &it, EQUIP_ITEM item)
+{
+    if (!HasSlotsForItem(it, item, 0))
+        return false;
+
+    CCharacterWeapList *weapons = (CCharacterWeapList *)it.m_weapons;
+
+    const EQUIP_ITEM first = (*weapons)[0].m_wepId;
+
+    if (item == first)
+        return true;
+    func_00283170(it, 0, item);
+    (*weapons)[0].SetupCharacterWeapon(item);
+
+    CZFTSWeapon *w = m_listWeapons__8CZWeapon.GetWeapon(item);
+    unsigned int slot;
+
+    if (w && w->IsM203Weapon()) {
+        slot = NextFreeSlot(it, -1);
+        if (slot < weapons->size())
+            data_003DD060[it.m_index].a = (*weapons)[slot].m_wepId;
+        ChooseSlotForCharacter(it, (EQUIP_ITEM)141, slot);
+        slot = NextFreeSlot(it, -1);
+        if (slot < weapons->size())
+            data_003DD060[it.m_index].b = (*weapons)[slot].m_wepId;
+        ChooseSlotForCharacter(it, (EQUIP_ITEM)175, slot);
+    } else if (item == 143) {
+        slot = NextFreeSlot(it, -1);
+        if (slot < weapons->size())
+            data_003DD060[it.m_index].a = (*weapons)[slot].m_wepId;
+        ChooseSlotForCharacter(it, (EQUIP_ITEM)179, slot);
+    } else if (item == 142) {
+        slot = NextFreeSlot(it, -1);
+        if (slot < weapons->size())
+            data_003DD060[it.m_index].a = (*weapons)[slot].m_wepId;
+        ChooseSlotForCharacter(it, (EQUIP_ITEM)175, slot);
+    } else if (item == 63) {
+        slot = NextFreeSlot(it, -1);
+        if (slot < weapons->size())
+            data_003DD060[it.m_index].a = (*weapons)[slot].m_wepId;
+        ChooseSlotForCharacter(it, (EQUIP_ITEM)183, slot);
+    }
+    UpdateCharWeaponUiVars(it.m_index);
+    func_00282140();
+    return true;
+}
+
+namespace {
+
+/* whether a slot is locked against the item for any selected character (SOCOM II's; the name ours):
+ * the lock's negation materialised (sltu, xori) before the branch, as `!(bool)` with a continue */
+inline bool AnySlotLocked(int slot, EQUIP_ITEM item)
+{
+    for (CSelectedCharsItr c("UiCharSet"); c.Valid(); c.Advance()) {
+        if (!(bool)IsSlotLocked(c, slot, item))
+            continue;
+        return true;
+    }
+    return false;
+}
+
+#pragma auto_inline off
+/* whether a selected character has room for the item in its equipment slots (SOCOM II's, 0x284120;
+ * the name ours): the three slots, more what the slot it would replace takes up, less every slot
+ * locked against what the item keeps, against the slots the item takes -- two for 145, 146 and 152
+ * and for 52 and 61 (whose own 141 a slot then keeps), one for 63, 142 and 143, none for anything
+ * else. The cases are in reverse of the target's compare chains; the two switches written out (an
+ * inline for the second takes the item by const reference to match, by value it colours the index
+ * into v0 ahead of the switch's constant) */
+bool HasSlotsForItem(const CSelectedCharsItr &it, EQUIP_ITEM item, int slot)
+{
+    int need = 0;
+    EQUIP_ITEM keep = EQUIP_NONE;
+
+    switch (item) {
+    case 61:
+    case 52:
+        need = 2;
+        keep = (EQUIP_ITEM)141;
+        break;
+    case 63:
+    case 142:
+    case 143:
+        need = 1;
+        break;
+    case 145:
+    case 146:
+    case 152:
+        need = 2;
+        break;
+    }
+    int free = 3;
+    CCharacterWeapList *weapons = (CCharacterWeapList *)it.m_weapons;
+
+    if (slot < weapons->size()) {
+        int n = 0;
+
+        switch ((*weapons)[slot].m_wepId) {
+        case 61:
+        case 52:
+            n = 2;
+            break;
+        case 63:
+        case 142:
+        case 143:
+            n = 1;
+            break;
+        case 145:
+        case 146:
+        case 152:
+            n = 2;
+            break;
+        }
+        free += n;
+    }
+    for (int s = 2; s < 5; s++)
+        if (AnySlotLocked(s, keep))
+            free--;
+    return free >= need;
+}
+
+/* a weapon put into a selected character's slot (SOCOM II's, 0x282F20; the name ours): an item taking
+ * two slots first takes the next free one past it (round the equipment slots, past any locked) for
+ * its second -- 185 for a 145, 186 for a 146, else EQUIP_END: what the slot held let go and kept in
+ * the character's picks, or the second pushed on with the pick EQUIP_NONE -- then the UI variables
+ * and the selection's valves updated. The slot and the second declared at the top, the weapon's item
+ * read once into a local (lb, narrowed for the tests and passed on): the target's saved registers */
+void PutInSlot(const CSelectedCharsItr &it, const CCharacterWeap &w, int slot)
+{
+    int s;
+    EQUIP_ITEM second;
+    CCharacterWeapList *weapons = (CCharacterWeapList *)it.m_weapons;
+
+    if (func_003D3750(w.m_wepId) == 2) {
+        s = FindItemSlot(it, EQUIP_NONE, slot);
+
+        if (s == -1) {
+            s = slot + 1;
+            if (s >= 5)
+                s = 2;
+            while (s == -1 || IsSlotLocked(it, s, EQUIP_NONE)) {
+                s++;
+                if (s >= 5)
+                    s = 2;
+            }
+        }
+
+        EQUIP_ITEM id = w.m_wepId;
+
+        second = EQUIP_END;
+        if (id == 145)
+            second = (EQUIP_ITEM)185;
+        else if (id == 146)
+            second = (EQUIP_ITEM)186;
+        if (s < weapons->size()) {
+            func_00283170(it, s, id);
+            data_003DD060[it.m_index].a = (*weapons)[s].m_wepId;
+
+            CCharacterWeap tmp;
+
+            tmp.SetupCharacterWeapon(second);
+            (*weapons)[s] = tmp;
+        } else {
+            data_003DD060[it.m_index].a = EQUIP_NONE;
+
+            CCharacterWeap tmp;
+
+            tmp.SetupCharacterWeapon(second);
+            weapons->push_back(tmp);
+        }
+    }
+    (*weapons)[slot] = w;
+    UpdateCharWeaponUiVars(it.m_index);
+    func_00282140();
+}
 
 /* the slot of a character's first weapon of the item past the one to skip, among the first five,
  * or -1 (0x282EB0) */
@@ -337,6 +531,60 @@ int FindItemSlot(const CSelectedCharsItr &it, EQUIP_ITEM item, int skip)
         if ((*w).m_wepId == item && i != skip)
             found = i;
     return found;
+}
+
+/* an item put into a selected character's equipment slot, or the first free one (-1: past the weapons
+ * the slots hold, each its own count of slots, within the five) when it has room for it (SOCOM II's,
+ * 0x282C20; the name ours): true when it is there already, else what the slot held let go, the
+ * weapons padded with EQUIP_NONE up to an empty slot, the item set in through PutInSlot when the old
+ * one took one or two slots, the UI variables updated */
+bool ChooseSlotForCharacter(const CSelectedCharsItr &it, EQUIP_ITEM item, int slot)
+{
+    if (!HasSlotsForItem(it, item, slot))
+        return false;
+
+    CCharacterWeapList *weapons = (CCharacterWeapList *)it.m_weapons;
+
+    if (item == (*weapons)[slot].m_wepId)
+        return true;
+    if (slot == -1) {
+        for (slot = 2; slot < weapons->size(); slot += func_003D3750((*weapons)[slot].m_wepId))
+            ;
+        if (slot >= 5)
+            return false;
+    }
+
+    CCharacterWeap w;
+
+    w.SetupCharacterWeapon(item);
+
+    EQUIP_ITEM cur = EQUIP_NONE;
+
+    if (slot < weapons->size())
+        cur = (*weapons)[slot].m_wepId;
+    if (cur == item) {
+        UpdateCharWeaponUiVars(it.m_index);
+        return true;
+    }
+    func_00283170(it, slot, item);
+    if (cur == EQUIP_NONE) {
+        if (slot < weapons->size())
+            PutInSlot(it, w, slot);
+        else {
+            while (slot >= weapons->size()) {
+                CCharacterWeap pad;
+
+                pad.SetupCharacterWeapon(EQUIP_NONE);
+                weapons->push_back(pad);
+            }
+            PutInSlot(it, w, slot);
+        }
+    } else if (func_003D3750(cur) == 1)
+        PutInSlot(it, w, slot);
+    else if (func_003D3750(cur) == 2)
+        PutInSlot(it, w, slot);
+    UpdateCharWeaponUiVars(it.m_index);
+    return true;
 }
 
 /* whether a slot keeps what it holds against the item: not when it holds the item itself; yes for
@@ -362,64 +610,72 @@ bool IsSlotLocked(CSelectedCharsItr it, int slot, EQUIP_ITEM item)
 }
 #pragma auto_inline reset
 
+/* whether an equipment slot (0 to 2: slots 2 to 4) is locked for a selected character, with
+ * UiCharLocked made the mask of every character whose slot is -- the selection widened to all of
+ * them (eight on the network, else four) for the walk, then put back (SOCOM II's, 0x2815D0; the name
+ * ours, after the three DoAllSelCharsHaveLockedEquip commands that jump to it). Its lock test is
+ * IsSlotLocked's in another order, written out; a vector of items is made and never used (the
+ * have-equipment test's, 0x281160, parses the command's argument into one) */
+/* a valve's value read through a reference (ours): read so, MW keeps it apart from SetValue's own
+ * read of the same field -- the target reads m_value twice for the saved selection and the lock
+ * count, where a plain read merges with SetValue's */
+inline unsigned int ValveValue(const CValve &v) { return v.m_value; }
+
+bool SelCharsHaveLockedEquip(int equip, C2DAnimCmdHdr *hdr)
+{
+    int slot = equip + 2;
+    std::vector<char> items;
+    CValve *set = CValve::GetByName("UiCharSet");
+    unsigned int mask = ValveValue(*set);
+
+    if (theNetwork.m_bNetwork)
+        set->SetValue(255);
+    else
+        set->SetValue(15);
+
+    CValve *locked = CValve::Create("UiCharLocked", VALVE_PERM);
+
+    locked->SetValue(0);
+
+    int bit = 1;
+
+    for (CSelectedCharsItr c("UiCharSet"); c.Valid(); c.Advance()) {
+        CCharacterWeapList *weapons = (CCharacterWeapList *)c.m_weapons;
+        EQUIP_ITEM cur = EQUIP_NONE;
+
+        if (slot < weapons->size())
+            cur = (*weapons)[slot].m_wepId;
+        CItemDefFlags *def = func_003CF1F0(cur);
+
+        if ((cur == 186 && FindItemSlot(c, cur, slot) == -1) || cur == 185 || cur == 141 ||
+            cur == EQUIP_END || (def && (def->m_flags & 0x30))) {
+            unsigned int v = ValveValue(*locked);
+
+            locked->SetValue(v + bit);
+        }
+        bit <<= 1;
+    }
+    set->SetValue(mask);
+    return AnySlotLocked(slot, EQUIP_NONE);
 }
 
-/* the primary weapon given to one selected character, when it may take it: its first weapon set up
- * as the item unless it is that already, then the primary's own items into free equipment slots --
- * an M203 rifle's two grenades (141, 175), 143's 179, 142's 175, 63's 183 -- what each slot held
- * kept, the UI variables and the selection's valves updated (SOCOM II's, 0x284360; the name ours,
- * after ChooseEquipmentForCharacter).
- * OPEN, 36 instructions (the right size), the saved registers alone: every block, call and test is
- * the target's, which keeps the list in s0, the character in s1, the narrowed item (andi 0xff, the
- * compares') in s2 and the item in s3; here the narrowed item takes s0, the list s1, the character
- * s2. MW's colouring (build/scratch/core/ig, record 217): the narrowed item's temporary has 26
- * neighbours, one over K after the item is pushed, so it is deferred with the list and the
- * character and coloured first; the target's order wants it under K. Tried: the list taken at the
- * top, through a const or a reference, read in place; the compare's operands swapped; the chain as
- * a switch (0x2EC); dead first definitions of the weapon or the slot at the top */
-bool ChoosePrimaryForCharacter(const CSelectedCharsItr &it, EQUIP_ITEM item)
+}
+
+/* "DoAllSelCharsHaveLockedEquip1" to "3" (SOCOM II's commands 0xC9-0xCB, the UI command table's
+ * records 199-201 at 0x3DE140; the names ours, after the table's): equipment slots 0 to 2 */
+bool UIDoAllSelCharsHaveLockedEquip3(C2DAnimCmdHdr *hdr, float *dT)
 {
-    if (!func_00284120(it, item, 0))
-        return false;
+    return SelCharsHaveLockedEquip(2, hdr);
+}
 
-    CCharacterWeapList *weapons = (CCharacterWeapList *)it.m_weapons;
+bool UIDoAllSelCharsHaveLockedEquip2(C2DAnimCmdHdr *hdr, float *dT)
+{
+    return SelCharsHaveLockedEquip(1, hdr);
+}
 
-    if (item == (*weapons)[0].m_wepId)
-        return true;
-    func_00283170(it, 0, item);
-    (*weapons)[0].SetupCharacterWeapon(item);
-
-    CZFTSWeapon *w = m_listWeapons__8CZWeapon.GetWeapon(item);
-    unsigned int slot;
-
-    if (w && w->IsM203Weapon()) {
-        slot = NextFreeSlot(it, -1);
-        if (slot < weapons->size())
-            data_003DD060[it.m_index].a = (*weapons)[slot].m_wepId;
-        func_00282C20(it, (EQUIP_ITEM)141, slot);
-        slot = NextFreeSlot(it, -1);
-        if (slot < weapons->size())
-            data_003DD060[it.m_index].b = (*weapons)[slot].m_wepId;
-        func_00282C20(it, (EQUIP_ITEM)175, slot);
-    } else if (item == 143) {
-        slot = NextFreeSlot(it, -1);
-        if (slot < weapons->size())
-            data_003DD060[it.m_index].a = (*weapons)[slot].m_wepId;
-        func_00282C20(it, (EQUIP_ITEM)179, slot);
-    } else if (item == 142) {
-        slot = NextFreeSlot(it, -1);
-        if (slot < weapons->size())
-            data_003DD060[it.m_index].a = (*weapons)[slot].m_wepId;
-        func_00282C20(it, (EQUIP_ITEM)175, slot);
-    } else if (item == 63) {
-        slot = NextFreeSlot(it, -1);
-        if (slot < weapons->size())
-            data_003DD060[it.m_index].a = (*weapons)[slot].m_wepId;
-        func_00282C20(it, (EQUIP_ITEM)183, slot);
-    }
-    UpdateCharWeaponUiVars(it.m_index);
-    func_00282140();
-    return true;
+bool UIDoAllSelCharsHaveLockedEquip1(C2DAnimCmdHdr *hdr, float *dT)
+{
+    return SelCharsHaveLockedEquip(0, hdr);
 }
 
 namespace {
@@ -498,7 +754,11 @@ namespace {
  * inlined pick behind a `daddiu a1,zero,1; beqz a1` test of its own), where a bool assigned a bool
  * call is a move. `ok = false; if (f()) ok = true;` in the two calling arms gives their first three
  * instructions (0x16C); ternaries, int-returning picks (sltu), if-return wrappers, `&&` forms and a
- * ternary chain fold or lose (build/scratch/core/v_cefc.py) */
+ * ternary chain fold or lose (build/scratch/core/v_cefc.py). Round 9: each pick `!= false`, `?
+ * true : false`, `!!`, `== true` or `!= 0`, and the three picks as an inline returning each (or
+ * through a bool local) -- 0x154 to 0x16C. The target's secondary arm tests a constant 1 (`daddiu
+ * a1,zero,1; beqz a1`) ahead of the inlined pick and narrows the pick's result (andi) at the join:
+ * the pick sits inside an inline of its own whose bool MW does not fold */
 bool ChooseEquipmentForCharacter(const CSelectedCharsItr &it, EQUIP_ITEM item)
 {
     CCharacterWeapList *weapons = (CCharacterWeapList *)it.m_weapons;
@@ -517,7 +777,7 @@ bool ChooseEquipmentForCharacter(const CSelectedCharsItr &it, EQUIP_ITEM item)
     else if (CZWeapon::IsSecondary(item))
         ok = ChooseSecondaryForCharacter(it, item);
     else
-        ok = func_00282C20(it, item, -1);
+        ok = ChooseSlotForCharacter(it, item, -1);
     UpdateCharWeaponUiVars(it.m_index);
     return ok;
 }
@@ -619,7 +879,7 @@ bool UIChooseEquip1(C2DAnimCmdHdr *hdr, float *dT)
     bool chosen = false;
 
     for (CSelectedCharsItr it("UiCharSet"); it.Valid(); it.Advance())
-        if (func_00282C20(it, item, 2))
+        if (ChooseSlotForCharacter(it, item, 2))
             chosen = true;
     return chosen;
 }
@@ -630,7 +890,7 @@ bool UIChooseEquip2(C2DAnimCmdHdr *hdr, float *dT)
     bool chosen = false;
 
     for (CSelectedCharsItr it("UiCharSet"); it.Valid(); it.Advance())
-        if (func_00282C20(it, item, 3))
+        if (ChooseSlotForCharacter(it, item, 3))
             chosen = true;
     return chosen;
 }
@@ -641,7 +901,7 @@ bool UIChooseEquip3(C2DAnimCmdHdr *hdr, float *dT)
     bool chosen = false;
 
     for (CSelectedCharsItr it("UiCharSet"); it.Valid(); it.Advance())
-        if (func_00282C20(it, item, 4))
+        if (ChooseSlotForCharacter(it, item, 4))
             chosen = true;
     return chosen;
 }
@@ -1327,7 +1587,7 @@ bool UIJoinMPGame(C2DAnimCmdHdr *hdr, float *dT)
 
     name = !strcmp(name, "INPUT_STRING") ? ZAnim.m_CurAnim->m_arg_list->GetCharP(0) : name;
     if (data_0044FE10.IsActive())
-        ok = func_003039B0(&data_0044FE10, name);
+        ok = data_0044FE10.JoinGame(name);
     else
         ok = theLobby.JoinGame(name);
     return ok;

@@ -6,8 +6,8 @@
  * zui_var.cpp is ours (the press beta's zui.cpp may be it).
  *
  * Round 19: the manager's Serialize and the variable's Format (0x3860F0, SOCOM 1's) byte-exact.
- * OPEN, not written yet: _Refresh (0x385E50-0x3860EF) and
- * 0x3866F0; DetachUIVar, ~CUIVarManager, the revival 0x386B80, the watcher vector's iterator pieces
+ * Round 20: RefreshUIVar 0x385E50 byte-exact and _Refresh 0x385EA0 written (OPEN: byte-exact but
+ * two calls to rows the rdr units have not named, below). OPEN, not written yet: 0x3866F0; DetachUIVar, ~CUIVarManager, the revival 0x386B80, the watcher vector's iterator pieces
  * (0x386910-0x3869EF, 0x386AB0) and the thunks stand as generated drafts. Round 13: CUIVariable's
  * copy constructor 0x386BF0 byte-exact (zui.h's CUIVariable : _zrdr, UIVarMixin); Attach written,
  * open (below). */
@@ -17,11 +17,47 @@
 #include "zui.h"
 
 /* an rdr value packed into a buffer, its size returned (zrdr_pack, 0x334DB0); by address: two values the
- * same (0x335E20); a variable's name and strings made again in a table (0x385E50) and the variable
- * revived as a new one (0x386B80) -- the drafts stand for them */
+ * same (0x335E20) and the variable revived as a new one (0x386B80) -- the drafts stand for them */
 unsigned int zrdr_pack(_zrdr *rdr, void *buf, unsigned int size);   /* (zrdr_pack.cpp's) */
 extern "C" int func_00335E20(_zrdr *a, _zrdr *b);
-extern "C" void func_00385E50(CUIVariable *var, CSTable *table);
+
+/* a value's strings made again in the table: a string's text re-created, an array's items in turn
+ * (0x385EA0; SOCOM 1's _Refresh, at the same place in the run). The walk inlines itself twice and
+ * calls itself below that, the accessors cut a level more in each copy -- zui.h's real accessor
+ * heights (the UI lane's round 20): String() const over an inline IsString(), Count() over an inline
+ * IsArray(), Item() over Count(). The outer body inlines them whole, the first copy calls IsString,
+ * IsArray and Item out of line, the second String, Count and Item; the recursion stops at the
+ * inline_max_size cut (flat accessors give the target's two copies with the wrong cuts, the tall ones
+ * three copies with an `unsigned` counter -- an `int` counter, i*8 recomputed each pass, gives two).
+ * The cast picks zui.h's const String() (the one over IsString, as zrdr.h has it): the non-const one
+ * stays flat for LoadFromRdr, whose type test and String() share one load in the target.
+ * OPEN, the code byte-exact but two calls: the out-of-line IsString 0x32C650 and String 0x335700 are
+ * the rdr units' rows (func_0032C650, func_00335700 in the map), to be named IsString__5_zrdrCFv
+ * and String__5_zrdrCFv as zrdr.h declares them */
+void _Refresh(_zrdr *rdr, CSTable *table)
+{
+    switch (rdr->type) {
+    case 1:
+    case 2:
+        break;
+    case 3:
+        rdr->string = table->CreateString(((const _zrdr *)rdr)->String());
+        break;
+    case 4:
+        for (int i = 0; i < rdr->Count(); i++)
+            _Refresh(rdr->Item(i), table);
+        break;
+    }
+}
+
+/* a variable's name re-created in the table, then its value's strings (0x385E50; ours: SOCOM 1's
+ * CollectGarbage inlined the two, SOCOM II's calls this out of line -- MW's refusal to inline the
+ * recursive _Refresh propagates to it, the engine core's round 5) */
+void RefreshUIVar(CUIVariable *var, CSTable *table)
+{
+    var->m_name = table->CreateString(var->m_name);
+    _Refresh(var, table);
+}
 extern "C" void func_00386B80(CUIVariable *var, const char *name, _zrdr *value, UIVAR_LONGEVITY longevity);
 
 /* (zanim.h has CValve whole, zrdr.h CRdrEditor: : CRdrFile, 0x4C bytes) */
@@ -247,7 +283,7 @@ void CUIVarManager::CollectGarbage()
 
     m_currtab = !old;
     for (i = begin(); i != end(); ++i)
-        func_00385E50(&*i, &m_stab[m_currtab]);
+        RefreshUIVar(&*i, &m_stab[m_currtab]);
     m_stab[old].Clear();
     char *buf = m_packbuf[m_currtab];
     int left = 0x4000;

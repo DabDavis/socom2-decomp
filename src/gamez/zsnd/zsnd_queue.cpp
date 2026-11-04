@@ -115,15 +115,12 @@ void CSndQueue::Stop()
     m_sound = 0;
 }
 
-/* OPEN, 17 instructions, stack slots only: the target puts the front iterator `first` at 88(sp),
- * below all four erase temporaries (104, 100 in the loop, 96 and 92 in the two arms); here it takes
- * 104, right after `i` (108), and the temporaries follow. Tried: `first` declared at function
- * scope, assigned rather than initialised, an inline helper taking it by value. By AddTask's frame
- * rule (zsys_sched.cpp: the caller's own variables and temporaries first, then the inline
- * expansions breadth-first) the four erases' by-value positions are depth-1 expansions and `first`
- * something created after them -- yet it is initialised in place from begin(), no copy: the second
- * half moved into one or two inline levels taking `first` by value (the world lane's round 13) adds
- * begin()'s temporary and a copy (0x20C) */
+/* the entries due or unplayable dropped from the front, then the front one played -- dropped once it
+ * plays, or once the headset has it queued, else dropped and the next tried. The walk's
+ * iterator serves the second half too: MW splits the reused variable into a second web, made after
+ * every inline expansion, so the front iterator takes the frame's bottom slot (88) below the four
+ * erases' temporaries, as the target's does (the world lane's round 14; a separate `first` is
+ * numbered with the named locals, at 104 -- 17 instructions) */
 void CSndQueue::PlayNext()
 {
     bool found = false;
@@ -142,20 +139,20 @@ void CSndQueue::PlayNext()
             found = true;
     }
     if (m_queue.size()) {
-        std::vector<CSndQueueEntry *>::iterator first = m_queue.begin();
+        i = m_queue.begin();
 
-        m_instance = (*first)->Play();
+        m_instance = (*i)->Play();
         m_sound = 0;
         Headset *h = Headset::ftsGetHeadset();
 
-        if (m_instance || (h && h->IsQueued((*first)->m_sound))) {
-            OnPlay(*first);
-            m_sound = (*first)->m_sound;
-            (*first)->m_used = false;
-            m_queue.erase(first);
+        if (m_instance || (h && h->IsQueued((*i)->m_sound))) {
+            OnPlay(*i);
+            m_sound = (*i)->m_sound;
+            (*i)->m_used = false;
+            m_queue.erase(i);
         } else {
-            (*first)->m_used = false;
-            m_queue.erase(first);
+            (*i)->m_used = false;
+            m_queue.erase(i);
             PlayNext();
         }
     }

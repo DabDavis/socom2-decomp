@@ -7,8 +7,9 @@
  *     CBmpWithNode's constructor and destructor (0x38E620 and 0x38E490, taken by 0x398AA0 and
  *     0x398A40 for __construct_array, and by its initialiser 0x403800), the linker having kept the
  *     first unit's copies;
- *   - the Korean input unit (zui_hangul.cpp) defines ~CSkbKeyProps (0x394370), which zui_skb.cpp's
- *     ~CSoftKeyboard calls;
+ *   - the display unit (zui_skbview.cpp) defines ~CSkbKeyProps (0x394370) and SetShown (0x3941D0),
+ *     which zui_skb.cpp's ~CSoftKeyboard and ShowElements call (the UI lane's round 20: they open
+ *     that unit's stretch, after the Korean unit's template tail);
  *   - zui_skb.cpp calls the display unit's ReadIntPair (0x395300) and the Korean unit's
  *     SkbRdrCount (0x3910B0) out of line.
  * MW names an unnamed namespace after the COMPILED file, so a header's unnamed namespace would have
@@ -148,7 +149,7 @@ public:
 class CSoftKeyboard;
 
 /* a key's props: its button among them (SOCOM 1's CSkbKeyProps; only what is read here). Its
- * destructor is the Korean input unit's (0x394370) */
+ * destructor is the display unit's (0x394370) */
 class CSkbKeyProps {
 public:
     /* (ours: AddKeyProps 0x38B770 news one, every word zeroed) */
@@ -162,6 +163,8 @@ public:
     void PrepForDisplay(zdb::CTextureRelocMgr *mgr, C2DFont *font, zdb::CNode *parent);
     /* its node forgotten and its button deleted (0x394320; ours) */
     void InvalidateDisplay();
+    /* its node shown or hidden, if it has one (0x3941D0; ours: CBmpWithNode's SetShown) */
+    void SetShown(bool on);
 
     int m_x;   // 0x0: the key's place and size (SkbPlaceCursor's; the names ours)
     int m_y;   // 0x4
@@ -315,6 +318,47 @@ bool SkbShifted(CPad *pad);
 bool SkbShifted2(CPad *pad);
 void SkbToggleLock2();
 void SkbToggleShiftLock(bool toggle);
+
+/* a UI command as a menu's ZAnim sequence carries it (zanim_menu.h's C2DAnimCmdHdr, which the
+ * keyboard's units cannot include -- zui.h's rule: only its layout here) */
+class C2DAnimCmdHdr {
+public:
+    unsigned int header;               // 0x0: the _zanim_cmd_hdr
+    unsigned short node_ref_index;     // 0x4
+    unsigned char m_command_index;     // 0x6
+    unsigned short m_argument_index;   // 0x8: the argument, an index into the anim's names
+    unsigned char m_command_type;      // 0xa
+};
+
+/* a UI command whose record a parser builds (zanim_menu.h's UIParsedCmd: its halfword; a base, so
+ * the record's own fields start at its 0x10) */
+struct UIParsedCmd : public C2DAnimCmdHdr {
+    unsigned short m_c;   // 0xc
+};
+
+/* the keyboard's set-up command's record (SOCOM II's, a parsed command with what the keyboard opens
+ * for: its argument names the purpose; the names ours, read off SkbSetPurpose 0x397640 and its
+ * readers) */
+struct UISkbOpenCmd : public UIParsedCmd {
+    char m_caption[0x40];     // 0x10: the caption's plain text
+    int m_title1;             // 0x50: mode 1's caption, an anim name (MsgPlayer), or -1
+    int m_title2;             // 0x54: mode 2's (Action2)
+    char m_name[0x20];        // 0x58: the keyboard to open (KEYBOARD's when empty)
+    char m_uivar[0x20];       // 0x78: the UI variable the typed text goes to, by name
+    int m_maxBytes0;          // 0x98: string 0's limits, bytes and characters (0 none)
+    int m_maxChars0;          // 0x9c
+    int m_maxBytes1;          // 0xa0: string 1's
+    int m_maxChars1;          // 0xa4
+    bool m_noQuotes;          // 0xa8: a typed double quote becomes an apostrophe (0x399EC0)
+    bool m_allowEmpty;        // 0xa9: an empty text may be entered (OnEnterKey)
+};
+
+/* the display unit's set-up from the command (zui_skbview.cpp, 0x397640; the names ours): the
+ * keyboard's name returned; whether an empty text may be entered (0x395110: an int, OnEnterKey
+ * tests it through an int inline) and whether a double quote may be typed (0x396ED0) */
+const char *SkbSetPurpose(UISkbOpenCmd *cmd);
+int SkbEmptyAllowed();
+bool SkbQuotesAllowed();
 
 /* four words: a place and a size (a rectangle, the names ours; the look's rectangles) */
 struct CSkbRect {

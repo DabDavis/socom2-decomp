@@ -64,15 +64,23 @@ static inline bool InRange(float depth, float end)
     return depth > end;
 }
 
+/* the next element's depth, -1 past the first buffered (ours: the select's join inside an inline
+ * is left unpadded, as the target's two labels are -- the same if/else written in DrawRange pads
+ * both to 8 bytes, 2 words long) */
+static inline float ElementDepth(BufferElement *e)
+{
+    if (e == 0)
+        return -1.0f;
+    else
+        return e->m_depth;
+}
+
 /* SOCOM 1's: the buffered elements drawn, last first, while their depth stays beyond `end`; the
  * next element's depth returned (-1 past the first). SOCOM II compares the depth itself where
- * SOCOM 1 squared it.
- * OPEN, 2 words (0x144 against 0x13C): every instruction agrees but for two alignment nops around
- * the next depth's select -- the target falls from the null arm (`b` over the load) straight into
- * the non-null arm and the join without padding either label; this if/else pads both to 8 bytes.
- * Tried: the ternary both ways round, `!= 0`, a pointer local, an if-assign and three inline
- * helpers (all put the non-null arm first, 0x134, or keep the pads); the materialised range test
- * (`depth > end` through an inline bool) and everything else match */
+ * SOCOM 1 squared it. Byte-exact since the world lane's round 14: the next depth's select through
+ * ElementDepth (it was 2 words long written here: the ternary both ways round, `!= 0`, a pointer
+ * local, an if-assign and setters through a reference or a pointer all pad the labels or put the
+ * non-null arm first) */
 float DrawRange(float depth, float end)
 {
     m_lastTexture = 0;
@@ -94,10 +102,7 @@ float DrawRange(float depth, float end)
             e->DrawXZ(m);
             break;
         }
-        if (*pParticleBuf == 0)
-            depth = -1.0f;
-        else
-            depth = (*pParticleBuf)->m_depth;
+        depth = ElementDepth(*pParticleBuf);
         pParticleBuf--;
     }
     m_lastTexture = 0;
