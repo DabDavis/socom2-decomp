@@ -306,6 +306,33 @@ and assign(first, last) 0x18DB40 (MSL's string internals are modelled nowhere ye
 game's versions of the same pieces) -- and ~out_of_range 0x18D830 (the replace's throw: emitted once the replace
 exists); 3.0b38/b50/b52 still untold.
 
+Round 7 (244 of 244: the range is whole) wrote the library string's template replace 0x18D3E0, ~out_of_range 0x18D830,
+reserve 0x18D8C0 and assign(first, last) 0x18DB40, the pod vector's insert copy 0x18B810 and both range_map class
+inserts 0x18BE10 / 0x18C510 (one set of statements in msl/msl.h). THE BUILDS, TOLD APART: the runtime and the MSL library
+are 3.0b50 or 3.0b52, not 3.0b38 -- __PopStackFrame 0x184340 is byte-exact under b50/b52 only (b38 0x2A8 against
+0x2B8), and six iostream.cpp rows (xsputn/xsgetn<wchar_t>, the pod insert and erase copies, both class inserts) match only
+under b50/b52: b38 folds each unrolled step's `p + 4` into the load offsets, b50 and b52 keep a register per step; the
+game's MAIN units score alike under all three (zlib's huft_build still rules out b38). b50 AGAINST b52 -- OPEN: all 289
+hand-written MW units and the 1,285 MW drafts compiled under both (build/scratch/rt-r7/cmpbuilds.py) differ in three
+functions only, pointing opposite ways: seal_tasks.cpp's CTDrain::Tick 0x5DD3C0 is exact only under b52 (b50 drops a
+pointer's null test once it has been dereferenced; the target keeps it), seal_aistate.cpp's breach side test 0x5F3270
+(16 off under b52) is exact under b50 (only b50 forms the shared `0 * v.y` product; nothing else in the unit changes),
+SetGoalDir 0x56D920 misses under both -- a mixed-build link or a coincidence; the units stay on b52 until more evidence.
+Measured: MW narrows a bitfield access to a byte only when the field's declared type is not template-dependent (a
+`typename Allocator::size_type` field stays lw/sw); locals declared uninitialised at a function's top are numbered at
+their declaration there (a bool declared after them takes s0 though defined first -- against the world's round 12 rule:
+which wins depends on the shape); `while (newsize > newcap)` gives a fused sltu at / bnez at loop test, `while (newcap <
+newsize)` computes the bottom test into v0; MW evaluates call arguments right to left (a value the target computes
+before a later argument needs its own local ahead of the call); `*p++ = x` over a class element copies the old pointer
+first, `for (...; --k, ++p) *p = x;` stores through p and steps it in the delay slot; an inlined ternary accessor leaves
+an empty join block that takes the next block's alignment nop (the `b` lands a word early: an if/else assigning in each
+arm avoids it); inside an inline `!x ? a : b` compiles as `x ? b : a`, `x == false ? a : b` keeps the short-first
+layout; a reference local to a stack object keeps its address in a register for field accesses; an empty-struct
+argument is passed as a byte loaded off the stack, never as zero. The same string source at the game's flags
+(exceptions off) reproduces six game rows word for word (build/scratch/rt-r7/g1.cpp): OVL1's reserve 0x1E7C90, template
+replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 and 0x541240 -- include/string's to write
+(the MSL lane's).
+
 ## What the source has to reproduce
 
 - **Function order inside a TU is REVERSE definition order** (`-inline deferred`): the image's
