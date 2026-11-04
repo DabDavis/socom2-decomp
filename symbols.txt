@@ -2724,7 +2724,7 @@
 0x00257ED0 0x8 func_00257ED0  # OVL1
 0x00257EE0 0xAC ReadString__Q23zar4CZARFPPc  # OVL1; ours, the core lane round 4 (SOCOM II's: a length word read through m_pFile's fread, then when 4 bytes came and the length is positive a _malloc'd zeroed copy of length+1 filled by a second fread; the bytes read returned -- CIO::fwrite(const char *)'s record read back; CZSIObject::Read calls it for the object's name)
 0x00257F90 0x70 ReleaseDataBuffer__Q23zar4CZARFv  # OVL1; s1:calls by hand (the zdb-world lane: at SOCOM 1's call site)
-0x00258000 0x510 func_00258000  # OVL1
+0x00258000 0x510 ReadDirectory__Q23zar4CZARFiUi  # OVL1; SOCOM 1 name, the core lane round 5 (Open 0x258920 calls it with (dir, mode) right after the file opens, where SOCOM 1's Open calls ReadDirectory(int, unsigned int) 0x1D87B0: 0x510 bytes against SOCOM 1's 0x518)
 0x00258510 0x58 GetSize__Q23zar4CZARFPCc  # OVL1; s1:order by hand (SOCOM 1's GetSize 0x1D8CD0, between ReadDirectory and GetOpenKey there as here: the open key's FindKey, its size or -1; Fetch(const char *, char **) calls it where SOCOM 1's does)
 0x00258570 0x30 GetOpenKey__Q23zar4CZARFv  # OVL1; s1:callee by hand (LoadZAR, CZAnimSet::Load and the name tables call it where SOCOM 1's call GetOpenKey; the open-key stack's top or the root -- a vector here, SOCOM 1's a list)
 0x002585A0 0x54 OpenKey__Q23zar4CZARFPQ23zar4CKey  # OVL1; s1:callee by hand (LoadZAR opens each set's key with it where SOCOM 1's calls OpenKey(CKey *); pushes a non-null key)
@@ -2732,7 +2732,7 @@
 0x00258650 0xD0 OpenKey__Q23zar4CZARFPCc  # OVL1; s1:callee by hand (LoadZAR opens Anim_Sets with it where SOCOM 1's calls OpenKey(const char *); FindKey on the open key, then the push)
 0x00258720 0x20 CloseKey__Q23zar4CZARFPQ23zar4CKey  # OVL1; s1:callee by hand (LoadZAR closes each key with it where SOCOM 1's calls CloseKey; pops the stack)
 0x00258740 0x1DC func_00258740  # OVL1
-0x00258920 0x21C func_00258920  # OVL1; s1~ Open__Q23zar4CZARFPCciUiUi (OpenZAR calls it where SOCOM 1's calls zar::CZAR::Open, but with a fifth argument, t1 = 0: the signature changed)
+0x00258920 0x21C Open__Q23zar4CZARFPCciUiUib  # OVL1; s1~ Open__Q23zar4CZARFPCciUiUi (OpenZAR calls it where SOCOM 1's calls zar::CZAR::Open, but with a fifth argument, t1 = 0: the signature changed); SOCOM 1 name with a fifth argument, the core lane round 5 (byte-exact from source: SOCOM 1's Open(name, int, unsigned, unsigned) -- the file opened, SetFilename, the padding stored, ReadDirectory, Close on failure -- plus the dir stored at 0x94 and, with the fifth argument, a second file "<name>_tmp.<ext>" opened at 0x18; every caller passes t1 = 0, so bool is a guess)
 0x00258B40 0x90 ReOpen__Q23zar4CZARFiUi  # OVL1; tu: zar_main.cpp~ (1.0 beta); s1:calls (CRdrArchive::OpenAll and FindRdr call it with (1, 1) where SOCOM 1's call zar::CZAR::ReOpen) -- the rdr lane
 0x00258BD0 0x70 Flush__Q23zar4CZARFv  # OVL1; ours, the core lane round 4 (SOCOM II's: false unless the file is open -- the inline IsOpen -- then WriteDirectory when the modified byte 0x25 is set, the byte cleared, true; CSaveManager::Save calls it)
 0x00258C40 0xA0 Close__Q23zar4CZARFb  # OVL1; ours by SOCOM 1's, the core lane round 5 (SOCOM 1's Close(bool): the owned file closed and deleted or the given one closed, here the second file at 0x18 too, then the directory freed; both callers in 0x1E91C0 pass li a1,1 and neither build's body reads the flag; inlined whole into Close() 0x258CE0 as SOCOM 1's is into its Close)

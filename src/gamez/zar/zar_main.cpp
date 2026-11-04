@@ -14,6 +14,9 @@
 
 /* the root key's name and a deleted key's (SOCOM 1's file statics, "ROOT" and "DELETED"; OVL1
  * 0x3DD000 and 0x3DD008, 8 bytes apart as MW 3.0 lays such statics out) */
+/* MSL's strtok (MAIN; not in include/string.h) */
+extern "C" char *strtok(char *s, const char *delim);
+
 static const char *DEFAULT_ZAR_NAME = "ROOT";
 static const char *DELETED_ZAR_NAME = "DELETED";
 
@@ -80,6 +83,39 @@ void CZAR::Close(bool)
         m_pDataFile = 0;
     }
     FreeDirectory();
+}
+
+bool CZAR::Open(const char *name, int dir, unsigned int mode, unsigned int padded, bool data)
+{
+    bool ok = false;
+
+    if (name) {
+        if (!m_pFile)
+            m_pFile = m_pFileAlloc = new CFileIO;
+        ok = m_pFile->Open(name, mode);
+        if (ok) {
+            SetFilename(name);
+            m_data_padded = padded;
+            ok = ReadDirectory(dir, mode);
+            if (!ok)
+                Close();
+            else
+                m_tail._5c = dir;
+        }
+    }
+    if (ok && data && name) {
+        char tmp[256];
+        char path[256];
+
+        if (!m_pDataFile)
+            m_pDataFile = new CFileIO;
+        strcpy(path, name);
+        strcpy(tmp, strtok(path, "."));
+        strcat(tmp, "_tmp.");
+        strcat(tmp, strtok(0, "."));
+        ok = m_pDataFile->Open(tmp, 60);
+    }
+    return ok;
 }
 
 bool CZAR::Flush()

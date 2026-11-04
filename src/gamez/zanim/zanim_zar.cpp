@@ -56,9 +56,6 @@ int CZAnimMain::LoadZAR(const char *name, const char *set_name)
     return 1;
 }
 
-/* zar::CZAR::Open with a fifth argument SOCOM 1's did not have: not named */
-extern "C" int func_00258920(zar::CZAR *zar, const char *name, int mode, unsigned int flags, unsigned int a, int b);
-
 /* a ZAR's anim sets, or the one named: none when the anims are not loaded from ZARs, nothing
  * when the file is closed or its version not SOCOM II's (72; SOCOM 1's 30) */
 int CZAnimMain::LoadZAR(CZAnimZAR *archive, const char *set_name)
@@ -119,7 +116,7 @@ CZAnimZAR *CZAnimMain::OpenZAR(const char *name)
             sprintf(path, "%s/%s", name, "zanim.zar");
         else
             sprintf(path, "%s", name);
-        if (func_00258920(zar, path, 0, 1, 16, 0))
+        if (zar->Open(path, 0, 1, 16, false))
             return zar;
         delete zar;
         return 0;

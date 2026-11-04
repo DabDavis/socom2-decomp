@@ -143,6 +143,13 @@ public:
     /* the directory written if it changed, while the file is open: whether it is (SOCOM II's --
      * CSaveManager::Save calls it; the name ours) */
     bool Flush();
+    /* the archive opened over the named file: the directory read (dir and mode handed on), the
+     * data padded so; with data, a second file "<name>_tmp.<ext>" opened too (SOCOM 1's
+     * Open(name, int, unsigned, unsigned) with a fifth argument -- every caller passes 0, its type
+     * a guess) */
+    bool Open(const char *name, int dir, unsigned int mode, unsigned int padded, bool data);
+    /* the directory off the file (SOCOM 1's; 0x258000) */
+    bool ReadDirectory(int dir, unsigned int mode);
     /* the file reopened unless it still is (0x258B40, SOCOM 1's ReOpen; both callers pass 1, 1) */
     bool ReOpen(int, unsigned int);
     bool IsOpen() { return m_pFile ? m_pFile->IsOpen() : false; }
