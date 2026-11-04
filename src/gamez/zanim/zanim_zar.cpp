@@ -11,7 +11,6 @@
 
 #include "zanim.h"
 
-extern "C" void func_00258CE0(CZAnimZAR *zar);
 /* a ZAR by name, its sets loaded and the file closed again: LoadZAR's walk written out once
  * more, without its open-file test or its null test of the sets' key */
 int CZAnimMain::LoadZAR(const char *name, const char *set_name)
@@ -130,7 +129,7 @@ CZAnimZAR *CZAnimMain::OpenZAR(const char *name)
 
 int CZAnimMain::CloseZAR(CZAnimZAR *zar)
 {
-    func_00258CE0(zar);
+    zar->Close();
     delete zar;
     return 1;
 }

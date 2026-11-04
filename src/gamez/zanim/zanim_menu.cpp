@@ -1185,7 +1185,7 @@ _zanim_cmd_hdr *UIPlayMPEGParse(const char *name, _zrdr *rdr)
     func_0032DC00(rdr, "INTERLACE", &cmd->m_interlace);
     cmd->m_stream_type = 0;
     cmd->m_stream = 0;
-    stream = func_0032F0D0(rdr, "AUDIOSTREAM");
+    stream = zrdr_findtag(rdr, "AUDIOSTREAM");
     if (stream) {
         if (stream->type == 1) {
             cmd->m_stream_type = 0;
@@ -1484,13 +1484,13 @@ _zanim_cmd_hdr *UIGetPlayerInfoParse(const char *name, _zrdr *rdr)
         strcpy(buf, s);
         cmd->SetArgument(buf);
     }
-    if (func_0032F0D0(rdr, "BRIEFING"))
+    if (zrdr_findtag(rdr, "BRIEFING"))
         cmd->m_what = 0;
-    else if (func_0032F0D0(rdr, "CLAN"))
+    else if (zrdr_findtag(rdr, "CLAN"))
         cmd->m_what = 1;
-    else if (func_0032F0D0(rdr, "FRIEND"))
+    else if (zrdr_findtag(rdr, "FRIEND"))
         cmd->m_what = 2;
-    else if (func_0032F0D0(rdr, "LADDER"))
+    else if (zrdr_findtag(rdr, "LADDER"))
         cmd->m_what = 3;
     else
         cmd->m_what = 0;
@@ -1690,28 +1690,28 @@ _zanim_cmd_hdr *UIGetLadderInfoParse(const char *name, _zrdr *rdr)
 
     cmd->header.timeless = 1;
     cmd->header.data_size = sizeof(UILadderCmd);
-    if (func_0032F0D0(rdr, "CLAN")) {
-        if (func_0032F0D0(rdr, "Top10"))
+    if (zrdr_findtag(rdr, "CLAN")) {
+        if (zrdr_findtag(rdr, "Top10"))
             cmd->m_op = 7;
-        else if (func_0032F0D0(rdr, "LadderPressUp"))
+        else if (zrdr_findtag(rdr, "LadderPressUp"))
             cmd->m_op = 8;
-        else if (func_0032F0D0(rdr, "LadderPressDown"))
+        else if (zrdr_findtag(rdr, "LadderPressDown"))
             cmd->m_op = 9;
-        else if (func_0032F0D0(rdr, "LadderUp"))
+        else if (zrdr_findtag(rdr, "LadderUp"))
             cmd->m_op = 10;
-        else if (func_0032F0D0(rdr, "LadderDown"))
+        else if (zrdr_findtag(rdr, "LadderDown"))
             cmd->m_op = 11;
         else
             cmd->m_op = 6;
-    } else if (func_0032F0D0(rdr, "Top10")) {
+    } else if (zrdr_findtag(rdr, "Top10")) {
         cmd->m_op = 1;
-    } else if (func_0032F0D0(rdr, "LadderPressUp")) {
+    } else if (zrdr_findtag(rdr, "LadderPressUp")) {
         cmd->m_op = 2;
-    } else if (func_0032F0D0(rdr, "LadderPressDown")) {
+    } else if (zrdr_findtag(rdr, "LadderPressDown")) {
         cmd->m_op = 3;
-    } else if (func_0032F0D0(rdr, "LadderUp")) {
+    } else if (zrdr_findtag(rdr, "LadderUp")) {
         cmd->m_op = 4;
-    } else if (func_0032F0D0(rdr, "LadderDown")) {
+    } else if (zrdr_findtag(rdr, "LadderDown")) {
         cmd->m_op = 5;
     } else {
         cmd->m_op = 0;
@@ -2315,7 +2315,7 @@ _zanim_cmd_hdr *UIGetMissionInformationParse(const char *name, _zrdr *rdr)
 
     cmd->header.timeless = 1;
     cmd->header.data_size = sizeof(UIMissionInfoCmd);
-    if (func_0032F0D0(rdr, "MULTIPLAYER"))
+    if (zrdr_findtag(rdr, "MULTIPLAYER"))
         cmd->m_multiplayer = 1;
     else
         cmd->m_multiplayer = 0;
@@ -2332,21 +2332,21 @@ _zanim_cmd_hdr *UICharacterProfileParse(const char *name, _zrdr *rdr)
 
     cmd->header.timeless = 1;
     cmd->header.data_size = sizeof(UIProfileCmd);
-    if (func_0032F0D0(rdr, "EXISTS"))
+    if (zrdr_findtag(rdr, "EXISTS"))
         cmd->m_op = UIPROFILE_EXISTS;
-    else if (func_0032F0D0(rdr, "LOAD"))
+    else if (zrdr_findtag(rdr, "LOAD"))
         cmd->m_op = UIPROFILE_LOAD;
-    else if (func_0032F0D0(rdr, "SAVE"))
+    else if (zrdr_findtag(rdr, "SAVE"))
         cmd->m_op = UIPROFILE_SAVE;
-    else if (func_0032F0D0(rdr, "SaveToServer"))
+    else if (zrdr_findtag(rdr, "SaveToServer"))
         cmd->m_op = UIPROFILE_SAVE_TO_SERVER;
-    else if (func_0032F0D0(rdr, "WaitForServerSaveComplete"))
+    else if (zrdr_findtag(rdr, "WaitForServerSaveComplete"))
         cmd->m_op = UIPROFILE_WAIT_FOR_SERVER_SAVE;
-    else if (func_0032F0D0(rdr, "LoadFromServer"))
+    else if (zrdr_findtag(rdr, "LoadFromServer"))
         cmd->m_op = UIPROFILE_LOAD_FROM_SERVER;
-    else if (func_0032F0D0(rdr, "WaitForLoadComplete"))
+    else if (zrdr_findtag(rdr, "WaitForLoadComplete"))
         cmd->m_op = UIPROFILE_WAIT_FOR_LOAD;
-    else if (func_0032F0D0(rdr, "DELETE"))
+    else if (zrdr_findtag(rdr, "DELETE"))
         cmd->m_op = UIPROFILE_DELETE;
     else
         cmd->m_op = UIPROFILE_NONE;
@@ -2416,11 +2416,11 @@ _zanim_cmd_hdr *UICompareValuesParse(const char *name, _zrdr *rdr)
     }
     if (s)
         cmd->m_value2 = ZAnim.m_CurAnim->AddName(s);
-    if (func_0032F0D0(rdr, "CASE_INSENSITIVE"))
+    if (zrdr_findtag(rdr, "CASE_INSENSITIVE"))
         cmd->m_case_insensitive = 1;
     else
         cmd->m_case_insensitive = 0;
-    if (func_0032F0D0(rdr, "COMPARE_AFTER_FORMATTING"))
+    if (zrdr_findtag(rdr, "COMPARE_AFTER_FORMATTING"))
         cmd->m_after_formatting = 1;
     else
         cmd->m_after_formatting = 0;
