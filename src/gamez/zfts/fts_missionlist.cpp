@@ -35,6 +35,8 @@ public:
  * Its code follows the list's in the image, so it is defined first; the names are ours */
 class CMsgEditor : public C2D {
 public:
+    CMsgEditor();
+    virtual ~CMsgEditor();
     void SetMaxLength(int n);
     void DeleteCharacter();
     void AddCharacter(char c);
@@ -63,6 +65,21 @@ char *_strdup(const char *s, const char *file, int line);
 void _free(void *p, const char *file, int line);
 bool ParseWhisper(char *args);
 void SendWhisper(char *name, char *msg);
+
+/* both alphas clear, the limit 5 (OVL1 0x2CA2D0: CMission()'s, for its +0x1060 editor) */
+CMsgEditor::CMsgEditor()
+{
+    m_cursorTrans = 0.0f;
+    m_textTrans = 0.0f;
+    m_maxlen = 5;
+}
+
+/* (OVL1 0x2CA240: the editor's only virtual of its own -- its vtable 0x4064B0's slot 2 --, so
+ * written here, which is where the vtable comes out; the text, the cursor -- C2DBitmap's implicit
+ * destructor inlined -- and the C2D base torn down) */
+CMsgEditor::~CMsgEditor()
+{
+}
 
 /* the text loaded in the font given and the cursor's black box over the line, both faded out and
  * made children (OVL1 0x2CA100: CHUD::Init's) */

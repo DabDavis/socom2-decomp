@@ -243,6 +243,11 @@ public:
     CCompassAnchor *m_anchor;   // 0x4
 };
 
+/* the mission's objective anchors (SOCOM 1's CObjAnchorVec: a class over the vector -- ~CMission
+ * tests `this` once more above the vector's chain) */
+class CObjAnchorVec : public std::vector<SObjectiveCam_Anchor> {
+};
+
 /* a mission's state (SOCOM 1's DWARF: a byte) */
 enum MISSION_STATE {
     MISSION_UNLOADED = 0,
@@ -290,11 +295,104 @@ public:
     int GetPoint(int index, int step, CPnt3D *pos, CPnt3D *dir, const char **name);
 };
 
+/* ---- the player's message queue (theMission's at 0x11B0, fts_state.h's m_netQueue: the chat's and
+ * the core state's lines, shown by the menu state and the HUD; SOCOM II's, the names ours) ---- */
+
+/* a message's type (fts_state.h's: a byte enum; the chat's CHAT_COLOR is the same three values) */
+enum MSGTYPE {
+    MSGTYPE_PLAYER = 0,
+    MSGTYPE_SYSTEM = 1,
+    MSGTYPE_ALERT = 5
+};
+
+extern "C" {
+unsigned int strlen(const char *s);
+void *memset(void *p, int c, unsigned int n);
+}
+
+/* a queued message: its type, its text and its sender, 0xA1 bytes (st_menu.cpp's CQueuedMessage) */
+class CQueuedMessage {
+public:
+    CQueuedMessage();
+    /* the text kept to 127 characters, an empty one (a single character too) left as it was, none
+     * given made "[empty message]" */
+    void SetText(const char *text)
+    {
+        if (text && strlen(text) < 128)
+            strcpy(m_text, text);
+        else if (text && strlen(text) > 1) {
+            strncpy(m_text, text, 126);
+            m_text[127] = 0;
+        } else if (!text)
+            strcpy(m_text, "[empty message]");
+    }
+    MSGTYPE GetType() { return m_type; }
+    void SetType(MSGTYPE type) { m_type = type; }
+    /* the sender's name, or none */
+    void SetName(const char *name)
+    {
+        if (name && *name)
+            strncpy(m_name, name, 32);
+        else
+            memset(m_name, 0, 32);
+    }
+
+    MSGTYPE m_type;   // 0x0
+    char m_text[128];   // 0x1
+    char m_name[32];   // 0x81
+};
+
+/* ten messages in a ring: taken at the head, added at the tail, one slot always left free */
+class CMessageQueue {
+public:
+    bool HasMessages();
+    void Dequeue(CQueuedMessage *msg);
+    void Enqueue(const char *text, MSGTYPE type, const char *name);
+
+    ~CMessageQueue();
+
+    int m_head;   // 0x0
+    int m_tail;   // 0x4
+    CQueuedMessage m_msgs[10];   // 0x8
+};
+
+
+/* emptied, every text made "NULL MSG QUEUE(dtor)" -- auto-inlined into ~CMission, its own copy
+ * stripped: NOT `inline`, or its literal is pooled as the inline's and SetText's null tests on it
+ * are kept (build/scratch/states/p15.cpp) */
+CMessageQueue::~CMessageQueue()
+{
+    m_head = 0;
+    m_tail = 0;
+    for (unsigned int i = 0; i < 10; i++)
+        m_msgs[i].SetText("NULL MSG QUEUE(dtor)");
+}
+
+/* the HUD's message lists (fts_message.cpp's C2DMessage_Q, 0x4E0 bytes) and the chat line's editor
+ * (fts_missionlist.cpp's CMsgEditor, 0x150 bytes): only their construction and teardown */
+class C2DMessage_Q {
+public:
+    C2DMessage_Q();   /* 0x2B7610 */
+    ~C2DMessage_Q();   /* 0x2B6EE0 */
+
+    unsigned char _0[0x4e0];
+};
+
+class CMsgEditor {
+public:
+    CMsgEditor();   /* 0x2CA2D0 */
+    ~CMsgEditor();   /* 0x2CA240 */
+
+    unsigned char _0[0x150];
+};
+
 /* the mission (only what this unit touches, at SOCOM II's offsets) */
-class CMission {
+class CMission : public CSaveModule {
 public:
     CMission();    /* 0x2ADBC0 */
-    ~CMission();   /* 0x2AD940 */
+    ~CMission();   /* 0x2AD940: its vtable's slot 2 (0x406290) */
+    void Serialize(int flags);   /* 0x2A6340: slot 3 */
+    void UnSerialize(const char *name, CRdrFile *file, int flags);   /* 0x2A54E0: slot 4 */
     bool Open(const char *name, int load_ai);
     static bool tick(float dT, void *data);   /* 0x2AAB00 */
     bool ZAnimLoad();
@@ -319,8 +417,7 @@ public:
     void EndMission();
     void CreateLadderTable();
 
-    unsigned char _0[0x18];
-    MISSION_STATE m_state;   // 0x18 (SOCOM 1's)
+    MISSION_STATE m_state;   // 0x18 (SOCOM 1's; the save module's base ahead)
     char *m_database;   // 0x1c (SOCOM 1's)
     unsigned char m_20;   // 0x20: SOCOM II's, Close clears it last (the name ours)
     unsigned char _21[0x60 - 0x21];
@@ -337,20 +434,26 @@ public:
     std::vector<CCompassAnchor *> m_anchor_extraction;   // 0x10c (SOCOM 1's at 0x80)
     std::vector<CCompassAnchor *> m_anchors;   // 0x118: the nav points' anchors (SOCOM 1's at 0x8c)
     CCompassAnchor *m_whoistalking;   // 0x124: SOCOM II's (Open makes it "WhoIsTalking"; the name ours)
-    std::vector<SObjectiveCam_Anchor> m_objanchor_vec;   // 0x128 (SOCOM 1's CObjAnchorVec at 0x98)
+    CObjAnchorVec m_objanchor_vec;   // 0x128 (SOCOM 1's at 0x98)
     unsigned char _134[0x1a4 - 0x134];
     CValve *m_valve_complete;   // 0x1a4 (SOCOM 1's at 0xe0)
     CValve *m_valve_failure;   // 0x1a8
     CValve *m_valve_abort;   // 0x1ac
     CValve *m_valve_timeout;   // 0x1b0
     CValve *m_valve_nofade;   // 0x1b4
-    unsigned char _1b8[0x1804 - 0x1b8];
+    unsigned char _1b8[0x1c0 - 0x1b8];
+    C2DMessage_Q m_messages;   // 0x1c0 (SOCOM 1's three at 0xf0, ~CMission tears them down)
+    C2DMessage_Q m_messages2;   // 0x6a0
+    C2DMessage_Q m_messages3;   // 0xb80
+    CMsgEditor m_messages4;   // 0x1060: the chat line (hud_main.cpp's)
+    CMessageQueue m_netQueue;   // 0x11b0: the player's message ring
     class CLadderList *m_ladders;   // 0x1804 (SOCOM 1's at 0x580)
     CZNetGame *m_pNetGame;   // 0x1808 (SOCOM 1's at 0x584)
     unsigned char m_chars_loaded;   // 0x180c (SOCOM 1's at 0x588)
     unsigned char _180d[0x181c - 0x180d];
     CRdrFile *m_materialsRdr;   // 0x181c (SOCOM 1's at 0x598)
-    unsigned char _1820[0x1848 - 0x1820];
+    unsigned char _1820[0x183c - 0x1820];
+    CSaferStr m_183c;   // 0x183c: a string ~CMission tears down (SOCOM 1's at 0x5a8)
     CMissionCamList m_missioncams;   // 0x1848 (SOCOM 1's at 0x5b4)
     CMissionObjectiveCamList m_objectivecams;   // 0x1854 (SOCOM 1's at 0x5c0)
     float m_music_hold;   // 0x1860: how long the music's raised intensity holds (SOCOM II's; the name ours)
@@ -822,65 +925,6 @@ void CCareerStats::Clear()
     m_2c = 0;
     m_30 = 0;
 }
-
-/* ---- the player's message queue (theMission's at 0x11B0, fts_state.h's m_netQueue: the chat's and
- * the core state's lines, shown by the menu state and the HUD; SOCOM II's, the names ours) ---- */
-
-/* a message's type (fts_state.h's: a byte enum; the chat's CHAT_COLOR is the same three values) */
-enum MSGTYPE {
-    MSGTYPE_PLAYER = 0,
-    MSGTYPE_SYSTEM = 1,
-    MSGTYPE_ALERT = 5
-};
-
-extern "C" {
-unsigned int strlen(const char *s);
-void *memset(void *p, int c, unsigned int n);
-}
-
-/* a queued message: its type, its text and its sender, 0xA1 bytes (st_menu.cpp's CQueuedMessage) */
-class CQueuedMessage {
-public:
-    CQueuedMessage();
-    /* the text kept to 127 characters, an empty one (a single character too) left as it was, none
-     * given made "[empty message]" */
-    void SetText(const char *text)
-    {
-        if (text && strlen(text) < 128)
-            strcpy(m_text, text);
-        else if (text && strlen(text) > 1) {
-            strncpy(m_text, text, 126);
-            m_text[127] = 0;
-        } else if (!text)
-            strcpy(m_text, "[empty message]");
-    }
-    MSGTYPE GetType() { return m_type; }
-    void SetType(MSGTYPE type) { m_type = type; }
-    /* the sender's name, or none */
-    void SetName(const char *name)
-    {
-        if (name && *name)
-            strncpy(m_name, name, 32);
-        else
-            memset(m_name, 0, 32);
-    }
-
-    MSGTYPE m_type;   // 0x0
-    char m_text[128];   // 0x1
-    char m_name[32];   // 0x81
-};
-
-/* ten messages in a ring: taken at the head, added at the tail, one slot always left free */
-class CMessageQueue {
-public:
-    bool HasMessages();
-    void Dequeue(CQueuedMessage *msg);
-    void Enqueue(const char *text, MSGTYPE type, const char *name);
-
-    int m_head;   // 0x0
-    int m_tail;   // 0x4
-    CQueuedMessage m_msgs[10];   // 0x8
-};
 
 /* an empty message, untyped (OVL1 0x2A4290: the menu state's and the HUD's locals) */
 CQueuedMessage::CQueuedMessage()
@@ -1429,6 +1473,12 @@ void func_002B2E50(CMission *mission);   /* (SOCOM 1's CMission::LoadVehicles) *
 void func_00295660();
 }
 
+/* the mission torn down: its members in reverse, then the save module (OVL1 0x2AD940, SOCOM 1's
+ * implicit chain with SOCOM II's camera path, chat editor and message ring added) */
+CMission::~CMission()
+{
+}
+
 /* the mission opened: the database's archive and string tables, the vectors reserved, the compass,
  * the scheduler's three tasks, the sounds and the jukebox, the materials, the mission's valves, the
  * AI maps and the nav points, the talker's anchor (SOCOM II's), the particles, the anims, the
@@ -1912,7 +1962,7 @@ void CMission::Close()
     theCompass.Close();
     FreeVector(m_anchor_extraction);
     FreeVector(m_anchors);
-    FreeVector(m_objanchor_vec);
+    FreeVector((std::vector<SObjectiveCam_Anchor> &)m_objanchor_vec);
     CCharacterType::CleanupTemporary();
     if (CZWeapon::m_pProjectilelist)
         CZWeapon::m_pProjectilelist->Dump();
