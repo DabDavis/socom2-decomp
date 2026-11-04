@@ -778,10 +778,22 @@ public:
         }
         return false;
     }
-    /* a cell's altitude (new in SOCOM II, the names ours: ai_map.cpp's 0x516940 from the cell; by
-     * its location too big to inline whole -- GetCell is past inline_max_size -- so a caller
-     * inlines it one level and calls GetCell and the first out of line, CAiMaps::GetAltitude) */
-    bool GetAltitude(const CAiCell *cell, float &alt) const;
+    /* a cell's altitude: the box's floor plus the quantum times the cell's ten altitude bits, true;
+     * false for no cell (new in SOCOM II, the names ours). From the cell an inline: OVL1 has its
+     * copy (0x210630) and OVL1's GetCellCenter copy 0x20F220 inlines it whole; OVL2's copy 0x516940
+     * follows ai_map.cpp's first caller cutting a walk one level (0x516180, after it GetCellCenter's
+     * other copies 0x5168E0-0x516920) -- every OVL2 caller reaches it through an inline cut so (the
+     * HUD's round 35 made it inline in hud_linemap.cpp alone). By its location too big to inline
+     * whole -- GetCell is past inline_max_size -- so a caller inlines it one level and calls GetCell
+     * and the first out of line, CAiMaps::GetAltitude */
+    bool GetAltitude(const CAiCell *cell, float &alt) const
+    {
+        if (cell) {
+            alt = m_bbox.m_min.y + m_alt_quant * (float)cell->m_altitude;
+            return true;
+        }
+        return false;
+    }
     bool GetAltitude(const CAiMapLoc &loc, float &alt) const
     {
         CAiCell *cell = GetCell(loc, 0);

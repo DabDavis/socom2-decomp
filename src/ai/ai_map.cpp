@@ -517,18 +517,10 @@ bool CAiMaps::GetCellRepelParams(const CAiMapLoc &loc, const CPnt3D *pos, float 
     return map ? map->GetCellRepelParams(loc, pos, range, dir, len, cell) : false;
 }
 
-/* called, not inlined, by the initialiser (the target's jal 0x515720): pinned */
+/* called, not inlined, by the initialiser (the target's jal 0x515720): pinned (the cell's altitude,
+ * 0x516940, was defined here until the AI core's round 24: an inline in ai.h now, its copy emitted
+ * after GetClosestDir(loc, point) here) */
 #pragma auto_inline off
-/* a cell's altitude: the box's floor plus its quantised height (new in SOCOM II, the name ours) */
-bool CAiMap::GetAltitude(const CAiCell *cell, float &alt) const
-{
-    if (cell) {
-        alt = m_bbox.m_min.y + m_alt_quant * (float)cell->m_altitude;
-        return true;
-    }
-    return false;
-}
-
 /* a value within a span, ends included, all three by reference (the name ours: GetLocation's two
  * box tests, each materialised as an inline bool's, the value loaded first) */
 inline bool _in_span(const float &v, const float &lo, const float &hi)
