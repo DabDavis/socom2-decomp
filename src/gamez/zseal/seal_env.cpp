@@ -698,9 +698,8 @@ extern "C" void func_005B61A0()
 }
 
 extern "C" {
-/* a pickup taken offline (OVL2 0x59F0C0), told to the network as this console's own or another's
- * (OVL2 0x59E830; OVL1 0x2BA2C0, the net code's) */
-void func_0059F0C0(CZSealBody *seal, CPickup *pickup);
+/* (a pickup taken offline is CZSealBody::PickupItem, OVL2 0x59F0C0) told to the network as this
+ * console's own or another's (OVL2 0x59E830; OVL1 0x2BA2C0, the net code's) */
 void func_0059E830(CZSealBody *seal, int a, unsigned int netid, short *ids, unsigned int id);
 void func_002BA2C0(int a, unsigned int netid, short *ids, unsigned int id, unsigned int owner);
 }
@@ -727,7 +726,7 @@ extern "C" void func_0059F610(CZSealBody *seal, CPickup *pickup)
         else
             func_002BA2C0(1, pickup->GetPickupNetEntityID(), ids, id, owner);
     } else
-        func_0059F0C0(seal, pickup);
+        seal->PickupItem(pickup);
 }
 
 extern "C" {
@@ -2356,8 +2355,199 @@ union AckUnion {
         unsigned char m_weapon : 1;
         unsigned char m_rest : 7;
     } bits;
+    /* an ammunition pickup's answer: a bit per entry of its stash (CheckForAmmoPickups; the names
+     * ours) */
+    struct {
+        unsigned char m_0 : 1;
+        unsigned char m_1 : 1;
+        unsigned char m_2 : 1;
+        unsigned char m_3 : 1;
+        unsigned char m_4 : 1;
+        unsigned char m_5 : 1;
+        unsigned char m_6 : 1;
+        unsigned char m_7 : 1;
+    } ammo;
     unsigned char b;
 };
+
+/* an ammunition pickup's contents: the weapons' stash (zwep_weapon.cpp's CZItemStash, three parallel
+ * lists of words -- a weapon, an ammunition and a count per entry -- out of line in OVL1; only what
+ * the pickups call) and the pickup's view of it (zseal.h's CPickupAmmo; the name ours) */
+class CZItemStash {
+public:
+    int Count();
+    bool Get(int i, int *a, int *b, int *c);
+    void Clear(int i);
+};
+
+class CPickupAmmo : public CZItemStash {
+};
+
+/* the answer's ammunition bit for an entry set (an inline: the chain's tests run 0 to 7, each bit
+ * stored as `(on & 1) << i`, the & shared by all; the name ours) */
+static inline void SetAckAmmo(AckUnion *ack, int i, bool on)
+{
+    if (i == 0)
+        ack->ammo.m_0 = on;
+    else if (i == 1)
+        ack->ammo.m_1 = on;
+    else if (i == 2)
+        ack->ammo.m_2 = on;
+    else if (i == 3)
+        ack->ammo.m_3 = on;
+    else if (i == 4)
+        ack->ammo.m_4 = on;
+    else if (i == 5)
+        ack->ammo.m_5 = on;
+    else if (i == 6)
+        ack->ammo.m_6 = on;
+    else if (i == 7)
+        ack->ammo.m_7 = on;
+}
+
+extern "C" {
+/* the rounds of a weapon's ammunition taken into the kit (OVL2 0x5BB000, the kit lane's range:
+ * SOCOM 1's CZKit::PickupAmmo by HandlePickupAck's call) and an ammunition pickup walked with a
+ * label (OVL2 0x541910, pickup_main.cpp's) */
+void func_005BB000(CZKit *kit, int weapon, int ammo, int *rounds);
+void func_00541910(CPickup *p, const char *label);
+}
+
+/* an entry of an ammunition pickup taken: its weapon's rounds into the kit, the entry cleared, the
+ * pickup walked (an inline: each of HandlePickupAck's eight answers runs it, every copy with its
+ * own three words; the name ours) */
+static inline void TakeAmmoEntry(CZSealBody *seal, CPickup *p, int i)
+{
+    CPickupAmmo *ammo = p->GetAmmo();
+    int w = 0;
+    int a = 0;
+    int n = 0;
+
+    ammo->Get(i, &w, &a, &n);
+    func_005BB000(&seal->m_kit, w, a, &n);
+    ammo->Clear(i);
+    func_00541910(p, "pickup");
+}
+
+/* each entry of an ammunition pickup with rounds left matched against the items asked for -- an
+ * item a weapon in its high byte and an ammunition in its low one -- and the answer's bit for the
+ * entry set (OVL2 0x59E580; SOCOM 1's CheckForAmmoPickups, the entries the stash's now) */
+void CZSealBody::CheckForAmmoPickups(int count, CPickupAmmo *ammo, unsigned short *items, AckUnion *ack)
+{
+    for (int i = 0; i < ammo->Count(); i++) {
+        int n = 0;
+        int w = 0;
+        int a = 0;
+
+        ammo->Get(i, &w, &a, &n);
+        for (int j = 0; j < count; j++) {
+            unsigned short weapon = items[j] >> 8;
+            unsigned short round = (unsigned short)(items[j] << 8) >> 8;
+            EQUIP_ITEM wid = w ? ((CZWeapon *)w)->m_ID : (EQUIP_ITEM)255;
+            EQUIP_AMMO aid = a ? ((CZAmmo *)a)->m_ID : (EQUIP_AMMO)255;
+
+            if (round == aid && weapon == wid && n > 0)
+                SetAckAmmo(ack, i, true);
+        }
+    }
+}
+
+/* a console's answer to this SEAL's pickup request: for each bit set, while the count lasts, a weapon
+ * pickup (the first bit only) taken or the ammunition entry of the bit taken into the kit; the kit's
+ * request finished and the ammunition pickup cleaned up (OVL2 0x59DFB0; SOCOM 1's HandlePickupAck,
+ * its eight blocks counting the answers now, the entries the stash's) */
+void CZSealBody::HandlePickupAck(int count, int id, AckUnion *ack)
+{
+    CPickup *p = CPickup::FindPickup(id);
+
+    if (!p)
+        return;
+    int n = 0;
+
+    if (ack->ammo.m_0 && n < count) {
+        switch (p->m_type) {
+        case 8:
+            PickupItem(p);
+            break;
+        case 9:
+            TakeAmmoEntry(this, p, 0);
+            break;
+        }
+        n++;
+    }
+    if (ack->ammo.m_1 && n < count) {
+        switch (p->m_type) {
+        case 8:
+            break;
+        case 9:
+            TakeAmmoEntry(this, p, 1);
+            break;
+        }
+        n++;
+    }
+    if (ack->ammo.m_2 && n < count) {
+        switch (p->m_type) {
+        case 8:
+            break;
+        case 9:
+            TakeAmmoEntry(this, p, 2);
+            break;
+        }
+        n++;
+    }
+    if (ack->ammo.m_3 && n < count) {
+        switch (p->m_type) {
+        case 8:
+            break;
+        case 9:
+            TakeAmmoEntry(this, p, 3);
+            break;
+        }
+        n++;
+    }
+    if (ack->ammo.m_4 && n < count) {
+        switch (p->m_type) {
+        case 8:
+            break;
+        case 9:
+            TakeAmmoEntry(this, p, 4);
+            break;
+        }
+        n++;
+    }
+    if (ack->ammo.m_5 && n < count) {
+        switch (p->m_type) {
+        case 8:
+            break;
+        case 9:
+            TakeAmmoEntry(this, p, 5);
+            break;
+        }
+        n++;
+    }
+    if (ack->ammo.m_6 && n < count) {
+        switch (p->m_type) {
+        case 8:
+            break;
+        case 9:
+            TakeAmmoEntry(this, p, 6);
+            break;
+        }
+        n++;
+    }
+    if (ack->ammo.m_7 && n < count) {
+        switch (p->m_type) {
+        case 8:
+            break;
+        case 9:
+            TakeAmmoEntry(this, p, 7);
+            break;
+        }
+        n++;
+    }
+    m_kit.PendingPickupHandled();
+    CPickup::CleanupAmmoPickup(p);
+}
 
 /* (called through its map name with an int first parameter: this caller zero-extends the count at
  * both calls, as it would for an int -- passed to an unsigned short parameter it would go as it is) */

@@ -180,6 +180,8 @@ public:
     void PreTick(float dT);
     /* an explosive set down (SOCOM 1's HandlePlacingExlosive, sic; OVL2 0x5C0020, kit.h's) */
     void HandlePlacingExlosive(EQUIP_ITEM item, float a, float b);
+    /* a pickup's answer dealt with (SOCOM 1's; OVL2 0x5B99D0, kit.h's) */
+    void PendingPickupHandled();
 
     /* kit.h's flags (the kit lane's names): only bit 12 here */
     unsigned int m_bits0 : 12;   // 0x0
@@ -1639,6 +1641,13 @@ public:
     /* another console's dropped weapon made here as a network pickup (SOCOM 1's; OVL2 0x59EC60 --
      * WeaponPUPacketHandler calls it with the packet's item, id and place) */
     void CreateNetWeaponPickup(unsigned short item, int netid, CPnt3D *pos, CQuat *rot);
+    /* another console's dropped ammunition made here (SOCOM 1's; OVL2 0x59E9E0 -- not written) */
+    void CreateNetAmmoPickup(unsigned char who, unsigned short *a, unsigned short *b, int id, CPnt3D *pos);
+    /* a kill credited to the killer, with whether the weapon was one of five (SOCOM 1's, the flag
+     * new; OVL2 0x59EE20 -- not written) */
+    void HandleKiller(int killer, bool b);
+    /* a pickup taken (SOCOM 1's; OVL2 0x59F0C0 -- not written) */
+    void PickupItem(CPickup *pickup);
     /* the MP bomb made a pickup at a point (SOCOM 1's; OVL2 0x59DAB0, not written yet) and every
      * item dropped (SOCOM 1's; OVL2 0x59DDB0) */
     static class CPickup *CreateMPBombPickup(const CPnt3D *pos, bool b);
