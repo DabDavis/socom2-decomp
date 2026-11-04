@@ -2001,6 +2001,45 @@ templates next), and the earlier rounds' opens; 3.0b38/b50/b52 still untold.
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the engine core, round 4** (a new int_circleclip.cpp, CZAnimArgList's getters, zar::CZAR):
+  - an iterator ASSIGNED from std::find_if (`iterator it; it = find_if(...)`) lives in its stack slot, copied bitwise out of
+    find_if's return temporary: written `if (it != end()) return X; return 0;` it is all eight CZAnimArgList getters
+    (0x2720E0-0x272720), and the destructor's walk wants it too, with end() in a local;
+  - `t = d != 0.0f ? x / d : 0.0f` gives the target's three nops after div.s, `t = 0; if (d) t = x / d;` pads only to the
+    label's alignment; `0.0f < x` compiles to `c.lt.s 0,x`, `x > 0.0f` to `c.le.s x,0`;
+  - `#pragma inline_intrinsics off` keeps MSL's abs a call (under -O4 abs expands inline whatever header declares it);
+    `m_pFile = io ? io : (m_pFileAlloc = new CFileIO)` gives the shape both builds share (CZAR's constructor 0x2590A0); a
+    plain CPnt3D assignment inside an inline cut by height calls the implicit copy out of line (0x20F1F0 then matches);
+  - int_circleclip.cpp is SOCOM 1's zdb::CCircleClip::CircleSegmentClip 0x2DF160 (0x3F4), between int_material.cpp and the
+    lobby, as in SOCOM 1; CDI::LoadPlaneVU0 0x2DD130 written as an asm function;
+  - open: ~CZAR (its key buffer a vector of 24-byte CKeys freed through out-of-line pieces), CPacketMsg::GetArg (4 bytes).
+- **Tells from the online lobby, round 15** (the room player list's sort and erase, setLoadImageTagsYX):
+  - a unit pragma fitted to older headers goes stale: the chat unit's `#pragma inline_max_size(100)` (round 10) was what held
+    std::sort<RoomPlayer> 0x2F1980 with __sort132 and __selection_sort (6.2 KB) -- re-measure inline_max_size when headers
+    deepen;
+  - two functions reading one guarded function-local static means the static belongs to an inline both expand (the class
+    deque's do_assign reads push_back's `max`: cdeque<PCv>'s max_size 0x285CE0, named at integration);
+  - a nested ternary's inner join is never threaded (a target whose inner arm branches straight to the outer join assigns one
+    variable in every arm); MW folds `(x & A) & B`, a pointer cast between the masks keeps them apart; a pointer declared
+    first but assigned after the counts keeps the highest saved register; a member-wise copy of a struct block-copied
+    elsewhere is a layout-identical class with a user constructor;
+  - sccheck lists draft matches only with `-v` ("nothing lost" checks need it); scdiff's relocation lines can show a wrong
+    global the instruction count hides (the world report read the wrong global: LobbyWorldID 0x66A538);
+  - open: 0x2F13F0 (34: the last page's erase walk), the world report 0x2EF590 (9: jump threading, as CreateGame's and
+    GetGameInfo's), insert<RoomPlayer> 0x2F2D90 (59: the class insert's register), the two do_assigns.
+- **Tells from the SEALs, round 24** (the frame slices, the radio valve, the database-handle statics, the alert records):
+  - an `int` member passed to an `unsigned int` parameter loads after the other arguments, typed `unsigned int` it loads first
+    (0x56D2B0: `m_270` is a team mask); MW aligns 0x18-byte bss objects to 16 (the five slices sit 0x20 apart:
+    __sinit_seal_ai.cpp 0x6687E0);
+  - a flat difference built with the three-float CPnt3D constructor subtracts x first, float locals declared x-first subtract
+    z first (0x5582C0); a float constant passed as a call argument and loaded with lwc1 from data is a variable (25.0 at
+    0x651028);
+  - to test a word's bit and its low byte, read it once: `unsigned int w = ...; if (w & 0x100) { int level = w & 0xff; ...
+    }` puts the andi ahead of the inline call (0x5712F0); an `extern "C"` declaration under a mangled name (e.g.
+    `__dt__8CAiEventFv`) lets source call an implicit destructor by hand;
+  - CSealCtrlAi::ReleaseDatabaseHandles/AcquireDatabaseHandles (the kit's leads) and CZSealBody::
+    Uninit_ReInitDatabaseHandles 0x5A3B50 (the game states' lead) are SOCOM 1's;
+  - open: 0x5712F0 (3: the clock loaded before the anim's time), 0x5B1350 (1).
 - **Tells from the game states, round 28** (a new fts_ovl2statics.cpp: the OVL1 unit of OVL2 classes' statics; ReOpen):
   - fts_ovl2statics.cpp (0x2CD670-0x2CE7FF, the file name ours) has no functions of its own: about sixty statics of OVL2
     classes defined in its initialiser's order, with SOCOM 1's names, and a tail emitting the destructors it registers in
