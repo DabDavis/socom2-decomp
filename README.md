@@ -1927,6 +1927,109 @@ templates next), and the earlier rounds' opens; 3.0b38/b50/b52 still untold.
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the UI, round 16** (the dialog design's loaders and their template tail, zui_spec.cpp):
+  - an `int` counter compared with an unsigned count (`sltu`) keeps `i*8` recomputed each pass; an `unsigned` counter is
+    strength-reduced to a byte offset stepped by 8 (LoadFromRdr's SCRIPT_LIBRARY loop);
+  - MW keeps a class object in memory only as the source or destination of a bitwise copy: a pair passed by value to an
+    inline is built member-wise in one slot, copied bitwise into the parameter and read from there; with a user copy
+    constructor the copy is elided and the parameter broken into registers (AddKeyProps by value reaches the target's
+    0x124, 27 off: one bitwise copy too many);
+  - CGameDlgDesign::LoadFromRdr 0x381550 and LoadModels 0x3812B0 are SOCOM 1's (both builds read ROTX, ROTY and ROTZ into
+    the same float); CGameDlgDesign is 0x74 bytes, a third string at 0x24 (zui.cpp's 0x367430 constructs it),
+    CDlgDesignModel 0x34;
+  - two map rows carried a wrong mangled length (`70` for `72__vector_deleter<15CDlgDesignModel,...>`, 0x36AE50 and
+    0x36ACF0): as spelled no source could match them;
+  - open: LoadDlgObjects 0x383360 (0x29C vs 0x2B8: the target keeps an orphaned else-block, seven words, at each inlined
+    Count()/Item() ternary), resize<CDesignDlgObj> 0x383960 (6) and resize<CDlgDesignModel> 0x383AA0 (5: the inlined
+    destructor of the temporary's second string reads the text pointer through the member's address in the target, `lw
+    a0,8(a0)`), erase<CSaferStr> 0x383BC0 (15), __copy<CSaferStr> 0x383D00 (is_long called out of line here),
+    erase<CDlgDesignModel> 0x384BD0 (20), CDlgDesignModel's copy constructor 0x3854C0 (one saved register short).
+- **Tells from the weapons, round 18** (a new vis_load.cpp; OpenDecals, NodeSetup, LandmarkEnable, AlphaEnable):
+  - two bool calls guarding a cleanup, written `bool ok = f(); if (ok) ok = g(); if (!ok) X;`, give the target's padded join
+    label before the second branch (`andi; nop; bnez`); `f() == false || g() == false` pads after the branch instead;
+  - a loop count in an int local and the array pointer in a local load once, the object's register reused; reading
+    `size()` and `[i]` in the loop re-reads both after every out-of-line push_back; a pointer read into a local before a
+    class-vector element reference is taken loads ahead of the vector's data pointer;
+  - an inline bool predicate `return a && !b && !c;` used in an `if` materialises its value; written in place, the
+    condition branches directly;
+  - `<iostream>`'s initialiser pair needs no data rows to match, so an unnamed `__sinit` placed by its neighbours opens a
+    unit on its own: 0x404500 is __sinit_vis_load.cpp, a third unit at 0x3B2CB0-0x3B36EF between zvid_init.cpp (closed by
+    zVid_Assert 0x3B2C80) and vis_vu.cpp (LoadNodeVisuals, LoadMeshNode; the 0x700-byte recursive reader 0x3B2FF0
+    unwritten; the names ours);
+  - SOCOM II's CMission::Open calls OpenDecals() 0x3D03C0, a tail call passing "decals.rdr" to an overload (0x3D0870, SOCOM
+    1's body) that never reads the name; NodeSetup 0x3B6D10's fourth argument is gone (no caller sets it, the code never
+    reads it); LandmarkEnable 0x3B7130 is SOCOM 1's, AlphaEnable 0x3B7150 SOCOM 1's with the z-write argument inverted;
+  - open: HandleTimers 0x3C99A0 (2: 0x1C8 vs 0x1D0 -- the target sets v0 = 0 early and pads two more labels),
+    InitializeWeapons (the end computed in place in `this`'s register: the end-in-a-local rule 52 off, begin() first
+    0x3C8 long), GetDamage (3), CTurret::Fire (2: `m_id` loaded before `m_node`).
+- **Tells from the SEALs, round 21** (CZSealBody's database handles, OKToStand, the ladder state, three new rows):
+  - `p = c ? q : p;` leaves the join label unaligned, `if (c) p = q;` pads it to 8 with a nop (0x560340, a state's nod to
+    its squad leader);
+  - a byte call result taken into an `unsigned char` local before a flag's zero puts the zero after the call; `bit = (x ==
+    2) != 0` gives the target's second `sltu` before a bit-field store (0x594B70, the reload button: double-click or held
+    0.4 s);
+  - a callee reading an argument register no caller sets has a real parameter (an uninitialised local lands in v0
+    instead): SOCOM II's OKToStand 0x57EFE0 takes a stance none of its three callers passes;
+  - two `return`s joining at one shared `move sN,v0` are an inlined function's result -- InStateHang's last arm is
+    Stand(-1);
+  - `if ((t = f()) != 0)` tests v0 with the copy in the delay slot, `t = f(); if (t)` copies first and tests the saved
+    register;
+  - one variable reused across two loops gets separate register webs (the first loop stays the target's), separate
+    variables renumber everything; a loop counter declared before the count fixed ReInitDatabaseHandles 0x5A49F0;
+  - defining, in an OVL2 unit, a function whose row is in OVL1 moves the unit's span into OVL1, and sccheck then scores the
+    unit's template copies against OVL1's rows (insert<CZDecalDef> 0x3D3D90 showed as a regression until the definition
+    went);
+  - InitDatabaseHandles 0x5A4CE0 is SOCOM 1's tail call into ReInitDatabaseHandles (the game states' lead, confirmed);
+    InStateProne/Crouch/Stand named from the state dispatcher 0x5870E0's jump table (data 0x65D100) and SOCOM 1's order;
+  - open: InitDecalHandles 0x5A4CF0 (10, right size: the blood tag and the loop count swap s0/s5), InStateHang 0x584390 (5:
+    Crouch 0x581990's register pair inside the inlined Stand(-1)); seal_env.cpp's vector<CZDecalDef> reserve and insert
+    (8 bytes short each: the MSL headers' question).
+- **Tells from the kit and AI states, round 22** (CSealUnit's creators; CZKit's lase, detonation and 2X ammo):
+  - a walk over a static list that two functions share, written as a static inline helper, puts its iterator below the
+    callers' temporaries in the frame and keeps its end in a saved register; written in place, the iterator takes an
+    earlier slot and the end is rebuilt each pass (CreateMultiPlayerUnits 0x5ECCD0 through `UpdateUnits()`, taking the
+    end into a local);
+  - an int local passed by address to an inline (`SetData(&data, 4)`) takes the slot right under the function's first
+    named iterator, an inline's by-value parameter (SetDataPtr) lands lower; a list push_back reached through one more
+    inline level puts the insert's temporaries under a later walk's;
+  - in a leaf, a field read in place at each test, not taken into a local, keeps the target's temporary registers
+    (InitalizeSealUnit 0x5EC9F0's team); a member vector reached through a reference local has its address computed once
+    into a register, through the global MW folds the address into each load;
+  - a pointer-vector walk `for (it = begin(), e = end(); ...)` gives the iterator s2 and the end s1 (the end declared ahead
+    swaps them); a pointer local declared before a struct copy-initialisation (`CPnt3D c = CPnt3D::zero`) loads before the
+    copy;
+  - CMission::Open picks CreateSinglePlayerUnits 0x5EC6A0 or CreateMultiPlayerUnits on theNetwork.m_bNetwork, as SOCOM 1
+    does; FetchLaseTarget 0x5BFE60, DetonateRemoteExplosives 0x5C0130 and Setup2XAmmo 0x5C75F0 sit in SOCOM 1's order;
+    0x5C7E00 is CZKit::Init by order and calls (unwritten);
+  - open: CreateSinglePlayerUnits (11: the "units made" flag's store scheduled after the walk's first-node load in the
+    target -- the order-5 test a one-case switch, the data an int local and push_back one inline level deeper got it this
+    close), CZKit::UnInit 0x5C7CE0 (0xCC vs 0x120: the target keeps its three pointer-vector iterators in the frame and
+    copies them through $f0; include/vector's pointer iterator stays in registers in every form tried),
+    GetTimeSinceLastSighting 0x60A590 (3: the clock always in $f0, under 3.0b50, 3.0b38 and 3.0b22 too), 0x5F6270 (0x48 vs
+    0x44).
+- **Tells from the HUD, round 28** (a new c2dfont.cpp: SOCOM II's font and its Korean composer, 0x359820-0x35F8EF):
+  - pieces written `(it - 1)->field` a statement at a time, the iterator kept on the stack (end() stored, then copied
+    through a float register), are a reverse iterator -- a class holding end() and dereferencing `current - 1`: AddPiece
+    0x35C2C0 matched only so (include/vector has no rbegin(); the unit carries its own);
+  - a row of -1 shorts filled by a loop that is not unrolled is an array of a class with an inline -1 constructor (a
+    written `for` loop unrolls 8x): the table rows' two resizes match so;
+  - a target calling tiny inline pieces out of line cuts the inline that holds them a level: one more inline level under
+    the int reader (SOCOM 1's GetRdrArrayInt) reproduced ReadPoint's cut and emits the point reader's five pieces
+    0x35A140-0x35A230; the target inlines CHangulFont() one level (0x35A240-0x35A2B0 not emitted here: open);
+  - `store(v >= 0 ? v : def)` doubles the target's counter step into both arms, `if (v < 0) v = def;` does not; naming the
+    first call argument as a local (`ul = findtag(e, "UL"); AddPiece(ul, findtag(e, "LR"), h)`) gives the loop item's
+    registers;
+  - a Metrowerks unit's static named like another unit's data.txt row resolves to that row and reports WRONG REFERENCE:
+    give statics names unique to their unit;
+  - 0x35E100's s1:calls name vector_imp<LOD>::insert was wrong: resize<CLayout> 0x35CC50 calls it, its element 0x48 bytes
+    (renamed to the CLayout instance); the class names (CHangulFont, CLayout, CJamoPlace, CTrailRow, CVowelRow, CJamoIndex,
+    C2DPlacement, C2DGlyphRef) and the JAMO enum are ours;
+  - open: AddJamo 0x359820 (22: registers, two stack slots), Compose 0x3599D0 and LoadChar 0x35BEF0 (8 bytes: the
+    font-texture lookup's branch layout), Load 0x359C40 and ReadPlacement 0x35AA80 (4: the findtag wrapper 0x35A240 called
+    out of line), GetGlyph 0x35A3A0 (frame 0x70 vs 0x50), the range loaders (registers), the tail's copy constructors
+    0x35D370/0x35D420 (include/vector's copy constructor would call begin, end, the deleter's constructor and the
+    allocator out of line, 0x35D490-0x35D4E0) and the four inserts; 0x359740, a list<const void *> piece only
+    __list_imp::resize 0x3C0B14 calls, unassigned.
 - **Tells from the online lobby, round 13** (CAcctDB::Save, the stats record, Login/Register/CreateGame, the deque's end):
   - a plain variable's argument move is placed after a constant argument's when the variable is declared in an inner block,
     before it when declared in the enclosing block (CAcctDB::Save: `total` moved into the `if (size)` block);
@@ -7424,6 +7527,52 @@ lintPrime -- 18 of 21, the whole C part but the Montgomery exponentiation and it
 type-22 message 0x635E60 OPEN; 89 of 95) -- 8 rows new to the map's byte-exact rows (`src/lib/medius` 926 ->
 934 of 992), none superseding a draft; 6 rows named (QUO, EMOD, MULT, XMOD, lintIncrement, lintDecrement by
 SOCOM 1's bodies, order and calls; 0x6283F8's `s1~` noted), 4 data rows. No tool changed.
+
+**Round 20b: LargeInt.c's loops, Dme.c's structure registry, DmeLocal.c's ping and timebase by SOCOM 1's bodies.**
+
+- **A loop entered in its middle is one loop.c leaves alone**: lintIncrement and lintDecrement (open since
+  round 8b) are for loops rotated only up to the nonzero words' `break` -- word 0's exit a `return`
+  (lintIncrement) or a `break` in an else after the borrow case (lintDecrement), past expand_end_loop's
+  30-insn scan; the moved region then holds the arms' labels, so its test is not copied, and the entry (i
+  known 0) is threaded straight into word 0's case. With two entries the loop is not optimized: the index is
+  recomputed (`sll; addu`) and -1 loaded inside, as in the target and SOCOM 1's copies. lintIsbSPRP's squaring
+  loop is labels and gotos (no loop notes: jump.c copies no test, loop.c moves no address into a second
+  register) -- any loop statement is copied, the shape the vendor wrote there not found; its first IsEqual's
+  failure branch holds `r = 1; goto test`, its `return 1` the block the loop's IsEqual cross-jumps to.
+- **A pointer initialised at its declaration aliases every global**: two sets (`= 0` and the address) leave
+  alias analysis no base for it, so its stores may clobber anything and the target reloads around them --
+  NetObjectField's body 0x623F30 reloads NetFieldCount after the field's stores only as `NetField *pField =
+  0;` (26 words otherwise). The same idea read backwards closed nothing open; try it where a target reloads a
+  global ours keeps.
+- **Round 13c's callee-definition rule, three more times**: NetFreeRemoteObject's last `beqz` (DmeFree defined
+  above it, and void: as int its reload of the record took v1), the timebase callback 0x619138's `bne`/`beqz`
+  (NetResetTime and NetGetTime's body defined above), and round 19b's 0x635E60 by another route (below).
+  Defining a callee can also move a later function: NetGetLocalTime's body written in DmeLocal.c is
+  byte-exact but moves func_0061C7A8's registers after DMEmalloc (23s), so it stays a draft (round 14b's rule).
+- **The message is the cursor rewound**: 0x635E60 passes `pMsg - 29` after its last `pMsg += 2`, not the
+  buffer's address -- then the write pointer stays one register updated in place (round 19b's open).
+- **A record typed as its filler writes it closes its reader**: 0x6192A0 fills a ping slot (a halfword port, the
+  callback as the in-use word, the world and client) and so types it; round 13b's 0x61C9E8, which read the
+  port as an int and called the flag through a cast (16 bytes long), is byte-exact under that type.
+- **Shapes, measured**: `pStruct->a[pStruct->n] = x; pStruct->b[pStruct->n] = y; pStruct->n++;` (the
+  increment inside the index computes the count's address once and loop.c hoists it: 65s); an index zeroed at
+  its declaration is the prologue's `move s3,zero`; GCC's multiply-accumulate for `nTotal += a * b` (madd,
+  the accumulator zeroed by `mtlo` at the entry); a sample index bumped right after its store (`a[n++] = x`) to
+  reach the following test's delay slot.
+- **Names**: RegisterChildStructure (0x624070: SOCOM 1's static of that name, fifth of the same six-function
+  object, `s1:order+body`), NetResetTime (0x614838: SOCOM 1's, byte-identical, before DMEmalloc; no Dme.c
+  wrapper calls it); data: NetFieldList, NetStructureList, NetFieldCount, NetStructureCount,
+  GlobalObjectFieldCount, GlobalObjectFieldList, CurrentNetTime (SOCOM 1's at the same accesses).
+- **Open, diagnosed in place**: rt_udp's 0x63F168 (2: `li a0,-1` against `move a2,sp` for the call's slot --
+  sched1's ready-list tie goes to the lower LUID; a pseudo dying at a2's move would weigh less, no spelling
+  found) and 0x6419E8 (round 19b's), and the earlier opens.
+
+Hand-written in round 20b: `medius/largeint.c` (+3: lintIncrement, lintDecrement, lintIsbSPRP -- 21 of 21, the C
+part whole but the Montgomery exponentiation), `medius/rt_msg_client.c` (+1, 0x635E60: 90 of 95), `medius/dme.c`
+(+3: 0x623F30, RegisterChildStructure, 0x624180; 90 of 90), `medius/dmelocal.c` (+8: 0x613FD0, NetResetTime,
+DmeFree, 0x615068, NetFreeRemoteObject, 0x619138, 0x6192A0, and 0x61C9E8 closed) -- 15 functions byte-exact
+(`src/lib/medius` 934 -> 949 of 1,002), 12 rows new to the map's byte-exact rows, 3 superseding matched drafts
+(NetResetTime, DmeFree, 0x615068); 2 rows named, 7 data rows. No tool changed.
 
 ## Open, and next
 

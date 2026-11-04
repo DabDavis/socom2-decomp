@@ -45,6 +45,9 @@ CAiSBreach *GetBreachState(CSealCtrlAi *ai)
 /* what a squad is told of its SEALs (SOCOM 1's UNIT_MESSAGE, a byte; the names ours) */
 enum UNIT_MESSAGE { UNIT_MSG_0 = 0, UNIT_MSG_1 = 1, UNIT_MSG_2 = 2, UNIT_MSG_3 = 3, UNIT_MSG_4 = 4 };
 
+/* the squad's formation (the byte at 8: 1 when made; the names ours) */
+enum UNIT_FORMATION { FORMATION_0 = 0, FORMATION_1 = 1, FORMATION_2 = 2, FORMATION_LAST = 255 };
+
 /* a squad command (zseal.h's FT_COMMAND, which this unit does not include: the same byte enum) */
 enum FT_COMMAND { CMD_UNKNOWN = 0, CMD_ACTION = 1, CMD_LAST = 255 };
 
@@ -135,6 +138,13 @@ public:
     ~CSealUnit();
     /* every squad deleted, the made flag cleared (SOCOM 1's; OVL2 0x5ECEF0) */
     static void UnInit();
+    /* the squads made for a single-player mission and for a network game (SOCOM 1's, called where
+     * SOCOM 1's are -- CMission::Open by theNetwork.m_bNetwork, ReOpen_Load the first: OVL2
+     * 0x5EC6A0, 0x5ECCD0), and a SEAL put in a squad, the one given or else its team's (SOCOM 1's
+     * InitalizeSealUnit, the squad argument new: OVL2 0x5EC9F0, between them as in SOCOM 1) */
+    static void CreateSinglePlayerUnits();
+    static void InitalizeSealUnit(CZSealBody *seal, CSealUnit *unit);
+    static void CreateMultiPlayerUnits();
     /* the squad's SEALs' AI states dropped, `all` handed on to each, and with `recurse` the squads
      * under it -- a walk that never runs: its test is against begin() (OVL2 0x5E6C90, new in SOCOM
      * II; the name ours) */
@@ -191,7 +201,8 @@ public:
     /* the table at 4: IssueCommand, AllowCommand (0x669650) */
     virtual void IssueCommand(CZSealBody *seal, FT_COMMAND cmd, void *data, bool b);
     virtual bool AllowCommand(CZSealBody *seal, FT_COMMAND cmd, void *data);
-    unsigned char m_8;   // 0x8 (new in SOCOM II: 1 when made; the name ours)
+    UNIT_FORMATION m_8;   // 0x8 (new in SOCOM II: 1 when made; the name ours -- the enum: passed on
+                          // to the formation setter it loads with lb)
     unsigned char m_unit_in_point;   // 0x9 (SOCOM 1's 0x8)
     UnitPointData m_follower_point_data;   // 0xc
     UnitPointData m_leader_point_data;   // 0x20
@@ -221,11 +232,24 @@ public:
     void *GetDataPtr();
     bool SetDataPtr(void *p);
 
+    void AddSub(CSealUnit *const &unit) { m_sub_units.push_back(unit); }
     unsigned int m_data_size;   // 0x34
     unsigned char m_data[0x20];   // 0x38
     unsigned int m_unit_num;   // 0x58 (SOCOM 1's 0x38)
     unsigned int m_5c;   // 0x5c: the squad's bit, 1 << (number & 31) (new in SOCOM II; the name ours)
     CSealUnit *m_parent;   // 0x60 (SOCOM 1's 0x3c): the squad this one is a part of
+
+    /* a squad put under this one: listed, its parent set and this one's bits added to its own (an
+     * inline taking the squad by value -- CreateSinglePlayerUnits re-reads it off the stack after
+     * the insert, a copy per call; SOCOM 1 wrote the push and the parent out; the name ours). The
+     * push through AddSub, a level deeper: only so do the inserts' temporaries sit under the entity
+     * walk's in the frame, as the target's do (a stand-in for whatever level the original had) */
+    void AddSubUnit(CSealUnit *unit)
+    {
+        AddSub(unit);
+        unit->m_parent = this;
+        unit->m_5c |= m_5c;
+    }
     /* SOCOM 1's DWARF: the squad's three list types, classes over std::list (each adds a this-tested
      * level to its implicit destructor: the destructor's four tests per list) */
     class slist : public std::list<CZSealBody *> {
@@ -496,7 +520,7 @@ bool CSealUnit::IsMemberOfUnit(CZSealBody *seal, bool recurse)
 }
 
 /* (OVL2 0x5EE6F0; SOCOM 1's, the lists built out of line, the team's bit new) */
-CSealUnit::CSealUnit(unsigned int team) : m_8(1), m_unit_num(team)
+CSealUnit::CSealUnit(unsigned int team) : m_8(FORMATION_1), m_unit_num(team)
 {
     m_parent = 0;
     m_a0 = 0;
@@ -714,6 +738,16 @@ bool CSealUnit::GetData(void *data, unsigned int size)
 /* the player (fts_player.cpp's, OVL1 0x2B3580) */
 CZSealBody *ftsGetPlayer();
 
+/* the mission as far as the squads read it: its AI parameters' fireteam command (SOCOM 1's
+ * CMission::m_ai_params at 0xB4, AI_PARAMS::fireteam_command at +4 -- the byte SOCOM 1's
+ * CreateSinglePlayerUnits reads; SOCOM II's at 0x148, read by this unit alone). fts_state.h's
+ * CMission, which this unit does not include, leaves it unnamed: the view ours */
+struct CMissionFireteamView {
+    unsigned char _0[0x148];
+    FT_COMMAND m_fireteam_command;   // 0x148
+};
+extern CMissionFireteamView theMission;
+
 /* a SEAL's look out of a direction, in the XZ plane: the squad's own when m_a4 is set; following
  * the player, squad 3's leader turned 45 degrees one way and the others 45 the other, the leader
  * of any other squad kept straight; a pair (two SEALs) splits 60 degrees each way; else the
@@ -791,9 +825,6 @@ int func_005E76D0(CSealUnit *unit);
 void func_005EAF20(CSealUnit *unit, int sound, int b, float chance);
 }
 
-/* the squad's formation (the byte at 8: 1 when made; the names ours) */
-enum UNIT_FORMATION { FORMATION_0 = 0, FORMATION_1 = 1, FORMATION_2 = 2, FORMATION_LAST = 255 };
-
 extern "C" {
 void func_005EB6D0(CSealUnit *unit, UNIT_FORMATION f, int b);
 }
@@ -860,6 +891,150 @@ void CSealUnit::UnInit()
         delete unit;
     }
     m_created_units_test = false;
+}
+
+/* each squad's update run (an inline both creators end with: the end taken once into a local, the
+ * iterator assigned from begin() -- written in each creator, the iterator is numbered ahead of their
+ * walks' temporaries and the end is re-built each pass; the name ours) */
+static inline void UpdateUnits()
+{
+    std::list<CSealUnit *>::iterator e = CSealUnit::m_list.end();
+    std::list<CSealUnit *>::iterator u;
+
+    for (u = CSealUnit::m_list.begin(); u != e; ++u)
+        func_005E7830(*u);
+}
+
+/* an entity that is a SEAL (kind 2), or none (seal.cpp's) */
+static inline CZSealBody *AsSeal(CEntity *e)
+{
+    return e && e->m_type == CEntity::ENT_TYPE_SEAL ? (CZSealBody *)e : 0;
+}
+
+/* the network game's squads, once: 0 (the player's), 28 (the SEALs'), 17 (the terrorists'), 31,
+ * 30, 26, 25 and 24 (the radio channel's); every SEAL into its side's squad by its team bits, the
+ * player into squad 0, and each squad's update run (OVL2 0x5ECCD0; SOCOM 1's -- its squads made
+ * inline, SOCOM II's through Create). The third arm's ftsGetPlayer() is the target's: a call whose
+ * result nothing uses (compiled-out code around it, likely) */
+void CSealUnit::CreateMultiPlayerUnits()
+{
+    if (!m_created_units_test) {
+        CSealUnit *unit = Create(0);
+        CSealUnit *seals = Create(28);
+        CSealUnit *terrorists = Create(17);
+
+        Create(31);
+        Create(30);
+        Create(26);
+        Create(25);
+        Create(24);
+        m_created_units_test = true;
+
+        CEntityList::const_iterator i;
+
+        for (i = CEntity::GetEntityList().begin(); i != CEntity::GetEntityList().end(); ++i) {
+            CZSealBody *seal = AsSeal(*i);
+
+            if (seal) {
+                if (seal->m_team & 0x10000000)
+                    seals->SealJoinUnit(seal);
+                else if (seal->m_team & 0x20000)
+                    terrorists->SealJoinUnit(seal);
+                else
+                    ftsGetPlayer();
+            }
+        }
+        unit->SealJoinUnit(ftsGetPlayer());
+        UpdateUnits();
+    }
+}
+
+/* a SEAL put in a squad: the one given, else its team's -- bit 3 squad 3, bit 2 squad 2, bit 28
+ * squad 28, bit 17 squad 17, bit 18 squad 18, else the first of squads 5-15 its bits name, else
+ * squad 4 (OVL2 0x5EC9F0; SOCOM 1's InitalizeSealUnit, GetUnitByTeam inlined at each). The team read
+ * in place at each test: taken into a local it moves every temporary register */
+void CSealUnit::InitalizeSealUnit(CZSealBody *seal, CSealUnit *unit)
+{
+    if (seal) {
+        if (!unit) {
+            if (seal->m_team & 8)
+                unit = GetUnitByTeam(3);
+            else if (seal->m_team & 4)
+                unit = GetUnitByTeam(2);
+            else if (seal->m_team & 0x10000000)
+                unit = GetUnitByTeam(28);
+            else if (seal->m_team & 0x20000)
+                unit = GetUnitByTeam(17);
+            else if (seal->m_team & 0x40000)
+                unit = GetUnitByTeam(18);
+            else {
+                for (unsigned int i = 5; i < 16; i++)
+                    if (1 << i & seal->m_team && !unit)
+                        unit = GetUnitByTeam(i);
+                if (!unit)
+                    unit = GetUnitByTeam(4);
+            }
+        }
+        if (unit)
+            unit->SealJoinUnit(seal);
+    }
+}
+
+/* the single-player squads: 1 (Alpha) with 2 and 3 (Bravo's fire teams) under it, 28, 17, 18, 4,
+ * 29 and 5-15; every SEAL put in its squad; Alpha told the player's order 6, then the mission's
+ * fireteam command -- 5 goes to squad 3 with the data 8 stored, squad 2 told 4 -- the formation set
+ * to Alpha's own, and each squad's update run (OVL2 0x5EC6A0; SOCOM 1's, its squads made inline and
+ * order 5's 8 passed as the data).
+ * OPEN, 11 instructions: the made flag's store. The target loads m_list's first node and stores it to
+ * the walk's temporary before it stores the flag; MW here stores the flag first (CreateMultiPlayerUnits,
+ * the same store written before its entity walk, gets the target's order). Tried: the flag as 1, through
+ * an inline setter, as UpdateUnits' argument, the walk written in place, through a reference, a
+ * pointer and a const view of m_list, u declared first, the flag stored after begin() or end() inside
+ * the walk's inline. What closed the rest: the order 5 test a one-case switch (`beq; b`), the data an
+ * int local (its slot right under the walk's iterator: SetDataPtr's parameter lands lower), the
+ * push_back one inline level deeper (AddSub: the inserts' temporaries under the walk's) */
+void CSealUnit::CreateSinglePlayerUnits()
+{
+    CSealUnit *alpha = Create(1);
+    CSealUnit *bravo1 = Create(2);
+    CSealUnit *bravo2 = Create(3);
+
+    Create(28);
+    Create(17);
+    Create(18);
+    Create(4);
+    Create(29);
+    alpha->AddSubUnit(bravo1);
+    alpha->AddSubUnit(bravo2);
+    for (unsigned int n = 5; n < 16; n++)
+        Create(n);
+
+    CEntityList::const_iterator i;
+
+    for (i = CEntity::GetEntityList().begin(); i != CEntity::GetEntityList().end(); ++i)
+        InitalizeSealUnit(AsSeal(*i), 0);
+
+    CZSealBody *player = ftsGetPlayer();
+
+    alpha->IssueCommand(player, (FT_COMMAND)6, 0, true);
+
+    FT_COMMAND cmd = (FT_COMMAND)theMission.m_fireteam_command;
+
+    switch (cmd) {
+    case 5: {
+        int data = 8;
+
+        bravo2->SetData(&data, sizeof data);
+        bravo2->IssueCommand(player, cmd, (void *)1, true);
+        bravo1->IssueCommand(player, (FT_COMMAND)4, 0, true);
+        break;
+    }
+    default:
+        alpha->IssueCommand(player, cmd, 0, true);
+    }
+    func_005EB6D0(alpha, alpha->m_8, 0);
+    m_created_units_test = true;
+    UpdateUnits();
 }
 
 /* (OVL2 0x5E6C90; pinned: at fifteen statements -inline auto takes it, and the target's recursion

@@ -59,7 +59,8 @@ static inline float RandSize(float lo, float hi)
 /* a material's extension (int_material.cpp's, held in zweapon.h's CMaterialExArray): only the
  * footfall sounds by gait (the names ours) */
 struct CMaterialEx {
-    unsigned char _0[8];
+    char *m_name;   // 0x0 (ReInitDatabaseHandles' footfall anims are named after it)
+    unsigned char _4[8 - 4];
     CSnd *m_runsound;   // 0x8
     CSnd *m_walksound;   // 0xc
     CSnd *m_pronesound;   // 0x10
@@ -817,6 +818,36 @@ extern "C" bool func_005A8850(CZSealBody *seal)
 }
 
 extern "C" {
+/* the blend tests of seal_body.cpp: anim types 8 or 9 on top, 10 or 11, and a type of the set's (OVL2
+ * 0x587F50, 0x587F10, 0x57DF10) */
+bool func_00587F50(CZSealBody *seal);
+bool func_00587F10(CZSealBody *seal);
+bool func_0057DF10(CZSealBody *seal);
+/* the farthest a SEAL may be moving and still take a pickup (OVL2 data: 32) */
+extern float data_006508A0;
+}
+
+/* whether the SEAL may take a weapon up now: alive, on the ground, in neither blend pair, moving
+ * slower than the limit, working nothing, holding no class-4 item, not in the set's blend, and
+ * free to fire (OVL2 0x5A81D0, new in SOCOM II: CSealCtrl::TickPickups asks it; the name unknown) */
+extern "C" bool func_005A81D0(CZSealBody *seal)
+{
+    if (!seal->m_isAlive)
+        return false;
+    if (seal->m_state == stateInAir || func_00587F50(seal) || func_00587F10(seal))
+        return false;
+    const CPnt3D &v = seal->m_velM;
+
+    if (!(v.x * v.x + v.y * v.y + v.z * v.z <= data_006508A0 * data_006508A0))
+        return false;
+    if (seal->m_eb8 || seal->m_kit.GetCurItemFireClass() == CZKit::FIRE_CLASS_145)
+        return false;
+    if (func_0057DF10(seal))
+        return false;
+    return seal->CanFire(true, false);
+}
+
+extern "C" {
 /* the CQB deaths, from in front and from behind (OVL1 data, anim types; SOCOM 1's small-data pair) */
 extern AnimType data_003DEE30;
 extern AnimType data_003DEE38;
@@ -959,6 +990,149 @@ void CZSealBody::HandleWeaponEvent(CZProjectile *proj, unsigned int event, void 
         if (seal)
             ((CSealCtrl *)seal->m_control)->OnWeaponEvent(proj, event, data);
     }
+}
+
+/* (zdb::CWorld::GetTexHandle, znode.h's: InitDecalHandles calls OVL2's copy, 0x5A4F70, right after
+ * it -- an inline's out-of-line copy in the original; st_core.cpp defines the function, out of line,
+ * and a definition here would put this unit's span in OVL1) */
+
+extern "C" {
+/* the decals rdr (OVL1 bss, the weapons' 0x437D00) and a material's index by name (OVL1 0x2DE9E0,
+ * SOCOM 1's CMaterialExArray::ResolveMaterialIndex -- not named) */
+extern _zrdr *data_00437D00;
+int func_002DE9E0(const char *name);
+}
+/* (zrdr.h's, which this unit cannot include beside zanim.h's _zrdr) */
+bool zrdr_findreal(const _zrdr *rdr, const char *tag, float *out, int n);
+
+/* the decal textures: the footsteps' by material, the blood drips' with their size ranges (OVL2
+ * 0x5A4CF0; SOCOM 1's, the arrays SOCOM II's). Each tag found in the test, assigned there (the
+ * target tests v0 with the copy in the delay slot), the locals declared first in tools/perm.py's
+ * order, the counter, the count and the item one variable each for both loops.
+ * OPEN, 10 instructions (the size right, 2 registers): in the second block the target gives the blood
+ * tag s0 and the loop's count s5; here they swap (the tag s5, the count's second web s0). The first
+ * block is the target's. Tried: perm.py over the declarations (best 10 with the shared counter, 19
+ * with separate second-loop variables or a separate count; 1828-2328 steps each), the tag declared in
+ * the test or tested apart, the decals rdr's local reused for the blood tag, the steps tag reused. */
+void CZSealBody::InitDecalHandles()
+{
+    char *texture;
+    int i;
+    _zrdr *steps;
+    _zrdr *blood;
+    char *material;
+    int n;
+    _zrdr *rdr;
+    zdb::CTexHandle *tex;
+    _zrdr *item;
+    int index;
+
+    rdr = data_00437D00;
+    data_0044D550 = _calloc(4, CMaterialExArray::m_materialex_list.size(), 0, 0);
+    if ((steps = zrdr_findtag(rdr, "FOOTSTEP_DECALS")) != 0) {
+        n = steps->Count();
+        for (i = 0; i < n; i++) {
+            item = ItemAt(steps, i);
+            material = zrdr_findstring(item, "MATERIALNAME");
+            texture = zrdr_findstring(item, "TEXTURENAME");
+            index = func_002DE9E0(material);
+            ((zdb::CTexHandle **)data_0044D550)[index] = zdb::CWorld::GetTexHandle(texture);
+        }
+    }
+    if ((blood = zrdr_findtag(rdr, "BLOOD_DRIP_DECALS")) != 0) {
+        CZDecalDef def;
+
+        def.m_decalminsize = 0;
+        def.m_decalmaxsize = 0;
+        def.m_texture = 0;
+        n = blood->Count();
+        m_blooddriptexhandles.reserve(n);
+        for (i = 0; i < n; i++) {
+            item = ItemAt(blood, i);
+            tex = zdb::CWorld::GetTexHandle(zrdr_findstring(item, "TEXTURENAME"));
+            if (tex) {
+                float min = 0.0f;
+                float max = 0.0f;
+
+                zrdr_findreal(item, "MIN_SIZE", &min, 1);
+                zrdr_findreal(item, "MAX_SIZE", &max, 1);
+                def.m_decalminsize = min;
+                def.m_decalmaxsize = max;
+                def.m_texture = tex;
+                m_blooddriptexhandles.push_back(def);
+            }
+        }
+    }
+}
+
+/* (SOCOM 1's InitDatabaseHandles: the handles taken again, OVL2 0x5A4CE0) */
+void CZSealBody::InitDatabaseHandles()
+{
+    ReInitDatabaseHandles();
+}
+
+extern "C" {
+/* the ripple anims, by gait (OVL1 bss: SOCOM 1's m_bigrippleanim and m_smallrippleanim, three each),
+ * the fall into water, the drops (SOCOM 1's m_dropanim and two more), the CQB and body-fall sounds
+ * (SOCOM 1's m_cqb_sound, m_body_fall_sound), and the ladder's slide with its instance and the
+ * goggles' and the holster's sounds (new in SOCOM II; the names ours) */
+extern CZAnim *data_0044D520[3];
+extern CZAnim *data_0044D530[3];
+extern CZAnim *data_0044D540;
+extern CSnd *data_0044D578;
+extern CSnd *data_0044D580;
+extern CSnd *data_0044CE20;
+extern CSndInstance *data_0044CE28;
+extern CSnd *data_0044CE30;
+extern CSnd *data_0044CE38;
+extern CSnd *data_0044CE40;
+extern CSnd *data_0044CE48;
+}
+
+/* the database's handles taken: the hand signals, the weapon events' callback, the ripple, fall and
+ * drop anims, a footfall anim per material ("seal_footfall_" and its name), the sounds -- the
+ * heartbeat's reopened (OVL2 0x5A49F0; SOCOM 1's ReInitDatabaseHandles, the footfall loop as SOCOM
+ * 1's -- the satchel's drop anim stored over the foot bomb's, as SOCOM II's code has it) */
+void CZSealBody::ReInitDatabaseHandles()
+{
+    int i;   /* (declared first: the count takes the lower saved register) */
+
+    InitHandSignals();
+    CZWeapon::AddWeaponEventCallback(HandleWeaponEvent, 1, 0);
+    int n = CMaterialExArray::m_materialex_list.size();
+
+    data_0044D520[0] = ZAnim.GetAnim("big_ripple_anim", 0);
+    data_0044D520[1] = ZAnim.GetAnim("big_ripple_anim_walk", 0);
+    data_0044D520[2] = ZAnim.GetAnim("big_ripple_anim_run", 0);
+    data_0044D530[0] = ZAnim.GetAnim("small_ripple_anim", 0);
+    data_0044D530[1] = ZAnim.GetAnim("small_ripple_anim_walk", 0);
+    data_0044D530[2] = ZAnim.GetAnim("small_ripple_anim_run", 0);
+    data_0044D540 = ZAnim.GetAnim("seal_fall_in_water", 0);
+    data_0044D508 = (int)ZAnim.GetAnim("drop_item", 0);
+    data_0044D510 = (int)ZAnim.GetAnim("drop_footbomb", 0);
+    data_0044D510 = (int)ZAnim.GetAnim("drop_satchel", 0);
+    data_0044D548 = _calloc(4, n, 0, 0);
+    for (i = 0; i < n; i++) {
+        ((CZAnim **)data_0044D548)[i] = 0;
+        CMaterialEx *ex = MaterialEx(i);
+
+        if (ex) {
+            char name[64];
+
+            sprintf(name, "seal_footfall_%s", ex->m_name);
+            ((CZAnim **)data_0044D548)[i] = ZAnim.GetAnim(name, 0);
+        }
+    }
+    data_0044D578 = CSnd::GetSoundByName(".RIFLE_BUTT");
+    data_0044D580 = CSnd::GetSoundByName(".BONE_BRK_1");
+    CloseHeartbeatSounds();
+    OpenHeartbeatSounds();
+    data_0044CE20 = CSnd::GetSoundByName("~LADDER_SLIDE");
+    data_0044CE28 = 0;
+    data_0044CE30 = CSnd::GetSoundByName(".NV_GOGGLES_ON");
+    data_0044CE38 = CSnd::GetSoundByName(".NV_GOGGLES_OFF");
+    data_0044CE40 = CSnd::GetSoundByName(".GUNTOHOLSTER");
+    data_0044CE48 = CSnd::GetSoundByName(".GUNTOBACK");
 }
 
 /* a 12-byte vector temporary (the class vector's three words) */
