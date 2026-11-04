@@ -2033,6 +2033,55 @@ exists); 3.0b38/b50/b52 still untold.
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the UI, round 20** (CDesignDlgObj's helpers, SkbSetPurpose, insert<SKBSEQ>, _Refresh's accessors):
+  - REFUSAL PROPAGATION REACHES MSL'S HELPERS: pinning an element's assignment with `auto_inline off` makes copy / fill_n /
+    copy_backward's helpers inline whole; left unpinned, MW refuses the assignment itself, and the helpers and the copy
+    constructor come out of line as in the target (__copy<CDesignDlgObj *> 0x3845B0, __fill_n 0x384AA0, __copy_backward
+    0x384B00, CDesignDlgObj's copy constructor 0x384B70);
+  - CInit<int, 0> members copy-construct word by word (lw/sw) and assign through one FPR each (lwc1/swc1), plain ints give
+    lw/sw both ways, an int[2] block-copies both ways; a recursive function's self-copies are set by the inline_max_size
+    cut, not the level -- taller accessors let a third copy fit, an int counter against an unsigned count (recomputing
+    i*8) stops it at the target's two (_Refresh 0x385EA0, SOCOM 1's);
+  - a derived record's fields start after the base's padded size, so a parsed command's halfword must be modelled as a base
+    class (UIParsedCmd, fields from 0x10: SkbSetPurpose 0x397640); MW reloads a field across an inlined bool accessor --
+    LoadFromRdr's shared type load needs a flat non-const String(), _Refresh reaches the const one over IsString through a
+    cast (0x32C650 IsString and 0x335700 String named at integration: zrdr.h's, out of line);
+  - 0x3941D0-0x39441F is zui_skbview.cpp's, not zui_hangul.cpp's (CSkbKeyProps::SetShown and its destructor); SkbOpen
+    0x38D770 takes the handler's (command, time step); open: erase<CDesignDlgObj> 0x384410 (19: two saved registers),
+    insert<CDesignDlgObj> 0x384620 (the construct cut -- the class-insert trade's second population), SkbPadKeyEvent.
+- **Tells from the kit and AI states, round 29** (DrawOctahedron, a target's visibility, the squad's three orders):
+  - a dead first definition of each variable fixes MW's numbering, so the real assignments can then be ordered to fix the
+    schedule without moving registers (DrawOctahedron 0x5FF2F0, 0xAB8: twelve lines with DrawLine's body written out each
+    time under seal_ailines.cpp's dont_inline -- its two corner-to-corner lines are diagonals); a coordinate both line
+    ends share, folded into its own local, takes that local's number, written as a repeated expression the temporary takes
+    the highest number and pushes the other values up;
+  - in an inline, `return d == 0 ? false : d->m_state == 4;` lays out the null arm first, `d ? ... : false` and an early
+    return put it after (0x60AFA0: a target's visibility from its finished ray, which SOCOM 1 did inline in
+    CSealCtrl::SensorTick; it brings _saturate<f>'s OVL2 copy 0x539B70); `bool r = !flag;` returned on the early path gives
+    the target's `andi v0,a2,0xff`, `if (!flag) return true;` gives `li v0,1`; an unsigned char parameter tested `== 0` is
+    re-extended before the branch, `!x` branches on the register directly;
+  - byte-enum copies declared first and assigned in reverse order give the target's load order and registers (initialised
+    in place they load the other way); a list walk with its end taken into a local declared before the iterator gives the
+    iterator s0 and the end s1, testing against end() swaps them (CSealUnit::FollowSeal 0x5EB580);
+  - CSealUnit::ConfirmCommand 0x5EABA0 (SOCOM 1's: the confirm-orders flag ShouldConfirmVoiceCommands 0x3DF1D0 first, the
+    sound name by sprintf) and AcknowledgeCommand 0x5EAD70 (SOCOM II's canned radio answer); CAiState's slot +0x3C takes
+    the AI (both callers pass it in a1: the four Virtual3C rows renamed); open: CheckMaster 0x5FDD40 (0x178 vs 0x180: the
+    target turns both bit tests into a value before branching), GetFiremodeGraphic (0x70 vs 0x68).
+- **Tells from the game states, round 32** (the danger level, the spawners' insert, SendPickupAckMessage's int, znet.h):
+  - an iterator INITIALISED from `GetEntityList().begin()` gives one copy and lives in a register, ASSIGNED it gives two
+    copies and lives in memory (LoadVehicles 0x2B2E50 against 0x2B7A90); a push_back made inside an inline helper puts its
+    iterator temporaries below the caller's frame objects -- that fixed all of LoadVehicles' stack slots (it stays 41 off
+    in the colouring: the entry iterator wanted after c, r, rows and cols, which no declaration order reaches -- best of
+    9,000 orders searched offline with build/scratch/states-r32/ig/search.py: 4 off);
+  - a same-team test written as a positive inline used as a plain truth test, the other entity the inline's parameter,
+    keeps that member's address hoisted (spelled `!IsEnemy(...)` it keeps a sltu/xori pair); a local assigned from an
+    inline accessor's result is absorbed into the inline's temporary, numbered after later named locals; a byte read
+    through `*_max<Uc>()` into an int local is compared directly, an unsigned char local gets an `andi 0xff` (the danger
+    around the player 0x2A4A10, its tail emitting _max<Uc> 0x2AFC40);
+  - a box passed by value to an inline keeps GetBBox, written as that call's argument, out of line, a local copy inlines it
+    one level; the grid's base point is stored z, x, y field by field as in SOCOM 1 (the three-float constructor evaluates
+    x first, 8 bytes longer); SendPickupAckMessage 0x2BA1F0 takes an int first (renamed __Fiii8AckUnion, seal_env.cpp
+    respelled at integration); fts_remote.cpp and fts_net_seal.cpp include znet.h now (the online lobby's transform).
 - **Tells from the HUD, round 36** (hud_lensflare.cpp's loaders and entries, CUIMapCtrl::Tick, a unit boundary):
   - a `const _zrdr *` lets MW read the type byte once for every inline test, a plain pointer reloads it after an
     intervening null test (CLensFlareManager::LoadLightSource 0x1FF630 and LoadRdr 0x1FF4F0); the loader's first name is
