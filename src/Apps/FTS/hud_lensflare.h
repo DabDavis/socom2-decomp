@@ -94,6 +94,9 @@ public:
     void ReInit();
     void Reset();
     void LoadRdr(const char *name);
+    /* a LightSourceDefinition record: when active is "on", a flare made on every node the
+     * group_node name (with its wildcards) finds (0x1FF630, the name ours) */
+    void LoadLightSource(_zrdr *def);
     void Init();
     void Clear();
 

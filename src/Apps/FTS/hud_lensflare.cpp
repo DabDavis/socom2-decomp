@@ -8,7 +8,10 @@
 
 #include <iostream>
 
+#include <string.h>
+
 #include "../../gamez/znode/znode.h"
+#include "../../gamez/zrdr/zrdr.h"
 #include "hud_lensflare.h"
 
 /* the flare system (OVL1 bss 0x488F10; no rows yet): a flare made at a point with a size (its
@@ -22,9 +25,75 @@ extern "C" void func_00336580(CFlareSystem *system, int handle, CPnt3D *pos);
 extern "C" void func_003365E0(CFlareSystem *system, int handle, CPnt3D *pos, float size);
 extern "C" bool func_00336520(CFlareSystem *system, int handle, void *query);
 
-/* the rdr's finders (zrdr.h's) */
-char *zrdr_findstring(const _zrdr *rdr, const char *tag);
-bool zrdr_findreal(const _zrdr *rdr, const char *tag, float *out, int n);
+extern "C" int sprintf(char *dst, const char *fmt, ...);
+
+/* a node name with up to five '*' wildcards counted through as digits, last first -- "lf*" gives
+ * lf0, lf1, ... lf9 (SOCOM II's; the names ours): the name being expanded, its wildcards from the
+ * end backwards, each one's digit, and how many it has (OVL1 bss 0x408FD0-0x40901B) */
+char *g_flareNamePattern;
+char *g_flareNameWild[5];
+int g_flareNameDigit[5];
+int g_flareNameWilds;
+
+/* the wildcards written with their digits, the first wildcard's last */
+static inline char *FlareNameFormat()
+{
+    for (int i = g_flareNameWilds - 1; i >= 0; i--) {
+        char digit[4];
+
+        sprintf(digit, "%d", g_flareNameDigit[i]);
+        *g_flareNameWild[i] = digit[0];
+    }
+    return g_flareNamePattern;
+}
+
+/* the next name: the digits counted up as an odometer, the first wildcard the fastest; none when
+ * they have all come round (or there are no wildcards). Pinned: -inline auto would expand it into
+ * the loader, which calls it */
+#pragma auto_inline off
+char *NextFlareName()
+{
+    bool wrapped = false;
+
+    for (int i = 0; i < g_flareNameWilds; i++) {
+        wrapped = true;
+        if (g_flareNameDigit[i] < 9) {
+            g_flareNameDigit[i]++;
+            wrapped = false;
+            break;
+        }
+        g_flareNameDigit[i] = 0;
+    }
+    if (wrapped || !g_flareNameWilds)
+        return 0;
+    return FlareNameFormat();
+}
+#pragma auto_inline reset
+
+/* the first name: the pattern kept, its last five wildcards found from the end, all digits 0 -- the
+ * name itself when it has none */
+char *FirstFlareName(char *name)
+{
+    g_flareNameWilds = 0;
+    if (!name)
+        return 0;
+    g_flareNamePattern = name;
+    for (int k = 0; k < 5; k++) {
+        g_flareNameWild[k] = 0;
+        g_flareNameDigit[k] = 0;
+    }
+    for (int i = strlen(name) - 1; i >= 0; i--) {
+        if (g_flareNamePattern[i] == '*') {
+            g_flareNameWild[g_flareNameWilds] = &g_flareNamePattern[i];
+            g_flareNameWilds++;
+            if (g_flareNameWilds == 5)
+                i = -1;
+        }
+    }
+    if (!g_flareNameWilds)
+        return name;
+    return FlareNameFormat();
+}
 
 /* the asset manager's library list (node_world.h's classes: units including znode.h declare their
  * own partial ones) */
@@ -178,6 +247,64 @@ void CLensFlareEntry::Init()
     SetColor(225.0f, 224.0f, 133.0f);
     Off();
 }
+
+/* when the record's active item is "on": the group_node name copied and expanded through its
+ * wildcards, each name looked up as a landmark of the world and then as a node anywhere under it,
+ * and a flare made on each node found */
+void CLensFlareManager::LoadLightSource(_zrdr *def)
+{
+    if (def && def->type == ZRDR_ARRAY) {
+        _zrdr *active = zrdr_flat_findtag_startidx(def, "active", 0);
+
+        if (active && active->Item(0)->type == ZRDR_STRING && !strcmp(active->Item(0)->String(), "on")) {
+            /* const: its type byte is read once for both of the array tests (a plain pointer
+             * reloads it after the second null test, 4 bytes long) */
+            const _zrdr *group = zrdr_findtag(def, "group_node");
+
+            if (group && group->type == ZRDR_ARRAY && group && group->Item(0)->type == ZRDR_STRING) {
+                char *names = _strdup(group->Item(0)->String(), 0, 0);
+
+                char *name = FirstFlareName(names);
+
+                do {
+                    zdb::CNode *node = zdb::CWorld::m_world->FindLandmark(name);
+
+                    if (!node)
+                        node = zdb::CWorld::m_world->FindChild(name, true);
+                    if (node) {
+                        CLensFlareEntry *flare = new CLensFlareEntry(def, node);
+
+                        if (flare)
+                            push_back(flare);
+                    }
+                    name = NextFlareName();
+                } while (name);
+                _free(names, 0, 0);
+            }
+        }
+    }
+}
+
+/* the flares read from an rdr: every LightSourceDefinition record in it. The counter an int (an
+ * unsigned one is strength-reduced into a fourth saved register), the item const (its type byte
+ * read once for String()'s test). Pinned: Init calls it, where -inline auto would expand it */
+#pragma auto_inline off
+void CLensFlareManager::LoadRdr(const char *name)
+{
+    _zrdr *rdr = zrdr_read(name, 0, 0);
+
+    if (rdr && rdr->type == ZRDR_ARRAY) {
+        for (int i = 0; i < rdr->Count(); i++) {
+            const _zrdr *item = rdr->Item(i);
+
+            if (item->type == ZRDR_STRING && !strcasecmp(item->String(), "LightSourceDefinition"))
+                LoadLightSource(rdr->Item(i + 1));
+        }
+    }
+    if (rdr)
+        zrdr_free((CRdrFile *)rdr);
+}
+#pragma auto_inline reset
 
 /* every flare deleted, the list emptied, inactive.
  * OPEN (4 bytes short): the target keeps three saved registers -- this, the end (this + 4) and

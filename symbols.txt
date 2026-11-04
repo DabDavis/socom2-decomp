@@ -1702,7 +1702,7 @@
 0x001FF370 0xE4 ReInit__17CLensFlareManagerFv  # OVL1; by hand (hud_lensflare.cpp: CHUD::ReInit_Init's last call on the manager at CHUD+0x1A698; the flares walked as Tick's and PreDITick's, each on a node placed at CPnt3D::zero through TransformToWorld and made (0x336650) or moved (0x3365E0) in the flare system; the name ours)
 0x001FF460 0x8C Reset__17CLensFlareManagerFv  # OVL1; by hand (CHUD::ReInit_Uninit's call on the manager: each flare's handle at 0x8C given back to the system at 0x488F10 and set to -1; the name ours)
 0x001FF4F0 0x140 LoadRdr__17CLensFlareManagerFPCc  # OVL1; by hand (Init's call with lensflare.rdr's name, as SOCOM 1's CLensFlareSaturate::LoadRdr took one)
-0x001FF630 0x270 func_001FF630  # OVL1
+0x001FF630 0x270 LoadLightSource__17CLensFlareManagerFP5_zrdr  # OVL1; ours (the HUD lane, round 36: hud_lensflare.cpp -- LoadRdr 0x1FF4F0 calls it with the record after each LightSourceDefinition string: when active is "on", group_node's name expanded through FirstFlareName/NextFlareName, each found as a landmark (CWorld slot +0x4C) or a node (FindChild), a new CLensFlareEntry pushed for each; byte-exact)
 0x001FF8A0 0x69C Tick__15CLensFlareEntryFf  # OVL1; by hand (the HUD lane, round 36: slot +0x38 of CLensFlareEntry's table 0x4052B0, C2D's Tick(float) by ztwod.h's slot order; it places each element through 0x200C10; unwritten)
 0x001FFF40 0x920 LoadFlare__15CLensFlareEntryFP5_zrdrPQ23zdb5CNode  # OVL1; ours (the HUD lane, round 36: the constructor 0x200AC0's last call, passing its record and node on: it reads the flare's settings and news its 0xA0-byte elements element1, element2, ... through 0x200D60; unwritten)
 0x00200860 0x110 Init__15CLensFlareEntryFv  # OVL1; ours (the HUD lane, round 36: hud_lensflare.cpp -- the constructor 0x200AC0's first call: the flags cleared through bool setters, no handle, the glare's defaults, SetColor(225, 224, 133), Off; byte-exact)
@@ -1710,8 +1710,8 @@
 0x00200AC0 0x150 __ct__15CLensFlareEntryFP5_zrdrPQ23zdb5CNode  # OVL1; ours (the HUD lane, round 36: hud_lensflare.cpp -- the 0xE0-byte entry LoadRdr's helper 0x1FF630 news with the record and the node it found; C2DBitmap() then the table 0x4052B0 and the element vector, Init, Load(0, 0, 640, 448), SetTrans(128), SetIsTrans(true), then 0x1FFF40 with both; byte-exact)
 0x00200C10 0x144 Place__13CFlareElementFfbPC6CPnt3D  # OVL1; ours (the HUD lane, round 36: hud_lensflare.cpp -- an element of a flare, 0xA0 bytes with a C2DBitmap member at 0: shown at the point projected through appCamera's camera (0x290370), sized and faded through its ranges, else Off; called from CLensFlareEntry::Tick; byte-exact)
 0x00200D60 0x1C8 Load__13CFlareElementFP5_zrdr  # OVL1; ours (the HUD lane, round 36: hud_lensflare.cpp -- the element's record: texture, color, position_scale, size, opacity, scale; LoadFlare 0x1FFF40 calls it on each new element and keeps the element when it returns true; 3 instructions open)
-0x00200F30 0x118 func_00200F30  # OVL1
-0x00201050 0x1A0 func_00201050  # OVL1
+0x00200F30 0x118 NextFlareName__Fv  # OVL1; ours (the HUD lane, round 36: hud_lensflare.cpp -- the loader's next name: the wildcards' digits counted up as an odometer, 0 when they come round; byte-exact)
+0x00201050 0x1A0 FirstFlareName__FPc  # OVL1; ours (the HUD lane, round 36: hud_lensflare.cpp -- the flare loader 0x1FF630 calls it on a strdup'd node name, then 0x200F30 until it returns 0, finding a node by each: up to five '*' wildcards in the name counted through as digits; byte-exact)
 0x002011F0 0x384 func_002011F0  # OVL1
 0x00201580 0xC On__11CZPauseTestFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00201590 0x8 Off__11CZPauseTestFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
