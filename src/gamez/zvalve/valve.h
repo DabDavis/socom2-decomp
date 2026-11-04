@@ -8,24 +8,35 @@
 
 #include "../zanim/zanim.h"
 
+/* the pool's free valves: a class of its own over the pointer vector (~CValvePool 0x352870 runs
+ * four this-tested levels before the data's delete, a std::vector three; the name ours) */
+class CValveVector : public std::vector<CValve *> {
+};
+
 /* the valves' pool: free valves to reuse and a buffer their names are assigned from (SOCOM 1's
  * class, its static `valvePool` in valve_list.cpp: the same 0x1C bytes in both builds, read off
  * Open) */
 class CValvePool {
 public:
+    /* the vector empty, the rest cleared (inline: valve_list.cpp's initialiser stores the six words
+     * and the flag byte itself, 0x4034F0) */
+    CValvePool() : m_initialized(false), m_namesSize(0), m_names(0), m_namesNext(0) {}
+    /* the pool emptied, then the vector freed (its copy 0x352870 in valve_list.cpp's tail, the
+     * initialiser's registered destructor) */
+    ~CValvePool() { Free(); }
     CValve *Acquire(const char *name, VALVE_TYPE type);
     void Release(CValve *valve);
     bool FlushNames(bool force);
     void Free();
 
-    std::vector<CValve *> m_free;   /* 0x00 */
+    CValveVector m_free;            /* 0x00 */
     bool m_initialized;             /* 0x0C */
     int m_namesSize;                /* 0x10 */
     char *m_names;                  /* 0x14 */
     char *m_namesNext;              /* 0x18 */
 };
-extern CValvePool data_0049E820;    /* valvePool (SOCOM 1's static; valve_list.cpp's initialiser
-                                       builds it, 0x4034F0) */
+extern CValvePool valvePool;        /* 0x49E820 (SOCOM 1's static of valve_list.cpp, whose
+                                       initialiser builds it, 0x4034F0) */
 
 /* Close's, Reset's and Uninit's remove_if predicate: a valve of the type (any, for 0) deleted, or
  * given back to the pool, its name freed (SOCOM 1's functor; the type a byte, read unsigned).
@@ -50,7 +61,7 @@ struct CValveOpDelete {
 
             valve->FreeName();
             if (kept->m_pooled)
-                data_0049E820.m_free.push_back(kept);
+                valvePool.m_free.push_back(kept);
             else
                 delete kept;
             return true;

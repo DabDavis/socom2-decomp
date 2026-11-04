@@ -290,21 +290,10 @@ extern char data_004A1750[];            /* CFileIO's file-name suffix (SOCOM 1's
 /* the sound list searched by hash (0x344F20, a wrapper over the binary search 0x344EE0) */
 extern "C" CSnd *func_00344F20(const unsigned int *hash);
 
-/* a pointer inserted before an iterator (MSL's vector insert(position, x) over the pod's: the
- * iterator taken by value, copied through the FPU) */
-static inline void insert_sound(std::vector<CSnd *> &v, std::vector<CSnd *>::iterator position, CSnd *const &x)
-{
-    v.insert((unsigned int *)position.m_p, 1, (const unsigned int &)x);
-}
-
 /* SOCOM 1's: a sound added to the list -- SOCOM II's keeps it in hash order (the binary search's):
  * inserted before the first sound with a higher hash, else pushed at the end. The search's answer
- * is not used.
- * OPEN, 20 instructions (the target's size): the target holds the list's data pointer in a2 from
- * begin()'s load across the walk -- each end() adds the re-read size to it, the pointer re-read
- * only after the insert -- and `done` in a3; here every end() re-reads the data pointer (the pod
- * end() reusing begin()'s load, the MSL headers' open item: "Open, and next"). Tried: the end as
- * data() + size() by hand (0x10C-0x11C) */
+ * is not used. MSL's insert(position, x) re-loads the data pointer right after its call (its
+ * `begin() + n`), so every end() test reuses that one register (the MSL headers' round 17) */
 void CSnd::AddNewCSnd(CSnd *sound)
 {
     if (m_isDisabled)
@@ -315,7 +304,7 @@ void CSnd::AddNewCSnd(CSnd *sound)
 
     for (i = m_soundlist.begin(); i != m_soundlist.end() && !done; i++) {
         if (*i && sound->m_18 < (*i)->m_18) {
-            insert_sound(m_soundlist, i, sound);
+            m_soundlist.insert(i, sound);
             done = true;
         }
     }

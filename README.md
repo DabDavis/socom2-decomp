@@ -1965,6 +1965,65 @@ templates next), and the earlier rounds' opens; 3.0b38/b50/b52 still untold.
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the HUD, round 31** (six static initialisers, zui_2d.cpp's LoadSpecs, the glyph pair's copy):
+  - a member stored `0.0f` rather than int `0` gives the same `sw zero` but creates an FP temporary at that point, which
+    fixes the later float registers (CTeleType::LoadSpec's f0/f1); a copy through a stack slot, re-read from the member,
+    comes from an inline by-value accessor (CRenderableString::LoadSpec's colour);
+  - a virtual call through a secondary base's vptr with no null test of `this` is an inline member of that base
+    (UIVarMixin::WatchUIVar); a pointer cast adds a null test, a pointer local a saved register;
+  - 12-byte CPnt3D file statics sit 16 bytes apart in bss; a static array of a class with an empty user constructor builds
+    through `__construct_array`, which emits that constructor out of line (hud_linemap.cpp's clip buffers);
+  - the initialisers by the research: hud_linemap.cpp's (SOCOM 1's `_linedata`, nine LINE_DATA entries, CZLineMap's six
+    CPnt4D[2] clip buffers), hud_main.cpp's (m_hud_textcolor, SOCOM 1's X_WeaponBackground), hud_lensflare.cpp's and
+    zui_2d.cpp's (<iostream>'s pair only), hud_pausemenu.cpp's (five CPnt3D colours), c2dstring.cpp's (its span starts at
+    0x361B00, as the research said); __sinit_hud_newhudmap.cpp matches since GCC 24a's local-function check;
+  - the glyph pair's copy 0x35D370 matched with the colour type 4-aligned and the m_20 member 16-aligned (the MSL lane's
+    measurement); zui_2d.cpp's LoadSpecs are SOCOM 1's names;
+  - open: __sinit_hud_tcm.cpp 0x3FF4A0 (2 instructions short: for each cache's strcpy the target takes the name off the
+    object's address register, `addiu a0,v0,12`, where MW folds the name's address into one lui/addiu pair).
+- **Tells from the world, rdr and sound, round 10** (eight initialisers, AddNewCSnd, ~CValvePool, the rdr packers):
+  - a user-declared constructor, even an empty one, makes the implicit copy member by member (words through v0, a bool with
+    lbu/sb); a trivial class copies as an FPU block (the CRegistrant vector's reserve 0x3506B0);
+  - in tail code, an own function whose body holds a list clear is too tall to inline: Source::~List 0x32BFD0 calls Uninit
+    out of line where an own-code ~List inlines it;
+  - MW computes the same product twice only for two different expressions (`n * sizeof(T)` and `n * 8` stay separate); a
+    one-case switch gives the target's beq/b pair where an `if` gives bne; `off += (int)base` emits the offset first in the
+    addu, a pointer sum puts the base first whatever the source order;
+  - a unit's __sinit row stretches sccheck's unit span into the data area, so its template-instance misses show as WRONG
+    instead of elsewhere (a scoring artifact: the counts do not change);
+  - by the integrator's initialiser research: node_shadow.cpp's (SOCOM 1's file-static boxAdjust, (5, 5, 5)),
+    node_world.cpp's and zrndr_init.cpp's (each needed <iostream> included first), the three zparticle units' (with
+    BufferElement() and Source::~List), zsnd_positions.cpp's, zsys_init.cpp's (with the CRegistrant reserve, ~CIOPManager
+    and the deleter's pieces from source) and a new zsys_overlay.cpp's (0x3515D0-0x3518BF, the name ours); at integration
+    0x1EA340 ~CNodeVector and 0x1FDCE0 ~CDynTexList named (closing __sinit_zparticle.cpp), and 0x3B7D50, 0x3B7DB0 and
+    0x320660 set right (the stack's destructor, the deque copy, ~CProjectedMapVector -- an s1:align name had sat on the
+    stack's destructor);
+  - AddNewCSnd by the MSL lane's insert(iterator, x) (zsnd_csnd.cpp 57 of 57), RenderLineWorld on zmath.h's PNT4D,
+    ~CValvePool (the pool's vector a derived class, Free pinned), CAssetList::FindMipLevel (end() re-derived each pass),
+    _resolveB, zrdr_pack and zrdr_packarray;
+  - waiting on zanim.h (the engine core's): CValveList as a class (__sinit_valve_list.cpp, ~CValveList 0x352900),
+    CSched_Manager() declared (__sinit_zsys_sched.cpp and its constructor and destructor), AddTask;
+  - open: PlayRandom (11), PostTick (3), ~CAssetLib (0x2D8 of 0x2E8: the pod reusing begin()'s data address), _resolveA
+    (inlined three deep).
+- **Tells from the online lobby, round 14** (the voice's handlers, zNetLoadIRX, the reports, the account gender):
+  - the caller's code for a ternary shows the parameter's type: an enum gives a bare `movz`, an int `sltu`, an int fed an
+    enum ternary `movz` plus `andi` -- the account gender is an int-sized enum (ACCT_GENDER, extent 0x7FFFFFFF: a one-byte
+    enum costs Add and UnSerialize their sb/lb and lbu), and Add 0x2FBCE0 and SetAcctInfo 0x2FD0D0 take it;
+  - a field tested and reloaded inside one inline: testing it through a const accessor stops MW sharing the field's address
+    (the recording read 0x30F990, with its two callees pinned); a value that must take a lower saved register than an
+    inlined member call's `this` is the caller's own local, passed in;
+  - a short return assigned to an int local is re-extended at the call (dsll32/dsra32): the target's callee returns int; a
+    truth test of a byte field before a switch on it makes the switch re-extend the byte with `andi 0xff`, `!= 0` does not;
+    copy-initialising a struct with odd-length arrays (`GamePlayerStats old = g;`) block-copies, and a pointer declared
+    after it is computed after the copy loop (the player report 0x2EF7F0);
+  - one cursor and one count reused for two argument lists reproduce MW's register sharing; separate locals uninitialised
+    on a default path are live from entry and take extra saved registers (zNetLoadIRX 0x30DEE0, SOCOM 1's); an assignment
+    written before a call lands in its delay slot;
+  - the deque's two operator++ copies 0x2E1480/0x2E14E0 (called for `++first` and `++i` in 0x2E1090) say the original's
+    const_iterator and iterator are separate classes where include/deque has a typedef; 0x2E0E10 is cdeque<PCv>'s
+    do_assign over the convert_iterator, 0x2E1090 the class deque's (unnamed: 0x1C4 vs 0x27C, 0x36C vs 0x384);
+  - open: the world report 0x2EF590 (9: the mission number's joins), the deque's begin 0x2E0CB0 (14: the numbering rule
+    leaves the permutation) and init 0x2E0B40 (0xC0 vs 0xC8: the iterators copied as FPU blocks).
 - **Tells from the engine core, round 2** (zanim_menu.cpp's equipment handlers, three initialisers, 249 respells):
   - a function template declared but not defined gives a call to the instance an earlier unit emits, and emits no copy of
     its own (zin_pad.cpp's `_saturate<f>`);
@@ -6255,6 +6314,84 @@ byte-exact (1,844,036 bytes) 47.03 % -> 47.10 %. (3) automatch's runtime toolcha
 (`LIBC`). No tool that scores changed: scdiff.py, sccheck.py, scdecomp.py and `include/` are master's,
 so no MW or GCC unit can score differently; the retired rows are named by no unit. automatch over the lane's three ranges (`--max-size 0x400 --emit --no-prune --jobs 2 --obj-dir` the lane's `src/lib` build): MAIN `18DB90 1C4CC0` 54 tried, 0 hits (7 build failures, 13 m2c refusals), OVL1 `1E7F58 1E8FD4` 2 tried, 0 hits, `243000 256FD0` 96 tried, 0 hits (22, 8): 152 tried, none byte-exact (round 22a: 172, 0) -- every draft that built missed; the rows -g opened were written by hand first.
 
+**Round 24a** (2026-11-04, the tools first, then round 22a's and 23a's opens): 7 rows newly byte-exact
+-- the lane's `src/lib` sdk/libc rows +7, none lost (`--files '^lib/'`: 2,628 of 2,774 before the
+round's last three, no regression) -- and sceCdStRead 65 words -> 10. **newlib's runtime is whole**:
+`_d2b` (open since round 6a) is newlib 1.9.0's text (mprec.c 17 of 17). **libdbc whole as written**
+(`sdk/libdbc.c` 16 of 16): sceDbcCreateSocket (round 12a's 40 words), sceDbcSendData (round 22a's 21)
+and sceDbcReceiveData (round 12a's 61) closed, sceDbcSRData, sceDbcSendData2 and sceDbcSendData3 new,
+each byte-exact as first written. No rows named. What they showed:
+
+- **A loop's base assigned inside the loop is hoisted where the target has it**: libdbc's copies run
+  through `addiu a2,s2,12` in the loop's preheader -- after the size test, whose delay slot then
+  takes `i = 0` -- which is loop.c's invariant motion of `d = (char *)&p[3];` written in the body;
+  combine runs after loop.c, so it can no longer fold the 12 into the store (`d[i]` through a base
+  assigned before the loop is the test's delay slot and swaps two saved registers; `((char
+  *)&p[3])[i]` folds the 12 at once: `sb v1,12(a0)`, 4 bytes short).
+- **Strict aliasing reads the vendor's types off a schedule**: sceDbcCreateSocket's words 10 and 11
+  are the caller's two buffer addresses (libpad2's 0x1BD630 passes one it checks for 64-byte
+  alignment and that one + 128); stored as pointers they alias no int load, so the parameter's second
+  word is loaded right after the first buffer's store -- as int stores the load waits two cycles
+  behind them (a true memory dependence, sched2's `queued for 2 cycles`) and `i = 0` takes its place.
+  The other way round is round 11a's sifrpc ten (the target never hoists a load above a store through
+  another structure): their packet fields are in alias sets that conflict in the vendor's types and
+  not in these -- the next thing to try there.
+- **newlib 1.9.0 tests a word before storing it**: `_d2b`'s `if (d1) { y = d1; k = lo0bits (&y); if
+  (k) ...` puts the store to y's slot after the branch (the target's `sw a1,0(sp)` in lo0bits' delay
+  slot); 1.8.2's `if (y = d1)`, which the unit had, stores before the test (5 words).
+- **A block-local temporary is local-alloc's, tied to v0**: sceCdStRead's two stream calls each split
+  their own result; one `ret` for both is a pseudo live in two blocks, which global-alloc gave a2,
+  and both splits read a copy (`move a2,v0`, the 8 bytes over).
+- **Open, diagnosed in place**: sceCdStRead (10 words, registers only: `last` and SCE_CD_debug's %hi
+  tie in global-alloc's priority -- 4 refs over 88 insns and 5 over 110, both 909 -- and the lower
+  pseudo, last, takes s6; 14 spellings of the loop keep no extra RTL insn past CSE). Not reached:
+  sceGsSetDefDispEnv (round 22a's diagnosis stands), the densest stretches (OVL1's codec
+  0x248000-0x256000 and 0x250000's 36, libmrpc 0x1BC000, libmpeg's last six, the tty/SIF objects),
+  libdbc's sceDbcGetDepNumber and 0x1902B0.
+
+**The tools, round 24a**: (1) **scdiff resolves a TU-local function no name reaches by its code** (the
+HUD lane's request): Metrowerks' static initialiser registers each static array's destructor, a local
+`__arraydtor$N` (N a per-unit counter no row can carry), and its address was compared as a local
+object -- raw bytes, relocation fields included -- so the code-exact `__sinit_hud_newhudmap.cpp`
+(0x3FDE80) scored WRONG REFERENCE on its four. `scdiff.local_code_ok` compares the candidate's
+function against the target's function at the referenced address (a map row of its size there), its
+bytes masked by its own relocations and each of those resolved one level deeper (`LOCAL_CODE_DEPTH`
+2); `content-ok` when it holds, else the reference stays as the other rules leave it, so nothing can
+turn into a miss -- for an MW object (each function its own section) and as a GNU object's last
+resort before `unchecked`. **Proved** over every unit (`--files .`, `-v`, 2 jobs, one frozen snapshot,
+`build/scratch/gcc/proof.sh`): master c53574dd's sccheck.py, scdiff.py and scdecomp.py with its map
+and these, 14,115 lines, identical but the initialiser's (WRONG -> match: 10,961 -> 10,962);
+hud_newhudmap.o is the one object defining such a function today. The canary's
+`test_mw_local_function_resolves_by_its_code` holds the four content-ok at their rows and fails a
+destructor with another count, or with its array's %lo 16 bytes on (masked alike: only the
+destructor's own relocations see it), and the four with the resolution switched off. (2) **sccheck's
+"superseded" summary follows the scoring** (the integrator's follow-up to 82c1ff75, merged): a draft is
+listed when a strong hand-written definition has its name, or a byte-exact copy matched at the
+draft's own address -- by name it listed OVL1's ~vector<CZDecalDef> 0x2CDB30, which the scoring keeps
+since 82c1ff75 (seal_env.cpp's copy matches OVL2's 0x5A3C60) and automatch keeps too (its
+`hand_defined()` already keys a copy's match by the row it matched). The canary's
+`test_copy_supersedes_a_draft_only_where_it_matched` builds seal_env.cpp and that draft (both match,
+nothing listed) and swaps the rows' roles in the map (the copy matches at the draft's address: the
+draft superseded and listed); it fails under c53574dd's sccheck (the draft dropped) and 82c1ff75's
+(listed). Re-proved with master 82c1ff75's tools and map against these, every unit: identical rows
+but the initialiser, and the false summary line gone (10,963 -> 10,964). (3) **automatch's GCC drafts
+build** (the round's lead): of the lane's 29 build failures, 17 were loads through an int that
+`gcc_repair` rewrites -- but it returned None while any error it cannot repair remained (an undeclared
+frame slot only `stack_locals`' variant declares), discarding its repairs, so every variant started
+from the unrepaired body; it keeps them now (`GCC_PARTIAL`). And: a slot m2c only subscripts
+(`&sp50[0]`: an array passed by address) is a pointer to its elements, typed by m2c's own cast
+(`(f32 (*)[]) &sp1B0[0]`), also when the bare frame is never named, never over m2c's function-pointer
+declarator (`STACK_ARRAYS`, `STACK_SLOTS`: 9 rows); m2c's `saved_reg_<r>` declared from GCC's own error
+(`GCC_SAVED_REGS`); a load behind m2c's cast of it (`(f32) *((i * 4) + p)`, an `lwc1`) made as that
+type, or as its assigned variable's (`GCC_TYPED_LOADS` -- an s32 load was an `lw` and a `cvt.s.w`);
+newlib's `__assert` unprototyped though m2c gave it a stray f32 (`GCC_NARROW_LIBC`). MW's repair path
+is unchanged. automatch over the lane's three ranges (`--max-size 0x400 --emit --no-prune --jobs 2
+--obj-dir` the lane's `src/lib` build): MAIN `18DB90 1C4CC0` 54 tried, 0 hits (build failures 7 -> 2,
+13 m2c refusals), OVL1 `1E7F58 1E8FD4` 2 tried, 0 hits, `243000 256FD0` 96 tried, 0 hits (22 -> 3, 8):
+152 tried, build failures 29 -> 5 (calls through an int, a frameless function's stack argument, a
+pointer sum, a TImode operation, one nested load past the repair's rounds), none byte-exact -- every
+draft that builds misses: what the generator leaves here is near misses, now nearly all measurable.
+
 **Next**: the libraries by hand, module by module, as their vendors wrote them (each `src/lib`
 unit's header says what it covers); GCC's scheduler moves independent stores, and which source
 order gives the target's is easier measured than predicted (`tools/ccperm.py PROBE
@@ -6262,7 +6399,7 @@ FUNCTION` tries every order of a marked block). libkernl's thread, tty/printf an
 (sifcmd, sifrpc, the libmrpc copy), fileio, libgraph, libipu/libmpeg, libmc, libpad (its version
 is not the demo's: its rows are unnamed), libcdvd (its first object is dtls13010's: the sibling call
 above; it reads its semaphores and callback number through volatile and plain globals the target
-schedules apart) are open -- newlib's libc, libm and libgcc are whole but `_d2b` (round 23a); the
+schedules apart) are open -- newlib's libc, libm and libgcc are whole (`_d2b`, the last, in round 24a); the
 network library at 0x1C0948-0x1C4CC0 (inet_aton at -O2 beside RPC stubs built at -O0: frame pointer,
 spilled arguments) holds BIND's inet_ntop.c (round 5a: Sony's SDK toolchain, inet_ntop's returned
 calls jal-and-return); in OVL1 lgAudInit (registers), libnetb's Open, Recv/RecvFrom, Send/SendTo,

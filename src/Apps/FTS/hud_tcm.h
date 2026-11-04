@@ -15,6 +15,7 @@
 #ifndef HUD_TCM_H
 #define HUD_TCM_H
 
+#include <string.h>
 #include <vector>
 
 #include "../../gamez/ztwod/ztwod.h"
@@ -57,6 +58,8 @@ public:
  * them with their names) */
 class CTCMCache {
 public:
+    /* named (the initialiser's: the vector's three words zeroed, then the name copied) */
+    CTCMCache(const char *name) { strcpy(m_name, name); }
     CTCMEntry *Find(const char *name);
     CTCMEntry *Add(const char *name, TCMFunc action, int actionArg, TCMFunc update, int updateArg);
     ~CTCMCache();

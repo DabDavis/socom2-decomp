@@ -70,10 +70,12 @@ public:
 };   // 0x14 bytes
 
 /* a glyph's colour, four ints (ours: LoadChar stores a PNT3D's components converted and 128;
- * copied whole, word by word through the float registers) */
+ * copied whole, word by word through the float registers). The type is 4-aligned and the member
+ * 16-aligned (the MSL lane's round 17: the image's 4D copies take three shapes -- this one, a
+ * 4-aligned block at a 16-aligned member, makes the pair's copy 0x35D370 byte-exact) */
 struct C2DGlyphColor {
     int r, g, b, a;
-} __attribute__((aligned(16)));
+};
 
 /* a character's glyph (ours): its code, its pieces, a fixed advance (8 for the space, else -1),
  * the baseline and the left and right kerning, the font texture's index, whether it has a colour
@@ -96,7 +98,7 @@ public:
     short m_16;   // 0x16
     short m_18;   // 0x18
     unsigned char m_1a;   // 0x1a
-    C2DGlyphColor m_20;   // 0x20
+    C2DGlyphColor m_20 __attribute__((aligned(16)));   // 0x20
 };   // 0x30 bytes
 
 /* what GetGlyph hands back: a glyph of the font's, or one composed for the call and owned here

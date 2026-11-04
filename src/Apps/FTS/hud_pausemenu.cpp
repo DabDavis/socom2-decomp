@@ -66,6 +66,14 @@ public:
     C2DBitmap m_bitmap1340;   // 0x1340
 } __attribute__((aligned(16)));   // 0x13c0 bytes (CHUD's member at 0x18900)
 
+/* the menu's five colours (OVL1 bss 0x409020-0x40906B, 16 bytes apart: the unit's initialiser
+ * 0x3FDB20 stores their fifteen words; SOCOM 1's pause menu had none; the names ours) */
+static CPnt3D s_pauseColor0(11.0f, 21.0f, 24.0f);
+static CPnt3D s_pauseColor1(35.0f, 51.0f, 56.0f);
+static CPnt3D s_pauseColor2(11.0f, 45.0f, 64.0f);
+static CPnt3D s_pauseColor3(35.0f, 51.0f, 56.0f);
+static CPnt3D s_pauseColor4(128.0f, 128.0f, 128.0f);
+
 /* the menu drawn while open, or while 0x409080 holds (a byte; no row named yet): the background,
  * then the third panel or the second and the twelve lines */
 extern unsigned char data_00409080;

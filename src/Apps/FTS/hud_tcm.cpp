@@ -3,9 +3,10 @@
  * 1 counterpart (hud_tcm.h has the cut into three units: the tree calls this unit's eight-byte
  * mode setter 0x236250 out of line, while Reset here inlines SetCache).
  *
- * Its initialiser (0x3FF4A0, not written yet) builds theTCM (0x413120) with CTCM's constructor
- * 0x237390, the two item caches spCache (0x4144F0) and mpCache (0x414550), and the layout's
- * colours at 0x4130C0-0x413108. Defined in reverse of their image order (-inline deferred). */
+ * Its initialiser (0x3FF4A0) stores the layout's colours at 0x4130C0-0x41310B, builds theTCM
+ * (0x413120) with CTCM's constructor 0x237390 and registers its implicit destructor (0x237580), and
+ * the two item caches, mpCache (0x4144F0) and spCache (0x414550), registering ~CTCMCache 0x230620
+ * (hud_tcmcmds.cpp's). Defined in reverse of their image order (-inline deferred). */
 
 #include <string.h>
 
@@ -17,6 +18,26 @@ extern "C" CTCMNode *func_00236D20(CTCMEntry *entry, int arg, const char *captio
 
 /* the menu's time constant (0.3; a variable: read with lwc1 -- the name ours) */
 static float s_tcm_dd8 = 0.3f;
+
+/* the layout's colours (OVL1 bss 0x4130C0-0x41310B, 16 bytes apart; the fifth a copy of the
+ * fourth -- the initialiser copies it, 8 bytes and 4; func_00236430 reads them; the names ours) */
+static CPnt3D s_tcmColor0(255.0f, 0.0f, 16.0f);
+static CPnt3D s_tcmColor1(255.0f, 128.0f, 64.0f);
+static CPnt3D s_tcmColor2(0.0f, 255.0f, 64.0f);
+static CPnt3D s_tcmColor3(48.0f, 48.0f, 48.0f);
+static CPnt3D s_tcmColor4 = s_tcmColor3;
+
+/* the menu, and the item caches by name: the network game's and the single-player game's (the
+ * tree's cache builders 0x232BC0/0x2344E0 fill them).
+ * OPEN, 2 instructions (__sinit_hud_tcm.cpp, 0x160 against 0x168): the colours, theTCM and both
+ * caches' vector stores are the target's, but for each cache's strcpy the target materialises the
+ * object (`addiu v0,v0,lo(cache)`) and takes the name off it (`addiu a0,v0,12`), where MW folds the
+ * name's address into one lui/addiu pair. Tried: the name through a pointer or reference local, a
+ * cast of this, &m_name[0], an inline setter or accessor, a member class holding the name, the
+ * constructor out of class, member-initialised, copy- or converting-initialised globals -- all fold */
+CTCM theTCM;
+CTCMCache mpCache("mpCache");
+CTCMCache spCache("spCache");
 
 /* the menu built: the root node, the mode 4, the three backing polys untextured, translucent and
  * black with two corners clear, the counters and the holds (SOCOM II's) */

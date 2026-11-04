@@ -5,6 +5,7 @@
  * SOCOM 1's, the same 0x258 bytes. */
 
 #include <eetypes.h>
+#include <iostream>
 #include "../zsys/zsys_public.h"
 
 /* Sony's GS packet types (libgraph.h's, in our own words) */
