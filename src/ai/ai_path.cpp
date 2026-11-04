@@ -23,6 +23,18 @@ const T &_min(const T &a, const T &b)
  * read-mask-writes, the map id first */
 const CAiMapLoc CAiMapLoc::invalid(0x1FFF, 0x1FFF, 0x3F);
 
+/* the priority from which a queued path stops the one planning (ai.h; 1.0f). This unit's constant,
+ * not ai_astar.cpp's (the AI core's round 23): it sits at 0x65AED8 between invalid and PrintPath's
+ * strings, in the area that holds the units' const objects (CAiEvent::NoExpire, the planners' RTTI,
+ * CAiMap::action::invalid, invalid) and their strings, unit by unit in link order -- ai_astar.cpp's
+ * initialised variables (s_typeBias, timerlimit, the direction lists) are at 0x64F8D0 on, in the
+ * other area, with ai_events.cpp's (a probe: MW puts const objects in .rodata, initialised
+ * variables in .data). Only PathPlanExecute's CAiPathQueue::Insert reads it, from the other unit,
+ * so the lwc1 stays */
+namespace ai {
+const float s_preemptPriority = 1.0f;
+}
+
 /* what the path's functions call that is not written yet (this unit's) */
 extern "C" void func_00525810(CAiPath *path, unsigned int leg);   /* SOCOM 1's SmoothPathLeg */
 /* a cell put into the path on its map (FindDetour's last call: SOCOM 1's InsertPathLoc or
