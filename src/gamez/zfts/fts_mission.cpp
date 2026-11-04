@@ -968,6 +968,7 @@ extern "C" float func_002ACA30(FadeRange *r, float x)
 class CRdrArchive {
 public:
     static CRdrArchive *AddArchive(const char *name, const char *path);   /* 0x32C1E0 */
+    static void RemoveArchive(const char *name, const char *path);   /* 0x32C2B0 */
     static void OpenAll();   /* 0x32C570 */
 };
 
@@ -1687,6 +1688,56 @@ extern "C" void func_002AF360(const char *bank)
 
         t->Load(data_00440B80.GetBank(i), GetLanguage());
     }
+}
+
+/* the mission's package (util_main.cpp's CPackage: only its open and close; the object ours) */
+class CPackage {
+public:
+    bool Close();   /* 0x39C3F0 */
+    bool Open(const char *name);   /* 0x39C440 */
+};
+
+extern "C" {
+extern CPackage data_004A15F8;
+unsigned int strlen(const char *s);
+}
+
+namespace {
+/* the old mission's archive taken off the reader and its package closed, then the new mission's
+ * package and archive opened -- each archive under run/, run/mp/ or run/sp/ by the database's
+ * prefix (SOCOM 1's, the packages SOCOM II's; OVL1 0x2AEF90) */
+void UpdateMissionArchive(const char *olddb, const char *newdb)
+{
+    if (olddb) {
+        CSaferStr path;
+
+        path = "run/";
+        if (!strncmp(olddb, "mp", 2))
+            path += "mp/";
+        else if (!strncmp(olddb, "m", 1))
+            path += "sp/";
+        path += olddb;
+        CRdrArchive::RemoveArchive("readerm.zar", path.c_str());
+        data_004A15F8.Close();
+    }
+    if (newdb && strlen(newdb)) {
+        char name[32] = "run/";
+
+        strcat(name, newdb);
+        strcat(name, ".zdb");
+        data_004A15F8.Open(name);
+        CSaferStr path;
+
+        path = "run/";
+        if (!strncmp(newdb, "mp", 2))
+            path += "mp/";
+        else if (!strncmp(newdb, "m", 1))
+            path += "sp/";
+        path += newdb;
+        CRdrArchive::AddArchive("readerm.zar", path.c_str());
+        CRdrArchive::OpenAll();
+    }
+}
 }
 
 /* whether the player's controller is in none of states 2 to 5 (SOCOM II's; OVL1 0x2AA890). One
