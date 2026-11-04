@@ -255,7 +255,7 @@ public:
 };   // 0xc0 bytes
 
 /* wrapped text (SOCOM 1's CWrappedText; zui_2d.h's layout, 0x250 bytes), its destructor declared
- * first so that this unit does not take its table */
+ * first: defined here since round 42 (0x379D90), so this unit takes its table and the thunk 0x37D010 */
 class CWrappedText : public CRenderableString {
 public:
     virtual ~CWrappedText();
@@ -446,6 +446,13 @@ const char *TranslateString(const char *s);
  * slots: C2D's 26 and three new, DrawBackground the last) */
 class C3StateButton : public C2D {
 public:
+    /* inline (C2DButton's constructor inlines it, as SOCOM 1's does): no caption, the text at
+     * (10, 5), white, at scale 1.5 */
+    C3StateButton() : _szCaption(0), _iTextX(10), _iTextY(5), _bCaptionCentered(false)
+    {
+        _strCaption.SetColor(255.0f, 255.0f, 255.0f);
+        _strCaption.m_scale = 1.5f;
+    }
     virtual ~C3StateButton();
     /* slot 12: the caption ticks with the button (0x37C600) */
     virtual void Tick(float dT) { _strCaption.Tick(dT); }
@@ -465,7 +472,15 @@ public:
 /* a button's look in one state (0x34 bytes; its destructor 0x36E650, a string at 0 destroyed, is
  * the button's -- a plain stand-in here, the fields by what SetNormal hands on; the names ours) */
 struct ButtonState {
-    unsigned char _0[0xc];   // 0x0: a string
+    /* inline (C2DButton's constructor builds its four so, as SOCOM 1's: grey caption, the scale
+     * left alone) */
+    ButtonState()
+        : m_tex(0), m_fadeMin(0.0f), m_fadeMax(0.0f), m_pulse(false), m_period(0.0f), m_fadeTime(0.0f),
+          m_color(128.0f, 128.0f, 128.0f)
+    {
+    }
+
+    CSaferStr m_texName;   // 0x0: the state's image (SOCOM 1's _TexName)
     zdb::CTexHandle *m_tex;   // 0xc: the background's texture
     float m_fadeMin;   // 0x10
     float m_fadeMax;   // 0x14
@@ -556,6 +571,7 @@ extern CZAnimMain ZAnim;
  * its background a plain bitmap at 0x1A0) */
 class C2DButton : public C3StateButton, public UIVarMixin {
 public:
+    C2DButton();
     virtual ~C2DButton();
     /* slot 26: the background's alpha, a fraction of 128 (0x37C2C0) */
     virtual void SetBackgroundAlpha(float a) { m_background.SetTrans(128.0f * a); }
@@ -582,7 +598,7 @@ public:
     CPlainBmp m_background;   // 0x1a0
     float _fWidth;   // 0x240 (SOCOM 1's names, 0x30 later)
     float _fHeight;   // 0x244
-    unsigned char _248[0x24c - 0x248];
+    C2DFont *m_alternateFont;   // 0x248 (SOCOM 1's, at 0x218 there): deleted by the destructor
     float m_pressTime;   // 0x24c: the press's time left, ticked down; zeroed when the normal state is shown
     ActionItem m_actions[30];   // 0x250: the button's actions (SOCOM 1's _actions)
     int m_numActions;   // 0x430
@@ -719,7 +735,8 @@ inline bool SecureMore(const char *s) { return !SecureNull(s) && *s; }
 /* a button showing a spec of its own (SOCOM 1's CHandlerButton; SOCOM II's 0x440 bytes, zui_2d.h's
  * layout). It keeps C2DButton's UpdateUIVar, so its vtable (0x407700) is one of the three that take
  * the button's thunk 0x37D0E0 -- defining its destructor here is what emits that thunk, since
- * C2DButton's own table belongs with ~C2DButton's unit and CCheckBox overrides the slot */
+ * C2DButton's own table (this unit's since round 42, with ~C2DButton) takes the destructor's thunk
+ * and CCheckBox overrides the slot */
 class CHandlerButton : public C2DButton {
 public:
     virtual ~CHandlerButton();
@@ -1123,6 +1140,35 @@ void CPopUpDialog::Tick(float dT)
     m_790.Tick(dT);
     if (m_32c)
         m_32c->Tick(dT);
+}
+
+/* built with no size, font, press or actions: the bases', the four states' and the background's
+ * inline constructors (SOCOM 1's C2DButton(), 0x38FA10 there; CButtonSpec::CreateDisplayObj's) */
+C2DButton::C2DButton() : _fWidth(0.0f), _fHeight(0.0f), m_alternateFont(0), m_pressTime(0.0f), m_numActions(0)
+{
+}
+
+/* the children deleted, each taken off the list first (~CUIMapCtrl's walk, under a test of the
+ * list's size), the alternate font deleted and the actions forgotten (SOCOM 1's ~C2DButton, 0x38F780
+ * there: the same body), then the members and the bases */
+C2DButton::~C2DButton()
+{
+    if (size()) {
+        iterator i;
+        iterator e = end();
+
+        for (i = begin(); i != e;) {
+            C2D *p = *i;
+            iterator next;
+
+            next = erase(i);
+            delete p;
+            i = next;
+        }
+    }
+    if (m_alternateFont)
+        delete m_alternateFont;
+    m_numActions = 0;
 }
 
 /* the background loaded with a texture, the caption's scale (inlines' out-of-line copies after
@@ -1663,6 +1709,23 @@ void CWrappedText::LoadSpec(const CWrapSpec &spec, zdb::CTextureRelocMgr *mgr)
     m_upArrow.m_pulsing = true;
     m_upArrow.m_period = 1.0f;
     m_displayOneLine = spec.m_displayOneLine;
+}
+
+/* the lines deleted, each taken off the list first (SOCOM 1's ~CWrappedText, 0x391480 there: the
+ * same walk, ~CUIMapCtrl's shape), then the arrows and the renderable string */
+CWrappedText::~CWrappedText()
+{
+    iterator i;
+    iterator e = end();
+
+    for (i = begin(); i != e;) {
+        C2D *p = *i;
+        iterator next;
+
+        next = erase(i);
+        delete p;
+        i = next;
+    }
 }
 
 bool CWrappedText::TickZAnimCmd(_zanim_cmd_hdr *hdr, float *dT, bool *done)

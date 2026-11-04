@@ -14,7 +14,7 @@
 #include "../../gamez/znode/znode.h"
 
 /* an item's node made from its cache entry (0x236D20, below tcmAddItem: written in the HUD's round 41,
- * 6 instructions off -- see its OPEN) */
+ * byte-exact since round 42) */
 CTCMNode *tcmCreateItem(CTCMEntry *entry, const char *parent, const char *caption, const char *name,
                         const char *text2, bool flag);
 
@@ -192,17 +192,21 @@ CTCMNode *tcmAddItem(const char *name, const char *parent, const char *caption, 
 }
 
 /* a poly textured from a handle, its two triangles with it (none without one), then told whether it
- * has one (ours: the three stores and the virtual call, three times in the builder; a member -- the
- * target computes `this` ahead of the call's argument, which a free helper's reference parameter
- * does not) */
+ * has one (ours: the three stores and the virtual call, three times in the builder). Through a local
+ * copy of `this` defined after the texture's ternary: the target computes the poly (`addiu a0`)
+ * right after the first store and the call's bool in its delay slot -- the copy, in the uses' block,
+ * makes `this` a variable of its own numbered ahead of the argument (round 42: written through
+ * `this`, a member, a free helper or a copy defined at the top, MW computes the bool first, or keeps
+ * the copy as the stores' base) */
 inline void C2DBitmapPoly::SetTexture(zdb::CTexHandle *h)
 {
     zdb::CTexture *tex = h ? h->m_texture : 0;
+    C2DBitmapPoly *self = this;
 
-    m_texture = tex;
-    m_tris[0].m_texture = tex;
-    m_tris[1].m_texture = tex;
-    SetHasTexture(tex != 0);
+    self->m_texture = tex;
+    self->m_tris[0].m_texture = tex;
+    self->m_tris[1].m_texture = tex;
+    self->SetHasTexture(tex != 0);
 }
 
 /* the item's node made under each node named `parent` (theTCM itself without a name), for a cache
@@ -213,13 +217,8 @@ inline void C2DBitmapPoly::SetTexture(zdb::CTexHandle *h)
  * of the loop's counter, as the target's s4/s3 (declared at its first use the two swap); the list
  * reached through GetRoot() keeps &theTCM.m_root in a saved register from the loop's out-of-line
  * entry test without hoisting its end node (a reference local spills that, 240 bytes of frame).
- * OPEN, 6 instructions, one pair three times: at each SetHasTexture the target computes the poly
- * (`addiu a0,s1,48`) right after the first texture store and the bool (`sltu a1,zero,v0`) in the
- * call's delay slot -- the poly evaluated ahead of the argument; MW evaluates the argument first in
- * every form tried: the setter a member, a free inline on a reference, a pointer or either
- * parameter order, the bool a local, `!!t`, `(bool)t`, the texture a parameter, the stores
- * chained or the value an assignment expression, the poly through an inline accessor, a copy of
- * `this` or a C2D pointer (a cast or a local) */
+ * Byte-exact since round 42 with SetTexture written through its copy of `this` (above); round 41's
+ * six were each SetHasTexture's argument scheduled ahead of the poly */
 CTCMNode *tcmCreateItem(CTCMEntry *entry, const char *parent, const char *caption, const char *name,
                         const char *text2, bool flag)
 {
