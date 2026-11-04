@@ -128,8 +128,15 @@ public:
     float CalcVolPan(const CPnt3D *pos, float vol, int *outVol, int *outPan);
 
     static CSnd *GetSoundByName(const char *name);
+    /* SOCOM 1's: a bank loaded by name and recorded (0x343DD0) */
+    static bool LoadBank(const char *name);
     static void AddNewCSnd(CSnd *sound);
     static void SetGroupVol(int group, float vol);
+    /* SOCOM 1's: up to seven groups' volumes lowered to a part for a time, their own kept; SOCOM
+     * II's reset moves them back over five seconds, a step at a time (0x3412F0, 0x3410D0) */
+    static void SetGroupVolTemp(float time, float pct, int g0, int g1, int g2, int g3, int g4, int g5,
+                                int g6);
+    static void ResetGroupVolTemp(float dT);
     static void LoadReverbs(_zrdr *rdr);
     static void LoadIndoorReverbs(_zrdr *rdr);
     static void LoadOutdoorReverbs(_zrdr *rdr);
@@ -157,6 +164,15 @@ public:
                                                 pushes onto it, UnloadAllSounds deletes them) */
     static CMatrix m_listenermatrix;    /* 0x48DD40: the listener (SOCOM 1's: CalcVolPan transforms
                                            by it) */
+    /* the group fade (SOCOM 1's statics, but the lowered volumes and the reset's position, SOCOM
+     * II's, the names ours): the groups (-1 for none), their own and their lowered volumes, the
+     * time left (1e9 held), the part, and the reset's position (0 to 1; 100 at start: done) */
+    static int m_fadegroup[7];          /* 0x48DDB0 */
+    static int m_fade_oldvol[7];        /* 0x48DDD0 */
+    static int m_fade_newvol[7];        /* 0x48DDF0 */
+    static float m_fadetime;            /* 0x48DE10 */
+    static float m_fadepct;             /* 0x48DE18 */
+    static float m_fadeRestore;         /* 0x3DFFE0 */
 
     float m_vol;                        /* 0x04 */
     char *m_name;                       /* 0x08 */
@@ -165,7 +181,8 @@ public:
     unsigned char m_bank;               /* 0x10: 255 for none (SOCOM 1's int m_bank) */
     unsigned short m_ID;                /* 0x12: 0xFFFF for none (SOCOM 1's int m_ID) */
     int m_14;                           /* 0x14 */
-    int m_18;                           /* 0x18 */
+    unsigned int m_18;                  /* 0x18: the name's hash, the sound list's order (compared
+                                           unsigned: AddNewCSnd) */
     unsigned int m_isStreamed : 1;      /* 0x1C bit 0 (SOCOM 1's byte at 0x1C) */
     unsigned int m_socom2_bit1 : 1;     /* bit 1 */
     unsigned int m_isOneShot : 1;       /* bit 2 (SOCOM 1's byte at 0x1D: the bool overloads') */
@@ -446,16 +463,26 @@ public:
     static void Start();
     static void SetIntensity(float level);
     static void NormalizeWeights(MUSIC_MODE mode);
+    /* SOCOM 1's: a sequence of the mode picked at random by weight and played (0x348B20) */
+    static void PlayRandom(MUSIC_MODE mode);
     static void Play(MUSIC_MODE mode, CSnd *sound);
     static void ClearQueue();
     static void FadeOut();
+    /* the queued music started, or the mode's own (SOCOM 1's Tick inlined this five times; SOCOM
+     * II's calls it, 0x349100 -- the name ours) and the music ticked (SOCOM 1's, 0x3492B0) */
+    static void PlayQueued();
+    static void Tick(float dT);
     static void LoadPlaylists(const char *name);
     static void LoadMusicLists(_zrdr *rdr, int mode);
     static void Cleanup();
 
     static std::vector<CSndSequence *> m_playlists[4];  /* 0x48E010: by intensity (SOCOM 1 had two) */
     static std::vector<float> m_weights[4];             /* 0x48E050 */
-    static signed char m_currentmode;                   /* 0x48E090 (SOCOM 1's) */
+    /* the music's state and the queued mode are plain chars (signed: lb, compared as signed bytes):
+     * Play stores its MUSIC_MODE into them unconverted, from the raw argument register, where a
+     * signed char's conversion CSEs with the sign-extended copy the compares use (the world lane's
+     * round 9: Play, Tick and PlayQueued byte-exact so) */
+    static char m_currentmode;                          /* 0x48E090 (SOCOM 1's) */
     static bool m_playlists_loaded;                     /* 0x48E098 (SOCOM 1's) */
 
     static CSndInstance *m_instance;    /* 0x48E080 (names ours) */
@@ -463,7 +490,7 @@ public:
     static MUSIC_MODE m_mode;           /* 0x48E0A0 */
     static bool m_modeChanged;          /* 0x48E0A8 */
     static int m_queued;                /* 0x48E0B0 */
-    static signed char m_queuedMode;    /* 0x48E0B4 */
+    static char m_queuedMode;           /* 0x48E0B4 */
     static bool m_jukebox_stopped;      /* 0x3E0080 (SOCOM 1's: Start clears it, Cleanup sets it) */
 };
 

@@ -238,9 +238,6 @@ public:
     unsigned char _71a[0x720 - 0x71a];   // 0x71a
 };   // 0x720 bytes
 
-/* the world's lighting switch (0x3B7130: CVisual::m_lightingEnable set and its inverse beside it) */
-extern "C" void func_003B7130(bool on);
-
 /* zvid_init.cpp's: the 21-quadword packet's word set, and the packet sent (it reads no argument;
  * the pipe passes one) */
 extern "C" void func_003B0D50(unsigned int v);
@@ -569,9 +566,9 @@ void CPipe::PrepareAtom(zdb::CNode *node)
         data_004B4DAC = 0;
         m_camera->m_fovMask = 16175;
         m_doFog = node->m_fog ? m_camera->TestLandmarkFOG((const CPnt3D *)node->m_matrix.m_matrix[3], node->GetRadius()) : false;
-        func_003B7130(!node->m_socom2_5a_bit2);
+        zdb::CVisual::LandmarkEnable(!node->m_socom2_5a_bit2);
     } else {
-        func_003B7130(false);
+        zdb::CVisual::LandmarkEnable(false);
         BuildLightMapList(node);
         BuildProjectedMapList(node);
         m_doFog = node->m_fog ? m_camera->TestFOG((const CPnt3D *)node->m_matrix.m_matrix[3], node->GetRadius()) : false;
@@ -730,7 +727,7 @@ void CPipe::SaveDelayedNode(CMatrix *matrix, zdb::CNode *node, zdb::tag_ZVIS_FOV
 void CPipe::RenderDelayedNodes()
 {
     m_node = 0;
-    func_003B7130(false);
+    zdb::CVisual::LandmarkEnable(false);
     tag_DelayedNode *d = &m_DelayedNodes[0];
 
     for (unsigned int i = 0; i < m_delayedNodeNum; i++, d++) {
@@ -771,11 +768,9 @@ void CPipe::RenderDelayedNodes()
     }
 }
 
-/* zmath's: whether a matrix is the unit one (0x3084F0, not named); CVisual's node set-up (0x3B6D10,
- * SOCOM 1's NodeSetup, its fourth argument gone: no SOCOM II caller sets a3) and its light set-up
+/* zmath's: whether a matrix is the unit one (0x3084F0, not named); CVisual's light set-up
  * (0x3B6B20, not named) */
 extern "C" bool func_003084F0(const CMatrix *m);
-extern "C" void func_003B6D10(zdb::CNode *atom, zdb::CNode *node, CMatrix *m);
 extern "C" void func_003B6B20(zdb::CNode *node, int n, float scale);
 
 /* SOCOM 1's: an active node with visuals drawn into the shadow pass with its children -- its matrix
@@ -793,7 +788,7 @@ void CPipe::RenderNodeShadow(zdb::CNode *node)
     else
         m = s_stack.Multiply(&node->m_matrix, true);
     if (node->GetFirstVisual()) {
-        func_003B6D10(m_node, node, m);
+        zdb::CVisual::NodeSetup(m_node, node, m);
         func_003B6B20(node, 1, 1.0f);
         zdb::CVisualVector &v = node->m_visual;
 
@@ -859,7 +854,7 @@ void CPipe::RenderMeshShadow(zdb::CNode *node, zdb::CMesh *mesh, CMatrix *matrix
         }
     }
     if (own) {
-        func_003B6D10(m_node, node, m);
+        zdb::CVisual::NodeSetup(m_node, node, m);
         func_003B6B20(node, 1, 1.0f);
         own->SetLOD(0u, 1u);
         own->Render(m);
@@ -1127,9 +1122,12 @@ void CFlareSystem::Clear()
     FreeVector(m_flares);
 }
 
-/* zmath's CPnt4D() out of line (0x2110E0, an empty constructor): the flare's projection is built
- * through it -- called by hand, the original's spelling unknown (zmath.h's is inline) */
-extern "C" void func_002110E0(CPnt4D *p);
+/* zmath's CPnt4D() out of line: the row 0x2110E0 is __ct__6CPnt4DFv, the weak copy hud_linemap.cpp
+ * emits for its initialiser's __construct_array (fts_message.cpp's initialiser and Props::Create use
+ * the same copy). The flare's projection is built through it -- called here by its symbol, the
+ * original's spelling unknown (zmath.h's constructor is inline: `CPnt4D p;`, `CPnt4D p = CPnt4D();`
+ * and a one-element array all inline it, 0x104 against 0x10C) */
+extern "C" void __ct__6CPnt4DFv(CPnt4D *p);
 
 /* SOCOM II's (the name ours; CCoreState::Tick calls it): with any flare added, each one's verdict
  * cleared and, for an active one to test, taken again with its projection's depth */
@@ -1143,7 +1141,7 @@ void CFlareSystem::Tick()
             if (f->m_active && f->m_test) {
                 CPnt4D p;
 
-                func_002110E0(&p);
+                __ct__6CPnt4DFv(&p);
                 f->SetVisible(thePipe.TestFlare(&f->m_pos, &p, f->m_size));
                 f->m_depth = p.w;
             }
