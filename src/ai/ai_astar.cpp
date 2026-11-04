@@ -80,11 +80,10 @@ static float s_typeBias = 1.0f;
 static CAiMap::DIR s_allDirs[8] = {CAiMap::N, CAiMap::NE, CAiMap::E, CAiMap::SE, CAiMap::S, CAiMap::SW, CAiMap::W, CAiMap::NW};
 static CAiMap::DIR s_doorDirs[8] = {CAiMap::N, CAiMap::NE, CAiMap::E, CAiMap::SE, CAiMap::S, CAiMap::SW, CAiMap::W, CAiMap::NW};
 
-/* the path a caller is building leg by leg (SOCOM 1's ai::_plan_path), and the priority from which
- * a queued path stops the one planning (ai.h) */
+/* the path a caller is building leg by leg (SOCOM 1's ai::_plan_path); the priority from which a
+ * queued path stops the one planning is ai_path.cpp's (ai.h) */
 namespace ai {
 CAiPath *_plan_path;
-float s_preemptPriority = 1.0f;
 /* the planner queue (SOCOM 1's; 0x66A180, built after the lists) */
 CAiPathQueue path_queue;
 }

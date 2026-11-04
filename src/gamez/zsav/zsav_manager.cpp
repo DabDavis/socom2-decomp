@@ -22,12 +22,6 @@ public:
 
 int zrdr_free(CRdrFile *file);
 
-/* zar::CZAR's members zar.h does not declare (placeholders, the archive first): the archive
- * opened (SOCOM 1's Open(const char *, int, unsigned, unsigned), a word more in SOCOM II), a key
- * made under the open key */
-extern "C" bool func_00258920(zar::CZAR *zar, const char *name, int flags, unsigned int mode, unsigned int align,
-                              int a);
-extern "C" zar::CKey *func_00258740(zar::CZAR *zar, const char *name);
 
 
 /* a string that is never null (SOCOM 1's zutil.h: MSL's basic_string; a local's destructor is the
@@ -136,14 +130,14 @@ bool CSaveManager::Save(const char *name, int flags, int version, char *desc, ch
     zar::CZAR archive("root", &buf);
     zar_tag(archive) = tag;
     m_pZar = &archive;
-    if (func_00258920(&archive, name, flags, 26, 16, 0)) {
+    if (archive.Open(name, flags, 26, 16, 0)) {
         m_AbortSave = false;
         header.m_size = 268;
         header.m_flags = flags;
         sprintf(header.m_desc, "%s", desc ? desc : "");
         header.m_version = version;
         archive.Insert("zSaveHeader", &header, header.m_size);
-        zar::CKey *modules = func_00258740(&archive, "CSaveModuleList");
+        zar::CKey *modules = archive.CreateKey("CSaveModuleList");
         if (modules) {
             iterator it;
 
@@ -154,7 +148,7 @@ bool CSaveManager::Save(const char *name, int flags, int version, char *desc, ch
 
                 if (module->TestFlags(version)) {
                     trace.Print(module->m_ModuleName);
-                    if ((module->m_pKey = func_00258740(&archive, module->m_ModuleName)) != 0) {
+                    if ((module->m_pKey = archive.CreateKey(module->m_ModuleName)) != 0) {
                         module->Serialize(version);
                         archive.CloseKey(module->m_pKey);
                         module->m_pKey = 0;
@@ -265,7 +259,7 @@ bool CSaveManager::Load(const char *name, int flags)
     m_Filename = (char *)name;
     if (GetHeader(name, flags, &header) && flags != -1 && header.m_flags != flags)
         return false;
-    if (func_00258920(&archive, name, flags, 1, 16, 0)) {
+    if (archive.Open(name, flags, 1, 16, 0)) {
         m_AbortLoad = false;
         zar::CKey *modules = archive.OpenKey("CSaveModuleList");
         if (modules) {
@@ -321,7 +315,7 @@ bool CSaveManager::GetHeader(const char *name, int flags, CSaveHeader *header)
         m_pFile->Close();
     }
     zar::CZAR archive("root", &buf);
-    if (func_00258920(&archive, name, flags, 1, 16, 0)) {
+    if (archive.Open(name, flags, 1, 16, 0)) {
         zar::CKey *key = archive.OpenKey("zSaveHeader");
 
         if (key) {
@@ -344,7 +338,7 @@ bool CSaveManager::SaveRdr(zar::CKey *key, const char *name, CRdrFile *file)
 
     sprintf(buf, "%s.rdr", name);
     if (key) {
-        zar::CKey *k = func_00258740(m_pZar, buf);
+        zar::CKey *k = m_pZar->CreateKey(buf);
         if (k) {
             file->Insert(m_pZar, k);
             m_pZar->CloseKey(k);

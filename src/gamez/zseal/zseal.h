@@ -39,10 +39,15 @@ enum MENU_STATE {
     stateLast = 6
 };
 
-/* the view the player looks through (SOCOM 1's DWARF, a signed byte: SetCurZoomState's argument) */
+/* the view the player looks through (SOCOM 1's DWARF, a signed byte: SetCurZoomState's argument)
+ * with SOCOM II's numbers -- thirteen states, the turret's thermal view new at 2 and SOCOM 1's
+ * others one place on (DecrZoomState, IncrZoomState and SetCurZoomState switch on them; the
+ * thermal view's name ours) */
 enum ZOOMSTATE {
-    ZOOMSTATE_UNKNOWN = -1, ZOOMSTATE_3RDPERSON = 0, ZOOMSTATE_1STPERSON = 1, ZOOMSTATE_NVG = 2,
-    ZOOMSTATE_BINOCS = 3, ZOOMSTATE_WEAPONDEF1 = 4, NUM_ZOOMSTATES = 12
+    ZOOMSTATE_UNKNOWN = -1, ZOOMSTATE_3RDPERSON = 0, ZOOMSTATE_1STPERSON = 1, ZOOMSTATE_THERMAL = 2,
+    ZOOMSTATE_NVG = 3, ZOOMSTATE_BINOCS = 4, ZOOMSTATE_WEAPONDEF1 = 5, ZOOMSTATE_WEAPONDEF2 = 6,
+    ZOOMSTATE_WEAPONDEF3 = 7, ZOOMSTATE_WEAPONDEF4 = 8, ZOOMSTATE_WEAPONDEF5 = 9, ZOOMSTATE_WEAPONDEF6 = 10,
+    ZOOMSTATE_WEAPONDEF7 = 11, ZOOMSTATE_WEAPONDEF8 = 12, NUM_ZOOMSTATES = 13
 };
 
 /* what a SEAL holds (SOCOM 1's SEAL_ITEM, a byte enum: zweapon.h keeps a word-sized stand-in of
@@ -128,6 +133,9 @@ public:
      * OVL2 0x5C8870, 0x5BDA10 -- both const in SOCOM II, kit.h's) */
     int GetItemIndex(EQUIP_ITEM item) const;
     bool ItemHasAmmo(int index) const;
+    /* whether an item has room for rounds (SOCOM 1's; OVL2 0x5BA5B0, kit.h's -- the AI's ammunition
+     * search asks it) */
+    bool CanAddAmmo(int index, int rounds);
     /* the item in hand (kit.h's: const in SOCOM II; OVL2 0x5C3780) */
     class CZFTSWeapon *GetCurItem() const;
     /* whether the item in hand has rounds left (kit.h's; OVL2 0x5BDB00) */
@@ -148,6 +156,9 @@ public:
     /* whether a scope or the binoculars are up (SOCOM 1's; OVL2 0x5B9990, 0x5B90F0 -- kit.h's) */
     bool IsUsingScope();
     bool IsUsingBinocs();
+    /* whether a weapon picked up has a slot to go in (kit.h's; OVL2 0x5BAC30, the kit lane's: the
+     * SEAL's pickup tests 0x5A9C70 and 0x5A9F40 ask it) */
+    bool HasPickupSlot();
     /* the sniper's kick made ready (SOCOM 1's; OVL2 0x5B9180, kit.h's: SetCurZoomState calls it) */
     void InitializeSniperKick();
     /* the weapon's display marked changed (SOCOM 1's; OVL2 0x5B99B0, kit.h's) */
@@ -832,10 +843,12 @@ public:
     CPnt3D m_leg_to;   // 0x5ec
     CPnt3D m_leg_dir;   // 0x5f8
     float m_leg_len;   // 0x604
-    unsigned int m_608;   // 0x608
+    /* the walk along the leg: how far is done, a word, the time since the side step was last picked
+     * and the side step itself (0x5698A0 reads them as floats, 0x56C080 clears them; the names ours) */
+    float m_leg_done;   // 0x608
     unsigned int m_60c;   // 0x60c
-    unsigned int m_610;   // 0x610
-    unsigned int m_614;   // 0x614
+    float m_strafe_time;   // 0x610
+    float m_strafe;   // 0x614
     CAiMapLoc m_leg_cell;   // 0x618
     unsigned char _61c[0x628 - 0x61c];
     unsigned char m_event[0x28];   // 0x628: a CAiEvent (SOCOM 1's m_event, 0x480)
@@ -911,6 +924,8 @@ public:
     virtual void OnStateChange(SEAL_STATE from, SEAL_STATE to);
     /* a target seen to fall called out (SOCOM 1's; OVL2 0x5C9B10, the kit lane's seal_sensors.cpp) */
     virtual void NotifyTargetDown(CZSealBody *seal);
+    /* the view cone set from the head (SOCOM 1's; OVL2 0x5C9400, the kit lane's seal_sensors.cpp) */
+    virtual void UpdateViewCone();
     /* the AI's own event set: its kind, its duration and where (SOCOM 1's, the same words with the
      * event at 0x628; OVL2 0x5FAD00, the kit lane's seal_aievent.cpp) */
     CAiEvent::EVENT SetAiEvent(CAiEvent::EVENT e, float duration, const CPnt3D *pos);
@@ -1386,6 +1401,8 @@ public:
     /* the SEAL's controller, and its AI (inline: the follow chain's walk calls their copies at its
      * bottom -- OVL2 0x5FCF00, 0x5EA7C0; the names ours) */
     CEntityCtrl *GetControl() { return m_control; }
+    /* CEntity's last valid cell (an inline: 0x569AA0 reads it through one -- the name ours) */
+    const CAiMapLoc &MapLocValid() const { return m_mapLocValid; }
     class CSealCtrlAi *GetSealCtrlAi() { return ((CSealCtrl *)GetControl())->GetSealCtrlAi(); }
     void RemoveFollower()
     {
@@ -1673,8 +1690,11 @@ public:
      * m_rifle_as_gear and m_pistol_as_gear were the gear alone; the names ours) */
     CObjAnim m_item_gear[5];   // 0x388 (the rifle's 0x390, the pistol's 0x398)
     void *m_select;   // 0x3b0: a TASK_SELECT (SOCOM 1's 0x318), the AI's tasks' argument
-    unsigned char _3b4[0x3dc - 0x3b4];
-    zdb::CNode *m_3dc;   // 0x3dc: a node 0x5AA620 takes the SEAL of (the name ours)
+    unsigned char _3b4[0x3c0 - 0x3b4];
+    /* the hit under the reticule (SOCOM 1's m_last_reticule, 0x340 -- the name by SOCOM 1's
+     * reticule pair, which SOCOM II moved ahead of the altitude): the weapon pickup's test 0x5A9C70
+     * reads its point and material, the radio toggle 0x5AA620 takes the SEAL of its node (0x3dc) */
+    zdb::IntersectStruct m_last_reticule;   // 0x3c0
     unsigned char _3e0[0x400 - 0x3e0];
     zdb::IntersectStruct m_last_altitude;   // 0x400 (SOCOM 1's 0x320)
     unsigned char _420[0x428 - 0x420];

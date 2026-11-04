@@ -25,18 +25,32 @@ CSched_Manager::CSched_Manager() : m_inTick(false), m_priority(0.0f)
     m_FreeList.clear();
 }
 
+/* the task linked in before pos through the base's insert, its iterator handed back as it is --
+ * two inline levels that each return the base's iterator (a STAND-IN for the original MSL's
+ * list<T *>::insert, whose depths are not known: what it reproduces is the frame). MW lays out
+ * the frame in creation order: the caller's own temporaries first -- an inline's return slot is
+ * one when every level returns the same class, so the base insert's result lands just under
+ * begin()'s temporary -- then the inline expansions breadth-first, each creating its by-value
+ * parameters and temporaries as it is expanded: depth 1 (pop_front's erase, the end insert)
+ * before depth 2 (this pair's inner level, whose position copy so goes to the frame's bottom) */
+inline CSched_Manager::base::iterator SchedInsertNode(CSched_Manager *m, CSched_Manager::base::iterator pos,
+                                                     CSched_Task *const &t)
+{
+    return m->base::insert(pos, (const void *const &)t);
+}
+
+inline CSched_Manager::base::iterator SchedInsert(CSched_Manager *m, CSched_Manager::iterator pos,
+                                                 CSched_Task *const &t)
+{
+    return SchedInsertNode(m, pos, t);
+}
+
 /* a task added: one off the free list, or a new one; named (a copy), its callback, priority and
  * user data set, and linked in ahead of the first task of a higher priority, else at the end
  * (SOCOM 1's AddTask; SOCOM 1 passed the task itself to insert, homed once at the join -- here
- * that keeps it in memory, 0x1CC bytes, so the reference goes to a copy). OPEN, 9 instructions:
- * every instruction but the frame slots of the three calls' iterator temporaries -- the target
- * puts the loop insert's result at 144, just under begin()'s temporary and ABOVE the free list's
- * erase (140/136), and its argument at the bottom (124), below the end insert's pair (132/128);
- * here they are made in source order. The end taken into a local fixed the end's register (14 ->
- * 9); the loop insert's result assigned (`i = insert(i, added)`, or to a named iterator, wrapper
- * or base) puts its argument at 124 (7) but the result stays below the others; pop_front against
- * erase(begin()), push_back for the end insert and the locals' declaration orders change nothing
- * or lose (build/scratch/core/v_addtask.py) */
+ * that keeps it in memory, 0x1CC bytes, so the reference goes to a copy). The loop's insert
+ * through SchedInsert gives the target's frame (the three calls' iterator temporaries at
+ * 144/124, 140/136 and 132/128); through the wrapper's insert they were made in source order */
 bool CSched_Manager::AddTask(const char *name, bool (*task)(float, void *), float priority, void *user_data)
 {
     CSched_Task *t;
@@ -65,7 +79,7 @@ bool CSched_Manager::AddTask(const char *name, bool (*task)(float, void *), floa
 
     for (i = begin(); i != e; ++i) {
         if (priority < (*i)->m_priority) {
-            insert(i, added);
+            SchedInsert(this, i, added);
             inserted = true;
             break;
         }
@@ -166,4 +180,66 @@ void CSched_Manager::Clear()
         clear();
     }
     ClearFreeList(false);
+}
+
+/* a task flagged for removal deleted: remove_if's predicate (SOCOM 1's _task_cleanup) */
+bool _task_cleanup(CSched_Task *t)
+{
+    if (t->m_remove) {
+        delete t;
+        return true;
+    }
+    return false;
+}
+
+/* with `all`, the removed tasks deleted and taken off the list (SOCOM 1's), the list then copied
+ * out and back (SOCOM II's); the free list's tasks deleted and the free list emptied (SOCOM 1's).
+ * Brings remove_copy_if 0x34E9B0 byte-exact (remove_if 0x34E8C0 is include/algorithm's open list
+ * instance, 6 instructions).
+ * OPEN, 67 instructions (the target's size): every call, test and loop is the target's, the misses
+ * are `this` (s3 here, s2 there: the copy-back loop's push_back end, this+4, is hoisted into s2 --
+ * the target recomputes it each pass) and the frame. The target's slots, top down: the remove_if
+ * result, the element (both loops' -- one slot), the first loop's iterator, remove_if's two
+ * arguments, both loops' begin() temporaries, then the three erases' triples (the remove_if
+ * erase's, clear()'s, the free list's), then both push_backs' pairs, the local list's destructor's
+ * erase, the second loop's iterator and the local list at the bottom. By AddTask's frame rule
+ * (zsys_sched.cpp's SchedInsert) that is: the erases one inline level down (the wrapper's own
+ * erase over the base's), the push_backs two (the base's push_back), and the copy-back loop a deep
+ * inline's by-value iterator (a range insert's `first`?) -- the source here makes them in source
+ * order. Tried: the end kept in a local for the first erase (`iterator e`, kept: it gives the
+ * target's s0), the iterators declared together or apart, the copy-back loop as for or as
+ * `if (j != end) do ... while (++j != end)` (kept: the target's top test), the free list's walk as
+ * for_each (adds the functor's zero byte) or a loop (kept) */
+void CSched_Manager::ClearFreeList(bool all)
+{
+    if (all) {
+        iterator e = end();
+        iterator r = std::remove_if(begin(), e, _task_cleanup);
+
+        erase(r, e);
+    }
+    if (all) {
+        std::list<CSched_Task *> tmp;
+        CSched_Task *t;
+        iterator i, j;
+
+        for (i = begin(); i != end(); ++i) {
+            t = *i;
+            tmp.push_back(t);
+        }
+        clear();
+        j = tmp.begin();
+        if (j != tmp.end())
+            do {
+                t = *j;
+                push_back(t);
+            } while (++j != tmp.end());
+    }
+    if (m_FreeList.size()) {
+        iterator e = m_FreeList.end();
+
+        for (iterator i = m_FreeList.begin(); i != e; ++i)
+            delete *i;
+        m_FreeList.clear();
+    }
 }

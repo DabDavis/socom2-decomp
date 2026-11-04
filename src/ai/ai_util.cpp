@@ -2,11 +2,18 @@
  * clock direction, quadratic, elevate, noise and motion test, and CAi's aiming helpers. SOCOM 1's
  * functions in the demo's order (0x17DE90-0x17F06F, between aidemo.cpp's plot_tick and
  * ai_events.cpp; no DWARF names their file); SOCOM II adds an XZ noise beside the 3D one and an
- * AddNoise pair over each. Defined here in reverse of the image's order (-inline deferred). */
+ * AddNoise pair over each. Defined here in reverse of the image's order (-inline deferred).
+ * THE UNIT IS COMPILED WITHOUT AUTO-INLINING (the AI core's round 23; README "The inlining mode,
+ * measured" had it as a candidate): no function of the unit is inlined into another anywhere in the
+ * target -- both AddNoise pairs tail-call their three-argument halves, AddNoise(3) and AddNoiseXZ(3)
+ * call MakeNoise/MakeNoiseXZ -- and one file-wide `#pragma auto_inline off` replaces round 22's three
+ * pins, every function scoring as with them (the functions declared `inline` still inline). */
 
 #include <stdlib.h>
 
 #include "ai.h"
+
+#pragma auto_inline off
 
 /* a point into a VU0 vector, w 1 -- read through the reference, an address-taken local's fields
  * come off the frame (AlignToPoint; the names are ours) */
@@ -110,49 +117,66 @@ bool ai::is_moving(const CPnt3D *v, float speedSq)
 
 /* a random offset in a ring: each axis a random size in [range.x, range.y), a random sign
  * (SOCOM 1's; SOCOM II returns the point).
- * OPEN with MakeNoiseXZ (19 instructions here, 13 there, both the right size): the saved float
- * registers alone -- the target's run lo f22, sign f21, span f20 where this build gives span f21
- * and sign f20 (sign's three assignments are split live ranges, numbered after every named local;
- * the target numbers span after them). The draws' joins are the target's since the AI core round
- * 22 (_frand above: 95 and 1-short before). Tried: declaration order (all six), the sign as a
- * ternary, an if/else or inline in the product, per-axis sign locals, the span a local, `hi - lo`
- * or recomputed in each draw (0x1B4-0x1BC), the range by reference (SOCOM 1's PNT2D temporaries)
- * (build/scratch/ai/spec_noise*.py, mn3.py) */
+ * Byte-exact with MakeNoiseXZ since the AI core's round 23 (open from round 2 to 22 on the saved
+ * float registers alone: span f21 and sign f20 against the target's span f20, sign f21). MW's
+ * colouring (build/scratch/ai/ig/, the MSL lane's igdump under gdb) showed why: a sign assigned from
+ * a ternary is absorbed into the ternary's temporary, numbered after every named local and so
+ * coloured ahead of span; assigned in an if/else it stays the named local declared between lo and
+ * span -- and the product's operands then come out in the target's order (value, sign) only with the
+ * draw in a named local of its own (an inline's result multiplied by a variable always goes second) */
 CPnt3D *ai::MakeNoise(CPnt3D *out, const PNT2D &range)
 {
     float lo = range.x;
     float sign;
     float span = range.y - range.x;
+    float r;
 
-    sign = rand_range(0.0f, 1.0f) <= 0.5f ? 1.0f : -1.0f;
-    out->x = sign * rand_range(lo, span);
-    sign = rand_range(0.0f, 1.0f) <= 0.5f ? 1.0f : -1.0f;
-    out->y = sign * rand_range(lo, span);
-    sign = rand_range(0.0f, 1.0f) <= 0.5f ? 1.0f : -1.0f;
-    out->z = sign * rand_range(lo, span);
+    if (rand_range(0.0f, 1.0f) <= 0.5f)
+        sign = 1.0f;
+    else
+        sign = -1.0f;
+    r = rand_range(lo, span);
+    out->x = r * sign;
+    if (rand_range(0.0f, 1.0f) <= 0.5f)
+        sign = 1.0f;
+    else
+        sign = -1.0f;
+    r = rand_range(lo, span);
+    out->y = r * sign;
+    if (rand_range(0.0f, 1.0f) <= 0.5f)
+        sign = 1.0f;
+    else
+        sign = -1.0f;
+    r = rand_range(lo, span);
+    out->z = r * sign;
     return out;
 }
 
-/* the same in the ground plane, y zero (new in SOCOM II; the name is ours). Pinned: AddNoiseXZ
- * calls it in the target, where -inline auto would take its eight statements (MakeNoise, one draw
- * more, is not taken) */
-#pragma auto_inline off
+/* the same in the ground plane, y zero (new in SOCOM II; the name is ours) */
 CPnt3D *ai::MakeNoiseXZ(CPnt3D *out, const PNT2D &range)
 {
     float lo = range.x;
     float sign;
     float span = range.y - range.x;
+    float r;
 
-    sign = rand_range(0.0f, 1.0f) <= 0.5f ? 1.0f : -1.0f;
-    out->x = sign * rand_range(lo, span);
+    if (rand_range(0.0f, 1.0f) <= 0.5f)
+        sign = 1.0f;
+    else
+        sign = -1.0f;
+    r = rand_range(lo, span);
+    out->x = r * sign;
     out->y = 0.0f;
-    sign = rand_range(0.0f, 1.0f) <= 0.5f ? 1.0f : -1.0f;
-    out->z = sign * rand_range(lo, span);
+    if (rand_range(0.0f, 1.0f) <= 0.5f)
+        sign = 1.0f;
+    else
+        sign = -1.0f;
+    r = rand_range(lo, span);
+    out->z = r * sign;
     return out;
 }
-#pragma auto_inline reset
 
-/* a point moved by a random offset (SOCOM 1's two) */
+/* a point moved by a random offset (SOCOM 1's two; the two-argument one tail-calls the other) */
 CPnt3D *ai::AddNoise(const CPnt3D *p, CPnt3D *out, const PNT2D &range)
 {
     CPnt3D noise;
@@ -167,9 +191,7 @@ CPnt3D *ai::AddNoise(CPnt3D *p, const PNT2D &range)
     return AddNoise(p, p, range);
 }
 
-/* the same in the ground plane (new in SOCOM II; the names are ours). Pinned with MakeNoiseXZ:
- * the two-argument one tail-calls it, as AddNoise's do */
-#pragma auto_inline off
+/* the same in the ground plane (new in SOCOM II; the names are ours) */
 CPnt3D *ai::AddNoiseXZ(const CPnt3D *p, CPnt3D *out, const PNT2D &range)
 {
     CPnt3D noise;
@@ -178,7 +200,6 @@ CPnt3D *ai::AddNoiseXZ(const CPnt3D *p, CPnt3D *out, const PNT2D &range)
     p->Add(&noise, out);
     return out;
 }
-#pragma auto_inline reset
 
 CPnt3D *ai::AddNoiseXZ(CPnt3D *p, const PNT2D &range)
 {

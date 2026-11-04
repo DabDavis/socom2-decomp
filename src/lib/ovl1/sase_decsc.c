@@ -3,7 +3,9 @@
  * block (`assert(pMemBlkD != NellyNull)`, file and line by `#line` as in sase_encsc.c) and stores
  * one float. Called by the decoder API's setters (sase_decapi.c). The decoder's objects were built
  * at -G0 (sase_decapi.c reaches the host's callbacks by lui/lw where the encoder's use $gp); these
- * four touch no global. Placeholders: the codec's names are not in SOCOM 1. */
+ * four touch no global. After them, the pitch candidates' merge 0x254458 (GCC round 26a: one exit,
+ * the result in the first parameter's register; no assert names its file, so it is kept here).
+ * Placeholders: the codec's names are not in SOCOM 1. */
 
 #define NellyNull 0
 extern void __assert(const char *file, int line, const char *expr);
@@ -43,4 +45,28 @@ void func_00254408(DecMemBlk *pMemBlkD, float x)
 #line 568 "../../SaseDec/source/DecSC.c"
 	assert(pMemBlkD != NellyNull);
 	pMemBlkD->f40 = x;
+}
+
+/* the two pitch candidates merged (GCC round 26a; after the setters, no assert naming its file):
+ * within 25 % of each other they are averaged, else the better-voiced one is taken -- and a low
+ * pitch whose voicing is weak gives way to the higher candidate. 0.8 is the vendor's truncated
+ * conversion (0x3F4CCCCC), a hex float. */
+float func_00254458(float fP1, float fP2, float fV1, float fV2)
+{
+	float fP, fV;
+
+	if (fP2 <= fP1 * 1.25F && fP1 * 0x1.999998p-1F <= fP2)
+		fP = (fP1 + fP2) * 0.5F;
+	else {
+		if (fV2 < fV1) {
+			fV = fV1;
+			fP = fP1;
+		} else {
+			fV = fV2;
+			fP = fP2;
+		}
+		if (fP < 30.0F && fV * fP * 0.5F < 1.0F)
+			fP = (fP1 < fP2) ? fP2 : fP1;
+	}
+	return fP;
 }
