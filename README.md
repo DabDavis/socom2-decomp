@@ -2060,6 +2060,20 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the online lobby, round 19** (CMPEG::IdleTick, GamePassesTypeFilter, the radio tick written whole):
+  - a loop invariant that is nothing but a signed-to-unsigned conversion is still hoisted, its empty preheader laid after
+    the function's last block (the engine core's round 11): CMPEG::IdleTick 0x309780 matches with `int` line counts and
+    the loop inside `if (p_mp)` -- the target's two jump-only blocks;
+  - an `unsigned char` local compared repeatedly can take three registers where an `int` takes one (GamePassesTypeFilter
+    0x2E31E0: the first mission an int defined after `mixed`, narrowed back with `(unsigned char)first` in the chain);
+    `do { ... } while (*++seq);` stops MW carrying the loop test's load into the next pass's first read, `p++; while
+    (*p)` does not;
+  - a field compared with a call's result is loaded in the order the comparison is written: `call() > field` loads it
+    after the call, `field < call()` before, held in a saved register; an `*s++` byte-to-halfword loop is unrolled in
+    pairs stepping the pointer by 2 (offsets 0 and 1), `s[i]` gives an `addu` and offsets 0-7; an element field read twice
+    across a call keeps the element's whole address, read through a getter inline it is shared as a value;
+  - the radio tick 0x30EC10 (0x9E0) written whole, every block, call and frame slot the target's, 13 off (the five sends'
+    argument load order); the chat queue's copy chain named after the lobby queue's mirror.
 - **Tells from the kit and AI states, round 34** (SetHideLook, CAiSTarget::Tick, three long opens):
   - a member the target loads twice with nothing between: read one of the two through a const view,
     `((const T *)p)->m` -- plain reads are merged -- and take the second as a local before the test (CAiSFollow::SetHideLook

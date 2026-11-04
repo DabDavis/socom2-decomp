@@ -4186,6 +4186,7 @@
 0x002E2B00 cbGameList__FiiiP22MediusGameListResponse
 0x002E2CE0 UpdateGameListDisplay__FP12BriefingRoom
 0x002E3080 GamePassesFilters__FP8RoomGame
+0x002E31E0 GamePassesTypeFilter__FP8RoomGame
 0x002E33D0 func_002E33D0
 0x002E33E0 HasMissions__8RoomGameFv
 0x002E3490 AllowsType__8RoomGameFi
@@ -4698,6 +4699,7 @@
 0x00309560 Loop__5CMPEGFv
 0x003096C0 Done__5CMPEGFv
 0x003096F0 End__5CMPEGFv
+0x00309780 IdleTick__5CMPEGFv
 0x00309850 Tick__5CMPEGFi
 0x003098E0 Run__5CMPEGFPCcbbi
 0x00309A10 Uninit__5CMPEGFv
