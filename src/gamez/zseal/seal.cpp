@@ -51,6 +51,35 @@ extern "C" void *func_00555170(CIndexedArray *a)
 }
 #pragma auto_inline reset
 
+/* the application's camera (camera.h's CAppCamera, OVL1 bss 0x415FF0: its first two virtuals, its
+ * zdb camera and the SEAL it shows) */
+class CAppCamera {
+public:
+    virtual void Tick(float dT);
+    virtual bool AttachTo(CZSealBody *prey);
+
+    unsigned char _4[0xb4 - 0x4];
+    zdb::CCamera *m_camera;   // 0xb4
+    zdb::CNode *m_camera_effects;   // 0xb8
+    CZSealBody *m_bc;   // 0xbc: the SEAL the camera shows
+};
+
+extern CAppCamera *appCamera;
+
+/* the player (fts_player.cpp's CftsPlayer, OVL1 bss 0x440C38: its SEAL first) */
+class CftsPlayer {
+public:
+    CZSealBody *m_body;   // 0x0
+    int m_4;   // 0x4
+};
+
+extern CftsPlayer ftsPlayer;
+
+extern "C" {
+/* a SEAL a spectator may not watch online (OVL1 0x2C2FD0, unowned: hud_tcmcmds.cpp's reading) */
+bool func_002C2FD0(CZSealBody *seal);
+}
+
 /* the SEAL's stats, CSealStats, are zseal.h's (CZSealBody::m_stats) */
 
 CZSealBody *ftsGetPlayer();
@@ -261,6 +290,89 @@ typedef void (CSealStats::*SEAL_STATS_EVENT)(const CZSealBody *seal, bool teamma
 static inline CZSealBody *AsSeal(CEntity *e)
 {
     return e && e->m_type == CEntity::ENT_TYPE_SEAL ? (CZSealBody *)e : 0;
+}
+
+/* an entity's team bits, by reference (an inline: the address is taken once, ahead of the walk) */
+static inline const unsigned int &TeamOf(const CEntity *e)
+{
+    return e->m_team;
+}
+
+/* the spectator's camera moved to the SEAL after the one it shows in the entity list, round to the
+ * start and once round at most, by 0x546FA0's tests (OVL2 0x547170; new in SOCOM II, its name
+ * unknown -- n declared ahead of the SEALs here, after them there: the two number them so) */
+extern "C" void func_00547170(CZSealBody *seal, bool team)
+{
+    int i = CEntity::GetEntityIndex(appCamera->m_bc);
+    int start = i;
+    unsigned int n = (unsigned int)-1;
+    CZSealBody *s = ftsPlayer.m_body;
+    CZSealBody *player = s;
+
+    i++;
+    while (i != start) {
+        n++;
+        s = (CZSealBody *)CEntity::m_list.GetEntityByIndex(i);
+        if (!s) {
+            s = ftsPlayer.m_body;
+            i = 0;
+        } else {
+            s = AsSeal(s);
+            if (s && theNetwork.m_9 && func_002C2FD0(s))
+                s = 0;
+            if (s && (s->m_isAlive || player == s) && s->m_type == CEntity::ENT_TYPE_SEAL &&
+                (!team || ((TeamOf(seal) & TeamOf(s)) && !(TeamOf(s) & 0x20000))))
+                break;
+            if (++i >= CEntity::m_list.size()) {
+                i = 0;
+                s = ftsPlayer.m_body;
+            }
+        }
+        if (CEntity::m_list.size() < n)
+            i = start;
+    }
+    if (i != start) {
+        appCamera->AttachTo(s);
+        s->m_kit.SetWeaponInfoChanged();
+    }
+}
+
+/* the spectator's camera moved to the SEAL before the one it shows in the entity list, round to the
+ * end and once round at most: a living SEAL, or the player, that may be watched -- of the SEAL's
+ * team when asked, and not one of team bit 17's (OVL2 0x546FA0; new in SOCOM II, its name unknown) */
+extern "C" void func_00546FA0(CZSealBody *seal, bool team)
+{
+    int i = CEntity::GetEntityIndex(appCamera->m_bc);
+    int start = i;
+    CZSealBody *s = ftsPlayer.m_body;
+    CZSealBody *player = s;
+    unsigned int n = (unsigned int)-1;
+
+    i--;
+    while (i != start) {
+        n++;
+        if (i < 0)
+            i = CEntity::m_list.size() - 1;
+        s = (CZSealBody *)CEntity::m_list.GetEntityByIndex(i);
+        if (!s) {
+            s = ftsPlayer.m_body;
+            i--;
+        } else {
+            s = AsSeal(s);
+            if (s && theNetwork.m_9 && func_002C2FD0(s))
+                s = 0;
+            if (s && (s->m_isAlive || player == s) && s->m_type == CEntity::ENT_TYPE_SEAL &&
+                (!team || ((TeamOf(seal) & TeamOf(s)) && !(TeamOf(s) & 0x20000))))
+                break;
+            i--;
+        }
+        if (CEntity::m_list.size() < n)
+            i = start;
+    }
+    if (i != start) {
+        appCamera->AttachTo(s);
+        s->m_kit.SetWeaponInfoChanged();
+    }
 }
 
 /* the stats' event handed to the SEAL's teammates: each living SEAL of its team but itself has its
@@ -790,15 +902,6 @@ void func_002707C0(CZAnim *anim, bool now);
 extern CSnd *data_0044CE30;
 extern CSnd *data_0044CE38;
 }
-
-/* the application's camera (camera.h's CAppCamera, OVL1 bss 0x415FF0: only its zdb camera here) */
-class CAppCamera {
-public:
-    unsigned char _0[0xb4];
-    zdb::CCamera *m_camera;   // 0xb4
-};
-
-extern CAppCamera *appCamera;
 
 /* the view set (OVL2 0x5448A0; SOCOM 1's with SOCOM II's states: the goggles' sound in or out of
  * night vision where SOCOM 1 reset the power, the screen offsets zeroed off the first person, the

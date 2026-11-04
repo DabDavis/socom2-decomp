@@ -150,6 +150,8 @@ public:
     bool IsUsingBinocs();
     /* the sniper's kick made ready (SOCOM 1's; OVL2 0x5B9180, kit.h's: SetCurZoomState calls it) */
     void InitializeSniperKick();
+    /* the weapon's display marked changed (SOCOM 1's; OVL2 0x5B99B0, kit.h's) */
+    void SetWeaponInfoChanged();
     /* the class of the item in hand (kit.h's byte enum; OVL2 0x5B8760, the kit lane's) */
     enum FIRE_CLASS { FIRE_CLASS_NONE = 0, FIRE_CLASS_RIFLE = 1, FIRE_CLASS_PISTOL = 2,
                       FIRE_CLASS_THROWN = 3, FIRE_CLASS_145 = 4, FIRE_CLASS_LAST = 255 };
