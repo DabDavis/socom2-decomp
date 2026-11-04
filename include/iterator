@@ -11,17 +11,21 @@ struct bidirectional_iterator_tag : public forward_iterator_tag {};
 struct random_access_iterator_tag : public bidirectional_iterator_tag {};
 
 /* what an iterator walks and how far apart two are (MSL's; the heap functions read them: the class
- * vectors' iterators carry the two typedefs, a pointer has its own) */
+ * vectors' iterators carry the two typedefs, a pointer has its own), and its category (remove_if's
+ * search dispatches on it: include/algorithm -- the list iterators bidirectional, the vector
+ * iterators and pointers random access) */
 template <class Iterator>
 struct iterator_traits {
     typedef typename Iterator::difference_type difference_type;
     typedef typename Iterator::value_type value_type;
+    typedef typename Iterator::iterator_category iterator_category;
 };
 
 template <class T>
 struct iterator_traits<T *> {
     typedef int difference_type;
     typedef T value_type;
+    typedef random_access_iterator_tag iterator_category;
 };
 
 /* a pointer range's length, MSL's way: through the random-access helper and its tag */

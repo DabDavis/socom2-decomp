@@ -5,6 +5,8 @@
 #ifndef _MSL_ALGORITHM
 #define _MSL_ALGORITHM
 
+#include <iterator>
+
 namespace std {
 
 template <class InputIterator, class Function>
@@ -128,11 +130,55 @@ OutputIterator remove_copy_if(InputIterator first, InputIterator last, OutputIte
  * would have to dispatch on the iterator. Tried (build/p11/r1.var, r2.var): explicit temporaries
  * `ForwardIterator(first)` (no change for the lists, the vectors lose their size), local copies in
  * remove_if, a walker local in find_if, an empty user destructor on the list iterators (every list
- * instance changes size) */
+ * instance changes size).
+ * SO remove_if's SEARCH DISPATCHES ON THE ITERATOR'S CATEGORY (the MSL headers round 20, after the
+ * world's round 14 closed list<CSched_Task *>'s 0x34E8C0 with a stand-in specialisation in round 8's
+ * shape C, now retired): a random-access iterator (the vectors', a pointer) is searched by value, as
+ * find_if, its walker and bound remove_if's own parameters (references: no code); a bidirectional
+ * one (both list iterators) is copied into remove_if's own locals in order, first then last -- the
+ * target's parameter order -- and searched by reference. +3 over every hand-written unit: the
+ * entity list's 0x29FE70, the callback list's 0x3C6560, the AI groups' 0x60E9A0 (with 0x34E8C0
+ * through the header), the vectors' seven unchanged. The copies belong to remove_if, not to the
+ * search: where the predicate is too tall for the search to inline whole (valve_list.cpp's 0x352500,
+ * ai_events.cpp's 0x50F670 call ++, !=, * and the return's copy out of line) the target still makes
+ * them inline -- copies inside the search (shape C) are calls there, 8 bytes long. OPEN in those
+ * two (9 instructions: the slots alone): the target allocates the search's return temporary (92)
+ * above the copies (first 88, last 84) -- by-value parameters' slots, which come after the return
+ * temporary's -- where named locals take the top; by value, MW evaluates last's copy first (4 off);
+ * an inline helper returning either copy, in either argument, changes nothing (build/p20/d/, vF*).
+ * The kit's 0x5F8AF0 is a different miss: the target re-reads the functor's byte at every step
+ * (`lbu a1,104(sp)`), ours hoists it into s0 under every shape (0x114 against 0x110) */
+template <class Category, class InputIterator, class Predicate>
+struct __remove_if_search {
+    typedef InputIterator &walker;
+    static InputIterator find(InputIterator first, InputIterator last, Predicate pred)
+    {
+        while (first != last && !pred(*first))
+            ++first;
+        return first;
+    }
+};
+
+template <class InputIterator, class Predicate>
+struct __remove_if_search<bidirectional_iterator_tag, InputIterator, Predicate> {
+    typedef InputIterator walker;
+    static InputIterator find(InputIterator &first, const InputIterator &last, Predicate pred)
+    {
+        while (first != last && !pred(*first))
+            ++first;
+        return first;
+    }
+};
+
 template <class ForwardIterator, class Predicate>
 ForwardIterator remove_if(ForwardIterator first, ForwardIterator last, Predicate pred)
 {
-    first = find_if<ForwardIterator, Predicate &>(first, last, pred);
+    typedef __remove_if_search<typename iterator_traits<ForwardIterator>::iterator_category,
+                               ForwardIterator, Predicate &> search;
+    typename search::walker f = first;
+    typename search::walker l = last;
+
+    first = search::find(f, l, pred);
     ForwardIterator i = first;
     return first == last ? first : remove_copy_if(++i, last, first, pred);
 }

@@ -220,8 +220,8 @@ void CZProjectile::Init()
     m_lastPlayerHitPos.x = 0.0f;
     m_lastPlayerHitPos.y = 0.0f;
     m_lastPlayerHitPos.z = 0.0f;
-    m_lastVolumetricHit.x = 0.0f;
-    m_lastVolumetricHit.y = 0.0f;
+    m_78 = 0;
+    m_restnode = 0;
     m_98 = 0;
     SetFlag9(false);
     SetFlag20(false);
@@ -283,6 +283,136 @@ void CZProjectile::SetVelW(const CPnt3D *vel)
     m_vel = *vel;
     SetDone(false);
     m_intersecthandle = -1;
+}
+
+/* no node (inline: the ancestor walk's test is materialised, sltu/xori, before its branch -- as
+ * zwep_explosive.cpp's) */
+static inline bool NoNode(CNode *node)
+{
+    return !node;
+}
+
+/* the frame's hits walked nearest first, beyond the last one dealt with and within the range,
+ * skipping any on a node under the shooter's: none left, a miss; else, unless the material stops
+ * nothing (a penetration of 1), a bounce for the launchers' and satchels' classes and five items
+ * (two of them only once at rest), an impact for the rest -- each saying whether the shot is spent
+ * (0 and 4), stopped (1) or goes on to the next hit; the end point is the frame's end (SOCOM 1's
+ * HandleIntersections, 0x3C9B70: SOCOM II's skips the hits while the delay at 0x98 runs, drops the
+ * shotgun's impact, and ends the walk on 4 too). The shapes the target fixed: the hit count an
+ * if/else on `m_98 > 0` (its zero in the branch's delay slot and the result's clear duplicated into
+ * both arms); `closest` given a dead first definition at the top and `i` declared there (MW numbers
+ * a variable at its first definition: closest s4, i s3, n s2 as the target's), the loop's point at
+ * function scope (its y/z addresses hoisted into s6/s7, the frame's order) and the last hit's its own;
+ * the done flag spilled to the frame (sp+176) as the target's.
+ * OPEN, 0x438 against 0x440, 2 instructions: the item tests -- the target copies the weapon's id
+ * with `lb a0` and narrows it (`andi v1,a0,0xff`) ahead of the 172/173/178/185 compares and again
+ * after the 185 arm's join, compares unfolded; here MW reads one `lbu` and folds 172/173 into a range
+ * test. GetDamage's (2) is the same miss. Tried: GetId() inline, a local (single-assigned, with a dead
+ * default, assigned in the condition, through a comma `(id = .., false)`), a goto and a flag form
+ * (the local's own statement after the class tests), an inline predicate taking the id (by value;
+ * with the rest node), signed-char views of the field */
+bool CZProjectile::HandleIntersections(float dT)
+{
+    if (!m_di || m_state == PROJECTILE_AT_REST)
+        return false;
+
+    IntersectStruct *closest = 0;
+    int i;
+    int n;
+
+    if (m_98 > 0.0f)
+        n = 0;
+    else
+        n = m_di->m_Cnt;
+
+    bool result = false;
+
+    closest = 0;
+    bool done = false;
+    CPnt3D pos;
+    CPnt3D d;
+
+    do {
+        float mindist;
+        float range = m_currange * m_currange;
+
+        mindist = 0.0f;
+        float lastdist;
+
+        if (!closest)
+            lastdist = mindist;
+        else {
+            CPnt3D e;
+
+            closest->m_pos.Sub(&m_di->m_Tail, &e);
+            lastdist = e.x * e.x + e.y * e.y + e.z * e.z;
+        }
+        closest = 0;
+        for (i = 0; i < n; i++) {
+            IntersectStruct *is = &m_di->m_Intersects[i];
+            CNode *node = is->m_node;
+
+            if (node) {
+                bool found = false;
+
+                for (CNode *p = node->m_parent; !NoNode(p) && !found; p = p->m_parent)
+                    if (p == m_owner)
+                        found = true;
+                if (found)
+                    continue;
+            }
+
+            is->m_pos.Sub(&m_di->m_Tail, &d);
+
+            float dist = d.x * d.x + d.y * d.y + d.z * d.z;
+
+            if (!(dist <= lastdist)) {
+                if (!closest || dist < mindist) {
+                    if (dist < range) {
+                        closest = is;
+                        mindist = dist;
+                    }
+                }
+            }
+        }
+        if (closest) {
+            CMaterialEx *ex = CMaterialExArray::GetMaterialEx(closest->GetMaterial());
+            float pen = 0.0f;
+
+            if (ex)
+                pen = ex->m_penetration;
+            if (pen != 1.0f) {
+                CZFTSWeapon *w = dynamic_cast<CZFTSWeapon *>(m_weapon);
+                unsigned char r;
+
+                if (w && (w->GetIDType() == 121 || w->GetIDType() == 151 || w->GetId() == 172 ||
+                          w->GetId() == 173 || w->GetId() == 178 || (w->GetId() == 185 && m_restnode) ||
+                          (w->GetId() == 186 && m_restnode)))
+                    r = HandleBounce(closest, dT, &pos);
+                else
+                    r = HandleImpact(closest, dT, mindist, &pos);
+                if (r == 0 || r == 4) {
+                    result = true;
+                    done = true;
+                } else if (r == 1) {
+                    done = true;
+                    result = false;
+                } else {
+                    result = false;
+                    done = false;
+                }
+            }
+        } else {
+            if (DoMiss(dT, &pos) == 3)
+                result = false;
+            else
+                result = true;
+            done = true;
+        }
+    } while (!done);
+    m_frameendpos = pos;
+    CZWeapon::MakeWeaponEventCallbacks(1, this);
+    return result;
 }
 
 /* the fuse and the removal timer run out (SOCOM 1's HandleTimers, 0x3C99A0: a network game's copy of
