@@ -8,8 +8,10 @@
  * II's body: the C2D library builds the wide line), the iterator's FindValid (0x20F100) and Advance
  * (0x2107C0), CalcPoint (0x210870), and with them every copy they leave out of line -- ai.h's
  * CAiMap::GetCellCenter (0x20F220), GetCell (0x2106A0), GetAltitude (0x210630, inline in ai.h),
- * IsMapCell, GetIndex, IsLayer and the vector pieces, all on the AI core's real ai.h. Defined in
- * reverse of their image order (-inline deferred). */
+ * IsMapCell, GetIndex, IsLayer and the vector pieces, all on the AI core's real ai.h; (round 43)
+ * Tick (0x20EBD0, SOCOM 1's: its two map ticks one inline each, TickLines pinned out of line) and
+ * TickRegions (0x20DF70, SOCOM 1's). Not yet: Clip, TickWayPoints, TickAnchors, SetupPolygon. Defined in reverse of their
+ * image order (-inline deferred). */
 
 #include "../../gamez/zmath/zmath.h"
 #include "../../ai/ai.h"
@@ -69,6 +71,24 @@ public:
     void TickLines(const CAiMap &map, float fPulseTrans, bool bDim);
     void TickLine(const CAiMap::line &line, float fPulseTrans, bool bDim);
     void SetupPolygon(const CAiMap::line &line, float fPulseTrans, bool bDim);
+    /* the map's way points and regions, dimmed on request, and the anchors pulsed (SOCOM 1's
+     * TickWayPoints, TickRegions and TickAnchors, called from Tick as SOCOM 1's: 0x20DAC0,
+     * 0x20DF70, 0x20E750; unwritten) */
+    void TickWayPoints(const CAiMap &map, bool bDim);
+    void TickRegions(const CAiMap &map, bool bDim);
+    void TickAnchors(float fPulseTrans);
+    /* one map's lines, way points and regions ticked, the map kept while they are (inline: SOCOM
+     * 1's line table gives each of Tick's two calls one line, and its pulse is read before the map
+     * is looked up -- the arguments' right-to-left order; the name ours) */
+    void TickMap(CAiMap *map, float fPulseTrans, bool bDim)
+    {
+        m_map = map;
+        if (m_map) {
+            TickLines(*m_map, fPulseTrans, bDim);
+            TickWayPoints(*m_map, bDim);
+            TickRegions(*m_map, bDim);
+        }
+    }
     /* the pen put on a cell, and a line drawn to a point or a cell (SOCOM 1's LineTo, the cell's
      * forms SOCOM II's; the line drawn back, none when the cell has no point) */
     void MoveTo(const CAiMapLoc &loc);
@@ -463,6 +483,68 @@ void CZLineMap::SetupWideLine(const CAiMap::line &line, const LINE_DATA &data)
     polys->SetTrans((1.0f / 128.0f) * data.opacity);
 }
 
+/* the viewer: only its last valid cell (CEntity's, zentity.h), whose map id picks the maps */
+class CZSealBody : public CEntity {
+};
+
+/* the maps a map's list shows, and the AI's maps (fts_mission.cpp's, ai_maps.cpp's) */
+int ftsGetNumVisibleMaps(unsigned int list);
+/* (an int here: Tick compares and passes the returned map with no narrowing, as SOCOM 1's) */
+int ftsGetVisibleMap(unsigned int list, int i);
+
+class CAiMaps {
+public:
+    CAiMap *GetMapByIndex(unsigned int i) const;
+};
+
+extern CAiMaps AiMaps;
+
+/* the pulse stepped (up and down between 60 and 127); last tick's lines, strings, triangles, wide
+ * lines and bitmaps dropped; then the maps the viewer's map shows, dimmed, its own map bright and
+ * the anchors (SOCOM 1's Tick, the wide lines and bitmaps SOCOM II's) */
+bool CZLineMap::Tick(CZNewHudMap *hudmap, float dT)
+{
+    static float transp_delta = 167.5f;
+
+    g_fPulseTrans += transp_delta * dT;
+    if (g_fPulseTrans > 127.0f) {
+        g_fPulseTrans = 127.0f;
+        transp_delta = -transp_delta;
+    } else if (g_fPulseTrans < 60.0f) {
+        g_fPulseTrans = 60.0f;
+        transp_delta = -transp_delta;
+    }
+    m_hudmap = hudmap;
+    m_lastline = 0;
+    m_laststring = 0;
+    m_iNumActiveTriangles = 0;
+    for (int iLine = 0; iLine < m_vecWideLines.size(); iLine++)
+        delete m_vecWideLines[iLine];
+    m_vecWideLines.clear();
+    for (int iBmp = 0; iBmp < m_vecBitmaps.size(); iBmp++)
+        delete m_vecBitmaps[iBmp];
+    m_vecBitmaps.clear();
+
+    CZSealBody *viewer = hudmap->m_viewer;
+
+    if (!viewer)
+        return false;
+
+    unsigned int iMapId = viewer->m_mapLocValid.m_mapid;
+
+    for (int iMap = 0; iMap < ftsGetNumVisibleMaps(iMapId); iMap++) {
+        unsigned int map = ftsGetVisibleMap(iMapId, iMap);
+
+        if (iMapId != map)
+            TickMap(AiMaps.GetMapByIndex(map), g_fPulseTrans, true);
+    }
+    TickMap(AiMaps.GetMapByIndex(iMapId), g_fPulseTrans, false);
+    TickAnchors(g_fPulseTrans);
+    m_map = 0;
+    m_hudmap = 0;
+    return false;
+}
+
 inline bool CZLineMap::IsObjectiveLine(const CAiMap::line &line) const
 {
     CMissionObjectiveCam *obj = m_hudmap->m_objectivelist.GetCurrentObjective();
@@ -522,6 +604,8 @@ void CZLineMap::TickLine(const CAiMap::line &line, float fPulseTrans, bool bDim)
 
 /* each of the map's lines: drawn as a line unless it is a polygon without its outline, and a
  * polygon filled (SOCOM 1's TickLines; the polygon's own tick, 0x20F5C0, SOCOM II's) */
+/* (pinned out of line: Tick calls it, where -inline auto would take its few statements) */
+#pragma auto_inline off
 void CZLineMap::TickLines(const CAiMap &map, float fPulseTrans, bool bDim)
 {
     const CAiMap::lines &lines = map.m_lineTable;
@@ -533,6 +617,53 @@ void CZLineMap::TickLines(const CAiMap &map, float fPulseTrans, bool bDim)
             TickLine(*i, fPulseTrans, bDim);
         if ((bool)(*i).m_polygon != false)
             SetupPolygon(*i, fPulseTrans, bDim);
+    }
+}
+#pragma auto_inline reset
+
+/* the map's regions of kinds 1 and 5 outlined, corner to corner, in the extract look (dimmed on
+ * request) -- SOCOM 1's TickRegions (its DWARF: myLine, type, loc, rit and the static reference
+ * ld), the corners' cells drawn through SOCOM II's cell LineTo */
+void CZLineMap::TickRegions(const CAiMap &map, bool bDim)
+{
+    static LINE_DATA &ld = _linedata[LINETYPE_EXTRACT];
+    float fTrans = ld.opacity;
+
+    /* (a ternary: the if-statement pads its join and multiplies the other way round, fTrans first) */
+    fTrans = bDim ? 0.3f * fTrans : fTrans;
+
+    const CAiMap::regions &regions = map.m_regionTable;
+
+    for (CAiMap::regions::const_iterator rit = regions.begin(); rit != regions.end(); ++rit) {
+        int type = (*rit).m_type;
+
+        if (type == 1 || type == 5) {
+            CAiMapLoc loc;
+            C2DLine *myLine;
+
+            loc = (*rit).m_loc;
+            MoveTo(loc);
+            loc = CAiMapLoc((*rit).m_loc.x + (*rit).m_dx - 1, (*rit).m_loc.y, 0);
+            if ((myLine = LineTo(loc)) != 0) {
+                myLine->SetColor(ld.color.x, ld.color.y, ld.color.z);
+                myLine->SetTrans(fTrans);
+            }
+            loc = CAiMapLoc((*rit).m_loc.x + (*rit).m_dx - 1, (*rit).m_loc.y + (*rit).m_dy - 1, 0);
+            if ((myLine = LineTo(loc)) != 0) {
+                myLine->SetColor(ld.color.x, ld.color.y, ld.color.z);
+                myLine->SetTrans(fTrans);
+            }
+            loc = CAiMapLoc((*rit).m_loc.x, (*rit).m_loc.y + (*rit).m_dy - 1, 0);
+            if ((myLine = LineTo(loc)) != 0) {
+                myLine->SetColor(ld.color.x, ld.color.y, ld.color.z);
+                myLine->SetTrans(fTrans);
+            }
+            loc = (*rit).m_loc;
+            if ((myLine = LineTo(loc)) != 0) {
+                myLine->SetColor(ld.color.x, ld.color.y, ld.color.z);
+                myLine->SetTrans(fTrans);
+            }
+        }
     }
 }
 
