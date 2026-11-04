@@ -114,6 +114,10 @@ public:
     CKey *Insert(const char *name, const void *data, int size);
     /* a key's data in place, a pointer into the CBufferIO's buffer */
     bool FetchLIP(CKey *key, void **buf);
+    /* every key of the open one fetched in place and handed to func -- the archive, the key's
+     * name, its data and size, and data: the keys func took counted (SOCOM 1's FetchAll, 0x25A390;
+     * SOCOM 1's said only whether there were any) */
+    int FetchAll(int (*func)(CZAR &zar, const char *name, void *buf, int size, void *data), void *data);
     bool Fetch(CKey *key, void *buf, int size, unsigned int flags);
     bool Fetch(const char *name, void *buf, int size);
     bool Fetch(const char *name, char **str);

@@ -62,6 +62,54 @@ bool CZAR::Fetch(const char *name, char **str)
     return ok;
 }
 
+/* every key of the open one: opened, sought, fetched in place and handed to func, which takes it
+ * when it answers more than nothing and no more than the key's size; the keys taken counted (SOCOM
+ * 1's FetchAll -- the same walk, its end taken once; SOCOM 1's called FetchLIP out of line and
+ * returned whether any were taken). The fetch is FetchLIP's body written with the seek's test in
+ * the if: inlined, FetchLIP itself (its `ok = seek == offset; if (ok)`, which its own row needs)
+ * keeps the compare materialised, 8 bytes long.
+ * OPEN, 15 instructions, registers only: the iterator and the offset/ok trade s1/s0 (MW's
+ * colouring pushes the scalarised iterator last, so it colours first and takes s0; the target's
+ * wants it numbered between the fetch's io and offset). Tried (round 12): the iterator and end
+ * declared together, before the loop, the io, offset, ok or key declared at the top, the fetch an
+ * inline -- build/scratch/core/v_fa*.py */
+int CZAR::FetchAll(int (*func)(CZAR &zar, const char *name, void *buf, int size, void *data), void *data)
+{
+    int count = 0;
+    CKey *open = GetOpenKey();
+    CKeyRing::iterator e = open->end();
+
+    for (CKeyRing::iterator i = open->begin(); i != e; ++i) {
+        CKey *key = *i;
+        bool ok = false;
+
+        if (IsOpen() && OpenKey(key)) {
+            ok = m_pFile->fseek(key->m_offset, 0) != -1;
+            if (ok) {
+                void *buf = 0;
+                CBufferIO *io = dynamic_cast<CBufferIO *>(m_pFile);
+
+                if (IsOpen() && OpenKey(key)) {
+                    if (key->m_size) {
+                        int offset = key->m_offset;
+
+                        if (m_pFile->fseek(offset, 0) == offset)
+                            io->fread(key->m_size, &buf);
+                    }
+                    CloseKey(key);
+                }
+                int n = func(*this, key->m_name, buf, key->m_size, data);
+
+                ok = n > 0 && n <= key->m_size;
+            }
+            CloseKey(key);
+        }
+        if (ok)
+            count++;
+    }
+    return count;
+}
+
 /* a new key under the open one, if its data could be written (SOCOM 1's) */
 CKey *CZAR::Insert(const char *name, const void *data, int size)
 {
@@ -75,6 +123,55 @@ CKey *CZAR::Insert(const char *name, const void *data, int size)
         key = 0;
     }
     return key;
+}
+
+/* a key's data appended: to the second file at its end, or to the buffer at 0x34 when there is
+ * none; the key given the data's place and size, the data padded with 0xAF to m_data_padded
+ * (SOCOM II's: SOCOM 1's encrypted the data into the one file) */
+bool CZAR::Insert(CKey *key, const void *data, int size)
+{
+    bool ok = false;
+
+    if (data && size > 0) {
+        int pos = m_pDataFile ? m_pDataFile->fseek(0, 2) : 0;
+
+        ok = pos != -1;
+        if (ok) {
+            int at = 0;
+
+            if (m_pDataFile)
+                ok = m_pDataFile->fwrite(data, size) == size;
+            else {
+                if (m_34)
+                    at = m_34->m_used;
+                ok = WriteBuffer(data, size) == size;
+            }
+            if (ok) {
+                key->m_offset = m_pDataFile ? pos : at;
+                key->m_size = size;
+
+                unsigned int rem = size % m_data_padded;
+                unsigned int pad;
+
+                if (rem)
+                    pad = m_data_padded - rem;
+                else
+                    pad = 0;
+                if (pad) {
+                    char *buf = (char *)_malloc(pad, 0, 0);
+
+                    memset(buf, (char)0xAF, pad);
+                    if (m_pDataFile)
+                        m_pDataFile->fwrite(buf, pad);
+                    else
+                        WriteBuffer(buf, pad);
+                    if (buf)
+                        _free(buf, 0, 0);
+                }
+            }
+        }
+    }
+    return ok;
 }
 
 bool CZAR::Fetch(const char *name, void *buf, int size)
