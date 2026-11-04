@@ -26,6 +26,21 @@ public:
 
 class CZAR;
 
+/* the archive's directory tail, at the file's end (SOCOM 1's DWARF: 0x60 bytes; SOCOM II's 0x64,
+ * the version a word later -- CZAR() sets it, 0x20002 where SOCOM 1's set 0x20001) */
+struct TAIL {
+    int flags;   // 0x0
+    int key_count;   // 0x4
+    int stable_size;   // 0x8
+    int stable_ofs;   // 0xc
+    int reserved[16];   // 0x10
+    int offset;   // 0x50
+    int crc;   // 0x54
+    int appversion;   // 0x58
+    int _5c;   // 0x5c: SOCOM II's
+    int version;   // 0x60
+};   // 0x64 bytes
+
 class CKey : public CKeyRing {
 public:
     CKey(const char *name);
@@ -85,13 +100,22 @@ public:
     CKeyRing m_keys;   // 0x4: the open keys, innermost last
     CIO* m_pFileAlloc;   // 0x10
     CIO* m_pFile;   // 0x14
-    unsigned char _18[0x30 - 0x18];   // 0x18: SOCOM 1's m_databuffer .. m_data_padded, and new fields
+    void* m_databuffer;   // 0x18
+    unsigned int m_databuffer_size;   // 0x1c
+    int m_data_size;   // 0x20: SOCOM II's (the name ours): the buffer's size the bone loaders take with it
+    unsigned char m_24;   // 0x24: SOCOM II's (ReleaseDataBuffer clears it)
+    unsigned char m_modified;   // 0x25 (SOCOM 1: 0x20): the directory to be written (0x258BD0)
+    unsigned int m_data_padded;   // 0x28 (SOCOM 1: 0x24)
+    int m_2c;   // 0x2c: SOCOM II's
     int m_data_start;   // 0x30 (new in SOCOM II, the name ours): the file offset the keys' offsets count from
-    unsigned char _34[0x9C - 0x34];   // 0x34: a new field, then SOCOM 1's m_tail (grown by 4)
+    int m_34;   // 0x34: SOCOM II's
+    TAIL m_tail;   // 0x38 (SOCOM 1: 0x28)
     CKey* m_root;   // 0x9c (SOCOM 1: 0x88)
     CSTable* m_stable;   // 0xa0 (SOCOM 1: 0x8c)
     char* m_filename;   // 0xa4 (SOCOM 1: 0x90): CRdrArchive's walks compare their names with it
-    unsigned char _a8[0xB8 - 0xA8];   // 0xa8: SOCOM 1's m_key_buffer .. m_bSecure
+    std::vector<CKey *> m_key_buffer;   // 0xa8 (SOCOM 1's CKeyVec, a vector<CKey>: the element type here not settled)
+    unsigned char m_bCompress;   // 0xb4
+    unsigned char m_bSecure;   // 0xb5
 };   // 0xb8 bytes (OpenZAR's new; SOCOM 1's 0xA4)
 
 }

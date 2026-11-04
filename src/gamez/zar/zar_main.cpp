@@ -3,6 +3,7 @@
  * reverse of their image order (-inline deferred). */
 
 #include "zar.h"
+#include "../zutil/util_stable.h"
 
 /* the root key's name and a deleted key's (SOCOM 1's file statics, "ROOT" and "DELETED"; OVL1
  * 0x3DD000 and 0x3DD008, 8 bytes apart as MW 3.0 lays such statics out) */
@@ -10,6 +11,25 @@ static const char *DEFAULT_ZAR_NAME = "ROOT";
 static const char *DELETED_ZAR_NAME = "DELETED";
 
 namespace zar {
+
+/* the archive over a file, an own CFileIO when none is given (SOCOM 1's: the members zeroed, the
+ * tail cleared and versioned, a string table of 1024, the name set -- SetFilename inlined -- the
+ * data padded to 16, a root key named DEFAULT_ZAR_NAME). Byte-exact: the file is a ternary (both
+ * builds branch to the allocation and jump over an empty arm, which an `if (!io)` turns round) */
+CZAR::CZAR(const char *name, CIO *io)
+    : m_pFileAlloc(0), m_databuffer(0), m_databuffer_size(0), m_24(0), m_2c(0), m_root(0), m_stable(0),
+      m_filename(0), m_bCompress(0)
+{
+    memset(&m_tail, 0, sizeof(m_tail));
+    m_tail.version = 0x20002;
+    m_stable = new CSTable(0, 1024);
+    m_34 = 0;
+    m_data_start = 0;
+    SetFilename(name);
+    m_pFile = io ? io : (m_pFileAlloc = new CFileIO);
+    m_data_padded = 16;
+    m_root = new CKey(DEFAULT_ZAR_NAME);
+}
 
 /* the name copied in unless it is the one held: the old copy freed (never the default's own
  * pointer), no name or the default's kept as the default's pointer (SOCOM 1's) */

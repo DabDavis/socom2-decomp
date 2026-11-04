@@ -133,7 +133,7 @@ void zBoneLoad()
     if (n > 1) {
         archive->m_commons.reserve(n);
         archive->LoadAll();
-        archive->m_bufsize = *(int *)(archive->m_zar._18 + 8);
+        archive->m_bufsize = archive->m_zar.m_data_size;
         archive->m_buffer = ReleaseDataBuffer__Q23zar4CZARFv(&archive->m_zar);
     }
     archive->m_zar.Close();
@@ -167,7 +167,7 @@ void zBoneLoadMap(const char *dir, CRdrFile *rdr)
         archive->m_commons.reserve(n);
         bool ok = archive->LoadAll();
 
-        archive->m_bufsize = *(int *)(archive->m_zar._18 + 8);
+        archive->m_bufsize = archive->m_zar.m_data_size;
         archive->m_buffer = ReleaseDataBuffer__Q23zar4CZARFv(&archive->m_zar);
         loaded = ok;
     }
