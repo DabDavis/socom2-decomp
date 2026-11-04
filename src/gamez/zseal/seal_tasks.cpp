@@ -96,6 +96,10 @@ void ClearLook__9CSealCtrlF7AI_LOOK(CSealCtrl *ctrl, int look);
  * range) and a CSealCtrlAi function the goto's end calls first (OVL2 0x5628F0) */
 void func_005F3FC0(CAiSScript *s, CSealCtrlAi *ai, bool b);
 void func_005628F0(CSealCtrlAi *ai);
+/* the AI's byte at 0x5BC, out of line (OVL2 0x555890: `lb` there, the caller masks it), and whether its route is done -- a path
+ * at 0x508 in state 4, or 1 to 3 (OVL2 0x5629B0): the SEAL lane's rows, CTGoto::Tick's */
+unsigned char func_00555890(CSealCtrlAi *ai);
+bool func_005629B0(CSealCtrlAi *ai);
 /* the AI's event mask brought up to its team (OVL2 0x572D70, the SEAL lane's row: CTTeam::Tick calls
  * it where SOCOM 1's called CSealCtrlAi::UpdateEventMask) and a squad's member set up again
  * (CSealUnit::InitalizeSealUnit, OVL2 0x5EC9F0: seal_unit.cpp's, which zseal.h's CSealUnit does not
@@ -700,6 +704,7 @@ struct CTMacro : TASK_HDR {
 
     static _zanim_cmd_hdr *Parse(_zrdr *rdr);
     static void Begin(_zanim_cmd_hdr *hdr);
+    static bool Tick(_zanim_cmd_hdr *hdr, float *dT);
 };
 
 /* ai::LOOKAT (SOCOM 1's CTLookAt) */
@@ -746,8 +751,12 @@ struct CTGoto : TASK_HDR {
     unsigned char _8[0xc - 0x8];
     unsigned char m_bit0 : 1;   // 0xc bit 0
     unsigned char m_bit1 : 1;   // bit 1
+    unsigned char _c2 : 6;
+    unsigned char _d;
+    unsigned char m_done : 1;   // 0xe bit 0: the tick done at once
 
     static void Begin(_zanim_cmd_hdr *hdr);
+    static bool Tick(_zanim_cmd_hdr *hdr, float *dT);
     static void End(_zanim_cmd_hdr *hdr);
 };
 
@@ -1122,6 +1131,37 @@ void CTGoto::Begin(_zanim_cmd_hdr *hdr)
     }
 }
 
+/* running until the AI's route is done, the AI in mode 3: the move set up again for a script state
+ * in mode 2 (OVL2 0x5DB510) */
+bool CTGoto::Tick(_zanim_cmd_hdr *hdr, float *dT)
+{
+    TASK_SEAL(CTGoto);
+    CEntityCtrl *ctrl = seal ? seal->m_control : 0;
+    CSealCtrlAi *ai = seal ? SealAi(seal) : 0;
+
+    if (!seal || !ctrl || !ai) {
+        *dT = 0.0f;
+        return true;
+    }
+    bool done = cmd->m_done;
+
+    if (!done) {
+        ai->SetAiMode((AI_MODE)3);
+        CAiState *s = ai->GetAiState();
+        CAiSScript *script = s && s->m_state == AI_STATE_SCRIPT ? (CAiSScript *)s : 0;
+
+        if (script && func_00555890(ai) == 2) {
+            func_005DB8F0(ai, cmd, 1);
+            func_005F3FC0(script, ai, true);
+        }
+        bool r = func_005629B0(ai);
+
+        done = cmd->m_bit0 ? r : true;
+    }
+    *dT = 0.0f;
+    return done;
+}
+
 /* (OVL2 0x5DB350: as Begin) */
 void CTGoto::End(_zanim_cmd_hdr *hdr)
 {
@@ -1319,6 +1359,62 @@ void CTLookAt::End(_zanim_cmd_hdr *hdr)
         return;
     if (cmd->m_looking & 1)
         ClearLook__9CSealCtrlF7AI_LOOK((CSealCtrl *)ctrl, 3);
+}
+
+/* the AI's bit 6 (an inline bool: its read is not merged with the set's load of the same byte) */
+inline bool TaskAiBit6(const CSealCtrlAi *ai)
+{
+    return ai->m_aibit6;
+}
+
+/* a script state's hold, false for none (inline: its value masked at the assignment) */
+inline bool TaskScriptHeld(const CAiSScript *script)
+{
+    return script ? script->m_hold : false;
+}
+
+/* the anim run for the SEAL, its script state pushed with it (the AI's bit 6 held set meanwhile, the
+ * old script's hold carried over) -- done at once (OVL2 0x5D6DC0; the select read into a local ahead
+ * of GetNode, the bit read through an inline bool: both as the target)
+ * OPEN, 8 bytes short: the old hold's bool is masked into its saved register at the join in the target
+ * (`sltu v0` / `move v0,zero`, then `andi s4,v0,0xff`), straight into it here (`sltu s4`) -- through an
+ * inline, an if-assign, an unsigned char, the anim's and run's order, the select declared at the top:
+ * none moves it; and the SEAL takes s1 where the target colours it after the select and the AI (s4) */
+bool CTMacro::Tick(_zanim_cmd_hdr *hdr, float *dT)
+{
+    TASK_SEAL(CTMacro);
+    CSealCtrlAi *ai = seal ? SealAi(seal) : 0;
+
+    if (!ai) {
+        *dT = 0.0f;
+        return true;
+    }
+    CZAnim *anim = cmd->m_anim;
+    CZAnim *run = 0;
+
+    if (anim) {
+        void *select = seal->m_select;
+
+        run = anim->ActivateArg(1, 1, select, 3, seal->GetNode(), 0);
+    }
+    if (run) {
+        bool bit6 = TaskAiBit6(ai);
+
+        ai->m_aibit6 = true;
+        CAiState *s = ai->GetAiState();
+        CAiSScript *script = s && s->m_state == AI_STATE_SCRIPT ? (CAiSScript *)s : 0;
+        bool hold = TaskScriptHeld(script);
+
+        if (ai->PushAiState(AI_STATE_SCRIPT, 5)) {
+            s = ai->GetAiState();
+            script = s && s->m_state == AI_STATE_SCRIPT ? (CAiSScript *)s : 0;
+            script->m_58 = (unsigned int)run;
+            script->SetHold(hold);
+        }
+        ai->m_aibit6 = bit6;
+    }
+    *dT = 0.0f;
+    return true;
 }
 
 /* the anim looked up by name (OVL2 0x5D7040) */
