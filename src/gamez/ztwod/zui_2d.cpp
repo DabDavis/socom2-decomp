@@ -289,6 +289,7 @@ class CScrollText : public CWrappedText {
 public:
     void LoadSpec(const CScrollSpec &spec);
     virtual ~CScrollText();
+    virtual void Draw(const CMatrix &m, zdb::CTextureRelocMgr *mgr);
     virtual void Tick(float dT);
 
     int m_250;   // 0x250
@@ -588,11 +589,12 @@ public:
 class CHProgressBar : public CPlainBmp {
 public:
     virtual ~CHProgressBar();
+    virtual void Draw(const CMatrix &m, zdb::CTextureRelocMgr *mgr);
     virtual void Tick(float dT);
     virtual void UpdateUIVar(CUIVariable *var);
 
     float m_fill;   // 0xa0: 0 to 1
-    float _a4;
+    int m_width;   // 0xa4: the full bar's width (Draw converts it)
     float m_time;   // 0xa8: the seconds a full bar takes
     CSaferStr m_str;   // 0xac
 } __attribute__((aligned(16)));   // 0xc0 bytes
@@ -775,6 +777,51 @@ void CTeleType::SetString(const char *s, bool translate)
     m_text = s;
     m_1a8 = 0;
     Update();
+}
+
+/* slot 2: the wrapped lines' strings laid out from the corner the matrix places, side by side
+ * along a row until the width is passed (that string then starts the next row), the rows
+ * scrolled up by the scroll position and faded at the window's edges -- out of sight beyond a
+ * row past either, in proportion within it (SOCOM 1's CScrollText::Draw; SOCOM II places each
+ * string with SetPos) */
+void CScrollText::Draw(const CMatrix &m, zdb::CTextureRelocMgr *mgr)
+{
+    CPnt3D p = CPnt3D::zero;
+
+    m.Transform(&p, 1);
+    int line = 0;
+    float bottom = p.y + m_25c * GetSpacing();
+    float x = 0.0f;
+    iterator e = end();
+
+    for (iterator i = begin(); i != e;) {
+        float y = p.y + line * GetSpacing() - m_scroll;
+        C2DString *str = (C2DString *)*i;
+
+        str->SetPos((int)(p.x + x), (int)y);
+        if (!(x <= m_width)) {
+            x = 0.0f;
+            line++;
+            continue;
+        }
+        ++i;
+        x += str->m_charheight;
+        if (y < p.y) {
+            if (y < p.y - GetSpacing())
+                str->SetTrans(0.0f);
+            else {
+                y -= p.y - GetSpacing();
+                str->SetTrans(100.0f * (y / GetSpacing()));
+            }
+        } else if (!(y <= bottom - GetSpacing())) {
+            if (!(y <= bottom))
+                str->SetTrans(0.0f);
+            else
+                str->SetTrans(100.0f * ((bottom - y) / GetSpacing()));
+        } else
+            str->SetTrans(100.0f);
+        str->Draw(mgr, 0, 0);
+    }
 }
 
 /* the text scrolled toward its line, 30 a second, snapped once within a step (SOCOM 1's
@@ -1746,6 +1793,53 @@ public:
 
     CMatrix m_matrix;   // 0x0
 };
+}
+
+/* the menu being shown (zui.cpp's UiGetCurMenu, 0x36A200, not named yet): a node, its vtable
+ * pointer at 0x60 as CNode's -- slot +0x24 the child found by name (znode.h's order) */
+class CMenuNode {
+public:
+    unsigned char _0[0x60];
+    virtual ~CMenuNode();
+    virtual void _Copy();
+    virtual void UpdateGrid();
+    virtual void ReserveChildren(int n);
+    virtual void AddChild(zdb::CNode *child);
+    virtual int DeleteChild(zdb::CNode *child);
+    virtual void DeleteChildren();
+    virtual zdb::CNode *FindChild(const char *name, bool deep);
+};
+
+extern "C" CMenuNode *func_0036A200();
+
+/* the GS scissor rectangle (zvid) */
+void zVid_Scissor(int x1, int y1, int x2, int y2);
+
+/* slot 2: the bitmap drawn scissored to the filled part -- the bar's corner and the fill's corner
+ * placed by the matrix -- and the menu's node of the bar's name moved to the fill's edge (SOCOM
+ * 1's CHProgressBar::Draw: CPlainBmp::Draw inlined, the corners transformed out of line in SOCOM
+ * II) */
+void CHProgressBar::Draw(const CMatrix &m, zdb::CTextureRelocMgr *mgr)
+{
+    CPnt3D p[2];
+
+    p[0].x = 0.0f;
+    p[0].y = 0.0f;
+    p[0].z = 0.0f;
+    p[1].x = m_width * m_fill;
+    p[1].y = m_iHeight;
+    p[1].z = 0.0f;
+    m.Transform(p, 2);
+    mgr->PreGetSprPacket(0);
+    zVid_Scissor((int)p[0].x, (int)p[0].y, (int)p[1].x, (int)p[1].y);
+    CPlainBmp::Draw(m, mgr);
+    mgr->PreGetSprPacket(0);
+    zVid_Scissor(0, 0, 640, 448);
+    CMenuNode *menu = func_0036A200();
+    zdb::CNode *node = menu->FindChild(m_str.c_str(), true);
+
+    if (node)
+        node->SetPosition(p[1].x, p[0].y, 0.0f);
 }
 
 /* the node zoomed in about the control's centre, by half the time's step at the given rate, no
