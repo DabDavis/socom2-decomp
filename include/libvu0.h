@@ -24,6 +24,9 @@ void sceVu0TransMatrix(sceVu0FMATRIX m0, sceVu0FMATRIX m1, sceVu0FVECTOR tv);
 void sceVu0CameraMatrix(sceVu0FMATRIX m, sceVu0FVECTOR p, sceVu0FVECTOR zd, sceVu0FVECTOR yd);
 void sceVu0ApplyMatrix(sceVu0FVECTOR v0, sceVu0FMATRIX m0, sceVu0FVECTOR v1);
 void sceVu0CopyVector(sceVu0FVECTOR v0, sceVu0FVECTOR v1);
+/* v0.xyz = v1 * r + v2 * (1 - r) and v0.w = v1.w, a quadword written (MAIN 0x1C0768,
+ * src/lib/sdk/libvu0.c) */
+void sceVu0InterVectorXYZ(sceVu0FVECTOR v0, sceVu0FVECTOR v1, sceVu0FVECTOR v2, float r);
 void sceVu0ViewScreenMatrix(sceVu0FMATRIX m, float scrz, float ax, float ay, float cx, float cy,
                             float zmin, float zmax, float nearz, float farz);
 #ifdef __cplusplus

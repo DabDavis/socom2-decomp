@@ -20,6 +20,8 @@ char *strchr(const char *s, int c);
 char *strrchr(const char *s, int c);
 char *strstr(const char *s, const char *sub);
 int strcasecmp(const char *a, const char *b);
+/* newlib's (MAIN 0x1993C0, src/lib/libc/strncasecmp.c) */
+int strncasecmp(const char *a, const char *b, size_t n);
 #ifdef __cplusplus
 }
 #endif
