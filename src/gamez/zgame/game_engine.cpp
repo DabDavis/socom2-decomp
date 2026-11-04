@@ -117,12 +117,12 @@ void zRndrInit();   /* 0x335FD0 */
 void zMath_Init();   /* 0x306670 */
 void uninit_trig_table();   /* 0x309400 */
 void zUtilUninit();   /* 0x39C6F0 */
+void zVid_Uninit();   /* 0x3B11F0 */
 
 /* unnamed yet (SOCOM 1's names in the comments) */
 extern "C" {
 void func_00576120();   /* (OVL2: SOCOM 1 deleted its CSealAnim here) */
 void func_005761B0();   /* (OVL2: and newed it here) */
-void func_003B11F0();   /* zVid_Uninit */
 }
 
 /* play started: the game active, the first state switched to (OVL1 0x2D04D0) */
@@ -184,7 +184,7 @@ void CGame::StopEngine()
     CInput::Uninit();
     CInput::DeletePad(0);
     CInput::DeletePad(1);
-    func_003B11F0();
+    zVid_Uninit();
     zUtilUninit();
     CGameStateChangeCmd::DestroyPool();
     uninit_trig_table();
