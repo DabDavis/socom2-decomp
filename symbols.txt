@@ -8352,33 +8352,33 @@
 0x003D2070 0x64 func_003D2070  # OVL1
 0x003D20E0 0x64 func_003D20E0  # OVL1
 0x003D2150 0x60 SetDecalSetName__8CZWeaponFPCc  # OVL1; s1:align, checked by hand (the weapons lane round 16: SOCOM 1's, the same code -- the name at 0x20 (SOCOM 1's 0x1C) freed and _strdup'ed; func_003CDA30 calls it)
-0x003D21B0 0x8 func_003D21B0  # OVL1
+0x003D21B0 0x8 GetDecalSetName__8CZWeaponFv  # OVL1; s1:calls by hand (the wep lane, round 17: InitializeWeapons passes its result to CZDecalSet::GetDecalSetByName as SOCOM 1's does; returns m_decalsetname, 0x20)
 0x003D21C0 0x60 ClearAnims__8CZWeaponFv  # OVL1; s1:order by hand (SOCOM 1's shape: m_hitanim freed, three anims cleared -- one more in SOCOM II -- m_specialmaterialanim freed)
 0x003D2220 0x50 GetTimer__8CZWeaponFi  # OVL1; by hand (the wep lane: 0xD8 + 4i, or the mission's float at theMission+0x1864 for the item 152, 9999999 when negative; HandleDelayedDetonate and the kit call it; the name ours); zwep_weapon.cpp
 0x003D2270 0x10 SetTimer__8CZWeaponFif  # OVL1; by hand (the wep lane: the reader stores the entry's Timer1/Timer2 (default 9999999) at 0xD8 + 4i; the name ours); zwep_weapon.cpp
-0x003D2280 0x8 func_003D2280  # OVL1
-0x003D2290 0x8 func_003D2290  # OVL1
+0x003D2280 0x8 SetZoomedFireAnimTT__8CZWeaponFP6CZAnim  # OVL1; by hand (the wep lane, round 17: takes "%s_zoom_TT"'s animation, new in SOCOM II -- the name ours; stores 0x8C)
+0x003D2290 0x8 SetZoomedFireAnim__8CZWeaponFP6CZAnim  # OVL1; s1:calls by hand (the wep lane, round 17: takes "%s_zoom"'s animation, as SOCOM 1's; stores 0x88, which GetFireAnim(true) returns)
 0x003D22A0 0x8 func_003D22A0  # OVL1
 0x003D22B0 0x1C GetFireAnim__8CZWeaponFb  # OVL1; the integrator 2026-11-04, by the weapons lane round 15: its body is zoomed ? m_88 : m_84, and SOCOM 1's Fire calls GetFireAnim at the same site (CTurret::Fire 0x3A8D20 calls it)
 0x003D22D0 0x8 func_003D22D0  # OVL1
 0x003D22E0 0x2C GetHitAnim__8CZWeaponFi  # OVL1; s1:order by hand (SOCOM 1's shape: m_hitanim[i], 0 unless i is below CMaterialExArray's list size)
-0x003D2310 0x8 func_003D2310  # OVL1
+0x003D2310 0x8 GetFireAnimName__8CZWeaponFv  # OVL1; s1:calls by hand (the wep lane, round 17: InitializeWeapons looks its result up for the fire, "%s_zoom" and "%s_zoom_TT" animations, as SOCOM 1's; m_fireanimname, 0xAC)
 0x003D2320 0x2C GetSpecialMaterialAnim__8CZWeaponFi  # OVL1; s1:order by hand (the same over m_specialmaterialanim, 0x94)
 0x003D2350 0x40 SetSpecialMaterialAnim__8CZWeaponFiP6CZAnim  # OVL1; s1:order by hand (the same over m_specialmaterialanim, 0x94; before SetHitAnim as in SOCOM 1)
-0x003D2390 0x8 func_003D2390  # OVL1
-0x003D23A0 0x8 func_003D23A0  # OVL1
+0x003D2390 0x8 SetDefaultSpecialAnim__8CZWeaponFP6CZAnim  # OVL1; s1:calls by hand (the wep lane, round 17: as SOCOM 1's; stores 0x90)
+0x003D23A0 0x8 SetFireAnim__8CZWeaponFP6CZAnim  # OVL1; s1:calls by hand (the wep lane, round 17: takes the fire name's animation, as SOCOM 1's; stores 0x84, which GetFireAnim(false) returns)
 0x003D23B0 0x40 SetHitAnim__8CZWeaponFiP6CZAnim  # OVL1; s1:order by hand (SOCOM 1's: m_hitanim[i] set when i is below the materials' count, true; false otherwise)
-0x003D23F0 0x8 func_003D23F0  # OVL1
-0x003D2400 0x8 func_003D2400  # OVL1
-0x003D2410 0x8 func_003D2410  # OVL1
-0x003D2420 0x44 func_003D2420  # OVL1
-0x003D2470 0x44 func_003D2470  # OVL1
+0x003D23F0 0x8 GetSpecialMaterialAnimName__8CZWeaponFv  # OVL1; s1:calls by hand (the wep lane, round 17: the special material animations' prefix, as SOCOM 1's; m_specialmaterialanimname, 0xB4)
+0x003D2400 0x8 GetDefaultSpecialAnimName__8CZWeaponFv  # OVL1; s1:calls by hand (the wep lane, round 17: looked up for SetDefaultSpecialAnim, as SOCOM 1's; m_defaultspecialanimname, 0xB0)
+0x003D2410 0x8 GetHitAnimName__8CZWeaponFv  # OVL1; s1:calls by hand (the wep lane, round 17: the "%s_%s" hit animations' prefix, as SOCOM 1's; m_hitanimname, 0xA8)
+0x003D2420 0x44 AllocateHitAnimMem__8CZWeaponFv  # OVL1; s1:calls by hand (the wep lane, round 17: InitializeWeapons calls it first of the two allocators, as SOCOM 1's; m_hitanim, 0x80, _malloc'd for the materials)
+0x003D2470 0x44 AllocateSpecialMaterialAnimMem__8CZWeaponFv  # OVL1; s1:calls by hand (the wep lane, round 17: the second allocator, m_specialmaterialanim, 0x94)
 0x003D24C0 0x6C func_003D24C0  # OVL1
 0x003D2530 0x6C func_003D2530  # OVL1
 0x003D25A0 0x6C func_003D25A0  # OVL1
 0x003D2610 0x6C func_003D2610  # OVL1
 0x003D2680 0xC0 IsLegalAmmo__8CZWeaponFP6CZAmmo  # OVL1; s1:align confirmed by hand (the wep lane: walks m_LegalAmmoList (0xC4) comparing CZAmmo::GetName's strings, as SOCOM 1's); zwep_weapon.cpp
-0x003D2740 0x8 func_003D2740  # OVL1
+0x003D2740 0x8 GetIconTextureName__8CZWeaponCFv  # OVL1; s1:calls by hand (the wep lane, round 17: InitializeWeapons tests it and passes it to CWorld::GetTexHandle as SOCOM 1's does; returns m_icontexname, 0x14)
 0x003D2750 0x8 func_003D2750  # OVL1
 0x003D2760 0x8 GetAssociatedGearName__8CZWeaponFv  # OVL1; s1:calls by hand (the kit lane's round 12, vetted by the integrator: called where SOCOM 1's SetItemByIndex calls CZWeapon::GetAssociatedGearName, with the same arguments)
 0x003D2770 0x34 func_003D2770  # OVL1
@@ -8418,10 +8418,10 @@
 0x003D2D70 0x4B4 func_003D2D70  # OVL1
 0x003D3230 0x520 func_003D3230  # OVL1
 0x003D3750 0x40 func_003D3750  # OVL1
-0x003D3790 0xC func_003D3790  # OVL1
-0x003D37A0 0xC func_003D37A0  # OVL1
-0x003D37B0 0xC func_003D37B0  # OVL1
-0x003D37C0 0xC func_003D37C0  # OVL1
+0x003D3790 0xC SetRocketPassSound__8CZWeaponFP4CSnd  # OVL1; by hand (the wep lane, round 17: InitializeWeapons hands it the ".ROCKET_BY" sound right after the bullets' -- new in SOCOM II, the name ours; stores the static 0x4B52A8)
+0x003D37A0 0xC SetBulletPassSound__8CZWeaponFP4CSnd  # OVL1; s1:calls by hand (the wep lane, round 17: SOCOM 1's InitializeWeapons hands SetBulletPassSound__8CZWeaponFP4CSnd the ".BUL_PASSING" sound at the same place SOCOM II's hands this one it; stores the static 0x4B52A0 as SOCOM 1's stores m_bulletpassSound)
+0x003D37B0 0xC GetRocketPassSound__8CZWeaponFv  # OVL1; by hand (the wep lane, round 17: returns 0x4B52A8, which SetRocketPassSound stores; OVL2's CSealCtrl::OnWeaponEvent calls it -- the name ours)
+0x003D37C0 0xC GetBulletPassSound__8CZWeaponFv  # OVL1; by hand (the wep lane, round 17: returns 0x4B52A0, which SetBulletPassSound stores -- SOCOM 1's GetBulletPassSound after its setter; OVL2's CSealCtrl::OnWeaponEvent calls it)
 0x003D37D0 0x8 CreateWeaponList__8CZWeaponFv  # OVL1; s1:order by hand (the wep lane: `return true`, 8 bytes, as SOCOM 1's CreateWeaponList__8CZWeaponFv, first of the five list statics in SOCOM 1's order; 0x1EA720 calls it after CreateProjectileList and CreateMarkList); zwep_weapon.cpp
 0x003D37E0 0xC8 DestroyMarkList__8CZWeaponFv  # OVL1; the wep lane: SOCOM 1's DestroyMarkList__8CZWeaponFv (m_pMarklist's three tables freed, its two vector<CZDecalDef> destroyed through 0x2CDB30 and the list<CNode *> through 0x316770, deleted, zeroed, true) -- zwep_weapon.cpp defines it, byte-exact once 0x2CDB30 and 0x316770 carry the vector's and the list's destructor names (an earlier unit's copies, which the linker kept); the row keeps its placeholder until then, so the draft's match stands; s1:order (the weapons lane's round 7: SOCOM 1's DestroyMarkList static, before CreateMarkList 0x3D38B0 as in SOCOM 1; byte-exact from zwep_weapon.cpp with its three callees named)
 0x003D38B0 0x78 CreateMarkList__8CZWeaponFv  # OVL1; s1:order by hand (the wep lane: SOCOM 1's CreateMarkList__8CZWeaponFv -- news 52 bytes, the list's constructor 0x1EABB0, the vectors' words and the three tables zeroed, stored at m_pMarklist 0x4B5248; 0x1EA720 calls it); zwep_weapon.cpp
