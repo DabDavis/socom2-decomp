@@ -297,42 +297,6 @@ void CAiPath::PostProcess()
 }
 #pragma auto_inline reset
 
-/* each leg smoothed, the invalid points dropped and the points' storage trimmed, when there are
- * points, the plan is complete and smoothing is forced or on (SOCOM 1's dropped the invalid points
- * itself and trimmed nothing) */
-bool CAiPath::SmoothPath(bool force)
-{
-    bool done = false;
-
-    if (HasPoints() && (force || (m_flags & 1))) {
-        for (unsigned int i = 0; i < m_legcount; i++)
-            func_00525810(this, i);
-        RemoveInvalidPoints();
-        TrimVector<std::vector<point> >(m_points);
-        done = true;
-    }
-    return done;
-}
-
-/* whether a cell suits the path's kind (new in SOCOM II, the name ours: the leg smoother 0x525C80
- * asks it twice, out of line): a stealthy path keeps to soils 2, 4, 5 and 12 (water, brush,
- * forest, grass -- one bit test), a basic one to roads, any other takes every cell */
-#pragma auto_inline off
-bool CAiPath::IsPreferredCell(const CAiCell *cell) const
-{
-    bool ok = true;
-
-    if (m_type == PATH_STEALTH) {
-        unsigned int soil = cell->m_soil;
-
-        ok = soil == 2 || soil == 4 || soil == 5 || soil == 12;
-    } else if (m_type == PATH_BASIC) {
-        ok = cell->m_soil == 3;
-    }
-    return ok;
-}
-#pragma auto_inline reset
-
 /* MSL's reverse_iterator over the points (ours: include/vector has none; the HUD's c2dfont.cpp
  * carries the same shape) -- the base iterator held, `current - 1` at each access */
 class CPointRevIter {
@@ -377,6 +341,76 @@ inline bool operator!=(const CPointRevIter &x, const CPointRevIter &y)
 {
     return x.current != y.current;
 }
+
+/* the legs rebuilt from a finished path's points, last to first (new in SOCOM II, the name ours:
+ * 0x526540, CAiMaps::ExtendPath's last call): one leg to start, its map the last point's, and a new leg
+ * -- the point before and the point after as its ends, the after point's map -- wherever the points
+ * cross maps; the first point closes the last leg, and the path is smoothed when asked. The walk is
+ * UpdatePathWidth's reverse iterator; each map pushed straight from the lookup (two call
+ * temporaries) */
+extern "C" void func_00526540(CAiPath *path, CAiMaps *maps, bool smooth)
+{
+    if (!maps)
+        return;
+    if (!path->HasPoints())
+        return;
+    path->m_waypts.clear();
+    path->m_maps.clear();
+    path->m_legcount = 1;
+    CPointRevIter i = rbegin(path->m_points);
+    CAiPath::point *prev = &*i;
+
+    path->m_waypts.push_back(prev->m_loc);
+    path->m_maps.push_back(maps->GetMapByIndex((*i).m_loc.m_mapid));
+    for (++i; i != rend(path->m_points); ++i) {
+        if ((*i).m_loc.m_mapid != path->m_waypts.back().m_mapid) {
+            path->m_waypts.push_back(prev->m_loc);
+            path->m_waypts.push_back((*i).m_loc);
+            path->m_maps.push_back(maps->GetMapByIndex((*i).m_loc.m_mapid));
+            path->m_legcount++;
+        }
+        prev = &*i;
+    }
+    path->m_waypts.push_back(prev->m_loc);
+    if (smooth)
+        path->SmoothPath(true);
+}
+
+/* each leg smoothed, the invalid points dropped and the points' storage trimmed, when there are
+ * points, the plan is complete and smoothing is forced or on (SOCOM 1's dropped the invalid points
+ * itself and trimmed nothing) */
+bool CAiPath::SmoothPath(bool force)
+{
+    bool done = false;
+
+    if (HasPoints() && (force || (m_flags & 1))) {
+        for (unsigned int i = 0; i < m_legcount; i++)
+            func_00525810(this, i);
+        RemoveInvalidPoints();
+        TrimVector<std::vector<point> >(m_points);
+        done = true;
+    }
+    return done;
+}
+
+/* whether a cell suits the path's kind (new in SOCOM II, the name ours: the leg smoother 0x525C80
+ * asks it twice, out of line): a stealthy path keeps to soils 2, 4, 5 and 12 (water, brush,
+ * forest, grass -- one bit test), a basic one to roads, any other takes every cell */
+#pragma auto_inline off
+bool CAiPath::IsPreferredCell(const CAiCell *cell) const
+{
+    bool ok = true;
+
+    if (m_type == PATH_STEALTH) {
+        unsigned int soil = cell->m_soil;
+
+        ok = soil == 2 || soil == 4 || soil == 5 || soil == 12;
+    } else if (m_type == PATH_BASIC) {
+        ok = cell->m_soil == 3;
+    }
+    return ok;
+}
+#pragma auto_inline reset
 
 /* the points' flags, last to first (0x525520, by position SOCOM 1's UpdateTurnAngles -- SOCOM II's
  * points carry no angle: the same reverse walk over the legs as UpdatePathWidth's): at each leg's goal
