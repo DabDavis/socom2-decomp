@@ -242,7 +242,10 @@ int CZAR::ReadString(char **str)
  * * 0x257C70, ++(int) 0x257C50). include/vector's pointer iterator (== a leaf, __iter building it
  * by value) is a level too short and self-inlines three levels. And 0x257CB0/0x257BA0 repeat
  * __vector_pod<Ui>'s begin/end words (0x1EA8C0/0x1EA890) in the same overlay, so they are other
- * instances: the key ring's base is not __vector_pod<unsigned int> in the original */
+ * instances: the key ring's base is not __vector_pod<unsigned int> in the original. The copies
+ * are cut by inline_max_size, not the level (levels 6-8 change nothing; `#pragma
+ * inline_max_size(320)` gives four copies, 0x274, with the second level calling data() and the
+ * iterator's pointer constructor by value): the original's pieces cost fewer units */
 int _countKeys(zar::CKey *key)
 {
     int count = 1;
