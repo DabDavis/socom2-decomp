@@ -38,6 +38,7 @@
 0x001CC428 0x28 dch  # MAIN; s1:data-exact (size SOCOM 1's; via sceDmaGetChan +1)
 0x001CC458 0x4 p_environ  # MAIN; newlib getenv_r.c's static (char ***p_environ = &environ), read by _findenv_r
 0x001CC750 0x4 _impure_ptr  # MAIN; s1:data-exact (size SOCOM 1's; via __assert +8)
+0x001CC758 0x4 __mb_cur_max  # MAIN; SOCOM 1's symbol (the demo's GLOBAL OBJECT __mb_cur_max, 4 bytes, after _impure_ptr there as here): newlib's MB_CUR_MAX (1), passed to _mbtowc_r by _vfiprintf_r -- the GCC lane r22a
 0x001CC760 0x408 __malloc_av_  # MAIN; SOCOM 1's symbol (the demo's GLOBAL OBJECT __malloc_av_, 1032 bytes, the bookkeeping words after it in the same order): newlib mallocr.c's bins, defined by mallocr.o (DEFINE_MALLOC), read by freer.o, reallocr.o and malignr.o -- the GCC lane r22a
 0x001CCB68 0x8 __malloc_trim_threshold  # MAIN; SOCOM 1's symbol (8 bytes, after __malloc_av_ as in the demo): newlib mallocr.c's trim_threshold (unsigned long, 64-bit), mallocr.o's -- the GCC lane r22a
 0x001CCB70 0x8 __malloc_top_pad  # MAIN; SOCOM 1's symbol (8 bytes, as the demo's): newlib mallocr.c's top_pad, mallocr.o's -- the GCC lane r22a
