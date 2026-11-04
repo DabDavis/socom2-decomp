@@ -12,7 +12,10 @@
  * (getpic.c's picture_data, start_of_slice and slice, macroblock.c's decode_macroblock with its
  * macroblock_modes in line and skipped_macroblock, motion.c), the VLCs the IPU's VDEC tables, the
  * blocks BDEC's, every byte-exact as that text reads but where the IPU changed it. _updateTempTackData
- * is left to its matching draft. Names are SOCOM 1's (s1:exact).
+ * is left to its matching draft. GCC round 30a the picture output's _dispRefImage (as first written)
+ * and _dispRefImageField (`d->_080 = pts` before `d->_088 = 1`: the long store may alias the long load,
+ * so it stays below it), over libmpeg.h's MpegRef with its time stamps, flags, centre offsets and display
+ * size named. Names are SOCOM 1's (s1:exact).
  *
  * The IPU's idle wait and the command write are macros, expanded inside the readers
  * (_ipuVdec, _peepBit, _flushBuf, _nextBit) as well as being functions of their own: the
@@ -2036,6 +2039,79 @@ int _isOutSizeOK(MpegDec *d, MpegRef *ref)
 		_Error(d, buf);
 	}
 	return ok;
+}
+
+/* GCC round 30a: a frame output -- its time stamps and flags into the caller's sceMpeg, the
+ * aspect code its flags select (a 16-entry table, 0x1CE3E0), its display size and centre offsets;
+ * the picture stored colour-converted or as RAW8 when the buffer holds it and the picture is valid */
+extern void _getPtsDtsFlags(MpegDec *d, MpegRef *ref, long *pts, long *dts, u_long *flags);
+extern void _csc_storeRefImage(MpegDec *d, MpegRef *ref);
+extern void _cpr8(MpegDec *d, MpegRef *ref);
+extern void _markOutput(MpegDec *d);
+extern u_int data_001CE3E0[16];
+
+void _dispRefImage(MpegDec *d, MpegRef *ref, int frameNo)
+{
+	_getPtsDtsFlags(d, ref, &d->mp->pts, &d->mp->dts, &d->mp->flags);
+	d->_080 = d->mp->pts;
+	d->_088 = data_001CE3E0[(int)(d->mp->flags >> 5) & 0xf];
+	d->dispWidth = ref->dispWidth;
+	d->dispHeight = ref->dispHeight;
+	d->_0b4 = ref->centre[0];
+	d->_0b8 = ref->centre[1];
+	d->_0bc = ref->centre[2];
+	d->_0c0 = ref->centre[3];
+	d->_0c4 = ref->centre[4];
+	d->_0c8 = ref->centre[5];
+	if (_isOutSizeOK(d, ref) && ref->valid == 1) {
+		if (d->csc)
+			_csc_storeRefImage(d, ref);
+		else
+			_cpr8(d, ref);
+		_markOutput(d);
+	}
+}
+
+/* a field pair output: each field's time stamps and flags (the first field's into pts/dts/flags,
+ * the second's into the 2nd set, both flagged 64 when the top field is first), the first field's
+ * display size and centre offsets with the second's alternate ones; the top field stored at twice
+ * its macroblock height */
+void _dispRefImageField(MpegDec *d, MpegRef *top, MpegRef *bottom, int frameNo)
+{
+	MpegRef *first, *second;
+	int flag = 0;
+
+	if (d->picture_structure == 2) {
+		first = top;
+		second = bottom;
+		flag = 64;
+	} else {
+		first = bottom;
+		second = top;
+	}
+	_getPtsDtsFlags(d, first, &d->mp->pts, &d->mp->dts, &d->mp->flags);
+	d->_080 = d->mp->pts;
+	d->_088 = 1;
+	_getPtsDtsFlags(d, second, &d->mp->pts2nd, &d->mp->dts2nd, &d->mp->flags2nd);
+	d->_080 = d->mp->pts2nd;
+	d->_088 = 1;
+	d->mp->flags |= flag;
+	d->mp->flags2nd |= flag;
+	d->dispWidth = first->dispWidth;
+	d->dispHeight = first->dispHeight;
+	d->_0b4 = first->centre[0];
+	d->_0b8 = second->centre[1];
+	d->_0c0 = first->centre[3];
+	d->_0c4 = second->centre[4];
+	if (_isOutSizeOK(d, top) && top->valid == 1 && bottom->valid == 1) {
+		top->mbh <<= 1;
+		if (d->csc)
+			_csc_storeRefImage(d, top);
+		else
+			_cpr8(d, top);
+		top->mbh >>= 1;
+		_markOutput(d);
+	}
 }
 
 /* the IPU's output DMA (channel 3) into the scratchpad */

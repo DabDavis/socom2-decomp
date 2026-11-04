@@ -120,9 +120,15 @@ typedef struct {
 	int height;		/* 0x08 */
 	int mbw;		/* 0x0C */
 	int mbh;		/* 0x10 */
-	char pad14[0x28 - 0x14];
+	int _14;		/* 0x14 */
+	long pts;		/* 0x18: _getPtsDtsFlags reads both (GCC round 30a) */
+	long dts;		/* 0x20 */
 	int valid;		/* 0x28 */
-	char pad2c[0x68 - 0x2C];
+	int _2c, _30, _34, _38, _3c, _40;	/* 0x2C: the picture's flags, packed into sceMpeg.flags */
+	int centre[6];		/* 0x44: copied to MpegDec._0b4 ... _0c8 (sceMpegDispCenterOffX/Y's) */
+	int dispWidth;		/* 0x5C */
+	int dispHeight;		/* 0x60 */
+	int _64;		/* 0x64 */
 } MpegRef;
 
 /* a macroblock's record (0x140 bytes, two of them from 0x590): BDEC's output and what the motion
