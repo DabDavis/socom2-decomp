@@ -2060,6 +2060,28 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the HUD, round 43** (GetBlipID, the line map's Tick and TickRegions):
+  - `x = c ? k * x : x;` multiplies constant-first and leaves the join unpadded; `if (c) x = k * x;`, `x *= k` and `x = x *
+    k` all multiply variable-first and pad the join (CZLineMap::TickRegions 0x20DF70, SOCOM 1's); a static reference bound
+    to an array element is guarded in MW 3.0 (`static LINE_DATA &ld = _linedata[1]`);
+  - a bitfield tested through an inline `? true : false` gives `andi` then `sltu` before the branch, `(bool)b`, `b != 0`
+    and an inline `return b;` branch straight on the `andi`; a select of two constants into an `unsigned char` local,
+    returned as `unsigned int`, gives the target's `movz` plus `andi 0xff` (CZPlayerMapItem::GetBlipID 0x222C80);
+  - a global float passed to an inline after a call argument (`f(g(), global, k)`) is loaded before g() runs and kept in a
+    saved float register -- told by SOCOM 1's line table giving the whole call one line (CZLineMap::Tick 0x20EBD0: each
+    map's tick one inline call, TickLines pinned out of line).
+- **Tells from the AI core, round 25** (is_traversable at last, ResetGears, the handle list's erase, ai_vismap.cpp):
+  - a field read into a caller's named local before an inlined callee reads it again takes over the inline's read: the
+    local is numbered below the inline's result and the shared pointer load becomes a late temporary, reordering the
+    colouring (CRestrainedPlanner::is_traversable 0x512CB0: the soil a byte-enum local, cell a0 / bool a2 / soil a3);
+  - a bitfield copied into an int local compares without the byte narrowing, a byte-enum local or an `(unsigned char)`
+    cast keeps the target's `andi 0xff`; the postfix-step preheader rule holds for an empty walk too
+    (CCharacterType::ResetGears 0x53F0B0); an end() local declared inside an outer loop's body is hoisted into that loop's
+    preheader after the function, declared before the loop it stays inline (UpdateNameTables 0x52B820: the target's size);
+  - a template instance in a unit's tail with no caller in that unit can come from a dead-stripped own function (the
+    handle list's range erase 0x50FBD0 from CAiEventQ::Clear, in ABSENT.txt); MW still emits an 8-byte empty `__sinit`
+    (`jr ra; nop`) for a static with an inline empty constructor and no destructor -- ai_vismap.cpp, between ai_maps.cpp
+    and seal_ai.cpp in link order, holds only that (0x6687D0).
 - **Tells from completing the MSL headers, round 23** (the scalar vectors' rbegin, the pointer vector's original iterator
   measured; probes build/scratch/msl-r23-p23/, the measured header build/scratch/msl-r23/vector.r23_pointer_iterator):
   - THE POINTER VECTOR'S ORIGINAL ITERATOR, read off the image: the raw begin/end belong to each element type, not the
