@@ -2060,6 +2060,21 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the engine core, round 14** (GetAltitude, ParseNetworkPacketArgs, ftsGetAltitudeApprox, NetworkReceive):
+  - an inline that wraps an out-of-line call gives its result the lowest saved register (getting the map through one
+    swapped the map and cell into the target's s0/s1: ftsGetAltitudeApprox 0x2A2EB0, with OVL1's CAiMap::GetLocation copy
+    0x2A3950 emitted by fts_main.cpp through a duplicate of ai_map.cpp's inline -- ai.h only declares it);
+  - reassigning a pointer local (`anim = anim->GetAvailable()`) makes the new value a separate web numbered last; a named
+    local for the new value plus a `const` copy of the parameter defined after it gives the target's registers (SOCOM
+    II's NetworkReceive 0x273780, open for 19); two by-reference inlines called with two array elements compute the
+    second argument's address first (arguments right to left), written in place the first comes first;
+  - in a float sum of two products, naming each product keeps MW from computing the second before the first sum; reading
+    an array index into a local ahead of a constructor temporary keeps the load before the temporary's stores
+    (zdb::CDIPoly::GetAltitude 0x2DD8E0, never written before);
+  - an inline returning six in-place `&&`s joined by `||` materialises every level with no narrowing, through bool helper
+    inlines each pair gains an andi, an int return type the final andi; MW merges the empty joins of nested ifs but pads
+    their labels, a ternary leaves its labels unpadded but keeps its own join; a byte-enum field read through `(unsigned
+    char *)` gives lbu for a switch, read as the enum lb plus andi (CZAnimArgList::ParseNetworkPacketArgs 0x271B30).
 - **Tells from the game states, round 35** (LoadWorld at last, the stealth rating, CMenuState::Init, CNodeAction::Open):
   - a clamp whose upper bound is a ternary (the lower bound an if) leaves no join block, so a following constant
     assignment lands between the next call's lui and jal with the addiu in the delay slot (the stealth rating 0x1F3290,
