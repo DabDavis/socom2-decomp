@@ -478,6 +478,12 @@ void zVid_Init(_zvid_mode mode)
     zVid.frameNumber = 0;
 }
 
+/* the video system shut down: nothing left to do (SOCOM 1's deleted its CTTY; CGame::StopEngine
+ * calls it at the same place SOCOM 1's calls zVid_Uninit, after DeletePad(1)) */
+void zVid_Uninit()
+{
+}
+
 /* one GS register set through the GIF's A+D path: a DMA tag and two VIF codes, the GIF tag, the
  * pair -- one cursor step per quadword (SOCOM 1's wrote them all off the packet's start) */
 void SetGSReg(short reg, unsigned long data)

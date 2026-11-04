@@ -795,6 +795,33 @@ extern "C" _word128 *func_003B5260(_word128 *to, _word128 *from)
     return to;
 }
 
+/* the decal builder (0x3B3AB0, not written): the visual, the node's view id, the size, the point,
+ * the normal in the model's frame, the UV projection and the texture */
+extern "C" void func_003B3AB0(CVisual *v, int vid, float size, CPnt3D *pos, CPnt3D *normal,
+                              CMatrix *uv, CTexHandle *tex);
+
+/* a decal projected onto the visual: the normal brought into the model's frame through the
+ * world-to-model inverse, the projection composed with the model-to-world matrix, the node's view
+ * id (none without a node) handed to the builder (SOCOM 1's, SOCOM II's builder taking the
+ * matrix). OPEN, 2 instructions: the copy's argument set-up -- the target (and SOCOM 1's) sets a1
+ * (the matrix) before the call and &inv in its delay slot, here &inv goes first and a1 fills the
+ * slot; the direct call, the copy assignment, casts, a pointer local, the four declaration orders
+ * of n/m/inv/vid and the id as short/int/unsigned all give the same two (build/scratch/wep/v_adr*.py) */
+void CVisual::ApplyDecalRender(CMatrix *mtw, CNode *node, float size, CPnt3D *pos, CPnt3D *normal,
+                               CTexHandle *tex, CMatrix *uv)
+{
+    CPnt3D n;
+    CMatrix m;
+    CMatrix inv;
+    int vid = node ? node->m_vid : 0;
+
+    inv = *mtw;
+    Vu0MatrixInverseWithUniformScale(&inv, &inv);
+    TransformVectors(&inv, normal, &n, 1);
+    sceVu0MulMatrix(m.m_matrix, uv->m_matrix, mtw->m_matrix);
+    func_003B3AB0(this, vid, size, pos, &n, &m, tex);
+}
+
 /* the decals of one view let go of, each back to the pool its kind says, and the view's list
  * emptied -- none on a visual of another type (SOCOM 1's, the same code). The list's slot is read
  * and cleared through the pod's data() reference, &data_ kept in a saved register across the
