@@ -20,7 +20,7 @@ extern void __assert(const char *file, int line, const char *expr);
  * The high half is the accumulator, updated in place -- `hi >>= 15; hi += lo >> 31; lo = (lo << 1)
  * >> 1; hi += lo;`: one variable through the chain gives the target's v0 from the product to the
  * store, the low sum its v1 (open since round 18a, 12 words, on the sum written as one expression
- * into `lo`: then the low half held the chain and took v0) -- GCC round 19a, measured over 97
+ * into `lo`: then the low half held the chain and took v0) -- GCC round 19a, measured over 101
  * spellings (build/scratch/gcc/v_rng*.c): this and a temporary `t` for the accumulator are the two
  * that match; the decoder's copy 0x256380 (sase_swsynth.c) is the same text. */
 void func_0024AEB0(int *plSeed)

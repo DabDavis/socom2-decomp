@@ -5344,6 +5344,53 @@ tried, 0 hits (13 build failures, 16 m2c refusals), `1CCD78 1CE2A4` 6 tried, 0 h
 OVL1 `1E7F58 1E8FD4` 2 tried, 0 hits, `243000 256FD0` 137 tried, 0 hits (23, 8): 288 tried, none
 byte-exact (round 17a: 290, 0).
 
+**Round 19a** (2026-11-04, by hand, the codec and libmpeg): 21 functions written byte-exact of 24 --
+18 rows newly byte-exact, three matched drafts superseded (0x252EF0, 0x252F70, 0x2534D0) -- the
+lane's `src/lib` sdk/libc/libgcc/libm/ovl1 rows 1,050 -> 1,071 of 1,132 scored, none lost (re-checked
+after merging master 3f8f6d4c). OVL1's codec: the RNG closed in both copies (`ovl1/sase_libmath.c`
+0x24AEB0, open since round 18a, and the decoder's 0x256380 in `sase_swsynth.c`), a new
+`ovl1/sase_vad.c` (the encoder's voice-activity objects 0x252E88-0x253510, no assert naming their
+file: a 33-band history and the detector's state, 8 of 9), the decoder's gain curve 0x256130, block
+free 0x2569D8 and band normaliser 0x256EC0, and nelly.c's 48-byte block 0x249EE0. MAIN's libmpeg
+(`sdk/mpeg_dec.c` +6: _decPicture, _outputFrame, _isOutSizeOK, receiveDataFromIPU,
+_decode_motion_vector, _dualPrimeVector; a new `sdk/mpeg_demux.c`, the demo's demux object 0x1585B0:
+_system_header, _type2id OPEN). No rows named (the codec is not in SOCOM 1; libmpeg's rows had their
+names). What they showed:
+
+- **A register-only miss can be which VALUE a variable carries**: the RNG's twelve words were the
+  sum chain living in the low half (`lo = (hi >> 15) + (lo >> 31) + ((lo << 1) >> 1)`, one variable
+  reassigned: global-alloc, v0 taken first by a local); Carta's in-place form -- the high half the
+  accumulator, `hi >>= 15; hi += lo >> 31; lo = (lo << 1) >> 1; hi += lo;` -- gives the target's v0
+  from the product to the store (101 spellings measured: this and a temporary for the accumulator).
+- **libmpeg's macroblock layer is the MPEG Software Simulation Group's mpeg2decode** (motion.c):
+  decode_motion_vector and Dual_Prime_Arithmetic byte-exact as that text writes them, over the
+  decoder's own picture_structure/top_field_first -- the next source to read for _motionVector(s),
+  _skipMB0 and the slice layer. A switch's case bodies are laid out in source order: _decPicture's
+  frame case comes first (its body right after the dispatch tree).
+- **One call with chosen arguments, not one per arm**: _outputFrame's field pair is picked into locals
+  and passed once (a call per arm: 21s); the VAD's threshold is one temporary assigned in each arm
+  (`fT = ...; p->fThresh = fT;` -- the store in each arm or one coefficient set: 8s-15).
+- **Stores that may alias a function pointer stay above its load**: 0x249EE0's four cleared words are
+  floats -- as ints they may alias the host's memset pointer, whose load then follows them (19 words);
+  as floats the load is hoisted and the order is tools/ccperm.py's one of 24.
+- **A max as a conditional expression**: the VAD's floor is `(fT <= fU) ? fU : fT` (the target's
+  `c.le.s; bc1fl; mov.s`); an `if (fT > fFloor)` tests the other way (4-5 words), the hang counter's
+  two 1s are stored flag first.
+- **Open, diagnosed in place**: CodePv's 0x2487E8 (round 18a's six words, now measured: Pv and the flag
+  tie on references and global-alloc orders them by live length as the first scheduler left it --
+  Pv's parameter copy two insns before the flag's andi, which that pass ranks last for its register
+  weight; 72 spellings and every parameter order alike), the VAD's 0x2533B0 (17: CSE follows the three
+  equalities to a known 1 where the target holds the flag's lb in s0), nelly.c's 0x251748 (the target
+  keeps a dead compare after the 56 test), _type2id (a 64-bit case tree under an unused frame where this
+  switch compares 32 bits). The vendor's-compiler-does-less three (the no-wait four's PRE, adddate's
+  GCSE, sceSifInitIopHeap's scheduler) were not revisited.
+
+**The tools, round 19a**: no tool changed. automatch over the lane's four ranges (`--max-size 0x400
+--emit --no-prune --jobs 1 --obj-dir` the lane's `src/lib` build): MAIN `18DB90 1C4CC0` 143 tried, 0
+hits (13 build failures, 16 m2c refusals), `1CCD78 1CE2A4` 6 tried, 0 hits (5 refusals), OVL1 `1E7F58
+1E8FD4` 2 tried, 0 hits, `243000 256FD0` 96 tried, 0 hits (22, 8): 247 tried, none byte-exact (round
+18a: 288, 0) -- the drafts that build all miss; the 35 that do not are round 16a's kinds.
+
 **Next**: the libraries by hand, module by module, as their vendors wrote them (each `src/lib`
 unit's header says what it covers); GCC's scheduler moves independent stores, and which source
 order gives the target's is easier measured than predicted (`tools/ccperm.py PROBE
