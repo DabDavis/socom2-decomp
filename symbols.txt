@@ -3530,8 +3530,8 @@
 0x00290290 0xB0 __ct__21RTList<11ACTIVE_ANIM>FUi  # OVL1; s1:align by hand (0.93 to SOCOM 1's: the size, three links cleared, the pool new[]'d with LIST_ITEM's constructor 0x290340 and zeroed)
 0x00290340 0x14 __ct__Q221RTList<11ACTIVE_ANIM>9LIST_ITEMFv  # OVL1; s1:align by hand (opcode-identical to SOCOM 1's: three words zeroed)
 0x00290360 0x8 IsCell__Q23zdb5CNodeFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x00290370 0xD8 func_00290370  # OVL1
-0x00290450 0x88 func_00290450  # OVL1
+0x00290370 0xD8 GetScreenPos__Q23zdb7CCameraFPC6CPnt3DP6CPnt3D  # OVL1; ours, the core lane round 8 (SOCOM II's, zcam_main.cpp's first function as the image orders it, before SOCOM 1's first, GetVuMtxSet: a point through the VU block's world-to-screen matrix (GetVuMtxSet inlined, the CMatrix copy, Transform), w past 1e-5 or false, x/y divided by w less the 2048 offsets, w as z; func_00200C10 calls it)
+0x00290450 0x88 GetScreenPosPers__Q23zdb7CCameraFPC6CPnt3DP6CPnt4D  # OVL1; ours, the core lane round 8 (SOCOM II's, zcam_main.cpp: a point (w 1) through sceVu0RotTransPers with the world-to-screen matrix, sceVu0ITOF4Vector into the CPnt4D, whether w is past 1e-5; CPipe::TestFlare 0x336810 calls it)
 0x002904E0 0x8 GetVuMtxSet__Q23zdb7CCameraFv  # OVL1; SOCOM 1 name (zcam_main.cpp, in its order; matched)
 0x002904F0 0x110 TestLandmarkFOG__Q23zdb7CCameraFPC6CPnt3Df  # OVL1; SOCOM 1 name (zcam_main.cpp, in its order; matched)
 0x00290600 0xF4 TestFOG__Q23zdb7CCameraFPC6CPnt3Df  # OVL1; SOCOM 1 name (zcam_main.cpp, in its order; matched)

@@ -7,6 +7,11 @@
 #include "../zanim/zanim.h"
 #include "../zsys/zsys.h"
 
+/* libvu0's (MAIN, prebuilt) */
+typedef int sceVu0IVECTOR[4] __attribute__((aligned(16)));
+extern "C" void sceVu0RotTransPers(sceVu0IVECTOR v0, sceVu0FMATRIX m0, sceVu0FVECTOR v1, int mode);
+extern "C" void sceVu0ITOF4Vector(sceVu0FVECTOR v0, sceVu0IVECTOR v1);
+
 /* fov.cpp's VU0 code */
 unsigned int sceVu0ClipBBox(float lc[4][4], PNT4D *v);
 int _OutsideGuardBand(float *minv, float *maxv, float ms[4][4], float vm[][4], int n);
@@ -1075,6 +1080,43 @@ bool CCamera::TestLandmarkFOG(const CPnt3D *worldPos, float radius)
 tag_FrameSetup *CCamera::GetVuMtxSet()
 {
     return m_mtxSet.m_vu;
+}
+
+/* a world point to the screen through the VU block's world-to-screen matrix, kept as RotTransPers
+ * gives it, and whether it lies in front -- w past 1e-5 (SOCOM II's, 0x290450: CPipe::TestFlare's;
+ * the name ours) */
+bool CCamera::GetScreenPosPers(const CPnt3D *p, CPnt4D *out)
+{
+    sceVu0IVECTOR s;
+    sceVu0FVECTOR v;
+
+    v[0] = p->x;
+    v[1] = p->y;
+    v[2] = p->z;
+    v[3] = 1.0f;
+    sceVu0RotTransPers(s, GetVuMtxSet()->mtxWorldToScreen, v, 0);
+    sceVu0ITOF4Vector((float *)out, s);
+    return out->w > 1e-5f;
+}
+
+/* a world point's screen position about the centre (the 2048 offsets taken off) and its depth,
+ * none behind the eye (SOCOM II's, 0x290370; the name ours) */
+bool CCamera::GetScreenPos(const CPnt3D *p, CPnt3D *out)
+{
+    CPnt4D v(p->x, p->y, p->z, 1.0f);
+    CPnt4D r;
+    CMatrix m(*(CMatrix *)GetVuMtxSet()->mtxWorldToScreen);
+
+    m.Transform(&v, &r, 1);
+    if (r.w > 1e-5f) {
+        float inv = 1.0f / r.w;
+
+        out->x = r.x * inv - 2048.0f;
+        out->y = r.y * inv - 2048.0f;
+        out->z = r.w;
+        return true;
+    }
+    return false;
 }
 
 }
