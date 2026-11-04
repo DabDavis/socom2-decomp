@@ -2030,6 +2030,29 @@ exists); 3.0b38/b50/b52 still untold.
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the UI, round 18** (three soft-keyboard functions by MW's colouring, util_memcard.cpp whole, LoadDesign):
+  - A VARIABLE ONE NEIGHBOUR OVER K IS DEFERRED: in SkbTypeOrBack 0x399C20 (open since round 9), SkbCursorBack 0x399530
+    and SkbTextFits 0x396D40 (since round 11) the cursor had 25 neighbours (K = 25), and a low-degree variable numbered
+    just below it and pushed first drops it under K -- the saved registers reorder with no code change; the MSL lane's
+    igdump tools (build/scratch/msl-r18-p18/p18/ig/) with build/scratch/ui-r18/igrec.py and igvar.py show a candidate's
+    numbering in seconds;
+  - an inline's bool return folds into a temporary, but a flag the caller declares and the inline writes through `bool
+    &` (cleared, then set) stays the caller's variable, numbered where it is declared; a local initialised from a
+    ternary folds into the ternary's temporary, assigned in an if/else it stays a named variable; a named float local
+    inside an inline is numbered before the expression's temporaries, and an inline expanded ahead of a sum makes its
+    result a bare temporary, so the other operand comes first in the add (SkbCursorBack: the line offset an inline with
+    a named float local, CSkbLook's m_c4 a float member);
+  - a typedef's `aligned(N)` (libmc.h's spelling) aligns a function's own locals of that type, but an inlined function's
+    copy keeps only the struct's own alignment (16) -- put on the struct, it applies everywhere: CMemCard's GetUsedSpace
+    0x3A1060, CreateReserveFiles 0x3A1880 and CreateReserveFile 0x3A1980 (open since round 1; util_memcard.cpp 41 of 41);
+  - CGameMenu::Init 0x368570 (SOCOM 1's) and the six vector copies after LoadDesign (0x3676D0-0x3677F0) from drafts to
+    source; LoadDesign 0x367430 (ours) matches with 0x22BAD0 named ~vector<CSaferStr> -- its only callee, named at
+    integration with 0x36A200 UiGetCurMenu (the HUD's round 34);
+  - open: scheduling and delay slots -- Serialize 0x385670 (2), Append 0x3908A0 (1: the add's operand order), SkbWrapText
+    (3), SkbWrapTokens (5), CHandlerButtonSpec's constructor 0x380280 (8); LoadDlgObjects 0x383360 (MW moves the
+    else-arm's instruction into the delay slot and drops the block, the target copies it and leaves an orphaned block);
+    level 6: Attach 0x3869F0 (0x386980 and 0x386AB0 come with it), CStringTables::Unload, __sinit_zui_hangul.cpp;
+    UTF8GetChar and CLocTable::Find (byte re-extension).
 - **Tells from the HUD, round 34** (zui_2d.cpp's SOCOM 1 Draws and HandlePads, CLayout's copy constructor by a scan):
   - MW 3.0 emits nothing for an explicit instantiation of an inline function template (`template It std::find(It, It,
     const T &);`): the out-of-line copy appears only when some caller leaves it a call (0x3586B0, std::find over
