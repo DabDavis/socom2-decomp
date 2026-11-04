@@ -6743,20 +6743,20 @@
 0x00366B60 0x210 func_00366B60  # OVL1
 0x00366D70 0x35C func_00366D70  # OVL1
 0x003670D0 0x35C func_003670D0  # OVL1
-0x00367430 0x238 func_00367430  # OVL1
+0x00367430 0x238 LoadDesign__9CGameMenuFPCcP9CZAnimZAR  # OVL1; the UI lane round 18: ours by its body and callers (this, an rdr name, the ZAR: a CGameDlgDesign built on the stack, "(%.2f)CGameDlgDesign::LoadFromRdr(): %s" printed into a 0x100-byte static with zVid.runTime, the rdr read from data/common/zrdr/dialog with LoadDialogsFromReader's flags, LoadFromRdr and zrdr_free, then the menu's reader name assigned and LoadFromDesign 0x367950 -- the block SOCOM 1's Init and SwitchMenu inlined; SOCOM II's Init 0x368570 and 0x365A00 call it); zui.cpp
 0x00367670 0x60 __dt__Q23std52vector<10ActionItem,Q23std23allocator<10ActionItem>>Fv  # OVL1; by its body (~vector<ActionItem>: calls 0x36AC10, the deleter's destructor, with 0) -- the UI-widgets lane
-0x003676D0 0x60 func_003676D0  # OVL1
-0x00367730 0x60 func_00367730  # OVL1
-0x00367790 0x14 func_00367790  # OVL1
-0x003677B0 0x14 func_003677B0  # OVL1
-0x003677D0 0x14 func_003677D0  # OVL1
-0x003677F0 0x14 func_003677F0  # OVL1
+0x003676D0 0x60 __dt__Q23std58vector<13CDesignDlgObj,Q23std26allocator<13CDesignDlgObj>>Fv  # OVL1; the UI lane round 18: by its callers and body (CGameMenu::LoadDesign 0x367430 destroys its design's two CDesignDlgObj vectors, CONTROLS and OBJECTS at 0x4C/0x58, through it: the deleter's destructor 0x36AC80 with 0, the object deleted when asked); zui.cpp's out-of-line copy after its first user, LoadDesign compiling to the target's code with every call so named
+0x00367730 0x60 __dt__Q23std62vector<15CDlgDesignModel,Q23std28allocator<15CDlgDesignModel>>Fv  # OVL1; the UI lane round 18: by its callers and body (LoadDesign 0x367430 destroys its design's MODELS vector at 0x64 through it: the deleter's destructor 0x36ACF0 with 0); zui.cpp's copy after its first user
+0x00367790 0x14 __ct__Q23std62vector<15CDlgDesignModel,Q23std28allocator<15CDlgDesignModel>>Fv  # OVL1; the UI lane round 18: by its caller (CGameDlgDesign's inline constructor in LoadDesign 0x367430 builds MODELS at 0x64 with it; three words zeroed); zui.cpp's copies follow LoadDesign in reverse of their first use
+0x003677B0 0x14 __ct__Q23std58vector<13CDesignDlgObj,Q23std26allocator<13CDesignDlgObj>>Fv  # OVL1; the UI lane round 18: by its caller (the design's CONTROLS and OBJECTS at 0x4C/0x58, built in LoadDesign 0x367430; three words zeroed)
+0x003677D0 0x14 __ct__Q23std52vector<10ActionItem,Q23std23allocator<10ActionItem>>Fv  # OVL1; the UI lane round 18: by its caller (the design's ANIMATIONS at 0x40, built in LoadDesign 0x367430; three words zeroed)
+0x003677F0 0x14 __ct__Q23std48vector<9CSaferStr,Q23std21allocator<9CSaferStr>>Fv  # OVL1; the UI lane round 18: by its caller (the design's LIBRARIES at 0 and SCRIPT_LIBRARY at 0x34, built first and fifth in LoadDesign 0x367430; three words zeroed)
 0x00367810 0x138 RunEventAnim__9CGameMenuFQ210ActionItem5EVENTPCc  # OVL1; the UI lane round 15: SOCOM 1's RunEventAnim__9CGameMenuFQ210ActionItem5EVENTPCc by its body (the 30 commands at 0x6F8 walked to m_numCommands 0x8D8 as SOCOM 1's at 0x68C/0x86C, each event action of the event started through CZAnim::ActivateArg(1, 8, arg) or Activate(0); TickMPEG passes ONMPEGEND), byte-exact from zui.cpp
 0x00367950 0xBE8 LoadFromDesign__9CGameMenuFRC14CGameDlgDesignP9CZAnimZAR  # OVL1; s1:calls by hand (the menu's design loader: this, the design and the ZAR in a0-a2 as SOCOM 1's; its first call 0x369210 at +0x34 as SOCOM 1's Clear, then UiSetCounterSpeedFactor and UiSetTtySpeedFactor with 1.0 in that order, as SOCOM 1's at +0x44/+0x54; SOCOM II adds a flag block between; 0xBE8 against 0xBA4)
 0x00368540 0x8 NumChildren__11CDlgObjSpecCFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00368550 0x8 GetChild__11CDlgObjSpecCFi  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00368560 0x8 HasChildren__11CDlgObjSpecCFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x00368570 0xB4 func_00368570  # OVL1
+0x00368570 0xB4 Init__9CGameMenuFPQ23zdb16CTextureRelocMgrP9CZAnimZAR  # OVL1; the UI lane round 18: SOCOM 1's Init__9CGameMenuFPQ23zdb16CTextureRelocMgrP9CZAnimZAR by its body (Clear, the ZAR stored at 0xC0, a zVid flag cleared, the relocator given or g_relocBatch at 0x8DC, StartBatchReloc, the design of GetReaderFileName loaded, EndBatchReloc, true -- SOCOM 1's with the design load moved out to 0x367430); zui.cpp
 0x00368630 0x1C GetReaderFileName__9CGameMenuFv  # OVL1; s1:vtable by hand (slot 0x10 of __vt__9CGameMenu 0x406F80, SOCOM 1's GetReaderFileName's slot: the reader's name string returned)
 0x00368650 0xB20 func_00368650  # OVL1
 0x00369170 0x48 DrawForeplane__9CGameMenuFv  # OVL1; s1:exact

@@ -363,14 +363,25 @@ static inline bool HasChar(const char *p)
     return p && *p;
 }
 
+/* the string has a character at p, into the caller's flag (ours: the counting walks' test). The flag is
+ * the caller's own local, declared ahead of the cursor, cleared and then set -- so it stays a variable
+ * of its own (an inline's bool return is folded into a temporary) and MW numbers it before the
+ * cursor: a low-degree neighbour pushed in the first simplify sweep, which lets the cursor (25
+ * neighbours otherwise, one over K) be pushed there too, so the count and skb take s0/s1 and the
+ * cursor s2, as the target's. The code is HasChar's */
+static inline bool TestChar(bool &more, const char *p)
+{
+    more = false;
+    if ((bool)p && *p)
+        more = true;
+    return more;
+}
+
 /* the composition's character typed, if there is one; else 0x398C40 when the text has characters
  * (string 1's counted when s_textCount1 says so, plus s_textCount0), 0x3952F0 when not; then
- * state 3 (0x399C20; the name ours).
- * OPEN, 13 instructions (same size, same blocks): the saved registers are numbered otherwise --
- * the target keeps the count in s0, skb in s1 and the pointer in s2 (here p s0, the count s1, skb
- * s2) -- and does the count's ++ in UTF8CharLen's delay slot, after the pointer's store. Tried: the
- * count as an inline CountChars(p) with its own locals (13 again), p and the count declared ahead
- * (0x10 short) */
+ * state 3 (0x399C20; the name ours). The count's walk tests through TestChar's flag (its numbering:
+ * open from round 9 to 17 with the walk's test an inline bool, HasChar) and counts ahead of the step
+ * (the ++ in UTF8CharLen's delay slot) */
 void SkbTypeOrBack(CSoftKeyboard *skb)
 {
     unsigned short c = SkbHangulBack();
@@ -381,9 +392,14 @@ void SkbTypeOrBack(CSoftKeyboard *skb)
         int n;
 
         if (s_textCount1) {
+            bool more;
+
             n = 0;
-            for (const char *p = ShownText(&s_textString1); HasChar(p); n++)
+            const char *p = ShownText(&s_textString1);
+            while (TestChar(more, p)) {
+                n++;
                 p += CharLen(p);
+            }
         } else {
             n = 0;
         }
@@ -508,41 +524,45 @@ static inline const int &CursorY(const CSoftKeyboard *skb)
     return s_textSel ? skb->m_cc : skb->m_c8;
 }
 
-/* a text's characters counted (ours) */
-static inline int CountChars(const char *p)
+/* the line offset of the counted strings (ours): a line height per counted string. The height a
+ * named local of the inline -- numbered before the temporaries, so the count's are coloured first
+ * and take $f0, the height $f1 -- and the whole an inline expanded ahead of the y's sum (a bare
+ * temporary there, so the y is the sum's first operand), as the target's */
+static inline float LineOffset(const CSoftKeyboard *skb)
 {
-    int n = 0;
+    float h = skb->m_c4;
 
-    for (; HasChar(p); p += CharLen(p))
-        n++;
-    return n;
+    return (float)s_textCount1 * h;
 }
 
 /* the cursor stepped back a character (0x399530; the name ours: 0x38C630's left key and
  * SkbHandleKey call it with the showing keyboard): string 1's count down by one, or at its start,
  * while string 1 counts, string 1 given up and its characters counted into the count; then the
  * cursor placed after that many characters of the cursor's string -- the props' x plus their width,
- * the cursor's y plus a line height per counted string -- and the composition cleared.
- * OPEN, 13 instructions (same size): SkbTypeOrBack's numbering -- the target keeps the count in s0,
- * skb in s1 and the pointer in s2 (here the pointer s1, skb s2) -- and the line offset's product
- * takes the converted count in $f0 and the height in $f1, added after the y (here the other way).
- * Tried: the count loop in the function (p s0), p declared first, a while loop, the global counted
- * directly, the count's text a parameter or a local of the inline; the y's terms as locals (one,
- * both, the product, the height), a cast on the product. The count read into a local before the
- * width call gives the target's argument order (the count loaded ahead of the string's ternary) */
+ * the cursor's y plus a line height per counted string -- and the composition cleared. The walk is
+ * SkbTypeOrBack's (TestChar's flag declared ahead of the cursor); the count read into a local before
+ * the width call gives the target's argument order (the count loaded ahead of the string's ternary) */
 void SkbCursorBack(CSoftKeyboard *skb)
 {
     if (s_textCount0 > 0) {
         s_textCount0--;
     } else if (s_textCount1) {
+        bool more;
+        int n = 0;
+
         s_textCount1 = 0;
-        s_textCount0 = CountChars(ShownText(&s_textString1));
+        const char *p = ShownText(&s_textString1);
+        while (TestChar(more, p)) {
+            n++;
+            p += CharLen(p);
+        }
+        s_textCount0 = n;
     }
     int count = s_textCount0;
     float w = SkbTextWidth(CursorString(), count);
     SKBPROPS props = s_textSel ? SKB_PROPS_MSGPLAYER : SKB_PROPS_USER;
     float x = w + (float)skb->m_caps[props].m_0;
-    float y = (float)CursorY(skb) + *(float *)&skb->m_c4 * (float)s_textCount1;
+    float y = (float)CursorY(skb) + LineOffset(skb);
 
     func_00395120(x, y);
     SkbHangulClear();
