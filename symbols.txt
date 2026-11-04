@@ -13352,7 +13352,7 @@
 0x00668680 0x8C func_00668680  # OVL2 data area; a static initialiser
 0x00668710 0xB4 func_00668710  # OVL2 data area; a static initialiser
 0x006687D0 0x8 func_006687D0  # OVL2 data area; a static initialiser
-0x006687E0 0x158 func_006687E0  # OVL2 data area; a static initialiser
+0x006687E0 0x158 __sinit_seal_ai.cpp  # OVL2 data area; a static initialiser; by hand (the SEALs, round 24, the integrator's lead from the AI core's round 22): seal_ai.cpp's initialiser -- it builds the AI's five frame slices (OVL2 bss 0x66B060-0x66B0FF, 0x20 apart) that CSealCtrlAi::PreTick, 0x558640, 0x56D2B0 and 0x574C30 read, in the ctors table between ai_maps.cpp's and __sinit_seal_body.cpp
 0x00668940 0x29C __sinit_seal_body.cpp  # OVL2 data area; a static initialiser; s1:unit by hand (the SEAL lane, round 17: SOCOM 1's __sinit_seal_body.cpp builds newanims through the RTList constructor, registers ~CActiveAnimList and stores the ten throw offsets' same values; SOCOM II adds three offsets first and drops the CSTable)
 0x00668BE0 0x30 func_00668BE0  # OVL2 data area; a static initialiser; s1~ node_util.cpp (names 0.53); the same words as __sinit_node_util.cpp (0x402960) bar the link's addresses (tools/ovlcopies.py) -- identical code, not proven the same instance (template instances for different types and look-alike accessors share bodies)
 0x00668C10 0x194 func_00668C10  # OVL2 data area; a static initialiser; s1~ seal_control.cpp (shape 0.20, a hint)

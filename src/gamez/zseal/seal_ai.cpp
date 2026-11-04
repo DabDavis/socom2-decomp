@@ -24,6 +24,16 @@
  * real depths. */
 #pragma inline_depth(8)
 
+/* THE UNIT'S DYNAMICALLY INITIALISED STATICS, in the order its initialiser builds them
+ * (__sinit_seal_ai.cpp, OVL2 0x6687E0): the AI's five frame slices (zseal.h's CAiSlice) */
+namespace ai {
+CAiSlice slice0;
+CAiSlice slice1;
+CAiSlice slice2;
+CAiSlice slice3;
+CAiSlice slice4;
+}
+
 /* the states this unit defines (SOCOM 1's; only what their destructors need -- none of them has
  * a member with a destructor of its own, so each destructor is the base's, inlined) */
 class CAiSRescued : public CAiState {
@@ -1291,6 +1301,24 @@ extern "C" bool func_0056D530(const CAiMap::region *r, unsigned int team)
         }
     }
     return found;
+}
+
+/* the sleep check's turn (OVL2 0x56D2B0, new in SOCOM II: the fifth frame slice, by the entity's id):
+ * a SEAL with a region and a team falls asleep when no live one of the team stands in it, and wakes
+ * when one does; one without them, on its turn, widens the window by one (the name unknown) */
+extern "C" void func_0056D2B0(CSealCtrlAi *ai)
+{
+    int id = ai->m_entity->m_id;
+
+    if (!ai->m_270 || !ai->m_274) {
+        if (ai::slice4.Has(id))
+            ai::slice4.SetCount(ai::slice4.m_count + 1, ai::slice4.m_total);
+    } else if (ai::slice4.Has(id)) {
+        ai::slice4.m_hits++;
+        bool in = func_0056D530((const CAiMap::region *)ai->m_274, ai->m_270);
+
+        ai->SetSleeping(!in);
+    }
 }
 
 
