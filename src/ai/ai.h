@@ -886,6 +886,11 @@ public:
      * boundary, the occupied bit, as the flags choose -- whether any cell changed (SOCOM 1's
      * Tile(region, value, flags); the layer new: the walker unit's 0x536230) */
     bool Tile(const region *r, unsigned int value, unsigned int flags, int layer);
+    /* a vehicle's footprint moved: the region's cells cleared of the occupied bit (flags 32), the
+     * region rebuilt from the four corners (0x515900, not written yet), its cells set again; true
+     * (new in SOCOM II, the name ours: 0x515880, CVehicle::Tick's call with the vehicle's four
+     * transformed corners at +408 and its region at +368) */
+    bool TileFootprint(const CPnt3D *corners, region *r);
     bool ResetCells();
     static CPnt3D &GetDirVec(DIR dir, CPnt3D &v);
     /* each direction's step in cells, x then y, N to NW (SOCOM 1's CAiMap::neighbor, the demo's

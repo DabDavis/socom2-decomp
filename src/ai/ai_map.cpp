@@ -529,6 +529,20 @@ bool CAiMap::GetAltitude(const CAiCell *cell, float &alt) const
     return false;
 }
 
+/* the region rebuilt from a footprint's corners (0x515900, unwritten: GetLocation for corners, the
+ * region from two cells 0x515DE0) */
+extern "C" void func_00515900(CAiMap *map, const CPnt3D *corners, CAiMap::region *r);
+
+/* the footprint's old cells cleared, the region rebuilt, the new ones set (new in SOCOM II, the name
+ * ours) */
+bool CAiMap::TileFootprint(const CPnt3D *corners, region *r)
+{
+    Tile(r, 0, 32, 0);
+    func_00515900(this, corners, r);
+    Tile(r, 1, 32, 0);
+    return true;
+}
+
 /* whether the cell is under the overlay: inside its region (the region's Contains, materialised),
  * then on its row's run, the row and column taken again from the region's corner (new in SOCOM II,
  * the name ours: the base planner's cost and FindTraversable call it) */

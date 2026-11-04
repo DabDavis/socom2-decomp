@@ -9412,7 +9412,7 @@
 0x00515580 0x194 Reset__7CAiCellFv  # OVL2; ours (SOCOM 1's CAiCell() body, 0x185200, as a function of its own: the constructor 0x515720 and the layers' allocation 0x516FC0 call it; the name ours)
 0x00515720 0x28 __ct__7CAiCellFv  # OVL2; tu: vis_mesh.cpp~ (1.0 beta); s1:order by hand (the demo's 0x185200, ai_map.cpp's first function: __sinit_ai_map.cpp (0x668630) builds the dummy cell with it as SOCOM 1's does; SOCOM II's body calls Reset, 0x515580)
 0x00515750 0x128 Contains__10CAiOverlayCFRC9CAiMapLoc  # OVL2; ours (an overlay's cell test: the region's Contains materialised, then the row's run in the scanlines vector at +0x1C; the overlay list's walks call it -- 0x53A500, fcost 0x512930)
-0x00515880 0x78 func_00515880  # OVL2
+0x00515880 0x78 TileFootprint__6CAiMapFPC6CPnt3DPQ26CAiMap6region  # OVL2; the AI core round 22: ours (new in SOCOM II, ai_map.cpp's, between CAiOverlay::Contains and 0x515900: CVehicle::Tick's call with the map, the vehicle's four transformed corners (+408) and its region (+368) -- the region tiled with 0 under flags 32 (the occupied bit), rebuilt from the corners by 0x515900, tiled with 1, true); byte-exact from ai_map.cpp
 0x00515900 0x4D4 func_00515900  # OVL2
 0x00515DE0 0x198 func_00515DE0  # OVL2
 0x00515F80 0x198 func_00515F80  # OVL2
