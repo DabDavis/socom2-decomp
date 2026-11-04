@@ -3770,7 +3770,7 @@
 0x002A3170 0x7B4 func_002A3170  # OVL1
 0x002A3930 0x14 func_002A3930  # OVL1
 0x002A3950 0x198 func_002A3950  # OVL1; OVL1's copy of CAiMap::GetLocation (OVL2 0x515F80, the same words: the engine core round 13); ovl-copy: GetLocation__6CAiMapCFPC6CPnt3DR9CAiMapLoc
-0x002A3AF0 0x8 func_002A3AF0  # OVL1
+0x002A3AF0 0x8 func_002A3AF0  # OVL1; the engine core round 14: OVL1's copy of CAiMapLoc() (0x516120, the same two words), fts_main.cpp's -- ftsGetAltitudeApprox 0x2A2EB0 calls it for the inlined map altitude's cell, the copies after the query in reverse of first use; ovl-copy: __ct__9CAiMapLocFv
 0x002A3B00 0x8 GetIntersect__8CDIDummyFPQ23zdb11DiIntersect  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x002A3B10 0x8 GetAltitude__8CDIDummyFPQ23zdb11DiIntersect  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x002A3B20 0x8 LoadTipAndTail__8CDIDummyFPQ23zdb11DiIntersect  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
