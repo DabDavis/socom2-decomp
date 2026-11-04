@@ -5,7 +5,7 @@
  * layout's buttons, the pressures, the jump/action test, and SOCOM II's stick readers (the strafe
  * 0x2C6110, a function's button held 0x2C61E0, a stick's axis 0x2C6520, the pitch 0x2C65B0 and its
  * caller, the look 0x2C6290 open), and the chat line's USB keyboard (0x2C6C70, its last function
- * before the layouts' destructor). Not yet: the per-layout parser 0x2C67F0. Defined in reverse of
+ * before the layouts' destructor), and the per-layout parser 0x2C67F0 (open). Defined in reverse of
  * their image order (-inline deferred). */
 
 #include <string>
@@ -328,9 +328,104 @@ extern "C" void func_002C6C70()
     }
 }
 
-/* one layout read from its rdr item and added to the layouts (SOCOM II's, out of the loader's
- * loop; OVL1 0x2C67F0, not written yet) */
-extern "C" void func_002C67F0(_zrdr *config);
+namespace {
+PAD_BUTTON ReadBtnName(const char *name);
+
+/* the game functions' names in controller.rdr, by function (SOCOM 1's c_arrFuncNames, a local of
+ * the unit's namespace; SOCOM II adds TACMAP) */
+const char *c_arrFuncNames[13] = {
+    "Action", "AimMode", "Fire", "FireMode", "Inventory", "Jump", "Reload", "StrafeLeft", "StrafeRight",
+    "SwapWeapon1", "SwapWeapon2", "TeamCommand", "TACMAP"
+};
+}
+
+/* one layout read from its rdr item and added to the layouts (SOCOM 1's Init's loop body, moved out
+ * of the loader in SOCOM II; OVL1 0x2C67F0, the name the map's): its name, then each mapping's
+ * Result and Input's Control -- a game function's button by name, else the stick settings: MoveLong
+ * the look's stick (and an AimMode Off the held look), Pitch a stick mask for the held set, the
+ * other or both by AimMode, Rotate and Strafe their sticks. The layout is pushed by reference, so
+ * it lives in the frame and every store reloads it; the function index is narrowed to the byte
+ * enum before ReadBtnName (the target's andi in the call's delay slot), the mask an int narrowed
+ * at each OR.
+ * OPEN, 12 instructions, registers only: at the button store and the two mask ORs the target
+ * colours the layout's reload a0 and the narrowed value v1 (the OR's operands mask first, then the
+ * loaded byte in a1), this the reload a1/v1 and the narrowed value a0 -- MW's commutative operand
+ * order puts the higher-numbered vreg first, so the target numbers the base's reload BEFORE the
+ * index's narrowing (and the loaded byte before the mask's), where MW lowers `p->a[i]` and `x |= y`
+ * index and right side first. Measured (build/scratch/states/sp_67f0*.py): the base as an rvalue
+ * pointer -- `((CCfgButton *)((char *)pConfig + 0x12))[f]`, or a CCfgSticks * accessor for the
+ * masks -- makes the button store the target's, and with `|= mask & 0xff` the ORs are 4 off (only
+ * the narrowed mask and the loaded byte trade v1/a1); an inline accessor for the buttons' array
+ * grows the function 8 bytes. Also tried: the index cast in place, an unsigned char local, a
+ * byte-enum local before the call (it gives the delay slot's andi), SetButton/Add members taking
+ * the enum or the byte, `mask | m_mask`, two-sided ORs, a CCfgSticks pointer local */
+extern "C" void func_002C67F0(_zrdr *config)
+{
+    const char *name = zrdr_findstring(config, "Name");
+    CCtrlrConfig *pConfig = new CCtrlrConfig(name);
+
+    CCtrlrConfigs::m_configs.push_back(pConfig);
+    _zrdr *mappings = zrdr_findtag(config, "Mappings");
+    int count = mappings ? (int)mappings->Count() : 0;
+
+    for (int i = 0; i < count; i++) {
+        _zrdr *mapping = mappings->Item(i);
+        const char *result = zrdr_findstring(mapping, "Result");
+        _zrdr *input = zrdr_findtag(mapping, "Input");
+        const char *control = zrdr_findstring(input, "Control");
+
+        if (!result || !control)
+            continue;
+        bool found = false;
+
+        for (int func = 0; func < 13; func++) {
+            if (!strcasecmp(result, c_arrFuncNames[func])) {
+                PadBtnFunc::_ f = (PadBtnFunc::_)func;
+
+                pConfig->m_btns.m_btn[f].m_btn = ReadBtnName(control);
+                found = true;
+                break;
+            }
+        }
+        if (found)
+            continue;
+        if (!strcasecmp(result, "MoveLong")) {
+            if (!strcasecmp(control, "LeftStickVert"))
+                pConfig->m_lookStick.m_stick = STICK_LEFT;
+            else if (!strcasecmp(control, "RightStickVert"))
+                pConfig->m_lookStick.m_stick = STICK_RIGHT;
+            const char *aim = zrdr_findstring(input, "AimMode");
+
+            if (aim && !strcasecmp(aim, "Off"))
+                pConfig->m_11.m_on = 1;
+        } else if (!strcasecmp(result, "Pitch")) {
+            int mask = 0;
+
+            if (!strcasecmp(control, "LeftStickVert"))
+                mask = 1;
+            else if (!strcasecmp(control, "RightStickVert"))
+                mask = 2;
+            bool hasAim = zrdr_findtag(input, "AimMode") != 0;
+            const char *aim = zrdr_findstring(input, "AimMode");
+            bool on = !aim || strcasecmp(aim, "Off");
+
+            if (!hasAim || on)
+                pConfig->m_pitchSticksHeld.m_mask |= mask;
+            if (!hasAim || !on)
+                pConfig->m_pitchSticks.m_mask |= mask;
+        } else if (!strcasecmp(result, "Rotate")) {
+            if (!strcasecmp(control, "LeftStickHoriz"))
+                pConfig->m_e.m_stick = STICK_LEFT;
+            else if (!strcasecmp(control, "RightStickHoriz"))
+                pConfig->m_e.m_stick = STICK_RIGHT;
+        } else if (!strcasecmp(result, "Strafe")) {
+            if (!strcasecmp(control, "LeftStickHoriz"))
+                pConfig->m_strafeStick.m_stick = STICK_LEFT;
+            else if (!strcasecmp(control, "RightStickHoriz"))
+                pConfig->m_strafeStick.m_stick = STICK_RIGHT;
+        }
+    }
+}
 
 namespace {
 /* a button by its controller.rdr name, none for an unknown one (SOCOM 1's ReadBtnName -- nested in
