@@ -1,8 +1,10 @@
 /* hud_bitmapreticule.cpp -- the reticle (OVL1 ...-0x21938F): SOCOM 1's unit (its DWARF names it,
  * Z:\dev\Apps\FTS\hud_bitmapreticule.cpp). Written: UnInit, Draw, the constructor and destructor
  * (0x218D50-0x21932F), hudStartDefuseTimer (0x219330, the unit's last), On, Off and the pause test's
- * OnPauseTest (0x215180-0x215243), in SOCOM 1's order; still to write: Init (0x2178C0) and the five
- * functions 0x215250-0x2178BF. BitmapReticule is 0x12F0 bytes longer in SOCOM II, laid out whole
+ * OnPauseTest (0x215180-0x215243), in SOCOM 1's order, HideTimer (0x213610, the unit's first) and
+ * TimerProgressTick (0x213680, round 41); still to write: 0x213840-0x215170 (by SOCOM 1's order
+ * UpdateGBarColor, SetGBarVal, ChangeReticule), Init (0x2178C0) and the five functions
+ * 0x215250-0x2178BF. BitmapReticule is 0x12F0 bytes longer in SOCOM II, laid out whole
  * (SOCOM 1's names, SOCOM II's offsets; the reticle type is a byte now). Defined in reverse of their
  * image order (-inline deferred). */
 
@@ -31,6 +33,7 @@ public:
     void OnPauseTest();
     void UnInit();
     void HideTimer();
+    void TimerProgressTick(float dT);
 
     /* SOCOM 1's DWARF names at SOCOM II's offsets (read off the constructor 0x218DE0 and the
      * destructor 0x219090); SOCOM II's own members named by offset */
@@ -226,6 +229,42 @@ void BitmapReticule::UnInit()
     m_lase_update.ClearAndWipe();
     m_detonation_update.ClearAndWipe();
     m_enemy_name.ClearAndWipe();
+}
+
+/* the timer bar: while a timer runs, its background and image shown, the image's right edge at the
+ * time's fraction (counting down unless it counts up), the timer let go once it leaves 0..max; with
+ * none, both faded out at 400 a second and turned off at 0 (SOCOM 1's TimerProgressTick, the bar's
+ * rectangle constants now and the frame time a parameter, 0x213680; 0x216770 calls it). The clamp
+ * at 0 is a ternary assigned back: as an `if` MW pads its join and not the count-down's */
+void BitmapReticule::TimerProgressTick(float dT)
+{
+    if (m_pCurval) {
+        float bomb_timer = *m_pCurval;
+
+        bomb_timer = bomb_timer < 0.0f ? 0.0f : bomb_timer;
+        bomb_timer *= m_maxval_frac;
+        if (!m_bIncrTimer)
+            bomb_timer = 1.0f - bomb_timer;
+        m_timer_BKGRD.On();
+        m_timer_BKGRD.SetTrans(38.4f);
+        m_timer_IMAGE.On();
+        m_timer_IMAGE.SetTrans(100.0f);
+        m_timer_IMAGE.SetPos(534, 187, (int)(534.0f + 50.0f * bomb_timer), 199);
+        if (!(*m_pCurval <= m_maxval))
+            m_pCurval = 0;
+        else if (*m_pCurval < 0.0f)
+            m_pCurval = 0;
+    } else {
+        float trans_val = m_timer_IMAGE.GetTrans() - 400.0f * dT;
+
+        if (trans_val < 0.0f) {
+            trans_val = 0.0f;
+            m_timer_IMAGE.Off();
+            m_timer_BKGRD.Off();
+        }
+        m_timer_IMAGE.SetTrans(trans_val);
+        m_timer_BKGRD.SetTrans(trans_val);
+    }
 }
 
 /* the timer's four bitmaps faded out (SOCOM II's, the unit's first in the image: CHUD::ReInit_Init
