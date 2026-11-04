@@ -446,6 +446,13 @@ const char *TranslateString(const char *s);
  * slots: C2D's 26 and three new, DrawBackground the last) */
 class C3StateButton : public C2D {
 public:
+    /* inline (C2DButton's constructor inlines it, as SOCOM 1's does): no caption, the text at
+     * (10, 5), white, at scale 1.5 */
+    C3StateButton() : _szCaption(0), _iTextX(10), _iTextY(5), _bCaptionCentered(false)
+    {
+        _strCaption.SetColor(255.0f, 255.0f, 255.0f);
+        _strCaption.m_scale = 1.5f;
+    }
     virtual ~C3StateButton();
     /* slot 12: the caption ticks with the button (0x37C600) */
     virtual void Tick(float dT) { _strCaption.Tick(dT); }
@@ -465,6 +472,14 @@ public:
 /* a button's look in one state (0x34 bytes; its destructor 0x36E650, a string at 0 destroyed, is
  * the button's -- a plain stand-in here, the fields by what SetNormal hands on; the names ours) */
 struct ButtonState {
+    /* inline (C2DButton's constructor builds its four so, as SOCOM 1's: grey caption, the scale
+     * left alone) */
+    ButtonState()
+        : m_tex(0), m_fadeMin(0.0f), m_fadeMax(0.0f), m_pulse(false), m_period(0.0f), m_fadeTime(0.0f),
+          m_color(128.0f, 128.0f, 128.0f)
+    {
+    }
+
     CSaferStr m_texName;   // 0x0: the state's image (SOCOM 1's _TexName)
     zdb::CTexHandle *m_tex;   // 0xc: the background's texture
     float m_fadeMin;   // 0x10
@@ -556,6 +571,7 @@ extern CZAnimMain ZAnim;
  * its background a plain bitmap at 0x1A0) */
 class C2DButton : public C3StateButton, public UIVarMixin {
 public:
+    C2DButton();
     virtual ~C2DButton();
     /* slot 26: the background's alpha, a fraction of 128 (0x37C2C0) */
     virtual void SetBackgroundAlpha(float a) { m_background.SetTrans(128.0f * a); }
@@ -1123,6 +1139,12 @@ void CPopUpDialog::Tick(float dT)
     m_790.Tick(dT);
     if (m_32c)
         m_32c->Tick(dT);
+}
+
+/* built with no size, font, press or actions: the bases', the four states' and the background's
+ * inline constructors (SOCOM 1's C2DButton(), 0x38FA10 there; CButtonSpec::CreateDisplayObj's) */
+C2DButton::C2DButton() : _fWidth(0.0f), _fHeight(0.0f), m_alternateFont(0), m_pressTime(0.0f), m_numActions(0)
+{
 }
 
 /* the children deleted, each taken off the list first (~CUIMapCtrl's walk, under a test of the
