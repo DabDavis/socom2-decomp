@@ -8,8 +8,8 @@
  * profile entries through a log record of its own: 45, the inputs, and 37, a flag that adds a
  * second output and that the block keeps. Written so far: the session pair (round 15c: the
  * state copied field by field, the arrays by loops 2.96 unrolls by ten, the two ring positions
- * kept as unsigned indices), ChangeMike (OPEN), TestChangeMike and CheckForAbnormalConditions
- * (round 19c) and the constructor; the rest are declared, not yet defined. */
+ * kept as unsigned indices), ChangeMike, TestChangeMike and CheckForAbnormalConditions
+ * (round 19c; ChangeMike closed in 20c) and the constructor; the rest are declared, not yet defined. */
 #include "tosblk.h"
 
 typedef struct TOSLOG {
@@ -108,22 +108,28 @@ static __inline__ unsigned short StartHold(VAD *v, unsigned short aside)
  * more than 0.2, moves it by a fraction of itself, within 0xFFFF and the range around the last
  * change), a hold started at it (0: none -- state 1), then, when nothing changed and the level
  * moved more than a hundredth for 11 frames, the change kept and command 12's report 5 when the
- * level is at an end and the energy beyond the floor. SOCOM 1's body (0x2D0; SOCOM II's 0x2D8):
- * the doubles are float constants promoted (0.2f, 2.7631019f, 1.381551f: float-precision bits in
- * .rodata), the starting level an inline's result (CurrentLevel, ours: the target tests its 0
- * as a value, not threaded to the exit).
- * OPEN (4 bytes short): the target masks the starting level (`andi s3,v0,0xffff`: a wider value
- * converted) and keeps n in s2 and the distance in s0 (here the other way round); in the hold
- * (StartHold) it re-masks the hold flag and keeps the level in a0, the call's argument copied; the
- * `changed` exit is a `bnezl` with the clear in its slot. Int and short results of the level
- * inline leave the move (build/scratch/gcc/r19c/v_cm*.py). */
+ * level is at an end and the energy beyond the floor. SOCOM 1's body (0x2D0; SOCOM II's 0x2D8),
+ * its three shapes the target's (round 20c, from round 19c's 4-byte miss):
+ * - the starting level an inline with a return per arm (CurrentLevel, ours): each return sets the
+ *   inline's HImode result in its own block, so the conversion at the join is no combine's to drop
+ *   -- the target's `andi s3,v0,0xffff` -- and the hold flag, loaded there as a QImode pseudo, is
+ *   zero-extended again where StartHold tests it (`andi v0,s5,0xff`); a result variable assigned
+ *   in one arm lets combine see both values and fold the masks away;
+ * - the clamp's upper bound an if/else (`if (lo < hi) n = lo; else n = hi;`): if-conversion stores
+ *   lo and moves hi in with a movz, hi in a register of its own; `lo < hi ? lo : hi` computes hi
+ *   into n's register and moves lo in;
+ * - the test of the change an if around the rest with the clear in the else: the else block is laid
+ *   out of line, its store goes into the `bnezl`'s slot and the branch to the common `return 0`;
+ *   a guard clause `if (v->changed) { v->count = 0; return 0; }` falls through into the clear.
+ * Then n in s2 and the distance in s0 come out as the target's. The doubles: 0.2f, and two values
+ * that are no float's (the midpoints above 2.7631018f and 1.3815509f: 25 significant bits, two
+ * fifths and a fifth of the same 6.90775484 -- folded double arithmetic, as CheckForAbnormalConditions'
+ * 5.7564623653888703 is five sixths of it), spelled as their 17-digit decimals (dconst.py). */
 static __inline__ unsigned short CurrentLevel(VAD *v)
 {
-    unsigned short r = 0;
-
-    if (v->hold == 0)
-        r = v->level;
-    return r;
+    if (v->hold != 0)
+        return 0;
+    return v->level;
 }
 
 static int ChangeMike(VAD *v)
@@ -151,7 +157,10 @@ static int ChangeMike(VAD *v)
 
             if (lo < n)
                 lo = n;
-            n = lo < hi ? lo : hi;
+            if (lo < hi)
+                n = lo;
+            else
+                n = hi;
         }
         n = StartHold(v, n);
         if (n == 0) {
@@ -159,22 +168,21 @@ static int ChangeMike(VAD *v)
             return 0;
         }
     }
-    if (v->changed != 0) {
+    if (v->changed == 0) {
+        if ((int)(old * 0.01f) < labs(n - old))
+            v->count = 0;
+        if (v->count >= 11) {
+            e = v->f44[0] + v->f44[3] + v->f44[4];
+            v->changed = n;
+            v->count = 0;
+            if (((unsigned short)n == 0xFFFF && e < (double)v->floor2 - 2.7631019353866578)
+                || ((unsigned short)n < 6555 && e > (double)v->floor2 + 1.3815509676933289)) {
+                if ((unsigned char)_tosControl(v, 12, 5, v->time))
+                    return 1;
+            }
+        }
+    } else
         v->count = 0;
-        return 0;
-    }
-    if ((int)(old * 0.01f) < labs(n - old))
-        v->count = 0;
-    if (v->count < 11)
-        return 0;
-    e = v->f44[0] + v->f44[3] + v->f44[4];
-    v->changed = n;
-    v->count = 0;
-    if (((unsigned short)n == 0xFFFF && e < (double)v->floor2 - 2.7631019f)
-        || ((unsigned short)n < 6555 && e > (double)v->floor2 + 1.381551f)) {
-        if ((unsigned char)_tosControl(v, 12, 5, v->time))
-            return 1;
-    }
     return 0;
 }
 
