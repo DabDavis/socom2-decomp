@@ -481,6 +481,11 @@ CZAnim *CZWeapon::GetHitAnim(int material)
     return 0;
 }
 
+CZAnim *CZWeapon::GetDefaultSpecialAnim()
+{
+    return m_defaultspecialanim;
+}
+
 void CZWeapon::SetZoomedFireAnim(CZAnim *anim)
 {
     m_zoomedfireanim = anim;
@@ -1195,6 +1200,7 @@ float *CZWeapon::m_timer_pCurval;
 bool CZWeapon::m_timer_bTimerRegistered;
 bool CZWeapon::m_timer_bTimerCleared;
 bool CZWeapon::m_timer_bIncrTimer = true;
+bool CZWeapon::m_allowImpactAnimations = true;
 
 void CZWeapon::RegisterTimer(float *pCurval, float maxval, bool bIncr)
 {

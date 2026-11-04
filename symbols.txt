@@ -8353,7 +8353,7 @@
 0x003D2290 0x8 SetZoomedFireAnim__8CZWeaponFP6CZAnim  # OVL1; s1:calls by hand (the wep lane, round 17: takes "%s_zoom"'s animation, as SOCOM 1's; stores 0x88, which GetFireAnim(true) returns)
 0x003D22A0 0x8 func_003D22A0  # OVL1
 0x003D22B0 0x1C GetFireAnim__8CZWeaponFb  # OVL1; the integrator 2026-11-04, by the weapons lane round 15: its body is zoomed ? m_88 : m_84, and SOCOM 1's Fire calls GetFireAnim at the same site (CTurret::Fire 0x3A8D20 calls it)
-0x003D22D0 0x8 func_003D22D0  # OVL1
+0x003D22D0 0x8 GetDefaultSpecialAnim__8CZWeaponFv  # OVL1; s1:order by hand (the wep lane, round 21: zwep_weapon.cpp -- SOCOM 1's GetDefaultSpecialAnim 0x31E760 in its place between GetFireAnim and GetHitAnim, the same 8-byte accessor of m_defaultspecialanim (0x90 here, SOCOM 1's 0x70); HandleDelayedDetonate calls it where SOCOM 1's does)
 0x003D22E0 0x2C GetHitAnim__8CZWeaponFi  # OVL1; s1:order by hand (SOCOM 1's shape: m_hitanim[i], 0 unless i is below CMaterialExArray's list size)
 0x003D2310 0x8 GetFireAnimName__8CZWeaponFv  # OVL1; s1:calls by hand (the wep lane, round 17: InitializeWeapons looks its result up for the fire, "%s_zoom" and "%s_zoom_TT" animations, as SOCOM 1's; m_fireanimname, 0xAC)
 0x003D2320 0x2C GetSpecialMaterialAnim__8CZWeaponFi  # OVL1; s1:order by hand (the same over m_specialmaterialanim, 0x94)

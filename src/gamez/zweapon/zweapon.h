@@ -222,6 +222,8 @@ public:
     static EQUIP_ITEM GetWeaponId(const char *name);
     /* a material's hit and special animations, none past the materials' count (SOCOM 1's) */
     CZAnim *GetHitAnim(int material);
+    /* the animation a detonation starts by default (SOCOM 1's, 0x3D22D0) */
+    CZAnim *GetDefaultSpecialAnim();
     CZAnim *GetSpecialMaterialAnim(int material);
     void SetHasFireMode(FIREMODE mode);
     void SetMaxFireMode(FIREMODE mode);
@@ -411,6 +413,10 @@ public:
     static bool m_timer_bTimerRegistered;
     static bool m_timer_bTimerCleared;
     static bool m_timer_bIncrTimer;
+    /* whether hits and detonations start their animations (SOCOM 1's static, a byte in its
+     * .sdata; SOCOM II's at 0x3E1540, initialised true: only the projectile's three impact
+     * handlers read it) */
+    static bool m_allowImpactAnimations;
     /* a second timer of the same kind, never cleared (new in SOCOM II, 0x3D0090-0x3D00FF: the kit
      * registers an item's use time with it, the HUD's timer tick takes it -- the names ours) */
     static void RegisterTimer2(float *pCurval, float maxval, bool bIncr);
@@ -683,6 +689,16 @@ public:
      * forgets it; 0x3C6990 and 0x3C6980, the names ours) */
     static CPnt3D *GetNewExplosion();
     static void ClearNewExplosion();
+    /* and set (inline: HandleDelayedDetonate's, through a pointer it tests -- the name ours) */
+    static void SetNewExplosion(const CPnt3D *pos)
+    {
+        const CPnt3D *p = pos;
+
+        if (p) {
+            m_explosionPos = *p;
+            m_newExplosion = true;
+        }
+    }
     static CPnt3D m_explosionPos;   // 0x4B51C8 (built from CPnt3D::zero by the initialiser)
     static bool m_newExplosion;   // 0x4B51D8
     /* inline: the bool's `& 1` survives a constant argument, as SetVelW's and Init's stores show

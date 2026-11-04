@@ -41,6 +41,27 @@ public:
     void AddNewMark(zdb::IntersectStruct *is, CZProjectile *proj, float size);
 };
 
+/* something the AI notices (ai.h's CAiEvent: its fields and the pool's two calls) */
+class CAiEvent {
+public:
+    static CAiEvent *Acquire();
+    static void Create(CAiEvent *e);
+
+    CPnt3D m_pos;   // 0x0
+    float m_rangeSq;   // 0xc
+    float m_duration;   // 0x10
+    int m_owner;   // 0x14
+    unsigned int m_id : 16;   // 0x18
+    unsigned int m_visible : 1;   // 0x1a
+    unsigned int m_type : 15;   // AIE_EXPLOSION is 8
+};
+
+/* an animation (zanim.h's class: the call only) */
+class CZAnim {
+public:
+    CZAnim *ActivateArg(int type, ...);
+};
+
 /* MSL's, in double (MAIN's copy) */
 extern "C" double tan(double x);
 
@@ -515,6 +536,98 @@ void CZProjectile::Cleanup()
 void CZProjectile::Detonate()
 {
     m_state = PROJECTILE_TO_BE_DETONATED;
+}
+
+/* the detonation dealt with once its proximity has been registered: detonated; the blast's point
+ * kept for the camera's shake unless the weapon is one of twelve; a noise the AI hears within the
+ * weapon's sound radius; the weapon's default animation for nine weapons, else the material's
+ * under the point (a flag set over water) or the default; the explosion handled when it has a
+ * radius, the pickup destroyed, the claymore's (and 158's) node switched off, 158's removal timer
+ * set; detonated, the point lifted (SOCOM 1's, 0x3C8330: its noise took the impact radius through
+ * a call, its anim list five weapons long). The twelve are a switch (a compare chain in reverse
+ * case order, no delay slot filled; written as `!=` tests MW fills them), the nine an `||` chain
+ * (MW folds 127/128 and 172/173 into range tests); the underwater bit is tested as a bool
+ * (`(bool)b != false` keeps the target's sltu) and the explosion setter copies through a local
+ * pointer (zweapon.h's SetNewExplosion: through the parameter the offset folds into the loads) */
+void CZProjectile::HandleDelayedDetonate()
+{
+    m_state = PROJECTILE_WAS_DETONATED;
+
+    EQUIP_ITEM id = m_weapon->m_ID;
+
+    switch (id) {
+    case 122:
+    case 125:
+    case 123:
+    case 127:
+    case 128:
+    case 159:
+    case 172:
+    case 173:
+    case 174:
+    case 177:
+    case 178:
+    case 182:
+        break;
+    default:
+        SetNewExplosion(&m_framestartpos);
+        break;
+    }
+
+    float r = m_weapon->m_soundradius;
+
+    if (r > 1.0f) {
+        CAiEvent *e = CAiEvent::Acquire();
+
+        e->m_pos = m_framestartpos;
+        e->m_rangeSq = r * r;
+        e->m_duration = 0.5f;
+        e->m_type = 8;
+        e->m_owner = m_shooterID;
+        CAiEvent::Create(e);
+    }
+    if (id == 122 || id == 127 || id == 128 || id == 172 || id == 173 || id == 178 || id == 182 ||
+        id == 125 || id == CLAYMORE) {
+        CZAnim *anim = m_weapon->GetDefaultSpecialAnim();
+
+        if (anim && CZWeapon::m_allowImpactAnimations)
+            anim->ActivateArg(1, 3, m_instance, 0);
+    } else {
+        IntersectStruct *hit = CWorld::m_world->GetAltitude(&m_framestartpos, 0.5f);
+        CMaterialEx *ex = 0;
+        int mat = 0;
+
+        if (hit) {
+            mat = hit->GetMaterial();
+            ex = CMaterialExArray::GetMaterialEx(mat);
+        }
+
+        CZAnim *anim = 0;
+
+        if (ex) {
+            if ((bool)ex->m_underwater != false)
+                SetFlag19(true);
+            if (!(hit->m_pos.y <= m_framestartpos.y - 10.0f))
+                anim = m_weapon->GetSpecialMaterialAnim(mat);
+            if (!anim)
+                anim = m_weapon->GetDefaultSpecialAnim();
+        } else
+            anim = m_weapon->GetDefaultSpecialAnim();
+        if (anim && CZWeapon::m_allowImpactAnimations)
+            anim->ActivateArg(1, 5, &m_framestartpos, 0);
+    }
+    if (m_ammo->GetExplosionRadius() > 0.0f)
+        HandleDetonateExplosion();
+    if (m_pickup) {
+        CPickup::Destroy(m_pickup);
+        m_pickup = 0;
+    }
+    if (m_weapon->m_ID == CLAYMORE || m_weapon->m_ID == 158)
+        m_instance->SetActive(false);
+    if (m_weapon->m_ID == 158)
+        m_removaltime = m_weapon->GetTimer(1);
+    m_state = PROJECTILE_WAS_DETONATED;
+    m_framestartpos.y += 1.0f;
 }
 
 bool CZProjectile::GetFlag9()
