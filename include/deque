@@ -99,7 +99,24 @@
  * (0x20C), without the pragma it inlines but both iterators are copied into the frame at entry (0x270)
  * -- by value, by member, by const reference and const by-value parameters alike (the last 0x1F8, the
  * target's size, by coincidence: the copies stay). The class deque's init (0x2E0830, 0x3A5ED0) through
- * __convert_iterator (with or without its converter member) is 0x118 against 0xB0. */
+ * __convert_iterator (with or without its converter member) is 0x118 against 0xB0.
+ * The online lane's round 13 (probes in build/scratch/onl/p/, untracked): THE BUFFER'S begin()/end()
+ * BUILD A NAMED TEMPORARY AND COPY IT OUT THROUGH CONST REFERENCE ACCESSORS -- cdeque<T *>::end() is
+ * `return make_iterator(index)`, an in-class make_iterator constructing `iterator t(...)` and returning
+ * it (a value returned through an inline function keeps its temporary in the frame; `return iterator(..)`
+ * or a named local in end() itself is built in place in the return slot), the iterator's constructor
+ * taking start and capacity by const reference (they are read where the body uses them: capacity late,
+ * start shared with the element pointer), and a user copy constructor reading the source through
+ * `T **const &p() const` accessors: their inlined reference temporaries hold the field addresses that
+ * the constructor's stores share, which is the target's `addiu t0,sp,4` ... `lw v1,0(t0)` copy-out (by
+ * value, `x.p_` or through a pointer the copy folds to sp offsets). The lobby's end() 0x2E0C10 and
+ * util_ssm.cpp's 0x3A62B0 are byte-exact so, nothing lost over every hand-written unit. Still open: every
+ * begin() (0x2E0CB0, 0x3A6350, the rdr's 0x334030) has start*4 coloured before the three field-address
+ * temporaries where the target colours it after them (the inliner's temporaries are numbered before
+ * CSE's; nine forms of begin(), make_iterator and the constructor tried), the pointer deques' pair
+ * (0x333F90/0x334030, cdeque<const void **>) does not CSE the copy's addresses at all (0x98/0x68 against
+ * 0xA0/0x70), and init (0x2E0B40) copies its by-address iterators as FPU blocks, as an implicit copy
+ * would (0xC0 against 0xC8). */
 
 #ifndef _MSL_DEQUE
 #define _MSL_DEQUE
@@ -298,13 +315,18 @@ class cdeque<T *, Allocator> : public cdeque<const void *, std::allocator<const 
 public:
     class iterator {
     public:
-        iterator(T **p, T **data, unsigned int start, unsigned int cap)
+        iterator(T **p, T **data, const unsigned int &start, const unsigned int &cap)
         {
             p_ = p;
             data_ = data;
             first_ = data_ + start;
             last_ = data_ + cap;
         }
+        iterator(const iterator &x) { p_ = x.p(); data_ = x.data(); first_ = x.first(); last_ = x.last(); }
+        T **const &p() const { return p_; }
+        T **const &data() const { return data_; }
+        T **const &first() const { return first_; }
+        T **const &last() const { return last_; }
         T *&operator*() const { return *p_; }
         iterator &operator++()
         {
@@ -354,6 +376,12 @@ public:
     cdeque() {}
     explicit cdeque(const Allocator &a);
     cdeque(const cdeque &x);
+    iterator make_iterator(unsigned int n) const
+    {
+        iterator t((T **)this->data_ + n, (T **)this->data_, this->start_, this->capacity_);
+
+        return t;
+    }
     iterator begin() const;
     iterator end() const;
     template <class InputIterator>
@@ -379,17 +407,13 @@ cdeque<T *, Allocator>::cdeque(const cdeque &x) : base(x.alloc())
 template <class T, class Allocator>
 typename cdeque<T *, Allocator>::iterator cdeque<T *, Allocator>::begin() const
 {
-    iterator i((T **)this->data_ + this->start_, (T **)this->data_, this->start_, this->capacity_);
-
-    return i;
+    return make_iterator(this->start_);
 }
 
 template <class T, class Allocator>
 typename cdeque<T *, Allocator>::iterator cdeque<T *, Allocator>::end() const
 {
-    iterator i((T **)this->data_ + (this->capacity_ ? (this->start_ + this->size_) % this->capacity_ : 0), (T **)this->data_, this->start_, this->capacity_);
-
-    return i;
+    return make_iterator(this->capacity_ ? (this->start_ + this->size_) % this->capacity_ : 0);
 }
 
 template <class T, class Allocator>

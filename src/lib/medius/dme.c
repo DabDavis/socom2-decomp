@@ -1,5 +1,5 @@
 /* sc: compiler=ee-gcc2.96; flags=-O2 -G0 */
-/* DME's public API, thread-safe (OVL2 0x620908-0x623EF8): SCEA's DME client ("dme version:
+/* DME's public API, thread-safe (OVL2 0x620908-0x6244B0): SCEA's DME client ("dme version:
  * 1.32.0070"), prebuilt with ee-gcc 2.96 at -O2 -G0 (README "The GCC front"). SOCOM 1's DME has no
  * such layer -- its NetSendMessage is the body -- while SOCOM II's public Net* functions each test
  * that DME is initialised (17) and running thread-safe (43), lock DME's mutex, call the internal
@@ -32,8 +32,8 @@ extern int NetGetBandwidthInfo(int);
 extern int func_00623EF8(void);
 extern int func_00623F00(int, int, int, int);
 extern int func_00623F08(void);
-extern int func_00623F30(int, int, int, int, int, int);
-extern int func_00624180(int, int, int);
+int func_00623F30(int *pnField, int nOffset, int nSize, int nType, int nCount, char *szName);
+int func_00624180(int *pnStruct, char *szName, int nSize);
 int func_00624460(unsigned int nClass, int nArg1, int nArg2, int nArg3);
 extern unsigned char func_00624418(int, int, int);
 int func_00624440(int arg0, int arg1);
@@ -361,7 +361,7 @@ int NetRegisterObjectStart(void)
     return result;
 }
 
-int NetObjectField(int arg0, int arg1, int arg2, int arg3, int arg4, int arg5)
+int NetObjectField(int *pnField, int nOffset, int nSize, int nType, int nCount, char *szName)
 {
     int result;
 
@@ -371,13 +371,13 @@ int NetObjectField(int arg0, int arg1, int arg2, int arg3, int arg4, int arg5)
         return DME_LOCK_FAILED;
     if (rt_mutex_lock(DmeMutex, 0) != 0)
         return DME_LOCK_FAILED;
-    result = func_00623F30(arg0, arg1, arg2, arg3, arg4, arg5);
+    result = func_00623F30(pnField, nOffset, nSize, nType, nCount, szName);
     if (rt_mutex_unlock(DmeMutex, 0) != 0)
         return DME_LOCK_FAILED;
     return result;
 }
 
-int NetRegisterStructure(int arg0, int arg1, int arg2)
+int NetRegisterStructure(int *pnStruct, char *szName, int nSize)
 {
     int result;
 
@@ -387,7 +387,7 @@ int NetRegisterStructure(int arg0, int arg1, int arg2)
         return DME_LOCK_FAILED;
     if (rt_mutex_lock(DmeMutex, 0) != 0)
         return DME_LOCK_FAILED;
-    result = func_00624180(arg0, arg1, arg2);
+    result = func_00624180(pnStruct, szName, nSize);
     if (rt_mutex_unlock(DmeMutex, 0) != 0)
         return DME_LOCK_FAILED;
     return result;
@@ -1520,10 +1520,152 @@ int func_00623E60(int arg0)
     return result;
 }
 
+/* ---- round 20b: the object and structure descriptions (0x623EF8-0x624338), SOCOM 1's six-function
+ * object NetRegisterMessageStart .. NetRegisterStructure (0x420A08, gcc2_compiled) in its order, grown
+ * by guards: a field is 32 bytes here (40 there) and its 16-byte name is copied unaligned; an
+ * object's fields together must stay under 475 bytes (31). The first three are matched drafts.
+ * Shapes, measured: a pointer initialised at its declaration (`NetField *pField = 0;`) has two sets,
+ * so alias analysis finds no base for it and its stores may clobber any global -- the target reloads
+ * NetFieldCount after the record's stores (an uninitialised pField, one set from NetFieldList, lets
+ * CSE keep the value: 26 words); the count bumped in its own statement after both arrays' stores
+ * (`apFields[n++]` computes nFields' address once and loop.c hoists it: 65s); an index zeroed at its
+ * declaration is the prologue's `move s3,zero`. ---- */
+
+extern int data_00651180;               /* NetInitialize has run */
+
+typedef struct NetField {               /* SOCOM 1's NetFieldList entry, shrunk */
+    int nOffset;                        /* 0x00 */
+    int nSize;                          /* 0x04 */
+    int nCount;                         /* 0x08 */
+    int nType;                          /* 0x0C: a structure's index + 16 from 16 */
+    char szName[16];                    /* 0x10 */
+} NetField;                             /* 0x20 */
+
+typedef struct NetStructure {
+    int nSize;                          /* 0x000 */
+    int nFields;                        /* 0x004 */
+    char szName[32];                    /* 0x008 */
+    NetField *apFields[64];             /* 0x028 */
+    int anOffsets[64];                  /* 0x128 */
+} NetStructure;                         /* 0x228 */
+
+extern int GlobalObjectFieldCount;      /* 0x651208 */
+extern unsigned int NetFieldCount;      /* 0x67C59C */
+extern unsigned int NetStructureCount;  /* 0x67C5A0 */
+extern int GlobalObjectFieldList[64];   /* 0x672020 */
+extern NetField NetFieldList[1024];     /* 0x67E988 */
+extern NetStructure NetStructureList[16]; /* 0x67C5C8 */
+extern void *memcpy(void *dst, const void *src, unsigned int n);
+extern char *strncpy(char *dst, const char *src, unsigned int n);
+
+/* NetObjectField's body (0x623F30): one field of the global object described; the fields' bytes,
+ * the new one's with them, summed into the multiply-accumulator (madd from the entry's mtlo) */
+int func_00623F30(int *pnField, int nOffset, int nSize, int nType, int nCount, char *szName)
+{
+    unsigned int nTotal = 0;
+    NetField *pField = 0;
+    int i;
+
+    if (data_00651180 == 0)
+        return 17;
+    if (pnField == 0)
+        return 23;
+    if (nSize <= 0)
+        return 23;
+    if (nCount <= 0)
+        return 23;
+    if (GlobalObjectFieldCount >= 64)
+        return 8;
+    if (NetFieldCount >= 1024)
+        return 8;
+    for (i = 0; i < GlobalObjectFieldCount; i++)
+        nTotal += NetFieldList[NetFieldCount - GlobalObjectFieldCount + i].nSize *
+                  NetFieldList[NetFieldCount - GlobalObjectFieldCount + i].nCount;
+    nTotal += nSize * nCount;
+    if (nTotal >= 475)
+        return 31;
+    pField = &NetFieldList[NetFieldCount];
+    if (pField == 0)
+        return 10;
+    pField->nOffset = nOffset;
+    pField->nSize = nSize;
+    pField->nType = nType;
+    pField->nCount = nCount;
+    if (szName != 0)
+        memcpy(pField->szName, szName, 16);
+    GlobalObjectFieldList[GlobalObjectFieldCount] = NetFieldCount;
+    *pnField = GlobalObjectFieldCount;
+    GlobalObjectFieldCount++;
+    NetFieldCount++;
+    return 0;
+}
+
+/* SOCOM 1's RegisterChildStructure (0x624070): a structure's fields flattened into another's, a
+ * structure field recursing with its offset added */
+void RegisterChildStructure(NetStructure *pStruct, NetStructure *pChild, int nOffset)
+{
+    NetField *pField = 0;
+    int i;
+
+    if (pStruct == 0)
+        return;
+    if (pChild == 0)
+        return;
+    for (i = 0; i < pChild->nFields; i++) {
+        pField = pChild->apFields[i];
+        if (pField->nType >= 16) {
+            RegisterChildStructure(pStruct, &NetStructureList[pField->nType - 16], nOffset + pField->nOffset);
+        } else {
+            pStruct->anOffsets[pStruct->nFields] = nOffset + pField->nOffset;
+            pStruct->apFields[pStruct->nFields] = pField;
+            pStruct->nFields++;
+        }
+    }
+}
+
+/* NetRegisterStructure's body (0x624180): a structure of the global object's fields so far */
+int func_00624180(int *pnStruct, char *szName, int nSize)
+{
+    NetStructure *pStruct;
+    NetField *pField = 0;
+    int i = 0;
+
+    if (data_00651180 == 0)
+        return 17;
+    if (pnStruct == 0)
+        return 23;
+    if (szName == 0)
+        return 23;
+    if (nSize <= 0)
+        return 23;
+    if (NetStructureCount >= 16)
+        return 8;
+    pStruct = &NetStructureList[NetStructureCount];
+    if (pStruct == 0)
+        return 10;
+    pStruct->nSize = nSize;
+    pStruct->nFields = 0;
+    strncpy(pStruct->szName, szName, 32);
+    for (i = 0; i < GlobalObjectFieldCount; i++) {
+        pField = &NetFieldList[GlobalObjectFieldList[i]];
+        if (pField == 0)
+            continue;
+        if (pField->nType >= 16) {
+            RegisterChildStructure(pStruct, &NetStructureList[pField->nType - 16], pField->nOffset);
+        } else {
+            pStruct->anOffsets[pStruct->nFields] = pField->nOffset;
+            pStruct->apFields[pStruct->nFields] = pField;
+            pStruct->nFields++;
+        }
+    }
+    *pnStruct = NetStructureCount;
+    NetStructureCount++;
+    return 0;
+}
+
 /* ---- round 7b: Dme.c's own registration tables, after the wrappers (NetInitialize must have run:
  * 17): a handler per message class (16 of them, three words each) and the stream types ---- */
 
-extern int data_00651180;               /* NetInitialize has run */
 extern unsigned int data_0067C5A4;      /* the stream types registered */
 extern unsigned int data_0067C5A8;      /* the message classes registered */
 extern int data_0067E848[];

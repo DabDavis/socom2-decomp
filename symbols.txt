@@ -4676,9 +4676,9 @@
 0x002E0A10 0x70 __dt__Q210Metrowerks56cdeque<P11LOBBY_STATE,Q23std25allocator<P11LOBBY_STATE>>Fv  # OVL1; ours, the online lane round 10 (the state queue's circular buffer's destructor: 0x2E09A0 destroys its temporary through it; byte-exact)
 0x002E0A80 0x40 __ct__Q210Metrowerks128__compressed_pair_imp<Q23std24allocator<11LOBBY_STATE>,Q210Metrowerks56cdeque<P11LOBBY_STATE,Q23std25allocator<P11LOBBY_STATE>>>FRCQ23std24allocator<11LOBBY_STATE>RCQ210Metrowerks56cdeque<P11LOBBY_STATE,Q23std25allocator<P11LOBBY_STATE>>  # OVL1; ours, the online lane round 10 (the state queue's blocks, a compressed pair of the allocator and the circular buffer, copy-constructed from both; byte-exact)
 0x002E0AC0 0x78 __ct__Q210Metrowerks56cdeque<P11LOBBY_STATE,Q23std25allocator<P11LOBBY_STATE>>FRCQ210Metrowerks56cdeque<P11LOBBY_STATE,Q23std25allocator<P11LOBBY_STATE>>  # OVL1; ours, the online lane round 10 (the state queue's circular buffer's copy constructor: the compressed pair's constructor 0x2E0A80 calls it; open in include/deque, 0x70 against 0x78 -- the image calls its begin() and the allocator base, util_ssm's 0x3A6160 alike)
-0x002E0B40 0xC8 func_002E0B40  # OVL1
-0x002E0C10 0xA0 func_002E0C10  # OVL1
-0x002E0CB0 0x70 func_002E0CB0  # OVL1
+0x002E0B40 0xC8 init<Q310Metrowerks56cdeque<P11LOBBY_STATE,Q23std25allocator<P11LOBBY_STATE>>8iterator>__Q210Metrowerks56cdeque<P11LOBBY_STATE,Q23std25allocator<P11LOBBY_STATE>>FQ310Metrowerks56cdeque<P11LOBBY_STATE,Q23std25allocator<P11LOBBY_STATE>>8iteratorQ310Metrowerks56cdeque<P11LOBBY_STATE,Q23std25allocator<P11LOBBY_STATE>>8iteratorQ23std20forward_iterator_tag_v  # OVL1; the online lane round 13: the state queue's block buffer's range init, the copy constructor 0x2E0AC0's last call with begin()/end(), handing two __convert_iterators to the const void * base's do_assign 0x2E0E10
+0x002E0C10 0xA0 end__Q210Metrowerks56cdeque<P11LOBBY_STATE,Q23std25allocator<P11LOBBY_STATE>>CFv  # OVL1; the online lane round 13: the state queue's block buffer's end() const, called by its copy constructor 0x2E0AC0 after begin() 0x2E0CB0 and before init 0x2E0B40; byte-exact from include/deque (the iterator built in a named temporary by make_iterator, its copy through const reference accessors)
+0x002E0CB0 0x70 begin__Q210Metrowerks56cdeque<P11LOBBY_STATE,Q23std25allocator<P11LOBBY_STATE>>CFv  # OVL1; the online lane round 13: the state queue's block buffer's begin() const, the first call of its copy constructor 0x2E0AC0 (open: start*4 and the three field addresses numbered the other way round)
 0x002E0D20 0x18 __ct__Q210Metrowerks40__cdeque_buf<PCv,Q23std14allocator<PCv>>FRCQ23std14allocator<PCv>  # OVL1; the MSL headers round 7: include/deque -- the circular buffer's storage built from an allocator (four words cleared), the buffers' copy constructors' base; byte-exact copies in zrdr_edit.cpp and util_ssm.cpp
 0x002E0D40 0x8 __ct__Q23std24allocator<11LOBBY_STATE>FRCQ23std24allocator<11LOBBY_STATE>  # OVL1; ours, the online lane round 10 (the allocator's copy constructor, out of class: the compressed pair's constructor 0x2E0A80 calls it; byte-exact)
 0x002E0D50 0x18 func_002E0D50  # OVL1
@@ -5952,7 +5952,7 @@
 0x00335C00 0x214 func_00335C00  # OVL1
 0x00335E20 0x1A8 func_00335E20  # OVL1
 0x00335FD0 0x258 zRndrInit__Fv  # OVL1; s1:calls
-0x00336230 0x10C func_00336230  # OVL1
+0x00336230 0x10C Tick__12CFlareSystemFv  # OVL1; the world lane round 8: ours -- the flare system's tick (CCoreState::Tick calls it on 0x488F10): each flare's visible bit cleared, an active one to test given TestFlare's verdict
 0x00336340 0xA8 Clear__12CFlareSystemFv  # OVL1; the rdr lane: SOCOM II's, the name ours (CFlareSystem at 0x488F10: every flare of the pointer vector at 4 deleted, its size zeroed, FreeVector's pieces called -- 0x3364B0, 0x3364A0, 0x336460, 0x3363F0; 0x33B720 calls it)
 0x003363F0 0x70 __dt__Q23std44vector<P6CFlare,Q23std19allocator<P6CFlare>>Fv  # OVL1; the rdr lane: the flare system's pointer vector's destructor (three this tests, the pod's storage deleted), FreeVector's temporary's in CFlareSystem::Clear (zrndr_pipe.cpp's inline copy); the element class name ours
 0x00336460 0x40 swap__Q23std44vector<P6CFlare,Q23std19allocator<P6CFlare>>FRQ23std44vector<P6CFlare,Q23std19allocator<P6CFlare>>  # OVL1; the rdr lane: the flare system's pointer vector's swap, FreeVector's in CFlareSystem::Clear (zrndr_pipe.cpp's inline copy)
@@ -5962,32 +5962,32 @@
 0x00336520 0x60 func_00336520  # OVL1
 0x00336580 0x58 func_00336580  # OVL1
 0x003365E0 0x6C func_003365E0  # OVL1
-0x00336650 0x1B4 func_00336650  # OVL1
-0x00336810 0x16C func_00336810  # OVL1
+0x00336650 0x1B4 Add__12CFlareSystemFPC6CPnt3Df  # OVL1; the world lane round 8: ours -- the flare system's add (CLensFlareManager::ReInit calls it with a position and a size, keeps the handle it returns): the first inactive flare reused, else a new one pushed
+0x00336810 0x16C TestFlare__5CPipeFPC6CPnt3DP6CPnt4Df  # OVL1; the world lane round 8: ours -- CPipe's (a0 thePipe, the camera at 0x628): a point pulled toward the camera, projected, compared with the depth buffer under it; the flare system's tick calls it
 0x00336980 0x88 PushOpacity__5CPipeFf  # OVL1; the rdr lane: SOCOM II's, the name ours (the opacity stack at 0x668 -- SOCOM 1's m_opacity_stack at 0x648, its size and index after it -- grown by _realloc a slot at a time, the new top the product with the one under it; 0x336A10 pushes a node's 0x9C opacity through it when under 0.992)
-0x00336A10 0x44 func_00336A10  # OVL1
-0x00336A60 0x1A8 func_00336A60  # OVL1
+0x00336A10 0x44 PushNodeOpacity__5CPipeFPQ23zdb5CNode  # OVL1; the world lane round 8: ours -- SOCOM II's helper: PushOpacity(node->m_Opacity) when it is under 0.9921875, and whether it was; RenderUiNodeRecursive, RenderMesh and RenderNode call it where SOCOM 1's inlined the push
+0x00336A60 0x1A8 RenderUiNodeRecursive__5CPipeFPQ23zdb5CNode  # OVL1; the world lane round 8: s1:calls -- called by itself and by RenderUiNode (0x336C10), as SOCOM 1's RenderUiNodeRecursive (0x241AB0) is
 0x00336C10 0x9C RenderUiNode__5CPipeFPQ23zdb5CNode  # OVL1; s1:callee
 0x00336CB0 0x2A4 Render__Q25CPipe6CAlphaFv  # OVL1; s1:align
-0x00336F60 0x244 func_00336F60  # OVL1
-0x003371B0 0x1F8 func_003371B0  # OVL1
-0x003373B0 0x10C func_003373B0  # OVL1
-0x003374C0 0x3DC func_003374C0  # OVL1
+0x00336F60 0x244 Insert__Q25CPipe6CAlphaFP15tag_DelayedNode  # OVL1; the world lane round 8: ours -- the alpha pass's draw-list insert by range (CAlpha::Add and AddLine call it with the record; a list iterator kept in a static across calls)
+0x003371B0 0x1F8 Add__Q25CPipe6CAlphaFPQ23zdb5CNodePQ23zdb5CNodePQ23zdb7CVisualQ23zdb12tag_ZVIS_FOVf  # OVL1; the world lane round 8: s1:calls -- sceVu0CopyMatrix from the stack's top, the view id (empty/top), Transform, GetScaledRangeSquared, then the sorted insert, as SOCOM 1's CAlpha::Add (0x241FF0); RenderVisual calls it
+0x003373B0 0x10C AddLine__Q25CPipe6CAlphaFP6CPnt4DP6CPnt4DP6CPnt4DP6CPnt4D  # OVL1; the world lane round 8: ours -- RenderLineWorld's translucent line (a0 &thePipe.m_alpha): the four points copied into the next record, its node cleared, its range from the camera, then the sorted insert 0x336F60
+0x003374C0 0x3DC RenderVisual__5CPipeFPQ23zdb5CNodeQ23zdb12tag_ZVIS_FOV  # OVL1; the world lane round 8: s1:calls -- GetScaledRangeSquared, DrawLOD, Transform, GetScaledRangeSquared, CAlpha's add, CDynTexList::Add, NodeSetup, as SOCOM 1's RenderVisual (0x2424F0); RenderUiNodeRecursive calls it with (node, 0) as SOCOM 1's does
 0x003378A0 0x100 __dt__Q25CPipe6CAlphaFv  # OVL1; the world lane r3: SOCOM 1's ~CAlpha (inline in SOCOM 1's ~CPipe: the cursor back at the start, the draw list and the texture lists emptied, the buffer freed with SOCOM 1's line 2276); ~CPipe calls it out of line -- zrndr_pipe.cpp
 0x003379A0 0x60 __ct__Q25CPipe6CAlphaFv  # OVL1; the world lane r3: SOCOM 1's CAlpha() (inline in SOCOM 1's CPipe(): the draw list, the texture lists, _malloc(0x36B00) into the walk's start and cursor); CPipe() calls it out of line -- zrndr_pipe.cpp
 0x00337A00 0x2D0 RenderMeshShadow__5CPipeFPQ23zdb5CNodePQ23zdb5CMeshP7CMatrix  # OVL1; s1:align
-0x00337CD0 0x264 func_00337CD0  # OVL1
-0x00337F40 0x2AC func_00337F40  # OVL1
+0x00337CD0 0x264 RenderNodeShadow__5CPipeFPQ23zdb5CNode  # OVL1; the world lane round 8: s1:calls -- Multiply, GetFirstVisual, NodeSetup, GetScaledRangeSquared, DrawLOD, itself over the children, as SOCOM 1's RenderNodeShadow (0x242B70); RenderMeshShadow and RenderWorld call it
+0x00337F40 0x2AC RenderDelayedNodes__5CPipeFv  # OVL1; the world lane round 8: s1:calls -- the light lists (BuildLightMapList 0x339660, then SOCOM II's second), sceVu0CopyMatrix, RenderNode, as SOCOM 1's RenderDelayedNodes (0x242D40); RenderWorld (0x339DE0) its only caller
 0x003381F0 0x1FC SaveDelayedNode__5CPipeFP7CMatrixPQ23zdb5CNodeQ23zdb12tag_ZVIS_FOV  # OVL1; s1:align
 0x003383F0 0x88 AddAlphaTextures__5CPipeFPQ23zdb5CNode  # OVL1; the rdr lane: SOCOM II's, the name ours (CDynTexList::Add(CDynTexList *) of each of the node's visuals' lists (CNode 0x84, CVisual 0x48) into the alpha pass's at 0x650 = CAlpha (0x638) + 0x18, SOCOM 1's CAlpha::m_dyntexlist; SaveDelayedNode calls it)
 0x00338480 0x538 RenderMesh__5CPipeFPQ23zdb5CNodePQ23zdb5CMeshP7CMatrixQ23zdb12tag_ZVIS_FOV  # OVL1; the world lane r7: s1:calls (RenderAtom calls it with (node, 0, 0, 0) for a node with a mesh where SOCOM 1's calls RenderMesh; its callers SOCOM 1's RenderMesh's alike: CClutter::Render, the UI node walk, itself, RenderNode)
 0x003389C0 0x5E0 RenderNode__5CPipeFPQ23zdb5CNodeQ23zdb12tag_ZVIS_FOV  # OVL1; the world lane r7: s1:calls (RenderAtom calls it with (node, 0) for a node without a mesh where SOCOM 1's calls RenderNode; its callers SOCOM 1's RenderNode's alike: CClutter::Render, the delayed nodes, itself, the world pass)
 0x00338FA0 0x4D0 func_00338FA0  # OVL1
-0x00339470 0x1F0 func_00339470  # OVL1
-0x00339660 0x468 func_00339660  # OVL1
+0x00339470 0x1F0 BuildProjectedMapList__5CPipeFPQ23zdb5CNode  # OVL1; the world lane round 8: ours -- CVisual::m_projectedMapList (0x4B4E30) emptied and refilled with the world's shadow casters (0x580) whose box the node's sphere meets, for a pipe's node with bit 6 of 0xA1; called after BuildLightMapList by RenderDelayedNodes and PrepareAtom
+0x00339660 0x468 BuildLightMapList__5CPipeFPQ23zdb5CNode  # OVL1; the world lane round 8: s1:calls -- GetBBox, Sub, Scale, Add, Transform, Sub, then CLightMapVector::Exists and the pod insert, twice, as SOCOM 1's BuildLightMapList (0x2442F0); called by RenderDelayedNodes and PrepareAtom
 0x00339AD0 0x218 func_00339AD0  # OVL1
-0x00339CF0 0xE8 func_00339CF0  # OVL1
-0x00339DE0 0x1328 func_00339DE0  # OVL1
+0x00339CF0 0xE8 RenderCell__5CPipeFPQ23zdb5CCell  # OVL1; the world lane round 8: ours -- CPipe's (a0 thePipe): a cell's fog test from its bounding box's centre, its first visual rendered when reflective, then CCell::RenderClutter; RenderWorld calls it three times
+0x00339DE0 0x1328 RenderWorld__5CPipeFPQ23zdb6CWorld  # OVL1; the world lane round 8: s1:calls -- CCoreState::Tick and CMenuState::Tick call it with thePipe and the world after the camera's Update, as SOCOM 1's RenderWorld (0x244780); it calls RenderDelayedNodes
 0x0033B110 0x114 RenderAtom__5CPipeFPQ23zdb5CNode  # OVL1; s1:align
 0x0033B230 0x134 PrepareAtom__5CPipeFPQ23zdb5CNode  # OVL1; the world lane r7: SOCOM II's, the name ours -- RenderAtom calls it where SOCOM 1's calls BuildLightMapList and then tests the fog: the fog flag at 0x713 cleared, a landmark's FOV mask and fog (TestLandmarkFOG), else the light lists (0x339660, 0x339470) and TestFOG
 0x0033B370 0xB0 RandomizeOverlay__5CPipeFv  # OVL1; the rdr lane: SOCOM II's, the name ours (when the texture handle at 0x708 is set: every pixel of its texture -- width times height bytes at 0x18 -- set to 255 * rand()/2^31, then FlushCache(0); CCoreState::Tick calls it, SetOverlayTexture inlines it)
@@ -6554,79 +6554,79 @@
 0x00359590 0xA4 Load__13C2DBitmapPolyFffffffffPQ23zdb8CTexture  # OVL1; s1:exact
 0x00359640 0x100 __ct__13C2DBitmapPolyFv  # OVL1; s1:calls
 0x00359740 0xE0 func_00359740  # OVL1
-0x00359820 0x1AC func_00359820  # OVL1
-0x003599D0 0x26C func_003599D0  # OVL1
-0x00359C40 0x4F4 func_00359C40  # OVL1
-0x0035A140 0x18 func_0035A140  # OVL1
-0x0035A160 0x8 func_0035A160  # OVL1
-0x0035A170 0x8 func_0035A170  # OVL1
-0x0035A180 0xB0 func_0035A180  # OVL1
-0x0035A230 0x10 func_0035A230  # OVL1; tu: orders.cpp~ (1.0 beta)
+0x00359820 0x1AC AddJamo__11CHangulFontFP8C2DGlyphi4JAMOP7CLayouti  # OVL1; ours (the HUD lane, round 28: c2dfont.cpp, SOCOM II's font -- one jamo of a Hangul syllable as a glyph piece: the first alternate rectangle the layout part names, else its own)
+0x003599D0 0x26C Compose__11CHangulFontFP8C2DGlyph7C2DCharP7C2DFont  # OVL1; ours (the HUD lane, round 28: c2dfont.cpp, SOCOM II's font -- a Hangul syllable (U+AC00-U+D7A3) composed from its lead, vowel and trail jamo through the layout tables; GetGlyph calls it)
+0x00359C40 0x4F4 Load__7C2DFontFPC5_zrdrPCc  # OVL1; ours (the HUD lane, round 28: c2dfont.cpp, SOCOM II's font -- the faces rdr's entry for the font's name (CHUD::Init, CRenderableString::LoadSpec, CSoftKeyboard::PrepForDisplay call it with the rdr and the name))
+0x0035A140 0x18 __ct__10CFontPointFRC10CFontPoint  # OVL1; ours (the HUD lane, round 28: c2dfont.cpp, SOCOM II's font -- the point reader's out-of-line piece: ReadPoint is inlined one level into Load and ReadPlacement, which call it; SOCOM 1's zui_skb.cpp has the int reader as GetRdrArrayInt)
+0x0035A160 0x8 SetY__10CFontPointFi  # OVL1; ours (the HUD lane, round 28: c2dfont.cpp, SOCOM II's font -- the point reader's out-of-line piece: ReadPoint is inlined one level into Load and ReadPlacement, which call it; SOCOM 1's zui_skb.cpp has the int reader as GetRdrArrayInt)
+0x0035A170 0x8 SetX__10CFontPointFi  # OVL1; ours (the HUD lane, round 28: c2dfont.cpp, SOCOM II's font -- the point reader's out-of-line piece: ReadPoint is inlined one level into Load and ReadPlacement, which call it; SOCOM 1's zui_skb.cpp has the int reader as GetRdrArrayInt)
+0x0035A180 0xB0 GetInt__FPC5_zrdrUi  # OVL1; ours (the HUD lane, round 28: c2dfont.cpp, SOCOM II's font -- the point reader's out-of-line piece: ReadPoint is inlined one level into Load and ReadPlacement, which call it; SOCOM 1's zui_skb.cpp has the int reader as GetRdrArrayInt)
+0x0035A230 0x10 __ct__10CFontPointFv  # OVL1; tu: orders.cpp~ (1.0 beta); ours (the HUD lane, round 28: c2dfont.cpp, SOCOM II's font -- the point reader's out-of-line piece: ReadPoint is inlined one level into Load and ReadPlacement, which call it; SOCOM 1's zui_skb.cpp has the int reader as GetRdrArrayInt)
 0x0035A240 0x8 func_0035A240  # OVL1
 0x0035A250 0xC func_0035A250  # OVL1
 0x0035A260 0x10 func_0035A260  # OVL1
 0x0035A270 0x14 func_0035A270  # OVL1
 0x0035A290 0x14 func_0035A290  # OVL1
 0x0035A2B0 0x14 func_0035A2B0  # OVL1
-0x0035A2D0 0x78 func_0035A2D0  # OVL1
-0x0035A350 0x44 func_0035A350  # OVL1
-0x0035A3A0 0x2B0 func_0035A3A0  # OVL1
-0x0035A650 0x158 func_0035A650  # OVL1
-0x0035A7B0 0x90 func_0035A7B0  # OVL1
-0x0035A840 0x234 func_0035A840  # OVL1
-0x0035AA80 0xF0 func_0035AA80  # OVL1
-0x0035AB70 0x400 func_0035AB70  # OVL1
-0x0035AF70 0x350 func_0035AF70  # OVL1
-0x0035B2C0 0x1F0 func_0035B2C0  # OVL1
-0x0035B4B0 0x33C func_0035B4B0  # OVL1
-0x0035B7F0 0x1E0 func_0035B7F0  # OVL1
-0x0035B9D0 0x3A4 func_0035B9D0  # OVL1
-0x0035BD80 0x16C func_0035BD80  # OVL1
-0x0035BEF0 0x3C4 func_0035BEF0  # OVL1
-0x0035C2C0 0xDC func_0035C2C0  # OVL1
-0x0035C3A0 0x274 func_0035C3A0  # OVL1
+0x0035A2D0 0x78 __dt__10CJamoGlyphFv  # OVL1; ours (the HUD lane, round 28: c2dfont.cpp, SOCOM II's font -- the unit's template tail: the instance its code makes)
+0x0035A350 0x44 __ct__10CJamoGlyphFv  # OVL1; ours (the HUD lane, round 28: c2dfont.cpp, SOCOM II's font -- the unit's template tail: the instance its code makes)
+0x0035A3A0 0x2B0 GetGlyph__7C2DFontFP11C2DGlyphRefUs  # OVL1; ours (the HUD lane, round 28: c2dfont.cpp, SOCOM II's font -- the glyph for a character (C2DString's layout calls it with a two-word glyph reference on its stack))
+0x0035A650 0x158 Unload__7C2DFontFv  # OVL1; ours (the HUD lane, round 28: c2dfont.cpp, SOCOM II's font -- everything given up, then the scalars reset (C2DFont's destructor calls it first))
+0x0035A7B0 0x90 GetWidth__8C2DGlyphFv  # OVL1; ours (the HUD lane, round 28: c2dfont.cpp, SOCOM II's font -- the widest piece edge (C2DString::UpdatePos and AddCharacter call it on a glyph))
+0x0035A840 0x234 ReadRect__FPC5_zrdrPC5_zrdr  # OVL1; ours (the HUD lane, round 28: c2dfont.cpp, SOCOM II's font -- a rectangle from two rdr points (UL, LR))
+0x0035AA80 0xF0 ReadPlacement__FPC5_zrdr  # OVL1; ours (the HUD lane, round 28: c2dfont.cpp, SOCOM II's font -- a piece's placement from DispPos, HorScale and VertScale)
+0x0035AB70 0x400 LoadVowelRangeLayouts__11CHangulFontFRQ23std48vector<9CSaferStr,Q23std21allocator<9CSaferStr>>PC5_zrdrRCQ23std48vector<9CSaferStr,Q23std21allocator<9CSaferStr>>  # OVL1; ours (the HUD lane, round 28: c2dfont.cpp, SOCOM II's font -- the Korean block's VowelRangeLayouts (28-entry rows))
+0x0035AF70 0x350 LoadLeadRangeLayouts__11CHangulFontFRQ23std48vector<9CSaferStr,Q23std21allocator<9CSaferStr>>PC5_zrdrRCQ23std48vector<9CSaferStr,Q23std21allocator<9CSaferStr>>  # OVL1; ours (the HUD lane, round 28: c2dfont.cpp, SOCOM II's font -- the Korean block's LeadRangeLayouts (21-entry rows))
+0x0035B2C0 0x1F0 LoadLeadUsage__11CHangulFontFPC5_zrdrRCQ23std48vector<9CSaferStr,Q23std21allocator<9CSaferStr>>  # OVL1; ours (the HUD lane, round 28: c2dfont.cpp, SOCOM II's font -- the Korean block's LeadLayoutUsage (the 19 leads' rows))
+0x0035B4B0 0x33C LoadJamo__11CHangulFontFRQ23std48vector<9CSaferStr,Q23std21allocator<9CSaferStr>>PC5_zrdr4JAMO  # OVL1; ours (the HUD lane, round 28: c2dfont.cpp, SOCOM II's font -- a jamo's UL/LR rectangle and its Styles)
+0x0035B7F0 0x1E0 Load__11CHangulFontFPC5_zrdr  # OVL1; ours (the HUD lane, round 28: c2dfont.cpp, SOCOM II's font -- the Korean block (Jamo, then the four tables; texture, baseline, kernings))
+0x0035B9D0 0x3A4 LoadCharLayouts__11CHangulFontFRQ23std48vector<9CSaferStr,Q23std21allocator<9CSaferStr>>PC5_zrdrRCQ23std48vector<9CSaferStr,Q23std21allocator<9CSaferStr>>  # OVL1; ours (the HUD lane, round 28: c2dfont.cpp, SOCOM II's font -- the Korean block's CharLayouts (Lead/Vowel/Trail placements))
+0x0035BD80 0x16C LoadElems__8C2DGlyphFPC5_zrdri  # OVL1; ours (the HUD lane, round 28: c2dfont.cpp, SOCOM II's font -- a glyph's Elems (corners and placement each))
+0x0035BEF0 0x3C4 LoadChar__7C2DFontFPC5_zrdr  # OVL1; ours (the HUD lane, round 28: c2dfont.cpp, SOCOM II's font -- one charoffsets entry; Load sums the widths it returns)
+0x0035C2C0 0xDC AddPiece__8C2DGlyphFPC5_zrdrPC5_zrdri  # OVL1; ours (the HUD lane, round 28: c2dfont.cpp, SOCOM II's font -- a piece from UL/LR corners appended to the glyph)
+0x0035C3A0 0x274 find_or_insert<Us,8C2DGlyph>__Q23std186__tree<Q23std19pair<CUs,8C2DGlyph>,Q33std80map<Us,8C2DGlyph,Q23std8less<Us>,Q23std38allocator<Q23std19pair<CUs,8C2DGlyph>>>13value_compare,Q23std38allocator<Q23std19pair<CUs,8C2DGlyph>>>FRCUs_RQ23std19pair<CUs,8C2DGlyph>  # OVL1; ours (the HUD lane, round 28: c2dfont.cpp, SOCOM II's font -- the unit's template tail: the instance its code makes)
 0x0035C620 0x8 func_0035C620  # OVL1
-0x0035C630 0x80 func_0035C630  # OVL1
-0x0035C6B0 0xC4 func_0035C6B0  # OVL1
-0x0035C780 0x80 func_0035C780  # OVL1
-0x0035C800 0x40 func_0035C800  # OVL1
-0x0035C840 0xB8 func_0035C840  # OVL1
-0x0035C900 0x22C func_0035C900  # OVL1
-0x0035CB30 0x8 func_0035CB30  # OVL1
-0x0035CB40 0x8 func_0035CB40  # OVL1
-0x0035CB50 0x8 func_0035CB50  # OVL1
-0x0035CB60 0x8 func_0035CB60  # OVL1
-0x0035CB70 0x20 func_0035CB70  # OVL1
-0x0035CB90 0xB4 func_0035CB90  # OVL1
-0x0035CC50 0xDC func_0035CC50  # OVL1
-0x0035CD30 0x80 func_0035CD30  # OVL1
-0x0035CDB0 0x28 func_0035CDB0  # OVL1
-0x0035CDE0 0xBC func_0035CDE0  # OVL1
-0x0035CEA0 0xD4 func_0035CEA0  # OVL1
-0x0035CF80 0x68 func_0035CF80  # OVL1
-0x0035CFF0 0x68 func_0035CFF0  # OVL1
-0x0035D060 0x68 func_0035D060  # OVL1
-0x0035D0D0 0x164 func_0035D0D0  # OVL1
-0x0035D240 0x130 func_0035D240  # OVL1
-0x0035D370 0xA8 func_0035D370  # OVL1
-0x0035D420 0x6C func_0035D420  # OVL1
+0x0035C630 0x80 find<Us>__Q23std186__tree<Q23std19pair<CUs,8C2DGlyph>,Q33std80map<Us,8C2DGlyph,Q23std8less<Us>,Q23std38allocator<Q23std19pair<CUs,8C2DGlyph>>>13value_compare,Q23std38allocator<Q23std19pair<CUs,8C2DGlyph>>>FRCUs_Q33std186__tree<Q23std19pair<CUs,8C2DGlyph>,Q33std80map<Us,8C2DGlyph,Q23std8less<Us>,Q23std38allocator<Q23std19pair<CUs,8C2DGlyph>>>13value_compare,Q23std38allocator<Q23std19pair<CUs,8C2DGlyph>>>8iterator  # OVL1; ours (the HUD lane, round 28: c2dfont.cpp, SOCOM II's font -- the unit's template tail: the instance its code makes)
+0x0035C6B0 0xC4 find_or_insert<i,9CFontRect>__Q23std185__tree<Q23std19pair<Ci,9CFontRect>,Q33std79map<i,9CFontRect,Q23std7less<i>,Q23std38allocator<Q23std19pair<Ci,9CFontRect>>>13value_compare,Q23std38allocator<Q23std19pair<Ci,9CFontRect>>>FRCi_RQ23std19pair<Ci,9CFontRect>  # OVL1; ours (the HUD lane, round 28: c2dfont.cpp, SOCOM II's font -- the unit's template tail: the instance its code makes)
+0x0035C780 0x80 find<i>__Q23std185__tree<Q23std19pair<Ci,9CFontRect>,Q33std79map<i,9CFontRect,Q23std7less<i>,Q23std38allocator<Q23std19pair<Ci,9CFontRect>>>13value_compare,Q23std38allocator<Q23std19pair<Ci,9CFontRect>>>FRCi_Q33std185__tree<Q23std19pair<Ci,9CFontRect>,Q33std79map<i,9CFontRect,Q23std7less<i>,Q23std38allocator<Q23std19pair<Ci,9CFontRect>>>13value_compare,Q23std38allocator<Q23std19pair<Ci,9CFontRect>>>8iterator  # OVL1; ours (the HUD lane, round 28: c2dfont.cpp, SOCOM II's font -- the unit's template tail: the instance its code makes)
+0x0035C800 0x40 clear__Q23std186__tree<Q23std19pair<CUs,8C2DGlyph>,Q33std80map<Us,8C2DGlyph,Q23std8less<Us>,Q23std38allocator<Q23std19pair<CUs,8C2DGlyph>>>13value_compare,Q23std38allocator<Q23std19pair<CUs,8C2DGlyph>>>Fv  # OVL1; ours (the HUD lane, round 28: c2dfont.cpp, SOCOM II's font -- the unit's template tail: the instance its code makes)
+0x0035C840 0xB8 swap__Q23std186__tree<Q23std19pair<CUs,8C2DGlyph>,Q33std80map<Us,8C2DGlyph,Q23std8less<Us>,Q23std38allocator<Q23std19pair<CUs,8C2DGlyph>>>13value_compare,Q23std38allocator<Q23std19pair<CUs,8C2DGlyph>>>FRQ23std186__tree<Q23std19pair<CUs,8C2DGlyph>,Q33std80map<Us,8C2DGlyph,Q23std8less<Us>,Q23std38allocator<Q23std19pair<CUs,8C2DGlyph>>>13value_compare,Q23std38allocator<Q23std19pair<CUs,8C2DGlyph>>>  # OVL1; ours (the HUD lane, round 28: c2dfont.cpp, SOCOM II's font -- the unit's template tail: the instance its code makes)
+0x0035C900 0x22C destroy__Q23std185__tree<Q23std19pair<Ci,9CFontRect>,Q33std79map<i,9CFontRect,Q23std7less<i>,Q23std38allocator<Q23std19pair<Ci,9CFontRect>>>13value_compare,Q23std38allocator<Q23std19pair<Ci,9CFontRect>>>FPQ33std185__tree<Q23std19pair<Ci,9CFontRect>,Q33std79map<i,9CFontRect,Q23std7less<i>,Q23std38allocator<Q23std19pair<Ci,9CFontRect>>>13value_compare,Q23std38allocator<Q23std19pair<Ci,9CFontRect>>>4node  # OVL1; ours (the HUD lane, round 28: c2dfont.cpp, SOCOM II's font -- the unit's template tail: the instance its code makes)
+0x0035CB30 0x8 deallocate__Q23std210allocator<Q33std185__tree<Q23std19pair<Ci,9CFontRect>,Q33std79map<i,9CFontRect,Q23std7less<i>,Q23std38allocator<Q23std19pair<Ci,9CFontRect>>>13value_compare,Q23std38allocator<Q23std19pair<Ci,9CFontRect>>>4node>FPQ33std185__tree<Q23std19pair<Ci,9CFontRect>,Q33std79map<i,9CFontRect,Q23std7less<i>,Q23std38allocator<Q23std19pair<Ci,9CFontRect>>>13value_compare,Q23std38allocator<Q23std19pair<Ci,9CFontRect>>>4nodeUi  # OVL1; ours (the HUD lane, round 28: c2dfont.cpp, SOCOM II's font -- the unit's template tail: the instance its code makes)
+0x0035CB40 0x8 node_alloc__Q23std185__tree<Q23std19pair<Ci,9CFontRect>,Q33std79map<i,9CFontRect,Q23std7less<i>,Q23std38allocator<Q23std19pair<Ci,9CFontRect>>>13value_compare,Q23std38allocator<Q23std19pair<Ci,9CFontRect>>>Fv  # OVL1; ours (the HUD lane, round 28: c2dfont.cpp, SOCOM II's font -- the unit's template tail: the instance its code makes)
+0x0035CB50 0x8 destroy__Q23std38allocator<Q23std19pair<Ci,9CFontRect>>FPQ23std19pair<Ci,9CFontRect>  # OVL1; ours (the HUD lane, round 28: c2dfont.cpp, SOCOM II's font -- the unit's template tail: the instance its code makes)
+0x0035CB60 0x8 alloc__Q23std185__tree<Q23std19pair<Ci,9CFontRect>,Q33std79map<i,9CFontRect,Q23std7less<i>,Q23std38allocator<Q23std19pair<Ci,9CFontRect>>>13value_compare,Q23std38allocator<Q23std19pair<Ci,9CFontRect>>>Fv  # OVL1; ours (the HUD lane, round 28: c2dfont.cpp, SOCOM II's font -- the unit's template tail: the instance its code makes)
+0x0035CB70 0x20 __ct__Q23std185__tree<Q23std19pair<Ci,9CFontRect>,Q33std79map<i,9CFontRect,Q23std7less<i>,Q23std38allocator<Q23std19pair<Ci,9CFontRect>>>13value_compare,Q23std38allocator<Q23std19pair<Ci,9CFontRect>>>FRCQ33std79map<i,9CFontRect,Q23std7less<i>,Q23std38allocator<Q23std19pair<Ci,9CFontRect>>>13value_compareRCQ23std38allocator<Q23std19pair<Ci,9CFontRect>>  # OVL1; ours (the HUD lane, round 28: c2dfont.cpp, SOCOM II's font -- the unit's template tail: the instance its code makes)
+0x0035CB90 0xB4 resize__Q23std66__vector_imp<13C2DGlyphPiece,Q23std26allocator<13C2DGlyphPiece>,0>FUi  # OVL1; ours (the HUD lane, round 28: c2dfont.cpp, SOCOM II's font -- the unit's template tail: the instance its code makes)
+0x0035CC50 0xDC resize__Q23std52__vector_imp<7CLayout,Q23std19allocator<7CLayout>,0>FUi  # OVL1; ours (the HUD lane, round 28: c2dfont.cpp, SOCOM II's font -- the unit's template tail: the instance its code makes)
+0x0035CD30 0x80 __dt__10CJamoPlaceFv  # OVL1; ours (the HUD lane, round 28: c2dfont.cpp, SOCOM II's font -- the unit's template tail: the instance its code makes)
+0x0035CDB0 0x28 __ct__10CJamoPlaceFv  # OVL1; ours (the HUD lane, round 28: c2dfont.cpp, SOCOM II's font -- the unit's template tail: the instance its code makes)
+0x0035CDE0 0xBC resize__Q23std56__vector_imp<9CTrailRow,Q23std21allocator<9CTrailRow>,0>FUi  # OVL1; ours (the HUD lane, round 28: c2dfont.cpp, SOCOM II's font -- the unit's template tail: the instance its code makes)
+0x0035CEA0 0xD4 resize__Q23std56__vector_imp<9CVowelRow,Q23std21allocator<9CVowelRow>,0>FUi  # OVL1; ours (the HUD lane, round 28: c2dfont.cpp, SOCOM II's font -- the unit's template tail: the instance its code makes)
+0x0035CF80 0x68 __dt__Q23std54__vector_deleter<7CLayout,Q23std19allocator<7CLayout>>Fv  # OVL1; ours (the HUD lane, round 28: c2dfont.cpp, SOCOM II's font -- the unit's template tail: the instance its code makes)
+0x0035CFF0 0x68 __dt__Q23std58__vector_deleter<9CTrailRow,Q23std21allocator<9CTrailRow>>Fv  # OVL1; ours (the HUD lane, round 28: c2dfont.cpp, SOCOM II's font -- the unit's template tail: the instance its code makes)
+0x0035D060 0x68 __dt__Q23std58__vector_deleter<9CVowelRow,Q23std21allocator<9CVowelRow>>Fv  # OVL1; ours (the HUD lane, round 28: c2dfont.cpp, SOCOM II's font -- the unit's template tail: the instance its code makes)
+0x0035D0D0 0x164 init<PC13C2DGlyphPiece>__Q23std66__vector_imp<13C2DGlyphPiece,Q23std26allocator<13C2DGlyphPiece>,0>FPC13C2DGlyphPiecePC13C2DGlyphPieceQ23std20forward_iterator_tag_v  # OVL1; ours (the HUD lane, round 28: c2dfont.cpp, SOCOM II's font -- the unit's template tail: the instance its code makes)
+0x0035D240 0x130 insert_node_at__Q23std186__tree<Q23std19pair<CUs,8C2DGlyph>,Q33std80map<Us,8C2DGlyph,Q23std8less<Us>,Q23std38allocator<Q23std19pair<CUs,8C2DGlyph>>>13value_compare,Q23std38allocator<Q23std19pair<CUs,8C2DGlyph>>>FPQ33std19__red_black_tree<1>9node_basebbRCQ23std19pair<CUs,8C2DGlyph>  # OVL1; ours (the HUD lane, round 28: c2dfont.cpp, SOCOM II's font -- the unit's template tail: the instance its code makes)
+0x0035D370 0xA8 __ct__Q23std19pair<CUs,8C2DGlyph>FRCQ23std19pair<CUs,8C2DGlyph>  # OVL1; ours (the HUD lane, round 28: c2dfont.cpp, SOCOM II's font -- the unit's template tail: the instance its code makes)
+0x0035D420 0x6C __ct__Q23std58vector<13C2DGlyphPiece,Q23std26allocator<13C2DGlyphPiece>>FRCQ23std58vector<13C2DGlyphPiece,Q23std26allocator<13C2DGlyphPiece>>  # OVL1; ours (the HUD lane, round 28: c2dfont.cpp, SOCOM II's font -- the unit's template tail: the instance its code makes)
 0x0035D490 0x1C end__Q23std106__vector_imp<Q28Particle22SequenceEntry<6CPnt4D>,Q23std46allocator<Q28Particle22SequenceEntry<6CPnt4D>>,0>CFv  # OVL1; s1:exact
 0x0035D4B0 0x8 func_0035D4B0  # OVL1
 0x0035D4C0 0x14 func_0035D4C0  # OVL1
 0x0035D4E0 0x8 func_0035D4E0  # OVL1
-0x0035D4F0 0x148 func_0035D4F0  # OVL1
-0x0035D640 0x2F8 func_0035D640  # OVL1
-0x0035D940 0x5F4 func_0035D940  # OVL1
-0x0035DF40 0x1C0 func_0035DF40  # OVL1
-0x0035E100 0x5D0 insert__Q23std44__vector_imp<3LOD,Q23std15allocator<3LOD>,0>FP3LODUiRC3LOD  # OVL1; s1:calls
+0x0035D4F0 0x148 insert_node_at__Q23std185__tree<Q23std19pair<Ci,9CFontRect>,Q33std79map<i,9CFontRect,Q23std7less<i>,Q23std38allocator<Q23std19pair<Ci,9CFontRect>>>13value_compare,Q23std38allocator<Q23std19pair<Ci,9CFontRect>>>FPQ33std19__red_black_tree<1>9node_basebbRCQ23std19pair<Ci,9CFontRect>  # OVL1; ours (the HUD lane, round 28: c2dfont.cpp, SOCOM II's font -- the unit's template tail: the instance its code makes)
+0x0035D640 0x2F8 erase__Q23std66__vector_imp<13C2DGlyphPiece,Q23std26allocator<13C2DGlyphPiece>,0>FP13C2DGlyphPieceP13C2DGlyphPiece  # OVL1; ours (the HUD lane, round 28: c2dfont.cpp, SOCOM II's font -- the unit's template tail: the instance its code makes)
+0x0035D940 0x5F4 insert__Q23std66__vector_imp<13C2DGlyphPiece,Q23std26allocator<13C2DGlyphPiece>,0>FP13C2DGlyphPieceUiRC13C2DGlyphPiece  # OVL1; ours (the HUD lane, round 28: c2dfont.cpp, SOCOM II's font -- the unit's template tail: the instance its code makes)
+0x0035DF40 0x1C0 erase__Q23std52__vector_imp<7CLayout,Q23std19allocator<7CLayout>,0>FP7CLayoutP7CLayout  # OVL1; ours (the HUD lane, round 28: c2dfont.cpp, SOCOM II's font -- the unit's template tail: the instance its code makes)
+0x0035E100 0x5D0 insert__Q23std52__vector_imp<7CLayout,Q23std19allocator<7CLayout>,0>FP7CLayoutUiRC7CLayout  # OVL1; s1:calls; ours (the HUD lane, round 28: c2dfont.cpp, SOCOM II's font -- the layout vector's insert, which its resize 0x35CC50 calls with a three-part CLayout built by __construct_array; not SOCOM 1's LOD: the element is the Korean composer's 0x48-byte layout)
 0x0035E6D0 0xBC func_0035E6D0  # OVL1
-0x0035E790 0x2D8 func_0035E790  # OVL1
-0x0035EA70 0x5BC func_0035EA70  # OVL1
-0x0035F030 0x288 func_0035F030  # OVL1
-0x0035F2C0 0x574 func_0035F2C0  # OVL1
-0x0035F840 0x8C func_0035F840  # OVL1
-0x0035F8D0 0x8 func_0035F8D0  # OVL1
-0x0035F8E0 0x8 func_0035F8E0  # OVL1
+0x0035E790 0x2D8 erase__Q23std56__vector_imp<9CTrailRow,Q23std21allocator<9CTrailRow>,0>FP9CTrailRowP9CTrailRow  # OVL1; ours (the HUD lane, round 28: c2dfont.cpp, SOCOM II's font -- the unit's template tail: the instance its code makes)
+0x0035EA70 0x5BC insert__Q23std56__vector_imp<9CTrailRow,Q23std21allocator<9CTrailRow>,0>FP9CTrailRowUiRC9CTrailRow  # OVL1; ours (the HUD lane, round 28: c2dfont.cpp, SOCOM II's font -- the unit's template tail: the instance its code makes)
+0x0035F030 0x288 erase__Q23std56__vector_imp<9CVowelRow,Q23std21allocator<9CVowelRow>,0>FP9CVowelRowP9CVowelRow  # OVL1; ours (the HUD lane, round 28: c2dfont.cpp, SOCOM II's font -- the unit's template tail: the instance its code makes)
+0x0035F2C0 0x574 insert__Q23std56__vector_imp<9CVowelRow,Q23std21allocator<9CVowelRow>,0>FP9CVowelRowUiRC9CVowelRow  # OVL1; ours (the HUD lane, round 28: c2dfont.cpp, SOCOM II's font -- the unit's template tail: the instance its code makes)
+0x0035F840 0x8C clear__Q23std54__vector_deleter<7CLayout,Q23std19allocator<7CLayout>>Fv  # OVL1; ours (the HUD lane, round 28: c2dfont.cpp, SOCOM II's font -- the unit's template tail: the instance its code makes)
+0x0035F8D0 0x8 clear__Q23std58__vector_deleter<9CTrailRow,Q23std21allocator<9CTrailRow>>Fv  # OVL1; ours (the HUD lane, round 28: c2dfont.cpp, SOCOM II's font -- the unit's template tail: the instance its code makes)
+0x0035F8E0 0x8 clear__Q23std58__vector_deleter<9CVowelRow,Q23std21allocator<9CVowelRow>>Fv  # OVL1; ours (the HUD lane, round 28: c2dfont.cpp, SOCOM II's font -- the unit's template tail: the instance its code makes)
 0x0035F8F0 0xC8 GetAssetLibs__7C2DLineFRQ23C2D8CLibList  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0035F9C0 0x100 clip3DLine__FP6CPnt4DP6CPnt4DP6CPnt4D  # OVL1; s1:order by hand (c2dline.cpp: SOCOM 1's first clip3DLine, 0xDC there, the same five calls to the four-argument one on the planes' pairs, a null test first)
 0x0035FAC0 0x21C clip3DLine__FP6CPnt4DP6CPnt4DP6CPnt4DP6CPnt4D  # OVL1; s1:order by hand (c2dline.cpp: SOCOM 1's second clip3DLine, after the three-argument one as there (0x240 there); the three-argument one calls it five times with a plane pair; VU0 differences, inner products, the behind end moved onto the plane)
@@ -7690,7 +7690,7 @@
 0x003A6120 0x40 __ct__Q210Metrowerks185__compressed_pair_imp<Q23std43allocator<M19CSimpleStateMachineFPCvPvUc_v>,Q210Metrowerks94cdeque<PM19CSimpleStateMachineFPCvPvUc_v,Q23std44allocator<PM19CSimpleStateMachineFPCvPvUc_v>>>FRCQ23std43allocator<M19CSimpleStateMachineFPCvPvUc_v>RCQ210Metrowerks94cdeque<PM19CSimpleStateMachineFPCvPvUc_v,Q23std44allocator<PM19CSimpleStateMachineFPCvPvUc_v>>  # OVL1; the MSL headers round 7: include/deque -- the blocks' pair: the allocator's copy (0x3A63C0) and the buffer's (0x3A6160); byte-exact
 0x003A6160 0x78 __ct__Q210Metrowerks94cdeque<PM19CSimpleStateMachineFPCvPvUc_v,Q23std44allocator<PM19CSimpleStateMachineFPCvPvUc_v>>FRCQ210Metrowerks94cdeque<PM19CSimpleStateMachineFPCvPvUc_v,Q23std44allocator<PM19CSimpleStateMachineFPCvPvUc_v>>  # OVL1; the MSL headers round 7: include/deque -- the block buffer's copy constructor, called by the byte-exact 0x3A6120; OPEN as 0x333E40
 0x003A61E0 0xC8 func_003A61E0  # OVL1
-0x003A62B0 0xA0 func_003A62B0  # OVL1
+0x003A62B0 0xA0 end__Q210Metrowerks94cdeque<PM19CSimpleStateMachineFPCvPvUc_v,Q23std44allocator<PM19CSimpleStateMachineFPCvPvUc_v>>CFv  # OVL1; the integrator 2026-11-04, by the online lane round 13: util_ssm.cpp emits it byte-exact under include/deque's new cdeque<T *> iterator; its neighbours mirror the lobby deque's (the copy constructor 0x3A6160, init 0x3A61E0, end, begin 0x3A6350)
 0x003A6350 0x70 func_003A6350  # OVL1
 0x003A63C0 0x8 __ct__Q23std43allocator<M19CSimpleStateMachineFPCvPvUc_v>FRCQ23std43allocator<M19CSimpleStateMachineFPCvPvUc_v>  # OVL1; the MSL headers round 7: include/deque and include/memory -- the allocator's copy constructor, out of class; byte-exact
 0x003A63D0 0x18 func_003A63D0  # OVL1
@@ -9559,14 +9559,14 @@
 0x00523820 0x924 insert__Q23std54__vector_imp<8link_v22,Q23std20allocator<8link_v22>,0>FP8link_v22UiRC8link_v22  # OVL2; by hand, the AI core round 12 (resize<link_v22> 0x51E4D0 calls it on its growing arm with the end, the count and an old link)
 0x00524150 0x8 clear__Q23std56__vector_deleter<8name_v20,Q23std20allocator<8name_v20>>Fv  # OVL2; by hand, the AI core round 12 (the old names' deleter destructor 0x51E540 calls it first, as every deleter destructor calls its clear)
 0x00524160 0x8 clear__Q23std56__vector_deleter<8link_v22,Q23std20allocator<8link_v22>>Fv  # OVL2; by hand, the AI core round 12 (the old links' deleter destructor 0x51E5B0 calls it first, as every deleter destructor calls its clear)
-0x00524170 0x4E8 func_00524170  # OVL2
-0x00524660 0xF4 func_00524660  # OVL2
+0x00524170 0x4E8 FindDetour__7CAiPathFRC9CAiMapLocPC6CPnt3DRC9CAiMapLoci  # OVL2; ours, the AI core round 20 (a CAiPath member, the unit's first function: the last point (the one before when it is the goal), the closest direction to it from a cell, lines walked square to it out from a point with _DetourLineCallback 0x524660, the cell found put in through 0x526C10; an AI state's 0x602270 calls it; ai_path.cpp, open)
+0x00524660 0xF4 _DetourLineCallback__FRC19MAP_LINEWALK_STRUCTPv  # OVL2; ours, the AI core round 20 (the line callback 0x524170 hands CAiMap::WalkLine: a cell both CanTravelLine legs reach from its data's first end and to its second is kept and stops the walk, else the walk goes to its range; byte-exact in ai_path.cpp)
 0x00524760 0x120 PointInPath__7CAiPathFRC9CAiMapLocPUi  # OVL2; the AI core round 17: SOCOM 1's PointInPath by its body (the demo's 0x193540, 0xE4: none without points or the snake flag 4, each point within its width of the cell -- |dx| unsigned, |dy| signed, against the width byte -- its index counted from the back); SOCOM II adds the map id's test and walks the class iterator; the leg smoother 0x525C80, ExtendPath 0x52BDF0 (twice), CAiSFollow::Tick 0x5FB1C0 and 0x5FD790 call it; the AI core round 18: not const in SOCOM II (SOCOM 1's was) -- its walk re-reads the count and data through this for each pass's end test as FindPoint's does, which only the non-const member over the points' reference count gives (ai.h)
 0x00524880 0xD0 FindPoint__7CAiPathFRC9CAiMapLocPUi  # OVL2; s1:order by hand (the demo's PointInPath 0x193540, the first of the points' functions before PrintPath in both builds: the points walked for the cell, its index handed back when asked; SOCOM II drops the width test -- ai_path.cpp); the AI core round 17: the point on the cell itself (the name ours, new in SOCOM II): the points walked for x and y equal, the forward index handed back -- no snake flag, no width; CAiSBreach::Tick 0x5F2120 calls it. PointInPath by place before, but SOCOM 1's PointInPath body (the demo's 0x193540: flag 4, the widths, the index from the back) is 0x524760; the AI core round 18: not const -- the walk keeps this in a0 and re-reads the points' count and data at this+0x9C/0xA0 for each pass's end test, byte-exact as a non-const member over the points' reference count (ai.h); the const spelling hoisted the end
 0x00524950 0x380 PrintPath__7CAiPathCFPCc  # OVL2; s1:callee by hand (PostProcess calls it when bit 6 of m_flags is set, where SOCOM 1's calls PrintPath__7CAiPathCFv; SOCOM II passes a name -- "dbg_path" -- and builds the text with sprintf/strcat; TickPathPlanner and the AI states call it too)
 0x00524CD0 0x2C SetPathType__7CAiPathFQ27CAiPath9PATH_TYPE  # OVL2; s1:order by hand, the AI core round 18 (the SEALs lane's lead, round 18): SOCOM 1's SetPathType (the demo's 0x1938F0) word for word but the state's offset (0x80 here, 0x78 there) and one join pad -- refused in state 2 (PLANNING), the type stored at 9, whether it took returned; CSealCtrlAi::SetRoute calls it with GetDefaultRouteType's result where SOCOM 1's calls SetPathType
 0x00524D00 0x48 PopPoint__7CAiPathFP9CAiMapLoc  # OVL2; ours (new in SOCOM II, among the points' functions after PrintPath: the last 8-byte point of m_points (0x98) taken off, its cell handed back when asked, a bool; the SEALs call it -- ai_path.cpp)
-0x00524D50 0x4AC func_00524D50  # OVL2
+0x00524D50 0x4AC AddSnakePoint__7CAiPathFRC9CAiMapLocUiUi  # OVL2; s1:order by hand, the AI core round 20 (SOCOM 1's AddSnakePoint, the demo's 0x193930, between SetPathType and SetSnakeLength as here, the same body with a search count and a flags byte added: CZSealBody::UpdateAiMapLoc 0x5B7DE8 passes the global at 0x650928 and 8 or 0; the two Ui ours; byte-exact in ai_path.cpp, emitting _min<Ui> 0x528510)
 0x00525200 0x8 func_00525200  # OVL2
 0x00525210 0x12C SetSnakeLength__7CAiPathFUi  # OVL2; s1:order by hand (the SEAL lane's lead, vetted: the demo's 0x193D40 -- a zero length with a buffer set clears flag bit 2, a path planning (state 1-3) is aborted through AbortPathPlan, then the point and location vectors are cleared and the stats reset; SOCOM II's fields 0xC further on)
 0x00525340 0x1DC UpdatePathWidth__7CAiPathFUi  # OVL2; s1:callee by hand (PostProcess calls it with 5 when bit 2 of m_flags is set, as SOCOM 1's PostProcess calls UpdatePathWidth__7CAiPathFUi; 0x1DC against the demo's 0x1EC, after SetSnakeLength in both builds)
@@ -9596,16 +9596,16 @@
 0x00527C40 0x38 GetLegMap__7CAiPathFi  # OVL2; s1:callee by hand (CreatePlanner calls it with -1 for the new CAiStar's map, as SOCOM 1's calls GetLegMap__7CAiPathFi)
 0x00527C80 0x58 GetLegPoints__7CAiPathCFR9CAiMapLocR9CAiMapLoci  # OVL2; s1:callee by hand (CreatePlanner calls it with the new CAiStar's two cells and -1, as SOCOM 1's calls GetLegPoints__7CAiPathCFR9CAiMapLocR9CAiMapLoci)
 0x00527CE0 0x18C RemoveInvalidPoints__7CAiPathFv  # OVL2; ours (new in SOCOM II: SmoothPath's call after the legs -- the points on CAiMapLoc::invalid dropped through MSL's remove (find inlined, remove_copy 0x528530) and the range erase 0x528C80, the old size less the new returned; SOCOM 1's SmoothPath did it inline -- ai_path.cpp)
-0x00527E70 0x144 func_00527E70  # OVL2
+0x00527E70 0x144 GetLength__7CAiPathFb  # OVL2; s1:order by hand, the AI core round 20 (SOCOM 1's GetLength, the demo's 0x196510, after GetLegPoints and before ~CAiPath as here; CAiMaps::CreateGraph calls it with false after PathPlanImmediate, as SOCOM 1's does; byte-exact in ai_path.cpp)
 0x00527FC0 0x8 func_00527FC0  # OVL2
-0x00527FD0 0x1DC func_00527FD0  # OVL2
+0x00527FD0 0x1DC CopyPlan__7CAiPathFPC7CAiPath  # OVL2; ours, the AI core round 20 (new in SOCOM II, between SetState 0x527FC0 and ~CAiPath: another path's finished plan copied field by field -- flags, legs, the cells' and maps' vectors, the stats, state, length, limits, points -- unless this one is queued or planning, the id bumped and dbg_path drawn under flag 0x40; the SEALs' 0x555420/0x5556A0/0x562790 call it; ai_path.cpp, open)
 0x005281B0 0x188 __dt__7CAiPathFv  # OVL2; s1:order (right before CAiPath's constructor, as SOCOM 1's; ~CAiSPlan and ~CAiSPathRecover call it on their path members) -- the kit lane
 0x00528340 0xE4 __ct__7CAiPathFv  # OVL2; s1:order by hand (the demo's 0x1967D0, right after ~CAiPath in both builds: the waypoint, map and point vectors and the stats' visited cells built empty, the stats reset, m_type_bias 1.0, m_flags 3, every other field zeroed -- SOCOM II's new 0x18, 0x24, 0x88-0x90 among them)
 0x00528430 0xDC resize__Q23std68__vector_imp<Q27CAiPath5point,Q23std27allocator<Q27CAiPath5point>,0>FUi  # OVL2; s1:callee by hand (SetSnakeLength calls it on m_points (0x98) with the length when it is below the size, as the demo's SetSnakeLength calls resize<point> 0x196910; its temporary point zeroes the 8-byte point's bits)
 0x00528510 0x18 _min<Ui>__2aiFRCUiRCUi_RCUi  # OVL2; s1:exact; by hand: MW 3.0 mangles the return type (SOCOM 1's _min<Ui>__2aiFRCUiRCUi)
 0x00528530 0xBC remove_copy<Q33std68__vector_imp<Q27CAiPath5point,Q23std27allocator<Q27CAiPath5point>,0>8iterator,Q33std68__vector_imp<Q27CAiPath5point,Q23std27allocator<Q27CAiPath5point>,0>8iterator,9CAiMapLoc>__3stdFQ33std68__vector_imp<Q27CAiPath5point,Q23std27allocator<Q27CAiPath5point>,0>8iteratorQ33std68__vector_imp<Q27CAiPath5point,Q23std27allocator<Q27CAiPath5point>,0>8iteratorQ33std68__vector_imp<Q27CAiPath5point,Q23std27allocator<Q27CAiPath5point>,0>8iteratorRC9CAiMapLoc_Q33std68__vector_imp<Q27CAiPath5point,Q23std27allocator<Q27CAiPath5point>,0>8iterator  # OVL2; s1:callee by hand (RemoveInvalidPoints' remove calls it with the points' iterators and CAiMapLoc::invalid, as SOCOM 1's SmoothPath calls remove_copy<point *, point *, CAiMapLoc> 0x196A20)
 0x005285F0 0x1DC init<PCQ27CAiPath5point>__Q23std68__vector_imp<Q27CAiPath5point,Q23std27allocator<Q27CAiPath5point>,0>FPCQ27CAiPath5pointPCQ27CAiPath5pointQ23std20forward_iterator_tag_v  # OVL2; by hand (the points' copy 0x5264F0 calls it with the other's data and end, as MSL's range init)
-0x005287D0 0x460 func_005287D0  # OVL2
+0x005287D0 0x460 do_assign<PCQ27CAiPath5point>__Q23std68__vector_imp<Q27CAiPath5point,Q23std27allocator<Q27CAiPath5point>,0>FPCQ27CAiPath5pointPCQ27CAiPath5pointQ23std20forward_iterator_tag_v  # OVL2; by hand, the AI core round 20 (the points' range assign: CAiPath::CopyPlan 0x527FD0 calls it for m_points = path->m_points as it calls do_assign<const CAiMapLoc *> 0x51E7A0 for the cells; include/vector's class do_assign, byte-exact in ai_path.cpp's tail)
 0x00528C30 0x4C func_00528C30  # OVL2; OVL2's copy of the 4-byte pod's operator= (OVL1 0x259AF0, the same 0x4C bytes bar the call, to 0x529030 here), the AI core round 14 -- CCharacterType's constructor copies the base's gear with it, as ai_path.cpp's 0x527FD0 does a pointer vector; ovl-copy: __as__Q23std38__vector_pod<Ui,Q23std13allocator<Ui>>FRCQ23std38__vector_pod<Ui,Q23std13allocator<Ui>>
 0x00528C80 0x160 erase__Q23std68__vector_imp<Q27CAiPath5point,Q23std27allocator<Q27CAiPath5point>,0>FPQ27CAiPath5pointPQ27CAiPath5point  # OVL2; by hand (the points' resize 0x528430 calls it with data + n and the end, as MSL's resize erases the tail; 8-byte steps)
 0x00528DE0 0x248 reserve__Q23std68__vector_imp<Q27CAiPath5point,Q23std27allocator<Q27CAiPath5point>,0>FUi  # OVL2; s1:callee by hand (SetSnakeLength calls it on m_points with the length, as the demo's calls reserve<point> 0x196BC0; 8-byte elements, MSL's length error)
@@ -9640,7 +9640,7 @@
 0x0052B7E0 0x34 GetSporeCount__7CAiMapsFUi  # OVL2; ours (new in SOCOM II, after GetSporeLocation: a zeroed range filled by spores::GetRange, its count returned)
 0x0052B820 0x350 UpdateNameTables__7CAiMapsFv  # OVL2; s1:callee by hand, the AI core round 16 (ReadMapSet 0x52B0D0's second table call, as the demo's calls UpdateNameTables__7CAiMapsFv; it clears, refills and Sorts the name tables)
 0x0052BB70 0x274 UpdateActionTables__7CAiMapsFv  # OVL2; s1:callee by hand, the AI core round 16 (ReadMapSet 0x52B0D0's first call after ReadCellTable<spores>, as the demo's ReadMapSet calls UpdateActionTables__7CAiMapsFv there; it reads action::invalid)
-0x0052BDF0 0x518 func_0052BDF0  # OVL2
+0x0052BDF0 0x518 ExtendPath__7CAiMapsFR7CAiPathRC9CAiMapLocRC9CAiMapLoc  # OVL2; s1:order by hand, the AI core round 20 (SOCOM 1's ExtendPath, the demo's 0x199220, after UpdateActionTables as here and with the same calls -- CanTravelLine, AppendPathLoc (SOCOM II's 0x526F20) four times, PointInPath twice on the template, IncrementPathId; SOCOM II takes the walk's first cell too and ends in 0x526540; CAiSFollow::Tick calls it; ai_maps.cpp, 2 instructions open)
 0x0052C310 0x8 func_0052C310  # OVL2
 0x0052C320 0x284 GetLocationDelta__7CAiMapsFRC9CAiMapLocRC9CAiMapLoc  # OVL2; s1:order by hand, the AI core round 15 (the demo's GetLocationDelta 0x199610, between SmoothPath and RegisterPathPlan as 0x52C310/0x52C5B0 are here: the same-map Manhattan sum, two TransformTo calls, _max<Ui> of the maps' cell counts; SOCOM II adds map 0 as the common grid)
 0x0052C5B0 0xC RegisterPathPlan__7CAiMapsFRC9CAiMapLocRC9CAiMapLocP7CAiPath  # OVL2; s1:exact by hand, the AI core round 18: SOCOM 1's three-argument RegisterPathPlan (the demo's 0x199860) word for word -- the path moved to t0 and the five-argument RegisterPathPlan 0x52C5C0 tail-called with a count of 1
@@ -11943,7 +11943,7 @@
 0x00614758 0x70 func_00614758  # OVL2 unaligned
 0x006147C8 0x18 func_006147C8  # OVL2 unaligned
 0x006147E0 0x58 func_006147E0  # OVL2
-0x00614838 0xC func_00614838  # OVL2 unaligned
+0x00614838 0xC NetResetTime  # OVL2 unaligned; s1:order+body (gcc r20b: SOCOM 1's NetResetTime 0x418FF8, byte-identical -- the clock base stored -- just before DMEmalloc as there; no Dme.c wrapper calls it, so the name is the body's (round 7b's rule); the timebase ping's callback 0x619138 calls it)
 0x00614848 0x40 DMEmalloc  # OVL2 unaligned; s1:calls (exact but it calls rt_memory_allocate_init_zero where the demo calls rt_memory_allocate)
 0x00614888 0x2C func_00614888  # OVL2 unaligned
 0x006148B8 0x28 NetRegisterMallocFreeCallbacks  # OVL2 unaligned; s1:exact
@@ -12197,7 +12197,7 @@
 0x00623F00 0x8 func_00623F00  # OVL2
 0x00623F08 0x24 func_00623F08  # OVL2 unaligned
 0x00623F30 0x140 func_00623F30  # OVL2
-0x00624070 0x10C func_00624070  # OVL2
+0x00624070 0x10C RegisterChildStructure  # OVL2; s1:order+body (gcc r20b: SOCOM 1's static RegisterChildStructure 0x420B50, fifth of the six-function object NetRegisterMessageStart .. NetRegisterStructure as here -- the same field walk and self-recursion on a structure field, &NetStructureList[type - 16]; SOCOM II adds the two null guards; NetRegisterStructure's body 0x624180 calls it as SOCOM 1's does)
 0x00624180 0x1B4 func_00624180  # OVL2
 0x00624338 0x84 func_00624338  # OVL2 unaligned
 0x006243C0 0x58 func_006243C0  # OVL2
