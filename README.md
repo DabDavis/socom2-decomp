@@ -2032,6 +2032,24 @@ exists); 3.0b38/b50/b52 still untold.
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the SEALs, round 27** (UpdateStance, the standing and turning set, the explosive damage, the net pickup):
+  - any assignment to a variable at a loop's exit, even `sum = +sum;`, gives the exit its own label, so MW does not jump
+    the loop's first test straight past it (StandStill 0x586240; `(void)0;` and `*= 1.0f` do not); a `short` local set in
+    an if/else and stored once after the join gives a single store, the ternary puts its 2 in the first test's delay slot
+    (StandTurning 0x586050);
+  - MW keeps a product's operands in the target's order only when the last factor comes from an inline -- `(b - a) *
+    Ease8(x)`; swapping the operands in source changes nothing (SmoothXZThrottles 0x586C10, whose float numbering
+    tools/perm.py found over a block of dead first definitions where no declaration order did);
+  - in `call() == load` MW loads the plain operand first, into a saved register across the call, whichever side it is
+    on -- the call's result taken into a local first keeps the load after the call (CanPickupNetItem 0x59E830); an `andi
+    0xffff` on an unsigned short argument before a call shows the callee's parameter is an int (SendPickupAckMessage
+    0x2BA1F0's first, the states' row); IsAi written in IsPlayer's ternary form keeps the result in v0 (UpdateStance
+    0x552D60); a function-local `static float` written twice is compared by content (the blend split 0x583350);
+  - SOCOM 1's order names the set: UpdateStance after UpdateLODFlags, HandleDamageExplosive 0x5AC070 (HandleDamage calls
+    it first), IsStopped 0x586F00, CheckForAmmoPickups 0x59E580 and HandlePickupAck 0x59DFB0 (named, unwritten); a
+    tick that inlines GetSeal (0x59A8E0) needs GetSeal in its unit -- and 0x59B440, which calls it out of line, may open
+    a unit of its own (0x59AD30-0x59BA7F, untested); open: AnimSignal 0x562030 (include/list's reverse_iterator), the
+    string-keyed map's insert 0x58CEF0/0x58D2B0 (include/tree).
 - **Tells from the UI, round 19** (Serialize, Append, CGameMenu::Add2dNode, the soft keyboard's elements and bitmaps):
   - a reference bound between two tests, followed by `if (!x) continue;`, puts its address in the second test's delay slot
     (CUIVarManager::Serialize 0x385670); `a += b` through a class's `operator+=(const T &)` converts and binds the argument
