@@ -7,16 +7,27 @@
 #include "zseal.h"
 #include "../zweapon/zweapon.h"
 #include <algorithm>
+#include <vector>
 
 /* an ammunition pickup's contents: the weapons' stash (zwep_weapon.cpp's CZItemStash, three parallel
- * lists of words -- a weapon, an ammunition and a count per entry, OVL1's: its rows Compact 0x3CFB20,
- * Count 0x3CFCF0, Get 0x3CFD70 -- only what the pickups call; seal_env.cpp's stand-in too) and the
- * pickup's view of it (zseal.h's CPickupAmmo) */
+ * lists -- a weapon, an ammunition and a count per entry, OVL1's: its rows Compact 0x3CFB20,
+ * Count 0x3CFCF0, Get 0x3CFD70, GetAnim 0x3CFB00 -- only what the pickups call; seal_env.cpp's
+ * stand-in too) and the pickup's view of it (zseal.h's CPickupAmmo). Its members typed as the
+ * weapons' round 23 read them: Destroy's delete runs the implicit destructor, which calls the three
+ * members' destructors out of line, last member first -- this unit is the first in OVL2 to ask for
+ * them, so their copies follow Destroy (0x5427E0 the weapons', 0x542850 the ammunitions', 0x5428C0
+ * the counts') */
 class CZItemStash {
 public:
     void Compact();
     int Count();
     bool Get(int i, int *a, int *b, int *c);
+    CZAnim *GetAnim();
+
+    std::vector<CZWeapon *> m_weapons;   // 0x0
+    std::vector<CZAmmo *> m_ammo;   // 0xc
+    std::vector<int> m_rounds;   // 0x18
+    CZAnim *m_anim;   // 0x24
 };
 
 class CPickupAmmo : public CZItemStash {
@@ -33,7 +44,27 @@ void func_00541700(CPickup *p);
 void func_005418B0(CPickup *p);
 /* (OVL1 data: -1, the time that never runs; read as a variable) */
 extern float data_003F3440;
+/* an animation stopped (OVL1, zanim_set.cpp's callers pass false too) */
+void func_002707C0(CZAnim *anim, bool now);
 }
+
+/* the pickup lists' push_back as SOCOM II's MSL has it: through the base's push_back, which is
+ * insert(end(), x) -- SOCOM 1's chain, one level taller than include/list's pointer-list push_back
+ * (ai_events.cpp's CAiEvent list, "variant vc"): Destroy's push_back temporaries then take the
+ * frame's lowest slots, below the remove's equal_to, as the target's */
+template <>
+inline void std::list<CPickup *, std::allocator<CPickup *> >::push_back(CPickup *const &x)
+{
+    std::__list_deleter<const void *, std::allocator<const void *> >::push_back((const void *const &)x);
+}
+
+/* what a pickup of kind 10 holds (only its delete is seen: a destructor of its own, empty -- the
+ * delete's null test stays behind the case's own) */
+struct CPickupData10 {
+    ~CPickupData10() {}
+
+    int m_0;
+};
 
 /* the distance (squared) past which a pickup whose time ran out goes, and the time it is given
  * again (OVL2 data, 8 bytes apart: MW 3.0's layout of initialised statics) */
@@ -143,6 +174,75 @@ void CPickup::DebugPickups()
 
     for (i = m_list.begin(); i != e; ++i)
         ;
+}
+
+/* a listed pickup taken off the list, what it holds let go by its kind -- kind 10's data deleted,
+ * a weapon's node taken out of the world, ammunition's stash deleted (its drop anim stopped) and
+ * its node too, the MP bomb's node -- the pickup cleared and put back in the pool; one not listed
+ * leaves the list walked (OVL2 0x542470; SOCOM 1's, the bomb's node now DeleteMPBombNode's) */
+void CPickup::Destroy(CPickup *pickup)
+{
+    iterator it = std::find(m_list.begin(), m_list.end(), pickup);
+
+    if (it == m_list.end()) {
+        DebugPickups();
+        return;
+    }
+    m_list.remove(pickup);
+    /* (the kind taken into an enum local: the target loads it into a0 and keeps the pickup in v1) */
+    PU_TYPE type = (PU_TYPE)pickup->m_type;
+
+    switch (type) {
+    case 10:
+        if (pickup->m_data)
+            delete (CPickupData10 *)pickup->m_data;
+        pickup->m_data = 0;
+        break;
+    case PU_WEAPON: {
+        zdb::CNode *node = pickup->m_node;
+
+        if (node) {
+            if (node->m_parent)
+                node->m_parent->DeleteChild(node);
+            zdb::CWorld::m_world->DeleteTextureAssetCharacter(zdb::CHARSETCOMMON, node);
+            zdb::CNode::Delete(node);
+        }
+        break;
+    }
+    case PU_AMMO: {
+        CZItemStash *stash = (CZItemStash *)pickup->m_data;
+        CZAnim *anim = 0;
+
+        if (stash) {
+            anim = stash->GetAnim();
+            delete stash;
+        }
+        pickup->m_data = 0;
+        zdb::CNode *node = pickup->m_node;
+
+        if (node) {
+            if (node->m_parent)
+                node->m_parent->DeleteChild(node);
+            if (anim)
+                func_002707C0(anim, false);
+            zdb::CWorld::m_world->DeleteTextureAssetCharacter(zdb::CHARSETCOMMON, node);
+            zdb::CNode::Delete(node);
+        }
+        break;
+    }
+    case PU_MPBOMB:
+        DeleteMPBombNode();
+        break;
+    }
+    pickup->m_data = 0;
+    pickup->m_node = 0;
+    pickup->m_type = PU_NONE;
+    pickup->SetLocked(false);
+    pickup->SetSecondary(false);
+    pickup->m_owner = 0;
+    pickup->m_id = 0;
+    pickup->m_bits.ClearAll();
+    m_pool.push_back(pickup);
 }
 
 /* the online tick: no pickup's time runs out, only the MP bomb's node goes when it is flagged

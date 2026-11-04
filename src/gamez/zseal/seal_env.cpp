@@ -1391,10 +1391,9 @@ void CZSealBody::HandleWeaponEvent(CZProjectile *proj, unsigned int event, void 
  * and a definition here would put this unit's span in OVL1) */
 
 extern "C" {
-/* the decals rdr (OVL1 bss, the weapons' 0x437D00) and a material's index by name (OVL1 0x2DE9E0,
- * SOCOM 1's CMaterialExArray::ResolveMaterialIndex -- not named) */
+/* the decals rdr (OVL1 bss, the weapons' 0x437D00; a material's index by name is
+ * CMaterialExArray::ResolveMaterialIndex, zweapon.h's: OVL1 0x2DE9E0) */
 extern _zrdr *data_00437D00;
-int func_002DE9E0(const char *name);
 }
 /* (zrdr.h's, which this unit cannot include beside zanim.h's _zrdr) */
 bool zrdr_findreal(const _zrdr *rdr, const char *tag, float *out, int n);
@@ -1429,7 +1428,7 @@ void CZSealBody::InitDecalHandles()
             item = ItemAt(steps, i);
             material = zrdr_findstring(item, "MATERIALNAME");
             texture = zrdr_findstring(item, "TEXTURENAME");
-            index = func_002DE9E0(material);
+            index = CMaterialExArray::ResolveMaterialIndex(material);
             ((zdb::CTexHandle **)data_0044D550)[index] = zdb::CWorld::GetTexHandle(texture);
         }
     }
@@ -2359,13 +2358,25 @@ union AckUnion {
 };
 
 /* an ammunition pickup's contents: the weapons' stash (zwep_weapon.cpp's CZItemStash, three parallel
- * lists of words -- a weapon, an ammunition and a count per entry -- out of line in OVL1; only what
- * the pickups call) and the pickup's view of it (zseal.h's CPickupAmmo; the name ours) */
+ * lists -- a weapon, an ammunition and a count per entry -- out of line in OVL1: the constructor
+ * 0x3CFF80, Add 0x3CFEF0, Count 0x3CFCF0, Get 0x3CFD70, Clear, SetAnim 0x3CFB10; only what the
+ * pickups call) and the pickup's view of it (zseal.h's CPickupAmmo; the name ours). The members
+ * typed as the weapons' round 23 read them: a delete runs the implicit destructor, which calls the
+ * three members' destructors out of line, last member first (pickup_main.cpp's copies, 0x5428C0,
+ * 0x542850, 0x5427E0) */
 class CZItemStash {
 public:
+    CZItemStash();
     int Count();
+    void Add(CZWeapon *weapon, CZAmmo *ammo, int rounds);
     bool Get(int i, int *a, int *b, int *c);
     void Clear(int i);
+    void SetAnim(CZAnim *anim);
+
+    std::vector<CZWeapon *> m_weapons;   // 0x0
+    std::vector<CZAmmo *> m_ammo;   // 0xc
+    std::vector<int> m_rounds;   // 0x18
+    CZAnim *m_anim;   // 0x24
 };
 
 class CPickupAmmo : public CZItemStash {
@@ -2692,11 +2703,132 @@ void CZSealBody::CreateNetWeaponPickup(unsigned short item, int netid, CPnt3D *p
     }
 }
 
+/* another console's dropped ammunition made here, with the pickups open: each of the count's items
+ * unpacked into its weapon and ammunition, the weapon's item -- or else the ammunition with its
+ * rounds -- let go from this SEAL's kit, and the stash given the weapon, the ammunition and the
+ * rounds; an ammunition box instanced at the point, made dynamic and a character node with its
+ * textures, then a network pickup of kind 9 of that id holding the stash, the drop anim run on its
+ * node and kept by the stash; with no node the stash deleted (OVL2 0x59E9E0; SOCOM 1's
+ * CreateNetAmmoPickup -- AmmoPUPacketHandler's call) */
+void CZSealBody::CreateNetAmmoPickup(unsigned short count, unsigned short *items, unsigned short *rounds,
+                                     int id, CPnt3D *pos)
+{
+    if (!CPickup::m_isOpen)
+        return;
+    CZItemStash *stash = new CZItemStash;
+
+    for (int i = 0; i < count; i++) {
+        EQUIP_ITEM item;
+        EQUIP_AMMO ammo;
+
+        CZWeapon::UnpackItemAndAmmoEnums(items[i], &item, &ammo);
+        if (item != EQUIP_NONE) {
+            int k = m_kit.GetItemIndex(item);
+
+            if (k != -1)
+                m_kit.RemoveItemAndAmmo(k);
+        } else {
+            int k = m_kit.GetAmmoIndex(ammo, rounds[i]);
+
+            if (k != -1)
+                m_kit.RemoveAmmo(k);
+        }
+        CZWeapon *w = CZWeapon::m_listWeapons.GetWeapon(item);
+        CZAmmo *a = CZAmmo::m_ammolist.GetAmmo(ammo);
+
+        stash->Add(w, a, rounds[i]);
+    }
+    CQuat q;
+
+    q.MakeYXZRot(0.0f, 0.0f, 0.0f);
+    zdb::CNode *node =
+        zdb::CNode::CreateInstance((zdb::CModel *)zdb::CWorld::GetModel("fiftycal_box"), pos, &q);
+
+    if (!node) {
+        delete stash;
+        return;
+    }
+    node->SetDynamic(true, true);
+    node->m_socom2_a1_bits.bit2 = 1;
+    node->m_bumpmap = 1;
+    zdb::CWorld::m_world->AddTextureAssetCharacter(zdb::CHARSETCOMMON, node);
+    CPickup *p = CPickup::NetworkCreate(id, CPickup::PU_AMMO, node, stash);
+
+    if (data_0044D508)
+        stash->SetAnim(((CZAnim *)data_0044D508)->ActivateArg(1, 3, p->m_node, 0));
+}
+
+extern "C" {
+/* the kit's ammunition put into a stash: all of it (-1) or so many rounds (OVL2 0x5BA040, the kit
+ * lane's row -- SOCOM 1's CZKit::FillAmmoPickupInstance, after RemoveAmmo in both builds) */
+void func_005BA040(CZKit *kit, CZItemStash *stash, int rounds);
+}
+
+/* this SEAL's ammunition dropped, all of it (-1) or so many rounds, with the pickups open and,
+ * online, by a player only: the kit's rounds put into a new stash, which -- if any entry has rounds
+ * -- goes into an ammunition box at the SEAL's place, turned by its own turn, named, made dynamic
+ * and a character node, then a pickup of kind 9 the SEAL owns, the drop anim run on its node and
+ * kept by the stash; an empty stash, or one with no node, deleted (OVL2 0x59FD50; SOCOM 1's
+ * DropAmmo, the empty test new -- PickupItem and 0x5A0040 call it) */
+void CZSealBody::DropAmmo(int rounds)
+{
+    /* (one test: the two returns share the target's `b` to the epilogue) */
+    if (!CPickup::m_isOpen || (theNetwork.m_9 && !IsPlayer()))
+        return;
+    CZItemStash *stash = new CZItemStash;
+
+    if (rounds == -1)
+        func_005BA040(&m_kit, stash, -1);
+    else
+        func_005BA040(&m_kit, stash, rounds);
+    int i;
+
+    for (i = 0; i < stash->Count(); i++) {
+        int w = 0;
+        int a = 0;
+        int n = 0;
+
+        stash->Get(i, &w, &a, &n);
+        if (n)
+            break;
+    }
+    if (i >= stash->Count()) {
+        delete stash;
+        return;
+    }
+    CPnt3D off = CPnt3D::zero;
+    CPnt3D at;
+
+    m_quat.Apply(&off, &at, 1);
+    at.Add(&m_posW, &at);
+    CQuat q;
+
+    q.MakeYXZRot(0.0f, 0.0f, 0.0f);
+    zdb::CNode *node =
+        zdb::CNode::CreateInstance((zdb::CModel *)zdb::CWorld::GetModel("fiftycal_box"), &at, &q);
+
+    if (!node) {
+        delete stash;
+        return;
+    }
+    node->SetName("Ammobox");
+    node->SetDynamic(true, true);
+    node->m_socom2_a1_bits.bit2 = 1;
+    node->m_bumpmap = 1;
+    zdb::CWorld::m_world->AddTextureAssetCharacter(zdb::CHARSETCOMMON, node);
+    CPickup *p = CPickup::Create(m_id, CPickup::PU_AMMO, node, stash);
+
+    if (data_0044D508 && p)
+        stash->SetAnim(((CZAnim *)data_0044D508)->ActivateArg(1, 3, p->m_node, 0));
+}
+
+/* the ground under a point within a depth (fts_main.cpp's ftsGetAltitudeApprox, OVL1 0x2A2EB0) */
+zdb::IntersectStruct *ftsGetAltitudeApprox(const CPnt3D *p, float depth, bool chars);
+
 extern "C" {
 /* (the kit's item at an index let go is CZKit::RemoveItemAndAmmo, zseal.h's; OVL2 0x5B9BB0, the kit
- * lane's) the ground under a point within a depth (OVL1 0x2A2EB0), a weapon readied (OVL2 0x57D540,
- * seal_body.cpp's) and the item it takes (OVL1 data 0x3DEB48, a short) */
-zdb::IntersectStruct *func_002A2EB0(const CPnt3D *p, float depth, int chars);
+ * lane's) a weapon readied (OVL2 0x57D540, seal_body.cpp's) and the item it takes (OVL1 data
+ * 0x3DEB48, a short) */
 void func_0057D540(CZSealBody *seal, short item, int x);
 extern short data_003DEB48;
 }
@@ -2725,7 +2857,7 @@ void CZSealBody::DropAllItems()
     pos.z = m_posW.z;
 
     y += 1.0f;
-    zdb::IntersectStruct *hit = func_002A2EB0(&pos, 8.0f, 1);
+    zdb::IntersectStruct *hit = ftsGetAltitudeApprox(&pos, 8.0f, true);
 
     if (hit)
         y = hit->m_pos.y;

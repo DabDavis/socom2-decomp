@@ -3770,7 +3770,7 @@
 0x002A3170 0x7B4 func_002A3170  # OVL1
 0x002A3930 0x14 func_002A3930  # OVL1
 0x002A3950 0x198 func_002A3950  # OVL1; OVL1's copy of CAiMap::GetLocation (OVL2 0x515F80, the same words: the engine core round 13); ovl-copy: GetLocation__6CAiMapCFPC6CPnt3DR9CAiMapLoc
-0x002A3AF0 0x8 func_002A3AF0  # OVL1
+0x002A3AF0 0x8 func_002A3AF0  # OVL1; the engine core round 14: OVL1's copy of CAiMapLoc() (0x516120, the same two words), fts_main.cpp's -- ftsGetAltitudeApprox 0x2A2EB0 calls it for the inlined map altitude's cell, the copies after the query in reverse of first use; ovl-copy: __ct__9CAiMapLocFv
 0x002A3B00 0x8 GetIntersect__8CDIDummyFPQ23zdb11DiIntersect  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x002A3B10 0x8 GetAltitude__8CDIDummyFPQ23zdb11DiIntersect  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x002A3B20 0x8 LoadTipAndTail__8CDIDummyFPQ23zdb11DiIntersect  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
@@ -9083,13 +9083,13 @@
 0x00501958 0x54 ControlMedian  # OVL2 unaligned; s1:align
 0x005019B0 0x18 Median_Reset  # OVL2; s1:exact
 0x005019C8 0xC4 InitMedian  # OVL2 unaligned; s1:align
-0x00501A90 0x38C func_00501A90  # OVL2
+0x00501A90 0x38C LogPitchProcessing  # OVL2; s1:order -- the gcc lane, round 22c: the pitch combiner object's first, before NormE_Processing, as SOCOM 1's object 0x36CE48 holds it (0x38C here, 0x384 there)
 0x00501E20 0x114 NormE_Processing  # OVL2; s1:align
 0x00501F38 0x35C FlushPitchCombiner  # OVL2 unaligned; s1:calls
-0x00502298 0x3BC func_00502298  # OVL2 unaligned
-0x00502658 0x298 func_00502658  # OVL2 unaligned
-0x005028F0 0x114 func_005028F0  # OVL2
-0x00502A08 0x508 func_00502A08  # OVL2 unaligned
+0x00502298 0x3BC ProcessPitchCombiner  # OVL2 unaligned; s1:slot -- the gcc lane, round 22c: ConstructPitchCombiner's process slot (t0), as SOCOM 1's constructor passes ProcessPitchCombiner
+0x00502658 0x298 PitchCombinerReset  # OVL2 unaligned; s1:calls -- the gcc lane, round 22c: ControlPitchCombiner's command 200 calls it where SOCOM 1's calls PitchCombinerReset; the object's fifth, as SOCOM 1's
+0x005028F0 0x114 ControlPitchCombiner  # OVL2; s1:slot -- the gcc lane, round 22c: ConstructPitchCombiner's control slot (t2), as SOCOM 1's constructor passes ControlPitchCombiner; SOCOM 1's body (cases 200, 201, 255), moved before InitPitchCombiner in SOCOM II
+0x00502A08 0x508 InitPitchCombiner  # OVL2 unaligned; s1:slot -- the gcc lane, round 22c: ConstructPitchCombiner's init slot (t1), as SOCOM 1's constructor passes InitPitchCombiner
 0x00502F10 0x3C ConstructPitchCombiner  # OVL2; s1:align
 0x00502F50 0x4C0 spline2  # OVL2; s1:calls (SOCOM 1's Lin_2_Log calls spline2 where ours call this row, 1 call site; the same position in SOCOM 1's object)
 0x00503410 0x398 Lin_2_Log  # OVL2; s1:calls
@@ -10679,17 +10679,17 @@
 0x00599B60 0x39C ReCreate__10CZSealBodyFP10CZSealBodyPC14CCharacterType  # OVL2; s1:order (after Create, before PostCreateSeal); SetWeaponInfoChanged, the matrix copy and _strdup as SOCOM 1's; SOCOM 1's signature, unproven
 0x00599F00 0x548 PostCreateSeal__10CZSealBodyFP10CZSealBodyP9CSealCtrl  # OVL2; s1:order (after ReCreate); SetNodeEx and SetController as SOCOM 1's; Create calls it second, as SOCOM 1's; SOCOM 1's signature, unproven
 0x0059A450 0x1DC func_0059A450  # OVL2; s1:order (after PostCreateSeal; a list walk over the small iterator copies after it); SOCOM 1's signature, unproven; s1~ FindGear__10CZSealBodyFPCc (s1:order, wrong: SOCOM 1's FindGear searched a list by name with a this; SOCOM II's walks a node's child vector recursively and returns the count, which Create prints as '%d nodes' -- the SEAL lane, round 4)
-0x0059A630 0x14 func_0059A630  # OVL2
-0x0059A650 0x14 func_0059A650  # OVL2
-0x0059A670 0x10 func_0059A670  # OVL2; tu: char_type.cpp~ (1.0 beta)
-0x0059A680 0x18 func_0059A680  # OVL2
-0x0059A6A0 0x18 func_0059A6A0  # OVL2
-0x0059A6C0 0x14 func_0059A6C0  # OVL2
-0x0059A6E0 0x8 func_0059A6E0  # OVL2
-0x0059A6F0 0x10 func_0059A6F0  # OVL2; tu: char_type.cpp~ (1.0 beta)
-0x0059A700 0x8 func_0059A700  # OVL2
-0x0059A710 0x8 func_0059A710  # OVL2
-0x0059A720 0xC func_0059A720  # OVL2
+0x0059A630 0x14 func_0059A630  # OVL2; OVL2's copy of CNodeVector's iterator == (OVL1 0x1EA7E0, the same words; the SEALs, round 35: 0x59A450's node count walks each child's m_child (CNode +0x68, a CNodeVector: GetChildren 0x59A710 returns this+0x68) through these out-of-line pieces, the same words as OVL1's named CNodeVector pieces); ovl-copy: __eq__Q33std62__vector_imp<PQ23zdb5CNode,Q23std24allocator<PQ23zdb5CNode>,1>8iteratorCFRCQ33std62__vector_imp<PQ23zdb5CNode,Q23std24allocator<PQ23zdb5CNode>,1>8iterator
+0x0059A650 0x14 func_0059A650  # OVL2; OVL2's copy of CNodeVector's iterator prefix ++ (the postfix inlined one level: copy, ++, copy) (OVL1 0x1EA820, the same words; the SEALs, round 35: 0x59A450's node count walks each child's m_child (CNode +0x68, a CNodeVector: GetChildren 0x59A710 returns this+0x68) through these out-of-line pieces, the same words as OVL1's named CNodeVector pieces); ovl-copy: __pp__Q33std62__vector_imp<PQ23zdb5CNode,Q23std24allocator<PQ23zdb5CNode>,1>8iteratorFv
+0x0059A670 0x10 func_0059A670  # OVL2; tu: char_type.cpp~ (1.0 beta); OVL2's copy of CNodeVector's iterator copy constructor (OVL1 0x313450, the same words; the SEALs, round 35: 0x59A450's node count walks each child's m_child (CNode +0x68, a CNodeVector: GetChildren 0x59A710 returns this+0x68) through these out-of-line pieces, the same words as OVL1's named CNodeVector pieces); ovl-copy: __ct__Q33std62__vector_imp<PQ23zdb5CNode,Q23std24allocator<PQ23zdb5CNode>,1>8iteratorFRCQ33std62__vector_imp<PQ23zdb5CNode,Q23std24allocator<PQ23zdb5CNode>,1>8iterator
+0x0059A680 0x18 func_0059A680  # OVL2; OVL2's copy of CNodeVector's iterator != (OVL1 0x1EA800, the same words; the SEALs, round 35: 0x59A450's node count walks each child's m_child (CNode +0x68, a CNodeVector: GetChildren 0x59A710 returns this+0x68) through these out-of-line pieces, the same words as OVL1's named CNodeVector pieces); ovl-copy: __ne__Q33std62__vector_imp<PQ23zdb5CNode,Q23std24allocator<PQ23zdb5CNode>,1>8iteratorCFRCQ33std62__vector_imp<PQ23zdb5CNode,Q23std24allocator<PQ23zdb5CNode>,1>8iterator
+0x0059A6A0 0x18 func_0059A6A0  # OVL2; OVL2's copy of CNodeVector's end() (OVL1 0x1EA850, the same words; the SEALs, round 35: 0x59A450's node count walks each child's m_child (CNode +0x68, a CNodeVector: GetChildren 0x59A710 returns this+0x68) through these out-of-line pieces, the same words as OVL1's named CNodeVector pieces); ovl-copy: end__Q23std62__vector_imp<PQ23zdb5CNode,Q23std24allocator<PQ23zdb5CNode>,1>Fv
+0x0059A6C0 0x14 func_0059A6C0  # OVL2; OVL2's copy of CNodeVector's iterator postfix ++ (OVL1 0x313460, the same words; the SEALs, round 35: 0x59A450's node count walks each child's m_child (CNode +0x68, a CNodeVector: GetChildren 0x59A710 returns this+0x68) through these out-of-line pieces, the same words as OVL1's named CNodeVector pieces); ovl-copy: __pp__Q33std62__vector_imp<PQ23zdb5CNode,Q23std24allocator<PQ23zdb5CNode>,1>8iteratorFi
+0x0059A6E0 0x8 func_0059A6E0  # OVL2; OVL2's copy of CNodeVector's iterator * (the element's address) (OVL1 0x1EA840, the same words; the SEALs, round 35: 0x59A450's node count walks each child's m_child (CNode +0x68, a CNodeVector: GetChildren 0x59A710 returns this+0x68) through these out-of-line pieces, the same words as OVL1's named CNodeVector pieces); ovl-copy: __ml__Q33std62__vector_imp<PQ23zdb5CNode,Q23std24allocator<PQ23zdb5CNode>,1>8iteratorCFv
+0x0059A6F0 0x10 func_0059A6F0  # OVL2; tu: char_type.cpp~ (1.0 beta); OVL2's copy of CNodeVector's iterator = (OVL1 0x313480, the same words; the SEALs, round 35: 0x59A450's node count walks each child's m_child (CNode +0x68, a CNodeVector: GetChildren 0x59A710 returns this+0x68) through these out-of-line pieces, the same words as OVL1's named CNodeVector pieces); ovl-copy: __as__Q33std62__vector_imp<PQ23zdb5CNode,Q23std24allocator<PQ23zdb5CNode>,1>8iteratorFRCQ33std62__vector_imp<PQ23zdb5CNode,Q23std24allocator<PQ23zdb5CNode>,1>8iterator
+0x0059A700 0x8 func_0059A700  # OVL2; OVL2's copy of CNodeVector's iterator default constructor (OVL1 0x313490, the same words; the SEALs, round 35: 0x59A450's node count walks each child's m_child (CNode +0x68, a CNodeVector: GetChildren 0x59A710 returns this+0x68) through these out-of-line pieces, the same words as OVL1's named CNodeVector pieces); ovl-copy: __ct__Q33std62__vector_imp<PQ23zdb5CNode,Q23std24allocator<PQ23zdb5CNode>,1>8iteratorFv
+0x0059A710 0x8 func_0059A710  # OVL2; OVL2's copy of CNodeVector's CNode::GetChildren's out-of-line copy (&m_child) (OVL1 0x1EA880, the same words; the SEALs, round 35: 0x59A450's node count walks each child's m_child (CNode +0x68, a CNodeVector: GetChildren 0x59A710 returns this+0x68) through these out-of-line pieces, the same words as OVL1's named CNodeVector pieces); ovl-copy: GetChildren__Q23zdb5CNodeFv
+0x0059A720 0xC func_0059A720  # OVL2; OVL2's copy of CNodeVector's begin() (OVL1 0x1EA870, the same words; the SEALs, round 35: 0x59A450's node count walks each child's m_child (CNode +0x68, a CNodeVector: GetChildren 0x59A710 returns this+0x68) through these out-of-line pieces, the same words as OVL1's named CNodeVector pieces); ovl-copy: begin__Q23std62__vector_imp<PQ23zdb5CNode,Q23std24allocator<PQ23zdb5CNode>,1>Fv
 0x0059A730 0xB8 FindGear__10CZSealBodyFPCc  # OVL2; s1:order by hand (SOCOM 1's FindGear__10CZSealBodyFPCc: this unread, the gear whose name at +0xC strcmps equal, else 0 -- SOCOM 1's walked m_gear_list__14CCharacterType, a list 0x20 after m_char_list; SOCOM II's walks the pointer vector at the same 0x20 on, 0x44CD68; after the iterator copies, before PreCreateSeal, as SOCOM 1's sits right before PreCreateSeal; seal_cfg.cpp's 0x58B0F0 calls it three times with this and a name) -- the SEAL lane, round 7
 0x0059A7F0 0xF0 PreCreateSeal__10CZSealBodyFPC14CCharacterTypePCcPPQ23zdb5CNode  # OVL2; s1:order (after FindGear's tail); Create calls it first, as SOCOM 1's (the character's Acquire, CreateInstance, SetDynamic, CreateLODs); SOCOM 1's signature, unproven
 0x0059A8E0 0x178 func_0059A8E0  # OVL2
@@ -10732,7 +10732,7 @@
 0x0059F6F0 0x34 func_0059F6F0  # OVL2
 0x0059F730 0x388 func_0059F730  # OVL2
 0x0059FAC0 0x284 func_0059FAC0  # OVL2
-0x0059FD50 0x2E8 func_0059FD50  # OVL2
+0x0059FD50 0x2E8 DropAmmo__10CZSealBodyFi  # OVL2; s1:order by hand (the SEALs, round 35): SOCOM 1's DropAmmo__10CZSealBodyFi -- the same body: the pickups open and online a player only, a stash newed and filled from the kit by FillAmmoPickupInstance (OVL2 0x5BA040, called twice: -1 or the rounds), the offset CPnt3D::zero turned by the SEAL's quat and added to its place, fiftycal_box instanced there, the stash deleted when none, SetDynamic, AddTextureAssetCharacter, CPickup::Create of kind 9 with the SEAL's id and the drop anim kept by the stash; SOCOM II adds the empty-stash test (Count/Get) and the node's name 'Ammobox'. PickupItem and 0x5A0040 call it, as SOCOM 1's PickupItem and DropItem's neighbours do
 0x005A0040 0x228 func_005A0040  # OVL2
 0x005A0270 0x484 FindRandomDamageAnim__10CZSealBodyF15DAMAGE_LOCATIONPb  # OVL2; s1:order by hand (the SEALs, round 29): SOCOM 1's FindRandomDamageAnim__10CZSealBodyF15DAMAGE_LOCATIONPb, right before FindRandomDeathAnim in both builds (SOCOM 1's DropAllItems, the two finders, SetArmor, the three armour setups of 0xC8-0xCC bytes and DamageRandomLocation; SOCOM II's 0x5A0040, 0x5A0270, 0x5A0700, the new 0x5A0950, 0x5A0B60/0x5A0BB0, 0x5A0C00/0x5A0CD0/0x5A0DA0 of 0xC8 each and 0x5A0E70 on the pellet tables); UpdateHealth's living branch asks it for a hurt SEAL's anim (location, &flag) and plays it in the SEAL's stance
 0x005A0700 0x244 FindRandomDeathAnim__10CZSealBodyF15DAMAGE_LOCATIONPb  # OVL2; s1:calls by hand (the SEALs, round 29): UpdateHealth's dying branch and OnWeaponHit's dead-SEAL branch call it with (the location or 3, &flag) and hand the anim to WeaponHitAnim with state 8, as SOCOM 1's call FindRandomDeathAnim__10CZSealBodyF15DAMAGE_LOCATIONPb; after FindRandomDamageAnim in both builds
@@ -10951,7 +10951,7 @@
 0x005B9BB0 0x258 RemoveItemAndAmmo__5CZKitFi  # OVL2; s1:order by hand (the kit lane, round 12): SOCOM 1's RemoveItemAndAmmo__5CZKitFi (0x2A5830 there) opens alike -- the index wrapped on m_num_items, the item's slot, magazines and ammunition cleared, the count made the last item's place plus one, the selection reset -- with SOCOM II's closing up (0x5B9A00) and WepWaitOn added; RemoveItem (0x5B9E10) calls it; seal_kit.cpp byte-exact
 0x005B9E10 0xEC RemoveItem__5CZKitF10EQUIP_ITEM  # OVL2; by hand (the kit lane, round 11): HandlePlaceMPBomb (0x5BC200) drops the MP bomb, item 154, through it where SOCOM 1's HandlePlaceMPBomb dropped it inline; FindItemWithAmmo inlined, then 0x5B9BB0 (by its place and its opening wrap SOCOM 1's RemoveItemAndAmmo(int)) on the index -- new in SOCOM II, the name ours
 0x005B9F00 0x134 RemoveAmmo__5CZKitFi  # OVL2; s1:order by hand (the kit lane, round 20): SOCOM 1's RemoveAmmo (0x2A5A80), after RemoveItemAndAmmo and before FillAmmoPickupInstance as there -- the index wrapped twice (SOCOM 1's inline wrap then unwrap), the ten magazines zeroed, m_ammo cleared
-0x005BA040 0x390 func_005BA040  # OVL2
+0x005BA040 0x390 FillAmmoPickupInstance__5CZKitFP11CZItemStashi  # OVL2; SOCOM 1's CZKit::FillAmmoPickupInstance (the SEALs' round 35: after RemoveAmmo in both builds, DropAmmo calls it as SOCOM 1's does with (stash, -1 or rounds)); unwritten -- seal_env.cpp calls it by its old placeholder, resolved by address
 0x005BA3D0 0x1E0 AddAmmo__5CZKitFii  # OVL2; s1:order by hand (the kit lane, round 20): SOCOM 1's AddAmmo (0x2A5EB0), after FillAmmoPickupInstance and before CanAddAmmo as there -- the same magazine count, item-194 doubling and top-up walk; its tail (the item 153/187 swap) moved into 0x5C74E0
 0x005BA5B0 0x1C0 CanAddAmmo__5CZKitFii  # OVL2; s1:calls by hand (the kit lane, round 20): SOCOM 1's CanAddAmmo (0x2A6160) -- the same 10-slot and count tests, GetNumMags/GetAmmoCapacity, the item-194 (SOCOM 1's 188) find, the six classes doubled, the magazine walk; the second int unread in both builds
 0x005BA770 0x4C0 func_005BA770  # OVL2
