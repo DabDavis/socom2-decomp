@@ -522,14 +522,12 @@ void ai::PathPlanExecute()
 
 /* a path taken off the planner: a search under way is dropped and the path told it is unplanned,
  * a queued one told it failed (SOCOM 1's two arms); SOCOM II also looks for it in the queue when
- * its state says neither.
- * OPEN (0x174 against 0x194, re-measured with master's list<T *> pieces, 2026-10-25): an inline
- * height. The target's third arm calls list<CAiPath *>'s begin() (0x5109C0), end() (0x5109B0,
- * twice), std::find (0x510970) and != (0x510950) out of line, in that order, with a copy of the
- * path (sp+80) as find's value -- CAiPathQueue::Contains taking the path by value, inlined one
- * level. With include/list and include/algorithm as they stand Contains is at most five high and
- * inlines whole (find's loop in place, 0x174); the original's MSL was deeper (README "Level 6?"),
- * as PathPlanExecute's Insert, inlined one level by its size, does not show */
+ * its state says neither. Byte-exact since the AI core's round 20: the third arm calls
+ * list<CAiPath *>'s begin() (0x5109C0), end() (0x5109B0, twice), std::find (0x510970) and !=
+ * (0x510950) out of line, in that order, with a copy of the path (sp+80) as find's value --
+ * CAiPathQueue::Contains taking the path by value, inlined one level because ai.h specialises
+ * std::find over this list one level taller (include/algorithm's leaves Contains five high, inlined
+ * whole: 0x174); find's out-of-line copy matches with it */
 bool ai::AbortPathPlan(CAiPath *path)
 {
     if (path->m_state == CAiPath::PLANNING) {

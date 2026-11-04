@@ -1450,6 +1450,27 @@ extern float s_preemptPriority;
 /* an empty function of ai_astar.cpp's, called when a path preempted the queue (0x510D00; SOCOM 1's
  * stretch has an MSL accessor there) */
 extern "C" void func_00510D00();
+/* std::find over the planner queue, one inline level taller than include/algorithm's: the search
+ * through a helper taking the first iterator by reference (the AI core's round 20). Specialised for
+ * this list alone, as ai_events.cpp's push_back is: CAiPathQueue::Contains is then six high and
+ * AbortPathPlan inlines it one level -- begin(), end() twice, find and != out of line, the path's
+ * copy as find's value, as the target (0x5107B0) -- and find's own copy (0x510970) still walks its
+ * first parameter in memory (a by-value helper keeps the iterators in registers, 0x40) */
+namespace std {
+template <class InputIterator, class T>
+inline void __find_x(InputIterator &first, const InputIterator &last, const T &value)
+{
+    while (!(first == last) && !(*first == value))
+        ++first;
+}
+template <>
+inline list<CAiPath *>::iterator find(list<CAiPath *>::iterator first, list<CAiPath *>::iterator last,
+                                      CAiPath *const &value)
+{
+    __find_x(first, last, value);
+    return first;
+}
+}
 namespace ai {
 class CAiPathQueue : public std::list<CAiPath *> {
 public:
