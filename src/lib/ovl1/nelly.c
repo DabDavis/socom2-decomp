@@ -13,11 +13,11 @@ extern int data_001D55A0;                      /* the codec's mode (0-2) */
 extern int func_00252470(int a, int b, int n);
 extern int func_00252098(int a, int b, int n);
 extern int func_00251C80(int a, int b, int n);
-extern int data_001D55B0;
+extern void (*data_001D55B0)(void *p, int c, int n);    /* the host's memset */
 extern unsigned short data_001D55C0;            /* nonzero while a frame is in flight */
 extern void (*data_001D55AC)(void *);           /* the host's free callback */
 
-int func_00256F88(int x)
+int func_00256F88(void (*x)(void *p, int c, int n))
 {
     data_001D55B0 = x;
     return 0;
@@ -79,6 +79,57 @@ void func_0024FFB8(void **pblock)
         data_001D55AC(*pblock);
         *pblock = 0;
     }
+}
+
+typedef struct {
+    float afA[4];
+    float afB[4];
+    float f32, f36, f40, f44;
+} Blk48;
+
+/* a 48-byte block: four floats cleared, then its two 4-float arrays through the host's memset.
+ * The floats are stored in the order tools/ccperm.py measured (one of 24; GCC round 19a): as ints
+ * the stores may alias the memset pointer and its load stays after them (19 words) */
+int func_00249EE0(Blk48 **pp)
+{
+    Blk48 *p;
+
+    p = data_001D55A8(1, 48);
+    *pp = p;
+    if (p == 0)
+        return 1;
+    p->f44 = 0;
+    p->f32 = 0;
+    p->f36 = 0;
+    p->f40 = 0;
+    data_001D55B0(p->afA, 0, 16);
+    data_001D55B0(p->afB, 0, 16);
+    return 0;
+}
+
+/* a level's band: 261 above 96, 20 less for each 8 below it, down to 161.
+ * OPEN (0x70 against 0x8C): the target keeps the 56 test's branch and then compares against 48
+ * with nothing branching on it (`c.lt.s; jr ra; nop`), so 56, 48 and below all return 161 by a
+ * path the jump optimiser left in place; here the 56 and 48 tests fold into one dead compare after
+ * 64. A chain of returns, an assigned result (initialised or in a final else), the ifs in either
+ * order and a 141 for the 48 case give 15-49 words (build/scratch/gcc/v_1748.c, GCC round 19a). */
+int func_00251748(float fX)
+{
+    if (fX > 96.0F)
+        return 261;
+    if (fX > 88.0F)
+        return 241;
+    if (fX > 80.0F)
+        return 221;
+    if (fX > 72.0F)
+        return 201;
+    if (fX > 64.0F)
+        return 181;
+    if (fX > 56.0F)
+        return 161;
+    if (fX > 48.0F)
+        return 161;
+    return 161;
 }
 
 int func_00249F68(void **pblock)

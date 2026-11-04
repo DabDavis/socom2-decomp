@@ -11,7 +11,7 @@
  * a word more before the node wheel (its fields from SOCOM 1's +68 on are 4 higher). The tokens'
  * nodes are blocks of the scheduler's small-block allocator (fastallo.c), given back to its free
  * lists by size; a tree node's word indexes a table of its states' offsets. Only the functions
- * written so far are here, in image order: FreeIsoWordTokenDp, InitNewUtterance (OPEN),
+ * written so far are here, in image order: FreeIsoWordTokenDp, InitNewUtterance,
  * ExpandGarbageArrays, ConstructIsoWordTokenDp, InitIsoWordTokenDpProcess, CalcNrNodes,
  * IdleProcess, ScoreCompare. CalcNrNodes reads the child count before its depth test (the
  * target's load in the test's delay slot) and steps its child pointer in the for (the unrolled
@@ -166,11 +166,6 @@ static __inline__ void FastAlloc(ISOTOS *tos, int **pp, unsigned int n)
         *pp = fastallo_AllocateMemoryFromChunk(&tos->fa, n);
 }
 
-/* a word's state count: the halfword distance between its first state and the next word's (the
- * table holds offsets; as addresses the base cancels -- the target's `sll 1; sra 1` is the scaled
- * difference divided back, which no difference of the offsets themselves gives) */
-#define NBRSTATES(base, tab, w)  (&(base)[(tab)[(w) + 1]] - &(base)[(tab)[w]])
-
 /* the wheel's next slot */
 #define NEXTSLOT(w, p)  ((p) < (w)->end ? (p) + 1 : (w)->base)
 
@@ -208,13 +203,15 @@ static void FreeIsoWordTokenDp(ISOWDP *e)
 }
 
 /* a new utterance: the wheel's tokens give their nodes back, the root token takes a node of its
- * word's size and the wheel's first slot.
- * OPEN (round 17c; the right size, 14 words): the target loads the word's two table entries
- * next first (`lw v0,4(a0)` then `lw v1,0(a0)`, the entry's address in a0, as SOCOM 1's order),
- * this compile the other way round with the address in v1 -- the base, a local word or table,
- * a statement for the count, the operands reversed all leave it (build/scratch/gcc/iso/v_inu*.py);
- * and the closing loads and stores are scheduled in another order (the target loads +136, +152,
- * +100 and stores +172 last; 120 orders of the first five stores come no closer than 13 words).
+ * word's size and the wheel's first slot. The word's state count is the halfword distance from
+ * its first state to the next word's (the table holds offsets; as addresses the base cancels --
+ * the target's `sll 1; sra 1` is the scaled difference divided back). The first state is a
+ * pointer of its own, taken first: the next word's entry is then the address's last use, and the
+ * first scheduling pass (which prefers the insn that frees a register) loads it first, as the
+ * target does (one expression loads the word's own entry first). The closing stores end with
+ * `f96 = f100`, the block's last use of e: it frees two registers and is stored as soon as its
+ * load lands, the other three value stores follow in source order and the zero stores, which
+ * free nothing, after them -- the target's order (round 17c's 120 orders kept that store first).
  * The node's size is unsigned (sizeof: the target's srl), the allocation an inline storing
  * through the field's address taken before the call (the target's s1 across it), the free list
  * indexed from the scheduler itself (tos + 4n + 104, not through &tos->fa). */
@@ -222,7 +219,8 @@ static int InitNewUtterance(ISOWDP *e)
 {
     ISOTOS *tos = e->tos;
     WTOKEN **q, **p, **s;
-    int n = NBRSTATES((short *)e->wordstates, e->wordstates, e->start->word) - 3;
+    short *states = (short *)e->wordstates + e->wordstates[e->start->word];
+    int n = (short *)e->wordstates + e->wordstates[e->start->word + 1] - states - 3;
     unsigned int size;
 
     for (s = e->wheel.head; s != e->wheel.tail; s = NEXTSLOT(&e->wheel, s)) {
@@ -243,12 +241,12 @@ static int InitNewUtterance(ISOWDP *e)
             return 1;
     }
     e->wheel.tail = p;
-    e->f96 = e->f100;
     e->f128 = e->start;
     e->f92 = e->f152;
     e->f94 = 0;
     e->f132 = 0;
     e->f172 = 0;
+    e->f96 = e->f100;
     return 0;
 }
 

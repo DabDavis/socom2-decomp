@@ -21,7 +21,7 @@ extern int userwordAcknowledge(CASR *c);
 extern int userwordStartUserWordTraining(CASR *c, int what, void *a, void *b);
 extern int casrEnableGenders(CASR *c, int genders);
 extern int casrActivateContext(CASR *c, void *ctx, int a);
-extern int func_004D5058(CASR *c, unsigned int *ids, unsigned int n);
+extern int SetIsolatedWordDpActiveWords(CASR *c, unsigned int *ids, unsigned int n);
 extern int casrDoSecondPass(CASR *c);
 extern int tosDestruct(CASR *c);
 extern int CreateExEvCtxInfo(CASR *c);
@@ -1021,7 +1021,7 @@ int casrSetActiveWords(CASR *c, unsigned int *ids, unsigned int n)
     if (ids == 0 && n != 0)
         return _tosErrorLog(c->event, CASR_ERR_ARG);
     if (c->iso_word)
-        return func_004D5058(c, ids, n);
+        return SetIsolatedWordDpActiveWords(c, ids, n);
     FillContextV2VirtualTable(&vt);
     vt.data = c->ctx->data;
     nwords = vt.GetNbrWord(&vt);
