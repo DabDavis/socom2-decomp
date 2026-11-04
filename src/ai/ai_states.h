@@ -45,7 +45,7 @@ enum AI_STATE {
  * zseal.h's CAiTimer, defined after this header, has no constructor yet), CPnt3D() and
  * CAiMapLoc() (OVL2's 0x516900, 0x516120) where a member built by hand precedes them, CAiPath()
  * (0x528340: ai.h's CAiPath, which this header does not include), a three-word zeroing
- * constructor (0x52EB00: a vector's, ai_maps.cpp's copy), Rfloat(float) (0x5F6F30: other units
+ * constructor (0x52EB00: CAiMapLocVec(), by its mangled name -- ai_maps.cpp's copy), Rfloat(float) (0x5F6F30: other units
  * define Rfloat classes of their own), and the follow's, the path recovery's and the animation's
  * unnamed members (0x5F6F20, 0x5F6F10, 0x5F6F00, 0x5F6F70, 0x5F6F40 -- Create's out-of-line
  * copies) */
@@ -54,7 +54,7 @@ void *func_005EA550(void *timer, float period);
 void *func_00516900(void *pnt);
 void *func_00516120(void *loc);
 void *func_00528340(void *path);
-void *func_0052EB00(void *vec);
+void *__ct__12CAiMapLocVecFv(void *vec);
 void *func_005F6F30(void *rfloat, float f);
 void *func_005F6F20(void *p);
 void *func_005F6F10(void *p, int x);
@@ -472,10 +472,10 @@ public:
 
 class CAiSPlan : public CAiState {
 public:
-    /* its members built by hand, the first a vector's (0x52EB00) that this header cannot spell */
+    /* its members built by hand, the first a CAiMapLocVec (0x52EB00, called by its mangled name) */
     CAiSPlan() : CAiState(AI_STATE_PLAN)
     {
-        func_0052EB00(_58);
+        __ct__12CAiMapLocVecFv(_58);
         func_00528340(m_path);
         func_00516120(&m_cell);
     }
@@ -656,7 +656,7 @@ public:
     CAiSPathRecover() : CAiState(AI_STATE_PATHRECOVER)
     {
         func_00528340(m_path);
-        func_0052EB00(m_vec);
+        __ct__12CAiMapLocVecFv(m_vec);
         func_005F6F00(&m_110, 15, 0);
     }
     virtual void OnSignal(SIGNAL sig, CSealCtrlAi *ai);
