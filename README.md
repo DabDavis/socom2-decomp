@@ -6939,6 +6939,58 @@ showed:
   whether reorg sends the null check's `li v0,-1` straight to the epilogue). Not reached:
   sceGsSetDefDispEnv, sceCdStRead (their round 22a/24a diagnoses stand), OVL1's codec stretches.
 
+**Round 26a** (2026-11-04, sceSifCallRpc's types first, then OVL1's codec by hand): 20 rows newly
+byte-exact (3,736 bytes) of 21 written -- the lane's `src/lib` sdk/libc/libgcc/libm/ovl1 rows 1,207
+-> 1,227 of 1,279 scored, none lost (re-checked after merging master 8ece3e5d) -- all in Nellymoser's
+codec, five new units by the files the objects' asserts or neighbours name: `ovl1/sase_voicing.c`
+(Voicing.c: 0x251270, 0x251348), `sase_asktoenv.c` (the decoder's AskToEnvInline.c: the step-up at
+order 12 0x253888 -- libtran.c's text --, the resampler 0x253920, the bit reader 0x2539C0),
+`sase_decvcfry.c` (0x248C80, 0x248D40), `sase_coder.c` (0x248A18), `sase_fft4cfg.c` (the VU0 transform
+0x252098, its set-up 0x252150, the bit reversal 0x252290), `sase_pitchmerge.c` (the object between
+libvect.c and the encoder API, named by what it does: 0x24F010, 0x24F170, 0x24F468), and in old units
+0x2499A8 (EncSC.c), 0x254458 (after DecSC.c), 0x256A18 with its two static tables, 0x256BC8, 0x256CC8
+(SWSynth.c), 0x251678 (nelly.c). No rows named (the codec is not in SOCOM 1). What they showed:
+
+- **A call's argument order reads the callee's parameter order**: GCC evaluates arguments right to
+  left, so the order of the target's argument moves says where each parameter sits -- which the
+  EABI's per-class registers hide (an int and a float parameter take a0 and f12 in either order).
+  0x24F010's call of 0x24F170 moves f14, then a0, then f13 and f12: the pointer after the third float
+  (pointer first: 4 words; two of the 120 orders match). The same order shows in the first.
+- **A constant held from the entry is a local initialised at its declaration**: 0x248A18's 4096 is
+  loaded before the loop's entry test (`float fScale = 4096.0F;`; a literal is hoisted into the
+  preheader, after the test: 4 words), 0x249B58's three into f20-f22 at the entry.
+- **The vendor's redundant statements are in the code**: 0x253920 stores `pfTmp[i] = pfEnv[k]` before
+  an if/else that stores again (the target's `swc1` in the test's slot and the in-range arm's reload:
+  23-38 words without it); 0x2539C0's second shift is a variable of its own (through iBit, iBit
+  outranks pusPos in global-alloc: 15 words); 0x251678's index is a variable (combine folds its `+ 29`
+  into the load's offset otherwise); 0x252290's carry bit starts at n and is halved in the loop's test
+  (from n >> 1 loop.c hoists the invariant).
+- **OVL1's text ends in VU0 microcode, not only VU1's**: the codec's mode-1 FFT (0x252098) copies both
+  halves into VU0 data memory (0x11004000, 0x11004400), sets vi1 = (n != 256) and runs `vcallms 0`;
+  its set-up (0x252150) loads 0x3D5980-0x3D6750 into VU0 micro memory (0x11000000) and a 2016-byte
+  table by GCC's block move. ("The target" lists 0x3D5980-0x3DBFF8 as VU1 microcode; its first 0xDD0
+  bytes are VU0's.)
+- **The codec's unions have a `long l`**, 64-bit on the EE (its asserts name `union_x.l`): the fast
+  log2 0x2517D8 and exp2 0x251850 read the bits with mfc1 and an `and` of 0xFFFFFFFF and pass words
+  through the stack; eighteen spellings miss (the unions in registers OR in the undefined upper word,
+  pointer casts stay registers through ADDRESSOF) -- not written, the spellings in nelly.c's note.
+- **sceSifCallRpc's types, swept** (round 25a's lead; 11,556 variants over the function's own view of
+  the client and the packet, `build/scratch/gcc/v_calltypes.py`, `v_ct3.py`): 17 -> 2 words with the
+  client's fields ints (`buff`'s load waits two cycles behind the `rmode` store, a true dependence)
+  and `pid = rpc_id` first; the two words are the client's paddr/pid stores, and sched1 decides
+  them -- pid's store is the loaded value's last use and outranks paddr's on register pressure as
+  soon as the load's latency allows. Not adopted (the unit's types are its other functions' too).
+- **Open, diagnosed in place**: 0x249B58 (7 words: fFs and fMin trade f22/f21 in global-alloc, all six
+  declaration orders tried). Not reached: sceSifMCallRpc, sceSifMUnBindRpc, sceCdStRead,
+  sceGsSetDefDispEnv (their diagnoses stand), the codec's large rows.
+
+**The tools, round 26a**: no tool changed -- scdiff.py, sccheck.py, scdecomp.py, the tools and
+`include/` are master's, so no MW or GCC unit can score differently. automatch over the lane's three
+ranges (`--max-size 0x400 --emit --no-prune --jobs 1 --obj-dir` the lane's private builds): MAIN
+`18DB90 1C4CC0` 43 tried, 0 hits (2 build failures, 11 m2c refusals), OVL1 `1E7F58 1E8FD4` 2, 0,
+`243000 256FD0` 85, 0 (2 build failures -- 0x24B2F8, 0x24DBB8 -- 8 refusals): 130 tried, none
+byte-exact (round 25a: 149 over these three, 0); every draft that built missed.
+
 **Next**: the libraries by hand, module by module, as their vendors wrote them (each `src/lib`
 unit's header says what it covers); GCC's scheduler moves independent stores, and which source
 order gives the target's is easier measured than predicted (`tools/ccperm.py PROBE
