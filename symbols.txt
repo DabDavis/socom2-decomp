@@ -12251,17 +12251,17 @@
 0x00626D00 0x28 lintClearBit  # OVL2; s1:order (the gcc lane, round 8b): after lintSetBit as SOCOM 1's, its body (0x28, the bit and'ed out)
 0x00626D28 0x50 func_00626D28  # OVL2 unaligned
 0x00626D78 0x74 func_00626D78  # OVL2 unaligned
-0x00626DF0 0x180 func_00626DF0  # OVL2
-0x00626F70 0x180 func_00626F70  # OVL2
-0x006270F0 0x180 func_006270F0  # OVL2
+0x00626DF0 0x180 lintAdd  # OVL2; s1:order (round 18b: SOCOM 1's lintAdd after the in-place add and subtract, here after the carry pair; the sum into a third number through a copy; 0x180 against 0x17C)
+0x00626F70 0x180 lintSub  # OVL2; s1:order+calls (round 18b: after lintAdd as SOCOM 1's; RSAGenerateKeyPair calls it (b, a, b) where SOCOM 1's calls lintSub)
+0x006270F0 0x180 MOD  # OVL2; s1:calls (round 18b: lintPrime's fourth call, SOCOM 1's MOD there)
 0x00627270 0x310 func_00627270  # OVL2
-0x00627580 0x268 func_00627580  # OVL2
-0x006277E8 0x308 func_006277E8  # OVL2 unaligned
+0x00627580 0x268 QRMOD  # OVL2; s1:calls (round 18b: its ten calls are SOCOM 1's QRMOD's in order -- lintGetBits twice, lintSetSmallValue, ShiftLeft, ShiftRight, IsNotSmaller, lintSubIP, lintGetBits, lintSetBit, ShiftRight -- and RSAGenerateKeyPair calls it where SOCOM 1's calls QRMOD)
+0x006277E8 0x308 GCD  # OVL2 unaligned; s1:calls (round 18b: lintPrime's two GCD calls before IsOne, SOCOM 1's GCD there; 0x308 against 0x310)
 0x00627AF0 0x280 func_00627AF0  # OVL2
-0x00627D70 0x1F8 func_00627D70  # OVL2
-0x00627F68 0x150 func_00627F68  # OVL2 unaligned
-0x006280B8 0x100 func_006280B8  # OVL2 unaligned
-0x006281B8 0x1D8 func_006281B8  # OVL2 unaligned
+0x00627D70 0x1F8 lintIsbSPRP  # OVL2; s1:calls (round 18b: lintPrime's strong-probable-prime test, SOCOM 1's lintIsbSPRP there)
+0x00627F68 0x150 LucasTest  # OVL2 unaligned; s1:calls (round 18b: lintPrime's last test, SOCOM 1's LucasTest there; 0x150 both builds)
+0x006280B8 0x100 lintRandomize  # OVL2 unaligned; s1:calls (round 18b: lintPrime's first call, SOCOM 1's lintRandomize there)
+0x006281B8 0x1D8 lintPrime  # OVL2 unaligned; s1:calls (round 18b: RSAGenerateKeyPair's (p, 256) prime draw at SOCOM 1's lintPrime's places; its own thirteen calls are SOCOM 1's lintPrime's in order, with its assert "nBits == lintGetBits(pPrime)")
 0x00628390 0x64 func_00628390  # OVL2
 0x006283F8 0x74C func_006283F8  # OVL2 unaligned
 0x00628B48 0x80 lintGetBits  # OVL2 unaligned; s1:body+assert (the gcc lane, round 14b): LargeInt.c's prime search asserts `nBits == lintGetBits(pPrime)` on this call's result (0x628214, the string at 0x6640D8); hand-written EE assembly (plzcw on the top nonzero word), the first of the asm run 0x628B48-0x629A44
@@ -12275,7 +12275,7 @@
 0x006290B8 0x9C func_006290B8  # OVL2 unaligned
 0x00629154 0x84 lintSubIP  # OVL2 unaligned; s1:body (the gcc lane, round 14b): SOCOM 1's lintSubIP(a, b) in EE assembly -- a -= b in place over all 32 words, the borrow by dsra32; after the bit-limited add as lintSubIP follows lintAddIP there
 0x006291D8 0x9C func_006291D8  # OVL2 unaligned
-0x00629274 0x42C func_00629274  # OVL2 unaligned
+0x00629274 0x42C MODIP  # OVL2 unaligned; s1:calls (round 18b: MOD calls it in place where SOCOM 1's MOD calls MODIP; one of LargeInt's assembly primitives here, SOCOM 1's C)
 0x006296A0 0x1C8 func_006296A0  # OVL2
 0x00629868 0x1DC func_00629868  # OVL2 unaligned
 0x00629A48 0x5C func_00629A48  # OVL2 unaligned
@@ -12319,8 +12319,8 @@
 0x0062AE10 0x130 func_0062AE10  # OVL2
 0x0062AF40 0x14C func_0062AF40  # OVL2
 0x0062B090 0xD8 func_0062B090  # OVL2
-0x0062B168 0x3DC func_0062B168  # OVL2 unaligned
-0x0062B548 0x3D4 func_0062B548  # OVL2 unaligned
+0x0062B168 0x3DC RSAGenerateKeyPair  # OVL2 unaligned; s1:order+calls (round 18b: RSA.c's first function as SOCOM 1's object's; its two primes are lintPrime(p, 256) as SOCOM 1's, n = p*q, the inverse of 17; asserts at RSA.c:164; called through 0x6305C8, SOCOM 1's KM_GenerateRSAKeyPair shape)
+0x0062B548 0x3D4 func_0062B548  # OVL2 unaligned; s1:order (SOCOM 1's RSA object opens with it before RSAEncryptBlock, as here; the body draws two primes, n = p*q, the inverse of 17 mod phi, and asserts in /public/work/dev/rt_crypt/src/RSA.c); s1~ (round 18b: not SOCOM 1's RSAGenerateKeyPair after all -- that is 0x62B168; this is SOCOM II's table-prime twin, asserting at RSA.c:293, called through KM_GenerateRSAKeyPair's second twin 0x630600)
 0x0062B920 0x28 RSAEncryptBlock  # OVL2; s1:order (the gcc lane, round 17b): second of SOCOM 1's RSA object's five (0x409864) -- RSADecryptBlock with the public exponent 17, here a static 64-byte block (0x655530) where SOCOM 1's built it on the stack; its callee is the next row
 0x0062B948 0x298 RSADecryptBlock  # OVL2 unaligned; s1:order (the gcc lane, round 17b): third of the five, SOCOM 1's size (0x298) and body (the exponent, modulus and input copied into the low halves of three LINTs, the high halves cleared, EMOD 0x6283F8, the result's low half copied out)
 0x0062BBE0 0x2C RSAEncrypt  # OVL2; s1:order (the gcc lane, round 17b): fourth of the five (0x409B60) -- RSADecrypt with a static exponent 17 (0x655570)
@@ -12471,7 +12471,7 @@
 0x00630370 0x6C KM_DeleteKeys  # OVL2; s1:align
 0x006303E0 0x124 KM_Destroy  # OVL2; s1:calls
 0x00630508 0xBC KM_Cleanup  # OVL2 unaligned; s1:callee
-0x006305C8 0x38 func_006305C8  # OVL2 unaligned
+0x006305C8 0x38 KM_GenerateRSAKeyPair  # OVL2 unaligned; s1:order+body (round 18b: SOCOM 1's rt_crypt object has KM_Destroy, KM_Cleanup, KM_GenerateRSAKeyPair, KM_CreateRandomRCKey; here its body -- InitializePRNG, then RSAGenerateKeyPair -- sits between KM_Cleanup and KM_CreateRandomRCKey, with a twin 0x630600 for the table-prime generator)
 0x00630600 0x38 func_00630600  # OVL2
 0x00630638 0x58 KM_CreateRandomRCKey  # OVL2 unaligned; s1:align
 0x00630690 0x2A8 KM_Encrypt  # OVL2; s1:order (the gcc lane, round 12b): SOCOM 1's rt_crypt object ends KM_Encrypt, KM_Decrypt; this is its body grown -- GetKeyMaster, the 4-byte SHA of the data masked to 29 bits, GetKeyChain, then RCSaltyInitialize/RCEncrypt under the client's or the session's RC key (tags 0x60000000/0x20000000) or RSAEncrypt under the client's public key (0xE0000000), plus SOCOM II's KM_GetSoftwareKeyPair path (0x80000000)
