@@ -50,9 +50,84 @@ void CZSealBody::InvalidateFollowParams()
     m_follow_params_are_current = 0;
 }
 
-extern "C" {
-/* the follow's hide update (OVL2 0x5FDAD0, unwritten) */
-void func_005FDAD0(CAiSFollow *f, CSealCtrlAi *ai);
+/* a direction to look in from a map spot, toward a point (OVL2 0x559580, the SEAL lane's range, not
+ * written: seal_ai.cpp passes 0 for the point) */
+extern "C" CAiMap::DIR func_00559580(const CAiMapLoc *loc, const CPnt3D *dir, unsigned int mask, int b, int n,
+    int c);
+
+/* whether a look of a mode may be set: none of a higher mode holds (seal_ai.cpp's inline; the name
+ * ours) */
+static inline bool LookAllowed(CSealCtrlAi *ai, AI_LOOK look)
+{
+    return look >= ai->m_look_mode;
+}
+
+/* whether the AI drives a SEAL, as a ternary (IsPlayer's shape: the call's result narrowed at the
+ * join -- zseal.h's IsAi presets a bool; the name ours) */
+static inline bool DrivenByAi(CZSealBody *seal)
+{
+    return seal->m_control ? ((CSealCtrl *)seal->m_control)->IsAi() : false;
+}
+
+/* a hold with its flags' bit 5 set (an inline bool, seal_airesponse.cpp's HoldBroken shape: the
+ * self-assigning else arm keeps the flags test a branch, the kit lane's round 33; the name ours) */
+static inline bool HoldBit5(const CAiState *s)
+{
+    bool r = false;
+
+    if (s->m_state == AI_STATE_HOLD) {
+        if (s->m_flags & 0x20)
+            r = true;
+        else
+            r = r;
+    }
+    return r;
+}
+
+/* the follower's look while the follow hides, set once (flag 2): an escortee looks along the
+ * follow's direction at 0xE8; a follower of an AI master holding with its bit 5 at the hold's point;
+ * else the squad's look out of the direction at 0xB0, through the map (OVL2 0x5FDAD0, new in SOCOM
+ * II: HideCheck's one call; the name ours). Byte-exact in the kit lane's round 34 with three
+ * shapes: the team test read through a const view of the AI (the target loads m_entity twice --
+ * once for the test, once into `self`; a plain read is merged), the master's AI taken into a const
+ * local for the stack's ternary (read through a cast at each use, the call block's first word is
+ * moved into the size test's delay slot where the target copies it and leaves the original), and
+ * the ternary IsAi (zseal.h's presets a bool) */
+bool CAiSFollow::SetHideLook(CSealCtrlAi *ai)
+{
+    bool done = (m_6c & 2) != 0;
+
+    if (!done && LookAllowed(ai, AIL_NORMAL)) {
+        CZSealBody *self = (CZSealBody *)ai->m_entity;
+        bool set = false;
+
+        if (((const CSealCtrlAi *)ai)->m_entity->m_team & 0x20000)
+            set = ai->SetLookDirW(AIL_NORMAL, (const CPnt3D *)m_e8, true);
+        else if (DrivenByAi(m_master)) {
+            CSealCtrlAi *mai = m_master->GetSealCtrlAi();
+            const CSealCtrlAi *cmai = mai;
+            const CAiState *s = cmai->m_stateStack.size() == 0 ? 0 : cmai->m_stateStack.GetState();
+
+            if (s ? HoldBit5(s) : false) {
+                CAiState *h = mai->GetAiState();
+                CAiSHold *hold = h && h->m_state == AI_STATE_HOLD ? (CAiSHold *)h : 0;
+
+                if (hold && hold->m_active)
+                    set = ai->SetLookPosW(AIL_CORPSE, &hold->m_pos);
+            }
+        } else {
+            CPnt3D dir;
+
+            ((CSealCtrl *)self->m_control)->m_unit->GetMyLookDir(&dir, (CPnt3D *)m_b0, self);
+            set = ai->SetLookDirW(AIL_NORMAL, func_00559580(&self->m_mapLocValid, &dir, 0x40000, 0, 10, 0));
+        }
+        if (set) {
+            ai->ModifyLookFlags(5, 0);
+            m_6c |= 2;
+            done = true;
+        }
+    }
+    return done;
 }
 
 /* two cells' x and y distances summed (CAiPlanner::dist's shape, unscaled; the name ours) */
@@ -82,7 +157,7 @@ bool CAiSFollow::HideCheck(CSealCtrlAi *ai, bool b, bool hide, char *out)
         }
     }
     if (r)
-        func_005FDAD0(this, ai);
+        SetHideLook(ai);
     return r;
 }
 
@@ -186,10 +261,73 @@ static inline AI_MODE FollowMode(const CSealCtrlAi *ai)
     return m;
 }
 
-extern "C" {
-/* the AI's follow step by mode (OVL2 0x5FD460, this unit's, not written: the AI, two values passed
- * through, the mode) */
-void func_005FD460(CSealCtrlAi *ai, void *a, int b, AI_MODE mode);
+/* a path with points, planned (CAiPath::HasPoints as a preset bool: the emptiness test a materialised
+ * inline bool, the state's under it with round 33's self-assigning else arm; the names ours) */
+static inline bool PathNotEmpty(const CAiPath *p)
+{
+    return !(p->m_points.size() == 0);
+}
+
+static inline bool PathDone(const CAiPath *p)
+{
+    bool r = false;
+
+    if (PathNotEmpty(p)) {
+        if (p->m_state == CAiPath::COMPLETE)
+            r = true;
+        else
+            r = r;
+    }
+    return r;
+}
+
+/* where a mode sends the AI, the point and its cell: modes 4 and 5 the goal (when one is set), 3
+ * the path's last point (a planned path's), 6 the follow's own -- 4 or 3 by its two flags, asked
+ * again; whether there is one (OVL2 0x5FD460, new in SOCOM II: 0x5FD620's call; the name unknown).
+ * The cases in source order 6, 3, 4/5 (the tests run in reverse); the path through a const local
+ * (the size read once for the test and the index, the state and the points through the pointer --
+ * a plain pointer folds every field into the AI's offsets and reloads the size), the last point
+ * tested for null in an if of its own (a ternary or an inline returning it keeps a zero arm) --
+ * byte-exact in the kit lane's round 34 */
+extern "C" bool func_005FD460(CSealCtrlAi *ai, CPnt3D *pos, CAiMapLoc *loc, AI_MODE mode)
+{
+    bool r = false;
+
+    switch (mode) {
+    case 6: {
+        CAiState *s = ai->GetAiState();
+        CAiSFollow *f = s && s->m_state == AI_STATE_FOLLOW ? (CAiSFollow *)s : 0;
+
+        if (f) {
+            if (f->m_7c)
+                r = func_005FD460(ai, pos, loc, (AI_MODE)4);
+            else if (f->m_7d)
+                r = func_005FD460(ai, pos, loc, (AI_MODE)3);
+        }
+        break;
+    }
+    case 3: {
+        const CAiPath *path = (const CAiPath *)&ai->m_path;
+
+        if (PathDone(path)) {
+            const CAiMapLoc *last = &path->m_points[path->m_points.size() - 1].m_loc;
+
+            if (last && AiMaps.GetCellCenter(*last, pos)) {
+                *loc = *last;
+                r = true;
+            }
+        }
+        break;
+    }
+    case 4:
+    case 5:
+        if (ai->m_goal_pos_valid) {
+            *pos = ai->m_goal_pos;
+            r = AiMaps.GetLocation(pos, *loc);
+        }
+        break;
+    }
+    return r;
 }
 
 /* (OVL2 0x5FD6F0; 0x556370 calls it -- the name unknown) */
@@ -199,9 +337,9 @@ extern "C" AI_MODE func_005FD6F0(const CSealCtrlAi *ai)
 }
 
 /* the follow step in the AI's mode (OVL2 0x5FD620; 0x556370 calls it -- the name unknown) */
-extern "C" void func_005FD620(CSealCtrlAi *ai, void *a, int b)
+extern "C" void func_005FD620(CSealCtrlAi *ai, CPnt3D *pos, CAiMapLoc *loc)
 {
-    func_005FD460(ai, a, b, FollowMode(ai));
+    func_005FD460(ai, pos, loc, FollowMode(ai));
 }
 
 /* the AI's check of an entity (0x5FD150) at the entity's distance from the SEAL; true when there is

@@ -249,4 +249,9 @@ extern "C" {
 void func_002344E0();
 }
 
+/* an item's node from the current cache's entry of that name, under every node named `parent`
+ * (hud_tcm.cpp's 0x237000: the tree's cache builders call it) */
+CTCMNode *tcmAddItem(const char *name, const char *parent, const char *caption, const char *nodename,
+                     const char *text2, bool flag);
+
 #endif

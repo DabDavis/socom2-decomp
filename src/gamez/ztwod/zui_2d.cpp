@@ -2563,12 +2563,19 @@ public:
     /* an item added with the box's font and scale: at the end, or (any other `where`) before the
      * highlighted row (SOCOM II's, 0x373F20, the name ours: UpdateUIVar and 0x372980 call it) */
     void AddItem(ListItem *item, int where);
+    /* an item's text: its action's argument, else its own string, else its look's (SOCOM II's,
+     * 0x374B50, the name ours: the lobby's 0x2F0EA0 calls it) */
+    const char *GetItemText(int idx);
+    /* every item erased and deleted, then the box's own font (SOCOM II's, 0x375C70, the name ours:
+     * UpdateUIVar and 0x372980 call it) */
+    void RemoveAllItems();
     /* slot 24 of its table 0x407670: the box's eleven commands after C2D's (0x373640) */
     int GetZAnimCmdType(const char *name);
 
     unsigned char _0[0xa0];
     C2DFont *m_font;   // 0xa0
-    unsigned char _a4[0xc0 - 0xa4];
+    unsigned char _a4[0xbc - 0xa4];
+    C2DFont *m_ownFont;   // 0xbc: a font of the box's own, deleted with its items
     std::list<ListItem *> m_items;   // 0xc0
     float m_scale;   // 0xcc: the items' scale
     unsigned char _d0[0xd4 - 0xd0];
@@ -2585,6 +2592,56 @@ public:
     unsigned char _180[0x194 - 0x180];
     int m_highlighted;   // 0x194
 };
+
+/* each item's node erased before the item is deleted, the next iterator kept apart and ASSIGNED
+ * the erase's result (its conversion's temporary then copied through a float register; initialised
+ * from it, MW builds it in place: 16 bytes short, two registers swapped); the font deleted and
+ * cleared if there is one */
+void CUIListBox::RemoveAllItems()
+{
+    std::list<ListItem *>::iterator it;
+
+    it = m_items.begin();
+    while (it != m_items.end()) {
+        ListItem *item = *it;
+        std::list<ListItem *>::iterator next;
+
+        next = m_items.erase(it);
+
+        delete item;
+        it = next;
+    }
+    if (m_ownFont) {
+        delete m_ownFont;
+        m_ownFont = 0;
+    }
+}
+
+/* none for an index out of range; the walk is AddItem's (the iterator assigned from begin(), in
+ * memory, stepped by a counted loop MW unrolls 8x). One return of a local preset to none: early
+ * returns branch out of range through a block of their own */
+const char *CUIListBox::GetItemText(int idx)
+{
+    const char *text = 0;
+
+    if (idx >= 0 && (unsigned int)idx < m_items.size()) {
+        std::list<ListItem *>::iterator it;
+
+        it = m_items.begin();
+        for (int i = 0; i < idx; i++)
+            ++it;
+
+        ListItem *item = *it;
+
+        if (item->m_action.Argument)
+            text = item->m_action.Argument;
+        else if (item->m_text)
+            text = item->m_text;
+        else
+            text = item->GetString();
+    }
+    return text;
+}
 
 /* the iterator taken from begin() is a local in memory (ASSIGNED from begin(), its copy goes through
  * a float register; initialised from it, it lives in a register: 0xC4 against 0xE4), stepped on to

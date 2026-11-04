@@ -376,6 +376,172 @@ int CAiSTarget::Virtual14(CSealCtrlAi *ai, CAiState *sub)
     return Result();
 }
 
+/* the controller's alert amount at 0x718, a float (the name ours) */
+struct CAiCtrl718f {
+    unsigned char _0[0x718];
+    float m_718;   // 0x718
+};
+
+/* the controller's target (SOCOM 1's CAiTarget, ai_target.cpp's: only what this unit calls) */
+class CAiTarget {
+public:
+    float GetTimeSinceLastSighting() const;
+
+    CEntity *m_entity;   // 0x0
+};
+
+/* the AI's look and moves toward a target (OVL2 0x5F0B30, 0x5F0990: seal_aistate.cpp's), the alert
+ * gathered by 0x572240 dropped (OVL2 0x572310, the SEAL lane's row) and two of the SEAL lane's
+ * tests (OVL2 0x558F80: the SEAL's kit holds a sniper rifle; 0x558FB0: the SEAL in a region of
+ * kind 6) */
+extern "C" {
+bool func_005F0990(CSealCtrlAi *ai, const CPnt3D *pos, int mode, int a, int b);
+void func_00572310(CSealCtrlAi *ai);
+bool func_00558F80(CSealCtrlAi *ai);
+bool func_00558FB0(CSealCtrlAi *ai);
+bool func_00607830(const CSealCtrlAi *ai);
+}
+/* (seal_airesponse.cpp's, defined with the event state below) */
+inline bool TargetHeld(CSealCtrlAi *ai);
+
+/* the target's entity's position, or 0 (an inline: the target re-reads it at each use) */
+static inline const CPnt3D *TargetPos(CSealCtrlAi *ai)
+{
+    CEntity *t = ((CAiTarget *)ai->m_67c)->m_entity;
+
+    return t ? &t->m_posW : 0;
+}
+
+/* the target lost: out of sight for over three seconds (an inline bool; the name ours) */
+static inline bool SightLost(CSealCtrlAi *ai)
+{
+    return ((CAiTarget *)ai->m_67c)->GetTimeSinceLastSighting() > 3.0f;
+}
+
+/* done with the target: it is gone, or neither held nor seen for three seconds (an inline bool;
+ * the name ours) */
+static inline bool TargetGone(CSealCtrlAi *ai)
+{
+    bool r = true;
+
+    if (func_0060A850(ai->m_67c)) {
+        if (!TargetHeld(ai))
+            r = SightLost(ai);
+        else
+            r = false;
+    }
+    return r;
+}
+
+/* the target held with an alert gathered (an inline bool: the target materialises the `&&`; the
+ * name ours) */
+static inline bool HeldAlerted(CSealCtrlAi *ai)
+{
+    return TargetHeld(ai) && ((CAiCtrl718f *)ai)->m_718 > 0.0f;
+}
+
+/* the AI too busy to go for the target: a broken hold (func_00607830's body: the target inlines it,
+ * the AI taken into a const local -- read through the parameter, MW hoists the stack's address for
+ * GetState above the size test where the target keeps it in the call's delay slot), a sniper rifle,
+ * or (not a SEAL of the player's side) in a region of kind 6. Inline bools, each a result preset
+ * and changed under nested tests with a self-assigning else arm (the kit lane's round 33: the
+ * target's preset-then-clear `||` and set-under-test `&&` -- `return a || b;` gives MW's value
+ * select, if-forms without the arm if-convert); `!m_navyseal` an inline of its own (materialised,
+ * sltu/xori). The names ours */
+inline bool HoldBroken(const CAiState *s);
+static inline bool HoldBrokenOf(CSealCtrlAi *ai)
+{
+    const CSealCtrlAi *c = ai;
+    const CAiState *s = c->m_stateStack.size() == 0 ? 0 : c->m_stateStack.GetState();
+
+    return s ? HoldBroken(s) : false;
+}
+
+static inline bool HoldOrSniper(CSealCtrlAi *ai)
+{
+    bool r = true;
+
+    if (!HoldBrokenOf(ai)) {
+        if (!func_00558F80(ai))
+            r = false;
+        else
+            r = r;
+    }
+    return r;
+}
+
+static inline bool NotNavySeal(CSealCtrlAi *ai)
+{
+    return !ai->m_navyseal;
+}
+
+static inline bool Region6(CSealCtrlAi *ai)
+{
+    bool r = false;
+
+    if (NotNavySeal(ai)) {
+        if (func_00558FB0(ai))
+            r = true;
+        else
+            r = r;
+    }
+    return r;
+}
+
+static inline bool StayPut(CSealCtrlAi *ai)
+{
+    bool r = true;
+
+    if (!HoldOrSniper(ai)) {
+        if (!Region6(ai))
+            r = false;
+        else
+            r = r;
+    }
+    return r;
+}
+
+/* a target state: once its time is up or the target gone, done (step 3); step 0 goes for the
+ * target's cell -- a look pushed while the target is held with an alert gathered, else a move --
+ * unless the AI should stay put, step 2 waits for the alert and 1.5 seconds before going again,
+ * step 1 for the route (OVL2 0x604880; SOCOM 1's only timed out; byte-exact in the kit lane's round
+ * 34: the shapes are the helpers') */
+int CAiSTarget::Tick(CSealCtrlAi *ai)
+{
+    STEP step = (STEP)m_phase;
+
+    if (!(ai->m_stateStack.m_timer < m_time) || TargetGone(ai))
+        step = STEP_3;
+    switch (step) {
+    case STEP_0:
+        if (!StayPut(ai)) {
+            CAiMapLoc loc;
+
+            if (AiMaps.GetLocation(TargetPos(ai), loc)) {
+                if (HeldAlerted(ai))
+                    func_005F0B30(ai, TargetPos(ai), 5, 2, 2);
+                else
+                    func_005F0990(ai, TargetPos(ai), 5, 2, 2);
+                func_00572310(ai);
+            }
+        }
+        step = STEP_2;
+        break;
+    case STEP_2:
+        if (((CAiCtrl718f *)ai)->m_718 > 0.0f && m_phaseTime >= 1.5f)
+            step = STEP_0;
+        break;
+    case STEP_1:
+        if (func_005629B0(ai))
+            step = STEP_2;
+        break;
+    }
+    UpdatePhase(step);
+    if (step == STEP_3)
+        SetActive(false);
+    return Result();
+}
+
 /* the controller's word at 0x718 (zseal.h does not name it -- the name ours) */
 struct CAiCtrl718 {
     unsigned char _0[0x718];

@@ -5,7 +5,8 @@
  * symbol table gives the class its own unit; the name is ours. Written, all byte-exact: the
  * constructor (the UVs memcpy'd from a local's initialiser), the setters, Load, SetPos, SetUV, Draw
  * and the clip copies, the three-plane-pair clip3DLine; MakePacket and the one-plane clip3DLine
- * OPEN. Not yet: the line drawers (0x35FCE0-0x36025F) and GetAssetLibs (m2c's draft matches). Defined in reverse of their image order
+ * OPEN; Draw3DLine (SOCOM II's own body: the HUD's round 40). Not yet: Draw2DLine 0x35FCE0 and GetAssetLibs (m2c's draft
+ * matches). Defined in reverse of their image order
  * (-inline deferred). */
 
 #include <string.h>
@@ -248,6 +249,96 @@ void C2DLine::SetClipInfo(float (*vertex)[4], float (*rgb)[4], float (*uv)[4])
         m_NewUV[i][2] = uv[i][2];
         m_NewUV[i][3] = uv[i][3];
     }
+}
+
+/* the world's camera as the 3D lines reach it (znode.h's CWorld::m_world and m_camera at 0x128, its
+ * matrix set's VU block at 0x3F0 -- zcamera.h's -- and the block's world-to-screen matrix at 0x20) */
+namespace zdb {
+class CFrameSetup {
+public:
+    unsigned char _0[0x20];
+    sceVu0FMATRIX mtxWorldToScreen;   // 0x20
+};
+
+class CCamera {
+public:
+    unsigned char _0[0x3f0];
+    CFrameSetup *m_vu;   // 0x3f0 (m_mtxSet.m_vu)
+};
+
+class CWorld {
+public:
+    unsigned char _0[0x128];
+    CCamera *m_camera;   // 0x128
+    static CWorld *m_world;
+};
+}
+
+/* libvu0's product, element by element, and its perspective transform (MAIN, prebuilt) */
+extern "C" void sceVu0MulVector(sceVu0FVECTOR v0, sceVu0FVECTOR v1, sceVu0FVECTOR v2);
+extern "C" void sceVu0RotTransPers(sceVu0IVECTOR v0, sceVu0FMATRIX m0, sceVu0FVECTOR v1, int mode);
+
+/* the depth the 3D lines are drawn nearer by (SOCOM 1's static zOffset, 0x4753C8: 2) */
+static int zOffset = 2;
+
+/* a line in the world in one packet of its own: the GS's depth test set (TEST_1 through A+D), then
+ * the two ends' colours (0..1 scaled to the GS's 255, the alpha's 128) and their points through the
+ * camera's world-to-screen matrix, their depths offset by zOffset (SOCOM II's: SOCOM 1 scaled the
+ * colours inline and chose the blend by the alphas). The target's three packet registers come from
+ * one step per quadword on a cursor of another type than the packet, the DMA tag a third pointer
+ * declared first and assigned from the cursor (initialised from the packet it is merged with it),
+ * and each end's point pointer a block local (one function-level pointer for both takes s1, the
+ * matrix s0: the target's the other way round) */
+void Draw3DLine(CPnt4D *p0, CPnt4D *p1, CPnt4D *c0, CPnt4D *c1)
+{
+    static CPnt4D s_scale(255.0f, 255.0f, 255.0f, 128.0f);
+    unsigned int *tag;
+    u_long128 *packet = zSysSprGetPacket(0);
+    sceVu0FVECTOR *p = (sceVu0FVECTOR *)packet;
+
+    tag = (unsigned int *)p;
+    sceVu0FVECTOR *m = zdb::CWorld::m_world->m_camera->m_vu->mtxWorldToScreen;
+
+    p++;
+    ((unsigned long *)p)[0] = 0x1024C00000008001;
+    ((unsigned long *)p)[1] = 0xE;
+    p++;
+    ((unsigned long *)p)[0] = 0x5000C;
+    ((unsigned long *)p)[1] = 0x47;
+    p++;
+    ((unsigned long *)p)[0] = 0x2000000000008002;
+    ((unsigned long *)p)[1] = 0x41;
+    p++;
+    sceVu0MulVector((float *)p, (float *)c0, (float *)&s_scale);
+    sceVu0FTOI0Vector((int *)p, (float *)p);
+    {
+        p++;
+        int *xyz = (int *)p;
+
+        p0->w = 1.0f;
+        sceVu0RotTransPers(xyz, m, (float *)p0, 0);
+        xyz[2] += zOffset;
+        p++;
+    }
+    sceVu0MulVector((float *)p, (float *)c1, (float *)&s_scale);
+    sceVu0FTOI0Vector((int *)p, (float *)p);
+    {
+        p++;
+        int *xyz = (int *)p;
+
+        p1->w = 1.0f;
+        sceVu0RotTransPers(xyz, m, (float *)p1, 0);
+        xyz[2] += zOffset;
+        p++;
+    }
+
+    int qwc = p - (sceVu0FVECTOR *)tag - 1;
+
+    tag[0] = qwc | 0x10000000;
+    tag[1] = 0;
+    tag[2] = 0x11000000;
+    tag[3] = qwc | 0x50000000;
+    zSysFifoKick(packet, (u_long128 *)p - packet);
 }
 
 /* libvu0's subtraction (MAIN, prebuilt) and a point's difference through it, by value as zmath's

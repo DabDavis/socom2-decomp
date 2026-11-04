@@ -17,8 +17,6 @@ class CValve;
 
 extern "C" {
 void func_00525200(void *path);   /* (a CAiPath reset: its member at 0x98's, tail-called) */
-void func_00525210(void *path, unsigned int length);   /* CAiPath::SetSnakeLength (SOCOM 1's
-                                                          SetSnakePathUpdate calls it) */
 }
 
 /* the world's camera (zdb::CWorld at 0x128; only that) */
@@ -658,10 +656,10 @@ void CZSealBody::SetSnakePathUpdate(bool on, unsigned int length)
         return;
     if (on) {
         m_snake_path = true;
-        func_00525210(m_snakePath, length);
+        ((CAiPath *)m_snakePath)->SetSnakeLength(length);
     } else {
         m_snake_path = false;
-        func_00525210(m_snakePath, 0);
+        ((CAiPath *)m_snakePath)->SetSnakeLength(0);
     }
 }
 
@@ -853,6 +851,14 @@ void CZSealBody::ActionAvailableMask(unsigned char id, bool on)
         m_action_available &= ~(1 << id);
 }
 
+/* the action the HUD shows selected: its bit alone in the selection mask (OVL2 0x544C80; SOCOM 1's
+ * ActionSelectionMask(unsigned int, bool) cleared or added a bit, SOCOM II's takes the action alone,
+ * a byte narrowed here as ActionAvailableMask's -- hud_actionbitmap.cpp's call, the HUD's round 39) */
+void CZSealBody::ActionSelectionMask(unsigned char id)
+{
+    m_action_selection = 1 << id;
+}
+
 /* a UI variable's value (SOCOM 1's _zrdr through CUIVarManager::Find: a type byte, a string for type
  * 3) and the variables (OVL1 bss 0x437E80) */
 struct CUIVarValue {
@@ -863,12 +869,16 @@ struct CUIVarValue {
     const char *GetString() { return m_type == 3 ? m_string : 0; }
 };
 
-class CUIVarManager;
+/* the UI variables (zui.h's CUIVarManager, OVL1 bss 0x437E80): only Find (SOCOM 1's Find__13CUIVarManager
+ * FPCc by this call; OVL1 0x385900) */
+class CUIVarManager {
+public:
+    CUIVarValue *Find(const char *name);
+};
+
 extern CUIVarManager theUIVarManager;
 
 extern "C" {
-/* CUIVarManager::Find (SOCOM 1's Find__13CUIVarManagerFPCc by this call; OVL1 0x385900, unowned) */
-CUIVarValue *func_00385900(CUIVarManager *mgr, const char *name);
 /* a flag the network player's making sets (OVL1 bss 0x44CE50; SOCOM 1's a small-data byte) and the
  * local team's mask (OVL1 bss 0x441470) */
 extern unsigned char data_0044CE50;
@@ -887,7 +897,7 @@ void CZSealBody::NetworkPlayerCreate()
     char name[31];
 
     data_0044CE50 = 1;
-    CUIVarValue *var = func_00385900(&theUIVarManager, "PLAYERNAMEVAR");
+    CUIVarValue *var = theUIVarManager.Find("PLAYERNAMEVAR");
 
     if (var)
         strncpy(name, var->GetString(), 31);

@@ -624,6 +624,8 @@ public:
      * 0x5FDAD0 runs (OVL2 0x5FC7D0: SOCOM 1's HandleFollowTickHideCheck by its place; the names
      * ours) */
     bool HideCheck(CSealCtrlAi *ai, bool b, bool hide, char *out);
+    /* the follower's look while hiding, set once: true once it is (OVL2 0x5FDAD0; the name ours) */
+    bool SetHideLook(CSealCtrlAi *ai);
     /* the AI's follow master made the state's, a new one restarting its step; true while it
      * lives (flag 8 then says whether it closes in), else the master let go (OVL2 0x5FDD40,
      * CAiSFollow::Tick's first call; the name ours) */
@@ -781,6 +783,8 @@ class CAiSTarget : public CAiState {
 public:
     CAiSTarget() : CAiState(AI_STATE_TARGET) {}
     virtual void OnSignal(SIGNAL sig, CSealCtrlAi *ai);
+    /* +0x10 (0x604880, seal_airesponse.cpp's) */
+    virtual int Tick(CSealCtrlAi *ai);
     /* +0x14 (0x604BF0): over once the AI's target no longer holds */
     virtual int Virtual14(CSealCtrlAi *ai, CAiState *sub);
     virtual ~CAiSTarget();
