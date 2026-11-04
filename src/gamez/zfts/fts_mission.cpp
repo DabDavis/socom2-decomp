@@ -1012,16 +1012,37 @@ public:
     void Init();   /* 0x3D16B0 */
 };
 
+class CZWeaponList;
 class CZWeapon {
 public:
     static void Open();   /* 0x3D03D0 */
     static void ClearTimer(float *pCurval);
 
+    static CZWeaponList m_listWeapons;   /* 0x4B5210 */
     static CZMarkList *m_pMarklist;   /* 0x4B5248 */
 };
 
-/* a character type's weapons (zchar's CCharacterWeapList: only the slots' padding, OVL2's) */
-class CCharacterWeapList {
+/* an item a SEAL carries (zweapon.h's EQUIP_ITEM: a byte enum, unsigned; only the bounds) */
+enum EQUIP_ITEM {
+    EQUIP_PISTOL = 0,
+    EQUIP_NONE = 255
+};
+
+/* the weapons by item (zweapon.h's CZWeaponList: only the lookup) */
+class CZWeaponList {
+public:
+    CZWeapon *GetWeapon(EQUIP_ITEM item);   /* 0x3C4B40 */
+};
+
+/* a weapon a type carries (zchar.h's CCharacterWeap, 0xC bytes: only the item) */
+class CCharacterWeap {
+public:
+    EQUIP_ITEM m_wepId;   // 0x0
+    unsigned char _1[0xc - 0x1];
+};
+
+/* a character type's weapons (zchar's CCharacterWeapList, a vector: and the slots' padding, OVL2's) */
+class CCharacterWeapList : public std::vector<CCharacterWeap> {
 public:
     void PadWeaponSlots();   /* OVL2 0x53B070 */
 };
@@ -1037,7 +1058,7 @@ public:
     char *m_name;   // 0x0
     unsigned char _4[0x2e8 - 0x4];
     CCharacterWeapList m_weapons;   // 0x2e8
-    unsigned char _2e9[0x300 - 0x2e9];
+    unsigned char _2f4[0x300 - 0x2f4];
     unsigned char m_custom;   // 0x300: a custom type (the name ours: stored with li, so no bool)
 };
 
@@ -1688,6 +1709,44 @@ extern "C" void func_002AF360(const char *bank)
 
         t->Load(data_00440B80.GetBank(i), GetLanguage());
     }
+}
+
+extern "C" const char *func_003D2820(CZWeapon *weapon);   /* (a weapon's description, its word at 0xC) */
+
+/* a custom type's weapons' UI variables: each of its first six weapons' description under the type's
+ * slot names, "<NONE>" in the slots it leaves (SOCOM 1's; OVL1 0x2AF190) */
+void UpdateCharWeaponUiVars(int i)
+{
+    const char *names[8][6] = {
+        {"Char1PrimaryWeaponDescr", "Char1SecondaryWeaponDescr", "Char1Equip1Descr", "Char1Equip2Descr", "Char1Equip3Descr", "Char1Equip4Descr"},
+        {"Char2PrimaryWeaponDescr", "Char2SecondaryWeaponDescr", "Char2Equip1Descr", "Char2Equip2Descr", "Char2Equip3Descr", "Char2Equip4Descr"},
+        {"Char3PrimaryWeaponDescr", "Char3SecondaryWeaponDescr", "Char3Equip1Descr", "Char3Equip2Descr", "Char3Equip3Descr", "Char3Equip4Descr"},
+        {"Char4PrimaryWeaponDescr", "Char4SecondaryWeaponDescr", "Char4Equip1Descr", "Char4Equip2Descr", "Char4Equip3Descr", "Char4Equip4Descr"},
+        {"Char5PrimaryWeaponDescr", "Char5SecondaryWeaponDescr", "Char5Equip1Descr", "Char5Equip2Descr", "Char5Equip3Descr", "Char5Equip4Descr"},
+        {"Char6PrimaryWeaponDescr", "Char6SecondaryWeaponDescr", "Char6Equip1Descr", "Char6Equip2Descr", "Char6Equip3Descr", "Char6Equip4Descr"},
+        {"Char7PrimaryWeaponDescr", "Char7SecondaryWeaponDescr", "Char7Equip1Descr", "Char7Equip2Descr", "Char7Equip3Descr", "Char7Equip4Descr"},
+        {"Char8PrimaryWeaponDescr", "Char8SecondaryWeaponDescr", "Char8Equip1Descr", "Char8Equip2Descr", "Char8Equip3Descr", "Char8Equip4Descr"}
+    };
+
+    if (i >= 8)
+        return;
+    const CCharacterType *type = CCharacterType::GetByNameMod(GetCustomCharTypeName(i));
+
+    if (!type)
+        return;
+    CZWeaponList *list = &CZWeapon::m_listWeapons;
+    int n = 0;
+
+    for (CCharacterWeapList::const_iterator w = type->m_weapons.begin(), e = type->m_weapons.end();
+         w != e && n < 6; ++w, ++n) {
+        CZWeapon *weapon = list->GetWeapon((*w).m_wepId);
+        const char *name = names[i][n];
+        const char *descr = weapon ? func_003D2820(weapon) : "(unknown)";
+
+        *theUIVarManager.Add(name, 0, UIVL_TEMPORARY) = descr;
+    }
+    for (; n < 6; n++)
+        *theUIVarManager.Add(names[i][n], 0, UIVL_TEMPORARY) = "<NONE>";
 }
 
 /* the mission's package (util_main.cpp's CPackage: only its open and close; the object ours) */
