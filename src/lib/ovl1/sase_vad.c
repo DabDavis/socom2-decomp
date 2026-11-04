@@ -31,6 +31,39 @@ typedef struct {
 	signed char bActive;    /* 0x15 */
 } VadState;
 
+/* a frame's band struck (ucX >> 3): every band decayed by 0.96875, the struck one toward 1, and the
+ * level made the bands' centroid, times 8; the frame count restarted (GCC round 28a).
+ * OPEN (0x110 against 0x120, every word after the first loop the target's): the target loads the
+ * bands into v1 and copies them into a2 on BOTH paths of the first loop's entry test (its
+ * preheader and the skip path), the second loop's `i = iBand + 1` duplicated after the loop (in the
+ * `b`'s slot) and on the skip path; here the load goes straight to a2 and the paths join first. Ten
+ * spellings alike (build/scratch/gcc/gen_2d68.py: the bands as a local or as p->pfBand in each loop,
+ * assigned before or after the first statement, an `if` around the first loop -- that one doubles
+ * the test, 0x118) */
+void func_00252D68(unsigned char ucX, VadHist *p)
+{
+	float *pf = p->pfBand;
+	int iBand = ucX >> 3;
+	float fSum;
+	int i;
+
+	pf[iBand] = (pf[iBand] - 1.0F) * 0.96875F + 1.0F;
+	fSum = pf[iBand];
+	for (i = 0; i < iBand; i++) {
+		pf[i] *= 0.96875F;
+		fSum += pf[i];
+	}
+	for (i = iBand + 1; i < 33; i++) {
+		pf[i] *= 0.96875F;
+		fSum += pf[i];
+	}
+	p->fLevel = 0.0F;
+	for (i = 0; i < 33; i++)
+		p->fLevel += (float)i * pf[i] / fSum;
+	p->sFrames = 0;
+	p->fLevel *= 8.0F;
+}
+
 /* the history's first 84 frames: every band decayed */
 void func_00252E88(VadHist *p)
 {
