@@ -6,10 +6,14 @@
  * them: a character's delete before NewLine, SetPos and the scaled Load after the Loads, the
  * string-table lookup by id after SetString, and two static setters before the constructor. SOCOM
  * 1's symbol table gives the class its own unit; the name is ours. Written, all byte-exact: the
- * constructor and destructor, ClearAndWipe, On, Off, Tick, both Draws, the scaled Load and the
- * sized one, SetPos, NewLine, DeleteCharacter and SetFont; Load(text, font, x, y) OPEN. Not yet:
- * UpdatePos (0x362B70), AddCharacter, SetString, SetStringId, MakePacket, Format, 0x363C20 and the
- * functions after the constructor. Defined in reverse of their image order (-inline deferred). */
+ * constructor and destructor, ClearAndWipe, GetCharWidth (0x363C20), On, Off, Tick, both Draws,
+ * Format, SetStringId, SetString, the three Loads, SetPos, AddCharacter, NewLine, DeleteCharacter,
+ * UpdatePos, SetFont and FormatString (0x363F60, after the constructor). Not yet: MakePacket
+ * (0x3635C0) and the four layout functions it calls (0x361BD0-0x362B1F: it builds a packet writer
+ * and a layout cursor on its stack -- the cursor's constructor 0x362900 takes the string and the
+ * colour -- and loops `while (*cursor.m_p) { 0x361BD0(&writer, &cursor); 0x3625E0(&cursor); }`,
+ * 0x3625E0 the only caller of GetCharWidth). Defined in reverse of their image order (-inline
+ * deferred). */
 
 #include <stdarg.h>
 #include <string.h>

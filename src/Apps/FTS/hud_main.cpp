@@ -9,7 +9,9 @@
  * Written, all byte-exact: the timer and zoom texts, Add2D, the two map switches, ZoomIn, ZoomOut,
  * IsOn, Off, On, PostDITick, PreDITick, Flash, the four network texts Tick calls (spectator,
  * spectating, respawn, ghost), PauseGame, ReInit_Init, ReInit_Uninit, GetTextureByName,
- * DrawPhase, ReleaseHUD, HudText_to_upper, GetHUDOwner and the constructor; and, with the
+ * DrawPhase, ReleaseHUD, HudText_to_upper, GetHUDOwner, the constructor and the unit's last four
+ * (round 33: hudToggleHelpWindows, hudHelpWindowsEnabled, hudInit -- SOCOM 1's, the unit's last
+ * there too -- and FormatStringInt, 0x1FDE30-0x1FE18F); and, with the
  * members laid out, the implicit destructors the unit links (the selectors', the team names',
  * the stance icon's, the network selector's slots and category page). Written and OPEN: the
  * destructor (0xA40; two headers' inline heights, diagnosed there). Not yet: Tick (0x1158),

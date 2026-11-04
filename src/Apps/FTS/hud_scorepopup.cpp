@@ -11,7 +11,8 @@
  * triggers (0x22BC40, 0x22BD50), the tick (0x22BE20, SOCOM 1's hudTickScorePopup by its place),
  * hudIsScorePopupOn (0x22CBF0) and 0x22CC10. Written, all byte-exact: CScorePopup's destructor
  * and Draw, CHudPopups' Draw and destructor, hudTurnOffScorePopup, the triggers and
- * hudIsScorePopupOn. The unit's statics are anonymous-namespace globals in SOCOM 1 (g_bOn,
+ * hudIsScorePopupOn; and (round 33) the message pop-ups' third trigger (0x22D270, by names), their
+ * reset (0x22D190) and hud.rdr's common look (0x22D3F0). The unit's statics are anonymous-namespace globals in SOCOM 1 (g_bOn,
  * g_oSeals2Ds, g_oTerrs2Ds, the box's ten CScoreBmps); its initialiser (0x3FE980, 0x9D0 bytes)
  * builds every one, byte-exact with the objects defined in their address order (round 32; the
  * flags and the frame's ints, which it does not build, still by address). Defined in reverse
