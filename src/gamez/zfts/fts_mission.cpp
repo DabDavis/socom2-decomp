@@ -1575,7 +1575,9 @@ inline void SetTranslation(CMatrix *m, const CPnt3D *p)
     m->m_matrix[3][2] = p->z;
 }
 
-extern "C" float *func_002A2EB0(const CPnt3D *pos, int a, float range);   /* (fts_main.cpp's: the ground under a point) */
+/* the ground under a point (fts_main.cpp's, SOCOM II's three-argument form: the hit, its point
+ * first) */
+float *ftsGetAltitudeApprox(const CPnt3D *pos, float range, bool flag);
 
 /* a node set down on the ground: the point dropped to the floor found under it, the node's box
  * turned by the rotation and its lowest corner on the axis asked for put on the floor, an offset
@@ -1593,7 +1595,7 @@ extern "C" void func_002A8C90(zdb::CNode *node, const CPnt3D *at, int axis, cons
                               const CPnt3D *rot)
 {
     CPnt3D pos = *at;
-    float *ground = func_002A2EB0(&pos, 0, 10.0f);
+    float *ground = ftsGetAltitudeApprox(&pos, 10.0f, false);
 
     if (ground)
         pos.y = ground[1];

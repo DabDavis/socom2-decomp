@@ -243,23 +243,6 @@ void SkbParseComplete(CSkbCompleteVec *complete, _zrdr *rdr, const char *tag)
  * bytes: the total, then the parts). Its members not written yet: the stepper 0x3903A0
  * (recursive), the destructor 0x390690 (its draft matches) and the test that a split is left
  * 0x391DF0 (the parts' size); the sum of the first n parts 0x391E70 is written below (OPEN). */
-/* the last element through a reverse iterator over the parts (ours: MSL's rbegin()/reverse_iterator,
- * which include/vector lacks -- its operator* copies the base and steps the copy back; the matcher
- * 0x3919D0 calls end() 0x391D40 and this 0x391D30 out of line, the constructor inlines both) */
-template <class It>
-class CSkbRevIter {
-public:
-    CSkbRevIter(It i) : current(i) {}
-    typename It::value_type &operator*() const
-    {
-        It tmp = current;
-
-        return *--tmp;
-    }
-
-    It current;
-};
-
 class CSkbSplit {
 public:
     CSkbSplit(int n, int k);
@@ -267,10 +250,6 @@ public:
     unsigned int Part(int i);
     /* the parts through a reference: the walks' vector address hoisted (ours) */
     std::vector<unsigned int> &Parts() { return m_parts; }
-    CSkbRevIter<std::vector<unsigned int>::iterator> RBegin()
-    {
-        return CSkbRevIter<std::vector<unsigned int>::iterator>(m_parts.end());
-    }
 
     int m_n;   // 0x0
     std::vector<unsigned int> m_parts;   // 0x4
@@ -278,8 +257,10 @@ public:
 
 /* the first split of n into k parts: k - 1 of one and the rest last, none when k is out of 1..n
  * (0x391F80; ours). Byte-exact (the UI's round 23): the test `k > n || k <= 0` (`n < k` puts the
- * compare in v0), the last part stored through the reverse iterator (two stack temporaries and an
- * FPR copy, as the scalar vector's class end() and __iter give) */
+ * compare in v0), the last part stored through the parts' reverse iterator (include/vector's
+ * rbegin() over std::reverse_iterator since the MSL headers' round 23, retiring the unit's stand-in:
+ * two stack temporaries and an FPR copy, as the scalar vector's class end() and __iter give; the
+ * matcher 0x3919D0 calls that end() 0x391D40 and the reverse * 0x391D30 out of line) */
 CSkbSplit::CSkbSplit(int n, int k) : m_n(n)
 {
     if (k > n || k <= 0)
@@ -287,7 +268,7 @@ CSkbSplit::CSkbSplit(int n, int k) : m_n(n)
     Parts().resize(k, 0);
     for (int i = 0; i < k - 1; i++)
         Parts()[i] = 1;
-    *RBegin() = n - k + 1;
+    *m_parts.rbegin() = n - k + 1;
 }
 
 /* the sum of the split's first n parts (0x391E70; the composer calls it out of line; the name

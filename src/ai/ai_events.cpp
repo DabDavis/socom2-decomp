@@ -290,7 +290,11 @@ CAiEvent::iterator CAiEvent::GetFirstEvent(EVENT_CLASS c)
  * an inner `? true : false`) and a `seen` bool local (if-assigned or a ternary): the same 0x19C; the
  * round 24 the bit test as an inline of its own with a result local (round 22's rand() rule: an arm
  * that is an inline's body ends on a padded label), assigned or if/else, and the whole seen test as an
- * inline taking the kind with an if/else result: the same 0x19C (build/scratch/ai/v_gne.py) */
+ * inline taking the kind with an if/else result: the same 0x19C (build/scratch/ai/v_gne.py); the
+ * round 25 the mask computed first (`(1 << (i & 31)) & m_vec[i >> 5]`, the mask or both in locals),
+ * the seen test as an if/else in the body (nested, flagged, either sense), and before the bit test:
+ * 0x19C, 0x194 or 0x1AC. MW's pre-colouring code evaluates m_vec[i >> 5] first (srl, andi, sll, lw)
+ * where the target's colouring reads as the mask's first */
 CAiEvent *CAiEvent::GetNextEvent(const CPnt3D *pos, iterator &it, float scale)
 {
     CAiEvent *found = 0;
@@ -363,6 +367,15 @@ unsigned int CAiEvent::MakeMaskEx(EVENT e, ...)
     }
     va_end(ap);
     return mask;
+}
+
+/* every handle dropped (the name ours): never called, dead-stripped, but the handle list's range
+ * erase it instantiates survives in the unit's tail, 0x50FBD0 between the pointer lists' copies and
+ * the handle list's insert -- byte-exact so (the AI core round 25); ~CAiEventQ and
+ * CSealCtrlAi::OnDeath, in later units, call this copy */
+void CAiEventQ::Clear()
+{
+    clear();
 }
 
 /* the handle of an event, added if the queue has none (SOCOM 1's).

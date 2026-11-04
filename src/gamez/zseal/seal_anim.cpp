@@ -16,12 +16,21 @@ public:
 };
 
 /* a part's pose as the blender keeps it (SOCOM 1's records, 0x20 bytes: a position, the part's id
- * -- below zero for none -- and a rotation; the names ours) */
+ * -- below zero for none -- and a rotation; the names ours). SOCOM II's halfword at 0xe: AnimPush sets
+ * it on every record, AnimOverlay lays a position over only where one of the two lacks it -- the
+ * position's fourth word, which VU0's XYZ interpolation writes, so AnimOverlay keeps the word across
+ * the call */
 struct CSealAnimRec {
     CPnt3D m_pos;   // 0x0
     short m_id;   // 0xc
+    short m_nopos;   // 0xe
     CQuat m_rot;   // 0x10
 };
+
+extern "C" {
+/* v0 = v1 * r + v2 * (1 - r), the x, y and z (Sony's libvu0, MAIN 0x1C0768: a quadword written) */
+void sceVu0InterVectorXYZ(sceVu0FVECTOR v0, sceVu0FVECTOR v1, sceVu0FVECTOR v2, float r);
+}
 
 /* a frame on the blender's stack: the parts' records and the anim pushed (0xc bytes; the names ours) */
 struct CSealAnimFrame {
@@ -93,12 +102,15 @@ public:
     }
     /* an anim's pose at its frame and fraction pushed at a weight (SOCOM 1's took the SEAL and the
      * active anim; OVL2 0x5777D0, not written yet), and the top frame's records put back on the
-     * SEAL's parts, the depth left returned (SOCOM 1's took the body; OVL2 0x577700) */
-    void AnimPush(CZSIScriptCommon *anim, float ffrac, float wt, short frame);
+     * SEAL's parts, the depth left returned (SOCOM 1's took the body; OVL2 0x577700). The frame an
+     * `int` (round 34: 0x577DF0's call evaluates the short field's conversion first) */
+    void AnimPush(CZSIScriptCommon *anim, float ffrac, float wt, int frame);
     int AnimPop();
     /* frame a's rotations moved toward frame b's by b's share of their weights, a given both (SOCOM
      * 1's; OVL2 0x576E30) */
     int CombineRotations(int a, int b);
+    /* the top frame laid over the one below it at a fraction and popped (SOCOM 1's; OVL2 0x576BB0) */
+    int AnimOverlay(float t);
 
     int m_count;   // 0x0
     CZSealBody *m_seal;   // 0x4
@@ -111,14 +123,11 @@ extern CSealAnim *data_0044CDE0;
 
 /* a SEAL posed by one anim alone: the blender emptied and given the SEAL, the anim pushed, the pose
  * popped onto the parts (OVL2 0x577DF0, new in SOCOM II: seal_cfg.cpp's 0x58C600 calls it; the name
- * unknown).
- * OPEN, 0x50 against 0x4C (1 instruction more, the rest reordered): the two stores through one load
- * of the global needed the inline Begin (written out, MW reloads the global between them); left, MW
- * copies the anim pointer to v1 (`move v1,a1`) and loads its m_anim into a1 second, where the target
- * loads the frame (a2), the two floats, then m_anim into a1 last, off a1 itself. Tried: the floats
- * before or around the frame in AnimPush's prototype (the same code), the fields in locals first, the
- * anim through a local, the calls as CSealAnim members (round 12: SOCOM 1's AnimPush/AnimPop), an
- * inline AnimPush(const ACTIVE_ANIM *) unpacking the fields. */
+ * unknown). The two stores through one load of the global need the inline Begin (written out, MW
+ * reloads the global between them); the target loads the frame (a2), the two floats, then m_anim into
+ * a1 last, off a1 itself -- AnimPush takes the frame as an `int` (round 34): an argument needing a
+ * conversion is evaluated earlier, so the short field goes first; with a `short` (or `unsigned short`)
+ * parameter MW loads m_anim first and copies the anim pointer to v1 (0x50 bytes). */
 extern "C" void func_00577DF0(CZSealBody *seal, ACTIVE_ANIM *anim)
 {
     data_0044CDE0->Begin(seal);
@@ -126,30 +135,45 @@ extern "C" void func_00577DF0(CZSealBody *seal, ACTIVE_ANIM *anim)
     data_0044CDE0->AnimPop();
 }
 
+/* THE RECORD LOOPS (the SEALs, round 34): every loop here over siNumBodyObjects records -- AnimPop,
+ * CombineRotations, 0x576BB0, 0x577000 -- loads the count into a register ahead of the loop for its
+ * bottom test and reads the global AGAIN for the entry test alone (`lw v0; sltu at,zero,v0; beqz`).
+ * MW never hoists the global out of a loop with a store or a call in it (probes: extern, static, extern
+ * const alike), and with the count in a local it folds the entry test onto that local (one load, 8
+ * bytes short); `for` loops, inline helpers taking the count, a struct copy or a reference all do the
+ * same. What gives the target's two loads is a count taken into a local, then a guard comparing the
+ * counter with the global READ THROUGH A CONST VIEW -- which MW's CSE keeps apart from the plain read
+ * (the kit's round 34 rule) -- around a do-while on the local. The original's spelling (an accessor
+ * returning a const reference, a macro) is not known; this one is the target's, byte for byte. */
+
 /* the top frame's records put back on the SEAL's parts, each with a part, its position and rotation
  * (OVL2 0x577700; SOCOM 1's AnimPop, after AnimBlend in both builds, its 32 records a count now) --
- * called out of line from 0x577DF0: pinned */
-/* OPEN, 0xCC both (the loop's registers): the target loads the record count into a3 before the loop
- * and keeps it for the bottom test, re-reading the global only for the entry test; MW here re-reads it
- * every pass (a local bound drops the entry test's own load: 0xC4). Tried: the count const, an int
- * counter, the record copies through an inline. The index `top` (kept, not folded into the -12) and
- * `> -1` (slti) are the target's. */
+ * called out of line from 0x577DF0: pinned. The frame through a pointer local (indexed in place, MW
+ * adds the base last: 9 off), the index `top` kept (inline, the -1 folds into the -12) and `> -1`
+ * (slti) the target's; the counter declared before the count (the other order swaps a3/t0). */
 #pragma auto_inline off
 int CSealAnim::AnimPop()
 {
     std::vector<CZBodyPart *> &parts = m_seal->m_body_parts;
     int top = m_count - 1;
-    CSealAnimRec *rec = m_frames->m_frames[top].m_recs;
+    CSealAnimFrame *f = &m_frames->m_frames[top];
+    CSealAnimRec *rec = f->m_recs;
+    unsigned int i = 0;
+    unsigned int n = siNumBodyObjects;
 
-    for (unsigned int i = 0; i < siNumBodyObjects; i++, rec++) {
-        if (rec->m_id > -1) {
-            CZBodyPart *part = parts[rec->m_id];
+    if (i < *(const unsigned int *)&siNumBodyObjects) {
+        do {
+            if (rec->m_id > -1) {
+                CZBodyPart *part = parts[rec->m_id];
 
-            if (part) {
-                part->m_pos = rec->m_pos;
-                part->m_rot = rec->m_rot;
+                if (part) {
+                    part->m_pos = rec->m_pos;
+                    part->m_rot = rec->m_rot;
+                }
             }
-        }
+            i++;
+            rec++;
+        } while (i < n);
     }
     m_count--;
     return m_count;
@@ -159,19 +183,15 @@ int CSealAnim::AnimPop()
 /* frame a's rotations moved toward frame b's by b's share of the two weights -- a part b lacks
  * takes b's, near enough to either end it snaps -- and a given the sum (OVL2 0x576E30; SOCOM 1's
  * CombineRotations, the fraction clamped to [0, 1] in SOCOM II, the records a count now and the
- * rotation copies inline).
- * OPEN, 0x1C0 against 0x1CC: AnimPop's miss exactly -- the target loads the record count into s1 ahead
- * of the records, re-reads the global for the loop's entry test and keeps s1 for the bottom test, where
- * MW re-reads the global every pass (the loop calls Slerp). Tried: a local count at five places (0x1C4
- * or 0x1BC: MW merges the entry test's load into it), a const reference to the global, an `extern
- * const` placeholder, an inline returning the count, the loop in an inline helper taking the count by
- * value (0x1C4 or 0x1E0), an explicit guard on the global before a do-while; the pragmas
- * opt_pointer_analysis, opt_loop_invariants, opt_lifetimes, opt_rotateloops,
- * opt_optimizenonregaccess change nothing, and only `opt_common_subs off` or `opt_propagation off`
- * with a local count give the size (75 and 96 instructions off). The registers otherwise want a s5,
- * i s4, ra s3, rb s2, the count s1 and frame a's address s0 */
+ * rotation copies inline), the loop the record loops' shape (above AnimPop). The saved registers (a s5,
+ * i s4, ra s3, rb s2, the count s1, frame a s0) want the counter, the two record cursors and the count
+ * declared uninitialised at the top, ahead of the frames (MW numbers them there). */
 int CSealAnim::CombineRotations(int a, int b)
 {
+    unsigned int i;
+    CSealAnimRec *ra;
+    CSealAnimRec *rb;
+    unsigned int n;
     CSealAnimFrame *fa = &m_frames->m_frames[a];
     CSealAnimFrame *fb = &m_frames->m_frames[b];
     float sum = fa->m_wt + fb->m_wt;
@@ -181,24 +201,102 @@ int CSealAnim::CombineRotations(int a, int b)
         frac = 0.0f;
     if (frac > 1.0f)
         frac = 1.0f;
-    CSealAnimRec *rb = fb->m_recs;
-    CSealAnimRec *ra = fa->m_recs;
-
-    for (unsigned int i = 0; i < siNumBodyObjects; i++, ra++, rb++) {
-        if (ra->m_id != -1) {
-            if (rb->m_id != -1) {
-                if (frac > 0.001f) {
-                    if (frac >= 0.999f)
-                        ra->m_rot = rb->m_rot;
-                    else
-                        ra->m_rot.Slerp(&rb->m_rot, frac, &ra->m_rot);
-                }
-            } else
-                ra->m_rot = rb->m_rot;
-        }
+    rb = fb->m_recs;
+    ra = fa->m_recs;
+    n = siNumBodyObjects;
+    i = 0;
+    if (i < *(const unsigned int *)&siNumBodyObjects) {
+        do {
+            if (ra->m_id != -1) {
+                if (rb->m_id != -1) {
+                    if (frac > 0.001f) {
+                        if (frac >= 0.999f)
+                            ra->m_rot = rb->m_rot;
+                        else
+                            ra->m_rot.Slerp(&rb->m_rot, frac, &ra->m_rot);
+                    }
+                } else
+                    ra->m_rot = rb->m_rot;
+            }
+            i++;
+            ra++;
+            rb++;
+        } while (i < n);
     }
     fa->m_wt = sum;
     return a;
+}
+
+/* the top frame laid over the one below it at a fraction and popped: every part the top holds given to
+ * the frame below, its position moved there by the fraction where either lacks one (VU0's XYZ
+ * interpolation, the record's fourth word kept), then its rotation (Slerp); near enough to either end
+ * each snaps (OVL2 0x576BB0: SOCOM 1's AnimOverlay by its place, before CombineRotations in both
+ * builds -- SOCOM 1's weighted the positions with Scale and Add over 32 records), the depth left
+ * returned. The record loops' shape (above AnimPop); `> -1` (slti) the target's tests.
+ * OPEN, 22 instructions (the size the target's, round 34): registers only -- the first loop's counter
+ * and the count trade s5/s1, and the second loop's record cursor (rb reassigned) is a web of its own in
+ * s1 where the target keeps the first loop's s3. The locals' order is tools/perm.py's best over the
+ * uninitialised declarations and the assignments (400 s; the natural order 49 off); a counter of its
+ * own for the second loop, or cursors of their own, lose more (34-36). */
+int CSealAnim::AnimOverlay(float t)
+{
+    unsigned int n;
+    int top;
+    CSealAnimRec *rb;
+    CSealAnimRec *ra;
+    float r;
+    unsigned int i;
+    CSealAnimFrame *fb;
+    CSealAnimFrame *fa;
+    top = m_count - 1;
+    r = 1.0f - t;
+    fb = &m_frames->m_frames[top - 1];
+    fa = &m_frames->m_frames[top];
+    n = siNumBodyObjects;
+    ra = fa->m_recs;
+    rb = fb->m_recs;
+    i = 0;
+
+    if (i < *(const unsigned int *)&siNumBodyObjects) {
+        do {
+            if (ra->m_id > -1) {
+                rb->m_id = ra->m_id;
+                if (!rb->m_nopos || !ra->m_nopos) {
+                    if (t >= 0.999f)
+                        rb->m_pos = ra->m_pos;
+                    else if (t > 0.001f) {
+                        float w = *(float *)&rb->m_id;
+
+                        sceVu0InterVectorXYZ((float *)rb, (float *)rb, (float *)ra, r);
+                        *(float *)&rb->m_id = w;
+                    }
+                }
+            }
+            i++;
+            rb++;
+            ra++;
+        } while (i < n);
+    }
+    rb = fb->m_recs;
+    ra = fa->m_recs;
+    i = 0;
+    if (i < n) {
+        do {
+            if (ra->m_id > -1) {
+                if (rb->m_id == -1)
+                    rb->m_rot = ra->m_rot;
+                else if (t >= 0.999f)
+                    rb->m_rot = ra->m_rot;
+                else if (t > 0.001f)
+                    rb->m_rot.Slerp(&ra->m_rot, t, &rb->m_rot);
+            }
+            i++;
+            rb++;
+            ra++;
+        } while (i < n);
+    }
+    m_count = top;
+    return m_count;
 }
 
 /* the SEAL's adrenaline (OVL2 0x5781B0, the unit's last; SOCOM 1's, the same load) */

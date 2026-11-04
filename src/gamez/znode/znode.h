@@ -2080,6 +2080,9 @@ public:
 /* every node by index (SOCOM 1's DWARF: a CNodeVector and a lock byte) */
 class CNodeUniverse : public CNodeVector {
 public:
+    /* made locked (SOCOM 1's inline: LoadWorld news the universe, the vector's three words zeroed
+     * and the lock set in its null test) */
+    CNodeUniverse() : m_locked(1) {}
     CNode *GetElement(int i);
     int GetIndex(CNode *node);
     void RemoveNode(CNode *node);
