@@ -5,7 +5,10 @@
  * RefCountedPtrArray.h) SOCOM 1 links. SOCOM II's library is a later build of it: wchar_t is 4
  * bytes (showmanyc<wchar_t> divides by 4, SOCOM 1's by 2; filebuf<wchar_t>'s flags sit at 0x70).
  * The classes are SOCOM 1's DWARF layouts (`tools/dwarf1.py types`), the members' names its own;
- * only what the written functions use is declared. Our file, in our words. */
+ * only what the written functions use is declared. The exceptions: basic_string and the vector
+ * inserts are CodeWarrior 3.0's MSL, the shapes the game's own copies have (SOCOM 1's 2.4 string was
+ * reference-counted), measured on MAIN's exceptions-on copies and, as probes with the game's flags,
+ * on OVL1's and OVL2's (round 7). Our file, in our words. */
 #ifndef MAIN_MSL_H
 #define MAIN_MSL_H
 

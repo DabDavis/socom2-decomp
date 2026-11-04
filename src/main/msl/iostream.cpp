@@ -457,7 +457,7 @@ basic_filebuf<charT, traits>::read3(bool peek)
  * The two codecvt destructors (0x18A550, 0x18A5B0, 0x5C each) are implicit: they match once
  * locale::facet's destructor is inline (msl.h), its vtable store folded into theirs.
  * xsgetn<wchar_t> (0x185EB0) matches since round 6 (the wide traits' copy, msl.h). ~ctype<char>
- * (locale.cpp) is generated, not written.
+ * is locale.cpp's (written there since round 4).
  *
  * codecvt<char, char, int>: no conversion */
 codecvt_base::result codecvt<char, char, int>::do_out(int &, const char *from, const char *, const char *&from_next,
