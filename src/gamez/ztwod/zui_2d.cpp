@@ -891,7 +891,7 @@ void CScrollText::Draw(const CMatrix &m, zdb::CTextureRelocMgr *mgr)
             continue;
         }
         ++i;
-        x += str->m_charheight;
+        x += str->m_length;
         if (y < p.y) {
             if (y < p.y - GetSpacing())
                 str->SetTrans(0.0f);
@@ -1883,7 +1883,7 @@ public:
 };
 }
 
-/* the menu being shown (zui.cpp's UiGetCurMenu, 0x36A200, not named yet): a node, its vtable
+/* the menu being shown (zui.cpp's UiGetCurMenu, 0x36A200, named by the integrator after the UI's round 18): a node, its vtable
  * pointer at 0x60 as CNode's -- slot +0x24 the child found by name (znode.h's order) */
 class CMenuNode {
 public:
@@ -1898,7 +1898,7 @@ public:
     virtual zdb::CNode *FindChild(const char *name, bool deep);
 };
 
-extern "C" CMenuNode *func_0036A200();
+CMenuNode *UiGetCurMenu();
 
 /* the GS scissor rectangle (zvid) */
 void zVid_Scissor(int x1, int y1, int x2, int y2);
@@ -1923,7 +1923,7 @@ void CHProgressBar::Draw(const CMatrix &m, zdb::CTextureRelocMgr *mgr)
     CPlainBmp::Draw(m, mgr);
     mgr->PreGetSprPacket(0);
     zVid_Scissor(0, 0, 640, 448);
-    CMenuNode *menu = func_0036A200();
+    CMenuNode *menu = UiGetCurMenu();
     zdb::CNode *node = menu->FindChild(m_str.c_str(), true);
 
     if (node)

@@ -23,6 +23,74 @@ typedef struct {
 #define INV_TWOPI	0x1.45f306p-3F		/* 1 / (2 pi) */
 #define TWOPI		0x1.921fb4p+2F
 
+/* the band offsets and their pitch thresholds (GCC round 26a, 0x256A18's) */
+static const float afBandOffset[6] = {
+	0x1.dd6bf0p+1F, 0x1.d4c4dcp+1F, 0x1.cbbfccp+1F, 0x1.c24facp+1F, 0x1.b86406p+1F, 0x1.ade7bep+1F,
+};
+static const float afBandThresh[5] = { 96.0F, 88.0F, 80.0F, 72.0F, 64.0F };
+
+extern float func_002517D8(float fX);	/* the encoder's fast log2 (shared) */
+
+/* the gain offset of the band fX falls in, plus half the log2 of fY */
+float func_00256A18(float fX, float fY)
+{
+	int i;
+
+	for (i = 0; i < 5; i++)
+		if (afBandThresh[i] < fX)
+			break;
+	return afBandOffset[i] + func_002517D8(fY) * 0.5F + -0x1.42e68p+2F;
+}
+
+extern float func_00251850(float fX);	/* the encoder's fast exp2 (shared) */
+
+/* the bands' phases advanced by a growing step, the even bands' by an offset from 1/pi that grows
+ * by 1/(20 pi) a band past fX * 0.1875; the second array's log gains raised by the fast exp2
+ * (GCC round 26a) */
+void func_00256BC8(int n, float *pfPhase, float *pfGain, float fStep, float fX)
+{
+	int i, iLimit;
+	float fAcc, fOff;
+
+	iLimit = (int)(fX * 0.1875F);
+	fAcc = fStep;
+	fOff = 0x1.45f306p-2F;
+	for (i = 0; i < n; i++) {
+		pfPhase[i] += fAcc;
+		fAcc += fStep;
+		if (i >= iLimit)
+			fOff += 0x1.04c26ap-6F;
+		if ((i & 1) == 0)
+			pfPhase[i] += fOff;
+		pfGain[i] = func_00251850(pfGain[i]);
+	}
+}
+
+/* two arrays upsampled in place by iFactor from the top down (GCC round 26a): the samples from
+ * iHold up held iFactor times, those below it followed by iFactor - 1 zeros */
+void func_00256CC8(int iLength, int n, int iFactor, float *pfB, float *pfA, int iHold)
+{
+	int i, j, k;
+
+	k = iLength - 1;
+	for (i = n - 1; i >= iHold; i--)
+		for (j = 0; j < iFactor; j++) {
+			pfA[k] = pfA[i];
+			pfB[k] = pfB[i];
+			k--;
+		}
+	for (; i >= 0; i--) {
+		pfA[k] = pfA[i];
+		pfB[k] = pfB[i];
+		k--;
+		for (j = 1; j < iFactor; j++) {
+			pfA[k] = 0.0F;
+			pfB[k] = 0.0F;
+			k--;
+		}
+	}
+}
+
 /* the noise generator: libmath.c's minimal-standard RNG (0x24AEB0) again, the same text, its
  * assert at SWSynth.c:359 -- the high half the accumulator, updated in place (GCC round 19a) */
 void func_00256380(int *plSeed)

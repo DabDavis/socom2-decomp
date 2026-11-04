@@ -273,14 +273,23 @@ void CVehicleRdrEntry::Randomize(bool reset)
         m_respawnIndex = RandomIndex(m_respawn.m_count - 1);
 }
 
+/* a matrix's translation set from three values (the name is ours): taken by value, they are read
+ * right to left before the stores, as the target's last block loads z, y, x and then stores x, y, z */
+static inline void SetTranslation(CMatrix &m, float x, float y, float z)
+{
+    m.m_matrix[3][0] = x;
+    m.m_matrix[3][1] = y;
+    m.m_matrix[3][2] = z;
+}
+
 /* the start's place as a matrix (SOCOM 1's): the start picked -- at random for -1, Randomize
  * inlined -- then its name and direction, its location, its cell's centre, the direction's rotation
  * with the centre as the translation; false at the first step that fails.
- * OPEN, the right size since the AI core round 22 (66 instructions, registers only: the inlined
- * Randomize's padding is RandomDraw's, as Randomize's own): every saved register is one off -- the
- * target keeps this in s3, the matrix in s2, the pick's count in s4 (numbered BELOW both
- * parameters, which no local or inlined variable is); this build this in s4, the matrix in s3, the
- * count in s0 */
+ * Byte-exact since the AI core's round 23 (66 instructions from round 22, every saved register one
+ * off): the start read through startvec::Get, whose bool is the caller's `ok` only from the join on
+ * (MW's colouring had a function-wide ok, `false` at the top, take s0 first and push every other
+ * saved register up one; the target's pick count in s4 follows), and the translation through
+ * SetTranslation */
 bool CVehicleRdrEntry::GetStartMatrix(CMatrix &m, unsigned int index)
 {
     if (index == (unsigned int)-1)
@@ -289,13 +298,8 @@ bool CVehicleRdrEntry::GetStartMatrix(CMatrix &m, unsigned int index)
         m_startIndex = index;
     const char *name;
     int dir;
-    bool ok = false;
+    bool ok = m_start.Get(m_startIndex, name, dir);
 
-    if (m_startIndex < m_start.m_count) {
-        name = m_start.m_start[m_startIndex].m_name;
-        dir = m_start.m_start[m_startIndex].m_dir;
-        ok = true;
-    }
     if (ok) {
         CAiMapLoc loc;
 
@@ -309,9 +313,7 @@ bool CVehicleRdrEntry::GetStartMatrix(CMatrix &m, unsigned int index)
 
                 CAiMap::GetDirQuat((CAiMap::DIR)dir, q, true);
                 q.ToMatrix(&m);
-                m.m_matrix[3][0] = pos.x;
-                m.m_matrix[3][1] = pos.y;
-                m.m_matrix[3][2] = pos.z;
+                SetTranslation(m, pos.x, pos.y, pos.z);
             }
         }
     }
