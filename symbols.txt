@@ -6295,14 +6295,14 @@
 0x0034A7B0 0x15C IsQueued__7HeadsetFP4CSnd  # OVL1; SOCOM II's, name ours: whether the headset queues or streams the sound or one of its group's members (CSndQueue::Tick and PlayNext ask it)
 0x0034A910 0x158 StopSound__7HeadsetFiP4CSnd  # OVL1; s1:order by hand (SOCOM 1's StopSound(int, CSnd *), first of the unit in both builds; CZAnim::StopSounds and the SOUND tick stop a headset stream with it, (headset, channel, sound), as SOCOM 1's do)
 0x0034AA70 0x48 func_0034AA70  # OVL1
-0x0034AAC0 0x23C func_0034AAC0  # OVL1
+0x0034AAC0 0x23C Remove__7HeadsetFibb  # OVL1; the world lane r7: s1:calls (Queue calls it with (id, true, false) and (id, true, true) where SOCOM 1's Queue calls Remove__7HeadsetFibb)
 0x0034AD00 0x2C4 ConnectedTick__7HeadsetFf  # OVL1; s1:calls by hand (Headset::Tick calls it when the state is 1, as SOCOM 1's Tick calls ConnectedTick; between Remove and DisconnectedTick in both builds)
 0x0034AFD0 0x3D4 DisconnectedTick__7HeadsetFf  # OVL1; s1:calls by hand (Headset::Tick calls it when the state is 2, as SOCOM 1's Tick calls DisconnectedTick)
 0x0034B3B0 0x54 Tick__7HeadsetFf  # OVL1; s1:align
 0x0034B410 0xD0 SoundSysCallback__7HeadsetFUi  # OVL1; s1:callee
 0x0034B4E0 0x2C StaticSoundSysCallback__7HeadsetFUiUl  # OVL1; s1:exact
 0x0034B510 0x1B0 DeQueue__7HeadsetFPPiPUiPP4CSndPi  # OVL1; s1:order by hand (SOCOM 1's Headset::DeQueue(int **, unsigned int *, CSnd **, int *): after StaticSoundSysCallback and before Queue in both builds; the queue flush calls it with 0 and the addresses of m_c, m_sound and m_vol until it fails, ConnectedTick and DisconnectedTick too) -- the sound lane
-0x0034B6C0 0x1CC func_0034B6C0  # OVL1
+0x0034B6C0 0x1CC Queue__7HeadsetFUiP4CSndi  # OVL1; the world lane r7: s1:order+calls (SOCOM 1's Headset::Queue(unsigned int, CSnd *, int): after DeQueue in both builds, the same course -- the last free entry taken through erase, the entry's three words, the queue's push, Remove(id, true, false/true) for modes 2/3; CSnd's two plays call it)
 0x0034B890 0x28 ResetStream__7HeadsetFv  # OVL1; SOCOM II's, name ours (the headset's instance cleared and its id -1)
 0x0034B8C0 0x4C Reset__7HeadsetFv  # OVL1; SOCOM II's, name ours (the stream request reset, the headset state 0; CSnd::Close calls it)
 0x0034B910 0xC8 __ct__7HeadsetFv  # OVL1; SOCOM 1's Headset() by its call (Create news 64 bytes and calls it on them, keeping what it returns as the headset)

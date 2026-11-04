@@ -149,6 +149,32 @@ void Headset::ResetStream()
     }
 }
 
+/* SOCOM 1's: a channel's sound queued in the last free entry (none free, none queued); SOCOM II
+ * plays nothing unless the headset is idle or the sound a dialog or bit 6 one (true, unqueued).
+ * A mode-2 or mode-3 sound drops the channel's older entries (SOCOM 1's Remove, 0x34AAC0) */
+bool Headset::Queue(unsigned int id, CSnd *sound, int vol)
+{
+    int idx = -1;
+
+    if (m_free.size() == 0)
+        return false;
+    if (!m_b && sound->m_mode != 3 && !sound->m_socom2_bit6)
+        return true;
+    idx = m_free.back();
+    if (idx == -1)
+        return false;
+    m_free.erase(m_free.end() - 1);
+    m_entries[idx * 3] = id;
+    m_entries[idx * 3 + 1] = (unsigned int)sound;
+    m_entries[idx * 3 + 2] = vol;
+    m_queue.push_back(idx);
+    if (sound->m_mode == 2)
+        Remove(id, true, false);
+    else if (sound->m_mode == 3)
+        Remove(id, true, true);
+    return true;
+}
+
 /* SOCOM 1's: the first queued entry whose channel the skip list (a count, then pointers to the
  * channels) does not hold -- its channel, sound and volume given back, the entry taken off the
  * queue and its index freed; false when none is left. SOCOM II stops at the first such entry */
