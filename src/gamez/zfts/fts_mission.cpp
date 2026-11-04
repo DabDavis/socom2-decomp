@@ -510,7 +510,7 @@ public:
     unsigned char m_20;   // 0x20: SOCOM II's, Close clears it last (the name ours)
     unsigned char _21[0x60 - 0x21];
     char m_db_string[0x80];   // 0x60 (SOCOM 1's at 0x20)
-    int m_timer;   // 0xe0: cleared by Open and before the second unload (SOCOM 1's at 0x60)
+    float m_timer;   // 0xe0: the mission's time in seconds, cleared by Open and before the second unload (SOCOM 1's float at 0x60)
     unsigned char _e4[0xe8 - 0xe4];
     float m_e8;   // 0xe8: the mission's own clock, in seconds (SOCOM 1's m_winlosstimer at 0x68; the name ours)
     float m_winlossinc;   // 0xec (SOCOM 1's at 0x6c: the constructor sets both -1)
@@ -1817,7 +1817,7 @@ void func_00295660();
  * dead locals, an allocator temporary or a volatile pointer add nothing) */
 CMission::CMission()
     : CSaveModule("CMission", theMemCard.m_configSave), m_state(MISSION_UNLOADED), m_database(0),
-      m_timer(0), m_ladders(0), m_pNetGame(0), m_music_hold(0.0f), m_satcheltimer(10.0f)
+      m_timer(0.0f), m_ladders(0), m_pNetGame(0), m_music_hold(0.0f), m_satcheltimer(10.0f)
 {
     strncpy(m_weaponmodelpostfix, "", 30);
     m_chars_loaded = 0;
@@ -1895,7 +1895,7 @@ bool CMission::Open(const char *name)
         strcpy(m_database = m_db_string, name);
     else
         m_database = 0;
-    m_timer = 0;
+    m_timer = 0.0f;
     m_chars_loaded = 0;
     AddTask__14CSched_ManagerFPCcPFfPv_bfPv(&zTaskScheduler, "diTick",
                                             (bool (*)(float, void *))zdb::CWorld::diTick, 5.0f, 0);
@@ -2029,7 +2029,7 @@ bool CMission::ReOpen_Unload2()
 {
     zdb::CWorld *world = zdb::CWorld::m_world;
 
-    m_timer = 0;
+    m_timer = 0.0f;
     CEntity::RemoveAll();
     CAiEvent::Close();
     world->ClearLightMapList();

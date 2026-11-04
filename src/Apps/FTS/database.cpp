@@ -51,13 +51,7 @@ void zBoneUnloadMap();
  * FreeVector called; the name ours) */
 static inline void FreeTickList() { FreeVector<std::vector<zdb::CTickLight> >(zdb::CLight::m_tick_list); }
 
-/* CVisual's map textures beside m_lightMapTexture (SOCOM 1's statics, cleared in its order:
- * m_specMapTexture, m_envFrontMapTexture, m_envBackMapTexture -- znode.h's CVisual lacks them) */
 extern "C" {
-extern zdb::CTexHandle *data_004B4D90;
-extern zdb::CTexHandle *data_004B4E48;
-extern zdb::CTexHandle *data_004B4E50;
-
 /* the frame's end (the video lane's, 0x3B05E0: the FIFO ended, the GS path synced) */
 void func_003B05E0();
 /* UnloadTheWorld below, called by its row's placeholder (the row stays func_ for its draft) */
@@ -189,9 +183,9 @@ void UnloadTheWorld()
         zdb::EmptyAssetRecycleBin();
         zdb::CAssetMgr::m_assets.Clear();
         zdb::CVisual::m_lightMapTexture = 0;
-        data_004B4D90 = 0;
-        data_004B4E48 = 0;
-        data_004B4E50 = 0;
+        zdb::CVisual::m_specMapTexture = 0;
+        zdb::CVisual::m_envFrontMapTexture = 0;
+        zdb::CVisual::m_envBackMapTexture = 0;
         FreeTickList();
         if (zdb::NodeUniverse) {
             delete zdb::NodeUniverse;
