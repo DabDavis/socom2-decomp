@@ -1316,6 +1316,9 @@ public:
      * n`; the names ours) */
     void SetBit9(bool on) { m_bit9 = on; }
     void SetBit10(bool on) { m_bit10 = on; }
+    /* the moving and turning flags set (inlines: InStateHang clears both with `(0 & 1) << n`) */
+    void SetIsMoving(bool on) { m_is_moving = on; }
+    void SetIsTurning(bool on) { m_is_turning = on; }
     /* the stance's change taken, once (seal_body.cpp) */
     bool StanceChanged();
     /* the state of the topmost blend not in state 3, else 0 (SOCOM 1's PeekBaseState; OVL2
@@ -1368,8 +1371,10 @@ public:
     /* the top blend turned at a rate from the turn, capped per state (SOCOM 1's TurnControl after
      * ProneControl: OVL2 0x583960 -- SOCOM II's takes the turn alone) */
     CZBodyAnimBlend *TurnControl(float turn);
-    /* the ladder state's anims (SOCOM 1's InStateClimbLadder, no floats in SOCOM II; OVL2 0x584240) */
+    /* the ladder and hang states' anims (SOCOM 1's InStateClimbLadder and InStateHang, no floats in
+     * SOCOM II; OVL2 0x584240, 0x584390) */
     CZBodyAnimBlend *InStateClimbLadder();
+    CZBodyAnimBlend *InStateHang();
     /* the body carried let go (SOCOM 1's DropBody, before OKToStand in both builds: OVL2 0x57EE00) */
     void DropBody();
     /* a stun taken: the kind's highest kept, the controller told (SOCOM 1's; OVL2 0x5A53D0) */
@@ -1487,7 +1492,8 @@ public:
     unsigned char m_fade_priority;   // 0x238
     unsigned char _239[0x240 - 0x239];
     float m_240;   // 0x240: PostCheckDILadder checks the ladder only from 0.03 up (the name ours)
-    unsigned char _244[0x2e0 - 0x244];
+    float m_244;   // 0x244: InStateHang's second throttle with 0x240 (the name ours)
+    unsigned char _248[0x2e0 - 0x248];
     float m_2e0;   // 0x2e0: the time step the overlay ticks by (0x579EF0; the names ours)
     float m_alt;   // 0x2e4 (SOCOM 1's 0xe98)
     CZBodyPart *m_root;   // 0x2e8 (SOCOM 1's 0x26c)

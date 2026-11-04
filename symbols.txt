@@ -10435,7 +10435,7 @@
 0x0057E770 0x5A0 func_0057E770  # OVL2
 0x0057ED10 0xE4 func_0057ED10  # OVL2
 0x0057EE00 0x1E0 DropBody__10CZSealBodyFv  # OVL2; s1:order by hand (SOCOM 1 DropBody__10CZSealBodyFv, right before OKToStand in both builds: the carried body at 0xEAC, SOCOM 1 m_carry 0xDA8, let go with a drop anim and cleared; the SEALs round 16)
-0x0057EFE0 0x168 OKToStand__FP10CZSealBody  # OVL2; s1:calls
+0x0057EFE0 0x168 OKToStand__FP10CZSealBody10SEAL_STATE  # OVL2; s1:calls; the SEAL lane, round 21: SOCOM 1's OKToStand, SOCOM II's with a byte argument the callee narrows and tests against 1 (12 up for 1, else 19: a stance) -- none of the three callers (0x552EC0 twice, 0x584C60) sets a1; the mangled name ours
 0x0057F150 0x150 func_0057F150  # OVL2
 0x0057F2A0 0x70 func_0057F2A0  # OVL2
 0x0057F310 0xC4 func_0057F310  # OVL2
@@ -10475,7 +10475,7 @@
 0x00583AF0 0x374 func_00583AF0  # OVL2
 0x00583E70 0x3C8 func_00583E70  # OVL2
 0x00584240 0x144 InStateClimbLadder__10CZSealBodyFv  # OVL2; s1:order by hand (the SEAL lane, round 21): SOCOM 1's InStateClimbLadder__10CZSealBodyFfff -- after the carry states, before InStateHang in both builds, and the state dispatcher 0x5870E0's case 5 (stateClimbLadder) calls it; the same body (the 0x3DEF50 anim's early return, the climb anim 45 pushed, popped at the ladder's foot going down for 44, the representative's playback from the rate) with SOCOM II's rate read at 0x240 instead of three float arguments
-0x00584390 0x224 func_00584390  # OVL2
+0x00584390 0x224 InStateHang__10CZSealBodyFv  # OVL2; s1:order by hand (the SEAL lane, round 21): SOCOM 1's InStateHang__10CZSealBodyFfff -- after InStateClimbLadder in both builds, and the state dispatcher 0x5870E0's case 4 (stateHang) calls it; the same body (the throttles' length against the hang's reach, the pops down to the hang anim and its push, the moving/turning bits cleared, Stand_0(4, 1) forward, ClearStack(1, true) and Stand_0(state, -1) back) with SOCOM II's throttles read at 0x240/0x244 and Stand_0's added time
 0x005845C0 0x53C func_005845C0  # OVL2
 0x00584B00 0x110 func_00584B00  # OVL2
 0x00584C10 0x48 func_00584C10  # OVL2

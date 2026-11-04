@@ -387,6 +387,41 @@ extern "C" bool func_0057F150(CSealCtrl *ctrl)
     return true;
 }
 
+/* whether there is room to stand: a ray from 2 above the hips, on the SEAL's axis, 12 up crouched or 19
+ * otherwise, with the SEAL's node switched off and camera-collision polygons asked for -- clear unless
+ * it hits a polygon of a camera type other than 1 (OVL2 0x57EFE0; SOCOM 1's OKToStand, after DropBody in
+ * both builds -- SOCOM 1's from the head 7 up, its offset added to GetPosW's). SOCOM II's tests a byte
+ * in a1 that none of its three callers sets: a stance never assigned */
+bool OKToStand(CZSealBody *seal, SEAL_STATE stance)
+{
+    zdb::IntersectStruct *hit;
+    bool was;
+    float h;
+    CPnt3D pos;
+
+    if (stance == stateCrouch)
+        h = 12.0f;
+    else
+        h = 19.0f;
+    seal->PartInSpace(seal->m_hips, 0, &pos, 0);
+    pos.y += 2.0f;
+    CPnt3D from(0.0f, pos.y, 0.0f);
+
+    from.Add(&seal->m_posW, &from);
+    CPnt3D to(from.x, h + seal->m_posW.y, from.z);
+
+    was = seal->GetNode()->SetActive(false);
+    zdb::SetCameraCollideFlagRequired(true);
+    hit = zdb::CWorld::m_world->GetIntersect(&from, &to);
+    seal->GetNode()->SetActive(was);
+    if (hit && CameraType(hit) != CAMERA_TYPE_1) {
+        zdb::SetCameraCollideFlagRequired(false);
+        return false;
+    }
+    zdb::SetCameraCollideFlagRequired(false);
+    return true;
+}
+
 /* whether the SEAL may act: an AI's controller unless its bit 17 is set, anyone else's unless its
  * action bit is (OVL2 0x57F2A0, new in SOCOM II; the name ours -- the controller read once, its null
  * test only the IsAi call's) */
@@ -1411,6 +1446,47 @@ void CZSealBody::BodySetState(int state)
     if (m_control && state != m_state)
         ((CSealCtrl *)m_control)->OnStateChange((SEAL_STATE)m_state, (SEAL_STATE)state);
     func_0028DFB0(*this, state);
+}
+
+extern "C" {
+/* how far the throttles may stray for a hang to hold (OVL1 data; seal_env.cpp's ladder test reads it) */
+extern float data_003F3428;
+}
+
+/* hanging: with the throttles within the hang's reach the blends popped down to the hang (34) -- or to
+ * one -- the hang pushed if it is not on top, the top made whole and the moving and turning flags
+ * cleared; pushed forward, a stand from the hang (stance 4); pulled back from a top blend still
+ * hanging (byte 0x2B), the stack cleared to one and a stand from the state, at the old top's time
+ * (OVL2 0x584390: SOCOM 1's InStateHang by order and the state dispatcher's case 4, its throttles read
+ * at 0x240/0x244, the sqrt inline, Stand_0's time new). The pulled-back arm is Stand(-1), inlined: its
+ * two returns join at one `move s0,v0`, as only an inline's result does; one result for the three arms.
+ * OPEN, 5 instructions (the size right): Crouch's miss (0x581990) exactly -- in the inlined Stand the
+ * target gives the stance s2 and ClearStack's stack pointer s0, ours the other way round. Tried: the
+ * declaration orders of ClearStack's and Stand's locals (Stand and ClearStack still match out of line) */
+CZBodyAnimBlend *CZSealBody::InStateHang()
+{
+    CZBodyAnimBlend *r;
+
+    func_00555170(&m_blends);
+    float x = m_240;
+    float z = m_244;
+
+    if (sqrtf(x * x + z * z) <= data_003F3428) {
+        CBodyAnimBlendStack *stack = &m_blends;
+
+        while (!IsCurrentBlend((AnimType)34) && SignedBlendCount(stack) > 1)
+            func_00589AA0(this);
+        if (!IsCurrentBlend((AnimType)34))
+            func_00588BC0(this, (AnimType)34, 4, 0, 0);
+        r = (CZBodyAnimBlend *)func_00555170(&m_blends);
+        r->SetRepresentativeWt(1.0f);
+        SetIsMoving(false);
+        SetIsTurning(false);
+    } else if (!(x <= 0.0f))
+        r = Stand_0(4, 1, -1.0f);
+    else
+        r = Stand(-1);
+    return r;
 }
 
 /* on a ladder: nothing while the 0x3DEF50 anim is on top; else the climb (anim 45) pushed if it is not,
