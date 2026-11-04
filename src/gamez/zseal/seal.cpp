@@ -1679,6 +1679,72 @@ inline CTurret *CZSealBody::GetTurret()
     return m_eb8 ? AsTurret(m_eb8) : 0;
 }
 
+extern "C" {
+/* whether the top blend is one of two anims (OVL2 0x588030, seal_body.cpp's range, unwritten) and the
+ * SEAL put on a turret offline (OVL2 0x5463C0, not written yet) */
+bool func_00588030(CZSealBody *seal);
+void func_005463C0(CZSealBody *seal, CEntity *e);
+/* two of the weapon changes' anims (OVL1 data: seal_env.cpp's IsChangingWeapons reads them too) */
+extern short data_003DF108;
+extern short data_003DF110;
+}
+
+/* the network's platform message (OVL1's CZPlatformState: only the turret's send here) */
+class CZPlatformState {
+public:
+    static void SendPlatform(CTurret *t);
+};
+
+/* whether an entity has a controller (an inline bool written `? true : false`: the target
+ * materialises it, sltu, before the branch) */
+static inline bool HasController(const CEntity *e)
+{
+    return e->m_control ? true : false;
+}
+
+/* whether the SEAL's top blend is in state 8 (an inline: the call and the compare come ahead of
+ * the `||` it is in) */
+static inline bool TopBlendIn8(CZSealBody *seal)
+{
+    return ((CZBodyAnimBlend *)func_00555170((CIndexedArray *)&seal->m_blends))->m_state == 8;
+}
+
+/* a turret boarded when it may be: one no one works, the SEAL alive and its top blend not in state
+ * 8, none of 0x588030's anims nor the two weapon changes', nothing worked or carried -- online the
+ * platform sent, offline 0x5463C0 boards it; whether it was (OVL2 0x546210, new in SOCOM II:
+ * CSealCtrl::OnActionButton and CAiSUseVehicle::Board call it; the name unknown) */
+extern "C" bool func_00546210(CZSealBody *seal, CEntity *e)
+{
+    bool ok = true;
+    CTurret *t = AsTurret(e);
+
+    if (t && HasController(t))
+        ok = false;
+    /* (a value of its own: the target makes the call and the compare ahead of the alive test) */
+    bool in8 = TopBlendIn8(seal);
+
+    if (!seal->m_isAlive || in8)
+        ok = false;
+    if (func_00588030(seal))
+        ok = false;
+    if (ok && (!e || seal->m_eb8))
+        ok = false;
+    if (ok && (seal->IsCurrentBlend((AnimType)data_003DF108) || seal->IsCurrentBlend((AnimType)data_003DF110)))
+        ok = false;
+    if (seal->m_carry)
+        ok = false;
+    if (ok) {
+        if (theNetwork.m_9) {
+            CTurret *turret = AsTurret(e);
+
+            if (turret)
+                CZPlatformState::SendPlatform(turret);
+        } else
+            func_005463C0(seal, e);
+    }
+    return ok;
+}
+
 /* whether the SEAL sees thermally: with nothing worked, by the goggles (item 195); with a turret, by
  * its thermal scope (OVL2 0x5433C0) */
 bool CZSealBody::HasThermal(CEntity *e)
