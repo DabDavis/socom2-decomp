@@ -171,7 +171,12 @@ public:
     CSealUnit *GetTop();
     static CSealUnit *GetUnitByTeam(unsigned int team);
     static CSealUnit *Create(unsigned int team);
-    /* a SEAL taken out of its squad (SOCOM 1's, static; OVL2 0x5EDF90, not written yet) */
+    /* a SEAL back from the dead: off the dead list and onto the escortees (a team-bit-17 SEAL of
+     * squad 17) or the SEALs (SOCOM 1's; OVL2 0x5EDE40) */
+    void Revive(CZSealBody *seal);
+    /* a SEAL taken out of its squad: off its SEALs, escortees and dead, the follow's source handed on
+     * to the new leader, the follow flag set again when the squad still follows; the squad updated
+     * (SOCOM 1's, static; OVL2 0x5EDF90) */
     static void SealLeaveUnit(CZSealBody *seal);
     void SealJoinUnit(CZSealBody *seal);
     void EscorteeJoinUnit(CZSealBody *seal);
@@ -376,6 +381,43 @@ void CSealUnit::EscorteeJoinUnit(CZSealBody *seal)
     if (*m_commands.begin() == 4 || HostEscort())
         m_a0 = 1;
     func_005E7830(this);
+}
+
+/* (OVL2 0x5EDF90; SOCOM 1's) */
+void CSealUnit::SealLeaveUnit(CZSealBody *seal)
+{
+    CSealUnit *unit = ((CUnitCtrl *)((CEntity *)seal)->m_control)->m_unit;
+
+    if (!unit)
+        return;
+    bool found = false;
+
+    for (std::list<CZSealBody *>::iterator e = unit->m_seals.end(), i = unit->m_seals.begin(); i != e; ++i)
+        if (*i == seal) {
+            unit->m_seals.erase(i);
+            found = true;
+            break;
+        }
+    for (std::list<CZSealBody *>::iterator e = unit->m_escortees.end(), i = unit->m_escortees.begin(); i != e; ++i)
+        if (*i == seal) {
+            unit->m_escortees.erase(i);
+            found = true;
+            break;
+        }
+    for (std::list<CZSealBody *>::iterator e = unit->m_dead_guys.end(), i = unit->m_dead_guys.begin(); i != e; ++i)
+        if (*i == seal) {
+            unit->m_dead_guys.erase(i);
+            found = true;
+            break;
+        }
+    if (found) {
+        if (unit->m_follow_source == seal)
+            unit->m_follow_source = unit->m_seals.size() == 0 ? 0 : *unit->m_seals.begin();
+        if (unit->m_follow_source)
+            if (*unit->m_commands.begin() == 4 || unit->HostEscort())
+                unit->m_a0 = 1;
+    }
+    func_005E7830(unit);
 }
 
 /* (OVL2 0x5E7830) the squad's four lists walked and nothing done -- the bodies compiled out: the
@@ -609,6 +651,39 @@ CZSealBody *CSealUnit::GetSealByIndex(int index, int depth)
         }
     }
     return seal;
+}
+
+/* (OVL2 0x5EDE40; SOCOM 1's: the two walks after the dead list's look for the SEAL and do nothing
+ * -- compiled-out code. Each walk's end taken into a local ahead of its iterator: the target's
+ * iterator in a1, the end in a2.)
+ * OPEN, 3 instructions: the SEAL lives in its home (push_back takes its address) and the target reads
+ * it there again ahead of the second and third walks (`lw a0,36(sp)` in each loop's entry) -- written
+ * plainly MW keeps the entry's load in a register through all three walks (0x140 bytes); read through
+ * the reference local below the reloads are the target's but through an address register of their
+ * own (`addiu a3,sp,36` at entry, `lw a0,0(a3)`). Tried: a reference per walk (4), a pointer local
+ * (3), `*&seal`, an inline taking it by reference (both folded: 0x140), std::find, an inline Has()
+ * over a reference parameter (0x170), gotos for the returns, the compare's operands swapped */
+void CSealUnit::Revive(CZSealBody *seal)
+{
+    CZSealBody *const &s = seal;
+
+    if (!seal->m_isAlive)
+        return;
+    for (std::list<CZSealBody *>::iterator e = m_dead_guys.end(), i = m_dead_guys.begin(); i != e; ++i)
+        if (*i == seal) {
+            m_dead_guys.erase(i);
+            if ((seal->m_team & 0x20000) && m_unit_num == 17)
+                m_escortees.push_back(seal);
+            else
+                m_seals.push_back(seal);
+            return;
+        }
+    for (std::list<CZSealBody *>::iterator e = m_seals.end(), i = m_seals.begin(); i != e; ++i)
+        if (*i == s)
+            return;
+    for (std::list<CZSealBody *>::iterator e = m_escortees.end(), i = m_escortees.begin(); i != e; ++i)
+        if (*i == s)
+            return;
 }
 
 /* (OVL2 0x5EDDD0; GetUnitByTeam inlined) */
