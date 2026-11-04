@@ -2281,6 +2281,8 @@ public:
     /* an item added with the box's font and scale: at the end, or (any other `where`) before the
      * highlighted row (SOCOM II's, 0x373F20, the name ours: UpdateUIVar and 0x372980 call it) */
     void AddItem(ListItem *item, int where);
+    /* slot 24 of its table 0x407670: the box's eleven commands after C2D's (0x373640) */
+    int GetZAnimCmdType(const char *name);
 
     unsigned char _0[0xa0];
     C2DFont *m_font;   // 0xa0
@@ -2323,6 +2325,46 @@ void CUIListBox::AddItem(ListItem *item, int where)
             ++it;
         m_items.insert(it, item);
     }
+}
+
+/* the box's commands (SOCOM 1's CUIListBox::GetZAnimCmdType: its eleven names after C2D's, which
+ * C2D's inline lookup counts and falls back to; RemoveAllItems takes 11 and GetContents 10, tested
+ * in that order) */
+/* C2D's own lookup, inline (ztwod.h's: the null name its count) */
+static inline int C2DCmdType(const char *name)
+{
+    return GetUICommandType(0);
+}
+
+int CUIListBox::GetZAnimCmdType(const char *name)
+{
+    if (!name)
+        return C2DCmdType(0) + 12;
+    if (!*name)
+        return 0;
+    if (!strcasecmp("Finish", name))
+        return C2DCmdType(0) + 1;
+    if (!strcasecmp("Highlight_on", name))
+        return C2DCmdType(0) + 2;
+    if (!strcasecmp("Highlight_off", name))
+        return C2DCmdType(0) + 3;
+    if (!strcasecmp("Has_Items", name))
+        return C2DCmdType(0) + 4;
+    if (!strcasecmp("GetItemCount", name))
+        return C2DCmdType(0) + 5;
+    if (!strcasecmp("GetFocusIndex", name))
+        return C2DCmdType(0) + 6;
+    if (!strcasecmp("SetFocusIndex", name))
+        return C2DCmdType(0) + 7;
+    if (!strcasecmp("AddItem", name))
+        return C2DCmdType(0) + 8;
+    if (!strcasecmp("RemoveItem", name))
+        return C2DCmdType(0) + 9;
+    if (!strcasecmp("RemoveAllItems", name))
+        return C2DCmdType(0) + 11;
+    if (!strcasecmp("GetContents", name))
+        return C2DCmdType(0) + 10;
+    return C2DCmdType(name);
 }
 
 namespace {
