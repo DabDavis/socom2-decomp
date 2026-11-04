@@ -7,7 +7,7 @@
  * IdleProcess, all but the constructor and FindBestRecognised LOCAL there), ScanSoft's speech
  * recogniser, prebuilt with ee-gcc 2.96 at -O2 -G0 -fno-strict-aliasing -funroll-loops (README
  * "The GCC front"). Names are SOCOM 1's. Only the functions written so far are here, in image
- * order: InitNBestDynProgProcess and PrunDynProg (round 19c; PrunDynProg closed in 20c), FindBestRecognised (round
+ * order: CollectDummyMemory (round 20c), InitNBestDynProgProcess and PrunDynProg (round 19c; PrunDynProg closed in 20c), FindBestRecognised (round
  * 17c), ExtendBacktraceStack, ScoreCompare (NAME@nbestdp in the map: the iso-word object has its
  * own). SOCOM II's rows hold SOCOM 1's in order: 0x4EB5E8 is CollectDummyMemory's position,
  * 0x4EB7D8 InitViterbi's, 0x4EBCB0 InitDynprogContext's, 0x4EC130 new. The backtrace stack is a list of three-word records from the
@@ -38,9 +38,43 @@ typedef struct BTSTACK {
     int entry;                          /* +8 */
 } BTSTACK;
 
+/* a backtrace record the tokens share: its count of users at +12 */
+typedef struct BTREC {
+    int pad0[3];
+    unsigned short users;               /* +12 */
+} BTREC;
+
+/* a token on the active lists at +112 (seven words) and +116 (five) */
+typedef struct NBTOKEN {
+    struct NBTOKEN *next;               /* +0 */
+    int pad4[2];
+    BTREC *bt;                          /* +12 */
+} NBTOKEN;
+
+/* a link of a word record's list (two words) */
+typedef struct NBLINK {
+    struct NBLINK *next;                /* +0 */
+} NBLINK;
+
+/* a word record on the list at +120 (five words): its backtrace and a list of links */
+typedef struct NBWORD {
+    struct NBWORD *next;                /* +0 */
+    int pad4;
+    BTREC *bt;                          /* +8 */
+    int pad12;
+    NBLINK *links;                      /* +16 */
+} NBWORD;
+
+/* a recognised word's record in a result (five words), chained at +16 */
+typedef struct NBRWORD {
+    int pad0[4];
+    struct NBRWORD *next;               /* +16 */
+} NBRWORD;
+
 /* a recognised word sequence, chained best first */
 typedef struct NBRESULT {
-    char pad0[16];
+    char pad0[12];
+    NBRWORD *words;                     /* +12 */
     struct NBRESULT *next;              /* +16 */
 } NBRESULT;
 
@@ -66,7 +100,10 @@ typedef struct NBESTDP {
     NBRESULT *results;                  /* +92 */
     char pad96[12];
     unsigned int frame;                 /* +108: the frames so far */
-    char pad112[60];
+    NBTOKEN *tok7;                      /* +112 */
+    NBTOKEN *tok5;                      /* +116 */
+    NBWORD *words;                      /* +120 */
+    char pad124[48];
     int f172;                           /* +172 */
     unsigned short f176;                /* +176 */
     char pad178[6];
@@ -95,8 +132,85 @@ extern unsigned int _tosGetProfileU32(void *b, unsigned short key, unsigned int 
 extern float _tosGetProfileFloat(void *b, unsigned short key, float def);
 
 extern unsigned int FindBestBacktraces(NBESTDP *d, NBTRACE ***bt);
+extern void CleanUpParBTProc(NBESTDP *d, BTREC *bt);
 extern NBRESULT *BacktraceWordsParBT(NBESTDP *d, NBTRACE *bt);
 extern void heap_Free(void *heap, void *p);
+
+/* a record given back to the scheduler's free list of its size, its first word the link. The
+ * list's address is a pointer of the push's own (`fl_`): loop.c hoists each as an invariant of its
+ * own -- the target's `addiu s3,s6,132` in each preheader, and in the results' two loops a second
+ * register copied from the first (`move t1,t0`) -- where the free list spelled
+ * as a field is addressed off tos each time (`lw v0,132(s4)`), and a pointer declared at the top
+ * of a loop's body takes another priority in global-alloc (the word records' list and their copy
+ * swap s3/s4) */
+#define FREE_REC(tos, k, p) { int **fl_ = &(tos)->fa.free[k]; *(int **)(p) = *fl_; *fl_ = (int *)(p); }
+
+/* the pass's memory given back: every token, word record and result to the scheduler's free lists
+ * by size (seven words, five, two), a backtrace losing its last user cleaned up. SOCOM 1's body is
+ * the middle two lists (0x118 bytes), with a scheduler pointer of its own (read again after the
+ * first list: PRE reloads it on that loop's exit, the target's s5); SOCOM II adds the seven-word
+ * tokens before them and the results after (0x1EC), through the pointer read at the top (s6).
+ * The record is copied before its backtrace's test (a saved register across the call) */
+
+static void CollectDummyMemory(NBESTDP *d)
+{
+    DPTOS *tos = d->tos;
+    NBTOKEN *t, *pt;
+    NBWORD *w, *pw;
+    NBRESULT *r, *pr;
+
+    for (t = d->tok7; t != 0; ) {
+        pt = t;
+        if (t->bt != 0 && --t->bt->users == 0)
+            CleanUpParBTProc(d, t->bt);
+        t = t->next;
+        FREE_REC(tos, 7, pt);
+    }
+    d->frame = 0;
+    d->tok7 = 0;
+    {
+        DPTOS *tos = d->tos;
+
+        for (t = d->tok5; t != 0; ) {
+            pt = t;
+            if (t->bt != 0 && --t->bt->users == 0)
+                CleanUpParBTProc(d, t->bt);
+            t = t->next;
+            FREE_REC(tos, 5, pt);
+        }
+        for (w = d->words; w != 0; ) {
+            NBLINK *l = w->links;
+
+            pw = w;
+            if (w->bt != 0 && --w->bt->users == 0)
+                CleanUpParBTProc(d, w->bt);
+            while (l != 0) {
+                NBLINK *pl = l;
+
+                l = l->next;
+                FREE_REC(tos, 2, pl);
+            }
+            w = w->next;
+            FREE_REC(tos, 5, pw);
+        }
+        d->tok5 = 0;
+        d->words = 0;
+    }
+    for (r = d->results; r != 0; ) {
+        NBRWORD *rw = r->words;
+
+        pr = r;
+        while (rw != 0) {
+            NBRWORD *prw = rw;
+
+            rw = rw->next;
+            FREE_REC(tos, 5, prw);
+        }
+        r = r->next;
+        FREE_REC(tos, 5, pr);
+    }
+    d->results = 0;
+}
 
 /* the block's profile: SOCOM 1's body, its fraction converted inline where SOCOM 1 called fptoui
  * (0.2f lands an ulp low through 2.96's parser, on the target's 0x3E4CCCCC); the inputs' frame

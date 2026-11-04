@@ -8930,7 +8930,7 @@
 0x004EB4A8 0x118 CalcNrNodes@isowdp  # OVL2 unaligned; s1:order -- the gcc lane, round 17c: SOCOM 1's iso-word object holds its LOCAL CalcNrNodes (0x124) after InitIsoWordTokenDpProcess, as here -- the same recursion over a node's 12-byte children down to a depth, unrolled by four; SOCOM 1 has a second LOCAL CalcNrNodes in another object (0x3456B0), so the name is qualified
 0x004EB5C0 0x8 IdleProcess@isowdp  # OVL2; s1:order -- the gcc lane, round 17c: SOCOM 1's iso-word object ends CalcNrNodes, IdleProcess (8 bytes, jr ra), ScoreCompare, as here; the N-best object's own IdleProcess keeps the bare name (0x4F0CB0)
 0x004EB5C8 0x20 ScoreCompare@isowdp  # OVL2 unaligned; s1:order (SOCOM 1's iso-word token DP object at 0x356970 ends with its LOCAL ScoreCompare, as this object ends at 0x4EB5E8; a qsort comparator of the tokens' int at +4: -1, 0, 1) -- the gcc lane, round 11c
-0x004EB5E8 0x1EC func_004EB5E8  # OVL2 unaligned
+0x004EB5E8 0x1EC CollectDummyMemory  # OVL2 unaligned; s1:order -- the gcc lane, round 20c: SOCOM 1's N-best object (0x358DF0) starts with its LOCAL CollectDummyMemory (0x118), as this object starts here; SOCOM 1's body is this row's middle -- the +116 tokens to the scheduler's five-word free list (+124), the +120 word records with their links to the two-word list (+112), each backtrace's user count decremented and cleaned up at zero (CleanUpParBTProc) -- with the seven-word tokens (+112) before and the results (+92) after
 0x004EB7D8 0x3C0 func_004EB7D8  # OVL2 unaligned
 0x004EBB98 0x114 InitNBestDynProgProcess  # OVL2 unaligned; s1:align
 0x004EBCB0 0x47C func_004EBCB0  # OVL2
