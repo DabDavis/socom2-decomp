@@ -5,9 +5,9 @@
  * constructor LOCAL there; SOCOM II moved the control function before the init),
  * ScanSoft's speech recogniser, prebuilt with ee-gcc 2.96 at -O2 -G0 -fno-strict-aliasing
  * -funroll-loops (README "The GCC front"). Names are SOCOM 1's; the block's fields are named by
- * their use. NormE_Processing (round 17c), PitchCombinerReset (OPEN) and ControlPitchCombiner
- * (round 22c: SOCOM 1's body, 0x5028F0 -- the constructor's control slot, moved before
- * InitPitchCombiner in SOCOM II) are written. */
+ * their use. NormE_Processing (round 17c), FlushPitchCombiner and PitchCombinerReset (OPEN) and
+ * ControlPitchCombiner (round 22c: SOCOM 1's body, 0x5028F0 -- the constructor's control slot,
+ * moved before InitPitchCombiner in SOCOM II) are written. */
 #include "tosblk.h"
 
 /* a ring of frames: its start, read and write cursors and end */
@@ -28,14 +28,14 @@ typedef struct PITCHCOMB {
     RING r96;                           /* +96 */
     RING r112;                          /* +112 */
     RING out;                           /* +128: the normalised energies' ring */
-    int f144;                           /* +144 */
+    float f144;                         /* +144: the last frame's difference r60 - r112 */
     void *f148;                         /* +148 */
     float *weights;                     /* +152: the window's weights */
     unsigned char f156;                 /* +156: r96's and r112's lead, doubled */
     unsigned char nwin;                 /* +157: the window's frames */
     unsigned char nring;                /* +158: the rings' length */
     unsigned char f159;
-    unsigned char f160;
+    unsigned char f160;                 /* +160: frames still to flush */
     unsigned char f161;
     unsigned char f162;
     unsigned char f163;
@@ -50,7 +50,9 @@ typedef struct PITCHCOMB {
     unsigned char f183;
     unsigned char f184;
     unsigned char f185;
-    char pad186[10];
+    char pad186[2];
+    float f188;                         /* +188: the output's fifth value when r80's frame is 1 */
+    float f192;                         /* +192: else */
 } PITCHCOMB;                            /* 196 bytes (ConstructPitchCombiner's) */
 
 /* (LogPitchProcessing 0x501A90 is not written) */
@@ -96,7 +98,101 @@ static void NormE_Processing(PITCHCOMB *p)
     }
 }
 
-/* (FlushPitchCombiner and ProcessPitchCombiner, 0x501F38-0x502658, are not written) */
+/* one frame of the flush: the lagging rings (r96, r112: when the frames left reach the lead, padded
+ * with their last frame) and the output (padded likewise, through a cursor of its own) caught up once,
+ * then a frame out of the rings' read cursors -- the r60 - r112 difference, r96's, the energy's and
+ * the output's frames scaled, r80's choice of +188/+192 -- and every read cursor stepped; 1 while
+ * frames are left, else the flag at +182 cleared and 0. SOCOM 1's body. Measured: each padding
+ * loop's cursor stepped in the store (`*p->r96.wr++ = *s`: the field's address taken once, as the
+ * target's `addiu t0,s0,104`), the count an int narrowed at the loop's test (the target's `andi
+ * 0xffff` after the wrap test's join), the frame written through `*q++` and its last value one
+ * store at the join (a conditional expression).
+ * OPEN (round 22c, 0x354 against 0x35C, 2 words short): the target -- SOCOM 1's copy too -- reads
+ * +156 again for the count where this compile reuses the lead test's read (and a loop head's
+ * alignment nop follows). With +156 volatile the size and every block are the target's and only
+ * registers differ (36 words: s and i swap a2/a3 in each padding block, every declaration order
+ * alike, build/scratch/gcc/fd/fl4.py) -- but the reset reads +156 once for two uses, so the field
+ * is left plain; the second read's cause is not known */
+static int FlushPitchCombiner(PITCHCOMB *p)
+{
+    float *q;
+
+    if (p->f160 != 0) {
+        if (p->f183 != 0) {
+            if (p->f160 >= (unsigned char)(p->f156 - 1)) {
+                float *s;
+                int len;
+                unsigned short i;
+
+                s = p->r96.wr - 1;
+                len = p->f156 >> 1;
+                if (s < p->r96.base)
+                    s = p->r96.end - 1;
+                for (i = 0; i < (unsigned short)len; i++) {
+                    *p->r96.wr++ = *s;
+                    if (p->r96.wr == p->r96.end)
+                        p->r96.wr = p->r96.base;
+                }
+                s = p->r112.wr - 1;
+                if (s < p->r112.base)
+                    s = p->r112.end - 1;
+                for (i = 0; i < (unsigned short)len; i++) {
+                    *p->r112.wr++ = *s;
+                    if (p->r112.wr == p->r112.end)
+                        p->r112.wr = p->r112.base;
+                }
+            }
+            p->f183 = 0;
+        }
+        if (p->f184 != 0) {
+            float *w = p->out.wr;
+            float *s = w - 1;
+            int len = p->nwin >> 1;
+            unsigned short i;
+
+            if (s < p->out.base)
+                s = p->out.end - 1;
+            for (i = 0; i < (unsigned short)len; i++) {
+                *w++ = *s;
+                if (w == p->out.end)
+                    w = p->out.base;
+            }
+            p->f184 = 0;
+        }
+        p->f144 = *p->r60.rd - *p->r112.rd;
+        q = qEnQueueOne(p->b.outputs->q);
+        *q++ = p->f144 * 32.0f;
+        *q++ = *p->r96.rd * 53.0f;
+        *q++ = *p->e.rd * 1.107;
+        *q++ = *p->out.rd * 0.832;
+        *q = *p->r80.rd == 1.0f ? p->f188 : p->f192;
+        p->r60.rd++;
+        if (p->r60.rd == p->r60.end)
+            p->r60.rd = p->r60.base;
+        p->r112.rd++;
+        if (p->r112.rd == p->r112.end)
+            p->r112.rd = p->r112.base;
+        p->r96.rd++;
+        if (p->r96.rd == p->r96.end)
+            p->r96.rd = p->r96.base;
+        p->e.rd++;
+        if (p->e.rd == p->e.end)
+            p->e.rd = p->e.base;
+        p->out.rd++;
+        if (p->out.rd == p->out.end)
+            p->out.rd = p->out.base;
+        p->r80.rd++;
+        if (p->r80.rd == p->r80.end)
+            p->r80.rd = p->r80.base;
+        p->f160--;
+        if (p->f160 != 0)
+            return 1;
+    }
+    p->f182 = 0;
+    return 0;
+}
+
+/* (ProcessPitchCombiner, 0x502298, is not written) */
 
 /* a ring emptied: its cursors at its start, its end n frames on, its frames zeroed. The length an
  * int narrowed into a short of its own for the loop (the target's `andi 0xffff` of the loaded byte,
