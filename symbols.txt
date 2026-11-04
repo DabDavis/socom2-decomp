@@ -2163,9 +2163,9 @@
 0x002306E0 0x18C Add__9CTCMCacheFPCcPFP10CZSealBodyi_iiPFP10CZSealBodyi_ii  # OVL1; ours by hand (the HUD lane, round 23: hud_tcmcmds.cpp -- an item (0x70 bytes: a 0x60 name, command, test and their arguments) made and kept unless held; the cache builder 0x2344E0 calls it for every item)
 0x00230870 0x7EC func_00230870  # OVL1
 0x00231060 0xE8 AlignRoot__4CTCMFP8CTCMNode  # OVL1; ours by hand (the HUD lane, round 37: hud_tcmcmds.cpp -- the root column laid out again at the left edge (0x230870 with s_tcmLeftX) unless its first shown item is there; the menu layout 0x231690's last call; the name ours)
-0x00231150 0x1C0 func_00231150  # OVL1
-0x00231310 0x22C func_00231310  # OVL1
-0x00231540 0x150 func_00231540  # OVL1
+0x00231150 0x1C0 SlideRoot__4CTCMFP8CTCMNodebf  # OVL1; ours by hand (the HUD lane, round 37: hud_tcmcmds.cpp -- the root column slid a frame from its first shown item's x, out to s_tcmLeftX at 1000 a second or in to s_tcmLeft at 1200, then laid out (0x230870); true once there or with no shown item; the menu layout 0x231690's; the name ours)
+0x00231310 0x22C PlaceCursor__4CTCMFP8CTCMNode  # OVL1; ours by hand (the HUD lane, round 37: hud_tcmcmds.cpp -- the cursor laid out on the selected item: the two bars coloured from s_tcmCursorColor and placed, the dimmer 0x7D0 stretched over zVid's screen size, the item's second text in the HUD's font and colour at the bar's corner, faded by 80 * 0xDA0; FadeCursor's last call; the name ours)
+0x00231540 0x150 FadeCursor__4CTCMFP8CTCMNodebf  # OVL1; ours by hand (the HUD lane, round 37: hud_tcmcmds.cpp -- the cursor's three bitmaps faded in or out by a frame at 450/600 a second, clamped to 0 or the cursor colour's alpha, true when done; then 0x231310; the menu layout 0x231690's; the name ours)
 0x00231690 0x380 func_00231690  # OVL1
 0x00231A10 0x14 __ct__10CTCMColumnFv  # OVL1; ours by hand (the HUD lane, round 23: hud_tcmcmds.cpp -- CTCMColumn's inline constructor (1.0f, 0), the unit's tail: __construct_array takes it for g_tcmColumns)
 0x00231A30 0x16C UpdateState__8CTCMNodeFb  # OVL1; ours by hand (the HUD lane, round 27: hud_tcmtree.cpp -- the node's TCM_STATE from its entry's test at +0x64 run between tcmSetCurNode/tcmClearCurNode, the children's when asked, then hidden when no child is shown; recursive, called out of line by itself and by 0x235440)

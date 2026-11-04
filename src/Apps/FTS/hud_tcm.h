@@ -174,6 +174,9 @@ public:
     CTCMNode *GetColumn(unsigned int depth);
     /* hud_tcmcmds.cpp's layout (the names ours) */
     void AlignRoot(CTCMNode *cur);
+    bool FadeCursor(CTCMNode *cur, bool in, float dt);
+    bool SlideRoot(CTCMNode *cur, bool out, float dt);
+    void PlaceCursor(CTCMNode *cur);
     /* the tree unit's (hud_tcmtree.cpp; the names ours) */
     void Tick(CPad *pad, float dt);
     void TalkTick(float dt);
@@ -196,7 +199,7 @@ public:
     C2DBitmapPoly m_7d0;   // 0x7d0
     C2DBitmapPoly m_9c0;   // 0x9c0
     C2DBitmapPoly m_bb0;   // 0xbb0
-    int m_da0;   // 0xda0
+    float m_da0;   // 0xda0 (a float: the cursor's text fades by it)
     float m_da4;   // 0xda4
     int m_da8;   // 0xda8
     int m_dac;   // 0xdac
