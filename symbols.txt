@@ -7828,7 +7828,7 @@
 0x003B10C0 0x94 SetGSReg__FsUl  # OVL1; s1:align
 0x003B1160 0x18 func_003B1160  # OVL1
 0x003B1180 0x64 func_003B1180  # OVL1
-0x003B11F0 0x8 func_003B11F0  # OVL1
+0x003B11F0 0x8 zVid_Uninit__Fv  # OVL1; by hand (the wep lane, round 19, on the integrator's lead from the game states' round 27: SOCOM 1's CGame::StopEngine calls zVid_Uninit right after DeletePad(1) and before zUtilUninit, SOCOM II's calls 0x3B11F0 at the same place; it sits just ahead of zVid_Init as SOCOM 1's zVid_Uninit 0x308660 sits ahead of zVid_Init 0x308690; empty in SOCOM II, SOCOM 1's deleted its CTTY); zvid_init.cpp
 0x003B1200 0x1A4 zVid_Init__F10_zvid_mode  # OVL1; s1:align
 0x003B13B0 0xE4 zvid_KickPacket__FPUlibb  # OVL1; s1:calls by hand (the wep lane: SOCOM 1's zvid_KickPacket -- sceDmaSendN on the GIF channel and sceGsSyncPath, or a FIFO packet referencing the GS packet -- with a fourth flag that copies the packet into the scratchpad behind its tag; CVideo::Clear calls it (vramcode, 10, true, false))
 0x003B14A0 0x2B4 zvid_SetVideoMode__F10_zvid_modeb  # OVL1; s1:order by hand (the wep lane, round 14: SOCOM 1's zvid_SetVideoMode -- zVid_Init calls it with (mode, false) after the thread start as SOCOM 1's after sceGsResetPath, and the swap 0x3AFF30 with the mode as SOCOM 1's zVid_Swap; the same three-way switch storing the private zvid + 0x248/0x24C/0x250 modes, the H-blank rate and the PCRTC offset, then sceGsResetGraph on request, sceGsSetDefDBuff, the store image)
@@ -8193,8 +8193,8 @@
 0x003C6900 0xC func_003C6900  # OVL1
 0x003C6910 0xC func_003C6910  # OVL1
 0x003C6920 0x60 __dt__16CWepCallbackListFv  # OVL1; s1~ __dt__7CFlyoutFv (align on the skeleton alone: it destroys a CWepCallbackList base (0, 0x3C6880) and deletes on the flag -- zwep_global.cpp's tail, not CFlyout, whose SOCOM 1 destructor deletes the node at 0; the weapons lane round 16); by hand (the wep lane, round 17: the destructor zwep_global.cpp's initialiser 0x404B70 registers for m_callbacks, as SOCOM 1's __sinit_zwep_global.cpp registers SOCOM 1's __dt__16CWepCallbackListFv; MW's implicit ~CWepCallbackList compiles to it, calling the base __list_imp's destructor 0x3C6880)
-0x003C6980 0xC func_003C6980  # OVL1
-0x003C6990 0x28 func_003C6990  # OVL1
+0x003C6980 0xC ClearNewExplosion__12CZProjectileFv  # OVL1; by hand (the wep lane, round 19: the flag at 0x4B51D8 cleared -- CHUD::ReInit_Init calls it; GetNewExplosion's pair; the name ours); zwep_projectile.cpp
+0x003C6990 0x28 GetNewExplosion__12CZProjectileFv  # OVL1; by hand (the wep lane, round 19: the last delayed detonation's point at 0x4B51C8, handed out once -- the flag at 0x4B51D8 tested and cleared; HandleDelayedDetonate stores both, CZSealBody::Tick shakes the camera by the player's distance to it; zwep_projectile.cpp's last functions with 0x3C6980, the unit opening at 0x3C6980 -- its initialiser 0x404BB0 builds the point; the name ours); zwep_projectile.cpp
 0x003C69C0 0x100 OnWeaponHit__12CZProjectileFPQ23zdb15IntersectStructP12CZProjectile  # OVL1; by hand (the wep lane: CProjectileNodeEx's OnWeaponHit (0x3D4B80) hands it the hit and the other projectile; the other's GetDamage(&m_frameendpos, 1) non-zero detonates this one unless WasDetonated or the network holds it -- new in SOCOM II, the name ours)
 0x003C6AC0 0x20 SetLastHitWasPerson__12CZProjectileFb  # OVL1; by hand (the wep lane: bit 4 of the word at 4 from a bool, SOCOM 1's m_lastHitWasPerson bit -- new in SOCOM II, the name ours)
 0x003C6AE0 0xEC SetPositionVel__12CZProjectileFPC6CPnt3DPC6CPnt3D  # OVL1; by hand (the wep lane: 0x3C6BD0 and SetVelW inlined -- new in SOCOM II, the name ours)

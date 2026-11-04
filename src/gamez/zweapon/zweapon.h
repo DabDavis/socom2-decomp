@@ -664,6 +664,13 @@ public:
     void SetLastHitWasPerson(bool on);
     void SetFlag9(bool on);
     bool GetFlag9();
+    /* the last delayed detonation's point, handed out once (SOCOM II's: HandleDelayedDetonate
+     * stores it, CZSealBody::Tick shakes the camera by the player's distance to it, CHUD::ReInit_Init
+     * forgets it; 0x3C6990 and 0x3C6980, the names ours) */
+    static CPnt3D *GetNewExplosion();
+    static void ClearNewExplosion();
+    static CPnt3D m_explosionPos;   // 0x4B51C8 (built from CPnt3D::zero by the initialiser)
+    static bool m_newExplosion;   // 0x4B51D8
     /* inline: the bool's `& 1` survives a constant argument, as SetVelW's and Init's stores show
      * (the names ours) */
     void SetDone(bool on) { m_done = on; }

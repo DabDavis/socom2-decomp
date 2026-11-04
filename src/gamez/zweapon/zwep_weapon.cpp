@@ -83,6 +83,14 @@ public:
     static std::vector<CZDecalSet *> m_decalsets;
 };   // 0xc bytes
 
+/* the unit's statics, in the initialiser's order (__sinit_zwep_weapon.cpp, 0x404C10: the weapon
+ * list, the placed charges and the tracers through their constructors, the decal sets' three words
+ * zeroed -- each destructor registered after it; SOCOM 1's builds the same but the charges) */
+CZWeaponList CZWeapon::m_listWeapons;
+CPlacedExplosiveList CZWeapon::m_placedExplosives;
+CFlyoutMachine CZWeapon::m_flyout_machine;
+std::vector<CZDecalSet *> CZDecalSet::m_decalsets;
+
 namespace zdb {
 class CNode;
 class CTexHandle;
