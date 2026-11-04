@@ -2403,10 +2403,7 @@ static inline void SetAckAmmo(AckUnion *ack, int i, bool on)
 }
 
 extern "C" {
-/* the rounds of a weapon's ammunition taken into the kit (OVL2 0x5BB000, the kit lane's range:
- * SOCOM 1's CZKit::PickupAmmo by HandlePickupAck's call) and an ammunition pickup walked with a
- * label (OVL2 0x541910, pickup_main.cpp's) */
-void func_005BB000(CZKit *kit, int weapon, int ammo, int *rounds);
+/* an ammunition pickup walked with a label (OVL2 0x541910, pickup_main.cpp's) */
 void func_00541910(CPickup *p, const char *label);
 }
 
@@ -2421,7 +2418,7 @@ static inline void TakeAmmoEntry(CZSealBody *seal, CPickup *p, int i)
     int n = 0;
 
     ammo->Get(i, &w, &a, &n);
-    func_005BB000(&seal->m_kit, w, a, &n);
+    seal->m_kit.PickupAmmo((CZFTSWeapon *)w, (CZAmmo *)a, &n);
     ammo->Clear(i);
     func_00541910(p, "pickup");
 }
@@ -2592,10 +2589,8 @@ void CZSealBody::CanPickupNetItem(unsigned short count, int id, unsigned short *
 }
 
 extern "C" {
-/* a weapon's model name (OVL1 0x3D2750, an out-of-line accessor: CZWeapon::m_modelname) and an
- * item's kind (OVL2 0x5B8820, the kit lane's range: 2 a pistol, the slot ITEM_PISTOL names) */
+/* a weapon's model name (OVL1 0x3D2750, an out-of-line accessor: CZWeapon::m_modelname) */
 char *func_003D2750(CZWeapon *w);
-SEAL_ITEM_BYTE func_005B8820(EQUIP_ITEM item);
 }
 
 extern "C" {
@@ -2702,7 +2697,7 @@ void CZSealBody::CreateNetWeaponPickup(unsigned short item, int netid, CPnt3D *p
     CPickup *p = CPickup::NetworkCreate(netid, (CPickup::PU_TYPE)8, node, w);
 
     if (p) {
-        p->m_secondary = func_005B8820(w->m_ID) == ITEM_PISTOL;
+        p->m_secondary = CZKit::GetItemFireClass(w->m_ID) == CZKit::FIRE_CLASS_PISTOL;
         if (data_0044D508)
             ((CZAnim *)data_0044D508)->ActivateArg(1, 3, p->m_node, 0);
     } else {
@@ -3233,10 +3228,8 @@ extern "C" void func_005A0BB0(CZSealBody *seal)
 
 /* the hits under a point handled (SOCOM 1's SealProcessAltitude; OVL2 0x5B5D40, not written yet) */
 extern "C" void func_005B5D40(CZSealBody *seal, zdb::DiIntersect *di, CPnt3D *pos, float f);
-/* zdb::CWorld::GetAltitudes (OVL1 0x31DEA0): SOCOM II's takes no height -- none of its five callers
- * sets $f12 -- where znode.h declares SOCOM 1's (p, alt); called by its address until the zdb lane
- * drops the float */
-extern "C" zdb::DiIntersect *func_0031DEA0(zdb::CWorld *world, const CPnt3D *p);
+/* (zdb::CWorld::GetAltitudes, OVL1 0x31DEA0: SOCOM II's takes no height -- none of its five callers
+ * sets $f12 -- znode.h's since the zdb lane dropped the float; called by name) */
 
 /* the inline setter of the altitude query's character flag (the stores `(b & 1) << 1`) */
 static inline void SetAltitudeCharacters(zdb::DiIntersect *di, bool on)
@@ -3265,7 +3258,7 @@ void CZSealBody::SealGetAltitude(CPnt3D *pos, float f)
     chars = di->m_AltitudeCharacters;
     if (m_altitude_characters)
         SetAltitudeCharacters(di, true);
-    hits = func_0031DEA0(world, pos);
+    hits = world->GetAltitudes(pos);
     SetAltitudeCharacters(di, chars);
     node->SetActive(active);
     func_005B5D40(this, hits, pos, f);
