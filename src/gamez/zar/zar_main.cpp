@@ -1,10 +1,74 @@
-/* zar_main.cpp -- zar::CZAR, the archive (OVL1 0x258000-...): its file, its stack of open keys
- * and what it fetches. The unit name is SOCOM 1's (the press beta's asserts name it). Defined in
- * reverse of their image order (-inline deferred). */
+/* zar_main.cpp -- zar::CZAR, the archive (OVL1 0x256FD0-0x259EDF, the README's zar units): its
+ * file, its stack of open keys and what it fetches. The unit name is SOCOM 1's (the press beta's
+ * asserts name it). Defined in reverse of their image order (-inline deferred). Written: the
+ * constructor, SetFilename, CloseKeepDir, Flush, the key stack's six (CloseKey .. GetSize) and
+ * ReadString. Not yet: ~CZAR 0x258F20 (it frees m_key_buffer, a vector<CKey> -- NewKey's 24-byte
+ * pushes -- through four out-of-line pieces at 0x2574C0-0x257570, whose element type include/vector
+ * must carry first), Close, the 0x258C40 close (SOCOM 1's Close(bool) without the flag), Open
+ * 0x258920, NewKey, WriteDirectory, the buffer writers below 0x257590 and the CKey vector's class
+ * insert 0x259250. */
 
 #include "zar.h"
+#include "../zutil/util_stable.h"
+
+/* the root key's name and a deleted key's (SOCOM 1's file statics, "ROOT" and "DELETED"; OVL1
+ * 0x3DD000 and 0x3DD008, 8 bytes apart as MW 3.0 lays such statics out) */
+static const char *DEFAULT_ZAR_NAME = "ROOT";
+static const char *DELETED_ZAR_NAME = "DELETED";
 
 namespace zar {
+
+/* the archive over a file, an own CFileIO when none is given (SOCOM 1's: the members zeroed, the
+ * tail cleared and versioned, a string table of 1024, the name set -- SetFilename inlined -- the
+ * data padded to 16, a root key named DEFAULT_ZAR_NAME). Byte-exact: the file is a ternary (both
+ * builds branch to the allocation and jump over an empty arm, which an `if (!io)` turns round) */
+CZAR::CZAR(const char *name, CIO *io)
+    : m_pFileAlloc(0), m_databuffer(0), m_databuffer_size(0), m_24(0), m_2c(0), m_root(0), m_stable(0),
+      m_filename(0), m_bCompress(0)
+{
+    memset(&m_tail, 0, sizeof(m_tail));
+    m_tail.version = 0x20002;
+    m_stable = new CSTable(0, 1024);
+    m_34 = 0;
+    m_data_start = 0;
+    SetFilename(name);
+    m_pFile = io ? io : (m_pFileAlloc = new CFileIO);
+    m_data_padded = 16;
+    m_root = new CKey(DEFAULT_ZAR_NAME);
+}
+
+bool CZAR::Flush()
+{
+    if (!IsOpen())
+        return false;
+    if (m_modified) {
+        WriteDirectory();
+        m_modified = 0;
+    }
+    return true;
+}
+
+/* the name copied in unless it is the one held: the old copy freed (never the default's own
+ * pointer), no name or the default's kept as the default's pointer (SOCOM 1's) */
+void CZAR::SetFilename(const char *name)
+{
+    if (m_filename && m_filename != DEFAULT_ZAR_NAME) {
+        if (m_filename == name)
+            return;
+        _free(m_filename, 0, 0);
+        m_filename = 0;
+    }
+    if (!name || name == DEFAULT_ZAR_NAME)
+        m_filename = (char *)DEFAULT_ZAR_NAME;
+    else
+        m_filename = _strdup(name, 0, 0);
+}
+
+/* (SOCOM 1's, the same code) */
+void CZAR::CloseKeepDir()
+{
+    m_pFile->Close();
+}
 
 /* a key pushed when there is one: SOCOM 1's (a list's push_front) tests twice too */
 inline void CKeyRing::push(CKey *key)
@@ -56,6 +120,19 @@ int CZAR::GetSize(const char *name)
     CKey *key = GetOpenKey()->FindKey(name);
 
     return key ? key->m_size : -1;
+}
+
+int CZAR::ReadString(char **str)
+{
+    int len = 0;
+    int n;
+
+    if ((n = m_pFile->fread(&len, 4)) == 4 && len > 0) {
+        *str = (char *)_malloc(len + 1, 0, 0);
+        memset(*str, 0, len + 1);
+        n += m_pFile->fread(*str, len);
+    }
+    return n;
 }
 
 }

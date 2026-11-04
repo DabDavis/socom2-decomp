@@ -18,8 +18,10 @@
  * a0 and reads the text pointer through it (`lw a0,8(a0)`) once include/string's destructor reads the
  * text as a `charT *` through the words (its comment).
  * OPEN, the tail's string pieces: the CSaferStr erase 0x383BC0 (15) and __copy 0x383D00 (the
- * copy here calls is_long() out of line), the model vector's erase 0x384BD0 (20) and copy
- * constructor 0x3854C0 (one saved register short: the strings' copy constructors' shape).
+ * copy here calls is_long() out of line) and the model vector's erase 0x384BD0 (20); the model's
+ * copy constructor 0x3854C0 is byte-exact since the MSL headers' round 18 (include/string's copy
+ * constructor reads the long size through a reference accessor: the second string's address of it
+ * kept in s3 across reserve).
  * OPEN, not written yet: the button family's constructors (CButtonSpec's 0x380620, 0xC8C bytes,
  * CRadioStripSpec's 0x37DA50, CUIListBoxSpec's 0x37EAB0), the list box's CreateDisplayObj 0x37E8B0
  * (CUIListBox's constructor, zui_2d.cpp's class), and the rest of the template tail

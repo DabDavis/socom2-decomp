@@ -16,9 +16,10 @@
 #include "../zsys/zsys.h"
 
 /* the node's atom count set (node_main.cpp's SOCOM 1 CNode::SetAtomCnt(int), not named yet) */
-/* MSL's abs (MAIN, 0x191428, named): called by its address, since MW expands a call spelled abs
- * through <stdlib.h> inline (its builtin) where addOrderedCellAtom's target calls it twice */
-extern "C" int func_00191428(int x);
+/* MSL's abs (MAIN 0x191428): addOrderedCellAtom's target calls it twice, where -O4's intrinsics
+ * expand a call spelled abs inline (MW's builtin, whatever header declares it) -- so that function
+ * is compiled under `#pragma inline_intrinsics off` (measured: the one pragma that keeps the call) */
+#include <stdlib.h>
 
 /* the cell box SetCellBoundary set and GetNextCell walks (SOCOM 1's file statics) */
 static int xMinCell;
@@ -115,6 +116,7 @@ void CGrid::buildOrderedCellAtomList(const CPnt3D *view)
 
 /* a cell of the walk's box added to the ordered list, with its ring (its distance in cells from
  * the view cell), once per walk and only inside the boundary unless forced (SOCOM 1's) */
+#pragma inline_intrinsics off
 void CGrid::addOrderedCellAtom(int x, int z, bool force)
 {
     if (x >= m_ix && x < m_ixb && z >= m_iz && z < m_izb) {
@@ -126,7 +128,7 @@ void CGrid::addOrderedCellAtom(int x, int z, bool force)
                 GRIDCELLATOM *g = &m_orderedCells.m_Atoms[m_orderedCells.m_gridCellAtomCnt];
 
                 g->cellAtom = atom;
-                g->ring = func_00191428(x - m_orderedCells.m_viewX) + func_00191428(z - m_orderedCells.m_viewZ);
+                g->ring = abs(x - m_orderedCells.m_viewX) + abs(z - m_orderedCells.m_viewZ);
                 g->x = x;
                 g->z = z;
                 m_orderedCells.m_gridCellAtomCnt++;
@@ -134,6 +136,7 @@ void CGrid::addOrderedCellAtom(int x, int z, bool force)
         }
     }
 }
+#pragma inline_intrinsics reset
 
 /* the cell box a pair of corners spans, its first cell given back (SOCOM 1's; the corners by
  * value, the box's cells kept in the unit's statics for GetNextCell).

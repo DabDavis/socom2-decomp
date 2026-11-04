@@ -1,10 +1,78 @@
 /* seal_sensors.cpp -- what an AI SEAL senses: its view cone, the visibility tests, the targets it
  * sees fall (SOCOM 1's unit, __sinit_seal_sensors.cpp: UpdateViewCone, SetViewFOV, ComputeVisibility,
  * RegisterCanSee ... NotifyTargetDown). OVL2 0x5C9400-0x5CDBCF, after seal_kit.cpp's CAiWepHint and
- * before seal_tasks.cpp. So far NotifyTargetDown. Defined in reverse of their image order (-inline
- * deferred). */
+ * before seal_tasks.cpp. So far NotifyTargetDown, a pickup's sighting and the request pool's end:
+ * CloseDiPool, OpenDiPool, CleanupDiPool and the free list's members (seal_dipool.h). Defined in
+ * reverse of their image order (-inline deferred). */
 
 #include "zseal.h"
+#include "seal_dipool.h"
+
+/* what an entity knows of another, or 0 (inline: the ternary inside it keeps the call's result in
+ * both arms, `b; move v1,v0` / `move v1,zero`, and pads no label -- written in the caller it pads
+ * both, 0x198; the name ours) */
+static inline CTarget *TargetOf(CEntity *e, CEntity *of)
+{
+    return e ? e->m_targets.FindTarget(of) : 0;
+}
+
+/* a dying SEAL's requests dropped (CDiPool::Release inlined one level: the list's pieces called out
+ * of line, as CloseDiPool's), then each of its targets' entry for it unhooked from its request
+ * (SOCOM 1's; OVL2 0x5CC8A0). CTarget's word at 0x28 is the request (zentity.h's m_unk28). The
+ * targets through a reference local keep the vector's address in s1; the request's value declared
+ * before its address gives the target's a2/a1 (a reference to the field, or the address first, swaps
+ * them) */
+void CleanupDiPool(CZSealBody *seal)
+{
+    _diPool.Release(seal);
+    CTargetList &targets = seal->m_targets;
+
+    for (CTargetList::iterator t = targets.begin(); t != targets.end(); t++) {
+        CTarget *found = TargetOf(t->m_ent, seal);
+
+        if (found) {
+            CDiPool::dir *d = (CDiPool::dir *)found->m_unk28;
+            CDiPool::dir **p = (CDiPool::dir **)&found->m_unk28;
+
+            if (d)
+                d->Drop();
+            *p = 0;
+        }
+    }
+}
+
+/* (SOCOM 1's, empty in both; OVL2 0x5CC890) */
+void CSealCtrlAi::OpenDiPool()
+{
+}
+
+void CDiPool::dirlist::Free(dir *d)
+{
+    d->m_state = 0;
+    d->m_2c = 0;
+    push_back(d);
+}
+
+/* The walking iterator the target keeps in the frame (copied in from begin()'s temporary through $f0,
+ * re-read and re-stored at each step) is one ASSIGNED from begin() -- the wrapper iterator's implicit
+ * assignment is a bitwise copy, which keeps both ends of it in memory -- with the end taken into a
+ * local first (held in s1). Not for_each: its by-value `first` is built by the iterator's user-declared
+ * copy constructor and scalarised (0x90); a plain walk `i != end()` is 0xA0 */
+void CDiPool::dirlist::DeleteAll()
+{
+    iterator i;
+    iterator e = end();
+
+    for (i = begin(); i != e; ++i)
+        delete *i;
+    clear();
+}
+
+/* the pool emptied at the mission's end (SOCOM 1's; OVL2 0x5CC5F0) */
+void CSealCtrlAi::CloseDiPool()
+{
+    _diPool.Close();
+}
 
 /* a weapon's item (zweapon.h's CZWeapon::m_ID at 0x7C, a byte enum: copied with lb, compared with
  * lbu -- zseal.h declares CZWeapon only by name) */
@@ -67,6 +135,75 @@ extern "C" bool func_005CB450(CSealCtrlAi *ai, CPickup *p, CZWeapon *w)
         pick->SetPickup(p, 1);
     }
     return go;
+}
+
+/* a round-robin share of the entities, a window [start, end) over their list that moves on by its
+ * size each frame, wrapping past the count into [0, wrap) (SOCOM II's; five records 0x20 apart at
+ * OVL2 bss 0x66B060-0x66B0F7, built by the OVL2 initialiser 0x6687E0 -- the SEALs' PreTick, ScanTick
+ * and the AI's per-frame work test an index against them; the names ours) */
+struct CAiSlice {
+    int m_start;   // 0x0
+    int m_end;   // 0x4
+    int m_size;   // 0x8
+    int m_total;   // 0xc
+    int m_wrap;   // 0x10
+    int m_count;   // 0x14: the frame's takers
+
+    /* the window moved on and resized to a new count (inline: ai_posttick's three). The zero arm of
+     * the wrap first (`m_total == 0 ? 0 : ...`, the target's `bnez total` to the divide) and the sum
+     * built in two steps from m_size (the target loads m_size first and keeps the sum in its
+     * register) */
+    void Next(int total, int size)
+    {
+        int start = m_size;
+
+        start += m_start;
+        if (start >= m_total)
+            start = m_total == 0 ? 0 : start % m_total;
+        m_start = start;
+        m_size = size;
+        m_total = total;
+        m_wrap = 0;
+        m_end = m_start + m_size;
+        if (size >= total)
+            m_wrap = size;
+        else if (m_end > total)
+            m_wrap = m_end - total;
+        else
+            m_wrap = 0;
+        m_count = 0;
+    }
+};
+
+extern CAiSlice ai_slice0;
+extern CAiSlice ai_slice1;
+extern CAiSlice ai_slice4;
+
+/* the "ai_posttick" task (CCoreState::Init adds it at 10.7, after target_post_tick): three slices
+ * moved on over the entity list, by the function's three static sizes (8-byte-spaced data in
+ * definition order: 6, 5, 1) (OVL2 0x5CCA30, new in SOCOM II -- SOCOM 1's ai_post_tick was the
+ * pool's post-tick, ai_target.cpp's 0x60B8F0 here; the name unknown).
+ * OPEN, 3 instructions, one in each slice: the target adds the window's start to the size it loaded
+ * first as `addu a1,v1,a1` (the start's load first among the operands, the sum in the size's
+ * register), MW writes `addu a1,a1,v1` -- the two-step sum gives every register right but puts the
+ * variable first in the add whichever way it is written (`start += m_start`, `start = m_start +
+ * start`, `start = start + m_start`, a cast, a const accessor returning it); `m_start + m_size`
+ * in one expression (in either order, through named copies of either field, a declaration split
+ * from its assignment, an accessor, a wrap helper taking the sum and the count by value, a
+ * named count before or after, the parameters swapped) loads the start first and trades the sum's
+ * and the count's a0/a1 (27); `m_start += m_size` stores early (0x2C8); the wrap's arms the other
+ * way round, `m_total ? x % m_total : 0` or an if/else, 0x2B0 */
+extern "C" bool func_005CCA30(float dT, void *data)
+{
+    static int size0 = 6;
+    static int size4 = 5;
+    static int size1 = 1;
+    int n = CEntity::m_list.size();
+
+    ai_slice0.Next(n, size0);
+    ai_slice1.Next(n, size1);
+    ai_slice4.Next(n, size4);
+    return false;
 }
 
 /* a target seen to fall: the AI calls it, "tango down", at full chance (OVL2 0x5C9B10; SOCOM 1's

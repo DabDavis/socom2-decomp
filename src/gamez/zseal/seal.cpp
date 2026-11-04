@@ -16,9 +16,6 @@
 class CValve;
 
 extern "C" {
-void func_005C7840(CZKit *kit);   /* CZKit::PostSetupItems (SOCOM 1's OnMissionStart calls it) */
-void func_003CAEE0(CZProjectile *proj, const CPnt3D *vel);   /* CZProjectile::SetVelW (SOCOM 1's
-                                                                 _rethrow_grenade calls it) */
 void func_00525200(void *path);   /* (a CAiPath reset: its member at 0x98's, tail-called) */
 void func_00525210(void *path, unsigned int length);   /* CAiPath::SetSnakeLength (SOCOM 1's
                                                           SetSnakePathUpdate calls it) */
@@ -405,7 +402,7 @@ static void _rethrow_grenade(CValve *valve, void *data)
     vel.y = up;
     vel.x *= scale;
     vel.z *= scale;
-    func_003CAEE0(grenade, &vel);
+    grenade->SetVelW(&vel);
 }
 
 /* the AI's aiming helper, CAi, is ai.h's */
@@ -438,7 +435,7 @@ CZAnim *CZSealBody::PickupObject(CPickup *pickup)
                 CValve *valve = CValve::Create(0, (VALVE_TYPE)2);
 
                 func_00351960(valve, 1, _rethrow_grenade, pickup);
-                func_003CAEE0((CZProjectile *)pickup->m_data, 0);
+                ((CZProjectile *)pickup->m_data)->SetVelW(0);
                 CMatrix m;
                 const CMatrix *from = &m_node->m_matrix;
 
@@ -558,7 +555,7 @@ void CZSealBody::ResetAltitude(float y)
 /* the mission's start: the kit's items set up, then the controller's (OVL2 0x553E60) */
 void CZSealBody::OnMissionStart()
 {
-    func_005C7840(&m_kit);
+    m_kit.PostSetupItems();
     ((CSealCtrl *)m_control)->OnMissionStart();
 }
 
@@ -568,13 +565,6 @@ void CZSealBody::OnMissionEnd()
 {
     CPickup::DestroyNetPickups(m_id);
     ((CSealCtrl *)m_control)->OnMissionEnd();
-}
-
-extern "C" {
-/* CBody::AddBodyPart (OVL1 0x28EBE0), which returns the part it made -- NewBodyPart's, in v0: zbody.h
- * (the engine core's) declares it void, so it is called by its mangled name here, the body by reference
- * so no null test is made */
-CZBodyPart *AddBodyPart__5CBodyFPQ23zdb5CNodeP10CZBodyPart(CBody &body, zdb::CNode *node, CZBodyPart *parent);
 }
 
 /* a weapon's node made, kept for freeing and named, parented by the item: the rifle in hand to the
@@ -607,7 +597,9 @@ bool CZSealBody::AddWeapon(SEAL_ITEM_BYTE item)
         node->SetName("grenade");
         break;
     }
-    return (m_item_gear[item].m_part = AddBodyPart__5CBodyFPQ23zdb5CNodeP10CZBodyPart(*this, node, parent)) != 0;
+    /* (CBody::AddBodyPart, OVL1 0x28EBE0, returns the part it made: zbody.h declares it so since the
+     * engine core's round 3) */
+    return (m_item_gear[item].m_part = AddBodyPart(node, parent)) != 0;
 }
 
 /* the root body part (OVL2 0x553DB0; SOCOM 1's, CBody's slot 0x10) */

@@ -142,6 +142,9 @@ public:
     bool SetItemAmmo(unsigned int index, void *ammo, int rounds, int count);
     /* the item at an index let go with its ammunition (SOCOM 1's; OVL2 0x5B9BB0, the kit lane's) */
     void RemoveItemAndAmmo(int index);
+    /* the items' set-up finished (SOCOM 1's; OVL2 0x5C7840, the kit lane's -- the SEAL's OnMissionStart
+     * calls it) */
+    void PostSetupItems();
     /* whether a scope or the binoculars are up (SOCOM 1's; OVL2 0x5B9990, 0x5B90F0 -- kit.h's) */
     bool IsUsingScope();
     bool IsUsingBinocs();
@@ -164,6 +167,8 @@ class CSealCtrlAi;
  * ours) */
 struct AI_SOUND_PRIORITY {
     unsigned int m_level : 8;
+    /* (its bit 0, the word's 8: the anim dropped once the alertness's band passes the level -- the
+     * target tests it on the word, `andi 0x100`: 0x5712F0) */
     unsigned int m_rest : 24;
 };
 
@@ -217,6 +222,10 @@ public:
     class CAiMap *GetMapByIndex(unsigned int i) const;
     /* a location's cell (ai_maps.h's, OVL2 0x52D6A0) */
     CAiCell *GetCell(const CAiMapLoc &loc);
+    /* a path planned from a cell through a list of cells, and a cell's region (ai_maps.h's, OVL2
+     * 0x52C5C0, 0x52D950) */
+    bool RegisterPathPlan(const CAiMapLoc &start, const CAiMapLoc *locs, int count, CAiPath *path);
+    CAiMap::region *GetRegion(const CAiMapLoc &loc);
     /* the cells between two points walked over the maps, each handed to a callback (ai_maps.h's,
      * OVL2 0x5352D0) */
     bool WalkLine(const CPnt3D *from, const CPnt3D *to, bool (*f)(const MAP_LINEWALK_STRUCT &s, void *data),
@@ -646,13 +655,13 @@ enum AI_ROUTE { ROUTE_NONE = 0, ROUTE_1 = 1, ROUTE_2 = 2 };
 
 /* the destructors the AI's data runs by hand (its members' own, out of line: a route's (OVL2
  * 0x573F20, the implicit destructor of a CAiPath plus a byte), CAiEvent's (0x573F80) and
- * CAiEventQ's (0x573FF0) -- seal_ai.cpp's copies, after ~CSealCtrlAi -- and CAiPath's (0x5281B0,
- * which ai.h does not declare: its implicit one would be inlined) */
+ * CAiEventQ's (0x573FF0) -- seal_ai.cpp's copies, after ~CSealCtrlAi -- by their mangled names, and
+ * CAiPath's (0x5281B0, ai_states.h's __dt__7CAiPathFv: ai.h does not declare it, its implicit one
+ * would be inlined) */
 extern "C" {
-void *func_00573FF0(void *queue, int flags);
-void *func_00573F80(void *event, int flags);
+void *__dt__9CAiEventQFv(void *queue, int flags);
+void *__dt__8CAiEventFv(void *event, int flags);
 void *func_00573F20(void *route, int flags);
-void *func_005281B0(void *path, int flags);
 }
 
 /* a CAiPath's bytes (ai.h's class, 0xA8: built and destroyed by hand here, as ai.h does not
@@ -688,7 +697,9 @@ public:
     void Reset();
 
     float m_time;   // 0x0
-    unsigned int m_4;   // 0x4
+    /* (a float: the alert records' amount -- 0x5582C0's inlined Reset stores the 0.0 its distance
+     * holds in $f2) */
+    float m_4;   // 0x4
     unsigned char m_8;   // 0x8
     unsigned char _9[0x1c - 0x9];
     unsigned int m_1c;   // 0x1c
@@ -714,10 +725,10 @@ public:
      * (CAiPath's is undeclared), the state stack last as a real member */
     ~SEAL_AI_PARAMS()
     {
-        func_00573FF0(m_eventQueue, -1);
-        func_00573F80(m_event, -1);
+        __dt__9CAiEventQFv(m_eventQueue, -1);
+        __dt__8CAiEventFv(m_event, -1);
         func_00573F20(&m_route, -1);
-        func_005281B0(&m_path, -1);
+        __dt__7CAiPathFv(&m_path, -1);
     }
 
     unsigned char _250[0x254 - 0x250];
@@ -750,8 +761,11 @@ public:
     unsigned char _26d[0x26e - 0x26d];
     unsigned char m_26e;   // 0x26e: a mode byte (2 refuses SetSprayTimer; the name ours)
     unsigned char _26f[0x270 - 0x26f];
-    int m_270;   // 0x270: a count 0x56D450 sets with the cell it finds (the names ours)
-    void *m_274;   // 0x274: that cell
+    /* the teams whose presence in a region wakes the SEAL, and the region (0x56D450 sets them -- 14
+     * when none is given -- and 0x56D2B0 asks 0x56D530 of them; the mask unsigned: the target loads
+     * it as the call's first operand; the names ours) */
+    unsigned int m_270;   // 0x270
+    void *m_274;   // 0x274
     SEAL_STANCE m_stance;   // 0x278 (SOCOM 1's 0x285)
     SEAL_STANCE m_stance_asked;   // 0x279: the stance SetStance was last asked for (the names ours)
     float m_stance_delay;   // 0x27c (SOCOM 1's 0x288)
@@ -894,6 +908,8 @@ public:
      * event at 0x628; OVL2 0x5FAD00, the kit lane's seal_aievent.cpp) */
     CAiEvent::EVENT SetAiEvent(CAiEvent::EVENT e, float duration, const CPnt3D *pos);
 
+    /* the scripted group the AI is in, or none (ai_group.cpp's, OVL2 0x60E7A0) */
+    class CAiGroup *GetGroup();
     /* the AI's mode set (SOCOM 1's; OVL2 0x56CBF0) and its states dropped (SOCOM 1's
      * ClearAiState, the AI-states lane's 0x5F5F20) */
     void SetAiMode(AI_MODE mode);
@@ -993,6 +1009,17 @@ public:
      * in both builds) */
     static float aiAccuracyAngle;
     static void SetAiAccuracyAngle(float angle);
+    /* the visibility tests' request pool closed and opened (SOCOM 1's statics; OVL2 0x5CC5F0,
+     * 0x5CC890 -- ReleaseDatabaseHandles 0x574BD0 and AcquireDatabaseHandles 0x574C30 call them;
+     * seal_sensors.cpp, the kit lane's) */
+    static void CloseDiPool();
+    static void OpenDiPool();
+    /* the AI's handles let go and taken (SOCOM 1's statics: the two loops' sounds, the request pool
+     * -- SOCOM II's take the callouts' sounds, the difficulty, the squad's radio valves, the tuning,
+     * the frame slices, the idle anims' kinds and the groups' ids besides; OVL2 0x574BD0, 0x574C30,
+     * seal_ai.cpp) */
+    static void ReleaseDatabaseHandles();
+    static void AcquireDatabaseHandles();
     /* a spray of fire timed, when the item in hand fires fully automatic (SOCOM 1's; OVL2 0x565AE0) */
     void SetSprayTimer(float t);
     /* the aim turned off its line by the target's error (slot +0x74, SOCOM 1's; OVL2 0x5C9250, the
@@ -1316,6 +1343,10 @@ public:
      * and footfall anims, the sounds (SOCOM 1's statics; OVL2 0x5A49F0, 0x5A4CE0 -- which CMission::
      * Open calls --, and the decal textures 0x5A4CF0) */
     static void ReInitDatabaseHandles();
+    /* ReInit's handles let go: the drop anims' words cleared, the footfall anims' buffer freed, the
+     * weapon-event callback removed (SOCOM 1's static; OVL2 0x5A3B50 -- UninitDatabaseHandles inlines
+     * it, CMission::ReOpen_Unload1 calls it) */
+    static void Uninit_ReInitDatabaseHandles();
     static void InitDatabaseHandles();
     static void InitDecalHandles();
     /* a weapon's event handed to every SEAL's controller (SOCOM 1's static callback; OVL2 0x5A4F80) */
@@ -1938,5 +1969,9 @@ public:
 };   // 0x1bc bytes
 
 extern CharacterDynamics theCharacterDynamics;
+
+/* a dying SEAL's visibility requests dropped and its targets' entries for it unhooked (SOCOM 1's
+ * free function; OVL2 0x5CC8A0 -- CSealCtrlAi::OnDeath calls it; seal_sensors.cpp, the kit lane's) */
+void CleanupDiPool(CZSealBody *seal);
 
 #endif
