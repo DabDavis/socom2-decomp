@@ -510,25 +510,28 @@ void __vector_pod<T, Allocator>::resize(size_t sz, const T &c)
 /* n copies of x at position: in place when the capacity holds them (x itself moved with the tail
  * when it lies there), else into a buffer grown by doubling from the old capacity (SOCOM 1's
  * <vector> 486-530, one block: newcap, newsize, olddata, pos, xp, t1 -- MW's DWARF lists a block's
- * locals in REVERSE declaration order: flush's `failed` before its sentry `ok`).
- * OPEN (MAIN's copy 0x18B810), 0x488 like the target's, 20 instructions off (round 6: was 0x470): the
- * throw (length_error through the counted string), both branches and the 8x copies are the target's,
- * and every saved register since round 6 -- the six locals declared at the top in SOCOM 1's order
- * (newsize s0, xp s4, olddata s5, pos s6) and the in-place test through capacity() (the accessor makes
- * the growth branch re-read capacity_, which the plain field had kept in a saved register); `e - (t1 -
- * n) <= xp` branches where `!(xp < ...)` made a bool, and the doubling loop's if/else gives the target's
- * padding. What differs: the loop's max_size() constant is in v1 (the target's v0, its exit test in at)
- * and the second copy loads data_ before size_ (the target size_ first) -- build/scratch/rt/pi1.py.
- * Written so that iostream.cpp emits ~logic_error, ~length_error and what(). */
+ * locals in REVERSE declaration order: flush's `failed` before its sentry `ok`). MAIN's copy 0x18B810
+ * byte-exact (round 7; rounds 5-6 had it 20 instructions off): the six locals declared at the top --
+ * SOCOM 1's order but olddata last, which the class inserts below need (newsize, newcap and olddata in
+ * that order; 360 of the 720 orders give the pod's registers, the 120 with that order among them all
+ * three inserts': build/scratch/rt/r7/perm.py) -- and the in-place test through capacity() (round 6: every saved register; the
+ * accessor makes the growth branch re-read capacity_), `e - (t1 - n) <= xp` (branches, where `!(xp <
+ * ...)` made a bool), the doubling loop's if/else (the target's padding) under `while (newsize > newcap)`
+ * -- written `newcap < newsize`, MW computed the loop's bottom test into v0 and its hoisted max_size()
+ * into v1, where the target branches on at and keeps the constant in v0 -- and the old end taken into
+ * a local ahead of the second copy (the target reads size_ before the new data_; the end written in the
+ * argument list is evaluated after the third argument) -- build/scratch/rt/r7/pi1.py, pi2.py. The fills
+ * step their pointer in the loop's increment (the class insert below needs it; the pod's code is the same
+ * either way). Written so that iostream.cpp emits ~logic_error, ~length_error and what(). */
 template <class T, class Allocator>
 void __vector_pod<T, Allocator>::insert(T *position, size_t n, const T &x)
 {
     size_t t1;
     const T *xp;
     size_t pos;
-    T *olddata;
     size_t newsize;
     size_t newcap;
+    T *olddata;
     if (n == 0)
         return;
     if (n > max_size() || size_ > max_size() - n)
@@ -543,14 +546,14 @@ void __vector_pod<T, Allocator>::insert(T *position, size_t n, const T &x)
         if (t1 != 0)
             for (T *i = e, *j = e + n; position < i;)
                 *--j = *--i;
-        for (size_t k = n; k != 0; --k)
-            *position++ = *xp;
+        for (size_t k = n; k != 0; --k, ++position)
+            *position = *xp;
         size_ += n;
     } else {
         olddata = data_;
         pos = (size_t)(position - olddata);
         newcap = capacity_ ? capacity_ : 1;
-        while (newcap < newsize) {
+        while (newsize > newcap) {
             if (newcap < max_size() / 2)
                 newcap *= 2;
             else
@@ -558,11 +561,12 @@ void __vector_pod<T, Allocator>::insert(T *position, size_t n, const T &x)
         }
         data_ = (T *)operator new(newcap * sizeof(T));
         T *p = data_ + pos;
-        for (size_t k = n; k != 0; --k)
-            *p++ = x;
+        for (size_t k = n; k != 0; --k, ++p)
+            *p = x;
         if (olddata) {
             copy(olddata, olddata + pos, data_);
-            copy(olddata + pos, olddata + size_, data_ + pos + n);
+            T *oldend = olddata + size_;
+            copy(olddata + pos, oldend, data_ + pos + n);
             operator delete(olddata);
         }
         size_ = newsize;
@@ -640,12 +644,68 @@ public:
     iterator end() { return iterator(this->data_ + this->size_); }
     const_iterator begin() const { return const_iterator(this->data_); }
     const_iterator end() const { return const_iterator(this->data_ + this->size_); }
-    /* NOT WRITTEN: the class insert (0x18BE10 for the mask map's 12-byte entries, 0x6F8; 0x18C510 for
-     * the case maps' 16-byte ones, 0x658) -- the pod insert's shape over a class element (memberwise
-     * copies, the wchar_t fields lhu/sh, the mask's lh/sh), the same length_error throw */
+    size_t capacity() const { return this->capacity_; }
+    static size_t max_size() { return size_t(-1) / sizeof(T); }
     void insert(T *position, size_t n, const T &x);
     void insert(iterator position, const T &x) { insert(position.m_p, 1, x); }
 };
+
+/* the class insert (0x18BE10 over the mask map's 12-byte entries, 0x18C510 over the case maps' 16-byte
+ * ones, both byte-exact, round 7): the pod insert's statements over a class element -- an entry assigned
+ * member by member (the wchar_t ends lhu/sh, the mask's halves lh/sh), max_size() the largest count of
+ * them. The fills step the pointer in the loop's increment: `*position++ = *xp` over a class element
+ * copies the old pointer into a temporary ahead of the member stores (the target stores through the
+ * pointer and steps it in the branch's delay slot) */
+template <class T, class Allocator>
+void __vector_imp<T, Allocator, false>::insert(T *position, size_t n, const T &x)
+{
+    size_t t1;
+    const T *xp;
+    size_t pos;
+    size_t newsize;
+    size_t newcap;
+    T *olddata;
+    if (n == 0)
+        return;
+    if (n > max_size() || this->size_ > max_size() - n)
+        throw length_error("vector::insert length error");
+    newsize = this->size_ + n;
+    if (newsize <= capacity()) {
+        T *e = this->data_ + this->size_;
+        t1 = (size_t)(e - position);
+        xp = &x;
+        if (e - (t1 - n) <= xp && xp < e)
+            xp += n;
+        if (t1 != 0)
+            for (T *i = e, *j = e + n; position < i;)
+                *--j = *--i;
+        for (size_t k = n; k != 0; --k, ++position)
+            *position = *xp;
+        this->size_ += n;
+    } else {
+        olddata = this->data_;
+        pos = (size_t)(position - olddata);
+        newcap = this->capacity_ ? this->capacity_ : 1;
+        while (newsize > newcap) {
+            if (newcap < max_size() / 2)
+                newcap *= 2;
+            else
+                newcap = max_size();
+        }
+        this->data_ = (T *)operator new(newcap * sizeof(T));
+        T *p = this->data_ + pos;
+        for (size_t k = n; k != 0; --k, ++p)
+            *p = x;
+        if (olddata) {
+            copy(olddata, olddata + pos, this->data_);
+            T *oldend = olddata + this->size_;
+            copy(olddata + pos, oldend, this->data_ + pos + n);
+            operator delete(olddata);
+        }
+        this->size_ = newsize;
+        this->capacity_ = newcap;
+    }
+}
 
 template <class T> struct __is_pointer { enum { value = false }; };
 template <class T> struct __is_pointer<T *> { enum { value = true }; };

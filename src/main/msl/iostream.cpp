@@ -9,8 +9,9 @@
  * basic_filebuf's bodies -- SOCOM 1's DWARF names the members and their locals (fstream lines
  * 203-863); round 6: overflow and seekoff, and the generation order (the inline ~basic_filebuf,
  * _RefCountedPtr's copy constructor, unshift and write2 defined after the instantiations, min<int>
- * instantiated), which closed every filebuf row; the unit's __sinit (the wide ids' guards). Open:
- * the pod vector's insert copy (msl.h) and the class vector inserts (declared, not written).
+ * instantiated), which closed every filebuf row; the unit's __sinit (the wide ids' guards); round 7:
+ * the pod vector's insert copy 0x18B810 and the two class vector inserts 0x18BE10/0x18C510, the same
+ * statements over the range maps' entries (msl.h) -- every row of the unit byte-exact.
  *
  * THE COMPILER (README "MAIN's Metrowerks runtime"): 3.0b38/3.0b50/3.0b52 -- showmanyc<wchar_t>
  * and setbuf<wchar_t> need a 4-byte wchar_t (3.0b22-020926 and later); ctype<wchar_t>::do_widen's
