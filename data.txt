@@ -639,6 +639,7 @@
 0x003FAB68 0x8 __RTTI__19CStickDeadzoneTuner  # RTTI of CStickDeadzoneTuner: found by its RTTI's name
 0x003FAB98 0x8 __RTTI__12CDialogTuner  # RTTI of CDialogTuner: found by its RTTI's name
 0x003FABA0 0x4 @LOCAL@GetSkbKey__8CSkbGridCFii@s_nullKey  # OVL1 data; zui_skb.cpp's: CSkbGrid::GetSkbKey's function-local null key (a CSkbKey: its row byte zeroed with sb, its code with sh at +2, under the guard 0x49ECB0) -- the UI lane round 14: 15 references in 4 functions (GetCurKeyProps 0x38B2A0, 0x38C130, GetCurKey 0x38CB90, SkbHandleKey 0x38DFE0)
+0x003FABB8 0x4 s_chatRecipientValve  # OVL1 data; zui_skb.cpp's, ours: a pointer to "ChatRecipient" (the string at 0x3FABA8 just before it), the valve's name -- 2 references in 2 functions (ShowElements 0x38B580 reads the valve, 0x38BFE0 creates it with a value) -- the UI lane round 19
 0x003FAC60 0x38 s_actionKeyNames  # OVL1 data; zui_skb.cpp's static (name ours): the fourteen action keys' names a keyboard's rdr gives (CapsLock, Recip, BackSpace ... MsgPlayer, Action2), each key row 1 with its index for its code; 1 reference in 1 function (StrToSkbKey) -- the UI lane round 15
 0x003FACC0 0x14 s_charKeyNames  # OVL1 data; zui_skb.cpp's static (name ours): the five named characters (Quote1, Quote2, ParenL, ParenR, Space); 1 reference in 1 function (StrToSkbKey) -- the UI lane round 15
 0x003FACE0 0x4 s_charKeyChars  # OVL1 data; zui_skb.cpp's static (name ours): a pointer to their characters "'\"() " (0x3FACD8), read through the pointer; 1 reference in 1 function (StrToSkbKey) -- the UI lane round 15

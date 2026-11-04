@@ -226,6 +226,11 @@ public:
 class CBmpWithNode : public CPlainBmp {
 public:
     CBmpWithNode() : m_node(0) {}
+    /* its node shown or hidden, if it has one (ours: zui_skb.cpp defines it, beside znode.h's
+     * CNode) */
+    inline void SetShown(bool on);
+    /* (ours: a test through it leaves the node to be read again, as SkbTogglePair's) */
+    bool HasNode() const { return m_node != 0; }
 
     zdb::CNode *m_node;   // 0xa0
 } __attribute__((aligned(16)));   // 0xb0 bytes
@@ -416,6 +421,13 @@ public:
     void SwitchTo(CSoftKeyboard *to);
     void SwitchToNamed(int i);
     void ShowSkb(const char *text);
+    /* its elements shown or hidden (0x38B580; ours) */
+    void ShowElements(bool on);
+    /* the background bitmap: the chat recipient's or the plain one (ours) */
+    CBmpWithNode &Background(int chat) { return chat ? m_270 : m_1c0; }
+    /* the caption bitmap the display's flag picks (ours: its unsigned char narrows the flag at
+     * the call, `andi 0xff`) */
+    CBmpWithNode &Caption(unsigned char second) { return second ? m_320 : m_3d0; }
     void ShutdownBegin(CGameMenu *menu);
     void OnEnterKey(CGameMenu *menu);
 

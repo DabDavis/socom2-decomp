@@ -195,11 +195,9 @@ int SkbTypedTextNotBlank();
 int SkbEnterKana(CSoftKeyboard *skb);
 void SkbTakeText(CGameMenu *menu);
 
-/* (the next unit's node lists' layout from a grid size, 0x395140; this unit's elements shown or
- * hidden, 0x38B580) */
+/* (the next unit's node lists' layout from a grid size, 0x395140) */
 extern "C" {
 void func_00395140(int w, int h, CSkbTexLists *lists, CSoftKeyboard *skb);
-void func_0038B580(CSoftKeyboard *skb, int which);
 }
 
 /* (this unit's out-of-line copies of SOCOM 1's CIntPair members and the look's start position,
@@ -246,7 +244,7 @@ void CSoftKeyboard::ShowSkb(const char *text)
         func_00395540(this, &m_fonts.m_fonts[1]);
         m_node->SetActive(true);
         g_pActiveSkb = this;
-        func_0038B580(this, 0);
+        ShowElements(0);
         func_0036A210(0.5f);
         g_bIgnoreUnchanged = m_ignoreUnchangedString;
     }
@@ -296,6 +294,7 @@ enum VALVE_STATE {
 class CValve {
 public:
     static CValve *Create(const char *name, VALVE_TYPE type);
+    static CValve *GetByName(const char *name);
     void MakeCallbacks(VALVE_STATE state);
 
     char *m_name;   // 0x0
@@ -313,6 +312,56 @@ static inline void SetValveValue(CValve *valve, bool value)
     valve->m_value = value;
     if (state != VALVE_SAME)
         valve->MakeCallbacks(state);
+}
+
+/* the chat recipient's valve, by name (ours: a pointer in data, 0x3FABB8 -- 0x38BFE0 sets the
+ * valve, ShowElements reads it) */
+static const char *s_chatRecipientValve = "ChatRecipient";
+
+/* the display unit's: which of the two caption bitmaps shows (0x397840: a byte it keeps at
+ * 0x3E04C0; passed to Caption's unsigned char, it is narrowed at the call) */
+extern "C" unsigned char func_00397840();
+/* a key's node shown or hidden (the next unit's CSkbKeyProps member, 0x3941D0) */
+extern "C" void func_003941D0(CSkbKeyProps *props, bool on);
+
+/* a bitmap's node shown or hidden, if it has one (zui_skb.h's CBmpWithNode) */
+inline void CBmpWithNode::SetShown(bool on)
+{
+    if (m_node)
+        m_node->SetActive(on);
+}
+
+/* the keyboard's elements shown or hidden: the background -- the chat recipient's while its valve
+ * is on -- and one of the two caption bitmaps by the display's flag; hidden, the two the tick
+ * shows for a USB keyboard as well; then every key's node (0x38B580; the name ours) */
+void CSoftKeyboard::ShowElements(bool on)
+{
+    if (m_1c0.HasNode()) {
+        if (on) {
+            CValve *valve = CValve::GetByName(s_chatRecipientValve);
+            int chat = valve ? valve->m_value : 0;
+
+            if (Background(chat).m_node)
+                Background(chat).m_node->SetActive(true);
+        } else {
+            m_1c0.SetShown(false);
+            m_270.SetShown(false);
+        }
+    }
+    if (on)
+        Caption(func_00397840()).SetShown(true);
+    else {
+        m_320.SetShown(false);
+        m_3d0.SetShown(false);
+    }
+    if (!on) {
+        if (m_480.HasNode())
+            m_480.SetShown(false);
+        if (m_530.HasNode())
+            m_530.SetShown(false);
+    }
+    for (CSkbKeyMap::iterator it = m_keyProps.begin(); it != m_keyProps.end(); ++it)
+        func_003941D0((*it).second, on);
 }
 
 /* the display unit's: the name of the keyboard to open (0x397640) and its root node */
@@ -407,7 +456,7 @@ void SkbTick(CGameMenu *menu, bool input, float dT)
         unsigned char scaled = func_00394DA0(skb, dT);
 
         if (scaled == 1) {
-            func_0038B580(skb, 1);
+            skb->ShowElements(1);
             func_00398BB0();
         } else if (scaled == 2) {
             skb->m_node->SetActive(false);
@@ -555,7 +604,7 @@ void CSoftKeyboard::ShutdownBegin(CGameMenu *menu)
     void (C2DButton::*normal)() = &C2DButton::SetNormal;
 
     SetCurKeyState(normal);
-    func_0038B580(this, 0);
+    ShowElements(0);
     func_00394420();
     func_00398B50();
     func_00399C10(this);
@@ -574,8 +623,8 @@ void CSoftKeyboard::SwitchTo(CSoftKeyboard *to)
     m_node->SetActive(false);
     to->m_node->SetActive(true);
     g_pActiveSkb = to;
-    func_0038B580(to, 0);
-    func_0038B580(to, 1);
+    to->ShowElements(0);
+    to->ShowElements(1);
 }
 
 /* the key's button put into a state, if it has one (SOCOM 1's, instruction for instruction; called
