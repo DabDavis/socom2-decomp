@@ -22,10 +22,14 @@
  * their data_ placeholders, each commented with SOCOM 1's name where its use pairs it. Still
  * open here: VuUpdate (0xCC4: its tail calls even 8-byte helpers out of line, the out-of-line
  * copies at 0x3B5250-0x3B52C0 following it, so its inline budget runs out -- likely
- * inline_max_total_size), 0x3B5F20, 0x3B41D0 (the decal program), 0x3B6870/0x3B6B20 (the local
- * lights' setup), 0x3B7170/0x3B76B0/0x3B78D0 (the lens colours), the deque copy chain's init
- * 0x3B7E30, do_assign 0x3B8000 and default constructor 0x3B7FA0 (the rest of the chain is
- * byte-exact since the MSL headers' round 18: m_stack_vid, below). */
+ * inline_max_total_size), 0x3B5F20, 0x3B41D0 (the decal program), 0x3B6B20 (the lights' packet:
+ * the scale and channel kept, a packet begun as 0x3B6820's, 0x3B6870's header, the light scale
+ * from 0x3E1448/127 while lit, each local light's two quadwords copied in through a frame
+ * temporary whose field addresses are hoisted -- a by-value 4D copy, the shape not found yet --
+ * then VuExecuteState0 and CSPR::Kick), the deque copy chain's init 0x3B7E30, do_assign 0x3B8000
+ * and default constructor 0x3B7FA0 (the rest of the chain is byte-exact since the MSL headers'
+ * round 18: m_stack_vid, below). Round 20: the unit's initialiser, the light tints (0x3B7170,
+ * 0x3B76B0, 0x3B78D0) and the header's lights (0x3B6870) byte-exact. */
 
 #include <stack>
 #include "znode.h"
