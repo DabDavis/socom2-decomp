@@ -603,6 +603,7 @@
 0x003F8C18 0x8 __RTTI__23CDblBufTextureRelocator  # RTTI of CDblBufTextureRelocator: found by its RTTI's name
 0x003F8F28 0x8 __RTTI__17CListItemTypeImpl  # RTTI of CListItemTypeImpl: found by its RTTI's name
 0x003F8F40 0x8 __RTTI__Q220@unnamed@zui_2d_cpp@23CListItemStringTypeImpl  # by hand (the HUD lane, round 25): RTTI of @unnamed@zui_2d_cpp@::CListItemStringTypeImpl (its name at 0x3F8EE0, the base's RTTI 0x3F8F28 at +4): the array look's DrawPrep 0x37AB90 dynamic_casts to it (1 reference); zui_2d.cpp
+0x003F8F50 0x10 s_zoomAnchor  # OVL1 data; zui_2d.cpp's static const table, ours (the HUD lane, round 39): the zoom-out anchor (0 none, 1-4 the corners, 5-8 the edges' middles) for each mask of the four corners' covered flags, read by CUIMapCtrl::AnchorZoom 0x36D510 (1 reference)
 0x003F8FA8 0x8 __RTTI__9CPlainBmp  # RTTI of CPlainBmp: found by its RTTI's name
 0x003F9010 0x8 __RTTI__17CRenderableString  # RTTI of CRenderableString: found by its RTTI's name
 0x003F9058 0x8 __RTTI__11CSecureText  # RTTI of CSecureText: found by its RTTI's name
@@ -1465,6 +1466,7 @@
 0x0049EA78 0x4 s_fStickX  # OVL1 bss; zui.cpp's static, ours (SOCOM 1's gp-25364): the menu's stick x, read by IsStickNearCenter, GetStickDir, UiGetDirStickMoved and DidStickMovePrev/Next -- the UI-widgets lane
 0x0049EA80 0x4 s_fStickY  # OVL1 bss; zui.cpp's static, ours (SOCOM 1's gp-25360): the menu's stick y, read by the same five -- the UI-widgets lane
 0x0049EA88 0x4 s_countSound  # OVL1 bss; zui.cpp's static, ours (SOCOM 1's gp-25356 static PlayCountSound plays): the count sound -- UiLoadCountSound sets it, LoadFromDesign and Clear store it, PlayCountSound reads it: 4 references in 4 functions -- the UI-widgets lane
+0x0049EAA0 0x1 g_hasAnims  # OVL1 bss; zui.cpp's global, SOCOM 1's name (the demo's byte at gp-25344, set to 1 by the same LoadSpecs): set when a menu object takes actions -- CUIMapCtrl::LoadSpec 0x36D140, C2DButton::LoadSpec 0x376BD0 and 0x375E20 store 1 (sb), LoadFromDesign stores and reads it, Clear reads and clears it, CGameMenu() clears it, 0x3654C0 reads it (lbu): 9 references in 7 functions -- the HUD lane round 39
 0x0049EAA8 0x4 g_relocBatch  # OVL1 bss; zui.cpp's, SOCOM 1's name (its __sinit_zui.cpp stores it the same way): a zdb::CBatchRelocator, only its vtable pointer (0x406C10), stored by __sinit_zui.cpp 0x403620 (no destructor registered); 2 references in 2 functions (__sinit_zui.cpp, 0x368570 takes its address) -- the UI lane round 17
 0x0049EAB0 0x100 s_loadMsg  # OVL1 bss; zui.cpp's static, ours: the buffer LoadDesign 0x367430 sprintfs "(%.2f)CGameDlgDesign::LoadFromRdr(): %s" into, 0x100 bytes up to zui_2d.cpp's statics (0x49EBB0, __sinit_zui_2d.cpp's) -- 1 reference (LoadDesign) -- the UI lane round 18
 0x0049EBE8 0x4 s_mapCtrlDT  # OVL1 bss; zui_2d.cpp's static (name ours, the HUD lane round 36): the frame time CUIMapCtrl::Tick 0x36C750 stores, read by CUIMapCtrl::HandlePad 0x36D2E0 for its zooms (the menus' frame time, the UI lane's round 19); 3 references in 2 functions

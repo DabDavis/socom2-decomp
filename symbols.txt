@@ -6831,13 +6831,13 @@
 0x0036C750 0xC Tick__10CUIMapCtrlFf  # OVL1; by hand (the HUD lane, round 36: slot +0x38 of CUIMapCtrl's table 0x407260 -- C2D's Tick(float) by ztwod.h's slot order; it stores dT to 0x49EBE8, which only CUIMapCtrl::HandlePad 0x36D2E0 reads, for its zooms; SOCOM 1's CUIMapCtrl has no Tick; zui_2d.cpp)
 0x0036C760 0x2CC ParseZAnimCmd__10CUIMapCtrlFP5_zrdr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0036CA30 0x498 OnPan__10CUIMapCtrlCFRC20CUIMapCtrlAnimCmdHdrf  # OVL1; s1:name by its call (the HUD lane, round 30: CUIMapCtrl::TickZAnimCmd 0x36C600's PAN case calls it with the command and *dT, as SOCOM 1's TickZAnimCmd calls OnPan(const CUIMapCtrlAnimCmdHdr &, float) const; unwritten)
-0x0036CED0 0x18C func_0036CED0  # OVL1
+0x0036CED0 0x18C IsCovered__10CUIMapCtrlCFffRC6CPnt3Df  # OVL1; s1:calls by hand (the HUD lane, round 39: zui_2d.cpp -- SOCOM 1's IsCovered 0x386400, the same walk and tests, called four times by OnPan and ZoomOut as SOCOM 1's OnPan calls it; its const begin()/end() inlined in SOCOM II; byte-exact)
 0x0036D060 0xD4 Draw__10CUIMapCtrlFRC7CMatrixPQ23zdb16CTextureRelocMgr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x0036D140 0x198 func_0036D140  # OVL1
+0x0036D140 0x198 LoadSpec__10CUIMapCtrlFRC14CUIMapCtrlSpecP7C2DFontPQ23zdb9CAssetLibPQ23zdb16CTextureRelocMgr  # OVL1; s1:calls by hand (the HUD lane, round 39: zui_2d.cpp -- SOCOM 1's CUIMapCtrl::LoadSpec 0x3866C0, called by CUIMapCtrlSpec::CreateDisplayObj after the constructor with (spec, font, 0, mgr) as SOCOM 1's; byte-exact)
 0x0036D2E0 0x228 HandlePad__10CUIMapCtrlFPC4CPadi  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x0036D510 0x210 func_0036D510  # OVL1
+0x0036D510 0x210 AnchorZoom__10CUIMapCtrlFR6CPnt3DPCbRC6CPnt3Df  # OVL1; ours by hand (the HUD lane, round 39: zui_2d.cpp -- ZoomOut's one call, with the four corners' IsCovered answers: the point held still picked through the 16-byte table 0x3F8F50 by a nine-way switch, the position zoomed about it; byte-exact)
 0x0036D720 0x128 __dt__10CUIMapCtrlFv  # OVL1; s1:calls; s1:vtable (the same slot of the same class's vtable in both builds, code alike); was __dt__11CZPauseTestFv
-0x0036D850 0x5C func_0036D850  # OVL1
+0x0036D850 0x5C __ct__10CUIMapCtrlFv  # OVL1; s1:calls by hand (the HUD lane, round 39: zui_2d.cpp -- SOCOM 1's CUIMapCtrl() 0x386DA0, the constructor CUIMapCtrlSpec::CreateDisplayObj calls after new(528) as SOCOM 1's; byte-exact)
 0x0036D8B0 0xB4 Render__9C2DVisualFP7CMatrix  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0036D970 0xA8 GetZAnimCmdType__12CPopUpDialogFPCc  # OVL1; s1:calls
 0x0036DA20 0xC2C TickZAnimCmd__12CPopUpDialogFP14_zanim_cmd_hdrPfPb  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
