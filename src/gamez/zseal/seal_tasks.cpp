@@ -96,6 +96,12 @@ void ClearLook__9CSealCtrlF7AI_LOOK(CSealCtrl *ctrl, int look);
  * range) and a CSealCtrlAi function the goto's end calls first (OVL2 0x5628F0) */
 void func_005F3FC0(CAiSScript *s, CSealCtrlAi *ai, bool b);
 void func_005628F0(CSealCtrlAi *ai);
+/* the AI's event mask brought up to its team (OVL2 0x572D70, the SEAL lane's row: CTTeam::Tick calls
+ * it where SOCOM 1's called CSealCtrlAi::UpdateEventMask) and a squad's member set up again
+ * (CSealUnit::InitalizeSealUnit, OVL2 0x5EC9F0: seal_unit.cpp's, which zseal.h's CSealUnit does not
+ * declare) */
+void func_00572D70(CSealCtrlAi *ai);
+void InitalizeSealUnit__9CSealUnitFP10CZSealBodyP9CSealUnit(CZSealBody *seal, CSealUnit *unit);
 /* the goto's move set up (OVL2 0x5DB8F0, this unit's: the AI, the command, a flag; whether it
  * began -- not written yet) */
 bool func_005DB8F0(CSealCtrlAi *ai, void *cmd, int x);
@@ -246,6 +252,20 @@ struct TASK_TIMER {
         return f;
     }
     void Reset() { m_timer = Period(); }
+    /* the countdown run down by dt and drawn again when it ends, whether it did -- an infinite one
+     * never does (inline: its by-value dt is read ahead of the test, CTWait::Tick 0x5CDBD0) */
+    bool Update(float dt)
+    {
+        bool done = false;
+
+        if (m_timer != CAiTimer::infinite) {
+            m_timer -= dt;
+            done = m_timer != CAiTimer::infinite && m_timer <= 0.0f;
+            if (done)
+                Reset();
+        }
+        return done;
+    }
     void Set(const Rfloat &p)
     {
         m_period = p;
@@ -429,6 +449,7 @@ struct CTTeam : TASK_HDR {
     int m_op;   // 0xc: 0 join, 1 leave, 2 ismember
 
     static _zanim_cmd_hdr *Parse(_zrdr *rdr);
+    static bool Tick(_zanim_cmd_hdr *hdr, float *dT);
     /* a block made (inline: its arguments read before the allocation) */
     static CTTeam *Create(signed char op, _zrdr *tag)
     {
@@ -532,6 +553,7 @@ struct CTWait : TASK_HDR {
 
     static _zanim_cmd_hdr *Parse(_zrdr *rdr);
     static void Begin(_zanim_cmd_hdr *hdr);
+    static bool Tick(_zanim_cmd_hdr *hdr, float *dT);
     /* a block made (inline: the period set, the timer drawn, and drawn again) */
     static CTWait *Create(const Rfloat &wait)
     {
@@ -581,8 +603,19 @@ struct CTPaint : TASK_HDR {
     static bool Tick(_zanim_cmd_hdr *hdr, float *dT);
 };
 
-/* ai::MOVE (SOCOM 1's CTMove) */
+/* ai::MOVE (SOCOM 1's CTMove): a move to a point, a node, the SEAL itself or relative to it -- the
+ * kinds and fields its Parse (0x5D64B0) sets from the tags (the names ours but the tags') */
 struct CTMove : TASK_HDR {
+    CPnt3D m_pos;   // 0x8: the tag "pos" (or "ofs")
+    CPnt3D m_dir;   // 0x14: the tag "dir"
+    float m_dist;   // 0x20: the tag "offset" (or "dist")
+    int m_node;   // 0x24: the tag "node"'s names, or "relseal"'s value
+    unsigned char m_kind : 4;   // 0x28: 1 node, 2 self, 3 relseal, 4 relseal with a dir
+    unsigned char m_28_4 : 1;
+    unsigned char m_blocking : 1;   // bit 5: the tag "blocking"
+    unsigned char m_28_6 : 2;
+
+    static bool Tick(_zanim_cmd_hdr *hdr, float *dT);
     static void End(_zanim_cmd_hdr *hdr);
 };
 
@@ -1186,6 +1219,29 @@ void CTMacro::Begin(_zanim_cmd_hdr *hdr)
         cmd->m_anim = ZAnim.GetAnim(cmd->m_name.m_str, 0);
 }
 
+/* running, when blocking, while the AI moves to its goal (OVL2 0x5D5B40) */
+bool CTMove::Tick(_zanim_cmd_hdr *hdr, float *dT)
+{
+    TASK_SEAL(CTMove);
+    CEntityCtrl *ctrl = seal ? seal->m_control : 0;
+    CSealCtrlAi *ai = seal ? SealAi(seal) : 0;
+
+    if (!seal || !ctrl) {
+        *dT = 0.0f;
+        return true;
+    }
+    bool done = true;
+
+    if (cmd->m_blocking && ai) {
+        CSealCtrl *sc = (CSealCtrl *)ctrl;
+
+        done = !(sc->m_goal_type == GOAL_MOVE && (sc->m_goal_dir_valid || sc->m_goal_pos_valid) &&
+                 ai->m_3f4 == 5);
+    }
+    *dT = 0.0f;
+    return done;
+}
+
 /* (OVL2 0x5D5A20) */
 void CTMove::End(_zanim_cmd_hdr *hdr)
 {
@@ -1322,6 +1378,56 @@ _zanim_cmd_hdr *CTRange::Parse(_zrdr *rdr)
     return &cmd->hdr;
 }
 
+/* the mission (fts_state.h's CMission: only the team valves' refresh, OVL1 0x2B23A0) and theMission
+ * (OVL1 bss 0x4364E0) */
+class CMission {
+public:
+    void RefreshTeamValves();
+};
+extern CMission theMission;
+
+/* the SEAL joins or leaves the teams, its AI's events, its squad and the team valves brought up to
+ * it; ismember does nothing here (OVL2 0x5CEA40; SOCOM 1's, which updated the AI's events only --
+ * its team read once ahead of the switch, as SOCOM 1's too: the load in the first compare's delay slot)
+ * OPEN, 20 instructions: the block and the find's counter swap saved registers (the target's block
+ * s2, counter s3, the SEAL sharing the counter's; here the block s3, the counter and the SEAL s2) --
+ * the target colours the block before the SEAL where every other handler's allocation is numbering
+ * order; the find's five declarations in all 60 orders (build/scratch/kit/v_team2.py, best 17), the
+ * controller/AI order, the team local first, a second block pointer after the AI: none moves it */
+bool CTTeam::Tick(_zanim_cmd_hdr *hdr, float *dT)
+{
+    TASK_SEAL(CTTeam);
+    CEntityCtrl *ctrl = seal ? seal->m_control : 0;
+    CSealCtrlAi *ai = seal ? SealAi(seal) : 0;
+
+    if (!seal || !ctrl) {
+        *dT = 0.0f;
+        return true;
+    }
+    unsigned int team = seal->m_team;
+
+    switch (cmd->m_op) {
+    case 0:
+        seal->SetTeamMask(team | cmd->m_mask);
+        if (ai)
+            func_00572D70(ai);
+        InitalizeSealUnit__9CSealUnitFP10CZSealBodyP9CSealUnit(seal, 0);
+        theMission.RefreshTeamValves();
+        break;
+    case 1:
+        seal->SetTeamMask(team & ~cmd->m_mask);
+        if (ai)
+            func_00572D70(ai);
+        InitalizeSealUnit__9CSealUnitFP10CZSealBodyP9CSealUnit(seal, 0);
+        theMission.RefreshTeamValves();
+        break;
+    case 2:
+        break;
+    }
+    *dT = 0.0f;
+    return true;
+}
+
 /* join, leave or ismember, the tag's values the mask (OVL2 0x5CEC40) */
 _zanim_cmd_hdr *CTTeam::Parse(_zrdr *rdr)
 {
@@ -1446,6 +1552,18 @@ _zanim_cmd_hdr *CTWait::Parse(_zrdr *rdr)
     if (zrdr_findRfloat(rdr, "wait", &wait))
         cmd = Create(wait);
     return &cmd->hdr;
+}
+
+/* the wait run down, drawn again when it ends (OVL2 0x5CDBD0; SOCOM 1's the same but for the timer's
+ * compares, two materialised bools there) */
+bool CTWait::Tick(_zanim_cmd_hdr *hdr, float *dT)
+{
+    TASK_SEAL(CTWait);
+    CSealCtrlAi *ai = seal ? SealAi(seal) : 0;
+    bool done = cmd->m_wait.Update(*dT);
+
+    *dT = 0.0f;
+    return done;
 }
 
 /* the wait drawn (OVL2 0x5CDDA0) */
