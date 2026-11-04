@@ -535,3 +535,29 @@ void CZLineMap::TickLines(const CAiMap &map, float fPulseTrans, bool bDim)
             SetupPolygon(*i, fPulseTrans, bDim);
     }
 }
+
+/* the map drawn: the active triangles, the lines (at most 500), the wide lines' polygon sets, the
+ * bitmaps and the strings (at most 32) -- SOCOM 1's CZLineMap::Draw with SOCOM II's sets and
+ * bitmaps (the unit's first function, 0x20D390). One function-level counter for the triangles'
+ * and the bitmaps' walks, the other three walks' their own (round 42: as the target's registers
+ * have them -- every counter loop-scoped colours the parameters first, 0x10 longer; one counter
+ * for all five takes the target's five registers but shares the webs) */
+void CZLineMap::Draw(zdb::CCamera *camera)
+{
+    int i;
+
+    for (i = 0; i < m_iNumActiveTriangles; i++)
+        m_vecTriangles[i]->Draw(camera);
+    for (int i = 0; i < m_lastline && i < 500; i++)
+        m_linelist[i].Draw(camera);
+    for (int i = 0; i < m_vecWideLines.size(); i++) {
+        CPolySet *set = m_vecWideLines[i];
+
+        for (int j = 0; j < set->size(); j++)
+            (*set)[j]->Draw(camera);
+    }
+    for (i = 0; i < m_vecBitmaps.size(); i++)
+        m_vecBitmaps[i]->Draw(camera);
+    for (int i = 0; i < m_laststring && i < 32; i++)
+        m_stringlist[i].Draw(camera);
+}
