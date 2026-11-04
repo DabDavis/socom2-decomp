@@ -39,7 +39,6 @@ public:
 extern "C" {
 void func_00341250(float dT);
 void func_003654C0(CGameMenu *menu, float dT);   /* CGameMenu::Tick */
-void func_00339DE0(CPipe *pipe, zdb::CWorld *world);   /* CPipe::RenderWorld */
 void func_003AFF30(bool a, bool b);              /* zVid_Swap */
 
 }
@@ -154,7 +153,7 @@ bool CMenuState::Tick(float dT)
         thePipe.FIFO_Load(zdb::CTexManager::m_texmanager.m_buffer.data_[zdb::CTexManager::TexPhase[0]]);
         if (zdb::CWorld::m_world->m_camera)
             zdb::CWorld::m_world->m_camera->Update(zdb::ZCAM_TYPE_0);
-        func_00339DE0(&thePipe, zdb::CWorld::m_world);
+        thePipe.RenderWorld(zdb::CWorld::m_world);
     }
     m_menu->DrawForeplane();
     zdb::CTexManager::m_texmanager.m_buffer.data_[0]->Load(true);

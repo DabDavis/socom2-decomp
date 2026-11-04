@@ -38,6 +38,14 @@
 0x001CC428 0x28 dch  # MAIN; s1:data-exact (size SOCOM 1's; via sceDmaGetChan +1)
 0x001CC458 0x4 p_environ  # MAIN; newlib getenv_r.c's static (char ***p_environ = &environ), read by _findenv_r
 0x001CC750 0x4 _impure_ptr  # MAIN; s1:data-exact (size SOCOM 1's; via __assert +8)
+0x001CC758 0x4 __mb_cur_max  # MAIN; SOCOM 1's symbol (the demo's GLOBAL OBJECT __mb_cur_max, 4 bytes, after _impure_ptr there as here): newlib's MB_CUR_MAX (1), passed to _mbtowc_r by _vfiprintf_r -- the GCC lane r22a
+0x001CC760 0x408 __malloc_av_  # MAIN; SOCOM 1's symbol (the demo's GLOBAL OBJECT __malloc_av_, 1032 bytes, the bookkeeping words after it in the same order): newlib mallocr.c's bins, defined by mallocr.o (DEFINE_MALLOC), read by freer.o, reallocr.o and malignr.o -- the GCC lane r22a
+0x001CCB68 0x8 __malloc_trim_threshold  # MAIN; SOCOM 1's symbol (8 bytes, after __malloc_av_ as in the demo): newlib mallocr.c's trim_threshold (unsigned long, 64-bit), mallocr.o's -- the GCC lane r22a
+0x001CCB70 0x8 __malloc_top_pad  # MAIN; SOCOM 1's symbol (8 bytes, as the demo's): newlib mallocr.c's top_pad, mallocr.o's -- the GCC lane r22a
+0x001CCB78 0x4 __malloc_sbrk_base  # MAIN; SOCOM 1's symbol (4 bytes, as the demo's): newlib mallocr.c's sbrk_base ((char *)-1 until the first sbrk), mallocr.o's -- the GCC lane r22a
+0x001CCB80 0x8 __malloc_max_sbrked_mem  # MAIN; SOCOM 1's symbol (8 bytes, as the demo's): newlib mallocr.c's max_sbrked_mem, mallocr.o's -- the GCC lane r22a
+0x001CCB88 0x8 __malloc_max_total_mem  # MAIN; SOCOM 1's symbol (8 bytes, as the demo's): newlib mallocr.c's max_total_mem, mallocr.o's -- the GCC lane r22a
+0x001CCB90 0x28 __malloc_current_mallinfo  # MAIN; SOCOM 1's symbol (40 bytes, as the demo's): newlib mallocr.c's current_mallinfo (ten ints), mallocr.o's -- the GCC lane r22a
 0x001CCBD0 0x10 gp.6  # MAIN; s1:data-seq (size SOCOM 1's; via sceGsGetGParam)
 0x001CCBE0 0x20 init_vif_regs.3  # MAIN; s1:data-exact (size SOCOM 1's; via sceGsResetPath)
 0x001CCC00 0x10 init_mp3.3  # MAIN; s1:data-exact (size SOCOM 1's; via sceGsExecStoreImage)
@@ -865,6 +873,11 @@
 0x00409F00 0x4 m_explosionU1__17CZClaymoreMapItem  # OVL1 bss; SOCOM 1's static: 2 references in 2 functions
 0x00409F08 0x4 m_explosionV1__17CZClaymoreMapItem  # OVL1 bss; SOCOM 1's static: 2 references in 2 functions
 0x00409F20 0x460 g_arrHorGridLines__27@unnamed@hud_newhudmap_cpp@  # OVL1 bss; s1:data-exact (size SOCOM 1's; via __arraydtor$2546)
+0x0040A390 0x5A0 g_arrVertGridLines__27@unnamed@hud_newhudmap_cpp@  # OVL1 bss; SOCOM 1's static (its symbol table: hud_newhudmap.cpp's anonymous namespace, nine COverlayLines after the seven horizontal ones, as here; the HUD lane, round 29) -- 6 references in 6 functions: the constructor sets their alpha, InitMap, Draw, 0x209350, 0x20A780, its __arraydtor 0x20CE30
+0x0040A940 0x558 g_strLegend__27@unnamed@hud_newhudmap_cpp@  # OVL1 bss; ours (the HUD lane, round 29: hud_newhudmap.cpp -- nine C2DStrings, the full-screen map legend's labels; __sinit_hud_newhudmap.cpp 0x3FDE80 builds them, 0x20CE10 destroys them) -- 49 references in 7 functions: UninitMap blanks them, the legend builder 0x20C080 loads them (39), the constructor (4), Draw (2), 0x20BE00
+0x0040BC70 0xA0 g_lineNorthIndBarb__27@unnamed@hud_newhudmap_cpp@  # OVL1 bss; SOCOM 1's static (its symbol table: the north indicator's barb, the first of its three COverlayLines; the constructor sets the three's alpha FrontShaft, RearShaft, Barb as SOCOM 1's; the HUD lane, round 29) -- 4 references in 3 functions: the constructor, Draw, 0x20BE00 (SOCOM 1's SetupNorthIndicator) twice
+0x0040BD20 0xA0 g_lineNorthIndFrontShaft__27@unnamed@hud_newhudmap_cpp@  # OVL1 bss; SOCOM 1's static (the north indicator's front shaft; the HUD lane, round 29) -- 4 references in 3 functions: the constructor, Draw, 0x20BE00 twice
+0x0040BDD0 0xA0 g_lineNorthIndRearShaft__27@unnamed@hud_newhudmap_cpp@  # OVL1 bss; SOCOM 1's static (the north indicator's rear shaft; the HUD lane, round 29) -- 4 references in 3 functions: the constructor, Draw, 0x20BE00 twice
 0x0040BEF0 0x4 m_mpbombtex__15CZMPBombMapItem  # OVL1 bss; SOCOM 1's static (gp-25036 in the demo, which SOCOM 1's CHUD::ReleaseHUD zeroes last, after m_claymoretex, as SOCOM II's does here): 3 references in 3 functions (CHUD::ReleaseHUD, CZNewHudMap::InitMap, CZMPBombMapItem::Tick)
 0x0040BF40 0x10 g_mapLineProps__25@unnamed@hud_linemap_cpp@  # OVL1 bss; SOCOM 1's static (its symbol table: hud_linemap.cpp's unnamed namespace, a std::map<int, LINE_DATA>): the line types by id -- hudAddLineType reads it through operator[], the unit's initialiser 0x3FE190 builds it and registers ~map (0x2110F0)
 0x0040BF60 0x10 g_mapPolyProps__25@unnamed@hud_linemap_cpp@  # OVL1 bss; SOCOM 1's static (its symbol table: hud_linemap.cpp's unnamed namespace, a std::map<int, LINE_DATA>): the polygon types by id -- hudAddPolyType reads it through operator[], built and registered by 0x3FE190 after the line types
