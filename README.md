@@ -1806,6 +1806,11 @@ templates next), and the earlier rounds' opens; 3.0b38/b50/b52 still untold.
     implicit) -- the last is zmath.h's own PNT4D: RenderLineWorld over PNT4D parameters is byte-exact (zmath.h's comment);
     c2dfont.cpp's glyph colour is the same 4-aligned block at a 16-aligned member (four ints with a member-level
     `aligned(16)`, or `int m_20[4] aligned(16)`, make the pair's copy 0x35D370 byte-exact: the HUD lane's c2dfont.h);
+  - A WALK'S end() REUSES begin()'s DATA LOAD WHEN EVERY PATH TO THE TEST HAS ONE: MSL's pointer-vector insert(position,
+    x) -- the offset taken first, the pod's insert, `begin() + n` returned -- re-loads the data pointer right after its call,
+    so the world's CSnd::AddNewCSnd 0x343F90, calling it with the result unused, keeps the pointer in one register for
+    every test (byte-exact, zsnd_csnd.cpp 57 of 57 with `m_soundlist.insert(i, sound)`: the world lane's to write); no form
+    of the pod's end() changes it (build/p17/podend.py). include/vector has the member now;
   - not reached: the class insert's end register (insert<CLadderData> 0x2B0260, the delayed nodes' 0x33C5C0: no new
     shape), AddKeyProps' pair temporary, GetSealCount's outer copy, the deques' make_iterator; 0x359740 is __list_imp<PCv>::
     advance_to, placed right after C2DBitmapPoly() 0x359640 -- the unit before c2dfont.cpp emitted it first.
