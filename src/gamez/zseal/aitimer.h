@@ -21,6 +21,17 @@ public:
         m_timer = Period();
     }
 
+    /* the copy, field by field (the kit lane, round 33: OVL2 0x5EBDA0 is seal_unit.cpp's out-of-line
+     * copy -- CAiSBreach's implicit operator=, inlined a level into 0x5EBB50, calls it beside CAiState's
+     * 0x5EBDC0; a trivial copy would be inlined there as three float moves) */
+    CAiTimer &operator=(const CAiTimer &t)
+    {
+        m_min = t.m_min;
+        m_range = t.m_range;
+        m_timer = t.m_timer;
+        return *this;
+    }
+
     /* a fixed period set and the countdown started (no zeroing first, unlike the constructor:
      * 0x5631B0) */
     void Set(float t)

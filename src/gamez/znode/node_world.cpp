@@ -133,6 +133,50 @@ void CWorld::GarbageCollect()
             (*it)->ShrinkAtomBasePtrs();
 }
 
+/* a node's box through one inline level more than CNode::GetBBox (ours, a stand-in): the set's
+ * TestFOV and the shadow caster's constructor call GetBBox straight, with no one-level copy of its
+ * body -- what a wrapper inlined one level gives, the recursive GetBBox under it called out of
+ * line, where a direct call inlines GetBBox's body once (every other caller) */
+static inline const CBBox *NodeBBox(CNode *node)
+{
+    return node->GetBBox();
+}
+
+/* a caster for the node: its box's size, and the box of its corners carried into the world by the
+ * node's matrix (new in SOCOM II, the name ours).
+ * OPEN, 0x1F0 of 0x228: the target calls CPnt3D()'s out-of-line copy (0x1FB3C0) for each corner
+ * and GetBBox straight, which is what an inline helper inlined ONE level gives (its callees called,
+ * as hud_linemap.cpp's GetCellCenter calls CPnt3D()) -- the corners, their transform and the box
+ * likely an inline of the original's too tall to inline whole; the box is then built through a
+ * temporary (the first corner copied whole into 0xD0, from there whole into the temporary's
+ * minimum at 0x50 and field by field into its maximum at 0x5C, the temporary assigned to m_bbox
+ * field by field: a CBBox made from one point, by value?), the minimum kept with `<=` and the
+ * maximum with `<` */
+CShadowCaster::CShadowCaster(CNode *node)
+{
+    m_node = node;
+    node->GetBBox()->GetSize(&m_size);
+    const CBBox *box = NodeBBox(m_node);
+    CPnt3D pts[8];
+
+    GetBBoxCorners(pts, box);
+    m_node->m_matrix.Transform(pts, 8);
+    CPnt3D p = pts[0];
+    CBBox b;
+
+    b.m_min = p;
+    b.m_max = p;
+    m_bbox = b;
+    for (int i = 1; i < 8; i++) {
+        m_bbox.m_min.x = m_bbox.m_min.x >= pts[i].x ? pts[i].x : m_bbox.m_min.x;
+        m_bbox.m_min.y = m_bbox.m_min.y >= pts[i].y ? pts[i].y : m_bbox.m_min.y;
+        m_bbox.m_min.z = m_bbox.m_min.z >= pts[i].z ? pts[i].z : m_bbox.m_min.z;
+        m_bbox.m_max.x = m_bbox.m_max.x > pts[i].x ? m_bbox.m_max.x : pts[i].x;
+        m_bbox.m_max.y = m_bbox.m_max.y > pts[i].y ? m_bbox.m_max.y : pts[i].y;
+        m_bbox.m_max.z = m_bbox.m_max.z > pts[i].z ? m_bbox.m_max.z : pts[i].z;
+    }
+}
+
 /* a shadow caster made for the node and listed (pinned: AddChild calls it, where AddShadow, its
  * neighbour, is inlined) */
 #pragma auto_inline off
@@ -768,9 +812,13 @@ void CWorld::DeleteTextureAssetCharacter(_RenderPhase phase, CNode *node)
  * OPEN, 0x11C of 0x144: `delete c` inlines the destructor and the nodes' vector teardown whole in
  * the target (the set's null test, doDelBuffer, then four this-tests of &m_nodes and the block
  * freed) -- five destructor levels under the delete, where include/vector's pointer vector makes
- * ~CNodeVector a call (-1) here; it turns on the vector remodel. Apart from that the target keeps
- * the set in s0 across the remove (loaded from its stack home before the size test), where this
- * reloads it after the call */
+ * ~CNodeVector a call (-1) here; it turns on the vector remodel. MEASURED (the world lane's round
+ * 16, build/scratch/wld/podsub.py): with the pointer pod's destructor deleting its block directly
+ * (`operator delete(data_)`, the pointer vector's destructor three high, not four) this source is
+ * byte-exact -- the set read into a second local, `p`, which the target keeps in s0 across the
+ * remove while `c`, whose address the remove's binder takes, stays in its stack home (one local,
+ * reloaded after the call, is 0x14C). Not applied: the same header change loses six destructors
+ * that need the deallocate level (README "Level 6, or 8?") */
 void CWorld::RemoveEmptyTextureAssetCharacters()
 {
     CTextureAssetCharacterList::iterator it = m_TextureAssetCharacters.begin(),
@@ -778,10 +826,11 @@ void CWorld::RemoveEmptyTextureAssetCharacters()
 
     while (it != e) {
         CTextureAssetCharacters *c = *it;
+        CTextureAssetCharacters *p = c;
 
-        if (c->m_nodes.size() == 0) {
+        if (p->m_nodes.size() == 0) {
             m_TextureAssetCharacters.remove(c);
-            delete c;
+            delete p;
             it = m_TextureAssetCharacters.begin();
             e = m_TextureAssetCharacters.end();
         } else
@@ -802,7 +851,11 @@ void CWorld::ReleaseTextureAssetCharacters()
 /* every character set's nodes let go of and the set deleted, the list emptied (SOCOM 1's).
  * OPEN, 0xF0 of 0x124: as RemoveEmptyTextureAssetCharacters, `delete c` inlines ~CNodeVector's four
  * this-tested levels in the target and calls it here (the vector remodel); FreeVector's
- * constructor, clear, swap and destructor calls and the list's clear already line up */
+ * constructor, clear, swap and destructor calls and the list's clear already line up. MEASURED
+ * (round 16): byte-exact as it stands once the pointer pod's destructor deletes its block directly
+ * (the pointer vector's destructor three high) -- which also closes ClearGroups 0x3C2A10 and
+ * vector<SKBCOMPLETE>'s resize and loses ~CNodeVector (database.cpp's copy), ~CCell, ~CHUD,
+ * ~CVisual, CPipe::~CAlpha and ~CGSTexBuffer: level 6's split, so not applied */
 void CWorld::WipeoutTextureAssetCharacters()
 {
     CTextureAssetCharacterList::iterator it, e = m_TextureAssetCharacters.end();
@@ -854,6 +907,68 @@ void CWorld::RemoveDecals()
         m_child[i]->RemoveDecals(0);
     func_003BF050(&CDecal::m_tempPool);
     func_003BF050(&CDecal::m_permPool);
+}
+
+/* every set's visible nodes counted: the first set in view returned, the common characters' set
+ * (CHARSETCOMMON) given back apart, the first in view (SOCOM 1's, its render phase read ahead of
+ * the count). The cursor is assigned from begin() (a temporary copied in, below the found
+ * iterator's slot) and the end taken once, the found test re-deriving it */
+CTextureAssetCharacterList::iterator CTextureAssetCharacterList::TestFOV(CCamera *cam,
+                                                                        CTextureAssetCharacters **common)
+{
+    iterator it;
+    iterator e = end();
+    iterator found = e;
+
+    *common = 0;
+    for (it = begin(); it != e; ++it) {
+        _RenderPhase phase = (*it)->m_lib->m_renderphase;
+
+        if ((*it)->TestFOV(cam)) {
+            if (phase == CHARSETCOMMON) {
+                if (*common == 0)
+                    *common = *it;
+            } else if (found == end())
+                found = it;
+        }
+    }
+    return found;
+}
+
+/* the set's nodes in view counted: each active node's box, its eight corners carried into the
+ * world by the node's matrix, tested against the camera's view, the node's in-view bit set from
+ * the answer (SOCOM 1's; SOCOM II tests the box's corners in 4D after the node's transform).
+ * OPEN, 44 instructions at the target's size, FRAME SLOTS ONLY (every register as the target's):
+ * the target keeps the box's copy at 0xA0 below the corners at 0xC0, this puts the corners at 0xA0
+ * and the copy above them at 0x120 -- the copy is created after the array in the target. Tried:
+ * the corners' bounds as two CPnt3D locals (80 off), declared after the array and assigned (the
+ * assignments' temporaries: 0x294 or 105 off), in an inner block, bound by reference to the box or
+ * to a by-value wrapper's result (with or without a named return value: 0x2DC-0x30C), declared
+ * uninitialised and assigned */
+int CTextureAssetCharacters::TestFOV(CCamera *cam)
+{
+    m_visible = 0;
+    for (CNodeVector::iterator it = m_nodes.begin(); it != m_nodes.end(); ++it) {
+        CNode *node = *it;
+
+        if (node->m_active) {
+            CBBox b = *NodeBBox(node);
+            CPnt4D c[8] = {
+                CPnt4D(b.m_min.x, b.m_min.y, b.m_max.z, 1.0f), CPnt4D(b.m_min.x, b.m_min.y, b.m_min.z, 1.0f),
+                CPnt4D(b.m_max.x, b.m_min.y, b.m_min.z, 1.0f), CPnt4D(b.m_max.x, b.m_min.y, b.m_max.z, 1.0f),
+                CPnt4D(b.m_min.x, b.m_max.y, b.m_max.z, 1.0f), CPnt4D(b.m_min.x, b.m_max.y, b.m_min.z, 1.0f),
+                CPnt4D(b.m_max.x, b.m_max.y, b.m_min.z, 1.0f), CPnt4D(b.m_max.x, b.m_max.y, b.m_max.z, 1.0f),
+            };
+
+            node->m_matrix.Transform(c, c, 8);
+            if (cam->TestFOV((PNT4D *)c, 0, true) == ZVIS_FOV_ALL_OUT)
+                node->m_socom2_a1_bits.bit4 = false;
+            else
+                node->m_socom2_a1_bits.bit4 = true;
+            m_visible += node->m_socom2_a1_bits.bit4 && node->m_active;
+        }
+    }
+    return m_visible;
 }
 
 /* a character set for a library's textures, in a buffer of its own named after the node (with a

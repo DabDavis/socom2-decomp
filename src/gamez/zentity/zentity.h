@@ -275,6 +275,7 @@ public:
     static void CreateEntity(CEntity *e, bool include);
     static void PurgeEntities();
     static void UpdateTargetList(bool b);
+    bool OnUpdateTargetList(bool force, bool sort);
     static void ReplaceTargetList(CEntity *from, CEntity *to);
     static bool EntityIsValid(CEntity *e);
     static void CountAwareness();
@@ -333,6 +334,10 @@ public:
     static CEntityList m_target_inc;
     static CEntityList m_target_add;
     static CEntityList m_target_rem;
+    /* the round robin of target updates: where the next tick's slice starts, and how many it
+     * takes (SOCOM 1's rrTargetListFirst and rrTargetListCount, ent_target.cpp's) */
+    static int rrTargetListFirst;
+    static int rrTargetListCount;
 };
 
 inline void CTarget::Update(CEntity *self, CEntity *target)
