@@ -6895,7 +6895,7 @@
 0x003742F0 0x2E8 func_003742F0  # OVL1
 0x003745E0 0x46C HandlePad__10CUIListBoxFPC4CPadi  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00374A50 0x100 func_00374A50  # OVL1
-0x00374B50 0x15C func_00374B50  # OVL1
+0x00374B50 0x15C GetItemText__10CUIListBoxFi  # OVL1; ours by hand (the HUD lane, round 41: zui_2d.cpp -- an item's text by index: none out of range, else its action's argument, its own string or its look's GetString; the walk AddItem's; the lobby's 0x2F0EA0 calls it)
 0x00374CB0 0x388 func_00374CB0  # OVL1
 0x00375040 0x488 Tick__10CUIListBoxFf  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x003754D0 0x238 UpdateUIVar__10CUIListBoxFP11CUIVariable  # OVL1; by hand (the HUD lane, round 16): CUIListBox's secondary table (0x4076E0: RTTI, -128, @128@__dt__10CUIListBoxFv, the thunk 0x37D060, then this) holds it where CSliderBar's holds UpdateUIVar__10CSliderBarFP11CUIVariable; it reads the variable's type byte (4, a list) as the other UpdateUIVars do

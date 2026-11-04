@@ -2563,6 +2563,9 @@ public:
     /* an item added with the box's font and scale: at the end, or (any other `where`) before the
      * highlighted row (SOCOM II's, 0x373F20, the name ours: UpdateUIVar and 0x372980 call it) */
     void AddItem(ListItem *item, int where);
+    /* an item's text: its action's argument, else its own string, else its look's (SOCOM II's,
+     * 0x374B50, the name ours: the lobby's 0x2F0EA0 calls it) */
+    const char *GetItemText(int idx);
     /* slot 24 of its table 0x407670: the box's eleven commands after C2D's (0x373640) */
     int GetZAnimCmdType(const char *name);
 
@@ -2585,6 +2588,32 @@ public:
     unsigned char _180[0x194 - 0x180];
     int m_highlighted;   // 0x194
 };
+
+/* none for an index out of range; the walk is AddItem's (the iterator assigned from begin(), in
+ * memory, stepped by a counted loop MW unrolls 8x). One return of a local preset to none: early
+ * returns branch out of range through a block of their own */
+const char *CUIListBox::GetItemText(int idx)
+{
+    const char *text = 0;
+
+    if (idx >= 0 && (unsigned int)idx < m_items.size()) {
+        std::list<ListItem *>::iterator it;
+
+        it = m_items.begin();
+        for (int i = 0; i < idx; i++)
+            ++it;
+
+        ListItem *item = *it;
+
+        if (item->m_action.Argument)
+            text = item->m_action.Argument;
+        else if (item->m_text)
+            text = item->m_text;
+        else
+            text = item->GetString();
+    }
+    return text;
+}
 
 /* the iterator taken from begin() is a local in memory (ASSIGNED from begin(), its copy goes through
  * a float register; initialised from it, it lives in a register: 0xC4 against 0xE4), stepped on to
