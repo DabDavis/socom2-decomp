@@ -1726,10 +1726,10 @@
 0x00204A40 0x7B4 func_00204A40  # OVL1
 0x00205200 0x278 ClosePauseMenu__11CZPauseTestFv  # OVL1; s1:calls by hand (CHUD::ReInit_Uninit's first call on CHUD+0x18900, as SOCOM 1's; the last function before the pause menu's destructor and constructor, as SOCOM 1's before its constructor)
 0x00205480 0x318 __dt__11CZPauseTestFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x002057A0 0x58 func_002057A0  # OVL1
+0x002057A0 0x58 __dt__10CPauseItemFv  # OVL1; ours by hand (the HUD lane, round 37: hud_pausemenu.cpp -- the line's implicit destructor, handed to __construct_new_array beside the constructor; destroys the string member with -1)
 0x00205800 0x170 __ct__11CZPauseTestFv  # OVL1; by hand (stores CZPauseTest's vtable 0x405320; CHUD's constructor builds CHUD+0x18900 with it)
-0x00205970 0xF8 func_00205970  # OVL1
-0x00205A70 0x1D0 func_00205A70  # OVL1
+0x00205970 0xF8 __ct__10CPauseItemFv  # OVL1; ours by hand (the HUD lane, round 37: hud_pausemenu.cpp -- a pause-menu line's constructor, its address handed to __construct_new_array by CZPauseTest() for the twelve lines; the class name ours)
+0x00205A70 0x1D0 IsSelectable__11CZPauseTestFSc  # OVL1; ours by hand (the HUD lane, round 37: hud_pausemenu.cpp -- whether a line can be chosen: the line's flags by the network state, the NoAutoAim valve, the LAN lobby; ReInit, 0x201690 and 0x202520 call it; the name ours)
 0x00205C40 0x1C0 __dt__15CZObjectiveListFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00205E00 0x990 RefreshStatics__15CZObjectiveListFv  # OVL1; s1:calls by hand (the HUD lane: SOCOM 1's RefreshStatics -- RefreshList's (0x207570) one callee, the tactical map's statics loaded, UV'd and listed: the titles 'TACTICAL MAP' and 'OBJECTIVES', the legend's lines; SOCOM II moved it to the unit's end, so it sits right after the implicit destructor)
 0x00206790 0x18 IsPlayingAnimation__15CZObjectiveListFv  # OVL1; s1:exact shape (theHUD's mission cameras' IsPlaying, tail-called, as SOCOM 1's 0x14 bytes)
