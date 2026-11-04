@@ -5690,21 +5690,24 @@ only ShowArrows' have rows. **Proved** over every unit (`--files .`, `-v` so the
 matches are listed too, 2 jobs, `build/scratch/gcc/proof.sh`): master ad2fbf89's sccheck.py,
 scdiff.py and scdecomp.py and these, over one frozen snapshot of src/ and include/, give 13,611
 lines, identical but ShowArrows' (`10 relocs, 8 unchecked` -> `10 relocs`); 10,681 byte-exact
-under both. The canary's `test_mw_function_static_resolves_by_its_function` pairs it with the rows
+under both. Re-proved after merging master 38925218 (the lane's units in): 13,685 lines, the same
+one line apart, 10,734 byte-exact. The canary's `test_mw_function_static_resolves_by_its_function` pairs it with the rows
 moved (MISMATCH) and removed (the 8 unchecked again), and fails with the mapping switched off.
 automatch over the lane's four ranges (`--max-size 0x400 --emit --no-prune --jobs 2 --obj-dir` the
 lane's `src/lib` build): MAIN `18DB90 1C4CC0` 91 tried, 0 hits (12 build failures, 15 m2c
 refusals), `1CCD78 1CE2A4` 6 tried, 0 hits (5 refusals), OVL1 `1E7F58 1E8FD4` 2 tried, 0 hits,
-`243000 256FD0` 96 tried, 0 hits (22, 8): 195 tried, none byte-exact (round 20a: 220, 0) -- the 34
-that do not build are round 16a's kinds; every draft that builds misses.
+`243000 256FD0` 96 tried, 0 hits (22, 8): 195 tried, none byte-exact (round 20a: 220, 0) -- 34
+drafts did not build (not reclassified this round: round 16a's survey names the kinds) and every
+draft that built missed.
 
-**Round 21a** (2026-11-04, the tools first, then the socket layer): 16 rows newly byte-exact -- the
-lane's `src/lib` sdk/libc/libgcc/libm/ovl1 rows 1,102 -> 1,118 of 1,184 scored, none lost -- of 18
-functions written. `sdk/inet_sock.c` (13 -> 29 of 35): the BSD calls over libinet -- socket
+**Round 21a** (2026-11-04, the tools first, then the socket layer): 17 rows newly byte-exact -- the
+lane's `src/lib` sdk/libc/libgcc/libm/ovl1 rows 1,102 -> 1,119 of 1,186 scored, none lost -- of 19
+functions written. `sdk/inet_sock.c` (13 -> 30 of 37): the BSD calls over libinet -- socket
 0x1C2B90, bind 0x1C2CD8, connect 0x1C2DD0, listen 0x1C3120 and its per-slot listener 0x1C2F38,
-send/recv 0x1C3660/0x1C3810, sendto/recvfrom 0x1C39B0/0x1C3B20, close 0x1C3CE8 -- and the thread's
-buffer resize 0x1C2648, its context's drop 0x1C2A98, the send side's lazy open 0x1C35A0, an option
-setter 0x1C4088, the abort 0x1C4C20, and round 20a's open thread context 0x1C2160. No rows named
+send/recv 0x1C3660/0x1C3810, sendto/recvfrom 0x1C39B0/0x1C3B20, close 0x1C3CE8, a socket's abort
+0x1C28F8 -- and the thread's buffer resize 0x1C2648, its context's drop 0x1C2A98, the send side's
+lazy open 0x1C35A0, an option setter 0x1C4088, the abort 0x1C4C20, and round 20a's open thread
+context 0x1C2160. No rows named
 (not in SOCOM 1; inet_bsd.c's wrappers say which call is which: socket ... shutdown in libinsck's
 alphabetical order). What they showed:
 
@@ -5737,9 +5740,11 @@ alphabetical order). What they showed:
   address pointer and libnet's client address), getsockname/getpeername 0x1C46D0 (4: the 16 for
   `*namelen` in v1 before the port's store, the target's v0 after), gethostbyname 0x1C48A0 (0x178
   against 0x180: the target keeps its three error paths' `func_001C2310(c, X); return 0;` apart,
-  this compile cross-jumps them), and round 20a's allocator three (0x1C1D40, 0x1C1E90, 0x1C2028).
-  Not written: the socket calls 0x1C28F8, 0x1C3E60, getsockopt 0x1C4140, setsockopt 0x1C43D0,
-  0x1C4A20. Not reached: libmpeg's last six, libgraph and libipu (0x1A13D0-0x1A3448), libkernl's
+  this compile cross-jumps them) and gethostbyaddr 0x1C4A20 (0x1EC against 0x1FC: the target
+  merges three of its four into the lock failure's call, this compile all four -- one question for
+  both: which source makes GCC 2.9's cross-jumping stop), and round 20a's allocator three
+  (0x1C1D40, 0x1C1E90, 0x1C2028). Not written: 0x1C3E60, getsockopt 0x1C4140, setsockopt 0x1C43D0.
+  Not reached: libmpeg's last six, libgraph and libipu (0x1A13D0-0x1A3448), libkernl's
   tty and SIF objects, OVL1's codec.
 
 **Next**: the libraries by hand, module by module, as their vendors wrote them (each `src/lib`
