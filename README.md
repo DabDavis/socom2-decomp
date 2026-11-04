@@ -75,7 +75,7 @@ The image is three pieces of one address space:
 | piece | base | source | code |
 |---|---|---|---|
 | MAIN | `0x00100000` | `SCUS_972.75`'s one non-empty LOAD | `0x180000-0x1CA3D0`, `0x1D4B00-0x1D4F90` (`0x1CCD78-0x1CE2A0`, swept as code at first, is libkernl's tlbsrc -- a kernel image linked at 0x80075000 -- and .data: its rows retired, GCC round 23a) |
-| OVL1 | `0x001E7000` | `ftscore.bin` (FTSCore) | `0x1E7040-0x3D5980`; VU1 microcode `0x3D5980-0x3DBFF8` |
+| OVL1 | `0x001E7000` | `ftscore.bin` (FTSCore) | `0x1E7040-0x3D5980`; VU0 microcode `0x3D5980-0x3D6750` (the speech codec's FFT), VU1 microcode `0x3D6750-0x3DBFF8` |
 | OVL2 | `0x004C5380` | `zsealetc.bin` (ZSealEtc) | `0x4C53C0-0x64F778` |
 
 - **The overlays are encrypted on the disc** (`RUN/RAW/APACHE00.ZDB`, docs/storage.md).
@@ -90,8 +90,10 @@ The image is three pieces of one address space:
   a prologue at `0x1E7040`, and the boot enters ZSealEtc at `0x4C53C0`. The text range is
   `[base+0x40, base+0x40+text)`, ending on FTSCore exactly at its first float constant.
   (socom-unzipped's research/05 says 0x80; it is not.)
-- **OVL1's text ends in VU1 microcode** (lower/upper NOP pairs `8000033C`/`000002FF`); the
-  sweep stops at it. Ghidra's 39 KB "function" at `0x3D6750` is that microcode.
+- **OVL1's text ends in VU microcode** (lower/upper NOP pairs `8000033C`/`000002FF`); the
+  sweep stops at it. Its first 0xDD0 bytes, `0x3D5980-0x3D6750`, are VU0's (the speech codec's FFT
+  uploads them: the GCC lane's round 26a), the rest VU1's. Ghidra's 39 KB "function" at `0x3D6750`
+  is the VU1 microcode.
 - **MAIN is mostly not ours**: Sony's SDK (GCC-built, 8-byte aligned, tables inside `.text` —
   `PsIIlibipu`, `PsIIlibkernl`), MSL, zlib 1.1.4, and the boot loader. The `__sinit_*` static
   initialisers sit after rodata at `0x1D4B00`, as Metrowerks places them.
@@ -2030,6 +2032,49 @@ exists); 3.0b38/b50/b52 still untold.
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the SEALs, round 26** (seven SOCOM II functions: the fire point's finds, the side step, the SEAL targets):
+  - a float compared with a zero held in a local keeps the field first in `c.eq.s` (a literal always goes first); a
+    ternary between two lvalues written in place gives each arm its own block -- through an inline returning a pointer or
+    reference, or through an if/else, MW presets the first arm in the delay slot and drops its block: the online MP bomb
+    near the fire point 0x5AA110 (open since round 19) and the nearest pickup 0x5A9F40;
+  - an inline bool `return !(a || b);` leaves its join label unaligned, the `int r = a != 0; if (!r) r = b != 0; return r
+    ^ 1;` form pads it to 8 -- pick by whether the target's `xori` sits at 4 mod 8; a member accessor returning a field by
+    const reference makes MW address the second bitfield read through the field's address (`addiu a0,s1,232; lhu
+    2(a0)`), read directly or through a static accessor the offset folds (the pickup under the reticule 0x5A9C70: the
+    PICKUP material bit through a `? true : false` inline);
+  - `RandRange(lo, hi) { return Rfloat(lo, hi - lo); }` gives the target's float-register order (built in place, min and
+    range swap); the chance stays in a stack slot only through seal_control.cpp's `Chance` (a by-value parameter with a
+    `const float &` bound inside the inline -- a literal or a local passed straight folds, and a one-float class
+    temporary, even with a volatile member, is scalarised): the side step 0x5698A0; a `break` to the loop's shared
+    `return 0` (the nearest SEAL target 0x569C60);
+  - MW's `@N` and `name$N` symbols are numbered by a counter header declarations shift: object comparisons must rank them
+    (build/scratch/seal-r26/objcmp.py: every hand-written unit's functions before and after a header change, ~35 s at 2
+    jobs -- it proved the ZOOMSTATE renumbering to SOCOM II's 13 view states neutral over 626 units);
+  - UpdateAiMapLoc 0x5B7BA0 sits after seal_env.cpp's template tail -- SOCOM 1 has it just before seal_ex.cpp's
+    ftmask_create: the next unit's; 0x58D190 is RTList<ACTIVE_ANIM>::Remove's words (its only caller the unwritten
+    0x58BDF0); open: 0x5B14E0 and 0x5A2490 (2 each), AnimPop / CombineRotations (the record count loaded once across the
+    Slerp calls).
+- **Tells from the AI core, round 23** (MakeNoise and MakeNoiseXZ by the float colouring, GetStartMatrix, GetLocation):
+  - A LOCAL ASSIGNED FROM A TERNARY IS ABSORBED INTO THE TERNARY'S TEMPORARY, numbered after all named locals; assigned in
+    an if/else it stays the named local, numbered where it is declared -- MakeNoise 0x50E190 and MakeNoiseXZ 0x50DFF0
+    (open since round 2), read off MW's float-register colouring with the MSL lane's igdump tools (class 1 too); an
+    inline call's result multiplied by a variable always comes out `variable * result`, whatever the source order -- with
+    the result in a named local the source order holds;
+  - `bool found = i < n; if (found) { ...; found = true; } return found;` in an inline reuses the test's `sltu` as the false
+    value, `daddiu 1` for true, and narrows with `andi 0xff` into the caller's bool at the join; an inline bool taking a
+    count by value loads the count before its first branch and narrows its result, bool locals set in place do neither
+    (CAiMap::GetLocation(point) 0x515F80: the row and column tests each set a bool of their own);
+  - CVehicleRdrEntry::GetStartMatrix 0x532D10 (66 off before): a new zchar.h inline `startvec::Get(i, name, dir)` whose
+    bool becomes `ok` only at the join, as SOCOM 1's, and a by-value SetTranslation (z, y, x loaded before x, y, z
+    stored); ai_util.cpp is compiled without auto-inlining (one file-wide `#pragma auto_inline off` for round 22's three
+    pins);
+  - MW's placement: const objects in .rodata, initialised variables in .data, dynamically initialised non-const statics in
+    .bss, string literals in .data unless `-str readonly` -- and OVL2's AI strings sit beside their const objects at
+    0x65Axxx, away from the initialised variables at 0x64Fxxx: a lead that the game too was built `-str readonly`
+    (CAiMap::neighbor, const in our source, sits at 0x64F); s_preemptPriority is ai_path.cpp's `const float`;
+  - open: plan_legcomplete (the body held a call during optimisation that was removed later), remove_if<_tick>,
+    GetNextEvent, is_traversable (soil > cell > bool where the target needs cell > bool > soil), resize<reader>, the pod
+    resize copy 0x53AA50, CAiMap(int)/~CAiMap; 0x6687D0 (an 8-byte empty initialiser) still unplaced.
 - **Tells from the UI, round 18** (three soft-keyboard functions by MW's colouring, util_memcard.cpp whole, LoadDesign):
   - A VARIABLE ONE NEIGHBOUR OVER K IS DEFERRED: in SkbTypeOrBack 0x399C20 (open since round 9), SkbCursorBack 0x399530
     and SkbTextFits 0x396D40 (since round 11) the cursor had 25 neighbours (K = 25), and a low-degree variable numbered
@@ -6968,8 +7013,7 @@ libvect.c and the encoder API, named by what it does: 0x24F010, 0x24F170, 0x24F4
 - **OVL1's text ends in VU0 microcode, not only VU1's**: the codec's mode-1 FFT (0x252098) copies both
   halves into VU0 data memory (0x11004000, 0x11004400), sets vi1 = (n != 256) and runs `vcallms 0`;
   its set-up (0x252150) loads 0x3D5980-0x3D6750 into VU0 micro memory (0x11000000) and a 2016-byte
-  table by GCC's block move. ("The target" lists 0x3D5980-0x3DBFF8 as VU1 microcode; its first 0xDD0
-  bytes are VU0's.)
+  table by GCC's block move ("The target" corrected at integration: its first 0xDD0 bytes are VU0's).
 - **The codec's unions have a `long l`**, 64-bit on the EE (its asserts name `union_x.l`): the fast
   log2 0x2517D8 and exp2 0x251850 read the bits with mfc1 and an `and` of 0xFFFFFFFF and pass words
   through the stack; eighteen spellings miss (the unions in registers OR in the undefined upper word,
