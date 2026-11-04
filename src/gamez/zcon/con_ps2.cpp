@@ -504,7 +504,12 @@ unsigned int CPacketMsg::GetArgCount() const
  * labels are unpadded, as an inline's or an expression's are): the whole body an inline helper with
  * the nested ifs gives the target's every block and branch but pads three labels (0x50); the null
  * test in an inline over an inner inline or ternary gives its padding but joins the inner returns in
- * one `b` (0x48) -- build/scratch/core/v_getarg*.py */
+ * one `b` (0x48) -- build/scratch/core/v_getarg*.py. Round 14: the nested if/else assigning a result
+ * (`if (m_data) { if (index >= argc) r = 0; else r = m_args[index]; } else r = 0;`) has every block
+ * and branch of the target -- both inner arms jump straight to the join -- but pads its three labels
+ * (0x50), and moved into an inline (by result or through a reference) it pads the same; the inner
+ * test as a ternary leaves the labels unpadded but keeps the ternary's own join, a `b` to the outer
+ * join (0x48: so MW merges an if-statement's empty joins, never an expression's) */
 void *CPacketMsg::GetArg(unsigned int index) const
 {
     if (!m_data)

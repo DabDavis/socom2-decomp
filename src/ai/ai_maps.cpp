@@ -25,19 +25,23 @@ const T &_max(const T &a, const T &b)
  * each copied in with its map's index, the table sorted (SOCOM 1's; SOCOM II counts and reserves
  * first, and skips a kind no map has). The copy is the name's implicit one (CAiMapLoc's written
  * copy, the characters' 2-byte loop, the two bytes), the walks' iterators assigned (in memory), the
- * first walk's end taken once ahead of the kinds' loop: that saved register spills the kind and
- * `this` to the stack as the target's do (frame, registers and spills alike).
- * OPEN, 11 instructions short (0x324 against 0x350): block layout only -- the target keeps both
- * loops' entry tests, the kinds' loop entered through a preheader laid out after the body (the
- * field addresses, both ends, then a jump to the `k < 6` test) and the count walk's set-up and first
- * `n != end` test in a block after the function's body that jumps back to the loop's test; MW folds
- * both here (k starts at 1; the count loop's test inline). A `for` with `int k` before it, `while`
- * for the count walk and either compare order give the same 0x324 */
+ * first walk's end taken into a local at the top of each kind (its saved register spills the kind
+ * and `this` to the stack as the target's do). Two preheaders after the function's last block, as
+ * the target's (the AI core round 25; 0x324 before, both folded inline): the end local inside the
+ * kinds' loop is a loop invariant MW hoists into the kinds' loop's preheader (the field addresses,
+ * both ends, then a jump to the `k < 6` test), and the count walk's postfix step hoists its end into
+ * the walk's own (the online lane's postfix rule).
+ * OPEN, right size, 34 instructions: registers only -- the target gives the push walk's names
+ * iterator s0 and the name-table cursor (m_names[k], strength-reduced) s1, this build the other way
+ * round (the iterator's scalar @7178 is numbered below the cursor's @7190), and the count walk's
+ * cursor and end take a0/v1 where this build's take a2/a0. A named reference to m_names[k] (0x360),
+ * the push walk's iterator declared outside its for, a postfix push step, `e` before `mapid`: no
+ * change */
 void CAiMaps::UpdateNameTables()
 {
-    iterator last = end();
-
     for (int k = 1; k < 6; k++) {
+        iterator last = end();
+
         m_names[k].clear();
         int count = 0;
         iterator i;
@@ -45,7 +49,7 @@ void CAiMaps::UpdateNameTables()
         for (i = begin(); i != last; ++i) {
             CAiMap::names &names = (*i)->m_namesTable;
 
-            for (CAiMap::names::iterator n = names.begin(); n != names.end(); ++n)
+            for (CAiMap::names::iterator n = names.begin(); n != names.end(); n++)
                 if ((*n).m_15 == k)
                     count++;
         }

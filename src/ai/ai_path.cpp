@@ -110,7 +110,12 @@ CAiPath::~CAiPath()
  * their address and the data read through it -- 8 off, 7 with the copy in an inline taking both stats
  * by pointer -- but then reads the size through v1 too (the target: off s1), copies m_current with
  * lw/sw (the implicit assignment's lwc1/swc1 lost) and keeps the tag slots swapped
- * (build/scratch/ai/v_copy.py) */
+ * (build/scratch/ai/v_copy.py). The AI core round 25: include/vector's class operator= reading the
+ * other's data through the deleter's data() reference (`(const T *)const_cast<__vector_imp &>(x).
+ * data()`, both ends) gives the target's v1 and `lw a1,8(v1)` with the size off s1 -- 2 off, only
+ * the two forward_iterator_tag slots (68/72) swapped; with m_visited as CAiMapLocVec as well, this
+ * and ~CAiPath match and CAiPath() is the level too tall (an MSL-lane header change: char_type.cpp
+ * scores the same either way) */
 bool CAiPath::CopyPlan(const CAiPath *path)
 {
     bool ok = false;

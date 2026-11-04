@@ -2060,6 +2060,76 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the game states, round 35** (LoadWorld at last, the stealth rating, CMenuState::Init, CNodeAction::Open):
+  - a clamp whose upper bound is a ternary (the lower bound an if) leaves no join block, so a following constant
+    assignment lands between the next call's lui and jal with the addiu in the delay slot (the stealth rating 0x1F3290,
+    open since round 33);
+  - an out-parameter passed type-punned (`(int *)&unsigned_local`) to a callee inlined one level keeps the caller's local
+    on the stack, same-typed MW promotes it to a register; `if ((x = f()) != 0)` tests v0 with the move in the delay slot,
+    `x = f(); if (x)` moves first and pads the slot; when a caller loads a value into a0 for a test right before calling a
+    no-argument function, the callee really takes that value (UiLoadCountSound 0x369880 takes the menu, unread: renamed);
+  - a list held as a member of a wrapper class: the wrapper's one-level inline destructor calls its Clear out of line,
+    then the member's ~list with -1 (a base destructor gets 0); a tall inline expanded one level calls every iterator
+    piece -- two near-twin methods give both shapes, one reading end() each pass with postfix ++, the other taking the end
+    once with prefix ++ (LoadWorld 0x1E91C0, 0x1090: a local list class -- CLoadList / CLoadEntry, the names ours -- whose
+    13 out-of-line pieces 0x1EA430-0x1EA6D0 match from source, with reserve<CTickLight> 0x1EA8D0);
+  - making and listing an object inside an inline helper that returns it reads the constructor arguments before the
+    `new`; only the helper's own local stays in memory for push_back's reference (CMenuState::Init 0x1F4860: st_menu.cpp
+    21 of 21; CNodeAction::Open 0x2B4F40; GetUIString 0x2B48E0 and GetTCMActions 0x2B4CD0 named).
+- **Tells from the kit and AI states, round 36** (seal_tasks.cpp's set-mode, region, range and event tasks):
+  - an enum local tested `== 0` keeps the target's extra andi before the branch, `!mode` tests the register directly
+    (CTSetMode::Tick 0x5D2480 / Parse 0x5D2630: SOCOM II's mode the low 16 bits of a flags word, "always" and
+    "respawn_only" bits 16 and 17); inside an inline `Count() > i` folds to beqz for item 0 where `i < Count()` keeps an
+    sltu;
+  - a float default the target loads from data is a static, not a literal (MW builds a literal in registers:
+    lui/ori/mtc1); a local declared before the TASK_SEAL find and assigned after it takes the counter's register and
+    leaves the block in s1, declared after the find the two swap; a bool preset to true and cleared under two tests the
+    target computes as values keeps the inner test a branch with `else byId = byId;` (CTRange::Tick 0x5CF480 through
+    TASK_ENT::Get: by name until found, then by id unless its bit 13 is set; CTRegion::Parse 0x5CF290; CTEvent::Tick
+    0x5DCE70);
+  - a callee whose inline tree is taller than five gets only its own body inlined, everything it calls staying a call --
+    AnimSet::Find's caller 0x5E3940 wants a tree six high (a probe with GetName five levels deep is byte-exact): the tall
+    chain must be c_str (two levels today) or the iterator's constructor or assignment (the MSL's question).
+- **Tells from the HUD, round 43** (GetBlipID, the line map's Tick and TickRegions):
+  - `x = c ? k * x : x;` multiplies constant-first and leaves the join unpadded; `if (c) x = k * x;`, `x *= k` and `x = x *
+    k` all multiply variable-first and pad the join (CZLineMap::TickRegions 0x20DF70, SOCOM 1's); a static reference bound
+    to an array element is guarded in MW 3.0 (`static LINE_DATA &ld = _linedata[1]`);
+  - a bitfield tested through an inline `? true : false` gives `andi` then `sltu` before the branch, `(bool)b`, `b != 0`
+    and an inline `return b;` branch straight on the `andi`; a select of two constants into an `unsigned char` local,
+    returned as `unsigned int`, gives the target's `movz` plus `andi 0xff` (CZPlayerMapItem::GetBlipID 0x222C80);
+  - a global float passed to an inline after a call argument (`f(g(), global, k)`) is loaded before g() runs and kept in a
+    saved float register -- told by SOCOM 1's line table giving the whole call one line (CZLineMap::Tick 0x20EBD0: each
+    map's tick one inline call, TickLines pinned out of line).
+- **Tells from the AI core, round 25** (is_traversable at last, ResetGears, the handle list's erase, ai_vismap.cpp):
+  - a field read into a caller's named local before an inlined callee reads it again takes over the inline's read: the
+    local is numbered below the inline's result and the shared pointer load becomes a late temporary, reordering the
+    colouring (CRestrainedPlanner::is_traversable 0x512CB0: the soil a byte-enum local, cell a0 / bool a2 / soil a3);
+  - a bitfield copied into an int local compares without the byte narrowing, a byte-enum local or an `(unsigned char)`
+    cast keeps the target's `andi 0xff`; the postfix-step preheader rule holds for an empty walk too
+    (CCharacterType::ResetGears 0x53F0B0); an end() local declared inside an outer loop's body is hoisted into that loop's
+    preheader after the function, declared before the loop it stays inline (UpdateNameTables 0x52B820: the target's size);
+  - a template instance in a unit's tail with no caller in that unit can come from a dead-stripped own function (the
+    handle list's range erase 0x50FBD0 from CAiEventQ::Clear, in ABSENT.txt); MW still emits an 8-byte empty `__sinit`
+    (`jr ra; nop`) for a static with an inline empty constructor and no destructor -- ai_vismap.cpp, between ai_maps.cpp
+    and seal_ai.cpp in link order, holds only that (0x6687D0).
+- **Tells from completing the MSL headers, round 23** (the scalar vectors' rbegin, the pointer vector's original iterator
+  measured; probes build/scratch/msl-r23-p23/, the measured header build/scratch/msl-r23/vector.r23_pointer_iterator):
+  - THE POINTER VECTOR'S ORIGINAL ITERATOR, read off the image: the raw begin/end belong to each element type, not the
+    shared pod (CNode's 0x1EA8C0 / 0x1EA890 and CKey's 0x257CB0 / 0x257BA0 have the same words in one overlay: different
+    instances); `__raw_begin() { return this->data(); }`, `__raw_end() { return __base::end(); }` (the pod's end through
+    data(): 0x34D920 is that pod end); begin() through `__iter(__raw_begin())`, end() taking the raw end into a const
+    local first; the iterator gains `iterator(unsigned int *const &)` (0x257CA0) and base() (0x257B90), `==` comparing
+    base()s; the copy constructor stays implicit (a user-declared one makes the postfix ++'s copy 0x18 against 0x14) --
+    with it _countKeys 0x2578F0, fixupKey 0x257CC0 and NextFile 0x34D740 come out instruction-for-instruction the
+    target's, but end() becomes four inline levels high and 19 current walks fitted to three lose their match (their
+    fifth level cut): NOT ADOPTED until those walks are refitted (queued);
+  - a non-leaf inline larger than inline_max_size inlines one level, so bisecting that pragma gives each piece's size; a
+    self-inlined copy counts its pieces only two levels down; a loop test's end() counts twice (the test is duplicated)
+    and a local's `const` costs one unit; a const local in end() is what lets MW hoist a loop-invariant end into a
+    preheader, and the pod's end must call data() for it to stay hoisted;
+  - the scalar vectors' rbegin() / rend() over include/iterator's reverse_iterator (code-neutral over 633 units):
+    CSkbSplit(n, k) 0x391F80 is `*m_parts.rbegin() = n - k + 1;`, the UI's CSkbRevIter stand-in retired, the reverse
+    iterator's operator* 0x391D30 named.
 - **Tells from the SEALs, round 34** (the anim stack's pop and rotations, SetMaxMotion, vector<AnimSet *>'s pieces):
   - the count kept in a register while the entry test re-reads the global comes from: take the count into a local, guard
     with `if (i < *(const unsigned int *)&g)`, then `do {} while (i < n)` -- MW never hoists the global past a store or a

@@ -142,7 +142,8 @@ void CGrid::addOrderedCellAtom(int x, int z, bool force)
  * value, the box's cells kept in the unit's statics for GetNextCell).
  * OPEN, 9 instructions (right size): registers in the inlined gridGetAtomBasePtr -- the target
  * keeps z in a1 and the clamped x in a2 (SOCOM 1's in a0/a1), here z takes a2 and x a1; not the
- * result local, its place, nor a helper taking the grid */
+ * result local, its place, nor a helper taking the grid; round 14: x and z read into locals first
+ * (either order, before or after the pointer) -- 9 or 10 */
 CCell *CGrid::SetCellBoundary(CPnt3D min, CPnt3D max)
 {
     gridGetGridXandZIndex(&xMinCell, &zMinCell, min.x, min.z);
