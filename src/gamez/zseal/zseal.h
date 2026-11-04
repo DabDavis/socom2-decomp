@@ -220,6 +220,10 @@ class CSealUnit {
 public:
     /* a member's news handed to the squad (SOCOM 1's; OVL2 0x5ED7B0, the kit lane's) */
     void Notify(CZSealBody *seal, UNIT_MESSAGE msg, void *data);
+    /* the squad of a team, and a member by its index (OVL2 0x5EF2F0, 0x5EDBB0: the kit lane's
+     * seal_unit.cpp, which declares them alike) */
+    static CSealUnit *GetUnitByTeam(unsigned int team);
+    CZSealBody *GetSealByIndex(int index, int depth);
 
     unsigned int m_0;   // 0x0
     virtual void IssueCommand(CZSealBody *seal, FT_COMMAND cmd, void *data, bool b);

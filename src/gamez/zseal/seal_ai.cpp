@@ -13,6 +13,7 @@
 #include "../zweapon/zweapon.h"
 #include <stdio.h>
 #include <string.h>
+#include <stdarg.h>
 
 /* The unit inlines to depth 8, not the flags' 5 (a pragma acts through its state at the unit's end):
  * CSealUnit::GetTop's out-of-line copy (0x561D20, after 0x561B90) inlines itself eight times, and a
@@ -1677,6 +1678,132 @@ extern "C" void func_0056BEF0(CSealCtrlAi *ai)
     ai->ClearGoal(GOAL_MOVE);
     func_00570F90(ai, 1.0f);
     func_005B3890(e, 1);
+}
+
+extern "C" {
+/* the mission's vehicles, counted (OVL2 bss: OnMissionStart sets it), the reach within which a target
+ * vehicle is looked at, squared, and the nearness asked of its box (OVL2 data, 250000 and 5: read
+ * with lwc1, variables; the names ours) */
+extern int data_0066AFE8;
+extern float data_00650170;
+extern float data_00650168;
+bool func_0056A8E0(CEntity *vehicle, const CPnt3D *pos, float near);
+void func_00569550(CSealCtrlAi *ai, unsigned int id);
+}
+
+/* the entity as a vehicle (type 4, CVehicle's), if it is one (an inline, the name ours) */
+static inline CEntity *AsVehicle(CEntity *e)
+{
+    return e && e->m_type == 4 ? e : 0;
+}
+
+/* the vehicle a spot -- the SEAL's own by default -- is at: the SEAL's targets walked nearest first
+ * while within reach, the first vehicle whose box the spot is near; told to 0x569550 when asked (OVL2
+ * 0x56A760, new in SOCOM II: PreTick calls it five times, the line walk's callback once; the name
+ * unknown) */
+extern "C" unsigned int func_0056A760(CSealCtrlAi *ai, const CPnt3D *pos, bool tell)
+{
+    unsigned int id = CEntity::invalidId;
+    CEntity *e = ai->m_entity;
+
+    if (data_0066AFE8 > 0) {
+        if (!pos)
+            pos = &e->m_posW;
+        CTargetList *list = &e->m_targets;
+
+        for (CTargetList::iterator i = list->begin(); i != list->end(); ++i) {
+            if (!(i->m_distSq <= data_00650170))
+                break;
+            CEntity *v = AsVehicle(i->m_ent);
+
+            if (v && func_0056A8E0(v, pos, data_00650168)) {
+                id = v->m_id;
+                break;
+            }
+        }
+        if (tell && id != CEntity::invalidId)
+            func_00569550(ai, id);
+    }
+    return id;
+}
+
+extern "C" {
+/* a switch 0x572880 clears when its question fails (OVL2 bss; the name ours) */
+extern unsigned char data_0066AFE0;
+}
+
+/* the state as a hold (kind 2), if it is one (an inline, the name ours) */
+static inline CAiState *AsHold(CAiState *s)
+{
+    return s && s->m_state == AI_STATE_HOLD ? s : 0;
+}
+
+/* whether a player SEAL hit is the one team 2's second member holds for: the switch on, the SEAL a
+ * player's, that member the AI's, its state a hold with flag 0x80 -- the AI and the state given
+ * back, else the switch, the AI and the state cleared (OVL2 0x572880, new in SOCOM II: OnWeaponHit
+ * asks it; the name unknown) */
+extern "C" bool func_00572880(CZSealBody *seal, CSealCtrlAi **ai, CAiState **state)
+{
+    bool r = false;
+
+    if (data_0066AFE0 && seal && seal->IsPlayer()) {
+        CSealUnit *unit = CSealUnit::GetUnitByTeam(2);
+
+        if (unit) {
+            CZSealBody *s = unit->GetSealByIndex(1, 0);
+
+            if (s && (s->m_control ? ((CSealCtrl *)s->m_control)->IsAi() : false)) {
+                *ai = s->GetSealCtrlAi();
+                *state = AsHold((*ai)->GetAiState());
+                if (*state && ((*state)->m_flags & 0x80))
+                    r = true;
+            }
+        }
+    }
+    if (!r) {
+        data_0066AFE0 = 0;
+        *ai = 0;
+        *state = 0;
+    }
+    return r;
+}
+
+extern "C" {
+/* whether the AI's task anims may run (OVL1 data, a byte; the name ours) */
+extern unsigned char data_003DF188;
+}
+
+/* the state as a script (kind 1), if it is one (an inline, the name ours) */
+static inline CAiSScript *AsScript(CAiState *s)
+{
+    return s && s->m_state == AI_STATE_SCRIPT ? (CAiSScript *)s : 0;
+}
+
+/* a task's anim activated with the arguments that follow, the copy kept four slots on (SOCOM II's
+ * anims and copies, four each from 0x450 -- the task counted from 1); when asked and it ran, a
+ * script state pushed that plays the anim, marked running; whether it ran (OVL2 0x561F00; SOCOM 1's
+ * ActivateEx, variadic: a3-t3 stored to the frame, the flag too, its address taken by va_start) */
+bool CSealCtrlAi::ActivateEx(SEAL_TASK task, bool push, ...)
+{
+    if (!data_003DF188)
+        return false;
+    va_list ap;
+
+    va_start(ap, push);
+    CZAnim *active;
+    CZAnim *anim = m_anims[task - 1];
+
+    active = 0;
+    if (anim)
+        active = anim->ActivateArgV(ap);
+    m_anims[task + 3] = active;
+    if (active && push && PushAiState(AI_STATE_SCRIPT, 1)) {
+        CAiSScript *s = AsScript(GetAiState());
+
+        s->m_58 = (unsigned int)anim;
+        s->m_active = true;
+    }
+    return active != 0;
 }
 
 /* the target's entity, held in the word at 0x67C (an inline, the name ours) */
