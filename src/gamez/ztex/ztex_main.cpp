@@ -131,10 +131,6 @@ struct GifTag {
     ((unsigned long)(a) | ((unsigned long)(b) << 2) | ((unsigned long)(c) << 4) |                     \
      ((unsigned long)(d) << 6) | ((unsigned long)(fix) << 32))
 
-/* the select block's builder (SOCOM 1's CVisual::GetTextureSelectBlock, vis_main.cpp's: its row is
- * still a placeholder) */
-extern "C" _word128 *func_003C3D90(unsigned int n, _word128 **cursor, _word128 *ref, _word128 *tag);
-
 /* a shadow or reflection texture (by its name) given a select of its own: six registers -- TEX0
  * at its GS address, TEX1, TEXA, CLAMP and ALPHA, the shadow's blend, the reflection's or the
  * plain one -- in a fresh VU select block (SOCOM 1's, the same code); any other texture is left
@@ -157,7 +153,8 @@ int CTexture::SetupSpecialTextures()
     if (m_vuSelect)
         _free(m_vuSelect, 0, 0);
     m_vuSelect = 0;
-    m_vuSelect = func_003C3D90(m_selectQwc, &m_gifSelect, (_word128 *)&m_dmaRef, (_word128 *)&m_dmaRefVu);
+    m_vuSelect = CVisual::GetTextureSelectBlock(m_selectQwc, &m_gifSelect, (_word128 *)&m_dmaRef,
+                                                (_word128 *)&m_dmaRefVu);
     m_loadimage = m_vuSelect;
 
     _word128 *p = m_gifSelect;

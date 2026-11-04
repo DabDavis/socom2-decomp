@@ -107,6 +107,13 @@ public:
     CAiGroup *GetGroup();
     /* the bit at 0x264 (inline; the name ours) */
     void SetAiBit0(bool b) { m_aibit0 = b; }
+    /* whether the current state is of a kind (zseal.h's AiStateIs, SOCOM 1's: the stack's const
+     * GetState called, the test built whole with its explicit false arm) */
+    bool StackNotEmpty() const { return !(m_stateStack.size() == 0); }
+    bool AiStateIs(AI_STATE state) const
+    {
+        return StackNotEmpty() ? (m_stateStack.GetState()->m_state == state ? true : false) : false;
+    }
 
     unsigned char _18[0x264 - 0x18];
     unsigned int m_aibit0 : 1;   // 0x264 bit 0 (cleared when the AI joins a group)
@@ -645,7 +652,9 @@ static void FaceXZ(const CPnt3D *from, const CPnt3D *to, CMatrix *m)
  * &p.z (the target's s8, hoisted with &p.y into s7) is computed in the loop. `#pragma
  * opt_strength_reduction off` drops the index register but the &p.y/&p.z hoisting with it (0x6C8).
  * Tried: the increments in the for header, `int i`, an inline GetLoc (0x6FC). Its erase(begin())
- * emits the step list's erase(position), 0x60EB60, byte-exact */
+ * emits the step list's erase(position), 0x60EB60, byte-exact. The GOING walk's test is the
+ * controller's AiStateIs (round 21: the target's const GetState call, xor/sltiu/xori and explicit
+ * false arm at 0x60C898) -- with it the function is 0x6EC, the stack's inline Is() gave 0x6E4 */
 bool CAiGroup::Tick()
 {
     STATE state = m_state;
@@ -727,7 +736,7 @@ bool CAiGroup::Tick()
         bool there = true;
 
         for (memberlist::iterator it = m_members.begin(); it != m_members.end(); ++it) {
-            if ((*it)->m_stateStack.Is(AI_STATE_GOTO)) {
+            if ((*it)->AiStateIs(AI_STATE_GOTO)) {
                 there = false;
                 break;
             }
@@ -773,17 +782,15 @@ bool CAiGroup::Tick()
     return m_state == DONE;
 }
 
-/* (OVL2 0x60D020: the AI held in the frame -- its address is push_back's).
- * OPEN, 4 instructions: Is(AI_STATE_SUSPENDED) -- the target materialises it whole (xor/sltiu/xori,
- * the second operand's sltiu, a `b` past the false arm's `move v0,zero`, label pads) and tests that,
- * MW here branches on each operand: the open shape of CAiStateStack::Pop(ai, AI_STATE)
- * (seal_aistate.cpp). The rest is byte-exact */
+/* (OVL2 0x60D020: the AI held in the frame -- its address is push_back's). The suspension test is
+ * the controller's AiStateIs (the stack's const GetState called, the test built whole with its
+ * explicit false arm: the kit lane, round 21) -- the stack's inline Is() branches on each operand */
 bool CAiGroup::AddMember(CSealCtrlAi *ai)
 {
     bool ok = false;
 
     if (ai && !ai->InGroup()) {
-        if (ai->m_stateStack.Is(AI_STATE_SUSPENDED) && !data_003DF188)
+        if (ai->AiStateIs(AI_STATE_SUSPENDED) && !data_003DF188)
             ai->PopAiState(AI_STATE_SUSPENDED);
         func_0056D0C0(ai, 0);
         func_0056D6A0(ai, 0);

@@ -6,7 +6,9 @@
  * pointer pair, ClearAiStates, UnInit, Notify, PlayRemoteMsg, run_anim (SOCOM 1's can_run_anim
  * inlined), CZSealBody::IsAi's copy, 0x5EAEB0, 0x5EB8A0 and the orders' range erase (0x5EF610);
  * round 15: the destructor (the lists as SOCOM 1's slist/ulist/clist classes) and GetSealCount
- * (0x5ED9B0, open on the MSL's depths: 0x5ED8F0/0x5ED950/0x5ED980 are its iterator copies).
+ * (0x5ED9B0, open on the MSL's depths: 0x5ED8F0/0x5ED950/0x5ED980 are its iterator copies);
+ * round 21: FindRescuedNear (0x5EEDB0, new) and GetMyLookDir (0x5EEF80, SOCOM 1's), the stand-in
+ * controller given its real state stack for AiStateIs.
  * Open: 0x5EBDC0 is CAiState's implicit operator= (0x5EBB50 assigns a breach state to the one it
  * pushed: the vptr skipped, m_time, the stack -- the list's assignment, then its words at 0xC-0x1B
  * copied as one aggregate through the FPU, lwc1/swc1, m_result with lw/sw -- then CAiState's
@@ -87,10 +89,26 @@ public:
     /* SEAL_AI_PARAMS's two mode bytes at 0x26C/0x26D (zseal.h's m_26c: 4, any target taken) */
     signed char m_26c;   // 0x26c
     signed char m_26d;   // 0x26d
-    unsigned char _26e[0x42c - 0x26e];
-    /* its state stack's kinds, a bit each (CAiStateStack::m_10, the stack at 0x41C) */
-    unsigned int m_stateKinds;   // 0x42c
+    unsigned char _26e[0x41c - 0x26e];
+    /* its states (SEAL_AI_PARAMS's stack: the kinds on it a bit each at 0x42C, m_10) */
+    CAiStateStack m_stateStack;   // 0x41c
+
+    /* whether the current state is of a kind (zseal.h's AiStateIs: the stack's const GetState
+     * called, the test built whole with its explicit false arm) */
+    bool StackNotEmpty() const { return !(m_stateStack.size() == 0); }
+    bool AiStateIs(AI_STATE state) const
+    {
+        return StackNotEmpty() ? (m_stateStack.GetState()->m_state == state ? true : false) : false;
+    }
 };
+
+/* the AI maps as far as this unit reads them (ai_maps.h's CAiMaps, which this unit does not include):
+ * two cells' distance (OVL2 0x52C320, compared signed) */
+class CAiMaps {
+public:
+    unsigned int GetLocationDelta(const CAiMapLoc &a, const CAiMapLoc &b);
+};
+extern CAiMaps AiMaps;
 
 /* a point-out's state, the leader's and the follower's (SOCOM 1's DWARF: UnitPointData, 0x14 bytes,
  * the same in SOCOM II) */
@@ -151,6 +169,8 @@ public:
      * follower's (the second), when the squad is pointing and the AI is a SEAL's (SOCOM 1's; OVL2
      * 0x5E7580) */
     bool GetMyPointOutTurnDir(CZSealBody *seal, CPnt3D **dir);
+    /* a SEAL's look out of a direction (SOCOM 1's; OVL2 0x5EEF80) */
+    void GetMyLookDir(CPnt3D *out, CPnt3D *dir, CZSealBody *seal);
     /* a SEAL among the squad's or its escortees, or with `recurse` in a squad under it; and the same
      * asked of a squad by number (SOCOM 1's; OVL2 0x5EDCC0, 0x5EDDD0) */
     bool IsMemberOfUnit(CZSealBody *seal, bool recurse);
@@ -194,6 +214,8 @@ public:
         return ok;
     }
     bool GetData(void *data, unsigned int size);
+    /* the rescued AI SEAL near one, while the extraction can run (OVL2 0x5EEDB0) */
+    CZSealBody *FindRescuedNear(CZSealBody *seal);
     /* the order's data as a pointer, or 0; and set so (OVL2 0x5E6D60, 0x5E6DD0: the HUD's command
      * menu and the AI's handlers read the target SEAL so; the names ours) */
     void *GetDataPtr();
@@ -223,7 +245,8 @@ public:
     unsigned char _a2;
     unsigned char m_a3;   // 0xa3 (SOCOM 1's m_member_died)
     unsigned char m_a4;   // 0xa4 (SOCOM 1's m_ambush)
-    unsigned char _a5[0xb4 - 0xa5];
+    unsigned char _a5[0xa8 - 0xa5];
+    CPnt3D m_a8;   // 0xa8: the look a set m_a4 gives every SEAL (GetMyLookDir; SOCOM 1's at 0x80)
     CZSealBody *m_follow_source;   // 0xb4 (SOCOM 1's 0x8c)
     unsigned char _b8[0xbc - 0xb8];
     int m_point_ticks;   // 0xbc (SOCOM 1's 0x9c)
@@ -513,7 +536,7 @@ void CSealUnit::CommandNotifyFromChild(CSealUnit *child, CZSealBody *seal, FT_CO
             CZSealBody *s = *i;
 
             if (s->IsAi()) {
-                if (((CUnitSealCtrl *)s->m_control)->GetSealCtrlAi()->m_stateKinds & (1 << 9))
+                if (((CUnitSealCtrl *)s->m_control)->GetSealCtrlAi()->m_stateStack.m_10 & (1 << 9))
                     some = true;
                 else
                     all = false;
@@ -687,6 +710,79 @@ bool CSealUnit::GetData(void *data, unsigned int size)
     }
     return ok;
 }
+
+/* the player (fts_player.cpp's, OVL1 0x2B3580) */
+CZSealBody *ftsGetPlayer();
+
+/* a SEAL's look out of a direction, in the XZ plane: the squad's own when m_a4 is set; following
+ * the player, squad 3's leader turned 45 degrees one way and the others 45 the other, the leader
+ * of any other squad kept straight; a pair (two SEALs) splits 60 degrees each way; else the
+ * direction flattened (OVL2 0x5EEF80; SOCOM 1's GetMyLookDir, its front() a call there) */
+void CSealUnit::GetMyLookDir(CPnt3D *out, CPnt3D *dir, CZSealBody *seal)
+{
+    if (m_a4) {
+        *out = m_a8;
+        return;
+    }
+    *out = *dir;
+    if (m_follow_source == ftsGetPlayer()) {
+        if (m_unit_num == 3) {
+            if (m_seals.front() == seal) {
+                out->x = 0.7071f * dir->x - 0.7071f * dir->z;
+                out->y = 0.0f;
+                out->z = 0.7071f * dir->x + 0.7071f * dir->z;
+            } else {
+                out->x = -dir->z;
+                out->y = 0.0f;
+                out->z = dir->x;
+            }
+        } else if (m_seals.front() != seal) {
+            out->x = 0.7071f * dir->x + 0.7071f * dir->z;
+            out->y = 0.0f;
+            out->z = -0.7071f * dir->x + 0.7071f * dir->z;
+        }
+    } else if (m_seals.size() == 2) {
+        if (m_seals.front() == seal) {
+            out->x = 0.5f * dir->x - 0.866f * dir->z;
+            out->y = 0.0f;
+            out->z = 0.866f * dir->x + 0.5f * dir->z;
+        } else {
+            out->x = 0.5f * dir->x + 0.866f * dir->z;
+            out->y = 0.0f;
+            out->z = -0.866f * dir->x + 0.5f * dir->z;
+        }
+    } else {
+        out->x = dir->x;
+        out->y = 0.0f;
+        out->z = dir->z;
+    }
+}
+
+/* the AI SEAL squad 17 holds in the rescued state within 50 cells of `seal`, while the escortees'
+ * extraction anim can run; else 0 (OVL2 0x5EEDB0, new in SOCOM II: IssueCommand and AllowCommand
+ * ask it -- the name ours). GetUnitByTeam, can_run_anim and IsAi inlined, the state test the
+ * controller's AiStateIs (the stack's const GetState called) */
+CZSealBody *CSealUnit::FindRescuedNear(CZSealBody *seal)
+{
+    if (seal && can_run_anim("escortee_extract")) {
+        CSealUnit *unit = GetUnitByTeam(17);
+
+        if (unit) {
+            /* the end taken first: the walk's iterator numbered after it, s0 to its s1 */
+            slist::iterator e = unit->m_seals.end();
+
+            for (slist::iterator i = unit->m_seals.begin(); i != e; ++i) {
+                CZSealBody *s = *i;
+
+                if (s && s->IsAi() && ((CUnitSealCtrl *)s->m_control)->GetSealCtrlAi()->AiStateIs(AI_STATE_RESCUED)
+                    && (int)AiMaps.GetLocationDelta(seal->m_mapLocValid, s->m_mapLocValid) < 50)
+                    return s;
+            }
+        }
+    }
+    return 0;
+}
+
 
 extern "C" {
 /* the squad's awareness (0x5E76D0: SOCOM 1's GetAwareCounter by position), a squad sound by number

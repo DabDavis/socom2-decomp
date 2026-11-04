@@ -326,8 +326,8 @@ inline void swap(__vector_pod<T, Allocator> &x, __vector_pod<T, Allocator> &y)
 
 /* A 1-byte pod (vector<char>, the soft keyboard's Korean unit: zui_hangul.cpp's template tail
  * 0x3923E0-0x393FB0) moves its bytes through memcpy, memmove and memset where the 4-byte pod
- * (above, SOCOM 1's) walks them in loops -- SOCOM II's 2-byte pod (OVL2's 0x5B68E0) is the same
- * insert again, memmove and memcpy with a fill loop -- so MSL 3.0's copy, copy_backward and fill_n
+ * (above, SOCOM 1's) walks them in loops -- SOCOM II's 2-byte pod (OVL2's 0x5B68E0, after this one)
+ * is the same insert again, memmove and memcpy with a fill loop -- so MSL 3.0's copy, copy_backward and fill_n
  * dispatch to the C library for the narrow types. The structure is the 4-byte pod's (0x1FE340's
  * insert, 0x259B90's init, 0x259D20's assign, 0x259AF0's operator=, 0x259B40's copy, 0x28F220's
  * erase), statement for statement; the helpers' names are ours. Each helper takes the range's
@@ -375,6 +375,15 @@ inline T *__pod_copy_backward(T *first, T *last, T *result)
 inline void __pod_fill_n(char *first, unsigned int n, const char &value)
 {
     memset(first, (unsigned char)value, n);
+}
+
+/* the 2-byte pod's fill (below): include/algorithm's counted loop, the value re-read each pass as a
+ * SIGNED halfword -- SOCOM II's 0x5B68E0 loads it with lh in both branches, where SOCOM 1's insert of
+ * the same pod (0x2CD740 in the demo, otherwise this one instruction for instruction) loads lhu; a
+ * plain `const unsigned short &` read gives lhu here too (the MSL headers round 16) */
+inline void __pod_fill_n(unsigned short *first, unsigned int n, const unsigned short &value)
+{
+    std::fill_n(first, n, *(const short *)&value);
 }
 
 template <class Allocator>
@@ -544,6 +553,116 @@ void __vector_pod<char, Allocator>::insert(T *position, unsigned int n, const T 
     }
 }
 
+/* A 2-byte pod: SOCOM II's vector<AnimType> (the SEALs' seal_env.cpp, its CAnimTypeVector stand-in)
+ * runs on __vector_pod<unsigned short> -- the insert's mangled name, OVL2 0x5B68E0 -- as SOCOM 1's
+ * does (the demo's data(), operator[] const, size() and constructor of it out of line, 0x2C08E0-
+ * 0x2CD220, and its insert 0x2CD740). Both builds move the halves through the C library, as the char
+ * pod moves its bytes: the insert is the char pod's statement for statement, memmove for the shift
+ * and memcpy for the two runs, with a fill loop for memset (__pod_fill_n above); the reserve is the
+ * 4-byte pod's with the old block memcpy'd over where that one loops word by word -- MW does not fold
+ * the 2-byte pointer difference back to the count, so both copies divide the byte length by two
+ * (bgez/sra) and shift it back. Byte-exact in seal_env.cpp's template tail (the MSL headers round 16,
+ * build/p16/, untracked): insert 0x5B68E0 (push_back's: the READ_DAMAGE_ANIM readers) and reserve
+ * 0x5B6BD0 (InitDeathAndFlinchAnimations). Only what the image shows is here: the char pod's erase,
+ * resize, range init/assign, copy and assignment would serve unchanged, but no 2-byte instance of
+ * them exists */
+template <class Allocator>
+class __vector_pod<unsigned short, Allocator> {
+public:
+    typedef unsigned short T;
+
+    __vector_pod() { capacity_ = 0; size_ = 0; data_ = 0; }
+    ~__vector_pod()
+    {
+        if (data_)
+            deallocate(data_);
+    }
+    static void deallocate(T *p) { operator delete(p); }
+    T *&data() { return data_; }
+    unsigned int &cap() { return capacity_; }
+    unsigned int capacity() const { return capacity_; }
+    T *begin() { return data(); }
+    T *end() { return data() + size_; }
+    unsigned int size() const { return size_; }
+    static unsigned int max_size() { return (unsigned int)-1 / sizeof(T); }
+    static T *allocate(unsigned int n)
+    {
+        T *p = (T *)operator new(n * sizeof(T));
+        if (!p)
+            __msl_error("Memory allocation failure");
+        return p;
+    }
+    void reserve(unsigned int n);
+    void insert(T *position, unsigned int n, const T &x);
+    void push_back(const T &x) { insert(data() + size_, 1, x); }
+
+    unsigned int capacity_;
+    unsigned int size_;
+    T *data_;
+};
+
+/* room for n (0x5B6BD0): a fresh block, the old halves memcpy'd into it and the old block freed */
+template <class Allocator>
+void __vector_pod<unsigned short, Allocator>::reserve(unsigned int n)
+{
+    if (n > cap()) {
+        if (n > max_size())
+            __msl_error("vector::reserve length error\n");
+        T *old = data_;
+
+        data() = allocate(n);
+        if (old) {
+            __pod_copy(old, old + size_, data_);
+            operator delete(old);
+        }
+        cap() = n;
+    }
+}
+
+/* n copies of x inserted before position (0x5B68E0): the char pod's insert over halves */
+template <class Allocator>
+void __vector_pod<unsigned short, Allocator>::insert(T *position, unsigned int n, const T &x)
+{
+    if (n == 0)
+        return;
+    if (n > max_size() || size_ > max_size() - n)
+        __msl_error("vector::insert length error\n");
+    const T *xp = &x;
+    unsigned int newsize = size_ + n;
+
+    if (newsize <= capacity()) {
+        T *e = data_ + size_;
+        unsigned int m = e - position;
+
+        if (e - (m - n) <= xp && xp < e)
+            xp += n;
+        if (m)
+            __pod_copy_backward(position, e, e + n);
+        __pod_fill_n(position, n, *xp);
+        size_ += n;
+    } else {
+        unsigned int k = position - data_;
+        T *old = data_;
+        unsigned int newcap = capacity_ ? capacity_ : 1;
+
+        while (newsize > newcap) {
+            if (newcap < max_size() / 2)
+                newcap *= 2;
+            else
+                newcap = max_size();
+        }
+        data() = allocate(newcap);
+        __pod_fill_n(data_ + k, n, *xp);
+        if (old) {
+            __pod_copy(old, old + k, data_);
+            __pod_copy(old + k, old + size_, data_ + k + n);
+            deallocate(old);
+        }
+        size_ = newsize;
+        capacity_ = newcap;
+    }
+}
+
 /* what every vector shows its users: the iterators and accessors over its storage (a macro, so
  * that neither kind of vector carries a class of its own for them) */
 /* the iterator class alone (the scalar vectors take it without the rest of the access, whose
@@ -627,7 +746,11 @@ class __vector_imp : public __vector_deleter<T, Allocator> {
     /* the end through a const local, as the pointer vectors' end() holds the base's: a walk then
      * re-reads the data pointer each pass and keeps only size*sizeof(T) (CMesh::SetLOD 0x3B94F0, the
      * weapons lane's round 8 request; the MSL headers round 5) -- built straight into the iterator,
-     * MW hoisted the whole end */
+     * MW hoisted the whole end. The count read plainly: through a reference accessor (`unsigned int
+     * &sz()` on the deleter, the AI core's round 18 lead -- CAiPath's count() re-reads size and data
+     * each pass) every walk re-reads the size too, -6 over every hand-written unit, nothing gained
+     * (GetRouteIndex, GetRegionContaining, CAiMaps::GetClosestRegion, CMesh::SetLOD, BriefingRoom::
+     * FindPlayer, the chat unit's 0x2F10B0 keep size*k hoisted: the MSL headers round 16) */
     iterator end()
     {
         T *const p = this->data() + this->size_;
@@ -748,6 +871,37 @@ class __vector_imp<T *, Allocator, true> : public __vector_pod<unsigned int, all
     iterator erase(iterator position) { return __iter(__base::erase((unsigned int *)position.m_p)); }
     void clear() { __vector_pod<unsigned int, allocator<unsigned int> >::clear(); }
     void swap(__vector_imp &x) { __base::swap(x); }
+    /* No reserve of its own: vector<T *> forwards to the pod's (below). The states lane's round 22
+     * request, SETTLED (the MSL headers round 16, build/p16/rsv*.cpp, untracked): 0x2B1600, which
+     * fts_mission.cpp's resize<CUIVariable> 0x2B1390 calls from its one-level cut of CUIVariable() (the
+     * watchers' reserve(16), where CUIVariable's copy constructor 0x386BF0 calls 0x1EEBA0 for the same
+     * member), is the pod reserve's body again -- its "vector::reserve length error\n" fts_mission.cpp's
+     * own (0x3F1D00, shared with that unit's class reserve 0x2B00E0), its "Memory allocation failure"
+     * the image-wide one every pod and deque function uses (0x3E2220): the forwarder's out-of-line copy
+     * with the pod's reserve INLINED. Measured:
+     *   - MW inlines an out-of-class (non-inline) template member into an inline function's out-of-line
+     *     copy only under its AUTO-inline size limit, `#pragma inline_max_auto_size` -- the pod's
+     *     reserve needs 17 (the default stops it: the copy is an 8-byte `j`, whatever the forwarder's
+     *     form, however its copy is forced, inline_max_size 40 to 2000) -- and only when that member was
+     *     generated first (an own function of the unit reserving a pointer vector);
+     *   - the auto limit is per unit: at 20 project-wide (set from this header) every hand-written unit
+     *     gives 8357 against 8460 (-104, +15) -- the original kept the default for its own code;
+     *   - a literal: an inline function's string is a deduplicated `@STRING@<function>` symbol (bind
+     *     13, one copy kept at link) unless the unit holds an identical unit-local one, which it reuses;
+     *   - so THE SHAPE THAT GIVES BOTH: vector<T *>::reserve forwarding here (neutral over every
+     *     hand-written unit, 8460 before and after) and, in fts_mission.cpp, `#pragma
+     *     inline_max_auto_size(17)` (which also cuts CUIVariable() in resize: the states lane's
+     *     inline_max_size(180) is then not needed; at 20 fadeToEndMissionTick is lost), with an own
+     *     function reserving a pointer vector ahead of the tail (CMission::Open 0x2AC410 does: jal
+     *     0x1EEBA0): resize<CUIVariable> 0x2B1390, 0x2B1600 and the CUIVariable() pieces 0x2B17A0,
+     *     0x2B17C0, 0x2B17E0 byte-exact as a probe (merged master 04c038f5: the unit 72 -> 75 -- the
+     *     stand-in reserving function, appended at the file's end, itself costs CreateCustomCharTypes
+     *     (_zrdr *) and __sinit_fts_mission.cpp; the real CMission::Open goes at its own place). 0x2B1600
+     *     renamed for it.
+     * Tried on the way, not applied: the pod's reserve inline and exactly five high under the forwarder
+     * (own code then calls 0x1EEBA0 and the copy inlines it, resize cut by height without the pragma --
+     * but every inline function holding a reserve is cut too: CNode::_Copy, 0x3BEBD0, MarkNodes,
+     * ReadDecalSet, 8460 -> 8459) */
     T *&at(unsigned int n)
     {
         return (T *&)__vector_pod<unsigned int, allocator<unsigned int> >::at(n);
@@ -1379,6 +1533,8 @@ public:
     explicit vector(unsigned int n, T *const &value = 0) : __vector_imp<T *, Allocator, true>(n, value) {}
     void clear() { __vector_imp<T *, Allocator, true>::clear(); }
     void swap(vector &x) { __vector_imp<T *, Allocator, true>::swap(x); }
+    /* a forwarder to the pod's reserve, as the class vector's (see __vector_imp<T *>'s comment) */
+    void reserve(unsigned int n) { __vector_imp<T *, Allocator, true>::reserve(n); }
 };
 
 }

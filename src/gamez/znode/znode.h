@@ -457,6 +457,10 @@ public:
     static CTexHandle *m_lightMapTexture;
     /* the camera the visuals are drawn from (SOCOM 1's static; CWorld::Initalize sets it) */
     static CCamera *m_camera;
+    /* the colour added to the lighting and the lights' scale (SOCOM 1's statics: the pipe's
+     * SaveDelayedNode keeps both with a delayed node) */
+    static CPnt3D m_addColor;
+    static float m_GlobalLightScale;
     /* the decals of one view let go of (SOCOM 1's, by name) */
     void DereferenceDecals(unsigned int vid);
     /* a light added to the local lights the VU code reads: its position and range, its colour and
