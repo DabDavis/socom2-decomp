@@ -12,9 +12,7 @@
 #include "../zar/zar.h"
 #include "../zsys/zsys_public.h"
 
-/* a texture handle the world's loads fall back on (0x4B4D90, BSS: cleared with
- * CVisual::m_lightMapTexture on a world's release -- not named yet) */
-extern "C" zdb::CTexHandle *data_004B4D90;
+/* (a band's texture falls back on CVisual::m_specMapTexture, 0x4B4D90: znode.h's) */
 /* a mesh's select block for a level of detail (vis_mesh.cpp's 0x3B9480, new in SOCOM II: not
  * named yet) */
 extern "C" _word128 *func_003B9480(zdb::CMesh *mesh, unsigned int lod);
@@ -135,7 +133,7 @@ void CMaterial_Object::Read(CSaveLoad *io)
                         if (name)
                             band->m_tex = CAssetMgr::m_assets.GetTexHandle(name);
                         if (!band->m_tex)
-                            band->m_tex = data_004B4D90;
+                            band->m_tex = CVisual::m_specMapTexture;
                         band->m_type = 2;
                         if (name)
                             _free(name, 0, 0);
