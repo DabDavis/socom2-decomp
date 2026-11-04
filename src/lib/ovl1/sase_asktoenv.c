@@ -141,3 +141,65 @@ void func_002539C0(BIT_READER *p, unsigned char *pucOut, int iBits)
 	}
 	*pucBit = iEnd;
 }
+
+/* the decoder's memory block (80 bytes): the synthesis frame sase_swsynth.c reads -- its buffers,
+ * gains, rate, position in the period, hold flag and state -- and a level at 72 */
+typedef struct {
+	void *pv0;
+	float *pfHist;                  /* 644 */
+	float *pf8;                     /* 65 */
+	float *pf12;                    /* 65 */
+	float *pf16;                    /* 102 */
+	float *pf20;                    /* 102 */
+	int i24;
+	float afGain[4];
+	float fRate;
+	float fPos;
+	int i52;
+	int i56;
+	int i60;
+	short sHold;
+	short s66;
+	int iState;
+	float fLevel;
+	int i76;
+} DecMblk;
+
+extern void *(*data_001D55A8)(int n, int size);  /* the host's allocator (calloc's arguments) */
+extern int func_00256970(DecMblk *p);
+
+/* the decoder's block made, its buffers allocated (1 on any failure) and its state set (GCC round
+ * 28a; no assert names its file: kept beside the bit reader). The state's stores in this order, one
+ * of 5,040 (tools/ccperm.py) */
+int func_00253A98(DecMblk **pp)
+{
+	DecMblk *p;
+
+	p = data_001D55A8(1, sizeof(DecMblk));
+	*pp = p;
+	if (p == 0)
+		return 1;
+	if ((p->pfHist = data_001D55A8(644, 4)) == 0)
+		return 1;
+	if (func_00256970(p) != 0)
+		return 1;
+	p->sHold = 1;
+	p->afGain[0] = 1.0F;
+	p->afGain[1] = 1.0F;
+	p->afGain[2] = 1.0F;
+	p->afGain[3] = 1.0F;
+	p->fRate = 1.0F;
+	p->fPos = 80.0F;
+	p->iState = 1;
+	p->i56 = 0;
+	if ((p->pf8 = data_001D55A8(65, 4)) == 0)
+		return 1;
+	if ((p->pf12 = data_001D55A8(65, 4)) == 0)
+		return 1;
+	if ((p->pf16 = data_001D55A8(102, 4)) == 0)
+		return 1;
+	if ((p->pf20 = data_001D55A8(102, 4)) == 0)
+		return 1;
+	p->fLevel = 100.0F;
+	return 0;
+}

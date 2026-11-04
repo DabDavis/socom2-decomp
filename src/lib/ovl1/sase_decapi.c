@@ -13,9 +13,11 @@ typedef struct {
 	long f16;
 	unsigned char type;     /* 11 */
 	void *blk;              /* 28: the decoder's memory block */
+	long f32;
+	struct SaseDecFrame *frame;     /* 40: the frame being decoded */
 } SaseHandle;
 
-typedef struct {
+typedef struct SaseDecFrame {
 	void *in;               /* the packed frame */
 	int f4;
 	void *out;              /* the PCM samples */
@@ -36,6 +38,55 @@ extern void func_00254368(void *blk, float x);
 extern void func_002543B8(void *blk, float x);
 
 int func_00255C68(SaseHandle **ph);
+
+/* the decoded frame's parameters as the caller sees them: the gain and the two 12-term arrays */
+typedef struct {
+	float fGain;
+	float afA[12];
+	float afB[12];
+} SaseDecParams;
+
+extern void func_00253DF8(void *blk, void *in, int *pf4, void *out, unsigned short n, unsigned short *pf14,
+                          unsigned char *pf16, float *pfB, float *pfA, float *pfGain);
+
+/* a frame decoded behind the API's checks (the handle's, then 0x255D10's), its parameters copied
+ * out when asked (GCC round 28a) */
+int func_00254EC8(SaseHandle *h, SaseDecFrame *f, SaseDecParams *pOut)
+{
+	float afB[12];
+	float afA[16];
+	float fGain;
+	int i;
+
+	if (h == 0 || h->magic != 0xface)
+		return 6100;
+	if (h->type != 11)
+		return 6115;
+	if (f == 0)
+		return 6170;
+	if (f->out == 0)
+		return 6130;
+	if (f->in == 0)
+		return 6125;
+	if (f->f14 >= f->f12)
+		return 6145;
+	if (f->f18 >= f->f12)
+		return 6150;
+	if (f->f16 >= 8)
+		return 6135;
+	if (f->f20 >= 8)
+		return 6140;
+	h->frame = f;
+	func_00253DF8(h->blk, f->in, &f->f4, f->out, f->f12, &f->f14, &f->f16, afB, afA, &fGain);
+	if (pOut != 0) {
+		pOut->fGain = fGain;
+		for (i = 0; i < 12; i++)
+			pOut->afA[i] = afA[i];
+		for (i = 0; i < 12; i++)
+			pOut->afB[i] = afB[i];
+	}
+	return 0;
+}
 
 /* what the codec says of itself (zNetVoice.cpp's CodecInfo reads the frame's samples at 60 and
  * the packed frame's bits at 96): 0x70 bytes */
