@@ -2764,12 +2764,12 @@
 0x0025ACB0 0x144 Fetch__Q23zar4CZARFPCcPb  # OVL1; s1:calls by hand (the zdb-world lane: the bool fetch, at SOCOM 1's call sites)
 0x0025AE00 0x108 FindKey__Q23zar4CKeyFPCc  # OVL1; s1:callee by hand (OpenKey(const char *) calls it on the open key where SOCOM 1's calls zar::CKey::FindKey; the same search by name)
 0x0025AF10 0x114 Read__Q23zar4CKeyFPQ23zar4CZARP3CIOi  # OVL1; s1:calls by hand (SOCOM 1's CKey::Read 0x1DC1D0: called by ReadDirectory 0x258000 and by itself for each child, as SOCOM 1's; the 16-byte record, NewKey(0), the child pushed -- SOCOM II reserves first and clamps a negative count)
-0x0025B030 0x280 func_0025B030  # OVL1
+0x0025B030 0x280 Write__Q23zar4CKeyFPQ23zar4CZAR  # OVL1; SOCOM 1 name, the core lane round 8 (SOCOM 1's CKey::Write(CZAR *) 0x1DC2D0: WriteDirectory 0x257590 calls it on m_root with this where SOCOM 1's WriteDirectory calls Write; the same record, name/offset/size then the child count, through the archive's file)
 0x0025B2B0 0x8 func_0025B2B0  # OVL1
 0x0025B2C0 0x14 func_0025B2C0  # OVL1; size 0x14 (a tail call through t9; the seed ran on into the padding)
 0x0025B2E0 0x8 func_0025B2E0  # OVL1
-0x0025B2F0 0x8 func_0025B2F0  # OVL1
-0x0025B300 0x240 func_0025B300  # OVL1
+0x0025B2F0 0x8 RecordSize__Q23zar4CKeyFv  # OVL1; ours, the core lane round 8 (SOCOM II's: returns 16, a key's directory record; WriteDirectory calls it with no arguments after each CountKeys -- a static member)
+0x0025B300 0x240 CountKeys__Q23zar4CKeyFb  # OVL1; ours, the core lane round 8 (SOCOM II's: WriteDirectory 0x257590 calls it twice on m_root with true and multiplies by RecordSize's 16 to size the directory; the key itself plus its children's, recursing only when the bool is set -- the loop tests it with the iterators)
 0x0025B540 0x38 InsertKey__Q23zar4CKeyFPQ23zar4CKey  # OVL1; s1:order by hand (SOCOM 1's CKey::InsertKey 0x1DC450 after CKey::Write, as here: push_back and return the key; CreateKey 0x258740 and 0x25A2F0 call it)
 0x0025B580 0x398 DeleteChildren__Q23zar4CKeyFb  # OVL1; ours, the core lane round 5 (FreeDirectory 0x257320 calls it on the root with true when the key buffer holds no keys and false otherwise; with true each child key is deleted after its own children; signature from the call sites: a0 the key, a1 a bool tested beqz)
 0x0025B920 0x8 func_0025B920  # OVL1
@@ -2789,10 +2789,10 @@
 0x0025BBE0 0x20 __ct__Q23zar4CKeyFv  # OVL1; SOCOM 1 name, the core lane round 5 (NewKey builds its nameless key with it where SOCOM 1 calls CKey() 0x1DC4A0: the ring and the three fields zeroed; before CKey(const char *) as in SOCOM 1)
 0x0025BC00 0x20 __ct__Q23zar4CKeyFPCc  # OVL1; s1:order by hand (SOCOM 1's CKey(const char *) 0x1DC4E0, last of its zar_search.cpp: the list (here the vector) built, the name stored, size and offset zeroed; CZAR's constructor calls it with "" for the root)
 0x0025BC20 0x9D0 InitCommands__10CZAnimMainFv  # OVL1; s1:calls by hand (registers the core ZAnim commands through AddCmd, as SOCOM 1's InitCommands does; SOCOM II adds 11 to its 49)
-0x0025C5F0 0xE8 func_0025C5F0  # OVL1
-0x0025C6E0 0x198 func_0025C6E0  # OVL1
-0x0025C880 0x280 func_0025C880  # OVL1
-0x0025CB00 0xD0 func_0025CB00  # OVL1
+0x0025C5F0 0xE8 zAnimAlphaExpr__FP7GsAlphaPcif  # OVL1; ours, the core lane round 8 (SOCOM II's, zanim_cmd_parse.cpp: an alpha key track -- pairs of time and value, the count -- at a time: nothing at or before the first key, else the value interpolated between the keys about it (the last's past them), times 128, clamped to a byte into the GS ALPHA's FIX; the blend-mode, light and two particle ticks call it)
+0x0025C6E0 0x198 zAnimColorExpr__FP5PNT4DPciif  # OVL1; ours, the core lane round 8 (SOCOM II's, zanim_cmd_parse.cpp: a colour key track -- a time and a PNT4D a key, 20 bytes -- at a time: before its first key the colour eased toward it by t over the key's time, else interpolated between the keys about the time (the last key's past them); the fourth argument, the caller's first channel, unread; func_002642F0, the TRUECOLOR tick, calls it)
+0x0025C880 0x280 zAnimRGBAExpr__FPUcPcif  # OVL1; ours, the core lane round 8 (SOCOM II's, zanim_cmd_parse.cpp: a colour key track (20-byte keys, as zAnimColorExpr's) at a time, nothing at or before its first key, made four bytes -- 0.5 + 128 times each component, converted unsigned; the BLUR3D tick func_00264A40 drives the blur's amount word with it)
+0x0025CB00 0xD0 zAnimHeadingToDir__FP6CPnt3Dff  # OVL1; ours, the core lane round 8 (SOCOM II's, zanim_cmd_parse.cpp: a heading in degrees made a direction -- minus sine and cosine of it in x and z -- with the pitch over 90 as y, x and z shortened by one less the pitch's magnitude; zAnimCallAnimBegin and zAnimObjectMotionBegin call it)
 0x0025CBD0 0x98 zAnimCmdAddData__FP14_zanim_cmd_hdrPvi  # OVL1; s1:calls (SOCOM 1's zAnimCmdAddData: CmdParseParams appends each key through it)
 0x0025CC70 0x8 zAnimDebugTick__FP14_zanim_cmd_hdrPf  # OVL1; ZAnim DEBUG tick (InitCommands' #51, file id 0x34); s1:cmd (registered under "DEBUG" tick in both builds' InitCommands)
 0x0025CC80 0x28 zAnimRemoveSatchelsTick__FP14_zanim_cmd_hdrPf  # OVL1; ZAnim REMOVE_SATCHELS tick (InitCommands' #57, file id 0x3a); ours, the core lane round 3: ZAnim REMOVE_SATCHELS's tick by the command's name (SOCOM II's command; SOCOM 1's zAnim<Name>Tick convention) -- zanim_cmd_parse.cpp's, byte-exact
@@ -3328,7 +3328,7 @@
 0x00283B50 0x304 func_00283B50  # OVL1
 0x00283E60 0x2C0 func_00283E60  # OVL1
 0x00284120 0x238 func_00284120  # OVL1
-0x00284360 0x2DC func_00284360  # OVL1
+0x00284360 0x2DC ChoosePrimaryForCharacter__FRCQ224@unnamed@zanim_menu_cpp@17CSelectedCharsItr10EQUIP_ITEM  # OVL1; ours, the core lane round 8 (SOCOM II's: ChooseEquipmentForCharacter's pick for a primary -- 0x284120's check, the first weapon set up unless already the item, an M203's grenades 141 and 175, 143's 179, 142's 175 or 63's 183 into NextFreeSlot's slots through 0x282C20, each slot's old item kept in the 2-byte table 0x3DD060, the UI variables and valves updated)
 0x00284640 0xB0 NextFreeSlot__24@unnamed@zanim_menu_cpp@FRCQ224@unnamed@zanim_menu_cpp@17CSelectedCharsItri  # OVL1; ours, the core lane round 7 (SOCOM II's: the slot an item goes into -- the first empty one past the given (FindItemSlot), else the next unlocked of slots 2-4, round; 0x284360 calls it five times; the name ours)
 0x002846F0 0x30 func_002846F0  # OVL1
 0x00284720 0x420 func_00284720  # OVL1; the core lane round 3: OVL1's copy of do_assign<PC14CCharacterWeap>__Q23std68__vector_imp<14CCharacterWeap,Q23std27allocator<14CCharacterWeap>,0>FPC14CCharacterWeapPC14CCharacterWeapQ23std20forward_iterator_tag_v (0x53f370), zanim_menu.cpp's template tail -- ExecuteChooseDefaultEquipment 0x282980 calls it for the vector's inlined operator= where SOCOM 1's calls do_assign<PC14CCharacterWeap> 0x1D7700 (not OVL2's words: CCharacterWeap's constructor and destructor are out of line in this unit); ovl-copy: do_assign<PC14CCharacterWeap>__Q23std68__vector_imp<14CCharacterWeap,Q23std27allocator<14CCharacterWeap>,0>FPC14CCharacterWeapPC14CCharacterWeapQ23std20forward_iterator_tag_v
@@ -3530,8 +3530,8 @@
 0x00290290 0xB0 __ct__21RTList<11ACTIVE_ANIM>FUi  # OVL1; s1:align by hand (0.93 to SOCOM 1's: the size, three links cleared, the pool new[]'d with LIST_ITEM's constructor 0x290340 and zeroed)
 0x00290340 0x14 __ct__Q221RTList<11ACTIVE_ANIM>9LIST_ITEMFv  # OVL1; s1:align by hand (opcode-identical to SOCOM 1's: three words zeroed)
 0x00290360 0x8 IsCell__Q23zdb5CNodeFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x00290370 0xD8 func_00290370  # OVL1
-0x00290450 0x88 func_00290450  # OVL1
+0x00290370 0xD8 GetScreenPos__Q23zdb7CCameraFPC6CPnt3DP6CPnt3D  # OVL1; ours, the core lane round 8 (SOCOM II's, zcam_main.cpp's first function as the image orders it, before SOCOM 1's first, GetVuMtxSet: a point through the VU block's world-to-screen matrix (GetVuMtxSet inlined, the CMatrix copy, Transform), w past 1e-5 or false, x/y divided by w less the 2048 offsets, w as z; func_00200C10 calls it)
+0x00290450 0x88 GetScreenPosPers__Q23zdb7CCameraFPC6CPnt3DP6CPnt4D  # OVL1; ours, the core lane round 8 (SOCOM II's, zcam_main.cpp: a point (w 1) through sceVu0RotTransPers with the world-to-screen matrix, sceVu0ITOF4Vector into the CPnt4D, whether w is past 1e-5; CPipe::TestFlare 0x336810 calls it)
 0x002904E0 0x8 GetVuMtxSet__Q23zdb7CCameraFv  # OVL1; SOCOM 1 name (zcam_main.cpp, in its order; matched)
 0x002904F0 0x110 TestLandmarkFOG__Q23zdb7CCameraFPC6CPnt3Df  # OVL1; SOCOM 1 name (zcam_main.cpp, in its order; matched)
 0x00290600 0xF4 TestFOG__Q23zdb7CCameraFPC6CPnt3Df  # OVL1; SOCOM 1 name (zcam_main.cpp, in its order; matched)
@@ -3625,7 +3625,7 @@
 0x0029BC90 0x158 LookAt__10CAppCameraFPC6CPnt3DPC6CPnt3DR7CMatrix  # OVL1; s1:calls (SOCOM 1's LookAt: Sub, Normalize twice, sceVu0OuterProduct, the matrix rows and the eye noted; AttachTo and the camera modes call it)
 0x0029BDF0 0x178 ResetView__10CAppCameraFv  # OVL1; the name ours (the view's preset taken up: goal position, aim, tether length; with a SEAL attached the camera placed through LookAt and SetMatrix; FTSTick's view switch calls it)
 0x0029BF70 0xC38 ClipCameraChord__10CAppCameraFfP6CPnt3DP6CPnt3DP6CPnt3D  # OVL1; s1:calls (SOCOM 1's call sequence -- Sub, Normalize, Scale, Sub, GetNode, the collide flag twice, GetIntersects, GetNearestIntersectCamPoint, ToRightXZ ...; APLookAt calls it with (dT, p0, p1, p1) at the same place as SOCOM 1's)
-0x0029CBB0 0x164 func_0029CBB0  # OVL1
+0x0029CBB0 0x164 ClipChord__10CAppCameraFP6CPnt3DP6CPnt3DP6CPnt3D  # OVL1; ours, the core lane round 8 (SOCOM II's, camera.cpp: GetThirdPersonCamPos 0x29A950 calls it -- the followed SEAL's node (0xC0) and its carried SEAL's (0xBC's +0xEAC) SetActive(false) around zdb::SetCameraCollideFlagRequired(false), CWorld::GetIntersects(from, to, the death-state byte) and GetNearestIntersectCamPoint, the hit copied out, both nodes set back; the bool whether it hit)
 0x0029CD20 0x198 GetNearestIntersectCamPoint__FPQ23zdb11DiIntersectP6CPnt3D  # OVL1; s1:calls
 0x0029CEC0 0x44 Dispatch__8CHandlerFP7CPacketP8CConsole  # OVL1; s1:align
 0x0029CF10 0x60 __dt__8CHandlerFv  # OVL1; s1:calls
@@ -4964,13 +4964,13 @@
 0x002F6230 0x28 __ct__Q23std65deque<17MediusChatMessage,Q23std30allocator<17MediusChatMessage>>Fv  # OVL1; tu: vis_mesh.cpp~ (1.0 beta); ours, the online lane round 10 (the chat deque's default constructor: the initialiser builds the queue's Container() temporary with it; the draft stands, this unit's copy 0x30 against 0x28 as the lobby queue's)
 0x002F6260 0x30 func_002F6260  # OVL1
 0x002F6290 0x18 func_002F6290  # OVL1
-0x002F62B0 0x88 __dt__Q23std71__deque_buf<17MediusChatMessage,Q23std30allocator<17MediusChatMessage>>Fv  # OVL1; ours, the online lane round 10 (the chat deque's block buffer's out-of-class destructor: the chat queues' destructors 0x2F5E50 and 0x2F5EF0 call it -- the chat unit's tail, not the lobby unit's first function; it walks the elements through 0x2F5D10 and destroys them with 0x2F5B10; open in include/deque, 0x110 against 0x88)
+0x002F62B0 0x88 __dt__Q23std75__deque_destroy<17MediusChatMessage,Q23std30allocator<17MediusChatMessage>>Fv  # OVL1; ours, the online lane round 10 (the chat deque's block buffer's out-of-class destructor: the chat queues' destructors 0x2F5E50 and 0x2F5EF0 call it -- the chat unit's tail, not the lobby unit's first function; it walks the elements through 0x2F5D10 and destroys them with 0x2F5B10; open in include/deque, 0x110 against 0x88); the MSL headers round 19: a class element's teardown level between __deque_imp and __deque_buf (include/deque's __deque_destroy, picked by has_trivial_dtor): destroy(begin(), end()) -- end's make_iterator first -- then ~__deque_buf 0x2F6BC0 with 0; byte-exact from the chat unit's tail (was ~__deque_buf's name)
 0x002F6340 0x2BC func_002F6340  # OVL1
 0x002F6600 0x444 func_002F6600  # OVL1
 0x002F6A50 0x8 func_002F6A50  # OVL1
 0x002F6A60 0x8 func_002F6A60  # OVL1
 0x002F6A70 0x144 make_iterator__Q23std71__deque_imp<17MediusChatMessage,Q23std30allocator<17MediusChatMessage>>CFUi  # OVL1; the MSL headers round 13: the chat deque's iterator to an element, const (the copy constructor 0x2F5F80 calls it for x's end and begin); include/deque's make_iterator, open as every instance's
-0x002F6BC0 0x138 func_002F6BC0  # OVL1
+0x002F6BC0 0x138 __dt__Q23std71__deque_buf<17MediusChatMessage,Q23std30allocator<17MediusChatMessage>>Fv  # OVL1; the MSL headers round 19: the chat deque's block buffer's out-of-class destructor (the blocks freed, the buffer's five this-tests), called with 0 by the teardown level 0x2F62B0 -- the name 0x2F62B0 carried until then; byte-exact from the chat unit's tail (include/deque's ~__deque_buf, as the lobby's 0x2E19E0)
 0x002F6D00 0x6C func_002F6D00  # OVL1
 0x002F6D70 0xBC CountGamePlayers__Fv  # OVL1; ours (a lobby state handler 0x2EF3C0 calls it: with 'late_joiner' on and the net game in progress, MediusGetGamePlayers asked once at a time, 0x44FA88 the flag)
 0x002F6E30 0x90 cbCountGamePlayers__FiiiP28MediusGetGamePlayersResponse  # OVL1; ours (CountGamePlayers' MediusGetGamePlayers callback: 'MediusGetGamePlayers' checked, flagged players counted into 0x66A990, the total to 0x66A9A0 at the list's end)
@@ -8930,8 +8930,8 @@
 0x004EB4A8 0x118 CalcNrNodes@isowdp  # OVL2 unaligned; s1:order -- the gcc lane, round 17c: SOCOM 1's iso-word object holds its LOCAL CalcNrNodes (0x124) after InitIsoWordTokenDpProcess, as here -- the same recursion over a node's 12-byte children down to a depth, unrolled by four; SOCOM 1 has a second LOCAL CalcNrNodes in another object (0x3456B0), so the name is qualified
 0x004EB5C0 0x8 IdleProcess@isowdp  # OVL2; s1:order -- the gcc lane, round 17c: SOCOM 1's iso-word object ends CalcNrNodes, IdleProcess (8 bytes, jr ra), ScoreCompare, as here; the N-best object's own IdleProcess keeps the bare name (0x4F0CB0)
 0x004EB5C8 0x20 ScoreCompare@isowdp  # OVL2 unaligned; s1:order (SOCOM 1's iso-word token DP object at 0x356970 ends with its LOCAL ScoreCompare, as this object ends at 0x4EB5E8; a qsort comparator of the tokens' int at +4: -1, 0, 1) -- the gcc lane, round 11c
-0x004EB5E8 0x1EC func_004EB5E8  # OVL2 unaligned
-0x004EB7D8 0x3C0 func_004EB7D8  # OVL2 unaligned
+0x004EB5E8 0x1EC CollectDummyMemory  # OVL2 unaligned; s1:order -- the gcc lane, round 20c: SOCOM 1's N-best object (0x358DF0) starts with its LOCAL CollectDummyMemory (0x118), as this object starts here; SOCOM 1's body is this row's middle -- the +116 tokens to the scheduler's five-word free list (+124), the +120 word records with their links to the two-word list (+112), each backtrace's user count decremented and cleaned up at zero (CleanUpParBTProc) -- with the seven-word tokens (+112) before and the results (+92) after
+0x004EB7D8 0x3C0 InitViterbi@nbestdp  # OVL2 unaligned; s1:order -- the gcc lane, round 20c: SOCOM 1's N-best object (0x358DF0) holds its LOCAL InitViterbi (0x384) after CollectDummyMemory, as this row follows it; the same body -- ExtendBacktraceStack when there is no stack, CollectDummyMemory, the counters cleared, a 5-word backtrace record and a 7-word token per state of each active word, the pruning level reset -- with SOCOM 1's two list releases moved into CollectDummyMemory; SOCOM 1's DpGenUw object has another LOCAL InitViterbi, so the name is qualified
 0x004EBB98 0x114 InitNBestDynProgProcess  # OVL2 unaligned; s1:align
 0x004EBCB0 0x47C func_004EBCB0  # OVL2
 0x004EC130 0xC8 func_004EC130  # OVL2
@@ -11438,7 +11438,7 @@
 0x005EF380 0xEC Create__9CSealUnitFUi  # OVL2; s1:calls by hand (the kit lane, round 5, from another lane's lead): CZSealState::UpdateRollandsUnitStuff calls it where SOCOM 1's calls CSealUnit::Create (after GetUnitByTeam, twice); its body is SOCOM 1's (the list searched, new CSealUnit(team) pushed, team 24's valve)
 0x005EF470 0x198 func_005EF470  # OVL2
 0x005EF610 0xBC erase__Q23std60__list_deleter<10FT_COMMAND,Q23std23allocator<10FT_COMMAND>>FQ33std60__list_deleter<10FT_COMMAND,Q23std23allocator<10FT_COMMAND>>19generic_iterator<0>Q33std60__list_deleter<10FT_COMMAND,Q23std23allocator<10FT_COMMAND>>19generic_iterator<0>  # OVL2; by hand (the kit lane, round 14): the squad orders' range erase -- seal_unit.cpp emits the instance (the clear its code instantiates) byte-exact here, where SOCOM 1's seal_unit.cpp tail has the same instance after Create; IssueCommand and 0x5EE4D0 call it; the words are those of 12 other pod-list range erases
-0x005EF6D0 0x100 func_005EF6D0  # OVL2
+0x005EF6D0 0x100 insert__Q23std60__list_deleter<10FT_COMMAND,Q23std23allocator<10FT_COMMAND>>FQ33std60__list_deleter<10FT_COMMAND,Q23std23allocator<10FT_COMMAND>>19generic_iterator<0>RC10FT_COMMAND  # OVL2; the MSL headers round 19: list<FT_COMMAND>'s insert(position, x) -- include/list's deleter insert (the node in MSL's alloc_ptr while the 1-byte command is built in it, then linked and counted) compiles byte-exact to it as a probe in seal_unit.cpp's tail (a push_back appended); only IssueCommand (the kit lane's, unwritten) calls it, so it counts once that is written
 0x005EF7D0 0x18 __ct__Q23std60__list_deleter<10FT_COMMAND,Q23std23allocator<10FT_COMMAND>>Fv  # OVL2; s1:callee by hand (the kit lane, round 13): CSealUnit's constructor (0x5EE6F0) calls it on the orders list (0x94) where SOCOM 1's calls __ct__Q23std60__list_deleter<10FT_COMMAND,...>Fv (0x2D79E0) on its clist (0x70) -- the deleter's three-word zeroing constructor, seal_unit.cpp's out-of-line copy in its template tail
 0x005EF7F0 0xE0 func_005EF7F0  # OVL2
 0x005EF8D0 0x78 func_005EF8D0  # OVL2; OVL2's copy of init<Q33std42__list_deleter<PCv,Q23std14allocator<PCv>>19generic_iterator<1>>__Q23std42__list_deleter<PCv,Q23std14allocator<PCv>>FQ33std42__list_deleter<PCv,Q23std14allocator<PCv>>19generic_iterator<1>Q33std42__list_deleter<PCv,Q23std14allocator<PCv>>19generic_iterator<1>_v (0x317720, the same words bar the link's addresses -- tools/ovlcopies.py); ovl-copy: init<Q33std42__list_deleter<PCv,Q23std14allocator<PCv>>19generic_iterator<1>>__Q23std42__list_deleter<PCv,Q23std14allocator<PCv>>FQ33std42__list_deleter<PCv,Q23std14allocator<PCv>>19generic_iterator<1>Q33std42__list_deleter<PCv,Q23std14allocator<PCv>>19generic_iterator<1>_v

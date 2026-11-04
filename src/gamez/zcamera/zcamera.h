@@ -209,6 +209,9 @@ public:
     void SetScreenOffsetY(float y);
     void SetScreenOffsetX(float x);
     tag_FrameSetup *GetVuMtxSet();
+    /* a world point to the screen (SOCOM II's; the names ours) */
+    bool GetScreenPosPers(const CPnt3D *p, CPnt4D *out);
+    bool GetScreenPos(const CPnt3D *p, CPnt3D *out);
     void GetLandmarkFarPlane(CWorld *world);
     bool TestLandmarkFOG(const CPnt3D *worldPos, float radius);
     bool TestFOG(const CPnt3D *worldPos, float radius);
