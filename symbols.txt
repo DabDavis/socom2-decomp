@@ -2175,33 +2175,33 @@
 0x00231540 0x150 func_00231540  # OVL1
 0x00231690 0x380 func_00231690  # OVL1
 0x00231A10 0x14 __ct__10CTCMColumnFv  # OVL1; ours by hand (the HUD lane, round 23: hud_tcmcmds.cpp -- CTCMColumn's inline constructor (1.0f, 0), the unit's tail: __construct_array takes it for g_tcmColumns)
-0x00231A30 0x16C func_00231A30  # OVL1
-0x00231BA0 0x228 func_00231BA0  # OVL1
-0x00231DD0 0x8 func_00231DD0  # OVL1
-0x00231DE0 0x8 func_00231DE0  # OVL1
-0x00231DF0 0x10 func_00231DF0  # OVL1
-0x00231E00 0x8 func_00231E00  # OVL1
-0x00231E10 0x10 func_00231E10  # OVL1
-0x00231E20 0x8 func_00231E20  # OVL1
-0x00231E30 0x10 func_00231E30  # OVL1
-0x00231E40 0x138 func_00231E40  # OVL1
-0x00231F80 0x4C func_00231F80  # OVL1
-0x00231FD0 0x60 func_00231FD0  # OVL1
-0x00232030 0xA8 func_00232030  # OVL1
-0x002320E0 0x18 func_002320E0  # OVL1; size 0x18 (a tail call through t9; the seed ran on into the padding)
-0x00232100 0x64 func_00232100  # OVL1
-0x00232170 0xC0 func_00232170  # OVL1
-0x00232230 0x8 func_00232230  # OVL1
-0x00232240 0x20 func_00232240  # OVL1
-0x00232260 0x1FC func_00232260  # OVL1
-0x00232460 0x10 func_00232460  # OVL1
-0x00232470 0x10 func_00232470  # OVL1
-0x00232480 0x10 func_00232480  # OVL1
+0x00231A30 0x16C UpdateState__8CTCMNodeFb  # OVL1; ours by hand (the HUD lane, round 27: hud_tcmtree.cpp -- the node's TCM_STATE from its entry's test at +0x64 run between tcmSetCurNode/tcmClearCurNode, the children's when asked, then hidden when no child is shown; recursive, called out of line by itself and by 0x235440)
+0x00231BA0 0x228 HideAll__8CTCMNodeFv  # OVL1; ours by hand (the HUD lane, round 27: hud_tcmtree.cpp -- the subtree's display off, m_root.Off() through its vtable then each child's, self-inlined four times; tcmCloseNode, 0x231690 call it)
+0x00231DD0 0x8 GetNumChildren__8CTCMNodeFv  # OVL1; ours by hand (the HUD lane, round 27: hud_tcmtree.cpp's out-of-line copy -- the children's count, the first level of the chain (CTCMNode -> CTCMNodeList::Count -> size): the deepest self-inlined copies of HideAll and Tick call it; code-exact through HideAll's and Tick's calls)
+0x00231DE0 0x8 GetRoot__8CTCMNodeFv  # OVL1; ours by hand (the HUD lane, round 27: hud_tcmtree.cpp's out-of-line copy -- the root C2D's address (this + 0x14): HideAll's deepest copy calls it; code-exact through HideAll's and Tick's calls)
+0x00231DF0 0x10 GetChild__8CTCMNodeFUi  # OVL1; ours by hand (the HUD lane, round 27: hud_tcmtree.cpp's out-of-line copy -- a child by reference, the first level of the chain (CTCMNode -> CTCMNodeList::Get -> operator[]); code-exact through HideAll's and Tick's calls)
+0x00231E00 0x8 Count__12CTCMNodeListFv  # OVL1; ours by hand (the HUD lane, round 27: hud_tcmtree.cpp's out-of-line copy -- the second level of the count's chain (HideAll's fourth copy, Tick's second call it); code-exact through HideAll's and Tick's calls)
+0x00231E10 0x10 Get__12CTCMNodeListFUi  # OVL1; ours by hand (the HUD lane, round 27: hud_tcmtree.cpp's out-of-line copy -- the second level of the child's chain (HideAll's third copy calls it); code-exact through HideAll's and Tick's calls)
+0x00231E20 0x8 size__Q23std56__vector_imp<P8CTCMNode,Q23std21allocator<P8CTCMNode>,1>CFv  # OVL1; ours by hand (the HUD lane, round 27: hud_tcmtree.cpp's out-of-line copy -- include/vector's size(), the count chain's third level (HideAll's third copy calls it); code-exact through HideAll's and Tick's calls)
+0x00231E30 0x10 __vc__Q23std56__vector_imp<P8CTCMNode,Q23std21allocator<P8CTCMNode>,1>FUi  # OVL1; ours by hand (the HUD lane, round 27: hud_tcmtree.cpp's out-of-line copy -- include/vector's operator[], the child chain's third level (HideAll's second copy calls it); code-exact through HideAll's and Tick's calls)
+0x00231E40 0x138 Find__8CTCMNodeFPCcRQ23std48vector<P8CTCMNode,Q23std21allocator<P8CTCMNode>>b  # OVL1; ours by hand (the HUD lane, round 27: hud_tcmtree.cpp -- the children whose caption (m_text's string + first char) strcasecmp-equals a name pushed onto a vector and counted, recursing when asked; the builder 0x232BC0, 0x236260 and 0x236D20 call it)
+0x00231F80 0x4C AddChild__8CTCMNodeFP8CTCMNode  # OVL1; ours by hand (the HUD lane, round 27: hud_tcmtree.cpp -- push_back onto the children, the child's parent at +0xC set, the child returned; 0x236D20 calls it)
+0x00231FD0 0x60 DeleteChildren__8CTCMNodeFv  # OVL1; ours by hand (the HUD lane, round 27: hud_tcmtree.cpp -- the children deleted from the back (~CTCMNode with 1) and popped; CTCM::Reset calls it)
+0x00232030 0xA8 RemoveChild__8CTCMNodeFP8CTCMNode  # OVL1; ours by hand (the HUD lane, round 27: hud_tcmtree.cpp -- a child found and taken out of the children; ~CTCMNode calls it on its parent)
+0x002320E0 0x18 SetText2__8CTCMNodeFPCc  # OVL1; size 0x18 (a tail call through t9; the seed ran on into the padding); ours by hand (the HUD lane, round 27: hud_tcmtree.cpp -- the second C2DString at +0x69C's SetString(s, true), a tail call through slot 26)
+0x00232100 0x64 SetName__8CTCMNodeFPCc  # OVL1; ours by hand (the HUD lane, round 27: hud_tcmtree.cpp -- the name at +0x698 freed and _strdup'ed)
+0x00232170 0xC0 SetCaption__8CTCMNodeFPCci  # OVL1; ours by hand (the HUD lane, round 27: hud_tcmtree.cpp -- m_text's SetString, the caption cut to a length with a dash through a 128-byte buffer)
+0x00232230 0x8 SetEntry__8CTCMNodeFP9CTCMEntry  # OVL1; ours by hand (the HUD lane, round 27: hud_tcmtree.cpp -- the entry at +0x10; 0x236D20 calls it)
+0x00232240 0x20 SetDelay__8CTCMNodeFf  # OVL1; ours by hand (the HUD lane, round 27: hud_tcmtree.cpp -- the delay at +0x73C lengthened, the ready flag +0x740 cleared; tcmCharacterTaunt and tcmSendMessage call it)
+0x00232260 0x1FC Tick__8CTCMNodeFf  # OVL1; ours by hand (the HUD lane, round 27: hud_tcmtree.cpp -- the message delays at +0x73C counted down, the ready flag set at zero, the whole subtree's; self-inlined twice; 0x236430 calls it)
+0x00232460 0x10 NoChildren__8CTCMNodeFv  # OVL1; ours by hand (the HUD lane, round 27: hud_tcmtree.cpp's out-of-line copy -- whether there are no children, the first level of the chain (CTCMNode -> empty): Tick's deepest copy calls it; code-exact through HideAll's and Tick's calls)
+0x00232470 0x10 IsWaiting__8CTCMNodeCFv  # OVL1; ours by hand (the HUD lane, round 27: hud_tcmtree.cpp's out-of-line copy -- hud_tcm.h's `!m_ready` (+0x740): Tick's deepest copy calls it; code-exact through HideAll's and Tick's calls)
+0x00232480 0x10 empty__Q23std56__vector_imp<P8CTCMNode,Q23std21allocator<P8CTCMNode>,1>CFv  # OVL1; ours by hand (the HUD lane, round 27: hud_tcmtree.cpp's out-of-line copy -- include/vector's empty(), the chain's second level: Tick's second copy calls it; code-exact through HideAll's and Tick's calls)
 0x00232490 0x1D0 __dt__8CTCMNodeFv  # OVL1; by hand (the HUD lane, round 24: the menu tree unit's -- CTCMNode's destructor, round 23's lead; hud_tcm.cpp emits its implicit copy with CTCM's constructor)
 0x00232660 0x22C __ct__8CTCMNodeFv  # OVL1; by hand (the HUD lane, round 24: the menu tree unit's -- CTCMNode's constructor, called out of line by CTCM's 0x237390 at its start, as round 23's notes had it)
-0x00232890 0xBC func_00232890  # OVL1
-0x00232950 0x14 func_00232950  # OVL1
-0x00232970 0x58 func_00232970  # OVL1
+0x00232890 0xBC Play__10CTCMSoundsF9TCM_SOUND  # OVL1; ours by hand (the HUD lane, round 27: hud_tcmtree.cpp -- one of the three sounds played through CSnd's slot 1 with (0, 255) while loaded; the switch narrows its byte enum)
+0x00232950 0x14 Clear__10CTCMSoundsFv  # OVL1; ours by hand (the HUD lane, round 27: hud_tcmtree.cpp -- the loaded flag and the three sounds cleared; CTCM::Reset calls it)
+0x00232970 0x58 Load__10CTCMSoundsFv  # OVL1; ours by hand (the HUD lane, round 27: hud_tcmtree.cpp -- .TCM_SLIDE, .TCM_SELECT twice by CSnd::GetSoundByName)
 0x002329D0 0x18 __ct__10CTCMSoundsFv  # OVL1; by hand (the HUD lane, round 24: the menu tree unit's -- the menu's sounds' constructor, called out of line by CTCM's constructor 0x237390 on CTCM+0xDB8, as round 23's notes had it)
 0x002329F0 0x1CC func_002329F0  # OVL1
 0x00232BC0 0x1918 func_00232BC0  # OVL1

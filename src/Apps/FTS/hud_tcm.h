@@ -64,6 +64,16 @@ public:
     char m_name[0x40];   // 0xc
 };
 
+class CTCMNode;
+
+/* a node's children (ours): a class over the pointer vector -- ~CTCMNode tests `this` four times
+ * before the deleter's delete, one more than a plain vector member gives */
+class CTCMNodeList : public std::vector<CTCMNode *> {
+public:
+    unsigned int Count() { return size(); }
+    CTCMNode *&Get(unsigned int i) { return (*this)[i]; }
+};
+
 /* a node of the menu (0x750 bytes: the tree's constructor 0x232660 builds it, its destructor
  * 0x232490 tears it down) */
 class CTCMNode {
@@ -73,11 +83,29 @@ public:
     CTCMNode();
     ~CTCMNode();
 
+    /* the tree's own (hud_tcmtree.cpp; every name ours) */
+    TCM_STATE UpdateState(bool recurse);
+    void HideAll();
+    void Tick(float dt);
+    C2D *GetRoot() { return &m_root; }
+    unsigned int GetNumChildren() { return m_children.Count(); }
+    CTCMNode *&GetChild(unsigned int i) { return m_children.Get(i); }
+    bool NoChildren() { return m_children.empty(); }
+    int Find(const char *name, std::vector<CTCMNode *> &found, bool recurse);
+    CTCMNode *AddChild(CTCMNode *child);
+    void DeleteChildren();
+    CTCMNode *RemoveChild(CTCMNode *child);
+    void SetText2(const char *s);
+    void SetName(const char *name);
+    void SetCaption(const char *caption, int len);
+    void SetEntry(CTCMEntry *entry);
+    void SetDelay(float delay);
+
     /* whether the node is still waiting out its last message's delay (ours: the commands test the
      * flag through it, materialised) */
     bool IsWaiting() const { return !m_ready; }
 
-    std::vector<CTCMNode *> m_children;   // 0x0
+    CTCMNodeList m_children;   // 0x0
     CTCMNode *m_parent;   // 0xc
     CTCMEntry *m_entry;   // 0x10
     C2D m_root;   // 0x14
@@ -97,11 +125,21 @@ public:
 
 class CSnd;
 
+/* which of the menu's sounds (a byte: Play narrows it with andi) */
+enum TCM_SOUND {
+    TCM_SND_SLIDE = 0,
+    TCM_SND_SELECT = 1,
+    TCM_SND_BACK = 2
+};
+
 /* the menu's sounds (0x10 bytes; the tree's code: its constructor 0x2329D0, Load 0x232970 --
  * .TCM_SLIDE, .TCM_SELECT twice -- Play 0x232890, Clear 0x232950) */
 class CTCMSounds {
 public:
     CTCMSounds();
+    void Load();
+    void Clear();
+    void Play(TCM_SOUND which);
 
     bool m_loaded;   // 0x0
     CSnd *m_back;   // 0x4: Play(2)
