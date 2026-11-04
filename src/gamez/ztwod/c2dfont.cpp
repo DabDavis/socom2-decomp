@@ -160,39 +160,27 @@ public:
     CJamoPlace m_parts[3];   // 0x0
 };   // 0x48 bytes
 
+/* a table entry: a row or layout index, none until read (ours: the lead table's out-of-line
+ * constructor 0x35A260 stores -1; the rows below construct theirs in place) */
+class CJamoIndex {
+public:
+    CJamoIndex() : m_v(-1) {}
+
+    short m_v;
+};
+
 /* the layout for each trailing consonant, by the vowel's row (ours; VowelRangeLayouts) */
 class CTrailRow {
 public:
-    CTrailRow()
-    {
-        m_noTrail = -1;
-        for (int i = 0; i < 27; i++)
-            m_trails[i] = -1;
-    }
-
-    short m_noTrail;   // 0x0
-    short m_trails[27];   // 0x2
+    CJamoIndex m_noTrail;   // 0x0
+    CJamoIndex m_trails[27];   // 0x2
 };   // 0x38 bytes
 
 /* the vowel row for each vowel, by the lead's row (ours; LeadRangeLayouts) */
 class CVowelRow {
 public:
-    CVowelRow()
-    {
-        for (int i = 0; i < 21; i++)
-            m_vowels[i] = -1;
-    }
-
-    short m_vowels[21];   // 0x0
+    CJamoIndex m_vowels[21];   // 0x0
 };   // 0x2a bytes
-
-/* a lead consonant's row (ours; LeadLayoutUsage): none until read */
-class CLeadRow {
-public:
-    CLeadRow() : m_row(-1) {}
-
-    short m_row;
-};
 
 /* an int the composer reads from the rdr (ours) */
 class CFontInt {
@@ -220,7 +208,7 @@ public:
     std::vector<CLayout> m_layouts;   // 0x660
     std::vector<CTrailRow> m_trailRows;   // 0x66c
     std::vector<CVowelRow> m_vowelRows;   // 0x678
-    CLeadRow m_leadRows[19];   // 0x684
+    CJamoIndex m_leadRows[19];   // 0x684
     CFontInt m_texture;   // 0x6ac
     CFontInt m_baseline;   // 0x6b0
     CFontInt m_lKerning;   // 0x6b4
@@ -493,7 +481,7 @@ void CHangulFont::LoadLeadUsage(const _zrdr *rdr, const std::vector<CSaferStr> &
         const char *s = zrdr_flat_findstring(usage, s_hangulJamoNames[s_hangulLeads[i]], 0);
         int row = FindName(names, s);
 
-        m_leadRows[i].m_row = row >= 0 ? row : def;
+        m_leadRows[i].m_v = row >= 0 ? row : def;
     }
 }
 
@@ -507,13 +495,13 @@ void CHangulFont::LoadLeadRangeLayouts(std::vector<CSaferStr> &names, const _zrd
 
         names.push_back(CSaferStr(zrdr_flat_findstring(item, "Name", 0)));
         m_vowelRows.resize(m_vowelRows.size() + 1);
-        short *row = m_vowelRows.back().m_vowels;
+        CJamoIndex *row = m_vowelRows.back().m_vowels;
         int def = FindName(vowelNames, zrdr_flat_findstring(item, "Default", 0));
 
         for (unsigned int k = 0; k < 21; k++) {
             int v = FindName(vowelNames, zrdr_flat_findstring(item, s_hangulJamoNames[s_hangulVowels[k]], 0));
 
-            *row++ = v >= 0 ? v : def;
+            (row++)->m_v = v >= 0 ? v : def;
         }
     }
 }
@@ -533,11 +521,11 @@ void CHangulFont::LoadVowelRangeLayouts(std::vector<CSaferStr> &names, const _zr
         int def = FindName(layoutNames, zrdr_flat_findstring(item, "Default", 0));
         int none = FindName(layoutNames, zrdr_flat_findstring(item, "NoTrail", 0));
 
-        row->m_noTrail = none >= 0 ? none : def;
+        row->m_noTrail.m_v = none >= 0 ? none : def;
         for (unsigned int k = 0; k < 27; k++) {
             int v = FindName(layoutNames, zrdr_flat_findstring(item, s_hangulJamoNames[s_hangulTrails[k]], 0));
 
-            row->m_trails[k] = v >= 0 ? v : def;
+            row->m_trails[k].m_v = v >= 0 ? v : def;
         }
     }
 }
@@ -709,21 +697,28 @@ bool CHangulFont::Compose(C2DGlyph *glyph, C2DChar code, C2DFont *font)
     glyph->m_16 = 0;
     glyph->m_18 = 0;
     glyph->m_1a = 0;
-    glyph->m_code = code.m_code;
-    int s = code.m_code - 0xAC00;
+    unsigned short c = code.m_code;
+
+    glyph->m_code = c;
+    int s = c - 0xAC00;
     int lead = s / 588;
-    int vrow = m_leadRows[lead].m_row;
+    int vrow = m_leadRows[lead].m_v;
 
     if (vrow < 0)
         return false;
     int vowel = s % 588 / 28;
-    int trow = m_vowelRows[vrow].m_vowels[vowel];
+    int trow = m_vowelRows[vrow].m_vowels[vowel].m_v;
 
     if (trow < 0)
         return false;
     int trail = s % 28;
     CTrailRow &tr = m_trailRows[trow];
-    int lay = trail ? tr.m_trails[trail - 1] : tr.m_noTrail;
+    int lay;
+
+    if (trail)
+        lay = tr.m_trails[trail - 1].m_v;
+    else
+        lay = tr.m_noTrail.m_v;
 
     if (lay < 0)
         return false;
