@@ -328,6 +328,7 @@ public:
     virtual void SetBackgroundAlpha(float a) { m_background.SetTrans(128.0f * a); }
     virtual void DrawBackground(const CMatrix &m, zdb::CTextureRelocMgr *mgr);
     virtual void SetCanHandleInput(bool val);
+    void ShowState(ButtonState *state);
     virtual void Tick(float dT);
     virtual void SetActive();
     virtual void SetNormal();
@@ -691,8 +692,6 @@ void CPopUpDialog::Tick(float dT)
         m_32c->Tick(dT);
 }
 
-/* a state applied: the background, the caption's style and the pulse (0x3773F0, unwritten) */
-extern "C" void func_003773F0(C2DButton *button, ButtonState *state);
 /* the background loaded with a texture, the caption's scale (inlines' out-of-line copies after
  * SetNormal, matched as drafts) */
 extern "C" void func_0036E840(C2DButton *button, zdb::CTexHandle *tex);
@@ -770,6 +769,47 @@ void C2DButton::SetNormal()
     }
 }
 
+/* the caption's style as SetCaptionStyle sets it, for ShowState, which inlines what SetNormal
+ * calls out of line (the four helpers are pinned for SetNormal; the name ours) */
+static inline void ApplyCaptionStyle(C2DString &caption, const CPnt3D &color, bool pulse, float time,
+                                     float min, float max)
+{
+    caption.SetColor(color.x, color.y, color.z);
+    caption.SetTrans(100.0f);
+    caption.m_Type = pulse ? STRING_PULSE : STRING_NORMAL;
+    caption.m_fadeTime = time;
+    caption.m_fadeMax = max;
+    caption.m_fadeMin = min;
+}
+
+/* the background's pulse as CPlainBmp::SetPulse sets it (its period a by-value parameter: loaded
+ * once), for ShowState (the name ours) */
+static inline void ApplyPulse(CPlainBmp &bmp, float period)
+{
+    if (period == 0.0f) {
+        bmp.SetTrans(128.0f);
+        bmp.m_pulsing = false;
+    } else {
+        bmp.m_pulsing = true;
+        bmp.m_period = period;
+    }
+}
+
+/* a state shown and made the current one: the background's texture, the caption's scale and
+ * style, the background's pulse -- SetNormal's body with its four helpers inlined (0x3773F0; the
+ * disabled state through SetCanHandleInput, which calls it out of line: pinned; the name ours) */
+#pragma auto_inline off
+void C2DButton::ShowState(ButtonState *state)
+{
+    m_state = state;
+    m_background.Load(0.0f, 0.0f, _fWidth, _fHeight, state->m_tex);
+    _strCaption.m_scale = state->m_scale;
+    ApplyCaptionStyle(_strCaption, state->m_color, state->m_pulse, state->m_fadeTime,
+                      state->m_fadeMin, state->m_fadeMax);
+    ApplyPulse(m_background, state->m_period);
+}
+#pragma auto_inline reset
+
 /* slot 19 (C2DButton's table +0x4C, as in every button's): input on or off -- on, the normal
  * state shown unless the button is pressed or active; off, the disabled state (SOCOM 1's
  * SetCanHandleInput, which loaded the disabled bitmap itself) */
@@ -780,7 +820,7 @@ void C2DButton::SetCanHandleInput(bool val)
         if (m_state != &m_pressed && m_state != &m_active)
             SetNormal();
     } else
-        func_003773F0(this, &m_disabled);
+        ShowState(&m_disabled);
 }
 
 /* the caption's colour, its alpha 100, and its pulse: whether, how fast, between what (the name ours;
