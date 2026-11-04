@@ -191,6 +191,73 @@ CAiSAvoid::~CAiSAvoid()
 {
 }
 
+extern "C" {
+/* an ammunition pickup's stash: its entries' count, and an entry's weapon, cartridge and rounds
+ * (OVL1 0x3CFCF0 Count__11CZItemStashFv and 0x3CFD70 Get__11CZItemStashFiPiPiPi -- pickup_main.cpp
+ * spells them so), and whether a cartridge fits a weapon (OVL1 0x3D2680, zweapon.h's
+ * CZWeapon::IsLegalAmmo -- by its mangled name: this unit does not include zweapon.h) */
+int func_003CFCF0(CPickupAmmo *ammo);
+void func_003CFD70(CPickupAmmo *ammo, int index, int *weapon, int *cartridge, int *rounds);
+bool IsLegalAmmo__8CZWeaponFP6CZAmmo(CZFTSWeapon *w, CZAmmo *ammo);
+}
+
+/* a weapon's item (zweapon.h's CZWeapon::m_ID at 0x7C, a byte enum: read with lb -- a view) */
+struct CAiWeaponID {
+    unsigned char _0[0x7c];
+    EQUIP_ITEM m_ID;   // 0x7c
+};
+
+/* a point's length squared (inline: the difference returned by value stays in the frame, its y and
+ * z read back through their addresses -- seal_look.cpp's LenSq) */
+static inline float AmmoLenSq(const CPnt3D &v)
+{
+    return v.x * v.x + v.y * v.y + v.z * v.z;
+}
+
+/* the nearest ammunition pickup within range of a point with a cartridge the weapon takes and the
+ * kit has room for, or 0 (OVL2 0x6082E0: CAiSNoAmmo::Tick's call; new in SOCOM II -- the name
+ * unknown). The none-yet result zeroed before the index lookup (the target's jal delay slot); the
+ * difference a named point through Sub, read in place by the inline length */
+extern "C" CPickup *func_006082E0(const CPnt3D *pos, float range, CZKit *kit, CZFTSWeapon *w)
+{
+    if (!kit || !w)
+        return 0;
+    CPickup::iterator it = CPickup::GetFirst();
+    CPickup *p;
+
+    range *= range;
+    CPickup *best = 0;
+    int index = kit->GetItemIndex(((CAiWeaponID *)w)->m_ID);
+
+    while ((p = CPickup::GetNext(it, CPickup::PU_AMMO)) != 0) {
+        CPickupAmmo *ammo = p->GetAmmo();
+        bool ok = false;
+        int n = func_003CFCF0(ammo);
+
+        for (int i = 0; i < n; i++) {
+            int weapon = 0;
+            int cartridge = 0;
+            int rounds = 0;
+
+            func_003CFD70(ammo, i, &weapon, &cartridge, &rounds);
+            if (IsLegalAmmo__8CZWeaponFP6CZAmmo(w, (CZAmmo *)cartridge) && kit->CanAddAmmo(index, rounds))
+                ok = rounds > 0;
+        }
+        if (ok) {
+            CPnt3D v;
+
+            pos->Sub(p->GetPosW(), &v);
+            float d = AmmoLenSq(v);
+
+            if (d < range) {
+                best = p;
+                range = d;
+            }
+        }
+    }
+    return best;
+}
+
 /* a no-ammunition state's reset (OVL2 0x608290; SOCOM 1's) */
 void CAiSNoAmmo::OnSignal(SIGNAL sig, CSealCtrlAi *ai)
 {
