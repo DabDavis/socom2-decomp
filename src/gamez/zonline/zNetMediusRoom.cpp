@@ -746,17 +746,17 @@ void cbRoomList(int, int, int, MediusChannelListResponse *resp)
 /* a player of the room by name (for find_if; the name ours) */
 struct RoomPlayerNamed {
     RoomPlayerNamed(const char *name) : m_name(name) {}
-    bool operator()(const RoomPlayer &p) const { return !strcmp(p.AccountName, m_name); }
+    bool operator()(const MediusLobbyWorldPlayerListResponse &p) const { return !strcmp(p.AccountName, m_name); }
 
     const char *m_name;
 };
 
 /* the room's player of that name, if it holds one (OVL1 0x2E3610: the player-info callback
  * 0x2F0020 asks it) */
-RoomPlayer *BriefingRoom::FindPlayer(const char *name)
+MediusLobbyWorldPlayerListResponse *BriefingRoom::FindPlayer(const char *name)
 {
-    RoomPlayer *player = 0;
-    std::vector<RoomPlayer>::iterator i = std::find_if(m_players.begin(), m_players.end(),
+    MediusLobbyWorldPlayerListResponse *player = 0;
+    std::vector<MediusLobbyWorldPlayerListResponse>::iterator i = std::find_if(m_players.begin(), m_players.end(),
                                                        RoomPlayerNamed(name));
 
     if (i != m_players.end())
