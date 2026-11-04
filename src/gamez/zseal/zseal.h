@@ -728,7 +728,13 @@ public:
     /* the state on top of the stack (SOCOM 1's; OVL2 0x5F5FD0, 0x5F6010, the AI-states lane's
      * seal_aistate.cpp defines them -- which is const by SOCOM 1's order) */
     CAiStateStack m_stateStack;   // 0x41c (SOCOM 1's 0x324; 0x20 bytes in SOCOM II)
-    unsigned char _43c[0x450 - 0x43c];
+    unsigned char _43c[0x440 - 0x43c];
+    /* three words 0x56BEF0 clears -- the third's low half only -- as the AI leaves a ladder (SetAiMode
+     * and 0x56AF50 read them, CanTraverse the third; new in SOCOM II, the names ours) */
+    unsigned int m_440;   // 0x440
+    unsigned int m_444;   // 0x444
+    unsigned int m_448;   // 0x448
+    unsigned char _44c[0x450 - 0x44c];
     /* the anims the tasks play (SOCOM 1's m_task_anim[6], 0x33c there, its m_task_handle[6] 0x18
      * after: SetupAnimations binds [0] to <node>_start and [2] to <node>_ambient) -- so the
      * m_task_anim below, at 0x468, is SOCOM 1's m_task_handle[0] */
@@ -790,6 +796,23 @@ public:
     unsigned char _768[0x76c - 0x768];
     unsigned char m_weapon_kind;   // 0x76c: the kind 0x560540 reads off the body's weapon (the name ours)
     unsigned char _76d[0x7c0 - 0x76d];
+};
+
+/* the fire parameters (SOCOM 1's DWARF AI_FIREPARAMS, 0x60 bytes; SOCOM II's are 0x70, the flags
+ * at 0x6C -- the kit lane's seal_aiparams.cpp zeroes them there before the reset 0x55F6F0). Only
+ * the members SOCOM II's code shows at SOCOM 1's offsets are named */
+class AI_FIREPARAMS {
+public:
+    unsigned char _0[8];   // SOCOM 1: m_weapon, m_ammo
+    CPnt3D m_targetPos;   // 0x8
+    CPnt3D m_targetVel;   // 0x14
+    CPnt3D m_lookDirW;   // 0x20
+    CPnt3D m_aimPointW;   // 0x2c
+    CPnt3D m_aimDirM;   // 0x38
+    unsigned char _44[0x5c - 0x44];   // SOCOM 1: m_throwVec, m_throwPower, m_timeout, m_stance
+    float m_dist;   // 0x5c: the target's distance (0x55EBE0; SOCOM 1's flags were here)
+    unsigned char _60[0x6c - 0x60];
+    unsigned int m_flags;   // 0x6c
 };
 
 class CSealCtrlAi : public CSealCtrl, public SEAL_AI_PARAMS {
@@ -867,6 +890,8 @@ public:
     /* whether the SEAL is in a stance: the AI's own, or the one its body's state stands for (OVL2
      * 0x562FC0, new in SOCOM II: CAiSFollow::OnSignal asks it; the name ours) */
     bool InStance(SEAL_STANCE stance, bool fromState);
+    /* the weapon fired once ready (OVL2 0x563BD0; SOCOM 1's) */
+    bool FireWhenReady(AI_FIREPARAMS &params, float delay);
     /* the bit 2 at 0x264 set, never for a SEAL whose team has bit 17 or 26 or that holds no item
      * (OVL2 0x56D890: CAiSPlan::Tick and CAiState::Signal call it; the name ours) */
     void SetAiBit2(bool on);

@@ -1623,6 +1623,113 @@ extern "C" bool func_0056A130(CSealCtrlAi *ai, const CAiMapLoc &to, SEAL_LINEWAL
     return !(w->m_blocked || w->m_met);
 }
 
+/* the box around eight points -- a box's corners (OVL2 0x56ACE0, new in SOCOM II: 0x56A8E0 calls it;
+ * the name unknown) */
+/* a bound lowered or raised to a value (inlines, the names ours: the value, the later argument, is
+ * read before the bound -- the ternary written in place reads the bound first) */
+static inline void LowerTo(float &bound, float v)
+{
+    bound = v <= bound ? v : bound;
+}
+
+static inline void RaiseTo(float &bound, float v)
+{
+    bound = v >= bound ? v : bound;
+}
+
+extern "C" void func_0056ACE0(CBBox *box, const CPnt3D *pts)
+{
+    box->m_min = pts[0];
+    box->m_max = pts[0];
+    for (int i = 1; i < 8; i++) {
+        const CPnt3D *p = &pts[i];
+
+        LowerTo(box->m_min.x, p->x);
+        LowerTo(box->m_min.y, p->y);
+        LowerTo(box->m_min.z, p->z);
+        RaiseTo(box->m_max.x, p->x);
+        RaiseTo(box->m_max.y, p->y);
+        RaiseTo(box->m_max.z, p->z);
+    }
+}
+
+extern "C" {
+void func_00570F90(CSealCtrlAi *ai, float t);
+void func_005B3890(CEntity *seal, int x);
+}
+
+/* the AI put back on its feet off a ladder: out of mode 7 -- the mode before it restored -- into
+ * mode 3, the climb's words cleared, the move goal dropped, 0x570F90 asked with 1 and the SEAL's
+ * 0x5B3890 with 1 (OVL2 0x56BEF0, new in SOCOM II: 0x56AF50 calls it three times; the name
+ * unknown) */
+extern "C" void func_0056BEF0(CSealCtrlAi *ai)
+{
+    CEntity *e = ai->m_entity;
+
+    if (ai->m_3f4 == 7) {
+        if (ai->m_3f4 == 7)
+            ai->RestoreAiMode();
+        ai->SetAiMode((AI_MODE)3);
+    }
+    ai->m_448 &= 0xffff0000;
+    ai->m_440 = 0;
+    ai->m_444 = 0;
+    ai->ClearGoal(GOAL_MOVE);
+    func_00570F90(ai, 1.0f);
+    func_005B3890(e, 1);
+}
+
+/* the target's entity, held in the word at 0x67C (an inline, the name ours) */
+static inline CEntity *TargetOf(CSealCtrlAi *ai)
+{
+    return *(CEntity **)ai->m_67c;
+}
+
+extern "C" bool func_0055E670(CSealCtrlAi *ai, AI_FIREPARAMS *p);
+
+/* a shot asked for by the fire parameters (flags 0x4000000 and 0x40000) taken: flag 4 with a target
+ * aims at the target's spot and speed first; either way the aim (0x55E670) fires when ready, and
+ * once done -- when asked -- the request is cleared with the look of mode 11; whether one was asked
+ * (OVL2 0x55EAA0, new in SOCOM II: 0x563E10, 0x5B8920 and 0x5C1970 call it; the name unknown) */
+extern "C" bool func_0055EAA0(CSealCtrlAi *ai, AI_FIREPARAMS *p, bool clear)
+{
+    bool r = false;
+
+    if ((p->m_flags & 0x4000000) && (p->m_flags & 0x40000)) {
+        r = true;
+        if ((p->m_flags & 4) && func_0060A850(ai->m_67c)) {
+            p->m_targetPos = TargetOf(ai)->m_posW;
+            p->m_targetVel = TargetOf(ai)->m_velW;
+            if (func_0055E670(ai, p))
+                ai->FireWhenReady(*p, 0.0f);
+        } else if (func_0055E670(ai, p))
+            ai->FireWhenReady(*p, 0.0f);
+        if (clear) {
+            p->m_flags &= ~0x4000000;
+            ai->ClearLook(AIL_11);
+        }
+    }
+    return r;
+}
+
+/* the fire parameters aimed straight at the target's spot: the look along the line to it, the aim
+ * point the spot, the model's aim down -z, flag 0x100000 on and 0x800000 off, the distance kept
+ * (OVL2 0x55EBE0, new in SOCOM II: 0x55F0A0 picks it by flag 0x80000; the name unknown) */
+extern "C" bool func_0055EBE0(CSealCtrlAi *ai, AI_FIREPARAMS *p)
+{
+    CPnt3D *target = &p->m_targetPos;
+    CPnt3D dir = *target - ai->m_entity->m_posW;
+    float dist = dir.Normalize();
+
+    p->m_aimPointW = *target;
+    p->m_lookDirW = dir;
+    p->m_aimDirM = CPnt3D::unit_nz;
+    p->m_flags &= ~0x800000;
+    p->m_flags |= 0x100000;
+    p->m_dist = dist;
+    return true;
+}
+
 /* whether the body holds a weapon of the kind: kind 1 is rows 2 and 3 (OVL2 0x5609F0).
  * OPEN, 15 instructions: the target materialises each row's test (xor, sltiu) and branches on the
  * first, the entity in a2; MW here compares with beq and reuses the 1 the kind test left in v0.
