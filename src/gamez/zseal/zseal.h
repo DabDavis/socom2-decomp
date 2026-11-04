@@ -141,6 +141,10 @@ public:
     /* whether a scope or the binoculars are up (SOCOM 1's; OVL2 0x5B9990, 0x5B90F0 -- kit.h's) */
     bool IsUsingScope();
     bool IsUsingBinocs();
+    /* the class of the item in hand (kit.h's byte enum; OVL2 0x5B8760, the kit lane's) */
+    enum FIRE_CLASS { FIRE_CLASS_NONE = 0, FIRE_CLASS_RIFLE = 1, FIRE_CLASS_PISTOL = 2,
+                      FIRE_CLASS_THROWN = 3, FIRE_CLASS_145 = 4, FIRE_CLASS_LAST = 255 };
+    FIRE_CLASS GetCurItemFireClass();
 
     /* kit.h's flags (the kit lane's names): only bit 12 here */
     unsigned int m_bits0 : 12;   // 0x0
@@ -224,6 +228,8 @@ public:
      * seal_unit.cpp, which declares them alike) */
     static CSealUnit *GetUnitByTeam(unsigned int team);
     CZSealBody *GetSealByIndex(int index, int depth);
+    /* the squad's leader (SOCOM 1's const GetLeader; OVL2 0x5E8A90, the kit lane's) */
+    CZSealBody *GetLeader() const;
 
     unsigned int m_0;   // 0x0
     virtual void IssueCommand(CZSealBody *seal, FT_COMMAND cmd, void *data, bool b);
@@ -578,7 +584,8 @@ public:
     unsigned int m_do_aimap_collide : 1;
     unsigned int m_bit16 : 1;   // new in SOCOM II (the constructor sets both)
     unsigned int m_bit17 : 1;
-    unsigned int m_unused : 14;
+    unsigned int m_bit18 : 1;   // new in SOCOM II: the reload button held (0x594B70; the name ours)
+    unsigned int m_unused : 13;
     CPnt3D m_goal_dir;   // 0x174 (SOCOM 1's 0x16c)
     CPnt3D m_goal_pos;   // 0x180
     CPnt3D m_fudge_velR;   // 0x18c
@@ -590,7 +597,8 @@ public:
     float m_speed;   // 0x1c4 (SOCOM 1's 0x1bc)
     unsigned char _1c8[0x221 - 0x1c8];
     MENU_STATE m_menustate;   // 0x221 (as SOCOM 1's)
-    unsigned char _222[0x244 - 0x222];
+    unsigned char _222[0x240 - 0x222];
+    float m_240;   // 0x240: how long the reload button has been held (0x594B70; the name ours)
     float m_244;   // 0x244: CanPlaceBomb's wait, set to 1.5 when it refuses (the name ours)
     unsigned char _248[0x250 - 0x248];
 };
@@ -1257,6 +1265,12 @@ public:
     static std::vector<class CZDecalDef> m_blooddriptexhandles;
     /* the database's handles let go (SOCOM 1's static; OVL2 0x5A3BB0) */
     static void UninitDatabaseHandles();
+    /* the database's handles taken: the hand signals, the weapon-event callback, the ripple, drop
+     * and footfall anims, the sounds (SOCOM 1's statics; OVL2 0x5A49F0, 0x5A4CE0 -- which CMission::
+     * Open calls --, and the decal textures 0x5A4CF0) */
+    static void ReInitDatabaseHandles();
+    static void InitDatabaseHandles();
+    static void InitDecalHandles();
     /* a weapon's event handed to every SEAL's controller (SOCOM 1's static callback; OVL2 0x5A4F80) */
     static void HandleWeaponEvent(CZProjectile *proj, unsigned int event, void *data);
     void SetSnakePathUpdate(bool on, unsigned int length);
@@ -1305,6 +1319,9 @@ public:
      * n`; the names ours) */
     void SetBit9(bool on) { m_bit9 = on; }
     void SetBit10(bool on) { m_bit10 = on; }
+    /* the moving and turning flags set (inlines: InStateHang clears both with `(0 & 1) << n`) */
+    void SetIsMoving(bool on) { m_is_moving = on; }
+    void SetIsTurning(bool on) { m_is_turning = on; }
     /* the stance's change taken, once (seal_body.cpp) */
     bool StanceChanged();
     /* the state of the topmost blend not in state 3, else 0 (SOCOM 1's PeekBaseState; OVL2
@@ -1357,6 +1374,10 @@ public:
     /* the top blend turned at a rate from the turn, capped per state (SOCOM 1's TurnControl after
      * ProneControl: OVL2 0x583960 -- SOCOM II's takes the turn alone) */
     CZBodyAnimBlend *TurnControl(float turn);
+    /* the ladder and hang states' anims (SOCOM 1's InStateClimbLadder and InStateHang, no floats in
+     * SOCOM II; OVL2 0x584240, 0x584390) */
+    CZBodyAnimBlend *InStateClimbLadder();
+    CZBodyAnimBlend *InStateHang();
     /* the body carried let go (SOCOM 1's DropBody, before OKToStand in both builds: OVL2 0x57EE00) */
     void DropBody();
     /* a stun taken: the kind's highest kept, the controller told (SOCOM 1's; OVL2 0x5A53D0) */
@@ -1474,7 +1495,8 @@ public:
     unsigned char m_fade_priority;   // 0x238
     unsigned char _239[0x240 - 0x239];
     float m_240;   // 0x240: PostCheckDILadder checks the ladder only from 0.03 up (the name ours)
-    unsigned char _244[0x2e0 - 0x244];
+    float m_244;   // 0x244: InStateHang's second throttle with 0x240 (the name ours)
+    unsigned char _248[0x2e0 - 0x248];
     float m_2e0;   // 0x2e0: the time step the overlay ticks by (0x579EF0; the names ours)
     float m_alt;   // 0x2e4 (SOCOM 1's 0xe98)
     CZBodyPart *m_root;   // 0x2e8 (SOCOM 1's 0x26c)

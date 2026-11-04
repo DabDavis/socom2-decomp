@@ -57,6 +57,7 @@ public:
 class CMissionObjectiveCam : public CMissionCam {
 public:
     CMissionObjectiveCam();
+    ~CMissionObjectiveCam();
     bool IsInvalid() const;
     bool IsDisplayOn() const;
     bool IsComplete() const;
@@ -106,6 +107,13 @@ CMissionObjectiveCam::CMissionObjectiveCam()
     m_isSubObjective = false;
     m_isCompass = false;
     m_unused = 0;
+}
+
+/* the objective's own text freed through FreeText, then its lines' vector and the mission camera
+ * torn down (OVL1 0x2C7490; SOCOM 1's frees the four strings and the lines in place) */
+CMissionObjectiveCam::~CMissionObjectiveCam()
+{
+    FreeText();
 }
 
 /* an objective shown on the compass: neither complete nor invalid, its display valve on (or

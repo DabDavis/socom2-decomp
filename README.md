@@ -1927,6 +1927,103 @@ templates next), and the earlier rounds' opens; 3.0b38/b50/b52 still untold.
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the HUD, round 29** (CZNewHudMap: CalcNewMatrix, UninitMap, RemoveItem, the constructor; the map's statics):
+  - a struct the target keeps on the stack, where MW scalarises a named one, comes out of a reference bound to a
+    default-constructed temporary whose address the filler takes: `const SealDir &d = SealDir(); Fill((SealDir *)&d);`;
+  - an inline's parameter order fixes the float registers (CalcNewMatrix 0x20AE50's clamp matched only with the width
+    last); for the larger of two floats `b > a ? b : a` reproduces the false arm's copy through a temporary, `b <= a ? a :
+    b` or a ternary assigned straight to the variable loses it; an inline's by-value float parameter is loaded once and
+    reused across a branch, read as a member it is reloaded;
+  - `iterator next; next = erase(i);` keeps the target's copy through the frame, `iterator next = erase(i);` loses it; an
+    `iterator e = end()` taken once lives in a saved register;
+  - a virtual destructor declared and not defined keeps a unit from emitting the implicit copy: a stand-in member type
+    cannot regress a destructor only its draft matches (hud_main.cpp no longer emits ~CZNewHudMap);
+  - hud_newhudmap.cpp's statics run 0x409F20-0x40BE7F in SOCOM 1's order (COverlayLine[7], COverlayLine[9], C2DString[9],
+    CPlainBmp[9], four C2DBitmapPolys, three COverlayLines), the float statics after (the grid's alpha 24.0 at 0x3DC490),
+    its initialiser 0x3FDE80; CZObjectiveList is 0x730 bytes; CZNewHudMap keeps m_parent at 0x810 and the zoom sounds at
+    0x814/0x818;
+  - the zoom getter hud_newhudmap.cpp calls (0x2AF870) is in question: SOCOM 1's SwitchMapToFullScreen calls
+    ftsGetTacMapZoom at that point, but SOCOM 1's getter order and its globals' order make 0x2AF870 the far zoom (the
+    game states' round 26 settles it);
+  - open: FrameObjective 0x20B800 (4: the target adds z's sum, then x's, into temporaries and multiplies by 0.5 held in
+    f0).
+- **Tells from the game states, round 25** (CMission::Close and its anchor vector, MissionBankList::Resize, the deleters):
+  - an empty loop reached through an inline accessor returning the element's address leaves its arm's shell -- the test
+    stays, and the build loop's arm becomes a lone jump placed after the body; without the accessor MW folds both arms
+    away: func_002AF410's "two empty arms" are MissionBankList::Resize, a fixed-array resize whose loops reach each slot
+    through an inline `At(i)` (`At(i)->~MissionBank()` down, `new (At(i)) MissionBank` up), its element's destructor
+    trivial (the initialiser registers none for the global; build/scratch/states-r25/gen_resize3.py has the probe matrix);
+  - writing CMission::Close 0x2AB3F0 (0x604) generates the anchor vector's deleter's clear and destructor first, so they
+    inline where they must: reserve<SObjectiveCam_Anchor> 0x2B00E0, ~vector 0x2ABA00, the deleter's member swap 0x2ABA60,
+    clear 0x2ABAA0, vector() 0x2ABAB0 and the camera path's clear 0x2B1310 match from source with it (0x2ABA00's old
+    swap name was wrong; the free swap's name does not move to 0x2ABA60);
+  - a CPnt3D stored into a matrix row through a cast pointer goes through an address register, element-wise stores or the
+    matrix indexed as a CPnt3D array store straight to the frame; `for (e = end(), i = begin(); ...)` swaps a walk's saved
+    registers;
+  - a loaded byte's `andi 0xff` survives when the conversion is applied after a ternary's join (an inline returning the raw
+    char); comparing two one-byte enum wrappers through their conversions narrows even a constant at runtime -- the
+    byte-enum family's two partial reproductions (the button's own `lb; andi` still folds to `lbu`);
+  - 0x2B55E0 is CNodeAction::Close (SOCOM 1's call at the same place); ~CMissionObjectiveCam 0x2C7490 and
+    ftsNetworkPlayerInit 0x2B7D60 byte-exact; RenderWorld and CFlareSystem::Tick respelled (no code change);
+  - open: insert<CLadderData> 0x2B0260 (right size, 55: the class insert's end register), NVGNoiseParse (t0/t1),
+    UnInitialize (v0/v1).
+- **Tells from the UI, round 16** (the dialog design's loaders and their template tail, zui_spec.cpp):
+  - an `int` counter compared with an unsigned count (`sltu`) keeps `i*8` recomputed each pass; an `unsigned` counter is
+    strength-reduced to a byte offset stepped by 8 (LoadFromRdr's SCRIPT_LIBRARY loop);
+  - MW keeps a class object in memory only as the source or destination of a bitwise copy: a pair passed by value to an
+    inline is built member-wise in one slot, copied bitwise into the parameter and read from there; with a user copy
+    constructor the copy is elided and the parameter broken into registers (AddKeyProps by value reaches the target's
+    0x124, 27 off: one bitwise copy too many);
+  - CGameDlgDesign::LoadFromRdr 0x381550 and LoadModels 0x3812B0 are SOCOM 1's (both builds read ROTX, ROTY and ROTZ into
+    the same float); CGameDlgDesign is 0x74 bytes, a third string at 0x24 (zui.cpp's 0x367430 constructs it),
+    CDlgDesignModel 0x34;
+  - two map rows carried a wrong mangled length (`70` for `72__vector_deleter<15CDlgDesignModel,...>`, 0x36AE50 and
+    0x36ACF0): as spelled no source could match them;
+  - open: LoadDlgObjects 0x383360 (0x29C vs 0x2B8: the target keeps an orphaned else-block, seven words, at each inlined
+    Count()/Item() ternary), resize<CDesignDlgObj> 0x383960 (6) and resize<CDlgDesignModel> 0x383AA0 (5: the inlined
+    destructor of the temporary's second string reads the text pointer through the member's address in the target, `lw
+    a0,8(a0)`), erase<CSaferStr> 0x383BC0 (15), __copy<CSaferStr> 0x383D00 (is_long called out of line here),
+    erase<CDlgDesignModel> 0x384BD0 (20), CDlgDesignModel's copy constructor 0x3854C0 (one saved register short).
+- **Tells from the weapons, round 18** (a new vis_load.cpp; OpenDecals, NodeSetup, LandmarkEnable, AlphaEnable):
+  - two bool calls guarding a cleanup, written `bool ok = f(); if (ok) ok = g(); if (!ok) X;`, give the target's padded join
+    label before the second branch (`andi; nop; bnez`); `f() == false || g() == false` pads after the branch instead;
+  - a loop count in an int local and the array pointer in a local load once, the object's register reused; reading
+    `size()` and `[i]` in the loop re-reads both after every out-of-line push_back; a pointer read into a local before a
+    class-vector element reference is taken loads ahead of the vector's data pointer;
+  - an inline bool predicate `return a && !b && !c;` used in an `if` materialises its value; written in place, the
+    condition branches directly;
+  - `<iostream>`'s initialiser pair needs no data rows to match, so an unnamed `__sinit` placed by its neighbours opens a
+    unit on its own: 0x404500 is __sinit_vis_load.cpp, a third unit at 0x3B2CB0-0x3B36EF between zvid_init.cpp (closed by
+    zVid_Assert 0x3B2C80) and vis_vu.cpp (LoadNodeVisuals, LoadMeshNode; the 0x700-byte recursive reader 0x3B2FF0
+    unwritten; the names ours);
+  - SOCOM II's CMission::Open calls OpenDecals() 0x3D03C0, a tail call passing "decals.rdr" to an overload (0x3D0870, SOCOM
+    1's body) that never reads the name; NodeSetup 0x3B6D10's fourth argument is gone (no caller sets it, the code never
+    reads it); LandmarkEnable 0x3B7130 is SOCOM 1's, AlphaEnable 0x3B7150 SOCOM 1's with the z-write argument inverted;
+  - open: HandleTimers 0x3C99A0 (2: 0x1C8 vs 0x1D0 -- the target sets v0 = 0 early and pads two more labels),
+    InitializeWeapons (the end computed in place in `this`'s register: the end-in-a-local rule 52 off, begin() first
+    0x3C8 long), GetDamage (3), CTurret::Fire (2: `m_id` loaded before `m_node`).
+- **Tells from the SEALs, round 21** (CZSealBody's database handles, OKToStand, the ladder state, three new rows):
+  - `p = c ? q : p;` leaves the join label unaligned, `if (c) p = q;` pads it to 8 with a nop (0x560340, a state's nod to
+    its squad leader);
+  - a byte call result taken into an `unsigned char` local before a flag's zero puts the zero after the call; `bit = (x ==
+    2) != 0` gives the target's second `sltu` before a bit-field store (0x594B70, the reload button: double-click or held
+    0.4 s);
+  - a callee reading an argument register no caller sets has a real parameter (an uninitialised local lands in v0
+    instead): SOCOM II's OKToStand 0x57EFE0 takes a stance none of its three callers passes;
+  - two `return`s joining at one shared `move sN,v0` are an inlined function's result -- InStateHang's last arm is
+    Stand(-1);
+  - `if ((t = f()) != 0)` tests v0 with the copy in the delay slot, `t = f(); if (t)` copies first and tests the saved
+    register;
+  - one variable reused across two loops gets separate register webs (the first loop stays the target's), separate
+    variables renumber everything; a loop counter declared before the count fixed ReInitDatabaseHandles 0x5A49F0;
+  - defining, in an OVL2 unit, a function whose row is in OVL1 moves the unit's span into OVL1, and sccheck then scores the
+    unit's template copies against OVL1's rows (insert<CZDecalDef> 0x3D3D90 showed as a regression until the definition
+    went);
+  - InitDatabaseHandles 0x5A4CE0 is SOCOM 1's tail call into ReInitDatabaseHandles (the game states' lead, confirmed);
+    InStateProne/Crouch/Stand named from the state dispatcher 0x5870E0's jump table (data 0x65D100) and SOCOM 1's order;
+  - open: InitDecalHandles 0x5A4CF0 (10, right size: the blood tag and the loop count swap s0/s5), InStateHang 0x584390 (5:
+    Crouch 0x581990's register pair inside the inlined Stand(-1)); seal_env.cpp's vector<CZDecalDef> reserve and insert
+    (8 bytes short each: the MSL headers' question).
 - **Tells from the kit and AI states, round 22** (CSealUnit's creators; CZKit's lase, detonation and 2X ammo):
   - a walk over a static list that two functions share, written as a static inline helper, puts its iterator below the
     callers' temporaries in the frame and keeps its end in a saved register; written in place, the iterator takes an
@@ -5824,6 +5921,80 @@ alphabetical order). What they showed:
   (0x1C1D40, 0x1C1E90, 0x1C2028). Not written: 0x1C3E60, getsockopt 0x1C4140, setsockopt 0x1C43D0.
   Not reached: libmpeg's last six, libgraph and libipu (0x1A13D0-0x1A3448), libkernl's
   tty and SIF objects, OVL1's codec.
+
+**Round 22a** (2026-11-04, newlib from newlib's own text, then Sony's objects by the demo's layout):
+25 rows newly byte-exact (12,124 bytes) and 12 matched drafts superseded -- the lane's `src/lib`
+sdk/libc/libgcc/libm/ovl1 rows 1,119 -> 1,156 of 1,228 scored, none lost -- 37 functions written
+byte-exact of 42, and 10 rows and 8 data rows named. newlib's malloc family whole (`libc/mallocr.c`
+_malloc_r and malloc_extend_top, `freer.c` _free_r and _malloc_trim_r, `reallocr.c`, `malignr.c`,
+over a shared `mallocr.h`; the EE port's `mlock.c` and the locked wrappers `malloc.c`, `malign.c`,
+`realloc.c`), `_vfiprintf_r` (0xBF8), vfprintf.c's `exponent` (`_vfprintf_r` and `cvt` OPEN),
+vfscanf.c's `__sccl`; Sony's libipu whole (`sdk/libipu.c`, `sdk/ipu_init.c`, the demo's two
+objects); libgraph's sceGsResetPath, checkModelVersion and _GetGsDxDyOffset (sceGsSetDefDispEnv
+OPEN); libdbc's init, end and version query; libcdvd's streaming object (`sdk/cd_stream.c`, 9 of
+10). Named: _memalign_r, memalign, exponent, __sccl (by body: newlib's text compiles to each byte
+for byte), setD4_CHCR@libipu and @ipu_init (the demo's objects), sceCdStRead, sceCdStPause,
+sceCdStResume, sceCdStStat (their own messages); data.txt: mallocr.o's seven globals
+(`__malloc_av_` ... `__malloc_current_mallinfo`) and `__mb_cur_max`, the demo's names and sizes.
+What they showed:
+
+- **newlib's own text compiles as it stands, once the EE's configuration is right**: mallocr.c
+  (Doug Lea's 2.6.4) is byte-exact in four objects -- built as newlib builds it, one per
+  `DEFINE_*` macro -- under MALLOC_ALIGNMENT 16 and **SIZE_T_SMALLER_THAN_LONG** (size_t a word,
+  long 64-bit: every remainder is long_sub_size_t's conditional `(x < y) ? -(long)(y - x) : x - y`;
+  without it _malloc_r is 0x660 against 0x728). newlib 1.9.0's text is at
+  `raw.githubusercontent.com/mirror/newlib-cygwin/newlib-1_9_0/newlib/...` (the lane fetched it
+  into build/scratch/gcc/newlib/), 1.8.2's at sourceware.org/pub/newlib.
+- **The toolchain's newlib is a snapshot older than 1.9.0**: _vfiprintf_r has 1.9.0's text but for
+  `char *xdigs;` (1.9.0 stores `= NULL`), and vfprintf.c's FLOATING_POINT body has the older `double
+  _double` (no union cleared), `int expsize;` and exponent's `char expbuf[MAXEXP]` (a 320-byte
+  frame) -- each an extra store or a frame the target does not have. Its vfscanf.c is neither
+  1.8.2's nor 1.9.0's: __svfscanf calls atol and sprintf where both (and the demo's 0xB08 copy)
+  convert through the ccfn pointer and atof; not written.
+- **newlib's va_arg is GCC 2.96's builtin** (`libc/gccstdarg.h`): `__builtin_va_list` is a 4-byte
+  pointer and `__builtin_va_arg` reads at it and then steps it by 8 (`move v0,s4; lw s8,0(v0);
+  addiu s4,s4,8`); the repo's include/stdarg.h (MW's) steps first and reads at -8 -- the same code
+  wherever a va_list is only passed on, not where va_arg reads one.
+- **The DFmode delay slots are the only difference left in vfprintf.c**: with the snapshot's
+  lines, _vfprintf_r is 0x1660 against 0x1670 and cvt 0x1B0 against 0x1C0, every other word the
+  target's -- the runtime compiler's `move a0,zero; jal dpsub; nop` against this one's filled slot
+  (round 4a), a fourth object with that one diagnosis.
+- **Sony's libipu**: the demo's DMA object's setD3/setD4_CHCR re-enable interrupts only if DIntr
+  found them on in SOCOM II (0x74; the demo's 0x64 always call EIntr, as ipu_init.c's copy still
+  does); sceIpuRestartDMA takes channel 4's address before its count (a0/a1 otherwise);
+  sceIpuInit reads each FIFO quadword through a volatile quadword -- MPEG's default intra matrix
+  in zigzag order and a row of 16s sent four times (a plain read is one CSE'd load, 0x228).
+- **libgraph and libdbc, small shapes**: checkModelVersion counts in an unsigned int (`sltiu`);
+  sceGsResetPath's VU1 reset is an asm with a zero input register (`move a0,zero` before `cfc2`);
+  libdbc's init has each bind's failure print and return on its own -- cross-jumping keeps one
+  copy, laid out after the semaphore's failure as in the target (a goto label at the end lays it
+  last: 0x234 against 0x23C).
+- **libcdvd's streaming calls are a newer object than the demo's libcdvd**: nine sceCdSt* calls
+  over one stream-command RPC (N-command RPC 9, the command numbers ps2sdk's reconstruction
+  gives); the stream RPC byte-exact as first written, its request built in `_sceCd_ncmdsdata` and
+  its reply read uncached.
+- **Open, diagnosed in place**: _vfprintf_r, cvt (above); sceGsSetDefDispEnv (0x3B8 against
+  0x374: the DISPLAY word's spelling -- DX summed in 64 bits and masked like DY with 0xfff, MAGH,
+  DW and DH unmasked); sceCdStRead (65 words: the stream result copied out of v0 before its split);
+  sceDbcSendData (right size, 21 words: the base and size pointer's s2/s3, the copy's base made in
+  the preheader). Not written: __svfscanf (above), libgraph's other setters (sceGsSetDef*,
+  sceGsExec*, sceGsSyncPath: GS register words built from bitfield structs still to be read off
+  the code), libmrpc, libcdvd's remaining calls, OVL1's codec.
+- **The map holds a kernel image as functions**: func_001CCD78 ... func_001CCF20 are `tlbsrc`
+  (data.txt's 0x330-byte row, s1:data-exact): code linked at 0x80075000 (_start, PutTLBEntry,
+  SetTLBEntry, GetTLBEntry, ProbeTLBEntry, ExpandScratchPad) that libkernl copies into kernel
+  memory -- their calls and table reference 0x8007xxxx, which no MAIN-linked unit can score -- and
+  func_001CD078 (0x122C) is data: tlbsrc's syscall table and the .data after it (tlbfunc.c's
+  SysEntry, `_kTLBRefillHandler` ...). Left as they are, for the integrator to retire.
+
+**The tools, round 22a**: no tool changed (scdiff.py, sccheck.py, scdecomp.py and `include/` are
+master's), so no unit can score differently; every hand-written unit after merging master
+0c351b2d (`--files '^(?!auto/)'`, 9,430 scored) gives 8,878 byte-exact, its only "regressions" the
+eleven rows only their drafts match (above, "Working in parallel"). automatch over the lane's four
+ranges (`--max-size 0x400 --emit --no-prune --jobs 1 --obj-dir` the lane's `src/lib` build): MAIN
+`18DB90 1C4CC0` 68 tried, 0 hits (11 build failures, 13 m2c refusals), `1CCD78 1CE2A4` 6 tried, 0
+hits (5 refusals), OVL1 `1E7F58 1E8FD4` 2 tried, 0 hits, `243000 256FD0` 96 tried, 0 hits (22, 8):
+172 tried, none byte-exact (round 21a: 195, 0) -- every draft that built missed.
 
 **Next**: the libraries by hand, module by module, as their vendors wrote them (each `src/lib`
 unit's header says what it covers); GCC's scheduler moves independent stores, and which source

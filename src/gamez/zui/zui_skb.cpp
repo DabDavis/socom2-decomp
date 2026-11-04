@@ -713,7 +713,15 @@ void CSoftKeyboard::ParseKeyProps(_zrdr *rdr)
  * the key copy and the value word for word (0x10C) is std::make_pair by value with CSkbKey's copy
  * left implicit (a by-value argument is then copied bitwise, as the target's lh/sh), its m_row/m_code
  * views first in their unions and its assignment written over m_urow/m_scode (this unit stays at 98)
- * -- the pair temporary between them is still folded */
+ * -- the pair temporary between them is still folded.
+ * Round 16 (build/scratch/ui/v_akp1.py, v_akp2.py, over that 0x10C form): MW keeps a class object in
+ * memory only as a BLOCK COPY's source or destination -- a pair passed BY VALUE to an inline insert
+ * helper is built member-wise at one slot, copied bitwise (ld/sd) to the parameter's and read
+ * member-wise from there (0x124, the target's size, 27 off: one bitwise copy too many) -- while the
+ * target's pair at 80 is written and read member-wise only. Folded as well: the pair returned through
+ * a reference local in the helper, bound to a const reference, a named value_type, the key by value
+ * into a helper building the pair, a pair or value_type by value with a user copy constructor
+ * (elided, then scalarised: 0xFC) */
 void CSoftKeyboard::AddKeyProps(const CSkbKey &key, const CSkbRect &r)
 {
     CSkbKeyProps *props = FindKeyProps(key);
