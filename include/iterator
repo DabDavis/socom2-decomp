@@ -28,6 +28,52 @@ struct iterator_traits<T *> {
     typedef random_access_iterator_tag iterator_category;
 };
 
+/* a walk backwards over a bidirectional iterator, MSL's: the base iterator `current` one past the
+ * element, stepped back by ++ and read through a copy stepped back by * (the list's rbegin()/rend()) */
+template <class Iterator>
+class reverse_iterator {
+public:
+    typedef Iterator iterator_type;
+    typedef typename iterator_traits<Iterator>::difference_type difference_type;
+    typedef typename iterator_traits<Iterator>::value_type value_type;
+    typedef typename iterator_traits<Iterator>::iterator_category iterator_category;
+
+    reverse_iterator() {}
+    explicit reverse_iterator(Iterator x) : current(x) {}
+    Iterator base() const { return current; }
+    value_type &operator*() const
+    {
+        Iterator tmp = current;
+
+        return *--tmp;
+    }
+    reverse_iterator &operator++()
+    {
+        --current;
+        return *this;
+    }
+    reverse_iterator &operator--()
+    {
+        ++current;
+        return *this;
+    }
+
+protected:
+    Iterator current;
+};
+
+template <class Iterator>
+inline bool operator==(const reverse_iterator<Iterator> &x, const reverse_iterator<Iterator> &y)
+{
+    return x.base() == y.base();
+}
+
+template <class Iterator>
+inline bool operator!=(const reverse_iterator<Iterator> &x, const reverse_iterator<Iterator> &y)
+{
+    return x.base() != y.base();
+}
+
 /* a pointer range's length, MSL's way: through the random-access helper and its tag */
 template <class T>
 inline int __distance(const T *first, const T *last, random_access_iterator_tag)

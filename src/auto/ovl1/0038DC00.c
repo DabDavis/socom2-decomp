@@ -7,10 +7,10 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
+M2C_UNK HandlePad__13CSoftKeyboardFP4CPadP9CGameMenu(s32, s32, s32); /* extern */
 M2C_UNK SkbHandleKey__FiP4CPadP9CGameMenu(s32, s32, s32); /* extern */
 s32 SkbPadKeyEvent__FP4CPad(s32);                   /* extern */
-M2C_UNK func_0038C990(s32, s32, s32);               /* extern */
-s32 func_00396EC0();                                /* extern */
+s32 SkbScaling__Fv();                               /* extern */
 extern s32 data_0049ECD0;
 
 s32 func_0038DC00(s32 arg0, s32 arg1) {
@@ -19,14 +19,14 @@ s32 func_0038DC00(s32 arg0, s32 arg1) {
     if (data_0049ECD0 == 0) {
         return 0;
     }
-    if (func_00396EC0() != 0) {
+    if (SkbScaling__Fv() != 0) {
         return 1;
     }
     temp_v0 = SkbPadKeyEvent__FP4CPad(arg0);
     if (temp_v0 & 0xFF) {
         SkbHandleKey__FiP4CPadP9CGameMenu(temp_v0, arg0, arg1);
     } else {
-        func_0038C990(data_0049ECD0, arg0, arg1);
+        HandlePad__13CSoftKeyboardFP4CPadP9CGameMenu(data_0049ECD0, arg0, arg1);
     }
     return 1;
 }

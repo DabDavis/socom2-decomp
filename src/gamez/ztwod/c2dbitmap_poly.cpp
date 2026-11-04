@@ -1,7 +1,7 @@
 /* c2dbitmap_poly.cpp -- C2DBitmapPoly, a bitmap drawn as two C2DPolys (OVL1 0x357E90-0x35973F):
  * SOCOM 1's unit (its name from a local class's mangling, C2DWidePolyline's CPnt2D in
  * c2dbitmap_poly_cpp), its functions in SOCOM 1's order -- C2DWidePolyline::SetSegments,
- * GetAssetLibs, the two Rotate_Zaxis, the three flips, SetUseFrameBufferAlpha, GetTrans, SetTrans,
+ * GetAssetLibs, the two Rotate_Zaxis (on the unit's static r, 0x3E0300), the three flips, SetUseFrameBufferAlpha, GetTrans, SetTrans,
  * SetColor, the two SetUV, SetCenterPos, SetPos, Draw, Load and the constructor -- with SOCOM II's
  * own among them: a corner's alpha after GetTrans and a rectangle's SetPos before the corners'.
  * The vtable's inline flag setters open it (SetAA and SetGouraud linked from here; the other two
@@ -28,6 +28,25 @@ static inline void CopyRow(float *d, const float *s)
     d[1] = s[1];
     d[2] = s[2];
     d[3] = s[3];
+}
+
+/* the rotation both Rotate_Zaxis write and turn the corners by (SOCOM 1's static `r`, 0x43A860;
+ * the identity until the first turn) */
+static float r[2][2] = { { 1.0f, 0.0f }, { 0.0f, 1.0f } };
+
+/* half the difference added to the larger (the midpoint when p is the smaller; the target's code
+ * either way). By reference: the second is read first and numbered below the first, as the target
+ * holds them (by value, MW reads the arguments last first and numbers them in order) */
+static inline float Mid(const float &p, const float &q)
+{
+    float d = p - q;
+
+    d *= 0.5f;
+    if (p > q)
+        d += p;
+    else
+        d += q;
+    return d;
 }
 
 /* all four corners at once, by value (an inline: the callers copy the points into its parameters,
@@ -188,6 +207,126 @@ void C2DBitmapPoly::FlipImage_XYaxis()
     CopyRow(m_tris[0].m_vertex[2], m_tris[1].m_vertex[0]);
     CopyRow(m_tris[1].m_vertex[1], m_tris[1].m_vertex[0]);
     CopyRow(m_tris[1].m_vertex[0], m_tris[0].m_vertex[0]);
+}
+
+/* turned by the angle (degrees) about the centre of the corners' extent (SOCOM 1's, 0x2E4 there):
+ * the four distinct corners moved to the origin, r set and applied, moved back, and the second
+ * triangle's two shared corners copied. The turns are written out on the function's own x, y, nx
+ * and ny (y declared first): an inline turn per corner computes y' before x' whatever its order,
+ * where the target computes x' first for the first two corners; the cosine stored to r[1][1] and
+ * then copied to r[0][0] (a chained store reloads r[1][1] for the first corner's y'), and the
+ * radians left a temporary (a named local is numbered below the centres, the inline's variables,
+ * and takes $f22 where the target's $f20) */
+void C2DBitmapPoly::Rotate_Zaxis(float s)
+{
+    float (*a)[4] = m_tris[0].m_vertex;
+    float (*b)[4] = m_tris[1].m_vertex;
+    float cx = Mid(m_tris[0].m_vertex[1][0], m_tris[0].m_vertex[2][0]);
+    float cy = Mid(a[0][1], a[1][1]);
+    float y, x, nx, ny;
+
+    a[0][0] -= cx;
+    a[0][1] -= cy;
+    a[1][0] -= cx;
+    a[1][1] -= cy;
+    a[2][0] -= cx;
+    a[2][1] -= cy;
+    b[2][0] -= cx;
+    b[2][1] -= cy;
+    r[1][0] = sinf(0.017453292f * s);
+    r[1][1] = cosf(0.017453292f * s);
+    r[0][0] = r[1][1];
+    r[0][1] = -r[1][0];
+    y = a[0][1];
+    x = a[0][0];
+    nx = x * r[0][0] + y * r[0][1];
+    ny = x * r[1][0] + y * r[1][1];
+    a[0][0] = nx;
+    a[0][1] = ny;
+    y = a[1][1];
+    x = a[1][0];
+    nx = x * r[0][0] + y * r[0][1];
+    ny = x * r[1][0] + y * r[1][1];
+    a[1][0] = nx;
+    a[1][1] = ny;
+    y = a[2][1];
+    x = a[2][0];
+    nx = x * r[0][0] + y * r[0][1];
+    ny = x * r[1][0] + y * r[1][1];
+    a[2][0] = nx;
+    a[2][1] = ny;
+    y = b[2][1];
+    x = b[2][0];
+    nx = x * r[0][0] + y * r[0][1];
+    ny = x * r[1][0] + y * r[1][1];
+    b[2][0] = nx;
+    b[2][1] = ny;
+    a[0][0] += cx;
+    a[0][1] += cy;
+    a[1][0] += cx;
+    a[1][1] += cy;
+    a[2][0] += cx;
+    a[2][1] += cy;
+    b[2][0] += cx;
+    b[2][1] += cy;
+    CopyRow(b[0], a[0]);
+    CopyRow(b[1], a[2]);
+}
+
+/* turned by a sine and cosine about the same centre (SOCOM 1's, 0x294 there) */
+void C2DBitmapPoly::Rotate_Zaxis(float s, float c)
+{
+    float (*a)[4] = m_tris[0].m_vertex;
+    float (*b)[4] = m_tris[1].m_vertex;
+    float cx = Mid(m_tris[0].m_vertex[1][0], m_tris[0].m_vertex[2][0]);
+    float cy = Mid(a[0][1], a[1][1]);
+    float y, x, nx, ny;
+
+    a[0][0] -= cx;
+    a[0][1] -= cy;
+    a[1][0] -= cx;
+    a[1][1] -= cy;
+    a[2][0] -= cx;
+    a[2][1] -= cy;
+    b[2][0] -= cx;
+    b[2][1] -= cy;
+    r[1][0] = s;
+    r[0][1] = -s;
+    r[0][0] = r[1][1] = c;
+    y = a[0][1];
+    x = a[0][0];
+    nx = x * r[0][0] + y * r[0][1];
+    ny = x * r[1][0] + y * r[1][1];
+    a[0][0] = nx;
+    a[0][1] = ny;
+    y = a[1][1];
+    x = a[1][0];
+    nx = x * r[0][0] + y * r[0][1];
+    ny = x * r[1][0] + y * r[1][1];
+    a[1][0] = nx;
+    a[1][1] = ny;
+    y = a[2][1];
+    x = a[2][0];
+    nx = x * r[0][0] + y * r[0][1];
+    ny = x * r[1][0] + y * r[1][1];
+    a[2][0] = nx;
+    a[2][1] = ny;
+    y = b[2][1];
+    x = b[2][0];
+    nx = x * r[0][0] + y * r[0][1];
+    ny = x * r[1][0] + y * r[1][1];
+    b[2][0] = nx;
+    b[2][1] = ny;
+    a[0][0] += cx;
+    a[0][1] += cy;
+    a[1][0] += cx;
+    a[1][1] += cy;
+    a[2][0] += cx;
+    a[2][1] += cy;
+    b[2][0] += cx;
+    b[2][1] += cy;
+    CopyRow(b[0], a[0]);
+    CopyRow(b[1], a[2]);
 }
 
 /* the texture's library, once, then the children's.
