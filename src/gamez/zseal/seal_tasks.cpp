@@ -70,6 +70,8 @@ unsigned int ftmask_create(_zrdr *rdr);
 namespace sealai {
 AI_STATE get_state(const char *name);
 SEAL_STANCE get_stance(const char *name);
+/* a mode by its name, 1 for none (OVL2 0x575790, seal_ai.cpp's) */
+AI_MODE get_mode(const char *name);
 }
 /* a state by name or alias (below) */
 AI_STATE get_state_fixup(const char *name);
@@ -368,6 +370,24 @@ struct CTSelect : TASK_HDR {
     static _zanim_cmd_hdr *Parse(_zrdr *rdr);
     static bool Tick(_zanim_cmd_hdr *hdr, float *dT);
     static TASK_PARAM *Create(CZSealBody *seal);
+};
+
+/* ai::SETMODE (SOCOM 1's CTSetMode, its mode a word there): the AI's mode set, or for none the AI
+ * put to sleep -- "always", or while it has not respawned unless "respawn_only" (the tags';
+ * SOCOM II's mode a 16-bit field, the two tags bits 16 and 17 of the same word) */
+struct CTSetMode : TASK_HDR {
+    enum { MODE = 0xFFFF, ALWAYS = 0x10000, RESPAWN_ONLY = 0x20000 };
+
+    void SetMode(AI_MODE mode)
+    {
+        m_flags &= ~MODE;
+        m_flags |= mode;
+    }
+
+    unsigned int m_flags;   // 0x8: the AI_MODE (the reader's first item, 0 to sleep), the tags
+
+    static _zanim_cmd_hdr *Parse(_zrdr *rdr);
+    static bool Tick(_zanim_cmd_hdr *hdr, float *dT);
 };
 
 /* ai::STOPALL (SOCOM 1's CTStopAll): every AI switched on or off */
@@ -1730,6 +1750,71 @@ TASK_PARAM *CTSelect::Create(CZSealBody *seal)
     if (seal)
         p->hdr.data_type = ai_cmdid[2];
     return p;
+}
+
+/* a reader's item a string, or 0 (inline; the name ours) */
+inline char *TaskItemString(_zrdr *rdr, int i)
+{
+    if (rdr && rdr->Count() > i) {
+        _zrdr *item = rdr->Item(i);
+
+        if (item && item->type == 3)
+            return item->String();
+    }
+    return 0;
+}
+
+/* the mode by the first item's name, then the items after it as the tags (OVL2 0x5D2630; SOCOM 1's
+ * read only the mode) */
+_zanim_cmd_hdr *CTSetMode::Parse(_zrdr *rdr)
+{
+    CTSetMode *cmd = 0;
+    char *name = TaskItemString(rdr, 0);
+
+    if (name) {
+        cmd = NewTask<CTSetMode>();
+        cmd->SetMode((AI_MODE)1);
+        cmd->SetMode(sealai::get_mode(name));
+
+        int i = 1;
+        char *s;
+
+        while ((s = TaskItemString(rdr, i++)) != 0) {
+            if (!strcasecmp(s, "always"))
+                cmd->m_flags |= CTSetMode::ALWAYS;
+            else if (!strcasecmp(s, "respawn_only"))
+                cmd->m_flags |= CTSetMode::RESPAWN_ONLY;
+        }
+        cmd->m_param = 0;
+        zrdr_finduint(rdr, "ai", (unsigned int *)&cmd->m_param, 1);
+    }
+    return &cmd->hdr;
+}
+
+/* the AI's mode set, or for none the AI put to sleep (OVL2 0x5D2480; SOCOM 1's slept for mode 0,
+ * and without an AI sent the SEAL to a goal for mode 2 -- SOCOM II dropped that) */
+bool CTSetMode::Tick(_zanim_cmd_hdr *hdr, float *dT)
+{
+    TASK_SEAL(CTSetMode);
+    CEntityCtrl *ctrl = seal ? seal->m_control : 0;
+    CSealCtrlAi *ai = seal ? SealAi(seal) : 0;
+
+    if (!seal || !ctrl) {
+        *dT = 0.0f;
+        return true;
+    }
+    AI_MODE mode = (AI_MODE)(cmd->m_flags & CTSetMode::MODE);
+
+    if (ai) {
+        bool respawned = ai->m_has_respawned ? true : false;
+
+        if (mode == 0) {
+            if ((!respawned && !(cmd->m_flags & CTSetMode::RESPAWN_ONLY)) || (cmd->m_flags & CTSetMode::ALWAYS))
+                ai->SetSleeping(true);
+        } else
+            ai->SetAiMode(mode);
+    }
+    return true;
 }
 
 /* the sound let finish (OVL2 0x5D1210) */
