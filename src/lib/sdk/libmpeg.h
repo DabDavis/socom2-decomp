@@ -18,6 +18,7 @@ typedef int u_long128 __attribute__((mode(TI)));
 #define IPU_BP		((volatile u_int *)0x10002020)
 #define IPU_TOP		((volatile u_long *)0x10002030)
 #define D3_CHCR		((volatile u_int *)0x1000B000)
+#define D3_MADR		((volatile u_int *)0x1000B010)
 #define D3_QWC		((volatile u_int *)0x1000B020)
 #define D4_CHCR		((volatile u_int *)0x1000B400)
 #define D4_MADR		((volatile u_int *)0x1000B410)
