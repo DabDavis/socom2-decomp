@@ -97,6 +97,82 @@ public:
     int m_sum[7];   // 0x18: [1] the kills
 };
 
+/* the mission's objectives counted: complete and total, and the fraction complete, for the
+ * primary, the secondary and the third kind (SOCOM 1 counted two in Init itself) */
+struct CObjectiveCount {
+    CObjectiveCount()
+    {
+        complete = 0;
+        total = 0;
+    }
+
+    float fraction;
+    int complete;
+    int total;
+};
+
+struct CObjectiveCounts {
+    CObjectiveCount primary;
+    CObjectiveCount secondary;
+    CObjectiveCount third;
+};
+
+
+/* an objective (fts_objectivecam.cpp's CMissionObjectiveCam: only its two tests and its kind's bits) */
+class CMissionObjectiveCam {
+public:
+    bool IsDisplayOn() const;   /* 0x2C70A0 */
+    bool IsComplete() const;   /* 0x2C70D0 */
+
+    unsigned char _0[0x40];
+    unsigned int m_isSecondary : 1;   // 0x40
+    unsigned int m_isSubObjective : 1;   // 0x40
+    unsigned int m_isCompass : 1;   // 0x40
+    unsigned int m_bExtraction : 1;   // 0x40
+    unsigned int m_bit4 : 1;   // 0x40: SOCOM II's, the third kind
+    unsigned int m_unused : 27;   // 0x40
+};
+
+/* the objectives counted (OVL1 0x1F38F0, Init's first call on theMission's list; SOCOM 1's Init
+ * counted inline): each objective's completion asked first; one of the third kind counts there,
+ * else one shown counts as a secondary or a primary; then each kind's fraction, none for none --
+ * the third's first (the name ours) */
+extern "C" void func_001F38F0(CObjectiveCounts *counts, const std::list<CMissionObjectiveCam *> *objectives)
+{
+    for (std::list<CMissionObjectiveCam *>::const_iterator it = objectives->begin(); it != objectives->end();
+         ++it) {
+        bool complete = (*it)->IsComplete();
+
+        if ((*it)->m_bit4) {
+            counts->third.total++;
+            if (complete)
+                counts->third.complete++;
+        } else if ((*it)->IsDisplayOn()) {
+            if ((*it)->m_isSecondary) {
+                counts->secondary.total++;
+                if (complete)
+                    counts->secondary.complete++;
+            } else {
+                counts->primary.total++;
+                if (complete)
+                    counts->primary.complete++;
+            }
+        }
+    }
+    if (counts->third.total > 0)
+        counts->third.fraction = (float)counts->third.complete / (float)counts->third.total;
+    else
+        counts->third.fraction = 0.0f;
+    if (counts->secondary.total > 0)
+        counts->secondary.fraction = (float)counts->secondary.complete / (float)counts->secondary.total;
+    else
+        counts->secondary.fraction = 0.0f;
+    if (counts->primary.total > 0)
+        counts->primary.fraction = (float)counts->primary.complete / (float)counts->primary.total;
+    else
+        counts->primary.fraction = 0.0f;
+}
+
 /* a fraction as a whole percentage, and a value rounded (the names ours) */
 static inline int Round(float f) { return (int)(0.5f + f); }
 static inline int Percent(float f) { return Round(100.0f * f); }
@@ -204,28 +280,7 @@ CZSealBody &CEntityItr::GetSeal() const
     return *(CZSealBody *)(e && e->m_type == 2 ? e : 0);
 }
 
-/* the mission's objectives counted: complete and total, and the fraction complete, for the
- * primary, the secondary and the third kind (SOCOM 1 counted two in Init itself) */
-struct CObjectiveCount {
-    CObjectiveCount()
-    {
-        complete = 0;
-        total = 0;
-    }
-
-    float fraction;
-    int complete;
-    int total;
-};
-
-struct CObjectiveCounts {
-    CObjectiveCount primary;
-    CObjectiveCount secondary;
-    CObjectiveCount third;
-};
-
 extern "C" {
-void func_001F38F0(CObjectiveCounts *counts, void *objectives);
 void func_001F21B0(CObjectiveCounts *counts);   /* SetRoundStatUiVars */
 }
 
@@ -237,7 +292,7 @@ bool CExitState::Init()
 {
     CObjectiveCounts counts;
 
-    func_001F38F0(&counts, theMission.m_objectives);
+    func_001F38F0(&counts, (const std::list<CMissionObjectiveCam *> *)theMission.m_objectives);
     theMission.ReOpen_Unload1();
     func_001F21B0(&counts);
     theMission.ReOpen_Unload2();
