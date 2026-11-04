@@ -7,7 +7,7 @@
  * 1's (s1:align, s1:order, s1:slot); the block's fields are named by their use. ResizeQueues
  * (round 15c): SOCOM 1's body instruction for instruction but the prologue's schedule; round 16c
  * the constructor and the three small functions after it (GetpCachedDistances, GetDistanceOffset,
- * IdleDistCalcProcess). */
+ * IdleDistCalcProcess); round 21c FreeLanguage. */
 #include "tosblk.h"
 
 /* a queue (queue.c), as far as the block reads it: the bytes of an element at +8 */
@@ -32,8 +32,25 @@ typedef struct DISTSIL {
     char pad120[16];
     void *f136;                         /* +136 */
     void *f140;                         /* +140 */
-    char pad144[172];
+    unsigned short n112;                /* +144: f112's codebooks */
+    unsigned short n116;                /* +146: f116's */
+    char pad148[20];
+    int f168;                           /* +168 */
+    int f172;                           /* +172 */
+    void *f176;                         /* +176 */
+    void *f180;                         /* +180 */
+    int f184;                           /* +184 */
+    char pad188[8];
+    void *f196[10];                     /* +196 */
+    char pad236[80];
 } DISTSIL;                              /* 316 bytes (ConstructDistCalc's) */
+
+/* a codebook of the language's (12 bytes): its two tables */
+typedef struct DSCODEBOOK {
+    void *data;                         /* +0 */
+    int f4;
+    void *f8;                           /* +8 */
+} DSCODEBOOK;
 
 /* the profile's reader, as a block: the scheduler and the block's id */
 typedef struct TOSLOG {
@@ -66,7 +83,61 @@ static int ResizeQueues(DISTSIL *d, int n)
     return 0;
 }
 
-/* (FreeLanguage .. InitCalculateDistances, 0x4FF158-0x500DF8, are not written) */
+/* a list of codebooks given back: each one's two tables, then the list, its count set to `z`
+ * (SOCOM 1's FreeLanguage holds this twice, the scheduler read again for the second). The count's
+ * new value is an argument, 0 at both calls: integrate.c copies a constant argument into a pseudo,
+ * which reload rematerialises (the target's `move v0,zero; sh v0`; SOCOM 1's compile spilled the
+ * first expansion's to the stack and kept the second's in s8) -- `*n = 0` stores $zero */
+static __inline__ void FreeCodeBooks(DISTSIL *d, DSCODEBOOK **list, unsigned short *n, int z)
+{
+    TOS *tos = d->b.tos;
+    DSCODEBOOK *c = *list;
+    int i;
+
+    for (i = 0; i < *n; i++, c++)
+        if (c->data != 0) {
+            heap_Free(tos->heap, c->data);
+            heap_Free(tos->heap, c->f8);
+            c->data = 0;
+        }
+    if (*n != 0) {
+        heap_Free(tos->heap, *list);
+        *n = z;
+    }
+}
+
+/* the language's tables given back: both codebook lists, the ten byte tables, the two caches and
+ * the cached distances. SOCOM 1's body (0x248; 0x228 here). The tables' counter is unsigned (the
+ * target's `sltiu`, counting up: an int counter is reversed by loop.c) */
+static void FreeLanguage(DISTSIL *d)
+{
+    TOS *tos = d->b.tos;
+    unsigned int i;
+
+    FreeCodeBooks(d, (DSCODEBOOK **)&d->f112, &d->n112, 0);
+    FreeCodeBooks(d, (DSCODEBOOK **)&d->f116, &d->n116, 0);
+    for (i = 0; i < 10; i++)
+        if (d->f196[i] != 0) {
+            heap_Free(tos->heap, d->f196[i]);
+            d->f196[i] = 0;
+        }
+    if (d->f176 != 0) {
+        heap_Free(tos->heap, d->f176);
+        d->f176 = 0;
+        heap_Free(tos->heap, d->f180);
+        d->f180 = 0;
+    }
+    d->f168 = 0;
+    d->f172 = 0;
+    d->f184 = 0;
+    if (d->f108 != 0) {
+        heap_Free(tos->heap, d->f108);
+        d->f108 = 0;
+    }
+}
+
+/* (0x4FF380 .. InitCalculateDistances, -0x500DF8, are not written but InitDistSilProcess's and
+ * ControlDistSilProcess's prototypes) */
 extern int InitDistSilProcess(DISTSIL *d);
 extern int ControlDistSilProcess(DISTSIL *d, unsigned char cmd, void *arg, void *arg2);
 static void IdleDistCalcProcess(DISTSIL *d, void **in);
