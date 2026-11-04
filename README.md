@@ -8029,6 +8029,64 @@ showed:
   not `.sdata` variables a call would keep in the loop. Not reached: round 26a's and 27a's other opens,
   libmpeg's six, libgraph's setters.
 
+**The tools, round 29a** (the lanes' requests): (1) **`tools/objcmp.py --by-address`** (the game
+states' round-34 objcmp_addr.py and the kit's round-33 byaddr.py folded in): every lane respells
+placeholders, and plain objcmp reported each renamed call as a difference. With the flag every name
+a map resolves -- a relocation's target, a function's own name, a data object's -- is compared as its
+map address by the scorer's own rule (`scdiff._sym_address`: the row, an `ovl-copy:` from code in
+another overlay, a placeholder's address), the tree's map first, then BASE's (a name since renamed);
+a name no map resolves (a static, MW's `@N`, a section) is compared by name as before. Resolution is
+a function of the name alone, so the flag only equates more; a unit equal only so is listed with its
+respellings (`SAME-BY-ADDRESS`). Both compilers write REL relocations (the offset in the field), so
+`data_001D0BB0[1]` respelled as the row at 0x1D0BB8 still differs: a symbol is equated, never a sum.
+Measured against 2deeccce~1 over all 633 hand-written units: plain mode's output byte-identical to
+master's objcmp (44 differ); by address 36, a strict subset, the 8 equated each a real respelling
+(the states' three CVisual statics in database.cpp, the HUD's two CTCM calls, seal_env.cpp's three
+...), and st_core.cpp differs only in its dropped stand-in -- the states lane's hand result. The
+canary's `test_objcmp_by_address_equates_a_respelling` (6 assertions; negatives: plain differs,
+another row differs, unmapped names compare by name, an offset into a placeholder). (2) **`tools/
+ccdump.py -f` prints global-alloc's priorities** (the GCC c lane's round-21c prio.py folded in): each
+allocno's as global.c's allocno_compare computes it from `.lreg`'s flow info -- (double)(floor_log2(refs)
+x refs) / live x 10000 x size, truncated, ties to the lower pseudo -- with its calls, register and a
+`tie` mark; the order these give is checked against the order `.greg` printed and a disagreement is
+said (sceCdStRead: agrees, and shows round 24a's 909/909 tie at once; one count perturbed: "NOT the
+order .greg printed"). No tool that scores changed: scdiff.py, sccheck.py, scdecomp.py and `include/`
+are master's, so no MW or GCC unit can score differently.
+
+**Round 29a** (2026-11-04, the tools first, then libgraph's setters and libmpeg's CSC object): 8 rows
+newly byte-exact (3,224 bytes) of 11 written -- the lane's `src/lib` sdk/libc/libgcc/libm/ovl1 rows
+1,246 -> 1,254 of 1,311 scored, none lost. libgraph, one unit per demo object (`sdk/gs_setdefclear.c`,
+`gs_setdefstoreimage.c`, `gs_setdefloadimage.c`, `gs_execloadimage.c`, `gs_setdefdrawenv.c`,
+`gs_syncpath.c`; libgraph 14 of 17, `gs_setdefdbuff.c` OPEN) over `sdk/libgraph.h`'s new blocks
+(Sony's SCE_GS_SET_* words, the GIF tag's fields, the clear, image, drawing-environment and
+double-buffer packets); libmpeg's colour-space conversion (`sdk/mpeg_csc.c`, new: the demo's object
+0x157C20 -- `_doCSC`, `_ch4dma`; `_ch3dmaCSC`, `_doCSC2` OPEN). No rows named (all had SOCOM 1's). What
+they showed:
+
+- **libgraph's register words are Sony's SET macros**: each field cast to u_long and shifted, no
+  field masked (the masks in the code are the source's: FRAME's `((w + 63) >> 6) & 0x3f`, `psm &
+  0xf`, the depth test's `ztest & 3`); a GIF tag is cleared whole (`por; sq`) and its fields set one by
+  one -- flow folds one word's field stores into a single ld/sd. sceGsSetDefStoreImage and
+  SetDefLoadImage byte-exact as first written; SetDefDrawEnv's XYOFFSET is 64-bit arithmetic (`2048 -
+  (u_long)(w >> 1)`: the target's dsubu; an int difference converted after is 0x1D4).
+- **A do-while(0) macro moves code**: sceGsExecLoadImage's scratchpad test as `do { if ... else ... }
+  while (0)` laid its SPR arm out of line after the return; written bare, in line as the target's.
+  The MADR store is in each arm (a conditional expression's one store forms its address through
+  `$at`), and each wait keeps its own failure block -- cross-jumping merges them, the kept copy after
+  the second SPR arm as the target lays it out; one shared `goto timeout` puts it last.
+- **jump.c copies no loop exit test holding an asm with operands** (duplicate_loop_exit_test's
+  `asm_noperands > 0`): sceGsSyncPath's VU1 wait has its test copied before the loop like every other
+  wait, so its `cfc2 %0,$vi29` is read before the loop and again at the end of the body (in the test
+  the loop is entered by a jump, 8 bytes short; through a `$6` register variable, the AND ties to a2).
+- **scePrintf is void** (eekernel.h's): the address formed right after each call takes v0
+  (sceGsSyncPath's ten-register dump), never v1, which the int's call value keeps out.
+- **A bit read by shift, not by bitfield**: libmpeg's wait on channel 3 reads STR as `(*D3_CHCR >> 8) &
+  1` (`lw; srl; andi`) -- libdma's tD_CHCR bitfield is an `lbu` of the byte, a mask an `andi 0x100`.
+- **Open, diagnosed in place**: sceGsSetDefDBuff (0x290 against 0x298, 122 words exact: the halved page
+  narrowed to a short for DISPFB alone; twelve shapes), `_ch3dmaCSC` (right size with the pass count
+  volatile, 15 words of the plain QWC/CHCR stores' schedule), `_doCSC2` (0x1B8 against 0x1C0). Not
+  reached: sceGsExecStoreImage (0x68C), `_csc_storeRefImage`, round 28a's and 26a's opens.
+
 **Next**: the libraries by hand, module by module, as their vendors wrote them (each `src/lib`
 unit's header says what it covers); GCC's scheduler moves independent stores, and which source
 order gives the target's is easier measured than predicted (`tools/ccperm.py PROBE
