@@ -9221,6 +9221,61 @@ InitViterbi@nbestdp OPEN; 6 of 7), `asr/vad.c` (ChangeMike closed: 6 of 6), `asr
 byte-exact rows, none superseding a draft; `src/lib/asr` 498 of 530 (493 of 528 before). 2 rows named
 (CollectDummyMemory, InitViterbi@nbestdp: `s1:order`, each body checked). No tool changed.
 
+**Round 21c: DynProgScoreUserWords, the N-best object's middle, the distance block's frees.**
+
+- **Global-alloc's order is computable, ties included**: a pseudo's priority is floor_log2(refs) x
+  refs / live length (the `.lreg` dump's "used N times across M insns"), the saved registers go to
+  the call-crossing pseudos in that order and the rest take caller-saved ones (`sq` round the call);
+  equal priorities fall to the lower pseudo number. `build/scratch/gcc-r21c/prio.py LREG GREG` prints
+  each pseudo's refs, length, priority and register off `tools/ccdump.py -f`'s sections -- it told
+  DynProgScoreUserWords' previous-cell pointer had to rank inside a 0.184-0.196 window, and FreeDistCalc's
+  miss as an exact 4/7 tie.
+- **CSE keeps the longer-lived register of a copy as the pair's canonical one** (cse.c's make_regs_eqv):
+  with `pc = c` and pc living past c, the uses of c in the extended block become pc's and `c++` comes
+  out `pc + 12`. DynProgScoreUserWords (SOCOM 1's body with two trailing loops of SOCOM II's: the back
+  pointer check func_004E6BC0 -- a public inline now, its copy deferred to the object's end -- and an
+  empty walk) is byte-exact once the walk steps `c` itself (`for (i = 0, c = e->cells; ...; i++, c++)`):
+  c then outlives pc, keeps its uses, and pc, copied at the first cell's top, ranks below min (the
+  target's a2 and s8); loop.c deletes the dead stepping afterwards.
+- **2.96's fold distributes a sum over a conditional operand**: `a + (c ? x : y) + b` becomes `c ? a + x
+  + b : a + y + b`, each arm adding into the one temporary stored once at the join, and a non-variable
+  first operand becomes a SAVE_EXPR read before the test. NBestDynProgProcess' garbage scores are one
+  statement over a lazily-scored phoneme (`d->f100[n + 1] = d->f100[n] + SCORE(k) + base`, SCORE a
+  conditional that calls the scorer on 32767): the target's single `sw` at the join, the left side's
+  address first, the array read in the branch's slot -- as statements of their own the adds survive but
+  the shared store and the four saved registers' order do not.
+- **An inline's constant argument is a pseudo reload rematerialises**: FreeLanguage's codebook-list
+  inline takes the count's new value as an argument (0 at both calls): `move v0,zero; sh v0` where
+  `*n = 0` stores $zero (SOCOM 1's compile spilled the first expansion's to the stack, kept the second's
+  in s8 -- the same source).
+- **Shapes, measured**: a static inline between an out-of-line caller and an inlining one
+  (ExtendBacktraceStack: InitViterbi calls it, CleanUpParBTProc holds it twice, its copy deferred to the
+  object's end as the image has it); a block written inline gets locals of its own (FindBestBacktraces
+  holds SOCOM 1's CollectDummyMemory body: one token pointer for three loops crosses the block's call);
+  `f64 > beam` against `beam < f64` orders the two loads (operand 0 expanded first); an unsigned counter
+  compared with a constant counts up (`sltiu`), an int one is reversed by loop.c (FreeLanguage's tables
+  against FreeDistCalc's); the next record read through `top->prev` before top steps (CleanUpParBTProc);
+  a copy's first store after the first field's (CopyParBT: the target's load before it, -fno-strict-
+  aliasing); InitDynprogContext's flags walked by a pointer taken before the loop (the load in the entry
+  test's slot), a counter of its own per loop, the filter's out pointer declared before its table (30 of
+  the 120 declaration orders); FindBestBacktraces' word id `st[1] + (st[2] << 16)`.
+- **A fifth object built with `-ffast-math`: the distance block's** (distsil.c): NormCorrection's
+  unrolled sum loads its first copy straight into the sum (`0 + x` folded); every other function of the
+  object compiles the same with the flag. Its rounding compares in double (`x < 0.0`, the target's
+  dpcmp on x converted once), and its clamp tests the upper bound first (both bounds if-converted into
+  a movn/movz pair; the lower bound first keeps a branch).
+- **Open, diagnosed in place**: FreeDistCalc (31 words, the right size: the priority tie above);
+  InitViterbi@nbestdp not revisited.
+
+Hand-written in round 21c: `asr/dpscoreuw.c` (DynProgScoreUserWords: 12 of 12), `asr/nbestdp.c` (+6:
+InitDynprogContext, CleanUpParBTProc, CopyParBT, FindBestBacktraces, NBestDynProgProcess, and SOCOM II's
+own func_004EC130 -- the context's release -- over its draft; 12 of 13), `asr/distsil.c` (+3: FreeLanguage,
+NormCorrection, FreeDistCalc OPEN; 9 of 10) -- 8 rows new to the map's byte-exact rows (5,624 bytes), one
+matched draft superseded (func_004EC130); `src/lib/asr` 507 of 540 (498 of 530 before). 6 rows named:
+InitDynprogContext, FreeLanguage, NormCorrection (`s1:order`, each body SOCOM 1's), DynProgAccNBestNoOptSil
+and DynProgAccNBestOptSil (`s1:order`, `s1:ref`: InitDynprogContext stores them by the context's silence
+flag as SOCOM 1's does), FreeDistCalc (`s1:order`, `s1:calls`). No tool changed.
+
 **Round 14b: the "toolchain" opens were SCEA's shapes; LargeInt's core is assembly.**
 
 - **LargeInt's EE primitives are hand-written assembly** (0x628B48-0x629A44, between LargeInt.c's C and
