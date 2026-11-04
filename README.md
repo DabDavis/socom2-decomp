@@ -2033,6 +2033,24 @@ exists); 3.0b38/b50/b52 still untold.
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the kit and AI states, round 29** (DrawOctahedron, a target's visibility, the squad's three orders):
+  - a dead first definition of each variable fixes MW's numbering, so the real assignments can then be ordered to fix the
+    schedule without moving registers (DrawOctahedron 0x5FF2F0, 0xAB8: twelve lines with DrawLine's body written out each
+    time under seal_ailines.cpp's dont_inline -- its two corner-to-corner lines are diagonals); a coordinate both line
+    ends share, folded into its own local, takes that local's number, written as a repeated expression the temporary takes
+    the highest number and pushes the other values up;
+  - in an inline, `return d == 0 ? false : d->m_state == 4;` lays out the null arm first, `d ? ... : false` and an early
+    return put it after (0x60AFA0: a target's visibility from its finished ray, which SOCOM 1 did inline in
+    CSealCtrl::SensorTick; it brings _saturate<f>'s OVL2 copy 0x539B70); `bool r = !flag;` returned on the early path gives
+    the target's `andi v0,a2,0xff`, `if (!flag) return true;` gives `li v0,1`; an unsigned char parameter tested `== 0` is
+    re-extended before the branch, `!x` branches on the register directly;
+  - byte-enum copies declared first and assigned in reverse order give the target's load order and registers (initialised
+    in place they load the other way); a list walk with its end taken into a local declared before the iterator gives the
+    iterator s0 and the end s1, testing against end() swaps them (CSealUnit::FollowSeal 0x5EB580);
+  - CSealUnit::ConfirmCommand 0x5EABA0 (SOCOM 1's: the confirm-orders flag ShouldConfirmVoiceCommands 0x3DF1D0 first, the
+    sound name by sprintf) and AcknowledgeCommand 0x5EAD70 (SOCOM II's canned radio answer); CAiState's slot +0x3C takes
+    the AI (both callers pass it in a1: the four Virtual3C rows renamed); open: CheckMaster 0x5FDD40 (0x178 vs 0x180: the
+    target turns both bit tests into a value before branching), GetFiremodeGraphic (0x70 vs 0x68).
 - **Tells from the game states, round 32** (the danger level, the spawners' insert, SendPickupAckMessage's int, znet.h):
   - an iterator INITIALISED from `GetEntityList().begin()` gives one copy and lives in a register, ASSIGNED it gives two
     copies and lives in memory (LoadVehicles 0x2B2E50 against 0x2B7A90); a push_back made inside an inline helper puts its
