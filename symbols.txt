@@ -12255,7 +12255,7 @@
 0x00626F70 0x180 lintSub  # OVL2; s1:order+calls (round 18b: after lintAdd as SOCOM 1's; RSAGenerateKeyPair calls it (b, a, b) where SOCOM 1's calls lintSub)
 0x006270F0 0x180 MOD  # OVL2; s1:calls (round 18b: lintPrime's fourth call, SOCOM 1's MOD there)
 0x00627270 0x310 func_00627270  # OVL2
-0x00627580 0x268 func_00627580  # OVL2
+0x00627580 0x268 QRMOD  # OVL2; s1:calls (round 18b: its ten calls are SOCOM 1's QRMOD's in order -- lintGetBits twice, lintSetSmallValue, ShiftLeft, ShiftRight, IsNotSmaller, lintSubIP, lintGetBits, lintSetBit, ShiftRight -- and RSAGenerateKeyPair calls it where SOCOM 1's calls QRMOD)
 0x006277E8 0x308 GCD  # OVL2 unaligned; s1:calls (round 18b: lintPrime's two GCD calls before IsOne, SOCOM 1's GCD there; 0x308 against 0x310)
 0x00627AF0 0x280 func_00627AF0  # OVL2
 0x00627D70 0x1F8 lintIsbSPRP  # OVL2; s1:calls (round 18b: lintPrime's strong-probable-prime test, SOCOM 1's lintIsbSPRP there)

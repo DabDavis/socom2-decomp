@@ -150,3 +150,47 @@ void lintSub(LINT *pResult, LINT *a, LINT *b)
     lintSubIP(&t, b);
     memcpy(pResult, &t, sizeof t);
 }
+
+extern unsigned int lintGetBits(LINT *p);       /* largeint_asm.s */
+extern int IsNotSmaller(LINT *a, LINT *b);
+extern void ShiftLeft(LINT *p, unsigned int n);
+extern void ShiftRight(LINT *p, unsigned int n);
+
+/* the quotient and remainder of a by b (SOCOM 1's QRMOD by its calls, in order): the
+ * divisor shifted up to the remainder's length, then subtracted down a bit at a time */
+void QRMOD(LINT *a, LINT *b, LINT *pQuot, LINT *pRem)
+{
+    LINT d;
+    unsigned int nBitsR;
+    unsigned int nBitsD;
+    unsigned int nBitsB;
+
+    memcpy(&d, b, sizeof d);
+    memcpy(pRem, a, sizeof d);
+    nBitsR = lintGetBits(pRem);
+    nBitsD = lintGetBits(&d);
+    nBitsB = nBitsD;
+    lintSetSmallValue(pQuot, 0);
+    if (nBitsD < nBitsR) {
+        ShiftLeft(&d, nBitsR - nBitsD);
+        nBitsD = nBitsR;
+    }
+    for (;;) {
+        if (nBitsR < nBitsB)
+            return;
+        if (nBitsR < nBitsD) {
+            ShiftRight(&d, nBitsD - nBitsR);
+            nBitsD = nBitsR;
+        }
+        if (IsNotSmaller(pRem, &d)) {
+            lintSubIP(pRem, &d);
+            nBitsR = lintGetBits(pRem);
+            lintSetBit(pQuot, nBitsD - nBitsB);
+        } else {
+            if (nBitsB >= nBitsD)
+                return;
+            ShiftRight(&d, 1);
+            nBitsD--;
+        }
+    }
+}

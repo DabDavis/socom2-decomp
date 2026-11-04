@@ -44,7 +44,7 @@ extern void lintAddIP(LINT *a, LINT *b);
 extern void lintSubIP(LINT *a, LINT *b);
 extern void func_00626D28(LINT *p, unsigned int n);                 /* p += n */
 extern void lintSub(LINT *pResult, LINT *a, LINT *b);         /* result = a - b */
-extern void func_00627580(LINT *a, LINT *b, LINT *pQuot, LINT *pRem);       /* a / b, a % b */
+extern void QRMOD(LINT *a, LINT *b, LINT *pQuot, LINT *pRem);       /* a / b, a % b */
 extern void func_006296A0(LINT *pResult, LINT *a, LINT *b);         /* result = a * b */
 extern void func_00629868(LINT *pResult, LINT *a, LINT *b, LINT *pMod);     /* a * b mod m */
 extern void lintPrime(LINT *p, int nBits);
@@ -76,7 +76,7 @@ void RSAGenerateKeyPair(RSA_BLOCK *pPublic, RSA_BLOCK *pPrivate)
         lintSubIP(&n, &q);
         lintSetSmallValue(&q, 1);
         lintSetSmallValue(&a, 17);
-        func_00627580(&n, &a, &d, &b);
+        QRMOD(&n, &a, &d, &b);
         lintAddIP(&d, &q);
         lintSub(&b, &a, &b);
         for (;;) {
@@ -133,7 +133,7 @@ void func_0062B548(RSA_BLOCK *pPublic, RSA_BLOCK *pPrivate)
         lintSubIP(&n, &q);
         lintSetSmallValue(&q, 1);
         lintSetSmallValue(&a, 17);
-        func_00627580(&n, &a, &d, &b);
+        QRMOD(&n, &a, &d, &b);
         lintAddIP(&d, &q);
         lintSub(&b, &a, &b);
         for (;;) {
