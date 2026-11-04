@@ -50,7 +50,9 @@ CHeap::~CHeap()
  * lane's round 8: a function-scoped `#pragma opt_propagation off` (the stand-in three other
  * functions need) fixes the store -- 6 -- but not the head's schedule, under any spelling of the
  * rounding tried (`~3 & (size + 3)`, `& -4`, `4 + ...`, `>> 2 << 2`, the rounding in its own local,
- * `need` declared first or after `exact`: 6 to 29; build/scratch/wld/v_alloc*.py) */
+ * `need` declared first or after `exact`: 6 to 29; build/scratch/wld/v_alloc*.py). Round 14: best
+ * assigned after its declaration, the split written through `found` from its start (7), `found =
+ * bestBlock` moved to the end (54) */
 void *CHeap::Alloc(unsigned int size)
 {
     Block *found = 0;

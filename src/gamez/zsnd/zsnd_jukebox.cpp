@@ -257,7 +257,8 @@ void CSndJukebox::SetIntensity(float level)
  * a reference to the playlist inside the block or before the loop (both weights and playlist),
  * a pointer, the pod's data() reference, begin() + i, begin().m_p[i] (0x1A4-0x1C8). The counter
  * an int (unsigned strength-reduces the element address), `sum` declared ahead of `r` ($f21/$f20),
- * `return` (a `break` drops the block's exit, 0x1B8) */
+ * `return` (a `break` drops the block's exit, 0x1B8); round 14: the playlist through an inline
+ * returning it by reference or pointer, held in a reference local or not (12) */
 void CSndJukebox::PlayRandom(MUSIC_MODE mode)
 {
     float sum;
@@ -290,7 +291,9 @@ void CSndJukebox::PlayRandom(MUSIC_MODE mode)
  * OPEN, registers only (75 instructions differ, the same blocks and size): the target keeps the
  * mode in a2, its offset in v1 and builds each address in a0, here a1, a2 and v1 -- CSndGroup::
  * NormalizeWeights' open register question over m_weights[mode]. Tried: a reference to the
- * mode's vector (0x208), the mode copied to an int (0x210) */
+ * mode's vector (0x208), the mode copied to an int (0x210). MW's colouring (round 14, igdump): the
+ * mode's 12-byte offset (a CSE temporary, live through all three loops) is coloured after the 8x
+ * unrolled sum's temporaries and gets a2 where the target's has v1 */
 void CSndJukebox::NormalizeWeights(MUSIC_MODE mode)
 {
     float total = 0.0f;
