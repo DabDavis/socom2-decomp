@@ -472,6 +472,32 @@ bool CAiMaps::ReadMapSet(const char *name, const char *path)
     return ok;
 }
 
+/* the mission's maps (SOCOM 1's AiMaps; 0x66A1B0, 0x2E0 bytes): __sinit_ai_maps.cpp (0x668710)
+ * builds it -- the list and the spores inline, the arrays' element constructors called through
+ * __construct_array (their copies, CAiMapLocVec() 0x52EB00 and CAiMap::names() 0x52EB20, right
+ * after ~CAiMaps), the graph and the cookie zeroed -- and registers ~CAiMaps.
+ * OPEN at -inline level=5 (0x3C against 0xB4: the initialiser calls the constructor), BYTE-EXACT
+ * AT LEVEL 6 (`#pragma inline_depth(6)` at the unit's end, measured): the constructor is an own
+ * function of the unit, dead-stripped (ABSENT.txt) -- written out of line it instantiates the pointer
+ * list's out-of-class deleter constructor, which the target's initialiser inlines (no function of
+ * the image's ai_maps.cpp calls OVL2's copy 0x50FFA0, so the instantiating function is gone), and
+ * the initialiser takes it whole (-inline auto: all or nothing) only if its tree is at most the
+ * level high: the spores' chain (CAiMaps(), spores(), vector(), __vector_imp(), the deleter's,
+ * __vector_capacity()) is six. As an inline in-class constructor it is cut to one level at 5 (0x98:
+ * list() and spores() called) and needs `inline_depth(6)` plus an own function building a pointer
+ * list (0xA4 with neither) */
+CAiMaps AiMaps;
+
+CAiMaps::CAiMaps() : m_graph(0), m_cookie(0) {}
+
+/* the set's graph destroyed and cleared; the members' destructors follow (SOCOM 1's ~CAiMaps, the
+ * demo's 0x19D790: the last of the unit's functions in both builds) */
+CAiMaps::~CAiMaps()
+{
+    CGraph::Destroy(m_graph);
+    m_graph = 0;
+}
+
 /* every map deleted, front first, then the tables (SOCOM 1's Close inlined this). Pinned: Close
  * calls it, where -inline auto takes it whole (its erase called out of line does not stop it) */
 #pragma auto_inline off
@@ -591,7 +617,6 @@ unsigned int CAiMaps::GetLocationDelta(const CAiMapLoc &a, const CAiMapLoc &b)
  * the path finished after an extension (SOCOM 1's ExtendPath ended in SmoothPath and
  * UpdateTurnAngles) */
 extern "C" bool func_00526F20(CAiPath *path, const CAiMapLoc &loc, CAiMap *map);
-extern "C" void func_00526540(CAiPath *path, CAiMaps *maps, bool smooth);
 
 /* a path stretched to a cell (SOCOM 1's ExtendPath, the demo's 0x199220 after UpdateActionTables
  * as here; SOCOM II takes the walk's first cell too): an empty path takes the cell when the feet
@@ -662,7 +687,7 @@ bool CAiMaps::ExtendPath(CAiPath &path, const CAiMapLoc &from, const CAiMapLoc &
             }
         }
         if (post)
-            func_00526540(&path, this, smooth);
+            path.RebuildLegs(this, smooth);
     }
     return ok;
 }
@@ -1032,35 +1057,45 @@ bool CAiMaps::Tile(const CAiMap::region *r, unsigned int value, unsigned int fla
 /* the region's type changed: its cell removed from the old type's list and added to the new
  * one's, true when it had the type already (SOCOM 1's). The removal is an inline cut to one level
  * (CAiMapLocVec::Remove): the target calls even its iterators' constructors and assignment, and
- * std::remove, out of line (0x529D30-0x529ED7, after it), where push_back is inlined.
- * OPEN, right size, 10 instructions: registers only -- the target keeps the region in s1 and the
- * type in s2, here the other way round. Tried: `old == type`, `old` unsigned, the test on the
- * field, the cell as a reference local, the region cast into a non-const local (57 off) */
+ * std::remove, out of line (0x529D30-0x529ED7, after it), where push_back is inlined. Byte-exact
+ * (the AI core round 22) through a non-const local of the region, numbered after the parameters
+ * (the region s1, the type s2), the old type read through the const parameter (the store then
+ * reloads the byte), and the new type stored as an int: the narrowed type the compare made (andi
+ * 0xff in v0) is reused for the store's mask, as the target's -- stored plain it is masked from the
+ * parameter's register (3 off), the type through `reg` 57 off */
 bool CAiMaps::SetRegionType(const CAiMap::region *r, CAiMap::region::TYPE type)
 {
+    CAiMap::region *reg = (CAiMap::region *)r;
     CAiMap::region::TYPE old = (CAiMap::region::TYPE)r->m_type;
 
     if (type == old)
         return true;
-    ((CAiMap::region *)r)->m_type = type;
-    m_regions[old].Remove(r->m_loc);
-    m_regions[type].push_back(r->m_loc);
+    reg->m_type = (int)type;
+    m_regions[old].Remove(reg->m_loc);
+    m_regions[type].push_back(reg->m_loc);
     return false;
+}
+
+/* a draw below m, an inline of its own: its exit, the end of the ternary's second arm, is the
+ * label MW pads to 8 bytes after the `mfhi` -- the target's nop -- where the draw written in the
+ * ternary leaves the join unpadded (and fills the y draw's `b` with the next load). The names ours */
+inline int _rnd(int m)
+{
+    return rand() % m;
 }
 
 /* 0 to n, n not drawn for (the name ours: GetRandomLoc's two draws) */
 inline int _random(int n)
 {
-    return n == 0 ? 0 : rand() % (n + 1);
+    return n == 0 ? 0 : _rnd(n + 1);
 }
 
 /* a random cell of the region on the region's map, drawn up to eight times until one is
  * traversable (SOCOM 1's; the cell's test through the map's IsTraversable, new in SOCOM II).
- * OPEN, 2 instructions short (0x1A4 against 0x1AC): the target pads each draw's join with a nop
- * after the `mfhi` (and so leaves the y draw's `b` delay slot empty, where this build fills it
- * with the next load) -- registers, branches and order otherwise as the target's. Tried: the
- * draw as a ternary either way round, if/else, early returns, through a local, and written out
- * in the body; GetMap pinned (the target calls it: inlined, the map's walk adds 0x58 bytes) */
+ * Byte-exact (the AI core round 22) once the draw went through an inline of its own (_rnd above:
+ * each draw's join padded with a nop after the `mfhi`, the y draw's `b` delay slot left empty);
+ * the ternary either way round, if/else, early returns and a local all gave 0x1A4. GetMap pinned
+ * (the target calls it: inlined, the map's walk adds 0x58 bytes) */
 bool CAiMaps::GetRandomLoc(const CAiMap::region *r, CAiMapLoc &loc)
 {
     bool found = false;
