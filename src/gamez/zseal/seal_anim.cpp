@@ -126,30 +126,45 @@ extern "C" void func_00577DF0(CZSealBody *seal, ACTIVE_ANIM *anim)
     data_0044CDE0->AnimPop();
 }
 
+/* THE RECORD LOOPS (the SEALs, round 34): every loop here over siNumBodyObjects records -- AnimPop,
+ * CombineRotations, 0x576BB0, 0x577000 -- loads the count into a register ahead of the loop for its
+ * bottom test and reads the global AGAIN for the entry test alone (`lw v0; sltu at,zero,v0; beqz`).
+ * MW never hoists the global out of a loop with a store or a call in it (probes: extern, static, extern
+ * const alike), and with the count in a local it folds the entry test onto that local (one load, 8
+ * bytes short); `for` loops, inline helpers taking the count, a struct copy or a reference all do the
+ * same. What gives the target's two loads is a count taken into a local, then a guard comparing the
+ * counter with the global READ THROUGH A CONST VIEW -- which MW's CSE keeps apart from the plain read
+ * (the kit's round 34 rule) -- around a do-while on the local. The original's spelling (an accessor
+ * returning a const reference, a macro) is not known; this one is the target's, byte for byte. */
+
 /* the top frame's records put back on the SEAL's parts, each with a part, its position and rotation
  * (OVL2 0x577700; SOCOM 1's AnimPop, after AnimBlend in both builds, its 32 records a count now) --
- * called out of line from 0x577DF0: pinned */
-/* OPEN, 0xCC both (the loop's registers): the target loads the record count into a3 before the loop
- * and keeps it for the bottom test, re-reading the global only for the entry test; MW here re-reads it
- * every pass (a local bound drops the entry test's own load: 0xC4). Tried: the count const, an int
- * counter, the record copies through an inline. The index `top` (kept, not folded into the -12) and
- * `> -1` (slti) are the target's. */
+ * called out of line from 0x577DF0: pinned. The frame through a pointer local (indexed in place, MW
+ * adds the base last: 9 off), the index `top` kept (inline, the -1 folds into the -12) and `> -1`
+ * (slti) the target's; the counter declared before the count (the other order swaps a3/t0). */
 #pragma auto_inline off
 int CSealAnim::AnimPop()
 {
     std::vector<CZBodyPart *> &parts = m_seal->m_body_parts;
     int top = m_count - 1;
-    CSealAnimRec *rec = m_frames->m_frames[top].m_recs;
+    CSealAnimFrame *f = &m_frames->m_frames[top];
+    CSealAnimRec *rec = f->m_recs;
+    unsigned int i = 0;
+    unsigned int n = siNumBodyObjects;
 
-    for (unsigned int i = 0; i < siNumBodyObjects; i++, rec++) {
-        if (rec->m_id > -1) {
-            CZBodyPart *part = parts[rec->m_id];
+    if (i < *(const unsigned int *)&siNumBodyObjects) {
+        do {
+            if (rec->m_id > -1) {
+                CZBodyPart *part = parts[rec->m_id];
 
-            if (part) {
-                part->m_pos = rec->m_pos;
-                part->m_rot = rec->m_rot;
+                if (part) {
+                    part->m_pos = rec->m_pos;
+                    part->m_rot = rec->m_rot;
+                }
             }
-        }
+            i++;
+            rec++;
+        } while (i < n);
     }
     m_count--;
     return m_count;
@@ -159,19 +174,15 @@ int CSealAnim::AnimPop()
 /* frame a's rotations moved toward frame b's by b's share of the two weights -- a part b lacks
  * takes b's, near enough to either end it snaps -- and a given the sum (OVL2 0x576E30; SOCOM 1's
  * CombineRotations, the fraction clamped to [0, 1] in SOCOM II, the records a count now and the
- * rotation copies inline).
- * OPEN, 0x1C0 against 0x1CC: AnimPop's miss exactly -- the target loads the record count into s1 ahead
- * of the records, re-reads the global for the loop's entry test and keeps s1 for the bottom test, where
- * MW re-reads the global every pass (the loop calls Slerp). Tried: a local count at five places (0x1C4
- * or 0x1BC: MW merges the entry test's load into it), a const reference to the global, an `extern
- * const` placeholder, an inline returning the count, the loop in an inline helper taking the count by
- * value (0x1C4 or 0x1E0), an explicit guard on the global before a do-while; the pragmas
- * opt_pointer_analysis, opt_loop_invariants, opt_lifetimes, opt_rotateloops,
- * opt_optimizenonregaccess change nothing, and only `opt_common_subs off` or `opt_propagation off`
- * with a local count give the size (75 and 96 instructions off). The registers otherwise want a s5,
- * i s4, ra s3, rb s2, the count s1 and frame a's address s0 */
+ * rotation copies inline), the loop the record loops' shape (above AnimPop). The saved registers (a s5,
+ * i s4, ra s3, rb s2, the count s1, frame a s0) want the counter, the two record cursors and the count
+ * declared uninitialised at the top, ahead of the frames (MW numbers them there). */
 int CSealAnim::CombineRotations(int a, int b)
 {
+    unsigned int i;
+    CSealAnimRec *ra;
+    CSealAnimRec *rb;
+    unsigned int n;
     CSealAnimFrame *fa = &m_frames->m_frames[a];
     CSealAnimFrame *fb = &m_frames->m_frames[b];
     float sum = fa->m_wt + fb->m_wt;
@@ -181,21 +192,27 @@ int CSealAnim::CombineRotations(int a, int b)
         frac = 0.0f;
     if (frac > 1.0f)
         frac = 1.0f;
-    CSealAnimRec *rb = fb->m_recs;
-    CSealAnimRec *ra = fa->m_recs;
-
-    for (unsigned int i = 0; i < siNumBodyObjects; i++, ra++, rb++) {
-        if (ra->m_id != -1) {
-            if (rb->m_id != -1) {
-                if (frac > 0.001f) {
-                    if (frac >= 0.999f)
-                        ra->m_rot = rb->m_rot;
-                    else
-                        ra->m_rot.Slerp(&rb->m_rot, frac, &ra->m_rot);
-                }
-            } else
-                ra->m_rot = rb->m_rot;
-        }
+    rb = fb->m_recs;
+    ra = fa->m_recs;
+    n = siNumBodyObjects;
+    i = 0;
+    if (i < *(const unsigned int *)&siNumBodyObjects) {
+        do {
+            if (ra->m_id != -1) {
+                if (rb->m_id != -1) {
+                    if (frac > 0.001f) {
+                        if (frac >= 0.999f)
+                            ra->m_rot = rb->m_rot;
+                        else
+                            ra->m_rot.Slerp(&rb->m_rot, frac, &ra->m_rot);
+                    }
+                } else
+                    ra->m_rot = rb->m_rot;
+            }
+            i++;
+            ra++;
+            rb++;
+        } while (i < n);
     }
     fa->m_wt = sum;
     return a;
