@@ -13,6 +13,7 @@
 
 #include "../zar/zar.h"
 #include <deque>
+#include <map>
 #include <stack>
 
 class CSTable;
@@ -55,15 +56,21 @@ struct _zrdr {
     ~_zrdr();
     void DeleteChildren();
     void Clone(_zrdr *src, CSTable *strings);
-    /* out of line in every unit (0x32C650/0x32C660): the file and pack units call them */
-    bool IsString() const;
-    bool IsArray() const;
+    /* the type tests, inline (zui.h's real heights: the recursive walkers' copies call them out of
+     * line where their inline budget runs out -- 0x32C650/0x32C660, the linked copies) */
+    bool IsString() const { return type == ZRDR_STRING; }
+    bool IsArray() const { return type == ZRDR_ARRAY; }
+    /* the type as a byte (ours: the walkers' copies call it out of line, 0x32CF30, and mask what it
+     * gives back -- an 8-bit result) */
+    unsigned char Type() const { return type; }
     /* the packed flag set (ours, inline: zrdr_pack and its array copier set it with `true`, which
      * MW folds to a daddiu constant ORed into the masked byte) */
     void SetPacked(bool b) { packed = b; }
 
-    /* an array's count, its items, a value read as a string or a number (ours, inline) */
-    unsigned int Count() const { return type == ZRDR_ARRAY ? length : 0; }
+    /* an array's count over IsArray(), its items over Count() (zui.h's heights: a recursive walk's
+     * first self-copy inlines Count one level, calling IsArray), a value read as a string or a
+     * number (ours, inline) */
+    unsigned int Count() const { return IsArray() ? length : 0; }
     _zrdr *Item(unsigned int i) const { return i < Count() ? &array[i] : 0; }
     char *String() const { return type == ZRDR_STRING ? string : 0; }
     float Real() const
@@ -140,8 +147,20 @@ public:
     ~CSTable();
     void LoadTable(void *table, unsigned int bytes, bool copy);
     char *CreateString(const char *s);
+    /* the strings packed into one buffer, fn called for each user (CRdrFile::Pack's _fixup), and the
+     * packed strings moved to a buffer of the caller's (util_stable.h's) */
+    unsigned int Pack(void (*fn)(CSTable *, void *), void *data);
+    int Relocate(void *buf, unsigned int reserve, bool owner);
 
-    unsigned char _0[0x20];
+    unsigned char _0[0xC];   // 0x0: util_stable.h's base vector<char *>
+    /* util_stable.h's first three virtuals, its vtable pointer here at 0xC (_fixup calls FindString
+     * through it) */
+    virtual void Clear();   // 0x08
+    virtual void Destroy();   // 0x0C
+    virtual char *FindString(const char *str);   // 0x10
+    unsigned char _10[8];   // 0x10: util_stable.h's owner flag and buffer
+    unsigned int m_bytes;   // 0x18: the packed strings' bytes (util_stable.h's)
+    unsigned int m_reserve;   // 0x1c
 };   // 0x20 bytes
 
 class CRdrIO;
@@ -158,7 +177,13 @@ public:
     bool ReadPacked(CFileIO &io, unsigned int size);
     zar::CKey *Insert(zar::CZAR *zar, zar::CKey *key);
     bool Resolve(bool pack);
-    void Pack();
+    /* the tree packed into one buffer of its own: its equal arrays shared, the strings packed, the
+     * values copied after them (SOCOM 1's; SOCOM II's gives the buffer's size back) */
+    unsigned int Pack();
+    /* an array's values copied to dst and the array pointed at them, its arrays in turn, a shared
+     * array (nofree) pointed at its owner's copy through the map of the copies made -- the next free
+     * value given back (SOCOM 1's Pack(_zrdr *, _zrdr *, int), grown) */
+    _zrdr *Pack(_zrdr *rdr, _zrdr *dst, int *remaining, int delta, std::map<_zrdr *, _zrdr *> &copies);
     /* the parser (zrdr_parse.cpp): SOCOM 1's, reading from the file given rather than its file
      * stack's top, an array's depth passed down */
     _zrdr *ReadArray(CRdrIO *io, int depth);

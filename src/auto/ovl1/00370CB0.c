@@ -7,16 +7,16 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
+M2C_UNK PressActive__11CRadioStripFv(char *);       /* extern */
 M2C_UNK ShowChoice__11CRadioStripFv();              /* extern */
 M2C_UNK Tick__9C2DButtonFf(char *, f32);            /* extern */
-M2C_UNK func_00370DB0(char *);                      /* extern */
 
 /* Warning: Gap in callee-saved word stack region.
  * Saved: [0x0, 0x10, 0x14, 0x18, 0x1c, 0x20, 0x24], gap at: 0x8. */
 void func_00370CB0(char *arg0, f32 fparg0) {
     if (SC_MEMBER(arg0, u8 *, 0x444) != 0) {
         ShowChoice__11CRadioStripFv();
-        func_00370DB0(arg0);
+        PressActive__11CRadioStripFv(arg0);
         SC_MEMBER(arg0, u8 *, 0x444) = 0U;
     }
     Tick__9C2DButtonFf(arg0, fparg0);

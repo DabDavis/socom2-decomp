@@ -11,12 +11,15 @@
  * Defined in reverse of their image order (-inline deferred). */
 
 #include "../../gamez/ztwod/ztwod.h"
+#include "../../gamez/zinput/zinput.h"
 #include "hud_weaponsel.h"
 
 /* the selector's own update (no row named yet) */
 extern "C" void func_0023E030(CMPWeaponSel *sel, float dT);
-/* the selector's state switch (an unsigned char: 0 closed, 1-3 its pages) */
-extern "C" void func_00240B90(CMPWeaponSel *sel, unsigned char state);
+/* a button's state as the controller unit reads it (OVL1 0x2C64E0, by address: hud_tcmtree.cpp's
+ * TCM_BUTTON, a byte) */
+extern "C" KEY_STATE func_002C64E0(int button, CPad *pad);
+
 
 namespace zdb {
 class CAssetList {
@@ -36,9 +39,56 @@ public:
     EQUIP_ITEM GetPrimaryEnum() const;
 };
 
+/* a character type's weapons (zchar.h's CCharacterWeap and CCharacterWeapList: a 12-byte weapon
+ * and its ammunition, the vector of them; the AI core's header reaches zweapon.h, whose CZWeapon
+ * this unit stands in for) */
+class CCharacterWeap {
+public:
+    void SetupCharacterWeapon(EQUIP_ITEM item);
+
+    EQUIP_ITEM m_wepId;   // 0x0
+    unsigned char m_ammoId;   // 0x1
+    int m_ammoCount;   // 0x4
+    int m_magCount;   // 0x8
+};
+
+class CCharacterWeapList : public std::vector<CCharacterWeap> {
+public:
+    void AddWeapon(EQUIP_ITEM item);
+};
+
+class CCharacterType {
+public:
+    EQUIP_ITEM GetWeaponByIndex(unsigned int i) const;
+
+    unsigned char _0[0x2e8];
+    CCharacterWeapList m_weapons;   // 0x2e8
+};
+
+/* the controller's menu states (hud_missioncams.h's MENU_STATE, SOCOM 1's DWARF) */
+enum MENU_STATE {
+    stateNone = 0,
+    stateWeaponSel = 1,
+    stateOrders = 2,
+    statePauseTestMenu = 3,
+    stateFullScreenMapMenu = 4,
+    stateFullScreenMapAnim = 5,
+    stateLast = 6,
+};
+
+/* the seal's controller: SOCOM 1's SetMenuState with a flag added (OVL2) */
+class CSealCtrl {
+public:
+    void SetMenuState(MENU_STATE state, bool flag);
+};
+
 class CZSealBody {
 public:
-    unsigned char _0[0x5e0];
+    CCharacterType *GetCharacter();
+
+    unsigned char _0[0xc0];
+    CSealCtrl *m_ctrl;   // 0xc0
+    unsigned char _c4[0x5e0 - 0xc4];
     CZKit m_kit;   // 0x5e0
 };
 
@@ -193,11 +243,18 @@ inline void CMPWeaponSel::SetF2000(bool on)
     SetValve("Enable_F2000HE", on ? 9 : 0);
 }
 
+/* the members built in place: the title, the backdrops, the category page (its polys, list and
+ * slots through __construct_array), the list and the five selected slots (0x241A90; CHUD's
+ * constructor calls it -- the unit's last function, so defined first) */
+CMPWeaponSel::CMPWeaponSel() : m_1538(1.0f), m_153c(0)
+{
+}
+
 /* closed; the slots listed; the backdrops loaded, added to the HUD's phases and faded out; the
  * grenades of the owner's primary weapon let through, the others' not */
 void CMPWeaponSel::Init()
 {
-    m_active = false;
+    m_state = SEL_CLOSED;
     m_list.m_34 = 0;
     m_1530 = 255;
     m_1531 = 255;
@@ -256,7 +313,48 @@ void CMPWeaponSel::Init()
 void CMPWeaponSel::UnInit()
 {
     Off();
-    func_00240B90(this, 0);
+    SetState(SEL_CLOSED);
+}
+
+/* the selector's state changed: the list (2) fills its slots from the owner's weapons when opened
+ * from closed and hides the page's backdrop; the page (3) comes on, updated twice, showing the
+ * list's slot; closed (0) hides the backdrop and gives the owner's controller its menu back -- the
+ * state kept; 1 (chosen) and anything else change nothing (0x240B90; the name ours) */
+void CMPWeaponSel::SetState(SEL_STATE state)
+{
+    switch (state) {
+    case SEL_LIST:
+        if (!m_state)
+            Open();
+        m_categories.m_bitmap3.Off();
+        break;
+    case SEL_PAGE: {
+        m_categories.On();
+        m_categories.m_bitmap3.On();
+        func_0023D860(&m_categories, 0.0f);
+        m_categories.m_state = SEL_PAGE;
+
+        /* through a slot pointer, as Scroll's (indexed straight, the offset is added the other
+         * way round) */
+        SelectedSlot *slot = &m_selected[m_list.m_34];
+
+        m_categories.SetWeapon(slot->m_weapon);
+        break;
+    }
+    case SEL_CLOSED:
+        m_categories.m_bitmap3.Off();
+        if (m_state) {
+            CZSealBody *owner = CHUD::GetHUDOwner();
+
+            if (owner)
+                owner->m_ctrl->SetMenuState(stateNone, false);
+        }
+        break;
+    case SEL_CHOSEN:
+    default:
+        return;
+    }
+    m_state = state;
 }
 
 void CWeaponSlot::SetTrans(float trans)
@@ -270,8 +368,28 @@ void SlotList::SetTrans(float trans)
             m_slots[i]->SetTrans(trans);
 }
 
-/* whether the list's slot can be chosen (0x23E910; no row named yet) */
-extern "C" bool func_0023E910(CMPWeaponSel *sel, int index);
+
+/* the list's buttons: up and down scroll the slots, the confirm button (0x2C64E0's 0) opens the
+ * category page, triangle, start or 0x2C64E0's 4 close the selector (0x23EBC0; the name ours --
+ * m2c's draft matched as it stood) */
+void CMPWeaponSel::HandlePad(CPad *pad)
+{
+    if (pad->m_state[PAD_UP] == KEY_FALLING) {
+        Scroll(-2);
+        return;
+    }
+    if (pad->m_state[PAD_DOWN] == KEY_FALLING) {
+        Scroll(2);
+        return;
+    }
+    if (func_002C64E0(0, pad) == KEY_FALLING) {
+        SetState(SEL_PAGE);
+        return;
+    }
+    if (pad->m_state[PAD_TRIANGLE] == KEY_FALLING || pad->m_state[PAD_START] == KEY_FALLING ||
+        func_002C64E0(4, pad) == KEY_FALLING)
+        SetState(SEL_CLOSED);
+}
 
 /* the cursor a slot on or back, round the five, again while the slot is refused; the page then
  * shows the slot's weapon, updated. Pinned: the target calls itself and the page's SetWeapon out
@@ -288,7 +406,7 @@ void CMPWeaponSel::Scroll(signed char dir)
         if (m_list.m_34 < 0)
             m_list.m_34 = 4;
     }
-    if (!func_0023E910(this, m_list.m_34))
+    if (!CanSelect(m_list.m_34))
         Scroll(dir);
 
     /* through a slot pointer (indexed straight, MW adds the offset to `this` the other way round) */
@@ -299,10 +417,79 @@ void CMPWeaponSel::Scroll(signed char dir)
 }
 #pragma auto_inline reset
 
+/* the HUD owner's side (fts code, 0x2C30B0: a null-tested seal; no row named yet) */
+extern "C" bool func_002C30B0(CZSealBody *seal);
+
+/* the item in one of the equipment slots (2-4) but the one asked about, its index, or -1 */
+inline int CMPWeaponSel::FindEquipment(EQUIP_ITEM item, int skip)
+{
+    for (int i = 2; i < 5; i++) {
+        if (i != skip && m_selected[i].m_weapon && m_selected[i].m_weapon->m_item == item)
+            return i;
+    }
+    return -1;
+}
+
+/* items 141 and 254 never chosen, 185 and 186 only when another equipment slot holds the same
+ * (by value: the item's one `lb` serves this switch and IsLocked's, each masking it) */
+inline void CMPWeaponSel::CheckItem(EQUIP_ITEM item, int index, bool &ok)
+{
+    switch (item) {
+    case 254:
+    case 141:
+        ok = false;
+        break;
+    case 186:
+        ok = FindEquipment((EQUIP_ITEM)186, index) != -1;
+        break;
+    case 185:
+        ok = FindEquipment((EQUIP_ITEM)185, index) != -1;
+        break;
+    }
+}
+
+/* the C4 locked out for the owner's side by the server's valve (16 one side, 32 the other; the
+ * one-case switch is the target's layout: the null preset in the compare's delay slot, a `b` over
+ * the case) */
+static inline bool IsLocked(CZWeapon *weapon, EQUIP_ITEM item)
+{
+    if (!weapon)
+        return false;
+    CValve *valve = 0;
+
+    switch (item) {
+    case 151:
+        valve = CValve::GetByName("Enable_c4");
+        break;
+    }
+    CZSealBody *owner = CHUD::GetHUDOwner();
+    int bit = 16;
+    if (func_002C30B0(owner))
+        bit = 32;
+    return (valve ? bit & valve->m_value : 0) != 0;
+}
+
+/* whether a slot can be chosen: an empty one can; items 141 and 254 never; 185 and 186 only
+ * when another equipment slot holds the same; the C4 not while its valve locks it out
+ * (0x23E910; the name ours -- Scroll and the selector's update 0x23E030 call it). The slot's
+ * weapon is read straight each time: a CSE temporary, numbered after the inlines' item, takes a3
+ * where a named `CZWeapon *weapon` (or a slot pointer or reference) swaps it with the item's t0 */
+bool CMPWeaponSel::CanSelect(int index)
+{
+    bool ok = true;
+
+    if (m_selected[index].m_weapon) {
+        CheckItem(m_selected[index].m_weapon->m_item, index, ok);
+        if (IsLocked(m_selected[index].m_weapon, m_selected[index].m_weapon->m_item))
+            ok = false;
+    }
+    return ok;
+}
+
 /* while up: the lists, the page, the title and the backdrops on, then updated */
 void CMPWeaponSel::On()
 {
-    if (m_active) {
+    if (m_state) {
         m_list.On();
         m_categories.On();
         m_title.On();
@@ -324,6 +511,71 @@ void CMPWeaponSel::Off()
     m_bitmap3.Off();
 }
 
+/* opened on the list: the slots emptied and given the owner's character's first five weapons (one
+ * read again when it reads 0), the page shown the list's slot, the cursor round to the first
+ * slot it allows, the selector on and updated, the owner's controller in the weapon menu, and the
+ * lists told their owner (0x23E370; the name ours -- SetState's list case calls it from closed) */
+void CMPWeaponSel::Open()
+{
+    CZSealBody *owner = CHUD::GetHUDOwner();
+
+    if (!owner)
+        return;
+    m_1530 = 255;
+    m_1531 = 255;
+
+    CZWeaponList &list = CZWeapon::m_listWeapons;
+    CCharacterType *character = owner->GetCharacter();
+    int count = character->m_weapons.size();
+    int i;
+
+    for (i = 0; i < 5; i++)
+        m_selected[i].SetWeapon(0);
+    for (i = 0; i < 5 && i < count; i++) {
+        EQUIP_ITEM item = character->GetWeaponByIndex(i);
+
+        if (!(item > 0))
+            item = character->GetWeaponByIndex(i);
+        m_selected[i].SetWeapon(list.GetWeapon(item));
+    }
+
+    SelectedSlot *slot = &m_selected[m_list.m_34];
+
+    m_categories.SetWeapon(slot->m_weapon);
+    m_list.m_34 = -1;
+    Scroll(2);
+    On();
+    func_0023E030(this, 0.0f);
+    owner->m_ctrl->SetMenuState(stateWeaponSel, false);
+    m_categories.m_list.m_owner = this;
+    m_categories.m_owner = this;
+    m_state = SEL_LIST;
+}
+
+/* the five selected slots' weapons given to the HUD owner's character: the weapons it has set up
+ * again, the rest pushed and set up unless empty (0x23E5E0; the name ours -- its one caller,
+ * 0x240600, is unwritten) */
+void CMPWeaponSel::SetCharacterWeapons()
+{
+    CCharacterWeapList &weapons = CHUD::GetHUDOwner()->GetCharacter()->m_weapons;
+    int i;
+
+    for (i = 0; i < 5; i++) {
+        if (i >= weapons.size())
+            break;
+        weapons[i].SetupCharacterWeapon(m_selected[i].m_weapon->m_item);
+    }
+    for (; i < 5; i++) {
+        CZWeapon *weapon = m_selected[i].m_weapon;
+        EQUIP_ITEM item;
+
+        weapons.AddWeapon(weapon->m_item);
+        item = weapon->m_item;
+        if (item != EQUIP_NONE)
+            weapons[i].SetupCharacterWeapon(item);
+    }
+}
+
 /* the name and the bitmap faded together */
 void CategorySlot::SetTrans(float trans)
 {
@@ -341,18 +593,51 @@ void CMPWeaponCategories::SetWeapon(CZWeapon *weapon)
     m_index = list.GetWeaponIndex(weapon);
     m_type = weapon->GetIDType();
     if (CZWeapon::IsPrimary(weapon->m_item))
-        m_kind = 0;
+        m_kind = KIND_PRIMARY;
     else if (CZWeapon::IsSecondary(weapon->m_item))
-        m_kind = 1;
+        m_kind = KIND_SECONDARY;
     else
-        m_kind = 2;
+        m_kind = KIND_OTHER;
     if (weapon->m_item == EQUIP_NONE) {
         m_type = EQUIP_NONE;
         m_index = list.GetWeaponIndex(list.GetWeapon((EQUIP_ITEM)121));
-        m_kind = 2;
+        m_kind = KIND_OTHER;
     }
 }
 #pragma auto_inline reset
+
+/* the arrows' pulse, in colour blends a second (0x3DCEA8, the unit's float pool; the name ours) */
+static float s_arrowpulserate = 2.0f;
+
+/* the page's arrows pulsed between grey and yellow: the blend runs up to 1 and back down to 0, two
+ * a second, each arrow given the blended colour (0x23D2B0; the name ours -- the selector's tick
+ * 0x240600 calls it) */
+void CMPWeaponCategories::TickArrows(float dT)
+{
+    static CPnt3D s_lo(80.0f, 80.0f, 80.0f);
+    static CPnt3D s_hi(255.0f, 255.0f, 128.0f);
+
+    if (m_pulseup) {
+        m_pulse += dT * s_arrowpulserate;
+        if (m_pulse >= 1.0f) {
+            m_pulse = 1.0f;
+            m_pulseup = false;
+        }
+    } else {
+        m_pulse -= dT * s_arrowpulserate;
+        if (m_pulse <= 0.0f) {
+            m_pulse = 0.0f;
+            m_pulseup = true;
+        }
+    }
+
+    float r = s_lo.x + m_pulse * (s_hi.x - s_lo.x);
+    float g = s_lo.y + m_pulse * (s_hi.y - s_lo.y);
+    float b = s_lo.z + m_pulse * (s_hi.z - s_lo.z);
+
+    for (int i = 0; i < 4; i++)
+        m_polys[i].SetColor(r, g, b);
+}
 
 /* whether the page's arrows are hidden (bss 0x4147C0, a byte; the name ours) */
 static bool s_noarrows;
@@ -370,6 +655,70 @@ void CMPWeaponCategories::ShowArrows()
 
     for (int i = 0; i < 4; i++)
         m_polys[i].SetColor(s_grey.x, s_grey.y, s_grey.z);
+}
+
+/* while the page is up (state 3): up and down step the weapon, left and right the class; triangle
+ * or start back to the list (2), the confirm button (0x2C64E0's 0) on to state 1 (0x23D1B0; the
+ * name ours -- m2c's draft matched as it stood) */
+void CMPWeaponCategories::HandlePad(CPad *pad)
+{
+    if (m_state == SEL_PAGE) {
+        if (pad->m_state[PAD_UP] == KEY_FALLING) {
+            Move(-2);
+            return;
+        }
+        if (pad->m_state[PAD_DOWN] == KEY_FALLING) {
+            Move(2);
+            return;
+        }
+        if (pad->m_state[PAD_LEFT] == KEY_FALLING) {
+            Move(1);
+            return;
+        }
+        if (pad->m_state[PAD_RIGHT] == KEY_FALLING) {
+            Move(-1);
+            return;
+        }
+        if (pad->m_state[PAD_TRIANGLE] == KEY_FALLING || pad->m_state[PAD_START] == KEY_FALLING) {
+            m_state = SEL_LIST;
+            return;
+        }
+        if (func_002C64E0(0, pad) == KEY_FALLING)
+            m_state = SEL_CHOSEN;
+    }
+}
+
+/* the list's next weapon class up or down from a class that the page's kind allows (0x23C840;
+ * no row named yet: a switch over the class starts calling NextClass) */
+extern "C" EQUIP_ITEM func_0023C840(SlotList *list, bool up, EQUIP_ITEM type, WEAPON_KIND kind);
+
+/* the page's cursor moved: a weapon on (2) or back (-2) in its class, or the class on (-1) or
+ * back (1) -- the grenades' class (171) passed over when the selector lets none through -- and on
+ * a new class its first weapon; then the page updated (0x23D060; the name ours) */
+void CMPWeaponCategories::Move(signed char dir)
+{
+    bool up = false;
+
+    switch (dir) {
+    case 2:
+        up = true;
+    case -2:
+        m_index = m_list.NextWeapon(up, m_index, m_type, m_kind);
+        break;
+    case -1:
+        up = true;
+    case 1: {
+        int old = m_type;
+
+        m_type = func_0023C840(&m_list, up, m_type, m_kind);
+        if (m_type == 171 && !m_owner->m_203 && !m_owner->m_gl && !m_owner->m_f2000)
+            m_type = func_0023C840(&m_list, up, m_type, m_kind);
+        if (old != m_type)
+            m_index = m_list.NextWeapon(true, 0, m_type, m_kind);
+        break;
+    }
+    }
+    func_0023D860(this, 0.0f);
 }
 
 /* the slots drawn while the list is on */
@@ -432,7 +781,7 @@ EQUIP_ITEM SlotList::NextClass(bool up, EQUIP_ITEM cls)
 }
 
 /* whether the list's slot can show a weapon (0x23C390; no row named yet) */
-extern "C" bool func_0023C390(SlotList *list, CZWeapon *weapon, int a, int b);
+extern "C" bool func_0023C390(SlotList *list, CZWeapon *weapon, EQUIP_ITEM type, WEAPON_KIND kind);
 
 /* where a search for the next weapon started (.data 0x3DCEB0, -1 between searches; the name ours) */
 static int s_searchstart = -1;
@@ -447,7 +796,7 @@ static int s_searchstart = -1;
  * moved, a temporary the recursive call's result is split into. The first GetWeaponByIndex
  * re-materialises the list's address, the last uses the saved one: the source spells them apart */
 #pragma auto_inline off
-int SlotList::NextWeapon(bool up, int index, int a, int b)
+int SlotList::NextWeapon(bool up, int index, EQUIP_ITEM type, WEAPON_KIND kind)
 {
     if (index == s_searchstart)
         return index;
@@ -469,8 +818,8 @@ int SlotList::NextWeapon(bool up, int index, int a, int b)
         if (index < 0)
             index = list.m_count - 1;
     }
-    if (!func_0023C390(this, CZWeapon::m_listWeapons.GetWeaponByIndex(index), a, b))
-        index = NextWeapon(up, index, a, b);
+    if (!func_0023C390(this, CZWeapon::m_listWeapons.GetWeaponByIndex(index), type, kind))
+        index = NextWeapon(up, index, type, kind);
     list.GetWeaponByIndex(index);
     s_searchstart = -1;
     return index;
