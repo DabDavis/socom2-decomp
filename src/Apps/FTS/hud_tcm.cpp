@@ -12,9 +12,31 @@
 
 #include "hud_tcm.h"
 
-/* the tree's (0x231A30-0x23624F): an item's node made from its cache entry */
+/* an item's node made from its cache entry (0x236D20, this unit's -- not written: the HUD's round 39
+ * had it at the target's size, 51 instructions off, and took it out). Read off the target: for a
+ * non-null entry, the nodes named by the second argument (theTCM.Find((const char *)arg, found,
+ * true)) or theTCM itself (found.push_back(&theTCM)); for each a new CTCMNode given SetCaption(a2,
+ * 0), SetName(a3), SetText2(t0), SetEntry(entry), m_741 = the last argument's byte, the back and the
+ * bar on GetTexHandle("TCM.tif") (an inline setting the poly's and both triangles' texture to the
+ * handle's +0xC or 0, then SetHasTexture), UVs (1,0,0,1) and (0.7,0,0.3,1), the icon on
+ * "TCMarrow.tif", AddChild under the found node and its m_root pushed onto theTCM.m_root (the list's
+ * address hoisted into a saved register: a reference local gives the size); 0 returned on every
+ * path. Open: the target homes t0 and the flag (`sb t1`) at 188/187 in a 224-byte frame where the
+ * draft took 240 -- and with a `bool` last parameter tcmAddItem would convert its int (it passes t1
+ * through untouched) */
 extern "C" CTCMNode *func_00236D20(CTCMEntry *entry, int arg, const char *caption, const char *text2,
                                    const char *name, int flags);
+
+/* the world's action points as the menu names them (zseal.h's CNodeAction: its prompt at 0x2C) and
+ * the ones the radio menu lists (OVL1 0x2B4CD0: the enabled ones of the action list, pushed onto
+ * the vector given) */
+class CNodeAction {
+public:
+    unsigned char _0[0x2c];
+    const char *m_uistring;   // 0x2c
+};
+
+extern "C" void func_002B4CD0(std::vector<CNodeAction *> *actions);
 
 /* the menu's time constant (0.3; a variable: read with lwc1 -- the name ours) */
 static float s_tcm_dd8 = 0.3f;
@@ -38,6 +60,71 @@ static CPnt3D s_tcmColor4 = s_tcmColor3;
 CTCM theTCM;
 CTCMCache mpCache("mpCache");
 CTCMCache spCache("spCache");
+
+/* the action points given to the items under each "NODEACTION ROOT" node, child by child, each
+ * item's two lines set to its prompt (0x236260: the tree's builder calls it; the name ours). The
+ * child and its action are declared ahead of the inner walk: inside it they take the walk's index's
+ * saved register and it theirs (MW spills the node to the frame either way, as the target does) */
+void tcmSetNodeActions()
+{
+    std::vector<CNodeAction *> actions;
+
+    func_002B4CD0(&actions);
+
+    std::vector<CTCMNode *> found;
+
+    theTCM.Find("NODEACTION ROOT", found, true);
+
+    unsigned int n = found.size();
+
+    if (n && actions.size()) {
+        for (unsigned int i = 0; i < n; i++) {
+            CTCMNode *node = found[i];
+
+            if (node) {
+                unsigned int m = node->GetNumChildren();
+
+                if (m) {
+                    unsigned int e = actions.size();
+                    CTCMNode *child;
+                    CNodeAction *action;
+
+                    for (unsigned int j = 0; j < m && j < e; j++) {
+                        child = node->m_children[j];
+                        action = actions[j];
+
+                        if (child && action) {
+                            child->m_action = action;
+                            child->m_text.SetString(action->m_uistring, true);
+                            child->m_text2.SetString(action->m_uistring, true);
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/* the item list's bars: a dark one at 110 and a blue-grey one opaque, both untextured over the same
+ * box, each turned on and added to the item list's bitmap, then the closing clock and its flag
+ * cleared */
+void CTCM::SetupItemBars()
+{
+    m_11c0.SetHasTexture(false);
+    m_11c0.SetColor(0.0f, 0.0f, 0.0f);
+    m_11c0.SetTrans(110.0f);
+    m_11c0.SetPos(136.0f, 100.0f, 140.0f, 132.0f);
+    m_11c0.On();
+    m_items.push_back(&m_11c0);
+    m_fd0.SetHasTexture(false);
+    m_fd0.SetColor(35.0f, 51.0f, 56.0f);
+    m_fd0.SetTrans(128.0f);
+    m_fd0.SetPos(136.0f, 100.0f, 140.0f, 132.0f);
+    m_fd0.On();
+    m_items.push_back(&m_fd0);
+    m_dd0 = 0.0f;
+    m_dce = 0;
+}
 
 /* the menu built: the root node, the mode 4, the three backing polys untextured, translucent and
  * black with two corners clear, the counters and the holds (SOCOM II's) */
@@ -117,6 +204,26 @@ void CTCM::SetCache(CTCMCache *cache)
     else
         strcpy(m_cacheName, "No Cache Available");
     m_cache = cache;
+}
+
+/* the node the path selects, walked down from the root -- the path started at the first child when
+ * there is none yet and the root has children; none for an empty path (the walk's count taken once,
+ * so MW unrolls it 8x as the target does) */
+CTCMNode *CTCM::GetSelected()
+{
+    CTCMNode *node = 0;
+
+    if (!m_path.size() && GetNumChildren())
+        m_path.push_back(0);
+
+    unsigned int n = m_path.size();
+
+    if (n) {
+        node = this;
+        for (unsigned int i = 0; i < n; i++)
+            node = node->m_children[m_path[i]];
+    }
+    return node;
 }
 
 /* the node of a depth's column: the path walked down from the root */
