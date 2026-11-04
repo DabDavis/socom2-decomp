@@ -717,6 +717,7 @@ struct CTEvent : TASK_HDR {
 
     static _zanim_cmd_hdr *Parse(_zrdr *rdr);
     static void Begin(_zanim_cmd_hdr *hdr);
+    static bool Tick(_zanim_cmd_hdr *hdr, float *dT);
 };
 
 /* ai::DEBUG (SOCOM 1's CTDebug): a message, "DEBUG on"/"DEBUG off" for the words on and off (the
@@ -1238,6 +1239,45 @@ _zanim_cmd_hdr *CTDrain::Parse(_zrdr *rdr)
 /* (OVL2 0x5DD0D0) */
 void CTEvent::Begin(_zanim_cmd_hdr *hdr)
 {
+}
+
+/* an AI event made as the task says -- its kind, range (75 unless given) and duration (0.15: both
+ * statics, OVL2 data 0x650AB0 and 0x650AB8 -- a literal is built in registers), at its point or a
+ * node's transform of it -- the SEAL its owner (OVL2 0x5DCE70; SOCOM 1's) */
+bool CTEvent::Tick(_zanim_cmd_hdr *hdr, float *dT)
+{
+    static float duration = 0.15f;
+    static float range = 75.0f;
+    CAiEvent *e;   /* declared ahead of the find: the target's block s1, the event the counter's s2 */
+    TASK_SEAL(CTEvent);
+    CSealCtrlAi *ai = seal ? SealAi(seal) : 0;
+
+    e = CAiEvent::Acquire();
+
+    e->m_duration = cmd->m_hasDuration ? cmd->m_duration : duration;
+    float r = cmd->m_hasRange ? cmd->m_range : range;
+
+    e->m_rangeSq = r * r;
+    e->m_visible = (bool)cmd->m_vis;
+    CPnt3D pos = CPnt3D::zero;
+
+    if (cmd->m_hasNode) {
+        zdb::CNode *node = ZAnim.m_CurAnim->GetNode(cmd->m_nodes, false);
+
+        if (node) {
+            CMatrix m;
+
+            node->BuildMTW(m);
+            m.Transform(&cmd->m_pos, &pos, 1);
+        }
+    } else
+        pos = cmd->m_pos;
+    e->m_pos = pos;
+    if (seal)
+        e->m_owner = seal->m_id;
+    e->m_type = (CAiEvent::EVENT)cmd->m_type;
+    CAiEvent::Create(e);
+    return true;
 }
 
 /* done at once, the time kept unless there is no AI (OVL2 0x5DC8A0) */
