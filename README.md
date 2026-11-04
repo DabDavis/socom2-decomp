@@ -2033,6 +2033,21 @@ exists); 3.0b38/b50/b52 still untold.
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the HUD, round 37** (the pause test, CTCM's layout functions, the hud_pausemenu boundary):
+  - an `-enum min` enum with no negative value is unsigned (0..66 behaves as 0..255), so a signed-char argument becomes
+    `lbu` -- hud_tcmcmds.cpp's FT_COMMAND must be a signed byte for the target's `lb` (its AcknowledgeCommand /
+    ConfirmCommand calls respelled); a `CPauseItem &Item(int i)` accessor makes MW re-extend a char parameter after a call,
+    `m_items[line]` keeps the extension across it in a saved register that colours first;
+  - `t = c ? x / k : 0.0f` pads the division's block with nops up to the join, the same as an if/else lets the scheduler put
+    the call's set-up in that gap; a bool flag cleared after a call stays in a scratch register, cleared before it takes a
+    saved one; in a loop, declaring the element pointer before the count and the index gives the index the lower scratch
+    register (CTCM::Layout 0x231690, FadeCursor, PlaceCursor, SlideRoot, AlignRoot -- they open hud_tcmcmds.cpp);
+  - MW NARROWS 1-BIT BIT-FIELD READ-MODIFY-WRITES TO BYTE WIDTH in every shape tried (int, unsigned long, unsigned short and
+    4-byte-enum fields, volatile, packed and `#pragma pack`, nested structs, opt_scalarizebitfields), where the target's
+    CPauseItem() 0x205970 sets five 1-bit fields through an unaligned word at 0x9D (lwr/lwl, swr/swl -- the only such
+    read-modify-write in the image; OPEN);
+  - hud_pausemenu.cpp runs 0x2011F0-0x205C3F (CZPauseTest::IsSelectable 0x205A70 its last function); CTCM's 0xDA0 and 0xDD0
+    are floats (read with lwc1).
 - **Tells from completing the MSL headers, round 20** (remove_if by iterator category; probes build/scratch/msl-r20-p20/,
   untracked):
   - std::remove_if picks its search by the iterator's category: list iterators (bidirectional) are copied into remove_if's
