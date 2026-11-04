@@ -202,7 +202,9 @@ public:
      * in a2 and the bool in t0; the names ours) */
     virtual bool Virtual34(CSealCtrlAi *ai, CAiEvent *e, CZSealBody *seal, bool enemy) { return true; }
     virtual bool Virtual38() { return true; }                             /* +0x38 (new) */
-    virtual bool Virtual3C() { return true; }                             /* +0x3C (new) */
+    /* +0x3C (new): the AI passed (the follow's master check 0x5FDD40 and 0x558640 hand it in a1 after
+     * testing its bit 13; no override read so far reads it) */
+    virtual bool Virtual3C(CSealCtrlAi *ai) { return true; }
     virtual bool Virtual40() { return false; }                            /* +0x40 (new) */
     /* +0x44 (new): of a kind (0x575950 answers m_state == state) */
     virtual bool Virtual44(AI_STATE state) { return false; }
@@ -395,7 +397,7 @@ public:
     virtual bool CanPursue(CSealCtrlAi *ai) const { return false; }
     virtual bool Virtual34(CSealCtrlAi *ai, CAiEvent *e, CZSealBody *seal, bool enemy);
     /* +0x3C (the name ours, by slot) */
-    virtual bool Virtual3C() { return false; }
+    virtual bool Virtual3C(CSealCtrlAi *ai) { return false; }
     virtual ~CAiSBreach();
 
     CPnt3D m_58;   // 0x58
@@ -452,7 +454,7 @@ public:
     CAiSGoto() : CAiState(AI_STATE_GOTO) {}
     virtual void OnSignal(SIGNAL sig, CSealCtrlAi *ai);
     /* +0x3C and +0x40 (the names ours, by slot) */
-    virtual bool Virtual3C() { return !(m_flags & 4); }
+    virtual bool Virtual3C(CSealCtrlAi *ai) { return !(m_flags & 4); }
     virtual bool Virtual40() { return true; }
     virtual ~CAiSGoto();
 
@@ -569,7 +571,7 @@ public:
     }
     /* +0x3C (the name ours, by slot): close behind -- its distance under the follow range, and
      * its flag bit 3 set */
-    virtual bool Virtual3C();
+    virtual bool Virtual3C(CSealCtrlAi *ai);
     virtual ~CAiSFollow();
 
     /* the offset from the leader set: as cells, and from a formation's slot (OVL2 0x5FD0E0, 0x5FD050;
@@ -583,6 +585,17 @@ public:
      * 0x5FDAD0 runs (OVL2 0x5FC7D0: SOCOM 1's HandleFollowTickHideCheck by its place; the names
      * ours) */
     bool HideCheck(CSealCtrlAi *ai, bool b, bool hide, char *out);
+    /* the AI's follow master made the state's, a new one restarting its step; true while it
+     * lives (flag 8 then says whether it closes in), else the master let go (OVL2 0x5FDD40,
+     * CAiSFollow::Tick's first call; the name ours) */
+    bool CheckMaster(CSealCtrlAi *ai);
+    /* the flag word's bits: cleared unless on, then set when on (the turret's SetFlag shape,
+     * zveh.h's; inline in CheckMaster -- the name ours) */
+    void SetFlag(unsigned int mask, bool on)
+    {
+        m_6c &= ~(on ? 0 : mask);
+        m_6c |= on ? mask : 0;
+    }
 
     class CZSealBody *m_master;   // 0x58: the SEAL followed (SetFollowMaster clears it; the name ours)
     int m_5c[2];   // 0x5c: the offset from the leader, in cells (0x5F6F20 zeroes them)

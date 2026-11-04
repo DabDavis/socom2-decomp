@@ -10079,7 +10079,7 @@
 0x005553B0 0x8 CanPursue__8CAiStateCFP11CSealCtrlAi  # OVL2; slot 0x2C of __vt__8CAiState, SOCOM 1's slot 0x24 (aligned as GetStatus__8CAiStateCFv); returns true as SOCOM 1's
 0x005553C0 0x8 Virtual34__8CAiStateFP11CSealCtrlAiP8CAiEventP10CZSealBodyb  # OVL2; s1:vtable by hand (slot 0x34 of __vt__8CAiState and of the states that keep it: returns true, as ai_states.h's inline; seal_ai.cpp emits the copy) (the SEAL lane, round 5); slot 0x34's parameters (the kit lane, round 5): its one call, 0x5F95D0's, passes the AI, the event, the owner when a SEAL and a bool in t0; both overrides read the event and the bool
 0x005553D0 0x8 Virtual38__8CAiStateFv  # OVL2; s1:vtable by hand (slot 0x38 of __vt__8CAiState and of the states that keep it: returns true) (the SEAL lane, round 5)
-0x005553E0 0x8 Virtual3C__8CAiStateFv  # OVL2; s1:vtable by hand (slot 0x3C of __vt__8CAiState and of the states that keep it: returns true) (the SEAL lane, round 5)
+0x005553E0 0x8 Virtual3C__8CAiStateFP11CSealCtrlAi  # OVL2; s1:vtable by hand (slot 0x3C of __vt__8CAiState and of the states that keep it: returns true) (the SEAL lane, round 5); by hand (the kit lane, round 29, outside its range: ai_states.h's base declaration): slot +0x3C takes the AI -- both callers (0x5FDE30, 0x5586E8) pass it in a1 after testing its bit 13; the base answers true
 0x005553F0 0x8 Virtual40__8CAiStateFv  # OVL2; s1:vtable by hand (slot 0x40 of __vt__8CAiState and of the states that keep it: returns false) (the SEAL lane, round 5)
 0x00555400 0x8 Virtual44__8CAiStateF8AI_STATE  # OVL2; s1:vtable by hand (slot 0x44 of __vt__8CAiState and of every state but CAiSPursue, which overrides it at 0x575950: returns false) (the SEAL lane, round 5)
 0x00555410 0x8 Virtual48__8CAiStateFiP8CAiState  # OVL2; s1:vtable by hand (slot 0x48 of __vt__8CAiState and of every state but CAiSPursue, which overrides it at 0x55A7D0: returns false) (the SEAL lane, round 5)
@@ -11556,11 +11556,11 @@
 0x005F8900 0x8 CanAttack__13CAiSSuspendedCFv  # OVL2; by hand: CAiSSuspended's vtable slot +0x24 (CanAttack; SOCOM 1's in the same tail position)
 0x005F8910 0x8 CanPursue__13CAiSSuspendedCFP11CSealCtrlAi  # OVL2; by hand: CAiSSuspended's vtable slot +0x2C (CanPursue; SOCOM 1's in the same tail position)
 0x005F8920 0x8 CanPursue__10CAiSBreachCFP11CSealCtrlAi  # OVL2; by hand: CAiSBreach's vtable slot +0x2C (CanPursue, jr ra; move v0,zero as SOCOM 1's)
-0x005F8930 0x8 Virtual3C__10CAiSBreachFv  # OVL2; by hand: CAiSBreach's vtable slot +0x3C, one of SOCOM II's six new CAiState slots (the name ours, by its slot): false (the base's is true)
+0x005F8930 0x8 Virtual3C__10CAiSBreachFP11CSealCtrlAi  # OVL2; by hand: CAiSBreach's vtable slot +0x3C, one of SOCOM II's six new CAiState slots (the name ours, by its slot): false (the base's is true); by hand (the kit lane, round 29): slot +0x3C takes the AI (its callers 0x5FDE30, 0x5586E8 pass it in a1)
 0x005F8940 0x78 __dt__10CAiSScriptFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x005F89C0 0x78 __dt__8CAiSGotoFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x005F8A40 0x8 Virtual40__8CAiSGotoFv  # OVL2; by hand: CAiSGoto's vtable slot +0x40, one of SOCOM II's six new CAiState slots (the name ours, by its slot): true (the base's is false)
-0x005F8A50 0x14 Virtual3C__8CAiSGotoFv  # OVL2; by hand: CAiSGoto's vtable slot +0x3C, one of SOCOM II's six new CAiState slots (the name ours, by its slot): true while the flag word (+0x2C) lacks bit 2
+0x005F8A50 0x14 Virtual3C__8CAiSGotoFP11CSealCtrlAi  # OVL2; by hand: CAiSGoto's vtable slot +0x3C, one of SOCOM II's six new CAiState slots (the name ours, by its slot): true while the flag word (+0x2C) lacks bit 2; by hand (the kit lane, round 29): slot +0x3C takes the AI (its callers 0x5FDE30, 0x5586E8 pass it in a1)
 0x005F8A70 0x78 __dt__10CAiSPickupFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x005F8AF0 0x110 remove_if<Q33std46list<P8CAiState,Q23std21allocator<P8CAiState>>19generic_iterator<0>,18CAiStateDeleteKind>__3stdFQ33std46list<P8CAiState,Q23std21allocator<P8CAiState>>19generic_iterator<0>Q33std46list<P8CAiState,Q23std21allocator<P8CAiState>>19generic_iterator<0>18CAiStateDeleteKind_Q33std46list<P8CAiState,Q23std21allocator<P8CAiState>>19generic_iterator<0>  # OVL2; by hand (the kit lane, round 5): std::remove_if over the state stack with CAiStateDeleteKind (Remove's, 0x5F81E0), the template tail of seal_aistate.cpp; find_if and the functor inlined
 0x005F8C00 0x18 func_005F8C00  # OVL2
@@ -11593,8 +11593,8 @@
 0x005FD6F0 0x94 func_005FD6F0  # OVL2
 0x005FD790 0x33C func_005FD790  # OVL2
 0x005FDAD0 0x224 func_005FDAD0  # OVL2
-0x005FDD00 0x38 Virtual3C__10CAiSFollowFv  # OVL2; by hand: CAiSFollow's vtable slot +0x3C, one of SOCOM II's six new CAiState slots (the name ours, by its slot): a float at +0xF4 under the variable at 0x650C38 and flag bit 3 of +0x6C
-0x005FDD40 0x180 func_005FDD40  # OVL2
+0x005FDD00 0x38 Virtual3C__10CAiSFollowFP11CSealCtrlAi  # OVL2; by hand: CAiSFollow's vtable slot +0x3C, one of SOCOM II's six new CAiState slots (the name ours, by its slot): a float at +0xF4 under the variable at 0x650C38 and flag bit 3 of +0x6C; by hand (the kit lane, round 29): slot +0x3C takes the AI -- both callers (0x5FDE30, 0x5586E8) pass it in a1 after testing its bit 13; the code reads none of it
+0x005FDD40 0x180 CheckMaster__10CAiSFollowFP11CSealCtrlAi  # OVL2; by hand (the kit lane, round 29; the name ours): CAiSFollow::Tick's first call (0x5FB220) -- the AI's follow master (+0x5D4) made the state's (+0x58; a new one restarts the step, UpdatePhase(0) inlined), true while it lives (CEntity's m_isAlive), flag 8 (+0x6C) set when a navy SEAL's AI-driven master's AI has bit 13 and its state's +0x3C answers, else SetFollowMaster(0); open, 0x178 against 0x180
 0x005FDEC0 0xB8 GetStatus__10CAiSFollowCFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x005FDF80 0x270 OnSignal__10CAiSFollowFQ28CAiState6SIGNALP11CSealCtrlAi  # OVL2; by hand: CAiSFollow's vtable slot +0x8 (OnSignal)
 0x005FE1F0 0x2C8 func_005FE1F0  # OVL2
