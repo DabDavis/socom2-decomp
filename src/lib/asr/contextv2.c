@@ -206,14 +206,18 @@ static int *_contextGetpWordProp(CONTEXTV2 *c)
     return (int *)(d->lex + EVEN(d->nbr_item + d->nbr_pron) + 4) + (d->nbr_pron + d->nbr_word);
 }
 
-/* OPEN (1 word, the size 4 short): the target copies the word count before rounding it (move
- * a0,a3) and keeps its unrounded copy for pron + word; every shape tried (a local count, the
- * rounding first or last, the sum through WordProp's) rounds the loaded register in place. */
+/* the syntax follows the words' table: the word count read into a local and rounded there before
+ * the table's address is formed (the target copies the count, `move a0,a3`, and keeps the
+ * unrounded one for pron + word -- the local is live across that use), and added last through a
+ * pointer of its own (the header's 192 then goes in before the halfword index, as the target's) */
 static unsigned short *_contextGetpSyntax(CONTEXTV2 *c)
 {
     CTXDATA *d = c->data;
-    int n = EVEN(d->nbr_word);
+    int n = d->nbr_word;
+    unsigned short *p;
 
-    return (unsigned short *)((int *)(d->lex + EVEN(d->nbr_item + d->nbr_pron) + 4)
-                              + (d->nbr_pron + d->nbr_word)) + n;
+    n = EVEN(n);
+    p = (unsigned short *)((int *)(d->lex + EVEN(d->nbr_item + d->nbr_pron) + 4)
+                           + (d->nbr_pron + d->nbr_word));
+    return p + n;
 }

@@ -7046,7 +7046,14 @@
 0x004D0980 Tone_Of_Final
 0x004D09A8 Calculate_NbrOfStatesInDict_ForChinese
 0x004D1B20 FreeSecondPassContext
+0x004D45A8 CalcNrNodes10
 0x004D52F8 CreateCtxTree
+0x004D5318 CalcAccuracyCtxTree
+0x004D53C8 FreeTree
+0x004D5598 _FreeTree
+0x004D5718 CalcNrNodes@ctxtree
+0x004D5830 _CountWordsInTree
+0x004D59B8 _GetWordsInTree
 0x004D5AA8 CompareIDs
 0x004D5AB8 CreateActiveWordsCtxTree
 0x004D7460 func_004D7460
@@ -7163,6 +7170,7 @@
 0x004E89C0 ConstructFFTMod
 0x004E8A50 ControlFFTMod
 0x004E8D78 FreeIsoWordTokenDp
+0x004E8EA8 InitNewUtterance
 0x004EAA28 ExpandGarbageArrays@isowdp
 0x004EB3A0 ConstructIsoWordTokenDp
 0x004EB3E0 InitIsoWordTokenDpProcess
@@ -7318,6 +7326,7 @@
 0x00508448 _contextGetpLex
 0x00508458 _contextGetpBeginOfWords
 0x00508480 _contextGetpWordProp
+0x005084B8 _contextGetpSyntax
 0x00508718 FillLanguageVirtualTable
 0x00508880 _transwGetSize
 0x005088A8 _langCheckBitField
@@ -7357,6 +7366,9 @@
 0x00508AA8 _langGetpWarpFactors
 0x00508AB8 _langGetpGastone
 0x00508AD0 _langGetpErgodicStates
+0x00508B00 _langGetpErgodicPhenomes
+0x00508B40 _langGetpErgodicPenalty
+0x00508B90 _langGetpCodeBook
 0x005093F8 _langGetpOffsetForFinals
 0x00509418 _langGetpToneConversionMatrix
 0x00509438 _langGetpExtraEventContext
@@ -7366,6 +7378,7 @@
 0x00509508 _cdbGetpFirstCdb
 0x00509510 _cdbGetpIndexInSecCdb
 0x00509530 _cdbGetpSecondCdb
+0x00509560 _cdbGetpProbMatrix
 0x00509618 _cdbGetProbMatrixSize
 0x00509650 _cdbGetSmoothMatrixSize
 0x00509660 _exevGetLeading_NBS_penalty
