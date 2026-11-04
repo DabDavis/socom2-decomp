@@ -340,6 +340,9 @@ class CZAnimSetSave;
 /* a scheduled task (SOCOM 1's DWARF; the system lane's) */
 class CSched_Task {
 public:
+    /* nothing named, nothing to run (SOCOM II's inline: AddTask's `new` stores these five and
+     * leaves the two times unset) */
+    CSched_Task() : m_name(0), m_remove(false), m_priority(0.0f), m_task(0), m_user_data(0) {}
     /* the name freed (SOCOM II's inline: CSched_Manager::Clear deletes its tasks through it) */
     ~CSched_Task()
     {
@@ -360,6 +363,10 @@ public:
 /* the anims' task scheduler (SOCOM 1's names and DWARF: a list of tasks; zsys_sched.cpp) */
 class CSched_Manager : public std::list<CSched_Task *> {
 public:
+    /* SOCOM 1's (zsys_sched.cpp's initialiser builds zTaskScheduler through it, 0x34E860) */
+    CSched_Manager();
+    /* a task added in priority order, from the free list when it has one (SOCOM 1's, 0x34E6B0) */
+    bool AddTask(const char *name, bool (*task)(float, void *), float priority, void *user_data);
     bool RemoveTask(void *task, bool all);
     bool RemoveTask(const char *name, bool all);    /* the system lane's */
     void Clear();
@@ -739,6 +746,11 @@ struct VALVE_CB {
 class CValveCBList : public std::list<VALVE_CB *> {
 };
 
+/* every valve (SOCOM 1's: its __sinit_valve_list.cpp registers __dt__10CValveListFv for
+ * CValve::m_list, as SOCOM II's 0x4034F0 registers 0x352900 -- the world lane's round 10) */
+class CValveList : public std::list<CValve *> {
+};
+
 class CRdrFile;
 
 class CValve {
@@ -793,7 +805,7 @@ public:
     unsigned int m_unused : 5;   // 0x4
     CValveCBList m_callbacks;   // 0x8 (SOCOM 1's DWARF; the valve lane's)
 
-    static std::list<CValve *> m_list;   // 0x49E800: every valve (SOCOM 1's)
+    static CValveList m_list;   // 0x49E800: every valve (SOCOM 1's)
 };   // 0x14 bytes (SOCOM 1's)
 
 class _zanim_valve_ref {
