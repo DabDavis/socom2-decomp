@@ -180,7 +180,9 @@ bool CAiSAction::Virtual38()
  * slot of the !m_hold branch (materialised, sltu/xori, as NotHeld() gives it) and set to 1 after
  * the virtual CanPursue, then copies it with andi; here the inline's return true/false lands in
  * v0 at its own labels -- a result local assigned false first is if-converted into an sltu on
- * the call's result instead (0x6C), with == true or != false 0x74 */
+ * the call's result instead (0x6C), with == true or != false 0x74; round 28, Pursuable as `bool r;
+ * if (...) r = true; else r = false;` (0x84), `r = false` with the two tests nested (0x6C), `return
+ * NotHeld() && CanPursue(ai)` and the && into a local (0x6C) */
 bool CAiSScript::CanPushAiState(AI_STATE state, CSealCtrlAi *ai)
 {
     bool ok = true;
@@ -1437,11 +1439,14 @@ void CAiSBreach::OnSignal(SIGNAL sig, CSealCtrlAi *ai)
  * the y-terms' `0 * v.y` once and adds it into both dots (the first through adda/madd, the second
  * with two add.s, its z-term first); here the second dot's y-term is fused into a madd of its own.
  * Tried: the two points field by field (0x134), the dots written out (0x114), one point reused for
- * both (its x and z reassigned, or negated: 0x134), either dot first, Dot(v, p) */
+ * both (its x and z reassigned, or negated: 0x134), either dot first, Dot(v, p); round 28: the
+ * right point's y taken from the left's (16), the y-term in a shared local with the dots written
+ * out (22; the second's z-term first, 17). The 0 is the points' literal, not d.y: d is reloaded
+ * after Normalize and its y never is */
 extern "C" int func_005F3270(CAiSBreach *b, CSealCtrlAi *ai)
 {
     int r = 2;
-    CAiMap::DIR dir = (CAiMap::DIR)((CAiMap::action *)b->m_78)->m_direction;
+    CAiMap::DIR dir = (CAiMap::DIR)b->m_78->m_direction;
 
     if (dir != CAiMap::DIR_COUNT) {
         if (b->m_flags & 1)
@@ -1466,6 +1471,35 @@ extern "C" int func_005F3270(CAiSBreach *b, CSealCtrlAi *ai)
             r = 1;
     }
     return r;
+}
+
+/* an action's extra cell i, or the invalid cell past the six (the name ours: an unsigned test) */
+static inline const CAiMapLoc &BreachLocEx(const CAiMap::action *a, unsigned int i)
+{
+    return i < 6 ? a->m_locEx[i] : CAiMapLoc::invalid;
+}
+
+/* the cell at the middle of the door's three cells on the breach's side -- 0-2 with the flag bit
+ * 0, 3-5 without -- its coordinates their averages, its map the last one's (OVL2 0x5F3100:
+ * CAiSBreach::Tick calls it, a member -- the state in a0 -- and takes the cell's centre; the name
+ * unknown) */
+extern "C" void func_005F3100(CAiSBreach *b, CAiMapLoc *out)
+{
+    float x = 0.0f;
+    float y = 0.0f;
+    unsigned int mapid = 0;
+    int start = (b->m_flags & 1) ? 0 : 3;
+
+    for (int i = 0; i < 3; i++) {
+        const CAiMapLoc &loc = BreachLocEx(b->m_78, i + start);
+
+        x += loc.x;
+        y += loc.y;
+        mapid = loc.m_mapid;
+    }
+    out->x = (int)(x / 3.0f);
+    out->y = (int)(y / 3.0f);
+    out->m_mapid = mapid;
 }
 
 /* what a breach lets be pushed: no avoiding in its steps 4-9, no grenade in steps 6 and 7 -- a

@@ -162,6 +162,11 @@ public:
     static EQUIP_ITEM GetWeaponId(const char *name);   /* 0x3D19E0 */
     static bool IsPrimary(EQUIP_ITEM item);            /* 0x3D1D10 */
     static bool IsSecondary(EQUIP_ITEM item);          /* 0x3D1CE0 */
+    static EQUIP_ITEM GetIDType(EQUIP_ITEM item);      /* 0x3D1A60: the item's class */
+};
+class CZFTSWeapon {
+public:
+    static bool IsM203Weapon(EQUIP_ITEM item);         /* 0x3C5E10 */
 };
 /* a character's weapon (zchar.h's CCharacterWeap, SOCOM 1's DWARF: 12 bytes, the item first). Its
  * constructors and destructor are char_type.cpp's (OVL2 0x53EFD0, 0x53EFA0 member by member, and
@@ -260,6 +265,150 @@ inline bool ChooseSecondaryForCharacter(const CSelectedCharsItr &it, EQUIP_ITEM 
     return true;
 }
 
+/* a weapon's definition as the slot test reads it: its flags at 4 (0x3CF1F0's result, zwep_weapon.cpp's
+ * lookup by item -- not named yet; the stand-in type ours) */
+struct CItemDefFlags {
+    int _0;
+    unsigned short m_flags;   // 0x4: 0x30 an item that keeps its slot
+};
+extern "C" CItemDefFlags *func_003CF1F0(EQUIP_ITEM item);
+
+/* the new choosers' slot helpers (SOCOM II's, the names ours), each called out of line: pinned. Their
+ * image order (IsSlotLocked 0x281950, FindItemSlot 0x282EB0, NextFreeSlot 0x284640) is their
+ * generation order, the reverse of this definition order -- which is load-bearing: a caller
+ * generated after its callee knows the registers it writes, so NextFreeSlot keeps `slot` in a2
+ * across FindItemSlot (defined ahead of its callees here, it saved the slot in s1: 12 bytes long) */
+namespace {
+
+int FindItemSlot(const CSelectedCharsItr &it, EQUIP_ITEM item, int skip);
+bool IsSlotLocked(CSelectedCharsItr it, int slot, EQUIP_ITEM item);
+
+#pragma auto_inline off
+/* the slot an item goes into: the first empty one past the given, else the next of the equipment
+ * slots (2 to 4, round) that is not locked (0x284640) */
+int NextFreeSlot(const CSelectedCharsItr &it, int slot)
+{
+    int s = FindItemSlot(it, EQUIP_NONE, slot);
+
+    if (s == -1) {
+        s = slot + 1;
+        if (s >= 5)
+            s = 2;
+        if (s < 2)
+            s = 2;
+        while (s == -1 || IsSlotLocked(it, s, EQUIP_NONE)) {
+            s++;
+            if (s >= 5)
+                s = 2;
+        }
+    }
+    return s;
+}
+
+/* the slot of a character's first weapon of the item past the one to skip, among the first five,
+ * or -1 (0x282EB0) */
+int FindItemSlot(const CSelectedCharsItr &it, EQUIP_ITEM item, int skip)
+{
+    CCharacterWeapList *weapons = (CCharacterWeapList *)it.m_weapons;
+    int found = -1;
+    int i = 0;
+
+    for (CCharacterWeapList::iterator w = weapons->begin(), e = weapons->end();
+         w != e && found == -1 && i < 5; ++w, ++i)
+        if ((*w).m_wepId == item && i != skip)
+            found = i;
+    return found;
+}
+
+/* whether a slot keeps what it holds against the item: not when it holds the item itself; yes for
+ * items 141 and 185, for 186 when no other slot holds one, for a weapon's padding (EQUIP_END) and for
+ * an item whose definition is flagged 0x30 (0x281950; the true cases one ||'d test, their shared
+ * `return true` block as the target's). The character by value: the callee's copy (12 bytes
+ * through the FPRs) */
+bool IsSlotLocked(CSelectedCharsItr it, int slot, EQUIP_ITEM item)
+{
+    CCharacterWeapList *weapons = (CCharacterWeapList *)it.m_weapons;
+    EQUIP_ITEM cur = EQUIP_NONE;
+
+    if (slot < weapons->size())
+        cur = (*weapons)[slot].m_wepId;
+    CItemDefFlags *def = func_003CF1F0(cur);
+
+    if (cur == item)
+        return false;
+    if (cur == 141 || cur == 185 || (cur == 186 && FindItemSlot(it, cur, slot) == -1) ||
+        cur == EQUIP_END || (def && (def->m_flags & 0x30)))
+        return true;
+    return false;
+}
+#pragma auto_inline reset
+
+}
+
+namespace {
+
+/* whether a selected character may take an item with the weapons it has (SOCOM II's, 0x280E90 --
+ * the name ours): the class-195 item only with a class-101 primary, item 186 only beside a 146 and
+ * 146 or 145 only once; items 171/173/175 only on an M203 or item-142 primary, 176/178/179 only on
+ * a 143, 181 to 183 only on a 63. The item's own class is looked up and dropped */
+#pragma auto_inline off
+bool CanTakeItem(EQUIP_ITEM item, const CSelectedCharsItr &it)
+{
+    CZWeapon::GetIDType(item);
+    EQUIP_ITEM primary = (*(CCharacterWeapList *)it.m_weapons)[0].m_wepId;
+
+    if (CZWeapon::GetIDType(primary) != 101 && item == 195)
+        return false;
+    if (item == 186 && FindItemSlot(it, (EQUIP_ITEM)146, -1) == -1)
+        return false;
+    if (item == 146 && FindItemSlot(it, (EQUIP_ITEM)146, -1) != -1)
+        return false;
+    if (item == 145 && FindItemSlot(it, (EQUIP_ITEM)145, -1) != -1)
+        return false;
+    if (!CZFTSWeapon::IsM203Weapon(primary) && primary != 142 && (item == 171 || item == 173 || item == 175))
+        return false;
+    if (primary != 143 && (item == 176 || item == 178 || item == 179))
+        return false;
+    if (primary != 63 && (item == 181 || item == 182 || item == 183))
+        return false;
+    return true;
+}
+#pragma auto_inline reset
+
+}
+
+/* zwep_weapon.cpp's 0x3D3230 (not named yet): an item's weapon-menu value, what UiWeapon holds */
+extern "C" int func_003D3230(EQUIP_ITEM item);
+
+/* "CanCharactersSelectUIWeapon" (SOCOM II's command 0xCF, the UI command table's record at 0x3DE1A0;
+ * the name ours, after the table's): the item whose menu value UiWeapon holds -- the first of the
+ * items below EQUIP_END to give it -- and whether every selected character may take it. The value
+ * a local: compared in the call's expression, MW loads the valve's ahead of the call; the flag and
+ * the counter first set in the for's head, the flag first (s0 to the counter's s1, the counter's
+ * zero in the branch's delay slot) */
+bool UICanCharactersSelectUIWeapon(C2DAnimCmdHdr *hdr, float *dT)
+{
+    CValve *v = CValve::GetByName("UiWeapon");
+
+    if (!v)
+        return false;
+    int i;
+    bool found;
+
+    for (found = false, i = 0; i < 254 && !found; i++) {
+        int value = func_003D3230((EQUIP_ITEM)i);
+
+        if (value == v->m_value)
+            found = true;
+    }
+    EQUIP_ITEM item = (EQUIP_ITEM)(i - 1);
+
+    for (CSelectedCharsItr it("UiCharSet"); it.Valid(); it.Advance())
+        if (!CanTakeItem(item, it))
+            return false;
+    return true;
+}
+
 namespace {
 
 /* the item put on one selected character: none when the character has it already or carries fewer
@@ -331,6 +480,32 @@ bool ExecuteChooseDefaultEquipment(C2DAnimCmdHdr *hdr, float *dT)
     return true;
 }
 
+}
+
+/* "ChooseDefaultEquipmentOnly" (SOCOM II's command 0x8F, the UI command table's record at 0x3DDDB0;
+ * the name ours, after the table's): each selected character carrying two weapons or more given its
+ * type's default weapons -- the vector's assignment inlined, as ExecuteChooseDefaultEquipment's --
+ * its own primary and secondary set up again in the first two slots */
+bool UIChooseDefaultEquipmentOnly(C2DAnimCmdHdr *hdr, float *dT)
+{
+    for (CSelectedCharsItr it("UiCharSet"); it.Valid(); it.Advance()) {
+        if (((CCharacterWeapList *)it.m_weapons)->size() < 2)
+            continue;
+        EQUIP_ITEM primary = (*(CCharacterWeapList *)it.m_weapons)[0].m_wepId;
+        EQUIP_ITEM secondary = (*(CCharacterWeapList *)it.m_weapons)[1].m_wepId;
+        CCharacterType *type = CCharacterType::GetByNameMod(GetDefCharTypeName(it.m_index));
+        CCharacterWeapList *def = type ? (CCharacterWeapList *)type->m_weapons : 0;
+
+        if (def) {
+            *(CCharacterWeapList *)it.m_weapons = *def;
+            if (((CCharacterWeapList *)it.m_weapons)->size() >= 2) {
+                (*(CCharacterWeapList *)it.m_weapons)[0].SetupCharacterWeapon(primary);
+                (*(CCharacterWeapList *)it.m_weapons)[1].SetupCharacterWeapon(secondary);
+                UpdateCharWeaponUiVars(it.m_index);
+            }
+        }
+    }
+    return true;
 }
 
 /* the primary the argument names given to every selected character: whether all took it (SOCOM II's;

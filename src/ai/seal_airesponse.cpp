@@ -191,13 +191,19 @@ CAiSAvoid::~CAiSAvoid()
 {
 }
 
+/* an ammunition pickup's stash: its entries' count, and an entry's weapon, cartridge and rounds,
+ * false past the live ones (OVL1's CZItemStash, zwep_weapon.cpp's class: 0x3CFCF0 Count and
+ * 0x3CFD70 Get -- a view of the two members called; the pickup's data is the stash, zseal.h's
+ * CPickupAmmo only a name) */
+class CZItemStash {
+public:
+    int Count();
+    bool Get(int i, int *a, int *b, int *c);
+};
+
 extern "C" {
-/* an ammunition pickup's stash: its entries' count, and an entry's weapon, cartridge and rounds
- * (OVL1 0x3CFCF0 Count__11CZItemStashFv and 0x3CFD70 Get__11CZItemStashFiPiPiPi -- pickup_main.cpp
- * spells them so), and whether a cartridge fits a weapon (OVL1 0x3D2680, zweapon.h's
- * CZWeapon::IsLegalAmmo -- by its mangled name: this unit does not include zweapon.h) */
-int func_003CFCF0(CPickupAmmo *ammo);
-void func_003CFD70(CPickupAmmo *ammo, int index, int *weapon, int *cartridge, int *rounds);
+/* whether a cartridge fits a weapon (OVL1 0x3D2680, zweapon.h's CZWeapon::IsLegalAmmo -- by its
+ * mangled name: this unit does not include zweapon.h) */
 bool IsLegalAmmo__8CZWeaponFP6CZAmmo(CZFTSWeapon *w, CZAmmo *ammo);
 }
 
@@ -232,14 +238,14 @@ extern "C" CPickup *func_006082E0(const CPnt3D *pos, float range, CZKit *kit, CZ
     while ((p = CPickup::GetNext(it, CPickup::PU_AMMO)) != 0) {
         CPickupAmmo *ammo = p->GetAmmo();
         bool ok = false;
-        int n = func_003CFCF0(ammo);
+        int n = ((CZItemStash *)ammo)->Count();
 
         for (int i = 0; i < n; i++) {
             int weapon = 0;
             int cartridge = 0;
             int rounds = 0;
 
-            func_003CFD70(ammo, i, &weapon, &cartridge, &rounds);
+            ((CZItemStash *)ammo)->Get(i, &weapon, &cartridge, &rounds);
             if (IsLegalAmmo__8CZWeaponFP6CZAmmo(w, (CZAmmo *)cartridge) && kit->CanAddAmmo(index, rounds))
                 ok = rounds > 0;
         }
