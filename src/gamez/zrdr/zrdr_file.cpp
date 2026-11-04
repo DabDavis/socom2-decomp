@@ -2,9 +2,11 @@
  * its offsets resolved into pointers and back, freed (OVL1 0x32C670-0x32DBFF). The unit name is
  * SOCOM 1's (the press beta's asserts name a zrdr_file.cpp; SOCOM 1's demo holds CRdrFile's
  * functions in this order, ReadPacked to zrdr_free). Defined in reverse of their image order
- * (-inline deferred). Not written yet: the resolvers and packers, which recurse and inline
- * themselves (0x32CB90, 0x32CCB0, Pack at 0x32CF40, 0x32D1B0, 0x32D3C0, 0x32D840), and the
- * template pieces after zrdr_free. */
+ * (-inline deferred). The packer keeps a std::map<_zrdr *, _zrdr *> of the arrays copied (a shared
+ * array finds its owner's copy there): the map's template tail closes the unit, 0x32D780-0x32DBFF
+ * (find_or_insert, destroy, the allocators' pieces, the constructor, insert_node_at). */
+
+#include <string.h>
 
 #include "zrdr.h"
 
@@ -17,11 +19,24 @@ void _free(void *p, const char *file, int line);
 /* the packed format's version (1), what a buffer's first halfword must hold */
 extern unsigned short data_003DFF58;
 
-/* the resolvers (not written yet): the tree's offsets into pointers (A) and back (B) */
-extern "C" void func_0032CCB0(_zrdr *rdr, _zrdr *root, char *strings);
+/* the resolvers: the tree's pointers made offsets (A) and back (B) */
+void _resolveA(_zrdr *rdr, const _zrdr *root, const char *strings);
 void _resolveB(_zrdr *rdr, const _zrdr *root, const char *strings);
 /* zrdr_freearray (0x335AA0) */
 void zrdr_freearray(_zrdr *rdr);
+
+/* a packed buffer's header (ours): the format's version, whether its offsets are resolved, its
+ * strings' size, the root's offset; the strings follow */
+struct RdrHeader {
+    unsigned short version;   // 0x0
+    unsigned short flags;   // 0x2: 1, the offsets are resolved
+    unsigned int strings;   // 0x4
+    int root;   // 0x8
+};
+
+/* the arrays' sharing and the values' count (zrdr_pack.cpp) */
+void zrdr_compress(_zrdr *rdr);
+int zrdr_countarray(_zrdr *rdr);
 
 /* SOCOM 1's; it returns 0 (other units declare it void, which their calls do not see) */
 int zrdr_free(CRdrFile *file)
@@ -53,14 +68,124 @@ CRdrFile::~CRdrFile()
     m_flags = 0;
 }
 
-/* a packed buffer's header (ours): the format's version, whether its offsets are resolved, its
- * strings' size, the root's offset; the strings follow */
-struct RdrHeader {
-    unsigned short version;   // 0x0
-    unsigned short flags;   // 0x2: 1, the offsets are resolved
-    unsigned int strings;   // 0x4
-    int root;   // 0x8
-};
+/* an array's values copied to dst and the array pointed at the copy, recorded in the map by its old
+ * address; a shared array (nofree) pointed at its owner's copy instead. Each item that is an array
+ * is copied after them in turn, a string's offset moved by delta; the next free value given back
+ * (SOCOM II's grown SOCOM 1's Pack(_zrdr *, _zrdr *, int): the count left and the map new) */
+_zrdr *CRdrFile::Pack(_zrdr *rdr, _zrdr *dst, int *remaining, int delta,
+                      std::map<_zrdr *, _zrdr *> &copies)
+{
+    if (rdr->nofree)
+        rdr->array = copies[rdr->array];
+    else {
+        int n = rdr->Count();
+
+        memcpy(dst, rdr->array, n * sizeof(_zrdr));
+        copies[rdr->array] = dst;
+        rdr->array = dst;
+        dst += n;
+        *remaining -= n;
+        for (int i = 0; i < n; i++) {
+            _zrdr *item = rdr->Item(i);
+
+            switch (item->type) {
+            case ZRDR_ARRAY:
+                dst = Pack(item, dst, remaining, delta, copies);
+                break;
+            case ZRDR_STRING:
+                item->integer += delta;
+                break;
+            }
+        }
+    }
+    return dst;
+}
+
+/* SOCOM 1's _fixup, CSTable::Pack's callback for a file's tree (Pack hands it over): a string's
+ * text made the packed table's copy, an array's items in turn. SOCOM II's FindString is a virtual
+ * (util_stable.h's slot 0x10); the walk inlines itself twice, the type read straight (the second
+ * copy's test stays inline) */
+void _fixup(CSTable *table, void *data)
+{
+    _zrdr *rdr = (_zrdr *)data;
+
+    if (rdr->type == ZRDR_ARRAY) {
+        int n = rdr->Count();
+
+        for (int i = 0; i < n; i++)
+            _fixup(table, rdr->Item(i));
+    } else if (rdr->type == ZRDR_STRING)
+        rdr->string = table->FindString(rdr->string);
+}
+
+/* SOCOM 1's: the tree packed into a buffer of its own -- its equal arrays shared, its strings packed
+ * (each string value pointed at the packed copy), then the header, the strings and the values copied
+ * after them, root first, its strings' offsets moved to the new buffer; the old tree freed through a
+ * value pointed at it. The buffer's size (SOCOM II's; a packed file's own) */
+unsigned int CRdrFile::Pack()
+{
+    if (m_buffer)
+        return m_size;
+    std::map<_zrdr *, _zrdr *> copies;
+
+    zrdr_compress(this);
+    m_strings.Pack(_fixup, this);
+    int n = zrdr_countarray(this) + 1;
+    unsigned int offset = m_strings.m_bytes + sizeof(RdrHeader);
+
+    if (offset & 15)
+        offset += 16 - (offset & 15);
+    unsigned int size = offset + n * sizeof(_zrdr);
+    char *buf = (char *)_calloc(size, 1, 0, 0);
+    RdrHeader *h = (RdrHeader *)buf;
+
+    h->version = data_003DFF58;
+    h->flags = 0;
+    h->strings = m_strings.m_bytes;
+    h->root = offset;
+    int delta = m_strings.Relocate(buf + sizeof(RdrHeader), 0, false);
+    _zrdr *old = type == ZRDR_ARRAY ? array : 0;
+    _zrdr *root = (_zrdr *)(buf + offset);
+
+    *root = *this;
+    int remaining = n - 1;
+    Pack(root, root + 1, &remaining, delta, copies);
+    integer = root->integer;
+    if (m_buffer)
+        _free(m_buffer, 0, 0);
+    m_buffer = 0;
+    m_buffer = (unsigned char *)buf;
+    m_size = size;
+    _zrdr tree;
+
+    tree.array = old;
+    tree.type = ZRDR_ARRAY;
+    tree.length = length;
+    zrdr_freearray(&tree);
+    return m_size;
+}
+
+/* SOCOM 1's _resolveA, before _resolveB as there: a tree's pointers made offsets again for packing
+ * -- an array's from the tree's root, its items first unless the array lives in the buffer, a
+ * string's from the string table. It inlines itself twice, the accessors a level shorter in each
+ * copy (the second calls Type(), 0x32CF30, out of line: its copy follows this function) */
+void _resolveA(_zrdr *rdr, const _zrdr *root, const char *strings)
+{
+    switch (rdr->Type()) {
+    case ZRDR_ARRAY:
+        if (!rdr->nofree) {
+            unsigned int n = rdr->Count();
+
+            for (int i = 0; i < n; i++)
+                _resolveA(rdr->Item(i), root, strings);
+        }
+        rdr->integer -= (int)root;
+        break;
+    case ZRDR_STRING:
+        rdr->integer -= (int)strings;
+        break;
+    }
+}
 
 /* SOCOM 1's _resolveB, after Resolve as there: a packed tree's offsets made pointers -- a string's
  * into the string table (a negative offset makes the value the integer 0), an array's into the
@@ -114,7 +239,7 @@ bool CRdrFile::Resolve(bool pack)
     if (m_buffer)
         strings = (char *)(h + 1);
     if (pack) {
-        func_0032CCB0(root, root, strings);
+        _resolveA(root, root, strings);
         h->flags &= ~1;
     } else {
         if (!(h->flags & 1)) {

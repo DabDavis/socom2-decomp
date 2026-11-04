@@ -255,8 +255,13 @@ public:
 };   /* 0x58 bytes */
 
 /* the CD file system's flag that a sound stream owns the drive (SOCOM 1's static) */
-/* a file in the CD's table of contents (SOCOM 1's DWARF; util_sonyio.cpp defines it) */
-struct _FILECD;
+/* a file in the CD's table of contents (SOCOM 1's DWARF, as util_sonyio.cpp's) */
+struct _FILECD {
+    char *name;                 // 0x0
+    unsigned int startSector;   // 0x4
+    unsigned int endSector;     // 0x8
+    unsigned int sectorSize;    // 0xc
+};
 
 class CFileCD {
 public:

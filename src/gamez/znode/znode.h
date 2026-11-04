@@ -197,7 +197,7 @@ public:
     /* the edges a point's vertical crosses, their count; the two edge points through a point
      * (SOCOM 1's) */
     int GetEdgeIntersectsY(CPnt3D *p, CPnt3D *out);
-    bool GetEdgeIntersects(CPnt3D *p, CPnt3D *a, CPnt3D *b);
+    int GetEdgeIntersects(CPnt3D *p, CPnt3D *a, CPnt3D *b);
 
     CPnt4D *m_pnts;   // 0x10: its points, 16 bytes each (Allocate mallocs them; the name ours)
 };
@@ -1934,6 +1934,9 @@ class CAssetList;
 class CWorld : public CNode {
 public:
     static CWorld *m_world;
+    /* the world's scale (SOCOM 1's static, 0x3DFE10 in data.txt; zwep_reader.cpp and seal_dyn.cpp
+     * read it as data_003DFE10) */
+    static float m_scale;
     /* a texture's handle by name, from the asset manager's list (SOCOM 1's four words, out of
      * line at 0x1EC940; the wep lane's) */
     static CTexHandle *GetTexHandle(const char *name);

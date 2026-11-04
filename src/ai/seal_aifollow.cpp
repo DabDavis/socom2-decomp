@@ -143,7 +143,7 @@ void CAiSFollow::SetOffset(const int *cells)
 }
 
 /* (OVL2 0x5FD050; CSealCtrlAi::OnCommand and the squad's formation, 0x5EB6D0, call it) */
-void CAiSFollow::SetFormation(signed char formation, int slot)
+void CAiSFollow::SetFormation(UNIT_FORMATION formation, int slot)
 {
     m_70 = slot;
     m_74 = formation;

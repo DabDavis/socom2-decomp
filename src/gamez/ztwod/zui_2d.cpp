@@ -314,6 +314,14 @@ public:
     }
 };
 
+/* a progress bar's spec (zui_spec.h's CHProgressBarSpec: an image's, then a string -- SOCOM 1's at
+ * 0x20, SOCOM II's at 0x28; the name ours) */
+class CHProgressBarSpec : public CImageSpec {
+public:
+    unsigned char _24[0x28 - 0x24];
+    CSaferStr m_text;   // 0x28
+};
+
 class CTextSpec : public CDlgObjSpec {
 public:
     /* the colour by value (ours: the target copies it through a return slot on the stack) */
@@ -609,6 +617,8 @@ public:
     virtual void Draw(const CMatrix &m, zdb::CTextureRelocMgr *mgr);
     virtual void Tick(float dT);
     virtual void UpdateUIVar(CUIVariable *var);
+    /* a slot of its own, +0x84 (zui_2d.h's) */
+    virtual void LoadSpec(const CHProgressBarSpec &spec, zdb::CTexHandle *tex);
 
     float m_fill;   // 0xa0: 0 to 1
     int m_width;   // 0xa4: the full bar's width (Draw converts it)
@@ -648,16 +658,17 @@ public:
     virtual bool TickZAnimCmd(_zanim_cmd_hdr *hdr, float *dT, bool *done);
     virtual int GetZAnimCmdType(const char *name);
 
-    /* the strip's two refreshes after a new choice (SOCOM II's: SOCOM 1 walked the buttons inline;
-     * 0x370D10, the name ours, and 0x370DB0, no row named yet) */
+    virtual bool HandlePad(const CPad *pad, int port);
+    /* the strip's two refreshes after a new choice: its buttons shown (SOCOM II's, 0x370D10, the name
+     * ours) and its check boxes set (SOCOM 1's PressActive, 0x370DB0) */
     void ShowChoice();
+    void PressActive();
     void LoadSpec(const CRadioStripSpec *spec, zdb::CTexHandle *tex);
 
     int m_choice;   // 0x440
     bool m_444;   // 0x444: set by LoadSpec (SOCOM 1's at 0x414)
 } __attribute__((aligned(16)));   // 0x450 bytes
 
-extern "C" void func_00370DB0(CRadioStrip *strip);
 
 /* a counting string (SOCOM 1's C2DCounter; zui_2d.h's layout: 0xD8 bytes), its destructor declared
  * first for the same reason */
@@ -1004,6 +1015,21 @@ void CHProgressBar::UpdateUIVar(CUIVariable *var)
 }
 
 /* slot 12: filled at its rate, to full */
+/* set up from its spec (SOCOM 1's CHProgressBar::LoadSpec, 0x38B890 there): the plain bitmap's own
+ * (the pulse, the spec's variable watched, the bitmap loaded), the variable watched again, the
+ * full width the spec's, empty, and the spec's text kept */
+void CHProgressBar::LoadSpec(const CHProgressBarSpec &spec, zdb::CTexHandle *tex)
+{
+    CPlainBmp::LoadSpec(spec, tex);
+    CUIVariable *var = spec.GetUIVar();
+
+    if (var)
+        WatchUIVar(var);
+    m_width = spec.m_sizex;
+    m_fill = 0.0f;
+    m_str = spec.m_text.c_str();
+}
+
 void CHProgressBar::Tick(float dT)
 {
     m_fill += dT / m_time;
@@ -1394,7 +1420,7 @@ bool CRadioStrip::TickZAnimCmd(_zanim_cmd_hdr *hdr, float *dT, bool *done)
         if (choice >= 0 && choice <= size() - 1) {
             m_choice = choice;
             ShowChoice();
-            func_00370DB0(this);
+            PressActive();
         }
         *done = true;
         handled = true;
@@ -2255,6 +2281,8 @@ public:
     /* an item added with the box's font and scale: at the end, or (any other `where`) before the
      * highlighted row (SOCOM II's, 0x373F20, the name ours: UpdateUIVar and 0x372980 call it) */
     void AddItem(ListItem *item, int where);
+    /* slot 24 of its table 0x407670: the box's eleven commands after C2D's (0x373640) */
+    int GetZAnimCmdType(const char *name);
 
     unsigned char _0[0xa0];
     C2DFont *m_font;   // 0xa0
@@ -2297,6 +2325,46 @@ void CUIListBox::AddItem(ListItem *item, int where)
             ++it;
         m_items.insert(it, item);
     }
+}
+
+/* the box's commands (SOCOM 1's CUIListBox::GetZAnimCmdType: its eleven names after C2D's, which
+ * C2D's inline lookup counts and falls back to; RemoveAllItems takes 11 and GetContents 10, tested
+ * in that order) */
+/* C2D's own lookup, inline (ztwod.h's: the null name its count) */
+static inline int C2DCmdType(const char *name)
+{
+    return GetUICommandType(0);
+}
+
+int CUIListBox::GetZAnimCmdType(const char *name)
+{
+    if (!name)
+        return C2DCmdType(0) + 12;
+    if (!*name)
+        return 0;
+    if (!strcasecmp("Finish", name))
+        return C2DCmdType(0) + 1;
+    if (!strcasecmp("Highlight_on", name))
+        return C2DCmdType(0) + 2;
+    if (!strcasecmp("Highlight_off", name))
+        return C2DCmdType(0) + 3;
+    if (!strcasecmp("Has_Items", name))
+        return C2DCmdType(0) + 4;
+    if (!strcasecmp("GetItemCount", name))
+        return C2DCmdType(0) + 5;
+    if (!strcasecmp("GetFocusIndex", name))
+        return C2DCmdType(0) + 6;
+    if (!strcasecmp("SetFocusIndex", name))
+        return C2DCmdType(0) + 7;
+    if (!strcasecmp("AddItem", name))
+        return C2DCmdType(0) + 8;
+    if (!strcasecmp("RemoveItem", name))
+        return C2DCmdType(0) + 9;
+    if (!strcasecmp("RemoveAllItems", name))
+        return C2DCmdType(0) + 11;
+    if (!strcasecmp("GetContents", name))
+        return C2DCmdType(0) + 10;
+    return C2DCmdType(name);
 }
 
 namespace {
@@ -2904,6 +2972,35 @@ CTeleType::~CTeleType()
 {
 }
 
+/* the strip's check boxes set to the choice: each checked one but the chosen unchecked, its second
+ * action run, then the chosen one checked, its first action run (SOCOM 1's CRadioStrip::PressActive,
+ * 0x38A880 there: the same two walks; SOCOM II's pad handler calls ShowChoice first) */
+void CRadioStrip::PressActive()
+{
+    int n = 0;
+    iterator e = end();
+    iterator i = begin();
+
+    for (; i != e; ++i, ++n) {
+        CCheckBox *box = (CCheckBox *)*i;
+
+        if (box && box->m_checked && n != m_choice) {
+            box->m_checked = false;
+            box->m_action1.Run();
+        }
+    }
+    n = 0;
+    iterator e2 = end();
+    for (i = begin(); i != e2; ++i, ++n) {
+        CCheckBox *box = (CCheckBox *)*i;
+
+        if (box && !box->m_checked && n == m_choice) {
+            box->m_checked = true;
+            box->m_action0.Run();
+        }
+    }
+}
+
 /* the strip's buttons shown, the chosen one active and the others normal (SOCOM II's; called out of
  * line by the command tick and the pad's handler: pinned; the end declared before the walk's
  * iterator, or the two trade saved registers) */
@@ -3137,6 +3234,46 @@ bool CPopUpDialog::HandlePad(const CPad *pad, int port)
         }
     }
     return true;
+}
+
+/* slot 15: while it takes input, left steps the choice back and right or cross on, round the
+ * strip; the buttons shown, the check boxes set and the selection sound played -- taken (SOCOM 1's
+ * CRadioStrip::HandlePad, 0x38AA70 there, with SOCOM II's ShowChoice before PressActive) */
+bool CRadioStrip::HandlePad(const CPad *pad, int port)
+{
+    if (!CanHandleInput())
+        return false;
+    if (pad->m_state[3] == 1) {   // left
+        if (m_choice == 0)
+            m_choice = size() - 1;
+        else
+            m_choice--;
+        ShowChoice();
+        PressActive();
+        PlaySelectionSound();
+        return true;
+    }
+    if (pad->m_state[2] == 1) {   // right
+        if (m_choice >= size() - 1)
+            m_choice = 0;
+        else
+            m_choice++;
+        ShowChoice();
+        PressActive();
+        PlaySelectionSound();
+        return true;
+    }
+    if (pad->m_state[9] == 1) {   // cross
+        if (m_choice >= size() - 1)
+            m_choice = 0;
+        else
+            m_choice++;
+        ShowChoice();
+        PressActive();
+        PlaySelectionSound();
+        return true;
+    }
+    return false;
 }
 
 /* set up from its spec: the button's own (SOCOM 1's CHandlerButton::LoadSpec, 0x38EC90 there,

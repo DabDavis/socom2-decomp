@@ -10,9 +10,11 @@
  * a destructor takes (this, short) and runs complete with -1; the element count and size are
  * size_t; the partial-array destructor's five words sit at sp+144 in __construct_array.
  *
- * THE COMPILER (README "MAIN's Metrowerks runtime"): a 3.0b38-or-later build -- __destroy_arr and
- * __destroy_new_array are byte-exact only under 3.0b22-020926, 3.0b38, 3.0b50 and 3.0b52, and
- * __initialize_cpp_rts's short-loop nops rule out 3.0b22-020926; the game's 3.0b52 here. The
+ * THE COMPILER (README "MAIN's Metrowerks runtime"): 3.0b50 or 3.0b52 -- __destroy_arr and
+ * __destroy_new_array are byte-exact only under 3.0b22-020926, 3.0b38, 3.0b50 and 3.0b52,
+ * __initialize_cpp_rts's short-loop nops rule out 3.0b22-020926, and round 7: ExceptionMIPS.cpp's
+ * __PopStackFrame 0x184340 rules out 3.0b38 (0x2A8 there against the target's 0x2B8; the whole
+ * runtime is alike under b50 and b52, build/scratch/rt/r7/cmpbuilds.py); the game's 3.0b52 here. The
  * game's flags but -Cpp_exceptions ON: with it off, std::terminate and std::unexpected become
  * tail calls (`jr v0`, 9 words off); the target keeps their frames. */
 

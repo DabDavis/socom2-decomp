@@ -9,11 +9,11 @@
  * grid_clutter.cpp's and int_material.cpp's in the table). SOCOM 1 names no file for
  * these functions (the beta's int_main.cpp asserts end at DiIntersect(n), before SetCDIBBox); the
  * unit's name is ours. Written so far: the shapes' constructors and destructors,
- * CDIBBox::GetAltitude, SetEdgeVecsAndNorm and GetBBoxCorners. Unwritten, in image order:
- * SetCDIBBox, CDIBBox::GetIntersect, 0x2DD130 (the polygon's first three points loaded on VU0,
- * vcallms 0x70: new), CDIPoly::GetIntersect, DiIntersect::LoadTipAndTail (0x2DD210),
- * GetEdgeIntersectsY, GetEdgeIntersects, intersect2d (0x2DD690) and CDIPoly::GetAltitude -- VU0 code
- * throughout. Defined in reverse of their image order (-inline deferred). */
+ * CDIBBox::GetAltitude, SetEdgeVecsAndNorm, LoadPlaneVU0, GetBBoxCorners and (round 10) the edge
+ * queries GetEdgeIntersectsY, GetEdgeIntersects and intersect2d (0x2DD690), and
+ * DiIntersect::LoadTipAndTail (0x2DD210) and CDIPoly::GetIntersect (both open). Unwritten, in
+ * image order: SetCDIBBox, CDIBBox::GetIntersect and CDIPoly::GetAltitude -- VU0 code throughout.
+ * Defined in reverse of their image order (-inline deferred). */
 
 #include "node_world.h"
 
@@ -45,6 +45,171 @@ CDIBBox::CDIBBox()
 CDIBBox::~CDIBBox()
 {
     Free();
+}
+
+}
+
+/* where the point falls along the edge from a to b, measured in the xz plane: its projection
+ * onto the edge past either end (beyond a -1e-5 tolerance) is no crossing; at an end, the end
+ * itself goes into out, still no crossing; between them the point on the edge at that fraction
+ * goes into out (SOCOM 1's intersect2d, the same Sub calls, tolerance and frame). The two
+ * projections declared first (numbered before the points: s takes $f21, the edge's z -- read into a
+ * local ahead of the second Sub, as the target loads it -- and t share $f20) */
+bool intersect2d(const CPnt3D *p, const CPnt3D *a, const CPnt3D *b, CPnt3D *out)
+{
+    float s, t;
+    CPnt3D e = *b - *a;
+    float ez = e.z;
+    CPnt3D d = *p - *a;
+    s = e.x * d.x + ez * d.z;
+
+    if (s < -1e-5f)
+        return false;
+    if (s <= 0.0f) {
+        *out = *a;
+        return false;
+    }
+    CPnt3D d2 = *p - *b;
+    t = -(e.x * d2.x + ez * d2.z);
+
+    if (t < -1e-5f)
+        return false;
+    if (t <= 0.0f) {
+        *out = *b;
+        return false;
+    }
+    *out = *a + (*b - *a) * (s / (t + s));
+    return true;
+}
+
+namespace zdb {
+
+/* the ray against the polygon, edge by edge on VU0 (the tip and tail already loaded): the last
+ * point and the first through the microprogram at 0x10, then each next point through 0x20 -- its
+ * result, the hit point with a word at 12 the program zeroes for a miss, into the next hit's slot,
+ * and from 0x20 the plane's normal into the slot's +0x10 -- whether every edge kept the hit (SOCOM
+ * 1's, slimmed: SOCOM II syncs once a call and leaves the poly and count to the caller).
+ * OPEN, 0xB0 against 0xC0: every instruction is the target's but the registers (p a3, the normal's
+ * address a1 and the count v1 where the target has a1, v1 and a3), the order of the result's lwc1
+ * and the zero's mtc1 (the target loads first, then a nop before c.eq.s, at both tests) and the two
+ * loop-label pads that follow. GCC-style asm (the lwc1 inside or outside) and these asm blocks
+ * compile alike; the normal's address hoisted to a local and `p + n - 1` give the target's set-up */
+int CDIPoly::GetIntersect(DiIntersect *di)
+{
+    IntersectStruct *is = &di->m_Intersects[di->m_Cnt];
+    CPnt3D *norm = &is->m_norm;
+    int n = m_flags.m_ptcount;
+    CPnt4D *p = m_pnts;
+    CPnt4D *last = p + n - 1;
+    float w;
+
+    asm volatile {
+        lqc2 vf4, 0(last)
+        lqc2 vf5, 0(p)
+        vcallms 0x10
+        qmtc2.i a0, vf0
+        sqc2 vf29, 0(is)
+        lwc1 w, 12(is)
+    }
+    if (w == 0.0f)
+        return 0;
+    do {
+        p++;
+        asm volatile {
+            vadd.xyz vf4, vf5, vf0
+            lqc2 vf5, 0(p)
+            vcallms 0x20
+            qmtc2.i a0, vf0
+            sqc2 vf29, 0(is)
+            sqc2 vf3, 0(norm)
+            lwc1 w, 12(is)
+        }
+        if (w == 0.0f)
+            return 0;
+    } while (--n);
+    return 1;
+}
+
+/* the model-space tip and tail as points (w 1), the tail's w then the back-face mask's bits, loaded
+ * into VU0 -- the tip in vf1, the tail in vf2 -- for the polygon queries' microprograms (SOCOM 1's,
+ * which wrote the pair to VU0's data memory instead).
+ * OPEN, 5 instructions (the right size, every store in the target's order): the mask's load and the
+ * 1.0f constant trade v1/a1 (the target loads the mask into a1). The asm's operands listed tail
+ * first fixed the address pair; tried for the rest (build/scratch/core/v_ltt*.py): the mask in a
+ * const or plain local (top, middle, a dead first definition), the 1.0f in a local before or after,
+ * the w through an int pointer, an int array index, unsigned, a float cast, tip built first */
+void DiIntersect::LoadTipAndTail()
+{
+    CPnt4D tip, tail;
+
+    tail = CPnt4D(m_MTail.x, m_MTail.y, m_MTail.z, 1.0f);
+    *(int *)&tail.w = CDI::m_backface_mask;
+    tip = CPnt4D(m_MTip.x, m_MTip.y, m_MTip.z, 1.0f);
+    asm __volatile__ (
+        "lqc2 $vf1, 0(%1)\n"
+        "lqc2 $vf2, 0(%0)\n"
+        : : "r"(&tail), "r"(&tip) : "memory");
+}
+
+/* a polygon point as a CPnt3D (its w ignored; ours) */
+inline CPnt3D &Pnt3(CPnt4D &p) { return *(CPnt3D *)&p; }
+
+/* the polygon's edges whose height range holds the point's (each edge from the previous point, up
+ * or down), the point at that height on each kept in out -- the edge's first point when the edge is
+ * level; how many (SOCOM 1's) */
+int CDI::GetEdgeIntersectsY(CPnt3D *p, CPnt3D *out)
+{
+    if (m_flags.m_ptcount < 3)
+        return 0;
+    int count = 0;
+    int prev = m_flags.m_ptcount - 1;
+    int i = 0;
+
+    do {
+        if ((p->y > m_pnts[prev].y && p->y <= m_pnts[i].y) ||
+            (p->y >= m_pnts[i].y && p->y < m_pnts[prev].y)) {
+            float d = m_pnts[i].y - m_pnts[prev].y;
+
+            if (d == 0.0f)
+                out[count++] = Pnt3(m_pnts[prev]);
+            else
+                out[count++] = Pnt3(m_pnts[prev]) +
+                               (Pnt3(m_pnts[i]) - Pnt3(m_pnts[prev])) * ((p->y - m_pnts[prev].y) / d);
+        }
+        prev = i;
+    } while (++i < m_flags.m_ptcount);
+    return count;
+}
+
+/* the polygon's edges the point's line crosses (each edge from the previous point), their
+ * crossings kept -- at most four -- and the highest and the lowest of them handed back; how many
+ * (SOCOM 1's: the count read in place, no local -- an int local adds an andi -- and re-read at each
+ * pass of a do/while, which has no entry test; the second walk reuses the first's counter) */
+int CDI::GetEdgeIntersects(CPnt3D *p, CPnt3D *hi, CPnt3D *lo)
+{
+    if (m_flags.m_ptcount < 3)
+        return 0;
+    CPnt3D pts[4];
+    int count = 0;
+    int prev = m_flags.m_ptcount - 1;
+    int i = 0;
+
+    do {
+        if (intersect2d(p, (CPnt3D *)&m_pnts[prev], (CPnt3D *)&m_pnts[i], &pts[count]))
+            count++;
+        prev = i;
+    } while (++i < m_flags.m_ptcount);
+    if (count == 0)
+        return 0;
+    *hi = pts[0];
+    *lo = pts[0];
+    for (i = 1; i < count; i++) {
+        if (pts[i].y > hi->y)
+            *hi = pts[i];
+        if (pts[i].y < lo->y)
+            *lo = pts[i];
+    }
+    return count;
 }
 
 /* (hand-written VU0 code, an asm function: the points' pointer at 0x10, three quadwords) */
