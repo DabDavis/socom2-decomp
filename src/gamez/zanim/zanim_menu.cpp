@@ -1227,13 +1227,13 @@ bool UIGetClan(C2DAnimCmdHdr *hdr, float *dT)
 
 bool UIClearCareerStats(C2DAnimCmdHdr *hdr, float *dT)
 {
-    func_002A3E20(data_00437E30);
+    ((CCareerStats *)data_00437E30)->Clear();
     return true;
 }
 
 bool UISetCareerStatsUIVars(C2DAnimCmdHdr *hdr, float *dT)
 {
-    func_002A3BC0(data_00437E30);
+    ((CCareerStats *)data_00437E30)->SetUIVars();
     return true;
 }
 
@@ -1623,7 +1623,7 @@ bool UIAdvanceMPMission(C2DAnimCmdHdr *hdr, float *dT)
             index = func_002C8DB0(&data_00441650, atoi(current + 2), 1)->m_index;
         }
         if (index == 255)
-            index = func_002C8840(&data_00441650, 1)->m_index;
+            index = static_cast<CMultiMissionList &>(data_00441650).GetRandom(true)->m_index;
         if (index > 0) {
             sprintf(name, "mp%d", index);
             strcpy(database, name);
