@@ -25,11 +25,13 @@
 unsigned int SkbRdrCount(_zrdr *rdr);
 void SkbForgetDisplay();
 extern "C" {
-void func_00398FC0();
-void func_003958D0(zdb::CNode *node, zdb::CTextureRelocMgr *mgr, C2DFont *font, void (*callback)());
+void func_00398FC0(zdb::CNode *node, zdb::CTextureRelocMgr *mgr);
 void func_003997F0();
 void func_0039AD10();
 }
+/* the keyboards' shared display built with the key units' callback (zui_skbview.cpp's, 0x3958D0) */
+void SkbPrepDisplay(zdb::CNode *parent, zdb::CTextureRelocMgr *mgr, C2DFont *font,
+                    void (*prep)(zdb::CNode *node, zdb::CTextureRelocMgr *mgr));
 
 namespace {
 
@@ -95,7 +97,7 @@ void InvalidateSkbsDisplay()
 void PrepSkbsForDisplay(zdb::CNode *node, zdb::CTextureRelocMgr *mgr, C2DFont *font)
 {
     g_pActiveSkb = 0;
-    func_003958D0(node, mgr, font, func_00398FC0);
+    SkbPrepDisplay(node, mgr, font, func_00398FC0);
     for (int i = 0; i < g_arrSkbs.size(); i++)
         g_arrSkbs[i]->PrepForDisplay(mgr, font);
 }
@@ -215,12 +217,13 @@ void func_0038B8A0(CSoftKeyboard *skb, int x, int y);
 }
 
 /* (the units after this one, by address: the keyboard's captions and text shown with its fonts and
- * the text (0x398EA0), its key caps (0x395540); zui.cpp's menu fade, 0x36A210) */
+ * the text (0x398EA0); zui.cpp's menu fade, 0x36A210) */
 extern "C" {
 void func_00398EA0(CSoftKeyboard *skb, CSkbFonts *fonts, const char *text);
-void func_00395540(CSoftKeyboard *skb, C2DFont *font);
 void func_0036A210(float t);
 }
+/* the display set going as the keyboard opens (zui_skbview.cpp's, 0x395540) */
+void SkbStartDisplay(CSoftKeyboard *skb, C2DFont *font);
 
 /* the keyboard shown with a text, unless one is showing: its cursor at its start position, its
  * node lists laid out, its text, captions and caps made, its node on, the active one, its first
@@ -238,7 +241,7 @@ void CSoftKeyboard::ShowSkb(const char *text)
         func_0038B8A0(this, x, func_0038B530(&pos) - 1);
         SkbSetKeyTextures(m_17c, m_180, m_texLists.m_lists, this);
         func_00398EA0(this, &m_fonts, text);
-        func_00395540(this, &m_fonts.m_fonts[1]);
+        SkbStartDisplay(this, &m_fonts.m_fonts[1]);
         m_node->SetActive(true);
         g_pActiveSkb = this;
         ShowElements(0);
@@ -378,10 +381,11 @@ extern "C" {
  * key handler (0x38DFE0) */
 int func_003949C0(CSoftKeyboard *skb);
 int func_003978C0();
-int func_00396EC0();
 void func_00398BB0();
 
 }
+/* whether the display is busy scaling (the display unit's SkbScaling, 0x396EC0) */
+bool SkbScaling();
 /* the keyboard's scaling stepped, 1 scaled up, 2 scaled down (the display unit's SkbScale) */
 unsigned char SkbScale(CSoftKeyboard *skb, float dT);
 
@@ -440,7 +444,7 @@ void SkbTick(CGameMenu *menu, bool input, float dT)
         }
         CSoftKeyboard *skb = g_pActiveSkb;
 
-        if (!func_00396EC0() && skb->m_480.m_node) {
+        if (!SkbScaling() && skb->m_480.m_node) {
             bool on = KeyboardAttached();
 
             if (skb->m_480.m_node)
@@ -569,6 +573,65 @@ void SkbMoveCursor(CSoftKeyboard *skb, unsigned char dir)
 static inline bool IsNone(int n)
 {
     return !n;
+}
+
+/* the key rows shown for the piece list in use (the display unit's, 0x394520) */
+void SkbShowKeyRows(CPad *pad, CSoftKeyboard *skb, bool row2);
+/* the text cursor's or the composition's back step (zui_skbkeys.cpp's, 0x399C20) */
+void SkbTypeOrBack(CSoftKeyboard *skb);
+/* a key read this frame (zin_keyboard.cpp's KeyInput, 32 bytes) and its reader */
+struct KeyInput {
+    unsigned char code;
+    int shift;
+    int ctrl;
+    int alt;
+    int _10;
+    int caps;
+    int _18[2];
+};
+int GetKeyReadThisFrame(KeyInput *key);
+extern "C" {
+/* the USB keyboard's key handled (0x38C630, not written yet) */
+void func_0038C630(CSoftKeyboard *skb, CGameMenu *menu, KeyInput *key);
+}
+/* the other edit string selected (zui_skbkeys.cpp's, 0x399100) */
+void SkbToggleTextSel(CSoftKeyboard *skb);
+
+/* the pad's buttons handled, while the keyboard is not scaling: cross pressed and let go presses
+ * and lights the cursor's key, circle enters, triangle closes (the menu's event 29 run first), R1
+ * toggles the second lock, square types or steps back, select toggles; L1 pressed or let go shows
+ * the shifted keys; then the USB keyboard's keys read this frame (0x38C990; ours: SOCOM 1's
+ * HandleInput did it all in one) */
+void CSoftKeyboard::HandlePad(CPad *pad, CGameMenu *menu)
+{
+    if (SkbScaling())
+        return;
+    if (pad->m_state[PAD_CROSS] == KEY_FALLING) {
+        void (C2DButton::*pressed)() = &C2DButton::Slot27;
+
+        SetCurKeyState(pressed);
+    } else if (pad->m_state[PAD_CROSS] == KEY_RISING) {
+        void (C2DButton::*active)() = &C2DButton::SetActive;
+
+        SetCurKeyState(active);
+    } else if (pad->m_state[PAD_CIRCLE] == KEY_FALLING)
+        OnEnterKey(menu);
+    else if (pad->m_state[PAD_TRIANGLE] == KEY_FALLING) {
+        menu->RunEventAnim((ActionItem::EVENT)29, 0);
+        ShutdownBegin(menu);
+    } else if (pad->m_state[PAD_TRIGGER_R1] == KEY_FALLING) {
+        SkbToggleLock2();
+        SkbShowKeyRows(pad, this, m_174);
+    } else if (pad->m_state[PAD_SQUARE] == KEY_FALLING)
+        SkbTypeOrBack(this);
+    else if (pad->m_state[PAD_SELECT] == KEY_FALLING)
+        SkbToggleTextSel(this);
+    if (pad->m_state[PAD_TRIGGER_L1] == KEY_FALLING || pad->m_state[PAD_TRIGGER_L1] == KEY_RISING)
+        SkbShowKeyRows(pad, this, m_174);
+    KeyInput key;
+
+    while (GetKeyReadThisFrame(&key))
+        func_0038C630(this, menu, &key);
 }
 
 /* the enter key: nothing while 0x3999D0 says so; an unchanged string (when that counts) or an

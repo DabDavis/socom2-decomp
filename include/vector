@@ -1397,7 +1397,16 @@ T *__vector_imp<T, Allocator, IsPOD>::erase(T *position)
  *    remaining first-population inserts need the else loop's cursor below the end as well). Both
  *    populations compile the same in-place code; only the cut construct() separates them, and no
  *    declared, scalarised or split variable tried takes a number before m in one and after it in the
- *    other */
+ *    other.
+ *    The MSL headers round 22 (the calls each target makes, build/p22/mdis.py -c, untracked): the
+ *    second population is not the one whose copy_backward is called -- AcctRecord 0x2FE3E0 and
+ *    CVehicleRdrEntry 0x534630 inline copy_backward and fill_n (their only calls are placement new,
+ *    the copy constructor, new/delete and the error path), CTurretDef 0x3ABD90, zrdr_sym 0x3325E0 and
+ *    CDlgDesignModel 0x384ED0 call __copy_backward and __fill_n -- so the end's number there cannot
+ *    come from whether copy_backward's result temporary exists: with it inlined (AcctRecord) the
+ *    object form merges e.m_p into that temporary as in the first population and the target still
+ *    wants the end before m. What the five share is the one-level construct() alone (its two
+ *    parameters an inliner's temporaries, placement new and the copy constructor calls) */
 template <class T, class Allocator, bool IsPOD>
 void __vector_imp<T, Allocator, IsPOD>::insert(T *position, unsigned int n, const T &x)
 {

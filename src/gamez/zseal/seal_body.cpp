@@ -5,6 +5,17 @@
 
 #include "zseal.h"
 
+/* an animation set (anim.cpp's, the kit lane's, which declares the whole class: only the members
+ * called here -- their rows named, OVL2 0x5E3B20-0x5E3E80) */
+class AnimSet {
+public:
+    int AnimId(AnimType type) const;
+    CZSIScriptCommon *GetVariantScript(AnimType type, int kind, int index);
+    CZSIScriptCommon *GetScript(AnimType type);
+    CZSIScriptCommon *GetScript(AnimType type, int kind);
+    int GetVariantIndex(AnimType type, int kind, int anim);
+};
+
 /* THE UNIT'S STATICS, in the order its initialiser builds them (__sinit_seal_body.cpp, OVL2 0x668940):
  * three offsets new in SOCOM II (OVL2 data 0x65D008, 0x65D018, 0x65D028: the crouched pickup's,
  * StabBuddy's and RestrainBuddy's, each read by that function alone -- the names ours), the climbs'
@@ -50,8 +61,6 @@ extern "C" bool func_0058A470(CZSealBody *seal, AnimType type)
 }
 
 extern "C" {
-/* (OVL2 0x5E3C20, anim.cpp's, not written yet: an anim id's script for a weapon, or none) */
-CZSIScriptCommon *func_005E3C20(AnimSet *set, short id, short weapon);
 void *func_00555170(void *v);
 }
 
@@ -72,10 +81,10 @@ extern "C" bool func_0057D710(CZSealBody *seal, short weapon)
     for (int i = stack->m_top; i >= 0; i--) {
         ACTIVE_ANIM *rep = BlendAt(stack, i)->Representative();
         short id = rep->m_id;
-        CZSIScriptCommon *anim = func_005E3C20(seal->m_animset, id, seal->m_weapon_id);
+        CZSIScriptCommon *anim = seal->m_animset->GetScript((AnimType)id, seal->m_weapon_id);
 
         if (!anim)
-            anim = func_005E3C20(seal->m_animset, id, 0);
+            anim = seal->m_animset->GetScript((AnimType)id, 0);
         if (anim)
             rep->m_anim = anim;
     }
@@ -1162,10 +1171,6 @@ CZBodyAnimBlend *CZSealBody::Hang_0(int stance, int n)
     return b;
 }
 
-extern "C" {
-/* an anim set's script for a type (OVL2 0x5E3D90, anim.cpp's: 0x5E3C20 with no weapon) */
-CZSIScriptCommon *func_005E3D90(AnimSet *set, AnimType type);
-}
 
 /* a climb blended by its height: the medium climb's blend pushed, its list filled with anim 42 at a
  * weight falling from 1 at 12 to 0 at 26.5 and the medium climb at the rest (OVL2 0x581110: SOCOM 1's
@@ -1183,13 +1188,13 @@ CZBodyAnimBlend *CZSealBody::BlendedClimb(float h)
     else
         w = 1.0f - (h - 12.0f) / 14.5f;
     if (w > 0.0f) {
-        ACTIVE_ANIM *a = m_active_anim_pool.GetActiveAnim(func_005E3D90(m_animset, (AnimType)42), -1);
+        ACTIVE_ANIM *a = m_active_anim_pool.GetActiveAnim(m_animset->GetScript((AnimType)42), -1);
 
         a->m_id = 42;
         PushAnim(&newanims, a, w);
     }
     if (w < 1.0f) {
-        ACTIVE_ANIM *a = m_active_anim_pool.GetActiveAnim(func_005E3D90(m_animset, (AnimType)AnimTypes::ClimbMedium), -1);
+        ACTIVE_ANIM *a = m_active_anim_pool.GetActiveAnim(m_animset->GetScript((AnimType)AnimTypes::ClimbMedium), -1);
 
         a->m_id = AnimTypes::ClimbMedium;
         PushAnim(&newanims, a, 1.0f - w);
@@ -1487,10 +1492,8 @@ extern "C" unsigned short func_0058A920(unsigned short flags, unsigned short bit
 #pragma auto_inline reset
 
 extern "C" {
-/* an animation set the SEALs share (OVL1 bss 0x44D408) and a set's anim of a type, negative for none
- * (OVL2 0x5E3E80, the kit lane's range) */
+/* an animation set the SEALs share (OVL1 bss 0x44D408) */
 extern AnimSet *data_0044D408;
-int func_005E3E80(AnimSet *set, int type);
 }
 
 extern "C" {
@@ -1578,9 +1581,9 @@ extern "C" bool func_005857E0(CZSealBody *seal)
 {
     if (((const CZSealBody *)seal)->m_animset == data_0044D408)
         return true;
-    if (func_005E3E80(SetOf(seal), 18) < 0)
+    if (SetOf(seal)->AnimId((AnimType)18) < 0)
         return false;
-    if (func_005E3E80(SetOf(seal), 84) < 0)
+    if (SetOf(seal)->AnimId((AnimType)84) < 0)
         return false;
     if (seal->m_inwater && !(seal->m_waterdepth <= 8.5f))
         return false;
@@ -1660,12 +1663,8 @@ extern "C" bool func_0057DDF0(CZSealBody *seal, CZSealBody *other)
 }
 
 extern "C" {
-/* an anim type read as a variable (OVL1 data, -1 in the image) and AnimSet's variant pick and the
- * script of a variant (OVL2 0x5E3DA0, GetVariantIndex__7AnimSetF8AnimTypeii, and 0x5E3B20: anim.cpp's,
- * the kit lane's -- AnimSet is declared there alone) */
+/* an anim type read as a variable (OVL1 data, -1 in the image) */
 extern short data_003DF130;
-int func_005E3DA0(AnimSet *set, AnimType type, int kind, int anim);
-CZSIScriptCommon *func_005E3B20(AnimSet *set, AnimType type, int kind, int variant);
 }
 
 /* the anim of 0x3DF130 pushed over the base stance, kind 13, at a variant of the held weapon's --
@@ -1687,9 +1686,9 @@ extern "C" CZBodyAnimBlend *func_0057DCC0(CZSealBody *seal, int variant)
     rep = b->Representative();
 
     if (variant < 0)
-        variant = func_005E3DA0(seal->m_animset, (AnimType)data_003DF130, seal->m_weapon_id,
-                                rep->m_anim->m_id);
-    rep->m_anim = func_005E3B20(seal->m_animset, (AnimType)data_003DF130, seal->m_weapon_id, variant);
+        variant = seal->m_animset->GetVariantIndex((AnimType)data_003DF130, seal->m_weapon_id,
+                                                    rep->m_anim->m_id);
+    rep->m_anim = seal->m_animset->GetVariantScript((AnimType)data_003DF130, seal->m_weapon_id, variant);
     if (theNetwork.m_9 && !seal->IsRemote())
         func_002BBAF0(seal->m_id, 34, variant, false, 12);
     return b;
@@ -1703,16 +1702,13 @@ extern "C" void *func_0057DC80(CZSealBody *seal)
     return func_00555170((char *)seal + 0x1c0);
 }
 
-/* CBody::BodySetState (OVL1 0x28DFB0, the body lane's: the state stored) */
-extern "C" void func_0028DFB0(CBody &body, int state);
-
 /* the state set: the controller told of a change first (OVL2 0x58A6B0; SOCOM 1's, virtual in SOCOM
  * II -- CBody's slot 0x14, CZSealBody's 0x90) */
 void CZSealBody::BodySetState(int state)
 {
     if (m_control && state != m_state)
         ((CSealCtrl *)m_control)->OnStateChange((SEAL_STATE)m_state, (SEAL_STATE)state);
-    func_0028DFB0(*this, state);
+    CBody::BodySetState(state);   /* (OVL1 0x28DFB0, the body lane's: the state stored) */
 }
 
 /* hanging: with the throttles within the hang's reach the blends popped down to the hang (34) -- or to

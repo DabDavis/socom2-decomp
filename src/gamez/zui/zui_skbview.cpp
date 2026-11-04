@@ -11,8 +11,14 @@
  *
  * Round 11 wrote the locks and shift test (bitmaps 0 and 5, CPad's L1), the six sounds, the cursor,
  * the pair and bitmap-4 toggles, the bitmap loader, the caps' text look and the key props' spec.
- * OPEN, not written yet: the tick 0x3949C0, the display's builders 0x394520, 0x395140, 0x395540,
- * 0x3958D0, 0x397070, 0x397950, the cap look reader 0x397D30.
+ * OPEN, not written yet: the tick 0x3949C0, the display's scaler 0x397950, the cap look reader
+ * 0x397D30.
+ * Round 22: the key rows walked through CSkbBmpRows' and CSkbBmpRow's operator[]s (the nested
+ * reference accessors keep MW from rotating the inner loop: entered at its bottom test through a
+ * preheader after the return) -- SkbSetKeyTextures 0x395140 and SkbForgetDisplay 0x396F30 (open since
+ * rounds 21 and 11), SkbShowKeyRows 0x394520, SkbReadUiParams 0x397070 and SkbPrepDisplay 0x3958D0
+ * byte-exact, SkbScaling 0x396EC0 and SkbTwoEdits 0x396F10 from drafts; SkbStartDisplay 0x395540
+ * written, OPEN (8 bytes long, below).
  * Round 21: the scaling step SkbScale 0x394DA0 (its state an unsigned char, tested `== 0` first: `!`
  * re-extends the byte for the next test; the t >= 1 block written as the if's body, the return 0
  * after it) and SkbLoadUiParams 0x3943E0 (from zui_hangul.cpp), byte-exact.
@@ -51,14 +57,25 @@ static inline int GetRdrArrayInt(_zrdr *rdr, int i)
 
 /* ten bitmaps with their nodes: a row of the keyboards' shared keys (the name ours: its implicit
  * constructor and destructor, 0x398AA0 and 0x398A40, build and destroy the ten through zui_skb.cpp's
- * CBmpWithNode copies) */
+ * CBmpWithNode copies). The rows are walked `s_keyRows[i][j]`, through the two reference-returning
+ * operator[]s (the UI's round 22): the nested accessors are what make MW enter each inner loop at its
+ * bottom test through a preheader laid after the return path -- the shape of every row walk in the
+ * unit (0x394520, 0x395140, 0x395540, 0x3958D0, 0x396F30, 0x397070); the members spelled out, or one
+ * accessor alone, MW rotates the loop knowing j = 0 (round 21's forms, all short). It is the engine
+ * core's round-11 rule: the row reference the outer operator[] returns is computed inside the inner
+ * body and hoisted as an invariant, and MW lays such a preheader after the function's last block and
+ * enters the loop with a `b` to it (a probe: one loop over `g[2][j]`, the row constant, rotates) */
 struct CSkbBmpRow {
+    CBmpWithNode &operator[](int j) { return m_bmps[j]; }
+
     CBmpWithNode m_bmps[10];
 };   // 0x6e0 bytes
 
 /* the four rows (the name ours: the initialiser inlines the implicit constructor, __construct_array
  * over the rows, and registers the implicit destructor 0x3989E0) */
 struct CSkbBmpRows {
+    CSkbBmpRow &operator[](int i) { return m_rows[i]; }
+
     CSkbBmpRow m_rows[4];
 };   // 0x1b80 bytes
 
@@ -132,6 +149,15 @@ static float s_scaleTime;
 /* the cursor's blink: the tick steps it, wrapping at a second, the cursor bitmap (1) shown for its
  * first half (0x4A1090; the name ours) */
 static float s_blinkTime;
+/* the key repeat (UiParams.rdr's RepeatDelay, RepeatSpeedStart, RepeatAccelTime, RepeatSpeedEnd:
+ * 0x4A10A0, 0x4A10B0, 0x4A1098, 0x4A10A8) and the legend's slide times (SlideInSec, SlideOutSec:
+ * 0x4A1080, 0x4A1088), read by 0x397070 (the names ours) */
+static float s_repeatDelay;
+static float s_repeatSpeedStart;
+static float s_repeatAccelTime;
+static float s_repeatSpeedEnd;
+static float s_slideInSec;
+static float s_slideOutSec;
 
 /* the valves (zanim.h has CValve whole: the scaling's done valve here) */
 enum VALVE_STATE { VALVE_SAME, VALVE_ON, VALVE_OFF };
@@ -221,44 +247,48 @@ SKBKEY SkbPadKeyEvent(CPad *pad)
     return SKBKEY_NONE;
 }
 
-/* a look's piece list by index (ours: the look's lists read through a byte index) */
+/* a look's piece list by index (ours: the look's lists read through a byte index; through a pointer
+ * to the lists, so the index is added before the look -- `look->m_sources[i]` adds the look first, as
+ * an inline CSkbLook member does too) */
 static inline CSkbBgPieces &SkbPieces(CSkbLook *look, unsigned char i)
 {
-    return look->m_sources[i];
+    CSkbBgPieces *s = look->m_sources;
+
+    return s[i];
 }
 
 /* the shared key bitmaps given their textures: the two bitmaps 6 and 7 theirs, and row i's ten keys
  * list i's handles in turn, each key's UVs the part of its texture that piece i of the look's list i
- * takes (0x395140; the name ours).
- * OPEN, 0x194 against 0x1B0 (written round 21): SkbForgetDisplay's loop shape -- the target enters
- * the inner loop at its bottom test (`b` to a preheader MW lays out after the return path, holding
- * the hoisted piece list's address -- the inline's second `andi` -- and the bitmap pointer's start,
- * then `b` to the test), the counter zeroed in the outer body's first block; every form here is
- * rotated (MW threads the entry jump knowing j = 0): a while loop, the counter declared outside or
- * first, ++j, an explicit `goto test; do ... while`, the bound through an inline, the piece list
- * read inside the inner loop (hoisted) -- all 0x194. The texture's sizes convert as ints, the height
- * first, as the target's; the target also steps `lists` by 12 in s4 where this indexes it */
+ * takes (0x395140; the name ours). Byte-exact since the UI's round 22: the bitmap read `s_keyRows[i][j]`
+ * (the rows' operator[]s: the inner loop entered at its bottom test, as SkbForgetDisplay's), list i a
+ * reference local (the s4 stepped by 12 numbered between i and j), the row index narrowed into a byte
+ * local in the outer body (its `andi`, then the piece list's own in the hoisted preheader), the piece a
+ * reference local read in place -- a reference to its rectangle renumbers the address and the two
+ * positions (a3/a1/a2) -- and the texture's sizes converted in each argument (named float locals take
+ * $f2/$f3 the other way round, or load the width first) */
 void SkbSetKeyTextures(zdb::CTexHandle *tex6, zdb::CTexHandle *tex7, std::vector<zdb::CTexHandle *> *lists,
                        CSkbLook *look)
 {
     s_bmp6.m_pTexHandle = tex6;
     s_bmp7.m_pTexHandle = tex7;
     for (int i = 0; i < 4; i++) {
-        CSkbBgPieces &pieces = SkbPieces(look, i);
+        std::vector<zdb::CTexHandle *> &list = lists[i];
+        unsigned char k = i;
 
         for (int j = 0; j < 10; j++) {
-            CBmpWithNode &bmp = s_keyRows.m_rows[i].m_bmps[j];
-            zdb::CTexHandle *h = j < lists[i].size() ? lists[i][j] : 0;
+            CBmpWithNode &bmp = s_keyRows[i][j];
+            zdb::CTexHandle *h = j < list.size() ? list[j] : 0;
 
             bmp.m_pTexHandle = h;
             zdb::CTexture *tex = h ? h->m_texture : 0;
 
             if (tex) {
-                const CSkbRect &r = pieces[j].m_source;
-                float ht = (int)tex->m_height, w = (int)tex->m_width;
+                CSkbBgPiece &piece = SkbPieces(look, k)[j];
 
-                bmp.SetUV(r.m_pos[0] / w, r.m_pos[1] / ht, (r.m_pos[0] + r.m_size[0]) / w,
-                          (r.m_pos[1] + r.m_size[1]) / ht);
+                bmp.SetUV(piece.m_source.m_pos[0] / (float)(int)tex->m_width,
+                          piece.m_source.m_pos[1] / (float)(int)tex->m_height,
+                          (piece.m_source.m_pos[0] + piece.m_source.m_size[0]) / (float)(int)tex->m_width,
+                          (piece.m_source.m_pos[1] + piece.m_source.m_size[1]) / (float)(int)tex->m_height);
             }
         }
     }
@@ -316,7 +346,9 @@ static inline void SetCaption(const char *text)
     s_caption.SetString(text, true);
 }
 
-/* the display's sounds found by the names the look gave (0x397BC0, from 0x3958D0; the name ours) */
+/* the display's sounds found by the names the look gave (0x397BC0, from 0x3958D0; the name ours;
+ * its one caller calls it out of line: pinned) */
+#pragma auto_inline off
 void SkbFindSounds()
 {
     /* three names taken first: the target holds them in saved registers across the first call */
@@ -329,6 +361,7 @@ void SkbFindSounds()
     s_sound0 = CSnd::GetSoundByName(s_str6.c_str());
     s_sound4 = CSnd::GetSoundByName(s_str1.c_str());
 }
+#pragma auto_inline reset
 
 /* the text: the edited buffer, or the one the keyboard opened with (0x3998A0 and 0x399D20 ask) */
 const char *SkbGetText(bool edited)
@@ -336,8 +369,8 @@ const char *SkbGetText(bool edited)
     return edited ? s_editText : s_openText.c_str();
 }
 
-/* the display unit's reader of UiParams.rdr (0x397070, not written yet) */
-extern "C" void func_00397070(CRdrFile *file);
+/* the display unit's reader of UiParams.rdr (0x397070, below) */
+void SkbReadUiParams(CRdrFile *file);
 
 /* the keyboards' display read again from UiParams.rdr (0x3943E0; CMission::Init calls it). This
  * unit's: it lies between ~CSkbKeyProps and 0x394420, and its two strings between s_padKeys and
@@ -346,7 +379,7 @@ void SkbLoadUiParams()
 {
     CRdrFileHolder file("UiParams.rdr", "data/common");
 
-    func_00397070(file);
+    SkbReadUiParams(file);
 }
 
 /* the key's spec deleted through its virtual destructor (0x394370; ours: ~CSoftKeyboard deletes
@@ -485,13 +518,9 @@ void SkbPlaceCursor(CSkbKeyProps *props)
 
 /* every node the display holds forgotten: the bitmaps', the key rows' (through the bitmaps'
  * SetNode), the sounds, the display's root node, the caption's node and text (0x396F30, from
- * InvalidateSkbsDisplay; the name ours).
- * OPEN, 6 instructions short (0x11C of 0x134): the target enters the inner loop at its bottom test
- * through two jumps -- the counter zeroed in the outer body's first block, the bitmap pointer set in
- * a block MW put after the return path -- with two delay slots left empty, where every form here
- * rotates it into a do-while (the trip count known). Tried: a reference local for the row, a while
- * loop, the counter declared outside, `&m_bmps[0] + j`, the row's loop as an inline member, an
- * inline taking the count as a parameter: all 0x11C */
+ * InvalidateSkbsDisplay; the name ours). Byte-exact since the UI's round 22: the key rows walked
+ * through both rows' operator[]s, which keep the inner loop's entry at its bottom test (one accessor
+ * alone, a row reference, a while loop or the counter declared outside all rotate it: 0x11C) */
 void SkbForgetDisplay()
 {
     s_bmp1.m_node = 0;
@@ -501,7 +530,7 @@ void SkbForgetDisplay()
     s_bmp7.m_node = 0;
     for (int i = 0; i < 4; i++)
         for (int j = 0; j < 10; j++)
-            s_keyRows.m_rows[i].m_bmps[j].Slot10(0);
+            s_keyRows[i][j].Slot10(0);
     s_bmp0.m_node = 0;
     s_bmp5.m_node = 0;
     s_bmp4.m_node = 0;
@@ -589,18 +618,22 @@ static inline bool SkbPadShift(const CPad *pad)
 }
 
 /* whether the keys type shifted: L1 against the shift lock (bitmap 5); 0x399070 asks (0x396E60;
- * the names ours) */
+ * the names ours). The two bools are compared with `^`, which MW keeps an xor of its own and converts
+ * after: inlined (0x394520's two arms) the xor writes its second operand's register and the sltu the
+ * result's, where `!=` is one set-not-equal whose xor writes the result's (the out-of-line copies
+ * are the same code either way) */
 bool SkbShifted(CPad *pad)
 {
     bool shift = SkbPadShift(pad);
 
-    return shift != SkbShown(s_bmp5);
+    return shift ^ SkbShown(s_bmp5);
 }
 
-/* the same, against the second lock (bitmap 0) as well (0x38D200 asks; 0x396CB0, ours) */
+/* the same, against the second lock (bitmap 0) as well (0x38D200 asks; 0x396CB0, ours; `^` as
+ * above) */
 bool SkbShifted2(CPad *pad)
 {
-    return SkbShifted(pad) != SkbShown(s_bmp0);
+    return SkbShifted(pad) ^ SkbShown(s_bmp0);
 }
 
 /* a string given cap i's look -- the default font when the cap names none, its colour and scale --
@@ -922,4 +955,231 @@ void SkbToggleShiftLock(bool toggle)
         s_bmp5.m_node->SetActive(!s_bmp5.m_node->m_active);
     else if (s_bmp5.m_node)
         s_bmp5.m_node->SetActive(false);
+}
+
+/* the background piece lists, as the look names them: BackgroundPieces, ShiftBgPieces,
+ * TwoEditsBgPieces, TwoEditsShiftBgPieces (a byte enum: the choice below is assigned with `li`, an
+ * unsigned char's with `daddiu`; the names ours) */
+enum SKBLIST { SKBLIST_PLAIN, SKBLIST_SHIFT, SKBLIST_TWO, SKBLIST_TWOSHIFT };
+
+/* the key rows shown for the background piece list in use: 3 the two edits' shifted list, 2 the
+ * two edits' list (caption mode 1 with a list), 1 the shifted list (shifted, with a shift background
+ * or a list), else 0; bitmaps 6 and 7 shown with lists 0 and 1, and row i's keys j shown while i is
+ * the list's index and j under its count -- the shift by the pad and the shift lock alone when the
+ * keyboard has a row-2 key, else against the second lock too (0x394520: 0x38C990 and 0x38D200 call it
+ * after the locks toggle, with the keyboard's 0x174; the name ours). Byte-exact (the UI's round 22):
+ * the last list's test a bool local (its load and compare ahead of the first branch), declared before
+ * `two`; the counts compared as ints (slt/blez); the key's flag a ternary (slt into v1, no branch),
+ * `list == i` (the list first in the bne); the rows walked through their operator[]s */
+
+void SkbShowKeyRows(CPad *pad, CSoftKeyboard *skb, bool row2)
+{
+    bool shifted = row2 ? SkbShifted(pad) : SkbShifted2(pad);
+    SKBLIST list = SKBLIST_PLAIN;
+    bool has3 = (int)skb->m_sources[3].size() > 0;
+    bool two = s_captionMode == CAPTION_1;
+
+    if (two && shifted && has3)
+        list = SKBLIST_TWOSHIFT;
+    else if (two && (int)skb->m_sources[2].size() > 0)
+        list = SKBLIST_TWO;
+    else if (shifted && (*skb->m_shiftBackground.c_str() || (int)skb->m_sources[1].size() > 0))
+        list = SKBLIST_SHIFT;
+    if (s_bmp6.m_node)
+        s_bmp6.m_node->SetActive(list == 0);
+    if (s_bmp7.m_node)
+        s_bmp7.m_node->SetActive(list == 1);
+    int count = SkbPieces(skb, list).size();
+
+    for (int i = 0; i < 4; i++)
+        for (int j = 0; j < 10; j++) {
+            CBmpWithNode &bmp = s_keyRows[i][j];
+            bool on = list == i ? j < count : false;
+
+            if (bmp.m_node)
+                bmp.m_node->SetActive(on);
+        }
+}
+
+/* the Korean input's rules, read from the same file (zui_hangul.cpp's) */
+void SkbParseKoreanRules(_zrdr *rdr);
+
+/* the soft keyboards' common props, UiParams.rdr's CommonSoftKeyboardProps: the key repeat's delay
+ * and speeds, the six sounds' names (the scaling's two, the key presses', the navigation's and the
+ * refusal's), the legend's texture, rectangle and slide times, the USB keyboard's icon, room for
+ * the typed text, the Korean rules, and the backgrounds' opacity given to bitmaps 6 and 7 and every
+ * key (0x397070; SkbLoadUiParams calls it with the file; the name ours) */
+void SkbReadUiParams(CRdrFile *file)
+{
+    _zrdr *props = zrdr_findtag(file, "CommonSoftKeyboardProps");
+
+    s_repeatDelay = SkbFindReal(props, "RepeatDelay", 0.0f);
+    s_repeatSpeedStart = SkbFindReal(props, "RepeatSpeedStart", 0.0f);
+    s_repeatAccelTime = SkbFindReal(props, "RepeatAccelTime", 0.0f);
+    s_repeatSpeedEnd = SkbFindReal(props, "RepeatSpeedEnd", 0.0f);
+    s_str6 = zrdr_findstring(props, "ScaleUpSound");
+    s_str5 = zrdr_findstring(props, "ScaleDownSound");
+    s_str2 = zrdr_findstring(props, "KeyPressSound");
+    s_str1 = zrdr_findstring(props, "KeyPressEnterSound");
+    s_str3 = zrdr_findstring(props, "NavigationSound");
+    s_str4 = zrdr_findstring(props, "NegativeSound");
+    _zrdr *legend = zrdr_findtag(props, "Legend");
+
+    s_str0 = zrdr_findstring(legend, "Texture");
+    s_rect = SkbReadRect(legend);
+    s_slideInSec = SkbFindReal(legend, "SlideInSec", 0.0f);
+    s_slideOutSec = SkbFindReal(legend, "SlideOutSec", 0.0f);
+    s_str8 = zrdr_findstring(props, "UsbKbdOnIcon");
+    s_openText.reserve(800);
+    SkbParseKoreanRules(file);
+    float opacity = SkbFindReal(props, "BackgroundsOpacity", 1.0f);
+
+    s_bmp6.SetTrans(128.0f * opacity);
+    float trans = 128.0f * opacity;
+
+    s_bmp7.SetTrans(trans);
+    for (int i = 0; i < 4; i++)
+        for (int j = 0; j < 10; j++)
+            s_keyRows[i][j].SetTrans(trans);
+}
+
+/* a key read this frame (zin_keyboard.cpp's KeyInput, 32 bytes) and its reader */
+struct KeyInput {
+    unsigned char code;
+    int shift;
+    int ctrl;
+    int alt;
+    int _10;
+    int caps;
+    int _18[2];
+};
+int GetKeyReadThisFrame(KeyInput *key);
+
+/* the three toggles' bitmaps and the look rectangles they take (a table 0x395540 copies from
+ * 0x3E0500 into its frame; ours) */
+struct SKBTOGGLE {
+    unsigned char m_rect;
+    CBmpWithNode *m_bmp;
+};
+
+/* the display set going as a keyboard opens: the caption plain, two keys read away, the display
+ * placed at the look's position, the cursor (bitmap 2) hidden, the legend (bitmap 3) placed slid in,
+ * the plain background's keys shown, the caption given cap 1's look, the caret (bitmap 1) sized and
+ * hidden, the scaling up started, and the three toggles sized, placed at their rectangles and hidden
+ * (0x395540; ShowSkb calls it with the font; the name ours) */
+/* the legend (bitmap 3) placed slid in by t, a fraction of its width (ours: the 1.0f a caller
+ * passes is still multiplied) */
+static inline void SkbPlaceLegend(CSoftKeyboard *skb, float t)
+{
+    s_bmp3.m_node->SetPosition((float)skb->m_6c - t * (float)s_rect.m_size[0], 0.0f, 0.0f);
+}
+
+/* a node put at a place raised by dy (ours: the 0.0f a caller passes is still added) */
+static inline void SkbPlaceNode(zdb::CNode *node, int x, int y, float dy)
+{
+    node->SetPosition((float)x, dy + (float)y, 0.0f);
+}
+
+void SkbStartDisplay(CSoftKeyboard *skb, C2DFont *font)
+{
+    KeyInput key;
+
+    s_captionMode = CAPTION_PLAIN;
+    GetKeyReadThisFrame(&key);
+    GetKeyReadThisFrame(&key);
+    SkbPlaceNode(g_skbDisplayNode, skb->m_5c, skb->m_60, 0.0f);
+    if (s_bmp2.m_node)
+        s_bmp2.m_node->SetActive(false);
+    SkbPlaceLegend(skb, 1.0f);
+    if (s_bmp6.m_node)
+        s_bmp6.m_node->SetActive(true);
+    if (s_bmp7.m_node)
+        s_bmp7.m_node->SetActive(false);
+    int count = SkbPieces(skb, SKBLIST_PLAIN).size();
+
+    for (int i = 0; i < 4; i++)
+        for (int j = 0; j < 10; j++) {
+            CBmpWithNode &bmp = s_keyRows[i][j];
+            bool on = i == 0 ? j < count : false;
+
+            if (bmp.m_node)
+                bmp.m_node->SetActive(on);
+        }
+    SkbApplyCapLook(&s_caption, s_captionNode, skb, 1, font, 0.0f);
+    s_bmp1.Load(0.0f, 0.0f, (float)skb->m_d0, (float)skb->m_d4, s_bmp1.m_pTexHandle);
+    if (s_bmp1.m_node)
+        s_bmp1.m_node->SetActive(false);
+    s_scaleTime = 0.0f;
+    s_scaling = SKBSCALE_UP;
+    SKBTOGGLE toggles[3] = {{0, &s_bmp0}, {1, &s_bmp5}, {2, &s_bmp4}};
+
+    for (unsigned int k = 0; k < 3; k++) {
+        CSkbRect r = skb->m_rects[toggles[k].m_rect];
+        CBmpWithNode *bmp = toggles[k].m_bmp;
+        const CSkbRect *p = &r;
+
+        bmp->Load(0.0f, 0.0f, (float)p->m_size[0], (float)p->m_size[1], bmp->m_pTexHandle);
+        SkbPlaceNode(bmp->m_node, p->m_pos[0], p->m_pos[1], 0.0f);
+        if (bmp->m_node)
+            bmp->m_node->SetActive(false);
+    }
+}
+
+/* the keyboards' shared display built under the menu's node: the sounds found, the display's root
+ * node (hidden), the legend (bitmap 3: its texture and the legend rectangle's size, hidden), the
+ * cursor's highlight (bitmap 2), bitmaps 6 and 7 and the forty keys untextured, the default font
+ * kept, the key units' own pieces made through the callback, the caption's node, the caret (bitmap
+ * 1: no texture, white, its node hidden) and the three toggles' highlights (0x3958D0;
+ * PrepSkbsForDisplay calls it; the name ours). Byte-exact (the UI's round 22): SkbLoadBitmap inlined
+ * (SkbFindSounds pinned: called out of line), the legend's size read into int locals first (the
+ * target loads it ahead of the texture name's c_str()), each toggle taken into a local (kept in a
+ * saved register for the SetNode slot's call) */
+void SkbPrepDisplay(zdb::CNode *parent, zdb::CTextureRelocMgr *mgr, C2DFont *font,
+                    void (*prep)(zdb::CNode *node, zdb::CTextureRelocMgr *mgr))
+{
+    SkbFindSounds();
+    g_skbDisplayNode = zdb::CNode::Create("AllSkbsRoot");
+    parent->AddChild(g_skbDisplayNode);
+    g_skbDisplayNode->SetActive(false);
+    int w = s_rect.m_size[0], h = s_rect.m_size[1];
+
+    s_bmp3.Slot10(SkbLoadBitmap(&s_bmp3, g_skbDisplayNode, w, h, s_str0.c_str(), mgr));
+    if (s_bmp3.m_node)
+        s_bmp3.m_node->SetActive(false);
+    s_bmp2.Slot10(SkbLoadBitmap(&s_bmp2, g_skbDisplayNode, 0, 0, "SkbHighlight.tif", mgr));
+    s_bmp6.Slot10(SkbLoadBitmap(&s_bmp6, g_skbDisplayNode, 0, 0, 0, mgr));
+    s_bmp7.Slot10(SkbLoadBitmap(&s_bmp7, g_skbDisplayNode, 0, 0, 0, mgr));
+    for (int i = 0; i < 4; i++)
+        for (int j = 0; j < 10; j++) {
+            CBmpWithNode &bmp = s_keyRows[i][j];
+
+            bmp.Slot10(SkbLoadBitmap(&bmp, g_skbDisplayNode, 0, 0, 0, mgr));
+        }
+    s_defaultFont = font;
+    prep(g_skbDisplayNode, mgr);
+    s_captionNode = func_0036AB20(&s_caption, mgr, g_skbDisplayNode);
+    s_bmp1.SetHasTexture(false);
+    s_bmp1.SetColor(255.0f, 255.0f, 255.0f);
+    s_bmp1.m_node = func_0036AB20(&s_bmp1, mgr, g_skbDisplayNode);
+    if (s_bmp1.m_node)
+        s_bmp1.m_node->SetActive(false);
+    CBmpWithNode *toggles[3] = {&s_bmp0, &s_bmp5, &s_bmp4};
+
+    for (unsigned int k = 0; k < 3; k++) {
+        CBmpWithNode *bmp = toggles[k];
+
+        bmp->Slot10(SkbLoadBitmap(bmp, g_skbDisplayNode, 0, 0, "SkbHighlight.tif", mgr));
+    }
+}
+
+/* whether the keyboard is scaling up or down (0x396EC0; HandlePad asks; the name ours) */
+bool SkbScaling()
+{
+    return s_scaling != SKBSCALE_NONE;
+}
+
+/* whether the caption shows mode 1, the two edit strings (0x396F10; 0x399100 asks; the name ours) */
+bool SkbTwoEdits()
+{
+    return s_captionMode == CAPTION_1;
 }
