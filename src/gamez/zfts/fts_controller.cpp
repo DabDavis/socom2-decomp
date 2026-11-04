@@ -213,6 +213,10 @@ public:
     static std::vector<CCtrlrConfig *> m_configs;
 };
 
+/* the layouts (0x4415C8: the unit's initialiser 0x400730 clears its three words and registers its
+ * destructor's copy 0x2C6ED0) */
+std::vector<CCtrlrConfig *> CCtrlrConfigs::m_configs;
+
 extern "C" int strcasecmp(const char *a, const char *b);
 
 namespace {
