@@ -2001,6 +2001,21 @@ templates next), and the earlier rounds' opens; 3.0b38/b50/b52 still untold.
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the HUD, round 33** (C2DString's text functions, hud_main.cpp's help windows and hudInit, the popup triggers):
+  - a const inline accessor reading a local object's member folds into a frame offset, a non-const one shares the saved
+    address register the object's inline constructor and destructor keep (GetCharWidth 0x363C20, AddCharacter 0x362E00);
+  - a same-type cast (`(float)f`, `(int)i`) makes MW load that operand first -- it closed C2DString::Load 0x3630E0 after
+    120 earlier groupings, and AddCharacter's padding;
+  - a byte enum's constant stores need no `andi 0xff`, an unsigned char's do (FormatString 0x363F60's state); an int counter
+    over `Item(unsigned)` stops strength reduction, separate loop-scoped variables per walk give the target's registers
+    where one shared list variable does not (hudInit 0x1FDEE0, SOCOM 1's);
+  - `if (a) return; if (!f()) return; x = true; return;` gives one `b epilogue` per test, `if (!a && f()) x = true;
+    return;` joins first; MW keeps va_start's dead `li v0,2; slti at,v0,8` when the va_list is unused (Format 0x363830's
+    buffer is 10512 bytes);
+  - C2DString's 0x3C member is SOCOM 1's m_length (the text's pixel length: AddCharacter adds each advance to it) -- the
+    rename waits on its other users (fts_message.cpp, fts_msgeditor.cpp, zui_skbkeys.cpp);
+  - open: MakePacket 0x3635C0 and the four layout functions 0x361BD0-0x362B1F (unwritten: a packet writer and a layout
+    cursor on its stack -- c2dstring.cpp's header comment).
 - **Tells from the engine core, round 4** (a new int_circleclip.cpp, CZAnimArgList's getters, zar::CZAR):
   - an iterator ASSIGNED from std::find_if (`iterator it; it = find_if(...)`) lives in its stack slot, copied bitwise out of
     find_if's return temporary: written `if (it != end()) return X; return 0;` it is all eight CZAnimArgList getters
