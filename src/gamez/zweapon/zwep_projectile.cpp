@@ -739,7 +739,10 @@ struct CONE {
  * fold. Tried for (1): `damage = damage * (...)`, the product reversed, `/ 0.5f`, brackets, the
  * product, the difference or the factor in a variable, `r` and `dist` declared apart, a radius
  * variable. Round 18: the switch with its cases in either order (159 first: 125 off; the claymore
- * first: 0x4D8), `r -= 0.5f`, `t = r - 0.5f` and `k = 2.0f * (r - 0.5f)` locals change nothing */
+ * first: 0x4D8), `r -= 0.5f`, `t = r - 0.5f` and `k = 2.0f * (r - 0.5f)` locals change nothing.
+ * Round 21 for (2), by the first-definition rule: a dead `id = EQUIP_NONE` at the top or just ahead,
+ * the id declared at the top uninitialised, read twice, through an int or a signed-char view --
+ * all fold to lbu; assigned in both arms of the detonation test (a join) it is 0x4DC */
 float CZProjectile::GetDamage(const CPnt3D *pos, float minimum)
 {
     float damage;
