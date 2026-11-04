@@ -321,8 +321,6 @@ static const char *s_chatRecipientValve = "ChatRecipient";
 /* the display unit's: whether key 11 shows its wide cap (0x397840: a byte it keeps at 0x3E04C0;
  * passed to KeyCap's unsigned char, it is narrowed at the call) */
 extern "C" unsigned char func_00397840();
-/* a key's node shown or hidden (the next unit's CSkbKeyProps member, 0x3941D0) */
-extern "C" void func_003941D0(CSkbKeyProps *props, bool on);
 
 /* a bitmap's node shown or hidden, if it has one (zui_skb.h's CBmpWithNode) */
 inline void CBmpWithNode::SetShown(bool on)
@@ -361,7 +359,7 @@ void CSoftKeyboard::ShowElements(bool on)
             m_530.SetShown(false);
     }
     for (CSkbKeyMap::iterator it = m_keyProps.begin(); it != m_keyProps.end(); ++it)
-        func_003941D0((*it).second, on);
+        (*it).second->SetShown(on);
 }
 
 /* the display unit's: the name of the keyboard to open (0x397640) and its root node */

@@ -206,6 +206,13 @@ const char *SkbGetText(bool edited)
     return edited ? s_editText : s_openText.c_str();
 }
 
+/* the key's spec deleted through its virtual destructor (0x394370; ours: ~CSoftKeyboard deletes
+ * every key's props) */
+CSkbKeyProps::~CSkbKeyProps()
+{
+    delete m_spec;
+}
+
 /* the key's display forgotten: its node, and its button deleted (0x394320; ours: the keyboard's
  * InvalidateDisplay calls it for every key) */
 void CSkbKeyProps::InvalidateDisplay()
@@ -231,6 +238,14 @@ void CSkbKeyProps::SetSpec(_zrdr *rdr)
 {
     delete m_spec;
     m_spec = rdr ? new CButtonSpec(rdr) : 0;
+}
+
+/* the key's node shown or hidden, if it has one (0x3941D0; ours: CBmpWithNode's SetShown, called
+ * for every key by the keyboard's ShowElements) */
+void CSkbKeyProps::SetShown(bool on)
+{
+    if (m_node)
+        m_node->SetActive(on);
 }
 
 /* the cursor's bitmap (2) sized to a key and put on it, the key's button made active (0x397590;

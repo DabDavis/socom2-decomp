@@ -162,6 +162,8 @@ public:
     void PrepForDisplay(zdb::CTextureRelocMgr *mgr, C2DFont *font, zdb::CNode *parent);
     /* its node forgotten and its button deleted (0x394320; ours) */
     void InvalidateDisplay();
+    /* its node shown or hidden, if it has one (0x3941D0; ours: CBmpWithNode's SetShown) */
+    void SetShown(bool on);
 
     int m_x;   // 0x0: the key's place and size (SkbPlaceCursor's; the names ours)
     int m_y;   // 0x4
