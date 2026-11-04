@@ -1,4 +1,4 @@
-/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 */
+/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 -g */
 /* newlib's malignr.o: mallocr.c built with DEFINE_MEMALIGN -- _memalign_r (README "The GCC front"). */
 #define DEFINE_MEMALIGN
 #include "mallocr.h"

@@ -1,4 +1,4 @@
-/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 */
+/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 -g */
 /* newlib's stdlib/rand.c (MAIN 0x197728-0x1977A4), the toolchain's libc: srand then rand, one
  * object as in the demo -- the 64-bit LCG in the reentrancy block (Knuth's multiplier). */
 

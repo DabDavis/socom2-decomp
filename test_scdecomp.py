@@ -112,6 +112,27 @@ def test_symbol_map_is_sane():
     ck(all(img.segment(s.addr) is not None for s in st.symbols), "every row is inside the image")
 
 
+def test_mangled_names_spell_their_lengths():
+    """Every mangled row's length prefixes agree with its name (tools/manglecheck.py, GCC round
+    23a): a row spelled with a wrong length is a name no unit can define. Negatives: the UI
+    lane's round-16 slip (70 for 72, unbalanced) is caught and corrected, and a length that
+    swallows the const qualifier (`9bad_castCFv`, still well-formed) is suspect."""
+    import manglecheck as MC
+    rows = [r for r in MC.map_rows([E.SYMBOLS, E.DATA]) if MC.claims_mangled(r[3])]
+    ck(len(rows) > 7000, f"{len(rows)} mangled rows read")
+    bad = [r[3] for r in rows if not MC.parses(r[3])]
+    ck(not bad, f"{len(bad)} mangled row(s) whose lengths do not parse: {bad[:3]}")
+    voc = MC.vocabulary(r[3] for r in rows)
+    sus = [r[3] for r in rows if MC.suspects(r[3], voc)]
+    ck(not sus, f"{len(sus)} mangled row(s) spelling a name nowhere else spelled: {sus[:3]}")
+    slip = "clear__Q23std70__vector_deleter<15CDlgDesignModel,Q23std28allocator<15CDlgDesignModel>>Fv"
+    ck(not MC.parses(slip), "the UI's slip does not parse")
+    ck(MC.corrections(slip) == [slip.replace("std70", "std72")], "and its one correction is 72")
+    ck(MC.parses("what__Q23std9bad_castCFv") and MC.suspects("what__Q23std9bad_castCFv", voc),
+       "a length one too long that swallows `C` is suspect")
+    ck(not MC.parses("__dt__Q23std14length_errorFv"), "a destructor is no static datum")
+
+
 def test_sweep_finds_the_hard_boundaries():
     """Three boundaries the first drafts got wrong, each now pinned."""
     img = E.image()

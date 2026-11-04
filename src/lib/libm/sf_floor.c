@@ -1,4 +1,4 @@
-/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 */
+/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 -g */
 /* newlib's libm/common/sf_floor.c (floorf, MAIN 0x1B3648), as newlib wrote it, under the EE's float
  * model (fdlibm.h: no infinity, no denormals). One object, as in the demo. */
 

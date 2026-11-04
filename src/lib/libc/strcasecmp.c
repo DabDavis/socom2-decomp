@@ -1,4 +1,4 @@
-/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 */
+/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 -g */
 /* newlib's string/strcasecmp.c (MAIN 0x198B80), the toolchain's libc: one object, as in the demo.
  * tolower is newlib's ctype macro (the _ctype_ table's _U bit). */
 

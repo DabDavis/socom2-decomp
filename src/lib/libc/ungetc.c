@@ -1,4 +1,4 @@
-/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 */
+/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 -g */
 /* newlib's stdio/ungetc.c (MAIN 0x19AFF0-0x19B25C), the toolchain's libc: __submore (static: grow
  * the ungetc buffer) and ungetc. The demo's object 0x3E7BD0 holds the same two. */
 

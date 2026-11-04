@@ -1,4 +1,4 @@
-/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 -fno-builtin */
+/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 -fno-builtin -g */
 /* newlib's libm/common/sf_scalbn.c (scalbnf, MAIN 0x198420: linked among libc's objects), as newlib
  * wrote it, under the EE's float model (fdlibm.h); -fno-builtin as newlib is built (copysignf
  * called). One object, as in the demo. */

@@ -1,4 +1,4 @@
-/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 */
+/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 -g */
 /* newlib's stdlib/malloc.c as the EE's newlib has it (MAIN 0x194C30-0x194CCC): malloc and free on
  * the global reentrancy block, each inside the malloc lock (stock newlib calls straight through;
  * mlock.c's lock is recursive, so _malloc_r's own lock nests). */

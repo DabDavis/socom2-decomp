@@ -1,4 +1,4 @@
-/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 */
+/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 -g */
 /* newlib's reallocr.o: mallocr.c built with DEFINE_REALLOC -- _realloc_r (README "The GCC front"). */
 #define DEFINE_REALLOC
 #include "mallocr.h"

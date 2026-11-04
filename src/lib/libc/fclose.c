@@ -1,4 +1,4 @@
-/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 */
+/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 -g */
 /* newlib's stdio/fclose.c (MAIN 0x192CA8), the toolchain's libc. */
 
 #include "newlib.h"

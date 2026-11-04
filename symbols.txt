@@ -330,8 +330,8 @@
 0x001915C8 0x64 calloc  # MAIN unaligned
 0x00191630 0xB4 _calloc_r  # MAIN; s1:order (newlib: the demo's callocr object between calloc and closer; _malloc_r then memset)
 0x001916E8 0x58 _close_r  # MAIN unaligned; by body (newlib's reent/closer.c: errno zeroed, close(fd), errno copied into ptr->_errno on -1; the demo's _close_r is 0x58 too)
-0x00191740 0x22C func_00191740  # MAIN
-0x00191970 0x1264 func_00191970  # MAIN
+0x00191740 0x22C quorem  # MAIN; by call (newlib dtoa.c's static quorem: _dtoa_r calls it twice, as the demo's _dtoa_r calls its quorem -- GCC round 23a)
+0x00191970 0x1264 _dtoa_r  # MAIN; by call (newlib vfprintf.c's cvt calls _dtoa_r at this instruction -- byte-exact under the runtime's -g, GCC round 23a; the demo's cvt 0x3EA220 calls its _dtoa_r 0x3DF370 alike)
 0x00192BD8 0x8 __env_lock  # MAIN unaligned; s1:order (newlib envlock.c, between dtoa's and errno's objects: the empty hook _findenv_r calls before its walk)
 0x00192BE0 0x8 __env_unlock  # MAIN; s1:order (newlib envlock.c: the empty hook _findenv_r calls after its walk)
 0x00192BE8 0xC __errno  # MAIN unaligned; s1:callee
@@ -1357,13 +1357,6 @@
 0x001CA2A0 0xEC uncompress  # MAIN
 0x001CA390 0x28 zcfree  # MAIN
 0x001CA3C0 0xC zcalloc  # MAIN; by position: three other thunks share its bytes
-0x001CCD78 0x38 func_001CCD78  # MAIN unaligned
-0x001CCDB0 0x90 func_001CCDB0  # MAIN
-0x001CCE40 0x3C func_001CCE40  # MAIN
-0x001CCE80 0x4C func_001CCE80  # MAIN
-0x001CCED0 0x4C func_001CCED0  # MAIN
-0x001CCF20 0x130 func_001CCF20  # MAIN
-0x001CD078 0x122C func_001CD078  # MAIN unaligned
 0x001CF830 0x44 inflate_mask  # MAIN data: zlib infutil.c, uInt[17]
 0x001D4B00 0x74 __sinit_zmalloc.cpp  # MAIN; by hand (MAIN runtime lane round 2): the pool unit's static initialiser -- constructs the six pools (24-byte first, 2200 blocks, ... 4-byte last, 8800) at 0x1D5690..0x1D5780; the unit's file name ours; src/main/zmalloc.cpp
 0x001D4B80 0x64 func_001D4B80  # MAIN

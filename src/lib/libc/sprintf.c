@@ -1,4 +1,4 @@
-/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 */
+/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 -g */
 /* newlib's stdio/sprintf.c (MAIN 0x198848-0x19895C), the toolchain's libc: _sprintf_r and sprintf, a
  * string FILE on the stack (this newlib's _sprintf_r calls vfprintf, not _vfprintf_r). */
 

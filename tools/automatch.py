@@ -64,15 +64,19 @@ TRIPLES = ("mipsee-gcc-c", "mipsee-mwcc-c")   # the second converts about 1 % mo
 # other's pieces); its draft carries the directive of the one that matched.
 # (lo, hi, [(toolchain, flags), ...], what)
 # the SDK's own build is dtls13010 (README "The GCC front": libvu0's inline asm, the broken sibling
-# call); its C compiles as 991111's but where that sibling call shows, so it goes first
-SDK, LIBC = ("ee-gcc2.9-991111-01-dtls13010", "-O2 -G0"), ("ee-gcc2.96", "-O2 -G0")
+# call); its C compiles as 991111's but where that sibling call shows, so it goes first. The runtime
+# (newlib's libc and libm, libgcc) was built with GCC's CFLAGS_FOR_TARGET, -g -O2 (SCE's patch adds
+# -G0): under -g GNU as fills none of the delay slots GCC leaves it (a double's move), cc1's output
+# the same (GCC round 23a)
+SDK, LIBC = ("ee-gcc2.9-991111-01-dtls13010", "-O2 -G0"), ("ee-gcc2.96", "-O2 -G0 -g")
 GCC_RANGES = [
     (0x18DB90, 0x191410, [SDK, LIBC], "MAIN: libcdvd, libdma (Sony's SDK 2.7)"),
     (0x191410, 0x1A13D0, [LIBC, SDK], "MAIN: newlib's libc, libgcc and fp-bit"),
     (0x1A13D0, 0x1AD088, [SDK, LIBC], "MAIN: libgraph, libipu, libkernl"),
     (0x1AD088, 0x1B3970, [LIBC, SDK], "MAIN: newlib's libm"),
     (0x1B3970, 0x1C4CC0, [SDK, LIBC], "MAIN: libmc, libmpeg, libmrpc, libpad2, libscf, libvu0 ..."),
-    (0x1CCD78, 0x1CE2A4, [SDK, LIBC], "MAIN: the code after zlib's"),
+    # (0x1CCD78-0x1CE2A4, "the code after zlib's", is libkernl's .data: the tlbsrc kernel image
+    # linked at 0x80075000 and its syscall table, then tlbfunc.c's statics -- no rows since GCC 23a)
     (0x1E7F58, 0x1E8FD4, [("ee-gcc2.96", "-O2 -G0 -fno-strict-aliasing")],
      "OVL1: the microphone input (Sid*), libezcnf/libezctl"),
     # the heap is ScanSoft's (the demo links it inside the recogniser): SearchFor's loop is unrolled

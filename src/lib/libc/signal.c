@@ -1,4 +1,4 @@
-/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 */
+/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 -g */
 /* newlib's signal/signal.c (MAIN 0x1984E8-0x1987CC), the toolchain's libc: the reentrancy block's
  * table of 32 handlers, signal and raise over it. The demo's object 0x3E5198 holds the same eight
  * in the same order. */

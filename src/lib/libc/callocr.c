@@ -1,4 +1,4 @@
-/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 */
+/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 -g */
 /* newlib's stdlib/mallocr.c built with DEFINE_CALLOC (MAIN 0x191630): _calloc_r, Doug Lea's cALLOc
  * as newlib configures it here -- no mmap, MORECORE_CLEARS off (no lock around it: the caller,
  * calloc, holds the malloc lock), MALLOC_ZERO's unrolled clear up to nine words, else memset.

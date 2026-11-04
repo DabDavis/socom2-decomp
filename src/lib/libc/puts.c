@@ -1,4 +1,4 @@
-/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 */
+/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 -g */
 /* newlib's stdio/puts.c (MAIN 0x196C90-0x196D34), the toolchain's libc: _puts_r and puts, the
  * string and its newline as two iovecs to __sfvwrite. */
 

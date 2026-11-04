@@ -1,4 +1,4 @@
-/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 */
+/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 -g */
 /* newlib's reent/lseekr.c (_lseek_r, MAIN 0x194848), the toolchain's libc (README "The GCC front"): one object,
  * as in the demo. The system layer's errno is the global one (newlib undefines the macro here), copied
  * into the reentrancy block when the call fails and set it. */

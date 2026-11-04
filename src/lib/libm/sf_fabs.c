@@ -1,4 +1,4 @@
-/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 */
+/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 -g */
 /* newlib's libm/common/sf_fabs.c (fabsf, MAIN 0x1B3620), from the toolchain's own libm: ee-gcc 2.96 -O2 -G0
  * (README "The GCC front"; every 2.9x/2.95.x/3.2 build misses). One object, as in the demo. */
 

@@ -1,4 +1,4 @@
-/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 */
+/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 -g */
 /* newlib's libm/common/sf_cos.c (cosf, MAIN 0x1B3548), as newlib wrote it, under the EE's float
  * model (fdlibm.h). One object, as in the demo. */
 

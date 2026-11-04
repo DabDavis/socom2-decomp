@@ -1,4 +1,4 @@
-/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 */
+/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 -g */
 /* newlib's stdio/printf.c (MAIN 0x196BC0-0x196C8C), the toolchain's libc: _printf_r and printf as
  * newlib wrote them. */
 
