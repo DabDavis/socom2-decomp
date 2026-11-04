@@ -24,11 +24,6 @@ extern "C" double strtod(const char *s, char **end);   /* newlib (MAIN) */
 /* the values allocator (zrdr_pack.cpp's unit, 0x335BC0): `n` zeroed values, the first typed */
 extern "C" _zrdr *func_00335BC0(unsigned char type, int n);
 
-/* basic_string's substr, which the map has not named (a placeholder, `this` first; find_last_of
- * and find_first_of over a C string are include/string's since the MSL headers round 13, 0x331F30
- * and 0x331ED0 with their cores in this unit's tail) */
-extern "C" std::string func_0032FC40(const std::string *s, unsigned int pos, unsigned int n);
-
 /* basic_string's erase(pos, n) and operator[] (inline; include/string has neither) */
 static inline std::string &string_erase(std::string &s, unsigned int pos, unsigned int n)
 {
@@ -349,7 +344,7 @@ bool CRdrIO::Open(const char *name, unsigned int mode)
     unsigned int pos = m_name.find_last_of("\\/", (unsigned int)std::string::npos);
 
     if (pos != (unsigned int)std::string::npos) {
-        m_path = func_0032FC40(&m_name, 0, pos);
+        m_path = m_name.substr(0, pos);
         string_erase(m_name, 0, pos + 1);
         unsigned int i;
         while ((i = m_path.find_first_of("\\", 0)) != (unsigned int)std::string::npos)
@@ -365,10 +360,6 @@ bool CRdrIO::Open(void *buf, unsigned int size)
     m_path.erase();
     return CBufferIO::Open(buf, size);
 }
-
-/* basic_string's (str, pos, n) constructor (0x332320) and the 6-argument replace under it (0x332CF0),
- * which include/string does not have yet: placeholders, the new string built in the return slot */
-extern "C" std::string func_00332320(const std::string *s, unsigned int pos, unsigned int n);
 
 /* a string trimmed of the characters given at both ends (ours, inline) */
 static inline void zrdr_trim(std::string &s, const char *set)
@@ -525,8 +516,7 @@ bool _preproc_filter(CRdrIO *io)
             switch (token) {
             case ZRDR_PP_INCLUDE:
                 if (!skipping) {
-                    std::string name = func_00332320(&line, line.find_first_of(white, 0),
-                                                     (unsigned int)std::string::npos);
+                    std::string name(line, line.find_first_of(white, 0), (unsigned int)std::string::npos);
 
                     zrdr_trim(name, " \t\n\r\f\"");
                     CRdrIO inc;
@@ -555,10 +545,10 @@ bool _preproc_filter(CRdrIO *io)
                 if (!skipping) {
                     unsigned int first = line.find_first_of(white, 0);
                     unsigned int last = line.find_first_of(white, first + 1);
-                    std::string name = func_00332320(&line, first, last - first);
+                    std::string name(line, first, last - first);
 
                     if (last != (unsigned int)std::string::npos) {
-                        std::string value = func_00332320(&line, last, (unsigned int)std::string::npos);
+                        std::string value(line, last, (unsigned int)std::string::npos);
 
                         zrdr_trim(name, " \t\n\r\f");
                         zrdr_trim(value, " \t\n\r\f");
@@ -573,16 +563,14 @@ bool _preproc_filter(CRdrIO *io)
                 break;
             case ZRDR_PP_UNDEF:
                 if (!skipping) {
-                    std::string name = func_00332320(&line, line.find_first_of(white, 0),
-                                                     (unsigned int)std::string::npos);
+                    std::string name(line, line.find_first_of(white, 0), (unsigned int)std::string::npos);
 
                     zrdr_trim(name, " \t\n\r\f");
                     g_symbols.Undefine(name);
                 }
                 break;
             case ZRDR_PP_IFDEF: {
-                std::string name = func_00332320(&line, line.find_first_of(white, 0),
-                                                 (unsigned int)std::string::npos);
+                std::string name(line, line.find_first_of(white, 0), (unsigned int)std::string::npos);
 
                 depth++;
                 if (!skipping) {
@@ -643,7 +631,7 @@ bool _preproc_filter(CRdrIO *io)
                     if (start == mark)
                         mark = start = i;
                     else {
-                        std::string word = func_0032FC40(&line, start, i - start);
+                        std::string word = line.substr(start, i - start);
 
                         zrdr_trim(word, " \t\n\r\f");
                         zrdr_sym *sym = g_symbols.Find(word, false, false);

@@ -721,7 +721,10 @@ public:
      * bit 2 the one 0x56D890 sets, which a covered state keeps (0x5F6350); a breach clears 13 on
      * entry, then sets 16 from its own bit 13, clears 17 and sets 13 as it ends (0x5F3620) */
     unsigned int m_aibit2 : 1;
-    unsigned int m_bits3 : 4;
+    unsigned int m_bits3 : 3;
+    /* bit 6: held set while CTMacro::Tick (0x5D6DC0) pushes its script state, then put back (the
+     * kit lane, round 23; the name ours) */
+    unsigned int m_aibit6 : 1;
     /* bit 7: set and cleared by 0x561E20 (CAiSNoAmmo's Tick sets it), never with bit 1 (the name
      * ours) */
     unsigned int m_aibit7 : 1;
