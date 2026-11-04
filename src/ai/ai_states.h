@@ -26,6 +26,13 @@
 class CSealCtrlAi;
 class CAiEvent;
 class CZSealBody;
+class CZAnim;
+
+/* an anim's signal to its controller (SOCOM 1's AI_SIGNAL by AnimSignal's mangled name; a byte -- the
+ * switch narrows it with andi -- its cases 1 to 6, the names unknown). Here, not in zseal.h, since
+ * CAiState's slot +0x0C takes it: CSealCtrlAi::AnimSignal (0x562030) hands each state the signal as
+ * it came (zseal.h sees it through this header) */
+enum AI_SIGNAL { AI_SIGNAL_0 = 0, AI_SIGNAL_LAST = 255 };
 
 /* the state kinds (SOCOM 1's AI_STATE, a byte: CAiState's constructor stores it with sb). The
  * values are the ones CAiState::Create (0x5F6550) builds each state for; the names ours, after
@@ -200,9 +207,10 @@ public:
      * slots need (seal_ai.cpp's are the ones linked, 0x555380-0x5553B0, 0x570D10, 0x575990,
      * 0x575AA0; seal_unit.cpp's OnSignal and Tick, 0x5F81D0) */
     virtual void OnSignal(SIGNAL sig, CSealCtrlAi *ai) {}               /* +0x08 */
-    /* +0x0C (new; the base's own, seal_aistate.cpp's): the script state's sequence `id` told
-     * `event` -- event 2 ends this state (the name ours) */
-    virtual void Virtual0C(int id, int event, CSealCtrlAi *ai);
+    /* +0x0C (new; the base's own, seal_aistate.cpp's): an anim's signal handed on by the controller's
+     * AnimSignal (0x562030), the anim and the signal as it came -- the script state's sequence told
+     * signal 2 ends this state (the name ours; the types the caller's, the SEALs' round 33) */
+    virtual void Virtual0C(CZAnim *anim, AI_SIGNAL sig, CSealCtrlAi *ai);
     /* +0x10: an AI_RESULT as an int (the stack's tick keeps it unextended, `move s1,v0`), and no
      * frame time -- the stack's tick sets $f12 for its own recursion but never for this call, and
      * no state's Tick reads $f12 before writing it: they read m_dT, which the stack's tick stores
@@ -443,7 +451,7 @@ public:
 class CAiSScript : public CAiState {
 public:
     CAiSScript() : CAiState(AI_STATE_SCRIPT) {}
-    virtual void Virtual0C(int id, int event, CSealCtrlAi *ai);
+    virtual void Virtual0C(CZAnim *anim, AI_SIGNAL sig, CSealCtrlAi *ai);
     virtual bool CanPushAiState(AI_STATE state, CSealCtrlAi *ai);
     virtual bool CanAttack() const;
     virtual bool CanPursue(CSealCtrlAi *ai) const;
@@ -563,7 +571,7 @@ public:
 class CAiSAction : public CAiState {
 public:
     CAiSAction() : CAiState(AI_STATE_ACTION) {}
-    virtual void Virtual0C(int id, int event, CSealCtrlAi *ai);
+    virtual void Virtual0C(CZAnim *anim, AI_SIGNAL sig, CSealCtrlAi *ai);
     virtual bool CanPushAiState(AI_STATE state, CSealCtrlAi *ai);
     virtual bool CanAttack() const;
     virtual bool CanScan() const;
