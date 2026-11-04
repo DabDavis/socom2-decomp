@@ -10474,7 +10474,7 @@
 0x00583960 0x18C TurnControl__10CZSealBodyFf  # OVL2; s1:order by hand (SOCOM 1 TurnControl__10CZSealBodyFff, after ProneControl: the top blend weight made 1, the turn doubled and negated, capped 0.6/0.3/0.35/0.6 by state as in SOCOM 1; SOCOM II takes one float, every caller sets f12 alone; the SEALs round 16)
 0x00583AF0 0x374 func_00583AF0  # OVL2
 0x00583E70 0x3C8 func_00583E70  # OVL2
-0x00584240 0x144 func_00584240  # OVL2
+0x00584240 0x144 InStateClimbLadder__10CZSealBodyFv  # OVL2; s1:order by hand (the SEAL lane, round 21): SOCOM 1's InStateClimbLadder__10CZSealBodyFfff -- after the carry states, before InStateHang in both builds, and the state dispatcher 0x5870E0's case 5 (stateClimbLadder) calls it; the same body (the 0x3DEF50 anim's early return, the climb anim 45 pushed, popped at the ladder's foot going down for 44, the representative's playback from the rate) with SOCOM II's rate read at 0x240 instead of three float arguments
 0x00584390 0x224 func_00584390  # OVL2
 0x005845C0 0x53C func_005845C0  # OVL2
 0x00584B00 0x110 func_00584B00  # OVL2
@@ -10784,10 +10784,10 @@
 0x005A44F0 0x1C8 ReadTeammateDeathAnimations__7AnimSetFP5_zrdrPCc15DAMAGE_LOCATION  # OVL2; s1:callee
 0x005A46C0 0x180 InitDeathAndFlinchAnimations__7AnimSetFv  # OVL2; s1:order by hand (the SEAL lane, round 19: SOCOM 1's InitDeathAndFlinchAnimations__7AnimSetFv, between ReadTeammateDeathAnimations and ReadDeathAndFlinchAnims in both builds; the same two loops, six locations by three states, reserving 8 in the same six tables in SOCOM 1's order; the set loader 0x5E30F0 calls it)
 0x005A4840 0x1A8 ReadDeathAndFlinchAnims__7AnimSetFv  # OVL2; tu: seal_env.cpp~ (1.0 beta); s1:exact
-0x005A49F0 0x2E8 func_005A49F0  # OVL2
-0x005A4CE0 0x8 func_005A4CE0  # OVL2
-0x005A4CF0 0x278 func_005A4CF0  # OVL2
-0x005A4F70 0x10 func_005A4F70  # OVL2
+0x005A49F0 0x2E8 ReInitDatabaseHandles__10CZSealBodyFv  # OVL2; s1:order by hand (the SEAL lane, round 21): SOCOM 1's ReInitDatabaseHandles__10CZSealBodyFv, right before InitDatabaseHandles (0x5A4CE0, its `j`) in both builds; the same body -- InitHandSignals, AddWeaponEventCallback(HandleWeaponEvent), the ripple and drop anims, the footfall anims by material through "seal_footfall_%s", the CQB and body-fall sounds, Close/OpenHeartbeatSounds; SOCOM II adds the fall-in-water anim, two drop anims and five sounds
+0x005A4CE0 0x8 InitDatabaseHandles__10CZSealBodyFv  # OVL2; s1:order by hand (the SEAL lane, round 21, the game states' lead): SOCOM 1's InitDatabaseHandles__10CZSealBodyFv, 8 bytes, `j ReInitDatabaseHandles` in both builds; CMission::Open calls it right after InitDecalHandles
+0x005A4CF0 0x278 InitDecalHandles__10CZSealBodyFv  # OVL2; s1:order by hand (the SEAL lane, round 21, the game states' lead): SOCOM 1's InitDecalHandles__10CZSealBodyFv, after InitDatabaseHandles in both builds; the same two blocks -- FOOTSTEP_DECALS' MATERIALNAME/TEXTURENAME into the handle buffer at the material's index, BLOOD_DRIP_DECALS' TEXTURENAME/MIN_SIZE/MAX_SIZE pushed on m_blooddriptexhandles after its reserve; CMission::Open calls it
+0x005A4F70 0x10 func_005A4F70  # OVL2; the SEAL lane, round 21: zdb::CWorld::GetTexHandle's OVL2 copy -- the words of OVL1's 0x1EC940 (move a1,a0; the asset list; j CAssetList::GetTexHandle) bar the link's addresses, right after its caller InitDecalHandles, which calls it where SOCOM 1's calls GetTexHandle__Q23zdb6CWorldFPCc; ovl-copy: GetTexHandle__Q23zdb6CWorldFPCc
 0x005A4F80 0x11C HandleWeaponEvent__10CZSealBodyFP12CZProjectileUiPv  # OVL2; s1:ref by hand (UninitDatabaseHandles, 0x5A3BB0, removes it with CZWeapon::RemoveWeaponEventCallback where SOCOM 1's UninitDatabaseHandles removes HandleWeaponEvent__10CZSealBodyFP12CZProjectileUiPv; the callback's type is that static member's; seal_env.cpp, not written yet)
 0x005A50A0 0x1A4 TickStun__10CZSealBodyFf  # OVL2; s1:order by hand (the SEAL lane, round 19: SOCOM 1's TickStun__10CZSealBodyFf, after HandleWeaponEvent and before HandleStunFromHit/HandleStunDamage in both builds; the same seven-kind walk of m_stunval run down by the character type's m_recovery_factor, HandleStunRecovery's jump table inlined; SOCOM II clears the stunned bit when not stunned)
 0x005A5250 0x174 func_005A5250  # OVL2
@@ -10917,8 +10917,8 @@
 0x005B6890 0x4C func_005B6890  # OVL2; the same words as __ct__Q23std38__vector_pod<Ui,Q23std13allocator<Ui>>FRCQ23std38__vector_pod<Ui,Q23std13allocator<Ui>> (0x259b40) bar the link's addresses (tools/ovlcopies.py) -- identical code, not proven the same instance (template instances for different types and look-alike accessors share bodies)
 0x005B68E0 0x2E8 insert__Q23std38__vector_pod<Us,Q23std13allocator<Us>>FPUsUiRCUs  # OVL2; s1:calls; the MSL headers round 16: include/vector's 2-byte pod insert (the char pod's, memmove/memcpy, the fill re-reading the value as a signed half -- lh, where SOCOM 1's 0x2CD740 has lhu), byte-exact in seal_env.cpp's template tail (push_back's, the death and flinch readers)
 0x005B6BD0 0x110 reserve__Q23std38__vector_pod<Us,Q23std13allocator<Us>>FUi  # OVL2; by hand (the SEAL lane, round 19): the pod vector's reserve for a 2-byte element (new(n * 2), the old block memcpy'd over and deleted, 'vector::reserve length error'): InitDeathAndFlinchAnimations reserves 8 in each anim-type table with it, as SOCOM 1's reserves its vector<AnimType>s; beside insert__...<Us> (0x5B68E0); the MSL headers round 16: include/vector's 2-byte pod reserve (the 4-byte pod's with memcpy), byte-exact in seal_env.cpp's template tail
-0x005B6CE0 0x4C4 func_005B6CE0  # OVL2
-0x005B71B0 0x198 func_005B71B0  # OVL2
+0x005B6CE0 0x4C4 func_005B6CE0  # OVL2; the SEAL lane, round 21: the class vector<CZDecalDef>'s insert, OVL2's copy (OVL1's 0x3D3D90 is 0x4CC): InitDecalHandles pushes each blood decal through it (end(), 1, the def) where SOCOM 1's calls insert__Q23std60__vector_imp<10CZDecalDef,...>; ovl-copy: insert__Q23std60__vector_imp<10CZDecalDef,Q23std23allocator<10CZDecalDef>,0>FP10CZDecalDefUiRC10CZDecalDef
+0x005B71B0 0x198 reserve__Q23std60__vector_imp<10CZDecalDef,Q23std23allocator<10CZDecalDef>,0>FUi  # OVL2; by hand (the SEAL lane, round 21): the class vector<CZDecalDef>'s reserve -- InitDecalHandles reserves the blood decals' count on m_blooddriptexhandles through it where SOCOM 1's InitDecalHandles calls reserve__Q23std60__vector_imp<10CZDecalDef,Q23std23allocator<10CZDecalDef>,0>FUi
 0x005B7350 0x5BC func_005B7350  # OVL2
 0x005B7910 0x8 func_005B7910  # OVL2
 0x005B7920 0x68 func_005B7920  # OVL2

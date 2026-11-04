@@ -58,6 +58,44 @@ public:
 };
 
 extern "C" {
+/* a pad button double-clicked and its state (OVL1 0x2C6490 -- CPad::GetDoubleClick through the
+ * button map --, 0x2C64E0, unowned: the HUD's readers call the second the same way) */
+unsigned char func_002C6490(int button, CPad *pad);
+unsigned char func_002C64E0(int button, CPad *pad);
+/* the kit's reload (OVL2 0x5C4600, the kit lane's) and how long the button is held for it (OVL2
+ * data: 0.4) */
+void func_005C4600(CZKit *kit);
+extern float data_00650670;
+}
+
+/* the reload button: double-clicked, or held past the limit, reloads the SEAL's kit; while held its
+ * time runs, else it is cleared (OVL2 0x594B70, new in SOCOM II: PreTick calls it; the name unknown).
+ * The double-click's result taken into a byte local first (the flag's zero after the call) and the
+ * held test stored `!= 0` (the target's second sltu) */
+extern "C" void func_00594B70(CSealCtrl *ctrl, float dT)
+{
+    CPad *pad = ctrl->m_padid < CInput::NUM_PADS ? CInput::m_pads[ctrl->m_padid] : 0;
+    unsigned char dbl = func_002C6490(3, pad);
+    bool reload = false;
+
+    if (dbl)
+        reload = true;
+    else {
+        ctrl->m_bit18 = (func_002C64E0(3, pad) == 2) != 0;
+        if (ctrl->m_bit18)
+            ctrl->m_240 += dT;
+        else
+            ctrl->m_240 = 0.0f;
+        if (!(ctrl->m_240 <= data_00650670)) {
+            ctrl->m_240 = 0.0f;
+            reload = true;
+        }
+    }
+    if (reload)
+        func_005C4600(&((CZSealBody *)ctrl->m_entity)->m_kit);
+}
+
+extern "C" {
 /* (OVL1, unowned: a SEAL's side in the game, both builds' net code; seal.cpp's too) */
 bool func_002C30B0(const CZSealBody *seal);
 /* the two teams' bomb sites (OVL1 bss, past theMission's mapped size; the names ours) */

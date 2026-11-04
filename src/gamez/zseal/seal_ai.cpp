@@ -1459,6 +1459,52 @@ extern "C" bool func_005604D0(CSealCtrlAi *ai, int a)
     return r;
 }
 
+extern "C" int rand(void);
+
+/* a random value in a range (SOCOM 1's Rfloat: the minimum and the span; its inline operator's
+ * out-of-line copy at OVL2 0x560960, after 0x5605A0 its first caller, as SOCOM 1's 0x25ABA0 sits
+ * after CAiSPursue::Tick) */
+class Rfloat {
+public:
+    Rfloat(float min, float range) : m_min(min), m_range(range) {}
+    operator float() const;
+
+    float m_min;   // 0x0
+    float m_range;   // 0x4
+};
+
+/* a state's bit 2 as a bool (an inline: the byte read again and the test materialised, apart from
+ * the running bit's) */
+static inline bool StateBit2(const CAiState *s)
+{
+    return s->m_bit2 ? true : false;
+}
+
+/* a running state's nod, once: the SEAL looks at its leader -- the player when it leads itself -- a
+ * moment, and says so (sound 56, or 55 when asked), the state's bit 2 set (OVL2 0x560340, new in
+ * SOCOM II: the deploy, action, breach, goto and follow states' Ticks call it; the names ours) */
+extern "C" void func_00560340(CSealCtrlAi *ai, CAiState *state, bool b)
+{
+    if (!state || !state->m_active || StateBit2(state))
+        return;
+    ftsGetPlayer();
+    CEntity *leader = ai->m_unit->GetLeader();
+
+    /* (the ternary: an if leaves the join's label aligned with a nop) */
+    leader = leader == ai->m_entity ? ftsGetPlayer() : leader;
+    if (leader) {
+        CPnt3D pos;
+
+        if (ai->SetLookPosW((AI_LOOK)8, leader->GetTargetPosW(&pos)))
+            ai->SetLookTimer(Rfloat(0.5f, 1.0f));
+        if (!b)
+            ai->PlayAiSound((CHARACTER_SOUND)56, 1.0f, -1);
+        else
+            ai->PlayAiSound((CHARACTER_SOUND)55, 1.0f, -1);
+        state->SetBit2(true);
+    }
+}
+
 /* a sound played for an item, surely and with no AI event: the one given, or for none (-1) the item's
  * own -- 41 to 47 for items 128, 127, 151, 152, 121, 122 and 123, else 40 (OVL2 0x560280, new in SOCOM
  * II: CAiSDeploy::Tick calls it; the name unknown -- the cases written so, their tests run reversed) */
@@ -1492,20 +1538,6 @@ extern "C" void func_00560280(CSealCtrl *ctrl, unsigned char item, CHARACTER_SOU
     }
     ctrl->PlayAiSound(sound, 1.0f, -1);
 }
-
-extern "C" int rand(void);
-
-/* a random value in a range (SOCOM 1's Rfloat: the minimum and the span; its inline operator's
- * out-of-line copy at OVL2 0x560960, after 0x5605A0 its first caller, as SOCOM 1's 0x25ABA0 sits
- * after CAiSPursue::Tick) */
-class Rfloat {
-public:
-    Rfloat(float min, float range) : m_min(min), m_range(range) {}
-    operator float() const;
-
-    float m_min;   // 0x0
-    float m_range;   // 0x4
-};
 
 /* the random part through a local: written as one expression the join loses its pad and an
  * inlined copy (0x5608B0, PlayAiSound) its registers */

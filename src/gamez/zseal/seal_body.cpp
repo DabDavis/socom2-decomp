@@ -1413,6 +1413,35 @@ void CZSealBody::BodySetState(int state)
     func_0028DFB0(*this, state);
 }
 
+/* on a ladder: nothing while the 0x3DEF50 anim is on top; else the climb (anim 45) pushed if it is not,
+ * and going down at the foot of the ladder the climb popped and the step off (44) pushed; climbing,
+ * the top blend made whole and played at the climb's rate (OVL2 0x584240: SOCOM 1's InStateClimbLadder
+ * by order -- after the carry states, before InStateHang -- and by the state dispatcher's case 5;
+ * SOCOM II's reads the rate at 0x240 where SOCOM 1's took three floats) */
+CZBodyAnimBlend *CZSealBody::InStateClimbLadder()
+{
+    CZBodyAnimBlend *top = (CZBodyAnimBlend *)func_00555170(&m_blends);
+    float rate = m_240;
+    const CPnt3D &pos = m_posW;
+
+    if (IsCurrentBlend((AnimType)data_003DEF50))
+        return top;
+    if (!IsCurrentBlend((AnimType)45))
+        func_00588BC0(this, (AnimType)45, 5, 0, 0);
+    if (rate < 0.0f && pos.y < 1.0f + m_alt) {
+        if (IsCurrentBlend((AnimType)45))
+            func_00589AA0(this);
+        return (CZBodyAnimBlend *)func_00588BC0(this, (AnimType)44, 0, 1, 0);
+    }
+    CZBodyAnimBlend *b = (CZBodyAnimBlend *)func_00555170(&m_blends);
+
+    b->SetRepresentativeWt(1.0f);
+    ACTIVE_ANIM *rep = b->Representative();
+
+    rep->SetPlayback(rate * rep->m_anim->m_1c);
+    return b;
+}
+
 extern "C" float fabsf(float x);
 
 /* the top blend turned: its weight made 1 and its playback set from the turn, doubled and negated,
