@@ -296,23 +296,14 @@ extern "C" float func_001F3550(CObjectiveCounts *counts)
 /* the stealth rating (OVL1 0x1F3290): 35 less the times seen, the stealth kills up to 30, 35 less
  * 35 for each alarm the "scoring_alarm" valve counts -- none under 45 seconds of mission -- as a
  * percentage; the stealth kills, the alarms, the enemy's shots and the rating shown.
- * OPEN, 2 instructions (the target's size; 48 until round 34), one delay slot: every register is
- * the target's -- the first term counted down from a 35 in its own variable, s3; the alarms
- * numbered before the kills by a dead first definition ahead of them (`int alarms = 0;`, the world's
- * round-12 rule: defined at its use after the kills the two trade registers, defined at its
- * declaration ahead its li fills the kills clamp's delay slot), s2 and s1; the sum a variable of its
- * own, s3 -- and the final clamps are ternaries: the target leaves their two joins unpadded, as a
- * join MW makes inside an expression (the if-statement clamps pad both labels to 8: 0x2C0). What
- * is left: the target schedules the alarms' `li s2,35` between the name's lui and the jal and fills
- * the delay slot with its addiu, where MW puts the li in the slot. Round 34 measured every
- * placement of the li: defined in the call's block it lands in the slot whatever its numbering
- * (after the kills, through an inline's parameter, a by-reference out-parameter, an inline holding
- * the lookup, the whole alarm term an inline taking the 35 by value, a comma in the call's argument,
- * a const local, the name in a local ahead), defined
- * after the call the jal's block changes (0x2B0). The image's only matched witness of the target's
- * shape is zui_hangul.cpp's SkbHangulRestart 0x3914C8 (an inlined loop counter set from the inline's
- * parameter just before the loop guard's call); a plain named local set before a call gives this
- * one's (zNetMediusChat.cpp's delay, 0x2EF46C) */
+ * Byte-exact (round 35; 48 off until round 34, 2 then): the first term counted down from a 35 in its
+ * own variable, s3; the alarms numbered before the kills by a dead first definition ahead of them
+ * (`int alarms = 0;`, the world's round-12 rule), s2 and s1; the sum a variable of its own, s3; the
+ * final clamps ternaries (the target leaves their joins unpadded) -- and the kills' upper clamp a
+ * TERNARY too, while the lower one stays an if: the clamp's join is then no block of its own, and
+ * the alarms' `li s2,35` lands between the name's lui and the jal, the name's addiu in the delay
+ * slot, as the target (as an if-statement MW put the li in the slot whatever its placement --
+ * round 34's measurements, every one 2 off) */
 extern "C" float func_001F3290(CSealStats **stats)
 {
     int score = 35;
@@ -325,8 +316,7 @@ extern "C" float func_001F3290(CSealStats **stats)
 
     if (kills < 0)
         kills = 0;
-    if (kills > 30)
-        kills = 30;
+    kills = kills > 30 ? 30 : kills;
     alarms = 35;
     CValve *alarm = CValve::GetByName("scoring_alarm");
 

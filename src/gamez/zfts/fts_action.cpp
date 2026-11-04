@@ -10,6 +10,8 @@
 #include "../zanim/zanim.h"
 #include "../zsys/zsys.h"
 
+extern "C" int strcasecmp(const char *a, const char *b);
+
 /* a SEAL's controller: only the slot this unit calls (fts_remote.cpp's CEntityCtrl, the names
  * ours) */
 class CActionCtrl {
@@ -72,11 +74,61 @@ public:
         m_uidesc = 0;
     }
 
+    /* SOCOM 1's ACTION_TYPE (a byte under -enum min: the type's names by it, 8 the unknown) */
+    enum ACTION_TYPE { ACT_DOOR, ACT_WINDOW, ACT_SWITCH, ACT_DEFUSE, ACT_MPBOMB, ACT_BREACH, ACT_SATCHEL,
+                       ACT_ITEM, ACT_UNKNOWN };
+
+    /* a type's name in the actions file (SOCOM 1's, out of line there; inlined into Open here) */
+    static const char *GetActionType(ACTION_TYPE type)
+    {
+        switch (type) {
+        case ACT_DOOR:
+            return "DOOR";
+        case ACT_WINDOW:
+            return "WINDOW";
+        case ACT_DEFUSE:
+            return "DEFUSE";
+        case ACT_SWITCH:
+            return "SWITCH";
+        case ACT_ITEM:
+            return "ITEM";
+        case ACT_MPBOMB:
+            return "MPBOMB";
+        case ACT_SATCHEL:
+            return "SATCHEL";
+        case ACT_BREACH:
+            return "ACT_BREACH";
+        }
+        return "UNKNOWN";
+    }
+    /* an action made on a node and listed, its id its place in the list (ours, inline: Open's
+     * arguments are read before the new, and the action Open keeps is the returned copy -- the
+     * list's push_back homes only this local) */
+    /* a type by its name, unknown when none matches (ours, inline: SOCOM 1's Open walked the names
+     * itself) */
+    static ACTION_TYPE GetActionType(const char *name)
+    {
+        for (int i = 0; i < 8; i++)
+            if (!strcasecmp(name, GetActionType((ACTION_TYPE)i)))
+                return (ACTION_TYPE)i;
+        return ACT_UNKNOWN;
+    }
+    static CNodeAction *Add(zdb::CNode *node, CZAnim *anim, CValve *valve, zdb::CTexHandle *tex)
+    {
+        CNodeAction *action = new CNodeAction(node, anim, valve, tex);
+
+        action->m_id = m_actions.size();
+        m_actions.push_back(action);
+        return action;
+    }
+    static int Open(zdb::CWorld *world, const char *name);
     static void SyncActionsMP(int who);
     static void Close();
     static void Reset();
     static CNodeAction *GetActionById(unsigned int id);
     static CNodeAction *FindActionByValve(const CValve *valve);
+    static void GetTCMActions(std::vector<CNodeAction *> *list);
+    const char *GetUIString();
     int ExecuteAction(CZSealBody *body, unsigned int index);
 
     /* whether the action's state goes to the other clients (the name ours) */
@@ -85,7 +137,7 @@ public:
     /* the flags set one by one (the constructor's order; the names ours) */
     void SetNetworked(bool b) { m_networked = b; }
     void SetNetworkLog(bool b) { m_network_log = b; }
-    void SetFlag2(bool b) { m_3f_2 = b; }
+    void SetTCM(bool b) { m_tcm = b; }
     void SetFlag3(bool b) { m_3f_3 = b; }
     void SetBits4(int n) { m_3f_4 = n; }
 
@@ -106,12 +158,13 @@ public:
     unsigned char m_3e;   // 0x3e
     unsigned char m_networked : 1;   // 0x3f (SOCOM 1's at 0x2e)
     unsigned char m_network_log : 1;
-    unsigned char m_3f_2 : 1;
+    unsigned char m_tcm : 1;   // bit 2: offered in the command menu (Open's `tcm` tag)
     unsigned char m_3f_3 : 1;
     unsigned char m_3f_4 : 4;
 
-    /* the flag at bit 2 of 0x3f (the name ours) */
-    bool IsFlag2() { return m_3f_2 ? true : false; }
+    /* whether the command menu offers the action (bit 2 of 0x3f, set by Open's `tcm` tag; the
+     * name ours) */
+    bool IsTCM() { return m_tcm ? true : false; }
 
     static Container m_actions;
 };
@@ -130,6 +183,18 @@ inline void SetValveValue(CValve *valve, int value)
 
 CZSealBody *ftsGetPlayer();
 extern "C" int strcmp(const char *a, const char *b);
+
+/* the rdr reader (zrdr.h's) */
+class CRdrFile;
+_zrdr *zrdr_read(const char *name, const char *path, int flags);
+int zrdr_free(CRdrFile *file);
+char *zrdr_findstring(const _zrdr *rdr, const char *tag);
+bool zrdr_findreal(const _zrdr *rdr, const char *tag, float *out, int n);
+bool zrdr_findint(const _zrdr *rdr, const char *tag, int *out, int n);
+/* a team mask read (vehicle_rdr.cpp's) */
+unsigned int ParseTeams(_zrdr *rdr);
+/* whether the network game swaps its sides (fts_net_game.cpp's) */
+extern "C" unsigned char data_004412D8;
 
 /* unnamed yet (SOCOM 1's names in the comments) */
 extern "C" {
@@ -222,6 +287,102 @@ void CNodeAction::Reset()
     }
 }
 
+/* the map's actions read from its rdr (OVL1 0x2B4F40: SOCOM 1's CNodeAction::Open, grown): for each
+ * entry of `actions`, its node found in the world, its valve made, an action put on the node unless
+ * it already has an extension -- its anim, bitmap, range and elevation, then SOCOM II's settings:
+ * the descriptor, no_netlog, one_shot, points, the type by name, the extra anims, the team (its two
+ * sides swapped when the network game swaps them) and tcm. Byte-exact (round 35): the action made
+ * and listed through the inline Add, the type by name through the inline GetActionType(const char *)
+ * returning early, and the anims tag and each extra anim assigned in their tests (the value tested
+ * in v0, the variable set in the delay slot) */
+int CNodeAction::Open(zdb::CWorld *world, const char *name)
+{
+    _zrdr *rdr = zrdr_read(name, 0, 0);
+    _zrdr *actions = zrdr_findtag(rdr, "actions");
+
+    if (actions && actions->type == 4) {
+        int n = actions->Count();
+
+        for (unsigned int i = 0; (int)i < n; i++) {
+            _zrdr *entry = actions->Item(i);
+            float range = 32.0f;
+            float elevation = -1.0f;
+            const char *nodeName = zrdr_findstring(entry, "node");
+            const char *animName = zrdr_findstring(entry, "anim");
+            const char *valveName = zrdr_findstring(entry, "valve");
+            const char *bitmap = zrdr_findstring(entry, "bitmap");
+            const char *descriptor = zrdr_findstring(entry, "descriptor");
+            zdb::CTexHandle *tex = 0;
+
+            if (bitmap)
+                tex = zdb::CWorld::GetTexHandle(bitmap);
+            zrdr_findreal(entry, "range", &range, 1);
+            zrdr_findreal(entry, "elevation", &elevation, 1);
+
+            zdb::CNode *node = world->FindChild(nodeName, true);
+            CZAnim *anim = animName ? ZAnim.GetAnim(animName, 0) : 0;
+
+            if (node) {
+                CValve::GetByName(valveName);
+                CValve *valve = CValve::Create(valveName, VALVE_PERM);
+
+                if (!node->m_nodeEx) {
+                    CNodeAction *action = Add(node, anim, valve, tex);
+
+                    action->m_range = range;
+                    action->m_20 = elevation;
+                    node->SetNodeEx(action, false);
+                    valve->AddCallback(3, _actionValveCallback, action);
+                    if (descriptor)
+                        action->m_uidesc = _strdup(descriptor, 0, 0);
+                    if (zrdr_findtag(entry, "no_netlog"))
+                        action->SetNetworked(false);
+                    if (zrdr_findtag(entry, "one_shot"))
+                        action->SetFlag3(true);
+                    zrdr_findint(entry, "points", &action->m_38, 1);
+
+                    const char *type = zrdr_findstring(entry, "type");
+
+                    if (type)
+                        action->m_type = GetActionType(type);
+
+                    _zrdr *anims;
+
+                    if ((anims = zrdr_findtag(entry, "anim")) != 0) {
+                        unsigned int count = anims->Count();
+
+                        for (unsigned int k = 1; k < count; k++) {
+                            if ((anim = ZAnim.GetAnim(anims->Item(k)->String(), 0)) != 0)
+                                action->m_anims.push_back(anim);
+                        }
+                    }
+
+                    _zrdr *team = zrdr_findtag(entry, "team");
+
+                    if (team) {
+                        unsigned int teams = ParseTeams(team);
+
+                        if (theNetwork.m_bNetwork && data_004412D8) {
+                            unsigned int swapped = teams & ~0x101;
+
+                            if (teams & 1)
+                                swapped |= 0x100;
+                            if (teams & 0x100)
+                                swapped |= 1;
+                            teams = swapped;
+                        }
+                        action->m_30 = teams;
+                    }
+                    if (zrdr_findtag(entry, "tcm"))
+                        action->SetTCM(true);
+                }
+            }
+        }
+    }
+    zrdr_free((CRdrFile *)rdr);
+    return 0;
+}
+
 /* the action whose valve has this name (SOCOM II's; OVL1 0x2B4E80). Out of line: the
  * EXECUTE_ACTION tick calls it */
 #pragma auto_inline off
@@ -266,16 +427,17 @@ CNodeAction *CNodeAction::FindActionByValve(const CValve *valve)
     return found;
 }
 
-/* every action flagged at bit 2 of 0x3f appended to a vector (SOCOM II's; OVL1 0x2B4CD0) */
-extern "C" void func_002B4CD0(std::vector<CNodeAction *> *list)
+/* every action the command menu offers appended to a vector (SOCOM II's; OVL1 0x2B4CD0, the HUD's
+ * tcmSetNodeActions 0x236260 calls it: the actions Open tagged `tcm`; the name ours) */
+void CNodeAction::GetTCMActions(std::vector<CNodeAction *> *list)
 {
     if (list) {
-        CNodeAction::Container::iterator e = CNodeAction::m_actions.end();
+        Container::iterator e = m_actions.end();
 
-        for (CNodeAction::Container::iterator i = CNodeAction::m_actions.begin(); i != e; ++i) {
+        for (Container::iterator i = m_actions.begin(); i != e; ++i) {
             CNodeAction *action = *i;
 
-            if (action && action->IsFlag2())
+            if (action && action->IsTCM())
                 list->push_back(action);
         }
     }
@@ -305,7 +467,7 @@ extern const char *data_003DE6C8;      /* "Breach doorway under reticule" */
 }
 
 /* the action described for the UI: its own description, else its type's (SOCOM II's; OVL1
- * 0x2B4760 -- SOCOM 1's GetUIString beside it, 0x2B4820, is the same switch over the names) */
+ * 0x2B4760 -- 0x2B4820 and GetUIString 0x2B48E0 beside it are the same switch over two more name tables) */
 extern "C" const char *func_002B4760(CNodeAction *action)
 {
     const char *s = action->m_uidesc;
@@ -395,7 +557,7 @@ CNodeAction::CNodeAction(zdb::CNode *node, CZAnim *anim, CValve *valve, zdb::CTe
     m_3e = 0;
     SetNetworked(true);
     SetNetworkLog(false);
-    SetFlag2(false);
+    SetTCM(false);
     SetFlag3(false);
     SetBits4(0);
     m_range = 32.0f;
@@ -420,6 +582,51 @@ extern "C" bool func_002B49A0(CNodeAction *action, unsigned int who)
         taken = true;
     }
     return taken;
+}
+
+/* the action types' names (SOCOM 1's UISTR_ACT_* pointers, a set of SOCOM II's own for each of the
+ * three describers: the door's pair by its valve, then one each) */
+extern "C" {
+extern const char *data_003DE628[2];   /* "CLOSE DOOR", "OPEN DOOR" */
+extern const char *data_003DE630;      /* "FLIP SWITCH" */
+extern const char *data_003DE638;      /* "TAKE ITEM" */
+extern const char *data_003DE640;      /* "DEFUSE BOMB" */
+extern const char *data_003DE648;      /* "MP BOMB" */
+extern const char *data_003DE650;      /* "PLACE SATCHEL" */
+extern const char *data_003DE658;      /* "BREACH" */
+}
+
+/* the action's type named for the UI (SOCOM 1's GetUIString(), returning the name where SOCOM 1's
+ * string overload filled one; OVL1 0x2B48E0: CActionTxtrMachine::Add 0x2209C0 calls it where SOCOM
+ * 1's Add calls GetUIString) */
+const char *CNodeAction::GetUIString()
+{
+    const char *s = 0;
+
+    switch (m_type) {
+    case 0:
+        s = m_valve->m_value ? data_003DE628[0] : data_003DE628[1];
+        break;
+    case 2:
+        s = data_003DE630;
+        break;
+    case 7:
+        s = data_003DE638;
+        break;
+    case 3:
+        s = data_003DE640;
+        break;
+    case 4:
+        s = data_003DE648;
+        break;
+    case 6:
+        s = data_003DE650;
+        break;
+    case 5:
+        s = data_003DE658;
+        break;
+    }
+    return s;
 }
 
 /* an anim's done callback set (CZAnim's fields at 0x1c/0x20; the anim a copy, so both stores go

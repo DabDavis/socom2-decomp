@@ -81,6 +81,9 @@ public:
 class CAiEventQ : public std::list<CAiEventHandle> {
 public:
     CAiEventHandle *Create(unsigned int id);
+    /* every handle dropped (the name ours: dead-stripped -- ai_events.cpp's tail keeps the range
+     * erase it instantiates, 0x50FBD0, which ~CAiEventQ and CSealCtrlAi::OnDeath call) */
+    void Clear();
 
     unsigned char m_diRequested;   // 0xc
 };

@@ -12,7 +12,8 @@
  * CDIBBox::GetAltitude, SetEdgeVecsAndNorm, LoadPlaneVU0, GetBBoxCorners and (round 10) the edge
  * queries GetEdgeIntersectsY, GetEdgeIntersects and intersect2d (0x2DD690), and
  * DiIntersect::LoadTipAndTail (0x2DD210) and CDIPoly::GetIntersect (both open). Unwritten, in
- * image order: SetCDIBBox, CDIBBox::GetIntersect and CDIPoly::GetAltitude -- VU0 code throughout.
+ * image order: SetCDIBBox and CDIBBox::GetIntersect -- VU0 code throughout; CDIPoly::GetAltitude
+ * (0x2DD8E0) written in round 14.
  * Defined in reverse of their image order (-inline deferred). */
 
 #include "node_world.h"
@@ -21,6 +22,25 @@
  * the DI itself; the name is ours). Built as (0, 1, 0, 0) by the unit's initialiser,
  * __sinit_int_shapes.cpp (0x401D80, byte-exact) */
 static CPnt4D diNorm(0.0f, 1.0f, 0.0f, 0.0f);
+
+/* a polygon point as a CPnt3D (its w ignored; ours) */
+inline CPnt3D &Pnt3(CPnt4D &p) { return *(CPnt3D *)&p; }
+/* whether a segment lies wholly beyond one of a box's six faces (ours: CDIBBox::GetIntersect's
+ * rejection -- an inline's `||` of six `&&`s written in place materialises each level as the
+ * target's, each pair's bool unnarrowed; through inline bool helpers each pair gains an andi, by
+ * value they load first; the int return gives the final andi) */
+inline int SegmentOutside(const CBBox *box, const CPnt3D *a, const CPnt3D *b)
+{
+    return (a->x < box->m_min.x && b->x < box->m_min.x) || (a->x > box->m_max.x && b->x > box->m_max.x) ||
+           (a->y < box->m_min.y && b->y < box->m_min.y) || (a->y > box->m_max.y && b->y > box->m_max.y) ||
+           (a->z < box->m_min.z && b->z < box->m_min.z) || (a->z > box->m_max.z && b->z > box->m_max.z);
+}
+
+/* two points' differences in x and in z (ours: CDIPoly::GetAltitude's edges -- the arguments
+ * evaluated right to left put the second point's address first, as the target computes it, where
+ * the subtraction written in place takes the first's) */
+inline float SubX(const CPnt4D &a, const CPnt4D &b) { return a.x - b.x; }
+inline float SubZ(const CPnt4D &a, const CPnt4D &b) { return a.z - b.z; }
 
 namespace zdb {
 
@@ -83,6 +103,55 @@ bool intersect2d(const CPnt3D *p, const CPnt3D *a, const CPnt3D *b, CPnt3D *out)
 }
 
 namespace zdb {
+
+/* the polygon's height under the model-space tail: the plane of its first three points loaded into
+ * VU0 (LoadPlaneVU0's body, the normal into diNorm), none for an upright plane or a point outside an
+ * edge -- walked from the last point back, each edge's xz perpendicular against the point beyond a
+ * -1e-5 tolerance -- else the next hit's position (the tail at the plane's height over the first
+ * point) and normal (SOCOM 1's, the normal its own field there; SOCOM II leaves the poly to the
+ * caller as GetIntersect does). The edge vector a local the stores keep in memory (the points
+ * re-read after each), the slopes named locals (otherwise MW multiplies the second before the first
+ * sum), the hit's index read into a local ahead of the normal's temporary (built from a reference
+ * to diNorm, its fields loaded z first), the position's statement reading the count again */
+int CDIPoly::GetAltitude(DiIntersect *di)
+{
+    CPnt3D p;
+    CPnt3D e;
+    CPnt4D *pnts = m_pnts;
+
+    asm volatile {
+        lqc2 vf4, 0(pnts)
+        lqc2 vf5, 16(pnts)
+        lqc2 vf6, 32(pnts)
+        vcallms 0x70
+    }
+    int i = m_flags.m_ptcount - 1;
+
+    p.x = di->m_MTail.x;
+    p.z = di->m_MTail.z;
+    if (diNorm.y == 0.0f)
+        return 0;
+    int j = 0;
+
+    do {
+        e.z = SubX(m_pnts[i], m_pnts[j]);
+        e.x = SubZ(m_pnts[j], m_pnts[i]);
+        if (e.x * (p.x - m_pnts[i].x) + e.z * (p.z - m_pnts[i].z) <= -1e-5f)
+            return 0;
+        j = i;
+    } while (--i >= 0);
+    float inv = 1.0f / diNorm.y;
+    float a = inv * -diNorm.x;
+    float b = inv * -diNorm.z;
+
+    p.y = m_pnts[0].y + a * (p.x - m_pnts[0].x) + b * (p.z - m_pnts[0].z);
+    const CPnt4D &nn = diNorm;
+    int c = di->m_Cnt;
+
+    di->m_Intersects[c].m_norm = CPnt3D(nn.x, nn.y, nn.z);
+    di->m_Intersects[di->m_Cnt].m_pos = p;
+    return 1;
+}
 
 /* the ray against the polygon, edge by edge on VU0 (the tip and tail already loaded): the last
  * point and the first through the microprogram at 0x10, then each next point through 0x20 -- its
@@ -150,9 +219,6 @@ void DiIntersect::LoadTipAndTail()
         "lqc2 $vf2, 0(%0)\n"
         : : "r"(&tail), "r"(&tip) : "memory");
 }
-
-/* a polygon point as a CPnt3D (its w ignored; ours) */
-inline CPnt3D &Pnt3(CPnt4D &p) { return *(CPnt3D *)&p; }
 
 /* the polygon's edges whose height range holds the point's (each edge from the previous point, up
  * or down), the point at that height on each kept in out -- the edge's first point when the edge is
@@ -237,6 +303,60 @@ void CDI::SetEdgeVecsAndNorm()
     sceVu0OuterProduct((float *)&n, (float *)&a, (float *)&b);
     sceVu0Normalize((float *)&n, (float *)&n);
     VecSet(&diNorm.x, n.x, n.y, n.z, 0.0f);
+}
+
+/* the ray against the box: none when tail and tip lie beyond the same face, else the box's corners
+ * through VU0's microprogram at 0x30 (the high corner's w the back-face flag: 0 when the mask is 48,
+ * 224 else), its hit and normal into the next hit's slot, whether the hit's w is set (SOCOM 1's;
+ * written in the engine core's round 14). The tail numbered before the tip but set after it (the
+ * target computes the tip's address first and gives the pair t3/t2).
+ * OPEN, 8 instructions (0x278 against 0x280), the last test only: the target loads the hit's w
+ * before the zero's mtc1 (then a nop) and puts the return 0's `move v0,zero` in the bc1f's delay
+ * slot -- CDIPoly::GetIntersect's open tail exactly (MW hoists the mtc1 above the asm's lwc1); tried
+ * `w != 0.0f` first and a result local (build/scratch/core/v_bbox*.py) */
+int CDIBBox::GetIntersect(DiIntersect *di)
+{
+    const CBBox *box = m_bbox;
+    const CPnt3D *tail;
+    const CPnt3D *tip;
+
+    tip = &di->m_MTip;
+    tail = &di->m_MTail;
+    if (SegmentOutside(box, tail, tip))
+        return 0;
+    CPnt4D lo;
+    CPnt4D hi;
+    CPnt4D *plo = &lo;
+    CPnt4D *phi = &hi;
+
+    lo.x = m_bbox->m_min.x;
+    lo.y = m_bbox->m_min.y;
+    lo.z = m_bbox->m_min.z;
+    hi.x = m_bbox->m_max.x;
+    hi.y = m_bbox->m_max.y;
+    hi.z = m_bbox->m_max.z;
+    int *flag = (int *)&phi->w;
+
+    if (m_backface_mask != 48)
+        *flag = 224;
+    else
+        *flag = 0;
+    IntersectStruct *is = &di->m_Intersects[di->m_Cnt];
+    CPnt3D *norm = &is->m_norm;
+    float w;
+
+    asm volatile {
+        lqc2 vf3, 0(plo)
+        lqc2 vf4, 0(phi)
+        vcallms 0x30
+        qmtc2.i a0, vf0
+        sqc2 vf10, 0(is)
+        sqc2 vf30, 0(norm)
+        lwc1 w, 12(is)
+    }
+    if (w == 0.0f)
+        return 0;
+    return 1;
 }
 
 /* a box answers no altitude query (SOCOM 1's, the same two words) */

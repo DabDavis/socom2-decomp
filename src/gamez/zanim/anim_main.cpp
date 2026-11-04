@@ -76,7 +76,10 @@ int CZAnimMain::UnloadCmdSet(int index)
  * s3/s0 (the command declared ahead of its set fixes the set's s2, round 12: 8 -> 6; the offset
  * is an optimiser temporary, numbered after every named local, so it colours first). Reusing s
  * and cmd, hoisting the locals, the index declared first (10), the set a reference (8), the
- * command indexed (0x1F4) or the set read in place (0x1F0) are further off */
+ * command indexed (0x1F4) or the set read in place (0x1F0) are further off. Round 14 (igdump: the
+ * offset temporary v43 is coloured first, the command v40 fourth): the command defined with the set,
+ * declared outside the loop, after the index, its first point a const local, the set a reference,
+ * the offset a named local stepped by 12 -- 6 to 17 (build/scratch/core/v_gcmd.py) */
 int CZAnimMain::GetCmd(int set, char *name, bool create)
 {
     _zanim_cmd_set *s = &m_cmdset_list[set];

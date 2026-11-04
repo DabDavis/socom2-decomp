@@ -185,6 +185,19 @@ public:
     static void CloseAll();
     /* a set's anims taken from another (SOCOM 1's; OVL2 0x5E3740) */
     void Inherit(AnimSet *base);
+    /* the set's name (out of line in the SEALs' units, OVL2 0x578940; the name ours) */
+    std::string &GetName() { return m_name; }
+    /* a set by its name in the list, or 0 (SOCOM 1's Find; inlined one level in 0x5E3940, the list's
+     * iterator pieces called -- OVL2 0x5788C0-0x578980, the SEALs' copies) */
+    static AnimSet *Find(const char *name)
+    {
+        std::vector<AnimSet *>::iterator i;
+
+        for (i = list.begin(); i != list.end(); i++)
+            if (!strcmp(name, (*i)->GetName().c_str()))
+                return *i;
+        return 0;
+    }
 
     /* every set (SOCOM 1's AnimSet::List, a pointer vector; OVL1 bss 0x44D430) */
     static std::vector<AnimSet *> list;
@@ -558,9 +571,26 @@ CZSIScriptCommon *AnimSet::GetVariantScript(AnimType type, int kind, int index)
     return 0;
 }
 
-/* a set's included sets inherited, each found by name in the list (OVL2 0x5E3940, unwritten: SOCOM
- * 1's Inherit held the walk inline) */
-extern "C" void func_005E3940(AnimSet *set);
+/* a set's included sets inherited, each found by name in the list (OVL2 0x5E3940: SOCOM 1's Inherit
+ * held the walk inline; the name unknown).
+ * OPEN, 0x154 against 0x180: the target inlines Find one level -- every call in it (the iterator's
+ * default constructor, begin, operator=, end, !=, *, GetName, c_str, postfix ++: the SEALs' copies
+ * 0x5788C0-0x578980) left a call -- so Find's whole inline tree is taller than five there; here it
+ * is at most five and all of it inlines. A probe with GetName five high (four wrapper levels: Find's
+ * tree six) is byte-exact, four high is not. CloseAll (0x5E5070) inlines the list's begin, end, !=
+ * and ++ whole, so those are at most four high in the original: the tall chain is c_str's (two
+ * here, c_str -> is_long; the outer walk's own c_str inlines at depth one, so five high fits) or
+ * the iterator's constructor or assignment -- include/string's and include/vector's depths, the
+ * MSL lane's */
+extern "C" void func_005E3940(AnimSet *set)
+{
+    for (std::vector<std::string>::iterator i = set->m_included.begin(); i != set->m_included.end(); i++) {
+        AnimSet *base = AnimSet::Find((*i).c_str());
+
+        if (base)
+            set->Inherit(base);
+    }
+}
 
 /* a set's anims taken from another (SOCOM 1's Inherit; OVL2 0x5E3740): the other's own includes
  * first while this one is not ready, then each of its type records in use (a non-negative anim)

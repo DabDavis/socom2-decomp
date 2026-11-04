@@ -77,6 +77,7 @@ public:
 class CInput {
 public:
     static void Tick(float dT);   /* 0x2D9E40 (st_mpexit.cpp's call) */
+    static void Flush();   /* 0x2D9E00 (CMenuState::Init's call) */
 
     static CPad *m_pads[2];
 };
@@ -165,6 +166,8 @@ public:
 class CSnd {
 public:
     static bool PostTick(float dT, void *data);
+    /* a sound by its name (zsnd.h's; CMenuState::Init's selection sound) */
+    static void *GetSoundByName(const char *name);
 };
 
 /* the mission's texture buffers: a vector of them (zdb::CTexManager::m_texmanager's) */

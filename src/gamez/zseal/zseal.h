@@ -306,6 +306,8 @@ public:
      * 0x52C5C0, 0x52D950) */
     bool RegisterPathPlan(const CAiMapLoc &start, const CAiMapLoc *locs, int count, CAiPath *path);
     CAiMap::region *GetRegion(const CAiMapLoc &loc);
+    /* a region by its name, and its cell (ai_maps.h's, OVL2 0x52D9F0) */
+    CAiMap::region *GetRegion(const char *name, CAiMapLoc &loc);
     /* the cells between two points walked over the maps, each handed to a callback (ai_maps.h's,
      * OVL2 0x5352D0) */
     bool WalkLine(const CPnt3D *from, const CPnt3D *to, bool (*f)(const MAP_LINEWALK_STRUCT &s, void *data),
