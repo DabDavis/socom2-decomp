@@ -366,14 +366,86 @@ public:
     bool m_autoScroll;   // 0x7c
 };
 
-class ActionItem;
+/* a button's look in one state (0x34 bytes; its destructor 0x36E650, a string at 0 destroyed, is
+ * the button's -- a plain stand-in here, the fields by what SetNormal hands on; the names ours) */
+struct ButtonState {
+    /* inline (C2DButton's constructor builds its four so, as SOCOM 1's: grey caption, the scale
+     * left alone) */
+    ButtonState()
+        : m_tex(0), m_fadeMin(0.0f), m_fadeMax(0.0f), m_pulse(false), m_period(0.0f), m_fadeTime(0.0f),
+          m_color(128.0f, 128.0f, 128.0f)
+    {
+    }
 
-/* a button's spec (zui_spec.h's CButtonSpec, 0x118 bytes: only its size here) and a check box's
- * (CCheckBoxSpec: the two actions, the check's place and size, its texture's name) */
+    /* a spec's look taken over (inline: C2DButton::LoadSpec copies its four so, as SOCOM 1's -- the
+     * fields, then the image's name through its text, the scale last). The name and the scale
+     * through a reference of their own: the target builds the look's address for the string's
+     * c_str and keeps it across the assignment for the scale (SOCOM 1's data() call did the same);
+     * read through `s` MW folds both into the spec's offsets, and the reference also gives the
+     * target's saved registers (this s1, the spec s0) */
+    void operator=(const ButtonState &s)
+    {
+        m_tex = s.m_tex;
+        m_fadeMin = s.m_fadeMin;
+        m_fadeMax = s.m_fadeMax;
+        m_pulse = s.m_pulse;
+        m_period = s.m_period;
+        m_fadeTime = s.m_fadeTime;
+        m_color = s.m_color;
+
+        const ButtonState &n = s;
+
+        m_texName = n.m_texName.c_str();
+        m_scale = n.m_scale;
+    }
+
+    CSaferStr m_texName;   // 0x0: the state's image (SOCOM 1's _TexName)
+    zdb::CTexHandle *m_tex;   // 0xc: the background's texture
+    float m_fadeMin;   // 0x10
+    float m_fadeMax;   // 0x14
+    bool m_pulse;   // 0x18: the caption pulses
+    float m_period;   // 0x1c: the background's pulse
+    float m_fadeTime;   // 0x20
+    CPnt3D m_color;   // 0x24: the caption's
+    float m_scale;   // 0x30: the caption's
+};   // 0x34 bytes
+
+/* a button's action (zui_spec.h's ActionItem, 0x10 bytes: its destructor zui_cleanup.cpp's,
+ * 0x3890C0; the type and the key state byte enums) */
+class ActionItem {
+public:
+    /* zui_spec.h's: a button action on the falling edge of no button (the list items build theirs) */
+    ActionItem() : Type(0), Animation(0), Argument(0), State(1), Event(16) {}
+    ~ActionItem();
+    void Run() const;
+    bool Start() const;
+    ActionItem &operator=(const ActionItem &a);   // zui.cpp's, 0x369FA0
+
+    unsigned char Type;   // 0x0: ACTION_TYPE
+    char *Animation;   // 0x4: the animation it starts
+    char *Argument;   // 0x8: handed to it, if any
+    unsigned char State;   // 0xc: KEY_STATE
+    unsigned char Event;   // 0xd: the pad button or the event (a union in zui_spec.h)
+};
+
+/* a button's spec (zui_spec.h's CButtonSpec, 0x118 bytes, its names: its PRESSED look the first of
+ * the four, as SOCOM 1's C2DButton's _PressedState, the one C2DButton's m_active below takes) and a
+ * check box's (CCheckBoxSpec: the two actions, the check's place and size, its texture's name) */
 class CButtonSpec : public CDlgObjSpec {
 public:
-    unsigned char _8[0x118 - 0x8];
-};
+    IPNT2D m_size;   // 0x8: XSIZE, YSIZE or SIZE
+    IPNT2D m_offset;   // 0x10: XOFFSET, YOFFSET or OFFSET
+    float m_scale;   // 0x18: SCALE
+    ButtonState m_pressed;   // 0x1c: PRESSED
+    ButtonState m_active;   // 0x50: ACTIVE
+    ButtonState m_normal;   // 0x84: NORMAL
+    ButtonState m_disabled;   // 0xb8: DISABLED
+    CSaferStr m_caption;   // 0xec: CAPTION
+    bool m_hcentered;   // 0xf8: HCENTERED
+    std::vector<ActionItem> m_commands;   // 0xfc: ANIMATIONS
+    bool m_hasFont;   // 0x108: a FONT given
+    CSaferStr m_font;   // 0x10c: FONT
+};   // 0x118 bytes
 
 class CCheckBoxSpec : public CButtonSpec {
 public:
@@ -470,46 +542,6 @@ public:
     bool _bCaptionCentered;   // 0xbc
 };   // 0xc0 bytes
 
-/* a button's look in one state (0x34 bytes; its destructor 0x36E650, a string at 0 destroyed, is
- * the button's -- a plain stand-in here, the fields by what SetNormal hands on; the names ours) */
-struct ButtonState {
-    /* inline (C2DButton's constructor builds its four so, as SOCOM 1's: grey caption, the scale
-     * left alone) */
-    ButtonState()
-        : m_tex(0), m_fadeMin(0.0f), m_fadeMax(0.0f), m_pulse(false), m_period(0.0f), m_fadeTime(0.0f),
-          m_color(128.0f, 128.0f, 128.0f)
-    {
-    }
-
-    CSaferStr m_texName;   // 0x0: the state's image (SOCOM 1's _TexName)
-    zdb::CTexHandle *m_tex;   // 0xc: the background's texture
-    float m_fadeMin;   // 0x10
-    float m_fadeMax;   // 0x14
-    bool m_pulse;   // 0x18: the caption pulses
-    float m_period;   // 0x1c: the background's pulse
-    float m_fadeTime;   // 0x20
-    CPnt3D m_color;   // 0x24: the caption's
-    float m_scale;   // 0x30: the caption's
-};   // 0x34 bytes
-
-/* a button's action (zui_spec.h's ActionItem, 0x10 bytes: its destructor zui_cleanup.cpp's,
- * 0x3890C0; the type and the key state byte enums) */
-class ActionItem {
-public:
-    /* zui_spec.h's: a button action on the falling edge of no button (the list items build theirs) */
-    ActionItem() : Type(0), Animation(0), Argument(0), State(1), Event(16) {}
-    ~ActionItem();
-    void Run() const;
-    bool Start() const;
-    ActionItem &operator=(const ActionItem &a);   // zui.cpp's, 0x369FA0
-
-    unsigned char Type;   // 0x0: ACTION_TYPE
-    char *Animation;   // 0x4: the animation it starts
-    char *Argument;   // 0x8: handed to it, if any
-    unsigned char State;   // 0xc: KEY_STATE
-    unsigned char Event;   // 0xd: the pad button or the event (a union in zui_spec.h)
-};
-
 /* the animations (zanim.h's CZAnimMain and CZAnim: only what an action calls; ZAnim OVL1 bss
  * 0x414BB0) */
 class CZAnim {
@@ -586,7 +618,7 @@ public:
     virtual bool TickZAnimCmd(_zanim_cmd_hdr *hdr, float *dT, bool *done);
     virtual int GetZAnimCmdType(const char *name);
     virtual void UpdateUIVar(CUIVariable *var);
-    void LoadSpec(const CButtonSpec &spec);   // 0x376BD0, not written
+    void LoadSpec(const CButtonSpec &spec);   // 0x376BD0
 
     /* the four states (ButtonState, 0x34 bytes each: its destructor 0x36E650; the names ours) and
      * the one shown */
@@ -1177,6 +1209,62 @@ C2DButton::~C2DButton()
 extern "C" void func_0036E840(C2DButton *button, zdb::CTexHandle *tex);
 extern "C" void func_0036E830(C2DButton *button, float scale);
 
+/* set when a menu object takes actions (zui.cpp's global, SOCOM 1's g_hasAnims at gp-25344 there;
+ * OVL1 bss 0x49EAA0) */
+extern unsigned char g_hasAnims;
+
+/* the mission's fonts' rdr (the font loaders read it) */
+_zrdr *FetchMissionFontsRdr();
+
+/* set up from its spec (SOCOM 1's C2DButton::LoadSpec, 0x38F090 there): the spec's actions taken
+ * (the menu told it has some), the size, the caption's scale and place, a font of its own when the
+ * spec names one, the four looks -- normal, then the spec's ACTIVE into 0xFC (SetActive's), its
+ * PRESSED into 0xC8, then disabled, SOCOM 1's order -- the caption's centring, the spec's variable
+ * watched and the button brought up to date with it. The size and the offset each through a pair
+ * of locals declared together (both loaded, then converted or stored, as the target does: one
+ * statement each interleaves them, an IPNT2D local goes through the stack); the centring through
+ * a bool local (chained, the bool's conversion is redone between the stores) */
+void C2DButton::LoadSpec(const CButtonSpec &spec)
+{
+    for (int i = 0; i < (int)spec.m_commands.size(); i++) {
+        g_hasAnims = 1;
+        m_numActions++;
+        m_actions[i] = spec.m_commands[i];
+    }
+    float w = spec.m_size.x, h = spec.m_size.y;
+
+    _fWidth = w;
+    _fHeight = h;
+    _strCaption.m_scale = spec.m_scale;
+
+    int x = spec.m_offset.x, y = spec.m_offset.y;
+
+    _iTextX = x;
+    _iTextY = y;
+    if (spec.m_hasFont) {
+        const char *name = spec.m_font.c_str();
+
+        m_alternateFont = new C2DFont;
+        m_alternateFont->Load(FetchMissionFontsRdr(), name);
+        _strCaption.SetFont(m_alternateFont);
+    }
+    m_normal = spec.m_normal;
+    m_pressed = spec.m_active;
+    m_active = spec.m_pressed;
+    m_disabled = spec.m_disabled;
+    bool centered = spec.m_hcentered;
+
+    _strCaption.m_isCentered = centered;
+    _bCaptionCentered = centered;
+
+    CUIVariable *var = spec.GetUIVar();
+
+    if (var)
+        WatchUIVar(var);
+    if (UIVarMixin::m_uivar)
+        UpdateUIVar(UIVarMixin::m_uivar);
+}
+
 /* slot 18: the state at 0xFC shown, when the button takes input, and every action of type 1 on
  * event 2 run (SOCOM 1's C2DButton::SetActive; the activation written out -- through the check box's
  * ActionItem::Run its copy of the item takes a register more) */
@@ -1698,7 +1786,6 @@ bool C2DCounter::TickZAnimCmd(_zanim_cmd_hdr *hdr, float *dT, bool *done)
 /* Scroll_Up a line while above the top, Scroll_Down a line while the lines below the window
  * last; anything else the renderable string's (SOCOM II's; the compare chain tests the cases in
  * reverse, the bool through a local -- the base's result masked, true assigned) */
-_zrdr *FetchMissionFontsRdr();
 
 /* set up from its spec (SOCOM 1's CRenderableString::LoadSpec, 0x390FB0 there): the scale and the
  * caption, the justification, the colour, a font of its own when the spec names one (made and
@@ -1957,10 +2044,6 @@ public:
     std::vector<CDesignDlgObj> m_elements;   // 0x18: ELEMENTS
     std::vector<ActionItem> m_animations;   // 0x24: ANIMATIONS
 };   // 0x30 bytes
-
-/* set when a menu object takes actions (zui.cpp's global, SOCOM 1's g_hasAnims at gp-25344 there;
- * OVL1 bss 0x49EAA0) */
-extern unsigned char g_hasAnims;
 
 class CUIMapCtrl : public C2D {
 public:
