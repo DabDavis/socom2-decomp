@@ -681,69 +681,6 @@ struct CAiRouteBytes {
     AI_ROUTE m_state;   // 0xa8
 };
 
-/* a share of the AI's work spread over the frames (new in SOCOM II; the class and its names ours):
- * this frame's window of entity numbers, [m_start, m_end), wrapped past the m_total numbers into [0,
- * m_wrap) -- m_count numbers a frame, m_hits how many were served. Five of them, OVL2 bss 0x66B060 on,
- * 0x20 apart (0x18 bytes each, aligned to 16: 0x66B0F8 is another word), seal_ai.cpp's (its initialiser __sinit_seal_ai.cpp, OVL2 0x6687E0, builds them in
- * order): CSealCtrlAi::PreTick reads all five, 0x558640 the second, 0x56D2B0 the fifth, 0x574C30
- * resets the first, second and fifth, the kit lane's 0x5CCA30 and ScanTick (0x600550) read the
- * first */
-class CAiSlice {
-public:
-    CAiSlice()
-    {
-        m_hits = 0;
-        Reset();
-    }
-    /* (inline: 0x574C30 expands it three times, the sums last) */
-    void Reset()
-    {
-        m_start = 0;
-        m_count = 0;
-        m_total = 0;
-        m_wrap = 0;
-        m_end = m_start + m_count;
-    }
-    /* whether a number takes its turn this frame (an inline bool: the target materialises it,
-     * `daddiu 1` on the true arm) */
-    bool Has(int id) const
-    {
-        if (id < m_wrap || (id >= m_start && id < m_end))
-            return true;
-        return false;
-    }
-    /* the window resized: m_count numbers out of m_total, the part past the end wrapped (an inline:
-     * the target compares the arguments, held in registers, and reads the members back) */
-    void SetCount(int count, int total)
-    {
-        m_wrap = 0;
-        m_total = total;
-        m_count = count;
-        m_end = m_start + m_count;
-        if (count >= total)
-            m_wrap = count;
-        else if (m_end > total)
-            m_wrap = m_end - total;
-        else
-            m_wrap = 0;
-    }
-
-    int m_start;   // 0x0
-    int m_end;   // 0x4
-    int m_count;   // 0x8
-    int m_total;   // 0xc
-    int m_wrap;   // 0x10
-    int m_hits;   // 0x14
-};
-
-namespace ai {
-extern CAiSlice slice0;   // OVL2 bss 0x66B060
-extern CAiSlice slice1;   // 0x66B080
-extern CAiSlice slice2;   // 0x66B0A0
-extern CAiSlice slice3;   // 0x66B0C0
-extern CAiSlice slice4;   // 0x66B0E0
-}
-
 /* a stamp of the AI's at 0x324 (new in SOCOM II; the class and its names ours): the mission's time
  * when it was restarted and four fields its restart clears. Reset is an ordinary function of
  * seal_ai.cpp (OVL2 0x558590), which the sleep setters there inline; the avoid and path-recover
@@ -1061,6 +998,11 @@ public:
      * in both builds) */
     static float aiAccuracyAngle;
     static void SetAiAccuracyAngle(float angle);
+    /* the visibility tests' request pool closed and opened (SOCOM 1's statics; OVL2 0x5CC5F0,
+     * 0x5CC890 -- ReleaseDatabaseHandles 0x574BD0 and AcquireDatabaseHandles 0x574C30 call them;
+     * seal_sensors.cpp, the kit lane's) */
+    static void CloseDiPool();
+    static void OpenDiPool();
     /* a spray of fire timed, when the item in hand fires fully automatic (SOCOM 1's; OVL2 0x565AE0) */
     void SetSprayTimer(float t);
     /* the aim turned off its line by the target's error (slot +0x74, SOCOM 1's; OVL2 0x5C9250, the
@@ -2006,5 +1948,9 @@ public:
 };   // 0x1bc bytes
 
 extern CharacterDynamics theCharacterDynamics;
+
+/* a dying SEAL's visibility requests dropped and its targets' entries for it unhooked (SOCOM 1's
+ * free function; OVL2 0x5CC8A0 -- CSealCtrlAi::OnDeath calls it; seal_sensors.cpp, the kit lane's) */
+void CleanupDiPool(CZSealBody *seal);
 
 #endif

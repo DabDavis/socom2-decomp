@@ -24,15 +24,68 @@
  * real depths. */
 #pragma inline_depth(8)
 
+/* a round-robin share of the AI's work over the frames (new in SOCOM II; the names the kit lane's,
+ * whose seal_sensors.cpp keeps its own copy of the class with the per-frame Next -- one class for
+ * zseal.h, when the two lanes' halves meet): this frame's window of entity numbers, [m_start, m_end),
+ * wrapped past the m_total numbers into [0, m_wrap) -- m_size numbers a frame, m_count how many were
+ * served. Five of them, OVL2 bss 0x66B060 on, 0x20 apart (0x18 bytes each, aligned to 16: 0x66B0F8
+ * is another word): CSealCtrlAi::PreTick reads the first, second and fifth, 0x558640 the second,
+ * 0x56D2B0 the fifth, 0x574C30 resets those three, ai_posttick (0x5CCA30) moves them on and ScanTick
+ * (0x600550) reads the first; only the initialiser touches the third and fourth */
+struct CAiSlice {
+    CAiSlice()
+    {
+        m_count = 0;
+        Reset();
+    }
+    /* (inline: 0x574C30 expands it three times, the sums last) */
+    void Reset()
+    {
+        m_start = 0;
+        m_size = 0;
+        m_total = 0;
+        m_wrap = 0;
+        m_end = m_start + m_size;
+    }
+    /* whether a number takes its turn this frame (an inline bool: the target materialises it,
+     * `daddiu 1` on the true arm) */
+    bool Has(int id) const
+    {
+        if (id < m_wrap || (id >= m_start && id < m_end))
+            return true;
+        return false;
+    }
+    /* the window resized: m_size numbers out of m_total, the part past the end wrapped (an inline:
+     * the target compares the arguments, held in registers, and reads the members back) */
+    void SetSize(int size, int total)
+    {
+        m_wrap = 0;
+        m_total = total;
+        m_size = size;
+        m_end = m_start + m_size;
+        if (size >= total)
+            m_wrap = size;
+        else if (m_end > total)
+            m_wrap = m_end - total;
+        else
+            m_wrap = 0;
+    }
+
+    int m_start;   // 0x0
+    int m_end;   // 0x4
+    int m_size;   // 0x8
+    int m_total;   // 0xc
+    int m_wrap;   // 0x10
+    int m_count;   // 0x14
+};
+
 /* THE UNIT'S DYNAMICALLY INITIALISED STATICS, in the order its initialiser builds them
- * (__sinit_seal_ai.cpp, OVL2 0x6687E0): the AI's five frame slices (zseal.h's CAiSlice) */
-namespace ai {
-CAiSlice slice0;
-CAiSlice slice1;
-CAiSlice slice2;
-CAiSlice slice3;
-CAiSlice slice4;
-}
+ * (__sinit_seal_ai.cpp, OVL2 0x6687E0): the five slices */
+CAiSlice ai_slice0;
+CAiSlice ai_slice1;
+CAiSlice ai_slice2;
+CAiSlice ai_slice3;
+CAiSlice ai_slice4;
 
 /* the states this unit defines (SOCOM 1's; only what their destructors need -- none of them has
  * a member with a destructor of its own, so each destructor is the base's, inlined) */
@@ -1391,10 +1444,10 @@ extern "C" void func_0056D2B0(CSealCtrlAi *ai)
     int id = ai->m_entity->m_id;
 
     if (!ai->m_270 || !ai->m_274) {
-        if (ai::slice4.Has(id))
-            ai::slice4.SetCount(ai::slice4.m_count + 1, ai::slice4.m_total);
-    } else if (ai::slice4.Has(id)) {
-        ai::slice4.m_hits++;
+        if (ai_slice4.Has(id))
+            ai_slice4.SetSize(ai_slice4.m_size + 1, ai_slice4.m_total);
+    } else if (ai_slice4.Has(id)) {
+        ai_slice4.m_count++;
         bool in = func_0056D530((const CAiMap::region *)ai->m_274, ai->m_270);
 
         ai->SetSleeping(!in);

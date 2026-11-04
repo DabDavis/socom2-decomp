@@ -1673,7 +1673,7 @@ CAiSCQBAttack::~CAiSCQBAttack()
  * 0x515200, with 0, behind the three this-tests of ~vector and ~__vector_imp inlined) */
 CAiSPlan::~CAiSPlan()
 {
-    func_005281B0(m_path, -1);
+    __dt__7CAiPathFv(m_path, -1);
     unsigned char *v = _58;
 
     if (v)

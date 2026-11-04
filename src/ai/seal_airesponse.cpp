@@ -180,7 +180,7 @@ CAiSPathRecover::~CAiSPathRecover()
         if (v)
             if (v)
                 func_00515200(v, 0);
-    func_005281B0(m_path, -1);
+    __dt__7CAiPathFv(m_path, -1);
 }
 
 CAiSRush::~CAiSRush()
