@@ -2060,6 +2060,20 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the HUD, round 42** (the TCM builder, the root's show, the button's and wrapped text's destructors):
+  - calling a virtual through a local copy of `this` defined in the block where it is used computes the object ahead of
+    the argument and puts the argument in the call's delay slot; copied at the top of the function the copy becomes the
+    stores' base register instead (tcmCreateItem 0x236D20: SetTexture through `self = this` after the texture's ternary);
+  - a local declared uninitialised ahead of an element pointer in a loop body is numbered below the pointer and coloured
+    after it (CTCM::ShowRoot 0x235560: the state); a negation written at both uses is a common subexpression, a temporary
+    numbered after an inline's variables, so it takes s0 -- a named local swaps it (tcmVote 0x22F3C0: `!cur` twice);
+  - in sequential walks a function-level counter shared by some loops, the others loop-scoped, decides which saved
+    registers the counters share; all loop-scoped, the parameters are coloured first and two more saved registers are
+    needed (CZLineMap::Draw 0x20D390); defining a destructor that was only declared emits its this-adjusting thunk too,
+    and both match (~CWrappedText 0x379D90 / @152@ 0x37D010, ~C2DButton 0x377510 / @192@ 0x37D040);
+  - SetupBackgroundBox 0x22AE90 matches through a STAND-IN: the bottom-right corner's u read as `*(volatile float
+    *)&s_fCornerU` (about 20 natural spellings let MW hoist v's load; the variable volatile everywhere moves six loads);
+    ActionSelectionMask's caller measured: the callee's parameter is an int (`1 << (unsigned char)id`).
 - **Tells from the kit and AI states, round 35** (the view cone, the enemy callout, the pickup scan, slot 0xC retyped):
   - MW folds a mask local read only once back into the expression, and an `&` then evaluates the word's index first
     whatever order is written; redefining the local (`m &= word`) keeps the mask first (0x5CB450 / 0x5CB630 at 2: which
