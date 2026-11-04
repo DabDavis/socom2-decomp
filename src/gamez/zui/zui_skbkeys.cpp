@@ -345,9 +345,10 @@ void SkbTakeText(CGameMenu *menu)
 
 extern "C" {
 void func_00398C00(unsigned short c, CSoftKeyboard *skb);
-void func_00398C40(CSoftKeyboard *skb);
 void func_003952F0();
 }
+/* the character before the cursor erased (below) */
+void SkbEraseBack(CSoftKeyboard *skb);
 int UTF8CharLen(const char *&s);
 
 /* two words of the text's (0x4A1348, 0x4A1350: one says whether string 1 counts, the other is
@@ -408,7 +409,7 @@ void SkbTypeOrBack(CSoftKeyboard *skb)
             n = 0;
         }
         if (s_textCount0 + n > 0)
-            func_00398C40(skb);
+            SkbEraseBack(skb);
         else
             func_003952F0();
     }
@@ -501,8 +502,10 @@ int SkbEnterKana(CSoftKeyboard *skb)
 
 /* the byte length of the character at a byte offset of the text being edited -- string 0's while it
  * is edited, else string 1's with string 2's after it when string 2 has any (0x39A790; the name
- * ours: 0x398C40 calls it) -- the string default-built, then assigned (the target zeroes its words
- * before it reads the text), the test a ternary into a bool local (materialised, andi at the join) */
+ * ours: SkbEraseBack 0x398C40 calls it out of line, so pinned) -- the string default-built, then
+ * assigned (the target zeroes its words before it reads the text), the test a ternary into a bool
+ * local (materialised, andi at the join) */
+#pragma auto_inline off
 int SkbEditCharLen(int pos)
 {
     CSaferStr text;
@@ -513,6 +516,53 @@ int SkbEditCharLen(int pos)
     if (more)
         text += ShownText(&s_textString2);
     return CharLen(text.c_str() + pos);
+}
+#pragma auto_inline reset
+
+/* a string's characters counted into the caller's count, through the caller's flag (ours: the
+ * backspace's walk -- inside an inline its CharLen copy's stack slot is a level deeper, below the
+ * erase's category byte, as the target's frame has it; with the count and the flag the caller's own
+ * variables the saved registers stay the walk-in-place numbering) */
+static inline void SkbCountChars(int &n, bool &more, const char *p)
+{
+    n = 0;
+    while (TestChar(more, p)) {
+        n++;
+        p += CharLen(p);
+    }
+}
+
+/* the character before the cursor erased (0x398C40; the name ours: SkbTypeOrBack's back step when
+ * nothing is being composed): the text rebuilt as SkbEditCharLen builds it, the cursor's place in it
+ * counted (string 1's characters first while they count), the character before it erased, the text
+ * set again and the cursor put back a character */
+void SkbEraseBack(CSoftKeyboard *skb)
+{
+    CSaferStr text;
+
+    text = ShownText(EditString());
+    bool more2 = s_textSel ? false : HasChar(ShownText(&s_textString2));
+
+    if (more2)
+        text += ShownText(&s_textString2);
+    int n;
+
+    if (s_textCount1) {
+        bool more;
+
+        SkbCountChars(n, more, ShownText(&s_textString1));
+    } else {
+        n = 0;
+    }
+    int pos = s_textCount0 + n;
+    const char *s = text.c_str();
+    int off = 0;
+
+    for (int i = 0; i < pos - 1; i++)
+        off += CharLen(s + off);
+    text.erase(off, SkbEditCharLen(off));
+    SkbSetText(text.c_str(), skb);
+    SkbCursorTo(pos - 1, skb, true);
 }
 
 /* the text cursor put at a place (0x395120, the display unit's: its node's position) */

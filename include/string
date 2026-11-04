@@ -122,6 +122,14 @@ public:
 
         return *(basic_string *)func_001EE780(this, 0, (size_type)npos, 0, 0, category);
     }
+    /* n characters from pos erased: the same template replace over (pos, n) (the UI lane's round 21:
+     * the soft keyboard's backspace 0x398C40 calls it so; additive) */
+    basic_string &erase(size_type pos, size_type n)
+    {
+        forward_iterator_tag category;
+
+        return *(basic_string *)func_001EE780(this, pos, n, 0, 0, category);
+    }
 
     void reserve(size_type n);
     basic_string &replace(size_type pos, size_type n1, const basic_string &str);
