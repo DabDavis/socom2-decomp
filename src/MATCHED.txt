@@ -1311,6 +1311,7 @@
 0x001E8E38 ezNetCtlUpInterface
 0x001E8EB0 ezNetCtlDownInterface
 0x001E8FE0 func_001E8FE0
+0x001E9120 FreeVector<Q23std64vector<Q23zdb10CTickLight,Q23std29allocator<Q23zdb10CTickLight>>>__FRQ23std64vector<Q23zdb10CTickLight,Q23std29allocator<Q23zdb10CTickLight>>_v
 0x001EA250 __dt__Q23std38__list_imp<PCv,Q23std14allocator<PCv>>Fv
 0x001EA2D0 func_001EA2D0
 0x001EA340 __dt__Q23zdb11CNodeVectorFv
@@ -1340,8 +1341,8 @@
 0x001EA890 end__Q23std38__vector_pod<Ui,Q23std13allocator<Ui>>Fv
 0x001EA8B0 __iter__Q23std62__vector_imp<PQ23zdb5CNode,Q23std24allocator<PQ23zdb5CNode>,1>FRCPUi
 0x001EA8C0 begin__Q23std38__vector_pod<Ui,Q23std13allocator<Ui>>Fv
-0x001EAA70 func_001EAA70
-0x001EAA80 func_001EAA80
+0x001EAA70 clear__Q23std74__vector_deleter<Q23zdb10CTickLight,Q23std29allocator<Q23zdb10CTickLight>>Fv
+0x001EAA80 __dt__Q23std74__vector_deleter<Q23zdb10CTickLight,Q23std29allocator<Q23zdb10CTickLight>>Fv
 0x001EAAF0 erase__Q23std42__list_deleter<PCv,Q23std14allocator<PCv>>FQ33std42__list_deleter<PCv,Q23std14allocator<PCv>>19generic_iterator<0>Q33std42__list_deleter<PCv,Q23std14allocator<PCv>>19generic_iterator<0>
 0x001EABB0 __ct__Q23std42__list_deleter<PCv,Q23std14allocator<PCv>>Fv
 0x001EABD0 func_001EABD0
@@ -2150,6 +2151,9 @@
 0x00248718 func_00248718
 0x00248738 func_00248738
 0x00248760 func_00248760
+0x00248A18 func_00248A18
+0x00248C80 func_00248C80
+0x00248D40 func_00248D40
 0x00248DD8 func_00248DD8
 0x00248F60 func_00248F60
 0x00249588 func_00249588
@@ -2164,6 +2168,7 @@
 0x002498E0 func_002498E0
 0x00249920 func_00249920
 0x00249968 func_00249968
+0x002499A8 func_002499A8
 0x00249A38 func_00249A38
 0x00249C50 func_00249C50
 0x00249C60 func_00249C60
@@ -2206,7 +2211,10 @@
 0x0024EE38 func_0024EE38
 0x0024EEA0 func_0024EEA0
 0x0024EF30 func_0024EF30
+0x0024F010 func_0024F010
 0x0024F108 func_0024F108
+0x0024F170 func_0024F170
+0x0024F468 func_0024F468
 0x0024F518 func_0024F518
 0x0024F568 func_0024F568
 0x0024F5B8 func_0024F5B8
@@ -2228,14 +2236,20 @@
 0x00250BE0 func_00250BE0
 0x00250C68 func_00250C68
 0x00250CC0 func_00250CC0
+0x00251270 func_00251270
+0x00251348 func_00251348
 0x00251638 func_00251638
+0x00251678 func_00251678
 0x00251700 func_00251700
 0x00251A28 func_00251A28
 0x00251AF8 func_00251AF8
 0x00251B38 func_00251B38
 0x00251B78 func_00251B78
 0x00251C00 func_00251C00
+0x00252098 func_00252098
+0x00252150 func_00252150
 0x00252238 func_00252238
+0x00252290 func_00252290
 0x00252748 func_00252748
 0x002527F8 func_002527F8
 0x00252880 func_00252880
@@ -2257,11 +2271,15 @@
 0x002531F8 func_002531F8
 0x00253420 func_00253420
 0x002534D0 func_002534D0
+0x00253888 func_00253888
+0x00253920 func_00253920
+0x002539C0 func_002539C0
 0x00254250 func_00254250
 0x00254318 func_00254318
 0x00254368 func_00254368
 0x002543B8 func_002543B8
 0x00254408 func_00254408
+0x00254458 func_00254458
 0x00255B68 func_00255B68
 0x00255B80 func_00255B80
 0x00255BA8 func_00255BA8
@@ -2276,7 +2294,10 @@
 0x00256380 func_00256380
 0x00256970 func_00256970
 0x002569D8 func_002569D8
+0x00256A18 func_00256A18
 0x00256AB0 func_00256AB0
+0x00256BC8 func_00256BC8
+0x00256CC8 func_00256CC8
 0x00256EC0 func_00256EC0
 0x00256F48 func_00256F48
 0x00256F68 func_00256F68
@@ -2418,6 +2439,7 @@
 0x00264610 func_00264610
 0x00264A40 func_00264A40
 0x00264CB0 zAnimLightTick__FP14_zanim_cmd_hdrPf
+0x002656F0 func_002656F0
 0x002659C0 zAnimSoundTick__FP14_zanim_cmd_hdrPf
 0x00265F20 zAnimCameraTick__FP14_zanim_cmd_hdrPf
 0x00266320 zAnimCameraBegin__FP14_zanim_cmd_hdr
@@ -2609,6 +2631,7 @@
 0x00274860 Get2DVisual__Q23zdb7CVisualFv
 0x00274870 GetUICommandType__FPCc
 0x00274930 GetMenuStack__Fv
+0x00274C00 UIUpdateServerInfo__FP13C2DAnimCmdHdrPf
 0x00274D60 UILobbyDisconnect__FP13C2DAnimCmdHdrPf
 0x00274FC0 UICompareValuesParse__FPCcP5_zrdr
 0x00275130 UIUpdateAcctInfo__FP13C2DAnimCmdHdrPf
@@ -2647,6 +2670,9 @@
 0x00277930 UIStopAllSounds__FP13C2DAnimCmdHdrPf
 0x00277950 UIHasClanInvitations__FP13C2DAnimCmdHdrPf
 0x00277960 UIClanHasInvitations__FP13C2DAnimCmdHdrPf
+0x00277970 UINetGetInterfaceList__FP13C2DAnimCmdHdrPf
+0x00277AB0 UINetCnfSelectCombo__FP13C2DAnimCmdHdrPf
+0x00277BF0 UINetCnfCurrCombo__FP13C2DAnimCmdHdrPf
 0x00277D50 UINetCnfClose__FP13C2DAnimCmdHdrPf
 0x00278020 UINetCnfUninit__FP13C2DAnimCmdHdrPf
 0x00278040 UINetCnfInit__FP13C2DAnimCmdHdrPf
@@ -3058,9 +3084,11 @@
 0x00295F10 GetPosW__7CEntityCFv
 0x00299140 func_00299140
 0x00299150 ResetDeathCam__10CAppCameraFv
+0x002991C0 APLookAt__10CAppCameraFfP7CEntityR7CMatrix
 0x00299320 Shake__10CAppCameraFUc
 0x002994E0 BeginShake__10CAppCameraFffffffff
 0x00299700 StopShake__10CAppCameraFv
+0x002997F0 UpdateCameraRegions__10CAppCameraFv
 0x002998F0 Tick__10CAppCameraFf
 0x00299C00 func_00299C00
 0x00299C10 TickTask__10CAppCameraFfPv
@@ -3535,6 +3563,7 @@
 0x002C32C0 func_002C32C0
 0x002C32E0 func_002C32E0
 0x002C3300 func_002C3300
+0x002C3330 func_002C3330
 0x002C34F0 func_002C34F0
 0x002C3500 func_002C3500
 0x002C3920 func_002C3920
@@ -3857,6 +3886,8 @@
 0x002D6000 Update__Q23zdb5CGridFPQ23zdb5CNode
 0x002D60E0 Remove__Q23zdb5CGridFPQ23zdb5CNode
 0x002D61A0 Insert__Q23zdb5CGridFPQ23zdb5CNode
+0x002D61B0 GetNextAtomOrdered__Q23zdb5CGridFv
+0x002D6260 GetNextAtom__Q23zdb5CGridFv
 0x002D6380 gridGetGridXandZIndex__Q23zdb5CGridFPiPiff
 0x002D6430 gridGetNextIndex__Q23zdb5CGridFv
 0x002D6610 StartTraversalOrdered__Q23zdb5CGridFv
@@ -5497,7 +5528,9 @@
 0x0034E480 Clear__14CSched_ManagerFv
 0x0034E560 RemoveTask__14CSched_ManagerFPvb
 0x0034E5E0 RemoveTask__14CSched_ManagerFPCcb
+0x0034E6B0 AddTask__14CSched_ManagerFPCcPFfPv_bfPv
 0x0034E860 __ct__14CSched_ManagerFv
+0x0034E9B0 remove_copy_if<Q33std54list<P11CSched_Task,Q23std25allocator<P11CSched_Task>>19generic_iterator<0>,Q33std54list<P11CSched_Task,Q23std25allocator<P11CSched_Task>>19generic_iterator<0>,PFP11CSched_Task_b>__3stdFQ33std54list<P11CSched_Task,Q23std25allocator<P11CSched_Task>>19generic_iterator<0>Q33std54list<P11CSched_Task,Q23std25allocator<P11CSched_Task>>19generic_iterator<0>Q33std54list<P11CSched_Task,Q23std25allocator<P11CSched_Task>>19generic_iterator<0>PFP11CSched_Task_b_Q33std54list<P11CSched_Task,Q23std25allocator<P11CSched_Task>>19generic_iterator<0>
 0x0034EA70 __dt__14CSched_ManagerFv
 0x0034EAE0 _calloc__FUiUiPCci
 0x0034EB50 _realloc__FPvUiPCci
@@ -5574,9 +5607,12 @@
 0x00352EA0 __ct__6CValveFPCcUi10VALVE_TYPE
 0x00353030 CmdTickVWatch__6CValveFP14_zanim_cmd_hdrPf
 0x003530D0 CmdParseVWatch__6CValveFP5_zrdr
-0x00353260 func_00353260
+0x00353260 CmdTickVBit__FP14_zanim_cmd_hdrPf
+0x00353270 CmdParseVBit__FP5_zrdr
 0x00353C70 ParseValveName__14VALVE_CMD_DATAFPCcRi
 0x00353D00 CmdTickCmp__6CValveFP14_zanim_cmd_hdrPf
+0x00353D10 ParseOperator__6CValveFPCc
+0x00353FD0 Compare__14VALVE_CMD_DATAFv
 0x00354470 RegisterCommands__6CValveFv
 0x00354510 Free__Q23zdb8CTexListFv
 0x003545F0 Append__Q23zdb8CTexListFPQ23zdb8CTextureb
@@ -7988,6 +8024,8 @@
 0x0050DF40 AddNoiseXZ__2aiFPC6CPnt3DP6CPnt3DRC5PNT2D
 0x0050DF90 AddNoise__2aiFP6CPnt3DRC5PNT2D
 0x0050DFA0 AddNoise__2aiFPC6CPnt3DP6CPnt3DRC5PNT2D
+0x0050DFF0 MakeNoiseXZ__2aiFP6CPnt3DRC5PNT2D
+0x0050E190 MakeNoise__2aiFP6CPnt3DRC5PNT2D
 0x0050E3D0 is_moving__2aiFPC6CPnt3Df
 0x0050E410 AlignToPoint__3CAiFPC7CMatrixPC6CPnt3DP7CMatrixf
 0x0050E540 Extrapolate__3CAiFPC6CPnt3DPC6CPnt3DfP6CPnt3D
@@ -8098,6 +8136,7 @@
 0x00515750 Contains__10CAiOverlayCFRC9CAiMapLoc
 0x00515880 TileFootprint__6CAiMapFPC6CPnt3DPQ26CAiMap6region
 0x00515DE0 SetCorners__Q26CAiMap6regionFRC9CAiMapLocRC9CAiMapLoc
+0x00515F80 GetLocation__6CAiMapCFPC6CPnt3DR9CAiMapLoc
 0x00516120 __ct__9CAiMapLocFv
 0x00516130 func_00516130
 0x005168E0 Add__6CPnt3DFPC6CPnt3D
@@ -8369,6 +8408,7 @@
 0x00532000 erase__Q23std64__vector_imp<Q26CAiMap4link,Q23std25allocator<Q26CAiMap4link>,0>FPQ26CAiMap4link
 0x005321B0 __sort132<Q33std64__vector_imp<Q26CAiMap4name,Q23std25allocator<Q26CAiMap4name>,0>8iterator,PFRCQ26CAiMap4nameRCQ26CAiMap4name_b>__3stdFQ33std64__vector_imp<Q26CAiMap4name,Q23std25allocator<Q26CAiMap4name>,0>8iteratorQ33std64__vector_imp<Q26CAiMap4name,Q23std25allocator<Q26CAiMap4name>,0>8iteratorQ33std64__vector_imp<Q26CAiMap4name,Q23std25allocator<Q26CAiMap4name>,0>8iteratorPFRCQ26CAiMap4nameRCQ26CAiMap4name_b_v
 0x005329F0 __selection_sort<Q33std64__vector_imp<Q26CAiMap4name,Q23std25allocator<Q26CAiMap4name>,0>8iterator,PFRCQ26CAiMap4nameRCQ26CAiMap4name_b>__3stdFQ33std64__vector_imp<Q26CAiMap4name,Q23std25allocator<Q26CAiMap4name>,0>8iteratorQ33std64__vector_imp<Q26CAiMap4name,Q23std25allocator<Q26CAiMap4name>,0>8iteratorPFRCQ26CAiMap4nameRCQ26CAiMap4name_b_v
+0x00532D10 GetStartMatrix__16CVehicleRdrEntryFR7CMatrixUi
 0x00532F40 GetRespawnDir__16CVehicleRdrEntryCFv
 0x00532F80 GetRespawnPos__16CVehicleRdrEntryCFv
 0x00532FC0 GetStartDir__16CVehicleRdrEntryCFv
@@ -8766,7 +8806,10 @@
 0x00567840 StopThrottles__11CSealCtrlAiFb
 0x005678F0 SetThrottle__11CSealCtrlAiFUif
 0x00569530 func_00569530
+0x005698A0 func_005698A0
+0x00569AA0 func_00569AA0
 0x00569C50 func_00569C50
+0x00569C60 func_00569C60
 0x0056A130 func_0056A130
 0x0056A760 func_0056A760
 0x0056AC70 Normalize__5CBBoxFv
@@ -9174,6 +9217,9 @@
 0x005A8850 func_005A8850
 0x005A88C0 func_005A88C0
 0x005A8CB0 CanChangeItem__10CZSealBodyFv
+0x005A9C70 func_005A9C70
+0x005A9F40 func_005A9F40
+0x005AA110 func_005AA110
 0x005AA470 func_005AA470
 0x005AA600 func_005AA600
 0x005AA610 func_005AA610
@@ -9230,7 +9276,7 @@
 0x005B8F20 SetItemPtr__5CZKitFiPv
 0x005B8FC0 ClearItemPtr__5CZKitFi
 0x005B8FF0 GetItemPtr__5CZKitFi
-0x005B9020 func_005B9020
+0x005B9020 ResetRetOffsetXY__5CZKitFv
 0x005B9030 ResetScreenOffsetXY__5CZKitFv
 0x005B90C0 IncrScreenOffsetY__5CZKitFf
 0x005B90D0 ScreenOffsetY__5CZKitFv
@@ -9261,7 +9307,7 @@
 0x005BD030 FireGrenade__5CZKitFPC6CPnt3DPC6CPnt3D
 0x005BD6D0 func_005BD6D0
 0x005BD6E0 WeaponIsGrenadeLauncherMode__5CZKitFi
-0x005BD7E0 func_005BD7E0
+0x005BD7E0 CurWeaponIsLauncherMode__5CZKitFv
 0x005BD7F0 WeaponIsLauncherMode__5CZKitFi
 0x005BD8F0 WeaponIsM203Mode__5CZKitFi
 0x005BDA00 func_005BDA00
@@ -9349,6 +9395,7 @@
 0x005C9270 GetAccuracyFactor__11CSealCtrlAiFv
 0x005C9340 GetWeaponAccuracy__10CAiWepHintFP8CZWeaponfb
 0x005C93C0 GetWeaponEffectiveRange__10CAiWepHintFP8CZWeapon
+0x005C9400 UpdateViewCone__11CSealCtrlAiFv
 0x005C9720 SetViewFOV__9CSealCtrlFf
 0x005C97A0 push_back__Q23std56list<PQ27CDiPool3dir,Q23std26allocator<PQ27CDiPool3dir>>FRCPQ27CDiPool3dir
 0x005C97D0 func_005C97D0
@@ -9588,6 +9635,9 @@
 0x005F07D0 CanScan__10CAiSActionCFv
 0x005F07E0 CanPushAiState__10CAiSActionF8AI_STATEP11CSealCtrlAi
 0x005F0830 func_005F0830
+0x005F0990 func_005F0990
+0x005F0B30 func_005F0B30
+0x005F15A0 func_005F15A0
 0x005F1760 func_005F1760
 0x005F1800 OnSignal__8CAiSPlanFQ28CAiState6SIGNALP11CSealCtrlAi
 0x005F1950 GetStatus__8CAiSPlanCFv
@@ -9755,6 +9805,7 @@
 0x00605A60 CanAttack__9CAiSEventCFv
 0x00605A80 OnSignal__9CAiSEventFQ28CAiState6SIGNALP11CSealCtrlAi
 0x00605F90 OnSignal__16CAiSStunResponseFQ28CAiState6SIGNALP11CSealCtrlAi
+0x00606DB0 func_00606DB0
 0x00607560 func_00607560
 0x006075C0 func_006075C0
 0x00607650 OnSignal__8CAiSHoldFQ28CAiState6SIGNALP11CSealCtrlAi
@@ -9762,10 +9813,12 @@
 0x00608050 func_00608050
 0x00608060 Tick__10CAiSNoAmmoFP11CSealCtrlAi
 0x00608290 OnSignal__10CAiSNoAmmoFQ28CAiState6SIGNALP11CSealCtrlAi
+0x006082E0 func_006082E0
 0x006084B0 FindNearestPickup__FPC6CPnt3DUcf
 0x006085C0 Tick__10CAiSReloadFP11CSealCtrlAi
 0x00608840 Virtual14__10CAiSReloadFP11CSealCtrlAiP8CAiState
 0x006089E0 OnSignal__10CAiSReloadFQ28CAiState6SIGNALP11CSealCtrlAi
+0x00609190 func_00609190
 0x006093F0 OnSignal__10CAiSShotAtFQ28CAiState6SIGNALP11CSealCtrlAi
 0x00609710 __dt__9CAiSAvoidFv
 0x00609790 __dt__8CAiSRushFv

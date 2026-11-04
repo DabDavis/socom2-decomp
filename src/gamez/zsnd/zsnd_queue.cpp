@@ -118,7 +118,12 @@ void CSndQueue::Stop()
 /* OPEN, 17 instructions, stack slots only: the target puts the front iterator `first` at 88(sp),
  * below all four erase temporaries (104, 100 in the loop, 96 and 92 in the two arms); here it takes
  * 104, right after `i` (108), and the temporaries follow. Tried: `first` declared at function
- * scope, assigned rather than initialised, an inline helper taking it by value */
+ * scope, assigned rather than initialised, an inline helper taking it by value. By AddTask's frame
+ * rule (zsys_sched.cpp: the caller's own variables and temporaries first, then the inline
+ * expansions breadth-first) the four erases' by-value positions are depth-1 expansions and `first`
+ * something created after them -- yet it is initialised in place from begin(), no copy: the second
+ * half moved into one or two inline levels taking `first` by value (the world lane's round 13) adds
+ * begin()'s temporary and a copy (0x20C) */
 void CSndQueue::PlayNext()
 {
     bool found = false;

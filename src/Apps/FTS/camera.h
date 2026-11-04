@@ -23,6 +23,12 @@ struct CDIKind {
 
 /* a hit along a ray (SOCOM 1's DWARF) */
 struct IntersectStruct {
+    /* the hit's polygon read (int_main.cpp's, 0x2DC150-0x2DC1D0; the names the map's) */
+    int GetPolyFlag27();
+    bool IsInside();
+    unsigned int GetRegion();
+    int GetMaterial();
+
     CPnt3D m_pos;   // 0x0
     CDI *m_poly;   // 0xc
     CPnt3D m_norm;   // 0x10
@@ -92,6 +98,8 @@ class CZSealBody {
 public:
     virtual ~CZSealBody();
     virtual CMatrix *GetMatrix();
+    /* the SEAL a node belongs to, if any (zseal.h's static) */
+    static CZSealBody *GetSeal(zdb::CNode *node);
 
     unsigned char _4[0xc0 - 4];
     CEntityCtrl *m_control;   // 0xc0
@@ -153,6 +161,13 @@ enum CAMVIEW {
     cam_view_last = 5
 };
 
+/* the controller CAppCamera keeps at 0xC4: only its float at 0x130, which looking at a point zeroes
+ * (SOCOM 1's CEntityCtrl had it at the same place; the names ours) */
+struct CAppCameraCtrl {
+    unsigned char _0[0x130];
+    float m_130;   // 0x130
+};
+
 class CAppCamera {
 public:
     ~CAppCamera();
@@ -161,6 +176,7 @@ public:
 
     void FTSTick();
     void APLookAt(float dT, CEntity *target, CMatrix &cTw);
+    void UpdateCameraRegions();
 
     /* the mode changes Tick runs a transition for (inline: their bools are materialised before the
      * branch, SOCOM 1's too; the names ours) */
@@ -188,6 +204,8 @@ public:
     void StopShake();
     static bool TickTask(float dT, void *data);
     void LookAt(const CPnt3D *from, const CPnt3D *to, CMatrix &cTw);
+    /* the chord from the aim to the goal cut short against the world (0x29BF70, SOCOM 1's) */
+    void ClipCameraChord(float dT, CPnt3D *from, CPnt3D *to, CPnt3D *out);
     static bool CmdTick3rdPersonTest(_zanim_cmd_hdr *hdr, float *dT);
     static _zanim_cmd_hdr *CmdParse3rdPersonTest(_zrdr *rdr);
     static _zanim_cmd_hdr *CmdParseShake(_zrdr *rdr);
@@ -214,7 +232,9 @@ public:
     zdb::CNode *m_camera_effects;   // 0xb8 (SOCOM 1: 0x38)
     CZSealBody *m_bc;   // 0xbc: SOCOM II's, a SEAL the mode setter asks after (the name ours)
     CZSealBody *m_entity;   // 0xc0 (SOCOM 1: 0x3c)
-    unsigned int _c4;
+    /* SOCOM II's: the followed SEAL's controller, kept here -- APLookAt zeroes its float at 0x130
+     * where SOCOM 1's reached it as m_entity->m_control (the names ours) */
+    CAppCameraCtrl *m_ctrl;   // 0xc4
     CZBodyPart *m_skel_root;   // 0xc8 (SOCOM 1: 0x40)
     CPnt3D m_rPos;   // 0xcc (SOCOM 1: 0x44)
     CPnt3D m_wPos;   // 0xd8 (SOCOM 1: 0x50)

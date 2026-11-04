@@ -72,9 +72,23 @@ struct CValveOpDelete {
     unsigned char m_type;
 };
 
-/* a valve command's data (SOCOM 1's struct name, from its mangled members) */
+/* a valve command's data (SOCOM 1's struct name, from its mangled members): the valve, and the
+ * value it is compared with or set to -- a constant or another valve, each named as an argument's,
+ * the anim's or itself (the layout read off Compare; the names ours). The VALVE and VBIT blocks
+ * hold it from +4 */
 struct VALVE_CMD_DATA {
+    int ref;   // 0x0: the valve: an argument's index, the anim's valve index, or the valve
+    int value;   // 0x4: the constant, or the second valve named as ref is
+    unsigned char op;   // 0x8: ParseOperator's code
+    unsigned char isArg : 1;   // 0x9
+    unsigned char isAnim : 1;   // 0x9
+    unsigned char valIsArg : 1;   // 0x9
+    unsigned char valIsAnim : 1;   // 0x9
+    unsigned char valIsValve : 1;   // 0x9: value names a valve
+
     static CValve *ParseValveName(const char *name, int &index);
+    /* the valve's value against the block's, by its operator (0x353FD0, SOCOM 1's) */
+    bool Compare();
 };
 
 #endif

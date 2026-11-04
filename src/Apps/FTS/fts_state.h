@@ -108,6 +108,7 @@ class CNode;
 class CTexHandle;
 class CAssetLib;
 class CWorld;
+class CTextureRelocMgr;
 
 class CAssetList {
 public:
@@ -255,6 +256,9 @@ public:
     virtual void PrepControls(CTextureRelocMgr *reloc);
     void Draw2dOnly();
     void DrawForeplane();
+    /* the menu set up over a relocator, its own rdr's design loaded (SOCOM 1's; 0x368570, the UI's
+     * round 18 -- zui.cpp) */
+    bool Init(zdb::CTextureRelocMgr *mgr, CZAnimZAR *zar);
     /* the background film (SOCOM 1's trio, by order and fields: the UI lane's round 13) */
     void TickMPEG();   /* 0x366940 */
     void RestartBackgroundMPEG(const char *name);   /* 0x366A00 */
