@@ -52,12 +52,14 @@ CActionTxtr g_arrActionTxtrs[22];
  * own (SOCOM 1's CNodeAction::GetUIString, by its call here: OVL1 0x2B48E0) */
 class CNodeAction {
 public:
+    /* its prompt from its kind when it has no string of its own (SOCOM 1's GetUIString, OVL1
+     * 0x2B48E0) */
+    const char *GetUIString();
+
     unsigned char _0[0x28];
     zdb::CTexHandle *m_texhandle;   // 0x28
     const char *m_uistring;   // 0x2c
 };
-
-extern "C" const char *func_002B48E0(CNodeAction *action);
 
 /* a weapon's name as the pickup prompt shows it (zweapon.h's: OVL1 0x3D2830) */
 class CZWeapon {
@@ -258,7 +260,7 @@ unsigned int CActionTxtrMachine::Add(CActionTxtr *pActionTxtr)
             if (pNodeAction->m_uistring)
                 pActionTxtr->SetName(pNodeAction->m_uistring);
             else
-                pActionTxtr->SetName(func_002B48E0(pNodeAction));
+                pActionTxtr->SetName(pNodeAction->GetUIString());
         }
     }
     pActionTxtr->m_2DBitmap.SetTrans(0.0f);
