@@ -192,29 +192,30 @@ STICK_DIR UiGetDirStickMoved();
  * and 7 the edit keys) */
 enum SKBKEY { SKBKEY_NONE, SKBKEY_1, SKBKEY_2, SKBKEY_3, SKBKEY_4, SKBKEY_5, SKBKEY_6, SKBKEY_7 };
 
-/* the four cursor events by the stick's direction or the pad button pressed (0x3FB388; ours) */
+/* the four cursor events by the stick's direction or the pad button pressed (0x3FB388; ours: the
+ * event a SKBKEY field -- MW loads a byte enum with `lb` and narrows it at each read, the table's
+ * load in SkbPadKeyEvent) */
 struct SKBPADKEY {
     unsigned char m_dir;     // a STICK_DIR
     unsigned char m_button;  // a PAD_BUTTON
-    signed char m_event;
+    SKBKEY m_event;
 };
-static SKBPADKEY s_padKeys[4] = {{1, 3, 2}, {2, 2, 3}, {3, 4, 1}, {4, 5, 4}};
+static SKBPADKEY s_padKeys[4] = {{1, 3, SKBKEY_2}, {2, 2, SKBKEY_3}, {3, 4, SKBKEY_1}, {4, 5, SKBKEY_4}};
 
 /* the pad's key event: a cursor move by the stick or the pad, else cross, L2 or R2 (5, 6, 7) --
  * kept, its hold time restarted; with none, the kept event cleared once the stick is centred or
  * one of those keys is let go (0x394F60; the name ours). The release test is a bool accumulated
  * with `|=` (the target's branch-free sltu/or chain; `||` branches, `|` of the compares differs).
- * OPEN, 1 instruction (the target's size since the UI's round 24): the table's event is loaded
- * with `lbu` where the target has `lb`. The tests written `== SKBKEY_NONE` / `!= SKBKEY_NONE`
- * narrow the byte enum with `andi 0xff` at each read as the target does (`!event` / `if (event)`
- * test the loaded byte directly: 16 bytes short); but MW folds the signed char's conversion to the
- * unsigned byte enum into the load whatever its form -- `(SKBKEY)(signed char)`, `(SKBKEY)(int)`,
- * a signed char or int local first, the field a plain char, a pointer read, an inline returning
- * it (round 24) -- where a 2-byte enum keeps `lb` with `andi 0xffff` at the reads and a signed byte
- * enum (an enumerator -1) keeps `lb` with a sign-extension at each read. A signed char local tested
- * through `(SKBKEY)` casts gives every instruction but holds the event in a3: only a byte-enum
- * local is coalesced with the return register (35 off). The search as an inline returning the event
- * (int, signed char or SKBKEY) is 24-29 off. */
+ * Byte-exact since the UI's round 24 (open since round 19, 16 bytes short): the table's event a
+ * SKBKEY FIELD, read without a cast -- MW loads byte-enum memory with `lb` (sign-extending) and
+ * narrows with `andi 0xff` at each read, the target's lb and andi's; a signed char field cast to
+ * SKBKEY folds the conversion into an `lbu` in every form (`(SKBKEY)(signed char)`, `(SKBKEY)(int)`,
+ * a char or int local first, an inline returning it). The tests are written `== SKBKEY_NONE` /
+ * `!= SKBKEY_NONE`: `!event` / `if (event)` test the loaded byte directly (16 bytes short). Measured
+ * on the way: a 2-byte enum loads a signed char field with `lb` and narrows with `andi 0xffff`, a
+ * signed byte enum (an enumerator -1) sign-extends at each read; a signed char local tested
+ * through casts has every instruction but the event in a3 (only a byte-enum local is coalesced
+ * with the return register); the search as an inline returning the event is 24-29 off. */
 SKBKEY SkbPadKeyEvent(CPad *pad)
 {
     STICK_DIR dir = UiGetDirStickMoved();
@@ -222,7 +223,7 @@ SKBKEY SkbPadKeyEvent(CPad *pad)
 
     for (int i = 0; i < 4; i++) {
         if (pad->m_state[s_padKeys[i].m_button] == KEY_FALLING || dir == s_padKeys[i].m_dir) {
-            event = (SKBKEY)s_padKeys[i].m_event;
+            event = s_padKeys[i].m_event;
             break;
         }
     }
