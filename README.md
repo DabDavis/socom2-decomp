@@ -1965,6 +1965,22 @@ templates next), and the earlier rounds' opens; 3.0b38/b50/b52 still untold.
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the AI core, round 22** (the maps' initialisers, SetRegionType, GetRandomLoc, the vehicle footprint):
+  - a `rand()` draw written as an inline function of its own makes its arm end on a label padded to 8 bytes (the target's
+    nop after `mfhi`); written inline in the arm, MW leaves the join unpadded and fills the `b` delay slot -- GetRandomLoc
+    0x529EE0 (open since round 10) and CVehicleRdrEntry::Randomize 0x533040, and MakeNoise's joins lined up;
+  - a non-const local copied from a const pointer parameter is numbered after the parameters; a byte-enum parameter stored
+    into a bit-field as `(int)` reuses the compare's narrowed value (SetRegionType 0x529C00);
+  - a static whose constructor is defined out of line and dead-stripped is inlined by the initialiser whole or not at all,
+    and that out-of-line definition lets the initialiser inline the out-of-class template members it uses
+    (__sinit_ai_maps.cpp 0x668710: byte-exact only at inline depth 6 -- another level-6 case; CAiMaps() is in ABSENT.txt);
+  - MW deletes a branch whose body it can see is empty -- an empty asm, a dead raw load, an inlined accessor whose callees
+    it also inlined (plan_legcomplete: `asm volatile { nop }` gives the size);
+  - __sinit_ai_path.cpp 0x668680 builds CAiMapLoc::invalid (every bit set); CAiMap::TileFootprint 0x515880 and
+    region::SetCorners 0x515DE0 (CVehicle::Tick's; names ours); CAiPath::UpdatePointFlags (SOCOM 1's) and RebuildLegs
+    (ours) as members;
+  - open: MakeNoise (19) and MakeNoiseXZ (13, right size: two saved float registers swapped), GetStartMatrix (66, right
+    size), CAiMap::GetLocation(point) 0x515F80 (0x1A0 vs 0x198: m_ny loaded early, the bool narrowed), remove_if<_tick>.
 - **Tells from the weapons, round 19** (CTurretDef::Parse, __sinit_zwep_weapon.cpp, the explosion statics):
   - an inline's by-value float whose address is taken (saturated in place) gets the frame's lowest slot, below the caller's
     temporaries; a named local sits above them; `m_b = m_a = x` stores both from one register where two statements reload an
