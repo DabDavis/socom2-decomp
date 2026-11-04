@@ -77,12 +77,6 @@ class CAiState;
  * movz` narrowed; the stack's tick returns 2 once its state is done -- the names ours) */
 enum AI_RESULT { AI_RUNNING = 0, AI_DONE = 1, AI_FINISHED = 2, AI_RESULT_LAST = 255 };
 
-/* the states a controller (or a state) runs, the current one at the front (SOCOM 1's DWARF:
- * CAiStateStack : list, 0xc bytes -- CSealCtrlAi::m_stateStack there, followed by m_stateTimer
- * and m_stateFlags; SOCOM II also gives every CAiState one, at +8). SOCOM II's is 0x20 bytes: its
- * constructor (0x5F8520) sets three words after the list, and its tick (0x5F8030) runs the clock
- * at 0x18 that SOCOM 1 kept in the controller (CSealCtrlAi's 0x434: the stack sits at 0x41C there).
- * The stack owns its states. */
 /* a word of the stack's, held as an aggregate and read as the word (the name ours: see
  * CAiStateStack's m_c) */
 class CAiStateWord {
@@ -103,6 +97,12 @@ public:
     unsigned int m_v;
 };
 
+/* the states a controller (or a state) runs, the current one at the front (SOCOM 1's DWARF:
+ * CAiStateStack : list, 0xc bytes -- CSealCtrlAi::m_stateStack there, followed by m_stateTimer
+ * and m_stateFlags; SOCOM II also gives every CAiState one, at +8). SOCOM II's is 0x20 bytes: its
+ * constructor (0x5F8520) sets three words after the list, and its tick (0x5F8030) runs the clock
+ * at 0x18 that SOCOM 1 kept in the controller (CSealCtrlAi's 0x434: the stack sits at 0x41C there).
+ * The stack owns its states. */
 class CAiStateStack : public std::list<CAiState *> {
 public:
     /* out of line, seal_aistate.cpp's (0x5F8520): CAiState's constructor (0x5EA5D0) and Create's
