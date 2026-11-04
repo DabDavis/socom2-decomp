@@ -10734,8 +10734,8 @@
 0x0059FAC0 0x284 func_0059FAC0  # OVL2
 0x0059FD50 0x2E8 func_0059FD50  # OVL2
 0x005A0040 0x228 func_005A0040  # OVL2
-0x005A0270 0x484 func_005A0270  # OVL2
-0x005A0700 0x244 func_005A0700  # OVL2
+0x005A0270 0x484 FindRandomDamageAnim__10CZSealBodyF15DAMAGE_LOCATIONPb  # OVL2; s1:order by hand (the SEALs, round 29): SOCOM 1's FindRandomDamageAnim__10CZSealBodyF15DAMAGE_LOCATIONPb, right before FindRandomDeathAnim in both builds (SOCOM 1's DropAllItems, the two finders, SetArmor, the three armour setups of 0xC8-0xCC bytes and DamageRandomLocation; SOCOM II's 0x5A0040, 0x5A0270, 0x5A0700, the new 0x5A0950, 0x5A0B60/0x5A0BB0, 0x5A0C00/0x5A0CD0/0x5A0DA0 of 0xC8 each and 0x5A0E70 on the pellet tables); UpdateHealth's living branch asks it for a hurt SEAL's anim (location, &flag) and plays it in the SEAL's stance
+0x005A0700 0x244 FindRandomDeathAnim__10CZSealBodyF15DAMAGE_LOCATIONPb  # OVL2; s1:calls by hand (the SEALs, round 29): UpdateHealth's dying branch and OnWeaponHit's dead-SEAL branch call it with (the location or 3, &flag) and hand the anim to WeaponHitAnim with state 8, as SOCOM 1's call FindRandomDeathAnim__10CZSealBodyF15DAMAGE_LOCATIONPb; after FindRandomDamageAnim in both builds
 0x005A0950 0x210 func_005A0950  # OVL2
 0x005A0B60 0x48 func_005A0B60  # OVL2
 0x005A0BB0 0x48 func_005A0BB0  # OVL2
@@ -10753,7 +10753,7 @@
 0x005A2390 0xF8 func_005A2390  # OVL2
 0x005A2490 0x1E8 func_005A2490  # OVL2
 0x005A2680 0x8 func_005A2680  # OVL2
-0x005A2690 0x900 func_005A2690  # OVL2
+0x005A2690 0x900 WeaponHitAnim__10CZSealBodyF8AnimType10SEAL_STATE  # OVL2; s1:calls by hand (the SEALs, round 29): UpdateHealth and OnWeaponHit hand it FindRandomDeathAnim's anim with state 8 where SOCOM 1's call WeaponHitAnim__10CZSealBodyF8AnimType10SEAL_STATEb with (anim, 8, false); SOCOM II's takes no flag (a1 the 2-byte AnimType, a2 the state byte, a3 unread) and finds a death anim itself for an undefined one
 0x005A2F90 0xD4 CheckForRegionTrigger__10CZSealBodyFUi  # OVL2; s1:calls
 0x005A3070 0xF0 GetHeadParams__10CZSealBodyFP6CPnt3DP6CPnt3D  # OVL2; s1:order by hand (SOCOM 1's GetHeadParams__10CZSealBodyFP6CPnt3DP6CPnt3D, after CheckForRegionTrigger in both builds: the head part's place through PartInSpace and the node's matrix, the look's direction through its rotation -- SOCOM II tests each pointer first) -- the SEAL lane, round 12
 0x005A3160 0x58 GetNeckPosW__10CZSealBodyFP6CPnt3D  # OVL2; slot 0x38 of __vt__10CZSealBody (CEntity's slot 0x38, GetNeckPosW in zentity.h; the name ours)

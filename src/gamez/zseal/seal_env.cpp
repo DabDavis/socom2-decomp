@@ -1600,6 +1600,48 @@ extern "C" float func_005A56D0(CZSealBody *seal)
     return sum;
 }
 
+/* the health taken from the six locations' values: dead when the head's or the body's has run out
+ * or the SEAL was dead already -- a bullet in the head then a head shot -- the health zeroed with the
+ * death's kind and, for a SEAL alive till now, a death anim played (unless remote, a fall or a
+ * grenade) and the HUD's hit flag set; else the health their weighted average, and when that fell a
+ * damage anim played in the SEAL's stance (the same exceptions) and the flag set (OVL2 0x5A54D0;
+ * SOCOM 1's UpdateHealth, its five health pairs six values now, the drops gone) */
+void CZSealBody::UpdateHealth(DAMAGE_LOCATION where, SEAL_DEATH_TYPE type)
+{
+    float old = m_health;
+    bool alive = m_isAlive;
+    bool dead = false;
+
+    /* (the flag compared == false: its andi before the branch) */
+    if (m_ffc[0] <= 0.0f || m_ffc[3] <= 0.0f || alive == false) {
+        dead = true;
+        if (where == 0 && type == DEATH_BULLET)
+            type = DEATH_HEADSHOT;
+    }
+    if (dead) {
+        SetHealth(0.0f, type);
+        if (alive) {
+            if (!IsRemote() && type != DEATH_FALLING && type != DEATH_GRENADE) {
+                bool b;
+
+                WeaponHitAnim(FindRandomDeathAnim(where, &b), stateDead);
+            }
+            SetHudHitFlag();
+        }
+    } else {
+        SetHealth(func_005A56D0(this), DEATH_NONE);
+        if (m_health < old) {
+            if (!IsRemote() && type != DEATH_FALLING && type != DEATH_GRENADE) {
+                bool b;
+                AnimType anim = FindRandomDamageAnim(where, &b);
+
+                WeaponHitAnim(anim, GetStance(false));
+            }
+            SetHudHitFlag();
+        }
+    }
+}
+
 /* one of the six values set to its rate times a factor, none below zero, and when it changed started
  * -- value 3 with kind 5, value 0 with 3, any other with 0 (OVL2 0x5A5790, new in SOCOM II; the names
  * ours. The case tests run in reverse source order) */
@@ -1630,11 +1672,7 @@ extern "C" {
 /* (OVL1 0x2C2FD0, the network game's: whether a SEAL's hits go unfelt -- the player's by a valve,
  * another's by its client's flag; the name unknown) */
 bool func_002C2FD0(CZSealBody *seal);
-/* a death anim for a location and the weapon hit's anim played in a state (OVL2 0x5A0700 and
- * 0x5A2690: SOCOM 1's FindRandomDeathAnim and WeaponHitAnim by these calls, SOCOM II's without the
- * flag -- not written) and two of seal_body.cpp's (OVL2 0x57E770, 0x585FF0; not written) */
-AnimType func_005A0700(CZSealBody *seal, DAMAGE_LOCATION where, bool *b);
-void func_005A2690(CZSealBody *seal, AnimType anim, SEAL_STATE state);
+/* two of seal_body.cpp's (OVL2 0x57E770, 0x585FF0; not written) */
 void func_0057E770(CZSealBody *seal);
 void func_00585FF0(CZSealBody *seal);
 }
@@ -1691,7 +1729,7 @@ int CZSealBody::OnWeaponHit(zdb::IntersectStruct *hit, CZProjectile *proj)
     } else if (!IsRemote()) {
         bool b;
 
-        func_005A2690(this, func_005A0700(this, (DAMAGE_LOCATION)3, &b), stateDead);
+        WeaponHitAnim(FindRandomDeathAnim((DAMAGE_LOCATION)3, &b), stateDead);
     }
     func_0057E770(this);
     func_00585FF0(this);

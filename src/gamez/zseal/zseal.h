@@ -1585,9 +1585,16 @@ public:
     /* a landing's damage by its speed, the severity returned (SOCOM 1's; OVL2 0x5AC1F0) */
     LANDING_TYPE HandleFallingDamage(float speed);
     /* the health taken from the six locations' values: dead when the head's or the body's runs out
-     * (a bullet in the head a head shot), else their weighted average (SOCOM 1's; OVL2 0x5A54D0 --
-     * not written; the six values' setter 0x5A5790 calls it too) */
+     * (a bullet in the head a head shot), else their weighted average (SOCOM 1's; OVL2 0x5A54D0; the
+     * six values' setter 0x5A5790 calls it too) */
     void UpdateHealth(DAMAGE_LOCATION where, SEAL_DEATH_TYPE type);
+    /* a hit's damage anim and a death anim for a location, a flag handed back (SOCOM 1's, in its
+     * order; OVL2 0x5A0270, 0x5A0700 -- not written) */
+    AnimType FindRandomDamageAnim(DAMAGE_LOCATION where, bool *b);
+    AnimType FindRandomDeathAnim(DAMAGE_LOCATION where, bool *b);
+    /* a weapon hit's anim played in a state, a death anim found when none is given (SOCOM 1's,
+     * without its flag; OVL2 0x5A2690 -- not written) */
+    void WeaponHitAnim(AnimType anim, SEAL_STATE state);
     /* a stun taken: the kind's highest kept, the controller told (SOCOM 1's; OVL2 0x5A53D0) */
     void HandleStunDamage(STUN_TYPE type, float amount, const CPnt3D *from);
     /* the stuns run down by the character's recovery (SOCOM 1's; OVL2 0x5A50A0), each kind's
