@@ -2708,15 +2708,15 @@
 0x002578F0 0x294 _countKeys__FPQ23zar4CKey  # OVL1; s1:calls by hand, the core lane round 7 (SOCOM 1's _countKeys 0x1D8480: WriteDirectory 0x257590 calls it on m_root and stores the count at +0x3C, the tail's key count, where SOCOM 1's WriteDirectory inlines it into the same slot; recursive as SOCOM 1's -- it self-inlines three levels, the deeper ones calling vector<CKey *>'s iterator pieces 0x257B90-0x257CB0 out of line)
 0x00257B90 0x8 func_00257B90  # OVL1
 0x00257BA0 0x14 func_00257BA0  # OVL1; tu: ztex_manager.cpp~ (1.0 beta)
-0x00257BC0 0x14 func_00257BC0  # OVL1
-0x00257BE0 0x14 func_00257BE0  # OVL1
-0x00257C00 0x10 func_00257C00  # OVL1; tu: char_type.cpp~ (1.0 beta)
-0x00257C10 0x18 func_00257C10  # OVL1
-0x00257C30 0x18 func_00257C30  # OVL1
-0x00257C50 0x14 func_00257C50  # OVL1
-0x00257C70 0x8 func_00257C70  # OVL1
-0x00257C80 0xC func_00257C80  # OVL1
-0x00257C90 0xC func_00257C90  # OVL1
+0x00257BC0 0x14 __eq__Q33std60__vector_imp<PQ23zar4CKey,Q23std23allocator<PQ23zar4CKey>,1>8iteratorCFRCQ33std60__vector_imp<PQ23zar4CKey,Q23std23allocator<PQ23zar4CKey>,1>8iterator  # OVL1; by hand, the core lane round 10 (vector<CKey *>'s iterator ==, the two words compared: zar_main.cpp emits its out-of-line pieces right after _countKeys in the image's order -- ==, prefix ++, copy, !=, end, postfix ++, *, begin, __iter -- the target holding three more between them, 0x257B90/0x257BA0/0x257CA0, include/vector's open shapes)
+0x00257BE0 0x14 __pp__Q33std60__vector_imp<PQ23zar4CKey,Q23std23allocator<PQ23zar4CKey>,1>8iteratorFv  # OVL1; by hand, the core lane round 10 (vector<CKey *>'s iterator prefix ++, a 4-byte step returning this: zar_main.cpp's pieces after _countKeys in the image's order)
+0x00257C00 0x10 __ct__Q33std60__vector_imp<PQ23zar4CKey,Q23std23allocator<PQ23zar4CKey>,1>8iteratorFRCQ33std60__vector_imp<PQ23zar4CKey,Q23std23allocator<PQ23zar4CKey>,1>8iterator  # OVL1; tu: char_type.cpp~ (1.0 beta); by hand, the core lane round 10 (vector<CKey *>'s iterator copy constructor: zar_main.cpp's pieces after _countKeys in the image's order; 0x257CA0 has the same words, another piece)
+0x00257C10 0x18 __ne__Q33std60__vector_imp<PQ23zar4CKey,Q23std23allocator<PQ23zar4CKey>,1>8iteratorCFRCQ33std60__vector_imp<PQ23zar4CKey,Q23std23allocator<PQ23zar4CKey>,1>8iterator  # OVL1; by hand, the core lane round 10 (vector<CKey *>'s iterator != as !(==): zar_main.cpp's pieces after _countKeys in the image's order; the world's subtitle loader 0x34D190 walks a ZAR's keys with them)
+0x00257C30 0x18 end__Q23std60__vector_imp<PQ23zar4CKey,Q23std23allocator<PQ23zar4CKey>,1>Fv  # OVL1; by hand, the core lane round 10 (vector<CKey *>'s end(), data + size*4 into the returned iterator: zar_main.cpp's pieces after _countKeys in the image's order)
+0x00257C50 0x14 __pp__Q33std60__vector_imp<PQ23zar4CKey,Q23std23allocator<PQ23zar4CKey>,1>8iteratorFi  # OVL1; by hand, the core lane round 10 (vector<CKey *>'s iterator postfix ++, the old pointer returned: zar_main.cpp's pieces after _countKeys in the image's order; the subtitle loader's 0x34D5D0/0x34D740 call it)
+0x00257C70 0x8 __ml__Q33std60__vector_imp<PQ23zar4CKey,Q23std23allocator<PQ23zar4CKey>,1>8iteratorCFv  # OVL1; by hand, the core lane round 10 (vector<CKey *>'s iterator *, the element's address: zar_main.cpp's pieces after _countKeys in the image's order, between postfix ++ and begin; 0x257B90 has the same words, another piece)
+0x00257C80 0xC begin__Q23std60__vector_imp<PQ23zar4CKey,Q23std23allocator<PQ23zar4CKey>,1>Fv  # OVL1; by hand, the core lane round 10 (vector<CKey *>'s begin(), the data pointer into the returned iterator: zar_main.cpp's pieces after _countKeys in the image's order)
+0x00257C90 0xC __iter__Q23std60__vector_imp<PQ23zar4CKey,Q23std23allocator<PQ23zar4CKey>,1>FRCPUi  # OVL1; by hand, the core lane round 10 (vector<CKey *>'s __iter(unsigned int *const &), the raw pointer read through the reference: zar_main.cpp's pieces after _countKeys in the image's order)
 0x00257CA0 0x10 func_00257CA0  # OVL1; tu: char_type.cpp~ (1.0 beta)
 0x00257CB0 0x8 func_00257CB0  # OVL1
 0x00257CC0 0x1F8 fixupKey__Q23zar4CKeyFP7CSTablePv  # OVL1; s1:calls by hand, the core lane round 7 (SOCOM 1's CKey::fixupKey 0x1D8600: WriteDirectory 0x257590 hands it to CSTable::Pack 0x39F6F0 with m_root, as SOCOM 1's WriteDirectory hands 0x1D8600 to Pack; recursive, calling itself at 0x257DEC)
