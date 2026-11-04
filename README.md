@@ -2060,6 +2060,17 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the UI, round 24** (SkbPadKeyEvent at last):
+  - MW loads a byte-enum field with `lb` and narrows it with `andi 0xff` at each read; a `signed char` field cast to the
+    enum folds into `lbu` in every form tried (`(E)(signed char)`, `(E)(int)`, a char or int local first, an inline
+    returning it) -- SkbPadKeyEvent 0x394F60 (open since round 19) matches with the pad table's event field an SKBKEY read
+    without a cast (the table's data unchanged);
+  - a byte enum tested `== E_0` / `!= E_0` narrows at the test, `!e` / `if (e)` tests the loaded byte directly (16 bytes
+    shorter); a 2-byte enum loads a `signed char` field with `lb` and narrows with `andi 0xffff`, a signed byte enum (one
+    enumerator -1) sign-extends at each read instead;
+  - MW numbers a float expression's temporaries in source order (left operand first) though the loads are emitted first;
+    a constant passed through an inline's parameter, or held in a caller local defined before calls, is propagated before
+    that numbering (SkbStartDisplay stays 1 off on it); CSkbSplit's sum 0x391E70 written (12: a register rotation).
 - **Tells from the engine core, round 13** (the pop-up dialog's model, the network packet arguments, the mission title):
   - a jump table that starts at 0 needs its empty cases written, otherwise MW builds a compare chain
     (CZAnimArgList::AddNetworkPacketArgs 0x271EE0, SOCOM 1's); a `li a3,1` shared by a `== 1` compare and the call's third
