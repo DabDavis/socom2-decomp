@@ -10308,7 +10308,7 @@
 0x00572880 0x168 func_00572880  # OVL2
 0x005729F0 0x340 OnWeaponEvent__11CSealCtrlAiFP12CZProjectileUiPv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00572D30 0x3C func_00572D30  # OVL2
-0x00572D70 0x228 func_00572D70  # OVL2
+0x00572D70 0x228 UpdateEventMask__11CSealCtrlAiFv  # OVL2; s1:order by hand (the SEALs, round 22, the kit lane's round-23 lead: CTTeam::Tick calls it in its join and leave cases where SOCOM 1's CTTeam::Tick calls UpdateEventMask; between OnWeaponEvent's and CreateAiEvent's places as in SOCOM 1; the same three MakeMaskEx statics plus a fourth, the mask at 0x65C as SOCOM 1's m_eventMask at 0x4B8, the team bits 26/28/17 and bits 8/9 as SOCOM 1's m_sleeping/m_snoozing, cleared online)
 0x00572FA0 0x164 CreateAiEvent__9CSealCtrlFQ28CAiEvent5EVENTffbPC6CPnt3DUi  # OVL2; s1:order (seal_ai.cpp: after OnWeaponEvent and the event-mask update, before the AI brain's set-up, as SOCOM 1's CreateAiEvent__9CSealCtrlFQ28CAiEvent5EVENTffbPC6CPnt3DUi; the voice's caller 0x55FEE0 passes its arguments in that order: the kind in a1, two floats, false in a2, the position in a3, an id in t0) -- the SEAL lane, round 4
 0x00573110 0x20 func_00573110  # OVL2
 0x00573130 0xA4C func_00573130  # OVL2
@@ -10375,7 +10375,7 @@
 0x00576700 0x160 func_00576700  # OVL2
 0x00576860 0x344 func_00576860  # OVL2
 0x00576BB0 0x280 func_00576BB0  # OVL2
-0x00576E30 0x1CC func_00576E30  # OVL2
+0x00576E30 0x1CC CombineRotations__9CSealAnimFii  # OVL2; s1:order by hand (the SEALs, round 22: SOCOM 1's CombineRotations__9CSealAnimFii, between AnimOverlay's and AnimBlend's places in seal_anim.cpp; the same weight sum, b's share, the -1 tests, the 0.001/0.999 snaps and Slerp; SOCOM II clamps the share and loops siNumBodyObjects records)
 0x00577000 0x700 func_00577000  # OVL2
 0x00577700 0xCC AnimPop__9CSealAnimFv  # OVL2; s1:order by hand (SOCOM 1's AnimPop__9CSealAnimFP5CBody, after AnimBlend in both builds: the top frame's 0x20-byte records (position, id, rotation) put back on the parts by id, the count dropped and returned; SOCOM II's reads the SEAL's own parts and a record count from OVL1 data) -- the SEAL lane, round 12
 0x005777D0 0x3C4 AnimPush__9CSealAnimFP16CZSIScriptCommonffs  # OVL2; s1:order by hand (SOCOM 1's AnimPush__9CSealAnimFP10CZSealBodyP11ACTIVE_ANIM, between AnimPop's and Animate's places in both builds (0x3C4 here, 0x444 there); SOCOM II's takes the active anim's script, fraction, weight and frame -- 0x577DF0 passes them -- and stores the script into the pushed frame; the parameter types are the call's) -- the SEAL lane, round 12

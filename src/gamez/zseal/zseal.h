@@ -778,7 +778,10 @@ public:
     CAiMapLoc m_leg_cell;   // 0x618
     unsigned char _61c[0x628 - 0x61c];
     unsigned char m_event[0x28];   // 0x628: a CAiEvent (SOCOM 1's m_event, 0x480)
-    unsigned char m_eventQueue[0x10];   // 0x650: a CAiEventQ (SOCOM 1's m_eventQueue, 0x4a8)
+    unsigned char m_eventQueue[0xc];   // 0x650: a CAiEventQ (SOCOM 1's m_eventQueue, 0x4a8: SOCOM II's lists are 0xc bytes)
+    /* the kinds of event the AI hears (SOCOM 1's m_eventMask, 0x4b8: UpdateEventMask, OVL2 0x572D70,
+     * stores it at 0x65c) */
+    unsigned int m_eventMask;   // 0x65c
     unsigned char m_660;   // 0x660: set at the mission's start in mode 1 (the names ours)
     unsigned char _661[0x664 - 0x661];
     CZSealBody *m_664;   // 0x664: the player, in mode 1
@@ -855,6 +858,8 @@ public:
      * ClearAiState, the AI-states lane's 0x5F5F20) */
     void SetAiMode(AI_MODE mode);
     bool ClearAiState(bool all);   /* returns a bool (the kit lane: 0x5F5F20 sets v0) */
+    /* the kinds of event heard, by the SEAL's team and sleep (SOCOM 1's; OVL2 0x572D70) */
+    void UpdateEventMask();
     /* the state stack's operations as the controller offers them (SOCOM 1's, their bodies the
      * stack's now: OVL2 0x5F5BA0-0x5F5CB0 and 0x5F5FC0, the AI-states lane's seal_aistate.cpp):
      * a state set or pushed when CanPushAiState allows it -- SOCOM 1's bool now a flags word it
@@ -1511,7 +1516,20 @@ public:
     CZBodyPart *m_spinehi;   // 0x310 (SOCOM 1's 0x294: AddDIPolys caps its box)
     CZBodyPart *m_lthigh;   // 0x314 (SOCOM 1's 0x298)
     CZBodyPart *m_rthigh;   // 0x318 (SOCOM 1's 0x29c: the pistol's holster)
-    unsigned char _31c[0x350 - 0x31c];
+    /* (SOCOM 1's DWARF names on, 0x7c on: 0x5765F0 saves and 0x576700 eases twenty of them) */
+    CZBodyPart *m_rcalf;   // 0x31c (SOCOM 1's 0x2a0)
+    CZBodyPart *m_rbicep;   // 0x320 (SOCOM 1's 0x2a4)
+    CZBodyPart *m_rforearm;   // 0x324 (SOCOM 1's 0x2a8)
+    CZBodyPart *m_lbicep;   // 0x328 (SOCOM 1's 0x2ac)
+    CZBodyPart *m_lforearm;   // 0x32c (SOCOM 1's 0x2b0)
+    CZBodyPart *m_lscap;   // 0x330 (SOCOM 1's 0x2b4)
+    CZBodyPart *m_rscap;   // 0x334 (SOCOM 1's 0x2b8)
+    CZBodyPart *m_lshoulder_wgt;   // 0x338 (SOCOM 1's 0x2bc)
+    CZBodyPart *m_rshoulder_wgt;   // 0x33c (SOCOM 1's 0x2c0)
+    CZBodyPart *m_lcalf;   // 0x340 (SOCOM 1's 0x2c4)
+    CZBodyPart *m_ltoe;   // 0x344 (SOCOM 1's 0x2c8)
+    CZBodyPart *m_rtoe;   // 0x348 (SOCOM 1's 0x2cc)
+    CZBodyPart *m_weapon;   // 0x34c (SOCOM 1's 0x2d0)
     CZBodyPart *m_rifle;   // 0x350 (SOCOM 1's 0x2d4)
     CZBodyPart *m_pistol;   // 0x354 (SOCOM 1's 0x2d8)
     /* the eyes and their lids (SOCOM 1's 0x2e0-0x2ec: SOCOM II drops m_grenade before them, so

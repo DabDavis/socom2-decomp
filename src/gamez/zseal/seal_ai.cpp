@@ -810,6 +810,58 @@ extern "C" float func_005750D0(unsigned char i)
     return data_0064FE60[data_0066AFD8][i];
 }
 
+/* an event kind's bit (an inline: through it the base mask is a guarded static, as the target's) */
+static inline unsigned int EventBit(CAiEvent::EVENT e)
+{
+    return 1 << e;
+}
+
+/* neither of SOCOM 1's m_snoozing (bit 9) and m_sleeping (bit 8) set (an inline bool). The target
+ * materialises it before its branch: bit 9 as a bool (sltu), bit 8 only when that is clear, then a
+ * bare xori -- an int holding the `||` gives exactly that; `!(a || b)` builds 1/0 constants, a bool
+ * local adds a second sltu at the join, bool accessors cost 8 bytes */
+static inline bool AiAwake(const CSealCtrlAi *ai)
+{
+    int r = ai->m_aibit9 != 0;
+
+    if (!r)
+        r = ai->m_aibit8 != 0;
+    return r ^ 1;
+}
+
+/* the kinds of event the AI hears: all but the unknown, less the sleeper's when it sleeps or its team
+ * has bit 26, less the teams' of bits 28 and 17, and only the deaf set's complement for a team of bit
+ * 1 -- none online (OVL2 0x572D70: SOCOM 1's UpdateEventMask, by its order and CTTeam::Tick's calls --
+ * the join and the leave -- where SOCOM 1's calls it; SOCOM II starts from a fourth static and tests
+ * the team's bit 1 first) */
+void CSealCtrlAi::UpdateEventMask()
+{
+    static unsigned int all = ~EventBit(CAiEvent::AIE_UNKNOWN);
+    static unsigned int asleep = CAiEvent::MakeMaskEx(CAiEvent::AIE_UNKNOWN, CAiEvent::AIE_GENERIC,
+        CAiEvent::AIE_POINT, CAiEvent::AIE_ENTITY, CAiEvent::AIE_VOICE, CAiEvent::AIE_CORPSE,
+        CAiEvent::AIE_DOOR, CAiEvent::AIE_HELPME, CAiEvent::AIE_ALARM, CAiEvent::AIE_LIGHTSOFF,
+        CAiEvent::AIE_NONE);
+    static unsigned int unaware = CAiEvent::MakeMaskEx(CAiEvent::AIE_UNKNOWN, CAiEvent::AIE_GENERIC,
+        CAiEvent::AIE_POINT, CAiEvent::AIE_ENTITY, CAiEvent::AIE_CORPSE, CAiEvent::AIE_HELPME,
+        CAiEvent::AIE_ALARM, CAiEvent::AIE_LIGHTSOFF, CAiEvent::AIE_EXPLOSION, CAiEvent::AIE_NONE);
+    static unsigned int deaf = CAiEvent::MakeMaskEx(CAiEvent::AIE_UNKNOWN, CAiEvent::AIE_GENERIC,
+        CAiEvent::AIE_ALARM, CAiEvent::AIE_LIGHTSOFF, CAiEvent::AIE_CORPSE, CAiEvent::AIE_POINT,
+        CAiEvent::AIE_DOOR, CAiEvent::AIE_NONE);
+    CEntity *e = m_entity;
+
+    m_eventMask = all;
+    if (e->m_team & 2)
+        m_eventMask &= ~deaf;
+    else {
+        if (!AiAwake(this) || (e->m_team & 0x4000000))
+            m_eventMask &= ~asleep;
+        if ((e->m_team & 0x10000000) || (e->m_team & 0x20000))
+            m_eventMask &= ~unaware;
+    }
+    if (theNetwork.m_9)
+        m_eventMask = 0;
+}
+
 /* whether an entity may be taken as a target: any in mode 4, else one of no team of ours (OVL2
  * 0x572D30) */
 extern "C" bool func_00572D30(CSealCtrlAi *ai, CEntity *e)
