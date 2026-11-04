@@ -13,10 +13,6 @@
 
 namespace zdb {
 
-/* the free view ids' stack (znode.h's CVisual::m_stack_vid; vis_vu.cpp's class) */
-class CVidStack : public std::stack<void *> {
-};
-
 /* a decal on a visual: what its view's list walk reads (vis_decal.cpp's class; SOCOM 1's, no DWARF
  * -- the names ours) */
 class CDecal {
@@ -155,10 +151,11 @@ CVisual *CVisual::Create(zar::CZAR &zar)
     return v;
 }
 
-/* the specular maps' storage given back (SOCOM 1's) */
+/* the specular maps' storage given back (SOCOM 1's): FreeVector over the base pointer vector -- the
+ * target's temporary is a vector<CLightMap *>, not the CLightMapVector the list is */
 void CVisual::Flush()
 {
-    FreeVector(m_specMapList);
+    FreeVector<std::vector<CLightMap *> >(m_specMapList);
 }
 
 /* one holder fewer, the count left given back (SOCOM 1's) */

@@ -36,25 +36,106 @@ void zVid_ZTestOnWriteSet(bool on);
 
 namespace zdb {
 
-/* the free view ids' stack (znode.h's CVisual::m_stack_vid; zrdr.h's own std::stack keeps <stack>
- * out of znode.h) */
-class CVidStack : public std::stack<void *> {
-};
+/* a decal's add-on point (SOCOM 1's zdb::AddonPoint by its constructor's name, 0x3B7CF0, which
+ * SOCOM 1 builds the same way; no DWARF, the members' names ours): a position from the zero point,
+ * two halfwords and two zeroed points with a word after each -- all assigned in the body: the zero
+ * point ASSIGNED is copied a field at a time through one FPR, each field's address its own lui (the
+ * target's); copy-constructed in the initializer list its address is taken into a register once */
+struct AddonPoint {
+    AddonPoint()
+    {
+        m_pos = CPnt3D::zero;
+        m_c = 0;
+        m_e = -1;
+        m_10 = CPnt3D(0.0f, 0.0f, 0.0f);
+        m_20 = CPnt3D(0.0f, 0.0f, 0.0f);
+        m_1c = 0;
+        m_2c = 0;
+    }
 
-/* the free view ids (0x4B4A40): __sinit_vis_vu.cpp 0x404570 builds it second, after a static
- * tag_GlobalLight[4] (0x4B4820) -- a temporary deque<void *> default-built (0x3B7FA0), copied in
+    CPnt3D m_pos;   // 0x0
+    short m_c;   // 0xc
+    short m_e;   // 0xe: -1
+    CPnt3D m_10;   // 0x10
+    int m_1c;   // 0x1c
+    CPnt3D m_20;   // 0x20
+    int m_2c;   // 0x2c
+};   // 0x30 bytes
+
+/* THE UNIT'S STATICS, in __sinit_vis_vu.cpp's order (0x404570, 0x470 bytes: it builds each in its
+ * definition order, the stores of each run scheduled together) -- SOCOM 1's __sinit_vis_main.cpp
+ * builds the same statics bar SOCOM II's new colour tables, its _StartingMatrix and visData (SOCOM
+ * II's CVisData is vis_data.cpp's) */
+
+/* the custom global lights, four of tag_GlobalLight's two unit matrices (0x4B4820) */
+tag_GlobalLight CVisual::m_customGlobalLight[4];
+
+/* the free view ids (0x4B4A40): a temporary deque<void *> default-built (0x3B7FA0), copied in
  * (0x3B7DB0) and torn down to ~__deque_buf with 0, the stack's destructor registered (0x3B7D50).
  * Defined here, the unit's tail emits the stack's chain (the MSL headers round 18): ~deque<PCv>
  * 0x3B7C90 (one this-tested level, then ~__deque_buf: the pointer deque's base, not CVisBase), the
- * deque<void *> copy 0x3B7DB0 with its begin/end 0x3B7F40/0x3B7EE0, byte-exact. The stack is
- * std::stack<void *> itself in the target: 0x3B7D50, the destructor the initialiser registers, is
- * ~stack<Pv> inlining ~deque<Pv> and calling ~deque<PCv> -- a plain stack static compiles to it
- * byte for byte (build/p18/vis/stk.cpp), where this CVidStack wrapper registers its own destructor
- * and cuts the chain a level higher (znode.h declares the wrapper; the integrator's to change). OPEN
- * here: the initialiser's other statics, deque<void *>() 0x3B7FA0 (0x30 vs 0x28: the default
- * constructors' middle level 0x334120) and init 0x3B7E30 (0x88 vs 0xB0: its iterators copied once
- * more in the target, around two empty converters) */
-CVidStack CVisual::m_stack_vid;
+ * deque<void *> copy 0x3B7DB0 with its begin/end 0x3B7F40/0x3B7EE0, byte-exact. A plain
+ * std::stack<void *>: 0x3B7D50, the destructor the initialiser registers, is ~stack<Pv> inlining
+ * ~deque<Pv> and calling ~deque<PCv> (a wrapper class registered its own destructor). OPEN here:
+ * deque<void *>() 0x3B7FA0 (0x30 vs 0x28: the default constructors' middle level 0x334120) and
+ * init 0x3B7E30 (0x88 vs 0xB0: its iterators copied once more in the target, around two empty
+ * converters) */
+std::stack<void *> CVisual::m_stack_vid;
+
+/* the base fog colour (0x4B4AB0; CSaveLoad::Load sets its w, SeeFarther reads it) */
+CPnt4D CVisual::m_basefog_color(1.0f, 1.0f, 1.0f, 0.0f);
+
+/* the local lights (0x4B4B00, 0x4B4C40, 0x4B4C68) */
+CVisual::LOCAL_LIGHT CVisual::localLightBuf[10];
+CLight *CVisual::localLightPtr[10];
+int CVisual::m_local_light_cnt;
+
+/* the light maps' tints (0x4B4C70, 0x4B4CB0, 0x4B4CF0), the lens colours' product (0x4B4D30), the
+ * lens colours (0x4B4D40) and the added colour (0x4B4D80) */
+CPnt4D CVisual::m_lightTint[4] = {
+    CPnt4D(0.33f, 0.33f, 0.33f, 0.0f), CPnt4D(0.33f, 0.33f, 0.33f, 0.0f),
+    CPnt4D(0.33f, 0.33f, 0.33f, 0.0f), CPnt4D(0.33f, 0.33f, 0.33f, 0.0f)
+};
+CPnt4D CVisual::m_lightTintTarget[4] = {
+    CPnt4D(0.33f, 0.33f, 0.33f, 0.0f), CPnt4D(0.33f, 0.33f, 0.33f, 0.0f),
+    CPnt4D(0.33f, 0.33f, 0.33f, 0.0f), CPnt4D(0.33f, 0.33f, 0.33f, 0.0f)
+};
+CPnt4D CVisual::m_lightTintRate[4] = {
+    CPnt4D(1.0f, 1.0f, 1.0f, 0.0f), CPnt4D(1.0f, 1.0f, 1.0f, 0.0f),
+    CPnt4D(1.0f, 1.0f, 1.0f, 0.0f), CPnt4D(1.0f, 1.0f, 1.0f, 0.0f)
+};
+CPnt4D CVisual::m_lensScale(1.0f, 1.0f, 1.0f, 0.5f);
+CPnt4D CVisual::m_lensColor[4] = {
+    CPnt4D(1.0f, 1.0f, 1.0f, 0.0f), CPnt4D(1.0f, 1.0f, 1.0f, 0.0f),
+    CPnt4D(1.0f, 1.0f, 1.0f, 0.0f), CPnt4D(1.0f, 1.0f, 1.0f, 0.0f)
+};
+CPnt3D CVisual::m_addColor(0.0f, 0.0f, 0.0f);
+
+/* the specular, light, shadow and projected maps' lists (0x4B4DA8, 0x4B4DE0, 0x4B4E08, 0x4B4E30) */
+CLightMapVector CVisual::m_specMapList;
+CLightMapVector CVisual::m_lightMapList;
+CLightMapVector CVisual::m_shadowMapList;
+CProjectedMapVector CVisual::m_projectedMapList;
+
+/* the world-to-model matrix (0x4B4E70, a unit matrix) */
+CMatrix CVisual::m_WorldToModel;
+
+}
+
+/* the fog plane and vector without the camera's alternate fog (SOCOM 1's file statics, outside zdb:
+ * the demo's symbols are the bare NoAltFogBottomV/NoAltFogVectorV; const, so MW puts them in .data,
+ * 0x3FC200 -- VuObjectSetup transforms the pair together) */
+static const CPnt4D NoAltFogBottomV(0.0f, -100000000.0f, 0.0f, 1.0f);
+static const CPnt4D NoAltFogVectorV(0.0f, 1.0f, 0.0f, 0.0f);
+
+/* the projected map's colour (0x4B4EE0) */
+CPnt4D zdb::CVisual::m_projectedColor(128.0f, 128.0f, 128.0f, 240.0f);
+
+/* the decal builder's add-on points (SOCOM 1's file static decaldata, outside zdb as the demo's
+ * symbol is: 0x4B4EF0) */
+static zdb::AddonPoint decaldata[6];
+
+namespace zdb {
 
 /* the view id in use, the stack's top -- a `break` if the stack is empty (the wep lane, round 13:
  * SOCOM 1's GetChainData and VuUpdate test the size and break the same way ahead of the top; the
@@ -110,11 +191,6 @@ static inline bool VuRoom(_word128 *p, unsigned int n)
 {
     return !(p + n >= data_004B4AE8);
 }
-
-/* the local lights (SOCOM 1's statics) */
-CVisual::LOCAL_LIGHT CVisual::localLightBuf[10];
-CLight *CVisual::localLightPtr[10];
-int CVisual::m_local_light_cnt;
 
 /* whether the band draws at the squared distance: not outside it, fully between its fades, and
  * faded by the opacity within one (SOCOM 1's) */
@@ -184,18 +260,18 @@ void CVisual::LandmarkEnable(bool on)
  * is taken ahead of the colour's copy, the maximum's reloaded after it) */
 void CVisual::AddLocalLight(CLight *light, CPnt3D *pos)
 {
-    LOCAL_LIGHT *l = &localLightBuf[m_local_light_cnt];
+    CPnt4D *l = localLightBuf[m_local_light_cnt];
 
-    l->m_pos[0] = pos->x;
-    l->m_pos[1] = pos->y;
-    l->m_pos[2] = pos->z;
-    l->m_rangeSq = light->m_maxRangeSq;
+    l[0].x = pos->x;
+    l[0].y = pos->y;
+    l[0].z = pos->z;
+    l[0].w = light->m_maxRangeSq;
     float min2 = light->m_minRange * light->m_minRange;
 
-    l->m_color[0] = light->m_diffuse.x;
-    l->m_color[1] = light->m_diffuse.y;
-    l->m_color[2] = light->m_diffuse.z;
-    l->m_invFalloff = 1.0f / (light->m_maxRangeSq - min2);
+    l[1].x = light->m_diffuse.x;
+    l[1].y = light->m_diffuse.y;
+    l[1].z = light->m_diffuse.z;
+    l[1].w = 1.0f / (light->m_maxRangeSq - min2);
     localLightPtr[m_local_light_cnt] = light;
     m_local_light_cnt++;
 }
@@ -328,7 +404,6 @@ extern "C" float m_GlobalLightScale__Q23zdb7CVisual;
 extern "C" float data_003E1480;
 extern "C" unsigned char data_003E1468;
 extern "C" unsigned char data_004B4A58;
-extern "C" CPnt4D data_003FC200[2];
 extern "C" _word128 *data_004B4AD8;
 
 /* the camera's alternate-fog switch (CCamera's, the top bit of its byte 335: zcamera.h's _word128
@@ -374,7 +449,7 @@ _word128 *CVisual::VuObjectSetup(_word128 *p)
         else if (((CAMERA_FOG *)m_camera)->m_altFog && m_bits.m_b19)
             fog = (CPnt4D *)((char *)m_camera + 1248);
         else
-            fog = data_003FC200;
+            fog = (CPnt4D *)&NoAltFogBottomV;
         data_004B4E70.Transform(fog, (CPnt4D *)&p[2], 2);
         if (data_004B4A58) {
             p[2].f32[3] = 255.0f;
