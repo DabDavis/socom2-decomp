@@ -341,9 +341,12 @@ public:
     void Purge();
     void Clear();
     void Read(const _zrdr *rdr);
+    CMultiMission *GetRandom(bool multi);
 
-    CMultiMissionVector m_c;   // 0xc
-    CMultiMissionVector m_18;   // 0x18
+    /* the multiplayer missions that are their names' newest, and the rest, by index into the list
+     * (GetRandom's pools, rebuilt when the counts no longer add up; the names ours) */
+    std::vector<unsigned int> m_c;   // 0xc
+    std::vector<unsigned int> m_18;   // 0x18
 };
 
 /* the game types a mission's TYPE names (the names ours, as the rdr spells them) */
@@ -416,6 +419,32 @@ inline void SetValveValue(CValve *valve, int value)
     valve->m_value = value;
     if (state != VALVE_SAME)
         valve->MakeCallbacks(state);
+}
+
+/* a mission at random -- a multiplayer one that is its name's newest, or one of the rest -- the
+ * pools rebuilt first when the list has changed; the pick swapped to its pool's end (OVL1 0x2C8840;
+ * the menu's random mission, zanim_menu.cpp) */
+CMultiMission *CMultiMissionList::GetRandom(bool multi)
+{
+    if (m_c.size() + m_18.size() != size()) {
+        m_c.clear();
+        m_18.clear();
+        for (unsigned int i = 0; i < size(); i++) {
+            if (at(i)->m_multi) {
+                if (func_002C94F0(at(i)))
+                    m_c.push_back(i);
+            } else
+                m_18.push_back(i);
+        }
+    }
+    std::vector<unsigned int> &pool = multi ? m_c : m_18;
+    int n = pool.size();
+    int k = (int)(0.99f * (n - 1) * (rand() * (1.0f / 2147483648.0f))) % n;
+    unsigned int t = pool[k];
+
+    pool[k] = pool[n - 1];
+    pool[n - 1] = t;
+    return at(t);
 }
 
 /* the missions an rdr lists added, the multiplayer ones that are their names' newest counted into
