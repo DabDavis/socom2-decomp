@@ -4971,6 +4971,7 @@
 0x0031B770 CmdTickWind__5CWindFP14_zanim_cmd_hdrPf
 0x0031C2F0 RegisterAnimCommands__5CWindFv
 0x0031C320 __ct__Q23zdb23CTextureAssetCharactersFPQ23zdb9CAssetLibPQ23zdb5CNodePQ23zdb11CDynTexList
+0x0031C770 TestFOV__Q23zdb26CTextureAssetCharacterListFPQ23zdb7CCameraPPQ23zdb23CTextureAssetCharacters
 0x0031C880 RemoveDecals__Q23zdb6CWorldFv
 0x0031C930 ClearShadowList__Q23zdb6CWorldFv
 0x0031CA60 __dt__Q23std66vector<PQ23zdb10CRenderMap,Q23std30allocator<PQ23zdb10CRenderMap>>Fv
@@ -5288,7 +5289,7 @@
 0x00333D30 begin__Q23std83deque<PQ210CRdrEditor11CRDRNodeVec,Q23std39allocator<PQ210CRdrEditor11CRDRNodeVec>>CFv
 0x00333E00 __ct__Q210Metrowerks98__compressed_pair_imp<Q23std14allocator<PCv>,Q210Metrowerks36cdeque<PPCv,Q23std15allocator<PPCv>>>FRCQ23std14allocator<PCv>RCQ210Metrowerks36cdeque<PPCv,Q23std15allocator<PPCv>>
 0x003340A0 __ct__Q23std14allocator<PCv>FRCQ23std14allocator<PCv>
-0x003340B0 func_003340B0
+0x003340B0 __ct__Q210Metrowerks36cdeque<PPCv,Q23std15allocator<PPCv>>FRCQ23std15allocator<PPCv>
 0x003340D0 __ct<PCv>__Q23std15allocator<PPCv>FRCQ23std14allocator<PCv>_Pv
 0x003340E0 alloc__Q23std39__deque_buf<PCv,Q23std14allocator<PCv>>CFv
 0x003340F0 __ct__Q23std83deque<PQ210CRdrEditor11CRDRNodeVec,Q23std39allocator<PQ210CRdrEditor11CRDRNodeVec>>Fv
@@ -5499,6 +5500,7 @@
 0x003421D0 swap__Q23std56__vector_deleter<8CSndBank,Q23std20allocator<8CSndBank>>FRQ23std56__vector_deleter<8CSndBank,Q23std20allocator<8CSndBank>>
 0x00342210 clear__Q23std46vector<8CSndBank,Q23std20allocator<8CSndBank>>Fv
 0x00342220 __ct__Q23std46vector<8CSndBank,Q23std20allocator<8CSndBank>>Fv
+0x00342670 CalcVolPan__4CSndFPC6CPnt3DfPiPi
 0x003428A0 func_003428A0
 0x003428F0 func_003428F0
 0x00342910 PlaySoundVolPanPitch__4CSndFfiibP12CSndInstanceUi
@@ -5631,7 +5633,8 @@
 0x0034A6F0 Flush__7HeadsetFv
 0x0034A7B0 IsQueued__7HeadsetFP4CSnd
 0x0034A910 StopSound__7HeadsetFiP4CSnd
-0x0034AA70 func_0034AA70
+0x0034AA70 Interrupt__7HeadsetFv
+0x0034AAC0 Remove__7HeadsetFibb
 0x0034B3B0 Tick__7HeadsetFf
 0x0034B410 SoundSysCallback__7HeadsetFUi
 0x0034B4E0 StaticSoundSysCallback__7HeadsetFUiUl

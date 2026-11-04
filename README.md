@@ -2060,6 +2060,21 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the world, rdr and sound, round 16** (the texture-asset FOV test, CSnd's volume and pan, the headset):
+  - a recursive inline like CNode::GetBBox reached through one extra inline level is called directly, where a direct
+    call always inlines one copy of its body -- a bare `jal GetBBox` in the target means a wrapper (probes
+    build/scratch/wld-r16/pb*.cpp; CShadowCaster's constructor 0x31F780 stays open on it, 0x1F0 vs 0x228);
+  - `x *= -1.0f` on a named local gives the product that operand's register, `p.z * -1.0f` as a call argument swaps the
+    registers (CSnd::CalcVolPan 0x342670, SOCOM 1's, through CPnt3D::Length()); CPnt3D::Length() reads the point's fields
+    straight off the frame where the same sum written out keeps one field's address in a register;
+  - an iterator assigned from `begin()` puts a `begin()` temporary in the frame below the other iterators, copied in
+    through the float registers (CTextureAssetCharacterList::TestFOV 0x31C770 matches with the cursor declared ahead of
+    the loop and assigned from begin()); Headset::Remove 0x34AAC0 on StopSound's walk;
+  - measured for the MSL lane, not applied: cdeque<T *>::iterator's constructor as an initialiser list makes end()
+    0x333F90 byte-exact and changes nothing else in 633 units (a const-qualified element type loses the address sharing
+    in the iterator copy under the current one); the pod vector's destructor a level lower (operator delete(data_)
+    instead of deallocate) gains four and loses six (~CNodeVector, ~CCell, ~CHUD, ~CVisual, CPipe::~CAlpha,
+    ~CGSTexBuffer) -- the same split level 6 gives.
 - **Tells from the game states, round 34** (fts_net_seal.cpp complete, ezctl.c's dmaIOP, the stealth rating to 2):
   - variables at or over K wait for the same simplify sweep and are then coloured highest-index first: a `const` copy of a
     parameter, numbered after another local, takes the register the target gives the parameter (`const int c = client;`
@@ -6161,7 +6176,9 @@ every hand-written unit (`--files '^(?!auto/)'`) before it is committed. A workt
 
 `--files '^(?!auto/)'` leaves out the drafts, so a hand-written inline copy that only its draft
 matches reports as a regression there (0x32C5F0, ~CRdrArchiveList's copy, 0x3340F0, the rdr editor's deque
-constructor -- zrdr_edit.cpp's copy is 0x30 against 0x28 since the MSL headers' round 7 -- 0x1EF8C0, st_core.cpp's
+constructor -- zrdr_edit.cpp's copy is 0x30 against 0x28 since the MSL headers' round 7 -- and, since the world's round
+16 named it, 0x3340B0, cdeque<PPCv>'s constructor from an allocator (vis_vu.cpp's inline copy `elsewhere`; its draft
+carries an `sc: as=` line) -- 0x1EF8C0, st_core.cpp's
 ~vector<CMovieCue> (0x60 against 0x80: generated early by FreeVector's temporary), 0x510080, OVL2's
 __list_imp destructor that seal_aistate.cpp's missing copy now reports "elsewhere", and, since the
 online lane's round 10 renamed their rows, the lobby and chat queues' 0x2E0D90, 0x2E0DC0 and 0x2F6230
