@@ -7999,10 +7999,10 @@
 0x003BE9B0 0x6C Init__Q23zdb14CMeshDecalPoolFUiUi  # OVL1; s1:align
 0x003BEA20 0x3C func_003BEA20  # OVL1
 0x003BEA60 0x98 func_003BEA60  # OVL1
-0x003BEB00 0xB0 func_003BEB00  # OVL1
+0x003BEB00 0xB0 __dt__Q23zdb15CDecalBatchItemFv  # OVL1; by hand (the weapons lane round 16: the decal batch's item destructor -- 0x3BEBD0's __construct_array and 0x3BEA60's __destroy_arr take it; the names ours, vis_decal.cpp)
 0x003BEBB0 0x1C func_003BEBB0  # OVL1
 0x003BEBD0 0x70 func_003BEBD0  # OVL1
-0x003BEC40 0x50 func_003BEC40  # OVL1
+0x003BEC40 0x50 __ct__Q23zdb15CDecalBatchItemFv  # OVL1; by hand (the weapons lane round 16: the decal batch's item constructor -- 0x3BEBD0 passes it to __construct_array with 0x3BEB00, 40-byte items, 296 of them, at +0xC of the 0x2E50-byte batch the VU0 decal builder 0x3B8680 makes; the names ours, vis_decal.cpp)
 0x003BEC90 0x8 Tick__Q23zdb6CDecalFf  # OVL1; s1:calls (SOCOM 1's VisualEffectsTick calls CDecal::Tick first; SOCOM II's is empty)
 0x003BECA0 0x334 func_003BECA0  # OVL1
 0x003BEFE0 0x24 PutPermDecal__Q23zdb6CDecalFPQ23zdb6CDecal  # OVL1; s1:align
@@ -8199,7 +8199,7 @@
 0x003C6880 0x80 __dt__16CWepCallbackListFv  # OVL1; s1:align, checked by hand (erases WEAPON_CALLBACK_STRUCT nodes through that list's erase, 0x3C6610 -- the one list of that type)
 0x003C6900 0xC func_003C6900  # OVL1
 0x003C6910 0xC func_003C6910  # OVL1
-0x003C6920 0x60 func_003C6920  # OVL1
+0x003C6920 0x60 func_003C6920  # OVL1; s1~ __dt__7CFlyoutFv (align on the skeleton alone: it destroys a CWepCallbackList base (0, 0x3C6880) and deletes on the flag -- zwep_global.cpp's tail, not CFlyout, whose SOCOM 1 destructor deletes the node at 0; the weapons lane round 16)
 0x003C6980 0xC func_003C6980  # OVL1
 0x003C6990 0x28 func_003C6990  # OVL1
 0x003C69C0 0x100 OnWeaponHit__12CZProjectileFPQ23zdb15IntersectStructP12CZProjectile  # OVL1; by hand (the wep lane: CProjectileNodeEx's OnWeaponHit (0x3D4B80) hands it the hit and the other projectile; the other's GetDamage(&m_frameendpos, 1) non-zero detonates this one unless WasDetonated or the network holds it -- new in SOCOM II, the name ours)
@@ -8232,7 +8232,7 @@
 0x003C8740 0xC Detonate__12CZProjectileFv  # OVL1; s1:order by hand (the wep lane: SOCOM 1's Detonate, the state byte set to 3, before Cleanup)
 0x003C8750 0x1CC Cleanup__12CZProjectileFv  # OVL1; s1:order by hand (the wep lane: SOCOM 1's Cleanup after Detonate; the destructor calls it first, as SOCOM 1's does)
 0x003C8920 0x630 func_003C8920  # OVL1
-0x003C8F50 0x5E0 func_003C8F50  # OVL1
+0x003C8F50 0x5E0 HandleBounce__12CZProjectileFPQ23zdb15IntersectStructP6CPnt3D  # OVL1; s1:align, checked by hand (the weapons lane round 16: SOCOM 1's HandleBounce(IntersectStruct *, float, CPnt3D *) opening -- GetMaterial, the material table, the 0.99 bounce test, GetHitAnim, ActivateArg; SOCOM II's never reads $f12 before writing it, so the float parameter is gone; its callers 0x3C8920, 0x3C9B70 and PostTick pass this, the hit and a point)
 0x003C9530 0x46C func_003C9530  # OVL1
 0x003C99A0 0x1D0 func_003C99A0  # OVL1
 0x003C9B70 0x440 func_003C9B70  # OVL1
@@ -8340,7 +8340,7 @@
 0x003D1E20 0x74 IsDirectFire__8CZWeaponFv  # OVL1; s1:order by hand (SOCOM 1's: false for the indirect classes of GetIDType(m_ID), true otherwise; after GetIDType() as in SOCOM 1)
 0x003D1EA0 0x5C GetDefaultAmmoId__8CZWeaponFv  # OVL1; s1:order by hand (SOCOM 1's shape: GetDefaultAmmo inlined -- the legal ammo list's first, its id byte or 255)
 0x003D1F00 0x44 GetDefaultAmmo__8CZWeaponFv  # OVL1; s1:order by hand (SOCOM 1's: the legal ammo list's first ammo, none when it is empty)
-0x003D1F50 0x3C func_003D1F50  # OVL1
+0x003D1F50 0x3C PostTick__8CZWeaponFfPv  # OVL1; s1:align, checked by hand (the weapons lane round 16: SOCOM 1's static, the same code -- the pause byte tested, else the projectile list's PostTick; st_core.cpp registers it as weapon_post_tick)
 0x003D1F90 0x6C func_003D1F90  # OVL1
 0x003D2000 0x8 func_003D2000  # OVL1
 0x003D2010 0x8 func_003D2010  # OVL1
@@ -8351,7 +8351,7 @@
 0x003D2060 0x8 func_003D2060  # OVL1
 0x003D2070 0x64 func_003D2070  # OVL1
 0x003D20E0 0x64 func_003D20E0  # OVL1
-0x003D2150 0x60 func_003D2150  # OVL1
+0x003D2150 0x60 SetDecalSetName__8CZWeaponFPCc  # OVL1; s1:align, checked by hand (the weapons lane round 16: SOCOM 1's, the same code -- the name at 0x20 (SOCOM 1's 0x1C) freed and _strdup'ed; func_003CDA30 calls it)
 0x003D21B0 0x8 func_003D21B0  # OVL1
 0x003D21C0 0x60 ClearAnims__8CZWeaponFv  # OVL1; s1:order by hand (SOCOM 1's shape: m_hitanim freed, three anims cleared -- one more in SOCOM II -- m_specialmaterialanim freed)
 0x003D2220 0x50 GetTimer__8CZWeaponFi  # OVL1; by hand (the wep lane: 0xD8 + 4i, or the mission's float at theMission+0x1864 for the item 152, 9999999 when negative; HandleDelayedDetonate and the kit call it; the name ours); zwep_weapon.cpp
@@ -8385,7 +8385,7 @@
 0x003D27B0 0x8 func_003D27B0  # OVL1
 0x003D27C0 0x8 func_003D27C0  # OVL1
 0x003D27D0 0x8 func_003D27D0  # OVL1
-0x003D27E0 0x8 func_003D27E0  # OVL1
+0x003D27E0 0x8 GetEffectiveRange__8CZWeaponFv  # OVL1; s1:order by hand (the weapons lane round 16: the float at 0x40, m_effectiverange -- SOCOM 1's GetEffectiveRange (0x31EC70) right before GetMaxRange (0x31EC80), as 0x3D27E0 before 0x3D27F0; CZProjectile::GetDamage calls it where SOCOM 1's does)
 0x003D27F0 0x8 GetMaxRange__8CZWeaponFv  # OVL1; s1:order by hand (the wep lane: the float at 0x3C -- SOCOM 1's m_maxrange at 0x38, shifted by the word SOCOM II inserts before m_ammocap; CZProjectile::Reset stores it to m_currange where SOCOM 1's Reset stores GetMaxRange's; right before GetNumMags, as SOCOM 1's is but for GetEncumbrance)
 0x003D2800 0x8 GetNumMags__8CZWeaponFv  # OVL1; s1:order by hand (the wep lane, on the kit lane's lead: returns the word at 0x2C, SOCOM 1's m_nummags at 0x28 four bytes on as m_maxfiremode is; in SOCOM 1's order, GetNumMags then GetAmmoCapacity before GetDescription)
 0x003D2810 0x8 GetAmmoCapacity__8CZWeaponFv  # OVL1; s1:order by hand (the wep lane, on the kit lane's lead: returns the word at 0x28, SOCOM 1's m_ammocap at 0x24)
@@ -8405,7 +8405,7 @@
 0x003D2A10 0x8 func_003D2A10  # OVL1
 0x003D2A20 0x8 func_003D2A20  # OVL1
 0x003D2A30 0x30 SetHasFireMode__8CZWeaponF8FIREMODE  # OVL1; s1:order by hand (SOCOM 1's: the mode's flag set at 0xD0, the maximum mode at 0x24 raised to it)
-0x003D2A60 0x20 func_003D2A60  # OVL1
+0x003D2A60 0x20 HasFireMode__8CZWeaponCFi  # OVL1; s1:align, checked by hand (the weapons lane round 16: SOCOM 1's, the same code -- true past mode 4, else the byte at 0xD0+mode, SOCOM 1's 0xA8)
 0x003D2A80 0x40 SetMaxFireMode__8CZWeaponF8FIREMODE  # OVL1; by hand (new in SOCOM II, right after SetHasFireMode: the maximum mode stored at 0x24 and every mode up to it, at most five, flagged at 0xD0; the name is ours)
 0x003D2AC0 0x6C func_003D2AC0  # OVL1
 0x003D2B30 0x6C func_003D2B30  # OVL1

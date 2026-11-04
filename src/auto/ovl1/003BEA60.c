@@ -4,24 +4,25 @@ typedef signed char s8; typedef unsigned char u8; typedef short s16; typedef uns
 typedef int s32; typedef unsigned int u32; typedef long s64; typedef unsigned long u64;
 typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK32;
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
+#define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
 M2C_UNK __destroy_arr(char *, M2C_UNK *, M2C_UNK, M2C_UNK); /* extern */
 M2C_UNK __dl__FPv(char *);                          /* extern */
+extern M2C_UNK __dt__Q23zdb15CDecalBatchItemFv;
 extern char *data_004B5078;
-extern M2C_UNK func_003BEB00;
 
 void func_003BEA60(void) {
     char *temp_a0;
     char *temp_s0;
 
-    M2C_FIELD(data_004B5078, s32 *, 0x2E4C) = 0;
-    M2C_FIELD(data_004B5078, s32 *, 4) = 0;
+    SC_MEMBER(data_004B5078, s32 *, 0x2E4C) = 0;
+    SC_MEMBER(data_004B5078, s32 *, 4) = 0;
     temp_s0 = data_004B5078;
     if (temp_s0 != NULL) {
-        __destroy_arr(temp_s0 + 0xC, &func_003BEB00, 0x28, 0x128);
+        __destroy_arr(temp_s0 + 0xC, &__dt__Q23zdb15CDecalBatchItemFv, 0x28, 0x128);
         if ((temp_s0 != NULL) && (temp_s0 != NULL) && (temp_s0 != NULL)) {
-            temp_a0 = M2C_FIELD(temp_s0, char **, 8);
+            temp_a0 = SC_MEMBER(temp_s0, char **, 8);
             if (temp_a0 != NULL) {
                 __dl__FPv(temp_a0);
             }

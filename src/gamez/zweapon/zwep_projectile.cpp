@@ -386,6 +386,103 @@ struct CONE {
     }
 };
 
+/* the damage at a point: a detonation's falling off past half its radius to nothing at the
+ * radius, an impact's from the weapon's effective range to nothing at its maximum; none when it
+ * comes to nothing or under the minimum, else scaled for FTS (SOCOM 1's, with the weapon's bonus
+ * SOCOM II's). SOCOM II's items 153 and 159 take cones besides: 153's damage a 32nd outside an
+ * 84.375-degree cone about its node's -z axis, 159's none outside a 45-degree cone about its
+ * node's rotated z axis, nor at all off the network. The node's position is assigned from its
+ * matrix row field by field, one register (as SOCOM 1's): GetPosition()'s by-value copy stores
+ * through a pointer; the -z axis through a row pointer keeps the node in one register; IsInCone
+ * is pinned (called out of line).
+ * OPEN, the right size (0x4D0), 5 instructions: (1) the falloff's 2.0f * (r - 0.5f) -- the target
+ * puts the product in f1 (the 2.0's register), here f0 (SOCOM 1's colouring is ours); (2) the
+ * impact's `dist - eff` -- the target computes it in the span test's delay slot, here after the
+ * branch; (3) the id -- the target copies the byte enum with `lb` and narrows it (`andi 0xff`)
+ * for the compares, here one `lbu` (a local, an assigned local, GetId(), CLAYMORE/159 as
+ * enumerators, a weapon local, a switch either way round -- the switches 8 and 16 bytes longer --
+ * all give lbu). Tried for (1)/(2): `damage = damage * (...)`, the product reversed, brackets, `r`
+ * divided as its own statement, `span > 0.0f` first */
+float CZProjectile::GetDamage(const CPnt3D *pos, float minimum)
+{
+    float damage;
+
+    if (WasDetonated()) {
+        damage = m_ammo->GetExplosionDamage();
+        damage += m_weapon->GetDamageBonus();
+        CPnt3D d;
+
+        d = *(const CPnt3D *)m_instance->m_matrix.m_matrix[3];
+
+        d = d - *pos;
+        float dist = d.Length();
+        float r = dist / m_ammo->GetExplosionRadius();
+
+        if (r > 1.0f)
+            damage = 0.0f;
+        else if (r > 0.5f)
+            damage *= 1.0f - 2.0f * (r - 0.5f);
+    } else {
+        damage = m_ammo->GetImpactDamage();
+        damage += m_weapon->GetDamageBonus();
+        CPnt3D d = CPnt3D::zero;
+
+        d = *(const CPnt3D *)m_instance->m_matrix.m_matrix[3];
+        d = d - *pos;
+        float dist = d.Length();
+        float eff = m_weapon->GetEffectiveRange();
+
+        if (dist > eff) {
+            float span = m_weapon->GetMaxRange() - eff;
+
+            if (span <= 0.0f)
+                damage = 0.0f;
+            else
+                damage *= 1.0f - (dist - eff) / span;
+        }
+    }
+    if (damage && !(damage < minimum))
+        damage = CZFTSWeapon::ResolveFTSDamage(damage);
+    else
+        damage = 0.0f;
+
+    EQUIP_ITEM id = m_weapon->m_ID;
+
+    if (id == CLAYMORE) {
+        CPnt3D apex;
+
+        apex = *(const CPnt3D *)m_instance->m_matrix.m_matrix[3];
+        CPnt3D dir(0.0f, 0.0f, 1.0f);
+
+        const float *z = m_instance->m_matrix.m_matrix[2];
+
+        dir.x = -z[0];
+        dir.y = -z[1];
+        dir.z = -z[2];
+        if (!IsInCone(pos, &apex, &dir, 1.4726216f))
+            damage /= 32.0f;
+    } else if (id == EQUIP_ITEM_159) {
+        if (!theNetwork.m_bNetwork)
+            damage = 0.0f;
+        else {
+            CPnt3D apex;
+
+            apex = *(const CPnt3D *)m_instance->m_matrix.m_matrix[3];
+            CPnt3D dir(0.0f, 0.0f, 1.0f);
+            CPnt3D rot = CPnt3D::zero;
+
+            m_instance->GetRotation(&rot);
+            CMatrix m;
+
+            m.SetRotate(&rot);
+            TransformVectors(&m, &dir, &dir, 1);
+            if (!IsInCone(pos, &apex, &dir, 0.7853982f))
+                damage = 0.0f;
+        }
+    }
+    return damage;
+}
+
 /* the damage a hit does at a point: the ammunition's impact damage (its explosion's once the
  * projectile has gone off) and the weapon's bonus, nothing when that is below the minimum, else
  * the damage at the point, resolved through the health and armour (SOCOM 1's, without the bonus) */
@@ -412,6 +509,8 @@ float CZProjectile::GetDamage(const CPnt3D *pos, float *health, float *armor, fl
  * its y and z addresses in registers; MW scalarises this CONE whole. Tried: the projection by
  * const reference (0x168), Contains through a CONE pointer (0x174), the cone as a volatile
  * object read through a reference (0x180), the test written out (0x164), r * tan(angle) */
+/* (pinned: GetDamage calls it out of line) */
+#pragma auto_inline off
 bool CZProjectile::IsInCone(const CPnt3D *pos, const CPnt3D *apex, const CPnt3D *dir, float angle)
 {
     float r = m_ammo->GetExplosionRadius();
@@ -428,6 +527,7 @@ bool CZProjectile::IsInCone(const CPnt3D *pos, const CPnt3D *apex, const CPnt3D 
 
     return cone.Contains(d, along);
 }
+#pragma auto_inline reset
 
 /* the damage done to a health through its armour: the armour takes the piercing's share and a
  * quarter of what it stopped (SOCOM 1's, the piercing turned around: 10 pierces nothing) */

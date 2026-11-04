@@ -1888,6 +1888,21 @@ templates next), and the earlier rounds' opens; 3.0b38/b50/b52 still untold.
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the weapons, round 16** (the item groups, the VU0 decal batch, GetTextureSelectBlock's return, the
+  texture-effect respells):
+  - an enum local read in a switch's case blocks is copied with `lb` and narrowed per compare; the same local compared in
+    an if chain becomes one `lbu`; MW folds none of `> 255`, `>= 256`, `== -1` or `== 0x100` on an unsigned byte enum
+    result;
+  - assigning a node's matrix row through a pointer copies field by field straight into an address-taken local, where
+    CNode::GetPosition() by value stores through a pointer register; a static member function shows at its call site by
+    the missing a0 (the mangled name cannot tell: ResolveFTSDamage is static); a user destructor's body statement lands
+    in the delay slot of the first member's this-test (0x3BEB00);
+  - CVisual::GetTextureSelectBlock returns `_word128 *` (ztex_main.cpp's caller func_003C3D90 can be respelled);
+    vis_texfx.h holds the texture-effect classes (zanim_cmd_tick.cpp calls theTextureFXManager.Scroll/SetSpeed,
+    byte-identical); CZWeapon's PostTick, SetDecalSetName, HasFireMode (SOCOM 1's code) and GetEffectiveRange named;
+  - open: GetDamage(pos, minimum) 0x3C7600 (5: the falloff product in f0 against f1, `dist - eff` not in the span test's
+    delay slot, the id test one lbu where the target copies with lb and narrows with andi), UnpackItemAndAmmoEnums (1:
+    `packed % 256ul` gives dsra32 where the target has dsrl32), 0x3C5C20.
 - **Tells from the world, rdr and sound, round 6** (the sound banks, the subtitle table, FIFO_Signal settled):
   - A CAST ON THE BASE OF AN INLINE ACCESSOR'S FIELD READ keeps that field's address in a saved register across calls,
     even for by-value or volatile reads: include/list's `((node *)node_)->data_` is what holds a walk's element address
