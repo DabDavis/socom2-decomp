@@ -146,8 +146,10 @@ public:
     /* whether an item has room for rounds (SOCOM 1's; OVL2 0x5BA5B0, kit.h's -- the AI's ammunition
      * search asks it) */
     bool CanAddAmmo(int index, int rounds);
-    /* the item in hand (kit.h's: const in SOCOM II; OVL2 0x5C3780) */
+    /* the item in hand (kit.h's: const in SOCOM II; OVL2 0x5C3780) and the item made current by its
+     * index (kit.h's; OVL2 0x5C4B10) */
     class CZFTSWeapon *GetCurItem() const;
+    void SetCurItemByIndex(int index);
     /* the weapons parented to the hand for the rifle or the pistol (kit.h's; OVL2 0x5C6A40, 0x5C6DA0:
      * the two takes start with them) */
     void ReParentToRifle();
@@ -531,6 +533,9 @@ enum AI_LOOK {
 class CSealCtrl : public CEntityCtrl {
 public:
     CSealCtrl();
+    /* the scan's tick (OVL2 0x600550, the kit lane's range: the map's ScanTick__9CSealCtrlFf; CSealCtrlAi's
+     * PreTick, seal_control.cpp's, calls it) */
+    void ScanTick(float dT);
     virtual ~CSealCtrl();
     virtual bool PreTick(float dT);
     virtual bool Tick(float dT);

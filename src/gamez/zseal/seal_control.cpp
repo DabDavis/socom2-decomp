@@ -37,9 +37,8 @@ extern "C" {
  * never runs) */
 extern bool data_003DF1B0;
 extern bool data_0066B3E0;
-/* CSealCtrl::ScanTick (SOCOM 1's ScanTick__9CSealCtrlFf, which its Tick calls in the same place; OVL2
- * 0x600550, the kit lane's seal_look.cpp range, not written) */
-void func_00600550(CSealCtrl *ctrl, float dT);
+/* (CSealCtrl::ScanTick -- SOCOM 1's ScanTick__9CSealCtrlFf, which its Tick calls in the same place;
+ * OVL2 0x600550, the kit lane's seal_look.cpp range -- is zseal.h's, called by name) */
 /* CZSealState::UpdateLocalSeal (SOCOM 1's UpdateLocalSeal__11CZSealStateFP10CZSealBody; OVL1
  * 0x2BD640), SOCOM II's taking a further argument */
 void func_002BD640(CEntity *seal, int x);
@@ -84,7 +83,7 @@ bool CSealCtrl::Tick(float dT)
                 ClearLook(AIL_TURNING);
             }
         }
-        func_00600550(this, dT);
+        ScanTick(dT);
     }
     func_002BD640(m_entity, 0);
     m_244 -= dT;
@@ -537,9 +536,6 @@ static inline bool Chance(float chance)
 }
 
 extern "C" {
-/* CCharacterType::PlayAt (SOCOM 1's PlayAt__14CCharacterTypeF15CHARACTER_SOUNDUiPC6CPnt3D, which
- * SOCOM II's returns a bool from; OVL2 0x53B710, the AI-core lane's) */
-bool func_0053B710(CCharacterType *type, CHARACTER_SOUND sound, unsigned int id, const CPnt3D *pos);
 /* the voice's AI event made where the SEAL stands (OVL2 0x55FEE0, seal_ai.cpp's) */
 void func_0055FEE0(CSealCtrl *ctrl, int event);
 }
@@ -556,7 +552,7 @@ bool CSealCtrl::PlayAiSound(CHARACTER_SOUND sound, float chance, int event)
     if (chance < 1.0f)
         go = Chance(chance);
     if (go) {
-        played = func_0053B710(seal->GetCharacter(), sound, seal->m_id, &seal->m_posW);
+        played = seal->GetCharacter()->PlayAt(sound, seal->m_id, &seal->m_posW);
         func_0055FEE0(this, event);
     }
     return played;

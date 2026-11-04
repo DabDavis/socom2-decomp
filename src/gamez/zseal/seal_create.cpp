@@ -9,13 +9,9 @@
 #include "../zsys/zsys.h"
 #include <stdio.h>
 
-extern "C" {
-/* CCharacterType::Acquire and CreateLODs (SOCOM 1's Acquire__14CCharacterTypeCFv and
- * CreateLODs__14CCharacterTypeFPQ23zdb5CNode, called here where SOCOM 1's PreCreateSeal calls
- * them; OVL2 0x53CCA0, 0x53CB20 -- the AI-core lane's range) */
-const CCharacterType *func_0053CCA0(const CCharacterType *type);
-void func_0053CB20(const CCharacterType *type, zdb::CNode *node);
-}
+/* (CCharacterType::Acquire and CreateLODs -- SOCOM 1's Acquire__14CCharacterTypeCFv and
+ * CreateLODs__14CCharacterTypeFPQ23zdb5CNode, called here where SOCOM 1's PreCreateSeal calls them;
+ * OVL2 0x53CCA0, 0x53CB20 -- are zchar.h's, called by name) */
 
 class CZSealState {
 public:
@@ -68,12 +64,9 @@ void CZSealBody::Destroy(CZSealBody *seal)
     }
 }
 
-extern "C" {
-/* CCharacterType::UnPack: the packed weapons read into a type (SOCOM 1's UnPack__14CCharacterType
+/* (CCharacterType::UnPack, the packed weapons read into a type -- SOCOM 1's UnPack__14CCharacterType
  * FPC20CCharacterWeapPackedP14CCharacterType, called here where SOCOM 1's CreateRemoteSeal calls it;
- * OVL2 0x53EC60, the AI-core lane's range) */
-void func_0053EC60(const unsigned char *packed, CCharacterType *type);
-}
+ * OVL2 0x53EC60 -- is zchar.h's, called by name) */
 
 /* another console's SEAL made: a network controller newed, the character type taken -- for the two
  * kinds the flags name the type itself, else a temporary copy named for the client with the packed
@@ -96,7 +89,7 @@ CZSealBody *CZSealBody::CreateRemoteSeal(int index, int id, const char *name, in
         CCharacterType *t = CCharacterType::Create(buf, type, true);
 
         t->m_istemporary = 1;
-        func_0053EC60(packed, t);
+        CCharacterType::UnPack((const CCharacterWeapPacked *)packed, t);
         seal = Create(t, name, ctrl);
     }
     if (seal) {
@@ -239,13 +232,13 @@ const CCharacterType *CZSealBody::PreCreateSeal(const CCharacterType *type, cons
 {
     const CCharacterType *t;
 
-    if ((t = func_0053CCA0(type)) != 0) {
+    if ((t = type->Acquire()) != 0) {
         *node = ((CCharacterType *)t)->CreateInstance(name);
         zdb::CNode *n = *node;
 
         if (n) {
             n->SetDynamic(true, true);
-            func_0053CB20(t, n);
+            ((CCharacterType *)t)->CreateLODs(n);
             zdb::CWorld::m_world->AddChild(n);
             n->m_socom2_a1_bits.bit2 = 1;
             n->m_bumpmap = 1;

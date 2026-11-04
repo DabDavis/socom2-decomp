@@ -752,9 +752,7 @@ void CSealCtrlAi::AcquireDatabaseHandles()
     data_0066AFE8 = 0;
 }
 
-/* how far an event's kind carries (SOCOM 1's static CAiEvent::GetEventRange, ai.h's class lacks it:
- * OVL2 0x50F4C0 by its address) */
-extern "C" float func_0050F4C0(CAiEvent::EVENT event);
+/* (how far an event's kind carries: SOCOM 1's static CAiEvent::GetEventRange, OVL2 0x50F4C0 -- ai.h's) */
 /* the voice's reach scale (OVL2 data 0x650380, read as a variable) */
 extern "C" float data_00650380;
 
@@ -765,7 +763,7 @@ extern "C" CAiEvent *func_0055FEE0(CSealCtrl *ctrl, CAiEvent::EVENT event)
     CAiEvent *r = 0;
 
     if (event != CAiEvent::AIE_NONE) {
-        float range = func_0050F4C0(event);
+        float range = CAiEvent::GetEventRange(event);
 
         r = ctrl->CreateAiEvent(CAiEvent::AIE_VOICE, data_00650380, range, false, &ctrl->m_entity->m_posW, event);
     }
@@ -785,9 +783,8 @@ extern "C" {
  * state returned -- OVL2 0x5556A0, 0x5558A0) */
 bool func_005556A0(CSealCtrlAi *ai, const CAiPathBytes *path, CAiRouteBytes *route);
 AI_ROUTE func_005558A0(CSealCtrlAi *ai);
-/* the kit's current item by its index (CZKit::SetCurItemByIndex, OVL2 0x5C4B10: zseal.h's kit is a
- * stand-in) and its fire mode (0x5C37B0, declared below) */
-void func_005C4B10(CZKit *kit, int index);
+/* the kit's fire mode (0x5C37B0, declared below; its current item by index is zseal.h's
+ * CZKit::SetCurItemByIndex, OVL2 0x5C4B10) */
 bool func_005C37B0(CZKit *kit, FIREMODE mode);
 }
 
@@ -832,7 +829,7 @@ void CAiSDeploy::OnSignal(SIGNAL sig, CSealCtrlAi *ai)
     case SIGNAL_1: {
         CZKit *kit = &seal->m_kit;
 
-        func_005C4B10(kit, 0);
+        kit->SetCurItemByIndex(0);
         func_005C37B0(kit, (FIREMODE)2);
         ai->ClearLook(AIL_11);
         ai->SetDesiredStance(STANCE_PRONE, 0.0f, false);
