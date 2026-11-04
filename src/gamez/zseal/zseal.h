@@ -1604,8 +1604,10 @@ public:
     static void AcquireRemoteAi(CZSealBody *seal);
     /* an action offered or withdrawn (SOCOM 1's took an unsigned int id) */
     void ActionAvailableMask(unsigned char id, bool on);
-    /* the action shown selected, its bit alone (OVL2 0x544C80, seal.cpp; SOCOM 1's took a flag too) */
-    void ActionSelectionMask(unsigned char id);
+    /* the action shown selected, its bit alone (OVL2 0x544C80, seal.cpp; SOCOM 1's took a flag too):
+     * an int, narrowed inside (the HUD's round 42: its caller loads the byte with `lb`, which only an
+     * int-sized parameter gives) */
+    void ActionSelectionMask(int id);
     /* the restraint flag set (an inline: its bool is stored as `(b & 1)`) */
     void SetRestrained(bool on) { m_restrained = on; }
     /* the squad-joined flag set (an inline: `(b & 1) << 6` even for a constant) */

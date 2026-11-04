@@ -4548,9 +4548,11 @@ struct CCellGather {
 };
 
 extern "C" {
-/* (OVL2 0x511F80 and 0x52D280, the AI core's: a map's cell at a location, and a cell's kind) */
+/* (OVL2 0x511F80 and 0x52D280, the AI core's: a map's cell at a location, CAiMap::GetCell, and
+ * whether the cell is inside, CAiCell::IsInside -- a bool: ai.h's inline, which the target calls out of
+ * line here) */
 void *func_00511F80(void *map, CAiMapLoc *loc, int a);
-int func_0052D280(void *cell);
+bool func_0052D280(void *cell);
 }
 
 /* a cell's kind, none off the map (an inline returning a byte: each return narrows on its own) */
@@ -4565,11 +4567,9 @@ static inline unsigned char CellKind(void *map, CAiMapLoc *loc)
 
 /* a cell walk's step: a cell not of the kind sought takes the point and counts (its cell kept at the
  * fourth); one of the kind marks the start found once; the walk goes on while the kinds differ (OVL2
- * 0x556280, new in SOCOM II; a callback).
- * OPEN, 2 instructions: the target narrows the kind into v1 in each arm (`andi v1,v0,0xff` before the
- * then-arm's branch, past the else's own); MW here narrows the call's result into v0 and branches to
- * the else's narrowing. Tried: the kind as an if/else, a ternary (with and without a cast), zero
- * first then the call, the inline returning a byte or an int, the cast inside the compare. */
+ * 0x556280, new in SOCOM II; a callback). The target narrows the kind into v1 in each arm (`andi
+ * v1,v0,0xff` in the then-arm's delay slot, past the else's own): IsInside returns a bool (round 34) --
+ * declared int, MW narrows the call's result into v0 and branches to the else's narrowing (2 off). */
 extern "C" bool func_00556280(CCellWalk *w, CCellGather *g)
 {
     bool same = false;
