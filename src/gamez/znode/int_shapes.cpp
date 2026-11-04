@@ -47,6 +47,18 @@ CDIBBox::~CDIBBox()
     Free();
 }
 
+/* (hand-written VU0 code, an asm function: the points' pointer at 0x10, three quadwords) */
+asm void CDI::LoadPlaneVU0()
+{
+    lw v1, 16(a0)
+    lqc2 vf4, 0(v1)
+    lqc2 vf5, 16(v1)
+    lqc2 vf6, 32(v1)
+    vcallms 0x70
+    jr ra
+    nop
+}
+
 /* the polygon's normal from its first three points, normalised on VU0 (SOCOM 1's) */
 void CDI::SetEdgeVecsAndNorm()
 {

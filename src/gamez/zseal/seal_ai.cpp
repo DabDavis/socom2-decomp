@@ -24,6 +24,69 @@
  * real depths. */
 #pragma inline_depth(8)
 
+/* a round-robin share of the AI's work over the frames (new in SOCOM II; the names the kit lane's,
+ * whose seal_sensors.cpp keeps its own copy of the class with the per-frame Next -- one class for
+ * zseal.h, when the two lanes' halves meet): this frame's window of entity numbers, [m_start, m_end),
+ * wrapped past the m_total numbers into [0, m_wrap) -- m_size numbers a frame, m_count how many were
+ * served. Five of them, OVL2 bss 0x66B060 on, 0x20 apart (0x18 bytes each, aligned to 16: 0x66B0F8
+ * is another word): CSealCtrlAi::PreTick reads the first, second and fifth, 0x558640 the second,
+ * 0x56D2B0 the fifth, 0x574C30 resets those three, ai_posttick (0x5CCA30) moves them on and ScanTick
+ * (0x600550) reads the first; only the initialiser touches the third and fourth */
+struct CAiSlice {
+    CAiSlice()
+    {
+        m_count = 0;
+        Reset();
+    }
+    /* (inline: 0x574C30 expands it three times, the sums last) */
+    void Reset()
+    {
+        m_start = 0;
+        m_size = 0;
+        m_total = 0;
+        m_wrap = 0;
+        m_end = m_start + m_size;
+    }
+    /* whether a number takes its turn this frame (an inline bool: the target materialises it,
+     * `daddiu 1` on the true arm) */
+    bool Has(int id) const
+    {
+        if (id < m_wrap || (id >= m_start && id < m_end))
+            return true;
+        return false;
+    }
+    /* the window resized: m_size numbers out of m_total, the part past the end wrapped (an inline:
+     * the target compares the arguments, held in registers, and reads the members back) */
+    void SetSize(int size, int total)
+    {
+        m_wrap = 0;
+        m_total = total;
+        m_size = size;
+        m_end = m_start + m_size;
+        if (size >= total)
+            m_wrap = size;
+        else if (m_end > total)
+            m_wrap = m_end - total;
+        else
+            m_wrap = 0;
+    }
+
+    int m_start;   // 0x0
+    int m_end;   // 0x4
+    int m_size;   // 0x8
+    int m_total;   // 0xc
+    int m_wrap;   // 0x10
+    int m_count;   // 0x14
+};
+
+/* THE UNIT'S DYNAMICALLY INITIALISED STATICS, in the order its initialiser builds them
+ * (__sinit_seal_ai.cpp, OVL2 0x6687E0): the five slices */
+CAiSlice ai_slice0;
+CAiSlice ai_slice1;
+CAiSlice ai_slice2;
+CAiSlice ai_slice3;
+CAiSlice ai_slice4;
+
 /* the states this unit defines (SOCOM 1's; only what their destructors need -- none of them has
  * a member with a destructor of its own, so each destructor is the base's, inlined) */
 class CAiSRescued : public CAiState {
@@ -548,6 +611,156 @@ void CSealCtrlAi::Initalize()
     m_3f4 = (AI_MODE)1;
 }
 
+/* a squad mate's radio valve set -- the AI's own by its call sign at 0x26C (1 Able 2, 2 Bravo 1, 3
+ * Bravo 2), or with no AI all three (OVL2 0x574EF0, new in SOCOM II: OnDeath closes the AI's,
+ * 0x573130 opens it as it takes its call sign, 0x574C30 closes all three; the name unknown) */
+extern "C" void func_00574EF0(CSealCtrlAi *ai, int value)
+{
+    if (!ai) {
+        CValve *v;
+
+        v = CValve::GetByName("snd_able2");
+        if (v)
+            SetValveValue(v, value);
+        v = CValve::GetByName("snd_bravo1");
+        if (v)
+            SetValveValue(v, value);
+        /* (the last test on v0, the copy in its delay slot) */
+        if ((v = CValve::GetByName("snd_bravo2")) != 0)
+            SetValveValue(v, value);
+    } else {
+        CValve *v = 0;
+
+        switch (ai->m_26c) {
+        case 1:
+            v = CValve::GetByName("snd_able2");
+            break;
+        case 2:
+            v = CValve::GetByName("snd_bravo1");
+            break;
+        case 3:
+            v = CValve::GetByName("snd_bravo2");
+            break;
+        }
+        if (v)
+            SetValveValue(v, value);
+    }
+}
+
+/* the scripted groups (ai_group.cpp's class: only its statics here) */
+class CAiGroup {
+public:
+    static void DeleteAll();
+    static void ResetIds();
+    /* the group's act broken off (OVL2 0x60D280) */
+    void Abort();
+};
+
+/* (declared again below where their users are: the doze count, the task anims' switch, the row) */
+namespace ai {
+extern int snooze_count;
+}
+
+extern "C" {
+extern unsigned char data_003DF188;
+extern int data_0066AFD8;
+/* the callouts' sounds looked up and forgotten (OVL2 0x6075C0, 0x607560: the AI states' seal_airesponse.cpp) */
+void func_006075C0();
+void func_00607560();
+/* a doze's start (SOCOM 1's ai::snooze_time, -3 there; OVL2 bss 0x66AFF0) and two flags cleared with
+ * it (OVL2 bss 0x66B008, 0x66AFE0; the names ours) */
+extern float data_0066AFF0;
+extern unsigned char data_0066B008;
+extern unsigned char data_0066AFE0;
+/* the AI's tuning, twice (OVL2 bss 0x66AD20 and 0x66AE80, 0x154 bytes each: the second's fields set
+ * after both are cleared) and the idle anims' kinds (OVL2 bss 0x66AD00) -- the names ours */
+extern unsigned char data_0066AD20[0x154];
+extern unsigned char data_0066AE80[0x154];
+extern float data_0066AE94;
+extern float data_0066AF6C;
+extern float data_0066AF70;
+extern float data_0066AF74;
+extern float data_0066AF80;
+extern float data_0066AF88;
+extern float data_0066AF9C;
+extern float data_0066AFA0;
+extern float data_0066AFA8;
+extern float data_0066AFAC;
+extern int data_0066B048;
+extern int data_0066B050;
+extern int data_0066AFE8;
+extern int data_0066AD00[7];
+}
+
+/* the anim kind of a name (anim.cpp's, the kit lane's: C++ linkage) */
+int FindAnimKind(const char *name);
+
+/* the AI's handles let go: the loops' sounds and instances, the callouts' sounds, the request pool, the
+ * groups (OVL2 0x574BD0; SOCOM 1's ReleaseDatabaseHandles, the integrator's lead from the kit's round
+ * 25: SOCOM 1's two memsets and CloseDiPool, SOCOM II's callouts and groups around them) */
+void CSealCtrlAi::ReleaseDatabaseHandles()
+{
+    memset(aiSoundHandle, 0, sizeof aiSoundHandle);
+    memset(aiSoundInstance, 0, sizeof aiSoundInstance);
+    func_00607560();
+    CloseDiPool();
+    CAiGroup::DeleteAll();
+}
+
+/* the AI's handles taken: the loops' sounds, the callouts', the task anims allowed, the request pool
+ * opened, the doze count and time reset, the difficulty off its valve (within 0 to 7, else 1), the
+ * squad's radio valves closed, the tuning cleared and set, the slices reset, the idle anims' kinds
+ * looked up and the groups' ids (OVL2 0x574C30; SOCOM 1's AcquireDatabaseHandles, the integrator's
+ * lead from the kit's round 25: SOCOM 1's two GetSoundByName and OpenDiPool, then its doze reset) */
+void CSealCtrlAi::AcquireDatabaseHandles()
+{
+    aiSoundHandle[0] = CSnd::GetSoundByName("SND_STREAM_ABORT");
+    aiSoundHandle[1] = CSnd::GetSoundByName("STREAMING_BOUNDRY_WARNING");
+    func_006075C0();
+    data_003DF188 = 1;
+    OpenDiPool();
+    ai::snooze_count = 0;
+    data_0066AFF0 = -2.0f;
+    data_0066B008 = 0;
+    data_0066AFE0 = 0;
+
+    CValve *v = CValve::GetByName("ai_difficulty");
+
+    if (v) {
+        data_0066AFD8 = v->m_value;
+        _saturate(&data_0066AFD8, 0, 7);
+    } else {
+        data_0066AFD8 = 1;
+    }
+    func_00574EF0(0, 0);
+    memset(data_0066AD20, 0, sizeof data_0066AD20);
+    memset(data_0066AE80, 0, sizeof data_0066AE80);
+    data_0066AF70 = 1.5f;
+    data_0066AF74 = 1.5f;
+    data_0066AF6C = 1.25f;
+    data_0066AE94 = 0.15f;
+    data_0066AF9C = 3.5f;
+    data_0066AFA0 = 2.5f;
+    data_0066AFAC = 3.0f;
+    data_0066AFA8 = 5.0f;
+    data_0066B050 = 4;
+    data_0066AF88 = 3.0f;
+    data_0066AF80 = 3.0f;
+    ai_slice0.Reset();
+    ai_slice1.Reset();
+    ai_slice4.Reset();
+    data_0066B048 = 0;
+    data_0066AD00[0] = 0;
+    data_0066AD00[2] = FindAnimKind("bored02");
+    data_0066AD00[3] = FindAnimKind("bored03");
+    data_0066AD00[1] = data_0066AD00[2];
+    data_0066AD00[4] = FindAnimKind("suspicious");
+    data_0066AD00[5] = FindAnimKind("ready");
+    data_0066AD00[6] = FindAnimKind("conversation");
+    CAiGroup::ResetIds();
+    data_0066AFE8 = 0;
+}
+
 /* how far an event's kind carries (SOCOM 1's static CAiEvent::GetEventRange, ai.h's class lacks it:
  * OVL2 0x50F4C0 by its address) */
 extern "C" float func_0050F4C0(CAiEvent::EVENT event);
@@ -713,8 +926,6 @@ extern "C" {
 /* the maps' path plan registered from a cell through a list of cells into a path (SOCOM 1's
  * CAiMaps::RegisterPathPlan by its call here; OVL2 0x52C5C0, the AI core's) and a path's planner set,
  * whether it took (SOCOM 1's CAiPath::SetPathType; OVL2 0x524CD0, the AI core's) */
-bool func_0052C5C0(CAiMaps *maps, const CAiMapLoc &start, const CAiMapLoc *locs, int count,
-                   CAiPathBytes *path);
 }
 
 /* whether the current state is of kind 8 with flag 1 (0x559000's shape, kind 2 and flag 0x80 there) */
@@ -760,7 +971,7 @@ inline float CSealCtrlAi::GetDefaultRouteBias()
 bool CSealCtrlAi::SetRoute(const CAiMapLoc *locs, int count)
 {
     CAiMapLoc start(m_entity->m_mapLocValid);
-    bool ok = func_0052C5C0(&AiMaps, start, locs, count, &m_path);
+    bool ok = AiMaps.RegisterPathPlan(start, locs, count, (CAiPath *)&m_path);
 
     if (ok) {
         SetAiMode((AI_MODE)3);
@@ -1226,6 +1437,50 @@ static inline ALERT_BAND AlertBand(float x)
     return ALERT_BAND_4;
 }
 
+/* the blend stack's top (seal.cpp's stand-in for RTStack<CZBodyAnimBlend>::Top's OVL2 copy) */
+extern "C" void *func_00555170(void *stack);
+
+/* whether the AI's anim of a kind still plays on top of the body's blends: never for none (-1); the
+ * one the AI made (0x75C) is dropped -- made none, and false -- once its time runs out or, when its
+ * priority says so (bit 8), once the alertness's band passes its level (OVL2 0x5712F0, new in SOCOM
+ * II: 0x571100, 0x571150 and the AI states' ticks ask it; the name unknown). The level is an int of
+ * the word's low byte, taken before the band (its `andi` ahead of the walk), the band AlertBand's
+ * enum (`li 4`).
+ * OPEN, 3 instructions (the size right): the time test -- the target loads the clock (0x4365C0) into
+ * $f1 before the anim's time into $f0, then `c.le.s $f1,$f0; bc1t`; here the time loads first
+ * whatever the spelling: `!(now <= t)`, `now > t`, `t < now` and `!(t >= now)` (both c.lt.s), the
+ * clock through an inline, float locals in either order, a reference to the time, the arms swapped
+ * (40 off). */
+extern "C" bool func_005712F0(CSealCtrlAi *ai, short anim)
+{
+    if (anim == -1)
+        return false;
+
+    CZBodyAnimBlend *top = (CZBodyAnimBlend *)func_00555170((char *)ai->m_entity + 0x1c0);
+    bool r = top ? anim == top->m_animType : false;
+
+    if (r && anim == ai->m_sound) {
+        if (!(data_004365C0 <= ai->m_sound_time)) {
+            ai->m_sound = -1;
+            r = false;
+        } else {
+            /* (the priority's word read once: its bit 8 tested, its low byte the level) */
+            unsigned int pri = *(unsigned int *)&ai->m_sound_priority;
+
+            if (pri & 0x100) {
+                int level = pri & 0xff;
+
+                if (level < AlertBand(((CAlertness *)ai)->m_alert)) {
+                    ai->m_sound = -1;
+                    r = false;
+                }
+            }
+        }
+    }
+    return r;
+}
+
+
 /* the AI's turn: at its own rate, slowed by the speed (between 0.35 and the whole, OVL2 data
  * 0x650100/0x650108 -- this function's statics) when the alertness is low or the look deploys,
  * unless a Navy SEAL in mode 6 (OVL2 0x56C340: slot 0x9C; the bands are a switch, its chain ending
@@ -1291,6 +1546,24 @@ extern "C" bool func_0056D530(const CAiMap::region *r, unsigned int team)
         }
     }
     return found;
+}
+
+/* the sleep check's turn (OVL2 0x56D2B0, new in SOCOM II: the fifth frame slice, by the entity's id):
+ * a SEAL with a region and a team falls asleep when no live one of the team stands in it, and wakes
+ * when one does; one without them, on its turn, widens the window by one (the name unknown) */
+extern "C" void func_0056D2B0(CSealCtrlAi *ai)
+{
+    int id = ai->m_entity->m_id;
+
+    if (!ai->m_270 || !ai->m_274) {
+        if (ai_slice4.Has(id))
+            ai_slice4.SetSize(ai_slice4.m_size + 1, ai_slice4.m_total);
+    } else if (ai_slice4.Has(id)) {
+        ai_slice4.m_count++;
+        bool in = func_0056D530((const CAiMap::region *)ai->m_274, ai->m_270);
+
+        ai->SetSleeping(!in);
+    }
 }
 
 
@@ -2187,9 +2460,6 @@ extern "C" {
 extern float data_0064FDD8;
 extern float data_0064FDF0;
 extern float data_0064FE48;
-/* (OVL2 0x60E7A0 and 0x60D280, unowned: OnDeath and OnStunDamage make the same pair of calls) */
-void *func_0060E7A0(CSealCtrlAi *ai);
-void func_0060D280(void *p);
 }
 
 /* the range narrowed by a factor unless it stands (an inline: the factor, its argument, is loaded
@@ -2218,10 +2488,10 @@ extern "C" void func_00572240(CSealCtrlAi *ai, CAiAlert *alert, float amount)
         ai->m_730 = alert->m_4;
         ScaleRange(ai, data_0064FDF0);
 
-        void *p = func_0060E7A0(ai);
+        CAiGroup *g = ai->GetGroup();
 
-        if (p)
-            func_0060D280(p);
+        if (g)
+            g->Abort();
     }
 }
 
@@ -2885,7 +3155,9 @@ void CAiStamp::Reset()
     m_20 = 0;
 }
 
-/* an alert's level record (the names ours: 0x558030, 0x5582C0 and 0x558440 keep one each) */
+/* an alert's level record (the names ours: 0x558030, 0x5582C0 and 0x558440 keep one each) -- the
+ * AI's stamp (zseal.h's CAiStamp at 0x324, whose Reset restarts it) with what each keeps of its
+ * cause: the cell, the entity and its flag (0x558440), the point (0x5582C0) */
 struct CAlertLevel {
     float m_time;   // 0x0: when the level was raised, on the game's clock
     float m_amount;   // 0x4
@@ -2894,6 +3166,15 @@ struct CAlertLevel {
     int m_c;   // 0xc: cleared on any change
     unsigned char _10[0x14 - 0x10];
     AI_MODE m_mode;   // 0x14: the AI's mode at the change, 1 without an AI
+    unsigned char _15[0x18 - 0x15];
+    CAiMapLoc m_loc;   // 0x18: the cause's cell
+    CZSealBody *m_who;   // 0x1c: the SEAL that caused it (CAiStamp's m_1c)
+    unsigned char m_avoid;   // 0x20: whether the SEAL is one to avoid (CAiStamp's m_20)
+    unsigned char _21[0x24 - 0x21];
+    CPnt3D m_pos;   // 0x24: the cause's point
+
+    /* restarted (CAiStamp::Reset, this unit's own function, inlined) */
+    void Reset() { ((CAiStamp *)this)->Reset(); }
 };
 
 extern "C" {
@@ -2934,6 +3215,83 @@ extern "C" ALERT_CHANGE func_00557F60(CAlertLevel *a, CSealCtrlAi *ai, unsigned 
     return r;
 }
 
+/* a point's distance from another flat on the ground, squared (an inline: the difference built by the
+ * three-float constructor, its y a zero -- the target subtracts x first, as only it or locals declared
+ * z first give) */
+static inline float FlatDistSq(const CPnt3D *a, const CPnt3D *b)
+{
+    CPnt3D d(a->x - b->x, 0.0f, a->z - b->z);
+
+    return d.x * d.x + d.y * d.y + d.z * d.z;
+}
+
+/* (OVL2 data 0x6504A0: how far, squared, a noise may move before it counts as a new one -- 100,
+ * read as a variable) */
+extern "C" float data_006504A0;
+
+/* a noise heard at a point (level 4): a first one keeps the point and its cell; more of it add up
+ * unless it moved ten or more away, which restarts the record on the new point; whether the record
+ * now holds an untaken level 4 (OVL2 0x5582C0, new in SOCOM II: 0x5582B0 tail-calls it, 0x5B0420
+ * calls it; the name unknown) */
+extern "C" bool func_005582C0(CAlertLevel *a, CSealCtrlAi *ai, const CPnt3D *pos, float amount)
+{
+    switch (func_00557F60(a, ai, 4, amount)) {
+    case ALERT_NONE:
+        break;
+    case ALERT_SET:
+        a->m_pos = *pos;
+        AiMaps.GetLocation(&a->m_pos, a->m_loc);
+        break;
+    case ALERT_ADDED:
+        if (!(FlatDistSq(&a->m_pos, pos) < data_006504A0)) {
+            a->Reset();
+            func_00557F60(a, ai, 4, amount);
+            a->m_pos = *pos;
+            AiMaps.GetLocation(&a->m_pos, a->m_loc);
+        }
+        break;
+    }
+    return a->m_c == 0 && a->m_level == 4;
+}
+
+/* whether one SEAL should keep away from another within a range (seal_airesponse.cpp's), and the
+ * range here (OVL2 data 0x651028: 25, five squared -- read as a variable) */
+bool ShouldAvoid(CZSealBody *a, CZSealBody *b, float d2);
+extern "C" float data_00651028;
+
+/* another SEAL seen (level 1), unless it is the AI's own or, asked to, one it need not avoid within
+ * five: a first sighting keeps its cell, the SEAL and the flag; more of the same SEAL add up, another
+ * restarts the record on it; whether the record now holds an untaken level 1 (OVL2 0x558440, new in
+ * SOCOM II: 0x54F7E0 calls it four times, 0x567900 once; the name unknown) */
+extern "C" bool func_00558440(CAlertLevel *a, CSealCtrlAi *ai, CZSealBody *seal, bool avoid, float amount)
+{
+    if (seal && seal != ai->m_entity) {
+        if (!avoid || ShouldAvoid((CZSealBody *)ai->m_entity, seal, data_00651028)) {
+            switch (func_00557F60(a, ai, 1, amount)) {
+            case ALERT_NONE:
+                break;
+            case ALERT_SET:
+                a->m_loc = seal->m_mapLocValid;
+                a->m_who = seal;
+                a->m_avoid = avoid;
+                break;
+            case ALERT_ADDED:
+                if (a->m_who != seal) {
+                    a->Reset();
+                    a->m_loc = seal->m_mapLocValid;
+                    a->m_who = seal;
+                    a->m_amount = amount;
+                    a->m_avoid = avoid;
+                } else if (!avoid) {
+                    a->m_avoid = false;
+                }
+                break;
+            }
+        }
+    }
+    return a->m_c == 0 && a->m_level == 1;
+}
+
 /* whether a map's cell (its first layer's) lies inside: CAiMap::GetCell inlined one level, its pieces
  * the calls ai.h names (OVL2 0x5561C0, new in SOCOM II: the grenade state's Tick, 0x565460 and the
  * AI states call it; the name unknown) */
@@ -2946,7 +3304,6 @@ extern "C" bool func_005561C0(const CAiMap *map, const CAiMapLoc &loc)
 
 extern "C" {
 /* (OVL2 0x52D950, the AI core's: the AI maps' cell at a location) */
-void *func_0052D950(CAiMaps *maps, const CAiMapLoc *loc);
 }
 
 /* whether a location is the invalid cell (an inline bool: the target materialises the `&&`) */
@@ -2969,7 +3326,7 @@ extern "C" bool func_0056D450(CSealCtrlAi *ctrl, const CAiMapLoc *loc, int n)
         ctrl->m_270 = 0;
     } else {
         ctrl->m_270 = 0;
-        ctrl->m_274 = func_0052D950(&AiMaps, loc);
+        ctrl->m_274 = AiMaps.GetRegion(*loc);
         if (ctrl->m_274) {
             ctrl->m_270 = n;
             ok = true;
@@ -3008,20 +3365,19 @@ extern "C" CBoxCorners *func_0056AE40(CBoxCorners *c, const CBBox *b)
 }
 
 extern "C" {
-/* (OVL2 0x5712F0, seal_ai.cpp's: whether the controller's SEAL should act now; and 0x589AA0, the
- * body's: the act) */
-int func_005712F0(CSealCtrlAi *ctrl);
+/* (OVL2 0x589AA0, the body's: the anim on top let go) */
 void func_00589AA0(CZSealBody *seal);
 }
 
-/* the controller's SEAL made to act when it should, saying whether it did (OVL2 0x571100, new in
- * SOCOM II; the AI states' 0x60DFC0 asks it) */
-extern "C" bool func_00571100(CSealCtrlAi *ctrl)
+/* the AI's anim of a kind stopped when it plays on top of the body's blends (0x5712F0), saying whether
+ * it was (OVL2 0x571100, new in SOCOM II; CAiGroup::act_anim::Stop, 0x60DFC0, asks it with the act's
+ * anim -- the kind passed through in a1) */
+extern "C" bool func_00571100(CSealCtrlAi *ctrl, short anim)
 {
     bool acted = false;   /* declared first: the SEAL takes s0, the flag s1 */
     CZSealBody *seal = (CZSealBody *)ctrl->m_entity;
 
-    if (func_005712F0(ctrl)) {
+    if (func_005712F0(ctrl, anim)) {
         func_00589AA0(seal);
         acted = true;
     }

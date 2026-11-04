@@ -1776,6 +1776,42 @@ templates next), and the earlier rounds' opens; 3.0b38/b50/b52 still untold.
   - ztex_manager.cpp's share from 0x357000 (CGSTexBuffer's Setup/Add/RelocateAll, CDynTexList's
     Adds) is SOCOM 1's order; the unit itself starts near 0x3557xx, so the two halves become one
     file once the rest is written.
+- **Tells from completing the MSL headers, round 18** (the instances other lanes waited on; probes build/p18/, untracked):
+  - AN INLINE REFERENCE ACCESSOR'S TEMPORARY FOLDS OFF THE FUNCTION'S OWN PARAMETER AND STAYS A VARIABLE OFF AN INLINED
+    ARGUMENT AT AN OFFSET: include/string's copy constructor reading the long size through `const size_type &long_size()
+    const` keeps the out-of-line copy 0x22E560 (and a member at offset 0) folding `lw 4(s1)`, while CDlgDesignModel's
+    second string (+12) holds `&str.w_[1]` in s3 across reserve -- 0x3854C0 byte-exact (+1, the UI's request); a
+    reference local is a variable at every site (0x22E560 grows to 0x9C), a by-reference helper parameter or a reference
+    to the word array renumbers the rest;
+  - THE VID STACK IS std::stack<void *> (the weapons' round 19 request, settled): 0x3B7D50, the destructor
+    __sinit_vis_vu.cpp registers for m_stack_vid, is ~stack<Pv> inlining ~deque<Pv> and calling 0x3B7C90 -- ~deque<PCv>,
+    the POINTER deque's base (one this-tested level, then ~__deque_buf<PCv> with 0), not ~CVisBase -- and a plain
+    `std::stack<void *>` static compiles to both byte for byte (build/p18/vis/stk.cpp); vis_vu.cpp now defines
+    CVisual::m_stack_vid and its tail emits the chain: 0x3B7C90, 0x3B7D50, the deque<void *> copy 0x3B7DB0 and its
+    begin()/end() const 0x3B7F40/0x3B7EE0 byte-exact (+5; rows named, init 0x3B7E30 too). znode.h's CVidStack wrapper
+    registers a destructor of its own, so __sinit_vis_vu.cpp needs the static declared `std::stack<void *>` (a shared
+    header: the integrator's); deque<void *>() 0x3B7FA0 (calling the rdr editor's middle level 0x334120) stays open with
+    0x3340F0 and keeps its placeholder name while only its draft matches;
+  - EVERY DEQUE do_assign CALLS ITS ITERATORS' OPERATORS OUT OF LINE (the online lobby's two operator++ copies, generalised):
+    the lobby's 0x2E1090, the rdr editor's 0x334440 and the vid stack's 0x3B8000 call the source's !=, * and ++, the
+    destination's * and ++ and the destination iterator's copy constructor (std::copy's returned iterator) -- out-of-class
+    members generated after do_assign; the source and destination are different classes (identical copies of ++ and *),
+    the pointer deques' sources per element type and their destinations shared. The head is std::distance by value (two
+    by-value levels: $f0 copies, then lq/sq, the difference over the copies in memory), the tail std::copy by value with a
+    `!=` loop. As probes the lobby's six operator copies come out byte-exact (0x2E1420-0x2E1550) with *, ++, != and the
+    destination's copy constructor out of class; do_assign stays 0x31C against 0x384 while the source is copied through
+    the buffer iterator's user copy constructor (the target's source copy is bitwise: a const buffer iterator without
+    one). Recorded in include/deque's comment, not applied (every init/do_assign row would be renamed `14const_iterator`);
+  - THE CLASS ERASE'S END IS PER ELEMENT, as the insert's: the string-element erases (CSaferStr's 0x383BC0,
+    CDlgDesignModel's 0x384BD0, zrdr_sym's) want the end coloured before the count and cursor -- `iterator e = end()`, a
+    scalarised object numbered after the named locals, makes all three byte-exact and loses 28 (9232 -> 9209): the ends
+    there are the plain local's (include/vector's erase comment); not applied;
+  - not reached: the class insert's end register (insert<CLadderData> 0x2B0260, the delayed nodes' 0x33C5C0), the deques'
+    make_iterator, ~CAssetLib's two data addresses (the target keeps `&m_models.data_` and `&m_palettes.data_` -- this+16,
+    this+40 -- in saved registers from the walks to the vectors' inlined destructors: the reference-accessor tell's
+    pattern, no pod form found), AddKeyProps' pair temporary, GetSealCount's outer copy, remove_if<_tick>, 0x359740's
+    requester; CreateSoftKeyboard's grid store (the code read through a reference accessor, the ternary passed straight)
+    moves nothing.
 - **Tells from completing the MSL headers, round 17** (the instances other lanes waited on; probes build/p17/, untracked):
   - THE CLASS VECTOR'S COPY CONSTRUCTOR IS SOCOM 1's MSL (its Props::Branch 0x237ED0 calls every piece out of line): the
     deleter built from the other's `alloc() const`, then init over the other's RAW `begin()/end() const` (a pointer in v0).
@@ -1965,6 +2001,41 @@ templates next), and the earlier rounds' opens; 3.0b38/b50/b52 still untold.
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the game states, round 28** (a new fts_ovl2statics.cpp: the OVL1 unit of OVL2 classes' statics; ReOpen):
+  - fts_ovl2statics.cpp (0x2CD670-0x2CE7FF, the file name ours) has no functions of its own: about sixty statics of OVL2
+    classes defined in its initialiser's order, with SOCOM 1's names, and a tail emitting the destructors it registers in
+    reverse order of the statics -- __sinit_fts_ovl2statics.cpp 0x400870 (0x134C, 592 relocations) byte-exact once OVL2's
+    0x5D9540 was named ~CMallocBlocks at integration; ~vector<CModel *> 0x2CD710 survives the link only because
+    __sinit_zwep_projectile.cpp registers it;
+  - a class vector over the 2-byte pod needs `__vector_imp<AnimType, A, true>` and `vector<AnimType>` partial
+    specialisations in the unit to mangle as `vector<8AnimType,...>`; an array static's `__arraydtor$N` resolves by its code
+    now (GCC 24a); a word the initialiser stores through a member list's address after that list's constructor belongs to
+    the list's own class (CDiPool's free list: a class of its own -- the kit's seal_dipool.h models it differently: queued);
+  - members of a class object at a constant offset are folded into `this+offset` at every access, even through an inline
+    member; a separate pointer local declared at each use keeps each one in a saved register (CMission::ReOpen_Load
+    0x2ABD40's queues), one pointer reassigned three times numbers the registers the other way round;
+  - CMission::ReOpen_Load and ReOpen_Unload1 0x2AC0E0 byte-exact; 0x3249D0 is SOCOM 1's Particle::ReserveNodePool (named at
+    integration), 0x5A3B50 SOCOM 1's CZSealBody::Uninit_ReInitDatabaseHandles (the SEALs');
+  - open: CNodeAction::Close (level 6), UnInitialize (the valve inline's temporaries).
+- **Tells from the kit and AI states, round 25** (SOCOM 1's request pool CDiPool, the target ticks, the Cur ammo wrappers):
+  - when every small piece of a walk (begin, end, !=, *, the assignment, postfix ++) is a separate call, the walk is an
+    inline member inlined only one level: write it inside an inline and call that -- SOCOM 1's CDiPool in a new
+    seal_dipool.h (shared by seal_sensors.cpp and ai_target.cpp) brought dirlist's DeleteAll and Free, CleanupDiPool,
+    target_pretick/target_post_tick and their pieces;
+  - an iterator kept in memory and re-stored at each step was assigned from begin() (the wrapper's implicit, bitwise
+    assignment) with the end taken into a local first -- not for_each, whose by-value parameter goes to a register;
+  - a ternary whose result shows in both arms (`b; move v1,v0` / `move v1,zero`) with no label padding comes from an inline
+    function's return (written in the caller, the labels pad); `x == 0 ? 0 : y % x` puts the zero arm first, `x ? y % x :
+    0` the other way; a field's value declared in a local before the local holding its address gives the target's a2/a1
+    (a reference to the field swaps them);
+  - a by-hand constructor or destructor call can use its mangled name in an `extern "C"` declaration only where the header
+    declares that member out of line (inline ones collide with the emitted copy: CAiTimer(float), CAiMapLoc(), Rfloat(float)
+    stay by address);
+  - GetCurMaxAmmoCount 0x5C3CE0 and GetCurAmmoCount 0x5C3890 are tail calls with the selected item (round 24's lead);
+    ReParentToRifle/Pistol 0x5C6A40/0x5C6DA0 and ScanTick 0x600550 named (the SEALs' leads); target_pretick/target_post_tick
+    keep their placeholder names (declaring SOCOM 1's statics in zseal.h would hide CSealCtrl's virtual PreTick/PostTick);
+  - open: ai_posttick 0x5CCA30 (3, new in SOCOM II: three round-robin entity windows -- the target's add is `addu
+    a1,v1,a1`, every spelling `addu a1,a1,v1`).
 - **Tells from the world, rdr and sound, round 11** (a new node_wave.cpp, COverlayLoader::Load, Destruction_Instance):
   - calling a function through one extra inline level expands it later, so its temporaries take lower stack slots (the
     erase in CRipple::Tick 0x321F50, through a small inline Erase(i): include/list's list<T *> has no erase of its own);
@@ -8275,7 +8346,9 @@ What is open across lanes, and what comes next:
   element copies and four destructors (about 15) evidence not found. The flag stays at 5, the headers
   at their level-5 shapes, seal_ai.cpp's pragma with them.
 - **MSL pieces not modelled yet**: the deque's copy constructor chain's generation order (its
-  structure is in since round 7: include/deque's comment; back() is in, pop_back() 8 bytes short), the tree's erase
+  structure is in since round 7: include/deque's comment; back() is in, pop_back() 8 bytes short) and
+  its iterator classes (every do_assign calls separate source and destination operators out of line,
+  std::distance and std::copy by value: the MSL headers' round 18), the tree's erase
   (0x306030), the CSaferStr trees (0x3A2D60-0x3A2F60 and OVL2's string-keyed map, through the
   string's out-of-line compare 0x2DEE30), zrdr_file.cpp's pointer-keyed map (0x32D780)
   (include/tree), the list instances of std::remove_if (0x29FE70, 0x3C6560, 0x352500, 0x50F670,

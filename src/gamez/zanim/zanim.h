@@ -48,8 +48,10 @@ public:
     enum TYPE {
         TYPE_NONE = 0,
         TYPE_CMD = 1,           /* our names, by the copies that set them */
+        TYPE_NODE = 3,          /* a node (GetNode, FindNode) */
         TYPE_VALVE = 4,
         TYPE_PNT3D = 5,         /* a point (zAnimRangeTestTick) */
+        TYPE_CHARP = 8,         /* a string (GetCharP) */
         TYPE_INT = 9            /* SOCOM II's network activation adds one */
     };
 
@@ -148,11 +150,20 @@ class CZAnimArgList : public std::list<CZAnimArg *> {
 public:
     virtual ~CZAnimArgList();
     CPnt3D *GetPnt3D(CZAnimArg::TYPE type);
+    /* SOCOM II's: whether an argument of a type is there, and its integer (the names ours) */
+    bool HasArg(CZAnimArg::TYPE type);
+    int GetInt(CZAnimArg::TYPE type);
     /* the index'th string argument (SOCOM 1's; the menu's handlers take their text from it) */
     char *GetCharP(int index);
+    /* SOCOM II's: the node argument, for CZAnim::GetNode's index 250, and a node matched against
+     * it (the names ours) */
+    CNode *GetNode(int index);
+    CNode *FindNode(CNode *node);
     void ParseNetworkPacketArgs(CZAnim *anim, ZAnimNetworkPacket *packet);
     /* the index'th argument's valve (SOCOM 1's; 0x2721C0, valve_main.cpp's VWATCH calls it) */
     CValve *GetValve(int index);
+    /* the index'th command argument (SOCOM 1's; the task handlers' parameter find calls it) */
+    _zanim_cmd_hdr *GetCmd(int index);
 };   // 0x10 bytes
 
 class _zanim_anim_params {

@@ -19,11 +19,11 @@ void func_002ACC10(CMission *mission, const char *database);   /* CMission::PreO
 
 void func_001EABD0(int argc, char **argv);       /* (the command line taken up) */
 void func_001EAC80();                            /* (the command line let go of) */
-void func_0039C700(int arg);
 }
 
 void InitSystemTuners();   /* 0x38A7A0 */
 void zSysInit();   /* 0x34F960 */
+void zUtilInit(const char *);   /* 0x39C700 */
 
 /* the voice recogniser (reco.cpp's CReco; only what main calls): its files loaded */
 class CReco {
@@ -126,7 +126,7 @@ int main(int argc, char **argv)
     zSysInit();
     theReco.Load();
     func_001EAC80();
-    func_0039C700(0);
+    zUtilInit(0);
     theGame.StartEngine();
     theGame.StartPlay();
     *theUIVarManager.Add("VERSION_STRING", 0, UIVL_PERMANENT) = "SOCOM 2 r0001 17:22:21 Oct 11 2003";

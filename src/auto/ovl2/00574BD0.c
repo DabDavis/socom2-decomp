@@ -7,8 +7,8 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
+M2C_UNK CloseDiPool__11CSealCtrlAiFv();             /* extern */
 M2C_UNK DeleteAll__8CAiGroupFv();                   /* extern */
-M2C_UNK func_005CC5F0();                            /* extern */
 M2C_UNK func_00607560();                            /* extern */
 M2C_UNK memset(M2C_UNK *, M2C_UNK, M2C_UNK);        /* extern */
 extern M2C_UNK aiSoundHandle__11CSealCtrlAi;
@@ -18,6 +18,6 @@ void func_00574BD0(void) {
     memset(&aiSoundHandle__11CSealCtrlAi, 0, 8);
     memset(&aiSoundInstance__11CSealCtrlAi, 0, 8);
     func_00607560();
-    func_005CC5F0();
+    CloseDiPool__11CSealCtrlAiFv();
     DeleteAll__8CAiGroupFv();
 }

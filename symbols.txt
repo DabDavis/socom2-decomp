@@ -2704,7 +2704,7 @@
 0x00257520 0x40 func_00257520  # OVL1
 0x00257560 0x8 func_00257560  # OVL1
 0x00257570 0x14 func_00257570  # OVL1
-0x00257590 0x358 func_00257590  # OVL1
+0x00257590 0x358 WriteDirectory__Q23zar4CZARFv  # OVL1; s1:callee by hand, the core lane round 4 (Close() 0x258CE0 calls it at +0x90 where SOCOM 1's Close() calls WriteDirectory at +0x8C; the new flush 0x258BD0 calls it when the modified byte 0x25 is set, clearing it after)
 0x002578F0 0x294 func_002578F0  # OVL1
 0x00257B90 0x8 func_00257B90  # OVL1
 0x00257BA0 0x14 func_00257BA0  # OVL1; tu: ztex_manager.cpp~ (1.0 beta)
@@ -2722,7 +2722,7 @@
 0x00257CC0 0x1F8 func_00257CC0  # OVL1
 0x00257EC0 0x10 func_00257EC0  # OVL1; tu: char_type.cpp~ (1.0 beta)
 0x00257ED0 0x8 func_00257ED0  # OVL1
-0x00257EE0 0xAC func_00257EE0  # OVL1
+0x00257EE0 0xAC ReadString__Q23zar4CZARFPPc  # OVL1; ours, the core lane round 4 (SOCOM II's: a length word read through m_pFile's fread, then when 4 bytes came and the length is positive a _malloc'd zeroed copy of length+1 filled by a second fread; the bytes read returned -- CIO::fwrite(const char *)'s record read back; CZSIObject::Read calls it for the object's name)
 0x00257F90 0x70 ReleaseDataBuffer__Q23zar4CZARFv  # OVL1; s1:calls by hand (the zdb-world lane: at SOCOM 1's call site)
 0x00258000 0x510 func_00258000  # OVL1
 0x00258510 0x58 GetSize__Q23zar4CZARFPCc  # OVL1; s1:order by hand (SOCOM 1's GetSize 0x1D8CD0, between ReadDirectory and GetOpenKey there as here: the open key's FindKey, its size or -1; Fetch(const char *, char **) calls it where SOCOM 1's does)
@@ -2734,11 +2734,11 @@
 0x00258740 0x1DC func_00258740  # OVL1
 0x00258920 0x21C func_00258920  # OVL1; s1~ Open__Q23zar4CZARFPCciUiUi (OpenZAR calls it where SOCOM 1's calls zar::CZAR::Open, but with a fifth argument, t1 = 0: the signature changed)
 0x00258B40 0x90 ReOpen__Q23zar4CZARFiUi  # OVL1; tu: zar_main.cpp~ (1.0 beta); s1:calls (CRdrArchive::OpenAll and FindRdr call it with (1, 1) where SOCOM 1's call zar::CZAR::ReOpen) -- the rdr lane
-0x00258BD0 0x70 func_00258BD0  # OVL1
+0x00258BD0 0x70 Flush__Q23zar4CZARFv  # OVL1; ours, the core lane round 4 (SOCOM II's: false unless the file is open -- the inline IsOpen -- then WriteDirectory when the modified byte 0x25 is set, the byte cleared, true; CSaveManager::Save calls it)
 0x00258C40 0xA0 func_00258C40  # OVL1
 0x00258CE0 0x17C Close__Q23zar4CZARFv  # OVL1; s1:calls by hand (the zdb-world lane: the loaders close their archives through it where SOCOM 1's call CZAR::Close)
-0x00258E60 0x14 func_00258E60  # OVL1; size 0x14 (a tail call through t9; the seed ran on into the padding)
-0x00258E80 0x9C func_00258E80  # OVL1
+0x00258E60 0x14 CloseKeepDir__Q23zar4CZARFv  # OVL1; size 0x14 (a tail call through t9; the seed ran on into the padding); s1:order by hand, the core lane round 4 (SOCOM 1's CloseKeepDir 0x1D98F0, the same 0x14 bytes -- m_pFile's Close through its table, a tail call -- between Close() and SetFilename as here)
+0x00258E80 0x9C SetFilename__Q23zar4CZARFPCc  # OVL1; s1:order by hand, the core lane round 4 (SOCOM 1's SetFilename 0x1D9910 after CloseKeepDir and before ~CZAR as here: m_filename (0xA4 here, SOCOM 1's 0x90) freed unless the default name's pointer or the name itself, then the name _strdup'd or DEFAULT_ZAR_NAME)
 0x00258F20 0x17C __dt__Q23zar4CZARFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x002590A0 0x190 __ct__Q23zar4CZARFPCcP3CIO  # OVL1; s1:callee by hand (OpenZAR calls it on the fresh CZAnimZAR with (0, 0) where SOCOM 1's OpenZAR calls zar::CZAR::CZAR(const char *, CIO *))
 0x00259230 0xC func_00259230  # OVL1
@@ -3027,11 +3027,11 @@
 0x00271EE0 0x1FC AddNetworkPacketArgs__13CZAnimArgListFP6CZAnimP18ZAnimNetworkPacket  # OVL1; s1:align
 0x002720E0 0xD8 GetCmd__13CZAnimArgListFi  # OVL1; s1:calls (the kit lane's round 8, vetted by the integrator: the find inlined into every task handler calls it with (list, i) exactly as SOCOM 1's taskFindParam calls GetCmd__13CZAnimArgListFi)
 0x002721C0 0xD8 GetValve__13CZAnimArgListFi  # OVL1; the integrator 2026-11-04, by the world lane round 7: CValve's VWATCH tick calls it on the anim's argument list (s1:calls)
-0x002722A0 0xF0 func_002722A0  # OVL1
-0x00272390 0xE8 func_00272390  # OVL1
+0x002722A0 0xF0 FindNode__13CZAnimArgListFPQ23zdb5CNode  # OVL1; ours, the core lane round 4 (SOCOM II's: the list's empty test, then the first TYPE 3 node argument's node returned when it is the node given; func_00270570 calls it on each anim's list with the node)
+0x00272390 0xE8 GetNode__13CZAnimArgListFi  # OVL1; ours, the core lane round 4 (SOCOM II's: CZAnim::GetNode calls it for index 250 -- 0 for any other index or an empty list, else the first TYPE 3 node argument's node)
 0x00272480 0xD8 GetCharP__13CZAnimArgListFi  # OVL1; s1:callee
-0x00272560 0xD8 func_00272560  # OVL1
-0x00272640 0xD8 func_00272640  # OVL1
+0x00272560 0xD8 GetInt__13CZAnimArgListFQ29CZAnimArg4TYPE  # OVL1; ours, the core lane round 4 (SOCOM II's: the first argument of the type's value at 12; zAnimFireWeaponTick asks for TYPE 9, CZAnimArgInt's, after HasArg)
+0x00272640 0xD8 HasArg__13CZAnimArgListFQ29CZAnimArg4TYPE  # OVL1; ours, the core lane round 4 (SOCOM II's: whether an argument of the type is there; zAnimFireWeaponTick asks it for TYPE 9 before GetInt)
 0x00272720 0xD8 GetPnt3D__13CZAnimArgListFQ29CZAnimArg4TYPE  # OVL1; s1:callee by hand (called where SOCOM 1's zAnimRangeTestTick calls it)
 0x00272800 0x60 Copy__12CZAnimArgIntFv  # OVL1; by vtable (__vt__12CZAnimArgInt's second slot: a copy, the type and the value at 12)
 0x00272860 0x70 Copy__14CZAnimArgPnt3DFv  # OVL1; tu: zanim_anim.cpp~ (1.0 beta); s1:exact
@@ -3343,7 +3343,7 @@
 0x00285A50 0x160 reserve__Q210Metrowerks34cdeque<PCv,Q23std14allocator<PCv>>FUi  # OVL1; s1:calls (the deque's push_back starts it with reserve(2) where SOCOM 1's does) -- the states lane
 0x00285BB0 0x120 func_00285BB0  # OVL1
 0x00285CD0 0x8 alloc__Q210Metrowerks34cdeque<PCv,Q23std14allocator<PCv>>CFv  # OVL1; the MSL headers round 7: include/deque -- the circular buffer's allocator at 0 (the buffers' copy constructors 0x333E40/0x3A6160/0x2E0AC0 pass it to 0x2E0D20; 0x285BB0 reads its max_size); byte-exact copies in zrdr_edit.cpp and util_ssm.cpp
-0x00285CE0 0x50 func_00285CE0  # OVL1
+0x00285CE0 0x50 max_size__Q210Metrowerks34cdeque<PCv,Q23std14allocator<PCv>>CFv  # OVL1; cdeque<const void *>'s max_size (a guarded static holding the allocator's max - 1): the lobby's do_assign 0x2E0E10 emits a call under that name; callers 0x285A50, 0x2E0E10, 0x2F5940, 0x3341C0, 0x3A6490 (the online lobby's round 15, renamed at integration)
 0x00285D30 0x428 func_00285D30  # OVL1
 0x00286160 0x868 func_00286160  # OVL1
 0x002869D0 0x1A4 PartInSpace__5CBodyCFP10CZBodyPartPC6CPnt3DP6CPnt3DP5CQuat  # OVL1; s1:calls
@@ -4321,35 +4321,35 @@
 0x002CCFF0 0x370 Authenticate__19CSMDNASAuthenticateFUc  # OVL1; ours: the third state (GetUniqueID queues it, 0x3DE8E8): DNAS.BIN's 0x4C6DF0 started, the status polled until done (the valve on) or failed -- fts_dnas.cpp
 0x002CD360 0x310 DNASErrorString__Fi  # OVL1; ours: a DNAS error number to its localised text (ids 0x451-0x478 through 0x363F60, the number substituted with "%d"); every failure in fts_dnas.cpp passes it to the menu's MP_DNAS_ERROR -- fts_dnas.cpp
 0x002CD670 0x20 __ct__Q23std481__tree<Q23std76pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,i>,Q33std260map<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,i,Q23std73less<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>>,Q23std95allocator<Q23std76pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,i>>>13value_compare,Q23std95allocator<Q23std76pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,i>>>FRCQ33std260map<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,i,Q23std73less<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>>,Q23std95allocator<Q23std76pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,i>>>13value_compareRCQ23std95allocator<Q23std76pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,i>>  # OVL1; the string-int map's tree constructor (value_compare, allocator): the SEAL anim names' initialiser 0x400870 and __sinit_int_material.cpp 0x401DB0 call it for their map<string, int> statics -- the engine core lane's round 1, by int_material.cpp's emitted copy (renamed at integration)
-0x002CD690 0x80 func_002CD690  # OVL1
-0x002CD710 0x70 func_002CD710  # OVL1
-0x002CD780 0x88 func_002CD780  # OVL1
-0x002CD810 0x88 func_002CD810  # OVL1
-0x002CD8A0 0x148 func_002CD8A0  # OVL1
-0x002CD9F0 0xA4 func_002CD9F0  # OVL1
-0x002CDAA0 0x88 func_002CDAA0  # OVL1
+0x002CD690 0x80 __dt__Q23std56list<PQ27CDiPool3dir,Q23std26allocator<PQ27CDiPool3dir>>Fv  # OVL1; by hand (the states lane, round 28: fts_ovl2statics.cpp's copy, byte-exact): ~list<CDiPool::dir *>, three this-tests and the range erase -- ~CDiPool 0x2CD8A0 calls it with 0 for its directions list's base, as SOCOM 1's ~CDiPool reaches list<CDiPool::dir *>'s pieces
+0x002CD710 0x70 __dt__Q23std56vector<PQ23zdb6CModel,Q23std25allocator<PQ23zdb6CModel>>Fv  # OVL1; by hand (the weapons' round 19 via the integrator, applied by the states lane, round 28): ~vector<zdb::CModel *> -- only __sinit_zwep_projectile.cpp 0x404BB0 registers it (0x404BD4), where SOCOM 1's initialiser registers ~vector for m_tracerpool__12CZTracerPool, a vector<CModel *>; three this-tests then the data deleted, code identical to ~vector<CTurret *> 0x3AA270; with the name __sinit_zwep_projectile.cpp is byte-exact (the weapons' temporary rename); OVL1's first copy, in the fts_ovl2statics stretch
+0x002CD780 0x88 __dt__Q28CAiGroup5CListFv  # OVL1; by hand (the states lane, round 28: fts_ovl2statics.cpp's copy, byte-exact): the initialiser 0x400870 registers it for CAiGroup::m_list 0x44D668 -- four this-tests (a class over list<CAiGroup *>, as SOCOM 1's CAiDodge::CList is over its list); the class name ours
+0x002CD810 0x88 __dt__Q28CAiDodge5CListFv  # OVL1; by hand (the states lane, round 28: fts_ovl2statics.cpp's copy, byte-exact): the initialiser 0x400870 registers it for CAiDodge::m_list 0x44D648, as SOCOM 1's __sinit_seal_aimoves.cpp registers __dt__Q28CAiDodge5CListFv for its m_list
+0x002CD8A0 0x148 __dt__7CDiPoolFv  # OVL1; by hand (the states lane, round 28: fts_ovl2statics.cpp's copy, byte-exact): the initialiser 0x400870 registers it for the sensors' query pool 0x44D5E0, as SOCOM 1's __sinit_seal_sensors.cpp registers __dt__7CDiPoolFv for _diPool -- the queries destroyed and freed, the free list emptied, the directions list torn down
+0x002CD9F0 0xA4 DeleteAll__Q27CDiPool8CDirListFv  # OVL1; by hand (the states lane, round 28: fts_ovl2statics.cpp's copy, byte-exact): ~CDiPool 0x2CD8A0 calls it on its directions list before the list's base destructor -- each element deleted, then the range erase (SOCOM 1's ~CDiPool inlined the same walk); the class and member names ours
+0x002CDAA0 0x88 __dt__Q29CSealUnit5ulistFv  # OVL1; by hand (the states lane, round 28: fts_ovl2statics.cpp's copy, byte-exact): the initialiser 0x400870 registers it for CSealUnit::m_list 0x44D5B0, as SOCOM 1's __sinit_seal_unit.cpp registers __dt__Q29CSealUnit5ulistFv
 0x002CDB30 0x78 __dt__Q23std52vector<10CZDecalDef,Q23std23allocator<10CZDecalDef>>Fv  # OVL1; by hand (the weapons lane's round 7, vetted by the integrator: DestroyMarkList calls it on CZMarkList's two vector<CZDecalDef> members at +0x10 and +0x1C; three this-tests, clear 0x2CE770, the data deleted; the initialiser 0x400870 registers it -- an earlier unit's copy, deduplicated by name)
-0x002CDBB0 0x88 func_002CDBB0  # OVL1
-0x002CDC40 0x78 func_002CDC40  # OVL1
-0x002CDCC0 0x78 func_002CDCC0  # OVL1
+0x002CDBB0 0x88 __dt__11CPickupListFv  # OVL1; by hand (the states lane, round 28: fts_ovl2statics.cpp's copy, byte-exact): the initialiser 0x400870 registers it for CPickup::m_list 0x44D470 and m_pool 0x44D490, as SOCOM 1's __sinit_pickup_main.cpp registers __dt__11CPickupListFv for both
+0x002CDC40 0x78 __dt__Q212CAnimAuxData5CListFv  # OVL1; by hand (the states lane, round 28: fts_ovl2statics.cpp's copy, byte-exact): the initialiser 0x400870 registers it for CAnimAuxData::list 0x44D450, as SOCOM 1's __sinit_anim.cpp registers __dt__Q212CAnimAuxData5CListFv
+0x002CDCC0 0x78 __dt__Q27AnimSet4ListFv  # OVL1; by hand (the states lane, round 28: fts_ovl2statics.cpp's copy, byte-exact): the initialiser 0x400870 registers it for AnimSet::list 0x44D430, as SOCOM 1's __sinit_anim.cpp registers __dt__Q27AnimSet4ListFv
 0x002CDD40 0x1C func_002CDD40  # OVL1
 0x002CDD60 0x1C func_002CDD60  # OVL1
 0x002CDD80 0x1C func_002CDD80  # OVL1
 0x002CDDA0 0x1C func_002CDDA0  # OVL1
 0x002CDDC0 0x1C func_002CDDC0  # OVL1
 0x002CDDE0 0x1C func_002CDDE0  # OVL1
-0x002CDE00 0x70 func_002CDE00  # OVL1
-0x002CDE70 0x14 func_002CDE70  # OVL1
-0x002CDE90 0x70 func_002CDE90  # OVL1
-0x002CDF00 0x80 func_002CDF00  # OVL1
-0x002CDF80 0x80 func_002CDF80  # OVL1
-0x002CE000 0x78 func_002CE000  # OVL1
-0x002CE080 0x78 func_002CE080  # OVL1
-0x002CE100 0x68 func_002CE100  # OVL1
-0x002CE170 0x8 func_002CE170  # OVL1
-0x002CE180 0x14 func_002CE180  # OVL1
-0x002CE1A0 0x3C func_002CE1A0  # OVL1
-0x002CE1E0 0x28 func_002CE1E0  # OVL1
+0x002CDE00 0x70 __dt__Q23std46vector<8AnimType,Q23std20allocator<8AnimType>>Fv  # OVL1; by hand (the states lane, round 28: fts_ovl2statics.cpp's copy, byte-exact): the death and damage tables' element destructor the initialiser 0x400870 hands __construct_array and the array destructors 0x2CDD40-0x2CDDE0 hand __destroy_arr, as SOCOM 1's __sinit_anim.cpp hands its vector<AnimType>'s -- SOCOM II's runs on the 2-byte pod
+0x002CDE70 0x14 __ct__Q23std46vector<8AnimType,Q23std20allocator<8AnimType>>Fv  # OVL1; by hand (the states lane, round 28: fts_ovl2statics.cpp's copy, byte-exact): the death and damage tables' element constructor the initialiser 0x400870 hands __construct_array, as SOCOM 1's __sinit_anim.cpp hands its vector<AnimType>'s
+0x002CDE90 0x70 __dt__Q23std48vector<P8ANIM_ADD,Q23std21allocator<P8ANIM_ADD>>Fv  # OVL1; by hand (the states lane, round 28: fts_ovl2statics.cpp's copy, byte-exact): the initialiser 0x400870 registers it for 0x44CDD0 (CZSealBody::m_aim_anims), as SOCOM 1's __sinit_seal.cpp registers ~vector<ANIM_ADD *> for its m_aim_anims; three this-tests, the data deleted
+0x002CDF00 0x80 __dt__20CCharacterModelCacheFv  # OVL1; by hand (the states lane, round 28: fts_ovl2statics.cpp's copy, byte-exact): the initialiser 0x400870 registers it for CCharacterModelCache::m_ModelCache 0x44CDA8 after its reserve(256), as SOCOM 1's __sinit_char_type.cpp registers __dt__20CCharacterModelCacheFv -- five this-tests: the cache over zdb::CModelVector over vector<CModel *>
+0x002CDF80 0x80 __dt__Q23std32list<PCc,Q23std14allocator<PCc>>Fv  # OVL1; by hand (the states lane, round 28: fts_ovl2statics.cpp's copy, byte-exact): the initialiser 0x400870 registers it for CCharacterType::m_anim_set_names 0x44CD88, as SOCOM 1's __sinit_char_type.cpp registers ~list<const char *>
+0x002CE000 0x78 __dt__18CCharacterGearListFv  # OVL1; by hand (the states lane, round 28: fts_ovl2statics.cpp's copy, byte-exact): the initialiser 0x400870 registers it for CCharacterType::m_gear_list 0x44CD68, as SOCOM 1's __sinit_char_type.cpp registers __dt__18CCharacterGearListFv -- four this-tests: SOCOM II's gear list a class over a pointer vector (SOCOM 1's over a list)
+0x002CE080 0x78 __dt__12CCharTypeVecFv  # OVL1; by hand (the states lane, round 28: fts_ovl2statics.cpp's copy, byte-exact): the initialiser 0x400870 registers it for CCharacterType::m_char_list 0x44CD48, as SOCOM 1's __sinit_char_type.cpp registers __dt__12CCharTypeVecFv
+0x002CE100 0x68 __dt__17CharacterDynamicsFv  # OVL1; by hand (the states lane, round 28: fts_ovl2statics.cpp's copy, byte-exact): the initialiser 0x400870 registers it for theCharacterDynamics 0x44C250, as SOCOM 1's __sinit_seal_dyn.cpp registers __dt__17CharacterDynamicsFv -- the camera list's two levels inlined, its deleter's destructor 0x2CE780 called
+0x002CE170 0x8 reserve__Q23std100vector<Q217CharacterDynamics13CCameraParams,Q23std47allocator<Q217CharacterDynamics13CCameraParams>>FUi  # OVL1; by hand (the states lane, round 28: fts_ovl2statics.cpp's copy, byte-exact): the class vector's reserve forwarder (a `j` to __vector_imp's, 0x2CE5B0) the initialiser 0x400870 calls with 5 from CharacterDynamics' constructor (inlined one level), where SOCOM 1's initialiser calls the reserve with 5
+0x002CE180 0x14 __ct__Q23std100vector<Q217CharacterDynamics13CCameraParams,Q23std47allocator<Q217CharacterDynamics13CCameraParams>>Fv  # OVL1; by hand (the states lane, round 28: fts_ovl2statics.cpp's copy, byte-exact): the camera list's constructor (three words zeroed) the initialiser 0x400870 calls for theCharacterDynamics+0x1B0 (m_cam_params), CharacterDynamics' constructor inlined one level
+0x002CE1A0 0x3C __ct__Q217CharacterDynamics12throw_paramsFv  # OVL1; by hand (the states lane, round 28: fts_ovl2statics.cpp's copy, byte-exact): SOCOM II's throw limits' constructor (0.15, 600, 300, 0.6, 0.3) the initialiser 0x400870 calls for theCharacterDynamics+0x198 (m_throw_params, SOCOM 1's DWARF) -- SOCOM 1's initialiser stored the members itself; the constructor ours
+0x002CE1E0 0x28 __ct__Q217CharacterDynamics10cam_wiggleFv  # OVL1; by hand (the states lane, round 28: fts_ovl2statics.cpp's copy, byte-exact): SOCOM II's camera wiggle's constructor (22, 0.6, 0.1) the initialiser 0x400870 calls for theCharacterDynamics+0x18C (m_cam_wiggle, SOCOM 1's DWARF) -- SOCOM 1's initialiser stored the members itself; the constructor ours
 0x002CE210 0x68 __dt__Q23std260map<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,i,Q23std73less<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>>,Q23std95allocator<Q23std76pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,i>>>Fv  # OVL1; ~map<string, int> (the tree's destroy(root) inlined, then the delete flag): the destructor 0x400870 and __sinit_int_material.cpp register for their map statics -- the engine core lane's round 1 (renamed at integration)
 0x002CE280 0x264 destroy__Q23std481__tree<Q23std76pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,i>,Q33std260map<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,i,Q23std73less<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>>,Q23std95allocator<Q23std76pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,i>>>13value_compare,Q23std95allocator<Q23std76pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,i>>>FPQ33std481__tree<Q23std76pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,i>,Q33std260map<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,i,Q23std73less<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>>,Q23std95allocator<Q23std76pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,i>>>13value_compare,Q23std95allocator<Q23std76pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,i>>>4node  # OVL1; ours (the MSL headers round 5: include/tree's instance for std::map<std::string, int>, byte-exact or alike but for its callees' names as a probe, build/p/mat0.cpp in the MSL lane's worktree; the key a plain std::string -- ~pair<const string, int> passes -1 to ~basic_string -- and the int SOCOM 1's int_material.cpp map<string, int>; the material unit's clear 0x2DEDF0 calls this destroy, an earlier unit's copy)
 0x002CE4F0 0x58 __dt__Q23std76pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,i>Fv  # OVL1; ours (the MSL headers round 5: include/tree's instance for std::map<std::string, int>, byte-exact or alike but for its callees' names as a probe, build/p/mat0.cpp in the MSL lane's worktree; the key a plain std::string -- ~pair<const string, int> passes -1 to ~basic_string -- and the int SOCOM 1's int_material.cpp map<string, int>; the material unit's clear 0x2DEDF0 calls this destroy, an earlier unit's copy)
@@ -4357,10 +4357,10 @@
 0x002CE560 0x8 node_alloc__Q23std481__tree<Q23std76pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,i>,Q33std260map<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,i,Q23std73less<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>>,Q23std95allocator<Q23std76pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,i>>>13value_compare,Q23std95allocator<Q23std76pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,i>>>Fv  # OVL1; ours (the MSL headers round 5: include/tree's instance for std::map<std::string, int>, byte-exact or alike but for its callees' names as a probe, build/p/mat0.cpp in the MSL lane's worktree; the key a plain std::string -- ~pair<const string, int> passes -1 to ~basic_string -- and the int SOCOM 1's int_material.cpp map<string, int>; the material unit's clear 0x2DEDF0 calls this destroy, an earlier unit's copy)
 0x002CE570 0x24 destroy__Q23std95allocator<Q23std76pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,i>>FPQ23std76pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,i>  # OVL1; ours (the MSL headers round 5: include/tree's instance for std::map<std::string, int>, byte-exact or alike but for its callees' names as a probe, build/p/mat0.cpp in the MSL lane's worktree; the key a plain std::string -- ~pair<const string, int> passes -1 to ~basic_string -- and the int SOCOM 1's int_material.cpp map<string, int>; the material unit's clear 0x2DEDF0 calls this destroy, an earlier unit's copy)
 0x002CE5A0 0x8 alloc__Q23std481__tree<Q23std76pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,i>,Q33std260map<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,i,Q23std73less<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>>,Q23std95allocator<Q23std76pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,i>>>13value_compare,Q23std95allocator<Q23std76pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,i>>>Fv  # OVL1; ours (the MSL headers round 5: include/tree's instance for std::map<std::string, int>, byte-exact or alike but for its callees' names as a probe, build/p/mat0.cpp in the MSL lane's worktree; the key a plain std::string -- ~pair<const string, int> passes -1 to ~basic_string -- and the int SOCOM 1's int_material.cpp map<string, int>; the material unit's clear 0x2DEDF0 calls this destroy, an earlier unit's copy)
-0x002CE5B0 0x1B8 func_002CE5B0  # OVL1
+0x002CE5B0 0x1B8 func_002CE5B0  # OVL1; ovl-copy: reserve__Q23std108__vector_imp<Q217CharacterDynamics13CCameraParams,Q23std47allocator<Q217CharacterDynamics13CCameraParams>,0>FUi (the states lane, round 28: fts_ovl2statics.cpp's OVL1 copy of the camera list's reserve, byte-exact -- its temporary's destructor inlined, clear 0x2CE7F0 called; the forwarder 0x2CE170 jumps here; OVL2's seal_dyn.cpp copy 0x59D490 has the name)
 0x002CE770 0x8 clear__Q23std62__vector_deleter<10CZDecalDef,Q23std23allocator<10CZDecalDef>>Fv  # OVL1; by hand (the weapons lane's round 7, vetted by the integrator: 0x2CDB30 and the insert<CZDecalDef> 0x3D3D90 both call it)
-0x002CE780 0x68 func_002CE780  # OVL1
-0x002CE7F0 0x8 func_002CE7F0  # OVL1
+0x002CE780 0x68 func_002CE780  # OVL1; ovl-copy: __dt__Q23std110__vector_deleter<Q217CharacterDynamics13CCameraParams,Q23std47allocator<Q217CharacterDynamics13CCameraParams>>Fv (the states lane, round 28: fts_ovl2statics.cpp's OVL1 copy, byte-exact -- ~CharacterDynamics 0x2CE100 calls it with 0; OVL2's 0x59D640 has the name)
+0x002CE7F0 0x8 func_002CE7F0  # OVL1; ovl-copy: clear__Q23std110__vector_deleter<Q217CharacterDynamics13CCameraParams,Q23std47allocator<Q217CharacterDynamics13CCameraParams>>Fv (the states lane, round 28: fts_ovl2statics.cpp's OVL1 copy, byte-exact -- the deleter's clear for a trivially destructible element, called by 0x2CE780 and the reserve 0x2CE5B0; OVL2's 0x59D6B0 has the name)
 0x002CE800 0xDC func_002CE800  # OVL1
 0x002CE8E0 0x44 func_002CE8E0  # OVL1
 0x002CE930 0xA4 NetTickThreadEntry__FPv  # OVL1; s1:calls
@@ -4606,7 +4606,7 @@
 0x002DCDA0 0x280 GetIntersect__Q23zdb7CDIBBoxFPQ23zdb11DiIntersect  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x002DD020 0x8 GetAltitude__Q23zdb7CDIBBoxFPQ23zdb11DiIntersect  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x002DD030 0xF4 SetEdgeVecsAndNorm__Q23zdb3CDIFv  # OVL1; s1:calls
-0x002DD130 0x1C func_002DD130  # OVL1
+0x002DD130 0x1C LoadPlaneVU0__Q23zdb3CDIFv  # OVL1; ours, the core lane round 4 (SOCOM II's: the DI's points (0x10) loaded into vf4-vf6, three quadwords, and vcallms 0x70; the grid's node walks 0x2D2890 and 0x2D3030 call it with the DI)
 0x002DD150 0xC0 GetIntersect__Q23zdb7CDIPolyFPQ23zdb11DiIntersect  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x002DD210 0x9C func_002DD210  # OVL1
 0x002DD2B0 0x21C GetEdgeIntersectsY__Q23zdb3CDIFP6CPnt3DP6CPnt3D  # OVL1; s1:callee by hand (the zdb-world lane: GetIntersectedEdgePointsY calls it where SOCOM 1's calls GetEdgeIntersectsY, after LoadTipAndTail as there)
@@ -4639,7 +4639,7 @@
 0x002DEE30 0x60 compare__Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>CFRCQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>  # OVL1; ours (the MSL headers round 5: include/string's compare(const basic_string &), byte-exact as a probe -- the other's text and size in one short-first test, size() after, tail-jumping to compare(pos1, n1, s, n2); every string-keyed tree's comparator calls it and tests the sign, as SOCOM 1's map<CSaferStr,...> inlines it)
 0x002DEE90 0x194 insert_node_at__Q23std481__tree<Q23std76pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,i>,Q33std260map<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,i,Q23std73less<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>>,Q23std95allocator<Q23std76pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,i>>>13value_compare,Q23std95allocator<Q23std76pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,i>>>FPQ33std19__red_black_tree<1>9node_basebbRCQ23std76pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,i>  # OVL1; split by the integrator: ends at its jr ra (0x2DF01C, the frame popped in the delay slot), padded to 0x2DF030; ours (the MSL headers round 5: include/tree's instance for std::map<std::string, int>, byte-exact or alike but for its callees' names as a probe, build/p/mat0.cpp in the MSL lane's worktree; the key a plain std::string -- ~pair<const string, int> passes -1 to ~basic_string -- and the int SOCOM 1's int_material.cpp map<string, int>; the material unit's clear 0x2DEDF0 calls this destroy, an earlier unit's copy)
 0x002DF030 0x124 compare__Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>CFUiUiPCcUi  # OVL1; split from 0x2DEE90 by the integrator: a function reached only by the string compare 0x2DEE30's tail `j` (at 0x2DEE88), so the seed never cut it; ours (the MSL headers round 5: include/string's compare(pos1, n1, s, n2), byte-exact as a probe; SOCOM 1's compare__...CFUiUiPCcUi 0x14CF30 is the same code over the old string: "string compare: pos > len", min(size - pos1, n1), memcmp, -1/1/0)
-0x002DF160 0x3F4 func_002DF160  # OVL1
+0x002DF160 0x3F4 CircleSegmentClip__Q23zdb11CCircleClipFP6CPnt4DP6CPnt4DP6CPnt4DP6CPnt4DP6CPnt4DP6CPnt4DP6CPnt4DP6CPnt4DP6CPnt4DP6CPnt4DP6CPnt4DP6CPnt4D  # OVL1; s1:name by hand, the core lane round 4 (SOCOM 1's zdb::CCircleClip::CircleSegmentClip, 0x420 bytes at the demo's 0x220170 right after int_material.cpp's tree instances: the same twelve CPnt4D pointers, the same circle-segment clip with four sceVu0InterVector calls a branch; its one caller CZLineMap::Clip 0x20D5F0 calls it where SOCOM 1's Clip does); its own unit int_circleclip.cpp (the name ours)
 0x002DF560 0xD4 SyncGameClock__13CZOnlineLobbyFi  # OVL1; s1:calls
 0x002DF640 0xC MediusConnectionIndex__13CZOnlineLobbyFv  # OVL1; s1:calls by hand (the states lane: the network senders take the connection index through it where SOCOM 1's do)
 0x002DF650 0x4C UnInit__13CZOnlineLobbyFv  # OVL1; s1:callee
@@ -4680,8 +4680,8 @@
 0x002E0D90 0x28 __ct__Q23std53deque<11LOBBY_STATE,Q23std24allocator<11LOBBY_STATE>>Fv  # OVL1; tu: vis_mesh.cpp~ (1.0 beta); ours, the online lane round 10 (the state queue's default constructor: CZOnlineLobby() builds the queue's Container() temporary with it; open in include/deque, 0x30 against 0x28 -- the middle level 0x2E0DC0 the rdr editor's and vis unit's alike)
 0x002E0DC0 0x30 __ct__Q23std59__deque_buf<11LOBBY_STATE,Q23std24allocator<11LOBBY_STATE>>Fv  # OVL1; ours, the online lane round 10 (the state queue's empty block buffer, called by its default constructor; byte-exact)
 0x002E0DF0 0x18 func_002E0DF0  # OVL1
-0x002E0E10 0x27C func_002E0E10  # OVL1
-0x002E1090 0x384 func_002E1090  # OVL1
+0x002E0E10 0x27C do_assign<Q210Metrowerks105__convert_iterator<Q310Metrowerks56cdeque<P11LOBBY_STATE,Q23std25allocator<P11LOBBY_STATE>>8iterator,PCv>>__Q210Metrowerks34cdeque<PCv,Q23std14allocator<PCv>>FQ210Metrowerks105__convert_iterator<Q310Metrowerks56cdeque<P11LOBBY_STATE,Q23std25allocator<P11LOBBY_STATE>>8iterator,PCv>Q210Metrowerks105__convert_iterator<Q310Metrowerks56cdeque<P11LOBBY_STATE,Q23std25allocator<P11LOBBY_STATE>>8iterator,PCv>_v  # OVL1; ours, the online lane round 15 (the round-14 reading: cdeque<const void *>'s do_assign over the convert_iterator -- its only caller is cdeque<LOBBY_STATE *>'s init 0x2E0B40, as include/deque's init hands __convert_iterators to the base; it calls cdeque<PCv>::max_size 0x285CE0 out of line, as reserve does; the name zNetMedius.cpp emits; 0x1C4 against 0x27C)
+0x002E1090 0x384 do_assign<Q33std59__deque_imp<11LOBBY_STATE,Q23std24allocator<11LOBBY_STATE>>8iterator>__Q23std59__deque_imp<11LOBBY_STATE,Q23std24allocator<11LOBBY_STATE>>FQ33std59__deque_imp<11LOBBY_STATE,Q23std24allocator<11LOBBY_STATE>>8iteratorQ33std59__deque_imp<11LOBBY_STATE,Q23std24allocator<11LOBBY_STATE>>8iterator_v  # OVL1; ours, the online lane round 15 (the round-14 reading: the class deque's do_assign -- its only caller is deque<LOBBY_STATE>'s init 0x2E0830; the two operator++ copies 0x2E14E0/0x2E1480 called for ++first and ++i; its guarded max static is push_back 0x2E1610's (0x44F520/0x3F3A58): the original's static lives in an inline both expand, max_size() as cdeque<PCv>'s 0x285CE0 holds its own; the name zNetMedius.cpp emits; 0x36C against 0x384)
 0x002E1420 0x38 func_002E1420  # OVL1
 0x002E1460 0x14 func_002E1460  # OVL1
 0x002E1480 0x58 func_002E1480  # OVL1
@@ -4917,11 +4917,11 @@
 0x002F11F0 0x4C func_002F11F0  # OVL1
 0x002F1240 0x1AC func_002F1240  # OVL1
 0x002F13F0 0x278 func_002F13F0  # OVL1
-0x002F1670 0x2E0 func_002F1670  # OVL1
-0x002F1950 0x28 func_002F1950  # OVL1
+0x002F1670 0x2E0 UpdateRoomPlayerListDisplay__Fv  # OVL1; s1:calls by hand, the online lane round 15 (SOCOM 1's UpdateRoomPlayerListDisplay 0x32DDE0: its cbRoomPlayerList calls it on the last page as SOCOM II's 0x2F13F0 does, and it builds the same room player list -- SOCOM II sorts it first and adds the clan tags; zNetMediusChat.cpp, byte-exact)
+0x002F1950 0x28 PlayerNameLess__FR10RoomPlayerR10RoomPlayer  # OVL1; ours, the online lane round 15 (the room players' sort comparator: strcmp of the account names <= 0 -- the third argument of the std::sort<RoomPlayer> call in 0x2F1670, the instance's mangled name's PFR10RoomPlayerR10RoomPlayer_b; zNetMediusChat.cpp, a file static, byte-exact)
 0x002F1980 0xDB8 sort<Q33std60__vector_imp<10RoomPlayer,Q23std23allocator<10RoomPlayer>,0>8iterator,PFR10RoomPlayerR10RoomPlayer_b>__3stdFQ33std60__vector_imp<10RoomPlayer,Q23std23allocator<10RoomPlayer>,0>8iteratorQ33std60__vector_imp<10RoomPlayer,Q23std23allocator<10RoomPlayer>,0>8iteratorPFR10RoomPlayerR10RoomPlayer_b_v  # OVL1; ours (the MSL headers round 6: include/algorithm's std::sort, SOCOM 1's MSL; sort of the chat unit's room players (0x2F1670 calls it; SOCOM 1's _roomplayer_sort_aux by address, R/R non-const); the probe build/p6/chat.cpp; byte-exact as written, its shuffle static's relocations aside)
-0x002F2740 0x64C func_002F2740  # OVL1
-0x002F2D90 0x64C func_002F2D90  # OVL1
+0x002F2740 0x64C erase__Q23std60__vector_imp<10RoomPlayer,Q23std23allocator<10RoomPlayer>,0>FP10RoomPlayer  # OVL1; ours, the online lane round 15 (the room players' one-element erase: func_002F13F0's last-page walk drops each player at state 0 through it, the result stored back into the walk's iterator; include/vector's out-of-class T *erase(T *), zNetMediusChat.cpp's tail, byte-exact)
+0x002F2D90 0x64C insert__Q23std60__vector_imp<10RoomPlayer,Q23std23allocator<10RoomPlayer>,0>FP10RoomPlayerUiRC10RoomPlayer  # OVL1; ours, the online lane round 15 (the room players' class-vector insert(pos, n, x): func_002F13F0 pushes a new player through it -- (vector, data + size, 1, the response), include/vector's push_back; zNetMediusChat.cpp's tail; 59 instructions off, the class insert's open register question)
 0x002F33E0 0x7A4 __sort132<Q33std60__vector_imp<10RoomPlayer,Q23std23allocator<10RoomPlayer>,0>8iterator,PFR10RoomPlayerR10RoomPlayer_b>__3stdFQ33std60__vector_imp<10RoomPlayer,Q23std23allocator<10RoomPlayer>,0>8iteratorQ33std60__vector_imp<10RoomPlayer,Q23std23allocator<10RoomPlayer>,0>8iteratorQ33std60__vector_imp<10RoomPlayer,Q23std23allocator<10RoomPlayer>,0>8iteratorPFR10RoomPlayerR10RoomPlayer_b_v  # OVL1; ours (the MSL headers round 6: include/algorithm's std::sort, SOCOM 1's MSL; __sort132 of the chat unit's room players (0x2F1670 calls it; SOCOM 1's _roomplayer_sort_aux by address, R/R non-const); the probe build/p6/chat.cpp; byte-exact as written, its shuffle static's relocations aside)
 0x002F3B90 0x34C __selection_sort<Q33std60__vector_imp<10RoomPlayer,Q23std23allocator<10RoomPlayer>,0>8iterator,PFR10RoomPlayerR10RoomPlayer_b>__3stdFQ33std60__vector_imp<10RoomPlayer,Q23std23allocator<10RoomPlayer>,0>8iteratorQ33std60__vector_imp<10RoomPlayer,Q23std23allocator<10RoomPlayer>,0>8iteratorPFR10RoomPlayerR10RoomPlayer_b_v  # OVL1; ours (the MSL headers round 6: include/algorithm's std::sort, SOCOM 1's MSL; __selection_sort of the chat unit's room players (0x2F1670 calls it; SOCOM 1's _roomplayer_sort_aux by address, R/R non-const); the probe build/p6/chat.cpp; byte-exact as written, its shuffle static's relocations aside)
 0x002F3EE0 0x8 func_002F3EE0  # OVL1
@@ -5337,8 +5337,8 @@
 0x0030E3A0 0x8 func_0030E3A0  # OVL1
 0x0030E3B0 0x10 func_0030E3B0  # OVL1
 0x0030E3C0 0x10 func_0030E3C0  # OVL1
-0x0030E3D0 0x18 func_0030E3D0  # OVL1
-0x0030E3F0 0x18 func_0030E3F0  # OVL1
+0x0030E3D0 0x18 __ct__19CZBroadcastScheduleFUi18NetThresholdMethodPFP15NetFieldCompare_bUc  # OVL1; ours, the online lane round 15 (the game states' round-27 request: the broadcast schedule's compare-function constructor, SOCOM II's -- the function stored where the threshold goes, the byte at 0xC; __sinit_fts_remote.cpp builds the two position schedules with func_002BD270; zNetDme.cpp, byte-exact)
+0x0030E3F0 0x18 __ct__19CZBroadcastScheduleFUi18NetThresholdMethodfUc  # OVL1; ours, the online lane round 15 (the game states' round-27 request: the broadcast schedule's threshold constructor -- SOCOM 1's __ct__19CZBroadcastScheduleFUi18NetThresholdMethodd 0x322300, the last own function of its zNetDme.cpp right before ~CZNetwork as here; the double now a float in $f12 and a byte parameter stored at 0xC where SOCOM 1 zeroed it; __sinit_fts_remote.cpp builds sixteen statics with it; zNetDme.cpp, byte-exact)
 0x0030E410 0x78 __dt__9CZNetworkFv  # OVL1; ours, the online lane round 10 (CZNetwork's implicit destructor, the two lists' __list_imp destructors called: __sinit_zNetDme.cpp registers it for theNetwork, as SOCOM 1's registers its; byte-exact)
 0x0030E490 0xA8 func_0030E490  # OVL1
 0x0030E540 0x10 func_0030E540  # OVL1
@@ -5679,7 +5679,7 @@
 0x003247A0 0x7C ReleaseVector<Q23zdb10CTexHandle>__FRQ23std66vector<PQ23zdb10CTexHandle,Q23std30allocator<PQ23zdb10CTexHandle>>_v  # OVL1; the rdr lane: zonline.h's ReleaseVector on m_dyntexlist's textures (0x45C460): FlushDynTexList calls it first
 0x00324820 0xBC Close__8ParticleFv  # OVL1; s1:order by hand (SOCOM 1's Close, after FlushDynTexList: the dynamic textures freed, Source::List and Instance::List Uninit, the pool emptied through the destructor, RemoveTask("ParticleTick"), the node pool freed -- SOCOM II adds the purge 0x326FF0 and calls FreeNodePool) -- the rdr lane
 0x003248E0 0xE4 FreeNodePool__8ParticleFv  # OVL1; s1:order by hand (SOCOM 1's FreeNodePool, after Close in its unit: every pooled node through CNode::Delete, the count zeroed, the vector swapped empty; SOCOM II's Close calls it last) -- the rdr lane
-0x003249D0 0x34 func_003249D0  # OVL1
+0x003249D0 0x34 ReserveNodePool__8ParticleFv  # OVL1; s1:calls -- SOCOM 1's Particle::ReserveNodePool, which CMission::ReOpen_Load 0x2ABD40 calls at the place SOCOM 1's does (the game states' round 28, renamed at integration)
 0x00324A10 0x50 AddDynTexture__8ParticleFPQ23zdb10CTexHandle  # OVL1; s1:exact
 0x00324A60 0xC func_00324A60  # OVL1
 0x00324A70 0xAC Tick__8ParticleFfPv  # OVL1; s1:align
@@ -7887,14 +7887,14 @@
 0x003B76B0 0x214 func_003B76B0  # OVL1
 0x003B78D0 0x2B4 func_003B78D0  # OVL1
 0x003B7B90 0x100 DrawLOD__Q23zdb7CVisualFPQ23zdb9CLOD_bandfPf  # OVL1; s1:align
-0x003B7C90 0x60 __dt__8CVisBaseFv  # OVL1; s1:align
+0x003B7C90 0x60 __dt__Q23std33deque<PCv,Q23std14allocator<PCv>>Fv  # OVL1; s1:align; the MSL headers round 18 (the weapons' round 19 request): NOT ~CVisBase -- the pointer deque's base destructor, one this-tested level (~__deque_imp<PCv> inlined) then ~__deque_buf<PCv> 0x2CEFB0 called with 0, as include/deque's chain; ~stack<Pv> 0x3B7D50 calls it; vis_vu.cpp's tail emits it byte-exact once the unit defines CVisual::m_stack_vid
 0x003B7CF0 0x58 __ct__Q23zdb10AddonPointFv  # OVL1; s1:exact
-0x003B7D50 0x60 __dt__Q23std49stack<Ui,Q23std31deque<Ui,Q23std13allocator<Ui>>>Fv  # OVL1; s1:align; renamed at integration 2026-11-04: the stack's destructor -- __sinit_vis_vu.cpp 0x404570 registers it for m_stack_vid (the initialiser research); the s1:align name ~CProjectedMapVector moved to 0x320660
-0x003B7DB0 0x78 func_003B7DB0  # OVL1; s1:align; renamed at integration 2026-11-04: NOT the stack's destructor -- the deque copy (__sinit_vis_vu.cpp 0x404570 copies a temporary deque into m_stack_vid through it; the integrator's initialiser research, build/scratch/sinit/report.txt); its real name is the weapons lane's to give
-0x003B7E30 0xB0 func_003B7E30  # OVL1
-0x003B7EE0 0x5C func_003B7EE0  # OVL1
-0x003B7F40 0x5C func_003B7F40  # OVL1
-0x003B7FA0 0x28 func_003B7FA0  # OVL1; tu: vis_mesh.cpp~ (1.0 beta)
+0x003B7D50 0x60 __dt__Q23std49stack<Pv,Q23std31deque<Pv,Q23std13allocator<Pv>>>Fv  # OVL1; s1:align; renamed at integration 2026-11-04: the stack's destructor -- __sinit_vis_vu.cpp 0x404570 registers it for m_stack_vid (the initialiser research); the s1:align name ~CProjectedMapVector moved to 0x320660; the MSL headers round 18 (the weapons' round 19 request, settled): stack<Pv>, not stack<Ui> -- the destructor __sinit_vis_vu.cpp registers for m_stack_vid inlines ~deque<Pv> and calls ~deque<PCv> 0x3B7C90 (the POINTER deque's base, which a deque<Ui> would not have), as the rows 0x321EF0/0x321F40 (stack<Pv>'s top/empty) say; a plain std::stack<void *> static compiles to it byte for byte (build/p18/vis/stk.cpp)
+0x003B7DB0 0x78 __ct__Q23std31deque<Pv,Q23std13allocator<Pv>>FRCQ23std31deque<Pv,Q23std13allocator<Pv>>  # OVL1; s1:align; renamed at integration 2026-11-04: NOT the stack's destructor -- the deque copy (__sinit_vis_vu.cpp 0x404570 copies a temporary deque into m_stack_vid through it; the integrator's initialiser research, build/scratch/sinit/report.txt); its real name is the weapons lane's to give; the MSL headers round 18: deque<void *>'s copy constructor (include/deque's: base(x.alloc()) -- 0x3340E0, 0x333D90 --, the allocator base 0x2CEE30, x.begin() 0x3B7F40, x.end() 0x3B7EE0, init 0x3B7E30), what __sinit_vis_vu.cpp copies the temporary into m_stack_vid through; vis_vu.cpp's tail emits it byte-exact
+0x003B7E30 0xB0 init<Q33std39__deque_imp<PCv,Q23std14allocator<PCv>>8iterator>__Q23std31deque<Pv,Q23std13allocator<Pv>>FQ33std39__deque_imp<PCv,Q23std14allocator<PCv>>8iteratorQ33std39__deque_imp<PCv,Q23std14allocator<PCv>>8iteratorQ23std20forward_iterator_tag_v  # OVL1; the MSL headers round 18: deque<void *>'s range init, called by its copy constructor 0x3B7DB0, handing the two iterators converted to the base's do_assign 0x3B8000 (the rdr editor's 0x333BB0 alike; OPEN: 0x88 against 0xB0)
+0x003B7EE0 0x5C end__Q23std31deque<Pv,Q23std13allocator<Pv>>CFv  # OVL1; the MSL headers round 18: deque<void *>::end() const -- make_iterator(size_) 0x334AA0 copied out (the rdr editor's 0x333CD0 alike); the copy constructor 0x3B7DB0 calls it; vis_vu.cpp's tail emits it byte-exact
+0x003B7F40 0x5C begin__Q23std31deque<Pv,Q23std13allocator<Pv>>CFv  # OVL1; the MSL headers round 18: deque<void *>::begin() const -- make_iterator(0) 0x334AA0 copied out (the rdr editor's 0x333D30 alike); the copy constructor 0x3B7DB0 calls it; vis_vu.cpp's tail emits it byte-exact
+0x003B7FA0 0x28 func_003B7FA0  # OVL1; tu: vis_mesh.cpp~ (1.0 beta); the MSL headers round 18: deque<void *>'s default constructor, __ct__Q23std31deque<Pv,Q23std13allocator<Pv>>Fv (__sinit_vis_vu.cpp builds the stack's temporary with it; it calls the middle level 0x334120 as the rdr editor's deque() 0x3340F0 does) -- left unnamed while only its draft matches it (vis_vu.cpp's copy is 0x30 against 0x28, include/deque's open default-constructor level): rename it with the draft's re-emission
 0x003B7FD0 0x30 __ct__Q23zdb15tag_GlobalLightFv  # OVL1; s1:exact
 0x003B8000 0x3A4 func_003B8000  # OVL1
 0x003B83B0 0x14 func_003B83B0  # OVL1
@@ -10103,7 +10103,7 @@
 0x00557DC0 0x4C __pl__6CPnt3DCFRC6CPnt3D  # OVL2; s1:exact
 0x00557E10 0x48 __ml__6CPnt3DCFf  # OVL2; s1:exact
 0x00557E60 0x2C func_00557E60  # OVL2
-0x00557E90 0x4C func_00557E90  # OVL2
+0x00557E90 0x4C __mi__6CPnt3DCFRC6CPnt3D  # OVL2; by hand (the SEALs, round 24): CPnt3D's const operator- by value, the same shape as the + at 0x557DC0 (s1:exact) around Sub -- OVL2's copy after its first caller 0x557190, as zmath.h declares it
 0x00557EE0 0x50 SetDoAiMapCollide__11CSealCtrlAiFb  # OVL2; slot 0xB4 of __vt__11CSealCtrlAi (CSealCtrl's SetDoAiMapCollide at 0x592030 in the base): off whenever the byte at 0x3F4 is 7, the bit stored only when it changes (the SEAL lane, round 3)
 0x00557F30 0x2C func_00557F30  # OVL2
 0x00557F60 0xC8 func_00557F60  # OVL2
@@ -10320,8 +10320,8 @@
 0x00574AE0 0x50 StopAiSound__11CSealCtrlAiF8AI_SOUND  # OVL2; s1:order by hand (SOCOM 1's StopAiSound__11CSealCtrlAiF8AI_SOUND word for word bar the statics' gp addressing: the indexed instance stopped and cleared; UpdateAiMapLoc calls it -- the SEAL lane, round 8)
 0x00574B30 0x70 PlayAiSound__11CSealCtrlAiF8AI_SOUND  # OVL2; s1:order by hand (SOCOM 1's PlayAiSound__11CSealCtrlAiF8AI_SOUND, after StopAiSound as here, word for word bar the gp addressing: the indexed sound played (PlaySound, slot 0xC, with 0 and 255) unless its instance plays -- the SEAL lane, round 8)
 0x00574BA0 0x24 SetAiAccuracyAngle__11CSealCtrlAiFf  # OVL2; s1:calls by hand (SOCOM 1's SetAiAccuracyAngle__11CSealCtrlAiFf: CCharacterType::Open calls it in both builds; the same body, tanf of the angle into aiAccuracyAngle (0x3DF180, SOCOM 1's gp variable), after PlayAiSound(AI_SOUND) in both builds -- the integrator's lead) -- the SEAL lane, round 12
-0x00574BD0 0x54 func_00574BD0  # OVL2
-0x00574C30 0x2C0 func_00574C30  # OVL2
+0x00574BD0 0x54 ReleaseDatabaseHandles__11CSealCtrlAiFv  # OVL2; s1:order by hand (the SEALs, round 24, the integrator's lead from the kit's round 25): SOCOM 1's ReleaseDatabaseHandles__11CSealCtrlAiFv -- its two memsets (the loops' sounds and instances) and CloseDiPool in the same order, SOCOM II's callouts (0x607560) and CAiGroup::DeleteAll around them
+0x00574C30 0x2C0 AcquireDatabaseHandles__11CSealCtrlAiFv  # OVL2; s1:order by hand (the SEALs, round 24, the integrator's lead from the kit's round 25): SOCOM 1's AcquireDatabaseHandles__11CSealCtrlAiFv -- its two GetSoundByName and OpenDiPool, then the doze count and time reset, as SOCOM 1's; SOCOM II adds the callouts, the difficulty, the radio valves, the tuning, the slices and the idle kinds
 0x00574EF0 0x1A8 func_00574EF0  # OVL2
 0x005750A0 0xC func_005750A0  # OVL2
 0x005750B0 0xC func_005750B0  # OVL2
@@ -10763,7 +10763,7 @@
 0x005A33B0 0x1B8 HandleBloodDrip__10CZSealBodyFf  # OVL2; s1:calls
 0x005A3570 0x434 func_005A3570  # OVL2
 0x005A39B0 0x198 HandleFootfallSound__10CZSealBodyFP6CPnt3D  # OVL2; s1:order by hand (the SEAL lane, round 19: SOCOM 1's HandleFootfallSound__10CZSealBodyFP6CPnt3D, after HandleBloodDrip and HandleSealStep in both builds; the same material bound and bounds-checked read of CMaterialExArray's list, GetStance(false) == prone, the throttles within a half, the sound's PlaySound3D slot at the point; SOCOM II tests a third throttle and plays it flat for a player in first person)
-0x005A3B50 0x58 func_005A3B50  # OVL2
+0x005A3B50 0x58 Uninit_ReInitDatabaseHandles__10CZSealBodyFv  # OVL2; s1:order by hand (the SEALs, round 24, the integrator's lead from the game states' round 28): SOCOM 1's Uninit_ReInitDatabaseHandles__10CZSealBodyFv -- its words cleared, the buffer freed and zeroed, RemoveWeaponEventCallback of HandleWeaponEvent, in SOCOM 1's order; CMission::ReOpen_Unload1 calls it where SOCOM 1's does, UninitDatabaseHandles 0x5A3BB0 inlines it (seal_env.cpp)
 0x005A3BB0 0xA8 UninitDatabaseHandles__10CZSealBodyFv  # OVL2; s1:calls by hand (SOCOM 1's UninitDatabaseHandles__10CZSealBodyFv: _free of a buffer, the blood decals' vector emptied through the deleter's constructor, clear, swap and destructor on a stack temporary, a second buffer freed, RemoveWeaponEventCallback of the same callback, 0x5A4F80; SOCOM II zeroes three counts; seal_env.cpp)
 0x005A3C60 0x60 func_005A3C60  # OVL2; the MSL headers round 17: OVL2's ~vector<CZDecalDef> (two this-tests, the deleter's destructor 0x5B7920 called) -- UninitDatabaseHandles' FreeVector temporary; ovl-copy: __dt__Q23std52vector<10CZDecalDef,Q23std23allocator<10CZDecalDef>>Fv
 0x005A3CC0 0x40 swap__Q23std62__vector_deleter<10CZDecalDef,Q23std23allocator<10CZDecalDef>>FRQ23std62__vector_deleter<10CZDecalDef,Q23std23allocator<10CZDecalDef>>  # OVL2; by hand (the MSL headers round 17): the deleter's member swap out of line (the free swap inlined: this test, capacity, data, size) -- UninitDatabaseHandles' FreeVector, byte-exact (fts_mission.cpp's 0x2ABA60 alike)
@@ -11216,7 +11216,7 @@
 0x005D90E0 0x188 Begin__6CTHoldFP14_zanim_cmd_hdr  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::HOLD's begin (the first command so registered); SOCOM 1's RegisterCommands passes CTHold's begin for ai::HOLD
 0x005D9270 0x1B8 Parse__6CTHoldFP5_zrdr  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::HOLD's parse (the first command so registered); SOCOM 1's RegisterCommands passes CTHold's parse for ai::HOLD
 0x005D9430 0x104 End__7CTGroupFP14_zanim_cmd_hdr  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::GROUP's end (the first command so registered); the class name ours, after the command (SOCOM II's, absent from SOCOM 1)
-0x005D9540 0xE8 func_005D9540  # OVL2
+0x005D9540 0xE8 __dt__13CMallocBlocksFv  # OVL2; ~CMallocBlocks (the class name the game states'): __sinit_fts_ovl2statics.cpp 0x400870 registers it for the vector at 0x44CD20, so it is out of line in OVL2 -- the destructor the kit's round 23 found nothing calls (a pointer vector's elements freed from the back); with this name the initialiser is byte-exact (the game states' round 28, renamed at integration)
 0x005D9630 0x70 func_005D9630  # OVL2
 0x005D96A0 0x40 func_005D96A0  # OVL2
 0x005D96E0 0x8 func_005D96E0  # OVL2
@@ -13352,7 +13352,7 @@
 0x00668680 0x8C __sinit_ai_path.cpp  # OVL2 data area; a static initialiser; the AI core round 22: ai_path.cpp's initialiser (between ai_map.cpp's 0x668630 and ai_maps.cpp's 0x668710 in the table, as the units link): it builds CAiMapLoc::invalid (.data 0x65AED0, just ahead of s_preemptPriority and PrintPath's strings) through CAiMapLoc's three-field constructor, every field's bits set; byte-exact from ai_path.cpp
 0x00668710 0xB4 __sinit_ai_maps.cpp  # OVL2 data area; a static initialiser; the AI core round 22: SOCOM 1's __sinit_ai_maps.cpp (the demo's 0x46A370: the same members built in the same order -- the list, the spores, __construct_array over the six name tables and the seven region lists, the graph and the cookie zeroed -- and ~CAiMaps registered) builds AiMaps 0x66A1B0
 0x006687D0 0x8 func_006687D0  # OVL2 data area; a static initialiser
-0x006687E0 0x158 func_006687E0  # OVL2 data area; a static initialiser
+0x006687E0 0x158 __sinit_seal_ai.cpp  # OVL2 data area; a static initialiser; by hand (the SEALs, round 24, the integrator's lead from the AI core's round 22): seal_ai.cpp's initialiser -- it builds the AI's five frame slices (OVL2 bss 0x66B060-0x66B0FF, 0x20 apart) that CSealCtrlAi::PreTick, 0x558640, 0x56D2B0 and 0x574C30 read, in the ctors table between ai_maps.cpp's and __sinit_seal_body.cpp
 0x00668940 0x29C __sinit_seal_body.cpp  # OVL2 data area; a static initialiser; s1:unit by hand (the SEAL lane, round 17: SOCOM 1's __sinit_seal_body.cpp builds newanims through the RTList constructor, registers ~CActiveAnimList and stores the ten throw offsets' same values; SOCOM II adds three offsets first and drops the CSTable)
 0x00668BE0 0x30 func_00668BE0  # OVL2 data area; a static initialiser; s1~ node_util.cpp (names 0.53); the same words as __sinit_node_util.cpp (0x402960) bar the link's addresses (tools/ovlcopies.py) -- identical code, not proven the same instance (template instances for different types and look-alike accessors share bodies)
 0x00668C10 0x194 func_00668C10  # OVL2 data area; a static initialiser; s1~ seal_control.cpp (shape 0.20, a hint)

@@ -87,8 +87,8 @@ int audioDecSendToIOP(AudioDec *ad);
 
 /* ldimage.cpp */
 void loadImage(unsigned int *tags);
-int setLoadImageTagsYX(unsigned int *tags, void *image, int bw, int x, int y, unsigned int dbp);
-int setLoadImageTags(unsigned int *tags, void *image, int x, int y, unsigned int dbp);
+void setLoadImageTagsYX(unsigned int *tags, void *image, int bw, int x, int y, unsigned int dbp);
+void setLoadImageTags(unsigned int *tags, void *image, int x, int y, unsigned int dbp);
 
 /* strfile.cpp */
 int strFileOpen(const char *name);

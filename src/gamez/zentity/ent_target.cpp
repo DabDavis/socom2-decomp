@@ -34,7 +34,8 @@ void CEntity::SetUpdateTargetList(bool on)
  * on the stack and reads every member through it (a local copy of it reads the flag from a0).
  * OPEN (right size, 8 instructions): only the temporaries' stack slots -- the target's binder
  * copy at sp+76 and the push_backs' end iterators 4 bytes lower than these; the find written
- * straight into the test is longer (its begin()/end() a level deeper, partly out of line) */
+ * straight into the test is longer (its begin()/end() a level deeper, partly out of line); the
+ * found iterator assigned instead (round 4: the CZAnimArgList getters' shape) is 0x168 */
 void CEntity::SetIncludeInTargetList(bool on)
 {
     if (on == m_include_in_targetlist)

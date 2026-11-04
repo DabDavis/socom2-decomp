@@ -1208,7 +1208,17 @@ void __vector_imp<T, Allocator, IsPOD>::reserve(unsigned int n)
  * size(), is_long() -- and at level 5 three of those levels must not exist in the original. Each is
  * evidenced elsewhere (the turret's helper calls, OVL1's `j assign` operator= copy 0x32FD70, the three
  * this-tests of the piece's destructor that put CSaferStr between it and the string), so no header
- * shape found serves this instance at 5: left as it was (README "Level 6, or 8?") */
+ * shape found serves this instance at 5: left as it was (README "Level 6, or 8?").
+ * MEASURED (the MSL headers round 18, the UI's request: erase<CSaferStr> 0x383BC0, two saved registers
+ * swapped; build/p18/e/, untracked): the target colours the end FIRST (s0) and the count and the destroy
+ * cursor after it (s1) -- igdump: here p (degree 25, deferred) is coloured ahead of e, the order the
+ * spill-cost pick sets once every node is at K. `iterator e = end();` (the end a scalarised class
+ * object, numbered after the named locals) makes the string-element erases byte-exact (CSaferStr's,
+ * CDlgDesignModel's 0x384BD0, zrdr_parse.cpp's zrdr_sym erase) and loses 28 others (ActionItem's, the AI
+ * maps' eight, the weapons' and the vis data's: 9232 -> 9209 over every hand-written unit), whose ends
+ * want the plain local's low number -- the end's place is per ELEMENT (the elements whose destructor
+ * inlines a string's free), as the insert's is. `end().m_p`, data() and a later declaration change
+ * nothing or lose more: left as it was */
 template <class T, class Allocator, bool IsPOD>
 T *__vector_imp<T, Allocator, IsPOD>::erase(T *first, T *last)
 {
