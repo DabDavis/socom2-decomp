@@ -2060,6 +2060,23 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the game states, round 34** (fts_net_seal.cpp complete, ezctl.c's dmaIOP, the stealth rating to 2):
+  - variables at or over K wait for the same simplify sweep and are then coloured highest-index first: a `const` copy of a
+    parameter, numbered after another local, takes the register the target gives the parameter (`const int c = client;`
+    right after the uninitialised `int t;`: CZSealState::RemoteSealPostUpdateCallback 0x2BE020, fts_net_seal.cpp 17 of 17);
+  - a clamp written as a ternary (`x = x < 0 ? 0 : x;`) leaves its join unpadded, the if-statement form pads it to 8 (the
+    stealth rating 0x1F3290: 48 -> 2 off with a dead first definition `int alarms = 0;` -- the 2 a delay slot, MW's `li
+    s2,35` against the target's addiu of the name); a constant assigned to a named local just before a call lands in the
+    jal's delay slot whatever its numbering (the image's only matched counter-example: SkbHangulRestart 0x3914C8);
+  - MW forwards a single-use local's pure expression to its use through inline out-parameters, local structs, references
+    and inline by-value parameters alike (AddMission 0x1F1FB0's percentages stay at their uses); a select over a scalar
+    copy of a member becomes a single branch with the default in the delay slot, through a reference it keeps both arms
+    and the shared load becomes a late code-generation temporary (0x2C6290);
+  - GCC 2.96: an else arm with its own return schedules the call's `li a1,1` after the other argument registers, a shared
+    return puts it first (ezctl.c, the SOCOM 1 demo's code: dmaIOP 0x1E8F28 byte-exact, ezNetCtlSetProperties 3 off);
+  - CMission's +0xE0 m_timer is SOCOM 1's float in fts_mission.cpp too; database.cpp's CVisual texture statics and the
+    string stand-in's template replace are called by name -- respells proved by relocation targets compared by map
+    address (build/scratch/states-r34/objcmp_addr.py).
 - **Tells from the engine core, round 11** (the entity's target list and its vector<CTarget> tail, TestCellMid, ActivateExV):
   - A HOISTED LOOP INVARIANT MAKES A PREHEADER AFTER THE FUNCTION'S END: when MW hoists a value set inside a loop body (a
     local holding a global list's end(), assigned in the body), it lays the preheader after the function's last block and
