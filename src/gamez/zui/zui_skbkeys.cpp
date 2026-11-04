@@ -479,6 +479,22 @@ int SkbEnterKana(CSoftKeyboard *skb)
     return 1;
 }
 
+/* the byte length of the character at a byte offset of the text being edited -- string 0's while it
+ * is edited, else string 1's with string 2's after it when string 2 has any (0x39A790; the name
+ * ours: 0x398C40 calls it) -- the string default-built, then assigned (the target zeroes its words
+ * before it reads the text), the test a ternary into a bool local (materialised, andi at the join) */
+int SkbEditCharLen(int pos)
+{
+    CSaferStr text;
+
+    text = ShownText(EditString());
+    bool more = s_textSel ? false : HasChar(ShownText(&s_textString2));
+
+    if (more)
+        text += ShownText(&s_textString2);
+    return CharLen(text.c_str() + pos);
+}
+
 /* the text cursor put at a place (0x395120, the display unit's: its node's position) */
 extern "C" void func_00395120(float x, float y);
 

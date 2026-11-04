@@ -7492,7 +7492,7 @@
 0x0039A3F0 0x8 func_0039A3F0  # OVL1
 0x0039A400 0x1B0 func_0039A400  # OVL1
 0x0039A5B0 0x1DC func_0039A5B0  # OVL1
-0x0039A790 0x138 func_0039A790  # OVL1
+0x0039A790 0x138 SkbEditCharLen__Fi  # OVL1; ours (the UI lane round 17: the byte length (UTF8CharLen) of the character at a byte offset of the edited text -- string 0's while it is edited (0x4A1330), else string 1's with string 2's appended when it has any; 0x398C40 calls it; zui_skbkeys.cpp)
 0x0039A8D0 0x424 func_0039A8D0  # OVL1
 0x0039AD00 0xC func_0039AD00  # OVL1
 0x0039AD10 0x8 func_0039AD10  # OVL1
