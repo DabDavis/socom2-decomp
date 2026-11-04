@@ -446,7 +446,8 @@ struct CONE {
  * GetId(), and a switch on the local or the field (lbu, a compare chain 8 bytes longer) all
  * fold. Tried for (1): `damage = damage * (...)`, the product reversed, `/ 0.5f`, brackets, the
  * product, the difference or the factor in a variable, `r` and `dist` declared apart, a radius
- * variable */
+ * variable. Round 18: the switch with its cases in either order (159 first: 125 off; the claymore
+ * first: 0x4D8), `r -= 0.5f`, `t = r - 0.5f` and `k = 2.0f * (r - 0.5f)` locals change nothing */
 float CZProjectile::GetDamage(const CPnt3D *pos, float minimum)
 {
     float damage;
