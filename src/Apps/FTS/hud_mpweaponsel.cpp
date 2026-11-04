@@ -11,6 +11,7 @@
  * Defined in reverse of their image order (-inline deferred). */
 
 #include "../../gamez/ztwod/ztwod.h"
+#include "../../gamez/zinput/zinput.h"
 #include "hud_weaponsel.h"
 
 /* the selector's own update (no row named yet) */
@@ -458,18 +459,51 @@ void CMPWeaponCategories::SetWeapon(CZWeapon *weapon)
     m_index = list.GetWeaponIndex(weapon);
     m_type = weapon->GetIDType();
     if (CZWeapon::IsPrimary(weapon->m_item))
-        m_kind = 0;
+        m_kind = KIND_PRIMARY;
     else if (CZWeapon::IsSecondary(weapon->m_item))
-        m_kind = 1;
+        m_kind = KIND_SECONDARY;
     else
-        m_kind = 2;
+        m_kind = KIND_OTHER;
     if (weapon->m_item == EQUIP_NONE) {
         m_type = EQUIP_NONE;
         m_index = list.GetWeaponIndex(list.GetWeapon((EQUIP_ITEM)121));
-        m_kind = 2;
+        m_kind = KIND_OTHER;
     }
 }
 #pragma auto_inline reset
+
+/* the arrows' pulse, in colour blends a second (0x3DCEA8, the unit's float pool; the name ours) */
+static float s_arrowpulserate = 2.0f;
+
+/* the page's arrows pulsed between grey and yellow: the blend runs up to 1 and back down to 0, two
+ * a second, each arrow given the blended colour (0x23D2B0; the name ours -- the selector's tick
+ * 0x240600 calls it) */
+void CMPWeaponCategories::TickArrows(float dT)
+{
+    static CPnt3D s_lo(80.0f, 80.0f, 80.0f);
+    static CPnt3D s_hi(255.0f, 255.0f, 128.0f);
+
+    if (m_pulseup) {
+        m_pulse += dT * s_arrowpulserate;
+        if (m_pulse >= 1.0f) {
+            m_pulse = 1.0f;
+            m_pulseup = false;
+        }
+    } else {
+        m_pulse -= dT * s_arrowpulserate;
+        if (m_pulse <= 0.0f) {
+            m_pulse = 0.0f;
+            m_pulseup = true;
+        }
+    }
+
+    float r = s_lo.x + m_pulse * (s_hi.x - s_lo.x);
+    float g = s_lo.y + m_pulse * (s_hi.y - s_lo.y);
+    float b = s_lo.z + m_pulse * (s_hi.z - s_lo.z);
+
+    for (int i = 0; i < 4; i++)
+        m_polys[i].SetColor(r, g, b);
+}
 
 /* whether the page's arrows are hidden (bss 0x4147C0, a byte; the name ours) */
 static bool s_noarrows;
@@ -487,6 +521,74 @@ void CMPWeaponCategories::ShowArrows()
 
     for (int i = 0; i < 4; i++)
         m_polys[i].SetColor(s_grey.x, s_grey.y, s_grey.z);
+}
+
+/* a button's state as the controller unit reads it (OVL1 0x2C64E0, by address: hud_tcmtree.cpp's
+ * TCM_BUTTON, a byte) */
+extern "C" KEY_STATE func_002C64E0(int button, CPad *pad);
+
+/* while the page is up (state 3): up and down step the weapon, left and right the class; triangle
+ * or start back to the list (2), the confirm button (0x2C64E0's 0) on to state 1 (0x23D1B0; the
+ * name ours -- m2c's draft matched as it stood) */
+void CMPWeaponCategories::HandlePad(CPad *pad)
+{
+    if (m_state == 3) {
+        if (pad->m_state[PAD_UP] == KEY_FALLING) {
+            Move(-2);
+            return;
+        }
+        if (pad->m_state[PAD_DOWN] == KEY_FALLING) {
+            Move(2);
+            return;
+        }
+        if (pad->m_state[PAD_LEFT] == KEY_FALLING) {
+            Move(1);
+            return;
+        }
+        if (pad->m_state[PAD_RIGHT] == KEY_FALLING) {
+            Move(-1);
+            return;
+        }
+        if (pad->m_state[PAD_TRIANGLE] == KEY_FALLING || pad->m_state[PAD_START] == KEY_FALLING) {
+            m_state = 2;
+            return;
+        }
+        if (func_002C64E0(0, pad) == KEY_FALLING)
+            m_state = 1;
+    }
+}
+
+/* the list's next weapon class up or down from a class that the page's kind allows (0x23C840;
+ * no row named yet: a switch over the class starts calling NextClass) */
+extern "C" EQUIP_ITEM func_0023C840(SlotList *list, bool up, EQUIP_ITEM type, WEAPON_KIND kind);
+
+/* the page's cursor moved: a weapon on (2) or back (-2) in its class, or the class on (-1) or
+ * back (1) -- the grenades' class (171) passed over when the selector lets none through -- and on
+ * a new class its first weapon; then the page updated (0x23D060; the name ours) */
+void CMPWeaponCategories::Move(signed char dir)
+{
+    bool up = false;
+
+    switch (dir) {
+    case 2:
+        up = true;
+    case -2:
+        m_index = m_list.NextWeapon(up, m_index, m_type, m_kind);
+        break;
+    case -1:
+        up = true;
+    case 1: {
+        int old = m_type;
+
+        m_type = func_0023C840(&m_list, up, m_type, m_kind);
+        if (m_type == 171 && !m_owner->m_203 && !m_owner->m_gl && !m_owner->m_f2000)
+            m_type = func_0023C840(&m_list, up, m_type, m_kind);
+        if (old != m_type)
+            m_index = m_list.NextWeapon(true, 0, m_type, m_kind);
+        break;
+    }
+    }
+    func_0023D860(this, 0.0f);
 }
 
 /* the slots drawn while the list is on */
@@ -549,7 +651,7 @@ EQUIP_ITEM SlotList::NextClass(bool up, EQUIP_ITEM cls)
 }
 
 /* whether the list's slot can show a weapon (0x23C390; no row named yet) */
-extern "C" bool func_0023C390(SlotList *list, CZWeapon *weapon, int a, int b);
+extern "C" bool func_0023C390(SlotList *list, CZWeapon *weapon, EQUIP_ITEM type, WEAPON_KIND kind);
 
 /* where a search for the next weapon started (.data 0x3DCEB0, -1 between searches; the name ours) */
 static int s_searchstart = -1;
@@ -564,7 +666,7 @@ static int s_searchstart = -1;
  * moved, a temporary the recursive call's result is split into. The first GetWeaponByIndex
  * re-materialises the list's address, the last uses the saved one: the source spells them apart */
 #pragma auto_inline off
-int SlotList::NextWeapon(bool up, int index, int a, int b)
+int SlotList::NextWeapon(bool up, int index, EQUIP_ITEM type, WEAPON_KIND kind)
 {
     if (index == s_searchstart)
         return index;
@@ -586,8 +688,8 @@ int SlotList::NextWeapon(bool up, int index, int a, int b)
         if (index < 0)
             index = list.m_count - 1;
     }
-    if (!func_0023C390(this, CZWeapon::m_listWeapons.GetWeaponByIndex(index), a, b))
-        index = NextWeapon(up, index, a, b);
+    if (!func_0023C390(this, CZWeapon::m_listWeapons.GetWeaponByIndex(index), type, kind))
+        index = NextWeapon(up, index, type, kind);
     list.GetWeaponByIndex(index);
     s_searchstart = -1;
     return index;

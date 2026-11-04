@@ -194,6 +194,11 @@ public:
     unsigned char _11a9[0x11b0 - 0x11a9];
 } __attribute__((aligned(16)));   // 0x11b0 bytes
 
+/* a weapon's kind as the network selector's category page keeps it (a byte enum: copied with lb,
+ * compared with andi -- the slot test 0x23C390 masks it before comparing with 2, 1 and 0; the
+ * name ours) */
+enum WEAPON_KIND { KIND_PRIMARY, KIND_SECONDARY, KIND_OTHER };
+
 /* the network selector's slots (their vtables found by their RTTI names: CWeaponSlot 0x405E00,
  * CategorySlot 0x405D80, SelectedSlot 0x405D00, SlotList 0x405E80) */
 class CZWeapon;
@@ -256,7 +261,7 @@ public:
     EQUIP_ITEM NextClass(bool up, EQUIP_ITEM cls);
     /* the next weapon's index up or down the weapons' list that the slot takes (0x23C6F0; the name
      * ours: its last two arguments passed through to the slot's test) */
-    int NextWeapon(bool up, int index, int a, int b);
+    int NextWeapon(bool up, int index, EQUIP_ITEM type, WEAPON_KIND kind);
 
     class CMPWeaponSel *m_owner;   // 0x18: the selector (its Init sets the category page's)
     unsigned char _1c[0x20 - 0x1c];
@@ -307,11 +312,20 @@ public:
     void SetWeapon(CZWeapon *weapon);
     /* the four arrows off, or grey (0x23D460; the name ours) */
     void ShowArrows();
+    /* the arrows pulsed (0x23D2B0; the name ours) */
+    void TickArrows(float dT);
+    /* the cursor moved a weapon (2, -2) or a class (-1, 1) (0x23D060; the name ours) */
+    void Move(signed char dir);
+    /* the page's buttons while it is up (0x23D1B0; the name ours) */
+    void HandlePad(CPad *pad);
 
     EQUIP_ITEM m_type;   // 0xf20
-    unsigned char m_kind;   // 0xf21
+    WEAPON_KIND m_kind;   // 0xf21
+    unsigned char m_state;   // 0xf22: 3 while the page is up, 2 back to the list, 1 chosen
     int m_index;   // 0xf24
-    unsigned char _f28[0xf30 - 0xf28];
+    float m_pulse;   // 0xf28: the arrows' colour blend, 0 grey to 1 yellow
+    bool m_pulseup;   // 0xf2c: the blend rising
+    unsigned char _f2d[0xf30 - 0xf2d];
     class CMPWeaponSel *m_owner;   // 0xf30: the selector (its Init sets it)
     unsigned char _f34[0xf40 - 0xf34];
 } __attribute__((aligned(16)));   // 0xf40 bytes
