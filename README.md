@@ -37,7 +37,7 @@ and data reference resolved to the address the shipped code uses.
 | `tools/callnames.py` | name placeholders off byte-exact functions' own call sites (eqcallnames.py) |
 | `tools/m2c.py` | a target function as m2c-ready assembly (labels, callees by map name, `%hi/%lo` as `data_<VA>`), and m2c's draft |
 | `tools/perm.py` | the permuter: reorders `// PERM_BEGIN/END` lines and `// PERM_DECL` names until a function matches |
-| `tools/automatch.py` | compiles m2c's draft of every small function as it stands; `--emit` writes the hits to `src/auto/`; `--stale` redoes the drafts a rename left behind; a template-named row is drafted under its placeholder and renamed in the object (`/* sc: as=OLD NEW */`); a miss is redrafted with its callees' prototypes, then as C++ |
+| `tools/automatch.py` | compiles m2c's draft of every small function as it stands; `--emit` writes the hits to `src/auto/`; `--stale` redoes the drafts a rename left behind (their own row's, a placeholder's, or a callee's real name, read off git's history of the map: GCC round 28a); a template-named row is drafted under its placeholder and renamed in the object (`/* sc: as=OLD NEW */`); a miss is redrafted with its callees' prototypes, then as C++ |
 | `tools/sigs.py` | a function's parameters for m2c: the mangled name's list, or the argument registers live at its entry (backward dataflow over its blocks) |
 | `tools/cxx.py` | C++ declarations that mangle back to a Metrowerks name, for drafts that must make member and virtual calls |
 | `tools/s1names.py` | SOCOM 1's function names, out of the May 2002 demo's symbols and relocations |
@@ -7579,6 +7579,71 @@ LDPDA.c's autocorrelation 0x24A438 and SWSynth.c's frame wrappers 0x256190, 0x25
   `threshold * savings * lifetime >= insn_count` at its edge with a call in the loop; 26 shapes of the
   loop tried). Not reached: round 26a's opens (sceSifCallRpc, 0x249B58, the fast log2/exp2,
   sceSifMCallRpc, sceSifMUnBindRpc, sceCdStRead, sceGsSetDefDispEnv), libmpeg's six, the tty object.
+
+**The tools, round 28a** (the integrator's two requests): (1) **`automatch --stale` follows a
+callee's rename**: it redid a draft whose own row was renamed, or that spelled a placeholder the map
+had renamed, but not one calling a REAL name the map renamed -- the UI's round 20 integration:
+0x2808D0's draft went on calling `SkbOpen__Fv` after the row took its signature, a call no row
+resolves, which only the full check caught. `automatch.map_history_names` reads every name
+symbols.txt and data.txt have held off git's history of the two files (each row a commit removed
+or rewrote: 10,359 names in 5.5 s, 9,873 no longer in the map), and `stale()` also redoes a draft
+whose code -- comments and string literals not read -- spells one of those the map no longer holds
+(placeholders keep their own rule: one whose row took a template's name is still called by
+address); with no history (a shallow clone, an export) the placeholder rule alone applies. Measured:
+on the tree as it is the new rule flags nothing the old one does not (7 and 7: master's own stale
+drafts, for the integrator's `--stale`); 0x2808D0's draft as it stood before 1add2429 is stale
+under the new rule, not the old. (2) **sccheck's "N generated function(s) superseded" line counts
+by address**: one entry per draft, its row's address, and a draft whose row hand-written source
+matched under ANOTHER name -- an `ovl-copy:` row's draft, which defines the row's placeholder while
+the copy scores at that row -- is listed too (still scored: the scoring is unchanged), as `automatch
+--emit` drops it (`hand_defined()` names the matched row). The HUD's round 35 integration (8d60f16a)
+dropped fourteen drafts where the line named four: ten of them were `ovl-copy:` placeholders
+hud_linemap.cpp's inline copies matched. The canary gains `test_superseded_lists_drafts_by_address`
+(0x210A60's dropped draft as its fixture: listed, still scored; with the row's mark taken out of a
+copy of the map, nothing listed) -- it fails under master's sccheck at "listed superseded" -- and
+`test_stale_follows_a_callee_rename` (the old name stale, the map's name not, a comment no call, no
+history the old rule's blind spot). **Proved**: master 02f0dd88's sccheck.py, scdiff.py and
+scdecomp.py with its map against these, over one frozen snapshot of every unit (`--files .`, `-v`,
+`build/scratch/gcc/proof.sh`): 14,888 lines, identical but the superseded line, which now names its
+draft's address (`__dt__Q23std52vector<10AcctRecord,...>Fv 0x2fd070`, 1 under both); 11,481
+byte-exact of 11,942 scored in the snapshot. Master's later commits (to 4c001d4b, merged) touch no
+tool. automatch over the lane's three ranges (`--max-size 0x400 --emit --no-prune --jobs 1
+--obj-dir` the lane's private `src/lib` build): MAIN `18DB90 1C4CC0` 43 tried, 0 hits (2 build
+failures -- 0x1B5ED8, 0x1BE530 -- 11 m2c refusals), OVL1 `1E7F58 1E8FD4` 2, 0, `243000 256FD0` 57, 0
+(2 build failures -- 0x24B2F8, 0x24DBB8 -- 5 refusals): 102 tried, none byte-exact (round 27a: 120, 0).
+
+**Round 28a** (2026-11-04, the tools first, then the codec's decoder and libkernl's console): 6 rows
+newly byte-exact of 7 written -- the lane's `src/lib` rows 1,239 -> 1,245 of 1,298 scored, none lost
+(re-checked after merging master 4c001d4b) -- the decoder's random phases 0x256DB0 (SWSynth.c), the
+codec's description 0x255A68 and the checked frame decode 0x254EC8 (`ovl1/sase_decapi.c`), the LPC
+cepstrum 0x253760 and the decoder block's creation 0x253A98 (`ovl1/sase_asktoenv.c`), and libkernl's
+sceTtyInit (`sdk/tty.c`, open since round 11a). No rows named (the codec is not in SOCOM 1). What they
+showed:
+
+- **An out-of-line copy nothing calls is a public `inline` function**: neither RNG copy (0x256380,
+  0x24AEB0) has a caller -- 0x256DB0 inlines SWSynth.c's, assert and all (its line, 359, the copy's)
+  -- so the RNG is `inline` (GCC 2.96 emits a public inline's body besides; 0x256380 still matches).
+- **A bound held in a register is a variable's**: 0x253760's first loop exits on `li t2,12; slt
+  v1,t2,t0; beqz` -- MIPS's LE of two registers (operands reversed, the branch inverted), the 12 CSE's
+  after expansion; a literal bound is `slti v1,t0,13`, 2 words short with the loop head's alignment
+  nop.
+- **A struct pointer's store aliases no `void *`**: the decoder handle's frame pointer (+40) typed
+  `struct SaseDecFrame *` keeps the frame's `in`/`out` -- loaded by the checks -- in a1/a3 for the
+  unpacker's call; as `void *` its store may alias them and both are reloaded (8 bytes over).
+- **Volatile keeps a block's stores in source order**: sceTtyInit's success path stores writing,
+  wlen, rlen in source order with the pointers' lui/addiu/or between them -- the two lengths are
+  volatile like the socket and the writing flag (plain: 16 words; every field volatile puts a store
+  first, and reorg then fills the branch's slot from the failure path); the read queue stays plain
+  (sceTtyRead). The packet in field order, `reserved` first, which then takes QueueInit's slot.
+- **Measured**: 0x253A98's nine state stores (`tools/ccperm.py`: one order of 5,040 over seven of
+  them), 0x255A68's two pairs read off the schedule (the last source store first).
+- **Open, diagnosed in place**: the VAD history's update 0x252D68 (0x110 against 0x120, every word
+  after the first loop the target's: the target copies the bands' pointer on both paths of the first
+  loop's entry test and duplicates the second loop's start; ten spellings,
+  build/scratch/gcc/gen_2d68.py). Revisited without a new result: 0x250320 -- its three constants are
+  PtchCand.o's own `.lit4` run in first-use order (0x1D53FC-0x1D5404, then 0.72 and 1.333), literals,
+  not `.sdata` variables a call would keep in the loop. Not reached: round 26a's and 27a's other opens,
+  libmpeg's six, libgraph's setters.
 
 **Next**: the libraries by hand, module by module, as their vendors wrote them (each `src/lib`
 unit's header says what it covers); GCC's scheduler moves independent stores, and which source
