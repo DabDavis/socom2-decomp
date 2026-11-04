@@ -11284,7 +11284,7 @@
 0x005E1DF0 0x12FC func_005E1DF0  # OVL2
 0x005E30F0 0x624 func_005E30F0  # OVL2
 0x005E3720 0x18 Get__12CAnimAuxDataFUi  # OVL2; s1:exact
-0x005E3740 0x200 func_005E3740  # OVL2
+0x005E3740 0x200 Inherit__7AnimSetFP7AnimSet  # OVL2; by hand (the kit lane, round 35): SOCOM 1's Inherit__7AnimSetFP7AnimSet by its body (the self test, the base's includes resolved while this set is not ready -- SOCOM 1's walk inline, SOCOM II's call to 0x5E3940 --, the records put at their types' places, the anims-by-item groups copied, m_ready set; 312 groups where SOCOM 1 had 300), in SOCOM 1's place after Load; byte-exact from anim.cpp
 0x005E3940 0x180 func_005E3940  # OVL2
 0x005E3AC0 0x60 TypeBit1__7AnimSetF8AnimType  # OVL2; by hand (the kit lane, round 10): AnimSet's per-type record (the vector at 0x44, as BaseAnim reads it) tested for its byte-5 bit 1; new in SOCOM II, the name ours
 0x005E3B20 0xFC GetVariantScript__7AnimSetF8AnimTypeii  # OVL2; by hand (the kit lane, round 19; the name ours): AnimSet's script of a type's variant by kind and index -- GetVariant, then GetGroup's state naming the archive (1 zBoneArchive, 2 zBoneMapArchive), m_byRdr[variant]; 0 without one
