@@ -10174,11 +10174,11 @@
 0x00560960 0x68 __opf__6RfloatCFv  # OVL2; s1:order (SOCOM 1's __opf__6RfloatCFv, the same 0x68 bytes word for word but rand's address: Rfloat's inline operator float, its out-of-line copy after 0x5605A0, its one caller, as SOCOM 1's follows CAiSPursue::Tick) -- the SEAL lane, round 4
 0x005609D0 0x14 __ct__6RfloatFff  # OVL2; ours (the kit lane, vetted by the integrator: min stored at 0 and max - min at 4, this returned -- Rfloat's two-float constructor; SEAL_AI_PARAMS() builds both of its trigger's temporaries with it)
 0x005609F0 0x68 func_005609F0  # OVL2
-0x00560A60 0x58 func_00560A60  # OVL2
+0x00560A60 0x58 GetAiAware__11CSealCtrlAiCFv  # OVL2; s1:order by hand (the SEALs, round 30): SOCOM 1's GetAiAware__11CSealCtrlAiCFv, first of the aware family before GetAiAware(float) (0x560AC0) as in SOCOM 1 -- the same walk of the five band tops over the alertness (0xB4 here, 0xC0 there), the 4 an enum (li)
 0x00560AC0 0x58 func_00560AC0  # OVL2
 0x00560B20 0x5E4 func_00560B20  # OVL2
-0x00561110 0x1D4 func_00561110  # OVL2
-0x005612F0 0x254 func_005612F0  # OVL2
+0x00561110 0x1D4 SetAiAware__11CSealCtrlAiF8AI_AWAREPC6CPnt3Df  # OVL2; s1:order by hand (the SEALs, round 30): SOCOM 1's SetAiAware__11CSealCtrlAiF8AI_AWAREPC6CPnt3D, after AcquireAiAware's place and before SetAiAware(float, unsigned) in both builds -- the same band-top level less 0.001, the same DIRECTION test and band walk before SetAiEvent, the same raise through the sibling; SOCOM II adds a delay float (the -1 asks the difficulty table) and the dead SEAL's AIA_UNAWARE
+0x005612F0 0x254 SetAiAware__11CSealCtrlAiFfUi  # OVL2; s1:order by hand (the SEALs, round 30): SOCOM 1's SetAiAware__11CSealCtrlAiFfUi, after SetAiAware(AI_AWARE, const CPnt3D *) in both builds -- the same flags 1/2/4 on the value and goal, each held by _saturate; SOCOM II adds the sleeper's test, the dead SEAL's zero, the band kept at 0x5C4 and the goal's floor past GENERAL (SOCOM 1's had it in the other overload)
 0x00561550 0x63C func_00561550  # OVL2
 0x00561B90 0x18C func_00561B90  # OVL2
 0x00561D20 0xF4 GetTop__9CSealUnitFv  # OVL2; by hand (the SEAL lane, round 14): CSealUnit's top squad, m_parent (0x60, SOCOM 1's 0x3C) ? m_parent->GetTop() : this -- an inline's out-of-line copy (recursive: inlined into itself eight times), right after 0x561B90 its first caller; the name ours
@@ -10204,7 +10204,7 @@
 0x00563100 0xA0 SetStanceDelayed__11CSealCtrlAiF11SEAL_STANCEf  # OVL2; s1:calls by hand (SOCOM 1's SetStanceDelayed__11CSealCtrlAiF11SEAL_STANCEf: a -1 delay drawn at random, the asked stance and its delay stored; SOCOM II's at 0x279/0x280, 0.25 + (1.2 - 0.25) * r) -- CSealCtrlAi::OnCommand calls it three times -- the SEAL lane, round 9
 0x005631A0 0xC SetStance__11CSealCtrlAiF11SEAL_STANCE  # OVL2; s1:calls by hand (CTStance::Begin calls it where SOCOM 1's calls SetStance; it tail-calls 0x562B70 as SOCOM 1's SetStance calls DoSetStance), after storing the stance at 0x279 and clearing 0x280 -- the SEAL lane, round 9
 0x005631B0 0xE4 SetDesiredStance__11CSealCtrlAiF11SEAL_STANCEfb  # OVL2; ours (new in SOCOM II; seal_ai.cpp): CTStance::Begin calls it with the command's stance, true and CAiTimer::infinite, End with (prone, true, 0); sets the body's byte at 0x375 and restarts the AI's CAiTimer at 0x364 when the stance is prone, the target at 0x67C is held with bit 9 of 0x6A8, or forced -- the SEAL lane, round 9; (the float second: the prologue copies the parameters in reverse declaration order, mov.s first)
-0x005632A0 0x1C8 func_005632A0  # OVL2
+0x005632A0 0x1C8 GetDuckStance__11CSealCtrlAiCFP10CZSealBodyR11SEAL_STANCE  # OVL2; s1:order by hand (the SEALs, round 30): SOCOM 1's GetDuckStance__11CSealCtrlAiCFP10CZSealBodyR11SEAL_STANCE, after SetStance in both builds (SOCOM II's SetDesiredStance between) -- the same leader fallback, Sub/Normalize, reach and facing statics, GetStanceFromState(GetStance(false), stance) picking 1 or 2 and the true result; SOCOM II adds two bss switches, the Navy SEAL test and the CQB reach
 0x00563470 0x734 func_00563470  # OVL2
 0x00563BB0 0x8 func_00563BB0  # OVL2
 0x00563BC0 0x8 func_00563BC0  # OVL2
