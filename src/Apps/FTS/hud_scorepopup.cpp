@@ -13,8 +13,9 @@
  * and Draw, CHudPopups' Draw and destructor, hudTurnOffScorePopup, the triggers and
  * hudIsScorePopupOn. The unit's statics are anonymous-namespace globals in SOCOM 1 (g_bOn,
  * g_oSeals2Ds, g_oTerrs2Ds, the box's ten CScoreBmps); its initialiser (0x3FE980, 0x9D0 bytes)
- * builds every one, so they are declared by address here until it is written. Defined in
- * reverse of their image order (-inline deferred). */
+ * builds every one, byte-exact with the objects defined in their address order (round 32; the
+ * flags and the frame's ints, which it does not build, still by address). Defined in reverse
+ * of their image order (-inline deferred). */
 
 #include "hud_weaponsel.h"
 #include "../../gamez/zrdr/zrdr.h"
@@ -23,20 +24,31 @@
 #include <string>
 #include <vector>
 
+/* the HUD's backdrop alpha (hud_main.cpp's layout float, 76.8) and two layout floats the corners'
+ * texture coordinates come from (173 and 74) */
+extern float data_003E3000;
+extern float data_003E3018;
+extern float data_003E2FF0;
+
 namespace {
 
-/* a bitmap of the box (SOCOM 1's CScoreBmp: C2DBitmap with its own alpha set at construction; its
- * vtable 0x405A70 overrides nothing but the destructor, so MW 3.0 calls even a global one's Draw
- * through the table) */
+/* a bitmap of the box (SOCOM 1's CScoreBmp: C2DBitmap with its own alpha set at construction --
+ * the HUD's backdrop alpha, through the vtable as the initialiser calls it; its vtable 0x405A70
+ * overrides nothing but the destructor, so MW 3.0 calls even a global one's Draw through the
+ * table) */
 class CScoreBmp : public C2DBitmap {
+public:
+    CScoreBmp() { SetTrans(data_003E3000); }
 };
 
 /* a team's column (SOCOM 1's CTeamDisplay, 0xF60 there with 27 rows; SOCOM II's 0x1B50: its title
- * bitmap, 45 rows, and 0x18 bytes of its own) */
+ * bitmap, 45 rows, and 0x18 bytes of its own). The initialiser builds the title with C2DBitmap()
+ * and the rows with C2DString's constructor through __construct_array, and the implicit destructor
+ * 0x22E920 destroys them so: a plain bitmap and plain strings */
 class CTeamDisplay {
 public:
-    CScoreBmp _bmpTitleBg;   // 0x0
-    CHudBrightText _arrStrs[45];   // 0x80
+    C2DBitmap _bmpTitleBg;   // 0x0
+    C2DString _arrStrs[45];   // 0x80
     unsigned char _1b38[0x1b50 - 0x1b38];
 };
 
@@ -55,6 +67,51 @@ public:
 };
 
 }
+
+class CUIVariable;
+
+/* a UI variable's hook (zui_uivar.h's, SOCOM 1's DWARF; the vtable pointer first) */
+class UIVarMixin {
+public:
+    UIVarMixin() { m_uivar = 0; }
+    virtual ~UIVarMixin() { DetachUIVar(0); }
+    void DetachUIVar(CUIVariable *var);
+    virtual void UpdateUIVar(CUIVariable *var);
+
+    CUIVariable *m_uivar;   // 0x4
+};   // 8 bytes
+
+/* a plain bitmap of the UI's (zui_2d.h's, as hud_newhudmap.cpp declares it): the message pop-up's
+ * two bitmaps. Its constructor is inline (the initialiser inlines it), its camera Draw the
+ * bitmap's; the first non-inline virtual keeps the table out of this unit, the implicit destructor
+ * 0x1FDBE0 is registered */
+class CPlainBmp : public C2DBitmap, public UIVarMixin {
+public:
+    CPlainBmp()
+    {
+        SetColor(128.0f, 128.0f, 128.0f);
+        SetTrans(128.0f);
+        SetIsTrans(true);
+        SetCanHandleInput(false);
+        m_pulsing = false;
+        m_period = 1.0f;
+    }
+    virtual void Draw(zdb::CCamera *cam) { C2DBitmap::Draw(cam); }
+    virtual void Draw(const CMatrix &m, zdb::CTextureRelocMgr *mgr);
+    virtual void Tick(float dT);
+    virtual void SetMapOffset(int x, int y);
+
+    bool m_pulsing;   // 0x88
+    float m_period;   // 0x8c
+    float m_curtrans;   // 0x90
+} __attribute__((aligned(16)));   // 0xa0 bytes
+
+/* a string that is never null (SOCOM 1's: MSL's basic_string and nothing more; its implicit
+ * destructor's copy is main.cpp's, 0x1E7A50) */
+class CSaferStr : public std::string {
+public:
+    CSaferStr() {}
+};
 
 class CHUD {
 public:
@@ -94,37 +151,70 @@ struct IPNT2D {
     int x, y;
 };
 
-/* the unit's globals (the initialiser 0x3FE980 builds them; by address until it is written): */
-extern bool data_0040F608;   // SOCOM 1's g_bOn: the pop-up is up
-extern CTeamDisplay data_0040F670;   // SOCOM 1's g_oSeals2Ds
-extern CTeamDisplay data_004111C0;   // SOCOM 1's g_oTerrs2Ds
-extern CScoreBmp data_0040E4A0;   // the box's nine pieces (SOCOM 1's corners, edges and centre)
-extern CScoreBmp data_0040E530;
-extern CScoreBmp data_0040E5C0;
-extern CScoreBmp data_0040E650;
-extern CScoreBmp data_0040E6E0;
-extern CScoreBmp data_0040E770;
-extern CScoreBmp data_0040E800;
-extern CScoreBmp data_0040E890;
-extern CScoreBmp data_0040E920;
-extern C2DBitmap data_0040E9B0;
-extern C2DString data_0040EA40;
-extern CScoreBmp data_0040EAF0;
-extern CScoreBmp data_0040EB80;
-extern C2DString data_0040EC10;
-extern CScoreBmp data_0040ECC0;
-extern C2DString data_0040ED50[8];
-extern CScoreBmp data_0040F380;   // SOCOM 1's g_bmpTeamDivider (between the two columns)
-extern C2DString data_0040F410;
-extern C2DString data_0040F4C0;
-extern C2DString data_0040F570;
-extern C2DBitmap data_0040DBF0;
-extern C2DBitmap data_0040DC80[16];
-/* the second pop-up (0x22AB80's): whether it is up, its two bitmaps and its items */
+/* the unit's flags, by address (bss, no constructors): the message pop-up is up (0x40E480; CHudPopups
+ * draws behind it), and SOCOM 1's g_bOn, the score pop-up is up (0x40F608) */
+extern bool data_0040F608;
 extern bool data_0040E480;
-extern C2DBitmap data_0040F220;
-extern C2DBitmap data_0040F2D0;
-extern std::vector<C2D *> data_00412D70;
+
+struct CMessageTrigger;
+struct CMessageTriggerByName;
+struct CMessageTriggerByNames;
+struct CMessageTriggerByMap;
+
+/* the unit's objects, OVL1 bss 0x40DBF0-0x412E73, in the order its initialiser (0x3FE980) builds
+ * them, each after its destructor record -- SOCOM 1's anonymous namespace (its names: the box's nine
+ * pieces g_bmpUlCorner ... g_bmpCenter, g_bmpTeamDivider, g_oSeals2Ds, g_oTerrs2Ds; SOCOM II keeps
+ * their order); the rest SOCOM II's, the names ours: the bitmap drawn last and the sixteen pieces
+ * SetupSpectatorBox loads, two bitmaps and a string drawn after the divider, the spectators' title
+ * bar, title, box and eight names, the message pop-up's two plain bitmaps, three strings, three
+ * CSaferStrs the pop-up's tick and opener read, the message pop-up's items, the four trigger lists
+ * and the spectators' box colour; then the corners' texture coordinates (OVL1 .data, set here) */
+namespace {
+C2DBitmap g_bmpBoxOverlay;
+C2DBitmap g_arrBmpSpecPieces[16];
+CScoreBmp g_bmpUlCorner;
+CScoreBmp g_bmpUrCorner;
+CScoreBmp g_bmpLlCorner;
+CScoreBmp g_bmpLrCorner;
+CScoreBmp g_bmpTopEdge;
+CScoreBmp g_bmpLeftEdge;
+CScoreBmp g_bmpRightEdge;
+CScoreBmp g_bmpBottomEdge;
+CScoreBmp g_bmpCenter;
+C2DBitmap g_bmpHeaderBar;
+C2DString g_strHeader;
+CScoreBmp g_bmpHeaderBg;
+CScoreBmp g_bmpSpecTitleBg;
+C2DString g_strSpecTitle;
+CScoreBmp g_bmpSpecBox;
+C2DString g_arrStrSpecNames[8];
+CPlainBmp g_bmpPopupBg;
+CPlainBmp g_bmpPopupFrame;
+CScoreBmp g_bmpTeamDivider;
+C2DString g_strTeamLabel0;
+C2DString g_strTeamLabel1;
+C2DString g_strTeamLabel2;
+CTeamDisplay g_oSeals2Ds;
+CTeamDisplay g_oTerrs2Ds;
+CSaferStr g_strPopup0;
+CSaferStr g_strPopup1;
+CSaferStr g_strPopup2;
+std::vector<C2D *> g_vecPopupItems;
+std::vector<CMessageTriggerByNames *> g_vecTriggersByNames;
+std::vector<CMessageTriggerByName *> g_vecTriggersByName;
+std::vector<CMessageTrigger *> g_vecTriggers;
+std::vector<CMessageTriggerByMap *> g_vecTriggersByMap;
+}
+
+/* the corners' texture coordinates (OVL1 .data 0x3E5718 and 0x3E5720, zero in the image), computed
+ * after the vectors and before the box colour: their two loads are scheduled above the colour's
+ * three stores, as the target has them. Globals, not the anonymous namespace (the rows' names) */
+float s_fCornerU = 1.0f - 20.0f / data_003E3018;
+float s_fCornerV = 20.0f / data_003E2FF0;
+
+namespace {
+CPnt3D g_vSpecBoxColor(64.0f, 128.0f, 64.0f);
+}
 
 /* a message shown once (SOCOM II's; the names ours): a done flag, the map it is for and the object
  * or event that shows it, then what the opener (0x22B4A0) takes */
@@ -142,8 +232,6 @@ struct CMessageTriggerByName {
     int m_message[1];   // 0x10
 };
 
-extern std::vector<CMessageTrigger *> data_00412DD0;
-extern std::vector<CMessageTriggerByName *> data_00412DB0;
 
 /* the message pop-up opened (0x22B4A0: true once shown; not written yet) */
 extern "C" bool func_0022B4A0(void *message);
@@ -239,9 +327,9 @@ bool hudIsScorePopupOn()
 /* the message keyed by this name shown, once */
 void hudTriggerPopup(const char *name)
 {
-    for (int i = 0; i < data_00412DB0.size(); i++) {
-        if (!strcasecmp(data_00412DB0[i]->m_name.c_str(), name)) {
-            CMessageTriggerByName *t = data_00412DB0[i];
+    for (int i = 0; i < g_vecTriggersByName.size(); i++) {
+        if (!strcasecmp(g_vecTriggersByName[i]->m_name.c_str(), name)) {
+            CMessageTriggerByName *t = g_vecTriggersByName[i];
 
             if (!t->m_done && func_0022B4A0(t->m_message))
                 t->m_done = true;
@@ -253,11 +341,11 @@ void hudTriggerPopup(const char *name)
 /* the message for this map and this object shown, once */
 void hudTriggerPopup(CTriggerSource *source)
 {
-    for (int i = 0; i < data_00412DD0.size(); i++) {
-        CMessageTrigger *t = data_00412DD0[i];
+    for (int i = 0; i < g_vecTriggers.size(); i++) {
+        CMessageTrigger *t = g_vecTriggers[i];
 
         if (!strcasecmp(t->m_map.c_str(), GetDatabase()) && !strcasecmp(t->m_name.c_str(), source->GetName())) {
-            CMessageTrigger *t = data_00412DD0[i];
+            CMessageTrigger *t = g_vecTriggers[i];
 
             if (!t->m_done && func_0022B4A0(t->m_message))
                 t->m_done = true;
@@ -271,16 +359,16 @@ void hudTurnOffScorePopup()
 {
     data_0040F608 = false;
     for (unsigned int i = 0; i < 45; i++)
-        data_0040F670._arrStrs[i].ClearAndWipe();
+        g_oSeals2Ds._arrStrs[i].ClearAndWipe();
     for (unsigned int i = 0; i < 45; i++)
-        data_004111C0._arrStrs[i].ClearAndWipe();
-    data_0040F410.ClearAndWipe();
-    data_0040F4C0.ClearAndWipe();
-    data_0040F570.ClearAndWipe();
-    data_0040EA40.ClearAndWipe();
-    data_0040EC10.ClearAndWipe();
+        g_oTerrs2Ds._arrStrs[i].ClearAndWipe();
+    g_strTeamLabel0.ClearAndWipe();
+    g_strTeamLabel1.ClearAndWipe();
+    g_strTeamLabel2.ClearAndWipe();
+    g_strHeader.ClearAndWipe();
+    g_strSpecTitle.ClearAndWipe();
     for (unsigned int i = 0; i < 8; i++)
-        data_0040ED50[i].ClearAndWipe();
+        g_arrStrSpecNames[i].ClearAndWipe();
     if (theHUD)
         theHUD->On();
 }
@@ -298,13 +386,11 @@ static float s_specnamespacing = 16.8f;
 static float s_specnametrans = 110.0f;
 static const char *s_specboxtex = "newweapnbkrnd.tif";
 
-/* the pop-up's frame as SetupBackgroundBox leaves it (by address until the initialiser is written):
- * its left, its right and its top */
+/* the spectators' box's frame as 0x22CC10 lays it out (by address: the initialiser does not build
+ * them): its left, its right and its top */
 extern int data_0040F640;
 extern int data_0040F648;
 extern int data_0040F650;
-/* the box's colour (a CPnt3D the initialiser builds) */
-extern CPnt3D data_00412E68;
 
 /* the spectators' box laid out under the pop-up: its title bar, the title, the box and eight name
  * lines (called once by 0x22CC10, after SetupBackgroundBox; the name ours) */
@@ -318,29 +404,27 @@ void SetupSpectatorBox()
     float top = 25.0f + (float)data_0040F650 + s_specboxy;
     float bottom = 25.0f + top;
 
-    data_0040EB80.Load((float)data_0040F640, top, (float)data_0040F648, bottom, tex);
-    data_0040EB80.SetColor(data_00412E68);
-    data_0040EB80.SetTrans(80.0f);
-    data_0040EC10.Load(1.0f, "SPECTATORS", font, 0.0f, 0.0f, false);
-    data_0040EC10.SetPos((int)(10.0f + (float)data_0040F640), (int)(20.0f + top));
-    data_0040EC10.SetTrans(s_spectitletrans);
-    data_0040ECC0.Load((float)data_0040F640, bottom, (float)data_0040F648, s_specboxbottom, tex);
+    g_bmpSpecTitleBg.Load((float)data_0040F640, top, (float)data_0040F648, bottom, tex);
+    g_bmpSpecTitleBg.SetColor(g_vSpecBoxColor);
+    g_bmpSpecTitleBg.SetTrans(80.0f);
+    g_strSpecTitle.Load(1.0f, "SPECTATORS", font, 0.0f, 0.0f, false);
+    g_strSpecTitle.SetPos((int)(10.0f + (float)data_0040F640), (int)(20.0f + top));
+    g_strSpecTitle.SetTrans(s_spectitletrans);
+    g_bmpSpecBox.Load((float)data_0040F640, bottom, (float)data_0040F648, s_specboxbottom, tex);
     for (unsigned int i = 0; i < 8; i++) {
-        data_0040ED50[i].m_scale = s_specnamescale;
-        data_0040ED50[i].Load(s_specnameload, 0, font, 0.0f, 0.0f, false);
-        data_0040ED50[i].SetPos(24, (int)(16.0f + bottom + s_specnamespacing * (float)i));
-        data_0040ED50[i].SetTrans(s_specnametrans);
+        g_arrStrSpecNames[i].m_scale = s_specnamescale;
+        g_arrStrSpecNames[i].Load(s_specnameload, 0, font, 0.0f, 0.0f, false);
+        g_arrStrSpecNames[i].SetPos(24, (int)(16.0f + bottom + s_specnamespacing * (float)i));
+        g_arrStrSpecNames[i].SetTrans(s_specnametrans);
     }
 }
 }
 
-/* the pop-up's frame (by address until the initialiser is written): its left, right and top, and
- * the corners' texture coordinates (zero in the image: the initialiser sets them) */
+/* the pop-up's frame (SOCOM 1's g_iBoxLeftX, g_iBoxRightX, g_iBoxTopY; by address: the
+ * initialiser does not build them): its left, right and top */
 extern int data_0040F628;
 extern int data_0040F630;
 extern int data_0040F638;
-extern float data_003E5718;
-extern float data_003E5720;
 /* the box's inner bottom, SetupBackgroundBox's local static, and its guard */
 extern signed char data_00412E80;
 extern float data_003E5728;
@@ -366,8 +450,8 @@ void SetupBackgroundBox()
         float x1 = 20.0f + (float)data_0040F628;
         float y1 = 20.0f + (float)data_0040F638;
 
-        data_0040E4A0.Load(x0, y0, x1, y1, zdb::CAssetMgr::m_assets.GetTexHandle(s_specboxtex));
-        data_0040E4A0.SetUV(1.0f, 0.0f, data_003E5718, data_003E5720);
+        g_bmpUlCorner.Load(x0, y0, x1, y1, zdb::CAssetMgr::m_assets.GetTexHandle(s_specboxtex));
+        g_bmpUlCorner.SetUV(1.0f, 0.0f, s_fCornerU, s_fCornerV);
     }
     {
         float x0 = (float)data_0040F630 - 20.0f;
@@ -375,8 +459,8 @@ void SetupBackgroundBox()
         float x1 = (float)data_0040F630;
         float y1 = 20.0f + (float)data_0040F638;
 
-        data_0040E530.Load(x0, y0, x1, y1, zdb::CAssetMgr::m_assets.GetTexHandle(s_specboxtex));
-        data_0040E530.SetUV(data_003E5718, 0.0f, 1.0f, data_003E5720);
+        g_bmpUrCorner.Load(x0, y0, x1, y1, zdb::CAssetMgr::m_assets.GetTexHandle(s_specboxtex));
+        g_bmpUrCorner.SetUV(s_fCornerU, 0.0f, 1.0f, s_fCornerV);
     }
     {
         float x0 = (float)data_0040F628;
@@ -384,8 +468,8 @@ void SetupBackgroundBox()
         float x1 = 20.0f + (float)data_0040F628;
         float y1 = s_specboxbottom;
 
-        data_0040E5C0.Load(x0, y0, x1, y1, zdb::CAssetMgr::m_assets.GetTexHandle(s_specboxtex));
-        data_0040E5C0.SetUV(1.0f, 1.0f - data_003E5720, data_003E5718, 1.0f);
+        g_bmpLlCorner.Load(x0, y0, x1, y1, zdb::CAssetMgr::m_assets.GetTexHandle(s_specboxtex));
+        g_bmpLlCorner.SetUV(1.0f, 1.0f - s_fCornerV, s_fCornerU, 1.0f);
     }
     {
         float x0 = (float)data_0040F630 - 20.0f;
@@ -393,8 +477,8 @@ void SetupBackgroundBox()
         float x1 = (float)data_0040F630;
         float y1 = s_specboxbottom;
 
-        data_0040E650.Load(x0, y0, x1, y1, zdb::CAssetMgr::m_assets.GetTexHandle(s_specboxtex));
-        data_0040E650.SetUV(data_003E5718, 1.0f - data_003E5720, 1.0f, 1.0f);
+        g_bmpLrCorner.Load(x0, y0, x1, y1, zdb::CAssetMgr::m_assets.GetTexHandle(s_specboxtex));
+        g_bmpLrCorner.SetUV(s_fCornerU, 1.0f - s_fCornerV, 1.0f, 1.0f);
     }
 
     float left = 20.0f + (float)data_0040F628;
@@ -402,19 +486,19 @@ void SetupBackgroundBox()
     float top = 20.0f + (float)data_0040F638;
     zdb::CTexHandle *tex = zdb::CAssetMgr::m_assets.GetTexHandle(s_specboxtex);
 
-    data_0040E6E0.Load(left, (float)data_0040F638, right, top, tex);
-    data_0040E6E0.SetUV(0.5f, 0.0f, 0.5f, data_003E5720);
-    data_0040E770.Load((float)data_0040F628, top, left, data_003E5728, tex);
-    data_0040E770.SetUV(1.0f, 0.5f, data_003E5718, 0.5f);
-    data_0040E800.Load(right, top, (float)data_0040F630, data_003E5728, tex);
-    data_0040E800.SetUV(data_003E5718, 0.5f, 1.0f, 0.5f);
-    data_0040E890.Load(left, data_003E5728, right, s_specboxbottom, tex);
-    data_0040E890.SetUV(0.5f, 1.0f - data_003E5720, 0.5f, 1.0f);
-    data_0040E920.Load(left, top, right, data_003E5728, tex);
-    data_0040E920.SetUV(0.5f, 0.5f, 0.5f, 0.5f);
+    g_bmpTopEdge.Load(left, (float)data_0040F638, right, top, tex);
+    g_bmpTopEdge.SetUV(0.5f, 0.0f, 0.5f, s_fCornerV);
+    g_bmpLeftEdge.Load((float)data_0040F628, top, left, data_003E5728, tex);
+    g_bmpLeftEdge.SetUV(1.0f, 0.5f, s_fCornerU, 0.5f);
+    g_bmpRightEdge.Load(right, top, (float)data_0040F630, data_003E5728, tex);
+    g_bmpRightEdge.SetUV(s_fCornerU, 0.5f, 1.0f, 0.5f);
+    g_bmpBottomEdge.Load(left, data_003E5728, right, s_specboxbottom, tex);
+    g_bmpBottomEdge.SetUV(0.5f, 1.0f - s_fCornerV, 0.5f, 1.0f);
+    g_bmpCenter.Load(left, top, right, data_003E5728, tex);
+    g_bmpCenter.SetUV(0.5f, 0.5f, 0.5f, 0.5f);
     for (unsigned int i = 0; i < 16; i++) {
-        data_0040DC80[i].Load(0.0f, 0.0f, 0.0f, 0.0f, tex);
-        data_0040DC80[i].SetUV(0.5f, 0.5f, 0.5f, 0.5f);
+        g_arrBmpSpecPieces[i].Load(0.0f, 0.0f, 0.0f, 0.0f, tex);
+        g_arrBmpSpecPieces[i].SetUV(0.5f, 0.5f, 0.5f, 0.5f);
     }
 }
 }
@@ -436,10 +520,10 @@ IPNT2D GetTagIPNT2D(const _zrdr *rdr, const char *tag)
 void CHudPopups::Draw(zdb::CCamera *cam)
 {
     if (data_0040E480) {
-        data_0040F2D0.Draw(cam);
-        data_0040F220.Draw(cam);
-        for (int i = 0; i < data_00412D70.size(); i++)
-            data_00412D70[i]->Draw(cam);
+        g_bmpPopupFrame.Draw(cam);
+        g_bmpPopupBg.Draw(cam);
+        for (int i = 0; i < g_vecPopupItems.size(); i++)
+            g_vecPopupItems[i]->Draw(cam);
     }
 }
 
@@ -448,34 +532,34 @@ void CScorePopup::Draw(zdb::CCamera *cam)
 {
     if (!data_0040F608)
         return;
-    data_0040F670._bmpTitleBg.Draw(cam);
-    data_004111C0._bmpTitleBg.Draw(cam);
-    data_0040E4A0.Draw(cam);
-    data_0040E530.Draw(cam);
-    data_0040E5C0.Draw(cam);
-    data_0040E650.Draw(cam);
-    data_0040E6E0.Draw(cam);
-    data_0040E770.Draw(cam);
-    data_0040E800.Draw(cam);
-    data_0040E890.Draw(cam);
-    data_0040E920.Draw(cam);
-    data_0040F380.Draw(cam);
-    data_0040EAF0.Draw(cam);
-    data_0040E9B0.Draw(cam);
-    data_0040EA40.Draw(cam);
+    g_oSeals2Ds._bmpTitleBg.Draw(cam);
+    g_oTerrs2Ds._bmpTitleBg.Draw(cam);
+    g_bmpUlCorner.Draw(cam);
+    g_bmpUrCorner.Draw(cam);
+    g_bmpLlCorner.Draw(cam);
+    g_bmpLrCorner.Draw(cam);
+    g_bmpTopEdge.Draw(cam);
+    g_bmpLeftEdge.Draw(cam);
+    g_bmpRightEdge.Draw(cam);
+    g_bmpBottomEdge.Draw(cam);
+    g_bmpCenter.Draw(cam);
+    g_bmpTeamDivider.Draw(cam);
+    g_bmpHeaderBg.Draw(cam);
+    g_bmpHeaderBar.Draw(cam);
+    g_strHeader.Draw(cam);
     for (unsigned int i = 0; i < 16; i++)
-        data_0040DC80[i].Draw(cam);
+        g_arrBmpSpecPieces[i].Draw(cam);
     for (unsigned int i = 0; i < 45; i++)
-        data_0040F670._arrStrs[i].Draw(cam);
+        g_oSeals2Ds._arrStrs[i].Draw(cam);
     for (unsigned int i = 0; i < 45; i++)
-        data_004111C0._arrStrs[i].Draw(cam);
-    data_0040F410.Draw(cam);
-    data_0040F4C0.Draw(cam);
-    data_0040F570.Draw(cam);
-    data_0040ECC0.Draw(cam);
-    data_0040EB80.Draw(cam);
-    data_0040EC10.Draw(cam);
+        g_oTerrs2Ds._arrStrs[i].Draw(cam);
+    g_strTeamLabel0.Draw(cam);
+    g_strTeamLabel1.Draw(cam);
+    g_strTeamLabel2.Draw(cam);
+    g_bmpSpecBox.Draw(cam);
+    g_bmpSpecTitleBg.Draw(cam);
+    g_strSpecTitle.Draw(cam);
     for (unsigned int i = 0; i < 8; i++)
-        data_0040ED50[i].Draw(cam);
-    data_0040DBF0.Draw(cam);
+        g_arrStrSpecNames[i].Draw(cam);
+    g_bmpBoxOverlay.Draw(cam);
 }

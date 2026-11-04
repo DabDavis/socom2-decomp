@@ -2001,6 +2001,86 @@ templates next), and the earlier rounds' opens; 3.0b38/b50/b52 still untold.
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the game states, round 28** (a new fts_ovl2statics.cpp: the OVL1 unit of OVL2 classes' statics; ReOpen):
+  - fts_ovl2statics.cpp (0x2CD670-0x2CE7FF, the file name ours) has no functions of its own: about sixty statics of OVL2
+    classes defined in its initialiser's order, with SOCOM 1's names, and a tail emitting the destructors it registers in
+    reverse order of the statics -- __sinit_fts_ovl2statics.cpp 0x400870 (0x134C, 592 relocations) byte-exact once OVL2's
+    0x5D9540 was named ~CMallocBlocks at integration; ~vector<CModel *> 0x2CD710 survives the link only because
+    __sinit_zwep_projectile.cpp registers it;
+  - a class vector over the 2-byte pod needs `__vector_imp<AnimType, A, true>` and `vector<AnimType>` partial
+    specialisations in the unit to mangle as `vector<8AnimType,...>`; an array static's `__arraydtor$N` resolves by its code
+    now (GCC 24a); a word the initialiser stores through a member list's address after that list's constructor belongs to
+    the list's own class (CDiPool's free list: a class of its own -- the kit's seal_dipool.h models it differently: queued);
+  - members of a class object at a constant offset are folded into `this+offset` at every access, even through an inline
+    member; a separate pointer local declared at each use keeps each one in a saved register (CMission::ReOpen_Load
+    0x2ABD40's queues), one pointer reassigned three times numbers the registers the other way round;
+  - CMission::ReOpen_Load and ReOpen_Unload1 0x2AC0E0 byte-exact; 0x3249D0 is SOCOM 1's Particle::ReserveNodePool (named at
+    integration), 0x5A3B50 SOCOM 1's CZSealBody::Uninit_ReInitDatabaseHandles (the SEALs');
+  - open: CNodeAction::Close (level 6), UnInitialize (the valve inline's temporaries).
+- **Tells from the kit and AI states, round 25** (SOCOM 1's request pool CDiPool, the target ticks, the Cur ammo wrappers):
+  - when every small piece of a walk (begin, end, !=, *, the assignment, postfix ++) is a separate call, the walk is an
+    inline member inlined only one level: write it inside an inline and call that -- SOCOM 1's CDiPool in a new
+    seal_dipool.h (shared by seal_sensors.cpp and ai_target.cpp) brought dirlist's DeleteAll and Free, CleanupDiPool,
+    target_pretick/target_post_tick and their pieces;
+  - an iterator kept in memory and re-stored at each step was assigned from begin() (the wrapper's implicit, bitwise
+    assignment) with the end taken into a local first -- not for_each, whose by-value parameter goes to a register;
+  - a ternary whose result shows in both arms (`b; move v1,v0` / `move v1,zero`) with no label padding comes from an inline
+    function's return (written in the caller, the labels pad); `x == 0 ? 0 : y % x` puts the zero arm first, `x ? y % x :
+    0` the other way; a field's value declared in a local before the local holding its address gives the target's a2/a1
+    (a reference to the field swaps them);
+  - a by-hand constructor or destructor call can use its mangled name in an `extern "C"` declaration only where the header
+    declares that member out of line (inline ones collide with the emitted copy: CAiTimer(float), CAiMapLoc(), Rfloat(float)
+    stay by address);
+  - GetCurMaxAmmoCount 0x5C3CE0 and GetCurAmmoCount 0x5C3890 are tail calls with the selected item (round 24's lead);
+    ReParentToRifle/Pistol 0x5C6A40/0x5C6DA0 and ScanTick 0x600550 named (the SEALs' leads); target_pretick/target_post_tick
+    keep their placeholder names (declaring SOCOM 1's statics in zseal.h would hide CSealCtrl's virtual PreTick/PostTick);
+  - open: ai_posttick 0x5CCA30 (3, new in SOCOM II: three round-robin entity windows -- the target's add is `addu
+    a1,v1,a1`, every spelling `addu a1,a1,v1`).
+- **Tells from the world, rdr and sound, round 11** (a new node_wave.cpp, COverlayLoader::Load, Destruction_Instance):
+  - calling a function through one extra inline level expands it later, so its temporaries take lower stack slots (the
+    erase in CRipple::Tick 0x321F50, through a small inline Erase(i): include/list's list<T *> has no erase of its own);
+    taking the inner loop's end() into a local declared after the iterator fixes the temporaries' register order;
+  - an inline function's return value is numbered after the caller's named locals: the loader's slot address read through
+    `OverlaySlot(slot)` gets the target's saved register (COverlayLoader::Load 0x3515D0, 0x2EC); `x = x == y ? x : 0;` gives
+    the target's bne/b pair, `if (x != y) x = 0;` beq; a flags test written `((f & 1) & ((f & 0x100) == 0)) != 0` gives the
+    target's branch-free code (`&&` adds branches, the bit-field spelling loads bytes);
+  - node_wave.cpp is SOCOM 1's unit, 0x321DB0-0x3223CF between node_assetlib.cpp and zparticle.cpp (the lens flare, the
+    ripples, the ripple pool and its initialiser); it carries copies of ~CVisData and std::stack<void *>'s top()/empty() --
+    perhaps from a function the linker removed;
+  - open: CRipple::Flatten 0x3220D0 (0xB8 vs 0xF0: the target multiplies twice at run time and hoists it, MW folds it to
+    constants -- vis_ripple.cpp's CWaterRipple::Flatten has the same miss), ~list<CRipple *> 0x322370 (0xD4 vs 0x60: a
+    pointer-list destructor that calls ~__list_deleter after two levels needs a deleter destructor one level taller -- it
+    costs ~RTPool and Clear; include/list left as it is), __sinit_node_main.cpp (the same ~list shape).
+- **Tells from the HUD, round 32** (CHUD::SetRangeText, the objectives' and the score popup's initialisers):
+  - when an initialiser loads two globals ahead of an object's constructor stores, the globals were defined before that
+    object: MW does not hoist a load across an earlier store to a different object -- __sinit_hud_scorepopup.cpp 0x3FE980
+    (0x9D0, its 34 objects in address order: the two corner texture coordinates are globals computed after the vectors and
+    before the box colour) and __sinit_hud_objectives.cpp 0x3FDBC0 (17 statics);
+  - `__construct_array` passed C2DString's own constructor means the elements are plain C2DStrings (a derived class would
+    pass its own); CScoreBmp's constructor sets its alpha through the vtable; CTeamDisplay is a plain C2DBitmap plus 45
+    C2DStrings;
+  - check the round-start baseline before chasing an apparent regression (SetupBackgroundBox 0x22AE90 was already 2 off);
+  - open: CActionTxtr() 0x220CA0 (0x48 vs 0x54: the name's load reached through a folded test over a dead zero arm),
+    __sinit_hud_actionbitmap.cpp 0x3FE550 (the texture machine 0x40D550 and the computed floats to write), __sinit_hud_tcm.cpp.
+- **Tells from the engine core, round 3** (five static initialisers, a new zanim_cmd_parse.cpp, the equipment pickers):
+  - a search loop that breaks on a hit, followed by `i != e`, makes MW narrow the iterator's `!=` result with `andi 0xff` and
+    reuse it after the loop (ChooseEquipmentForCharacter 0x282A90);
+  - a unit that only declares an element's constructors and destructor emits different class-vector instances from the
+    unit that defines them -- OVL1's do_assign and clear call them out of line where OVL2's inline them: the special members
+    were non-inline in the original (CCharacterWeap's three, 0x53EF50-0x53EFD0, named at integration; with them zanim_menu.cpp's
+    do_assign 0x284720 and clear 0x285230 copies are byte-exact); do_assign's reallocation branch instantiates the class
+    clear() in the tail even when the unit's own code never calls clear();
+  - a static initialiser running an inline constructor stores fields in the constructor body's statement order, not member
+    order (__sinit_anim_main.cpp 0x3FFBE0: ZAnim); `insert(i, x)`'s by-reference parameter needs a copy (`added = t`) to keep
+    `t` in a register (AddTask: passing `t` itself sends it to memory, 0x1CC vs 0x1B0); a draft's `sc: as=` line keeps a
+    renamed row matched while its hand source is still off;
+  - the world's zanim.h requests made: CValveList as a class (__sinit_valve_list.cpp, ~CValveList 0x352900),
+    CSched_Manager() (__sinit_zsys_sched.cpp, its constructor and destructor); __sinit_con_ps2.cpp by
+    `CConsole::m_console("default console")`; zanim_cmd_parse.cpp is SOCOM 1's file (0x25BC20-0x25D22F: its initialiser the
+    <iostream> pair); CBody::AddBodyPart returns its part;
+  - open: AddTask 0x34E6B0 (9: the three insert calls' iterator temporaries' slots), OnIsEquipmentSelected 0x280790 (0x120
+    vs 0x138: the target re-reads the weapon list's size and data each pass), ChooseEquipmentForCharacter (0x154 vs 0x184:
+    the three picks' bools by branches), CConsole's constructor 0x29D7B0 (3, left on its draft).
 - **Tells from the AI core, round 22** (the maps' initialisers, SetRegionType, GetRandomLoc, the vehicle footprint):
   - a `rand()` draw written as an inline function of its own makes its arm end on a label padded to 8 bytes (the target's
     nop after `mfhi`); written inline in the arm, MW leaves the join unpadded and fills the `b` delay slot -- GetRandomLoc

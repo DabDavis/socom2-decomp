@@ -238,6 +238,13 @@ public:
     int GetAmmoTotal(int index);
     /* the rounds an item's magazine holds (SOCOM 1's; OVL2 0x5C3CF0) */
     int GetMaxAmmoCount(int index);
+    /* the rounds in an item's magazine (SOCOM 1's; OVL2 0x5C38A0, unwritten) */
+    int GetAmmoCount(int index);
+    /* the selected item's magazine capacity and rounds (OVL2 0x5C3CE0, 0x5C3890: SOCOM 1's
+     * GetCurMaxAmmoCount and GetCurAmmoCount, which did the work inline -- SOCOM II's tail-call the
+     * indexed pair with the selected item; CAmmoDisplay::Update calls both) */
+    int GetCurMaxAmmoCount();
+    int GetCurAmmoCount();
     int unwrap(int index, FIREMODE mode) const;
     EQUIP_IDTYPE GetCurItemIDType();
     /* the current item's class as the body keeps its fire points (a byte: CZSealBody's 0x5DFAD0

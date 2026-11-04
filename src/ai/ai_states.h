@@ -44,8 +44,9 @@ enum AI_STATE {
  * constructor calls its members' constructors out of line): CAiTimer(float) (0x5EA550:
  * zseal.h's CAiTimer, defined after this header, has no constructor yet), CPnt3D() and
  * CAiMapLoc() (OVL2's 0x516900, 0x516120) where a member built by hand precedes them, CAiPath()
- * (0x528340: ai.h's CAiPath, which this header does not include), a three-word zeroing
- * constructor (0x52EB00: a vector's, ai_maps.cpp's copy), Rfloat(float) (0x5F6F30: other units
+ * (0x528340: ai.h's CAiPath, which this header does not include -- its constructor and destructor
+ * called by their mangled names, as ai.h declares both out of line), a three-word zeroing
+ * constructor (0x52EB00: CAiMapLocVec(), by its mangled name -- ai_maps.cpp's copy), Rfloat(float) (0x5F6F30: other units
  * define Rfloat classes of their own), and the follow's, the path recovery's and the animation's
  * unnamed members (0x5F6F20, 0x5F6F10, 0x5F6F00, 0x5F6F70, 0x5F6F40 -- Create's out-of-line
  * copies) */
@@ -53,8 +54,8 @@ extern "C" {
 void *func_005EA550(void *timer, float period);
 void *func_00516900(void *pnt);
 void *func_00516120(void *loc);
-void *func_00528340(void *path);
-void *func_0052EB00(void *vec);
+void *__ct__7CAiPathFv(void *path);
+void *__ct__12CAiMapLocVecFv(void *vec);
 void *func_005F6F30(void *rfloat, float f);
 void *func_005F6F20(void *p);
 void *func_005F6F10(void *p, int x);
@@ -63,7 +64,7 @@ void *func_005F6F70(void *list);
 void *func_005F6F40(void *list);
 /* and the destructors of those members, called by hand from the states' destructors: ~CAiPath
  * (0x5281B0) and std::vector<CAiMapLoc>'s deleter's (0x515200, ai_astar.cpp's copy) */
-void *func_005281B0(void *path, int flags);
+void *__dt__7CAiPathFv(void *path, int flags);
 void func_00515200(void *vec, int flags);
 }
 
@@ -472,11 +473,11 @@ public:
 
 class CAiSPlan : public CAiState {
 public:
-    /* its members built by hand, the first a vector's (0x52EB00) that this header cannot spell */
+    /* its members built by hand, the first a CAiMapLocVec (0x52EB00, called by its mangled name) */
     CAiSPlan() : CAiState(AI_STATE_PLAN)
     {
-        func_0052EB00(_58);
-        func_00528340(m_path);
+        __ct__12CAiMapLocVecFv(_58);
+        __ct__7CAiPathFv(m_path);
         func_00516120(&m_cell);
     }
     virtual void OnSignal(SIGNAL sig, CSealCtrlAi *ai);
@@ -655,8 +656,8 @@ public:
     /* its members built by hand in order: a route, a vector, a pair built (15, 0) */
     CAiSPathRecover() : CAiState(AI_STATE_PATHRECOVER)
     {
-        func_00528340(m_path);
-        func_0052EB00(m_vec);
+        __ct__7CAiPathFv(m_path);
+        __ct__12CAiMapLocVecFv(m_vec);
         func_005F6F00(&m_110, 15, 0);
     }
     virtual void OnSignal(SIGNAL sig, CSealCtrlAi *ai);
