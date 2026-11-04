@@ -121,7 +121,10 @@ static inline const float &StringWidth(const C2DString &s)
  * OPEN, 5 instructions (same size): the outer loop's first block schedules the first piece's read
  * otherwise -- the target loads the data pointer first, then i * 12, `first = i` between; here the
  * index first. Tried: the three declarations in every order, `tokens[first]`, `begin() + i`, a
- * reference to the piece, a for loop, an int index */
+ * reference to the piece, a for loop, an int index; round 19: `tokens.data()[i]`, `&tokens[i]` into a
+ * pointer, `(&*begin())[i]`, a reference to the vector, the const operator[] -- all 5 off (the
+ * pre-colouring code has the index's sll/addu ahead of the data load in every one; the inner loop's
+ * `SKBTOKEN &t = tokens[i]` loads the data first in both builds) */
 bool SkbWrapTokens(std::vector<CSaferStr> &lines, std::vector<SKBTOKEN> &tokens, C2DFont *font, float scale,
                    float width)
 {
@@ -209,7 +212,11 @@ static inline bool SkbNot(int x)
  * materialised through SkbNot.
  * OPEN, 3 instructions (same size): `state == SKBWRAP_WORD` takes its xori temporary in v1 in the
  * target (then v1 zeroed for wordChar), here in a0, inWord's own register. Tried: the flags in
- * every declaration order, `!(state != ...)`, an int inWord, `(int)state == 1` */
+ * every declaration order, `!(state != ...)`, an int inWord, `(int)state == 1`. Round 19, read in
+ * the igdump record: MW's pre-colouring schedule puts wordChar's zero (`dmove r43 r0`) between the
+ * xori and its sltiu whatever its declaration's place (after `space`, assigned after the notEnd
+ * test, a second assignment), so the xori temporary interferes with wordChar and cannot share v1;
+ * inWord through an inline (`SkbIsWord`, SkbNot of the inequality) is 8-24 bytes longer */
 bool SkbWrapText(std::vector<CSaferStr> &lines, const char *text, C2DFont *font, bool byWord, float scale,
                  float width)
 {
