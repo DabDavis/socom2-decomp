@@ -465,7 +465,7 @@ public:
 /* a button's look in one state (0x34 bytes; its destructor 0x36E650, a string at 0 destroyed, is
  * the button's -- a plain stand-in here, the fields by what SetNormal hands on; the names ours) */
 struct ButtonState {
-    unsigned char _0[0xc];   // 0x0: a string
+    CSaferStr m_texName;   // 0x0: the state's image (SOCOM 1's _TexName)
     zdb::CTexHandle *m_tex;   // 0xc: the background's texture
     float m_fadeMin;   // 0x10
     float m_fadeMax;   // 0x14
@@ -582,7 +582,7 @@ public:
     CPlainBmp m_background;   // 0x1a0
     float _fWidth;   // 0x240 (SOCOM 1's names, 0x30 later)
     float _fHeight;   // 0x244
-    unsigned char _248[0x24c - 0x248];
+    C2DFont *m_alternateFont;   // 0x248 (SOCOM 1's, at 0x218 there): deleted by the destructor
     float m_pressTime;   // 0x24c: the press's time left, ticked down; zeroed when the normal state is shown
     ActionItem m_actions[30];   // 0x250: the button's actions (SOCOM 1's _actions)
     int m_numActions;   // 0x430
@@ -1123,6 +1123,29 @@ void CPopUpDialog::Tick(float dT)
     m_790.Tick(dT);
     if (m_32c)
         m_32c->Tick(dT);
+}
+
+/* the children deleted, each taken off the list first (~CUIMapCtrl's walk, under a test of the
+ * list's size), the alternate font deleted and the actions forgotten (SOCOM 1's ~C2DButton, 0x38F780
+ * there: the same body), then the members and the bases */
+C2DButton::~C2DButton()
+{
+    if (size()) {
+        iterator i;
+        iterator e = end();
+
+        for (i = begin(); i != e;) {
+            C2D *p = *i;
+            iterator next;
+
+            next = erase(i);
+            delete p;
+            i = next;
+        }
+    }
+    if (m_alternateFont)
+        delete m_alternateFont;
+    m_numActions = 0;
 }
 
 /* the background loaded with a texture, the caption's scale (inlines' out-of-line copies after
