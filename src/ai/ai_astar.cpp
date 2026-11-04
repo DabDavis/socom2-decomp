@@ -36,6 +36,10 @@ public:
         }
         return false;
     }
+    /* the cheapest node off the heap (after the order: below). An inline of its own -- the
+     * pop_heap's iterator temporaries take the frame's lowest slots only so, expanded a level
+     * deeper than the pushes' (find_path's frame, AI core round 19) */
+    void Pop();
 };
 
 /* the closed list: the cells visited (SOCOM II's are cells, SOCOM 1's nodes; 0x66A108, its
@@ -60,6 +64,12 @@ static unsigned int s_plannerStart;
 static std::greater<node> s_order;
 static CAiOpenList s_open;
 static CAiClosedList s_closed;
+
+inline void CAiOpenList::Pop()
+{
+    std::pop_heap(begin(), end(), s_order);
+    pop_back();
+}
 /* the longest each list has been (written by ~CAiStar, read by nothing in the image) */
 static unsigned int s_maxOpen;
 static unsigned int s_maxClosed;
@@ -184,6 +194,23 @@ inline bool over_limit(unsigned int limit, const unsigned int &n)
     return limit ? limit < n : false;
 }
 
+/* the way back (the name ours): taken by reference, so the promoted `last` is a later variable
+ * than the cell's byte and takes the first register (a0) -- by value, or `(DIR)((last + 4) % 8)`
+ * written in the test, the two swap (the AI core round 19) */
+inline CAiMap::DIR opposite(const CAiMap::DIR &d)
+{
+    return (CAiMap::DIR)((d + 4) % 8);
+}
+
+/* a cell on a map: its x and y, the map's id (the name ours). Through a reference, MW shares
+ * the trace back's x with the loop test's operator!= -- which then stays a materialised bool
+ * (daddiu 1 / move zero, then bnez), as the target's; written out in the push the cell is
+ * reloaded and the test becomes per-compare setcc's (the AI core round 19) */
+inline CAiMapLoc on_map(const CAiMapLoc &l, unsigned int id)
+{
+    return CAiMapLoc(l.x, l.y, id);
+}
+
 /* the trace back's step: GetNeighbor's, the cell's traversability asked and its answer dropped --
  * the target calls IsTraversable on the cell reached and ignores it (the name ours) */
 inline bool next_cell(CAiMap *map, const CAiMapLoc &loc, CAiMap::DIR dir, CAiMapLoc &out, CAiCell *&cell)
@@ -206,19 +233,19 @@ inline bool next_cell(CAiMap *map, const CAiMapLoc &loc, CAiMap::DIR dir, CAiMap
  * closes it and stops at the goal or a limit, else opens or improves its neighbours -- all eight
  * directions, or the ones a door on the cell allows; done, the path's points are traced back from
  * the goal by the directions the cells keep.
- * OPEN, right size since the AI core's round 18 (0xF30 before), 159 aligned rows off: the limit
- * tests through over_limit taking the count by reference (the limit loaded and tested first, the
- * count in the delay slot), the door's own direction stored first, the "has a direction" test an
- * inline accessor (the next statement reloads the field), the direction tables CAiMap::DIR arrays
- * (byte enums: copied with lb, read for arithmetic with lbu) and the push's failure laid out last
- * (`if (Push) {...} else {...; break;}`) each moved it closer. Left: (1) the first block keeps
- * &cur.m_h in s1 as it keeps &cur.m_g in s0 -- MW gives a local field's address a register at
- * three uses in a block (measured: a third read of m_h moves it there, and m_g falls back to sp
- * offsets at two), the target has three of each where this source has two of m_h (a dead store,
- * `(void)cur.m_h`, references and accessors did not supply the third); (2) IsDoor's `||`
- * materialised into a bool (daddiu/move) before the branch; (3) the loop's push_heap temporaries
- * and the trace back's cells sit 8 bytes higher in the target's frame (one 8-byte temporary more);
- * (4) registers following from these. SOCOM 1's find_path keeps the same cost addresses */
+ * Byte-exact since the AI core's round 19 (159 aligned rows off before). What each shape is for:
+ * the limit tests through over_limit taking the count by reference (the limit loaded and tested
+ * first, the count in the delay slot), the door's own direction stored first, the "has a
+ * direction" test an inline accessor (the next statement reloads the field), the direction tables
+ * CAiMap::DIR arrays (byte enums: copied with lb, read for arithmetic with lbu), the push's failure
+ * laid out last (`if (Push) {...} else {...; break;}`); then, round 19: the pop an inline of the
+ * open list's (its pop_heap temporaries expanded a level deeper take the frame's lowest slots --
+ * what read as "one 8-byte temporary more" was every other temporary 8 bytes higher), s_typeBias
+ * stored ahead of the two bools, the first block's f written out as `cur.m_g + cur.m_h` (through
+ * node::f() its loads fold into sp offsets and &cur.m_h never gets s1), the cost scaled inside the
+ * n.m_g statement, IsDoor reading m_type twice (ai.h), the trace back's cell built through on_map
+ * (by reference: the loop test's x is shared, so operator!= stays a materialised bool) and the way
+ * back through opposite(const DIR &) */
 void CAiStar::find_path(CAiPath *path)
 {
     node cur;
@@ -233,22 +260,21 @@ void CAiStar::find_path(CAiPath *path)
 
         CAiCell *cell = m_map->GetCell(m_start, 0);
 
-        cell->m_astar_f = cur.f();
+        cell->m_astar_f = cur.m_g + cur.m_h;
         cell->m_astar_g = cur.m_g;
         m_stats->nodes_added++;
         path->m_state = CAiPath::PLANNING;
     }
 
     CAiPath::ASTAR_STATUS status = CAiPath::ASTAR_SUCCESS;
-    bool intime = true;
 
     s_typeBias = path->m_type_bias;
+    bool intime = true;
     bool found = false;
 
     while (s_open.size() != 0 && (intime = *(volatile unsigned int *)0x10000000 - s_plannerStart < timerlimit)) {
         cur = *s_open.begin();
-        std::pop_heap(s_open.begin(), s_open.end(), s_order);
-        s_open.pop_back();
+        s_open.Pop();
 
         CAiCell *cell = m_map->GetCell(cur.m_loc, 0);
 
@@ -316,10 +342,10 @@ void CAiStar::find_path(CAiPath *path)
             }
 
             node n;
-            float c = 10.0f * m_planner->fcost(*m_map, cur.m_loc, d, to);
+            float c = m_planner->fcost(*m_map, cur.m_loc, d, to);
 
             n.m_loc = to;
-            n.m_g = cur.m_g + (int)c;
+            n.m_g = cur.m_g + (int)(10.0f * c);
             n.m_h = m_planner->dist(*m_map, to, m_goal);
             if (ncell->m_astar_dir == 8) {
                 ncell->m_astar_dir = (d + 4) % 8;
@@ -368,9 +394,9 @@ void CAiStar::find_path(CAiPath *path)
             CAiMap::DIR last = dir;
 
             dir = (CAiMap::DIR)cell->m_astar_dir;
-            if (last != CAiMap::DIR_COUNT && dir == (last + 4) % 8)
+            if (last != CAiMap::DIR_COUNT && dir == opposite(last))
                 break;
-            path->m_points.push_back(CAiPath::point(CAiMapLoc(loc.x, loc.y, m_map->GetMapId())));
+            path->m_points.push_back(CAiPath::point(on_map(loc, m_map->GetMapId())));
 
             CAiMapLoc next;
 
