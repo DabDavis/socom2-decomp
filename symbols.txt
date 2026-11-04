@@ -11031,10 +11031,10 @@
 0x005C3780 0x8 GetCurItem__5CZKitCFv  # OVL2; s1:calls by hand (the HUD lane: at SOCOM 1's call site in ZoomIn/ZoomOut; its result's type byte is compared with 11)
 0x005C3790 0x14 GetCurFireMode__5CZKitFv  # OVL2; s1:exact by hand (SOCOM 1's GetCurFireMode: the selected item's m_firemode, its low byte; 0x14 bytes in both, after GetCurItem as there)
 0x005C37B0 0xD4 SetCurFireMode__5CZKitF8FIREMODE  # OVL2; s1:calls by hand (CSealCtrlSquirm::Initalize calls it on the kit with 3 right after SetCurItemByIndex, as SOCOM 1's Initalize calls SetCurFireMode)
-0x005C3890 0x8 func_005C3890  # OVL2
+0x005C3890 0x8 GetCurAmmoCount__5CZKitFv  # OVL2; s1:order by hand (the kit lane, round 25): SOCOM 1's GetCurAmmoCount sits right before GetAmmoCount there too; here a tail call (j GetAmmoCount with the selected item, 0x824) -- CAmmoDisplay::Update and CHUD::Tick call it for the rounds
 0x005C38A0 0x36C GetAmmoCount__5CZKitFi  # OVL2; s1:calls (the HUD lane's round 15, vetted by the integrator: CWeaponSel::PlaceWeaponText calls it where SOCOM 1's PlaceWeaponText calls GetAmmoCount__5CZKitFi)
 0x005C3C10 0xD0 GetAmmoTotal__5CZKitFi  # OVL2; by hand: the index wrapped on m_num_items, its ten magazines (0x1D4) summed -- where SOCOM 1's EmptyAmmoCountTotal sat, which zeroed them (the name ours)
-0x005C3CE0 0x8 func_005C3CE0  # OVL2
+0x005C3CE0 0x8 GetCurMaxAmmoCount__5CZKitFv  # OVL2; s1:order by hand (the kit lane, round 25, the round-24 lead): SOCOM 1's GetCurMaxAmmoCount sits before GetMaxAmmoCount there too; here a tail call (j GetMaxAmmoCount with the selected item, 0x824) -- CAmmoDisplay::Update calls it for the clip size
 0x005C3CF0 0x1E4 GetMaxAmmoCount__5CZKitFi  # OVL2; s1:calls (the HUD lane's round 15, vetted by the integrator: PlaceWeaponText calls it where SOCOM 1's calls GetMaxAmmoCount__5CZKitFi)
 0x005C3EE0 0x59C func_005C3EE0  # OVL2
 0x005C4480 0x134 NextFireMode__5CZKitFi  # OVL2; by hand (the kit lane, round 12): a kit member -- the selected item's mode (m_firemode, 0x6FC), and when it is 4 or more (a launcher ammunition's item kind) that kind's first item with ammunition (kit.h's FindItemWithAmmo inlined) and the kind, handed to 0x5C3EE0 with the selected item's firing item (GetFiringItem); 0x5C4600 calls it with the selected index, which it does not read; new in SOCOM II, the name ours; seal_kit.cpp byte-exact
@@ -11058,8 +11058,8 @@
 0x005C6920 0x48 GetAmmoByIndex__5CZKitFi  # OVL2; by hand: new in SOCOM II -- m_ammo (0x15C, SOCOM 1's 0x148) at unwrap(index, 255), after a GetCurItem whose result is dropped; CAiSNoAmmo::Tick calls it after GetItemByIndex where SOCOM 1's called GetWeapon (the name ours)
 0x005C6970 0x8 GetCurAmmo__5CZKitFv  # OVL2; by hand: GetAmmoByIndex(m_selected_item), tail-called (the name ours)
 0x005C6980 0xC0 AttachItemNode__5CZKitFUcPCc  # OVL2; by hand (the kit lane, round 12): a kit member -- the body's attachment record of a kind (8-byte entries at body+0x388), the item in hand's node (the item pointers' vector at 0x834, one place on), the body's part of a name (CBody::FindPart on body+0x170: 0x5C50B0 passes "aimnodes") -- the node hidden (CNode slot 0x38, SetActive(false)), made the part's child (slot 0x18, AddChild) and kept at the record's +0xC; new in SOCOM II, the name ours; seal_kit.cpp byte-exact
-0x005C6A40 0x358 func_005C6A40  # OVL2
-0x005C6DA0 0x368 func_005C6DA0  # OVL2
+0x005C6A40 0x358 ReParentToRifle__5CZKitFv  # OVL2; s1:calls by hand (the integrator's lead from the SEALs' round 23, verified by the kit lane, round 25): SOCOM 1's ChangeToRifleMode calls ReParentToRifle on its kit (this+0x520) as its first call; SOCOM II's ChangeToRifleMode 0x5A70F0 calls 0x5C6A40 with the kit (this+0x5E0) at the same place; SOCOM 1's order too (ReParentToRifle before ReParentToPistol, 0x2AE190/0x2AE250)
+0x005C6DA0 0x368 ReParentToPistol__5CZKitFv  # OVL2; s1:calls by hand (the integrator's lead from the SEALs' round 23, verified by the kit lane, round 25): SOCOM 1's ChangeToPistolMode calls ReParentToPistol on its kit (this+0x520) first; SOCOM II's ChangeToPistolMode 0x5A7260 calls 0x5C6DA0 with the kit (this+0x5E0) at the same place
 0x005C7110 0x90 GetClass145Index__5CZKitFv  # OVL2; by hand (the kit lane, round 11): GetPrimaryIndex's loop with 0x3D1CB0 (an item kind of class 145) -- new in SOCOM II, the name ours
 0x005C71A0 0x90 GetSecondaryIndex__5CZKitFv  # OVL2; by hand (the kit lane, round 11): GetPrimaryIndex's loop with 0x3D1CE0 (an item kind of class 4, SOCOM 1's CZWeapon::IsSecondary) -- new in SOCOM II, the name ours
 0x005C7230 0x90 GetPrimaryIndex__5CZKitFv  # OVL2; by hand (the kit lane, round 11): the first item CZWeapon::IsPrimary takes, or -1 (new in SOCOM II, where SOCOM 1's GetItemIndex(SEAL_ITEM) read the item's slot kind; the name ours); 0x5A0040 calls the three
@@ -11096,7 +11096,7 @@
 0x005C9400 0x118 UpdateViewCone__11CSealCtrlAiFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x005C9520 0x200 func_005C9520  # OVL2
 0x005C9720 0x78 SetViewFOV__9CSealCtrlFf  # OVL2; s1:calls
-0x005C97A0 0x30 func_005C97A0  # OVL2
+0x005C97A0 0x30 push_back__Q23std56list<PQ27CDiPool3dir,Q23std26allocator<PQ27CDiPool3dir>>FRCPQ27CDiPool3dir  # OVL2; by hand (the kit lane, round 25): the request list's push_back (include/list's: the base's insert at the sentinel), out of line -- target_post_tick's cut of CDiPool::PostTick calls it (and 0x5CC120); seal_sensors.cpp's copy, the first
 0x005C97D0 0x58 func_005C97D0  # OVL2
 0x005C9830 0x74 func_005C9830  # OVL2
 0x005C98B0 0x7C func_005C98B0  # OVL2
@@ -11116,19 +11116,19 @@
 0x005CC0D0 0x30 func_005CC0D0  # OVL2
 0x005CC100 0x1C func_005CC100  # OVL2
 0x005CC120 0x4D0 func_005CC120  # OVL2
-0x005CC5F0 0xC4 func_005CC5F0  # OVL2
-0x005CC6C0 0xA4 func_005CC6C0  # OVL2
-0x005CC770 0x38 func_005CC770  # OVL2; the same words as Clear__7CGRouteFv (0x2d1190) bar the link's addresses (tools/ovlcopies.py) -- identical code, not proven the same instance (template instances for different types and look-alike accessors share bodies)
-0x005CC7B0 0x14 func_005CC7B0  # OVL2
-0x005CC7D0 0xC func_005CC7D0  # OVL2
-0x005CC7E0 0x14 func_005CC7E0  # OVL2
-0x005CC800 0x44 func_005CC800  # OVL2
-0x005CC850 0xC func_005CC850  # OVL2
-0x005CC860 0x10 func_005CC860  # OVL2
-0x005CC870 0xC func_005CC870  # OVL2
-0x005CC880 0x8 func_005CC880  # OVL2
-0x005CC890 0x8 func_005CC890  # OVL2
-0x005CC8A0 0x190 func_005CC8A0  # OVL2
+0x005CC5F0 0xC4 CloseDiPool__11CSealCtrlAiFv  # OVL2; s1:calls by hand (the kit lane, round 25): SOCOM 1's ReleaseDatabaseHandles (two 8-byte memsets, then CloseDiPool) is SOCOM II's 0x574BD0 (the memsets, a new call, then 0x5CC5F0, then CAiGroup::DeleteAll); the same walk -- the used list's requests reset onto the free list, the used list cleared, the free list's requests deleted -- in SOCOM 1's order before OpenDiPool and CleanupDiPool
+0x005CC6C0 0xA4 DeleteAll__Q27CDiPool7dirlistFv  # OVL2; by hand (the kit lane, round 25; the names ours): the free list (0x44D5FC) emptied -- each request deleted (for_each over an inline deleter: the first iterator in the frame, copied in through $f0), then clear(); CloseDiPool 0x5CC5F0 calls it last, where SOCOM 1's CloseDiPool did it inline
+0x005CC770 0x38 clear__Q23std42__list_deleter<PCv,Q23std14allocator<PCv>>Fv  # OVL2; the same words as Clear__7CGRouteFv (0x2d1190) bar the link's addresses (tools/ovlcopies.py) -- identical code, not proven the same instance (template instances for different types and look-alike accessors share bodies); by hand (the kit lane, round 25): the pointer lists' clear() (erase(begin(), end()) with both inlined), out of line -- CloseDiPool's inlined Close calls it on the used list
+0x005CC7B0 0x14 __ne__Q33std56list<PQ27CDiPool3dir,Q23std26allocator<PQ27CDiPool3dir>>19generic_iterator<0>CFRCQ33std56list<PQ27CDiPool3dir,Q23std26allocator<PQ27CDiPool3dir>>19generic_iterator<0>  # OVL2; by hand (the kit lane, round 25): the request list iterator's !=, out of line (the walk tests)
+0x005CC7D0 0xC end__Q23std56list<PQ27CDiPool3dir,Q23std26allocator<PQ27CDiPool3dir>>Fv  # OVL2; by hand (the kit lane, round 25): the request list's end(), out of line (CloseDiPool's and CleanupDiPool's walk tests)
+0x005CC7E0 0x14 __pp__Q33std56list<PQ27CDiPool3dir,Q23std26allocator<PQ27CDiPool3dir>>19generic_iterator<0>Fi  # OVL2; by hand (the kit lane, round 25): the request list iterator's postfix ++, out of line (the walks' step, i++)
+0x005CC800 0x44 Free__Q27CDiPool7dirlistFPQ27CDiPool3dir  # OVL2; by hand (the kit lane, round 25; the names ours): a request reset (its state byte and +0x2C zeroed, the record re-read from the frame for each store) and pushed onto the free list (0x44D5FC, this) -- CloseDiPool 0x5CC5F0 for each used request and ai_target.cpp's 0x60B8F0 call it, where SOCOM 1's CloseDiPool did it inline
+0x005CC850 0xC __ml__Q33std56list<PQ27CDiPool3dir,Q23std26allocator<PQ27CDiPool3dir>>19generic_iterator<0>CFv  # OVL2; by hand (the kit lane, round 25): the request list iterator's *, out of line (the element's address)
+0x005CC860 0x10 __as__Q33std56list<PQ27CDiPool3dir,Q23std26allocator<PQ27CDiPool3dir>>19generic_iterator<0>FRCQ33std56list<PQ27CDiPool3dir,Q23std26allocator<PQ27CDiPool3dir>>19generic_iterator<0>  # OVL2; by hand (the kit lane, round 25): the request list iterator's implicit assignment (a bitwise copy through $f0), out of line -- the walks assign begin() to their iterator
+0x005CC870 0xC begin__Q23std56list<PQ27CDiPool3dir,Q23std26allocator<PQ27CDiPool3dir>>Fv  # OVL2; by hand (the kit lane, round 25): the request list's begin(), out of line (CloseDiPool's and CleanupDiPool's walks: CDiPool's Close/Release inlined one level)
+0x005CC880 0x8 __ct__Q33std56list<PQ27CDiPool3dir,Q23std26allocator<PQ27CDiPool3dir>>19generic_iterator<0>Fv  # OVL2; by hand (the kit lane, round 25): the request list's iterator's default constructor, out of line -- CloseDiPool and CleanupDiPool inline CDiPool's Close/Release one level and call it first (SOCOM 1's symbols name the same list<CDiPool::dir *>)
+0x005CC890 0x8 OpenDiPool__11CSealCtrlAiFv  # OVL2; s1:calls by hand (the kit lane, round 25): SOCOM 1's AcquireDatabaseHandles (two GetSoundByName, then OpenDiPool, an empty function) is SOCOM II's 0x574C30, which calls this empty function in that place
+0x005CC8A0 0x190 CleanupDiPool__FP10CZSealBody  # OVL2; s1:calls by hand (the kit lane, round 25): SOCOM 1's CSealCtrlAi::OnDeath calls CleanupDiPool(seal) right after its event-handle list's erase; SOCOM II's OnDeath 0x5714B0 calls 0x5CC8A0 with the seal at the same place -- the dying SEAL's requests dropped, then each of its targets' entry for it unhooked from its request
 0x005CCA30 0x298 func_005CCA30  # OVL2
 0x005CCCD0 0xB9C func_005CCCD0  # OVL2
 0x005CD870 0x30 func_005CD870  # OVL2
@@ -11630,7 +11630,7 @@
 0x00600290 0x1A8 DoHandSignal__10CZSealBodyF15SEAL_HANDSIGNAL  # OVL2; s1:calls by hand (the kit lane, round 18): SOCOM 1's DoHandSignal -- the same state tests (dead, carrying, hanging, on a ladder, on the body or its top blend) and stance switch into m_handSignal, the anim pushed through 0x588BC0 unless on top; SOCOM II's adds the top blend's flag-0x40 test and the carry test, and returns a short -- src/gamez/zseal/seal_handsig.cpp
 0x00600440 0xE8 InitHandSignals__10CZSealBodyFv  # OVL2; s1:calls by hand (the kit lane, round 18): SOCOM 1's InitHandSignals (sprintf and FindAnimType per signal and stance into m_handSignal), a loop over a name table in SOCOM II; static (reads no member, its caller 0x5A49F0 passes none) -- src/gamez/zseal/seal_handsig.cpp
 0x00600530 0x18 __ct__11CHandSignalFv  # OVL2; s1:order by hand (the kit lane, round 18): SOCOM 1's CHandSignal() after InitHandSignals, the three anims set to -1 (shorts in SOCOM II); __sinit_seal_handsig.cpp passes it to __construct_array -- src/gamez/zseal/seal_handsig.cpp
-0x00600550 0x79C func_00600550  # OVL2
+0x00600550 0x79C ScanTick__9CSealCtrlFf  # OVL2; s1:calls by hand (the integrator's lead from the SEALs' round 23, verified by the kit lane, round 25): SOCOM 1's CSealCtrl::Tick calls _close_enough, GetWeaponState, SetLookDirR, ClearLook, sinf, cosf, SetLookDirR, ClearLook, ScanTick, UpdateLocalSeal; SOCOM II's Tick 0x596F10 makes the same ten calls, 0x600550 with (this, dT) in ScanTick's place; and it heads seal_look.cpp (SOCOM 1's seal_aiscan.cpp opens with ScanTick, 0x71C there) before ClearLook 0x600D40
 0x00600CF0 0x50 func_00600CF0  # OVL2
 0x00600D40 0x8C ClearLook__9CSealCtrlF7AI_LOOK  # OVL2; s1:order by hand (the kit lane, round 4): CSealCtrl::ClearLook(AI_LOOK) -- SOCOM 1's ClearLook__9CSealCtrlF7AI_LOOK (0x2E4310), the same stores 4 bytes on (the look's point to CPnt3D::unit_nz, type 3, mode 0, timer CAiTimer::infinite, flags 0) and the same tail call to SetDefaultLookParams (0x601400), SOCOM II's passing whether the type was not 3; a placeholder because zseal.h's CSealCtrl does not declare it (seal_look.cpp); by hand (the kit lane, round 18): written as CSealCtrl's member, seal_look.cpp
 0x00600DD0 0x100 SetLookDirR__9CSealCtrlF7AI_LOOKPC6CPnt3Db  # OVL2; s1:order by hand (the kit lane, round 18): SOCOM 1's SetLookDirR, the same code 4 bytes on (the look's kind tested, the direction copied or normalised, kind 3), SetDefaultLookParams now told whether the point's kind changed; CAiSPursue::Tick calls it before SetScanAngle/ModifyLookFlags/SetLookTimer in both builds -- seal_look.cpp
@@ -11746,16 +11746,16 @@
 0x0060B120 0x344 func_0060B120  # OVL2
 0x0060B470 0x37C func_0060B470  # OVL2
 0x0060B7F0 0xF8 func_0060B7F0  # OVL2
-0x0060B8F0 0x1FC func_0060B8F0  # OVL2
-0x0060BAF0 0x88 func_0060BAF0  # OVL2
-0x0060BB80 0x10 func_0060BB80  # OVL2
-0x0060BB90 0x48 func_0060BB90  # OVL2
-0x0060BBE0 0x14 func_0060BBE0  # OVL2
-0x0060BC00 0x10 func_0060BC00  # OVL2; tu: char_type.cpp~ (1.0 beta)
-0x0060BC10 0x28 func_0060BC10  # OVL2; tu: vis_mesh.cpp~ (1.0 beta)
-0x0060BC40 0x2CC func_0060BC40  # OVL2
-0x0060BF10 0x1C func_0060BF10  # OVL2
-0x0060BF30 0xC func_0060BF30  # OVL2
+0x0060B8F0 0x1FC func_0060B8F0  # OVL2; by hand (the kit lane, round 25): the target_post_tick task -- SOCOM 1's ai_post_tick, PostTick__11CSealCtrlAiFfPv (0x2B33B0: the same walk, states 2 and 1 freed, 4 settled), moved to ai_target.cpp in SOCOM II; kept a placeholder (the static would hide CSealCtrl::PostTick in CSealCtrlAi)
+0x0060BAF0 0x88 __dt__Q27CDiPool7dirlistFv  # OVL2; by hand (the kit lane, round 25; the class ours): the request list class's implicit destructor (four this-tests, the range erase), out of line behind target_post_tick's cut -- its local list, destroyed with -1
+0x0060BB80 0x10 HasIntersect__Q27CDiPool3dirCFv  # OVL2; by hand (the kit lane, round 25; the name ours): a request holds a DiIntersect (its index at 0x1C not negative), out of line behind target_post_tick's cut
+0x0060BB90 0x48 erase__Q27CDiPool7dirlistFQ33std56list<PQ27CDiPool3dir,Q23std26allocator<PQ27CDiPool3dir>>19generic_iterator<0>Q33std56list<PQ27CDiPool3dir,Q23std26allocator<PQ27CDiPool3dir>>19generic_iterator<0>  # OVL2; by hand (the kit lane, round 25; the member ours): a range of the request list unlinked, the wrapper iterators handed to the base's erase (0x50F990), out of line behind target_post_tick's cut
+0x0060BBE0 0x14 __pp__Q33std56list<PQ27CDiPool3dir,Q23std26allocator<PQ27CDiPool3dir>>19generic_iterator<0>Fv  # OVL2; by hand (the kit lane, round 25): the request list iterator's prefix ++, out of line behind target_post_tick's cut (the erase's end, ++next)
+0x0060BC00 0x10 __ct__Q33std56list<PQ27CDiPool3dir,Q23std26allocator<PQ27CDiPool3dir>>19generic_iterator<0>FRCQ33std56list<PQ27CDiPool3dir,Q23std26allocator<PQ27CDiPool3dir>>19generic_iterator<0>  # OVL2; tu: char_type.cpp~ (1.0 beta); by hand (the kit lane, round 25): the request list iterator's user-declared copy constructor (include/list's, as OVL2's 0x510BD0 for the path list), out of line behind target_post_tick's cut
+0x0060BC10 0x28 __ct__Q27CDiPool7dirlistFv  # OVL2; tu: vis_mesh.cpp~ (1.0 beta); by hand (the kit lane, round 25; the class ours): the request list class's implicit constructor (the deleter's constructor called), out of line behind target_post_tick's one-level cut of CDiPool::PostTick -- its local list; the copy after its caller
+0x0060BC40 0x2CC func_0060BC40  # OVL2; by hand (the kit lane, round 25): the target_pretick task -- SOCOM 1's ai_direg_tick, PrePostTick__11CSealCtrlAiFfPv (0x2B3600: the same walk of the pool's used list, states 1 and 4 skipped, the limited ones within the frame's budget, each ray registered with RegIntersectDelayed and its node ignored), moved to ai_target.cpp in SOCOM II; kept a placeholder: a static PrePostTick(float, void *) in zseal.h's CSealCtrlAi would hide CSealCtrl's virtual ticks in the SEALs' units
+0x0060BF10 0x1C SetCharacterHits__Q23zdb11DiIntersectFb  # OVL2; by hand (the kit lane, round 25; the name ours): DiIntersect's m_IntersectCharacters (byte 2 bit 0) set, nothing given back -- an inline (node_world.h) out of line behind target_pretick's one-level cut of CDiPool::PreTick, which clears it on each ray it registers; its only caller 0x60BC40, the copy after it
+0x0060BF30 0xC World__7CDiPoolFv  # OVL2; by hand (the kit lane, round 25; the name ours): the world the visibility pool registers its rays with (zdb::CWorld::m_world), an inline accessor out of line behind target_pretick's one-level cut of CDiPool::PreTick (seal_dipool.h) -- its only caller 0x60BC40, the copy after it
 0x0060BF40 0x224 __ct__14SEAL_AI_PARAMSFv  # OVL2; by hand (the kit lane, round 6): SEAL_AI_PARAMS's constructor -- CSealCtrlAi's constructor (0x5740A4) calls it on this + 0x250, the second base CSealCtrlAi's RTTI lists there, before its table store; it builds the state stack at +0x1CC (0x5F8520), two CAiPaths, the CAiEvent, the event queue, the CAiTarget (0x60A940) and the trigger
 0x0060C170 0x18 func_0060C170  # OVL2
 0x0060C190 0x78 __dt__Q28CAiGroup10act_cameraFv  # OVL2; by hand (the kit lane, round 16): slot +8 of CAiGroup::act_camera's vtable (0x669EC0) -- its table, then action's destructor inlined

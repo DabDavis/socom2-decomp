@@ -196,6 +196,10 @@ public:
         m_IntersectCharacters = on;
         return was;
     }
+    /* the same, nothing given back (inline: the visibility pool's pre-tick clears it on each ray it
+     * registers, out of line at OVL2 0x60BF10 behind that tick's one-level cut; the kit lane's,
+     * round 25 -- the name ours) */
+    void SetCharacterHits(bool on) { m_IntersectCharacters = on; }
 
     unsigned int m_Type : 16;   // 0x0
     unsigned int m_IntersectCharacters : 1;

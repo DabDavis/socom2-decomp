@@ -4,12 +4,13 @@ typedef signed char s8; typedef unsigned char u8; typedef short s16; typedef uns
 typedef int s32; typedef unsigned int u32; typedef long s64; typedef unsigned long u64;
 typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK32;
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
+#define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
 M2C_UNK __destroy_arr(M2C_UNK *, M2C_UNK *, M2C_UNK, M2C_UNK); /* extern */
-extern M2C_UNK data_0040C200;
-extern M2C_UNK func_00220C30;
+extern M2C_UNK __dt__11CActionTxtrFv;
+extern M2C_UNK g_arrActionTxtrs;
 
 void func_00220C10(void) {
-    __destroy_arr(&data_0040C200, &func_00220C30, 0xE0, 0x16);
+    __destroy_arr(&g_arrActionTxtrs, &__dt__11CActionTxtrFv, 0xE0, 0x16);
 }
