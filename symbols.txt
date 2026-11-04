@@ -10271,7 +10271,7 @@
 0x0056DDC0 0x50 OnRecycleEntity__11CSealCtrlAiFP7CEntity  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0056DE10 0x1064 PreTick__11CSealCtrlAiFf  # OVL2; slot 0x0C of __vt__11CSealCtrlAi (CEntityCtrl's PreTick slot)
 0x0056EE80 0x384 PostMortemPreTick__11CSealCtrlAiFf  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x0056F210 0x248 func_0056F210  # OVL2
+0x0056F210 0x248 AcquireRemoteAi__10CZSealBodyFP10CZSealBody  # OVL2; s1:order by hand (the SEALs, round 31): SOCOM 1's AcquireRemoteAi__10CZSealBodyFP10CZSealBody, right before CRemoteCtrl's destructor and SetAiNetState/GetAiNetState in both builds (SOCOM 1's 0x267F00 before its GetAiNetState 0x2682E0), zDoClientLeavesCallback its one caller in both (a0 the SEAL, a1 unset) -- the same code: the remote controller's net state, the controller swapped for a new CSealCtrlAi, InitAiBrain, the follow (9) and rescued (17) codes
 0x0056F460 0x60 __dt__11CRemoteCtrlFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0056F4C0 0x1FC SetAiNetState__11CRemoteCtrlFUi  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0056F6C0 0x29C GetAiNetState__11CSealCtrlAiCFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)

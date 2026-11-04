@@ -3300,6 +3300,78 @@ void CRemoteCtrl::SetAiNetState(unsigned int state)
     SetRestrained(seal, cur.m_restrained);
 }
 
+extern "C" {
+/* (OVL2 0x5EC9F0, seal_unit.cpp's: zseal.h's CSealUnit does not declare it) */
+void InitalizeSealUnit__9CSealUnitFP10CZSealBodyP9CSealUnit(CZSealBody *seal, CSealUnit *unit);
+}
+
+/* the remote SEAL taken over by the AI: its controller's network state read, the old controller
+ * deleted, a new AI's set up in the squad -- the followed one's squad kept for a follower whose squad
+ * still has SEALs -- and then, by the state's code, the follow order given to the SEAL it named (9),
+ * the rescued state pushed with the rescuer's id (17), or the id kept as the master's (OVL2
+ * 0x56F210: SOCOM 1's CZSealBody::AcquireRemoteAi, the squad, the deletion and the default new).
+ * The registers want the code, the squad and the unit declared at the top in that order (the six
+ * orders give 2 to 12 off; declared where defined, 37), the squad set to the unit and then cleared
+ * (the ternary duplicates the block), and the unit stored into the new AI before the squad's set-up
+ * (the store in that call's delay slot) */
+void CZSealBody::AcquireRemoteAi(CZSealBody *seal)
+{
+    unsigned int code;
+    CSealUnit *squad;
+    CSealUnit *unit;
+    CSealCtrl *ctrl = (CSealCtrl *)seal->m_control;
+    CSealCtrl *remote = (CSealCtrl *)ctrl->GetRemoteControl();
+
+    if (!remote)
+        return;
+
+    REMOTE_NET_STATE st;
+    unsigned int state = remote->GetAiNetState();
+
+    memcpy(&st, &state, sizeof(st));
+
+    unit = ctrl->m_unit;
+    code = st.m_code;
+    squad = unit;
+
+    if (code != 9 || !unit->GetSealCount(0))
+        squad = 0;
+
+    seal->SetController(0);
+    if (remote)
+        delete remote;
+
+    CSealCtrlAi *ai = new CSealCtrlAi;
+
+    seal->SetController(ai);
+    ai->m_unit = unit;
+    InitalizeSealUnit__9CSealUnitFP10CZSealBodyP9CSealUnit(seal, squad);
+    ai->Initalize();
+    ai->InitAiBrain();
+    ai->Dump();
+    switch (code) {
+    case 9: {
+        CZSealBody *leader = AsSeal(CEntity::m_list.GetEntityById(st.m_id));
+
+        if (leader)
+            seal->IssueCommand(leader, (FT_COMMAND)4, 0, false);
+        break;
+    }
+    case 17:
+        if (ai->PushAiState(AI_STATE_RESCUED, 0)) {
+            CAiState *s = ai->GetAiState();
+            CAiSRescued *r = s && s->m_state == AI_STATE_RESCUED ? (CAiSRescued *)s : 0;
+
+            r->m_5c = st.m_id;
+            r->SetActive(true);
+        }
+        break;
+    default:
+        ai->m_follow_master_id = st.m_id;
+        break;
+    }
+}
+
 /* the destructor of the network's controller (OVL2 0x56F460: CSealCtrl's called as a base) */
 CRemoteCtrl::~CRemoteCtrl()
 {

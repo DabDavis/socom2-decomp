@@ -292,6 +292,8 @@ public:
     /* the squad of a team, and a member by its index (OVL2 0x5EF2F0, 0x5EDBB0: the kit lane's
      * seal_unit.cpp, which declares them alike) */
     static CSealUnit *GetUnitByTeam(unsigned int team);
+    /* the squad's SEALs counted, with its sub-squads' to a depth (OVL2 0x5ED9B0, the kit lane's) */
+    int GetSealCount(int depth);
     CZSealBody *GetSealByIndex(int index, int depth);
     /* the squad's leader (SOCOM 1's const GetLeader; OVL2 0x5E8A90, the kit lane's) */
     CZSealBody *GetLeader() const;
@@ -1548,6 +1550,10 @@ public:
     /* an order given to the SEAL's controller, which may refuse order 17; a given order flagged
      * (SOCOM 1's; OVL2 0x590AC0) */
     void IssueCommand(CZSealBody *seal, FT_COMMAND cmd, void *data, bool b);
+    /* a SEAL another console drove taken over by the AI when its console leaves, from the state that
+     * console last sent (SOCOM 1's AcquireRemoteAi; OVL2 0x56F210, seal_ai.cpp's: static -- the
+     * SEAL is its one argument, zDoClientLeavesCallback passes it in a0 and nothing in a1) */
+    static void AcquireRemoteAi(CZSealBody *seal);
     /* an action offered or withdrawn (SOCOM 1's took an unsigned int id) */
     void ActionAvailableMask(unsigned char id, bool on);
     /* the restraint flag set (an inline: its bool is stored as `(b & 1)`) */
