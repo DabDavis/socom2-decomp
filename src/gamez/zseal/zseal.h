@@ -520,8 +520,9 @@ public:
      * the look's point changed kind, and SetLookPosW gained a cell's and an entity's overloads */
     void ClearLook(AI_LOOK look);
     /* an AI event of the controller's SEAL made (OVL2 0x572FA0; SOCOM 1's CreateAiEvent, by its
-     * order and the voice's call; the event's id returned) */
-    int CreateAiEvent(CAiEvent::EVENT event, float a, float b, bool c, const CPnt3D *pos, unsigned int d);
+     * order and the voice's call; the event returned, where SOCOM 1's answered a bool) */
+    CAiEvent *CreateAiEvent(CAiEvent::EVENT event, float duration, float range, bool visible, const CPnt3D *pos,
+        unsigned int userdata);
     bool SetLookDirR(AI_LOOK look, const CPnt3D *dir, bool exact);
     bool SetLookDirW(AI_LOOK look, CAiMap::DIR dir);
     bool SetLookDirW(AI_LOOK look, const CPnt3D *dir, bool exact);
@@ -595,7 +596,9 @@ public:
     float m_goal_tolerance;   // 0x1b4
     CAiTimer m_goal_timer;   // 0x1b8
     float m_speed;   // 0x1c4 (SOCOM 1's 0x1bc)
-    unsigned char _1c8[0x221 - 0x1c8];
+    /* when each kind of AI event was last made (SOCOM 1's m_event_time[15], 0x1c0: CreateAiEvent) */
+    float m_event_time[15];   // 0x1c8
+    unsigned char _204[0x221 - 0x204];
     MENU_STATE m_menustate;   // 0x221 (as SOCOM 1's)
     unsigned char _222[0x240 - 0x222];
     float m_240;   // 0x240: how long the reload button has been held (0x594B70; the name ours)
@@ -662,6 +665,23 @@ struct CAiRouteBytes {
     AI_ROUTE m_state;   // 0xa8
 };
 
+/* a stamp of the AI's at 0x324 (new in SOCOM II; the class and its names ours): the mission's time
+ * when it was restarted and four fields its restart clears. Reset is an ordinary function of
+ * seal_ai.cpp (OVL2 0x558590), which the sleep setters there inline; the avoid and path-recover
+ * states, CAiGroup::AddMember and SetGroup call it */
+class CAiStamp {
+public:
+    void Reset();
+
+    float m_time;   // 0x0
+    unsigned int m_4;   // 0x4
+    unsigned char m_8;   // 0x8
+    unsigned char _9[0x1c - 0x9];
+    unsigned int m_1c;   // 0x1c
+    unsigned char m_20;   // 0x20
+    unsigned char _21[0x24 - 0x21];
+};
+
 /* the AI's data, CSealCtrlAi's second base (new in SOCOM II: CSealCtrlAi's RTTI, OVL2 0x65C6D0,
  * lists SEAL_AI_PARAMS at 0x250 -- after CEntityCtrl and CSealCtrl at 0 -- and SEAL_AI_PARAMS's own,
  * 0x65C660, no bases). It holds what SOCOM 1's CSealCtrlAi held, in the same order: its
@@ -700,8 +720,9 @@ public:
      * ours) */
     unsigned int m_aibit7 : 1;
     unsigned int m_aibit8 : 1;   // bits 8 and 9: either refuses a state push without flag 4
-    unsigned int m_aibit9 : 1;   // (0x5F5CD0)
-    unsigned int m_bits10 : 3;
+    unsigned int m_aibit9 : 1;   // (0x5F5CD0) -- SOCOM 1's m_sleeping and m_snoozing (its DWARF)
+    unsigned int m_nosnooze : 1;   // bit 10 (SOCOM 1's: SetSnoozing refuses the doze with it set)
+    unsigned int m_bits11 : 2;
     unsigned int m_aibit13 : 1;
     unsigned int m_bits14 : 2;
     unsigned int m_aibit16 : 1;
@@ -718,7 +739,9 @@ public:
     SEAL_STANCE m_stance_asked;   // 0x279: the stance SetStance was last asked for (the names ours)
     float m_stance_delay;   // 0x27c (SOCOM 1's 0x288)
     float m_280;   // 0x280: the delay before the asked stance is taken (cleared by SetStance)
-    unsigned char _284[0x364 - 0x284];
+    unsigned char _284[0x324 - 0x284];
+    CAiStamp m_stamp;   // 0x324 (restarted by the sleep setters, the avoid and path-recover states)
+    unsigned char _348[0x364 - 0x348];
     CAiTimer m_stance_timer;   // 0x364: restarted with each desired stance (0x5631B0; the name ours)
     unsigned char _370[0x3d0 - 0x370];
     unsigned int m_3d0;   // 0x3d0: zeroed with each burst of the spray (0x5659E0; the name ours)
@@ -860,6 +883,10 @@ public:
     bool ClearAiState(bool all);   /* returns a bool (the kit lane: 0x5F5F20 sets v0) */
     /* the kinds of event heard, by the SEAL's team and sleep (SOCOM 1's; OVL2 0x572D70) */
     void UpdateEventMask();
+    /* asleep or awake, and dozing or not (SOCOM 1's SetSleeping and SetSnoozing: bits 8 and 9 at
+     * 0x264; OVL2 0x56D0C0, 0x56D6A0) */
+    void SetSleeping(bool on);
+    void SetSnoozing(bool on);
     /* the state stack's operations as the controller offers them (SOCOM 1's, their bodies the
      * stack's now: OVL2 0x5F5BA0-0x5F5CB0 and 0x5F5FC0, the AI-states lane's seal_aistate.cpp):
      * a state set or pushed when CanPushAiState allows it -- SOCOM 1's bool now a flags word it

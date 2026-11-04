@@ -10118,7 +10118,7 @@
 0x005582B0 0x8 func_005582B0  # OVL2
 0x005582C0 0x174 func_005582C0  # OVL2
 0x00558440 0x148 func_00558440  # OVL2
-0x00558590 0x20 func_00558590  # OVL2
+0x00558590 0x20 Reset__8CAiStampFv  # OVL2; ours (the SEALs, round 22): the AI's object at 0x324 restarted -- the mission's time at +0, four fields cleared; SetSleeping and SetSnoozing inline it (seal_ai.cpp's own function), the avoid and path-recover states, CAiGroup::AddMember and SetGroup call it (they spell it func_00558590, resolved by address)
 0x005585B0 0x24 func_005585B0  # OVL2
 0x005585E0 0x1C func_005585E0  # OVL2
 0x00558600 0x1C func_00558600  # OVL2
@@ -10264,11 +10264,11 @@
 0x0056C550 0x698 func_0056C550  # OVL2
 0x0056CBF0 0x49C SetAiMode__11CSealCtrlAiF7AI_MODE  # OVL2; s1:calls by hand (CSealCtrlAi::OnMissionEnd calls it with 2 at the place SOCOM 1's calls SetAiMode__11CSealCtrlAiF7AI_MODE, last, after ClearAiState and the anim's Stop; OnMissionEnd byte-exact against it)
 0x0056D090 0x30 RestoreAiMode__11CSealCtrlAiFv  # OVL2; ours (new in SOCOM II): CTHold::End calls it where SOCOM 1's called SetAiMode; SetAiMode with the signed byte at 0x3F5, then 1 stored there -- the SEAL lane, round 9
-0x0056D0C0 0x1E8 func_0056D0C0  # OVL2
+0x0056D0C0 0x1E8 SetSleeping__11CSealCtrlAiFb  # OVL2; s1:order by hand (the SEALs, round 22: SOCOM 1's SetSleeping__11CSealCtrlAiFb, after SetAiMode in both builds; the same bit 8 test, SetSnoozing(false) for a dozer, the node's SetActive and the two target-list setters, SetAiMode(1) on waking, UpdateEventMask last; SOCOM II adds the entity's bits 6/7, the stack's signals 5/6 and the stamp's reset 0x558590 inlined)
 0x0056D2B0 0x1A0 func_0056D2B0  # OVL2
 0x0056D450 0xD4 func_0056D450  # OVL2
 0x0056D530 0x170 func_0056D530  # OVL2
-0x0056D6A0 0x1EC func_0056D6A0  # OVL2
+0x0056D6A0 0x1EC SetSnoozing__11CSealCtrlAiFb  # OVL2; s1:callee by hand (the SEALs, round 22: SetSleeping calls it with false where SOCOM 1's SetSleeping calls SetSnoozing__11CSealCtrlAiFb; the same tests of bits 9, 8 and 10, the push of state 18 and its flags, ai::snooze_count up and down, the pop; SOCOM II adds the entity's bits 6/7 and the stamp's reset)
 0x0056D890 0x88 SetAiBit2__11CSealCtrlAiFb  # OVL2; ours: bit 2 of 0x264 (zseal.h's m_aibit2, the kit lane's reading) set from the argument, cleared when the SEAL's team word has bit 17 or 26 or its kit has no current item -- the SEAL lane, round 9
 0x0056D920 0x178 SetGoalDir__9CSealCtrlF9GOAL_TYPEPC6CPnt3Db  # OVL2; s1:calls by hand (SetGoalPos and ClearGoal call it with (type, 0, false) where SOCOM 1's call SetGoalDir__9CSealCtrlF9GOAL_TYPEPC6CPnt3Db; the row before SetGoalPos as SOCOM 1's)
 0x0056DAA0 0xF4 SetGoalPos__9CSealCtrlF9GOAL_TYPEPC6CPnt3Df  # OVL2; s1:order by hand (between SetGoalDir and ClearGoal as SOCOM 1's SetGoalPos at 0x267380; its code SOCOM 1's word for word with the goal fields 8 bytes on)
