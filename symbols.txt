@@ -8011,7 +8011,7 @@
 0x003BF110 0x8C RecycleTick__Q23zdb10CDecalPoolFv  # OVL1; s1:align
 0x003BF1A0 0x80 Get__Q23zdb10CDecalPoolFb  # OVL1; s1:align
 0x003BF220 0x6C Init__Q23zdb10CDecalPoolFUiUi  # OVL1; s1:align
-0x003BF290 0x140 func_003BF290  # OVL1
+0x003BF290 0x140 UVCompare__3zdbFP6CPnt3DP6CPnt3DP6CPnt3D  # OVL1; s1:order by hand (the wep lane, round 17: SOCOM 1's zdb::UVCompare 0x3134D0, between CDecalPool::Init and RTArray<CDecal>::GetOldestUsed in both builds, the same tests -- each axis's smallest of three against an upper bound, largest against a lower; SOCOM II's bounds are vis_decal.cpp's statics 0x4B5068/0x4B5070 where SOCOM 1's were 1.0 and 0.0)
 0x003BF3D0 0x64 GetOldestUsed__22RTArray<Q23zdb6CDecal>Fv  # OVL1; by hand (the wep lane: SOCOM 1's RTArray<CDecal>::GetOldestUsed -- CDecalPool::RecycleTick calls it where SOCOM 1's does; the first in-use item removed and returned)
 0x003BF440 0x7C PutBack__22RTArray<Q23zdb6CDecal>FPQ23zdb6CDecal  # OVL1; s1:callee by hand (the wep lane: CDecal::PutTempDecal and PutPermDecal call it where SOCOM 1's call PutBack__22RTArray<Q23zdb6CDecal>; zbody.h's PutBack shape)
 0x003BF4C0 0x8C GetNext__22RTArray<Q23zdb6CDecal>Fb  # OVL1; s1:callee by hand (the wep lane: CDecalPool::Get calls it where SOCOM 1's calls GetNext__22RTArray<Q23zdb6CDecal>Fb; zbody.h's RTArray<T>::GetNext shape -- m_available at 0x18, m_supportRecycle at 0x1C)
@@ -8601,7 +8601,7 @@
 0x00404500 0x64 func_00404500  # OVL1 data area; a static initialiser; s1~ zvid_init.cpp (shape 0.46, a hint)
 0x00404570 0x470 func_00404570  # OVL1 data area; a static initialiser
 0x004049E0 0x28 func_004049E0  # OVL1 data area; a static initialiser
-0x00404A10 0x94 func_00404A10  # OVL1 data area; a static initialiser
+0x00404A10 0x94 __sinit_vis_decal.cpp  # OVL1 data area; a static initialiser; by hand (the wep lane, round 17: vis_decal.cpp's initialiser -- the four decal pools (CDecal's and CMeshDecal's temporary and permanent, 0x4B5030-0x4B50B3) zeroed, then UVCompare's bounds 0x4B5068/0x4B5070 set from the float 0x3E14C8; between vis_vu.cpp's 0x404570 and vis_texfx.cpp's, as the units)
 0x00404AB0 0x80 __sinit_vis_texfx.cpp  # OVL1 data area; a static initialiser; s1:unit by hand (the wep lane: SOCOM 1's __sinit_vis_texfx.cpp builds the effects' list and clears zdb::vdata, registering both; SOCOM II's builds the manager 0x4B50D0 in the list's place, then vdata 0x4B5100)
 0x00404B30 0x3C __sinit_vis_ripple.cpp  # OVL1 data area; a static initialiser; s1~ zwep_explosive.cpp (shape 0.45, a hint); by hand (the wep lane: vis_ripple.cpp's static initialiser -- builds the ripple manager 0x4B5170 with 0x3C3420 and registers its destructor 0x3C34B0; the unit's name ours)
 0x00404B70 0x3C func_00404B70  # OVL1 data area; a static initialiser; s1~ zwep_global.cpp (shape 0.60, a hint)
