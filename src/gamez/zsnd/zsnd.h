@@ -527,6 +527,8 @@ public:
     /* SOCOM 1's: a channel's sound queued (0x34B6C0), a channel's entries dropped (0x34AAC0) */
     bool Queue(unsigned int id, CSnd *sound, int vol);
     void Remove(int id, bool a, bool b);
+    /* the stream stopped unless it is a dialog's (SOCOM II's, 0x34AA70, unreferenced; name ours) */
+    void Interrupt();
     /* the device found (ours: ftsGetHeadset's arguments load before the stores, as an inline's) */
     void SetDevice(int device, int format, unsigned char channels)
     {

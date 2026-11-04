@@ -256,6 +256,47 @@ void Headset::Tick(float dT)
 
 #include "../zsys/zsys.h"
 
+/* SOCOM 1's: a channel's queued entries dropped (their indices back to the free ones) -- with `a`
+ * those whose sound is in mode 1, with `b` those in mode 2 -- and the stream stopped if it is the
+ * channel's, its sound in such a mode, and its request not yet done (Queue calls it) */
+void Headset::Remove(int id, bool a, bool b)
+{
+    std::vector<int>::iterator i;
+
+    for (i = m_queue.begin(); i != m_queue.end();) {
+        int idx = *i;
+        unsigned int *e = &m_entries[idx * 3];
+        bool erased = false;
+
+        if (id == e[0]) {
+            if (a && ((CSnd *)e[1])->m_mode == 1) {
+                i = m_queue.erase(i);
+                m_free.push_back(idx);
+                erased = true;
+            } else if (b && ((CSnd *)e[1])->m_mode == 2) {
+                i = m_queue.erase(i);
+                m_free.push_back(idx);
+                erased = true;
+            }
+        }
+        if (!erased)
+            ++i;
+    }
+    if (m_c == id && ((a && m_sound && m_sound->m_mode == 1) || (b && m_sound && m_sound->m_mode == 2)) &&
+        (m_state == 0 || m_state == 1 || m_state == 2))
+        m_stop = 1;
+}
+
+/* the stream told to stop unless its sound is a dialog's (mode 3) or flagged bit 6, the flushed
+ * mark cleared (SOCOM II's, unreferenced in the image: no call, no address taken -- kept, as the
+ * linker kept it; the name ours) */
+void Headset::Interrupt()
+{
+    m_b = 0;
+    if (m_sound && m_sound->m_mode != 3 && !m_sound->m_socom2_bit6)
+        m_stop = 1;
+}
+
 /* SOCOM 1's: every queued entry of this channel and sound dropped (its index back to the free
  * ones), and the stream stopped if it is this one and its request is not yet done */
 void Headset::StopSound(int channel, CSnd *sound)
