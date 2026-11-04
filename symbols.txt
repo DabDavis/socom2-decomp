@@ -3826,7 +3826,7 @@
 0x002A8F50 0x19C GetClosestLadder__11CLadderListFPC6CPnt3Df  # OVL1; s1:align by hand (the states lane, round 23): SOCOM 1's GetClosestLadder -- the unused CMatrix, each ladder whose box's foot or top is _close_enough to the point's y, the centre (Interp 0.5) less the point, the ground-plane length against the range, LADDER_MASK (0x3DE5F8) or'd into the index -- with SOCOM II's constant tolerance (15.0 at 0x3DE600) and the box at the element's start; 0x2A8B78 calls it
 0x002A90F0 0x11C GetLadderByNode__11CLadderListFPQ23zdb5CNodei  # OVL1; ours (the states lane, round 23): the ladder whose node (+0x18) is the given one, else one among the node's children (CNode::m_child at 0x68) to a depth, recursing; the world's ladder walk 0x2A9260 calls it with depth 0 before and after its insert, the SEALs (0x5B28C4, 0x5B2BF4, 0x5B3E84) too
 0x002A9210 0x50 GetLadderByIndex__11CLadderListFi  # OVL1; s1:align
-0x002A9260 0x280 func_002A9260  # OVL1
+0x002A9260 0x280 CreateLadderTable__8CMissionFv  # OVL1; s1:calls by hand (the states lane, round 23): SOCOM 1's CreateLadderTable -- NodeUniverse walked, each node's DIs for the ladder app flags (2), the unit matrix BuildMTW fills, the node's box carried through it (the corners 0x2A96B0, their transform 0x2A9680, the box of them 0x2A9550), a CLadderData pushed when GetLadderByNode finds none; Open calls it where SOCOM 1's does
 0x002A94E0 0x68 func_002A94E0  # OVL1
 0x002A9550 0x128 func_002A9550  # OVL1
 0x002A9680 0x30 func_002A9680  # OVL1; s1:align; s1~ (the states lane, round 19: NOT a vector destructor -- it hands a matrix and an 8-point array to CMatrix::Transform(pts, pts, 8) and returns the points; called after 0x2A96B0's box corners and before 0x2A9550's bbox of them, by 0x2A9260 and by grid_main.cpp's gridAddNodeToGrids, which passes the node as the matrix: out-of-line copies of shared inlines, the first unit's kept; the s1:align name withdrawn)
@@ -3906,7 +3906,7 @@
 0x002AFC60 0x2C func_002AFC60  # OVL1; s1:align; OVL1's copy of ai::_min<float> (byte-identical to OVL2's 0x575C80, which carries the name; the states lane); ovl-copy: _min<f>__2aiFRCfRCf_RCf
 0x002AFC90 0x444 insert__Q23std80__vector_imp<20SObjectiveCam_Anchor,Q23std33allocator<20SObjectiveCam_Anchor>,0>FP20SObjectiveCam_AnchorUiRC20SObjectiveCam_Anchor  # OVL1; s1:align
 0x002B00E0 0x180 reserve__Q23std80__vector_imp<20SObjectiveCam_Anchor,Q23std33allocator<20SObjectiveCam_Anchor>,0>FUi  # OVL1; s1:align
-0x002B0260 0x684 func_002B0260  # OVL1
+0x002B0260 0x684 insert__Q23std62__vector_imp<11CLadderData,Q23std24allocator<11CLadderData>,0>FP11CLadderDataUiRC11CLadderData  # OVL1; s1:calls by hand (the states lane, round 23): CreateLadderTable's push_back calls it with (end, 1, the new CLadderData) where SOCOM 1's calls the same instance (the demo's 0x1FB300); fts_mission.cpp's template tail
 0x002B08F0 0x734 func_002B08F0  # OVL1
 0x002B1030 0x1F0 func_002B1030  # OVL1
 0x002B1220 0x68 func_002B1220  # OVL1

@@ -218,6 +218,7 @@ public:
     void SetFadingToEndMission(bool b) { m_FadingToEndMission = b; }
     unsigned int GetTimeLeft();
     void EndMission();
+    void CreateLadderTable();
 
     unsigned char _0[0xe0];
     int m_e0;   // 0xe0: cleared before the second unload (SOCOM II's; the name ours)
@@ -230,7 +231,8 @@ public:
     float m_next_fade_time;   // 0x104 (SOCOM 1's at 0x78)
     unsigned char _108[0x118 - 0x108];
     std::vector<CCompassAnchor *> m_anchors;   // 0x118: the nav points' anchors (SOCOM 1's at 0x8c)
-    unsigned char _124[0x1808 - 0x124];
+    unsigned char _124[0x1804 - 0x124];
+    class CLadderList *m_ladders;   // 0x1804 (SOCOM 1's at 0x580)
     CZNetGame *m_pNetGame;   // 0x1808 (SOCOM 1's at 0x584)
     unsigned char _180c[0x1860 - 0x180c];
     float m_music_hold;   // 0x1860: how long the music's raised intensity holds (SOCOM II's; the name ours)
@@ -295,6 +297,8 @@ extern "C" char *strncpy(char *dst, const char *src, unsigned int n);
 class CEntity {
 public:
     static void RemoveAll();
+
+    static const unsigned int invalidId;   /* 0x3EFFB0 */
 };
 class CAiEvent {
 public:
@@ -670,6 +674,18 @@ extern "C" void func_002A9550(CBBox *out, const CPnt3D *p)
  * last three names ours) */
 class CLadderData {
 public:
+    CLadderData() {}
+    /* a new ladder: its box, its node, no SEALs on it and none holding it, its place (ours: inline,
+     * its arguments read before the stores, the fields' addresses kept across the walk) */
+    CLadderData(const CBBox &box, zdb::CNode *node, int index)
+    {
+        m_bbox = box;
+        m_node = node;
+        m_users = 0;
+        m_owner = CEntity::invalidId;
+        m_index = index;
+    }
+
     CBBox m_bbox;   // 0x0 (SOCOM 1's at 0xc, after its normal)
     zdb::CNode *m_node;   // 0x18
     int m_users;   // 0x1c
@@ -687,6 +703,82 @@ public:
     CLadderData *GetLadderByNode(zdb::CNode *node, int depth);
     CLadderData *GetLadderByIndex(int index);
 };
+
+/* a ladder entered once: the one for a node, else a new one for it, found again (ours: inlined in
+ * CreateLadderTable -- the node tested again, the find's result unused there) */
+inline CLadderData *AddLadder(CLadderList *ladders, zdb::CNode *node, const CBBox &box)
+{
+    CLadderData *ladder = ladders->GetLadderByNode(node, 0);
+
+    if (!ladder && node) {
+        CLadderData d(box, node, ladders->size());
+
+        ladders->push_back(d);
+        ladder = ladders->GetLadderByNode(node, 0);
+    }
+    return ladder;
+}
+
+/* a node's box carried through a matrix: its corners (0x2A96B0, open: the copy calls CPnt3D(fff) and
+ * the assignments out of line), transformed (0x2A9680) and boxed again (0x2A9550) -- one inline
+ * level here, as the world's ladder walk and gridAddNodeToGrids call all four (ours) */
+extern "C" CPnt3D *func_002A96B0(CPnt3D *pts, const CBBox *box);
+extern "C" CPnt3D *func_002A9680(const CMatrix *m, CPnt3D *pts);
+
+inline void GetWorldBBox(zdb::CNode *node, const CMatrix &m, CBBox *out)
+{
+    PNT3D pts[8];
+
+    func_002A96B0((CPnt3D *)pts, node->GetBBox());
+    func_002A9680(&m, (CPnt3D *)pts);
+    func_002A9550(out, (CPnt3D *)pts);
+}
+
+/* a DI's app flags (tag_DI_HEAD's m_appflags, the flags word's bits 20-22): 2 a ladder polygon
+ * (the names ours) */
+enum DI_APPFLAGS {
+    DI_APP_0,
+    DI_APP_1,
+    DI_APP_LADDER
+};
+
+/* the ladders from the world: every node with a ladder polygon, its box carried through its matrix
+ * (SOCOM 1's CreateLadderTable; OVL1 0x2A9260, Open calls it). The flags are read as a byte and
+ * masked again -- `(unsigned char)flags & 7`, the target's `andi 0xff; andi 7` after the extract
+ * (SOCOM 1's has the `andi 7` alone; no cast, enum bitfield or accessor gives both); the box helper
+ * takes the corners themselves, not the transform's return; the ladder's index is read ahead of its
+ * stores, as a constructor's argument */
+void CMission::CreateLadderTable()
+{
+    if (!zdb::NodeUniverse)
+        return;
+    if (!m_ladders) {
+        m_ladders = new CLadderList;
+        if (!m_ladders)
+            return;
+    }
+    for (zdb::CNodeVector::iterator i = zdb::NodeUniverse->begin(); i != zdb::NodeUniverse->end(); ++i) {
+        zdb::CNode *node = *i;
+
+        if (!node)
+            continue;
+        for (zdb::CDIVector::iterator d = node->m_di.begin(); d != node->m_di.end(); ++d) {
+            if (((unsigned char)(*d)->m_flags.m_appflags & 7) == DI_APP_LADDER) {
+                CBBox world;
+                CMatrix m;
+
+                m.SetIdentity();
+                if (node->BuildMTW(m)) {
+                    GetWorldBBox(node, m, &world);
+                    CLadderList *ladders = m_ladders;
+
+                    AddLadder(ladders, node, world);
+                }
+                break;
+            }
+        }
+    }
+}
 
 /* a point less another by value, through Sub (the copy out of the temporary: the target's) */
 static inline CPnt3D Minus(const CPnt3D *a, const CPnt3D *b)
