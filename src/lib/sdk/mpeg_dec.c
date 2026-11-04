@@ -2139,6 +2139,40 @@ void _dispRefImageField(MpegDec *d, MpegRef *top, MpegRef *bottom, int frameNo)
 	}
 }
 
+/* the motion compensation's reference blocks fetched to the scratchpad: a chain of REF tags, two
+ * per block (the last one REFE), sent by channel 9 (the tags in the demo's function-local
+ * `_sprtagdata.24`, 0x1E0440: this compile numbers the static otherwise, so its reference stays
+ * unchecked).
+ * OPEN (GCC round 30a, 12 words, right size): registers only -- the loop's index and tag pointer
+ * trade t3/t2, the hoisted `n - 1` is allocated before the two bases (t7 against the target's t5)
+ * and the id's xor schedules after the index's mult. The count is a local read once (in the loop
+ * test the target hoists it and n - 1: through the field it is reloaded, 0x190) and the tag id a
+ * variable between the two stores (as a conditional expression in the OR, fold makes it a branch:
+ * 0x164; before the first store, 18 words); the 48 declaration orders all give these 12
+ * (build/scratch/gcc/v_dmaref*.py). */
+void dmaRefImage(MpegDec *d)
+{
+	static u_long _sprtagdata[64] __attribute__((aligned(64)));
+	u_long *t = (u_long *)(((u_int)_sprtagdata & 0x0fffffff) | 0x20000000);
+	int i, n, ie, id;
+
+	n = d->mb[d->_810].nRef;
+	for (i = 0; i < n; i++) {
+		t[0] = ((u_long)(d->mb[d->_810].src[i] & 0x0fffffff) << 32) | 0x30000030;
+		id = (i == n - 1) ? 0 : 3;
+		t[2] = ((u_long)(d->mb[d->_810].dst[i] & 0x0fffffff) << 32) | ((u_long)id << 28) | 48;
+		t += 4;
+	}
+	ie = DIntr();
+	asm volatile ("sync.l");
+	*D9_SADR = d->mb[d->_810].mc;
+	*D9_TADR = (u_int)_sprtagdata;
+	*D9_QWC = 0;
+	*D9_CHCR = 0x105;
+	if (ie)
+		EIntr();
+}
+
 /* the IPU's output DMA (channel 3) into the scratchpad */
 void receiveDataFromIPU(void *addr, int size)
 {

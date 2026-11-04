@@ -31,6 +31,8 @@ typedef int u_long128 __attribute__((mode(TI)));
 #define D4_TADR		((volatile u_int *)0x1000B430)
 #define D9_CHCR		((volatile u_int *)0x1000D400)
 #define D9_QWC		((volatile u_int *)0x1000D420)
+#define D9_TADR		((volatile u_int *)0x1000D430)
+#define D9_SADR		((volatile u_int *)0x1000D480)
 #define D_ENABLER	((volatile u_int *)0x1000F520)
 
 #define D_ENABLEW	((volatile u_int *)0x1000F590)
@@ -136,7 +138,11 @@ typedef struct {
 typedef struct {
 	u_int mc;		/* 0x000: a 6 KB scratchpad buffer (uncached) */
 	u_int coef;		/* 0x004: BDEC's 384 coefficients, 768 bytes of scratchpad */
-	char pad008[0x13C - 0x008];
+	u_int src[4];		/* 0x008: dmaRefImage's REF tags, two per block (GCC round 30a) */
+	u_int dst[4];		/* 0x018 */
+	char pad028[0x12C - 0x028];
+	int nRef;		/* 0x12C: the tag pairs dmaRefImage chains */
+	char pad130[0x13C - 0x130];
 	int noCoef;		/* 0x13C: neither intra nor coded: the prediction alone */
 } MpegMB;
 
