@@ -163,7 +163,6 @@ struct _FILECD {
 };
 extern "C" void func_00258920(void *zar, const char *name, int a, unsigned int b, unsigned int c,
                               int d);   /* zar::CZAR::Open, a fifth argument added */
-extern "C" void func_00258E60(void *zar);           /* zar::CZAR::CloseKeepDir */
 extern "C" void func_0034D180(void *p);
 extern "C" void func_0034C4A0();
 
@@ -191,7 +190,7 @@ void CSnd::Init()
         CFileIO::SetRootPath("cdrom0:\\");
         func_00258920(&m_bnkArchive, "run/sounds/bnkstore.zar", 0, 33, 16, 0);
         CFileIO::SetRootPath(path);
-        func_00258E60(&m_bnkArchive);
+        m_bnkArchive.CloseKeepDir();
     }
     func_0034D180(&data_0048DC30);
     snd_StartSoundSystem(0);

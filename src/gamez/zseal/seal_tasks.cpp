@@ -75,8 +75,6 @@ SEAL_STANCE get_stance(const char *name);
 AI_STATE get_state_fixup(const char *name);
 
 extern "C" {
-/* the anim's index'th command argument (SOCOM 1's CZAnimArgList::GetCmd(int); OVL1 0x2720E0) */
-_zanim_cmd_hdr *GetCmd__13CZAnimArgListFi(CZAnimArgList *list, int index);
 /* the AI's mode put back to the one it saved, which is made 1 (OVL2 0x56D090, the SEAL lane's
  * row: SetAiMode with the byte at 0x3F5, then 1 stored there -- where SOCOM 1's CTHold::End called
  * SetAiMode with 1) */
@@ -245,7 +243,7 @@ struct TASK_HDR {
         goto found_it;                                                      \
     }                                                                       \
     for (i = 0;; i++) {                                                     \
-        _zanim_cmd_hdr *p = GetCmd__13CZAnimArgListFi(list, i);             \
+        _zanim_cmd_hdr *p = list->GetCmd(i);                                \
         bool end = !(bool)p;                                                \
                                                                             \
         if (end)                                                            \

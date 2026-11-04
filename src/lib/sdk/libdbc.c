@@ -5,14 +5,17 @@
  * (round 12a). Every call is one sceSifCallRpc on the first client with the same 640-byte buffer
  * both ways, its function number 0x80001300 + n; the reply's words are read back out of it. The
  * debug printf is compiled out: an empty varargs function (func_00190BA0, the object's last).
- * The client data and the buffer are the object's own .bss, spelled by address here (data_<VA>).
+ * The client data and the buffer are the object's own .bss, spelled by address here (data_<VA>);
+ * SendData2's and SendData3's buffers have data rows (dbcSendData2Buf, dbcSendData3Buf: ours).
  * Its init (0x18FD10: the three binds and the version check), end (0x18FF50) and version query
  * (0x18FCB8) keep placeholders (they print no name; sceDbcInit/sceDbcEnd by the API, not proven).
- * Not written: sceDbcGetDepNumber and 0x1902B0 (interrupts off around a cache sync).
  * GCC r24a: a copy loop's base is assigned inside the loop (loop.c hoists it into the preheader,
  * where combine cannot fold it into the store), and the create request's two buffers are pointers
  * (their stores alias no int load under strict aliasing): CreateSocket, SendData and ReceiveData,
- * open since r12a/r22a, are byte-exact so. */
+ * open since r12a/r22a, are byte-exact so. GCC r25a: sceDbcGetDepNumber and 0x1902B0 (interrupts
+ * off around a cache sync and a 64-byte copy of the work area) whole as first written -- the copy a
+ * constant-size memcpy from the work area as bytes (unsigned char: GCC's block move then reads and
+ * writes both sides with ldl/ldr, sdl/sdr; an int array's alignment would give word moves). */
 
 typedef struct { int a[10]; } sceSifClientData;
 extern int sceSifCallRpc(sceSifClientData *cd, unsigned int fno, unsigned int mode, void *send, int ssize,
@@ -49,7 +52,7 @@ extern sceSifClientData data_001D6270;          /* the client of server 0x800013
 extern sceSifClientData data_001D6298;          /* the client of server 0x8000131C */
 extern int data_001D9800;                       /* the library's semaphore */
 extern int data_001D97C0[16];
-extern int data_001D9740[32];                   /* the work area handed to dbcman */
+extern unsigned char data_001D9740[128];        /* the work area handed to dbcman */
 
 /* dbcman's version: (major << 8) | minor, the server's reply word (RPC 0x80001363) */
 int func_0018FCB8(void)
@@ -189,6 +192,42 @@ int sceDbcDeleteSocket(int s)
 	return data_001D62C0[1];
 }
 
+extern void SyncDCache(void *start, void *end);
+extern int DIntr(void);
+extern int EIntr(void);
+extern void *memcpy(void *dst, const void *src, unsigned int n);
+
+/* The port's state: the work area dbcman writes (its first 64 bytes, one word a port) copied out
+ * with interrupts off after a cache sync of the whole area; a port whose state is not 1 has no
+ * device: -12. Then RPC 0x80001303 for the device's number. GCC r25a. */
+int sceDbcGetDepNumber(int port)
+{
+	SyncDCache(data_001D9740, data_001D9740 + 128);
+	DIntr();
+	memcpy(data_001D97C0, data_001D9740, 64);
+	EIntr();
+	if (data_001D97C0[port] != 1)
+		return -12;
+	data_001D62C0[0] = port;
+	if (sceSifCallRpc(&data_001D6248, 0x80001303, 0, data_001D62C0, 640, data_001D62C0, 640, 0, 0) < 0) {
+		func_00190BA0("sceDbcGetDepNumber: rpc error\n");
+		return 0;
+	}
+	return data_001D62C0[1];
+}
+
+/* The same copy, the port's state as 1 (a device) or 3. GCC r25a. */
+int func_001902B0(int port)
+{
+	SyncDCache(data_001D9740, data_001D9740 + 128);
+	DIntr();
+	memcpy(data_001D97C0, data_001D9740, 64);
+	EIntr();
+	if (data_001D97C0[port] == 1)
+		return 1;
+	return 3;
+}
+
 int sceDbcInitSocket(int s)
 {
 	data_001D62C0[0] = s;
@@ -304,7 +343,7 @@ int sceDbcSendData(int s, int a1, int *size, char *buf)
 	return p[131];
 }
 
-extern unsigned int data_001D6540[1060];	/* SendData2's buffer (4240 bytes) */
+extern unsigned int dbcSendData2Buf[1088];	/* SendData2's buffer (0x1100 bytes; the RPC moves 4240) */
 extern int sceSifCheckStatRpc(sceSifClientData *cd);
 
 /* Function 0x8000131B on the second client, no-wait: the data (at most 4224 bytes) copied in after
@@ -320,7 +359,7 @@ int sceDbcSendData2(int s, int a1, int *size, char *buf)
 		return 0;
 	}
 	WaitSema(data_001D9800);
-	p = data_001D6540;
+	p = dbcSendData2Buf;
 	p[0] = s;
 	p[1] = a1;
 	p[2] = *size;
@@ -333,7 +372,7 @@ int sceDbcSendData2(int s, int a1, int *size, char *buf)
 		SignalSema(data_001D9800);
 		return 0;
 	}
-	if (sceSifCallRpc(&data_001D6270, 0x8000131B, 1, data_001D6540, 4240, data_001D6540, 4240, 0, 0) < 0) {
+	if (sceSifCallRpc(&data_001D6270, 0x8000131B, 1, dbcSendData2Buf, 4240, dbcSendData2Buf, 4240, 0, 0) < 0) {
 		func_00190BA0("sceDbcSendData2: rpc error\n");
 		SignalSema(data_001D9800);
 		return 0;
@@ -342,7 +381,7 @@ int sceDbcSendData2(int s, int a1, int *size, char *buf)
 	return 1;
 }
 
-extern unsigned int data_001D7640[2084];	/* SendData3's buffer (8336 bytes) */
+extern unsigned int dbcSendData3Buf[2112];	/* SendData3's buffer (0x2100 bytes; the RPC moves 8336) */
 
 /* Function 0x8000131C on the third client, no-wait, at most 8320 bytes: SendData2's shape, a failed
  * call returning without a message (GCC r24a). */
@@ -357,7 +396,7 @@ int sceDbcSendData3(int s, int a1, int *size, char *buf)
 		return 0;
 	}
 	WaitSema(data_001D9800);
-	p = data_001D7640;
+	p = dbcSendData3Buf;
 	p[0] = s;
 	p[1] = a1;
 	p[2] = *size;
@@ -370,7 +409,7 @@ int sceDbcSendData3(int s, int a1, int *size, char *buf)
 		SignalSema(data_001D9800);
 		return 0;
 	}
-	if (sceSifCallRpc(&data_001D6298, 0x8000131C, 1, data_001D7640, 8336, data_001D7640, 8336, 0, 0) < 0) {
+	if (sceSifCallRpc(&data_001D6298, 0x8000131C, 1, dbcSendData3Buf, 8336, dbcSendData3Buf, 8336, 0, 0) < 0) {
 		SignalSema(data_001D9800);
 		return 0;
 	}

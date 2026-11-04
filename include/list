@@ -208,6 +208,13 @@ public:
      * __list_deleter &), 0x1DAF10 in the demo; SOCOM II's for the pointer lists is 0x33E790, the
      * same 0x58 bytes). Out of class, as the rest */
     void splice(iterator position, __list_deleter &x);
+    /* SOCOM 1's merge and sort over the pointer lists (the demo's merge<less<const void *> >
+     * 0x3F7EC0 and sort 0x3F7D20; SOCOM II's 0x33E690 and 0x33E510, zsav_manager.cpp's tail, the
+     * save modules sorted by address). Out of class, as the rest (the world lane's round 12) */
+    template <class Compare>
+    void merge(__list_deleter &x, Compare comp);
+    template <class Compare>
+    void sort(Compare comp);
 
 protected:
     unsigned int size_;
@@ -346,6 +353,110 @@ void __list_deleter<T, Allocator>::splice(iterator position, __list_deleter &x)
         size_ += x.size_;
         x.size_ = 0;
     }
+}
+
+/* x's nodes merged into this ordered list: each run of x's that sorts before an element of this
+ * one found and linked in ahead of it, the counts moved by the run's length; what is left of x
+ * spliced in at the end (SOCOM 1's merge: the same code, its sentinels through the end pair's
+ * second() out of line) */
+template <class T, class Allocator>
+template <class Compare>
+void __list_deleter<T, Allocator>::merge(__list_deleter &x, Compare comp)
+{
+    if (this == &x)
+        return;
+    /* first2 defined first, overwritten before any use: MW numbers a variable at its first
+     * definition, so it takes the register the target's has (t3, first1 t2, last1 t1, last2 t0)
+     * while the loads keep the target's order -- a stand-in, the original's spelling unknown (every
+     * order of the four plain declarations is 2 instructions or more off) */
+    iterator first2(&x.end_);
+    iterator first1(end_.next_);
+    iterator last1(&end_);
+
+    first2 = iterator(x.end_.next_);
+    iterator last2(&x.end_);
+
+    while (first1 != last1 && first2 != last2) {
+        if (comp(*first2, *first1)) {
+            iterator j = first2;
+            unsigned int n = 1;
+
+            for (++j; j != last2; ++j, ++n)
+                if (!comp(*j, *first1))
+                    break;
+            node_base *l = j.node_->prev_;
+
+            first2.node_->prev_->next_ = l->next_;
+            l->next_->prev_ = first2.node_->prev_;
+            first1.node_->prev_->next_ = first2.node_;
+            first2.node_->prev_ = first1.node_->prev_;
+            first1.node_->prev_ = l;
+            l->next_ = first1.node_;
+            x.size_ -= n;
+            size_ += n;
+            first2 = j;
+        }
+        ++first1;
+    }
+    if (first2 != last2)
+        splice(first1, x);
+}
+
+/* the list sorted by merging: two elements swapped in place, more split at the middle into a
+ * second list, each half sorted and the second merged back (SOCOM 1's sort). OPEN (0x1A4 against
+ * the target's 0x178): the second list's teardown -- the target inlines ~__list_deleter one level
+ * and calls begin(), end() (0x2A00B0, 0x2A00A0) and the range erase out of line, the destructor
+ * written erase(begin(), end()) and cut ("Level 6, or 8?"), where this header's destructor inlines
+ * the clear loop and the delete; the case-2 swap reads end_.next_ through &end_.next_ kept in a2 in
+ * the target. Everything before the teardown is the target's but registers */
+template <class T, class Allocator>
+template <class Compare>
+void __list_deleter<T, Allocator>::sort(Compare comp)
+{
+    switch (size_) {
+    case 0:
+    case 1:
+        return;
+    case 2: {
+        node_base *f = end_.next_;
+        node_base *s = f->next_;
+
+        if (comp(((node *)s)->data_, ((node *)f)->data_)) {
+            node_base *t;
+
+            t = f->prev_;
+            f->prev_ = f->next_;
+            f->next_ = t;
+            t = s->prev_;
+            s->prev_ = s->next_;
+            s->next_ = t;
+            t = end_.prev_;
+            end_.prev_ = end_.next_;
+            end_.next_ = t;
+        }
+        return;
+    }
+    }
+    iterator i(end_.next_);
+    unsigned int n = size_ / 2;
+
+    for (unsigned int k = n; k != 0; --k)
+        ++i;
+    __list_deleter tmp;
+    node_base *l = end_.prev_;
+    node_base *p = &tmp.end_;
+
+    i.node_->prev_->next_ = l->next_;
+    l->next_->prev_ = i.node_->prev_;
+    p->prev_->next_ = i.node_;
+    i.node_->prev_ = p->prev_;
+    p->prev_ = l;
+    l->next_ = p;
+    tmp.size_ = size_ - n;
+    size_ = n;
+    sort(comp);
+    tmp.sort(comp);
+    merge(tmp, comp);
 }
 
 template <class T, class Allocator>
