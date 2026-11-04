@@ -22,6 +22,163 @@ extern "C" void func_00336580(CFlareSystem *system, int handle, CPnt3D *pos);
 extern "C" void func_003365E0(CFlareSystem *system, int handle, CPnt3D *pos, float size);
 extern "C" bool func_00336520(CFlareSystem *system, int handle, void *query);
 
+/* the rdr's finders (zrdr.h's) */
+char *zrdr_findstring(const _zrdr *rdr, const char *tag);
+bool zrdr_findreal(const _zrdr *rdr, const char *tag, float *out, int n);
+
+/* the asset manager's library list (node_world.h's classes: units including znode.h declare their
+ * own partial ones) */
+namespace zdb {
+class CAssetList {
+public:
+    CTexHandle *GetTexHandle(const char *name);
+};
+class CAssetMgr {
+public:
+    static CAssetList m_assets;
+};
+class CCamera;
+}
+
+/* the HUD the elements' bitmaps are added to */
+class CHUD {
+public:
+    void Add2D(C2D *p2d, int phase, bool add_to_back);
+};
+extern CHUD *theHUD;
+
+/* the element's settings: its texture loaded (if found) and its bitmap added to the HUD hidden, its
+ * colour; its position scale (1 unless given); half its size (100 by 100 unless given); its opacity
+ * and scale ranges, each kept as the second value and the first less it.
+ * OPEN, 3 instructions (one stack slot): the target reads both ranges into sp+56 and leaves
+ * sp+64-71 unused (frame 0x60: colour 80, size 72). One shared range array gives the frame but swaps
+ * `this` and `rdr` (s0/s1, 17 off); two arrays give the target's registers with opacity's at 64.
+ * Tried: the two declared the other way round, each in a block of its own, an unused third array
+ * between them, a CPnt3D or float[4] colour, a CPnt3D for every array (3 to 17 off) */
+bool CFlareElement::Load(_zrdr *rdr)
+{
+    char *name = zrdr_findstring(rdr, "texture");
+
+    if (name) {
+        zdb::CTexHandle *tex = zdb::CAssetMgr::m_assets.GetTexHandle(name);
+
+        if (tex) {
+            m_bmp.Load(0.0f, 0.0f, tex);
+            m_bmp.SetHasTexture(true);
+            theHUD->Add2D(&m_bmp, -1, false);
+            m_bmp.Off();
+        }
+    }
+    float color[3];
+
+    if (zrdr_findreal(rdr, "color", color, 3))
+        m_bmp.SetColor(color[0], color[1], color[2]);
+    m_posScale = 1.0f;
+    zrdr_findreal(rdr, "position_scale", &m_posScale, 1);
+    float size[2];
+
+    if (!zrdr_findreal(rdr, "size", size, 2))
+        size[0] = size[1] = 100.0f;
+    m_halfWidth = 0.5f * size[0];
+    m_halfHeight = 0.5f * size[1];
+    float opacity[2];
+    float scale[2];
+
+    if (zrdr_findreal(rdr, "opacity", opacity, 2)) {
+        m_opacity = opacity[1];
+        m_opacityRange = opacity[0] - m_opacity;
+    }
+    if (zrdr_findreal(rdr, "scale", scale, 2)) {
+        m_scale = scale[1];
+        m_scaleRange = scale[0] - m_scale;
+    }
+    return true;
+}
+
+/* the app camera: only its world camera (camera.h's CAppCamera, +0xB4), which the flare's points
+ * are projected through -- a point to its screen offsets (a 12-byte point: the target's frame keeps
+ * it at sp+48), false when off screen */
+class CAppCamera {
+public:
+    unsigned char _0[0xb4];
+    zdb::CCamera *m_camera;   // 0xb4
+};
+extern CAppCamera *appCamera;
+extern "C" bool func_00290370(zdb::CCamera *cam, const CPnt3D *pos, CPnt3D *screen);
+
+/* shown on screen at the point, centred on the screen less the point's offset scaled by the position
+ * scale, sized and faded by `t` through the ranges -- or hidden, when not visible or off screen. The
+ * size's two products are taken before the position's (the target's float order) */
+void CFlareElement::Place(float t, bool visible, const CPnt3D *pos)
+{
+    if (visible) {
+        CPnt3D xy;
+
+        if (func_00290370(appCamera->m_camera, pos, &xy)) {
+            m_bmp.On();
+            float s = m_scale + t * m_scaleRange;
+            float w = s * m_halfWidth;
+            float h = s * m_halfHeight;
+            float x = 320.0f - xy.x * m_posScale;
+            float y = 224.0f - xy.y * m_posScale;
+
+            m_bmp.SetPos((int)(x - w), (int)(y - h), (int)(x + w), (int)(y + h));
+            m_bmp.SetTrans(128.0f * (m_opacity + t * m_opacityRange));
+        } else
+            m_bmp.Off();
+    } else
+        m_bmp.Off();
+}
+
+/* made off and transparent over the whole screen, then read from its record */
+CLensFlareEntry::CLensFlareEntry(_zrdr *rdr, zdb::CNode *node)
+{
+    Init();
+    SetOn(false);
+    SetFlag1(false);
+    SetFlag3(false);
+    SetFlag4(false);
+    m_node = 0;
+    SetFlag6(false);
+    SetHasTexture(false);
+    Load(0.0f, 0.0f, 640.0f, 448.0f, 0);
+    SetTrans(128.0f);
+    SetIsTrans(true);
+    LoadFlare(rdr, node);
+}
+
+/* every element hidden and deleted */
+CLensFlareEntry::~CLensFlareEntry()
+{
+    if (m_elements.size()) {
+        for (std::vector<CFlareElement *>::iterator i = m_elements.begin(); i != m_elements.end(); ++i)
+            delete *i;
+    }
+}
+
+/* off, no handle, no node; the glare's defaults; a pale yellow; hidden */
+void CLensFlareEntry::Init()
+{
+    SetOn(false);
+    SetFlag1(false);
+    m_handle = -1;
+    SetVisible(false);
+    SetFlag3(false);
+    m_9c = 0.0f;
+    m_a0 = 0.0f;
+    m_a4 = 0.5f;
+    m_84 = 0.75f;
+    m_88 = 1.0f / (1.0f - m_84);
+    SetFlag4(false);
+    m_node = 0;
+    m_d0 = 1.0f;
+    m_d4 = 1.0f;
+    m_d8 = 0.0f;
+    m_dc = 1.0f;
+    SetColor(225.0f, 224.0f, 133.0f);
+    Off();
+}
+
 /* every flare deleted, the list emptied, inactive.
  * OPEN (4 bytes short): the target keeps three saved registers -- this, the end (this + 4) and
  * this + 8, the address begin() reads, taken before the loop for the final clear(), which

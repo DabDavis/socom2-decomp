@@ -1812,6 +1812,8 @@ public:
     virtual C2DAnimCmdHdr *ParseZAnimCmd(_zrdr *rdr);
     virtual bool TickZAnimCmd(_zanim_cmd_hdr *hdr, float *dT, bool *done);
     virtual int GetZAnimCmdType(const char *name);
+    /* the frame time kept for the pad's zooms (SOCOM II's: slot +0x38 of the table, C2D's Tick) */
+    virtual void Tick(float dT);
     /* a pan step (SOCOM 1's OnPan, 0x36CA30) and the two zooms towards a node (SOCOM II's,
      * 0x36C3B0 and 0x36BFF0: the scale first, the node, the time -- the call's argument order;
      * the names ours) */
@@ -1986,6 +1988,16 @@ bool CUIMapCtrl::TickZAnimCmd(_zanim_cmd_hdr *hdr, float *dT, bool *done)
     default:
         return false;
     }
+}
+
+/* the menus' frame time as the map control last ticked it: HandlePad zooms by it, having no dT of
+ * its own (SOCOM II's; 0x49EBE8, the name ours) */
+static float s_mapCtrlDT;
+
+/* the frame time kept, nothing else ticked (SOCOM II's: SOCOM 1's CUIMapCtrl has no Tick) */
+void CUIMapCtrl::Tick(float dT)
+{
+    s_mapCtrlDT = dT;
 }
 
 /* PAN with its direction and rates, or ZOOM_IN, or ZOOM_OUT, as a command (SOCOM 1's); anything
@@ -2988,7 +3000,6 @@ unsigned char GetStickDir();
 /* the pad event a stick push stands for, by the side it is pushed to (ours: a byte enum -- its
  * constant stores need no masking, its compare with the action's event byte zero-extends) */
 enum STICK_EVENT { STICK_EV_2 = 2, STICK_EV_3 = 3, STICK_EV_4 = 4, STICK_EV_5 = 5, STICK_EV_NONE = 16 };
-extern float data_0049EBE8;
 
 /* the actions run on their pad events -- a stick action (state 2) when the stick is pushed out of
  * the centre toward its button's side -- whether any ran; then the map zoomed in or out by the
@@ -3033,9 +3044,9 @@ bool CUIMapCtrl::HandlePad(const CPad *pad, int port)
     float z = pad->m_zoom;
 
     if (z > 0.0f)
-        ZoomIn(z, m_node, data_0049EBE8);
+        ZoomIn(z, m_node, s_mapCtrlDT);
     else
-        ZoomOut(-z, m_node, data_0049EBE8);
+        ZoomOut(-z, m_node, s_mapCtrlDT);
     return handled;
 }
 
