@@ -86,11 +86,13 @@ int func_004C73F0();                        /* (sceDNAS2Shutdown) */
 
 /* ---- the engine's pieces called out of line ---- */
 
+/* a localised string built: the table's text for an id with its arguments substituted (C2DString's
+ * FormatString 0x363F60, the HUD's round 33) */
+void FormatString(char *out, int size, int id, const char **args, int nargs);
+
 extern "C" {
 /* a command's valve: CValve::Create(ArgName(hdr), 2) (zanim_menu.cpp's, out of line) */
 CValve *func_002846F0(C2DAnimCmdHdr *hdr);
-/* a localised string built: the table's text for an id with its arguments substituted */
-void func_00363F60(char *out, int size, int id, const char **args, int nargs);
 /* the CD file read by sector (util_sonyio.cpp's CFileCD, zsnd.h's stand-in): its close, not yet
  * named (an 8-byte function) */
 void func_0039DDB0(CFileCD *file);                     /* CFileCD::Close */
@@ -213,7 +215,7 @@ const char *DNASErrorString(int error)
     if (id > 0) {
         args[0] = data_004417E0;
         sprintf(data_004417E0, "%d", error);
-        func_00363F60(data_004416E0, 0x100, id, args, 1);
+        FormatString(data_004416E0, 0x100, id, args, 1);
     }
     return data_004416E0;
 }

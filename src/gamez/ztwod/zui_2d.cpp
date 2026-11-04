@@ -289,6 +289,7 @@ class CScrollText : public CWrappedText {
 public:
     void LoadSpec(const CScrollSpec &spec);
     virtual ~CScrollText();
+    virtual void Draw(const CMatrix &m, zdb::CTextureRelocMgr *mgr);
     virtual void Tick(float dT);
 
     int m_250;   // 0x250
@@ -471,6 +472,7 @@ public:
     ActionItem() : Type(0), Animation(0), Argument(0), State(1), Event(16) {}
     ~ActionItem();
     void Run() const;
+    bool Start() const;
     ActionItem &operator=(const ActionItem &a);   // zui.cpp's, 0x369FA0
 
     unsigned char Type;   // 0x0: ACTION_TYPE
@@ -508,9 +510,25 @@ public:
  * new, and its value, 16 bits at 4) */
 enum VALVE_TYPE { VALVE_ANY = 0, VALVE_PERM = 1, VALVE_TEMP = 2, VALVE_PERSIST = 3 };
 
+/* what a valve's change tells its callbacks (zanim.h's) */
+enum VALVE_STATE { VALVE_SAME = 0, VALVE_ON = 1, VALVE_OFF = 2 };
+
 class CValve {
 public:
     static CValve *Create(const char *name, VALVE_TYPE type);
+    void MakeCallbacks(VALVE_STATE state);
+    /* the value set, its callbacks told when it changed (the README's shape: both builds inline
+     * it -- an int parameter, the state compared against an enumerator) */
+    void SetValue(int value)
+    {
+        VALVE_STATE state = VALVE_SAME;
+
+        if (m_value != value)
+            state = value == 0 ? VALVE_OFF : VALVE_ON;
+        m_value = value;
+        if (state != VALVE_SAME)
+            MakeCallbacks(state);
+    }
 
     char *m_name;   // 0x0
     unsigned int m_value : 16;   // 0x4
@@ -588,11 +606,12 @@ public:
 class CHProgressBar : public CPlainBmp {
 public:
     virtual ~CHProgressBar();
+    virtual void Draw(const CMatrix &m, zdb::CTextureRelocMgr *mgr);
     virtual void Tick(float dT);
     virtual void UpdateUIVar(CUIVariable *var);
 
     float m_fill;   // 0xa0: 0 to 1
-    float _a4;
+    int m_width;   // 0xa4: the full bar's width (Draw converts it)
     float m_time;   // 0xa8: the seconds a full bar takes
     CSaferStr m_str;   // 0xac
 } __attribute__((aligned(16)));   // 0xc0 bytes
@@ -602,6 +621,7 @@ public:
 class CSliderBar : public C2DButton {
 public:
     virtual ~CSliderBar();
+    virtual void Draw(const CMatrix &m, zdb::CTextureRelocMgr *mgr);
     virtual void UpdateUIVar(CUIVariable *var);
     virtual C2DAnimCmdHdr *ParseZAnimCmd(_zrdr *rdr);
     virtual bool TickZAnimCmd(_zanim_cmd_hdr *hdr, float *dT, bool *done);
@@ -696,21 +716,37 @@ public:
  * renderable string's (0x36FC10) and the button's (0x3767C0) are declared with their classes
  * above). Each answers its own commands as the UI's count plus an index, and an empty name
  * with 0 */
-class CPopUpDialog : public C2D {
+class CPopUpDialog : public CPlainBmp {
 public:
     /* declared, not defined: stand-ins whose implicit destructors would supersede the drafts */
     virtual ~CPopUpDialog();
+    virtual void Draw(const CMatrix &m, zdb::CTextureRelocMgr *mgr);
     virtual void Tick(float dT);
+    virtual bool HandlePad(const CPad *pad, int port);
     virtual int GetZAnimCmdType(const char *name);
 
-    /* the parts its Tick ticks (SOCOM II's two members, through their tables; SOCOM 1 ticked the
-     * pointer alone) -- C2D stand-ins, their real classes unknown */
-    unsigned char _18[0x32c - 0x18];
+    /* a plain bitmap (Draw inlines CPlainBmp's), its text a 2D object at 0xB0 placed at an offset;
+     * the parts its Tick ticks (SOCOM II's two members, through their tables; SOCOM 1 ticked the
+     * pointer alone), each with an offset after it, drawn when 0x330 is set; the 2D object drawn
+     * instead of it all when 0x32C points at one -- C2D stand-ins, their real classes unknown */
+    unsigned char _a0[0xb0 - 0xa0];
+    C2DString m_text;   // 0xb0 (a string: HandlePad empties it through slot 26)
+    unsigned char _148[0x304 - 0x148];
+    IPNT2D m_textOffset;   // 0x304
+    unsigned char _30c[0x32c - 0x30c];
     C2D *m_32c;   // 0x32c
-    unsigned char _330[0x340 - 0x330];
-    C2D m_340;   // 0x340
-    unsigned char _358[0x790 - 0x358];
-    C2D m_790;   // 0x790
+    CValve *m_330;   // 0x330: the valve the answer is set in (the two buttons drawn only with one)
+    int m_choice;   // 0x334: the button chosen, 1 or 2
+    unsigned char _338;
+    bool m_339;   // 0x339: the cancel button (6) answers 66
+    unsigned char _33a[0x340 - 0x33a];
+    C2DButton m_340;   // 0x340: the first button
+    IPNT2D m_340Offset;   // 0x780
+    unsigned char _788[0x790 - 0x788];
+    C2DButton m_790;   // 0x790: the second
+    IPNT2D m_790Offset;   // 0xbd0
+    unsigned char _bd8[0xbe0 - 0xbd8];
+    bool m_keep;   // 0xbe0: the pop-up stays up after an answer
 };
 
 
@@ -776,6 +812,104 @@ void CTeleType::SetString(const char *s, bool translate)
     Update();
 }
 
+/* slot 2: the 2D object it points at drawn instead, if any; else the bitmap (CPlainBmp's Draw
+ * inlined), its two parts at their offsets from the corner the matrix places when they are shown,
+ * and its text at its offset (SOCOM 1's CPopUpDialog::Draw).
+ * OPEN, 22 instructions, all in the two parts' block: the target keeps &p.y, &p.z and the three
+ * translation cells' addresses in s6, s5, s4, s3, s1 (p.z's address numbered before the matrix's)
+ * and loads p.z with the other loads before any store, for both parts; here p.z's address comes
+ * after two of the matrix's and its load sinks to its store. The text's block and everything else
+ * is the target's. Tried: the cells assigned straight (interleaved stores), a CPnt3D built by its
+ * constructor (y and z swapped: arguments right to left), the parts as an array of 0x450-byte
+ * {object, offset} walked by a loop (not unrolled, two registers more), an inline setter taking the
+ * three floats (23) */
+void CPopUpDialog::Draw(const CMatrix &m, zdb::CTextureRelocMgr *mgr)
+{
+    CPnt3D p = CPnt3D::zero;
+
+    m.Transform(&p, 1);
+    if (m_32c) {
+        m_32c->Draw(m, mgr);
+        return;
+    }
+    CPlainBmp::Draw(m, mgr);
+    if (m_330) {
+        CMatrix mat;
+        CPnt3D pos;
+
+        pos.x = p.x + m_340Offset.x;
+        pos.y = p.y + m_340Offset.y;
+        pos.z = p.z;
+        mat(3, 0) = pos.x;
+        mat(3, 1) = pos.y;
+        mat(3, 2) = pos.z;
+        m_340.Draw(mat, mgr);
+        pos.x = p.x + m_790Offset.x;
+        pos.y = p.y + m_790Offset.y;
+        pos.z = p.z;
+        mat(3, 0) = pos.x;
+        mat(3, 1) = pos.y;
+        mat(3, 2) = pos.z;
+        m_790.Draw(mat, mgr);
+    }
+    CPnt3D pos;
+
+    pos.x = p.x + m_textOffset.x;
+    pos.y = p.y + m_textOffset.y;
+    pos.z = p.z;
+    CMatrix mat;
+
+    mat(3, 0) = pos.x;
+    mat(3, 1) = pos.y;
+    mat(3, 2) = pos.z;
+    m_text.Draw(mat, mgr);
+}
+
+/* slot 2: the wrapped lines' strings laid out from the corner the matrix places, side by side
+ * along a row until the width is passed (that string then starts the next row), the rows
+ * scrolled up by the scroll position and faded at the window's edges -- out of sight beyond a
+ * row past either, in proportion within it (SOCOM 1's CScrollText::Draw; SOCOM II places each
+ * string with SetPos) */
+void CScrollText::Draw(const CMatrix &m, zdb::CTextureRelocMgr *mgr)
+{
+    CPnt3D p = CPnt3D::zero;
+
+    m.Transform(&p, 1);
+    int line = 0;
+    float bottom = p.y + m_25c * GetSpacing();
+    float x = 0.0f;
+    iterator e = end();
+
+    for (iterator i = begin(); i != e;) {
+        float y = p.y + line * GetSpacing() - m_scroll;
+        C2DString *str = (C2DString *)*i;
+
+        str->SetPos((int)(p.x + x), (int)y);
+        if (!(x <= m_width)) {
+            x = 0.0f;
+            line++;
+            continue;
+        }
+        ++i;
+        x += str->m_length;
+        if (y < p.y) {
+            if (y < p.y - GetSpacing())
+                str->SetTrans(0.0f);
+            else {
+                y -= p.y - GetSpacing();
+                str->SetTrans(100.0f * (y / GetSpacing()));
+            }
+        } else if (!(y <= bottom - GetSpacing())) {
+            if (!(y <= bottom))
+                str->SetTrans(0.0f);
+            else
+                str->SetTrans(100.0f * ((bottom - y) / GetSpacing()));
+        } else
+            str->SetTrans(100.0f);
+        str->Draw(mgr, 0, 0);
+    }
+}
+
 /* the text scrolled toward its line, 30 a second, snapped once within a step (SOCOM 1's
  * CScrollText::Tick). The step computed after the distance (computed first, the constant 30 takes
  * the scratch register m_scroll's load wants) and the test `!(speed <= |diff|)` (as `|diff| <
@@ -819,6 +953,24 @@ void C2DButton::UpdateUIVar(CUIVariable *var)
             _strCaption.UpdatePos();
         }
     }
+}
+
+/* the slider drawn: the button, then its knob, placed by the matrix and along the width by the
+ * value, drawn with no matrix of its own (SOCOM 1's CSliderBar::Draw, slot 2: the button's Draw
+ * inlined, the corner transformed out of line in SOCOM II) */
+void CSliderBar::Draw(const CMatrix &m, zdb::CTextureRelocMgr *mgr)
+{
+    CPnt3D p = CPnt3D::zero;
+
+    m.Transform(&p, 1);
+    CMatrix mat;
+
+    C3StateButton::Draw(m, mgr);
+    int y = (int)p.y;
+    int x = (int)(p.x + m_value * _fWidth);
+
+    m_knob.Load(x, y, x + m_knobW, y + m_knobH, m_knobTex);
+    m_knob.Draw(mat, mgr);
 }
 
 /* the slider set from a real: below the centre value the left half in proportion, above it the
@@ -1666,6 +1818,7 @@ public:
     void OnPan(const CUIMapCtrlAnimCmdHdr &cmd, float dT) const;
     void ZoomIn(float scale, zdb::CNode *node, float dT);
     void ZoomOut(float scale, zdb::CNode *node, float dT);
+    virtual bool HandlePad(const CPad *pad, int port);
 
     ActionItem m_actions[30];   // 0x18
     int m_numActions;   // 0x1f8 (the destructor zeroes it)
@@ -1674,6 +1827,7 @@ public:
     int m_top;   // 0x200
     int m_right;   // 0x204
     int m_bottom;   // 0x208
+    zdb::CNode *m_node;   // 0x20c: the map's node (the pad's zooms move it)
 };
 
 /* the children deleted, each taken off the list first, the actions forgotten (SOCOM 1's, its count
@@ -1727,6 +1881,53 @@ public:
 
     CMatrix m_matrix;   // 0x0
 };
+}
+
+/* the menu being shown (zui.cpp's UiGetCurMenu, 0x36A200, named by the integrator after the UI's round 18): a node, its vtable
+ * pointer at 0x60 as CNode's -- slot +0x24 the child found by name (znode.h's order) */
+class CMenuNode {
+public:
+    unsigned char _0[0x60];
+    virtual ~CMenuNode();
+    virtual void _Copy();
+    virtual void UpdateGrid();
+    virtual void ReserveChildren(int n);
+    virtual void AddChild(zdb::CNode *child);
+    virtual int DeleteChild(zdb::CNode *child);
+    virtual void DeleteChildren();
+    virtual zdb::CNode *FindChild(const char *name, bool deep);
+};
+
+CMenuNode *UiGetCurMenu();
+
+/* the GS scissor rectangle (zvid) */
+void zVid_Scissor(int x1, int y1, int x2, int y2);
+
+/* slot 2: the bitmap drawn scissored to the filled part -- the bar's corner and the fill's corner
+ * placed by the matrix -- and the menu's node of the bar's name moved to the fill's edge (SOCOM
+ * 1's CHProgressBar::Draw: CPlainBmp::Draw inlined, the corners transformed out of line in SOCOM
+ * II) */
+void CHProgressBar::Draw(const CMatrix &m, zdb::CTextureRelocMgr *mgr)
+{
+    CPnt3D p[2];
+
+    p[0].x = 0.0f;
+    p[0].y = 0.0f;
+    p[0].z = 0.0f;
+    p[1].x = m_width * m_fill;
+    p[1].y = m_iHeight;
+    p[1].z = 0.0f;
+    m.Transform(p, 2);
+    mgr->PreGetSprPacket(0);
+    zVid_Scissor((int)p[0].x, (int)p[0].y, (int)p[1].x, (int)p[1].y);
+    CPlainBmp::Draw(m, mgr);
+    mgr->PreGetSprPacket(0);
+    zVid_Scissor(0, 0, 640, 448);
+    CMenuNode *menu = UiGetCurMenu();
+    zdb::CNode *node = menu->FindChild(m_str.c_str(), true);
+
+    if (node)
+        node->SetPosition(p[1].x, p[0].y, 0.0f);
 }
 
 /* the node zoomed in about the control's centre, by half the time's step at the given rate, no
@@ -2743,6 +2944,8 @@ class CPad {
 public:
     unsigned char m_0;   // 0x0
     unsigned char m_state[16];   // 0x1
+    unsigned char _11[0x21c - 0x11];
+    float m_zoom;   // 0x21c: a stick's axis (the map control zooms by it)
 };
 
 /* an action's animation started, handed its argument if it has one (the check box's two arms:
@@ -2760,6 +2963,138 @@ inline void ActionItem::Run() const
         else
             anim->Activate(0);
     }
+}
+
+/* the same, whether the animation was found (the map control's walk ors the answers: an inline
+ * bool, its `return true` an assignment; the name ours) */
+inline bool ActionItem::Start() const
+{
+    CZAnim *anim = ZAnim.GetAnim(Animation, 0);
+
+    if (!anim)
+        return false;
+    if (Argument)
+        anim->ActivateArg(1, 8, Argument, 0);
+    else
+        anim->Activate(0);
+    return true;
+}
+
+/* the menus' stick (zui.cpp's: whether it is within a radius of the centre, and the side it is
+ * pushed to, 1-4) and the menus' frame time (zui.cpp's bss, by address) */
+bool IsStickNearCenter(float r);
+unsigned char GetStickDir();
+
+/* the pad event a stick push stands for, by the side it is pushed to (ours: a byte enum -- its
+ * constant stores need no masking, its compare with the action's event byte zero-extends) */
+enum STICK_EVENT { STICK_EV_2 = 2, STICK_EV_3 = 3, STICK_EV_4 = 4, STICK_EV_5 = 5, STICK_EV_NONE = 16 };
+extern float data_0049EBE8;
+
+/* the actions run on their pad events -- a stick action (state 2) when the stick is pushed out of
+ * the centre toward its button's side -- whether any ran; then the map zoomed in or out by the
+ * pad's stick (SOCOM 1's CUIMapCtrl::HandlePad, slot 15) */
+bool CUIMapCtrl::HandlePad(const CPad *pad, int port)
+{
+    bool handled = false;
+
+    if (!CanHandleInput())
+        return false;
+    for (int i = 0; i < m_numActions; i++) {
+        const ActionItem *a = &m_actions[i];
+
+        if (!m_actions[i].Event)
+            continue;
+        if (a->State != pad->m_state[a->Event]) {
+            if (a->State != 2)
+                continue;
+            if (IsStickNearCenter(0.6f))
+                continue;
+            STICK_EVENT dir = STICK_EV_NONE;
+
+            switch (GetStickDir()) {
+            case 3:
+                dir = STICK_EV_4;
+                break;
+            case 1:
+                dir = STICK_EV_3;
+                break;
+            case 2:
+                dir = STICK_EV_2;
+                break;
+            case 4:
+                dir = STICK_EV_5;
+                break;
+            }
+            if (dir != a->Event)
+                continue;
+        }
+        handled |= a->Start();
+    }
+    float z = pad->m_zoom;
+
+    if (z > 0.0f)
+        ZoomIn(z, m_node, data_0049EBE8);
+    else
+        ZoomOut(-z, m_node, data_0049EBE8);
+    return handled;
+}
+
+/* the menus (zui's: the stack the pop-up is on, the selection sound) */
+class CMenuStack {
+public:
+    void KillPopUp();
+};
+
+CMenuStack *GetMenuStack();
+void PlaySelectionSound();
+
+/* slot 15: the pad handed to the 2D object it points at, if any; else a press of button 9 sets
+ * the chosen button's answer in the valve (and shows that button pressed), the cancel button 66,
+ * each closing the pop-up unless it stays up; and either side button moves the choice to the other
+ * button when that one is there -- taken either way (SOCOM 1's CPopUpDialog::HandlePad) */
+bool CPopUpDialog::HandlePad(const CPad *pad, int port)
+{
+    if (m_32c)
+        return m_32c->HandlePad(pad, port);
+    if (pad->m_state[9] == 1) {
+        if (m_330) {
+            m_330->SetValue(m_choice);
+            if (m_choice == 1)
+                m_340.Slot27();
+            else
+                m_790.Slot27();
+        }
+        if (!m_keep) {
+            m_text.SetString("", true);
+            GetMenuStack()->KillPopUp();
+        }
+        PlaySelectionSound();
+    }
+    if (m_339 && pad->m_state[6] == 1) {
+        if (m_330)
+            m_330->SetValue(66);
+        if (!m_keep) {
+            m_text.SetString("", true);
+            GetMenuStack()->KillPopUp();
+        }
+        PlaySelectionSound();
+    }
+    if (pad->m_state[3] == 1 || pad->m_state[2] == 1) {
+        if (m_choice == 1) {
+            if (m_790._fWidth > 0.0f) {
+                m_choice = 2;
+                m_340.SetNormal();
+                m_790.SetActive();
+                PlaySelectionSound();
+            }
+        } else if (m_340._fWidth > 0.0f) {
+            m_choice = 1;
+            m_340.SetActive();
+            m_790.SetNormal();
+            PlaySelectionSound();
+        }
+    }
+    return true;
 }
 
 /* set up from its spec: the button's own (SOCOM 1's CHandlerButton::LoadSpec, 0x38EC90 there,

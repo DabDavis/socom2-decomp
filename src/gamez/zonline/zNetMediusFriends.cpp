@@ -63,17 +63,27 @@ struct MediusAccountGetIDResponse {
 /* a request's bare answer */
 struct MediusStatusResponse { MEDIUS_RESPONSE_HEAD };
 
-/* someone ignored (0x48 bytes, a vector of them: the class vector's clear out of line, 0x302FC0) */
-struct IgnoreItem {
-    /* a blank entry (resize's T(): the memset call 0x303250 makes) */
-    IgnoreItem() { memset(this, 0, sizeof(*this)); }
-
+/* someone ignored, as the server answers (0x48 bytes; the name ours) */
+struct IgnoreInfo {
     char MessageID[MEDIUS_MESSAGEID_MAXLEN];   // 0x0
     MediusCallbackStatus StatusCode;   // 0x18
     int AccountID;   // 0x1c
     char AccountName[32];   // 0x20
     int _40;
     char EndOfList;   // 0x44
+};   // 0x48
+/* the ignore list's entry (a vector of them: the class vector's clear out of line, 0x302FC0): the
+ * answer held as a MEMBER -- MW's implicit assignment copies a struct's char arrays member by member
+ * but a member of struct type as one block, so the list's erases (0x303490) and insert (0x3022F0)
+ * move whole 72-byte blocks, as the target's do (the record itself, or the entry derived from it,
+ * copies its arrays bytewise: 0x528 against 0x2A0). Built from an answer by assigning it (Add's copy:
+ * member by member, no memset) */
+struct IgnoreItem {
+    /* a blank entry (resize's T(): the memset call 0x303250 makes) */
+    IgnoreItem() { memset(this, 0, sizeof(*this)); }
+    IgnoreItem(const IgnoreInfo &info) { m_info = info; }
+
+    IgnoreInfo m_info;   // 0x0
 };   // 0x48
 
 class IgnoreVector : public std::vector<IgnoreItem> {
@@ -87,14 +97,14 @@ public:
     {
         if (name)
             for (iterator i = begin(); i != end(); ++i)
-                if (!strcasecmp((*i).AccountName, name))
+                if (!strcasecmp((*i).m_info.AccountName, name))
                     return &*i;
         return 0;
     }
     IgnoreItem *Find(int id)
     {
         for (iterator i = begin(), e = end(); i != e; ++i)
-            if (id == (*i).AccountID)
+            if (id == (*i).m_info.AccountID)
                 return &*i;
         return 0;
     }
@@ -102,15 +112,24 @@ public:
     void UpdateDisplay();
 };
 
-/* a friend's invitation, as the list keeps it (0x40 bytes) */
-struct FriendInvitationItem {
+/* a friend's invitation, as the server answers (0x40 bytes; the name ours) */
+struct FriendInvitationInfo {
     char MessageID[MEDIUS_MESSAGEID_MAXLEN];   // 0x0
     int AccountID;   // 0x18
     char AccountName[32];   // 0x1c
     int AddType;   // 0x3c
 };   // 0x40
+/* the invitations' entry: the answer held as a member, so the vector's erase (0x302850) and insert
+ * (0x302AA0) move whole 64-byte blocks as the target's do, where a copy of the answer itself (Add's)
+ * goes member by member (see IgnoreItem) */
+struct FriendInvitationItem {
+    FriendInvitationInfo m_info;   // 0x0
+};   // 0x40
 
-/* the invitations: a vector of them (its insert and erase out of line, 0x302AA0 and 0x302850) */
+/* the invitations: a vector of them (its insert and erase out of line, 0x302AA0 and 0x302850; the
+ * erase byte-exact, the insert OPEN, 27 instructions -- the class insert's in-place registers,
+ * include/vector's open: the end pointer takes a0 where the target's takes v1, as the room players'
+ * 0x2F2D90 and the ignore list's 0x3022F0 (38)) */
 class FriendInvitationVector : public std::vector<FriendInvitationItem> {
 public:
     /* room for 64 at the start (the initialiser calls the reserve 0x3030B0 with 64) */
@@ -120,14 +139,14 @@ public:
     {
         if (name)
             for (iterator i = begin(); i != end(); ++i)
-                if (!strcasecmp((*i).AccountName, name))
+                if (!strcasecmp((*i).m_info.AccountName, name))
                     return &*i;
         return 0;
     }
     FriendInvitationItem *Find(int id)
     {
         for (iterator i = begin(), e = end(); i != e; ++i)
-            if (id == (*i).AccountID)
+            if (id == (*i).m_info.AccountID)
                 return &*i;
         return 0;
     }
@@ -361,11 +380,11 @@ void cbGetFriendInvitations(int, int, int, MediusGetBuddyInvitationsResponse *re
     FriendInvitationItem item;
 
     if (resp->MessageID)
-        memcpy(item.MessageID, resp->MessageID, sizeof(item.MessageID));
-    item.AccountID = resp->AccountID;
+        memcpy(item.m_info.MessageID, resp->MessageID, sizeof(item.m_info.MessageID));
+    item.m_info.AccountID = resp->AccountID;
     if (resp->AccountName)
-        memcpy(item.AccountName, resp->AccountName, sizeof(item.AccountName));
-    item.AddType = resp->AddType;
+        memcpy(item.m_info.AccountName, resp->AccountName, sizeof(item.m_info.AccountName));
+    item.m_info.AddType = resp->AddType;
     data_0044FE00.Add(&item);
 }
 
@@ -553,14 +572,15 @@ inline const char *OnlineMark(int status)
 #pragma auto_inline off
 
 /* an account ignored kept, unless its account's is there: copied whole (OVL1 0x301ED0: the ignore
- * list's callback 0x300F70 hands it each response). It first asks whether the name is ignored --
- * IsIgnored inlined, its walk of this very list made -- and does nothing with the answer: both
- * outcomes go on to the test by account */
+ * list's callback 0x300F70 hands it each response) -- an entry built from the answer, which assigns
+ * it member by member as the target does (a copy of the entry itself would be one block). It first
+ * asks whether the name is ignored -- IsIgnored inlined, its walk of this very list made -- and does
+ * nothing with the answer: both outcomes go on to the test by account */
 void IgnoreVector::Add(IgnoreItem *item)
 {
-    theLobby.IsIgnored(item->AccountName);
-    if (!Find(item->AccountID)) {
-        IgnoreItem copy = *item;
+    theLobby.IsIgnored(item->m_info.AccountName);
+    if (!Find(item->m_info.AccountID)) {
+        IgnoreItem copy(item->m_info);
 
         push_back(copy);
     }
@@ -610,11 +630,11 @@ void IgnoreVector::UpdateDisplay()
 
     ed.push(0);
     for (iterator i = begin(); i != end(); ++i) {
-        sprintf(text, "%d", (*i).AccountID);
+        sprintf(text, "%d", (*i).m_info.AccountID);
         ed.push(0);
         ed.addstringnode(text);
-        ed.addstringnode((*i).AccountName);
-        ed.addstringnode(OnlineMark((*i)._40));
+        ed.addstringnode((*i).m_info.AccountName);
+        ed.addstringnode(OnlineMark((*i).m_info._40));
         ed.pop();
     }
     ed.pop();
@@ -630,10 +650,10 @@ void FriendInvitationVector::UpdateDisplay()
 
     ed.push(0);
     for (iterator i = begin(); i != end(); ++i) {
-        sprintf(text, "%d", (*i).AccountID);
+        sprintf(text, "%d", (*i).m_info.AccountID);
         ed.push(0);
         ed.addstringnode(text);
-        ed.addstringnode((*i).AccountName);
+        ed.addstringnode((*i).m_info.AccountName);
         ed.pop();
     }
     ed.pop();
@@ -641,14 +661,15 @@ void FriendInvitationVector::UpdateDisplay()
 }
 
 /* an invitation kept, unless it is empty or its account's is there, and the list shown again
- * (OVL1 0x301DB0): copied by assignment first -- the odd-length id makes it member by member,
- * as the target's copy is (initialised from *item it would be a block copy) */
+ * (OVL1 0x301DB0): the answer copied in by assignment first -- the char arrays make it member by
+ * member, as the target's copy is (the entry copied whole, or initialised from the answer, would be
+ * one block) */
 void FriendInvitationVector::Add(FriendInvitationItem *item)
 {
-    if (item && item->AccountName[0] && !Find(item->AccountID)) {
+    if (item && item->m_info.AccountName[0] && !Find(item->m_info.AccountID)) {
         FriendInvitationItem copy;
 
-        copy = *item;
+        copy.m_info = item->m_info;
 
         push_back(copy);
         UpdateDisplay();
@@ -667,7 +688,7 @@ void FriendInvitationVector::Remove(int id)
 
     i = begin();
     while (i != end()) {
-        if (id == (*i).AccountID)
+        if (id == (*i).m_info.AccountID)
             i = erase(i);
         else
             ++i;
@@ -685,7 +706,7 @@ void func_003009C0(int, int, int, void *data)
     char text[512];
 
     data_0044FE00.Add(resp);
-    sprintf(text, "%s has invited you to join their friends list.", resp->AccountName);
+    sprintf(text, "%s has invited you to join their friends list.", resp->m_info.AccountName);
     theGame.GetCurrentState()->DisplayMessage(text, "", 0, 0, 0, 1, 0, 1);
 }
 
@@ -733,4 +754,13 @@ bool func_00300740(int kind, FriendsConnectParams *params)
     myConnectionIndex = -1;
     return CheckMediusError(MediusConnect(params, &result));
 }
+}
+
+/* a clear of the friend invitations the image no longer holds (no row: a stand-in for a function
+ * the link dead-stripped with the copies only it called -- its call made the deleter's clear
+ * generated ahead of the deleter's destructor, which the target's 0x303040 inlines; README "Tells
+ * from the weapons, round 7": dead-stripped stand-ins) */
+void DeadFriendInvitationsClear()
+{
+    data_0044FE00.clear();
 }

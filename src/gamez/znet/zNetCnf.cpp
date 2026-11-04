@@ -25,8 +25,7 @@ int ezNetCtlSetProperties(void *cnf);   /* (ezctl: opened on the configuration) 
 void ezNetCtlGetStatus(void *ctl);   /* (ezctl: the state read) */
 void ezNetCtlUpInterface(int a);   /* (ezctl: up) */
 void ezNetCtlDownInterface(int a);   /* (ezctl: down) */
-void func_001BCE48(void);
-void func_00363F60(char *out, int size, int id, const char **args, int n);   /* a UI text formatted */
+void sceSifMExitRpc(void);   /* the mrpc client closed */
 int sceSifMInitRpc(unsigned int mode);
 
 extern unsigned char data_00456780[];   /* the inet RPC client */
@@ -47,6 +46,7 @@ extern int data_00458098;   /* the time it changed */
 }
 
 int zSysLoadIRX(char *name, int argc, char *argp, bool start);
+void FormatString(char *out, int size, int id, const char **args, int nargs);   /* a UI text formatted (c2dstring.cpp) */
 
 /* eznetctl's state (0x457B00) */
 struct EzCtl {
@@ -104,7 +104,7 @@ extern "C" bool func_0030C630(CIOPManager::RebootPhase phase, CIOPManager::Reboo
         exitEzNetCtl();
     }
     sceLibnetTerminate(data_00456780);
-    func_001BCE48();
+    sceSifMExitRpc();
     return false;
 }
 
@@ -192,7 +192,7 @@ extern "C" bool func_0030C090()
 
             args[0] = data_004575C0;
             args[1] = data_004576C0;
-            func_00363F60(text, sizeof(text), 0x429, args, 2);
+            FormatString(text, sizeof(text), 0x429, args, 2);
             LobbyEvent("MP_MEDIUS_ERROR", text);
             exitEzNetCtl();
         } else {

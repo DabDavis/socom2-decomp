@@ -164,7 +164,7 @@ void C2DMessageString::Tick(float dT)
     m_time += dT;
     float typed = m_time * m_ttySpeed;
 
-    while (m_charheight < typed && strlen(m_string + m_firstCharPos) < strlen(m_text.c_str())) {
+    while (m_length < typed && strlen(m_string + m_firstCharPos) < strlen(m_text.c_str())) {
         const char *typed_so_far = m_string + m_firstCharPos;
 
         AddCharacter(m_text.c_str()[strlen(typed_so_far)]);

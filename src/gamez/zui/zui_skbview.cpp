@@ -225,33 +225,52 @@ static inline int CharLen(const char *s)
     return UTF8CharLen(s);
 }
 
-/* whether a text keeps within the limits the look sets for string 0 or 1: its bytes, then its
- * characters (0x396D40, 0x399EC0's test; the name ours).
- * OPEN, 13 instructions (same blocks, n's ++ in UTF8CharLen's delay slot as the target's): the
- * saved registers are numbered otherwise -- the target keeps p in s0, the limit in s1 and the count
- * in s2 (here the limit s0, the count s1, p s2) -- and its `return true` is a bool assigned
- * (daddiu), as an inlined function's is. Tried (build/scratch/ui/tf.py): a bool result variable,
- * the count declared first, the count before p, the count as an inline returning it, the whole
- * character test as an inline bool -- 8 to 31 off */
-bool SkbTextFits(const std::string &s, bool second)
+/* the string has a character at p, into the caller's flag (zui_skbkeys.cpp's TestChar: a variable of
+ * the caller's, numbered where it is declared, where an inline bool's return is a temporary) */
+static inline bool TestChar(bool &more, const char *p)
 {
+    more = false;
+    if ((bool)p && *p)
+        more = true;
+    return more;
+}
+
+/* whether a text keeps within the limits the look sets for string 0 or 1: its bytes, then its
+ * characters (ours: SkbTextFits' body, an inline -- its `return true` a bool assigned, daddiu, as an
+ * inlined function's is). Open from round 11 to 17 on its saved registers: MW's colouring, read off
+ * with the MSL lane's igdump, gives the target's cursor s0, limit s1 and count s2 only with the limit
+ * numbered first -- a variable of its own, assigned in an if/else (a ternary initialiser folds it
+ * into the ternary's temporary, numbered after the walk's) -- and the walk's flag numbered between
+ * the cursor and the count, so the count goes in simplify's first sweep and the cursor last */
+static inline bool TextFits(const std::string &s, bool second)
+{
+    int maxChars;
     int maxBytes = second ? s_maxBytes1 : s_maxBytes0;
 
     if (maxBytes > 0 && maxBytes < s.size())
         return false;
-    int maxChars = second ? s_maxChars1 : s_maxChars0;
-
+    if (second)
+        maxChars = s_maxChars1;
+    else
+        maxChars = s_maxChars0;
     if (maxChars > 0) {
         const char *p = s.c_str();
+        bool more = false;
         int n = 0;
 
-        while (HasChar(p)) {
+        while (TestChar(more, p)) {
             n++;
             p += CharLen(p);
         }
         return n <= maxChars;
     }
     return true;
+}
+
+/* (0x396D40, 0x399EC0's test; the name ours) */
+bool SkbTextFits(const std::string &s, bool second)
+{
+    return TextFits(s, second);
 }
 
 /* whether a bitmap's node is shown (ours) */
@@ -422,7 +441,7 @@ void CSoftKeyboard::ParseLook(_zrdr *rdr)
     float lh = 0.0f;
 
     zrdr_findreal(rdr, "UserStringLineHeight", &lh, 1);
-    *(float *)&m_c4 = lh;
+    m_c4 = lh;
     m_c8 = SkbFindInt(rdr, "CursorY", 0);
     m_cc = SkbFindInt(rdr, "CursorY2nd", 0);
     CIntPair csize = ReadIntPair(rdr, "CursorSize");
