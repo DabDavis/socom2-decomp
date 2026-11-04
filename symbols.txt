@@ -1541,7 +1541,7 @@
 0x001F1E40 0x94 IsLiveSeal__10CEntityItrCFv  # OVL1; the name ours (a CEntityItr test next to GetSeal, which it inlines twice: a SEAL and not func_002C2FD0; st_mpexit and the HUD call it)
 0x001F1EE0 0x48 IsSeal__10CEntityItrCFv  # OVL1; the name ours (a CEntityItr test next to GetSeal, which it inlines: whether the entity is a SEAL)
 0x001F1F30 0x78 Advance__10CEntityItrFv  # OVL1; s1:calls (SOCOM 1's walk to the next SEAL along CEntity::m_list, counting; SOCOM II dropped the flag test)
-0x001F1FB0 0x1F8 func_001F1FB0  # OVL1
+0x001F1FB0 0x1F8 AddMission__12CCareerStatsFfffff  # OVL1; ours (the states lane, round 30): the single-player career's stats taken up -- SetRoundStatUiVars 0x1F21B0 calls it on theMission +0x1950 (CCareerStats: SetUIVars 0x2A3BC0's thirteen ints) with five fractions: each made a whole percentage and averaged in over the missions counted at +0, the count up one, seven of ftsGetPlayer()'s halfword counters (0x58C-0x5B8, the kills at 0x598 into +0x1C, m_kills) summed; st_exit.cpp
 0x001F21B0 0x608 func_001F21B0  # OVL1
 0x001F27C0 0x680 func_001F27C0  # OVL1
 0x001F2E40 0x450 func_001F2E40  # OVL1
