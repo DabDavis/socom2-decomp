@@ -192,23 +192,30 @@ STICK_DIR UiGetDirStickMoved();
  * and 7 the edit keys) */
 enum SKBKEY { SKBKEY_NONE, SKBKEY_1, SKBKEY_2, SKBKEY_3, SKBKEY_4, SKBKEY_5, SKBKEY_6, SKBKEY_7 };
 
-/* the four cursor events by the stick's direction or the pad button pressed (0x3FB388; ours) */
+/* the four cursor events by the stick's direction or the pad button pressed (0x3FB388; ours: the
+ * event a SKBKEY field -- MW loads a byte enum with `lb` and narrows it at each read, the table's
+ * load in SkbPadKeyEvent) */
 struct SKBPADKEY {
     unsigned char m_dir;     // a STICK_DIR
     unsigned char m_button;  // a PAD_BUTTON
-    signed char m_event;
+    SKBKEY m_event;
 };
-static SKBPADKEY s_padKeys[4] = {{1, 3, 2}, {2, 2, 3}, {3, 4, 1}, {4, 5, 4}};
+static SKBPADKEY s_padKeys[4] = {{1, 3, SKBKEY_2}, {2, 2, SKBKEY_3}, {3, 4, SKBKEY_1}, {4, 5, SKBKEY_4}};
 
 /* the pad's key event: a cursor move by the stick or the pad, else cross, L2 or R2 (5, 6, 7) --
  * kept, its hold time restarted; with none, the kept event cleared once the stick is centred or
  * one of those keys is let go (0x394F60; the name ours). The release test is a bool accumulated
  * with `|=` (the target's branch-free sltu/or chain; `||` branches, `|` of the compares differs).
- * OPEN, 16 bytes short (0x198 against 0x1A8): the event. The target loads the table's event with
- * `lb`, keeps it in v0 (the return value's register) and narrows it with `andi 0xff` at each test;
- * a byte-enum local folds the narrowing into an `lbu` and drops the tests' andi, a char local gives
- * the lb but no andi (0x1A0), an int local tested through a byte cast reaches the size but takes a3
- * and moves every volatile register (35 off): the shape that keeps all three is not found */
+ * Byte-exact since the UI's round 24 (open since round 19, 16 bytes short): the table's event a
+ * SKBKEY FIELD, read without a cast -- MW loads byte-enum memory with `lb` (sign-extending) and
+ * narrows with `andi 0xff` at each read, the target's lb and andi's; a signed char field cast to
+ * SKBKEY folds the conversion into an `lbu` in every form (`(SKBKEY)(signed char)`, `(SKBKEY)(int)`,
+ * a char or int local first, an inline returning it). The tests are written `== SKBKEY_NONE` /
+ * `!= SKBKEY_NONE`: `!event` / `if (event)` test the loaded byte directly (16 bytes short). Measured
+ * on the way: a 2-byte enum loads a signed char field with `lb` and narrows with `andi 0xffff`, a
+ * signed byte enum (an enumerator -1) sign-extends at each read; a signed char local tested
+ * through casts has every instruction but the event in a3 (only a byte-enum local is coalesced
+ * with the return register); the search as an inline returning the event is 24-29 off. */
 SKBKEY SkbPadKeyEvent(CPad *pad)
 {
     STICK_DIR dir = UiGetDirStickMoved();
@@ -216,11 +223,11 @@ SKBKEY SkbPadKeyEvent(CPad *pad)
 
     for (int i = 0; i < 4; i++) {
         if (pad->m_state[s_padKeys[i].m_button] == KEY_FALLING || dir == s_padKeys[i].m_dir) {
-            event = (SKBKEY)s_padKeys[i].m_event;
+            event = s_padKeys[i].m_event;
             break;
         }
     }
-    if (!event) {
+    if (event == SKBKEY_NONE) {
         if (pad->m_state[PAD_CROSS] == KEY_FALLING)
             event = SKBKEY_5;
         else if (pad->m_state[PAD_TRIGGER_L2] == KEY_FALLING)
@@ -228,7 +235,7 @@ SKBKEY SkbPadKeyEvent(CPad *pad)
         else if (pad->m_state[PAD_TRIGGER_R2] == KEY_FALLING)
             event = SKBKEY_7;
     }
-    if (event) {
+    if (event != SKBKEY_NONE) {
         s_keyEvent = event;
         s_keyHeld = 0.0f;
         return event;
@@ -1079,7 +1086,17 @@ struct SKBTOGGLE {
  * place; the font choice `font = name.size() == 0 ? s_defaultFont : font` leaves the join unpadded
  * as the target (`if (!name.size())` pads it: the game states' round-34 ternary rule; `!size() ?`
  * gives two arms); the node read into a local first (the target keeps it in s1 across the calls).
- * Round 23: 0x398 -> 0x390, 18 lines off -> 1. */
+ * Round 23: 0x398 -> 0x390, 18 lines off -> 1.
+ * Round 24, read off MW's float colouring (igdump): MW numbers the product's operands in TREE order
+ * and the colouring follows the numbers -- the target's registers (x f2, width f1, the 1.0 f0) are
+ * exactly `x - w * t`'s numbering, yet its product reads `t * w`, so the 1.0 is materialised after
+ * the width although it is the left operand; the tick 0x3949C0 places the same legend as `x - t *
+ * w` with a variable t in f21. Every `t * w` form numbers the 1.0 first (4 off), every `w * t` form
+ * keeps the swap (1 off): the width or x as int, float or dead-first-defined locals, an implicit
+ * int-to-float conversion, a product local, a by-value or by-reference t (by reference 0x398), an
+ * int, double or self-cast argument, `1.0f - 0.0f`, an extra inline level, x / w / t as the inline's
+ * three parameters (int or float), a multiply inline, the node in a local, t a caller local defined
+ * before the calls (the constant is propagated before numbering in each). */
 /* the legend (bitmap 3) placed slid in by t, a fraction of its width (ours: the 1.0f a caller
  * passes is still multiplied; the width written first gives the target's registers -- the 1.0 then
  * numbered after it, so coloured first into f0 -- with the product's operands the wrong way round,

@@ -2060,6 +2060,79 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from completing the MSL headers, round 23** (the scalar vectors' rbegin, the pointer vector's original iterator
+  measured; probes build/scratch/msl-r23-p23/, the measured header build/scratch/msl-r23/vector.r23_pointer_iterator):
+  - THE POINTER VECTOR'S ORIGINAL ITERATOR, read off the image: the raw begin/end belong to each element type, not the
+    shared pod (CNode's 0x1EA8C0 / 0x1EA890 and CKey's 0x257CB0 / 0x257BA0 have the same words in one overlay: different
+    instances); `__raw_begin() { return this->data(); }`, `__raw_end() { return __base::end(); }` (the pod's end through
+    data(): 0x34D920 is that pod end); begin() through `__iter(__raw_begin())`, end() taking the raw end into a const
+    local first; the iterator gains `iterator(unsigned int *const &)` (0x257CA0) and base() (0x257B90), `==` comparing
+    base()s; the copy constructor stays implicit (a user-declared one makes the postfix ++'s copy 0x18 against 0x14) --
+    with it _countKeys 0x2578F0, fixupKey 0x257CC0 and NextFile 0x34D740 come out instruction-for-instruction the
+    target's, but end() becomes four inline levels high and 19 current walks fitted to three lose their match (their
+    fifth level cut): NOT ADOPTED until those walks are refitted (queued);
+  - a non-leaf inline larger than inline_max_size inlines one level, so bisecting that pragma gives each piece's size; a
+    self-inlined copy counts its pieces only two levels down; a loop test's end() counts twice (the test is duplicated)
+    and a local's `const` costs one unit; a const local in end() is what lets MW hoist a loop-invariant end into a
+    preheader, and the pod's end must call data() for it to stay hoisted;
+  - the scalar vectors' rbegin() / rend() over include/iterator's reverse_iterator (code-neutral over 633 units):
+    CSkbSplit(n, k) 0x391F80 is `*m_parts.rbegin() = n - k + 1;`, the UI's CSkbRevIter stand-in retired, the reverse
+    iterator's operator* 0x391D30 named.
+- **Tells from the SEALs, round 34** (the anim stack's pop and rotations, SetMaxMotion, vector<AnimSet *>'s pieces):
+  - the count kept in a register while the entry test re-reads the global comes from: take the count into a local, guard
+    with `if (i < *(const unsigned int *)&g)`, then `do {} while (i < n)` -- MW never hoists the global past a store or a
+    call, and a plain local count folds into the entry test (CSealAnim::AnimPop 0x577700, CombineRotations 0x576E30);
+  - no-op conversions move argument loads: an argument needing one (unsigned to int, short to a short enum) is loaded after
+    the object pointer, one needing none before it (0x5B14E0, CZSealBody::SetMaxMotion 0x58BCB0 -- the strafe statics
+    declared AnimType, passed uncast); among the arguments the converted one is evaluated first (AnimPush 0x577DF0, its
+    frame an int);
+  - in a switch whose cases assign a result and break to `return r`, a default that returns directly leaves its `b
+    epilogue` aimed at the very next instruction (0x58C970); a callee declared `bool` instead of `int` moves the
+    narrowing `andi` into the arm's delay slot (0x556280); a same-type `(float)` cast on a clock loads the clock first in a
+    compare (0x5712F0);
+  - vector<AnimSet *>'s out-of-line pieces 0x5788C0-0x578980 (the kit's reading, probed byte-exact: !=, end, postfix ++,
+    *, operator=, begin, the default constructor, basic_string's c_str, AnimSet's GetName) sit right after their first
+    caller 0x5784A0 -- seal_body.cpp's last-defined functions; OVL1's c_str copy 0x36E860 marked an ovl-copy;
+    ActionSelectionMask takes an int (`1 << (unsigned char)id`).
+- **Tells from the UI, round 24** (SkbPadKeyEvent at last):
+  - MW loads a byte-enum field with `lb` and narrows it with `andi 0xff` at each read; a `signed char` field cast to the
+    enum folds into `lbu` in every form tried (`(E)(signed char)`, `(E)(int)`, a char or int local first, an inline
+    returning it) -- SkbPadKeyEvent 0x394F60 (open since round 19) matches with the pad table's event field an SKBKEY read
+    without a cast (the table's data unchanged);
+  - a byte enum tested `== E_0` / `!= E_0` narrows at the test, `!e` / `if (e)` tests the loaded byte directly (16 bytes
+    shorter); a 2-byte enum loads a `signed char` field with `lb` and narrows with `andi 0xffff`, a signed byte enum (one
+    enumerator -1) sign-extends at each read instead;
+  - MW numbers a float expression's temporaries in source order (left operand first) though the loads are emitted first;
+    a constant passed through an inline's parameter, or held in a caller local defined before calls, is propagated before
+    that numbering (SkbStartDisplay stays 1 off on it); CSkbSplit's sum 0x391E70 written (12: a register rotation).
+- **Tells from the engine core, round 13** (the pop-up dialog's model, the network packet arguments, the mission title):
+  - a jump table that starts at 0 needs its empty cases written, otherwise MW builds a compare chain
+    (CZAnimArgList::AddNetworkPacketArgs 0x271EE0, SOCOM 1's); a `li a3,1` shared by a `== 1` compare and the call's third
+    argument means the argument really is 1 (UICompareValues 0x274DB0: UIVAR_SESSION); a `signed char` return compared as
+    `(unsigned char)` gives the target's `andi 0xff` instead of a sign extension;
+  - a member read twice, once for a test and once as a call argument: take the test's read into a local through a const
+    view, ahead of the unrelated `index = -1` store -- the load comes first and the store fills the branch's delay slot;
+  - zanim_menu.h's minimal CPopUpDialog (a CPlainBmp base, the text at 0xB0, a C2D at 0x314, two buttons; 0xBF0 bytes) with
+    its destructor inline in the class and a later virtual out of line reproduces the image: zanim_menu.cpp emits no
+    vtable (zui_2d.cpp's at 0x4073A0 is the real one) and the destructor's copy lands after UIFlushMenuHistory
+    (~CPopUpDialog 0x27C8D0, CMenuStack::GetPopUp 0x27F190);
+  - renaming a row that only a draft matches makes that draft no-target until automatch --stale runs: write the function
+    from source first, or keep the placeholder; 0x2A2EB0-0x2A3AF8 is a unit of its own (ftsGetAltitudeApprox, SOCOM II's,
+    and OVL1's copy of CAiMap::GetLocation 0x2A3950).
+- **Tells from the HUD, round 42** (the TCM builder, the root's show, the button's and wrapped text's destructors):
+  - calling a virtual through a local copy of `this` defined in the block where it is used computes the object ahead of
+    the argument and puts the argument in the call's delay slot; copied at the top of the function the copy becomes the
+    stores' base register instead (tcmCreateItem 0x236D20: SetTexture through `self = this` after the texture's ternary);
+  - a local declared uninitialised ahead of an element pointer in a loop body is numbered below the pointer and coloured
+    after it (CTCM::ShowRoot 0x235560: the state); a negation written at both uses is a common subexpression, a temporary
+    numbered after an inline's variables, so it takes s0 -- a named local swaps it (tcmVote 0x22F3C0: `!cur` twice);
+  - in sequential walks a function-level counter shared by some loops, the others loop-scoped, decides which saved
+    registers the counters share; all loop-scoped, the parameters are coloured first and two more saved registers are
+    needed (CZLineMap::Draw 0x20D390); defining a destructor that was only declared emits its this-adjusting thunk too,
+    and both match (~CWrappedText 0x379D90 / @152@ 0x37D010, ~C2DButton 0x377510 / @192@ 0x37D040);
+  - SetupBackgroundBox 0x22AE90 matches through a STAND-IN: the bottom-right corner's u read as `*(volatile float
+    *)&s_fCornerU` (about 20 natural spellings let MW hoist v's load; the variable volatile everywhere moves six loads);
+    ActionSelectionMask's caller measured: the callee's parameter is an int (`1 << (unsigned char)id`).
 - **Tells from the kit and AI states, round 35** (the view cone, the enemy callout, the pickup scan, slot 0xC retyped):
   - MW folds a mask local read only once back into the expression, and an `&` then evaluates the word's index first
     whatever order is written; redefining the local (`m &= word`) keeps the mask first (0x5CB450 / 0x5CB630 at 2: which
