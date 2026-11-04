@@ -25,6 +25,14 @@ enum NetObjectLifespan {
     NetObjectLifespan_Extent = 0x7FFFFFFF
 };
 
+/* how the console reaches the network (SOCOM 1's MP_CONNECTION, its DWARF's values; a byte enum) */
+enum MP_CONNECTION {
+    USB_MODEM = 0,
+    USB_ETHERNET = 1,
+    NA_MODEM = 2,
+    NA_ETHERNET = 3
+};
+
 typedef void (*NetCreateObjectCallback)(int, int);
 typedef void (*NetUpdateObjectCallback)(int, int, int);
 typedef void (*NetDestroyObjectCallback)(int, int);
@@ -62,6 +70,7 @@ public:
     }
 
     int zNetInitialize();
+    bool zNetLoadIRX();
     int zNetLookupHost(const char *host, char *ip, int len);
     int zNetGetMyGameClientIndex();
     /* the clients in the game (0x30D510; the LAN lobby counts its players with it) */
@@ -121,7 +130,8 @@ public:
     void (*m_infoCallback)(void *info);   // 0x1198
     int m_infoRequestType;   // 0x119c
     int m_infoType;   // 0x11a0
-    unsigned char _11a4[0x1248 - 0x11a4];
+    MP_CONNECTION m_connection_type;   // 0x11a4 (SOCOM 1's at 0x1168)
+    unsigned char _11a5[0x1248 - 0x11a5];
     std::list<TypeAppMessage *> m_message_list;   // 0x1248
     std::list<TypeRTimeFixStruct *> m_fix_list;   // 0x1254
 };   // 0x1260

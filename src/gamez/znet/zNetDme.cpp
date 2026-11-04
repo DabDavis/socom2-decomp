@@ -8,6 +8,7 @@
  * placeholders, their shapes the call sites'. Only some of it so far. Defined in reverse of their
  * image order (-inline deferred). */
 
+#include <stdio.h>
 #include <string.h>
 #include "znet.h"
 #include "../zonline/zonline.h"
@@ -178,6 +179,111 @@ int CZNetwork::zNetInitialize()
     for (int i = 0; i < 4096; i++)
         m_ObjectFieldUpdate[i] = 0;
     return r.m_err;
+}
+
+/* --- the IOP's network modules (SOCOM 1's zNetLoadIRX) ------------------------------------- */
+
+class CSnd {
+public:
+    static void Close();
+    static void UIOpen();
+    static void WaitForCDRead();
+};
+
+class CIOPManager {
+public:
+    enum RebootPhase { PreReboot = 0 };
+    enum RebootMode { FirstBoot = 0 };
+    typedef bool (*RebootCallback)(RebootPhase phase, RebootMode mode, void *data);
+    int RegisterRebootCallback(RebootCallback cb, void *data);
+};
+extern CIOPManager theIOPManager;
+
+int zSysLoadIRX(char *name, int argc, char *argp, bool start);
+
+extern "C" {
+int sceSifMInitRpc(unsigned int mode);
+void sceLibnetInitialize(void *cd, int a, int b, int c);   /* the RPC client bound */
+bool func_0030C090();   /* (zNetCnf.cpp's: the network configuration's own start-up) */
+bool func_0030E260(CIOPManager::RebootPhase phase, CIOPManager::RebootMode mode, void *data);   /* (the inet client closed before a reboot) */
+extern bool data_0045B320;   /* the modules up */
+}
+
+/* the network's IOP modules loaded: the sound's CD reads finished and its streams closed, then --
+ * unless the configuration's own start-up does it -- inet.irx, netcnf.irx with the icon files as
+ * its arguments, inetctl.irx with the connection's options and configuration file, ppp.irx for a
+ * modem, an986.irx for the USB adaptor or smap.irx for the network adaptor (the IOP reboot callback
+ * registered with it), msifrpc.irx and libnetb.irx, and the RPC client bound; the sound's interface
+ * opened again and whether the modules are up returned, false at the first module that fails
+ * (SOCOM 1's zNetLoadIRX, which returned at once when they were up; OVL1 0x30DEE0:
+ * CSMInitNetwork::WaitForNetwork calls it on theNetwork). The option, count and file locals are
+ * the icon arguments' cursor and count again (s1/s0 throughout), the cursor set before the first
+ * icon name is fetched (in that call's delay slot) */
+bool CZNetwork::zNetLoadIRX()
+{
+    CSnd::WaitForCDRead();
+    CSnd::Close();
+    if (m_bNetCnfRequired)
+        data_0045B320 = func_0030C090();
+    else {
+        char name[256];
+        char args[256] = {0};
+        /* one cursor and one count serve both argument lists (the target keeps them in s1/s0
+         * throughout; the configuration file's name is the third) */
+        char *cnf;
+        char *p;
+        int n;
+
+        if (zSysLoadIRX("run/irx/inet.irx", 0, 0, true) < 0)
+            return false;
+        p = args;
+        CFileIO::PS2FileName("RUN/ICONS/NETCNF/SYS_NET.ICO", name, false);
+        n = sprintf(p, "icon=%s", name);
+        p += n + 1;
+        CFileIO::PS2FileName("RUN/ICONS/NETCNF/ICON.SYS", name, false);
+        n += sprintf(p, "iconsys=%s", name);
+        if (zSysLoadIRX("run/irx/netcnf.irx", n, args, true) < 0)
+            return false;
+        if (m_connection_type == USB_MODEM || m_connection_type == NA_MODEM) {
+            p = "-verbose\0-no_decode";
+            cnf = "net_ex.cnf";
+            n = 20;
+        } else if (m_connection_type == USB_ETHERNET) {
+            p = "-no_decode";
+            cnf = "net003.cnf";
+            n = 11;
+        } else if (m_connection_type == NA_ETHERNET) {
+            p = "-no_decode";
+            cnf = "net005.cnf";
+            n = 11;
+        }
+        memcpy(args, p, n);
+        CFileIO::PS2FileName(cnf, name, false);
+        strcpy(args + n, name);
+        if (zSysLoadIRX("run/irx/inetctl.irx", n + strlen(name) + 1, args, true) < 0)
+            return false;
+        if (m_connection_type == USB_MODEM || m_connection_type == NA_MODEM) {
+            if (zSysLoadIRX("run/irx/ppp.irx", 0, 0, true) < 0)
+                return false;
+        }
+        if (m_connection_type == USB_ETHERNET) {
+            if (zSysLoadIRX("run/irx/an986.irx", 0, 0, true) < 0)
+                return false;
+        } else if (m_connection_type == NA_ETHERNET || m_connection_type == NA_MODEM) {
+            if (zSysLoadIRX("run/irx/smap.irx", 0, 0, true) < 0)
+                return false;
+            theIOPManager.RegisterRebootCallback(func_0030E260, 0);
+        }
+        if (zSysLoadIRX("run/irx/msifrpc.irx", 0, 0, true) < 0)
+            return false;
+        if (zSysLoadIRX("run/irx/libnetb.irx", 0, 0, true) < 0)
+            return false;
+        sceSifMInitRpc(0);
+        sceLibnetInitialize(data_00456780, 0x800, 0x2000, 0x20);
+        data_0045B320 = true;
+    }
+    CSnd::UIOpen();
+    return data_0045B320;
 }
 
 /* a host name's address as text, 30 when it cannot be had (SOCOM II's; OVL1 0x30DE30: the server

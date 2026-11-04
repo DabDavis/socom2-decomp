@@ -5329,7 +5329,7 @@
 0x0030DBB0 0x130 zNetInitialize__9CZNetworkFv  # OVL1; s1:calls by hand, the online lane round 11 (SOCOM 1's zNetInitialize 0x321CA0: NetSetDefaultInitializeParams, NetInitialize, the network's init flag set when it answers no error, our address asked for into the object at 0xD0 (SOCOM 1's 0xAF), the 4096 object-field flags cleared, the error returned; SOCOM II's adds the DME state from DMEInit, a server-message callback 0x30DCE0 and the buffer sizes; UIDMEInit 0x276CF0 calls it on theNetwork)
 0x0030DCE0 0x148 func_0030DCE0  # OVL1
 0x0030DE30 0xAC zNetLookupHost__9CZNetworkFPCcPci  # OVL1; ours (the server list's connect 0x2FDF60 calls it on theNetwork: sceInetName2Address then sceInetAddress2String into the caller's buffer, 30 on failure)
-0x0030DEE0 0x37C func_0030DEE0  # OVL1
+0x0030DEE0 0x37C zNetLoadIRX__9CZNetworkFv  # OVL1; s1:calls by hand, the online lane round 14 (SOCOM 1's zNetLoadIRX 0x321E20: the same sequence -- CSnd::WaitForCDRead and Close, the netcnf combo's start-up when m_bNetCnfRequired, zSysLoadIRX of the modules by MP_CONNECTION, memcpy/PS2FileName/strcpy/strlen for inetctl's arguments, RegisterRebootCallback with smap, sceSifMInitRpc and the libnet client, CSnd::UIOpen, the loaded flag returned; SOCOM II drops the early return when loaded and loads inet.irx and netcnf.irx with the icon arguments first; CSMInitNetwork::WaitForNetwork 0x27702C calls it on theNetwork)
 0x0030E260 0x2C func_0030E260  # OVL1
 0x0030E290 0x64 func_0030E290  # OVL1
 0x0030E300 0x34 func_0030E300  # OVL1
