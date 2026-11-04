@@ -1131,17 +1131,12 @@ extern "C" bool func_005F61E0(CAiState *s)
     return r;
 }
 
-/* every `period` seconds of the controller's state clock, to a tenth (OVL2 0x5F6270).
- * OPEN, 0x48 against 0x44: the target builds 10.0 before it loads the clock and multiplies the
- * period first, with no load-delay nop; here the clock's load comes first. Tried: the inline
- * StateTimer, the products in either order, a shared constant local, the divisor in a local; round
- * 22: both products into float or int locals (the period's first), the timer into a local after the
- * period's, a named 10.0f, `period *= 10.0f`, a bool local, `!(a % b)` -- all 0x48; round 32: an
- * inline taking the two products (ints or floats, either order) or the timer and the period, under
- * 3.0b50 and b52 alike -- 0x48. */
+/* every `period` seconds of the controller's state clock, to a tenth (OVL2 0x5F6270; byte-exact in
+ * the kit lane's round 34, open since round 13: the clock read through a same-type cast -- the HUD's
+ * round-33 rule -- so MW builds 10.0 and multiplies the period first, as the target does) */
 extern "C" bool func_005F6270(CAiState *s, float period, CSealCtrlAi *ai)
 {
-    return (int)(10.0f * ai->m_stateStack.m_timer) % (int)(10.0f * period) == 0;
+    return (int)(10.0f * (float)ai->m_stateStack.m_timer) % (int)(10.0f * period) == 0;
 }
 
 /* a step taken now, or after a delay (the flags' bit 30 then set); the step the state is on

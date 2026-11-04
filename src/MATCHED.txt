@@ -1867,6 +1867,7 @@
 0x00228ED0 IsPlaying__16CZHudMissionCamsFv
 0x00229430 PlayCamera__16CZHudMissionCamsFPCc
 0x00229470 Draw__16CZHudMissionCamsFPQ23zdb7CCamera
+0x00229810 HudTick__16CZHudMissionCamsFP4CPadf
 0x002299F0 UnInit__16CZHudMissionCamsFv
 0x00229A70 Init__16CZHudMissionCamsFv
 0x00229B80 __dt__16CZHudMissionCamsFv
@@ -4185,6 +4186,7 @@
 0x002E2B00 cbGameList__FiiiP22MediusGameListResponse
 0x002E2CE0 UpdateGameListDisplay__FP12BriefingRoom
 0x002E3080 GamePassesFilters__FP8RoomGame
+0x002E31E0 GamePassesTypeFilter__FP8RoomGame
 0x002E33D0 func_002E33D0
 0x002E33E0 HasMissions__8RoomGameFv
 0x002E3490 AllowsType__8RoomGameFi
@@ -4697,6 +4699,7 @@
 0x00309560 Loop__5CMPEGFv
 0x003096C0 Done__5CMPEGFv
 0x003096F0 End__5CMPEGFv
+0x00309780 IdleTick__5CMPEGFv
 0x00309850 Tick__5CMPEGFi
 0x003098E0 Run__5CMPEGFPCcbbi
 0x00309A10 Uninit__5CMPEGFv
@@ -5288,6 +5291,7 @@
 0x00333CD0 end__Q23std83deque<PQ210CRdrEditor11CRDRNodeVec,Q23std39allocator<PQ210CRdrEditor11CRDRNodeVec>>CFv
 0x00333D30 begin__Q23std83deque<PQ210CRdrEditor11CRDRNodeVec,Q23std39allocator<PQ210CRdrEditor11CRDRNodeVec>>CFv
 0x00333E00 __ct__Q210Metrowerks98__compressed_pair_imp<Q23std14allocator<PCv>,Q210Metrowerks36cdeque<PPCv,Q23std15allocator<PPCv>>>FRCQ23std14allocator<PCv>RCQ210Metrowerks36cdeque<PPCv,Q23std15allocator<PPCv>>
+0x00333F90 end__Q210Metrowerks36cdeque<PPCv,Q23std15allocator<PPCv>>CFv
 0x003340A0 __ct__Q23std14allocator<PCv>FRCQ23std14allocator<PCv>
 0x003340B0 __ct__Q210Metrowerks36cdeque<PPCv,Q23std15allocator<PPCv>>FRCQ23std15allocator<PPCv>
 0x003340D0 __ct<PCv>__Q23std15allocator<PPCv>FRCQ23std14allocator<PCv>_Pv
@@ -5858,6 +5862,8 @@
 0x00358690 func_00358690
 0x00358700 func_00358700
 0x00358720 func_00358720
+0x00358730 Rotate_Zaxis__13C2DBitmapPolyFff
+0x003589D0 Rotate_Zaxis__13C2DBitmapPolyFf
 0x00358CC0 FlipImage_XYaxis__13C2DBitmapPolyFv
 0x00358D50 FlipImage_Yaxis__13C2DBitmapPolyFv
 0x00358E20 FlipImage_Xaxis__13C2DBitmapPolyFv
@@ -5935,6 +5941,7 @@
 0x0035F8E0 clear__Q23std58__vector_deleter<9CVowelRow,Q23std21allocator<9CVowelRow>>Fv
 0x0035F8F0 GetAssetLibs__7C2DLineFRQ23C2D8CLibList
 0x0035F9C0 clip3DLine__FP6CPnt4DP6CPnt4DP6CPnt4D
+0x00360030 Draw3DLine__FP6CPnt4DP6CPnt4DP6CPnt4DP6CPnt4D
 0x00360260 SetClipInfo__7C2DLineFPA4_fPA4_fPA4_f
 0x003602F0 FillClipInfo__7C2DLineFPA4_fPA4_fPA4_f
 0x00360380 MakePacket__7C2DLineFPQ23zdb7CCamera
@@ -10009,6 +10016,7 @@
 0x005F6100 func_005F6100
 0x005F6190 func_005F6190
 0x005F61E0 func_005F61E0
+0x005F6270 func_005F6270
 0x005F62C0 func_005F62C0
 0x005F6350 func_005F6350
 0x005F6550 Create__8CAiStateF8AI_STATE
@@ -10068,8 +10076,10 @@
 0x005FD050 SetFormation__10CAiSFollowF14UNIT_FORMATIONi
 0x005FD0E0 SetOffset__10CAiSFollowFPCi
 0x005FD3E0 func_005FD3E0
+0x005FD460 func_005FD460
 0x005FD620 func_005FD620
 0x005FD6F0 func_005FD6F0
+0x005FDAD0 SetHideLook__10CAiSFollowFP11CSealCtrlAi
 0x005FDD00 Virtual3C__10CAiSFollowFP11CSealCtrlAi
 0x005FDEC0 GetStatus__10CAiSFollowCFv
 0x005FE830 OnActionButton__15CSealCtrlSquirmFv
@@ -10132,6 +10142,7 @@
 0x006045B0 Tick__8CAiSFleeFP11CSealCtrlAi
 0x00604820 CanAttack__8CAiSFleeCFv
 0x00604830 OnSignal__8CAiSFleeFQ28CAiState6SIGNALP11CSealCtrlAi
+0x00604880 Tick__10CAiSTargetFP11CSealCtrlAi
 0x00604BF0 Virtual14__10CAiSTargetFP11CSealCtrlAiP8CAiState
 0x00604C60 OnSignal__10CAiSTargetFQ28CAiState6SIGNALP11CSealCtrlAi
 0x00605770 func_00605770
@@ -10186,6 +10197,7 @@
 0x0060A2D0 func_0060A2D0
 0x0060A2F0 OnSetVisible__9CAiTargetFb
 0x0060A460 Tick__9CAiTargetFP7CEntityf
+0x0060A590 GetTimeSinceLastSighting__9CAiTargetCFv
 0x0060A5B0 func_0060A5B0
 0x0060A5F0 SetTarget__9CAiTargetFP7CTarget
 0x0060A6A0 func_0060A6A0
@@ -10260,6 +10272,7 @@
 0x0060F470 Board__14CAiSUseVehicleFP11CSealCtrlAi
 0x0060F5C0 SetTimeout__14CAiSUseVehicleFf
 0x0060F5D0 CanPushAiState__14CAiSUseVehicleF8AI_STATEP11CSealCtrlAi
+0x0060F5E0 OnSignal__14CAiSUseVehicleFQ28CAiState6SIGNALP11CSealCtrlAi
 0x0060F6C0 func_0060F6C0
 0x0060F9A0 func_0060F9A0
 0x0060F9B0 func_0060F9B0
