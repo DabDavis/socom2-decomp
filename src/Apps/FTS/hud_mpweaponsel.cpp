@@ -16,8 +16,10 @@
 
 /* the selector's own update (no row named yet) */
 extern "C" void func_0023E030(CMPWeaponSel *sel, float dT);
-/* the selector's state switch (an unsigned char: 0 closed, 1-3 its pages) */
-extern "C" void func_00240B90(CMPWeaponSel *sel, unsigned char state);
+/* a button's state as the controller unit reads it (OVL1 0x2C64E0, by address: hud_tcmtree.cpp's
+ * TCM_BUTTON, a byte) */
+extern "C" KEY_STATE func_002C64E0(int button, CPad *pad);
+
 
 namespace zdb {
 class CAssetList {
@@ -57,15 +59,36 @@ public:
 
 class CCharacterType {
 public:
+    EQUIP_ITEM GetWeaponByIndex(unsigned int i) const;
+
     unsigned char _0[0x2e8];
     CCharacterWeapList m_weapons;   // 0x2e8
+};
+
+/* the controller's menu states (hud_missioncams.h's MENU_STATE, SOCOM 1's DWARF) */
+enum MENU_STATE {
+    stateNone = 0,
+    stateWeaponSel = 1,
+    stateOrders = 2,
+    statePauseTestMenu = 3,
+    stateFullScreenMapMenu = 4,
+    stateFullScreenMapAnim = 5,
+    stateLast = 6,
+};
+
+/* the seal's controller: SOCOM 1's SetMenuState with a flag added (OVL2) */
+class CSealCtrl {
+public:
+    void SetMenuState(MENU_STATE state, bool flag);
 };
 
 class CZSealBody {
 public:
     CCharacterType *GetCharacter();
 
-    unsigned char _0[0x5e0];
+    unsigned char _0[0xc0];
+    CSealCtrl *m_ctrl;   // 0xc0
+    unsigned char _c4[0x5e0 - 0xc4];
     CZKit m_kit;   // 0x5e0
 };
 
@@ -224,7 +247,7 @@ inline void CMPWeaponSel::SetF2000(bool on)
  * grenades of the owner's primary weapon let through, the others' not */
 void CMPWeaponSel::Init()
 {
-    m_active = false;
+    m_state = SEL_CLOSED;
     m_list.m_34 = 0;
     m_1530 = 255;
     m_1531 = 255;
@@ -283,7 +306,48 @@ void CMPWeaponSel::Init()
 void CMPWeaponSel::UnInit()
 {
     Off();
-    func_00240B90(this, 0);
+    SetState(SEL_CLOSED);
+}
+
+/* the selector's state changed: the list (2) fills its slots from the owner's weapons when opened
+ * from closed and hides the page's backdrop; the page (3) comes on, updated twice, showing the
+ * list's slot; closed (0) hides the backdrop and gives the owner's controller its menu back -- the
+ * state kept; 1 (chosen) and anything else change nothing (0x240B90; the name ours) */
+void CMPWeaponSel::SetState(SEL_STATE state)
+{
+    switch (state) {
+    case SEL_LIST:
+        if (!m_state)
+            Open();
+        m_categories.m_bitmap3.Off();
+        break;
+    case SEL_PAGE: {
+        m_categories.On();
+        m_categories.m_bitmap3.On();
+        func_0023D860(&m_categories, 0.0f);
+        m_categories.m_state = SEL_PAGE;
+
+        /* through a slot pointer, as Scroll's (indexed straight, the offset is added the other
+         * way round) */
+        SelectedSlot *slot = &m_selected[m_list.m_34];
+
+        m_categories.SetWeapon(slot->m_weapon);
+        break;
+    }
+    case SEL_CLOSED:
+        m_categories.m_bitmap3.Off();
+        if (m_state) {
+            CZSealBody *owner = CHUD::GetHUDOwner();
+
+            if (owner)
+                owner->m_ctrl->SetMenuState(stateNone, false);
+        }
+        break;
+    case SEL_CHOSEN:
+    default:
+        return;
+    }
+    m_state = state;
 }
 
 void CWeaponSlot::SetTrans(float trans)
@@ -297,6 +361,28 @@ void SlotList::SetTrans(float trans)
             m_slots[i]->SetTrans(trans);
 }
 
+
+/* the list's buttons: up and down scroll the slots, the confirm button (0x2C64E0's 0) opens the
+ * category page, triangle, start or 0x2C64E0's 4 close the selector (0x23EBC0; the name ours --
+ * m2c's draft matched as it stood) */
+void CMPWeaponSel::HandlePad(CPad *pad)
+{
+    if (pad->m_state[PAD_UP] == KEY_FALLING) {
+        Scroll(-2);
+        return;
+    }
+    if (pad->m_state[PAD_DOWN] == KEY_FALLING) {
+        Scroll(2);
+        return;
+    }
+    if (func_002C64E0(0, pad) == KEY_FALLING) {
+        SetState(SEL_PAGE);
+        return;
+    }
+    if (pad->m_state[PAD_TRIANGLE] == KEY_FALLING || pad->m_state[PAD_START] == KEY_FALLING ||
+        func_002C64E0(4, pad) == KEY_FALLING)
+        SetState(SEL_CLOSED);
+}
 
 /* the cursor a slot on or back, round the five, again while the slot is refused; the page then
  * shows the slot's weapon, updated. Pinned: the target calls itself and the page's SetWeapon out
@@ -396,7 +482,7 @@ bool CMPWeaponSel::CanSelect(int index)
 /* while up: the lists, the page, the title and the backdrops on, then updated */
 void CMPWeaponSel::On()
 {
-    if (m_active) {
+    if (m_state) {
         m_list.On();
         m_categories.On();
         m_title.On();
@@ -416,6 +502,47 @@ void CMPWeaponSel::Off()
     m_bitmap1.Off();
     m_bitmap2.Off();
     m_bitmap3.Off();
+}
+
+/* opened on the list: the slots emptied and given the owner's character's first five weapons (one
+ * read again when it reads 0), the page shown the list's slot, the cursor round to the first
+ * slot it allows, the selector on and updated, the owner's controller in the weapon menu, and the
+ * lists told their owner (0x23E370; the name ours -- SetState's list case calls it from closed) */
+void CMPWeaponSel::Open()
+{
+    CZSealBody *owner = CHUD::GetHUDOwner();
+
+    if (!owner)
+        return;
+    m_1530 = 255;
+    m_1531 = 255;
+
+    CZWeaponList &list = CZWeapon::m_listWeapons;
+    CCharacterType *character = owner->GetCharacter();
+    int count = character->m_weapons.size();
+    int i;
+
+    for (i = 0; i < 5; i++)
+        m_selected[i].SetWeapon(0);
+    for (i = 0; i < 5 && i < count; i++) {
+        EQUIP_ITEM item = character->GetWeaponByIndex(i);
+
+        if (!(item > 0))
+            item = character->GetWeaponByIndex(i);
+        m_selected[i].SetWeapon(list.GetWeapon(item));
+    }
+
+    SelectedSlot *slot = &m_selected[m_list.m_34];
+
+    m_categories.SetWeapon(slot->m_weapon);
+    m_list.m_34 = -1;
+    Scroll(2);
+    On();
+    func_0023E030(this, 0.0f);
+    owner->m_ctrl->SetMenuState(stateWeaponSel, false);
+    m_categories.m_list.m_owner = this;
+    m_categories.m_owner = this;
+    m_state = SEL_LIST;
 }
 
 /* the five selected slots' weapons given to the HUD owner's character: the weapons it has set up
@@ -523,16 +650,12 @@ void CMPWeaponCategories::ShowArrows()
         m_polys[i].SetColor(s_grey.x, s_grey.y, s_grey.z);
 }
 
-/* a button's state as the controller unit reads it (OVL1 0x2C64E0, by address: hud_tcmtree.cpp's
- * TCM_BUTTON, a byte) */
-extern "C" KEY_STATE func_002C64E0(int button, CPad *pad);
-
 /* while the page is up (state 3): up and down step the weapon, left and right the class; triangle
  * or start back to the list (2), the confirm button (0x2C64E0's 0) on to state 1 (0x23D1B0; the
  * name ours -- m2c's draft matched as it stood) */
 void CMPWeaponCategories::HandlePad(CPad *pad)
 {
-    if (m_state == 3) {
+    if (m_state == SEL_PAGE) {
         if (pad->m_state[PAD_UP] == KEY_FALLING) {
             Move(-2);
             return;
@@ -550,11 +673,11 @@ void CMPWeaponCategories::HandlePad(CPad *pad)
             return;
         }
         if (pad->m_state[PAD_TRIANGLE] == KEY_FALLING || pad->m_state[PAD_START] == KEY_FALLING) {
-            m_state = 2;
+            m_state = SEL_LIST;
             return;
         }
         if (func_002C64E0(0, pad) == KEY_FALLING)
-            m_state = 1;
+            m_state = SEL_CHOSEN;
     }
 }
 

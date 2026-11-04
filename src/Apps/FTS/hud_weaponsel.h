@@ -199,6 +199,10 @@ public:
  * name ours) */
 enum WEAPON_KIND { KIND_PRIMARY, KIND_SECONDARY, KIND_OTHER };
 
+/* the network selector's state and its category page's (a byte enum: the state switch 0x240B90
+ * masks it for its compare chain and stores it whole; the names ours) */
+enum SEL_STATE { SEL_CLOSED, SEL_CHOSEN, SEL_LIST, SEL_PAGE };
+
 /* the network selector's slots (their vtables found by their RTTI names: CWeaponSlot 0x405E00,
  * CategorySlot 0x405D80, SelectedSlot 0x405D00, SlotList 0x405E80) */
 class CZWeapon;
@@ -321,7 +325,7 @@ public:
 
     EQUIP_ITEM m_type;   // 0xf20
     WEAPON_KIND m_kind;   // 0xf21
-    unsigned char m_state;   // 0xf22: 3 while the page is up, 2 back to the list, 1 chosen
+    SEL_STATE m_state;   // 0xf22: 3 while the page is up, 2 back to the list, 1 chosen
     int m_index;   // 0xf24
     float m_pulse;   // 0xf28: the arrows' colour blend, 0 grey to 1 yellow
     bool m_pulseup;   // 0xf2c: the blend rising
@@ -344,8 +348,14 @@ public:
     /* the cursor moved a slot on (2) or back (-2), round the five, on past the slots its test
      * refuses; the category page shows the slot's weapon (0x23EAE0; the name ours) */
     void Scroll(signed char dir);
+    /* the list's buttons (0x23EBC0; the name ours) */
+    void HandlePad(CPad *pad);
     /* the five selected slots' weapons given to the HUD owner's character (0x23E5E0; the name ours) */
     void SetCharacterWeapons();
+    /* opened on the list, the slots filled from the owner's weapons (0x23E370; the name ours) */
+    void Open();
+    /* the selector's state changed (0x240B90; the name ours) */
+    void SetState(SEL_STATE state);
     /* whether a slot can be chosen (0x23E910; the name ours), the equipment slot holding an item
      * (the one asked about skipped) and the item's own test (inline) */
     bool CanSelect(int index);
@@ -355,7 +365,7 @@ public:
     inline void SetGL(bool on);
     inline void SetF2000(bool on);
 
-    bool m_active;   // 0x0: set while the selector is up (On does nothing without it)
+    SEL_STATE m_state;   // 0x0: closed (0) or up (On does nothing closed)
     C2DString m_title;   // 0x4
     C2DBitmap m_bitmap1;   // 0xa0
     C2DBitmap m_bitmap2;   // 0x120
