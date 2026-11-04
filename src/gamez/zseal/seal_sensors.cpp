@@ -6,6 +6,69 @@
 
 #include "zseal.h"
 
+/* a weapon's item (zweapon.h's CZWeapon::m_ID at 0x7C, a byte enum: copied with lb, compared with
+ * lbu -- zseal.h declares CZWeapon only by name) */
+struct CSensorWeaponView {
+    unsigned char _0[0x7c];
+    EQUIP_ITEM m_ID;   // 0x7c
+};
+
+/* a bit of a CBits set (inlined; zmath.h's CBits has Test and Clear only -- the name ours) */
+inline void SetSensorBit(CBits *bits, unsigned int i)
+{
+    bits->m_vec[i >> 5] |= 1 << (i & 31);
+}
+
+/* and tested, the mask first (the target builds it before the word's address, as the set does --
+ * CBits::Test indexes first; the name ours) */
+inline bool TestSensorBit(const CBits *bits, unsigned int i)
+{
+    return (1 << (i & 31)) & bits->m_vec[i >> 5];
+}
+
+/* a weapon pickup seen: unless the AI already goes for a pickup or this SEAL has marked it, a Navy
+ * SEAL goes for item 152 when its kit has none of it or none with ammunition (the pickup state
+ * pushed and handed it, flag 1); any other item is marked seen by this SEAL. Whether it went
+ * (OVL2 0x5CB450: 0x5CB870 asks it; new in SOCOM II -- the name ours). `go` declared first and
+ * assigned after the early return: the target numbers it before the SEAL (s2 to its s1).
+ * OPEN, 8 instructions, the seen-bit test's registers only: the target masks the index first
+ * (`andi a1,v1,0x1f` before `srl v1,v1,5`, the 1 in a0, the words in v0 -- the set below, which
+ * matches, has the same allocation); every spelling here shifts first (srl a1, andi in place, the
+ * 1 in v0): CBits::Test, the mask first or last, either in a local, the word's address in a local,
+ * `(w >> s) & 1` (10) */
+extern "C" bool func_005CB450(CSealCtrlAi *ai, CPickup *p, CZWeapon *w)
+{
+    bool go;
+    CZSealBody *seal = (CZSealBody *)ai->m_entity;
+
+    if (ai->AiStateIs(AI_STATE_PICKUP) || TestSensorBit((CBits *)p->m_bits, seal->m_index))
+        return false;
+    go = false;
+    CZKit *kit = &seal->m_kit;
+
+    if (ai->IsNavySeal() && kit) {
+        EQUIP_ITEM item = ((CSensorWeaponView *)w)->m_ID;
+        int i = kit->GetItemIndex(item);
+
+        switch (item) {
+        case 152:
+            if (i == -1 || !kit->ItemHasAmmo(i))
+                go = true;
+            break;
+        default:
+            SetSensorBit((CBits *)p->m_bits, seal->m_index);
+            break;
+        }
+    }
+    if (go && ai->PushAiState(AI_STATE_PICKUP, 0)) {
+        CAiState *s = ai->GetAiState();
+        CAiSPickup *pick = s && s->m_state == AI_STATE_PICKUP ? (CAiSPickup *)s : 0;
+
+        pick->SetPickup(p, 1);
+    }
+    return go;
+}
+
 /* a target seen to fall: the AI calls it, "tango down", at full chance (OVL2 0x5C9B10; SOCOM 1's
  * played its sound 18 the same way, through the same slot +0x24) */
 void CSealCtrlAi::NotifyTargetDown(CZSealBody *seal)

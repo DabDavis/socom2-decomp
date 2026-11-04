@@ -70,6 +70,11 @@ public:
     CKey *FindKey(const char *name);
     void CloseKey(CKey *key);
     void Close();
+    /* the in-memory data buffer handed to the caller (0x257F90): the CBufferIO under m_pFile
+     * releases it and the archive forgets it (the word at 0x1C, the byte at 0x24) -- 0 when none */
+    void *ReleaseDataBuffer();
+    /* the file reopened unless it still is (0x258B40, SOCOM 1's ReOpen; both callers pass 1, 1) */
+    bool ReOpen(int, unsigned int);
     bool IsOpen() { return m_pFile ? m_pFile->IsOpen() : false; }
 
     CKeyRing m_keys;   // 0x4: the open keys, innermost last

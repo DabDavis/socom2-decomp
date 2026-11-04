@@ -32,7 +32,7 @@ typedef struct RSA_BLOCK {
 
 extern void *memset(void *p, int c, unsigned int n);
 extern void *memcpy(void *d, const void *s, unsigned int n);
-extern void func_006283F8(LINT *pResult, LINT *pBase, LINT *pExp, LINT *pMod);     /* EMOD */
+extern void func_006283F8(LINT *pResult, LINT *pBase, LINT *pExp, LINT *pMod);     /* a^e mod m (where SOCOM 1 calls EMOD) */
 
 /* LargeInt.c's C and its assembly core (largeint_asm.s) */
 extern void lintSetSmallValue(LINT *p, unsigned int nValue);
@@ -42,11 +42,11 @@ extern int IsGreater(LINT *a, LINT *b);
 extern int IsSMaller(LINT *a, LINT *b);
 extern void lintAddIP(LINT *a, LINT *b);
 extern void lintSubIP(LINT *a, LINT *b);
-extern void func_00626D28(LINT *p, unsigned int n);                 /* p += n */
+extern void lintIncrement(LINT *p, unsigned int n);                 /* p += n */
 extern void lintSub(LINT *pResult, LINT *a, LINT *b);         /* result = a - b */
 extern void QRMOD(LINT *a, LINT *b, LINT *pQuot, LINT *pRem);       /* a / b, a % b */
-extern void func_006296A0(LINT *pResult, LINT *a, LINT *b);         /* result = a * b */
-extern void func_00629868(LINT *pResult, LINT *a, LINT *b, LINT *pMod);     /* a * b mod m */
+extern void MULT(LINT *pResult, LINT *a, LINT *b);         /* result = a * b */
+extern void XMOD(LINT *pResult, LINT *a, LINT *b, LINT *pMod);     /* a * b mod m */
 extern void lintPrime(LINT *p, int nBits);
 extern void func_0062A3B0(LINT *p);                                 /* prime.c: a 256-bit prime */
 extern void __assert(const char *file, int line, const char *failedexpr);
@@ -69,9 +69,9 @@ void RSAGenerateKeyPair(RSA_BLOCK *pPublic, RSA_BLOCK *pPrivate)
     do {
         q = p;
         lintPrime(&p, 256);
-        func_006296A0(&n, &p, &q);
+        MULT(&n, &p, &q);
         *pPublic = *(RSA_BLOCK *)&n;
-        func_00626D28(&n, 1);
+        lintIncrement(&n, 1);
         lintSubIP(&n, &p);
         lintSubIP(&n, &q);
         lintSetSmallValue(&q, 1);
@@ -103,7 +103,7 @@ void RSAGenerateKeyPair(RSA_BLOCK *pPublic, RSA_BLOCK *pPrivate)
         }
     } while (IsZero(&d));
     lintSetSmallValue(&p, 17);
-    func_00629868(&p, &d, &p, &n);
+    XMOD(&p, &d, &p, &n);
     if (!IsOne(&p))
 #line 164 "/public/work/dev/rt_crypt/src/RSA.c"
         assert(0);
@@ -126,9 +126,9 @@ void func_0062B548(RSA_BLOCK *pPublic, RSA_BLOCK *pPrivate)
     do {
         q = p;
         func_0062A3B0(&p);
-        func_006296A0(&n, &p, &q);
+        MULT(&n, &p, &q);
         *pPublic = *(RSA_BLOCK *)&n;
-        func_00626D28(&n, 1);
+        lintIncrement(&n, 1);
         lintSubIP(&n, &p);
         lintSubIP(&n, &q);
         lintSetSmallValue(&q, 1);
@@ -160,7 +160,7 @@ void func_0062B548(RSA_BLOCK *pPublic, RSA_BLOCK *pPrivate)
         }
     } while (IsZero(&d));
     lintSetSmallValue(&p, 17);
-    func_00629868(&p, &d, &p, &n);
+    XMOD(&p, &d, &p, &n);
     if (!IsOne(&p))
 #line 293 "/public/work/dev/rt_crypt/src/RSA.c"
         assert(0);

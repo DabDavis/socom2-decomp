@@ -4,17 +4,24 @@
  * SCEA's rt_crypt, prebuilt with ee-gcc 2.96 at -O2 -G0 (README "The GCC front"). SOCOM 1's object
  * (0x406C28: lintSetSmallValue, IsEven, IsZero ... lintPrime) rewritten: a number is still 32 words,
  * least significant first, but the tests walk up from word 0, IsGreater and its three siblings are
- * gone between IsEqual and the bit functions, and a word is added and taken with its carry where
- * SOCOM 1 added numbers. Names are SOCOM 1's where position and body agree (s1:order; IsEven
- * s1:exact); the rest keep placeholders. Only the functions written so far are here, in image
- * order (round 8b).
+ * gone between IsEqual and the bit functions (into LargeInt's assembly, largeint_asm.s, with the
+ * shifts, the in-place add and subtract, MODIP, MULT and XMOD), and the operations that returned a
+ * number by value take a result pointer and copy it out (memcpy, GCC's block move). Names are
+ * SOCOM 1's where position and body agree (s1:order; IsEven s1:exact), in image order: the whole C
+ * part of the object, 0x626B10-0x628B44, but the Montgomery exponentiation 0x6283F8 and its helper
+ * 0x628390 (round 8b; round 18b lintAdd ... QRMOD; round 19b QUO, GCD, EMOD, lintIsbSPRP, LucasTest,
+ * lintRandomize, lintPrime).
  *
  * Shapes, measured: IsEqual indexes plain word pointers (the target's address sums come index
- * first; a struct member's base first); lintGetBit puts the mask first, `(1 << n) & word`.
- * OPEN: func_00626D28 (17 words, the right size with the nonzero words' case written first and a
+ * first; a struct member's base first); lintGetBit puts the mask first, `(1 << n) & word`; QUO's
+ * divisor-length exit is a `break` in an else (an `if (...) break;` before the shift lies within the
+ * 30 insns 2.96's expand_end_loop scans, so the loop was rotated up to it and its test never copied
+ * above the loop -- the target's test is); lintPrime's delta walk is an index (2.96 makes it the
+ * target's pointer; a pointer in the source is set before the counter's first test).
+ * OPEN: lintIncrement (17 words, the right size with the nonzero words' case written first and a
  * walking pointer: the target lays word 0's case at the loop's head -- entered straight from the
- * initialisation -- and the others' after the test, this one the other way about) and
- * func_00626D78 (28s: the same layout question, indexed). */
+ * initialisation -- and the others' after the test, this one the other way about),
+ * lintDecrement (28s: the same layout question, indexed) and lintIsbSPRP (below). */
 
 #define LINT_WORDS  32
 
@@ -85,7 +92,7 @@ void lintClearBit(LINT *p, unsigned int nBit)
 }
 
 /* a word added, the carry run up (0x626D28) */
-void func_00626D28(LINT *p, unsigned int n)
+void lintIncrement(LINT *p, unsigned int n)
 {
     unsigned int *pd = p->d;
     unsigned int i;
@@ -104,7 +111,7 @@ void func_00626D28(LINT *p, unsigned int n)
 }
 
 /* a word taken, the borrow run up (0x626D78) */
-void func_00626D78(LINT *p, unsigned int n)
+void lintDecrement(LINT *p, unsigned int n)
 {
     unsigned int *pd = p->d;
     unsigned int i;
@@ -168,6 +175,48 @@ extern int IsNotSmaller(LINT *a, LINT *b);
 extern void ShiftLeft(LINT *p, unsigned int n);
 extern void ShiftRight(LINT *p, unsigned int n);
 
+/* the quotient into a third number (0x627270, SOCOM 1's QUO by position -- after MOD, before QRMOD
+ * -- and by its calls, in order): QRMOD's long division over copies of both, the quotient copied
+ * out (memcpy, as MOD) where SOCOM 1 returned it by value */
+void QUO(LINT *pResult, LINT *a, LINT *b)
+{
+    LINT r;
+    LINT d;
+    LINT q;
+    unsigned int nBitsR;
+    unsigned int nBitsD;
+    unsigned int nBitsB;
+
+    memcpy(&r, a, sizeof r);
+    memcpy(&d, b, sizeof d);
+    nBitsR = lintGetBits(&r);
+    nBitsD = lintGetBits(&d);
+    nBitsB = nBitsD;
+    lintSetSmallValue(&q, 0);
+    if (nBitsD < nBitsR) {
+        ShiftLeft(&d, nBitsR - nBitsD);
+        nBitsD = nBitsR;
+    }
+    while (nBitsR >= nBitsB) {
+        if (nBitsR < nBitsD) {
+            ShiftRight(&d, nBitsD - nBitsR);
+            nBitsD = nBitsR;
+        }
+        if (IsNotSmaller(&r, &d)) {
+            lintSubIP(&r, &d);
+            nBitsR = lintGetBits(&r);
+            lintSetBit(&q, nBitsD - nBitsB);
+        } else {
+            if (nBitsB < nBitsD) {
+                ShiftRight(&d, 1);
+                nBitsD--;
+            } else
+                break;
+        }
+    }
+    memcpy(pResult, &q, sizeof q);
+}
+
 /* the quotient and remainder of a by b (SOCOM 1's QRMOD by its calls, in order): the
  * divisor shifted up to the remainder's length, then subtracted down a bit at a time */
 void QRMOD(LINT *a, LINT *b, LINT *pQuot, LINT *pRem)
@@ -205,4 +254,210 @@ void QRMOD(LINT *a, LINT *b, LINT *pQuot, LINT *pRem)
             nBitsD--;
         }
     }
+}
+
+/* the greatest common divisor into a third number (SOCOM 1's GCD, lintPrime's call): Euclid's
+ * remainders taken in place on copies of both, the one left nonzero copied out */
+void GCD(LINT *pResult, LINT *a, LINT *b)
+{
+    LINT x;
+    LINT y;
+
+    memcpy(&x, a, sizeof x);
+    memcpy(&y, b, sizeof y);
+    for (;;) {
+        MODIP(&x, &y);
+        if (IsZero(&x)) {
+            memcpy(pResult, &y, sizeof y);
+            return;
+        }
+        MODIP(&y, &x);
+        if (IsZero(&y)) {
+            memcpy(pResult, &x, sizeof x);
+            return;
+        }
+    }
+}
+
+extern void XMOD(LINT *pResult, LINT *a, LINT *b, LINT *n);   /* largeint_asm.s: a * b mod n */
+extern void __assert(const char *file, int line, const char *failedexpr);
+#define assert(e)   ((e) ? (void)0 : __assert(__FILE__, __LINE__, #e))
+
+/* a to the e mod n into a fourth number (0x627AF0, SOCOM 1's EMOD by its body at its place -- after
+ * GCD, MULT and XMOD gone into the assembly): the bits of e from the bottom, b squared mod n each
+ * step and r multiplied by it where the bit is set; a zero modulus asserts and gives itself back */
+void EMOD(LINT *pResult, LINT *a, LINT *e, LINT *n)
+{
+    LINT r;
+    LINT b;
+    unsigned int nBits;
+    unsigned int nWord;
+    unsigned int i;
+    unsigned int nMask = 1;
+
+    nBits = lintGetBits(e);
+    MOD(&b, a, n);
+    if (IsZero(n)) {
+#line 663 "/public/work/dev/rt_crypt/src/LargeInt.c"
+        assert(0);
+        memcpy(pResult, n, sizeof *pResult);
+        return;
+    }
+    lintSetSmallValue(&r, 1);
+    nWord = 0;
+    for (i = 0; i < nBits; i++) {
+        if (i != 0) {
+            XMOD(&b, &b, &b, n);
+            nMask <<= 1;
+            if (nMask == 0) {
+                nMask = 1;
+                nWord++;
+            }
+        }
+        if (nMask & e->d[nWord])
+            XMOD(&r, &r, &b, n);
+    }
+    memcpy(pResult, &r, sizeof r);
+}
+
+extern void func_006283F8(LINT *pResult, LINT *a, LINT *e, LINT *n);    /* a to the e mod n, below */
+
+/* the strong probable-prime test of n to base b (SOCOM 1's lintIsbSPRP, lintPrime's call): n - 1 =
+ * d * 2^s, then b^d and its squares against 1 and n - 1. SOCOM 1's GCD test of n and b is gone, n - 1
+ * is the word decrement's and the power the new exponentiation's.
+ * OPEN (0x210 against 0x1F8): the squaring loop. The target enters it by a jump to its one test at
+ * the bottom (`sltu v0,r,s; bnez body`, r++ in the slot -- the body's first insn, stolen by reorg)
+ * and keeps x's address in one register; every spelling here (for, while with r++ first, r++ in the
+ * test, `for (;;)` with the bound a return or a break, IsOne's exit a break, a goto into a do-while,
+ * x through a pointer local) has jump.c copy the two-insn test above the loop
+ * (duplicate_loop_exit_test: a rotated test region without a call or label) and loop.c move x's
+ * address into a second register for the loop -- the test region the target's compiler would not
+ * copy is not found yet. */
+int lintIsbSPRP(LINT *n, LINT *b)
+{
+    LINT nm1;
+    LINT d;
+    LINT x;
+    unsigned int s;
+    unsigned int r;
+
+    memcpy(&nm1, n, sizeof nm1);
+    lintDecrement(&nm1, 1);
+    memcpy(&d, &nm1, sizeof d);
+    for (s = 0; !lintGetBit(&d, s); s++)
+        ;
+    if (s != 0)
+        ShiftRight(&d, s);
+    func_006283F8(&x, b, &d, n);
+    if (IsOne(&x))
+        return 1;
+    if (IsEqual(&x, &nm1))
+        return 1;
+    for (r = 1; r < s; r++) {
+        XMOD(&x, &x, &x, n);
+        if (IsEqual(&x, &nm1))
+            return 1;
+        if (IsOne(&x))
+            return 0;
+    }
+    return 0;
+}
+
+/* the Lucas-style check that follows the probable-prime tests (SOCOM 1's LucasTest, lintPrime's
+ * last call; the same size in both builds): b to the (n - 1) / 2 mod n is not 1 and its square is */
+int LucasTest(LINT *n, LINT *b)
+{
+    LINT x;
+    LINT e;
+
+    memcpy(&e, n, sizeof e);
+    lintDecrement(&e, 1);
+    if (IsEven(&e)) {
+        ShiftRight(&e, 1);
+        func_006283F8(&x, b, &e, n);
+        if (IsOne(&x))
+            return 0;
+        XMOD(&x, &x, &x, n);
+        if (IsOne(&x))
+            return 1;
+    }
+    return 0;
+}
+
+extern void setNewSeed(unsigned int nSeed);    /* rt_mt.c */
+extern unsigned int randomMT(void);
+
+/* nBits random bits into p, the top one set (SOCOM 1's lintRandomize, lintPrime's first call): the
+ * twister seeded once, a word xored in per 32 bits, the last word's bits shifted down under its
+ * top bit, the words above cleared */
+void lintRandomize(LINT *p, unsigned int nBits)
+{
+    static char bHasInitialized = 0;
+    unsigned int i = 0;
+
+    if (nBits > 1024)
+        nBits = 1024;
+    if (!bHasInitialized) {
+        bHasInitialized = 1;
+        setNewSeed(0x2EB3AE77);
+    }
+    while (nBits > 32) {
+        p->d[i] ^= randomMT();
+        nBits -= 32;
+        i++;
+    }
+    p->d[i] = (randomMT() | 0x80000000) >> (32 - nBits);
+    for (i++; i < LINT_WORDS; i++)
+        p->d[i] = 0;
+}
+
+extern LINT gCommonPrimes;              /* the small primes' products, LargeInt.c's .data */
+extern LINT gCommonPrimes2;
+extern unsigned int gPrimeSearchDeltas[];
+
+/* a random nBits prime into pPrime (SOCOM 1's lintPrime, RSAGenerateKeyPair's draw; its thirteen
+ * calls SOCOM 1's in order): an odd candidate with its second bit set, moved to 210k + 1, then
+ * stepped by the deltas until it shares no factor with the small primes and passes the probable-
+ * prime tests -- 127 steps, then a fresh draw. In place here, where SOCOM 1 returned a copy */
+void lintPrime(LINT *pPrime, unsigned int nBits)
+{
+    LINT t;
+    int bFound = 1;
+    unsigned int nTries = 0;
+    unsigned int i;
+
+    do {
+        lintRandomize(pPrime, nBits);
+        pPrime->d[0] |= 1;
+#line 864 "/public/work/dev/rt_crypt/src/LargeInt.c"
+        assert(nBits == lintGetBits(pPrime));
+        lintSetBit(pPrime, nBits - 2);
+        lintSetSmallValue(&t, 210);
+        MOD(&t, pPrime, &t);
+        lintIncrement(pPrime, 210 - t.d[0]);
+        i = 0;
+        while ((++nTries & 0x7F) != 0) {
+            lintIncrement(pPrime, gPrimeSearchDeltas[i++]);
+            bFound = 0;
+            GCD(&t, pPrime, &gCommonPrimes);
+            if (IsOne(&t)) {
+                GCD(&t, pPrime, &gCommonPrimes2);
+                bFound = IsOne(&t) != 0;
+            }
+            if (bFound) {
+                lintSetSmallValue(&t, 2);
+                bFound = lintIsbSPRP(pPrime, &t);
+                if (bFound) {
+                    lintSetSmallValue(&t, 3);
+                    bFound = LucasTest(pPrime, &t);
+                    if (bFound)
+                        return;
+                }
+            }
+            if (gPrimeSearchDeltas[i] & 1) {
+                lintIncrement(pPrime, gPrimeSearchDeltas[i]);
+                i = 0;
+            }
+        }
+    } while (!bFound);
 }
