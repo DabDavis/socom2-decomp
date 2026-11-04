@@ -105,7 +105,12 @@ inline char *ZString(_zrdr *z)
     return z->type == 3 ? z->string : 0;
 }
 
-/* the running mission's number, 0 none */
+/* the running mission's number, 0 none. Round 15 (build/scratch/onl/sp_lan.py): CreateGame's,
+ * GetGameInfo's and the world report's targets (0x2EF590, the chat unit's) all branch the inner
+ * zero arm straight to the final join -- or, in CreateGame, merge it into the outer zero arm --
+ * which a nested ternary's inner join never allows; `if (p && *p) return atoi(p + 2); return 0;`
+ * gives 8 and 20 here (one zero arm where the targets have two), the nested ifs the right joins
+ * but not the delay slots (the `== 0` ternary 0x36C/0x22C). Not applied */
 inline int MissionNumber()
 {
     return data_004364FC ? (*data_004364FC ? atoi(data_004364FC + 2) : 0) : 0;
