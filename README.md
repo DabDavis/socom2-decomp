@@ -1927,6 +1927,22 @@ templates next), and the earlier rounds' opens; 3.0b38/b50/b52 still untold.
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the engine core, round 1** (a new int_material.cpp, __sinit_zanim_menu.cpp, the zanim respells):
+  - after an early return on the same test, `if (n) do ... while (n)` keeps the loop's own top test; a `while`, or a `for`
+    with `break`, lets MW skip it (CMaterialExArray::UnInit 0x2DE750, 8 bytes);
+  - an auto-inlined function writing `end()` as `!=`'s argument matches out of line, but inlined into a caller the chain
+    lands one level too deep and `tail()` becomes a call -- `end()` taken into a local fixes both copies
+    (ResolveMaterialIndex 0x2DE9E0, and inside ReadMaterials);
+  - a unit's own constructor is inlined into its static initialiser: pin it with `#pragma auto_inline off` where the
+    target calls it -- CMenuStack() in __sinit_zanim_menu.cpp 0x3FFCA0, which builds g_MenuStack (not si_script.cpp's
+    statics, as the row's s1~ hint said: the initialisers' link order placed it);
+  - SOCOM 1's symbol table names classes even where it has no DWARF, through their constructors and template instances:
+    the material extension is CMaterialEx (`__ct__11CMaterialExFv`, `vector<P11CMaterialEx>`), its unit int_material.cpp
+    (0x2DDC30-0x2DF153; the next function, 0x2DF160's VU0 interpolation, opens another unit before the lobby's 0x2DF560);
+    the string-int map's tree constructor 0x2CD670 and ~map 0x2CE210 named at integration (the SEAL anim names'
+    initialiser 0x400870 and __sinit_int_material.cpp 0x401DB0 use them);
+  - open: ReadMaterials 0x2DDE40 (10: two inlined helpers' frame slots trade places), ~CMenuStack (1), CZAnimMain::GetCmd
+    (8: a strength-reduced temporary numbered low in the target, like the task handlers'), CEntity::JoinTeam (5).
 - **Tells from the HUD, round 29** (CZNewHudMap: CalcNewMatrix, UninitMap, RemoveItem, the constructor; the map's statics):
   - a struct the target keeps on the stack, where MW scalarises a named one, comes out of a reference bound to a
     default-constructed temporary whose address the filler takes: `const SealDir &d = SealDir(); Fill((SealDir *)&d);`;
