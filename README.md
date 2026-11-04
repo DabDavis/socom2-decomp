@@ -2060,6 +2060,33 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the UI, round 21** (the soft keyboard's text and display units):
+  - for a byte, `!x` followed by `x == k` re-extends the loaded byte with `andi 0xff`, `x == 0` reuses it as loaded
+    (SkbScale 0x394DA0: its state an unsigned char tested `== 0` first, the "done" block the if's body with `return 0`
+    after it); for a float, `!f ? 1 : 2` gives `c.eq.s f,zero` where `f != 0.0f ? 2 : 1` puts the zero first (SkbSetText);
+  - MW threads a loop's entry jump whenever it knows the counter's first value, whatever the source form, an explicit
+    goto-to-test included -- SkbSetKeyTextures 0x395140 (0x194 vs 0x1B0) and SkbForgetDisplay stay open on it: the target
+    enters the inner loop at its bottom test through a preheader laid after the return, so something hides the start value;
+  - an inline temporary's stack slot reflects its inline depth (a walk moved into an inline puts its CharLen copy a level
+    lower; passing the inline's count and flag by reference keeps the caller's numbering: SkbEraseBack 0x398C40); the
+    destructor's flag gives a local's declared type -- a CSaferStr local calls ~basic_string with 0, a std::string local
+    with -1 (SkbInsertChar 0x399EC0); a bool call result in a bool local is narrowed before a ternary tests it, a ternary
+    written directly as an `if` condition is not narrowed at its join (SkbCursorForward 0x399320);
+  - SkbLoadUiParams 0x3943E0 is zui_skbview.cpp's (its strings sit in that unit's data between s_padKeys and SkbScale's
+    "skb_done"): zui_hangul.cpp ends at 0x3941CF; include/string gains erase(pos, n) over the template replace.
+- **Tells from the world, rdr and sound, round 15** (zrdr_pack.cpp's equality and lookup, zrdr_file.cpp's pack and map):
+  - MW keeps a list sentinel's address once, in a saved register, only when the list is a member at a nonzero offset or
+    reached through an inline reference accessor; for a list at offset 0 of a pointer or reference `a+4` is recomputed at
+    every loop test (zrdr_findarray 0x3357C0 matches through a local `list<_zrdr *>::end()` via `end_node()`, a stand-in);
+  - a recursive helper the target inlines one level into its callers is an explicitly `inline` function (MW's one-level
+    fallback; `-inline auto` refuses a recursive function outright: _zrdr_equal 0x3352F0 into zrdr_equal 0x335E20);
+  - `ok = f(); if (ok)` masks the result with `andi 0xff`, `if (f())` branches on v0; `if (f) x = a; else x = 0;` gives two
+    stores where the ternary gives one; a temporary's fields are stored in the order the source assigns them;
+  - zrdr_compress / _zrdr_compress, zrdr_countarray (SOCOM 1's), _zrdr's Int / Real, _resolveA, _fixup, CRdrFile::Pack
+    and its array copier, the map<_zrdr *, _zrdr *>'s find_or_insert / destroy / insert_node_at, CSubtitleTable::Load
+    (the language's VAG index); CWorld::m_scale declared in znode.h (CWorld's class body is there); the subtitle walk
+    0x34D5D0 / 0x34D740 / 0x34DA00 waits on the key ring's iterator shapes (a copy constructor returning `this`, a
+    constructor from a pointer reference, an `__iter` taking the pointer's address, two raw-end copies).
 - **Tells from completing the MSL headers, round 21** (the library string's pieces in include/string, the list's assignment;
   probes build/scratch/msl-r21-p21/, untracked):
   - include/string's reserve, template replace and assign(first, last) out of class, from the same statements as MAIN's
