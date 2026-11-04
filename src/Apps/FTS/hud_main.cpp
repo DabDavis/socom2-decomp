@@ -656,8 +656,6 @@ zdb::CTexture *GetTextureByName(zdb::CWorld *world, const char *name)
 
 void hudTurnOffScorePopup();
 
-/* the radio command menu's (hud_tcm.h; 0x235300 the tree unit's, no row named yet) */
-extern "C" void func_00235300(CTCM *tcm, int flag);
 /* the members' clean-ups not named yet: the info box's, the spectator's, the ammo counts', the
  * lens flares' */
 extern "C" void func_00242AB0(CSpectatorInfo *info);
@@ -704,7 +702,7 @@ void CHUD::ReInit_Uninit()
     func_00242AB0(&m_spectatorinfo);
     CZPlayerMapItem::MissionEndCleanup();
     hudTurnOffScorePopup();
-    func_00235300(&theTCM, 0);
+    theTCM.Close(false);
     theTCM.m_dcd = 1;
     m_lensflares.Reset();
     theTCM.ClearItems();
