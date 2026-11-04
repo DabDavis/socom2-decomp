@@ -105,7 +105,9 @@ public:
 
     MP_MINOR_GAME_STATE MyMinorGameState(MP_MINOR_GAME_STATE state);
 
-    unsigned char _0[0x48];
+    unsigned char _0[0x14];
+    CValve *m_pPlayerTeamValve;   // 0x14 (SOCOM 1's at 0x10)
+    unsigned char _18[0x48 - 0x18];
     CValve *m_pPlayerReadyCountValve;   // 0x48 (SOCOM 1's at 0x44)
     unsigned char _4c[0x60 - 0x4c];
     CValve *m_pTeamFullValve;   // 0x60: set while either side has more than eight (SOCOM II's; the name ours)
@@ -130,6 +132,8 @@ class CMission {
 public:
     unsigned char _0[0x1808];
     CZNetGame *m_pNetGame;   // 0x1808 (SOCOM 1's at 0x584)
+    unsigned char _180c[0x18f4 - 0x180c];
+    unsigned char m_e3_team;   // 0x18f4 (SOCOM 1's E3_TEAMS_ENUM at 0x660, a byte: 1 the terrorists, 2 the SEALs)
 };
 
 extern CMission theMission;
@@ -890,6 +894,37 @@ extern "C" int func_002C3500(CZSealBody *body)
 extern "C" void func_002C34F0(int value)
 {
     data_00441468 = value;
+}
+
+/* the player's team taken up (OVL1 0x2C3330; the name ours): the E3 game's team over the one asked
+ * for (theMission's m_e3_team: 1 the terrorists', 2 the SEALs'), kept, the net game's player team
+ * valve set to it -- 0 the terrorists, 8 the SEALs, 16 a spectator (the 0x10000 bit), else 0 --
+ * and the character type for it chosen (fts_mission.cpp's 0x2A74A0). Every team test is the
+ * masks' inline, the valve read in each arm through the net game read once */
+extern "C" void func_002A74A0(unsigned int team);
+
+/* whether a team is the spectators' (the name ours: a bool inline, compared with false -- the
+ * conversion kept, sltu before the branch; tested plainly it folds into the and) */
+inline bool IsSpectatorTeam(unsigned int team) { return team & 0x10000; }
+
+extern "C" void func_002C3330(unsigned int team)
+{
+    if (theMission.m_e3_team == 1)
+        team = func_002C32E0();
+    else if (theMission.m_e3_team == 2)
+        team = func_002C32C0();
+    data_00441470 = team;
+    CZNetGame *game = theMission.m_pNetGame;
+
+    if (team == func_002C32E0())
+        SetValveValue(game->m_pPlayerTeamValve, 0);
+    else if (team == func_002C32C0())
+        SetValveValue(game->m_pPlayerTeamValve, 8);
+    else if (IsSpectatorTeam(team) != false)
+        SetValveValue(game->m_pPlayerTeamValve, 16);
+    else
+        SetValveValue(game->m_pPlayerTeamValve, 0);
+    func_002A74A0(team);
 }
 
 /* whether a team is the SEALs' (with the sides swapped, the terrorists'; OVL1 0x2C3300) */

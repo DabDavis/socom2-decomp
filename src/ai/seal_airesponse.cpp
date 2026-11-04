@@ -191,6 +191,73 @@ CAiSAvoid::~CAiSAvoid()
 {
 }
 
+extern "C" {
+/* an ammunition pickup's stash: its entries' count, and an entry's weapon, cartridge and rounds
+ * (OVL1 0x3CFCF0 Count__11CZItemStashFv and 0x3CFD70 Get__11CZItemStashFiPiPiPi -- pickup_main.cpp
+ * spells them so), and whether a cartridge fits a weapon (OVL1 0x3D2680, zweapon.h's
+ * CZWeapon::IsLegalAmmo -- by its mangled name: this unit does not include zweapon.h) */
+int func_003CFCF0(CPickupAmmo *ammo);
+void func_003CFD70(CPickupAmmo *ammo, int index, int *weapon, int *cartridge, int *rounds);
+bool IsLegalAmmo__8CZWeaponFP6CZAmmo(CZFTSWeapon *w, CZAmmo *ammo);
+}
+
+/* a weapon's item (zweapon.h's CZWeapon::m_ID at 0x7C, a byte enum: read with lb -- a view) */
+struct CAiWeaponID {
+    unsigned char _0[0x7c];
+    EQUIP_ITEM m_ID;   // 0x7c
+};
+
+/* a point's length squared (inline: the difference returned by value stays in the frame, its y and
+ * z read back through their addresses -- seal_look.cpp's LenSq) */
+static inline float AmmoLenSq(const CPnt3D &v)
+{
+    return v.x * v.x + v.y * v.y + v.z * v.z;
+}
+
+/* the nearest ammunition pickup within range of a point with a cartridge the weapon takes and the
+ * kit has room for, or 0 (OVL2 0x6082E0: CAiSNoAmmo::Tick's call; new in SOCOM II -- the name
+ * unknown). The none-yet result zeroed before the index lookup (the target's jal delay slot); the
+ * difference a named point through Sub, read in place by the inline length */
+extern "C" CPickup *func_006082E0(const CPnt3D *pos, float range, CZKit *kit, CZFTSWeapon *w)
+{
+    if (!kit || !w)
+        return 0;
+    CPickup::iterator it = CPickup::GetFirst();
+    CPickup *p;
+
+    range *= range;
+    CPickup *best = 0;
+    int index = kit->GetItemIndex(((CAiWeaponID *)w)->m_ID);
+
+    while ((p = CPickup::GetNext(it, CPickup::PU_AMMO)) != 0) {
+        CPickupAmmo *ammo = p->GetAmmo();
+        bool ok = false;
+        int n = func_003CFCF0(ammo);
+
+        for (int i = 0; i < n; i++) {
+            int weapon = 0;
+            int cartridge = 0;
+            int rounds = 0;
+
+            func_003CFD70(ammo, i, &weapon, &cartridge, &rounds);
+            if (IsLegalAmmo__8CZWeaponFP6CZAmmo(w, (CZAmmo *)cartridge) && kit->CanAddAmmo(index, rounds))
+                ok = rounds > 0;
+        }
+        if (ok) {
+            CPnt3D v;
+
+            pos->Sub(p->GetPosW(), &v);
+            float d = AmmoLenSq(v);
+
+            if (d < range) {
+                best = p;
+                range = d;
+            }
+        }
+    }
+    return best;
+}
+
 /* a no-ammunition state's reset (OVL2 0x608290; SOCOM 1's) */
 void CAiSNoAmmo::OnSignal(SIGNAL sig, CSealCtrlAi *ai)
 {
@@ -356,6 +423,48 @@ struct CAiCtrl32C {
 
 /* the shot-at state's limit (a function-local static in the original: 8-byte-spaced data) */
 static float s_shotAtTime = 15.0f;
+
+extern "C" {
+/* the SEAL's grenade about to go off called out, when it may (OVL2 0x584B00 and 0x57E540, the
+ * SEALs' seal_body.cpp and seal_ai.cpp rows) */
+bool func_00584B00(CZSealBody *seal);
+void func_0057E540(CZSealBody *seal);
+}
+
+/* the shot-at state's reaction at its step: in step 2 the AI's sound 72 at a quarter's chance, then
+ * -- at a quarter's chance, when the SEAL may -- its grenade's callout, else at 0.15's chance and in
+ * an AI mode of 3 or more a spray of 0.15 seconds; in step 3 the callout alone, in step 4 the spray
+ * alone (0.75 seconds); nothing in step 6 (OVL2 0x609190: CAiSShotAt::Tick calls it four times, a
+ * member -- the state in a0; the name unknown). The chances function-local statics (8-byte-spaced
+ * data after the shot-at time's) */
+extern "C" void func_00609190(CAiState *s, CSealCtrlAi *ai)
+{
+    CAiState::STEP step = (CAiState::STEP)s->m_phase;
+    CZSealBody *seal = (CZSealBody *)ai->m_entity;
+    float chance = 4.656613e-10f * rand();
+    static float callChance = 0.25f;
+    static float sprayChance = 0.15f;
+
+    switch (step) {
+    case CAiState::STEP_2:
+        ai->PlayAiSound((CHARACTER_SOUND)72, 0.25f, 0);
+        if (chance < callChance && func_00584B00(seal))
+            func_0057E540(seal);
+        else if (chance < sprayChance && func_00560A60(ai) > 2)
+            ai->SetSprayTimer(0.15f);
+        break;
+    case CAiState::STEP_3:
+        if (chance < callChance && func_00584B00(seal))
+            func_0057E540(seal);
+        break;
+    case CAiState::STEP_4:
+        if (chance < sprayChance && func_00560A60(ai) > 2)
+            ai->SetSprayTimer(0.75f);
+        break;
+    case CAiState::STEP_6:
+        break;
+    }
+}
 
 /* shot at, the sub-step: over after its time; before, once the AI's byte at 0x32C is set, the
  * sub-state ended and step 3 taken (OVL2 0x609340).
@@ -643,6 +752,41 @@ extern "C" void func_00607560()
         CAiCallout *c = &s_callouts[i];
 
         c->m_snd = 0;
+    }
+}
+
+/* the callouts' first float for the positional player (OVL2 data 0x650F78, after the table: three
+ * of the unit's functions read it -- 0x6067A0, 0x606DB0, 0x606EC0; the name ours) */
+static float s_calloutRange = 5.0f;
+
+/* the positional player (OVL1 0x3428F0, char_type.cpp's reading: the sound, the entity's id, the
+ * position, two floats) */
+extern "C" void func_003428F0(CSnd *sound, unsigned int id, const CPnt3D *pos, float a, float b);
+
+/* a callout played for a SEAL: at its position, or as its own when the sound's bit 3 is set (inline:
+ * its by-value arguments read before the null test, the float first; the name ours) */
+inline void PlayCallout(CSnd *snd, CEntity *seal, float range)
+{
+    if (snd) {
+        if (snd->m_socom2_bit3)
+            func_003428F0(snd, seal->m_id, 0, range, 1.0f);
+        else
+            func_003428F0(snd, seal->m_id, &seal->m_posW, range, 1.0f);
+    }
+}
+
+/* a SEAL's callout on being hit, under the state's flag bit 7: "^CS_0288" when the shooter shares
+ * its team, "^CS_0295" otherwise (OVL2 0x606DB0: CSealCtrlAi::OnWeaponHit calls it with the state
+ * and controller 0x572880 hands back and the shooter; the name unknown) */
+extern "C" void func_00606DB0(CAiState *s, CSealCtrlAi *ai, CEntity *e)
+{
+    if (ai && e && (s->m_flags & 0x80)) {
+        CEntity *seal = ai->m_entity;
+
+        if (seal->m_team & e->m_team)
+            PlayCallout(s_callouts[40].m_snd, seal, s_calloutRange);
+        else
+            PlayCallout(s_callouts[41].m_snd, seal, s_calloutRange);
     }
 }
 

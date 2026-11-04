@@ -58,11 +58,14 @@ public:
 extern CZNetwork theNetwork;
 extern "C" int func_0030D9B0(CZNetwork *net);    /* CZNetwork::zNetTick */
 
+/* the console (con_ps2.cpp's: only the tick, and SOCOM 1's theConsole -- CConsole::m_console,
+ * 0x416240 -- ticked here) */
 class CConsole {
 public:
     void Tick();
+
+    static CConsole m_console;
 };
-extern CConsole data_00416240;   /* SOCOM 1's theConsole, ticked here */
 
 /* the voice chat's pre-tick in SOCOM 1's place (SOCOM II's, unnamed) */
 extern "C" void func_003B05E0(void);
@@ -141,7 +144,7 @@ int CGame::Tick(float dT)
     unsigned char online = theNetwork.m_9;
 
     theNetwork.zNetUpdate();
-    data_00416240.Tick();
+    CConsole::m_console.Tick();
     CGameState *cur = GetCurrentState();
 
     if (m_Active) {

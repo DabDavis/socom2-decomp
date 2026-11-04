@@ -155,7 +155,7 @@ public:
 };
 
 extern "C" {
-extern CAiMaps data_0066A1B0;   /* (OVL2: the AI maps, SOCOM 1's theAiMaps) */
+extern CAiMaps AiMaps;   /* OVL2 0x66A1B0 (SOCOM 1's theAiMaps) */
 }
 
 /* every action (its initialiser __sinit_fts_action.cpp 0x4003A0 builds the list through the
@@ -172,7 +172,7 @@ void _actionValveCallback(CValve *valve, void *data)
         CAiMap::action *a = 0;
         CAiMapLoc loc;
 
-        if (data_0066A1B0.GetActionById(action->m_id, loc, &a))
+        if (AiMaps.GetActionById(action->m_id, loc, &a))
             a->m_state = valve->m_value;
     }
 }

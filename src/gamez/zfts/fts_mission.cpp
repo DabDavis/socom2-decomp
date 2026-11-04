@@ -1212,7 +1212,13 @@ inline CLadderData *AddLadder(CLadderList *ladders, zdb::CNode *node, const CBBo
 
 /* a node's box carried through a matrix: its corners (0x2A96B0, open: the copy calls CPnt3D(fff) and
  * the assignments out of line), transformed (0x2A9680) and boxed again (0x2A9550) -- one inline
- * level here, as the world's ladder walk and gridAddNodeToGrids call all four (ours) */
+ * level here, as the world's ladder walk and gridAddNodeToGrids call all four (ours).
+ * Measured (the states' round 30, build/scratch/states/p_corners.cpp): the eight corners as an inline
+ * `CPnt3D *f(CPnt3D *p, const CBBox *b)` (eight `p[i] = CPnt3D(...)` / `= b->m_min` stores) expand past
+ * inline_max_size, so a caller inlines it one level with the sixteen leaves called -- 0x2A8C90's
+ * shape, no pragma needed; but its out-of-line copy inlines the leaves (0xC8) in every order of
+ * generation tried, and reproduces 0x2A96B0 byte-exact only under `#pragma dont_inline on` at the
+ * unit's end -- which no unit can carry whole */
 extern "C" CPnt3D *func_002A96B0(CPnt3D *pts, const CBBox *box);
 extern "C" CPnt3D *func_002A9680(const CMatrix *m, CPnt3D *pts);
 

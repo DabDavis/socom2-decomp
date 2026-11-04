@@ -9,7 +9,6 @@
 extern "C" {
 void func_003654C0(CGameMenu *menu, float dT);   /* CGameMenu::Tick */
 void func_003AFF30(bool a, bool b);              /* zVid_Swap */
-void func_00368570(CGameMenu *menu, void *reloc, CZAnimZAR *zar);   /* CGameMenu::Init */
 
 }
 
@@ -64,7 +63,79 @@ const char *CExitMenu::GetReaderFileName()
 
 #include <list>
 
-class CZSealBody;
+/* a SEAL (zseal.h's: only the mission's counters a career takes up, halfwords from 0x58C; the
+ * names ours) */
+class CZSealBody {
+public:
+    unsigned char _0[0x58c];
+    unsigned short m_58c;   // 0x58c
+    unsigned char _58e[0x594 - 0x58e];
+    unsigned short m_594;   // 0x594
+    unsigned char _596[0x598 - 0x596];
+    unsigned short m_kills;   // 0x598
+    unsigned char _59a[0x5a2 - 0x59a];
+    unsigned short m_5a2;   // 0x5a2
+    unsigned char _5a4[0x5ae - 0x5a4];
+    unsigned short m_5ae;   // 0x5ae
+    unsigned char _5b0[0x5b4 - 0x5b0];
+    unsigned short m_5b4;   // 0x5b4
+    unsigned char _5b6[0x5b8 - 0x5b6];
+    unsigned short m_5b8;   // 0x5b8
+};
+
+CZSealBody *ftsGetPlayer();
+
+/* the single-player career's stats (fts_mission.cpp's CCareerStats, theMission +0x1950: the
+ * missions counted, five percentages averaged over them and seven of the player's counters summed;
+ * the names ours) */
+class CCareerStats {
+public:
+    void AddMission(float a, float b, float c, float d, float e);
+
+    int m_missions;   // 0x0
+    int m_avg[5];   // 0x4
+    int m_sum[7];   // 0x18: [1] the kills
+};
+
+/* a fraction as a whole percentage, and a value rounded (the names ours) */
+static inline int Round(float f) { return (int)(0.5f + f); }
+static inline int Percent(float f) { return Round(100.0f * f); }
+
+/* a mission taken into the career (OVL1 0x1F1FB0; SetRoundStatUiVars 0x1F21B0 calls it on
+ * theMission +0x1950, the name ours): each percentage averaged in over the missions so far, the
+ * count up one, the player's counters added.
+ * OPEN, 0x1EC against 0x1F8 (scheduling): the operations are the target's, but the target runs
+ * every percentage and quotient through $f1 (and the count's conversion through $f1 into $f3),
+ * waiting a nop after each mtc1, where this spreads them over $f1-$f3 and schedules three fewer
+ * slots. Tried: the percentages inline in the averages, as locals ahead (in a-e order, the count's
+ * conversion before, between or after them), `f + 0.5f`, the count converted implicitly, the sum
+ * divided as an int */
+void CCareerStats::AddMission(float a, float b, float c, float d, float e)
+{
+    int n = m_missions;
+    int pa = Percent(a);
+    int pb = Percent(b);
+    int pc = Percent(c);
+    int pd = Percent(d);
+    int pe = Percent(e);
+    float n1 = (float)(n + 1);
+
+    m_avg[0] = Round((float)(pa + n * m_avg[0]) / n1);
+    m_avg[1] = Round((float)(pb + n * m_avg[1]) / n1);
+    m_avg[2] = Round((float)(pc + n * m_avg[2]) / n1);
+    m_avg[3] = Round((float)(pd + n * m_avg[3]) / n1);
+    m_avg[4] = Round((float)(pe + n * m_avg[4]) / n1);
+    m_missions++;
+    CZSealBody *player = ftsGetPlayer();
+
+    m_sum[1] += player->m_kills;
+    m_sum[0] += player->m_5b4;
+    m_sum[2] += player->m_5a2;
+    m_sum[3] += player->m_5ae;
+    m_sum[4] += player->m_5b8;
+    m_sum[5] += player->m_594;
+    m_sum[6] += player->m_58c;
+}
 
 /* a thing in the world: only its type (2, a SEAL) at 0x10 (SOCOM 1's DWARF) */
 class CEntity {
@@ -187,7 +258,7 @@ bool CExitState::Init()
     CStringTables *tables = GetStringTables();
 
     tables->Load("UIX", GetLanguage());
-    func_00368570(m_menu, 0, animfile);
+    m_menu->Init(0, animfile);
     CVideo::Clear(false, 0, 0, 0, 0);
     zVid.m_91 = 1;
     zVid_Sync0();
