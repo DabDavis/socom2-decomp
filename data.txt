@@ -173,6 +173,8 @@
 0x001D61D0 0x0 cddr  # MAIN bss; s1:data-exact (size SOCOM 1's; via sceCdDiskReady)
 0x001D6200 0x0 _i_mode  # MAIN bss; s1:data-exact (size SOCOM 1's; via sceCdInit)
 0x001D6210 0x0 _dr_mode  # MAIN bss; s1:data-exact (size SOCOM 1's; via sceCdDiskReady)
+0x001D6540 0x1100 dbcSendData2Buf  # MAIN bss; ours (libdbc is not in SOCOM 1's demo, which links libpad): sceDbcSendData2's RPC buffer -- the socket, a1 and the size, then at most 4224 bytes of data, sent and received in 4240 bytes on the second client (0x8000131B); 0x1100 to SendData3's buffer, the object's next; 1 reference (sceDbcSendData2, src/lib/sdk/libdbc.c) -- the GCC lane r25a
+0x001D7640 0x2100 dbcSendData3Buf  # MAIN bss; ours (as dbcSendData2Buf): sceDbcSendData3's RPC buffer -- the same header, at most 8320 bytes, 8336 sent and received on the third client (0x8000131C); 0x2100 to the work area at 0x1D9740, the object's next; 1 reference (sceDbcSendData3, src/lib/sdk/libdbc.c) -- the GCC lane r25a
 0x001D9808 0x0 sceDmaCurrentEnv  # MAIN bss; s1:data-exact (size SOCOM 1's; via sceDmaGetEnv +1)
 0x001D9C20 0x0 topSema  # MAIN bss; s1:data-exact (size SOCOM 1's; via InitThread +4)
 0x001D9C28 0x0 topArg  # MAIN bss; s1:data-exact (size SOCOM 1's; via InitThread +3)
