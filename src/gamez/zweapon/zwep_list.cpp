@@ -39,7 +39,7 @@ public:
 struct MATERIALEX {
     char *m_name;   // 0x0
 };
-extern "C" MATERIALEX *func_002DE440(unsigned int i);
+/* (zweapon.h declares CMaterialExArray::GetWeaponAnimMaterialEx) */
 
 /* ---- CZAmmoList (0x3C4E80-0x3C519F) ---- */
 
@@ -269,7 +269,7 @@ void CZWeaponList::InitializeWeapons()
             unsigned int n = CMaterialExArray::m_materialex_list.size();
 
             for (unsigned int i = 0; i < n; i++) {
-                MATERIALEX *m = func_002DE440(i);
+                MATERIALEX *m = CMaterialExArray::GetWeaponAnimMaterialEx(i);
 
                 if (m) {
                     char name[32];
@@ -300,7 +300,7 @@ void CZWeaponList::InitializeWeapons()
             unsigned int n = CMaterialExArray::m_materialex_list.size();
 
             for (unsigned int i = 0; i < n; i++) {
-                MATERIALEX *m = func_002DE440(i);
+                MATERIALEX *m = CMaterialExArray::GetWeaponAnimMaterialEx(i);
 
                 if (m) {
                     char name[32];

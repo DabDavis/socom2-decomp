@@ -7882,12 +7882,12 @@
 0x003B6820 0x4C func_003B6820  # OVL1
 0x003B6870 0x2A8 func_003B6870  # OVL1
 0x003B6B20 0x1E4 func_003B6B20  # OVL1
-0x003B6D10 0xF4 NodeSetup__Q23zdb7CVisualFPQ23zdb5CNodePQ23zdb5CNodeP7CMatrixi  # OVL1; s1:align
+0x003B6D10 0xF4 NodeSetup__Q23zdb7CVisualFPQ23zdb5CNodePQ23zdb5CNodeP7CMatrix  # OVL1; s1:align; by hand (the wep lane, round 18: SOCOM 1's NodeSetup without its fourth argument -- the world lane's round 8 lead: no SOCOM II caller sets a3 and the code never reads it, where SOCOM 1's stores it); vis_vu.cpp
 0x003B6E10 0x190 GetChainData__Q23zdb7CVisualFv  # OVL1; s1:order by hand (the wep lane, round 13: SOCOM 1's CVisual::GetChainData -- VuUpdate's first call, whose bool it keeps in _DoDetail as SOCOM 1's; the top of m_stack_vid behind a break, the view's VU buffer from m_lodMesh, m_dmaChain/m_dmaQwc/m_dmaSubfaceQwc from its head and the detail layers' cut, store for store; SOCOM II keeps the subface offset 0x4B4ED0)
 0x003B6FA0 0xE0 SaveTextureSelect__Q23zdb7CVisualFP8_word128PQ23zdb8CTextureUl  # OVL1; s1:order by hand (the wep lane, round 13: SOCOM 1's CVisual::SaveTextureSelect, the same code -- the select's DMA reference written at _savedTS (0x3E1440) through the uncached mirror, the blend register's when the word is not the default 0x4000000000000000 nor the select's; VuLightMap and 0x3B5B90 call it as SOCOM 1's VuLightMap does)
 0x003B7080 0xA4 AddLocalLight__Q23zdb7CVisualFPQ23zdb6CLightP6CPnt3D  # OVL1; s1:align
-0x003B7130 0x1C func_003B7130  # OVL1
-0x003B7150 0x18 func_003B7150  # OVL1
+0x003B7130 0x1C LandmarkEnable__Q23zdb7CVisualFb  # OVL1; s1:order by hand (the wep lane, round 18: SOCOM 1's LandmarkEnable instruction for instruction -- the flag 0x4B4A58 stored, m_lightingEnable the inverse -- after AddLocalLight as SOCOM 1's follows it; the world lane's round 8 lead); vis_vu.cpp
+0x003B7150 0x18 AlphaEnable__Q23zdb7CVisualFb  # OVL1; s1:order by hand (the wep lane, round 18: SOCOM 1's AlphaEnable -- the int flag 0x4B4A20 stored, then a tail call to zVid_ZTestOnWriteSet, here with the flag inverted -- right after LandmarkEnable as in SOCOM 1); vis_vu.cpp
 0x003B7170 0x414 func_003B7170  # OVL1
 0x003B7590 0x84 func_003B7590  # OVL1
 0x003B7620 0x84 func_003B7620  # OVL1
@@ -8304,12 +8304,12 @@
 0x003D01E0 0xA8 GetAccuracy__Q28CZWeapon9AI_PARAMSCFf  # OVL1; by hand (the wep lane: SOCOM 1's name (its body returned 1.0); SOCOM II's reads the hard_min bit and the optimal range of the struct at weapon+0x70; OVL2's 0x5C9340 calls it); zwep_weapon.cpp
 0x003D0290 0xBC Read__Q28CZWeapon9AI_PARAMSFP5_zrdr  # OVL1; by hand (the wep lane: called on the weapon+0x70 with zrdr_findtag(entry, "ai_params"): sets the custom bit, "optimal_range" pair into 4/8 when min < max, "hard_min" sets bit 1 -- SOCOM 1's AI_PARAMS layout (DWARF); the name ours); zwep_weapon.cpp
 0x003D0350 0x64 Close__8CZWeaponFv  # OVL1; s1:align
-0x003D03C0 0xC func_003D03C0  # OVL1
+0x003D03C0 0xC OpenDecals__8CZWeaponFv  # OVL1; by hand (the wep lane, round 18: CMission::Open calls it where SOCOM 1's calls CZWeapon::OpenDecals -- the game states' round 24 lead, verified: a tail call passing "decals.rdr" (0x3FD318) to 0x3D0870, which never reads it); zwep_weapon.cpp
 0x003D03D0 0x44 Open__8CZWeaponFv  # OVL1; s1:calls
 0x003D0420 0x4C func_003D0420  # OVL1
 0x003D0470 0x1C0 ReadDecalEntry__10CZDecalSetFP5_zrdr  # OVL1; s1:calls by hand (the wep lane: ReadDecalSet calls it per entry as SOCOM 1's calls ReadDecalEntry__10CZDecalSetFP5_zrdr -- SETNAME, PERMENANT, MATERIALNAME/TEXTURENAME/MIN_SIZE/MAX_SIZE); zwep_weapon.cpp
 0x003D0630 0x238 ReadDecalSet__10CZDecalSetFP5_zrdr  # OVL1; s1:calls by hand (the wep lane: OpenDecals calls it on each DECAL_SETS item as SOCOM 1's calls ReadDecalSet__10CZDecalSetFP5_zrdr -- the new set built inline, ReadDecalEntry per entry, pushed onto m_decalsets); zwep_weapon.cpp
-0x003D0870 0xB8 OpenDecals__8CZWeaponFv  # OVL1; s1:calls
+0x003D0870 0xB8 OpenDecals__8CZWeaponFPCc  # OVL1; s1:calls; by hand (the wep lane, round 18: SOCOM 1's OpenDecals body -- the DECAL_SETS walk over the rdr global 0x437D00 -- taking the file name 0x3D03C0 passes and never reading it; the overload's name ours); zwep_weapon.cpp
 0x003D0930 0xA0 GetDecalSetByName__10CZDecalSetFPCc  # OVL1; s1:align
 0x003D09D0 0xF0 DestroyDecalSet__10CZDecalSetFv  # OVL1; s1:align
 0x003D0AC0 0x70 __dt__Q23std54vector<P10CZDecalSet,Q23std24allocator<P10CZDecalSet>>Fv  # OVL1; by hand (the wep lane: FreeVector's temporary destroyed with -1 in DestroyDecalSet, out of line); zwep_weapon.cpp

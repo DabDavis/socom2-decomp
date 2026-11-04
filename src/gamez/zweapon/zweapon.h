@@ -210,8 +210,11 @@ public:
      * own only so; the name is ours) */
     EQUIP_ITEM GetId() const { return m_ID; }
 
-    /* the decal sets read from the decals rdr's DECAL_SETS list (SOCOM 1's) */
+    /* the decal sets read from the decals rdr's DECAL_SETS list (SOCOM 1's; CMission::Open calls it
+     * where SOCOM 1's calls OpenDecals, 0x3D03C0). SOCOM II's passes the file's name, "decals.rdr", to
+     * an overload that reads the rdr the mark list loaded and never looks at the name (0x3D0870) */
     static void OpenDecals();
+    static void OpenDecals(const char *file);
     /* the name, packed with the ammo into a word for the network (SOCOM 1's statics) */
     static unsigned short PackItemAndAmmoEnums(EQUIP_ITEM item, EQUIP_AMMO ammo);
     static void UnpackItemAndAmmoEnums(unsigned short packed, EQUIP_ITEM *item, EQUIP_AMMO *ammo);
@@ -430,9 +433,12 @@ public:
 
 /* the materials' table (int_material.cpp's, SOCOM 1's class): only the extension list, whose size
  * the weapons' per-material animations are bounded by (SOCOM 1's static; 0x44F350 here) */
+struct MATERIALEX;
 class CMaterialExArray {
 public:
     static std::vector<void *> m_materialex_list;
+    /* a material's extension by index (SOCOM 1's static, 0x2DE440: InitializeWeapons calls it) */
+    static MATERIALEX *GetWeaponAnimMaterialEx(unsigned int i);
 };
 
 /* a weapon's per-stance reticle and recoil tuning (SOCOM 1's DWARF: 0x4c bytes; SOCOM II's is 0x74,
