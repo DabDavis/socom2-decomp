@@ -8738,6 +8738,55 @@ PrunDynProg OPEN; 4 of 5), `asr/vad.c` (+3: TestChangeMike, CheckForAbnormalCond
 (CompareIDs); `src/lib/asr` 493 of 528 (483 of 522 before). 1 row named (PrunDynProg `s1:order`: SOCOM
 1's N-best object holds it after CleanUpParBTProc at the same 0x1F4). No tool changed.
 
+**Round 20c: four of round 19c's opens closed, the N-best object's first two rows named.**
+
+- **A variable reused for an earlier value moves its register**: global-alloc gives a pseudo the first
+  register free over its whole life, and local-alloc's choices inside that life are its conflicts.
+  PrunDynProg's x (allocated first, a dozen references) took a0 until the rate was read into x itself
+  (`x = d->rate; ... x = diff * (d->f228 * x)`): the f228 load local-alloc put in a0 is then live in
+  x's range, x takes a1 and the old level a0 -- round 19c's 17 words, byte-exact.
+- **Three ChangeMike shapes** (4 bytes to byte-exact): an inline with a `return` per arm keeps its
+  HImode result's conversion at the join (`andi s3,v0,0xffff`: one result variable lets combine see
+  both values), and the hold flag, loaded there into a QImode pseudo, is zero-extended again where the
+  second inline tests it (`andi v0,s5,0xff`); `if (lo < hi) n = lo; else n = hi;` stores lo and moves
+  hi in with a movz (`lo < hi ? lo : hi` computes hi into n's register); and an `if` around the rest
+  with the clear in its `else` lays the else out of line -- reorg's `bnezl` to the common `return 0`
+  with the store in its slot (a guard clause falls through into the clear). Its doubles
+  2.7631019353866577 and 1.3815509676933289 are no float's: 25 significant bits, the midpoints above
+  two floats, 0.4 and 0.2 of the same 6.9077548384666443 whose five sixths CheckForAbnormalConditions
+  compares (no float literal, no folded float expression gives them: build/scratch/gcc/fconst.py,
+  fexpr.py) -- spelled as dconst.py's 17-digit decimals.
+- **This cc1 emits an integer multiply-add only when its addend is cheaper in LO** (open since round
+  5c; the only two recogniser rows with `mtlo`): regclass counts one move for the addsi3 that defines
+  the addend and one per madd for a GR, so a single madd ties (global then gives it v0: `mult; addu`)
+  and the same addend in two -- the probabilities' size added in each arm of the 4-bit test -- makes LO
+  its class: the `mtlo` before the branch, the two madds cross-jumped into one at the join after reload,
+  the arms' shared load in the branch's slot (_cdbGetpSmoothMatrix, _cdbGetCodeBookSize).
+- **A read through a pointer to a field is another expression for GCSE**: _cdbGetCodeBookSize's square
+  reloads the second size (SOCOM 1's copy too); written as a field, PRE finds it redundant with the
+  header's read (`PRE: redundant insn ... reaching reg` in the -dG dump, every field and cast spelling);
+  `int *s = &cdb->second_size; ... *s * *s` is `(mem (reg s))`, not `(mem (plus cdb 12))`, and stays.
+- **SOCOM II moved InitViterbi's two list releases into CollectDummyMemory** (0x4EB5E8, named
+  `s1:order`: SOCOM 1's body is its middle, the seven-word tokens before and the results after); each
+  push to a scheduler free list goes through a pointer of its own (a block macro, FREE_REC), which
+  loop.c hoists as an invariant of its own per loop (`addiu s3,s6,132` in each preheader; in the
+  results' nested loops a second register copied from the first) -- spelled as a field it is addressed
+  off tos each time, and declared at the top of a loop's body it takes another priority (s3/s4 swap).
+  The second list's scheduler pointer is read again after the first loop (PRE reloads it on that loop's
+  exit). InitViterbi@nbestdp (0x4EB7D8, named `s1:order`) is written: OPEN, 2 words short (the
+  unrolled token loop cross-jumped at another point); a counter of their own for its clearing loops is
+  what spills the word index (sp+4) as the target does.
+- **Tools** (build/scratch/gcc/, the lane's): `fconst.py ADDR N [SUFFIX]` (float-literal spellings whose
+  promoted value is a target double), `fexpr.py ADDR N EXPR...` (constant expressions folded by 2.96 and
+  read back), `findop.py REGEX [LO HI]` (rows whose disassembly matches, matched or open -- `mtlo` found
+  the two codebook functions alone), `rd.py ADDR N d|f|w`.
+
+Hand-written in round 20c: `asr/nbestdp.c` (+3: PrunDynProg closed, CollectDummyMemory new,
+InitViterbi@nbestdp OPEN; 6 of 7), `asr/vad.c` (ChangeMike closed: 6 of 6), `asr/language.c`
+(`_cdbGetCodeBookSize` and `_cdbGetpSmoothMatrix` closed: 76 of 76) -- 5 rows new to the map's
+byte-exact rows, none superseding a draft; `src/lib/asr` 498 of 530 (493 of 528 before). 2 rows named
+(CollectDummyMemory, InitViterbi@nbestdp: `s1:order`, each body checked). No tool changed.
+
 **Round 14b: the "toolchain" opens were SCEA's shapes; LargeInt's core is assembly.**
 
 - **LargeInt's EE primitives are hand-written assembly** (0x628B48-0x629A44, between LargeInt.c's C and
