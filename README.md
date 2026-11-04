@@ -2032,6 +2032,23 @@ exists); 3.0b38/b50/b52 still untold.
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the online lobby, round 17** (JoinGame twice, the game-players callback, zNetCreateObject, znet.h's members):
+  - a call result tested `== 0` with the success arm first (`f() == 0 ? n : -1`) gives the if-assign layout -- the load on
+    the fall-through, the constant in the retargeted branch's delay slot; `f() ? -1 : n` and `!f() ? n : -1` lay the
+    constant arm first; a pointer pick behaves the same (zNetCreateObject 0x30D670, the callback 0x2F7020's clan tag);
+  - an inline's local is laid out below every local of its caller, a constructed object included (CZOnlineLobby::JoinGame
+    0x2F83B0: its RANDOM request sits below the CRdrEditor only through an inline, GetRandomGame -- ours); an if-chain
+    tests in source order where a switch tests in reverse; a second null test whose false path goes to the function's
+    end, as the first's, was nested inside the first;
+  - a signed char bit-field's store reads its byte with `lb`, so a unit reading the same field with `lbu`/`dsrl` reads a
+    second declaration; `field & 3` does not fold into the zero-extension (an `andi` more); TypeRTimeFixStruct's kind is
+    `unsigned int m_kind : 8` -- the only shape giving both the switch's `lbu` and AddToFixList's seven-word copy;
+    `new T(*p)` on a plain struct is an FPR block copy behind a null test, `*q = *p` copies member by member;
+  - znet.h has fts_remote.cpp's members now (zNetGetGameSessionMasterClientIndex, zNetGetObject, the inline
+    GetGameConnectionIndex; NetObject's real layout: type index 0, owner 4, the kind's name 0xC, data 0x1C; m_master_index
+    is m_sessionmaster_index); CZLANLobby::JoinGame 0x3039B0 (UIJoinMPGame calls it on 0x44FE10 where it otherwise calls
+    the online one); open: GetGameInfo (21), CreateGame (10) and the world report (9: every `&&` spelling folds the
+    target's bnez/b pair into one beqz), FriendInvitationVector::Remove.
 - **Tells from the engine core, round 7** (six register misses closed by const locals, the equipment slots, the VBIT pair):
   - A `const` LOCAL SURVIVES MW'S COPY PROPAGATION AND KEEPS A NAMED VARIABLE'S NUMBER, where a plain local copy folds into
     its use -- that alone fixed float and GPR pair swaps in CZBodyAnimBlend::ThisFoot 0x28C220 (`const float t =
