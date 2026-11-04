@@ -2705,7 +2705,7 @@
 0x00257560 0x8 clear__Q23std50vector<Q23zar4CKey,Q23std22allocator<Q23zar4CKey>>Fv  # OVL1; the core lane round 5 (FreeVector<vector<CKey> >'s clear, a j to the deleter's clear: zar_main.cpp's inline copy)
 0x00257570 0x14 __ct__Q23std50vector<Q23zar4CKey,Q23std22allocator<Q23zar4CKey>>Fv  # OVL1; the core lane round 5 (FreeVector<vector<CKey> >'s temporary in ~CZAR and FreeDirectory: zar_main.cpp's inline copy)
 0x00257590 0x358 WriteDirectory__Q23zar4CZARFv  # OVL1; s1:callee by hand, the core lane round 4 (Close() 0x258CE0 calls it at +0x90 where SOCOM 1's Close() calls WriteDirectory at +0x8C; the new flush 0x258BD0 calls it when the modified byte 0x25 is set, clearing it after)
-0x002578F0 0x294 func_002578F0  # OVL1
+0x002578F0 0x294 _countKeys__FPQ23zar4CKey  # OVL1; s1:calls by hand, the core lane round 7 (SOCOM 1's _countKeys 0x1D8480: WriteDirectory 0x257590 calls it on m_root and stores the count at +0x3C, the tail's key count, where SOCOM 1's WriteDirectory inlines it into the same slot; recursive as SOCOM 1's -- it self-inlines three levels, the deeper ones calling vector<CKey *>'s iterator pieces 0x257B90-0x257CB0 out of line)
 0x00257B90 0x8 func_00257B90  # OVL1
 0x00257BA0 0x14 func_00257BA0  # OVL1; tu: ztex_manager.cpp~ (1.0 beta)
 0x00257BC0 0x14 func_00257BC0  # OVL1
@@ -2719,7 +2719,7 @@
 0x00257C90 0xC func_00257C90  # OVL1
 0x00257CA0 0x10 func_00257CA0  # OVL1; tu: char_type.cpp~ (1.0 beta)
 0x00257CB0 0x8 func_00257CB0  # OVL1
-0x00257CC0 0x1F8 func_00257CC0  # OVL1
+0x00257CC0 0x1F8 fixupKey__Q23zar4CKeyFP7CSTablePv  # OVL1; s1:calls by hand, the core lane round 7 (SOCOM 1's CKey::fixupKey 0x1D8600: WriteDirectory 0x257590 hands it to CSTable::Pack 0x39F6F0 with m_root, as SOCOM 1's WriteDirectory hands 0x1D8600 to Pack; recursive, calling itself at 0x257DEC)
 0x00257EC0 0x10 func_00257EC0  # OVL1; tu: char_type.cpp~ (1.0 beta)
 0x00257ED0 0x8 func_00257ED0  # OVL1
 0x00257EE0 0xAC ReadString__Q23zar4CZARFPPc  # OVL1; ours, the core lane round 4 (SOCOM II's: a length word read through m_pFile's fread, then when 4 bytes came and the length is positive a _malloc'd zeroed copy of length+1 filled by a second fread; the bytes read returned -- CIO::fwrite(const char *)'s record read back; CZSIObject::Read calls it for the object's name)
