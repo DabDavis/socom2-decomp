@@ -201,7 +201,9 @@ class CAiState {
 public:
     /* what a state is told (SOCOM 1's CAiState::SIGNAL, a byte; SOCOM 1's names unknown: the
      * states test 0-4, CAiSPursue's and CAiSAnimate's OnSignal reset on 4) */
-    enum SIGNAL { SIGNAL_0 = 0, SIGNAL_1 = 1, SIGNAL_2 = 2, SIGNAL_3 = 3, SIGNAL_4 = 4, SIGNAL_LAST = 255 };
+    enum SIGNAL { SIGNAL_0 = 0, SIGNAL_1 = 1, SIGNAL_2 = 2, SIGNAL_3 = 3, SIGNAL_4 = 4,
+        /* (CAiSFollow::OnSignal's jump table runs to 7: a case of 7, empty) */
+        SIGNAL_7 = 7, SIGNAL_LAST = 255 };
 
     /* the base's answers are inline: a unit that emits a state's table emits the copies its
      * slots need (seal_ai.cpp's are the ones linked, 0x555380-0x5553B0, 0x570D10, 0x575990,
@@ -632,6 +634,8 @@ public:
     }
     /* +0x3C (the name ours, by slot): close behind -- its distance under the follow range, and
      * its flag bit 3 set */
+    /* +0x08 (0x5FDF80) */
+    virtual void OnSignal(SIGNAL sig, CSealCtrlAi *ai);
     virtual bool Virtual3C(CSealCtrlAi *ai);
     virtual ~CAiSFollow();
 
@@ -663,16 +667,23 @@ public:
     class CZSealBody *m_master;   // 0x58: the SEAL followed (SetFollowMaster clears it; the name ours)
     int m_5c[2];   // 0x5c: the offset from the leader, in cells (0x5F6F20 zeroes them)
     float m_64;   // 0x64: its length in the world, 10 to a cell
-    unsigned char _68[0x6c - 0x68];
+    float m_68;   // 0x68: a range (15 on entry; the name ours)
     unsigned int m_6c;   // 0x6c: flags (0x5F6F10 builds them with 0)
     int m_70;   // 0x70: the formation's slot
     signed char m_74;   // 0x74: the formation
-    unsigned char _75[0x79 - 0x75];
+    /* 0x75-0x78, 0x7a: flags OnSignal's entry clears (0x76 set; the names ours) */
+    unsigned char m_75;
+    unsigned char m_76;
+    unsigned char m_77;
+    unsigned char m_78;
     unsigned char m_79;   // 0x79: hiding (HideCheck's flag; the name ours)
-    unsigned char _7a[0x7c - 0x7a];
+    unsigned char m_7a;
+    unsigned char _7b;
     unsigned char m_7c;   // 0x7c: a flag (the follow's mode 4 when set: 0x5FD6F0)
     unsigned char m_7d;   // 0x7d: a flag (mode 3)
-    unsigned char _7e[0x88 - 0x7e];
+    unsigned char _7e[0x80 - 0x7e];
+    int m_80;   // 0x80 (0 on entry)
+    int m_84;   // 0x84 (0 on entry)
     float m_88[3];   // 0x88: CPnt3Ds from here to 0x114, CAiMapLocs at 0xc0, 0xc8 and 0x104
     unsigned char _94[0x98 - 0x94];
     float m_98[3];   // 0x98
