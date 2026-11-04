@@ -510,9 +510,25 @@ public:
  * new, and its value, 16 bits at 4) */
 enum VALVE_TYPE { VALVE_ANY = 0, VALVE_PERM = 1, VALVE_TEMP = 2, VALVE_PERSIST = 3 };
 
+/* what a valve's change tells its callbacks (zanim.h's) */
+enum VALVE_STATE { VALVE_SAME = 0, VALVE_ON = 1, VALVE_OFF = 2 };
+
 class CValve {
 public:
     static CValve *Create(const char *name, VALVE_TYPE type);
+    void MakeCallbacks(VALVE_STATE state);
+    /* the value set, its callbacks told when it changed (the README's shape: both builds inline
+     * it -- an int parameter, the state compared against an enumerator) */
+    void SetValue(int value)
+    {
+        VALVE_STATE state = VALVE_SAME;
+
+        if (m_value != value)
+            state = value == 0 ? VALVE_OFF : VALVE_ON;
+        m_value = value;
+        if (state != VALVE_SAME)
+            MakeCallbacks(state);
+    }
 
     char *m_name;   // 0x0
     unsigned int m_value : 16;   // 0x4
@@ -706,6 +722,7 @@ public:
     virtual ~CPopUpDialog();
     virtual void Draw(const CMatrix &m, zdb::CTextureRelocMgr *mgr);
     virtual void Tick(float dT);
+    virtual bool HandlePad(const CPad *pad, int port);
     virtual int GetZAnimCmdType(const char *name);
 
     /* a plain bitmap (Draw inlines CPlainBmp's), its text a 2D object at 0xB0 placed at an offset;
@@ -713,20 +730,23 @@ public:
      * pointer alone), each with an offset after it, drawn when 0x330 is set; the 2D object drawn
      * instead of it all when 0x32C points at one -- C2D stand-ins, their real classes unknown */
     unsigned char _a0[0xb0 - 0xa0];
-    C2D m_text;   // 0xb0
-    unsigned char _c8[0x304 - 0xc8];
+    C2DString m_text;   // 0xb0 (a string: HandlePad empties it through slot 26)
+    unsigned char _148[0x304 - 0x148];
     IPNT2D m_textOffset;   // 0x304
     unsigned char _30c[0x32c - 0x30c];
     C2D *m_32c;   // 0x32c
-    int m_330;   // 0x330
-    unsigned char _334[0x340 - 0x334];
-    C2D m_340;   // 0x340
-    unsigned char _358[0x780 - 0x358];
+    CValve *m_330;   // 0x330: the valve the answer is set in (the two buttons drawn only with one)
+    int m_choice;   // 0x334: the button chosen, 1 or 2
+    unsigned char _338;
+    bool m_339;   // 0x339: the cancel button (6) answers 66
+    unsigned char _33a[0x340 - 0x33a];
+    C2DButton m_340;   // 0x340: the first button
     IPNT2D m_340Offset;   // 0x780
     unsigned char _788[0x790 - 0x788];
-    C2D m_790;   // 0x790
-    unsigned char _7a8[0xbd0 - 0x7a8];
+    C2DButton m_790;   // 0x790: the second
     IPNT2D m_790Offset;   // 0xbd0
+    unsigned char _bd8[0xbe0 - 0xbd8];
+    bool m_keep;   // 0xbe0: the pop-up stays up after an answer
 };
 
 
@@ -3017,6 +3037,64 @@ bool CUIMapCtrl::HandlePad(const CPad *pad, int port)
     else
         ZoomOut(-z, m_node, data_0049EBE8);
     return handled;
+}
+
+/* the menus (zui's: the stack the pop-up is on, the selection sound) */
+class CMenuStack {
+public:
+    void KillPopUp();
+};
+
+CMenuStack *GetMenuStack();
+void PlaySelectionSound();
+
+/* slot 15: the pad handed to the 2D object it points at, if any; else a press of button 9 sets
+ * the chosen button's answer in the valve (and shows that button pressed), the cancel button 66,
+ * each closing the pop-up unless it stays up; and either side button moves the choice to the other
+ * button when that one is there -- taken either way (SOCOM 1's CPopUpDialog::HandlePad) */
+bool CPopUpDialog::HandlePad(const CPad *pad, int port)
+{
+    if (m_32c)
+        return m_32c->HandlePad(pad, port);
+    if (pad->m_state[9] == 1) {
+        if (m_330) {
+            m_330->SetValue(m_choice);
+            if (m_choice == 1)
+                m_340.Slot27();
+            else
+                m_790.Slot27();
+        }
+        if (!m_keep) {
+            m_text.SetString("", true);
+            GetMenuStack()->KillPopUp();
+        }
+        PlaySelectionSound();
+    }
+    if (m_339 && pad->m_state[6] == 1) {
+        if (m_330)
+            m_330->SetValue(66);
+        if (!m_keep) {
+            m_text.SetString("", true);
+            GetMenuStack()->KillPopUp();
+        }
+        PlaySelectionSound();
+    }
+    if (pad->m_state[3] == 1 || pad->m_state[2] == 1) {
+        if (m_choice == 1) {
+            if (m_790._fWidth > 0.0f) {
+                m_choice = 2;
+                m_340.SetNormal();
+                m_790.SetActive();
+                PlaySelectionSound();
+            }
+        } else if (m_340._fWidth > 0.0f) {
+            m_choice = 1;
+            m_340.SetActive();
+            m_790.SetNormal();
+            PlaySelectionSound();
+        }
+    }
+    return true;
 }
 
 /* set up from its spec: the button's own (SOCOM 1's CHandlerButton::LoadSpec, 0x38EC90 there,
