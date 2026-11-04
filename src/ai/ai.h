@@ -585,6 +585,8 @@ public:
         }
         /* whether the line map shows it (the name ours; materialised where it is tested) */
         bool IsDisplayed() const { return !m_nodisplay; }
+        /* the rectangle between two cells, either corner first (new in SOCOM II, the name ours: 0x515DE0) */
+        void SetCorners(const CAiMapLoc &a, const CAiMapLoc &b);
 
         CAiMapLoc m_loc;   // 0x0
         unsigned int m_dx : 16;   // 0x4
@@ -1006,6 +1008,10 @@ public:
     bool FindActionLocation(unsigned int id, CAiMapLoc &loc, action **pa);
     action *GetCellAction(const CAiMapLoc &loc) const;
     bool GetLocation(const char *name, CAiMapLoc &loc);
+    /* the cell under a point: inside the box in x and z, the offsets in cells truncated on VU0, the
+     * cell given this map's id, whether it is on the map (SOCOM 1's, which gave the cell id 0;
+     * 0x515F80, the footprint's two calls) */
+    bool GetLocation(const CPnt3D *pos, CAiMapLoc &loc) const;
     name *GetCellName(const CAiMapLoc &loc);
     region *GetRegion(const char *name, CAiMapLoc &loc);
     region *GetRegion(const CAiMapLoc &loc);
