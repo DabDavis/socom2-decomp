@@ -178,7 +178,7 @@ static inline void CrossVU0(const CPnt3D *a, const CPnt3D *b, CPnt3D *out)
  * MW hoists into s7/fp); the frames `unsigned int`: their conversion to GetRot's int is a loop-invariant
  * temporary hoisted into the preheader, as the target's `move s0,a2` / `move s6,a3` there (as `int` the
  * parameters are copied in the prologue).
- * OPEN, 28 instructions: registers only. The target hoists `&seal->m_body_parts` into the preheader
+ * OPEN, 14 instructions (28 before round 45): the preheader's order. The target hoists `&seal->m_body_parts` into the preheader
  * (s1) and the replay (build/ig, tools/igreplay.py --movers) has exactly one numbering giving every
  * saved register: the parts' address numbered between part and the first hoisted conversion -- an
  * inlined function's variable or the first loop-optimiser temporary. Tried: the reference at the top
@@ -192,17 +192,27 @@ static inline void CrossVU0(const CPnt3D *a, const CPnt3D *b, CPnt3D *out)
  * reference or pointer out-parameter (the game states' round-39 rule), with part given a dead first
  * definition at function or block scope and `i` declared ahead of it (round 12's), and a static
  * inline returning the address -- by CZSealBody * or CBody * (zbody.h's ActiveAnimPool shape, whose
- * result MW hoists, is a member; the parts' load base folds into `468(seal)` here). */
+ * result MW hoists, is a member; the parts' load base folds into `468(seal)` here).
+ * The SEALs' round 45: 28 -> 14, EVERY REGISTER RIGHT -- `i` and `part` given dead first definitions at
+ * the top, after `obj` and ahead of the vector's reference (round 12's rule: the numbering obj, i,
+ * part, parts that the replay asked for, the reference not forwarded at function scope). What is left
+ * is the preheader's order alone: the target zeroes `i` in the entry test's delay slot and computes
+ * the parts' address after it, as a loop invariant hoisted out of the body would be -- defined in the
+ * body (a reference, a pointer, ahead of the bounds test or inside it, `part` dead-defined in the body
+ * too) the address is forwarded again (`lw v0,468(seal)`: 30 off, or 0x10 longer), as are a `?:` on
+ * the pointer and an `&&` defining it in the bounds test (0x8-0x10 longer). */
 extern "C" void func_00577BA0(CZSealBody *seal, CZSIScriptCommon *script, unsigned int f0, unsigned int f1, float t)
 {
-    std::vector<CZBodyPart *> &parts = seal->m_body_parts;
     CZSIObject *obj = script->m_pObjects;
+    unsigned int i = 0;
+    CZBodyPart *part = 0;
+    std::vector<CZBodyPart *> &parts = seal->m_body_parts;
 
-    for (unsigned int i = 0; i < script->m_nObjects; i++, obj++) {
+    for (; i < script->m_nObjects; i++, obj++) {
         unsigned int id = obj->m_body_part_id;
 
         if (id < siNumBodyObjects) {
-            CZBodyPart *part = parts[id];
+            part = parts[id];
             CQuat qd;
             CQuat q0;
             CQuat q1;
