@@ -896,8 +896,8 @@ extern "C" {
  * in use (OVL2 bss 0x66AFD8) */
 extern float data_0064FE60[][8];
 extern int data_0066AFD8;
-/* (OVL2 0x555420, not written yet: the AI's state brought up to date from two of its blocks) */
-void func_00555420(CSealCtrlAi *ai, void *a, void *b);
+/* (OVL2 0x555420, below: a route brought up to date from the AI's path) */
+bool func_00555420(CSealCtrlAi *ai, CAiPathBytes *path, CAiRouteBytes *route);
 }
 
 
@@ -1431,7 +1431,7 @@ extern "C" CAiState *func_00555900(CSealCtrlAi *ai, int kind, unsigned int flags
  * OnSignal call it) */
 extern "C" AI_ROUTE func_005558A0(CSealCtrlAi *ai)
 {
-    func_00555420(ai, &ai->m_path, &ai->m_route.m_path);
+    func_00555420(ai, &ai->m_path, &ai->m_route);
     return ai->m_route.m_state;
 }
 
@@ -1504,6 +1504,97 @@ extern "C" bool func_005556A0(CSealCtrlAi *ai, const CAiPathBytes *path, CAiRout
         ((CAiPath *)&route->m_path)->InsertPathLoc(loc, AiMaps.GetMapByIndex(loc.m_mapid), 0, true);
         route->m_state = ROUTE_1;
         r = true;
+    }
+    return r;
+}
+
+/* a route brought up to date: one asked to start (3) runs (1); a running one whose plan is held is
+ * handed to the AI's path -- as it is when it ends on the SEAL's cell, with that cell put at its head
+ * when the line from it to the last point is clear, else from the first point back from the end the
+ * line reaches (none past a flagged one), the points after it dropped and the path smoothed, the
+ * route left planning (2) when no point is reached; a running route's path is cleared either way;
+ * whether the route was running or planning (OVL2 0x555420, new in SOCOM II: 0x5558A0 and
+ * CAiSDeploy::OnSignal call it; the name unknown).
+ * OPEN, 14 structural differences and 6 register-only (159 instructions against 157; round 48): the
+ * held test. The target materialises the count's test (`xor/sltiu/xori` -- an inline's `!empty()`,
+ * as here), branches on the state (`li 4; bne`), and sets its result `0` in the first test's delay
+ * slot and `andi a2,a0,0xff` (the switch's 1) when both pass, keeping the count in a1 for the last
+ * point's index. Every shape tried gives one of two: `r = false; if (A && B) r = true;` with A a
+ * materialised inline is if-converted to `r = A ? B : 0` (B by xori/sltiu, 17 differences), and
+ * written plain (A a branch on the count) it keeps the target's init-and-andi but drops A's
+ * materialisation and reloads the count (14); `return true; / return false;` (here) gives two
+ * assignment arms (14). Tried too: a bool local (folded), HasPoints(), nested ifs, `(bool)size`,
+ * `== true` / `!= false`, the path cast once ahead of the test. The rest follows the target: the
+ * SEAL's cell named after the last point (a named `loc` ahead of `i` takes s1 -- a temporary's s0 in
+ * the target -- through the accessor it becomes the CSE temporary), the point compare an inline with
+ * the point's field on the left (the target loads its y first), size() by value (count()'s reference
+ * kept &size_ in a sixth saved register) */
+static inline bool HasAny(const CAiPath *p)
+{
+    return !p->m_points.empty();
+}
+
+static inline bool RouteHeld(const CAiPath *p)
+{
+    if (HasAny(p) && p->m_state == CAiPath::COMPLETE)
+        return true;
+    return false;
+}
+
+/* whether two cells are the same place, the map aside (an inline bool: the target materialises each
+ * compare; the name ours -- 0x569AA0's family and 0x555420 ask it) */
+static inline bool SameCell(const CAiMapLoc &a, const CAiMapLoc &b)
+{
+    return a.x == b.x && a.y == b.y;
+}
+
+extern "C" bool func_00555420(CSealCtrlAi *ai, CAiPathBytes *path, CAiRouteBytes *route)
+{
+    CZSealBody *seal = (CZSealBody *)ai->m_entity;
+    bool r = false;
+
+    switch (route->m_state) {
+    case ROUTE_NONE:
+        break;
+    case ROUTE_3:
+        route->m_state = ROUTE_1;
+        r = true;
+        break;
+    case ROUTE_2:
+        r = true;
+        break;
+    case ROUTE_1:
+        if (RouteHeld((CAiPath *)&route->m_path)) {
+            CAiPath *rp = (CAiPath *)&route->m_path;
+            const CAiPath::point &last = rp->m_points[rp->m_points.size() - 1];
+            const CAiMapLoc &loc = seal->MapLocValid();
+
+            r = true;
+            if (SameCell(last.m_loc, loc))
+                ((CAiPath *)path)->CopyPlan(rp);
+            else if (AiMaps.CanTravelLine(loc, last.m_loc, 0)) {
+                ((CAiPath *)path)->CopyPlan(rp);
+                rp->InsertPathLoc(loc, AiMaps.GetMapByIndex(loc.m_mapid), 0, true);
+            } else {
+                route->m_state = ROUTE_2;
+                for (int i = 1; i < rp->m_points.size(); i++) {
+                    const CAiPath::point &p = rp->m_points[rp->m_points.size() - i - 1];
+
+                    if (p.m_flags & 3)
+                        break;
+                    if (AiMaps.CanTravelLine(loc, p.m_loc, 0)) {
+                        while (i-- > 0)
+                            rp->PopPoint(0);
+                        route->m_state = ROUTE_1;
+                        ((CAiPath *)path)->CopyPlan(rp);
+                        ((CAiPath *)path)->SmoothPath(false);
+                        break;
+                    }
+                }
+            }
+        }
+        ((CAiPath *)&route->m_path)->Clear();
+        break;
     }
     return r;
 }
@@ -2522,13 +2613,6 @@ static inline bool Chance(float chance)
 static inline bool AiAwakeNow(const CSealCtrlAi *ai)
 {
     return !(ai->m_aibit9 || ai->m_aibit8);
-}
-
-/* whether two cells are the same place, the map aside (an inline bool: the target materialises each
- * compare; the name ours) */
-static inline bool SameCell(const CAiMapLoc &a, const CAiMapLoc &b)
-{
-    return a.x == b.x && a.y == b.y;
 }
 
 /* whether the AI drives a SEAL (IsPlayer's ternary shape: the bool narrowed in each arm here) */

@@ -923,7 +923,7 @@ enum SEAL_TASK { TASK_0 = 0, TASK_LAST = 255 };
 
 /* a route's state (a byte enum: copied with lb, compared with lbu; the names ours -- 1 and 2 are
  * the two a reset ends) */
-enum AI_ROUTE { ROUTE_NONE = 0, ROUTE_1 = 1, ROUTE_2 = 2 };
+enum AI_ROUTE { ROUTE_NONE = 0, ROUTE_1 = 1, ROUTE_2 = 2, ROUTE_3 = 3 };
 
 /* the destructors the AI's data runs by hand (its members' own, out of line: a route's (OVL2
  * 0x573F20, the implicit destructor of a CAiPath plus a byte), CAiEvent's (0x573F80) and
