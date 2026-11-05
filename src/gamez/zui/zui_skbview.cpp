@@ -259,7 +259,7 @@ SKBKEY SkbPadKeyEvent(CPad *pad)
  * an inline CSkbLook member does too) */
 static inline CSkbBgPieces &SkbPieces(CSkbLook *look, unsigned char i)
 {
-    CSkbBgPieces *s = look->m_sources;
+    CSkbBgPieces *s = look->m_sources.m_a;
 
     return s[i];
 }

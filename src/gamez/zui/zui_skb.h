@@ -284,6 +284,11 @@ struct CSkbCapLook {
     int m_b;   // 0x20
 };   // 0x24 bytes
 
+struct CSkbCapLooks {
+    CSkbCapLook m_a[3];
+    operator CSkbCapLook *() { return m_a; }
+};
+
 /* two ints read from an rdr pair (SOCOM 1's CIntPair: zui_skb.cpp's there, its Get1st and Get2nd) */
 struct CIntPair {
     CIntPair(int a, int b) : m_1st(a), m_2nd(b) {}
@@ -414,6 +419,14 @@ struct CSkbBgPiece {
  * deleter's destructor, one level more than a plain vector's */
 struct CSkbBgPieces : public std::vector<CSkbBgPiece> {};
 
+/* the look's arrays, each a class of its own (ours): ~CSoftKeyboard's inlined ~CSkbLook tests each
+ * array's address before its __destroy_arr (`addiu a0,s2,224; beqz a0`), as a wrapper's implicit
+ * destructor tests its `this`; read through the conversion as the arrays were */
+struct CSkbBgPiecesArr {
+    CSkbBgPieces m_a[4];
+    operator CSkbBgPieces *() { return m_a; }
+};
+
 /* what the rdr says about a keyboard's look (the look parser 0x3963F0's: Name, Background,
  * ShiftBackground, the sources ... TwoEditsGrowUp, StartGridPos; the names ours) */
 struct CSkbLook {
@@ -426,7 +439,7 @@ struct CSkbLook {
     CSaferStr m_name;   // 0x0
     CSaferStr m_background;   // 0xc
     CSaferStr m_shiftBackground;   // 0x18
-    CSkbBgPieces m_sources[4];   // 0x24: the four background piece lists
+    CSkbBgPiecesArr m_sources;   // 0x24: the four background piece lists
     int m_54, m_58, m_5c, m_60, m_64, m_68, m_6c;   // 0x54
     CSkbRect m_rects[5];   // 0x70
     int m_c0;   // 0xc0
@@ -436,7 +449,7 @@ struct CSkbLook {
      * it closes (the display unit's scaling step 0x394DA0 reads them with lwc1) */
     float m_scaleUpSec;   // 0xd8
     float m_scaleDownSec;   // 0xdc
-    CSkbCapLook m_caps[3];   // 0xe0
+    CSkbCapLooks m_caps;   // 0xe0: three
     std::vector<CSaferStr> m_strings;   // 0x14c
 
     /* a rectangle set by index (the look parser's five, out of line: zui_skbview.cpp's 0x396BD0) */
