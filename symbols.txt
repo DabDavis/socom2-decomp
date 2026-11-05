@@ -4911,7 +4911,7 @@
 0x002EFE10 0x10 func_002EFE10  # OVL1
 0x002EFE20 0x24 ChangeState__13CZOnlineLobbyF11LOBBY_STATE  # OVL1; ours (pushes its byte onto the state queue at +0x64 through the deque's push_back 0x2E1610, where SOCOM 1 pushes inline; Logout passes END_SESSION 18, the 0x2E0440 thunk SESSION_BEGIN 12)
 0x002EFE50 0x1C4 func_002EFE50  # OVL1
-0x002F0020 0xE7C func_002F0020  # OVL1
+0x002F0020 0xE7C cbGetPlayerInfo__FiiiP24MediusPlayerInfoResponse  # OVL1; ours, the online lane round 20 (MediusGetPlayerInfo's callback: func_002EFE50, UIGetPlayerInfo's request, passes it; named after the request as SOCOM 1's callbacks are -- SOCOM 1's own MediusGetPlayerInfo callback, cbGetPlayerStats__FiiiP24MediusPlayerInfoResponse 0x32D8B0, takes the same signature but reads our stats)
 0x002F0EA0 0x204 func_002F0EA0  # OVL1
 0x002F10B0 0x134 func_002F10B0  # OVL1
 0x002F11F0 0x4C func_002F11F0  # OVL1
@@ -5008,7 +5008,7 @@
 0x002F96E0 0xC func_002F96E0  # OVL1
 0x002F96F0 0x1FC func_002F96F0  # OVL1
 0x002F98F0 0x1C8 func_002F98F0  # OVL1
-0x002F9AC0 0x854 func_002F9AC0  # OVL1
+0x002F9AC0 0x854 UnpackPlayerStats__FP15GamePlayerStatsPCc  # OVL1; ours, the online lane round 20 (the stats text unpacked into the 'E' record, older records 'N'/'Q', 'A'-'D' upgraded a version at a time: the ladder item, the game players', the player info's and our own stats' readers call it; SOCOM 1 has none, reading its stats text with atoi)
 0x002FA320 0x234 Register__13CZOnlineLobbyFPCcPCc  # OVL1; s1:ui ('LobbyRegister' 0x27DDE0 calls it on theLobby where SOCOM 1's UILobbyRegister calls Register)
 0x002FA560 0x3C Logout__13CZOnlineLobbyFv  # OVL1; s1:ui ('LobbyLogout' 0x27DCC0, as SOCOM 1's UILobbyLogout calls Logout)
 0x002FA5A0 0x234 Login__13CZOnlineLobbyFPCcPCc  # OVL1; s1:ui ('LobbyLogin' 0x27DD20, as SOCOM 1's UILobbyLogin calls Login)
