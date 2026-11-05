@@ -312,7 +312,8 @@ void CMultiMissionList::Purge()
  * local before the loop inlines whole but colours differently: MW generates a for loop's test after
  * its body, so the end the test's inlined end() makes is numbered after the narrowed kind and the
  * element (the target colours it first: a0, the element a2, the kind a3, the iterator t0), where a
- * local end is numbered ahead of them (9-11 off). Written out at the caller's own level the test's
+ * local end is numbered ahead of them (9-11 off), and so is the online lobby's `data_ + size_` end
+ * (its round 20's Last(): 11 off here). Written out at the caller's own level the test's
  * end() inlines whole and numbers last, as here. (The states' round 36; until then the unit carried
  * `#pragma inline_depth(6)` -- the MSL headers' round-24 stand-in.) */
 CMultiMission *CMultiMissionList::Find(int id, bool multi)
