@@ -2065,6 +2065,22 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the SEALs, round 42** (the foot pin, the score valves' sum, GetPutativeFirePointW, SetDir, the fall begun):
+  - comparing against a float LOCAL holding zero (`v.z != zero`) keeps the field as c.eq.s's first operand, the 0.0f
+    literal puts the zero first (SOCOM 1's compare is field-first; the weapons' round 26: the literal is zero-first on
+    either side); `Dot(v, v)` through the reference inline makes MW reload the fields for later tests, as the target,
+    written out MW reuses the loaded registers (GetPutativeFirePointW 0x57FA70, SOCOM 1's);
+  - in a switch case `off = c ? &a : &b` goes through a shared join where if/else arms branch straight to the switch's
+    join; `if (d >= 1) a = 0; else if (d <= -1) a = PI; else a = acosf(d);` gives the target's clamp, the nested
+    `if (d < 1) {...}` inverts it; from a bool inline `return !a && !b && (c || d);` is 0x30 longer, `if (a || b || (c >=
+    k && !d)) return false; return true;` lays the false block first, as the target;
+  - a dead first definition (`node = 0;` ahead of `world = m_world; node = GetNode();`) gives the target's world-in-s0
+    (round 12's rule); `TeamOf(seal) & TeamOf(other)` with the scorer's team first keeps `&seal->m_team` hoisted in s0
+    (the score valves' sum 0x544D60, where all 13 stats events end); tail helpers the target calls out of line need
+    pinning once the unit gains a caller (0x5551A0, now called from the foot pin 0x54EA80; CLook::SetDir 0x5AD9D0);
+  - Crouch / InStateHang (5 each) read by the replay: the inner ClearStack's counter inside the inlined Stand must be
+    numbered ahead of Stand's stance -- MW numbers an inline's own inlines one level after the caller's other direct
+    inlines (12 shapes in the OPEN note).
 - **Tells from the weapons, round 26** (CZProjectile's GetDamage, DoMiss, HandleBounce and HandleImpact; the VU0 batch add):
   - a float product takes the lowest free FPR, so a target putting the product in its constant's register needs the
     constant, product and result as ONE in-place local, and a 1.0 that must colour after it a named local first defined
