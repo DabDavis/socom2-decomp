@@ -1076,6 +1076,87 @@ extern "C" bool func_005A6D30(CZSealBody *seal, SEAL_ITEM_BYTE item)
     return true;
 }
 
+extern "C" {
+/* (seal_body.cpp's OVL2 0x587F90, 0x587F50 and 0x587F10: tests of the SEAL's anim state -- the
+ * first refuses the fire, the other two with the item 151 in hand) and whether a blend's fraction is
+ * past a point, from the far end when reversed (OVL2 0x58A8C0, its draft), and a halfword's bits
+ * tested (seal.cpp's tail copy, OVL2 0x5551A0) */
+bool func_00587F90(CZSealBody *seal);
+bool func_00587F50(CZSealBody *seal);
+bool func_00587F10(CZSealBody *seal);
+bool func_0058A8C0(bool reversed, float t, float at);
+bool func_005551A0(unsigned short flags, unsigned short bits);
+}
+
+/* (the stab's, restraint's and CQB attack's tests, below) */
+static inline bool IsStabbing(CZSealBody *seal);
+static inline bool IsRestraining(CZSealBody *seal);
+static inline bool IsCQBAttacking(CZSealBody *seal);
+
+/* whether the SEAL may fire: standing, crouched, prone, peeking or in the air; not zooming; the top
+ * blend not in state 8; not throwing (the start included), reloading, changing weapons (the kit
+ * asked when told), stabbing, restraining or in a CQB attack; not carrying; 0x587F90's test failed;
+ * no overlay playing, no body carried, not stunned; not holding item 151 in either of the two anim
+ * states; and -- when timing is asked -- the top blend's last anim past its script's fire point (from
+ * the far end for a reversed blend) (OVL2 0x5A7DE0; SOCOM 1's CanFire, after IsThrowing in both builds,
+ * its two flags SOCOM II's: CanChangeItem asks it first, FireWhenReady once). The top through
+ * TopBlend() recomputes this+0x1c0 at each fetch as the target does (written func_00555170((char *)this
+ * + 0x1c0) MW folds it with IsThrowing's into a saved register: one more saved, 12 bytes long); the
+ * reversed flag declared before the fraction gives the target's andi before Begin (after it, the
+ * fraction is loaded ahead of the call and the andi sinks into Begin's delay slot) */
+bool CZSealBody::CanFire(bool kit, bool timing)
+{
+    CZBodyAnimBlend *top = TopBlend();
+
+    switch (m_state) {
+    case stateStand:
+    case stateCrouch:
+    case stateProne:
+    case statePeek:
+    case stateInAir:
+        break;
+    default:
+        return false;
+    }
+    if (m_iszooming)
+        return false;
+    if (top->m_state == 8)
+        return false;
+    if (IsThrowing(false))
+        return false;
+    if (IsReloading())
+        return false;
+    if (IsChangingWeapons(kit))
+        return false;
+    if (IsStabbing(this))
+        return false;
+    if (IsRestraining(this))
+        return false;
+    if (IsCQBAttacking(this))
+        return false;
+    if (m_state == stateCarrying)
+        return false;
+    if (func_00587F90(this))
+        return false;
+    if (m_overlay.m_anim)
+        return false;
+    if (m_carry)
+        return false;
+    if (m_am_stunned)
+        return false;
+    if ((func_00587F50(this) || func_00587F10(this)) && m_kit.GetCurItem()->GetIDType() == 151)
+        return false;
+    if (!timing)
+        return true;
+    bool r = false;
+    bool reversed = func_005551A0(top->m_flags, 0x20);
+    float t = top->m_tfrac;
+
+    for (ACTIVE_ANIM *a = top->m_anims.Begin(); a; a = a->m_overlay)
+        r = func_0058A8C0(reversed, t, a->m_anim->m_2c);
+    return r;
+}
+
 /* whether the top blend is a throw's, the start's two too unless told not (OVL2 0x5A7D10; SOCOM 1's
  * IsThrowing, before CanFire in both builds, the same tests) */
 bool CZSealBody::IsThrowing(bool started)
@@ -2829,9 +2910,54 @@ extern float data_0044C2D4;
 extern float data_0044C2D8;
 }
 
-/* a look anim's turn for a yaw and a pitch (SOCOM 1's GetLookQuat__FP6CPnt3DffP5CQuat; OVL2 0x5AE730,
- * not written yet) */
-void GetLookQuat(CPnt3D *table, float yaw, float pitch, CQuat *q);
+/* a look anim's turn for a yaw and a pitch: half of each angle's size about the table's axis for its
+ * sign -- the yaw's 2 or 6, the pitch's 3 or 9 -- as quaternions, the pitch's left out when it is
+ * close enough to none (OVL2 0x5AE730; SOCOM 1's GetLookQuat__FP6CPnt3DffP5CQuat, the flag held as
+ * the call's byte where SOCOM 1 converted it) */
+void GetLookQuat(CPnt3D *table, float yaw, float pitch, CQuat *q)
+{
+    float ayaw = fabsf(yaw);
+    float apitch = fabsf(pitch);
+    bool flat = _close_enough(pitch, 0.0f, 0.01f);
+    CQuat qy, qp;
+    CPnt3D v;
+
+    if (yaw >= 0.0f) {
+        if (pitch >= 0.0f) {
+            table[2].Scale(0.5f * ayaw, &v);
+            qy.Exp(&v);
+            if (!flat) {
+                table[3].Scale(0.5f * apitch, &v);
+                qp.Exp(&v);
+            }
+        } else {
+            table[2].Scale(0.5f * ayaw, &v);
+            qy.Exp(&v);
+            if (!flat) {
+                table[9].Scale(0.5f * apitch, &v);
+                qp.Exp(&v);
+            }
+        }
+    } else if (pitch >= 0.0f) {
+        table[6].Scale(0.5f * ayaw, &v);
+        qy.Exp(&v);
+        if (!flat) {
+            table[3].Scale(0.5f * apitch, &v);
+            qp.Exp(&v);
+        }
+    } else {
+        table[6].Scale(0.5f * ayaw, &v);
+        qy.Exp(&v);
+        if (!flat) {
+            table[9].Scale(0.5f * apitch, &v);
+            qp.Exp(&v);
+        }
+    }
+    if (flat)
+        *q = qy;
+    else
+        qy.Mul(&qp, q);
+}
 
 /* the look anims built, the head's and up the spine (OVL2 0x5AE6A0; SOCOM 1's) */
 void CZSealBody::InitLookAnims()
