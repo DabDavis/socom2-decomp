@@ -12,8 +12,8 @@
  * 0x387630, comes out of line here with everything inlined); ~ActionItem is the unit's first
  * function (SOCOM 1's lines 23-24), inlined in ~CCheckBoxSpec's inline copy.
  *
- * OPEN: ~CRadioStripSpec (4 bytes, the pointer vector's data_ reads, see there) and CUIListBoxSpec::
- * Copy 0x387CF0 (the list box's layout). */
+ * OPEN: CUIListBoxSpec::Copy 0x387CF0 (the list box's layout); ~CRadioStripSpec byte-exact since the
+ * MSL headers' round 27 (include/vector's pod destructor reading data_ through data() into a local). */
 
 #include "zui_2d.h"
 
@@ -168,13 +168,10 @@ CUIVariableSpec::~CUIVariableSpec()
 
 /* the strip's objects erased and deleted one by one (SOCOM 1's; the iterator assigned, so kept in
  * the frame, and assigned after the delete: the target holds erase's result in a saved register
- * across it) *
- * OPEN, 4 bytes short (0x198 of 0x19C), all in the vector's reads: the target computes &data_
- * (this + 0x120) into s0 in the delay slot of the first test and reads the destructor's `if
- * (data_)` through it, shares begin()'s data_ load with the first test's end(), and loads the
- * bottom test's size into a0 and data into v1 (here v1 and a0, and data_ reloaded each time). The
- * pod's end() through data() (probed) changes nothing: the shape is the pointer vector's
- * begin()/end() and its destructor's, include/vector's to settle (the AddPalette family) */
+ * across it). Byte-exact since the MSL headers' round 27: the target computes &data_ (this + 0x120)
+ * into s0 in the delay slot of the first test and reads the destructor's `if (data_)` through it --
+ * the pod destructor's `T *p = data();`, data()'s reference temporary a variable off a member at an
+ * offset (include/vector) */
 CRadioStripSpec::~CRadioStripSpec()
 {
     std::vector<CDesignDlgObj *>::iterator i = m_items.begin();
