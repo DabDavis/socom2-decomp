@@ -122,6 +122,9 @@ public:
      * 0x57D5E0, are looked up again unless it is on the stack) */
     static short SwapRifle;   // OVL1 0x3DEC78
     static short ClimbMedium;   // OVL1 0x3DEC90
+    /* (SOCOM 1's ClimbOver, 0x4751F0, eight after Stand2Prone in both builds: SealAnim 0x5870E0 tests
+     * the current blend against it where SOCOM 1's SealAnim does -- the SEALs, round 47) */
+    static short ClimbOver;   // OVL1 0x3DECA0
     /* (SOCOM II's two strafes, AnimType itself, not short -- the SEALs, round 34: SetMaxMotion passes
      * them to GetScript unconverted, the static loaded ahead of the set as an argument with no
      * conversion is) */
@@ -207,6 +210,10 @@ public:
     /* whether an item has room for rounds (SOCOM 1's; OVL2 0x5BA5B0, kit.h's -- the AI's ammunition
      * search asks it) */
     bool CanAddAmmo(int index, int rounds);
+    /* whether the kit holds an item with rounds (kit.h's; OVL2 0x5C8640) and the weapon at an index
+     * (kit.h's; OVL2 0x5BC6A0) */
+    bool HasItemWithAmmo(EQUIP_ITEM item);
+    void FillWeaponEnum(int index, class CZFTSWeapon **out);
     /* the item in hand (kit.h's: const in SOCOM II; OVL2 0x5C3780) and the item made current by its
      * index (kit.h's; OVL2 0x5C4B10) */
     class CZFTSWeapon *GetCurItem() const;
@@ -217,6 +224,8 @@ public:
     void ReParentToPistol();
     /* whether the item in hand has rounds left (kit.h's; OVL2 0x5BDB00) */
     bool CurItemHasAmmo();
+    /* whether the item is the one in use (kit.h's; OVL2 0x5B98C0 -- ai::INVIEW's tick asks it) */
+    bool IsUsingItem(EQUIP_ITEM item);
     /* the items held, an item set at an index, its magazines and rounds, its ammunition set -- with a
      * count of rounds (kit.h's; OVL2 0x5BE030, 0x5BDFB0, 0x5C4970, 0x5C3C10, 0x5BDE20, 0x5BDEC0) */
     int GetNumItems() const;
@@ -326,6 +335,10 @@ enum SEAL_STANCE {
     STANCE_NONE = -1, STANCE_STAND = 0, STANCE_CROUCH = 1, STANCE_PRONE = 2, STANCE_IDLE = 3,
     STANCE_MAX = 4
 };
+
+/* how fast a SEAL moves (GetSpeedState's: a byte -- its three callers narrow it with andi; the names
+ * ours) */
+enum SPEED_STATE { SPEED_NONE = 0, SPEED_STILL = 1, SPEED_SLOW = 2, SPEED_FAST = 3 };
 
 /* a random period and its countdown, CAiTimer, is aitimer.h's (included ahead of ai_states.h) */
 
@@ -674,6 +687,10 @@ public:
      * 0x591AB0, seal_command.cpp's -- not written yet; 0x591520 asks the first) */
     bool AllowCommandHOLDPOS(CZSealBody *seal);
     bool AllowCommandFOLLOW(CZSealBody *seal);
+    /* an order's name and an order by its name (SOCOM 1's, seal_command.cpp's there; OVL2 0x58EF80 and
+     * 0x58E0A0, seal_orders.cpp's: 72 orders where SOCOM 1's had 66) */
+    static FT_COMMAND GetCommandId(const char *name);
+    static const char *GetCommandName(FT_COMMAND cmd);
     virtual bool IsPlayer() const;
     virtual bool IsAi() const { return false; }
     virtual bool IsRemote() const { return false; }                         /* +0x34 */
@@ -1801,6 +1818,7 @@ public:
     void SetInSmoke(bool on) { m_isinsmoke = on; }
     /* bits 9 and 10 of 0x1060 set (inlines: a constant true is `daddiu 1 << n`, a false `(0 & 1) <<
      * n`; the names ours) */
+    void SetLanded(bool on) { m_landed = on; }
     void SetBit9(bool on) { m_bit9 = on; }
     void SetBit10(bool on) { m_bit10 = on; }
     /* the moving and turning flags set (inlines: InStateHang clears both with `(0 & 1) << n`) */
@@ -1817,6 +1835,21 @@ public:
     bool SmoothXZThrottles(float &x, float &z);
     /* whether the throttles leave the SEAL stopped (SOCOM 1's; OVL2 0x586F00, seal_body.cpp) */
     bool IsStopped(float x, float z, float t);
+    /* the anim after a step: a blend popped when asked and the state set from what is left, then
+     * the state's own control (SOCOM 1's took three throttles; OVL2 0x5870E0, seal_body.cpp) */
+    CZBodyAnimBlend *SealAnim(bool pop);
+    /* the states' controls (SOCOM 1's, no floats in SOCOM II -- they read the throttles at 0x23c-0x244;
+     * OVL2 0x586570, 0x584C60, 0x5845C0, 0x583AF0, 0x583E70, seal_body.cpp -- SealAnim calls them for
+     * states 0, 1, 2, 10 and 9, as SOCOM 1's does) */
+    CZBodyAnimBlend *InStateStand();
+    CZBodyAnimBlend *InStateCrouch();
+    CZBodyAnimBlend *InStateProne();
+    CZBodyAnimBlend *InStateCarried();
+    CZBodyAnimBlend *InStateCarrying();
+    /* in the air: the top blend's weight made 1 and its playback set from the larger throttle, signed
+     * by the side throttle (SOCOM 1's, no floats in SOCOM II: SealAnim inlines it, then stripped --
+     * src/ABSENT.txt) */
+    CZBodyAnimBlend *InAirControl();
     /* standing, turned in place (SOCOM 1's took three throttles; OVL2 0x586050, seal_body.cpp:
      * InStateStand returns it) */
     CZBodyAnimBlend *StandTurning(float turn);
@@ -1996,6 +2029,16 @@ public:
     /* the ground under a point found, the SEAL's own node off for it (SOCOM 1's; OVL2 0x5B4F30,
      * seal_env.cpp), and the hits handled (SOCOM 1's SealProcessAltitude; OVL2 0x5B5D40) */
     void SealGetAltitude(CPnt3D *pos, float f);
+    /* a hit's particle cloud entered: its gas or its smoke taken (SOCOM 1's; OVL2 0x5B5050,
+     * seal_env.cpp's -- SealProcessAltitude asks it for each hit) */
+    void HandleSmokeAndGas(zdb::IntersectStruct *hit, const class CMaterialEx *mat, const CPnt3D *pos);
+    /* a hit's water entered: the ripples by the depth and the gait, the depth and the in-water flag
+     * kept (SOCOM 1's, SOCOM II's with whether the SEAL was in water before; OVL2 0x5B52B0) */
+    void HandleWater(zdb::IntersectStruct *hit, const class CMaterialEx *mat, const CPnt3D *pos, bool wasin);
+    /* the hits under a point handled: the smoke, gas and water taken, the ground found -- the highest hit
+     * at or under the height, else the lowest -- and its regions and the node's flags updated (SOCOM 1's;
+     * OVL2 0x5B5D40) */
+    zdb::IntersectStruct *SealProcessAltitude(zdb::DiIntersect *di, const CPnt3D *pos, float f);
     /* the looks (SOCOM 1's, seal_env.cpp's in its order): the lids and the eyes turned to their looks'
      * directions, the head's direction, the head and the three parts above it turned by the look
      * anims (OVL2 0x5AD400, 0x5AD4D0, 0x5AD5A0, 0x5AD5B0); a look's goal off the current direction
@@ -2017,9 +2060,17 @@ public:
      * OVL2 0x587A30 and 0x587C20 not written yet, 0x587E00), and how fast it moves (SOCOM 1's; OVL2
      * 0x58A820) -- seal_body.cpp's */
     bool CanPitch();
+    /* an overlay anim pushed over the blends, the top blend returned, and the overlays it sets for the
+     * moving reloads and weapon changes (SOCOM 1's, in its order before CanPitch; OVL2 0x587780,
+     * 0x587760, 0x587740, 0x5876B0, 0x587670 -- seal_body.cpp's) */
+    class CZBodyAnimBlend *AddBlendOverlay(AnimType type);
+    void SetMovingRifleReload(ACTIVE_ANIM *a);
+    void SetMovingPistolReload(ACTIVE_ANIM *a);
+    void SetMovingChangeToRifle(ACTIVE_ANIM *a);
+    void SetMovingChangeToPistol(ACTIVE_ANIM *a);
     bool CanInterrupt();
     bool CanTurn();
-    int GetSpeedState();
+    SPEED_STATE GetSpeedState();
     /* the head turned forward by a pitch, and the look's direction in the world (SOCOM 1's
      * RotateHead, its second float gone, and GetLookDirW; OVL2 0x5AF470, 0x5AF500) */
     void RotateHead(float pitch);
@@ -2111,14 +2162,20 @@ public:
     float m_fade_target;   // 0x230
     float m_fade_rate;   // 0x234
     unsigned char m_fade_priority;   // 0x238
-    unsigned char _239[0x240 - 0x239];
+    unsigned char _239[0x23c - 0x239];
+    /* the throttles the states' controls read (SOCOM 1's InState* took them as arguments: SealAnim
+     * 0x5870E0's idle state tests all three against none; the names ours) */
+    float m_23c;   // 0x23c
     float m_240;   // 0x240: PostCheckDILadder checks the ladder only from 0.03 up (the name ours)
     float m_244;   // 0x244: InStateHang's second throttle with 0x240 (the name ours)
     /* the side and move throttles as last eased (SOCOM 1's at 0x194/0x198: SmoothXZThrottles eases
      * toward them; the names ours) */
     float m_prevx;   // 0x248
     float m_prevz;   // 0x24c
-    unsigned char _250[0x2e0 - 0x250];
+    unsigned char _250[0x2d4 - 0x250];
+    /* the volumetric hits under the SEAL (SOCOM 1's m_volumetricAltitudes at 0x260: SealProcessAltitude
+     * clears it and pushes each smoke or gas hit) */
+    std::vector<zdb::IntersectStruct> m_volumetricAltitudes;   // 0x2d4
     float m_2e0;   // 0x2e0: the time step the overlay ticks by (0x579EF0; the names ours)
     float m_alt;   // 0x2e4 (SOCOM 1's 0xe98)
     CZBodyPart *m_root;   // 0x2e8 (SOCOM 1's 0x26c)
@@ -2198,7 +2255,9 @@ public:
     class AnimSet *m_default_animset;   // 0x52c (SOCOM 1's 0x460: BindAnimSet keeps the set it replaces)
     class AnimSet *m_530;   // 0x530: the set 0x58C600 binds, kept with m_default_animset (the name ours)
     AnimType m_curblend;   // 0x534: the anim type on top of the blends (SOCOM 1's short at 0x464)
-    unsigned char _536[0x53c - 0x536];
+    unsigned char _536[0x538 - 0x536];
+    /* a ZAnim the 0x44D3F8 set holds, let go when the set is undone (0x585FF0; the name ours) */
+    class CZAnim *m_538;   // 0x538
     /* the zoom's anim, "zoom_control", while a scope or the binoculars are up (new in SOCOM II:
      * SetCurZoomState starts and releases it; the name ours) */
     class CZAnim *m_zoom_anim;   // 0x53c
@@ -2236,7 +2295,11 @@ public:
     /* a motion the position code keeps (ComputeNextPosition and PostPreTick read and write it; the
      * collision tick 0x54F570 stops checking once its length is all but zero -- the name ours) */
     CPnt3D m_f44;   // 0xf44
-    unsigned char _f50[0xf74 - 0xf50];
+    unsigned char _f50[0xf68 - 0xf50];
+    /* two heights SealAnim 0x5870E0 resets to -99 before a state's control runs (the names ours) */
+    float m_f68;   // 0xf68
+    float m_f6c;   // 0xf6c
+    unsigned char _f70[0xf74 - 0xf70];
     /* the weapon's state, bit 4 a flag GetWeaponState masks off (SOCOM 1's m_weapon_state, 0xe54) */
     unsigned int m_weapon_state;   // 0xf74
     /* an item the anim choice falls back on with no base blend (0x58C820 copies it with lb, tests it
@@ -2345,7 +2408,7 @@ public:
      * lane's seal_ik.cpp: two single-bit fields written one at a time, lbu/sb -- the names ours) */
     unsigned int m_bit6 : 1;
     unsigned int m_bit7 : 1;
-    unsigned int m_unused_bits : 1;
+    unsigned int m_landed : 1;   // bit 8: set with bit 10 when 0x59AD30 lands the SEAL, cleared in the air (the name ours)
     unsigned int m_bit9 : 1;   // bit 9: a remote SEAL with it set is skipped by 0x57DFE0 (the name ours)
     unsigned int m_bit10 : 1;   // bit 10: cleared with bit 9 set by 0x57DF20/0x57E050 (the name ours)
     unsigned int m_1060_bit11 : 1;
@@ -2407,7 +2470,13 @@ public:
     unsigned char _135c[0x1360 - 0x135c];
     float m_1360;   // 0x1360: above 0, 0x59B870 leaves m_fac alone (0x57E540 sets 0.2; the name ours)
     float m_1364;   // 0x1364: 0x57E540 clears it (the name ours)
-    unsigned char _1368[0x1440 - 0x1368];
+    unsigned char _1368[0x136c - 0x1368];
+    /* the ripples while the surface is just over the SEAL and while it wades, and the node they play
+     * at (SOCOM 1's 0xfd8, 0xfdc, 0xfe0: HandleWater's) */
+    CZAnim *m_belowwateranim;   // 0x136c
+    CZAnim *m_inwateranim;   // 0x1370
+    unsigned char _1374[0x1380 - 0x1374];
+    zdb::CNode m_wateranimnode;   // 0x1380
     CPnt3D m_aim_dir;   // 0x1440 (SOCOM 1's 0x10a0: AimWeapon sets it)
     CPnt3D m_aim_goal;   // 0x144c (SOCOM 1's 0x10ac: GetThrowAnim compares its y, as SOCOM 1's)
     unsigned char _1458[0x14a0 - 0x1458];

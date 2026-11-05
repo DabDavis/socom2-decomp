@@ -257,6 +257,8 @@
 0x0018E768 sceCdSync
 0x0018E808 sceCdSyncS
 0x0018E878 _sceCd_scmd_prechk
+0x0018F178 sceCdRead
+0x0018F358 func_0018F358
 0x0018F428 sceCdGetDiskType
 0x0018F4C0 sceCdGetError
 0x0018F558 sceCdPowerOff
@@ -1623,6 +1625,7 @@
 0x00200970 __dt__15CLensFlareEntryFv
 0x00200AC0 __ct__15CLensFlareEntryFP5_zrdrPQ23zdb5CNode
 0x00200C10 Place__13CFlareElementFfbPC6CPnt3D
+0x00200D60 Load__13CFlareElementFP5_zrdr
 0x00200F30 NextFlareName__Fv
 0x00201050 FirstFlareName__FPc
 0x00201580 On__11CZPauseTestFv
@@ -2055,7 +2058,7 @@
 0x00232950 Clear__10CTCMSoundsFv
 0x00232970 Load__10CTCMSoundsFv
 0x002329D0 __ct__10CTCMSoundsFv
-0x002329F0 tcmAddKindItems__FUc
+0x002329F0 tcmAddKindItems__F10FT_COMMAND
 0x002351A0 TalkTick__4CTCMFf
 0x00235300 Close__4CTCMFb
 0x00235440 Open__4CTCMFv
@@ -2088,6 +2091,7 @@
 0x002383B0 __ct__12CAmmoDisplayFv
 0x00238420 Off__10CMPInfoBoxFv
 0x00238490 On__10CMPInfoBoxFv
+0x00238500 Tick__10CMPInfoBoxFf
 0x00238660 UnInit__10CMPInfoBoxFv
 0x00238710 ReInit__10CMPInfoBoxFv
 0x002388A0 Init__10CMPInfoBoxFP7C2DFont
@@ -2113,6 +2117,7 @@
 0x0023A370 GetLevel__5CRecoFv
 0x0023A380 PrintResult__FPvP13_GSAPI_RESULTi
 0x0023A640 cbrecoNotify__FPv18_GSAPI_NOTIFY_TYPEUiUi
+0x0023A730 AdjustVolume__5CRecoFi
 0x0023A860 cbrecoResult__FPvUiP13_GSAPI_RESULTUi
 0x0023AC30 GetLangFile__F8LANGUAGE
 0x0023ACE0 GetLangCode__F8LANGUAGE
@@ -2310,6 +2315,7 @@
 0x00249968 func_00249968
 0x002499A8 func_002499A8
 0x00249A38 func_00249A38
+0x00249B58 func_00249B58
 0x00249C50 func_00249C50
 0x00249C60 func_00249C60
 0x00249C78 func_00249C78
@@ -2324,10 +2330,13 @@
 0x0024AAE8 func_0024AAE8
 0x0024AEB0 func_0024AEB0
 0x0024AF50 func_0024AF50
+0x0024B560 func_0024B560
 0x0024B720 func_0024B720
 0x0024B7E8 func_0024B7E8
 0x0024B8B0 func_0024B8B0
 0x0024B990 func_0024B990
+0x0024BA48 func_0024BA48
+0x0024BCF0 func_0024BCF0
 0x0024BE70 func_0024BE70
 0x0024BF50 func_0024BF50
 0x0024C078 func_0024C078
@@ -2747,7 +2756,7 @@
 0x0026FE90 DeleteParticleSources__6CZAnimFv
 0x0026FF20 State__6CZAnimFi
 0x00270220 Tick__6CZAnimFf
-0x002703D0 func_002703D0
+0x002703D0 GetRootNode__6CZAnimFb
 0x00270460 func_00270460
 0x00270570 func_00270570
 0x002707C0 func_002707C0
@@ -2794,6 +2803,7 @@
 0x00272BB0 ActivateArg__6CZAnimFie
 0x002732C0 ActivateEx__6CZAnimFie
 0x00273320 ActivateExV__6CZAnimFPc
+0x002734B0 Activate__6CZAnimFP6CZAnim
 0x00273780 func_00273780
 0x00273950 func_00273950
 0x00273960 func_00273960
@@ -3302,10 +3312,18 @@
 0x00299C00 func_00299C00
 0x00299C10 TickTask__10CAppCameraFfPv
 0x00299C40 TickCameraWiggle__10CAppCameraFfPQ23zdb7CCamera
+0x00299ED0 FirstToThirdPersonTransition__FP10CAppCamera
+0x0029A180 func_0029A180
+0x0029A3F0 ThirdToFirstPersonTransition__FP10CAppCamera
+0x0029A660 func_0029A660
+0x0029A950 GetThirdPersonCamPos__10CAppCameraFP6CPnt3DPf
+0x0029AE50 GetFirstPersonCamPos__FP10CAppCamera
+0x0029B0C0 FTSTick__10CAppCameraFv
 0x0029B2F0 SetZoom__10CAppCameraFf
 0x0029B330 SetCameraMode__10CAppCameraFUc
 0x0029B3C0 AttachTo__10CAppCameraFP10CZSealBody
 0x0029B570 __dt__10CAppCameraFv
+0x0029B5D0 __ct__10CAppCameraFPQ23zdb7CCamera
 0x0029BAA0 CmdParseShake__10CAppCameraFP5_zrdr
 0x0029BB90 CmdTick3rdPersonTest__10CAppCameraFP14_zanim_cmd_hdrPf
 0x0029BBB0 CmdParse3rdPersonTest__10CAppCameraFP5_zrdr
@@ -5451,8 +5469,12 @@
 0x00334150 func_00334150
 0x00334170 zrdr_newarray__FP5_zrdri
 0x003341C0 do_assign<Q210Metrowerks92__convert_iterator<Q310Metrowerks36cdeque<PPCv,Q23std15allocator<PPCv>>14const_iterator,PCv>>__Q210Metrowerks34cdeque<PCv,Q23std14allocator<PCv>>FQ210Metrowerks92__convert_iterator<Q310Metrowerks36cdeque<PPCv,Q23std15allocator<PPCv>>14const_iterator,PCv>Q210Metrowerks92__convert_iterator<Q310Metrowerks36cdeque<PPCv,Q23std15allocator<PPCv>>14const_iterator,PCv>_v
+0x00334440 do_assign<Q23std133__convert_iterator<Q33std83deque<PQ210CRdrEditor11CRDRNodeVec,Q23std39allocator<PQ210CRdrEditor11CRDRNodeVec>>16__const_iterator,PCv>>__Q23std39__deque_imp<PCv,Q23std14allocator<PCv>>FQ23std133__convert_iterator<Q33std83deque<PQ210CRdrEditor11CRDRNodeVec,Q23std39allocator<PQ210CRdrEditor11CRDRNodeVec>>16__const_iterator,PCv>Q23std133__convert_iterator<Q33std83deque<PQ210CRdrEditor11CRDRNodeVec,Q23std39allocator<PQ210CRdrEditor11CRDRNodeVec>>16__const_iterator,PCv>_v
 0x00334820 __ct__Q33std39__deque_imp<PCv,Q23std14allocator<PCv>>8iteratorFRCQ33std39__deque_imp<PCv,Q23std14allocator<PCv>>8iterator
+0x00334860 __ne__Q23std133__convert_iterator<Q33std83deque<PQ210CRdrEditor11CRDRNodeVec,Q23std39allocator<PQ210CRdrEditor11CRDRNodeVec>>16__const_iterator,PCv>CFRCQ23std133__convert_iterator<Q33std83deque<PQ210CRdrEditor11CRDRNodeVec,Q23std39allocator<PQ210CRdrEditor11CRDRNodeVec>>16__const_iterator,PCv>
 0x00334880 __pp__Q33std39__deque_imp<PCv,Q23std14allocator<PCv>>8iteratorFv
+0x003348E0 __pp__Q23std133__convert_iterator<Q33std83deque<PQ210CRdrEditor11CRDRNodeVec,Q23std39allocator<PQ210CRdrEditor11CRDRNodeVec>>16__const_iterator,PCv>Fv
+0x00334940 __ml__Q23std133__convert_iterator<Q33std83deque<PQ210CRdrEditor11CRDRNodeVec,Q23std39allocator<PQ210CRdrEditor11CRDRNodeVec>>16__const_iterator,PCv>CFv
 0x003349B0 __ml__Q33std39__deque_imp<PCv,Q23std14allocator<PCv>>8iteratorCFv
 0x00334D20 zrdr_IsComplex__FP5_zrdr
 0x00334DB0 zrdr_pack__FP5_zrdrPvUi
@@ -7143,6 +7165,7 @@
 0x003A9930 SetActive__7CTurretFb
 0x003A9990 UpdateCompassAnchor__7CTurretFv
 0x003A9A30 OnMissionStart__7CTurretFv
+0x003A9A80 Init__7CTurretFPQ23zdb5CNodeRC10CTurretDef
 0x003A9EA0 SetThermal__7CTurretFPQ23zdb5CNodeb
 0x003A9FB0 SetOpacity__7CTurretFf
 0x003AA020 SetVisible__7CTurretFb
@@ -7152,6 +7175,7 @@
 0x003AA2E0 swap__Q23std46vector<P7CTurret,Q23std20allocator<P7CTurret>>FRQ23std46vector<P7CTurret,Q23std20allocator<P7CTurret>>
 0x003AA320 clear__Q23std46vector<P7CTurret,Q23std20allocator<P7CTurret>>Fv
 0x003AA330 __ct__Q23std46vector<P7CTurret,Q23std20allocator<P7CTurret>>Fv
+0x003AA350 __ct__7CTurretFPQ23zdb5CNodeRC10CTurretDef
 0x003AA810 func_003AA810
 0x003AA900 func_003AA900
 0x003AA920 func_003AA920
@@ -7185,6 +7209,7 @@
 0x003AD680 PreTick__8CVehicleFf
 0x003AD760 ScanForVehicleByName__8CVehicleFPCcPC11CVehicleDefPQ23zdb5CNodeb
 0x003AD910 ScanForVehicleDefinitionHookups__8CVehicleFPQ23zdb5CNodeb
+0x003ADAB0 Init__8CVehicleFPQ23zdb5CNodeRC11CVehicleDef
 0x003ADE90 __ct__8CVehicleFPQ23zdb5CNodeRC11CVehicleDef
 0x003AE030 Spawn__8CVehicleFP16CVehicleRdrEntry
 0x003AE1A0 LoadVehicles__8CVehicleFv
@@ -7701,8 +7726,8 @@
 0x003D1F00 GetDefaultAmmo__8CZWeaponFv
 0x003D1F50 PostTick__8CZWeaponFfPv
 0x003D1F90 func_003D1F90
-0x003D2000 func_003D2000
-0x003D2010 func_003D2010
+0x003D2000 GetRecoilPct__8CZWeaponFv
+0x003D2010 SetRecoilPct__8CZWeaponFf
 0x003D2020 func_003D2020
 0x003D2030 GetArmingDistance__8CZWeaponFv
 0x003D2040 SetArmingDistance__8CZWeaponFf
@@ -7774,6 +7799,7 @@
 0x003D2C30 func_003D2C30
 0x003D2C40 func_003D2C40
 0x003D2C50 PlayFireSound__8CZWeaponFPC6CPnt3D
+0x003D2D70 Fire__8CZWeaponFPQ23zdb5CNodeP6CZAmmoPC6CPnt3DPC6CPnt3DPC6CPnt3DP12CZProjectileiPQ23zdb6CModel
 0x003D3230 GetMenuValue__8CZWeaponF10EQUIP_ITEM
 0x003D3750 func_003D3750
 0x003D3790 SetRocketPassSound__8CZWeaponFP4CSnd
@@ -8178,6 +8204,8 @@
 0x004E1D08 InitUserWordTraining
 0x004E1E30 ExitUserWordTraining
 0x004E2008 CalcF2
+0x004E35C8 CheckConsistency
+0x004E37F8 RejectTrainUtters
 0x004E3CC8 userwordStartUserWordTraining
 0x004E3E08 cbUserWordResultAvailable
 0x004E3ED8 cbScoreUserWordResultAvailable
@@ -8366,6 +8394,8 @@
 0x00502F50 spline2
 0x00503410 Lin_2_Log
 0x005041C0 ControlSHS_VUV
+0x005042B8 CreateFreqWindow
+0x00504520 InitSHS_VUV
 0x00504980 ConstructSHS_VUV
 0x005049C0 SlidingHisto_NewItem
 0x00504AC0 SlidingHisto_Init
@@ -9267,8 +9297,8 @@
 0x00555170 func_00555170
 0x005551A0 func_005551A0
 0x005551C0 func_005551C0
-0x00555210 func_00555210
-0x00555280 func_00555280
+0x00555210 __dt__Q23std84__vector_deleter<Q23zdb15IntersectStruct,Q23std34allocator<Q23zdb15IntersectStruct>>Fv
+0x00555280 clear__Q23std84__vector_deleter<Q23zdb15IntersectStruct,Q23std34allocator<Q23zdb15IntersectStruct>>Fv
 0x00555290 func_00555290
 0x005552A0 func_005552A0
 0x005552B0 func_005552B0
@@ -9294,6 +9324,7 @@
 0x00555890 func_00555890
 0x005558A0 func_005558A0
 0x005558D0 func_005558D0
+0x00555900 func_00555900
 0x00555B80 func_00555B80
 0x005561C0 func_005561C0
 0x00556280 func_00556280
@@ -9601,10 +9632,12 @@
 0x00586240 StandStill__10CZSealBodyFff
 0x00586C10 SmoothXZThrottles__10CZSealBodyFRfRf
 0x00586F00 IsStopped__10CZSealBodyFfff
-0x00587670 func_00587670
-0x005876B0 func_005876B0
-0x00587740 func_00587740
-0x00587760 func_00587760
+0x005870E0 SealAnim__10CZSealBodyFb
+0x00587670 SetMovingChangeToPistol__10CZSealBodyFP11ACTIVE_ANIM
+0x005876B0 SetMovingChangeToRifle__10CZSealBodyFP11ACTIVE_ANIM
+0x00587740 SetMovingPistolReload__10CZSealBodyFP11ACTIVE_ANIM
+0x00587760 SetMovingRifleReload__10CZSealBodyFP11ACTIVE_ANIM
+0x00587780 AddBlendOverlay__10CZSealBodyF8AnimType
 0x00587A30 CanPitch__10CZSealBodyFv
 0x00587B40 CanHeadLook__10CZSealBodyFv
 0x00587E00 CanTurn__10CZSealBodyFv
@@ -9682,7 +9715,7 @@
 0x0058DF20 func_0058DF20
 0x0058DFA0 func_0058DFA0
 0x0058E020 func_0058E020
-0x0058E0A0 func_0058E0A0
+0x0058E0A0 GetCommandId__9CSealCtrlFPCc
 0x0058E120 func_0058E120
 0x0058E360 func_0058E360
 0x0058E4D0 func_0058E4D0
@@ -9691,7 +9724,7 @@
 0x0058E950 func_0058E950
 0x0058EB00 func_0058EB00
 0x0058ED60 func_0058ED60
-0x0058EF80 func_0058EF80
+0x0058EF80 GetCommandName__9CSealCtrlF10FT_COMMAND
 0x0058F190 func_0058F190
 0x0058F230 func_0058F230
 0x0058F6E0 func_0058F6E0
@@ -9790,6 +9823,7 @@
 0x0059ABC0 func_0059ABC0
 0x0059AC60 func_0059AC60
 0x0059ACD0 GetSeal__10CZSealBodyFPQ23zdb5CNode
+0x0059AD30 func_0059AD30
 0x0059B870 func_0059B870
 0x0059BA80 Load__17CharacterDynamicsFRC8CRdrFile
 0x0059CF10 insert__Q23std108__vector_imp<Q217CharacterDynamics13CCameraParams,Q23std47allocator<Q217CharacterDynamics13CCameraParams>,0>FPQ217CharacterDynamics13CCameraParamsUiRCQ217CharacterDynamics13CCameraParams
@@ -9818,6 +9852,7 @@
 0x0059EE20 HandleKiller__10CZSealBodyFib
 0x0059F610 func_0059F610
 0x0059F6F0 func_0059F6F0
+0x0059FAC0 func_0059FAC0
 0x0059FD50 DropAmmo__10CZSealBodyFi
 0x005A0040 func_005A0040
 0x005A0270 FindRandomDamageAnim__10CZSealBodyF15DAMAGE_LOCATIONPb
@@ -9955,8 +9990,12 @@
 0x005B1570 func_005B1570
 0x005B1750 func_005B1750
 0x005B1890 func_005B1890
+0x005B1A10 func_005B1A10
 0x005B3A60 func_005B3A60
 0x005B4F30 SealGetAltitude__10CZSealBodyFP6CPnt3Df
+0x005B5050 HandleSmokeAndGas__10CZSealBodyFPQ23zdb15IntersectStructPC11CMaterialExPC6CPnt3D
+0x005B52B0 HandleWater__10CZSealBodyFPQ23zdb15IntersectStructPC11CMaterialExPC6CPnt3Db
+0x005B5D40 SealProcessAltitude__10CZSealBodyFPQ23zdb11DiIntersectPC6CPnt3Df
 0x005B61A0 func_005B61A0
 0x005B6240 func_005B6240
 0x005B6490 func_005B6490
@@ -9966,6 +10005,7 @@
 0x005B6BD0 reserve__Q23std38__vector_pod<Us,Q23std13allocator<Us>>FUi
 0x005B6CE0 func_005B6CE0
 0x005B71B0 reserve__Q23std60__vector_imp<10CZDecalDef,Q23std23allocator<10CZDecalDef>,0>FUi
+0x005B7350 insert__Q23std82__vector_imp<Q23zdb15IntersectStruct,Q23std34allocator<Q23zdb15IntersectStruct>,0>FPQ23zdb15IntersectStructUiRCQ23zdb15IntersectStruct
 0x005B7910 func_005B7910
 0x005B7920 __dt__Q23std62__vector_deleter<10CZDecalDef,Q23std23allocator<10CZDecalDef>>Fv
 0x005B7990 func_005B7990
@@ -10176,6 +10216,7 @@
 0x005D08A0 End__8CTStanceFP14_zanim_cmd_hdr
 0x005D09F0 Begin__8CTStanceFP14_zanim_cmd_hdr
 0x005D0B40 Parse__8CTStanceFP5_zrdr
+0x005D0C90 Tick__7CTSoundFP14_zanim_cmd_hdrPf
 0x005D1210 End__7CTSoundFP14_zanim_cmd_hdr
 0x005D1250 Begin__7CTSoundFP14_zanim_cmd_hdr
 0x005D16E0 Tick__8CTSignalFP14_zanim_cmd_hdrPf

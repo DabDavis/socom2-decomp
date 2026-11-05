@@ -175,6 +175,14 @@ OutputIterator remove_copy_if(InputIterator first, InputIterator last, OutputIte
  * tried gives -- or remove_if's own in an order that leaves the search's return temporary above
  * them: the copies in a nested block (9 off) and a search object built from the two (0x10C) do
  * neither.
+ * MEASURED AGAIN (the MSL headers round 29, build/p29/algv.py and algvars29.py, untracked; 0x50F670 and 0x352500):
+ * the search by value is 4 off under every build that could be the game's (3.0b52, 3.0b50, 3.0b38 alike: last's
+ * copy first), as MSL's free find_if<ForwardIterator, Predicate &> (the same 4), a non-static search on an
+ * uninitialised empty local (declared before or after the walkers: the same 4); a tag-dispatched two-level search
+ * by value (0xE4: the levels' copies fold), by const reference over by value (0xCC), by value over by reference
+ * (0xC0), last copied inside the search (0x100: the copy a call there), a search template not declared inline (not
+ * inlined at all, 0xC0). The target's walkers are the search's by-value parameters (made after its return
+ * temporary, in parameter order -- the slots), initialised left to right, which no form of the call reaches.
  * The kit's 0x5F8AF0 is a different miss: the target re-reads the functor's byte at every step
  * (`lbu a1,104(sp)`), ours hoists it into s0 under every shape (0x114 against 0x110) -- closed by the
  * kit's round 31 in its own source (the functor reads its kind into a local) */

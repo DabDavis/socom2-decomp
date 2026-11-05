@@ -250,7 +250,7 @@ SEAL_STATE CZSealBody::GetStance(bool flag) const
 /* how fast the SEAL moves, standing, crouched or prone: 1 still, 2 under 20 units a second, 3 faster
  * (1 in any other state; OVL2 0x58A820, SOCOM 1's GetSpeedState after GetStance, the speeds squared
  * -- Tick asks it) */
-int CZSealBody::GetSpeedState()
+SPEED_STATE CZSealBody::GetSpeedState()
 {
     float v = m_velM.x * m_velM.x + m_velM.y * m_velM.y + m_velM.z * m_velM.z;
 
@@ -259,10 +259,10 @@ int CZSealBody::GetSpeedState()
     case 1:
     case 2:
         if (v < 0.25f)
-            return 1;
-        return v < 400.0f ? 2 : 3;
+            return SPEED_STILL;
+        return v < 400.0f ? SPEED_SLOW : SPEED_FAST;
     }
-    return 1;
+    return SPEED_STILL;
 }
 
 /* an anim's push told to the network, for a SEAL this console plays: any anim, and anim 34 (OVL2
@@ -328,6 +328,94 @@ bool CZSealBody::CanPitch()
             r = false;
     }
     return r;
+}
+
+extern "C" {
+/* SOCOM II's overlaid anims (OVL1 data: the weapon change's, 0x3DEC68 -- SOCOM 1's MovingRifle2Pistol
+ * by position, unproven -- and four new ones the grenade and launcher code pushes) */
+extern short data_003DEC68;
+extern short data_003DF0B0;
+extern short data_003DF0D0;
+extern short data_003DF0F0;
+extern short data_003DF0F8;
+}
+
+/* an anim laid over the SEAL's blends: its trigger time, its own time and its event (an inline, the
+ * name ours: the overlays SOCOM II adds share its stores) */
+static inline void SetOverlay(CBlendOverlay &o, ACTIVE_ANIM *a, float trig, float t, short event)
+{
+    o.m_anim = a;
+    o.m_triggerT = trig;
+    o.m_ovlyT = t;
+    o.m_state = 0;
+    o.m_event = event;
+}
+
+/* an overlay anim pushed over the blends: its script looked up and an active anim taken for it, then,
+ * for the overlays the SEAL knows, the overlay set -- the moving reloads, the weapon change by the item
+ * in hand, and SOCOM II's four (events 3, 4, 8 and 10, the last two timed by their loop); the top blend,
+ * or none when the anim is missing (OVL2 0x587780; SOCOM 1's AddBlendOverlay, its overlay a member now
+ * -- 0x588BC0 calls it). The active anim declared first, uninitialised: it takes s1 and the top blend
+ * s0; the type passed through an int, which the target sign-extends at the call (the bare AnimType
+ * passes as it is) */
+CZBodyAnimBlend *CZSealBody::AddBlendOverlay(AnimType type)
+{
+    ACTIVE_ANIM *a;
+    CZBodyAnimBlend *top = (CZBodyAnimBlend *)func_00555170((char *)this + 0x1c0);
+    CZSIScriptCommon *script = m_animset->GetScript(type);
+
+    if (!script)
+        return 0;
+    a = m_active_anim_pool.GetActiveAnim(script, (int)type);
+
+    if (!a)
+        return 0;
+    if (type == AnimTypes::MovingRifleReload)
+        SetMovingRifleReload(a);
+    else if (type == AnimTypes::MovingPistolReload)
+        SetMovingPistolReload(a);
+    else if (type == data_003DEC68) {
+        if (m_item == 1)
+            SetMovingChangeToPistol(a);
+        else if (m_item == 2)
+            SetMovingChangeToRifle(a);
+    } else if (type == data_003DF0B0)
+        SetOverlay(m_overlay, a, -4.0f, 0.0f, 3);
+    else if (type == data_003DF0D0)
+        SetOverlay(m_overlay, a, -4.0f, 0.0f, 4);
+    else if (type == data_003DF0F0)
+        SetOverlay(m_overlay, a, -4.0f, a->m_anim->LoopTime(), 8);
+    else if (type == data_003DF0F8)
+        SetOverlay(m_overlay, a, -4.0f, a->m_anim->LoopTime(), 10);
+    return top;
+}
+
+/* the overlays of a moving reload, rifle and pistol (events 1 and 2) and of a weapon change on the move,
+ * to the pistol and to the rifle (events 6 and 5: triggered at once in the air, the rifle's timed by
+ * its loop) (OVL2 0x587760, 0x587740, 0x587670, 0x5876B0; SOCOM 1's, in its order -- CZSealBody::Tick
+ * calls them, AddBlendOverlay inlines them) */
+void CZSealBody::SetMovingRifleReload(ACTIVE_ANIM *a)
+{
+    SetOverlay(m_overlay, a, -4.0f, 0.0f, 1);
+}
+
+void CZSealBody::SetMovingPistolReload(ACTIVE_ANIM *a)
+{
+    SetOverlay(m_overlay, a, -4.0f, 0.0f, 2);
+}
+
+void CZSealBody::SetMovingChangeToRifle(ACTIVE_ANIM *a)
+{
+    float trig = m_airborne ? -4.0f : 0.0f;
+
+    SetOverlay(m_overlay, a, trig, a->m_anim->LoopTime(), 5);
+}
+
+void CZSealBody::SetMovingChangeToPistol(ACTIVE_ANIM *a)
+{
+    float trig = m_airborne ? -4.0f : 0.0f;
+
+    SetOverlay(m_overlay, a, trig, 0.0f, 6);
 }
 
 /* whether the SEAL's anim may be cut short: not when the top blend is done, its representative anim
@@ -2194,6 +2282,200 @@ CZBodyAnimBlend *CZSealBody::TurnControl(float turn)
     }
     b->Representative()->SetPlayback(neg ? -a : a);
     return b;
+}
+
+extern "C" {
+/* the anim set the zoom refuses (OVL1 bss; seal_env.cpp's) and a ZAnim let go (OVL1 0x2707C0,
+ * unowned: seal_ai.cpp's reading) */
+extern AnimSet *data_0044D3F8;
+void func_002707C0(CZAnim *anim, bool now);
+void func_00585FF0(CZSealBody *seal);
+/* the idle state's slack on the third throttle (OVL1 data, 0.025; the other two take 0x3F3428's) */
+extern float data_003F3420;
+}
+
+/* the idle state's test of the 0x44D3F8 set, its throttles passed by value: once a base stance's blend
+ * is up (anims 1, 18 and 26) and a throttle moves past its slack, the set undone; the top blend taken
+ * and dropped (an inline, the name ours: the target loads the throttles ahead of the set's test and
+ * stores them after it, as arguments of an inline call do -- read into locals of the case first) */
+static inline void IdleSet(CZSealBody *seal, float x, float y, float z)
+{
+    if (seal->IsCurrentBlend((AnimType)1) || seal->IsCurrentBlend((AnimType)18) ||
+        seal->IsCurrentBlend((AnimType)26)) {
+        static float zero_z = 0.0f;
+        static float zero_x = 0.0f;
+        static float zero_y = 0.0f;
+
+        if (!_close_enough(z, zero_z, data_003F3428) || !_close_enough(x, zero_x, data_003F3428) ||
+            !_close_enough(y, zero_y, data_003F3420))
+            func_00585FF0(seal);
+    }
+    func_00555170(&seal->m_blends);
+}
+
+/* a blend's state (an inline: through it the state is a temporary, numbered after every named local) */
+static inline int StateOf(CZBodyAnimBlend *b)
+{
+    return b->m_state;
+}
+
+/* the anim after a step: with nothing on the blends nothing; asked to pop -- a dead SEAL's blend kept
+ * in the air, else set dead with its fraction full -- the top blend popped, the climb-over that leaves
+ * the SEAL above its altitude in the air turned into a fall (anim 9 in state 6, the root's live bit
+ * and m_133c cleared), the state set from the popped blend's and the new top's, a blend without
+ * flag 0x40 returned and the altitude kept from the node in the air; else the state from the top
+ * blend's; then, the top blend flagged 0x40, the two heights reset and the state's own control run --
+ * the idle state undoing the 0x44D3F8 set once a base stance's blend is up and a throttle moves --
+ * and anything past the carried state popped down to one blend in state 0 (OVL2 0x5870E0; SOCOM 1's
+ * SealAnim, the same body: SOCOM II's controls read the throttles at 0x23c-0x244, its dead blend's
+ * test and the idle state's set new).
+ * Byte-exact (round 47, the size first try): the registers by `tools/igreplay.py --want` -- the state a
+ * temporary (StateOf), the popped blend a named local declared after it, uninitialised (written
+ * `top = PopBlend` MW splits top's second range into a temporary coloured ahead of the state), the
+ * idle state's throttles read into locals in the order x, z, y and passed to IdleSet */
+CZBodyAnimBlend *CZSealBody::SealAnim(bool pop)
+{
+    CZBodyAnimBlend *top = (CZBodyAnimBlend *)func_00555170(&m_blends);
+
+    if (!top)
+        return 0;
+    if (pop) {
+        int state = StateOf(top);
+        AnimType cur = m_curblend;
+        CZBodyAnimBlend *b;
+
+        if (state == stateDead && m_airborne)
+            return top;
+        if (state == stateDead) {
+            BodySetState(stateDead);
+            top->m_tfrac = 1.0f;
+            return top;
+        }
+        b = func_00589AA0(this);
+        if (!b)
+            return 0;
+        if (cur == AnimTypes::ClimbOver && m_airborne && !(m_posW.y <= m_alt)) {
+            b = (CZBodyAnimBlend *)func_00588BC0(this, (AnimType)9, stateInAir, 0, 0);
+            BodySetState(stateInAir);
+            m_root->SetActive(false);
+            m_133c = 0.0f;
+        }
+        if (b->m_state == statePeek)
+            BodySetState(statePeek);
+        else {
+            BodySetState(state);
+            if (state == stateInAir)
+                BodySetState(b->m_state);
+        }
+        if (!func_005551A0(b->m_flags, 64))
+            return b;
+        if (m_state == stateInAir)
+            m_alt = m_node->m_matrix.m_matrix[3][1];
+    } else
+        BodySetState(top->m_state);
+    top = (CZBodyAnimBlend *)func_00555170(&m_blends);
+    if (!func_005551A0(top->m_flags, 64))
+        return top;
+    m_f68 = -99.0f;
+    m_f6c = -99.0f;
+    switch (m_state) {
+    case stateStand:
+        top = InStateStand();
+        break;
+    case stateCrouch:
+        top = InStateCrouch();
+        break;
+    case stateProne:
+        top = InStateProne();
+        break;
+    case statePeek:
+        break;
+    case stateHang:
+        top = InStateHang();
+        break;
+    case stateClimbLadder:
+        top = InStateClimbLadder();
+        break;
+    case stateInAir:
+        top = InAirControl();
+        break;
+    case stateIdle: {
+        float x = m_240;
+        float z = m_244;
+        float y = m_23c;
+
+        if (m_animset == data_0044D3F8)
+            IdleSet(this, x, y, z);
+        top = (CZBodyAnimBlend *)func_00555170(&m_blends);
+        top->SetRepresentativeWt(1.0f);
+        top->Representative()->SetPlayback(1.0f);
+        break;
+    }
+    case stateDead:
+        break;
+    case stateCarried:
+        top = InStateCarried();
+        break;
+    case stateCarrying:
+        top = InStateCarrying();
+        break;
+    default: {
+        CZBodyAnimBlend *b = (CZBodyAnimBlend *)func_00555170(&m_blends);
+        int n = 12;
+        CBodyAnimBlendStack *stack = &m_blends;
+
+        while (BlendCount(stack) > 1 && n > 0) {
+            b = func_00589AA0(this);
+            n--;
+        }
+        if (n <= 0)
+            b = (CZBodyAnimBlend *)func_00555170((char *)this + 0x1c0);
+        else {
+            if (b)
+                b->m_ctrl = 0;
+            m_desiredStance = STANCE_PRONE;
+        }
+        top = b;
+        BodySetState(stateStand);
+        break;
+    }
+    }
+    return top;
+}
+
+/* in the air: the larger throttle's size, signed by the side throttle, as the top blend's playback
+ * against its representative's script rate, its weight made 1 (SOCOM 1's InAirControl, no floats in
+ * SOCOM II: SealAnim inlines it; then stripped -- src/ABSENT.txt) */
+CZBodyAnimBlend *CZSealBody::InAirControl()
+{
+    float x = m_240;
+    float z = m_244;
+    float ax = fabsf(x);
+    float az = fabsf(z);
+    float s = ax > az ? ax : az;
+    CZBodyAnimBlend *top = (CZBodyAnimBlend *)func_00555170(&m_blends);
+
+    top->SetRepresentativeWt(1.0f);
+    if (x < 0.0f)
+        s = -s;
+    ACTIVE_ANIM *rep = top->Representative();
+
+    rep->SetPlayback(s * rep->m_anim->m_1c);
+    return top;
+}
+
+/* the 0x44D3F8 set undone: when it is bound, the set kept at 0x530 bound again, the ZAnim at 0x538
+ * let go and the weapon's timer cleared (OVL2 0x585FF0, new in SOCOM II: SealAnim and the stance
+ * controls inline it, seal_env.cpp calls it -- the name unknown) */
+extern "C" void func_00585FF0(CZSealBody *seal)
+{
+    if (seal->m_animset == data_0044D3F8) {
+        seal->BindAnimSet(seal->m_530, false);
+        if (seal->m_538)
+            func_002707C0(seal->m_538, false);
+        seal->m_538 = 0;
+        CZWeapon::ClearTimer(0);
+    }
 }
 
 /* a move's throttles split into two blend weights: a dead zone on the second, the first's share of

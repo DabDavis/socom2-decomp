@@ -106,7 +106,8 @@ struct CMaterialEx {
     /* int_material.h's flags: VOLUMETRIC (bit 0), LIQUID (bit 1) and PICKUP (bit 4) here */
     unsigned int m_volumetric : 1;   // 0x3c
     unsigned int m_liquid : 1;   // bit 1
-    unsigned int m_flags2 : 2;
+    unsigned int m_underwater : 1;   // bit 2: UNDERWATER
+    unsigned int m_particle : 1;   // bit 3: a particle system's (HandleSmokeAndGas tests it)
     unsigned int m_pickup : 1;   // bit 4: PICKUP
     unsigned int m_flags5 : 27;
 
@@ -115,6 +116,7 @@ struct CMaterialEx {
     bool IsPickup() { return m_pickup ? true : false; }
     bool IsVolumetric() { return m_volumetric ? true : false; }
     bool IsLiquid() { return m_liquid ? true : false; }
+    bool IsParticle() const { return m_particle ? true : false; }
 };
 
 /* a material's extension, the first one for an index past the table (SOCOM 1's bounds-checked
@@ -4008,6 +4010,61 @@ void CZSealBody::DropAmmo(int rounds)
 /* the ground under a point within a depth (fts_main.cpp's ftsGetAltitudeApprox, OVL1 0x2A2EB0) */
 zdb::IntersectStruct *ftsGetAltitudeApprox(const CPnt3D *p, float depth, bool chars);
 
+/* a dead SEAL's satchel charge dropped: the satchel gear hidden; for a SEAL this console runs, holding
+ * the charge (item 152) with rounds as a weapon, a satchel model put on the ground under the SEAL's
+ * place (DropAmmo's turned offset, looked for from 1 over it), named, made dynamic and a character
+ * node, the charge's rounds in a new stash and a pickup of kind 9 the SEAL owns, the drop anim run on
+ * its node; the pickup, or none (OVL2 0x59FAC0, new in SOCOM II: CSealCtrlAi::OnDeath calls it; the
+ * name unknown -- the anim, data_0044D518, is one ReInitDatabaseHandles never sets) */
+extern "C" CPickup *func_0059FAC0(CZSealBody *seal)
+{
+    CPickup *p = 0;
+    zdb::CNode *gear = seal->FindAuxNode("Satchel", false);
+
+    if (gear)
+        gear->SetActive(false);
+    if (!seal->IsRemote() && seal->m_kit.HasItemWithAmmo((EQUIP_ITEM)152)) {
+        CZFTSWeapon *weapon = 0;
+        int index = seal->m_kit.GetItemIndex((EQUIP_ITEM)152);
+
+        if (index != -1)
+            seal->m_kit.FillWeaponEnum(index, &weapon);
+        if (weapon) {
+            CPnt3D off = CPnt3D::zero;
+            CQuat q;
+            CPnt3D at;
+
+            q.MakeYXZRot(0.0f, 0.0f, 0.0f);
+            seal->m_quat.Apply(&off, &at, 1);
+            at.Add(&seal->m_posW, &at);
+            float &y = at.y;
+
+            y += 1.0f;
+            zdb::IntersectStruct *hit = ftsGetAltitudeApprox(&at, 8.0f, false);
+
+            if (hit)
+                y = hit->m_pos.y;
+            zdb::CNode *node =
+                zdb::CNode::CreateInstance((zdb::CModel *)zdb::CWorld::GetModel("Satchel"), &at, &q);
+
+            if (node) {
+                CZItemStash *stash = new CZItemStash;
+
+                seal->m_kit.FillAmmoPickupInstance(stash, index);
+                node->SetName("Satchel");
+                node->SetDynamic(true, true);
+                node->m_socom2_a1_bits.bit2 = 1;
+                node->m_bumpmap = 1;
+                zdb::CWorld::m_world->AddTextureAssetCharacter(zdb::CHARSETCOMMON, node);
+                p = CPickup::Create(seal->m_id, CPickup::PU_AMMO, node, stash);
+                if (p && data_0044D518)
+                    stash->SetAnim(((CZAnim *)data_0044D518)->ActivateArg(1, 3, p->m_node, 0));
+            }
+        }
+    }
+    return p;
+}
+
 extern "C" {
 /* (the kit's item at an index let go is CZKit::RemoveItemAndAmmo, zseal.h's; OVL2 0x5B9BB0, the kit
  * lane's) a weapon readied (OVL2 0x57D540, seal_body.cpp's) and the item it takes (OVL1 data
@@ -4505,6 +4562,56 @@ extern "C" void func_005B1750(CZSealBody *seal, const CPnt3D *refpt, const CPnt3
     }
 }
 
+extern "C" {
+/* an anim's reference height when it has one, else 0 (OVL2 0x58C2B0, seal_cfg.cpp's range: its draft
+ * matches) */
+float func_0058C2B0(CZSealBody *seal, AnimType type);
+/* (OVL1 data: two before and two after ClimbMedium, as SOCOM 1's StepUp and ClimbOver sit -- unproven,
+ * so placeholders) */
+extern short data_003DEC80;
+extern short data_003DECA0;
+}
+
+/* a climb's homing aimed at a wall: the point it closes on taken to the given height, the anim's own
+ * reference point -- for ClimbMedium mixed toward the anim's reference height by the top blend's
+ * first weight once it blends two, one higher for 0x3DEC80 -- and the wall's normal turned about,
+ * the target offset by the climb (11.78 up and 2.42 back for anim 33, 0.29 down and 2.42 back for
+ * 0x3DECA0); none unless one of the climbs (or anim 42) is current, nor when told it is done (OVL2
+ * 0x5B1A10, new in SOCOM II: 0x5B2620 calls it; the name unknown). The wall's normal copied in and
+ * negated in place at the end, the offset assigned to the homing's target after the aim */
+extern "C" void func_005B1A10(CZSealBody *seal, bool done, CPnt3D *intpt, const CPnt3D *at, const CPnt3D *wall)
+{
+    if (done)
+        return;
+    CZBodyAnimBlend *top = (CZBodyAnimBlend *)func_00555170((char *)seal + 0x1c0);
+    CPnt3D norm = *wall;
+    CPnt3D ref;
+
+    func_0058C2F0(seal, top->Representative()->m_anim, &ref);
+    CPnt3D off = CPnt3D::zero;
+
+    intpt->y = at->y;
+    if (seal->IsCurrentBlend((AnimType)33)) {
+        off.y = 11.78f;
+        off.z = -2.42f;
+    } else if (seal->IsCurrentBlend((AnimType)AnimTypes::ClimbMedium)) {
+        if (top->CountAnims() > 1) {
+            float w = top->m_anims.Begin()->m_wt;
+
+            ref.y = (1.0f - w) * func_0058C2B0(seal, (AnimType)AnimTypes::ClimbMedium) + w * ref.y;
+        }
+    } else if (seal->IsCurrentBlend((AnimType)data_003DECA0)) {
+        off.y = -0.29f;
+        off.z = -2.42f;
+    } else if (seal->IsCurrentBlend((AnimType)data_003DEC80))
+        ref.y += 1.0f;
+    else if (!seal->IsCurrentBlend((AnimType)42))
+        return;
+    NegateInto(&norm, &norm);
+    HomingOf(top)->Aim(top, &ref, &norm, intpt);
+    top->m_homing.m_target_refpt_m = off;
+}
+
 /* the top blend homed onto its own goal: its goal marked unreached, the reference point a fixed offset
  * lowered by 11.487 (0x4137CAC0: 11.4869995) less the goal's height over the SEAL, half a unit up
  * again, the goal's normal turned about, the reference direction +z (OVL2 0x5B1890, new in SOCOM II:
@@ -4901,8 +5008,262 @@ extern "C" void func_005A0040(CZSealBody *seal)
         func_0059F730(seal, launcher, 0);
 }
 
-/* the hits under a point handled (SOCOM 1's SealProcessAltitude; OVL2 0x5B5D40, not written yet) */
-extern "C" void func_005B5D40(CZSealBody *seal, zdb::DiIntersect *di, CPnt3D *pos, float f);
+extern "C" {
+/* a ZAnim let go (OVL1 0x2707C0, unowned: seal_ai.cpp's reading) */
+void func_002707C0(CZAnim *anim, bool now);
+}
+
+/* a ripple anim stopped and forgotten when it runs (an inline, the name ours) */
+static inline void StopRipple(CZAnim *&anim)
+{
+    if (anim && anim->Running()) {
+        func_002707C0(anim, false);
+        anim = 0;
+    }
+}
+
+/* a hit's water entered: the SEAL's box against the surface -- wading (the surface between its feet
+ * and its top) the big ripples by the gait, the small ones stopped, and a fall's splash on landing;
+ * just under the surface (within 10 over its top) the small ripples, the big ones stopped; the depth
+ * kept, the in-water flag set while in it, both ripples stopped once dead (SOCOM 1's HandleWater, the
+ * gait an index now -- none for a SEAL at rest, which is not in water -- and the splash new; OVL2
+ * 0x5B52B0: SealProcessAltitude asks it after HandleSmokeAndGas, with whether the SEAL was in water
+ * before) */
+void CZSealBody::HandleWater(zdb::IntersectStruct *hit, const CMaterialEx *mat, const CPnt3D *pos, bool wasin)
+{
+    const CBBox *box = GetNode()->GetBBox();
+    float top = box->m_max.y + m_posW.y;
+    float bottom = box->m_min.y + m_posW.y;
+    float water = hit->m_pos.y;
+    int gait;
+
+    switch (GetSpeedState()) {
+    case 1:
+        gait = 0;
+        break;
+    case 2:
+        gait = 1;
+        break;
+    case 3:
+        gait = 2;
+        break;
+    default:
+        gait = -1;
+        break;
+    }
+    bool moving = gait != -1;
+
+    m_waterdepth = water - bottom;
+    if (top < bottom) {
+        float t = top;
+
+        top = bottom;
+        bottom = t;
+    }
+    if (hit)
+        m_wateranimnode.SetPosition(hit->m_pos.x, hit->m_pos.y, hit->m_pos.z);
+    if (moving) {
+        if (water > bottom && water < top) {
+            StopRipple(m_belowwateranim);
+            if (data_0044D520[gait] && (!m_inwateranim || !m_inwateranim->Running()) && m_isAlive)
+                m_inwateranim = data_0044D520[gait]->ActivateArg(1, 3, &m_wateranimnode, 0);
+            if (m_airborne && !wasin && data_0044D540)
+                data_0044D540->ActivateArg(1, 5, &hit->m_pos, 0);
+            m_inwater = true;
+        } else if (water > top && water < 10.0f + top) {
+            StopRipple(m_inwateranim);
+            if (data_0044D530[gait] && (!m_belowwateranim || !m_belowwateranim->Running()) && m_isAlive)
+                m_belowwateranim = data_0044D530[gait]->ActivateArg(1, 3, &m_wateranimnode, 0);
+            m_inwater = true;
+        } else if (water > top)
+            m_inwater = true;
+        else
+            m_inwater = false;
+    } else
+        m_inwater = false;
+    if (!m_isAlive) {
+        StopRipple(m_belowwateranim);
+        StopRipple(m_inwateranim);
+    }
+}
+
+/* a particle effect's node extension (SOCOM 1's DWARF: CParticleEx : CNodeEx, its emitter at 4; its
+ * virtuals all CNodeEx's inline ones, so the dynamic_cast below makes the unit emit OVL2's copy of its
+ * RTTI, 0x65F0C0) */
+class CParticleEx : public zdb::CNodeEx {
+public:
+    Particle::Source *m_emitter;   // 0x4
+};
+
+/* whether a value lies in a range, and a point in a box's x/y and in the whole box (inlines returning
+ * through a result: the target's `daddiu 1` per test, each level's result zeroed ahead of the tests
+ * it holds). The bounds by reference: the target loads the upper one only after the lower test
+ * (by value both load at the call); `!(v < lo)`, as `v >= lo` materialises the test */
+static inline bool InRange(float v, const float &lo, const float &hi)
+{
+    bool r = false;
+
+    if (!(v < lo) && v <= hi)
+        r = true;
+    return r;
+}
+
+static inline bool InBoxXY(const CBBox &b, const CPnt3D &p)
+{
+    bool r = false;
+
+    if (InRange(p.x, b.m_min.x, b.m_max.x) && InRange(p.y, b.m_min.y, b.m_max.y))
+        r = true;
+    return r;
+}
+
+static inline bool InBox(const CBBox &b, const CPnt3D &p)
+{
+    bool r = false;
+
+    if (InBoxXY(b, p) && InRange(p.z, b.m_min.z, b.m_max.z))
+        r = true;
+    return r;
+}
+
+/* a hit's particle cloud entered: a point inside the cloud node's box in the world takes the tear gas
+ * (cloud type 0) or the smoke (type 1) (SOCOM 1's HandleSmokeAndGas, its box test and its stuns now
+ * helpers; OVL2 0x5B5050: SealProcessAltitude 0x5B5D40 asks it for each hit, then HandleWater, as
+ * SOCOM 1's) */
+void CZSealBody::HandleSmokeAndGas(zdb::IntersectStruct *hit, const CMaterialEx *mat, const CPnt3D *pos)
+{
+    if (mat->IsParticle()) {
+        zdb::CNode *node = hit->m_node;
+        CBBox box;
+
+        node->m_matrix.Transform(&node->GetBBox()->m_min, &box.m_min, 2);
+        box.Normalize();
+        CParticleEx *ex = node ? dynamic_cast<CParticleEx *>(node->m_nodeEx) : 0;
+        Particle::Source *src = ex->m_emitter;
+
+        if (src) {
+            if (src->m_cloudtype == 0) {
+                if (InBox(box, *pos))
+                    func_005A0B60(this);
+            } else if (src->m_cloudtype == 1) {
+                if (InBox(box, *pos))
+                    func_005A0BB0(this);
+            }
+        }
+    }
+}
+
+/* the SEAL the application camera shows (camera.h's CAppCamera, as much as this unit reads) */
+class CAppCamera {
+public:
+    virtual void Tick(float dT);
+    virtual bool AttachTo(CZSealBody *prey);
+
+    unsigned char _4[0xbc - 0x4];
+    CZSealBody *m_bc;   // 0xbc
+};
+
+extern CAppCamera *appCamera;
+
+/* a hit polygon's bit 31 as a bool, none for no polygon (an inline, the name ours) */
+static inline bool PolyBit31(const zdb::IntersectStruct *is)
+{
+    return is->m_poly ? (bool)is->m_poly->m_flags.m_bit31 : false;
+}
+
+/* the hits under a point handled: the volumetric ones kept and their smoke or gas taken, the water
+ * handled, any other hit -- a SEAL's only when it is down (2) or dead (8), and none of them for a
+ * player -- a candidate for the ground: the highest at or under the point's height plus the given
+ * one, else the lowest; the ripples stopped when the SEAL left the water, the ground dropped when it
+ * lies over 20 above the node, and for the camera's SEAL its regions updated, the node's bit 6 set
+ * by the polygon's bit 31 and a SEAL underfoot marked (SOCOM 1's SealProcessAltitude, SOCOM II's
+ * player test, the water's flag passed on and the node's flags new; OVL2 0x5B5D40: SealGetAltitude's
+ * tail).
+ * Byte-exact (round 47; 0x454 against 0x45C in round 46): the 8 bytes were the camera's block, not
+ * the early return -- the target loads the world's camera into a saved register ahead of the first
+ * GetRegion call, a local of its own (`w = global; w->g(call())`); then the saved registers (this s3,
+ * best s2, lowest s1, the counter s0, the hit s4, the material s5): `tools/igreplay.py --want` with
+ * the hit as the only mover put it after the material's temporary (136 of 146 placements, none
+ * among the named locals), so the hit is an inline's result -- the element's address through
+ * GetIntersect below merges into a temporary numbered after every named local; and the last two
+ * (the in-water byte's store scheduled ahead of `best = 0`, `add.s $f20,$f0,$f20`): best declared
+ * after the water's reset, the height plus the point's a float local of its own (`f = pos->y + f`,
+ * `f += pos->y` and `f = f + pos->y` all give `$f20,$f20,$f0`) */
+/* the hit at an index (an inline: its result is the loop's hit) */
+static inline zdb::IntersectStruct *GetIntersect(zdb::DiIntersect *di, int i)
+{
+    return &di->m_Intersects[i];
+}
+
+zdb::IntersectStruct *CZSealBody::SealProcessAltitude(zdb::DiIntersect *di, const CPnt3D *pos, float f)
+{
+    m_volumetricAltitudes.clear();
+    if (m_isingas)
+        SetInGas(false);
+    if (m_isinsmoke)
+        SetInSmoke(false);
+    if (!di)
+        return 0;
+    bool wasin = m_inwater;
+
+    m_inwater = false;
+    m_waterdepth = 0.0f;
+    zdb::IntersectStruct *best = 0;
+    zdb::IntersectStruct *lowest = 0;
+
+    if (di->m_Cnt) {
+        float top = pos->y + f;
+
+        for (int i = 0; i < di->m_Cnt; i++) {
+            zdb::IntersectStruct *hit = GetIntersect(di, i);
+            CMaterialEx *mat = MaterialEx(hit->GetMaterial());
+
+            if (mat && mat->IsVolumetric()) {
+                m_volumetricAltitudes.push_back(*hit);
+                HandleSmokeAndGas(hit, mat, pos);
+            } else if (mat && mat->IsLiquid())
+                HandleWater(hit, mat, pos, wasin);
+            else {
+                CZSealBody *seal = GetSeal(hit->m_node);
+
+                if (seal) {
+                    if (IsPlayer())
+                        continue;
+                    if (seal->m_state != 2 && seal->m_state != 8)
+                        continue;
+                }
+                float y = hit->m_pos.y;
+
+                if (y <= top && (!best || !(y < best->m_pos.y)))
+                    best = hit;
+                if (!lowest || !(lowest->m_pos.y < y))
+                    lowest = hit;
+            }
+        }
+    }
+    if (!best)
+        best = lowest;
+    if (wasin && !m_inwater) {
+        StopRipple(m_belowwateranim);
+        StopRipple(m_inwateranim);
+    }
+    if (best && !(best->m_pos.y <= 20.0f + m_node->m_matrix.m_matrix[3][1]))
+        best = 0;
+    if (best) {
+        if (appCamera->m_bc == this) {
+            zdb::CCamera *cam = zdb::CWorld::m_world->m_camera;
+
+            cam->SetPlayerCanSeeRegions(best->GetRegion());
+            CheckForRegionTrigger(best->GetRegion());
+        }
+        bool b = PolyBit31(best);
+
+        GetNode()->m_socom2_a1_bits.bit6 = b;
+        if (GetSeal(best->m_node))
+            m_bit8 = true;
+    }
+    return best;
+}
 /* (zdb::CWorld::GetAltitudes, OVL1 0x31DEA0: SOCOM II's takes no height -- none of its five callers
  * sets $f12 -- znode.h's since the zdb lane dropped the float; called by name) */
 
@@ -4936,5 +5297,5 @@ void CZSealBody::SealGetAltitude(CPnt3D *pos, float f)
     hits = world->GetAltitudes(pos);
     SetAltitudeCharacters(di, chars);
     node->SetActive(active);
-    func_005B5D40(this, hits, pos, f);
+    SealProcessAltitude(hits, pos, f);
 }
