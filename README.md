@@ -2062,6 +2062,20 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the HUD, round 48** (CWeaponSel::HandleOpenState at last -- hud_weaponsel.cpp whole --, TickFullScreenMap):
+  - a constant assigned before a call is taken from a register already holding that value (`andi s0,v1,0xff` for a bool
+    true), assigned after the call -- which kills that register -- it is a fresh daddiu landing in a later delay slot
+    (HandleOpenState 0x21BDA0, open since round 16: the first button read into an int local before `select = true`);
+  - a local static inside an inline is one guarded object shared by every caller, and SOCOM 1's DWARF lists it under the
+    first caller only (HandleScrolling's boxFallback); a float "literal" with a zero low half loaded from the unit's .data
+    with lwc1 is a static variable -- MW builds such literals with lui + mtc1 (s_fScrollSpeed 0x3DC498);
+  - a pointer to one member (`const float *z = &ptDir.z`) keeps a stack struct in memory with the other members read
+    sp-relative, a plain named struct is scalarised; MW hoists a stack member's address computation to the top of its
+    basic block, so moving the declaration does not change its interference; for constant x complex expression MW
+    generates the complex operand first, so the constant is numbered last and coloured first ($f0: ComputeNewRating's 0.5);
+  - the input bit of TickFullScreenMap 0x209EE0 needed hud_missioncams.cpp's `(bool)ctrl->m_input_enabled != false`;
+    HandleScrolling 0x20A120 OPEN on one swap at exactly K (z's 25 neighbours), GetScrollPermissions 0x20AAC0 on its
+    facing kept at sp+112 (build/scratch/hud-r48/ig/: the replay tools adapted to a worktree).
 - **Tells from the SEALs, round 40** (__sinit_seal_env.cpp, CanFire, GetLookQuat, the two-ray batch, the visible-bounds
   walk; 24 data rows named):
   - A STATIC'S `= cosf(K)` INITIALISERS, IN ORDER, EMIT `__sinit` BYTE-EXACT (0x668C10: the four facing cosines, `static
