@@ -544,27 +544,53 @@ void C2DString::SetFont(C2DFont *font)
 /* ---- MakePacket's layout (SOCOM II's, 0x361BD0-0x362B1F: a cursor walking the string and the
  * packet writer it feeds; the names ours) ---- */
 
-/* the cursor: the string, the pen's place, the next character, four counters, a stop flag, the
- * string's +0x8C flag (the colour's alpha scaled 1.5) and the colour it writes as ints */
+/* the cursor: the string, the pen's place, the next character, its glyph (a C2DGlyphRef: MakePacket's
+ * cursor deletes the owned glyph at its end, the reference's destructor), the glyph's piece by index
+ * and by address, whether the font set the colour, the bright flag ('#B' toggles it; the string's
+ * +0x8C seeds it) and the colour it writes as ints (round 50: the glyph reference and the piece read
+ * off 0x362350's GetGlyph(font, cursor + 0x10) and its piece walk) */
 class C2DStringCursor {
 public:
     C2DStringCursor(C2DString *str, int *color);
+    /* the next character with a glyph: newlines and colour codes taken on the way (0x362350) */
+    void SeekGlyph();
+    /* the next piece, else the next character's glyph (0x3625E0) */
+    void Advance();
+    /* the glyph's current piece taken, and the font's drop-shadow colour written for a glyph without
+     * its own (inline: SeekGlyph and Advance end alike). The glyph through a local: m_piece is then
+     * loaded after Get()'s ternary, the target's order (indexing Get()'s result evaluates the
+     * subscript first) */
+    void SetPiece()
+    {
+        C2DGlyph *g = m_glyph.Get();
+
+        m_pieceptr = &g->m_pieces[m_piece];
+        if (m_str->m_font->m_3c && !m_glyph.Get()->m_1a) {
+            m_colorSet = true;
+            m_color[0] = (int)m_str->m_font->m_48.x;
+            m_color[1] = (int)m_str->m_font->m_48.y;
+            m_color[2] = (int)m_str->m_font->m_48.z;
+
+            float alpha = m_str->m_color[3];
+            float cap = (float)(int)(128.0f * m_str->m_font->m_54);
+
+            if (cap < alpha)
+                alpha = cap;
+            m_color[3] = (int)alpha;
+        }
+    }
 
     C2DString *m_str;   // 0x0
     float m_x;   // 0x4
     float m_y;   // 0x8
     const char *m_p;   // 0xc
-    int m_10;   // 0x10
-    int m_14;   // 0x14
-    int m_18;   // 0x18
-    int m_1c;   // 0x1c
-    bool m_done;   // 0x20
+    C2DGlyphRef m_glyph;   // 0x10
+    int m_piece;   // 0x18
+    C2DGlyphPiece *m_pieceptr;   // 0x1c
+    bool m_colorSet;   // 0x20
     unsigned char m_bright;   // 0x21
     int *m_color;   // 0x24
 };
-
-/* the cursor's line set up (0x362350; no row named yet) */
-extern "C" void func_00362350(C2DStringCursor *cursor);
 
 /* the colour's alpha scale for a bright string (.data 0x3E0338: a variable, read with lwc1; the
  * name ours) */
@@ -573,48 +599,131 @@ static float s_brightalpha = 1.5f;
 /* the cursor at the string's place (its position and offset, whole pixels), its first shown
  * character, centred or right-aligned by the measured length; its line set up and, unless the
  * string is empty, the colour written (the alpha 1.5 times for a bright string) (0x362900; the
- * name ours -- MakePacket's; round 49). The bright alpha's product written alpha first: scale first
- * swaps its FPR pair.
- * OPEN, 4 instructions, FPRs only: the centring's `0.5f * m_length` -- the target loads the length
- * into f2 and the 0.5 into f1, MW here the other way round. Its replay (tools/igreplay.py --want)
- * needs the length's node numbered before the position's float temporaries (at most v38.5 of
- * v32-v45) and the constant after it. Tried: either operand order, `m_x = m_x - ...`, a named local
- * for the length or the half (in the block, or declared at the top and assigned there), inline
- * helpers holding the length in a named local, `/ 2.0f` and `/ 2` (5 off) */
+ * name ours -- MakePacket's; round 49). Both products read the string's member through an inline
+ * accessor (round 50: open since round 49 on `0.5f * m_length`'s FPR pair -- the inline call is
+ * expanded ahead of the expression, so the length is numbered before the 0.5 and the alpha before
+ * the scale, the target's registers with the constant still the left operand; read plainly, either
+ * operand order swapped a pair) */
 C2DStringCursor::C2DStringCursor(C2DString *str, int *color)
+    : m_str(str), m_x((float)(int)(str->m_posx + str->m_socom2_7c)),
+      m_y((float)(int)(str->m_posy + str->m_socom2_80)), m_p(str->m_string + str->m_firstCharPos),
+      m_piece(0), m_pieceptr(0), m_colorSet(false), m_bright(0), m_color(color)
 {
-    m_str = str;
-    m_x = (float)(int)(str->m_posx + str->m_socom2_7c);
-    m_y = (float)(int)(str->m_posy + str->m_socom2_80);
-    m_p = str->m_string + str->m_firstCharPos;
-    m_10 = 0;
-    m_14 = 0;
-    m_18 = 0;
-    m_1c = 0;
-    m_done = false;
-    m_bright = 0;
-    m_color = color;
     m_bright = str->m_socom2_8c;
     if (str->m_isCentered || str->m_socom2_6a) {
         str->UpdatePos();
         if (str->m_isCentered)
-            m_x -= 0.5f * str->m_length;
+            m_x -= 0.5f * str->GetLength();
         if (str->m_socom2_6a)
             m_x -= str->m_length;
     }
-    func_00362350(this);
-    if (*m_p && !m_done) {
+    SeekGlyph();
+    if (*m_p && !m_colorSet) {
         if (m_bright) {
             m_color[0] = (int)m_str->m_color[0];
             m_color[1] = (int)m_str->m_color[1];
             m_color[2] = (int)m_str->m_color[2];
-            m_color[3] = (int)(m_str->m_color[3] * s_brightalpha);
+            m_color[3] = (int)(s_brightalpha * m_str->GetTrans());
         } else {
             m_color[0] = (int)m_str->m_color[0];
             m_color[1] = (int)m_str->m_color[1];
             m_color[2] = (int)m_str->m_color[2];
             m_color[3] = (int)m_str->m_color[3];
         }
+    }
+}
+
+/* the cursor moved on (0x3625E0; the name ours): after a drop-shadow piece the string's own colour
+ * back (the bright alpha as the constructor's), else the glyph's next piece, else the next
+ * character -- a '#B' after it toggles the bright flag and moves on again (one byte: the next call's
+ * UTF8CharLen skips the 'B'), any other advances the pen by the passed character's width and seeks
+ * the next glyph. An if / else chain: early returns each branch to a shared `b` (2 words).
+ * OPEN, 0x328 against 0x320: SetPiece's shadow alpha, as SeekGlyph's (see there) */
+void C2DStringCursor::Advance()
+{
+    if (m_colorSet) {
+        m_colorSet = false;
+        if (m_bright) {
+            m_color[0] = (int)m_str->m_color[0];
+            m_color[1] = (int)m_str->m_color[1];
+            m_color[2] = (int)m_str->m_color[2];
+            m_color[3] = (int)(s_brightalpha * m_str->GetTrans());
+        } else {
+            m_color[0] = (int)m_str->m_color[0];
+            m_color[1] = (int)m_str->m_color[1];
+            m_color[2] = (int)m_str->m_color[2];
+            m_color[3] = (int)m_str->m_color[3];
+        }
+    } else if (m_piece + 1 < m_glyph.Get()->m_pieces.size()) {
+        m_piece++;
+        SetPiece();
+    } else {
+        const char *p = m_p;
+
+        m_p += UTF8CharLen(p);
+        if (*m_p == '#' && m_p[1] == 'B') {
+            m_p++;
+            m_bright = !m_bright;
+            if (*m_p)
+                Advance();
+        } else {
+            m_x += m_str->GetCharWidth(UTF8GetChar(p));
+            SeekGlyph();
+        }
+    }
+}
+
+/* the next character with a glyph (0x362350; the name ours): a newline puts the pen back at the
+ * string's left and a line down (the spacing whole pixels) and skips one space after it, each '#B'
+ * toggles the bright flag, a character the font has no glyph (or no pieces) for is skipped; at a
+ * glyph its first piece is taken, and when the font colours its glyphs and this one has no colour of
+ * its own the font's drop-shadow colour is written (C2DFont's m_3c, m_48 and m_54: the faces rdr's
+ * "dropshadow" block), its alpha the string's capped at the shadow's opacity (whole).
+ * OPEN, 0x298 against 0x290, one spot shared with Advance (SetPiece's): the shadow alpha's FPRs --
+ * the target colours the 128 first ($f0, live across the three colour stores, which take $f1) and
+ * schedules the last store's address after the cvt (two alignment nops here follow from it); MW numbers
+ * the constant before the opacity's load whichever side it is written on (it canonicalises the
+ * constant to the first operand), and the replay (tools/igreplay.py --want 53=f0,54=f1,46=f1 --movers
+ * 54) wants the load anywhere below it. Tried: an accessor (C2DFont::GetShadowOpacity, folded away --
+ * unlike the constructor's GetLength), static helpers taking the font or the opacity (folded), a named
+ * opacity local (propagated, or computed at the top when declared first), the cap or the alpha first,
+ * both declared uninitialised, a font local, MIN(), a ternary. Matched on the way: the newline's
+ * spacing through an int local (the target's FPR pair), `*m_p == 0` in the colour-code loop (`!*m_p`
+ * makes MW sign-extend the reloaded char again before the '#' test: 2 words), break (not return) out of
+ * the walk at a glyph (2 words), a glyph local for the piece-count test (6 words), the character code
+ * an unsigned short local (the andi), SetPiece's glyph local (the piece pointer's load order) */
+void C2DStringCursor::SeekGlyph()
+{
+    while (*m_p) {
+        if (*m_p == '\n') {
+            m_x = (float)(int)(m_str->m_posx + m_str->m_socom2_7c);
+            int spacing = (int)m_str->GetSpacing();
+
+            m_y += spacing;
+            m_p++;
+            if (*m_p == ' ')
+                m_p++;
+            continue;
+        }
+        while (*m_p == '#' && m_p[1] == 'B') {
+            m_p += 2;
+            m_bright = !m_bright;
+            if (*m_p == 0)
+                return;
+        }
+
+        const char *p = m_p;
+        unsigned short code = UTF8GetChar(p);
+
+        m_str->m_font->GetGlyph(&m_glyph, code);
+        C2DGlyph *g = m_glyph.Get();
+
+        if (g && g->m_pieces.size()) {
+            m_piece = 0;
+            SetPiece();
+            break;
+        }
+        m_p += UTF8CharLen(p);
     }
 }
 

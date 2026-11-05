@@ -231,6 +231,12 @@ public:
     void MakePacket(zdb::CTextureRelocMgr *mgr, int depth);
     /* a character's advance in pixels (SOCOM II's, 0x363C20; the name ours) */
     int GetCharWidth(unsigned short c);
+    /* the measured length and the alpha (inline, the names ours: the text cursor's constructor
+     * 0x362900 reads both through accessors -- an inline call in an expression is expanded ahead of
+     * it, so each member load is numbered before the constant it is multiplied by, the target's
+     * FPR pair in both products; round 50) */
+    float GetLength() const { return m_length; }
+    float GetTrans() const { return m_color[3]; }
 
     C2DFont *m_font;   // 0x18
     char *m_string;   // 0x1c
