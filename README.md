@@ -2065,6 +2065,20 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the HUD, round 56** (CRatingMatch::AddTeam, open since round 19 -- mp_rating.cpp whole; AddJamo; GetGlyph):
+  - A VARIABLE THE TARGET KEEPS IN v0 FROM THE ENTRY TO `jr ra` IS THE RETURN VALUE -- adding the return changes the whole
+    colouring (CRatingMatch::AddTeam 0x23A170 returns the new team: 30 off to 0; as a void function `team` went to a0 and
+    the parameters sat at exactly K = 25 neighbours, deferred); `tools/igreplay.py --drop A-B` finds the single
+    interference that holds a node at K -- a drop that gives the target's registers names the live range that differs
+    (`--drop 33-36` gave AddTeam's before any source change);
+  - frame slots go by scope: an inline constructor's by-value parameter took the slot above a function-scope local, a
+    loop-scoped local the slot above that parameter -- naming the argument first makes the copy that local's own slot
+    (CHangulFont::AddJamo 0x359820); a class temporary made for a call argument goes in a later frame group under the
+    named locals -- a target with it above them declared it as a named local first (C2DFont::GetGlyph 0x35A3A0: frame 0x60
+    to 0x50, an empty C2DChar() constructor);
+  - defining a class's key function makes the unit emit its table's this-adjusting thunks (zui_2d.cpp now emits
+    0x37D060 / 0x37D070); four this-tests on a vector freed inside a deleted object's written destructor need level 6
+    when the vector is a derived class (~CUIListBox 0x375710 -- a "Level 6, or 8?" witness).
 - **Tells from the weapons, round 31** (zVid_Swap; InitializeWeapons, open since round 17; AttachDecal, since round 25;
   CopyBuffer, since round 13):
   - READ THE BRANCHES BEFORE TRUSTING A SWITCH'S SEMANTICS: CopyBuffer 0x3C36D0's kind-5 case had been inverted for 18

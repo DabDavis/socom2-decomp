@@ -2113,6 +2113,7 @@
 0x00239CA0 GetNewRating__12CRatingMatchFiPf
 0x00239D40 Compute__12CRatingMatchFv
 0x0023A030 AddPlayer__12CRatingMatchFiiif
+0x0023A170 AddTeam__12CRatingMatchFiibf
 0x0023A240 __dt__12CRatingMatchFv
 0x0023A2C0 __ct__12CRatingMatchFv
 0x0023A2E0 GetConfidence__5CRecoFv
@@ -6113,6 +6114,7 @@
 0x00359590 Load__13C2DBitmapPolyFffffffffPQ23zdb8CTexture
 0x00359640 __ct__13C2DBitmapPolyFv
 0x00359740 advance_to__Q23std38__list_imp<PCv,Q23std14allocator<PCv>>FUi
+0x00359820 AddJamo__11CHangulFontFP8C2DGlyphi4JAMOP7CLayouti
 0x003599D0 Compose__11CHangulFontFP8C2DGlyph7C2DCharP7C2DFont
 0x0035A140 __ct__Q221@unnamed@c2dfont_cpp@10CFontPointFRCQ221@unnamed@c2dfont_cpp@10CFontPoint
 0x0035A160 SetY__Q221@unnamed@c2dfont_cpp@10CFontPointFi
@@ -6127,6 +6129,7 @@
 0x0035A2B0 func_0035A2B0
 0x0035A2D0 __dt__10CJamoGlyphFv
 0x0035A350 __ct__10CJamoGlyphFv
+0x0035A3A0 GetGlyph__7C2DFontFP11C2DGlyphRefUs
 0x0035A650 Unload__7C2DFontFv
 0x0035A7B0 GetWidth__8C2DGlyphFv
 0x0035A840 ReadRect__FPC5_zrdrPC5_zrdr
