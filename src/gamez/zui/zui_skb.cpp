@@ -869,42 +869,44 @@ _zrdr *FetchMissionFontsRdr();
  * the key bitmaps into PrepKeyBitmaps): its node made, its two backgrounds' and every background
  * piece's texture prepared, the caps' fonts loaded, the four special key bitmaps loaded, rectangles
  * 3 and 4's bitmaps loaded and placed, and every key's props prepared.
- * OPEN, 0x350 of 0x374 (written round 27): every call and its arguments the target's; off -- (1) the
- * piece lists' loop: the target keeps &m_lists[i] itself as the induction (s0 from this+0x184,
- * +12 a pass) and enters the inner loop at its bottom test through a preheader after the return
- * (the UI's round-22 nested-accessor rule), here the base steps and the entry is threaded (the
- * pieces through m_sources[i] in the body, a list pointer: no change); (2) the caps' font test: the
- * target computes the short-form test once as a stored, negated, narrowed bool (`sltu; xori 1;
- * andi 0xff`) for both size() and c_str() -- include/string's open LastMessage shape (its size()
- * tests is_long(), c_str() !is_long()), the MSL lane's */
+ * Byte-exact since round 29 (open since round 27; the caps' font test the target's since the MSL
+ * headers' round 31): the piece lists walked through two reference-returning accessors, the target
+ * list `m_texLists[i]` at each use (CSkbTexLists::operator[]: MW strength-reduces the accessor's
+ * `this + 0x184` as the induction's base, s0 stepping 12 -- a reference local, or `m_lists[i]`
+ * spelled out, steps `this` and adds 0x184 in a register of its own) and the piece read
+ * `m_sources.Row(c)[j]` inside the inner body (the row hoisted out of it as an invariant: the UI's
+ * round-22 nested-accessor rule, the loop entered at its bottom test through a preheader after the
+ * return -- a row reference taken before the loop rotates it); the caps' fonts through CSkbFonts'
+ * conversion, as the caps are (the index added first, `addu v0,v0,s5`); rectangle 3's width and
+ * height taken into locals ahead of func_00397890's call (the target holds them in s1 / s0 across
+ * it -- read in the call, MW loads them after) */
 void CSoftKeyboard::PrepForDisplay(zdb::CTextureRelocMgr *mgr, C2DFont *font)
 {
     m_node = func_003978D0(m_name);
     m_17c = PrepTexture(m_background.c_str(), mgr);
     m_180 = PrepTexture(m_shiftBackground.c_str(), mgr);
     for (int i = 0; i < 4; i++) {
-        std::vector<zdb::CTexHandle *> &list = m_texLists.m_lists[i];
-
-        list.clear();
-        CSkbBgPieces &pieces = m_sources[(unsigned char)i];
-        int n = pieces.size();
+        m_texLists[i].clear();
+        int n = m_sources.Row((unsigned char)i).size();
 
         for (int j = 0; j < n; j++)
-            list.push_back(PrepTexture(pieces[j].m_texture.c_str(), mgr));
+            m_texLists[i].push_back(PrepTexture(m_sources.Row((unsigned char)i)[j].m_texture.c_str(), mgr));
     }
     for (int k = 0; k < 3; k++) {
         unsigned char c = k;
         CSaferStr &name = m_caps[c].m_texture;
 
         if (name.size())
-            m_fonts.m_fonts[c].Load(FetchMissionFontsRdr(), name.c_str());
+            m_fonts[c].Load(FetchMissionFontsRdr(), name.c_str());
     }
     PrepKeyBitmaps(&m_1c0, &m_270, 1, "SkbRecipState0.tif", "SkbRecipState1.tif", mgr);
     PrepKeyBitmaps(&m_320, &m_3d0, 11, "JapWideKeyCap.tif", "JapNarrowKeyCap.tif", mgr);
     CSkbRect &r3 = m_rects[3];
+    int w3 = r3.m_size[0];
 
-    if (r3.m_size[0]) {
-        zdb::CNode *node = SkbLoadBitmap(&m_480, m_node, r3.m_size[0], r3.m_size[1], func_00397890(), mgr);
+    if (w3) {
+        int h3 = r3.m_size[1];
+        zdb::CNode *node = SkbLoadBitmap(&m_480, m_node, w3, h3, func_00397890(), mgr);
 
         m_480.Slot10(node);
         m_480.m_node->SetPosition((float)r3.m_pos[0], (float)r3.m_pos[1], 0.0f);
