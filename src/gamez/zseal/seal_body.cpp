@@ -482,11 +482,6 @@ bool CZSealBody::CanTurn()
     return r;
 }
 
-extern "C" {
-/* the top blend popped (OVL2 0x589AA0, SOCOM 1's PopBlend's place; defined below) */
-CZBodyAnimBlend *func_00589AA0(CZSealBody *seal);
-}
-
 /* a blend's anims (anim.cpp's CBlendable, the kit lane's: four 12-byte slots -- only the test here),
  * and the animation set's strafe blendables (SOCOM 1's DWARF holds them as pointers, m_strafeL_anims
  * 0x6c and m_strafeR_anims 0x70 after the move ones; SOCOM II's set holds the 0x30-byte blendables
@@ -554,7 +549,7 @@ CZBodyAnimBlend *CZSealBody::StandStill(float x, float z)
             m_last_foot = last;
         }
         if (!IsCurrentBlend((AnimType)1)) {
-            func_00589AA0(this);
+            PopBlend();
             func_00588BC0(this, (AnimType)1, 0, 0, 0);
         }
     }
@@ -866,11 +861,9 @@ extern "C" bool func_0057F2A0(CZSealBody *seal)
 }
 
 extern "C" {
-/* two anim types the code reads as variables (OVL1 data, -1 in the image) and the top blend popped,
- * the new top returned (OVL2 0x589AA0, not written yet) */
+/* two anim types the code reads as variables (OVL1 data, -1 in the image) */
 extern short data_003DEAE0;
 extern short data_003DEF60;
-CZBodyAnimBlend *func_00589AA0(CZSealBody *seal);
 }
 
 /* the blends' count (an inline: unsigned, as the target's `sltiu` compares it) */
@@ -888,7 +881,7 @@ extern "C" void func_0057F310(CZSealBody *seal)
     CBodyAnimBlendStack *stack = &seal->m_blends;
 
     while (BlendCount(stack) > 1 && n > 0) {
-        b = func_00589AA0(seal);
+        b = seal->PopBlend();
         n--;
     }
     if (n <= 0)
@@ -924,7 +917,7 @@ extern "C" CZBodyAnimBlend *func_0057E540(CZSealBody *seal)
     CBodyAnimBlendStack *stack = &seal->m_blends;
 
     while (BlendCount(stack) > 1 && n > 0) {
-        b = func_00589AA0(seal);
+        b = seal->PopBlend();
         n--;
     }
     if (n <= 0)
@@ -1583,7 +1576,7 @@ CZBodyAnimBlend *CZSealBody::SetStanceIdle(AnimType type)
     CBodyAnimBlendStack *stack = &m_blends;
 
     while (BlendCount(stack) > 1 && n > 0) {
-        b = func_00589AA0(this);
+        b = PopBlend();
         n--;
     }
     if (n <= 0)
@@ -1690,7 +1683,7 @@ extern "C" bool func_00580360(CZSealBody *seal, float t)
         CBodyAnimBlendStack *stack = &seal->m_blends;
 
         while (BlendCount(stack) > 2 && n > 0) {
-            b = func_00589AA0(seal);
+            b = seal->PopBlend();
             n--;
         }
         if (n <= 0)
@@ -1717,7 +1710,7 @@ void CZSealBody::ClimbOver(float)
         CBodyAnimBlendStack *stack = &m_blends;
 
         while (BlendCount(stack) > 1 && n > 0) {
-            b = func_00589AA0(this);
+            b = PopBlend();
             n--;
         }
         if (n <= 0)
@@ -1742,7 +1735,7 @@ extern "C" CZBodyAnimBlend *func_0057F690(CZSealBody *seal)
     CBodyAnimBlendStack *stack = &seal->m_blends;
 
     while (BlendCount(stack) > 1 && n > 0) {
-        b = func_00589AA0(seal);
+        b = seal->PopBlend();
         n--;
     }
     if (n <= 0)
@@ -1784,7 +1777,7 @@ extern "C" CZBodyAnimBlend *func_0057F3E0(CZSealBody *seal)
     CBodyAnimBlendStack *stack = &seal->m_blends;
 
     while (BlendCount(stack) > 1 && n > 0) {
-        b = func_00589AA0(seal);
+        b = seal->PopBlend();
         n--;
     }
     if (n <= 0)
@@ -1810,7 +1803,7 @@ extern "C" CZBodyAnimBlend *func_0057F880(CZSealBody *seal)
     CBodyAnimBlendStack *stack = &seal->m_blends;
 
     while (BlendCount(stack) > 1 && n > 0) {
-        b = func_00589AA0(seal);
+        b = seal->PopBlend();
         n--;
     }
     if (n <= 0)
@@ -1845,7 +1838,7 @@ void CZSealBody::ClearStack(unsigned int count, bool prone)
     CBodyAnimBlendStack *stack = &m_blends;
 
     while (BlendCount(stack) > count && n > 0)
-        b = func_00589AA0(this), n--;
+        b = PopBlend(), n--;
     if (n <= 0)
         b = (CZBodyAnimBlend *)func_00555170((char *)this + 0x1c0);
     else if (prone) {
@@ -1929,13 +1922,13 @@ CZBodyAnimBlend *CZSealBody::ClearToBase(bool pop)
     while (SignedBlendCount(stack) > 1 && n > 0) {
         if (IsCurrentBlend((AnimType)1) || IsCurrentBlend((AnimType)18) || IsCurrentBlend((AnimType)26))
             break;
-        func_00589AA0(this);
+        PopBlend();
         n--;
     }
     if (n <= 0)
         return (CZBodyAnimBlend *)func_00555170((char *)this + 0x1c0);
     if (pop && SignedBlendCount(stack) > 1)
-        func_00589AA0(this);
+        PopBlend();
     ((CZBodyAnimBlend *)func_00555170(&m_blends))->m_ctrl = 0;
     m_desiredStance = STANCE_PRONE;
     return (CZBodyAnimBlend *)func_00555170((char *)this + 0x1c0);
@@ -2009,7 +2002,7 @@ extern "C" void func_00579DA0(CZSealBody *seal, int a)
         CBodyAnimBlendStack *stack = &seal->m_blends;
 
         while (BlendCount(stack) > 2 && n > 0) {
-            b = func_00589AA0(seal);
+            b = seal->PopBlend();
             n--;
         }
         if (n <= 0)
@@ -2193,7 +2186,7 @@ CZBodyAnimBlend *CZSealBody::InStateHang()
         CBodyAnimBlendStack *stack = &m_blends;
 
         while (!IsCurrentBlend((AnimType)34) && SignedBlendCount(stack) > 1)
-            func_00589AA0(this);
+            PopBlend();
         if (!IsCurrentBlend((AnimType)34))
             func_00588BC0(this, (AnimType)34, 4, 0, 0);
         r = (CZBodyAnimBlend *)func_00555170(&m_blends);
@@ -2224,7 +2217,7 @@ CZBodyAnimBlend *CZSealBody::InStateClimbLadder()
         func_00588BC0(this, (AnimType)45, 5, 0, 0);
     if (rate < 0.0f && pos.y < 1.0f + m_alt) {
         if (IsCurrentBlend((AnimType)45))
-            func_00589AA0(this);
+            PopBlend();
         return (CZBodyAnimBlend *)func_00588BC0(this, (AnimType)44, 0, 1, 0);
     }
     CZBodyAnimBlend *b = (CZBodyAnimBlend *)func_00555170(&m_blends);
@@ -2347,7 +2340,7 @@ CZBodyAnimBlend *CZSealBody::SealAnim(bool pop)
             top->m_tfrac = 1.0f;
             return top;
         }
-        b = func_00589AA0(this);
+        b = PopBlend();
         if (!b)
             return 0;
         if (cur == AnimTypes::ClimbOver && m_airborne && !(m_posW.y <= m_alt)) {
@@ -2421,7 +2414,7 @@ CZBodyAnimBlend *CZSealBody::SealAnim(bool pop)
         CBodyAnimBlendStack *stack = &m_blends;
 
         while (BlendCount(stack) > 1 && n > 0) {
-            b = func_00589AA0(this);
+            b = PopBlend();
             n--;
         }
         if (n <= 0)
@@ -2478,8 +2471,10 @@ extern "C" void func_00585FF0(CZSealBody *seal)
  * the length turned into an angle's fraction ((2 / pi) asin, kept within 0 and 1) and the other its
  * complement, the pair's length's inverse left in a static; the length returned, at most 1 (OVL2
  * 0x583350, new in SOCOM II: the crouched and standing move controls 0x582D10, 0x583030 ask it with
- * their throttles swapped -- `this` unread; the name ours) */
-extern "C" float func_00583350(CZSealBody *seal, float *a, float *b, float x, float z)
+ * their throttles swapped -- `this` unread; the name ours). The parameters interleaved, pointer,
+ * float, pointer, float: the registers are the same either way, but the callers set them up in this
+ * order (a1, $f12, a2, $f13 -- round 49, CrouchMoveControl) */
+extern "C" float func_00583350(CZSealBody *seal, float *a, float x, float *b, float z)
 {
     static float inv = 1.0f;
 
@@ -2509,6 +2504,145 @@ extern "C" float func_00583350(CZSealBody *seal, float *a, float *b, float x, fl
     inv = 1.0f / inv;
     return len;
 }
+
+extern "C" {
+/* every anim of a list that a blendable holds played at a rate scaled (OVL2 0x58BAB0, seal_cfg.cpp's) */
+void func_0058BAB0(CZSealBody *seal, CActiveAnimList *list, CBlendable *blendable, float scale);
+}
+
+/* the move blendables of the bound set (anim.cpp's AnimSet holds them whole from 0x60: a view, the
+ * names SOCOM 1's) */
+struct AnimSetMoves {
+    unsigned char _0[0x60];
+    CBlendable m_move_anims;   // 0x60
+    CBlendable m_moveback_anims;   // 0x90
+    CBlendable m_strafeL_anims;   // 0xc0
+    CBlendable m_strafeR_anims;   // 0xf0
+    CBlendable m_crouchmove_anims;   // 0x120
+    CBlendable m_crouchmoveback_anims;   // 0x150
+    CBlendable m_crouchstrafeL_anims;   // 0x180
+    CBlendable m_crouchstrafeR_anims;   // 0x1b0
+};
+
+/* the standing move: the throttles split by 0x583350 (the strafe's share and the length); outside the
+ * dead zone the forward throttle mixes the move anims (the back ones, played in reverse, for a negative
+ * one) at the length unless the strafe is whole, and the strafe throttle the strafe anims at its share;
+ * nothing mixed, the blends cleared to one (ClearStack(1, true) inlined) and the top returned; else the
+ * strafe's anims in the mix get their fraction's step zeroed and the mix becomes the top blend's (OVL2
+ * 0x583030; SOCOM 1's MoveControl, its weights' split moved out to 0x583350).
+ * OPEN, 12 structural differences (the size right, round 49): the target reloads the strafe's share
+ * from its stack slot for each strafe MixAnims (`lwc1 $f13,108(sp)` first in the call's set-up) where
+ * MW here keeps the compare's load in $f13 for the right strafe's call, and it branches `bc1t` to the
+ * left strafe's pick at the end (the if/else, the swapped if and the ternary all give `bc1f`); swapped
+ * declarations, `> 0.0f`, the length declared apart, the weights as an array or through a `const
+ * float &` do not give it (build/scratch/seal-r49/v_movecontrol*.py). The split's a2 after $f12 is
+ * 0x583350's parameter order, (seal, a, x, b, z) -- CrouchMoveControl matches with it */
+CZBodyAnimBlend *CZSealBody::MoveControl(float z, float x)
+{
+    CZBodyAnimBlend *top = (CZBodyAnimBlend *)func_00555170(&m_blends);
+    float side;
+    float fwd;
+
+    newanims.Clear();
+
+    float len = func_00583350(this, &side, x, &fwd, z);
+
+    if (!(fabsf(z) <= data_003F3428) && side < 1.0f) {
+        if (!(z < 0.0f))
+            MixAnims(&newanims, &((AnimSetMoves *)m_animset)->m_move_anims, len, 1.0f);
+        else {
+            MixAnims(&newanims, &((AnimSetMoves *)m_animset)->m_moveback_anims, -len, 1.0f);
+            func_0058BAB0(this, &newanims, &((AnimSetMoves *)m_animset)->m_moveback_anims, -1.0f);
+        }
+    }
+    if (!(fabsf(x) <= data_003F3428) && !(side <= 0.0f)) {
+        if (!(x < 0.0f))
+            MixAnims(&newanims, &((AnimSetMoves *)m_animset)->m_strafeR_anims, len, side);
+        else {
+            MixAnims(&newanims, &((AnimSetMoves *)m_animset)->m_strafeL_anims, -len, side);
+            func_0058BAB0(this, &newanims, &((AnimSetMoves *)m_animset)->m_strafeL_anims, -1.0f);
+        }
+    }
+    if (!newanims.Begin()) {
+        ClearStack(1, true);
+        return (CZBodyAnimBlend *)func_00555170(&m_blends);
+    }
+
+    CBlendable *strafe;
+
+    if (!(x < 0.0f))
+        strafe = &((AnimSetMoves *)m_animset)->m_strafeR_anims;
+    else
+        strafe = &((AnimSetMoves *)m_animset)->m_strafeL_anims;
+    for (ACTIVE_ANIM *a = newanims.Begin(); a; a = newanims.Next())
+        if (strafe->Contains((AnimType)a->m_id))
+            a->m_dfrac = 0.0f;
+    top->SetBlendAnims(this, &newanims);
+    return top;
+}
+
+/* the crouched move: the throttles split by 0x583350; the quadrant's crouched blendable mixed at the
+ * length -- the right strafe, the move, the left strafe and the back move, the last two played in
+ * reverse -- the throttles and the two weights kept; nothing mixed, the blends cleared to two
+ * (ClearStack(2, true) inlined) and the top returned; else the right strafe's anims in the mix get
+ * their fraction's step at a half and the mix becomes the top blend's -- on a new quadrant the parts
+ * saved and both interpolations set to the representative anim's blend-in time (OVL2 0x582D10;
+ * SOCOM 1's CrouchMoveControl, its weights' split moved out) */
+CZBodyAnimBlend *CZSealBody::CrouchMoveControl(float z, float x)
+{
+    CZBodyAnimBlend *top = (CZBodyAnimBlend *)func_00555170(&m_blends);
+    float side;
+    float fwd;
+
+    newanims.Clear();
+
+    float len = func_00583350(this, &side, x, &fwd, z);
+
+    switch (m_quadrant) {
+    case 0:
+        MixAnims(&newanims, &((AnimSetMoves *)m_animset)->m_crouchstrafeR_anims, len, 1.0f);
+        break;
+    case 1:
+        MixAnims(&newanims, &((AnimSetMoves *)m_animset)->m_crouchmove_anims, len, 1.0f);
+        break;
+    case 2:
+        MixAnims(&newanims, &((AnimSetMoves *)m_animset)->m_crouchstrafeL_anims, -len, 1.0f);
+        func_0058BAB0(this, &newanims, &((AnimSetMoves *)m_animset)->m_crouchstrafeL_anims, -1.0f);
+        break;
+    case 3:
+        MixAnims(&newanims, &((AnimSetMoves *)m_animset)->m_crouchmoveback_anims, -len, 1.0f);
+        func_0058BAB0(this, &newanims, &((AnimSetMoves *)m_animset)->m_crouchmoveback_anims, -1.0f);
+        break;
+    }
+    m_f60 = x;
+    m_f64 = z;
+    m_f68 = side;
+    m_f6c = fwd;
+    if (!newanims.Begin()) {
+        ClearStack(2, true);
+        return (CZBodyAnimBlend *)func_00555170(&m_blends);
+    }
+
+    CBlendable *strafe = &((AnimSetMoves *)m_animset)->m_crouchstrafeR_anims;
+
+    for (ACTIVE_ANIM *a = newanims.Begin(); a; a = newanims.Next())
+        if (strafe->Contains((AnimType)a->m_id))
+            a->m_dfrac = 0.5f;
+    top->SetBlendAnims(this, &newanims);
+
+    short last = m_lastquadrant;
+
+    if (last >= 0 && last != m_quadrant) {
+        SaveParts();
+
+        float t = top->Representative()->m_anim->m_20;
+
+        m_interp1 = t;
+        m_interp2 = t;
+    }
+    return top;
+}
+
 
 /* the stance's change taken, once (OVL2 0x582500; SOCOM 1's, the false return its own block) */
 bool CZSealBody::StanceChanged()
@@ -2663,7 +2797,7 @@ CZBodyAnimBlend *CZSealBody::PickupBuddy(CZSealBody *buddy)
     CBodyAnimBlendStack *stack = &buddy->m_blends;
 
     while (BlendCount(stack) > 1 && n > 0) {
-        b = func_00589AA0(buddy);
+        b = buddy->PopBlend();
         n--;
     }
     if (n <= 0)
@@ -2687,7 +2821,7 @@ CZBodyAnimBlend *CZSealBody::PickupBuddy(CZSealBody *buddy)
     n = 12;
     stack = &m_blends;
     while (BlendCount(stack) > 1 && n > 0) {
-        b = func_00589AA0(this);
+        b = PopBlend();
         n--;
     }
     if (n <= 0)
@@ -2723,7 +2857,7 @@ CZBodyAnimBlend *CZSealBody::PutdownBuddy()
         CBodyAnimBlendStack *stack = &c->m_blends;
 
         while (BlendCount(stack) > 1 && n > 0) {
-            b = func_00589AA0(c);
+            b = c->PopBlend();
             n--;
         }
         if (n <= 0)
@@ -2747,7 +2881,7 @@ CZBodyAnimBlend *CZSealBody::PutdownBuddy()
         n = 12;
         stack = &m_blends;
         while (BlendCount(stack) > 1 && n > 0) {
-            b = func_00589AA0(this);
+            b = PopBlend();
             n--;
         }
         if (n <= 0)
@@ -2853,7 +2987,7 @@ CZBodyAnimBlend *CZSealBody::StabBuddy(CZSealBody *victim)
     CBodyAnimBlendStack *stack = &m_blends;
 
     while (BlendCount(stack) > 1 && n > 0) {
-        b = func_00589AA0(this);
+        b = PopBlend();
         n--;
     }
     if (n <= 0)
@@ -2904,7 +3038,7 @@ extern "C" CZBodyAnimBlend *func_00578D20(CZSealBody *seal, CZSealBody *victim)
     CBodyAnimBlendStack *stack = &victim->m_blends;
 
     while (BlendCount(stack) > 1 && n > 0) {
-        b = func_00589AA0(victim);
+        b = victim->PopBlend();
         n--;
     }
     if (n <= 0)
@@ -2973,7 +3107,7 @@ CZBodyAnimBlend *CZSealBody::RestrainBuddy(CZSealBody *victim)
     CBodyAnimBlendStack *stack = &m_blends;
 
     while (BlendCount(stack) > 1 && n > 0) {
-        b = func_00589AA0(this);
+        b = PopBlend();
         n--;
     }
     if (n <= 0)
@@ -3061,7 +3195,7 @@ extern "C" CZBodyAnimBlend *func_005784A0(CZSealBody *seal, CZSealBody *victim)
     CBodyAnimBlendStack *stack = &victim->m_blends;
 
     while (BlendCount(stack) > 1 && n > 0) {
-        b = func_00589AA0(victim);
+        b = victim->PopBlend();
         n--;
     }
     if (n <= 0)

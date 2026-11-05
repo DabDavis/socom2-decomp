@@ -174,6 +174,11 @@ enum SEAL_DEATH_TYPE {
     DEATH_BULLET = 5, DEATH_GHOST = 6, DEATH_FALLING = 7, DEATH_MAX = 8
 };
 
+/* the SEAL's life as the network reports it (a byte enum: 0x543F70 copies the field with `lb` and
+ * compares the copy after `andi 0xff`, SetNetLife compares the field itself with `lbu`; the names
+ * ours -- 2 and 3 down, 1 up) */
+enum NET_LIFE { NETLIFE_0 = 0, NETLIFE_UP = 1, NETLIFE_DOWN = 2, NETLIFE_DEAD = 3 };
+
 /* the orders (SOCOM 1's DWARF, a byte: only the size matters here) */
 enum FT_COMMAND { CMD_UNKNOWN = 0, CMD_ACTION = 1, CMD_LAST = 255 };
 
@@ -803,6 +808,9 @@ public:
     void SetLookFlags(unsigned int flags);
     void SetLookTimer(float t);
     void SetLookRate(float rate);
+    /* the throttles read off the pad (SOCOM 1's ThrottlesPreTick, after PreTick: OVL2 0x5966A0 --
+     * PostMortemPreTick calls it first) */
+    void ThrottlesPreTick(class CPad *pad, float dT);
     /* the speed a throttle gives along an axis (SOCOM 1's sealctrl.cpp; OVL2 0x592880: the body's
      * GetMaxZMotion/GetMaxXMotion) */
     float GetSpeedFromThrottle(float throttle, int axis);
@@ -890,7 +898,10 @@ public:
     float m_event_time[15];   // 0x1c8
     unsigned char _204[0x221 - 0x204];
     MENU_STATE m_menustate;   // 0x221 (as SOCOM 1's)
-    unsigned char _222[0x238 - 0x222];
+    unsigned char _222[0x22c - 0x222];
+    /* the weapon state's timer (SOCOM 1's m_wep_state, a CAiTimer at 0x22c in both builds: 0x543F70
+     * restarts it and runs it out) */
+    CAiTimer m_wep_state;   // 0x22c
     float m_bombpickuptimer;   // 0x238 (as SOCOM 1's: TickMPBomb sets it once a defusal starts)
     float m_weapon_pickup_timer;   // 0x23c (as SOCOM 1's: TickPickups waits it out before a weapon is offered)
     float m_240;   // 0x240: how long the reload button has been held (0x594B70; the name ours)
@@ -1236,6 +1247,9 @@ public:
     /* the kit's weapon picked for a fire mode's hint, whether one was (SOCOM 1's; OVL2 0x563470, the
      * SEALs' row -- the kit lane's CTFireMode::Begin calls it) */
     bool ChooseWeapon(CAiWepHint &hint);
+    /* the stance and pace factor on the aim (OVL2 0x5C9270, the kit lane's seal_kit.cpp, which reads
+     * the controller through a view of its own; 0x55F0A0 asks it for the spread) */
+    float GetAccuracyFactor();
     /* an enemy first seen by the squad called out, by its place on the player's clock (SOCOM 1's,
      * which took the CTarget; OVL2 0x5C9930, the kit lane's seal_sensors.cpp) */
     void EnemyCallout(CEntity *e, CEntity *player);
@@ -1925,6 +1939,14 @@ public:
     CZBodyAnimBlend *Crouch();
     CZBodyAnimBlend *Stand_0(int stance, int n, float t);
     CZBodyAnimBlend *Stand(int n);
+    /* the standing and crouched moves: the move and strafe blendables mixed by the throttles, the
+     * backward ones played in reverse; with nothing mixed the blends cleared to one (SOCOM 1's
+     * MoveControl and CrouchMoveControl: OVL2 0x583030, 0x582D10) */
+    CZBodyAnimBlend *MoveControl(float x, float z);
+    CZBodyAnimBlend *CrouchMoveControl(float x, float z);
+    /* the top blend popped, the new top returned (SOCOM 1's PopBlend: OVL2 0x589AA0 -- called where
+     * SOCOM 1's is, the SEALs' round 48; it hides CBody::PopBlend, which no SEAL code calls) */
+    CZBodyAnimBlend *PopBlend();
     /* the blends popped down to a count, twelve at most; when that worked and asked, the top blend's
      * control cleared and the SEAL asked to go prone (SOCOM 1's ClearStack, after PopBlend: OVL2
      * 0x58A5E0 -- SOCOM II adds the limit; the stances inline it) */
@@ -2314,8 +2336,12 @@ public:
     /* a motion the position code keeps (ComputeNextPosition and PostPreTick read and write it; the
      * collision tick 0x54F570 stops checking once its length is all but zero -- the name ours) */
     CPnt3D m_f44;   // 0xf44
-    unsigned char _f50[0xf68 - 0xf50];
-    /* two heights SealAnim 0x5870E0 resets to -99 before a state's control runs (the names ours) */
+    unsigned char _f50[0xf60 - 0xf50];
+    /* the crouched move's throttles as CrouchMoveControl 0x582D10 last took them (the names ours) */
+    float m_f60;   // 0xf60
+    float m_f64;   // 0xf64
+    /* two heights SealAnim 0x5870E0 resets to -99 before a state's control runs (the names ours; the
+     * crouched move keeps its two weights there) */
     float m_f68;   // 0xf68
     float m_f6c;   // 0xf6c
     unsigned char _f70[0xf74 - 0xf70];
@@ -2329,8 +2355,12 @@ public:
     unsigned char m_item;   // 0xf79
     /* the SEAL's life as the network reports it: 2 and 3 down, 1 up again (0x544210 sets it;
      * the names ours) */
-    unsigned char m_netlife;   // 0xf7a
-    unsigned char _f7b[0xf88 - 0xf7b];
+    NET_LIFE m_netlife;   // 0xf7a
+    unsigned char _f7b;
+    /* how long, online, the SEAL's network life has not been 1 (up): past 20 s it is ended
+     * (0x543F70 runs it by the time step at 0x2e0; the name ours) */
+    float m_f7c;   // 0xf7c
+    unsigned char _f80[0xf88 - 0xf80];
     float m_waterdepth;   // 0xf88 (SOCOM 1's 0xe70, by its use: in water a SEAL crouches only up to 8.5
                           // deep, 0x5857E0, and goes prone only up to 2, Prone)
     /* the feet's spots in the world while a turn in place pins one (0x54EA80 takes the right's
@@ -2480,7 +2510,12 @@ public:
     } m_climb;   // 0x1328
     AnimType idlehack;   // 0x1334 (SOCOM 1's 0xfa4: SetStanceIdle keeps the idle anim it pushes)
     short m_weapon_id;   // 0x1336: the weapon in hand, looked up in the AI's kind table (the name ours)
-    unsigned char _1338[0x133c - 0x1338];
+    /* the move's quadrant (UpdateQuadrant's: 0 right, 1 ahead, 2 left, 3 behind, as the crouched
+     * move's mix reads it; the name ours) */
+    short m_quadrant;   // 0x1338
+    /* the quadrant before it, -1 for none: the crouched move eases the parts into a new one (the name
+     * ours) */
+    short m_lastquadrant;   // 0x133a
     float m_133c;   // 0x133c: the rate m_fac falls at (0x59B870; the name ours)
     float m_1340;   // 0x1340: a float the ground probes read -- not 0, 0x54F410 keeps a probe's height
                     // (the constructor, 0x5483D0 and 0x54EDF0 set it; the name ours)
