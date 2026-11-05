@@ -1884,6 +1884,41 @@ extern "C" void func_00543B90(CZSealBody *seal)
         unit->IssueCommand(seal, (FT_COMMAND)31, 0, false);
 }
 
+/* the SEAL made a ghost: dead as one (SetHealth inlined: 0, DEATH_GHOST), its body in state 8, its node
+ * clear and inactive, the state sent with bit 6 set, and order 34 given to team 24's squad (OVL2 0x543D50,
+ * new in SOCOM II: ftsNetworkPlayerInit calls it three times and ReCreate once -- 0x543B90's undoing;
+ * the name unknown) */
+extern "C" void func_00543D50(CZSealBody *seal)
+{
+    seal->SetHealth(0.0f, DEATH_GHOST);
+    seal->BodySetState(8);
+    zdb::CNode *node = seal->GetNode();
+
+    node->m_Opacity = 0.0f;
+    node->SetActive(false);
+
+    SEAL_NET_STATE st;
+    unsigned int zero = 0;
+    unsigned int state;
+
+    memcpy(&st, &zero, sizeof(st));
+    bool active = node->m_active;
+    float opacity = node->m_Opacity;
+
+    if (active && opacity > 0.0f)
+        st.m_fade = FadeLevel(active, opacity);
+    else
+        st.m_fade = 15;
+    st.SetBit6(true);
+    memcpy(&state, &st, sizeof(st));
+    ((CSealCtrl *)seal->m_control)->SetAiNetState(state);
+
+    CSealUnit *unit = CSealUnit::GetUnitByTeam(24);
+
+    if (unit)
+        unit->IssueCommand(seal, (FT_COMMAND)34, 0, false);
+}
+
 /* the entity the SEAL works as a turret, if it is one */
 static inline CTurret *AsTurret(CEntity *e)
 {

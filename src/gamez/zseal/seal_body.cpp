@@ -780,6 +780,60 @@ extern "C" void func_0057F310(CZSealBody *seal)
 }
 
 extern "C" {
+/* an anim's push told to the network as anim 34 (OVL2 0x588B40, below: this unit inlines it) */
+void func_00588B40(CZSealBody *seal, int time);
+/* an AnimTypes static (OVL1 data 0x3DEF08, 0x2C0 past Stand2Prone) */
+extern short data_003DEF08;
+}
+
+/* into the air: nothing but the top blend while the 0x3DEF08 anim plays; else the blends popped down to
+ * one, twelve at most, as 0x57F310 does, the crouch bit cleared, anim 26 and the 0x3DEF08 anim pushed in
+ * state 2, the body in the air (6), the velocity kept level as m_1350, the move's stopped, m_1360 at 0.2,
+ * the airborne bit and bit 9 set, bit 10 cleared, m_fac at the root's height, the desired state prone;
+ * the push told to the network (OVL2 0x57E540, new in SOCOM II: UpdateStance, the grenade state and
+ * 0x5880E0 call it -- the name unknown) */
+extern "C" CZBodyAnimBlend *func_0057E540(CZSealBody *seal)
+{
+    if (seal->IsCurrentBlend((AnimType)data_003DEF08))
+        return (CZBodyAnimBlend *)func_00555170(&seal->m_blends);
+
+    CZBodyAnimBlend *b = (CZBodyAnimBlend *)func_00555170(&seal->m_blends);
+    int n = 12;
+    CBodyAnimBlendStack *stack = &seal->m_blends;
+
+    while (BlendCount(stack) > 1 && n > 0) {
+        b = func_00589AA0(seal);
+        n--;
+    }
+    if (n <= 0)
+        b = (CZBodyAnimBlend *)func_00555170((char *)seal + 0x1c0);
+    else {
+        if (b)
+            b->m_ctrl = 0;
+        seal->m_desiredStance = STANCE_PRONE;
+    }
+    seal->Set21cBit2(false);
+    func_00588BC0(seal, (AnimType)26, 2, 0, 13);
+    CZBodyAnimBlend *r = (CZBodyAnimBlend *)func_00588BC0(seal, (AnimType)data_003DEF08, 2, 0, 13);
+
+    seal->BodySetState(6);
+    seal->m_1350 = seal->m_velW;
+    seal->m_1350.y = 0.0f;
+    seal->m_velM.x = 0.0f;
+    seal->m_velM.y = 0.0f;
+    seal->m_velM.z = 0.0f;
+    seal->m_1360 = 0.2f;
+    seal->m_1364 = 0.0f;
+    seal->SetAirborne(true);
+    seal->SetBit9(true);
+    seal->SetBit10(false);
+    seal->m_fac = seal->m_root->m_pos.y;
+    seal->m_desiredState = stateProne;
+    func_00588B40(seal, 4);
+    return r;
+}
+
+extern "C" {
 /* an anim the SEAL could take, its type, a fraction and a base time, a point (OVL2 0x57FCE0, not
  * written yet), a move begun one way or the other (OVL2 0x5805B0, below) and two anim types
  * read as variables (OVL1 data, -1 in the image) */

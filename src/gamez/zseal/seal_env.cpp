@@ -521,7 +521,7 @@ extern "C" {
  * defined below -- the deaths inline them) */
 void func_0059D750(CZSealBody *seal);
 void func_005B14E0(CZSealBody::CSealClimb *climb, CZSealBody *seal);
-/* the death's end, once its anim has run (OVL2 0x5A0040, not written yet), the overlay's anims let
+/* the death's end, once its anim has run (OVL2 0x5A0040, below), the overlay's anims let
  * go (OVL2 0x5781C0, the unclaimed stretch before seal_body.cpp) and 0x5A5DA0 (not written yet) */
 void func_005A0040(CZSealBody *seal);
 void func_005781C0(CZSealBody *seal);
@@ -3382,6 +3382,51 @@ extern "C" AnimType func_005A0950(CZSealBody *seal, DAMAGE_LOCATION loc, SEAL_ST
     if (anim == -1)
         anim = AnimSet::deathanim[3][0][0];
     return (AnimType)anim;
+}
+
+extern "C" {
+/* a weapon of the kit dropped as a pickup (OVL2 0x59F730, not written yet: the item's index, a flag) */
+void func_0059F730(CZSealBody *seal, int index, int b);
+}
+
+/* the death's end, once its anim has run: unless the SEAL is of team 2 or remote -- or, online, one
+ * whose hits go unfelt, a ghost or in a game whose flag 0xDC is set -- its ammunition dropped, then its
+ * primary weapon and its pistol (offline only where no such weapon lies within 50), then, online, its
+ * class-145 item when that holds item 185's or 186's rounds (OVL2 0x5A0040, new in SOCOM II: the death's
+ * callbacks call it -- the name unknown) */
+extern "C" void func_005A0040(CZSealBody *seal)
+{
+    if (seal->m_team & 2)
+        return;
+
+    bool drop = true;
+
+    if (seal->IsRemote())
+        drop = false;
+    if (theNetwork.m_9 && (func_002C2FD0(seal) || seal->m_deathType == DEATH_GHOST || data_00437CE8->m_dc))
+        drop = false;
+    if (!drop)
+        return;
+
+    int primary = seal->m_kit.GetPrimaryIndex();
+    int secondary = seal->m_kit.GetSecondaryIndex();
+    int launcher = theNetwork.m_9 ? seal->m_kit.GetClass145Index() : -1;
+    bool ammo = false;
+
+    if (launcher != -1) {
+        if (seal->m_kit.HasItem((EQUIP_ITEM)185))
+            ammo = seal->m_kit.ItemHasAmmo((EQUIP_ITEM)185);
+        else if (seal->m_kit.HasItem((EQUIP_ITEM)186))
+            ammo = seal->m_kit.ItemHasAmmo((EQUIP_ITEM)186);
+    }
+    seal->DropAmmo(-1);
+    if (primary != -1 && (theNetwork.m_9 || !CPickup::IsWeaponNear(seal->m_kit.GetPrimaryEnum(), &seal->m_posW, 50.0f)))
+        func_0059F730(seal, primary, 0);
+    if (secondary != -1 &&
+        (theNetwork.m_9 || !CPickup::IsWeaponNear(seal->m_kit.GetSecondaryEnum(), &seal->m_posW, 50.0f)))
+        func_0059F730(seal, secondary, 0);
+    if (ammo)
+        func_0059F730(seal, launcher, 0);
 }
 
 /* the hits under a point handled (SOCOM 1's SealProcessAltitude; OVL2 0x5B5D40, not written yet) */

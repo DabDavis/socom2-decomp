@@ -47,13 +47,51 @@ extern "C" {
 /* whether the map is filled (OVL1 bss 0x44AF70), and the next id handed out (OVL1 data 0x3DE930) */
 extern bool data_0044AF70;
 extern int data_003DE930;
-/* the map filled (OVL2 0x58CC30, not written yet) */
+/* the map filled (OVL2 0x58CC30, below) */
 void func_0058CC30();
 }
 
 extern "C" {
 /* the next body part id handed out (OVL1 data 0x3DE928) */
 extern unsigned int data_003DE928;
+}
+
+extern "C" {
+/* the ids of the parts the map names first (OVL1 data 0x3DF140-0x3DF168, 8 bytes apart): the root's,
+ * then from the top of the parts' object slots the four kept back and the last -- the rifle's, the
+ * pistol's, the grenade's, the weapon's and rifle_out's (the names ours) */
+extern int data_003DF140;
+extern int data_003DF148;
+extern int data_003DF150;
+extern int data_003DF158;
+extern int data_003DF160;
+extern int data_003DF168;
+}
+
+/* the body parts' names filled in once: no part handed out yet, skel_root the first, the four kept
+ * back and rifle_out at the top of the slots; the next id after them (OVL2 0x58CC30, new in SOCOM II:
+ * 0x58CB30 and 0x58CA60 call it -- the name ours) */
+extern "C" void func_0058CC30()
+{
+    if (data_0044AF70)
+        return;
+    data_003DE928 = 0;
+    data_003DF140 = 0;
+    data_003DE930 = siNumBodyObjects;
+    bodyPartNames_map[std::string("skel_root")] = data_003DF140;
+    data_003DE928++;
+    data_003DF148 = siNumBodyObjects - 4;
+    bodyPartNames_map[std::string("rifle")] = data_003DF148;
+    data_003DF150 = siNumBodyObjects - 3;
+    bodyPartNames_map[std::string("pistol")] = data_003DF150;
+    data_003DF158 = siNumBodyObjects - 2;
+    bodyPartNames_map[std::string("grenade")] = data_003DF158;
+    data_003DF160 = siNumBodyObjects - 1;
+    bodyPartNames_map[std::string("weapon")] = data_003DF160;
+    data_003DF168 = siNumBodyObjects;
+    bodyPartNames_map[std::string("rifle_out")] = data_003DF168;
+    data_003DE930++;
+    data_0044AF70 = true;
 }
 
 /* a body part's id by its name: the map filled once, the name found -- or given the next id while
@@ -316,14 +354,88 @@ public:
     AnimType BaseAnim(AnimType type);
     bool TypeBit1(AnimType type);
 
+    /* the set's name (out of line in the SEALs' units, OVL2 0x578940) and a set by its name in the
+     * list, or 0 (SOCOM 1's Find, anim.cpp's: inlined one level in 0x58C600, the list's iterator pieces
+     * called -- OVL2 0x5788C0-0x578980, seal_body.cpp's copies) */
+    std::string &GetName() { return m_name; }
+    static AnimSet *Find(const char *name)
+    {
+        std::vector<AnimSet *>::iterator i;
+
+        for (i = list.begin(); i != list.end(); i++)
+            if (!strcmp(name, (*i)->GetName().c_str()))
+                return *i;
+        return 0;
+    }
+
+    /* every set (SOCOM 1's AnimSet::List; OVL1 bss 0x44D430) */
+    static std::vector<AnimSet *> list;
+
     ANIMSET_PARAMS m_aparams;   // 0x0
-    unsigned char _34[0x5c - 0x34];
+    unsigned char _34[0x38 - 0x34];
+    std::string m_name;   // 0x38
+    unsigned char _44[0x5c - 0x44];
     CAnimsByFP *m_animsbyfp;   // 0x5c (SOCOM 1's at 0x60)
 };
 
 extern "C" {
 /* the set's own speeds read (SOCOM 1's AnimSet::SetMaxMotion; OVL2 0x5E0450, anim.cpp's) */
 void func_005E0450(AnimSet *set);
+}
+
+extern "C" {
+/* a SEAL posed by one anim alone (seal_anim.cpp's, OVL2 0x577DF0) */
+void func_00577DF0(CZSealBody *seal, ACTIVE_ANIM *anim);
+void *func_00555170(void *v);
+int strcmp(const char *a, const char *b);
+}
+
+/* the body readied: unless asked to keep them, every anim of the common archive and of the map's added
+ * to the body; the type's first anim set found by name and bound standing with its type-1 blend, kept
+ * as the default too; unless asked, the SEAL posed by the top blend's first anim and the parts saved
+ * (OVL2 0x58C600, new in SOCOM II: the constructor calls it -- the name unknown).
+ * OPEN, 77 instructions: AnimSet::Find. The target inlines Find ONE level -- every call in it (the
+ * iterator's default constructor, begin, operator=, end, !=, *, GetName, c_str, postfix ++) left a
+ * call to seal_body.cpp's copies 0x5788C0-0x578980, as in 0x5784A0 and anim.cpp's 0x5E3940 -- where
+ * MW here inlines Find's body with begin's and end's (their data(), __raw_end and __iter called):
+ * Find's tree is taller in the original. Probed: GetName written five high (four wrapper levels) makes
+ * Find six and the function byte-exact, the loops' locals as they stand (the first archive, then its
+ * counter, then its count; the second's count declared first, bare -- each loop's registers rotate:
+ * build/scratch/seal/v_58c600.py, 1 of 10 orders); so the whole miss is the MSL's depth (c_str's or an
+ * iterator piece's, the MSL lane's), not this body */
+extern "C" bool func_0058C600(CZSealBody *seal, bool keep)
+{
+    if (!keep) {
+        zBoneSetCurArchive(zBoneArchive());
+        CScriptArchive *a = zBoneCurArchive();
+        int i;
+        int n = a->m_byRdr.size();
+
+        for (i = 0; i < n; i++)
+            seal->BodyAddAnim(a, i);
+        int nm;
+        zBoneSetCurArchive(zBoneMapArchive());
+        CScriptArchive *m = zBoneCurArchive();
+        nm = m->m_byRdr.size();
+
+        for (int j = 0; j < nm; j++)
+            seal->BodyAddAnim(m, j);
+    }
+    zBoneSetCurArchive(0);
+    AnimSet *set = AnimSet::Find(seal->m_charType->m_anim_sets[0]);
+
+    seal->BindAnimSet(set, (AnimType)1, stateStand, false);
+    seal->m_530 = set;
+    seal->m_default_animset = set;
+    if (!keep) {
+        ACTIVE_ANIM *first = ((CZBodyAnimBlend *)func_00555170(&seal->m_blends))->m_anims.Begin();
+
+        seal->m_interp1 = 0.0f;
+        seal->m_interp2 = 0.0f;
+        func_00577DF0(seal, first);
+        seal->SaveParts();
+    }
+    return true;
 }
 
 /* an anim type for the item held: the rifle's base type, the pistol's own where the set marks the

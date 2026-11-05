@@ -169,6 +169,14 @@ public:
     bool SetItemAmmo(unsigned int index, void *ammo, int rounds, int count);
     /* the item at an index let go with its ammunition (SOCOM 1's; OVL2 0x5B9BB0, the kit lane's) */
     void RemoveItemAndAmmo(int index);
+    /* the first primary weapon, pistol and class-145 item, or -1, and the primary's and the pistol's
+     * items (kit.h's: OVL2 0x5C7230, 0x5C71A0, 0x5C7110, 0x5C8980, 0x5C8930 -- the death's drop
+     * 0x5A0040 asks them) */
+    int GetPrimaryIndex();
+    int GetSecondaryIndex();
+    int GetClass145Index();
+    EQUIP_ITEM GetPrimaryEnum() const;
+    EQUIP_ITEM GetSecondaryEnum() const;
     /* the first item whose ammunition is of a kind with the rounds, and the ammunition at an index
      * let go (SOCOM 1's; OVL2 0x5C8750, 0x5B9F00, the kit lane's -- CreateNetAmmoPickup asks them) */
     int GetAmmoIndex(EQUIP_AMMO ammo, int rounds);
@@ -1642,6 +1650,8 @@ public:
     /* the moving and turning flags set (inlines: InStateHang clears both with `(0 & 1) << n`) */
     void SetIsMoving(bool on) { m_is_moving = on; }
     void SetIsTurning(bool on) { m_is_turning = on; }
+    /* bit 2 of 0x21C set (an inline: 0x57E540 clears it with `(0 & 1) << 2`; the name ours) */
+    void Set21cBit2(bool on) { m_21c_bit2 = on; }
     /* the airborne flag set (an inline: 0x59B870 clears it with `(0 & 1) << 5`; the name ours) */
     void SetAirborne(bool on) { m_airborne = on; }
     /* the stance's change taken, once (seal_body.cpp) */
@@ -1993,7 +2003,7 @@ public:
     unsigned char _524[0x528 - 0x524];
     class AnimSet *m_animset;   // 0x528 (SOCOM 1's 0x45c)
     class AnimSet *m_default_animset;   // 0x52c (SOCOM 1's 0x460: BindAnimSet keeps the set it replaces)
-    unsigned char _530[0x534 - 0x530];
+    class AnimSet *m_530;   // 0x530: the set 0x58C600 binds, kept with m_default_animset (the name ours)
     AnimType m_curblend;   // 0x534: the anim type on top of the blends (SOCOM 1's short at 0x464)
     unsigned char _536[0x53c - 0x536];
     /* the zoom's anim, "zoom_control", while a scope or the binoculars are up (new in SOCOM II:
@@ -2186,8 +2196,9 @@ public:
     unsigned char _1344[0x1350 - 0x1344];
     CPnt3D m_1350;   // 0x1350: the velocity kept as 0x57DF20/0x57E050 set bit 9 (the name ours)
     unsigned char _135c[0x1360 - 0x135c];
-    float m_1360;   // 0x1360: above 0, 0x59B870 leaves m_fac alone (the name ours)
-    unsigned char _1364[0x1440 - 0x1364];
+    float m_1360;   // 0x1360: above 0, 0x59B870 leaves m_fac alone (0x57E540 sets 0.2; the name ours)
+    float m_1364;   // 0x1364: 0x57E540 clears it (the name ours)
+    unsigned char _1368[0x1440 - 0x1368];
     CPnt3D m_aim_dir;   // 0x1440 (SOCOM 1's 0x10a0: AimWeapon sets it)
     unsigned char _144c[0x14a0 - 0x144c];
     /* the aim and fire points and their positions (SOCOM 1's m_curr_aimpos, m_curr_aimpt,
