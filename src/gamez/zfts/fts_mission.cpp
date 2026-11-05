@@ -3037,23 +3037,29 @@ namespace {
 /* the custom character types the "UiVehicles" list names, each a copy of the character type of
  * the vehicle entry its "Name" names -- the entry then crewed by the copy (SOCOM 1's; OVL1
  * 0x2AFA10).
- * OPEN, 10 instructions, registers only: the name and the entry's character name trade saved
- * registers (the target's name s3, the character name s2, which the copy then reuses; here s2 and
- * s3). Tried: the entry and the character name declared ahead of the name in four orders, the
- * character name at loop scope, written out twice (one register fewer, 0xC shorter), not const,
- * and the name read from the table directly (as a ternary, as an if-assign) */
+ * Byte-exact (the states' round 41; 10 instructions off, registers only, until then): the target's
+ * name is s3 and the character name s2, so the name is numbered between the entry and the
+ * character name (`tools/igreplay.py --want 37=s2,39=s3 --movers 37,39`: 10 placements, all with
+ * the name after the entry) -- the entry declared first, uninitialised, then the name a named local
+ * read from the table by an if-assign. Through GetCustomCharTypeName (auto-inlined) the name merges
+ * into the inline's result temporary, numbered after every named local; a ternary from the table
+ * merges the same way. Tried before: the entry and the character name declared ahead of the name
+ * in four orders, the character name at loop scope, written out twice (one register fewer, 0xC
+ * shorter), not const, the table read directly with the name declared first */
 void CreateCustomCharTypes(CVehicleRdr *vehicles, _zrdr *rdr)
 {
     _zrdr *list = zrdr_findtag(rdr, "UiVehicles");
 
     g_iNumUiVehicles = list ? list->Count() : 0;
     for (int i = 0; i < g_iNumUiVehicles; i++) {
-        const char *name = GetCustomCharTypeName(i);
+        CVehicleRdrEntry *entry;
+        const char *name = 0;
 
+        if (i < 32)
+            name = data_003F02B0[i];
         if (!name)
             break;
-        CVehicleRdrEntry *entry =
-            vehicles->GetEntryByName(zrdr_findstring(ListItem(list, i), "Name"));
+        entry = vehicles->GetEntryByName(zrdr_findstring(ListItem(list, i), "Name"));
 
         if (entry) {
             const char *base = entry->m_charname;
