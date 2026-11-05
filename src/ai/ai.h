@@ -1580,6 +1580,10 @@ public:
     /* queued, planning or aborting (SOCOM 1 tested the three states one by one; SOCOM II's code,
      * inlined everywhere, is one unsigned range test -- the name ours) */
     bool IsPlanning() const { return (unsigned int)(m_state - 1) < 3; }
+    /* none of the three: the negation as its own range test, branched on (`sltiu at`) where
+     * !IsPlanning() materialises -- and its state load is the one a later HasPoints() reuses
+     * (InsertPathLoc 0x526C10, AppendPathLoc 0x526F20; the name ours) */
+    bool IsIdle() const { return (unsigned int)(m_state - 1) > 2; }
     /* the queue's order (new in SOCOM II, the name ours; out of line at 0x510C20) */
     float GetPriority() const { return m_priority; }
 
@@ -1665,6 +1669,9 @@ public:
     /* a cell put at the head of a finished path, a new leg where it changes map; false while the
      * path is planning or when it has no finished plan (SOCOM 1's AppendPathLoc, 0x526F20) */
     bool AppendPathLoc(const CAiMapLoc &loc, CAiMap *map);
+    /* a cell put at the start of a finished path, refused when it is there already (SOCOM 1's
+     * InsertPathLoc, 0x526C10: FindDetour's) */
+    bool InsertPathLoc(const CAiMapLoc &loc, CAiMap *map);
 
     CAiStar *m_astar;   // 0x0
     CAiPlanner *m_planner;   // 0x4
