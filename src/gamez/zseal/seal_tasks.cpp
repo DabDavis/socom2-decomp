@@ -63,6 +63,7 @@ bool zrdr_findPNT2D(const _zrdr *rdr, const char *tag, PNT2D *out);
 bool zrdr_isitemtype(const _zrdr *rdr, int index, int type);
 bool zrdr_findbool(const _zrdr *rdr, const char *tag, bool *out);
 bool zrdr_findPNT3D(const _zrdr *rdr, const char *tag, PNT3D *out);
+bool zrdr_toINT(const _zrdr *rdr, int *out, int n);
 /* a team block's teams as a mask (fts_player.cpp's, OVL1 0x2B34A0) */
 unsigned int ParseTeamBlock(_zrdr *rdr);
 /* the same, OVL2's copy (vehicle_rdr.cpp's, OVL2 0x533C10) */
@@ -910,6 +911,11 @@ struct CTMove : TASK_HDR {
     unsigned char m_blocking : 1;   // bit 5: the tag "blocking"
     unsigned char m_28_6 : 2;
 
+    /* (the names ours: Parse's first stores, their values not folded -- an inline's parameters) */
+    void SetKind(int kind) { m_kind = kind; }
+    void SetBlocking(bool b) { m_blocking = b; }
+
+    static _zanim_cmd_hdr *Parse(_zrdr *rdr);
     static bool Tick(_zanim_cmd_hdr *hdr, float *dT);
     static void End(_zanim_cmd_hdr *hdr);
 };
@@ -1213,6 +1219,51 @@ _zanim_cmd_hdr *CTMacro::Parse(_zrdr *rdr)
         cmd->SetBlocking(blocking);
         cmd->m_name.Set(name);
     }
+    return &cmd->hdr;
+}
+
+/* a move from the tags: "node" (its names, kind 1), else "relseal" (a SEAL's index, kind 3 -- 4 with a
+ * "dir") or "self" (kind 2); "pos" (or "ofs"), "offset" (or "dist"), "dir", "blocking" and the AI's
+ * index "ai" (OVL2 0x5D64B0; SOCOM 1's, but _calloc's file and line) */
+_zanim_cmd_hdr *CTMove::Parse(_zrdr *rdr)
+{
+    CTMove *cmd = NewTask<CTMove>();
+
+    cmd->SetKind(0);
+    cmd->m_pos = CPnt3D::zero;
+    cmd->m_dist = 0.0f;
+    cmd->m_dir = CPnt3D::unit_nz;
+    cmd->m_node = 0;
+    cmd->SetBlocking(false);
+
+    const char *node = zrdr_findstring(rdr, "node");
+
+    if (node) {
+        cmd->m_node = ZAnim.m_CurAnim->LoadNodeNames(0, node, 0, 1);
+        cmd->m_kind = 1;
+    } else {
+        _zrdr *rel = zrdr_findtag(rdr, "relseal");
+
+        if (rel) {
+            zrdr_toINT(rel, &cmd->m_node, 1);
+            cmd->m_kind = 3;
+        } else if (zrdr_findtag(rdr, "self"))
+            cmd->m_kind = 2;
+    }
+    if (!zrdr_findPNT3D(rdr, "pos", &cmd->m_pos))
+        zrdr_findPNT3D(rdr, "ofs", &cmd->m_pos);
+    if (!zrdr_findreal(rdr, "offset", &cmd->m_dist, 1))
+        zrdr_findreal(rdr, "dist", &cmd->m_dist, 1);
+    if (zrdr_findPNT3D(rdr, "dir", &cmd->m_dir))
+        switch (cmd->m_kind) {
+        case 3:
+            cmd->m_kind = 4;
+            break;
+        }
+    if (zrdr_findtag(rdr, "blocking"))
+        cmd->m_blocking = 1;
+    cmd->m_param = 0;
+    zrdr_finduint(rdr, "ai", (unsigned int *)&cmd->m_param, 1);
     return &cmd->hdr;
 }
 
