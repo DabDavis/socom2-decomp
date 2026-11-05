@@ -2503,6 +2503,80 @@ extern "C" float func_00583350(CZSealBody *seal, float *a, float *b, float x, fl
     return len;
 }
 
+extern "C" {
+/* every anim of a list that a blendable holds played at a rate scaled (OVL2 0x58BAB0, seal_cfg.cpp's) */
+void func_0058BAB0(CZSealBody *seal, CActiveAnimList *list, CBlendable *blendable, float scale);
+}
+
+/* the move blendables of the bound set (anim.cpp's AnimSet holds them whole from 0x60: a view, the
+ * names SOCOM 1's) */
+struct AnimSetMoves {
+    unsigned char _0[0x60];
+    CBlendable m_move_anims;   // 0x60
+    CBlendable m_moveback_anims;   // 0x90
+    CBlendable m_strafeL_anims;   // 0xc0
+    CBlendable m_strafeR_anims;   // 0xf0
+    CBlendable m_crouchmove_anims;   // 0x120
+    CBlendable m_crouchmoveback_anims;   // 0x150
+    CBlendable m_crouchstrafeL_anims;   // 0x180
+    CBlendable m_crouchstrafeR_anims;   // 0x1b0
+};
+
+/* the standing move: the throttles split by 0x583350 (the strafe's share and the length); outside the
+ * dead zone the forward throttle mixes the move anims (the back ones, played in reverse, for a negative
+ * one) at the length unless the strafe is whole, and the strafe throttle the strafe anims at its share;
+ * nothing mixed, the blends cleared to one (ClearStack(1, true) inlined) and the top returned; else the
+ * strafe's anims in the mix get their fraction's step zeroed and the mix becomes the top blend's (OVL2
+ * 0x583030; SOCOM 1's MoveControl, its weights' split moved out to 0x583350).
+ * OPEN, 14 structural differences, all scheduling (the size right, round 49): the target reloads the
+ * strafe's share from its stack slot for each strafe MixAnims (`lwc1 $f13,108(sp)` first in the call's
+ * set-up) where MW here keeps the compare's load in $f13 for the right strafe's call, and it sets the
+ * split's a2 after $f12; swapped declarations, `> 0.0f`, the length declared apart, the weights as an
+ * array or through a `const float &` do not give it (build/scratch/seal-r49/v_movecontrol*.py) */
+CZBodyAnimBlend *CZSealBody::MoveControl(float z, float x)
+{
+    CZBodyAnimBlend *top = (CZBodyAnimBlend *)func_00555170(&m_blends);
+    float side;
+    float fwd;
+
+    newanims.Clear();
+
+    float len = func_00583350(this, &side, &fwd, x, z);
+
+    if (!(fabsf(z) <= data_003F3428) && side < 1.0f) {
+        if (!(z < 0.0f))
+            MixAnims(&newanims, &((AnimSetMoves *)m_animset)->m_move_anims, len, 1.0f);
+        else {
+            MixAnims(&newanims, &((AnimSetMoves *)m_animset)->m_moveback_anims, -len, 1.0f);
+            func_0058BAB0(this, &newanims, &((AnimSetMoves *)m_animset)->m_moveback_anims, -1.0f);
+        }
+    }
+    if (!(fabsf(x) <= data_003F3428) && !(side <= 0.0f)) {
+        if (!(x < 0.0f))
+            MixAnims(&newanims, &((AnimSetMoves *)m_animset)->m_strafeR_anims, len, side);
+        else {
+            MixAnims(&newanims, &((AnimSetMoves *)m_animset)->m_strafeL_anims, -len, side);
+            func_0058BAB0(this, &newanims, &((AnimSetMoves *)m_animset)->m_strafeL_anims, -1.0f);
+        }
+    }
+    if (!newanims.Begin()) {
+        ClearStack(1, true);
+        return (CZBodyAnimBlend *)func_00555170(&m_blends);
+    }
+
+    CBlendable *strafe;
+
+    if (!(x < 0.0f))
+        strafe = &((AnimSetMoves *)m_animset)->m_strafeR_anims;
+    else
+        strafe = &((AnimSetMoves *)m_animset)->m_strafeL_anims;
+    for (ACTIVE_ANIM *a = newanims.Begin(); a; a = newanims.Next())
+        if (strafe->Contains((AnimType)a->m_id))
+            a->m_dfrac = 0.0f;
+    top->SetBlendAnims(this, &newanims);
+    return top;
+}
+
 /* the stance's change taken, once (OVL2 0x582500; SOCOM 1's, the false return its own block) */
 bool CZSealBody::StanceChanged()
 {

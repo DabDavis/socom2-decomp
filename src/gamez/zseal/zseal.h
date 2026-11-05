@@ -808,6 +808,9 @@ public:
     void SetLookFlags(unsigned int flags);
     void SetLookTimer(float t);
     void SetLookRate(float rate);
+    /* the throttles read off the pad (SOCOM 1's ThrottlesPreTick, after PreTick: OVL2 0x5966A0 --
+     * PostMortemPreTick calls it first) */
+    void ThrottlesPreTick(class CPad *pad, float dT);
     /* the speed a throttle gives along an axis (SOCOM 1's sealctrl.cpp; OVL2 0x592880: the body's
      * GetMaxZMotion/GetMaxXMotion) */
     float GetSpeedFromThrottle(float throttle, int axis);
@@ -1933,6 +1936,11 @@ public:
     CZBodyAnimBlend *Crouch();
     CZBodyAnimBlend *Stand_0(int stance, int n, float t);
     CZBodyAnimBlend *Stand(int n);
+    /* the standing and crouched moves: the move and strafe blendables mixed by the throttles, the
+     * backward ones played in reverse; with nothing mixed the blends cleared to one (SOCOM 1's
+     * MoveControl and CrouchMoveControl: OVL2 0x583030, 0x582D10) */
+    CZBodyAnimBlend *MoveControl(float x, float z);
+    CZBodyAnimBlend *CrouchMoveControl(float x, float z);
     /* the top blend popped, the new top returned (SOCOM 1's PopBlend: OVL2 0x589AA0 -- called where
      * SOCOM 1's is, the SEALs' round 48; it hides CBody::PopBlend, which no SEAL code calls) */
     CZBodyAnimBlend *PopBlend();
