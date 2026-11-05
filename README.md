@@ -2216,6 +2216,36 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
   - GetNodePos 0x5DF930 (open since round 26): the hand test `PartParent(m_rifle) == m_rhand`; seal_ailines.cpp's
     initialiser 0x668FB0 OPEN -- `#pragma defer_codegen off` after the includes separates the functions' inlining from
     the initialiser's, the copy into 0x66BAE0 member by member through $f0 is what remains.
+- **Tells from completing the MSL headers, round 27** (the data_ reader, the deques' init level, the class push_back;
+  probes build/p27/, scratch build/scratch/msl-r27/, untracked -- dtorvar.py, dqvar.py/dqvars.py, vecvar.py, rowscan.py):
+  - THE POD DESTRUCTOR READS data_ THROUGH data() INTO A PLAIN LOCAL (`T *p = data(); if (p) deallocate(p);`): the
+    inlined accessor's reference temporary stays a variable off a member at an offset and folds into the frame for a
+    stack object -- ~CRadioStripSpec 0x387340, ~CAssetLib 0x321990 and ~CMenuStack 0x27F590 keep &data_ in a saved
+    register (computed ahead of the walk) while resize<CUIVariable> 0x2B1390 still reads its temporary sp-relative:
+    the one reader round 26 asked for (+3, nothing lost; objcmp: only those three functions change). Passed straight
+    (`deallocate(data())`) the accessor is an inline call's argument, a level deeper (round 26's -34); a reference local
+    is a variable everywhere (loses the resize); the test alone through data() keeps all three wrong;
+  - EVERY DEQUE AND BLOCK-BUFFER RANGE INIT HAS A DISPATCH LEVEL: the ends copied by value once more (FPU words, then
+    lq/sq) around two value-initialised one-byte temporaries -- two plain empty classes by value are stored (`sb
+    zero`), the std iterator tags (deriving) are not (build/p27/probe3.cpp) -- then do_assign; a pointer container
+    converts one level further down, its converters built from those copies by const reference (the third copy, lw/sw,
+    the lowest slots). include/deque's Metrowerks::__deque_init over number<bool, ...>: the lobby's 0x2E0830 and
+    0x2E0B40 byte-exact from source, the state machine's 0x3A5ED0/0x3A61E0, the vid stack's 0x3B7E30 and the rdr
+    editor's 0x333BB0/0x333EC0 once their do_assign rows have names (+16 with the named iterator pieces);
+  - THE VID STACK'S do_assign 0x3B8000 IS NOT A CONVERTER'S: it copies a 24-byte source and dereferences a reference
+    (the rdr editor's 0x334440 copies the 28-byte converter); deque<void *> hands its const_iterators straight
+    (__deque_converts<void>), 0x3B8000 code-exact, its != 0x3B83B0 byte-exact. The converter's own shape stays open:
+    its ++ 0x3348E0 inlines the wrapped iterator's ++, which the vid stack calls out of line from the LATER unit
+    (0x3B83D0) -- the linker keeps the first unit's copy of an instance (the destination's ++ 0x334880, zrdr_edit.cpp's,
+    serves 0x3B8000), so zrdr_edit.cpp never emitted it: not one class, or a cut not found (include/deque's comment);
+  - THE CLASS VECTOR'S push_back GOES THROUGH end() (`insert(end().m_p, 1, x)`): the HUD's AddName is then cut one
+    level and makes the target's six calls in its order -- 0x22DD20 is rbegin() itself (its hidden return slot is the
+    reverse *'s `this`), not its end(); push_back 0x22DD60, rbegin and the reverse * 0x22DD10 byte-exact, objcmp: no other
+    unit's code moves. hudAddPopupDefinition stays 0x63C of 0x5E0 on the loader's own registers and the triggers'
+    constructors (the HUD lane's);
+  - measured, not reached: insert<AcctRecord> 0x2FE3E0 (no new idea on the end's number), CKey::CountKeys,
+    OnIsEquipmentSelected, CSkbSplit::Next. Over every hand-written unit, master merged: 10558 -> 10585 (+27), nothing
+    lost, the thirteen draft-only regressions unchanged.
 - **Tells from completing the MSL headers, round 26** (the tree's teardown and swap, the generic pod insert, the
   missions' GetNext; probes build/p26/, scratch build/scratch/msl-r26/, untracked):
   - THE OPTION MAP'S TEARDOWN 0x1EAD10 needs no header change: options.cpp (SOCOM II's unit between database.cpp and
@@ -11437,8 +11467,11 @@ What is open across lanes, and what comes next:
   0x5F8AF0: find_if's two iterator copies in parameter order -- include/algorithm), the class
   vector's destroy for elements with a virtual
   destructor (C2DPoly's deleter), __vector_imp::resize out of line (CPool), and the pod vector's
-  end() reusing begin()'s load (AddPalette, ~CAssetLib, DeleteChildren; the zdb world's round 6
-  measured `return data() + size_;`: +4, but CCharacterType::Create one level too tall).
+  end() reusing begin()'s load (AddPalette, DeleteChildren; the zdb world's round 6
+  measured `return data() + size_;`: +4, but CCharacterType::Create one level too tall -- ~CAssetLib
+  matches since the MSL headers' round 27, its destructor's data_ read through data()), and the pointer
+  deques' converter (its ++ inlines the wrapped iterator's ++ that the vid stack's do_assign calls
+  out of line: the MSL headers' round 27, include/deque).
 - **zMath** (0x306670-0x30954C, 47 of 54): CMatrix::SetRotate, CQuat::Align, CBits::Resize,
   CPnt3D::Reflect, CBBox::GetIntersect and the two DistToVectors. **zcamera**: CCamera::Update
   (13 instructions, the near plane's VU0 temporaries' stack offsets). **ZAnim**: the big handlers
