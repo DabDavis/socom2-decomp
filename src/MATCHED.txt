@@ -2554,7 +2554,7 @@
 0x0025AE00 FindKey__Q23zar4CKeyFPCc
 0x0025AF10 Read__Q23zar4CKeyFPQ23zar4CZARP3CIOi
 0x0025B2B0 func_0025B2B0
-0x0025B2C0 func_0025B2C0
+0x0025B2C0 WriteFile__Q23zar4CZARFPCvi
 0x0025B2E0 func_0025B2E0
 0x0025B2F0 RecordSize__Q23zar4CKeyFv
 0x0025B540 InsertKey__Q23zar4CKeyFPQ23zar4CKey
@@ -2566,9 +2566,11 @@
 0x0025B980 func_0025B980
 0x0025B9A0 func_0025B9A0
 0x0025B9C0 func_0025B9C0
-0x0025BAD0 func_0025BAD0
-0x0025BAE0 func_0025BAE0
-0x0025BB20 func_0025BB20
+0x0025B9D0 FreeVector<Q23std52vector<PQ23zar4CKey,Q23std23allocator<PQ23zar4CKey>>>__FRQ23std52vector<PQ23zar4CKey,Q23std23allocator<PQ23zar4CKey>>_v
+0x0025BA50 for_each<Q33std60__vector_imp<PQ23zar4CKey,Q23std23allocator<PQ23zar4CKey>,1>8iterator,PFPQ23zar4CKey_v>__3stdFQ33std60__vector_imp<PQ23zar4CKey,Q23std23allocator<PQ23zar4CKey>,1>8iteratorQ33std60__vector_imp<PQ23zar4CKey,Q23std23allocator<PQ23zar4CKey>,1>8iteratorPFPQ23zar4CKey_v_PFPQ23zar4CKey_v
+0x0025BAD0 clear__Q23std60__vector_imp<PQ23zar4CKey,Q23std23allocator<PQ23zar4CKey>,1>Fv
+0x0025BAE0 DeleteKey__3zarFPQ23zar4CKey
+0x0025BB20 ForgetKey__3zarFPQ23zar4CKey
 0x0025BB50 __dt__Q23zar4CKeyFv
 0x0025BBE0 __ct__Q23zar4CKeyFv
 0x0025BC00 __ct__Q23zar4CKeyFPCc
@@ -2654,6 +2656,7 @@
 0x00268360 UnloadSIScript__10CZAnimMainFP16_zanim_si_script
 0x002683B0 Unload__10CZAnimMainFv
 0x002684D0 func_002684D0
+0x00268520 ZAnimWildcardApply__FPCc
 0x00268680 ZAnimWildcardNext__Fv
 0x00268790 ZAnimWildcardInit__FPc
 0x00268930 AnimSchedulerTick__10CZAnimMainFfPv
@@ -4217,6 +4220,7 @@
 0x002D8BC0 __ct__Q23zdb19CClutterAnimManagerFv
 0x002D8C60 TickForce__Q23zdb12CClutterAnimFP6CPnt3DP6CPnt3Dff
 0x002D8FE0 Render__Q23zdb8CClutterFP6CPnt3D
+0x002D93A0 GetMatrix__Q23zdb8CClutterFv
 0x002D9490 GetTranslate__Q23zdb8CClutterFv
 0x002D94B0 Read__Q23zdb8CClutterFPQ23zar4CZAR
 0x002D9560 __ct__Q23zdb8CClutterFPQ23zdb5CNode

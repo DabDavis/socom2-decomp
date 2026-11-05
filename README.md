@@ -2065,6 +2065,20 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the engine core, round 19** (ZAnimWildcardApply and CClutter::GetMatrix, both open since round 9; the CKey
+  helpers from source):
+  - A CAST OR CONST COPY OF A PARAMETER OR OF `this` (`char *name = (char *)str`, `const CClutter *c = this`) IS A VARIABLE
+    OF ITS OWN, numbered where it is declared -- a plain copy is propagated or coalesced back into the original
+    (ZAnimWildcardApply 0x268520 with the digit index declared first; zdb::CClutter::GetMatrix 0x2D93A0's rotation path);
+  - when a recursive function inlines itself, calls up to four levels below the outer copy are inlined and the fifth level
+    is called out of line (CKey::DeleteChildren 0x25B580, three copies, OPEN: its tail wants SOCOM 1's compressed-pair
+    vector storage -- queued for the MSL); at the top level a while loop is entered by a jump to its bottom test and a
+    for gets a duplicated test up front, inlined copies of the same while get the duplicated test (CKey::Write, OPEN);
+  - MW folds the +1 of `[v + 1]` into the load offset only when v is a plain variable (`j = i + 1` named, const or in the
+    block still folds; `[stick * 2 + 1]` next to `int i = stick * 2` stays unfolded); `int n = count; NewAnimSet(n);
+    index = n;` keeps the inline's parameter in its own register, `index = count; NewAnimSet(index);` merges them;
+    FreeVector<vector<CKey *>> 0x25B9D0, for_each 0x25BA50, the vector's clear 0x25BAD0, DeleteKey 0x25BAE0, ForgetKey
+    0x25BB20 and CZAR::WriteFile 0x25B2C0 from source (the last three names ours).
 - **Tells from the online lobby, round 24** (the chat deque's push_back at last, open since round 10, with its growth
   pieces):
   - A CLASS ELEMENT'S DEQUE GROWS THROUGH A TEMPORARY BLOCK BUFFER: `tmp(2 * size(), 0)` plus init, then `tmp = buf` (the
