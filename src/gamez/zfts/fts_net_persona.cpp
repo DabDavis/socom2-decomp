@@ -100,23 +100,34 @@ public:
     /* (SOCOM 1's DWARF: only the values this unit names) */
     enum MP_MAJOR_GAME_STATE {
         MP_MAJOR_UNKNOWN = 0,
+        MP_MAJOR_MENUS = 1,
+        MP_MAJOR_LOADING = 2,
+        MP_MAJOR_INPLAY = 3,
+        MP_MAJOR_GAMEOVER = 6,
         MP_MAJOR_GHOST = 14
     };
 
     MP_MINOR_GAME_STATE MyMinorGameState(MP_MINOR_GAME_STATE state);
+    MP_MAJOR_GAME_STATE MyMajorGameState(MP_MAJOR_GAME_STATE state);
+    MP_MAJOR_GAME_STATE MPMajorGameState(MP_MAJOR_GAME_STATE state);
 
     unsigned char _0[0x14];
     CValve *m_pPlayerTeamValve;   // 0x14 (SOCOM 1's at 0x10)
     unsigned char _18[0x48 - 0x18];
     CValve *m_pPlayerReadyCountValve;   // 0x48 (SOCOM 1's at 0x44)
-    unsigned char _4c[0x60 - 0x4c];
+    unsigned char _4c[0x54 - 0x4c];
+    CValve *m_54;   // 0x54: set while a side has no player and no launch is counting down (SOCOM II's;
+                    // CheckStateSwitch's, the loading held while it is up -- the name ours)
+    unsigned char _58[0x60 - 0x58];
     CValve *m_pTeamFullValve;   // 0x60: set while either side has more than eight (SOCOM II's; the name ours)
     unsigned char _64[0x84 - 0x64];
     CUIVariable *m_uiv_SealList;   // 0x84 (SOCOM 1's four at 0x50-0x5c)
     CUIVariable *m_uiv_TerrList;   // 0x88
     CUIVariable *m_uiv_NoneList;   // 0x8c
     CUIVariable *m_uiv_ChatList;   // 0x90
-    unsigned char _94[0xac - 0x94];
+    unsigned char _94[0xa8 - 0x94];
+    unsigned char m_a8;   // 0xa8: (CheckStateSwitch's: set, an empty side does not hold the loading)
+    unsigned char _a9[0xac - 0xa9];
     int m_persona_object;   // 0xac: this client's persona object (the name ours)
     unsigned char _b0[0xd8 - 0xb0];
     bool m_ten_second_launch;   // 0xd8 (SOCOM 1's at 0x9f)
@@ -847,6 +858,89 @@ void CZPersonaState::ToggleReady()
         else
             game->MyMinorGameState(CZNetGame::MP_MINOR_READY);
         UpdateLocalPersona();
+    }
+}
+
+/* whether the sides let the loading go: both have players, or the game's byte at 0xA8 is set, or
+ * a side is full (SOCOM II's; an inline bool, its `||` chain materialised; the name ours) */
+inline bool SidesManned(CZNetGame *game)
+{
+    return data_00441448 && data_00441450 || game->m_a8 || game->m_pTeamFullValve->m_value;
+}
+
+/* the empty-side valve brought up to date after the count: up while a side has no player, unless
+ * the ten-second launch runs (the game read again: an inline of its own; the name ours) */
+inline void UpdateEmptySideValve()
+{
+    CZNetGame *game = theMission.m_pNetGame;
+
+    if (!SidesManned(game)) {
+        SetValveValue(game->m_54, 1);
+        if (game->m_ten_second_launch)
+            SetValveValue(game->m_54, 0);
+    } else
+        SetValveValue(game->m_54, 0);
+}
+
+/* the game's states moved on as the session's major state asks (SOCOM 1's CheckStateSwitch; OVL1
+ * 0x2C3CF0): the sides counted and the empty-side valve set first (SOCOM II's); in the menus the
+ * session master copies its states into its persona and starts the loading when everyone is ready
+ * and no side is empty; loading, this client follows once ready (or the lobby's flag, or the
+ * ten-second launch, says so); in play a ready client from the menus loads; at the game's end a
+ * client not in the menus ends too; any other state is taken as it is, not ready */
+void CZPersonaState::CheckStateSwitch()
+{
+    CZNetGame *game = theMission.m_pNetGame;
+
+    if (!game)
+        return;
+    func_002C4500();
+    UpdateEmptySideValve();
+    CZNetGame::MP_MAJOR_GAME_STATE state = game->m_mp_major_game_state;
+
+    switch (state) {
+    case CZNetGame::MP_MAJOR_UNKNOWN:
+        break;
+    case CZNetGame::MP_MAJOR_MENUS:
+        if (theNetwork.m_bSessionMaster) {
+            NetObject *obj = theNetwork.zNetGetObject(game->m_persona_object);
+
+            if (obj) {
+                PersonaData *data = (PersonaData *)obj->m_data;
+
+                if (data) {
+                    data->m_40 = game->m_my_major_game_state;
+                    data->m_41 = game->m_my_minor_game_state;
+                    if (AllReadyToLoad() && !game->m_54->m_value) {
+                        game->MPMajorGameState(CZNetGame::MP_MAJOR_LOADING);
+                        game->MyMajorGameState(CZNetGame::MP_MAJOR_LOADING);
+                        CZGameState::UpdateLocalGame(game);
+                    }
+                }
+            }
+        }
+        break;
+    case CZNetGame::MP_MAJOR_LOADING:
+        if (game->m_my_major_game_state == CZNetGame::MP_MAJOR_MENUS &&
+            (game->m_my_minor_game_state == CZNetGame::MP_MINOR_READY || func_002F6D00(&theLobby) != false ||
+             game->m_ten_second_launch))
+            game->MyMajorGameState(CZNetGame::MP_MAJOR_LOADING);
+        break;
+    case CZNetGame::MP_MAJOR_INPLAY:
+        if (game->m_my_major_game_state == CZNetGame::MP_MAJOR_MENUS &&
+            game->m_my_minor_game_state == CZNetGame::MP_MINOR_READY) {
+            game->MyMajorGameState(CZNetGame::MP_MAJOR_LOADING);
+            game->MyMinorGameState(CZNetGame::MP_MINOR_NOTREADY);
+        }
+        break;
+    case CZNetGame::MP_MAJOR_GAMEOVER:
+        if (game->m_my_major_game_state != CZNetGame::MP_MAJOR_MENUS)
+            game->MyMajorGameState(CZNetGame::MP_MAJOR_GAMEOVER);
+        break;
+    default:
+        game->MyMajorGameState(state);
+        game->MyMinorGameState(CZNetGame::MP_MINOR_NOTREADY);
+        break;
     }
 }
 
