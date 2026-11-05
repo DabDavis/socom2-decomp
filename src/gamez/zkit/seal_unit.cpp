@@ -1320,6 +1320,51 @@ extern "C" bool func_005EBB50(CAiSBreach *proto, CSealCtrlAi *ai)
     return r;
 }
 
+/* a follower's place in a formation, in map cells (two ints built by a constructor, so the tables
+ * below are made on the first call; the name ours) */
+struct UnitCellOffset {
+    UnitCellOffset(int x, int z) : m_x(x), m_z(z) {}
+
+    int m_x;
+    int m_z;
+};
+
+/* the first cell of the single file (OVL2 data 0x650B00, holding 1; read only by 0x5EB910 -- the
+ * name ours) */
+static int s_fileStart = 1;
+
+/* the cell offset of a formation's slot (OVL2 0x5EB910: CAiSFollow::SetFormation's, the follower's
+ * m_5c; new in SOCOM II, the name ours): formation 2 a single file straight back from the first cell,
+ * 1 and any other a staggered column */
+extern "C" void func_005EB910(UNIT_FORMATION formation, int slot, int *cells)
+{
+    static UnitCellOffset stagger[8] = {
+        UnitCellOffset(2, 2), UnitCellOffset(3, -2), UnitCellOffset(4, -3), UnitCellOffset(5, -2),
+        UnitCellOffset(6, 3), UnitCellOffset(7, 5), UnitCellOffset(8, -4), UnitCellOffset(9, -5),
+    };
+    static UnitCellOffset file[8] = {
+        UnitCellOffset(s_fileStart, 0), UnitCellOffset(s_fileStart + 1, 0),
+        UnitCellOffset(s_fileStart + 2, 0), UnitCellOffset(s_fileStart + 3, 0),
+        UnitCellOffset(s_fileStart + 4, 0), UnitCellOffset(s_fileStart + 5, 0),
+        UnitCellOffset(s_fileStart + 6, 0), UnitCellOffset(s_fileStart + 7, 0),
+    };
+
+    switch (formation) {
+    case FORMATION_2:
+        cells[0] = file[slot].m_x;
+        cells[1] = file[slot].m_z;
+        break;
+    case FORMATION_1:
+        cells[0] = stagger[slot].m_x;
+        cells[1] = stagger[slot].m_z;
+        break;
+    default:
+        cells[0] = stagger[slot].m_x;
+        cells[1] = stagger[slot].m_z;
+        break;
+    }
+}
+
 /* the formation set to the leader's: 2 inside, else 1, when it differs (OVL2 0x5EB8A0; the
  * formation byte and the name ours) */
 extern "C" void func_005EB8A0(CSealUnit *unit)
