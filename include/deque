@@ -521,14 +521,134 @@ public:
      * self-test), stores the new block in tmp.back(), pushes a null slot, constructs the element by
      * placement copy (its null test) and swaps tmp in, alloc_ptr released -- a strong-guarantee path
      * the scalar deques' push_back (0x2CF970, 0x2E1610: `reserve(2); resize(1)` on the buffer itself)
-     * does not take; not modelled */
+     * does not take. MODELLED SINCE the online lane's round 24: the pieces below (const_iterator,
+     * init, operator=, the forward do_assign, swap) and __deque_imp::push_back's class path */
     void push_back(const value_type &x);
     void reserve(unsigned int n);
     void resize(unsigned int n);
     unsigned int max_size() const;
     template <class InputIterator>
     void do_assign(InputIterator first, InputIterator last);
+
+    /* THE CLASS DEQUE'S GROWTH PIECES (the online lane, round 24: the chat's push_back 0x2F5290, see
+     * src/gamez/zonline/zNetMediusChat.cpp) -- additive: nothing else names them. A const buffer's
+     * iterator of four words, {p, data, first, last}, cdeque<T *>::iterator's layout and initialiser
+     * list (the storage re-read through the iterator's own field for first_ and last_, start and
+     * capacity by const reference); end() first, then begin() -- MW's right-to-left arguments */
+    class const_iterator {
+    public:
+        typedef const void *value_type;
+        typedef int difference_type;
+        typedef std::random_access_iterator_tag iterator_category;
+
+        const_iterator(const value_type *p, const value_type *const &data, const unsigned int &start, const unsigned int &cap)
+            : p_(p), data_(data), first_(data_ + start), last_(data_ + cap)
+        {
+        }
+        const value_type &operator*() const { return *p_; }
+        const_iterator &operator++()
+        {
+            if (++p_ == last_)
+                p_ = data_;
+            return *this;
+        }
+        friend bool operator==(const const_iterator &x, const const_iterator &y) { return x.p_ == y.p_; }
+        friend bool operator!=(const const_iterator &x, const const_iterator &y) { return x.p_ != y.p_; }
+        friend int operator-(const const_iterator &x, const const_iterator &y)
+        {
+            const value_type *f = x.first_;
+            int n = x.p_ - y.p_;
+
+            if (x.p_ >= f) {
+                if (y.p_ < f)
+                    n -= x.last_ - x.data_;
+            } else if (y.p_ >= f)
+                n += x.last_ - x.data_;
+            return n;
+        }
+
+        const value_type *p_;
+        const value_type *data_;
+        const value_type *first_;
+        const value_type *last_;
+    };
+    const_iterator begin() const { return const_iterator(this->data_ + this->start_, this->data_, this->start_, this->capacity_); }
+    const_iterator end() const
+    {
+        unsigned int e = this->capacity_ ? (this->start_ + this->size_) % this->capacity_ : 0;
+
+        return const_iterator(this->data_ + e, this->data_, this->start_, this->capacity_);
+    }
+    /* n copies of x (0x2F5940, the n-copies constructor's body: the length checked against max_size()
+     * out of line, one slot more than n allocated, x re-read for every element -- __vector_pod's
+     * init(n, value) one level over, SOCOM 1's name for that) */
+    cdeque(unsigned int n, const value_type &x) { init(n, x); }
+    void init(unsigned int n, const value_type &x);
+    /* the buffer assigned from another (the self-test, then the range assign 0x2F5700 over the other's
+     * const_iterators, its forward tag a byte) */
+    cdeque &operator=(const cdeque &x)
+    {
+        if (this != &x)
+            do_assign(x.begin(), x.end(), std::forward_iterator_tag());
+        return *this;
+    }
+    template <class ForwardIterator>
+    void do_assign(ForwardIterator first, ForwardIterator last, std::forward_iterator_tag);
+    void swap(cdeque &x);
 };
+
+/* the swap, field by field (0x2F56B0, SOCOM 1's swap word for word) */
+template <class Allocator>
+void cdeque<const void *, Allocator>::swap(cdeque &x)
+{
+    if (this != &x) {
+        std::swap(this->capacity_, x.capacity_);
+        std::swap(this->size_, x.size_);
+        std::swap(this->start_, x.start_);
+        std::swap(this->data_, x.data_);
+    }
+}
+
+template <class Allocator>
+void cdeque<const void *, Allocator>::init(unsigned int n, const value_type &x)
+{
+    if (n) {
+        if (n > max_size())
+            __msl_error("cdeque::construction length error");
+        this->data_ = this->allocate(n + 1);
+        this->capacity_ = n + 1;
+        this->size_ = n;
+        for (value_type *p = this->data_; n > 0; --n, ++p)
+            *p = x;
+    }
+}
+
+extern "C" unsigned int func_00285BB0(void *d, unsigned int n);
+
+/* [first, last) assigned (0x2F5700): emptied, regrown to the capacity func_00285BB0 recommends when n
+ * does not fit (the old storage freed first), the range copied in, then the count */
+template <class Allocator>
+template <class ForwardIterator>
+void cdeque<const void *, Allocator>::do_assign(ForwardIterator first, ForwardIterator last, std::forward_iterator_tag)
+{
+    unsigned int n = __deque_distance(first, last);
+
+    this->size_ = 0;
+    this->start_ = 0;
+    if (n > (this->capacity_ == 0 ? 0 : this->capacity_ - 1)) {
+        unsigned int c = func_00285BB0(this, n);
+
+        if (this->data_) {
+            this->deallocate(this->data_, this->capacity_);
+            this->data_ = 0;
+            this->capacity_ = 0;
+        }
+        this->data_ = this->allocate(c + 1);
+        this->capacity_ = c + 1;
+    }
+    __deque_copy(first, last, this->data_);
+    this->size_ = n;
+}
 
 template <class Allocator>
 void cdeque<const void *, Allocator>::pop_front()
@@ -1138,7 +1258,43 @@ void __deque_imp<T, Allocator>::pop_back()
  * the allocator straight into back() (named locals there swap the block's and back()'s saved
  * registers), and both block counts are `== 0 ? 0 : ...` (the zero arm falls through, as the
  * target lays it out). The function-local max static is guarded (0x44D6C8, the value at 0x3F3490 --
- * data.txt names each instance's). Byte-exact: 0x2CF970, the lobby's 0x2E1610 */
+ * data.txt names each instance's). Byte-exact: 0x2CF970, the lobby's 0x2E1610.
+ * A CLASS ELEMENT GROWS ANOTHER WAY (the online lane, round 24: the chat's 0x2F5290 byte-exact; the
+ * MSL headers' round 31 had measured that it never calls resize): the bigger block buffer is built in
+ * a temporary -- tmp(2 * size(), 0) (the zeroing inline, init 0x2F5940 called), the old buffer
+ * assigned into it (operator='s self-test, do_assign 0x2F5700 over the four-word const_iterators,
+ * end() built first) or, for an empty one, reserve(2) and push_back(0) -- the new block stored as
+ * tmp.back() through the allocator's result kept in a named local (read back through ap.get() it is
+ * reloaded after the calls), a null slot pushed, the element copy-constructed into the block (placement
+ * new: its null test), the guard released, tmp swapped in (0x2F56B0), the count; the element is
+ * constructed on the plain path too. Picked by has_trivial_dtor (the chat's lines are the tree's only
+ * class element); the dead branch's buffer is __deque_grow_buf's empty stand-in for a scalar, so no
+ * scalar deque's unit instantiates init, do_assign or swap (objcmp: every other unit identical) */
+/* the growth path's temporary block buffer (the online lane, round 24): a class element's push_back
+ * builds the bigger buffer in one (below); a scalar's never does, and its dead branch names an empty
+ * stand-in instead, so that no scalar deque's unit instantiates the buffer's init, do_assign or swap
+ * (with the buffer type itself there, five units emitted all three and the lobby's tail moved) */
+template <bool trivial>
+struct __deque_grow_buf {
+    typedef Metrowerks::cdeque<const void *, allocator<const void *> > type;
+};
+
+template <>
+struct __deque_grow_buf<true> {
+    struct type {
+        type(unsigned int, const void *const &) {}
+        template <class B>
+        type &operator=(const B &) { return *this; }
+        void reserve(unsigned int) {}
+        void push_back(const void *const &) {}
+        const void *&back() { return p_; }
+        template <class B>
+        void swap(B &) {}
+
+        const void *p_;
+    };
+};
+
 template <class T, class Allocator>
 void __deque_imp<T, Allocator>::push_back(const T &x)
 {
@@ -1148,24 +1304,49 @@ void __deque_imp<T, Allocator>::push_back(const T &x)
         if (this->size_ == max_size())
             __msl_error("deque::push_back length error");
         if (this->buf_.second_.size() == (this->buf_.second_.capacity() == 0 ? 0 : this->buf_.second_.capacity() - 1)) {
-            if (this->buf_.second_.size() == 0) {
-                this->buf_.second_.reserve(2);
-                this->buf_.second_.resize(1);
-            }
-            Allocator &a = this->buf_;
-            Metrowerks::alloc_ptr<T, Allocator &, size_type> ap(a.allocate(buf_size), a, buf_size);
+            if (Metrowerks::has_trivial_dtor<T>::value) {
+                if (this->buf_.second_.size() == 0) {
+                    this->buf_.second_.reserve(2);
+                    this->buf_.second_.resize(1);
+                }
+                Allocator &a = this->buf_;
+                Metrowerks::alloc_ptr<T, Allocator &, size_type> ap(a.allocate(buf_size), a, buf_size);
 
-            this->buf_.second_.reserve(this->buf_.second_.size() * 2);
-            *(this->buf_.second_.back() = ap.get()) = x;
-            this->buf_.second_.push_back(0);
-            ++this->size_;
-            ap.release();
-            return;
+                this->buf_.second_.reserve(this->buf_.second_.size() * 2);
+                *(this->buf_.second_.back() = ap.get()) = x;
+                this->buf_.second_.push_back(0);
+                ++this->size_;
+                ap.release();
+                return;
+            } else {
+                typedef typename __deque_grow_buf<Metrowerks::has_trivial_dtor<T>::value>::type B;
+                Allocator &a = this->buf_;
+                T *p = a.allocate(buf_size);
+                Metrowerks::alloc_ptr<T, Allocator &, size_type> ap(p, a, buf_size);
+                B tmp(this->buf_.second_.size() * 2, 0);
+
+                if (this->buf_.second_.size() != 0)
+                    tmp = this->buf_.second_;
+                else {
+                    tmp.reserve(2);
+                    tmp.push_back(0);
+                }
+                tmp.back() = p;
+                tmp.push_back(0);
+                new (p) T(x);
+                ap.release();
+                tmp.swap(this->buf_.second_);
+                ++this->size_;
+                return;
+            }
         }
         this->buf_.second_.back() = ((Allocator &)this->buf_).allocate(buf_size);
         this->buf_.second_.push_back(0);
     }
-    this->buf_.second_[n / buf_size][n % buf_size] = x;
+    if (Metrowerks::has_trivial_dtor<T>::value)
+        this->buf_.second_[n / buf_size][n % buf_size] = x;
+    else
+        new (&this->buf_.second_[n / buf_size][n % buf_size]) T(x);
     ++this->size_;
 }
 

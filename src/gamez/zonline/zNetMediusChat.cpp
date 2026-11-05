@@ -1259,6 +1259,23 @@ public:
 CChatQueue data_0044FA20;   /* the public lines waiting for the filter */
 CChatQueue data_0044FA50;   /* the private lines waiting for their player */
 
+/* A MODELLING DEVICE, dead-stripped (src/ABSENT.txt; the online lane, round 24): the chat queue's
+ * block buffers built in an own function of the unit. An out-of-class template member is inlined
+ * into the unit's tail only once an own function has instantiated it (README "Out-of-class template
+ * members"), and this unit's tail inlines what the lobby unit's calls: the chat's push_back 0x2F5290
+ * zeroes its temporary buffer in place (__cdeque_buf<PCv>() and allocator<PCv>(), called out of line
+ * without this), and its __deque_buf(const Allocator &) 0x2F5FF0 builds the rebound buffer temporary
+ * in place where the lobby's 0x2E09A0 calls cdeque(const Allocator &) and both allocator
+ * constructors. What own code of the original instantiated them is not known (none survives in the
+ * image: every own function of the unit is written); this function stands for it, the two buffers
+ * __deque_buf's two constructors build (the rebound one, and the default), and nothing calls it */
+void ChatQueueBuffers()
+{
+    Metrowerks::cdeque<MediusChatMessage *, std::allocator<MediusChatMessage *> > buf(
+        (std::allocator<MediusChatMessage *>(std::allocator<MediusChatMessage>())));
+    Metrowerks::cdeque<const void *, std::allocator<const void *> > tmp;
+}
+
 void cbGetPlayerInfo(int, int, int, MediusPlayerInfoResponse *);   /* the player's info shown */
 
 extern "C" {
