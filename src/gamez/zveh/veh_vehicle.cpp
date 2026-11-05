@@ -429,7 +429,12 @@ void CVehicle::UpdateAiMapLoc()
  * the cells a vector subclass (CAiMapLocVec's shape), as a member or as a second base of the region,
  * this matches byte for byte, but the region's constructor is then six high and CVehicle's
  * constructor (0x3ADE90, byte-exact as it stands) inlines it one level only. A user-declared
- * destructor on the region and the cells as a second base change nothing */
+ * destructor on the region and the cells as a second base change nothing. Round 25
+ * (build/scratch/wep/v_vdt*.py): the cells a vector subclass under `#pragma inline_depth(6)` make
+ * both byte-exact (the unit 29 of 30, GetBBox's copy off as at level 5) -- a depth-6 stand-in, not
+ * adopted; a plain vector as the region's second base matches the constructor and leaves this 8
+ * short, a subclass of __vector_imp with a user destructor too (each class level adds one to the
+ * constructor's chain and one to the destructor's: the asymmetry the two want is not in a class) */
 CVehicle::~CVehicle()
 {
 }

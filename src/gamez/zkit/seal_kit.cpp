@@ -13,6 +13,7 @@
 #include "../zcamera/zcamera.h"
 #include "../zentity/zentity.h"
 #include "../znode/node_world.h"
+#include "../zsnd/zsnd.h"
 
 #include <iostream>
 
@@ -519,6 +520,75 @@ int CZKit::GetCurNumMags()
     return 0;
 }
 
+/* the SEAL's controller as far as Init asks it: CSealCtrl's table to IsPlayer at +0x2C (zseal.h's,
+ * which this unit does not include; the two slots before it unnamed here), and zseal.h's
+ * CZSealBody::IsPlayer over it (the controller tested, slot 0x2C called; the name zseal.h's) */
+class CKitSealCtrl : public CEntityCtrl {
+public:
+    virtual void Virtual24();
+    virtual void Virtual28();
+    virtual bool IsPlayer() const;   /* +0x2C */
+};
+
+static inline bool KitIsPlayer(CKitBody *body)
+{
+    return body->m_control ? ((CKitSealCtrl *)body->m_control)->IsPlayer() : false;
+}
+
+/* the kit set up (OVL2 0x5C7E00; SOCOM 1's Init, 0x2AE9E0, call for call): the reload, empty-click
+ * and laser designator's two sounds found by name; the flashlight's light map made, placed at the
+ * origin as -0.0 -- the projection's translation and the node's position both, through one pointer
+ * held (CLightMap::SetPos(0, 0, 0) passes +0.0 to SetPosition, mtc1 zero, where both builds pass the
+ * stores' 0x80000000; m_lightMap read for each store reloads it), ranged 20-100, named, its opacity 256 and its blend word 73; a player's lens effects
+ * dropped, its night vision off and the timer reset; the sniper, kick, heartbeat and lase state
+ * cleared -- the previous sniper x twice, as SOCOM 1's -- and SOCOM II's new words set */
+void CZKit::Init()
+{
+    m_rldsnd = CSnd::GetSoundByName(".M4A1_RLD");
+    m_clicksnd = CSnd::GetSoundByName(".GUN_EMPTY");
+    m_lasesnd_start = CSnd::GetSoundByName("~LSR_DES_LOCK");
+    m_lasesnd_fin = CSnd::GetSoundByName("~LSR_DES_MISS");
+    m_lightMap = new zdb::CLightMap;
+    zdb::CLightMap *l = m_lightMap;
+
+    l->m_worldToUV.m_matrix[3][0] = -0.0f;
+    l->m_worldToUV.m_matrix[3][1] = -0.0f;
+    l->m_worldToUV.m_matrix[3][2] = -0.0f;
+    l->SetPosition(-0.0f, -0.0f, -0.0f);
+    m_lightMap->SetRange(20.0f, 100.0f);
+    m_lightMap->SetName("flash_lightmap");
+    m_lightMap->m_opacity = 256.0f;
+    zdb::BLENDMODE blend;
+
+    blend.m_alphaWORD = 73;
+    m_lightMap->m_blendmode = blend;
+    if (m_body && KitIsPlayer((CKitBody *)m_body)) {
+        Apply_LensEffects(false, 0);
+        m_nvg_enabled = false;
+        CZWeapon::ClearTimer(0);
+    }
+    m_chill_parabola = 0.0f;
+    m_heartbeat_state = 0;
+    m_sniper_posx = 0.0f;
+    m_sniper_posy = 0.0f;
+    m_sniper_prev_posx = 0.0f;
+    m_sniper_prev_posx = 0.0f;
+    m_firerifle_kick_movedist = 0.0f;
+    m_firerifle_kick_accum = 0.0f;
+    m_firerifle_kick_state = 0;
+    m_lase_mapname = 0;
+    m_lase_anim = 0;
+    m_lase_timer = 0.0f;
+    m_lase_echo = false;
+    CZWeapon::ClearTimer(&m_lase_timer);
+    m_hotswap = false;
+    m_8 = 0;
+    m_8bc = -1.0f;
+    m_8a4 = 0.2f;
+    m_8ac = CPnt3D::zero;
+    m_8a8 = 0;
+}
+
 /* an item's node deleted unless something holds it, its slot zeroed (std::transform's function
  * object: an empty user constructor, so it is built with no stores; the name ours) */
 struct DeleteUnparented {
@@ -916,11 +986,12 @@ CZFTSWeapon *CZKit::GetFiringItem(int index)
     return m_item[i];
 }
 
-/* (OVL2 0x5C6980) */
-void CZKit::AttachItemNode(unsigned char kind, const char *part)
+/* (OVL2 0x5C6980; pinned: ChangeItemModel, its only caller, calls it) */
+#pragma auto_inline off
+void CZKit::AttachItemNode(int kind, const char *part)
 {
     CKitBody *body = (CKitBody *)m_body;
-    CKitBody::Attach::Record *a = body->m_attach[kind].m_rec;
+    CKitBody::Attach::Record *a = body->m_attach[(unsigned char)kind].m_rec;
 
     if (a) {
         zdb::CNode *node = (zdb::CNode *)ItemPtr(m_selected_item);
@@ -931,6 +1002,74 @@ void CZKit::AttachItemNode(unsigned char kind, const char *part)
             parent->AddChild(node);
             a->m_node = node;
         }
+    }
+}
+#pragma auto_inline reset
+
+extern "C" {
+/* the body's carrying modes and its gear (seal_body.cpp's CZSealBody members, OVL2 0x5A70F0,
+ * 0x5A7260, 0x58B040 -- spelled by their mangled names, CZSealBody being incomplete here) and the
+ * hand a body's item goes to (OVL2 0x57D5E0, the SEAL lane's, unnamed) */
+void ChangeToRifleMode__10CZSealBodyFb(CZSealBody *body, bool now);
+void ChangeToPistolMode__10CZSealBodyFb(CZSealBody *body, bool now);
+void SetPartAsGear__10CZSealBodyFP10CZBodyPartP14CCharacterGear(CZSealBody *body, void *part, unsigned int gear);
+void func_0057D5E0(CZSealBody *body, int hand);
+}
+
+/* (OVL2 0x5C50B0: SOCOM 1's ChangeItemModel, its two modes, the item unread in both) -- at once,
+ * the rifle's or the pistol's carrying mode by the first item's fire class (FireClassOf inlined),
+ * the matching attachment's gear set and the hand told, then the fifth attachment's gear; else, by
+ * kind: 1 or 2 asks for the item unless the body's byte at 0xF79 already says so (kind 1 sets the
+ * bit from an int 1 -- the `andi` of the compare's register, as SOCOM 1's -- kind 2 from true), 4
+ * asks whatever, 3 asks and hangs the node on "aimnodes", any other only hangs it */
+void CZKit::ChangeItemModel(int item, int kind, int x, bool now)
+{
+    if (now) {
+        CKitBody *body;
+
+        if (FireClassOf(m_item[0]) == FIRE_CLASS_RIFLE) {
+            ChangeToRifleMode__10CZSealBodyFb(m_body, true);
+            body = (CKitBody *)m_body;
+            SetPartAsGear__10CZSealBodyFP10CZBodyPartP14CCharacterGear(m_body, body->m_attach[2].m_rec,
+                                                                        body->m_attach[2].m_4);
+            func_0057D5E0(m_body, 1);
+        } else {
+            ChangeToPistolMode__10CZSealBodyFb(m_body, true);
+            body = (CKitBody *)m_body;
+            SetPartAsGear__10CZSealBodyFP10CZBodyPartP14CCharacterGear(m_body, body->m_attach[1].m_rec,
+                                                                        body->m_attach[1].m_4);
+            func_0057D5E0(m_body, 2);
+        }
+        body = (CKitBody *)m_body;
+        SetPartAsGear__10CZSealBodyFP10CZBodyPartP14CCharacterGear(m_body, body->m_attach[4].m_rec,
+                                                                    body->m_attach[4].m_4);
+        return;
+    }
+    switch (kind) {
+    case 1:
+        if (((CKitBody *)m_body)->m_f79 != 1) {
+            m_requested_item = 1;
+            m_bit13 = false;
+        }
+        break;
+    case 2:
+        if (((CKitBody *)m_body)->m_f79 != 2) {
+            m_requested_item = true;
+            m_bit13 = false;
+        }
+        break;
+    case 4:
+        m_requested_item = true;
+        m_bit13 = false;
+        break;
+    case 3:
+        m_requested_item = true;
+        m_bit13 = false;
+        AttachItemNode(kind, "aimnodes");
+        break;
+    default:
+        AttachItemNode(kind, "aimnodes");
+        break;
     }
 }
 
@@ -957,6 +1096,168 @@ void CZKit::SetFireDelay(float delay, bool alt)
         m_fire_delay = delay;
     CZWeapon::RegisterTimer2(&m_fire_delay, m_fire_delay, 0);
     m_alt_firedelay = alt;
+}
+
+extern "C" {
+/* the SEAL's held item put through its reload, false when it cannot run (seal_env.cpp's, OVL2
+ * 0x5A82E0 -- the kit's Reload calls it three times) */
+bool func_005A82E0(CZSealBody *body, int how);
+}
+
+/* the launcher's next round chambered: with the grenade launcher's mode on item 146, its
+ * ammunition's item (the first of the mode's kind with rounds) steps on to its next magazine
+ * holding any, an empty one stopping it; then the SEAL's reload run and the item's reload sound
+ * (the weapon's word at 0xA0) played at the SEAL (OVL2 0x5C3000, new in SOCOM II: the kit's Tick
+ * calls it; the name ours) */
+void CZKit::ChamberLauncherRound()
+{
+    EQUIP_ITEM item = m_item[m_selected_item]->m_ID;
+    bool ok = true;
+
+    if (CurWeaponIsLauncherMode() && item == 146) {
+        int i = FindItemWithAmmo((EQUIP_ITEM)GetCurFireMode());
+
+        if (i != -1) {
+            int mag = m_currentmag[i] + 1;
+
+            if (ItemHasAmmo(i)) {
+                bool found = false;
+
+                if (mag > 9)
+                    mag = 0;
+                while (mag != m_currentmag[i] && !found) {
+                    if (m_reloads[i][mag] > 0)
+                        found = true;
+                    else if (++mag > 9)
+                        mag = 0;
+                }
+            }
+            m_currentmag[i] = mag;
+            if (m_reloads[i][m_currentmag[i]] == 0)
+                ok = false;
+        } else
+            ok = false;
+    }
+    if (ok) {
+        int sel = m_selected_item;
+
+        func_005A82E0(m_body, 1);
+        CSnd *snd = (CSnd *)m_item[sel]->m_socom2_a0;
+
+        if (snd)
+            snd->PlaySound3D(&((CEntity *)m_body)->m_posW, 1.0f, 0, 0, 255);
+    }
+}
+
+extern "C" {
+/* the body's tests Reload makes (seal_env.cpp's: OVL2 0x5A7D10 IsThrowing, 0x5A7AB0 IsReloading --
+ * spelled by their mangled names, CZSealBody being incomplete here -- and 0x5A78D0 between them,
+ * unnamed) and a state the body may leave for 3 (OVL2 0x5B4340, the SEAL lane's, unnamed) */
+bool IsThrowing__10CZSealBodyFb(CZSealBody *body, bool started);
+bool IsReloading__10CZSealBodyFv(CZSealBody *body);
+bool func_005A78D0(CZSealBody *body);
+bool func_005B4340(CZSealBody *body, int state);
+}
+
+/* the network as Reload reads it (zseal.h's CZNetwork, which this unit does not include: SOCOM 1's
+ * m_bSessionMaster and m_bNetwork bytes, OVL1 bss 0x45A0C0) and the network game's state (OVL1 bss
+ * 0x437CE8; hud_ammo.cpp's view: whether players respawn, the byte at 0xDC) */
+class CZNetwork {
+public:
+    unsigned char m_bSessionMaster;   // 0x0
+    unsigned char m_bNetwork;   // 0x1
+};
+extern CZNetwork theNetwork;
+
+class CKitNetGame {
+public:
+    unsigned char _0[0xdc];
+    unsigned char m_respawns;   // 0xdc
+};
+extern "C" CKitNetGame *data_00437CE8;
+
+/* the body off the ground, as a bool (the target materialises the bit: sltu; the name ours) */
+static inline bool Airborne(CKitBody *body)
+{
+    return body->m_airborne ? true : false;
+}
+
+/* the item in hand reloaded (OVL2 0x5C2A90; SOCOM 1's Reload, its tests and walk the same): not
+ * without a body, airborne, dead, throwing, reloading, 0x5A78D0 or carrying (state 9), nor when the
+ * body cannot take state 3 or looks through binoculars; under the grenade launcher's mode the
+ * launcher's ammunition item is the one reloaded. With rounds left, the next magazine holding any
+ * becomes the current one, the reload run and its sound played; online, a weapon with none left
+ * besides has its magazine refilled for nothing -- a pistol always, a primary weapon but items 142
+ * and 143 while players respawn. Either way the weapon's display is told and true
+ * is returned -- false when the reload cannot run */
+bool CZKit::Reload()
+{
+    if (!m_body || Airborne((CKitBody *)m_body) || !((CKitBody *)m_body)->m_alive
+        || IsThrowing__10CZSealBodyFb(m_body, false) || IsReloading__10CZSealBodyFv(m_body)
+        || func_005A78D0(m_body) || ((CKitBody *)m_body)->m_state == 9)
+        return false;
+    if (!func_005B4340(m_body, 3))
+        return false;
+    if (IsUsingBinocs())
+        return false;
+    int index = m_selected_item;
+    bool reloaded = false;
+
+    if (CurWeaponIsLauncherMode()) {
+        int i = FindItemWithAmmo((EQUIP_ITEM)GetCurFireMode());
+
+        if (i != -1)
+            index = i;
+    }
+    if (ItemHasAmmo(index)) {
+        int mag = m_currentmag[index] + 1;
+        bool found = false;
+
+        if (mag > 9)
+            mag = 0;
+        while (mag != m_currentmag[index] && !found) {
+            if (m_reloads[index][mag] > 0)
+                found = true;
+            else if (++mag > 9)
+                mag = 0;
+        }
+        if (found) {
+            if (!func_005A82E0(m_body, 0))
+                return false;
+            m_currentmag[index] = mag;
+            CSnd *snd = m_item[index]->m_reloadsound;
+
+            if (snd)
+                snd->PlaySound3D(&((CEntity *)m_body)->m_posW, 1.0f, 0, 0, 255);
+        } else if (theNetwork.m_bNetwork
+               && (m_item[index]->GetIDType() == 4
+                   || CZWeapon::IsPrimary(m_item[index]->m_ID) && m_item[index]->m_ID != 142
+                          && m_item[index]->m_ID != 143 && data_00437CE8->m_respawns)) {
+            m_reloads[index][m_currentmag[index]] = m_item[index]->GetAmmoCapacity();
+            if (!func_005A82E0(m_body, 0))
+                return false;
+            CSnd *snd = m_item[index]->m_reloadsound;
+
+            if (snd)
+                snd->PlaySound3D(&((CEntity *)m_body)->m_posW, 1.0f, 0, 0, 255);
+        }
+        m_weaponinfoChanged = true;
+        reloaded = true;
+    } else if (theNetwork.m_bNetwork
+               && (m_item[index]->GetIDType() == 4
+                   || CZWeapon::IsPrimary(m_item[index]->m_ID) && m_item[index]->m_ID != 142
+                          && m_item[index]->m_ID != 143 && data_00437CE8->m_respawns)) {
+        m_reloads[index][m_currentmag[index]] = m_item[index]->GetAmmoCapacity();
+        if (!func_005A82E0(m_body, 0))
+            return false;
+        CSnd *snd = m_item[index]->m_reloadsound;
+
+        if (snd)
+            snd->PlaySound3D(&((CEntity *)m_body)->m_posW, 1.0f, 0, 0, 255);
+        m_weaponinfoChanged = true;
+        reloaded = true;
+    }
+    return reloaded;
 }
 
 /* every remote charge the SEAL set down within 500 of him set off, then the detonator (153) taken
@@ -2205,5 +2506,37 @@ void CZKit::ShowProjectile()
 
         if (n)
             n->SetActive(true);
+    }
+}
+
+/* the sniper rifle's sight shown to suit the thermal scope: with item 195 in the kit, the first
+ * primary weapon -- when a sniper rifle (101) -- has its "scope" node hidden and its
+ * "thermal_scope" shown, without it the other way round; both looked up under the node the body's
+ * second attachment keeps (OVL2 0x5B82E0, new in SOCOM II after ShowProjectile: 0x5C0250 calls it;
+ * the names ours). HasItem and GetPrimaryIndex inline in each arm */
+static inline void ShowScopes(CZKit *kit, bool thermal)
+{
+    zdb::CNode *node = (zdb::CNode *)((CKitBody *)kit->m_body)->m_attach[1].m_rec->m_node;
+    zdb::CNode *scope = node->FindChild("scope", true);
+    zdb::CNode *tt = node->FindChild("thermal_scope", true);
+
+    if (scope)
+        scope->SetActive(!thermal);
+    if (tt)
+        tt->SetActive(thermal);
+}
+
+void CZKit::UpdateScopeModel()
+{
+    if (HasItem((EQUIP_ITEM)195)) {
+        int i = GetPrimaryIndex();
+
+        if (i != -1 && m_item[i]->GetIDType() == IDTYPE_SNIPER_RIFLE)
+            ShowScopes(this, true);
+    } else {
+        int i = GetPrimaryIndex();
+
+        if (i != -1 && m_item[i]->GetIDType() == IDTYPE_SNIPER_RIFLE)
+            ShowScopes(this, false);
     }
 }

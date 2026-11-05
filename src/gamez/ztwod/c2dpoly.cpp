@@ -4,9 +4,9 @@
  * then the triangle vector's template instances), with SOCOM II's own among them: a vertex's alpha
  * after GetTrans, and the four flag setters that keep the GS PRIM bits (vtable slots 6-9) before
  * the constructor. SOCOM 1's symbol table groups the two classes' RTTI in one unit; its name is
- * ours. Written, all byte-exact: C2DPoly's but MakePacket and GetAssetLibs (m2c's draft matches; it
- * calls the library vector's pieces out of line, as C2DBitmapPoly's), and the tri-fan's
- * constructor, Draw and destructor. Defined in reverse of
+ * ours. Written, all byte-exact: C2DPoly's but MakePacket, and the tri-fan's constructor, Draw,
+ * destructor and GetAssetLibs (both GetAssetLibs the HUD's round 46: C2DBitmapPoly's shape, calling
+ * the library vector's pieces out of line). Defined in reverse of
  * their image order (-inline deferred). */
 
 #include <eetypes.h>
@@ -27,13 +27,29 @@ void zSysFifoKick(u_long128 *packet, unsigned int qwc);
     ((unsigned long)(nloop) | ((unsigned long)(eop) << 15) | ((unsigned long)(pre) << 46) |   \
      ((unsigned long)(prim) << 47) | ((unsigned long)(flg) << 58) | ((unsigned long)(nreg) << 60))
 
-/* the texture as the triangle packets it: its GS registers at 0x30 */
+/* the texture as the triangle packets it: its GS registers at 0x30, the library it came from at
+ * 0x10 (the GetAssetLibs) */
 namespace zdb {
 class CTexture {
 public:
-    unsigned char _0[0x30];
+    unsigned char _0[0x10];
+    CAssetLib *m_assetlib;   // 0x10
+    unsigned char _14[0x30 - 0x14];
     sceVu0FVECTOR m_gsregs;   // 0x30
 };
+}
+
+/* the texture's library, once, then the children's (C2DBitmapPoly's shape: ztwod.h's AddAssetLib
+ * inlined one level, C2D's walk) */
+void C2DPoly::GetAssetLibs(CLibList &liblist)
+{
+    if (m_texture) {
+        zdb::CAssetLib *lib;
+
+        if ((lib = m_texture->m_assetlib) != 0)
+            AddAssetLib(liblist, lib);
+    }
+    C2D::GetAssetLibs(liblist);
 }
 
 /* the triangle at 0,0, untextured, white, blended, then grey and opaque, a triangle's PRIM word (3)
@@ -308,4 +324,16 @@ void C2DTriFan::Draw(zdb::CCamera *cam)
         for (std::vector<C2DPoly>::iterator i = m_polylist.begin(); i != m_polylist.end(); ++i)
             (*i).Draw(cam);
     }
+}
+
+/* the fan's texture's library, once, then the children's (C2DBitmapPoly's shape) */
+void C2DTriFan::GetAssetLibs(CLibList &liblist)
+{
+    if (m_texture) {
+        zdb::CAssetLib *lib;
+
+        if ((lib = m_texture->m_assetlib) != 0)
+            AddAssetLib(liblist, lib);
+    }
+    C2D::GetAssetLibs(liblist);
 }

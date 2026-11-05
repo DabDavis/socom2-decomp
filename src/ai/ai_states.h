@@ -27,6 +27,7 @@ class CSealCtrlAi;
 class CAiEvent;
 class CZSealBody;
 class CZAnim;
+class CNodeAction;
 
 /* an anim's signal to its controller (SOCOM 1's AI_SIGNAL by AnimSignal's mangled name; a byte -- the
  * switch narrows it with andi -- its cases 1 to 6, the names unknown). Here, not in zseal.h, since
@@ -590,9 +591,9 @@ public:
     virtual bool Virtual38();
     virtual ~CAiSAction();
 
-    /* 0x58: the action's object, released on the way out for the SEAL (OnSignal's 0x2B49D0 clears
-     * its holder id at 0x34; the name ours) */
-    void *m_58;
+    /* 0x58: the action's object, released on the way out for the SEAL (OnSignal's
+     * CNodeAction::Release, OVL1 0x2B49D0, clears its holder id at 0x34; the name ours) */
+    CNodeAction *m_58;
     unsigned char _5c[0x60 - 0x5c];
     CPnt3D m_60;   // 0x60
     int m_6c;   // 0x6c (0 on a reset)
@@ -650,6 +651,9 @@ public:
      * 0x5FDAD0 runs (OVL2 0x5FC7D0: SOCOM 1's HandleFollowTickHideCheck by its place; the names
      * ours) */
     bool HideCheck(CSealCtrlAi *ai, bool b, bool hide, char *out);
+    /* the follower's stance kept with its master's, asked to or moving (OVL2 0x5FC590: SOCOM 1's
+     * HandleFollowTickStance by its place; the names ours) */
+    void StanceCheck(CSealCtrlAi *ai, bool match, bool moving);
     /* the follower's look while hiding, set once: true once it is (OVL2 0x5FDAD0; the name ours) */
     bool SetHideLook(CSealCtrlAi *ai);
     /* the AI's follow master made the state's, a new one restarting its step; true while it

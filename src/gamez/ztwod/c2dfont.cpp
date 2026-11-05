@@ -259,7 +259,12 @@ static inline int GetInt(const _zrdr *rdr, unsigned int i)
     return GetRdrInt(e);
 }
 
-/* a point (ours: the drop shadow's offset and a placement's position) */
+/* a point (ours: the drop shadow's offset and a placement's position). In the unit's anonymous
+ * namespace (the HUD's round 46): its out-of-line copies are then the unit's own, so MW knows what
+ * they clobber when a later function calls them -- ReadPlacement keeps the found block in a2 across
+ * the constructor, GetInt and the setters, as the target does (a global class's copies could be
+ * another unit's at link time: MW assumes every caller-saved register lost and takes s1) */
+namespace {
 class CFontPoint {
 public:
     CFontPoint() : x(0), y(0) {}
@@ -271,14 +276,19 @@ public:
     int x;   // 0x0
     int y;   // 0x4
 };
+}
 
-/* a point from an rdr pair (ours: inlined one level, its callees out of line after Load) */
-static inline CFontPoint ReadPoint(const _zrdr *rdr)
+/* a point from the pair a tag names (ours: inlined one level, its callees out of line after Load).
+ * The tag's block found here, not by the caller (the HUD's round 46): the cut makes FlatFindTag a
+ * call too -- its copy 0x35A240, called only by Load's and ReadPlacement's point reads, every other
+ * FlatFindTag inlined */
+static inline CFontPoint ReadPoint(const _zrdr *rdr, const char *tag)
 {
+    _zrdr *t = FlatFindTag(rdr, tag);
     CFontPoint p;
 
-    p.SetX(GetInt(rdr, 0));
-    p.SetY(GetInt(rdr, 1));
+    p.SetX(GetInt(t, 0));
+    p.SetY(GetInt(t, 1));
     return p;
 }
 
@@ -315,7 +325,8 @@ static inline int FindName(const std::vector<CSaferStr> &names, const char *s)
 /* a rectangle from two rdr points (0x35A840) */
 CFontRect ReadRect(const _zrdr *ul, const _zrdr *lr);
 /* a placement from an rdr block's DispPos, HorScale and VertScale (0x35AA80) */
-/* OPEN, 4 bytes long (0xF4 against 0xF0): DispPos's findtag -- see Load. */
+/* (byte-exact since the HUD's round 46: the point read through ReadPoint(rdr, tag), the scale stored as it
+ * is read -- p.sx a register across the VertScale read, $f20) */
 C2DPlacement ReadPlacement(const _zrdr *rdr);
 
 C2DGlyphPiece *C2DGlyph::AddPiece(const _zrdr *ul, const _zrdr *lr, int height)
@@ -568,17 +579,17 @@ void CHangulFont::LoadVowelRangeLayouts(std::vector<CSaferStr> &names, const _zr
 C2DPlacement ReadPlacement(const _zrdr *rdr)
 {
     C2DPlacement p;
-    CFontPoint pos = ReadPoint(FlatFindTag(rdr, "DispPos"));
+    CFontPoint pos = ReadPoint(rdr, "DispPos");
     float sx = 1.0f;
 
     zrdr_findreal(rdr, "HorScale", &sx, 1);
+    p.sx = sx;
     float sy = 1.0f;
 
     zrdr_findreal(rdr, "VertScale", &sy, 1);
+    p.sy = sy;
     p.x = pos.x;
     p.y = -pos.y;
-    p.sx = sx;
-    p.sy = sy;
     return p;
 }
 
@@ -711,7 +722,7 @@ void C2DFont::Load(const _zrdr *rdr, const char *name)
 
     if (shadow) {
         m_3c = true;
-        CFontPoint off = ReadPoint(FlatFindTag(shadow, "offset"));
+        CFontPoint off = ReadPoint(shadow, "offset");
 
         m_40 = off.x;
         m_44 = off.y;

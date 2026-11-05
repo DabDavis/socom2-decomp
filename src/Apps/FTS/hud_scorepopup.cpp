@@ -225,20 +225,48 @@ namespace {
 CPnt3D g_vSpecBoxColor(64.0f, 128.0f, 64.0f);
 }
 
-/* a message shown once (SOCOM II's; the names ours): a done flag, the map it is for and the object
- * or event that shows it, then what the opener (0x22B4A0) takes */
-struct CMessageTrigger {
+/* the window a message pop-up opens and its text (SOCOM II's; the names ours): hud.rdr's
+ * WindowPos, WindowSize's width, TextSize (scaled by 1.1429), LineInterval and TextId -- what the
+ * opener (0x22B4A0) takes; every trigger ends with one. Its constructor 0x22DD90 is out of line
+ * (the loader's copy: the triggers' implicit constructors inline one level) */
+struct CPopupMessage {
+    CPopupMessage() : m_pos(0, 0), m_width(0), m_textSize(0.0f), m_lineInterval(0.0f) {}
+
+    IPNT2D m_pos;   // 0x0
+    int m_width;   // 0x8
+    float m_textSize;   // 0xc
+    float m_lineInterval;   // 0x10
+    CSaferStr m_textId;   // 0x14
+};   // 0x20 bytes
+
+/* each trigger's condition, a base with its own constructor (the done flag cleared): the loader's
+ * `new` calls it out of line, then the message's (0x22DC40, 0x22DC70, 0x22DCA0, 0x22DDC0; the
+ * names ours). A HUD objective's: its valve's name and the mission */
+struct CTriggerByValve {
+    CTriggerByValve() : m_done(false) {}
+
     bool m_done;   // 0x0
-    std::string m_name;   // 0x4
-    std::string m_map;   // 0x10
-    int m_message[1];   // 0x1c
+    CSaferStr m_name;   // 0x4: Valve
+    CSaferStr m_map;   // 0x10: Mission
+};
+
+/* a message shown once (SOCOM II's; the names ours): a done flag, the map it is for and the object
+ * or event that shows it, then what the opener (0x22B4A0) takes (hud.rdr's HudObjective) */
+struct CMessageTrigger : public CTriggerByValve {
+    CPopupMessage m_message;   // 0x1c
+};
+
+/* an animation command's (AnimCmd): the name, then the flag */
+struct CTriggerByName {
+    CTriggerByName() : m_done(false) {}
+
+    CSaferStr m_name;   // 0x0: Name
+    bool m_done;   // 0xc
 };
 
 /* a message keyed by name alone (0x22BD50's records: the name, the done flag, the message) */
-struct CMessageTriggerByName {
-    std::string m_name;   // 0x0
-    bool m_done;   // 0xc
-    int m_message[1];   // 0x10
+struct CMessageTriggerByName : public CTriggerByName {
+    CPopupMessage m_message;   // 0x10
 };
 
 
@@ -248,15 +276,37 @@ extern "C" bool func_0022B4A0(void *message);
 /* what a trigger is given: an object with its name at 0x20 (no name yet) */
 /* a message keyed by the map and any of several objects' names (0x22D270's records: the done flag,
  * the names, the map, the message) and one keyed by the map alone (0x22D190 clears its flag) */
-struct CMessageTriggerByNames {
+struct CTriggerByNames {
+    CTriggerByNames() : m_done(false) {}
+    /* a name appended, through the new last element (the loader's; inlined one level: push_back,
+     * the temporary's constructor and destructor, end(), the reverse * and CSaferStr's assignment
+     * called out of line, as the target does; the name ours) */
+    void AddName(const char *s)
+    {
+        m_names.push_back(CSaferStr());
+        *m_names.rbegin() = s;
+    }
+
     bool m_done;   // 0x0
-    std::vector<CSaferStr> m_names;   // 0x4
-    std::string m_map;   // 0x10
-    int m_message[1];   // 0x1c
+    std::vector<CSaferStr> m_names;   // 0x4: Icons
+    CSaferStr m_map;   // 0x10: Mission
 };
 
-struct CMessageTriggerByMap {
+struct CMessageTriggerByNames : public CTriggerByNames {
+    CPopupMessage m_message;   // 0x1c
+};
+
+/* an object first under the reticule (ObjUnderRet1stTime): its name and the mission */
+struct CTriggerByObject {
+    CTriggerByObject() : m_done(false) {}
+
     bool m_done;   // 0x0
+    CSaferStr m_name;   // 0x4: ObjName
+    CSaferStr m_map;   // 0x10: Mission
+};
+
+struct CMessageTriggerByMap : public CTriggerByObject {
+    CPopupMessage m_message;   // 0x1c
 };
 
 /* what the action icons hand the by-names trigger: an object with its name first (ours) */
@@ -345,6 +395,81 @@ int GetTeamMembers(CZSealBody **arrSeals, int *arrKills, bool bTeam0)
 }
 }
 
+/* a tag's first two numbers as integers (below, 0x22B360) */
+IPNT2D GetTagIPNT2D(const _zrdr *rdr, const char *tag);
+
+/* one of hud.rdr's PopupDefinitions read (SOCOM II's; hudInit calls it for each; the name ours, after
+ * SOCOM 1's hudAddPolyType): the Trigger block's Type picks the trigger and its list -- an action
+ * icon's first use (its Icons' names and the Mission), an animation command (by Name), an object
+ * first under the reticule (ObjName, Mission), a HUD objective (Valve, Mission) -- each new'ed and
+ * pushed first; then the message every trigger ends with: the window, the text size scaled by
+ * 1.1429, the line spacing (20 unless given) and the text id. Each new name is stored through the
+ * vector's last element, `*rbegin()` (its end() 0x22DD20 and the reverse * 0x22DD10 out of line, then
+ * CSaferStr's assignment 0x22DCC0), every other string through CSaferStr's inline assignment.
+ * OPEN, 0x6A4 against 0x5E0 (a level: the README's "Level 6, or 8?"): the target inlines the name
+ * append one level -- push_back (0x22DD60), the temporary's constructor and destructor (0x1E7B60,
+ * 0x1E7A50), the reverse * (0x22DD10) with rbegin()'s end() (0x22DD20) and CSaferStr's assignment
+ * (0x22DCC0) all called -- which needs AddName at least six high; with these headers it is four
+ * (at `#pragma inline_depth(4)` only rbegin's end and constructor are cut, push_back still
+ * inlines), so it inlines whole. The rest is written from the target: the four triggers' lists
+ * (0x412D90 by names, 0x412DB0 by name, 0x412DF0 by object, 0x412DD0 by valve), their base
+ * constructors and the message's out of line, each pointer pushed through a stack slot and
+ * reloaded, GetTagIPNT2D called (pinned), the text size stored back before the message's copy */
+void hudAddPopupDefinition(_zrdr *popup)
+{
+    CPopupMessage *msg = 0;
+    _zrdr *trigger = zrdr_findtag(popup, "Trigger");
+    const char *type = zrdr_findstring(trigger, "Type");
+
+    if (type && !strcasecmp(type, "ActionIcon1stTime")) {
+        CMessageTriggerByNames *t = new CMessageTriggerByNames;
+
+        msg = &t->m_message;
+        g_vecTriggersByNames.push_back(t);
+        _zrdr *icons = zrdr_findtag(trigger, "Icons");
+
+        if (icons) {
+            for (unsigned int i = 0; i < icons->Count(); i++)
+                t->AddName(icons->Item(i)->String());
+        }
+        t->m_map = zrdr_findstring(trigger, "Mission");
+    } else if (type && !strcasecmp(type, "AnimCmd")) {
+        CMessageTriggerByName *t = new CMessageTriggerByName;
+
+        msg = &t->m_message;
+        g_vecTriggersByName.push_back(t);
+        t->m_name = zrdr_findstring(trigger, "Name");
+    } else if (type && !strcasecmp(type, "ObjUnderRet1stTime")) {
+        CMessageTriggerByMap *t = new CMessageTriggerByMap;
+
+        msg = &t->m_message;
+        g_vecTriggersByMap.push_back(t);
+        t->m_name = zrdr_findstring(trigger, "ObjName");
+        t->m_map = zrdr_findstring(trigger, "Mission");
+    } else if (type && !strcasecmp(type, "HudObjective")) {
+        CMessageTrigger *t = new CMessageTrigger;
+
+        msg = &t->m_message;
+        g_vecTriggers.push_back(t);
+        t->m_name = zrdr_findstring(trigger, "Valve");
+        t->m_map = zrdr_findstring(trigger, "Mission");
+    }
+    if (msg) {
+        msg->m_pos = GetTagIPNT2D(popup, "WindowPos");
+        msg->m_width = GetTagIPNT2D(popup, "WindowSize").x;
+        float size = 1.0f;
+
+        zrdr_findreal(popup, "TextSize", &size, 1);
+        size *= 1.1429f;
+        msg->m_textSize = size;
+        float spacing = 20.0f;
+
+        zrdr_findreal(popup, "LineInterval", &spacing, 1);
+        msg->m_lineInterval = spacing;
+        msg->m_textId = zrdr_findstring(popup, "TextId");
+    }
+}
+
 /* the message for this map and any of these objects' names shown, once -- never in a network game
  * (SOCOM II's; the action icons call it, 0x21F850; the name ours) */
 void hudTriggerPopup(CNamedObject *source)
@@ -371,7 +496,7 @@ void hudTriggerPopup(CNamedObject *source)
             if (found) {
                 if (t->m_done)
                     return;
-                if (!func_0022B4A0(t->m_message))
+                if (!func_0022B4A0(&t->m_message))
                     return;
                 t->m_done = true;
                 return;
@@ -426,7 +551,7 @@ void hudTriggerPopup(const char *name)
         if (!strcasecmp(g_vecTriggersByName[i]->m_name.c_str(), name)) {
             CMessageTriggerByName *t = g_vecTriggersByName[i];
 
-            if (!t->m_done && func_0022B4A0(t->m_message))
+            if (!t->m_done && func_0022B4A0(&t->m_message))
                 t->m_done = true;
             break;
         }
@@ -442,7 +567,7 @@ void hudTriggerPopup(CTriggerSource *source)
         if (!strcasecmp(t->m_map.c_str(), GetDatabase()) && !strcasecmp(t->m_name.c_str(), source->GetName())) {
             CMessageTrigger *t = g_vecTriggers[i];
 
-            if (!t->m_done && func_0022B4A0(t->m_message))
+            if (!t->m_done && func_0022B4A0(&t->m_message))
                 t->m_done = true;
             break;
         }
@@ -600,8 +725,10 @@ void SetupBackgroundBox()
 }
 }
 
-/* a tag's first two numbers as integers, 0 for what is missing (the message loader's reader, called
- * twice by 0x22D660; the name ours) */
+/* a tag's first two numbers as integers, 0 for what is missing (the pop-up loader's reader, called
+ * twice by hudAddPopupDefinition 0x22D660, which the target does not inline it into: pinned; the
+ * name ours) */
+#pragma auto_inline off
 IPNT2D GetTagIPNT2D(const _zrdr *rdr, const char *tag)
 {
     _zrdr *t = zrdr_findtag(rdr, tag);
@@ -612,6 +739,7 @@ IPNT2D GetTagIPNT2D(const _zrdr *rdr, const char *tag)
 
     return IPNT2D(x, y);
 }
+#pragma auto_inline reset
 
 /* the message pop-up: its two bitmaps and its items (the object itself holds nothing) */
 void CHudPopups::Draw(zdb::CCamera *cam)

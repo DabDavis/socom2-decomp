@@ -22,14 +22,12 @@
  * their data_ placeholders, each commented with SOCOM 1's name where its use pairs it. Still
  * open here: VuUpdate (0xCC4: its tail calls even 8-byte helpers out of line, the out-of-line
  * copies at 0x3B5250-0x3B52C0 following it, so its inline budget runs out -- likely
- * inline_max_total_size), 0x3B5F20, 0x3B41D0 (the decal program), 0x3B6B20 (the lights' packet:
- * the scale and channel kept, a packet begun as 0x3B6820's, 0x3B6870's header, the light scale
- * from 0x3E1448/127 while lit, each local light's two quadwords copied in through a frame
- * temporary whose field addresses are hoisted -- a by-value 4D copy, the shape not found yet --
- * then VuExecuteState0 and CSPR::Kick), the deque copy chain's init 0x3B7E30, do_assign 0x3B8000
- * and default constructor 0x3B7FA0 (the rest of the chain is byte-exact since the MSL headers'
- * round 18: m_stack_vid, below). Round 20: the unit's initialiser, the light tints (0x3B7170,
- * 0x3B76B0, 0x3B78D0) and the header's lights (0x3B6870) byte-exact. */
+ * inline_max_total_size), 0x3B5F20, 0x3B41D0 (the decal program), the deque copy chain's init
+ * 0x3B7E30, do_assign 0x3B8000 and default constructor 0x3B7FA0 (the rest of the chain is
+ * byte-exact since the MSL headers' round 18: m_stack_vid, below). Round 20: the unit's
+ * initialiser, the light tints (0x3B7170, 0x3B76B0, 0x3B78D0) and the header's lights (0x3B6870)
+ * byte-exact. Round 25: the lights' packet 0x3B6B20 byte-exact (the by-value 4D copy is a CPnt4D
+ * temporary handed to an inline by reference) and AttachDecal 0x3B3800 written (open, 8 bytes). */
 
 #include <stack>
 #include "znode.h"
@@ -159,6 +157,14 @@ inline unsigned int CVisual::GetVid()
 
 /* a decal on a visual: the link and the pool it goes back to (vis_decal.cpp's class; SOCOM 1's,
  * no DWARF -- the names ours) */
+class CDecal;
+
+/* a decal's pool (vis_decal.cpp's class: only the call here) */
+class CDecalPool {
+public:
+    CDecal *Get(bool b);
+};
+
 class CDecal {
 public:
     static void PutPermDecal(CDecal *d);
@@ -169,6 +175,9 @@ public:
     unsigned char _8[0xc - 0x8];
     unsigned short m_view;   // 0xc
     unsigned short m_temp;   // 0xe: 1 for a temporary decal
+
+    static CDecalPool m_tempPool;
+    static CDecalPool m_permPool;
 };
 
 /* the end of the scratchpad's room for a packet, the VU context count, the world-to-model matrix
@@ -508,6 +517,63 @@ void CVisual::NodeSetup(CNode *atom, CNode *node, CMatrix *m)
         m_lightingEnable = false;
         data_003E1458 = false;
     }
+}
+
+/* a 4D point put at the cursor, the quadword after it returned (ours, inline) */
+static inline _word128 *Put4D(_word128 *p, const CPnt4D &v)
+{
+    *(CPnt4D *)p = v;
+    return p + 1;
+}
+
+/* the lights' packet's statics (new in SOCOM II, not named): the packets' flavour and the light
+ * scale 0x3B6B20 keeps, the scene's light level (-1: none) */
+extern "C" unsigned int data_004B4EB0;
+extern "C" float data_004B4A90;
+extern "C" int data_003E1448;
+extern "C" _word128 *data_004B4AD8;
+extern "C" _word128 *data_004B4AE0;
+extern "C" _word128 *func_003B6870(_word128 *q, CNode *node);
+
+/* a node's lights sent (new in SOCOM II, not named: CPipe's renderers call it with the node, 1 and
+ * 1.0): the flavour and the scale kept, a packet begun as 0x3B6820's (its stores in another order),
+ * 0x3B6870's header; while lit, the light scale from the scene's level (or the head's first word
+ * cleared) and, with the local lights on, each local light's two quadwords put in and their count
+ * at the head's second word; then VuExecuteState0 and the packet kicked. Each quadword is a
+ * CPnt4D temporary built from the light (its four loads, then four stores through its address)
+ * and handed to Put4D by reference (the copy out a field at a time, the temporary's field
+ * addresses hoisted out of the loop), the cursor threaded through Put4D's return (two +16 steps,
+ * not one +32), the light walked by a pointer set up ahead of the loop */
+extern "C" void func_003B6B20(CNode *node, int n, float scale)
+{
+    data_004B4EB0 = n;
+    data_004B4A90 = scale;
+
+    _word128 *p = (_word128 *)zSysSprGetPacket((u_long128 **)&CSPR::m_sprPacketEnd);
+
+    CSPR::m_sprPacket = p;
+    data_004B4AE0 = p;
+    data_004B4AD8 = p + 1;
+    data_004B4AD8->u128 = 0;
+    p = func_003B6870(data_004B4AD8 + 1, node);
+
+    bool lit = CVisual::m_lightingEnable;
+
+    if (lit && data_003E1448 != -1)
+        m_GlobalLightScale__Q23zdb7CVisual = (1.0f / 127.0f) * data_003E1448;
+    else
+        data_004B4AD8->u32[0] = 0;
+    if (lit && data_003E1458 && CVisual::m_local_light_cnt) {
+        CPnt4D *l = CVisual::localLightBuf[0];
+
+        for (unsigned int i = 0; i < (unsigned int)CVisual::m_local_light_cnt; i++) {
+            p = Put4D(p, CPnt4D(l[0]));
+            p = Put4D(p, CPnt4D(l[1]));
+            l += 2;
+        }
+        data_004B4AD8->u32[1] = CVisual::m_local_light_cnt * 2;
+    }
+    CSPR::Kick(CVisual::VuExecuteState0(p), true);
 }
 
 /* the camera's distance to a point (zcamera.h's CCamera::GetZ: its _word128 clashes with
@@ -1085,6 +1151,55 @@ void CVisual::ApplyDecalRender(CMatrix *mtw, CNode *node, float size, CPnt3D *po
     TransformVectors(&inv, normal, &n, 1);
     sceVu0MulMatrix(m.m_matrix, uv->m_matrix, mtw->m_matrix);
     func_003B3AB0(this, vid, size, pos, &n, &m, tex);
+}
+
+/* a decal set up (vis_decal.cpp's 0x3BECA0, not written: SOCOM 1's CDecal::AddDecal, SOCOM II's
+ * taking the flags, the texture, the points and the new word, then the visual and the view) */
+extern "C" void func_003BECA0(CDecal *d, float size, unsigned int flags, CTexHandle *tex,
+                              AddonPoint **points, int extra, CVisual *visual, unsigned int vid);
+
+/* a decal taken from the permanent pool (a negative size) or the temporary one and set up, then
+ * appended to the view's list -- whose end is found first (SOCOM 1's, SOCOM II finding the end
+ * before taking the decal, the decal's link cleared before it is set up). The end's walk is a
+ * `while (last)` with the link's test a break (the target's entry test, the link's test and the
+ * bottom `bnez` on the new end); the set-up's float comes first in its prototype (the target
+ * moves the size into f12 first, in the null test's delay slot); the list is a reference to the
+ * pod's data_ (its address spilled to sp+176, reloaded for the store).
+ * OPEN, 8 bytes short (written in the weapons' round 25): the pool's branch -- the target fills
+ * the bc1f's delay slot from the fall-through (the permanent pool's lui) and keeps the temporary
+ * arm's own lui, its `li a1,1` in the call's delay slot, then pads the join; here MW hoists the
+ * temporary arm's lui into the slot. A ternary, the arms inverted (`!(size < 0)`, `size >= 0`),
+ * int arguments, pool pointer locals, a bool variable and the decal declared at the top all give
+ * the same 0x144 */
+void CVisual::AttachDecal(unsigned int vid, float size, unsigned int flags, AddonPoint **points,
+                          CTexHandle *tex, int extra)
+{
+    unsigned int *&list = m_24.data();
+    CDecal *last = (CDecal *)list[vid];
+
+    while (last) {
+        CDecal *next = last->m_next;
+
+        if (!next)
+            break;
+        last = next;
+    }
+
+    CDecal *d;
+
+    if (size < 0.0f)
+        d = CDecal::m_permPool.Get(false);
+    else
+        d = CDecal::m_tempPool.Get(true);
+    if (d) {
+        d->m_next = 0;
+        func_003BECA0(d, size, flags, tex, points, extra, this, vid);
+        if (last)
+            last->m_next = d;
+        else
+            list[vid] = (unsigned int)d;
+        FlushCache(0);
+    }
 }
 
 /* the decals of one view let go of, each back to the pool its kind says, and the view's list

@@ -218,7 +218,17 @@ public:
      * the target's sltu appears and the function grows 0x68 -> 0x70 (of 0x78), the branch then
      * `bnez` on the un-negated bool; `!is_long()` in a bool helper, a second bool level, a bool
      * local, `? false : true`, a bool parameter of an inline picker, data() over c_str() and an
-     * if/else body all stay at 0x68 -- c_str() itself unchanged */
+     * if/else body all stay at 0x68 -- c_str() itself unchanged.
+     * THE FIND DEPTH (the MSL headers round 25, the kit's and the SEALs' request): c_str five high,
+     * libc++'s chain (c_str, data, the pointer pick, a __is_long over is_long), makes AnimSet::Find's
+     * tree six and its callers 0x5E3940 (anim.cpp with GetName plain) and 0x58C600 (seal_cfg.cpp)
+     * byte-exact; four high does not. But over every hand-written unit it is -11 by address: every
+     * inline wrapper around c_str passes five and is cut where the target inlines it whole
+     * (LadderItem::GetName's `return m_name.c_str()` -- LadderList::Find, UpdateLadderBestDisplay,
+     * UpdateLadderListDisplay --, CRdrIO::Open, zrdr_read, the lobby save's Load/Write, two LoadSpecs,
+     * SkbOpen, SwitchToNamed, SkbTextFits, LoadLeadUsage: 13 lost). So c_str is at most four high at
+     * level 5 and the tall chain under Find is not c_str's alone -- not applied (build/p25/string.t5);
+     * GetName's five-high fit stays */
     const charT *c_str() const { return !is_long() ? s_.data_ : (const charT *)w_[2]; }
     const charT *data() const { return c_str(); }
 

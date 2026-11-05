@@ -140,10 +140,9 @@ void CAiSAction::Virtual0C(CZAnim *anim, AI_SIGNAL sig, CSealCtrlAi *ai)
 }
 
 extern "C" {
-/* an object's holder id dropped when it is the SEAL's (OVL1 0x2B49D0: the word at 0x34 made
- * CEntity::invalidId) and an anim stopped (OVL1 0x2707C0, zanim's: SOCOM II's Stop with a flag) --
- * the SEAL's anim set is bound through zseal.h's BindAnimSet(AnimSet *, bool), OVL2 0x58C4A0 */
-void func_002B49D0(void *obj, unsigned int id);
+/* an anim stopped (OVL1 0x2707C0, zanim's: SOCOM II's Stop with a flag) -- the object's holder id
+ * is dropped by zseal.h's CNodeAction::Release (OVL1 0x2B49D0) and the SEAL's anim set bound
+ * through zseal.h's BindAnimSet(AnimSet *, bool), OVL2 0x58C4A0 */
 void func_002707C0(CZAnim *anim, bool now);
 }
 
@@ -182,7 +181,7 @@ void CAiSAction::OnSignal(SIGNAL sig, CSealCtrlAi *ai)
         break;
     case SIGNAL_1:
         if (m_58)
-            func_002B49D0(m_58, seal->m_id);
+            m_58->Release(seal->m_id);
     case SIGNAL_2:
         if (m_84 && (m_flags & 4)) {
             func_002707C0((CZAnim *)m_84, false);
@@ -203,7 +202,7 @@ void CAiSAction::OnSignal(SIGNAL sig, CSealCtrlAi *ai)
     case SIGNAL_3:
         ai->m_stateStack.SetFlags(1, 0);
         if (m_58)
-            func_002B49D0(m_58, ai->m_entity->m_id);
+            m_58->Release(ai->m_entity->m_id);
         break;
     }
 }
