@@ -1588,6 +1588,14 @@ bool CZKit::FetchLaseTarget()
     return false;
 }
 
+/* a placed C4's timer callback: its clock word cleared (SOCOM 1's Timer_PlaceC4, word for word; OVL2
+ * 0x5BFE40 -- HandleFireWeapon 0x5BE9A0 passes its address) */
+void Timer_PlaceC4(void *, void *data)
+{
+    if (data)
+        *(int *)data = 0;
+}
+
 /* the SEAL controller's trigger (zseal.h's CSealCtrl::m_trigger at 0x118, a byte enum: 0 up, 1 down,
  * 3 rising -- zseal.h is not included here; the view ours) */
 struct CKitTriggerView {
