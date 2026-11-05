@@ -71,6 +71,14 @@ extern "C" void func_002707C0(CZAnim *anim, int b);
 /* the tracers' speed (0x3E1570, initialised data; not named) */
 extern "C" float data_003E1570;
 
+/* the weapon's impact radius (0x3D27D0, m_impactradius) and arming distance (0x3D2030, the float
+ * at 0x68: an impact nearer the start bounces as a dud) -- zwep_weapon.cpp's getters, not named */
+extern "C" float func_003D27D0(CZWeapon *weapon);
+extern "C" float func_003D2030(CZWeapon *weapon);
+
+/* a dud's velocity scale (0x3E1510, initialised data; not named) */
+extern "C" float data_003E1510;
+
 /* the person material's index (0x3E14F8; SOCOM 1's zwep::personMaterialId): a shot does not come
  * to rest on a person */
 namespace zwep {
@@ -622,6 +630,127 @@ PROJECTILE_HIT CZProjectile::HandleBounce(IntersectStruct *hit, float dT, CPnt3D
     if (hit->m_node && hit->m_node->m_nodeEx)
         hit->m_node->m_nodeEx->OnWeaponHit(hit->m_node, hit, this);
     return r;
+}
+
+/* an impact (SOCOM 1's HandleImpact, its shotgun branch gone): the point handed back is the hit's; a
+ * person is taken up to the node below its tree's root, a second hit on the same one counted as
+ * already dealt with (no mark, event or anim), a new one remembered with the hit point and the
+ * echo flag. Out of range the shot is spent (4); else the hit node's extension is told, the mark
+ * left, a noise the AI hears raised where the weapon's impact radius scaled by the material
+ * reaches past a unit; a weapon with an arming distance not yet flown bounces, damped, as a dud;
+ * a player's (or person-hit) explosive shot detonates on anything but a liquid or a pickup; the
+ * flight anim is stopped, the hit anims played (a grenade launcher's next material's in a
+ * liquid), a grenade launcher's shot out of a liquid spent at once (4); else the range is cut by
+ * the material's penetration (the ammunition's armour pierce adds a tenth of it) and the shot
+ * goes on (2) while still in range. The target's float shapes: the impact radius taken from the call
+ * and scaled in place (`r = f(); r *= mod;` -- the product in one expression swaps the operands),
+ * the explosion radius tested for truth (`&& GetExplosionRadius() &&`: a `!= 0.0f` compare puts the
+ * zero first), the cut range scaled in place by the penetration */
+PROJECTILE_HIT CZProjectile::HandleImpact(IntersectStruct *hit, float dT, float dist, CPnt3D *pos)
+{
+    *pos = hit->m_pos;
+    CNode *node = hit->m_node;
+    unsigned int mat = hit->GetMaterial();
+    CMaterialEx *ex = CMaterialExArray::GetMaterialEx(mat);
+    bool same = false;
+
+    if (node && mat == zwep::personMaterialId) {
+        CNode *parent = node->m_parent;
+        CNode *next = parent->m_parent;
+
+        while (next) {
+            node = parent;
+            parent = next;
+            next = next->m_parent;
+        }
+        if (m_78 == node)
+            same = true;
+        else {
+            m_78 = node;
+            SetEcho(true);
+            m_lastPlayerHitPos = hit->m_pos;
+        }
+    }
+    CZWeapon *weapon = m_weapon;
+
+    if (dist > m_currange * m_currange)
+        return HIT_SPENT_4;
+    CPnt3D hitpos = hit->m_pos;
+
+    if (node && node->m_nodeEx)
+        node->m_nodeEx->OnWeaponHit(node, hit, this);
+    if (!same)
+        CZWeapon::m_pMarklist->AddNewMark(hit, this, 1.0f);
+    if (weapon && !same) {
+        float r = func_003D27D0(m_weapon);
+
+        r *= ex->m_impact_radius_mod;
+
+        if (r > 1.0f && !m_echo) {
+            CAiEvent *e = CAiEvent::Acquire();
+
+            e->m_pos = hitpos;
+            e->m_rangeSq = r * r;
+            e->m_duration = 0.1f;
+            e->m_type = 6;
+            e->m_owner = m_shooterID;
+            CAiEvent::Create(e);
+        }
+    }
+    if (weapon && func_003D2030(weapon) > 0.0f) {
+        CPnt3D d = *pos;
+
+        d = d - m_startpos;
+        float len = d.Length();
+
+        if (len < func_003D2030(weapon)) {
+            m_vel = m_vel * data_003E1510;
+            m_time = 9999999.0f;
+            SetDone(true);
+            return HandleBounce(hit, 0.0f, pos);
+        }
+    }
+    float pen = 0.0f;
+
+    if (ex)
+        pen = ex->m_penetration;
+    if ((m_isplayer || m_lastHitWasPerson) && m_ammo->GetExplosionRadius() && ex &&
+        (bool)ex->m_liquid == false && (bool)ex->m_pickup == false) {
+        m_state = PROJECTILE_TO_BE_DETONATED;
+        m_grenadestate = DETONATE;
+        m_currange = 0.0f;
+    }
+    if (m_animinstance) {
+        func_002707C0(m_animinstance, 0);
+        m_animinstance = 0;
+    }
+    CZAnim *anim = 0;
+    CZFTSWeapon *fw = dynamic_cast<CZFTSWeapon *>(m_weapon);
+
+    if (fw->IsGrenadeLauncherAmmo() && (bool)ex->m_liquid != false)
+        mat++;
+    if (mat < CMaterialExArray::m_materialex_list.size())
+        anim = m_weapon->GetHitAnim(mat);
+    if (!same && anim && CZWeapon::m_allowImpactAnimations)
+        anim->ActivateArg(1, 5, &hitpos, 7, &hit->m_norm, 6, &m_vel, 3, node, 0);
+    CZAnim *hitanim = m_ammo->m_hitanim;
+
+    if (!same && hitanim && CZWeapon::m_allowImpactAnimations)
+        hitanim->ActivateArg(1, 5, &hitpos, 0);
+    if (fw->IsGrenadeLauncherAmmo() && (bool)ex->m_liquid == false) {
+        m_removaltime = 0.0f;
+        return HIT_SPENT_4;
+    }
+    float range = m_currange;
+    float nr = range + range * (0.1f * m_ammo->GetArmorPierce());
+
+    nr *= pen;
+
+    if (nr < range)
+        m_currange = nr;
+    if (dist > m_currange * m_currange)
+        return HIT_SPENT_4;
+    return HIT_GOES_ON;
 }
 
 /* (a material's resistance to a blast is int_material.h's CMaterialEx::m_penetration, PENETRATION) */
