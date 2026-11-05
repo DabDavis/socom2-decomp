@@ -33,6 +33,77 @@ typedef struct {
 	EncParams *params;
 } EncMemBlk;
 
+/* the encoder's 88-byte block as its creation fills it (GCC round 32a: 0x249190, the block whose
+ * +68 and +72 the setters below read -- EncSC.c's, by its fields; its eight closing stores in one
+ * order of the few measured, tools/try.py) */
+typedef struct {
+	void *pCirc;            /* 0: the input ring (libsnd.c, 371 samples) */
+	void *pF;               /* 4: nelly.c's float block */
+	int i8;
+	int pad12;
+	void *pLdPda;           /* 16 */
+	void *pTrack;           /* 20 */
+	void *pBlk48;           /* 24 */
+	int i28;
+	int i32;
+	int pad36;
+	int i40;
+	int pad44;
+	int i48;
+	float f52;
+	float f56;
+	float f60;
+	int i64;
+	int f68;
+	EncParams *params;
+	int i76;
+	char pad80[8];
+} EncState;
+
+extern void *(*data_001D55A8)(int n, int size);  /* the host's allocator (calloc's arguments) */
+extern int func_0024C5D0(int iSize, void **pvCircMblk);
+extern int func_0024FF58(void **pp, float x);
+extern int func_0024A840(void **hLD_PDA_mblk);
+extern int func_00248D40(void **ppTrack);
+extern int func_00249EE0(void **pp);
+
+int func_00249190(EncState **ppEncMemBlk, int iMode)
+{
+	EncState *p;
+	EncParams *q;
+
+	p = data_001D55A8(1, sizeof(EncState));
+	*ppEncMemBlk = p;
+	if (p == NellyNull)
+		return 1;
+	p->i64 = iMode;
+	p->f68 = 1;
+	q = data_001D55A8(1, 64);
+	p->params = q;
+	if (q == NellyNull)
+		return 1;
+	if (func_0024C5D0(371, &p->pCirc))
+		return 1;
+	if (func_0024FF58(&p->pF, 0x1.fae146p-1f))
+		return 1;
+	p->i8 = 0;
+	if (func_0024A840(&p->pLdPda))
+		return 1;
+	if (func_00248D40(&p->pTrack))
+		return 1;
+	if (func_00249EE0(&p->pBlk48))
+		return 1;
+	p->i32 = 1;
+	p->i28 = 0;
+	p->i40 = 1;
+	p->i48 = 0;
+	p->f52 = 100.0F;
+	p->f56 = 0.0F;
+	p->f60 = 100.0F;
+	p->i76 = 0;
+	return 0;
+}
+
 void func_00249608(EncMemBlk *pEncMemBlk, float x)
 {
 #line 876 "../../SaseEncVad/source/EncSC.c"
