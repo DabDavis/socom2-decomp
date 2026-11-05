@@ -2062,6 +2062,20 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the HUD, round 46** (the five C2D GetAssetLibs, CHandlerButton::HandlePad, ReadPlacement):
+  - a list walk's end in `this`'s register: declare the end node uninitialised first and assign it after begin() -- MW
+    numbers it at the declaration but computes it where `this` dies, so it takes this's saved register (all five C2D
+    GetAssetLibs 0x3585A0 / 0x35F8F0 / 0x360A20 / 0x361500 / 0x3641F0 from drafts to source, find<CAssetLib *> 0x3586B0
+    with them, CHandlerButton::HandlePad 0x3765A0);
+  - MW uses what an already-generated callee clobbers only when the copy is the unit's own (anonymous namespace or
+    static): a global class's inline copies could be swapped at link time, so every caller-saved register is assumed lost
+    -- CFontPoint moved into the anonymous namespace kept ReadPlacement 0x35AA80's value in a2;
+  - a lookup done inside a cut inline (`ReadPoint(rdr, tag)`) is a call, the same lookup passed as that inline's argument
+    is inlined (FlatFindTag 0x35A240, called only from those two sites); a field assigned from an address-taken local
+    right after it is read keeps the value in a saved float register across the next call;
+  - include/vector's class vector gains rbegin() / rend() (additive); hudAddPopupDefinition 0x22D660 wants its name-append
+    helper six levels high (our push_back / end / rbegin and the CSaferStr temporary two levels shallower than the
+    original's: the MSL's).
 - **Tells from the world, rdr and sound, round 18** (CSnd::PostTick, the mission's sounds, CAlpha::Render; the last
   depth-6 stand-in dropped):
   - an int `x > -1` branches slti/bnez and `x >= 0` branches bltz -- a size-only check can hide it when another
