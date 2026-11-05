@@ -321,6 +321,123 @@ static inline bool IsItem(EQUIP_ITEM id, int item)
     return id == item;
 }
 
+/* switched on (inline: the bit converted to a bool, sltu, before its test -- as zwep_explosive.cpp's) */
+static inline bool NodeActive(CNode *node)
+{
+    return node->m_active;
+}
+
+/* an intersection's flags: bit 19 marks it registered for the delayed proximity test (zwep_explosive.cpp's
+ * view of zdb::DiIntersect's first word; the names ours) */
+struct DI_FLAGS {
+    unsigned int _b0 : 19;
+    unsigned int m_delayed : 1;
+    unsigned int _b20 : 12;
+};
+
+/* a point copied field by field through its address (the target keeps &a.y and &a.z in saved
+ * registers across the calls -- the kit's CopyPoint; the name ours). The source is NOT const: PreTick
+ * copies the accelerated direction onto itself, the loads through the hoisted field addresses as the
+ * stores (through a const source MW reads the frame slots straight and schedules the loads early) */
+static inline void CopyPoint(CPnt3D *dst, CPnt3D *src)
+{
+    dst->x = src->x;
+    dst->y = src->y;
+    dst->z = src->z;
+}
+
+/* a frame before the move (SOCOM 1's PreTick, 0x3CA5A0, in SOCOM II's states): skipped while both new
+ * flags are set; a shot at rest on a node set flying again once a node it rests under is switched off;
+ * nothing more while a detonation waits, once removed, or detonated (its next hit registered unless
+ * held); else the frame starts where the last ended and moves: a normal shot in flight -- or to be
+ * removed -- by its velocity, pushed along by the ammunition's acceleration for item 185 off its rest
+ * node, pulled down by the weapon's gravity otherwise (SOCOM 1's constant 9.8 scaled); a direct-fire one
+ * to 1.1 of the weapon's range at once, its speed then 300; a shotgun's pellets' proximity registered
+ * (while weapons intersect); one to be detonated registered for the blast's proximity and handed on.
+ * The delay at 0x98 runs down; a shot that is neither a shotgun's nor a waiting detonation has its
+ * frame's ray registered (a direct-fire shot masked by the word at 0xc0) */
+bool CZProjectile::PreTick(float dT)
+{
+    if (m_b18 && m_b17)
+        return true;
+    if (m_state == PROJECTILE_AT_REST) {
+        CNode *n = m_restnode;
+
+        if (n) {
+            for (; !NoNode(n) && m_state == PROJECTILE_AT_REST; n = n->m_parent)
+                if (NodeActive(n) == false)
+                    m_state = PROJECTILE_FLYOUT;
+        }
+    }
+    if (m_state == PROJECTILE_DETONATION_TO_BE_HANDLED)
+        return true;
+    if (m_state == 7)
+        return true;
+    if (m_state == PROJECTILE_WAS_DETONATED && !m_b18) {
+        RegisterNextHit();
+        return true;
+    }
+    if (m_state == PROJECTILE_WAS_DETONATED && m_b18)
+        return true;
+    m_intersecthandle = -1;
+    m_framestartpos = m_frameendpos;
+    if (m_shottype == NORMAL && (m_state == PROJECTILE_FLYOUT || m_state == PROJECTILE_TO_BE_REMOVED)) {
+        if (m_weapon->GetIDType() == 185 && !m_restnode) {
+            CPnt3D dir;
+
+            CopyPoint(&dir, &m_vel);
+            dir.Normalize();
+            dir = dir * m_ammo->GetAccelerationFactor();
+            CopyPoint(&dir, &dir);
+            m_vel = m_vel + dir * dT;
+            m_frameendpos = m_framestartpos + m_vel * dT;
+        } else {
+            CPnt3D g;
+
+            g.x = 0.0f * m_weapon->GetGravity();
+            g.y = -1.0f * m_weapon->GetGravity();
+            g.z = 0.0f * m_weapon->GetGravity();
+            m_vel = m_vel + g * dT;
+            m_frameendpos = m_framestartpos + m_vel * dT;
+        }
+    } else if (m_shottype == ONE_FRAME) {
+        m_vel.Normalize();
+        m_frameendpos = m_framestartpos + m_vel * (1.1f * m_weapon->GetMaxRange());
+        m_vel.Scale(300.0f);
+    } else if (m_shottype == ONE_FRAME_SHOTGUN && CZWeapon::m_allowWeaponIntersection) {
+        if (m_di) {
+            CWorld *world = CWorld::m_world;
+
+            m_intersecthandle = world->RegProximityDelayed(m_di, &m_framestartpos, m_ammo->GetExplosionRadius(),
+                                                           (unsigned int)-1);
+            CWorld::m_world->RegIgnoreNodeDelayed(m_di, m_owner);
+        }
+    } else if (m_state == PROJECTILE_TO_BE_DETONATED) {
+        if (m_di) {
+            ((DI_FLAGS *)m_di)->m_delayed = 1;
+            CWorld *world = CWorld::m_world;
+            float radius = m_ammo->GetExplosionRadius();
+
+            m_intersecthandle = world->RegProximityDelayed(m_di, &m_framestartpos, radius, (unsigned int)-1);
+        }
+        m_state = PROJECTILE_DETONATION_TO_BE_HANDLED;
+    }
+    if (m_98 > 0.0f)
+        m_98 -= dT;
+    if (CZWeapon::m_allowWeaponIntersection && m_shottype != ONE_FRAME_SHOTGUN &&
+        m_state != PROJECTILE_DETONATION_TO_BE_HANDLED && m_di) {
+        unsigned int mask = (unsigned int)-1;
+
+        if (m_shottype == ONE_FRAME)
+            mask = m_c0;
+        m_di->SetMask(mask);
+        m_intersecthandle = CWorld::m_world->RegIntersectDelayed(m_di, &m_framestartpos, &m_frameendpos,
+                                                                 (unsigned int)-1);
+        CWorld::m_world->RegIgnoreNodeDelayed(m_di, m_owner);
+    }
+    return true;
+}
+
 /* a frame after the move (SOCOM 1's PostTick, 0x3C9FB0, in SOCOM II's states: 7 removed, 6 to be
  * removed, 5 detonated): removed -- or held with both new flags set -- reported and done; detonated,
  * its next hit handled first; a delayed detonation handled; to be removed, removed once the flag or

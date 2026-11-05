@@ -302,6 +302,9 @@ public:
     EQUIP_AMMO GetDefaultAmmoId();
     CZAmmo *GetDefaultAmmo();
 
+    /* the gravity's pull (SOCOM II's, the float at 0x48: 0x3D27B0, before the muzzle velocity's
+     * getter; CZProjectile::PreTick scales the down vector by it; the name ours) */
+    float GetGravity();
     /* the impact radius (SOCOM 1's GetImpactRadius, const, the float at 0x4C: 0x3D27D0, between
      * the muzzle velocity's getter and GetEffectiveRange as in SOCOM 1; CZProjectile::HandleImpact
      * scales it for the hit's AI noise) */
