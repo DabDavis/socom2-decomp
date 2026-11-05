@@ -1324,6 +1324,19 @@ struct MAP_FLOODFILL_STRUCT {
 
 /* a cell handed to a walk's callback (SOCOM 1's MAP_FOREACH_STRUCT, which its DWARF does not lay
  * out: the map, the cell and its location as the callbacks read them) */
+/* a cell's counts by direction, N to NW (new in SOCOM II, the names ours, after SOCOM 1's
+ * CountMapTravelDir/CountMapVisDir count arrays: the walker unit's counters 0x535730, 0x535A40 and
+ * 0x535DF0 fill it -- CAiSRush::Tick zeroes the first word and sets the second to 64 first) */
+struct MAP_DIRCOUNT {
+    /* the direction of the most counts (ai_mapwalk.cpp's 0x5350C0) */
+    CAiMap::DIR GetBestDir(bool smooth, const CPnt3D *heading);
+
+    int m_unk0;   // 0x0
+    int m_range;   // 0x4
+    int m_count[8];   // 0x8
+    /* (the counter 0x535A40 steps a cell at +0x28 out along each direction: not laid out yet) */
+};
+
 struct MAP_FOREACH_STRUCT {
     /* empty, and called out of line where the walk is inlined one level (0x517780) */
     MAP_FOREACH_STRUCT() {}
