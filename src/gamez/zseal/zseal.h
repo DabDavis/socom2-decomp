@@ -1125,6 +1125,8 @@ public:
 
 class CSealCtrlAi : public CSealCtrl, public SEAL_AI_PARAMS {
 public:
+    /* the AI's ZAnim task commands registered (OVL2 0x5DE320, seal_tasks.cpp's; CMission::Init) */
+    static bool RegisterCommands();
     CSealCtrlAi();
     /* (0x573E60: the stack emptied, then the bases' destructors) */
     virtual ~CSealCtrlAi();

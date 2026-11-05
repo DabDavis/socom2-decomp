@@ -145,7 +145,9 @@ public:
  * v1` then `lw v0` for the early return) and tests the guard with `beqz v1` after it; MW here
  * reuses the early return's load for the guard (`beqz v0`). The plain `while` drops the guard
  * (0x80, SOCOM 1's shape); the size taken into a local first gives 0x90 too; a reference local
- * to the list gives 0x98 with its address in v1 (11 instructions) */
+ * to the list gives 0x98 with its address in v1 (11 instructions). Round 41: either test read through a
+ * const view of the list (`((const CList &)m_list).size()`), or the guard's size a local ahead of the
+ * early return, stays 0x90 -- MW merges the global's two loads anyway */
 bool CAiDodge::Destroy()
 {
     if (m_list.size() == 0)
