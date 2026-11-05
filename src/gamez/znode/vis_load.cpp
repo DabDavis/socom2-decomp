@@ -47,10 +47,21 @@ static inline void AddView(CVisual *v)
     v->m_24.push_back(0);
 }
 
+/* a visual's last view's level of detail dropped while it has more than one, the views' buffers then
+ * keeping their owners' counts (inline, the visual by value as AddView's; the name ours) */
+static inline void DropView(CVisual *v)
+{
+    if (v->m_lodMesh.size() > 1) {
+        v->m_lodMesh.pop_back();
+        v->m_24.pop_back();
+        data_004B5010 = 1;
+    }
+}
+
 bool hookupVisuals(CZAR *zar, CKey *key, CNode *node, CModel *model, CVisBase *block)
 {
-    char lname[1024];
     char name[1024];
+    char lname[1024];
     bool result = false;
 
     if (!node)
@@ -69,6 +80,7 @@ bool hookupVisuals(CZAR *zar, CKey *key, CNode *node, CModel *model, CVisBase *b
         data_003E14A8++;
 
     int i = 0;
+    int j;
 
     for (CRefList::iterator it = list.begin(), last = list.end(); it != last; ++it, i++) {
         CNode *instance = *it;
@@ -78,11 +90,13 @@ bool hookupVisuals(CZAR *zar, CKey *key, CNode *node, CModel *model, CVisBase *b
             inst = instance;
         inst->m_vid = i;
 
-        int j = 0;
-        CVisual *visual = 0;
+        CVisualVector::iterator v = visuals.begin();
         CVisualVector::iterator e = visuals.end();
+        CVisual *visual = 0;
 
-        for (CVisualVector::iterator v = visuals.begin(); v != e; ++v, j++) {
+        j = 0;
+
+        for (; v != e; ++v, j++) {
             data_004B5010 = 0;
             visual = *v;
             AddView(visual);
@@ -97,14 +111,10 @@ bool hookupVisuals(CZAR *zar, CKey *key, CNode *node, CModel *model, CVisBase *b
             else
                 ok = zar->Fetch(name, &off, 4);
             if (!ok) {
-                sprintf(name, fmtN, data_003E14A8, j);
                 i = 0;
+                sprintf(name, fmtN, data_003E14A8, j);
                 inst->m_vid = 0;
-                if (visual->m_lodMesh.size() > 1) {
-                    visual->m_lodMesh.pop_back();
-                    visual->m_24.pop_back();
-                    data_004B5010 = 1;
-                }
+                DropView(visual);
                 ok = zar->Fetch(name, &off, 4);
             }
             if (!ok)
@@ -117,11 +127,13 @@ bool hookupVisuals(CZAR *zar, CKey *key, CNode *node, CModel *model, CVisBase *b
         }
     }
     if (list.size() == 0 || *(unsigned char *)&model->m_variant || model->GetMesh()) {
-        int j = 0;
-        CVisual *visual = 0;
+        CVisualVector::iterator v = visuals.begin();
         CVisualVector::iterator e = visuals.end();
+        CVisual *visual = 0;
 
-        for (CVisualVector::iterator v = visuals.begin(); v != e; ++v, j++) {
+        j = 0;
+
+        for (; v != e; ++v, j++) {
             data_004B5010 = 0;
             visual = *v;
             AddView(visual);
@@ -144,26 +156,29 @@ bool hookupVisuals(CZAR *zar, CKey *key, CNode *node, CModel *model, CVisBase *b
                     node->SetDynamicLight(true, false);
                 else
                     ok = zar->Fetch(name, &off, 4);
+                if (!ok) {
+                    drop.push_back(visual);
+                    continue;
+                }
             }
-            if (!ok)
-                drop.push_back(visual);
-            else {
-                block->m_c = off;
-                visual->SetBuffer((_word128 *)((char *)block->m_data + block->m_c), 0, block);
-                result = true;
-            }
+            block->m_c = off;
+            visual->SetBuffer((_word128 *)((char *)block->m_data + block->m_c), 0, block);
+            result = true;
         }
     }
     if (drop.size()) {
-        for (std::vector<CVisual *>::iterator d = drop.begin(); d != drop.end(); ++d)
+        for (std::vector<CVisual *>::iterator d = drop.begin(), de = drop.end(); d != de; ++d)
             func_003162B0(node, *d, true);
         drop.clear();
     }
-    for (CNodeVector::iterator c = node->m_child.begin(); c != node->m_child.end(); ++c) {
+    for (CNodeVector::iterator c = node->m_child.begin(), ce = node->m_child.end(); c != ce; ++c) {
+        bool r = false;
         CNode *child = *c;
         CNode *instance = child->m_type == 2 ? child : 0;
 
-        if (!instance && hookupVisuals(zar, key, child, model, block))
+        if (!instance)
+            r = hookupVisuals(zar, key, child, model, block);
+        if (r)
             result = true;
     }
     return result;
