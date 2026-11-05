@@ -6,9 +6,17 @@
  * queues 0x44FA20 and 0x44FA50, whose destructor 0x2F5E50 and deque instances close it -- the
  * instances run on past 0x2F62B0 to 0x2F6CF7: 0x2F6340, 0x2F6600, 0x2F6A70 and 0x2F6BC0 are
  * called only from this unit's deque copy constructor 0x2F5F80, its 0x2F6090 and ~__deque_buf
- * 0x2F62B0, so they are its copies, and the lobby unit starts at 0x2F6D00). Still unwritten: the
- * game's world report 0x2EF590 and details 0x2EF7F0, the player-info callback 0x2F0020 (cbGetPlayerInfo) and the
- * player lists 0x2F0EA0-0x2F3B90 (class-vector walks and their sort) and the deque instances.
+ * 0x2F62B0, so they are its copies, and the lobby unit starts at 0x2F6D00). Every own function is
+ * written. The deque instances: push_back 0x2F5290 with init 0x2F5940 and do_assign 0x2F5700, the
+ * block buffer from an allocator 0x2F5FF0 and the pair 0x2F6060 byte-exact since the online lane's
+ * round 24 (ChatQueueBuffers below, a dead-stripped device). OPEN, the copy chain and the iterators
+ * -- the deque's copy constructor 0x2F5F80 (calls begin()/end() const where the target inlines them
+ * and calls make_iterator), the circular buffer's 0x2F6090 (0xCC of 0x19C: x.alloc() called, begin()/
+ * end() not inlined, the init's iterators not copied twice around the two empty temporaries -- the
+ * rdr editor's and the state machine's open shape), both inits 0x2F6340 / 0x2F6600 (calls to the
+ * do_assigns the target inlines whole: 0x2F6600 is our 0x444-byte do_assign's size exactly) and the
+ * make_iterators 0x2F5D10 / 0x2F6A70 (the buffer's begin() and operator+ inlined in the target) --
+ * all the tail's generation order (include/deque's comment; README "THE TAIL'S GENERATION ORDER").
  * Defined in reverse of their image order (-inline deferred). */
 
 #include <stdio.h>
