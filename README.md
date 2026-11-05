@@ -11004,8 +11004,12 @@ named (all had SOCOM 1's). No tool changed.
 Hand-written in round 27c: `asr/specsub.c` (InitSpecSub and ControlSpecSub closed: 6 of 7), `asr/mel.c`
 (MelInitBands new: 5 of 5), a new `asr/smooth.c` (SOCOM 1's smoothing object 0x3644C0, OVL2 0x4F7A48-0x4F812C:
 smtConstruct new, smtDestruct over its draft, Smoothing unwritten: 2 of 3), `asr/tos.c` (ConstructQueue new,
-SOCOM 1's static: 16 of 18; ConstructBlock 148 words, 2 short), `asr/shs.c` (Lin_2_Log new: 2 of 7). No rows
-named (all had SOCOM 1's). No tool changed.
+SOCOM 1's static: 16 of 18; ConstructBlock 148 words, 2 short), `asr/shs.c` (Lin_2_Log new: 2 of 7), a new
+`asr/secpass.c` (SOCOM 1's second-pass object 0x342708, OVL2 0x4D1C18-0x4D3318: GetSecondPassInfo new -- the
+language's and the context's accessors called through their tables, slot for slot; the word's pronunciation
+table indexed through its own pointer; the else arm's three stores written in the reverse of the target's
+order, sched1 issuing the last of equal stores first -- putWordInDict and CreateSecondPassTreeContext
+unwritten: 1 of 3). No rows named (all had SOCOM 1's). No tool changed.
 
 **Round 14b: the "toolchain" opens were SCEA's shapes; LargeInt's core is assembly.**
 
