@@ -69,17 +69,30 @@ struct CKitBody {
     unsigned char _176[0x200 - 0x176];
     signed char m_200;   // 0x200: the current item's zoom class (binoculars 4, scopes 5 and up)
     unsigned char _201[0x300 - 0x201];
-    void *m_rhand;   // 0x300: the right hand's body part (zseal.h's m_rhand)
-    unsigned char _304[0x388 - 0x304];
-    /* 0x388: attachments by kind, 8 bytes each -- the first word a record whose +0xC keeps the node
-     * hung on it (0x5C6980; the names ours) */
+    /* 0x388: attachments by kind, 8 bytes each -- the first word a record (zseal.h's CZBodyPart)
+     * whose +0xC keeps the node hung on it (0x5C6980) and +0x1C its parent part (0x5C6A40: the
+     * launcher's node moved last among its parent's children; the names ours) */
     struct Attach {
         struct Record {
             unsigned char _0[0xc];
             void *m_node;   // 0xc
+            unsigned char _10[0x1c - 0x10];
+            Record *m_parent;   // 0x1c
         } *m_rec;
         unsigned int m_4;
-    } m_attach[5];
+    };
+    void *m_rhand;   // 0x300: the right hand's body part (zseal.h's m_rhand)
+    unsigned char _304[0x350 - 0x304];
+    /* 0x350, 0x354: the rifle's and the pistol's parts (zseal.h's m_rifle, m_pistol) */
+    Attach::Record *m_rifle;
+    Attach::Record *m_pistol;
+    unsigned char _358[0x388 - 0x358];
+    Attach m_attach[5];
+
+    /* an attachment's part (inline; the name ours: ReParentToRifle's launcher part read through it
+     * is numbered with the temporaries, after the three walks -- as a plain field read into a named
+     * local it is numbered with the named locals and the saved registers shift) */
+    Attach::Record *AttachPart(int kind) { return m_attach[kind].m_rec; }
     unsigned char _3b0[0xeb8 - 0x3b0];
     /* 0xeb8: the entity the SEAL works -- a turret (zseal.h's m_eb8) */
     struct CKitMover *m_eb8;
@@ -415,6 +428,11 @@ public:
     int GetPrimaryIndex();
     int GetSecondaryIndex();
     int GetClass145Index();
+    /* the three weapons' models hung back on the body's rifle, pistol and launcher parts (OVL2
+     * 0x5C6A40, 0x5C6DA0: SOCOM 1's ReParentToRifle / ReParentToPistol, which hung items 0's and
+     * 1's; SOCOM II's ChangeToRifleMode / ChangeToPistolMode call them first, as SOCOM 1's) */
+    void ReParentToRifle();
+    void ReParentToPistol();
     /* the binoculars added unless held (OVL2 0x5C7450; SOCOM 1's) */
     void SetupBinocular();
     /* an item's model instanced and its node kept in m_itemptr (OVL2 0x5C72C0; SOCOM 1's) */
