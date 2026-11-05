@@ -5612,7 +5612,7 @@
 0x0031F430 0x10 ReserveChildren__Q23zdb6CWorldFi  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0031F440 0xB8 UpdateShadowCasters__Q23zdb6CWorldFv  # OVL1; new in SOCOM II, the name ours (the zdb-world lane): between ReserveChildren and AddShadowCaster, it walks m_shadow_casters (0x580): each caster's node (0x4C) SetActive(false) through the table, the node's first visual's first dynamic texture's CTexture stored at 0x50, then 0x31F570 on the caster
 0x0031F500 0x68 AddShadowCaster__Q23zdb6CWorldFPQ23zdb5CNode  # OVL1; new in SOCOM II, the name ours: a 0x70-byte object made from the node (0x31F780) pushed onto the vector at 0x580; AddChild and node_main.cpp call it
-0x0031F570 0x204 func_0031F570  # OVL1
+0x0031F570 0x204 Update__Q23zdb13CShadowCasterFv  # OVL1; ours (the world lane round 19: the shadow caster's world-to-texture matrix -- a camera at its node looking down -z, CLightMap::SetTexture's projection scaled by the box's size; UpdateShadowCasters calls it for each caster)
 0x0031F780 0x228 __ct__Q23zdb13CShadowCasterFPQ23zdb5CNode  # OVL1; new in SOCOM II, the names ours: AddShadowCaster news 0x70 bytes and calls it with the node
 0x0031F9B0 0xD8 GarbageCollect__Q23zdb6CWorldFv  # OVL1; s1:align
 0x0031FA90 0x28 __ct__Q23std54vector<PQ23zdb5CNode,Q23std24allocator<PQ23zdb5CNode>>FRCQ23std54vector<PQ23zdb5CNode,Q23std24allocator<PQ23zdb5CNode>>  # OVL1; tu: vis_mesh.cpp~ (1.0 beta); the vector's implicit copy constructor, out of line after GarbageCollect (its first caller, through the inline TrimVector): __vector_imp's copy inlined, __vector_pod's (0x259B40) called
