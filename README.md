@@ -2196,8 +2196,8 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     false` its branch-built bool (CAiMaps::GetLocation(point) 0x52DC70, 279 -> 172, OPEN);
   - include/list iterators declared and then ASSIGNED from begin() stay in memory, re-read and re-stored at each step
     (CAiMaps::RegisterPathPlan 0x52C5C0, unstarted before: 0x5F8 of 0x608, every call the target's, OPEN);
-  - `tools/objcmp.py -j 2` can print a FALSE difference (a race in scdecomp's SymbolTable._copy_index, queued for the
-    tools): prove with -j 1 until it is fixed.
+  - `tools/objcmp.py -j 2` could print a FALSE difference (a race in scdecomp's SymbolTable._copy_index) -- FIXED by the
+    GCC front's round 37a: any -j is safe again.
 - **Tells from the kit and AI states, round 51** (CSealUnit::IssueCommand written with the four rows only it calls; the
   OVL2 DI-pool twins from source; GOAL_TYPE moved into ai_states.h -- resumed after the 2026-11-05 crash for its wind-down):
   - a walk's end() taken into a local before the loop gives the target's begin in v0 and end in v1 (IssueCommand
@@ -2209,7 +2209,7 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     with lui/ori);
   - A FUNCTION-LOCAL STATIC OBJECT IS THREE DATA ROWS: its guard `@GUARD@fn@name` (tested with lb, set to 1), the object
     `@LOCAL@fn@name` and an anonymous destructor-chain record right after the guard (IssueCommand's breach prototype
-    0x66B8E0, 54 references, guard 0x66B8C0; the record 0x66B8C8 stays unnamed until scdecomp has a convention);
+    0x66B8E0, 54 references, guard 0x66B8C0; the record 0x66B8C8 is `@CHAIN@IssueCommand...@proto` since the GCC front's round 37a);
   - an inline cut to one level (SOCOM 1's HandleSupport) emits exactly the out-of-line copies the target calls --
     CAiState(AI_STATE) 0x5EA5D0, the CAiMapLoc copy 0x5EA7E0 and insert<FT_COMMAND> 0x5EF6D0 new, GetValidMapLoc 0x5EA870
     (our name) from its draft to source; RequestRay / GetRequest / SetRequest / CNewDiDir in seal_dipool.h (opt-in

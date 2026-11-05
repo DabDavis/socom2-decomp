@@ -258,6 +258,7 @@
 0x0018E768 sceCdSync
 0x0018E808 sceCdSyncS
 0x0018E878 _sceCd_scmd_prechk
+0x0018E9E8 func_0018E9E8
 0x0018ED78 sceCdDiskReady
 0x0018F178 sceCdRead
 0x0018F358 func_0018F358
