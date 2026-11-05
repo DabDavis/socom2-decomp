@@ -328,6 +328,8 @@ public:
     SlotList m_list;   // 0x960
     CategorySlot m_categories[4];   // 0x9a0
     C2DBitmap m_bitmap3;   // 0xea0
+    /* the page made (0x23CD20; the name ours) */
+    void Init();
     /* the weapon shown: its class (GetIDType, 255 none), its kind (0 primary, 1 secondary, 2 other)
      * and its index in the weapons' list (0x23D540; the names ours) */
     void SetWeapon(CZWeapon *weapon);

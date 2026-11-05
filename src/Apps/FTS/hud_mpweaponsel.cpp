@@ -178,8 +178,6 @@ static inline void SetValve(const char *name, int value)
         valve->SetValue(value);
 }
 
-/* the category page made (0x23CD20; no row named yet) */
-extern "C" void func_0023CD20(CMPWeaponCategories *page);
 
 /* the selector's layout: the backdrop's top, the list's left and top, the boxes' sizes (plain
  * initialised data 8 bytes apart, the unit's statics) and the backdrop's left (bss: the unit's
@@ -263,7 +261,7 @@ void CMPWeaponSel::Init()
     m_1530 = 255;
     m_1531 = 255;
     m_list.Off();
-    func_0023CD20(&m_categories);
+    m_categories.Init();
     m_categories.m_list.m_owner = this;
     m_categories.m_owner = this;
     m_list.m_slots[0] = &m_selected[0];
@@ -692,6 +690,51 @@ void CMPWeaponCategories::HandlePad(CPad *pad)
     }
 }
 
+
+/* the category page made: its arrows' pulse reset, everything off, its two backdrops loaded at the
+ * page's place and the third empty, all added to the HUD's phase 1 and faded out; no class, the
+ * primaries' kind, the list's four category slots, and the list's first weapon (0x23CD20; the name
+ * ours -- the selector's Init calls it) */
+void CMPWeaponCategories::Init()
+{
+    m_pulse = 0.0f;
+    m_pulseup = true;
+    Off();
+
+    zdb::CTexHandle *tex = zdb::CAssetMgr::m_assets.GetTexHandle("newweapnbkrnd.tif");
+
+    m_bitmap1.Load(s_708, s_titley, s_708 + s_700, s_titley + s_titleheight, tex);
+    m_bitmap1.SetUV(0.0f, 1.0f, 1.0f, 0.0f);
+    m_bitmap2.Load(s_catx, s_caty, s_catx + s_700, s_caty + s_db8, tex);
+    m_bitmap2.SetUV(0.0f, 1.0f, 1.0f, 0.0f);
+    m_bitmap3.Load(0.0f, 0.0f, 0.0f, 0.0f, tex);
+    m_bitmap3.SetUV(0.0f, 1.0f, 1.0f, 0.0f);
+    theHUD->Add2D(&m_bitmap1, 1, true);
+    theHUD->Add2D(&m_bitmap2, 1, true);
+    theHUD->Add2D(&m_title, 1, true);
+
+    int i;
+
+    for (i = 0; i < 4; i++)
+        theHUD->Add2D(&m_polys[i], 1, true);
+    theHUD->Add2D(&m_bitmap3, 1, true);
+    theHUD->Add2D(&m_list, 1, true);
+    m_bitmap1.SetTrans(0.0f);
+    m_bitmap2.SetTrans(0.0f);
+    m_bitmap3.SetTrans(0.0f);
+    m_title.SetTrans(0.0f);
+    for (unsigned int j = 0; j < 4; j++)
+        m_polys[j].SetTrans(0.0f);
+    m_list.SetTrans(0.0f);
+    m_type = (EQUIP_ITEM)255;
+    m_kind = KIND_PRIMARY;
+    m_state = SEL_CLOSED;
+    m_list.m_slots[0] = &m_categories[0];
+    m_list.m_slots[1] = &m_categories[1];
+    m_list.m_slots[2] = &m_categories[2];
+    m_list.m_slots[3] = &m_categories[3];
+    m_index = m_list.NextWeapon(true, 0, m_type, m_kind);
+}
 
 /* the page's cursor moved: a weapon on (2) or back (-2) in its class, or the class on (-1) or
  * back (1) -- the grenades' class (171) passed over when the selector lets none through -- and on
