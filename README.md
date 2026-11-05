@@ -2065,6 +2065,22 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the UI, round 28** (CFileCD::BuildTOC, CGameMenu::Tick and ParseButtonAnim -- all unwritten before; zui.cpp
+  84 of 85):
+  - AN INLINE'S RESULT LEFT UNSET ON SOME PATH IS LIVE FROM FUNCTION ENTRY and takes a saved register (CGameMenu::Tick
+    0x3654C0's two visibility switches call through whatever that register held when the node has no 2D visual);
+    assigning the clamp constant before a call lets MW put it in the call's delay slot using the compare's register;
+  - one variable reused for two disjoint ranges is split by MW: the second range becomes a temporary numbered after the
+    loop optimiser's, its spill slot below the loop's pointers (CFileCD::BuildTOC 0x39DFD0's `sectors`; m_CDmode is
+    Sony's sceCdRMode, the lowest file sector a signed int); locals declared uninitialised at the top number before a
+    later-initialised local;
+  - in an if / else chain a constant assigned to an unsigned char local compiles to daddiu, to an int li; in `b = find();
+    item->Type = X; item->Pad = Get(b);` the store lands in Get's delay slot, with find() inside Get's argument in find's;
+    MW hoists a loop-invariant float negation only when some use computes it on every path (GetStickDir's `-y`; StickAbs's
+    `-x` in one ternary arm is not -- CGameMenu::HandlePad 0x368650, OPEN at 72); field compares written as named bools
+    ahead of inlined calls give the target's eager sltiu block, inside the && chain they are lazy;
+  - ParseButtonAnim 0x365D50: ActionItem::EVENT spelled with all 63 names read off its compare chain; HandlePad's event
+    44 is USBKBD_ENTER (HID usages 40 and 88: Enter and keypad Enter).
 - **Tells from the world, rdr and sound, round 23** (CWind::Tick at last, open since round 14; Particle::Draw,
   CmdParseWind, CValve::CmdParseCmp, CSnd::LoadSounds' LoadCSnd; zparticle_props.cpp split off):
   - ON FLOATS `v > lo ? v : lo` COMPILES AS `!(v <= lo)`: `c.le.s v,lo; bc1t` with the value's arm first, `v <= lo ? lo :

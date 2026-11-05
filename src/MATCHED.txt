@@ -6271,7 +6271,9 @@
 0x00365210 PreGetSprPacket__23CDblBufTextureRelocatorFPQ23zdb10CTexHandle
 0x003653C0 Init__23CDblBufTextureRelocatorFv
 0x003654A0 func_003654A0
+0x003654C0 Tick__9CGameMenuFf
 0x00365A00 SwitchMenu__9CGameMenuFPc
+0x00365D50 ParseButtonAnim__FP5_zrdrP10ActionItem
 0x00366730 PrepModels__9CGameMenuFRC14CGameDlgDesign
 0x00366940 TickMPEG__9CGameMenuFv
 0x00366A00 RestartBackgroundMPEG__9CGameMenuFPCc
@@ -7028,6 +7030,7 @@
 0x0039DEA0 __ct__7CFileCDFv
 0x0039DEF0 Find__7CFileCDFPCc
 0x0039DFC0 func_0039DFC0
+0x0039DFD0 BuildTOC__7CFileCDFv
 0x0039E4F0 CreatePath__7CFileCDFPcPc
 0x0039E600 fflush__7CFileIOFv
 0x0039E610 ftell__7CFileIOCFv
