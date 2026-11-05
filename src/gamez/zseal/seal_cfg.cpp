@@ -123,6 +123,18 @@ extern "C" int func_0058CB30(const char *name)
     return id;
 }
 
+/* the body parts' names forgotten (SOCOM 1's ClearBodyPartNames_Map, its demo's 0x280E80, between
+ * BodyWepPart and BodyId as here): nothing calls it in SOCOM II, so the linker stripped it
+ * (src/ABSENT.txt) -- but the map's clear it instantiates is this unit's tail's, and survives: OVL2
+ * 0x58D150 with its destroy 0x58D450 and the node pieces 0x58D6D0-0x58D737, which anim.cpp's 0x5E30F0
+ * calls on the anim sets' two maps (an earlier unit's copy, as ai_events.cpp's stripped Clear leaves
+ * its range erase) */
+void ClearBodyPartNames_Map()
+{
+    bodyPartNames_map.clear();
+    data_0044AF70 = false;
+}
+
 /* a name's id: the map filled once, the name found -- or given the next id (OVL2 0x58CA60, new in
  * SOCOM II; the names ours). The end taken into a local: compared straight (`it != map.end()`), the
  * end() an argument of the iterator's != sits a level deeper, and both AddItems -- which inline this --
