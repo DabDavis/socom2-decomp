@@ -1243,7 +1243,7 @@
 0x004148E0 0xC s_hbLostColor  # OVL1 bss; hud_healthbar.cpp's static (128, 128, 64), name ours: the part just lost (the constructor); 4 references in 2 functions -- the HUD lane
 0x004148F0 0xC s_hbDeadColor  # OVL1 bss; hud_healthbar.cpp's static (100, 100, 100), name ours: the rest of the bar once its owner is dead (Update); 4 references in 2 functions -- the HUD lane
 0x00414980 0x0 cdUA  # OVL1 bss; s1:data-exact (size SOCOM 1's; via lgAudASync +5)
-0x00414BB0 0x1C8 ZAnim  # OVL1 bss; SOCOM II's CZAnimMain is 0x1C8 (Open clears m_CurrentFrame at 0x1C4); s1:data-exact (SOCOM 1's 0x1C4; via CheckForRegionTrigger__10CZSealBodyFUi +8)
+0x00414BB0 0x1C8 ZAnim  # OVL1 bss; SOCOM II's CZAnimMain is 0x1C8 (Open clears m_CurrentFrame at 0x1C4); s1:data-exact (SOCOM 1's 0x1C4; via CheckForRegionTrigger__10CZSealBodyFUi +8); +0x4C (0x414BFC) is m_network_activation_callback, the anims' network send -- the game states' 0x2B8660 stores SendZAnimNetworkPacket there (fts_remote.cpp's data_00414BFC), CZAnim::Activate 0x2734B0 calls through it (byte-exact): a member, not a row of its own (the core lane round 20)
 0x00414D78 0x4 _input_str_ptr  # OVL1 bss; SOCOM 1 name (the wildcard search's pattern; ZAnimWildcardInit sets it)
 0x00414D80 0x14 _digit_ptr  # OVL1 bss; SOCOM 1 name (the pattern's stars, five at most)
 0x00414DA0 0x14 _digit_val  # OVL1 bss; SOCOM 1 name (the digit each star stands for)

@@ -211,13 +211,13 @@ bool CZAnimMain::CmdTick(float *dT)
 /* the interpreter set up afresh (closed first when open): SOCOM II's version and gravity,
  * the exp tables (e^x - 1 over e^10 - 1, x from 0 to 10 by 0.25, and one less it), the core
  * commands and eight free anim sets (SOCOM 1's three).
- * OPEN, 18 instructions, registers only: the inlined NewAnimSet keeps the set count in v1 where
- * the target (and SOCOM 1's NewAnimSet out of line) has v0 with count + 1 in v1, and the eight
- * flags' 1 lands in a0 not v0. The permuter found nothing in Open's own text (44,496 tries).
- * Round 18: NewAnimSet as a for, `< index + 1`, sizeof sizes, the count + 1 in a local, the step
- * assigned -- 18 or 21 (build/scratch/core/v_open.py); the replay finds no placement of the four
- * temporaries (@3188, v87, v88, v90) giving the target's v0 */
-void CZAnimMain::Open()
+ * IT RETURNS true (round 20; open since round 1 at 18 instructions, registers only): MW's exit
+ * reads v0 even in a void function, so v0 stays live from the last call (the inlined NewAnimSet's
+ * Name) to the end and nothing after it may take v0 -- the set count went to v1 and the eight
+ * flags' 1 to a0. Returning the 1 the flags take ends v0's live range at the return, and the count,
+ * its increment and the 1 take v0 as the target's do (the replay could not find it by renumbering:
+ * the interference was with v0 itself). The only caller, fts_mission.cpp's, ignores it. */
+bool CZAnimMain::Open()
 {
     if (m_IsOpen)
         Close();
@@ -245,6 +245,7 @@ void CZAnimMain::Open()
     m_CurrentFrame = 0;
     m_RunningAnimCount = 0;
     m_IsOpen = 1;
+    return true;
 }
 
 void CZAnimMain::AddPath(const char *path)

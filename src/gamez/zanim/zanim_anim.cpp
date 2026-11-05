@@ -518,8 +518,7 @@ CZAnim *CZAnim::Activate(CZAnim *by)
                 packet->anim_index = index;
                 if (anim->m_arg_list && anim->m_arg_list->size())
                     packet = anim->m_arg_list->AddNetworkPacketArgs(anim, packet);
-                ((void (*)(ZAnimNetworkPacket *, int))ZAnim.m_network_activation_callback)(packet,
-                                                                                         packet->packet_size);
+                ZAnim.m_network_activation_callback(packet, packet->packet_size);
             }
         }
     }
