@@ -1098,6 +1098,87 @@ struct _zanim_cmd_wind : public _zanim_cmd_hdr {
     float speed_offset_velocity;   // 0x40
 };   // 0x44 bytes
 
+/* the WIND command read (SOCOM 1's): each of AZIMUTH, ZENITH and SPEED a goal (the angles in
+ * degrees, made radians) and its time, each gust's range and its rate from the _OFFSET arrays; a
+ * flag for each setting given (the array tested by its type byte: zanim.h's _zrdr). Byte-exact (the
+ * world lane round 23) */
+_zanim_cmd_hdr *CWind::CmdParseWind(_zrdr *rdr)
+{
+    if (!rdr)
+        return 0;
+    _zanim_cmd_wind *cmd = (_zanim_cmd_wind *)_calloc(1, sizeof(_zanim_cmd_wind), 0, 0);
+
+    cmd->data_size = sizeof(_zanim_cmd_wind);
+    cmd->timeless = 1;
+    _zrdr *t = zrdr_findtag(rdr, "AZIMUTH");
+
+    if (t && t->type == 4) {
+        cmd->flags |= 1;
+        cmd->azimuth = t->Item(0)->Real();
+        cmd->azimuth *= 0.017453292f;
+        if (t->Count() >= 2)
+            cmd->azimuth_time = t->Item(1)->Real();
+        else
+            cmd->azimuth_time = 0.0f;
+    }
+    t = zrdr_findtag(rdr, "ZENITH");
+    if (t && t->type == 4) {
+        cmd->flags |= 2;
+        cmd->zenith = t->Item(0)->Real();
+        cmd->zenith *= 0.017453292f;
+        if (t->Count() >= 2)
+            cmd->zenith_time = t->Item(1)->Real();
+        else
+            cmd->zenith_time = 0.0f;
+    }
+    t = zrdr_findtag(rdr, "SPEED");
+    if (t && t->type == 4) {
+        cmd->flags |= 4;
+        cmd->speed = t->Item(0)->Real();
+        if (t->Count() >= 2)
+            cmd->speed_time = t->Item(1)->Real();
+        else
+            cmd->speed_time = 0.0f;
+    }
+    t = zrdr_findtag(rdr, "AZIMUTH_OFFSET");
+    if (t && t->type == 4) {
+        if (t->Count() >= 2) {
+            cmd->flags |= 8;
+            cmd->min_azimuth_offset = t->Item(0)->Real();
+            cmd->max_azimuth_offset = t->Item(1)->Real();
+        }
+        if (t->Count() >= 3) {
+            cmd->flags |= 0x10;
+            cmd->azimuth_offset_velocity = t->Item(2)->Real();
+        }
+    }
+    t = zrdr_findtag(rdr, "ZENITH_OFFSET");
+    if (t && t->type == 4) {
+        if (t->Count() >= 2) {
+            cmd->flags |= 0x20;
+            cmd->min_zenith_offset = t->Item(0)->Real();
+            cmd->max_zenith_offset = t->Item(1)->Real();
+        }
+        if (t->Count() >= 3) {
+            cmd->flags |= 0x40;
+            cmd->zenith_offset_velocity = t->Item(2)->Real();
+        }
+    }
+    t = zrdr_findtag(rdr, "SPEED_OFFSET");
+    if (t && t->type == 4) {
+        if (t->Count() >= 2) {
+            cmd->flags |= 0x80;
+            cmd->min_speed_offset = t->Item(0)->Real();
+            cmd->max_speed_offset = t->Item(1)->Real();
+        }
+        if (t->Count() >= 3) {
+            cmd->flags |= 0x100;
+            cmd->speed_offset_velocity = t->Item(2)->Real();
+        }
+    }
+    return cmd;
+}
+
 /* the world's wind given the command's settings: each goal reached at once or over its time, the
  * gusts' ranges and rates set (SOCOM 1's) */
 bool CWind::CmdTickWind(_zanim_cmd_hdr *hdr, float *dt)
