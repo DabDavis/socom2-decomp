@@ -130,6 +130,10 @@ public:
     static void GetTCMActions(std::vector<CNodeAction *> *list);
     const char *GetUIString();
     int ExecuteAction(CZSealBody *body, unsigned int index);
+    /* the action taken by a user if no one else has it, and let go by its user (SOCOM II's; the AI
+     * states' action state takes and lets go of its object through them: the names ours) */
+    bool Acquire(unsigned int who);
+    void Release(unsigned int who);
 
     /* whether the action's state goes to the other clients (the name ours) */
     bool IsNetworked() { return m_networked ? true : false; }
@@ -565,20 +569,22 @@ CNodeAction::CNodeAction(zdb::CNode *node, CZAnim *anim, CValve *valve, zdb::CTe
     m_owner = CEntity::invalidId;
 }
 
-/* the action let go by its user (SOCOM II's; OVL1 0x2B49D0) */
-extern "C" void func_002B49D0(CNodeAction *action, unsigned int who)
+/* the action let go by its user: the word at 0x34 back to the invalid id when it is the one passed
+ * (SOCOM II's; OVL1 0x2B49D0 -- CAiSAction::OnSignal 0x5F0470 calls it twice for its object) */
+void CNodeAction::Release(unsigned int who)
 {
-    if (action->m_owner == who)
-        action->m_owner = CEntity::invalidId;
+    if (m_owner == who)
+        m_owner = CEntity::invalidId;
 }
 
-/* the action taken by a user, if no one else has it (SOCOM II's; OVL1 0x2B49A0) */
-extern "C" bool func_002B49A0(CNodeAction *action, unsigned int who)
+/* the action taken by a user, if no one else has it (SOCOM II's; OVL1 0x2B49A0 -- OVL2's 0x5F0180
+ * calls it) */
+bool CNodeAction::Acquire(unsigned int who)
 {
     bool taken = false;
 
-    if (action->m_owner == CEntity::invalidId || action->m_owner == who) {
-        action->m_owner = who;
+    if (m_owner == CEntity::invalidId || m_owner == who) {
+        m_owner = who;
         taken = true;
     }
     return taken;

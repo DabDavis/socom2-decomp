@@ -400,7 +400,6 @@ void CameraZoom::SetLensFxAnim(CZAnim *anim)
  * words of thePipe cleared (an inline both callers share; the names ours) */
 extern "C" {
 void func_00270960(CZAnim *anim, bool now);
-void func_005C1800(void *kit, int a, int b);
 extern int data_00488E90;                       /* thePipe + 0x6D0 */
 extern int data_00488EA0;                       /* thePipe + 0x6E0 */
 }
@@ -486,7 +485,7 @@ void CameraZoom::HoldLensFx(unsigned char hold)
 {
     data_00408CF0 |= hold;
     if (data_00408CF0) {
-        func_005C1800(&CameraZoom::m_seal->m_kit, 0, 0);
+        CameraZoom::m_seal->m_kit.Apply_LensEffects(false, 0);
         data_00408CD0 = 0;
         if (data_00408CC8) {
             func_002707C0(data_00408CC8, false);
