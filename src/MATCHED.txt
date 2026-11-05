@@ -1879,6 +1879,7 @@
 0x00224BF0 GetTimeInGameSec__9CNetClockFv
 0x00224C80 GetTimeInRoundSec__9CNetClockFv
 0x00225070 UpdateCareerRecord__23@unnamed@st_mpexit_cpp@Fii
+0x002253C0 ComputeNewRating__23@unnamed@st_mpexit_cpp@Fv
 0x002256F0 SetMvpUiVars__23@unnamed@st_mpexit_cpp@FPCcPCc
 0x00225A00 SetPlayerStatsUiVar__23@unnamed@st_mpexit_cpp@FPCcii
 0x00225E40 GetHitPct__10CSealStatsCFv
@@ -6362,6 +6363,7 @@
 0x00373640 GetZAnimCmdType__10CUIListBoxFPCc
 0x00374010 HighlightPrev__10CUIListBoxFv
 0x003742F0 HighlightNext__10CUIListBoxFv
+0x003745E0 HandlePad__10CUIListBoxFPC4CPadi
 0x00374A50 SetPressed__10CUIListBoxFv
 0x00374B50 GetItemText__10CUIListBoxFi
 0x00374CB0 SetActive__10CUIListBoxFv
