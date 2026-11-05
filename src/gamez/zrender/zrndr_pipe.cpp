@@ -187,6 +187,7 @@ public:
     void RenderNode(zdb::CNode *node, zdb::tag_ZVIS_FOV fov);
     void RenderCell(zdb::CCell *cell);
     void BuildProjectedMapList(zdb::CNode *node);
+    void BuildSpecMapList(zdb::CNode *node);
 
     unsigned int m_texIntIdx;   // 0x0
     unsigned int m_texLoadIdx;   // 0x4
@@ -612,6 +613,48 @@ void CPipe::RenderCell(zdb::CCell *cell)
     cell->RenderClutter(cell);
 }
 
+/* the specular fade a light map near enough gets in full (SOCOM II's, the name ours: 1.0 in the
+ * image, read with lwc1 -- a variable) */
+float s_specFadeNear = 1.0f;   /* 0x3DFF70 */
+
+/* SOCOM II's (the name ours; RenderNode and RenderUiNodeRecursive call it before a node's visuals
+ * are drawn, SOCOM 1 has no such list builder): the specular maps listed afresh -- for a node
+ * marked to take them, each light map but a shadow within 250 units of the stack top's place (the
+ * node's, pushed), its specular fade full within 225 and ramped down to nothing at 250. Each push
+ * passes a copy of its own, taken after the fade's store (its stack store then fills Exists' delay
+ * slot) while Exists is handed the light itself (a1 straight from s3), as the target's */
+void CPipe::BuildSpecMapList(zdb::CNode *node)
+{
+    zdb::CVisual::m_specMapList.clear();
+    if (node->m_socom2_a1_bits.bit7 == 1) {
+        CPnt3D pos = *(const CPnt3D *)CStack::m_top->m_matrix[3];
+        zdb::CLightMapVector &lights = m_world->m_lightMaps;
+
+        for (zdb::CLightMapVector::iterator i = lights.begin(); i != lights.end(); ++i) {
+            zdb::CLightMap *l = *i;
+
+            if (!l->m_isShadow) {
+                CPnt3D d = pos - *(const CPnt3D *)l->m_matrix.m_matrix[3];
+                float d2 = d.x * d.x + d.y * d.y + d.z * d.z;
+
+                if (d2 <= 50625.0f) {
+                    l->m_SpecularFade = s_specFadeNear;
+                    zdb::CLightMap *kept = l;
+
+                    if (!zdb::CVisual::m_specMapList.Exists(l))
+                        zdb::CVisual::m_specMapList.push_back(kept);
+                } else if (d2 < 62500.0f) {
+                    l->m_SpecularFade = (62500.0f - d2) * (1.0f / 11875.0f);
+                    zdb::CLightMap *kept = l;
+
+                    if (!zdb::CVisual::m_specMapList.Exists(l))
+                        zdb::CVisual::m_specMapList.push_back(kept);
+                }
+            }
+        }
+    }
+}
+
 /* a span about a value reaching into [lo, hi] (ours) */
 static inline bool SpanMeets(float v, float r, float lo, float hi)
 {
@@ -955,10 +998,6 @@ void CPipe::CAlpha::Add(zdb::CNode *atom, zdb::CNode *node, zdb::CVisual *visual
 }
 
 
-/* SOCOM II's light lists for a node's visuals (0x339AD0, not written: Exists and the pod's insert
- * twice, as BuildLightMapList) */
-extern "C" void func_00339AD0(CPipe *pipe, zdb::CNode *node);
-
 /* a view id given back -- a `break` if none is out (SOCOM 1's test, as CVisual::GetVid's; the name
  * ours) */
 static inline void PopVid()
@@ -1094,7 +1133,7 @@ void CPipe::RenderUiNodeRecursive(zdb::CNode *node)
         bool pushed = PushNodeOpacity(node);
 
         if (node->m_visual.size()) {
-            func_00339AD0(this, node);
+            BuildSpecMapList(node);
             RenderVisual(node, (zdb::tag_ZVIS_FOV)0);
         }
         zdb::CNodeVector &c = node->m_child;

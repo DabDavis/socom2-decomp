@@ -5978,7 +5978,7 @@
 0x00338FA0 0x4D0 func_00338FA0  # OVL1
 0x00339470 0x1F0 BuildProjectedMapList__5CPipeFPQ23zdb5CNode  # OVL1; the world lane round 8: ours -- CVisual::m_projectedMapList (0x4B4E30) emptied and refilled with the world's shadow casters (0x580) whose box the node's sphere meets, for a pipe's node with bit 6 of 0xA1; called after BuildLightMapList by RenderDelayedNodes and PrepareAtom
 0x00339660 0x468 BuildLightMapList__5CPipeFPQ23zdb5CNode  # OVL1; the world lane round 8: s1:calls -- GetBBox, Sub, Scale, Add, Transform, Sub, then CLightMapVector::Exists and the pod insert, twice, as SOCOM 1's BuildLightMapList (0x2442F0); called by RenderDelayedNodes and PrepareAtom
-0x00339AD0 0x218 func_00339AD0  # OVL1
+0x00339AD0 0x218 BuildSpecMapList__5CPipeFPQ23zdb5CNode  # OVL1; ours (the world lane round 19: m_specMapList (0x4B4DA8) cleared and refilled with the light maps but shadows within 250 units of the stack top's place, their specular fade set; RenderNode and RenderUiNodeRecursive call it before the visuals)
 0x00339CF0 0xE8 RenderCell__5CPipeFPQ23zdb5CCell  # OVL1; the world lane round 8: ours -- CPipe's (a0 thePipe): a cell's fog test from its bounding box's centre, its first visual rendered when reflective, then CCell::RenderClutter; RenderWorld calls it three times
 0x00339DE0 0x1328 RenderWorld__5CPipeFPQ23zdb6CWorld  # OVL1; the world lane round 8: s1:calls -- CCoreState::Tick and CMenuState::Tick call it with thePipe and the world after the camera's Update, as SOCOM 1's RenderWorld (0x244780); it calls RenderDelayedNodes
 0x0033B110 0x114 RenderAtom__5CPipeFPQ23zdb5CNode  # OVL1; s1:align

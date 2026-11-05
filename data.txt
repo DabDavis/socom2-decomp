@@ -395,6 +395,7 @@
 0x003DFD10 0x4 UNNAMED_NODE  # OVL1; SOCOM 1 name (node_main.cpp's file static: the name nameless nodes share; CNode::SetName reads it)
 0x003DFD18 0x4 DELETED_NODE  # OVL1; SOCOM 1 name (the name a node is left with as it is destroyed; ~CNode stores it after SetName(0), as SOCOM 1's)
 0x003DFE10 0x4 m_scale__Q23zdb6CWorld  # OVL1; s1:data-seq (size SOCOM 1's; via Load__17CharacterDynamicsFRC8CRdrFile)
+0x003DFF70 0x4 s_specFadeNear  # OVL1 data; SOCOM II's, name ours (the world lane round 19: the specular fade CPipe::BuildSpecMapList gives a light map within 225 units, 1.0 in the image); 1 reference
 0x003DFF88 0x8 gSndCommandBuffePtr  # OVL1 data; the world lane r6: SOCOM 1's global (its symbol, 0x475370 in $gp's area, 8 bytes) -- snd_StartSoundSystem points it at the two command buffers as SOCOM 1's does
 0x003DFF90 0x8 gCommandBuffeBytesAvail  # OVL1 data; the world lane r6: SOCOM 1's global (its symbol, 0x475378, 8 bytes) -- snd_StartSoundSystem sets both to 4092 as SOCOM 1's does
 0x003DFF98 0x8 gSndCommandReturnDefPtr  # OVL1 data; the world lane r6: SOCOM 1's global (its symbol, 0x475380, 8 bytes) -- snd_StartSoundSystem points it at the two return-definition buffers
