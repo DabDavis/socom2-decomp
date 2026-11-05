@@ -775,7 +775,43 @@ int CZKit::GetAmmoTotal(int index)
     return total;
 }
 
-/* (OVL2 0x5C3890; SOCOM 1's, a tail call here -- GetAmmoCount 0x5C38A0, between the two, unwritten) */
+/* the rounds in an item's current magazine: none without the item; under a launcher's mode those of
+ * the item its ammunition is (the first of that kind with rounds, else the last; none without one);
+ * for a launcher, its fire mode stepped once or twice as the selected item (until the item in hand
+ * is a launcher), then -- in a launcher's mode -- the item its ammunition is, -1 when that is out of
+ * range (OVL2 0x5C38A0; SOCOM 1's, the item read through the grenade launcher's mode, the launcher's
+ * stepping new) */
+int CZKit::GetAmmoCount(int index)
+{
+    int i = wrap(index, m_num_items);
+    CZFTSWeapon *w = m_item[i];
+
+    if (!w)
+        return 0;
+    if (WeaponIsLauncherMode(i)) {
+        int j = FindItemWithAmmo((EQUIP_ITEM)m_firemode[i]);
+
+        /* (the ternary this way round: `j == -1 ? 0 : ...` branches over a `b` to the end) */
+        return j != -1 ? m_reloads[j][m_currentmag[j]] : 0;
+    }
+    if (CZWeapon::IsLauncher(w->m_ID)) {
+        int sel = m_selected_item;
+
+        m_selected_item = i;
+        CycleFireMode();
+        if (!GetCurItem()->IsLauncherWeapon())
+            CycleFireMode();
+        m_selected_item = sel;
+        if (m_firemode[i] > AUTOFIRE)
+            i = FindItemWithAmmo((EQUIP_ITEM)m_firemode[i]);
+        if (i < 0 || i > m_num_items)
+            return -1;
+        return m_reloads[i][m_currentmag[i]];
+    }
+    return m_reloads[i][m_currentmag[i]];
+}
+
+/* (OVL2 0x5C3890; SOCOM 1's, a tail call here) */
 int CZKit::GetCurAmmoCount()
 {
     return GetAmmoCount(m_selected_item);
@@ -806,6 +842,50 @@ CZFTSWeapon *CZKit::GetCurItem() const
 CZFTSWeapon *CZKit::GetItemByIndex(int index) const
 {
     return m_item[unwrap(index, FIREMODE_CURRENT)];
+}
+
+extern "C" {
+/* a launcher's fire mode past 3 found for an item (OVL2 0x5C45C0, this unit's draft) and a
+ * weapon's fire mode allowed (CZWeapon::HasFireMode, OVL1 0x3D2A60: the weapons') */
+bool func_005C45C0(CZKit *kit, int index);
+bool HasFireMode__8CZWeaponCFi(const CZWeapon *w, int mode);
+}
+
+/* the selected item's fire mode stepped, unless it is zoomed past 1.01: past the item's last mode a
+ * launcher takes its next mode (and steps again from 0 when it has a launcher's mode past 3), any
+ * other item with modes goes back to 1; a mode the item lacks stepped over, else the weapon info
+ * and reticule marked changed and the reticule taken; then -- the item a rifle, or a sidearm in the
+ * second hand -- the hand's mode kept, and its item kind while the body lives (OVL2 0x5C4600;
+ * SOCOM 1's CycleFireMode, the zoom test, the launcher's mode from NextFireMode and the hand's
+ * tail new) */
+void CZKit::CycleFireMode()
+{
+    if (m_item[m_selected_item] && GetCurZoom() <= 1.01f) {
+        m_firemode[m_selected_item]++;
+        /* (the last mode on the left: the mode takes v0, the last mode v1 -- `mode > last` swaps them) */
+        if (m_item[m_selected_item]->m_maxfiremode < m_firemode[m_selected_item]) {
+            if (m_item[m_selected_item]->IsLauncherWeapon()) {
+                m_firemode[m_selected_item]--;
+                m_firemode[m_selected_item] = NextFireMode(m_selected_item);
+                if (m_firemode[m_selected_item] == 0 && func_005C45C0(this, m_selected_item))
+                    CycleFireMode();
+            } else if (m_item[m_selected_item]->m_maxfiremode)
+                m_firemode[m_selected_item] = 1;
+        }
+        if (!HasFireMode__8CZWeaponCFi(m_item[m_selected_item], m_firemode[m_selected_item]))
+            CycleFireMode();
+        else {
+            m_weaponinfoChanged = true;
+            m_reticuletypeChanged = true;
+            m_curitemreticule = GetReticuleByIndex(m_selected_item);
+        }
+    }
+    if (m_item[m_selected_item] && (CZWeapon::IsPrimary(m_item[m_selected_item]->m_ID) ||
+                                    (m_second_hand && CZWeapon::IsSecondary(m_item[m_selected_item]->m_ID)))) {
+        m_hand_firemode = m_firemode[m_selected_item];
+        if (((CKitBody *)m_body)->m_alive)
+            m_hand_item = m_item[m_selected_item] ? m_item[m_selected_item]->m_ID : m_hand_item;
+    }
 }
 
 /* (OVL2 0x5C4480) The mode read in place each time, MW sharing the one load: taken into a local
@@ -1000,6 +1080,48 @@ bool CZKit::FetchLaseTarget()
 bool CZKit::IsFireDelayed()
 {
     return m_fire_delay > 0.0f;
+}
+
+extern "C" {
+/* the light maps' white switch (a byte at OVL1 0x4835E0 set: OVL1 0x326C20, unclaimed) */
+void func_00326C20(int on);
+}
+
+/* the base fog colour by value, and a camera's fog set from a colour by value (thezoom.cpp's pair,
+ * whose SeeFarther puts the fog back the same way; the names ours) */
+static inline CPnt4D BaseFogColor() { return zdb::CVisual::m_basefog_color; }
+static inline void SetFogColorBy(zdb::CCamera *cam, CPnt4D c) { cam->SetFogColor(c); }
+
+/* (OVL2 0x5C1800: kit.h's; SOCOM 1's, the white switch and the tints' quarter second new -- SOCOM
+ * 1's set the lens colour itself) */
+void CZKit::Apply_LensEffects(bool on, CPnt3D *color)
+{
+    zdb::CCamera *cam = zdb::CWorld::m_world->m_camera;
+
+    if (!on) {
+        /* (a plain PNT4D: its address passed for the by-value colour, as thezoom.cpp's) */
+        PNT4D white;
+
+        white.x = 1.0f;
+        white.y = 1.0f;
+        white.z = 1.0f;
+        white.w = 0.0f;
+        zdb::CVisual::SetLightTints(white, 0.25f);
+        func_00326C20(1);
+        SetFogColorBy(cam, BaseFogColor());
+        SetLensFxEnable(false);
+    } else {
+        if (color) {
+            /* (the colour's own address passed for the by-value tint) */
+            zdb::CVisual::SetLightTints(*(PNT4D *)color, 0.0f);
+            func_00326C20(0);
+            /* (the base colour read three times: MW shares the static's load, a temporary copied
+             * once per channel -- one local, the copies gone, 0x20 short) */
+            cam->m_fog_color = CPnt4D(color->x * BaseFogColor().x, color->y * BaseFogColor().y,
+                                      color->z * BaseFogColor().z, 0.0f);
+        }
+        SetLensFxEnable(true);
+    }
 }
 
 /* the wait after a shot: the current item's (0.1 without one), none on safety, 0.8 of it in burst
@@ -1575,16 +1697,58 @@ int CZKit::AddAmmo(int index, int rounds)
     return rounds;
 }
 
+extern "C" {
+/* CZSealBody::WepWaitOn (OVL2 0x5DFFC0, seal_weapon.cpp's) */
+void WepWaitOn__10CZSealBodyFv(CZSealBody *body);
+}
+
+/* the kit's ammunition put into a stash, every item's (-1) or one index's: a held item's
+ * ammunition, its rounds counted, added with the item -- none for a rifle or sidearm, which stay
+ * -- when a magazine holds rounds and the item is not of class 185; the ammunition let go, the item
+ * too unless kept or a launcher, the magazines emptied; then the items closed up, the count made
+ * the last item's place plus one, the selection reset when it fell off (OVL2 0x5BA040; SOCOM 1's
+ * FillAmmoPickupInstance, the class tests, the launcher's keeping and the tail new) */
+void CZKit::FillAmmoPickupInstance(CZItemStash *stash, int index)
+{
+    for (int i = 0; i < m_num_items; i++) {
+        if (index == -1 || index == i) {
+            CZFTSWeapon *w = m_item[i];
+
+            if (w) {
+                /* (the class declared first: it takes the id's register, s3, the id s2) */
+                EQUIP_IDTYPE type;
+                EQUIP_ITEM id = w->m_ID;
+
+                type = (EQUIP_IDTYPE)w->GetIDType();
+
+                if (CZWeapon::IsPrimary(id) || CZWeapon::IsSecondary(id))
+                    w = 0;
+                void *ammo = m_ammo[i];
+                int total = GetAmmoTotal(i);
+
+                if (ammo && ItemHasAmmo(i) && type != 185)
+                    stash->Add(w, (CZAmmo *)ammo, total);
+                m_ammo[i] = 0;
+                if (w && !w->IsLauncherWeapon())
+                    m_item[i] = 0;
+                ClearReloads(i);
+            }
+        }
+    }
+    CompactItems();
+    UpdateNumItems();
+    if (m_selected_item > m_num_items || !m_item[m_selected_item]) {
+        m_selected_item = 0;
+        WepWaitOn__10CZSealBodyFv(m_body);
+        m_weaponinfoChanged = true;
+    }
+}
+
 /* an item's ammunition let go: its magazines emptied, its pointer cleared, the index wrapped
  * twice as the inlines do (OVL2 0x5B9F00; SOCOM 1's RemoveAmmo, which wrapped through unwrap) */
 void CZKit::RemoveAmmo(int index)
 {
     ClearAmmo(index);
-}
-
-extern "C" {
-/* CZSealBody::WepWaitOn (OVL2 0x5DFFC0, seal_weapon.cpp's) */
-void WepWaitOn__10CZSealBodyFv(CZSealBody *body);
 }
 
 /* the first item of a kind with ammunition, else the last of the kind, let go (OVL2 0x5B9E10, new
@@ -1707,6 +1871,126 @@ bool CZKit::IsUsingItem(int index)
 bool CZKit::IsUsingScope()
 {
     return ((CKitBody *)m_body)->m_200 >= 5;
+}
+
+extern "C" {
+/* the body's adrenaline (CZSealBody::Adrenaline, OVL2 0x5781B0: the SEALs'), the controller's low
+ * rumble (CSealCtrl::SetLowRumbleTime, OVL2 0x592B40: the SEALs'), the kick's and the drift's
+ * switches (OVL2 0x650938, 0x650940) and the baseline's settling rate (OVL2 0x650980) */
+float *Adrenaline__10CZSealBodyFv(CZSealBody *body);
+void SetLowRumbleTime__9CSealCtrlFff(CKitCtrl *ctrl, float power, float time);
+extern unsigned char data_00650938;
+extern unsigned char data_00650940;
+extern float data_00650980;
+}
+
+/* (OVL2 0x5B9280: kit.h's) */
+void CZKit::SniperTick(float dT, CTargetMods &mods, float settle)
+{
+    float *a = Adrenaline__10CZSealBodyFv(m_body);
+    float adr = a ? *a : 1.0f;
+    float calm = 1.0f - adr;
+
+    if (adr > 0.2f && ((CKitBody *)m_body)->m_200 != 4) {
+        m_heartbeat_accum += dT;
+        if (m_heartbeat_state == 0) {
+            if (m_heartbeat_accum > 0.3f + 0.3f * 0.8f * calm) {
+                float t = 20.0f + 100.0f * adr;
+
+                if (t > 0.0f)
+                    SetLowRumbleTime__9CSealCtrlFff(((CKitBody *)m_body)->m_control, 0.1f, t);
+                m_heartbeat_accum = 0.0f;
+                m_heartbeat_state = 1;
+            }
+        } else if (m_heartbeat_accum > 0.8f + 0.8f * 0.8f * calm) {
+            float t = 20.0f + 100.0f * adr;
+
+            if (t > 0.0f)
+                SetLowRumbleTime__9CSealCtrlFff(((CKitBody *)m_body)->m_control, 0.16f, t);
+            m_heartbeat_accum = 0.0f;
+            m_heartbeat_state = 0;
+        }
+    }
+    if (data_00650938) {
+        if (m_firerifle_kick_state == 1 && m_firerifle_kick_movedist > 0.0f) {
+            float rate = mods.GetFireRifle_KickRate();
+            CKitCtrl *ctrl = ((CKitBody *)m_body)->m_control;
+
+            if (ctrl) {
+                /* (the controller's value read ahead of the accumulator, in both states) */
+                float step = rate * dT;
+                float cur = ctrl->m_130;
+
+                m_firerifle_kick_accum += step;
+                if (m_firerifle_kick_accum > m_firerifle_kick_movedist)
+                    m_firerifle_kick_state = 2;
+                else
+                    ctrl->m_130 = cur + step;
+            }
+        } else if (m_firerifle_kick_state == 2) {
+            float rate = mods.GetFireRifle_KickReturnRate();
+            CKitCtrl *ctrl = ((CKitBody *)m_body)->m_control;
+
+            if (ctrl) {
+                float step = rate * dT;
+                float v = ctrl->m_130 - step;
+
+                m_firerifle_kick_accum -= step;
+
+                if (settle > 0.0f) {
+                    m_firerifle_kick_baseline += settle * data_00650980;
+                    if (m_firerifle_kick_baseline > v)
+                        m_firerifle_kick_baseline = v;
+                }
+                if (v <= m_firerifle_kick_baseline) {
+                    ctrl->m_130 = m_firerifle_kick_baseline;
+                    m_firerifle_kick_state = 0;
+                    m_firerifle_kick_movedist = 0.0f;
+                    m_firerifle_kick_accum = 0.0f;
+                } else
+                    ctrl->m_130 = v;
+            }
+        }
+    }
+    if (data_00650940) {
+        float lim = mods.GetSniper_DistLimit_PosX();
+        float limit = 0.2f * lim + 0.8f * lim * adr;
+
+        if (adr > 0.2f && limit != 0.0f) {
+            float r = m_sniper_posx / limit;
+
+            if (r < 0.0f)
+                r *= -1.0f;
+            /* (the pace's first read a local: the second read, its 0.25 and the ratio's product
+             * fuse after the call -- adda/madd) */
+            float pace = 0.75f + mods.GetSniper_DistPPFrame_PosX();
+
+            m_sniper_posx += dT * (0.25f + mods.GetSniper_DistPPFrame_PosX() + pace * r);
+            if (m_sniper_posx > limit) {
+                mods.SetSniper_DistPPFrame_PosX(-mods.GetSniper_DistPPFrame_PosX());
+                m_sniper_posx = limit;
+            } else if (m_sniper_posx < -limit) {
+                mods.SetSniper_DistPPFrame_PosX(-mods.GetSniper_DistPPFrame_PosX());
+                m_sniper_posx = -limit;
+            }
+            lim = mods.GetSniper_DistLimit_PosY();
+            limit = 0.2f * lim + 0.8f * lim * adr;
+            if (adr < 0.1f)
+                limit = 0.0f;
+            r = m_sniper_posy / limit;
+            if (r < 0.0f)
+                r *= -1.0f;
+            pace = 0.75f + mods.GetSniper_DistPPFrame_PosY();
+            m_sniper_posy += dT * (0.25f + mods.GetSniper_DistPPFrame_PosY() + pace * r);
+            if (m_sniper_posy > limit) {
+                mods.SetSniper_DistPPFrame_PosY(-mods.GetSniper_DistPPFrame_PosY());
+                m_sniper_posy = limit;
+            } else if (m_sniper_posy < -limit) {
+                mods.SetSniper_DistPPFrame_PosY(-mods.GetSniper_DistPPFrame_PosY());
+                m_sniper_posy = -limit;
+            }
+        }
+    }
 }
 
 extern "C" {

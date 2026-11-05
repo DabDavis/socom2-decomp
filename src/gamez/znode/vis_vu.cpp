@@ -1068,7 +1068,10 @@ extern "C" void func_003B3AB0(CVisual *v, int vid, float size, CPnt3D *pos, CPnt
  * matrix). OPEN, 2 instructions: the copy's argument set-up -- the target (and SOCOM 1's) sets a1
  * (the matrix) before the call and &inv in its delay slot, here &inv goes first and a1 fills the
  * slot; the direct call, the copy assignment, casts, a pointer local, the four declaration orders
- * of n/m/inv/vid and the id as short/int/unsigned all give the same two (build/scratch/wep/v_adr*.py) */
+ * of n/m/inv/vid and the id as short/int/unsigned all give the same two (build/scratch/wep/v_adr*.py).
+ * Round 24 (CTurret::Fire's no-op-conversion close does not carry over): the direct call over the
+ * rows or the CMatrix casts, a source or a destination pointer local, void-pointer casts, the id as
+ * an if/else or a zero then an if -- the same two (or 4 short) */
 void CVisual::ApplyDecalRender(CMatrix *mtw, CNode *node, float size, CPnt3D *pos, CPnt3D *normal,
                                CTexHandle *tex, CMatrix *uv)
 {

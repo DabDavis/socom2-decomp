@@ -42,48 +42,53 @@ bool demuxBuffAlloc;   /* 0x451D20 */
 bool audioBuffAlloc;   /* 0x451D28 */
 }
 
-#define MPEG_BUFF_SIZE (_Max_Height * 0x1680 / 2 + 0x176C)
-#define RGB32_SIZE (_Max_Height / 16 * 0xA000)
-#define PATH3TAG_SIZE ((((_Max_Height / 16) * 0xF0 + 10) * 4 + 63) / 64 * 512)
+/* the buffers' sizes for a film `h` lines high (libmpeg's SCE_MPEG_BUFFER_SIZE at 640 wide, Sony's
+ * sample's RGB32 and path-3 tag sizes) */
+#define MPEG_BUFF_SIZE(h) ((h) * 0x1680 / 2 + 0x176C)
+#define RGB32_SIZE(h) ((h) / 16 * 0xA000)
+#define PATH3TAG_SIZE(h) (((((h) / 16) * 0xF0 + 10) * 4 + 63) / 64 * 512)
 
 /* a buffer taken from the block when it holds the size and a 64-byte alignment, else allocated;
- * `own` set when it was allocated (the block's size unchanged) */
-#define TAKE_BUFF(dst, size, own)                                                                   \
+ * `then` done with the buffer stored, and `own` set when it was allocated (the block's size
+ * unchanged). The film's height `h` and the alignment are the block's own locals: MW shares a
+ * size's arithmetic between the test and the arms only when it is written over the global (one
+ * load each, the size computed once), so the height read into a local of its own is what makes the
+ * target compute the size afresh in the test and in each arm; the alignment a variable keeps
+ * `size + 64` apart from the size's own `+ 0x176C` (a literal 64 folds the two) */
+#define TAKE_BUFF(dst, size, own, then)                                                             \
     {                                                                                               \
         unsigned int before = left;                                                                 \
-        if ((size) + 64 < left) {                                                                   \
-            dst = block + ((64 - (int)block) & 63);                                                 \
-            left -= (size) + 64;                                                                    \
-            block += (size) + 64;                                                                   \
+        int h = _Max_Height;                                                                        \
+        unsigned int align = 64;                                                                    \
+        unsigned char *p;                                                                           \
+        if ((size) + align < left) {                                                                \
+            p = block + ((64 - (int)block) & 63);                                                   \
+            unsigned int need = (size) + align;                                                     \
+            left -= need;                                                                           \
+            block += need;                                                                          \
         } else                                                                                      \
-            dst = (unsigned char *)_memalign(64, size, 0, 0);                                       \
+            p = (unsigned char *)_memalign(64, size, 0, 0);                                         \
+        dst = p;                                                                                    \
+        then;                                                                                       \
         own = before == left;                                                                       \
     }
 
-/* the decoding buffers made, from `buf` as far as it goes (SOCOM 1's; OVL1 0x309B40).
- * OPEN, 0x370 against 0x418: the target recomputes each size from the loaded height in the test
- * and in both arms (no common subexpression across the branch), never folds the size's 0x176C and
- * the alignment's 64 into one add, and stores the pointer once after the join (a local or an
- * inline's result); the macro here, a cast to unsigned in the test, and an inline taking the block
- * and its size by reference (0x308) all fold and share. Round 19: an inline taking the size by
- * value (0x308), the sizes as inline functions of the height (0x370), unsigned casts on the macros,
- * in the test and the arms (0x370-0x378), `int left`, `left > size + 64`, the size or the need in a
- * block local (0x330), `left - 64 > size` (0x388); `#pragma optimization_level 3/2/1`,
- * `opt_common_subs off`, `opt_propagation off` (0x3C8, 0x430, 0x580, 0x508, 0x398): none keeps the
- * +64 apart and the size unshared. */
+/* the decoding buffers made, from `buf` as far as it goes (SOCOM 1's; OVL1 0x309B40). Round 20,
+ * byte-exact (open since round 4 at 0x370, every earlier spelling sharing the size): each buffer a
+ * block reading the height into a local after `before` (TAKE_BUFF: the height first gives the
+ * path-3 tag's load ahead of the RGB flag's store, 7 off), the size fields stored before the flag
+ * (`then`), the MPEG buffer's size from the global again (the target reloads the height after the
+ * buffer's store) */
 int CMPEG::Init(void *buf, int size)
 {
     unsigned char *block = (unsigned char *)buf;
     unsigned int left = size;
 
-    TAKE_BUFF(rsrcs.mpegBuff, MPEG_BUFF_SIZE, mpegBuffAlloc);
-    rsrcs.mpegBuffSize = MPEG_BUFF_SIZE;
-    TAKE_BUFF(rsrcs.rgb32, RGB32_SIZE, rgb32Alloc);
-    TAKE_BUFF(*(unsigned char **)&rsrcs.path3tag, PATH3TAG_SIZE, path3tagAlloc);
-    TAKE_BUFF(rsrcs.demuxBuff, 0x30000, demuxBuffAlloc);
-    rsrcs.demuxBuffSize = 0x30000;
-    TAKE_BUFF(rsrcs.audioBuff, 0xC000, audioBuffAlloc);
-    rsrcs.audioBuffSize = 0xC000;
+    TAKE_BUFF(rsrcs.mpegBuff, MPEG_BUFF_SIZE(h), mpegBuffAlloc, rsrcs.mpegBuffSize = MPEG_BUFF_SIZE(_Max_Height));
+    TAKE_BUFF(rsrcs.rgb32, RGB32_SIZE(h), rgb32Alloc, (void)0);
+    TAKE_BUFF(*(unsigned char **)&rsrcs.path3tag, PATH3TAG_SIZE(h), path3tagAlloc, (void)0);
+    TAKE_BUFF(rsrcs.demuxBuff, 0x30000, demuxBuffAlloc, rsrcs.demuxBuffSize = 0x30000);
+    TAKE_BUFF(rsrcs.audioBuff, 0xC000, audioBuffAlloc, rsrcs.audioBuffSize = 0xC000);
     rsrcs.iopBuffSize = 0x6000;
     initPssAudio(&rsrcs);
     return 1;
@@ -211,8 +216,8 @@ int CMPEG::Loop()
         stopPss(p_mp);
         strFileRewind();
         memset(rsrcs.mpegBuff, 0, rsrcs.mpegBuffSize);
-        memset(rsrcs.rgb32, 0, RGB32_SIZE);
-        memset(rsrcs.path3tag, 0, PATH3TAG_SIZE);
+        memset(rsrcs.rgb32, 0, RGB32_SIZE(_Max_Height));
+        memset(rsrcs.path3tag, 0, PATH3TAG_SIZE(_Max_Height));
         memset(rsrcs.demuxBuff, 0, 0x30000);
         memset(rsrcs.audioBuff, 0, rsrcs.audioBuffSize);
         memset(p_mp, 0, 0x48);

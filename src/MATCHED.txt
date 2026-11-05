@@ -4454,7 +4454,7 @@
 0x002EFE10 func_002EFE10
 0x002EFE20 ChangeState__13CZOnlineLobbyF11LOBBY_STATE
 0x002EFE50 func_002EFE50
-0x002F0020 func_002F0020
+0x002F0020 cbGetPlayerInfo__FiiiP24MediusPlayerInfoResponse
 0x002F0EA0 func_002F0EA0
 0x002F10B0 func_002F10B0
 0x002F11F0 func_002F11F0
@@ -4538,7 +4538,7 @@
 0x002F96E0 func_002F96E0
 0x002F96F0 func_002F96F0
 0x002F98F0 func_002F98F0
-0x002F9AC0 func_002F9AC0
+0x002F9AC0 UnpackPlayerStats__FP15GamePlayerStatsPCc
 0x002FA320 Register__13CZOnlineLobbyFPCcPCc
 0x002FA560 Logout__13CZOnlineLobbyFv
 0x002FA5A0 Login__13CZOnlineLobbyFPCcPCc
@@ -4766,6 +4766,7 @@
 0x00309850 Tick__5CMPEGFi
 0x003098E0 Run__5CMPEGFPCcbbi
 0x00309A10 Uninit__5CMPEGFv
+0x00309B40 Init__5CMPEGFPvi
 0x00309F60 sendToIOP2area__FiiiiPUciPUci
 0x0030A2D0 iopGetArea__FPiPiPiPiP8AudioDeci
 0x0030A3B0 audioDecSendToIOP__FP8AudioDec
@@ -5931,10 +5932,10 @@
 0x00357E90 SetAA__13C2DBitmapPolyFb
 0x00357EE0 SetGouraud__13C2DBitmapPolyFb
 0x003585A0 GetAssetLibs__13C2DBitmapPolyFRQ23C2D8CLibList
-0x00358670 func_00358670
-0x00358690 func_00358690
-0x00358700 func_00358700
-0x00358720 func_00358720
+0x00358670 push_back__Q23std70__vector_imp<PQ23zdb9CAssetLib,Q23std28allocator<PQ23zdb9CAssetLib>,1>FRCPQ23zdb9CAssetLib
+0x00358690 __eq__Q33std70__vector_imp<PQ23zdb9CAssetLib,Q23std28allocator<PQ23zdb9CAssetLib>,1>8iteratorCFRCQ33std70__vector_imp<PQ23zdb9CAssetLib,Q23std28allocator<PQ23zdb9CAssetLib>,1>8iterator
+0x00358700 end__Q23std70__vector_imp<PQ23zdb9CAssetLib,Q23std28allocator<PQ23zdb9CAssetLib>,1>Fv
+0x00358720 begin__Q23std70__vector_imp<PQ23zdb9CAssetLib,Q23std28allocator<PQ23zdb9CAssetLib>,1>Fv
 0x00358730 Rotate_Zaxis__13C2DBitmapPolyFff
 0x003589D0 Rotate_Zaxis__13C2DBitmapPolyFf
 0x00358CC0 FlipImage_XYaxis__13C2DBitmapPolyFv
@@ -6283,6 +6284,7 @@
 0x003787A0 ParseZAnimCmd__9CTeleTypeFP5_zrdr
 0x00378A10 SetString__9CTeleTypeFPCcb
 0x00378B00 LoadSpec__9CTeleTypeFRC8CTtySpec
+0x00378C00 Draw__9CTeleTypeFRC7CMatrixPQ23zdb16CTextureRelocMgr
 0x00378FC0 Tick__9CPlainBmpFf
 0x00379080 LoadSpec__9CPlainBmpFRC10CImageSpecPQ23zdb10CTexHandle
 0x00379160 Draw__9CPlainBmpFRC7CMatrixPQ23zdb16CTextureRelocMgr
@@ -8188,6 +8190,8 @@
 0x005019B0 Median_Reset
 0x005019C8 InitMedian
 0x00501E20 NormE_Processing
+0x00501F38 FlushPitchCombiner
+0x00502298 ProcessPitchCombiner
 0x005028F0 ControlPitchCombiner
 0x00502F10 ConstructPitchCombiner
 0x005041C0 ControlSHS_VUV
@@ -9319,8 +9323,10 @@
 0x00578150 AdrenalineIncr__10CZSealBodyFf
 0x005781B0 Adrenaline__10CZSealBodyFv
 0x005781C0 func_005781C0
+0x005788C0 __ne__Q33std54__vector_imp<P7AnimSet,Q23std20allocator<P7AnimSet>,1>8iteratorCFRCQ33std54__vector_imp<P7AnimSet,Q23std20allocator<P7AnimSet>,1>8iterator
 0x005788E0 end__Q23std54__vector_imp<P7AnimSet,Q23std20allocator<P7AnimSet>,1>Fv
 0x00578900 __pp__Q33std54__vector_imp<P7AnimSet,Q23std20allocator<P7AnimSet>,1>8iteratorFi
+0x00578920 c_str__Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>CFv
 0x00578940 GetName__7AnimSetFv
 0x00578950 __ml__Q33std54__vector_imp<P7AnimSet,Q23std20allocator<P7AnimSet>,1>8iteratorCFv
 0x00578960 __as__Q33std54__vector_imp<P7AnimSet,Q23std20allocator<P7AnimSet>,1>8iteratorFRCQ33std54__vector_imp<P7AnimSet,Q23std20allocator<P7AnimSet>,1>8iterator
@@ -9732,6 +9738,7 @@
 0x005B9110 Binocs_Enabled__5CZKitFb
 0x005B9180 InitializeSniperKick__5CZKitFv
 0x005B91C0 StartSniperKick__5CZKitFv
+0x005B9280 SniperTick__5CZKitFfR11CTargetModsf
 0x005B97A0 IsUsingItem__5CZKitFi
 0x005B98C0 IsUsingItem__5CZKitF10EQUIP_ITEM
 0x005B9990 IsUsingScope__5CZKitFv
@@ -9740,6 +9747,7 @@
 0x005B9BB0 RemoveItemAndAmmo__5CZKitFi
 0x005B9E10 RemoveItem__5CZKitF10EQUIP_ITEM
 0x005B9F00 RemoveAmmo__5CZKitFi
+0x005BA040 FillAmmoPickupInstance__5CZKitFP11CZItemStashi
 0x005BA3D0 AddAmmo__5CZKitFii
 0x005BA5B0 CanAddAmmo__5CZKitFii
 0x005BC200 HandlePlaceMPBomb__5CZKitFPC6CPnt3D
@@ -9790,6 +9798,7 @@
 0x005C09F0 GetFireDelay__5CZKitFv
 0x005C0AD0 func_005C0AD0
 0x005C1660 PreTick__5CZKitFf
+0x005C1800 Apply_LensEffects__5CZKitFbP6CPnt3D
 0x005C2400 IsFireDelayed__5CZKitFv
 0x005C32B0 SetFireDelay__5CZKitFfb
 0x005C3740 GetItemByIndex__5CZKitCFi
@@ -9797,10 +9806,12 @@
 0x005C3790 GetCurFireMode__5CZKitFv
 0x005C37B0 SetCurFireMode__5CZKitF8FIREMODE
 0x005C3890 GetCurAmmoCount__5CZKitFv
+0x005C38A0 GetAmmoCount__5CZKitFi
 0x005C3C10 GetAmmoTotal__5CZKitFi
 0x005C3CE0 GetCurMaxAmmoCount__5CZKitFv
 0x005C4480 NextFireMode__5CZKitFi
 0x005C45C0 func_005C45C0
+0x005C4600 CycleFireMode__5CZKitFv
 0x005C4890 func_005C4890
 0x005C48A0 func_005C48A0
 0x005C48B0 SetHandFireMode__5CZKitFi
@@ -9983,6 +9994,7 @@
 0x005E1DF0 func_005E1DF0
 0x005E3720 Get__12CAnimAuxDataFUi
 0x005E3740 Inherit__7AnimSetFP7AnimSet
+0x005E3940 func_005E3940
 0x005E3AC0 TypeBit1__7AnimSetF8AnimType
 0x005E3B20 GetVariantScript__7AnimSetF8AnimTypeii
 0x005E3C20 GetScript__7AnimSetF8AnimTypei
