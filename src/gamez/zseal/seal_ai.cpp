@@ -2979,19 +2979,27 @@ extern "C" void func_00567690(CSealCtrlAi *ai, float dT, bool b)
  * entity met and where, the follow's restraint, a distance, the target cell, the way back and the
  * controller (new in SOCOM II; the layout read off 0x56A130 and the callback, the names ours) */
 struct SEAL_LINEWALK {
+    /* (CreepTick's inline constructor: every member but the met cell, the scale and the way back) */
+    SEAL_LINEWALK()
+        : m_blocked(0), _1(0), m_met(0), m_metid(CEntity::invalidId), m_8(false), m_restrained(false),
+          m_dist(30.0f), m_to(CAiMapLoc::invalid), m_28(0), m_ai(0), m_30(true)
+    {
+    }
+
     unsigned char m_blocked;   // 0x0
     unsigned char _1;
     unsigned char m_met;   // 0x2: an entity in the way
-    unsigned char _3[9 - 3];
+    unsigned int m_metid;   // 0x4: CEntity::invalidId at first
+    bool m_8;   // 0x8
     bool m_restrained;   // 0x9
-    unsigned char _a[0xc - 0xa];
     CAiMapLoc m_metloc;   // 0xc
     float m_dist;   // 0x10
     float m_scale;   // 0x14
     CAiMapLoc m_to;   // 0x18
     CPnt3D m_back;   // 0x1c: the SEAL's facing, reversed
-    unsigned char _28[4];
+    unsigned int m_28;   // 0x28
     CSealCtrlAi *m_ai;   // 0x2c
+    bool m_30;   // 0x30: true at first
 };
 
 extern "C" {
@@ -3031,6 +3039,41 @@ extern "C" bool func_0056A130(CSealCtrlAi *ai, const CAiMapLoc &to, SEAL_LINEWAL
             w->m_met = false;
     }
     return !(w->m_blocked || w->m_met);
+}
+
+/* the AI's creep stepped (OVL2 0x567350, slot 0x88; new in SOCOM II, SOCOM 1's AI used the base's):
+ * with no goal the throttles stopped, the requests too (StopThrottles inlined), and done. Else the
+ * creep's bit 4 at 0x264 set; asked to walk, with a goal point and a goal kind other than 6, the line
+ * to the point's cell walked (0x56A130, a reach of 7.5) -- a cell off the map or a walk refused drops
+ * the walk and the goal point, unless the AI is in mode 7 and met no one. Then the base's creep; the
+ * goal gone after it, the AI out of mode 4 (to 1) and the goal cleared -- ClearGoal(m_goal_type): the
+ * target keeps the GOAL_NONE test's dead andi with no branch. Byte-exact (round 51) */
+void CSealCtrlAi::CreepTick(float dT, bool b)
+{
+    bool has = (bool)m_goal_dir_valid || (bool)m_goal_pos_valid;
+
+    if (!has) {
+        StopThrottles(false);
+        return;
+    }
+    m_aibit4 = true;
+    if (b && m_goal_pos_valid && m_goal_type != GOAL_RECOVER) {
+        SEAL_LINEWALK w;
+        CAiMapLoc loc;
+
+        if (!(AiMaps.GetLocation(&m_goal_pos, loc) ? func_0056A130(this, loc, &w, 7.5f) : false)
+            && (m_3f4 != 7 || w.m_met)) {
+            b = false;
+            m_goal_pos_valid = false;
+        }
+    }
+    CSealCtrl::CreepTick(dT, b);
+    has = (bool)m_goal_dir_valid || (bool)m_goal_pos_valid;
+    if (!has) {
+        if (m_3f4 == 4)
+            SetAiMode((AI_MODE)1);
+        ClearGoal(m_goal_type);
+    }
 }
 
 /* the box around eight points -- a box's corners (OVL2 0x56ACE0, new in SOCOM II: 0x56A8E0 calls it;

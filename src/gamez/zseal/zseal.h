@@ -1237,6 +1237,8 @@ public:
     /* (0x573E60: the stack emptied, then the bases' destructors) */
     virtual ~CSealCtrlAi();
     virtual void SetThrottle(unsigned int axis, float value);
+    /* the creep's line walk, then the base's (OVL2 0x567350, seal_ai.cpp's) */
+    virtual void CreepTick(float dT, bool b);
     virtual bool SlideTick(float dT);
     /* the turn toward a goal: CSealCtrl's at a rate of 2, slowed by the speed when the alertness is
      * low or the look deploys, unless a Navy SEAL in mode 6 (OVL2 0x56C340) */
