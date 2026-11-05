@@ -1962,7 +1962,12 @@ _zanim_cmd_hdr *CTTurret::Parse(_zrdr *rdr)
  * true : true`, the block through TaskBlock<T>: 0x274 each. The turret's type test, materialised in the target (sltu; beqz; lbu; xori 3;
  * sltiu; movz -- the `&&` as a value, then the select), is TASK_ENT::GetTyped's (round 37: inside
  * the inline that holds Get's switch it stays a value; in the caller every spelling folded it into
- * branches -- build/scratch/kit-r36/v_turret*.py) */
+ * branches -- build/scratch/kit-r36/v_turret*.py). The kit's round 50: nothing in the function
+ * branches to the padded label 0x5CE760 -- a C label before the find (MW drops it), the anim read
+ * into a caller local ahead of it, a do-while(0) around the find, a dead `ctrl` ternary before or
+ * after the AI, `r` set under a test of the AI or `ai ? true : true`, an if over the anim: 0x274
+ * each (an `if (!ai) r = true;` 0x28C) -- likely an inline's exit label (the AI core's round-22
+ * rand rule) whose inline is still unknown */
 bool CTTurret::Tick(_zanim_cmd_hdr *hdr, float *dT)
 {
     TASK_SEAL(CTTurret);

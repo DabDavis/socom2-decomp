@@ -9,8 +9,9 @@
  * dpdiv: 8 words longer); nothing else here changes with it. Names are SOCOM 1's (the process
  * and init rows by the constructor's slots). The input's first differences go into a ring of
  * three frames; each frame out is the Hamming window over the last half-step of the frame
- * before, this frame and the next half-step. WindowFlush (0x4FC240, which ProcessWindow
- * tail-calls when a flush is pending) is not yet written. */
+ * before, this frame and the next half-step. Round 31c: WindowFlush (0x4FC240, which ProcessWindow
+ * calls when a flush is pending), SOCOM 1's body as it stands -- the object whole (the frame's
+ * first and last samples are signed: the flush reads them with lh). */
 #include "tosblk.h"
 
 typedef struct WINDOW {
@@ -27,19 +28,53 @@ typedef struct WINDOW {
     float prev;                         /* +64: the last input sample, for the difference */
     unsigned char started;              /* +68 */
     unsigned char active;               /* +69 */
-    unsigned short first;               /* +70: the frame's first input sample */
-    unsigned short last;                /* +72: its last */
+    short first;                        /* +70: the frame's first input sample */
+    short last;                         /* +72: its last */
     unsigned char flush;                /* +74: a flush asked for before the start */
     char pad75;
     float *coefs;                       /* +76: the Hamming window */
 } WINDOW;                               /* 0x50 */
 
-extern void WindowFlush(WINDOW *w);     /* not yet written (the object's first, LOCAL in SOCOM 1) */
+static void WindowFlush(WINDOW *w);
 static void ProcessWindow(WINDOW *w, short **in);
 static int InitWindow(WINDOW *w);
 static int ControlWindow(WINDOW *w, unsigned char cmd);
 extern float cosf(float);
 extern void *memcpy(void *dst, const void *src, unsigned int n);
+
+/* a flush: one more frame out of what the ring holds -- the frame before the one being written
+ * copied into it, its first difference the step from the last frame's last sample back to its
+ * first -- windowed out as ProcessWindow does; the block active again. SOCOM 1's body */
+static void WindowFlush(WINDOW *w)
+{
+    float *coef = w->coefs;
+    unsigned short m = w->step;
+    float *src = w->rd;
+    float *out = qEnQueueOne(w->b.outputs[0].q);
+    float *q, *e;
+
+    src -= m;
+    if (src < w->buf)
+        src = w->end - m;
+    memcpy(w->rd, src, m * sizeof(float));
+    *w->rd = (float)w->first - (float)w->last;
+    w->rd += m;
+    if (w->rd == w->end)
+        w->rd = w->buf;
+    q = w->rd + m - w->half;
+    for (e = coef + w->half; coef < e; )
+        *out++ = *coef++ * *q++;
+    if (q == w->end)
+        q = w->buf;
+    for (e = coef + m; coef < e; )
+        *out++ = *coef++ * *q++;
+    if (q == w->end)
+        q = w->buf;
+    for (e = coef + w->half; coef < e; )
+        *out++ = *coef++ * *q++;
+    w->flush = 0;
+    w->active = 1;
+}
 
 /* one frame: the input's first differences go into the ring; the first frame after a start is
  * only stored (its first difference zeroed, the frame doubled); then the window over the last

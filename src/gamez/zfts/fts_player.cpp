@@ -7,12 +7,39 @@
 #include "../zentity/zentity.h"
 #include "../zanim/zanim.h"
 #include "../zsys/zsys.h"
+#include "../../ai/ai_maps.h"
 
 /* the body's states (zseal.h's SEAL_STATE: only its name and range, for OnStateChange's) */
 enum SEAL_STATE {
     stateStand = 0, stateCrouch = 1, stateProne = 2, statePeek = 3, stateHang = 4,
     stateClimbLadder = 5, stateInAir = 6, stateIdle = 7, stateDead = 8, stateCarrying = 9,
     stateCarried = 10, stateDone = 11
+};
+
+class CVehicleRdrEntry;
+
+/* how a character behaves (zchar.h's AI_PARAMS, 0x3C bytes, as the vehicle entry and the controller
+ * hold it: the constructor user-declared, so the assignment copies member by member -- the floats
+ * through the FPRs, the words with lw/sw, as LoadVehicle's inline copy does) */
+class AI_PARAMS {
+public:
+    AI_PARAMS();
+
+    unsigned int mask;   // 0x0
+    float accuracy;   // 0x4
+    float courage;   // 0x8
+    float surrender;   // 0xc
+    float stealth;   // 0x10
+    float training;   // 0x14
+    float visual_sens;   // 0x18
+    float visual_range;   // 0x1c
+    float visual_fov;   // 0x20
+    float aware_decay;   // 0x24
+    float thip_range;   // 0x28
+    unsigned int respawn;   // 0x2c
+    float target_delay;   // 0x30
+    float target_discipline;   // 0x34
+    CVehicleRdrEntry *m_veh;   // 0x38
 };
 
 /* a SEAL's controller (SOCOM 1's CSealCtrl, 592 bytes at SOCOM II's offsets: only what this unit
@@ -26,9 +53,13 @@ public:
      * the original's did (OVL2's copy is 0x58A710) */
     virtual void OnStateChange(SEAL_STATE from, SEAL_STATE to) {}
 
-    unsigned char _4[0x114 - 0x4];
+    unsigned char _4[0xd0 - 0x4];
+    AI_PARAMS m_aiParams;   // 0xd0 (zseal.h's)
+    unsigned char _10c[0x114 - 0x10c];
     int m_copy_index;   // 0x114: the player's copies' number (LoadVehicles sets it; the name ours)
-    unsigned char _118[0x171 - 0x118];
+    unsigned char _118[0x130 - 0x118];
+    float m_aimPitch;   // 0x130 (SOCOM 1's DWARF, at 0x130 there too)
+    unsigned char _134[0x171 - 0x134];
     unsigned char _171_0 : 3;
     unsigned char m_input_enabled : 1;   // 0x171, bit 3 (SOCOM 1's at 0x169)
     unsigned char _171_4 : 3;
@@ -39,8 +70,27 @@ public:
 class CSealCtrlAi : public CSealCtrl {
 public:
     CSealCtrlAi();
+    /* the brain built from the parameters (OVL2 0x573130, SOCOM 1's) */
+    void InitAiBrain();
+    /* the debug bit (SOCOM 1's SetDebug, out of line there; inline here: LoadVehicle stores it
+     * through a parameter, `andi a3,zero,1`) */
+    void SetDebug(bool on) { m_debug = on; }
 
-    unsigned char _250[0x7c0 - 0x250];
+    unsigned char _250[0x264 - 0x250];
+    /* 0x264: SOCOM 1's bits at 0x280 (its DWARF), zseal.h's SEAL_AI_PARAMS word */
+    unsigned int m_debug : 1;
+    unsigned int m_navyseal : 1;
+    unsigned int m_noturn_travel : 1;
+    unsigned int m_evasive_travel : 1;
+    unsigned int m_creeping : 1;
+    unsigned int m_nofade : 1;
+    unsigned int m_nobindanimset : 1;
+    unsigned int m_do_reaction : 1;
+    unsigned int m_sleeping : 1;
+    unsigned int m_snoozing : 1;
+    unsigned int m_nosnooze : 1;
+    unsigned int m_264_11 : 21;
+    unsigned char _268[0x7c0 - 0x268];
 };
 
 class CSealCtrlSquirm : public CSealCtrl {
@@ -57,10 +107,11 @@ public:
     virtual ~CSealCtrlCopy();
 };
 
-/* a character type (only its temporary types' cleanup) */
+/* a character type (only its temporary types' cleanup and the lookup by name) */
 class CCharacterType {
 public:
     static void CleanupTemporary();
+    static CCharacterType *GetByNameMod(const char *name);   /* OVL2 0x53E170 */
 };
 
 /* the SEAL (only what this unit touches) */
@@ -69,7 +120,15 @@ class CZSealBody : public CEntity {
 public:
     static CZSealBody *Create(const CCharacterType *type, const char *name, CSealCtrl *ctrl);
 
-    unsigned char _170[0x1060 - 0x170];
+    unsigned char _170[0x105c - 0x170];
+    /* 0x105c: SOCOM 1's bits at 0xf58 (zseal.h's names) */
+    unsigned int m_HudUpdateViewCone : 1;
+    unsigned int m_hudwashit : 1;
+    unsigned int m_aim_point_valid : 1;
+    unsigned int m_invincible : 1;
+    unsigned int m_invisible : 1;
+    unsigned int m_infiniteammo : 1;
+    unsigned int m_105c_6 : 26;
     unsigned char _1060_0 : 2;
     unsigned char m_inside : 1;   // 0x1060, bit 2 (SOCOM 1's at 0xf5c)
 
@@ -118,17 +177,25 @@ class CVehicleRdrEntry {
 public:
     bool IsSingleOnly() { return m_15c_1 ? true : false; }
     bool IsRecycled() { return m_recycle ? true : false; }
+    /* the start's place and direction (zchar.h's: OVL2 0x533000, 0x532FC0) and a start picked at
+     * random (0x533040) */
+    const char *GetStartPos() const;
+    int GetStartDir() const;
+    void Randomize(bool reset);
 
-    char m_name[0x70];   // 0x0 (zchar.h's name, character and display name)
+    char m_name[32];   // 0x0 (zchar.h's)
+    char m_character[48];   // 0x20
+    char m_display_name[32];   // 0x50
     unsigned char m_kind;   // 0x70: 1 a mission vehicle, 2 a spawned one (zchar.h's m_unk70)
     unsigned char _71[0x11c - 0x71];
     unsigned int m_teams;   // 0x11c
-    unsigned char _120[0x15c - 0x120];
-    unsigned char m_15c_0 : 1;   // 0x15c
+    AI_PARAMS m_aiParams;   // 0x120
+    unsigned char m_debug : 1;   // 0x15c (zchar.h's bits)
     unsigned char m_15c_1 : 1;
-    unsigned char m_15c_2 : 1;
-    unsigned char m_15c_3 : 1;
+    unsigned char m_nofade : 1;
+    unsigned char m_noshoot : 1;
     unsigned char m_recycle : 1;   // bit 4 (zchar.h's m_recycle)
+    unsigned char m_nosnooze : 1;
 };
 
 class CSpawners {
@@ -208,7 +275,8 @@ public:
     unsigned char _144[0x180 - 0x144];
     float m_player_grid_spacing;   // 0x180 (fts_mission.cpp's m_ai_params.player_grid_spacing)
     unsigned int m_player_grid_count;   // 0x184 (its player_grid_count)
-    unsigned char _188[0x1808 - 0x188];
+    float m_init_aim_pitch;   // 0x188 (fts_mission.cpp's: Read's "init_aim_pitch", in degrees)
+    unsigned char _18c[0x1808 - 0x18c];
     CZNetGame *m_pNetGame;   // 0x1808 (SOCOM 1's at 0x584)
     unsigned char _180c[0x1814 - 0x180c];
     CVehicleRdr *m_vehicle_rdr;   // 0x1814 (SOCOM 1's at 0x590)
@@ -499,6 +567,8 @@ public:
     virtual void _slot8();
     virtual bool Slot2C();   // 0x2c (unnamed: RefreshTeamValves asks it)
     virtual bool IsPlayer();   // 0x30
+    virtual bool IsRemote();   // 0x34 (zseal.h's)
+    virtual CSealCtrlAi *GetSealCtrlAi();   // 0x38 (zseal.h's: null but for an AI's)
 };
 
 /* the entity as a SEAL or a turret, if it is one (fts_remote.cpp's) */
@@ -708,6 +778,92 @@ extern "C" bool func_002B2D20(CMission *mission, CVehicleRdrEntry *entry, bool f
     if (!first && *only)
         ok = strcasecmp(only, entry->m_name) == 0;
     return ok;
+}
+
+extern "C" unsigned char data_004412D8;   /* the sides swapped (fts_net_persona.cpp's) */
+
+/* a vehicle's SEAL made (SOCOM 1's; OVL1 0x2B28D0): the entry's start drawn and the mission asked
+ * whether it takes the vehicle (SOCOM 1's filter, moved out to 0x2B2D20); the character type's SEAL
+ * made at the start's cell, turned its way -- the player's (squirm or copy as the switches say) or an
+ * AI; online an AI's sides swapped when the game swaps them (bits 30 and 31), offline the player put
+ * on team 26 and given the mission's initial aim pitch; the team mask and the no-shoot bit set; an
+ * AI given the entry's bits and parameters (the entry kept) and its brain, the player the mission's
+ * three cheats (bits 12-14 of its flags: invincible, invisible, infinite ammo) */
+CEntity *CMission::LoadVehicle(CVehicleRdrEntry *entry, bool player)
+{
+    if (!entry)
+        return 0;
+    entry->Randomize(false);
+    if (func_002B2D20(this, entry, player) == false)
+        return 0;
+    CCharacterType *type = CCharacterType::GetByNameMod(entry->m_character);
+
+    if (!type)
+        return 0;
+    CPnt3D pos = CPnt3D::zero;
+    CQuat quat = CQuat::identity;
+    CAiMapLoc loc;
+
+    if (AiMaps.GetLocation(entry->GetStartPos(), loc)) {
+        AiMaps.GetCellCenter(loc, &pos);
+        CAiMap::GetDirQuat((CAiMap::DIR)entry->GetStartDir(), quat, true);
+    }
+    SEAL_CONTROL_TYPE control;
+
+    if (player) {
+        if (doSquirm)
+            control = SEAL_CONTROL_SQUIRM;
+        else if (ftsPlayer.m_body)
+            control = SEAL_CONTROL_COPY;
+        else
+            control = SEAL_CONTROL_PLAYER;
+    } else
+        control = SEAL_CONTROL_AI;
+    CZSealBody *seal = ftsCreateSeal(type, entry->m_name, control);
+
+    if (!seal)
+        return 0;
+    unsigned int teams = entry->m_teams;
+
+    seal->m_node->SetName(entry->m_name);
+    if (entry->m_display_name[0])
+        seal->SetDisplayName(entry->m_display_name);
+    seal->TeleportTo(&pos, &quat);
+    if (theNetwork.m_bNetwork) {
+        if (!player && data_004412D8) {
+            unsigned int t = teams & 0x3fffffff;
+
+            if (teams & 0x40000000)
+                t |= 0x80000000;
+            if (teams & 0x80000000)
+                t |= 0x40000000;
+            teams = t;
+        }
+    } else if (player) {
+        teams |= 0x4000000;
+        if (m_init_aim_pitch != 0.0f)
+            ((CSealCtrl *)seal->m_control)->m_aimPitch = 0.017453292f * m_init_aim_pitch;
+    }
+    seal->SetTeamMask(teams);
+    seal->m_noshoot = entry->m_noshoot != 0;
+    CSealCtrlAi *ai = ((CSealCtrlQuery *)seal->m_control)->GetSealCtrlAi();
+
+    if (ai) {
+        ai->SetDebug(false);
+        ai->m_nofade = entry->m_nofade != 0;
+        ai->m_nosnooze = entry->m_nosnooze != 0;
+        ai->m_aiParams = entry->m_aiParams;
+        ai->m_aiParams.m_veh = entry;
+        ai->InitAiBrain();
+    } else if (player) {
+        if (m_vehicleFilter & 0x1000)
+            seal->m_invincible = true;
+        if (m_vehicleFilter & 0x2000)
+            seal->m_invisible = true;
+        if (m_vehicleFilter & 0x4000)
+            seal->m_infiniteammo = true;
+    }
+    return seal;
 }
 
 /* an entity given back: a SEAL's anims stopped, or, with vehicles waiting, the spawners' timer
