@@ -597,15 +597,19 @@ bool CSealCtrlAi::InGroup()
 
 /* (OVL2 0x60CE40: the AI held, out of the group (SetGroup(0) inlined), its look cleared and back in
  * the target list, its bits 19 and 21 set; then taken out of the members -- std::remove, the new end
- * a named local, the erase its own statement).
- * OPEN, 6 instructions, registers only: the entity (loaded first) comes out in s2 and SetGroup's
- * inlined `this` (the AI reloaded from its frame slot, its address being std::remove's value) in
- * s1; the target has them the other way round -- the entity coloured before the inline's variable,
- * as a later-numbered or deferred node would be. Tried: the let-go steps as a static inline taking
- * (ai, entity) (the AI then kept in a register: worse). The remove/erase half is byte-exact */
+ * a named local, the erase its own statement). The entity through an inline accessor: its result a
+ * temporary, numbered after SetGroup's inlined `this` (the AI reloaded from its frame slot, its address
+ * being std::remove's value), which puts the entity in s1 and the inline's variable in s2 -- read into
+ * the named local straight, the entity is numbered first and the two swap (round 42, by MW's colouring
+ * replayed with the vregs relabelled). The remove/erase half was byte-exact already */
+static inline CEntity *GroupAiEntity(CSealCtrlAi *ai)
+{
+    return ai->m_entity;
+}
+
 void CAiGroup::RemoveMember(CSealCtrlAi *ai)
 {
-    CEntity *e = ai->m_entity;
+    CEntity *e = GroupAiEntity(ai);
 
     ai->PopToAiState(AI_STATE_HOLD, true);
     ai->SetGroup(0);
