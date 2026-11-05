@@ -979,28 +979,55 @@ CTextureAssetCharacterList::iterator CTextureAssetCharacterList::TestFOV(CCamera
 
 /* the set's nodes in view counted: each active node's box, its eight corners carried into the
  * world by the node's matrix, tested against the camera's view, the node's in-view bit set from
- * the answer (SOCOM 1's; SOCOM II tests the box's corners in 4D after the node's transform).
- * OPEN, 44 instructions at the target's size, FRAME SLOTS ONLY (every register as the target's):
- * the target keeps the box's copy at 0xA0 below the corners at 0xC0, this puts the corners at 0xA0
- * and the copy above them at 0x120 -- the copy is created after the array in the target. Tried:
- * the corners' bounds as two CPnt3D locals (80 off), declared after the array and assigned (the
- * assignments' temporaries: 0x294 or 105 off), in an inner block, bound by reference to the box or
- * to a by-value wrapper's result (with or without a named return value: 0x2DC-0x30C), declared
- * uninitialised and assigned */
+ * the answer (SOCOM 1's; SOCOM II tests the box's corners in 4D after the node's transform). The
+ * corners are a local of the function's own block, declared ahead of the loop, and set field by
+ * field from the box's copy in GetBBoxCorners' order: the box declared after them takes the lower
+ * frame slot (0xA0, the corners 0xC0); initialised in the loop after the box they sat below it (44
+ * off), `c[i] = CPnt4D(...)` evaluates each constructor's arguments right to left (57 off) -- the
+ * world lane's rounds 16 and 21 */
 int CTextureAssetCharacters::TestFOV(CCamera *cam)
 {
+    CPnt4D c[8];
+
     m_visible = 0;
     for (CNodeVector::iterator it = m_nodes.begin(); it != m_nodes.end(); ++it) {
         CNode *node = *it;
 
         if (node->m_active) {
             CBBox b = *NodeBBox(node);
-            CPnt4D c[8] = {
-                CPnt4D(b.m_min.x, b.m_min.y, b.m_max.z, 1.0f), CPnt4D(b.m_min.x, b.m_min.y, b.m_min.z, 1.0f),
-                CPnt4D(b.m_max.x, b.m_min.y, b.m_min.z, 1.0f), CPnt4D(b.m_max.x, b.m_min.y, b.m_max.z, 1.0f),
-                CPnt4D(b.m_min.x, b.m_max.y, b.m_max.z, 1.0f), CPnt4D(b.m_min.x, b.m_max.y, b.m_min.z, 1.0f),
-                CPnt4D(b.m_max.x, b.m_max.y, b.m_min.z, 1.0f), CPnt4D(b.m_max.x, b.m_max.y, b.m_max.z, 1.0f),
-            };
+
+            c[0].x = b.m_min.x;
+            c[0].y = b.m_min.y;
+            c[0].z = b.m_max.z;
+            c[0].w = 1.0f;
+            c[1].x = b.m_min.x;
+            c[1].y = b.m_min.y;
+            c[1].z = b.m_min.z;
+            c[1].w = 1.0f;
+            c[2].x = b.m_max.x;
+            c[2].y = b.m_min.y;
+            c[2].z = b.m_min.z;
+            c[2].w = 1.0f;
+            c[3].x = b.m_max.x;
+            c[3].y = b.m_min.y;
+            c[3].z = b.m_max.z;
+            c[3].w = 1.0f;
+            c[4].x = b.m_min.x;
+            c[4].y = b.m_max.y;
+            c[4].z = b.m_max.z;
+            c[4].w = 1.0f;
+            c[5].x = b.m_min.x;
+            c[5].y = b.m_max.y;
+            c[5].z = b.m_min.z;
+            c[5].w = 1.0f;
+            c[6].x = b.m_max.x;
+            c[6].y = b.m_max.y;
+            c[6].z = b.m_min.z;
+            c[6].w = 1.0f;
+            c[7].x = b.m_max.x;
+            c[7].y = b.m_max.y;
+            c[7].z = b.m_max.z;
+            c[7].w = 1.0f;
 
             node->m_matrix.Transform(c, c, 8);
             if (cam->TestFOV((PNT4D *)c, 0, true) == ZVIS_FOV_ALL_OUT)
