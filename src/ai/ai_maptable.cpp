@@ -449,7 +449,7 @@ inline bool path_found(CAiPath &p)
  * gone, then (two way points or more) a path planned leg by leg through the planner and run to its
  * end; a finished path with points makes the route valid again, its cells copied last to first
  * (SOCOM 1's, 0x19E320; ValidateRoutes calls it when asked). True for a valid route.
- * OPEN, 0x340 against 0x348 (written in the AI core's round 29): the code is the target's but for the
+ * OPEN, right size (0x348), 10 instructions (written in the AI core's round 29): the code is the target's but for the
  * copy loop's preheader, where the target takes the points' size address afresh (a3, the label padded)
  * for the body and the bottom test -- its top test still reads the saved s0 the emptiness test and the
  * resize share -- and this build reuses s0 throughout. Tried: the loop as a while, through a points
@@ -458,7 +458,13 @@ inline bool path_found(CAiPath &p)
  * the wait loop: the state read through a reference local (s1 ahead of the loop, its two tests and
  * path_found's reload through it -- MW shares no load of a reference's field with the object's own)
  * and tested as !idle() (both tests on `sltiu at`; `< 3` materialised the bottom one)
- * (build/scratch/ai/v_rr*.py). The regions' finds compute their end once (find_region's `e`, SOCOM 1's
+ * (build/scratch/ai/v_rr*.py). Round 31: the count read through a reference local the copy's body
+ * alone uses (`unsigned int &cnt`, declared after the resize) reaches the target's size, 10 instructions
+ * off: the body's address is a variable of its own, but defined ahead of the top test (t0, j a3)
+ * where the target hoists a3 after it, and the bottom test still shares s0 -- the test through the
+ * reference too puts the top test on it and shares the body's load (20); a pointer the same; a points
+ * pointer, an inline test, a guarded do-while or the reference inside the body: s0 throughout (0x340)
+ * (build/scratch/ai/v_rr6.py, v_rr7.py). The regions' finds compute their end once (find_region's `e`, SOCOM 1's
  * FindByLocation shape): written through end() at each pass MW reloaded data_ in both walks here
  * (ValidateRoutes unchanged either way) */
 bool CAiMap::ReRoute(route *r)
@@ -491,8 +497,10 @@ bool CAiMap::ReRoute(route *r)
                     r->m_flags &= ~1;
                     r->m_path.clear();
                     r->m_path.resize(path.m_points.count());
+                    unsigned int &cnt = path.m_points.count();
+
                     for (int j = 0; j < (int)path.m_points.count(); j++)
-                        r->m_path[j] = path.m_points[path.m_points.count() - j - 1].m_loc;
+                        r->m_path[j] = path.m_points[cnt - j - 1].m_loc;
                 }
             }
         }
