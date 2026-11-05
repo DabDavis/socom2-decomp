@@ -51,8 +51,10 @@ int CKey::RecordSize()
  * (sltu/xori, bnez), a bool copy or the end in the test change the copies' sizes.
  * OPEN, one call (0x240 both, every instruction the target's): the second copy's end() inlines
  * the raw end and calls the pod's end 0x34D920 where the target calls CKey's raw end 0x257BA0 --
- * one level deeper; `#pragma inline_max_size` 240 to 300 does not move it, and every spelling with
- * the end in the loop test (as _countKeys' and fixupKey's, byte-exact) is 0x1B8-0x27C */
+ * one level deeper; `#pragma inline_max_size` 240 to 300 does not move it (120-238: 0x18C), and every
+ * spelling with the end in the loop test (as _countKeys' and fixupKey's, byte-exact) is 0x1B8-0x27C;
+ * round 15: the end or the iterator assigned rather than initialised 0x19C-0x1A4, the end first 20
+ * off (build/scratch/core/v_ck*.py) */
 int CKey::CountKeys(bool deep)
 {
     int count = 1;

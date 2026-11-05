@@ -64,9 +64,21 @@ void CScriptArchive::FreeRdr(CRdrFile *keep)
     m_rdr = 0;
 }
 
+/* the commons' end built straight from the vector's storage (ours: the online lobby's round 20
+ * Last()). With the image's own pointer-vector end() (four high since the MSL headers round 24) a
+ * walk testing `i != end()` inside an inline is six deep where its caller expands it -- at level 5
+ * MW keeps end()'s body and calls the raw end and __iter in ReadMotionRdr's inlined FindCommon,
+ * where the target inlines everything; through this the walk inlines whole at level 5 and every
+ * function of the unit scores as it did under round 24's depth-6 pragma, which the unit no longer
+ * carries (the engine core's round 15) */
+inline std::vector<CZSIScriptCommon *>::iterator CommonsLast(std::vector<CZSIScriptCommon *> &v)
+{
+    return std::vector<CZSIScriptCommon *>::iterator((CZSIScriptCommon **)v.data_ + v.size_);
+}
+
 CZSIScriptCommon *CScriptArchive::FindCommon(const char *name)
 {
-    for (std::vector<CZSIScriptCommon *>::iterator i = m_commons.begin(); i != m_commons.end(); ++i)
+    for (std::vector<CZSIScriptCommon *>::iterator i = m_commons.begin(); i != CommonsLast(m_commons); ++i)
         if (!strcmp(name, (*i)->m_pName))
             return *i;
     return 0;
@@ -308,17 +320,3 @@ void zBoneResetCallbacks()
     if (archive)
         archive->m_callbacks.ResetAnims();
 }
-
-/* THE UNIT INLINES TO DEPTH 6, not the flags' 5 (a pragma acts through its state at the unit's
- * end; the MSL headers round 24). include/vector's pointer iterator is the image's since that
- * round -- end() four high: the raw end, the pod's end, data() -- and a walk testing `i != end()`
- * inside an inline is then six deep where its caller inlines it: at 5 MW keeps end()'s body and
- * calls the raw end and __iter. At 6 ReadMotionRdr's two inlined script walks keep their ends
- * whole, as the target, with the source as it was written against the three-high end, and every
- * function of the unit scores as it did at 5 (measured over the unit). The end taken into a local
- * first (round 23's suggested refit) does not give the target: in fts_missionlist.cpp Find's own
- * copy then colours its end, flag and element differently (9 off) and in util_loc.cpp FindTable's
- * callers come out 12 bytes short. So the original's walks are the ones written here and its level
- * deeper than 5 (README "Level 6, or 8?")
- */
-#pragma inline_depth(6)

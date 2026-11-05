@@ -87,6 +87,8 @@ class CZKit {
 public:
     void SetCurReticule(bool on);   /* 0x5BE570 */
     bool NVG_Enabled() const;   /* 0x5C80F0 */
+    /* the lens effects on or off toward a colour (SOCOM 1's; 0x5C1800, the kit's round 38) */
+    void Apply_LensEffects(bool on, CPnt3D *color);
 
     unsigned char _0[0x1060 - 0x5e0];
 };

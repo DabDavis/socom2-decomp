@@ -44,7 +44,7 @@ CHeap::~CHeap()
     _free(m_base, 0, 0);
 }
 
-/* OPEN, 7 instructions: registers settled by this declaration order (the later-declared takes
+/* OPEN, 6 instructions: registers settled by this declaration order (the later-declared takes
  * the lower temporary); left: the target computes the rounded size before best's lui, and makes
  * the split's last store through `found` (v0) where MW here propagates bestBlock (t1). The world
  * lane's round 8: a function-scoped `#pragma opt_propagation off` (the stand-in three other
@@ -52,10 +52,13 @@ CHeap::~CHeap()
  * rounding tried (`~3 & (size + 3)`, `& -4`, `4 + ...`, `>> 2 << 2`, the rounding in its own local,
  * `need` declared first or after `exact`: 6 to 29; build/scratch/wld/v_alloc*.py). Round 14: best
  * assigned after its declaration, the split written through `found` from its start (7), `found =
- * bestBlock` moved to the end (54) */
+ * bestBlock` moved to the end (54). Round 18: `found` a `void *` (the return's type) keeps the
+ * split's last store through it (v0) with no pragma -- a copy that changes the pointer's type is
+ * not propagated (`char *` and `unsigned int *` alike): 6, the head's schedule only (the target
+ * colours the -4 v1 and reuses v1 for best's lui, so its rounding is computed before best) */
 void *CHeap::Alloc(unsigned int size)
 {
-    Block *found = 0;
+    void *found = 0;
     Block *b;
     Block *prev = 0;
     unsigned int need = ((size + 3) & ~3) + 4;
@@ -91,7 +94,7 @@ void *CHeap::Alloc(unsigned int size)
             bestPrev->next = rest;
         else
             m_free = rest;
-        found->size = need;
+        ((Block *)found)->size = need;
     }
     m_count++;
     if (found)

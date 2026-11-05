@@ -8,6 +8,31 @@
 #include "zseal.h"
 #include "seal_dipool.h"
 
+#include <iostream>
+
+/* the unit's statics, in the order its initialiser (__sinit_seal_sensors.cpp, OVL2 0x668E50) builds
+ * them after <iostream>'s two objects: SOCOM 1's four debug colours (its symbol table's file statics;
+ * OVL2 bss 0x66B760, 0x66B770, 0x66B780, 0x66B790 -- only the initialiser touches them, the drawing
+ * compiled out), then SOCOM II's sensing record (0x66B7A0, the names ours): the entity and AI
+ * parameters of the controller sensing now -- the sensor ticks set them -- and its eye, worked out on
+ * first use through the entity's slot +0x34 (_GetTargetPerception, 0x5CC120); the constructor
+ * zeroes the two pointers and the flag */
+static CPnt3D _colorViewDir(127.0f, 0.0f, 0.0f);
+static CPnt3D _colorEntVisible(0.0f, 127.0f, 0.0f);
+static CPnt3D _colorEntNoBlock(0.0f, 0.0f, 127.0f);
+static CPnt3D _colorPlayerNoSee(127.0f, 127.0f, 0.0f);
+
+struct CSensing {
+    CSensing() : m_entity(0), m_params(0), m_eye_valid(false) {}
+
+    CEntity *m_entity;   // 0x0
+    AI_PARAMS *m_params;   // 0x4: the controller's m_aiParams
+    CPnt3D m_eye;   // 0x8
+    bool m_eye_valid;   // 0x14
+};
+
+static CSensing _sensing;
+
 /* what an entity knows of another, or 0 (inline: the ternary inside it keeps the call's result in
  * both arms, `b; move v1,v0` / `move v1,zero`, and pads no label -- written in the caller it pads
  * both, 0x198; the name ours) */
@@ -88,7 +113,11 @@ inline bool TestSensorBit(const CBits *bits, unsigned int i)
  * Every other way round MW evaluates the word's index first (8: CBits::Test, the mask first or last,
  * in a local, the word's address in a local, `(w >> s) & 1`, inlined mask or word helpers, a
  * reference to the word); `m = 1; m <<= i & 31; return m & word;` puts the AND in v0 but swaps the 1
- * and the shift amount (4). 0x5CB630 below shares it */
+ * and the shift amount (4). 0x5CB630 below shares it. Round 39: 23 more shapes (the word or the
+ * result a local, a copy of the mask, `!= 0`, a ternary, the shift as its own statement with the
+ * amount a local before or after, a dead first definition, the index a local) all stay at 2 or
+ * move to 4-10 -- the `m = 1; m <<= s;` forms put the AND in v0 but always trade the 1 and the
+ * amount (CAiSPickup::Tick's SetBit has the same pair, its igdump reading in its note) */
 extern "C" bool func_005CB450(CSealCtrlAi *ai, CPickup *p, CZWeapon *w)
 {
     bool go;
@@ -248,6 +277,64 @@ extern "C" void func_005CB870(CSealCtrlAi *ai)
     }
 }
 
+/* how fast an unperceived target's visibility falls (OVL2 data 0x6509E0, read by both
+ * SensorPreTicks: a static, the name ours) */
+static float _visDecay = -0.15f;
+
+/* a target's visibility (inline: the decay's products take the other operand first) */
+static inline float Vis(const CTarget *t)
+{
+    return t->m_visibility;
+}
+
+/* the targets' frame: the sensing record set to this controller (its eye to be worked out again),
+ * a point ahead of the SEAL by its velocity worked out and left unused (new in SOCOM II), then each
+ * live target within the view range -- the list runs nearest first, so the first beyond it ends the
+ * walk -- that the SEAL does not perceive fades: its visibility falls by a rate the visibility sets,
+ * its request dropped, its sighting ended (OVL2 0x5CA9F0, CSealCtrl::PreTick calls it; SOCOM 1's
+ * SensorPreTick, which saturated a rise instead). The point a two-point local ASSIGNED (its tail
+ * and tip: two separate points, or one initialised, drop the operators' return copies -- 0x1E8);
+ * the perception into a bool local (the target's andi); the rate a local and the visibility read
+ * through Vis(), the products' operands then the target's */
+void CSealCtrl::SensorPreTick(float dT)
+{
+    static float lead = 1.0f;
+    CEntity *e = m_entity;
+    CTargetList &targets = e->m_targets;
+
+    _sensing.m_entity = e;
+    _sensing.m_params = &m_aiParams;
+    _sensing.m_eye_valid = false;
+    float range = m_visrange.m_value * m_visrange.m_value;
+    CPnt3D vel = e->m_velW;
+    struct { CPnt3D tail, tip; } ray;
+    float speed = vel.Normalize();
+
+    ray.tail = e->m_posW;
+    ray.tip = ray.tail + vel * (speed * lead);
+
+    for (CTargetList::iterator t = targets.begin(); t != targets.end(); t++) {
+        if (!t->m_ent || !t->m_ent->m_isAlive)
+            continue;
+        if (!(t->m_distSq <= range))
+            return;
+        bool seen = _GetTargetPerception(*t);
+
+        if (seen)
+            continue;
+        float rate = _visDecay * Vis(&*t);
+
+        t->m_aware = rate;
+        t->m_visibility = rate * dT + Vis(&*t);
+        CDiPool::dir *d = (CDiPool::dir *)t->m_unk28;
+
+        if (d)
+            d->Drop();
+        t->m_unk28 = 0;
+        OnSetTargetVisible(*t, false, 0);
+    }
+}
+
 /* the "ai_posttick" task (CCoreState::Init adds it at 10.7, after target_post_tick): three slices
  * (zseal.h's CAiSlice) moved on over the entity list, by the function's three static sizes
  * (8-byte-spaced data in definition order: 6, 5, 1) (OVL2 0x5CCA30, new in SOCOM II -- SOCOM 1's
@@ -352,6 +439,28 @@ void CSealCtrlAi::EnemyCallout(CEntity *e, CEntity *player)
 void CSealCtrlAi::NotifyTargetDown(CZSealBody *seal)
 {
     PlayAiSound(CHRSND_TANGO_DOWN, 1.0f, -1);
+}
+
+/* the object at 0x67C a state tests (OVL2 0x60A850, unwritten; seal_tasks.cpp's spelling) */
+extern "C" bool func_0060A850(void *target);
+
+/* the sensing frame: the base's, the view's sensitivity (the AI parameters' visual_sens) halved for
+ * it while the AI is in a group and put back after, then the object at 0x67C asked (OVL2 0x5C98B0,
+ * byte-exact as a draft before: SOCOM 1's CSealCtrlAi::SensorTick, the base's caller there too --
+ * its own work SOCOM II moved into the base and the sensor pre-tick). The parameters' address a
+ * local taken first, the saved value read in place: the target keeps the one in s0 and reads the
+ * other off `this` */
+void CSealCtrlAi::SensorTick(float dT)
+{
+    static float group_sens = 0.5f;
+    AI_PARAMS *p = &m_aiParams;
+    float sens = m_aiParams.visual_sens;
+
+    if (InGroup())
+        p->visual_sens *= group_sens;
+    CSealCtrl::SensorTick(dT);
+    p->visual_sens = sens;
+    func_0060A850(m_67c);
 }
 
 /* the view cone as the controller keeps it (SOCOM 1's DWARF: CSealCtrl's m_fov, m_fovtan, m_fovcos,

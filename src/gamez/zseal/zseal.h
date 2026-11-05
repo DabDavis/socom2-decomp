@@ -172,6 +172,14 @@ public:
     bool SetItemAmmo(unsigned int index, void *ammo, int rounds, int count);
     /* the item at an index let go with its ammunition (SOCOM 1's; OVL2 0x5B9BB0, the kit lane's) */
     void RemoveItemAndAmmo(int index);
+    /* the first primary weapon, pistol and class-145 item, or -1, and the primary's and the pistol's
+     * items (kit.h's: OVL2 0x5C7230, 0x5C71A0, 0x5C7110, 0x5C8980, 0x5C8930 -- the death's drop
+     * 0x5A0040 asks them) */
+    int GetPrimaryIndex();
+    int GetSecondaryIndex();
+    int GetClass145Index();
+    EQUIP_ITEM GetPrimaryEnum() const;
+    EQUIP_ITEM GetSecondaryEnum() const;
     /* the first item whose ammunition is of a kind with the rounds, and the ammunition at an index
      * let go (SOCOM 1's; OVL2 0x5C8750, 0x5B9F00, the kit lane's -- CreateNetAmmoPickup asks them) */
     int GetAmmoIndex(EQUIP_AMMO ammo, int rounds);
@@ -179,6 +187,9 @@ public:
     /* the kit's ammunition put into a stash, every item's (-1) or one index's (SOCOM 1's; OVL2
      * 0x5BA040, the kit lane's -- DropAmmo calls it) */
     void FillAmmoPickupInstance(CZItemStash *stash, int index);
+    /* the weapon in hand's fire mode stepped to the next (SOCOM 1's; OVL2 0x5C4600, the kit lane's --
+     * CSealCtrl's button handling calls it) */
+    void CycleFireMode();
     /* the items' set-up finished (SOCOM 1's; OVL2 0x5C7840, the kit lane's -- the SEAL's OnMissionStart
      * calls it) */
     void PostSetupItems();
@@ -562,6 +573,14 @@ public:
     /* the scan's tick (OVL2 0x600550, the kit lane's range: the map's ScanTick__9CSealCtrlFf; CSealCtrlAi's
      * PreTick, seal_control.cpp's, calls it) */
     void ScanTick(float dT);
+    /* the targets' frame: each in view range kept or forgotten by what the SEAL perceives (OVL2
+     * 0x5CA9F0 and 0x5CC120, the kit lane's seal_sensors.cpp: SOCOM 1's SensorPreTick, which
+     * CSealCtrl::PreTick calls, and its _GetTargetPerception) */
+    void SensorPreTick(float dT);
+    bool _GetTargetPerception(CTarget &target);
+    /* the targets' sightings (OVL2 0x5C9B30: SOCOM 1's SensorTick, which PostTick and CSealCtrlAi's
+     * SensorTick call; unwritten) */
+    void SensorTick(float dT);
     virtual ~CSealCtrl();
     virtual bool PreTick(float dT);
     virtual bool Tick(float dT);
@@ -1037,7 +1056,10 @@ public:
     /* a range and its goal, set together unless the range stands at 42 (0x570D90; the names ours) */
     float m_6f4;   // 0x6f4
     float m_6f8;   // 0x6f8
-    unsigned char _6fc[0x718 - 0x6fc];
+    unsigned char _6fc[0x700 - 0x6fc];
+    /* the scale EventTick's walks hear at, by a table's entry 6 (0x5750D0; the name ours) */
+    float m_700;   // 0x700
+    unsigned char _704[0x718 - 0x704];
     /* what 0x572240 gathers from an alert: the amounts summed, a point the alert fills, and its word
      * at 4 (the names ours) */
     float m_718;   // 0x718
@@ -1097,6 +1119,16 @@ public:
     /* an enemy first seen by the squad called out, by its place on the player's clock (SOCOM 1's,
      * which took the CTarget; OVL2 0x5C9930, the kit lane's seal_sensors.cpp) */
     void EnemyCallout(CEntity *e, CEntity *player);
+    /* the sensing frame: the base's with the view's sensitivity halved while in a group (SOCOM 1's;
+     * OVL2 0x5C98B0, the kit lane's seal_sensors.cpp) and whether the AI is in a group (OVL2 0x60E6E0,
+     * the kit lane's ai_group.cpp, which defines it on a view of its own) */
+    void SensorTick(float dT);
+    bool InGroup();
+    /* the AI's events of the frame (OVL2 0x5FAAE0, the kit lane's seal_aievent.cpp: SOCOM 1's
+     * EventTick) and one handed to the AI with the walk's distance squared, whether it took it (OVL2
+     * 0x5F95D0: SOCOM 1's HandleEvent, the distance new; unwritten) */
+    void EventTick(float dT);
+    bool HandleEvent(const CAiEvent *e, float distSq);
     /* the AI's own event set: its kind, its duration and where (SOCOM 1's, the same words with the
      * event at 0x628; OVL2 0x5FAD00, the kit lane's seal_aievent.cpp) */
     CAiEvent::EVENT SetAiEvent(CAiEvent::EVENT e, float duration, const CPnt3D *pos);
@@ -1654,6 +1686,10 @@ public:
     /* the moving and turning flags set (inlines: InStateHang clears both with `(0 & 1) << n`) */
     void SetIsMoving(bool on) { m_is_moving = on; }
     void SetIsTurning(bool on) { m_is_turning = on; }
+    /* bit 2 of 0x21C set (an inline: 0x57E540 clears it with `(0 & 1) << 2`; the name ours) */
+    void Set21cBit2(bool on) { m_21c_bit2 = on; }
+    /* the airborne flag set (an inline: 0x59B870 clears it with `(0 & 1) << 5`; the name ours) */
+    void SetAirborne(bool on) { m_airborne = on; }
     /* the stance's change taken, once (seal_body.cpp) */
     bool StanceChanged();
     /* the throttles' change per step held to a rate that grows as each nears full, an AI SEAL's
@@ -2003,7 +2039,7 @@ public:
     unsigned char _524[0x528 - 0x524];
     class AnimSet *m_animset;   // 0x528 (SOCOM 1's 0x45c)
     class AnimSet *m_default_animset;   // 0x52c (SOCOM 1's 0x460: BindAnimSet keeps the set it replaces)
-    unsigned char _530[0x534 - 0x530];
+    class AnimSet *m_530;   // 0x530: the set 0x58C600 binds, kept with m_default_animset (the name ours)
     AnimType m_curblend;   // 0x534: the anim type on top of the blends (SOCOM 1's short at 0x464)
     unsigned char _536[0x53c - 0x536];
     /* the zoom's anim, "zoom_control", while a scope or the binoculars are up (new in SOCOM II:
@@ -2057,7 +2093,10 @@ public:
     unsigned char _f7b[0xf88 - 0xf7b];
     float m_waterdepth;   // 0xf88 (SOCOM 1's 0xe70, by its use: in water a SEAL crouches only up to 8.5
                           // deep, 0x5857E0, and goes prone only up to 2, Prone)
-    unsigned char _f8c[0xfb0 - 0xf8c];
+    unsigned char _f8c[0xfac - 0xf8c];
+    /* a height eased down by m_133c a step, held from 2.2 (0x59B870, under the 0x3DEF08 anim: there
+     * the SEAL lands, m_airborne and m_133c cleared; the names ours) */
+    float m_fac;   // 0xfac
     SEAL_DEATH_TYPE m_deathType;   // 0xfb0 (SOCOM 1's 0xea4)
     unsigned char _fb1[0xfb4 - 0xfb1];
     float m_time_of_death;   // 0xfb4 (SOCOM 1's 0xea8)
@@ -2186,12 +2225,16 @@ public:
     } m_climb;   // 0x1328
     AnimType idlehack;   // 0x1334 (SOCOM 1's 0xfa4: SetStanceIdle keeps the idle anim it pushes)
     short m_weapon_id;   // 0x1336: the weapon in hand, looked up in the AI's kind table (the name ours)
-    unsigned char _1338[0x1340 - 0x1338];
+    unsigned char _1338[0x133c - 0x1338];
+    float m_133c;   // 0x133c: the rate m_fac falls at (0x59B870; the name ours)
     float m_1340;   // 0x1340: a float the ground probes read -- not 0, 0x54F410 keeps a probe's height
                     // (the constructor, 0x5483D0 and 0x54EDF0 set it; the name ours)
     unsigned char _1344[0x1350 - 0x1344];
     CPnt3D m_1350;   // 0x1350: the velocity kept as 0x57DF20/0x57E050 set bit 9 (the name ours)
-    unsigned char _135c[0x1440 - 0x135c];
+    unsigned char _135c[0x1360 - 0x135c];
+    float m_1360;   // 0x1360: above 0, 0x59B870 leaves m_fac alone (0x57E540 sets 0.2; the name ours)
+    float m_1364;   // 0x1364: 0x57E540 clears it (the name ours)
+    unsigned char _1368[0x1440 - 0x1368];
     CPnt3D m_aim_dir;   // 0x1440 (SOCOM 1's 0x10a0: AimWeapon sets it)
     unsigned char _144c[0x14a0 - 0x144c];
     /* the aim and fire points and their positions (SOCOM 1's m_curr_aimpos, m_curr_aimpt,
