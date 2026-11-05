@@ -2065,6 +2065,17 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the kit and AI states, round 52** (AnimSet::AddBlendable and SetMaxMotion and CZKit::TickLaserDesignator,
+  all unwritten before; Timer_PlaceC4 and ~CZKit from drafts to source; the DI-pool opt-in dropped):
+  - a pointer-vector walk written in the function itself with the real end() inlines whole at level 5 and reloads the data
+    pointer each pass; inside an inline it is cut, and a `Last()` stand-in hoists the whole end (AnimSet::AddBlendable
+    0x5E0030); an inline comparing `(short)type` re-extends the type in multi-label switch cases, single-label cases reuse
+    the switch's extension;
+  - a bool returned by an extern call and tested `!= false` keeps the target's andi 0xff before the branch, a plain
+    `if (f())` branches on v0 (CZKit::TickLaserDesignator 0x5BFAC0); a local CPnt3D copied field by field gives the
+    target's interleaved load / store pairs, a struct copy loads all three fields first (UpdateFollowParams, OPEN);
+  - MW 3.0's FUNCTION-LOCAL STATICS WITH CONSTANT INITIALISERS HAVE NO GUARD: they sit in .data or .bss 8 bytes apart in
+    declaration order (SOCOM 1 guarded them); `@LOCAL@` data rows resolve them.
 - **Tells from the game states, round 46** (CCinematicState::Init and Tick, both unwritten before -- st_core.cpp's
   CCinematicState whole; four placeholders respelled):
   - an array indexed by its own counter, stepped in the for's increment, is strength-reduced to a pointer stepped in the
