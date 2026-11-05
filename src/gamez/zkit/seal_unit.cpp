@@ -9,6 +9,10 @@
  * (0x5ED9B0, open on the MSL's depths: 0x5ED8F0/0x5ED950/0x5ED980 are its iterator copies);
  * round 21: FindRescuedNear (0x5EEDB0, new) and GetMyLookDir (0x5EEF80, SOCOM 1's), the stand-in
  * controller given its real state stack for AiStateIs.
+ * round 45: GetSealCount const (its walk's pieces 0x5ED880-0x5ED9A0 are the const_iterator's: end() const,
+ * begin() const and the by-value constructor byte-exact), SealJoinUnit 0x5EE250 and five new in SOCOM II
+ * -- the hand signal 0x5EB190, the formation offset 0x5EB910, the breach set-up 0x5EBF00, the order-at-
+ * a-door test 0x5EC230 and the squad's voice 0x5EAF20 (OPEN).
  * round 33: the breach push 0x5EBB50 with CAiState's implicit operator= 0x5EBDC0 and CAiTimer's
  * 0x5EBDA0 after it, and the list assignment's advance_to 0x5EF7F0 and splice 0x5EF950 in the tail.
  * OPEN, 0x1D8 against 0x198: the assignment's do_assign 0x5EF470 (include/list's) -- the target
