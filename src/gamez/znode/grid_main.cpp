@@ -71,7 +71,9 @@ CGridAtom **CGrid::gridGetAtomBasePtr(int x, int z)
  * OPEN (0x1F4 of 0x1E8): the target recomputes &m_Atoms[i] from the index at every step of the
  * inner loop (sll, addu) and tests the loop's bool twice (sltu, xori before the branch); MW
  * strength-reduces the element pointer here (a register stepped by 16) -- not an unsigned or short
- * index, pointer arithmetic, nor an accessor taking another index type */
+ * index, pointer arithmetic, nor an accessor taking another index type; round 18: `&m_Atoms[++i]`
+ * (0x1F0), `m_Atoms + i`, an accessor over the array or the grid, the ring read by index (0x1F4-0x1FC,
+ * build/scratch/core/v_bocal.py) */
 void CGrid::buildOrderedCellAtomList(const CPnt3D *view)
 {
     m_orderedCells.m_gridCellAtomCnt = 0;
@@ -221,26 +223,16 @@ inline int GridCellIndex(float v, float o, float inv, const int &n)
 }
 
 /* the walk's points (at most five) kept, and the box of cells they cover: the first point's cell,
- * widened by each point's, its far edges one past (SOCOM 1's).
- * OPEN, 4 instructions (the right size), scheduling only: the target materialises the first
- * point's 0.0001f (lui) before it loads the point's x and the origin's (SOCOM 1's too, a
- * store-to-load wait after m_PntCnt's store); here the loads go first. Tried: the index written
- * out, the constant in a local (declared first or at the use), the operands reordered, reference
- * parameters, the store moved; the clamp's MAX/MIN forms, the const reference count and the
- * indexed loop fixed everything else. Round 9: GridCellIndex taking the coordinate, the origin,
- * the scale (each, pairs, all three) by const reference -- the same 4. Round 10: the sum taken
- * first (`(0.0001f + (v - o)) * inv`), the sum or the constant in a local (plain or const), by value
- * or by reference -- the same 4 each (build/scratch/core/v_ste.py): the block's first load is placed
- * by the scheduler, whatever the expression. Round 15: the target's point load waits a cycle after
- * m_PntCnt's store (MW lets an independent constant fill a store-to-load gap it assumes aliasing:
- * CDIPoly::GetIntersect's probes), ours issues at once -- read through a non-const cast or a local,
- * indexed, the count stored as unsigned: the same 4 (build/scratch/core/v_ste2.py) */
+ * widened by each point's, its far edges one past (SOCOM 1's). The count's high clamp a ternary: as
+ * an if-statement (`if (n > 5) n = 5;`) it ends a block, and the scheduler then issues the first
+ * point's loads ahead of the 0.0001f's lui (4 off, open since round 6: the index written out, the
+ * constant in a local, the operands reordered, reference parameters, the store moved -- none moved
+ * it); the clamp's MAX/MIN forms, the const reference count and the indexed loop fixed the rest */
 void CGrid::SetTraversalExtents(const CPnt3D *pnts, int n, bool b)
 {
     m_LineWalk = b;
     n = MAX(0, n);
-    if (n > 5)
-        n = 5;
+    n = n > 5 ? 5 : n;
     m_PntCnt = n;
     m_ix = m_ixb = GridCellIndex(pnts->x, m_origin.x, m_InvCellDim, m_CellCount.cx);
     m_iz = m_izb = GridCellIndex(pnts->z, m_origin.z, m_InvCellDim, m_CellCount.cy);
@@ -653,24 +645,19 @@ bool CGrid::Create(CWorld *world, const tag_GRID_PARAMS *params)
 
 /* the cell under a point in x/z, or none: its indices from the origin, a ten-thousandth in, held
  * inside the grid (new in SOCOM II: AddClutter and the world's 0x31D940 ask it; the name is
- * ours).
- * OPEN, the right size, one scheduling swap and the label pads it moves (34 lines): the target
- * loads m_origin.z ahead of the second 0.0001f's lui, here the lui goes first -- the opposite of
- * SetTraversalExtents' first point; 3.0b50 and 3.0b38 compile it the same. Tried: the difference
- * in a local, the scale in a local, the indices declared together, the if-return tail */
+ * ours). The high clamps are ternaries: an if-statement's clamp pads its join label and lets the
+ * second 0.0001f's lui go ahead of m_origin.z's load (34 lines off, the engine core's round 17) */
 CCell *CGrid::GetCell(float x, float z)
 {
     CCell *cell = 0;
     int ix = (int)(m_InvCellDim * (0.0001f + (x - m_origin.x)));
 
     ix = MAX(0, ix);
-    if (ix > m_CellCount.cx - 1)
-        ix = m_CellCount.cx - 1;
+    ix = ix > m_CellCount.cx - 1 ? m_CellCount.cx - 1 : ix;
     int iz = (int)(m_InvCellDim * (0.0001f + (z - m_origin.z)));
 
     iz = MAX(0, iz);
-    if (iz > m_CellCount.cy - 1)
-        iz = m_CellCount.cy - 1;
+    iz = iz > m_CellCount.cy - 1 ? m_CellCount.cy - 1 : iz;
     CGridAtom **p = gridGetAtomBasePtr(ix, iz);
 
     if (p && *p)
@@ -713,24 +700,6 @@ void CGrid::Destroy()
     m_AtomBuf = 0;
 }
 
-/* a point scaled, and two points' sum, by value: the operation out of line into a temporary,
- * copied out (ld/sd and lwc1/swc1) -- as znode.h's PntMinus (the names are ours) */
-inline CPnt3D PntScale(const CPnt3D &a, float k)
-{
-    CPnt3D r;
-
-    a.Scale(k, &r);
-    return r;
-}
-
-inline CPnt3D PntPlus(const CPnt3D &a, const CPnt3D &b)
-{
-    CPnt3D r;
-
-    a.Add(&b, &r);
-    return r;
-}
-
 /* a prop handed to every cell its box covers in x/z: refused off the grid or without a node; its
  * node's box unscaled by the prop's inverse scale and moved by its matrix's translation, the
  * rectangle walked (SOCOM 1's; SOCOM II tests the prop's cell first and walks a CFRect through
@@ -747,12 +716,12 @@ bool CGrid::AddClutter(CClutter *clutter)
     const CBBox *bb = clutter->m_node->GetBBox();
     CPnt3D box[2];
 
-    box[0] = PntScale(bb->m_min, 1.0f / clutter->m_scale_inverse);
-    box[1] = PntScale(bb->m_max, 1.0f / clutter->m_scale_inverse);
+    box[0] = bb->m_min * (1.0f / clutter->m_scale_inverse);
+    box[1] = bb->m_max * (1.0f / clutter->m_scale_inverse);
     CMatrix *m = clutter->GetMatrix();
 
-    box[0] = PntPlus(box[0], *(CPnt3D *)m->m_matrix[3]);
-    box[1] = PntPlus(box[1], *(CPnt3D *)m->m_matrix[3]);
+    box[0] = box[0] + *(CPnt3D *)m->m_matrix[3];
+    box[1] = box[1] + *(CPnt3D *)m->m_matrix[3];
     CFRect rect(&box[0], &box[1]);
     SetTraversalBoundary(&rect);
     for (CGridAtom *atom = StartTraversal(); atom; atom = GetNextAtom()) {
@@ -824,7 +793,11 @@ bool CGrid::Read(CSaveLoad &io)
  * copy (move s4,v0; beqz s4) where MW here tests the ternary's v0, and this/z/model take s6/s5/s4
  * where ours take s5/s4/s6 -- the model through an if/else, preset, an inline, `!= 0`, a cast, a
  * declaration ahead of the key: the same 23 or 0x3C4 (build/scratch/core/v_rc*.py); the replay
- * (igreplay --want this=s6,z=s5,model=s4) finds no placement of z and model alone */
+ * (igreplay --want this=s6,z=s5,model=s4) finds no placement of z and model alone. Round 18: the
+ * model through an inline with two returns (0x3C4), with a preset local returned (17: the test on
+ * the copy, as the target, but the ternary's join and every register lost), the ternary reversed
+ * (`strcmp(...) ? GetModel : 0`, 0x3C4), the name in a local (0x3C4); the replay with this, z and
+ * model as movers found no placement in the 15 % it searched in 150 s (build/scratch/core/v_rc*.py) */
 bool CGrid::ReadClutter(const char *map, const char *dir)
 {
     if (m_ClutterCreated)

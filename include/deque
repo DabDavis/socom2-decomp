@@ -489,7 +489,39 @@ public:
     void pop_front();
     /* the back dropped: only the count (the deque's pop_back inlines it, 0x3349C0) */
     void pop_back() { --this->size_; }
-    /* out of line in an earlier unit (0x2858B0, 0x285A50, 0x285660) */
+    /* out of line in an earlier unit (0x2858B0, 0x285A50, 0x285660).
+     * resize's body MEASURED, NOT APPLIED (the MSL headers round 31, build/p31/dq/: deque.resize.diff,
+     * the v_rs*.py variants, untracked). The image's 0x285660 (zanim_menu.cpp's tail) is SOCOM 1's
+     * resize without the fill value: `if (size_ < n) insert(end(), n - size_, x); else if (n <
+     * size_) { if (n != 0) erase(begin() + n, end()); else clear(); }` -- clear() the two stores
+     * (size_, start_), insert(iterator, n, const value_type &) 0x286160 and erase(iterator, iterator)
+     * 0x285D30 (SOCOM 1's signatures, the rows still placeholders) called out of line, the value a
+     * zero WORD IN .data AT 0x3DE1D0 (the word after zanim_menu.cpp's UICommandTable, which only
+     * resize addresses: a static of resize's -- MW puts every zero-initialised static in .bss, so its
+     * declaration is not found; `static value_type x;` gives the code). Its iterators are FOUR words
+     * {p, data, first, last}, cdeque<T *>::iterator's layout: built with the data and the start by
+     * const reference and the storage re-read through the iterator's own field (`first_(d() +
+     * start)` over a `value_type *const &d()` accessor: the store and both reads through one address
+     * register), end()'s capacity taken into a local before its modulo, begin()'s start and data
+     * read once, `begin() + n` stepping a copy returned as `return t += n;` (t kept in memory) whose
+     * += steps n itself (`n += p_ - data_`). As a probe that is 0x244 of 0x244, 7 instructions off
+     * -- REGISTERS ONLY: begin()'s scaled start (`start_ << 2`, shared by p and first_) is numbered
+     * after the field-address temporary @N where the target numbers it before (`tools/igreplay.py
+     * --want` places it anywhere ahead of it), the same numbering as cdeque<T *>::begin() 0x2E0CB0's
+     * 14 (below); every begin() / constructor spelling tried (an index constructor, `&d[s]`, the
+     * pointer in a local, the locals reordered, the reference accessor two levels deep) keeps the 7.
+     * Over every hand-written unit the four-word iterator costs the six ~__deque_buf walks (0x2CEFB0
+     * game_main.cpp, the lobby's 0x2E19E0, the chat's 0x2F6BC0, the state machine's, vis_vu.cpp's and
+     * zrdr_edit.cpp's copies: 0x140 against 0x138 -- the walk wants the end's last slot computed
+     * before its position, which this header's three-word (p, first, last) constructor gives by
+     * MW's right-to-left arguments), so it is not applied. NOT the chat's push_back: 0x2F5290 never
+     * calls resize -- a class element's growth path builds the bigger block buffer in a temporary
+     * (`buf_type tmp(2 * size(), 0)`: 0x2F5940 is the n-copies constructor's body; then `tmp.reserve(2);
+     * tmp.push_back(0)` for an empty buffer, else `tmp = buf` -- 0x2F5700 the range assign behind the
+     * self-test), stores the new block in tmp.back(), pushes a null slot, constructs the element by
+     * placement copy (its null test) and swaps tmp in, alloc_ptr released -- a strong-guarantee path
+     * the scalar deques' push_back (0x2CF970, 0x2E1610: `reserve(2); resize(1)` on the buffer itself)
+     * does not take; not modelled */
     void push_back(const value_type &x);
     void reserve(unsigned int n);
     void resize(unsigned int n);

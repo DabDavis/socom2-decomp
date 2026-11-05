@@ -148,8 +148,11 @@ public:
     unsigned int m_flags;   // 0x2c: bit 0 the range is computed (SOCOM 1's m_d_computed)
 };
 
-/* a target is its entity, to std::find and std::remove (RemoveTarget) */
-inline bool operator==(const CTarget &t, const CEntity *e)
+/* a target is its entity, to std::find and std::remove (RemoveTarget). Over a non-const target
+ * and entity: remove_copy's copy (0x2A1210) then stores the m_ent its compare loaded -- the const
+ * forms (the entity by reference, by value, a local, the operands swapped, a ternary) reload it (8
+ * bytes long) */
+inline bool operator==(CTarget &t, CEntity *e)
 {
     return t.m_ent == e;
 }

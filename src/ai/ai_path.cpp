@@ -280,6 +280,144 @@ void CAiPath::plan_complete(PATH_STATE state)
 }
 #pragma auto_inline reset
 
+/* the graph's pieces as the detour reads them (graph_tree.h's CGNode, CGEdge and CGRoute, as
+ * ai_mapio.cpp's fixups lay out the first two: a region at a node's 8, a route at an edge's 0x14;
+ * the route a node list, its constructor and destructor graph_main.cpp's) */
+class CGNode {
+public:
+    unsigned char _0[0x8];
+    CAiMap::region *m_region;   // 0x8
+};
+
+class CGEdge {
+public:
+    unsigned char _0[0x14];
+    CAiMap::route *m_route;   // 0x14
+};
+
+class CGRoute {
+public:
+    CGRoute();
+    ~CGRoute();
+
+    std::list<CGNode *> m_nodes;   // 0x0
+};
+
+/* whether a step may end on the cell: CAiMap::IsTraversable's body (ai_maps.cpp, 0x52A090), as an
+ * inline of this unit's (ai_map.cpp and ai_mapwalk.cpp have the same) -- too big to inline whole,
+ * plan_addleg inlines it one level, GetCell and the cell's test (0x511F40) called out of line */
+inline bool _traversable(const CAiMap *map, const CAiMapLoc &loc)
+{
+    CAiCell *cell = map->GetCell(loc, 0);
+
+    return cell ? cell->IsTraversable() : false;
+}
+
+/* a leg added between two cells a step may end on: across regions of kind 4 that the map's graph
+ * joins -- while the path allows it (flag 0x20, cleared for the legs it adds) -- one leg for each
+ * step of each route the graph's route between the two regions takes, then the last to the goal;
+ * otherwise the leg itself, its two cells and its map pushed (SOCOM 1's, the demo's 0x195B90).
+ * OPEN, right size (0x408), 127 instructions (written in the AI core's round 31): every call, branch,
+ * spill and the frame's size are the target's -- the cell tests through the unit's _traversable
+ * inlined one level (GetCell and the cell's test out of line), the body under one `&&` so both
+ * failures reach the final `return false`, `from` ASSIGNED from start (CAiMapLoc's copy constructor
+ * copies field by field, its assignment the word), the next cell through a reference local the
+ * target keeps in a saved register across the recursive call (s0 = sp+220; SOCOM 1's s5 the same),
+ * so that the graph spills as the target's does. `tools/igreplay.py --move` put the reference after
+ * j in the numbering (49.5: next s0, j s1, rt s2, reg s3, i s6, b s7, n s8 -- the target's), hence
+ * `int j = 0;` ahead of it; what is left: the frame -- to and from sit above the route here wherever
+ * they are declared (4-byte locals ahead of the aggregate), below it in the target (220, 216: the
+ * place an inline's locals take, as if the walk were an inline of its own), which moves every
+ * offset -- and `a` shares s0 with next where the target gives it s1 (next live across the whole
+ * outer loop there, hoisted ahead of it) */
+bool CAiPath::plan_addleg(CAiMap *map, const CAiMapLoc &start, const CAiMapLoc &goal)
+{
+    if (_traversable(map, start) && _traversable(map, goal)) {
+        bool done = false;
+        bool fail = false;
+
+        if (m_flags & 0x20) {
+            m_flags &= ~0x20;
+            CGraph *graph = map->m_graph;
+
+            if (graph) {
+                CAiMap::region *r0 = map->GetRegionContaining(start, (CAiMap::region::TYPE)4, false);
+                CAiMap::region *r1 = map->GetRegionContaining(goal, (CAiMap::region::TYPE)4, false);
+
+                if (r0 && r1 && r0 != r1) {
+                    CGNode *n0 = graph->GetNodeByNodeEx(r0);
+                    CGNode *n1 = graph->GetNodeByNodeEx(r1);
+                    CGRoute route;
+
+                    if (graph->BuildRoute(n0, n1, 0, &route) && route.m_nodes.size()) {
+                        CAiMapLoc to;
+                        CAiMapLoc from;
+
+                        from = start;
+                        std::list<CGNode *>::iterator i = route.m_nodes.begin();
+                        CGNode *a = *i;
+
+                        for (++i; i != route.m_nodes.end(); ++i) {
+                            CGNode *b = *i;
+                            CGEdge *e = graph->FindEdge(a, b);
+
+                            if (!e) {
+                                fail = true;
+                                break;
+                            }
+                            CAiMap::region *reg = a->m_region;
+
+                            if (!reg) {
+                                fail = true;
+                                break;
+                            }
+                            CAiMap::route *rt = e->m_route;
+
+                            if (!rt) {
+                                fail = true;
+                                break;
+                            }
+                            int n = rt->m_path.size();
+                            int j = 0;
+                            CAiMapLoc &next = to;
+
+                            for (; j < n; j++) {
+                                next = reg->m_loc == rt->m_region[0] ? rt->m_path[j]
+                                                                     : rt->m_path[rt->m_path.size() - j - 1];
+                                if (!plan_addleg(map, from, next)) {
+                                    fail = true;
+                                    break;
+                                }
+                                from = next;
+                            }
+                            if (fail)
+                                break;
+                            from = next;
+                            a = b;
+                        }
+                        if (!fail) {
+                            plan_addleg(map, to, goal);
+                            done = true;
+                        }
+                    }
+                }
+            }
+            m_flags &= ~0;
+            m_flags |= 0x20;
+        }
+        if (done)
+            return true;
+        if (fail)
+            return false;
+        m_waypts.push_back(start);
+        m_waypts.push_back(goal);
+        m_maps.push_back(map);
+        m_legcount++;
+        return true;
+    }
+    return false;
+}
+
 /* the id moved on, the path drawn when asked (SOCOM 1's IncrementPathId; called from ai_maps.cpp
  * and the path-recover state) */
 void CAiPath::IncrementPathId()

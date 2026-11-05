@@ -861,6 +861,78 @@ def test_objcmp_by_address_resolves_a_sum():
     ck(O.summary(summed) != O.summary(named), "plain, without a map, the respelled unit differs")
 
 
+OBJCMP_ANON = """extern void ig_take(const int &v);
+{header}
+const char *ig_name(void)
+{{
+    return "{name}";
+}}
+
+void ig_pass(void)
+{{
+    ig_take({zero});
+}}
+
+const char *ig_other(void)
+{{
+    return "ig_other";
+}}
+"""
+OBJCMP_ANON_HEADER = """
+inline void ig_sat(int *v, const int &lo, const int &hi)
+{{
+    if (*v < lo)
+        *v = lo;
+    if (*v > hi)
+        *v = hi;
+}}
+
+struct IgMap {{
+    int n;
+    void Walk(int *y) {{ ig_sat(y, {lo}, n); }}
+}};
+"""
+
+
+def test_objcmp_aligns_anonymous_objects_by_content():
+    """tools/objcmp.py, GCC round 36a (the game states' round 43: ai.h's ForEachCell binds a literal 0
+    to a const reference, and every unit including ai.h gets two unreferenced 4-byte zero objects, used
+    or not -- every later `@N` rank shifted with the code unchanged, and a proof touching ai.h said
+    DIFF). Metrowerks' anonymous objects are now named by content and an unreferenced one left out
+    with its section (the linker drops it: vehicle_rdr.cpp's unreferenced zeros are not in the image).
+    A header whose uninstantiated inline binds 0 to a const reference INSERTS such a zero ahead of the
+    unit's strings and its referenced zero (`ig_take(0)` passes one's address): by content the unit is
+    the same, by rank (`--anon-by-rank`, rounds 27a-35a's rule) it differs, the ranks of every later
+    object shifted. Negatives, each by content: a referenced string changed differs, the referenced zero
+    made a 1 differs; and the inserted object changed (0 -> 1, still unreferenced) is the same."""
+    import objcmp as O
+    src = BUILD / "objcmp_anon_fixture"
+    src.mkdir(parents=True, exist_ok=True)
+
+    def obj(stem: str, header: str = "", name: str = "ig_name", zero: str = "0") -> Path:
+        p = src / f"{stem}.cpp"
+        p.write_text(OBJCMP_ANON.format(header=header, name=name, zero=zero))
+        o = BUILD / f"objcmp_anon_{stem}.o"
+        D.compile_obj(p, o, D.COMPILER, None, [HERE / "include", src])
+        return o
+    base = obj("base")
+    inserted = obj("inserted", OBJCMP_ANON_HEADER.format(lo="0"))
+    names, dropped, dead = O.anon_by_content(E.Elf.read(inserted))
+    ck(len(dead) == 1 == len(dropped) and len(names) == 3 and "@.data:00000000" in names.values(),
+       f"the header's zero is the one unreferenced object; the strings and the passed zero are named ({names}, {dead})")
+    ck(O.summary(base) == O.summary(inserted), "an unreferenced anonymous object inserted: the same, by content")
+    ck(O.summary(base, anon_rank=True) != O.summary(inserted, anon_rank=True),
+       "negative: by rank (--anon-by-rank) the same unit differs")
+    res = O.resolver(E.symbols())
+    ck(O.summary(base, res, sums=True) == O.summary(inserted, res, sums=True), "and the same by address")
+    ck(O.summary(base) != O.summary(obj("changed", OBJCMP_ANON_HEADER.format(lo="0"), name="ig_nane")),
+       "a referenced string changed: it differs")
+    ck(O.summary(base) != O.summary(obj("one", OBJCMP_ANON_HEADER.format(lo="0"), zero="1")),
+       "the referenced zero made a 1: it differs")
+    ck(O.summary(base) == O.summary(obj("dead", OBJCMP_ANON_HEADER.format(lo="1"))),
+       "the inserted object changed, still unreferenced: the same (nothing can read it)")
+
+
 def test_unit_builds_the_same_bytes_at_any_path():
     """A unit's object may not depend on where the tree lies (GCC round 34a). sase_rfft2g.c's
     asserts always hold, so GCC drops their calls -- but not their strings, __FILE__ among them,
@@ -1400,6 +1472,94 @@ def test_igreplay_reads_float_registers_in_the_target():
         R.main([str(dump), "-f", "^Exp$", "--cls", "1", "-r", "1", "--target", str(unit), func])
     ck(", 0 differ," in out.getvalue() and "0 PCode instructions unmatched" in out.getvalue(),
        f"the CLI maps an FPR record ({out.getvalue().splitlines()[-1][:120]})")
+
+
+IG_BYTES = """extern int ig_g(int);
+
+int ig_bytes(signed char *a, unsigned char *b, short *c, unsigned short *d)
+{
+    int first;
+    int second;
+    int third;
+    int fourth;
+
+    first = a[1];
+    second = b[2];
+    third = c[3];
+    fourth = d[4];
+    ig_g(0);
+    return first + second + third + fourth;
+}
+"""
+
+
+def test_igreplay_reads_byte_and_halfword_loads():
+    """tools/igreplay.py --target, GCC round 36a (round 35a's find): mwccps2 registers its byte and
+    halfword loads as 1030 lbu, 1037 lb, 1038 lh and 1039 lhu, and rounds 32a-35a's table read
+    1040/1041/1044/1045 (ll, lld, l.s, lwc2) as them -- so no GPR byte or halfword load was ever
+    matched, and its register was never read in the target. The fixture loads one of each through a
+    pointer into four values live across a call (first s3, second s2, third s1, fourth s0): aligned
+    with its own code every PCode instruction matches (the old table: the four loads unmatched), and
+    against a target whose four loads write s7, s6, s5, s4 -- the adds still reading s3-s0 -- each
+    node's load is read there as a disagreeing use (the old table: no node disagrees). And a memory
+    access's displacement, which the PCode knows for a pointer and a constant offset, picks between
+    instructions of one signature: two `lh t1,N(a1)` scheduled out of the PCode's order map each node
+    to its own field's register (by signature alone, to each other's: c2dfont.cpp's vector erase lost
+    41 of its 68 registers so). A candidate longer than its target maps instead of raising IndexError."""
+    import igdump
+    import igreplay as R
+    src = _ig_fixture("ig_bytes.c", IG_BYTES)
+    recs, _ = igdump.dump(src, BUILD / "ig_bytes.jsonl")
+    sel = igdump.select(recs, "^ig_bytes$", 0)
+    ck(len(sel) == 1, f"one GPR colouring of ig_bytes ({len(sel)})")
+    rec = sel[0][1]
+    ops = {str(i[0]) for i in rec["code"] if not isinstance(i, str)}
+    ck({"1030", "1037", "1038", "1039"} <= ops and not ops & {"1040", "1041", "1044", "1045"},
+       f"the PCode's byte and halfword loads are 1030/1037/1038/1039 ({sorted(ops)})")
+    regs = _ig_regs(rec)
+    names = ("first", "second", "third", "fourth")
+    ck(tuple(regs.get(n) for n in names) == ("s3", "s2", "s1", "s0"), f"first-fourth in s3-s0 ({regs})")
+    code, rel, _ = E.Elf.read(build(src, "ig_bytes")).function("ig_bytes")
+    words = [w for _, w, _ in E.disasm(D.mask(code, rel), 0)]
+    ours = [t for _, _, t in E.disasm(D.mask(code, rel), 0)]
+    loads = ["lb s3,1(a0)", "lbu s2,2(a1)", "lh s1,6(a2)", "lhu s0,8(a3)"]
+    ck(all(t in ours for t in loads), f"the code loads each into its register ({ours})")
+    nodes = [R.node_index(rec, n) for n in names]
+    tcol, conflicts, unmatched = R.tmap(rec, ours, ours)
+    ck(unmatched == 0 and not conflicts and all(tcol[v] == rec["nodes"][v]["color"] for v in nodes),
+       f"aligned with its own code, every PCode instruction matches ({unmatched} unmatched)")
+    moved = {16: 20, 17: 21, 18: 22, 19: 23}
+    theirs_w = [w & ~(31 << 16) | (moved[(w >> 16) & 31] << 16) if (w >> 26) in (0x20, 0x21, 0x24, 0x25) else w
+                for w in words]
+    theirs = [t for _, _, t in E.disasm(b"".join(struct.pack("<I", w) for w in theirs_w), 0)]
+    ck(all(t.replace(f"s{r - 16}", f"s{moved[r] - 16}", 1) in theirs for t, r in zip(loads, (19, 18, 17, 16))),
+       f"the target's loads write s7-s4 ({[t for t in theirs if t.startswith('l')]})")
+    tcol2, conflicts2, unm2 = R.tmap(rec, ours, theirs)
+    ck(all(conflicts2.get(v) == {f"s{moved[rec['nodes'][v]['color']] - 16}": 1, R.rname(rec["nodes"][v]["color"]): 1}
+           for v in nodes) and unm2 == 0,
+       f"each node's load is read in the target, against its add ({ {v: conflicts2.get(v) for v in nodes} })")
+    lines, _, _ = R.target_report(rec, tcol2, conflicts2, unm2)
+    ck(sum(l.lstrip().startswith("v") and "uses disagree" in l for l in lines) == 4,
+       f"--target's report lists the four ({lines})")
+    saved = dict(R.PSEUDO)
+    try:
+        for k in ("1030", "1037", "1038", "1039"):
+            del R.PSEUDO[k]
+        R.PSEUDO.update({"1041": "lb", "1040": "lbu", "1044": "lh", "1045": "lhu"})
+        _, conflicts3, unm3 = R.tmap(rec, ours, theirs)
+    finally:
+        R.PSEUDO.clear()
+        R.PSEUDO.update(saved)
+    ck(unm3 == 4 and not conflicts3,
+       f"negative: rounds 32a-35a's table leaves the four loads unmatched and reads none of them ({unm3}, {conflicts3})")
+    syn = {"cls": 0, "nodes": [{"i": i, "color": i} for i in range(32)] + [{"i": 32, "color": 9}, {"i": 33, "color": 9}],
+           "code": [[1038, ["r32", "k4:2800000000000000", "r5"]], [1038, ["r33", "k4:2a00000000000000", "r5"]]]}
+    syn_ours, syn_targ = ["lh t1,42(a1)", "lh t1,40(a1)"], ["lh t2,42(a1)", "lh t1,40(a1)"]
+    ck(R.tmap(syn, syn_ours, syn_targ)[0] == {32: 9, 33: 10} and R.tmap(syn, syn_ours, syn_targ, disp=False)[0] == {32: 10, 33: 9},
+       "the displacement picks each field's load (by signature alone, the two trade)")
+    tcol4, _, _ = R.tmap(rec, ours, ours[:13])
+    ck(all(v in tcol4 for v in nodes) and len(tcol4) < len(tcol),
+       f"a candidate longer than its target maps what both hold ({len(tcol4)} of {len(tcol)} mapped)")
 
 
 IG_SPILL = """extern int ig_g(int);
