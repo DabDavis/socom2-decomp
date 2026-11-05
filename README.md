@@ -49,7 +49,7 @@ and data reference resolved to the address the shipped code uses.
 | `tools/unitscan.py` | where one hand-written unit could be two: its pinned and inlined pairs, the target's own calls, every cut that separates the first and none of the second |
 | `tools/s1vtables.py` | virtual functions named slot by slot: SOCOM II's vtables found by their RTTI's class-name string, aligned with the demo's `__vt__` tables; `--holdout` measures it on names the map already has |
 | `tools/try.py` | compile one unit with one variant at a time and score one symbol, in a scratch copy of `src/` and `include/`, built as sccheck builds it (the unit's own `sc:` directive: a GCC unit's toolchain and flags, `as=`, `overlay=`); a variant is a `--sub` and the `--and`s after it, or one of `--variants FILE.py`'s; `--target ROW` scores against another row, `--all` every function of the unit (GCC round 27a) |
-| `tools/objcmp.py` | a header change proved code-neutral: every hand-written unit built at BASE's text and as it is, function by function, data section by section (GCC round 27a, the SEALs' round-26 harness); `--by-address` compares every name a map resolves as its map address, so a placeholder respelled by its row's name is the same (GCC round 29a) |
+| `tools/objcmp.py` | a header change proved code-neutral: every hand-written unit built at BASE's text and as it is, function by function, data section by section (GCC round 27a, the SEALs' round-26 harness); `--by-address` compares every name a map resolves as its map address, so a placeholder respelled by its row's name is the same (GCC round 29a); both sides are built at one scratch path, so a path the compiler writes (an unreferenced `__FILE__`) is no difference (GCC round 34a) |
 | `tools/scperm.py` | the permuter: EQOA's tree-sitter mutations of one function, MW-compiled and alignment-scored (needs `.venv`) |
 | `tools/ccsweep.py` | compiler identification for the GCC front: one source over every ee-gcc toolchain and flag set (and `//==` source variants), every function it defines scored |
 | `tools/ccperm.py` | every order of a marked block of statements, for GCC's scheduled stores: which source order gives the target's |
@@ -59,8 +59,8 @@ and data reference resolved to the address the shipped code uses.
 | `tools/asmunit.py` | an assembler unit (`.s`) for a library object that was assembly: the rows transcribed (canonical instructions, labels, map names, %hi/%lo of the symbols the code addresses, the unit's own `.bss` labels), assembled by the toolchain named and scored until every function matches |
 | `tools/structdiff.py` | one function against its row with the registers and the link normalised, so only STRUCTURAL differences show (opcodes, unrelocated immediates, order, which function is called); says how many instructions differ in their registers alone -- a register-only miss -- and `--regs` keeps the registers (the game states' round-35 structdiff.py and mydiff.py, promoted in GCC round 31a) |
 | `tools/cdis.py` | the candidate's disassembly before the link, each relocation named as the scorer resolves it (`<R_MIPS_LO16 currentDir = 0x1df400>`), `--at` at its row's addresses, `--list` the object's functions (the game states' round-35 cdis.py, promoted in GCC round 31a) |
-| `tools/igdump.py` | Metrowerks' own register colouring read out of mwccps2 3.0b52 under gdb: a unit built as sccheck builds it, every colouring one JSON line (each virtual register's variable, degree, neighbours, colour, spill cost; the colouring order; the PCode); `-f` shows a function's, `--saved` who holds each saved register (the lanes' igdump.py, promoted in GCC round 32a) |
-| `tools/igreplay.py` | MW's simplify/colour replayed offline on an igdump record (every GPR and FPR record replays exactly); `--move V=POS` renumbers a virtual register to see the registers that numbering gives, `--want`/`--movers` searches the placements, `--nb` a node's neighbours and sweeps (the MSL lane's igreplay.py, the game states' relabel.py and brute.py, the AI core's nbdeg.py: GCC round 32a); `--target` scores the colouring a `--move` gives and lists every node whose target uses disagree, and a search has a budget, `--timeout`/`--max-iters`, with progress (GCC round 33a) |
+| `tools/igdump.py` | Metrowerks' own register colouring read out of mwccps2 3.0b52 under gdb: a unit built as sccheck builds it, every colouring one JSON line (each virtual register's variable, degree, neighbours, colour, spill cost; the colouring order; the PCode); `-f` shows a function's, `--saved` who holds each saved register (the lanes' igdump.py, promoted in GCC round 32a); the spill slots each spilled node takes and the frame's top (GCC round 34a) |
+| `tools/igreplay.py` | MW's simplify/colour replayed offline on an igdump record (every GPR and FPR record replays exactly); `--move V=POS` renumbers a virtual register to see the registers that numbering gives, `--want`/`--movers` searches the placements, `--nb` a node's neighbours and sweeps (the MSL lane's igreplay.py, the game states' relabel.py and brute.py, the AI core's nbdeg.py: GCC round 32a); `--target` scores the colouring a `--move` gives and lists every node whose target uses disagree, and a search has a budget, `--timeout`/`--max-iters`, with progress (GCC round 33a); the spill slots a numbering gives, checked against the record and with `--target` against the target's (GCC round 34a) |
 | `tools/igvar.py` | source variants (try.py's `--sub`/`--and`/`--variants`) each built under igdump in a scratch tree; per variant the spilled nodes and each saved register's holders by variable, or `--all` every telling node (the AI core's and the game states' igvar.py: GCC round 32a) |
 | `symbols.txt` | **the map** — `0xADDR SIZE name  # note`, kept by hand from here on |
 | `data.txt` | the map of global data, the same format and namespace |
@@ -2065,6 +2065,61 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the weapons, round 28** (CZWeapon::Fire at last, CTurret's Init and constructor, CVehicle::Init):
+  - MW LAYS OUT THE FRAME TOP-DOWN IN THREE GROUPS: named locals in declaration order, then return copies and
+    non-returned inline locals in code order, then by-value inlines' result locals in expansion order; an array or
+    struct declared later takes the lower slot; a dead assignment of an inline's by-value result to a declared local
+    removes the copy and the local but leaves the inline's result local in the last group (Fire's unused point behind:
+    `bpos = *pos - d`);
+  - writing an auto-inlined call out into an uninitialised named local assigned in both arms gives its spill the named
+    local's place -- CZWeapon::Fire 0x3D2D70, 31 frame offsets off since round 22, closed by the spill slots
+    `tools/igreplay.py --move 45=40.5` predicted (the GCC front's round 34a slot replay);
+  - a bool field passed to a bool parameter loads straight with lbu, an unsigned char field adds an sltu; a const member
+    inline with mutable results keeps a local struct in the frame (SOCOM 1's CAiCone), inside a loop MW hoists every one
+    of its field addresses; a named local for an inline's product moves its float register; a class other units declare
+    differently can be built in a slot struct by calling its out-of-line constructor by mangled name through an
+    `extern "C"` declaration (`__ct__9CAiTargetFv` -- a modelling device); CTurret::Init 0x3A9A80 (SOCOM 1's, first build),
+    CTurret() 0x3AA350, CVehicle::Init 0x3ADAB0 (its twin); m_weaponTickDisabled and Get / SetRecoilPct named.
+- **Tells from the SEALs, round 46** (HandleSmokeAndGas, HandleWater, AddBlendOverlay, the satchel drop, the climb's wall
+  homing; seal_orders.cpp all hand source):
+  - an inline's by-value bounds are loaded at the call, taken by `const float &` the upper bound loads only after the
+    lower test, as the target (`!(v < lo) && v <= hi`); a result returned from several early `return p;` with p still 0 is
+    folded to the constant, one return at the end of nested ifs keeps p in a saved register zeroed at entry (the dead AI
+    SEAL's satchel drop 0x59FAC0, new in SOCOM II);
+  - a short-sized enum parameter passed to a short parameter goes unextended, `(int)type` gives the target's sign
+    extension at the call; declaring the active anim first, uninitialised, swaps the target's s0 / s1 between it and the
+    top blend (AddBlendOverlay 0x587780, SOCOM 1's, with its four setters by order);
+  - a class whose virtuals are all inline makes the unit that dynamic_casts to it emit that overlay's RTTI copy: resolve
+    it with an `ovl-copy:` data row (CParticleEx's 0x65F0C0); HandleWater 0x5B52B0 is SOCOM 1's plus a bool -- was the
+    SEAL in water before; GetCommandName 0x58EF80 / GetCommandId 0x58E0A0 named by SOCOM 1's order.
+- **Tells from the game states, round 41** (four long opens closed -- HandleBombStateRequest since round 6, SetState since
+  10, CreateCustomCharTypes and NVGNoiseParse since 24 -- the accuracy rating, C2DMessage_Q::Init):
+  - copying a parameter into an enum-typed local placed between two early-return tests moves the parameter's register
+    copy there (into the call's delay slot), an unsigned char local leaves it at entry, an int local drops the narrowing
+    (CZBombState::HandleBombStateRequest 0x2C1F10); an auto-inlined function's result merges into a temporary numbered
+    after every named local -- read into a named local with an if-assign it takes its place in the declaration order
+    (CreateCustomCharTypes 0x2AFA10, `entry` declared first uninitialised: found with `tools/igreplay.py --want`);
+  - a pointer local `k = base + i` made first in a loop body makes the loop optimiser create that induction variable
+    first (NVGNoiseParse 0x2AE050: the swapped loop registers fixed); an unsigned short converted to float takes the
+    unsigned path (bltz / srl / or / add.s), through an int local it is a plain cvt.s.w; `a*k1 - b*k2 + c*k2` in one
+    expression fuses into suba / madd, as three statements on one variable it stays mul / sub / add (the accuracy rating
+    0x1F2E40);
+  - 0x43668C is no pointer of its own: theMission (0x4364E0) + 0x1AC, CMission::m_valve_abort -- the "mission_abort"
+    valve, its halfword +4 the value (respelled; the HUD's and the SEALs' reads queued); Sample_ExtractionLoc is blocked
+    by TWO CSaferStr declarations (zsav_lobby.h's std::string subclass, zentity.h's opaque 12 bytes) -- queued for the
+    MSL to reconcile.
+- **Tells from the HUD, round 53** (ComputeNewRating, CUIListBox::HandlePad):
+  - A VALUE ASSIGNED IN TWO BRANCHES IS NEVER FOLDED BACK INTO ITS USE -- an if/else, or a ternary even with identical
+    arms: MW generates and numbers it where it is assigned, where a single assignment (a named local, `x -= y`, an inline
+    returning it) is folded back (ComputeNewRating 0x2253C0: the halfway step's difference `iChange` assigned in two
+    branches puts the 0.5 first; CUIListBox::HandlePad 0x3745E0: the pad's state a ternary with two identical arms -- a
+    MARKED numbering device, the original's two arms unknown, accepted at integration as local and lossless);
+  - in a float multiply MW generates the complex operand first, so in `0.5f * (a - b)` the constant is numbered last
+    and takes $f0, a plain variable operand after the constant; with an inline call on the left of `==` MW moves it to
+    the right in the compare; `x += -(e)` compiles to negu / addu, `x -= e` to subu;
+  - an inline function's parameter is substituted into each of its uses, so an expression argument used twice is
+    computed twice (Draw2DLine 0x35FCE0's tag setter, 4 off, OPEN); in an `asm volatile` block four pointer locals get
+    a1, a0, v1, v0 in declaration order; hud_missioncams.cpp's three CSnd calls respelled (SAME-BY-ADDRESS).
 - **Tells from the kit and AI states, round 47** (LobAim; six task handlers, four on the first build):
   - SWITCH COMPARE CHAINS TEST CASES IN REVERSE SOURCE ORDER (CTMap::Tick 0x5D6770 needs `case 4: case 3: case 5:`);
     CTSignal::Tick's three-GetTyped shape closes CTSetAnimSet::Tick 0x5D1E00, CTPlay::End 0x5D2AA0 and CTPlay::Begin
@@ -9593,6 +9648,84 @@ codec is not in SOCOM 1). What they showed:
   libmath.c's 0x24AD48 is round 26a's `union_x.l` kind. Not reached: sceCdDiskReady, 0x18EF70,
   sceCdInit, dmaRefImage, sceBInetRecv/Send, sceGsResetGraph (their diagnoses stand), libtran.c's passes
   0x24DBB8-0x24E788.
+
+**The tools, round 34a** (the integrator's two requests): (1) **a build that depends on where the tree
+lies**: sase_rfft2g.c (round 33a) differed under `tools/objcmp.py` with its source unchanged (the MSL's
+round 28, the UI's round 26) -- its asserts always hold, GCC drops their calls but not their strings, and
+`__FILE__` was the absolute path the unit was built at (0x56B bytes of .rodata here, the path's own
+length), so a scratch copy, or another worktree, wrote other bytes the scorer never reads (the online
+lobby's round 22 diagnosed it too). Two fixes: the unit names its file by `#line` as every other codec
+unit does -- its whole .rodata is now the target's (0x3EB8A0, 1,307 bytes: the two twiddle tables,
+"../../shared/rFft2G.c", "(N==256) || (N=64)") -- and **objcmp builds both sides at ONE path**
+(`<work>/tree/`: BASE's copy first, then the tree's in its place: `build_side`, `tree_copy`). Before the
+fix objcmp HEAD over all 651 hand-written units: 1 differs (this one); against fd3d7457 over 652 units the
+new objcmp and the old print the same lines (the round's three real changes). The canary's
+`test_unit_builds_the_same_bytes_at_any_path`: every unit naming `__FILE__`/`__DATE__`/`__TIME__` (28)
+built from two tree copies at paths of different lengths, compared as objcmp compares; rfft2g twice at
+one path; its .rodata the target's; negatives: without its `#line` it differs in .rodata#1 alone, and
+built as objcmp's two sides now it is the same, at another path it is not. (2) **The spill slots**
+(the weapons' round-27 request: CZWeapon::Fire 0x3D2D70, 31 off in stack offsets alone). Read out of
+mwccps2 3.0b52: when a colouring spills, insertspillcode (0x517580) first runs a slot pass (0x5173E0)
+that walks the spilled nodes in INDEX order and hands each one not rematerialised -- its variable's
+Object, or a new temporary's (0x516EE0) -- to 0x4A0D30, a bump allocator over the local area: the
+type's size added, rounded up to 0x45CB20's alignment, the Object's +0x30 the negated total (0x5B63A8);
+at frame layout (0x4BE6F0) the area's top above sp is [0x5B6D90], and an Object's sp offset that plus its
+own. `tools/igdump.py` breaks at the pass's entry and exit and inside the allocator (0x4A0D3B: ebx the
+Object, ax its alignment) and at 0x4BE8BE (not 0x4BE8B1: gdb steps over a breakpoint out of line,
+decoding as x86-64, where that absolute byte store is rip-relative -- SIGSEGV), and records `spills`
+(base, end, each slot's node, name, size, align, offset; the rematerialised) on the colouring that
+spilled and `frame` on every record of the function; a function's records are written once its frame
+is laid out, every other field byte-identical (zwep_weapon.cpp's 172 records). **A char or bool spilled
+takes a 16-byte quadword** (16/16), a word 4/4. `tools/igreplay.py` replays the pass under a `--move`
+(`stack_slots`), checks every record's slots in the every-record mode, and with `--target` reads each
+spilled node's slot in the target (the candidate's instructions at the slot, the target's at the same
+indices). Fire: as recorded ammo (v34), useflyout (v41), @5712 (v45) at sp 236, 208, 204 under a frame
+top of 448; `--move 45=40.5` gives 220, 216, 192 and 432 -- "3 of 3 spilled nodes' slots are the
+target's": GetDefaultAmmo's result must be numbered before the flag, and the source shape that does it
+is the weapons' to find. Measured over ten MW units (1,775 records, 14 that spill): every record's
+slots replay, and all 32 slots are addressed at frame + offset in the object's code. The canary's
+`test_igreplay_replays_spill_slots` (11 assertions): a fixture spilling h, i, flag in index order (-4,
+-8, -32; sp 188, 184, 160 in its code); `--move flag before i` predicts -4, -32, -36 and a frame top of
+208 -- what the swapped declarations compile to (sp 204, 176, 172); negatives: the record's own order
+under the move, a changed alignment. (3) No tool that scores changed: scdiff.py, sccheck.py,
+scdecomp.py, tools/try.py and `include/` are master's, so no MW or GCC unit can score differently;
+every `src/lib` unit after the round: 2,786 byte-exact of 2,923, no regression (`--files '^lib/'`).
+automatch over the lane's three ranges (`--max-size 0x400 --emit --no-prune --jobs 2 --obj-dir` the lane's
+private `src/lib` build): MAIN `18DB90 1C4CC0` 12 tried, 0 hits (3 m2c refusals, 9 misses), OVL1 `1E7F58
+1E8FD4` 0 tried, `243000 256FD0` 40 tried, 0 hits (2 build failures, 5 refusals, 33 misses): 52 tried, none
+byte-exact (round 33a: 57, 0).
+
+**Round 34a** (2026-11-05, the requests first, then the opens and small rows): 6 rows newly byte-exact
+(2,440 bytes) -- libcdvd's sceCdRead 0x18F178 (a new `sdk/cd_read.c`, the demo's own text) and its seek
+0x18F358 (a new `sdk/cd_seek.c`, as first written), the codec's pitch conversion 0x249B58 (open since
+round 26a), and libquan.c's two-stage 2-D vector quantiser: the M-best stage-1 search 0x24B560, the
+search 0x24BA48 and the decode 0x24BCF0 (as first written) -- `sase_libquan.c` 11 of 12. No rows named:
+0x18F358 is ps2sdk's sceCdSeek by its N-command (5, CD_NCMD_SEEK) and shape, but not in SOCOM 1 and
+printing nothing. What they showed:
+
+- **Duplicated tails are references until reload**: 0x249B58's estimator arms each store their result
+  and clamp it themselves -- the two tails are identical and cross-jumping merges them after reload
+  into the one store and clamp the target has after the join, but through global-alloc there were
+  two, and fMin's extra references rank it ahead of fFs (as one tail fMin 3 refs over 46 insns, 652,
+  against fFs's 1333: `tools/ccdump.py -f`). A register-only miss on a priority can be a statement
+  written twice. (Tried on 0x2487E8 too: a store in each arm merges into the branch's slot, the
+  target's layout, but gives Pv four references -- above Pv_Mid and iIndex, 13 words.)
+- **A float literal past 0x1p+127 is .sdata loaded by lui under -G8**: libquan.c's start distance
+  0x7F7FFFED (a hex float) is no `.lit4` entry but a pool constant in `.sdata`, addressed absolutely,
+  8 bytes apart per function's pool (0x1D5560, 0x1D5568 -- 1e38 between them).
+- **A case tree reads the switch's cases**: sceCdRead's data-pattern switch tests `< 2` between its two
+  compares -- case 0 named with the default; {1, 2} alone compares twice. And `_sceCd_ee_read_mode` is
+  volatile: the default's branch to the join keeps an empty slot (a plain load there filled it).
+- **An assert's text names the parameters**: 0x24BA48's first assert says `iNumCand`, the M-best
+  search's `iMBest` -- a WRONG REFERENCE on the expression string alone.
+- **Open, diagnosed in place**: unchanged this round -- 0x24C000, 0x252FE0, 0x24AD48, sceCdDiskReady,
+  0x18EF70, sceCdInit, dmaRefImage, sceBInetRecv/Send, sceGsResetGraph (their diagnoses stand; the
+  duplicated-tail lever is the next thing to try on the priority ties: sceCdStRead's 909/909 needs a
+  reference for SCE_CD_debug's %hi and none for `last`); libnetb_udp_init_buffer (round 5a: the
+  target's `move v1,a0` is a copy of hdr in the last block that local-alloc gives v1 while the size
+  takes a0 -- an inline helper, a volatile or `void *` view and a block copy give none: 12 more shapes,
+  `build/scratch/gcc/v_initbuf*.py`). Not reached: libquan.c's 12-coefficient dequantiser 0x24B2F8
+  (six 2-D stages over a table of parameter blocks, 0x268) and quantiser 0x24B028, libtran.c's passes.
 
 **Next**: the libraries by hand, module by module, as their vendors wrote them (each `src/lib`
 unit's header says what it covers); GCC's scheduler moves independent stores, and which source

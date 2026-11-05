@@ -297,11 +297,12 @@ extern float func_00249C78(PITCH_CONV *p, float *pf);
 
 /* the period in samples to a pitch at 8 kHz, re-estimated by the block's mode, clamped to 50-1000
  * Hz and turned back into a period (the constants locals initialised at the top: the target loads
- * all three into f20-f22 at the entry; the two estimators' results meet in one store after the
- * join -- a store in each arm is 29s).
- * OPEN (GCC round 26a, 7 words, registers only): fFs and fMin trade f22/f21 -- global-alloc ranks
- * fFs (four references) first here; all six declaration orders tried (7-12 words,
- * build/scratch/gcc/v_pconv.py). */
+ * all three into f20-f22 at the entry). Each arm stores its estimate and clamps it itself -- the
+ * two tails are identical, and cross-jumping merges them after reload into the one store and
+ * clamp after the join the target has; but through allocation there were two, and fMin's four
+ * references (as one tail: three, 652 against fFs's 1333 in global-alloc's priority, so fFs took
+ * f21 -- open since round 26a, 7 words) rank it ahead of fFs: f21, the target's (GCC round 34a;
+ * the clamps alone in the arms, or the store and the low clamp, stay 7 off). */
 void func_00249B58(PITCH_CONV *p, float *pfOut, float *pfPeriod)
 {
 	float fFs = 8000.0F, fMin = 50.0F, fMax = 1000.0F;
@@ -313,16 +314,19 @@ void func_00249B58(PITCH_CONV *p, float *pfOut, float *pfPeriod)
 	}
 	if (p->usLinear) {
 		*pfPeriod = fFs / *pfPeriod;
-		fP = func_00249C60(p, pfPeriod);
+		*pfPeriod = func_00249C60(p, pfPeriod);
+		if (*pfPeriod < fMin)
+			*pfPeriod = fMin;
+		if (*pfPeriod > fMax)
+			*pfPeriod = fMax;
 	} else {
 		*pfPeriod = fFs / *pfPeriod;
-		fP = func_00249C78(p, pfPeriod);
+		*pfPeriod = func_00249C78(p, pfPeriod);
+		if (*pfPeriod < fMin)
+			*pfPeriod = fMin;
+		if (*pfPeriod > fMax)
+			*pfPeriod = fMax;
 	}
-	*pfPeriod = fP;
-	if (*pfPeriod < fMin)
-		*pfPeriod = fMin;
-	if (*pfPeriod > fMax)
-		*pfPeriod = fMax;
 	*pfPeriod = fFs / *pfPeriod;
 }
 

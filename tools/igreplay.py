@@ -48,6 +48,18 @@ a deep copy of the record (relabel(), kept for its callers): the same colours, ~
 
     ./tools/igreplay.py DUMP -f F -r 0 --target UNIT F_MANGLED --move 41=87.5   # the move against the target
     ./tools/igreplay.py DUMP -f F -r 0 --target UNIT F_MANGLED --movers 41,87 --timeout 60
+
+The spill slots (GCC round 34a, the weapons' round-27 request): a record igdump wrote with `spills`
+and `frame` also replays which stack slot each spilled node takes -- the slot pass gives them in
+INDEX order, each bumped down the local area by its size and rounded to its alignment -- so a
+--move shows the slots and the frame it gives as well as the colours, and --target reads each
+spilled node's slot in the target (the candidate's instructions addressing it, the target's at the
+same indices). The every-record mode checks each record's slots as it checks its colours.
+
+    ./tools/igreplay.py DUMP -f '^Fire$' -r 0 --move 45=40.5 --target src/gamez/zweapon/zwep_weapon.cpp Fire__8CZWeapon...
+      as recorded  v34=ammo 4/4 -212 (sp 236); v41=useflyout 16/16 -240 (sp 208); v45=@5712 4/4 -244 (sp 204); ... frame top 448
+      moved        v34=ammo 4/4 -212 (sp 220); v45=@5712 4/4 -216 (sp 216); v41=useflyout 16/16 -240 (sp 192); ... frame top 432
+      3 of 3 spilled nodes' slots are the target's under --move/--drop; frame top 432
 """
 
 from __future__ import annotations
@@ -460,9 +472,9 @@ def tmap(rec: dict, ours: list[str], targ: list[str], window: int = 24):
     return out, conflicts, unmatched
 
 
-def target_colours(rec: dict, unit: Path, func: str, img=None):
-    """tmap for `func` (a map name the unit defines): the unit built as sccheck builds it (its
-    directive, include/ and src/), its final code and the target row's aligned with the record."""
+def final_code(unit: Path, func: str, img=None) -> tuple[list[str], list[str]]:
+    """(the candidate's final code, the target row's), instruction texts: `func` (a map name the unit
+    defines) built as sccheck builds the unit (its directive, include/ and src/)."""
     here = Path(__file__).resolve().parent.parent
     sys.path.insert(0, str(here))
     import scdecomp as E
@@ -478,7 +490,113 @@ def target_colours(rec: dict, unit: Path, func: str, img=None):
     targ = [t for _, _, t in E.disasm(img.read(sym.addr, sym.size), sym.addr)]
     if len(ours) != len(targ):
         print(f"  {func}: {len(ours)} instructions against the target's {len(targ)} -- the alignment is approximate")
+    return ours, targ
+
+
+def target_colours(rec: dict, unit: Path, func: str, img=None, code=None):
+    """tmap for `func` (a map name the unit defines): the unit built as sccheck builds it (its
+    directive, include/ and src/), its final code and the target row's aligned with the record
+    (`code`: final_code()'s pair, when the caller has it)."""
+    ours, targ = code or final_code(unit, func, img)
     return tmap(rec, ours, targ)
+
+
+# --- the stack slots of the spilled nodes (GCC round 34a: the weapons' round-27 request) ------------
+# igdump records, for a colouring that spilled, the slot pass's work (`spills`: the local area's size
+# before it, `base`, and per slot the node, its Object's size and alignment and its offset) and, per
+# function, the local area's top above sp once the frame is laid out (`frame`). The slot pass
+# (insertspillcode's first step, 0x5173E0) walks the nodes in INDEX order and gives every spilled one
+# that is not rematerialised a slot by bumping the area: size added, rounded up to the alignment, the
+# offset the negated total. So a renumbering moves the slots as well as the colours: CZWeapon::Fire
+# (0x3D2D70) spills ammo (v34, 4 bytes), useflyout (v41, a 16-byte quadword) and GetDefaultAmmo's
+# result (v45, 4): in index order the two words fall apart (-212, -240, -244: 244 bytes, a 448-byte
+# frame); numbered ammo, result, flag -- the target's 220, 216, 192 -- they share a quadword (240,
+# 432). A node with no recorded slot that spills only in a replay is sized as its class's word (4).
+
+SP_RE = re.compile(r'(-?\d+)\(sp\)')
+
+
+def _align_up(x: int, a: int) -> int:
+    return (x + a - 1) & ~(a - 1) if a > 0 else x
+
+
+def stack_slots(rec: dict, colour: list[int] | None = None, newidx=None, later_end: int | None = None) -> dict | None:
+    """The slots the slot pass gives the nodes the colouring spills: `colour` by NEW index and
+    `newidx` (old -> new) a replay's (default: the record's own colouring). None when the record
+    carries no slot information (igdump before round 34a, or a colouring that spilled nothing).
+    {'slots': [(old index, name, size, align, offset, sp offset or None, assumed size)], 'base', 'end',
+    'frame' (the local area's top above sp, None unless igdump recorded the function's)}; `later_end`,
+    the local area's size after the function's last spill pass when that is a later one, keeps the
+    later allocations in the frame."""
+    sp = rec.get('spills')
+    if not sp:
+        return None
+    n = len(rec['nodes'])
+    nreal = rec['nreal']
+    if newidx is None:
+        newidx = list(range(n))
+    known = {s['i']: (s['size'], s['align']) for s in sp['slots'] if s.get('i') is not None}
+    remat = rec.get('remat') or [0] * n
+    flags = [nd['flags'] or 0 for nd in rec['nodes']]
+    if colour is None:                  # the record's own: MW's spilled flag
+        spilled = [i for i in range(nreal, n) if rec['nodes'][i]['fl'] & F_SPILLED and not remat[i]]
+    else:
+        spilled = [i for i in range(nreal, n)
+                   if colour[newidx[i]] == -1 and not flags[i] & F_COAL and not remat[i]]
+    names = {int(k): (v or '').split('@0x')[0] for k, v in rec['names'].items()}
+    top = sp['base']
+    slots = []
+    for i in sorted(spilled, key=lambda i: newidx[i]):
+        size, align = known.get(i, (4, 4))
+        top = _align_up(top + size, align)
+        slots.append([i, names.get(i, ''), size, align, -top, None, i not in known])
+    frame = rec.get('frame')
+    if frame is not None:
+        last = later_end if later_end is not None else sp['end']
+        extra = frame - _align_up(last, 16)
+        frame = _align_up(last + top - sp['end'], 16) + extra
+        for s in slots:
+            s[5] = frame + s[4]
+    return dict(slots=[tuple(s) for s in slots], base=sp['base'], end=top, frame=frame)
+
+
+def slots_line(res: dict) -> str:
+    out = []
+    for i, name, size, align, off, spoff, assumed in res['slots']:
+        out.append(f"v{i}{('=' + name) if name else ''} {size}/{align}{'?' if assumed else ''} {off}"
+                   + (f" (sp {spoff})" if spoff is not None else ""))
+    return ("; ".join(out) or "none") + f"; locals {res['base']} -> {res['end']}" + (
+        f", frame top {res['frame']}" if res['frame'] is not None else "")
+
+
+def check_slots(rec: dict) -> bool | None:
+    """Whether the slot model gives the record's own slots (None: the record carries none)."""
+    sp = rec.get('spills')
+    if not sp:
+        return None
+    got = stack_slots(rec)
+    want = [(s['i'], s['size'], s['align'], s['off']) for s in sp['slots']]
+    return [(i, size, align, off) for i, _, size, align, off, _, _ in got['slots']] == want \
+        and got['end'] == sp['end']
+
+
+def target_slots(res: dict, ours: list[str], targ: list[str]) -> dict[int, dict[int, int]]:
+    """{node: {the target's sp offset: uses}}: every instruction of the candidate's final code that
+    addresses a node's slot (sp + its offset, as `stack_slots` of the RECORD's colouring gives it)
+    and the target's at the same index -- an alignment by index, so read it where the two have the
+    same length (Fire: 31 instructions differ in their offsets alone)."""
+    out: dict[int, dict[int, int]] = {}
+    at = {s[5]: s[0] for s in res['slots'] if s[5] is not None}
+    for k, text in enumerate(ours):
+        m = SP_RE.search(text)
+        if not m or int(m.group(1)) not in at or k >= len(targ):
+            continue
+        t = SP_RE.search(targ[k])
+        if t and text.split()[0] == targ[k].split()[0]:
+            v = at[int(m.group(1))]
+            out.setdefault(v, {}).setdefault(int(t.group(1)), 0)
+            out[v][int(t.group(1))] += 1
+    return out
 
 
 def target_rows(tcol: dict, conflicts: dict, colour) -> list[tuple]:
@@ -492,6 +610,31 @@ def target_rows(tcol: dict, conflicts: dict, colour) -> list[tuple]:
 
 def is_saved(c: int) -> bool:
     return 16 <= c <= 23 or c == 30
+
+
+def target_slot_report(rec: dict, code, moves=None, drop=(), late: int | None = None
+                       ) -> tuple[list[str], int, int]:
+    """--target's slot lines: each spilled node's slot from sp -- the record's, or with `moves`/`drop`
+    the replay's -- against the target's (target_slots: the candidate's instructions at the record's
+    slots, the target's at the same indices); and (agreeing, mapped)."""
+    own = stack_slots(rec, later_end=late)
+    tsl = target_slots(own, *code)
+    mine = own
+    if moves or drop:
+        moved, newidx, _ = replay_moved(rec, moves or {}, drop)
+        mine = stack_slots(rec, moved, newidx, later_end=late)
+    sp_of = {s[0]: s[5] for s in mine['slots']}
+    g = Graph(rec)
+    lines, agree = [], 0
+    for v in sorted(tsl, key=lambda v: -(sp_of.get(v) or 0)):
+        best = max(tsl[v], key=tsl[v].get)
+        agree += best == sp_of.get(v)
+        lines.append(f"  slot v{v:<4} {g.name(v)[:20]:20} {'moved' if mine is not own else 'ours '} sp "
+                     f"{sp_of.get(v)!s:5} target sp {best}" + (f"  (uses: {tsl[v]})" if len(tsl[v]) > 1 else ""))
+    lines.append(f"  {agree} of {len(tsl)} spilled nodes' slots are the target's"
+                 + (" under --move/--drop" if mine is not own else "")
+                 + (f"; frame top {mine['frame']}" if mine['frame'] is not None else ""))
+    return lines, agree, len(tsl)
 
 
 def target_report(rec: dict, tcol: dict, conflicts: dict, unmatched: int, moves=None, drop=()
@@ -531,6 +674,18 @@ def target_report(rec: dict, tcol: dict, conflicts: dict, unmatched: int, moves=
 
 def load(path) -> list[dict]:
     return [json.loads(ln) for ln in open(path)]
+
+
+def later_end(recs: list[dict], k: int) -> int | None:
+    """The local area's size after the last spill pass of record k's function (its records follow it in
+    the dump with the same procedure and frame), for stack_slots' `later_end`; None if k's is the last."""
+    rec, last = recs[k], None
+    for r in recs[k + 1:]:
+        if r.get('proc') != rec.get('proc') or r.get('frame') != rec.get('frame'):
+            break
+        if r.get('spills'):
+            last = r['spills']['end']
+    return last
 
 
 def node_index(rec: dict, key: str) -> int:
@@ -573,14 +728,18 @@ def main(argv=None) -> int:
            and (rx is None or rx.search((r.get('proc') or '').split('@0x')[0]))]
     single = a.move or a.drop or a.want or a.nb or a.watch or a.target
     if not single:
-        bad_recs = 0
+        bad_recs = nslots = 0
         for k, r in sel:
             g = Graph(r)
             bad, same = g.check()
-            bad_recs += bool(bad) or not same
+            slots = check_slots(r)
+            nslots += slots is not None
+            bad_recs += bool(bad) or not same or slots is False
             print(f"[{k}] {(r.get('proc') or '?').split('@0x')[0]} cls {r['cls']}: {r['nused'] - r['nreal']} virtual, "
-                  f"K {g.K}: order {'same' if same else 'DIFFERS'}, colour mismatches {len(bad)} {bad[:6] if bad else ''}")
-        print(f"{len(sel) - bad_recs} of {len(sel)} records replay exactly")
+                  f"K {g.K}: order {'same' if same else 'DIFFERS'}, colour mismatches {len(bad)} {bad[:6] if bad else ''}"
+                  + ("" if slots is None else f", stack slots {'same' if slots else 'DIFFER'}"))
+        print(f"{len(sel) - bad_recs} of {len(sel)} records replay exactly"
+              + (f" ({nslots} with spill slots, each checked)" if nslots else ""))
         return 1 if bad_recs else 0
     if a.record is None and len(sel) != 1:
         raise SystemExit(f"{len(sel)} records selected: name one with -r N (N counts the selected, from 0)")
@@ -599,12 +758,22 @@ def main(argv=None) -> int:
         x, y = d.split('-')
         drop.append((node_index(rec, x), node_index(rec, y)))
     want = {}
+    late = later_end(recs, k)
+    if rec.get('spills'):
+        print("  stack slots (the slot pass: each spilled node in index order, bumped down the local area):")
+        print(f"    as recorded  {slots_line(stack_slots(rec, later_end=late))}")
+        if moves or drop:
+            moved, newidx, _ = replay_moved(rec, moves, drop)
+            print(f"    moved        {slots_line(stack_slots(rec, moved, newidx, later_end=late))}")
     if a.target:
         if cls != 0:
             raise SystemExit("--target reads the GPR class's PCode (igdump records it for class 0 only)")
-        tcol, conflicts, unmatched = target_colours(rec, Path(a.target[0]), a.target[1])
+        code = final_code(Path(a.target[0]), a.target[1])
+        tcol, conflicts, unmatched = target_colours(rec, Path(a.target[0]), a.target[1], code=code)
         lines, want, _ = target_report(rec, tcol, conflicts, unmatched, moves, drop)
         print("\n".join(lines))
+        if rec.get('spills'):
+            print("\n".join(target_slot_report(rec, code, moves, drop, late)[0]))
         if not a.movers and not a.watch:
             return 0
     if a.want or (want and a.movers):

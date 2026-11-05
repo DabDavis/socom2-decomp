@@ -202,30 +202,69 @@ extern "C" int func_0058F230(CSealUnit *unit, CZSealBody *seal, unsigned char ta
     return false;
 }
 
-extern "C" {
-/* the other names, their drafts matching (OVL2 0x58E120, 0x58E360, 0x58E4D0, 0x58E750, 0x58EB00,
- * 0x58F190: string switches and an order's table) */
-const char *func_0058E120(unsigned char v);
-const char *func_0058E360(unsigned char v);
-const char *func_0058E4D0(unsigned char v);
-const char *func_0058E750(unsigned char v);
-const char *func_0058EB00(unsigned char v);
-int func_0058F190(unsigned char cmd);
-}
+/* an order target's weapon: the deploy targets' grenades and charges (3-15) as their EQUIP_ITEMs --
+ * SOCOM 1's GRENADE, HE_GRENADE, FLASHBANG, SMOKE_GRENADE, SATCHEL_CHARGE, M203_FRAG, M203_HE,
+ * M203_SMOKE and GL_HE, GL_IL, GL_SMOKE, GL_FRAG, then SOCOM II's red smoke 127 -- and EQUIP_NONE for
+ * any other target (OVL2 0x58F190, new in SOCOM II: CSealCtrlAi's OnCommand and AllowCommand ask it;
+ * the name unknown). A result with breaks: direct returns are 8 instructions long */
+extern "C" EQUIP_ITEM func_0058F190(unsigned char target)
+{
+    EQUIP_ITEM item = EQUIP_NONE;
 
+    switch (target) {
+    case 3:
+        item = (EQUIP_ITEM)121;
+        break;
+    case 4:
+        item = (EQUIP_ITEM)126;
+        break;
+    case 5:
+        item = (EQUIP_ITEM)123;
+        break;
+    case 6:
+        item = (EQUIP_ITEM)122;
+        break;
+    case 7:
+        item = (EQUIP_ITEM)152;
+        break;
+    case 8:
+        item = (EQUIP_ITEM)175;
+        break;
+    case 9:
+        item = (EQUIP_ITEM)171;
+        break;
+    case 10:
+        item = (EQUIP_ITEM)173;
+        break;
+    case 11:
+        item = (EQUIP_ITEM)176;
+        break;
+    case 12:
+        item = (EQUIP_ITEM)177;
+        break;
+    case 13:
+        item = (EQUIP_ITEM)178;
+        break;
+    case 14:
+        item = (EQUIP_ITEM)179;
+        break;
+    case 15:
+        item = (EQUIP_ITEM)127;
+        break;
+    }
+    return item;
+}
 
 extern "C" {
 int strcasecmp(const char *a, const char *b);
-/* two tables of 72 names each, a byte value's name (OVL2 0x58ED60 and 0x58EF80, string switches) */
-const char *func_0058ED60(unsigned char v);
-const char *func_0058EF80(unsigned char v);
 }
 
-/* an order's name, CMD_UNKNOWN for an order without one (OVL2 0x58EF80, new in SOCOM II; the second
- * table 0x58E0A0 searches -- SOCOM II's own FT_COMMAND values, not SOCOM 1's: ESCORT 8, AMBUSH 30, 24
- * and 29 unnamed). The cases in the names' order, each a block of its own (the image's), case 0's
- * apart from the default's */
-extern "C" const char *func_0058EF80(unsigned char cmd)
+/* an order's name, CMD_UNKNOWN for an order without one (OVL2 0x58EF80: SOCOM 1's
+ * CSealCtrl::GetCommandName by its order -- GetCommandId 0x58E0A0 searches it, as SOCOM 1's does --
+ * with SOCOM II's own FT_COMMAND values, not SOCOM 1's: ESCORT 8, AMBUSH 30, 24 and 29 unnamed). The
+ * cases in the names' order, each a block of its own (the image's), case 0's apart from the
+ * default's */
+const char *CSealCtrl::GetCommandName(FT_COMMAND cmd)
 {
     switch (cmd) {
     case 0: return "CMD_UNKNOWN";
@@ -261,8 +300,214 @@ extern "C" const char *func_0058EF80(unsigned char cmd)
     return "CMD_UNKNOWN";
 }
 
-/* an order's name for the HUD (OVL2 0x58E950, a switch over 24 orders; its draft matches) */
-extern "C" const char *func_0058E950(unsigned char cmd);
+/* a multiplayer message's name, CMD_UNKNOWN for none (OVL2 0x58ED60, new in SOCOM II: the first
+ * table 0x58E020 searches -- the messages are FT_COMMAND values 37-71). The cases in the image's
+ * block order */
+extern "C" const char *func_0058ED60(unsigned char msg)
+{
+    switch (msg) {
+    case 38:
+        return "CMD_MP_GRENADE_THROWN";
+    case 39:
+        return "CMD_MP_ENEMY_DEAD";
+    case 40:
+        return "CMD_MP_FRIEND_DEAD";
+    case 41:
+        return "CMD_MP_UNDER_FIRE";
+    case 42:
+        return "CMD_MP_GOT_ONE";
+    case 66:
+        return "CMD_MP_SEALS_WINNING";
+    case 67:
+        return "CMD_MP_TERRORISTS_WINNING";
+    case 68:
+        return "CMD_MP_HOSTAGE_KILLED";
+    case 43:
+        return "CMD_MP_ESCORTEE_FOLLOWING";
+    case 69:
+        return "CMD_MP_BOMB_PLANTED";
+    case 70:
+        return "CMD_MP_TARGET_DESTROYED";
+    case 71:
+        return "CMD_MP_BOMB_DEFUSED";
+    case 44:
+        return "CMD_MP_PLAYER_HAS_KILLED";
+    case 45:
+        return "CMD_MP_COVER_ME";
+    case 46:
+        return "CMD_MP_DEFUSE";
+    case 47:
+        return "CMD_MP_PROTECT";
+    case 48:
+        return "CMD_MP_POINT";
+    case 49:
+        return "CMD_MP_SOP1";
+    case 50:
+        return "CMD_MP_SOP2";
+    case 51:
+        return "CMD_MP_SOP3";
+    case 52:
+        return "CMD_MP_SOP4";
+    case 53:
+        return "CMD_MP_SOP5";
+    case 59:
+        return "CMD_MP_TAUNT1";
+    case 60:
+        return "CMD_MP_TAUNT2";
+    case 61:
+        return "CMD_MP_TAUNT3";
+    case 62:
+        return "CMD_MP_TAUNT4";
+    case 63:
+        return "CMD_MP_TAUNT5";
+    case 64:
+        return "CMD_MP_TAUNT6";
+    case 65:
+        return "CMD_MP_TAUNT7";
+    case 37:
+        return "CMD_MP_VOTE_OFF";
+    }
+    return "CMD_UNKNOWN";
+}
+
+/* an order target's name, "null" for none (OVL2 0x58EB00, new in SOCOM II: the targets 0x58DF20 and
+ * 0x58DEB0 bound for an order kind -- the deploy items 3-15, the breach entries 17-19, the crosshairs
+ * and the nav points 21-31 -- the doors' and the bomb's 33-35, the landing zone and the bunkers 37-40;
+ * OVL1's radio menu and CSealUnit::ConfirmCommand ask it). The default a result set ahead of the
+ * switch (the target's delay-slot load) */
+extern "C" const char *func_0058EB00(unsigned char target)
+{
+    const char *name = "null";
+
+    switch (target) {
+    case 1:
+        return "UNIT";
+    case 3:
+        return "FRAG";
+    case 4:
+        return "HE";
+    case 5:
+        return "BANG";
+    case 6:
+        return "SMOKE";
+    case 7:
+        return "SATCHEL";
+    case 8:
+        return "FRAG2";
+    case 9:
+        return "HE2";
+    case 10:
+        return "SMOKE2";
+    case 11:
+        return "GL_HE";
+    case 12:
+        return "GL_IL";
+    case 13:
+        return "GL_SMOKE";
+    case 14:
+        return "GL_FRAG";
+    case 15:
+        return "REDSMOKE";
+    case 17:
+        return "BR_BANG";
+    case 18:
+        return "BR_FRAG";
+    case 19:
+        return "BR_CLEAR";
+    case 21:
+        return "CROSSHAIRS";
+    case 22:
+        return "CHARLIE";
+    case 23:
+        return "DELTA";
+    case 24:
+        return "ECHO";
+    case 25:
+        return "FOXTROT";
+    case 26:
+        return "JULIET";
+    case 27:
+        return "ROMEO";
+    case 28:
+        return "SIERRA";
+    case 29:
+        return "WHISKEY";
+    case 30:
+        return "XRAY";
+    case 31:
+        return "ZULU";
+    case 33:
+        return "OPEN DOOR";
+    case 34:
+        return "CLOSE DOOR";
+    case 35:
+        return "DEFUSE BOMB";
+    case 37:
+        return "LZ_CROSSHAIRS";
+    case 38:
+        return "BUNKER 1";
+    case 39:
+        return "BUNKER 2";
+    case 40:
+        name = "BUNKER 3";
+        break;
+    }
+    return name;
+}
+
+/* an order's caption for the radio menu, its name for any other order (OVL2 0x58E950, new in
+ * SOCOM II: OVL1's radio menu asks it). The cases in the image's block order (the names') */
+extern "C" const char *func_0058E950(unsigned char cmd)
+{
+    switch (cmd) {
+    case 1:
+        return "CMD_ACTION";
+    case 12:
+        return "ATTACK TO";
+    case 16:
+        return "BREACH";
+    case 23:
+        return "CLEAR AREA";
+    case 14:
+        return "COVER TARGET";
+    case 2:
+        return "DEPLOY";
+    case 8:
+        return "ESCORT";
+    case 22:
+        return "EXTRACT";
+    case 3:
+        return "FIRE AT WILL";
+    case 4:
+        return "FOLLOW";
+    case 17:
+        return "GET DOWN";
+    case 6:
+        return "HOLD FIRE";
+    case 20:
+        return "KILL TARGET";
+    case 5:
+        return "HOLD POSITION";
+    case 15:
+        return "LASE TARGET";
+    case 13:
+        return "LEAD TO";
+    case 10:
+        return "MOVE TO";
+    case 19:
+        return "OVERWATCH";
+    case 18:
+        return "PULL OUT";
+    case 7:
+        return "REGROUP";
+    case 9:
+        return "RUN TO";
+    case 11:
+        return "STEALTH TO";
+    default:
+        return CSealCtrl::GetCommandName((FT_COMMAND)cmd);
+    }
+}
 
 /* an order's name, regroup's spelled apart (OVL2 0x58E900; new in SOCOM II, its name unknown --
  * OVL1's HUD calls it) */
@@ -276,20 +521,261 @@ extern "C" const char *func_0058E900(unsigned char cmd)
     }
 }
 
+/* an order's second line for the radio menu, its caption for any other order (OVL2 0x58E750, new in
+ * SOCOM II: OVL1's radio menu asks it) */
+extern "C" const char *func_0058E750(unsigned char cmd)
+{
+    switch (cmd) {
+    case 1:
+        return "CMD_ACTION";
+    case 12:
+        return "Take all available shots and move to . . .";
+    case 16:
+        return "Breach doorway under crosshairs";
+    case 23:
+        return "Secure the area";
+    case 14:
+        return "Covering fire at crosshairs";
+    case 2:
+        return "Throw or place item at crosshairs . . .";
+    case 8:
+        return "Person under crosshairs will follow";
+    case 22:
+        return "Extract escortee or hostage";
+    case 3:
+        return "Take any and every open shot";
+    case 4:
+        return "Follow me";
+    case 17:
+        return "Drop to the ground";
+    case 6:
+        return "Shoot only when shot at";
+    case 20:
+        return "Fire at current target";
+    case 5:
+        return "Stay where you are";
+    case 15:
+        return "Laser designate guided weapon target . . .";
+    case 13:
+        return "Escort me to . . .";
+    case 10:
+        return "Move at normal pace to . . .";
+    case 19:
+        return "Assume overwatch position";
+    case 18:
+        return "Leave the battlefield";
+    case 7:
+        return "Rally on my current position";
+    case 9:
+        return "Run to . . .";
+    case 11:
+        return "Using shadows and cover move to . . .";
+    default:
+        return func_0058E950(cmd);
+    }
+}
+
+/* an order target's caption for the radio menu, its name for any other target (OVL2 0x58E4D0, new in
+ * SOCOM II: OVL1's radio menu asks it) */
+extern "C" const char *func_0058E4D0(unsigned char target)
+{
+    switch (target) {
+    case 1:
+        return "UNIT";
+    case 3:
+        return "FRAG";
+    case 4:
+        return "HE";
+    case 5:
+        return "BANG";
+    case 6:
+        return "SMOKE";
+    case 7:
+        return "SATCHEL";
+    case 8:
+        return "FRAG2";
+    case 9:
+        return "HE2";
+    case 10:
+        return "SMOKE2";
+    case 11:
+        return "GL_HE";
+    case 12:
+        return "GL_IL";
+    case 13:
+        return "GL_SMOKE";
+    case 14:
+        return "GL_FRAG";
+    case 15:
+        return "RED SMOKE";
+    case 17:
+        return "BANG AND CLEAR";
+    case 18:
+        return "FRAG AND CLEAR";
+    case 19:
+        return "MOVE AND CLEAR";
+    case 21:
+        return "CROSSHAIRS";
+    case 22:
+        return "CHARLIE";
+    case 23:
+        return "DELTA";
+    case 24:
+        return "ECHO";
+    case 25:
+        return "FOXTROT";
+    case 26:
+        return "JULIET";
+    case 27:
+        return "ROMEO";
+    case 28:
+        return "SIERRA";
+    case 29:
+        return "WHISKEY";
+    case 30:
+        return "XRAY";
+    case 31:
+        return "ZULU";
+    case 33:
+        return "OPEN DOOR";
+    case 34:
+        return "CLOSE DOOR";
+    case 35:
+        return "DEFUSE BOMB";
+    case 37:
+        return "CROSSHAIRS";
+    case 38:
+        return "BUNKER 1";
+    case 39:
+        return "BUNKER 2";
+    case 40:
+        return "BUNKER 3";
+    default:
+        return func_0058EB00(target);
+    }
+}
+
+/* an order target's node name for the radio menu, its caption for any other target (OVL2 0x58E360,
+ * new in SOCOM II: OVL1's radio menu asks it). A compare chain: its tests run in reverse of the
+ * cases' order */
+extern "C" const char *func_0058E360(unsigned char target)
+{
+    switch (target) {
+    case 2:
+        return "CROSS HAIRS";
+    case 21:
+        return "CROSS HAIRS";
+    case 4:
+        return "H E";
+    case 8:
+        return "FRAG TWO";
+    case 9:
+        return "H E TWO";
+    case 10:
+        return "SMOKE TWO";
+    case 33:
+        return "OPEN DOOR";
+    case 34:
+        return "CLOSE DOOR";
+    case 35:
+        return "DEFUSE BOMB";
+    case 17:
+        return "BANG AND CLEAR";
+    case 18:
+        return "FRAG AND CLEAR";
+    case 19:
+        return "MOVE AND CLEAR";
+    default:
+        return func_0058E4D0(target);
+    }
+}
+
+/* an order target's second line for the radio menu, its caption for any other target (OVL2
+ * 0x58E120, new in SOCOM II: OVL1's radio menu asks it) */
+extern "C" const char *func_0058E120(unsigned char target)
+{
+    switch (target) {
+    case 1:
+        return "UNIT";
+    case 3:
+        return "Frag grenade";
+    case 4:
+        return "High explosive grenade";
+    case 5:
+        return "Flashbang";
+    case 6:
+        return "Smoke grenade";
+    case 7:
+        return "Explosive satchel";
+    case 8:
+        return "Frag grenade";
+    case 9:
+        return "High explosive grenade";
+    case 10:
+        return "Smoke grenade";
+    case 11:
+        return "High explosive grenade";
+    case 13:
+        return "Smoke grenade";
+    case 14:
+        return "Frag grenade (launcher)";
+    case 15:
+        return "Red smoke grenade";
+    case 17:
+        return "Throw flashbang then clear the room";
+    case 18:
+        return "Throw frag then clear the room";
+    case 19:
+        return "Clear the room behind crosshairs";
+    case 21:
+        return "Targeting reticule";
+    case 22:
+        return "Nav point Charlie";
+    case 23:
+        return "Nav point Delta";
+    case 24:
+        return "Nav point Echo";
+    case 25:
+        return "Nav point Foxtrot";
+    case 26:
+        return "Nav point Juliet";
+    case 27:
+        return "Nav point Romeo";
+    case 28:
+        return "Nav point Sierra";
+    case 29:
+        return "Nav point Whiskey";
+    case 30:
+        return "Nav point X-Ray";
+    case 31:
+        return "Nav point Zulu";
+    case 33:
+        return "Open door under crosshairs";
+    case 34:
+        return "Close door under crosshairs";
+    case 35:
+        return "Defuse bomb under crosshairs";
+    case 37:
+        return "Laser designate guided weapon target . . .";
+    default:
+        return func_0058E4D0(target);
+    }
+}
+
 /* a name's value in the first and the second table, 0 for none (OVL2 0x58E020, 0x58E0A0, new in
  * SOCOM II; CCharacterType::InitMultiplayerMessages reads the multiplayer messages through them --
  * the second is SOCOM 1's CSealCtrl::GetCommandId). The byte value a local declared after the
  * counter: it takes s0, the counter s1 */
-extern "C" unsigned char func_0058E0A0(const char *name)
+FT_COMMAND CSealCtrl::GetCommandId(const char *name)
 {
     if (name)
         for (int i = 0; i < 72; i++) {
-            unsigned char v = i;
+            FT_COMMAND v = (FT_COMMAND)i;
 
-            if (!strcasecmp(func_0058EF80(v), name))
+            if (!strcasecmp(GetCommandName(v), name))
                 return v;
         }
-    return 0;
+    return CMD_UNKNOWN;
 }
 
 extern "C" unsigned char func_0058E020(const char *name)

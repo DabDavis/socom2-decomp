@@ -672,7 +672,11 @@ void CTCMNode::SetText2(const char *s)
  * OPEN, 5 instructions, registers: the target computes `n - 1` into t1 and the data pointer into
  * t0 and adds the store's address data first (`addu a2,t0,t2`), MW swaps the two and adds the
  * outer offset first -- `n - 1` as a local, `n - 1 != i`, begin()/data() indexing, a local for the
- * copied child, signed outer counters all tried */
+ * copied child, signed outer counters all tried. Round 53's replay (igdump, igreplay --target):
+ * `n - 1` is a code-generation temporary here (v44, hoisted by the back end) and the inner loop's
+ * data pointer the IRO's @1490; every placement giving the target's t0/t1 puts `n - 1` after the
+ * outer counter's strength-reduced @1482 and before @1490 -- a front-end temporary the IRO made
+ * between the two, which no named local (numbered before @1482: 2 off) gives */
 CTCMNode *CTCMNode::RemoveChild(CTCMNode *child)
 {
     CTCMNode *found = 0;
