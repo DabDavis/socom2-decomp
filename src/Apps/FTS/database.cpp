@@ -218,7 +218,7 @@ void zBoneLoadMap(const char *dir, CRdrFile *rdr);
 /* a reader nothing sets (OVL1 bss, read by LoadWorld alone) */
 extern "C" CRdrFile *data_00437D18;
 void FilterAssetLibFolder(const char *name, char *folder);
-void LoadNodeVisuals(zar::CZAR *zar, zdb::CNode *node);
+void hookupVisuals(zar::CZAR *zar, zdb::CModel *model);
 
 /* a render phase's texture buffer (the texture manager's buffer at the phase's index) */
 static inline zdb::CGSTexBuffer *PhaseBuffer(int phase, int i)
@@ -416,7 +416,7 @@ bool LoadWorld(const char *database)
                 if (!strcmp(model->m_name, "worldmodel"))
                     worldmodel = model;
                 else if (result)
-                    LoadNodeVisuals(&archive, model);
+                    hookupVisuals(&archive, (zdb::CModel *)model);
             }
             if (result)
                 pAssetLib->m_model_buffer = archive.ReleaseDataBuffer();
@@ -434,7 +434,7 @@ bool LoadWorld(const char *database)
                 }
                 result = archive.Open(full_libname, -1, 1, 16, 0);
                 if (result)
-                    LoadNodeVisuals(&archive, worldmodel);
+                    hookupVisuals(&archive, (zdb::CModel *)worldmodel);
                 pAssetLib->m_socom2_38 = archive.ReleaseDataBuffer();
                 archive.Close(true);
             }

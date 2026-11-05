@@ -280,10 +280,6 @@ CTexture *CVisual::ResolveTextureName(_word128 *names, _word128 *select)
     return tex;
 }
 
-/* whether the views' buffers share their owners' counts (a byte in bss, 0x4B5010: set, SetBuffer
- * leaves the owner's count alone; not named) */
-extern "C" unsigned char data_004B5010;
-
 /* a texture found by name, the null texture's when it is missing, its handle and palette listed
  * (ours: SetBuffer's two lookups) */
 static inline CTexture *FindTexture(CDynTexList &list, const char *name)
@@ -303,7 +299,7 @@ static inline CTexture *FindTexture(CDynTexList &list, const char *name)
 }
 
 /* a view's VU buffer kept for this visual (SOCOM 1's SetBuffer, 0x3C38C0): its owner counted (unless
- * the flag at 0x4B5010 says not), the buffer stored for the view, and once per buffer (the head's
+ * m_noBufferRefs says not), the buffer stored for the view, and once per buffer (the head's
  * flag) the owner noted and the head's list made ready -- texture names (6) resolved, the select
  * before a blend list (3) shortened by one, a texture handle's (5) texture remembered, a blend list
  * (3) under a texture copied into a block of its own when it has entries (kept in the blend words)
@@ -323,7 +319,7 @@ static inline CTexture *FindTexture(CDynTexList &list, const char *name)
  * counters stay s4/s3/s1 (a vector reference or a pointer to data() the same) */
 void CVisual::SetBuffer(_word128 *buf, unsigned int vid, CVisBase *base)
 {
-    if (!data_004B5010)
+    if (!m_noBufferRefs)
         base->m_refs++;
 
     char *names = (char *)base->m_data;

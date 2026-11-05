@@ -547,18 +547,19 @@ public:
     static LOCAL_LIGHT localLightBuf[10];
     static CLight *localLightPtr[10];
     static int m_local_light_cnt;
+    /* set while a visual's level-of-detail views are trimmed (hookupVisuals' fallback key): SetBuffer
+     * then leaves the buffer's owner's count alone (0x4B5010, a bss byte right after decaldata; new in
+     * SOCOM II -- SOCOM 1's SetBuffer always counts -- the name ours) */
+    static unsigned char m_noBufferRefs;
     /* a decal unlinked from its view's list (SOCOM 1's, 0x3B37A0) */
     void RemoveDecal(class CDecal *decal);
     /* a decal projected onto the visual (SOCOM 1's, by name) */
     void ApplyDecalRender(CMatrix *mtw, CNode *node, float size, CPnt3D *pos, CPnt3D *normal,
                           CTexHandle *tex, CMatrix *uv);
-    /* a decal taken from a pool and appended to a view's list (SOCOM 1's, 0x3B3800; SOCOM II adds
-     * the last word, handed through to the decal) */
-    void AttachDecal(unsigned int vid, float size, unsigned int flags, struct AddonPoint **points,
-                     CTexHandle *tex, int extra);
-    /* (the same, as SOCOM II's caller 0x3B3AB0 and the set-up 0x3BECA0 show it: SOCOM II's new
-     * argument is a point after the size -- CDecal::AddDecal keeps it -- then SOCOM 1's flags, points
-     * and texture; the wep lane's round 32, vis_vu.cpp defines this one) */
+    /* a decal taken from a pool and appended to a view's list (SOCOM 1's, 0x3B3800; as SOCOM II's
+     * caller 0x3B3AB0 and the set-up 0x3BECA0 show it: SOCOM II's new argument is a point after the
+     * size -- CDecal::AddDecal keeps it -- then SOCOM 1's flags, points and texture; the wep lane's
+     * round 32, vis_vu.cpp defines it) */
     void AttachDecal(unsigned int vid, float size, CPnt3D *pos, unsigned int flags, struct AddonPoint **points,
                      CTexHandle *tex);
     /* a texture select's name resolved against the world's textures, the default one failing it:
