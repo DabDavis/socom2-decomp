@@ -305,6 +305,9 @@ public:
     /* the gravity's pull (SOCOM II's, the float at 0x48: 0x3D27B0, before the muzzle velocity's
      * getter; CZProjectile::PreTick scales the down vector by it; the name ours) */
     float GetGravity();
+    /* the muzzle velocity (SOCOM 1's GetMuzzleVelocity, the float at 0x44: 0x3D27C0, before
+     * GetImpactRadius as in SOCOM 1; CZProjectile::SetProjectile scales the direction by it) */
+    float GetMuzzleVelocity();
     /* the impact radius (SOCOM 1's GetImpactRadius, const, the float at 0x4C: 0x3D27D0, between
      * the muzzle velocity's getter and GetEffectiveRange as in SOCOM 1; CZProjectile::HandleImpact
      * scales it for the hit's AI noise) */
@@ -806,6 +809,10 @@ public:
     void SetVelW(const CPnt3D *vel);
     /* the shot made ready to fly (SOCOM 1's, 0x3CAF60) */
     void PreFireProjectile();
+    /* the shot set off (SOCOM 1's SetProjectile, 0x3CB1A0, without its two angles; CZWeapon's Fire
+     * calls it): false when a network grenade could not be made */
+    bool SetProjectile(zdb::CNode *owner, CZWeapon *weapon, CZAmmo *ammo, const CPnt3D *pos,
+                       const CPnt3D *dir, const CPnt3D *vel, int shooter, zdb::CModel *model);
     /* SOCOM II's: a hit on the projectile itself from another (CProjectileNodeEx hands it on; the
      * name ours) */
     void OnWeaponHit(zdb::IntersectStruct *hit, CZProjectile *projectile);

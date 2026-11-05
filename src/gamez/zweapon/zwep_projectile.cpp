@@ -37,7 +37,11 @@ extern CAiMaps AiMaps;
 class CZGrenadeState {
 public:
     static void UpdateLocalGrenade(CZProjectile *proj);
+    static int CreateLocalGrenade(CZProjectile *proj);
 };
+
+/* five items of a kind (zwep_ftsweapon.cpp's 0x3C5AC0, not named) */
+extern "C" bool func_003C5AC0(EQUIP_ITEM id);
 
 /* a pickup (OVL2's) */
 class CPickup {
@@ -246,6 +250,101 @@ void CZProjectile::Init()
     SetFlag20(false);
     m_c0 = -1;
     m_hasrested = 0;
+}
+
+/* a thrown shot of the player's made a network grenade, announced as created (SOCOM 1's inline; a
+ * person-hit shot makes none in SOCOM II) */
+static inline bool CreateNetGrenade(CZProjectile *p)
+{
+    if (!p->m_isplayer || p->m_lastHitWasPerson)
+        return false;
+    p->m_object_index = CZGrenadeState::CreateLocalGrenade(p);
+    if (p->m_object_index < 0)
+        return false;
+    p->m_grenadestate = CREATE;
+    CZGrenadeState::UpdateLocalGrenade(p);
+    return true;
+}
+
+/* a shot set off (SOCOM 1's SetProjectile, 0x3CB1A0, without the angles: SOCOM II marks five weapon
+ * classes' shots as tracers unless the item is one of five or none, turns the model to the start,
+ * gives item 159 its owner's rotation, holds item 185's launch still when it is not the player's,
+ * takes the timers from the weapon passed, and clears its own new members): the weapon and its
+ * range, the ammunition, the frame at the start, the velocity the muzzle's along the direction
+ * plus the carrier's, the model, the owner, the timers, the flags and the shot type; then fired
+ * (PreFireProjectile), and a thrown shot of the player's in a network game announced as a grenade
+ * -- false when that fails */
+bool CZProjectile::SetProjectile(CNode *owner, CZWeapon *weapon, CZAmmo *ammo, const CPnt3D *pos,
+                                 const CPnt3D *dir, const CPnt3D *vel, int shooter, CModel *model)
+{
+    m_weapon = weapon;
+    if (m_weapon)
+        m_currange = m_weapon->GetMaxRange();
+
+    bool tracer = false;
+    EQUIP_ITEM type = m_weapon->GetIDType();
+
+    if (type == 31 || type == 51 || type == 91 || type == 141 || type == 205) {
+        EQUIP_ITEM id = m_weapon->m_ID;
+
+        if (!func_003C5AC0(id) && id != 255)
+            tracer = true;
+    }
+    SetLastHitWasVolumetric(tracer);
+    m_ammo = ammo;
+    m_framestartpos = *pos;
+    if (m_shottype == ONE_FRAME_SHOTGUN)
+        SetModelOrientation(true, pos);
+    else if (m_shottype == ONE_FRAME)
+        SetModelOrientation(true, pos);
+    else
+        SetModelOrientation(false, pos);
+    if (owner && m_weapon->m_ID == 159 && m_instance) {
+        CPnt3D rot = CPnt3D::zero;
+
+        owner->GetRotation(&rot);
+        m_instance->SetRotation(&rot);
+    }
+    m_frameendpos = *pos;
+    m_startpos = *pos;
+    m_intersecthandle = -1;
+    if (type == 185 && !m_isplayer && !m_lastHitWasPerson && owner)
+        dir->Scale(0.0f, &m_vel);
+    else
+        dir->Scale(weapon->GetMuzzleVelocity(), &m_vel);
+    m_vel.Add(vel, &m_vel);
+    if (model)
+        m_instance->SetModel(model);
+    m_owner = owner;
+    m_time = weapon->GetTimer(0);
+    m_removaltime = weapon->GetTimer(1);
+    m_pickup = 0;
+    SetDone(false);
+    m_animinstance = 0;
+    m_shottype = NORMAL;
+    m_state = PROJECTILE_FLYOUT;
+    m_shooterID = shooter;
+    SetIsFirstHit(true);
+    SetEcho(false);
+    SetFlag7(false);
+    m_lastPlayerHitPos.x = 0.0f;
+    m_lastPlayerHitPos.y = 0.0f;
+    m_lastPlayerHitPos.z = 0.0f;
+    m_78 = 0;
+    m_restnode = 0;
+    m_98 = 0.0f;
+    SetFlag9(m_ammo->GetIgnoreExplosionDI());
+    if (m_weapon->IsDirectFire())
+        m_shottype = ONE_FRAME;
+    PreFireProjectile();
+
+    bool ok = true;
+
+    if (m_weapon && !m_weapon->IsDirectFire() && theNetwork.m_bNetwork && m_isplayer) {
+        if (!CreateNetGrenade(this))
+            ok = false;
+    }
+    return ok;
 }
 
 /* made ready to fly: a launcher's fire animation started on the node (SOCOM II's), the
