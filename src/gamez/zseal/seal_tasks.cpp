@@ -523,7 +523,10 @@ struct TASK_ENT {
         }
     }
     /* the entity: by the name until it is found, then by its id -- unless it carries bit 13 (new in
-     * SOCOM II), when the name is asked again each time; none for no name (inline; the name ours) */
+     * SOCOM II), when the name is asked again each time; none for no name (inline; the name ours).
+     * The name's entity a local of its own, copied to the result at once: where the result lives in
+     * a saved register the case's tests and reads stay on the call's v0 and the copy fills the first
+     * test's delay slot (CTInView::Tick 0x5D7FD0, the kit's round 49); one variable tests the copy */
     enum TYPE { TYPE_NONE = 0, TYPE_NAME = 1, TYPE_ID = 2 };
 
     CEntity *Get()
@@ -535,16 +538,18 @@ struct TASK_ENT {
         case TYPE_NONE:
             break;
         case TYPE_NAME: {
-            e = CEntity::GetEntityList().GetEntity(anim ? anim->GetName(m_name) : 0);
-            m_id = e ? e->m_id : CEntity::invalidId;
+            CEntity *n = CEntity::GetEntityList().GetEntity(anim ? anim->GetName(m_name) : 0);
+
+            e = n;
+            m_id = n ? n->m_id : CEntity::invalidId;
 
             /* preset, then cleared under two materialised tests: `else byId = byId;` keeps the
              * inner test a branch */
             bool byId = true;
-            bool gone = !(bool)e;
+            bool gone = !(bool)n;
 
             if (!gone) {
-                bool off = !(bool)e->m_bit13;
+                bool off = !(bool)n->m_bit13;
 
                 if (!off)
                     byId = false;
@@ -1991,17 +1996,23 @@ _zanim_cmd_hdr *CTInView::Parse(_zrdr *rdr)
 }
 
 /* the view cone as the controller keeps it -- seal_sensors.cpp's view of zseal.h's padded CSealCtrl
- * (SOCOM 1's CAiCone at 0x70, its ContainsPoint inlined) */
+ * (SOCOM 1's CAiCone at 0x70, its ContainsPoint inlined). The depth and its fraction of the height
+ * held in named floats of the inline (`d`, `k`): numbered with the inline's variables, before the
+ * vector's temporaries, the depth keeps the target's $f6 and the fraction's product its operand
+ * order (CTInView::Tick; seal_sensors.cpp's copy, m_dot read straight, is SensorTick's) */
 struct TASK_CONE {
     bool ContainsPoint(const CPnt3D *p)
     {
         p->Sub(&m_cone_pos, &vec);
-        m_dot = m_cone_dir.x * vec.x + m_cone_dir.y * vec.y + m_cone_dir.z * vec.z;
-        if (m_dot <= 0.0f || m_dot > m_height)
-            return false;
-        float r = m_point_radius + m_dot * m_inv_height * m_radius;
+        float d = m_cone_dir.x * vec.x + m_cone_dir.y * vec.y + m_cone_dir.z * vec.z;
 
-        if (vec.z * vec.z + (vec.x * vec.x + vec.y * vec.y) - m_dot * m_dot <= r * r)
+        m_dot = d;
+        if (d <= 0.0f || d > m_height)
+            return false;
+        float k = d * m_inv_height;
+        float r = m_point_radius + k * m_radius;
+
+        if (vec.z * vec.z + (vec.x * vec.x + vec.y * vec.y) - d * d <= r * r)
             return true;
         return false;
     }
@@ -2021,25 +2032,35 @@ struct TASK_CONECTRL {
     TASK_CONE m_view_cone;   // 0x70
 };
 
+/* a target list's end as the data plus the count read through the const size() (an inline of ours,
+ * standing for an end() the original's vector likely had: include/vector's end() measured that way
+ * loses 128 functions -- the MSL headers' round 30): a walk keeps the data pointer from its entry
+ * test and re-reads only the count each pass, through &m_targets in a register (CTInView::Tick) */
+inline CTargetList::iterator TaskTargetsEnd(CTargetList &l)
+{
+    CTarget *const p = l.data_ + l.size();
+
+    return CTargetList::iterator(p);
+}
+
 /* whether the viewer -- the task's SEAL, or the entity named if a SEAL (found three times over, as
  * CTSignal::Tick's: the SEAL, then its controller and its AI, unused but for the calls) -- holds the
  * item named and sees the target entity: in its targets and visible (bit 9), and for a player's SEAL
  * inside its view cone; or, for a team, any target of the team visible (OVL2 0x5D7FD0; SOCOM 1's
- * without the cone, the item test and the entities by name or id).
- * OPEN, 0x6AC against 0x6BC: every block but the team walk's end is the target's (the cone through
- * a controller local -- its fields addressed off the controller, as the target's s0 -- the result
- * preset after the three finds). THE WALK'S END: the target keeps &m_targets in a1 and the data
- * pointer from the entry test in v0, and re-reads only the SIZE every pass (`lw a3,4(a1)`, size*48
- * rebuilt) -- seal_aivehicle.cpp's 0x60F760 open shape: written in place MW re-reads the data and
- * keeps size*48 (0x6B4), through a reference or a pointer local, a const walk or an index it hoists
- * the whole end (0x6AC; an index 0x68C). And the numbering: the target colours the result s0, the
- * viewer s1 and dT s2 -- here dT, spill-picked last, takes s0 under every declaration order tried
- * (the result or the viewer first, preset or not; igreplay --move of either moves only the rest) */
+ * without the cone, the item test and the entities by name or id). The cone through a controller
+ * local (its fields addressed off the controller, as the target's s0), the result preset after the
+ * three finds. Byte-exact (the kit's round 49, open since round 48) by four pieces: THE WALK'S END
+ * through TaskTargetsEnd (above: the target keeps the data from the entry test in v0 and re-reads
+ * only the count, `lw a3,4(a1)` -- written in place, through a reference, a pointer local, a const
+ * walk or an index MW hoisted the whole end, 0x6AC, or re-read both, 0x6C4); THE BLOCK through
+ * TaskBlock<T>(hdr), numbered as a temporary (CTPlay::Tick's: the find's variables then take the
+ * target's s4-s1 and dT s2); TASK_ENT::Get's name lookup on a local of its own (the target's tests
+ * on v0, the result's copy in the delay slot); the cone's depth and fraction in named floats */
 bool CTInView::Tick(_zanim_cmd_hdr *hdr, float *dT)
 {
     CZSealBody *dest;
     CEntityCtrl *ctrl;
-    TASK_SEAL(CTInView);
+    TASK_SEAL_AS(CTInView, TaskBlock<CTInView>(hdr));
     dest = seal;
     ctrl = dest ? dest->m_control : 0;
     CSealCtrlAi *ai = dest ? SealAi(dest) : 0;
@@ -2075,7 +2096,7 @@ bool CTInView::Tick(_zanim_cmd_hdr *hdr, float *dT)
             } else {
                 CTargetList &targets = dest->m_targets;
 
-                for (CTargetList::iterator t = targets.begin(); t != targets.end(); t++) {
+                for (CTargetList::iterator t = targets.begin(); t != TaskTargetsEnd(targets); t++) {
                     if (cmd->m_team & t->m_ent->m_team) {
                         done = (t->m_flags & 0x200) != 0;
                         if (done)
