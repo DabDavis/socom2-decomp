@@ -175,8 +175,9 @@ public:
     unsigned char m_paused;   // 0x2
     unsigned char m_state;   // 0x3
     unsigned int m_activation : 3;   // 0x4: 3 bits in SOCOM II (RestartClones masks 7; SOCOM 1's 2)
-    unsigned int m_network_anim : 1;   // 0x4
-    unsigned int m_socom2_bit4 : 1;   // 0x4: SOCOM II's -- func_0026CAA0 sets node_search_scope at bit 5
+    unsigned int m_socom2_bit3 : 1;   // 0x4: SOCOM II's, not read yet (the name ours)
+    unsigned int m_network_anim : 1;   // 0x4: bit 4 -- Activate tests it before sending (func_0026CAA0
+                                       // sets node_search_scope at bit 5)
     unsigned int node_search_scope : 2;   // 0x4
     unsigned int m_auto_copy_anim : 1;   // 0x4
     unsigned int m_auto_add_to_world : 1;   // 0x4
@@ -283,7 +284,7 @@ public:
     int Load(zar::CZAR &archive);
     float GetHealth();
     CNode *GetNode(int index, bool create);
-    CNode *GetRootNode();
+    CNode *GetRootNode(bool create);
     CPnt3D *GetArgPnt3D()
     {
         return m_arg_list ? m_arg_list->GetPnt3D(CZAnimArg::TYPE_PNT3D) : 0;
@@ -635,6 +636,8 @@ public:
         m_socom2_42 = 0;
         m_socom2_11 = 0;
     }
+    /* an activated anim's scheduler task (SOCOM 1's, 0x268930: a draft's) */
+    static bool AnimSchedulerTick(float dT, void *data);
     void StopSequence(const char *name);
     void ActivateSequence(const char *name);
     void CmdSet(int index);
