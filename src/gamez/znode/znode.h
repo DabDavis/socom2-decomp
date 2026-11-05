@@ -524,6 +524,9 @@ public:
     /* whether a level-of-detail band draws at a squared distance, its fade into the opacity
      * (SOCOM 1's; `this` unread) */
     bool DrawLOD(CLOD_band *band, float d, float *opacity);
+    /* the visual's VU packets built and sent (SOCOM 1's, 0x3B4580: vis_vu.cpp's, not written; the
+     * pipe's CAlpha::Render calls it for each translucent visual -- the world lane round 18) */
+    void VuUpdate();
     /* the local lights: two quadwords each -- position and squared range, colour and the inverse of
      * the falloff -- the lights and their count (SOCOM 1's statics, 320 and 40 bytes). The buffer is
      * an array of CPnt4D: __sinit_vis_vu.cpp builds it with one __construct_array of twenty CPnt4D()

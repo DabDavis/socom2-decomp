@@ -117,12 +117,18 @@ static inline bool IsMsgId(const char *name)
     return name && *name == '_';
 }
 
-/* a name's bucket: its first and middle characters summed */
+/* a name's bucket: its first and middle characters summed. The sign test an if/else assigning h (UI
+ * round 25): the ternary leaves the join unpadded with the second modulo's shift in the first arm's
+ * `b` delay slot, the target pads the join and leaves the slot empty (CLocTable::Find(name)) */
 static inline int HashName(const char *name)
 {
     int h = name[0] + name[strlen(name) / 2];
 
-    return h < 0 ? -h % 17 : h % 17;
+    if (h < 0)
+        h = -h % 17;
+    else
+        h = h % 17;
+    return h;
 }
 
 /* a table's entries (a plain vector: Load inlines the table's constructor whole, which a vector
@@ -173,17 +179,24 @@ public:
     void Load(const char *name, LANGUAGE lang);
     unsigned short GetId(const char *name, const char *table);
     const char *GetString(int id, const char *table);
-    /* a table by name, or 0 */
+    /* a table by name, or 0 (the walk's end through Last(): see there) */
     CLocTable *FindTable(const char *name)
     {
         if (name) {
-            for (iterator i = begin(); i != end(); ++i) {
+            for (iterator i = begin(); i != Last(); ++i) {
                 if (!strcmp(name, (*i)->m_name))
                     return *i;
             }
         }
         return 0;
     }
+    /* the end built straight from the storage (the online lobby's round 20 Last()): through
+     * include/vector's end() -- four inline levels high since the MSL headers' round 24 -- FindTable's
+     * `i != end()` is six deep where Find(int, const char *) expands it, so at -inline level=5 MW keeps
+     * end()'s body and calls the raw end and __iter; through Last() the walk inlines whole at 5, as the
+     * target's (data + size * 4 at each test), and the unit's object is the depth-6 stand-in's
+     * (`#pragma inline_depth(6)`, which it no longer carries) */
+    iterator Last() { return iterator((elem_t *)this->data_ + this->size_); }
 
     LOCENTRY *m_last;   // 0xc: the entry found last
 };
@@ -245,16 +258,16 @@ LOCENTRY *CLocTable::Find(int id)
     return &m_entries[0];
 }
 
-/* the entry with this name: the one found last, else its bucket walked.
- * OPEN, 2 instructions long: the target tests the '_' on the byte the empty test loaded (`xori
- * v0,v1,0x5f`), where IsMsgId re-extends it (dsll32/dsra32) -- as the target's own
- * CStringTables::Find(name) does. No change from the test written out, a bool local, name[0],
- * `*name == 0` or the two tests joined. The bucket walk is `m_hash[h].end()` re-read each pass (the
- * size's and the data's addresses in two saved registers) and the hash's modulo in each arm of the
- * sign test (two divs), both as the target */
+/* the entry with this name: the one found last, else its bucket walked. The empty test `*name == 0`
+ * (UI round 25): the target tests the '_' on the byte that test loaded (`xori v0,v1,0x5f`) -- `!*name`
+ * makes IsMsgId re-extend it (dsll32/dsra32), as the target's CStringTables::Find(name) does (the
+ * UI's round 21 rule for a byte: `!x` then `x == k` re-extends, `x == 0` reuses it as loaded). The
+ * bucket walk is `m_hash[h].end()` re-read each pass (the size's and the data's addresses in two
+ * saved registers) and the hash's modulo in each arm of the sign test (two divs), both as the
+ * target's */
 LOCENTRY *CLocTable::Find(const char *name)
 {
-    if (!name || !*name)
+    if (!name || *name == 0)
         return 0;
     if (!IsMsgId(name))
         return 0;
@@ -308,12 +321,15 @@ LANGUAGE LanguageFromName(const char *name)
 /* the table read from its rdr: the null entry, then each entry (ID, MSG_ID, LOCALIZED, SCALE,
  * OFFSET), sorted by id and hashed by name, the table named, and the strings moved into a buffer
  * of their own */
-/* OPEN, 2 instructions short: the null entry's `max < 0` folds to bgez here where the target keeps
- * `slt at,v0,zero; beqz at` -- the second Add's shape with the id's register as $zero, as if the 0
- * were a variable when the compare was lowered (the max through a local, a reference- or value-
- * returning helper, a `const int &` parameter: no change or worse); and the target hoists the
- * temporary's msgid address (sp+164) into s8 for the loop. Item(j) with an int j, the MSG_ID found
- * twice and the OFFSET pair's byte-wise `= {0}` are the target's */
+/* OPEN, 1 instruction (the target's size since UI round 25, every other word the target's but the
+ * three alignment nops that follow the shift): the null entry's `max < 0` folds to bgez here where
+ * the target keeps `slt at,v0,zero; beqz at` -- the second Add's shape with the id's register as
+ * $zero, as if the 0 were a variable when the compare was lowered (the max through a local, a
+ * reference- or value-returning helper, a `const int &` parameter: no change or worse; round 25: the
+ * id an `unsigned short`, a zero local, the loop's address-taken id declared first -- its store then
+ * kept --, or n, i or j as the null entry's id with a second definition later: no change). The
+ * relocation test reads the table's bytes used (m_bytes, +0x18: round 25), not its size. Item(j)
+ * with an int j, the MSG_ID found twice and the OFFSET pair's byte-wise `= {0}` are the target's */
 void CLocTable::Read(const char *name, _zrdr *rdr)
 {
     Add(0, "", "");
@@ -351,8 +367,8 @@ void CLocTable::Read(const char *name, _zrdr *rdr)
         m_hash[HashName(p->m_msgid)].push_back(p);
     }
     sprintf(m_name, "%s", name);
-    if (m_strings.m_reserve < 0x5c00) {
-        unsigned int size = m_strings.m_reserve < 0x800 ? 0x800 : 0x5c00;
+    if (m_strings.m_bytes < 0x5c00) {
+        unsigned int size = m_strings.m_bytes < 0x800 ? 0x800 : 0x5c00;
         int delta = m_strings.Relocate(_malloc(size, 0, 0), size, true);
 
         for (std::vector<LOCENTRY>::iterator e = m_entries.begin(); e != m_entries.end(); ++e) {
@@ -425,7 +441,13 @@ void CStringTables::Load(const char *name, LANGUAGE lang)
  * subclass makes CLocTable() six levels high and Load (0x2C0 bytes, byte-exact with a plain vector)
  * then calls the members' constructors out of line; include/vector's class-vector constructor (4
  * levels) leaves no room for both at -inline level=5. The walk -- `next` its own variable, stepped
- * before the compare and set from erase -- is the target's */
+ * before the compare and set from erase -- is the target's. Round 25, measured again (a LEVEL, not
+ * the engine core's refusal propagation: nothing here is refused): a subclass with everything
+ * implicit, with a user-declared constructor or with a user-declared destructor all give Unload
+ * byte-exact and cut CLocTable() in Load one level (CLocEntries(), Item, Count and vector's reserve
+ * forwarder called out of line); deriving from __vector_imp directly gives the plain vector's two
+ * tests. CLocTable() is then six high (itself, the subclass's, vector's, __vector_imp's, the
+ * deleter's and the capacity's constructors) */
 void CStringTables::Unload(const char *name)
 {
     if (name) {
@@ -518,12 +540,18 @@ LOCENTRY *CStringTables::Find(int id, const char *table)
     return e;
 }
 
-/* the entry with this name: the one found last, else in the named table or in each.
- * OPEN, 3 instructions long: one saved register more -- the target shares e's (s0) with the table
- * walk's iterator and the parameter table's (s1) with the last walk's, where MW gives e a register
- * of its own here; Find(id, table), the same code without the name tests, is byte-exact */
+/* the entry with this name: the one found last, else in the named table or in each. The last walk
+ * through a named pointer declared ahead of e, compared through the iterators (UI round 25: a
+ * NUMBERING stand-in): MW colours this function's over-K variables highest-index first (the game
+ * states' round 34), and the walk's scalarised iterator -- a temporary, numbered after every named
+ * local -- took s0 before e could, so e needed a register of its own (one saved register more, 3
+ * instructions long). A named pointer declared first is numbered below e: e is coloured first and
+ * shares s0 with FindTable's iterator, the parameter table s1 with the walk, as the target's (read off
+ * MW's colouring with the igdump tools). Compared raw (`p != end`) MW branches straight on the
+ * pointers, 6 instructions short; Find(id, table), where e crosses no call, keeps the plain walk */
 LOCENTRY *CStringTables::Find(const char *name, const char *table)
 {
+    CLocTable **p;
     LOCENTRY *e = 0;
 
     if (!name || !*name)
@@ -544,25 +572,11 @@ LOCENTRY *CStringTables::Find(const char *name, const char *table)
         }
         return 0;
     }
-    for (iterator i = begin(); i != end(); ++i) {
-        if ((e = (*i)->Find(name)) != 0) {
+    for (p = begin().m_p; iterator(p) != end(); ++p) {
+        if ((e = (*p)->Find(name)) != 0) {
             m_last = e;
             return e;
         }
     }
     return e;
 }
-
-/* THE UNIT INLINES TO DEPTH 6, not the flags' 5 (a pragma acts through its state at the unit's
- * end; the MSL headers round 24). include/vector's pointer iterator is the image's since that
- * round -- end() four high: the raw end, the pod's end, data() -- and a walk testing `i != end()`
- * inside an inline is then six deep where its caller inlines it: at 5 MW keeps end()'s body and
- * calls the raw end and __iter. At 6 CStringTables::Find(int, const char *) inlines FindTable's
- * walk whole, as the target, with the source as it was written against the three-high end, and
- * every function of the unit scores as it did at 5 (measured over the unit). The end taken into a
- * local first (round 23's suggested refit) does not give the target: in fts_missionlist.cpp Find's
- * own copy then colours its end, flag and element differently (9 off) and in util_loc.cpp
- * FindTable's callers come out 12 bytes short. So the original's walks are the ones written here
- * and its level deeper than 5 (README "Level 6, or 8?")
- */
-#pragma inline_depth(6)
