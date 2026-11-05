@@ -14,8 +14,6 @@
 #include "../../gamez/zinput/zinput.h"
 #include "hud_weaponsel.h"
 
-/* the selector's own update (no row named yet) */
-extern "C" void func_0023E030(CMPWeaponSel *sel, float dT);
 /* a button's state as the controller unit reads it (OVL1 0x2C64E0, by address: hud_tcmtree.cpp's
  * TCM_BUTTON, a byte) */
 extern "C" KEY_STATE func_002C64E0(int button, CPad *pad);
@@ -97,6 +95,7 @@ public:
     static CZSealBody *GetHUDOwner();
     void Add2D(C2D *p2d, int phase, bool add_to_back);
     static void HudText_to_upper(char *instr);
+    static PNT4D m_hud_textcolor;   /* the HUD's text colour */
 
     unsigned char _0[0x498];
     C2DFont *m_myfont;   // 0x498
@@ -190,8 +189,24 @@ static float s_gap = 10.0f;
 static float s_rowheight = 14.0f;
 static float s_slotheight = 64.0f;
 static float s_db8 = 225.0f;
+/* the category page's title backdrop: its top and height (CMPWeaponCategories::Init, 0x23D860) */
+static float s_cattitley = 105.0f;
+static float s_cattitleheight = 35.0f;
+/* the layout's further places (.data 0x3DCDD0-0x3DCE20, 8 bytes apart: variables, read with lwc1;
+ * the names ours, by address but the title's) -- the selector's title backdrop top and height (its
+ * Init and Layout: the category page's are the two above, the same values), the title's scale and
+ * line, the cursor bar's top, height and step, the slots' left and first line (Layout) */
+static float s_dd0 = 1.0f;
+static float s_dd8 = 129.0f;
+static float s_de0 = 18.0f;
+static float s_de8 = 146.0f;
 static float s_titley = 105.0f;
+static float s_df8 = 129.0f;
 static float s_titleheight = 35.0f;
+static float s_e08 = 1.0f;
+static float s_e10 = 20.0f;
+static float s_e18 = 10.0f;
+static float s_e20 = 159.0f;
 
 /* the pages' colours and places, computed by the unit's initialiser (0x3FF7F0) in this order --
  * bss 0x4146C0-0x4147AB; the names ours, their users (0x23CD20, 0x23D860, 0x23E030, 0x240600)
@@ -415,7 +430,7 @@ void CMPWeaponSel::Scroll(signed char dir)
     SelectedSlot *slot = &m_selected[m_list.m_34];
 
     m_categories.SetWeapon(slot->m_weapon);
-    func_0023E030(this, 0.0f);
+    Layout(0.0f);
 }
 #pragma auto_inline reset
 
@@ -498,7 +513,7 @@ void CMPWeaponSel::On()
         m_bitmap1.On();
         m_bitmap2.On();
         m_bitmap3.On();
-        func_0023E030(this, 0.0f);
+        Layout(0.0f);
     }
 }
 
@@ -547,11 +562,45 @@ void CMPWeaponSel::Open()
     m_list.m_34 = -1;
     Scroll(2);
     On();
-    func_0023E030(this, 0.0f);
+    Layout(0.0f);
     owner->m_ctrl->SetMenuState(stateWeaponSel, false);
     m_categories.m_list.m_owner = this;
     m_categories.m_owner = this;
     m_state = SEL_LIST;
+}
+
+/* the selector laid out: the title's backdrop, the list's and the cursor's bar at its slot, each
+ * coloured and translucent; the five slots placed down the list, grey when they cannot be chosen,
+ * else in the HUD's text colour; the title centred over its backdrop (0x23E030; the name ours --
+ * Scroll, On and Open call it with 0) */
+void CMPWeaponSel::Layout(float dT)
+{
+    m_bitmap1.SetPos((int)s_backx, (int)s_titley, (int)(s_backx + s_width), (int)(s_titley + s_titleheight));
+    m_bitmap1.SetColor(s_color1.x, s_color1.y, s_color1.z);
+    m_bitmap1.SetIsTrans(true);
+    m_bitmap2.SetPos((int)s_listx, (int)s_listy, (int)(s_listx + s_width), (int)(s_listy + s_listheight));
+    m_bitmap2.SetColor(s_color2.x, s_color2.y, s_color2.z);
+    m_bitmap2.SetIsTrans(true);
+    m_bitmap3.SetColor(s_color4.x, s_color4.y, s_color4.z);
+    m_bitmap3.SetIsTrans(true);
+
+    float y = s_de8 + (float)m_list.m_34 * s_e10;
+
+    m_bitmap3.SetPos((int)s_768, (int)y, (int)(s_768 + s_750), (int)(y + s_de0));
+    for (int i = 0; i < 5; i++) {
+        m_selected[i].SetPos(s_e18, s_e20 + s_e10 * (float)i);
+        if (!CanSelect(i)) {
+            m_selected[i].SetColor(40.0f, 40.0f, 40.0f);
+        } else {
+            PNT4D color = CHUD::m_hud_textcolor;
+
+            m_selected[i].SetColor(color.x, color.y, color.z);
+        }
+    }
+    m_title.Load(s_e08, "WEAPON EXCHANGE", theHUD->m_myfont, s_backx + s_width / 2.0f, s_df8, true);
+    m_title.SetColor(s_color6.x, s_color6.y, s_color6.z);
+    m_title.m_isCentered = 1;
+    m_title.UpdatePos();
 }
 
 /* the five selected slots' weapons given to the HUD owner's character: the weapons it has set up
@@ -703,7 +752,7 @@ void CMPWeaponCategories::Init()
 
     zdb::CTexHandle *tex = zdb::CAssetMgr::m_assets.GetTexHandle("newweapnbkrnd.tif");
 
-    m_bitmap1.Load(s_708, s_titley, s_708 + s_700, s_titley + s_titleheight, tex);
+    m_bitmap1.Load(s_708, s_cattitley, s_708 + s_700, s_cattitley + s_cattitleheight, tex);
     m_bitmap1.SetUV(0.0f, 1.0f, 1.0f, 0.0f);
     m_bitmap2.Load(s_catx, s_caty, s_catx + s_700, s_caty + s_db8, tex);
     m_bitmap2.SetUV(0.0f, 1.0f, 1.0f, 0.0f);

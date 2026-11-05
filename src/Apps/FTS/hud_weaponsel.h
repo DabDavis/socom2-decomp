@@ -371,6 +371,8 @@ public:
     void Scroll(signed char dir);
     /* the list's buttons (0x23EBC0; the name ours) */
     void HandlePad(CPad *pad);
+    /* the selector laid out (0x23E030; the name ours) */
+    void Layout(float dT);
     /* the five selected slots' weapons given to the HUD owner's character (0x23E5E0; the name ours) */
     void SetCharacterWeapons();
     /* opened on the list, the slots filled from the owner's weapons (0x23E370; the name ours) */
