@@ -182,8 +182,10 @@ public:
     void Layout(float t);
     /* the tree unit's (hud_tcmtree.cpp; the names ours) */
     void Tick(CPad *pad, float dt);
+    /* the open menu's input (0x235D40, Tick's mode 1) */
+    void HandleOpenPad(CPad *pad, float dt);
     void TalkTick(float dt);
-    int Select(const char *name);
+    bool Select(const char *name);
     void Next();
     void ShowRoot();
     void Open();

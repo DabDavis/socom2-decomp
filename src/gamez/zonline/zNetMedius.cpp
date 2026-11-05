@@ -4,7 +4,18 @@
  * 0x2DF560-0x2E1CDF: after int_material.cpp (the zdb-world lane's, to 0x2DF554), its static
  * initialiser 0x401E30 constructing theLobby (0x2E0710) and registering its destructor (0x2E0630);
  * the queue's deque instances (0x2E07B0-0x2E1BB0) close it, before the rooms' unit (0x2E1CE0).
- * Only some of it so far. Defined in reverse of their image order (-inline deferred). */
+ * Only some of it so far. Defined in reverse of their image order (-inline deferred).
+ * The deque instances still open are include/deque's (the MSL lane's); measured in the online
+ * lane's round 23 (build/scratch/onl/dq1.py, dqb.py): the cdeque begin() 0x2E0CB0 wants the scaled
+ * start (start_ << 2, a code-generator temporary here, v41 in MW's dump) numbered between the
+ * data_/start_ loads' temporaries and the in-memory iterator's three field-address temporaries
+ * (igreplay --want: v41 at 34.5 or 35.5, nothing else) -- make_iterator's p, data or byte offset in
+ * a local, or `&data_[n]`, all keep 14; the image's tail generates the deque's copy constructor
+ * first (the lobby's constructor, the last own function generated, calls it), then its callees in
+ * reverse call order, so __deque_buf(const Allocator &) 0x2E09A0 is generated before the
+ * temporary's ~cdeque 0x2E0A10, cdeque(const Allocator &) 0x2E0D50 and the allocators 0x2E0D40 /
+ * 0x2E0D70 and calls them all, where this object generates ~cdeque first and inlines it (an
+ * out-of-class ~cdeque: still inlined, ~__deque_buf 0x2E19E0 lost) */
 
 #include <stdio.h>
 #include "zonline.h"

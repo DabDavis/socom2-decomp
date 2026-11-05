@@ -119,14 +119,10 @@ public:
 /* the one compass (SOCOM II's, OVL1 bss 0x436390; the name is ours) */
 extern CCompass theCompass;
 
-/* a string, 12 bytes in SOCOM II (MSL 3.0's basic_string; SOCOM 1's was a pointer) */
-class CSaferStr {
-public:
-    CSaferStr();
-    ~CSaferStr();
-
-    unsigned int m_rep[3];
-};
+/* a string, 12 bytes in SOCOM II (MSL 3.0's basic_string; SOCOM 1's was a pointer): SOCOM 1's zutil.h
+ * class, the one declaration zsav_lobby.h shares (zutil/saferstr.h, the MSL headers round 30 -- an
+ * opaque stand-in until then, which kept fts_mission.cpp from including ai.h) */
+#include "../zutil/saferstr.h"
 
 /* what an entity knows of another (SOCOM 1's DWARF, 0x28 bytes; SOCOM II's is 0x30 -- FindTarget
  * steps 48 -- and keeps its flags in a word it masks by hand: GetRange tests and sets bit 0 with
