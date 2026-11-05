@@ -1158,39 +1158,26 @@ bool CWind::CmdTickWind(_zanim_cmd_hdr *hdr, float *dt)
     return true;
 }
 
-/* a value kept below a bound, and above one: the selects the target makes (by value; the names
- * ours -- MSL's min and max return references, which select addresses) */
-template <class T>
-inline T WindMin(const T &a, const T &b)
-{
-    return b < a ? b : a;
-}
-
-template <class T>
-inline T WindMax(const T &a, const T &b)
-{
-    return a < b ? b : a;
-}
-
 /* an offset wandered at random by its rate, kept below its upper bound and above its lower (ours:
- * CWind::Tick's three offsets, each through references -- MW reloads the offset after each store) */
+ * CWind::Tick's three offsets, each through references -- MW reloads the offset after each store;
+ * written in place it forwards the stored value, 0x404). `off > lo ? off : lo` is MW's `!(off <=
+ * lo)`: `c.le.s off,lo; bc1t` to the bound's arm, the offset's arm first, as the target (and SOCOM
+ * 1's) -- `off <= lo ? lo : off` puts the bound's arm first */
 static inline void WindOffset(float &off, const float &vel, const float &lo, const float &hi, float dt)
 {
     off += dt * (vel * (2.0f * (4.656613e-10f * rand()) - 1.0f));
     off = off < hi ? off : hi;
-    off = off <= lo ? lo : off;
+    off = off > lo ? off : lo;
 }
 
 /* the gusts: each offset wandered at random by its rate and kept in its range; the wind vector from
  * the azimuth, the zenith (a speed below zero turning it about) and the speed (SOCOM 1's).
- * OPEN, 0x414 of 0x418: each offset wandered and clamped through a helper taking it and its bounds
- * by reference -- the target reads each offset afresh after every store to it, as this now does
- * (written in place MW forwards the stored value: 0x404). Left: the lower bound's test, which the
- * target makes as `c.le.s off,lo; bc1t` to the bound's arm with the offset's arm first (here
- * bc1f, the arms the other way: `off <= lo ? lo : off`, `off > lo ? off : lo`, `!(off <= lo) ?`, a
- * negated if/else and WindMax all tried -- the world lane's round 21, build/scratch/wld/v_wind.py),
- * and a saved s1 more in the target's frame (the wind's z address, s0 + 8, held from the cosf on).
- * Tried before: the selects returning references (address selects) */
+ * Byte-exact (the world lane round 23; open since round 14): the zenith clamped by value (the
+ * bounds lui immediates -- through `const T &` selects they were read from memory), the sum
+ * declared azimuth, zenith, speed (their loads' registers), the wind's z through a reference local
+ * (its address s0 + 8 in a saved register from the cosf on: s1, the frame's extra quad), y written
+ * straight into the vector and the scale's test `y >= 0` read back from it (MW forwards the stored
+ * value: a local y moves the compare up and takes other registers) */
 void CWind::Tick(float dt)
 {
     if (m_TickGoal)
@@ -1198,16 +1185,16 @@ void CWind::Tick(float dt)
     WindOffset(m_AzimuthOffset, m_AzimuthOffsetVelocity, m_MinAzimuthOffset, m_MaxAzimuthOffset, dt);
     WindOffset(m_ZenithOffset, m_ZenithOffsetVelocity, m_MinZenithOffset, m_MaxZenithOffset, dt);
     WindOffset(m_SpeedOffset, m_SpeedOffsetVelocity, m_MinSpeedOffset, m_MaxSpeedOffset, dt);
-    float speed = m_Speed + m_SpeedOffset;
     float azimuth = m_Azimuth + m_AzimuthOffset;
     float zenith = m_Zenith + m_ZenithOffset;
+    float speed = m_Speed + m_SpeedOffset;
 
     if (speed < 0.0f) {
         speed = -speed;
         azimuth += 3.1415927f;
     }
-    zenith = WindMin(90.0f, zenith);
-    zenith = WindMax(-90.0f, zenith);
+    zenith = zenith < 90.0f ? zenith : 90.0f;
+    zenith = zenith > -90.0f ? zenith : -90.0f;
     if (azimuth < 0.0f) {
         while (azimuth < 0.0f)
             azimuth += 6.2831855f;
@@ -1215,17 +1202,17 @@ void CWind::Tick(float dt)
         while (azimuth >= 6.2831855f)
             azimuth -= 6.2831855f;
     m_Wind.x = sinf(azimuth);
-    m_Wind.z = cosf(azimuth);
-    float y = 0.011111111f * zenith;
+    float &z = m_Wind.z;
+    z = cosf(azimuth);
 
     m_Wind.x = -m_Wind.x;
     m_Wind.y = 0.0f;
-    m_Wind.z = -m_Wind.z;
-    m_Wind.y = y;
-    float scale = y < 0.0f ? 1.0f + y : 1.0f - y;
+    z = -z;
+    m_Wind.y = 0.011111111f * zenith;
+    float scale = m_Wind.y >= 0.0f ? 1.0f - m_Wind.y : 1.0f + m_Wind.y;
 
     m_Wind.x *= scale;
-    m_Wind.z *= scale;
+    z *= scale;
     m_Wind = (CPnt4D &)m_Wind * speed;
 }
 
