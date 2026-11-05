@@ -1,6 +1,8 @@
-/* hud_objectives.cpp -- the objectives list (OVL1 0x205C40-0x208254): SOCOM 1's unit (its DWARF names
- * it, Z:\dev\Apps\FTS\hud_objectives.cpp). IsPlayingAnimation, Draw, Tick, Init and the implicit
- * destructor so far, all byte-exact. Defined in reverse of their image order (-inline deferred). */
+/* hud_objectives.cpp -- the objectives list (OVL1 0x205C40-0x208ACB): SOCOM 1's unit (its DWARF names
+ * it, Z:\dev\Apps\FTS\hud_objectives.cpp). Every CZObjectiveList member byte-exact (FreeList,
+ * RefreshList and AddObjective since the HUD's round 47, with FreeList's FreeVector pieces); its
+ * tail is vector<bool>'s out-of-line members (0x207F60-0x208A8B) and the two array destructors.
+ * Defined in reverse of their image order (-inline deferred). */
 
 #include <algorithm>
 #include <list>
@@ -39,7 +41,11 @@ public:
 /* how fast the selected name pulses (data 0x3DC460: a variable, read with lwc1) */
 static float s_pulserate = 1000.0f;
 /* an unselected name's alpha (data 0x3DC450) */
+/* a check box's alpha (data 0x3DC458) */
+static float s_checktrans = 96.0f;
 static float s_unselectedtrans = 80.0f;
+/* a completed objective's name's alpha (data 0x3DC448) */
+static float s_completetrans = 128.0f;
 /* the map frame's alpha (data 0x3DC440: a variable, read with lwc1) */
 static float s_frametrans = 128.0f;
 
@@ -121,7 +127,26 @@ public:
         unsigned int n_;
     };
 
+    /* a position as SOCOM 1's DWARF has it: the vector and the index */
+    class iterator {
+    public:
+        iterator(vector *v, unsigned int n) : vec_(v), n_(n) {}
+        iterator &operator+=(int n)
+        {
+            n_ += n;
+            return *this;
+        }
+
+        vector *vec_;
+        unsigned int n_;
+    };
+
     vector() : capacity_(0), size_(0), data_(0) {}
+    iterator begin() { return iterator(this, 0); }
+    iterator end() { return iterator(this, size_); }
+    void push_back(const bool &x) { insert(end(), x); }
+    iterator insert(iterator position, const bool &x);
+    void insert(iterator position, unsigned int n, const bool &x);
     ~vector() { if (data_) operator delete(data_); }
     reference operator[](unsigned int n) { return reference(*this, n); }
     void clear() { size_ = 0; }
@@ -134,6 +159,14 @@ public:
 };
 
 #pragma auto_inline off
+/* one value put in before a position, the position given back (0x207FD0, SOCOM 1's) */
+vector<bool, allocator<bool> >::iterator vector<bool, allocator<bool> >::insert(iterator position,
+                                                                                const bool &x)
+{
+    insert(position, 1, x);
+    return begin() += position.n_;
+}
+
 /* the three words traded (0x207F90, SOCOM 1's exact; FreeVector's swap, called) */
 void vector<bool, allocator<bool> >::swap(vector &x)
 {
@@ -331,13 +364,79 @@ void CZObjectiveList::Tick(float dT)
     }
 }
 
+/* an objective's name and check box made and listed, at the given height: its name indented
+ * further for a secondary objective, greyed if it cannot be done, green when done, blue when
+ * marked; whether it can be selected (not done, possible and shown) recorded; nothing shown if
+ * the objective is not displayed (SOCOM 1's; the mark and the display test SOCOM II's) */
+/* (the two bools declared at the top are numbered there, ahead of bSecondary -- SOCOM 1's
+ * locals; defined where they are computed, they swap three saved registers; the texture picked
+ * before the corners are summed, as the target's branch comes first) */
+bool CZObjectiveList::AddObjective(const CMissionObjectiveCam &objective, float ypos)
+{
+    bool bComplete;
+    bool bValid;
+    C2DString *string = new C2DString;
+    C2DBitmap *bitmap = new C2DBitmap;
+
+    m_objectivecompletedbitmap.push_back(bitmap);
+    m_objectivenames.push_back(string);
+    bool bSecondary = objective.m_isSecondary;
+
+    string->Load(0.765f, objective.m_name, theHUD->m_myfont, 10.0f + (float)(bSecondary ? 45 : 30),
+                 ypos, true);
+    bComplete = objective.IsComplete();
+    bValid = !objective.IsInvalid();
+    bool bMarked = objective.m_bit4;
+    bool bSelectable = !bComplete && bValid && objective.IsDisplayOn();
+
+    m_vecSelectable.push_back(bSelectable);
+    if (!objective.IsDisplayOn()) {
+        string->Off();
+        bitmap->Off();
+        return false;
+    }
+    float fXOffset = (float)(bSecondary ? 25 : 10);
+    zdb::CTexHandle *tex = bComplete ? m_checktex : m_checkboxtex;
+    float fLeftX = 10.0f + fXOffset;
+    float fTopY = 1.0f + (-13.0f + ypos);
+
+    bitmap->Load(fLeftX, fTopY, 15.0f + fLeftX, 15.0f + fTopY, tex);
+    if (bMarked) {
+        string->SetColor(g_colSelected.x, g_colSelected.y, g_colSelected.z);
+        string->SetTrans(s_unselectedtrans);
+        bitmap->SetColor(g_colSelected);
+        bitmap->SetTrans(s_checktrans);
+    } else if (bComplete) {
+        string->SetColor(g_colComplete.x, g_colComplete.y, g_colComplete.z);
+        string->SetTrans(s_completetrans);
+        bitmap->SetColor(g_colComplete);
+        bitmap->SetTrans(s_checktrans);
+    } else if (!bValid) {
+        string->SetColor(g_colUnavailable.x, g_colUnavailable.y, g_colUnavailable.z);
+        string->SetTrans(s_unselectedtrans);
+        bitmap->SetColor(g_colUnavailable);
+        bitmap->SetTrans(s_checktrans);
+    } else {
+        string->SetColor(g_colNormal.x, g_colNormal.y, g_colNormal.z);
+        string->SetTrans(s_unselectedtrans);
+        bitmap->SetColor(g_colNormal);
+        bitmap->SetTrans(s_checktrans);
+    }
+    push_back(bitmap);
+    push_back(string);
+    return true;
+}
+
 /* the list rebuilt: freed (its vectors kept), the statics laid out again, an entry added per
  * objective 15 apart from 104 down; the camera held before selected again if it is still
  * selectable, else the first objective that is not secondary and is selectable, else on from
- * the last (SOCOM 1's, the held camera SOCOM II's) */
+ * the last (SOCOM 1's, the held camera SOCOM II's). The walks are const_iterators over a const
+ * reference (SOCOM 1's const tail() and generic_iterator<1>): plain iterators lose the begin/end
+ * temporaries. The held camera read through GetCurrentObjectiveRetainer(), auto-inlined, is
+ * numbered after the named locals and takes s2 (read straight off the member it takes s4) */
 void CZObjectiveList::RefreshList()
 {
-    CMissionObjectiveCam *retained = m_cur_selected_objective;
+    CMissionObjectiveCam *retained = GetCurrentObjectiveRetainer();
 
     FreeList(false);
     RefreshStatics();
