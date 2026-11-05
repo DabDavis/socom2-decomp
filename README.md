@@ -2212,6 +2212,32 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     the multiply by the global, `a * s * g` the global first; in `a > b ? a - b : b - a` b is loaded first; 13-bit
     unsigned bitfields compare with sltu, cast to (int) with slt (CSealCtrl::SlideTick 0x566940, SOCOM 1's with ClearGoal
     inlined; the level-2 alert record 0x558030).
+- **Tells from completing the MSL headers, round 29** (the deque's converter built, the list's own insert measured, remove_if;
+  probes build/p29/, scratch build/scratch/msl-r29/, untracked -- dqv.py/dqvars29.py, algv.py/algvars29.py, lv_vars.py):
+  - THE POINTER DEQUE CONVERTS THROUGH A CONVERTER OF ITS OWN: std::__convert_iterator (SOCOM 1's MSL name for its
+    converter) with *, ++ and != OUT OF CLASS, wrapping deque<T *>'s own __const_iterator -- the base const_iterator's
+    fields and code with its operators IN CLASS -- built from the base's const_iterators in init's converting dispatch
+    (begin() / end() / init unchanged); the circular buffer keeps Metrowerks::__convert_iterator, its operators in class
+    and inlined (0x3341C0). The rdr editor's do_assign 0x334440 (open since round 18) and its converter's != 0x334860,
+    ++ 0x3348E0 and * 0x334940 byte-exact and named; zrdr_edit.cpp stops emitting the base const_iterator's ++ and *
+    (the vid stack's own 0x3B83D0 / 0x3B8430 still match from vis_vu.cpp, round 27's linker argument met). Over every
+    hand-written unit +4, nothing lost (the two `gone` are zrdr_edit.cpp's copies of those two rows);
+  - TWO BY-VALUE LEVELS KEEP BOTH COPIES OVER AN ITERATOR WHOSE OPERATORS ARE IN CLASS: the converter's * as `return
+    deref(i_);` with `static T deref(Iterator i) { return convert()(i); }` copies the wrapped iterator twice -- FPU words
+    from `this` to sp+32, the functor's empty temporary (`sb zero`), lq/sq to sp+0 -- as the target's; round 27's same
+    two levels over the out-of-class base const_iterator folded to one copy; a named copy (`Iterator i = i_;`) is the
+    target's size but copies member by member (lw / sw, 14 off);
+  - a const_iterator of deque<T *>'s own DERIVED from the base's and returned by begin() / end() copies the base
+    subobject loads-first (12 off) and shrinks the rdr init to 0xB0: the converted walk's iterator is a class of its
+    own, built only in the converting path;
+  - THE LIST'S OWN insert(position, x), measured, not applied: `iterator insert(iterator position, const T &x) { return
+    __list_deleter<T, Allocator>::insert(position, x); }` in list<T> gives the kit's snoozer 0x5CD8F0 and the graph
+    queue's 0x2D1D50 byte-exact under list<T>'s name (their stand-in classes' inserts dropped), +0 / -1 over every
+    hand-written unit: LoadVehicles 0x2B2E50's position copy goes a level deeper, below the entity walk's end copy
+    (4 instructions); ten AddSpawn refits tried (include/list's comment), and a deeper const end() makes it 0x5D0;
+  - remove_if's walkers (0x50F670 / 0x352500) stay 4 off: by value under 3.0b52, 3.0b50 and 3.0b38 alike MW copies
+    last first; MSL's free find_if, a non-static search, two by-value levels, a search not declared inline -- each the
+    same 4 or worse (include/algorithm's comment).
 - **Tells from completing the MSL headers, round 28** (the list's base begin(), the states' string stand-in, the converter;
   probes and scratch in build/scratch/msl-r28/, untracked):
   - THE LIST'S ORIGINAL begin() is `iterator begin() { return iterator(base::begin()); }` (SOCOM 1's CGTree::Destroy calls
@@ -11808,9 +11834,10 @@ What is open across lanes, and what comes next:
   destructor (C2DPoly's deleter), __vector_imp::resize out of line (CPool), and the pod vector's
   end() reusing begin()'s load (AddPalette, DeleteChildren; the zdb world's round 6
   measured `return data() + size_;`: +4, but CCharacterType::Create one level too tall -- ~CAssetLib
-  matches since the MSL headers' round 27, its destructor's data_ read through data()), and the pointer
-  deques' converter (its ++ inlines the wrapped iterator's ++ that the vid stack's do_assign calls
-  out of line: the MSL headers' round 27, include/deque).
+  matches since the MSL headers' round 27, its destructor's data_ read through data()); the pointer
+  deques' converter is in since the MSL headers' round 29 (std::__convert_iterator over deque<T *>'s own
+  __const_iterator: the rdr editor's do_assign and its three pieces), and the list's own insert(position,
+  x) is measured, not applied (round 29: +0 / -1, LoadVehicles).
 - **zMath** (0x306670-0x30954C, 47 of 54): CMatrix::SetRotate, CQuat::Align, CBits::Resize,
   CPnt3D::Reflect, CBBox::GetIntersect and the two DistToVectors. **zcamera**: CCamera::Update
   (13 instructions, the near plane's VU0 temporaries' stack offsets). **ZAnim**: the big handlers
