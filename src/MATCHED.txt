@@ -6247,10 +6247,14 @@
 0x00365210 PreGetSprPacket__23CDblBufTextureRelocatorFPQ23zdb10CTexHandle
 0x003653C0 Init__23CDblBufTextureRelocatorFv
 0x003654A0 func_003654A0
+0x00365A00 SwitchMenu__9CGameMenuFPc
 0x00366730 PrepModels__9CGameMenuFRC14CGameDlgDesign
 0x00366940 TickMPEG__9CGameMenuFv
 0x00366A00 RestartBackgroundMPEG__9CGameMenuFPCc
 0x00366B10 HaltBackgroundMPEG__9CGameMenuFv
+0x00366B60 MakeButtonActive__9CGameMenuFPCc
+0x00366D70 MakePrevButtonActive__9CGameMenuFb
+0x003670D0 MakeNextButtonActive__9CGameMenuFb
 0x00367430 LoadDesign__9CGameMenuFPCcP9CZAnimZAR
 0x00367670 __dt__Q23std52vector<10ActionItem,Q23std23allocator<10ActionItem>>Fv
 0x003676D0 __dt__Q23std58vector<13CDesignDlgObj,Q23std26allocator<13CDesignDlgObj>>Fv
@@ -6267,6 +6271,7 @@
 0x00368630 GetReaderFileName__9CGameMenuFv
 0x00369170 DrawForeplane__9CGameMenuFv
 0x003691C0 Draw2dOnly__9CGameMenuFv
+0x00369210 Clear__9CGameMenuFv
 0x003696D0 Add2dNode__9CGameMenuFP13CDesignDlgObj
 0x00369880 UiLoadCountSound__FP9CGameMenu
 0x003698C0 __dt__9CGameMenuFv
@@ -6645,9 +6650,10 @@
 0x00387A20 Copy__17CHProgressBarSpecFv
 0x00387A90 __ct__10CImageSpecFR10CImageSpec
 0x00387C70 Copy__14CSliderBarSpecFv
-0x00387F60 func_00387F60
+0x00387CF0 Copy__14CUIListBoxSpecFv
+0x00387F60 __ct__Q23std48vector<P8ListItem,Q23std21allocator<P8ListItem>>FRCQ23std48vector<P8ListItem,Q23std21allocator<P8ListItem>>
 0x00387F90 __ct__6CPnt3DFRC6CPnt3D
-0x00387FB0 func_00387FB0
+0x00387FB0 __ct__Q23std54vector<P10ColumnData,Q23std24allocator<P10ColumnData>>FRCQ23std54vector<P10ColumnData,Q23std24allocator<P10ColumnData>>
 0x00387FE0 CreateDisplayObj__18CHandlerButtonSpecCFP7C2DFontPQ23zdb16CTextureRelocMgr
 0x00388080 Copy__18CHandlerButtonSpecFv
 0x003880F0 __dt__18CHandlerButtonSpecFv
@@ -6744,6 +6750,7 @@
 0x0038CB80 func_0038CB80
 0x0038CB90 GetCurKey__13CSoftKeyboardCFv
 0x0038CC50 FindKeyProps__13CSoftKeyboardFRC7CSkbKey
+0x0038CCA0 __dt__13CSoftKeyboardFv
 0x0038D130 __dt__12CSkbBgPiecesFv
 0x0038D1A0 __dt__11CSkbCapLookFv
 0x0038D4E0 ZuiUnInit__Fv
@@ -6902,6 +6909,7 @@
 0x003978C0 func_003978C0
 0x003978D0 func_003978D0
 0x00397BC0 SkbFindSounds__Fv
+0x00397D30 ReadCapLook__8CSkbLookFUcP5_zrdrPCc
 0x00397FE0 resize__Q23std62__vector_imp<11CSkbBgPiece,Q23std24allocator<11CSkbBgPiece>,0>FUi
 0x00398910 __ct__11CSkbBgPieceFRC11CSkbBgPiece
 0x003989E0 __dt__11CSkbBmpRowsFv
@@ -7085,6 +7093,7 @@
 0x003A3890 __dt__Q23std48vector<P8LOCENTRY,Q23std21allocator<P8LOCENTRY>>Fv
 0x003A3900 Load__13CStringTablesFPCc8LANGUAGE
 0x003A3BC0 __ct__Q23std48vector<P8LOCENTRY,Q23std21allocator<P8LOCENTRY>>Fv
+0x003A3BE0 Read__9CLocTableFPCcP5_zrdr
 0x003A40E0 LanguageFromName__FPCc
 0x003A41F0 Find__9CLocTableFPCc
 0x003A43A0 Find__9CLocTableFi

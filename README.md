@@ -2065,6 +2065,26 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the UI, round 27** (CGameMenu's button walks, SwitchMenu and Clear, ~CSoftKeyboard, CUIListBoxSpec::Copy,
+  ReadCapLook, CLocTable::Read):
+  - a list iterator assigned again later stays in memory even for its first, initialised walk -- each unrolled `++`
+    steps through a slot of its own (CGameMenu::MakeButtonActive 0x366B60, MakePrevButtonActive / MakeNextButtonActive,
+    named by SOCOM 1's order); an index saved after a walk bounded by the same member is numbered among the loop
+    optimiser's temporaries, after the end's -- declared before the walk, it and the end swap s1 / s2; one counter reused
+    for two walks renumbers the second walk's range late;
+  - a plain `return;` after a search loop sends its empty test to that return's `b`, an else-if jumps straight to the
+    epilogue; `x <= -1` gives `slti at,x,0`, `x < 0` a bgez; `id > max ? id : max` keeps `slt at,max,zero` when id is the
+    constant 0, `max < id` folds to bgez and the if-form pads the join;
+  - a member array wrapped in a class of its own gets a this-test before `__destroy_arr` in an inlined implicit
+    destructor (~CSoftKeyboard 0x38CCA0, open since round 26); assigning a struct whose members are class types
+    (CInit<int,0>) copies each word through $f0, plain ints with lw / sw; six IPNT2D members copy two words at a time, an
+    `IPNT2D[2]` member four; an erase called through an inline helper puts its temporaries below the walk's own; a lerp
+    written as an inline keeps `0 - x` as a sub.s from a zero register;
+  - defining a class's key function (CUIListBoxSpec::Copy 0x387CF0) makes the unit emit its vtable, its inline virtuals
+    and the member copies its implicit copy constructor calls -- zui_cleanup.cpp now emits ~CUIListBoxSpec, GetType,
+    CPnt3D's copy constructor (no unit emitted it at level 5 before) and the two pointer-vector copy constructors
+    (0x387F60 / 0x387FB0, named); CLocTable::Read 0x3A3BE0 (open since round 8); CGameMenu::Tick 0x3654C0, HandlePad
+    0x368650 and CFileCD::BuildTOC 0x39DFD0 named by SOCOM 1's calls, unwritten.
 - **Tells from the HUD, round 54** (CReco::AdjustVolume, CFlareElement::Load, CMPInfoBox::Tick; the queued respells):
   - MW LAYS OUT THE FRAME TOP-DOWN AND ALIGNS A STACK OBJECT OF 8-15 BYTES TO 8, ONE OF 16 OR MORE TO 16: a slot the
     target "reserves and never touches" can be a smaller struct's alignment padding or the tail of an array read with a
