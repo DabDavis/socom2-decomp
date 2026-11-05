@@ -735,9 +735,11 @@ void CTurret::Rotate(float dT)
     }
 }
 
-/* the AI's target (ai_target.cpp's class, OVL2): its sighting clock and the aim's spread */
+/* the AI's target (ai_target.cpp's class, OVL2): its sighting clock, the aim's spread and its
+ * tick (0x60A460: kept current, dropped once it no longer counts) */
 class CAiTarget {
 public:
+    void Tick(CEntity *self, float dT);
     float GetTimeSinceLastSighting() const;
     void ModifyAimDir(CPnt3D *dir, float error, float limit);
 };
@@ -876,21 +878,35 @@ extern "C" const float data_003E0850;
  * direction's heading against the yaw joint's -z axis, its elevation against the pitch joint's
  * rows -- each nothing once on it, slowed (the cross product, clamped) within ten degrees, else
  * the full step toward it -- times the definition's rates.
- * OPEN, 2 instructions long (written in the weapons' round 24): the yaw joint's -z axis is copied
- * through one pointer and negated in place, the target reading and writing its three fields
- * sp-relative (y, x, z: loads, negs, stores) where MW here hoists &z.y and &z.z into a0/a1 ahead
- * of the copy and so cannot batch the loads; the registers follow. Settled on the way: the sign
- * step tests the cross product still in its register (a `cross` variable the clamp's copy starts
- * from) and is `cross >= 0 ? 1 : -1` (the target's bc1t to -1); `cross < 0 ? -1 : 1` or an if/else
- * branch the other way (11 more). Tried for the negation: three statements (y, x, z or x, y, z),
- * the three-float constructor, an inline Neg(CPnt3D *), the axis out of an inline returning it by
- * value (the row or the z axis) -- the same two addresses or worse; assigned, it scalarises (38) */
+ * Settled on the way: the sign step tests the cross product still in its register (a `cross`
+ * variable the clamp's copy starts from) and is `cross >= 0 ? 1 : -1` (the target's bc1t to -1);
+ * `cross < 0 ? -1 : 1` or an if/else branch the other way (11 more). The weapons' round 25, by the
+ * engine core's round-15 rule (an address-taken local read twice keeps its field addresses in
+ * registers unless one reader goes through a reference inline): the axis negated in place through
+ * AimNeg3(float *, const CPnt3D &) reads and writes it sp-relative, the target's size (round 24's
+ * forms -- three statements, the three-float constructor, a pointer inline, the axis returned by
+ * value -- kept &z.y/&z.z in a0/a1, 2 instructions long; a reference-returning or field-wise
+ * reference inline stays long); the cosine declared ahead of the sine gives the target's f22/f21,
+ * the negated sine and cosine named floats its f5/f4.
+ * OPEN, 19 instructions, the target's size: the negation's schedule -- the target loads y, x, z,
+ * stores y, x, z and forwards z.z to the dot (`mov.s`), reloading only z.x; here the stores end on
+ * y and both are reloaded (the inline's declaration and store orders change nothing) -- and the
+ * pitch half's d.y in f5 where the target has f3 */
+static inline void AimNeg3(float *r, const CPnt3D &p)
+{
+    float y = -p.y, x = -p.x, zz = -p.z;
+
+    r[1] = y;
+    r[0] = x;
+    r[2] = zz;
+}
+
 extern "C" bool func_003A8910(CTurret *t, const CPnt3D *dir, float *yaw, float *pitch)
 {
     CPnt3D d = *dir;
     float len = sqrtf(d.x * d.x + d.z * d.z);
-    float s = 0.0f;
     float c;
+    float s = 0.0f;
 
     if (s == len)
         c = 1.0f;
@@ -903,9 +919,11 @@ extern "C" bool func_003A8910(CTurret *t, const CPnt3D *dir, float *yaw, float *
     m.SetIdentity();
     CPnt3D z = *(CPnt3D *)t->m_yawNode->m_matrix.m_matrix[2];
 
-    z = CPnt3D(-z.x, -z.y, -z.z);
-    float dot = z.x * -s + z.z * -c;
-    float cross = z.z * -s - z.x * -c;
+    AimNeg3((float *)&z, z);
+    float ns = -s;
+    float nc = -c;
+    float dot = z.x * ns + z.z * nc;
+    float cross = z.z * ns - z.x * nc;
     float yv = cross;
 
     if (dot > data_003E07E8)
@@ -944,6 +962,43 @@ extern "C" bool func_003A8910(CTurret *t, const CPnt3D *dir, float *yaw, float *
  * result in a local, begin() in a local, this->end(), a copy of the pointer */
 /* the AI's target's validity test (OVL2 0x60A850, the kit lane's) */
 extern "C" bool func_0060A850(void *target);
+
+/* the line of fire to the target clear (OVL2 0x609DF0, ai_util.cpp's) */
+namespace ai {
+bool CheckLineOfFire(const CEntity *self, const CTarget *target, float radius);
+}
+
+/* the AI's fire control (new in SOCOM II, not named: 0x3A88C0 runs it each PreTick after the aim):
+ * the target kept current; with the AI on and a target held, the cycle restarted (and no shot)
+ * while the aim lies outside the parameters' cone (the turret's AI parameters at 0x204), else a
+ * shot due while the cycle is up and its clock run down; a due shot with a clear line of fire sets
+ * the fire bit (4), and a cycle run out is restarted. The cone's cosine is a local of its own: in
+ * the compare MW expands the inline Dot ahead of the call (f21 saved, 0x14 long) whichever side the
+ * call is written on; `fire = timer > marker` gives the target's li/move pair (`!(<=)` adds xori) */
+extern "C" void func_003A8030(CTurret *t, float dT)
+{
+    ((CAiTarget *)t->m_target)->Tick(t, dT);
+    if (t->m_flags & 8) {
+        bool held = func_0060A850(t->m_target) && (t->m_targetFlags & 0x200);
+
+        if (held) {
+            bool fire;
+            float cone = ((AI_PARAMS *)((char *)t + 0x204))->GetAimConeCos();
+
+            if (Dot(t->m_398, t->m_38c) < cone) {
+                t->m_trigger.Restart();
+                fire = false;
+            } else {
+                fire = t->m_trigger.m_timer > t->m_trigger.m_marker;
+                t->m_trigger.m_timer -= dT;
+            }
+            if (fire && ai::CheckLineOfFire(t, (CTarget *)t->m_target, 10.0f))
+                t->m_flags |= 4;
+            if (t->m_trigger.m_timer <= 0.0f)
+                t->m_trigger.Restart();
+        }
+    }
+}
 
 /* the turret's target in sight: a valid target held (bit 9), or seen within the last three seconds
  * (new in SOCOM II, not named: CTTurret::Tick asks it; the SEALs' hostile anchor makes the same
