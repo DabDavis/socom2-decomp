@@ -83,7 +83,6 @@ void func_00295F20(CAppCamera *cam, CMatrix &cTw, float dT);   /* (mode 1's came
 void func_00296F10(CAppCamera *cam, CMatrix &cTw, float dT);   /* (the tether's: APTeatherCam's place) */
 void func_00295B00(CAppCamera *cam, CMatrix &cTw, float dT);   /* (first person's: APFirstPersonCam's place) */
 void func_002964F0(CAppCamera *cam, CMatrix &cTw, float dT);
-void func_005AA6E0(CZSealBody *seal, CPnt3D *pos, CMatrix &cTw);   /* CZSealBody::CheckDIShoot */
 }
 
 /* the character's tuning (SOCOM 1's CharacterDynamics: only the peek's rate here) */
@@ -341,7 +340,10 @@ _zanim_cmd_hdr *CAppCamera::CmdParseShake(_zrdr *rdr)
  * after it (35.5 on); a caller's named level is copy-propagated away (its node dead), and the
  * camera a named local is coalesced with the call's a0 -- the level an enum field, a local copy in
  * Shake (unsigned char, int), a cast in either, a dead first definition: the same 36
- * (build/scratch/core/v_shake*.py, the core lane's round-17 scratch) */
+ * (build/scratch/core/v_shake*.py, the core lane's round-17 scratch). Round 18: the test and the call
+ * in a free inline over the level, the command or a const reference to the level (each 0x34: Shake no
+ * longer inlined -- one level more), the level a reference local (53), the command a reference or cast
+ * through a leaf template (36) */
 void CAppCamera::CmdBeginShake(_zanim_cmd_hdr *hdr)
 {
     if (appCamera)
@@ -919,7 +921,7 @@ void CAppCamera::Tick(float dT)
         }
         m_camera->SetMatrix(&camMatrix);
         if (OurGameName == 1 && m_bc && m_camera_mode != cam_mode_6)
-            func_005AA6E0(m_bc, &m_wPos, camMatrix);
+            m_bc->CheckDIShoot(&m_wPos, &camMatrix);
         if (m_wiggle_echo)
             TickCameraWiggle(dT, m_camera);
     }

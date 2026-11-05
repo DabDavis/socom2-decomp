@@ -100,12 +100,12 @@ CMaterial_Object::~CMaterial_Object()
 
 /* the palette: a key per material, each read whole (0x3C bytes) with its texture's name, the name
  * resolved into its handle -- the fallback texture when the asset manager has none -- and freed
- * (SOCOM II's own: SOCOM 1's read the bands whole from one key). OPEN, 20 instructions, registers
- * only: the target gives the name s0, the loop's two strength-reduced offsets s1/s2 and the band s3
- * (the name numbered after the compiler's induction temporaries); here the offsets take s0/s1, the
- * band s2 and the name s3. Tried (build/scratch/wep/v_matread.py): every local declared at the top,
- * key ahead of the archive (ScrollingTexture's order), the band a reference, the name declared ahead
- * of the band, at the loop's top or the function's -- all 20 or 31 */
+ * (SOCOM II's own: SOCOM 1's read the bands whole from one key). Byte-exact since the weapons'
+ * round 30: the target gives the name s0, numbered after the loop's strength-reduced induction
+ * temporaries (s1-s3) -- the name read again in the test (`if (band->m_name)`), MW's IRO makes the
+ * two reads one CSE temporary created after those and copy-propagates the local into it (as it does
+ * the band into @2253); a named local, an inline's local or parameter, or `(name = ...) != 0` are
+ * all numbered ahead of the temporaries (20 off) */
 void CMaterial_Object::Read(CSaveLoad *io)
 {
     if (io) {
@@ -130,7 +130,7 @@ void CMaterial_Object::Read(CSaveLoad *io)
                     if (band->m_ownsName) {
                         char *name = band->m_name;
 
-                        if (name)
+                        if (band->m_name)
                             band->m_tex = CAssetMgr::m_assets.GetTexHandle(name);
                         if (!band->m_tex)
                             band->m_tex = CVisual::m_specMapTexture;
