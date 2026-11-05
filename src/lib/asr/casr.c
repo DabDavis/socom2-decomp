@@ -991,18 +991,22 @@ int casrGetState(CASR *c, int *state)
     return 0;
 }
 
-/* OPEN: the target sets the result 0 before testing ctx, keeps the type it loads in a1 and
- * stores data before heap; the guard and single-exit shapes tried miss by 18-25 words. */
+/* One guard per test, each its own `return 0` (round 25c, open since round 2b): the two returns
+ * share one `move v0,zero`, which the target issues at the entry ("the result 0 before testing
+ * ctx"); with one `||` guard 0x68, a single exit 0x64, a result variable 16 words. The heap is
+ * stored first in the source (the scheduler reverses the pair). */
 IMPORT *casrImportContext(void *heap, int *ctx)
 {
-    IMPORT *p = 0;
+    IMPORT *p;
 
-    if (ctx != 0 && *ctx == 6) {
-        p = heap_Alloc(heap, sizeof(IMPORT));
-        if (p != 0) {
-            p->heap = heap;
-            p->data = ctx;
-        }
+    if (ctx == 0)
+        return 0;
+    if (*ctx != 6)
+        return 0;
+    p = heap_Alloc(heap, sizeof(IMPORT));
+    if (p != 0) {
+        p->heap = heap;
+        p->data = ctx;
     }
     return p;
 }
