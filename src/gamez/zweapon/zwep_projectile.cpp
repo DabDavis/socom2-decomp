@@ -71,6 +71,12 @@ extern "C" void func_002707C0(CZAnim *anim, int b);
 /* the tracers' speed (0x3E1570, initialised data; not named) */
 extern "C" float data_003E1570;
 
+/* the person material's index (0x3E14F8; SOCOM 1's zwep::personMaterialId): a shot does not come
+ * to rest on a person */
+namespace zwep {
+extern int personMaterialId;
+}
+
 /* SOCOM 1's tracer pool: a static nothing reads in SOCOM II, still built and torn down by the
  * initialiser (its destructor is the copy at 0x2CD710, linked from an earlier unit) */
 class CZTracerPool {
@@ -540,6 +546,82 @@ PROJECTILE_HIT CZProjectile::DoMiss(float dT, CPnt3D *pos)
         return HIT_SPENT_4;
     }
     return HIT_MISSED;
+}
+
+/* a bounce off the hit (SOCOM 1's HandleBounce, its time unread): a liquid or a material the shot
+ * passes (penetration 0.99 or more) plays the weapon's hit anim there, damps the velocity by the
+ * material's elasticity and lets the shot go on just past the hit (2). Anything else stops it (1):
+ * the node it rests on kept unless a person, the velocity reflected off the hit (none once rested)
+ * and damped -- by three quarters more on its first hit -- the hit anim played for a fast one
+ * not under water; a slow one coming to rest when the bounce turned it upward (a person undamps it
+ * instead), the point handed back just off the hit along its normal, or its frame's start once it
+ * had rested already. Either way the hit node's extension is told. The target's shapes: the
+ * material's index unsigned (GetMaterialEx's range test on it, the copy in the delay slot); the
+ * hit point handed to ActivateArg BY VALUE through its `...` (MW copies it to a temporary and
+ * passes the address: a named copy's slot sits above the temporaries, the target's among them);
+ * `down` initialised by a ternary (numbered after the inline's temporary that holds the material,
+ * so it takes s3 and the material s4 -- a plain bool is numbered first and swaps them); the
+ * point off the hit a named local (its initializer's operator+ and operator* temporaries
+ * allocated first, as the target's frame has them -- assigned straight into *pos they follow) */
+PROJECTILE_HIT CZProjectile::HandleBounce(IntersectStruct *hit, float dT, CPnt3D *pos)
+{
+    unsigned int mat = hit->GetMaterial();
+    CMaterialEx *ex = CMaterialExArray::GetMaterialEx(mat);
+    PROJECTILE_HIT r;
+
+    if (ex && ((bool)ex->m_liquid != false || !(ex->m_penetration < 0.99f))) {
+        CZAnim *anim = m_weapon->GetHitAnim(mat);
+
+        if (anim && CZWeapon::m_allowImpactAnimations)
+            anim->ActivateArg(1, 5, hit->m_pos, 0);
+        m_vel = m_vel * ex->m_elasticity;
+        *pos = hit->m_pos + m_vel * 0.0001f;
+        r = HIT_GOES_ON;
+    } else {
+        if (hit->m_node && zwep::personMaterialId != hit->GetMaterial())
+            m_restnode = hit->m_node;
+        bool down = m_vel.y < 0.0f ? true : false;
+        CPnt3D v = m_hasrested ? CPnt3D::zero : m_vel.Reflect(&hit->m_norm);
+        float e = 0.0f;
+
+        if (ex)
+            e = ex->m_elasticity;
+        if (m_isfirsthit) {
+            m_vel = v * (0.75f * e);
+            SetIsFirstHit(false);
+        } else
+            m_vel = v * e;
+        float speed = m_vel.Length();
+        CZAnim *anim = m_weapon->GetHitAnim(mat);
+
+        if (anim && (bool)ex->m_underwater == false && CZWeapon::m_allowImpactAnimations &&
+            speed > 10.0f)
+            anim->ActivateArg(1, 5, hit->m_pos, 0);
+        unsigned char rested = m_hasrested;
+
+        if (speed < 5.0f && m_state != PROJECTILE_AT_REST) {
+            if (zwep::personMaterialId != hit->GetMaterial()) {
+                if (down && m_vel.y > 0.0f) {
+                    m_vel.x = m_vel.y = m_vel.z = 0.0f;
+                    SetProjectileState(PROJECTILE_AT_REST, false);
+                }
+            } else
+                m_vel = m_vel * (1.0f / e);
+        }
+        if (!m_hasrested || !rested) {
+            CPnt3D n = hit->m_norm;
+
+            n.Normalize();
+            CPnt3D off = hit->m_pos + n * 0.1f;
+
+            *pos = off;
+        } else
+            *pos = m_framestartpos;
+        r = HIT_STOPPED;
+    }
+    if (hit->m_node && hit->m_node->m_nodeEx)
+        hit->m_node->m_nodeEx->OnWeaponHit(hit->m_node, hit, this);
+    return r;
 }
 
 /* (a material's resistance to a blast is int_material.h's CMaterialEx::m_penetration, PENETRATION) */
