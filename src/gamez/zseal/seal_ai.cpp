@@ -1197,7 +1197,7 @@ void CSealCtrlAi::SetAiAware(float value, unsigned int flags)
     AI_AWARE now = GetAiAware();
 
     if (old != now)
-        m_5c8 = 0;
+        m_5c8 = 0.0f;
     if (now >= AIA_GENERAL && m_aware.m_goal < data_0065C700[AIA_GENERAL])
         m_aware.m_goal = data_0065C6E0[AIA_GENERAL];
 }
@@ -4072,8 +4072,64 @@ struct REMOTE_NET_STATE {
 };
 
 extern "C" {
-/* a kill credited to a SEAL's stats (OVL2 0x545480, seal.cpp's span) */
-void func_00545480(CSealStats *stats);
+/* a rescue credited to a SEAL's stats -- its counter 14 and three points to its score (OVL2 0x545480,
+ * seal.cpp's span: the SEAL in a1, which both callers hand it) */
+void func_00545480(CSealStats *stats, CZSealBody *seal);
+}
+
+/* the AI's post-tick (OVL2 0x56F970, slot 0x3C: SOCOM 1's AI had no override): the sightings ticked
+ * while bit 19 is set; the stance kept up to the SEAL's state, an asked stance taken once its delay runs
+ * out; the desired-stance timer's expiry asks the SEAL for stance 2; a follower whose team has bit 17,
+ * once it stands in a region of type 1, rescued by its master -- the rescued state pushed with the
+ * region and the master's id, and the rescue credited to the master (0x545480) -- the master forgotten
+ * when it is not a SEAL; the first time the alertness is DIRECTION with 8 s in its band (SPECIFIC with
+ * 5 s) the player's counter 16 goes up by 2 (by 3). Byte-exact (round 51): the bit's test a
+ * branch-built bool (`m_aibit19 ? true : false`: sltu, then beqz -- the bit tested in place, a (bool)
+ * cast or a bool local each 4 off) */
+bool CSealCtrlAi::PostTick(float dT)
+{
+    CZSealBody *seal = (CZSealBody *)m_entity;
+
+    if (m_aibit19 ? true : false)
+        SensorTick(dT);
+    m_stance = CZSealBody::GetStanceFromState((SEAL_STATE)seal->m_state, m_stance);
+    if (m_stance != m_stance_asked && m_stance_asked != -1) {
+        m_280 -= dT;
+        if (m_280 < 0.0f)
+            DoSetStance(m_stance_asked);
+    }
+    if (TickGoalTimer(m_stance_timer, dT))
+        seal->m_desiredStance = (SEAL_STANCE)2;
+    if (m_follow_master_id != CEntity::invalidId && (seal->m_team & 0x20000)) {
+        CAiMap::region *region = AiMaps.GetRegionTypeContainer((CAiMap::region::TYPE)1, seal->m_mapLoc);
+
+        if (region) {
+            CZSealBody *master = AsSeal(CEntity::m_list.GetEntityById(m_follow_master_id));
+
+            if (master) {
+                if (SetAiState(AI_STATE_RESCUED, 0)) {
+                    CAiState *st = GetAiState();
+                    CAiSRescued *r = st && st->m_state == AI_STATE_RESCUED ? (CAiSRescued *)st : 0;
+
+                    r->m_58 = (unsigned int)region;
+                    r->m_5c = m_follow_master_id;
+                    r->SetActive(true);
+                    func_00545480(&master->m_stats, master);
+                }
+            } else
+                m_follow_master_id = CEntity::invalidId;
+        }
+    }
+    if (!m_aibit18) {
+        if (GetAiAware() == AIA_DIRECTION && !(m_5c8 < 8.0f)) {
+            m_aibit18 = true;
+            ftsGetPlayer()->m_stats.m_count[16] += 2;
+        } else if (GetAiAware() == AIA_SPECIFIC && !(m_5c8 < 5.0f)) {
+            m_aibit18 = true;
+            ftsGetPlayer()->m_stats.m_count[16] += 3;
+        }
+    }
+    return true;
 }
 
 extern "C" float floorf(float);
@@ -4173,7 +4229,7 @@ void CRemoteCtrl::SetAiNetState(unsigned int state)
             CZSealBody *killer = AsSeal(CEntity::m_list.GetEntityById(cur.m_id));
 
             if (killer)
-                func_00545480(&killer->m_stats);
+                func_00545480(&killer->m_stats, killer);
         }
         }
     }
