@@ -14,12 +14,11 @@ int ChangeThreadPriority(int tid, int prio);
 unsigned int strlen(const char *s);
 
 /* unnamed yet (SOCOM 1's names in the comments, where it had them) */
-void func_003AFF30(bool wait, bool swap);        /* zVid_Swap */
-
 void func_001EABD0(int argc, char **argv);       /* (the command line taken up) */
 void func_001EAC80();                            /* (the command line let go of) */
 }
 
+void zVid_Swap(bool flip, bool restore);   /* 0x3AFF30 */
 void InitSystemTuners();   /* 0x38A7A0 */
 void zSysInit();   /* 0x34F960 */
 void zUtilInit(const char *);   /* 0x39C700 */
@@ -91,7 +90,7 @@ bool COurGame::StartEngine()
     bool started = false;
 
     if (CGame::StartEngine()) {
-        func_003AFF30(false, true);
+        zVid_Swap(false, true);
         zdb::CTexManager::m_texmanager.doAddBuffer("default", 0.0f, 1.0f);
         theMission.Init();
         InitSystemTuners();

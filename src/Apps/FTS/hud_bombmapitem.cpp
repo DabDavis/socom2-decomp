@@ -75,7 +75,13 @@ CZMPBombMapItem::CZMPBombMapItem(zdb::CNode *node)
  * own claymore Tick sums into $f23 as ours does). Round 48 tried, none moving it: `float size =
  * (m_size += k)`, a chained `size = m_size = m_size + k`, the sum first then stored, size declared
  * first / at function scope for both branches, the growth in a local, a sum local copied, a
- * reference to m_size, an inline grower returning the new size, the store after the copy */
+ * reference to m_size, an inline grower returning the new size, the store after the copy. Round 56:
+ * the 53 are one instruction's shift -- the target's `mov.s $f23,$f0` after the store reads as the
+ * back end forwarding a RELOAD of m_size after allocation (an IR copy would have been coalesced);
+ * every spelling of the reload tried is forwarded by the front end first: `m_size = m_size + k`,
+ * through a pointer to the field (store, load or both), through a copy of `this`, a raw-address
+ * access, size assigned before the store (chained either way), a shared drawing inline taking the
+ * size by value */
 bool CZMPBombMapItem::Tick(CZNewHudMap *map, float dT)
 {
     if (!m_wasdetonated) {

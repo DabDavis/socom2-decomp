@@ -2524,18 +2524,22 @@ struct AnimSetMoves {
     CBlendable m_crouchstrafeR_anims;   // 0x1b0
 };
 
+/* the strafe's share read through a const reference (an inline, the name ours: MoveControl's strafe
+ * test) */
+static inline float StrafeShare(const float &share) { return share; }
+
 /* the standing move: the throttles split by 0x583350 (the strafe's share and the length); outside the
  * dead zone the forward throttle mixes the move anims (the back ones, played in reverse, for a negative
  * one) at the length unless the strafe is whole, and the strafe throttle the strafe anims at its share;
  * nothing mixed, the blends cleared to one (ClearStack(1, true) inlined) and the top returned; else the
  * strafe's anims in the mix get their fraction's step zeroed and the mix becomes the top blend's (OVL2
  * 0x583030; SOCOM 1's MoveControl, its weights' split moved out to 0x583350).
- * OPEN, 12 structural differences (the size right, round 49): the target reloads the strafe's share
- * from its stack slot for each strafe MixAnims (`lwc1 $f13,108(sp)` first in the call's set-up) where
- * MW here keeps the compare's load in $f13 for the right strafe's call, and it branches `bc1t` to the
- * left strafe's pick at the end (the if/else, the swapped if and the ternary all give `bc1f`); swapped
- * declarations, `> 0.0f`, the length declared apart, the weights as an array or through a `const
- * float &` do not give it (build/scratch/seal-r49/v_movecontrol*.py). The split's a2 after $f12 is
+ * Byte-exact since round 50 (open in round 49, 12 off): the target reloads the strafe's share from
+ * its stack slot for each strafe MixAnims (`lwc1 $f13,108(sp)`) because the strafe test reads it
+ * THROUGH A CONST REFERENCE -- an indirect load MW does not share with the calls' direct reads (the
+ * calls' reads through the reference instead match too; read straight, MW keeps the compare's load
+ * in $f13 for the right strafe's call); and the final pick is `x >= 0.0f` (`bc1t` to the left
+ * strafe; `!(x < 0.0f)`, the swapped if and the ternary give `bc1f`). The split's a2 after $f12 is
  * 0x583350's parameter order, (seal, a, x, b, z) -- CrouchMoveControl matches with it */
 CZBodyAnimBlend *CZSealBody::MoveControl(float z, float x)
 {
@@ -2555,7 +2559,7 @@ CZBodyAnimBlend *CZSealBody::MoveControl(float z, float x)
             func_0058BAB0(this, &newanims, &((AnimSetMoves *)m_animset)->m_moveback_anims, -1.0f);
         }
     }
-    if (!(fabsf(x) <= data_003F3428) && !(side <= 0.0f)) {
+    if (!(fabsf(x) <= data_003F3428) && !(StrafeShare(side) <= 0.0f)) {
         if (!(x < 0.0f))
             MixAnims(&newanims, &((AnimSetMoves *)m_animset)->m_strafeR_anims, len, side);
         else {
@@ -2570,7 +2574,7 @@ CZBodyAnimBlend *CZSealBody::MoveControl(float z, float x)
 
     CBlendable *strafe;
 
-    if (!(x < 0.0f))
+    if (x >= 0.0f)
         strafe = &((AnimSetMoves *)m_animset)->m_strafeR_anims;
     else
         strafe = &((AnimSetMoves *)m_animset)->m_strafeL_anims;

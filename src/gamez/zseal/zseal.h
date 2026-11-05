@@ -332,8 +332,8 @@ struct AI_SOUND_PRIORITY {
 
 /* an anim's signal to its controller (AI_SIGNAL) is ai_states.h's: CAiState's slot +0x0C takes it */
 
-/* the goals a controller pursues (SOCOM 1's DWARF, a byte) */
-enum GOAL_TYPE { GOAL_NONE = 0, GOAL_SCAN = 1, GOAL_LOOK = 2, GOAL_MOVE = 3, GOAL_SHOOT = 4, GOAL_AVOID = 5, GOAL_RECOVER = 6 };
+/* the goals a controller pursues (GOAL_TYPE, SOCOM 1's DWARF, a byte) are ai_states.h's: CAiSAvoid
+ * holds one (the kit's round 51) */
 
 /* a SEAL's stance (SOCOM 1's DWARF, a signed byte) */
 /* a SEAL's weapon state (SOCOM 1's WEAPON_STATE, a byte: GetWeaponState narrows with andi -- the
@@ -460,6 +460,9 @@ public:
     /* a SEAL's squad's own clean-up of it (OVL2 0x5EDF90, the kit lane's seal_unit.cpp, which
      * declares it alike) */
     static void SealLeaveUnit(CZSealBody *seal);
+    /* a SEAL in the squad of a number, or with `recurse` in a squad under it (SOCOM 1's; OVL2
+     * 0x5EDDD0, the kit lane's seal_unit.cpp, which declares it alike) */
+    static bool IsMemberOfUnit(unsigned int team, CZSealBody *seal, bool recurse);
 
     unsigned int m_0;   // 0x0
     virtual void IssueCommand(CZSealBody *seal, FT_COMMAND cmd, void *data, bool b);
@@ -612,6 +615,10 @@ public:
     static unsigned short nextPickupId;   // OVL1 data 0x3DF170 (SOCOM 1's, 1 at the start)
     static unsigned int bit_count;   // OVL1 data 0x3DF178
     static bool m_isOpen;   // OVL1 bss 0x44D4B0
+    /* a pickup's time when it never runs out: -1, read as a variable (OVL1 data 0x3F3440, in
+     * fts_ovl2statics.cpp's data among the SEALs' statics: SOCOM II's, the name the game states'
+     * -- Create, NetworkCreate and TickTimers read it, ftsFixupAiMap twice) */
+    static const float NO_TIMEOUT;
 
     float m_timer;   // 0x0 (new in SOCOM II)
     zdb::CNode *m_node;   // 0x4
@@ -1385,11 +1392,11 @@ public:
     CValve *GetValve(SEAL_VALVE v) const;
     /* a loop stopped, and started when it is not playing (SOCOM 1's statics; OVL2 0x574AE0,
      * 0x574B30 -- UpdateAiMapLoc calls them), its sounds and their instances (SOCOM 1's
-     * aiSoundHandle and aiSoundInstance; OVL1 bss 0x44D4D8, 0x44D4E0). The base's PlayAiSound
-     * stays visible beside the static */
+     * aiSoundHandle and aiSoundInstance; OVL1 bss 0x44D4D8, 0x44D4E0), and the base's PlayAiSound
+     * overridden beside the static (OVL2 0x55FF60, slot 0x24: seal_ai.cpp's) */
     static void StopAiSound(AI_SOUND sound);
     static void PlayAiSound(AI_SOUND sound);
-    using CSealCtrl::PlayAiSound;
+    virtual bool PlayAiSound(CHARACTER_SOUND sound, float chance, int event);
     static class CSnd *aiSoundHandle[2];
     static class CSndInstance *aiSoundInstance[2];
     /* the aim's error cone, kept as its tangent (SOCOM 1's aiAccuracyAngle; OVL1 data 0x3DF180, the
@@ -2213,7 +2220,11 @@ public:
      * toward them; the names ours) */
     float m_prevx;   // 0x248
     float m_prevz;   // 0x24c
-    unsigned char _250[0x2d4 - 0x250];
+    unsigned char _250[0x258 - 0x250];
+    /* bit 0: cleared by 0x549C30 when a wall the weapon's points are behind faces up past the limit
+     * (seal.cpp; the name ours) */
+    unsigned char m_258_0 : 1;   // 0x258
+    unsigned char _259[0x2d4 - 0x259];
     /* the volumetric hits under the SEAL (SOCOM 1's m_volumetricAltitudes at 0x260: SealProcessAltitude
      * clears it and pushes each smoke or gas hit) */
     std::vector<zdb::IntersectStruct> m_volumetricAltitudes;   // 0x2d4

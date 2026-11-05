@@ -718,10 +718,11 @@ void func_00607560();
 extern float data_0066AFF0;
 extern unsigned char data_0066B008;
 extern unsigned char data_0066AFE0;
-/* the AI's tuning, twice (OVL2 bss 0x66AD20 and 0x66AE80, 0x154 bytes each: the second's fields set
- * after both are cleared) and the idle anims' kinds (OVL2 bss 0x66AD00) -- the names ours */
-extern unsigned char data_0066AD20[0x154];
-extern unsigned char data_0066AE80[0x154];
+/* a time per character sound, twice (OVL2 bss 0x66AD20 and 0x66AE80, 85 floats each: when each sound
+ * last played and the least gap before it plays again -- PlayAiSound reads both; the second's fields
+ * set after both are cleared) and the idle anims' kinds (OVL2 bss 0x66AD00) -- the names ours */
+extern float data_0066AD20[85];
+extern float data_0066AE80[85];
 extern float data_0066AE94;
 extern float data_0066AF6C;
 extern float data_0066AF70;
@@ -2665,6 +2666,72 @@ static inline bool Chance(float chance)
     return Rfloat(0.0f, 1.0f) <= c;
 }
 
+/* 0x55FEE0's body as PlayAiSound expands it (a marked device, the name ours): the target hands the raw
+ * int to GetEventRange and sign-extends the raw register for CreateAiEvent's word, while its own tests
+ * share PlayAiSound's narrowed copy -- what a CAiEvent::EVENT third parameter does (a byte-enum parameter
+ * goes on unconverted, README), the signature PlayAiSound's callers in other lanes' units cannot take yet
+ * (they pass int literals). Through 0x55FEE0 itself the cast argument is narrowed at the call (3 off) */
+extern "C" float GetEventRange__8CAiEventFQ28CAiEvent5EVENT(int event);
+static inline CAiEvent *VoiceEvent(CSealCtrl *ctrl, int event)
+{
+    CAiEvent *r = 0;
+
+    if ((CAiEvent::EVENT)event != CAiEvent::AIE_NONE) {
+        float range = GetEventRange__8CAiEventFQ28CAiEvent5EVENT(event);
+
+        r = ctrl->CreateAiEvent(CAiEvent::AIE_VOICE, data_00650380, range, false, &ctrl->m_entity->m_posW,
+            (signed char)event);
+    }
+    return r;
+}
+
+/* a sound of the SEAL's character played (SOCOM 1's PlayAiSound(CHARACTER_SOUND), which always played
+ * it; OVL2 0x55FF60, slot 0x24 of CSealCtrlAi's vtable): not again within the sound's gap since it last
+ * played, then only if the chance comes up; sound 80 only while the AI runs, out of 0x60A850's pursuit
+ * and in state 2 or 9 at least 10 s into its step; a dead SEAL's only for sounds 60 and 61. A Navy
+ * SEAL's plays from no point and makes its AI event only for event 1, any other SEAL's from where it
+ * stands (CSealCtrl's 0x5978A0); the time kept. Whether it played */
+bool CSealCtrlAi::PlayAiSound(CHARACTER_SOUND sound, float chance, int event)
+{
+    bool played = false;
+    CCharacterType *ch;
+    float *last;
+    bool ok;
+    CZSealBody *seal = (CZSealBody *)m_entity;
+
+    if (sound != CHRSND_NONE) {
+        ch = seal->GetCharacter();
+        last = &data_0066AD20[sound];
+        ok = true;
+        if (data_004365C0 - *last < data_0066AE80[sound])
+            ok = false;
+
+        if (ok && chance < 1.0f)
+            ok = Chance(chance);
+        if (sound == 80) {
+            ok = false;
+            if (aiEnabled && !func_0060A850(m_67c) && (AiStateIs((AI_STATE)2) || AiStateIs((AI_STATE)9)))
+                ok = GetAiState()->m_phaseTime >= 10.0f;
+        }
+        bool dying = sound == 60 || sound == 61;
+
+        if (ok && (seal->m_isAlive || dying)) {
+            unsigned int id = seal->m_id;
+            bool send = (CAiEvent::EVENT)event != CAiEvent::AIE_NONE;
+
+            if (m_navyseal) {
+                played = ch->PlayAt(sound, id, 0);
+                send = (CAiEvent::EVENT)event == 1;
+            } else
+                played = ch->PlayAt(sound, id, &seal->m_posW);
+            if (send)
+                VoiceEvent(this, event);
+            *last = data_004365C0;
+        }
+    }
+    return played;
+}
+
 /* neither of SOCOM 1's m_snoozing and m_sleeping set, as a bool -- the `||` MW's own (its join no
  * aligned label: the target's in 0x569AA0 and 0x569C60, where AiAwake's if pads one; the name ours) */
 static inline bool AiAwakeNow(const CSealCtrlAi *ai)
@@ -2782,8 +2849,9 @@ static inline bool TakesTargets(CSealCtrlAi *ai, CEntity *e)
  * when the AI drives it, on no team the entity is on, while the entity takes targets. The targets
  * are kept nearest first, so the first past the range ends the walk (OVL2 0x569E40, new in SOCOM
  * II: 0x561550 and CAiSGoto::Tick ask it; the names ours).
- * OPEN, 10 structural differences and 6 register-only (the size right, round 49). Right: the range
- * squared in place (`r2 = range; r2 *= r2`: mov.s then mul.s into $f20), the kind read through a
+ * OPEN, 23 instructions (the size right; round 50 -- 24 with round 49's `r2 = range; r2 *= r2`, whose
+ * second operand MW propagates back to $f12: the parameter squared in place, `range *= range`, gives
+ * the target's `mul.s $f20,$f20,$f20`). Right: the kind read through a
  * reference-returning inline (TypeOf: its address hoisted into s0, the kind reused by the turret
  * test), the AI taken non-const (a const one hoists the bits' address 0x266 too), kind 4's
  * `r = false` (its own `b` block). Left: (1) the turret test's `e && kind == 3 ? e : 0` -- the target
@@ -2794,13 +2862,18 @@ static inline bool TakesTargets(CSealCtrlAi *ai, CEntity *e)
  * computes `bit16 && !bit17` as a value in the last operand's register (`sltu; beqz; ... xori`) and
  * negates it with one `xori` at the join -- every inline form here either folds the negation into
  * the branches (the bits read in place), sets a bool with `daddiu 1` (an `&&` of accessor calls) or
- * renormalises a bool local (`andi 0xff; sltu`) before the `xori` */
+ * renormalises a bool local (`andi 0xff; sltu`) before the `xori`. Round 50 (build/scratch/seal-r50/
+ * v_569e40*.py, 56 variants): the target's turret test is a SINGLE-CASE SWITCH's layout (`beq` to the
+ * case, `b` to the default, the case's move in the beq's delay slot) with the null test branching to
+ * the default's `move a0,zero` -- `r = 0; if (e) switch (TypeOf(e)) { case 3: r = e; }` gives the beq/b
+ * but MW drops both zero moves (a0 already 0 from TakesTargets' `r = false`): 17 with the bit test as
+ * `!(AiBit16(ai) ? !AiBit17(ai) : AiBit16(ai))` (its false arm then still a `move`), 18 as Bit16Only;
+ * `default: r = 0`, an else, or returns in the cases 18-20 or the size off */
 extern "C" CZSealBody *func_00569E40(CSealCtrlAi *ai, const CPnt3D *pos, float range)
 {
     CEntity *e = ai->m_entity;
-    float r2 = range;
 
-    r2 *= r2;
+    range *= range;
     CTargetList &targets = e->m_targets;
 
     for (CTargetList::iterator i = targets.begin(); i != targets.end(); ++i) {
@@ -2818,7 +2891,7 @@ extern "C" CZSealBody *func_00569E40(CSealCtrlAi *ai, const CPnt3D *pos, float r
         CPnt3D d;
 
         pos->Sub(&seal->m_posW, &d);
-        if (!(d.x * d.x + d.y * d.y + d.z * d.z < r2))
+        if (!(d.x * d.x + d.y * d.y + d.z * d.z < range))
             break;
         return seal;
     }
