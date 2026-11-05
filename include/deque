@@ -818,7 +818,14 @@ public:
      * make_iterator taking n by const reference, begin() reading start_ into a local, begin()
      * building t itself or returning the constructor (27-28: t scalarised, out of memory); the
      * iterator constructor taking start/cap by value (19, end() lost) or reading data rather than
-     * data_ (22, end() lost); make_iterator returning the constructor straight (27, end() lost) */
+     * data_ (22, end() lost); make_iterator returning the constructor straight (27, end() lost).
+     * The online lane's round 24 (tools/igreplay.py --want on zNetMedius.cpp's record, build/scratch/
+     * onl/): the shared start*4 is a code-generation temporary (v41) and gives the target's colouring
+     * only numbered at 34.5 or 35.5 -- after the data and start front-end temporaries (@4252 t2, @4254
+     * v1), ahead of the three field addresses (@4256-@4260). A named scaled index in make_iterator
+     * (`unsigned int i = n * sizeof(T *)`, `n << 2`, an int, the data in a local first, `&b[n]`
+     * through a const pointer) is propagated away -- no node of its own -- and keeps the 14 (end()
+     * byte-exact under every one) */
     const_iterator make_iterator(unsigned int n) const
     {
         iterator t((T **)this->data_ + n, (T **)this->data_, this->start_, this->capacity_);
