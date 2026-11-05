@@ -127,12 +127,13 @@ void CUIVariable::Destroy()
 
 /* the mixin made a watcher of the variable unless it is one, and told so (SOCOM II's: AttachUIVar
  * calls it once m_uivar is set).
- * OPEN, 0xE4 against 0xC0: the target inlines IsAttached ONE level -- its found flag (s0, set with
- * daddiu) and its by-value parameter's copy (76(sp), find's value) inline, the watcher vector's
- * begin(), end() twice, std::find and != called out of line (0x3869C0, 0x3869D0, 0x386AB0,
- * 0x386980: the drafts' rows) -- so its tree is taller than five there (begin() three high here);
- * here IsAttached inlines whole. The original's begin()/end() a level or two deeper (README "Level
- * 6, or 8?") would do it; AttachUIVar is pinned (Attach calls it out of line) */
+ * The target inlines IsAttached ONE level -- its found flag (s0, set with daddiu) and its by-value
+ * parameter's copy (76(sp), find's value) inline, the watcher vector's begin(), end() twice,
+ * std::find and != called out of line (0x3869C0, 0x3869D0, 0x386AB0, 0x386980) -- so its tree is
+ * taller than five there. Byte-exact since the MSL headers round 24 adopted the image's pointer
+ * iterator (end() four high, != three): IsAttached is then cut as the target's, and the four
+ * pieces this unit emits match their rows (named that round). AttachUIVar is pinned (Attach calls
+ * it out of line) */
 void CUIVariable::Attach(UIVarMixin *mixin)
 {
     if (!IsAttached(mixin))

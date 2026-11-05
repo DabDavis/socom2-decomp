@@ -43,6 +43,25 @@ int CKey::RecordSize()
     return 16;
 }
 
+/* the keys counted, the key itself included, its children's own when deep (SOCOM II's, 0x25B300:
+ * WriteDirectory sizes the directory with it on the root, true). Recursive: it self-inlines four
+ * levels, each cutting vector<CKey *>'s pieces a level more (the MSL headers round 24, on the
+ * image's pointer iterator). The end taken once ahead of the loop; the flag tested `!= false`,
+ * so MW hoists the narrowed flag and tests it with beqz -- `deep && ...` hoists `!deep` instead
+ * (sltu/xori, bnez), a bool copy or the end in the test change the copies' sizes.
+ * OPEN, one call (0x240 both, every instruction the target's): the second copy's end() inlines
+ * the raw end and calls the pod's end 0x34D920 where the target calls CKey's raw end 0x257BA0 --
+ * one level deeper; `#pragma inline_max_size` 240 to 300 does not move it, and every spelling with
+ * the end in the loop test (as _countKeys' and fixupKey's, byte-exact) is 0x1B8-0x27C */
+int CKey::CountKeys(bool deep)
+{
+    int count = 1;
+
+    for (iterator i = begin(), e = end(); deep != false && i != e; ++i)
+        count += (*i)->CountKeys(true);
+    return count;
+}
+
 /* a child key added at the end (SOCOM 1's inserted into a list) */
 CKey *CKey::InsertKey(CKey *key)
 {

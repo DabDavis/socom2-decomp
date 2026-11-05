@@ -57,6 +57,8 @@ and data reference resolved to the address the shipped code uses.
 | `tools/ccdump.py` | a GCC unit compiled under its own `sc:` toolchain and flags with cc1's register-allocation and scheduler dumps (`-dl -dg -dS -dR -fsched-verbose=4`, the 2.9-991111 builds' spellings handled); `-f FUNC` splits one function's sections and prints its allocation order, each pseudo's final register and global-alloc's priority of each (floor_log2(refs) x refs / live, ties to the lower pseudo; checked against .greg's order: GCC round 29a) -- for register-only misses (GCC round 14c's harness, promoted in 15a) |
 | `tools/treesearch.py` | which source trees of a sum give the target's: every tree over a spec's leaves compiled under its GCC directive, each function's dataflow read back from cc1's RTL dump (2.96's fold regroups sums; the recogniser lane's round 18c, promoted in GCC round 20a) |
 | `tools/asmunit.py` | an assembler unit (`.s`) for a library object that was assembly: the rows transcribed (canonical instructions, labels, map names, %hi/%lo of the symbols the code addresses, the unit's own `.bss` labels), assembled by the toolchain named and scored until every function matches |
+| `tools/structdiff.py` | one function against its row with the registers and the link normalised, so only STRUCTURAL differences show (opcodes, unrelocated immediates, order, which function is called); says how many instructions differ in their registers alone -- a register-only miss -- and `--regs` keeps the registers (the game states' round-35 structdiff.py and mydiff.py, promoted in GCC round 31a) |
+| `tools/cdis.py` | the candidate's disassembly before the link, each relocation named as the scorer resolves it (`<R_MIPS_LO16 currentDir = 0x1df400>`), `--at` at its row's addresses, `--list` the object's functions (the game states' round-35 cdis.py, promoted in GCC round 31a) |
 | `symbols.txt` | **the map** — `0xADDR SIZE name  # note`, kept by hand from here on |
 | `data.txt` | the map of global data, the same format and namespace |
 | `src/` | the reconstructed source; `MATCHED.txt` (the baseline), `ABSENT.txt` (dead-stripped) |
@@ -2060,6 +2062,60 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from completing the MSL headers, round 24** (THE POINTER VECTOR'S ORIGINAL ITERATOR ADOPTED; probes
+  build/scratch/msl-r24-p24/):
+  - include/vector's pointer vector is the image's now: raw begin/end belonging to each element type, `begin() { return
+    __iter(__raw_begin()); }`, end() taking the raw end into a const local (four inline levels high), the iterator's
+    `iterator(unsigned int *const &)` and base(), `==` through base() -- _countKeys, fixupKey, CSubtitleList::Load,
+    NextFile 0x34D740 and the records' insert 0x34DA00 byte-exact, VuLightMap 0x3B54E0 and CUIVariable::Attach 0x3869F0
+    closed with it (they had been open on exactly this end); CKey::CountKeys one call off (its second copy calls the pod's
+    end where the target calls the raw end);
+  - A STAND-IN TO KNOW ABOUT: the walks fitted to the old three-level end() are kept by `#pragma inline_depth(6)` at the
+    end of their units -- fts_missionlist.cpp, bone_archive.cpp, char_type.cpp, util_loc.cpp, zNetMediusClan.cpp,
+    zNetMediusRoom.cpp, zsnd_positions.cpp and zwep_flyout.cpp -- each object byte-identical to master's (the new end at
+    depth 6 gives what the old gave at 5); a pragma's depth is per unit, and the image's four-high end makes a natural
+    walk inside an inline six deep -- but the level is settled at 5 for the game's own source, so these pragmas mark walks
+    whose real shape is still to be refit (CMultiMissionList::Find with the end taken first is 9 off: the obvious refit
+    is not it); CDynTexList::Add (ztex_manager.cpp) refit in source instead, depth 6 costing three of its neighbours;
+  - an end() passed as an argument (`i != end()`) is cut at its children, a tall callee written as a statement at the
+    inline above it; `deep != false && ...` hoists the narrowed flag and tests it with beqz, `deep && ...` hoists `!deep`;
+    a `while ((k = f()) != 0)` loop is rotated (the test after the body, entered by a jump), `for (;;) { k = f(); if (!k)
+    break; ... }` tests at the top as the target's Load does;
+  - the class vector's operator= reads the other vector through the deleter's data() reference (CopyPlan 21 -> 2,
+    code-neutral elsewhere); 0x53AA50 needs no header change (a probe asking for the pod's erase and resize emits it
+    byte-exact: which unit emits it is open); the original c_str's depth cannot be read off the image (no caller of a
+    piece below it; both its out-of-line copies whole).
+- **Tells from the kit and AI states, round 37** (seal_tasks.cpp's fire-mode, signal, create and in-state tasks):
+  - the type test `e && e->m_type == t ? e : 0` stays a value (sltu, beqz, xori/sltiu, movz) only inside an inline that
+    also holds the switch producing `e` -- written in the caller every spelling folds it back into branches (CTTurret's
+    test reproduced; the Tick stays 8 bytes long on a block boundary);
+  - an inline member called through a reference or pointer local keeps the object's address in one saved register across
+    calls with every field at an offset from it; called as `cmd->m.f()` MW folds the address into the outer object's
+    offsets; through a cast pointer it hoists each field's address into a register of its own; locals declared ahead of
+    TASK_SEAL's renumber the saved registers (CTSignal::Tick 0x5D16E0 needed a copy of the SEAL and the controller both
+    declared first);
+  - a 1-bit field tested `== 1` compiles to andi, xori, sltiu into the bool's register; a bit or byte tested through an
+    inline `? true : false` is materialised with sltu before the branch; compares read through a const view share one
+    load and a following inline reloads the member, a switch on the same member makes a jump table instead;
+  - `x &= ~0` written in place folds away, through an inline with a `clear` parameter it stays a dsll32/dsrl32 zero
+    extension; assigning inside an inline's by-value argument, `f(s = g())`, keeps v0 for the inline's use with the copy in
+    the delay slot; a jump table's length shows the highest case label (CAiSFollow::OnSignal 0x5FDF80's runs to 7: an
+    empty `case 7:`); CTFireMode's +0x8 block is SOCOM 1's CAiWepHint; seal_tasks.cpp 72 of 76.
+- **Tells from the HUD, round 44** (zui_2d.cpp's list box on its real base, the teletype's commands):
+  - a list walk's end() in a local declared before the iterator gives the iterator s0, end() in the test swaps the two
+    (CUIListBox::UpdateUIVar 0x3754D0, TickZAnimCmd 0x372980 twice); sequential loops sharing one function-level `int i`
+    give the target's registers where loop-scoped counters swap each loop's counter with its end-node or pointer register
+    (LoadSpec 0x375E20, SetActive 0x374CB0);
+  - `push_back(x)` taking a pointer local by `const T &` makes MW reload it from its stack slot for its next use; reading
+    the element into a second local first keeps the loaded register; in an unrolled loop's remainder, a bound re-read every
+    pass comes from a `const` accessor or a const view, read straight MW hoists it;
+  - in an inline `operator=(const T &s)`, a reference local `const T &n = s;` used for the string and the trailing member
+    keeps the source's address across the call and gives the target's numbering (C2DButton::LoadSpec 0x376BD0); `float w
+    = a.x, h = a.y;` declared together loads both before converting; for `(h - s) * k` MW puts the load-only operand first
+    in the mult -- `int d = h - s; d * k` gives the target's order; a byte copied into a bool and an unsigned-char field
+    through a bool local avoids the conversion a chained assignment adds;
+  - CUIListBox derives from its real base CPlainBmp (vtable 0x407670), its commands 20-byte CListBoxCmd records
+    (ParseZAnimCmd 0x372F10, the teletype's 0x3787A0 -- both on the first try).
 - **Tells from the SEALs, round 35** (the typed stash's writers, the recursive node count, 0x571010 at last):
   - `delete` of a type with an empty user destructor keeps the delete's own null test behind an `if`; an implicit
     destructor inlined into a delete calls the vector members' destructors out of line with -1, last member first
@@ -2140,6 +2196,37 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     handle list's range erase 0x50FBD0 from CAiEventQ::Clear, in ABSENT.txt); MW still emits an 8-byte empty `__sinit`
     (`jr ra; nop`) for a static with an inline empty constructor and no destructor -- ai_vismap.cpp, between ai_maps.cpp
     and seal_ai.cpp in link order, holds only that (0x6687D0).
+- **Tells from completing the MSL headers, round 24** (the pointer vector's original iterator adopted; probes build/p24/,
+  untracked; scratch build/scratch/msl-r24/: base.txt, run_a-g.txt, objcmp_d/g.txt):
+  - THE POINTER VECTOR'S ORIGINAL ITERATOR, ADOPTED (round 23's measured shape, include/vector's comment): over every
+    hand-written unit 10212 -> 10230 byte-exact, nothing lost -- _countKeys 0x2578F0, CKey::fixupKey 0x257CC0 (SOCOM 1's
+    form, written), CSubtitleList::Load 0x34D5D0 with NextFile 0x34D740 and the records' insert 0x34DA00, VuLightMap
+    0x3B54E0 and CUIVariable::Attach 0x3869F0 (both open on their walks' ends), eleven pieces named;
+  - THE 19 WALKS IT CUT AT LEVEL 5 WANT LEVEL 6, NOT A LOCAL END: `#pragma inline_depth(6)` at the end of the eight units
+    holding them (fts_missionlist, bone_archive, char_type, util_loc, zNetMediusClan, zNetMediusRoom, zsnd_positions,
+    zwep_flyout) with their sources untouched gives all 18 there, and objcmp finds all eight objects BYTE-IDENTICAL to
+    master's -- the four-high end at 6 is exactly the three-high end at 5. The end taken into a local first (round 23's
+    suggestion) does not give the target: CMultiMissionList::Find's own copy colours its end, flag and element
+    differently (9 off; nine spellings 5-11 off), CStringTables::FindTable's callers come out 12 bytes short. With the
+    image's own end() the original's natural walks need a deeper level than 5 -- the README's "Level 6, or 8?" thesis
+    seen from the other side; ztex_manager.cpp, where depth 6 costs three functions, takes CTexPalList::Exists written
+    out in CDynTexList::Add(CTexPalette *) with its parameter copied into a local (the copy is the value std::find reads:
+    loaded early into t1 as the target, the parameter itself loads late, 13 off);
+  - MW evaluates an argument's inline tree one level below the call it is passed to: in an inline's `i != end()` the
+    end's children are cut first (end's body kept, the raw end and __iter called); a tall callee written as a statement
+    (the kit's GetName probe) cuts the inline above it instead -- AnimSet::Find's caller 0x5E3940 goes 0x154 -> 0x184
+    under the new header (target 0x180, Find's end cut at its children, where the target calls every Find piece);
+    c_str's depth is not on the image (no function calls a piece below c_str: its copies 0x578920/0x36E860 are whole);
+  - `for (...; deep != false && i != e; ...)` hoists the narrowed flag and tests it with beqz, `deep && ...` hoists
+    `!deep` (sltu/xori, bnez) -- CKey::CountKeys 0x25B300 (zar_key.cpp, its unit by address) so is every instruction the
+    target's but one call (its second copy calls the pod's end 0x34D920, the target CKey's raw end 0x257BA0;
+    inline_max_size 240-300 does not move it); a `while ((k = f()) != 0)` is rotated (test after the body, an entry `b`),
+    `for (;;) { k = f(); if (!k) break; ...}` tests at the top as Load's target;
+  - the class vector's operator= through the deleter's data() reference (the AI core's round 25): objcmp moves only
+    CAiPath::CopyPlan (21 -> 2 off), adopted; the pod resize copy 0x53AA50 comes out byte-exact from any unit asking for
+    the pod's erase and resize, either order (build/p24/rsz.cpp) -- no declaration change needed, the emitting unit open;
+  - the pod's raw `end() const` round 23 carried is used by nothing (removed, neutral); UpdateTextureSelects 0x355DE0 is
+    1 instruction off under the new header (was 11: only the palette test's beq operand order left).
 - **Tells from completing the MSL headers, round 23** (the scalar vectors' rbegin, the pointer vector's original iterator
   measured; probes build/scratch/msl-r23-p23/, the measured header build/scratch/msl-r23/vector.r23_pointer_iterator):
   - THE POINTER VECTOR'S ORIGINAL ITERATOR, read off the image: the raw begin/end belong to each element type, not the
@@ -8410,6 +8497,70 @@ round 19a, and `_id2type`, sceMpegAddStrCallback, `_pack_header`) and picture ou
   `_ch3dmaCSC`, `_doCSC2`, 0x252D68, 0x250320 (their diagnoses stand), libcdvd's sceCdDiskReady/sceCdRead,
   OVL1's codec and libnetb rows.
 
+**The tools, round 31a** (the game states' round 35 request): two scratch tools promoted. (1)
+**`tools/structdiff.py SRC SYMBOL`** (states-r35's structdiff.py and mydiff.py): one function against
+its scoring row, built as sccheck builds it (scdiff's `--target`, `--compiler`, `--flags`, `-I`; ccdump's
+`--unit`; `--obj` reads a `--build-dir`'s object), with what allocation and the link change normalised on
+both sides -- the allocatable registers (`--regs` keeps them), every relocated immediate (the
+candidate's by its own relocation table, the target's by the link's rule: a lui of an image address's
+high half, the offsets through its register until it is written, every $gp offset), branch targets --
+and a call by its callee's NAME (the candidate's relocation resolved as the scorer resolves it, the
+target's destination by the map), so calling another function is a difference where masking hid it;
+opcodes, field offsets, constants, frame slots and order are kept. It says how many instructions differ
+in their registers alone. The scratch tool masked every non-sp offset (a wrong field read the same) and
+every lui. Two rules carry the target's side: a call's clobber takes effect after its delay slot (`jal
+f; addiu a0,a0,%lo(x)`), and a second alignment over offset-masked tokens pairs an instruction the rule
+missed (a lui in another block) with the candidate's relocated one. Measured on every byte-exact function
+of two private builds -- 1,326 (all of src/lib) and 859 (zlib, zanim, zmath, zdb, OVL2's 0x5xxxxx
+drafts): **0** show a difference of either kind. Over the 57 open lib rows it says which are
+register-only: ezNetCtlSetProperties, sceBInetSend, 0x249B58, sceGsResetGraph (the other 53 differ in
+structure too; dmaRefImage, "registers only" since round 30a, had its n - 1 scheduled apart). (2)
+**`tools/cdis.py SRC SYMBOL [LO HI]`** (states-r35's cdis.py): the candidate's disassembly, each relocation
+named `<TYPE label = 0xADDRESS>` -- a GNU section reference by the object's own label at that offset
+(else the sized object holding it, else `.rodata+0x40`), a `%hi` by its first `%lo`'s addend (GNU as
+writes it just before), a `.text`+N callee by the function there; `--at` at the row's addresses,
+`--list` the object's functions. The canary gains `test_structdiff_sees_structure_not_registers` (sceMcChdir
+exact, then its target changed a word at a time: a register -- 0 structural, 1 register-only; a %lo --
+nothing; a field offset, an opcode, a callee -- 1 structural each; with registers not normalised it fails)
+and `test_cdis_names_every_relocation` (17 assertions). No tool that scores changed: scdiff.py,
+sccheck.py, scdecomp.py and `include/` are master's, so no MW or GCC unit can score differently.
+automatch over the lane's three ranges (`--max-size 0x400 --emit --no-prune --jobs 1 --obj-dir` the
+lane's private build): MAIN `18DB90 1C4CC0` 17 tried, 0 hits (1 build failure, 3 m2c refusals, 13
+misses), OVL1 `1E7F58 1E8FD4` 0 tried, `243000 256FD0` 56 tried, 0 hits (2 build failures -- 0x24B2F8,
+0x24DBB8 --, 5 refusals, 49 misses): 73 tried, none byte-exact (round 30a: 77, 0).
+
+**Round 31a** (2026-11-05, the tools first, then round 30a's opens): 3 rows newly byte-exact -- htonl
+and htons (0x1C1308, 0x1C1330, open since round 6a, a new `sdk/inet_hton.c`) and libezctl's
+ezNetCtlSetProperties (open since the states' round 34: `ovl1/ezctl.c` 8 of 8) -- dmaRefImage 12 -> 9
+words, libnetb's sceBInetRecv written (0x2474F8, OPEN at 6) -- and 2 rows named, both s1:order: sceBInetRecv and sceBInetOpen (0x2472C8, its calls the demo's too). What they showed:
+
+- **htonl and htons are a separate object built at -O1**: both compute in source order, the result in
+  v0 and one temporary in v1 for every term, which -O2's schedulers never leave (2 and 3 words); and no
+  plain C spelling of htons puts its second term in v1 on any of the thirteen toolchains at -O1 or at
+  -O2 without the schedulers (3 words each, the dying a0) -- with `register u_int r asm ("$2"), t asm
+  ("$3")` (InitTLB32MB's idiom, round 3a) both are byte-exact under dtls13010 at -O1 (htonl is so as
+  one temporary too). The reading is BSD's hand-written MIPS htonl.S/htons.S in C operand order; the
+  demo, without this library, cannot tell the C object from an assembled one (an assembled object's
+  .text is 4-aligned, a compiled one's 8, and both rows sit where either could). The library's objects
+  already differ in level (inet_bsd.c -O0, inet_addr.c and inet_sock.c -O2).
+- **A result variable shared by two arms is the return register's**: ezNetCtlSetProperties sets `ret =
+  -2; rpc->data[0] = ret;` on one path and reads the word back after the report on the other, so the -2
+  is born in v0 and the path jumps past the final reload (`li v0,-2; b; sw v0`); the demo's text --
+  the word returned on both paths -- keeps it in v1 and jumps to the reload.
+- **loop.c hoists invariants in the body's order, and the later one lives the shorter**: dmaRefImage's
+  `n - 1` was hoisted between the two bases (the id computed before the destination's read), live a
+  line longer than the second base, so global-alloc gave the base t5 first; reading the destination into
+  a local before the id puts n - 1 last, as the target's allocation says (`tools/ccdump.py -f`). The index
+  still outranks the tag pointer (11 refs over 36 insns against 9 over 37) and takes t2.
+- **A REG_EQUIV constant goes first in local-alloc**: libnetb's DMA descriptors (sceBInetSend's open
+  since round 13a, sceBInetRecv's now) give the constant size v0 before the loaded IOP address in
+  every spelling tried -- store orders, the size in a variable, Sony's u_int fields, an inline helper.
+- **Open, diagnosed in place**: dmaRefImage (9: the index/tag pointer priorities), sceBInetRecv (6),
+  sceGsResetGraph (4, registers only: seven more spellings of the FFMode flag and the callback test).
+  Not reached: sceGsSetDefDBuff, `_ch3dmaCSC`, `_doCSC2`, 0x252D68, 0x250320 (their diagnoses stand),
+  libnetb's sceBInetOpen 0x2472C8 (named: the demo's order and calls, 0x198 against its 0x120),
+  libnetb_recv_from/send_to (the demo's sizes), the codec's rows.
+
 **Next**: the libraries by hand, module by module, as their vendors wrote them (each `src/lib`
 unit's header says what it covers); GCC's scheduler moves independent stores, and which source
 order gives the target's is easier measured than predicted (`tools/ccperm.py PROBE
@@ -10288,6 +10439,8 @@ What is open across lanes, and what comes next:
   10): `__sinit_zNetMediusUniverse.cpp` 0x4022D0 matches at `-inline level=6` and not at 5 once
   theAcctDB is modelled as the member at offset 0 of an outer CZUniversInformationServer (the
   destructor it registers, 0x300570, is not CAcctDB's vtable's) -- open at 5 (0xC4 vs 0x144).
+  THE IMAGE'S OWN POINTER-VECTOR end() (the MSL headers round 24) makes 19 natural walks need level 6: their
+  eight units carry `#pragma inline_depth(6)`, their objects byte-identical to the level-5 fit's.
   MEASURED OVER THE WHOLE TREE (2026-11-03, master 914fce13, `SC_FLAGS` with level=N, everything
   else as now): level 5 gives 9,295 byte-exact, 6 gives 9,246 (56 lost, 5 gained), 7 9,240, 8 and 9
   9,241 (64 lost, 14 gained). The five that every level from 6 gains are non-recursive:

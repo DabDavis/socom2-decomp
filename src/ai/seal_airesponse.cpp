@@ -875,6 +875,48 @@ extern "C" void func_00605770(CSealCtrlAi *ai, bool order, CHARACTER_SOUND sound
     }
 }
 
+extern "C" {
+/* a weapon kind asked of the AI (OVL2 0x5F6100, seal_aistate.cpp's: a CAiState member, unnamed) */
+bool func_005F6100(CAiState *s, CSealCtrlAi *ai, int kind, bool keep);
+}
+
+/* an event's callout on its first step: a kind-5 event's sound 72 (the order with it when the SEAL
+ * stands); else with the flags' bit 2 sound 70 likewise, with bit 3 sound 69 alone, the weapon kind
+ * 4 asked (bit 1 keeping the old) and the event's order (kind 11, the second anim list) -- then
+ * bits 2 and 3 traded for bit 4 (OVL2 0x6055B0: CAiSEvent::Tick's step after NextStep calls it, a
+ * member -- the state in a0; new in SOCOM II, the name unknown). The SEAL read once at the top
+ * (the target's s0, the stance after it): 0x605770 inlined reads it in each arm; the kind test a
+ * one-case switch (`beq` to the case, `b` to the default) */
+extern "C" void func_006055B0(CAiSEvent *s, CSealCtrlAi *ai)
+{
+    CEntity *seal = ai->m_entity;
+
+    switch ((signed char)s->m_58) {
+    case 5: {
+        ai->PlayAiSound((CHARACTER_SOUND)72, 0.75f, -1);
+        SEAL_STATE r = ((CZSealBody *)seal)->GetStance(true);
+
+        if (r == stateStand)
+            func_00571010(ai, func_00609530(0), 2, (ORDER_KIND)r);
+        break;
+    }
+    default:
+        if (s->m_flags & 4) {
+            ai->PlayAiSound((CHARACTER_SOUND)70, 1.0f, -1);
+            SEAL_STATE r = ((CZSealBody *)seal)->GetStance(true);
+
+            if (r == stateStand)
+                func_00571010(ai, func_00609530(0), 2, (ORDER_KIND)r);
+        } else if (s->m_flags & 8) {
+            ai->PlayAiSound((CHARACTER_SOUND)69, 0.25f, -1);
+            if (s->m_flags & 2)
+                func_005F6100(s, ai, 4, true);
+            func_00571010(ai, func_00609530(1), 258, (ORDER_KIND)11);
+        }
+        s->SetFlags(0x10, 0xc);
+    }
+}
+
 /* the hold's signed-byte count (a file static: its Tick reads it too; OVL2 data 0x650E10) */
 static signed char s_holdCount = 3;
 

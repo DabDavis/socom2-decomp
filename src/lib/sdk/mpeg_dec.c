@@ -2143,9 +2143,14 @@ void _dispRefImageField(MpegDec *d, MpegRef *top, MpegRef *bottom, int frameNo)
  * per block (the last one REFE), sent by channel 9 (the tags in the demo's function-local
  * `_sprtagdata.24`, 0x1E0440: this compile numbers the static otherwise, so its reference stays
  * unchecked).
- * OPEN (GCC round 30a, 12 words, right size): registers only -- the loop's index and tag pointer
- * trade t3/t2, the hoisted `n - 1` is allocated before the two bases (t7 against the target's t5)
- * and the id's xor schedules after the index's mult. The count is a local read once (in the loop
+ * OPEN (GCC round 30a, 12 words, right size; 9 since round 31a): registers only -- the loop's index
+ * and tag pointer trade t3/t2. Round 31a: the destination is read into a local BEFORE the id (the
+ * target's n - 1 is hoisted after the second base: loop.c moves invariants in body order, and the
+ * later one is live the shorter, so global-alloc gives it t5 first -- tools/ccdump.py -f), which
+ * closed the n - 1/base pair; the index (11 refs over 36 insns, priority 9166) still outranks the
+ * tag pointer (9 over 37, 7297) and takes t2 -- an early `i = 0`, a while loop, the pointer
+ * assigned after the count or stepped `t = t + 4` leave both counts as they are (the init is
+ * placed at the loop either way), and `*t++` twice changes the code (0x170). The count is a local read once (in the loop
  * test the target hoists it and n - 1: through the field it is reloaded, 0x190) and the tag id a
  * variable between the two stores (as a conditional expression in the OR, fold makes it a branch:
  * 0x164; before the first store, 18 words); the 48 declaration orders all give these 12
@@ -2155,12 +2160,14 @@ void dmaRefImage(MpegDec *d)
 	static u_long _sprtagdata[64] __attribute__((aligned(64)));
 	u_long *t = (u_long *)(((u_int)_sprtagdata & 0x0fffffff) | 0x20000000);
 	int i, n, ie, id;
+	u_int dst;
 
 	n = d->mb[d->_810].nRef;
 	for (i = 0; i < n; i++) {
 		t[0] = ((u_long)(d->mb[d->_810].src[i] & 0x0fffffff) << 32) | 0x30000030;
+		dst = d->mb[d->_810].dst[i];
 		id = (i == n - 1) ? 0 : 3;
-		t[2] = ((u_long)(d->mb[d->_810].dst[i] & 0x0fffffff) << 32) | ((u_long)id << 28) | 48;
+		t[2] = ((u_long)(dst & 0x0fffffff) << 32) | ((u_long)id << 28) | 48;
 		t += 4;
 	}
 	ie = DIntr();

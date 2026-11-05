@@ -7,14 +7,11 @@
  * (0x34DED0). Defined in reverse of their image order (-inline deferred).
  * Written so far: the constructor, the lookup and the empty walk it calls, the loader (0x34D190:
  * CSubtitleTable is the VAG location table -- each language's VAGS_<lang>.ZAR and VAGSTORE.ZAR, their
- * files' offsets, sizes and name hashes) and its first call (0x34D180). Not written:
- * 0x34D460/0x34D470/0x34D480 (drafts), CSubtitleList::Load 0x34D5D0 and the next-file walk 0x34D740
- * (the key ring's vector<CKey *> iterator, which they call out of line through zar's pieces
- * 0x257B90-0x257CB0 -- include/vector's class iterator has none of their shapes: a copy constructor
- * returning this 0x257C00, a pointer-reference constructor 0x257CA0, an __iter taking the pointer's
- * address 0x257C90, two raw-end copies 0x257BA0/0x34D920 -- model zar's key ring first, then name
- * them; 0x34D740 inlines itself three times, each copy calling those pieces a level higher), the
- * records' insert(pos, n, x) 0x34DA00, the tail. */
+ * files' offsets, sizes and name hashes) and its first call (0x34D180), and since the MSL headers
+ * round 24 (include/vector's pointer iterator as the image's) CSubtitleList::Load 0x34D5D0, the
+ * next-file walk 0x34D740 it inlines one level (self-inlined three times, each copy calling the key
+ * ring's pieces a level higher: the pod's end 0x34D920 at the second) and the records' insert(pos,
+ * n, x) 0x34DA00. Not written: 0x34D460/0x34D470/0x34D480 (drafts), the tail. */
 
 #include <stdio.h>
 #include <vector>
@@ -48,6 +45,55 @@ bool CSubtitleList::Find(const char *name, int *a, int *b)
     }
     Dump();
     return false;
+}
+
+/* the open key's next file from it on: the key under it, it stepped past it -- a directory (a
+ * negative size) skipped for the one after it; 0 at the end. Recursive, so inlined one level into
+ * Load and self-inlined in its own copy (0x34D740, after Load: the MSL headers round 24, on
+ * include/vector's pointer iterator as the image's -- each copy cuts the key ring's pieces a
+ * level more, the second calling the pod's end 0x34D920 out of line; the name ours) */
+inline zar::CKey *NextFile(zar::CKey *key, zar::CKeyRing::iterator &it)
+{
+    zar::CKey *k = it != key->end() ? *it : 0;
+
+    if (k) {
+        it++;
+        if (k->m_size < 0)
+            return NextFile(key, it);
+    }
+    return k;
+}
+
+void CopyUpper(const char *src, char *dst, int max);
+
+/* the open key's files listed: each one's data offset, size and upper-cased name's hash. The
+ * loop tests at its top (`for (;;)`: a while is rotated, its test laid after the body behind an
+ * entry jump, 8 bytes short); the offset, size and name declared in that order, so the name
+ * (numbered last) takes s0 and the offset s2 (README "MW's saved-register order is a NUMBERING") */
+bool CSubtitleList::Load(zar::CZAR *ar)
+{
+    zar::CKey *key = ar->GetOpenKey();
+    zar::CKeyRing::iterator it = key->begin();
+
+    for (;;) {
+        zar::CKey *k = NextFile(key, it);
+
+        if (!k)
+            break;
+        CSubtitleEntry e;
+        char name[32];
+        int ofs = ar->m_data_start + k->m_offset;
+        int size = k->m_size;
+        const char *s = k->m_name;
+
+        strcpy(name, s);
+        CopyUpper(s, name, 30);
+        e.m_0 = ofs;
+        e.m_4 = size;
+        e.m_hash = func_003A59C0(name);
+        push_back(e);
+    }
+    return true;
 }
 
 /* the records walked, the print compiled out (out of line: Find calls it) */

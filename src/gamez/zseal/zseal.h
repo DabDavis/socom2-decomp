@@ -287,7 +287,9 @@ public:
 /* the AI's maps (SOCOM 1's CAiMaps; the global AiMaps, OVL2 bss) -- only the cell's centre */
 class CAiMaps {
 public:
-    bool GetCellCenter(const CAiMapLoc &loc, CPnt3D *center);
+    /* a cell's centre, the point handed back -- none off the maps (ai_maps.h's, OVL2 0x52D480: a
+     * `CPnt3D *`, not a bool -- the callers test v0 straight, with no `andi 0xff`) */
+    CPnt3D *GetCellCenter(const CAiMapLoc &loc, CPnt3D *center);
     /* a named location's cell (ai_maps.h's, OVL2 0x52DB70) */
     bool GetLocation(const char *name, CAiMapLoc &loc);
     /* a point's cell (ai_maps.h's, OVL2 0x52DC70) */
@@ -1500,6 +1502,9 @@ public:
      * kept), the speeds and the weapon reset and the type's blend pushed in the state (SOCOM 1's took the
      * set alone; OVL2 0x58C350, seal_cfg.cpp) */
     void BindAnimSet(class AnimSet *set, AnimType type, SEAL_STATE state, bool force);
+    /* the same with the type-1 blend in state 0 (SOCOM 1's BindAnimSet(AnimSet *), the flag new; OVL2
+     * 0x58C4A0, seal_cfg.cpp) */
+    void BindAnimSet(class AnimSet *set, bool force);
     /* the carried body let go of (SOCOM 1's; OVL2 0x579220, seal_body.cpp) */
     void DetachBody();
     /* the animation set's limits on the sideways and forward motion (seal_cfg.cpp) */

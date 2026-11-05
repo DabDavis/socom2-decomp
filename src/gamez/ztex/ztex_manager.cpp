@@ -139,11 +139,22 @@ void CDynTexList::Add(CTexHandle *tex, bool b)
         Add(tex->m_texture->m_palette, b);
 }
 
-/* a palette listed, unless b and it is already there (the test is CTexPalList::Exists) */
+/* a palette listed, unless b and it is already there -- the test is CTexPalList::Exists written
+ * out, its parameter a local of its own (the MSL headers round 24): with include/vector's pointer
+ * iterator as the image's (end() four high) the inline Exists's end() is six deep here and cut at
+ * 5 (end's body kept, the raw end and __iter called), and inline_depth(6) costs the unit three
+ * other functions (~CGSTexBuffer, doAddBuffer, WipePktBuf grow). Written so, the end is computed
+ * once for find's last and the test, and the copied pointer is the value find reads, loaded
+ * ahead of the iterator copies into t1 as the target (the parameter itself loads it late, 13 off) */
 void CDynTexList::Add(CTexPalette *pal, bool b)
 {
-    if (b && m_pal_list.Exists(pal))
-        return;
+    if (b) {
+        CTexPalette *p = pal;
+        CTexPalList::iterator it = std::find(m_pal_list.begin(), m_pal_list.end(), p);
+
+        if (it != m_pal_list.end())
+            return;
+    }
     if (m_pal_list.size() == m_pal_list.capacity())
         m_pal_list.reserve(m_pal_list.size() + 1);
     m_pal_list.push_back(pal);

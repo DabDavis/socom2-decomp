@@ -1,6 +1,6 @@
 /* sc: compiler=ee-gcc2.9-991111-01-dtls13010; flags=-O2 -G0 */
-/* The socket library's address routines (MAIN 0x1C1308-0x1C1854), BSD's own text: htonl, htons,
- * inet_addr and inet_aton (FreeBSD's libc/net/inet_addr.c of 1996-2002 -- strtoul per part, errno
+/* The socket library's address routines (MAIN 0x1C1348-0x1C1854), BSD's own text: inet_addr and
+ * inet_aton (FreeBSD's libc/net/inet_addr.c of 1996-2002 -- strtoul per part, errno
  * ERANGE and an empty part fail, a.b, a.b.c and a.b.c.d assembled with their range checks),
  * inet_lnaof, inet_makeaddr, inet_netof and inet_network (4.4BSD's). The socket layer's -O0
  * wrappers (inet_bsd.c) call each one; BIND's inet_ntop.c follows. Built with the SDK's toolchain
@@ -12,20 +12,8 @@
  * functions). The ctype tests are the library's own inlines (no table, no call). Rows keep their
  * placeholders: no symbol names this library (it is not in the SOCOM 1 demo).
  *
- * OPEN: htonl and htons -- the target computes each in strict source order through two registers
- *   (`sll; andi; sll; or; srl; andi; or; srl; jr; or`); -O2 schedules the pieces apart (7-10 words),
- *   -O1 and -O2 without both schedulers come within two (the last shift lands in a0, not v1); no
- *   spelling tried gives the target's (build/scratch/gcc/v_htonl.c: five forms, five flag sets).
- *   GCC round 30a: htonl is byte-exact through ONE reused temporary (`r = x << 24; t = x & 0xff00;
- *   t <<= 8; r |= t; t = x >> 8; t &= 0xff00; r |= t; t = x >> 24; r |= t;` -- the temporary is
- *   v1 throughout, the last shift's too) but only with both schedulers off (`-fno-schedule-insns
- *   -fno-schedule-insns2`, or -O1): -O2 hoists the andi above the first sll, 2 words, and no flag
- *   of this unit's other functions allows that. htons's parameter is no u_short (the target never
- *   zero-extends a0: an int or u_int), and every C spelling puts its second term in the dying a0
- *   where the target's is v1 (3 words without the schedulers, 5 with). Both read as code no
- *   scheduler touched -- a separate object (-O1, or BSD's MIPS htonl.S/htons.S style assembly, two
- *   registers, the delay slot GNU as's) -- which the demo cannot tell: this library is not in it
- *   (build/scratch/gcc/v_htonl.py, v_htons.py).
+ * htonl and htons (0x1C1308, 0x1C1330), once this unit's head and open here since round 6a, are a
+ *   separate object built at -O1: inet_hton.c (GCC round 31a). This one calls them.
  * OPEN: inet_network -- right size, one instruction placed apart: the hex digit's sum goes through
  *   v0 and a move into val's t0 (the decimal digit's goes straight). Its isxdigit tests an
  *   UNINITIALISED variable for the digit case -- the target computes `(u_char)(x - '0') < 10` of a
@@ -65,15 +53,8 @@ static __inline__ int isxdigit(unsigned char c)
 }
 static __inline__ int isspace(unsigned char c) { return (unsigned)(c - '\t') < 5 || c == ' '; }
 
-u_int func_001C1308(u_int x)
-{
-	return (x << 24) | ((x & 0xff00) << 8) | ((x >> 8) & 0xff00) | (x >> 24);
-}
-
-u_short func_001C1330(u_short x)
-{
-	return ((x << 8) & 0xff00) | ((x >> 8) & 0xff);
-}
+u_int func_001C1308(u_int x);		/* htonl, htons: inet_hton.c */
+u_int func_001C1330(u_int x);
 
 int func_001C1378(const char *cp, struct in_addr *addr);
 

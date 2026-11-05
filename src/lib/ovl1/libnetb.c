@@ -190,6 +190,62 @@ int sceBInetClose(void *cd, u_int *net_buf, LIBNETB *s, int ms)
     return (ret < 0) ? -501 : 0;
 }
 
+/* a stream socket's receive from its ring (the demo's sceBInetRecv, by its object's order between
+ * Close and RecvFrom, the body the demo's own grown by the peer check): the waiting bytes copied
+ * out, the read position advanced, and once the ring is drained its header DMAed back to the IOP.
+ * OPEN (GCC round 31a, 6 words, right size, registers only -- tools/structdiff.py): the state's
+ * load takes v1 where the target's takes v0, and the descriptor's two words trade v0/v1 as in
+ * sceBInetSend below: local-alloc gives the constant 4 (a REG_EQUIV constant, its life the shorter)
+ * v0 first in every spelling tried -- the size through a variable, dst stored first, self read into
+ * a local (before the flush: 29), Sony's u_int descriptor fields, an __inline__ helper (0x13C)
+ * (build/scratch/gcc/v_recvdma.py, v_sifdma.py). The peer check returns its result both ways
+ * (`return ret` when chk is 0: the target's v0 kept, no `move v0,zero`). */
+int sceBInetRecv(void *cd, u_int *net_buf, LIBNETB *s, void *ptr, int count, int *pflags)
+{
+    LIBNETB_RING *r;
+    struct sif_dma dma;
+    int chk = 0;
+    u_int id;
+    int n, len, ret;
+
+    if (s == 0)
+        return -512;
+    r = s->recv_mirror;
+    FlushCache(0);
+    if (r->state != 0) {
+        ret = func_00247BD8(s, &chk);
+        if (ret != 0)
+            return ret;
+        if (chk == 0)
+            return ret;
+    }
+    *pflags = r->avail;
+    n = r->pending;
+    if (n <= 0)
+        return n;
+    len = count;
+    if (n < len)
+        len = n;
+    memcpy(ptr, r->buf + r->f24, len);
+    r->pending -= len;
+    if (r->pending != 0) {
+        r->f24 += len;
+    } else {
+        r->f24 = 0;
+        FlushCache(0);
+        dma.src = r;
+        dma.dst = r->self;
+        dma.size = 4;
+        dma.attr = 0;
+        id = sceSifSetDma(&dma, 1);
+        if (id == 0)
+            printf("Error DMAing data to IOP memory!!!\n");
+        while (sceSifDmaStat(id) >= 0)
+            ;
+    }
+    return len;
+}
+
 int sceBInetRecvFrom(void *cd, u_int *net_buf, LIBNETB *s, void *ptr, int count, int *pflags,
                      sceBInetAddress *addr, int *port, int ms)
 {

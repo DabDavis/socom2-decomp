@@ -952,9 +952,10 @@ extern "C" unsigned char data_004B4A68;
  * the colour tinted through a table when the flag is up (SOCOM 1's VuLightMap, made a pass per
  * map). The flag is an int (`li`, stored unmasked), the iterator assigned from begin() (its
  * temporary), the blend word a local (loaded ahead of the texture for the call), the type test a
- * bool local (its sltu). OPEN, 5 instructions: the loop test's end() -- the target colours the
- * size v1 and the iterator's word a0, ours the other way round (end() != it, !(it == end()), ++it
- * and a while loop do not move it) */
+ * bool local (its sltu). Byte-exact since the MSL headers round 24 adopted the image's pointer
+ * iterator (end() through the raw end and the pod's end): open until then 5 instructions off on
+ * the loop test's end() -- the size and the iterator's word coloured the other way round, which
+ * no spelling of the walk moved (end() != it, !(it == end()), ++it, a while loop) */
 bool CVisual::VuLightMap(_word128 **cursor, unsigned int tag)
 {
     if (!(*cursor + 10 < data_004B4AE8))

@@ -139,6 +139,76 @@ void CAiSAction::Virtual0C(CZAnim *anim, AI_SIGNAL sig, CSealCtrlAi *ai)
     }
 }
 
+extern "C" {
+/* an object's holder id dropped when it is the SEAL's (OVL1 0x2B49D0: the word at 0x34 made
+ * CEntity::invalidId), an anim stopped (OVL1 0x2707C0, zanim's: SOCOM II's Stop with a flag) and the
+ * SEAL's anim set bound (OVL2 0x58C4A0, seal_body.cpp's BindAnimSet wrapper) */
+void func_002B49D0(void *obj, unsigned int id);
+void func_002707C0(CZAnim *anim, bool now);
+void func_0058C4A0(CEntity *seal, class AnimSet *set, bool b);
+}
+
+/* the AI's bit 0 at 0x264 set through a bool (zseal.h's m_debug: the `andi zero,1` form; the name
+ * ours) */
+inline void SetAiBit0(CSealCtrlAi *ai, bool b)
+{
+    ai->m_debug = b;
+}
+
+/* the "action" state told: a reset clears its object, point, anims and cells; on entry the SEAL's
+ * anim set is kept and the AI's bit 0 cleared; leaving (1, the object released first, or 2) a held
+ * anim is stopped, the stack marked, the anim set bound back and the step put to 0 -- or 9 past the
+ * wait (7) unless its bit 2 -- the stack marked again; 3 marks it and releases the object (OVL2
+ * 0x5F0470; SOCOM 1's reset only, the rest new). The step's two compares read through a const view
+ * share one load, and UpdatePhase reloads it (read in place, MW reuses the compare's register; a
+ * switch over the step makes a jump table) */
+void CAiSAction::OnSignal(SIGNAL sig, CSealCtrlAi *ai)
+{
+    CEntity *seal = ai ? ai->m_entity : 0;
+
+    switch (sig) {
+    case SIGNAL_4:
+        m_58 = 0;
+        m_60 = CPnt3D::zero;
+        m_84 = 0;
+        m_animset = 0;
+        m_6c = 0;
+        *(unsigned int *)&m_70 = *(unsigned int *)&CAiMapLoc::invalid;
+        *(unsigned int *)&m_74 = *(unsigned int *)&m_70;
+        m_78 = 0;
+        break;
+    case SIGNAL_0:
+        m_animset = ((CZSealBody *)seal)->m_animset;
+        SetAiBit0(ai, false);
+        break;
+    case SIGNAL_1:
+        if (m_58)
+            func_002B49D0(m_58, seal->m_id);
+    case SIGNAL_2:
+        if (m_84 && (m_flags & 4)) {
+            func_002707C0((CZAnim *)m_84, false);
+            m_84 = 0;
+            m_78 = 0;
+        }
+        ai->m_stateStack.SetFlags(1, 0);
+        func_0058C4A0(seal, m_animset, false);
+        if (((const CAiState *)this)->m_phase < 7)
+            UpdatePhase(0);
+        else if (((const CAiState *)this)->m_phase == 7) {
+            if (m_flags & 4)
+                UpdatePhase(0);
+        } else
+            UpdatePhase(9);
+        ai->m_stateStack.SetFlags(1, 0);
+        break;
+    case SIGNAL_3:
+        ai->m_stateStack.SetFlags(1, 0);
+        if (m_58)
+            func_002B49D0(m_58, ai->m_entity->m_id);
+        break;
+    }
+}
+
 /* an event's kind as the states read it (ai.h's CAiEvent::m_type, the halfword at 0x1A, bits
  * 1-15: this unit cannot include ai.h, whose CAiMaps zseal.h's stand-in rivals) and the kinds
  * they test, a signed byte as ai.h's EVENT is (the names ai.h's) */
@@ -243,6 +313,48 @@ extern "C" bool func_005F43B0(CSealCtrlAi *ai, const char *name, unsigned int fl
         return script->ActivateSequence(name, flags);
     }
     return false;
+}
+
+extern "C" char *strncpy(char *dst, const char *src, unsigned int n);
+
+/* an anim paused (the byte at 2 as a bool: materialised, sltu, then branched on -- zanim.h's CZAnim
+ * has no accessor; the name ours) */
+static inline bool AnimPaused(const CZAnim *anim)
+{
+    return anim->m_paused ? true : false;
+}
+
+/* the AI's sequence names (SOCOM 1's namespace sealai; OVL2 0x575210, seal_ai.cpp's) */
+namespace sealai {
+const char *get_aiseq(unsigned int i);
+}
+
+/* a response sequence run on the script's anim (m_58: ActivateEx stores it): with a name, while the
+ * state runs, unheld (or flags bit 3), when the anim has the sequence -- bit 2 resumes a paused anim
+ * first (false when it is not paused) and marks the flags' bit 2; the AI's own sequence paused, this
+ * one activated, held by bit 0, the mode cleared (255) by bit 1, the name kept; whether it began
+ * (OVL2 0x5F41F0; SOCOM 1's, with SOCOM II's bit 3 and Resume's new argument) */
+bool CAiSScript::ActivateSequence(const char *name, unsigned int flags)
+{
+    bool r = false;
+
+    if (name && m_active && ((flags & 8) || !Held()) && m_58
+        && ((CZAnim *)m_58)->SequenceExists(name)) {
+        if (flags & 4) {
+            if (!AnimPaused((CZAnim *)m_58))
+                return false;
+            func_002709B0((CZAnim *)m_58, 0);
+            SetFlags(4, 0);
+        }
+        ((CZAnim *)m_58)->PauseSequence(sealai::get_aiseq(m_seq));
+        ((CZAnim *)m_58)->ActivateSequence(name);
+        SetHold(flags & 1);
+        if (flags & 2)
+            m_mode = 255;
+        strncpy(m_seqName, name, 16);
+        r = true;
+    }
+    return r;
 }
 
 /* (OVL2 0x5F4080) */

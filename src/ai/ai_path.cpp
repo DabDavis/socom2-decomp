@@ -115,7 +115,8 @@ CAiPath::~CAiPath()
  * data()`, both ends) gives the target's v1 and `lw a1,8(v1)` with the size off s1 -- 2 off, only
  * the two forward_iterator_tag slots (68/72) swapped; with m_visited as CAiMapLocVec as well, this
  * and ~CAiPath match and CAiPath() is the level too tall (an MSL-lane header change: char_type.cpp
- * scores the same either way) */
+ * scores the same either way). In include/vector since the MSL headers round 24 (no other
+ * hand-written object moves): 2 off here */
 bool CAiPath::CopyPlan(const CAiPath *path)
 {
     bool ok = false;
