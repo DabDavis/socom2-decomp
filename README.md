@@ -2065,6 +2065,23 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the weapons, round 30** (the turret's target scan at last, open since round 25; CMaterial_Object::Read, open
+  since round 11; the DI pool's get and set-up named):
+  - WRITING A LOOP GUARD BY HAND AROUND A DO-WHILE (`if (n) { T *a = ...; do { ... } while (...); }`) PUTS THE LOCALS
+    DECLARED INSIDE THE GUARD IN THE LOOP'S PREHEADER AND KEEPS THE LOOP ROTATED -- the three addresses the target holds
+    across 0x3A7A40's loop, computed after the entry test (with slot and node's dead first definitions where `igreplay
+    --move` put them, the slot an `int &`, the cone's dot and the radius' product named locals);
+  - an inline cut to one level by inline_max_size calls even CPnt3D's implicit assignment out of line (0x20F1F0):
+    RequestRay's real body gives the target's four out-of-line pieces -- the pool's get 0x3A7E30 and set-up 0x3A7DD0
+    (GetRequest / SetRequest, ours) and list<CDiPool::dir *>::push_back's OVL1 copy 0x3A7DA0 (`ovl-copy:` of OVL2's
+    0x5C97A0, whose own emitter was checked first); an int-to-pointer copy into an address-taken local is not forwarded to
+    its next read (the target's `sw v0; lw v0`), a pointer-to-pointer copy is;
+  - a local initialised from a field that is read again before any call becomes IRO's CSE temporary, numbered after the
+    loop's strength-reduced induction temporaries (a named local, an inline's local or `(x = ...) != 0` are numbered
+    before them); a named float local for an inline's dot product is numbered ahead of the expression's temporaries;
+    `!(reg & m)` materialises sltu / xori, `(reg & m) == 0` branches on the AND; a float field read before a stack
+    object is built is scheduled ahead of its stores; a second counter used as an index (`dst[k++]`) is strength-reduced
+    to a stepped pointer, whatever its type (0x3B24C0, OPEN).
 - **Tells from the HUD, round 55** (c2dfont.cpp: LoadJamo, LoadVowelRangeLayouts, Load, Compose, LoadChar):
   - CHangulFont::LoadJamo 0x35B4B0 by the online lobby's round-23 rule: ReadRect made static, the target keeps a0 across
     it -- with the rectangle's corners a one-int class (a struct of class-typed members copies through $f0, plain ints
