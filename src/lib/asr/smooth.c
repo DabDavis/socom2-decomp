@@ -70,7 +70,7 @@ extern void func_004F7038(MTX *m, ASRENGINE *eng);              /* mtxDestruct *
 extern IMTX *imtxConstruct(ASRENGINE *eng);
 extern IMTX *imtxInit(IMTX *m, int rows, int cols, ASRENGINE *eng);
 extern void func_004F76A0(IMTX *m, ASRENGINE *eng);             /* imtxDestruct */
-extern void func_004F7880(MTX *to, MTX *from);                  /* mtxFillCopy */
+extern void mtxFillCopy(MTX *to, MTX *from);
 extern float mtxMax(MTX *m);
 extern void mtxCompress(MTX *m, float c);
 extern int QrPreMult(MTX *r, MTX *c, MTX *x);
@@ -150,7 +150,7 @@ int Smoothing(SMOOTHER *s, float *x)
     float *px, *py, *pr, *q, *end, d, diag, *col, *out;
     int *idx;
 
-    func_004F7880(r, s->b);
+    mtxFillCopy(r, s->b);
     xm->data = x;
     xm->end = x + xm->n;
     mtxCompress(xm, mtxMax(xm) - s->level);
