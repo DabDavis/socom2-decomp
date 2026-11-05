@@ -565,6 +565,21 @@ void CClutterAnimManager::TestCellMid(CPnt3D *mid, CPnt3D *pos)
     }
 }
 
+/* a prop's new animation: no node, no lean, the wobble's clock at 5.01 (inline in both builds:
+ * ClutterTick's new -- SOCOM 1's casts the prop's node to a CModel, its result unused, as SOCOM
+ * II's does) */
+inline CClutterAnim::CClutterAnim(CClutter *c)
+{
+    m_clutter = c;
+    dynamic_cast<CModel *>(m_clutter->m_node);
+    m_node = 0;
+    m_lean = CPnt3D::zero;
+    m_14 = 0.0f;
+    m_1c = 0.0f;
+    m_18 = 5.01f;
+    m_20 = 0.0f;
+}
+
 /* a prop's animation ticked (SOCOM 1's, 0x217BA0): with the cell flagged, the first effector within
  * its radius of the prop in x, z and y pushes it -- the prop given an animation if it has none (the
  * world's foliage sound played at it, the animation listed), the wobble's clock reset and TickForce
