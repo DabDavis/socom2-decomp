@@ -8,6 +8,10 @@
  * reverse of their definition), the category page's SetWeapon and ShowArrows, the selector's
  * Scroll and SlotList::NextClass. The layout is hud_weaponsel.h's.
  * The initialiser (0x3FF7F0) is the file statics below, defined in address order (round 20).
+ * Round 49: the equipment picks (NextFreeEquipment, PickEquipment), SlotList's CanTake and
+ * NextCategory (and NextWeapon at last), the page's Init, Layout and Fade (its m2c draft as source),
+ * the selector's Layout, SetSlot and HudTick -- every row but 0x23ECA0 (0x1250, the slot's item put in
+ * place with the five kinds' pick loops: unwritten, called through a placeholder), all byte-exact.
  * Defined in reverse of their image order (-inline deferred). */
 
 #include "../../gamez/ztwod/ztwod.h"
