@@ -176,6 +176,10 @@ public:
      * delay slot filled from the permanent arm, the temporary arm's own lui and its padded join) */
     static CDecal *GetPermDecal() { return m_permPool.Get(false); }
     static CDecal *GetTempDecal() { return m_tempPool.Get(true); }
+    /* the decal set up on a visual's view (vis_decal.cpp's, SOCOM 1's: SOCOM II's takes the point
+     * after the size) */
+    CDecal *AddDecal(float size, CPnt3D *pos, AddonPoint **points, unsigned int flags, CTexHandle *tex,
+                     CVisual *visual, unsigned int vid);
 
     CDecal *m_next;   // 0x0
     CVisual *m_visual;   // 0x4
@@ -1320,13 +1324,9 @@ void CVisual::ApplyDecalRender(CMatrix *mtw, CNode *node, float size, CPnt3D *po
     func_003B3AB0(this, vid, size, pos, &n, &m, tex);
 }
 
-/* a decal set up (vis_decal.cpp's 0x3BECA0, not written: SOCOM 1's CDecal::AddDecal, SOCOM II's
- * taking the flags, the texture, the points and the new word, then the visual and the view) */
-extern "C" void func_003BECA0(CDecal *d, float size, unsigned int flags, CTexHandle *tex,
-                              AddonPoint **points, int extra, CVisual *visual, unsigned int vid);
-
-/* a decal taken from the permanent pool (a negative size) or the temporary one and set up, then
- * appended to the view's list -- whose end is found first (SOCOM 1's, SOCOM II finding the end
+/* a decal taken from the permanent pool (a negative size) or the temporary one and set up (the point
+ * handed through to CDecal::AddDecal: SOCOM II's new argument -- round 32 read it off both ends of the
+ * call; the row's types were SOCOM 1's with an int appended), then appended to the view's list -- whose end is found first (SOCOM 1's, SOCOM II finding the end
  * before taking the decal, the decal's link cleared before it is set up). The end's walk is a
  * `while (last)` with the link's test a break (the target's entry test, the link's test and the
  * bottom `bnez` on the new end); the set-up's float comes first in its prototype (the target
@@ -1342,8 +1342,8 @@ extern "C" void func_003BECA0(CDecal *d, float size, unsigned int flags, CTexHan
  * temporary arm's lui into the slot. A ternary, the arms inverted (`!(size < 0)`, `size >= 0`),
  * int arguments, pool pointer locals, a bool variable and the decal declared at the top all give
  * the same 0x144 */
-void CVisual::AttachDecal(unsigned int vid, float size, unsigned int flags, AddonPoint **points,
-                          CTexHandle *tex, int extra)
+void CVisual::AttachDecal(unsigned int vid, float size, CPnt3D *pos, unsigned int flags, AddonPoint **points,
+                          CTexHandle *tex)
 {
     unsigned int *&list = m_24.data();
     CDecal *last = (CDecal *)list[vid];
@@ -1364,7 +1364,7 @@ void CVisual::AttachDecal(unsigned int vid, float size, unsigned int flags, Addo
         d = CDecal::GetTempDecal();
     if (d) {
         d->m_next = 0;
-        func_003BECA0(d, size, flags, tex, points, extra, this, vid);
+        d->AddDecal(size, pos, points, flags, tex, this, vid);
         if (last)
             last->m_next = d;
         else

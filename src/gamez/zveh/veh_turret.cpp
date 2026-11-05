@@ -9,6 +9,10 @@
 #include <string.h>
 
 #include "zveh.h"
+/* the DI pool's request helpers -- RequestRay, its get and set-up and CNewDiDir -- are seal_dipool.h's
+ * (the kit's round 51), shared with the SEALs' _GetTargetPerception: OVL1 0x3A7E30 / 0x3A7DD0 are this
+ * unit's out-of-line copies */
+#define SEAL_DIPOOL_REQUESTS
 #include "../zseal/seal_dipool.h"
 
 using namespace zdb;
@@ -1327,81 +1331,6 @@ static inline bool ConeContains(CTurret *t, const CPnt3D *p, const CPnt3D *apex,
             dot * dot <= r * r)
         return true;
     return false;
-}
-
-/* a request made: SOCOM 1's CDiPool::dir() -- the state, whose test, the two words and the limit
- * zeroed (0x3A7E30's inlined constructor). A modelling device: seal_dipool.h's dir declares no
- * constructor (the kit's file), so the scan's `new` builds this layout-identical subclass */
-struct CNewDiDir : public CDiPool::dir {
-    CNewDiDir()
-    {
-        m_state = 0;
-        m_ent = 0;
-        m_2c = 0;
-        m_limited = 0;
-        m_30 = 0;
-    }
-};
-
-/* a request taken off the free list, or a new one made when it is empty (inline: out of line at
- * 0x3A7E30 behind RequestRay's cut, OVL2's copy 0x5C9830 -- a member of the free list's class in the
- * original, by its `this`: seal_dipool.h's CDirList; the name ours) */
-static inline CDiPool::dir *GetRequest(CDiPool::CDirList &free)
-{
-    CDiPool::dir *d;
-
-    if (free.empty())
-        d = new CNewDiDir;
-    else {
-        d = free.front();
-        free.pop_front();
-    }
-    return d;
-}
-
-/* a request set up: the ray from tail to tip, new, no DiIntersect yet, unaged, whose test it is,
- * the target's node and the target (inline: out of line at 0x3A7DD0 behind RequestRay's cut, OVL2's
- * copy 0x5C97D0 -- a dir member in the original, by its `this`; the name ours) */
-static inline void SetRequest(CDiPool::dir *d, const CPnt3D &tail, const CPnt3D &tip, CEntity *viewer,
-                              CNode *node, CEntity *target)
-{
-    d->m_tail = tail;
-    d->m_tip = tip;
-    d->m_state = 3;
-    d->m_index = -1;
-    d->m_age = 0.0f;
-    d->m_ent = viewer;
-    d->m_2c = (int)node;
-    d->m_limited = 0;
-    d->m_30 = (int)target;
-}
-
-/* a ray from the eye to the target's point requested for a target's slot: a request made, set up
- * and listed when it has none, else its own re-aimed (inline, cut to ONE level by its expanded size:
- * the target calls the pool's get, the set-up, the used list's push_back (0x3A7DA0, OVL1's copy of
- * OVL2's 0x5C97A0) and CPnt3D's implicit assignment (an earlier unit's copy, 0x20F1F0) out of line,
- * as the SEALs' twin 0x5CC120 does; the name ours) */
-static inline void RequestRay(int &slot, const CPnt3D &eye, const CPnt3D &pos, CEntity *viewer,
-                              CNode *node, CEntity *target)
-{
-    CDiPool::dir *d = 0;
-
-    if (!slot) {
-        d = GetRequest(_diPool.m_free);
-        if (d) {
-            SetRequest(d, eye, pos, viewer, node, target);
-            d->m_limited = 0;
-            _diPool.m_used.push_back(d);
-            slot = (int)d;
-        }
-    } else {
-        d = (CDiPool::dir *)slot;
-        d->m_tail = eye;
-        d->m_tip = pos;
-        d->m_2c = (int)node;
-        d->m_limited = 0;
-        d->m_30 = (int)target;
-    }
 }
 
 /* the targets' rays (new in SOCOM II, not named: 0x3A88C0 calls it under AI control -- the SEALs'

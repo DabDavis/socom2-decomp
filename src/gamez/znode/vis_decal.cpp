@@ -14,6 +14,19 @@ namespace zdb {
 class CDecal;
 class CMeshDecal;
 
+/* a decal's add-on point (vis_vu.cpp's AddonPoint, its layout: the position, two halfwords, two
+ * points with a word after each -- here the words are what AddDecal reads them as, the colour and
+ * the normal's halfwords) */
+struct AddonPoint {
+    CPnt3D m_pos;   // 0x0
+    short m_c;   // 0xc
+    short m_e;   // 0xe
+    CPnt3D m_10;   // 0x10
+    unsigned int *m_rgba;   // 0x1c
+    CPnt3D m_20;   // 0x20
+    short *m_normal;   // 0x2c
+};   // 0x30 bytes
+
 /* a decal's pool: the decals in use, the most, the extra allowed past it and how often the most
  * was passed, over an RTArray of them (SOCOM 1's; 0x14 bytes, the statics m_tempPool and
  * m_permPool; the member names ours) */
@@ -77,11 +90,18 @@ public:
     static void PutPermDecal(CDecal *d);
     static void PutTempDecal(CDecal *d);
 
+    CDecal *AddDecal(float size, CPnt3D *pos, AddonPoint **points, unsigned int flags, CTexHandle *tex,
+                     CVisual *visual, unsigned int vid);
+
     CDecal *m_next;   // 0x0
     CVisual *m_visual;   // 0x4
-    unsigned char _8[0xc - 0x8];
+    float m_size;   // 0x8
     unsigned short m_view;   // 0xc
-    unsigned char _e[0x120 - 0xe];   // (0x120 bytes: RTArray<CDecal>()'s array stride)
+    unsigned short m_kind;   // 0xe: 2 permanent (a negative size), 1 temporary
+    u_long128 m_tex;   // 0x10: the texture's VU select reference
+    unsigned int m_pkt[0x110 / 4 - 8];   // 0x20: the DMA reference and the VIF packet it sends
+    CPnt3D m_pos;   // 0x110 (SOCOM II's)
+    unsigned char _11c[0x120 - 0x11c];   // (0x120 bytes: RTArray<CDecal>()'s array stride)
 
     static CDecalPool m_tempPool;
     static CDecalPool m_permPool;
@@ -220,6 +240,121 @@ CDecal *CDecalPool::Get(bool b)
         }
     }
     return d;
+}
+
+/* a decal set up on a visual's view: its size, kind, visual and view; the texture's VU select; the
+ * DMA reference to its VIF packet -- the three points' colours, the fan's and the strip's GIF tags
+ * (textured, gouraud, fogged triangles, alpha-blended for a translucent texture that is not a bump
+ * map), each point's two quadwords and the last point's normal (SOCOM 1's CDecal::AddDecal, 0x312E80
+ * in the demo: the same packet; SOCOM II's takes the point after the size and keeps it at 0x110 --
+ * the flags are read by neither). The alpha test a materialised bool (the target's sltu / xori
+ * before its branch), the points unrolled, the reference's address an integer sum (a pointer sum
+ * folds this+16+32 into one addiu; the target adds twice), the decal returned (the target's mid-body
+ * `move v0,a0`). OPEN, 50 instructions at the target's size: the colouring -- `tools/igreplay.py
+ * --move prim=100.5` (prim numbered after the code generator's temporaries) gives the target's t0
+ * for t, v1 for prim and a3 for the flag byte, leaving 8 code-generation temporaries off (the
+ * constants' v0/a3 and t1-t3, which then set the schedule); no source shape tried numbers prim so
+ * late -- one variable for the set-up and strip tags, prim declared after strip, blend first, a
+ * ternary, a one-element local array, a one-word local struct, a bitfield struct and an inline
+ * returning prim give 50-59 (build/scratch/wep/v_add*.py) */
+CDecal *CDecal::AddDecal(float size, CPnt3D *pos, AddonPoint **points, unsigned int flags, CTexHandle *tex,
+                         CVisual *visual, unsigned int vid)
+{
+    CTexture *t = tex->m_texture;
+
+    m_size = size;
+    m_view = vid;
+    m_visual = visual;
+    if (size < 0.0f)
+        m_kind = 2;
+    else
+        m_kind = 1;
+
+    unsigned int prim = 0x301DC000;
+    bool blend = t->m_transparent && !t->m_bumpmap;
+
+    if (blend)
+        prim |= 0x200000;
+    m_tex = t->m_dmaRefVu;
+    m_pkt[0] = 0x3000000E;
+    u_long128 *q = &m_tex;
+
+    m_pkt[1] = (unsigned int)CACHED((unsigned int)q + 0x20);
+    m_pkt[2] = 0x01000103;
+    m_pkt[3] = 0x6E038006;
+    unsigned int strip = (prim & 0xFFFC7FFF) | 0x18000;
+    m_pkt[3] |= 0x4000;
+    m_pkt[4] = *points[0]->m_rgba;
+    m_pkt[5] = *points[1]->m_rgba;
+    m_pkt[6] = *points[2]->m_rgba;
+    m_pkt[7] = 0x01000101;
+    m_pkt[8] = 0x6C048000;
+    m_pkt[9] = 0x8000;
+    m_pkt[10] = (strip & 0xFFFC7FFF) | 0x28000;
+    m_pkt[11] = 0x412;
+    m_pkt[12] = 0;
+    m_pkt[13] = 0x8003;
+    m_pkt[14] = strip;
+    m_pkt[15] = 0x412;
+    m_pkt[16] = 0;
+    m_pkt[17] = 13;
+    m_pkt[18] = 0;
+    m_pkt[19] = 3;
+    m_pkt[20] = 1;
+    m_pkt[21] = 0;
+    m_pkt[22] = 0;
+    m_pkt[23] = 0;
+    m_pkt[24] = 0;
+    m_pkt[25] = 0x01000203;
+    m_pkt[26] = 0x6C068004;
+
+    AddonPoint *p;
+    float *f = (float *)&m_pkt[27];
+
+    p = points[0];
+    f[0] = p->m_10.x;
+    f[1] = p->m_10.y;
+    f[2] = p->m_10.z;
+    f[3] = p->m_20.x;
+    f[4] = p->m_pos.x;
+    f[5] = p->m_pos.y;
+    f[6] = p->m_20.y;
+    f[7] = p->m_20.z;
+    p = points[1];
+    f[8] = p->m_10.x;
+    f[9] = p->m_10.y;
+    f[10] = p->m_10.z;
+    f[11] = p->m_20.x;
+    f[12] = p->m_pos.x;
+    f[13] = p->m_pos.y;
+    f[14] = p->m_20.y;
+    f[15] = p->m_20.z;
+    p = points[2];
+    f[16] = p->m_10.x;
+    f[17] = p->m_10.y;
+    f[18] = p->m_10.z;
+    f[19] = p->m_20.x;
+    f[20] = p->m_pos.x;
+    f[21] = p->m_pos.y;
+    f[22] = p->m_20.y;
+    f[23] = p->m_20.z;
+    m_pkt[51] = 0x01000102;
+    m_pkt[52] = 0x6E01800D;
+    m_pkt[52] |= 0x4000;
+    ((unsigned char *)&m_pkt[53])[0] = 0;
+    ((unsigned char *)&m_pkt[53])[1] = 3;
+    ((unsigned char *)&m_pkt[53])[2] = 6;
+    ((unsigned char *)&m_pkt[53])[3] = 1;
+    m_pkt[54] = 0x01000102;
+    m_pkt[55] = 0x6901800E;
+    ((short *)&m_pkt[56])[0] = p->m_normal[0];
+    ((short *)&m_pkt[56])[1] = p->m_normal[1];
+    ((short *)&m_pkt[56])[2] = p->m_normal[2];
+    ((short *)&m_pkt[56])[3] = 0;
+    m_pkt[58] = 0x17000000;
+    m_pkt[59] = 0;
+    m_pos = *pos;
+    return this;
 }
 
 /* the VU0 decal builder's batch (0x3B8680 makes it on first use: new in SOCOM II, no SOCOM 1
