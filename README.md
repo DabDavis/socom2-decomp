@@ -2065,6 +2065,25 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the SEALs, round 49** (the network-life timeout, the recursive soil mark, the AI fire parameters,
+  PostMortemPreTick, CrouchMoveControl; the SEALs' own placeholders respelled):
+  - A CALLEE DECLARED `(T *a, float x, T *b, float z)` GETS THE SAME REGISTERS AS `(a, b, x, z)`, BUT ITS CALLERS SET THEM
+    UP IN DECLARATION ORDER (a1, $f12, a2, $f13) -- CZSealBody::CrouchMoveControl 0x582D10's callers; 0x583350's
+    parameters reordered so;
+  - a pointer field's address read through a tiny inline (`SealOf(this)`) makes the result a temporary numbered after the
+    named locals (`igreplay --movers` on CSealCtrl::PostMortemPreTick 0x592560); a CAiTimer reset that keeps the timer's
+    base address comes from inlines working through a local copy `T *t = this;` -- on `this` directly MW bases the
+    accesses on the fields' own addresses;
+  - a byte enum read into a local: lb in the first block, then andi 0xff at the compare -- compared in place it loads
+    with lbu (NET_LIFE: the online network-life timeout 0x543F70); a const AI pointer passed to bitfield-reading inlines
+    makes MW hoist the bitfield byte's address out of loops, a non-const one not; an unsigned char copy of a bit
+    re-tested as `(bool)navy == false` gives the target's andi with an sltu in both arms of the ternary before it (the AI
+    fire parameters 0x55F0A0); a callee short enough for -inline auto that the target still calls is pinned with
+    `#pragma auto_inline off` (0x55EBE0); the recursive soil mark 0x556EE0;
+  - 0x533A40 named CVehicleRdr::CVehicleRdr by the integrator: SOCOM 1's CMission::Init calls CVehicleRdr() on a new
+    12-byte object where SOCOM II's Init calls it (the game states' round 44), and it follows the entry vector's
+    constructor 0x533A20 as SOCOM 1's 0x1A38E0 follows 0x1A38C0 -- its body that constructor inlined (0x14; SOCOM 1's
+    0x34 calls the compressed pair's out of line).
 - **Tells from the game states, round 44** (CMission::LoadVehicle and Init -- unwritten before; LastMessage, open since
   round 17):
   - C2DMessage_Q::LastMessage 0x2B6D60 by the MSL's round-31 shape: a dead first `c_str()` ahead of the return makes the
