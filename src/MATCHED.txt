@@ -10293,11 +10293,15 @@
 0x005EABA0 ConfirmCommand__9CSealUnitF10FT_COMMANDUci
 0x005EAD70 AcknowledgeCommand__9CSealUnitF10FT_COMMANDUci
 0x005EAEB0 func_005EAEB0
+0x005EB190 func_005EB190
 0x005EB580 FollowSeal__9CSealUnitFP10CZSealBody
 0x005EB8A0 func_005EB8A0
+0x005EB910 func_005EB910
 0x005EBB50 func_005EBB50
 0x005EBDA0 __as__8CAiTimerFRC8CAiTimer
 0x005EBDC0 __as__8CAiStateFRC8CAiState
+0x005EBF00 func_005EBF00
+0x005EC230 func_005EC230
 0x005EC9F0 InitalizeSealUnit__9CSealUnitFP10CZSealBodyP9CSealUnit
 0x005ECCD0 CreateMultiPlayerUnits__9CSealUnitFv
 0x005ECEF0 UnInit__9CSealUnitFv
@@ -10317,8 +10321,11 @@
 0x005ED8A0 func_005ED8A0
 0x005ED8C0 func_005ED8C0
 0x005ED8D0 func_005ED8D0
+0x005ED8F0 end__Q23std48list<P9CSealUnit,Q23std22allocator<P9CSealUnit>>CFv
 0x005ED920 func_005ED920
 0x005ED940 func_005ED940
+0x005ED950 begin__Q23std48list<P9CSealUnit,Q23std22allocator<P9CSealUnit>>CFv
+0x005ED980 __ct__Q33std48list<P9CSealUnit,Q23std22allocator<P9CSealUnit>>19generic_iterator<1>FQ33std42__list_deleter<PCv,Q23std14allocator<PCv>>19generic_iterator<1>
 0x005ED9A0 func_005ED9A0
 0x005EDBB0 GetSealByIndex__9CSealUnitFii
 0x005EDCC0 IsMemberOfUnit__9CSealUnitFP10CZSealBodyb
@@ -10327,6 +10334,7 @@
 0x005EDE40 Revive__9CSealUnitFP10CZSealBody
 0x005EDF90 SealLeaveUnit__9CSealUnitFP10CZSealBody
 0x005EE160 EscorteeJoinUnit__9CSealUnitFP10CZSealBody
+0x005EE250 SealJoinUnit__9CSealUnitFP10CZSealBody
 0x005EE4D0 __dt__9CSealUnitFv
 0x005EE6F0 __ct__9CSealUnitFUi
 0x005EEDB0 FindRescuedNear__9CSealUnitFP10CZSealBody
@@ -10342,6 +10350,7 @@
 0x005EF950 func_005EF950
 0x005EF9B0 func_005EF9B0
 0x005EF9D0 __dt__10CAiSActionFv
+0x005F0180 func_005F0180
 0x005F0390 GetStatus__10CAiSActionCFv
 0x005F0470 OnSignal__10CAiSActionFQ28CAiState6SIGNALP11CSealCtrlAi
 0x005F06B0 Virtual0C__10CAiSActionFP6CZAnim9AI_SIGNALP11CSealCtrlAi
