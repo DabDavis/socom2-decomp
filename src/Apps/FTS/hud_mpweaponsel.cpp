@@ -391,6 +391,115 @@ void CMPWeaponSel::SetState(SEL_STATE state)
     m_state = state;
 }
 
+/* a chosen weapon put in a selected slot (0x23FEF0; no row named yet) */
+extern "C" void func_0023FEF0(CMPWeaponSel *sel, int slot, CZWeapon *weapon);
+
+/* the selector's and the page's fade levels, 0 (gone) to 100 (bss 0x4147B0, 0x4147B8), and their
+ * rates and ceilings (.data 0x3DCE78/0x3DCE80, 0x3DCE98/0x3DCEA0: variables; the names ours) */
+static float s_selfade;
+static float s_pagefade;
+static float s_selfaderate = 400.0f;
+static float s_selfademax = 100.0f;
+static float s_pagefaderate = 400.0f;
+static float s_pagefademax = 100.0f;
+
+/* the selector's and the page's cursor-bar pulse rates, blends a second (.data 0x3DCE70, 0x3DCE90:
+ * variables; the names ours) */
+static float s_selpulserate = 4.0f;
+static float s_pagepulserate = 4.0f;
+
+/* the selector's tick: by state -- closed, 0x2C64E0's button 4 opens the list; on the list the
+ * page's arrows grey and the list's buttons; on the page its buttons and pulsing arrows, and when
+ * the page closes on a choice, the choice put in the cursor's slot and the character's weapons
+ * set; either way back on the list, laid out. Then, while the list's backdrop is up: the cursor
+ * bar's colour pulsed on the list (else the bright colour), the selector faded in (out while
+ * closed; off altogether below 0), the page's bar pulsed and the page faded (0x240600; the name
+ * ours, after SOCOM 1's CWeaponSel::HudTick -- CHUD::Tick calls it in a network game) */
+void CMPWeaponSel::HudTick(CPad *pad, float dT)
+{
+    if (!CHUD::GetHUDOwner())
+        return;
+    switch (m_state) {
+    case SEL_PAGE: {
+        m_categories.HandlePad(pad);
+        if (m_categories.m_state)
+            m_categories.TickArrows(dT);
+
+        int dir;
+
+        if (m_categories.m_state == SEL_CHOSEN)
+            dir = 1;
+        else if (m_categories.m_state == SEL_LIST)
+            dir = -1;
+        else
+            dir = 0;
+        if (dir == -1 || dir == 1) {
+            if (dir == 1) {
+                func_0023FEF0(this, m_list.m_34, m_categories.m_categories[1].m_weapon);
+                SetCharacterWeapons();
+            }
+            Layout(dT);
+            SetState(SEL_LIST);
+        }
+        break;
+    }
+    case SEL_LIST:
+        m_categories.ShowArrows();
+        HandlePad(pad, dT);
+        break;
+    case SEL_CLOSED:
+        if (func_002C64E0(4, pad) == KEY_FALLING)
+            SetState(SEL_LIST);
+        break;
+    }
+    if (!m_bitmap2.IsOn())
+        return;
+    if (m_state == SEL_LIST) {
+        m_153c += m_1538 * (dT * s_selpulserate);
+        if (m_153c > 1.0f) {
+            m_153c = 1.0f;
+            m_1538 *= -1.0f;
+        }
+        if (m_153c < 0.0f) {
+            m_153c = 0.0f;
+            m_1538 *= -1.0f;
+        }
+
+        CPnt3D d = s_color8 - s_color7;
+
+        m_bitmap3.SetColor(s_color7.x + d.x * m_153c, s_color7.y + d.y * m_153c, s_color7.z + d.z * m_153c);
+    } else {
+        m_bitmap3.SetColor(s_color8.x, s_color8.y, s_color8.z);
+    }
+    s_selfade += (m_state == SEL_CLOSED ? -1.0f : 1.0f) * (dT * s_selfaderate);
+    if (s_selfade < 0.0f) {
+        Off();
+        s_selfade = 0.0f;
+    } else if (!(s_selfade <= s_selfademax)) {
+        s_selfade = s_selfademax;
+    }
+    m_bitmap1.SetTrans(s_selfade);
+    m_bitmap2.SetTrans(s_selfade);
+    m_bitmap3.SetTrans(s_selfade);
+    m_title.SetTrans(s_selfade);
+    m_list.SetTrans(s_selfade);
+    m_categories.m_f38 += m_categories.m_f34 * (dT * s_pagepulserate);
+    if (m_categories.m_f38 > 1.0f) {
+        m_categories.m_f38 = 1.0f;
+        m_categories.m_f34 *= -1.0f;
+    }
+    if (m_categories.m_f38 < 0.0f) {
+        m_categories.m_f38 = 0.0f;
+        m_categories.m_f34 *= -1.0f;
+    }
+
+    CPnt3D d2 = s_color8 - s_color7;
+
+    m_categories.m_bitmap3.SetColor(s_color7.x + d2.x * m_categories.m_f38, s_color7.y + d2.y * m_categories.m_f38,
+                                    s_color7.z + d2.z * m_categories.m_f38);
+    m_categories.Fade(m_state == SEL_CLOSED, dT);
+}
+
 void CWeaponSlot::SetTrans(float trans)
 {
 }
@@ -406,7 +515,8 @@ void SlotList::SetTrans(float trans)
 /* the list's buttons: up and down scroll the slots, the confirm button (0x2C64E0's 0) opens the
  * category page, triangle, start or 0x2C64E0's 4 close the selector (0x23EBC0; the name ours --
  * m2c's draft matched as it stood) */
-void CMPWeaponSel::HandlePad(CPad *pad)
+#pragma auto_inline off
+void CMPWeaponSel::HandlePad(CPad *pad, float dT)
 {
     if (pad->m_state[PAD_UP] == KEY_FALLING) {
         Scroll(-2);
@@ -424,6 +534,7 @@ void CMPWeaponSel::HandlePad(CPad *pad)
         func_002C64E0(4, pad) == KEY_FALLING)
         SetState(SEL_CLOSED);
 }
+#pragma auto_inline reset
 
 /* the cursor a slot on or back, round the five, again while the slot is refused; the page then
  * shows the slot's weapon, updated. Pinned: the target calls itself and the page's SetWeapon out
@@ -749,6 +860,32 @@ void CategorySlot::SetTrans(float trans)
 {
     m_name.SetTrans(trans);
     m_bitmap.SetTrans(trans);
+}
+
+/* the page faded out (closing) or in at 400 a second, off altogether below 0, at most 100; each
+ * of its parts given the level (0x23D610; the name ours -- the selector's tick calls it each frame,
+ * closing while the selector is closed; m2c's draft matched as it stood) */
+void CMPWeaponCategories::Fade(bool closing, float dT)
+{
+    s_pagefade += (closing ? -1.0f : 1.0f) * (dT * s_pagefaderate);
+    if (s_pagefade < 0.0f) {
+        Off();
+        s_pagefade = 0.0f;
+    } else if (!(s_pagefade <= s_pagefademax)) {
+        s_pagefade = s_pagefademax;
+    }
+    m_bitmap1.SetTrans(s_pagefade);
+    m_bitmap2.SetTrans(s_pagefade);
+    m_bitmap3.SetTrans(s_pagefade);
+    m_title.SetTrans(s_pagefade);
+    m_list.SetTrans(s_pagefade);
+
+    unsigned int i;
+
+    for (i = 0; i < 4; i++)
+        m_categories[i].SetTrans(s_pagefade);
+    for (i = 0; i < 4; i++)
+        m_polys[i].SetTrans(s_pagefade);
 }
 
 /* the weapon's index and class, and whether it is a primary (0), a secondary (1) or neither (2);

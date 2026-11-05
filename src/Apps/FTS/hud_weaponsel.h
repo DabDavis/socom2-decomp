@@ -330,6 +330,8 @@ public:
     void Init();
     /* the page laid out and on (0x23D860; the name ours) */
     void Layout(float dT);
+    /* the page faded out (closing) or in (0x23D610; the name ours) */
+    void Fade(bool closing, float dT);
     /* the weapon shown: its class (GetIDType, 255 none), its kind (0 primary, 1 secondary, 2 other)
      * and its index in the weapons' list (0x23D540; the names ours) */
     void SetWeapon(CZWeapon *weapon);
@@ -350,8 +352,8 @@ public:
     bool m_pulseup;   // 0xf2c: the blend rising
     unsigned char _f2d[0xf30 - 0xf2d];
     class CMPWeaponSel *m_owner;   // 0xf30: the selector (its Init sets it)
-    float m_f34;   // 0xf34: 1 from the constructor
-    int m_f38;   // 0xf38
+    float m_f34;   // 0xf34: 1 from the constructor: the cursor bar's pulse direction (1 or -1)
+    float m_f38;   // 0xf38: the cursor bar's pulse, 0 to 1 (the selector's tick reads it with lwc1)
     unsigned char _f3c[0xf40 - 0xf3c];
 } __attribute__((aligned(16)));   // 0xf40 bytes
 
@@ -369,8 +371,10 @@ public:
     /* the cursor moved a slot on (2) or back (-2), round the five, on past the slots its test
      * refuses; the category page shows the slot's weapon (0x23EAE0; the name ours) */
     void Scroll(signed char dir);
-    /* the list's buttons (0x23EBC0; the name ours) */
-    void HandlePad(CPad *pad);
+    /* the list's buttons (0x23EBC0; the name ours -- the tick passes it dT too) */
+    void HandlePad(CPad *pad, float dT);
+    /* the selector's tick (0x240600; the name ours, after SOCOM 1's CWeaponSel::HudTick) */
+    void HudTick(CPad *pad, float dT);
     /* the selector laid out (0x23E030; the name ours) */
     void Layout(float dT);
     /* the five selected slots' weapons given to the HUD owner's character (0x23E5E0; the name ours) */
@@ -410,8 +414,8 @@ public:
     bool m_f2000;   // 0x1533: the F2000's (Enable_F2000FRAG ...)
     bool m_gl;   // 0x1534: the grenade launcher's (Enable_GLFRAG ...)
     unsigned char _1535[0x1538 - 0x1535];
-    float m_1538;   // 0x1538: 1 from the constructor
-    int m_153c;   // 0x153c
+    float m_1538;   // 0x1538: 1 from the constructor: the cursor bar's pulse direction (1 or -1)
+    float m_153c;   // 0x153c: the cursor bar's pulse, 0 to 1 (the tick reads it with lwc1)
 } __attribute__((aligned(16)));   // 0x1540 bytes
 
 #endif
