@@ -612,6 +612,10 @@ public:
     static unsigned short nextPickupId;   // OVL1 data 0x3DF170 (SOCOM 1's, 1 at the start)
     static unsigned int bit_count;   // OVL1 data 0x3DF178
     static bool m_isOpen;   // OVL1 bss 0x44D4B0
+    /* a pickup's time when it never runs out: -1, read as a variable (OVL1 data 0x3F3440, in
+     * fts_ovl2statics.cpp's data among the SEALs' statics: SOCOM II's, the name the game states'
+     * -- Create, NetworkCreate and TickTimers read it, ftsFixupAiMap twice) */
+    static const float NO_TIMEOUT;
 
     float m_timer;   // 0x0 (new in SOCOM II)
     zdb::CNode *m_node;   // 0x4

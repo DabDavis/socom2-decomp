@@ -42,8 +42,6 @@ void func_002BA3F0(int count, unsigned short *packed, unsigned short *rounds, un
 /* (this unit's, below) */
 void func_00541700(CPickup *p);
 void func_005418B0(CPickup *p);
-/* (OVL1 data: -1, the time that never runs; read as a variable) */
-extern float data_003F3440;
 /* an animation stopped (OVL1, zanim_set.cpp's callers pass false too) */
 void func_002707C0(CZAnim *anim, bool now);
 }
@@ -121,7 +119,7 @@ CPickup *CPickup::Create(unsigned int owner, PU_TYPE type, zdb::CNode *node, voi
     p->Set(type, node, data, owner, nextPickupId++);
     p->SetLocked(false);
     p->SetSecondary(false);
-    p->m_timer = data_003F3440;
+    p->m_timer = NO_TIMEOUT;
     m_list.push_back(p);
     if (type == PU_WEAPON && node) {
         zdb::CNode *scope = node->FindChild("scope", true);
@@ -152,7 +150,7 @@ CPickup *CPickup::NetworkCreate(unsigned int netid, PU_TYPE type, zdb::CNode *no
     p->Set(type, node, data, GetEntityIDFromNetID(netid), netid);
     p->SetLocked(false);
     p->SetSecondary(false);
-    p->m_timer = data_003F3440;
+    p->m_timer = NO_TIMEOUT;
     m_list.push_back(p);
     if (type == PU_WEAPON && node) {
         zdb::CNode *scope = node->FindChild("scope", true);
@@ -295,7 +293,7 @@ void CPickup::TickTimers(const CPnt3D *pos, float dT)
         CPickup *p = *i;
 
         ++i;
-        if (pos && p->m_timer != data_003F3440) {
+        if (pos && p->m_timer != NO_TIMEOUT) {
             p->m_timer -= dT;
             if (p->m_timer <= 0.0f) {
                 CPnt3D d;
