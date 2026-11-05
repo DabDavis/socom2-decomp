@@ -2062,6 +2062,20 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the engine core, round 15** (CAppCamera::LookAt; a depth-6 stand-in dropped; the float zero after an asm):
+  - field reads of an address-taken local: when the local is copied, direct reads keep its field addresses in saved
+    registers, and so do reads with both readers through a reference inline -- one reader of each kind reads off the
+    frame (CAppCamera::LookAt 0x29BC90: exactly one of the view vector's readers through a reference inline, LaNegRow);
+    loads from an escaped stack object are reloaded after a call, values the target keeps across one in $f20/$f21 come
+    from named float locals;
+  - plain C float tests give MW's `lwc1; mtc1 zero; nop; c.*.s` (164 matched sites; the 7 counter-cases all loads waiting
+    on a store); after an asm `sqc2` a C-made zero is scheduled into the store-to-load gap MW leaves before an aliasing
+    lwc1 -- only a zero made inside the asm block keeps the target's order (CDIBBox::GetIntersect 0x2DCDA0 to the target's
+    size, 2 off: probably a stand-in for whatever the original wrote); MW won't hoist the fall-through's `move v0,zero`
+    into a conditional branch's slot when the branch's block also writes or reads v0;
+  - the `Last()` technique works for a plain vector member too, through a free inline `iterator((T **)v.data_ +
+    v.size_)` (bone_archive.cpp's FindCommon: its depth-6 stand-in dropped, 12 of 12 at level 5, object byte-identical);
+    writing the walk out in ReadMotionRdr instead misses it.
 - **Tells from the AI core, round 26** (GetBilinearAltitude, CopyPlan, the planners' fcost, a depth-6 stand-in dropped):
   - scalarised arrays and structs are numbered after the named locals: as plain scalars the steps and weights took the
     parameters' registers, an `int s[2]` and a PNT2D gave the target's (CAiMap::GetBilinearAltitude 0x2A3170, 0x7B4, an
