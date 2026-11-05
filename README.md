@@ -2065,6 +2065,22 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the HUD, round 51** (hud_missioncams.cpp whole -- CleanupCamera, PlayCamera -- and ClosePauseMenu):
+  - a dead `= 0` at the top numbers a named local there, declared there without an initializer it is numbered at its
+    assignment (CleanupCamera 0x229520: `kit = 0` numbers the kit before the loop counter -- found and confirmed with
+    `tools/igreplay.py`); a local read ahead of an if-chain is loaded once in the first test's delay slot, read inside
+    each case it is loaded per case; an inline accessor used as an argument is expanded before a ternary in the same
+    argument list (PlayCamera 0x228EE0's font);
+  - a signed char field cast to a byte enum at a call loads with lbu -- the target's lb needs the field declared as the
+    enum (ClosePauseMenu 0x205200: SOCOM 1's `MENU_STATE m_oldmenustate`); an int counter against an unsigned count keeps
+    `i * 8` recomputed each pass, an unsigned counter strength-reduces it into a saved register;
+  - an implicit struct assignment copies word by word through $f0 with the source addresses in registers only when the
+    members are class-typed (two int members copy with lw / sw); an inline member called on an address-taken pointer
+    loads it once as `this`, the same writes made in the caller reload it after every call; an inline's erase temporaries
+    take frame slots below the caller's direct inlines';
+  - hudAddPopupDefinition 0x22D660 (0x600 of 0x5E0) wants the trigger bases' implicit constructors six levels high: an
+    invented intermediate CSaferStr base closes it but loses the unit's ~CSaferStr copy and the name vector's clear --
+    DECLINED (a net loss, and the depth-6 policy), OPEN.
 - **Tells from the kit and AI states, round 45** (GetSealCount's list pieces, SealJoinUnit, five SOCOM-II-only functions):
   - TWO PIECE SETS FOR ONE LIST TYPE ARE ITS TWO ITERATOR KINDS, not a unit boundary: generic_iterator<0> (DistributeNotify's,
     its constructor taking the base iterator by const reference, 0x5ED6E0-0x5ED7A0) and generic_iterator<1>
