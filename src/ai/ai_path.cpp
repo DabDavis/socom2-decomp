@@ -99,7 +99,7 @@ CAiPath::~CAiPath()
  * CAiMapLoc *> (0x51E7A0), the maps' through the 4-byte pod's operator= (0x528C30), the points'
  * through do_assign<const point *> (0x5287D0, this unit's tail, byte-exact). The state's two tests
  * written out on one read (IsPlanning() reloads it and materialises the range test).
- * OPEN, 21 instructions, the right size: the stats' copy -- the target takes the other stats' visited
+ * Open until round 26 (21 instructions, the right size): the stats' copy -- the target takes the other stats' visited
  * cells' address into a register before the nine words (v1; the words through v0) and reads their
  * data through it, the size straight; the implicit CAiPathStats assignment here folds both reads into
  * offsets of `path` and swaps the two registers. As a CAiMapLocVec (SOCOM 1's DWARF) the visited cells
@@ -116,7 +116,16 @@ CAiPath::~CAiPath()
  * the two forward_iterator_tag slots (68/72) swapped; with m_visited as CAiMapLocVec as well, this
  * and ~CAiPath match and CAiPath() is the level too tall (an MSL-lane header change: char_type.cpp
  * scores the same either way). In include/vector since the MSL headers round 24 (no other
- * hand-written object moves): 2 off here */
+ * hand-written object moves): 2 off here. BYTE-EXACT since the AI core round 26: the stats copied
+ * through an inline taking both by reference (by pointer alike) -- the implicit assignment is no
+ * inline level of its own, so written in place the visited cells' operator= sat at the points' level
+ * and its tag temporary took the slot above theirs; one level down it takes the frame's lowest slot
+ * (68) as the target's, the kit's round-33 rule (build/scratch/ai/v_cp.py) */
+inline void _copy_stats(CAiPathStats &d, const CAiPathStats &s)
+{
+    d = s;
+}
+
 bool CAiPath::CopyPlan(const CAiPath *path)
 {
     bool ok = false;
@@ -130,7 +139,7 @@ bool CAiPath::CopyPlan(const CAiPath *path)
         m_curleg = path->m_curleg;
         m_waypts = path->m_waypts;
         m_maps = path->m_maps;
-        m_stats = path->m_stats;
+        _copy_stats(m_stats, path->m_stats);
         m_state = path->m_state;
         m_status = path->m_status;
         m_length = path->m_length;
