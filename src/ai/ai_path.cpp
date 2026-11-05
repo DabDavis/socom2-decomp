@@ -35,9 +35,6 @@ namespace ai {
 const float s_preemptPriority = 1.0f;
 }
 
-/* what the path's functions call that is not written yet (this unit's) */
-extern "C" void func_00525810(CAiPath *path, unsigned int leg);   /* SOCOM 1's SmoothPathLeg */
-
 
 /* a vector's storage cut to its size: a copy of it swapped in (node_world.cpp's, the name ours):
  * inlined one level, its copy constructor, swap and destructor called out of line */
@@ -601,7 +598,7 @@ bool CAiPath::SmoothPath(bool force)
 
     if (HasPoints() && (force || (m_flags & 1))) {
         for (unsigned int i = 0; i < m_legcount; i++)
-            func_00525810(this, i);
+            SmoothPathLeg(i);
         RemoveInvalidPoints();
         TrimVector<std::vector<point> >(m_points);
         done = true;
@@ -627,6 +624,89 @@ bool CAiPath::IsPreferredCell(const CAiCell *cell) const
     return ok;
 }
 #pragma auto_inline reset
+
+/* what the smoothing walk carries (the name ours): the path, and what the walk has met */
+struct SMOOTH_DATA {
+    CAiPath *m_path;   // 0x0
+    int m_state;   // 0x4
+};
+
+bool _SmoothLineCallback(const MAP_LINEWALK_STRUCT &s, void *data);
+
+/* whether a point's cell lets the leg be smoothed across it: no action of kind 1 or 4 on it (nor
+ * 7 for the point dropped) and, without an action, no climb (the name ours) */
+inline bool smooth_cell(const CAiMap *map, const CAiPath::point &p, bool mid)
+{
+    CAiCell *cell = map->GetCell(p.m_loc, 0);
+    bool ok = true;
+
+    if (cell) {
+        if (cell->HasAction()) {
+            switch (map->GetCellAction(p.m_loc)->m_type) {
+            case 1:
+            case 4:
+                ok = false;
+                break;
+            case 7:
+                ok = !mid;
+                break;
+            }
+        } else if (cell->IsSoil(CAiMap::SOIL_CLIMB)) {
+            ok = false;
+        }
+    }
+    return ok;
+}
+
+/* a leg smoothed: from its first point, each point dropped (made invalid) when the line from the
+ * last point kept to the one after it is clear and their cells allow it, else kept as the new
+ * anchor; true when any was dropped (SOCOM 1's SmoothPathLeg, the demo's 0x194700) */
+bool CAiPath::SmoothPathLeg(int leg)
+{
+    CAiMap *map = GetLegMap(leg);
+    int first;
+    int last;
+
+    if (!map || !GetLegBoundary(first, last, leg))
+        return false;
+    int anchor = first;
+    bool changed = false;
+
+    if (anchor - last > 2) {
+        int i = anchor - 1;
+
+        while (i > last) {
+            CAiMapLoc &start = m_points[anchor].m_loc;
+            point &mid = m_points[i];
+            point &next = m_points[i - 1];
+            bool smooth = smooth_cell(map, start, false);
+
+            if (smooth) {
+                smooth = smooth_cell(map, mid, true);
+                if (smooth) {
+                    smooth = smooth_cell(map, next, false);
+                    if (smooth) {
+                        SMOOTH_DATA d;
+
+                        d.m_path = this;
+                        d.m_state = 0;
+                        smooth = map->WalkLine(start, next.m_loc, _SmoothLineCallback, &d, 0.2f);
+                    }
+                }
+            }
+
+            if (smooth) {
+                m_points[i].m_loc = CAiMapLoc::invalid;
+                i--;
+                changed = true;
+            } else {
+                anchor = i;
+                i--;
+            }
+        }
+    }
+    return changed;
+}
 
 /* the points' flags, last to first (SOCOM 1's UpdatePointFlags by its place and body, the demo's
  * 0x1940A0 right after UpdatePathWidth -- its UpdateTurnAngles, next, is gone: SOCOM II's points carry
