@@ -548,7 +548,7 @@ public:
     void CloseVehicleRdr();   /* 0x2B3430 */
     void OpenVehicleRdr();   /* 0x2B3470 */
     void PreOpen(const char *database);   /* 0x2ACC10 */
-    void Read(_zrdr *rdr);   /* 0x2AAB20 */
+    bool Read(_zrdr *rdr);   /* 0x2AAB20 */
     void RefreshTeamValves();   /* 0x2B23A0 */
     bool LoadVehicles();   /* 0x2B2E50 (fts_player.cpp's) */
     void CreateCompassNavPoints();
@@ -587,14 +587,14 @@ public:
 
     MISSION_STATE m_state;   // 0x18 (SOCOM 1's; the save module's base ahead)
     char *m_database;   // 0x1c (SOCOM 1's)
-    unsigned char m_20;   // 0x20: SOCOM II's, Close clears it last (the name ours)
-    unsigned char _21[0x60 - 0x21];
-    char m_db_string[0x80];   // 0x60 (SOCOM 1's at 0x20)
+    char m_20[0x40];   // 0x20: Read's Tcm NODEACTION_ROOTNAME (SOCOM II's); Close clears it last
+    char m_db_string[0x40];   // 0x60 (SOCOM 1's at 0x20)
+    char m_description[0x40];   // 0xa0: Read's "description" (SOCOM II's)
     float m_timer;   // 0xe0: the mission's time in seconds, cleared by Open and before the second unload (SOCOM 1's float at 0x60)
     float m_delay;   // 0xe4 (SOCOM 1's at 0x64; OnMissionStart sets it -1)
     float m_e8;   // 0xe8: the mission's own clock, in seconds (SOCOM 1's m_winlosstimer at 0x68; the name ours)
     float m_winlossinc;   // 0xec (SOCOM 1's at 0x6c: the constructor sets both -1)
-    unsigned char _f0[0xf4 - 0xf0];
+    float m_goal_completion_time;   // 0xf0: Read's, in seconds (-1 for none; SOCOM II's)
     float m_elevation_max;   // 0xf4: Read's "elevation" max (127 by default; SOCOM II's, the names ours)
     float m_elevation_min;   // 0xf8: its min (-127)
     unsigned char m_DelayEndMission : 1;   // 0xfc (SOCOM 1's bytes at 0x70, 0x71)
@@ -616,7 +616,12 @@ public:
     float m_init_aim_pitch;   // 0x188: Read's "init_aim_pitch" (SOCOM II's)
     float m_seefarther_binocs;   // 0x18c (SOCOM 1's at 0xd8)
     float m_seefarther_weapzoom;   // 0x190 (SOCOM 1's at 0xdc)
-    unsigned char _194[0x1a4 - 0x194];
+    unsigned char m_194;   // 0x194: a primary weapon override read (SOCOM II's, the names ours)
+    unsigned char _195[0x198 - 0x195];
+    int m_198;   // 0x198: Read's weapon_overrides primary
+    unsigned char m_19c;   // 0x19c: a secondary weapon override read
+    unsigned char _19d[0x1a0 - 0x19d];
+    int m_1a0;   // 0x1a0: its secondary
     CValve *m_valve_complete;   // 0x1a4 (SOCOM 1's at 0xe0)
     CValve *m_valve_failure;   // 0x1a8
     CValve *m_valve_abort;   // 0x1ac
@@ -653,7 +658,9 @@ public:
     zdb::CNode *m_sealbombshack;   // 0x18ec (SOCOM 1's at 0x658)
     zdb::CNode *m_terroristbombshack;   // 0x18f0 (SOCOM 1's at 0x65c)
     unsigned char m_e3_team;   // 0x18f4 (SOCOM 1's E3_TEAMS_ENUM at 0x660, a byte)
-    unsigned char _18f5[0x1910 - 0x18f5];
+    unsigned char _18f5[0x18f8 - 0x18f5];
+    CPnt3D m_ffc_min;   // 0x18f8: Read's Free_Fly_Camera_Extents Min (-1 each by default; SOCOM II's)
+    CPnt3D m_ffc_max;   // 0x1904: its Max (1 each)
     CCamPath m_campath;   // 0x1910: SOCOM II's camera path (the name ours)
     CCareerStats m_careerstats0;   // 0x191c (SOCOM II's; the names ours)
     CCareerStats m_careerstats;   // 0x1950: the UI's CLEAR_CAREER_STATS and SET_CAREER_STATS_UI_VARS ones
@@ -853,6 +860,7 @@ class CSealCtrlAi;
 class CSealCtrl {
 public:
     void StopRumbler();   /* OVL2 0x592AC0 */
+    static unsigned char GetCommandId(const char *name);   /* OVL2 0x58E0A0 (a byte: Read narrows it) */
     virtual ~CSealCtrl();   /* +0x08 (zentity.h's CEntityCtrl's, then zseal.h's CSealCtrl's) */
     virtual void _slot0c();
     virtual void _slot10();
@@ -2529,7 +2537,7 @@ CMission::CMission()
     m_winlossinc = -1.0f;
     m_e8 = -1.0f;
     m_e3_team = 0;
-    m_20 = 0;
+    m_20[0] = 0;
     m_vehicle_rdr = 0;
     m_183c = "ui/assetlib/junk_name";
     memset(m_team_valves, 0, sizeof(m_team_valves));
@@ -3585,7 +3593,7 @@ void CMission::Close()
     if (CZWeapon::m_pProjectilelist)
         CZWeapon::m_pProjectilelist->Dump();
     theUIVarManager.CollectGarbage();
-    m_20 = 0;
+    m_20[0] = 0;
 }
 
 /* the shortest respawn time Read lets "ai_params" set, and the default (10 in data: a variable, it
@@ -3612,6 +3620,152 @@ void CMission::AI_PARAMS::Reset()
     stealth_noise = 1.0f;
     active_limit = 9;
     nosnooze_limit = 5;
+}
+
+extern "C" {
+extern float data_003DE5F0;   /* (10: the shortest respawn time) */
+}
+
+bool zrdr_findreal(const _zrdr *rdr, const char *tag, float *out, int n);
+bool zrdr_findSTRING(const _zrdr *rdr, const char *tag, const char **out);
+extern "C" char *strcpy(char *dst, const char *src);
+
+/* the mission's rdr read (SOCOM 1's CMission::Read, grown; OVL1 0x2AAB20): the goal's completion
+ * time from its hours, minutes and seconds, the description, the elevation's bounds, the AI's
+ * parameters (the respawn time at least 10, the recycling's from the respawn's, the fireteam's
+ * command by name), the weapon overrides, the node actions' root, the satchel timer, the
+ * see-farther zooms, the free-fly camera's extents and the scenic views (each a camera path point,
+ * its rotation in degrees, the pitch wrapped above 90) */
+/* a camera path point filled: where, which way and its name, cut to the buffer (the name ours;
+ * the name passed by value: read for the copy before the fields and again for the test) */
+inline void SetCamPathPoint(SCamPathPoint *p, const CPnt3D &pos, const CPnt3D &dir, const char *name)
+{
+    p->m_pos = pos;
+    p->m_dir = dir;
+    if (name) {
+        strncpy(p->m_name, name, sizeof(p->m_name));
+        p->m_name[sizeof(p->m_name) - 1] = 0;
+    } else
+        p->m_name[0] = 0;
+}
+
+bool CMission::Read(_zrdr *rdr)
+{
+    float t;
+    float e;
+
+    m_goal_completion_time = -1.0f;
+    _zrdr *goal = zrdr_findtag(rdr, "goal_completion_time");
+
+    if (goal) {
+        if (zrdr_findreal(goal, "hours", &t, 1) && t > 0.0f)
+            m_goal_completion_time += 3600.0f * t;
+        if (zrdr_findreal(goal, "minutes", &t, 1) && t > 0.0f)
+            m_goal_completion_time += 60.0f * t;
+        if (zrdr_findreal(goal, "seconds", &t, 1) && t > 0.0f)
+            m_goal_completion_time += t;
+    }
+    const char *desc = zrdr_findstring(rdr, "description");
+
+    strcpy(m_description, desc ? desc : "MISSION DESCRIPTION : MISSING");
+    _zrdr *elevation = zrdr_findtag(rdr, "elevation");
+
+    if (elevation) {
+        if (zrdr_findreal(elevation, "max", &e, 1))
+            m_elevation_max = e;
+        if (zrdr_findreal(elevation, "min", &e, 1))
+            m_elevation_min = e;
+    }
+    m_ai_params.Reset();
+    m_init_aim_pitch = 0.0f;
+    zrdr_findreal(rdr, "init_aim_pitch", &m_init_aim_pitch, 1);
+    _zrdr *ai = zrdr_findtag(rdr, "ai_params");
+
+    if (ai) {
+        zrdr_findreal(ai, "weather_factor", &m_ai_params.weather_factor, 1);
+        zrdr_findreal(ai, "respawn_time", &m_ai_params.respawn_time, 1);
+        zrdr_findreal(ai, "respawn_fade", &m_ai_params.respawn_fade, 1);
+        if (zrdr_findreal(ai, "respawn_range", &m_ai_params.respawn_range, 1))
+            m_ai_params.respawn_range *= m_ai_params.respawn_range;
+        if (m_ai_params.respawn_time < data_003DE5F0)
+            m_ai_params.respawn_time = data_003DE5F0;
+        zrdr_findreal(ai, "light_scale", &m_ai_params.light_scale, 1);
+        zrdr_findreal(ai, "light_inside", &m_ai_params.light_inside, 1);
+        zrdr_findreal(ai, "shadow_scale", &m_ai_params.shadow_scale, 1);
+        zrdr_findreal(ai, "shadow_inside", &m_ai_params.shadow_inside, 1);
+        zrdr_findreal(ai, "stealth_noise", &m_ai_params.stealth_noise, 1);
+        zrdr_findreal(ai, "ambient_noise", &m_ai_params.ambient_noise, 1);
+        zrdr_findint(ai, "active_limit", (int *)&m_ai_params.active_limit, 1);
+        zrdr_findint(ai, "nosnooze_limit", (int *)&m_ai_params.nosnooze_limit, 1);
+        m_ai_params.recycle_time = m_ai_params.respawn_time;
+        m_ai_params.recycle_range = m_ai_params.respawn_range;
+        const char *command = zrdr_findstring(ai, "fireteam_command");
+
+        if (command) {
+            int id = CSealCtrl::GetCommandId(command);
+
+            if (id)
+                m_ai_params.fireteam_command = id;
+        }
+    }
+    m_19c = 0;
+    m_194 = 0;
+    _zrdr *weapons = zrdr_findtag(rdr, "weapon_overrides");
+
+    if (weapons) {
+        if (zrdr_findint(weapons, "primary", &m_198, 1))
+            m_194 = 1;
+        if (zrdr_findint(weapons, "secondary", &m_1a0, 1))
+            m_19c = 1;
+    }
+    m_20[0] = 0;
+    _zrdr *tcm = zrdr_findtag(rdr, "Tcm");
+
+    if (tcm) {
+        const char *root = zrdr_findstring(tcm, "NODEACTION_ROOTNAME");
+
+        if (root) {
+            strncpy(m_20, root, sizeof(m_20) - 1);
+            m_20[sizeof(m_20) - 1] = 0;
+        }
+    }
+    m_satcheltimer = 10.0f;
+    zrdr_findreal(rdr, "SATCHEL_TIMER", &m_satcheltimer, 1);
+    zrdr_findreal(rdr, "SEEFARTHER_BINOCS", &m_seefarther_binocs, 1);
+    zrdr_findreal(rdr, "SEEFARTHER_WEAPZOOM", &m_seefarther_weapzoom, 1);
+    m_ffc_min.x = m_ffc_min.y = m_ffc_min.z = -1.0f;
+    m_ffc_max.x = m_ffc_max.y = m_ffc_max.z = 1.0f;
+    _zrdr *extents = zrdr_findtag(rdr, "Free_Fly_Camera_Extents");
+
+    if (extents) {
+        zrdr_findreal(extents, "Min", &m_ffc_min.x, 3);
+        zrdr_findreal(extents, "Max", &m_ffc_max.x, 3);
+    }
+    m_campath.clear();
+    _zrdr *views = zrdr_findtag(rdr, "Scenic_Views");
+
+    if (views && views->IsArray()) {
+        for (unsigned int i = 0; i < views->Count(); i++) {
+            _zrdr *view = views->Item(i);
+            CPnt3D pos;
+            CPnt3D rot;
+            const char *name = 0;
+
+            zrdr_findreal(view, "Pos", &pos.x, 3);
+            zrdr_findreal(view, "Rot", &rot.x, 3);
+            zrdr_findSTRING(view, "Desc", &name);
+            if (rot.x > 90.0f)
+                rot.x -= 360.0f;
+            rot.x *= 0.017453292f;
+            rot.y *= 0.017453292f;
+            rot.z *= 0.017453292f;
+            SCamPathPoint point;
+
+            SetCamPathPoint(&point, pos, rot, name);
+            m_campath.push_back(point);
+        }
+    }
+    return true;
 }
 
 /* the point `step` on from `index`, wrapping both ways, read out through at(); the index it lands
