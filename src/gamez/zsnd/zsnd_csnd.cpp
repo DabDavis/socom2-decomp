@@ -357,18 +357,23 @@ inline void CSnd::LoadSounds(const char *name)
  * own five files (voice, effects, ambience, the SVO and music lines), then a multiplayer map's
  * shared sounds, or a campaign mission's headquarters' and ABLE's and its teams' by the mission's
  * number (as func_00344910's groups).
- * OPEN, 16 instructions at the target's size, two registers only: the target keeps the name in s1
- * and the flag in s0, this the other way (func_00344910 below, the same head, matches with the
- * flag declared first and the name a ternary -- the ternary's value numbered last). Tried (build/
- * scratch/wld/v_snd*.py): either declaration order, the buffer first, the flag assigned apart or
- * dead-first, the override written into the parameter and copied (4 off: the override then lands
- * in s1, not a0), an inline name helper either way, an inline multiplayer test, the flag a ternary
- * (0x468) */
+ * Round 18: byte-exact with the name chosen by an if/else into an uninitialised local and the flag
+ * defined after it. The target keeps the name in s1 and the flag in s0: both have K = 25
+ * neighbours, so they are coloured highest number first -- a name initialised by a ternary is
+ * numbered after every named local and took s0 (16 off; func_00344910 above, where that is the
+ * target's); the flag defined at its declaration, ahead of the if/else, 21 off; the parameter
+ * overwritten in place 4 off, the override then landing in s1, not a0 (build/scratch/wld/v_snd*.py) */
 extern "C" int func_00344450(const char *name)
 {
-    const char *s = data_0048DEC8 ? data_0048DEB8 : name;
-    bool mp = false;
+    const char *s;
+    bool mp;
     char buf[32];
+
+    if (data_0048DEC8)
+        s = data_0048DEB8;
+    else
+        s = name;
+    mp = false;
 
     strlen(s);
     if (s[1] == 'p')
@@ -918,10 +923,10 @@ void Vu0MatrixInverseWithUniformScale(CMatrix *dst, CMatrix *src);
  * outdoor one else; none past a table's end) and the listener's matrix inverted; the group fade
  * timed or eased back; the voices and the jukebox ticked; a held stream played once a stream voice is
  * free; the music depth from the listener's height; the vocal queue and, offline, the headset.
- * OPEN, 0x4A4 of 0x4AC (the world lane's round 17): every instruction the target's but the two room
- * tests, which the target makes `slti at,room,0; bnez at` where MW here branches `bltz room` -- `room
- * > -1`, `0 <= room`, `!(room < 0)` and an inline test alike; the test in a bool local 0x4B0
- * (build/scratch/wld/v_pt.py) */
+ * Round 18: byte-exact -- the room tests `room > -1` (slti/bnez; `room >= 0` branches bltz), the
+ * music depth `floor(...) + -128.0` (dpadd with the constant first; `- 128.0` is dpsub) clamped by
+ * `depth > 127` (slti at/bnez; `>= 128` puts the compare in v1). Round 17 had measured `> -1` alike
+ * only because its tail was `- 128.0`: one size, two differences cancelling */
 bool CSnd::PostTick(float dT, void *data)
 {
     if (!m_listenerIsValid) {
@@ -933,7 +938,7 @@ bool CSnd::PostTick(float dT, void *data)
         int room = cam->m_AbovePolyFlag;
 
         if (cam->m_IsInside || ftsPlayer.IsInside()) {
-            if (room >= 0 && (data_003DFFB0 != room || data_003DFFB0 == -1)) {
+            if (room > -1 && (data_003DFFB0 != room || data_003DFFB0 == -1)) {
                 data_003DFFB0 = room;
                 data_003DFFC0 = -1;
                 if ((unsigned int)room >= data_0048DB88.size()) {
@@ -950,7 +955,7 @@ bool CSnd::PostTick(float dT, void *data)
                     m_hasreverb = true;
                 }
             }
-        } else if (room >= 0 && (data_003DFFC0 != room || data_003DFFC0 == -1)) {
+        } else if (room > -1 && (data_003DFFC0 != room || data_003DFFC0 == -1)) {
             data_003DFFC0 = room;
             data_003DFFB0 = -1;
             if ((unsigned int)room >= data_0048DBC8.size()) {
@@ -988,9 +993,9 @@ bool CSnd::PostTick(float dT, void *data)
     func_0034BEC0(dT);
     if (m_listener) {
         int depth = (int)(floor(255.0f * func_002ACA30(theMission, ((CMatrix *)m_listener)->m_matrix[3][1]))
-                          - 128.0);
+                          + -128.0);
 
-        if (depth >= 128)
+        if (depth > 127)
             depth = 127;
         if (depth < -128)
             depth = -128;
