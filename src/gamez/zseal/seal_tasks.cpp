@@ -304,12 +304,21 @@ struct TASK_HDR {
  * the `if` MW branches on p), each `return p` a block of its own (`b` to the join: a `goto` alone
  * folds into the compare). Then the argument's cast and its SEAL, as the inline's GetParam/GetSeal
  * did; a handler adds its controller or AI. A macro: the original's spelling is unknown -- this is
- * the one shape found that numbers the block between the counter and the list. */
-#define TASK_SEAL(T)                                                        \
+ * the one shape found that numbers the block between the counter and the list. TASK_SEAL_AS(T, BLOCK)
+ * takes the block's expression: TaskBlock<T>(hdr), the cast through a leaf template inline, makes the
+ * block the inline's result temporary -- numbered after every named and inline variable (the kit's
+ * round 49: CTPlay::Tick, whose block follows its second, inlined find). */
+template <class T> inline T *TaskBlock(_zanim_cmd_hdr *hdr)
+{
+    return (T *)hdr;
+}
+
+#define TASK_SEAL(T) TASK_SEAL_AS(T, (T *)hdr)
+#define TASK_SEAL_AS(T, BLOCK)                                              \
     unsigned int type = ai_cmdid[2];                                        \
     int index = ((TASK_HDR *)hdr)->m_param;                                 \
     int i;                                                                  \
-    T *cmd = (T *)hdr;                                                      \
+    T *cmd = BLOCK;                                                         \
     CZAnimArgList *list = ZAnim.m_CurAnim->m_arg_list;                      \
     _zanim_cmd_hdr *found;                                                  \
                                                                             \
@@ -2979,21 +2988,21 @@ found_it:
  * asked for the death anim, the body dropped, the stack cleared and the SEAL killed unless
  * invincible; a CQB pushed with the AI's bit 6 set; any other pushed unless it plays on top), then
  * waiting, blocking, while it plays; the second wait run down -- done once it ends (OVL2 0x5D2F30;
- * SOCOM 1's, the states, the entity and the CQB push new).
- * OPEN, registers only (0x808 at the target's size, 514 instructions, every opcode the target's):
- * the shape is the target's -- the draw an if/else with the rand in a local (a padded label, as
- * CTSound's), the stance a ternary (an unpadded join: the stance merges into its temporary, numbered
- * after the anim's type), the killer's find an inline with the index a local after its type (s3/s2),
- * blocking an if/else of two stores, the invincible bit `? true : false` (its sltu). MW's colouring
- * replayed (tools/igreplay.py --target) gives every register of the target once the BLOCK (`cmd`) is
- * numbered after the second find's inline variables (`--move 39=58.5`: 0 differ) -- a temporary's
- * place, where the macro's named local takes s4 for s0. Tried: the block through a cast inline, a
- * template inline and a void cast (76-86 off) */
+ * SOCOM 1's, the states, the entity and the CQB push new). The draw an if/else with the rand in a
+ * local (a padded label, as CTSound's), the stance a ternary (an unpadded join: the stance merges into
+ * its temporary, numbered after the anim's type), the killer's find an inline with the index a local
+ * after its type (s3/s2), blocking an if/else of two stores, the invincible bit `? true : false` (its
+ * sltu). THE BLOCK through TaskBlock<CTPlay>(hdr), a leaf template inline returning the cast: the
+ * block becomes the inline's result temporary, numbered after the second find's variables -- MW's
+ * colouring replayed wants it anywhere past that find's counter (tools/igreplay.py --target, `--move
+ * 39=55.5` and up: 0 differ), the macro's named local took s4 for s0 (86 off); a cast inline with a
+ * local, or the cast outside the inline, stays 76 off. The last compare `cmd->m_2c ==
+ * top->m_animType` (its xor's operand order). Byte-exact (the kit's round 49). */
 bool CTPlay::Tick(_zanim_cmd_hdr *hdr, float *dT)
 {
     CZSealBody *dest;
     CEntityCtrl *ctrl;
-    TASK_SEAL(CTPlay);
+    TASK_SEAL_AS(CTPlay, TaskBlock<CTPlay>(hdr));
     dest = seal;
     ctrl = dest ? dest->m_control : 0;
     CSealCtrlAi *ai = dest ? SealAi(dest) : 0;
@@ -3067,7 +3076,7 @@ bool CTPlay::Tick(_zanim_cmd_hdr *hdr, float *dT)
         break;
     case 4: {
         CZBodyAnimBlend *top = (CZBodyAnimBlend *)func_00555170(&dest->m_blends);
-        bool same = top ? top->m_animType == cmd->m_2c : false;
+        bool same = top ? cmd->m_2c == top->m_animType : false;
 
         if (!same)
             cmd->m_22 = 3;
