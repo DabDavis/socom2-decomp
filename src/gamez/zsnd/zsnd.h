@@ -162,8 +162,10 @@ public:
     static void SetupSoundGroups(const char *name);
     /* SOCOM 1's: a bank loaded and the sounds file's sounds read and added (0x344090); the one-name
      * form loads both by the same name (out of line in SOCOM 1, inline here: no copy is left) */
-    static int LoadSounds(const char *bank, const char *file);
+    static int LoadSounds(const char *name, const char *bank);
     static void LoadSounds(const char *name);
+    /* SOCOM 1's: a sound's settings read from its record (0x3435C0, not written) */
+    void LoadCSnd(_zrdr *rdr);
     static void LoadReverbs(_zrdr *rdr);
     static void LoadIndoorReverbs(_zrdr *rdr);
     static void LoadOutdoorReverbs(_zrdr *rdr);
