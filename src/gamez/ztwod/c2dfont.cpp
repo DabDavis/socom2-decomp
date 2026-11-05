@@ -651,15 +651,17 @@ void C2DFont::Unload()
 
 /* the glyph for a character: the font's own; nothing for a carriage return; a Hangul syllable
  * composed; else a letter by the code's remainder, else the first glyph */
-/* OPEN, 4 bytes long (0x2B4 against 0x2B0): the target's frame is 0x50 (here 0x70, with s3
- * saved): it keeps the found glyph in s2 across Release (Set's argument, as here) but holds the
- * find's result and the code in two slots (sp+72, sp+66) where this build keeps three. Tried:
- * the iterator initialised and assigned, Release written out. */
+/* OPEN, 21 instructions, the frame only (round 55: the size and code now the target's -- the
+ * owned glyph released BEFORE the new one is made, as the target orders it (Own(new C2DGlyph)
+ * evaluates the new first), and each find into an iterator of its own, initialised, so neither is
+ * reloaded for `&(*i).second`). Left: the target's frame is 0x50, here 0x60, and its slots run
+ * key 78, the composer's C2DChar 76, i 72, j 68, code 66 where this build has key 94, i 88, j 84,
+ * C2DChar 80, code 78 (22 bytes unused below them, the target 10). Tried: a named C2DChar, the
+ * second key a named local, either find in a block of its own. */
 void C2DFont::GetGlyph(C2DGlyphRef *ref, unsigned short code)
 {
-    std::map<unsigned short, C2DGlyph>::iterator i;
+    std::map<unsigned short, C2DGlyph>::iterator i = m_glyphs.find(code);
 
-    i = m_glyphs.find(code);
     if (i != m_glyphs.end()) {
         ref->Set(&(*i).second);
         return;
@@ -670,14 +672,16 @@ void C2DFont::GetGlyph(C2DGlyphRef *ref, unsigned short code)
     }
     if (code >= 0xAC00 && code < 0xD7A4 && m_faces) {
         ref->m_glyph = 0;
-        ref->Own(new C2DGlyph);
+        ref->Release();
+        ref->m_owned = new C2DGlyph;
         if (m_faces->Compose(ref->m_owned, code, this))
             return;
         ref->Release();
     }
-    i = m_glyphs.find((char)(code % 26 + 'A'));
-    if (i != m_glyphs.end())
-        ref->Set(&(*i).second);
+    std::map<unsigned short, C2DGlyph>::iterator j = m_glyphs.find((char)(code % 26 + 'A'));
+
+    if (j != m_glyphs.end())
+        ref->Set(&(*j).second);
     else if (m_glyphs.size())
         ref->Set(&(*m_glyphs.begin()).second);
 }

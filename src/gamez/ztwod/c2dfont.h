@@ -82,7 +82,9 @@ struct C2DGlyphColor {
  * of its own, and that colour */
 class C2DGlyph {
 public:
-    C2DGlyph() : m_code(0), m_10(-1), m_12(0), m_14(0), m_16(0), m_18(0), m_1a(0) {}
+    /* (m_10's -1 stored in the body: GetGlyph's inlined `new C2DGlyph` stores it last -- the HUD's
+     * round 55) */
+    C2DGlyph() : m_code(0), m_12(0), m_14(0), m_16(0), m_18(0), m_1a(0) { m_10 = -1; }
 
     /* the widest piece's right edge (c2dfont.cpp, 0x35A7B0: C2DString's layout calls it) */
     int GetWidth();
