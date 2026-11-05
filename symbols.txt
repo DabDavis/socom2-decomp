@@ -11270,8 +11270,8 @@
 0x005DFFC0 0x2C WepWaitOn__10CZSealBodyFv  # OVL2; s1:order (the same four constants, the fields 276 bytes on)
 0x005DFFF0 0x14 WepWaitOff__10CZSealBodyFv  # OVL2; s1:order (zeroes the same four fields)
 0x005E0010 0x14 GetWeaponState__10CZSealBodyCFv  # OVL2; s1:order (after WepWaitOn/WepWaitOff, which match the demo's constants with the fields 276 bytes on)
-0x005E0030 0x420 func_005E0030  # OVL2
-0x005E0450 0x240 func_005E0450  # OVL2
+0x005E0030 0x420 AddBlendable__7AnimSetFiff  # OVL2; s1:order by hand (the kit lane, round 52): SOCOM 1's AnimSet::AddBlendable(int, float, float) (0x2C0690) first in anim.cpp as there -- the same cases (SOCOM 1's 69/70 RunR/RunL are 66/67 here), the default testing AnimTypes::CrouchStrafeLeft, the speeds scaled by ten; the type found by a walk over SOCOM II's records instead of the id vector, CBlendable::AddBlendable inlined in each case
+0x005E0450 0x240 SetMaxMotion__7AnimSetFv  # OVL2; s1:order by hand (the kit lane, round 52): SOCOM 1's AnimSet::SetMaxMotion (0x2C08F0) after AddBlendable and before DefineFPAnims as there -- its eight MaxTrans1 calls inlined over SOCOM II's whole blends (0x60-0x1B0), stored to ANIMSET_PARAMS 0x0-0x1C; CZSealBody::SetMaxMotion calls it first in both builds
 0x005E0690 0x130C func_005E0690  # OVL2
 0x005E19A0 0x28 SetPistolAnim__10CAnimsByFPF8AnimType8AnimType  # OVL2; s1:exact
 0x005E19D0 0x40 PistolFPAnim__10CAnimsByFPCF8AnimType  # OVL2; s1:order by hand (the kit lane, round 10): SOCOM 1's anim.cpp has SetPistolAnim, PistolFPAnim, RifleFPAnim, PistolAnim, BaseAnim in this order, as 0x5E19A0-0x5E1A90 here; the same 0x40 bytes reading the group's short at 6, 312 types for SOCOM 1's 300
