@@ -274,17 +274,21 @@ static int TriggerLR_FindSpeech(TRIGGERLR *p, float **in)
  * lead counted up to its ceiling), then the speech search; at the speech's start the start frame
  * reported (command 203 or 200, after stopping the first input unless it is kept -- the inputs
  * then disabled, else the state 1), and in the speech the end reported once (command 201, the
- * state 2). SOCOM 1's body. Declared int and returning nothing (the scheduler's TOSFUNC): each
- * failure returns what the call left in v0, as the target's paths do; the end test `f80 > f68`
- * (operand 0 expanded first: the target loads +80 first).
- * OPEN (round 24c, 0x194 against 0x18C, every block the target's but one): the target cross-jumps
- * the two state stores (state 1's arm branches to state 2's `sw v0,144(s0)`, `li v0,1` in the
- * keep test's slot). Here jump2 -- after sched2 in 2.96 -- threads state 1's jump past the
- * fall-off-the-end `(clobber (reg v0))` an int function returning nothing gets, so its tail is
- * compared with that clobber and never merges (-dJ); an explicit `return;` after `state = 1`
- * gives both tails `sw; clobber`, but the store's 1 then takes v1 (the block clobbers v0) and the
- * two still differ (build/scratch/gcc/r24c/v_ptl*.py, 11 shapes). */
-static int ProcessTriggerLR(TRIGGERLR *p, void **in)
+ * state 2). SOCOM 1's body, void as SOCOM 1's (whose compile makes the disable call a sibling
+ * call; 2.96 keeps it a `jal` in its nested arm, measured -- the target's); the end test
+ * `f80 > f68` (operand 0 expanded first: the target loads +80 first). Round 24c had it int (falling off the end, its
+ * `(clobber (reg v0))` kept the two state stores from cross-jumping: 0x194); void they merge as
+ * the target's.
+ * OPEN (round 25c, the right size, 1 word): the keep test's `bnez` -- the target keeps its stolen
+ * `li v0,1` slot unannulled, this compile annuls it (`bnezl`) -- is round 13c's definition-order
+ * word, and its mechanism is the call on the fall-through: 2.96 marks a function it has compiled
+ * nothrow (TREE_NOTHROW), so a call to one carries `REG_EH_REGION 0`, and only with that note on
+ * the disable call does reorg leave the slot plain (a stand-in body of
+ * tosBaseBlockDisableInputQueues above this function gives byte-exact; the call's RTL differs in
+ * that note alone, build/scratch/gcc/ann/). The callee is tos.c's, another object, and this cc1
+ * has no `nothrow` attribute; -fno-exceptions, -fexceptions, -fsjlj-exceptions,
+ * -fno-asynchronous-exceptions and -funwind-tables do not give the note. */
+static void ProcessTriggerLR(TRIGGERLR *p, void **in)
 {
     if (in[0] != 0) {
         p->nframes++;
