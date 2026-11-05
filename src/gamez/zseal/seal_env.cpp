@@ -1664,7 +1664,11 @@ bool CZSealBody::CanUseCQB(CZSealBody *victim)
  * negation is NegateInto(&fwd, &fwd) -- the out-parameter form folds the loads into sp offsets and keeps
  * only &fwd.y in a register, as the target. Tried since: the nodes in locals (either order), the
  * positions in pointer locals, the offset computed first, both points assigned, GetNode(). Before: the
- * offset computed first, the facing assigned after it, y through a pointer, Negate(fwd.y). */
+ * offset computed first, the facing assigned after it, y through a pointer, Negate(fwd.y). Round 39:
+ * CanUseRestraint/CanUseCQB/CanUseKnife share the shape and matched with the Sub's `this` (the victim's
+ * position) a pointer local declared before the facing -- here the Sub's `this` is this SEAL's own
+ * position, and that local (pointer, reference, node pointer, either order, an inline helper taking
+ * the facing by value and both points by reference) still loads after the stores: 10 every time. */
 AnimType CZSealBody::FindDeathAnimTypeCQB(CZSealBody *victim)
 {
     CPnt3D fwd(*(const CPnt3D *)victim->m_node->m_matrix.m_matrix[2]);
