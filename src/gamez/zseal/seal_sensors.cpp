@@ -113,7 +113,11 @@ inline bool TestSensorBit(const CBits *bits, unsigned int i)
  * Every other way round MW evaluates the word's index first (8: CBits::Test, the mask first or last,
  * in a local, the word's address in a local, `(w >> s) & 1`, inlined mask or word helpers, a
  * reference to the word); `m = 1; m <<= i & 31; return m & word;` puts the AND in v0 but swaps the 1
- * and the shift amount (4). 0x5CB630 below shares it */
+ * and the shift amount (4). 0x5CB630 below shares it. Round 39: 23 more shapes (the word or the
+ * result a local, a copy of the mask, `!= 0`, a ternary, the shift as its own statement with the
+ * amount a local before or after, a dead first definition, the index a local) all stay at 2 or
+ * move to 4-10 -- the `m = 1; m <<= s;` forms put the AND in v0 but always trade the 1 and the
+ * amount (CAiSPickup::Tick's SetBit has the same pair, its igdump reading in its note) */
 extern "C" bool func_005CB450(CSealCtrlAi *ai, CPickup *p, CZWeapon *w)
 {
     bool go;

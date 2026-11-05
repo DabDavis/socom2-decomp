@@ -1045,7 +1045,10 @@ public:
     /* a range and its goal, set together unless the range stands at 42 (0x570D90; the names ours) */
     float m_6f4;   // 0x6f4
     float m_6f8;   // 0x6f8
-    unsigned char _6fc[0x718 - 0x6fc];
+    unsigned char _6fc[0x700 - 0x6fc];
+    /* the scale EventTick's walks hear at, by a table's entry 6 (0x5750D0; the name ours) */
+    float m_700;   // 0x700
+    unsigned char _704[0x718 - 0x704];
     /* what 0x572240 gathers from an alert: the amounts summed, a point the alert fills, and its word
      * at 4 (the names ours) */
     float m_718;   // 0x718
@@ -1110,6 +1113,11 @@ public:
      * the kit lane's ai_group.cpp, which defines it on a view of its own) */
     void SensorTick(float dT);
     bool InGroup();
+    /* the AI's events of the frame (OVL2 0x5FAAE0, the kit lane's seal_aievent.cpp: SOCOM 1's
+     * EventTick) and one handed to the AI with the walk's distance squared, whether it took it (OVL2
+     * 0x5F95D0: SOCOM 1's HandleEvent, the distance new; unwritten) */
+    void EventTick(float dT);
+    bool HandleEvent(const CAiEvent *e, float distSq);
     /* the AI's own event set: its kind, its duration and where (SOCOM 1's, the same words with the
      * event at 0x628; OVL2 0x5FAD00, the kit lane's seal_aievent.cpp) */
     CAiEvent::EVENT SetAiEvent(CAiEvent::EVENT e, float duration, const CPnt3D *pos);
