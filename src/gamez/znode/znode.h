@@ -615,6 +615,8 @@ public:
     /* the decals' VU program: its commands written after p, their count at the head, the packet
      * closed (SOCOM 1's VuBatchProgram_Decals, without its object-header argument) */
     _word128 *VuBatchProgram_Decals(_word128 *p);
+    /* the decals of the view in use sent after their VU program (inline, VuUpdate's: the name ours) */
+    _word128 *VuDecals(_word128 *p);
     /* the visual's VU program, the map passes run inside it when any multipass map is on or a
      * detail layer is given (SOCOM 1's VuBatchProgram, the object header become that flag) */
     _word128 *VuBatchProgram(_word128 *p, bool multipass, tag_DETAIL_PARAMS *detail);
