@@ -5695,7 +5695,7 @@
 0x00326350 0x6A4 DrawStreaked__Q28Particle13BufferElementFRA4_A4_f  # OVL1; s1:calls by hand (DrawFlush calls it for draw type 3, as SOCOM 1's calls DrawStreaked) -- the rdr lane
 0x00326A00 0x21C DrawPrep__8ParticleFv  # OVL1; s1:calls by hand (the world lane round 18: SOCOM 1's CAlpha::Render calls DrawPrep__8ParticleFv first, its float kept in $f20 for the draw ranges, as SOCOM II's Render calls this, its only caller; 0x21C against SOCOM 1's 0x144)
 0x00326C20 0xC func_00326C20  # OVL1
-0x00326C30 0x310 func_00326C30  # OVL1
+0x00326C30 0x310 zqsort<PQ28Particle13BufferElement>__FPPQ28Particle13BufferElementiPFRCPQ28Particle13BufferElementRCPQ28Particle13BufferElement_i_v  # OVL1; s1:calls by hand (the world lane round 19: SOCOM 1's DrawPrep calls its zqsort<BufferElement *> instance (0x2360A0, 0x2D8) with bufferPtr, numParticles and bufferPtrCompare, as SOCOM II's DrawPrep calls this; the return type appended, MW 3.0's)
 0x00326F40 0x8 __ct__Q28Particle13BufferElementFv  # OVL1; the world lane r10: SOCOM 1's (its __sinit_zparticle_buf.cpp constructs Particle::buffer through __construct_array with the element's constructor, as SOCOM II's 0x402BB0 passes this) -- byte-exact from source
 0x00326F50 0x58 Recycle__Q28Particle20Destruction_InstanceFv  # OVL1; the rdr lane: slot 0x14 of Destruction_Instance's table (0x4069E0), the same onto its own pool (0x488468)
 0x00326FB0 0x40 func_00326FB0  # OVL1
