@@ -7,16 +7,16 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
+M2C_UNK BindAnimSet__10CZSealBodyFP7AnimSetb(char * arg0, char * arg1, u8 arg2);
 M2C_UNK ClearTimer__8CZWeaponFPf(char * arg0);
 M2C_UNK func_002707C0(s32 arg0, s32 arg1);
-M2C_UNK func_0058C4A0(s32 arg0, s32 arg1, s32 arg2);
 extern s32 data_0044D3F8;
 
 void func_00585FF0(char *arg0) {
     s32 temp_a0;
 
     if (SC_MEMBER(arg0, s32 *, 0x528) == data_0044D3F8) {
-        func_0058C4A0((s32) arg0, SC_MEMBER(arg0, s32 *, 0x530), 0);
+        BindAnimSet__10CZSealBodyFP7AnimSetb(arg0, SC_MEMBER(arg0, char **, 0x530), 0U);
         temp_a0 = SC_MEMBER(arg0, s32 *, 0x538);
         if (temp_a0 != 0) {
             func_002707C0(temp_a0, 0);
