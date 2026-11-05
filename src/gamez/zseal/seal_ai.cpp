@@ -2701,6 +2701,130 @@ extern "C" CEntity *func_00569C60(CEntity *e, float *range, unsigned int mask, b
     return 0;
 }
 
+/* an entity's kind by reference (an inline, the name ours: read in a loop through it, MW hoists the
+ * kind's address into the preheader) */
+static inline const CEntity::TYPE &TypeOf(const CEntity *e)
+{
+    return e->m_type;
+}
+
+/* a turret's flag word (zveh.h's CTurret::m_flags at 0x3A4; only that) and bit 4 clear (an inline
+ * returning the negation: materialised, sltu then xori, before the branch) */
+struct CTurretFlags {
+    bool NoBit10() const { return !(m_flags & 0x10); }
+
+    unsigned char _0[0x3a4];
+    unsigned int m_flags;   // 0x3a4
+};
+
+/* the entity as a turret, if it is one (an inline, the name ours) */
+static inline CTurretFlags *AsTurretFlags(CEntity *e)
+{
+    return e ? (TypeOf(e) == CEntity::ENT_TYPE_TURRET ? (CTurretFlags *)e : 0) : 0;
+}
+
+/* the AI's bit 16 set without bit 17 (an inline, the name ours) */
+static inline bool AiBit16(CSealCtrlAi *ai) { return ai->m_aibit16 ? true : false; }
+static inline bool AiBit17(CSealCtrlAi *ai) { return ai->m_aibit17 ? true : false; }
+static inline bool Bit16Only(CSealCtrlAi *ai)
+{
+    bool r = AiBit16(ai);
+
+    if (r)
+        r = !AiBit17(ai);
+    return r;
+}
+static inline bool NotBit16Only(CSealCtrlAi *ai)
+{
+    return !(AiBit16(ai) && !AiBit17(ai));
+}
+
+/* whether a turret the AI drives may take targets: unless the AI has bit 16 without 17, flagged 2,
+ * not 0x10, and 0x20 (an inline, each step a bool of its own; the names ours) */
+static inline bool TurretTakesTargets(CSealCtrlAi *ai, const CTurretFlags *t)
+{
+    bool r = false;
+    bool b = false;
+    bool a = false;
+
+    if (NotBit16Only(ai) && (t->m_flags & 2))
+        a = true;
+    if (a && t->NoBit10())
+        b = true;
+    if (b && (t->m_flags & 0x20))
+        r = true;
+    return r;
+}
+
+/* whether the AI's entity takes targets: a SEAL always, kind 4 never, a turret as above (an inline,
+ * the name ours) */
+static inline bool TakesTargets(CSealCtrlAi *ai, CEntity *e)
+{
+    bool r = false;
+
+    if (e) {
+        switch (TypeOf(e)) {
+        case CEntity::ENT_TYPE_TURRET:
+            r = TurretTakesTargets(ai, AsTurretFlags(e));
+            break;
+        case 4:
+            r = false;
+            break;
+        default:
+            r = true;
+            break;
+        }
+    }
+    return r;
+}
+
+/* the nearest enemy SEAL among the AI's entity's targets within a range of a point: alive, awake
+ * when the AI drives it, on no team the entity is on, while the entity takes targets. The targets
+ * are kept nearest first, so the first past the range ends the walk (OVL2 0x569E40, new in SOCOM
+ * II: 0x561550 and CAiSGoto::Tick ask it; the names ours).
+ * OPEN, 10 structural differences and 6 register-only (the size right, round 49). Right: the range
+ * squared in place (`r2 = range; r2 *= r2`: mov.s then mul.s into $f20), the kind read through a
+ * reference-returning inline (TypeOf: its address hoisted into s0, the kind reused by the turret
+ * test), the AI taken non-const (a const one hoists the bits' address 0x266 too), kind 4's
+ * `r = false` (its own `b` block). Left: (1) the turret test's `e && kind == 3 ? e : 0` -- the target
+ * branches `beqz e` with the zero in the delay slot, then `beq` to the true arm; the plain ternary
+ * (as seal.cpp's AsTurret) makes MW hoist `e != 0` into a saved register and materialise the `&&`,
+ * the nested ternary used here branches `bne` past the true arm, if/return and a result local are
+ * worse (R1-R4, F1-F5 in build/scratch/seal-r49/v_569e40*.py); (2) the AI's bit test: the target
+ * computes `bit16 && !bit17` as a value in the last operand's register (`sltu; beqz; ... xori`) and
+ * negates it with one `xori` at the join -- every inline form here either folds the negation into
+ * the branches (the bits read in place), sets a bool with `daddiu 1` (an `&&` of accessor calls) or
+ * renormalises a bool local (`andi 0xff; sltu`) before the `xori` */
+extern "C" CZSealBody *func_00569E40(CSealCtrlAi *ai, const CPnt3D *pos, float range)
+{
+    CEntity *e = ai->m_entity;
+    float r2 = range;
+
+    r2 *= r2;
+    CTargetList &targets = e->m_targets;
+
+    for (CTargetList::iterator i = targets.begin(); i != targets.end(); ++i) {
+        CZSealBody *seal = AsSeal(i->m_ent);
+
+        if (!seal || !seal->m_isAlive)
+            continue;
+        if (AiDriven(seal) && !AiAwakeNow(seal->GetSealCtrlAi()))
+            continue;
+        if (seal->m_team & e->m_team)
+            continue;
+        if (!TakesTargets(ai, e))
+            continue;
+
+        CPnt3D d;
+
+        pos->Sub(&seal->m_posW, &d);
+        if (!(d.x * d.x + d.y * d.y + d.z * d.z < r2))
+            break;
+        return seal;
+    }
+    return 0;
+}
+
 /* the nearest enemy SEAL among an entity's targets within a range (OVL2 0x569C50: 0x569C60 for a
  * team the entity's own does not meet) */
 extern "C" CEntity *func_00569C50(CEntity *e, float *range, bool flagged)
@@ -3476,6 +3600,58 @@ extern "C" bool func_00557190(CSealCtrlAi *ai, CEntity *other)
         }
     }
     return result;
+}
+
+/* the cell a step in a direction reaches, and whether it may be stepped on: on the map, with a
+ * traversable first-layer cell (an inline, the name ours: GetNeighbor's body with the cell's test) */
+static inline bool TraversableNeighbor(CAiMap *map, const CAiMapLoc &loc, CAiMap::DIR dir, CAiMapLoc &out)
+{
+    int x = loc.x + CAiMap::neighbor[dir][0];
+    int y = loc.y + CAiMap::neighbor[dir][1];
+
+    if (x >= 0 && x < map->m_nx && y >= 0 && y < map->m_ny) {
+        out.x = x;
+        out.y = y;
+        out.m_mapid = map->GetMapId();
+
+        CAiCell *cell = map->GetCell(out, 0);
+
+        return cell ? cell->IsTraversable() : false;
+    }
+    return false;
+}
+
+/* whether a soil hides who stands on it (CAiCell::IsConcealingSoil's test on a soil already read:
+ * MW lowers the four compares to a bit test, 0x40D over soil - 2) */
+static inline bool ConcealingSoil(unsigned int soil)
+{
+    return soil == 2 || soil == 4 || soil == 5 || soil == 12;
+}
+
+/* a cell made soil 13 -- one of soil 1, 13 or a concealing soil, with no link, when asked -- and,
+ * given a direction, the traversable cell a step that way marked too (OVL2 0x556EE0, new in SOCOM II:
+ * 0x556370 calls it twice, it calls itself for the step; the names ours) */
+extern "C" void func_00556EE0(CAiMap *map, const CAiMapLoc &loc, const CPnt3D *dir, bool mark)
+{
+    if (!map)
+        map = AiMaps.GetMapByIndex(loc.m_mapid);
+
+    CAiCell *cell = map ? map->GetCell(loc, 0) : 0;
+
+    if (cell) {
+        if (mark && !cell->HasLink()) {
+            unsigned int soil = cell->m_soil;
+
+            if (soil == 1 || soil == 13 || ConcealingSoil(soil))
+                cell->m_soil = 13;
+        }
+        if (dir) {
+            CAiMapLoc n;
+
+            if (TraversableNeighbor(map, loc, CAiMap::GetClosestDir(dir), n))
+                func_00556EE0(map, n, 0, true);
+        }
+    }
 }
 
 /* CZAnim::Stop, which SOCOM II gave a flag (zanim.h's declaration) */
