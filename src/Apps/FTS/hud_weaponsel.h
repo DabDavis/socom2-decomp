@@ -266,6 +266,8 @@ public:
     /* the next weapon's index up or down the weapons' list that the slot takes (0x23C6F0; the name
      * ours: its last two arguments passed through to the slot's test) */
     int NextWeapon(bool up, int index, EQUIP_ITEM type, WEAPON_KIND kind);
+    /* whether the list's slot takes a weapon (0x23C390; the name ours) */
+    bool CanTake(CZWeapon *weapon, EQUIP_ITEM type, WEAPON_KIND kind);
 
     /* no owner, no slots yet (inline: the selector's constructor builds two) */
     SlotList()
@@ -378,6 +380,9 @@ public:
     EQUIP_ITEM NextFreeEquipment(EQUIP_ITEM item, int index);
     EQUIP_ITEM PickEquipment(int index, EQUIP_ITEM item, EQUIP_ITEM other);
     inline int FindEquipment(EQUIP_ITEM item, int skip);
+    inline bool HasClassElsewhere(EQUIP_ITEM cls);
+    inline bool IsSelectedElsewhere(CZWeapon *weapon);
+    inline EQUIP_ITEM CursorItem();
     inline void CheckItem(EQUIP_ITEM item, int index, bool &ok);
     inline void Set203(bool on);
     inline void SetGL(bool on);

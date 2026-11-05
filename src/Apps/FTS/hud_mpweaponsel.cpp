@@ -784,21 +784,17 @@ EQUIP_ITEM SlotList::NextClass(bool up, EQUIP_ITEM cls)
     return (EQUIP_ITEM)id;
 }
 
-/* whether the list's slot can show a weapon (0x23C390; no row named yet) */
-extern "C" bool func_0023C390(SlotList *list, CZWeapon *weapon, EQUIP_ITEM type, WEAPON_KIND kind);
 
 /* where a search for the next weapon started (.data 0x3DCEB0, -1 between searches; the name ours) */
 static int s_searchstart = -1;
 
 /* the next weapon's index up or down the weapons' list, round it, on past the weapons the slot
  * refuses, back where the search started; none without the HUD's owner. Pinned: the target calls
- * itself out of line.
- * OPEN, 28 instructions, registers only (the code is the target's, size equal): the target numbers
- * the index LAST (s0; this s5, up s4, a s3, b s2, the list s1) where MW here numbers it with the
- * parameters (s3, the list s0). A local copy of the index declared after the list coalesces back
- * into the parameter (no change). Untried: the list through a pointer, the index's first read
- * moved, a temporary the recursive call's result is split into. The first GetWeaponByIndex
- * re-materialises the list's address, the last uses the saved one: the source spells them apart */
+ * itself out of line. The stepped index is a variable of its own, `next = index + 1` after the
+ * list: numbered after the list it takes s0 as the target's does (round 49, open since round 26 --
+ * the parameter stepped in place is numbered with the parameters, s3, and a plain copy `next =
+ * index` coalesces back into it). The first GetWeaponByIndex re-materialises the list's address,
+ * the last uses the saved one: the source spells them apart */
 #pragma auto_inline off
 int SlotList::NextWeapon(bool up, int index, EQUIP_ITEM type, WEAPON_KIND kind)
 {
@@ -812,23 +808,114 @@ int SlotList::NextWeapon(bool up, int index, EQUIP_ITEM type, WEAPON_KIND kind)
     }
 
     CZWeaponList &list = CZWeapon::m_listWeapons;
+    int next;
 
     if (up) {
-        index++;
-        if (index >= list.m_count)
-            index = 0;
+        next = index + 1;
+        if (next >= list.m_count)
+            next = 0;
     } else {
-        index--;
-        if (index < 0)
-            index = list.m_count - 1;
+        next = index - 1;
+        if (next < 0)
+            next = list.m_count - 1;
     }
-    if (!func_0023C390(this, CZWeapon::m_listWeapons.GetWeaponByIndex(index), type, kind))
-        index = NextWeapon(up, index, type, kind);
-    list.GetWeaponByIndex(index);
+    if (!CanTake(CZWeapon::m_listWeapons.GetWeaponByIndex(next), type, kind))
+        next = NextWeapon(up, next, type, kind);
+    list.GetWeaponByIndex(next);
     s_searchstart = -1;
-    return index;
+    return next;
 }
 #pragma auto_inline reset
+
+/* whether a selected slot other than the cursor's holds a weapon of the class, or the weapon itself;
+ * the cursor's slot's item (255 for none) */
+inline bool CMPWeaponSel::HasClassElsewhere(EQUIP_ITEM cls)
+{
+    for (int i = 0; i < 5; i++) {
+        if (m_selected[i].m_weapon->GetIDType() == cls && i != m_list.m_34)
+            return true;
+    }
+    return false;
+}
+
+inline bool CMPWeaponSel::IsSelectedElsewhere(CZWeapon *weapon)
+{
+    for (int i = 0; i < 5; i++) {
+        if (m_selected[i].m_weapon == weapon && i != m_list.m_34)
+            return true;
+    }
+    return false;
+}
+
+inline EQUIP_ITEM CMPWeaponSel::CursorItem()
+{
+    SelectedSlot *slot = &m_selected[m_list.m_34];
+
+    return slot->m_weapon ? slot->m_weapon->m_item : (EQUIP_ITEM)255;
+}
+
+/* the items a list may show again where another slot holds them (the names ours) */
+static inline bool CanRepeat(EQUIP_ITEM item)
+{
+    switch (item) {
+    case 146:
+    case 145:
+    case 185:
+    case 153:
+    case 158:
+    case 195:
+    case 194:
+        return false;
+    }
+    return true;
+}
+
+/* whether the list's slot takes a weapon: of the kind (primary, secondary, or neither) and the class
+ * asked for (255 any); 195 only beside a class-101 weapon in another slot, 186 only where another
+ * slot holds it and not when the cursor's slot holds 146; a weapon only once unless CanRepeat; and
+ * its valve open to the owner's side (bit 8 on the side 0x2C30B0 names, else bit 1) (0x23C390; the
+ * name ours -- NextWeapon's test) */
+bool SlotList::CanTake(CZWeapon *weapon, EQUIP_ITEM type, WEAPON_KIND kind)
+{
+    if (!weapon)
+        return false;
+    switch (kind) {
+    case KIND_PRIMARY:
+        if (!CZWeapon::IsPrimary(weapon->m_item))
+            return false;
+        break;
+    case KIND_SECONDARY:
+        if (!CZWeapon::IsSecondary(weapon->m_item))
+            return false;
+        break;
+    case KIND_OTHER:
+        if (CZWeapon::IsPrimary(weapon->m_item) || CZWeapon::IsSecondary(weapon->m_item))
+            return false;
+        break;
+    }
+
+    EQUIP_ITEM item = weapon->m_item;
+    EQUIP_ITEM cls = weapon->GetIDType();
+
+    if (type != 255 && cls != type)
+        return false;
+    if (m_owner && !m_owner->HasClassElsewhere((EQUIP_ITEM)101) && item == 195)
+        return false;
+    if (m_owner && !m_owner->IsSelectedElsewhere(weapon) && item == 186)
+        return false;
+    if (m_owner && m_owner->CursorItem() == 146 && item == 186)
+        return false;
+    if (m_owner && !CanRepeat(weapon->m_item) && m_owner->IsSelectedElsewhere(weapon))
+        return false;
+
+    CValve *valve = CZWeapon::GetEnableValve(item);
+    CZSealBody *owner = CHUD::GetHUDOwner();
+    int bit = 1;
+
+    if (func_002C30B0(owner))
+        bit = 8;
+    return (valve ? bit & valve->m_value : 0) != 0;
+}
 
 /* the slots' text: the weapon's description, upper-cased into a buffer of its own, at 0.9 (each slot
  * class its buffer, bss 0x414810 and 0x414860), and the slots' offsets (the unit's 8-byte-spaced
