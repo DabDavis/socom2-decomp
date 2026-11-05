@@ -5,6 +5,7 @@
 #include "../gamez/zseal/zseal.h"
 
 extern "C" float data_00650C38;   /* the follow's close range (a variable: read with lwc1) */
+extern "C" float data_00650C28;   /* the follow's range on entry, 15.0 (a variable: read with lwc1) */
 
 /* a cell's size in the world (OVL2 data 0x64FC60, 10.0: read as a variable) */
 extern "C" float data_0064FC60;
@@ -23,6 +24,91 @@ inline void CAiSFollow::UpdateOffsetLength()
     v.y = 0.0f;
     v.z = -m_5c[0] * data_0064FC60;
     m_64 = v.Length();
+}
+
+/* the AI's route as the follow state reads it (zseal.h's CAiPathBytes at 0x46C: the two flag words;
+ * the names ours) */
+struct FOLLOW_PATH {
+    /* `clear` cleared and `set` set in the word at 0x20 (inline: `&= ~0` stays a zero extension) */
+    void SetFlags(unsigned int set, unsigned int clear)
+    {
+        m_20 &= ~clear;
+        m_20 |= set;
+    }
+
+    unsigned char _0[0x1c];
+    unsigned int m_1c;   // 0x1c
+    unsigned int m_20;   // 0x20
+};
+
+extern "C" {
+/* the AI's goals dropped (OVL2 0x5628F0, the SEALs' row), a path's plan aborted and its template
+ * set (OVL2 0x5107B0, 0x527300: the AI core's) and a stance tested (OVL2 0x562FC0, the SEALs') */
+void func_005628F0(CSealCtrlAi *ai);
+void AbortPathPlan__2aiFP7CAiPath(FOLLOW_PATH *path);
+void SetTemplatePath__7CAiPathFP7CAiPath(FOLLOW_PATH *path, FOLLOW_PATH *t);
+bool InStance__11CSealCtrlAiF11SEAL_STANCEb(CSealCtrlAi *ai, SEAL_STANCE stance, bool b);
+}
+
+/* a follow's events: on entry mode 6, the goals dropped, the route marked and the AI-map collision
+ * off, then the defaults -- the range 15, formation 1 slot 0 (SetFormation inlined), the flags
+ * cleared, 0x76 set, the flag word 8; leaving (1) the route aborted and its template dropped, the
+ * collision back, a prone SEAL crouched, the master let go and kept; 2 the route unmarked, mode 1;
+ * 3 mode 6 again, the route marked, the step back to 0 (OVL2 0x5FDF80; SOCOM 1's entry and exit
+ * reworked) */
+void CAiSFollow::OnSignal(SIGNAL sig, CSealCtrlAi *ai)
+{
+    FOLLOW_PATH *path = ai ? (FOLLOW_PATH *)&ai->m_path : 0;
+
+    switch (sig) {
+    case SIGNAL_0:
+        ai->SetAiMode((AI_MODE)6);
+        func_005628F0(ai);
+        path->SetFlags(1, 0);
+        ai->SetDoAiMapCollide(false);
+        m_68 = data_00650C28;
+        SetFormation((UNIT_FORMATION)1, 0);
+        m_78 = 0;
+        m_77 = 0;
+        m_75 = 0;
+        m_7a = 0;
+        m_79 = 0;
+        m_76 = 1;
+        m_84 = 0;
+        m_80 = 0;
+        m_7d = 0;
+        m_7c = 0;
+        m_6c = 8;
+        break;
+    case SIGNAL_1:
+        AbortPathPlan__2aiFP7CAiPath(path);
+        path->m_20 &= ~1;
+        SetTemplatePath__7CAiPathFP7CAiPath(path, 0);
+        path->m_1c &= ~8;
+        ai->SetDoAiMapCollide(true);
+        if (InStance__11CSealCtrlAiF11SEAL_STANCEb(ai, (SEAL_STANCE)2, false))
+            ai->SetStance((SEAL_STANCE)1);
+        ai->SetFollowMaster(0);
+        m_master = ai->m_follow_master;
+        break;
+    case SIGNAL_2:
+        path->m_20 &= ~1;
+        ai->SetDoAiMapCollide(true);
+        ai->SetAiMode((AI_MODE)1);
+        m_master = 0;
+        break;
+    case SIGNAL_3:
+        ai->SetAiMode((AI_MODE)6);
+        path->SetFlags(1, 0);
+        UpdatePhase(0);
+        ai->SetDoAiMapCollide(false);
+        m_master = 0;
+        break;
+    case SIGNAL_4:
+        break;
+    case SIGNAL_7:
+        break;
+    }
 }
 
 /* the remote console's word at 0xC of its +4 set (OVL2 0x5E6AA0, a named draft in seal_unit.cpp's

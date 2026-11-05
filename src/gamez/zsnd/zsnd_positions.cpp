@@ -86,3 +86,17 @@ extern "C" void func_0034BD40()
     for (std::vector<CSndPosition *>::iterator i = data_0049E230.begin(); i != data_0049E230.end(); i++)
         ;
 }
+
+/* THE UNIT INLINES TO DEPTH 6, not the flags' 5 (a pragma acts through its state at the unit's
+ * end; the MSL headers round 24). include/vector's pointer iterator is the image's since that
+ * round -- end() four high: the raw end, the pod's end, data() -- and a walk testing `i != end()`
+ * inside an inline is then six deep where its caller inlines it: at 5 MW keeps end()'s body and
+ * calls the raw end and __iter. At 6 0x34C2F0 inlines the position list's walks whole, as the
+ * target, with the source as it was written against the three-high end, and every function of the
+ * unit scores as it did at 5 (measured over the unit). The end taken into a local first (round
+ * 23's suggested refit) does not give the target: in fts_missionlist.cpp Find's own copy then
+ * colours its end, flag and element differently (9 off) and in util_loc.cpp FindTable's callers
+ * come out 12 bytes short. So the original's walks are the ones written here and its level deeper
+ * than 5 (README "Level 6, or 8?")
+ */
+#pragma inline_depth(6)

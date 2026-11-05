@@ -733,6 +733,71 @@ public:                                                                         
     const elem_t &operator[](unsigned int n) const { return ((const elem_t *)this->data_)[n]; } \
     void pop_back() { this->size_--; }
 
+/* A vector of pointers' own iterator (the MSL headers round 23, read off the image's self-inlined
+ * walks: zar's _countKeys 0x2578F0, fixupKey 0x257CC0 and CountKeys 0x25B300, the world's subtitle
+ * walk 0x34D740, each cutting the pieces a level more per self-inlined copy). The class iterator's
+ * operators, with three of its own:
+ *   - a constructor from the base's raw pointer BY REFERENCE (0x257CA0, returning this): __iter
+ *     inlined one level calls it with the pointer's address;
+ *   - base(), the pointer (0x257B90): == compares through it, so an == inlined one level calls it
+ *     on each side, this first (_countKeys' and CountKeys' second levels, the subtitle walk's);
+ *   - the copy constructor stays implicit: the postfix ++'s copies call it out of line where it is
+ *     cut (0x257C00), and its out-of-line copy reads the pointer once (0x257C50, 0x14 bytes) --
+ *     user-declared, the copy and the step each read it (0x18).
+ * The by-value constructor stays for the callers that build one from an element pointer. */
+#define __MSL_VECTOR_PTR_ITERATOR(ELEMENT)                                                        \
+    typedef ELEMENT elem_t;                                                                     \
+    class iterator {                                                                            \
+    public:                                                                                     \
+        typedef elem_t value_type;                                                              \
+        typedef int difference_type;                                                            \
+        typedef random_access_iterator_tag iterator_category;                                   \
+        iterator() {}                                                                           \
+        iterator(elem_t *p) : m_p(p) {}                                                         \
+        iterator(unsigned int *const &p) : m_p((elem_t *)p) {}                                  \
+        elem_t *base() const { return m_p; }                                                    \
+        bool operator==(const iterator &o) const { return base() == o.base(); }                 \
+        bool operator!=(const iterator &o) const { return !(*this == o); }                      \
+        iterator &operator++() { ++m_p; return *this; }                                         \
+        iterator operator++(int) { iterator t(*this); ++*this; return t; }                      \
+        iterator &operator+=(int n) { m_p += n; return *this; }                                 \
+        iterator &operator-=(int n) { m_p -= n; return *this; }                                 \
+        iterator operator+(int n) const { iterator t(*this); return t += n; }                   \
+        iterator operator-(int n) const { iterator t(*this); return t -= n; }                   \
+        iterator &operator--() { --m_p; return *this; }                                         \
+        int operator-(const iterator &o) const { return m_p - o.m_p; }                          \
+        bool operator<(const iterator &o) const { return m_p < o.m_p; }                         \
+        bool operator>=(const iterator &o) const { return !(*this < o); }                       \
+        elem_t &operator*() const { return *m_p; }                                              \
+        elem_t *operator->() const { return m_p; }                                              \
+                                                                                                \
+        elem_t *m_p;                                                                            \
+    };
+
+/* the pointer vectors' access: __MSL_VECTOR_ACCESS over their own iterator */
+#define __MSL_VECTOR_PTR_ACCESS(ELEMENT)                                                          \
+public:                                                                                         \
+    __MSL_VECTOR_PTR_ITERATOR(ELEMENT)                                                          \
+                                                                                                \
+    class const_iterator {                                                                      \
+    public:                                                                                     \
+        const_iterator(const elem_t *p) : m_p(p) {}                                             \
+        const_iterator(const iterator &i) : m_p(i.m_p) {}                                       \
+        bool operator==(const const_iterator &o) const { return m_p == o.m_p; }                 \
+        bool operator!=(const const_iterator &o) const { return !(*this == o); }                \
+        const_iterator &operator++() { ++m_p; return *this; }                                   \
+        const_iterator operator++(int) { const_iterator t(*this); ++*this; return t; }          \
+        const elem_t &operator*() const { return *m_p; }                                        \
+                                                                                                \
+        const elem_t *m_p;                                                                      \
+    };                                                                                          \
+                                                                                                \
+    unsigned int size() const { return this->size_; }                                           \
+    unsigned int capacity() const { return this->capacity_; }                                   \
+    bool empty() const { return this->size_ == 0; }                                             \
+    const elem_t &operator[](unsigned int n) const { return ((const elem_t *)this->data_)[n]; } \
+    void pop_back() { this->size_--; }
+
 /* the pointer vectors' element read, straight off data_ */
 #define __MSL_VECTOR_INDEX(ELEMENT) \
     ELEMENT &operator[](unsigned int n) { return ((ELEMENT *)this->data_)[n]; }
@@ -821,80 +886,91 @@ class __vector_imp : public __vector_deleter<T, Allocator> {
     /* the assignment: the other's elements copied over these through the range assign (out of class,
      * called) unless it is this one -- the empty tag a byte read off the stack, as the pods' (the AI
      * core's round 14: CCharacterType's constructor 0x53D7C0 copies its base's weapons and levels of
-     * detail so, 0x53F370 and 0x53F730) */
+     * detail so, 0x53F370 and 0x53F730). The other's data read through the deleter's data()
+     * reference, both ends (the AI core's round 25; the MSL headers round 24: objcmp -- only
+     * CAiPath::CopyPlan 0x527FD0 moves, 21 instructions off to 2, the target's v1 for the address
+     * and the size off s1; every other hand-written object byte-identical) */
     __vector_imp &operator=(const __vector_imp &x)
     {
         if (this != &x)
-            do_assign((const T *)x.data_, (const T *)x.data_ + x.size_, forward_iterator_tag());
+            do_assign((const T *)const_cast<__vector_imp &>(x).data(),
+                      (const T *)const_cast<__vector_imp &>(x).data() + x.size_, forward_iterator_tag());
         return *this;
     }
     template <class InputIterator>
     void do_assign(InputIterator first, InputIterator last, forward_iterator_tag);
 };
 
-/* THE IMAGE'S POINTER-VECTOR ITERATOR, MEASURED AND NOT ADOPTED (the MSL headers round 23; the header
- * as measured is build/scratch/msl-r23/vector.r23_pointer_iterator, its witnesses' probes beside it,
- * all untracked). Read off the self-inlined walks -- zar's _countKeys 0x2578F0 (four copies), fixupKey
- * 0x257CC0 (three), CountKeys 0x25B300, the world's subtitle walk 0x34D740 -- each copy cutting the
- * pieces a level more:
- *   - the raw ends are T-DEPENDENT members of this class: CNode's 0x1EA8C0 / 0x1EA890 (named the pod's
- *     begin/end here) and CKey's 0x257CB0 / 0x257BA0 hold the same words in one overlay, so they are
- *     different instances; `unsigned int *__raw_begin() { return this->data(); }` and `__raw_end()
- *     { return __base::end(); }` (the pod's end through data(): 0x34D920 is that pod end, called where
- *     the raw end is inlined and it is not -- the subtitle walk's second level). Through data(): a
- *     direct `data_ + size_`, a const member or a reference read loses the hoisted end of GetIndex,
- *     GetFreeEntry, CGrid::Destroy, GenerateLandmarkList and AddPalette;
+/* THE IMAGE'S POINTER-VECTOR ITERATOR (the MSL headers round 23 measured it, round 24 adopted it).
+ * Read off the self-inlined walks -- zar's _countKeys 0x2578F0 (four copies), fixupKey 0x257CC0
+ * (three), CountKeys 0x25B300, the world's subtitle walk 0x34D740 -- each copy cutting the pieces a
+ * level more:
+ *   - the raw ends are T-DEPENDENT members of this class: CNode's 0x1EA8C0 / 0x1EA890 and CKey's
+ *     0x257CB0 / 0x257BA0 hold the same words in one overlay, so they are different instances;
+ *     `__raw_begin() { return this->data(); }` and `__raw_end() { return __base::end(); }` (the pod's
+ *     end through data(): 0x34D920 is that pod end, called where the raw end is inlined and it is
+ *     not -- the subtitle walk's second level). Through data(): a direct `data_ + size_`, a const
+ *     member or a reference read loses the hoisted end of GetIndex, GetFreeEntry, CGrid::Destroy,
+ *     GenerateLandmarkList and AddPalette (round 23);
  *   - `begin() { return __iter(__raw_begin()); }` (the raw pointer in __iter's argument, a level below
  *     it: _countKeys' and CountKeys' second levels inline __iter and call the raw begin), `end() {
  *     unsigned int *const p = __raw_end(); return __iter(p); }`, `__iter(p) { return iterator(p); }`;
- *   - the iterator gains `iterator(unsigned int *const &p) : m_p((elem_t *)p) {}` (0x257CA0, returning
- *     this) and `elem_t *base() const { return m_p; }` (0x257B90), == written `base() == o.base()`;
- *     the copy constructor stays implicit (user-declared, the postfix ++'s out-of-line copy reads the
- *     pointer twice: 0x18 against 0x257C50's 0x14).
- * So written, _countKeys, fixupKey (SOCOM 1's: the iterator declared, then assigned) and the subtitle
- * walk (an `inline` NextFile, the probe's sub.cpp) are instruction for instruction the target's,
- * nine rows named; but end() is then four high (end, the raw end, the pod's end, data()) where every
- * walk fitted so far assumes three, and over every hand-written unit (master 09523ebb) it gives 10031
- * byte-exact against 10044: +_countKeys and the nine pieces, -19 -- ReadMotionRdr, five of
- * char_type.cpp (Create, KorusGetPackedWeapons, Open, Parse, RdrFetch_CharacterType), four of
- * fts_missionlist.cpp (Find inlined into GetMultiValue x2, GetName, Add), util_loc's
- * CStringTables::Find(int, ...), InvitePlayerToClan, CanJoinRoom, JoinRoom, cbRoomList,
- * zsnd_positions' 0x34C2F0, CDynTexList::Add, CPlacedExplosiveList's constructor and destructor -- each
- * inlining an end() whose fifth level the new height cuts (inline_max_size is not it: 1000 changes
- * nothing). Those walks were fitted to the three-high end: CMultiMissionList::Find written `for
- * (iterator i = begin(), e = end(); i != e; ++i)` brings Find, GetName and GetMultiValue to the
- * target's sizes (registers left), so the image's end() is consistent with the original's walks and
- * the next step is refitting those 19 against it, then adopting it (with the rows in
- * symbols.r23_pointer_iterator.txt). Two levers measured on the way: inline_max_size counts a local's
- * `const` and a loop test's end() twice (the duplicated test), and the raw pair's constness decides
- * whether a walk's first test reuses begin's load of the data */
+ *   - the iterator gains `iterator(unsigned int *const &p)` (0x257CA0, returning this) and `elem_t
+ *     *base() const` (0x257B90), == written `base() == o.base()`; the copy constructor stays
+ *     implicit (user-declared, the postfix ++'s out-of-line copy reads the pointer twice: 0x18
+ *     against 0x257C50's 0x14).
+ * end() is so four high (end, the raw end, the pod's end, data()) where every walk fitted before
+ * assumed three. ADOPTED, measured over every hand-written unit (master bbc50153: 10212 byte-exact ->
+ * 10230, nothing lost): +_countKeys, fixupKey, CSubtitleList::Load 0x34D5D0 and its NextFile
+ * 0x34D740 with the records' insert 0x34DA00, VuLightMap 0x3B54E0 (open on its loop test's end:
+ * the size and iterator registers), CUIVariable::Attach 0x3869F0 (IsAttached cut one level, as the
+ * target) and eleven pieces named (0x257B90-0x257CB0, 0x257EC0/0x257ED0, 0x34D920, 0x3869C0,
+ * 0x3869D0, 0x386980, 0x386AB0). The 19 walks the four-high end cut at -inline level=5 (an inline's
+ * `i != end()` six deep in its caller: end()'s body kept, the raw end and __iter called) refit as:
+ *   - the source as it was, with `#pragma inline_depth(6)` at the unit's end, in the eight units
+ *     whose every function scores at 6 as at 5 -- fts_missionlist.cpp, bone_archive.cpp,
+ *     char_type.cpp, util_loc.cpp, zNetMediusClan.cpp, zNetMediusRoom.cpp, zsnd_positions.cpp,
+ *     zwep_flyout.cpp: their objects are byte-identical to master's (objcmp), i.e. the new header at
+ *     6 gives exactly what the old one gave at 5. The end taken into a local first (round 23's
+ *     suggested refit) does not give the target: CMultiMissionList::Find's own copy then colours its
+ *     end, flag and element differently (9 off; every spelling tried 5-11 off), FindTable's callers
+ *     come out 12 bytes short;
+ *   - in ztex_manager.cpp, where depth 6 costs three other functions, CDynTexList::Add(CTexPalette *)
+ *     with CTexPalList::Exists written out, its parameter a local (byte-exact).
+ * So the original's walks are the natural ones and its level is deeper than 5 (README "Level 6, or
+ * 8?"). Two levers measured on the way (round 23): inline_max_size counts a local's `const` and a
+ * loop test's end() twice (the duplicated test), and the raw pair's constness decides whether a
+ * walk's first test reuses begin's load of the data. The pod's raw `end() const` round 23 carried
+ * is used by nothing (removed: neutral over every hand-written unit) */
 template <class T, class Allocator>
 class __vector_imp<T *, Allocator, true> : public __vector_pod<unsigned int, allocator<unsigned int> > {
     typedef __vector_pod<unsigned int, allocator<unsigned int> > __base;
-    __MSL_VECTOR_ACCESS(T *)
+    __MSL_VECTOR_PTR_ACCESS(T *)
     __MSL_VECTOR_INDEX(T *)
     __vector_imp() {}
     __vector_imp(unsigned int n, T *const &value) : __base(n, (const unsigned int &)value) {}
-    iterator __iter(unsigned int *const &p) { return iterator((elem_t *)p); }
-    /* the base's pointer held in a const local first: begin() is three high so (SetDynamic and
-     * SetUseParentBBoxTree assign it to a declared iterator and inline it whole in their outer
-     * copies), while data()'s reference survives for CNode::FindChild by name to keep &data_ in a
-     * register. Passed straight to __iter, the call would sit a level deeper; a plain local
-     * swaps two of SetDynamic's registers */
-    iterator begin()
-    {
-        unsigned int *const p = __base::begin();
-
-        return __iter(p);
-    }
-    /* the base's end held in a const local first, as begin() holds its pointer: with the base's
-     * end() reading through data(), passed straight to __iter it would sit a level too deep for
-     * CCharacterType::Create's inlined GetByNameMod, while find_node still calls the base's end()
-     * out of line as its target does (measured over every hand-written unit, the MSL headers'
-     * round 4) */
+    /* the iterator from the base's raw pointer, both by reference (0x257C90 / 0x1EA8B0: a hidden
+     * return, this, the pointer's address) */
+    iterator __iter(unsigned int *const &p) { return iterator(p); }
+    /* The raw ends are this class's own (the MSL headers round 23): every pointer vector runs on
+     * the one __vector_pod<unsigned int>, yet each element type has its own copies -- CNode's
+     * 0x1EA8C0 / 0x1EA890 and CKey's 0x257CB0 / 0x257BA0, the same words in the same overlay. The
+     * begin through data(); the end through the pod's end (data() + size), which the subtitle
+     * walk's second level calls (0x34D920) where this one is inlined (the names ours) */
+    unsigned int *__raw_begin() { return this->data(); }
+    unsigned int *__raw_end() { return __base::end(); }
+    /* begin(): the raw pointer passed straight to __iter, so it sits a level below __iter -- a
+     * walk's copy cut to two levels inlines __iter (calling the pointer-reference constructor) and
+     * calls the raw begin (_countKeys' and CountKeys' second levels), one cut to a level calls both
+     * (SetDynamicLight's, SetNodeEx's, the third levels) */
+    iterator begin() { return __iter(__raw_begin()); }
+    /* end(): the raw end held in a const local first, as the subtitle walk's second level shows it
+     * (the raw end inlined there, at __iter's level) -- so written, _countKeys keeps its four
+     * self-inlined copies (the MSL headers round 24: byte-exact; round 23 measured MW counting the
+     * local's const and the end twice, the loop's test being duplicated, against inline_max_size) */
     iterator end()
     {
-        unsigned int *const p = __base::end();
+        unsigned int *const p = __raw_end();
 
         return __iter(p);
     }
