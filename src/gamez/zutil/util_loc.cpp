@@ -441,7 +441,13 @@ void CStringTables::Load(const char *name, LANGUAGE lang)
  * subclass makes CLocTable() six levels high and Load (0x2C0 bytes, byte-exact with a plain vector)
  * then calls the members' constructors out of line; include/vector's class-vector constructor (4
  * levels) leaves no room for both at -inline level=5. The walk -- `next` its own variable, stepped
- * before the compare and set from erase -- is the target's */
+ * before the compare and set from erase -- is the target's. Round 25, measured again (a LEVEL, not
+ * the engine core's refusal propagation: nothing here is refused): a subclass with everything
+ * implicit, with a user-declared constructor or with a user-declared destructor all give Unload
+ * byte-exact and cut CLocTable() in Load one level (CLocEntries(), Item, Count and vector's reserve
+ * forwarder called out of line); deriving from __vector_imp directly gives the plain vector's two
+ * tests. CLocTable() is then six high (itself, the subclass's, vector's, __vector_imp's, the
+ * deleter's and the capacity's constructors) */
 void CStringTables::Unload(const char *name)
 {
     if (name) {
