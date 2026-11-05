@@ -2062,6 +2062,37 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the HUD, round 47** (hud_objectives.cpp whole: CZObjectiveList and vector<bool>):
+  - a local initialised from an auto-inlined accessor (`retained = GetCurrentObjectiveRetainer()`) is numbered after the
+    named locals -- s2, not s4 (RefreshList 0x207570); a const_iterator walk over a const list reference keeps its
+    begin / end temporaries in memory, a plain-iterator walk loses them (RefreshList, as SOCOM 1's const walk); a
+    for_each functor with a user-declared empty constructor is not zero-stored on the stack (FreeList 0x207030);
+  - uninitialised locals declared at the top in SOCOM 1's DWARF order set an MSL body's saved-register numbering while
+    statement order still sets the schedule (vector<bool>'s insert(n) 0x208040, shift_out 0x208600, AddObjective
+    0x207A00's bools); `size() + n` through the inline accessor puts n first, `size_ + n` keeps the target's order; in a
+    same-word arm, returning inside each branch fills the `b` delay slot, a trailing `return;` after the if/else leaves
+    a nop (set 0x208270);
+  - SOCOM II's vector<bool> uses 32-bit words, an initial capacity of 32 and a (vector, index) iterator -- SOCOM 1's
+    used 64-bit words; hud_objectives.cpp runs to 0x208ACB (vector<bool>'s members and two array destructors close it);
+    a marked stand-in: RetainSelection / GetObjectiveByTail (ours) walk through tail() one inline level down so
+    second() stays out of line as in the target -- in GetObjective itself SelectNext/PreviousObjective grow 0xA0 -> 0x22C.
+- **Tells from the SEALs, round 39** (the CanUse* stretch in SOCOM 1's order, IsReloading, GetReticuleAction, Reload):
+  - a single-use pointer local for the victim's position, declared before a stack copy, keeps its node load ahead of the
+    copy's stores (CanUseCQB 0x5A9500, CanUseRestraint 0x5A90B0) -- not when the operand is the function's own position
+    (FindDeathAnimTypeCQB, OPEN); `const CPnt3D &pos = a + b;` keeps the temporary's address in a saved register for a
+    second use; a bit returned as `b ? true : false` keeps the sltu before the branch, the bare bit is tested in place
+    (CanUseKnife 0x5A98B0);
+  - `if (f()) return false; if (f()) return false; return true;` gives the target's materialised `!f()` with an empty
+    delay slot, `return !f()` lets MW fill it; the blend stack's top through TopBlend() recomputes `this+0x1c0` at every
+    call, `func_00555170((char *)this + 0x1c0)` inside inlines folds it into a saved register (CanZoom 0x5A8DA0);
+  - a call's byte result kept unnormalised in v0 with an andi at each use is a byte-enum local (`SEAL_STATE base =
+    (SEAL_STATE)PeekBaseState()`), an unsigned char or int local normalises at the call; a range test branching on `sltiu
+    at` is `(unsigned)(x - lo) > n - 1`, `!(... < n)` or `>= n` materialise it in v0; if/else arms assigning short statics
+    load straight into the join register, a ternary sign-extends in every arm (Reload 0x5A82E0, SOCOM 1's with a flag
+    and a bool result);
+  - a recursive inline expanded one level into its caller numbers its variables after the caller's, so its result takes
+    s0 -- a static inline helper reproduces it (GetReticuleAction 0x5AA240; CNodeAction derives from zdb::CNodeEx for its
+    dynamic_cast).
 - **Tells from the game states, round 37** (CGraph::Read at last; the network chat's line add, the IOP reboot callback):
   - REPLAY MW'S OWN COLOURING with the virtual registers moved to other indices to see which numbering the target needs
     before writing any source (build/scratch/states-r37/ig/: igreplay.py, relabel.py, brute.py) -- that found CGraph::Read
