@@ -2065,6 +2065,36 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the SEALs, round 44** (SlideTick, the level-2 alert record, seal_cfg.cpp's map teardown):
+  - A DEAD-STRIPPED SOCOM 1 FUNCTION CAN BE WHAT MAKES A UNIT EMIT A TEMPLATE'S PIECES: seal_cfg.cpp's map<string, int>
+    teardown 0x58D020-0x58D730 comes out of SOCOM 1's ClearBodyPartNames_Map (its demo's 0x280E80, between BodyWepPart and
+    BodyId), defined in the unit and listed in src/ABSENT.txt -- no SOCOM II code calls it, the linker dropped it (OVL2's
+    map destroy 0x58D450 new with it); the seven OVL2 rows' `ovl-copy:` notes were checked first: each OVL1 twin keeps
+    its own emitter (fts_ovl2statics.cpp, int_material.cpp), so no credit moved;
+  - a member read through a const view gives the target's second load of a value an inline also reads; a scalarised
+    `CPnt3D perp(-f.z, 0.0f, f.x)` used with Dot keeps `y * 0` as a multiply by a zero register, a literal 0.0f folds it;
+    accesses to a CPnt3D local written in the body share one saved address register, reads through reference inlines
+    become plain frame offsets;
+  - `float f = (x >= 0.0f);` converts the bool unsigned with no andi, `(unsigned int)(bool)` adds one; `bool has = (bool)a
+    || (bool)b; if (!has)` gives an sltu per bit and tests the `||` value in v0; `t = a * s; r = t * g * k` puts t first in
+    the multiply by the global, `a * s * g` the global first; in `a > b ? a - b : b - a` b is loaded first; 13-bit
+    unsigned bitfields compare with sltu, cast to (int) with slt (CSealCtrl::SlideTick 0x566940, SOCOM 1's with ClearGoal
+    inlined; the level-2 alert record 0x558030).
+- **Tells from completing the MSL headers, round 28** (the list's base begin(), the states' string stand-in, the converter;
+  probes and scratch in build/scratch/msl-r28/, untracked):
+  - THE LIST'S ORIGINAL begin() is `iterator begin() { return iterator(base::begin()); }` (SOCOM 1's CGTree::Destroy calls
+    the base begin() 0x17F770, then the wrapper constructor 0x210C90): DistributeNotify 0x5ED4F0 code-exact -- but MW
+    checks a call written as an inline call's argument one level deeper, so at level 5 it is +1 / -12 (zanim_anim.cpp's
+    eight `find_if(begin(), ...)` walks, pickup_main.cpp's three, CreateMultiPlayerUnits -- all match again at level 6):
+    not applied, recorded as "Level 6, or 8?" evidence; a lossless by-reference constructor stand-in DECLINED (SOCOM 1
+    mangles that constructor by value);
+  - GetSealCount (const) needs three header changes: the const_iterator's `*` by reference (APPLIED: no loss anywhere),
+    size() through sz() (-2) and begin() const through the base's (+1 / -2) -- the last two not applied; fts_state.h's
+    basic_string stand-in stays (its default constructor four high, include/string's two: four-high costs 47);
+  - the converter wraps an iterator class with in-class operators (a deque<T *> const_iterator of its own), not the
+    base's -- both deques' begin() / end() const are word for word alike, so conversion depends on the element type alone
+    (unbuilt; `__deque_converts<void>` stays); an empty inline default constructor counts as a level; an inline
+    function's out-of-line copy is emitted only when something calls it out of line; the list<CSealUnit *> pieces named.
 - **Tells from the weapons, round 27** (CZProjectile's PostTick, PreTick and SetProjectile; the turret's mount test and aim):
   - a result reassigned before the return (`if (x) r = false; return r;`) pads the last join label, `if (x) return false;
     return r;` and the ternary don't (PostTick 0x3C9FB0); `0.0f * call()` folds to a stored zero but keeps the call --
