@@ -199,8 +199,10 @@ int sceBInetClose(void *cd, u_int *net_buf, LIBNETB *s, int ms)
  * v0 first in every spelling tried -- the size through a variable, dst stored first, self read into
  * a local (before the flush: 29), Sony's u_int descriptor fields, an __inline__ helper (0x13C)
  * (build/scratch/gcc/v_recvdma.py, v_sifdma.py). The peer check returns its result both ways
- * (`return ret` when chk is 0: the target's v0 kept, no `move v0,zero`). */
-int sceBInetRecv(void *cd, u_int *net_buf, LIBNETB *s, void *ptr, int count, int *pflags)
+ * (`return ret` when chk is 0: the target's v0 kept, no `move v0,zero`). The timeout `ms` is
+ * unread, but its one caller passes it (rt_comm_platform2_receive 0x62E1E8: `li t2,2` before the
+ * jal, the seventh argument), as sceBInetRecvFrom's (which tests it) and sceBInetSend's. */
+int sceBInetRecv(void *cd, u_int *net_buf, LIBNETB *s, void *ptr, int count, int *pflags, int ms)
 {
     LIBNETB_RING *r;
     struct sif_dma dma;
@@ -277,8 +279,10 @@ int func_002476D0(void *cd, u_int *net_buf, LIBNETB *s, void *ptr, sceBInetAddre
  * registers (the target loads src into v0 and dst into v1, then dst into v0 and the size into v1).
  * Every order of the four field stores leaves the same 8 (tools/ccperm.py); an __inline__ helper
  * per transfer gives each its own descriptor (frame 80, the target's 64), so the vendor wrote both
- * out. The ring's size is an int here (slt), its header size unsigned (the prepare calls' sltu). */
-int sceBInetSend(void *cd, u_int *net_buf, LIBNETB *s, void *ptr, int count)
+ * out. The ring's size is an int here (slt), its header size unsigned (the prepare calls' sltu).
+ * The flags and the timeout are unread, but its one caller passes both (rt_comm_platform2_send
+ * 0x62DFA0: `move t1,sp` and `move t2,zero` before the jal, the sixth and seventh arguments). */
+int sceBInetSend(void *cd, u_int *net_buf, LIBNETB *s, void *ptr, int count, int *pflags, int ms)
 {
     LIBNETB_RING *r;
     struct sif_dma dma;

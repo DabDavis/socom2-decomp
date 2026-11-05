@@ -1101,7 +1101,7 @@ void CZKit::SetFireDelay(float delay, bool alt)
 extern "C" {
 /* the SEAL's held item put through its reload, false when it cannot run (seal_env.cpp's, OVL2
  * 0x5A82E0 -- the kit's Reload calls it three times) */
-bool func_005A82E0(CZSealBody *body, int how);
+bool Reload__10CZSealBodyFb(CZSealBody *body, bool b);
 }
 
 /* the launcher's next round chambered: with the grenade launcher's mode on item 146, its
@@ -1141,7 +1141,7 @@ void CZKit::ChamberLauncherRound()
     if (ok) {
         int sel = m_selected_item;
 
-        func_005A82E0(m_body, 1);
+        Reload__10CZSealBodyFb(m_body, true);
         CSnd *snd = (CSnd *)m_item[sel]->m_socom2_a0;
 
         if (snd)
@@ -1222,7 +1222,7 @@ bool CZKit::Reload()
                 mag = 0;
         }
         if (found) {
-            if (!func_005A82E0(m_body, 0))
+            if (!Reload__10CZSealBodyFb(m_body, false))
                 return false;
             m_currentmag[index] = mag;
             CSnd *snd = m_item[index]->m_reloadsound;
@@ -1234,7 +1234,7 @@ bool CZKit::Reload()
                    || CZWeapon::IsPrimary(m_item[index]->m_ID) && m_item[index]->m_ID != 142
                           && m_item[index]->m_ID != 143 && data_00437CE8->m_respawns)) {
             m_reloads[index][m_currentmag[index]] = m_item[index]->GetAmmoCapacity();
-            if (!func_005A82E0(m_body, 0))
+            if (!Reload__10CZSealBodyFb(m_body, false))
                 return false;
             CSnd *snd = m_item[index]->m_reloadsound;
 
@@ -1248,7 +1248,7 @@ bool CZKit::Reload()
                    || CZWeapon::IsPrimary(m_item[index]->m_ID) && m_item[index]->m_ID != 142
                           && m_item[index]->m_ID != 143 && data_00437CE8->m_respawns)) {
         m_reloads[index][m_currentmag[index]] = m_item[index]->GetAmmoCapacity();
-        if (!func_005A82E0(m_body, 0))
+        if (!Reload__10CZSealBodyFb(m_body, false))
             return false;
         CSnd *snd = m_item[index]->m_reloadsound;
 
@@ -1671,6 +1671,14 @@ extern "C" {
 bool func_003C5CA0(CZFTSWeapon *w);
 }
 
+/* the item in hand an M203 in its launcher's fire mode (OVL2 0x5BDA00, a tail call: SOCOM 1's
+ * CurWeaponIsM203Mode, which tested the item itself; Reload and three unwritten SEAL functions call
+ * it) */
+bool CZKit::CurWeaponIsM203Mode()
+{
+    return WeaponIsM203Mode(m_selected_item);
+}
+
 /* an M203 (or class 145) in its launcher's fire mode (OVL2 0x5BD8F0, its selected item's 0x5BDA00:
  * SOCOM 1's CurWeaponIsM203Mode on an index) */
 bool CZKit::WeaponIsM203Mode(int index)
@@ -1715,6 +1723,14 @@ bool CZKit::WeaponIsGrenadeLauncherMode(int index)
     if (w && w->IsGrenadeLauncherWeapon() && m_firemode[index] > AUTOFIRE)
         return true;
     return false;
+}
+
+/* the item in hand a grenade launcher in its launcher's fire mode (OVL2 0x5BD6D0, a tail call
+ * between CurMagHasAmmo and WeaponIsGrenadeLauncherMode; the SEAL's Reload and 0x5BE9A0 call it --
+ * the name ours) */
+bool CZKit::CurWeaponIsGrenadeLauncherMode()
+{
+    return WeaponIsGrenadeLauncherMode(m_selected_item);
 }
 
 /* the body as the magazine test reads it (zseal.h's CZSealBody::m_infiniteammo, bit 5 of the word at

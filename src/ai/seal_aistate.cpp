@@ -83,9 +83,6 @@ bool GetTraversableLocation__7CAiMapsFPC6CPnt3DR9CAiMapLoc(CAiMaps *maps, const 
 bool func_005F0830(CSealCtrlAi *ai, void *loc, unsigned int mode, int kind, int step);
 void PickupObject__10CZSealBodyFP7CPickup(CEntity *seal, CPickup *pickup);
 /* (CSealCtrlAi::SetStance, SOCOM 1's, called from the same Ticks; OVL2 0x5631A0: zseal.h's) */
-/* CZSealBody::CanUseCQB (SOCOM 1's CanUseCQB__10CZSealBodyFP10CZSealBody, called from the same
- * CQB Tick; OVL2 0x5A9500, the SEAL lane's row) */
-bool func_005A9500(CEntity *seal, CEntity *target);
 /* CZSealBody::ExecuteAction_CQBAttack (named; zseal.h's CZSealBody does not declare it) */
 void ExecuteAction_CQBAttack__10CZSealBodyFP10CZSealBody(CEntity *seal, CEntity *target);
 }
@@ -1939,7 +1936,7 @@ int CAiSCQBAttack::Tick(CSealCtrlAi *ai)
         break;
     case 1:
         ai->SetStance((SEAL_STANCE)0);
-        if (func_005A9500(seal, m_target)) {
+        if (((CZSealBody *)seal)->CanUseCQB((CZSealBody *)m_target)) {
             ExecuteAction_CQBAttack__10CZSealBodyFP10CZSealBody(seal, m_target);
             m_time = StateTimer(ai) + 2.5f;
         } else
@@ -1982,17 +1979,12 @@ CAiSCQBAttack::~CAiSCQBAttack()
 }
 
 /* (OVL2 0x5F86C0) its members destroyed by hand, as ai_states.h keeps them as bytes: the route
- * (~CAiPath, 0x5281B0, with -1), then the vector (std::vector<CAiMapLoc>'s deleter destructor,
- * 0x515200, with 0, behind the three this-tests of ~vector and ~__vector_imp inlined) */
+ * (~CAiPath, 0x5281B0, with -1), then the vector as the CAiMapLocVec it is (its deleter's destructor
+ * 0x515200 called with 0 behind the three this-tests of ~vector and ~__vector_imp inlined) */
 CAiSPlan::~CAiSPlan()
 {
     __dt__7CAiPathFv(m_path, -1);
-    unsigned char *v = _58;
-
-    if (v)
-        if (v)
-            if (v)
-                func_00515200(v, 0);
+    ((CAiMapLocVec *)_58)->~CAiMapLocVec();
 }
 
 /* (OVL2 0x5EF9D0, the unit's first function) */

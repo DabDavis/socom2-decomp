@@ -678,7 +678,14 @@ struct CMissionInfo {
  * flag extracted ahead of the part) but puts the conversion in f's own register ($f20, the product
  * `mul.s $f20,$f20,$f0`) where the target converts into a temporary ($f1) and multiplies constant
  * first; a separate conversion local is forwarded to its single use (56 off), all 24 orders of the
- * four locals as they stand 6-66 off */
+ * four locals as they stand 6-66 off.
+ * Round 37 (igdump): the constant's lui/ori temporaries are v66/v67 and the byte v68, coloured
+ * highest first -- the byte must be generated before the constant, and MW generates the product's
+ * constant after its converted operand, so no single-expression product allows it. Tried: the scale
+ * as an inline (by float, unsigned int or unsigned char, through a constant parameter, a named
+ * result -- all 6), `v / 20.0f` (33), part and flag in a named copy of a nested bitfield struct
+ * (0x1D4, through memory) or of the packet (0x1EC); part and flag defined before the floats move the
+ * byte's load and their live ranges, renumbering the saved registers (55-66) */
 /* whether the mission's mode takes no hits (the name ours: the handler's test materialised) */
 inline bool NoHitMode(int mode)
 {
@@ -1913,7 +1920,15 @@ static inline void CrossNormal(const CPnt3D *a, const CPnt3D *b, CPnt3D *out)
  * found flag s0, the SEAL s1, the kind s2, the matrix s3 and the point s4 (in the random arm the
  * client's index takes s0 and the share s1, the SEAL dead there), and lays the points out up 160,
  * side 176, facing 192, the cell 204; here the kind s0 and the SEAL s4, up at 192. All 24 orders of
- * up, side, facing and the flag at the top keep the shorter shape's registers */
+ * up, side, facing and the flag at the top keep the shorter shape's registers.
+ * Round 37 (MW's colouring read with igdump): the random arm's client and share are both over K and
+ * coloured highest-index first, so the target's client s0 / share s1 need the share numbered first
+ * (`int per = count / 24; int client = body->m_fc8;`); that and the zero arm laid out first
+ * (`range == 0 ? 0 : ...`, or an if/else) give the target's arm, registers and layout -- but 8 bytes
+ * short: MW fills the zero arm's `b` from the join (`mult v0,s1,s0`) where the target keeps a nop and
+ * pads the join to 8 (as SetDynamicLOD 0x3B04C0's else-if joins). Not moved by an inline picker
+ * (ternary, if/return, if/else), `first = per * client` up front, n assigned in both arms or the pick
+ * written inside n's expression (two of those the right size by compensation, 23-24 off) */
 extern "C" void func_002B8100(CZSealBody *body, CPnt3D *pos, CMatrix *m, int type)
 {
     CPnt3D up(0.0f, 1.0f, 0.0f);
