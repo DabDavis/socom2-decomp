@@ -3,9 +3,9 @@
  * functions in the demo's order -- the delay thread, the N-command callback and its callback
  * thread, the power-off callback, the search, the N- and S-command pre-checks, sync, init and
  * disk-ready. Prebuilt with the SDK's ee-gcc 2.9-991111-01, the dtls13010 build (README "The GCC
- * front"). Names are SOCOM 1's (s1:exact and the demo's globals, data.txt; libcdvd.h). Not yet
- * written: sceCdLayerSearchFile, sceCdInit, sceCdDiskReady and the newer 0x18EF70. The functions
- * appear in the target's order, which is the demo's but for the accessor func_0018E9E8. */
+ * front"). Names are SOCOM 1's (s1:exact and the demo's globals, data.txt; libcdvd.h). OPEN:
+ * sceCdInit, sceCdDiskReady, the newer 0x18EF70 and the accessor func_0018E9E8 (each diagnosed in
+ * place). The functions appear in the target's order, which is the demo's but for the accessor. */
 
 #include "libcdvd.h"
 
@@ -215,6 +215,105 @@ static int PowerOffCB(void)
 	Init_seq = 0;
 	_icmd_bind = 1;
 	return 1;
+}
+
+/* The search (GCC r35a): a file found by path on a layer, through its own RPC client (0x80000597)
+ * and the older inline pre-check -- the semaphore polled, the command kept, the caller's status
+ * read, sync, the bind loop with a delay on each failure (as _sceCd_ncmd_prechk's) -- the path
+ * copied to the request's 256 bytes in round 17a's peeled shape (the byte stored, then tested), the
+ * sceCdlFILE (36 bytes: SDK 2.7's has a flag word after the date) copied back from the uncached
+ * request, three debug lines each its own test (CSE threads the first failure past all three), the
+ * reply read before the semaphore is signalled. ps2sdk's sceCdSearchFile is the same call. Read off
+ * the allocation (tools/ccdump.py -f): the bind flag's %hi is the first saved register after the
+ * pointers (s1), which needs the flag's clear INSIDE the loop -- flow counts a reference in a loop
+ * twice (4 refs over 68 insns, 1176, above the path's 1066; after the loop 3 refs, 441, s6) -- and
+ * the delays count in a variable of their own (v0, the copy's index a1; one `i` for both: 9 words);
+ * the nine saved registers leave `layer` on the stack, as the target's. */
+typedef struct {
+	u_int lsn;
+	u_int size;
+	char name[16];
+	u_char date[8];
+	u_int flag;
+} sceCdlFILE;
+
+typedef struct {
+	sceCdlFILE file;
+	char name[256];
+	void *dest;
+	int layer;
+} SearchFilePkt;
+
+extern void *memcpy(void *, const void *, unsigned int);
+extern int _sf_bind;
+extern SearchFilePkt _sf_data;
+extern int sfrdata[];
+extern sceSifClientData cdrdsf;
+
+int sceCdLayerSearchFile(sceCdlFILE *fp, const char *name, int layer)
+{
+	int i, j, ret;
+
+	cmd_sem_init();
+	if (_sceCd_ncmd_semid != PollSema(_sceCd_ncmd_semid))
+		return 0;
+	ncmd_sema_keep_cmd = 1;
+	ReferThreadStatus(my_thid, &data_001D5FA0);
+	if (sceCdSync(1)) {
+		SignalSema(_sceCd_ncmd_semid);
+		return 0;
+	}
+	sceSifInitRpc(0);
+	if (_sf_bind < 0) {
+		while (1) {
+			if (sceSifBindRpc(&cdrdsf, 0x80000597, 0) < 0) {
+				if (SCE_CD_debug > 0)
+					scePrintf("Libcdvd bind err CdSearchFile\n");
+				j = 0x100000;
+				while (j--)
+					;
+				continue;
+			}
+			if (cdrdsf.serve != 0) {
+				_sf_bind = 0;
+				break;
+			}
+			j = 0x100000;
+			while (j--)
+				;
+		}
+	}
+	for (i = 0; i < 256; i++) {
+		_sf_data.name[i] = name[i];
+		if (_sf_data.name[i] == 0)
+			break;
+	}
+	if (i == 256)
+		_sf_data.name[255] = 0;
+	if (SCE_CD_debug > 0)
+		scePrintf("ee call cmd search %s\n", _sf_data.name);
+	_sf_data.layer = layer;
+	_sf_data.dest = &_sf_data;
+	sceSifWriteBackDCache(&_sf_data, sizeof(SearchFilePkt));
+	if (sceSifCallRpc(&cdrdsf, 0, 0, &_sf_data, sizeof(SearchFilePkt), sfrdata, 4, 0, 0) < 0) {
+		SignalSema(_sceCd_ncmd_semid);
+		return 0;
+	}
+	memcpy(fp, (void *)((u_int)&_sf_data | 0x20000000), sizeof(sceCdlFILE));
+	if (SCE_CD_debug > 0)
+		scePrintf("search name %s\n", fp->name);
+	if (SCE_CD_debug > 0)
+		scePrintf("search size %d\n", fp->size);
+	if (SCE_CD_debug > 0)
+		scePrintf("search loc lbn %d\n", fp->lsn);
+	ret = *(int *)((u_int)sfrdata | 0x20000000);
+	SignalSema(_sceCd_ncmd_semid);
+	return ret;
+}
+
+int sceCdSearchFile(sceCdlFILE *fp, const char *name)
+{
+	return sceCdLayerSearchFile(fp, name, 0);
 }
 
 int _sceCd_ncmd_prechk(int cmd)
