@@ -8408,7 +8408,7 @@
 0x003D2C30 0x8 func_003D2C30  # OVL1
 0x003D2C40 0x8 func_003D2C40  # OVL1
 0x003D2C50 0x11C PlayFireSound__8CZWeaponFPC6CPnt3D  # OVL1; by hand (the wep lane: picks m_firesound[0..2] (0xE0) by the listener's squared distance against the WEAPON_GLOBAL sound distances 0x4B52F8/0x4B52F4 and plays it through CSnd's slot +0x14, PlaySound3D(pos, 1.0, 0, 0, 255); the name ours); zwep_weapon.cpp
-0x003D2D70 0x4B4 func_003D2D70  # OVL1
+0x003D2D70 0x4B4 Fire__8CZWeaponFPQ23zdb5CNodeP6CZAmmoPC6CPnt3DPC6CPnt3DPC6CPnt3DP12CZProjectileiPQ23zdb6CModel  # OVL1; s1:vtable by hand (the weapons lane, round 27: __vt__8CZWeapon's slot 0xC, SOCOM 1's member Fire 0x31F2B0 (node, ammo, pos, dir, vel, projectile, shooter, model) without its two angles -- SetProjectile, RemoveProjectile on a failure, the AI noise of direct fire; SOCOM II's backblast (item 159 fired backwards through a free projectile) ahead of it and PlayFireSound inlined after; CTurret::Fire calls it through the table)
 0x003D3230 0x520 GetMenuValue__8CZWeaponF10EQUIP_ITEM  # OVL1; by hand (the weapons lane, round 22: a switch from items to their weapon-menu values, -1 for none -- zanim_menu.cpp walks every item for the one whose value the UiWeapon valve holds, as the engine core's round 7 found; m2c's draft was byte-exact; the name ours); zwep_weapon.cpp
 0x003D3750 0x40 func_003D3750  # OVL1
 0x003D3790 0xC SetRocketPassSound__8CZWeaponFP4CSnd  # OVL1; by hand (the wep lane, round 17: InitializeWeapons hands it the ".ROCKET_BY" sound right after the bullets' -- new in SOCOM II, the name ours; stores the static 0x4B52A8)

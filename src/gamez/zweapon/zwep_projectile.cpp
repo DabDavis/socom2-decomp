@@ -435,10 +435,8 @@ struct DI_FLAGS {
 };
 
 /* a point copied field by field through its address (the target keeps &a.y and &a.z in saved
- * registers across the calls -- the kit's CopyPoint; the name ours). The source is NOT const: PreTick
- * copies the accelerated direction onto itself, the loads through the hoisted field addresses as the
- * stores (through a const source MW reads the frame slots straight and schedules the loads early) */
-static inline void CopyPoint(CPnt3D *dst, CPnt3D *src)
+ * registers across the calls -- the kit's CopyPoint; the name ours) */
+static inline void CopyPoint(CPnt3D *dst, const CPnt3D *src)
 {
     dst->x = src->x;
     dst->y = src->y;
@@ -487,7 +485,9 @@ bool CZProjectile::PreTick(float dT)
             CopyPoint(&dir, &m_vel);
             dir.Normalize();
             dir = dir * m_ammo->GetAccelerationFactor();
-            CopyPoint(&dir, &dir);
+            dir.x = dir.x;
+            dir.y = dir.y;
+            dir.z = dir.z;
             m_vel = m_vel + dir * dT;
             m_frameendpos = m_framestartpos + m_vel * dT;
         } else {
