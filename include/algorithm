@@ -17,8 +17,26 @@ inline Function for_each(InputIterator first, InputIterator last, Function f)
     return f;
 }
 
+/* MSL's find, its test `first != last` (the MSL headers round 25): CUIVariable::Detach 0x3866F0's
+ * inner copy, find's body inlined and its pieces cut, calls the iterator's != (0x386980) and negates
+ * it -- the iterators by value, `return first` the copy constructor (0x386960). Written `!(first ==
+ * last)` (the level-4 fit, 2026-10-24) the cut copy calls == straight */
 template <class InputIterator, class T>
 inline InputIterator find(InputIterator first, InputIterator last, const T &value)
+{
+    while (first != last && !(*first == value))
+        ++first;
+    return first;
+}
+
+/* remove's search: find a level shorter, its test through == (the level-5 fit). MSL's remove assigns
+ * find's result (`first = find(...)`), which puts find in operator='s argument a level deeper, so
+ * over MSL's != find it is six high and -inline level=5 cuts find to its body in every caller
+ * (CNodeVector::Remove 0x311CC0, CWorld::DeleteLightMap 0x31FB50, CTurretList::Remove 0x3A71F0,
+ * CTexManager::doDelBuffer, where the target inlines it whole: the original's level deeper than 5,
+ * README "Level 6, or 8?"); fully inlined the two tests compile alike */
+template <class InputIterator, class T>
+inline InputIterator __remove_find(InputIterator first, InputIterator last, const T &value)
 {
     while (!(first == last) && !(*first == value))
         ++first;
@@ -48,7 +66,7 @@ OutputIterator remove_copy(InputIterator first, InputIterator last, OutputIterat
 template <class ForwardIterator, class T>
 inline ForwardIterator remove(ForwardIterator first, ForwardIterator last, const T &value)
 {
-    first = find(first, last, value);
+    first = __remove_find(first, last, value);
     ForwardIterator i = first;
     return first == last ? first : remove_copy(++i, last, first, value);
 }

@@ -115,9 +115,9 @@ void ClearLook__9CSealCtrlF7AI_LOOK(CSealCtrlAi *ai, int x);
 /* (OVL2 0x567840, 0x570D60: the SEAL lane's rows -- a stun's controller calls, the second
  * taking a float) */
 void StopThrottles__11CSealCtrlAiFb(CSealCtrlAi *ai, int x);
-/* the kit's reload (OVL2 0x5C2A90, seal_kit.cpp's range, unwritten: called on the SEAL's kit at
- * 0x5E0 by the reload state's sub-step) */
-void func_005C2A90(void *kit);
+/* the kit's reload (CZKit::Reload, OVL2 0x5C2A90, seal_kit.cpp's -- spelled by its mangled name:
+ * called on the SEAL's kit at 0x5E0 by the reload state's sub-step, its result unread) */
+bool Reload__5CZKitFv(void *kit);
 void func_00570D60(CSealCtrlAi *ai, int x, float f);
 /* the AI's target held (OVL2 0x60A850, after the response states: CAiTarget's, the target at
  * CSealCtrlAi 0x67C) and a look pushed at a point (OVL2 0x5F0B30, seal_aistate.cpp's) */
@@ -1247,7 +1247,7 @@ int CAiSReload::Virtual14(CSealCtrlAi *ai, CAiState *sub)
             ai->PlayAiSound((CHARACTER_SOUND)68, 1.0f, -1);
             SetFlags(0, 1);
         }
-        func_005C2A90((char *)seal + 0x5e0);
+        Reload__5CZKitFv((char *)seal + 0x5e0);
         if (m_flags & 4)
             ChangeStanceDelayed__11CSealCtrlAiF11SEAL_STANCE11SEAL_STANCEf(ai, 2, 1, -1.0f);
         else
