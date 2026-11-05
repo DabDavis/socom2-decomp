@@ -1029,6 +1029,168 @@ void CZKit::SetFireDelay(float delay, bool alt)
     m_alt_firedelay = alt;
 }
 
+extern "C" {
+/* the SEAL's held item put through its reload, false when it cannot run (seal_env.cpp's, OVL2
+ * 0x5A82E0 -- the kit's Reload calls it three times) */
+bool func_005A82E0(CZSealBody *body, int how);
+}
+
+/* the launcher's next round chambered: with the grenade launcher's mode on item 146, its
+ * ammunition's item (the first of the mode's kind with rounds) steps on to its next magazine
+ * holding any, an empty one stopping it; then the SEAL's reload run and the item's reload sound
+ * (the weapon's word at 0xA0) played at the SEAL (OVL2 0x5C3000, new in SOCOM II: the kit's Tick
+ * calls it; the name ours) */
+void CZKit::ChamberLauncherRound()
+{
+    EQUIP_ITEM item = m_item[m_selected_item]->m_ID;
+    bool ok = true;
+
+    if (CurWeaponIsLauncherMode() && item == 146) {
+        int i = FindItemWithAmmo((EQUIP_ITEM)GetCurFireMode());
+
+        if (i != -1) {
+            int mag = m_currentmag[i] + 1;
+
+            if (ItemHasAmmo(i)) {
+                bool found = false;
+
+                if (mag > 9)
+                    mag = 0;
+                while (mag != m_currentmag[i] && !found) {
+                    if (m_reloads[i][mag] > 0)
+                        found = true;
+                    else if (++mag > 9)
+                        mag = 0;
+                }
+            }
+            m_currentmag[i] = mag;
+            if (m_reloads[i][m_currentmag[i]] == 0)
+                ok = false;
+        } else
+            ok = false;
+    }
+    if (ok) {
+        int sel = m_selected_item;
+
+        func_005A82E0(m_body, 1);
+        CSnd *snd = (CSnd *)m_item[sel]->m_socom2_a0;
+
+        if (snd)
+            snd->PlaySound3D(&((CEntity *)m_body)->m_posW, 1.0f, 0, 0, 255);
+    }
+}
+
+extern "C" {
+/* the body's tests Reload makes (seal_env.cpp's: OVL2 0x5A7D10 IsThrowing, 0x5A7AB0 IsReloading --
+ * spelled by their mangled names, CZSealBody being incomplete here -- and 0x5A78D0 between them,
+ * unnamed) and a state the body may leave for 3 (OVL2 0x5B4340, the SEAL lane's, unnamed) */
+bool IsThrowing__10CZSealBodyFb(CZSealBody *body, bool started);
+bool IsReloading__10CZSealBodyFv(CZSealBody *body);
+bool func_005A78D0(CZSealBody *body);
+bool func_005B4340(CZSealBody *body, int state);
+}
+
+/* the network as Reload reads it (zseal.h's CZNetwork, which this unit does not include: SOCOM 1's
+ * m_bSessionMaster and m_bNetwork bytes, OVL1 bss 0x45A0C0) and the network game's state (OVL1 bss
+ * 0x437CE8; hud_ammo.cpp's view: whether players respawn, the byte at 0xDC) */
+class CZNetwork {
+public:
+    unsigned char m_bSessionMaster;   // 0x0
+    unsigned char m_bNetwork;   // 0x1
+};
+extern CZNetwork theNetwork;
+
+class CKitNetGame {
+public:
+    unsigned char _0[0xdc];
+    unsigned char m_respawns;   // 0xdc
+};
+extern "C" CKitNetGame *data_00437CE8;
+
+/* the body off the ground, as a bool (the target materialises the bit: sltu; the name ours) */
+static inline bool Airborne(CKitBody *body)
+{
+    return body->m_airborne ? true : false;
+}
+
+/* the item in hand reloaded (OVL2 0x5C2A90; SOCOM 1's Reload, its tests and walk the same): not
+ * without a body, airborne, dead, throwing, reloading, 0x5A78D0 or carrying (state 9), nor when the
+ * body cannot take state 3 or looks through binoculars; under the grenade launcher's mode the
+ * launcher's ammunition item is the one reloaded. With rounds left, the next magazine holding any
+ * becomes the current one, the reload run and its sound played; online, a weapon with none left
+ * besides has its magazine refilled for nothing -- a pistol always, a primary weapon but items 142
+ * and 143 while players respawn. Either way the weapon's display is told and true
+ * is returned -- false when the reload cannot run */
+bool CZKit::Reload()
+{
+    if (!m_body || Airborne((CKitBody *)m_body) || !((CKitBody *)m_body)->m_alive
+        || IsThrowing__10CZSealBodyFb(m_body, false) || IsReloading__10CZSealBodyFv(m_body)
+        || func_005A78D0(m_body) || ((CKitBody *)m_body)->m_state == 9)
+        return false;
+    if (!func_005B4340(m_body, 3))
+        return false;
+    if (IsUsingBinocs())
+        return false;
+    int index = m_selected_item;
+    bool reloaded = false;
+
+    if (CurWeaponIsLauncherMode()) {
+        int i = FindItemWithAmmo((EQUIP_ITEM)GetCurFireMode());
+
+        if (i != -1)
+            index = i;
+    }
+    if (ItemHasAmmo(index)) {
+        int mag = m_currentmag[index] + 1;
+        bool found = false;
+
+        if (mag > 9)
+            mag = 0;
+        while (mag != m_currentmag[index] && !found) {
+            if (m_reloads[index][mag] > 0)
+                found = true;
+            else if (++mag > 9)
+                mag = 0;
+        }
+        if (found) {
+            if (!func_005A82E0(m_body, 0))
+                return false;
+            m_currentmag[index] = mag;
+            CSnd *snd = m_item[index]->m_reloadsound;
+
+            if (snd)
+                snd->PlaySound3D(&((CEntity *)m_body)->m_posW, 1.0f, 0, 0, 255);
+        } else if (theNetwork.m_bNetwork
+               && (m_item[index]->GetIDType() == 4
+                   || CZWeapon::IsPrimary(m_item[index]->m_ID) && m_item[index]->m_ID != 142
+                          && m_item[index]->m_ID != 143 && data_00437CE8->m_respawns)) {
+            m_reloads[index][m_currentmag[index]] = m_item[index]->GetAmmoCapacity();
+            if (!func_005A82E0(m_body, 0))
+                return false;
+            CSnd *snd = m_item[index]->m_reloadsound;
+
+            if (snd)
+                snd->PlaySound3D(&((CEntity *)m_body)->m_posW, 1.0f, 0, 0, 255);
+        }
+        m_weaponinfoChanged = true;
+        reloaded = true;
+    } else if (theNetwork.m_bNetwork
+               && (m_item[index]->GetIDType() == 4
+                   || CZWeapon::IsPrimary(m_item[index]->m_ID) && m_item[index]->m_ID != 142
+                          && m_item[index]->m_ID != 143 && data_00437CE8->m_respawns)) {
+        m_reloads[index][m_currentmag[index]] = m_item[index]->GetAmmoCapacity();
+        if (!func_005A82E0(m_body, 0))
+            return false;
+        CSnd *snd = m_item[index]->m_reloadsound;
+
+        if (snd)
+            snd->PlaySound3D(&((CEntity *)m_body)->m_posW, 1.0f, 0, 0, 255);
+        m_weaponinfoChanged = true;
+        reloaded = true;
+    }
+    return reloaded;
+}
+
 /* every remote charge the SEAL set down within 500 of him set off, then the detonator (153) taken
  * up and the count stepped (OVL2 0x5C0130; SOCOM 1's DetonateRemoteExplosives, its unused pod
  * vector kept -- zeroed at entry, freed at the end -- the position read straight off the SEAL where

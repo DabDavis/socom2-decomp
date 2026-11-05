@@ -63,7 +63,10 @@ struct CKitBody {
     unsigned char m_alive : 1;   // bit 4: CEntity's alive bit
     unsigned char _e1_5 : 3;
     unsigned char _e2[0x170 - 0xe2];
-    unsigned char m_cbody[0x90];   // 0x170: the CBody base (0x90 bytes: the parts FindPart searches)
+    /* 0x170: the CBody base (0x90 bytes: the parts FindPart searches, passed by its first byte) */
+    unsigned char m_cbody[4];
+    short m_state;   // 0x174: CBody's, the SEAL's state (zseal.h's: 9 stateCarrying)
+    unsigned char _176[0x200 - 0x176];
     signed char m_200;   // 0x200: the current item's zoom class (binoculars 4, scopes 5 and up)
     unsigned char _201[0x388 - 0x201];
     /* 0x388: attachments by kind, 8 bytes each -- the first word a record whose +0xC keeps the node
@@ -75,6 +78,9 @@ struct CKitBody {
         } *m_rec;
         unsigned int m_4;
     } m_attach[4];
+    unsigned char _3a8[0x105e - 0x3a8];
+    unsigned char _105e : 5;   // 0x105e: zseal.h's flag word at 0x105c, its bits 16-23
+    unsigned char m_airborne : 1;   // bit 21: off the ground
 };
 
 /* a weapon as the kit reads it (CZWeapon; only the wait between shots, SOCOM 1's m_firewait --
@@ -168,6 +174,11 @@ public:
      * else its first -- the weapons' shared record told (OVL2 0x5C32B0, new in SOCOM II: CSealCtrl's
      * PreTick and 0x5C5340 call it; the name ours) */
     void SetFireDelay(float delay, bool alt);
+    /* the launcher's next round chambered and the reload run (OVL2 0x5C3000, new in SOCOM II; the
+     * name ours) */
+    void ChamberLauncherRound();
+    /* the item in hand reloaded, false when the body cannot (SOCOM 1's; OVL2 0x5C2A90) */
+    bool Reload();
     /* the hand's fire mode slot (0 or 1, by bit 18) set to a mode, the mode kept, and -- the body
      * alive -- the slot's item kind noted (OVL2 0x5C48B0, new in SOCOM II: CZSealBody::ReCreate
      * calls it; the name ours) */
