@@ -64,6 +64,8 @@ bool zrdr_isitemtype(const _zrdr *rdr, int index, int type);
 bool zrdr_findbool(const _zrdr *rdr, const char *tag, bool *out);
 bool zrdr_findPNT3D(const _zrdr *rdr, const char *tag, PNT3D *out);
 bool zrdr_toINT(const _zrdr *rdr, int *out, int n);
+/* an anim type by name, -1 for none (anim.cpp's, OVL2 0x5E5000) */
+AnimType FindAnimType(const char *name);
 /* a team block's teams as a mask (fts_player.cpp's, OVL1 0x2B34A0) */
 unsigned int ParseTeamBlock(_zrdr *rdr);
 /* the same, OVL2's copy (vehicle_rdr.cpp's, OVL2 0x533C10) */
@@ -1216,12 +1218,17 @@ struct CTPlay : TASK_HDR {
     unsigned char _18[0x20 - 0x18];
     signed char m_count;   // 0x20: the anims (SOCOM 1's a bitfield at 0x20 bit 1)
     unsigned char _21;
-    unsigned char m_22;   // 0x22: 11 when made
-    unsigned char _23[0x30 - 0x23];
+    unsigned char m_22;   // 0x22: 11 when made, else the tag "stance" (0-2)
+    unsigned char m_skip_end : 1;   // 0x23 bit 0: the tag "skip_end"
+    unsigned char m_blocking : 1;   // bit 1: the tag "blocking"
+    unsigned char _23_2 : 6;
+    TASK_ENT m_ent;   // 0x24: the tag "entity"
+    unsigned char _2c[0x30 - 0x2c];
     unsigned int m_anims[1];   // 0x30: m_count of them (SOCOM 1's at 0x24)
 
-    static CTPlay *Create(int count, unsigned int *anims, float a, float b);    /* (RegisterCommands' handlers, unwritten) */
+    static CTPlay *Create(int count, unsigned int *anims, float a, float b);
     static _zanim_cmd_hdr *Parse(_zrdr *rdr);
+    /* (RegisterCommands' handlers, unwritten) */
     static void Begin(_zanim_cmd_hdr *hdr);
     static bool Tick(_zanim_cmd_hdr *hdr, float *dT);
     static void End(_zanim_cmd_hdr *hdr);
@@ -1272,6 +1279,50 @@ bool CSealCtrlAi::RegisterCommands()
     ai_cmdid[0] = ZAnim.AddCmd("ai::TURRET", CTTurret::Parse, 0, CTTurret::Tick, 0);
     ai_cmdid[0] = ZAnim.AddCmd("ai::VALVE", CTValve::Parse, 0, CTValve::Tick, 0);
     ai_cmdid[0] = ZAnim.AddCmd("ai::WAIT", CTWait::Parse, CTWait::Begin, CTWait::Tick, 0);
+    return true;
+}
+
+/* whether the AI drives a SEAL, the controller tested in a ternary (zseal.h's IsAi presets a bool:
+ * the target's both arms narrow the result -- the IsPlayer shape; the name ours) */
+inline bool TaskIsAi(CZSealBody *seal)
+{
+    return seal->m_control ? ((CSealCtrl *)seal->m_control)->IsAi() : false;
+}
+
+/* a squad command issued to a team's unit, the team's AI SEALs put to sleep (28) or woken (27) first
+ * (OVL2 0x5DDFA0; SOCOM 1's, without its cover and hold cases).
+ * OPEN, 15 instructions at the target's size: (1) the command passed to IssueCommand -- the target
+ * switches on it unmasked AND passes it unmasked (SOCOM 1's switch too): an int local masks at the
+ * call (`andi a2,s5,0xff`), an FT_COMMAND one masks in the switch (0x2B0), unsigned char/short, `&
+ * 0xff`, an if-chain for the switch all fail; (2) the SEAL and the walk's element trade s3/s4 (the
+ * element declared before TASK_SEAL changes nothing). The iterator declared outside the loop is the
+ * target's (kept in the frame, each step through $f0); inside the for it is a register (8 regs) */
+bool CTComm::Tick(_zanim_cmd_hdr *hdr, float *dT)
+{
+    TASK_SEAL(CTComm);
+    CSealCtrlAi *ai = seal ? SealAi(seal) : 0;
+    int c = (FT_COMMAND)cmd->m_cmd;
+    CEntityList::const_iterator it;
+
+    if (c) {
+        switch (c) {
+        case 27:
+        case 28:
+            for (it = CEntity::GetEntityList().begin(); it != CEntity::GetEntityList().end(); ++it) {
+                CEntity *e = *it;
+                CZSealBody *s = e && e->m_type == CEntity::ENT_TYPE_SEAL ? (CZSealBody *)e : 0;
+
+                if (s && (1 << cmd->m_team) & s->m_team && TaskIsAi(s))
+                    SealAi(s)->SetSleeping(c == 28);
+            }
+            break;
+        }
+        CSealUnit *unit = CSealUnit::GetUnitByTeam(cmd->m_team);
+
+        if (unit)
+            unit->IssueCommand(seal, (FT_COMMAND)c, 0, false);
+    }
+    *dT = 0.0f;
     return true;
 }
 
@@ -1344,6 +1395,62 @@ _zanim_cmd_hdr *CTMacro::Parse(_zrdr *rdr)
         cmd->SetBlocking(blocking);
         cmd->m_name.Set(name);
     }
+    return &cmd->hdr;
+}
+
+/* a reader's item as zrdr.h's _zrdr::Item has it, the index unsigned (zanim.h's _zrdr, which this
+ * unit sees, takes an int, and an int index is strength-reduced in a loop: CTPlay::Parse's walk
+ * recomputes `i << 3` each pass; the name ours) */
+inline _zrdr *TaskItem(_zrdr *rdr, unsigned int i)
+{
+    return i < rdr->Count() ? &rdr->array[i] : 0;
+}
+
+/* anims played: the "anim" list's types (-1 for a name none has), a "stance" (0-2 kept in m_22),
+ * "skip_end", the "prewait" and "postwait" periods, "blocking", an "entity" by the running anim's
+ * name and the AI's index "ai" (OVL2 0x5D3C80; SOCOM 1's grown -- the stance, skip_end and the
+ * entity new in SOCOM II) */
+_zanim_cmd_hdr *CTPlay::Parse(_zrdr *rdr)
+{
+    _zrdr *anims = zrdr_findtag(rdr, "anim");
+
+    if (!anims)
+        return 0;
+    int count = anims->Count();
+    CTPlay *cmd = Create(count, 0, 0.0f, 0.0f);
+
+    for (int i = 0; i < count; i++) {
+        const char *name = TaskItem(anims, i)->String();
+
+        cmd->m_anims[i] = name ? (int)FindAnimType(name) : -1;
+    }
+    const char *stance = zrdr_findstring(rdr, "stance");
+
+    if (stance)
+        switch (sealai::get_stance(stance)) {
+        case STANCE_STAND:
+            cmd->m_22 = 0;
+            break;
+        case STANCE_CROUCH:
+            cmd->m_22 = 1;
+            break;
+        case STANCE_PRONE:
+            cmd->m_22 = 2;
+            break;
+        }
+    cmd->m_skip_end = zrdr_findtag(rdr, "skip_end") != 0;
+    zrdr_findRfloat(rdr, "prewait", &cmd->m_8);
+    zrdr_findRfloat(rdr, "postwait", &cmd->m_10);
+    if (zrdr_findtag(rdr, "blocking"))
+        cmd->m_blocking = 1;
+    const char *ent = zrdr_findstring(rdr, "entity");
+
+    cmd->m_ent.m_name = 0;
+    cmd->m_ent.m_id = CEntity::invalidId;
+    cmd->m_ent.m_type = 0;
+    cmd->m_ent.SetName(ent);
+    cmd->m_param = 0;
+    zrdr_finduint(rdr, "ai", (unsigned int *)&cmd->m_param, 1);
     return &cmd->hdr;
 }
 
