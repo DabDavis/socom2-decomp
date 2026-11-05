@@ -154,8 +154,7 @@ public:
         if (m_entries.size() < m_entries.capacity()) {
             int max = m_maxId;
 
-            if (max < id)
-                max = id;
+            max = id > max ? id : max;
             m_maxId = max;
             m_entries.push_back(LOCENTRY(id, m_strings.CreateString(msgid), m_strings.CreateString(text)));
         }
@@ -321,15 +320,12 @@ LANGUAGE LanguageFromName(const char *name)
 /* the table read from its rdr: the null entry, then each entry (ID, MSG_ID, LOCALIZED, SCALE,
  * OFFSET), sorted by id and hashed by name, the table named, and the strings moved into a buffer
  * of their own */
-/* OPEN, 1 instruction (the target's size since UI round 25, every other word the target's but the
- * three alignment nops that follow the shift): the null entry's `max < 0` folds to bgez here where
- * the target keeps `slt at,v0,zero; beqz at` -- the second Add's shape with the id's register as
- * $zero, as if the 0 were a variable when the compare was lowered (the max through a local, a
- * reference- or value-returning helper, a `const int &` parameter: no change or worse; round 25: the
- * id an `unsigned short`, a zero local, the loop's address-taken id declared first -- its store then
- * kept --, or n, i or j as the null entry's id with a second definition later: no change). The
- * relocation test reads the table's bytes used (m_bytes, +0x18: round 25), not its size. Item(j)
- * with an int j, the MSG_ID found twice and the OFFSET pair's byte-wise `= {0}` are the target's */
+/* Byte-exact since the UI's round 27: the null entry's `slt at,v0,zero` is Add's `id > max ? id :
+ * max` -- the id on the left keeps the compare a set-less-than against the id's register even when
+ * the id is the constant 0 ($zero), where `max < id` folds to bgez; the ternary leaves the join
+ * unpadded, `if (id > max) max = id;` pads it. The relocation test reads the table's bytes used
+ * (m_bytes, +0x18: round 25), not its size. Item(j) with an int j, the MSG_ID found twice and the
+ * OFFSET pair's byte-wise `= {0}` are the target's */
 void CLocTable::Read(const char *name, _zrdr *rdr)
 {
     Add(0, "", "");
