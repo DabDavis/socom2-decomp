@@ -252,15 +252,28 @@ static inline CPlacedExplosiveList::iterator Erase(CPlacedExplosiveList *list,
             (unsigned int *)pos.m_p));
 }
 
-/* the storage cleared, then emptied element by element (Clear inlined) */
+/* the storage cleared, then emptied element by element -- Clear's walk WRITTEN OUT, not called
+ * (the weapons' round 24 refit at the settled level 5): include/vector's pointer end() is four
+ * high since the MSL headers' round 24, so a walk's `it != end()` reaches data() five levels below
+ * the function holding it -- inside an inline Clear() that is six, and level 5 keeps end()'s body
+ * but calls the raw end and __iter. Written out here the walk sits where the target's does; the
+ * object is byte-identical to the one the old `#pragma inline_depth(6)` stand-in gave (objcmp) */
 CPlacedExplosiveList::CPlacedExplosiveList()
 {
-    Clear();
+    iterator it;
+
+    it = begin();
+    while (it != end())
+        it = Erase(this, it);
 }
 
 CPlacedExplosiveList::~CPlacedExplosiveList()
 {
-    Clear();
+    iterator it;
+
+    it = begin();
+    while (it != end())
+        it = Erase(this, it);
 }
 
 /* every charge erased, one at a time */
@@ -319,17 +332,3 @@ int CProjectileNodeEx::OnWeaponHit(CNode *node, IntersectStruct *hit, CZProjecti
     m_projectile->OnWeaponHit(hit, projectile);
     return 0;
 }
-
-/* THE UNIT INLINES TO DEPTH 6, not the flags' 5 (a pragma acts through its state at the unit's
- * end; the MSL headers round 24). include/vector's pointer iterator is the image's since that
- * round -- end() four high: the raw end, the pod's end, data() -- and a walk testing `i != end()`
- * inside an inline is then six deep where its caller inlines it: at 5 MW keeps end()'s body and
- * calls the raw end and __iter. At 6 CPlacedExplosiveList's constructor and destructor inline
- * Clear's walk whole, as the target, with the source as it was written against the three-high end,
- * and every function of the unit scores as it did at 5 (measured over the unit). The end taken
- * into a local first (round 23's suggested refit) does not give the target: in fts_missionlist.cpp
- * Find's own copy then colours its end, flag and element differently (9 off) and in util_loc.cpp
- * FindTable's callers come out 12 bytes short. So the original's walks are the ones written here
- * and its level deeper than 5 (README "Level 6, or 8?")
- */
-#pragma inline_depth(6)
