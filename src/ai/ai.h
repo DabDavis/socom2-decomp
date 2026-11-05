@@ -1672,6 +1672,9 @@ public:
     /* a cell put at the start of a finished path, refused when it is there already (SOCOM 1's
      * InsertPathLoc, 0x526C10: FindDetour's) */
     bool InsertPathLoc(const CAiMapLoc &loc, CAiMap *map);
+    /* a cell put in at a point index, counted from the end when asked (new in SOCOM II, the name
+     * ours: 0x526810, the AI states') */
+    bool InsertPathLoc(const CAiMapLoc &loc, CAiMap *map, int index, bool from_end);
 
     CAiStar *m_astar;   // 0x0
     CAiPlanner *m_planner;   // 0x4
