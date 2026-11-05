@@ -2753,7 +2753,7 @@
 0x0026FE90 DeleteParticleSources__6CZAnimFv
 0x0026FF20 State__6CZAnimFi
 0x00270220 Tick__6CZAnimFf
-0x002703D0 func_002703D0
+0x002703D0 GetRootNode__6CZAnimFb
 0x00270460 func_00270460
 0x00270570 func_00270570
 0x002707C0 func_002707C0
@@ -2800,6 +2800,7 @@
 0x00272BB0 ActivateArg__6CZAnimFie
 0x002732C0 ActivateEx__6CZAnimFie
 0x00273320 ActivateExV__6CZAnimFPc
+0x002734B0 Activate__6CZAnimFP6CZAnim
 0x00273780 func_00273780
 0x00273950 func_00273950
 0x00273960 func_00273960
@@ -3308,10 +3309,18 @@
 0x00299C00 func_00299C00
 0x00299C10 TickTask__10CAppCameraFfPv
 0x00299C40 TickCameraWiggle__10CAppCameraFfPQ23zdb7CCamera
+0x00299ED0 FirstToThirdPersonTransition__FP10CAppCamera
+0x0029A180 func_0029A180
+0x0029A3F0 ThirdToFirstPersonTransition__FP10CAppCamera
+0x0029A660 func_0029A660
+0x0029A950 GetThirdPersonCamPos__10CAppCameraFP6CPnt3DPf
+0x0029AE50 GetFirstPersonCamPos__FP10CAppCamera
+0x0029B0C0 FTSTick__10CAppCameraFv
 0x0029B2F0 SetZoom__10CAppCameraFf
 0x0029B330 SetCameraMode__10CAppCameraFUc
 0x0029B3C0 AttachTo__10CAppCameraFP10CZSealBody
 0x0029B570 __dt__10CAppCameraFv
+0x0029B5D0 __ct__10CAppCameraFPQ23zdb7CCamera
 0x0029BAA0 CmdParseShake__10CAppCameraFP5_zrdr
 0x0029BB90 CmdTick3rdPersonTest__10CAppCameraFP14_zanim_cmd_hdrPf
 0x0029BBB0 CmdParse3rdPersonTest__10CAppCameraFP5_zrdr
