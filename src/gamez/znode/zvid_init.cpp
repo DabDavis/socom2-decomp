@@ -162,7 +162,12 @@ extern int data_004A45A0;
 /* the mean of the last n frames' times: all sixteen in order, or n back from the newest (new in
  * SOCOM II, not named). OPEN, 17 instructions, the same size: the unrolled walk's index and its
  * bound (n - 8) trade v1 and a1; the single exit gave the sum $f0 and declaring i first its a2 (the
- * index declared before i, at the top, unsigned, a while loop: no better) */
+ * index declared before i, at the top, unsigned, a while loop: no better). Round 29, by
+ * `tools/igreplay.py --target`: those two are the only differing nodes, idx (v35) and the unroller's
+ * bound, a front-end temporary (v36, `n - 8`, defined right after idx's load) -- every placement
+ * numbering the bound BEFORE idx gives the target's registers (91 of 3,481). Not found in source:
+ * the step in the for, two statements, the for-init, idx unsigned, a named count, `last - i` (0x1F0),
+ * a pointer walk (0x188), a while (no unrolling) */
 extern "C" float func_003B1BF0(unsigned int n)
 {
     float sum = 0.0f;

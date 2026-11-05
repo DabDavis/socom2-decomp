@@ -1121,6 +1121,66 @@ extern "C" _word128 *func_003B5260(_word128 *to, _word128 *from)
     return to;
 }
 
+/* the decals' VU program (SOCOM 1's VuBatchProgram_Decals, 0x30C9C0 in the demo: the same command
+ * tags in the same order -- 82 and 102 or 70 by the visual's type, 6 for flag bit 3, then by the
+ * map statics' switch the lit, fog, local-light and closing commands -- SOCOM II's counting the VU
+ * contexts in 0x4B4AF0 and reading the lit bit with the lighting switch; SOCOM II drops the object
+ * header SOCOM 1 took: VuUpdate's two calls pass the visual and the packet and keep the result): the
+ * command count stored at the head's third word, the packet closed */
+_word128 *CVisual::VuBatchProgram_Decals(_word128 *p)
+{
+    bool lit = m_lightingEnable && m_bits.m_b4;
+
+    data_004B4AF0 = 0;
+    _word128 *start = p;
+
+    if (m_utype == 1) {
+        p = VuCommand(p, 82, 0, 1);
+        p = VuCommand(p, 102, 0, 1);
+        data_004B4AF0 += 2;
+    } else {
+        p = VuCommand(p, 70, 0, 1);
+        data_004B4AF0++;
+    }
+    if (m_flags & 8) {
+        p = VuCommand(p, 6, 0, 1);
+        data_004B4AF0++;
+    }
+    if (data_004B4EB0) {
+        p = VuCommand(p, 8, 0, 1);
+        if (m_fogEnable)
+            p = VuCommand(p, 16, data_004B4AF0, 1);
+        if (lit) {
+            p = VuCommand(p, 84, data_004B4AF0, 1);
+            if (m_applyLocalLights && m_local_light_cnt)
+                p = VuCommand(p, 32, data_004B4AF0, m_local_light_cnt);
+            p = VuCommand(p, 24, data_004B4AF0, 1);
+        }
+        if (data_004B4A68)
+            p = VuCommand(p, 92, data_004B4AF0, 1);
+        p = VuCommand(p, 40, data_004B4AF0, 1);
+    } else {
+        p = VuCommand(p, 2, 0, 1);
+        data_004B4AF0++;
+        p = VuCommand(p, 10, data_004B4AF0, 1);
+        if (m_fogEnable)
+            p = VuCommand(p, 18, data_004B4AF0, 1);
+        if (lit) {
+            p = VuCommand(p, 86, data_004B4AF0, 1);
+            if (m_applyLocalLights && m_local_light_cnt)
+                p = VuCommand(p, 34, data_004B4AF0, m_local_light_cnt);
+            p = VuCommand(p, 26, data_004B4AF0, 1);
+        }
+        if (data_004B4A68)
+            p = VuCommand(p, 94, data_004B4AF0, 1);
+        p = VuCommand(p, 42, data_004B4AF0, 1);
+        p = VuCommand(p, 76, data_004B4AF0, 1);
+    }
+    p = VuCommand(p, 66, data_004B4AF0, 1);
+    data_004B4AD8->u32[2] = p - start;
+    return VuExecuteState0(p);
+}
+
 /* the decal builder (0x3B3AB0, not written): the visual, the node's view id, the size, the point,
  * the normal in the model's frame, the UV projection and the texture */
 extern "C" void func_003B3AB0(CVisual *v, int vid, float size, CPnt3D *pos, CPnt3D *normal,

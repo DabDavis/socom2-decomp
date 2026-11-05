@@ -606,6 +606,9 @@ public:
     static _word128 *VuExecuteState0(_word128 *p);
     /* a packet's map passes, between an opening and a closing command (ours) */
     _word128 *VuMapPasses(_word128 *p, tag_DETAIL_PARAMS *detail);
+    /* the decals' VU program: its commands written after p, their count at the head, the packet
+     * closed (SOCOM 1's VuBatchProgram_Decals, without its object-header argument) */
+    _word128 *VuBatchProgram_Decals(_word128 *p);
     /* a texture select saved for the VU code: a DMA reference to it at _savedTS and, unless the
      * blend word is the default or already the select's, the blend register's update (SOCOM 1's
      * static, 0x3B6FA0) */

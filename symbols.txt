@@ -7852,7 +7852,7 @@
 0x003B3800 0x14C AttachDecal__Q23zdb7CVisualFUifUiPPQ23zdb10AddonPointPQ23zdb10CTexHandlei  # OVL1; s1:align; the wep lane, round 25: SOCOM II's takes a sixth word (t1, kept in s8 and handed to the decal set-up 0x3BECA0 as its t0) -- the source's mangled name
 0x003B3950 0x160 ApplyDecalRender__Q23zdb7CVisualFP7CMatrixPQ23zdb5CNodefP6CPnt3DP6CPnt3DPQ23zdb10CTexHandleP7CMatrix  # OVL1; s1:calls
 0x003B3AB0 0x714 func_003B3AB0  # OVL1
-0x003B41D0 0x3A4 func_003B41D0  # OVL1
+0x003B41D0 0x3A4 VuBatchProgram_Decals__Q23zdb7CVisualFP8_word128  # OVL1; s1:order by hand (the weapons lane, round 29: SOCOM 1's VuBatchProgram_Decals 0x30C9C0 -- the same VU command tags in the same order: 82/102 or 70 by m_type, 6 for flag bit 3, then by 0x4B4EB0 the fog 16/18, lit 84/86, local-light 32/34, 24/26, 92/94 and closing 40 or 42+76 commands, 66 last; between the decal builder 0x3B3AB0 and VuUpdate as SOCOM 1's sits before VuUpdate; SOCOM II drops the object header SOCOM 1 took -- VuUpdate's two calls 0x3B503C/0x3B5174 pass only the visual and the packet and keep the result; vis_vu.cpp)
 0x003B4580 0xCC4 VuUpdate__Q23zdb7CVisualFv  # OVL1; s1:calls by hand (the wep lane: SOCOM 1's VuUpdate__Q23zdb7CVisualFf -- its only callers are CVisual::Render and CPipe::CAlpha::Render, as here; Kick, zSysSprGetPacket and Copy as its callees; SOCOM II's takes no argument: neither caller sets $f12 (SOCOM 1's Render passed 1.0f) and it reads only a0. Its map setups moved under 0x3B5F20/0x3B5B90, which call the light (0x3B54E0, m_lightMapList), shadow (0x3B5730, m_shadowMapList) and projected (0x3B58B0, m_projectedMapList) setups with the packet by address)
 0x003B5250 0x8 func_003B5250  # OVL1
 0x003B5260 0x10 func_003B5260  # OVL1
