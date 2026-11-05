@@ -461,28 +461,26 @@ void CTCM::Close(bool selected)
  * declared it bool) -- and the command's result the node's byte state, as HandleOpenPad's (the
  * NoChildren() ternary gives the target's `move s5,zero ... movn s5,a0,v1`; the call casts the
  * command's pointer, the same modelling device): 21 instructions to 1.
- * OPEN, 1 instruction: the target reads the column's count through v0 (`lw s0,4(v0)`, the column's
- * copy in the test's delay slot), MW through the copy (s6) -- the count through GetNumChildren() or
- * Count(), `int n`, n declared ahead of the test, the column declared at the top, initialised
- * (0x264) or declared in the if's condition (0x264) all tried. Round 56 (igdump's PCode): here the
- * test reads the call's r2 and the count's load the variable (`lw r37,4(r36)`) -- the target's load
- * reads the call's value too; the column tested in the name's `&&` chain, n declared at the top or
- * zeroed dead, n assigned in the condition, the children through a reference, a second column
- * variable, a const column, an early return, the count through a cast: 1 each or worse */
+ * Round 57, byte-exact: the target's count reads v0 and the loop a copy in s6 made in the test's
+ * delay slot -- TWO variables, both defined ahead of the null test: the column (short-lived, so
+ * coalesced with the call's v0: the test and the count read it) and a reference to its children
+ * (m_children sits at offset 0, so the reference is a copy of the column: s6, the loop's). Taken
+ * after the test (round 56's try) the copy lands in the count's block, after the load */
 bool CTCM::Select(const char *name)
 {
     bool done = false;
     CTCMNode *c;
 
     if (name && strlen(name)) {
-        CTCMNode *column;
+        CTCMNode *column = GetColumn(m_path.size() - 1);
+        CTCMNodeList &kids = column->m_children;
 
-        if ((column = GetColumn(m_path.size() - 1)) != 0) {
+        if (column) {
             unsigned int n = column->m_children.size();
 
             if (n)
                 for (int i = 0; i < n && !done; i++) {
-                    c = column->m_children[i];
+                    c = kids[i];
                     const char *s = c ? c->m_name : 0;
 
                     if (s && strlen(s) && s && !strcasecmp(s, name)) {
