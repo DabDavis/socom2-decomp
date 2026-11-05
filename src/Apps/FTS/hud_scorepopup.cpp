@@ -153,11 +153,21 @@ public:
 };
 }
 
+/* a point read from a tag (SOCOM 1's IPNT2D is two ints; each coordinate here a one-int struct -- a
+ * STAND-IN, the real type unknown: hudAddPopupDefinition copies the window's position coordinate by
+ * coordinate through $f0, each source address in a register, as MW's implicit assignment block-copies
+ * class-typed members (two int members copy with lw/sw), and reads WindowSize's x with one plain lw,
+ * not through a conversion inline -- which would keep the temporary's address in a register; SOCOM 1's
+ * CInit<int, 0> zeroes and costs GetTagIPNT2D and CPopupMessage()) */
 struct IPNT2D {
-    IPNT2D() {}
-    IPNT2D(int ax, int ay) { x = ax; y = ay; }
+    struct coord {
+        int v;
+    };
 
-    int x, y;
+    IPNT2D() {}
+    IPNT2D(int ax, int ay) { x.v = ax; y.v = ay; }
+
+    coord x, y;
 };
 
 /* the unit's flags, by address (bss, no constructors): the message pop-up is up (0x40E480; CHudPopups
@@ -237,13 +247,22 @@ struct CPopupMessage {
     float m_textSize;   // 0xc
     float m_lineInterval;   // 0x10
     CSaferStr m_textId;   // 0x14
+
+    void Read(_zrdr *popup);
 };   // 0x20 bytes
 
 /* each trigger's condition, a base with its own constructor (the done flag cleared): the loader's
  * `new` calls it out of line, then the message's (0x22DC40, 0x22DC70, 0x22DCA0, 0x22DDC0; the
- * names ours). A HUD objective's: its valve's name and the mission */
+ * names ours). A HUD objective's: its valve's name and the mission, read by an inline of its own
+ * (ours: the loader reloads the pushed trigger from its stack slot once, as this inline's `this`,
+ * where the strings assigned through the trigger reload it after every call) */
 struct CTriggerByValve {
     CTriggerByValve() : m_done(false) {}
+    void Read(_zrdr *trigger)
+    {
+        m_name = zrdr_findstring(trigger, "Valve");
+        m_map = zrdr_findstring(trigger, "Mission");
+    }
 
     bool m_done;   // 0x0
     CSaferStr m_name;   // 0x4: Valve
@@ -279,8 +298,8 @@ extern "C" bool func_0022B4A0(void *message);
 struct CTriggerByNames {
     CTriggerByNames() : m_done(false) {}
     /* a name appended, through the new last element (the loader's; inlined one level: push_back,
-     * the temporary's constructor and destructor, end(), the reverse * and CSaferStr's assignment
-     * called out of line, as the target does; the name ours) */
+     * the temporary's constructor and destructor, rbegin(), the reverse * and CSaferStr's
+     * assignment called out of line, as the target does; the name ours) */
     void AddName(const char *s)
     {
         m_names.push_back(CSaferStr());
@@ -299,6 +318,11 @@ struct CMessageTriggerByNames : public CTriggerByNames {
 /* an object first under the reticule (ObjUnderRet1stTime): its name and the mission */
 struct CTriggerByObject {
     CTriggerByObject() : m_done(false) {}
+    void Read(_zrdr *trigger)
+    {
+        m_name = zrdr_findstring(trigger, "ObjName");
+        m_map = zrdr_findstring(trigger, "Mission");
+    }
 
     bool m_done;   // 0x0
     CSaferStr m_name;   // 0x4: ObjName
@@ -398,23 +422,49 @@ int GetTeamMembers(CZSealBody **arrSeals, int *arrKills, bool bTeam0)
 /* a tag's first two numbers as integers (below, 0x22B360) */
 IPNT2D GetTagIPNT2D(const _zrdr *rdr, const char *tag);
 
+/* the message's window and text read (an inline of its own, ours: the erase temporaries of the
+ * message's text id take the frame slot below the triggers' -- MW lays out an inline's inlines after
+ * the caller's direct ones) */
+inline void CPopupMessage::Read(_zrdr *popup)
+{
+    m_pos = GetTagIPNT2D(popup, "WindowPos");
+    m_width = GetTagIPNT2D(popup, "WindowSize").x.v;
+    float size = 1.0f;
+
+    zrdr_findreal(popup, "TextSize", &size, 1);
+    size *= 1.1429f;
+    m_textSize = size;
+    float spacing = 20.0f;
+
+    zrdr_findreal(popup, "LineInterval", &spacing, 1);
+    m_lineInterval = spacing;
+    m_textId = zrdr_findstring(popup, "TextId");
+}
+
 /* one of hud.rdr's PopupDefinitions read (SOCOM II's; hudInit calls it for each; the name ours, after
  * SOCOM 1's hudAddPolyType): the Trigger block's Type picks the trigger and its list -- an action
  * icon's first use (its Icons' names and the Mission), an animation command (by Name), an object
  * first under the reticule (ObjName, Mission), a HUD objective (Valve, Mission) -- each new'ed and
  * pushed first; then the message every trigger ends with: the window, the text size scaled by
  * 1.1429, the line spacing (20 unless given) and the text id. Each new name is stored through the
- * vector's last element, `*rbegin()` (its end() 0x22DD20 and the reverse * 0x22DD10 out of line, then
- * CSaferStr's assignment 0x22DCC0), every other string through CSaferStr's inline assignment.
- * OPEN, 0x6A4 against 0x5E0 (a level: the README's "Level 6, or 8?"): the target inlines the name
- * append one level -- push_back (0x22DD60), the temporary's constructor and destructor (0x1E7B60,
- * 0x1E7A50), the reverse * (0x22DD10) with rbegin()'s end() (0x22DD20) and CSaferStr's assignment
- * (0x22DCC0) all called -- which needs AddName at least six high; with these headers it is four
- * (at `#pragma inline_depth(4)` only rbegin's end and constructor are cut, push_back still
- * inlines), so it inlines whole. The rest is written from the target: the four triggers' lists
- * (0x412D90 by names, 0x412DB0 by name, 0x412DF0 by object, 0x412DD0 by valve), their base
- * constructors and the message's out of line, each pointer pushed through a stack slot and
- * reloaded, GetTagIPNT2D called (pinned), the text size stored back before the message's copy */
+ * vector's last element, `*rbegin()` (rbegin() 0x22DD20 -- its return slot handed straight to the
+ * reverse * 0x22DD10 as `this` -- out of line, then CSaferStr's assignment 0x22DCC0), every other
+ * string through CSaferStr's inline assignment. Since the MSL headers' round 27 (the class push_back
+ * through end()) the name append makes the target's six calls in order; the HUD's round 51 wrote the
+ * rest from the target: an `int` counter against the unsigned Count() (`i * 8` recomputed each pass,
+ * where `unsigned` strength-reduces it into a saved register), the names appended through a plain copy
+ * of the pushed pointer and the object's and valve's strings read by inlines of their own (each loads
+ * the pushed trigger from its stack slot once, as the target does; the by-name trigger's one string
+ * reloads it at its use), the message read by an inline (its erase temporaries' slots below the
+ * triggers'), and IPNT2D's coordinates copied one by one through $f0 (its stand-in coord struct).
+ * OPEN, 0x600 against 0x5E0 (a level: the README's "Level 6, or 8?"): the target calls the three
+ * other triggers' base constructors (0x22DCA0 by name, 0x22DC70 by object, 0x22DC40 by valve) and
+ * the message's (0x22DD90) out of line from their implicit constructors inlined one level, which
+ * needs those six high; with include/string's two-high constructor they are five and inline whole
+ * (+8 instructions). CSaferStr one level taller (an intermediate base under it -- invented, not
+ * adopted: ~CSaferStr's copy and the name vector's clear lose a match) makes the function byte-exact,
+ * the three constructors' rows waiting for their names (__ct__14CTriggerByNameFv,
+ * __ct__16CTriggerByObjectFv, __ct__15CTriggerByValveFv) */
 void hudAddPopupDefinition(_zrdr *popup)
 {
     CPopupMessage *msg = 0;
@@ -426,13 +476,14 @@ void hudAddPopupDefinition(_zrdr *popup)
 
         msg = &t->m_message;
         g_vecTriggersByNames.push_back(t);
+        CTriggerByNames *names = t;
         _zrdr *icons = zrdr_findtag(trigger, "Icons");
 
         if (icons) {
-            for (unsigned int i = 0; i < icons->Count(); i++)
-                t->AddName(icons->Item(i)->String());
+            for (int i = 0; i < icons->Count(); i++)
+                names->AddName(icons->Item(i)->String());
         }
-        t->m_map = zrdr_findstring(trigger, "Mission");
+        names->m_map = zrdr_findstring(trigger, "Mission");
     } else if (type && !strcasecmp(type, "AnimCmd")) {
         CMessageTriggerByName *t = new CMessageTriggerByName;
 
@@ -444,29 +495,16 @@ void hudAddPopupDefinition(_zrdr *popup)
 
         msg = &t->m_message;
         g_vecTriggersByMap.push_back(t);
-        t->m_name = zrdr_findstring(trigger, "ObjName");
-        t->m_map = zrdr_findstring(trigger, "Mission");
+        t->Read(trigger);
     } else if (type && !strcasecmp(type, "HudObjective")) {
         CMessageTrigger *t = new CMessageTrigger;
 
         msg = &t->m_message;
         g_vecTriggers.push_back(t);
-        t->m_name = zrdr_findstring(trigger, "Valve");
-        t->m_map = zrdr_findstring(trigger, "Mission");
+        t->Read(trigger);
     }
     if (msg) {
-        msg->m_pos = GetTagIPNT2D(popup, "WindowPos");
-        msg->m_width = GetTagIPNT2D(popup, "WindowSize").x;
-        float size = 1.0f;
-
-        zrdr_findreal(popup, "TextSize", &size, 1);
-        size *= 1.1429f;
-        msg->m_textSize = size;
-        float spacing = 20.0f;
-
-        zrdr_findreal(popup, "LineInterval", &spacing, 1);
-        msg->m_lineInterval = spacing;
-        msg->m_textId = zrdr_findstring(popup, "TextId");
+        msg->Read(popup);
     }
 }
 
