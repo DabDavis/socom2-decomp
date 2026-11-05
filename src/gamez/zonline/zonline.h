@@ -658,8 +658,8 @@ struct MediusLadderListResponse {
     char EndOfList;   // 0x1d0
 };
 
-/* a player's stats unpacked (zNetMediusLobby.cpp; the record handed back) */
-extern "C" GamePlayerStats *func_002F9AC0(GamePlayerStats *stats, const char *text);
+/* a player's stats unpacked (zNetMediusLobby.cpp's, 0x2F9AC0; the record handed back; the name ours) */
+GamePlayerStats *UnpackPlayerStats(GamePlayerStats *stats, const char *text);
 
 struct LadderItem {
     /* the page's player made an item: too tall to inline whole, so the names' constructors and
@@ -668,7 +668,7 @@ struct LadderItem {
     {
         GamePlayerStats stats;
 
-        func_002F9AC0(&stats, resp->AccountStats);
+        UnpackPlayerStats(&stats, resp->AccountStats);
         m_position = resp->LadderPosition;
         m_name = resp->AccountName;
         m_a4 = resp->LadderStat;

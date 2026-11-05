@@ -7,7 +7,7 @@
  * instances run on past 0x2F62B0 to 0x2F6CF7: 0x2F6340, 0x2F6600, 0x2F6A70 and 0x2F6BC0 are
  * called only from this unit's deque copy constructor 0x2F5F80, its 0x2F6090 and ~__deque_buf
  * 0x2F62B0, so they are its copies, and the lobby unit starts at 0x2F6D00). Still unwritten: the
- * game's world report 0x2EF590 and details 0x2EF7F0, the player-info callback 0x2F0020 and the
+ * game's world report 0x2EF590 and details 0x2EF7F0, the player-info callback 0x2F0020 (cbGetPlayerInfo) and the
  * player lists 0x2F0EA0-0x2F3B90 (class-vector walks and their sort) and the deque instances.
  * Defined in reverse of their image order (-inline deferred). */
 
@@ -1259,12 +1259,13 @@ public:
 CChatQueue data_0044FA20;   /* the public lines waiting for the filter */
 CChatQueue data_0044FA50;   /* the private lines waiting for their player */
 
+void cbGetPlayerInfo(int, int, int, MediusPlayerInfoResponse *);   /* the player's info shown */
+
 extern "C" {
 MediusErrorCode MediusFindPlayer(MediusFindPlayerRequest *req,
                               void (*cb)(int, int, int, MediusFindPlayerResponse *));   /* MediusFindPlayer */
 MediusErrorCode MediusGetPlayerInfo(MediusPlayerInfoRequest *req,
                               void (*cb)(int, int, int, MediusPlayerInfoResponse *));   /* MediusGetPlayerInfo */
-void func_002F0020(int, int, int, MediusPlayerInfoResponse *);   /* the player's info shown */
 void func_00300670();   /* the Medius library closed */
 void func_0030D770(CZNetwork *net);   /* the DME left (CZNetwork's) */
 void func_0030E3A0(CZNetwork *net, int);   /* and closed (CZNetwork's) */
@@ -1507,7 +1508,7 @@ extern "C" void func_002F10B0(int, int, int, MediusPlayerInfoResponse *resp)
         BriefingRoom *room = data_0044F568.FindRoom(ZString(theLobby.uiv_LobbyWorldNameVar));
         GamePlayerStats stats;
 
-        func_002F9AC0(&stats, resp->Stats);
+        UnpackPlayerStats(&stats, resp->Stats);
         if (room) {
             int id = atoi(resp->MessageID);
 
@@ -1600,16 +1601,18 @@ bool func_002F0EA0(CZOnlineLobby *lobby, C2D *list)
 
 extern "C" {
 void func_002F3EE0(GamePlayerStats *stats);   /* the stats put in order (the unit's: an 8-byte row) */
+}
 
 /* a player's info come in, made the menu's three pages: the name (with the clan's tag), the
  * whereabouts and the ladder figures; the online state from the list the request's message id names
  * (the ladder, the clan, the friends, else the room's players); a failure says so (SOCOM II's; OVL1
- * 0x2F0020: MediusGetPlayerInfo's callback, func_002EFE50 asks for it). Round 18, byte-exact: the
+ * 0x2F0020: MediusGetPlayerInfo's callback, func_002EFE50 asks for it -- named as SOCOM 1's callbacks
+ * are, after the request: its own MediusGetPlayerInfo callback is cbGetPlayerStats, our stats). Round 18, byte-exact: the
  * clan's and the friend's whereabouts read through a reference local (the target keeps the member's
  * address, c + 0x140, in a register for the copy's two arrays: written straight the offsets fold, as
  * the room player's and the ladder's do); the room player looked up if-assign (the zero in the null
  * test's delay slot: a ternary branches over it) */
-void func_002F0020(int, int, int, MediusPlayerInfoResponse *resp)
+void cbGetPlayerInfo(int, int, int, MediusPlayerInfoResponse *resp)
 {
     PNT3D color;
     PlayerWhereabouts where;
@@ -1626,7 +1629,7 @@ void func_002F0020(int, int, int, MediusPlayerInfoResponse *resp)
 
     if (resp->StatusCode == 0) {
         memset(&where, 0, sizeof(where));
-        func_002F9AC0(&stats, resp->Stats);
+        UnpackPlayerStats(&stats, resp->Stats);
         if (!strcmp(resp->MessageID, "LADDER")) {
             LadderItem *l = LadderLeaders.Find(resp->AccountName);
 
@@ -1860,7 +1863,6 @@ void func_002F0020(int, int, int, MediusPlayerInfoResponse *resp)
     *figures = " ";
     *desc = " ";
 }
-}
 
 /* a player's info asked for, the menu's fields blanked meanwhile; the request's message id names
  * the menu it is for (SOCOM II's; OVL1 0x2EFE50: UIGetPlayerInfo calls it on theLobby) */
@@ -1891,7 +1893,7 @@ extern "C" void func_002EFE50(CZOnlineLobby *lobby, const char *id, int what)
         memcpy(req.MessageID, "BRIEFING", MEDIUS_MESSAGEID_MAXLEN);
         break;
     }
-    MediusGetPlayerInfo(&req, func_002F0020);
+    MediusGetPlayerInfo(&req, cbGetPlayerInfo);
 }
 
 /* the online session left: the Medius and DME connections closed, the lobby with them (SOCOM 1's;
