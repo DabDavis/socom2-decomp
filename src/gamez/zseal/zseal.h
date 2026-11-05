@@ -1946,6 +1946,15 @@ public:
     bool IsChangingWeapons(bool kit);
     bool IsReloading();
     bool CanChangeItem();
+    /* whether a body may be picked up, the view zoomed, a victim restrained, taken by a CQB attack or
+     * knifed now (SOCOM 1's, in its order around CanChangeItem and FindDeathAnimTypeCQB: OVL2
+     * 0x5A89C0, 0x5A8DA0, 0x5A90B0, 0x5A9500, 0x5A98B0 -- CSealCtrl::PerformProximityActions asks all
+     * but CanZoom, which PreTick asks, as SOCOM 1's) */
+    bool CanUseBodyCarry(CZSealBody *victim);
+    bool CanZoom();
+    bool CanUseRestraint(CZSealBody *victim);
+    bool CanUseCQB(CZSealBody *victim);
+    bool CanUseKnife(CZSealBody *victim);
     /* the SEAL's own AI event made where it stands (SOCOM 1's; OVL2 0x550E50, seal.cpp) */
     void CreateAiEvent();
     /* the SEAL's adrenaline, its level first (SOCOM 1's; OVL2 0x5781B0, seal_anim.cpp's last) */

@@ -1260,6 +1260,138 @@ extern AnimType data_003DEE30;
 extern AnimType data_003DEE38;
 }
 
+extern "C" {
+/* (OVL2 0x5B4340, not written yet: a test of the SEAL's state against a kind, below) */
+bool func_005B4340(CZSealBody *seal, int kind);
+/* the stab's pistol anim and the stabbed one's, the CQB attack's two (OVL1 data, anim types: SOCOM 1's
+ * PistolStab, CQB and PistolCQB by their places among AnimTypes' statics, 8 bytes apart) */
+extern short data_003DEE10;
+extern short data_003DEE20;
+extern short data_003DEE28;
+/* the cosines the knife's and the CQB attack's facings must pass (OVL2 bss: SOCOM 1's KNIFE_DOT and
+ * CQB_DOT, below) */
+extern float data_0065F0D8;
+extern float data_0065F0E0;
+/* the restrained anim set (OVL1 bss, below) */
+extern AnimSet *data_0044D400;
+/* a halfword's bits tested (seal.cpp's tail copy, OVL2 0x5551A0) */
+bool func_005551A0(unsigned short flags, unsigned short bits);
+}
+
+/* whether an entity takes no fire (an inline, as zseal.h's IsNavySeal: its bool is converted,
+ * `sltu`, before the branch -- the bit returned bare is tested as it is; the name ours) */
+static inline bool NoShoot(const CEntity *e)
+{
+    return e->m_noshoot ? true : false;
+}
+
+/* whether the SEAL may knife a victim: the victim there, alive and of another team, neither restrained
+ * nor in the restrained set; the state test of kind 6 passed, no stab's anim on top, no scope up, the
+ * victim not one that takes no fire, the SEAL not prone, an AI victim not aware of a direction or more;
+ * the victim ahead of the SEAL's fire point within the knife's cosine of its facing, flattened, and the
+ * SEAL behind the victim (OVL2 0x5A98B0; SOCOM 1's CanUseKnife, after CanUseCQB in both builds, the
+ * same tests -- SOCOM 1's measured from the SEAL's position) */
+bool CZSealBody::CanUseKnife(CZSealBody *victim)
+{
+    if (!victim || !victim->m_isAlive || (victim->m_team & m_team))
+        return false;
+    if (victim->m_restrained || victim->m_animset == data_0044D400)
+        return false;
+    if (!func_005B4340(this, 6))
+        return false;
+    if (IsCurrentBlend((AnimType)AnimTypes::Stab) || IsCurrentBlend((AnimType)data_003DEE10) ||
+        IsCurrentBlend((AnimType)AnimTypes::Stabbed))
+        return false;
+    if (m_kit.IsUsingScope())
+        return false;
+    if (NoShoot(victim))
+        return false;
+    CSealCtrlAi *ai = victim->GetSealCtrlAi();
+
+    if (GetStance(true) == stateProne)
+        return false;
+    if (ai) {
+        AI_AWARE aware = ai->GetAiAware();
+
+        if (aware == AIA_DIRECTION || aware == AIA_SPECIFIC)
+            return false;
+    }
+    float zero = 0.0f;
+    const CPnt3D &pos = m_posW + (FIREPOS_SET(this, zero) ? m_curr_firepos : CPnt3D::zero);
+    const CPnt3D *vpos = (const CPnt3D *)victim->m_node->m_matrix.m_matrix[3];
+    CPnt3D fwd(*(const CPnt3D *)m_node->m_matrix.m_matrix[2]);
+    CPnt3D d = *vpos - pos;
+
+    NegateInto(&fwd, &fwd);
+    fwd.y = 0.0f;
+    d.y = 0.0f;
+    fwd.Normalize();
+    d.Normalize();
+    if (!(Dot(d, fwd) <= data_0065F0D8)) {
+        CPnt3D vfwd(*(const CPnt3D *)victim->m_node->m_matrix.m_matrix[2]);
+        CPnt3D back = pos - *vpos;
+
+        NegateInto(&vfwd, &vfwd);
+        vfwd.y = 0.0f;
+        back.y = 0.0f;
+        if (Dot(back, vfwd) < 0.0f)
+            return true;
+    }
+    return false;
+}
+
+/* whether the SEAL may take a victim in a CQB attack: the victim there, alive and of another team; the
+ * SEAL's top blend without flag 2; the state test of kind 7 passed; neither SEAL in a CQB anim (the
+ * attack's two or the victim's falls); the victim not one that takes no fire; an item in hand, not
+ * none; no scope up, neither prone; and the victim within 30 of the SEAL's fire point, ahead within the
+ * CQB attack's cosine of its facing, flattened (OVL2 0x5A9500; SOCOM 1's CanUseCQB, after
+ * FindDeathAnimTypeCQB in both builds; the AI's sensors and the CQB attack state ask it too) */
+bool CZSealBody::CanUseCQB(CZSealBody *victim)
+{
+    if (!victim || !victim->m_isAlive || (victim->m_team & m_team))
+        return false;
+    CZBodyAnimBlend *top = TopBlend();
+
+    if (top && func_005551A0(top->m_flags, 2))
+        return false;
+    if (!func_005B4340(this, 7))
+        return false;
+    if (IsCurrentBlend((AnimType)data_003DEE20) || IsCurrentBlend((AnimType)data_003DEE28) ||
+        IsCurrentBlend((AnimType)data_003DEE30) || IsCurrentBlend((AnimType)data_003DEE38))
+        return false;
+    if (victim->IsCurrentBlend((AnimType)data_003DEE20) || victim->IsCurrentBlend((AnimType)data_003DEE28) ||
+        victim->IsCurrentBlend((AnimType)data_003DEE30) || victim->IsCurrentBlend((AnimType)data_003DEE38))
+        return false;
+    if (NoShoot(victim))
+        return false;
+    CZKit *kit = &m_kit;
+    CZFTSWeapon *item = kit->GetCurItem();
+
+    if (!item)
+        return false;
+    if (item->m_ID == EQUIP_NONE)
+        return false;
+    if (kit->IsUsingScope())
+        return false;
+    if (GetStance(true) == stateProne)
+        return false;
+    if (victim->GetStance(true) == stateProne)
+        return false;
+    float zero = 0.0f;
+    CPnt3D pos = m_posW + (FIREPOS_SET(this, zero) ? m_curr_firepos : CPnt3D::zero);
+    const CPnt3D *vpos = (const CPnt3D *)victim->m_node->m_matrix.m_matrix[3];
+    CPnt3D fwd(*(const CPnt3D *)m_node->m_matrix.m_matrix[2]);
+    CPnt3D d = *vpos - pos;
+
+    NegateInto(&fwd, &fwd);
+    fwd.y = 0.0f;
+    d.y = 0.0f;
+    fwd.Normalize();
+    if (d.Normalize() <= 30.0f && !(Dot(d, fwd) <= data_0065F0E0))
+        return true;
+    return false;
+}
+
 /* the death a CQB attack gives its victim: from behind or in front, by the attacker's offset against
  * the victim's facing, flattened (OVL2 0x5A9420; SOCOM 1's FindDeathAnimTypeCQB, after CanUseRestraint
  * in both builds, the same arithmetic).
@@ -1288,6 +1420,171 @@ extern "C" {
 bool func_005B4340(CZSealBody *seal, int kind);
 }
 
+extern "C" {
+/* the stab's, the CQB attack's and the restraint's anims besides AnimTypes' (OVL1 data, anim types:
+ * SOCOM 1's PistolStab, CQB, PistolCQB and PistolApplyRestraints by their places among AnimTypes'
+ * statics, 8 bytes apart -- Stab 0x3DEE08 two before) */
+extern short data_003DEE10;
+extern short data_003DEE20;
+extern short data_003DEE28;
+extern short data_003DEE50;
+/* the anim set the zoom refuses (OVL1 bss) */
+extern AnimSet *data_0044D3F8;
+/* whether a carried body's homing runs: one carried and the top blend's homing set (seal_body.cpp's
+ * range, OVL2 0x579EA0: its draft); the top blend's test of the blends a hand-held item allows
+ * (seal.cpp's OVL2 0x54F6E0) */
+bool func_00579EA0(CZSealBody *seal);
+bool func_0054F6E0(CZSealBody *seal, bool blend, bool mount, bool anims);
+/* (OVL1 0x2C2FD0: whether a SEAL's hits go unfelt, below) */
+bool func_002C2FD0(CZSealBody *seal);
+}
+
+/* whether the top blend is a stab's, a restraint's or a CQB attack's (inlines: each fetches the top
+ * blend again, the bool materialised -- the names ours) */
+static inline bool IsStabbing(CZSealBody *seal)
+{
+    short type = seal->TopBlend()->m_animType;
+
+    if (type == data_003DEE10 || type == AnimTypes::Stab)
+        return true;
+    return false;
+}
+
+static inline bool IsRestraining(CZSealBody *seal)
+{
+    short type = seal->TopBlend()->m_animType;
+
+    if (type == AnimTypes::ApplyRestraints || type == data_003DEE50)
+        return true;
+    return false;
+}
+
+static inline bool IsCQBAttacking(CZSealBody *seal)
+{
+    short type = seal->TopBlend()->m_animType;
+
+    if (type == data_003DEE20 || type == data_003DEE28)
+        return true;
+    return false;
+}
+
+extern "C" {
+/* an anim the restraint refuses on top (OVL1 data, an anim type) */
+extern short data_003DEF70;
+/* the cosines the restraint's, the knife's and the CQB attack's facings must pass (OVL2 bss:
+ * SOCOM 1's RESTRAINT_DOT, KNIFE_DOT and CQB_DOT, seal_env.cpp's statics 8 bytes apart after
+ * FLASHBANG_DOT in both builds -- the unit's initialiser 0x668C10 sets them to the cosines of 85,
+ * 25 and 65 degrees, as SOCOM 1's __sinit_seal_env.cpp does) */
+extern float data_0065F0D0;
+extern float data_0065F0D8;
+extern float data_0065F0E0;
+/* a halfword's bits tested (seal.cpp's tail copy, OVL2 0x5551A0) and whether the AI's SEAL may be
+ * taken hostage (seal_ai.cpp's OVL2 0x555B80, the third argument always 0) */
+bool func_005551A0(unsigned short flags, unsigned short bits);
+bool func_00555B80(CSealCtrlAi *ai, int kind, int flag);
+}
+
+/* whether the SEAL may restrain a victim: the victim there, alive and restrainable; the state test of
+ * kind 8 passed; neither restraint anim (the victim's or the captor's two) nor the anim it refuses on
+ * top; an AI victim neither stunned nor refusing the hostage state; the victim's top blend without
+ * flag 2; no scope up, not prone; and the victim ahead of the SEAL's fire point within the
+ * restraint's cosine of its facing, flattened (OVL2 0x5A90B0; SOCOM 1's CanUseRestraint, before
+ * FindDeathAnimTypeCQB in both builds -- SOCOM 1's took the victim from behind or surrendering after
+ * the facing test) */
+bool CZSealBody::CanUseRestraint(CZSealBody *victim)
+{
+    if (!victim || !victim->m_isAlive)
+        return false;
+    if (!victim->m_restrainable)
+        return false;
+    if (!func_005B4340(this, 8))
+        return false;
+    if (IsCurrentBlend((AnimType)AnimTypes::ReceiveRestraints) ||
+        IsCurrentBlend((AnimType)AnimTypes::ApplyRestraints) || IsCurrentBlend((AnimType)data_003DEE50))
+        return false;
+    if (IsCurrentBlend((AnimType)data_003DEF70))
+        return false;
+    if (victim->m_control ? ((CSealCtrl *)victim->m_control)->IsAi() : false) {
+        CSealCtrlAi *ai = victim->GetSealCtrlAi();
+
+        if (ai->AiStateIs(AI_STATE_STUNRESPONSE) || !func_00555B80(ai, 3, 0))
+            return false;
+    }
+    CZBodyAnimBlend *top = victim->TopBlend();
+
+    if (top && func_005551A0(top->m_flags, 2))
+        return false;
+    if (m_kit.IsUsingScope())
+        return false;
+    if (GetStance(true) == stateProne)
+        return false;
+    float zero = 0.0f;
+    CPnt3D pos = m_posW + (FIREPOS_SET(this, zero) ? m_curr_firepos : CPnt3D::zero);
+    const CPnt3D *vpos = (const CPnt3D *)victim->m_node->m_matrix.m_matrix[3];
+    CPnt3D fwd(*(const CPnt3D *)m_node->m_matrix.m_matrix[2]);
+    CPnt3D d = *vpos - pos;
+
+    NegateInto(&fwd, &fwd);
+    fwd.y = 0.0f;
+    d.y = 0.0f;
+    fwd.Normalize();
+    d.Normalize();
+    if (!(Dot(d, fwd) <= data_0065F0D0))
+        return true;
+    return false;
+}
+
+/* whether the SEAL may zoom its view: alive; online, its hits felt; standing, crouched, prone,
+ * peeking or in the air (carrying, or anything else, not), its top blend not in state 8; not
+ * throwing, changing weapons, stabbing, restraining or in a CQB attack; no overlay playing, the
+ * top blend's item test failed, not in the anim set it refuses, and no carried body homing (OVL2
+ * 0x5A8DA0; SOCOM 1's CanZoom, after CanChangeItem in both builds -- SOCOM II's tests from the
+ * overlay on are its own, the homing asked twice) */
+bool CZSealBody::CanZoom()
+{
+    if (!m_isAlive)
+        return false;
+    if (theNetwork.m_9 && func_002C2FD0(this))
+        return false;
+    CZBodyAnimBlend *top = TopBlend();
+
+    switch (m_state) {
+    case stateCarrying:
+        return false;
+    case stateStand:
+    case stateCrouch:
+    case stateProne:
+    case statePeek:
+    case stateInAir:
+        break;
+    default:
+        return false;
+    }
+    if (top->m_state == 8)
+        return false;
+    if (IsThrowing(false))
+        return false;
+    if (IsChangingWeapons(true))
+        return false;
+    if (IsStabbing(this))
+        return false;
+    if (IsRestraining(this))
+        return false;
+    if (IsCQBAttacking(this))
+        return false;
+    if (m_overlay.m_anim)
+        return false;
+    if (func_0054F6E0(this, true, true, true))
+        return false;
+    if (m_animset == data_0044D3F8)
+        return false;
+    if (func_00579EA0(this))
+        return false;
+    if (func_00579EA0(this))
+        return false;
+    return true;
+}
+
 /* whether the SEAL may change what it holds: alive, its hands free (CanFire), the state test passed,
  * not in the air, working no turret, its trigger not held (OVL2 0x5A8CB0; SOCOM 1's, which tested the
  * first two and the air) */
@@ -1304,6 +1601,56 @@ bool CZSealBody::CanChangeItem()
     if (m_eb8)
         return false;
     if (m_control && ((CSealCtrl *)m_control)->m_trigger == TRIGGER_DOWN)
+        return false;
+    return true;
+}
+
+extern "C" {
+/* the anim sets of a SEAL held: the restrained one (seal.cpp's 0x5463F0 and the AnimSet view's
+ * 0x58C600 keep it), and a third the carry refuses beside the throwables' (OVL1 bss) */
+extern AnimSet *data_0044D400;
+extern AnimSet *data_0044D410;
+}
+
+/* whether the SEAL may pick a body up: the body there, dead, neither carrying nor carried, not
+ * restrained nor in the restrained set; the SEAL alive, not stunned, in neither the throwables' set
+ * nor the third, the body's node showing whole, no scope up, neither peeking nor its top blend in
+ * state 3, neither carrying nor carried, holding no body, not prone, and the body within 300 (the
+ * squared distance) of its fire point (OVL2 0x5A89C0; SOCOM 1's CanUseBodyCarry, after AimWeapon in
+ * both builds -- SOCOM 1's measured from the SEAL's position, with fewer tests) */
+bool CZSealBody::CanUseBodyCarry(CZSealBody *victim)
+{
+    if (!victim || victim->m_isAlive || victim->m_state == stateCarrying || victim->m_state == stateCarried)
+        return false;
+    if (victim->m_restrained || victim->m_animset == data_0044D400)
+        return false;
+    if (!m_isAlive)
+        return false;
+    if (m_am_stunned)
+        return false;
+    if (m_animset == data_0044D408)
+        return false;
+    if (m_animset == data_0044D410)
+        return false;
+    zdb::CNode *node = victim->GetNode();
+
+    if (!node->m_active || node->m_Opacity < 1.0f)
+        return false;
+    if (m_kit.IsUsingScope())
+        return false;
+    if (m_state == statePeek || ((CZBodyAnimBlend *)func_00555170((char *)this + 0x1c0))->m_state == statePeek)
+        return false;
+    if (m_state == stateCarrying || m_state == stateCarried)
+        return false;
+    if (m_carry)
+        return false;
+    if (GetStance(true) == stateProne)
+        return false;
+    float zero = 0.0f;
+    CPnt3D pos = m_posW + (FIREPOS_SET(this, zero) ? m_curr_firepos : CPnt3D::zero);
+    CPnt3D d = pos - victim->m_posW;
+
+    if (!(d.x * d.x + d.y * d.y + d.z * d.z <= 300.0f))
         return false;
     return true;
 }

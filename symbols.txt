@@ -10820,13 +10820,13 @@
 0x005A8790 0xC0 AimWeapon__10CZSealBodyFv  # OVL2; s1:order by hand (SOCOM 1's AimWeapon__10CZSealBodyFv, before CanUseBodyCarry and CanChangeItem in both builds: PartInSpace of the item's part, the quaternion applied to unit_x into the aim (SOCOM 1's m_aim_dir 0x10a0 = 0x1440), unit_nz otherwise; the item byte SOCOM 1's m_item 0xe58 = 0xF79) -- the SEAL lane, round 12
 0x005A8850 0x70 func_005A8850  # OVL2
 0x005A88C0 0xF8 func_005A88C0  # OVL2
-0x005A89C0 0x2E4 func_005A89C0  # OVL2
+0x005A89C0 0x2E4 CanUseBodyCarry__10CZSealBodyFP10CZSealBody  # OVL2; s1:order by hand (the SEALs, round 39): SOCOM 1's CanUseBodyCarry__10CZSealBodyFP10CZSealBody (0x299170), after AimWeapon and before CanChangeItem in both builds; CSealCtrl::PerformProximityActions calls it as SOCOM 1's does; seal_env.cpp byte-exact
 0x005A8CB0 0xF0 CanChangeItem__10CZSealBodyFv  # OVL2; s1:calls (the HUD lane's round 16, vetted by the integrator: CWeaponSel::OnOpen/HandleOpenState call it where SOCOM 1's call CanChangeItem__10CZSealBodyFv; 0xF0 here against SOCOM 1's 0x78)
-0x005A8DA0 0x310 func_005A8DA0  # OVL2
-0x005A90B0 0x370 func_005A90B0  # OVL2
+0x005A8DA0 0x310 CanZoom__10CZSealBodyFv  # OVL2; s1:order by hand (the SEALs, round 39): SOCOM 1's CanZoom__10CZSealBodyFv (0x2993E0), after CanChangeItem in both builds, the same state switch and throw/stab/restraint/CQB tests; CSealCtrl::PreTick calls it as SOCOM 1's does; seal_env.cpp byte-exact
+0x005A90B0 0x370 CanUseRestraint__10CZSealBodyFP10CZSealBody  # OVL2; s1:order by hand (the SEALs, round 39): SOCOM 1's CanUseRestraint__10CZSealBodyFP10CZSealBody (0x299600), after CanZoom and before FindDeathAnimTypeCQB in both builds, the restraint anims and RESTRAINT_DOT; PerformProximityActions calls it as SOCOM 1's does; seal_env.cpp byte-exact
 0x005A9420 0xD8 FindDeathAnimTypeCQB__10CZSealBodyFP10CZSealBody  # OVL2; s1:order by hand (SOCOM 1's FindDeathAnimTypeCQB__10CZSealBodyFP10CZSealBody, after CanUseRestraint's place in both builds: the same code -- the victim's facing negated and flattened against the offset, two anim types picked by the sign) -- the SEAL lane, round 12
-0x005A9500 0x3B0 func_005A9500  # OVL2
-0x005A98B0 0x3B8 func_005A98B0  # OVL2
+0x005A9500 0x3B0 CanUseCQB__10CZSealBodyFP10CZSealBody  # OVL2; s1:order by hand (the SEALs, round 39): SOCOM 1's CanUseCQB__10CZSealBodyFP10CZSealBody (0x2999F0), after FindDeathAnimTypeCQB in both builds; PerformProximityActions, CSealCtrl::SensorPreTick and CAiSCQBAttack::Tick call it as SOCOM 1's do; seal_env.cpp byte-exact
+0x005A98B0 0x3B8 CanUseKnife__10CZSealBodyFP10CZSealBody  # OVL2; s1:order by hand (the SEALs, round 39): SOCOM 1's CanUseKnife__10CZSealBodyFP10CZSealBody (0x299D10), after CanUseCQB in both builds, KNIFE_DOT and the from-behind test; PerformProximityActions calls it as SOCOM 1's does; seal_env.cpp byte-exact
 0x005A9C70 0x2C8 func_005A9C70  # OVL2
 0x005A9F40 0x1C8 func_005A9F40  # OVL2
 0x005AA110 0x130 func_005AA110  # OVL2
