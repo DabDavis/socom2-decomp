@@ -141,6 +141,41 @@ struct CAiMapRegion;
 const CAiMapRegion *GetRegion__7CAiMapsFRC9CAiMapLoc(CAiMaps *maps, const CAiMapLoc &loc);
 void Tile__7CAiMapsFPCQ26CAiMap6regionUiUi(CAiMaps *maps, const CAiMapRegion *r, unsigned int value, unsigned int flags);
 bool SetRegionType__7CAiMapsFPCQ26CAiMap6regionQ36CAiMap6region4TYPE(CAiMaps *maps, const CAiMapRegion *r, unsigned char type);
+/* and CAiMaps::GetRegion(const char *, CAiMapLoc &), a region by name with its cell (OVL2 0x52D9F0) */
+const CAiMapRegion *GetRegion__7CAiMapsFPCcR9CAiMapLoc(CAiMaps *maps, const char *name, CAiMapLoc &loc);
+}
+
+/* a region kind's name (SOCOM 1's CAiMap::region::GetTypeName, out of line there -- 0x2B9AA0, its
+ * unit's tail -- and inlined here; ai.h's region::TYPE names only ANY, so the kinds are numbers:
+ * the target's case blocks run 0, 1, 6, 2-5, default) */
+inline const char *RegionTypeName(CAiMap::region::TYPE type)
+{
+    switch (type) {
+    case 0:
+        return "DEFAULT";
+    case 1:
+        return "EXTRACT_ZONE";
+    case 6:
+        return "GUARD";
+    case 2:
+        return "SAFE_HOUSE";
+    case 3:
+        return "WORM_HOLE";
+    case 4:
+        return "ROUTER";
+    case 5:
+        return "HUD_VISIBLE";
+    }
+    return "UNKNOWN";
+}
+
+/* a region kind by its name, 0 for none (inlined in both builds; the name ours) */
+inline CAiMap::region::TYPE RegionTypeByName(const char *name)
+{
+    for (int i = 1; i < 7; i++)
+        if (!strcasecmp(name, RegionTypeName((CAiMap::region::TYPE)i)))
+            return (CAiMap::region::TYPE)i;
+    return (CAiMap::region::TYPE)0;
 }
 
 /* the AI's parameters ai::PARAM tests and sets, in its parser's order (the names its tags'; the
@@ -385,7 +420,9 @@ struct CTSound : TASK_HDR {
     CSndInstance *m_inst;   // 0xc: the sound playing
 
     static void Begin(_zanim_cmd_hdr *hdr);
-    static void End(_zanim_cmd_hdr *hdr);
+    static void End(_zanim_cmd_hdr *hdr);    /* (RegisterCommands' handlers, unwritten) */
+    static _zanim_cmd_hdr *Parse(_zrdr *rdr);
+    static bool Tick(_zanim_cmd_hdr *hdr, float *dT);
 };
 
 /* ai::SELECT (SOCOM 1's CTSelect) */
@@ -606,7 +643,8 @@ struct CTCreate : TASK_HDR {
     TASK_ANIMNAME m_dst;   // 0xc
     unsigned char _e[0x170 - 0xe];   // 0x170 bytes
 
-    static _zanim_cmd_hdr *Parse(_zrdr *rdr);
+    static _zanim_cmd_hdr *Parse(_zrdr *rdr);    /* (RegisterCommands' handlers, unwritten) */
+    static bool Tick(_zanim_cmd_hdr *hdr, float *dT);
 };
 
 /* ai::SIGNAL (SOCOM 1's CTSignal): an AI signal sent, to an entity or the SEAL */
@@ -662,7 +700,8 @@ struct CTSetAnimSet : TASK_HDR {
     unsigned char _e[0x10 - 0xe];
     TASK_ENT m_ent;   // 0x10: the tag "entity"
 
-    static _zanim_cmd_hdr *Parse(_zrdr *rdr);
+    static _zanim_cmd_hdr *Parse(_zrdr *rdr);    /* (RegisterCommands' handlers, unwritten) */
+    static bool Tick(_zanim_cmd_hdr *hdr, float *dT);
 };
 
 /* ai::TURRET (SOCOM II's): a turret entity tested for a target (flag 1) or being active (2), or set
@@ -712,7 +751,8 @@ struct CTInView : TASK_HDR {
         cmd->m_equip = equip ? CZWeapon::GetWeaponId(equip) : 0;
         cmd->m_team = team;
         return cmd;
-    }
+    }    /* (RegisterCommands' handlers, unwritten) */
+    static bool Tick(_zanim_cmd_hdr *hdr, float *dT);
 };
 
 /* ai::INSTATE (SOCOM 1's CTInState): an entity's AI in a state, or with it on its stack */
@@ -896,6 +936,38 @@ struct CTPaint : TASK_HDR {
     unsigned char m_mode;   // 0x12
     unsigned char m_13;   // 0x13
 
+    /* a block for a region's cell (inline; the name ours: its arguments are bound ahead of the
+     * allocation -- the flags' 1 is live across the header's mask, which takes a0 in the target --
+     * where a block filled after NewTask colours them the other way round) */
+    static CTPaint *Create(const CAiMapLoc &loc, unsigned short value, unsigned int flags, unsigned char mode)
+    {
+        CTPaint *cmd = NewTask<CTPaint>();
+
+        cmd->m_loc = loc;
+        cmd->m_value = value;
+        cmd->m_flags = flags;
+        cmd->m_mode = mode;
+        cmd->m_13 = 0;
+        return cmd;
+    }
+    static _zanim_cmd_hdr *Parse(_zrdr *rdr);
+    static bool Tick(_zanim_cmd_hdr *hdr, float *dT);
+};
+
+/* ai::MAP, ai::PARAM and ai::STATE (SOCOM 1's CTMap, CTParam, CTState): their blocks not laid out yet --
+ * only the handlers RegisterCommands hands on (unwritten) */
+struct CTMap : TASK_HDR {
+    static _zanim_cmd_hdr *Parse(_zrdr *rdr);
+    static bool Tick(_zanim_cmd_hdr *hdr, float *dT);
+};
+
+struct CTParam : TASK_HDR {
+    static _zanim_cmd_hdr *Parse(_zrdr *rdr);
+    static bool Tick(_zanim_cmd_hdr *hdr, float *dT);
+};
+
+struct CTState : TASK_HDR {
+    static _zanim_cmd_hdr *Parse(_zrdr *rdr);
     static bool Tick(_zanim_cmd_hdr *hdr, float *dT);
 };
 
@@ -917,7 +989,8 @@ struct CTMove : TASK_HDR {
 
     static _zanim_cmd_hdr *Parse(_zrdr *rdr);
     static bool Tick(_zanim_cmd_hdr *hdr, float *dT);
-    static void End(_zanim_cmd_hdr *hdr);
+    static void End(_zanim_cmd_hdr *hdr);    /* (RegisterCommands' handlers, unwritten) */
+    static void Begin(_zanim_cmd_hdr *hdr);
 };
 
 /* ai::MACRO (SOCOM 1's CTMacro): an anim of the set, by name -- the block sized to the name */
@@ -954,7 +1027,8 @@ struct CTLookAt : TASK_HDR {
     static _zanim_cmd_hdr *Parse(_zrdr *rdr);
     static void Begin(_zanim_cmd_hdr *hdr);
     static void End(_zanim_cmd_hdr *hdr);
-    static CTLookAt *Create(const char *name);
+    static CTLookAt *Create(const char *name);    /* (RegisterCommands' handlers, unwritten) */
+    static bool Tick(_zanim_cmd_hdr *hdr, float *dT);
 };
 
 /* a scripted AI group (ai_group.cpp's class, OVL2 0x60C190-0x60EDFF: its Find by id, 0x60E460) */
@@ -969,7 +1043,9 @@ struct CTGroup : TASK_HDR {
     unsigned int m_14;   // 0x14: the group's id (CAiGroup::Find's), 0 once ended
 
     static bool Tick(_zanim_cmd_hdr *hdr, float *dT);
-    static void End(_zanim_cmd_hdr *hdr);
+    static void End(_zanim_cmd_hdr *hdr);    /* (RegisterCommands' handlers, unwritten) */
+    static _zanim_cmd_hdr *Parse(_zrdr *rdr);
+    static void Begin(_zanim_cmd_hdr *hdr);
 };
 
 /* ai::GOTO (SOCOM 1's CTGoto) */
@@ -986,7 +1062,8 @@ struct CTGoto : TASK_HDR {
 
     static void Begin(_zanim_cmd_hdr *hdr);
     static bool Tick(_zanim_cmd_hdr *hdr, float *dT);
-    static void End(_zanim_cmd_hdr *hdr);
+    static void End(_zanim_cmd_hdr *hdr);    /* (RegisterCommands' handlers, unwritten) */
+    static _zanim_cmd_hdr *Parse(_zrdr *rdr);
 };
 
 /* ai::FIREWEAPON (SOCOM 1's CTFireWeapon) */
@@ -1110,7 +1187,8 @@ struct CTValve : TASK_HDR {
     VALVE_CMD_DATA m_data;   // 0x8
     int m_valve;   // 0x14: a SEAL_VALVE
 
-    static bool Tick(_zanim_cmd_hdr *hdr, float *dT);
+    static bool Tick(_zanim_cmd_hdr *hdr, float *dT);    /* (RegisterCommands' handlers, unwritten) */
+    static _zanim_cmd_hdr *Parse(_zrdr *rdr);
 };
 
 /* ai::COMM (SOCOM 1's CTComm): a squad command to a team */
@@ -1127,7 +1205,8 @@ struct CTComm : TASK_HDR {
         c->m_team = team;
         c->m_cmd = cmd;
         return c;
-    }
+    }    /* (RegisterCommands' handlers, unwritten) */
+    static bool Tick(_zanim_cmd_hdr *hdr, float *dT);
 };
 
 /* ai::PLAY (SOCOM 1's CTPlay): anims played, their types at the block's end (the names ours) */
@@ -1141,7 +1220,11 @@ struct CTPlay : TASK_HDR {
     unsigned char _23[0x30 - 0x23];
     unsigned int m_anims[1];   // 0x30: m_count of them (SOCOM 1's at 0x24)
 
-    static CTPlay *Create(int count, unsigned int *anims, float a, float b);
+    static CTPlay *Create(int count, unsigned int *anims, float a, float b);    /* (RegisterCommands' handlers, unwritten) */
+    static _zanim_cmd_hdr *Parse(_zrdr *rdr);
+    static void Begin(_zanim_cmd_hdr *hdr);
+    static bool Tick(_zanim_cmd_hdr *hdr, float *dT);
+    static void End(_zanim_cmd_hdr *hdr);
 };
 
 /* the pursuit state as the task sets it (CAiSPursue, seal_ai.cpp's: its duration at 0x58) */
@@ -1149,6 +1232,48 @@ class CAiSPursueTask : public CAiState {
 public:
     float m_duration;   // 0x58
 };
+
+/* the commands registered with ZAnim under their names, each id left in ai_cmdid[0] (every Parse copies
+ * it into its block) but ai::SELECT's, kept in ai_cmdid[2] -- the type the handlers' find looks for
+ * (OVL2 0x5DE320; SOCOM 1's, without its ai::ACTION, ai::DOOR and ai::SPECIAL; CMission::Init calls it) */
+bool CSealCtrlAi::RegisterCommands()
+{
+    ai_cmdid[0] = ZAnim.AddCmd("ai::COMM", CTComm::Parse, 0, CTComm::Tick, 0);
+    ai_cmdid[0] = ZAnim.AddCmd("ai::CREATE", CTCreate::Parse, 0, CTCreate::Tick, 0);
+    ai_cmdid[0] = ZAnim.AddCmd("ai::DEBUG", CTDebug::Parse, 0, CTDebug::Tick, 0);
+    ai_cmdid[0] = ZAnim.AddCmd("ai::DRAIN", CTDrain::Parse, CTDrain::Begin, CTDrain::Tick, CTDrain::End);
+    ai_cmdid[0] = ZAnim.AddCmd("ai::EVENT", CTEvent::Parse, CTEvent::Begin, CTEvent::Tick, 0);
+    ai_cmdid[0] = ZAnim.AddCmd("ai::FIREMODE", CTFireMode::Parse, CTFireMode::Begin, CTFireMode::Tick, 0);
+    ai_cmdid[0] = ZAnim.AddCmd("ai::FIREWEAPON", CTFireWeapon::Parse, CTFireWeapon::Begin, CTFireWeapon::Tick, 0);
+    ai_cmdid[0] = ZAnim.AddCmd("ai::GOTO", CTGoto::Parse, CTGoto::Begin, CTGoto::Tick, CTGoto::End);
+    ai_cmdid[0] = ZAnim.AddCmd("ai::GROUP", CTGroup::Parse, CTGroup::Begin, CTGroup::Tick, CTGroup::End);
+    ai_cmdid[0] = ZAnim.AddCmd("ai::HOLD", CTHold::Parse, CTHold::Begin, CTHold::Tick, CTHold::End);
+    ai_cmdid[0] = ZAnim.AddCmd("ai::INSTATE", CTInState::Parse, 0, CTInState::Tick, 0);
+    ai_cmdid[0] = ZAnim.AddCmd("ai::INVIEW", CTInView::Parse, 0, CTInView::Tick, 0);
+    ai_cmdid[0] = ZAnim.AddCmd("ai::LOOKAT", CTLookAt::Parse, CTLookAt::Begin, CTLookAt::Tick, CTLookAt::End);
+    ai_cmdid[0] = ZAnim.AddCmd("ai::MACRO", CTMacro::Parse, CTMacro::Begin, CTMacro::Tick, 0);
+    ai_cmdid[0] = ZAnim.AddCmd("ai::MAP", CTMap::Parse, 0, CTMap::Tick, 0);
+    ai_cmdid[0] = ZAnim.AddCmd("ai::MOVE", CTMove::Parse, CTMove::Begin, CTMove::Tick, CTMove::End);
+    ai_cmdid[0] = ZAnim.AddCmd("ai::PAINT", CTPaint::Parse, 0, CTPaint::Tick, 0);
+    ai_cmdid[0] = ZAnim.AddCmd("ai::PARAM", CTParam::Parse, 0, CTParam::Tick, 0);
+    ai_cmdid[0] = ZAnim.AddCmd("ai::PURSUE", CTPursue::Parse, CTPursue::Begin, CTPursue::Tick, CTPursue::End);
+    ai_cmdid[0] = ZAnim.AddCmd("ai::ANIMATE", CTPlay::Parse, CTPlay::Begin, CTPlay::Tick, CTPlay::End);
+    ai_cmdid[0] = ZAnim.AddCmd("ai::INRANGE", CTRange::Parse, 0, CTRange::Tick, 0);
+    ai_cmdid[0] = ZAnim.AddCmd("ai::INREGION", CTRegion::Parse, 0, CTRegion::Tick, 0);
+    ai_cmdid[2] = ZAnim.AddCmd("ai::SELECT", CTSelect::Parse, 0, CTSelect::Tick, 0);
+    ai_cmdid[0] = ZAnim.AddCmd("ai::SETMODE", CTSetMode::Parse, 0, CTSetMode::Tick, 0);
+    ai_cmdid[0] = ZAnim.AddCmd("ai::SETANIMSET", CTSetAnimSet::Parse, 0, CTSetAnimSet::Tick, 0);
+    ai_cmdid[0] = ZAnim.AddCmd("ai::SIGNAL", CTSignal::Parse, 0, CTSignal::Tick, 0);
+    ai_cmdid[0] = ZAnim.AddCmd("ai::SOUND", CTSound::Parse, CTSound::Begin, CTSound::Tick, CTSound::End);
+    ai_cmdid[0] = ZAnim.AddCmd("ai::STANCE", CTStance::Parse, CTStance::Begin, CTStance::Tick, CTStance::End);
+    ai_cmdid[0] = ZAnim.AddCmd("ai::STATE", CTState::Parse, 0, CTState::Tick, 0);
+    ai_cmdid[0] = ZAnim.AddCmd("ai::STOPALL", CTStopAll::Parse, 0, CTStopAll::Tick, 0);
+    ai_cmdid[0] = ZAnim.AddCmd("ai::TEAM", CTTeam::Parse, 0, CTTeam::Tick, 0);
+    ai_cmdid[0] = ZAnim.AddCmd("ai::TURRET", CTTurret::Parse, 0, CTTurret::Tick, 0);
+    ai_cmdid[0] = ZAnim.AddCmd("ai::VALVE", CTValve::Parse, 0, CTValve::Tick, 0);
+    ai_cmdid[0] = ZAnim.AddCmd("ai::WAIT", CTWait::Parse, CTWait::Begin, CTWait::Tick, 0);
+    return true;
+}
 
 /* a squad command to a team, when the command is known (OVL2 0x5DE250) */
 _zanim_cmd_hdr *CTComm::Parse(_zrdr *rdr)
@@ -1218,6 +1343,40 @@ _zanim_cmd_hdr *CTMacro::Parse(_zrdr *rdr)
         cmd->m_anim = 0;
         cmd->SetBlocking(blocking);
         cmd->m_name.Set(name);
+    }
+    return &cmd->hdr;
+}
+
+/* a region painted: the "region" named and its cell, then a "soil" (mode 1, flag bit 2), a
+ * "boundary" tile under 3 (mode 2, bit 3) or a "reg_type" (mode 3, the flags cleared) (OVL2
+ * 0x5D57C0; SOCOM 1's, its GetTypeName inlined) */
+_zanim_cmd_hdr *CTPaint::Parse(_zrdr *rdr)
+{
+    CTPaint *cmd = 0;
+    const char *name = zrdr_findstring(rdr, "region");
+    CAiMapLoc loc;
+
+    if (name && GetRegion__7CAiMapsFPCcR9CAiMapLoc(&AiMaps, name, loc)) {
+        cmd = CTPaint::Create(loc, 0, 1, 0);
+    }
+    if (cmd) {
+        const char *soil = zrdr_findstring(rdr, "soil");
+        const char *type = zrdr_findstring(rdr, "reg_type");
+        unsigned int tile = 0;
+
+        if (soil) {
+            cmd->m_mode = 1;
+            cmd->m_value = CAiMap::GetSoilByName(soil);
+            cmd->m_flags |= 4;
+        } else if (zrdr_finduint(rdr, "boundary", &tile, 1) && tile < 3) {
+            cmd->m_mode = 2;
+            cmd->m_value = tile;
+            cmd->m_flags |= 8;
+        } else if (type) {
+            cmd->m_mode = 3;
+            cmd->m_value = RegionTypeByName(type);
+            cmd->m_flags = 0;
+        }
     }
     return &cmd->hdr;
 }
