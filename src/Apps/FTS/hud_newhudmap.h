@@ -110,6 +110,8 @@ public:
     void HandleScrolling(float fStickX, float fStickY);
     /* which ways the full-screen map may scroll (SOCOM 1's; 0x20AAC0) */
     CScrollBools GetScrollPermissions() const;
+    /* the full-screen map's arrows pulsed and grid lines grown in (SOCOM 1's; 0x209350) */
+    void TickFullScreenAnims(float dT) const;
     /* the bounds the full-screen map scrolls inside (an inline; the name ours) */
     const CBBox *GetScrollBounds() const;
     void CalcNewMatrix();

@@ -421,8 +421,8 @@ public:
 
 extern "C" {
 void func_00544D60(CZSealBody *seal, int arg);   /* (the SEAL lane's) */
-void func_003AFF30(bool a, bool b);              /* zVid_Swap */
 }
+void zVid_Swap(bool flip, bool restore);   /* 0x3AFF30 (the weapons' round 31 named it) */
 
 /* what the state's uninitialisation calls (only that; the names the map's) */
 enum VALVE_STATE {
@@ -1231,7 +1231,7 @@ bool CMPExitState::Tick(float dT)
     m_menu->Tick(dT);
     m_menu->Draw2dOnly();
     zSysFifoEnd();
-    func_003AFF30(true, true);
+    zVid_Swap(true, true);
     return false;
 }
 

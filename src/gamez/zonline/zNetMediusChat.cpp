@@ -17,6 +17,13 @@
  * do_assigns the target inlines whole: 0x2F6600 is our 0x444-byte do_assign's size exactly) and the
  * make_iterators 0x2F5D10 / 0x2F6A70 (the buffer's begin() and operator+ inlined in the target) --
  * all the tail's generation order (include/deque's comment; README "THE TAIL'S GENERATION ORDER").
+ * Measured in the online lane's round 25 (build/scratch/onl/v_ends.py, v_mkoff.py, untracked), for the
+ * copy constructor 0x2F5F80: a dead own function asking for the deque's begin() / end() const, defined
+ * LAST (so taken first: the object then emits them at 66/67, ahead of the copy constructor at 99), or
+ * ahead of the queues, or copying the deque, leaves both calls (0x60) -- generated first is NOT enough
+ * for an out-of-class member to inline into the tail; declared `inline`, begin() / end() take
+ * make_iterator in with them (0xC8: the target calls it); `#pragma auto_inline off` around include/
+ * deque's make_iterators changes nothing (a template follows the pragma's state at the unit's end).
  * Defined in reverse of their image order (-inline deferred). */
 
 #include <stdio.h>
@@ -622,6 +629,45 @@ void CreateRoomStateHandler(LOBBY_STATE_FLAG flag)
     }
 }
 
+void ConnectSuccessStateHandler(LOBBY_STATE_FLAG flag);
+void ConnectErrorStateHandler(LOBBY_STATE_FLAG flag);
+void SessionBeginStateHandler(LOBBY_STATE_FLAG flag);
+void AccountRegistrationStateHandler(LOBBY_STATE_FLAG flag);
+void RegistrationFailureStateHandler(LOBBY_STATE_FLAG flag);
+void AccountLoginStateHandler(LOBBY_STATE_FLAG flag);
+void LoginFailureStateHandler(LOBBY_STATE_FLAG flag);
+void LobbyActiveStateHandler(LOBBY_STATE_FLAG flag);
+void CreateNewGameStateHandler(LOBBY_STATE_FLAG flag);
+void CreateFailureStateHandler(LOBBY_STATE_FLAG flag);
+void JoinGameStateHandler(LOBBY_STATE_FLAG flag);
+void LobbyServerConnectStateHandler(LOBBY_STATE_FLAG flag);
+void LobbyReadyToConnectStateHandler(LOBBY_STATE_FLAG flag);
+void EndSessionStateHandler(LOBBY_STATE_FLAG flag);
+void JoinRoomStateHandler(LOBBY_STATE_FLAG flag);
+
+/* the state handlers set, in SOCOM 1's Open's order (CONNECT_SUCCESS first, SESSION_BEGIN third;
+ * the user, screen-name and clan states keep none), each through SetStateHandler (SOCOM II's, out of
+ * SOCOM 1's Open: CZOnlineLobby::Open calls it on itself; OVL1 0x2ED460, the name ours) */
+void CZOnlineLobby::RegisterStateHandlers()
+{
+    SetStateHandler(CONNECT_SUCCESS, ConnectSuccessStateHandler);
+    SetStateHandler(CONNECT_ERROR, ConnectErrorStateHandler);
+    SetStateHandler(SESSION_BEGIN, SessionBeginStateHandler);
+    SetStateHandler(ACCOUNT_REGISTRATION, AccountRegistrationStateHandler);
+    SetStateHandler(REGISTRATION_FAILURE, RegistrationFailureStateHandler);
+    SetStateHandler(ACCOUNT_LOGIN, AccountLoginStateHandler);
+    SetStateHandler(LOGIN_FAILURE, LoginFailureStateHandler);
+    SetStateHandler(LOBBY_ACTIVE, LobbyActiveStateHandler);
+    SetStateHandler(CREATE_NEW_GAME, CreateNewGameStateHandler);
+    SetStateHandler(CREATE_FAILURE, CreateFailureStateHandler);
+    SetStateHandler(JOIN_GAME, JoinGameStateHandler);
+    SetStateHandler(LOBBY_SERVER_CONNECT, LobbyServerConnectStateHandler);
+    SetStateHandler(READY_TO_CONNECT, LobbyReadyToConnectStateHandler);
+    SetStateHandler(END_SESSION, EndSessionStateHandler);
+    SetStateHandler(JOIN_ROOM, JoinRoomStateHandler);
+    SetStateHandler(CREATE_ROOM, CreateRoomStateHandler);
+}
+
 void cbAccountRegistration(int, int, int, MediusAccountRegistrationResponse *resp);
 
 unsigned char *GetDNASUniqueID(int *size);
@@ -1134,6 +1180,26 @@ void LobbyActiveStateHandler(LOBBY_STATE_FLAG flag)
     }
 }
 
+/* four states with nothing to do, empty as SOCOM 1's: between ConnectErrorStateHandler and
+ * EndSessionStateHandler in SOCOM 1's order in both builds, and the state table 0x2ED460 sets them in
+ * SOCOM 1's Open's slots -- CONNECT_SUCCESS 1, REGISTRATION_FAILURE 6, LOGIN_FAILURE 10, CREATE_FAILURE
+ * 14 (OVL1 0x2EE6D0, 0x2EE6C0, 0x2EE6B0, 0x2EE6A0) */
+void RegistrationFailureStateHandler(LOBBY_STATE_FLAG flag)
+{
+}
+
+void LoginFailureStateHandler(LOBBY_STATE_FLAG flag)
+{
+}
+
+void ConnectSuccessStateHandler(LOBBY_STATE_FLAG flag)
+{
+}
+
+void CreateFailureStateHandler(LOBBY_STATE_FLAG flag)
+{
+}
+
 /* CONNECT_ERROR: the connection closed and the menus told (SOCOM 1's was empty; OVL1 0x2EE610) */
 void ConnectErrorStateHandler(LOBBY_STATE_FLAG flag)
 {
@@ -1298,7 +1364,6 @@ MediusErrorCode MediusFindPlayer(MediusFindPlayerRequest *req,
 MediusErrorCode MediusGetPlayerInfo(MediusPlayerInfoRequest *req,
                               void (*cb)(int, int, int, MediusPlayerInfoResponse *));   /* MediusGetPlayerInfo */
 void func_00300670();   /* the Medius library closed */
-void func_0030D770(CZNetwork *net);   /* the DME left (CZNetwork's) */
 void func_0030E3A0(CZNetwork *net, int);   /* and closed (CZNetwork's) */
 MediusErrorCode MediusSendChatMessage(MediusSendDirectMessageRequest *req);   /* the direct message sent */
 extern char data_00437690[];   /* theMission's message ring (CMission::m_netQueue) */
@@ -1940,7 +2005,7 @@ bool CZOnlineLobby::Bailout()
         func_00300670();
     }
     if (theNetwork.m_network_init) {
-        func_0030D770(&theNetwork);
+        theNetwork.zNetClose();
         func_0030E3A0(&theNetwork, 0);
     }
     Close();
