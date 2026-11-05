@@ -2065,6 +2065,22 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the game states, round 41** (four long opens closed -- HandleBombStateRequest since round 6, SetState since
+  10, CreateCustomCharTypes and NVGNoiseParse since 24 -- the accuracy rating, C2DMessage_Q::Init):
+  - copying a parameter into an enum-typed local placed between two early-return tests moves the parameter's register
+    copy there (into the call's delay slot), an unsigned char local leaves it at entry, an int local drops the narrowing
+    (CZBombState::HandleBombStateRequest 0x2C1F10); an auto-inlined function's result merges into a temporary numbered
+    after every named local -- read into a named local with an if-assign it takes its place in the declaration order
+    (CreateCustomCharTypes 0x2AFA10, `entry` declared first uninitialised: found with `tools/igreplay.py --want`);
+  - a pointer local `k = base + i` made first in a loop body makes the loop optimiser create that induction variable
+    first (NVGNoiseParse 0x2AE050: the swapped loop registers fixed); an unsigned short converted to float takes the
+    unsigned path (bltz / srl / or / add.s), through an int local it is a plain cvt.s.w; `a*k1 - b*k2 + c*k2` in one
+    expression fuses into suba / madd, as three statements on one variable it stays mul / sub / add (the accuracy rating
+    0x1F2E40);
+  - 0x43668C is no pointer of its own: theMission (0x4364E0) + 0x1AC, CMission::m_valve_abort -- the "mission_abort"
+    valve, its halfword +4 the value (respelled; the HUD's and the SEALs' reads queued); Sample_ExtractionLoc is blocked
+    by TWO CSaferStr declarations (zsav_lobby.h's std::string subclass, zentity.h's opaque 12 bytes) -- queued for the
+    MSL to reconcile.
 - **Tells from the HUD, round 53** (ComputeNewRating, CUIListBox::HandlePad):
   - A VALUE ASSIGNED IN TWO BRANCHES IS NEVER FOLDED BACK INTO ITS USE -- an if/else, or a ternary even with identical
     arms: MW generates and numbers it where it is assigned, where a single assignment (a named local, `x -= y`, an inline

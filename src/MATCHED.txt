@@ -1464,6 +1464,7 @@
 0x001F1E40 IsLiveSeal__10CEntityItrCFv
 0x001F1EE0 IsSeal__10CEntityItrCFv
 0x001F1F30 Advance__10CEntityItrFv
+0x001F2E40 func_001F2E40
 0x001F3290 func_001F3290
 0x001F3550 func_001F3550
 0x001F38F0 func_001F38F0
@@ -3525,6 +3526,7 @@
 0x002AD940 __dt__8CMissionFv
 0x002ADBC0 __ct__8CMissionFv
 0x002ADF10 NVGNoiseTick__FP14_zanim_cmd_hdrPf
+0x002AE050 NVGNoiseParse__FP5_zrdr
 0x002AE340 func_002AE340
 0x002AE3A0 func_002AE3A0
 0x002AE4F0 HUDClearTimerTick__FP14_zanim_cmd_hdrPf
@@ -3558,6 +3560,7 @@
 0x002AF880 ftsGetTacMapZoom__Fv
 0x002AF890 ftsGetNumVisibleMaps__FUi
 0x002AF8C0 CreateCustomCharTypes__25@unnamed@fts_mission_cpp@FP5_zrdr
+0x002AFA10 CreateCustomCharTypes__25@unnamed@fts_mission_cpp@FP11CVehicleRdrP5_zrdr
 0x002AFBA0 GetLobbySaveManager__Fv
 0x002AFBB0 clear__Q23std82__vector_deleter<20SObjectiveCam_Anchor,Q23std33allocator<20SObjectiveCam_Anchor>>Fv
 0x002AFBC0 at__Q23std66__vector_imp<13SCamPathPoint,Q23std26allocator<13SCamPathPoint>,0>FUi
@@ -3657,6 +3660,7 @@
 0x002B6D00 SetBkgColor__12C2DMessage_QFfff
 0x002B6DE0 Clear_Messages__12C2DMessage_QFv
 0x002B6EE0 __dt__12C2DMessage_QFv
+0x002B6FC0 Init__12C2DMessage_QFP7C2DFontP8CRdrFile
 0x002B7520 func_002B7520
 0x002B7530 func_002B7530
 0x002B7610 __ct__12C2DMessage_QFv
@@ -3774,6 +3778,7 @@
 0x002C1A80 InitBomb__11CZBombStateFv
 0x002C1BF0 CreateBombHere__11CZBombStateFP6CPnt3D
 0x002C1C30 ChangeBombState__11CZBombStateFv
+0x002C1F10 HandleBombStateRequest__11CZBombStateFiUcP6CPnt3D
 0x002C2090 RequestNewBombState__11CZBombStateFiQ211CZBombState13EnumBombStatePC6CPnt3D
 0x002C20C0 UpdateLocalBomb__11CZBombStateFv
 0x002C2260 CreateLocalBomb__11CZBombStateFv
@@ -3929,6 +3934,7 @@
 0x002CA340 UIDownloadPatch__FP13C2DAnimCmdHdrPf
 0x002CA520 __dt__16CSMDownloadPatchFv
 0x002CA590 Start__16CSMDownloadPatchFv
+0x002CA630 SetState__16CSMDownloadPatchFRCM19CSimpleStateMachineFPCvPvUc_v
 0x002CA6D0 __apl__Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>FPCc
 0x002CA6E0 __vc__Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>FUi
 0x002CA700 size__Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>CFv
