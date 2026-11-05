@@ -2065,6 +2065,34 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the kit and AI states, round 44** (PrivateNotify, TickReticule, Recoil, GetHandFloorHit -- all unwritten
+  before):
+  - MW masks a bit-field store after folding constants, so `m_bit = false` gives the inline setter's `andi zero,1` at ~4
+    inline units less per call -- enough to bring a constructor under inline_max_size: CAiState::Reset writing its bits
+    straight into the fields lets CAiState(AI_STATE) inline under a derived constructor (CSealUnit::PrivateNotify
+    0x5ED140's stack CAiSPursue; objcmp: no other unit changed);
+  - one float variable reused for a second value (`rate = A(); rate *= dT; ... rate = B(); rate *= dT;`) splits into a new
+    web numbered after every temporary -- it takes $f0 and its multiply sinks into a delay slot, two locals take $f2; a
+    stack CPnt3D copied field by field through an inline taking its address keeps &p.y / &p.z in saved registers across
+    calls (Recoil 0x5C3360 and GetHandFloorHit 0x5C2430 -- the reverse of the open "stack point's field addresses" tell);
+  - `x = d == 0.0f ? x : f(x)` keeps the target's empty-arm `bc1f; b`, `if (d != 0.0f)` drops it; an int MIN ternary
+    converted per arm (`a < n ? (float)a : (float)n`) gives the per-arm cvt.s.w, held in a local before multiplying by a
+    field for the operand order; material bits tested `? true : false` materialise sltu before the branch;
+  - seal_kit.cpp includes ../znode/int_material.h ahead of kit.h for the real CMaterialExArray (zweapon.h carries a
+    stand-in); DistributeNotify OPEN on include/list's base begin() (queued for the MSL).
+- **Tells from the HUD, round 50** (the string cursor's constructor, C2DString::MakePacket):
+  - MW puts the constant first in `constant * load` whichever side it is written on, and numbers it first -- swapping the
+    source operands changes nothing (SeekGlyph / Advance 8 long, OPEN); an inline accessor is generated ahead of the
+    expression only sometimes (`str->GetLength()` on a parameter was, `m_str->m_font->Get...()` folded back): the
+    cursor's constructor 0x362900 reads the string's members through new accessors, each load numbered before its
+    constant;
+  - a loop test read through an inline (`while (cursor.More())`) keeps the guard's read sp-relative, the plain read
+    shares the hoisted address register with the guard; MakePacket 0x3635C0: the default colour a 16-aligned static
+    copied with lq / sq, a C2DStringPacket writer on the stack with its transparency flag passed to its inline
+    constructor, an inline Clear() shared by the constructor and Flush(), the destructor running the flush;
+  - `if (*p == 0) return;` reuses the loaded byte for the next compare where `!*p` sign-extends it again; returns in
+    different branches each jump to a shared `b` block, unlike an if/else chain or break; C2D's flag byte at 0x14 is
+    allocated from the low bit up (bit 2 m_isTrans).
 - **Tells from the SEALs, round 42** (the foot pin, the score valves' sum, GetPutativeFirePointW, SetDir, the fall begun):
   - comparing against a float LOCAL holding zero (`v.z != zero`) keeps the field as c.eq.s's first operand, the 0.0f
     literal puts the zero first (SOCOM 1's compare is field-first; the weapons' round 26: the literal is zero-first on

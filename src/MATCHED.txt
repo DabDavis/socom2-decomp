@@ -6116,6 +6116,7 @@
 0x00361B40 GetString__Fi
 0x00361B60 TranslateString__FPCc
 0x00361BC0 GetStringTables__Fv
+0x00362900 __ct__15C2DStringCursorFP9C2DStringPi
 0x00362B20 SetFont__9C2DStringFP7C2DFont
 0x00362B70 UpdatePos__9C2DStringFv
 0x00362DC0 DeleteCharacter__9C2DStringFv
@@ -6127,6 +6128,7 @@
 0x003631C0 Load__9C2DStringFfPCcP7C2DFontffb
 0x003631F0 SetString__9C2DStringFPCcb
 0x00363460 SetStringId__9C2DStringFi
+0x003635C0 MakePacket__9C2DStringFPQ23zdb16CTextureRelocMgri
 0x00363830 Format__9C2DStringFPCce
 0x003639C0 Draw__9C2DStringFPQ23zdb7CCamera
 0x00363A70 Draw__9C2DStringFPQ23zdb16CTextureRelocMgrPQ23zdb7CCamerai
@@ -9966,9 +9968,12 @@
 0x005C1660 PreTick__5CZKitFf
 0x005C1800 Apply_LensEffects__5CZKitFbP6CPnt3D
 0x005C2400 IsFireDelayed__5CZKitFv
+0x005C2430 GetHandFloorHit__5CZKitFb
+0x005C2670 TickReticule__5CZKitFf
 0x005C2A90 Reload__5CZKitFv
 0x005C3000 ChamberLauncherRound__5CZKitFv
 0x005C32B0 SetFireDelay__5CZKitFfb
+0x005C3360 Recoil__5CZKitFP11CZFTSWeapon
 0x005C3740 GetItemByIndex__5CZKitCFi
 0x005C3780 GetCurItem__5CZKitCFv
 0x005C3790 GetCurFireMode__5CZKitFv
@@ -10266,6 +10271,7 @@
 0x005ECCD0 CreateMultiPlayerUnits__9CSealUnitFv
 0x005ECEF0 UnInit__9CSealUnitFv
 0x005ECF90 ShareTarget__9CSealUnitFP10CZSealBodyP7CEntitybi
+0x005ED140 PrivateNotify__9CSealUnitFP10CZSealBody12UNIT_MESSAGEPv
 0x005ED6E0 func_005ED6E0
 0x005ED700 func_005ED700
 0x005ED720 func_005ED720
