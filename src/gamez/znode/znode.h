@@ -1623,17 +1623,6 @@ struct CClutterEffector {
     float GetRadius() const { return m_radius; }
 };
 
-/* a vector between two points, by value: Sub out of line into a temporary, copied out (ld/sd and
- * lwc1/swc1) -- the collision code's differences (grid_di.cpp, int_main.cpp; SOCOM II's CPnt3D
- * operator-, which zmath.h lacks; the name is ours) */
-inline CPnt3D PntMinus(const CPnt3D &a, const CPnt3D &b)
-{
-    CPnt3D r;
-
-    a.Sub(&b, &r);
-    return r;
-}
-
 /* the clutter's animation: the props pushed about by effectors (SOCOM 1's grid_clutter.cpp class,
  * 0x70 bytes, its DWARF) */
 class CClutterAnimManager {

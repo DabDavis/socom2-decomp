@@ -713,24 +713,6 @@ void CGrid::Destroy()
     m_AtomBuf = 0;
 }
 
-/* a point scaled, and two points' sum, by value: the operation out of line into a temporary,
- * copied out (ld/sd and lwc1/swc1) -- as znode.h's PntMinus (the names are ours) */
-inline CPnt3D PntScale(const CPnt3D &a, float k)
-{
-    CPnt3D r;
-
-    a.Scale(k, &r);
-    return r;
-}
-
-inline CPnt3D PntPlus(const CPnt3D &a, const CPnt3D &b)
-{
-    CPnt3D r;
-
-    a.Add(&b, &r);
-    return r;
-}
-
 /* a prop handed to every cell its box covers in x/z: refused off the grid or without a node; its
  * node's box unscaled by the prop's inverse scale and moved by its matrix's translation, the
  * rectangle walked (SOCOM 1's; SOCOM II tests the prop's cell first and walks a CFRect through
@@ -747,12 +729,12 @@ bool CGrid::AddClutter(CClutter *clutter)
     const CBBox *bb = clutter->m_node->GetBBox();
     CPnt3D box[2];
 
-    box[0] = PntScale(bb->m_min, 1.0f / clutter->m_scale_inverse);
-    box[1] = PntScale(bb->m_max, 1.0f / clutter->m_scale_inverse);
+    box[0] = bb->m_min * (1.0f / clutter->m_scale_inverse);
+    box[1] = bb->m_max * (1.0f / clutter->m_scale_inverse);
     CMatrix *m = clutter->GetMatrix();
 
-    box[0] = PntPlus(box[0], *(CPnt3D *)m->m_matrix[3]);
-    box[1] = PntPlus(box[1], *(CPnt3D *)m->m_matrix[3]);
+    box[0] = box[0] + *(CPnt3D *)m->m_matrix[3];
+    box[1] = box[1] + *(CPnt3D *)m->m_matrix[3];
     CFRect rect(&box[0], &box[1]);
     SetTraversalBoundary(&rect);
     for (CGridAtom *atom = StartTraversal(); atom; atom = GetNextAtom()) {

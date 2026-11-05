@@ -312,8 +312,8 @@ asm void CDI::LoadPlaneVU0()
 void CDI::SetEdgeVecsAndNorm()
 {
     CPnt4D *p = m_pnts;
-    CPnt3D e0 = PntMinus(*(CPnt3D *)&p[1], *(CPnt3D *)&p[0]);
-    CPnt3D e1 = PntMinus(*(CPnt3D *)&p[2], *(CPnt3D *)&p[0]);
+    CPnt3D e0 = *(CPnt3D *)&p[1] - *(CPnt3D *)&p[0];
+    CPnt3D e1 = *(CPnt3D *)&p[2] - *(CPnt3D *)&p[0];
     CPnt4D n;
     CPnt4D a(e0.x, e0.y, e0.z, 1.0f);
     CPnt4D b(e1.x, e1.y, e1.z, 1.0f);
