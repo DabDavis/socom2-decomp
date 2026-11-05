@@ -2758,6 +2758,61 @@ void CZSealBody::CreateNetAmmoPickup(unsigned short count, unsigned short *items
 }
 
 extern "C" {
+/* the MP bomb asked for while the pickups are shut, and where (OVL1 bss 0x44CDF8 and 0x44CDE8: SOCOM 1's
+ * pair at the same place, a $gp byte and a point; the names ours) */
+extern bool data_0044CDF8;
+extern CPnt3D data_0044CDE8;
+}
+
+/* the MP bomb's pickup made at a point: with the pickups shut only asked for there; else the satchel's
+ * model instanced, named MPFootBomb, put in the world, made dynamic and a character node with its
+ * textures, polygons and visuals; unless told not to, a pickup of kind 11 the player owns, and the
+ * player's bomb marker made (BOMB_GROUND, type 1) or moved there, its base marker dropped; the node kept
+ * as the bomb's (OVL2 0x59DAB0; SOCOM 1's, the owner, the bump-map bit and the marker's move new) */
+CPickup *CZSealBody::CreateMPBombPickup(const CPnt3D *pos, bool b)
+{
+    if (!CPickup::m_isOpen) {
+        data_0044CDF8 = true;
+        data_0044CDE8 = *pos;
+        return 0;
+    }
+    CQuat q;
+
+    q.MakeYXZRot(0.0f, 0.0f, 0.0f);
+    CZWeapon::m_listWeapons.GetWeapon((EQUIP_ITEM)154);
+    zdb::CNode *node = zdb::CNode::CreateInstance((zdb::CModel *)zdb::CWorld::GetModel("Satchel"), pos, &q);
+
+    if (!node)
+        return 0;
+    node->SetName("MPFootBomb");
+    zdb::CWorld::m_world->AddChild(node);
+    node->SetDynamic(true, true);
+    node->m_socom2_a1_bits.bit2 = 1;
+    node->m_bumpmap = 1;
+    zdb::CWorld::m_world->AddTextureAssetCharacter(zdb::CHARSETCOMMON, node);
+    node->SetDescendantDI(true);
+    node->SetDescendantVisuals(true);
+    CPickup *p = 0;
+
+    if (b == false) {   /* (`!b` tests the register as it came; the target narrows it first) */
+        CZSealBody *player = ftsGetPlayer();
+
+        p = CPickup::Create(player->m_id, (CPickup::PU_TYPE)11, node, 0);
+        if (!player->m_mpbomb_anchor) {
+            CCompassAnchor *a = CCompass::CreateAnchor(*pos, "BOMB_GROUND");
+
+            a->m_type = 1;
+            player->CompassAnchor_MPBomb(a);
+        } else
+            player->m_mpbomb_anchor->m_posW = *pos;
+        CCompass::DeleteAnchor(player->m_mpbase_anchor);
+        player->CompassAnchor_MPBase(0);
+    }
+    CPickup::m_mpbombnode = node;
+    return p;
+}
+
+extern "C" {
 /* the kit's ammunition put into a stash: all of it (-1) or so many rounds (OVL2 0x5BA040, the kit
  * lane's row -- SOCOM 1's CZKit::FillAmmoPickupInstance, after RemoveAmmo in both builds) */
 void func_005BA040(CZKit *kit, CZItemStash *stash, int rounds);
@@ -3382,6 +3437,76 @@ extern "C" AnimType func_005A0950(CZSealBody *seal, DAMAGE_LOCATION loc, SEAL_ST
     if (anim == -1)
         anim = AnimSet::deathanim[3][0][0];
     return (AnimType)anim;
+}
+
+extern "C" {
+/* the state of the topmost blend in state 0, 1 or 2, else 0 (seal_body.cpp's, OVL2 0x57DBB0: SOCOM 1's
+ * BaseState) and a halfword's bits tested (seal.cpp's tail copy, OVL2 0x5551A0) */
+unsigned char func_0057DBB0(CZSealBody *seal);
+bool func_005551A0(unsigned short flags, unsigned short bits);
+}
+
+/* a death's anim for where the SEAL was hit: the stance it dies in -- dead already, the blends' base
+ * state with the body put in state 8; carried or carrying, standing; any other but a stand, a crouch or
+ * prone, the base state; stunned, prone -- and, past half of a stance change (17, 19, 25: before half,
+ * reversed, by the top blend's flag 0x20), the stance it is going to; then one of that stance's at random
+ * (OVL2 0x5A0700; SOCOM 1's, its pick moved out into 0x5A0950) */
+AnimType CZSealBody::FindRandomDeathAnim(DAMAGE_LOCATION where, bool *b)
+{
+    *b = false;
+    SEAL_STATE state = GetStance(false);
+
+    switch (state) {
+    case stateStand:
+    case stateCrouch:
+    case stateProne:
+        break;
+    case stateCarrying:
+    case stateCarried:
+        state = stateStand;
+        break;
+    case stateDead:
+        state = (SEAL_STATE)func_0057DBB0(this);
+        BodySetState(8);
+        break;
+    default:
+        state = (SEAL_STATE)func_0057DBB0(this);
+        break;
+    }
+    if (m_am_stunned)
+        state = stateProne;
+    if (IsCurrentBlend((AnimType)17) || IsCurrentBlend((AnimType)19) || IsCurrentBlend((AnimType)25)) {
+        float t = ((CZBodyAnimBlend *)func_00555170(&m_blends))->m_tfrac;
+        bool late = false;
+        bool back = func_005551A0(((CZBodyAnimBlend *)func_00555170(&m_blends))->m_flags, 32);
+
+        if (back) {
+            if (t > 0.5f)
+                late = true;
+        } else if (t < 0.5f)
+            late = true;
+        if (late) {
+            if (IsCurrentBlend((AnimType)17)) {
+                if (back)
+                    state = stateCrouch;
+                else
+                    state = stateStand;
+            }
+            if (IsCurrentBlend((AnimType)19)) {
+                if (back)
+                    state = stateProne;
+                else
+                    state = stateCrouch;
+            }
+            if (IsCurrentBlend((AnimType)25)) {
+                if (back)
+                    state = stateProne;
+                else
+                    state = stateStand;
+            }
+        }
+    }
+    return func_005A0950(this, where, state);
 }
 
 extern "C" {
