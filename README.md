@@ -2065,6 +2065,19 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the weapons, round 27** (CZProjectile's PostTick, PreTick and SetProjectile; the turret's mount test and aim):
+  - a result reassigned before the return (`if (x) r = false; return r;`) pads the last join label, `if (x) return false;
+    return r;` and the ternary don't (PostTick 0x3C9FB0); `0.0f * call()` folds to a stored zero but keeps the call --
+    for each store right after its own call write three statements into an address-taken local, a 3-argument
+    constructor evaluates all three calls first (PreTick 0x3CA5A0's gravity);
+  - a self-copy through CopyPoint with a const source reads the frame slots directly, through a non-const source or field
+    by field it reads through the hoisted field addresses like the stores; a byte switch handling only some of 0..12
+    builds an 8-entry table, listing every value to 12 builds the target's 13 entries, case 12 alone gives a compare
+    chain (CVisual::SetBuffer 0x3C38C0's jump table; 8 short, OPEN);
+  - in `ok && IsControlled()` the inline predicate folds, `IsControlled() != false` materialises the sltu
+    (CTurret::Virtual5C 0x3A90C0); CZWeapon::Fire 0x3D2D70 is 31 off in stack offsets only -- igreplay gives all 57 of
+    its registers, the miss is the spill-slot order (two word spills packed into one quadword): the tools lane is asked to
+    record spill order; SetProjectile 0x3CB1A0 is SOCOM 1's without its two angles, first build.
 - **Tells from the HUD, round 51** (hud_missioncams.cpp whole -- CleanupCamera, PlayCamera -- and ClosePauseMenu):
   - a dead `= 0` at the top numbers a named local there, declared there without an initializer it is numbered at its
     assignment (CleanupCamera 0x229520: `kit = 0` numbers the kit before the loop counter -- found and confirmed with
