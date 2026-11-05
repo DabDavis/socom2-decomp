@@ -374,6 +374,64 @@ extern "C" void func_005765F0(CZSealBody *seal)
     seal->SavePart(seal->m_weapon);
 }
 
+extern "C" {
+/* the body-part ids of the rifle and the pistol, and the third one the weapon in hand moves to when
+ * a script animates it (OVL1 data, read as variables -- seal_env.cpp's) */
+extern int data_003DF148;
+extern int data_003DF150;
+extern int data_003DF160;
+}
+
+/* a script's object for a body part, none past its table (the name ours) */
+static inline CZSIObject *ObjectFor(CZSIScriptCommon *s, int id)
+{
+    CZSIObject *o;
+
+    if (id >= 0 && (unsigned int)id < s->m_objects_for_body.size())
+        o = s->m_objects_for_body[id];
+    else
+        o = 0;
+    return o;
+}
+
+/* the weapon in hand put on the part a pushed script animates: the rifle's or the pistol's own part
+ * when the script has an object for it, else the third part when it has one for that (OVL2 0x5763E0,
+ * new in SOCOM II: 0x577EA0 calls it for each anim it pushes unless the weapons are changing; the
+ * name unknown) */
+extern "C" void func_005763E0(CZSealBody *seal, CZSIScriptCommon *s)
+{
+    unsigned char item = seal->m_item;
+
+    if (item == 1) {
+        int id = data_003DF148;
+
+        if (ObjectFor(s, id)) {
+            seal->SetBodyPart(id, seal->m_rifle);
+            seal->SetBodyPart(data_003DF160, 0);
+            return;
+        }
+        if (ObjectFor(s, data_003DF160)) {
+            seal->SetBodyPart(id, 0);
+            seal->SetBodyPart(data_003DF160, seal->m_rifle);
+            return;
+        }
+    }
+    if (item == 2) {
+        int id = data_003DF150;
+
+        if (ObjectFor(s, id)) {
+            seal->SetBodyPart(id, seal->m_pistol);
+            seal->SetBodyPart(data_003DF160, 0);
+            return;
+        }
+        if (ObjectFor(s, data_003DF160)) {
+            seal->SetBodyPart(id, 0);
+            seal->SetBodyPart(data_003DF160, seal->m_pistol);
+            return;
+        }
+    }
+}
+
 /* a part's node placed where the part is (CZBodyPart::Orient's body, body.cpp's, written out: SOCOM
  * II inlines it here, through the null-tested pointer setters) */
 static inline void OrientPart(CZBodyPart *part)
