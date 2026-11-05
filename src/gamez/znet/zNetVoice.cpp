@@ -641,7 +641,19 @@ inline void StopRecording(VoiceRadio *r)
  * every spelling of the stand-in alike). SlotTaken itself: `r->m_slots[i]` read twice keeps the
  * whole address (r + 8i + 0x70, the extra addiu and an alignment nop: 0x9E8), a getter CSEs the
  * value across the call, by reference, const views, a VoiceSlot accessor, a member: the same; only
- * the stepped radio (`(VoiceRadio *)(i + (VoiceSlot *)r)`, its slot 0) keeps r + 8i. Settled on the
+ * the stepped radio (`(VoiceRadio *)(i + (VoiceSlot *)r)`, its slot 0) keeps r + 8i. Round 20 measured
+ * (1) on probes (build/scratch/onl/p1-p16.cpp, the lane's worktree): the two loads tie in MW's scheduler
+ * and the tie goes to the global's load (the IR's left-to-right order) unless the radio's load ends the
+ * radio's live range -- SendRadioRequest standalone (r dead after the send), a send followed by `return
+ * 1`, or r reassigned after it (`r = global;`), loads t0 first as the target; with r read after the block (`return r->x`, `g2(r)`) the conn goes
+ * first whatever the spelling (r copied into a local, an inline's parameter, a reference, a base-class
+ * or member-object inline, a cast, a void * parameter, an inline returning r, the id in a local, a
+ * volatile conn: MW propagates every copy before scheduling). func_00623AE8's pair flips another way:
+ * after `if (!r->m_open) return 0;` straight ahead of it the conn goes first (every spelling of the
+ * test, an inline IsOpen, an else arm, a dead local, an empty inline between), with a call between
+ * (`g();`) or the call in an if block (`if (r->m_open) { ... }`, the target's block layout lost) the
+ * slot goes first. So the target's radio pointer dies at each send -- a second variable holding it, or
+ * a different body around the sends; not found. Settled on the
  * way: the clocks compared `GetLocalTime() > field` (the call first, the field loaded after it),
  * the master asked for inside the request before the slot is read, the tone loops `*s++` / `*s--`
  * (MW unrolls them in pairs, the target's), StartRecording's result kept, its zero arm first */

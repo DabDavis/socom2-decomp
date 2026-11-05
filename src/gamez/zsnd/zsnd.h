@@ -80,6 +80,9 @@ void snd_StopSoundSystem(void);
 
 class CSndInstance;
 class CValve;
+namespace zdb {
+class CNode;
+}
 namespace zar {
 class CZAR;
 }
@@ -126,6 +129,12 @@ public:
 
     /* SOCOM 1's: a 3D sound's volume and pan at a position; SOCOM II's returns the distance */
     float CalcVolPan(const CPnt3D *pos, float vol, int *outVol, int *outPan);
+    /* SOCOM 1's: the volume at a distance, through the near and far ranges (SOCOM II's inline:
+     * no out-of-line copy is left; CalcVolPan inlines it) */
+    int CalcVol(float dist, float vol);
+    /* SOCOM 1's: a streamed sound started on a voice (0x342240; SOCOM II's adds a word, tested
+     * whole for the stream's flag 2 -- PlaySoundVolPanPitch passes 0) */
+    int StreamSoundVolPan(int vol, int pan, CSndInstance *inst, int flag);
 
     static CSnd *GetSoundByName(const char *name);
     /* SOCOM 1's: a bank loaded by name and recorded (0x343DD0) */
@@ -137,6 +146,13 @@ public:
     static void SetGroupVolTemp(float time, float pct, int g0, int g1, int g2, int g3, int g4, int g5,
                                 int g6);
     static void ResetGroupVolTemp(float dT);
+    /* SOCOM 1's (an out-of-line `if (!m_isDisabled) CSndGroup::LoadSoundGroups();` there): SOCOM
+     * II's takes the groups file's name and is inline -- no copy is left */
+    static void SetupSoundGroups(const char *name);
+    /* SOCOM 1's: a bank loaded and the sounds file's sounds read and added (0x344090); the one-name
+     * form loads both by the same name (out of line in SOCOM 1, inline here: no copy is left) */
+    static int LoadSounds(const char *bank, const char *file);
+    static void LoadSounds(const char *name);
     static void LoadReverbs(_zrdr *rdr);
     static void LoadIndoorReverbs(_zrdr *rdr);
     static void LoadOutdoorReverbs(_zrdr *rdr);
@@ -152,7 +168,13 @@ public:
     static bool GetSubtitles();
     static void SetSubtitles(bool on);
 
+    /* SOCOM 1's: the scheduler's post tick -- the listener's reverb by the camera's room, its
+     * matrix, the group fade, the voices, the jukebox, a held stream, the positions, the music
+     * depth, the vocal queue and the headset (0x341A60) */
+    static bool PostTick(float dT, void *data);
     static bool m_isDisabled;           /* 0x48DD28 */
+    static zdb::CNode *m_listener;      /* 0x48DB48: SOCOM 1's, the listening camera's node (the
+                                           app camera's: database.cpp's testLoad sets it) */
     static bool m_listenerIsValid;      /* 0x48DB50: SOCOM 1's, beside m_listener (CalcVolPan gives
                                            no volume and no pan while it is clear) */
     static CSnd *m_errorsound;          /* 0x48DD90 */
@@ -182,7 +204,8 @@ public:
     unsigned short m_range_max;         /* 0x0E */
     unsigned char m_bank;               /* 0x10: 255 for none (SOCOM 1's int m_bank) */
     unsigned short m_ID;                /* 0x12: 0xFFFF for none (SOCOM 1's int m_ID) */
-    int m_14;                           /* 0x14 */
+    CSnd *m_14;                         /* 0x14: a sound played along with this one, at its volume,
+                                           pan and pitch (PlaySoundVolPanPitch; name ours) */
     unsigned int m_18;                  /* 0x18: the name's hash, the sound list's order (compared
                                            unsigned: AddNewCSnd) */
     unsigned int m_isStreamed : 1;      /* 0x1C bit 0 (SOCOM 1's byte at 0x1C) */
@@ -200,9 +223,12 @@ public:
     unsigned int m_mode : 3;            /* bits 5-7: 1 when built, 3 by SetDialogMode */
     char *m_20;                         /* 0x20 */
     char *m_24;                         /* 0x24 */
-    int m_28;                           /* 0x28 */
-    int m_2c;                           /* 0x2C */
-    int m_30;                           /* 0x30 */
+    const char *m_28;                   /* 0x28: the subtitle's string key (TranslateString's; SOCOM
+                                           1's m_subtitle at 0x30) */
+    CValve *m_2c;                       /* 0x2C: the valve the subtitle waits on (CValve::Create(name,
+                                           2) when read; none or a nonzero value shows it) */
+    float m_30;                         /* 0x30: the subtitle's time (converted to int for the
+                                           message queue, SOCOM 1's float at 0x38) */
     float m_34;                         /* 0x34 */
     float m_38;                         /* 0x38 */
 };   /* 0x3C bytes */
@@ -395,6 +421,10 @@ public:
     static void ReleaseSoundInstance(CSndInstance *instance);
     static CSndInstance *AcquireSoundInstance(unsigned int handle, CSnd *parent);
 
+    /* the master volume through an inline read (ours: CSnd::PlaySoundVolPanPitch's three voice
+     * volumes `(int)(GetMasterVol() * (1024.0f * vol * m_vol))` take the target's operand order only
+     * so -- the static read in place, or written last, MW emits the product second) */
+    static float GetMasterVol() { return m_mastervol; }
     static float m_mastervol;                       /* 0x3E0070 */
     static std::list<CSndInstance *> m_list;        /* 0x48DF98: the voices playing */
     static CSndInstanceVec m_pool;                  /* 0x48DFB8: the free ones */
@@ -555,8 +585,10 @@ public:
     std::vector<int> m_queue;   /* 0x18: the queued entries' indices (SOCOM 1's at 0x18 too) */
     std::vector<int> m_free;    /* 0x24: the free entries' indices, 0-19 when built */
     unsigned int *m_entries;    /* 0x30: twenty entries of three words */
-    int m_34;                   /* 0x34 */
-    CSndInstance *m_instance;   /* 0x38 */
+    CSndInstance *m_34;         /* 0x34: the voice a sound plays on through the speakers while
+                                   no headset is found (DisconnectedTick) */
+    CSnd *m_instance;           /* 0x38: the voice-over sound streaming (bit 4), set as its stream
+                                   starts (ConnectedTick), with its entry's id at 0x3C */
     int m_3c;                   /* 0x3C */
 };   /* 0x40 bytes (operator new's) */
 

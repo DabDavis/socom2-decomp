@@ -88,6 +88,58 @@ CAiPath *_plan_path;
 CAiPathQueue path_queue;
 }
 
+/* the basic planner's penalties for a step off the road: into water or onto a climb, and onto
+ * anything else (0x64F8E0, 5.0, and 0x64F8E8, 1.5: read with lwc1, so variables; the names ours) */
+static float s_basicWetCost = 5.0f;
+static float s_basicOffRoadCost = 1.5f;
+
+/* the basic planner's step: the base's cost, and for a step onto anything but road a penalty --
+ * water or a climb (soils 2 and 6) the wet cost, anything else the path's type bias times the
+ * off-road cost -- doubled for a step that leaves the road (SOCOM 1's CBasicTravel::fcost, which
+ * weighed the altitude itself). Both cells read through GetCell inlined one level, their soils
+ * taken into byte-enum locals ahead of the base's call (the andi 0xff at each use) */
+float CBasicPlanner::fcost(CAiMap &map, const CAiMapLoc &from, CAiMap::DIR dir, const CAiMapLoc &to)
+{
+    CAiCell *a = map.GetCell(from, 0);
+    CAiCell *b = map.GetCell(to, 0);
+    CAiMap::SOIL sa = (CAiMap::SOIL)a->m_soil;
+    CAiMap::SOIL sb = (CAiMap::SOIL)b->m_soil;
+    float cost = CAiPlanner::fcost(map, from, dir, to);
+    bool road = sb == CAiMap::SOIL_ROAD;
+    bool wet = true;
+
+    if (sb != CAiMap::SOIL_WATER && sb != CAiMap::SOIL_CLIMB)
+        wet = false;
+    if (!road) {
+        if (wet)
+            cost += s_basicWetCost * (sa == CAiMap::SOIL_ROAD ? 2.0f : 1.0f);
+        else
+            cost += s_typeBias * (s_basicOffRoadCost * (sa == CAiMap::SOIL_ROAD ? 2.0f : 1.0f));
+    }
+    return cost;
+}
+
+/* the stealth planner's step: the base's cost, raised by the path's type bias for a step into the
+ * open, lowered by half the bias for one from cover into cover, never below 0 (SOCOM 1's
+ * CStealthTravel::fcost, which weighed the shadow itself; the cover CAiCell::IsConcealing) */
+float CStealthPlanner::fcost(CAiMap &map, const CAiMapLoc &from, CAiMap::DIR dir, const CAiMapLoc &to)
+{
+    CAiCell *a = map.GetCell(from, 0);
+    CAiCell *b = map.GetCell(to, 0);
+    float cost = CAiPlanner::fcost(map, from, dir, to);
+
+    if (b->IsConcealing()) {
+        if (a->IsConcealing()) {
+            cost -= 0.5f * s_typeBias * cost;
+            if (cost < 0.0f)
+                cost = 0.0f;
+        }
+    } else {
+        cost += s_typeBias * cost;
+    }
+    return cost;
+}
+
 /* the restrained planner's step: the search limited to 5000 cells, the base's test, no soil 6,
  * and no closed door (SOCOM 1's CRestrainedTravel, the same tests). The soil read once into a
  * byte-enum local ahead of the base's test (written out, so MW shares its load with the soil-6
@@ -114,6 +166,50 @@ bool CRestrainedPlanner::is_traversable(CAiMap *map, CAiPath *path, const CAiMap
             return false;
     }
     return true;
+}
+
+/* a step's cost: 1, 2.5 onto a climb or an occupied cell, 1.3 times that on a diagonal; a steep
+ * cell at either end costs 10 when the step climbs, an overlay over the far cell 50, a collision
+ * cell 25 (SOCOM 1's CAiPlanner::fcost; SOCOM II adds the overlays and the collision soil). Both
+ * cells read through GetCell inlined one level, the overlays' walk inlined whole; the diagonal's
+ * factor a ternary (constant-first, as the target's mul.s), the last occupied test the field
+ * itself (through IsOccupied() MW loads the byte again).
+ * OPEN, 0x380 against 0x378 (new in the AI core round 26): one load. The target keeps the far
+ * cell's byte from the steep test's second compare (lbu v1, the soil andi'd off it) and the inlined
+ * overlay walk's occupied test reads that register; here CAiOverlayList::Contains(cell, loc) loads
+ * the byte again (and the loop head moves a word). Not through its parameter: the field read
+ * directly in Contains, the cell by reference, the far soil in a local (loaded unconditionally then,
+ * 88 off) all keep the reload; only the test written in the caller on `b` itself
+ * (`b->m_occupied && overlays.Contains(to)`) shares the load -- but then the occupied miss jumps
+ * past the walk's materialised result, which the target's inline holds (11 off) */
+float CAiPlanner::fcost(CAiMap &map, const CAiMapLoc &from, CAiMap::DIR dir, const CAiMapLoc &to)
+{
+    CAiCell *a = map.GetCell(from, 0);
+    CAiCell *b = map.GetCell(to, 0);
+    float cost = 1.0f;
+
+    if (a->m_soil == CAiMap::SOIL_STEEP || b->m_soil == CAiMap::SOIL_STEEP) {
+        float ha;
+        float hb;
+
+        map.GetAltitude(a, ha);
+        map.GetAltitude(b, hb);
+        if (hb > ha)
+            return 10.0f;
+    } else {
+        if (ai::overlays.Contains(b, to))
+            return 50.0f;
+        unsigned int soil = b->m_soil;
+
+        if (soil == CAiMap::SOIL_COLLISION)
+            return 25.0f;
+        if (soil == CAiMap::SOIL_CLIMB)
+            cost = 2.5f;
+        else if (b->m_occupied)
+            cost = 2.5f;
+    }
+    cost = dir & 1 ? 1.3f * cost : cost;
+    return cost;
 }
 
 /* the lists' storage reserved: 1024 open nodes, 24576 closed cells (0x5128F0) */

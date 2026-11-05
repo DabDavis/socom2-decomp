@@ -599,6 +599,108 @@ void CTurret::SampleDynamics(float dT)
     }
 }
 
+/* the yaw joint turned by its rate over the step: the node's x axis's (x, z) turned by the step's
+ * angle; inside the definition's yaw limits (both 2D crosses with the limits' (sin, cos) of the
+ * right sign) or clamped to the limit it passed, the joint's matrix rebuilt about y from the
+ * normalised direction and its angle written out; whether it moved (0x3A76D0) */
+extern "C" bool func_003A76D0(CTurret *t, float dT, float rate, CNode *node, CMatrix *m, float *angle)
+{
+    static CMatrix unit;
+    float a = rate * dT;
+    float s = sinf(a);
+    float c = cosf(a);
+    CPnt3D d;
+    float x0 = node->m_matrix.m_matrix[0][0];
+    float z0 = node->m_matrix.m_matrix[2][0];
+
+    d.x = s * x0 + c * z0;
+    d.y = 0.0f;
+    d.z = c * x0 - s * z0;
+    d.Normalize();
+
+    const TURRET_LIMIT_TRIG &lim = t->m_def->m_yawTrig;
+    float x = -d.x;
+    float z = -d.z;
+    float cmin = z * -lim.m_sinmin - x * -lim.m_cosmin;
+    float cmax = z * -lim.m_sinmax - x * -lim.m_cosmax;
+    bool moved = cmin <= 0.0f && cmax >= 0.0f;
+
+    if (!moved) {
+        if (cmin > 0.0f) {
+            d.x = lim.m_sinmin;
+            moved = true;
+            d.z = t->m_def->m_yawTrig.m_cosmin;
+        } else if (cmax < 0.0f) {
+            d.x = lim.m_sinmax;
+            moved = true;
+            d.z = t->m_def->m_yawTrig.m_cosmax;
+        }
+    }
+    if (moved) {
+        d.Normalize();
+        sceVu0CopyMatrix(m->m_matrix, node->m_matrix.m_matrix);
+        m->m_matrix[0][0] = d.z;
+        m->m_matrix[0][2] = -d.x;
+        m->m_matrix[2][0] = d.x;
+        m->m_matrix[2][2] = d.z;
+        *angle = atan2f(d.x, d.z);
+    }
+    return moved;
+}
+
+/* the pitch joint turned by its rate over the step from the angle kept (0x3B8): its direction's
+ * (sin, cos), inside the definition's pitch limits or clamped to the one it passed; then the angle
+ * written out (asin of the direction's x) and, with an extra angle to add, the direction turned by
+ * it; the joint's matrix rebuilt about x; whether it moved (0x3A7490) */
+extern "C" bool func_003A7490(CTurret *t, float dT, float rate, float extra, CNode *node, CMatrix *m,
+                              float *angle)
+{
+    static CMatrix unit;
+    float a = rate * dT;
+    float c = cosf(t->m_3b8 + a);
+    float s = sinf(t->m_3b8 + a);
+    CPnt3D d;
+
+    d.x = s;
+    d.y = 0.0f;
+    d.z = c;
+    d.Normalize();
+
+    const TURRET_LIMIT_TRIG &lim = t->m_def->m_pitchTrig;
+    float z = -d.z;
+    float cmin = d.x * -lim.m_cosmin - z * lim.m_sinmin;
+    float cmax = d.x * -lim.m_cosmax - z * lim.m_sinmax;
+    bool moved = cmin <= 0.0f && cmax >= 0.0f;
+
+    if (!moved) {
+        if (cmin > 0.0f) {
+            d.x = lim.m_sinmin;
+            moved = true;
+            d.z = t->m_def->m_pitchTrig.m_cosmin;
+        } else if (cmax < 0.0f) {
+            d.x = lim.m_sinmax;
+            moved = true;
+            d.z = t->m_def->m_pitchTrig.m_cosmax;
+        }
+    }
+    if (moved) {
+        *angle = asinf(d.x);
+        if (fabsf(extra) > 0.001f) {
+            c = cosf(*angle + extra);
+            s = sinf(*angle + extra);
+            d.x = s;
+            d.z = c;
+        }
+        d.Normalize();
+        sceVu0CopyMatrix(m->m_matrix, node->m_matrix.m_matrix);
+        m->m_matrix[1][1] = d.z;
+        m->m_matrix[1][2] = d.x;
+        m->m_matrix[2][1] = -d.x;
+        m->m_matrix[2][2] = d.z;
+    }
+    return moved;
+}
+
 /* the joints turned: the yaw's angle kept in 0x3B0, the pitch's in 0x3B8 (its extra cleared), then
  * the aim -- the pitch joint's world Z negated -- and bit 3 set, and while bit 1 is clear the scope's
  * frame from the pitch joint (SOCOM 1's Rotate, split; the name ours) */
@@ -666,11 +768,11 @@ static inline ZOOMSTATE ZoomState(CEntity *e)
  * twice (the target's `beqz v0; beqz v0` on one load: through IsControlled() it is reloaded, through
  * a `c ? c->m_entity : 0` inline the null is materialised) and the flag is set to an int 1 (`andi
  * a1,t0,0xff` off the 1 the tracer index stored; `true` is a daddiu of its own).
- * OPEN, 2 instructions: the weapon's call loads the shooter id (t3) ahead of the node (a1), here the
- * node first -- the same set-up otherwise. Tried: the id or the node in a local (before the call, at
- * the top, before the anim), the call through an inline wrapper in SOCOM 1's static parameter order
- * and in the member's, accessors for the id and the node, the weapon in a local, `false` for the last
- * word -- none moves the two loads */
+ * Byte-exact since the weapons' round 24 by the SEALs' round-34 rule (an argument needing a no-op
+ * conversion is evaluated first): the virtual's shooter parameter is an INT, so the unsigned m_id
+ * is converted and its load (t3) goes ahead of the node's (a1) -- as unsigned it came after. Before
+ * (rounds 15-21): the id or the node in a local, an inline wrapper in either parameter order,
+ * accessors, the weapon in a local, `false` for the last word */
 void CTurret::Fire()
 {
     if (!m_weapon || m_weapon->m_ID == EQUIP_NONE)
@@ -738,7 +840,7 @@ extern "C" void func_003A78E0(CTurret *t, float dT)
 #pragma auto_inline reset
 
 /* the yaw and pitch toward a direction in the turret's frame (0x3A8910, not written) */
-extern "C" void func_003A8910(CTurret *t, const CPnt3D *dir, float *yaw, float *pitch);
+extern "C" bool func_003A8910(CTurret *t, const CPnt3D *dir, float *yaw, float *pitch);
 
 /* the yaw and pitch toward a point: the direction to it from the fire point, unit length, into the
  * turret's frame; straight ahead (-z) without one (new in SOCOM II, not named: the SEALs' vehicle
@@ -757,6 +859,81 @@ extern "C" void func_003A8BD0(CTurret *t, const CPnt3D *target, float *yaw, floa
         dir = CPnt3D::unit_nz;
     }
     func_003A8910(t, &dir, yaw, pitch);
+}
+
+/* the aim's statics (the unit's data, 8-byte spaced): the dot's ceiling (1), the cosine of ten
+ * degrees inside which the aim slows, the slowed step's scale (1), and the clamps' bounds (-1, 1)
+ * of the yaw's and the pitch's */
+extern "C" float data_003E07E8;
+extern "C" float data_003E07F0;
+extern "C" float data_003E07F8;
+extern "C" const float data_003E0838;
+extern "C" const float data_003E0840;
+extern "C" const float data_003E0848;
+extern "C" const float data_003E0850;
+
+/* the yaw and pitch toward a direction in the turret's frame (0x3A8910; the name ours): the
+ * direction's heading against the yaw joint's -z axis, its elevation against the pitch joint's
+ * rows -- each nothing once on it, slowed (the cross product, clamped) within ten degrees, else
+ * the full step toward it -- times the definition's rates.
+ * OPEN, 2 instructions long (written in the weapons' round 24): the yaw joint's -z axis is copied
+ * through one pointer and negated in place, the target reading and writing its three fields
+ * sp-relative (y, x, z: loads, negs, stores) where MW here hoists &z.y and &z.z into a0/a1 ahead
+ * of the copy and so cannot batch the loads; the registers follow. Settled on the way: the sign
+ * step tests the cross product still in its register (a `cross` variable the clamp's copy starts
+ * from) and is `cross >= 0 ? 1 : -1` (the target's bc1t to -1); `cross < 0 ? -1 : 1` or an if/else
+ * branch the other way (11 more). Tried for the negation: three statements (y, x, z or x, y, z),
+ * the three-float constructor, an inline Neg(CPnt3D *), the axis out of an inline returning it by
+ * value (the row or the z axis) -- the same two addresses or worse; assigned, it scalarises (38) */
+extern "C" bool func_003A8910(CTurret *t, const CPnt3D *dir, float *yaw, float *pitch)
+{
+    CPnt3D d = *dir;
+    float len = sqrtf(d.x * d.x + d.z * d.z);
+    float s = 0.0f;
+    float c;
+
+    if (s == len)
+        c = 1.0f;
+    else {
+        c = -d.z / len;
+        s = -d.x / len;
+    }
+    CMatrix m;
+
+    m.SetIdentity();
+    CPnt3D z = *(CPnt3D *)t->m_yawNode->m_matrix.m_matrix[2];
+
+    z = CPnt3D(-z.x, -z.y, -z.z);
+    float dot = z.x * -s + z.z * -c;
+    float cross = z.z * -s - z.x * -c;
+    float yv = cross;
+
+    if (dot > data_003E07E8)
+        yv = 0.0f;
+    else if (dot > data_003E07F0) {
+        yv *= data_003E07F8;
+        _saturate<float>(&yv, data_003E0838, data_003E0840);
+    } else
+        yv = cross >= 0.0f ? 1.0f : -1.0f;
+    *yaw = t->m_def->m_yawRate * yv;
+
+    float inv = 1.0f / sqrtf(len * len + d.y * d.y);
+    float h = len * inv;
+    float v = d.y * inv;
+    const float *r = t->m_pitchNode->m_matrix.m_matrix[1];
+    float dot2 = r[2] * v + r[1] * h;
+    float cross2 = r[2] * -h - -r[1] * v;
+    float pv = cross2;
+
+    if (dot2 > data_003E07E8)
+        pv = 0.0f;
+    else if (dot2 > data_003E07F0) {
+        pv *= data_003E07F8;
+        _saturate<float>(&pv, data_003E0848, data_003E0850);
+    } else
+        pv = cross2 >= 0.0f ? 1.0f : -1.0f;
+    *pitch = t->m_def->m_pitchRate * pv;
+    return true;
 }
 
 /* (called, never inlined: ~CTurret calls it). Its remove_copy instance (0x3AB9A0) is byte-exact.

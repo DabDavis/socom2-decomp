@@ -330,29 +330,37 @@ void C2DBitmapPoly::Rotate_Zaxis(float s, float c)
 }
 
 /* the texture's library, once, then the children's.
- * OPEN, 0x108 against 0xC8 (m2c's draft matches, so this stays out of the build): the target calls
- * the library vector's begin, end, find, == and push_back out of line (their copies follow it,
+ * OPEN, 3 instructions (m2c's draft matches, so this stays out of the build): the target calls the
+ * library vector's begin, end, find, == and push_back out of line (their copies follow it,
  * 0x358670-0x358728, in reverse of first use; all five C2D GetAssetLibs call these same copies,
- * c2dbitmap_poly.cpp's being linked first), where include/vector's pointer vector inlines all five
- * here. Five calls out of line is the shape of an inline helper inlined one level, which needs it
- * five high. Measured with wrapper ladders (build/scratch/hud/p_vh.cpp): begin and end are 3 high,
- * find 2, push_back 2, == 1, and a call in argument position of an inline call counts a level
- * deeper -- so a helper holding this test is 4 high and inlines whole (begin and end one level
- * inside it, 0x160), one wrapper more and the wrapper is called (0x80); a non-inline template is
- * called, an inline one inlines whole, `inline` on this definition changes nothing (0x104). The
- * helper's fifth level is not found yet */
+ * c2dbitmap_poly.cpp's being linked first). Since the MSL headers' round 24 (the pointer vector's
+ * original iterator, end() four high) the test in an inline helper is too tall to inline whole and
+ * is inlined one level, calling exactly those five -- this unit then emits the five copies, and its
+ * find<...iterator, CAssetLib *> is byte-exact against 0x3586B0 (`./scdiff.py ... --target
+ * 0x3586B0`; the row is unwritten, no draft emits it). The library is assigned in the test through
+ * a pointer the helper takes by reference (`(lib = ...) != 0`): its store fills the test's delay
+ * slot, as the target's, where a by-value helper leaves a nop and pads the join (0xD0), a
+ * reference to a plainly initialised lib, or the test inside the helper, reload it (7). What is
+ * left is C2D::GetAssetLibs's inline walk: the target loads the first node from this (s1) and
+ * then makes the end in this's register (`lw s0,8(s1); addiu s1,s1,4`), MW here keeps this in s0
+ * and shares it with the node (`addiu s1,s0,4; lw s0,8(s0)`) -- the end numbered before the node
+ * but computed after it, which no declaration order gives (begin first swaps both, a dead first
+ * definition of the end assigns it a level deeper; CHandlerButton::HandlePad 0x3765A0 misses on
+ * the same sharing). Before round 24 the helper inlined whole (0x160) */
 #if 0
+static inline void AddLib(C2D::CLibList &liblist, zdb::CAssetLib *const &lib)
+{
+    if (std::find(liblist.begin(), liblist.end(), lib) == liblist.end())
+        liblist.push_back(lib);
+}
+
 void C2DBitmapPoly::GetAssetLibs(CLibList &liblist)
 {
     if (m_texture) {
-        zdb::CAssetLib *lib = m_texture->m_assetlib;
+        zdb::CAssetLib *lib;
 
-        if (lib) {
-            CLibList::iterator it = std::find(liblist.begin(), liblist.end(), lib);
-
-            if (it == liblist.end())
-                liblist.push_back(lib);
-        }
+        if ((lib = m_texture->m_assetlib) != 0)
+            AddLib(liblist, lib);
     }
     C2D::GetAssetLibs(liblist);
 }
