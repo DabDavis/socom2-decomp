@@ -209,7 +209,13 @@ static inline zdb::CTexture *HandleTexture(zdb::CTexHandle *h)
  * it`, the weapon cast out through `it.i_` and a while walk move none of it. Round 18: the end taken
  * into a local before the iterator (the kit's round-21 rule) gives the iterator s1, the end s2, the weapon s0 (this's
  * register reused), 52 off -- the target computes the end in place in this's register (`addiu s1,s1,4`);
- * an iterator assigned from begin() ahead of the end local (the AI core's round 20) is 0x3C8 long */
+ * an iterator assigned from begin() ahead of the end local (the AI core's round 20) is 0x3C8 long.
+ * Round 30, by `tools/igreplay.py --target` on the `it = begin(); e = end();` walk (52 off: the end
+ * hoisted into s1, this's register taken by the weapon): with the end and the iterator numbered right
+ * after the weapon (--move 54=33.5 --move 53=33.6) this, the end, the iterator and the weapon all take
+ * the target's registers (this and the end sharing s1), leaving only hit/mat against the inner loops'
+ * counters (s3/s5 swapped) -- but a class iterator's scalarised fields are temporaries, numbered after
+ * every named local, so no walk over the list's own iterators reaches that numbering */
 void CZWeaponList::InitializeWeapons()
 {
     CZWeapon::SetBulletPassSound(CSnd::GetSoundByName(".BUL_PASSING"));
