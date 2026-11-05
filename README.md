@@ -11896,6 +11896,45 @@ named: 0x5042B8 `CreateFreqWindow` (`s1:calls+order`: SOCOM 1's InitSHS_VUV call
 the block's last table), 0x504520 `InitSHS_VUV` (`s1:slot`: ConstructSHS_VUV's init slot, as SOCOM 1's).
 casr.h gains +960 (the label scoring's result). No tool changed.
 
+**Round 30c: the SHS object whole, DoUserWordTraining, FindBestTranscription written.**
+
+- **A temporary set twice keeps a sum in its loop and gives the result a pseudo of its own**
+  (SubHarmonicSummation_and_VUVDetermination, round 29c's 38 words): the per-harmonic end as `t = out + n;
+  t -= k; hend = t;` -- set twice, t is no loop.c movable, so `out + n*4` stays in the outer loop
+  (`addu v1,t0,t5`, SOCOM 1's compile too), and the copy into hend gives the end its own register once
+  combine folds the subtraction into it (`subu t1,v1,v0`). `hend = out + n - k` hoists the sum; `end = out +
+  n; end -= k` keeps both in one register. With the sum split off, the end is set once and ranks below out
+  in global-alloc (round 29c's separate end, set twice, outranked it). Also: `x = in[0];
+  x++;` loads into x's own register (`x = in[0] + 1` loads into v0 first); a ratio tested as an expression
+  (`max / *x < s->f56`) keeps the quotient a pseudo of its own; independent loads issue in source order
+  (`q = s->f84; off = s->f92;` after the copy end).
+- **expand_end_loop rolls a `for (;;)` up to its first exit** (ProcessSHS_VUV): with the peak path's guard
+  written as `if (p == pend) break;` before the fifth copy, the code from the loop top to that exit (the
+  peak test, four copies, the guard) moves to the loop's end, so the not-a-peak exit test and the
+  increment sit above the body and the loop is entered by a jump over them -- the target's (and SOCOM
+  1's) layout, where a do-while keeps its test below the body. The entry jump into a loop's middle is
+  this rotation here, round 28c's conditional cross-jump in Smoothing.
+- **CSE's class head is the longer-lived register**: the zeroing walker loaded as `z = s->f64; peaks = z;`
+  and reused as the window loop's output walker outlives peaks, so CSE keeps z first and the unrolled
+  preconditioning stores through it (`sw zero,0(a0)` in a plain slot, peaks a copy in t2); a short-lived
+  walker is rewritten to peaks (`sw zero,0(a3)`, two slots annulled). A copy's base a variable of its own
+  (`dst[-2] = ...; dst[-1] = ...; q = dst; *q++ = ...`) for the target's `move a0,v0`.
+- **A multiply through a register holding a constant is a variable at the tree level**
+  (FindBestTranscription): the target's `li s2,3; mult v1,a0,s2` (SOCOM 1's too) comes from `j * n + i`
+  with `int n = 3` -- a literal 3 is synthesised (`sll; addu`) and `i * 3 + i` folds to `i * 4`; the
+  compares still take the immediate (CSE).
+- **Open, diagnosed in place**: FindBestTranscription (0x390 against 0x398: the second loop's own register
+  for 3, the first row's base in a register, the acoustic term's `- 0.9` after its join where fold
+  distributes and folds it, the zeros' copy order). Not reached: CreateSecondPassTreeContext,
+  DoDurationModeling, ScoreTranscriptions, ExtendNodeWheel, ConstructBlock, PitchCombinerReset/
+  InitPitchCombiner, InitViterbi@nbestdp (their diagnoses stand).
+
+Hand-written in round 30c: `asr/shs.c` (SubHarmonicSummation_and_VUVDetermination and ProcessSHS_VUV closed:
+the object whole, 8 of 8), `asr/userword.c` (DoUserWordTraining new, SOCOM 1's body as it stands;
+FindBestTranscription OPEN: 16 of 19) -- 3 rows new to the map's byte-exact rows (3,252 bytes), no draft
+superseded; `src/lib/asr` 556 of 583 (553 of 581 before). No rows named (all had SOCOM 1's). casr.h types
++920/+924 (the trained transcription's out-parameters). No tool changed.
+
 **Round 14b: the "toolchain" opens were SCEA's shapes; LargeInt's core is assembly.**
 
 - **LargeInt's EE primitives are hand-written assembly** (0x628B48-0x629A44, between LargeInt.c's C and
