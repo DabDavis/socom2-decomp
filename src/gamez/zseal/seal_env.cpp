@@ -79,10 +79,16 @@ static inline float Rand01()
 }
 
 /* a size in a decal's range (an inline: its arguments are loaded before rand() runs; the range
- * is lost -- (hi - hi) -- in both builds) */
+ * is lost -- (hi - hi) -- in both builds). The sum assigned back over `hi` -- a parameter reused is
+ * computed where it is assigned, so HandleBloodDrip has it before GetDecalNode is called (the target's
+ * add in that call's delay slot, $f22 never saved: returned as an expression MW sinks it below the
+ * call, 4 bytes long) -- and the random value a local first (in place it swaps the mul's operands) */
 static inline float RandSize(float lo, float hi)
 {
-    return lo + Rand01() * (hi - hi);
+    float r = Rand01();
+
+    hi = lo + r * (hi - hi);
+    return hi;
 }
 
 /* a material's extension (int_material.cpp's, held in zweapon.h's CMaterialExArray): only the
@@ -158,13 +164,9 @@ void CZSealBody::HandleFootfallSound(CPnt3D *pos)
 
 /* now and then a wounded SEAL drips blood: offline only, a random decal of the set at random size
  * under it, along its altitude hit (OVL2 0x5A33B0; SOCOM 1's word for word, the timer at 0x214 --
- * its size range is min + r * (max - max), as both builds have it).
- * OPEN, 0x1BC against 0x1B8 (93 of 110 instructions in place): the target computes the whole size
- * before GetDecalNode is called (the sum in $f20, hi's register, in the call's delay slot) and so
- * saves only $f20/$f21; MW here keeps the random product in $f20 across the call and adds after
- * it, saving $f22 too. Tried: the size in a local, the decal node in a local, the helper's sum
- * through a local, the product written inside the argument with min and max in locals (either
- * order). The early return and the zero-first pick (`if (n == 0) def = 0; else ...`) are the
+ * its size range is min + r * (max - max), as both builds have it). Byte-exact since the SEALs' round
+ * 41 (0x1BC against 0x1B8 since round 13): RandSize assigns its sum back over its `hi` parameter
+ * (above). The early return and the zero-first pick (`if (n == 0) def = 0; else ...`) are the
  * target's. */
 void CZSealBody::HandleBloodDrip(float dT)
 {
@@ -1185,11 +1187,6 @@ bool func_0058A470(CZSealBody *seal, AnimType type);
 }
 
 extern "C" {
-/* the item in hand in an M203's or a grenade launcher's fire mode (the kit's OVL2 0x5BDA00 and
- * 0x5BD6D0, tail calls on its selected item: SOCOM 1's CurWeaponIsM203Mode and its launcher twin --
- * the kit lane's rows) */
-bool func_005BDA00(CZKit *kit);
-bool func_005BD6D0(CZKit *kit);
 /* the reloads SOCOM II adds (OVL1 data, anim types beside data_003DF098..0x3DF0C8) and the throwables'
  * set's reload (0x3DF0D8, its timed call the kit's ShowProjectile: OVL2 0x5A78C0) */
 extern short data_003DF0B0;
@@ -1223,7 +1220,9 @@ bool CZSealBody::Reload(bool b)
     bool moving = m_velM.x * m_velM.x + m_velM.y * m_velM.y + m_velM.z * m_velM.z > 400.0f;
     bool launcher = true;
 
-    if (!func_005BDA00(&m_kit) && !func_005BD6D0(&m_kit))
+    /* the item in hand in an M203's or a grenade launcher's fire mode (the kit's CurWeaponIsM203Mode
+     * 0x5BDA00 and CurWeaponIsGrenadeLauncherMode 0x5BD6D0, tail calls on its selected item) */
+    if (!m_kit.CurWeaponIsM203Mode() && !m_kit.CurWeaponIsGrenadeLauncherMode())
         launcher = false;
     bool pistolkind = false;
 
@@ -2861,27 +2860,79 @@ static inline float RandBetween(float lo, float hi)
     return lo + (hi - lo) * Rand01();
 }
 
+/* how many of a projectile's pellets reach the SEAL, offline: 8 within 30, and 1-7 at random by the
+ * same spread; for any weapon but the shotgun (81) one fewer crouched and three fewer prone, none
+ * below zero; past 30 the count falls with the square of the distance, its fraction kept at random
+ * (OVL2 0x5A18B0, new in SOCOM II beside 0x5A1620, written after it: 0x5A0E70 calls it; the name
+ * unknown) */
+extern "C" int func_005A18B0(CZSealBody *seal, CZProjectile *proj)
+{
+    CPnt3D d = seal->m_posW;
+
+    *(PNT3D *)&d = d - proj->m_framestartpos;
+    int n = 0;
+    float dist = d.x * d.x + d.y * d.y + d.z * d.z;
+
+    if (dist < 900.0f)
+        n += 8;
+    float r = Rand01();
+
+    if (r < 0.05f)
+        n += 1;
+    else if (r < 0.15f)
+        n += 2;
+    else if (r < 0.5f)
+        n += 4;
+    else if (r < 0.85f)
+        n += 5;
+    else if (r < 0.95f)
+        n += 6;
+    else if (r <= 1.0f)
+        n += 7;
+    if (proj->m_weapon->GetIDType() != 81) {
+        switch (seal->GetStance(false)) {
+        case stateProne:
+            n -= 3;
+            break;
+        case stateCrouch:
+            n -= 1;
+            break;
+        }
+    }
+    if (n < 0)
+        n = 0;
+    if (n > 0 && !(dist <= 900.0f)) {
+        float f = 900.0f * (float)n / dist;
+
+        n = (int)f;
+        f -= (float)n;
+        if (RandBetween(0.0f, 1.0f) <= f)
+            n++;
+    }
+    return n;
+}
+
 /* how many of a shotgun shot's pellets from a point reach the SEAL: 8 within the near range (online's
  * wider), 4 more online within the far, and 1-7 at random by a fixed spread; past the near range the
  * count falls with the square of the distance, its fraction kept at random (OVL2 0x5A1620, new in SOCOM
  * II: RemoteWeaponDamageVictim and 0x5ABBC0 call it; the name unknown).
- * OPEN, 0x294 against 0x284 (the SEALs, round 40; the rest in place): the target copies the SEAL's
- * position into the frame (three loads, three stores through a pointer), subtracts *from through Sub
- * into a temporary, block-copies that (ld/sd) into operator-'s return slot and then copies the return
- * slot back over the first copy's slot with three loads then three stores at fixed offsets; `d = d -
- * *from` assigns it interleaved through two address registers (16 bytes long, the network flag's load
- * placed after), and every initialised spelling -- `CPnt3D d = pos - *from`, `CPnt3D(seal->m_posW) -
- * *from`, with or without the count declared between -- elides the last copy (0x274, 16 short). Wants
- * the shape that assigns the return slot back loads-first (a by-value CPnt3D operator result into a
- * local held in the same slot: the kit's round 39 two-point local is the nearest measured) */
+ * Byte-exact (the SEALs, round 41; 0x294 against 0x284 since round 40) by three things: the operator's
+ * return slot assigned back over the position's copy THROUGH ITS PNT3D BASE, `*(PNT3D *)&d = d -
+ * *from` -- a C struct's assignment, three loads then three stores at fixed offsets, where CPnt3D's
+ * own (and `(PNT3D &)d`, an inline `*p = *p - b`, member stores) go through two address registers and
+ * every initialised spelling elides the copy (0x274); the network flag read into an unsigned char (a
+ * bool local normalises it, sltu); the ratio assigned back over `dist` -- a reused variable is a web
+ * numbered after the named locals, so the count's conversion still colours first (f0) with the
+ * multiply's operands in the target's order (a ratio local, an inline divide or `n * (range / dist)`
+ * swap f0/f1, `s * (float)n` the operands) */
 extern "C" int func_005A1620(CZSealBody *seal, const CPnt3D *from)
 {
     CPnt3D d = seal->m_posW;
 
-    d = d - *from;
+    *(PNT3D *)&d = d - *from;
     int n = 0;
     float dist = d.x * d.x + d.y * d.y + d.z * d.z;
-    bool online = theNetwork.m_9;
+    unsigned char online = theNetwork.m_9;
     float range = online ? s_pelletNearOnline : s_pelletNear;
 
     if (dist < range)
@@ -2903,7 +2954,8 @@ extern "C" int func_005A1620(CZSealBody *seal, const CPnt3D *from)
     else if (r <= 1.0f)
         n += 7;
     if (n > 0 && !(dist <= range)) {
-        float f = (float)n * (range / dist);
+        dist = range / dist;
+        float f = (float)n * dist;
 
         n = (int)f;
         f -= (float)n;
@@ -3984,7 +4036,11 @@ public:
     unsigned char _0[0x1c];
     int m_users;   // 0x1c (the names ours)
     unsigned int m_owner;   // 0x20: the entity id of the SEAL holding it
-    unsigned char _24[0x28 - 0x24];
+    int m_index;   // 0x24: the index a SEAL taking it holds (0x5B1130 stores it to m_ladder)
+
+    /* the count read through an accessor: 0x5B1130 tests it, then loads it again to count itself in
+     * (the field read straight is reused from the test, 10 off) */
+    int GetUsers() const { return m_users; }
 };
 
 class CLadderList {
@@ -4100,6 +4156,58 @@ extern "C" void func_005B1350(CZSealBody *seal, int b, int index)
     }
 }
 
+/* the SEAL's ladder, or with none a free one taken: its users counted, the SEAL's index set from the
+ * ladder's, the ladder's owner cleared (an inline bool: 0x5B1130's) */
+static inline bool TakeLadder(CZSealBody *seal, unsigned int index)
+{
+    if (seal->m_ladder == index)
+        return true;
+    if (seal->m_ladder != data_003F3438)
+        return false;
+
+    CLadderData *ladder = theMission.m_ladders->GetLadderByIndex(index);
+
+    if (ladder) {
+        if (ladder->GetUsers() > 0)
+            return false;
+        ladder->m_users++;
+        seal->m_ladder = ladder->m_index;
+        ladder->m_owner = CEntity::invalidId;
+        return true;
+    }
+    return false;
+}
+
+/* a ladder's grant passed on: the first SEAL holding the ladder in state 1 under the byte takes it,
+ * its hold moved to state 3 when it could (OVL2 0x5B1130, new in SOCOM II: the game states' handler
+ * OVL1 0x2B9E20 calls it; the name unknown). The index an int (an unsigned short param narrows it,
+ * the target only copies it: s1 for the hold's test, s0 the inline's unsigned copy); the flag set
+ * before the cast and tested inside `if (seal)` (a null SEAL steps on past the test); the compares
+ * with the parameter on the left (`bne s2,v1`) */
+extern "C" void func_005B1130(unsigned char b, int index)
+{
+    CEntityList::const_iterator it;
+
+    for (it = CEntity::GetEntityList().begin(); it != CEntity::GetEntityList().end(); ++it) {
+        bool done = false;
+        CEntity *e = *it;
+        CZSealBody *seal = e && e->m_type == CEntity::ENT_TYPE_SEAL ? (CZSealBody *)e : 0;
+
+        if (seal) {
+            switch (seal->m_climb.m_state) {
+            case 1:
+                if (b == seal->m_climb.m_active && index == seal->m_climb.m_ladder) {
+                    if (TakeLadder(seal, index))
+                        seal->m_climb.m_state = 3;
+                    done = true;
+                }
+            }
+            if (done)
+                break;
+        }
+    }
+}
+
 extern "C" {
 /* (OVL2 0x5B1C80, not written: the ladder taken up by its index) */
 void func_005B1C80(CZSealBody *seal, int ladder);
@@ -4175,6 +4283,58 @@ public:
 static inline CHomingAim *HomingOf(CZBodyAnimBlend *b)
 {
     return (CHomingAim *)&b->m_homing;
+}
+
+/* a point brought onto a ladder's run between its two ends, on the flat: within 3 of one end only, put
+ * 3 from that end along the run; within 3 of both -- or asked for the middle -- put at the middle; false,
+ * left as it is, when it is near neither (OVL2 0x5B3A60, new in SOCOM II: 0x5B2620 calls it three times,
+ * the SEAL and its ladder passed unread; the names ours). The run's direction declared ahead of the
+ * offset (CPnt3D locals: the later-declared at the lower slot); the middle assigned, not initialised
+ * (a copy-initialised local is stored loads-first through its address, an assignment member by member
+ * at fixed offsets) */
+extern "C" bool func_005B3A60(CZSealBody *seal, const CPnt3D *ends, CPnt3D *pos, void *ladder, bool mid)
+{
+    if (!mid) {
+        CPnt3D w;
+        CPnt3D v;
+
+        v = ends[0];
+        v.Sub(pos, &v);
+        v.y = 0.0f;
+        float d0 = v.Length();
+
+        v = ends[1];
+        v.Sub(pos, &v);
+        v.y = 0.0f;
+        float d1 = v.Length();
+
+        if (!(d0 < 3.0f) && !(d1 < 3.0f))
+            return false;
+
+        w = ends[1];
+        w.Sub(&ends[0], &w);
+        w.y = 0.0f;
+        w.Normalize();
+        if (d0 < 3.0f && !(d1 < 3.0f)) {
+            v = ends[0];
+            w.Scale(3.0f, &w);
+            v.Add(&w, pos);
+            return true;
+        }
+        if (!(d0 < 3.0f) && d1 < 3.0f) {
+            v = ends[1];
+            w.Scale(3.0f, &w);
+            v.Sub(&w, pos);
+            return true;
+        }
+    }
+
+    CPnt3D m;
+
+    m = ends[0];
+    m.Add(&ends[1], &m);
+    m.Scale(0.5f, pos);
+    return true;
 }
 
 /* the wall's hit the SEAL holds kept or dropped: dropped when asked, or when the SEAL is more than 24
@@ -4481,6 +4641,124 @@ AnimType CZSealBody::FindRandomDeathAnim(DAMAGE_LOCATION where, bool *b)
         }
     }
     return func_005A0950(this, where, state);
+}
+
+extern "C" {
+/* three hurt anims a pick moves off when the flag is set (OVL1 data, the AnimTypes statics two to four
+ * before Stab -- SOCOM 1's there are DeathStandChest03 and its pistol pair: not named, SOCOM II's
+ * order changed) and the flag (OVL1 0x45A0C1, seal_ai.cpp's) */
+extern short data_003DEE00;
+extern short data_003DEDF8;
+extern short data_003DEDF0;
+extern unsigned char data_0045A0C1;
+}
+
+/* a hurt anim for where the SEAL was hit: the stance as for a death (idle, carrying and carried count as
+ * standing), past half of a stance change the stance it is going to, stunned prone -- the state kept
+ * as the desired one unless the body is idle, dead, carrying or carried; then one of that stance's at
+ * random, none when there are none -- with the flag set, a pick of the three anims above moves on to
+ * the next of the others, up to eight, one of them at random (OVL2 0x5A0270; SOCOM 1's, the move-on
+ * new). The body's state test one unsigned range (`sltiu at` branched on: a switch over the four
+ * gives a compare chain and costs the first switch its delay-slot fills, 0x40 long); `count > 1`
+ * branches on `slti at` where `>= 2` computes into v0; the control's IsRemote called, its result
+ * unused (a compiled-out print's test, likely) */
+AnimType CZSealBody::FindRandomDamageAnim(DAMAGE_LOCATION where, bool *b)
+{
+    *b = false;
+    SEAL_STATE state = GetStance(false);
+
+    switch (state) {
+    case stateStand:
+    case stateCrouch:
+    case stateProne:
+        break;
+    case stateIdle:
+    case stateCarrying:
+    case stateCarried:
+        state = stateStand;
+        break;
+    case stateDead:
+        state = (SEAL_STATE)func_0057DBB0(this);
+        BodySetState(8);
+        break;
+    default:
+        state = (SEAL_STATE)func_0057DBB0(this);
+        break;
+    }
+    if (IsCurrentBlend((AnimType)17) || IsCurrentBlend((AnimType)19) || IsCurrentBlend((AnimType)25)) {
+        float t = ((CZBodyAnimBlend *)func_00555170(&m_blends))->m_tfrac;
+        bool late = false;
+        bool back = func_005551A0(((CZBodyAnimBlend *)func_00555170(&m_blends))->m_flags, 32);
+
+        if (back) {
+            if (t > 0.5f)
+                late = true;
+        } else if (t < 0.5f)
+            late = true;
+        if (late) {
+            if (IsCurrentBlend((AnimType)17)) {
+                if (back)
+                    state = stateCrouch;
+                else
+                    state = stateStand;
+            }
+            if (IsCurrentBlend((AnimType)19)) {
+                if (back)
+                    state = stateProne;
+                else
+                    state = stateCrouch;
+            }
+            if (IsCurrentBlend((AnimType)25)) {
+                if (back)
+                    state = stateProne;
+                else
+                    state = stateStand;
+            }
+        }
+    }
+    if (m_am_stunned)
+        state = stateProne;
+    if ((unsigned int)(m_state - stateIdle) > stateCarried - stateIdle)
+        m_desiredState = state;
+
+    int n = AnimSet::damageanim[where][state].size();
+
+    if (n <= 0)
+        return (AnimType)-1;
+
+    AnimType anim;
+
+    if (n == 1)
+        anim = AnimSet::damageanim[where][state][0];
+    else {
+        int r = rand() % n;
+
+        anim = AnimSet::damageanim[where][state][r];
+        if (data_0045A0C1) {
+            if (m_control)
+                ((CSealCtrl *)m_control)->IsRemote();
+            if (anim == data_003DEE00 || anim == data_003DEDF8 || anim == data_003DEDF0) {
+                int picks[8];
+                int count = 0;
+
+                for (int i = (r + 1) % n; i != r; i = (i + 1) % n) {
+                    anim = AnimSet::damageanim[where][state][i];
+                    if (anim != data_003DEE00 && anim != data_003DEDF8 && anim != data_003DEDF0) {
+                        picks[count++] = i;
+                        if (count >= 8)
+                            break;
+                    }
+                }
+                if (count == 1)
+                    r = picks[0];
+                else if (count > 1)
+                    r = picks[rand() % count];
+                if (count > 0)
+                    anim = AnimSet::damageanim[where][state][r];
+            }
+        }
+    }
+    return anim;
 }
 
 extern "C" {
