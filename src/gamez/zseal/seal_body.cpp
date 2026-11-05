@@ -71,7 +71,12 @@ CPnt3D running_pistol_throw(3.056369f, 11.494563f, -3.000149f);
  * strength-reducing the walk (the target's `sll; addu` each pass -- 0x57DBB0 matches so); left, the
  * registers: the target narrows the type into a0 first and loads the array into v1, MW the other
  * way round. Tried: the compare reversed, a short parameter, the type cast or copied first, the
- * stack through a reference, the members straight off the SEAL, the body as a CBody. */
+ * stack through a reference, the members straight off the SEAL, the body as a CBody. Round 41, by
+ * MW's own colouring (tools/igvar.py): the array's hoisted load is temporary @8332, the type's
+ * sign extension @8334, so the extension colours first (v1) and the array takes a0 -- the target
+ * needs the extension numbered first. Still 5: the element a local, an int local for its type, a
+ * (short) or (AnimType) cast, a BlendIs inline, a result flag with break (18); an InStack(stack,
+ * type) inline taking an int, short or AnimType type: 6-7. */
 static inline CZBodyAnimBlend *BlendAt(CBodyAnimBlendStack *stack, unsigned int i)
 {
     return stack->m_stack[i];
