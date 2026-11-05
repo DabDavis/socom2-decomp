@@ -302,6 +302,15 @@ public:
     EQUIP_AMMO GetDefaultAmmoId();
     CZAmmo *GetDefaultAmmo();
 
+    /* the impact radius (SOCOM 1's GetImpactRadius, const, the float at 0x4C: 0x3D27D0, between
+     * the muzzle velocity's getter and GetEffectiveRange as in SOCOM 1; CZProjectile::HandleImpact
+     * scales it for the hit's AI noise) */
+    float GetImpactRadius() const;
+    /* the arming distance (SOCOM II's, the float at 0x68: 0x3D2030 and 0x3D2040; ReadWeapon's
+     * "ArmingDistance" -- an impact nearer the start bounces as a dud in HandleImpact; the names
+     * ours) */
+    float GetArmingDistance();
+    void SetArmingDistance(float v);
     /* the range (SOCOM 1's, the float at 0x3C: 0x3D27F0) */
     float GetMaxRange();
     /* the range full damage reaches (SOCOM 1's GetEffectiveRange, the float at 0x40: 0x3D27E0,

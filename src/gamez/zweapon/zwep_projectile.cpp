@@ -71,11 +71,6 @@ extern "C" void func_002707C0(CZAnim *anim, int b);
 /* the tracers' speed (0x3E1570, initialised data; not named) */
 extern "C" float data_003E1570;
 
-/* the weapon's impact radius (0x3D27D0, m_impactradius) and arming distance (0x3D2030, the float
- * at 0x68: an impact nearer the start bounces as a dud) -- zwep_weapon.cpp's getters, not named */
-extern "C" float func_003D27D0(CZWeapon *weapon);
-extern "C" float func_003D2030(CZWeapon *weapon);
-
 /* a dud's velocity scale (0x3E1510, initialised data; not named) */
 extern "C" float data_003E1510;
 
@@ -682,7 +677,7 @@ PROJECTILE_HIT CZProjectile::HandleImpact(IntersectStruct *hit, float dT, float 
     if (!same)
         CZWeapon::m_pMarklist->AddNewMark(hit, this, 1.0f);
     if (weapon && !same) {
-        float r = func_003D27D0(m_weapon);
+        float r = m_weapon->GetImpactRadius();
 
         r *= ex->m_impact_radius_mod;
 
@@ -697,13 +692,13 @@ PROJECTILE_HIT CZProjectile::HandleImpact(IntersectStruct *hit, float dT, float 
             CAiEvent::Create(e);
         }
     }
-    if (weapon && func_003D2030(weapon) > 0.0f) {
+    if (weapon && weapon->GetArmingDistance() > 0.0f) {
         CPnt3D d = *pos;
 
         d = d - m_startpos;
         float len = d.Length();
 
-        if (len < func_003D2030(weapon)) {
+        if (len < weapon->GetArmingDistance()) {
             m_vel = m_vel * data_003E1510;
             m_time = 9999999.0f;
             SetDone(true);

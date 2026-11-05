@@ -104,7 +104,6 @@ extern "C" {
 void func_003D2AC0(CZWeapon *w, const char *s);   /* Description */
 void func_003D2770(CZWeapon *w, CZAmmo *ammo);   /* AMMO_TYPES' NAME */
 void func_003D2060(CZWeapon *w, float f);   /* Damage_Modifier */
-void func_003D2040(CZWeapon *w, float f);   /* ArmingDistance */
 void func_003D20E0(CZWeapon *w, const char *s);   /* ReloadSound */
 void func_003D2070(CZWeapon *w, const char *s);   /* ReloadAfterShotSound */
 void func_003D2C30(CZWeapon *w, float f);   /* ReloadDelay */
@@ -314,7 +313,7 @@ void ZWepReader::ReadWeapon(_zrdr *entry)
     func_003D2060(w, f);
     if (!zrdr_findreal(entry, "ArmingDistance", &f, 1))
         f = 0.0f;
-    func_003D2040(w, WorldScaled(f));
+    w->SetArmingDistance(WorldScaled(f));
     if (!zrdr_findreal(entry, "Sound_Radius", &f, 1))
         f = 0.0f;
     w->SetSoundRadius(WorldScaled(f));

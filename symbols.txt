@@ -8338,8 +8338,8 @@
 0x003D2000 0x8 func_003D2000  # OVL1
 0x003D2010 0x8 func_003D2010  # OVL1
 0x003D2020 0x8 func_003D2020  # OVL1
-0x003D2030 0x8 func_003D2030  # OVL1
-0x003D2040 0x8 func_003D2040  # OVL1
+0x003D2030 0x8 GetArmingDistance__8CZWeaponFv  # OVL1; by hand (the weapons lane, round 27: the float at 0x68, stored by 0x3D2040 from ReadWeapon's ArmingDistance; CZProjectile::HandleImpact 0x3C8920 bounces a hit nearer the start than it as a dud; the name ours)
+0x003D2040 0x8 SetArmingDistance__8CZWeaponFf  # OVL1; by hand (the weapons lane, round 27: stores $f12 at 0x68, which GetArmingDistance 0x3D2030 returns; ZWepReader::ReadWeapon passes it the entry's ArmingDistance, world-scaled; the name ours)
 0x003D2050 0x8 GetDamageBonus__8CZWeaponFv  # OVL1; by hand (the wep lane: returns the float at 0x64, which CZProjectile::GetDamage adds to the ammunition's impact or explosion damage; the name ours)
 0x003D2060 0x8 func_003D2060  # OVL1
 0x003D2070 0x64 func_003D2070  # OVL1
@@ -8377,7 +8377,7 @@
 0x003D2770 0x34 func_003D2770  # OVL1
 0x003D27B0 0x8 func_003D27B0  # OVL1
 0x003D27C0 0x8 func_003D27C0  # OVL1
-0x003D27D0 0x8 func_003D27D0  # OVL1
+0x003D27D0 0x8 GetImpactRadius__8CZWeaponCFv  # OVL1; s1:order by hand (the weapons lane, round 27: SOCOM 1's GetImpactRadius__8CZWeaponCFv 0x31EC60 in the same run of getters -- after the muzzle velocity's 0x3D27C0 (the float at 0x44), before GetEffectiveRange 0x3D27E0 as in SOCOM 1; the float at 0x4C, m_impactradius, ReadWeapon's ImpactRadius; CZProjectile::HandleImpact 0x3C8920 scales it for the hit's AI noise)
 0x003D27E0 0x8 GetEffectiveRange__8CZWeaponFv  # OVL1; s1:order by hand (the weapons lane round 16: the float at 0x40, m_effectiverange -- SOCOM 1's GetEffectiveRange (0x31EC70) right before GetMaxRange (0x31EC80), as 0x3D27E0 before 0x3D27F0; CZProjectile::GetDamage calls it where SOCOM 1's does)
 0x003D27F0 0x8 GetMaxRange__8CZWeaponFv  # OVL1; s1:order by hand (the wep lane: the float at 0x3C -- SOCOM 1's m_maxrange at 0x38, shifted by the word SOCOM II inserts before m_ammocap; CZProjectile::Reset stores it to m_currange where SOCOM 1's Reset stores GetMaxRange's; right before GetNumMags, as SOCOM 1's is but for GetEncumbrance)
 0x003D2800 0x8 GetNumMags__8CZWeaponFv  # OVL1; s1:order by hand (the wep lane, on the kit lane's lead: returns the word at 0x2C, SOCOM 1's m_nummags at 0x28 four bytes on as m_maxfiremode is; in SOCOM 1's order, GetNumMags then GetAmmoCapacity before GetDescription)
