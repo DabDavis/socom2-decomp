@@ -986,11 +986,12 @@ CZFTSWeapon *CZKit::GetFiringItem(int index)
     return m_item[i];
 }
 
-/* (OVL2 0x5C6980) */
-void CZKit::AttachItemNode(unsigned char kind, const char *part)
+/* (OVL2 0x5C6980; pinned: ChangeItemModel, its only caller, calls it) */
+#pragma auto_inline off
+void CZKit::AttachItemNode(int kind, const char *part)
 {
     CKitBody *body = (CKitBody *)m_body;
-    CKitBody::Attach::Record *a = body->m_attach[kind].m_rec;
+    CKitBody::Attach::Record *a = body->m_attach[(unsigned char)kind].m_rec;
 
     if (a) {
         zdb::CNode *node = (zdb::CNode *)ItemPtr(m_selected_item);
@@ -1001,6 +1002,74 @@ void CZKit::AttachItemNode(unsigned char kind, const char *part)
             parent->AddChild(node);
             a->m_node = node;
         }
+    }
+}
+#pragma auto_inline reset
+
+extern "C" {
+/* the body's carrying modes and its gear (seal_body.cpp's CZSealBody members, OVL2 0x5A70F0,
+ * 0x5A7260, 0x58B040 -- spelled by their mangled names, CZSealBody being incomplete here) and the
+ * hand a body's item goes to (OVL2 0x57D5E0, the SEAL lane's, unnamed) */
+void ChangeToRifleMode__10CZSealBodyFb(CZSealBody *body, bool now);
+void ChangeToPistolMode__10CZSealBodyFb(CZSealBody *body, bool now);
+void SetPartAsGear__10CZSealBodyFP10CZBodyPartP14CCharacterGear(CZSealBody *body, void *part, unsigned int gear);
+void func_0057D5E0(CZSealBody *body, int hand);
+}
+
+/* (OVL2 0x5C50B0: SOCOM 1's ChangeItemModel, its two modes, the item unread in both) -- at once,
+ * the rifle's or the pistol's carrying mode by the first item's fire class (FireClassOf inlined),
+ * the matching attachment's gear set and the hand told, then the fifth attachment's gear; else, by
+ * kind: 1 or 2 asks for the item unless the body's byte at 0xF79 already says so (kind 1 sets the
+ * bit from an int 1 -- the `andi` of the compare's register, as SOCOM 1's -- kind 2 from true), 4
+ * asks whatever, 3 asks and hangs the node on "aimnodes", any other only hangs it */
+void CZKit::ChangeItemModel(int item, int kind, int x, bool now)
+{
+    if (now) {
+        CKitBody *body;
+
+        if (FireClassOf(m_item[0]) == FIRE_CLASS_RIFLE) {
+            ChangeToRifleMode__10CZSealBodyFb(m_body, true);
+            body = (CKitBody *)m_body;
+            SetPartAsGear__10CZSealBodyFP10CZBodyPartP14CCharacterGear(m_body, body->m_attach[2].m_rec,
+                                                                        body->m_attach[2].m_4);
+            func_0057D5E0(m_body, 1);
+        } else {
+            ChangeToPistolMode__10CZSealBodyFb(m_body, true);
+            body = (CKitBody *)m_body;
+            SetPartAsGear__10CZSealBodyFP10CZBodyPartP14CCharacterGear(m_body, body->m_attach[1].m_rec,
+                                                                        body->m_attach[1].m_4);
+            func_0057D5E0(m_body, 2);
+        }
+        body = (CKitBody *)m_body;
+        SetPartAsGear__10CZSealBodyFP10CZBodyPartP14CCharacterGear(m_body, body->m_attach[4].m_rec,
+                                                                    body->m_attach[4].m_4);
+        return;
+    }
+    switch (kind) {
+    case 1:
+        if (((CKitBody *)m_body)->m_f79 != 1) {
+            m_requested_item = 1;
+            m_bit13 = false;
+        }
+        break;
+    case 2:
+        if (((CKitBody *)m_body)->m_f79 != 2) {
+            m_requested_item = true;
+            m_bit13 = false;
+        }
+        break;
+    case 4:
+        m_requested_item = true;
+        m_bit13 = false;
+        break;
+    case 3:
+        m_requested_item = true;
+        m_bit13 = false;
+        AttachItemNode(kind, "aimnodes");
+        break;
+    default:
+        AttachItemNode(kind, "aimnodes");
+        break;
     }
 }
 

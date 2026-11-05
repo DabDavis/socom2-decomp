@@ -77,8 +77,10 @@ struct CKitBody {
             void *m_node;   // 0xc
         } *m_rec;
         unsigned int m_4;
-    } m_attach[4];
-    unsigned char _3a8[0x105e - 0x3a8];
+    } m_attach[5];
+    unsigned char _3b0[0xf79 - 0x3b0];
+    unsigned char m_f79;   // 0xf79: the item kind the body is asked for (ChangeItemModel's test; the name ours)
+    unsigned char _f7a[0x105e - 0xf7a];
     unsigned char _105e : 5;   // 0x105e: zseal.h's flag word at 0x105c, its bits 16-23
     unsigned char m_airborne : 1;   // bit 21: off the ground
 };
@@ -186,7 +188,7 @@ public:
     /* the item in hand's node hung under a part of the body -- hidden, made the part's child, kept in
      * the body's attachment of a kind (OVL2 0x5C6980, new in SOCOM II: 0x5C50B0 hangs it on
      * "aimnodes"; the name ours) */
-    void AttachItemNode(unsigned char kind, const char *part);
+    void AttachItemNode(int kind, const char *part);
     /* the item an index's ammunition is fired from: the item itself, or -- when it is a launcher's
      * grenades -- the first class-145 item (for that class's ammunition) or the first primary
      * weapon (OVL2 0x5C67D0, new in SOCOM II: the launcher-mode tests, GetReticuleByIndex and four
@@ -290,6 +292,11 @@ public:
     enum FIRE_CLASS { FIRE_CLASS_NONE = 0, FIRE_CLASS_RIFLE = 1, FIRE_CLASS_PISTOL = 2,
                       FIRE_CLASS_THROWN = 3, FIRE_CLASS_145 = 4, FIRE_CLASS_LAST = 255 };
     FIRE_CLASS GetCurItemFireClass();
+    /* the body's item model changed: at once, to the rifle's or the pistol's by the first item's fire
+     * class, the gear of the matching attachment and the fifth set; else, by kind, an item asked
+     * for or the node hung on "aimnodes" (OVL2 0x5C50B0: SOCOM 1's ChangeItemModel(int, int, int,
+     * bool) -- the callers narrow their byte arguments, the switch takes the int unmasked) */
+    void ChangeItemModel(int item, int kind, int x, bool now);
     /* the frame's kit work: the first frame's set-up, or an asked-for item handed to the body (OVL2
      * 0x5C1660: SOCOM 1's PreTick, CZSealBody::WeaponsTick calls it last) */
     void PreTick(float dT);
