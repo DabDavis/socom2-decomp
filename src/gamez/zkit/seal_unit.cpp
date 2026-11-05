@@ -69,7 +69,8 @@ public:
     /* (zseal.h's CSealCtrl::PlayAiSound: SOCOM II's takes a chance and the AI event the voice makes,
      * and says whether it played) */
     virtual bool PlayAiSound(int sound, float chance, int event);   /* +0x24 */
-    virtual void Virtual28();
+    /* whether the SEAL takes an order (zseal.h's CSealCtrl::AllowCommand) */
+    virtual bool AllowCommand(CZSealBody *seal, FT_COMMAND cmd, void *data);   /* +0x28 */
     virtual bool IsPlayer() const;   /* +0x2C */
     virtual bool IsAi() const;   /* +0x30 */
     virtual void Virtual34();
@@ -82,8 +83,13 @@ class CZSealBody : public CEntity {
 public:
     /* whether the AI drives it: the controller tested, IsAi called (the shape of zseal.h's IsPlayer
      * and IsRemote; the name ours) -- an inline whose out-of-line copy follows IssueCommand (OVL2
-     * 0x5EA880), defined here until IssueCommand is written */
+     * 0x5EA880): HandleSupport, cut to one level, calls it */
     bool IsAi();
+    /* the cell the SEAL was last on a map at (CEntity's m_mapLocValid, 0xE8: an inline whose
+     * out-of-line copy 0x5EA870 HandleSupport, cut to one level, calls; the name ours) */
+    const CAiMapLoc &GetValidMapLoc() const { return m_mapLocValid; }
+    /* the controller's AI (zseal.h's inline: its out-of-line copy 0x5EA7C0) */
+    class CSealCtrlAi *GetSealCtrlAi() { return ((CUnitSealCtrl *)m_control)->GetSealCtrlAi(); }
     /* whether the player drives it (zseal.h's IsPlayer: the controller tested, slot 0x2C called) */
     bool IsPlayer() { return m_control ? ((CUnitSealCtrl *)m_control)->IsPlayer() : false; }
     /* an order given to the SEAL (OVL2 0x590AC0, zseal.h's) */
@@ -148,6 +154,8 @@ public:
     CAiMap *GetMap(const CAiMapLoc &loc) const;
     /* a clear line between two cells (ai_maps.h's, OVL2 0x52CBD0) */
     bool CanSeeLine(const CAiMapLoc &from, const CAiMapLoc &to, CAiMapLoc *out);
+    /* the region of a kind a cell is in (ai_maps.h's, OVL2 0x52A200) */
+    CAiMap::region *GetRegionTypeContainer(CAiMap::region::TYPE type, const CAiMapLoc &loc);
 };
 extern CAiMaps AiMaps;
 
@@ -282,8 +290,9 @@ public:
     CZSealBody *GetLeader() const;
 
     class CCompassAnchor *m_compassanchor;   // 0x0
-    /* the table at 4: IssueCommand, AllowCommand (0x669650) */
-    virtual void IssueCommand(CZSealBody *seal, FT_COMMAND cmd, void *data, bool b);
+    /* the table at 4: IssueCommand, AllowCommand (0x669650). IssueCommand answers the SEAL that took
+     * the order (OVL2 0x5E8E10: its callers in the squads' walks keep the answer) */
+    virtual CZSealBody *IssueCommand(CZSealBody *seal, FT_COMMAND cmd, void *data, bool b);
     virtual bool AllowCommand(CZSealBody *seal, FT_COMMAND cmd, void *data);
     UNIT_FORMATION m_8;   // 0x8 (new in SOCOM II: 1 when made; the name ours -- the enum: passed on
                           // to the formation setter it loads with lb)
@@ -402,7 +411,13 @@ public:
      * the escortees with the first of them, and every squad under it given the follow (4) -- with no
      * SEAL to give it the escortees are seen to at once (0x5E7830); the SEAL handed back (OVL2
      * 0x5EB580, IssueCommand's four calls; new in SOCOM II, the name ours) */
-    CZSealBody *FollowSeal(CZSealBody *seal);
+    CZSealBody *FollowSeal(CZSealBody *seal, UNIT_FORMATION formation);
+    /* the support squad's orders (squad 29): the air support's anim (21), a rescued hostage's
+     * extraction (22) -- the valve made, a breach on the hostage's AI in a container region given it
+     * too; whether the squad was the support's (SOCOM 1's HandleSupport, out of line there; inline
+     * here, cut to one level -- IsAi, the cell accessor, CAiMapLoc's copy and GetSealCtrlAi are its
+     * out-of-line calls: OVL2 0x5EA880, 0x5EA870, 0x5EA7E0, 0x5EA7C0) */
+    bool HandleSupport(CZSealBody *seal, FT_COMMAND cmd, void *data, bool b);
 };
 
 bool CSealUnit::m_created_units_test;
@@ -903,6 +918,381 @@ CSealUnit::~CSealUnit()
     m_seals.clear();
 }
 
+extern "C" {
+/* the squad's anim run with an argument (0x5EF220, below), the order's hand signal (0x5EB190), a
+ * squad sound (0x5EAF20), the breach's set-up from the reticule's action (0x5EBF00), the cell an
+ * order's target names (seal_orders.cpp's 0x58F230) and a breach given its extraction valve
+ * (seal_ai.cpp's 0x559470, SOCOM 1's CAiSRescued::SetExtractValve) */
+void func_005EB190(CSealUnit *unit, CZSealBody *seal, FT_COMMAND cmd, void *data, bool quiet);
+bool func_005EAF20(CSealUnit *unit, int sound, bool pick, float chance);
+bool func_005EBF00(CZSealBody *from, CSealUnit *unit, class CNodeAction *na, CAiSBreach *proto);
+int func_0058F230(CSealUnit *unit, CZSealBody *seal, unsigned char target, CAiMapLoc *out);
+void func_00559470(CAiSBreach *b, CValve *valve);
+}
+bool run_anim(const char *name, void *arg);
+
+/* the SEAL's snake path (zseal.h's CZSealBody::m_snakePath, a CAiPath at 0x434), its aim point
+ * (0x1458) and the action under its reticule (seal_env.cpp's) -- a view */
+struct CUnitSealView {
+    unsigned char _0[0x434];
+    CAiPath m_snakePath;   // 0x434
+    unsigned char _4dc[0x1458 - 0x434 - sizeof(CAiPath)];
+    CPnt3D m_aim_point;   // 0x1458
+};
+class CNodeAction *GetReticuleAction__10CZSealBodyFb(CZSealBody *seal, bool b);
+
+/* the kinds of order that replace the squad's orders, and those put first (inlines, the cases in
+ * reverse of the target's compare chains; the names ours) */
+static inline bool IsRelayCommand(FT_COMMAND cmd)
+{
+    switch (cmd) {
+    case 8:
+        return true;
+    }
+    return false;
+}
+
+static inline bool IsMoveCommand(FT_COMMAND cmd)
+{
+    switch (cmd) {
+    case 4: case 5: case 19: case 7: case 17: case 10: case 11: case 9: case 13: case 12:
+        return true;
+    }
+    return false;
+}
+
+static inline bool IsFrontCommand(FT_COMMAND cmd)
+{
+    switch (cmd) {
+    case 2: case 16: case 25: case 1: case 26:
+        return true;
+    }
+    return false;
+}
+
+inline bool CSealUnit::HandleSupport(CZSealBody *seal, FT_COMMAND cmd, void *data, bool b)
+{
+    bool support = m_unit_num == 29;
+
+    if (support) {
+        switch (cmd) {
+        case 21:
+            run_anim("team_airsupport", 0);
+            break;
+        case 22: {
+            CZSealBody *hostage = FindRescuedNear(seal);
+
+            if (hostage && hostage->IsAi()) {
+                CValve *valve = CValve::Create("hostage_rescue", 0, VALVE_TEMP);
+                CAiMapLoc loc(hostage->GetValidMapLoc());
+
+                if (AiMaps.GetRegionTypeContainer((CAiMap::region::TYPE)1, loc)) {
+                    CAiSBreach *br = GetBreachState(hostage->GetSealCtrlAi());
+
+                    if (br) {
+                        valve = CValve::Create("hostage_rescue", 0, VALVE_TEMP);
+                        func_00559470(br, valve);
+                    }
+                }
+                if (valve)
+                    run_anim("escortee_extract", valve);
+            }
+            break;
+        }
+        }
+    }
+    return support;
+}
+
+/* an order given the squad (SOCOM 1's, much grown): squad 1's relay (8) handed to squad 3; the
+ * network's radio orders; the support squad's; the hand signal; the order kept (the move orders
+ * replace the list, the others go first) and told the squad above; squad 17's order to the SEAL
+ * looked at, squad 18's to the team's SEALs; the ambush dropped by an order that moves; then by the
+ * order -- a SEAL taken from the reticule into the squad (8), the action to the first AI SEAL and
+ * the follow to the rest (1), the player's support squads called (7), the follow (4), the ambush
+ * looking at the player (30), the targeted moves to the first SEAL that is not the giver, its follow
+ * set (9-13, 23, 14), the first SEAL or squad that allows it (2, 15), the breach set up from a
+ * prototype (16), else every SEAL and squad. The SEAL that took it is returned (OVL2 0x5E8E10) */
+CZSealBody *CSealUnit::IssueCommand(CZSealBody *seal, FT_COMMAND cmd, void *data, bool b)
+{
+    CZSealBody *took = 0;
+
+    if (m_unit_num == 1 && IsRelayCommand(cmd)) {
+        CSealUnit *u = GetUnitByTeam(3);
+
+        return u ? u->IssueCommand(seal, cmd, data, b) : 0;
+    }
+    if (RadioCommand(seal, cmd))
+        return 0;
+    if (HandleSupport(seal, cmd, data, b))
+        return 0;
+    func_005EB190(this, seal, cmd, data, b);
+    if (IsMoveCommand(cmd)) {
+        m_commands.erase(m_commands.begin(), m_commands.end());
+        m_commands.insert(m_commands.end(), cmd);
+    } else if (IsFrontCommand(cmd))
+        m_commands.insert(m_commands.begin(), cmd);
+    if (m_parent && !b)
+        m_parent->CommandNotifyFromChild(this, seal, cmd, data);
+    if (m_unit_num == 17) {
+        CZSealBody *t = seal->GetReticuleSeal();
+        CUnitSealCtrl *c = t ? (CUnitSealCtrl *)t->m_control : 0;
+
+        if (c && c->AllowCommand(seal, cmd, data)) {
+            t->IssueCommand(seal, cmd, data, true);
+            return t;
+        }
+    } else if (m_unit_num == 18) {
+        std::list<CZSealBody *> seals;
+        CZSealBody *s = 0;
+
+        GetTeamSeals(18, seal, this, &seals);
+        for (std::list<CZSealBody *>::iterator i = seals.begin(); i != seals.end(); ++i) {
+            s = *i;
+            if (((CUnitSealCtrl *)s->m_control)->AllowCommand(seal, cmd, data))
+                s->IssueCommand(seal, cmd, data, true);
+        }
+        return s;
+    }
+    if (m_a4) {
+        switch (cmd) {
+        case 4: case 3: case 11: case 13: case 10: case 9: case 12: case 16: case 23:
+            m_a4 = 0;
+        }
+    }
+    switch (cmd) {
+    case 8: {
+        CZSealBody *t = seal->GetReticuleSeal();
+
+        if (t->m_team & 0x20000) {
+            SealLeaveUnit(t);
+            if (m_unit_num == 17)
+                SealJoinUnit(t);
+            else {
+                m_escortees.push_back(t);
+                ((CUnitCtrl *)t->m_control)->m_unit = this;
+                if (m_commands.front() == 4 || HostEscort())
+                    m_a0 = 1;
+                func_005E7830(this);
+            }
+            t->IssueCommand(m_seals.front(), (FT_COMMAND)4, 0, false);
+        }
+        break;
+    }
+    case 1:
+        if (!m_seals.empty()) {
+            for (slist::iterator i = m_seals.begin(); i != m_seals.end(); ++i) {
+                if (((CUnitSealCtrl *)(*i)->m_control)->IsAi()) {
+                    if (!took) {
+                        took = *i;
+                        took->IssueCommand(seal, cmd, data, b);
+                    } else
+                        (*i)->IssueCommand(took, (FT_COMMAND)4, 0, false);
+                }
+            }
+        }
+        if (!took)
+            for (ulist::iterator u = m_sub_units.begin(); !took && u != m_sub_units.end(); ++u)
+                took = (*u)->IssueCommand(seal, cmd, data, b);
+        break;
+    case 7:
+        if (seal->IsPlayer()) {
+            unsigned int n = m_unit_num;
+
+            if (n == 2 || n == 1) {
+                CSealUnit *u = GetUnitByTeam(2);
+
+                if (u)
+                    took = u->IssueCommand(seal, (FT_COMMAND)4, 0, true);
+            }
+            if (n == 3 || n == 1) {
+                CSealUnit *u = GetUnitByTeam(3);
+
+                if (u) {
+                    CAiPath &path = ((CUnitSealView *)seal)->m_snakePath;
+                    const CAiPath::point *p = path.m_points.size() >= 4 ? &path.m_points[3] : 0;
+
+                    if (p) {
+                        u->SetData(p, 4);
+                        took = u->IssueCommand(seal, (FT_COMMAND)10, (void *)1, false);
+                    }
+                }
+            }
+        }
+        break;
+    case 4:
+        FollowSeal(seal, m_8);
+        break;
+    case 30:
+        m_a4 = 1;
+        for (ulist::iterator u = m_sub_units.begin(); u != m_sub_units.end(); ++u)
+            (*u)->IssueCommand(seal, (FT_COMMAND)30, data, b);
+        if (m_unit_num == 3) {
+            CZSealBody *first = m_seals.front();
+
+            m_a8 = ((CUnitSealView *)ftsGetPlayer())->m_aim_point - first->m_posW;
+            m_a8.Normalize();
+            IssueCommand(seal, (FT_COMMAND)5, data, b);
+            IssueCommand(seal, (FT_COMMAND)6, data, b);
+        } else if (m_unit_num == 2) {
+            m_a8 = ((CUnitSealView *)ftsGetPlayer())->m_aim_point - ftsGetPlayer()->m_posW;
+            IssueCommand(seal, (FT_COMMAND)6, data, b);
+        }
+        break;
+    case 12:
+        IssueCommand(seal, (FT_COMMAND)3, data, b);
+    case 10: case 11: case 9: case 13:
+        if (m_unit_num == 1)
+            GetUnitByTeam(3)->IssueCommand(seal, cmd, data, b);
+        else {
+            CAiMapLoc loc;
+
+            if (func_0058F230(this, seal, (unsigned char)(int)data, &loc)) {
+                for (slist::iterator i = m_seals.begin(); i != m_seals.end(); ++i) {
+                    CZSealBody *s = *i;
+
+                    if (s != seal) {
+                        s->IssueCommand(seal, cmd, data, b);
+                        m_follow_source = s;
+                        FollowSeal(s, (UNIT_FORMATION)1);
+                        took = s;
+                        break;
+                    }
+                }
+            }
+        }
+        break;
+    case 23:
+        if (m_unit_num == 1)
+            GetUnitByTeam(3)->IssueCommand(seal, cmd, data, b);
+        else {
+            CAiMapLoc loc;
+
+            loc = CAiMapLoc::invalid;
+            if (func_0058F230(this, seal, (unsigned char)(int)data, &loc)) {
+                IssueCommand(seal, (FT_COMMAND)3, 0, true);
+                for (slist::iterator i = m_seals.begin(); i != m_seals.end(); ++i) {
+                    CZSealBody *s = *i;
+
+                    if (s != seal) {
+                        s->IssueCommand(seal, cmd, data, b);
+                        m_follow_source = s;
+                        FollowSeal(s, (UNIT_FORMATION)1);
+                        took = s;
+                        break;
+                    }
+                }
+            }
+        }
+        break;
+    case 2: case 15:
+        for (slist::iterator i = m_seals.begin(); i != m_seals.end(); ++i) {
+            CZSealBody *s = *i;
+
+            if (s != seal && ((CUnitSealCtrl *)s->m_control)->AllowCommand(seal, cmd, data)) {
+                s->IssueCommand(seal, cmd, data, b);
+                if (m_unit_num == 3) {
+                    m_follow_source = s;
+                    FollowSeal(s, (UNIT_FORMATION)1);
+                }
+                took = s;
+                break;
+            }
+        }
+        if (!took) {
+            for (ulist::iterator u = m_sub_units.begin(); u != m_sub_units.end(); ++u) {
+                CSealUnit *su = *u;
+
+                if (su->AllowCommand(seal, cmd, data)) {
+                    took = su->IssueCommand(seal, cmd, data, b);
+                    break;
+                }
+            }
+        }
+        if (!took)
+            func_005EAF20(this, 56, false, 1.0f);
+        break;
+    case 14:
+        if (m_unit_num == 1)
+            GetUnitByTeam(3)->IssueCommand(seal, cmd, data, b);
+        else {
+            for (slist::iterator i = m_seals.begin(); i != m_seals.end(); ++i) {
+                CZSealBody *s = *i;
+
+                if (s != seal) {
+                    s->IssueCommand(seal, cmd, data, b);
+                    m_follow_source = s;
+                    FollowSeal(s, (UNIT_FORMATION)1);
+                    took = s;
+                    break;
+                }
+            }
+        }
+        break;
+    case 16: {
+        static CAiSBreach proto;
+        unsigned char kind = (unsigned char)(int)data;
+
+        if (kind != 1) {
+            proto.Reset((AI_STATE)proto.m_state);
+            proto.OnSignal((CAiState::SIGNAL)4, 0);
+            if (func_005EBF00(seal, this, GetReticuleAction__10CZSealBodyFb(seal, false), &proto)) {
+                switch (kind) {
+                case 17:
+                    proto.SetFlags(4, 0);
+                    break;
+                case 18:
+                    proto.SetFlags(2, 0);
+                    break;
+                case 19:
+                    break;
+                }
+                void *p = &proto;
+
+                SetData(&p, sizeof p);
+                data = (void *)1;
+            }
+        }
+        if ((unsigned char)(int)data == 1) {
+            for (slist::iterator i = m_seals.begin(); i != m_seals.end(); ++i) {
+                CZSealBody *s = *i;
+
+                if (s != seal) {
+                    s->IssueCommand(seal, cmd, (void *)1, b);
+                    took = s;
+                }
+            }
+            void *p = 0;
+            void *pr = GetData(&p, sizeof p) ? p : 0;
+            void *z = 0;
+
+            SetData(&z, sizeof z);
+            for (ulist::iterator u = m_sub_units.begin(); u != m_sub_units.end(); ++u) {
+                CSealUnit *su = *u;
+                void *q = pr;
+
+                su->SetData(&q, sizeof q);
+                su->IssueCommand(seal, cmd, (void *)1, true);
+                void *z2 = 0;
+
+                su->SetData(&z2, sizeof z2);
+            }
+        }
+        break;
+    }
+    default:
+        for (slist::iterator i = m_seals.begin(); i != m_seals.end(); ++i) {
+            took = *i;
+            if (took != seal)
+                took->IssueCommand(seal, cmd, data, b);
+        }
+        for (ulist::iterator u = m_sub_units.begin(); u != m_sub_units.end(); ++u)
+            took = (*u)->IssueCommand(seal, cmd, data, took || b);
+        break;
+    }
+    return took;
+}
+
 /* (OVL2 0x5E8CA0; SOCOM 1's, the AI's follow state (9) read off its stack's kinds where SOCOM 1
  * called FindAiState) */
 void CSealUnit::CommandNotifyFromChild(CSealUnit *child, CZSealBody *seal, FT_COMMAND cmd, void *data)
@@ -1196,7 +1586,7 @@ extern bool ShouldConfirmVoiceCommands;
 
 /* (OVL2 0x5EB580: the walks' ends taken into locals first -- the end before the iterator in each:
  * the iterators s0/s4, the ends s1/s5, as the target's; tested against end() the two swap) */
-CZSealBody *CSealUnit::FollowSeal(CZSealBody *seal)
+CZSealBody *CSealUnit::FollowSeal(CZSealBody *seal, UNIT_FORMATION formation)
 {
     m_follow_source = seal;
     m_a2 = 1;
