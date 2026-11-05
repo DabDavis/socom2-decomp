@@ -2065,6 +2065,18 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the AI core, round 29** (InflateRegion at last, open since round 2):
+  - MW's scheduler never moves a load through a pointer (`this`, a reference parameter) past a store to an address-taken
+    local -- an intermediate written to a local of its own before the next such store puts its loads ahead of it
+    (CAiMap::region::InflateRegion 0x5300A0: `r = right + (m_loc.x + m_dx)`, each grown edge set straight after its
+    corner);
+  - pointer analysis is off by default -- `#pragma opt_pointer_analysis on` crashes MW 3.0b52 on CAiMap::DestroyGraph,
+    and for InflateRegion alone (addr, ansi or type) changes nothing; an inline walk taking its end once keeps the end in
+    a register across two inlined copies (ReRoute 0x52F8F0, written, OPEN; ReRoute returns bool);
+  - an asm directive is not an empty statement to MW: `.set reorder` as an if's body keeps one compare, `.set noreorder`
+    reaches the target's size but reorders the code after (plan_legcomplete stays OPEN); `tools/igreplay.py --target`
+    reads integer registers only -- float-only misses (LeadTargetG) need the float mapping by hand (asked of the tools
+    lane).
 - **Tells from the HUD, round 52** (SetupNorthIndicator, the compass and full-screen map switches, four CUIListBox members):
   - `__rsqrt(1.0f, x)` is MW's intrinsic for the image's only `rsqrt.s` (SetupNorthIndicator 0x20BE00), `1.0f /
     sqrtf(x)` gives sqrt.s + div.s; a function-local static is reloaded after every call -- if the target computes every
