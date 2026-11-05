@@ -591,7 +591,12 @@ static inline AnimType PickAnim(const CAiAnimList *l)
  * -1 in the first test's delay slot; through a list pointer (here) MW keeps the list in s1 and the
  * last index in s0 as the target does, but lays the -1 out as a block of its own ahead of the draw
  * (`||`, `&&`, two ifs, a result local, ternaries); by-value (list, count) parameters load the
- * count first but fold `(count - 1) + 1` back into the count (the target divides by last + 1) */
+ * count first but fold `(count - 1) + 1` back into the count (the target divides by last + 1).
+ * Round 43: a result preset to animTypeUndefined (`r = -1; if (anims && count > 0) r = anims[...];
+ * return r;`) gives the target's early part -- the -1 in the first test's delay slot, both tests to
+ * the end -- at 0x1D4 against 0x1DC: what is left is the draw's `b` over the rand call, whose delay
+ * slot the target leaves empty with the call's and the join's labels padded to 8, where MW fills it
+ * from the join (the ternary or an if/else, in RandIndex, in PickAnim or written in place, b50 too) */
 AnimType func_00609530(unsigned char kind)
 {
     static bool first = true;

@@ -2065,6 +2065,76 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the weapons, round 26** (CZProjectile's GetDamage, DoMiss, HandleBounce and HandleImpact; the VU0 batch add):
+  - a float product takes the lowest free FPR, so a target putting the product in its constant's register needs the
+    constant, product and result as ONE in-place local, and a 1.0 that must colour after it a named local first defined
+    between them (GetDamage 0x3C7600, round 25's open -- `one` and `k` marked stand-in names: the original's unknown);
+  - `&local` passed to an inline that null-tests its pointer folds the test, a `(const T *)&local` cast or a pointer local
+    taken later keeps it (DoMiss 0x3C9530); a class object passed by value through `...` is copied to a temporary whose
+    slot sits among the compiler temporaries, where a named copy sits above them; a declaration's initializer is inlined
+    before expression statements (`CPnt3D off = a + b * s; *pos = off;` puts the operators' temporaries first in the
+    frame); a bool initialised by a ternary is numbered after inlines' temporaries -- the lower saved register
+    (HandleBounce 0x3C8F50);
+  - `x != 0.0f` compiles as `c.eq.s zero,x` whichever side the zero is on, a truth test `&& x &&` as `c.eq.s x,zero`;
+    `a = f(); a *= b;` keeps (a, b) order where `f() * b` in one expression gives (b, f()) (HandleImpact 0x3C8920); an
+    unsigned short local passed to an unsigned int parameter adds `andi 0xffff`, declared unsigned int straight from the
+    lhu it adds nothing (the VU0 decal batch add 0x3BE5F0);
+  - m_customGlobalLightIdx__Q23zdb7CVisual 0x3E1448 named (SOCOM 1's 4-byte symbol before m_applyShadow, holding -1;
+    read only by the lights packet send 0x3B6B20); ~CVehicle 8 short, OPEN (a third destructor level's `b` makes the
+    region's constructor six high in every shape tried).
+- **Tells from the game states, round 38** (0x2B8100 at last, the online rooms' chat line, fts_net_persona.cpp whole):
+  - FORWARDING IS THE IR OPTIMISER'S: MW's forwarding of a single-use local is mweppc's expression propagation
+    (IroPropagate), within one flow-graph node only -- `?:`, `&&` and `||` become branches, so any of them between a
+    definition and its use keeps the definition in place (HitPacketHandler 6 -> 2: a ternary on the flag stops the
+    conversion local being forwarded; AddMission's cause found the same way, OPEN: no reproduction flag adopted);
+  - the first-declared local takes the highest frame slot (0x2B8100: the points declared facing, side, up -- the only
+    one of 24 orders giving up 160 / side 176 / facing 192 -- with round 37's numbering and the `rand() %` draw as an
+    inline of its own, which pads the join and keeps the nop in the zero arm's `b`);
+  - locals declared uninitialised at the top are numbered there in declaration order; a pointer read through an explicit
+    if/else bounds test stays a named variable, through an inline accessor it merges into the inline's result temporary
+    (numbered after all named locals); an inline's by-value argument is loaded ahead of the inline's first test, landing
+    in that test's delay slot (CreateLocalPersona 0x2C5450);
+  - a bool-returning call in an `||` chain keeps its andi only written `!= false`; switching on an enum held in a local
+    gives lb + andi, and `default` passes the lb value on (CheckStateSwitch 0x2C3CF0); OnStateChange 0x2B3BE0 named --
+    slot 0x64 of CSealCtrlCopy's table in both builds, `jr ra; nop` in both (OVL2's 0x58A710 its other copy).
+- **Tells from the kit and AI states, round 43** (CAnimTypeRec::GetGroup -- anim.cpp whole -- and CZKit::CurMagHasAmmo):
+  - a copy `y = x` reaching `return y` on a path where x is unchanged is returned as x itself, in v0 -- a conversion on
+    the copy stops it (GetGroup 0x5E56D0, open since round 10: a const cursor with the group cast back); return types
+    are not mangled: an int result returned as unsigned char gives `andi 0xff` at the join, a bool return converts with
+    sltu (CurMagHasAmmo 0x5BD530, open since round 20 -- every caller branches on v0);
+  - in a non-assigning `mask & word` with word a load MW computes the word's address before the mask whatever the order
+    or casts; only `m &= word` keeps the mask first, reusing its register (0x5CB450 / 0x5CB630 stay 2 off: the target
+    ANDs into a new register); `for (e = l.end(), u = l.begin(); u != e; ++u)` numbers the end below the iterator; a
+    loop-invariant end declared in an inner for is hoisted to the outer loop's preheader, after its guard (SetFormation
+    12 -> 6).
+- **Tells from the HUD, round 49** (hud_mpweaponsel.cpp all but one -- NextWeapon at last):
+  - a value derived from a parameter (`next = index + 1`) defined after a named local is a new variable numbered there,
+    a plain copy coalesces back into the parameter (SlotList::NextWeapon 0x23C6F0, open since round 26); f12 set in a
+    call's delay slot proves the callee takes a float parameter, even an unused one (HandlePad renamed (CPad *, float));
+  - an inline bool over many ids written as a preset false plus `r = true` in one case compiles to the target's single
+    daddiu, `return true / false` gives two assignments; `x = up ? a : b` over constants is movz -- the target's branches
+    come from if/else, reusing the compare chain's constant registers as the values; `(float)ushort_field` takes MW's
+    unsigned conversion path, the target's plain cvt.s.w needs `(float)(int)field`; a preset-then-overwrite read (`x =
+    254; if (w) x = w->m_item;`) gives `beqz; li` in the delay slot then lb, a ternary branches both arms;
+  - TU-LOCAL STATICS WITHOUT DATA ROWS ARE CHECKED BY CONTENT, so two equal-valued statics pass either way -- name them to
+    check by address (round 20's s_titley / s_titleheight were the category page's pair: renamed s_cattitley /
+    s_cattitleheight, the selector's own pair 0x3DCDF0 / 0x3DCE00); a 16-aligned global struct copied to a stack local in a
+    loop gets its member addresses hoisted into saved registers (CMPWeaponSel::Layout, twice); loop-scoped counters in
+    two loops matched where a shared int swapped registers (CMPWeaponCategories::Layout -- round 44's converse).
+- **Tells from the world, rdr and sound, round 20** (BuildLightMapList by the replay, Particle::DestructionManager):
+  - an inline helper's parameter is numbered after the caller's named locals but below its shared common-subexpression
+    temporaries: passing a loaded value into a static inline predicate can swap two volatile registers, while a named
+    local holding it is copy-propagated away (CPipe::BuildLightMapList 0x339660: the instance through `IsModelOf(inst,
+    node)` takes a1 under the type's a0 -- `tools/igreplay.py --want` showed any number below the type's works);
+  - MW's code order before colouring interleaves independent statements: a constant initialised in its declaration can
+    land between a `-4` and its `and`, so the -4 cannot take the target's register -- assigned after the declarations the
+    lui follows the and (CHeap::Alloc 0x34EEB0: 6 -> 3, OPEN); `while ((j = hi) > (i = lo) + 8)` gives the fused slt / bnez,
+    `(i = lo) + 8 < (j = hi)` puts the compare in v1 (zqsort 0x326C30, written: MW spills the cheapest node, `lo + hi`,
+    where the target spills another -- the original must make that sum cost more, OPEN);
+  - zdb::CVisual's statics are named `..._Q23zdb7CVisual` (the integrator's brief dropped the namespace): m_applyShadow
+    0x3E1450, m_applyLocalLights 0x3E1458, m_applyMultipass 0x3E1460, declared additively in znode.h; CPipe::CAlpha's
+    m_first_alpha_add 0x3DFF68 and m_last_alpha_insert 0x488ED8 (thePipe's row 0x720 -> 0x718); Create3Sided named by
+    SOCOM II's DestructionManager making SOCOM 1's call with every argument in the same register.
 - **Tells from the SEALs, round 41** (the ladder grant, FindRandomDamageAnim, the swept cylinders, the shotgun pellets,
   HandleBloodDrip):
   - AN OPERATOR'S RETURN SLOT ASSIGNED THROUGH THE C STRUCT BASE (`*(PNT3D *)&d = d - *from;`) is copied loads-first at
@@ -10823,6 +10893,62 @@ casrImportContext closed: 55 of 57), `asr/userword.c` (CalcF2 new: 12 of 14), `a
 (InitPitchCombiner written, OPEN: 6 of 8) -- 8 rows new to the map's byte-exact rows (4,524 bytes), none
 superseding a draft; `src/lib/asr` 525 of 554 (517 of 549 before). 1 row named (0x4E2008 CalcF2,
 `s1:order`). No tool changed.
+
+**Round 26c: the nothrow note is -fno-inline's, the casr object whole, mel.c's process block.**
+
+- **A GNU extern inline compiled for inlining marks its function nothrow; -fno-inline keeps the call**:
+  2.96 sets TREE_NOTHROW where it saves a deferred inline, before any copy would be emitted, so with
+  the scheduler's input-queue commands as `extern __inline__` bodies (tos.c's own) visible and the
+  object built `-fno-inline`, the calls stay `jal`s to tos.c's copies, no copy is emitted, and each
+  call carries `REG_EH_REGION 0` -- ProcessTriggerLR's keep test is the target's `bnez` (round 25c's
+  word). Measured: without -fno-inline the calls are inlined (0x1CC); a body the inliner refuses
+  (varargs) is "only declared" (the `lose` path exits before the flag) and gives no note. So
+  `triggerlr.c` is the ninth object with a flag of its own (`-fno-inline`): its reset and session
+  helpers are written in place (a statement macro a plain block -- `do { } while (0)` is a loop to the
+  scheduler, 19 words). Round 13c's three fits (cbDoUserWordTraining -> ExitUserWordTraining,
+  tosCallControlFunc -> ConstructBlock, ControlPitchCombiner -> PitchCombinerReset) call functions
+  their own objects define earlier, in the image's order too: genuine, unchanged. The header's other
+  functions want no body: every block calls the constructor, the loggers and the profile getters,
+  and the blocks that inline their own statics would inline those (only triggerlr.c calls the queue
+  commands, and tosblk.h's units declare qQueueControl three ways, so the bodies sit in the unit).
+- **A running pointer that is the table's own variable keeps the unrolled rows' steps**
+  (casrInitSegmentation, open since round 9c): the inner loop is unrolled first and its biv remapped
+  to a copy of its value at each row's start (cc1's "Biv initial value remapped": the target's `move
+  a1,s1; addiu s1,a1,12`); with a second pointer from `seg`, CSE rewrites every row against the
+  unchanged `seg` and the rows fold into constant offsets of one base (`-fno-rerun-cse-after-loop`
+  does not change that: the first CSE knew it).
+- **A product assigned back to its variable keeps the result in that variable's pseudo**: `total *=
+  3` gives the target's `sll v0,a1,1; addu a1,v0,a1` (the total in a1); in the call's argument the
+  sum's result is tied to the first operand that dies (the shifted copy), and `total + total * 2`
+  swaps the add's operands.
+- **The store order of a record's head decides its schedule** (casrGetSessionData, open since round
+  9c): the size stored before the kind (the reload of `n` then heads the block, the language
+  pointer takes a0) -- every placement of the two pointers matches so, none with the kind first; the
+  genders' bases are as spelled (the first and the format through `g`, the other two off s). Round
+  24c's sweep of the 16 spellings had the kind first and read "one form" from 38 words each.
+- **SOCOM 1's bodies, again**: ProcessMel byte-exact as SOCOM 1 wrote it (unrolled by
+  -funroll-loops' preconditioning), InitSpecSub at 3 words (0x40C in both builds; the float literals
+  as written land on 2.96's ulp-low bits, `3.7808886e37f` on 0x7DE38DD0; the pointers before the
+  constants and the two stores of `buf` ring-first, sched1's last-store-first tie-break: 120 orders
+  scored). Its last 3 words are ControlSpecSub's pair exactly -- GCSE makes the reset's two reads of
+  `s->n` one expression and copies its reaching register AFTER the first load (`-dG`), where the
+  target loads into it; one cause, two rows.
+- **mel.c and specsub.c are -ffast-math objects** (their own min.s/max.s rows, round 25c): every
+  function written there compiles the same with the flag, so the directives carry it.
+- **Shapes, measured**: PitchCombinerReset's last store is not a sched1-off compile
+  (`-fno-schedule-insns` loses 7 of pitchcomb.c's 8); InitPitchCombiner's head is the profile value
+  stored before it is narrowed (an `unsigned int` local, the narrowed copy after the store: the
+  target's `sh v0; andi v0`), which moves the constants' allocation (17 words) -- its tail is
+  PitchCombinerReset's.
+- **Open, diagnosed in place**: InitSpecSub and ControlSpecSub (3 words each, above),
+  PitchCombinerReset and InitPitchCombiner (the last 1-store), InitViterbi@nbestdp (not revisited).
+
+Hand-written in round 26c: `asr/triggerlr.c` (ProcessTriggerLR closed: 5 of 5, -fno-inline), `asr/casr.c`
+(casrInitSegmentation, casrGetSessionData closed: 57 of 57), `asr/mel.c` (ProcessMel new, ConstructMel and
+InitMel over their drafts, in image order: 4 of 5, MelInitBands unwritten), `asr/specsub.c` (InitSpecSub
+written, OPEN: 5 of 7) -- 4 rows new to the map's byte-exact rows (1,528 bytes), two matched drafts
+superseded (ConstructMel 0x4F6918, InitMel 0x4F6C78); `src/lib/asr` 531 of 558 (525 of 554 before). No rows
+named (all had SOCOM 1's). No tool changed.
 
 **Round 14b: the "toolchain" opens were SCEA's shapes; LargeInt's core is assembly.**
 

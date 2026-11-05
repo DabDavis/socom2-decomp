@@ -151,6 +151,14 @@ public:
         void Insert(tag_DelayedNode *d);
         void Render();
 
+        /* set after each pass, so the next insert starts its walk at the list's start again (SOCOM
+         * 1's static m_first_alpha_add, 1 byte: OVL1 0x3DFF68), and the draw list's last insert,
+         * where the next one's walk starts (SOCOM 1's m_last_alpha_insert, 4 bytes: OVL1 bss
+         * 0x488ED8, just past thePipe's flags) -- declared only: defined here they would join the
+         * unit's data */
+        static bool m_first_alpha_add;
+        static std::list<void *>::iterator m_last_alpha_insert;
+
         zdb::CCamera *m_camera;   // 0x0
         tag_DelayedNode *m_visualList;   // 0x4
         tag_DelayedNode *m_next;   // 0x8
@@ -655,10 +663,6 @@ void CPipe::BuildSpecMapList(zdb::CNode *node)
     }
 }
 
-/* whether shadows apply (SOCOM 1's CVisual::m_applyShadow, the byte its BuildLightMapList reads;
- * CAlpha::Render clears it -- left unnamed here, declared again below) */
-extern "C" unsigned char data_003E1450;
-
 /* whether a light map reaches a sphere: its range and the sphere's radius against the distance
  * between them -- a shadow only on the side the world's shadow vector leaves lit (SOCOM 1's test,
  * in its BuildLightMapList's own inline; SOCOM II adds the shadow's side; the name ours) */
@@ -678,18 +682,26 @@ static inline bool LightReaches(zdb::CLightMap *l, const CPnt3D &center, float r
     return false;
 }
 
+/* whether a light map's instance is the node's model -- the node itself when it is one, none
+ * otherwise (ours: SOCOM 1's BuildLightMapList compares in place; SOCOM II's numbering needs the
+ * instance as an inline's parameter, below) */
+static inline bool IsModelOf(zdb::CNode *inst, zdb::CNode *node)
+{
+    return inst == (node->m_type == 2 ? node : 0);
+}
+
 /* SOCOM 1's: the light maps and shadows that reach a node listed afresh, six at most -- the node's
  * bounding sphere (its box's half-diagonal about the box's centre, carried by its matrix) against
  * each active light map's range; a shadow only while shadows apply and never on the model it is the
  * shadow of (SOCOM II computes the sphere once, ahead of the walk). The count and the light are
  * declared uninitialised at the top (numbered there: the count s4 and the light s3 below the list's
- * s2, as the target's -- declared where they are set, 31 off), the count unsigned (sltiu).
- * OPEN, 5 instructions at the target's size: the model test's two temporaries swap -- the target
- * loads the node's type into a0 and the light's instance into a1, this the other way round (SOCOM
- * 1's own code has this unit's pair). Tried (build/scratch/wld/v_blml2-5.py): the compare either
- * way, the model test as one `&&` or `||`, both ternaries written out, the type or the instance in
- * a local (0x460), the model local at the top or the shadow branch's top, an if/else for it, inline
- * ModelOf/InstanceOf helpers, `continue`s for the three skips */
+ * s2, as the target's -- declared where they are set, 31 off), the count unsigned (sltiu). The world
+ * lane's round 20, byte-exact: the model test's instance passed to an inline helper -- an inline's
+ * parameter is numbered after the caller's named locals, below the node type's CSE temporary
+ * (@N, shared by both ternaries), so the type is coloured first and takes a0, the instance a1, as
+ * the target's (tools/igreplay.py --want: any number for the instance below the type's gives it;
+ * compared in place, or the instance in a named local -- copy-propagated away -- the pair swaps:
+ * 5 off) */
 void CPipe::BuildLightMapList(zdb::CNode *node)
 {
     unsigned int n;
@@ -711,10 +723,10 @@ void CPipe::BuildLightMapList(zdb::CNode *node)
 
             if (l->m_active) {
                 if (l->m_isShadow) {
-                    if (data_003E1450) {
+                    if (zdb::CVisual::m_applyShadow) {
                         zdb::CNode *model = node->m_type == 2 ? node : 0;
 
-                        if (!model || l->m_instance != (node->m_type == 2 ? node : 0)) {
+                        if (!model || !IsModelOf(l->m_instance, node)) {
                             if (LightReaches(l, center, r)) {
                                 zdb::CLightMap *kept = l;
 
@@ -1100,11 +1112,7 @@ void DrawFlush();
 void Draw();
 }
 
-/* the alpha pass's flags (not named): 0x3E1450 cleared and 0x3E1460 set while it draws, 0x3DFF68 set
- * after it; NodeSetup's flag for a lit node's extra lights (vis_vu.cpp's) and their set-up
- * (0x338FA0, not written: RenderVisual calls it too) */
-extern "C" unsigned char data_003E1450, data_003E1460, data_003DFF68;
-extern "C" bool data_003E1458;
+/* the local lights' set-up of a lit node (0x338FA0, not written: RenderVisual calls it too) */
 extern "C" void func_00338FA0(zdb::CNode *node);
 
 /* SOCOM 1's: the translucent objects drawn in their depth order between the particle ranges -- each
@@ -1120,8 +1128,8 @@ void CPipe::CAlpha::Render()
     CPnt3D zero;
 
     zdb::CVisual::AlphaEnable(true);
-    data_003E1450 = 0;
-    data_003E1460 = 1;
+    zdb::CVisual::m_applyShadow = 0;
+    zdb::CVisual::m_applyMultipass = 1;
     zdb::CVisual::LandmarkEnable(false);
     data_004B4E34 = 0;
     if (m_drawList.size()) {
@@ -1141,7 +1149,7 @@ void CPipe::CAlpha::Render()
             zdb::CVisual::m_stack_vid.push((void *)d->m_vid);
             if (d->m_atom) {
                 zdb::CVisual::NodeSetup(d->m_atom, d->m_node, &d->m_matrix);
-                if (data_003E1458)
+                if (zdb::CVisual::m_applyLocalLights)
                     func_00338FA0(d->m_node);
                 func_003B6B20(d->m_node, d->m_fov, d->m_opacity);
                 zdb::CVisual::m_GlobalLightScale = d->m_lightScale;
@@ -1159,13 +1167,9 @@ void CPipe::CAlpha::Render()
 
     zdb::CVisual::m_addColor = color;
     zdb::CVisual::AlphaEnable(false);
-    data_003E1460 = 1;
-    data_003DFF68 = 1;
+    zdb::CVisual::m_applyMultipass = 1;
+    m_first_alpha_add = 1;
 }
-
-/* the draw list's last insert, where the next one's walk starts (a static of the unit, 0x488ED8, not
- * named: defined here it would join the unit's data) */
-extern std::list<void *>::iterator data_00488ED8;
 
 /* SOCOM 1's: a record put in the draw list in depth order, deepest first -- the walk starts at the
  * last insert (at the list's start again after each pass: Render sets 0x3DFF68), forward while the
@@ -1181,25 +1185,25 @@ extern std::list<void *>::iterator data_00488ED8;
  * `&d->m_40` (the third walk hoists it in the target too; a for/break first walk changes nothing) */
 void CPipe::CAlpha::Insert(tag_DelayedNode *d)
 {
-    if (data_003DFF68) {
-        data_003DFF68 = 0;
-        data_00488ED8 = m_drawList.begin();
+    if (m_first_alpha_add) {
+        m_first_alpha_add = 0;
+        m_last_alpha_insert = m_drawList.begin();
     }
-    std::list<void *>::iterator it = data_00488ED8;
+    std::list<void *>::iterator it = m_last_alpha_insert;
     std::list<void *>::iterator b = m_drawList.begin(), e = m_drawList.end();
 
     if (it == b) {
         while (it != e && d->m_40 < ((tag_DelayedNode *)*it)->m_40)
             ++it;
-        data_00488ED8 = m_drawList.insert(it, (void *const &)d);
+        m_last_alpha_insert = m_drawList.insert(it, (void *const &)d);
     } else if (!(d->m_40 < ((tag_DelayedNode *)*it)->m_40)) {
         while (it != b && !(d->m_40 <= ((tag_DelayedNode *)*it)->m_40))
             --it;
-        data_00488ED8 = m_drawList.insert(d->m_40 < ((tag_DelayedNode *)*b)->m_40 ? ++it : m_drawList.begin(), (void *const &)d);
+        m_last_alpha_insert = m_drawList.insert(d->m_40 < ((tag_DelayedNode *)*b)->m_40 ? ++it : m_drawList.begin(), (void *const &)d);
     } else {
         while (it != e && d->m_40 < ((tag_DelayedNode *)*it)->m_40)
             ++it;
-        data_00488ED8 = m_drawList.insert(it, (void *const &)d);
+        m_last_alpha_insert = m_drawList.insert(it, (void *const &)d);
     }
 }
 

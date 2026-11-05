@@ -331,6 +331,45 @@ void CMeshDecal::FreeMem()
     m_30 = 0;
 }
 
+/* an item added to the VU0 decal builder's batch (0x3B8680's, its one caller; new in SOCOM II, not
+ * named): the batch's next item, its point and halfwords reset and each list restarted with the
+ * word given, then the point and the halfwords set; the first word is a strip whose id (its
+ * halfword at 6) is searched for from the view data resumed, each strip found adding its vertex
+ * and its id to the lists. The cursor declared first (numbered ahead of the item, so the item takes
+ * s1 and the cursor the last halfword's s2, as the target), the id an unsigned int (an unsigned
+ * short adds the narrowing `andi`) */
+extern "C" void func_003BE5F0(unsigned int a, unsigned int b, const CPnt3D *pos, short c, short e,
+                              CVisData *from)
+{
+    CVisData *v;
+    CVisData vd;
+    CDecalBatchItem *item = &data_004B5078->m_items[data_004B5078->m_count++];
+
+    item->m_pos = CPnt3D::zero;
+    item->m_c = 0;
+    item->m_e = -1;
+    item->m_10.clear();
+    item->m_10.push_back(a);
+    item->m_1c.clear();
+    item->m_1c.push_back(b);
+    item->m_pos = *pos;
+    item->m_c = c;
+    item->m_e = e;
+    unsigned int id = ((unsigned short *)a)[3];
+    v = vd.Resume(from);
+
+    while (v) {
+        v = v->SearchStrip(id);
+        if (v) {
+            unsigned int sid = v->m_id;
+            unsigned int strip = (unsigned int)v->m_strip;
+
+            item->m_10.push_back(strip);
+            item->m_1c.push_back(sid);
+        }
+    }
+}
+
 void CMeshDecalPool::Uninit()
 {
     delete m_pool;
