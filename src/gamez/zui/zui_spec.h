@@ -523,12 +523,15 @@ public:
         m_xpos = x;
         m_ypos = y;
     }
+    /* the empty test a ternary (the UI lane's round 31): an `if` pads its then-label and lets MW fill
+     * the null tests' delay slots from the fall-through -- CHandlerButtonSpec(_zrdr *) 0x380280 is
+     * byte-exact only so (any of the four ternary spellings) */
     void SetName(const char *name)
     {
-        if (!name || !*name)
-            name = "unnamed";
+        name = !name || !*name ? "unnamed" : name;
         m_name = name;
     }
+    void SetChildOf(const char *name) { m_childOf = name; }
 
     CDlgObjSpec *m_spec;          // 0x0: SPEC
     int m_xpos;                   // 0x4: XPOS
