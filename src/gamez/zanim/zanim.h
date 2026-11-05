@@ -832,6 +832,9 @@ public:
     static bool Open(const char *name, VALVE_TYPE type);
     static void Uninit();
     static bool Init();
+    /* the valves' ZAnim commands registered (0x354470, its draft's; CMission::Init calls it -- the
+     * states' round 44, additive) */
+    static void RegisterCommands();
     static CValve *Create(const char *name, VALVE_TYPE type);
     static CValve *Create(const char *name, unsigned int value, VALVE_TYPE type);
     static CValve *GetByName(const char *name);

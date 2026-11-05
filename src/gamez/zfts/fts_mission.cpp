@@ -2159,7 +2159,6 @@ int CreateSema(SemaParam *param);
 extern SemaParam data_00440BE0;
 extern void *data_0045B718;   /* (an OVL1 object of 4316 bytes Init makes) */
 void func_002DC7A0();
-void func_00354470();   /* zanim.h's CValve has no RegisterCommands: its row, by address */
 void func_0059AC60();
 void func_002B4190();
 bool func_00259240();
@@ -2218,7 +2217,7 @@ bool CMission::Init()
     ZAnim.Open();
     CSealCtrlAi::RegisterCommands();
     func_0059AC60();
-    func_00354470();
+    CValve::RegisterCommands();
     zdb::CCamera::RegisterAnimCommands();
     CAppCamera::RegisterAnimCommands();
     CftsPlayer::RegisterAnimCommands();
