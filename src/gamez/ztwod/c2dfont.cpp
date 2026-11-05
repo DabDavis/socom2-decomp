@@ -758,11 +758,10 @@ void C2DFont::Load(const _zrdr *rdr, const char *name)
 
 /* a Hangul syllable built: its lead, vowel and (if any) trail placed by the layout the tables
  * choose, the composer's baseline and kernings; false where a table has no entry */
-/* OPEN, 8 bytes long (0x274 against 0x26C): the font texture's lookup. The target branches on
- * `index < 0` to a zero at the block's end and tests the size with the in-range load after a
- * `b join; move zero` (an if/else per test); GetTexture written as two early returns, a nested
- * ternary either way round and a local assigned in each arm all compile alike here. LoadChar
- * (8 bytes long too) inlines the same lookup. */
+/* (byte-exact since the HUD's round 55: GetTexture one ternary over `i >= 0 && i < size` -- the
+ * target's branch to a zero at the block's end and the size test's `b` over the load; the code
+ * stored to the glyph inside the subtraction's expression, so it is loaded once; the kernings read
+ * into locals, the right one first, before either store) */
 bool CHangulFont::Compose(C2DGlyph *glyph, C2DChar code, C2DFont *font)
 {
     glyph->m_code = 0;
@@ -773,10 +772,7 @@ bool CHangulFont::Compose(C2DGlyph *glyph, C2DChar code, C2DFont *font)
     glyph->m_16 = 0;
     glyph->m_18 = 0;
     glyph->m_1a = 0;
-    unsigned short c = code.m_code;
-
-    glyph->m_code = c;
-    int s = c - 0xAC00;
+    int s = (glyph->m_code = code.m_code) - 0xAC00;
     int lead = s / 588;
     int vrow = m_leadRows[lead].m_v;
 
@@ -807,8 +803,11 @@ bool CHangulFont::Compose(C2DGlyph *glyph, C2DChar code, C2DFont *font)
     if (trail)
         AddJamo(glyph, 2, s_hangulTrails[trail - 1], layout, height);
     glyph->m_12 = m_baseline.m_v;
-    glyph->m_14 = m_lKerning.m_v;
-    glyph->m_16 = m_rKerning.m_v;
+    int r = m_rKerning.m_v;
+    int l = m_lKerning.m_v;
+
+    glyph->m_14 = l;
+    glyph->m_16 = r;
     return true;
 }
 

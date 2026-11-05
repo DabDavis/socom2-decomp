@@ -152,14 +152,13 @@ public:
     void Unload();
     int LoadChar(const _zrdr *rdr);
 
-    /* a font texture by index, none out of range (inline: the loaders read a texture's height) */
+    /* a font texture by index, none out of range (inline: the loaders read a texture's height; one
+     * ternary over both tests -- the HUD's round 55: two early returns, nested ternaries and an
+     * if/else per test all give an `index < 0` arm of its own, 8 bytes longer in Compose and
+     * LoadChar) */
     zdb::CTexHandle *GetTexture(int i)
     {
-        if (i < 0)
-            return 0;
-        if ((unsigned int)i >= m_textures.size())
-            return 0;
-        return m_textures[i];
+        return i >= 0 && (unsigned int)i < m_textures.size() ? m_textures[i] : 0;
     }
 
     /* the font's scale (inline: c2dstring.cpp's Load multiplies by it last) */
