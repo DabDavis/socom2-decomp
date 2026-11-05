@@ -9576,7 +9576,7 @@
 0x005267A0 0x68 PostProcess__7CAiPathFv  # OVL2; s1:callee by hand (plan_complete calls it between zeroing the leg counters and bumping the path id, as SOCOM 1's inlined plan_complete calls PostProcess__7CAiPathFv; the same tail: UpdatePathWidth(5) when flag 4, PrintPath when flag 0x40)
 0x00526810 0x3F4 func_00526810  # OVL2
 0x00526C10 0x310 func_00526C10  # OVL2
-0x00526F20 0x3DC func_00526F20  # OVL2
+0x00526F20 0x3DC AppendPathLoc__7CAiPathFRC9CAiMapLocP6CAiMap  # OVL2; s1:order by hand, the AI core round 28 (SOCOM 1's AppendPathLoc, the demo's 0x195590 -- the third of the three cell-insertion functions after PostProcess as SOCOM 1's is after InsertPathLoc: planning tested, an empty path made of the cell and complete, else HasPoints, the head compared, the point inserted at begin, the last waypoint replaced or a leg pushed, the id stepped; CAiMaps::ExtendPath calls it four times with the cell and its map)
 0x00527300 0x8 SetTemplatePath__7CAiPathFP7CAiPath  # OVL2; s1:order by hand (the demo's 0x1958D0, 8 bytes in both builds, just before Clear: m_template (0x10) stored)
 0x00527310 0xA8 Clear__7CAiPathFv  # OVL2; s1:order by hand (the demo's 0x1958E0: a planning path aborted through AbortPathPlan, then unless still planning the points and cells cleared, the stats reset and the legs zeroed, true; the three state tests one range test in SOCOM II)
 0x005273C0 0xAC plan_legcomplete__7CAiPathFQ27CAiPath10PATH_STATE  # OVL2; s1:callee by hand (TickPathPlanner calls it with the path and its state at the same place as SOCOM 1's calls plan_legcomplete__7CAiPathFQ27CAiPath10PATH_STATE, and pops the queue when it returns false)

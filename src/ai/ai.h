@@ -1550,6 +1550,10 @@ public:
      * reads its count so everywhere */
     class points : public std::vector<point> {
     public:
+        using std::vector<point>::insert;
+        /* one point put before an iterator, the iterator by value (MSL's insert(position, x):
+         * AppendPathLoc's insert at the head copies begin()'s temporary into the parameter) */
+        void insert(iterator position, const point &x) { std::vector<point>::insert(position.m_p, 1, x); }
         unsigned int &count() { return this->size_; }
         iterator end()
         {
@@ -1658,6 +1662,9 @@ public:
      * the path's last point, out from a point, for a cell both legs reach (new in SOCOM II, the name
      * ours: 0x524170) */
     bool FindDetour(const CAiMapLoc &from, const CPnt3D *pos, const CAiMapLoc &goal, int cells);
+    /* a cell put at the head of a finished path, a new leg where it changes map; false while the
+     * path is planning or when it has no finished plan (SOCOM 1's AppendPathLoc, 0x526F20) */
+    bool AppendPathLoc(const CAiMapLoc &loc, CAiMap *map);
 
     CAiStar *m_astar;   // 0x0
     CAiPlanner *m_planner;   // 0x4

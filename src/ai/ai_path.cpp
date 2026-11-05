@@ -363,6 +363,55 @@ void CAiPath::SetTemplatePath(CAiPath *path)
     m_template = path;
 }
 
+/* a cell put at the head of a finished path (its points run last to first): an empty path made
+ * of it and complete, a cell already at the head taken as done, else its point inserted first and
+ * the last waypoint moved onto it -- or, on another map, a leg begun there; the id moved on after
+ * (SOCOM 1's AppendPathLoc, 0x526F20: CAiMaps::ExtendPath's appends; SOCOM 1 compared the head's
+ * map where SOCOM II compares the cell).
+ * OPEN, 116 instructions at the target's size (0x3DC), written in the AI core's round 28: every
+ * block is the target's, the registers are not. The target colours the cell s0, `this` s1 and `ok`
+ * s2 (sharing s2 with the waypoints' &data_ in the push path); MW colours `ok` s0, the cell s1,
+ * `this` s2. Read off MW's colouring (build/scratch/ai/ig/nbdeg.py): every spill cost is 0, `ok`
+ * (v34) has 19 hardware neighbours, `this`, the cell and twelve short temporaries numbered after it,
+ * so it sits over K at its first sweep and leaves with `this` and the cell in the second, coloured
+ * first -- the target's order needs `ok` gone a sweep earlier (numbered after its temporaries, or
+ * five virtual neighbours at most) while still meeting the cell. Tried (v_apl*.py): `ok` set in
+ * if/else arms (the cell s0, `this` s1, but `ok` no longer meets the cell: s0 too), `ok = true`
+ * before the head test, the cell through a reference or pointer local (coalesced away), the body
+ * as an inline member (too big: inlined one level, its callees called), the head test through
+ * CAiMapLoc's ==; the two points' temporaries also sit swapped (the target's first at sp+72) and
+ * the planning test reloads the state the HasPoints test reuses in the target (v1) */
+bool CAiPath::AppendPathLoc(const CAiMapLoc &loc, CAiMap *map)
+{
+    bool ok = false;
+
+    if ((unsigned int)(m_state - 1) > 2) {
+        if (m_points.empty()) {
+            m_points.push_back(point(loc));
+            m_state = COMPLETE;
+            ok = true;
+        } else if (HasPoints()) {
+            if (*m_points.begin() == loc) {
+                ok = true;
+            } else {
+                m_points.insert(m_points.begin(), point(loc));
+                if (!m_waypts.size() || m_waypts.back().m_mapid != loc.m_mapid) {
+                    m_waypts.push_back(loc);
+                    m_waypts.push_back(loc);
+                    m_maps.push_back(map);
+                    m_legcount++;
+                } else {
+                    m_waypts.back() = loc;
+                }
+                ok = true;
+            }
+        }
+    }
+    if (ok)
+        IncrementPathId();
+    return ok;
+}
+
 /* the finished path's points made, smoothed and widened, and drawn when asked (SOCOM 1's;
  * plan_complete calls it, never inlined) */
 #pragma auto_inline off
