@@ -155,6 +155,11 @@ public:
     void IncrScreenOffsetY(float dy);
     bool IsUsingBinocs();
     void InitializeSniperKick();
+    /* the scope's frame: the heartbeat's rumble paced by the adrenaline, the rifle's kick and its
+     * return -- the baseline settling by a rate -- and the sight's drift within limits the
+     * adrenaline scales (OVL2 0x5B9280; SOCOM 1's SniperTick, the settle rate and the two switches
+     * new: CZSealBody::Tick calls it while a scope or the binoculars are up) */
+    void SniperTick(float dT, CTargetMods &mods, float settle);
     /* the rounds a pull of the trigger fires, and the wait after (OVL2 0x5C0940 -- new in SOCOM II,
      * SOCOM 1's WillFireWeapon did it inline: the name ours -- and 0x5C09F0, SOCOM 1's) */
     int GetShotCount();
@@ -489,7 +494,9 @@ public:
     float m_firerifle_kick_movedist;   // 0x3c (SOCOM 1's 0x28)
     float m_firerifle_kick_accum;   // 0x40 (SOCOM 1's 0x2c)
     int m_firerifle_kick_state;   // 0x44 (SOCOM 1's 0x30)
-    unsigned char _48[0x54 - 0x48];
+    unsigned int m_heartbeat_state;   // 0x48 (SOCOM 1's 0x34)
+    float m_heartbeat_accum;   // 0x4c (SOCOM 1's 0x38)
+    unsigned char _50[0x54 - 0x50];
     RETICULE_TYPE m_curitemreticule;   // 0x54 (SOCOM 1's int at 0x40)
     unsigned char _55[0x58 - 0x55];
     float m_screenoffset_x;   // 0x58 (SOCOM 1's 0x44)

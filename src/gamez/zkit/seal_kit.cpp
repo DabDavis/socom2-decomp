@@ -1874,6 +1874,126 @@ bool CZKit::IsUsingScope()
 }
 
 extern "C" {
+/* the body's adrenaline (CZSealBody::Adrenaline, OVL2 0x5781B0: the SEALs'), the controller's low
+ * rumble (CSealCtrl::SetLowRumbleTime, OVL2 0x592B40: the SEALs'), the kick's and the drift's
+ * switches (OVL2 0x650938, 0x650940) and the baseline's settling rate (OVL2 0x650980) */
+float *Adrenaline__10CZSealBodyFv(CZSealBody *body);
+void SetLowRumbleTime__9CSealCtrlFff(CKitCtrl *ctrl, float power, float time);
+extern unsigned char data_00650938;
+extern unsigned char data_00650940;
+extern float data_00650980;
+}
+
+/* (OVL2 0x5B9280: kit.h's) */
+void CZKit::SniperTick(float dT, CTargetMods &mods, float settle)
+{
+    float *a = Adrenaline__10CZSealBodyFv(m_body);
+    float adr = a ? *a : 1.0f;
+    float calm = 1.0f - adr;
+
+    if (adr > 0.2f && ((CKitBody *)m_body)->m_200 != 4) {
+        m_heartbeat_accum += dT;
+        if (m_heartbeat_state == 0) {
+            if (m_heartbeat_accum > 0.3f + 0.3f * 0.8f * calm) {
+                float t = 20.0f + 100.0f * adr;
+
+                if (t > 0.0f)
+                    SetLowRumbleTime__9CSealCtrlFff(((CKitBody *)m_body)->m_control, 0.1f, t);
+                m_heartbeat_accum = 0.0f;
+                m_heartbeat_state = 1;
+            }
+        } else if (m_heartbeat_accum > 0.8f + 0.8f * 0.8f * calm) {
+            float t = 20.0f + 100.0f * adr;
+
+            if (t > 0.0f)
+                SetLowRumbleTime__9CSealCtrlFff(((CKitBody *)m_body)->m_control, 0.16f, t);
+            m_heartbeat_accum = 0.0f;
+            m_heartbeat_state = 0;
+        }
+    }
+    if (data_00650938) {
+        if (m_firerifle_kick_state == 1 && m_firerifle_kick_movedist > 0.0f) {
+            float rate = mods.GetFireRifle_KickRate();
+            CKitCtrl *ctrl = ((CKitBody *)m_body)->m_control;
+
+            if (ctrl) {
+                /* (the controller's value read ahead of the accumulator, in both states) */
+                float step = rate * dT;
+                float cur = ctrl->m_130;
+
+                m_firerifle_kick_accum += step;
+                if (m_firerifle_kick_accum > m_firerifle_kick_movedist)
+                    m_firerifle_kick_state = 2;
+                else
+                    ctrl->m_130 = cur + step;
+            }
+        } else if (m_firerifle_kick_state == 2) {
+            float rate = mods.GetFireRifle_KickReturnRate();
+            CKitCtrl *ctrl = ((CKitBody *)m_body)->m_control;
+
+            if (ctrl) {
+                float step = rate * dT;
+                float v = ctrl->m_130 - step;
+
+                m_firerifle_kick_accum -= step;
+
+                if (settle > 0.0f) {
+                    m_firerifle_kick_baseline += settle * data_00650980;
+                    if (m_firerifle_kick_baseline > v)
+                        m_firerifle_kick_baseline = v;
+                }
+                if (v <= m_firerifle_kick_baseline) {
+                    ctrl->m_130 = m_firerifle_kick_baseline;
+                    m_firerifle_kick_state = 0;
+                    m_firerifle_kick_movedist = 0.0f;
+                    m_firerifle_kick_accum = 0.0f;
+                } else
+                    ctrl->m_130 = v;
+            }
+        }
+    }
+    if (data_00650940) {
+        float lim = mods.GetSniper_DistLimit_PosX();
+        float limit = 0.2f * lim + 0.8f * lim * adr;
+
+        if (adr > 0.2f && limit != 0.0f) {
+            float r = m_sniper_posx / limit;
+
+            if (r < 0.0f)
+                r *= -1.0f;
+            /* (the pace's first read a local: the second read, its 0.25 and the ratio's product
+             * fuse after the call -- adda/madd) */
+            float pace = 0.75f + mods.GetSniper_DistPPFrame_PosX();
+
+            m_sniper_posx += dT * (0.25f + mods.GetSniper_DistPPFrame_PosX() + pace * r);
+            if (m_sniper_posx > limit) {
+                mods.SetSniper_DistPPFrame_PosX(-mods.GetSniper_DistPPFrame_PosX());
+                m_sniper_posx = limit;
+            } else if (m_sniper_posx < -limit) {
+                mods.SetSniper_DistPPFrame_PosX(-mods.GetSniper_DistPPFrame_PosX());
+                m_sniper_posx = -limit;
+            }
+            lim = mods.GetSniper_DistLimit_PosY();
+            limit = 0.2f * lim + 0.8f * lim * adr;
+            if (adr < 0.1f)
+                limit = 0.0f;
+            r = m_sniper_posy / limit;
+            if (r < 0.0f)
+                r *= -1.0f;
+            pace = 0.75f + mods.GetSniper_DistPPFrame_PosY();
+            m_sniper_posy += dT * (0.25f + mods.GetSniper_DistPPFrame_PosY() + pace * r);
+            if (m_sniper_posy > limit) {
+                mods.SetSniper_DistPPFrame_PosY(-mods.GetSniper_DistPPFrame_PosY());
+                m_sniper_posy = limit;
+            } else if (m_sniper_posy < -limit) {
+                mods.SetSniper_DistPPFrame_PosY(-mods.GetSniper_DistPPFrame_PosY());
+                m_sniper_posy = -limit;
+            }
+        }
+    }
+}
+
+extern "C" {
 /* the target mods' kick distances (SOCOM 1's CTargetMods::GetFireRifle_KickRandomDist and
  * GetFireRifle_KickBaseDist, const: OVL1 0x3C5F60 and 0x3C5F70 read 0x48 and 0x44, unclaimed) */
 int rand(void);
