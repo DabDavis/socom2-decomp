@@ -2065,6 +2065,24 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the engine core, round 17** (CCamera::Update; the clutter's TickForce, Render, the list's Render and the
+  anim manager's tick -- SOCOM 1's; the tether and camera data rows named):
+  - INLINE TEMPORARIES ARE LAID OUT IN EXPANSION ORDER: in a nested expression the outer operator's result and copy take
+    the higher slots (CCamera::Update 0x294070: the near-plane point written as one expression -- round 15's note
+    rejected that form, the current zmath.h accepts it); a named local passed to an inline's by-value class parameter is
+    block-copied into a slot below the call's result, which gives the target's two temporaries;
+  - a length taken through an inline of its own makes the caller's later scaling reload its operands (CClutterAnim::
+    TickForce 0x2D8C60); an address-taken local point written by its constructor and read through a reference inline is
+    read off the frame, read directly its field addresses go into saved registers (CClutter::Render 0x2D8FE0); `float len
+    = sum; d = len * k;` puts the sum first in mul.s, one expression puts k first;
+  - a 64-bit field needs an `(unsigned int)` cast to load with lw (without it ld); `a ? (b ? x : 0) : 0` puts each zero in
+    its branch's delay slot; uninitialised locals declared at the top set the numbering order -- a pointer declared after
+    them takes the last named-local number (CClutterList::Render 0x2D97B0's camera); `if ((x = f()) != 0)` branches on
+    v0, `T *x = f(); if (x)` on the copy; `#pragma auto_inline off` pins a callee its only caller calls out of line
+    (CGrid::DeleteClutter; CClutterAnimManager::l_Tick 0x2D8040 and Tick from source: grid_clutter.cpp 20 of 22);
+  - data rows: 0x3DE270 short_tether_rate (ours), 0x3DE278 CamRotZ_down and 0x3DE288 CamRotZ_up (SOCOM 1's), 0x3DE280
+    CamRotZ_mounted (ours); 0x3EFD38 `ovl-copy: __RTTI__10CZSealBody` (camera.cpp emits OVL1's own copy for 0x2956E0's
+    dynamic_cast).
 - **Tells from the AI core, round 30** (LeadTargetG at last, open since round 2; SmoothPathLeg and its line callback, SOCOM
   1's; CAiCell::IsSoil):
   - MW NEVER SHARES A LOAD THROUGH A REFERENCE LOCAL WITH THE OBJECT'S OWN FIELDS: a `const CPnt3D &` to w gave
@@ -2251,8 +2269,8 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     / s;` as its own statement schedules the divide first; `CPnt3D v = p;` copies as a block (ld / sd), declared first
     and assigned it copies field by field; a rotated while loop over a byte enum stepped as `((int)v + 1) % n` reuses the
     test's load with an andi (CAppCamera::FTSTick 0x29B0C0, the first- / third-person transitions and positions);
-  - camera.cpp carries local stand-ins ScaledBy / DiffOf for CPnt3D's inline operator* / operator- (zmath.h only declares
-    them -- queued for the MSL).
+  - camera.cpp carried local stand-ins ScaledBy / DiffOf for CPnt3D's operator* / operator- -- RETIRED in round 17: zmath.h
+    has defined both inline since 2026-10-25 (the MSL's round 30), and the object is identical with them.
 - **Tells from the kit and AI states, round 48** (CTSound::Tick; CTInView / CTPlay::Tick written):
   - a random pick as an if/else with the draw in its own local (`int r = rand(); x = r % (n + 1) + 1;`) pads the else
     label and leaves the `b` over it unfilled -- a ternary, a lone if or the draw inline fills the `b` from the join and
