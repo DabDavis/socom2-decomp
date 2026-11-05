@@ -811,7 +811,10 @@ FIREMODE CZKit::GetCurFireMode()
  * if/else, a result local (0x1DC), a static inline capacity helper (three bodies, either arm), a
  * shared `return 0` at the end, a goto, `== 0` and `!(bool)` in the if, the item through
  * GetItemByIndex (9); round 30, the launcher arm as one ternary over `i != -1 && m_item[i]` (the shape
- * that closed GetFiremodeGraphic: 0x1F4) */
+ * that closed GetFiremodeGraphic: 0x1F4). Round 43: the six matched functions with the target's
+ * `bnez; move v0,zero; b end; nop; pad; jal` (Logout, ScanForVehicleByName, UIJoinGameServer,
+ * ChooseSlotForCharacter, PlaySound3D, ActivateSequence) all have code after the call -- here the call
+ * is the function's tail, which MW lays out first */
 int CZKit::GetMaxAmmoCount(int index)
 {
     index = wrap(index, m_num_items);

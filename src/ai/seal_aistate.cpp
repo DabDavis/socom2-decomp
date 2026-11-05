@@ -1739,7 +1739,9 @@ extern "C" bool func_005F51A0(CSealCtrlAi *ai, int x, unsigned int flags)
  * temporary coloured earlier (a1) -- the target colours the index first, as if it were the later
  * number; still 4 in 18 more shapes (the word and bit as separate parameters either order, the bit
  * or word or mask a local, a reference or pointer to the word, the index reused, the bare
- * expression in the caller, an index local in the caller) */
+ * expression in the caller, an index local in the caller). Round 43: SetBit's index by const
+ * reference, by pointer, a reference to the word, and the bare expression reading the index twice
+ * all stay at 4 (0x5CB450's seen-bit test is the same question) */
 int CAiSPickup::Tick(CSealCtrlAi *ai)
 {
     STEP step;
