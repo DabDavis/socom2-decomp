@@ -9,6 +9,42 @@
 extern void __assert(const char *file, int line, const char *expr);
 #define assert(e) ((e) ? (void)0 : __assert(__FILE__, __LINE__, #e))
 
+float func_0024C000(const float *pfIn, const float *pfRef);
+
+/* the iMBest nearest 2-D codewords, best first (GCC round 34a): an insertion into the candidate
+ * list, its distances starting at the largest float the vendor wrote (0x7F7FFFED: a literal over
+ * 0x1p+127 GCC puts in .sdata and loads by lui, 8 bytes apart per object as the image holds them);
+ * the list cleared index first (the other order swaps the loop's two stores) */
+#define MAX_NUMCAND 2
+
+void func_0024B560(const float *pfData, const float *pfCB, int iCBSize, int *piMBestCand, int iMBest)
+{
+	float afDist[MAX_NUMCAND];
+	float fDist;
+	int i, j;
+
+#line 709 "../../SaseEncVad/source/libquan.c"
+	assert(iMBest <= MAX_NUMCAND);
+	assert((pfData != NellyNull) && (pfCB != NellyNull));
+	assert(piMBestCand != NellyNull);
+	for (i = 0; i < iMBest; i++) {
+		piMBestCand[i] = 0;
+		afDist[i] = 0x1.ffffdap+127F;
+	}
+	for (i = 0; i < iCBSize; i++) {
+		fDist = func_0024C000(pfData, pfCB);
+		pfCB += 2;
+		if (fDist < afDist[iMBest - 1]) {
+			for (j = iMBest - 1; j > 0 && fDist <= afDist[j - 1]; j--) {
+				afDist[j] = afDist[j - 1];
+				piMBestCand[j] = piMBestCand[j - 1];
+			}
+			afDist[j] = fDist;
+			piMBestCand[j] = i;
+		}
+	}
+}
+
 int func_0024B720(const float *pfCodeBook, int iLength, float fValue)
 {
 	float fDist, fMin;
