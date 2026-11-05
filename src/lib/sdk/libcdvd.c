@@ -433,35 +433,25 @@ int _sceCd_scmd_prechk(int cmd)
 	return 1;
 }
 
-/* OPEN (1 word over: 0xB4 for 0xB0): a newer call the demo lacks -- the N and S commands' semaphores,
- * buffers and clients by id. The target dispatches by a chain of equality tests (0x8001, 0x8003,
- * 0x8002, 0x8004, 0x8011, 0x8013, 0x8012, 0x8014) and lays the bodies after it in reverse, each
- * setting one value stored once: a switch lowered without a table. This build makes a jump table for
- * these eight cases (range 20) in source order or sorted, an int or u_int index alike; the if-chain
- * interleaves the bodies with the tests. */
+/* A newer call the demo lacks -- the N and S commands' semaphores, buffers and clients by id (GCC
+ * round 37a; open since round 13a). The target tests the eight ids in an order no switch keeps
+ * (0x8001, 0x8003, 0x8002, 0x8004, 0x8011, 0x8013, 0x8012, 0x8014: a switch's case list is sorted,
+ * and this build makes a jump table of it anyway, eight cases in a range of 20), every test first,
+ * each a beq to its arm, the arms after in reverse and the value stored once: ONE conditional
+ * expression, nested -- expand_expr emits each COND_EXPR's test with a jump to its arm and the arms
+ * as the nesting unwinds. An if-else chain interleaves the arms with the tests (0xB4), and gotos to
+ * the arms in either order are 31 and 43 words off. */
 int func_0018E9E8(int id, u_int *out)
 {
-	u_int v;
-
-	if (id == 0x8001)
-		v = _sceCd_ncmd_semid;
-	else if (id == 0x8003)
-		v = (u_int)data_001CA8C0;
-	else if (id == 0x8002)
-		v = (u_int)_sceCd_ncmdsdata;
-	else if (id == 0x8004)
-		v = (u_int)&_sceCd_cd_ncmd;
-	else if (id == 0x8011)
-		v = _sceCd_scmd_semid;
-	else if (id == 0x8013)
-		v = (u_int)_sceCd_scmdrdata;
-	else if (id == 0x8012)
-		v = (u_int)data_001CBE80;
-	else if (id == 0x8014)
-		v = (u_int)&_sceCd_cd_scmd;
-	else
-		v = 0;
-	*out = v;
+	*out = (id == 0x8001) ? _sceCd_ncmd_semid
+	     : (id == 0x8003) ? (u_int)data_001CA8C0
+	     : (id == 0x8002) ? (u_int)_sceCd_ncmdsdata
+	     : (id == 0x8004) ? (u_int)&_sceCd_cd_ncmd
+	     : (id == 0x8011) ? _sceCd_scmd_semid
+	     : (id == 0x8013) ? (u_int)_sceCd_scmdrdata
+	     : (id == 0x8012) ? (u_int)data_001CBE80
+	     : (id == 0x8014) ? (u_int)&_sceCd_cd_scmd
+	     : 0;
 	return 1;
 }
 

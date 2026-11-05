@@ -1695,6 +1695,7 @@
 0x00209100 FindMPBombItem__11CZNewHudMapFv
 0x002091B0 UpdateMPBomb__11CZNewHudMapFv
 0x00209230 UpdateExplosives__11CZNewHudMapFv
+0x00209350 TickFullScreenAnims__11CZNewHudMapCFf
 0x00209790 Draw__11CZNewHudMapFPQ23zdb7CCamera
 0x00209EE0 TickFullScreenMap__11CZNewHudMapFP4CPad10MENU_STATE
 0x0020A330 func_0020A330
@@ -1803,6 +1804,7 @@
 0x00213610 HideTimer__14BitmapReticuleFv
 0x00213680 TimerProgressTick__14BitmapReticuleFf
 0x00213840 ReloadTimerTick__14BitmapReticuleFfP10CZSealBody
+0x00213A60 SetGBarVal__14BitmapReticuleFf
 0x00215180 OnPauseTest__14BitmapReticuleFv
 0x002151A0 Off__14BitmapReticuleFv
 0x002151F0 On__14BitmapReticuleFv
@@ -2062,6 +2064,7 @@
 0x00232970 Load__10CTCMSoundsFv
 0x002329D0 __ct__10CTCMSoundsFv
 0x002329F0 tcmAddKindItems__F10FT_COMMAND
+0x00234F40 Select__4CTCMFPCc
 0x002351A0 TalkTick__4CTCMFf
 0x00235300 Close__4CTCMFb
 0x00235440 Open__4CTCMFv
@@ -2069,6 +2072,7 @@
 0x002356D0 Next__4CTCMFv
 0x00235760 FindPrev__4CTCMFP8CTCMNode
 0x00235870 FindNext__4CTCMFP8CTCMNodeb
+0x002359A0 HandleClosedPad__4CTCMFP4CPadf
 0x002360D0 Tick__4CTCMFP4CPadf
 0x00236250 Set__8CTCMModeFi
 0x00236260 tcmSetNodeActions__Fv
