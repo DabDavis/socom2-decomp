@@ -2065,6 +2065,21 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the weapons, round 31** (zVid_Swap; InitializeWeapons, open since round 17; AttachDecal, since round 25;
+  CopyBuffer, since round 13):
+  - READ THE BRANCHES BEFORE TRUSTING A SWITCH'S SEMANTICS: CopyBuffer 0x3C36D0's kind-5 case had been inverted for 18
+    rounds -- both builds leave kind 5 alone, copy kind 8 and make every other kind relative (nested ifs, the length
+    before the block pointers, d / s / n declared uninitialised: a signed division by a power of two ends a block, and
+    uninitialised declarations fix volatile-register order whatever the order of assignment);
+  - a std::list walked through named node pointers (`node_base *e, *n`) numbers the walk as named locals, and a dead
+    first definition of the element pointer at the top places it ahead of them; one counter / count pair reused across
+    two walks is split by MW -- each walk's own uninitialised pair declared before the name it tests takes the replay's
+    order (CZWeaponList::InitializeWeapons 0x3C4700: round 30's igreplay numbering put into source, a marked device);
+  - comparison operands are evaluated left to right, but a by-value two-argument inline reads its last argument first
+    (zVid_Swap 0x3AFF30, SOCOM 1's with SOCOM II's second bool: the wait loop's test through FrameEarly(t, rate));
+    an if / else whose arms each call their own inline keeps the target's fall-through delay-slot fill and padded join
+    (CVisual::AttachDecal 0x3B3800: each pool's Get through GetPermDecal / GetTempDecal); initcode 0x3E0880 and
+    zVid_Swap's t0Count named (SOCOM 1's).
 - **Tells from the UI, round 29** (CSoftKeyboard::PrepForDisplay and CGameMenu::HandlePad at last; SkbOpenParse named):
   - a member array read through a reference-returning accessor at each use (`m_texLists[i]`) makes MW strength-reduce
     from the accessor's `this + offset` -- a reference local, or `m_lists[i]` written out, steps `this` and adds the
