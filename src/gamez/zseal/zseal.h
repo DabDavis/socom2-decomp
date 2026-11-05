@@ -221,6 +221,8 @@ public:
     void ReParentToPistol();
     /* whether the item in hand has rounds left (kit.h's; OVL2 0x5BDB00) */
     bool CurItemHasAmmo();
+    /* whether the item is the one in use (kit.h's; OVL2 0x5B98C0 -- ai::INVIEW's tick asks it) */
+    bool IsUsingItem(EQUIP_ITEM item);
     /* the items held, an item set at an index, its magazines and rounds, its ammunition set -- with a
      * count of rounds (kit.h's; OVL2 0x5BE030, 0x5BDFB0, 0x5C4970, 0x5C3C10, 0x5BDE20, 0x5BDEC0) */
     int GetNumItems() const;

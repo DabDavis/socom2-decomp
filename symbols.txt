@@ -9096,8 +9096,8 @@
 0x005037A8 0x3D4 SubHarmonicSummation_and_VUVDetermination  # OVL2 unaligned; s1:calls (SOCOM 1's ProcessSHS_VUV calls SubHarmonicSummation_and_VUVDetermination where ours call this row, 1 call site; the same position in SOCOM 1's object)
 0x00503B80 0x640 ProcessSHS_VUV  # OVL2; s1:calls
 0x005041C0 0xF8 ControlSHS_VUV  # OVL2; s1:align
-0x005042B8 0x264 func_005042B8  # OVL2 unaligned
-0x00504520 0x45C func_00504520  # OVL2
+0x005042B8 0x264 CreateFreqWindow  # OVL2 unaligned; s1:calls+order (SOCOM 1's InitSHS_VUV calls CreateFreqWindow at the same point, after the last of the block's tables; the same position in SOCOM 1's shs object, after ControlSHS_VUV) -- the gcc lane, round 29c
+0x00504520 0x45C InitSHS_VUV  # OVL2; s1:slot (ConstructSHS_VUV passes it in tosBaseBlockConstruct's init slot, as SOCOM 1's passes InitSHS_VUV; the same position in SOCOM 1's shs object) -- the gcc lane, round 29c
 0x00504980 0x3C ConstructSHS_VUV  # OVL2; s1:align
 0x005049C0 0x100 SlidingHisto_NewItem  # OVL2; s1:align
 0x00504AC0 0x19C SlidingHisto_Init  # OVL2; s1:align

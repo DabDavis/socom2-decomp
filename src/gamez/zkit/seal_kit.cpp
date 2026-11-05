@@ -1556,13 +1556,12 @@ void CZKit::LobAim(CZSealBody *body, const CPnt3D *from, const CPnt3D *to, CPnt3
 
 extern "C" {
 /* the controller's high rumble (CSealCtrl::SetHighRumbleTime, OVL2 0x592BA0: the SEALs'), the target
- * mods' reported burst shot (an int at 0x6C, new in SOCOM II: OVL1 0x3C5AB0), the weapon's recoil
- * step (a float at 0x6C: OVL1 0x3D2000) and the body's recoil counter raised by it, to 10 at most (a
- * float at 0x378: OVL2 0x57D510) -- the weapons' and the SEALs' rows, unnamed */
+ * mods' reported burst shot (an int at 0x6C, new in SOCOM II: OVL1 0x3C5AB0) and the body's recoil
+ * counter raised by the weapon's recoil share (CZWeapon::GetRecoilPct, OVL1 0x3D2000), to 10 at most
+ * (a float at 0x378: OVL2 0x57D510) -- the weapons' and the SEALs' rows, unnamed */
 void SetHighRumbleTime__9CSealCtrlFf(CKitCtrl *ctrl, float time);
 void SetLowRumbleTime__9CSealCtrlFff(CKitCtrl *ctrl, float power, float time);
 int func_003C5AB0(CTargetMods *mods);
-float func_003D2000(CZFTSWeapon *w);
 void func_0057D510(CZSealBody *body, float step);
 }
 
@@ -1653,7 +1652,7 @@ void CZKit::Recoil(CZFTSWeapon *w)
         m_retsize = tmin;
     else if (m_retsize > tmax)
         m_retsize = tmax;
-    func_0057D510(m_body, func_003D2000(w));
+    func_0057D510(m_body, w->GetRecoilPct());
 }
 
 /* (OVL2 0x5C2670: kit.h's; SOCOM 1's TickReticule). One rate variable for the offsets' return and the
