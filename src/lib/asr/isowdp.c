@@ -12,7 +12,7 @@
  * nodes are blocks of the scheduler's small-block allocator (fastallo.c), given back to its free
  * lists by size; a tree node's word indexes a table of its states' offsets. Only the functions
  * written so far are here, in image order: FreeIsoWordTokenDp, InitNewUtterance,
- * ExpandGarbageArrays, ControlIsoWordTokenDp (round 31c), ConstructIsoWordTokenDp,
+ * ExpandGarbageArrays, GetNBest and ControlIsoWordTokenDp (round 31c), ConstructIsoWordTokenDp,
  * InitIsoWordTokenDpProcess, CalcNrNodes, IdleProcess, ScoreCompare. CalcNrNodes reads the child count before its depth test (the
  * target's load in the test's delay slot) and steps its child pointer in the for (the unrolled
  * copies at +12, +24, +36 off one register; `c++` in the call gives a pointer per copy). */
@@ -48,7 +48,7 @@ typedef struct QIN {
 typedef struct NODE {
     unsigned char f0;                   /* +0 */
     unsigned char len;                  /* +1 */
-    short f2;                           /* +2 */
+    short f2[1];                        /* +2: a score per state */
 } NODE;
 
 /* a token as the N-best sort sees it */
@@ -62,6 +62,7 @@ typedef struct WTOKEN {
     void *f0;                           /* +0 */
     NODE *node;                         /* +4 */
     unsigned short word;                /* +8 */
+    unsigned short f10;                 /* +10: 0 at a word's end */
 } WTOKEN;
 
 /* the node wheel: a ring of token pointers */
@@ -155,6 +156,8 @@ static int ExpandGarbageArrays(ISOWDP *e);
 static int InitIsoWordTokenDpProcess(ISOWDP *e);
 static int CalcNrNodes(void *n, int depth);
 static void IdleProcess(void);
+static int ScoreCompare(const TOKEN *a, const TOKEN *b);
+extern void qsort(void *base, unsigned int n, unsigned int size, int (*cmp)(const void *, const void *));
 
 /* a node given back to the allocator's free list of its size (len + 2 halfwords, in words) */
 #define FREENODE(fa, n)                                                 \
@@ -243,7 +246,7 @@ static int InitNewUtterance(ISOWDP *e)
     *p = e->start;
     FastAlloc(tos, (int **)&e->start->node, size);
     e->start->node->len = n;
-    e->start->node->f2 = 0;
+    e->start->node->f2[0] = 0;
     e->start->node->f0 = 0;
     p = NEXTSLOT(&e->wheel, p);
     if (p == e->wheel.head) {
@@ -387,7 +390,6 @@ typedef struct ISOPARAM {
     unsigned int f12;                   /* +12 */
 } ISOPARAM;
 
-extern int GetNBest(ISOWDP *e, unsigned int n);
 extern int InitIsoWordTokenDpContext(ISOWDP *e, void *ctx, void *arg2);
 extern unsigned char qQueueControl(void *q, int what, int reader, void *arg);
 extern unsigned char _tosControl(void *log, int id, int a, int b);
@@ -402,6 +404,65 @@ static __inline__ unsigned char AllocNBest(ISOWDP *e, ISOTOS *tos, unsigned int 
     if (e->f176 == 0)
         return 1;
     return 0;
+}
+
+#define WORST   (-33792)                /* 0xFFFF7C00: no score yet */
+
+/* the best n of the wheel's tokens that end a word (no successor, not the start token, at their
+ * node's last state), each scored by its node's last entry over the block's base: the first n as
+ * they come, then each better than the worst kept replacing it (the worst searched for again only
+ * after a replacement); sorted by score. SOCOM 1's body (round 31c): the wheel walked by a for
+ * with the records' base read before it (inside the empty-wheel test it takes the second
+ * register); the first n appended through an index (`best[cnt]`: a walker of its own gives the
+ * base the lower priority); a replacement's two stores written score first (sched1 issues the
+ * later of the two first); a node's scores an array at +2 (the node pointer first in the sum). */
+static unsigned int GetNBest(ISOWDP *e, unsigned int n)
+{
+    WHEEL *w = &e->wheel;
+    TOKEN *best;
+    WTOKEN **p;
+    WTOKEN *t;
+    NODE *node;
+    unsigned int cnt, k, wi;
+    int worst, score;
+    void *word;
+
+    worst = WORST;
+    cnt = 0;
+    wi = 0;
+    best = e->f176;
+    for (p = w->head; p != w->tail; p = NEXTSLOT(w, p)) {
+        {
+            t = *p;
+            if (t->f10 == 0 && t != e->start) {
+                node = t->node;
+                if (node->f0 == node->len) {
+                    score = node->f2[node->f0] + e->f132;
+                    word = t->f0;
+                    if (cnt < n) {
+                        best[cnt].score = score;
+                        best[cnt].f0 = word;
+                        cnt++;
+                    } else {
+                        if (worst == WORST)
+                            for (k = 0; k < n; k++)
+                                if (worst < best[k].score) {
+                                    worst = best[k].score;
+                                    wi = k;
+                                }
+                        if (score < worst) {
+                            best[wi].score = score;
+                            best[wi].f0 = word;
+                            worst = WORST;
+                        }
+                    }
+                }
+            }
+        }
+    }
+    if (cnt != 0)
+        qsort(best, cnt, sizeof(TOKEN), (int (*)(const void *, const void *))ScoreCompare);
+    return cnt;
 }
 
 /* the block's commands: 3 runs the pass, 5 idles it, 4 ends the utterance (the N-best sent, 9, or
