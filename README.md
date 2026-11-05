@@ -2063,7 +2063,7 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
 - **Tells from completing the MSL headers, round 25** (the pointer vector's erase, MSL's find, the deque's const_iterator;
-  probes build/p25/, untracked; scratch build/scratch/msl-r25/: base_master2.txt, run_*.txt, objcmp_*.txt):
+  probes and scratch in build/scratch/msl-r25/, untracked -- p25/ the probes; base_master2.txt, run_*.txt, objcmp_*.txt):
   - THE POINTER VECTOR'S erase(iterator) is `__iter(__raw_erase(position.base()))`, the raw erase T-dependent as the raw
     ends (a `j` to the pod's erase): CUIVariable::Detach 0x3866F0 (written, ours: SOCOM 1's DetachUIVar inlined it) inlines
     UIVarMixin::DetachUIVar 0x385D90 (written, its draft's code) with Detach once more inside it, cut a level -- base(),
