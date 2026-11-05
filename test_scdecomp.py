@@ -1037,6 +1037,23 @@ def test_igreplay_replays_and_predicts():
     hits = R.brute(rec, {first: "s0", second: "s1"}, [first])
     ck(second + 0.5 in [h[0] for h in hits] and first + 0.5 not in [h[0] for h in hits],
        f"--want finds the placement after second, not first's own ({hits})")
+    # --target (the MSL lane's igmap.py/igtarget.py, the kit's round 42): each virtual register's
+    # register in the TARGET, by aligning the PCode with the final code. zlib's inflate_blocks_new is
+    # byte-exact: every register it maps is the record's; with one word of the target changed (the
+    # block pointer `s` moved into s4 instead of s0) that use is read as s4.
+    unit = HERE / "src" / "zlib" / "infblock.c"
+    zrecs, _ = igdump.dump(unit, BUILD / "ig_infblock.jsonl")
+    zrec = igdump.select(zrecs, "^inflate_blocks_new$", 0)[0][1]
+    tcol, conflicts, _ = R.target_colours(zrec, unit, "inflate_blocks_new")
+    ck(len(tcol) >= 10 and all(tcol[v] == zrec["nodes"][v]["color"] for v in tcol) and not conflicts,
+       f"a byte-exact function maps to its own colouring ({len(tcol)} mapped)")
+    img, st = E.image(), E.symbols()
+    row = st.get("inflate_blocks_new")
+    a, w = next((a, w) for a, w, t in E.disasm(img.read(row.addr, row.size), row.addr) if t == "move s0,v0")
+    s = R.node_index(zrec, "s")
+    tcol2, conflicts2, _ = R.target_colours(zrec, unit, "inflate_blocks_new",
+                                            img=_PatchedImage(img, {a: w & ~(31 << 11) | (20 << 11)}))
+    ck(s in conflicts2 and conflicts2[s].get("s4") == 1, f"the target's s4 use of `s` is read ({conflicts2.get(s)})")
 
 
 def test_igvar_compares_variants():

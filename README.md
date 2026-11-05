@@ -6068,20 +6068,27 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
   (build/ig/<stem>.jsonl): each virtual register's variable, initial degree, neighbours, colour, spill cost,
   the colouring order and the pre-rewrite PCode -- the MSL lane's round-10 reader with the AI core's
   round-24 costs and procedure names; byte-identical to the lanes' dumps. It refuses a unit another build
-  compiles (its breakpoints are 3.0b52's addresses; a GCC unit is tools/ccdump.py's) and a dump that
-  recorded nothing. `./tools/igreplay.py DUMP` replays MW's simplify/colour (round 11's model, K 25 GPRs
+  compiles (its breakpoints are 3.0b52's addresses -- under 3.0b50 the compiler faults at 0x4C4968, so
+  seal_aistate.cpp cannot be dumped; a GCC unit is tools/ccdump.py's) and a dump that recorded nothing. `./tools/igreplay.py DUMP` replays MW's simplify/colour (round 11's model, K 25 GPRs
   and 32 FPRs -- the FPRs volatile f0-f19, then f20 up) and says whether each record replays: all 1,156
   records of nine lanes' dumps do, GPR and FPR (the lanes' copy read an empty reserved list as the GPRs'
   and so missed the FPRs); `--move V=POS` renumbers a node to show which registers a numbering gives
   before any source is written (the game states' round 37: CGraph::Read), `--want V=s0,... --movers V`
-  lists every placement that gives them, `--nb V` a node's neighbours with the sweep each was pushed in.
+  lists every placement that gives them, `--nb V` a node's neighbours with the sweep each was pushed in,
+  and `--target UNIT FUNC` reads each virtual register's register in the TARGET (the MSL lane's round-11
+  igmap.py/igtarget.py, the kit's round 42: the PCode aligned with the final code) -- with `--movers` its
+  saved registers are the `--want`. The workflow the lanes converged on (the states' round 37, the AI
+  core's round 28, the kit's round 42 -- five functions closed): dump the colouring, read the target's
+  registers, relabel or brute-force the numbering until the replay gives them, then find the source
+  shape that numbers so (`igreplay.py DUMP -f F -r 0 --target UNIT F_MANGLED --movers 41,87`).
   `./tools/igvar.py FILE FUNC --variants V.py` (or try.py's `--sub`/`--and`) builds each variant under
   igdump in a scratch tree and prints the spilled nodes and each saved register's holders, `(as it is)`
   where a variant changes nothing -- ~1 s a variant on a small unit. The canary: a fixture whose two
   locals live across calls takes s1/s0 in declaration order, recorded as the object's code has them
   (`test_igdump_records_mws_colouring`, with three refusals); every record of zmath_pnt3d.cpp replays,
-  a dropped interference does not, and `--move first=35.5` predicts what the swapped declarations
-  compile to (`test_igreplay_replays_and_predicts`); igvar shows the swap, a no-op, a missing
+  a dropped interference does not, `--move first=35.5` predicts what the swapped declarations compile
+  to, and `--target` maps zlib's byte-exact inflate_blocks_new to its own colouring and reads one
+  changed target word (`test_igreplay_replays_and_predicts`); igvar shows the swap, a no-op, a missing
   substitution and a build failure each for what it is (`test_igvar_compares_variants`).
 - **Tells from the online lobby, round 7** (the room and ladder units, zNetMediusFile.cpp):
   - a function handed to std::transform by address becomes a direct, never-inlined `jal` with the
@@ -8990,7 +8997,9 @@ an empty reserved list is the class's own (the FPRs reserve none: K 32 -- the co
 GPRs' seven and failed 2 of zmath_pnt3d.cpp's 12 FPR records), the FPRs' registers (f0-f19 volatile,
 f20-f31 handed out in order: read off the dumps, no pair of choices conflicting), and a spilled node
 -1 as MW records it (the copies' -2 counted every spill as a mismatch); relabel.py, brute.py and
-nbdeg.py are its `--move`, `--want`/`--movers` and `--nb`. Over every record of nine lanes' dumps
+nbdeg.py are its `--move`, `--want`/`--movers` and `--nb`, and igtarget.py/igmap.py its `--target` (the
+opcode table vendored as tools/igopnames.json; the kit's round-42 copy -- rl.py, igv1.py, sregs.py,
+rshow.py -- is the same toolset, its picks.py's spill-pick trace not folded in). Over every record of nine lanes' dumps
 (states-r32, -r37, hud-r45, seal-r38, msl-r18, ai-r28: 1,156, GPR and FPR) it reproduces the order and
 every colour. igvar takes try.py's variant parser (imported, not copied) and a scratch tree of its own
 (`$SC_IG_WORK`, else build/igvar/). The canary's three tests (above) each fail with the tool broken as

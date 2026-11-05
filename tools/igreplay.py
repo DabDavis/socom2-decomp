@@ -268,6 +268,106 @@ def neighbours(rec: dict, v: int) -> list[str]:
     return out
 
 
+# --- the target's registers (the MSL lane's round-11 igmap.py and igtarget.py; the kit's round 42) ---
+# Each PCode instruction of a record (pre-rewrite, every operand a virtual or hard register) is
+# matched to the nearest unused instruction of the candidate's final code with the same mnemonic and
+# the same registers under the record's own colouring; the target's instruction at that index then
+# names each virtual register's register in the TARGET (the most frequent, where uses disagree).
+OPNAMES = json.loads((Path(__file__).resolve().parent / "igopnames.json").read_text())
+OPNAMES.update({'1042': 'lw*', '1025': 'la*', '1112': 'entry*', '1120': 'nop*', '976': 'br*', '982': 'br*'})
+PSEUDO = {'1042': 'lw', '1025': 'addiu', '1076': 'sw', '1078': 'swc1', '1043': 'lwc1', '966': 'sltu',
+          '968': 'sltiu', '976': 'sltu', '982': 'sltu', '974': 'sltu', '1041': 'lb', '1040': 'lbu',
+          '1074': 'sb', '1044': 'lh', '1045': 'lhu', '1075': 'sh'}
+
+
+def _regs_of(text: str) -> tuple[str, list[str]]:
+    parts = text.split(None, 1)
+    if len(parts) < 2:
+        return (parts[0] if parts else ''), []
+    return parts[0], [t for t in re.split(r'[,()\s]+', parts[1]) if t in REGS]
+
+
+def _pc_sig(ins, colour):
+    op, args = ins
+    mn = PSEUDO.get(str(op), OPNAMES.get(str(op), str(op)))
+    regs, vregs = [], []
+    for a in args:
+        if a.startswith('r'):
+            n = int(a[1:])
+            c = n if n < 32 else colour[n]
+            regs.append(REGS[c] if 0 <= c < 32 else '?')
+            vregs.append(n)
+    if str(op) in ('966', '976', '982', '974', '968'):
+        regs, vregs = ['at'] + regs, [1] + vregs
+    if mn == 'dmove':
+        mn = 'move'
+    if mn in ('beq', 'bne') and len(regs) == 2 and regs[1] == 'zero':
+        mn, regs, vregs = mn + 'z', regs[:1], vregs[:1]
+    return mn, regs, vregs
+
+
+def tmap(rec: dict, ours: list[str], targ: list[str], window: int = 24):
+    """({virtual register: its register in the target}, {vreg: disagreeing counts}, PCode unmatched),
+    from a GPR record and the candidate's and the target's final code (instruction texts)."""
+    colour = [n['color'] for n in rec['nodes']]
+    fin = [_regs_of(t) for t in ours]
+    tfin = [_regs_of(t) for t in targ]
+    used, seen, pos, unmatched = set(), {}, 0, 0
+    for ins in rec['code']:
+        if isinstance(ins, str):
+            continue
+        mn, regs, vregs = _pc_sig(ins, colour)
+        if not any(v >= 32 for v in vregs):
+            continue
+        best = None
+        for d in range(window):
+            for k in (pos + d, pos - d):
+                if 0 <= k < len(fin) and k not in used and fin[k] == (mn, regs):
+                    best = k
+                    break
+            if best is not None:
+                break
+        if best is None:
+            unmatched += 1
+            continue
+        used.add(best)
+        pos = best + 1
+        tm, tr = tfin[best]
+        if tm != mn or len(tr) != len(regs):
+            continue
+        for v, r in zip(vregs, tr):
+            if v >= 32:
+                seen.setdefault(v, {}).setdefault(r, 0)
+                seen[v][r] += 1
+    out, conflicts = {}, {}
+    for v, d in seen.items():
+        out[v] = REGS.index(max(d, key=d.get))
+        if len(d) > 1:
+            conflicts[v] = d
+    return out, conflicts, unmatched
+
+
+def target_colours(rec: dict, unit: Path, func: str, img=None):
+    """tmap for `func` (a map name the unit defines): the unit built as sccheck builds it (its
+    directive, include/ and src/), its final code and the target row's aligned with the record."""
+    here = Path(__file__).resolve().parent.parent
+    sys.path.insert(0, str(here))
+    import scdecomp as E
+    import scdiff as D
+    import sccheck
+    st, img = E.symbols(), img or E.image()
+    _, obj, err = sccheck.build_one(Path(unit).resolve(), here / "build" / "ig" / "obj")
+    if obj is None:
+        raise SystemExit(f"{unit}: {err.strip().splitlines()[-1] if err.strip() else 'did not build'}")
+    sym = st.get(func)
+    code, rel, _ = E.Elf.read(obj).function(func)
+    ours = [t for _, _, t in E.disasm(D.mask(code, rel), sym.addr)]
+    targ = [t for _, _, t in E.disasm(img.read(sym.addr, sym.size), sym.addr)]
+    if len(ours) != len(targ):
+        print(f"  {func}: {len(ours)} instructions against the target's {len(targ)} -- the alignment is approximate")
+    return tmap(rec, ours, targ)
+
+
 def load(path) -> list[dict]:
     return [json.loads(ln) for ln in open(path)]
 
@@ -295,13 +395,16 @@ def main(argv=None) -> int:
     ap.add_argument("--want", help="wanted registers, V=reg,... (with --movers)")
     ap.add_argument("--movers", help="the nodes --want may renumber, comma-separated")
     ap.add_argument("--nb", help="list this node's neighbours")
+    ap.add_argument("--target", nargs=2, metavar=("UNIT", "FUNC"),
+                    help="read each virtual register's register in the target (FUNC a map name UNIT defines); "
+                         "with --movers, the saved registers it gives are the --want")
     a = ap.parse_args(argv)
     recs = load(a.dump)
     rx = re.compile(a.func) if a.func else None
     sel = [(k, r) for k, r in enumerate(recs)
            if (a.cls < 0 or r['cls'] == a.cls) and r['cls'] in VOLATILE
            and (rx is None or rx.search((r.get('proc') or '').split('@0x')[0]))]
-    single = a.move or a.drop or a.want or a.nb or a.watch
+    single = a.move or a.drop or a.want or a.nb or a.watch or a.target
     if not single:
         bad_recs = 0
         for k, r in sel:
@@ -320,8 +423,28 @@ def main(argv=None) -> int:
     if a.nb:
         print("\n".join(neighbours(rec, node_index(rec, a.nb))))
         return 0
-    if a.want:
-        want = {node_index(rec, kv.split('=')[0]): kv.split('=')[1] for kv in a.want.split(',')}
+    want = {}
+    if a.target:
+        if cls != 0:
+            raise SystemExit("--target reads the GPR class's PCode (igdump records it for class 0 only)")
+        tcol, conflicts, unmatched = target_colours(rec, Path(a.target[0]), a.target[1])
+        g0 = Graph(rec)
+        differ = 0
+        for v in sorted(tcol):
+            ours = rec['nodes'][v]['color']
+            if tcol[v] != ours:
+                differ += 1
+                print(f"  v{v:<4} {g0.name(v)[:20]:20} ours {rname(ours):5} target {rname(tcol[v]):5}"
+                      + (f"  (uses disagree: {conflicts[v]})" if v in conflicts else ""))
+            if 16 <= tcol[v] <= 23 or tcol[v] == 30 or 16 <= ours <= 23 or ours == 30:
+                want[v] = rname(tcol[v])
+        print(f"  {len(tcol)} virtual registers mapped, {differ} differ, {len(conflicts)} with disagreeing "
+              f"uses, {unmatched} PCode instructions unmatched")
+        if not a.movers:
+            return 0
+    if a.want or want:
+        if a.want:
+            want = {node_index(rec, kv.split('=')[0]): kv.split('=')[1] for kv in a.want.split(',')}
         movers = [node_index(rec, x) for x in (a.movers or '').split(',') if x]
         if not movers:
             raise SystemExit("--want needs --movers")
