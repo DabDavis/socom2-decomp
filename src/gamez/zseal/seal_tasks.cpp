@@ -2154,6 +2154,25 @@ bool CTGroup::Tick(_zanim_cmd_hdr *hdr, float *dT)
     return done;
 }
 
+/* a vector of blocks freed with the game's _free when it goes (fts_ovl2statics.cpp's static
+ * s_taskBlocks registers this destructor; the class and its names the game states'): out of line
+ * here, between CTGroup's tick and end (OVL2 0x5D9540) -- the blocks freed from the back, the storage
+ * traded away through FreeVector (its vector(), clear, swap and ~vector called: 0x5D96F0, 0x5D96E0,
+ * 0x5D96A0, 0x5D9630), then the base's teardown */
+class CMallocBlocks : public std::vector<void *> {
+public:
+    ~CMallocBlocks();
+};
+
+CMallocBlocks::~CMallocBlocks()
+{
+    while (size()) {
+        _free(back(), 0, 0);
+        pop_back();
+    }
+    FreeVector<std::vector<void *> >(*this);
+}
+
 /* (OVL2 0x5D9430) */
 void CTGroup::End(_zanim_cmd_hdr *hdr)
 {
