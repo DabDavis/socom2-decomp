@@ -526,62 +526,8 @@ bool CAiMaps::GetCellRepelParams(const CAiMapLoc &loc, const CPnt3D *pos, float 
  * 0x516940, was defined here until the AI core's round 24: an inline in ai.h now, its copy emitted
  * after GetClosestDir(loc, point) here) */
 #pragma auto_inline off
-/* a value within a span, ends included, all three by reference (the name ours: GetLocation's two
- * box tests, each materialised as an inline bool's, the value loaded first) */
-inline bool _in_span(const float &v, const float &lo, const float &hi)
-{
-    return v >= lo && v <= hi;
-}
-
-/* whether a point lies over the box in x and z (the name ours) */
-inline bool _over_box(const CBBox &b, const CPnt3D *pos)
-{
-    bool r = false;
-
-    if (_in_span(pos->x, b.m_min.x, b.m_max.x) && _in_span(pos->z, b.m_min.z, b.m_max.z))
-        r = true;
-    return r;
-}
-
-/* the cell under a point (SOCOM 1's GetLocation(CPnt3D *, loc), the demo's 0x19B0F0: the box test
- * in x and z, the offsets scaled by the inverse cell sizes and truncated on VU0 in place, the cell
- * stored field by field -- SOCOM II gives it the map's id where SOCOM 1 gave 0 -- and whether the
- * cell is on the map; 0x515F80, after SetCorners, which 0x515900 calls twice -- both inlines: their
- * copies follow BuildFootprint, their only caller, in reverse of first use with CAiMapLoc(), GetBBox
- * and the box's copy, 0x515DE0-0x516177, the AI core round 24). The row (the
- * halfword bitfield compared signed) and column tests each set a bool local of their own, the
- * _over_box shape written in place: byte-exact since the AI core's round 23 -- the row test through
- * an inline loaded m_ny ahead of the `bltz` and narrowed its bool (0x1A0 against 0x198, round 22),
- * one result local (`on && ...` returned) was 0x190 */
-inline bool CAiMap::GetLocation(const CPnt3D *pos, CAiMapLoc &loc) const
-{
-    bool inside = _over_box(m_bbox, pos);
-
-    if (inside) {
-        sceVu0FVECTOR v;
-        float *p = v;
-
-        v[0] = m_idx * (pos->x - m_bbox.m_min.x);
-        v[1] = m_idy * (pos->z - m_bbox.m_min.z);
-        asm volatile {
-            lqc2 vf3, 0(p)
-            vftoi0.xyzw vf3, vf3
-            sqc2 vf3, 0(p)
-        }
-        loc.x = ((int *)p)[0];
-        loc.y = (unsigned short)((int *)p)[1];
-        loc.m_mapid = (unsigned char)GetMapId();
-        bool on = false;
-        bool ret = false;
-
-        if (loc.y >= 0 && loc.y < m_ny)
-            on = true;
-        if (on && loc.x < m_nx)
-            ret = true;
-        return ret;
-    }
-    return false;
-}
+/* (CAiMap::GetLocation(point) and its two box helpers, defined here until the AI core's round 26,
+ * are ai.h's inlines now: this unit still emits OVL2's copy, 0x515F80) */
 
 /* the rectangle between two cells, either corner first: the map of the first, the lesser x and y
  * as the corner, the spans inclusive (new in SOCOM II, the name ours: 0x515DE0, which 0x515900 calls

@@ -240,6 +240,9 @@ public:
     /* whether the cell is indoors (the name ours: GetInterpolatedShadow's test, out of line at
      * 0x52D280 beside GetShadow's 0x52D270 where the map's shadow is inlined one level) */
     bool IsInside() const { return m_inside; }
+    /* whether the cell's height is blended with its neighbours' (the name ours: bit 27, OVL1's copy
+     * 0x2A3930, called out of line by ftsGetAltitudeApprox's one-level cut of GetMapAltitude) */
+    bool IsBilinear() const { return m_bilinear; }
     /* the fields' setters: their arguments masked at run time, `(0 & 1) << n` for a constant
      * (the names ours) */
     void SetOccupied(unsigned int b) { m_occupied = b; }
@@ -804,6 +807,121 @@ public:
 
         return cell ? GetAltitude(cell, alt) : false;
     }
+    /* a point's place in its cell, 0 to 1 from the cell's corner across x and z, none off the map
+     * (the name ours: GetBilinearAltitude's first test, inlined whole -- IsCell's row bool then its
+     * column bool; the corner's z first, so MW converts the row IsRow narrowed before any store) */
+    PNT2D *GetCellOffset(const CAiMapLoc &loc, const CPnt3D *pos, PNT2D *t) const
+    {
+        if (IsCell(loc)) {
+            float z = m_bbox.m_min.z + loc.y * m_dy;
+            float x = m_bbox.m_min.x + loc.x * m_dx;
+
+            t->x = m_idx * (pos->x - x);
+            t->y = m_idy * (pos->z - z);
+            return t;
+        }
+        return 0;
+    }
+    /* the neighbours a point's height blends with -- a step in x and in z toward the nearer side --
+     * and the cell's own weight in each, the point's nearness to its centre (the name ours: an inline
+     * bool, materialised and tested by GetBilinearAltitude; the offset read back off the stack) */
+    bool GetBilinearWeights(const CAiMapLoc &loc, const CPnt3D *pos, int *s, PNT2D &f) const
+    {
+        PNT2D t;
+
+        if (GetCellOffset(loc, pos, &t)) {
+            if (t.x > 0.5f) {
+                s[0] = 1;
+                f.x = 1.5f - t.x;
+            } else {
+                s[0] = -1;
+                f.x = 0.5f + t.x;
+            }
+            if (t.y > 0.5f) {
+                s[1] = 1;
+                f.y = 1.5f - t.y;
+            } else {
+                s[1] = -1;
+                f.y = 0.5f + t.y;
+            }
+            return true;
+        }
+        return false;
+    }
+    /* a point's height blended over the cell and its three neighbours toward the point, each weighted
+     * by the point's nearness to its centre -- a cell of bad altitude left out, the rest renormalised
+     * when their weights sum below 0.98 -- false when no cell had one (SOCOM 1's, the demo's 0x19A820:
+     * OVL1's only copy 0x2A3170, which ftsGetAltitudeApprox calls for a bilinear cell). GetCell past
+     * inline_max_size, so inlined one level -- its pieces called out of line -- GetAltitude whole; the
+     * neighbour built by the three-field constructor, then moved field by field (y a halfword store).
+     * Byte-exact by MW's colouring (the AI core round 26, build/scratch/ai/igrun.py): the steps an
+     * `int s[2]` and the weights a PNT2D, both scalarised after the named locals -- as two ints the
+     * x step took s1 (coloured highest-index first among the variables over K, with the parameters),
+     * as two floats the weights f26/f25 -- four altitudes, one register each as the target's */
+    bool GetBilinearAltitude(const CAiMapLoc &loc, const CPnt3D *pos, float *alt) const
+    {
+        int s[2];
+        PNT2D f;
+        bool found = false;
+
+        if (GetBilinearWeights(loc, pos, s, f)) {
+            float sum = 0.0f;
+            float a0;
+            float a1;
+            float a2;
+            float a3;
+
+            *alt = 0.0f;
+            const CAiCell *cell;
+            cell = GetCell(loc, 0);
+            if (cell && !cell->m_badalt) {
+                float w = f.x * f.y;
+
+                sum += w;
+                GetAltitude(cell, a0);
+                found = true;
+                *alt += w * a0;
+            }
+            CAiMapLoc n(loc.x + s[0], loc.y, loc.m_mapid);
+
+            cell = GetCell(n, 0);
+            if (cell && !cell->m_badalt) {
+                float w = (1.0f - f.x) * f.y;
+
+                sum += w;
+                GetAltitude(cell, a1);
+                found = true;
+                *alt += w * a1;
+            }
+            n.x = loc.x;
+            n.y = loc.y + s[1];
+            cell = GetCell(n, 0);
+            if (cell && !cell->m_badalt) {
+                float w = f.x * (1.0f - f.y);
+
+                sum += w;
+                GetAltitude(cell, a2);
+                found = true;
+                *alt += w * a2;
+            }
+            n.x = loc.x + s[0];
+            cell = GetCell(n, 0);
+            if (cell && !cell->m_badalt) {
+                float w = (1.0f - f.x) * (1.0f - f.y);
+
+                sum += w;
+                GetAltitude(cell, a3);
+                found = true;
+                *alt += w * a3;
+            }
+            if (found) {
+                if (sum < 0.98f)
+                    *alt /= sum;
+                return found;
+            }
+        }
+        return found;
+    }
     /* a line of cells walked from a cell, along a direction or to another cell, each handed to a
      * callback until one returns false (SOCOM 1's WalkLine pair, 0x537400 and 0x537E50 in the map
      * walkers' unit; SOCOM II adds the step, 0.2 from every caller written) */
@@ -1092,6 +1210,65 @@ public:
     void *m_overlay;   // 0x158
     CGraph *m_graph;   // 0x15c
 };
+
+/* a value within a span, ends included, all three by reference (the name ours: GetLocation's two
+ * box tests, each materialised as an inline bool's, the value loaded first) */
+inline bool _in_span(const float &v, const float &lo, const float &hi)
+{
+    return v >= lo && v <= hi;
+}
+
+/* whether a point lies over the box in x and z (the name ours) */
+inline bool _over_box(const CBBox &b, const CPnt3D *pos)
+{
+    bool r = false;
+
+    if (_in_span(pos->x, b.m_min.x, b.m_max.x) && _in_span(pos->z, b.m_min.z, b.m_max.z))
+        r = true;
+    return r;
+}
+
+/* the cell under a point (SOCOM 1's GetLocation(CPnt3D *, loc), the demo's 0x19B0F0: the box test
+ * in x and z, the offsets scaled by the inverse cell sizes and truncated on VU0 in place, the cell
+ * stored field by field -- SOCOM II gives it the map's id where SOCOM 1 gave 0 -- and whether the
+ * cell is on the map. An inline of ai.h's (the engine core's round 14 asked for it, AI core round
+ * 26): two units emit its copy, ai_map.cpp OVL2's 0x515F80 (after SetCorners, which 0x515900 calls
+ * twice -- both inlines: their copies follow BuildFootprint, their only caller, in reverse of first
+ * use with CAiMapLoc(), GetBBox and the box's copy, 0x515DE0-0x516177, the AI core round 24) and
+ * fts_main.cpp OVL1's 0x2A3950 (ftsGetAltitudeApprox's call). The row (the halfword bitfield
+ * compared signed) and column tests each set a bool local of their own, the _over_box shape written
+ * in place: byte-exact since the AI core's round 23 -- the row test through an inline loaded m_ny
+ * ahead of the `bltz` and narrowed its bool (0x1A0 against 0x198, round 22), one result local (`on
+ * && ...` returned) was 0x190 */
+inline bool CAiMap::GetLocation(const CPnt3D *pos, CAiMapLoc &loc) const
+{
+    bool inside = _over_box(m_bbox, pos);
+
+    if (inside) {
+        sceVu0FVECTOR v;
+        float *p = v;
+
+        v[0] = m_idx * (pos->x - m_bbox.m_min.x);
+        v[1] = m_idy * (pos->z - m_bbox.m_min.z);
+        asm volatile {
+            lqc2 vf3, 0(p)
+            vftoi0.xyzw vf3, vf3
+            sqc2 vf3, 0(p)
+        }
+        loc.x = ((int *)p)[0];
+        loc.y = (unsigned short)((int *)p)[1];
+        loc.m_mapid = (unsigned char)GetMapId();
+        bool on = false;
+        bool ret = false;
+
+        if (loc.y >= 0 && loc.y < m_ny)
+            on = true;
+        if (on && loc.x < m_nx)
+            ret = true;
+        return ret;
+    }
+    return false;
+}
 
 /* a cell handed to a flood fill's callback (SOCOM 1's, which its DWARF does not lay out: the
  * fields as the callbacks read them) */
