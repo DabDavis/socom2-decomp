@@ -2039,6 +2039,258 @@ extern "C" {
  * OVL2 0x555B80 and 0x555900: both take a third argument, which every caller passes as 0) */
 bool func_00555B80(CSealCtrlAi *ai, int kind, int flag);
 bool func_00555900(CSealCtrlAi *ai, int kind, int flag);
+/* the restraint's capture (OVL2 0x5784A0, below); CPnt3D's implicit assignment, OVL2's out-of-line
+ * copy (seal_env.cpp's note); a carried body's homing (seal_env.cpp's OVL2 0x5B1750) */
+CZBodyAnimBlend *func_005784A0(CZSealBody *seal, CZSealBody *victim);
+CPnt3D *func_00539E90(CPnt3D *to, const CPnt3D *from);
+void func_005B1750(CZSealBody *seal, const CPnt3D *refpt, const CPnt3D *intpt, const CPnt3D *dir);
+/* the stab's kill (OVL2 0x578D20, below); what a carried body's turret entity is told, with 1 (seal.cpp's
+ * range, OVL2 0x545EE0); the death's weapon drop (seal_env.cpp's OVL2 0x5A0040) */
+CZBodyAnimBlend *func_00578D20(CZSealBody *seal, CZSealBody *victim);
+void func_00545EE0(CZSealBody *seal, int n);
+void func_005A0040(CZSealBody *seal);
+}
+
+/* a blend's homing aimed (seal_env.cpp's stand-in over CHoming's layout, the same inline member: its
+ * `this` in a saved register as the copies go through the assignment's out-of-line copy) */
+class CHomingAim : public CHoming {
+public:
+    void Aim(CZBodyAnimBlend *b, const CPnt3D *refpt, const CPnt3D *norm, const CPnt3D *intpt)
+    {
+        m_blend = b;
+        func_00539E90(&m_refpt_m, refpt);
+        func_00539E90(&m_norm_w, norm);
+        func_00539E90(&m_int_w, intpt);
+        func_00539E90(&m_refvec_m, &CPnt3D::unit_nz);
+        func_00539E90(&m_target_refpt_m, &CPnt3D::zero);
+        m_1c = 0;
+        m_2c = 0;
+    }
+};
+
+static inline CHomingAim *HomingOf(CZBodyAnimBlend *b)
+{
+    return (CHomingAim *)&b->m_homing;
+}
+
+/* a point turned round into another (seal_env.cpp's inline) */
+static inline void NegateInto(const CPnt3D *in, CPnt3D *out)
+{
+    out->x = -in->x;
+    out->y = -in->y;
+    out->z = -in->z;
+}
+
+/* StabBuddy's timed call (OVL2 0x579210, an anim callback: the body, then the victim) -- the kill */
+extern "C" void func_00579210(void *body, void *victim)
+{
+    func_00578D20((CZSealBody *)body, (CZSealBody *)victim);
+}
+
+/* a buddy stabbed, the attacker's half: as RestrainBuddy (above) -- unless there is no victim or a
+ * carried body is already homed on; a victim working an entity told so with 1; unless the SEAL moves
+ * faster than 10 -- the victim's root part taken into the world and its facing (its matrix's z row)
+ * kept, the SEAL's blends popped down to one, the desired state standing; unless the top blend has
+ * flag 64 anim 2 pushed with the kill (0x579210) to call at 3; each the other's carry, the SEAL homed
+ * onto the stab's offset from the victim's root along the victim's facing; the controller zooming out,
+ * the victim's AI given bit 5; the top blend returned (OVL2 0x578F90; SOCOM 1's StabBuddy killed at
+ * once -- SOCOM II's starts it, 0x578D20 finishes it) */
+CZBodyAnimBlend *CZSealBody::StabBuddy(CZSealBody *victim)
+{
+    bool busy;
+    CZBodyAnimBlend *top = (CZBodyAnimBlend *)func_00555170(&m_blends);
+
+    if (!victim)
+        return top;
+    if (m_carry && ((CZBodyAnimBlend *)func_00555170(&m_blends))->m_homing.m_blend)
+        busy = true;
+    else
+        busy = false;
+    if (busy)
+        return top;
+    if (victim->m_eb8)
+        func_00545EE0(victim, 1);
+    if (!(m_velM.x * m_velM.x + m_velM.y * m_velM.y + m_velM.z * m_velM.z <= 100.0f))
+        return top;
+    CPnt3D root;
+
+    victim->m_node->m_matrix.Transform(&victim->GetRootPart()->m_pos, &root, 1);
+    CPnt3D dir;
+
+    dir = *(const CPnt3D *)victim->m_node->m_matrix.m_matrix[2];
+    CZBodyAnimBlend *b = (CZBodyAnimBlend *)func_00555170(&m_blends);
+    int n = 12;
+    CBodyAnimBlendStack *stack = &m_blends;
+
+    while (BlendCount(stack) > 1 && n > 0) {
+        b = func_00589AA0(this);
+        n--;
+    }
+    if (n <= 0)
+        b = (CZBodyAnimBlend *)func_00555170((char *)this + 0x1c0);
+    else {
+        if (b)
+            b->m_ctrl = 0;
+        m_desiredStance = STANCE_PRONE;
+    }
+    m_desiredState = stateStand;
+    CZBodyAnimBlend *r = b;
+
+    if (func_005551A0(b->m_flags, 64)) {
+        r = (CZBodyAnimBlend *)func_00588BC0(this, (AnimType)2, 0, 0, 0);
+        r->m_callback.m_func = func_00579210;
+        r->m_callback.m_tfrac = 3.0f;
+        r->m_callback.m_userdata = victim;
+    }
+    m_carry = victim;
+    victim->m_carry = this;
+    func_005B1750(this, &stab_offset, &root, &dir);
+    if (m_control)
+        ((CSealCtrl *)m_control)->m_zoomout = true;
+    CSealCtrlAi *ai = victim->GetSealCtrlAi();
+
+    if (ai)
+        ai->m_aibit5 = true;
+    return r;
+}
+
+/* the stab's kill, when StabBuddy's timed call comes due: unless the victim is gone, a victim working
+ * an entity told so with 1, its weapons dropped and its health zeroed by the knife; its blends popped
+ * down to one, twelve at most, Stabbed pushed dead (8); each the other's carry, the victim's root part
+ * parented to the attacker's, its node at the attacker's, its position updated and its root part
+ * inactive; the attacker's homing reset, its blends cleared to the base and Stab pushed, which is
+ * returned, the body in state 0 (OVL2 0x578D20, new in SOCOM II: SOCOM 1's StabBuddy did this at once
+ * -- the name ours) */
+extern "C" CZBodyAnimBlend *func_00578D20(CZSealBody *seal, CZSealBody *victim)
+{
+    if (!victim)
+        return (CZBodyAnimBlend *)func_00555170(&seal->m_blends);
+    if (victim->m_eb8)
+        func_00545EE0(victim, 1);
+    func_005A0040(victim);
+    victim->SetHealth(0.0f, DEATH_KNIFE_KILL);
+    CZBodyAnimBlend *b = (CZBodyAnimBlend *)func_00555170(&victim->m_blends);
+    int n = 12;
+    CBodyAnimBlendStack *stack = &victim->m_blends;
+
+    while (BlendCount(stack) > 1 && n > 0) {
+        b = func_00589AA0(victim);
+        n--;
+    }
+    if (n <= 0)
+        b = (CZBodyAnimBlend *)func_00555170((char *)victim + 0x1c0);
+    else {
+        if (b)
+            b->m_ctrl = 0;
+        victim->m_desiredStance = STANCE_PRONE;
+    }
+    func_00588BC0(victim, (AnimType)AnimTypes::Stabbed, stateDead, 0, 0);
+    victim->m_carry = seal;
+    seal->m_carry = victim;
+    victim->GetRootPart()->m_parent = seal->GetRootPart();
+    victim->GetNode()->SetPosition((const CPnt3D *)seal->GetNode()->m_matrix.m_matrix[3]);
+    victim->UpdatePosW();
+    victim->GetRootPart()->SetActive(false);
+    ((CZBodyAnimBlend *)func_00555170(&seal->m_blends))->m_homing.Reset();
+    seal->ClearToBase(false);
+    CZBodyAnimBlend *r = (CZBodyAnimBlend *)func_00588BC0(seal, (AnimType)AnimTypes::Stab, 0, 0, 0);
+
+    seal->BodySetState(0);
+    return r;
+}
+
+/* RestrainBuddy's timed call (OVL2 0x578D10, an anim callback: the body, then the victim it was
+ * handed) -- the capture made */
+extern "C" void func_00578D10(void *body, void *victim)
+{
+    func_005784A0((CZSealBody *)body, (CZSealBody *)victim);
+}
+
+/* a buddy restrained, the captor's half: unless there is no victim, a carried body is already homed
+ * on, or the SEAL moves faster than 10, the victim's root part taken into the world, the SEAL's blends
+ * popped down to one, twelve at most, as 0x57F310 does, the desired state standing; unless the top
+ * blend has flag 64 anim 2 pushed with the capture (0x578D10) to call at 3; each the other's carry,
+ * the SEAL homed onto the restraint's offset from the victim's root along the turned difference, the
+ * victim's top blend homed back along the flat reverse of it; the controller zooming out, the victim's
+ * AI given bit 5; the top blend returned (OVL2 0x578990; SOCOM 1's RestrainBuddy did the capture at
+ * once -- SOCOM II's starts it, 0x5784A0 finishes it). The registers, read off MW's colouring (igdump):
+ * every saved-register variable has 19 real neighbours, so a variable with six deferred neighbours sits
+ * at K; `busy` declared first (numbered before `top`) and set by if/else is removed in the first sweep
+ * before `top` is reached, which then drops under K -- with `top` out of the deferred set, the SEAL
+ * and the victim leave first in the second sweep and take s5/s4 as the target's. An inline bool or a
+ * `busy = a && b` keeps `top` at K (59 off); the loop's blend and the returned one are two variables
+ * (the loop's stays in v0, the result s3) */
+CZBodyAnimBlend *CZSealBody::RestrainBuddy(CZSealBody *victim)
+{
+    bool busy;
+    CZBodyAnimBlend *top = (CZBodyAnimBlend *)func_00555170(&m_blends);
+
+    if (!victim)
+        return top;
+    if (m_carry && ((CZBodyAnimBlend *)func_00555170(&m_blends))->m_homing.m_blend)
+        busy = true;
+    else
+        busy = false;
+    if (busy)
+        return top;
+    if (!(m_velM.x * m_velM.x + m_velM.y * m_velM.y + m_velM.z * m_velM.z <= 100.0f))
+        return top;
+    CPnt3D root;
+
+    victim->m_node->m_matrix.Transform(&victim->GetRootPart()->m_pos, &root, 1);
+    CZBodyAnimBlend *b = (CZBodyAnimBlend *)func_00555170(&m_blends);
+    int n = 12;
+    CBodyAnimBlendStack *stack = &m_blends;
+
+    while (BlendCount(stack) > 1 && n > 0) {
+        b = func_00589AA0(this);
+        n--;
+    }
+    if (n <= 0)
+        b = (CZBodyAnimBlend *)func_00555170((char *)this + 0x1c0);
+    else {
+        if (b)
+            b->m_ctrl = 0;
+        m_desiredStance = STANCE_PRONE;
+    }
+    m_desiredState = stateStand;
+    CZBodyAnimBlend *r = b;
+
+    if (func_005551A0(b->m_flags, 64)) {
+        r = (CZBodyAnimBlend *)func_00588BC0(this, (AnimType)2, 0, 0, 0);
+        r->m_callback.m_func = func_00578D10;
+        r->m_callback.m_tfrac = 3.0f;
+        r->m_callback.m_userdata = victim;
+    }
+    m_carry = victim;
+    victim->m_carry = this;
+    CPnt3D d;
+
+    m_posW.Sub(&root, &d);
+    CQuat q;
+
+    q.MakeYRot(0.7853982f);
+    CPnt3D t;
+
+    q.Apply(&d, &t, 1);
+    d = t;
+    func_005B1750(this, &restrain_offset, &root, &d);
+    CZBodyAnimBlend *vb = (CZBodyAnimBlend *)func_00555170(&victim->m_blends);
+    CPnt3D nrm(d);
+
+    nrm.y = 0.0f;
+    nrm.Normalize();
+    NegateInto(&nrm, &nrm);
+    HomingOf(vb)->Aim(vb, &CPnt3D::zero, &nrm, &root);
+    vb->m_homing.m_target_refpt_m = CPnt3D::zero;
+    vb->m_homing.m_2c = 1;
+    if (m_control)
+        ((CSealCtrl *)m_control)->m_zoomout = true;
+    CSealCtrlAi *ai = victim->GetSealCtrlAi();
+
+    if (ai)
+        ai->m_aibit5 = true;
+    return r;
 }
 
 /* the restraint taken hold of, when RestrainBuddy's timed call (0x578D10, three seconds into the

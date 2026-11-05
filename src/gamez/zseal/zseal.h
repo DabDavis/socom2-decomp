@@ -103,6 +103,11 @@ public:
     /* (SOCOM 1's ReceiveRestraints and ApplyRestraints, adjacent in both builds: the restraint's
      * capture 0x5784A0 pushes the first on the victim after anim 26 and the second on the captor,
      * as SOCOM 1's RestrainBuddy does) */
+    /* (SOCOM 1's Stab and Stabbed, two apart in both builds and five before ReceiveRestraints: the
+     * stab's kill 0x578D20 pushes Stabbed on the victim and Stab on the attacker, as SOCOM 1's
+     * StabBuddy does) */
+    static short Stab;   // OVL1 0x3DEE08
+    static short Stabbed;   // OVL1 0x3DEE18
     static short ReceiveRestraints;   // OVL1 0x3DEE40
     static short ApplyRestraints;   // OVL1 0x3DEE48
 };
@@ -927,7 +932,10 @@ public:
      * bit 2 the one 0x56D890 sets, which a covered state keeps (0x5F6350); a breach clears 13 on
      * entry, then sets 16 from its own bit 13, clears 17 and sets 13 as it ends (0x5F3620) */
     unsigned int m_aibit2 : 1;
-    unsigned int m_bits3 : 3;
+    unsigned int m_aibit3 : 1;
+    unsigned int m_aibit4 : 1;
+    /* bit 5: set on a restrained victim's AI by RestrainBuddy (OVL2 0x578990; the name ours) */
+    unsigned int m_aibit5 : 1;
     /* bit 6: held set while CTMacro::Tick (0x5D6DC0) pushes its script state, then put back (the
      * kit lane, round 23; the name ours) */
     unsigned int m_aibit6 : 1;
@@ -1630,8 +1638,11 @@ public:
         if (m_followers > 0)
             m_followers--;
     }
-    void RestrainBuddy(CZSealBody *victim);
-    void StabBuddy(CZSealBody *victim);
+    /* the restraint begun, the top blend returned (OVL2 0x578990, seal_body.cpp; SOCOM 1's returned
+     * its blend too) */
+    CZBodyAnimBlend *RestrainBuddy(CZSealBody *victim);
+    /* the stab begun, the top blend returned (OVL2 0x578F90, seal_body.cpp) */
+    CZBodyAnimBlend *StabBuddy(CZSealBody *victim);
     bool ExecuteAction_ApplyRestraint(CZSealBody *victim);
     bool ExecuteAction_CQBAttack(CZSealBody *victim);
     /* a pickup taken up: a grenade thrown back, the others each their own way (SOCOM 1's; OVL2
