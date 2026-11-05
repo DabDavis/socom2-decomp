@@ -29,8 +29,8 @@ public:
     bool Find(const char *name, int *a, int *b);
     void Dump();
     /* the open key's files walked (directories descended), each one's offset, size and name's
-     * hash pushed (0x34D5D0, not written: it walks the key ring's vector iterator through zar's
-     * out-of-line pieces 0x257B90-0x257CB0, unnamed yet, and the recursive next-file walk 0x34D740) */
+     * hash pushed (0x34D5D0: the key ring's vector iterator through zar's out-of-line pieces
+     * 0x257B90-0x257CB0 and the recursive next-file walk 0x34D740, zsnd_subtitles.cpp's) */
     bool Load(zar::CZAR *zar);
 };
 

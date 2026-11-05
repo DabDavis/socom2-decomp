@@ -2,7 +2,9 @@
  * file, its stack of open keys and what it fetches. The unit name is SOCOM 1's (the press beta's
  * asserts name it). Defined in reverse of their image order (-inline deferred). Written: the
  * constructor, the destructor, SetFilename, both Closes, CloseKeepDir, Flush, the key stack's six
- * (CloseKey .. GetSize), ReadString, NewKey and FreeDirectory -- whose FreeVectors give the vector<CKey>
+ * (CloseKey .. GetSize), ReadString, _countKeys and CKey::fixupKey (with their vector<CKey *>
+ * pieces 0x257B90-0x257CB0 and 0x257EC0/0x257ED0: the MSL headers round 24), NewKey and
+ * FreeDirectory -- whose FreeVectors give the vector<CKey>
  * and vector<CKey *> pieces 0x2573E0-0x25757F right after it, and the key buffer's clear and
  * deleter 0x2599B0/0x259A30 in the tail. Not yet: Open 0x258920, WriteDirectory, the
  * buffer writers below 0x257320, the directory reader 0x258000 and the CKey vector's class insert
@@ -335,21 +337,34 @@ int CZAR::ReadString(char **str)
     return n;
 }
 
+/* the key's name and its children's made the string table's packed copies (SOCOM 1's
+ * CKey::fixupKey 0x1D8600, CSTable::Pack's callback: WriteDirectory hands it over with m_root).
+ * Recursive, so it self-inlines; the iterator declared, then assigned begin() -- the target's
+ * third level calls the iterator's default constructor and implicit assignment (0x257ED0,
+ * 0x257EC0), its pieces right after it (the MSL headers round 24, on include/vector's pointer
+ * iterator as the image's: round 23's) */
+void CKey::fixupKey(CSTable *table, void *p)
+{
+    CKey *key = (CKey *)p;
+
+    key->m_name = table->FindString(key->m_name);
+    CKeyRing::iterator i;
+
+    for (i = key->begin(); i != key->end(); i++)
+        fixupKey(table, *i);
+}
+
 }
 
 /* the keys under a key, itself included (SOCOM 1's: recursive, WriteDirectory's tail count).
- * OPEN, 0x1C4 against 0x294: the target self-inlines four levels, each cutting vector<CKey *>'s
- * walk a level more -- its second level calls a raw begin and end (0x257CB0, 0x257BA0), an
- * iterator constructor taking the raw pointer BY REFERENCE (0x257CA0, __iter inlined around it)
- * and, inside the inlined ==, an accessor on each iterator (0x257B90); the third calls __iter
- * (0x257C90), end() and ==; the fourth every piece (begin 0x257C80, end 0x257C30, != 0x257C10,
- * * 0x257C70, ++(int) 0x257C50). include/vector's pointer iterator (== a leaf, __iter building it
- * by value) is a level too short and self-inlines three levels. And 0x257CB0/0x257BA0 repeat
- * __vector_pod<Ui>'s begin/end words (0x1EA8C0/0x1EA890) in the same overlay, so they are other
- * instances: the key ring's base is not __vector_pod<unsigned int> in the original. The copies
- * are cut by inline_max_size, not the level (levels 6-8 change nothing; `#pragma
- * inline_max_size(320)` gives four copies, 0x274, with the second level calling data() and the
- * iterator's pointer constructor by value): the original's pieces cost fewer units */
+ * The target self-inlines four levels, each cutting vector<CKey *>'s walk a level more -- its
+ * second level calls the raw begin and end (0x257CB0, 0x257BA0), the iterator's constructor from
+ * the raw pointer BY REFERENCE (0x257CA0, __iter inlined around it) and, inside the inlined ==,
+ * base() on each iterator (0x257B90); the third calls __iter (0x257C90), end() and ==; the fourth
+ * every piece (begin 0x257C80, end 0x257C30, != 0x257C10, * 0x257C70, ++(int) 0x257C50). The
+ * copies are cut by inline_max_size, not the level. Byte-exact on include/vector's pointer
+ * iterator as the image has it (the MSL headers round 23 measured it, round 24 adopted it): the
+ * raw ends this element type's own, end() four high */
 int _countKeys(zar::CKey *key)
 {
     int count = 1;
