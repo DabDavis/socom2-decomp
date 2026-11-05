@@ -6,7 +6,7 @@
  * ScanSoft's speech recogniser, prebuilt with ee-gcc 2.96 at -O2 -G0 -fno-strict-aliasing
  * -funroll-loops (README "The GCC front"). Names are SOCOM 1's. The constructor reads two
  * profile entries through a log record of its own: 45, the inputs, and 37, a flag that adds a
- * second output and that the block keeps. Written so far: the session pair (round 15c: the
+ * second output and that the block keeps. Written so far: ControlVad (round 32c), the session pair (round 15c: the
  * state copied field by field, the arrays by loops 2.96 unrolls by ten, the two ring positions
  * kept as unsigned indices), ChangeMike, TestChangeMike and CheckForAbnormalConditions
  * (round 19c; ChangeMike closed in 20c) and the constructor; the rest are declared, not yet defined. */
@@ -52,7 +52,7 @@ typedef struct VAD {
     unsigned short changed;             /* +1216 */
     unsigned short range;               /* +1218 */
     float factor;                       /* +1220 */
-    char pad1224;
+    unsigned char mode;                 /* +1224: command 3's second word */
     unsigned char reported;             /* +1225 */
     char pad1226[2];
     int state;                          /* +1228 */
@@ -332,8 +332,118 @@ static void VadPutSession(VAD *v, VADSESSION *ss)
     v->pos1160 = &v->f1076[ss->idx1160];
 }
 
+/* the EE's largest float (no infinity): 0x7FFFFFFF through 2.96's parser (gender.c's) */
+#define FLT_MAX 6.80564694e+38f
+
+/* commands 3 and 4's three words */
+typedef struct VADPARAM {
+    unsigned int speech;
+    unsigned int mode;
+    unsigned int timeout;               /* in hundredths */
+} VADPARAM;
+
+/* the speech flag set (command 3's first word): when it changes, on resets the level and the hold
+ * and sends the scheduler command 10, the threshold moved down by the two margins (and the frame
+ * counts cleared), off moves it back up. 1 when the scheduler refuses the command */
+static __inline__ unsigned char SetSpeech(VAD *v, unsigned char on)
+{
+    if (v->speech == on)
+        return 0;
+    v->speech = on;
+    if (on != 0) {
+        v->level = 0;
+        v->hold = 0;
+        if (_tosControl(v, 10, 0, 0) != 0)
+            return 1;
+        v->frames = 0;
+        v->lastframes = 0;
+        v->changed = 0;
+        v->f44[0] -= v->f44[3] + v->f44[4];
+    } else
+        v->f44[0] += v->f44[3] + v->f44[4];
+    return 0;
+}
+
+/* the block's commands: 1 the noise in hundredths of a dB, 8 its address, 2 a level set (the hold
+ * cleared), 5 a reset (no argument) or the session put back, 6 the session taken (each 512 bytes
+ * at *off), 3 the speech flag, the mode (its range, the counts cleared) and the timeout set, 4 the
+ * three read back, 7 a frame counted, 0xFF the block destroyed; 1 when handled. SOCOM 1's LOCAL,
+ * written from SOCOM II's code (round 32c); the bodies in the image's order. Case 5's put first
+ * (the target branches to the reset); the reset's stores in the order changed, frames, lastframes,
+ * histpos (sched1 gives the target's changed, histpos, frames, lastframes); the range an if/else
+ * (a ?: loads the true arm's constant before the test, into a register of its own); SetSpeech's
+ * equal case returned first (written as the outer if's condition, the flag's register is v1, the
+ * result's, and the first branch's slot is annulled). */
+static int ControlVad(VAD *v, unsigned char cmd, void *arg, int *off)
+{
+    VADPARAM *p = arg;
+    unsigned int i;
+
+    switch (cmd) {
+    case 1:
+        *(short *)arg = v->noise * 4.3429448f * 100.0;
+        break;
+    case 8:
+        *(float **)arg = &v->noise;
+        break;
+    case 2:
+        v->level = (int)arg;
+        v->hold = 0;
+        break;
+    case 5:
+        if (arg != 0) {
+            VadPutSession(v, (VADSESSION *)((char *)arg + *off));
+            *off += 512;
+        } else {
+            v->f40 = 0;
+            v->f72[2] = _tosGetProfileU32(v, 6, 2);
+            for (i = 0; i < 20; i++)
+                v->hist[i] = FLT_MAX;
+            v->changed = 0;
+            v->frames = 0;
+            v->lastframes = 0;
+            v->histpos = v->hist;
+        }
+        break;
+    case 6:
+        if (arg != 0)
+            VadGetSession(v, (VADSESSION *)((char *)arg + *off));
+        *off += 512;
+        break;
+    case 3:
+        if (SetSpeech(v, p->speech))
+            return 0;
+        if (v->mode != (unsigned char)p->mode) {
+            v->mode = p->mode;
+            if (p->mode != 0)
+                v->range = 0x3333;
+            else
+                v->range = 0x1EB8;
+            v->frames = 0;
+            v->lastframes = 0;
+            v->changed = 0;
+        }
+        v->timeout = p->timeout * 100;
+        break;
+    case 4:
+        p->speech = v->speech;
+        p->mode = v->mode;
+        p->timeout = v->timeout * 0.01f;
+        break;
+    case 7:
+        v->time = 0;
+        v->frames++;
+        break;
+    case 0xFF:
+        tosBaseBlockDestruct(&v->b);
+        break;
+    default:
+        return 0;
+    }
+    return 1;
+}
+
 extern void ProcessVad(VAD *v, unsigned char **in, int n);
-extern int ControlVad(VAD *v, unsigned char cmd);
 extern int InitVad(VAD *v);
 
 TOSBLOCK *ConstructVad(TOS *tos, unsigned char id)
