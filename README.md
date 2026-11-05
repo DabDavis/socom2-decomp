@@ -59,6 +59,9 @@ and data reference resolved to the address the shipped code uses.
 | `tools/asmunit.py` | an assembler unit (`.s`) for a library object that was assembly: the rows transcribed (canonical instructions, labels, map names, %hi/%lo of the symbols the code addresses, the unit's own `.bss` labels), assembled by the toolchain named and scored until every function matches |
 | `tools/structdiff.py` | one function against its row with the registers and the link normalised, so only STRUCTURAL differences show (opcodes, unrelocated immediates, order, which function is called); says how many instructions differ in their registers alone -- a register-only miss -- and `--regs` keeps the registers (the game states' round-35 structdiff.py and mydiff.py, promoted in GCC round 31a) |
 | `tools/cdis.py` | the candidate's disassembly before the link, each relocation named as the scorer resolves it (`<R_MIPS_LO16 currentDir = 0x1df400>`), `--at` at its row's addresses, `--list` the object's functions (the game states' round-35 cdis.py, promoted in GCC round 31a) |
+| `tools/igdump.py` | Metrowerks' own register colouring read out of mwccps2 3.0b52 under gdb: a unit built as sccheck builds it, every colouring one JSON line (each virtual register's variable, degree, neighbours, colour, spill cost; the colouring order; the PCode); `-f` shows a function's, `--saved` who holds each saved register (the lanes' igdump.py, promoted in GCC round 32a) |
+| `tools/igreplay.py` | MW's simplify/colour replayed offline on an igdump record (every GPR and FPR record replays exactly); `--move V=POS` renumbers a virtual register to see the registers that numbering gives, `--want`/`--movers` searches the placements, `--nb` a node's neighbours and sweeps (the MSL lane's igreplay.py, the game states' relabel.py and brute.py, the AI core's nbdeg.py: GCC round 32a) |
+| `tools/igvar.py` | source variants (try.py's `--sub`/`--and`/`--variants`) each built under igdump in a scratch tree; per variant the spilled nodes and each saved register's holders by variable, or `--all` every telling node (the AI core's and the game states' igvar.py: GCC round 32a) |
 | `symbols.txt` | **the map** — `0xADDR SIZE name  # note`, kept by hand from here on |
 | `data.txt` | the map of global data, the same format and namespace |
 | `src/` | the reconstructed source; `MATCHED.txt` (the baseline), `ABSENT.txt` (dead-stripped) |
@@ -6058,6 +6061,28 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
   whose member inline stores then calls keeps that member's `this` (cmd plus an offset) in a saved
   register across the call; a byte-enum call result tested `!= 0`, declared uninitialised ahead of a
   later flag, gives the andi before the branch (CTInState::Parse).
+- **Reading the numbering: tools/igdump.py, igreplay.py, igvar.py** (GCC round 32a: the copies every lane
+  carried in build/scratch/*/ig/ promoted, each resolving its paths from its own location, so a lane runs
+  them from its own worktree). `./tools/igdump.py UNIT -f FUNC` builds the unit as sccheck builds it (its
+  directive's flags, include/ and src/) with mwccps2 3.0b52 under gdb and writes every colouring
+  (build/ig/<stem>.jsonl): each virtual register's variable, initial degree, neighbours, colour, spill cost,
+  the colouring order and the pre-rewrite PCode -- the MSL lane's round-10 reader with the AI core's
+  round-24 costs and procedure names; byte-identical to the lanes' dumps. It refuses a unit another build
+  compiles (its breakpoints are 3.0b52's addresses; a GCC unit is tools/ccdump.py's) and a dump that
+  recorded nothing. `./tools/igreplay.py DUMP` replays MW's simplify/colour (round 11's model, K 25 GPRs
+  and 32 FPRs -- the FPRs volatile f0-f19, then f20 up) and says whether each record replays: all 1,156
+  records of nine lanes' dumps do, GPR and FPR (the lanes' copy read an empty reserved list as the GPRs'
+  and so missed the FPRs); `--move V=POS` renumbers a node to show which registers a numbering gives
+  before any source is written (the game states' round 37: CGraph::Read), `--want V=s0,... --movers V`
+  lists every placement that gives them, `--nb V` a node's neighbours with the sweep each was pushed in.
+  `./tools/igvar.py FILE FUNC --variants V.py` (or try.py's `--sub`/`--and`) builds each variant under
+  igdump in a scratch tree and prints the spilled nodes and each saved register's holders, `(as it is)`
+  where a variant changes nothing -- ~1 s a variant on a small unit. The canary: a fixture whose two
+  locals live across calls takes s1/s0 in declaration order, recorded as the object's code has them
+  (`test_igdump_records_mws_colouring`, with three refusals); every record of zmath_pnt3d.cpp replays,
+  a dropped interference does not, and `--move first=35.5` predicts what the swapped declarations
+  compile to (`test_igreplay_replays_and_predicts`); igvar shows the swap, a no-op, a missing
+  substitution and a build failure each for what it is (`test_igvar_compares_variants`).
 - **Tells from the online lobby, round 7** (the room and ladder units, zNetMediusFile.cpp):
   - a function handed to std::transform by address becomes a direct, never-inlined `jal` with the
     element in a0 (DeleteRoom); a functor's operator() would have `this` in a0;
@@ -8952,6 +8977,26 @@ words, libnetb's sceBInetRecv written (0x2474F8, OPEN at 6) -- and 2 rows named,
   Not reached: sceGsSetDefDBuff, `_ch3dmaCSC`, `_doCSC2`, 0x252D68, 0x250320 (their diagnoses stand),
   libnetb's sceBInetOpen 0x2472C8 (named: the demo's order and calls, 0x198 against its 0x120),
   libnetb_recv_from/send_to (the demo's sizes), the codec's rows.
+
+**The tools, round 32a** (the integrator's request: the MW lanes' register-colouring scripts had drifted
+into per-lane copies -- igdump.py in two versions, igvar.py in seven, an ig.sh in every lane hard-wired
+to one worktree): **`tools/igdump.py`, `tools/igreplay.py`, `tools/igvar.py`**, one toolset, each
+resolving its paths from its own location (README "MW's saved-register order is a NUMBERING" says what
+each does). igdump is the AI core's round-24 dumper (the superset: costs, rematerialisation, block
+weights, the procedure's name) and its driver in one file -- inside gdb it dumps, outside it builds the
+unit under its own directive with scdiff's compile command under `gdb -nx -batch` -- and its dump of
+zmath_pnt3d.cpp is byte-identical to the lanes' copy's. igreplay is round 11's Graph with three changes:
+an empty reserved list is the class's own (the FPRs reserve none: K 32 -- the copies fell back on the
+GPRs' seven and failed 2 of zmath_pnt3d.cpp's 12 FPR records), the FPRs' registers (f0-f19 volatile,
+f20-f31 handed out in order: read off the dumps, no pair of choices conflicting), and a spilled node
+-1 as MW records it (the copies' -2 counted every spill as a mismatch); relabel.py, brute.py and
+nbdeg.py are its `--move`, `--want`/`--movers` and `--nb`. Over every record of nine lanes' dumps
+(states-r32, -r37, hud-r45, seal-r38, msl-r18, ai-r28: 1,156, GPR and FPR) it reproduces the order and
+every colour. igvar takes try.py's variant parser (imported, not copied) and a scratch tree of its own
+(`$SC_IG_WORK`, else build/igvar/). The canary's three tests (above) each fail with the tool broken as
+a copy was: the FPRs under K 25 (22 of 24 replay), igvar building the unchanged source (`swapped: (as
+it is)`). No tool that scores changed: scdiff.py, sccheck.py, scdecomp.py, tools/try.py and `include/`
+are master's (`git diff --quiet`), so no MW or GCC unit can score differently.
 
 **Next**: the libraries by hand, module by module, as their vendors wrote them (each `src/lib`
 unit's header says what it covers); GCC's scheduler moves independent stores, and which source

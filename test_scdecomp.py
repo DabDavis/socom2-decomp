@@ -937,6 +937,129 @@ def test_cdis_names_every_relocation():
        "a section-relative %hi/%lo pair by the object's label, at the data map's address")
 
 
+# --- the register-numbering tools (GCC round 32a: the lanes' ig/ copies promoted) -----------
+
+IG_FIXTURE = """extern int ig_g(int);
+
+int ig_pair(int a, int b)
+{
+    int first;
+    int second;
+
+    first = ig_g(a);
+    second = ig_g(b);
+    ig_g(0);
+    return first + second;
+}
+"""
+IG_DECLS = ("int first;\n    int second;", "int second;\n    int first;")
+
+
+def _ig_fixture(name: str = "ig_fixture.c", text: str = IG_FIXTURE) -> Path:
+    BUILD.mkdir(parents=True, exist_ok=True)
+    p = BUILD / name
+    p.write_text(text)
+    return p
+
+
+def _ig_regs(rec: dict) -> dict[str, str]:
+    import igdump
+    return {igdump.var_name(rec, n["i"]): igdump.reg_name(rec["cls"], n["color"])
+            for n in rec["nodes"][rec["nreal"]:] if igdump.var_name(rec, n["i"])}
+
+
+def test_igdump_records_mws_colouring():
+    """tools/igdump.py (GCC round 32a, the igdump.py every lane copied): a fixture compiled by
+    mwccps2 3.0b52 under gdb, as sccheck builds it, records one GPR colouring of ig_pair whose
+    variables are named and whose registers are the object's own -- first and second, both live
+    across calls, in s1 and s0 (the first-declared local the higher saved register), the object
+    moving each call's v0 into exactly those and returning their sum from them. It refuses where a
+    record would be wrong or empty: a unit under 3.0b50 (the breakpoints are 3.0b52's addresses), a
+    GCC unit (cc1's allocation is tools/ccdump.py's), a unit that does not build."""
+    import igdump
+    src = _ig_fixture()
+    recs, out = igdump.dump(src, BUILD / "ig_fixture.jsonl")
+    sel = igdump.select(recs, "^ig_pair$", 0)
+    ck(len(sel) == 1, f"one GPR colouring of ig_pair ({len(sel)})")
+    regs = _ig_regs(sel[0][1])
+    ck({"a", "b", "first", "second"} <= set(regs), f"its parameters and locals named ({sorted(regs)})")
+    ck((regs["first"], regs["second"]) == ("s1", "s0"), f"first s1, second s0 ({regs['first']}, {regs['second']})")
+    obj = build(src, "ig_fixture")
+    code, _, _ = E.Elf.read(obj).function("ig_pair")
+    text = [t for _, _, t in E.disasm(code, 0)]
+    ck(f"move {regs['first']},v0" in text and f"move {regs['second']},v0" in text
+       and f"addu v0,{regs['first']},{regs['second']}" in text,
+       "the recorded registers are the code's: each call's result moved into them, the sum read from them")
+    b50 = _ig_fixture("ig_b50.c", "/* sc: compiler=mwcps2-3.0b50-030527 */\n" + IG_FIXTURE)
+    gcc = HERE / "src" / "lib" / "sdk" / "libmc.c"
+    broken = _ig_fixture("ig_broken.c", IG_FIXTURE.replace("return first + second;", "return first +;"))
+    for unit, why in ((b50, "breakpoints are"), (gcc, "ccdump"), (broken, "did not build")):
+        try:
+            igdump.dump(unit, BUILD / "ig_refused.jsonl")
+            ck(False, f"{unit.name}: dumped")
+        except RuntimeError as e:
+            ck(why in str(e), f"{unit.name} refused: {why} ({str(e)[:80]})")
+
+
+def test_igreplay_replays_and_predicts():
+    """tools/igreplay.py (GCC round 32a: the MSL lane's round-11 igreplay.py, the game states' round-37
+    relabel.py and brute.py, the AI core's round-28 nbdeg.py): MW's simplify/colour replayed offline
+    gives every recorded colouring of zmath_pnt3d.cpp exactly -- its 12 GPR and 12 FPR records, order
+    and colours -- and the fixture's; with one interference removed (first-second) the replay differs
+    from the record, so the check can fail. And it PREDICTS: renumbering first after second (`--move
+    first=35.5`) gives first s0 and second s1 -- what the swapped declarations compile to, measured by
+    igdump on the swapped source -- and --want/--movers finds that placement among the others."""
+    import igdump
+    import igreplay as R
+    recs, _ = igdump.dump(HERE / "src" / "gamez" / "zmath" / "zmath_pnt3d.cpp", BUILD / "ig_pnt3d.jsonl")
+    by_cls = {0: 0, 1: 0}
+    exact = 0
+    for r in recs:
+        by_cls[r["cls"]] += 1
+        bad, same = R.Graph(r).check()
+        exact += not bad and same
+    ck(by_cls[0] >= 10 and by_cls[1] >= 10 and exact == len(recs),
+       f"every record of zmath_pnt3d.cpp replays ({exact} of {len(recs)}: {by_cls})")
+    frecs, _ = igdump.dump(_ig_fixture(), BUILD / "ig_fixture.jsonl")
+    rec = igdump.select(frecs, "^ig_pair$", 0)[0][1]
+    bad, same = R.Graph(rec).check()
+    ck(not bad and same, "the fixture's record replays")
+    first, second = R.node_index(rec, "first"), R.node_index(rec, "second")
+    colour, newidx, _ = R.replay_moved(rec, {}, drop=[(first, second)])
+    ck((R.rname(colour[newidx[first]]), R.rname(colour[newidx[second]])) != ("s1", "s0"),
+       "an interference removed: the replay no longer gives the record's registers")
+    colour, newidx, _ = R.replay_moved(rec, {first: second + 0.5})
+    predicted = (R.rname(colour[newidx[first]]), R.rname(colour[newidx[second]]))
+    srecs, _ = igdump.dump(_ig_fixture("ig_swapped.c", IG_FIXTURE.replace(*IG_DECLS)), BUILD / "ig_swapped.jsonl")
+    sregs = _ig_regs(igdump.select(srecs, "^ig_pair$", 0)[0][1])
+    ck(predicted == ("s0", "s1") == (sregs["first"], sregs["second"]),
+       f"--move first after second predicts the swapped source's registers ({predicted}, {sregs})")
+    hits = R.brute(rec, {first: "s0", second: "s1"}, [first])
+    ck(second + 0.5 in [h[0] for h in hits] and first + 0.5 not in [h[0] for h in hits],
+       f"--want finds the placement after second, not first's own ({hits})")
+
+
+def test_igvar_compares_variants():
+    """tools/igvar.py (GCC round 32a: the AI core's round-28 igvar.py and the game states' round-37
+    one): each variant of a unit built under igdump in a scratch tree, the saved registers' holders
+    printed per variant. The fixture as it is holds second (with b) in s0 and first in s1; its
+    declarations swapped, first and second trade -- a no-op variant reads `(as it is)`, a
+    substitution not in the file is said and not built as the unchanged source, a variant that does
+    not build is a BUILD-FAIL -- and the file itself is never touched."""
+    import igvar
+    src = _ig_fixture()
+    variants = [("swapped", [IG_DECLS]), ("noop", [("ig_g(0);", "ig_g(0);")]),
+                ("missing", [("int third;", "int fourth;")]), ("broken", [("first + second;", "first +;")])]
+    work = BUILD / "igvar"
+    res = dict(igvar.run(src, src, "^ig_pair$", variants, work=work))
+    ck(res["(as it is)"] == ["[0] ig_pair: spilled -; s0=b/second s1=first"], f"as it is: {res['(as it is)']}")
+    ck(res["swapped"] == ["[0] ig_pair: spilled -; s0=b/first s1=second"], f"swapped: {res['swapped']}")
+    ck(res["noop"] == ["(as it is)"], f"a no-op variant: {res['noop']}")
+    ck(res["missing"][0].startswith("(not in ig_fixture.c"), f"a missing substitution: {res['missing']}")
+    ck(res["broken"][0].startswith("BUILD-FAIL"), f"a variant that does not build: {res['broken']}")
+    ck(src.read_text() == IG_FIXTURE, "the unit itself untouched")
+
+
 def test_everything_baselined_still_matches():
     rc = C.main([])
     ck(rc == 0, "sccheck: no regressions against MATCHED.txt, every TU builds")
