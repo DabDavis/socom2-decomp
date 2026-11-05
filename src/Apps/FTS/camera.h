@@ -93,6 +93,14 @@ public:
     unsigned char _0[0x1060 - 0x5e0];
 };
 
+/* a SEAL's body (zbody.h's CBody: only the part's place in space, OVL1 0x2869D0) */
+class CBody {
+public:
+    void PartInSpace(CZBodyPart *part, const CPnt3D *offset, CPnt3D *out, CQuat *q) const;
+
+    unsigned char _0[4];
+};
+
 /* a SEAL: its matrix (the second virtual), its controller (CEntity's at 0xC0), its body's state
  * and wanted peek (SOCOM 1's CBody::m_state at 0x11D, SOCOM II's a halfword at 0x174; its
  * m_desiredPeek at 0x305, SOCOM II's 0x375) and the zoomed flag (SOCOM 1's at 0xF5C) */
@@ -105,8 +113,9 @@ public:
 
     unsigned char _4[0xc0 - 4];
     CEntityCtrl *m_control;   // 0xc0
-    unsigned char _c4[0x174 - 0xc4];
-    short m_state;   // 0x174: 8 dead, 2 prone (SOCOM 1's SEAL_STATE)
+    unsigned char _c4[0x170 - 0xc4];
+    CBody m_body;   // 0x170 (SOCOM 1: 0x110; the stand-in's first word only)
+    short m_state;   // 0x174: 8 dead, 2 prone (SOCOM 1's SEAL_STATE: the body's, at its +4)
     unsigned char _176[0x375 - 0x176];
     SEAL_PEEK m_desiredPeek;   // 0x375
     unsigned char _376[0x5e0 - 0x376];
@@ -114,6 +123,9 @@ public:
     unsigned char _b0 : 5;   // 0x1060
     unsigned char m_zooming : 1;
     unsigned char _b6 : 2;
+    unsigned char _1061[0x1344 - 0x1061];
+    /* SOCOM II's: a scale the prone first-person camera reads, its y at least 0.5 (the name ours) */
+    CPnt3D m_1344;   // 0x1344
 };
 
 /* a camera position the app camera keeps per view: where it sits and where it looks, in the

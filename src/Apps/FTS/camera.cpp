@@ -54,6 +54,9 @@ extern float data_00416218;   /* (SOCOM II's) */
 extern float data_003DE270;   /* the tether's rate (FTSTick puts back 0.03) */
 extern unsigned int data_0044C404;   /* the views' count (their presets follow) */
 }
+/* two SEAL state tests (OVL2: seal_kit.cpp's and seal_env.cpp's) */
+extern "C" bool func_005A78D0(CZSealBody *body);
+extern "C" bool func_005A77E0(CZSealBody *seal, int state33, int anim36, int anim35);
 /* the death camera's pad handling (SOCOM II's: a member of the object at 0xF4) */
 extern "C" void func_00295260(void *deathcam, CAppCamera *cam, CPad *pad);
 
@@ -383,6 +386,50 @@ void CAppCamera::SetZoom(float zoom)
     cam->m_screenAspect[0] = x;
     cam->m_screenAspect[1] = y;
     m_camera->m_ZoomedRangeScale = m_camera->m_RangeScale / zoom;
+}
+
+/* where first person puts the camera, in the followed SEAL's space (SOCOM 1's): with the camera on
+ * the SEAL it follows, the skeleton root's place (or the origin), then -- prone -- lifted by the
+ * view's pitch and scaled by the SEAL's 0x1344 (SOCOM II's), else lifted 4.4 and pulled 2.5 back
+ * unless the SEAL is in one of two states, and moved aside by the peek; on another SEAL, the
+ * file's fixed point */
+CPnt3D GetFirstPersonCamPos(CAppCamera *cam)
+{
+    CPnt3D CamPoint;
+
+    if (cam->m_entity == cam->m_bc) {
+        if (cam->m_entity && cam->m_skel_root)
+            cam->m_bc->m_body.PartInSpace(cam->m_skel_root, 0, &CamPoint, 0);
+        else
+            CamPoint = CPnt3D::zero;
+        if (cam->m_bc->m_state != 2) {
+            CamPoint.y += 4.4f;
+            if (func_005A78D0(cam->m_bc) || func_005A77E0(cam->m_bc, 1, 1, 1))
+                CamPoint.z = 0.0f;
+            else
+                CamPoint.z = -2.5f;
+        } else {
+            float lift = 6.0f * cam->m_camera->m_matrix.m_matrix[2][1];
+
+            if (lift < 0.0f)
+                lift = 0.0f;
+            lift += 1.8f;
+            CamPoint.z = -7.0f;
+            CPnt3D scale = cam->m_bc->m_1344;
+
+            if (scale.y < 0.5f)
+                scale.y = 0.5f;
+            lift *= 2.0f / scale.y;
+            CamPoint.z *= 0.7f * scale.y;
+            CamPoint.y += lift;
+        }
+        if (peekCur < 0.0f)
+            CamPoint.x += 3.3f * peekCur;
+        else if (peekCur > 0.0f)
+            CamPoint.x += 4.35f * peekCur;
+    } else
+        CamPoint = firstPersonPos;
+    return CamPoint;
 }
 
 /* SOCOM 1's FTSTick: the followed SEAL's pad (its controller's, a player's), its two-button view
