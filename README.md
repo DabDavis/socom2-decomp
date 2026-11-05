@@ -2065,6 +2065,19 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the online lobby, round 23** (setLoadImageTags and the radio tick, open since rounds 17 and 19):
+  - MW KILLS AT A CALL ONLY THE REGISTERS THE CALLEE WRITES WHEN THE CALLEE HAS INTERNAL LINKAGE AND WAS GENERATED EARLIER
+    IN THE UNIT (static or an anonymous namespace; under `-inline deferred` "generated earlier" means defined later in the
+    source) -- an extern callee, or one generated later, kills every volatile register. MW's return reads v0, so a
+    function whose earlier-generated static callee never writes v0 keeps v0 live up to the call and starts its argument
+    shuffle at v1 (setLoadImageTags 0x30B9B0: setLoadImageTagsYX is static -- its extern declaration left zmpeg.h; the
+    anonymous namespace matches, extern is 2 off, the caller generated first 2 off; c2dfont.cpp's ReadPlacement keeps a2
+    across its anonymous-namespace callees the same way);
+  - a scaled index goes first in the addu written `(i << 3) + (unsigned int)p` -- `i * 8` first, the base first, char *
+    or element-pointer steps and `&((T *)p)[i]` all keep the base first (the radio tick 0x30EC10's SlotTaken step);
+  - include/deque measurements for the MSL (queued): cdeque begin() 0x2E0CB0 (the scaled start's numbering), the lobby
+    __deque_buf's out-of-line allocator pieces against the chat units' inlined ones, the chat push_back's inlined
+    cdeque<PCv>::resize (a body include/deque lacks).
 - **Tells from the weapons, round 29** (IsInCone, VuBatchProgram_Decals, VuBatchProgram, the store-image split):
   - THE 32 "UNUSED" FRAME BYTES WERE A STRUCT'S: in SOCOM 1's DWARF CAiCone is 0x38 bytes -- its two fields the code
     never touches (m_cone_pos, m_cone_dir) and the HUD's round-54 alignment rule give IsInCone 0x3C7280 the target's
