@@ -168,6 +168,7 @@ public:
     bool Format();
     bool IsFormatted();
     bool IsInserted();
+    bool HasChanged(int async, int *port);
     void LoadConfig(const char *name);
     void SaveConfig(const char *name, const char *desc);
     void LoadGame(const char *name);

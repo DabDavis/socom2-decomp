@@ -7611,7 +7611,7 @@
 0x003A1060 0x1A8 GetUsedSpace__8CMemCardFi  # OVL1; ours (when the save directory exists: the files of ./* summed in kilobytes, plus half the entry count and one when any file has bytes); the UI lane round 17: SOCOM II's takes an int -- both callers (CreateReserveFiles 0x3A193C and zanim_menu.cpp's UIIsSpaceForSaveGameFile 0x27B3F8) set a1 = 0 in the call's delay slot or before it, and the body never reads a1 (it is overwritten by sceMcSync's first argument set-up)
 0x003A1210 0xC4 GetFreeSpace__8CMemCardFv  # OVL1; s1:calls (the save handlers call it where SOCOM 1's do) -- the UI-commands lane
 0x003A12E0 0x88 Format__8CMemCardFv  # OVL1; s1:align
-0x003A1370 0x208 func_003A1370  # OVL1
+0x003A1370 0x208 HasChanged__8CMemCardFiPi  # OVL1; by hand (the UI lane, round 26: SOCOM II's insertion poll -- a PS2 card new in a port (libmc's -1/-2, type 2), the ports polled in turn, asynchronously or waited for; UIMC_Changed and UINetCnfSelectCombo call it, zanim_menu.cpp's func_003A1370; byte-exact from util_memcard.cpp, the name ours)
 0x003A1580 0xC8 IsFormatted__8CMemCardFv  # OVL1; s1:align
 0x003A1650 0xE0 IsInserted__8CMemCardFv  # OVL1; s1:align
 0x003A1730 0xA4 LoadGame__8CMemCardFPCc  # OVL1; s1:order (after the reserve-file deletes as SOCOM 1's saves follow IsInserted; the game save manager at 0x1C loads with flags 0xE, then LOADED_FROM_MEMCARD)
