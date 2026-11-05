@@ -4233,6 +4233,58 @@ static inline CHomingAim *HomingOf(CZBodyAnimBlend *b)
     return (CHomingAim *)&b->m_homing;
 }
 
+/* a point brought onto a ladder's run between its two ends, on the flat: within 3 of one end only, put
+ * 3 from that end along the run; within 3 of both -- or asked for the middle -- put at the middle; false,
+ * left as it is, when it is near neither (OVL2 0x5B3A60, new in SOCOM II: 0x5B2620 calls it three times,
+ * the SEAL and its ladder passed unread; the names ours). The run's direction declared ahead of the
+ * offset (CPnt3D locals: the later-declared at the lower slot); the middle assigned, not initialised
+ * (a copy-initialised local is stored loads-first through its address, an assignment member by member
+ * at fixed offsets) */
+extern "C" bool func_005B3A60(CZSealBody *seal, const CPnt3D *ends, CPnt3D *pos, void *ladder, bool mid)
+{
+    if (!mid) {
+        CPnt3D w;
+        CPnt3D v;
+
+        v = ends[0];
+        v.Sub(pos, &v);
+        v.y = 0.0f;
+        float d0 = v.Length();
+
+        v = ends[1];
+        v.Sub(pos, &v);
+        v.y = 0.0f;
+        float d1 = v.Length();
+
+        if (!(d0 < 3.0f) && !(d1 < 3.0f))
+            return false;
+
+        w = ends[1];
+        w.Sub(&ends[0], &w);
+        w.y = 0.0f;
+        w.Normalize();
+        if (d0 < 3.0f && !(d1 < 3.0f)) {
+            v = ends[0];
+            w.Scale(3.0f, &w);
+            v.Add(&w, pos);
+            return true;
+        }
+        if (!(d0 < 3.0f) && d1 < 3.0f) {
+            v = ends[1];
+            w.Scale(3.0f, &w);
+            v.Sub(&w, pos);
+            return true;
+        }
+    }
+
+    CPnt3D m;
+
+    m = ends[0];
+    m.Add(&ends[1], &m);
+    m.Scale(0.5f, pos);
+    return true;
+}
+
 /* the wall's hit the SEAL holds kept or dropped: dropped when asked, or when the SEAL is more than 24
  * from it on the flat, stands behind its face or faces away from it -- and, on a climbable face
  * (application flags 2), when its edge's drop is within 15 but the edge's foot above the SEAL by more
