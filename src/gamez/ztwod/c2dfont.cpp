@@ -26,7 +26,14 @@
  * there). Not emitted: FlatFindTag's copy 0x35A240 and the composer's member constructors
  * 0x35A250-0x35A2B0 (the target inlines CHangulFont() one level into Load, calling them; here it
  * inlines whole). 0x359740 (a list<const void *> piece only __list_imp::resize 0x3C0B14 calls) is
- * left out: whose tail it is is not settled. */
+ * left out: whose tail it is is not settled.
+ *
+ * Round 55 (the HUD lane): LoadJamo, LoadVowelRangeLayouts, CHangulFont::Load, Compose and LoadChar
+ * byte-exact -- the rectangle's corners a class (its copies go through $f0), ReadRect static, the
+ * strings and ints read through FlatFindString / FindIntAt (inline results, numbered after the
+ * caller's named locals; FindIntAt's default stored just ahead of each read), GetTexture one
+ * ternary over both tests, the item type through Type(). Still open: LoadLeadRangeLayouts and
+ * LoadCharLayouts (registers), AddJamo (2), GetGlyph (the frame), C2DFont::Load. */
 
 #include <map>
 #include <string>
