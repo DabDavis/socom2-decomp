@@ -293,6 +293,32 @@ extern char data_0048DEB8[];
 /* a mission's sound groups loaded (SOCOM II's; CMission::Open calls it after the mission's sounds,
  * 0x344450; the name not known): a multiplayer map's ("mp...") the common and hostage groups, a
  * campaign mission's the common groups and its teams' by the mission's number */
+/* SOCOM II's: the sound list searched for a hash between two indices (the name not known) -- the
+ * index's sound when the range is one and its hash is the key, else the half that holds it, the
+ * middle through floor() of a double. Recursive: MW inlines it into itself once, the inner copy
+ * calling the list's [], the hash and the two compares out of line (0x344E90-0x344ED0) */
+extern "C" double floor(double x);
+
+/* the hashes' order and equality (SOCOM II's; out of line in the search's inner copy, 0x344E90 and
+ * 0x344EA0: two arguments, no object -- the names ours) */
+inline bool HashLess(const unsigned int &a, const unsigned int &b) { return a < b; }
+inline bool HashEqual(const unsigned int &a, const unsigned int &b) { return a == b; }
+
+extern "C" CSnd *func_00344BF0(const unsigned int *key, int lo, int hi)
+{
+    if (lo == hi) {
+        if (HashEqual(*key, *CSnd::m_soundlist[lo]->GetHash()))
+            return CSnd::m_soundlist[lo];
+        return 0;
+    }
+    int mid = (int)floor(lo + (hi - lo) / 2);
+    unsigned int *k = CSnd::m_soundlist[mid]->GetHash();
+
+    if (k && HashLess(*k, *key))
+        return func_00344BF0(key, mid + 1, hi);
+    return func_00344BF0(key, lo, mid);
+}
+
 extern "C" void func_00344910(const char *name)
 {
     bool mp = false;
