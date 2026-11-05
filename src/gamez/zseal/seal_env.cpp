@@ -766,6 +766,59 @@ extern "C" void func_005B6490(zdb::CNode *node, CBBox *box)
     _stack.Pop();
 }
 
+/* whether a hit is one a shot goes through: a material known, not under a polygon of camera type 1,
+ * neither volumetric nor liquid, and passing under 0.98 of a shot or a pickup's */
+static inline bool ShootThrough(zdb::IntersectStruct *is)
+{
+    CMaterialEx *mat = is ? MaterialEx(is->GetMaterial()) : 0;
+
+    if (!mat || !is)
+        return false;
+    if (is->m_poly && (unsigned char)is->m_poly->m_flags.m_cameratype == 1)
+        return false;
+    if (mat->IsVolumetric() || mat->IsLiquid() || mat->m_penetration >= 0.98f && !mat->IsPickup())
+        return false;
+    return true;
+}
+
+/* the nearest hit a shot goes through on the way from one point to another, the SEAL's node switched
+ * off for the probe -- or none (OVL2 0x5B6240, new in SOCOM II: 0x5AA6E0 calls it; the name unknown) */
+extern "C" zdb::IntersectStruct *func_005B6240(CZSealBody *seal, const CPnt3D *from, const CPnt3D *to)
+{
+    /* (the node's dead first definition numbers it ahead of the world, which the target loads first
+     * and keeps in s0) */
+    zdb::CNode *node = 0;
+    zdb::CWorld *world = zdb::CWorld::m_world;
+
+    node = seal->GetNode();
+    bool active = node->m_active;
+
+    node->SetActive(false);
+    zdb::DiIntersect *di = world->GetIntersects(from, to);
+
+    node->SetActive(active);
+    int n = di ? di->m_Cnt : 0;
+    float best = 0.0f;
+    zdb::IntersectStruct *hit = 0;
+
+    for (int i = 0; i < n; i++) {
+        zdb::IntersectStruct *is = &di->m_Intersects[i];
+
+        if (ShootThrough(is)) {
+            CPnt3D v;
+
+            is->m_pos.Sub(from, &v);
+            float d = v.x * v.x + v.y * v.y + v.z * v.z;
+
+            if (!hit || d < best) {
+                hit = is;
+                best = d;
+            }
+        }
+    }
+    return hit;
+}
+
 extern "C" {
 /* the SEALs' pool of ray intersections, its count and a third word (OVL1 bss; new in SOCOM II) */
 extern zdb::DiIntersect **data_0044D588;
@@ -3229,6 +3282,65 @@ void CBlink::BlinkTick(float dT)
             m_nextT = 0.0f;
     }
 }
+
+/* the look aimed at a direction over a time: unless it is the goal already, the start's quaternion
+ * taken from straight ahead to where the look points and the time kept; none means done at once,
+ * else the turn's angle (the arc of the two directions' dot product, held to [0, pi]) over the time
+ * is the step, the direction the goal and the turn's axis (the cross product through VU0, as
+ * CPnt3D::Cross) scaled to half the angle -- straight up when the two all but agree (OVL2 0x5AD9D0;
+ * SOCOM 1's SetDir without its second quaternion and its start direction: SOCOM II's look turns
+ * from where it points). Out of line: Blink, BlinkTick, SetLookDir and SetEyeLookDir call it */
+#pragma auto_inline off
+void CLook::SetDir(const CPnt3D *dir, float rate)
+{
+    if (*dir == m_goal_dir)
+        return;
+    m_quat0.Align(CPnt3D::unit_nz, m_curr_dir);
+    m_rate = rate;
+    if (rate == 0.0f) {
+        m_fracT = 1.0f;
+        m_done = 1;
+        return;
+    }
+    m_fracT = 0.0f;
+    m_done = 0;
+    float d = dir->x * m_curr_dir.x + dir->y * m_curr_dir.y + dir->z * m_curr_dir.z;
+
+    float angle;
+
+    if (d >= 1.0f)
+        angle = 0.0f;
+    else if (d <= -1.0f)
+        angle = 3.1415927f;
+    else
+        angle = acosf(d);
+    m_deltaT = angle / m_rate;
+    m_goal_dir = *dir;
+    sceVu0FVECTOR r;
+    sceVu0FVECTOR va;
+    sceVu0FVECTOR vb;
+
+    va[0] = m_curr_dir.x;
+    va[1] = m_curr_dir.y;
+    va[2] = m_curr_dir.z;
+    va[3] = 1.0f;
+    vb[0] = dir->x;
+    vb[1] = dir->y;
+    vb[2] = dir->z;
+    vb[3] = 1.0f;
+    sceVu0OuterProduct(r, va, vb);
+    m_cross.x = r[0];
+    m_cross.y = r[1];
+    m_cross.z = r[2];
+    float len = m_cross.Length();
+
+    if (len < 0.001f) {
+        m_cross = CPnt3D::unit_y;
+        m_cross.Scale(0.5f * angle, &m_cross);
+    } else
+        m_cross.Scale(0.5f * angle / len, &m_cross);
+}
+#pragma auto_inline reset
 
 /* the look stepped: the fraction run up to its end, the direction the start's quaternion turned
  * by the eased part of the turn (OVL2 0x5AD920; SOCOM 1's) */

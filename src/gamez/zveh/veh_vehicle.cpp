@@ -434,7 +434,16 @@ void CVehicle::UpdateAiMapLoc()
  * both byte-exact (the unit 29 of 30, GetBBox's copy off as at level 5) -- a depth-6 stand-in, not
  * adopted; a plain vector as the region's second base matches the constructor and leaves this 8
  * short, a subclass of __vector_imp with a user destructor too (each class level adds one to the
- * constructor's chain and one to the destructor's: the asymmetry the two want is not in a class) */
+ * constructor's chain and one to the destructor's: the asymmetry the two want is not in a class).
+ * Round 26 (build/scratch/wep/v_vdt3.py, v_vdt4.py): the target's extra word is a `b` to the call
+ * with a1 = 0 in its slot, after the same two tests -- what a THIRD destructor class level over
+ * the deleter gives (its redundant test becomes the `b`). Matching this with the constructor kept:
+ * a wrapper struct round the vector (with or without a user destructor), a vector subclass with a
+ * user constructor, or the subclass with a region constructor `: m_cells()` -- each 0x98 here but
+ * CVehicle() 0xF8 (the region six high); an empty base with a user destructor (either base order),
+ * an empty inline called from the region's destructor, `~CVehicleRegion() {}`, a base destructor
+ * on CVehicleAiRegion and a __vector_imp subclass all leave this 0x90 with the constructor
+ * byte-exact; `~CVehicleRegion() { m_cells.clear(); }` is 0x9C */
 CVehicle::~CVehicle()
 {
 }
