@@ -572,6 +572,159 @@ bool CAiMaps::CanSeePoint(const CPnt3D *from, const CPnt3D *to, float rangeSq)
     return seen;
 }
 
+/* the step of a count out over ground a step may end on: GetNeighbor's, then the cell's test (the
+ * name ours: ai_astar.cpp's trace-back step, too tall to inline whole -- GetMapId, GetCell and the
+ * cell's test called out of line) */
+inline bool travel_step(CAiMap *map, const CAiMapLoc &loc, CAiMap::DIR dir, CAiMapLoc &out, CAiCell *&cell)
+{
+    int x = loc.x + CAiMap::neighbor[dir][0];
+    int y = loc.y + CAiMap::neighbor[dir][1];
+
+    if (x >= 0 && x < map->m_nx && y >= 0 && y < map->m_ny) {
+        out.x = x;
+        out.y = y;
+        out.m_mapid = map->GetMapId();
+        cell = map->GetCell(out, 0);
+        return cell ? cell->IsTraversable() : false;
+    }
+    return false;
+}
+
+/* how many cells of soil the travel count's flags weigh against it it passes (OVL2 0x64FA60, a file
+ * static: the count stops once the weight reaches it; the name ours) */
+static int s_travelSlack = 2;
+
+/* each direction's cells out from one, up to the range, a climb no steeper than 15 and ground the
+ * eye passes -- an opaque cell stops it but for SOIL_NOALT -- and no overlay's; with flag 1 it stops
+ * after grass, brush or forest; off the map from a transition cell of a map other than the first
+ * the direction counts whole (SOCOM 1's CountMapVisDir, 0x535DF0) */
+void CAiMap::CountMapVisDir(const CAiMapLoc &loc, MAP_DIRCOUNT *dc)
+{
+    CAiCell *start = GetCell(loc, 0);
+    CAiCell *cell = 0;
+    unsigned char soil = 0;
+
+    for (int i = 0; i < 8; i++) {
+        dc->m_loc[i] = loc;
+        dc->m_count[i] = 0;
+        if (!start)
+            continue;
+        for (int j = 0; j < dc->m_range; j++) {
+            CAiMapLoc next;
+
+            if (GetNeighbor(dc->m_loc[i], (DIR)i, next, cell)) {
+                if (cell->IsOpaque() && cell->GetSoil() != SOIL_NOALT)
+                    break;
+                bool high = false;
+                int d = cell->m_altitude - start->m_altitude;
+
+                if (d > 0 && d * m_alt_quant > 15.0f)
+                    high = true;
+                if (high)
+                    break;
+                if (ai::overlays.Contains(cell, next))
+                    break;
+                dc->m_loc[i] = next;
+                dc->m_count[i]++;
+                soil = cell->m_soil;
+                if ((dc->m_flags & 1) && (soil == SOIL_GRASS || soil == SOIL_BRUSH || soil == SOIL_FOREST))
+                    break;
+            } else {
+                if (m_mapid && soil == SOIL_TRANS)
+                    dc->m_count[i] = dc->m_range;
+                break;
+            }
+        }
+    }
+}
+
+/* each direction's cells out from one, up to the range, over ground a step may end on and no
+ * overlay's: the flags weigh the soils passed -- grass, brush and forest (1), a concealing soil (2)
+ * a cell for, other ground a cell against, and off the road (4) a cell for -- and the count stops
+ * once the weight reaches the slack (SOCOM 1's CountMapTravelDir, the weights new: 0x535A40) */
+void CAiMap::CountMapTravelDir(const CAiMapLoc &loc, MAP_DIRCOUNT *dc)
+{
+    for (int i = 0; i < 8; i++) {
+        CAiCell *cell = 0;
+        int weight = 0;
+
+        dc->m_loc[i] = loc;
+        dc->m_count[i] = 0;
+        for (int j = 0; j < dc->m_range; j++) {
+            CAiMapLoc next;
+
+            if (!travel_step(this, dc->m_loc[i], (DIR)i, next, cell))
+                break;
+            if (ai::overlays.Contains(cell, next))
+                break;
+            if (weight >= s_travelSlack)
+                break;
+            int w = 0;
+
+            if (dc->m_flags & 1) {
+                if (cell->m_soil == SOIL_GRASS || cell->m_soil == SOIL_BRUSH || cell->m_soil == SOIL_FOREST)
+                    w = 1;
+                else
+                    w = -1;
+            }
+            if (!w && (dc->m_flags & 2)) {
+                if (cell->IsConcealingSoil())
+                    w = 1;
+                else
+                    w = -1;
+            }
+            if (!w && (dc->m_flags & 4)) {
+                if (cell->m_soil != SOIL_ROAD)
+                    w = 1;
+                else
+                    w = -1;
+            }
+            weight += w;
+            if (weight < 0)
+                weight = 0;
+            dc->m_count[i]++;
+            dc->m_loc[i] = next;
+        }
+    }
+}
+
+/* from a cell no step may end on, each direction's cells out to the first one a step may, up to
+ * the range -- off the map, of a map other than the first, the direction counts whole; from one a
+ * step may end on every count is 0 (new in SOCOM II, the name ours: CAiSPathRecover::Tick's two
+ * calls, 0x535730) */
+void CAiMap::CountMapExitDir(const CAiMapLoc &loc, MAP_DIRCOUNT *dc)
+{
+    if (_traversable(this, loc)) {
+        for (int i = 0; i < 8; i++) {
+            dc->m_count[i] = 0;
+            dc->m_loc[i] = loc;
+        }
+        return;
+    }
+    for (int i = 0; i < 8; i++) {
+        dc->m_loc[i] = loc;
+        CAiCell *start = GetCell(loc, 0);
+
+        dc->m_count[i] = 0;
+        CAiCell *cell = 0;
+
+        for (int j = 0; j < dc->m_range; j++) {
+            CAiMapLoc next;
+
+            if (GetNeighbor(dc->m_loc[i], (DIR)i, next, cell)) {
+                dc->m_loc[i] = next;
+                dc->m_count[i]++;
+                if (cell->IsTraversable())
+                    break;
+            } else {
+                if (m_mapid)
+                    dc->m_count[i] = dc->m_range;
+                break;
+            }
+        }
+    }
+}
+
 /* the direction of the most counts: each count summed with its two neighbours' when asked, and only
  * the heading's closest direction and the two either side of it weighed when a heading is given --
  * the closest the first choice, a later one taken only with more (new in SOCOM II, the names ours:
