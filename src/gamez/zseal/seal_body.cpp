@@ -15,6 +15,32 @@ public:
     CZSIScriptCommon *GetScript(AnimType type, int kind);
     int GetVariantIndex(AnimType type, int kind, int anim);
     AnimType BaseAnim(AnimType type);
+    /* the set's name (out of line here, OVL2 0x578940: this unit emits Find's pieces first, right
+     * after 0x5784A0) -- five inline levels high: FITTED, not read off the image (the kit's round 38
+     * in anim.cpp, the same chain), the depth the target's Find needs so that its whole tree is over
+     * five and 0x5784A0 inlines Find one level, calling every piece, as the target does */
+    std::string &Name0() { return m_name; }
+    std::string &Name1() { return Name0(); }
+    std::string &Name2() { return Name1(); }
+    std::string &Name3() { return Name2(); }
+    std::string &GetName() { return Name3(); }
+    /* a set by its name in the list, or 0 (SOCOM 1's Find, anim.cpp's: its iterator pieces called --
+     * OVL2 0x5788C0-0x578980, this unit's copies) */
+    static AnimSet *Find(const char *name)
+    {
+        std::vector<AnimSet *>::iterator i;
+
+        for (i = list.begin(); i != list.end(); i++)
+            if (!strcmp(name, (*i)->GetName().c_str()))
+                return *i;
+        return 0;
+    }
+
+    /* every set (SOCOM 1's AnimSet::List; OVL1 bss 0x44D430) */
+    static std::vector<AnimSet *> list;
+
+    unsigned char _0[0x38];
+    std::string m_name;   // 0x38
 };
 
 /* THE UNIT'S STATICS, in the order its initialiser builds them (__sinit_seal_body.cpp, OVL2 0x668940):
@@ -2006,6 +2032,79 @@ bool CZSealBody::StanceChanged()
         return true;
     }
     return false;
+}
+
+extern "C" {
+/* whether the AI's SEAL may be taken hostage, and the hostage state pushed when it may (seal_ai.cpp's
+ * OVL2 0x555B80 and 0x555900: both take a third argument, which every caller passes as 0) */
+bool func_00555B80(CSealCtrlAi *ai, int kind, int flag);
+bool func_00555900(CSealCtrlAi *ai, int kind, int flag);
+}
+
+/* the restraint taken hold of, when RestrainBuddy's timed call (0x578D10, three seconds into the
+ * captor's anim) comes due: unless the victim is gone or its AI may not be taken hostage, the
+ * "Restrained anim set" bound to the victim and kept; its AI held (bit 6) and, the hostage state
+ * pushed, given the captor; the victim's blends popped down to one, twelve at most, as 0x57F310
+ * does, anim 26 and ReceiveRestraints pushed in state 2; each SEAL the other's carry, the victim
+ * restrained and no longer restrainable, its root part parented to the captor's, its node at the
+ * captor's, its position updated and its root part inactive; the captor's homing reset, its blends
+ * cleared to the base and ApplyRestraints pushed, which is returned, the body in state 0 (OVL2
+ * 0x5784A0, new in SOCOM II: SOCOM 1's RestrainBuddy did all this at once, SOCOM II's 0x578990 starts
+ * it -- the name ours) */
+extern "C" CZBodyAnimBlend *func_005784A0(CZSealBody *seal, CZSealBody *victim)
+{
+    if (!victim)
+        return (CZBodyAnimBlend *)func_00555170(&seal->m_blends);
+    CSealCtrlAi *ai = victim->GetSealCtrlAi();
+
+    if (!ai || !func_00555B80(ai, 3, 0))
+        return (CZBodyAnimBlend *)func_00555170(&seal->m_blends);
+    AnimSet *set = AnimSet::Find("Restrained anim set");
+
+    if (set) {
+        victim->BindAnimSet(set, false);
+        victim->m_530 = set;
+    }
+    if (ai) {
+        ai->m_aibit6 = true;
+        if (func_00555900(ai, 3, 0)) {
+            CAiState *s = ai->GetAiState();
+            CAiSHostage *h = s && s->m_state == AI_STATE_HOSTAGE ? (CAiSHostage *)s : 0;
+
+            h->SetCaptor(seal, true);
+        }
+    }
+    CZBodyAnimBlend *b = (CZBodyAnimBlend *)func_00555170(&victim->m_blends);
+    int n = 12;
+    CBodyAnimBlendStack *stack = &victim->m_blends;
+
+    while (BlendCount(stack) > 1 && n > 0) {
+        b = func_00589AA0(victim);
+        n--;
+    }
+    if (n <= 0)
+        b = (CZBodyAnimBlend *)func_00555170((char *)victim + 0x1c0);
+    else {
+        if (b)
+            b->m_ctrl = 0;
+        victim->m_desiredStance = STANCE_PRONE;
+    }
+    func_00588BC0(victim, (AnimType)26, 2, 0, 0);
+    func_00588BC0(victim, (AnimType)AnimTypes::ReceiveRestraints, 2, 0, 0);
+    victim->m_carry = seal;
+    seal->m_carry = victim;
+    victim->SetRestrained(true);
+    victim->SetRestrainable(false);
+    victim->GetRootPart()->m_parent = seal->GetRootPart();
+    victim->GetNode()->SetPosition((const CPnt3D *)seal->GetNode()->m_matrix.m_matrix[3]);
+    victim->UpdatePosW();
+    victim->GetRootPart()->SetActive(false);
+    ((CZBodyAnimBlend *)func_00555170(&seal->m_blends))->m_homing.Reset();
+    seal->ClearToBase(false);
+    CZBodyAnimBlend *r = (CZBodyAnimBlend *)func_00588BC0(seal, (AnimType)AnimTypes::ApplyRestraints, 0, 0, 0);
+
+    seal->BodySetState(0);
+    return r;
 }
 
 /* the object the top blend holds let go: the part's node taken off its parent and given to the

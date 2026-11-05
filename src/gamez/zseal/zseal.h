@@ -100,6 +100,11 @@ public:
      * conversion is) */
     static AnimType ProneRStrafe;   // OVL1 0x3DECC0 (SOCOM II adds one after ClimbMedium's four)
     static AnimType ProneLStrafe;   // OVL1 0x3DECD0
+    /* (SOCOM 1's ReceiveRestraints and ApplyRestraints, adjacent in both builds: the restraint's
+     * capture 0x5784A0 pushes the first on the victim after anim 26 and the second on the captor,
+     * as SOCOM 1's RestrainBuddy does) */
+    static short ReceiveRestraints;   // OVL1 0x3DEE40
+    static short ApplyRestraints;   // OVL1 0x3DEE48
 };
 
 /* how a SEAL died (SOCOM 1's DWARF, a byte) */
@@ -1653,6 +1658,9 @@ public:
     void ActionSelectionMask(int id);
     /* the restraint flag set (an inline: its bool is stored as `(b & 1)`) */
     void SetRestrained(bool on) { m_restrained = on; }
+    /* the restrainable flag set (an inline: 0x5784A0 clears it with `(0 & 1) << 7`, as SOCOM 1's
+     * RestrainBuddy does; the name ours) */
+    void SetRestrainable(bool on) { m_restrainable = on; }
     /* the squad-joined flag set (an inline: `(b & 1) << 6` even for a constant) */
     void SetJoinedUnit(bool on) { m_joined_unit = on; }
     /* the gas and smoke flags set (inlines: a constant true is `daddiu 1 << n`) */
