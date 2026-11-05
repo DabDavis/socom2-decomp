@@ -1413,8 +1413,10 @@
 0x00488FA0 0x4 gAwaitingInts  # OVL1 bss; SOCOM 1's global (its symbol, 0x476408 in $gp's area): the commands whose returns the call awaits, 1 for a direct command -- the world lane round 19
 0x00488FA8 0x4 gLastLoadError  # OVL1 bss; the world lane r6: SOCOM II's (the name ours) -- snd_BankLoad and snd_BankLoadByLoc clear it on entry and store 262 when their RPC call fails; 4 references in 2 functions
 0x00488FB0 0x4 gStreamingInited  # OVL1 bss; s1:data-seq (size SOCOM 1's; via snd_StopSoundSystem +1)
+0x00488FB8 0x4 gCdCallback  # OVL1 bss; SOCOM 1's global (its symbol, 0x476410 in $gp's area, between gStreamingInited and gSSRead as here): snd_FlushSoundCommands calls it with 1 once the stream-safe read is done; 1 reference -- the world lane round 19
 0x00488FC0 0x4 gSSRead  # OVL1 bss; SOCOM 1's global (its symbol): snd_StreamSafeCdRead sets it as SOCOM 1's does (gp 0x476414 there); 3 references in 2 functions
 0x00488FC8 0x4 gSSReadDone  # OVL1 bss; SOCOM 1's global (its symbol): snd_StreamSafeCdSync stores the status block's !busy in it as SOCOM 1's does (0x476418 there); 13 references in 6 functions
+0x00488FD0 0x4 gLoadingFromFS  # OVL1 bss; SOCOM 1's global (its symbol, 0x47641C in $gp's area, after gSSReadDone as here): set, the flush's finished call is a file load's and its callback gets the reply; 2 references in 1 function -- the world lane round 19
 0x00489000 0x40 gSyncBuffer  # OVL1 bss; SOCOM 1's global (its symbol, 0x509B80, 0x40 bytes): the command RPC's reply, words 0 and 2 cleared before a call -- the world lane round 19
 0x00489040 0x40 gSyncSendBuffer  # OVL1 bss; SOCOM 1's global (its symbol, 0x509BC0, 0x40 bytes): snd_SendIOPCommandAndWait's request, the data copied in -- the world lane round 19
 0x00489080 0x100 gSyncStringBuffer  # OVL1 bss; the world lane r6: SOCOM 1's global (its symbol, 0x509C00, 0x100 bytes) -- snd_BankLoad's request, the offset at 0 and the name from 4, as SOCOM 1's; 3 references in 1 function
@@ -1433,6 +1435,8 @@
 0x0048DA88 0x8 gLoadUserData  # OVL1 bss; the world lane r6: SOCOM 1's global (its symbol, 0x476430, 8 bytes: cleared with sd) -- cleared by snd_StartSoundSystem
 0x0048DAC0 0x10 gLoadReturnValue  # OVL1 bss; the world lane r6: SOCOM 1's global (its symbol, 0x50E600, 0x10 bytes) -- the loads' reply, set to -1 and waited on, cleared by snd_StartSoundSystem, as SOCOM 1's; 7 references in 3 functions
 0x0048DB00 0x20 gLoadParams  # OVL1 bss; the world lane r6: SOCOM 1's global (its symbol, 0x50E640, 0x20 bytes) -- snd_BankLoadByLoc's request, the sector at 0 and the offset at 4; 3 references in 1 function
+0x0048DB20 0x4 gFSLoadCB  # OVL1 bss; SOCOM II's, name ours (SOCOM 1's flush called gLoadCB here): the file load's callback, given the reply's second word and gFSLoadUserData, then cleared; 2 references in 1 function -- the world lane round 19
+0x0048DB28 0x8 gFSLoadUserData  # OVL1 bss; SOCOM II's, name ours: the file load callback's data (ld); 1 reference -- the world lane round 19
 0x0048DB30 0x4 gQuiet  # OVL1 bss; the world lane r6: SOCOM II's (the name ours) -- snd_StartSoundSystem sets it from its flag 2; the two command senders, both loads and the flush skip their messages while it is set; 17 references in 6 functions
 0x0048DB48 0x4 m_listener__4CSnd  # OVL1 bss; the states lane r31: SOCOM 1's CSnd static (its symbol, 0x476440, gp-26544) -- testLoad stores the app camera's node (+0xB4) into it and testUnload clears it at the instructions where SOCOM 1's store and clear m_listener__4CSnd; CSnd::PostTick reads it; 7 references in 5 functions
 0x0048DB50 0x1 m_listenerIsValid__4CSnd  # OVL1 bss; the world lane r16: SOCOM 1's CSnd static (its symbol, 0x476444, gp-26540, beside m_listener) -- CalcVolPan zeroes the volume and the pan while it is clear; 6 references in 5 functions (CSnd::PostTick twice, CalcVolPan, PlaySound3D, _OnMissionComplete, 0x2A7D40)
