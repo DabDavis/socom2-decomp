@@ -517,21 +517,29 @@ bool _invalid_route(CAiMap::route &r)
  * ones are dropped, the end taken once for both remove_if and the erase (SOCOM 1's; SOCOM II's
  * Contains tests the map too). Written in the AI core's round 24 for its instances: remove_if
  * 0x5311E0 and remove_copy_if 0x5328E0 byte-exact through it.
- * OPEN (0x3FC against 0x438): the target keeps the loop's iterator in memory (92(sp): loaded for
- * every use, stored by the step) where this build keeps it in a register. One iterator reused for
- * remove_if's result (`i = std::remove_if(...); erase(i, e);`) puts it in memory and gives the loop
- * word for word but for a0/a1 swapped in the two region finds and back() reloading the way points'
- * data_ that the target shares with [0]'s load -- 0x448, its tail one copy longer than the target's
- * (result -> i -> erase's argument, where the target copies the result straight into the argument).
- * Assigned in the for (declared outside), postfix steps, ->, begin()/end()-1 for the way points, the
- * end reused as i, i reused for begin: none keeps i in memory alone (build/scratch/ai/v_vr*.py).
- * The AI core round 25: `ReRoute((route *&)i)` puts i in memory (0x418) but MW then keeps one load
- * of it per pass where the target reloads it at each use; `i = m_routeTable.erase(...)` (0x400) and
- * the result into a fresh local (0x3FC) leave it in a register. The target's tail slots run e 72,
- * erase's copies 76/80, begin 84, the result 88 and i 92 (this build: e highest) */
+ * THE AI CORE'S ROUND 33 (0x3FC -> 0x430 of 0x438; structurally 2 off, both nops, and 34
+ * instructions in their registers alone): the loop's iterator declared ahead, ASSIGNED from begin(),
+ * and REUSED AS THE END for the tail (`i = end(); r = remove_if(begin(), i, p); erase(r, i);`) -- the
+ * end's copy into erase's parameter takes i's address, so i lives in memory (92(sp), reloaded at
+ * each use: the target's loop word for word), and its second range is split off to the frame's
+ * bottom, giving the target's tail slots exactly (i 92, result 88, begin 84, erase's copies 80/76,
+ * the end 72); assigned alone, or initialised, the class vector's iterator is scalarised. The last
+ * way point read as `(&w[0] + w.size())[-1]`: through operator[] its data pointer is CSE'd with
+ * [0]'s (the target's shared v0), and the end-then-minus-one arithmetic is back()'s (`w[size - 1]`
+ * indexes as (size-1)*4; back(), end()-1, data()+size-1 reload data_).
+ * OPEN: the target's second region find reads loc.x through a FRESH load of i into a2 (hoisted to
+ * its preheader, after the empty test: hence its two nops) and loc.y through the loop-top load
+ * still in a1; this build CSEs both into one second load (a0), and takes a0/a1 the other way round
+ * in the first find (`igreplay --move 35=36.5` -- the first find's result numbered after the second
+ * load -- gives the target's a0/a1, but not the split). Tried: -> for each access, a reference
+ * to m_region[1] (the first 65 instructions exact, the second find through the reference), the
+ * find through a result local, end() per pass, a while, i then e, the two results declared
+ * uninitialised, at the top, or with dead `= 0` definitions (build/scratch/ai/v_vr*.py) */
 void CAiMap::ValidateRoutes(bool force)
 {
-    for (routes::iterator i = m_routeTable.begin(); i != m_routeTable.end(); ++i) {
+    routes::iterator i;
+
+    for (i = m_routeTable.begin(); i != m_routeTable.end(); ++i) {
         if ((*i).m_flags & 1)
             continue;
         region *a = find_region(m_regionTable, (*i).m_region[0]);
@@ -545,17 +553,17 @@ void CAiMap::ValidateRoutes(bool force)
             (*i).m_flags |= 1;
             continue;
         }
-        if (!b->Contains((*i).m_waypts.back()) || b->m_type != 4) {
+        if (!b->Contains((&(*i).m_waypts[0] + (*i).m_waypts.size())[-1]) || b->m_type != 4) {
             (*i).m_flags |= 1;
             continue;
         }
         if (force)
             ReRoute(&*i);
     }
-    routes::iterator e = m_routeTable.end();
-    routes::iterator r = std::remove_if(m_routeTable.begin(), e, _invalid_route);
+    i = m_routeTable.end();
+    routes::iterator r = std::remove_if(m_routeTable.begin(), i, _invalid_route);
 
-    m_routeTable.erase(r, e);
+    m_routeTable.erase(r, i);
 }
 
 /* the route of an index, or none (new in SOCOM II, the name ours) */
