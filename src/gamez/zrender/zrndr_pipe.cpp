@@ -151,6 +151,14 @@ public:
         void Insert(tag_DelayedNode *d);
         void Render();
 
+        /* set after each pass, so the next insert starts its walk at the list's start again (SOCOM
+         * 1's static m_first_alpha_add, 1 byte: OVL1 0x3DFF68), and the draw list's last insert,
+         * where the next one's walk starts (SOCOM 1's m_last_alpha_insert, 4 bytes: OVL1 bss
+         * 0x488ED8, just past thePipe's flags) -- declared only: defined here they would join the
+         * unit's data */
+        static bool m_first_alpha_add;
+        static std::list<void *>::iterator m_last_alpha_insert;
+
         zdb::CCamera *m_camera;   // 0x0
         tag_DelayedNode *m_visualList;   // 0x4
         tag_DelayedNode *m_next;   // 0x8
@@ -655,10 +663,6 @@ void CPipe::BuildSpecMapList(zdb::CNode *node)
     }
 }
 
-/* whether shadows apply (SOCOM 1's CVisual::m_applyShadow, the byte its BuildLightMapList reads;
- * CAlpha::Render clears it -- left unnamed here, declared again below) */
-extern "C" unsigned char data_003E1450;
-
 /* whether a light map reaches a sphere: its range and the sphere's radius against the distance
  * between them -- a shadow only on the side the world's shadow vector leaves lit (SOCOM 1's test,
  * in its BuildLightMapList's own inline; SOCOM II adds the shadow's side; the name ours) */
@@ -711,7 +715,7 @@ void CPipe::BuildLightMapList(zdb::CNode *node)
 
             if (l->m_active) {
                 if (l->m_isShadow) {
-                    if (data_003E1450) {
+                    if (zdb::CVisual::m_applyShadow) {
                         zdb::CNode *model = node->m_type == 2 ? node : 0;
 
                         if (!model || l->m_instance != (node->m_type == 2 ? node : 0)) {
@@ -1100,11 +1104,7 @@ void DrawFlush();
 void Draw();
 }
 
-/* the alpha pass's flags (not named): 0x3E1450 cleared and 0x3E1460 set while it draws, 0x3DFF68 set
- * after it; NodeSetup's flag for a lit node's extra lights (vis_vu.cpp's) and their set-up
- * (0x338FA0, not written: RenderVisual calls it too) */
-extern "C" unsigned char data_003E1450, data_003E1460, data_003DFF68;
-extern "C" bool data_003E1458;
+/* the local lights' set-up of a lit node (0x338FA0, not written: RenderVisual calls it too) */
 extern "C" void func_00338FA0(zdb::CNode *node);
 
 /* SOCOM 1's: the translucent objects drawn in their depth order between the particle ranges -- each
@@ -1120,8 +1120,8 @@ void CPipe::CAlpha::Render()
     CPnt3D zero;
 
     zdb::CVisual::AlphaEnable(true);
-    data_003E1450 = 0;
-    data_003E1460 = 1;
+    zdb::CVisual::m_applyShadow = 0;
+    zdb::CVisual::m_applyMultipass = 1;
     zdb::CVisual::LandmarkEnable(false);
     data_004B4E34 = 0;
     if (m_drawList.size()) {
@@ -1141,7 +1141,7 @@ void CPipe::CAlpha::Render()
             zdb::CVisual::m_stack_vid.push((void *)d->m_vid);
             if (d->m_atom) {
                 zdb::CVisual::NodeSetup(d->m_atom, d->m_node, &d->m_matrix);
-                if (data_003E1458)
+                if (zdb::CVisual::m_applyLocalLights)
                     func_00338FA0(d->m_node);
                 func_003B6B20(d->m_node, d->m_fov, d->m_opacity);
                 zdb::CVisual::m_GlobalLightScale = d->m_lightScale;
@@ -1159,13 +1159,9 @@ void CPipe::CAlpha::Render()
 
     zdb::CVisual::m_addColor = color;
     zdb::CVisual::AlphaEnable(false);
-    data_003E1460 = 1;
-    data_003DFF68 = 1;
+    zdb::CVisual::m_applyMultipass = 1;
+    m_first_alpha_add = 1;
 }
-
-/* the draw list's last insert, where the next one's walk starts (a static of the unit, 0x488ED8, not
- * named: defined here it would join the unit's data) */
-extern std::list<void *>::iterator data_00488ED8;
 
 /* SOCOM 1's: a record put in the draw list in depth order, deepest first -- the walk starts at the
  * last insert (at the list's start again after each pass: Render sets 0x3DFF68), forward while the
@@ -1181,25 +1177,25 @@ extern std::list<void *>::iterator data_00488ED8;
  * `&d->m_40` (the third walk hoists it in the target too; a for/break first walk changes nothing) */
 void CPipe::CAlpha::Insert(tag_DelayedNode *d)
 {
-    if (data_003DFF68) {
-        data_003DFF68 = 0;
-        data_00488ED8 = m_drawList.begin();
+    if (m_first_alpha_add) {
+        m_first_alpha_add = 0;
+        m_last_alpha_insert = m_drawList.begin();
     }
-    std::list<void *>::iterator it = data_00488ED8;
+    std::list<void *>::iterator it = m_last_alpha_insert;
     std::list<void *>::iterator b = m_drawList.begin(), e = m_drawList.end();
 
     if (it == b) {
         while (it != e && d->m_40 < ((tag_DelayedNode *)*it)->m_40)
             ++it;
-        data_00488ED8 = m_drawList.insert(it, (void *const &)d);
+        m_last_alpha_insert = m_drawList.insert(it, (void *const &)d);
     } else if (!(d->m_40 < ((tag_DelayedNode *)*it)->m_40)) {
         while (it != b && !(d->m_40 <= ((tag_DelayedNode *)*it)->m_40))
             --it;
-        data_00488ED8 = m_drawList.insert(d->m_40 < ((tag_DelayedNode *)*b)->m_40 ? ++it : m_drawList.begin(), (void *const &)d);
+        m_last_alpha_insert = m_drawList.insert(d->m_40 < ((tag_DelayedNode *)*b)->m_40 ? ++it : m_drawList.begin(), (void *const &)d);
     } else {
         while (it != e && d->m_40 < ((tag_DelayedNode *)*it)->m_40)
             ++it;
-        data_00488ED8 = m_drawList.insert(it, (void *const &)d);
+        m_last_alpha_insert = m_drawList.insert(it, (void *const &)d);
     }
 }
 
