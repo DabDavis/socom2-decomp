@@ -8761,11 +8761,11 @@
 0x004D59B8 0xF0 _GetWordsInTree  # OVL2 unaligned; s1:order+calls -- the gcc lane, round 18c: SOCOM 1's LOCAL _GetWordsInTree (0x345AB8, after _CountWordsInTree as here): a leaf's word or its list appended at *out, each child's in turn (SOCOM II's children loop is not unrolled); GetIsolatedWordDpActiveWords inlines its first level
 0x004D5AA8 0x10 CompareIDs  # OVL2 unaligned; s1:exact
 0x004D5AB8 0x60 CreateActiveWordsCtxTree  # OVL2 unaligned; s1:align
-0x004D5B18 0x888 func_004D5B18  # OVL2 unaligned
-0x004D63A0 0x36C func_004D63A0  # OVL2
-0x004D6710 0x4AC func_004D6710  # OVL2
-0x004D6BC0 0x400 func_004D6BC0  # OVL2
-0x004D6FC0 0x4A0 func_004D6FC0  # OVL2
+0x004D5B18 0x888 Build_Tree_ForChinese_TreeCtx  # OVL2 unaligned; s1:calls (SOCOM 1's CreateSecondPassTreeContext_ForChinese calls Build_Tree_ForChinese_TreeCtx where ours call this row: its non-heap calls match ours call for call, 1 call site; the same position in SOCOM 1's object 0x345CD0)
+0x004D63A0 0x36C Translate_Prons_Into_Items_And_Tones_TreeCtx  # OVL2; s1:calls (SOCOM 1's CreateSecondPassTreeContext_ForChinese calls Translate_Prons_Into_Items_And_Tones_TreeCtx where ours call this row: its non-heap calls match ours call for call, 1 call site; the same position in SOCOM 1's object 0x345CD0)
+0x004D6710 0x4AC SplitUp_Finals_TreeCtx  # OVL2; s1:calls (SOCOM 1's CreateSecondPassTreeContext_ForChinese calls SplitUp_Finals_TreeCtx where ours call this row: its non-heap calls match ours call for call, 1 call site; the same position in SOCOM 1's object 0x345CD0)
+0x004D6BC0 0x400 Swap_Finals_TreeCtx  # OVL2; s1:calls (SOCOM 1's CreateSecondPassTreeContext_ForChinese calls Swap_Finals_TreeCtx where ours call this row: its non-heap calls match ours call for call, 1 call site; the same position in SOCOM 1's object 0x345CD0)
+0x004D6FC0 0x4A0 FillOut_Syntax_Statedict_And_Wordprops_ForChinese_TreeCtx  # OVL2; s1:calls (SOCOM 1's CreateSecondPassTreeContext_ForChinese calls FillOut_Syntax_Statedict_And_Wordprops_ForChinese_TreeCtx where ours call this row: its non-heap calls match ours call for call, 1 call site; the same position in SOCOM 1's object 0x345CD0)
 0x004D7460 0xDC func_004D7460  # OVL2
 0x004D7540 0xC00 CreateSecondPassTreeContext_ForChinese  # OVL2; s1:calls (SOCOM 1's casrDoIsoWordSecondPass calls CreateSecondPassTreeContext_ForChinese where ours call this row, 1 call site; the same position in SOCOM 1's object)
 0x004D8140 0x24 Tone_Of_Final_TreeCtx  # OVL2; s1:order (SOCOM 1's object 0x345CD0: after CreateSecondPassTreeContext_ForChinese, before Calculate_NbrOfStatesInDict_ForChinese_TreeCtx, as here; Tone_Of_Final's body; uncalled in both) -- the gcc lane, round 14c
@@ -8908,9 +8908,9 @@
 0x004E7120 0x3C ConstructExtraEventDp  # OVL2; s1:align
 0x004E7160 0x58 ProcessExtraEventDP  # OVL2; s1:align
 0x004E71B8 0x40 InitExtraEventDP  # OVL2 unaligned; s1:align
-0x004E71F8 0x8BC func_004E71F8  # OVL2 unaligned
-0x004E7AB8 0x1C0 func_004E7AB8  # OVL2 unaligned
-0x004E7C78 0x410 func_004E7C78  # OVL2 unaligned
+0x004E71F8 0x8BC fht  # OVL2 unaligned; s1:calls (SOCOM 1's realfft calls fht where ours calls this row, 1 call site; 0x8BC here, 0x8AC there; SOCOM 1's object 0x354FD8: fht, realfft)
+0x004E7AB8 0x1C0 realfft  # OVL2 unaligned; s1:calls (SOCOM 1's ProcessFFTMod calls realfft where ours calls this row, 1 call site, and it calls fht as ours calls 0x4E71F8; 0x1C0 here, 0x1B0 there)
+0x004E7C78 0x410 CalcAmplitudeSpec  # OVL2 unaligned; s1:order (SOCOM 1's fftmod object 0x355A38 opens with CalcAmplitudeSpec before ProcessFFTMod, as this row precedes ours; ProcessFFTMod calls it after realfft)
 0x004E8088 0x684 ProcessFFTMod  # OVL2 unaligned; s1:order (the process slot ConstructFFTMod hands tosBaseBlockConstruct, as SOCOM 1's ConstructFFTMod hands its LOCAL ProcessFFTMod; the FFT object's row before InitFFTMod, as in SOCOM 1's object at 0x355A38) -- the gcc lane, round 10c
 0x004E8710 0x2AC InitFFTMod  # OVL2; s1:order (ConstructFFTMod's init slot, as SOCOM 1's LOCAL InitFFTMod; the row before the constructor, as there) -- the gcc lane, round 10c
 0x004E89C0 0x8C ConstructFFTMod  # OVL2; s1:align
@@ -8919,10 +8919,10 @@
 0x004E8D78 0x130 FreeIsoWordTokenDp  # OVL2 unaligned; s1:align
 0x004E8EA8 0x1D4 InitNewUtterance  # OVL2 unaligned; s1:align
 0x004E9080 0x2DC ExtendNodeWheel  # OVL2; s1:calls
-0x004E9360 0xD98 func_004E9360  # OVL2
-0x004EA0F8 0x92C func_004EA0F8  # OVL2 unaligned
+0x004E9360 0xD98 RePruneToPho  # OVL2; s1:calls (SOCOM 1's FrameDPacoust calls RePruneToPho where ours calls this row, 2 call sites; the same position in SOCOM 1's object)
+0x004EA0F8 0x92C FrameDPacoust  # OVL2 unaligned; s1:calls (SOCOM 1's IsoWordTokenDpProcess calls FrameDPacoust where ours calls this row, 1 call site; the same position in SOCOM 1's object)
 0x004EAA28 0x104 ExpandGarbageArrays@isowdp  # OVL2 unaligned; s1~ ExpandGarbageArrays (one of 2); s1:order -- the gcc lane, round 17c: SOCOM 1's iso-word object (0x356970) holds its LOCAL ExpandGarbageArrays (0x104, the same size) between FrameDPacoust and IsoWordTokenDpProcess, as here; the body is SOCOM 1's with the record's fields 4 higher (two 151-word allocations, the arrays copied and grown by 150); the N-best object's own copy keeps the bare name (0x4EFB18)
-0x004EAB30 0x308 func_004EAB30  # OVL2
+0x004EAB30 0x308 IsoWordTokenDpProcess  # OVL2; s1:slot (SOCOM 1's InitIsoWordTokenDpContext installs IsoWordTokenDpProcess 0x358408 as the block's process where ours install this row; ConstructIsoWordTokenDp likewise; the same position in SOCOM 1's object, 0x30C there)
 0x004EAE38 0x23C GetNBest  # OVL2 unaligned; s1:calls (SOCOM 1's ControlIsoWordTokenDp calls GetNBest where ours call this row, 1 call site; the same position in SOCOM 1's object)
 0x004EB078 0x328 ControlIsoWordTokenDp  # OVL2 unaligned; s1:align
 0x004EB3A0 0x3C ConstructIsoWordTokenDp  # OVL2; s1:align

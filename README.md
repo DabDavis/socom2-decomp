@@ -12477,6 +12477,64 @@ casr.h types the user-word scoring result at +944 (dpscoreuw.c's SCOREUWRESULT),
 phoneme at SEGLABEL +16, the language's GetSilencePhenome, GetNbrWarpFactors and GetpWarpFactors slots
 and WARP. No tool changed.
 
+**Round 32c: casrEnableGenders' unroll, FindBestTranscription, the iso-word block's context and process, the VAD's control, realfft** (resumed after the 16:26 crash: the first agent had closed the first two and left the third at 5 words).
+
+- **loop.c's second pass decides the unroll factor** (casrEnableGenders): each switch loop's flag a block
+  variable (`on = 0; if (...) on = 1;`) gives 34 insns at the second pass, 3 x 34 >= 100, so the loop is
+  peeled once and unrolled by two as the target's; its three command tables are statics of two inline
+  helpers -- SOCOM 1's `ControlID_Disable.84 / Enable.88 / Disable.89` numbering (its 2.9x compiler spends
+  three hidden names per function) puts a function boundary between the stop table and the switch tables.
+- **A pointer value is a pseudo of its own** (FindBestTranscription): score rows written through pointers
+  set before their loops give the target's `move s4,sp`; a count per loop (the second `li s1,3`); the
+  smaller duration term doubled into a variable added apart.
+- **A helper that reads `e->tos` itself loads it after its own arguments** (InitIsoWordTokenDpContext): the
+  frames helper's tos load ahead of the sizing (so the sizing is the helper's own, the profile's frames
+  passed in), the N-best helper's count ahead of its tos -- at both call sites (ControlIsoWordTokenDp's case
+  26 stays byte-exact without its local). Written at the call sites: 5 words of load order.
+- **fold distributes a sum into a `?:` operand** (IsoWordTokenDpProcess, each garbage path one statement:
+  `g1[f + 1] = g1[f] + (s[p] != 0x7FFF ? s[p] : (s[p] = host(...))) + off`): the adds land in both arms with
+  one store at the join, the row's old value becomes a SAVE_EXPR loaded before the test (its own register
+  across the host's call), the destination's address is computed first (its own register too), and the
+  assignment's value is the stored short (the call's register stored, its sign extension summed). An
+  input read before a store through another pointer stays ahead of it (no strict aliasing).
+- **An inline's equal case returned first** (ControlVad's speech flag: `if (v->speech == on) return 0;`):
+  written as the outer if's condition the flag takes v1, the result's register, and the first branch's
+  slot is annulled; **a `?:` of two constants loads the true arm's before the test** (into a register of
+  its own) where an if/else stores from one register at the join.
+- **GNU as pads a loop label to 8** (`.p2align 3` from GCC's loop alignment): a `nop` at a loop's entry,
+  executed only on the way in, comes and goes with the parity of the code before it -- one word missing
+  upstream moves it (SplitUp_Finals).
+- **Indexes, not pointers, when the walkers start after the entry test** (realfft): loop.c's strength
+  reduction sets its walkers up in the loop's pre-header, after the copied entry test; pointers written
+  as such are set before it, and `x[n - i]` starts from n scaled (-4 in the accesses) where a second
+  counter from `n - 1` down gives the target's `addiu s0,s0,-1; sll; addu`.
+- **A copy macro's pointers as block locals** (SplitUp_Finals): one pair shared by four copy sites lives
+  across the function and takes the first registers (t0/t1, 152 words off); the macro's own block locals
+  are short-lived like the target's.
+- **Open, diagnosed in place**: SplitUp_Finals (126 words, the right size: PRE reuses the walk's node * 4 at
+  the tone test where the target recomputes it -- while reusing it on the leaf, split and plain paths --
+  and the registers follow; its twin SplitUp_Finals_TreeCtx is the same code word for word, not written);
+  ProcessVad (2 words: the target zeroes sum and copies it into cnt yet cnt takes $f0; the pointer to the
+  frame's value lives in the frame, as `volatile` gives -- SOCOM 1's too). Not reached: CreateSecondPassTreeContext,
+  RePruneToPho and FrameDPacoust (isowdp.c's last two), ExtendNodeWheel, ConstructBlock, PitchCombinerReset/
+  InitPitchCombiner, InitViterbi@nbestdp (their diagnoses stand).
+
+Hand-written in round 32c: `asr/casr.c` (casrEnableGenders closed: the object 58 of 58), `asr/userword.c`
+(FindBestTranscription closed: 19 of 21), `asr/isowdp.c` (InitIsoWordTokenDpContext and IsoWordTokenDpProcess
+new: 12 of 13), `asr/vad.c` (ControlVad new, ProcessVad written OPEN: 7 of 8), `asr/chinese.c` (SplitUp_Finals
+written OPEN: 2 of 4) and a new unit, `asr/fht.c` (SOCOM 1's object 0x354FD8: fht, realfft; realfft
+byte-exact, 1 of 1; fht's 0x8BC not written) -- 6 rows new to the map's byte-exact rows (4,680 bytes), no
+draft superseded; `src/lib/asr` 568 of 596 (562 of 590 before). Named (11, each with its evidence in the
+map): fht 0x4E71F8 and realfft 0x4E7AB8 (s1:calls: SOCOM 1's ProcessFFTMod calls realfft, which calls
+fht, as ours call these rows), CalcAmplitudeSpec 0x4E7C78 (s1:order: the fftmod object's first row before
+ProcessFFTMod, as in SOCOM 1); IsoWordTokenDpProcess
+0x4EAB30 (s1:slot -- SOCOM 1's InitIsoWordTokenDpContext installs it as the block's process), FrameDPacoust
+0x4EA0F8 and RePruneToPho 0x4E9360 (s1:calls, 1 and 2 call sites; the object's order); the Mandarin tree
+object's Build_Tree_ForChinese_TreeCtx 0x4D5B18, Translate_Prons_Into_Items_And_Tones_TreeCtx 0x4D63A0,
+SplitUp_Finals_TreeCtx 0x4D6710, Swap_Finals_TreeCtx 0x4D6BC0 and
+FillOut_Syntax_Statedict_And_Wordprops_ForChinese_TreeCtx 0x4D6FC0 (s1:calls: SOCOM 1's
+CreateSecondPassTreeContext_ForChinese makes the same non-heap calls in the same order). No tool changed.
+
 **Round 14b: the "toolchain" opens were SCEA's shapes; LargeInt's core is assembly.**
 
 - **LargeInt's EE primitives are hand-written assembly** (0x628B48-0x629A44, between LargeInt.c's C and
