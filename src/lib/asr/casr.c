@@ -1070,19 +1070,22 @@ int casrEnableLabelInQueue(CASR *c, unsigned char enable)
     return qQueueControl(c->queue, 8, c->queue_id, 0) == 0;
 }
 
-/* OPEN: the target tests the result at the join with a branch (bnez; li 1; move 0) where every
- * shape tried (?:, if/return, != 0, a flag variable) compiles to sltu. */
+/* Each arm tests its own pass's result (round 25c, open since round 1): `if (pass(c) != 0) return
+ * 1;` per arm and one `return 0` -- jump2 cross-jumps the three tests into the one at the join, a
+ * branch (bnez; li 1; move 0); a result assigned in the arms and tested once (?:, if/return, != 0,
+ * a flag variable) is a store-flag, sltu (0x58), and the arms returning their own `!= 0` or `?:`
+ * the same. */
 int casrDoSecondPass(CASR *c)
 {
-    int ok;
-
-    if (c->use_dp)
-        ok = casrDoSpelling(c);
-    else if (c->iso_word)
-        ok = casrDoIsoWordSecondPass(c);
-    else
-        ok = casrDoNormalSecondPass(c);
-    return ok ? 1 : 0;
+    if (c->use_dp) {
+        if (casrDoSpelling(c) != 0)
+            return 1;
+    } else if (c->iso_word) {
+        if (casrDoIsoWordSecondPass(c) != 0)
+            return 1;
+    } else if (casrDoNormalSecondPass(c) != 0)
+        return 1;
+    return 0;
 }
 
 int cbStateHandler(CASR *c, unsigned short state)
