@@ -682,6 +682,19 @@ enum PROJECTILE_TYPE {
     ONE_FRAME_SHOTGUN = 2
 };
 
+/* what became of a shot where it was dealt with -- the hit handlers' result (ours: a byte enum,
+ * the names ours; the weapons' round 24: HandleIntersections takes HandleImpact's or HandleBounce's
+ * result as a byte enum copied out of v0 and narrows it once, at the join, where an unsigned char
+ * result narrows in each arm). 0 and 4 spend the shot, 1 stops it, 2 lets it go on to the next hit;
+ * DoMiss's 3 is a miss the shot survives */
+enum PROJECTILE_HIT {
+    HIT_SPENT = 0,
+    HIT_STOPPED = 1,
+    HIT_GOES_ON = 2,
+    HIT_MISSED = 3,
+    HIT_SPENT_4 = 4
+};
+
 /* the projectile's extension of its node: a weapon's hit on the node handed to the projectile
  * (new in SOCOM II: __vt__17CProjectileNodeEx, 0x4083F0, overriding CNodeEx's first slot; its
  * functions out of line at 0x3D4B80-0x3D4BDF, in a unit after zwep_ammo.cpp). The class needs
@@ -766,9 +779,9 @@ public:
     /* a hit dealt with: an impact (0x3C8920), a bounce (0x3C8F50: SOCOM II's never reads the
      * time, its callers pass it), no hit this frame (0x3C9530); each returns what became of the
      * shot (SOCOM 1's, HandleShotgunImpact gone) */
-    unsigned char HandleImpact(zdb::IntersectStruct *hit, float dT, float dist, CPnt3D *pos);
-    unsigned char HandleBounce(zdb::IntersectStruct *hit, float dT, CPnt3D *pos);
-    unsigned char DoMiss(float dT, CPnt3D *pos);
+    PROJECTILE_HIT HandleImpact(zdb::IntersectStruct *hit, float dT, float dist, CPnt3D *pos);
+    PROJECTILE_HIT HandleBounce(zdb::IntersectStruct *hit, float dT, CPnt3D *pos);
+    PROJECTILE_HIT DoMiss(float dT, CPnt3D *pos);
     /* the frame's hits walked nearest first until one is dealt with or none is left (SOCOM 1's,
      * 0x3C9B70) */
     bool HandleIntersections(float dT);
