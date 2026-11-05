@@ -840,7 +840,7 @@ extern "C" void func_003A78E0(CTurret *t, float dT)
 #pragma auto_inline reset
 
 /* the yaw and pitch toward a direction in the turret's frame (0x3A8910, not written) */
-extern "C" void func_003A8910(CTurret *t, const CPnt3D *dir, float *yaw, float *pitch);
+extern "C" bool func_003A8910(CTurret *t, const CPnt3D *dir, float *yaw, float *pitch);
 
 /* the yaw and pitch toward a point: the direction to it from the fire point, unit length, into the
  * turret's frame; straight ahead (-z) without one (new in SOCOM II, not named: the SEALs' vehicle
@@ -859,6 +859,80 @@ extern "C" void func_003A8BD0(CTurret *t, const CPnt3D *target, float *yaw, floa
         dir = CPnt3D::unit_nz;
     }
     func_003A8910(t, &dir, yaw, pitch);
+}
+
+/* the aim's statics (the unit's data, 8-byte spaced): the dot's ceiling (1), the cosine of ten
+ * degrees inside which the aim slows, the slowed step's scale (1), and the clamps' bounds (-1, 1)
+ * of the yaw's and the pitch's */
+extern "C" float data_003E07E8;
+extern "C" float data_003E07F0;
+extern "C" float data_003E07F8;
+extern "C" const float data_003E0838;
+extern "C" const float data_003E0840;
+extern "C" const float data_003E0848;
+extern "C" const float data_003E0850;
+
+/* the yaw and pitch toward a direction in the turret's frame (0x3A8910; the name ours): the
+ * direction's heading against the yaw joint's -z axis, its elevation against the pitch joint's
+ * rows -- each nothing once on it, slowed (the cross product, clamped) within ten degrees, else
+ * the full step toward it -- times the definition's rates.
+ * OPEN, 2 instructions long (written in the weapons' round 24): the yaw joint's -z axis is copied
+ * through one pointer and negated in place, the target reading and writing its three fields
+ * sp-relative (y, x, z: loads, negs, stores) where MW here hoists &z.y and &z.z into a0/a1 ahead
+ * of the copy and so cannot batch the loads; the registers follow. Settled on the way: the sign
+ * step tests the cross product still in its register (a `cross` variable the clamp's copy starts
+ * from) and is `cross >= 0 ? 1 : -1` (the target's bc1t to -1); `cross < 0 ? -1 : 1` or an if/else
+ * branch the other way (11 more). Tried for the negation: three statements (y, x, z or x, y, z),
+ * the three-float constructor, an inline Neg(CPnt3D *) -- the same two addresses or worse */
+extern "C" bool func_003A8910(CTurret *t, const CPnt3D *dir, float *yaw, float *pitch)
+{
+    CPnt3D d = *dir;
+    float len = sqrtf(d.x * d.x + d.z * d.z);
+    float s = 0.0f;
+    float c;
+
+    if (s == len)
+        c = 1.0f;
+    else {
+        c = -d.z / len;
+        s = -d.x / len;
+    }
+    CMatrix m;
+
+    m.SetIdentity();
+    CPnt3D z = *(CPnt3D *)t->m_yawNode->m_matrix.m_matrix[2];
+
+    z = CPnt3D(-z.x, -z.y, -z.z);
+    float dot = z.x * -s + z.z * -c;
+    float cross = z.z * -s - z.x * -c;
+    float yv = cross;
+
+    if (dot > data_003E07E8)
+        yv = 0.0f;
+    else if (dot > data_003E07F0) {
+        yv *= data_003E07F8;
+        _saturate<float>(&yv, data_003E0838, data_003E0840);
+    } else
+        yv = cross >= 0.0f ? 1.0f : -1.0f;
+    *yaw = t->m_def->m_yawRate * yv;
+
+    float inv = 1.0f / sqrtf(len * len + d.y * d.y);
+    float h = len * inv;
+    float v = d.y * inv;
+    const float *r = t->m_pitchNode->m_matrix.m_matrix[1];
+    float dot2 = r[2] * v + r[1] * h;
+    float cross2 = r[2] * -h - -r[1] * v;
+    float pv = cross2;
+
+    if (dot2 > data_003E07E8)
+        pv = 0.0f;
+    else if (dot2 > data_003E07F0) {
+        pv *= data_003E07F8;
+        _saturate<float>(&pv, data_003E0848, data_003E0850);
+    } else
+        pv = cross2 >= 0.0f ? 1.0f : -1.0f;
+    *pitch = t->m_def->m_pitchRate * pv;
+    return true;
 }
 
 /* (called, never inlined: ~CTurret calls it). Its remove_copy instance (0x3AB9A0) is byte-exact.
