@@ -2439,3 +2439,35 @@ void CZKit::ShowProjectile()
             n->SetActive(true);
     }
 }
+
+/* the sniper rifle's sight shown to suit the thermal scope: with item 195 in the kit, the first
+ * primary weapon -- when a sniper rifle (101) -- has its "scope" node hidden and its
+ * "thermal_scope" shown, without it the other way round; both looked up under the node the body's
+ * second attachment keeps (OVL2 0x5B82E0, new in SOCOM II after ShowProjectile: 0x5C0250 calls it;
+ * the names ours). HasItem and GetPrimaryIndex inline in each arm */
+static inline void ShowScopes(CZKit *kit, bool thermal)
+{
+    zdb::CNode *node = (zdb::CNode *)((CKitBody *)kit->m_body)->m_attach[1].m_rec->m_node;
+    zdb::CNode *scope = node->FindChild("scope", true);
+    zdb::CNode *tt = node->FindChild("thermal_scope", true);
+
+    if (scope)
+        scope->SetActive(!thermal);
+    if (tt)
+        tt->SetActive(thermal);
+}
+
+void CZKit::UpdateScopeModel()
+{
+    if (HasItem((EQUIP_ITEM)195)) {
+        int i = GetPrimaryIndex();
+
+        if (i != -1 && m_item[i]->GetIDType() == IDTYPE_SNIPER_RIFLE)
+            ShowScopes(this, true);
+    } else {
+        int i = GetPrimaryIndex();
+
+        if (i != -1 && m_item[i]->GetIDType() == IDTYPE_SNIPER_RIFLE)
+            ShowScopes(this, false);
+    }
+}

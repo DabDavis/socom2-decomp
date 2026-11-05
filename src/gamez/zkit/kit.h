@@ -346,6 +346,9 @@ public:
     bool HasPickupSlot();
     /* the fire point's "projectile" child shown, for items 186 and 146 (OVL2 0x5B85A0; the name ours) */
     void ShowProjectile();
+    /* the sniper rifle's scope or thermal scope node shown, by item 195 (OVL2 0x5B82E0, new in SOCOM
+     * II; the name ours) */
+    void UpdateScopeModel();
     bool HasSniperRifle();
     bool HasItemWithAmmo(EQUIP_ITEM item);
     EQUIP_ITEM GetSecondaryEnum() const;

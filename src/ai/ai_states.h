@@ -651,6 +651,9 @@ public:
      * 0x5FDAD0 runs (OVL2 0x5FC7D0: SOCOM 1's HandleFollowTickHideCheck by its place; the names
      * ours) */
     bool HideCheck(CSealCtrlAi *ai, bool b, bool hide, char *out);
+    /* the follower's stance kept with its master's, asked to or moving (OVL2 0x5FC590: SOCOM 1's
+     * HandleFollowTickStance by its place; the names ours) */
+    void StanceCheck(CSealCtrlAi *ai, bool match, bool moving);
     /* the follower's look while hiding, set once: true once it is (OVL2 0x5FDAD0; the name ours) */
     bool SetHideLook(CSealCtrlAi *ai);
     /* the AI's follow master made the state's, a new one restarting its step; true while it
