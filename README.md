@@ -2065,6 +2065,18 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the SEALs, round 48** (CSealCtrlAi::SetAiEnabled; the reticule getters to source; fourteen rows named):
+  - SOCOM 1 counterparts sitting in the same run, at the same sizes and with the same bodies, name several rows at once:
+    SOCOM 1's ImpactFront calls Climb three times, ClimbOver once and AlignForClimb once, exactly as 0x5B2620 does
+    (ClimbOver 0x580A80, Climb 0x580B70, ImpactFront, AlignForClimb 0x5B1A10, PostCheckDIDown, PopBlend); CheckAnim,
+    CrouchMoveControl, MoveControl, ProneControl and UpdateQuadrant by SOCOM 1's order and callers; GetReticuleSeal
+    0x5AA690, GetReticuleDi 0x5AA6D0 and CheckDIShoot 0x5AA6E0 an exact run after CacheReticuleSeal in both builds;
+  - a data static's second witness can come from a function whose identity its callers fix: AnimTypes::StepUp 0x3DEC80
+    through Climb, which pushes it in the two switch arms where SOCOM 1's Climb pushes StepUp;
+  - MW if-converts `r = false; if (A && B) r = true;` into `r = A ? B : 0` when A is a materialised inline bool -- with A a
+    plain branch it keeps the "zero, then set" shape (0x555420, OPEN); `r = true` in a switch case while the switch's
+    constant 1 sits in a register compiles to `andi rX, rOne, 0xff`, not daddiu; SetAiEnabled 0x574830's alarm constant
+    is `0.0333f` (0x3D086595), not 1/30.
 - **Tells from the kit and AI states, round 49** (CTPlay::Tick and CTInView::Tick at last; the rush's SetTarget and
   OnSignal, the surrender's OnSignal):
   - A CAST THROUGH A LEAF TEMPLATE INLINE (`template <class T> T *TaskBlock(hdr) { return (T *)hdr; }`) MAKES THE LOCAL
