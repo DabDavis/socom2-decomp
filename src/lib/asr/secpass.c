@@ -80,3 +80,54 @@ int GetSecondPassInfo(CASR *c, CTXVT *ctx, SPINFO *info, int word)
     }
     return 0;
 }
+
+/* a word's states appended to the dictionary at *out: each speech unit's states but its first two
+ * (a one-item pronunciation, its ends dropped when three or more) or the pronunciation itself, each
+ * shifted left two, the last marked with bit 0, then the word's id in two halves; *count grows by
+ * the states and the id. SOCOM 1's body (0x1F4 there, its copies not unrolled), round 28c: the
+ * state count before the states' address (the target's sll after the loads, then the subu), a
+ * counter of its own per copy loop (one `j` is one pseudo for both: t0 where the target has t1 and
+ * a1), the mark through `*(o - 1)` (its address one register for the load and the store: `o[-1]`
+ * folds the -2 into both) and the id's halves at o[0], o[1] before one `o += 2`. */
+static void putWordInDict(CASR *c, CTXVT *ctx, int word, int *count, unsigned short **out,
+                          unsigned int id)
+{
+    int *su = c->lng->GetpSpeechUnit(c->lng);
+    unsigned short *lex = ctx->GetpLex(ctx);
+    int *bow = ctx->GetpBeginOfWords(ctx);
+    int *w = bow + *bow;
+    unsigned short *p = lex + w[word];
+    unsigned short *end = lex + w[word + 1];
+    unsigned short *o = *out;
+    unsigned int n, k, j, i, total = 0;
+    unsigned short type;
+
+    type = *p++;
+    n = end - p;
+    if (type == 1) {
+        end--;
+        if (n >= 3) {
+            p++;
+            end--;
+        }
+        for (; p <= end; p++) {
+            unsigned short *s;
+
+            k = su[*p + 1] - su[*p] - 2;
+            s = (unsigned short *)su + su[*p] + 2;
+            for (j = 0; j < k; j++)
+                *o++ = s[j] << 2;
+            total += k;
+        }
+    } else {
+        total = n;
+        for (i = 0; i < n; i++)
+            *o++ = p[i] << 2;
+    }
+    *(o - 1) |= 1;
+    o[0] = id;
+    o[1] = id >> 16;
+    o += 2;
+    *count += total + 2;
+    *out = o;
+}
