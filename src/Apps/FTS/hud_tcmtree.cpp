@@ -464,7 +464,11 @@ void CTCM::Close(bool selected)
  * OPEN, 1 instruction: the target reads the column's count through v0 (`lw s0,4(v0)`, the column's
  * copy in the test's delay slot), MW through the copy (s6) -- the count through GetNumChildren() or
  * Count(), `int n`, n declared ahead of the test, the column declared at the top, initialised
- * (0x264) or declared in the if's condition (0x264) all tried */
+ * (0x264) or declared in the if's condition (0x264) all tried. Round 56 (igdump's PCode): here the
+ * test reads the call's r2 and the count's load the variable (`lw r37,4(r36)`) -- the target's load
+ * reads the call's value too; the column tested in the name's `&&` chain, n declared at the top or
+ * zeroed dead, n assigned in the condition, the children through a reference, a second column
+ * variable, a const column, an early return, the count through a cast: 1 each or worse */
 bool CTCM::Select(const char *name)
 {
     bool done = false;

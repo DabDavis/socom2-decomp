@@ -330,7 +330,10 @@ static inline float MaxOf(float a, float b)
  * 53: the replay wants 0.5 numbered after both sums; the sums assigned in two arms (`if (obj) {
  * oz = z + oy; ox = x + ox; } else { the same }`, then `x = ox * 0.5f; z = oz * 0.5f;`) give every
  * register, 2 off: MW then multiplies `0.5, sum` where the target has `sum, 0.5` (a variable
- * times a constant is put constant first; `*=`, ternaries, `0.5f *` alike) */
+ * times a constant is put constant first; `*=`, ternaries, `0.5f *` alike). Round 56: the sums copied
+ * into x / z and then `*= 0.5f` (once or two-armed: the copies coalesce, the sums go back into
+ * f20/f21), a named 0.5, a PNT2D of the sums, `(ox *= 0.5f)` chained, a by-value halving inline --
+ * 4 to 7 */
 void CZNewHudMap::FrameObjective()
 {
     float x, z;
