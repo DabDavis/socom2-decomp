@@ -163,10 +163,25 @@ enum CAMVIEW {
     cam_view_last = 5
 };
 
-/* the controller CAppCamera keeps at 0xC4: only its float at 0x130, which looking at a point zeroes
- * (SOCOM 1's CEntityCtrl had it at the same place; the names ours) */
-struct CAppCameraCtrl {
-    unsigned char _0[0x130];
+/* the controller CAppCamera keeps at 0xC4 (the followed SEAL's CSealCtrl: zseal.h's virtuals to
+ * IsPlayer at 0x2C, its pad at 0x114) and its float at 0x130, which looking at a point zeroes
+ * (SOCOM 1's CEntityCtrl had it at the same place; the class name and m_130 ours) */
+class CAppCameraCtrl {
+public:
+    virtual ~CAppCameraCtrl();
+    virtual bool PreTick(float dT);
+    virtual bool Tick(float dT);
+    virtual bool PostMortemPreTick(float dT);
+    virtual void OnDeath();
+    virtual CAppCameraCtrl *GetRemoteControl();
+    virtual void SetThrottle(unsigned int axis, float value);
+    virtual bool PlayAiSound(int sound, float chance, int event);
+    virtual bool AllowCommand(CZSealBody *seal, int cmd, void *data);
+    virtual bool IsPlayer() const;   /* +0x2C */
+
+    unsigned char _4[0x114 - 4];
+    unsigned int m_padid;   // 0x114
+    unsigned char _118[0x130 - 0x118];
     float m_130;   // 0x130
 };
 
@@ -232,7 +247,7 @@ public:
     float m_goal_t_len;   // 0x28
     unsigned char _2c[0x50 - 0x2c];
     CShakeParams m_shake[3];   // 0x50: SMALL, MEDIUM, LARGE (SOCOM II's)
-    unsigned char _b0[0xb4 - 0xb0];
+    unsigned int m_padid;   // 0xb0 (SOCOM 1: 0x30): the pad the views are cycled from
     zdb::CCamera *m_camera;   // 0xb4 (SOCOM 1: 0x34)
     zdb::CNode *m_camera_effects;   // 0xb8 (SOCOM 1: 0x38)
     CZSealBody *m_bc;   // 0xbc: SOCOM II's, a SEAL the mode setter asks after (the name ours)

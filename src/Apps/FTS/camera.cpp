@@ -5,6 +5,7 @@
 #include <iostream>
 #include "camera.h"
 #include "../../gamez/zsys/zsys.h"
+#include "../../gamez/zinput/zinput.h"
 
 /* SOCOM 1's, not written yet */
 char *zrdr_findstring(const _zrdr *rdr, const char *tag);
@@ -50,7 +51,11 @@ extern float data_00416028;   /* its y amplitude */
 extern float data_00416208;   /* DeltaRot */
 extern float data_00416210;   /* DeltaAim */
 extern float data_00416218;   /* (SOCOM II's) */
+extern float data_003DE270;   /* the tether's rate (FTSTick puts back 0.03) */
+extern unsigned int data_0044C404;   /* the views' count (their presets follow) */
 }
+/* the death camera's pad handling (SOCOM II's: a member of the object at 0xF4) */
+extern "C" void func_00295260(void *deathcam, CAppCamera *cam, CPad *pad);
 
 /* what the tick reaches for (SOCOM 1's names in the comments) */
 extern "C" {
@@ -378,6 +383,44 @@ void CAppCamera::SetZoom(float zoom)
     cam->m_screenAspect[0] = x;
     cam->m_screenAspect[1] = y;
     m_camera->m_ZoomedRangeScale = m_camera->m_RangeScale / zoom;
+}
+
+/* SOCOM 1's FTSTick: the followed SEAL's pad (its controller's, a player's), its two-button view
+ * cycle stepping past the side, first person and peek views, the death camera's own pad handling
+ * (SOCOM II's, at 0xF4), then -- the view changed -- its preset taken up (ResetView, SOCOM II's
+ * call), first person or the tether entered through SetCameraMode and the tether's rate put back.
+ * The view's step casts it to an int: the loop's copy then reuses the test's load re-narrowed (the
+ * target's andi), where the plain enum reuses it as it is */
+void CAppCamera::FTSTick()
+{
+    if (!m_entity)
+        return;
+    if (m_ctrl && m_ctrl->IsPlayer())
+        m_padid = m_ctrl->m_padid;
+    CPad *pad = m_padid < CInput::NUM_PADS ? CInput::m_pads[m_padid] : 0;
+
+    if (!pad)
+        pad = CInput::m_pads[0];
+    if (pad) {
+        if (pad->GetTwoButtons(PAD_SELECT, PAD_DOWN)) {
+            m_ctrl_view = (CAMVIEW)(((int)m_ctrl_view + 1) % data_0044C404);
+            while (m_ctrl_view == cam_view_side || m_ctrl_view == cam_view_first ||
+                   m_ctrl_view == cam_view_peek_left || m_ctrl_view == cam_view_peek_right)
+                m_ctrl_view = (CAMVIEW)(((int)m_ctrl_view + 1) % data_0044C404);
+        }
+        func_00295260(&m_f4, this, pad);
+    }
+    if (m_ctrl_view != m_save_view) {
+        ResetView();
+        m_save_view = m_ctrl_view;
+        if (m_ctrl_view == cam_view_first) {
+            SetCameraMode(cam_mode_FP);
+            data_003DE270 = 0.03f;
+        } else {
+            SetCameraMode(cam_mode_tether);
+            data_003DE270 = 0.03f;
+        }
+    }
 }
 
 /* a frame of the shake (SOCOM 1's wiggle, rewritten): each axis's angle stepped by its rate and
