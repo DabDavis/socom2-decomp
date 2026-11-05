@@ -12,8 +12,11 @@
  * 0x387630, comes out of line here with everything inlined); ~ActionItem is the unit's first
  * function (SOCOM 1's lines 23-24), inlined in ~CCheckBoxSpec's inline copy.
  *
- * OPEN: CUIListBoxSpec::Copy 0x387CF0 (the list box's layout); ~CRadioStripSpec byte-exact since the
- * MSL headers' round 27 (include/vector's pod destructor reading data_ through data() into a local). */
+ * CUIListBoxSpec::Copy 0x387CF0 byte-exact since the UI's round 27 (zui_spec.h's list box layout:
+ * its definition here makes the unit emit the box's table, ~CUIListBoxSpec 0x389540 and GetType,
+ * and the member copies it calls -- the pointer vectors' 0x387F60/0x387FB0 and CPnt3D's 0x387F90,
+ * which no unit emitted at level 5); ~CRadioStripSpec byte-exact since the MSL headers' round 27
+ * (include/vector's pod destructor reading data_ through data() into a local). */
 
 #include "zui_2d.h"
 
@@ -222,6 +225,19 @@ CDlgObjSpec *CHandlerButtonSpec::Copy()
     CHandlerButtonSpec *spec = new CHandlerButtonSpec(*this);
 
     m_child = 0;
+    return spec;
+}
+
+/* a copy, two of its texture names set again from the spec's own (0x387CF0, by its vtable; SOCOM
+ * 1's is 0x3C8 bytes): the list box's implicit copy inlined one level -- CImageSpec's copy, the
+ * strings', the column and item vectors', the colours' and the commands' called (the two pointer
+ * vectors' and CPnt3D's copies come out after it, 0x387F60-0x387FB0) */
+CDlgObjSpec *CUIListBoxSpec::Copy()
+{
+    CUIListBoxSpec *spec = new CUIListBoxSpec(*this);
+
+    spec->m_tex80 = m_tex80.c_str();
+    spec->m_tex74 = m_tex74.c_str();
     return spec;
 }
 

@@ -5,7 +5,7 @@
  * Init (0x238F50), the radio icons' Ticks (0x239250, 0x2393F0) and the static icon's Init
  * (0x239570; the dynamic one's is inlined into CWhosTalking's), and the tail's basic_string(const
  * char *) (0x2396F0: out of class in MSL, so a call; the dynamic icon's Tick builds one). All
- * written, byte-exact but CMPInfoBox::Tick and CWhosTalking::Init (OPEN). Defined in reverse of
+ * written, byte-exact but CWhosTalking::Init (OPEN; CMPInfoBox::Tick since round 54). Defined in reverse of
  * their image order (-inline deferred). */
 
 #include "hud_mpinfobox.h"
@@ -134,11 +134,6 @@ static float s_box_w = s_namewidth;
 static float s_box_x2 = s_box_x1 + s_box_w;
 static float s_box_y2 = s_box_y1 + s_box_h;
 
-/* a seal's clan tag, if it has a seal */
-static inline const char *ClanTag(CZSealBody *owner)
-{
-    return owner ? func_002C3AC0(owner->m_player) : 0;
-}
 
 
 /* the icon off, white and clear, fading in to half; its six textures (the spectators' falling back
@@ -439,18 +434,21 @@ void CMPInfoBox::UnInit()
 }
 
 /* the owner's health, then its name (the clan's tag ahead of it, cut short with a dash when it
- * runs past the box) and who is talking.
- * OPEN, 11 instructions, all one swap of s1 and s2: the target keeps the owner in s1 and the clan
- * tag in s2 (the name then reusing s1), this the other way round. Tried: the tag uninitialised
- * ahead of the owner or after it, zero-initialised and set in an if (8 bytes longer), the name
- * declared first or not a local, the health bar's update as a member call -- the same swap. */
+ * runs past the box) and who is talking. The clan tag is declared first, uninitialised, and set by an
+ * if/else (round 54): so it is numbered at its declaration, ahead of the owner, and the owner and the
+ * name take s1 as the target's (the replay's --want put it at 31.5-33.5; through an inline's ternary
+ * its value is a temporary numbered after every named local, which swapped s1 and s2) */
 void CMPInfoBox::Tick(float dT)
 {
+    const char *clan;
     CZSealBody *owner = CHUD::GetHUDOwner();
 
     m_healthbar.Update(owner, true);
     m_healthbar.Tick(dT);
-    const char *clan = ClanTag(owner);
+    if (owner)
+        clan = func_002C3AC0(owner->m_player);
+    else
+        clan = 0;
     const char *name = owner->m_name;
     char text[64];
 

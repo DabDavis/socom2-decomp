@@ -195,6 +195,9 @@ class CMission {
 public:
     void RecycleEntity(CEntity *e);
     CEntity *LoadVehicle(CVehicleRdrEntry *entry, bool b);
+    void RefreshTeamValves();
+    /* a team's valve (ours: see RefreshTeamValves) */
+    CValve *TeamValve(unsigned int team) { return m_team_valves[team]; }
     bool LoadVehicles();
     void InitalizeTeamValves();
     void CloseVehicleRdr();
@@ -494,7 +497,7 @@ public:
     virtual void _slot6();
     virtual void _slot7();
     virtual void _slot8();
-    virtual void _slot9();
+    virtual bool Slot2C();   // 0x2c (unnamed: RefreshTeamValves asks it)
     virtual bool IsPlayer();   // 0x30
 };
 
@@ -738,6 +741,75 @@ void CMission::InitalizeTeamValves()
         m_team_valves[i] = CValve::Create(name, 0, (VALVE_TYPE)2);
     }
     m_player_valve_alive = CValve::Create("player_valve_alive", 0, (VALVE_TYPE)2);
+}
+
+/* a SEAL's team in a network game: the three tests RefreshTeamValves asks in turn (SOCOM II's,
+ * OVL1 0x2C31D0 / 0x2C30B0 / 0x2C2FD0; st_exit.cpp and hud_mpweaponsel.cpp call two of them) */
+extern "C" {
+bool func_002C31D0(CZSealBody *seal);
+bool func_002C30B0(CZSealBody *seal);
+bool func_002C2FD0(CZSealBody *seal);
+}
+
+/* whether the controller's slot 0x2C says yes (the slot unnamed: SOCOM 1's RefreshTeamValves asks the
+ * same slot before setting the player's alive valve) */
+inline bool CtrlSlot2C(CZSealBody *seal)
+{
+    return seal->m_control ? ((CSealCtrlQuery *)seal->m_control)->Slot2C() : false;
+}
+
+/* each AI team's valve recounted: none while a network client; all cleared (nothing at all when the
+ * first was never made), the player's alive valve set from a player's SEAL, then each live entity
+ * counted on its teams -- in a network game by the three team tests (SOCOM II's: teams 0 and 30, 8
+ * and 31, or 16) --, and each vehicle waiting on its entry's teams (SOCOM 1's; OVL1 0x2B23A0). Both
+ * builds index the valves afresh on every pass, which an accessor taking the team unsigned gives
+ * (indexed straight, MW strength-reduces the int counter's walk into a pointer, as
+ * InitalizeTeamValves' own loop is); one counter serves all three loops (each loop's own: the seal
+ * and the counters trade s1/s2/s3 -- the states' round 42, read off MW's colouring) */
+void CMission::RefreshTeamValves()
+{
+    if (theNetwork.m_bNetwork && !theNetwork.m_bSessionMaster)
+        return;
+    int i;
+
+    for (i = 0; i < 32; i++) {
+        if (!TeamValve(i) && i == 0)
+            return;
+        TeamValve(i)->SetValue(0);
+    }
+    CEntityList::const_iterator it;
+
+    for (it = CEntity::GetEntityList().begin(); it != CEntity::GetEntityList().end(); ++it) {
+        CEntity *e = *it;
+        CZSealBody *seal = AsSeal(e);
+
+        if (seal && CtrlSlot2C(seal) && m_player_valve_alive)
+            m_player_valve_alive->SetValue(e->m_isAlive ? true : false);
+        if (e->m_isAlive) {
+            if (theNetwork.m_bNetwork && func_002C31D0(seal)) {
+                TeamValve(0)->SetValue(TeamValve(0)->m_value + 1);
+                TeamValve(30)->SetValue(TeamValve(30)->m_value + 1);
+            } else if (theNetwork.m_bNetwork && func_002C30B0(seal)) {
+                TeamValve(8)->SetValue(TeamValve(8)->m_value + 1);
+                TeamValve(31)->SetValue(TeamValve(31)->m_value + 1);
+            } else if (theNetwork.m_bNetwork && func_002C2FD0(seal))
+                TeamValve(16)->SetValue(TeamValve(16)->m_value + 1);
+            else {
+                for (i = 0; i < 32; i++) {
+                    if ((1 << i) & e->m_team)
+                        TeamValve(i)->SetValue(TeamValve(i)->m_value + 1);
+                }
+            }
+        }
+    }
+    for (CSpawners::spawn_list::iterator s = spawners.m_spawns.begin(); s != spawners.m_spawns.end(); ++s) {
+        CVehicleRdrEntry *entry = (*s).entry;
+
+        for (i = 0; i < 32; i++) {
+            if ((1 << i) & entry->m_teams)
+                TeamValve(i)->SetValue(TeamValve(i)->m_value + 1);
+        }
+    }
 }
 
 /* the next vehicle waiting brought back when the timer runs out, its SEAL given a unit

@@ -675,7 +675,7 @@ void SkbCursorForward(CSoftKeyboard *skb)
     int count = s_textCount0;
     float w = SkbTextWidth(CursorString(), count);
     SKBPROPS props = s_textSel ? SKB_PROPS_MSGPLAYER : SKB_PROPS_USER;
-    float x = w + (float)skb->m_caps[props].m_0;
+    float x = w + (float)skb->m_caps[props].m_pos.Get1st();
     float y = (float)CursorY(skb) + LineOffset(skb);
 
     func_00395120(x, y);
@@ -723,7 +723,7 @@ void SkbCursorTo(int pos, CSoftKeyboard *skb, bool before)
     int count = s_textCount0;
     float w = SkbTextWidth(CursorString(), count);
     SKBPROPS props = s_textSel ? SKB_PROPS_MSGPLAYER : SKB_PROPS_USER;
-    float x = w + (float)skb->m_caps[props].m_0;
+    float x = w + (float)skb->m_caps[props].m_pos.Get1st();
     float y = (float)CursorY(skb) + LineOffset(skb);
 
     func_00395120(x, y);
@@ -776,7 +776,7 @@ void SkbCursorToEnd(CSoftKeyboard *skb)
     s_textCount0 = n;
     float w = SkbTextWidth(CursorString(), n);
     SKBPROPS props = s_textSel ? SKB_PROPS_MSGPLAYER : SKB_PROPS_USER;
-    float x = w + (float)skb->m_caps[props].m_0;
+    float x = w + (float)skb->m_caps[props].m_pos.Get1st();
     float y = (float)CursorY(skb) + LineOffset(skb);
 
     func_00395120(x, y);
@@ -809,7 +809,7 @@ void SkbCursorBack(CSoftKeyboard *skb)
     int count = s_textCount0;
     float w = SkbTextWidth(CursorString(), count);
     SKBPROPS props = s_textSel ? SKB_PROPS_MSGPLAYER : SKB_PROPS_USER;
-    float x = w + (float)skb->m_caps[props].m_0;
+    float x = w + (float)skb->m_caps[props].m_pos.Get1st();
     float y = (float)CursorY(skb) + LineOffset(skb);
 
     func_00395120(x, y);

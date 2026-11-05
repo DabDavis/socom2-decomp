@@ -9,9 +9,20 @@
 #include "hud_missioncams.h"
 #include "../../gamez/zinput/zinput.h"
 
+/* a named value (zanim.h's CValve: the mission's abort valve, its 16-bit value at 4) */
+class CValve {
+public:
+    char *m_name;   // 0x0
+    unsigned short m_value;   // 0x4
+};
+
 class CMission {
 public:
     CMissionCam *GetMissionCamByIdentifier(const char *id);
+
+    unsigned char _0[0x1ac];
+    CValve *m_valve_abort;   // 0x1ac: the "mission_abort" valve (fts_state.h's; the game states' round 41:
+                             // at 1 or 2 no film starts)
 };
 
 extern CMission theMission;
@@ -154,15 +165,6 @@ public:
 /* the score pop-up is up (hud_scorepopup.cpp's) */
 bool hudIsScorePopupOn();
 
-/* a pointer the film start tests (OVL1 bss 0x43668C, no data row yet): no film while the halfword at
- * 4 is 1 or 2 */
-struct CFilmBlock {
-    unsigned char _0[4];
-    unsigned short m_4;   // 0x4
-};
-
-extern CFilmBlock *data_0043668C;
-
 /* the voice recogniser (reco.cpp's theReco) suspended */
 class CReco {
 public:
@@ -171,9 +173,12 @@ public:
 
 extern CReco theReco;
 
-/* the weapons' tick switch (SOCOM 1's CZWeapon::m_weaponTickDisabled, cleared here as SOCOM 1's
- * CleanupCamera did -- OVL1 bss 0x4B52B0, no data row yet) */
-extern unsigned char data_004B52B0;
+/* the weapons' ticks switched off (zweapon.h's SOCOM 1 static, OVL1 bss 0x4B52B0: set here by the
+ * film start and cleared by its end, as SOCOM 1's CleanupCamera did) */
+class CZWeapon {
+public:
+    static bool m_weaponTickDisabled;
+};
 
 /* OVL2 0x598840 (a byte flag set when it changes) and 0x592CA0 (on the player's controller): their
  * names not known */
@@ -375,7 +380,7 @@ void CZHudMissionCams::CleanupCamera(CPad *pad)
         CSndJukebox::ClearQueue();
     }
     CSndInstance::ResumeAllSounds(SND_MODE_DIALOG);
-    data_004B52B0 = 0;
+    CZWeapon::m_weaponTickDisabled = false;
     CSealCtrlAi::SetAiEnabled(true, true);
     func_00598840(true);
 
@@ -469,7 +474,7 @@ void CZHudMissionCams::PlayCamera(CMissionCam *missioncam, bool bSwapLens)
 
     if (!seal || !seal->m_socom2_e1_4)
         return;
-    if (data_0043668C && (data_0043668C->m_4 == 1 || data_0043668C->m_4 == 2))
+    if (theMission.m_valve_abort && (theMission.m_valve_abort->m_value == 1 || theMission.m_valve_abort->m_value == 2))
         return;
     if (hudIsScorePopupOn())
         return;
@@ -505,7 +510,7 @@ void CZHudMissionCams::PlayCamera(CMissionCam *missioncam, bool bSwapLens)
     CSndInstance::PauseAllSounds(SND_MODE_DIALOG);
     theHUD->m_letterbox.AddLetterbox();
     theHUD->Off();
-    data_004B52B0 = 1;
+    CZWeapon::m_weaponTickDisabled = true;
     CSealCtrlAi::SetAiEnabled(false, false);
     func_00598840(false);
 

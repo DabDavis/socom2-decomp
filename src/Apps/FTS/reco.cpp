@@ -10,8 +10,8 @@
  * 0x3C. main loads its files (Load), CHUD::Init starts the engine (Init), ~CHUD stops it (UnInit),
  * CCoreState::Tick ticks it (Tick); the radio command menu (OVL1 0x413120, the HUD lane's unwritten
  * 0x22EDB0-0x2375xx) hears each result through cbrecoResult and reads the levels.
- * Defined in reverse of their image order (-inline deferred). All written (round 20); open:
- * AdjustVolume (a stack slot).
+ * Defined in reverse of their image order (-inline deferred). All written (round 20), all
+ * byte-exact since round 54 (AdjustVolume: the open parameters are 14 bytes).
  *
  * MW KNOWS WHAT AN ALREADY-GENERATED FUNCTION OF THE UNIT CLOBBERS: Load passes `lang` to the two
  * pinned language lookups, defined after it (so generated first), and keeps it in a0 across the
@@ -93,7 +93,7 @@ struct lgAudOpenParam {
     unsigned char bits;   // 0x3
     unsigned short rate;   // 0x4
     unsigned short bufferms;   // 0x6
-    unsigned char _8[0x10 - 0x8];
+    unsigned char _8[0xe - 0x8];   // 14 bytes in all, as sid.c's (the GCC front's): AdjustVolume's frame
 };
 
 extern "C" {
@@ -573,12 +573,10 @@ void cbrecoResult(void *hEngine, unsigned int action, _GSAPI_RESULT *pResult, un
 
 /* the recording volume stepped by delta, clamped to 20-100, and set on the first device that opens
  * (the levels in .data) */
-/* OPEN, 6 instructions: the open parameters' stack slot -- the target's at sp+456 (its fields at
- * 458-462), here at sp+448: the frame (480), the registers and the code agree. A 16-byte struct
- * gives the frame; 8 bytes put it above the description but shrink the frame to 464, 20 bytes
- * move it under the description, a 0x158-byte description grows the frame to 496; every order of
- * the three locals tried (perm_lines). Something 8 bytes wide sits between the two in the
- * original. */
+/* The open parameters' slot (sp+456) says their size (round 54): MW bumps the local area down from
+ * the top, the handle first (476), each object rounded to its alignment -- 16 for an object of 16
+ * bytes or more (a 16-byte struct sat at 448), 8 for one of 8-15 -- so only a 13-15-byte struct
+ * lands at 456 with the description under it at 112 and the frame at 480: 14 bytes, as sid.c's. */
 void CReco::AdjustVolume(int delta)
 {
     lgAudOpenParam param;
