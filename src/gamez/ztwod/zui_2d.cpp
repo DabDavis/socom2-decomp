@@ -67,6 +67,8 @@ struct _zrdr {
 class CUIVariable : public _zrdr {
 public:
     void UpdateDependents();
+    /* the value replaced by a copy of an rdr's (zui_var.cpp's, 0x386460) */
+    void Set(_zrdr *value);
     /* a value written out as text into a buffer of that size (zui.h's static, zui_var.cpp's
      * 0x3860F0) */
     static char *Format(_zrdr *value, char *buf, int size);
@@ -103,11 +105,19 @@ public:
             return 0;
     }
 
+    /* an array's count and its items (zrdr.h's _zrdr::Count and Item: 4 an array) */
+    bool IsArray() const { return m_type == 4; }
+    unsigned int Count() const { return IsArray() ? m_length : 0; }
+    CUIVariable *Item(unsigned int i) const { return i < Count() ? &m_array[i] : 0; }
+
     unsigned char m_type;   // 0x0
+    unsigned char _1;
+    unsigned short m_length;   // 0x2: an array's count (zrdr.h's 16-bit length)
     union {
         const char *m_str;   // 0x4
         float m_real;
         int m_int;
+        CUIVariable *m_array;   // an array's items, 8 bytes each
     };
 };
 
@@ -157,6 +167,7 @@ enum UIVAR_LONGEVITY {
 class CUIVarManager {
 public:
     CUIVariable *Add(const char *name, _zrdr *value, UIVAR_LONGEVITY longevity);
+    CUIVariable *Find(const char *name);
 };
 extern CUIVarManager theUIVarManager;
 
@@ -366,14 +377,86 @@ public:
     bool m_autoScroll;   // 0x7c
 };
 
-class ActionItem;
+/* a button's look in one state (0x34 bytes; its destructor 0x36E650, a string at 0 destroyed, is
+ * the button's -- a plain stand-in here, the fields by what SetNormal hands on; the names ours) */
+struct ButtonState {
+    /* inline (C2DButton's constructor builds its four so, as SOCOM 1's: grey caption, the scale
+     * left alone) */
+    ButtonState()
+        : m_tex(0), m_fadeMin(0.0f), m_fadeMax(0.0f), m_pulse(false), m_period(0.0f), m_fadeTime(0.0f),
+          m_color(128.0f, 128.0f, 128.0f)
+    {
+    }
 
-/* a button's spec (zui_spec.h's CButtonSpec, 0x118 bytes: only its size here) and a check box's
- * (CCheckBoxSpec: the two actions, the check's place and size, its texture's name) */
+    /* a spec's look taken over (inline: C2DButton::LoadSpec copies its four so, as SOCOM 1's -- the
+     * fields, then the image's name through its text, the scale last). The name and the scale
+     * through a reference of their own: the target builds the look's address for the string's
+     * c_str and keeps it across the assignment for the scale (SOCOM 1's data() call did the same);
+     * read through `s` MW folds both into the spec's offsets, and the reference also gives the
+     * target's saved registers (this s1, the spec s0) */
+    void operator=(const ButtonState &s)
+    {
+        m_tex = s.m_tex;
+        m_fadeMin = s.m_fadeMin;
+        m_fadeMax = s.m_fadeMax;
+        m_pulse = s.m_pulse;
+        m_period = s.m_period;
+        m_fadeTime = s.m_fadeTime;
+        m_color = s.m_color;
+
+        const ButtonState &n = s;
+
+        m_texName = n.m_texName.c_str();
+        m_scale = n.m_scale;
+    }
+
+    CSaferStr m_texName;   // 0x0: the state's image (SOCOM 1's _TexName)
+    zdb::CTexHandle *m_tex;   // 0xc: the background's texture
+    float m_fadeMin;   // 0x10
+    float m_fadeMax;   // 0x14
+    bool m_pulse;   // 0x18: the caption pulses
+    float m_period;   // 0x1c: the background's pulse
+    float m_fadeTime;   // 0x20
+    CPnt3D m_color;   // 0x24: the caption's
+    float m_scale;   // 0x30: the caption's
+};   // 0x34 bytes
+
+/* a button's action (zui_spec.h's ActionItem, 0x10 bytes: its destructor zui_cleanup.cpp's,
+ * 0x3890C0; the type and the key state byte enums) */
+class ActionItem {
+public:
+    /* zui_spec.h's: a button action on the falling edge of no button (the list items build theirs) */
+    ActionItem() : Type(0), Animation(0), Argument(0), State(1), Event(16) {}
+    ~ActionItem();
+    void Run() const;
+    bool Start() const;
+    ActionItem &operator=(const ActionItem &a);   // zui.cpp's, 0x369FA0
+
+    unsigned char Type;   // 0x0: ACTION_TYPE
+    char *Animation;   // 0x4: the animation it starts
+    char *Argument;   // 0x8: handed to it, if any
+    unsigned char State;   // 0xc: KEY_STATE
+    unsigned char Event;   // 0xd: the pad button or the event (a union in zui_spec.h)
+};
+
+/* a button's spec (zui_spec.h's CButtonSpec, 0x118 bytes, its names: its PRESSED look the first of
+ * the four, as SOCOM 1's C2DButton's _PressedState, the one C2DButton's m_active below takes) and a
+ * check box's (CCheckBoxSpec: the two actions, the check's place and size, its texture's name) */
 class CButtonSpec : public CDlgObjSpec {
 public:
-    unsigned char _8[0x118 - 0x8];
-};
+    IPNT2D m_size;   // 0x8: XSIZE, YSIZE or SIZE
+    IPNT2D m_offset;   // 0x10: XOFFSET, YOFFSET or OFFSET
+    float m_scale;   // 0x18: SCALE
+    ButtonState m_pressed;   // 0x1c: PRESSED
+    ButtonState m_active;   // 0x50: ACTIVE
+    ButtonState m_normal;   // 0x84: NORMAL
+    ButtonState m_disabled;   // 0xb8: DISABLED
+    CSaferStr m_caption;   // 0xec: CAPTION
+    bool m_hcentered;   // 0xf8: HCENTERED
+    std::vector<ActionItem> m_commands;   // 0xfc: ANIMATIONS
+    bool m_hasFont;   // 0x108: a FONT given
+    CSaferStr m_font;   // 0x10c: FONT
+};   // 0x118 bytes
 
 class CCheckBoxSpec : public CButtonSpec {
 public:
@@ -417,6 +500,7 @@ public:
     virtual ~CTeleType();
     virtual int GetZAnimCmdType(const char *name);
     virtual void Tick(float dT);
+    virtual C2DAnimCmdHdr *ParseZAnimCmd(_zrdr *rdr);
     virtual bool TickZAnimCmd(_zanim_cmd_hdr *hdr, float *dT, bool *done);
     virtual void SetString(const char *s, bool translate);
     void LoadSpec(const CTtySpec &spec);
@@ -469,46 +553,6 @@ public:
     bool _bCaptionCentered;   // 0xbc
 };   // 0xc0 bytes
 
-/* a button's look in one state (0x34 bytes; its destructor 0x36E650, a string at 0 destroyed, is
- * the button's -- a plain stand-in here, the fields by what SetNormal hands on; the names ours) */
-struct ButtonState {
-    /* inline (C2DButton's constructor builds its four so, as SOCOM 1's: grey caption, the scale
-     * left alone) */
-    ButtonState()
-        : m_tex(0), m_fadeMin(0.0f), m_fadeMax(0.0f), m_pulse(false), m_period(0.0f), m_fadeTime(0.0f),
-          m_color(128.0f, 128.0f, 128.0f)
-    {
-    }
-
-    CSaferStr m_texName;   // 0x0: the state's image (SOCOM 1's _TexName)
-    zdb::CTexHandle *m_tex;   // 0xc: the background's texture
-    float m_fadeMin;   // 0x10
-    float m_fadeMax;   // 0x14
-    bool m_pulse;   // 0x18: the caption pulses
-    float m_period;   // 0x1c: the background's pulse
-    float m_fadeTime;   // 0x20
-    CPnt3D m_color;   // 0x24: the caption's
-    float m_scale;   // 0x30: the caption's
-};   // 0x34 bytes
-
-/* a button's action (zui_spec.h's ActionItem, 0x10 bytes: its destructor zui_cleanup.cpp's,
- * 0x3890C0; the type and the key state byte enums) */
-class ActionItem {
-public:
-    /* zui_spec.h's: a button action on the falling edge of no button (the list items build theirs) */
-    ActionItem() : Type(0), Animation(0), Argument(0), State(1), Event(16) {}
-    ~ActionItem();
-    void Run() const;
-    bool Start() const;
-    ActionItem &operator=(const ActionItem &a);   // zui.cpp's, 0x369FA0
-
-    unsigned char Type;   // 0x0: ACTION_TYPE
-    char *Animation;   // 0x4: the animation it starts
-    char *Argument;   // 0x8: handed to it, if any
-    unsigned char State;   // 0xc: KEY_STATE
-    unsigned char Event;   // 0xd: the pad button or the event (a union in zui_spec.h)
-};
-
 /* the animations (zanim.h's CZAnimMain and CZAnim: only what an action calls; ZAnim OVL1 bss
  * 0x414BB0) */
 class CZAnim {
@@ -543,6 +587,12 @@ enum VALVE_STATE { VALVE_SAME = 0, VALVE_ON = 1, VALVE_OFF = 2 };
 class CValve {
 public:
     static CValve *Create(const char *name, VALVE_TYPE type);
+    /* made with a value if new (zanim.h's: the list box's count and focus valves) */
+    static CValve *Create(const char *name, unsigned int value, VALVE_TYPE type);
+    static CValve *GetByName(const char *name);
+    /* the value (inline, const: the list box's RemoveItem reads it again at every step of its
+     * walk's remainder loop, as the target does; read straight MW hoists it) */
+    unsigned int GetValue() const { return m_value; }
     void MakeCallbacks(VALVE_STATE state);
     /* the value set, its callbacks told when it changed (the README's shape: both builds inline
      * it -- an int parameter, the state compared against an enumerator) */
@@ -585,7 +635,7 @@ public:
     virtual bool TickZAnimCmd(_zanim_cmd_hdr *hdr, float *dT, bool *done);
     virtual int GetZAnimCmdType(const char *name);
     virtual void UpdateUIVar(CUIVariable *var);
-    void LoadSpec(const CButtonSpec &spec);   // 0x376BD0, not written
+    void LoadSpec(const CButtonSpec &spec);   // 0x376BD0
 
     /* the four states (ButtonState, 0x34 bytes each: its destructor 0x36E650; the names ours) and
      * the one shown */
@@ -1176,6 +1226,62 @@ C2DButton::~C2DButton()
 extern "C" void func_0036E840(C2DButton *button, zdb::CTexHandle *tex);
 extern "C" void func_0036E830(C2DButton *button, float scale);
 
+/* set when a menu object takes actions (zui.cpp's global, SOCOM 1's g_hasAnims at gp-25344 there;
+ * OVL1 bss 0x49EAA0) */
+extern unsigned char g_hasAnims;
+
+/* the mission's fonts' rdr (the font loaders read it) */
+_zrdr *FetchMissionFontsRdr();
+
+/* set up from its spec (SOCOM 1's C2DButton::LoadSpec, 0x38F090 there): the spec's actions taken
+ * (the menu told it has some), the size, the caption's scale and place, a font of its own when the
+ * spec names one, the four looks -- normal, then the spec's ACTIVE into 0xFC (SetActive's), its
+ * PRESSED into 0xC8, then disabled, SOCOM 1's order -- the caption's centring, the spec's variable
+ * watched and the button brought up to date with it. The size and the offset each through a pair
+ * of locals declared together (both loaded, then converted or stored, as the target does: one
+ * statement each interleaves them, an IPNT2D local goes through the stack); the centring through
+ * a bool local (chained, the bool's conversion is redone between the stores) */
+void C2DButton::LoadSpec(const CButtonSpec &spec)
+{
+    for (int i = 0; i < (int)spec.m_commands.size(); i++) {
+        g_hasAnims = 1;
+        m_numActions++;
+        m_actions[i] = spec.m_commands[i];
+    }
+    float w = spec.m_size.x, h = spec.m_size.y;
+
+    _fWidth = w;
+    _fHeight = h;
+    _strCaption.m_scale = spec.m_scale;
+
+    int x = spec.m_offset.x, y = spec.m_offset.y;
+
+    _iTextX = x;
+    _iTextY = y;
+    if (spec.m_hasFont) {
+        const char *name = spec.m_font.c_str();
+
+        m_alternateFont = new C2DFont;
+        m_alternateFont->Load(FetchMissionFontsRdr(), name);
+        _strCaption.SetFont(m_alternateFont);
+    }
+    m_normal = spec.m_normal;
+    m_pressed = spec.m_active;
+    m_active = spec.m_pressed;
+    m_disabled = spec.m_disabled;
+    bool centered = spec.m_hcentered;
+
+    _strCaption.m_isCentered = centered;
+    _bCaptionCentered = centered;
+
+    CUIVariable *var = spec.GetUIVar();
+
+    if (var)
+        WatchUIVar(var);
+    if (UIVarMixin::m_uivar)
+        UpdateUIVar(UIVarMixin::m_uivar);
+}
+
 /* slot 18: the state at 0xFC shown, when the button takes input, and every action of type 1 on
  * event 2 run (SOCOM 1's C2DButton::SetActive; the activation written out -- through the check box's
  * ActionItem::Run its copy of the item takes a register more) */
@@ -1533,6 +1639,42 @@ bool CSliderBar::TickZAnimCmd(_zanim_cmd_hdr *hdr, float *dT, bool *done)
     }
 }
 
+/* CONTINUE, SCROLL_UP, SCROLL_DOWN and FINISH as commands of their own, no argument -- all four
+ * tags looked up first; anything else the renderable string's (slot 22 of CTeleType's vtable
+ * 0x4078A0, after TickZAnimCmd as SOCOM 1's ParseZAnimCmd 0x3904E0, which parsed the same four) */
+C2DAnimCmdHdr *CTeleType::ParseZAnimCmd(_zrdr *rdr)
+{
+    C2DAnimCmdHdr *cmd;
+    _zrdr *cont = zrdr_findtag(rdr, "CONTINUE");
+    _zrdr *up = zrdr_findtag(rdr, "SCROLL_UP");
+    _zrdr *down = zrdr_findtag(rdr, "SCROLL_DOWN");
+    _zrdr *finish = zrdr_findtag(rdr, "FINISH");
+
+    if (cont) {
+        cmd = (C2DAnimCmdHdr *)_calloc(1, sizeof(C2DAnimCmdHdr), 0, 0);
+        cmd->header.timeless = 1;
+        cmd->header.data_size = sizeof(C2DAnimCmdHdr);
+        cmd->m_type = GetZAnimCmdType("CONTINUE");
+    } else if (up) {
+        cmd = (C2DAnimCmdHdr *)_calloc(1, sizeof(C2DAnimCmdHdr), 0, 0);
+        cmd->header.timeless = 1;
+        cmd->header.data_size = sizeof(C2DAnimCmdHdr);
+        cmd->m_type = GetZAnimCmdType("SCROLL_UP");
+    } else if (down) {
+        cmd = (C2DAnimCmdHdr *)_calloc(1, sizeof(C2DAnimCmdHdr), 0, 0);
+        cmd->header.timeless = 1;
+        cmd->header.data_size = sizeof(C2DAnimCmdHdr);
+        cmd->m_type = GetZAnimCmdType("SCROLL_DOWN");
+    } else if (finish) {
+        cmd = (C2DAnimCmdHdr *)_calloc(1, sizeof(C2DAnimCmdHdr), 0, 0);
+        cmd->header.timeless = 1;
+        cmd->header.data_size = sizeof(C2DAnimCmdHdr);
+        cmd->m_type = GetZAnimCmdType("FINISH");
+    } else
+        cmd = CRenderableString::ParseZAnimCmd(rdr);
+    return cmd;
+}
+
 /* Continue (1) restarts the pause; scroll up/down (2, 3) move the window a line once all is typed;
  * finish (4) types the rest at once, quietly, and goes on to the renderable string's commands as
  * any other does (it falls through). Only Continue and the base report a command handled */
@@ -1661,7 +1803,6 @@ bool C2DCounter::TickZAnimCmd(_zanim_cmd_hdr *hdr, float *dT, bool *done)
 /* Scroll_Up a line while above the top, Scroll_Down a line while the lines below the window
  * last; anything else the renderable string's (SOCOM II's; the compare chain tests the cases in
  * reverse, the bool through a local -- the base's result masked, true assigned) */
-_zrdr *FetchMissionFontsRdr();
 
 /* set up from its spec (SOCOM 1's CRenderableString::LoadSpec, 0x390FB0 there): the scale and the
  * caption, the justification, the colour, a font of its own when the spec names one (made and
@@ -1920,10 +2061,6 @@ public:
     std::vector<CDesignDlgObj> m_elements;   // 0x18: ELEMENTS
     std::vector<ActionItem> m_animations;   // 0x24: ANIMATIONS
 };   // 0x30 bytes
-
-/* set when a menu object takes actions (zui.cpp's global, SOCOM 1's g_hasAnims at gp-25344 there;
- * OVL1 bss 0x49EAA0) */
-extern unsigned char g_hasAnims;
 
 class CUIMapCtrl : public C2D {
 public:
@@ -2439,11 +2576,15 @@ int CUIMapCtrl::GetZAnimCmdType(const char *name)
 /* an .rdr built in memory (zrdr.h's CRdrEditor: only the three node adders the list items call) */
 class CRdrEditor {
 public:
+    CRdrEditor();
+    ~CRdrEditor();
     bool push(const char *name);
     bool pop();
     bool addintnode(int i);
     bool addrealnode(float f);
     bool addstringnode(const char *s);
+
+    unsigned char _0[0x4c];   // zrdr.h's: an rdr file (the value first) and the open lists' stack
 };
 
 /* strtod (MSL's; include/stdlib.h has no declaration of it) */
@@ -2462,6 +2603,8 @@ public:
     int m_y;   // 0x10
     unsigned char m_justify;   // 0x14: the string's 0x6A
     float m_scale;   // 0x18: the string look's scale when not 0
+    std::vector<zdb::CTexHandle *> m_textures;   // 0x1c: an image column's, prepared by the box
+    CUIVariable m_texNames;   // 0x28: their names, a ZRDR array (as zui_2d.cpp's variable reads one)
 };
 
 /* a list box's item's look (SOCOM 1's CListItemTypeImpl, zui_2d.cpp's). SOCOM II's table (0x4070F0)
@@ -2614,10 +2757,77 @@ void ListItem::AddToRdr(CRdrEditor *ed)
     m_impl->AddToRdr(ed);
 }
 
-/* the list box as its items read it (SOCOM 1's CUIListBox: the highlighted row, its opacity and
- * its pulse -- what DrawPrep gives the row it draws; the rest stood in) */
-class CUIListBox {
+/* four ints the list box's spec gives it (rectangles, by their use; the name ours) */
+struct IRECT {
+    int l, t, r, b;
+};
+
+/* a list box's spec (zui_spec.h's CUIListBoxSpec, 0x120 bytes: an image's, then what the box's
+ * LoadSpec reads -- the names ours, by the box's fields they set; its three colours copied out
+ * through inline getters returning them by value, as the target's stack temporaries show) */
+class CUIListBoxSpec : public CImageSpec {
 public:
+    CPnt3D GetColor() const { return m_color; }
+    CPnt3D GetColor13C() const { return m_color13c; }
+    CPnt3D GetColor148() const { return m_color148; }
+
+    int m_lineHeight;   // 0x24
+    float m_scale;   // 0x28
+    int m_2c;   // 0x2c
+    int m_30;   // 0x30
+    bool m_hasFont;   // 0x34
+    bool m_followEnd;   // 0x35
+    bool m_noHighlight;   // 0x36
+    bool m_37;   // 0x37
+    CSaferStr m_font;   // 0x38
+    CSaferStr m_tex44;   // 0x44
+    CSaferStr m_tex50;   // 0x50
+    CSaferStr m_tex5c;   // 0x5c
+    CSaferStr m_tex68;   // 0x68
+    CSaferStr m_tex74;   // 0x74
+    CSaferStr m_tex80;   // 0x80
+    IRECT m_rect8c;   // 0x8c
+    IRECT m_rect9c;   // 0x9c
+    IRECT m_rectac;   // 0xac
+    std::vector<ColumnData *> m_columns;   // 0xbc
+    CPnt3D m_color;   // 0xc8
+    CPnt3D m_color13c;   // 0xd4
+    CPnt3D m_color148;   // 0xe0
+    std::vector<ListItem *> m_items;   // 0xec
+    std::vector<ActionItem> m_commands;   // 0xf8
+    float m_seqStart;   // 0x104
+    float m_seqLength;   // 0x108
+    float m_pulseMin;   // 0x10c
+    float m_pulseMax;   // 0x110
+    float m_pulseTime;   // 0x114
+    float m_118;   // 0x118
+    int m_11c;   // 0x11c
+};   // 0x120 bytes
+
+/* a list box command (SOCOM II's 20 bytes): the header's type and argument -- a valve's name added
+ * to the animation's -- and a UI variable's name index at 0x10 */
+struct CListBoxCmd : public C2DAnimCmdHdr {
+    unsigned char m_var;   // 0x10
+};   // 0x14 bytes
+
+/* the list box as its items read it (SOCOM 1's CUIListBox: the highlighted row, its opacity and
+ * its pulse -- what DrawPrep gives the row it draws; the rest stood in). A plain bitmap first, as
+ * its vtable 0x407670 holds CPlainBmp's Draw and SetMapOffset and C2DBitmap's flag setters */
+class CUIListBox : public CPlainBmp {
+public:
+    /* slot 0 (0x375710, not written yet: its items, columns and fonts freed) */
+    virtual ~CUIListBox();
+    /* slot 22: the box's commands parsed (SOCOM 1's; SOCOM II's eleven) */
+    virtual C2DAnimCmdHdr *ParseZAnimCmd(_zrdr *rdr);
+    /* slot 24 of its table 0x407670: the box's eleven commands after C2D's (0x373640) */
+    virtual int GetZAnimCmdType(const char *name);
+    /* slot 18: the box made active (0x374CB0) */
+    virtual void SetActive();
+    /* slot 19: the rows shown normal (0x376420, its m2c draft matches) */
+    virtual void SetNormal();
+    /* set up from its spec (0x375E20: CUIListBoxSpec::CreateDisplayObj's call) */
+    void LoadSpec(const CUIListBoxSpec &spec, zdb::CTexHandle *tex, zdb::CTextureRelocMgr *mgr);
+
     /* the row's opacity, pulse time and limits: the highlighted row's own, the others' fixed */
     int GetAlpha(int idx) const { return m_highlighted == idx ? m_highlightAlpha : 80; }
     float GetPulseTime(int idx) const { return m_highlighted == idx ? m_pulseTime : 0.0f; }
@@ -2632,29 +2842,262 @@ public:
     /* every item erased and deleted, then the box's own font (SOCOM II's, 0x375C70, the name ours:
      * UpdateUIVar and 0x372980 call it) */
     void RemoveAllItems();
-    /* slot 24 of its table 0x407670: the box's eleven commands after C2D's (0x373640) */
-    int GetZAnimCmdType(const char *name);
+    /* the secondary table's slot (0x4076E0: after the thunk 0x37D060): the variable's list shown */
+    virtual void UpdateUIVar(CUIVariable *var);
+    /* slot 23: the box's commands run */
+    virtual bool TickZAnimCmd(_zanim_cmd_hdr *hdr, float *dT, bool *done);
 
-    unsigned char _0[0xa0];
+    /* the highlighted row set and the window scrolled to it (inline: UpdateUIVar and the
+     * focus command do it alike, the row read back for the product) */
+    void Highlight(int idx)
+    {
+        m_highlighted = idx;
+        m_scroll = 0;
+        m_offset = m_highlighted * m_lineHeight;
+    }
+
     C2DFont *m_font;   // 0xa0
-    unsigned char _a4[0xbc - 0xa4];
+    int m_a4;   // 0xa4 (the spec's 0x2C)
+    int m_a8;   // 0xa8 (the spec's 0x30)
+    int m_lineHeight;   // 0xac: a row's height (the spec's)
+    int m_offset;   // 0xb0: the highlighted row's offset in the list
+    float m_scrollY;   // 0xb4: the window's offset, negative
+    int m_scroll;   // 0xb8
     C2DFont *m_ownFont;   // 0xbc: a font of the box's own, deleted with its items
     std::list<ListItem *> m_items;   // 0xc0
     float m_scale;   // 0xcc: the items' scale
     unsigned char _d0[0xd4 - 0xd0];
     std::vector<ColumnData *> m_columns;   // 0xd4
     int m_highlightAlpha;   // 0xe0
-    unsigned char _e4[0x130 - 0xe4];
+    zdb::CTextureRelocMgr *m_mgr;   // 0xe4: the items' textures' relocator
+    bool m_noHighlight;   // 0xe8: HIGHLIGHT_OFF's (the spec's byte at 0x36)
+    bool m_followEnd;   // 0xe9: a new list highlights its last row (the spec's byte at 0x35)
+    bool m_ea;   // 0xea (the spec's 0x37)
+    zdb::CTexHandle *m_texEC;   // 0xec: the spec's textures, by their names at 0x50, 0x5C, 0x44
+    zdb::CTexHandle *m_texF0;   // 0xf0
+    zdb::CTexHandle *m_texF4;   // 0xf4
+    zdb::CTexHandle *m_texF8;   // 0xf8: the highlight's texture (0xF4's, SetActive's)
+    zdb::CTexHandle *m_texFC;   // 0xfc: and 0x68
+    IRECT m_rect100;   // 0x100 (the spec's 0x8C)
+    IRECT m_rect110;   // 0x110 (the spec's 0xAC)
+    IRECT m_rect120;   // 0x120 (the spec's 0x9C)
     CPnt3D m_color;   // 0x130: the rows' colour
-    unsigned char _13c[0x154 - 0x13c];
+    CPnt3D m_color13c;   // 0x13c: the highlight's (SetActive copies it to 0x154)
+    CPnt3D m_color148;   // 0x148
     CPnt3D m_highlightColor;   // 0x154
-    unsigned char _160[0x174 - 0x160];
+    float m_seqStart;   // 0x160: the first row's sequence start
+    float m_seqLength;   // 0x164: each row's sequence length
+    float m_pulseMin0;   // 0x168: the pulse's limits and time as the spec gives them (SetActive's)
+    float m_pulseMax0;   // 0x16c
+    float m_pulseTime0;   // 0x170
     float m_pulseMin;   // 0x174
     float m_pulseMax;   // 0x178
     float m_pulseTime;   // 0x17c
-    unsigned char _180[0x194 - 0x180];
+    unsigned char _180[0x184 - 0x180];
+    float m_184;   // 0x184 (the spec's 0x118)
+    zdb::CTexHandle *m_tex188;   // 0x188: the spec's textures by their names at 0x80 and 0x74
+    zdb::CTexHandle *m_tex18c;   // 0x18c
+    int m_190;   // 0x190 (the spec's 0x11C)
     int m_highlighted;   // 0x194
+    unsigned char _198[0x1a0 - 0x198];
+    CPlainBmp m_highlight;   // 0x1a0: the highlight's bitmap
+    CPlainBmp m_bar;   // 0x240
+    unsigned char _2e0[0x420 - 0x2e0];
+    ActionItem m_actions[30];   // 0x420: the box's actions (the spec's ANIMATIONS)
+    int m_numActions;   // 0x600
 };
+
+/* made active (SOCOM 1's CUIListBox::SetActive, 0x393D60 there; SOCOM II's body): the highlight's
+ * colour, the bar on and loaded, the highlight's bitmap textured, white and at 100, the pulse's
+ * limits and time taken from the spec's; with rows, the highlighted one found (no further than
+ * the last), the window scrolled to it, its own action run, then the box's actions on event 2 --
+ * each given its own argument, else the row's text when the row passes it on. One counter for the
+ * search and the actions' walk (each its own swaps the walk's two saved registers); the row's
+ * animation tested through a const view (the target reads it twice); the scroll's difference a
+ * local (in the product MW puts the height first) */
+void CUIListBox::SetActive()
+{
+    m_highlightColor = m_color13c;
+    m_bar.On();
+    m_bar.Load(0.0f, 0.0f, m_rect100.r, m_rect100.b, m_texFC);
+
+    zdb::CTexHandle *t = m_texF4;
+
+    m_texF8 = t;
+    m_highlight.Load(0.0f, 0.0f, 10.0f, 10.0f, m_texF8);
+    if (!t)
+        m_highlight.SetHasTexture(false);
+    else
+        m_highlight.SetHasTexture(true);
+    m_highlight.SetColor(255.0f, 255.0f, 255.0f);
+    m_highlight.SetTrans(m_highlightAlpha);
+    m_highlight.SetTrans(100.0f);
+    m_highlightAlpha = 100;
+    m_pulseTime = m_pulseTime0;
+    m_pulseMin = m_pulseMin0;
+    m_pulseMax = m_pulseMax0;
+    if (m_items.size()) {
+        std::list<ListItem *>::iterator it;
+        int i;
+
+        it = m_items.begin();
+        for (i = 0; i < m_highlighted && i < m_items.size() - 1; i++)
+            ++it;
+        m_highlighted = i;
+        if (m_highlighted < m_scroll)
+            m_scroll = m_highlighted;
+        int d = m_highlighted - m_scroll;
+
+        m_offset = d * m_lineHeight;
+        m_scrollY = -(m_scroll * m_lineHeight);
+
+        ListItem *item = *it;
+
+        if (((const ListItem *)item)->m_action2.Animation) {
+            CZAnim *anim = ZAnim.GetAnim(item->m_action2.Animation, 0);
+
+            if (anim) {
+                if (item->m_action2.Argument)
+                    anim->ActivateArg(1, 8, item->m_action2.Argument, 0);
+                else
+                    anim->Activate(0);
+            }
+        }
+        for (i = 0; i < m_numActions; i++)
+            if (m_actions[i].Type == 1 && m_actions[i].Event == 2) {
+                CZAnim *anim = ZAnim.GetAnim(m_actions[i].Animation, 0);
+
+                if (m_actions[i].Argument)
+                    anim->ActivateArg(1, 8, m_actions[i].Argument, 0);
+                else if (item->m_text && item->m_24)
+                    anim->ActivateArg(1, 8, item->m_text, 0);
+                else if (item->m_24)
+                    anim->ActivateArg(1, 8, item->GetString(), 0);
+            }
+    }
+}
+
+/* a list variable shown (nothing else): every item removed, one made from each of its values with
+ * the box's columns, font and scale -- a string's own text set -- and added at the end; the last
+ * row highlighted when the box follows its end; the rows' sequences laid one after another from the
+ * box's start; then the actions on event 46 run (SOCOM II's: SOCOM 1's built its rows otherwise).
+ * The counter an int (unsigned, MW strength-reduces Item's i*8 into a sixth saved register); the
+ * sequence walk's end a local declared before its iterator (end() in the test swaps the two's saved
+ * registers) */
+void CUIListBox::UpdateUIVar(CUIVariable *var)
+{
+    if (var->IsArray()) {
+        RemoveAllItems();
+        for (int i = 0; i < var->Count(); i++) {
+            CUIVariable *e = var->Item(i);
+            ListItem *item = new ListItem(e, m_columns, m_font, m_scale);
+
+            if (e && e->IsString())
+                item->SetString(e->GetString());
+            AddItem(item, -1);
+        }
+        if (m_followEnd)
+            Highlight(m_items.size() - 1);
+
+        float t = m_seqStart;
+        std::list<ListItem *>::iterator e = m_items.end();
+
+        for (std::list<ListItem *>::iterator it = m_items.begin(); it != e; ++it)
+            t = (*it)->SetSequenceTime(t, m_seqLength);
+        for (int i = 0; i < m_numActions; i++)
+            if (m_actions[i].Type == 1 && m_actions[i].Event == 46) {
+                CZAnim *anim = ZAnim.GetAnim(m_actions[i].Animation, 0);
+
+                if (anim) {
+                    if (m_actions[i].Argument)
+                        anim->ActivateArg(1, 8, m_actions[i].Argument, 0);
+                    else
+                        anim->Activate(0);
+                }
+            }
+    }
+}
+
+/* set up from its spec (SOCOM 1's CUIListBox::LoadSpec, 0x38E2E0 there; SOCOM II's columns and
+ * rows): the plain bitmap's own setup, the spec's sizes, scale, flags and timings, a font of its
+ * own when the spec names one; each column taken over, an image column's textures prepared from
+ * its names; each row prepared for the columns and taken over; the variable watched again; the
+ * actions; the textures, rectangles and colours; shown normal. One counter for the three walks
+ * (each loop's own swaps it with the push_back end node's and the action pointer's saved registers);
+ * the column and the row each read into a local of their own beside the one push_back takes by
+ * reference (through that one MW reloads it from its frame slot for the test and the call) */
+void CUIListBox::LoadSpec(const CUIListBoxSpec &spec, zdb::CTexHandle *tex, zdb::CTextureRelocMgr *mgr)
+{
+    int i;
+
+    CPlainBmp::LoadSpec(spec, tex);
+    m_tex188 = 0;
+    m_tex18c = 0;
+    m_mgr = mgr;
+    m_a4 = spec.m_2c;
+    m_a8 = spec.m_30;
+    m_lineHeight = spec.m_lineHeight;
+    m_scale = spec.m_scale;
+    m_noHighlight = spec.m_noHighlight;
+    m_followEnd = spec.m_followEnd;
+    m_ea = spec.m_37;
+    m_seqStart = spec.m_seqStart;
+    m_seqLength = spec.m_seqLength;
+    m_pulseMax0 = spec.m_pulseMax;
+    m_pulseMin0 = spec.m_pulseMin;
+    m_pulseTime0 = spec.m_pulseTime;
+    m_184 = spec.m_118;
+    m_190 = spec.m_11c;
+    if (spec.m_hasFont) {
+        const char *name = spec.m_font.c_str();
+
+        m_ownFont = new C2DFont;
+        m_ownFont->Load(FetchMissionFontsRdr(), name);
+        m_font = m_ownFont;
+    }
+    for (i = 0; i < (int)spec.m_columns.size(); i++) {
+        ColumnData *c = spec.m_columns[i];
+        ColumnData *col = c;
+
+        if (c->m_type == 0)
+            for (int j = 0; j < col->m_texNames.Count(); j++) {
+                zdb::CTexHandle *t = PrepTexture(col->m_texNames.Item(j)->GetString(), mgr);
+
+                col->m_textures.push_back(t);
+            }
+        m_columns.push_back(col);
+    }
+    for (i = 0; i < (int)spec.m_items.size(); i++) {
+        ListItem *p = spec.m_items[i];
+        ListItem *item = p;
+
+        p->PrepListItem(m_columns, m_font, m_scale, m_mgr);
+        m_items.push_back(item);
+    }
+
+    CUIVariable *var = spec.GetUIVar();
+
+    if (var)
+        WatchUIVar(var);
+    for (i = 0; i < (int)spec.m_commands.size(); i++) {
+        g_hasAnims = 1;
+        m_numActions++;
+        m_actions[i] = spec.m_commands[i];
+    }
+    m_texEC = PrepTexture(spec.m_tex50.c_str(), mgr);
+    m_texF0 = PrepTexture(spec.m_tex5c.c_str(), mgr);
+    m_texF4 = PrepTexture(spec.m_tex44.c_str(), mgr);
+    m_texFC = PrepTexture(spec.m_tex68.c_str(), mgr);
+    m_rect100 = spec.m_rect8c;
+    m_color = spec.GetColor();
+    m_color13c = spec.GetColor13C();
+    m_color148 = spec.GetColor148();
+    SetNormal();
+    m_tex18c = PrepTexture(spec.m_tex74.c_str(), mgr);
+    m_tex188 = PrepTexture(spec.m_tex80.c_str(), mgr);
+    m_rect110 = spec.m_rectac;
+    m_rect120 = spec.m_rect9c;
+}
 
 /* each item's node erased before the item is deleted, the next iterator kept apart and ASSIGNED
  * the erase's result (its conversion's temporary then copied through a float register; initialised
@@ -2767,6 +3210,222 @@ int CUIListBox::GetZAnimCmdType(const char *name)
     if (!strcasecmp("GetContents", name))
         return C2DCmdType(0) + 10;
     return C2DCmdType(name);
+}
+
+/* the box's commands (SOCOM II's eleven; SOCOM 1's four): FINISH finishes every row and the
+ * command; the highlight switched; HAS_ITEMS answers through *done; the count and the focus row
+ * given to a valve made for it, or the focus taken from one; AddItem a row made from the n-th
+ * value of a UI variable, n a valve's; RemoveItem the n-th row taken out and deleted; GetContents
+ * the rows written into a UI variable; RemoveAllItems. Each is done at once; anything else none */
+bool CUIListBox::TickZAnimCmd(_zanim_cmd_hdr *hdr, float *dT, bool *done)
+{
+    CListBoxCmd *cmd = (CListBoxCmd *)hdr;
+
+    switch (cmd->m_type - C2DCmdType(0)) {
+    case 1:
+        {
+            std::list<ListItem *>::iterator e = m_items.end();
+
+            for (std::list<ListItem *>::iterator it = m_items.begin(); it != e; ++it)
+                (*it)->Finish();
+        }
+        *done = true;
+        return true;
+    case 2:
+        m_noHighlight = false;
+        return true;
+    case 3:
+        m_noHighlight = true;
+        return true;
+    case 4:
+        *done = m_items.size() != 0;
+        return true;
+    case 5:
+        {
+            CValve *valve = CValve::Create(ZAnim.m_CurAnim->GetName(cmd->m_arg), 0, VALVE_TEMP);
+
+            valve->SetValue(m_items.size());
+        }
+        return true;
+    case 6:
+        {
+            CValve *valve = CValve::Create(ZAnim.m_CurAnim->GetName(cmd->m_arg), 0, VALVE_TEMP);
+
+            if (valve)
+                valve->SetValue(m_highlighted);
+        }
+        return true;
+    case 7:
+        {
+            CValve *valve = CValve::GetByName(ZAnim.m_CurAnim->GetName(cmd->m_arg));
+
+            if (valve)
+                Highlight(valve->m_value);
+        }
+        return true;
+    case 8:
+        {
+            CZAnim *anim = ZAnim.m_CurAnim;
+            const char *valveName = anim->GetName(cmd->m_arg);
+            const char *varName = anim->GetName(cmd->m_var);
+            CValve *valve = CValve::GetByName(valveName);
+            CUIVariable *var = theUIVarManager.Find(varName);
+
+            if (valve && var) {
+                CUIVariable *e = var->Item(valve->m_value);
+                ListItem *item = new ListItem(e, m_columns, m_font, m_scale);
+
+                if (e && e->IsString())
+                    item->SetString(e->GetString());
+                AddItem(item, -1);
+                if (m_followEnd)
+                    Highlight(m_items.size() - 1);
+            }
+        }
+        return true;
+    case 9:
+        {
+            CValve *valve = CValve::GetByName(ZAnim.m_CurAnim->GetName(cmd->m_arg));
+
+            if (valve) {
+                std::list<ListItem *>::iterator it;
+
+                it = m_items.begin();
+                for (unsigned int i = 0; i < valve->GetValue(); i++)
+                    ++it;
+
+                ListItem *item = *it;
+
+                m_items.remove(item);
+                delete item;
+            }
+        }
+        return true;
+    case 11:
+        RemoveAllItems();
+        return true;
+    case 10:
+        {
+            CUIVariable *var = theUIVarManager.Find(ZAnim.m_CurAnim->GetName(cmd->m_var));
+
+            if (var) {
+                CRdrEditor ed;
+
+                ed.push(0);
+                std::list<ListItem *>::iterator e = m_items.end();
+
+                for (std::list<ListItem *>::iterator it = m_items.begin(); it != e; ++it)
+                    (*it)->AddToRdr(&ed);
+                ed.pop();
+                var->Set((_zrdr *)&ed);
+            }
+        }
+        return true;
+    default:
+        return false;
+    }
+}
+
+/* the eleven commands, each a 20-byte record typed by slot 24: the four queries and RemoveItem take
+ * a valve's name, AddItem a valve's and a UI variable's, GetContents a UI variable's; anything else
+ * none -- C2D's parser is not asked (SOCOM 1's took fewer, in the same order) */
+C2DAnimCmdHdr *CUIListBox::ParseZAnimCmd(_zrdr *rdr)
+{
+    CListBoxCmd *cmd;
+
+    if (zrdr_findtag(rdr, "FINISH")) {
+        cmd = (CListBoxCmd *)_calloc(1, sizeof(CListBoxCmd), 0, 0);
+        cmd->header.timeless = 1;
+        cmd->header.data_size = sizeof(CListBoxCmd);
+        cmd->m_type = GetZAnimCmdType("FINISH");
+        cmd->m_arg = 0;
+        cmd->m_var = 0;
+    } else if (zrdr_findtag(rdr, "HIGHLIGHT_ON")) {
+        cmd = (CListBoxCmd *)_calloc(1, sizeof(CListBoxCmd), 0, 0);
+        cmd->header.timeless = 1;
+        cmd->header.data_size = sizeof(CListBoxCmd);
+        cmd->m_type = GetZAnimCmdType("HIGHLIGHT_ON");
+        cmd->m_arg = 0;
+        cmd->m_var = 0;
+    } else if (zrdr_findtag(rdr, "HIGHLIGHT_OFF")) {
+        cmd = (CListBoxCmd *)_calloc(1, sizeof(CListBoxCmd), 0, 0);
+        cmd->header.timeless = 1;
+        cmd->header.data_size = sizeof(CListBoxCmd);
+        cmd->m_type = GetZAnimCmdType("HIGHLIGHT_OFF");
+        cmd->m_arg = 0;
+        cmd->m_var = 0;
+    } else if (zrdr_findtag(rdr, "HAS_ITEMS")) {
+        cmd = (CListBoxCmd *)_calloc(1, sizeof(CListBoxCmd), 0, 0);
+        cmd->header.timeless = 1;
+        cmd->header.data_size = sizeof(CListBoxCmd);
+        cmd->m_type = GetZAnimCmdType("HAS_ITEMS");
+        cmd->m_arg = 0;
+        cmd->m_var = 0;
+    } else if (zrdr_findtag(rdr, "GetItemCount")) {
+        const char *valve = zrdr_findstring(rdr, "VALVE");
+
+        cmd = (CListBoxCmd *)_calloc(1, sizeof(CListBoxCmd), 0, 0);
+        cmd->header.timeless = 1;
+        cmd->header.data_size = sizeof(CListBoxCmd);
+        cmd->m_type = GetZAnimCmdType("GetItemCount");
+        cmd->m_arg = ZAnim.m_CurAnim->AddName(valve);
+        cmd->m_var = 0;
+    } else if (zrdr_findtag(rdr, "GetFocusIndex")) {
+        const char *valve = zrdr_findstring(rdr, "VALVE");
+
+        cmd = (CListBoxCmd *)_calloc(1, sizeof(CListBoxCmd), 0, 0);
+        cmd->header.timeless = 1;
+        cmd->header.data_size = sizeof(CListBoxCmd);
+        cmd->m_type = GetZAnimCmdType("GetFocusIndex");
+        cmd->m_arg = ZAnim.m_CurAnim->AddName(valve);
+        cmd->m_var = 0;
+    } else if (zrdr_findtag(rdr, "SetFocusIndex")) {
+        const char *valve = zrdr_findstring(rdr, "VALVE");
+
+        cmd = (CListBoxCmd *)_calloc(1, sizeof(CListBoxCmd), 0, 0);
+        cmd->header.timeless = 1;
+        cmd->header.data_size = sizeof(CListBoxCmd);
+        cmd->m_type = GetZAnimCmdType("SetFocusIndex");
+        cmd->m_arg = ZAnim.m_CurAnim->AddName(valve);
+        cmd->m_var = 0;
+    } else if (zrdr_findtag(rdr, "AddItem")) {
+        const char *valve = zrdr_findstring(rdr, "VALVE");
+        const char *var = zrdr_findstring(rdr, "UIVAR");
+
+        cmd = (CListBoxCmd *)_calloc(1, sizeof(CListBoxCmd), 0, 0);
+        cmd->header.timeless = 1;
+        cmd->header.data_size = sizeof(CListBoxCmd);
+        cmd->m_type = GetZAnimCmdType("AddItem");
+        cmd->m_arg = ZAnim.m_CurAnim->AddName(valve);
+        cmd->m_var = ZAnim.m_CurAnim->AddName(var);
+    } else if (zrdr_findtag(rdr, "RemoveItem")) {
+        const char *valve = zrdr_findstring(rdr, "VALVE");
+
+        cmd = (CListBoxCmd *)_calloc(1, sizeof(CListBoxCmd), 0, 0);
+        cmd->header.timeless = 1;
+        cmd->header.data_size = sizeof(CListBoxCmd);
+        cmd->m_type = GetZAnimCmdType("RemoveItem");
+        cmd->m_arg = ZAnim.m_CurAnim->AddName(valve);
+        cmd->m_var = 0;
+    } else if (zrdr_findtag(rdr, "GetContents")) {
+        const char *var = zrdr_findstring(rdr, "UIVAR");
+
+        cmd = (CListBoxCmd *)_calloc(1, sizeof(CListBoxCmd), 0, 0);
+        cmd->header.timeless = 1;
+        cmd->header.data_size = sizeof(CListBoxCmd);
+        cmd->m_type = GetZAnimCmdType("GetContents");
+        cmd->m_arg = 0;
+        cmd->m_var = ZAnim.m_CurAnim->AddName(var);
+    } else if (zrdr_findtag(rdr, "RemoveAllItems")) {
+        cmd = (CListBoxCmd *)_calloc(1, sizeof(CListBoxCmd), 0, 0);
+        cmd->header.timeless = 1;
+        cmd->header.data_size = sizeof(CListBoxCmd);
+        cmd->m_type = GetZAnimCmdType("RemoveAllItems");
+        cmd->m_arg = 0;
+        cmd->m_var = 0;
+    } else
+        cmd = 0;
+    return cmd;
 }
 
 namespace {

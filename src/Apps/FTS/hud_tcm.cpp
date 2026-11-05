@@ -23,11 +23,13 @@ CTCMNode *tcmCreateItem(CTCMEntry *entry, const char *parent, const char *captio
  * the vector given) */
 class CNodeAction {
 public:
+    /* every action Open tagged `tcm` (bit 2 of 0x3F), pushed onto the vector given (the game
+     * states' name, OVL1 0x2B4CD0) */
+    static void GetTCMActions(std::vector<CNodeAction *> *actions);
+
     unsigned char _0[0x2c];
     const char *m_uistring;   // 0x2c
 };
-
-extern "C" void func_002B4CD0(std::vector<CNodeAction *> *actions);
 
 /* the menu's time constant (0.3; a variable: read with lwc1 -- the name ours) */
 static float s_tcm_dd8 = 0.3f;
@@ -60,7 +62,7 @@ void tcmSetNodeActions()
 {
     std::vector<CNodeAction *> actions;
 
-    func_002B4CD0(&actions);
+    CNodeAction::GetTCMActions(&actions);
 
     std::vector<CTCMNode *> found;
 

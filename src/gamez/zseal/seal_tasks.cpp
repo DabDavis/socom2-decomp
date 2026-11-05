@@ -58,6 +58,8 @@ bool zrdr_toRfloat(const _zrdr *rdr, Rfloat *out);
 bool zrdr_findreal(const _zrdr *rdr, const char *tag, float *out, int n);
 bool zrdr_tobool(const _zrdr *rdr, bool *out);
 char *zrdr_findstring(const _zrdr *rdr, const char *tag);
+bool zrdr_findint(const _zrdr *rdr, const char *tag, int *out, int n);
+bool zrdr_findPNT2D(const _zrdr *rdr, const char *tag, PNT2D *out);
 bool zrdr_isitemtype(const _zrdr *rdr, int index, int type);
 bool zrdr_findbool(const _zrdr *rdr, const char *tag, bool *out);
 bool zrdr_findPNT3D(const _zrdr *rdr, const char *tag, PNT3D *out);
@@ -439,7 +441,6 @@ struct TASK_ENT {
             m_type = 1;
         }
     }
-
     /* the entity: by the name until it is found, then by its id -- unless it carries bit 13 (new in
      * SOCOM II), when the name is asked again each time; none for no name (inline; the name ours) */
     enum TYPE { TYPE_NONE = 0, TYPE_NAME = 1, TYPE_ID = 2 };
@@ -477,6 +478,17 @@ struct TASK_ENT {
             break;
         }
         return e;
+    }
+
+    /* the entity if it is of a type (inline; the name ours): the `&&` and the select stay a value --
+     * sltu, beqz, xori/sltiu, movz -- only inside an inline that holds Get's switch; written in the
+     * caller after Get (a local, a bool, an int, a type-test inline) MW folds them back into branches
+     * (CTTurret::Tick's and CTSignal::Tick's three) */
+    CEntity *GetTyped(int t)
+    {
+        CEntity *e = Get();
+
+        return e && e->m_type == t ? e : 0;
     }
 
     unsigned short m_type;   // 0x0: 0 none, 1 by the name, 2 by the id
@@ -561,6 +573,85 @@ struct CTRegion : TASK_HDR {
  * CTCreate's handlers read it as a word; the name ours) */
 extern int data_00650AA8;
 
+/* an anim name a task holds: the unit's none, then the running anim's name for it (inline: its
+ * `this` kept in s0 across AddName; the names ours) */
+struct TASK_ANIMNAME {
+    void Set(const char *name)
+    {
+        m_name = data_00650AA8;
+        if (name && ZAnim.m_CurAnim)
+            m_name = ZAnim.m_CurAnim->AddName(name);
+    }
+
+    short m_name;
+};
+
+/* ai::CREATE (SOCOM II's): an entity cloned from another under a new name (mode 2: the tag "clone"
+ * and its two names) or destroyed (4: "destroy" and its name) -- the names ours but the tags' */
+struct CTCreate : TASK_HDR {
+    /* a block made (inline: its arguments read before the allocation, right to left) */
+    static CTCreate *Create(const char *src, const char *dst, short mode)
+    {
+        CTCreate *c = NewTask<CTCreate>();
+
+        c->m_src.Set(src);
+        c->m_dst.Set(dst);
+        c->m_mode = mode;
+        return c;
+    }
+
+    short m_mode;   // 0x8
+    TASK_ANIMNAME m_src;   // 0xa
+    TASK_ANIMNAME m_dst;   // 0xc
+    unsigned char _e[0x170 - 0xe];   // 0x170 bytes
+
+    static _zanim_cmd_hdr *Parse(_zrdr *rdr);
+};
+
+/* ai::SIGNAL (SOCOM 1's CTSignal): an AI signal sent, to an entity or the SEAL */
+struct CTSignal : TASK_HDR {
+    /* a signal's name, AISIG_UNKNOWN past the seven (inline: SOCOM 1's had six -- its
+     * GetSignalByName's switch) and a name's signal, 0 for none or no match (SOCOM 1's
+     * GetSignalByName, out of line there, inlined in Parse here; the first ours) */
+    static const char *GetSignalName(AI_SIGNAL s)
+    {
+        switch (s) {
+        case 0:
+            return "AISIG_UNKNOWN";
+        case 1:
+            return "AISIG_ANIMCOMPLETE";
+        case 2:
+            return "AISIG_BEGINCRITICAL";
+        case 3:
+            return "AISIG_ENDCRITICAL";
+        case 4:
+            return "AISIG_SUSPEND";
+        case 5:
+            return "AISIG_RELEASE";
+        case 6:
+            return "AISIG_AUTOSTOP";
+        }
+        return "AISIG_UNKNOWN";
+    }
+    static AI_SIGNAL GetSignalByName(const char *name)
+    {
+        if (name) {
+            for (unsigned int i = 0; i < 7; i++)
+                if (!strcasecmp(name, GetSignalName((AI_SIGNAL)i)))
+                    return (AI_SIGNAL)i;
+        }
+        return (AI_SIGNAL)0;
+    }
+
+    int m_signal;   // 0x8: an AI_SIGNAL (a word)
+    TASK_ENT m_ent;   // 0xc: the tag "entity"
+    /* (0x14: the entity name's room, rounded to words -- allocated, never written since the name
+     * became an anim name: SOCOM 1 copied the name here) */
+
+    static _zanim_cmd_hdr *Parse(_zrdr *rdr);
+    static bool Tick(_zanim_cmd_hdr *hdr, float *dT);
+};
+
 /* ai::SETANIMSET (SOCOM 1's CTSetAnimSet, the name now a name of the running anim's): the SEAL's
  * anim set changed -- to the bored one (flag 2), or a named one; flag 4 the default's, and an
  * entity it applies to (the names ours but the tags') */
@@ -630,6 +721,7 @@ struct CTInState : TASK_HDR {
     TASK_ENT m_ent;   // 0xc
 
     static _zanim_cmd_hdr *Parse(_zrdr *rdr);
+    static bool Tick(_zanim_cmd_hdr *hdr, float *dT);
     /* a block made (inline: its arguments read before the allocation) */
     static CTInState *Create(AI_STATE state, bool stack, const char *name)
     {
@@ -897,16 +989,110 @@ struct CTFireWeapon : TASK_HDR {
 
     int m_item;   // 0x8: an EQUIP_ITEM (a word: the kit's test takes its byte)
     unsigned char m_firing : 1;   // 0xc bit 0 (the name ours)
-    unsigned char _d[0x2c - 0xd];   // 0x2c bytes
+    /* bits 1 and 3: an aim point or an aim cell given (Tick reads them; nothing read so far sets them
+     * -- the names ours) */
+    unsigned char m_hasPos : 1;
+    unsigned char m_c_2 : 1;
+    unsigned char m_hasCell : 1;
+    unsigned char m_c_4 : 4;
+    unsigned char _d[0x10 - 0xd];
+    CAiMapLoc m_cell;   // 0x10
+    CPnt3D m_pos;   // 0x14
+    unsigned char _20[0x2c - 0x20];   // 0x2c bytes
 
     static _zanim_cmd_hdr *Parse(_zrdr *rdr);
     static void Begin(_zanim_cmd_hdr *hdr);
+    static bool Tick(_zanim_cmd_hdr *hdr, float *dT);
+};
+
+/* the deploy state (kind 4: seal_ai.cpp's CAiSDeploy) as a fire task fills it -- where to fire, a
+ * point it clears and the weapon (the names ours) */
+struct TASK_DEPLOY : CAiState {
+    CPnt3D m_pos;   // 0x58
+    CPnt3D m_64;   // 0x64
+    int m_item;   // 0x70
+};
+
+extern "C" {
+/* a cell's centre (OVL2 0x52D480, ai_maps.h's: the centre's address, or 0 -- zseal.h's stand-in
+ * declares it bool, which a caller's test would not convert) */
+CPnt3D *GetCellCenter__7CAiMapsFRC9CAiMapLocP6CPnt3D(CAiMaps *maps, const CAiMapLoc *loc, CPnt3D *c);
+/* the AI's target held (OVL2 0x60A850, ai_target.cpp's: CAiTarget's, the target at 0x67C) */
+bool func_0060A850(void *target);
+}
+
+/* a fire mode as an AI takes it (the 8 bytes at a CTFireMode's 0x8, handed whole to the AI by
+ * Begin -- OVL2 0x563470, the SEALs' row; the names ours, after Parse's tags). The fields Parse
+ * clears through a setter keep MW's unfolded inserts (`andi zero,3`, `andi zero,1` shared by bits 8
+ * and 9, the 18-bit field's dsll32/dsrl32 of zero), the ones it sets straight fold to constants */
+struct TASK_FIREMODE {
+    void SetMode(unsigned int m) { m_mode = m; }
+    void SetBit8(bool b) { m_bit8 = b; }
+    void SetHasWeapon(bool b) { m_hasWeapon = b; }
+    void SetHigh(unsigned int n) { m_high = n; }
+
+    unsigned int m_mode : 2;   // 0x8 bits 0-1
+    unsigned int m_2 : 2;   // bits 2-3 (2)
+    unsigned int m_auto : 2;   // bits 4-5 (1; "fullauto" 3)
+    unsigned int m_burst : 2;   // bits 6-7 (1; "burst" 3)
+    unsigned int m_bit8 : 1;   // 0x9 bit 0
+    unsigned int m_hasWeapon : 1;   // bit 1: "weapon" given
+    unsigned int m_weapon : 4;   // bits 2-5: "weapon"
+    unsigned int m_high : 18;   // bits 14-31 (new in SOCOM II)
+    unsigned int m_c;   // 0xc
 };
 
 /* ai::FIREMODE (SOCOM 1's CTFireMode) */
 struct CTFireMode : TASK_HDR {
+    TASK_FIREMODE m_fire;   // 0x8
+    PNT2D m_trigger;   // 0x10: "trigger" (0.1, 0.8 by default)
+    unsigned char m_hasTrigger : 1;   // 0x18 bit 0: "trigger" given
+    unsigned char _19[0x1c - 0x19];   // 0x1c bytes
+
+    static _zanim_cmd_hdr *Parse(_zrdr *rdr);
+    static void Begin(_zanim_cmd_hdr *hdr);
     static bool Tick(_zanim_cmd_hdr *hdr, float *dT);
 };
+
+/* the AI's weapon picked for a fire mode (OVL2 0x563470, the SEALs' row: SOCOM 1's CTFireMode::Begin
+ * calls ChooseWeapon(CAiWepHint &) with the task's 0x8 there -- so TASK_FIREMODE is SOCOM 1's
+ * CAiWepHint) */
+extern "C" void func_00563470(CSealCtrlAi *ai, TASK_FIREMODE *hint);
+
+/* the AI's two trigger times as one struct (zseal.h's m_734, m_73c, m_744 and m_748: Rfloats and what
+ * they rolled), set and rolled through an inline member called on a REFERENCE local -- its address
+ * kept in one saved register across the rolls' rand() calls, every field at an offset from it (the
+ * target's s2); called through the cast pointer, MW hoists each field's address into a register of
+ * its own (s1-s3) instead; the rolls Rfloat's operator (its locals pad the joins). The names ours */
+struct TASK_AITRIGGER {
+    void Set(float b, float a)
+    {
+        m_b = b;
+        m_a = a;
+        Roll();
+    }
+    void Roll()
+    {
+        m_first = m_a;
+        m_sum = m_first + m_b;
+    }
+
+    Rfloat m_a;   // 0x734
+    Rfloat m_b;   // 0x73c
+    float m_sum;   // 0x744
+    float m_first;   // 0x748
+};
+
+/* the AI's bits 16 and 17 set through a bool (SOCOM 1's CTFireMode::Begin calls SetHoldFire(false)
+ * where SOCOM II clears both: the `andi zero,1` the two share; the names ours) */
+inline void SetAiBit16(CSealCtrlAi *ai, bool b)
+{
+    ai->m_aibit16 = b;
+}
+inline void SetAiBit17(CSealCtrlAi *ai, bool b)
+{
+    ai->m_aibit17 = b;
+}
 
 /* a valve command's data as a task holds it (SOCOM 1's VALVE_CMD_DATA, zvalve/valve.h's, which this
  * unit does not include): the valve set before the compare and cleared after (OVL1 0x353FD0) */
@@ -1085,6 +1271,74 @@ _zanim_cmd_hdr *CTSetAnimSet::Parse(_zrdr *rdr)
     return &cmd->hdr;
 }
 
+/* a signal by name -- the tag "signal", else the first item when neither tag is there, else for an
+ * empty block AISIG_ANIMCOMPLETE -- and an entity; none for signal 0 (OVL2 0x5D1B70; SOCOM 1's,
+ * with a seventh signal and the entity an anim name). The header's type is left unset, as SOCOM 1's
+ * was. The entity through a reference local (or a pointer) keeps its address in s0 across AddName,
+ * the target's; written `cmd->m_ent.` MW folds it into the block's offsets (CTSetAnimSet::Parse's
+ * shape); the block declared after the name's fallbacks takes its zero in the loop test's slot; the
+ * found signal tested `!= 0` keeps the re-mask */
+_zanim_cmd_hdr *CTSignal::Parse(_zrdr *rdr)
+{
+    const char *name = zrdr_findstring(rdr, "signal");
+    const char *ent = zrdr_findstring(rdr, "entity");
+
+    if (!name && !ent && zrdr_isitemtype(rdr, 0, 3))
+        name = rdr->Item(0)->String();
+    if (!name && !rdr->Count())
+        name = "AISIG_ANIMCOMPLETE";
+    CTSignal *cmd = 0;
+    AI_SIGNAL sig = GetSignalByName(name);
+
+    if (sig != 0) {
+        unsigned int size = TaskAlign(TaskStrLen(ent)) + 20;
+
+        cmd = (CTSignal *)_calloc(size, 1, 0, 0);
+        cmd->hdr.data_size = size;
+        cmd->m_signal = sig;
+        TASK_ENT &e = cmd->m_ent;
+
+        e.m_name = 0;
+        e.m_id = CEntity::invalidId;
+        e.m_type = 0;
+        e.SetName(ent);
+    }
+    return &cmd->hdr;
+}
+
+/* the signal handed to an AI -- the task's SEAL's, or with an entity named that SEAL's (found
+ * three times over, for the SEAL, its controller and its AI: GetTyped's materialised type test
+ * each time) -- with the running anim; done at once (OVL2 0x5D16E0; SOCOM 1's, the entity then by
+ * its name). The SEAL and its controller declared ahead of the find's locals (the SEAL a copy of the
+ * find's) give the target's numbering: the block s2, the SEAL the counter's s3, the controller the
+ * list's s1 (one of them alone swaps the other pair); the type read through a const view, so Get's
+ * switch reloads it */
+bool CTSignal::Tick(_zanim_cmd_hdr *hdr, float *dT)
+{
+    CZSealBody *dest;
+    CEntityCtrl *ctrl;
+    TASK_SEAL(CTSignal);
+    dest = seal;
+    ctrl = dest ? dest->m_control : 0;
+    CSealCtrlAi *ai = dest ? SealAi(dest) : 0;
+
+    if (((const TASK_ENT *)&cmd->m_ent)->m_type) {
+        dest = (CZSealBody *)cmd->m_ent.GetTyped(CEntity::ENT_TYPE_SEAL);
+        CZSealBody *s = (CZSealBody *)cmd->m_ent.GetTyped(CEntity::ENT_TYPE_SEAL);
+
+        ctrl = s ? s->m_control : 0;
+        s = (CZSealBody *)cmd->m_ent.GetTyped(CEntity::ENT_TYPE_SEAL);
+        ai = s ? SealAi(s) : 0;
+    }
+    if (!dest || !ctrl || !ai) {
+        *dT = 0.0f;
+        return true;
+    }
+    ai->AnimSignal(ZAnim.m_CurAnim, (AI_SIGNAL)cmd->m_signal);
+    *dT = 0.0f;
+    return true;
+}
+
 /* (OVL2 0x5CE8E0) */
 _zanim_cmd_hdr *CTTurret::Parse(_zrdr *rdr)
 {
@@ -1111,21 +1365,21 @@ _zanim_cmd_hdr *CTTurret::Parse(_zrdr *rdr)
 
 /* the turret named: whether it has a target in sight, whether it is switched on, or switched on
  * or off (OVL2 0x5CE660; the SEAL's AI asked for and unused).
- * OPEN, 0x274 against 0x27C: two things. (1) The target ends a block after the anim's load and the
- * preset `r` (`lw a0; daddiu s0,zero,1; nop`), the entity's switch a block of its own, and leaves
- * the id ternary's delay slot empty (`beqz v0; nop`) -- CTRange::Tick (byte-exact through the same
- * TASK_ENT::Get) has neither; `r` before or after the AI, assigned apart, no AI local: no change.
- * (2) The turret's type test is materialised in the target (sltu; beqz; lbu; xori 3; sltiu; movz
- * v0,zero,v1 -- the `&&` as a value, then the select): an int local takes the form with an andi
- * more, a bool local, a bool inline (`== true` compares it), `(bool)e &&` and a type-test inline
- * all fold back into branches (build/scratch/kit/v_turret*.py) */
+ * OPEN, 0x274 against 0x27C: the target ends a block after the anim's load and the preset `r`
+ * (`lw a0; daddiu s0,zero,1; nop`) -- nothing branches to the switch it pads for -- so the case
+ * compares load their constants fresh (`li v1,1`) where MW here shares the 1 with `r` (`li a2,1`),
+ * and it leaves the id ternary's delay slot empty (`beqz v0; nop`); CTRange::Tick (byte-exact
+ * through the same TASK_ENT::Get) has neither; `r` before or after the AI, assigned apart, no AI
+ * local: no change. The turret's type test, materialised in the target (sltu; beqz; lbu; xori 3;
+ * sltiu; movz -- the `&&` as a value, then the select), is TASK_ENT::GetTyped's (round 37: inside
+ * the inline that holds Get's switch it stays a value; in the caller every spelling folded it into
+ * branches -- build/scratch/kit-r36/v_turret*.py) */
 bool CTTurret::Tick(_zanim_cmd_hdr *hdr, float *dT)
 {
     TASK_SEAL(CTTurret);
     CSealCtrlAi *ai = seal ? SealAi(seal) : 0;
     bool r = true;
-    CEntity *e = cmd->m_ent.Get();
-    CTurret *turret = e && e->m_type == CEntity::ENT_TYPE_TURRET ? (CTurret *)e : 0;
+    CTurret *turret = (CTurret *)cmd->m_ent.GetTyped(CEntity::ENT_TYPE_TURRET);
 
     if (turret) {
         if (cmd->m_flags & 1)
@@ -1175,6 +1429,25 @@ _zanim_cmd_hdr *CTEvent::Parse(_zrdr *rdr)
         cmd->SetDuration(true);
     if (zrdr_findtag(rdr, "vis"))
         cmd->SetVis(true);
+    return &cmd->hdr;
+}
+
+/* an entity cloned ("clone": the source's name, then the new one) or destroyed ("destroy": its
+ * name) (OVL2 0x5DDD60; new in SOCOM II: the name assigned inside the test, which tests v0 with
+ * the copy in the delay slot) */
+_zanim_cmd_hdr *CTCreate::Parse(_zrdr *rdr)
+{
+    CTCreate *cmd = 0;
+    _zrdr *clone = zrdr_findtag(rdr, "clone");
+
+    if (clone && zrdr_isitemtype(clone, 0, 3) && zrdr_isitemtype(clone, 1, 3))
+        cmd = Create(clone->Item(0)->String(), clone->Item(1)->String(), 2);
+    else {
+        const char *name;
+
+        if ((name = zrdr_findstring(rdr, "destroy")) != 0)
+            cmd = Create(name, 0, 4);
+    }
     return &cmd->hdr;
 }
 
@@ -1280,6 +1553,59 @@ bool CTEvent::Tick(_zanim_cmd_hdr *hdr, float *dT)
     return true;
 }
 
+/* a fire mode: its defaults (mode 2, single auto and burst steps, the trigger 0.1 to 0.8), a
+ * weapon slot, the trigger, full auto or burst (OVL2 0x5DCC00; SOCOM 1's, the 18-bit field new) */
+_zanim_cmd_hdr *CTFireMode::Parse(_zrdr *rdr)
+{
+    CTFireMode *cmd = NewTask<CTFireMode>();
+    int weapon;
+    PNT2D trigger;
+
+    cmd->m_trigger.x = 0.1f;
+    cmd->m_trigger.y = 0.8f;
+    cmd->m_fire.SetMode(0);
+    cmd->m_fire.m_2 = 2;
+    cmd->m_fire.m_auto = 1;
+    cmd->m_fire.m_burst = 1;
+    cmd->m_fire.SetBit8(false);
+    cmd->m_fire.m_c = 0;
+    cmd->m_fire.SetHasWeapon(false);
+    cmd->m_fire.SetHigh(0);
+    if (zrdr_findint(rdr, "weapon", &weapon, 1)) {
+        cmd->m_fire.m_weapon = weapon;
+        cmd->m_fire.m_hasWeapon = 1;
+    }
+    if (zrdr_findPNT2D(rdr, "trigger", &trigger)) {
+        cmd->m_hasTrigger = 1;
+        cmd->m_trigger = trigger;
+    }
+    if (zrdr_findtag(rdr, "fullauto"))
+        cmd->m_fire.m_auto = 3;
+    else if (zrdr_findtag(rdr, "burst"))
+        cmd->m_fire.m_burst = 3;
+    return &cmd->hdr;
+}
+
+/* the fire mode given the AI's weapon choice; with a trigger its two trigger times (zseal.h's m_734
+ * and m_73c, Rfloats) set to the trigger's ends and rolled, as an attack's reset rolls them (0x565B80);
+ * the AI's bits 16 and 17 cleared (OVL2 0x5DC9D0; SOCOM 1's, its fire-mode switch to the kit gone) */
+void CTFireMode::Begin(_zanim_cmd_hdr *hdr)
+{
+    TASK_SEAL(CTFireMode);
+    CSealCtrlAi *ai = seal ? SealAi(seal) : 0;
+
+    if (ai) {
+        func_00563470(ai, &cmd->m_fire);
+        if (cmd->m_hasTrigger) {
+            TASK_AITRIGGER &t = *(TASK_AITRIGGER *)ai->m_734;
+
+            t.Set(cmd->m_trigger.x, cmd->m_trigger.y);
+        }
+        SetAiBit16(ai, false);
+        SetAiBit17(ai, false);
+    }
+}
+
 /* done at once, the time kept unless there is no AI (OVL2 0x5DC8A0) */
 bool CTFireMode::Tick(_zanim_cmd_hdr *hdr, float *dT)
 {
@@ -1311,6 +1637,54 @@ void CTFireWeapon::Begin(_zanim_cmd_hdr *hdr)
 
     if (ai && seal->m_kit.HasItem((EQUIP_ITEM)cmd->m_item))
         cmd->SetFiring(true);
+}
+
+/* firing once: the mark dropped, the aim the task's point, its cell's centre or the AI's held
+ * target, and a deploy state pushed to fire the weapon there (OVL2 0x5DC3C0; SOCOM 1's -- as there,
+ * with no aim found and no target held the push goes ahead on the mark's true). The mark tested
+ * `== 1` (andi, xori, sltiu into the bool's saved register); the bool declared ahead of the find's
+ * locals takes the counter's register and leaves the block s2 (declared after them, the two swap) */
+bool CTFireWeapon::Tick(_zanim_cmd_hdr *hdr, float *dT)
+{
+    bool ok;
+    TASK_SEAL(CTFireWeapon);
+    CSealCtrlAi *ai = seal ? SealAi(seal) : 0;
+
+    if (!ai) {
+        *dT = 0.0f;
+        return true;
+    }
+    ok = cmd->m_firing == 1;
+
+    if (ok) {
+        CPnt3D pos;
+
+        cmd->SetFiring(false);
+        if (cmd->m_hasPos) {
+            pos = cmd->m_pos;
+            ok = true;
+        } else if (cmd->m_hasCell)
+            ok = GetCellCenter__7CAiMapsFRC9CAiMapLocP6CPnt3D(&AiMaps, &cmd->m_cell, &pos) != 0;
+        else if (func_0060A850(ai->m_67c)) {
+            CEntity *e = *(CEntity **)ai->m_67c;
+            const CPnt3D *p = e ? &e->m_posW : 0;
+
+            pos = *p;
+            ok = true;
+        }
+        if (ok && ai->PushAiState(AI_STATE_DEPLOY, 0)) {
+            CAiState *s = ai->GetAiState();
+            TASK_DEPLOY *d = s && s->m_state == AI_STATE_DEPLOY ? (TASK_DEPLOY *)s : 0;
+
+            d->SetFlags(1, 0);
+            d->m_pos = pos;
+            d->m_64 = CPnt3D::zero;
+            d->m_item = cmd->m_item;
+            d->m_active = true;
+        }
+    }
+    *dT = 0.0f;
+    return true;
 }
 
 /* (OVL2 0x5DB730: the find written out, TASK_SEAL; the AI's ternary through SealAi keeps the call's
@@ -1477,6 +1851,52 @@ _zanim_cmd_hdr *CTInState::Parse(_zrdr *rdr)
     if (state != 0)
         return &Create(state, stack, name)->hdr;
     return 0;
+}
+
+/* a remote SEAL's AI state as its network state carries it (the low byte of the word
+ * CSealCtrl::GetAiNetState sends -- copied out by memcpy; the names ours) */
+struct TASK_NETSTATE {
+    unsigned char m_state;   // 0x0: an AI_STATE
+    unsigned char _1[3];
+};
+
+/* a SEAL's AI, or 0 (inline: its by-value parameter keeps the tested value, v0, for the call
+ * where an assignment's variable would be read; the name ours) */
+static inline CSealCtrlAi *TaskAiOf(CZSealBody *s)
+{
+    return s ? SealAi(s) : 0;
+}
+
+/* whether the SEAL (the task's, or the entity named, when it is a SEAL) is in a state: its AI's
+ * current state, or anywhere on its stack (the stack's bits); a remote SEAL's by its network state
+ * (OVL2 0x5D8840; SOCOM 1's, the remote test new; the time left as it is). The entity's SEAL
+ * assigned in TaskAiOf's argument (v0 tested and used, the copy in the delay slot); the type read
+ * through a const view, so Get's switch reloads it; the network state declared before the word
+ * (the later-declared 4-byte local takes the lower slot) */
+bool CTInState::Tick(_zanim_cmd_hdr *hdr, float *dT)
+{
+    TASK_SEAL(CTInState);
+    CSealCtrlAi *ai = seal ? SealAi(seal) : 0;
+
+    if (((const TASK_ENT *)&cmd->m_ent)->m_type)
+        ai = TaskAiOf(seal = (CZSealBody *)cmd->m_ent.GetTyped(CEntity::ENT_TYPE_SEAL));
+    bool r = false;
+
+    if (seal) {
+        if (ai) {
+            if (!cmd->m_stack)
+                r = ai->AiStateIs((AI_STATE)cmd->m_state);
+            else
+                r = (ai->m_stateStack.m_10 & (1 << (AI_STATE)cmd->m_state)) != 0;
+        } else if (seal->IsRemote()) {
+            TASK_NETSTATE ns;
+            unsigned int v = ((CSealCtrl *)seal->m_control)->GetAiNetState();
+
+            memcpy(&ns, &v, sizeof(ns));
+            r = cmd->m_state == ns.m_state;
+        }
+    }
+    return r;
 }
 
 /* the wait as a tagged range, the reader's own range, or its bool (true holds for good: -1)
