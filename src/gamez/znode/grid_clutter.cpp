@@ -68,6 +68,14 @@ inline void ClutterInsert(CClutterList *list, CClutterList::iterator pos, CClutt
         (unsigned int *)pos.m_p, 1, (const unsigned int &)x);
 }
 
+/* the visuals' added colour set, by value (ours: the two Renders' -- the call's result in a local, copied
+ * as a block into the parameter, then member by member into the static, its two temporaries laid
+ * out as the target's) */
+inline void SetAddColor(CPnt3D c)
+{
+    CVisual::m_addColor = c;
+}
+
 /* a prop listed: the list's repel flag and farthest fade kept up, room made ten at a time, the prop
  * held once more (refused at fifteen holders), put at the end when its node has the flag, else
  * after the props put in front so far; then moved down past every fading prop that fades nearer
@@ -129,6 +137,82 @@ struct CClutterRelease {
             delete c;
     }
 };
+
+/* the cell's props drawn from the camera's place, the visuals' local lights off meanwhile: the
+ * effectors near the cell asked first when the list holds a repelling prop; a list split at its
+ * word at 0x14 (the flag at 0x19) draws one part a frame, alternating; the fading props sit first,
+ * so the walk stops at the first one past the list's farthest fade, or past its own -- the cell's
+ * distance from the camera (its middle at the camera's height, each of x and z short by the
+ * cell's half-diagonal, scaled by the camera's zoomed range) measured once (SOCOM 1's, 0x2190C0:
+ * SOCOM II reads the camera's world place, splits the list and scales by the zoom; written in the
+ * core lane's round 17). The camera declared after the walk's locals, the prop among them (the
+ * target numbers it last of the named locals: s1); the walk's start a nested ternary (each test's
+ * zero in its branch's delay slot); midDone set ahead of the effectors' test (its delay slot) */
+void CClutterList::Render(CCell *cell)
+{
+    if (!size())
+        return;
+    bool midDone = false;
+    bool testDist;
+    int i;
+    int n;
+    CClutter *c;
+    CCamera *cam = thePipe.m_camera;
+    bool lights = CVisual::m_applyLocalLights;
+
+    CVisual::m_applyLocalLights = false;
+    CPnt3D mid;
+    CPnt3D camPos;
+
+    camPos = cam->m_worldPos;
+    testDist = true;
+
+    if (m_ContainsRepelClutter) {
+        cell->GetMidPoint(&mid);
+        midDone = true;
+        CWorld::m_world->m_grid.m_ClutterAnimManager->TestCellMid(&mid, &camPos);
+    }
+    i = m_socom2_19 ? (m_socom2_18 ? m_socom2_14 : 0) : 0;
+    n = m_socom2_19 ? (m_socom2_18 ? size() : m_socom2_14) : size();
+    float distSq;
+
+    m_socom2_18 = !m_socom2_18;
+    for (; i < n; i++) {
+        c = (*this)[i];
+
+        if (c->m_bit0) {
+            if (testDist) {
+                if (!midDone)
+                    cell->GetMidPoint(&mid);
+                mid.y = camPos.y;
+                mid.Sub(&camPos, &mid);
+                float half = 0.707f * CWorld::m_world->m_grid.m_CellDim;
+
+                mid.x = fabsf(mid.x);
+                mid.z = fabsf(mid.z);
+                if (mid.x > half)
+                    mid.x -= half;
+                else
+                    mid.x = 0.0f;
+                if (mid.z > half)
+                    mid.z -= half;
+                else
+                    mid.z = 0.0f;
+                float len = mid.x * mid.x + mid.y * mid.y + mid.z * mid.z;
+
+                distSq = len * cam->m_ZoomedRangeScale;
+                testDist = false;
+                if (distSq > m_max_farFadeSq)
+                    break;
+            }
+            if (distSq > c->m_farFadeSq)
+                break;
+        }
+        c->Render(&camPos);
+    }
+    SetAddColor(CPnt3D(0.0f, 0.0f, 0.0f));
+    CVisual::m_applyLocalLights = lights;
+}
 
 /* every prop let go of (an MSL for_each, its class iterators in stack slots), the list emptied
  * (SOCOM 1's; SOCOM II clears its word at 0x14 too) */
@@ -226,14 +310,6 @@ CMatrix *CClutter::GetMatrix()
 inline float LenSq(const CPnt3D &p)
 {
     return p.x * p.x + p.y * p.y + p.z * p.z;
-}
-
-/* the visuals' added colour set, by value (ours: Render's -- the call's result in a local, copied
- * as a block into the parameter, then member by member into the static, its two temporaries laid
- * out as the target's) */
-inline void SetAddColor(CPnt3D c)
-{
-    CVisual::m_addColor = c;
 }
 
 /* the prop drawn, once a frame (the frame's low fourteen bits kept in its flag word): its animation
