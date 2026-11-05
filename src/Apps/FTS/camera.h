@@ -112,13 +112,17 @@ public:
     static CZSealBody *GetSeal(zdb::CNode *node);
     /* the head turned to a pitch (OVL2 0x5AF470: SOCOM II's has no second float) */
     void RotateHead(float pitch);
+    /* whether a ladder can be climbed from here (OVL2 0x59DA60, SOCOM 1's) */
+    bool CanClimbLadder();
 
     unsigned char _4[0xc0 - 4];
     CEntityCtrl *m_control;   // 0xc0
     unsigned char _c4[0x170 - 0xc4];
     CBody m_body;   // 0x170 (SOCOM 1: 0x110; the stand-in's first word only)
     short m_state;   // 0x174: 8 dead, 2 prone (SOCOM 1's SEAL_STATE: the body's, at its +4)
-    unsigned char _176[0x375 - 0x176];
+    unsigned char _176[0x2e8 - 0x176];
+    CZBodyPart *m_root;   // 0x2e8 (SOCOM 1's 0x26c: the body's root part)
+    unsigned char _2ec[0x375 - 0x2ec];
     SEAL_PEEK m_desiredPeek;   // 0x375
     unsigned char _376[0x5e0 - 0x376];
     CZKit m_kit;   // 0x5e0 (SOCOM 1: 0x520)
