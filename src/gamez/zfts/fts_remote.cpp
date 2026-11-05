@@ -143,6 +143,8 @@ public:
     void CreateNetWeaponPickup(unsigned short item, int netid, CPnt3D *pos, CQuat *rot);
     void CreateNetAmmoPickup(unsigned short count, unsigned short *items, unsigned short *rounds, int id,
                              CPnt3D *pos);
+    /* a remote SEAL's AI taken over by the new session master (OVL2 0x56F210, SOCOM 1's) */
+    static void AcquireRemoteAi(CZSealBody *body);
 };
 
 class CZVehicle {
@@ -203,7 +205,9 @@ public:
     unsigned char m_respawn;   // 0xdc: respawning on (fts_mission.cpp's)
     unsigned char _dd[0xde - 0xdd];
     unsigned char m_de;   // 0xde: no hits sent while set (SOCOM II's)
-    unsigned char _df[0x111 - 0xdf];
+    unsigned char _df[0x104 - 0xdf];
+    CPnt3D m_104;   // 0x104: where the bomb is (SOCOM 1's at 0xcc; the name ours)
+    unsigned char m_110;   // 0x110: a bomb is down there (SOCOM 1's at 0xd8; the name ours)
     char m_111;   // 0x111 (SOCOM 1's at 0xd9: m_game_type)
     unsigned char _112;
     unsigned char m_mp_major_game_state;   // 0x113 (SOCOM 1's at 0xdb)
@@ -247,6 +251,7 @@ public:
 class CZOnlineLobby {
 public:
     int MediusConnectionIndex();
+    void ForceStatusReport();   /* 0x2F8350 */
     void Censor(const char *text, void (*send)(const char *, void *), void *arg);
     bool IsIgnored(const char *name);
 };
@@ -291,6 +296,8 @@ extern "C" unsigned int strlen(const char *s);
 class CZBombState {
 public:
     static void HandleBombStateRequest(int who, unsigned char state, CPnt3D *pos);
+    static int CreateLocalBomb();   /* 0x2C2260 */
+    static void CreateBombHere(CPnt3D *pos);   /* 0x2C1BF0 */
 };
 
 
@@ -568,7 +575,107 @@ void zRemoteClientLeavesCallback(int index, int client)
     }
 }
 
-void zDoClientLeavesCallback(int client);
+/* a squad (zseal.h's CSealUnit: its first word, then its table -- IssueCommand first; the squads'
+ * list, SOCOM 1's m_list, and the number SOCOM 1's DWARF calls m_unit_num, at 0x38 there) */
+enum UNIT_MESSAGE { UNIT_MESSAGE_0 = 0, UNIT_MESSAGE_DEATH = 1, UNIT_MESSAGE_2 = 2, UNIT_MESSAGE_LAST = 255 };
+
+class CSealUnit {
+public:
+    static CSealUnit *GetUnitByTeam(unsigned int team);   /* OVL2 0x5EF2F0 */
+    void Notify(CZSealBody *seal, UNIT_MESSAGE msg, void *data);   /* OVL2 0x5ED7B0 */
+
+    unsigned int m_0;   // 0x0
+    virtual void IssueCommand(CZSealBody *seal, FT_COMMAND cmd, void *data, bool b);
+    unsigned char _8[0x58 - 0x8];
+    unsigned int m_unit_num;   // 0x58 (SOCOM 1's at 0x38)
+
+    static std::list<CSealUnit *> m_list;   /* 0x44D5B0 */
+};
+
+void ftsNetworkGameInit();
+
+/* the entity as a SEAL, if it is one, into a variable of the caller's (AsSeal through a reference
+ * out-parameter, ours: zDoClientLeavesCallback's SEAL is a named local, uninitialised at the top
+ * and numbered there -- below the client index and the net game, the target's s2 against the game's
+ * s1; AsSeal's result returned by value merges into the inline's temporary, numbered after the
+ * caller's locals, and the two trade s1 and s2: the states' round 39, read off igreplay --want) */
+inline void GetSeal(CEntity *e, CZSealBody *&s)
+{
+    s = e && e->m_type == 2 ? (CZSealBody *)e : 0;
+}
+
+/* whether a SEAL is a remote one (its controller asked; ours, IsPlayerSeal's twin: the result
+ * narrowed in each arm) */
+inline bool IsRemoteSeal(CZSealBody *seal)
+{
+    return seal->m_ctrl ? seal->m_ctrl->IsRemote() : false;
+}
+
+extern "C" {
+bool func_002A72A0(CZNetGame *game);   /* (fts_mission.cpp's: a game type 1 or 2 -- a bomb game) */
+extern ClientConnectArgs data_00440F20;   /* (the arguments handed to the connect callback) */
+extern void *data_0045B718;   /* (zNetVoice.cpp's object) */
+void func_0030E7F0(void *voice);   /* (SOCOM 1's CZNetVoice::IAmNewSessionMaster) */
+}
+
+/* a client gone, put off to here (SOCOM 1's; OVL1 0x2BC080): with a client index of our own, if
+ * the session master left and we are the new one, we take over -- the game's and the persona's
+ * objects made (ftsNetworkGameInit, inlined), the bomb's in a bomb game, every remote SEAL that
+ * was the master's AI taken up, every squad but number 17 told, the lobby's and the voice's
+ * reports, the team valves (game states 2-5), the persona sent and each client waiting handed to
+ * the connect callback; then a bomb left down made here by the master, and the master's index
+ * kept. Byte-exact (round 39): the squads' walk takes its end into a local first (in a saved
+ * register, as the target; `!= m_list.end()` each pass rebuilds the address, 8 bytes longer), the
+ * entities' walk is round 31's (`!= GetEntityList().end()`), and the SEAL is GetSeal's */
+void zDoClientLeavesCallback(int client)
+{
+    CZSealBody *seal;
+
+    theNetwork.zNetGetGameSessionMasterClientIndex();
+    int me = theNetwork.zNetGetMyGameClientIndex();
+    CZNetGame *game = theMission.m_pNetGame;
+
+    if (me == 256)
+        return;
+    if (!theNetwork.m_bSessionMaster && me == theNetwork.zNetGetGameSessionMasterClientIndex()) {
+        theNetwork.m_bSessionMaster = 1;
+        ftsNetworkGameInit();
+        if (func_002A72A0(game))
+            CZBombState::CreateLocalBomb();
+        CEntityList::const_iterator i;
+
+        for (i = CEntity::GetEntityList().begin(); i != CEntity::GetEntityList().end(); ++i) {
+            GetSeal(*i, seal);
+            if (seal && IsRemoteSeal(seal) && (seal->m_team & 0x20000))
+                CZSealBody::AcquireRemoteAi(seal);
+        }
+        std::list<CSealUnit *>::iterator u, end = CSealUnit::m_list.end();
+
+        for (u = CSealUnit::m_list.begin(); u != end; ++u) {
+            if ((*u)->m_unit_num != 17)
+                (*u)->Notify(0, UNIT_MESSAGE_2, 0);
+        }
+        theLobby.ForceStatusReport();
+        func_0030E7F0(data_0045B718);
+        if (game->m_mp_major_game_state >= 2 && game->m_mp_major_game_state < 6)
+            theMission.RefreshTeamValves();
+        CZPersonaState::UpdateLocalPersona();
+        for (int c = 0; c < 24; c++) {
+            if (data_00440EC0[c]) {
+                data_00440F20.m_client = c;
+                data_00440F20.m_10 = data_00440EC0[c];
+                func_002BC620(&data_00440F20);
+                data_00440EC0[c] = 0;
+            }
+        }
+    }
+    if (theNetwork.m_bSessionMaster && func_002A72A0(game) && game->m_110)
+        CZBombState::CreateBombHere(&game->m_104);
+    game->m_110 = 0;
+    if (theNetwork.m_sessionmaster_index != theNetwork.zNetGetGameSessionMasterClientIndex())
+        theNetwork.m_sessionmaster_index = theNetwork.zNetGetGameSessionMasterClientIndex();
+}
+
 bool DMEJoinGameServer();
 void ftsNetworkGameInit();
 
@@ -1754,8 +1861,6 @@ extern "C" bool func_002B85C0()
 }
 
 extern "C" {
-extern ClientConnectArgs data_00440F20;   /* (the arguments handed to the connect callback) */
-extern void *data_0045B718;   /* (zNetVoice.cpp's object) */
 void func_00310080(void *voice, int ms);
 void func_0030FD90(void *voice, int arg);
 }
@@ -1793,14 +1898,6 @@ bool DMEJoinGameServer()
     return true;
 }
 
-/* a squad (zseal.h's CSealUnit: its first word, then its table -- IssueCommand first) */
-class CSealUnit {
-public:
-    static CSealUnit *GetUnitByTeam(unsigned int team);   /* OVL2 0x5EF2F0 */
-
-    unsigned int m_0;   // 0x0
-    virtual void IssueCommand(CZSealBody *seal, FT_COMMAND cmd, void *data, bool b);
-};
 
 extern "C" {
 bool func_002C30B0(CZSealBody *body);

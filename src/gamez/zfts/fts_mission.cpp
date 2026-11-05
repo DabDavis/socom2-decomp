@@ -1319,9 +1319,9 @@ extern "C" void func_002A94E0(CornerBox *box)
 /* the box around eight points -- a box's corners carried through a matrix -- each bound a ternary
  * keeping the point when it is beyond (`p <= min ? p : min`, `p >= max ? p : max`: MIN/MAX's operand
  * order compares the other way round). OVL1 0x2A9550: the copy the world's ladder walk (0x2A9260)
- * and grid_main.cpp's gridAddNodeToGrids call, after the corners (0x2A96B0, open: its CPnt3D(fff)
- * and assignments are calls in the target's copy, inlined in every shape tried -- a class, a member,
- * a class template, a template member out of class) and their transform (0x2A9680) */
+ * and grid_main.cpp's gridAddNodeToGrids call, after the corners (0x2A96B0, below BoxCorners: a
+ * wrapper inlining them one level, their CPnt3D(fff) and assignments called) and their transform
+ * (0x2A9680) */
 extern "C" void func_002A9550(CBBox *out, const CPnt3D *p)
 {
     out->m_min = p[0];
@@ -1386,15 +1386,14 @@ inline CLadderData *AddLadder(CLadderList *ladders, zdb::CNode *node, const CBBo
     return ladder;
 }
 
-/* a node's box carried through a matrix: its corners (0x2A96B0, open: the copy calls CPnt3D(fff) and
- * the assignments out of line), transformed (0x2A9680) and boxed again (0x2A9550) -- one inline
- * level here, as the world's ladder walk and gridAddNodeToGrids call all four (ours).
+/* a node's box carried through a matrix: its corners (0x2A96B0, BoxCorners' wrapper below, the
+ * corners' CPnt3D(fff) and assignments called), transformed (0x2A9680) and boxed again (0x2A9550)
+ * -- one inline level here, as the world's ladder walk and gridAddNodeToGrids call all four (ours).
  * Measured (the states' round 30, build/scratch/states/p_corners.cpp): the eight corners as an inline
  * `CPnt3D *f(CPnt3D *p, const CBBox *b)` (eight `p[i] = CPnt3D(...)` / `= b->m_min` stores) expand past
  * inline_max_size, so a caller inlines it one level with the sixteen leaves called -- 0x2A8C90's
- * shape, no pragma needed; but its out-of-line copy inlines the leaves (0xC8) in every order of
- * generation tried, and reproduces 0x2A96B0 byte-exact only under `#pragma dont_inline on` at the
- * unit's end -- which no unit can carry whole */
+ * shape, no pragma needed; an out-of-line copy of f inlines the leaves (0xC8) -- 0x2A96B0 is a
+ * plain function CALLING f (round 39), so f is cut one level inside it as well */
 extern "C" CPnt3D *func_002A96B0(CPnt3D *pts, const CBBox *box);
 extern "C" CPnt3D *func_002A9680(const CMatrix *m, CPnt3D *pts);
 
@@ -1564,6 +1563,17 @@ inline CPnt3D *BoxCorners(CPnt3D *p, const CBBox &b)
     p[6] = CPnt3D(b.m_max.x, b.m_max.y, b.m_min.z);
     p[7] = b.m_max;
     return p;
+}
+
+/* a box's eight corners, out of line (OVL1 0x2A96B0: the world's ladder walk 0x2A9260 and
+ * grid_main.cpp's gridAddNodeToGrids call it; the name ours). A function of its own, not
+ * BoxCorners' copy: the corners are too big to inline whole, so here, as in 0x2A8C90, they are
+ * inlined one level -- their sixteen leaves called, the target's shape -- and a function holding a
+ * call that cannot inline whole is never auto-inlined, so its callers call it (the states' round
+ * 39; round 30's out-of-line copy of the corners inlined the leaves, 0xC8) */
+extern "C" CPnt3D *func_002A96B0(CPnt3D *pts, const CBBox *box)
+{
+    return BoxCorners(pts, *box);
 }
 
 /* a matrix's translation set from a point, read through the pointer (ours: the three stores
