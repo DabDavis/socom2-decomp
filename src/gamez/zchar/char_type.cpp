@@ -96,7 +96,7 @@ CCharacterGear *CCharacterGearList::FindGear(const char *name)
 {
     if (!name)
         return 0;
-    for (iterator i = begin(); i != end(); ++i)
+    for (iterator i = begin(); i != Last(); ++i)
         if (!strcmp(name, (*i)->m_name))
             return *i;
     return 0;
@@ -160,7 +160,7 @@ CCharacterType *CCharacterType::GetByNameMod(const char *name)
     CCharacterType *found = 0;
 
     if (name) {
-        for (CCharTypeVec::iterator i = m_char_list.begin(); !found && i != m_char_list.end(); ++i) {
+        for (CCharTypeVec::iterator i = m_char_list.begin(); !found && i != m_char_list.Last(); ++i) {
             CCharacterType *t = *i;
 
             if (!strcmp(t->m_name, name))
@@ -1345,17 +1345,10 @@ float CVoiceFont::GetWhisperFactor() const
     return m_whisperFactor;
 }
 
-/* THE UNIT INLINES TO DEPTH 6, not the flags' 5 (a pragma acts through its state at the unit's
- * end; the MSL headers round 24). include/vector's pointer iterator is the image's since that
- * round -- end() four high: the raw end, the pod's end, data() -- and a walk testing `i != end()`
- * inside an inline is then six deep where its caller inlines it: at 5 MW keeps end()'s body and
- * calls the raw end and __iter. At 6 Create, KorusGetPackedWeapons, Open, Parse and
- * RdrFetch_CharacterType inline the type list's walks (GetByNameMod's and the others') whole, as
- * the target, with the source as it was written against the three-high end, and every function of
- * the unit scores as it did at 5 (measured over the unit). The end taken into a local first (round
- * 23's suggested refit) does not give the target: in fts_missionlist.cpp Find's own copy then
- * colours its end, flag and element differently (9 off) and in util_loc.cpp FindTable's callers
- * come out 12 bytes short. So the original's walks are the ones written here and its level deeper
- * than 5 (README "Level 6, or 8?")
- */
-#pragma inline_depth(6)
+/* (the unit carried `#pragma inline_depth(6)` from the MSL headers' round 24 until the AI core's
+ * round 26: with include/vector's image-own end(), four high, a walk testing `i != end()` inside an
+ * inline is six deep where its caller expands it, so at level 5 MW kept end()'s body and called the
+ * raw end and __iter. GetByNameMod's and FindGear's walks now end at the lists' Last() -- a
+ * `data_ + size_` iterator, the online lobby's round-20 refit -- and Create, KorusGetPackedWeapons,
+ * Open, Parse and RdrFetch_CharacterType inline them whole at the settled level 5, every function of
+ * the unit scoring as under the stand-in) */

@@ -2062,6 +2062,98 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the engine core, round 15** (CAppCamera::LookAt; a depth-6 stand-in dropped; the float zero after an asm):
+  - field reads of an address-taken local: when the local is copied, direct reads keep its field addresses in saved
+    registers, and so do reads with both readers through a reference inline -- one reader of each kind reads off the
+    frame (CAppCamera::LookAt 0x29BC90: exactly one of the view vector's readers through a reference inline, LaNegRow);
+    loads from an escaped stack object are reloaded after a call, values the target keeps across one in $f20/$f21 come
+    from named float locals;
+  - plain C float tests give MW's `lwc1; mtc1 zero; nop; c.*.s` (164 matched sites; the 7 counter-cases all loads waiting
+    on a store); after an asm `sqc2` a C-made zero is scheduled into the store-to-load gap MW leaves before an aliasing
+    lwc1 -- only a zero made inside the asm block keeps the target's order (CDIBBox::GetIntersect 0x2DCDA0 to the target's
+    size, 2 off: probably a stand-in for whatever the original wrote); MW won't hoist the fall-through's `move v0,zero`
+    into a conditional branch's slot when the branch's block also writes or reads v0;
+  - the `Last()` technique works for a plain vector member too, through a free inline `iterator((T **)v.data_ +
+    v.size_)` (bone_archive.cpp's FindCommon: its depth-6 stand-in dropped, 12 of 12 at level 5, object byte-identical);
+    writing the walk out in ReadMotionRdr instead misses it.
+- **Tells from the AI core, round 26** (GetBilinearAltitude, CopyPlan, the planners' fcost, a depth-6 stand-in dropped):
+  - scalarised arrays and structs are numbered after the named locals: as plain scalars the steps and weights took the
+    parameters' registers, an `int s[2]` and a PNT2D gave the target's (CAiMap::GetBilinearAltitude 0x2A3170, 0x7B4, an
+    ai.h inline whose OVL1 copy fts_main.cpp emits; CAiCell::IsBilinear 0x2A3930);
+  - an implicit operator= is no inline level of its own; calling it through an inline taking both objects by reference
+    pushes its temporaries one level down, onto the frame's lowest slot (CAiPath::CopyPlan 0x527FD0);
+  - a bool local assigned from a compare, declared right after a call, is materialised (xori/sltiu), the same test in the
+    if branches; an inline returning `!m_bit` materialises the negation before an && branch, `!HasBit()` branches on the
+    bit; a bitfield read directly reuses an earlier load of the byte, through a bool accessor or an inline's pointer
+    parameter it is loaded again; in a bool inline expanded whole the order its two result bools are declared picks v0
+    or v1 (CBasicPlanner / CStealthPlanner::fcost 0x513080 / 0x512DC0, CAiMap::TransformTo 0x517050,
+    MAP_DIRCOUNT::GetBestDir 0x5350C0);
+  - char_type.cpp's depth-6 stand-in dropped by the `Last()` technique (CCharTypeVec's and CCharacterGearList's walks end
+    at a data_ + size_ iterator: zchar/ 101 of 101 at level 5, objcmp 644 units 0 differ); GetLocation and its helpers
+    are ai.h inlines (fts_main.cpp's duplicate gone).
+- **Tells from the weapons, round 24** (HandleIntersections at last, the turret's joints and Fire, a depth-6 stand-in
+  dropped):
+  - A SECOND WAY OFF THE DEPTH-6 STAND-IN: when an inlined helper's walk puts data() six levels deep, write the helper's
+    walk out in the caller instead of calling it (CPlacedExplosiveList's constructor and destructor write Clear's walk
+    out: zwep_flyout.cpp 29 of 29 at level 5, its object byte-identical to the pragma's);
+  - to get a byte-enum field copied with lb and narrowed with andi at each test (again after a join) with no range fold,
+    use one inline bool per compare with the id passed by value -- read straight, through GetId() or as a local it is one
+    lbu with consecutive ids folded (HandleIntersections 0x3C9B70: `IsItem(w->GetId(), 172)`, the hit handlers'
+    result a PROJECTILE_HIT byte enum); a byte-enum call result assigned in two arms is narrowed once at the join, an
+    unsigned char result in each arm;
+  - MW's narrowed copy of a byte-enum parameter is a temporary numbered after all named locals (coloured first among
+    the deferred), an int local copy declared first is numbered below the other locals (CZProjectileList::Clear(int,
+    EQUIP_ITEM) 0x3CCEB0); `if (a || b) return;` ahead of a loop gives the target's branch to a block jumping to the end
+    plus a branch into the loop, the && guard forms branch straight to the end;
+  - `v &= ~clear` through an inline with clear 0 keeps a 32-to-64 zero extension before a byte store, in place MW folds it
+    (UnpackItemAndAmmoEnums 0x3D1C90); the no-op-conversion rule decides argument load order in a virtual call too
+    (CTurret::Fire 0x3A8D20: CZWeapon::Fire's shooter an int); a node matrix's floats read in place in two expressions are
+    reloaded after a store to an address-taken stack CPnt3D, read into locals they load once (the yaw and pitch joints
+    0x3A76D0 / 0x3A7490).
+- **Tells from the online lobby, round 20** (CMPEG::Init at last; two depth-6 stand-ins dropped):
+  - A WAY OFF THE DEPTH-6 STAND-IN: a pointer-vector walk `i != end()` inside an inline is six levels deep with the
+    image's end(); ending it at a `data_ + size_` iterator (a `Last()` accessor) lets it inline whole at level 5 --
+    InvitePlayerToClan 0x2E7600, CanJoinRoom 0x2E34E0, JoinRoom 0x2E3790 and cbRoomList 0x2E3B00 byte-exact without the
+    pragma (zNetMediusClan.cpp 62 of 62, zNetMediusRoom.cpp 60 of 60; `Last()` our spelling, not proven the original's);
+  - MW's scheduler breaks a tie between ready loads toward the one that ends a register's live range, otherwise source
+    order wins (a global member before a register-based load); copies of a pointer are merged before scheduling, so a
+    copy never makes a dying register (the radio tick 0x30EC10 stays 13 off on it); an `if (!p->f) return 0;` directly
+    ahead of a call orders that call's argument loads differently from the same call after another call;
+  - MW computes a size expression over a global once and shares it between an if's test and both arms, over a
+    block-local copy of the global it recomputes it in the test and each arm while sharing the load; `x + 64` with a
+    literal folds into x's own constant, with the 64 in a variable the adds stay separate (CMPEG::Init 0x309B40, open since
+    round 4: each buffer a block reading the film's height into a local, `unsigned int align = 64`);
+  - cbGetPlayerInfo 0x2F0020 (MediusGetPlayerInfo's callback) and UnpackPlayerStats 0x2F9AC0 named; the lobby deque's
+    iterator ++ 0x2E1480 / 0x2E14E0 laid out (a 24-byte iterator over 1-byte elements, 512-byte blocks) for the MSL lane.
+- **Tells from the HUD, round 45** (CTeleType::Draw; GetAssetLibs on the new vector header):
+  - a rectangle built inside a call's own argument list keeps the target's order of work; as named locals MW merges the
+    repeated `(float)(x + 2)` into one conversion and moves it past both calls (CTeleType::Draw 0x378C00: 0x390 bytes to
+    exact, with three int statics between the teletype's speed and noise statics: -5, 8, -11);
+  - an inline member function shares the caller's member loads (one m_font load serves two expansions and the height), a
+    free inline taking the object as a parameter reloads it; a member read into an inline's own local before a virtual
+    call stays a separate load from the caller's read after it -- read directly in either place MW uses one load across
+    the call; with `(lib = expr) != 0` and lib passed by reference into an inline the store fills the null test's delay
+    slot and the test uses the register, an initialised lib passed by reference is reloaded for the test;
+  - since the MSL's round 24, `find(begin(), end(), x) == end()` plus push_back in a helper is too tall to inline whole:
+    it inlines one level and calls the five pieces out of line -- the target's shape for all five C2D GetAssetLibs
+    (vector<CAssetLib *>'s pieces 0x358670-0x358720 named at integration; GetAssetLibs 0x3585A0 3 off: the target builds
+    the list walk's end iterator in this's register, which no declaration order gets).
+- **Tells from the kit and AI states, round 38** (the kit's ammo, lens and fire-mode members, SniperTick, Find's caller):
+  - a float constant one unit in the last place off its decimal is a product of float literals folded by the compiler:
+    0x3E75C290 is `0.3f*0.8f`, 0x3F23D70B is `0.8f*0.8f` -- writing `0.24f` gives 0x3E75C28F (CZKit::Apply_LensEffects
+    0x5C1800, SOCOM 1's);
+  - an inline returning a static CPnt4D by value, read three times in one expression, shares one load of the static (one
+    temporary copied once per channel), a local read once drops the copies and comes out 0x20 short; a float the target
+    holds in a saved register across a later call and then fuses with adda/madd is a local computed before that call
+    (`pace = 0.75f + Get(); ... += dT * (0.25f + Get() + pace * r);`: SniperTick 0x5B9280, SOCOM II's third float);
+  - a mid-function `return` gives bc1f over a `b` to the epilogue, the target's single bc1t to the end is an enclosing if
+    running to the function's end; a field the target loads ahead of an update in the same block is read into a local
+    before the update; `return j != -1 ? x : 0;` gives `beq; move v0,zero` with the value on the fall-through, `j == -1 ?
+    0 : x` branches over a `b`; declaration-time numbering holds inside a block (`T type; U id = ...; type = f();`);
+    `max < mode[i]` gives v0 to the mode, `mode[i] > max` swaps them (CycleFireMode 0x5C4600, GetAmmoCount 0x5C38A0);
+  - AnimSet::Find's caller 0x5E3940 matches with anim.cpp's AnimSet::GetName fitted five inline levels high (fitted, not
+    read off the image: its comment says so), anim.cpp's copies of the SEALs' 0x5788C0 / 0x578920 matching with it;
+    FillAmmoPickupInstance 0x5BA040 declared in zseal.h's CZKit (m_kit's type).
 - **Tells from the world, rdr and sound, round 17** (CSnd's play and stream calls, the headset's ticks, the mission's
   sound groups):
   - MW counts a function's statements BEFORE inlining, an inline call counting one: PlaySound3D 0x342B20 auto-inlines

@@ -13,6 +13,8 @@
 class AnimSet {
 public:
     AnimType BaseAnim(AnimType type);
+    /* a type's motion script with no weapon (anim.cpp's, OVL2 0x5E3D90) */
+    CZSIScriptCommon *GetScript(AnimType type);
 };
 
 /* a part's pose as the blender keeps it (SOCOM 1's records, 0x20 bytes: a position, the part's id
@@ -111,6 +113,9 @@ public:
     int CombineRotations(int a, int b);
     /* the top frame laid over the one below it at a fraction and popped (SOCOM 1's; OVL2 0x576BB0) */
     int AnimOverlay(float t);
+    /* the top count frames blended into one (SOCOM 1's AnimBlend, between CombineRotations and AnimPop in
+     * both builds; OVL2 0x577000, not written yet) */
+    void AnimBlend(int count);
 
     int m_count;   // 0x0
     CZSealBody *m_seal;   // 0x4
@@ -440,6 +445,67 @@ static inline void OrientPart(CZBodyPart *part)
 
     node->SetPosition(&part->m_pos);
     node->SetRotation(&part->m_rot);
+}
+
+extern "C" {
+/* the set whose SEALs show the pickup's anim (OVL1 bss 0x44D400), its anim type (OVL1 data 0x3DEE60),
+ * and whether the top blend is one of five anims (seal_body.cpp's, OVL2 0x587E80) */
+extern AnimSet *data_0044D400;
+extern short data_003DEE60;
+bool func_00587E80(CZSealBody *seal);
+/* the body's top blend (seal.cpp's tail copy, OVL2 0x555170) */
+void *func_00555170(void *stack);
+}
+
+/* the top blend's flag 4 (an inline bool: the target materialises it, sltu, before the branch) */
+static inline bool BlendFlag4(const CZBodyAnimBlend *b)
+{
+    return b->m_flags & 4 ? true : false;
+}
+
+/* the SEAL posed from its anims, when it is animated: every anim of the top blend pushed with its
+ * overlays laid over it -- each one's weapon put on its part first unless the weapons are changing --
+ * the anims blended, the body's own overlay laid over while it runs, and for the 0x44D400 set, dead,
+ * flagged 4 or in one of 0x587E80's anims, the 0x3DEE60 anim laid over whole; the pose put back on the
+ * parts (OVL2 0x577EA0, new in SOCOM II: 0x57A330 calls it -- the name unknown) */
+extern "C" void func_00577EA0(CZSealBody *seal)
+{
+    if (!seal->m_animate_me)
+        return;
+    CZBodyAnimBlend *top = (CZBodyAnimBlend *)func_00555170(&seal->m_blends);
+    int n = 0;
+
+    data_0044CDE0->Begin(seal);
+    bool changing = seal->IsChangingWeapons(true);
+
+    for (ACTIVE_ANIM *a = top->m_anims.Begin(); a; a = top->m_anims.Next()) {
+        if (!changing)
+            func_005763E0(seal, a->m_anim);
+        data_0044CDE0->AnimPush(a->m_anim, a->m_ffrac, a->m_wt, a->m_frame);
+        n++;
+        for (ACTIVE_ANIM *o = a->m_overlay; o; o = o->m_overlay) {
+            if (!changing)
+                func_005763E0(seal, o->m_anim);
+            data_0044CDE0->AnimPush(o->m_anim, o->m_ffrac, o->m_wt, o->m_frame);
+            data_0044CDE0->AnimOverlay(o->m_wt);
+        }
+    }
+    data_0044CDE0->AnimBlend(n);
+    CBlendOverlay &ov = seal->m_overlay;
+
+    if (ov.m_anim && ov.m_state) {
+        data_0044CDE0->AnimPush(ov.m_anim->m_anim, ov.m_anim->m_ffrac, ov.m_anim->m_wt, ov.m_anim->m_frame);
+        data_0044CDE0->AnimOverlay(1.0f);
+    }
+    if (seal->m_animset == data_0044D400 && (top->m_state == 8 || BlendFlag4(top) || func_00587E80(seal))) {
+        CZSIScriptCommon *s = seal->m_animset->GetScript((AnimType)data_003DEE60);
+
+        if (s) {
+            data_0044CDE0->AnimPush(s, 0.0f, 1.0f, 0);
+            data_0044CDE0->AnimOverlay(1.0f);
+        }
+    }
+    data_0044CDE0->AnimPop();
 }
 
 /* the parts' poses saved unless the body interpolates, then every live part with a node placed on

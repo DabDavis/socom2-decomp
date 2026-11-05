@@ -360,7 +360,12 @@ void ReleaseVector(std::vector<T *> &v)
 /* a pointer list's end built straight from its storage: a walk that re-reads the end after a call
  * inlines whole one level down only so -- through include/vector's end() (three high) an inlined
  * find calls end() and __iter out of line inside its caller (RevokeInvite, AddFriend), where the
- * target inlines everything (ours) */
+ * target inlines everything (ours). Round 20: with the image's own end() (four high since the MSL
+ * headers round 24) the same holds for the invitation list's find by name (InvitePlayerToClan) and
+ * the room list's Find (CanJoinRoom, JoinRoom, cbRoomList) -- `i != end()` inside an inline is six
+ * deep where its caller expands it, so at level 5 MW keeps end()'s body and calls the raw end and
+ * __iter; through Last() the walks inline whole at level 5 and every function of the clan and room
+ * units scores as under round 24's `#pragma inline_depth(6)` stand-in, which they no longer carry */
 #define LOBBY_LIST_LAST() \
     iterator Last() { return iterator((elem_t *)this->data_ + this->size_); }
 
@@ -432,10 +437,10 @@ public:
         return 0;
     }
     /* the invitation sent to the named player, 0 none (InvitePlayerToClan's; the end re-read
-     * every pass, as the call in the loop makes MW do) */
+     * every pass, as the call in the loop makes MW do; through Last(): see there) */
     ClanInvitationItem *Find(const char *name)
     {
-        for (iterator i = begin(); i != end(); ++i)
+        for (iterator i = begin(); i != Last(); ++i)
             if (!strcasecmp((*i)->AccountName, name))
                 return *i;
         return 0;
@@ -653,8 +658,8 @@ struct MediusLadderListResponse {
     char EndOfList;   // 0x1d0
 };
 
-/* a player's stats unpacked (zNetMediusLobby.cpp; the record handed back) */
-extern "C" GamePlayerStats *func_002F9AC0(GamePlayerStats *stats, const char *text);
+/* a player's stats unpacked (zNetMediusLobby.cpp's, 0x2F9AC0; the record handed back; the name ours) */
+GamePlayerStats *UnpackPlayerStats(GamePlayerStats *stats, const char *text);
 
 struct LadderItem {
     /* the page's player made an item: too tall to inline whole, so the names' constructors and
@@ -663,7 +668,7 @@ struct LadderItem {
     {
         GamePlayerStats stats;
 
-        func_002F9AC0(&stats, resp->AccountStats);
+        UnpackPlayerStats(&stats, resp->AccountStats);
         m_position = resp->LadderPosition;
         m_name = resp->AccountName;
         m_a4 = resp->LadderStat;
@@ -893,17 +898,18 @@ void UpdateGameListDisplay(BriefingRoom *room);
 /* the room list (SOCOM 1's BriefingRoomDB: 0x44F568, the rooms' unit's) */
 class BriefingRoomDB : public std::vector<BriefingRoom *> {
 public:
+    LOBBY_LIST_LAST()
     /* the rooms deleted with the list (0x2E5F60, which __sinit_zNetMediusRoom.cpp registers) */
     ~BriefingRoomDB() { DeleteAll(); }
     BriefingRoom *FindRoom(const char *name);
     /* FindRoom again, as an inline (CanJoinRoom expands it where the game list's request calls
-     * FindRoom out of line) */
+     * FindRoom out of line; the end through Last(): see there) */
     BriefingRoom *Find(const char *name)
     {
         BriefingRoom *room = 0;
 
         if (name) {
-            for (iterator i = begin(); i != end(); ++i) {
+            for (iterator i = begin(); i != Last(); ++i) {
                 if (!strcmp((*i)->LobbyName, name)) {
                     room = *i;
                     break;

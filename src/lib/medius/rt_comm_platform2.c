@@ -39,17 +39,17 @@ extern int sceBInetDisplayLibnetbState(void *cd);
 extern int sceInetName2Address(void *cd, void *buf, int flags, void *addr, const char *name, int ms,
                                int nretry);
 extern int sceInetAddress2String(void *cd, void *buf, char *name, int len, void *addr);
-extern int func_002474F8(void *cd, void *buf, int s, void *data, unsigned short len, int *flags, int ms);
+extern int sceBInetRecv(void *cd, void *buf, int s, void *data, unsigned short len, int *flags, int ms);
 extern int func_002476D0(void *cd, void *buf, int s, unsigned short *port, void *addr);
 extern int func_00247920(void *cd, void *buf, int s, int port, void *addr);
 extern int func_00247BD8(int s, int *pbConnected);
 extern int sceSifMInitRpc(unsigned int mode);
-extern int func_00246A38(void *cd, int a, int b, int c);
+extern int sceLibnetInitialize(void *cd, int a, int b, int c);
 extern int func_00246B90(void *cd, void *buf);
 extern int func_00246BD0(void *cd, void *buf);
-extern int func_00246B10(void *cd);
+extern int sceLibnetTerminate(void *cd);
 extern int func_00247008(void *cd, void *buf, void *pIfList, int n, void *addr, int flags);
-extern int func_002465E8(void *cd, void *buf, int id, int code, void *p, int len);
+extern int sceInetInterfaceControl(void *cd, void *buf, int id, int code, void *p, int len);
 extern int sceInetGetInterfaceList(void *cd, void *buf, int *ids, int n);
 extern int data_00672180[32];           /* the interfaces' ids */
 
@@ -96,7 +96,7 @@ typedef struct rt_comm_options {
 } rt_comm_options;
 
 extern int sceBInetCreate(void *cd, void *buf, int *ps, sceBInetParam *param);
-extern int func_002472C8(void *cd, void *buf, int s, int ms);
+extern int sceBInetOpen(void *cd, void *buf, int s, int ms);
 
 int rt_comm_platform2_startup(void)
 {
@@ -105,7 +105,7 @@ int rt_comm_platform2_startup(void)
     if (data_006555C8 != 0)
         return 4;
     sceSifMInitRpc(0);
-    func_00246A38(gSifMClientData, 2048, 8192, 32);
+    sceLibnetInitialize(gSifMClientData, 2048, 8192, 32);
     if (func_00246B90(gSifMClientData, gNetBuf) < 0)
         return 1;
     result = func_0062E7E0();
@@ -129,7 +129,7 @@ int rt_comm_platform2_shutdown(void)
         return 5;
     if (func_00246BD0(gSifMClientData, gNetBuf) < 0)
         return 1;
-    func_00246B10(gSifMClientData);
+    sceLibnetTerminate(gSifMClientData);
     data_006555C8 = 0;
     data_006555FC = -1;
     return 0;
@@ -209,7 +209,7 @@ int rt_comm_platform2_create(int *phSocket, char *szAddress, unsigned short *pnP
     }
     if (sceBInetCreate(gSifMClientData, gNetBuf, &hSocket, &param) != 0)
         return 1;
-    nResult = func_002472C8(gSifMClientData, gNetBuf, hSocket, nTimeout);
+    nResult = sceBInetOpen(gSifMClientData, gNetBuf, hSocket, nTimeout);
     if (nResult != 0) {
         if (nResult != -500 || pOptions->nType != 2) {
             sceBInetClose(gSifMClientData, gNetBuf, hSocket, 500);
@@ -332,7 +332,7 @@ int rt_comm_platform2_receive(int s, void *pData, unsigned short nLength, unsign
         return 2;
     if (pnReceived == 0)
         return 2;
-    nReceived = func_002474F8(gSifMClientData, gNetBuf, s, pData, (nLength > 4096) ? 4096 : nLength, &flags, 2);
+    nReceived = sceBInetRecv(gSifMClientData, gNetBuf, s, pData, (nLength > 4096) ? 4096 : nLength, &flags, 2);
     if (nReceived < 0) {
         if (flags & 4)
             return 13;
@@ -536,7 +536,7 @@ int func_0062E7E0(void)
         for (i = 0; i < nInterfaces; i++) {
             int id = data_00672180[i];
 
-            if (func_002465E8(gSifMClientData, gNetBuf, id, 8, &flags, 4) != 0)
+            if (sceInetInterfaceControl(gSifMClientData, gNetBuf, id, 8, &flags, 4) != 0)
                 return 1;
             if ((flags & 3) == 3) {
                 bFound = 1;
@@ -580,7 +580,7 @@ int func_0062E9C0(char *szIP)
     if (data_006555FC < 0)
         return 1;
     memset(&addr, 0, sizeof(addr));
-    if (func_002465E8(gSifMClientData, gNetBuf, data_006555FC, 11, &addr, sizeof(addr)) != 0)
+    if (sceInetInterfaceControl(gSifMClientData, gNetBuf, data_006555FC, 11, &addr, sizeof(addr)) != 0)
         return 1;
     if (sceBInetAddress2IP(szIP, &addr) != 0)
         return 1;
