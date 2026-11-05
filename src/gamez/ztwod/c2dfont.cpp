@@ -811,17 +811,19 @@ bool CHangulFont::Compose(C2DGlyph *glyph, C2DChar code, C2DFont *font)
 
 /* one jamo's piece: its rectangle -- the first alternate the layout's part names, else its own --
  * at the part's placement */
-/* OPEN, 22 instructions: the size and code are the target's; its registers and two frame slots are
- * not -- the target gives the jamo `this`'s register (s4), the rectangle the glyph's (s3) and the
- * keys a fresh one (s6), and puts the find's iterator at sp+136 under the end() temporary at
- * sp+140 (here: the iterator above it). Tried: the find through an inline member (frame right,
- * 4 bytes short), the declarations of r, keys and jamo in every order, keys and the map as
- * reference locals (the map's per pass is what puts it in s1 and its end after the call). */
+/* OPEN, 2 instructions (round 55, from 22): the jamo a plain named local (`&m_jamo[which]`, not
+ * GetJamo's result -- igreplay --want: it must be numbered just after the parameters) gives every
+ * register; the find's iterator declared after the piece iterator, outside the loop, gives both
+ * frame slots (it 140, f 136) -- but then the iterator is reloaded for `&(*f).second` where the
+ * target reuses the compare's load (declared in the loop, initialised: no reload, the slots
+ * swapped). Tried: `(f = find()) != end()`, `f->second`, FindAlt per key (4 and 0xC off), a FindAlt
+ * over the whole key list (0xC short), the piece iterator declared after the loop (8 long). */
 void CHangulFont::AddJamo(C2DGlyph *glyph, int part, JAMO which, CLayout *layout, int height)
 {
     glyph->m_pieces.resize(glyph->m_pieces.size() + 1);
-    CJamoGlyph *jamo = GetJamo(which);
+    CJamoGlyph *jamo = &m_jamo[which];
     CRevIter it(glyph->m_pieces.end());
+    std::map<int, CFontRect>::iterator f;
     CJamoPlace *place = layout->GetPart(part);
     const CFontRect *r = 0;
 
@@ -829,7 +831,7 @@ void CHangulFont::AddJamo(C2DGlyph *glyph, int part, JAMO which, CLayout *layout
 
     for (int i = 0; i < keys.size(); i++) {
         std::map<int, CFontRect> &alts = jamo->m_alts;
-        std::map<int, CFontRect>::iterator f = alts.find(keys[i]);
+        f = alts.find(keys[i]);
 
         if (f != alts.end()) {
             r = &(*f).second;
