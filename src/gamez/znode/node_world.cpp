@@ -56,6 +56,97 @@ void CWorld::Uninit()
 {
 }
 
+/* a light's direction or colour set and flagged to be sent (ours: the constructor sets each light
+ * through one -- a vector copied into the parameter whole, then into the light word by word; the
+ * constants stored straight; the flag after each) */
+static inline void SetLightDir(CWorld *w, int i, CPnt4D d)
+{
+    w->m_gLight.dir[i] = d;
+    w->m_gLightDirUpdate = 1;
+}
+
+static inline void SetLightDir(CWorld *w, int i, float x, float y, float z, float v)
+{
+    w->m_gLight.dir[i].x = x;
+    w->m_gLight.dir[i].y = y;
+    w->m_gLight.dir[i].z = z;
+    w->m_gLight.dir[i].w = v;
+    w->m_gLightDirUpdate = 1;
+}
+
+static inline void SetLightCol(CWorld *w, int i, float r, float g, float b, float a)
+{
+    w->m_gLight.col[i].x = r;
+    w->m_gLight.col[i].y = g;
+    w->m_gLight.col[i].z = b;
+    w->m_gLight.col[i].w = a;
+    w->m_gLightColUpdate = 1;
+}
+
+static inline void SetAmbient(CWorld *w, float r, float g, float b, float a)
+{
+    w->m_gLight.ambient.x = r;
+    w->m_gLight.ambient.y = g;
+    w->m_gLight.ambient.z = b;
+    w->m_gLight.ambient.w = a;
+    w->m_gLightColUpdate = 1;
+}
+
+/* SOCOM 1's (0x230030): the world made current, its scale set, its intersection made, a light from
+ * above and the ambient set, the lens effects' colours, one shadow texture loaded at the textures'
+ * base and shared by the four (SOCOM 1 loaded four), the shadow's direction and the defaults */
+CWorld::CWorld(const char *name) : m_camera(0), m_diInt(0), m_cellData(0), m_maxOverlap(2)
+{
+    SetName(name);
+    m_world = this;
+    m_scale = 10.0f;
+    m_invscale = 0.1f;
+    m_type = 6;
+    m_diInt = new DiIntersect(256);
+    m_diIntDelayCnt = 0;
+    CPnt4D d(0.5f, -0.8f, 0.5f, 1.0f);
+
+    sceVu0Normalize((float *)&d, (float *)&d);
+    SetLightDir(this, 0, d);
+    SetLightDir(this, 1, 0.0f, 0.0f, 0.0f, 0.0f);
+    SetLightDir(this, 2, 0.0f, 0.0f, 0.0f, 0.0f);
+    SetLightCol(this, 0, 0.8f, 0.8f, 0.8f, 1.0f);
+    SetLightCol(this, 1, 0.0f, 0.0f, 0.0f, 1.0f);
+    SetLightCol(this, 2, 0.0f, 0.0f, 0.0f, 1.0f);
+    SetAmbient(this, 0.2f, 0.2f, 0.2f, 1.0f);
+    m_night_mission = 0;
+    m_lensfx_nvg.x = 0.2f;
+    m_lensfx_nvg.y = 0.9f;
+    m_lensfx_nvg.z = 0.2f;
+    m_lensfx_nvg.w = 0.24f;
+    m_lensfx_starlightscope.x = 0.3f;
+    m_lensfx_starlightscope.y = 0.5f;
+    m_lensfx_starlightscope.z = 0.95f;
+    m_lensfx_starlightscope.w = 0.24f;
+    unsigned int addr = zVid.textureBaseAddr;
+    char buf[32];
+
+    sprintf(buf, "ShadowX_%d", 0);
+    m_shadowTex[0] = new CTexture(buf);
+    m_shadowTex[0]->LoadGS(addr | 0x80000000, buf, 0, 256, 256, 2);
+    m_shadowTex[1] = m_shadowTex[0];
+    m_shadowTex[2] = m_shadowTex[0];
+    m_shadowTex[3] = m_shadowTex[0];
+    m_shadowTexH = 0;
+    m_shadow_vector.x = 1.0f;
+    m_shadow_vector.y = -1.0f;
+    m_shadow_vector.z = 1.0f;
+    m_shadow_weight = 0.25f;
+    m_shadow_vector.Normalize();
+    m_default_soiltype = 0;
+    m_default_soiltype_name = 0;
+    m_world_text_specs[0] = 86.0f;
+    m_world_text_specs[1] = 63.0f;
+    m_world_text_specs[2] = 27.0f;
+    m_world_text_specs[3] = 128.0f;
+    m_foliage_sound = 0;
+}
+
 /* the camera made and placed at the origin, the global lights to be sent, the shadow texture's
  * handle made and added to the shadow phase's buffer (SOCOM 1's) */
 bool CWorld::Initalize()

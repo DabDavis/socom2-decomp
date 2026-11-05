@@ -250,6 +250,10 @@ struct CSkbFonts {
             m_fonts[i].Unload();
     }
 
+    /* (ours: PrepForDisplay loads cap c's font through it, the index added first as the caps'
+     * conversion adds it) */
+    operator C2DFont *() { return m_fonts; }
+
     C2DFont m_fonts[3];
 };
 
@@ -268,6 +272,10 @@ struct CSkbTexLists {
             m_lists[i].swap(tmp);
         }
     }
+
+    /* list i (ours: PrepForDisplay's walk through it strength-reduces `this + 0x184 + 12 * i`
+     * from the accessor's `this`, as the target's s0 does) */
+    std::vector<zdb::CTexHandle *> &operator[](int i) { return m_lists[i]; }
 
     std::vector<zdb::CTexHandle *> m_lists[4];
 };
@@ -331,7 +339,13 @@ void SkbToggleShiftLock(bool toggle);
  * keyboard's units cannot include -- zui.h's rule: only its layout here) */
 class C2DAnimCmdHdr {
 public:
-    unsigned int header;               // 0x0: the _zanim_cmd_hdr
+    /* zanim.h's _zanim_cmd_hdr, its bits (the set-up's parser 0x395F40 sets timeless and the size) */
+    struct {
+        unsigned int data_type : 16;
+        unsigned int quad_align : 1;
+        unsigned int timeless : 1;
+        unsigned int data_size : 14;
+    } header;                          // 0x0
     unsigned short node_ref_index;     // 0x4
     unsigned char m_command_index;     // 0x6
     unsigned short m_argument_index;   // 0x8: the argument, an index into the anim's names
@@ -428,6 +442,10 @@ struct CSkbBgPieces : public std::vector<CSkbBgPiece> {};
 struct CSkbBgPiecesArr {
     CSkbBgPieces m_a[4];
     operator CSkbBgPieces *() { return m_a; }
+    /* list i by reference (ours: PrepForDisplay's inner walk reads `Row(c)[j]`, two nested
+     * reference-returning accessors -- the UI's round-22 rule that enters the loop at its bottom
+     * test; named apart from operator[] so the conversion's users keep their code) */
+    CSkbBgPieces &Row(int i) { return m_a[i]; }
 };
 
 /* what the rdr says about a keyboard's look (the look parser 0x3963F0's: Name, Background,

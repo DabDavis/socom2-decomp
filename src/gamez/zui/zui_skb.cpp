@@ -399,6 +399,121 @@ void func_0038D200(const CSkbKey &key, CSoftKeyboard *skb, CPad *pad, CGameMenu 
 void SkbCursorBack(CSoftKeyboard *skb);
 void SkbCursorForward(CSoftKeyboard *skb);
 
+/* the keys unit's: the text's clearing, switching and closing, a jamo typed, a character typed
+ * (0x399E90, not named yet), the recipient toggle's callback (0x38BFE0) and the lock key's */
+bool SkbClearText(CSoftKeyboard *skb);
+void SkbTypeOrBack(CSoftKeyboard *skb);
+void SkbShowKeyRows(CPad *pad, CSoftKeyboard *skb, bool row2);
+void SkbHangulClear();
+void SkbSwitchText(CSoftKeyboard *skb);
+void SkbCloseText0(CSoftKeyboard *skb);
+void SkbTypeJamo(int arg, signed char jamo, CPad *pad);
+void SkbToggleBmp4();
+void SkbTogglePair(CBmpWithNode *a, CBmpWithNode *b, void (*onToggle)(bool));
+extern "C" void func_00399E90(unsigned short c, bool shifted, bool wide, CSoftKeyboard *skb);
+extern "C" void func_0038BFE0(bool on);
+
+/* a capital letter: A-Z, or Latin-1's capitals but the multiplication sign (ours) */
+static inline bool SkbIsAsciiUpper(unsigned short c)
+{
+    bool r = false;
+
+    if (c >= 'A' && c <= 'Z')
+        r = true;
+    return r;
+}
+static inline bool SkbIsUpper(unsigned short c)
+{
+    return SkbIsAsciiUpper(c) || (c >= 0xC0 && c < 0xDF && c != 0xD7);
+}
+
+/* a key of the keyboard pressed (0x38D200; the name ours): a character key types its letter in
+ * lower case, a function key (row 1) does its job -- 7 the shift lock --, a jamo key types its jamo
+ * and a switch key switches keyboards; then the shift lock set by whether it was the lock key, the
+ * key rows shown again and the sound played for it. Written round 29 (the row keeps its placeholder:
+ * SkbHandleKey calls it so).
+ * OPEN, at the target's size (0x2E0), every call, case order and register the target's but the
+ * capital test: the target materialises `upper || (c >= 0xC0 && c < 0xDF && c != 0xD7)` as an
+ * int with no narrowing (`sltu v0,zero,a0` on SkbIsAsciiUpper's byte, `slti; xori` for the `>=`),
+ * where every C++ form here narrows its bools (`andi 0xff` after each stage, 2-4 words): an int
+ * return, an int chain written out (`int r = a != 0; if (!r) { r = ...; if (r) r = ...; }`: two
+ * narrowings left), an unsigned char SkbIsAsciiUpper, `!(c < 0xC0)`, `c > 0xBF`
+ * (build/scratch/ui/v_kh*.py) */
+void func_0038D200(const CSkbKey &key, CSoftKeyboard *skb, CPad *pad, CGameMenu *menu)
+{
+    switch (key.m_urow) {
+    case 0: {
+        unsigned short c = key.m_code;
+
+        if (SkbIsUpper(c))
+            c += 32;
+        else if (c == 0x160)
+            c = 0x161;
+        else if (c == 0x178)
+            c = 0xFF;
+        bool wide = false;
+
+        if (skb->m_320.m_node && skb->m_320.m_node->m_active)
+            wide = true;
+        func_00399E90(c, SkbShifted2(pad), wide, skb);
+        SkbHangulClear();
+        break;
+    }
+    case 1:
+        switch (key.m_code) {
+        case 2:
+            SkbTypeOrBack(skb);
+            break;
+        case 3:
+            SkbClearText(skb);
+            break;
+        case 0:
+            SkbToggleLock2();
+            SkbShowKeyRows(pad, skb, skb->m_174);
+            SkbPlaySound(3);
+            break;
+        case 1:
+            SkbTogglePair(&skb->m_1c0, &skb->m_270, func_0038BFE0);
+            break;
+        case 6:
+            SkbTakeText(menu);
+            SkbPlaySound(3);
+            break;
+        case 4:
+            skb->OnEnterKey(menu);
+            break;
+        case 5:
+            func_0038C000(skb, menu);
+            break;
+        case 8:
+            SkbToggleBmp4();
+            break;
+        case 12:
+            SkbSwitchText(skb);
+            break;
+        case 13:
+            SkbCloseText0(skb);
+            break;
+        }
+        break;
+    case 2:
+        SkbTypeJamo((int)skb, key.m_code, pad);
+        break;
+    case 3:
+        skb->SwitchToNamed(key.m_code - 1);
+        SkbPlaySound(3);
+        break;
+    }
+    bool lock = key.m_urow == 1;
+
+    if (lock)
+        lock = key.m_code == 7;
+    SkbToggleShiftLock(lock);
+    SkbShowKeyRows(pad, skb, skb->m_174);
+    if (lock)
+        SkbPlaySound(3);
+}
+
 /* a key event of the showing keyboard: the four cursor moves (events 1-4 move up, down, left and
  * right: 3, 1, 2, 4 -- ours), the cursor's key (5), the two edit keys (6, 7) (0x38DFE0; the name
  * ours) */
@@ -869,42 +984,44 @@ _zrdr *FetchMissionFontsRdr();
  * the key bitmaps into PrepKeyBitmaps): its node made, its two backgrounds' and every background
  * piece's texture prepared, the caps' fonts loaded, the four special key bitmaps loaded, rectangles
  * 3 and 4's bitmaps loaded and placed, and every key's props prepared.
- * OPEN, 0x350 of 0x374 (written round 27): every call and its arguments the target's; off -- (1) the
- * piece lists' loop: the target keeps &m_lists[i] itself as the induction (s0 from this+0x184,
- * +12 a pass) and enters the inner loop at its bottom test through a preheader after the return
- * (the UI's round-22 nested-accessor rule), here the base steps and the entry is threaded (the
- * pieces through m_sources[i] in the body, a list pointer: no change); (2) the caps' font test: the
- * target computes the short-form test once as a stored, negated, narrowed bool (`sltu; xori 1;
- * andi 0xff`) for both size() and c_str() -- include/string's open LastMessage shape (its size()
- * tests is_long(), c_str() !is_long()), the MSL lane's */
+ * Byte-exact since round 29 (open since round 27; the caps' font test the target's since the MSL
+ * headers' round 31): the piece lists walked through two reference-returning accessors, the target
+ * list `m_texLists[i]` at each use (CSkbTexLists::operator[]: MW strength-reduces the accessor's
+ * `this + 0x184` as the induction's base, s0 stepping 12 -- a reference local, or `m_lists[i]`
+ * spelled out, steps `this` and adds 0x184 in a register of its own) and the piece read
+ * `m_sources.Row(c)[j]` inside the inner body (the row hoisted out of it as an invariant: the UI's
+ * round-22 nested-accessor rule, the loop entered at its bottom test through a preheader after the
+ * return -- a row reference taken before the loop rotates it); the caps' fonts through CSkbFonts'
+ * conversion, as the caps are (the index added first, `addu v0,v0,s5`); rectangle 3's width and
+ * height taken into locals ahead of func_00397890's call (the target holds them in s1 / s0 across
+ * it -- read in the call, MW loads them after) */
 void CSoftKeyboard::PrepForDisplay(zdb::CTextureRelocMgr *mgr, C2DFont *font)
 {
     m_node = func_003978D0(m_name);
     m_17c = PrepTexture(m_background.c_str(), mgr);
     m_180 = PrepTexture(m_shiftBackground.c_str(), mgr);
     for (int i = 0; i < 4; i++) {
-        std::vector<zdb::CTexHandle *> &list = m_texLists.m_lists[i];
-
-        list.clear();
-        CSkbBgPieces &pieces = m_sources[(unsigned char)i];
-        int n = pieces.size();
+        m_texLists[i].clear();
+        int n = m_sources.Row((unsigned char)i).size();
 
         for (int j = 0; j < n; j++)
-            list.push_back(PrepTexture(pieces[j].m_texture.c_str(), mgr));
+            m_texLists[i].push_back(PrepTexture(m_sources.Row((unsigned char)i)[j].m_texture.c_str(), mgr));
     }
     for (int k = 0; k < 3; k++) {
         unsigned char c = k;
         CSaferStr &name = m_caps[c].m_texture;
 
         if (name.size())
-            m_fonts.m_fonts[c].Load(FetchMissionFontsRdr(), name.c_str());
+            m_fonts[c].Load(FetchMissionFontsRdr(), name.c_str());
     }
     PrepKeyBitmaps(&m_1c0, &m_270, 1, "SkbRecipState0.tif", "SkbRecipState1.tif", mgr);
     PrepKeyBitmaps(&m_320, &m_3d0, 11, "JapWideKeyCap.tif", "JapNarrowKeyCap.tif", mgr);
     CSkbRect &r3 = m_rects[3];
+    int w3 = r3.m_size[0];
 
-    if (r3.m_size[0]) {
-        zdb::CNode *node = SkbLoadBitmap(&m_480, m_node, r3.m_size[0], r3.m_size[1], func_00397890(), mgr);
+    if (w3) {
+        int h3 = r3.m_size[1];
+        zdb::CNode *node = SkbLoadBitmap(&m_480, m_node, w3, h3, func_00397890(), mgr);
 
         m_480.Slot10(node);
         m_480.m_node->SetPosition((float)r3.m_pos[0], (float)r3.m_pos[1], 0.0f);

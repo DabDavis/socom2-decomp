@@ -488,6 +488,102 @@ void CSealCtrl::TickPickups(float dT)
     }
 }
 
+/* the state a SEAL's controller sends over the network (seal.cpp's SEAL_NET_STATE: a word packed
+ * through memcpy, its fourth byte the node's fade in fifteenths) */
+struct SEAL_NET_STATE_CTRL {
+    bool m_jump;   // 0x0
+    unsigned char _1[2];
+    unsigned char m_fade : 4;   // 0x3
+    unsigned char m_bit4 : 1;
+    unsigned char m_friend : 1;
+    unsigned char m_bit6 : 1;
+    unsigned char m_bit7 : 1;
+};
+
+extern "C" {
+extern float floorf(float);
+/* the game clock (OVL1 data 0x4365C0, the AI's: seconds), whether the spectators' menu is up (OVL1
+ * 0x2C2FA0, the HUD's) and the kit's thrown items cleared (OVL2 0x5B88C0, the kit lane's) */
+extern float data_004365C0;
+bool func_002C2FA0();
+void func_005B88C0(CZKit *kit);
+}
+
+/* a node's fade in fifteenths (seal.cpp's FadeLevel: 15 times the faded part when it is shown) */
+static inline unsigned int NetFadeLevel(bool active, float opacity)
+{
+    return active ? (unsigned int)floorf(15.0f * (1.0f - opacity)) : 0;
+}
+
+/* the controller's SEAL (an inline: its result a temporary, numbered after the named locals -- the
+ * SEAL in s2 under the menu byte and the node, PostMortemPreTick's registers by tools/igreplay.py) */
+static inline CZSealBody *SealOf(CSealCtrl *c)
+{
+    return (CZSealBody *)c->m_entity;
+}
+
+/* the dead SEAL's controller tick: the throttles' tick, then online -- unless a multiplayer death is
+ * pending a respawn (0xDC) out of the ghost and spectator modes -- the spectator's next and previous
+ * asked by two buttons out of the menu; five seconds after the death the kit's thrown items cleared;
+ * and, the action button pressed out of the menus, the node shown or hidden in turn, the fade sent
+ * as the network state and a respawn asked once it was hidden; the SEAL's state sent (OVL2 0x592560,
+ * slot 0x14; SOCOM 1's PostMortemPreTick ticked the throttles and read two buttons). Byte-exact (round
+ * 49): the menu byte an int local (lbu, compared unmasked), the SEAL through SealOf */
+bool CSealCtrl::PostMortemPreTick(float dT)
+{
+    CZSealBody *seal = SealOf(this);
+    CPad *pad = m_padid < CInput::NUM_PADS ? CInput::m_pads[m_padid] : 0;
+    zdb::CNode *node = seal->GetNode();
+    bool action = false;
+
+    ThrottlesPreTick(pad, dT);
+
+    int menu = m_menustate;
+
+    if (!menu)
+        action = func_002C64E0(0, pad) == 1;
+    if (theNetwork.m_9) {
+        CNetGameState *game = data_00437CE8;
+        float t = data_004365C0 - seal->m_time_of_death;
+
+        if (!game->m_dc || game->m_ghost || func_002C2FA0()) {
+            if (pad->m_state[2] == 3 && menu != 1)
+                seal->m_spectate_next = 1;
+            else
+                seal->m_spectate_next = 0;
+            if (pad->m_state[3] == 3 && menu != 1)
+                seal->m_spectate_prev = 1;
+            else
+                seal->m_spectate_prev = 0;
+        }
+        if (t > 5.0f && game->m_dc)
+            func_005B88C0(&seal->m_kit);
+        if (action && !game->m_ghost && !func_002C2FA0() && game->m_dc && t > 5.0f) {
+            float opacity = node->m_Opacity;
+            bool hidden = opacity == 0.0f;
+            bool show = !hidden;
+
+            node->SetActive(show);
+
+            SEAL_NET_STATE_CTRL st;
+            unsigned int zero = 0;
+            unsigned int state;
+
+            memcpy(&st, &zero, sizeof(st));
+            if (show && opacity > 0.0f)
+                st.m_fade = NetFadeLevel(show, opacity);
+            else
+                st.m_fade = 15;
+            memcpy(&state, &st, sizeof(st));
+            SetAiNetState(state);
+            if (hidden)
+                seal->m_needs_respawn = 1;
+        }
+        func_002BD640(seal, 0);
+    }
+    return true;
+}
+
 /* the view range's floor (OVL2 data 0x6506A0, read as a variable) */
 extern "C" float data_006506A0;
 

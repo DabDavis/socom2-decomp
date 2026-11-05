@@ -463,6 +463,7 @@
 0x003DFD10 0x4 UNNAMED_NODE  # OVL1; SOCOM 1 name (node_main.cpp's file static: the name nameless nodes share; CNode::SetName reads it)
 0x003DFD18 0x4 DELETED_NODE  # OVL1; SOCOM 1 name (the name a node is left with as it is destroyed; ~CNode stores it after SetName(0), as SOCOM 1's)
 0x003DFE10 0x4 m_scale__Q23zdb6CWorld  # OVL1; s1:data-seq (size SOCOM 1's; via Load__17CharacterDynamicsFRC8CRdrFile)
+0x003DFE18 0x4 m_invscale__Q23zdb6CWorld  # OVL1; the world lane r24: SOCOM 1's (its CWorld(const char *) stores m_scale 10 and m_invscale 0.1 at gp-32100 / gp-32096, SOCOM II's 0x320310 at 0x3DFE10 / 0x3DFE18 in the same order); 2 references in 2 functions (the constructor, CSaveLoad::Load)
 0x003DFF68 0x1 m_first_alpha_add__Q25CPipe6CAlpha  # OVL1 data (initialised 1); SOCOM 1's static (its symbol, 1 byte, 0x474EE8 in $gp's area): CPipe::CAlpha::Render sets it after the pass as SOCOM 1's Render does (`sb v1,-32008(gp)` there), CAlpha::Insert tests and clears it and starts its walk at the draw list's start -- the world lane round 20; 3 references in 2 functions
 0x003DFF70 0x4 s_specFadeNear  # OVL1 data; SOCOM II's, name ours (the world lane round 19: the specular fade CPipe::BuildSpecMapList gives a light map within 225 units, 1.0 in the image); 1 reference
 0x003DFF88 0x8 gSndCommandBuffePtr  # OVL1 data; the world lane r6: SOCOM 1's global (its symbol, 0x475370 in $gp's area, 8 bytes) -- snd_StartSoundSystem points it at the two command buffers as SOCOM 1's does
@@ -649,6 +650,7 @@
 0x003F2EE0 0x8 __RTTI__10CMsgEditor  # RTTI of CMsgEditor: found by its RTTI's name
 0x003F2F58 0x8 __RTTI__16CSMDownloadPatch  # RTTI of CSMDownloadPatch: found by its RTTI's name
 0x003F33D8 0x8 __RTTI__19CSMDNASAuthenticate  # RTTI of CSMDNASAuthenticate: found by its RTTI's name
+0x003F3440 0x4 NO_TIMEOUT__7CPickup  # OVL1 data; ours (the states lane, round 44): the float -1, a pickup's time when it never runs out -- 5 references, every one an lwc1: ftsFixupAiMap 0x2A8140 twice (the weapon's and the ammo box's pickup, stored to the new pickup's m_timer), CPickup::Create 0x542B90, NetworkCreate 0x542930 (stored likewise) and TickTimers 0x542290 (compared: a pickup at it is skipped); read as a variable, not folded (as a literal -1.0f is lui/mtc1), so a static, in fts_ovl2statics.cpp's data among the SEALs' statics (0x3F3420-0x3F3438, read by OVL2's CZSealBody) -- SOCOM 1's pickups have no timer, so no name of its
 0x003F3490 0x4 @LOCAL@max_size__Q23std39__deque_imp<PCv,Q23std14allocator<PCv>>Fv@max  # OVL1 data; ours (the MSL headers round 14): the deque push_back's function-local `static const unsigned int max = max_size()` (its value) for the instance at 0x2cf970; renamed by the online lane round 21: the static is the deque's max_size()'s, one object per element type that push_back and do_assign share -- read by CGame's push_back 0x2CF970 and the rdr editor's and the vid stack's do_assign 0x334440 / 0x3B8000
 0x003F3510 0x8 __RTTI__6CGNode  # RTTI of CGNode: found by its RTTI's name
 0x003F3520 0x8 __RTTI__6CGEdge  # RTTI of CGEdge: found by its RTTI's name
