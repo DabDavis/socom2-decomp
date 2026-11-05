@@ -5671,7 +5671,7 @@
 0x003223D0 0x9C ReleaseInstance__8ParticleFPQ23zdb5CNode  # OVL1; s1:align
 0x00322470 0x104 GetFreeInstance__8ParticleFv  # OVL1; s1:align
 0x00322580 0x278 DestructionManager__8ParticleFPQ23zdb5CNodePcP6CPnt4DfP6CPnt3DP6CPnt3DP6CPnt3DP6CPnt3Dif  # OVL1; s1:align
-0x00322800 0x5E4 func_00322800  # OVL1
+0x00322800 0x5E4 Create3Sided__8ParticleFPQ23zdb9CDIVectorPQ23zdb5CNodeP6CPnt4DPQ23zdb10CTexHandlefPQ23zdb6CModelP6CPnt3DP6CPnt3DP6CPnt3DP6CPnt3DPQ28Particle5Propsf  # OVL1; s1:calls by hand (the world lane round 20: SOCOM 1's DestructionManager calls its Create3Sided (0x232A50, 0x448) for type 0 with the collision pieces, node, colour, texture, float, the fragment model, four points, the properties and the second float on the stack and in f13 -- SOCOM II's DestructionManager makes the same call, every argument in the same register, to 0x322800)
 0x00322DF0 0x17BC func_00322DF0  # OVL1
 0x003245B0 0x13C PullVisuals__8ParticleFPQ23zdb5CNodePQ23zdb9CDIVector  # OVL1; s1:align
 0x003246F0 0x2C FlushDynTexList__8ParticleFv  # OVL1; s1:order by hand (SOCOM 1's FlushDynTexList, after PullVisuals: both of m_dyntexlist's vectors emptied and given up; SOCOM II calls a template instance for each, 0x3247A0 and 0x324720, which follow it) -- the rdr lane
