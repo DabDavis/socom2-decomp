@@ -8,8 +8,8 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_ERROR(x) 0
 #define NULL 0
 M2C_UNK CollectGarbage__13CUIVarManagerFv(M2C_UNK *); /* extern */
-M2C_UNK func_0030D020(M2C_UNK *);                   /* extern */
 M2C_UNK func_0030FE40(s32);                         /* extern */
+M2C_UNK zNetLeaveAndDisconnect__9CZNetworkFv(M2C_UNK *); /* extern */
 extern u8 data_0045A0C2;
 extern s32 data_0045B718;
 extern M2C_UNK theNetwork;
@@ -18,7 +18,7 @@ extern M2C_UNK theUIVarManager;
 void DMEDisconnectFromGameServer__Fv(void) {
     if (data_0045A0C2 != 0) {
         func_0030FE40(data_0045B718);
-        func_0030D020(&theNetwork);
+        zNetLeaveAndDisconnect__9CZNetworkFv(&theNetwork);
         CollectGarbage__13CUIVarManagerFv(&theUIVarManager);
     }
 }
