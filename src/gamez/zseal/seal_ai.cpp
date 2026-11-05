@@ -4812,6 +4812,63 @@ extern "C" bool func_005582C0(CAlertLevel *a, CSealCtrlAi *ai, const CPnt3D *pos
     return a->m_c == 0 && a->m_level == 4;
 }
 
+extern "C" {
+/* (OVL2 data 0x6504A8 and 0x6504B0, ints read as variables: how many changes a level-2 record keeps
+ * its cell through, and how many cells away a new one must be to restart it) */
+extern int data_006504A8;
+extern int data_006504B0;
+}
+
+/* how many cells apart two cells are, across and along (an inline: x compared unsigned, as the
+ * fields are, y as ints -- the target's sltu / slt; `a > b ?` loads b first) */
+static inline int CellSteps(const CAiMapLoc &a, const CAiMapLoc &b)
+{
+    unsigned int dx = a.x > b.x ? a.x - b.x : b.x - a.x;
+    int dy = (int)a.y > (int)b.y ? (int)a.y - (int)b.y : (int)b.y - (int)a.y;
+
+    return dx + dy;
+}
+
+/* a disturbance at a cell (level 2): a first one keeps the cell and the flag; more of it with the
+ * flag newly set take the amount back off (the change undone), the flag newly cleared restarts the
+ * record on the cell, set again only restarts it, and unflagged at another cell -- after enough
+ * changes, or far enough -- restarts it there; whether the record now holds an untaken level 2 (OVL2
+ * 0x558030, new in SOCOM II beside 0x5582C0 and 0x558440; the name unknown) */
+extern "C" bool func_00558030(CAlertLevel *a, CSealCtrlAi *ai, const CAiMapLoc *loc, bool flag, float amount)
+{
+    int c = a->m_c;
+
+    switch (func_00557F60(a, ai, 2, amount)) {
+    case ALERT_NONE:
+        break;
+    case ALERT_SET:
+        a->m_loc = *loc;
+        a->m_avoid = flag;
+        break;
+    case ALERT_ADDED:
+        if (flag && !a->m_avoid) {
+            a->m_amount -= amount;
+            a->m_c = c;
+        } else if (!flag && a->m_avoid) {
+            a->Reset();
+            func_00557F60(a, ai, 2, amount);
+            a->m_loc = *loc;
+            a->m_avoid = false;
+        } else if (flag) {
+            a->Reset();
+        } else if (a->m_loc != *loc) {
+            if (a->m_c >= data_006504A8 || CellSteps(a->m_loc, *loc) >= data_006504B0) {
+                a->Reset();
+                func_00557F60(a, ai, 2, amount);
+                a->m_loc = *loc;
+                a->m_avoid = flag;
+            }
+        }
+        break;
+    }
+    return a->m_c == 0 && a->m_level == 2;
+}
+
 /* whether one SEAL should keep away from another within a range (seal_airesponse.cpp's), and the
  * range here (OVL2 data 0x651028: 25, five squared -- read as a variable) */
 bool ShouldAvoid(CZSealBody *a, CZSealBody *b, float d2);
