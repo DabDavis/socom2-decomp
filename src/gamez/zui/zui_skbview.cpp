@@ -488,6 +488,7 @@ public:
 class CZAnim {
 public:
     const char *GetName(int index);
+    int AddName(const char *name);
 
     unsigned char _0[0x18];
     CZAnimArgList *m_arg_list;   // 0x18
@@ -954,6 +955,74 @@ void SkbTogglePair(CBmpWithNode *a, CBmpWithNode *b, void (*onToggle)(bool))
     SkbToggle(b);
     onToggle(SkbShown(*b));
     SkbPlaySound(3);
+}
+
+void *_calloc(unsigned int n, unsigned int size, const char *file, int line);
+int GetUICommandType(const char *name);
+
+/* a string an rdr tag names copied into a field of n bytes, else the field emptied (ours: the
+ * set-up's parser) */
+static inline void SkbCopyField(char *dst, _zrdr *rdr, const char *tag, unsigned int n)
+{
+    const char *s = zrdr_findstring(rdr, tag);
+
+    if (s && strlen(s) < n)
+        strcpy(dst, s);
+    else
+        dst[0] = 0;
+}
+
+/* an anim name an rdr tag names, added to the running anim's names, else -1 (ours) */
+static inline int SkbFindName(_zrdr *rdr, const char *tag)
+{
+    const char *s = zrdr_findstring(rdr, tag);
+
+    return s ? ZAnim.m_CurAnim->AddName(s) : -1;
+}
+
+/* the keyboard's set-up command's parser (0x395F40; SOCOM II's, the name ours): its record built --
+ * the purpose from UiVar, the two strings' limits (MaxBytes, MaxChars, MaxBytes2, MaxChars2), the
+ * caption (Purpose), the two titles (MsgPlayerTitle, Action2Title), the keyboard (SkbName), the
+ * variable the text goes to (UiVar2) and the two flags (NoDQuote, AllowEmpty), as zanim_menu.cpp's
+ * parsers build theirs */
+UISkbOpenCmd *SkbOpenParse(const char *name, _zrdr *rdr)
+{
+    UISkbOpenCmd *cmd = (UISkbOpenCmd *)_calloc(1, sizeof(UISkbOpenCmd), 0, 0);
+    const char *s;
+
+    cmd->header.timeless = 1;
+    cmd->header.data_size = sizeof(UISkbOpenCmd);
+    cmd->node_ref_index = 0;
+    cmd->m_command_index = GetUICommandType(name);
+    s = zrdr_findstring(rdr, "UiVar");
+    if (s && *s) {
+        cmd->m_argument_index = ZAnim.m_CurAnim->AddName(s);
+        cmd->m_c = 0;
+    }
+    int maxBytes0 = 0;
+
+    zrdr_findint(rdr, "MaxBytes", &maxBytes0, 1);
+    cmd->m_maxBytes0 = maxBytes0;
+    int maxChars0 = 0;
+
+    zrdr_findint(rdr, "MaxChars", &maxChars0, 1);
+    cmd->m_maxChars0 = maxChars0;
+    int maxBytes1 = 0;
+
+    zrdr_findint(rdr, "MaxBytes2", &maxBytes1, 1);
+    cmd->m_maxBytes1 = maxBytes1;
+    int maxChars1 = 0;
+
+    zrdr_findint(rdr, "MaxChars2", &maxChars1, 1);
+    cmd->m_maxChars1 = maxChars1;
+    SkbCopyField(cmd->m_caption, rdr, "Purpose", sizeof(cmd->m_caption));
+    cmd->m_title1 = SkbFindName(rdr, "MsgPlayerTitle");
+    cmd->m_title2 = SkbFindName(rdr, "Action2Title");
+    SkbCopyField(cmd->m_name, rdr, "SkbName", sizeof(cmd->m_name));
+    SkbCopyField(cmd->m_uivar, rdr, "UiVar2", sizeof(cmd->m_uivar));
+    cmd->m_noQuotes = zrdr_flat_findtag_startidx(rdr, "NoDQuote", 0) != 0;
+    cmd->m_allowEmpty = zrdr_flat_findtag_startidx(rdr, "AllowEmpty", 0) != 0;
+    return cmd;
 }
 
 /* a bitmap loaded with a texture by name at a size, and hung under a node (0x395D50: PrepForDisplay

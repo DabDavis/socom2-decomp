@@ -339,7 +339,13 @@ void SkbToggleShiftLock(bool toggle);
  * keyboard's units cannot include -- zui.h's rule: only its layout here) */
 class C2DAnimCmdHdr {
 public:
-    unsigned int header;               // 0x0: the _zanim_cmd_hdr
+    /* zanim.h's _zanim_cmd_hdr, its bits (the set-up's parser 0x395F40 sets timeless and the size) */
+    struct {
+        unsigned int data_type : 16;
+        unsigned int quad_align : 1;
+        unsigned int timeless : 1;
+        unsigned int data_size : 14;
+    } header;                          // 0x0
     unsigned short node_ref_index;     // 0x4
     unsigned char m_command_index;     // 0x6
     unsigned short m_argument_index;   // 0x8: the argument, an index into the anim's names
