@@ -108,7 +108,7 @@ public:
         m_clock_running = 1;
         Initialize();
     }
-    void Initialize();
+    bool Initialize();
     float UnInitialize();   /* (no value returned: see the definition) */
     bool TenSecondLaunch(bool launch);
     unsigned int DecrementRoundClockSec(int sec);
@@ -123,49 +123,72 @@ public:
     bool LateJoiner(bool late);
     void ResetScores();
 
-    unsigned char _0[0xc];
-    CValve *m_pE3RoundValve;   // 0xc
+    /* the valves (Initialize's: SOCOM 1's DWARF names those it has, SOCOM II's mp_max_round_time
+     * inserted at 0x8 moving the rest by 4) */
+    CValve *m_pMaxRoundCountValve;   // 0x0: mp_max_rounds (SOCOM 1's)
+    CValve *m_pHalfRoundCountValve;   // 0x4: mp_half_rounds (SOCOM 1's)
+    CValve *m_8;   // 0x8: mp_max_round_time (SOCOM II's)
+    CValve *m_pE3RoundValve;   // 0xc: mp_round_count (SOCOM 1's m_pRoundCountValve at 0x8)
     CValve *m_pGameOverValve;   // 0x10 (SOCOM 1's at 0xc)
-    int m_14;   // 0x14 (SOCOM 1's at 0x10)
-    int m_18;   // 0x18 (SOCOM 1's at 0x14)
-    int m_1c;   // 0x1c (SOCOM 1's at 0x18)
+    CValve *m_14;   // 0x14: player_team (SOCOM 1's m_pPlayerTeamValve at 0x10)
+    CValve *m_18;   // 0x18: mp_bomb (SOCOM 1's m_pBombStatusValve at 0x14)
+    CValve *m_1c;   // 0x1c: bomb_owner (SOCOM 1's m_pBombOwnerValve at 0x18)
     CValve *m_pMyMajorGameStateValve;   // 0x20 (SOCOM 1's at 0x1c)
     CValve *m_pMyMinorGameStateValve;   // 0x24 (SOCOM 1's at 0x20)
-    int m_28;   // 0x28 (SOCOM 1's at 0x24)
+    CValve *m_28;   // 0x28: mp_join_game (SOCOM 1's m_pJoinGameValve at 0x24)
     CValve *m_pLateJoinerValve;   // 0x2c (SOCOM 1's at 0x28)
-    unsigned char _30[0x34 - 0x30];
-    CValve *m_pLaunchSecondsValve;   // 0x34 (SOCOM 1's at 0x30)
+    CValve *m_p45SecondClockValve;   // 0x30: mp_45_sec_clock (SOCOM 1's at 0x2c)
+    CValve *m_pLaunchSecondsValve;   // 0x34: mp_x_sec_clock (SOCOM 1's m_pXSecondClockValve at 0x30)
     unsigned char _38[0x40 - 0x38];
-    int m_40;   // 0x40 (SOCOM 1's at 0x3c)
-    unsigned char _44[0x4c - 0x44];
-    int m_4c;   // 0x4c (SOCOM 1's at 0x48)
-    unsigned char _50[0x74 - 0x50];
+    CValve *m_40;   // 0x40: mp_penalty (SOCOM 1's m_pPenaltyValve at 0x3c)
+    CValve *m_pPlayerJoinCountValve;   // 0x44 (SOCOM 1's at 0x40)
+    CValve *m_pPlayerReadyCountValve;   // 0x48 (SOCOM 1's at 0x44)
+    CValve *m_4c;   // 0x4c: mp_persistent (SOCOM 1's m_pMPPersistentValve at 0x48)
+    CValve *m_pMPProgTimer1Valve;   // 0x50 (SOCOM 1's at 0x4c)
+    CValve *m_54;   // 0x54: mp_team_unbalance (0x54-0x70 SOCOM II's)
+    CValve *m_58;   // 0x58: aiteam_00
+    CValve *m_5c;   // 0x5c: aiteam_08
+    CValve *m_60;   // 0x60: mp_teams_too_big
+    CValve *m_64;   // 0x64: mp_allow_respawn
+    CValve *m_68;   // 0x68: mp_spectator
+    CValve *m_6c;   // 0x6c: skip_effects
+    CValve *m_70;   // 0x70: total_mp_kills
     CValve *m_74;   // 0x74: SOCOM II's (OnMissionStart clears it and the word at 0x7c; the names ours)
     CValve *m_78;   // 0x78: and this with the word at 0x80
     int m_7c;   // 0x7c
     int m_80;   // 0x80
-    int m_84[5];   // 0x84 (SOCOM 1's at 0x50)
+    /* the lists' UI variables BSEALLISTVAR, BTERRLISTVAR, BSPECLISTVAR, BNONELISTVAR and BCHATLISTVAR
+     * (SOCOM 1's four m_uiv_*List at 0x50; the spectators' SOCOM II's) */
+    CUIVariable *m_84[5];   // 0x84
     PNT2D m_static_radio;   // 0x98: the radio's place on the HUD (Init reads hud.rdr's; the names ours)
     PNT2D m_dynamic_radio;   // 0xa0
-    unsigned char _a8[0xbc - 0xa8];
+    unsigned char m_a8;   // 0xa8: SOCOM II's
+    unsigned char _a9[0xb0 - 0xa9];
+    int m_game_object_index;   // 0xb0 (SOCOM 1's at 0x74)
+    unsigned char _b4[0xbc - 0xb4];
     int m_bc;   // 0xbc (SOCOM 1's at 0x80)
     int m_c0;   // 0xc0 (SOCOM 1's at 0x84)
-    unsigned char _c4[0xc8 - 0xc4];
+    int m_c4;   // 0xc4 (SOCOM 1's m_gate_clock at 0x88)
     int m_c8;   // 0xc8 (SOCOM 1's at 0x8c)
     bool m_late_joiner;   // 0xcc (SOCOM 1's at 0x94)
     unsigned char _cd;
     unsigned char m_ce;   // 0xce (SOCOM 1's at 0x96)
     unsigned char m_cf;   // 0xcf (SOCOM 1's at 0x97)
-    unsigned char _d0[0xd4 - 0xd0];
+    unsigned char m_d0;   // 0xd0 (SOCOM 1's m_bdown at 0x98)
+    unsigned char m_d1;   // 0xd1 (SOCOM 1's m_ghost_ok at 0x99)
+    unsigned char _d2[0xd4 - 0xd2];
     unsigned char m_d4;   // 0xd4 (SOCOM 1's at 0x9b)
     unsigned char m_d5;   // 0xd5 (SOCOM 1's at 0x9c)
     unsigned char m_d6;   // 0xd6 (SOCOM 1's at 0x9d)
     unsigned char _d7;
     bool m_ten_second_launch;   // 0xd8 (SOCOM 1's at 0x9f)
     unsigned char m_d9;   // 0xd9: SOCOM II's
-    unsigned char _da[0xdc - 0xda];
+    unsigned char m_da;   // 0xda: SOCOM II's
+    unsigned char _db;
     bool m_respawn;   // 0xdc: respawning on (with the valve "Respawn")
-    unsigned char _dd[0xe0 - 0xdd];
+    unsigned char m_dd;   // 0xdd: SOCOM II's
+    unsigned char m_de;   // 0xde: SOCOM II's
+    unsigned char _df;
     unsigned int m_max_game_time;   // 0xe0: the round's clock in milliseconds (SOCOM 1's m_clock.m_max_game_time, at 0xa0)
     int m_launch_time;   // 0xe4 (SOCOM 1's at 0xa8)
     unsigned int m_time_in_round;   // 0xe8 (SOCOM 1's m_clock.m_time_in_round, at 0xac)
@@ -184,7 +207,8 @@ public:
     MP_MAJOR_GAME_STATE m_mp_major_game_state;   // 0x113 (SOCOM 1's at 0xdb)
     MP_MAJOR_GAME_STATE m_my_major_game_state;   // 0x114 (SOCOM 1's at 0xdc)
     MP_MINOR_GAME_STATE m_my_minor_game_state;   // 0x115 (SOCOM 1's at 0xdd)
-    unsigned char _116[0x11c - 0x116];
+    unsigned char _116[0x118 - 0x116];
+    float m_pos_smooth;   // 0x118 (SOCOM 1's at 0xe0: 50 at the start)
     int m_e3_round_count;   // 0x11c
     int m_120;   // 0x120
     int m_124;   // 0x124
@@ -3719,6 +3743,101 @@ unsigned int CZNetGame::DecrementRoundClockSec(int sec)
             m_max_game_time = 1000;
     }
     return GetMaxGameTimeSec();
+}
+
+/* the online game set up: its state, clock and flags cleared, its lists' UI variables made (the
+ * chat's emptied), the character type's name "0", and its valves made and the most cleared (SOCOM
+ * 1's Initialize, grown; OVL1 0x2A76D0) */
+bool CZNetGame::Initialize()
+{
+    m_f8 = 0;
+    m_100 = 0;
+    m_max_game_time = 0;
+    m_round_clock = 0;
+    m_time_in_round = 0;
+    m_launch_time = 0;
+    m_total_time = 0;
+    m_launch_f4 = 0;
+    m_clock_running = 1;
+    m_mp_major_game_state = MP_MAJOR_UNKNOWN;
+    m_my_minor_game_state = MP_MINOR_UNKNOWN;
+    m_my_major_game_state = MP_MAJOR_UNKNOWN;
+    m_bc = 0;
+    m_c8 = 0;
+    m_c0 = 0;
+    m_c4 = 0;
+    m_112 = 1;
+    m_d5 = 0;
+    m_cf = 0;
+    m_d6 = 0;
+    m_ce = 0;
+    m_ten_second_launch = false;
+    m_110 = 0;
+    m_respawn = false;
+    m_game_object_index = -1;
+    m_d1 = 0;
+    m_pos_smooth = 50.0f;
+    m_d0 = 0;
+    m_d9 = 0;
+    m_da = 0;
+    m_dd = 0;
+    m_de = 0;
+    m_84[0] = theUIVarManager.Add("BSEALLISTVAR", 0, UIVL_PERMANENT);
+    m_84[1] = theUIVarManager.Add("BTERRLISTVAR", 0, UIVL_PERMANENT);
+    m_84[2] = theUIVarManager.Add("BSPECLISTVAR", 0, UIVL_PERMANENT);
+    m_84[3] = theUIVarManager.Add("BNONELISTVAR", 0, UIVL_PERMANENT);
+    m_84[4] = theUIVarManager.Add("BCHATLISTVAR", 0, UIVL_PERMANENT);
+    CRdrEditor ed;
+
+    ed.push(0);
+    ed.pop();
+    m_84[4]->Set(&ed);
+    strncpy(m_12c, "0", sizeof(m_12c));
+    m_12c[sizeof(m_12c) - 1] = 0;
+    m_pMyMajorGameStateValve = CValve::Create("mp_major_game_state", 0, (VALVE_TYPE)1);
+    SetValveValue(m_pMyMajorGameStateValve, 0);
+    m_pMyMinorGameStateValve = CValve::Create("mp_minor_game_state", 0, (VALVE_TYPE)1);
+    SetValveValue(m_pMyMinorGameStateValve, 0);
+    m_28 = CValve::Create("mp_join_game", (VALVE_TYPE)1);
+    m_14 = CValve::Create("player_team", (VALVE_TYPE)1);
+    SetValveValue(m_14, 0);
+    m_pLateJoinerValve = CValve::Create("late_joiner", (VALVE_TYPE)1);
+    SetValveValue(m_pLateJoinerValve, 0);
+    LateJoiner(false);
+    m_p45SecondClockValve = CValve::Create("mp_45_sec_clock", (VALVE_TYPE)1);
+    SetValveValue(m_p45SecondClockValve, 0);
+    m_pLaunchSecondsValve = CValve::Create("mp_x_sec_clock", (VALVE_TYPE)1);
+    m_pMPProgTimer1Valve = CValve::Create("mp_prog_timer1", 30, (VALVE_TYPE)1);
+    m_40 = CValve::Create("mp_penalty", (VALVE_TYPE)1);
+    SetValveValue(m_40, 0);
+    m_pPlayerJoinCountValve = CValve::Create("player_join_count", (VALVE_TYPE)1);
+    SetValveValue(m_pPlayerJoinCountValve, 0);
+    m_pPlayerReadyCountValve = CValve::Create("player_ready_count", (VALVE_TYPE)1);
+    SetValveValue(m_pPlayerReadyCountValve, 0);
+    m_4c = CValve::Create("mp_persistent", (VALVE_TYPE)1);
+    m_18 = CValve::Create("mp_bomb", (VALVE_TYPE)1);
+    SetValveValue(m_18, 1);
+    m_pGameOverValve = CValve::Create("mp_game_over", 0, (VALVE_TYPE)1);
+    SetValveValue(m_pGameOverValve, 0);
+    m_1c = CValve::Create("bomb_owner", (VALVE_TYPE)1);
+    SetValveValue(m_1c, 0);
+    m_pE3RoundValve = CValve::Create("mp_round_count", 0, (VALVE_TYPE)1);
+    SetE3RoundCount(0);
+    m_54 = CValve::Create("mp_team_unbalance", 0, (VALVE_TYPE)1);
+    m_a8 = 0;
+    m_58 = CValve::Create("aiteam_00", 0, (VALVE_TYPE)1);
+    m_5c = CValve::Create("aiteam_08", 0, (VALVE_TYPE)1);
+    m_60 = CValve::Create("mp_teams_too_big", 0, (VALVE_TYPE)1);
+    m_64 = CValve::GetByName("mp_allow_respawn");
+    m_68 = CValve::Create("mp_spectator", 0, (VALVE_TYPE)1);
+    m_6c = CValve::Create("skip_effects", 0, (VALVE_TYPE)1);
+    m_pHalfRoundCountValve = CValve::Create("mp_half_rounds", 0, (VALVE_TYPE)1);
+    m_70 = CValve::Create("total_mp_kills", 0, (VALVE_TYPE)1);
+    m_pMaxRoundCountValve = CValve::GetByName("mp_max_rounds");
+    m_8 = CValve::GetByName("mp_max_round_time");
+    m_74 = CValve::GetByName("seals_team_score");
+    m_78 = CValve::GetByName("terrs_team_score");
+    return true;
 }
 
 /* the online game let go of: its state and clocks cleared, the rounds back to none (OVL1 0x2A75F0,
