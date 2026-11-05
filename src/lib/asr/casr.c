@@ -614,13 +614,16 @@ int casrGetParam(CASR *c, int id, unsigned int *value)
     return 0;
 }
 
-/* OPEN (1 word): the last test's branch -- the target's `bnez v0` keeps `li v0,1` in a plain delay
- * slot (the fall-through's `move v0,zero` overwrites it), 2.96 here annuls it (`bnezl`): reorg's view
- * of v0 at the fall-through. SOCOM 1's copy tests a copy (`move v1,v0; bnez v1`). Tried: the return
- * as unsigned char/int/long/short, _tosControl as int/unsigned char/signed char/unsigned short, every
- * error exit a `return 1` or one `goto error`, the else-if and nested forms (build/scratch/gcc/p/
- * s_ues*.py, 30 spellings: 1 to 44s); no switch of 2.96-ee-001003-1 moves it either (round 12c's
- * build/scratch/gcc-r12c/bnez_sweep.sh): a later SCE 2.96's reorg. */
+/* the extra events' state sent to the engine: on (the language's bit 64) the start, the counter's
+ * address, the context info and the info itself, else the stop; 1 on any failure (the context
+ * info freed when it was made). Round 24c, byte-exact: the shared failure return is the else-if's
+ * own body, its label inside the block (`} else if (...) { error: return 1; } return 0;`) -- with
+ * the label after a final `return 0` (round 9c-13c's 30 spellings) the else-if's fall-through
+ * shares the then-arm's `return 0` block (its label's one jump is the then-arm's last test: the
+ * -dd dump), reorg copies that block's `move v0,zero` into the then-arm's beqzl and redirects it,
+ * the label dies, and the else-if's slot is annulled (`bnezl`, 1 word) -- read as resource.c's
+ * live-register scan from the block's head, which drops a REG_DEAD register (v0, the call's
+ * value) only at the next CODE_LABEL. */
 static unsigned char UpdateExevStatus(CASR *c)
 {
     if (c->exev != 0 && c->lng->CheckBitField(c->lng, 64)) {
@@ -634,11 +637,11 @@ static unsigned char UpdateExevStatus(CASR *c)
             FreeCtxInfo(c);
             goto error;
         }
-    } else if (_tosControl(c->event, 101, 0, 0) != 0)
-        goto error;
-    return 0;
+    } else if (_tosControl(c->event, 101, 0, 0) != 0) {
 error:
-    return 1;
+        return 1;
+    }
+    return 0;
 }
 
 /* the second pass over the labelled utterance: its own context (the Chinese one when the language
