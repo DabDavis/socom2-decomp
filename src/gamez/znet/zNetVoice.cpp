@@ -65,7 +65,13 @@ struct VoiceSlot {
  * its constructor) and keeps at data_0045B718. SOCOM 1's zNetVoice.cpp held CZNetVoice, so the
  * class keeps that name (a prediction: SOCOM II's object is new); VoiceRadio is this unit's
  * older spelling, kept as a typedef for the placeholders */
+extern "C" {
+extern unsigned char data_003DF540[];   /* the radio's open and close tone, at rest */
+}
+
 struct CZNetVoice {
+    /* everything zeroed or given its rest value, the twelve channel slots last (0x3102E0) */
+    CZNetVoice();
     /* the radio's two message types registered with the network (0x310210) */
     void zNetRegisterVoice();
 
@@ -81,11 +87,15 @@ struct CZNetVoice {
     unsigned char _3c[0x44 - 0x3c];
     int m_hint;   // 0x44: the headset's enumeration hint (1 a change seen, 2 handled)
     unsigned char m_recording;   // 0x48: the headset recording (VoiceDevice's m_48)
-    unsigned char _49;
+    unsigned char m_playing;   // 0x49 (VoicePlayer's)
     unsigned char m_quiet;   // 0x4a: set, the talk key served; cleared (a channel change), the slot given back
-    unsigned char _4b;
+    unsigned char m_4b;
     unsigned char m_open;   // 0x4c: the set-up done (VoiceChat's)
-    unsigned char _4d[0x54 - 0x4d];
+    unsigned char m_4d;
+    unsigned char m_bypass;   // 0x4e: the headset's processing off (VoiceHeadset's; the constructor leaves it)
+    unsigned char m_noagc;   // 0x4f (VoiceHeadset's)
+    unsigned char m_nonoise;   // 0x50 (VoiceHeadset's)
+    unsigned char _51[0x54 - 0x51];
     unsigned char m_status[8];   // 0x54: our channel's state, as the DME reports it
     int m_5c;   // 0x5c
     /* the two message ids the network hands back at registration, unsigned (the radio tick's sends
@@ -97,9 +107,21 @@ struct CZNetVoice {
     VoiceSlot m_slots[12];   // 0x70
     unsigned char *m_tone;   // 0xd0: the open and close tone's samples (data_003DF540 at rest)
     short m_tonebuf[2000];   // 0xd4: the tone as the headset plays it
-    unsigned char _1074[0x1078 - 0x1074];
+    CValve *m_valve;   // 0x1074: the talk valve (VoiceTalk's)
     int m_usecodec;   // 0x1078 (VoiceChat's)
-};
+    void *m_echo;   // 0x107c: the echo canceller (VoiceHeadset's)
+    int m_1080;   // 0x1080
+    unsigned char m_settings[4];   // 0x1084: the canceller's settings (VoiceHeadset's)
+    unsigned char _1088[0x109c - 0x1088];
+    int m_109c;   // 0x109c: -1 at rest
+    int m_10a0;   // 0x10a0: 180 at rest
+    unsigned char _10a4[0x10bc - 0x10a4];
+    /* each stream's format, recording [0] and playback [1] (VoiceDevice's) */
+    int m_channels[2];   // 0x10bc
+    int m_bits[2];   // 0x10c4
+    int m_rate[2];   // 0x10cc
+    int m_ms[2];   // 0x10d4
+};   // 0x10dc: CMission::Init's operator new(4316)
 typedef CZNetVoice VoiceRadio;
 struct VoiceTalk {
     unsigned char m_state;   // 0x0
@@ -381,6 +403,46 @@ int func_003106A0(VoiceDecoder *d, const void *packet, short *out)
 }
 #pragma auto_inline reset
 
+/* the radio made (CMission::Init news its 4316 bytes and keeps it at data_0045B718; OVL1 0x3102E0):
+ * idle, no slot, channel or team, no headset, the tone at rest, the headset's streams mono and
+ * stereo 16-bit at 8 kHz -- and the twelve channel slots free (256: no client) last, the loop the
+ * target runs after every other store, unrolled six to a pass */
+CZNetVoice::CZNetVoice()
+{
+    m_state = 1;
+    m_slot = 0;
+    m_channel = 0;
+    m_team = 0;
+    m_handle = -1;
+    m_hint = 2;
+    m_recording = 0;
+    m_playing = 0;
+    m_quiet = 0;
+    m_4b = 0;
+    m_open = 0;
+    m_4d = 0;
+    m_noagc = 0;
+    m_nonoise = 0;
+    m_tone = data_003DF540;
+    m_valve = 0;
+    m_echo = 0;
+    m_1080 = 0;
+    m_109c = -1;
+    m_10a0 = 180;
+    m_channels[0] = 1;
+    m_channels[1] = 2;
+    m_bits[0] = 16;
+    m_bits[1] = 16;
+    m_rate[0] = 8000;
+    m_rate[1] = 8000;
+    m_ms[0] = 2000;
+    m_ms[1] = 2000;
+    for (int i = 0; i < 12; i++) {
+        m_slots[i].m_client = 256;
+        m_slots[i].m_4 = 0;
+    }
+}
+
 /* the radio's two messages registered: "Radio", three bytes, and "Channel Status", the twelve
  * slots' clients as halfwords (OVL1 0x310210) */
 void CZNetVoice::zNetRegisterVoice()
@@ -534,7 +596,6 @@ int lgAudASync(int wait);
 int lgAudClose(int handle);
 int lgAudStartRecording(int handle);
 int lgAudStopRecording(int handle);
-extern unsigned char data_003DF540[];   /* the radio's open and close tone, at rest */
 extern int data_0045C290;   /* the ticks without a headset */
 }
 

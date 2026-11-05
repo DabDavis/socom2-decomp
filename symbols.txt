@@ -5364,7 +5364,7 @@
 0x0030FEF0 0x188 func_0030FEF0  # OVL1
 0x00310080 0x190 func_00310080  # OVL1
 0x00310210 0xC4 zNetRegisterVoice__10CZNetVoiceFv  # OVL1; the online lane, round 25: the radio's two application message types ('Radio', three bytes; 'Channel Status', twelve halfwords) described and registered through CZNetwork::zNetRegisterMessage 0x30CFF0, state set idle; fts_remote.cpp's message registration calls it on the voice object data_0045B718 right after CZSealState::zNetRegisterSeal ... CZPlatformState::zNetRegisterPlatform, hence the zNetRegister* name (ours); the class SOCOM 1's zNetVoice.cpp's CZNetVoice (a prediction: SOCOM II's voice object is new, 0x10DC bytes, made by CMission::Init with constructor 0x3102E0)
-0x003102E0 0xE8 func_003102E0  # OVL1
+0x003102E0 0xE8 __ct__10CZNetVoiceFv  # OVL1; ours, the online lane round 26 (the game states' round-46 request: CMission::Init news 4316 bytes -- sizeof CZNetVoice, 0x10DC -- constructs them with this function and stores the object at data_0045B718, the this of zNetRegisterVoice 0x310210 and of the radio's every handler; the constructor's stores are the fields those handlers read: the state 1, the headset handle -1, the tone data_003DF540, the twelve channel slots 256 last)
 0x003103D0 0x3C func_003103D0  # OVL1
 0x00310410 0x68 func_00310410  # OVL1
 0x00310480 0x6C func_00310480  # OVL1
