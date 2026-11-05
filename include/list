@@ -34,7 +34,38 @@
  * one-level form), and GetSealCount's calls all come right with size() over sz() and the wrapper's
  * begin()/end() through the base's, its outer copy's in-memory temporaries not (seal_unit.cpp's note).
  * The tail() 0x2D2530 and second() 0x207560 that CGTree::Destroy's inner copy calls are this header's
- * tail() and the end pair's second() (non-const) by their code -- graph_tree.cpp could name them. */
+ * tail() and the end pair's second() (non-const) by their code -- graph_tree.cpp could name them.
+ * ROUND 28 (the MSL headers; probes build/p28/, scratch build/scratch/msl-r28/, untracked), MEASURED,
+ * NOT APPLIED -- THE WRAPPER'S begin() THROUGH THE BASE'S: DistributeNotify's first self-copy (0x5ED4F0,
+ * seal_unit.cpp) calls the base's begin() 0x510100 and builds the wrapper iterator from its result in
+ * place (0x5ED7A0), SOCOM 1's construction (the demo's CGTree::Destroy: begin 0x17F770, then 0x210C90
+ * by value) -- `iterator begin() { return iterator(base::begin()); }` (A), or `return base::begin();`,
+ * makes it code-exact. But base::begin() is then the wrapper constructor's ARGUMENT, checked a level
+ * deeper (README "MW's inline budget"): a begin() reached at depth 3 is no longer inlined whole (the
+ * build/p28/depth.cpp ladder: master's and a named local's begin() inline whole to depth 3, (A)'s to
+ * 2), and over every hand-written unit (A) is +1 / -12 -- zanim_anim.cpp's eight find_if(begin(), ...)
+ * walks (CZAnimArgList::GetCmd ...), pickup_main.cpp's DebugPickups inlined (func_005418B0,
+ * func_00541700, CPickup::Destroy), CreateMultiPlayerUnits; all twelve match again at -inline level=6
+ * (the original's level, "Level 6, or 8?"). Base iterator by const reference (A) is the same; base::begin()
+ * built by a default constructor and a store (a "leaf") makes DistributeNotify byte-exact and the twelve
+ * worse (the empty constructor counts). The base's begin() into a named local, `b = base::begin();
+ * return iterator(b);`, is as shallow as now but copies b into the by-value parameter (a third call in
+ * the self-copy); with the NON-CONST wrapper's constructor taking the base iterator by const reference
+ * (select<IsConst, base_iterator, const base_iterator &>) it is lossless -- +1 (DistributeNotify), the
+ * two <0> constructor rows renamed ...FRCQ3... (0x5ED7A0, 0x2D22E0) -- but SOCOM 1 mangles that
+ * constructor by value (0x210C90) and its <1> one, word for word SOCOM II's 0x5ED980, takes the base
+ * const_iterator by value in a register: one template by value, the image's instances agree, so the
+ * by-reference form is a stand-in, left for the integrator.
+ * GetSealCount (0x5ED9B0, const since the kit's round 45) needs three things: the const_iterator's * by
+ * reference (APPLIED, below: code-neutral), size() through sz() (`return sz();`: its first self-copy
+ * calls 0x5E8A80) and begin() const through the base's (it calls 0x5ED9A0, then 0x5ED980 with the base
+ * const_iterator in a1: a named local copied by value gives exactly that). With all three it is code-
+ * exact (its pieces' rows named), but size() three high costs CAiSTarget::Tick (seal_airesponse.cpp:
+ * StayPut -> HoldOrSniper -> HoldBrokenOf -> m_stateStack.size() is then too tall) and CAiState's
+ * operator= (the list assignment's min(size(), x.size()) one level taller -- a leaf count read there,
+ * `size_val()`, keeps it), and the const begin() through a named local -- +1 (st_mpexit.cpp's
+ * SetFinalTeamTotalsUiVar) -- costs CEntity::PostTickAll and CZObjectiveList::RefreshList (their frames):
+ * not applied. */
 
 #ifndef _MSL_LIST
 #define _MSL_LIST
@@ -763,8 +794,14 @@ public:
          * (no change) or copy assignment (the iterator leaves memory: every walk shrinks).
          * SerializeValves and CSched_Manager::RemoveTask(name) stay open: the target re-reads the
          * iterator itself after each call, as if it were visible to the callee (an escape probe --
-         * the iterator's address passed out -- does give that), and no form tried makes MW think so */
-        typedef typename select<IsConst, T *, T *&>::type reference;
+         * the iterator's address passed out -- does give that), and no form tried makes MW think so.
+         * THE const_iterator's ELEMENT BY REFERENCE TOO (the MSL headers round 28, the kit's round 45
+         * reading of 0x5ED940): list<CSealUnit *>::generic_iterator<1>'s out-of-line * returns the
+         * element's address (`lw v0,0(a0); addiu v0,v0,8`, GetSealCount's second self-copy loading it
+         * `lw a0,0(v0)`), as SOCOM 1's base iterators' * (0x1803D0, 0x1DABA0) -- `T *const &`, code-
+         * neutral over every hand-written unit (GetEntity's by-value fit no longer needed); 0x5ED940
+         * and the <1> walk's pieces 0x5ED880-0x5ED920 byte-exact from seal_unit.cpp's tail */
+        typedef typename select<IsConst, T *const &, T *&>::type reference;
         reference operator*() const { return (reference)*i_; }
         generic_iterator &operator++()
         {
