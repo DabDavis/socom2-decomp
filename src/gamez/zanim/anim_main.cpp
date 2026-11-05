@@ -72,20 +72,14 @@ int CZAnimMain::UnloadCmdSet(int index)
 
 
 /* a command by name in a set, made when asked; not made, it is looked for in the other sets.
- * OPEN, 6 instructions: the second search's command and the sets' strength-reduced offset trade
- * s3/s0 (the command declared ahead of its set fixes the set's s2, round 12: 8 -> 6; the offset
- * is an optimiser temporary, numbered after every named local, so it colours first). Reusing s
- * and cmd, hoisting the locals, the index declared first (10), the set a reference (8), the
- * command indexed (0x1F4) or the set read in place (0x1F0) are further off. Round 14 (igdump: the
- * offset temporary v43 is coloured first, the command v40 fourth): the command defined with the set,
- * declared outside the loop, after the index, its first point a const local, the set a reference,
- * the offset a named local stepped by 12 -- 6 to 17 (build/scratch/core/v_gcmd.py). Round 17, the
- * replay (igreplay --want c=s0,@3268=s3 --movers 40,43): both must move -- the offset right after j
- * (39.5/40.5), the command after the inner index (42.5 on) -- and the source that numbers so (`for
- * (int j = 0, off = 0; ...; j++, off += sizeof(_zanim_cmd_set))`, the set `(char *)m_cmdset_list +
- * off`, `int i = 0; zanim_cmd *c = o->cmd_list;` in that order) gives every register (3 left): the
- * named offset's zero sits before the loop's guard (the guard's delay slot) where the target's
- * strength-reduced one is set in the preheader after it, j's zero in the slot */
+ * The other sets' walk is the target's strength-reduced offset spelled out: a byte offset named
+ * after the loop's guard and stepped by the set's size, the guard written as an if over a do-while
+ * (the rotated loop MW makes of a for) -- so the offset is numbered after j and set in the
+ * preheader, after the guard's delay slot; the command defined after the inner index (round 17's
+ * replay: igreplay --want c=s0,@3268=s3 --movers 40,43, the offset right after j and the command
+ * after the inner index). Written as a for, the named offset's zero lands before the guard (3 off);
+ * the offset left to the optimiser, it is numbered after every named local and colours first (6 off:
+ * the second search's command and the offset trade s3/s0) */
 int CZAnimMain::GetCmd(int set, char *name, bool create)
 {
     _zanim_cmd_set *s = &m_cmdset_list[set];
@@ -103,16 +97,24 @@ int CZAnimMain::GetCmd(int set, char *name, bool create)
         cmd->id.b.index = s->count;
         return s->count++;
     }
-    for (int j = 0; j < m_cmdset_count; j++) {
-        if (j != set) {
-            zanim_cmd *c;
-            _zanim_cmd_set *o = &m_cmdset_list[j];
+    int j = 0;
 
-            c = o->cmd_list;
-            for (int i = 0; i < o->count; i++, c++)
-                if (!strcmp(name, c->name))
-                    return i;
-        }
+    if (j < m_cmdset_count) {
+        int off = 0;
+
+        do {
+            if (j != set) {
+                _zanim_cmd_set *o = (_zanim_cmd_set *)((char *)m_cmdset_list + off);
+                int i = 0;
+                zanim_cmd *c = o->cmd_list;
+
+                for (; i < o->count; i++, c++)
+                    if (!strcmp(name, c->name))
+                        return i;
+            }
+            j++;
+            off += sizeof(_zanim_cmd_set);
+        } while (j < m_cmdset_count);
     }
     return 0;
 }
