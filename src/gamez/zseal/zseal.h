@@ -674,6 +674,10 @@ public:
      * 0x591AB0, seal_command.cpp's -- not written yet; 0x591520 asks the first) */
     bool AllowCommandHOLDPOS(CZSealBody *seal);
     bool AllowCommandFOLLOW(CZSealBody *seal);
+    /* an order's name and an order by its name (SOCOM 1's, seal_command.cpp's there; OVL2 0x58EF80 and
+     * 0x58E0A0, seal_orders.cpp's: 72 orders where SOCOM 1's had 66) */
+    static FT_COMMAND GetCommandId(const char *name);
+    static const char *GetCommandName(FT_COMMAND cmd);
     virtual bool IsPlayer() const;
     virtual bool IsAi() const { return false; }
     virtual bool IsRemote() const { return false; }                         /* +0x34 */

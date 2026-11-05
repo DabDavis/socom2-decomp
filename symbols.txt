@@ -10573,7 +10573,7 @@
 0x0058DF20 0x78 func_0058DF20  # OVL2
 0x0058DFA0 0x7C func_0058DFA0  # OVL2
 0x0058E020 0x78 func_0058E020  # OVL2
-0x0058E0A0 0x78 func_0058E0A0  # OVL2
+0x0058E0A0 0x78 GetCommandId__9CSealCtrlFPCc  # OVL2; s1:order by hand (the SEALs, round 46): SOCOM 1's GetCommandId__9CSealCtrlFPCc (0x282CD0) -- the same loop (a null test, strcasecmp of GetCommandName(i) against the name, the byte returned) with SOCOM II's 72 for SOCOM 1's 66; the parsers (CMission::Read, CTComm::Parse, InitMultiplayerMessages) hand it a name read from rdr
 0x0058E120 0x234 func_0058E120  # OVL2
 0x0058E360 0x164 func_0058E360  # OVL2
 0x0058E4D0 0x274 func_0058E4D0  # OVL2
@@ -10582,7 +10582,7 @@
 0x0058E950 0x1A4 func_0058E950  # OVL2
 0x0058EB00 0x260 func_0058EB00  # OVL2
 0x0058ED60 0x220 func_0058ED60  # OVL2
-0x0058EF80 0x208 func_0058EF80  # OVL2
+0x0058EF80 0x208 GetCommandName__9CSealCtrlF10FT_COMMAND  # OVL2; s1:order by hand (the SEALs, round 46): SOCOM 1's GetCommandName__9CSealCtrlF10FT_COMMAND (0x282D40, 66 names) -- the same string switch over SOCOM II's 72 orders, and 0x58E0A0 searches it with strcasecmp exactly as SOCOM 1's GetCommandId searches GetCommandName
 0x0058F190 0xA0 func_0058F190  # OVL2
 0x0058F230 0x4A8 func_0058F230  # OVL2
 0x0058F6E0 0x1BC func_0058F6E0  # OVL2
