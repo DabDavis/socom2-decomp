@@ -12188,6 +12188,48 @@ FindBestTranscription OPEN: 16 of 19) -- 3 rows new to the map's byte-exact rows
 superseded; `src/lib/asr` 556 of 583 (553 of 581 before). No rows named (all had SOCOM 1's). casr.h types
 +920/+924 (the trained transcription's out-parameters). No tool changed.
 
+**Round 31c: the user-word training's two scorers, the window flush, the grammar data, the iso-word block's control and N-best.**
+
+- **Values reload spills take their slots in declaration order** (ScoreTranscriptions, 0x950): i, least, buf,
+  ret, retried, first, have and same declared in the order of the target's +68 to +96 give its slots; the
+  registers' variables can go anywhere.
+- **A constant hoisted by loop.c and denied a register is folded back by reload**: a struct field set to 1
+  and read back four statements later (`size = (lab.n + lab.one) * 2 + 16`) lives long enough in the
+  utterance loop for loop.c to hoist the 1; global-alloc finds it no register and reload rematerialises
+  it into `addiu`, where the target sums a register (`li t1,1; addu`). The sum written straight after the
+  store keeps the 1 in the loop.
+- **A ?: inside a test is threaded into branches; through a local it is a movn** (`n = c > 1 ? c - 2 : 0;
+  if (cnt == n)`); **each loop's counter and walker their own variables** (one variable is one pseudo, one
+  register through every loop -- the target's differ per loop); **`while (k++ < cnt)` for a copy loop the
+  target leaves rolled** (the old-value test); **a load written before two spill stores stays ahead of
+  them** in sched2 (the !have arm's `q = c->uw_bt` before `first = j; have = 1`).
+- **GCC unrolls a loop by its RTL size at loop.c, after hoisting** (DoDurationModeling, casrEnableGenders):
+  a walking pointer for the expansion makes its body small enough to unroll by four where the target's
+  index (`newseg[idx--]`) unrolls by two; casrEnableGenders' switch loop has 47 insns at loop.c, its three
+  life-1 invariants are hoisted and the loop unrolled completely (3 x 33 < 100), where the target keeps two
+  of them in the loop (a longer loop at that point) and peels one iteration ahead of a loop unrolled by
+  two -- OPEN, diagnosed in place.
+- **Two case labels sharing a body make a range; apart, each value is tested** (ContextSetGcdData's
+  types 3 and 4: the target's two `beql` into one body cross-jumping merged); **case bodies are laid out
+  as written** (ControlIsoWordTokenDp's 37, 38, 4, 3, 5, 34 ... 27, SOCOM 1's order).
+- **A callee returning an unsigned char keeps `return f()` a jal in an int function** (qQueueControl in
+  isowdp.c: the object makes sibling calls, the target's call does not) -- the README's `_tosErrorLog` rule
+  from the caller's side; **an int accessor narrowed at the store** gives the target's andi (an unsigned
+  short accessor is trusted); **a field read back after its own store** is one load for both uses (`e->f160
+  = p->f12; e->f156 = e->f160 / 10`); **an allocation through an inline returning 1 on failure** keeps the
+  failure's `move v0,zero` ahead of the null test (SOCOM 1's shape).
+- **An append through an index** (`best[cnt]`) gives the records' base its register where a walker of its
+  own (`q++`) outranks it (GetNBest).
+
+Hand-written in round 31c: `asr/userword.c` (DoDurationModeling, ScoreTranscriptions new: 18 of 20),
+`asr/window.c` (WindowFlush new: the object whole, 5 of 5), `asr/context.c` (ContextSetGcdData new: the
+object's rows all matched), `asr/isowdp.c` (ControlIsoWordTokenDp, GetNBest new: 10 of 11), `asr/casr.c`
+(casrEnableGenders written, OPEN: 57 of 58) -- 6 rows new to the map's byte-exact rows (6,840 bytes), no
+draft superseded; `src/lib/asr` 562 of 590 (556 of 583 before). No rows named (all had SOCOM 1's names).
+casr.h types the user-word scoring result at +944 (dpscoreuw.c's SCOREUWRESULT), the back pointers'
+phoneme at SEGLABEL +16, the language's GetSilencePhenome, GetNbrWarpFactors and GetpWarpFactors slots
+and WARP. No tool changed.
+
 **Round 14b: the "toolchain" opens were SCEA's shapes; LargeInt's core is assembly.**
 
 - **LargeInt's EE primitives are hand-written assembly** (0x628B48-0x629A44, between LargeInt.c's C and
