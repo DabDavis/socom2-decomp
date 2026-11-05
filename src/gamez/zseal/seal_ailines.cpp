@@ -13,7 +13,19 @@
  * DrawLine's kind test is SOCOM 1's, in place, a bool preset true and cleared (`a || b` in the `if`
  * is 0x10 shorter). OPEN, the initialiser (OVL2 0x668FB0, unnamed in the map): the target's inlines
  * CStack()'s push of the unit matrix and builds the colour (1, 0, 0) into 0x66BAEC, copied to
- * 0x66BAE0 -- here CStack() is called (the pragma) and the colours are not built. */
+ * 0x66BAE0 -- here CStack() is called (the pragma) and the colours are not built. Round 42: every
+ * whole-unit setting inlines alike in the functions and the initialiser (dont_inline and
+ * inline_depth(0) keep the functions and call CStack(); inline_max_size(0), auto_inline off or none
+ * lose DrawOctahedron, DrawLine and LineTo), but THE UNIT NON-DEFERRED -- `#pragma defer_codegen off`
+ * after the includes, dont_inline on over the functions as now and off after the namespace -- keeps
+ * every function byte-exact (17 of 18 with <iostream> included) while the initialiser inlines
+ * CStack() and the colour's (1, 0, 0) constructor: the target's whole but for the copy into 0x66BAE0,
+ * which the target makes member by member through $f0 from a pointer to 0x66BAEC (an implicit
+ * operator= of a class holding the colour, by its shape) -- a copy construction is ld/sd + lwc1, the
+ * implicit CPnt3D assignment (in an initialiser object's constructor) batches $f2/$f1/$f0 from
+ * absolute loads, the three-float constructor from the fields likewise, a pointer cast 0x10C, the
+ * colour as a member of a struct 0x104 (build/scratch/kit/v_ail1-8.py). Non-deferred, the image's
+ * order wants the functions in source order (today's reverse) */
 
 #include "../zmath/zmath.h"
 

@@ -127,7 +127,10 @@ extern CHUD *theHUD;
  * sp+64-71 unused (frame 0x60: colour 80, size 72). One shared range array gives the frame but swaps
  * `this` and `rdr` (s0/s1, 17 off); two arrays give the target's registers with opacity's at 64.
  * Tried: the two declared the other way round, each in a block of its own, an unused third array
- * between them, a CPnt3D or float[4] colour, a CPnt3D for every array (3 to 17 off) */
+ * between them, a CPnt3D or float[4] colour, a CPnt3D for every array (3 to 17 off). Round 48: one
+ * shared array anywhere gives a 0x50 frame (17 off: the hole at 64 is a slot the target allots and
+ * never touches), reading opacity into scale's array or a dead `if (0)` array get no slot either;
+ * a float[4] or CPnt4D range gives the 0x60 frame with the range at 48 (6 off) */
 bool CFlareElement::Load(_zrdr *rdr)
 {
     char *name = zrdr_findstring(rdr, "texture");

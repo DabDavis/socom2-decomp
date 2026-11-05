@@ -1,9 +1,11 @@
-/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 -fno-strict-aliasing -funroll-loops -fno-optimize-sibling-calls */
+/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 -fno-strict-aliasing -funroll-loops -fno-optimize-sibling-calls -ffast-math */
 /* userword: the recogniser's user-word training (OVL2 0x4E1B28-0x4E42A4, SOCOM 1's object at 0x34FFE0:
  * userwordAcknowledge .. cbDoUserWordTraining), ScanSoft's recogniser, prebuilt with ee-gcc 2.96 at
  * -O2 -G0 -fno-strict-aliasing -funroll-loops (README "The GCC front") and, this object, without
  * sibling calls: DoLabelStop returns casrEnableLabelInQueue's int through a jal, byte-exact only
- * under -fno-optimize-sibling-calls (10 words off without; DoLabelStart likewise). Only the
+ * under -fno-optimize-sibling-calls (10 words off without; DoLabelStart likewise) -- and with
+ * -ffast-math (round 25c: CalcF2's min.s and FindBestTranscription's max.s/min.s are its; every
+ * function here matches with and without). Only the
  * functions written so far are here, in image order; names are SOCOM 1's (s1:align, s1:order),
  * the context casr.h's (the three training utterances' records at +980: round 13c), the rest of
  * its user-word fields by offset. The utterance callbacks index the records through a local index
@@ -131,6 +133,47 @@ unsigned char SendLabelsToEngine(CASR *c, const unsigned char *blocks, int n)
 out:
     return ret;
 }
+
+extern float powf(float x, float y);
+extern float expf(float x);
+
+#define MIN(a, b) ((a) < (b) ? (a) : (b))
+
+/* the training utterances' consistency (SOCOM 1's CalcF2, the same slot): of the n x n scores
+ * `in`, each row's sums over the other columns; then each utterance's mean over the others of the
+ * smaller of the two ratios between their sums, clamped at 1.923 (in double), as
+ * exp(-25 (r - 1)^2). The min.s are -ffast-math's (round 25c: the object is built with it -- every
+ * function written here matches with and without). */
+static void CalcF2(float *out, float *in, unsigned char n)
+{
+    float m[9];
+    unsigned char i, j, k, u, v;
+    float sum, a, b;
+    double r;
+
+    for (i = 0; i < n; i++)
+        for (j = 0; j < n; j++) {
+            m[i * n + j] = 0;
+            for (k = 0; k < n; k++)
+                if (k != j)
+                    m[i * n + j] += in[i * n + k];
+        }
+    for (u = 0; u < n; u++) {
+        sum = 0;
+        for (v = 0; v < n; v++) {
+            if (u == v)
+                continue;
+            a = m[v * n + u] == 0 ? 0 : m[u * n + u] / m[v * n + u];
+            b = m[u * n + u] == 0 ? 0 : m[v * n + u] / m[u * n + u];
+            sum += MIN(a, b);
+        }
+        r = sum / (n - 1);
+        if (r > 1.923)
+            r = 1.923;
+        out[u] = expf(-powf((float)r - 1.0f, 2.0f) * 25.0f);
+    }
+}
+
 
 /* labels [start, end) of utterance n -- clipped to what was written -- into the label queue one at
  * a time, the engine run on each.

@@ -79,6 +79,7 @@ public:
 
     CMultiMission *Find(const char *name);
     CMultiMission *Find(int id, bool multi);
+    CMultiMission *GetNext(int id, bool multi);
     signed char GetMultiValue(int id);
     signed char GetMultiValue(const char *code);
     const char *GetName(int id, bool multi);
@@ -326,6 +327,53 @@ CMultiMission *CMultiMissionList::Find(int id, bool multi)
             break;
         }
     return m;
+}
+
+/* the mission after the one of an id and kind: the next of that kind that is its name's newest,
+ * round from the end to the start, or the first such when no mission has that id and kind (OVL1
+ * 0x2C8DB0: zanim_menu.cpp's UIAdvanceMPMission asks it for the mission after the current one; the
+ * name ours). Find(int, bool)'s walk written out (see Find), then std::find's two iterators copied
+ * through the FPRs into frame temporaries, the found one kept in its slot for the second search's
+ * end. The first search's own iterator initialised from the one after the found (a loop with an
+ * init: its entry test at the top, the narrowed kind in that loop's preheader, so the second
+ * search narrows it again -- `for (; i != end(); ++i)` jumps to a bottom test and shares one
+ * narrowing), the second search's iterator a loop-scoped one (the found mission's cursor reused,
+ * its two registers swap) -- the MSL headers round 26, on include/vector's iterator as it stands */
+CMultiMission *CMultiMissionList::GetNext(int id, bool multi)
+{
+    CMultiMission *cur = 0;
+    CMultiMission *next = 0;
+
+    for (iterator i = begin(); i != end(); ++i)
+        if (id == (*i)->m_id && multi == (*i)->m_multi) {
+            cur = *i;
+            break;
+        }
+    if (cur) {
+        iterator at = std::find(begin(), end(), cur);
+        iterator from = at;
+
+        if (++from == end())
+            from = begin();
+        for (iterator i = from; i != end(); ++i)
+            if ((*i)->m_multi == multi && func_002C94F0(*i)) {
+                next = *i;
+                break;
+            }
+        if (!next)
+            for (iterator i = begin(); i != at; ++i)
+                if ((*i)->m_multi == multi && func_002C94F0(*i)) {
+                    next = *i;
+                    break;
+                }
+    } else {
+        for (iterator i = begin(); i != end(); ++i)
+            if ((*i)->m_multi == multi && func_002C94F0(*i)) {
+                next = *i;
+                break;
+            }
+    }
+    return next;
 }
 
 /* a mission's name by id and kind, "unknown" without one (OVL1 0x2C8AE0: Find(int, bool)'s walk
