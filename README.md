@@ -2062,6 +2062,21 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the world, rdr and sound, round 17** (CSnd's play and stream calls, the headset's ticks, the mission's
+  sound groups):
+  - MW counts a function's statements BEFORE inlining, an inline call counting one: PlaySound3D 0x342B20 auto-inlines
+    CalcVolPan only once CalcVolPan is 15 statements -- SOCOM 1's CalcVol an inline call, the two zero stores chained, the
+    depth copy written `(z = p.z) *= -1.0f` (any one alone leaves it 16, called);
+  - a byte-enum call result put in a variable of the same enum stays unmasked and is re-extended only at compares;
+    through an `unsigned char` or `int` MW masks it at the assignment; `(int)(GetMasterVol() * (1024.0f * vol * m_vol))`
+    through an inline read gives the target's multiply order, the static read in place or written last swaps it
+    (CSnd::PlaySoundVolPanPitch 0x343140, StreamSoundVolPan 0x342240);
+  - a local initialised by a ternary is numbered after the named locals, so it takes s0 over a bool declared before it;
+    the target keeps a global table's address in a saved register across calls only when the source uses a pointer
+    local (in place each call recomputes it); `int loc = 0;` before the call lands in the jal's delay slot, after it in
+    the next branch's (Headset::ConnectedTick 0x34AD00 / DisconnectedTick 0x34AFD0, the mission's sound groups 0x344910);
+  - CGSTexBuffer::UpdateTextureSelects 0x355DE0 (open since round 2, 1 off after the vector change) closes with the
+    palette's old address read into a local and `next != old` tested.
 - **Tells from the SEALs, round 36** (the cell finders, InitDecalHandles, AnimOverlay -- closed by reading MW's colouring):
   - with every spill cost 0 MW colours in simplify-sweep order: a node at or over K leaves in a later sweep and is
     coloured earlier, so one neighbour too many reorders the saved registers (the look and cover cell finders 0x55F7F0 /
