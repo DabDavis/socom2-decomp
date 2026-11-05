@@ -145,6 +145,8 @@ public:
 class CTexManager {
 public:
     int doAddBuffer(const char *name, float start, float end);
+    /* the packet buffer wiped (SwitchMenu's, SOCOM 1's) */
+    static void WipePktBuf();
 
     std::vector<CGSTexBuffer *> m_buffers;   // 0x0
 
@@ -172,6 +174,8 @@ struct _zsys_public {
     sceDmaChan *DmaToVif0;   // 0x0
     sceDmaChan *DmaToVif1;   // 0x4
     sceDmaChan *DmaToGif;    // 0x8
+    unsigned char _c[0x1d - 0xc];
+    unsigned char isCdBoot;   // 0x1d: a CD boot (SwitchMenu parks the head before a reboot)
 };
 extern _zsys_public zSys;
 
@@ -245,6 +249,9 @@ public:
 
 class CGameMenu {
 public:
+    /* the menu an rdr names switched to (SOCOM 1's SwitchMenu; SOCOM II's fades first, and goes to a
+     * game state for five names) */
+    void SwitchMenu(char *name);
     /* the background movie (SOCOM 1's TickMPEG/RestartBackgroundMPEG/HaltBackgroundMPEG, SOCOM II's
      * restart taking a name) */
     bool TickMPEG();
@@ -297,7 +304,7 @@ public:
     CSaferStr m_ReaderName;     // 0x8e0: the menu's rdr
     std::vector<zdb::CNode *> m_modelNodes;   // 0x8ec: the design's models' nodes (PrepModels; SOCOM 1's at 0x878)
     bool m_8f8;                   // 0x8f8
-    int m_8fc;                    // 0x8fc (-1)
+    int m_fadeSteps;              // 0x8fc: -1, or the fade's steps left before SwitchMenu switches (the name ours)
     int m_900;                    // 0x900
     std::vector<CSaferStr> m_904; // 0x904
 
@@ -386,10 +393,23 @@ public:
     virtual CSndInstance *PlaySound(bool oneShot, CSndInstance *inst, unsigned int flags);
 };
 
-/* the game, as far as the menus' sounds read it (fts_state.h's COurGame: the menu state at 0x78,
- * its teletype sound's name at 0x14 there, its selection sound at 0x2C) */
-class COurGame {
+/* a game state, and the game's state switches (fts_state.h's CGameState and CGame: opaque here) */
+class CGameState;
+class CGame {
 public:
+    void Switch(CGameState *state, unsigned int flags);
+    void Pop(unsigned int flags);
+};
+
+/* the game, as far as the menus' sounds read it (fts_state.h's COurGame: the menu state at 0x78,
+ * its teletype sound's name at 0x14 there, its selection sound at 0x2C), and the states SwitchMenu
+ * goes to by name (the menu state, the load state at 0xEC and the shutdown state at 0x298; ours) */
+class COurGame : public CGame {
+public:
+    CGameState *MenuState() { return (CGameState *)((char *)this + 0x78); }
+    CGameState *LoadState() { return (CGameState *)((char *)this + 0xec); }
+    CGameState *ShutdownState() { return (CGameState *)((char *)this + 0x298); }
+
     unsigned char _0[0x8c];
     CSaferStr m_ttySoundString;   // 0x8c: m_menuState.TtySoundString
     unsigned char _98[0xa4 - 0x98];
@@ -583,7 +603,7 @@ extern unsigned char g_hasAnims;
  * strings and vectors, the backplane and foreplane under its node (the foreplane 1 nearer than the
  * video's 0x60), registered, the fader black and half opaque (SOCOM 1's) */
 CGameMenu::CGameMenu() : m_popupnode(0), m_274(0), m_movierunning(false), m_has_mpeg_background(false),
-                         m_8f8(false), m_8fc(-1), m_900(0)
+                         m_8f8(false), m_fadeSteps(-1), m_900(0)
 {
     data_0049EA90 = this;
     m_MPEGName.reserve(64);
@@ -960,6 +980,71 @@ void CGameMenu::MakeButtonActive(const char *name)
             return;
         }
     }
+}
+
+/* the CD's head parked (util_sonyio.cpp's 0x39DFC0: the lowest file sector read, ours) */
+extern "C" void func_0039DFC0();
+void RebootAfterError();
+void Unload_MissionReader();
+/* the menu an rdr names switched to, or the game state a name stands for (0x365A00: SOCOM 1's
+ * SwitchMenu -- the menu cleared, the packet buffer wiped, the mission reader unloaded, the fader
+ * set black and the design loaded inside one batch; SOCOM II's fades first: the first call keeps
+ * the name and starts three steps, each later one steps while the fader is opaque, the last
+ * switches -- to the load screen, the menu state (popped first, or not), shutdown, a reboot, or the
+ * menu) */
+void CGameMenu::SwitchMenu(char *name)
+{
+    if (m_fadeSteps <= -1) {
+        if (!strcmp(name, "REBOOT") && zSys.isCdBoot)
+            func_0039DFC0();
+        m_fadeSteps = 3;
+        m_ReaderName = name;
+        return;
+    }
+    if (m_fadeSteps > 0) {
+        if (m_fader.GetTrans() == 128.0f || !strcmp(name, "REBOOT")) {
+            m_pBackplaneNode->SetActive(false);
+            m_fadeSteps--;
+        }
+        return;
+    }
+    m_pBackplaneNode->SetActive(true);
+    m_fadeSteps = -1;
+    if (!strcmp(name, "LOAD_SCREEN")) {
+        theGame.Switch(theGame.LoadState(), 0);
+        return;
+    }
+    if (!strcmp(name, "POP_TO_MENU_STATE")) {
+        theGame.Pop(0);
+        theGame.Switch(theGame.MenuState(), 0);
+        return;
+    }
+    if (!strcmp(name, "MENU_SCREEN")) {
+        theGame.Switch(theGame.MenuState(), 0);
+        return;
+    }
+    if (!strcmp(name, "SHUTDOWN")) {
+        theGame.Switch(theGame.ShutdownState(), 0);
+        return;
+    }
+    if (!strcmp(name, "REBOOT")) {
+        RebootAfterError();
+        return;
+    }
+    Clear();
+    zdb::CTexManager::WipePktBuf();
+    Unload_MissionReader();
+    if (name && strstr(name, "dlgHype"))
+        printf("");
+    if (name && strstr(name, "dlgNetLogin"))
+        printf("");
+    m_fader.SetHasTexture(false);
+    m_fader.Load(0.0f, 0.0f, 640.0f, 448.0f, 0);
+    m_fader.SetColor(0.0f, 0.0f, 0.0f);
+    m_fader.SetTrans(128.0f);
+    m_Reloc->StartBatchReloc();
+    LoadDesign(name, m_zar);
+    m_Reloc->EndBatchReloc();
 }
 
 /* the background movie stopped, if one runs (SOCOM 1's HaltBackgroundMPEG, 0x366B10) */
