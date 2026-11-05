@@ -3553,6 +3553,7 @@
 0x002AC410 Open__8CMissionFPCc
 0x002ACA30 func_002ACA30
 0x002ACAD0 CreateCompassNavPoints__8CMissionFv
+0x002AD290 Init__8CMissionFv
 0x002AD940 __dt__8CMissionFv
 0x002ADBC0 __ct__8CMissionFv
 0x002ADF10 NVGNoiseTick__FP14_zanim_cmd_hdrPf
@@ -3626,6 +3627,7 @@
 0x002B2310 RecycleEntity__8CMissionFP7CEntity
 0x002B23A0 RefreshTeamValves__8CMissionFv
 0x002B2840 InitalizeTeamValves__8CMissionFv
+0x002B28D0 LoadVehicle__8CMissionFP16CVehicleRdrEntryb
 0x002B2D20 func_002B2D20
 0x002B2E50 LoadVehicles__8CMissionFv
 0x002B3430 CloseVehicleRdr__8CMissionFv
@@ -3690,6 +3692,7 @@
 0x002B63B0 __dt__16C2DMessageStringFv
 0x002B6430 func_002B6430
 0x002B6D00 SetBkgColor__12C2DMessage_QFfff
+0x002B6D60 LastMessage__12C2DMessage_QFv
 0x002B6DE0 Clear_Messages__12C2DMessage_QFv
 0x002B6EE0 __dt__12C2DMessage_QFv
 0x002B6FC0 Init__12C2DMessage_QFP7C2DFontP8CRdrFile
