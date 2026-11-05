@@ -1401,20 +1401,19 @@ bool zrdr_findreal(const _zrdr *rdr, const char *tag, float *out, int n);
 /* the decal textures: the footsteps' by material, the blood drips' with their size ranges (OVL2
  * 0x5A4CF0; SOCOM 1's, the arrays SOCOM II's). Each tag found in the test, assigned there (the
  * target tests v0 with the copy in the delay slot), the locals declared first in tools/perm.py's
- * order, the counter, the count and the item one variable each for both loops.
- * OPEN, 10 instructions (the size right, 2 registers): in the second block the target gives the blood
- * tag s0 and the loop's count s5; here they swap (the tag s5, the count's second web s0). The first
- * block is the target's. Tried: perm.py over the declarations (best 10 with the shared counter, 19
- * with separate second-loop variables or a separate count; 1828-2328 steps each), the tag declared in
- * the test or tested apart, the decals rdr's local reused for the blood tag, the steps tag reused. */
+ * order, the counter and the item one variable each for both loops. Round 36, read off MW's colouring
+ * (igdump): the steps tag's variable REUSED for the blood tag -- a variable reused for an unrelated
+ * second purpose is split into a new web numbered after the others (the counter's second web too), so
+ * the blood tag is coloured first (s0) -- and the blood count a separate local declared before `tex`
+ * (s5); the shared count's second web would be numbered last instead and take s0 */
 void CZSealBody::InitDecalHandles()
 {
     char *texture;
     int i;
     _zrdr *steps;
-    _zrdr *blood;
     char *material;
     int n;
+    int nblood;
     _zrdr *rdr;
     zdb::CTexHandle *tex;
     _zrdr *item;
@@ -1432,16 +1431,16 @@ void CZSealBody::InitDecalHandles()
             ((zdb::CTexHandle **)data_0044D550)[index] = zdb::CWorld::GetTexHandle(texture);
         }
     }
-    if ((blood = zrdr_findtag(rdr, "BLOOD_DRIP_DECALS")) != 0) {
+    if ((steps = zrdr_findtag(rdr, "BLOOD_DRIP_DECALS")) != 0) {
         CZDecalDef def;
 
         def.m_decalminsize = 0;
         def.m_decalmaxsize = 0;
         def.m_texture = 0;
-        n = blood->Count();
-        m_blooddriptexhandles.reserve(n);
-        for (i = 0; i < n; i++) {
-            item = ItemAt(blood, i);
+        nblood = steps->Count();
+        m_blooddriptexhandles.reserve(nblood);
+        for (i = 0; i < nblood; i++) {
+            item = ItemAt(steps, i);
             tex = zdb::CWorld::GetTexHandle(zrdr_findstring(item, "TEXTURENAME"));
             if (tex) {
                 float min = 0.0f;

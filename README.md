@@ -2062,6 +2062,68 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the HUD, round 45** (CTeleType::Draw; GetAssetLibs on the new vector header):
+  - a rectangle built inside a call's own argument list keeps the target's order of work; as named locals MW merges the
+    repeated `(float)(x + 2)` into one conversion and moves it past both calls (CTeleType::Draw 0x378C00: 0x390 bytes to
+    exact, with three int statics between the teletype's speed and noise statics: -5, 8, -11);
+  - an inline member function shares the caller's member loads (one m_font load serves two expansions and the height), a
+    free inline taking the object as a parameter reloads it; a member read into an inline's own local before a virtual
+    call stays a separate load from the caller's read after it -- read directly in either place MW uses one load across
+    the call; with `(lib = expr) != 0` and lib passed by reference into an inline the store fills the null test's delay
+    slot and the test uses the register, an initialised lib passed by reference is reloaded for the test;
+  - since the MSL's round 24, `find(begin(), end(), x) == end()` plus push_back in a helper is too tall to inline whole:
+    it inlines one level and calls the five pieces out of line -- the target's shape for all five C2D GetAssetLibs
+    (vector<CAssetLib *>'s pieces 0x358670-0x358720 named at integration; GetAssetLibs 0x3585A0 3 off: the target builds
+    the list walk's end iterator in this's register, which no declaration order gets).
+- **Tells from the kit and AI states, round 38** (the kit's ammo, lens and fire-mode members, SniperTick, Find's caller):
+  - a float constant one unit in the last place off its decimal is a product of float literals folded by the compiler:
+    0x3E75C290 is `0.3f*0.8f`, 0x3F23D70B is `0.8f*0.8f` -- writing `0.24f` gives 0x3E75C28F (CZKit::Apply_LensEffects
+    0x5C1800, SOCOM 1's);
+  - an inline returning a static CPnt4D by value, read three times in one expression, shares one load of the static (one
+    temporary copied once per channel), a local read once drops the copies and comes out 0x20 short; a float the target
+    holds in a saved register across a later call and then fuses with adda/madd is a local computed before that call
+    (`pace = 0.75f + Get(); ... += dT * (0.25f + Get() + pace * r);`: SniperTick 0x5B9280, SOCOM II's third float);
+  - a mid-function `return` gives bc1f over a `b` to the epilogue, the target's single bc1t to the end is an enclosing if
+    running to the function's end; a field the target loads ahead of an update in the same block is read into a local
+    before the update; `return j != -1 ? x : 0;` gives `beq; move v0,zero` with the value on the fall-through, `j == -1 ?
+    0 : x` branches over a `b`; declaration-time numbering holds inside a block (`T type; U id = ...; type = f();`);
+    `max < mode[i]` gives v0 to the mode, `mode[i] > max` swaps them (CycleFireMode 0x5C4600, GetAmmoCount 0x5C38A0);
+  - AnimSet::Find's caller 0x5E3940 matches with anim.cpp's AnimSet::GetName fitted five inline levels high (fitted, not
+    read off the image: its comment says so), anim.cpp's copies of the SEALs' 0x5788C0 / 0x578920 matching with it;
+    FillAmmoPickupInstance 0x5BA040 declared in zseal.h's CZKit (m_kit's type).
+- **Tells from the world, rdr and sound, round 17** (CSnd's play and stream calls, the headset's ticks, the mission's
+  sound groups):
+  - MW counts a function's statements BEFORE inlining, an inline call counting one: PlaySound3D 0x342B20 auto-inlines
+    CalcVolPan only once CalcVolPan is 15 statements -- SOCOM 1's CalcVol an inline call, the two zero stores chained, the
+    depth copy written `(z = p.z) *= -1.0f` (any one alone leaves it 16, called);
+  - a byte-enum call result put in a variable of the same enum stays unmasked and is re-extended only at compares;
+    through an `unsigned char` or `int` MW masks it at the assignment; `(int)(GetMasterVol() * (1024.0f * vol * m_vol))`
+    through an inline read gives the target's multiply order, the static read in place or written last swaps it
+    (CSnd::PlaySoundVolPanPitch 0x343140, StreamSoundVolPan 0x342240);
+  - a local initialised by a ternary is numbered after the named locals, so it takes s0 over a bool declared before it;
+    the target keeps a global table's address in a saved register across calls only when the source uses a pointer
+    local (in place each call recomputes it); `int loc = 0;` before the call lands in the jal's delay slot, after it in
+    the next branch's (Headset::ConnectedTick 0x34AD00 / DisconnectedTick 0x34AFD0, the mission's sound groups 0x344910);
+  - CGSTexBuffer::UpdateTextureSelects 0x355DE0 (open since round 2, 1 off after the vector change) closes with the
+    palette's old address read into a local and `next != old` tested.
+- **Tells from the SEALs, round 36** (the cell finders, InitDecalHandles, AnimOverlay -- closed by reading MW's colouring):
+  - with every spill cost 0 MW colours in simplify-sweep order: a node at or over K leaves in a later sweep and is
+    coloured earlier, so one neighbour too many reorders the saved registers (the look and cover cell finders 0x55F7F0 /
+    0x55F940, open since round 15; Crouch 0x581990 and InStateHang 0x584390 stay 5 off on it: Stand's stance has exactly
+    25 neighbours); defining a local after a store, not at its declaration, can drop its degree below K and move it a sweep
+    (`bool found; *side = 2; found = false;`);
+  - a local assigned from a load becomes the load's temporary and a single-use local is forwarded to its use; an
+    enum-typed inline argument gets its load numbered first, `unsigned char` or `int` parameters are forwarded (0x541700:
+    pickup_main.cpp 39 of 39); MW evaluates `a[i] == p->shortfield` field first however written, reading the element into
+    an int local first reverses it (0x5609F0);
+  - a variable reused for an unrelated purpose becomes a new web numbered last -- a way to colour a value first
+    (CZSealBody::InitDecalHandles 0x5A4CF0, open since round 21: the blood tag takes s0); locals deferred to the same sweep
+    take saved registers in reverse declaration order, reassigned cursors' second webs follow their first-loop assignments
+    (CSealAnim::AnimOverlay 0x576BB0, open since round 34);
+  - a bounds-tested pick inside an inline wants if/else assignments (a ternary materialises the test); an explicit
+    `return;` closing a void function's last if-block leaves a `b` to the epilogue aimed at the next instruction (0x5763E0:
+    seal_anim.cpp 12 of 12); BindAnimSet(AnimSet *, bool) 0x58C4A0 is SOCOM 1's five AI-state calls' landing site;
+    ChooseWeapon 0x563470 named.
 - **Tells from completing the MSL headers, round 24** (THE POINTER VECTOR'S ORIGINAL ITERATOR ADOPTED; probes
   build/scratch/msl-r24-p24/):
   - include/vector's pointer vector is the image's now: raw begin/end belonging to each element type, `begin() { return
@@ -10086,6 +10148,50 @@ AllocateNodeAndFreePrevious: 12 of 12) -- 3 rows new to the map's byte-exact row
 superseding a draft; `src/lib/asr` 510 of 544 (507 of 540 before). 5 rows named (ProcessPitchCombiner,
 InitPitchCombiner, ControlPitchCombiner `s1:slot`; PitchCombinerReset `s1:calls`; LogPitchProcessing
 `s1:order`). No tool changed.
+
+**Round 23c: the pitch combiner's process and flush, a stand-in for its lead, the reset's store read off sched1.**
+
+- **C89 locals declared at the top are one pseudo across a function's blocks, and that sets global-alloc's
+  order**: FlushPitchCombiner's three padding blocks share one `s`, `len` and `i` (round 22c had them per
+  block): `i` then spans three loops and outranks `s` (the target's i in a2, s in a3, len in a0 in every
+  block -- per-block locals rank `s` first, 36 words); every order of the five declarations gives the same,
+  and the output block computes its count before `s = w - 1` (the nwin load ahead of the subtraction).
+- **A void function's trailing call is a sibling call; an int one that falls off the end keeps its `jal`**:
+  ProcessPitchCombiner's null-frame flush is `jal; nop` under the frame -- declared int (the scheduler's
+  TOSFUNC) and returning nothing. `-fno-optimize-sibling-calls` gives the same function, but the object's
+  constructor ends in `j tosBaseBlockConstruct`, so the flag is not the object's.
+- **reorg never puts a volatile reference in a delay slot** (resource.c's resource_conflicts_p: any `volatil`
+  conflicts), so a field loaded in a slot anywhere in the object is plain: LogPitchProcessing's target loads
+  +156 in a bnel's and three beqz's slots. The flush's re-read of +156 after its lead test (SOCOM 1's compile
+  too) is given byte for byte by volatile, which is therefore a marked stand-in (`LEAD_STANDIN`): plain, the
+  flush is 2 words short and the log pass 1, the re-read their only structural difference -- CSE1 merges the
+  two `(mem/s:QI (plus p 156))` loads (exp_equiv_p reads no MEM flag; no store, call or label lies between);
+  `-fno-cse-follow-jumps`, `-fno-cse-skip-blocks`, `-fno-gcse`, `-fno-rerun-cse-after-loop` each lose matched
+  functions, and the lead test's arm shapes (the skip arm first, a goto) do not give it.
+- **A store that is the last use of both its value and its base enters sched1 at weight -2**
+  (PitchCombinerReset, read off the regmove dump: REG_DEAD on the 1 and on p), so rank_for_schedule's
+  (priority, weight, luid) puts it first in every source order; the target's needs it held until the others
+  issue. `do { p->f183 = 1; } while (0)` does that in sched1 (its LOOP_BEG note makes the store a barrier:
+  sched1's output is the target's), but the barrier stands in sched2 too, where flush_pending_lists gives
+  every load one dependent more and the depend-count tie-break issues each base load before the srl beside
+  it (4 words; with `-fno-schedule-insns2` the reset matches and NormE_Processing and ControlPitchCombiner
+  do not). Volatile flags, the tail or the cursors as inlines, a pointer to the flags and the block's own
+  pointer do not give it either. CSE1 also stops its block at a LOOP_END note (CSE2, after loop.c, does not).
+- **Shapes, measured**: a frame's first value read before the scan pointer is formed (`max = f[1]` then `v
+  = f + 2`: the pointer's addiu ahead of the entry test, the load in its slot); a run's two flags with +161
+  stored first (the last source store is issued first); each quotient back into its sum (`sum /= norm;
+  *p->r96.wr = sum`, the target divides into the sum's register); a back-fill's `d = s - 1` after the wrap
+  test -- reorg's steal from the join copies it into the branch's slot and the arm, two assignments in m2c's
+  reading; an else arm's ring start if-converted where the ring's end is already in a register.
+- **Open, diagnosed in place**: PitchCombinerReset (18 words, above), LogPitchProcessing (0x3A4 against
+  0x38C under the stand-in, 0x384 plain: above), InitViterbi@nbestdp not revisited, InitPitchCombiner not
+  written (it holds the reset's body, tail and all).
+
+Hand-written in round 23c: `asr/pitchcomb.c` (+4: FlushPitchCombiner closed, ProcessPitchCombiner new,
+ConstructPitchCombiner over its draft, LogPitchProcessing OPEN; +148, +166, +172 as a float, +176 and +186
+typed; 5 of 7) -- 2 rows new to the map's byte-exact rows (1,816 bytes), one matched draft superseded
+(ConstructPitchCombiner, 0x502F10); `src/lib/asr` 513 of 547 (510 of 544 before). No rows named (all four
+had SOCOM 1's). No tool changed.
 
 **Round 14b: the "toolchain" opens were SCEA's shapes; LargeInt's core is assembly.**
 

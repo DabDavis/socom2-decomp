@@ -2214,22 +2214,22 @@ unsigned char func_0055FA90(CAiMap *map, const CAiMapLoc &loc, CAiMap::DIR dir);
 
 /* a cell to look from, and one to take cover in, near the SEAL's last good cell (its map's
  * FindLookLoc and FindCoverLoc): the side it faces handed back, 2 when none is found (OVL2 0x55F7F0
- * and 0x55F940, new in SOCOM II: CAiSPursue::Tick calls both; the names unknown).
- * OPEN, both 27 instructions, registers only (the code and its size right): the target numbers the
- * result lowest and the map highest -- map s0, radius s1, side s2, out s3, pos s4, found s5 -- where
- * MW here gives the map s5 and shifts the parameters down one. Tried: the flag declared first, every
- * local declared first and assigned after, the call made in the test. Its being numbered below the
- * parameters says the flag is not a plain local: an inline (the two finders' common body, the
- * finder its only difference?) is the next thing to try */
+ * and 0x55F940, new in SOCOM II: CAiSPursue::Tick calls both; the names unknown). Round 36, read off
+ * MW's colouring (igdump): the flag defined after the side's store -- every spill cost is 0 here, so
+ * the order is the simplify sweeps': defined at its declaration the flag has 26 neighbours and the
+ * map leaves in the second sweep ahead of the parameters (s5); defined after the store it has 24, it
+ * leaves in the second sweep instead and the map with the parameters in the third, last -- map s0,
+ * radius s1, side s2, out s3, pos s4, found s5, as the target */
 extern "C" bool func_0055F940(CSealCtrlAi *ai, const CPnt3D *pos, CAiMapLoc &out, unsigned char *side,
                               int radius)
 {
     CAiMapLoc loc(ai->m_entity->m_mapLocValid);
     CAiMap *map = AiMaps.GetMapByIndex(loc.m_mapid);
-    bool found = false;
+    bool found;
     CAiMap::DIR dir = CAiMap::DIR_COUNT;
 
     *side = 2;
+    found = false;
     if (map) {
         found = map->FindCoverLoc(loc, pos, out, dir, radius);
         if (found)
@@ -2243,10 +2243,11 @@ extern "C" bool func_0055F7F0(CSealCtrlAi *ai, const CPnt3D *pos, CAiMapLoc &out
 {
     CAiMapLoc loc(ai->m_entity->m_mapLocValid);
     CAiMap *map = AiMaps.GetMapByIndex(loc.m_mapid);
-    bool found = false;
+    bool found;
     CAiMap::DIR dir = CAiMap::DIR_COUNT;
 
     *side = 2;
+    found = false;
     if (map) {
         found = map->FindLookLoc(loc, pos, out, dir, radius);
         if (found)
@@ -2293,26 +2294,25 @@ enum AI_WEAPON_KIND {
 
 /* the kind of the weapon the body holds: its row in the table, 2 and 3 both kind 1, none 0 (OVL2
  * 0x560540) */
-/* OPEN, 0x70 against 0x60: the target sets the result to 0 first, takes the row into v0 and tests
- * it against 2 then 3 (`bne 3` straight to the exit), returning 1 for both; MW here tests 3 apart
- * and branches over a join. Tried: the switch after the loop on a result local, returning from
- * inside the loop, the conversion as an inline switch. */
+/* (round 36: the result preset and the loop left by `break`, 2 and 3 joined by `||` -- the target's
+ * `bne 3` straight to the exit; the weapon id an `int` local, defined after the counter's bare
+ * declaration so it is numbered above it: the id a1, the counter a2, the table cursor a0) */
 #pragma auto_inline off
 extern "C" AI_WEAPON_KIND func_00560540(CSealCtrlAi *ai)
 {
-    for (int i = 0; i < 7; i++) {
-        if (((CZSealBody *)ai->m_entity)->m_weapon_id == data_0066AD00[i]) {
-            AI_WEAPON_KIND kind = (AI_WEAPON_KIND)i;
+    AI_WEAPON_KIND kind = WEAPON_KIND_0;
+    int i;
+    int id = ((CZSealBody *)ai->m_entity)->m_weapon_id;
 
-            switch (kind) {
-            case WEAPON_KIND_3:
-            case WEAPON_KIND_2:
-                return WEAPON_KIND_1;
-            }
-            return kind;
+    for (i = 0; i < 7; i++) {
+        if (id == data_0066AD00[i]) {
+            kind = (AI_WEAPON_KIND)i;
+            if (kind == WEAPON_KIND_2 || kind == WEAPON_KIND_3)
+                kind = WEAPON_KIND_1;
+            break;
         }
     }
-    return WEAPON_KIND_0;
+    return kind;
 }
 #pragma auto_inline reset
 
@@ -2974,17 +2974,34 @@ extern "C" bool func_0055EBE0(CSealCtrlAi *ai, AI_FIREPARAMS *p)
     return true;
 }
 
-/* whether the body holds a weapon of the kind: kind 1 is rows 2 and 3 (OVL2 0x5609F0).
- * OPEN, 15 instructions: the target materialises each row's test (xor, sltiu) and branches on the
- * first, the entity in a2; MW here compares with beq and reuses the 1 the kind test left in v0.
- * Tried: inline bool helpers (the `||` one too), a result local, a bool local for the `||`. */
+/* whether the body holds a weapon of the kind: kind 1 is rows 2 and 3 (OVL2 0x5609F0; round 36: a
+ * result local set in an if/else, kind 1's rows through an inline -- and the other kind's row read
+ * into an `int` local first: MW evaluates `data[k] == seal->m_weapon_id` id first whichever way it
+ * is written, so the id took a register the narrowed kind still held; the element first leaves the
+ * id the kind's v1 and the seal a2, as the target's) */
+/* kind 1's two rows tested as a value, the second only when the first fails: the inline's bool
+ * narrowed into the caller's at the join (the target's `andi` in the `b`'s delay slot) */
+static inline bool IsKind1(CZSealBody *seal)
+{
+    bool r = data_0066AD00[2] == seal->m_weapon_id;
+
+    if (!r)
+        r = data_0066AD00[3] == seal->m_weapon_id;
+    return r;
+}
 extern "C" bool func_005609F0(CSealCtrlAi *ai, unsigned char kind)
 {
     CZSealBody *seal = (CZSealBody *)ai->m_entity;
+    bool r;
 
     if (kind == 1)
-        return data_0066AD00[2] == seal->m_weapon_id || data_0066AD00[3] == seal->m_weapon_id;
-    return data_0066AD00[kind] == seal->m_weapon_id;
+        r = IsKind1(seal);
+    else {
+        int w = data_0066AD00[kind];
+
+        r = w == seal->m_weapon_id;
+    }
+    return r;
 }
 
 /* the three items AllowCommand asks about (OVL2 0x5664F0; the names ours) */

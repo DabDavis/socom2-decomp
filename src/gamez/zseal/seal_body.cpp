@@ -983,7 +983,12 @@ extern "C" bool func_005857E0(CZSealBody *seal);
  * OPEN, 5 instructions (the size right): in the inlined Stand(1) the target gives Stand's stance s1
  * (b's register) and ClearStack's stack pointer s0, ours the other way round; Stand's and Crouch's
  * declaration orders (stance and t declared first, uninitialised, or the crouch path first) change
- * nothing or lose more */
+ * nothing or lose more. Round 36, MW's colouring (igdump): Stand's stance has exactly K = 25
+ * neighbours (18 real; this, ClearStack's counter and stack pointer, the count and its +1, the top
+ * blend's state byte, the prone constant), so it waits for the second simplify sweep and is coloured
+ * ahead of the stack pointer (23, the first sweep) -- the target's graph has one interference fewer
+ * somewhere; ClearStack's fallback read spelled through `stack` or `&m_blends`, or its locals
+ * reordered, does not do it (5-15 off) */
 CZBodyAnimBlend *CZSealBody::Crouch()
 {
     CZBodyAnimBlend *b = (CZBodyAnimBlend *)func_00555170(&m_blends);
@@ -1766,7 +1771,8 @@ void CZSealBody::BodySetState(int state)
  * two returns join at one `move s0,v0`, as only an inline's result does; one result for the three arms.
  * OPEN, 5 instructions (the size right): Crouch's miss (0x581990) exactly -- in the inlined Stand the
  * target gives the stance s2 and ClearStack's stack pointer s0, ours the other way round. Tried: the
- * declaration orders of ClearStack's and Stand's locals (Stand and ClearStack still match out of line) */
+ * declaration orders of ClearStack's and Stand's locals (Stand and ClearStack still match out of line).
+ * Round 36, MW's colouring: the same cause as Crouch's -- Stand's stance has exactly K = 25 neighbours */
 CZBodyAnimBlend *CZSealBody::InStateHang()
 {
     CZBodyAnimBlend *r;
