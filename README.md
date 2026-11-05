@@ -10966,7 +10966,7 @@ written, OPEN: 5 of 7) -- 4 rows new to the map's byte-exact rows (1,528 bytes),
 superseded (ConstructMel 0x4F6918, InitMel 0x4F6C78); `src/lib/asr` 531 of 558 (525 of 554 before). No rows
 named (all had SOCOM 1's). No tool changed.
 
-**Round 27c: the spectral subtraction's reset, mel.c whole, three SOCOM 1 bodies, a new smoothing unit.**
+**Round 27c: the two max.s rows, the spectral subtraction's reset, mel.c and specsub.c whole, four SOCOM 1 bodies, two new units.**
 
 - **cse2 swaps a load and the copy after it when the copy's destination lives longer** (InitSpecSub and
   ControlSpecSub, open since rounds 15c/26c, one cause): GCSE makes the reset's after-loop read of `s->n` a
@@ -10995,13 +10995,24 @@ named (all had SOCOM 1's). No tool changed.
   `if (cb(...) != 0) return 1;` with no `return 0` of its own keeps the test a branch (`beqz v0; li v0,1`);
   `return cb(...) != 0`, or the arm's own `return 0`, is jump.c's store-flag (`sltu`). The input helper tests
   the block first and writes the no-block case last (`if (b != 0) ... else if`).
+- **SpectralSubtraction (0x1208, SOCOM 1's 0xF88 a guide only) byte-exact, written by the lane's helper**: the
+  block's fields read into locals at the top and written back at the end (`s->ringpos = pos` last: sched1
+  issues the store where `s` dies first); the heavy spill slots in declaration order (one `end` shared by
+  every later loop, then the position, nring, the two counters, the noise, the n*4 temporary); each pointer
+  one variable with one role across all the loops, each loop's end from its own pointer (`for (end = p + n;
+  ...)` -- two more refs put the gain pointer above the frame's in global-alloc's priorities, s8 and a0 as
+  the target's); the noise update an if (`d = *r++ - *q; if (*q < d) d = *q;`: the target branches), the
+  gain floor a local read before its loop (`t > lo ? t : lo`: the seven max.s; the field read in the loop
+  reloads each pass); the band mean a variable of its own; the counter `if (f40 <= nring) f40++` (sltu/movz);
+  f96 declared before the noise pointer (reload keeps `s` in t0 for both field loads).
 - **loop.c's reduced pointer adds in the giv's order** (Lin_2_Log): the output indexed `out[k + i]` starts
   the strength-reduced pointer at `k * 4 + out`, the target's operand order; a row pointer `out + k` adds the
   other way (1 word). The spline's bracket indices are variables of their own (`khi = klo + 1`: the target's
   separate `(klo + 1) * 4`; `y[n + 1]` folds into an offset of y[n]); the frame counter and the row offset
   are stepped together in the for (`j++, k += nlog`: the counter set first, its register the target's).
 
-Hand-written in round 27c: `asr/specsub.c` (InitSpecSub and ControlSpecSub closed: 6 of 7), `asr/mel.c`
+Hand-written in round 27c: `asr/specsub.c` (InitSpecSub and ControlSpecSub closed, SpectralSubtraction new:
+7 of 7), `asr/mel.c`
 (MelInitBands new: 5 of 5), a new `asr/smooth.c` (SOCOM 1's smoothing object 0x3644C0, OVL2 0x4F7A48-0x4F812C:
 smtConstruct new, smtDestruct over its draft, Smoothing unwritten: 2 of 3), `asr/tos.c` (ConstructQueue new,
 SOCOM 1's static: 16 of 18; ConstructBlock 148 words, 2 short), `asr/shs.c` (Lin_2_Log new: 2 of 7), a new
@@ -11009,7 +11020,9 @@ SOCOM 1's static: 16 of 18; ConstructBlock 148 words, 2 short), `asr/shs.c` (Lin
 language's and the context's accessors called through their tables, slot for slot; the word's pronunciation
 table indexed through its own pointer; the else arm's three stores written in the reverse of the target's
 order, sched1 issuing the last of equal stores first -- putWordInDict and CreateSecondPassTreeContext
-unwritten: 1 of 3). No rows named (all had SOCOM 1's). No tool changed.
+unwritten: 1 of 3) -- 8 rows new to the map's byte-exact rows (11,204 bytes), one matched draft superseded
+(smtDestruct 0x4F80A8); `src/lib/asr` 540 of 565 (531 of 558 before). No rows named (all had SOCOM 1's). No
+tool changed.
 
 **Round 14b: the "toolchain" opens were SCEA's shapes; LargeInt's core is assembly.**
 

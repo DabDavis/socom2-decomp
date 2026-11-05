@@ -8,8 +8,8 @@
  * here compiles the same with and without it, round 26c, so the directive carries the object's
  * flag). Names are SOCOM 1's (the constructor's slots, s1:align, s1:calls); the block's fields
  * are named by their use. A block of the scheduler's (asr/tosblk.h): two inputs, four outputs.
- * Only the functions written so far are here, in image order (SpectralSubtraction, 0x1208, is not
- * written: declared, its row open). The session functions copy the record in field order, the
+ * In image order, whole (SpectralSubtraction written in round 27c). The session functions copy the
+ * record in field order, the
  * ring's size taken into the count's own variable (`n += s->nring * n`: the target's sum into the
  * count's register). The reset (ControlSpecSub's null session, InitSpecSub's tail) is one text in
  * both: the first loop's count a block-local initialised at its declaration, the count after it
@@ -60,11 +60,10 @@ typedef struct SPECSUBSESSION {
 } SPECSUBSESSION;
 
 extern float logf(float x);
+extern float expf(float x);
 extern int qQueueControl(void *q, int cmd, unsigned short reader, int arg);
 extern void heap_Free(void *heap, void *p);
 
-/* not written yet (their rows open) */
-int SpectralSubtraction(SPECSUB *s, unsigned char flag, void *frame, float *out1, float *out0);
 static int InitSpecSub(SPECSUB *s);
 static void ProcessSpecSub(SPECSUB *s, void **in);
 
@@ -118,6 +117,155 @@ static void SpecSubGetSession(SPECSUB *s, SPECSUBSESSION *ss)
     *(int *)p = s->ringend - s->ring;
     n += s->nring * n;
     memcpy(p + 1, s->ring, n * 4);
+}
+
+/* a frame: the frame copied into the ring; the noise floor tracked (its first frames copied in,
+ * then each bin raised toward the oldest frame in the ring by a rate that slows with the count),
+ * the gains' estimates updated, the level from the largest band mean of the limits' segments, the
+ * gains floored, the two outputs the half log of the gained frame and the log of its total.
+ * Round 27c, byte-exact (0x1208; SOCOM 1's 0xF88 is an older text). The block's state in locals
+ * read at the top and written back at the end (the ring position last in the source: sched1 issues
+ * the store where `s` dies first, the target's order); the spill slots follow the declarations
+ * (sp16 the one `end` every later loop shares, then pos, nring, the two counters, noise, and the
+ * n*4 temporary). Every pointer a variable of one role across the loops -- p (+52, and the limits'
+ * scan of +56), a (+56), c (+80), q (noise), fr (the frame), lg, o -- with each loop's end taken
+ * from its own pointer (`for (end = p + n; ...)`: c's extra refs put it above fr, so c takes s8 and
+ * fr a0 under caller-saves, the target's); the first loop's frame pointer in its for (`fr = frame`
+ * in the init, the target's load in the guard's slot); the noise update as `d = *r++ - *q; if (*q
+ * < d) d = *q; *q += rate * d;` (the ring read first); the floor of the gains a local read before
+ * the loop (`t > lo ? t : lo`: the seven max.s); the band mean a variable of its own; f96 declared
+ * before noise (reload then keeps `s` in t0 for both field loads, the target's prologue). */
+void SpectralSubtraction(SPECSUB *s, unsigned char flag, float *frame, float *out1, float *out0)
+{
+    float *end;
+    float *pos = s->ringpos;
+    unsigned int nring = s->nring;
+    unsigned int f42 = s->f42;
+    unsigned int f40 = s->f40;
+    float f96 = s->f96;
+    float *noise = s->noise;
+    float *ringend = s->f64;
+    float *ring = s->ring;
+    float f92 = s->f92;
+    unsigned int n = s->n;
+    float sum = 0.0f;
+    float *p, *q, *r, *a, *c, *fr, *lg, *o;
+    float best;
+    unsigned int j;
+
+    memcpy(pos, frame, n * sizeof(float));
+    pos += n;
+    if (pos == ringend)
+        pos = ring;
+    if (flag != 0)
+        f40 = 0;
+    else {
+        lg = s->lognoise;
+        if (f42 == 0) {
+            for (q = noise, fr = frame; q < noise + n; q++, fr++) {
+                *q = *fr;
+                *lg++ = logf(*fr) * 0.5f;
+            }
+        }
+        if (f40 <= nring)
+            f40++;
+        if (f40 == nring + 1) {
+            float rate;
+
+            if (f96 <= f42)
+                rate = 1.0f / f96;
+            else {
+                f42++;
+                rate = 1.0f / f42;
+            }
+            r = pos;
+            lg = s->lognoise;
+            for (q = noise; q < noise + n; q++) {
+                float d = *r++ - *q;
+
+                if (*q < d)
+                    d = *q;
+                *q += rate * d;
+                *lg++ = logf(*q) * 0.5f;
+            }
+        }
+    }
+    if (f42 != 0) {
+        float g1 = 1.0f - f92;
+        float f104 = s->f104;
+
+        c = s->f80;
+        a = s->f56;
+        p = s->f52;
+        for (end = p + n; p < end; p++)
+            *p = f92 * (*a++ * *c++ + 1.0f);
+        a = s->f56;
+        q = noise;
+        fr = frame;
+        for (end = a + n; a < end; a++)
+            *a = (*fr++ + 0.000001f) / (f104 * *q++ + 0.000001f);
+        p = s->f52;
+        a = s->f56;
+        for (end = p + n; p < end; p++)
+            *p += g1 * *a++;
+    }
+    best = 0.0f;
+    p = s->f56;
+    for (j = 0; j < s->nlim; j++) {
+        float acc = 0.0f;
+        unsigned int cnt = 0;
+        float *e = s->f56 + s->lim[j];
+
+        for (; p < e; p++) {
+            acc += *p;
+            cnt++;
+        }
+        {
+            float m = acc / cnt;
+
+            if (best < m)
+                best = m;
+        }
+    }
+    {
+        float lv = s->f120 + best * s->f124;
+
+        if (s->f132 < lv)
+            lv = s->f132;
+        s->f128 = (s->f140 + s->f148 * s->f128) / (s->f136 + s->f144 * s->f128) * expf(lv);
+    }
+    if (f42 == 0) {
+        c = s->f80;
+        for (end = c + n; c < end; c++)
+            *c = 1.0f;
+    } else {
+        float lo = s->f108;
+
+        p = s->f52;
+        c = s->f80;
+        for (end = p + n; p < end; p++) {
+            float t = *p > 1.0f ? 1.0f - 1.0f / *p : 0.0f;
+
+            t *= t;
+            *c++ = t > lo ? t : lo;
+        }
+    }
+    c = s->f80;
+    fr = frame;
+    o = out1;
+    for (end = out1 + s->f88; o < end; o++)
+        *o = logf(*c++ * *fr++) * 0.5f;
+    for (end = out1 + n; o < end; o++) {
+        float v = *c++ * *fr++;
+
+        sum += v;
+        *o = logf(v) * 0.5f;
+    }
+    *out0 = logf(sum);
+    s->nring = nring;
+    s->f42 = f42;
+    s->f40 = f40;
+    s->ringpos = pos;
 }
 
 /* the resources freed with the block (SOCOM 1's FreeResourcesSpecSub, inlined) */
