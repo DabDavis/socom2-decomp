@@ -663,19 +663,20 @@ void CTexManager::ClearPktBufs(CTexManager &tm, bool all)
 
 /* the buffer's palettes and textures moved to their places from its start, each texture's selects
  * rewritten to the new place (SOCOM 1's UpdateTextureSelects, the interrupt's after a load).
- * OPEN, 11 instructions, register-only: both walks' end tests load the size into a0 and the cursor
- * into a1 (here a1 and a0), and the palette test branches `beq next, address` where the operands
- * written that way load into the other registers (written `address != next`, the loads are the
- * target's and the beq's operands swap: 23 the other way). The texture walk matches with the next
- * address taken first and the texture before the old address. Tried: `!(i == end())` (0x120), `end()
- * != i` (0x144), the palette's address through a local (16), *i read twice (0x148) */
+ * Both walks' end tests are the pointer vector's original iterator (the MSL headers' round 24: under
+ * the old header they loaded the size and the cursor into the other registers, 11 off). The palette
+ * test branches `beq next, address`: the palette's old address read into a local and tested
+ * `next != old` (the world lane's round 17 -- `old != next` 1 off, the members compared in place
+ * either way 1 or 6). The texture walk matches with the next address taken first and the texture
+ * before the old address */
 void CGSTexBuffer::UpdateTextureSelects()
 {
     m_nextAddress = m_startAddress;
     for (CTexPalList::iterator i = m_dyntex_list.m_pal_list.begin(); i != m_dyntex_list.m_pal_list.end(); i++) {
         CTexPalette *pal = *i;
+        unsigned int old = pal->m_gsaddr;
 
-        if (pal->m_gsaddr != m_nextAddress)
+        if (m_nextAddress != old)
             pal->m_gsaddr = m_nextAddress;
         m_nextAddress += (unsigned int)pal->m_size >> 8;
     }
