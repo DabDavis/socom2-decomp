@@ -2065,6 +2065,20 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the UI, round 26** (CreateDisplayObj, CGameMenu's constructor and destructor, PrepModels, HasChanged -- all
+  unwritten before):
+  - when a spec inlines a display object's constructor one level, a stand-in class with the members' REAL types is
+    enough: the cuts and the out-of-line copies follow on their own (CUIListBoxSpec::CreateDisplayObj 0x37E8B0, first
+    try, emitting list<ListItem *>() 0x37EA80 and vector<ColumnData *>() 0x37EA60; ~CGameMenu 0x3698C0 and CGameMenu()
+    0x369B60 once zui.cpp's CGameMenu had its full layout to 0x904); a stand-in CNode with no declared constructor makes
+    a member CNode construct inline, declaring `CNode();` restores the call;
+  - `bool b = g == -1 || g == -2;` reading the global twice gives MW's range test `(unsigned)(g + 2) < 2`, through an
+    inline or with a single read each compare is tested apart (nor / xor); `CPnt3D(m.x, m.y, m.z)` straight from the
+    fields gives y and z each other's float register, the fields read into locals z first give the target's; `x = x ==
+    0;` on an int gives `xor v0,v0,zero; sltiu`, `x ^= 1` gives xori (CMemCard::HasChanged 0x3A1370; zanim_menu.cpp's
+    two calls respelled by the integrator, SAME-BY-ADDRESS);
+  - CGameMenu::PrepModels 0x366730 is SOCOM 1's, found by its position; ~CSoftKeyboard OPEN (4 short: the target tests
+    each member array's address before __destroy_arr in the inlined ~CSkbLook).
 - **Tells from the kit and AI states, round 46** (PickupMPBomb, the snoozer list's pieces, the ai_pre_tick task written):
   - AN INLINE HELPER'S EXPANDED SIZE IS MEASURED by appending `#pragma inline_max_size(N)` at the unit's END and finding
     where the helper flips to a one-level inline -- the pragma acts only at the unit's end, around the callee or the
