@@ -1704,15 +1704,10 @@ extern "C" void func_00579EF0(CZSealBody *seal)
     }
 }
 
-extern "C" {
-/* (OVL2 0x579A30, CrouchToPickupBuddy below: what 0x579DA0 hands on to -- the buddy as an int here,
- * the placeholder resolving by its address) */
-void func_00579A30(CZSealBody *seal, int a);
-}
-
 /* for a SEAL: the blends popped down to two, twelve at most -- when that worked the top blend's
  * control cleared and the SEAL asked to go prone, as 0x57F310 does -- its movement velocity zeroed,
- * then 0x579A30 (OVL2 0x579DA0, new in SOCOM II: 0x5880E0 calls it; the name unknown). The stack's
+ * then CrouchToPickupBuddy 0x579A30 on the buddy it was handed as an int (OVL2 0x579DA0, new in SOCOM
+ * II: 0x5880E0 calls it; the name unknown). The stack's
  * address is shared by both Top calls here (both spelled alike). */
 extern "C" void func_00579DA0(CZSealBody *seal, int a)
 {
@@ -1733,7 +1728,7 @@ extern "C" void func_00579DA0(CZSealBody *seal, int a)
             seal->m_desiredStance = STANCE_PRONE;
         }
         seal->m_velM = CPnt3D::zero;
-        func_00579A30(seal, a);
+        seal->CrouchToPickupBuddy((CZSealBody *)a);
     }
 }
 

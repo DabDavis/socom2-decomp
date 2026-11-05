@@ -1185,11 +1185,6 @@ bool func_0058A470(CZSealBody *seal, AnimType type);
 }
 
 extern "C" {
-/* the item in hand in an M203's or a grenade launcher's fire mode (the kit's OVL2 0x5BDA00 and
- * 0x5BD6D0, tail calls on its selected item: SOCOM 1's CurWeaponIsM203Mode and its launcher twin --
- * the kit lane's rows) */
-bool func_005BDA00(CZKit *kit);
-bool func_005BD6D0(CZKit *kit);
 /* the reloads SOCOM II adds (OVL1 data, anim types beside data_003DF098..0x3DF0C8) and the throwables'
  * set's reload (0x3DF0D8, its timed call the kit's ShowProjectile: OVL2 0x5A78C0) */
 extern short data_003DF0B0;
@@ -1223,7 +1218,9 @@ bool CZSealBody::Reload(bool b)
     bool moving = m_velM.x * m_velM.x + m_velM.y * m_velM.y + m_velM.z * m_velM.z > 400.0f;
     bool launcher = true;
 
-    if (!func_005BDA00(&m_kit) && !func_005BD6D0(&m_kit))
+    /* the item in hand in an M203's or a grenade launcher's fire mode (the kit's CurWeaponIsM203Mode
+     * 0x5BDA00 and CurWeaponIsGrenadeLauncherMode 0x5BD6D0, tail calls on its selected item) */
+    if (!m_kit.CurWeaponIsM203Mode() && !m_kit.CurWeaponIsGrenadeLauncherMode())
         launcher = false;
     bool pistolkind = false;
 
