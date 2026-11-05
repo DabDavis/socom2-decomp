@@ -2062,6 +2062,20 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the UI, round 25** (CLocTable::Find and CStringTables::Find; a depth-6 stand-in dropped):
+  - WHEN THE CANDIDATE'S SIZE DIFFERS, scdiff masks the target at the candidate's relocation offsets and invents words --
+    read a plain text diff instead (tools/cdis.py --at against `scd show`): CLocTable::Find 0x3A41F0's "41 off, a dead
+    bnez zero in the target" was that artifact, the real miss 2 (the empty test `*name == 0` -- `!*name` makes the later
+    '_' test re-extend the byte -- and the hash's sign test an if/else assigning h, padding the join);
+  - a walk's scalarised iterator is a temporary numbered after every named local; a named pointer declared ahead of a
+    variable is numbered below it, compared through `iterator(p) != end()` it keeps the materialised test, raw `p != end`
+    branches directly (CStringTables::Find 0x3A3100); a reference local bound to a stack object's member vector keeps its
+    address saved for every field read, through an accessor MW hoists sp-relative addresses;
+  - an int counter compared with size() keeps i*4 each pass, an unsigned one is strength-reduced; `(int)a <= b - k`
+    branches on `slt at`, `b - k >= (int)a` puts the compare in a register; an inline returning a ternary leaves its join
+    unpadded, an if/else assigning the result pads it;
+  - util_loc.cpp's depth-6 stand-in dropped (FindTable's walk ends at `Last()`); CLocTable::Read 0x3A3BE0 1 off (the
+    relocation test reads m_bytes, not m_reserve); CSkbSplit::Next 0x3903A0 written (2 short).
 - **Tells from the kit and AI states, round 39** (ShowProjectile, seal_sensors.cpp's initialiser and sensor ticks):
   - a string literal passed to a virtual call on a call's result: as a local defined after the call its lui/addiu pair
     stays together before the `this` move, passed in place the move splits the pair, defined before the call it is kept
