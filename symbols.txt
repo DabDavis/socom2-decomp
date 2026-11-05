@@ -11018,7 +11018,7 @@
 0x005C0AE0 0x4EC func_005C0AE0  # OVL2
 0x005C0FD0 0x690 func_005C0FD0  # OVL2
 0x005C1660 0x1A0 PreTick__5CZKitFf  # OVL2; s1:callee by hand (the kit lane, round 26): CZSealBody::WeaponsTick (0x5DFC80) calls it last with the frame time, from the same instruction as SOCOM 1's WeaponsTick calls PreTick__5CZKitFf (0x2AA190, 0x17C there)
-0x005C1800 0x170 func_005C1800  # OVL2
+0x005C1800 0x170 Apply_LensEffects__5CZKitFbP6CPnt3D  # OVL2; SOCOM 1's CZKit::Apply_LensEffects (kit round 38: the demo's 0x2AA310 between PreTick and TickFlashlight, the same work -- the camera's fog colour at m_world's camera +0xD0, the lens bit m_lensfx_enable at byte 1 bit 0 set in both arms -- the colour a CPnt3D *, HandleNewZoom filling three floats; a0 the kit, thezoom.cpp's HoldLensFx passing &m_seal->m_kit; 19 callers in CameraZoom and the HUD's map); seal_kit.cpp's, byte-exact
 0x005C1970 0xA8C func_005C1970  # OVL2
 0x005C2400 0x24 IsFireDelayed__5CZKitFv  # OVL2; by hand: the float at 0x820 (SOCOM 1's m_fire_delay at 0x804, before m_selected_item as there) above zero (the name ours)
 0x005C2430 0x240 func_005C2430  # OVL2
@@ -11039,7 +11039,7 @@
 0x005C3EE0 0x59C func_005C3EE0  # OVL2
 0x005C4480 0x134 NextFireMode__5CZKitFi  # OVL2; by hand (the kit lane, round 12): a kit member -- the selected item's mode (m_firemode, 0x6FC), and when it is 4 or more (a launcher ammunition's item kind) that kind's first item with ammunition (kit.h's FindItemWithAmmo inlined) and the kind, handed to 0x5C3EE0 with the selected item's firing item (GetFiringItem); 0x5C4600 calls it with the selected index, which it does not read; new in SOCOM II, the name ours; seal_kit.cpp byte-exact
 0x005C45C0 0x40 func_005C45C0  # OVL2
-0x005C4600 0x288 func_005C4600  # OVL2
+0x005C4600 0x288 CycleFireMode__5CZKitFv  # OVL2; kit round 38: SOCOM 1's CycleFireMode (the demo's 0x2AC590, after FindNextGrenadeLauncherAmmo as 0x5C4480 here): the selected item's mode incremented past m_maxfiremode, the launcher's next mode, the recursion when HasFireMode refuses, the weapon info and reticule bits and GetReticuleByIndex -- SOCOM II adds the zoom test and the hand's tail; GetAmmoCount 0x5C38A0 calls it as the selected item; seal_kit.cpp's, byte-exact
 0x005C4890 0x8 func_005C4890  # OVL2
 0x005C48A0 0x8 func_005C48A0  # OVL2
 0x005C48B0 0xA8 SetHandFireMode__5CZKitFi  # OVL2; by hand (the kit lane, round 12): a kit member storing the mode in m_firemode[bit 18 ? 1 : 0] and at 0x7EC, then -- the body alive (0xE1 bit 4) -- that slot's item kind at 0x7F0; CZSealBody::ReCreate calls it; new in SOCOM II, the name ours; seal_kit.cpp byte-exact

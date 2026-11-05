@@ -775,7 +775,43 @@ int CZKit::GetAmmoTotal(int index)
     return total;
 }
 
-/* (OVL2 0x5C3890; SOCOM 1's, a tail call here -- GetAmmoCount 0x5C38A0, between the two, unwritten) */
+/* the rounds in an item's current magazine: none without the item; under a launcher's mode those of
+ * the item its ammunition is (the first of that kind with rounds, else the last; none without one);
+ * for a launcher, its fire mode stepped once or twice as the selected item (until the item in hand
+ * is a launcher), then -- in a launcher's mode -- the item its ammunition is, -1 when that is out of
+ * range (OVL2 0x5C38A0; SOCOM 1's, the item read through the grenade launcher's mode, the launcher's
+ * stepping new) */
+int CZKit::GetAmmoCount(int index)
+{
+    int i = wrap(index, m_num_items);
+    CZFTSWeapon *w = m_item[i];
+
+    if (!w)
+        return 0;
+    if (WeaponIsLauncherMode(i)) {
+        int j = FindItemWithAmmo((EQUIP_ITEM)m_firemode[i]);
+
+        /* (the ternary this way round: `j == -1 ? 0 : ...` branches over a `b` to the end) */
+        return j != -1 ? m_reloads[j][m_currentmag[j]] : 0;
+    }
+    if (CZWeapon::IsLauncher(w->m_ID)) {
+        int sel = m_selected_item;
+
+        m_selected_item = i;
+        CycleFireMode();
+        if (!GetCurItem()->IsLauncherWeapon())
+            CycleFireMode();
+        m_selected_item = sel;
+        if (m_firemode[i] > AUTOFIRE)
+            i = FindItemWithAmmo((EQUIP_ITEM)m_firemode[i]);
+        if (i < 0 || i > m_num_items)
+            return -1;
+        return m_reloads[i][m_currentmag[i]];
+    }
+    return m_reloads[i][m_currentmag[i]];
+}
+
+/* (OVL2 0x5C3890; SOCOM 1's, a tail call here) */
 int CZKit::GetCurAmmoCount()
 {
     return GetAmmoCount(m_selected_item);
@@ -806,6 +842,50 @@ CZFTSWeapon *CZKit::GetCurItem() const
 CZFTSWeapon *CZKit::GetItemByIndex(int index) const
 {
     return m_item[unwrap(index, FIREMODE_CURRENT)];
+}
+
+extern "C" {
+/* a launcher's fire mode past 3 found for an item (OVL2 0x5C45C0, this unit's draft) and a
+ * weapon's fire mode allowed (CZWeapon::HasFireMode, OVL1 0x3D2A60: the weapons') */
+bool func_005C45C0(CZKit *kit, int index);
+bool HasFireMode__8CZWeaponCFi(const CZWeapon *w, int mode);
+}
+
+/* the selected item's fire mode stepped, unless it is zoomed past 1.01: past the item's last mode a
+ * launcher takes its next mode (and steps again from 0 when it has a launcher's mode past 3), any
+ * other item with modes goes back to 1; a mode the item lacks stepped over, else the weapon info
+ * and reticule marked changed and the reticule taken; then -- the item a rifle, or a sidearm in the
+ * second hand -- the hand's mode kept, and its item kind while the body lives (OVL2 0x5C4600;
+ * SOCOM 1's CycleFireMode, the zoom test, the launcher's mode from NextFireMode and the hand's
+ * tail new) */
+void CZKit::CycleFireMode()
+{
+    if (m_item[m_selected_item] && GetCurZoom() <= 1.01f) {
+        m_firemode[m_selected_item]++;
+        /* (the last mode on the left: the mode takes v0, the last mode v1 -- `mode > last` swaps them) */
+        if (m_item[m_selected_item]->m_maxfiremode < m_firemode[m_selected_item]) {
+            if (m_item[m_selected_item]->IsLauncherWeapon()) {
+                m_firemode[m_selected_item]--;
+                m_firemode[m_selected_item] = NextFireMode(m_selected_item);
+                if (m_firemode[m_selected_item] == 0 && func_005C45C0(this, m_selected_item))
+                    CycleFireMode();
+            } else if (m_item[m_selected_item]->m_maxfiremode)
+                m_firemode[m_selected_item] = 1;
+        }
+        if (!HasFireMode__8CZWeaponCFi(m_item[m_selected_item], m_firemode[m_selected_item]))
+            CycleFireMode();
+        else {
+            m_weaponinfoChanged = true;
+            m_reticuletypeChanged = true;
+            m_curitemreticule = GetReticuleByIndex(m_selected_item);
+        }
+    }
+    if (m_item[m_selected_item] && (CZWeapon::IsPrimary(m_item[m_selected_item]->m_ID) ||
+                                    (m_second_hand && CZWeapon::IsSecondary(m_item[m_selected_item]->m_ID)))) {
+        m_hand_firemode = m_firemode[m_selected_item];
+        if (((CKitBody *)m_body)->m_alive)
+            m_hand_item = m_item[m_selected_item] ? m_item[m_selected_item]->m_ID : m_hand_item;
+    }
 }
 
 /* (OVL2 0x5C4480) The mode read in place each time, MW sharing the one load: taken into a local
@@ -1000,6 +1080,48 @@ bool CZKit::FetchLaseTarget()
 bool CZKit::IsFireDelayed()
 {
     return m_fire_delay > 0.0f;
+}
+
+extern "C" {
+/* the light maps' white switch (a byte at OVL1 0x4835E0 set: OVL1 0x326C20, unclaimed) */
+void func_00326C20(int on);
+}
+
+/* the base fog colour by value, and a camera's fog set from a colour by value (thezoom.cpp's pair,
+ * whose SeeFarther puts the fog back the same way; the names ours) */
+static inline CPnt4D BaseFogColor() { return zdb::CVisual::m_basefog_color; }
+static inline void SetFogColorBy(zdb::CCamera *cam, CPnt4D c) { cam->SetFogColor(c); }
+
+/* (OVL2 0x5C1800: kit.h's; SOCOM 1's, the white switch and the tints' quarter second new -- SOCOM
+ * 1's set the lens colour itself) */
+void CZKit::Apply_LensEffects(bool on, CPnt3D *color)
+{
+    zdb::CCamera *cam = zdb::CWorld::m_world->m_camera;
+
+    if (!on) {
+        /* (a plain PNT4D: its address passed for the by-value colour, as thezoom.cpp's) */
+        PNT4D white;
+
+        white.x = 1.0f;
+        white.y = 1.0f;
+        white.z = 1.0f;
+        white.w = 0.0f;
+        zdb::CVisual::SetLightTints(white, 0.25f);
+        func_00326C20(1);
+        SetFogColorBy(cam, BaseFogColor());
+        SetLensFxEnable(false);
+    } else {
+        if (color) {
+            /* (the colour's own address passed for the by-value tint) */
+            zdb::CVisual::SetLightTints(*(PNT4D *)color, 0.0f);
+            func_00326C20(0);
+            /* (the base colour read three times: MW shares the static's load, a temporary copied
+             * once per channel -- one local, the copies gone, 0x20 short) */
+            cam->m_fog_color = CPnt4D(color->x * BaseFogColor().x, color->y * BaseFogColor().y,
+                                      color->z * BaseFogColor().z, 0.0f);
+        }
+        SetLensFxEnable(true);
+    }
 }
 
 /* the wait after a shot: the current item's (0.1 without one), none on safety, 0.8 of it in burst

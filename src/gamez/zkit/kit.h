@@ -109,6 +109,13 @@ public:
      * DecrZoomState calls it where SOCOM 1's called InitializeSniperKick -- the name ours) */
     void ResetRetOffsetXY();
     void Binocs_Enabled(bool on);
+    /* the lens effects applied: on with a colour, the light maps tinted by it at once and the
+     * camera's fog the base fog by it; off, the tints back to white over a quarter second and the
+     * fog to the base (SOCOM 1's Apply_LensEffects; OVL2 0x5C1800 -- CameraZoom and the HUD's map
+     * call it) and the bit set through a bool (inline: both arms keep the target's unfolded masks;
+     * the name ours) */
+    void Apply_LensEffects(bool on, CPnt3D *color);
+    void SetLensFxEnable(bool b) { m_lensfx_enable = b; }
     void SetCurReticule(bool force);
     bool CurReticuleTypeChanged();
     float GetCurZoom();
@@ -174,6 +181,8 @@ public:
      * 0x5C4480, new in SOCOM II: 0x5C4600 passes the selected item, which it reads again itself --
      * the index unused; the name ours) */
     int NextFireMode(int index);
+    /* the selected item's fire mode stepped (OVL2 0x5C4600; SOCOM 1's) */
+    void CycleFireMode();
     /* an explosive of a kind taken in hand and placed: the item before it kept to go back to, a
      * direct-fire weapon's selection undone, else -- the body able, the wait run out, the placing
      * allowed (0x5BD530) -- placed (0x5BE9A0), or the item before it taken back (OVL2 0x5C0020;
