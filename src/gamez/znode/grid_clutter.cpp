@@ -268,36 +268,33 @@ CPnt3D *CClutter::GetTranslate()
 /* the prop's matrix: its own, or -- in the rotation form -- built in the clutter manager's matrix
  * from the product of its two rotations (normalised), its scale (row 2's w) and its translation
  * (SOCOM 1's; SOCOM II normalises the product and skips a unit scale).
- * OPEN, 19 instructions, registers only (right size): the target copies `this` into s1 after the
- * world's load and keeps the matrix in s0; here `this` takes s0 in the test's delay slot. Tried:
- * the matrix declared first, after the quaternion, at function scope; the world, the manager or
- * `this` through a local; the rotation path as an inline helper; the translation through a
- * pointer. Round 16, the replay: the target's `this` is two variables -- a0 on the plain path
- * (`move v0,a0`), a copy in s1 on the rotation path -- where ours is one, live across the calls
- * (degree 26 of K 25: deferred, coloured first, s0); every copy tried (a free inline's parameter,
- * a matrix pointer local before or after the matrix, `CClutter *c = this`) is coalesced back into
- * it (build/scratch/core/v_gm*.py) */
+ * Byte-exact (open rounds 9-18, 19 off on the registers alone): the target's `this` is two
+ * variables -- a0 on the plain path, a copy in s1 on the rotation path (round 16's replay) -- and
+ * every plain copy (`CClutter *c = this`, a free inline's parameter) was coalesced back into it; a
+ * copy of another type, `const CClutter *c = this` (or any cast copy), is a variable of its own
+ * (round 19, ZAnimWildcardApply's rule) */
 CMatrix *CClutter::GetMatrix()
 {
     if (m_quat) {
+        const CClutter *c = this;
         CMatrix *m = &CWorld::m_world->m_grid.m_ClutterAnimManager->m_matrix;
         CQuat q;
 
         m->SetIdentity();
-        ((CQuat *)m_matrix.m_matrix[1])->Mul((CQuat *)m_matrix.m_matrix[0], &q);
+        ((CQuat *)c->m_matrix.m_matrix[1])->Mul((CQuat *)c->m_matrix.m_matrix[0], &q);
         q.Normalize();
         q.ToMatrix(m);
-        if (m_matrix.m_matrix[2][3] != 1.0f) {
+        if (c->m_matrix.m_matrix[2][3] != 1.0f) {
             CMatrix s;
-            float k = m_matrix.m_matrix[2][3];
+            float k = c->m_matrix.m_matrix[2][3];
 
             s.m_matrix[0][0] = k;
             s.m_matrix[1][1] = k;
             s.m_matrix[2][2] = k;
             sceVu0MulMatrix(m->m_matrix, s.m_matrix, m->m_matrix);
         }
-        ClutterPntSet(m->m_matrix[3], m_matrix.m_matrix[2][0], m_matrix.m_matrix[2][1],
-                      m_matrix.m_matrix[2][2]);
+        ClutterPntSet(m->m_matrix[3], c->m_matrix.m_matrix[2][0], c->m_matrix.m_matrix[2][1],
+                      c->m_matrix.m_matrix[2][2]);
         return m;
     }
     return &m_matrix;
