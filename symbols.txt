@@ -7728,7 +7728,7 @@
 0x003A8BD0 0x14C func_003A8BD0  # OVL1
 0x003A8D20 0x224 Fire__7CTurretFv  # OVL1; by hand (the wep lane, round 15: veh_turret.cpp -- SOCOM 1's Fire__7CTurretFv shape: a projectile from m_pProjectilelist numbered for the tracers (0xB4 = 1, 0xB8 = ++0x2B0), the weapon's fire animation (0x3D22B0, SOCOM 1's GetFireAnim(bool): the zoomed one while the gunner's SEAL zooms, 0x200) activated with the fire node 0x288, the AI's ModifyAimDir on 0x194 (tan 15 deg, SOCOM 1's tan 20), then the weapon's virtual Fire (slot 0xC, SOCOM 1's static Fire made a member) and the fire timer reset; Tick's call when the timer runs out)
 0x003A8F50 0x164 SampleDynamics__7CTurretFf  # OVL1; s1:calls
-0x003A90C0 0x248 func_003A90C0  # OVL1
+0x003A90C0 0x248 Virtual5C__7CTurretFP10CZSealBodyP7CTurret  # OVL1; s1:vtable by hand (the weapons lane, round 27: __vt__7CTurret's slot +0x5C, CEntity's Virtual5C (zentity.h: the SEAL asks the entity its controller holds, OVL2 0x5A88C0) -- CTurret's override: not while flagged or controlled, the SEAL within the definition's MOUNTABLE_RANGE and height, facing within MOUNTABLE_ANGLE of the turret over x and z and behind it (a static cone's cosine); the name follows CEntity's slot)
 0x003A9310 0x8 ComputeNextPosition__7CTurretFf  # OVL1; s1:vtable by hand (the wep lane: CTurret's slot +0x28, empty, as SOCOM 1's ComputeNextPosition__7CTurretFf); veh_turret.cpp
 0x003A9320 0x1C UpdatePosW__7CTurretFv  # OVL1; by hand (the wep lane: CTurret's slot +0x10 -- the position copied out of the matrix at 0x300's translation row); veh_turret.cpp
 0x003A9340 0xA8 PrePostTick__7CTurretFf  # OVL1; by hand (the wep lane: CTurret's slot +0x20); veh_turret.cpp

@@ -568,6 +568,60 @@ void CTurret::ComputeNextPosition(float dT)
 {
 }
 
+/* two points' dot product over x and z (ours: the mount test's facing and side compares) */
+static inline float DotXZ(const CPnt3D &a, const CPnt3D &b)
+{
+    return a.x * b.x + a.z * b.z;
+}
+
+/* the mount test's backward cone, degrees (0x3E0830, initialised data; not named) and the height
+ * difference allowed, squared (0x3E0828) */
+extern "C" float data_003E0830;
+extern "C" float data_003E0828;
+
+/* may the SEAL mount it (CEntity's slot +0x5C, SOCOM II's; the SEAL asks the entity its controller
+ * holds, with that entity again when it is a turret): not while flagged (bit 1) or controlled; with
+ * a turret, the SEAL within the definition's mount range of it, close in height, facing within the
+ * definition's mount angle of the turret's forward (over x and z) and standing behind it -- its offset
+ * within a fixed cone of the turret's backward direction, the cone's cosine kept in a static */
+bool CTurret::Virtual5C(CZSealBody *seal, CTurret *turret)
+{
+    bool ok = true;
+
+    if (m_flags & 2)
+        ok = false;
+    if (ok && IsControlled() != false)
+        ok = false;
+    if (ok && turret) {
+        CPnt3D sp = ((CEntity *)seal)->m_posW;
+        CPnt3D d = turret->m_posW - sp;
+
+        if (Dot(d, d) > m_def->m_mountRange)
+            ok = false;
+        if (d.y * d.y > data_003E0828)
+            ok = false;
+        if (ok) {
+            CPnt3D a = *(CPnt3D *)((CEntity *)seal)->m_node->m_matrix.m_matrix[2];
+
+            a.y = 0.0f;
+            a.Normalize();
+            CPnt3D b = *(CPnt3D *)turret->m_node->m_matrix.m_matrix[2];
+
+            b.y = 0.0f;
+            b.Normalize();
+            if (DotXZ(a, b) < m_def->m_mountAngle)
+                ok = false;
+            static float limit = cosf(0.017453292f * data_003E0830);
+
+            d.y = 0.0f;
+            d.Normalize();
+            if (DotXZ(d, b) > -limit)
+                ok = false;
+        }
+    }
+    return ok;
+}
+
 /* the turret's frame sampled: its matrix from the yaw node's parent and the inverse, the fire
  * point's position (the origin without its node) and the velocity as the step over the frame
  * (SOCOM 1's) */
