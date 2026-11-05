@@ -1025,18 +1025,6 @@ void CZSealBody::ChangeToRifleMode(bool holster)
 extern "C" {
 /* the blend on top of the body's stack (seal.cpp's tail copy, OVL2 0x555170) */
 void *func_00555170(void *stack);
-/* the throws' anims (OVL1 data, an anim type's id each, the first short; SOCOM 1's small-data
- * statics) -- the second is tested twice in both builds -- and the two a throw's start adds (the
- * anims a jump cannot start from, below) */
-extern short data_003DEBC8;
-extern short data_003DEBB8;
-extern short data_003DEBA8;
-extern short data_003DEBE8;
-extern short data_003DEBF0;
-extern short data_003DEBD8;
-extern short data_003DEBE0;
-extern short data_003DEB20;
-extern short data_003DEB30;
 /* the weapon changes' anims (OVL1 data, an anim type's id each: four blends, three overlays) */
 extern short data_003DF0E0;
 extern short data_003DF0E8;
@@ -1213,14 +1201,17 @@ bool CZSealBody::CanFire(bool kit, bool timing)
 }
 
 /* whether the top blend is a throw's, the start's two too unless told not (OVL2 0x5A7D10; SOCOM 1's
- * IsThrowing, before CanFire in both builds, the same tests) */
+ * IsThrowing, before CanFire in both builds, the same tests in the same order -- CrouchThrowGrenade
+ * tested twice in both -- which names the two pistol tosses: the SEALs, round 44) */
 bool CZSealBody::IsThrowing(bool started)
 {
     short type = ((CZBodyAnimBlend *)func_00555170((char *)this + 0x1c0))->m_animType;
 
-    if (type == data_003DEBC8 || type == data_003DEBB8 || type == data_003DEBA8 || type == data_003DEBE8 ||
-        type == data_003DEBF0 || type == data_003DEBD8 || type == data_003DEBE0 || type == data_003DEBB8 ||
-        (!started && (type == data_003DEB20 || type == data_003DEB30)))
+    if (type == AnimTypes::ThrowGrenade || type == AnimTypes::CrouchThrowGrenade ||
+        type == AnimTypes::ProneThrowGrenade || type == AnimTypes::TossGrenade ||
+        type == AnimTypes::PistolTossGrenade || type == AnimTypes::ProneTossGrenade ||
+        type == AnimTypes::PistolProneTossGrenade || type == AnimTypes::CrouchThrowGrenade ||
+        (!started && (type == AnimTypes::TossGrenadePeekRight || type == AnimTypes::TossGrenadePeekLeft)))
         return true;
     return false;
 }
@@ -4097,30 +4088,22 @@ bool CZSealBody::CanClimbWall()
            CanTraverse((CDIType)5);
 }
 
-/* the anims a jump cannot start from (OVL1 data: an anim type each, its id the first short,
- * filled when the anims load; SOCOM 1's AnimType was an enum) */
 extern "C" {
-extern short data_003DEB20;
-extern short data_003DEB30;
-extern short data_003DEBA8;
-extern short data_003DEBB8;
-extern short data_003DEBC8;
-extern short data_003DEBD8;
-extern short data_003DEBE0;
-extern short data_003DEBE8;
-extern short data_003DEBF0;
 /* (OVL2 0x5A7DE0 is CZSealBody::CanFire, zseal.h's) the body's current blend (seal.cpp's tail, OVL2
  * 0x555170) */
 void *func_00555170(void *stack);
 }
 
-/* whether an anim is one a jump cannot start from (an inline bool: the target materialises the
- * test with daddiu/move and branches on it; the second test of 0x3DEBB8 is the source's) */
+/* whether an anim is one a jump cannot start from -- the throws and both peek tosses, IsThrowing's
+ * ten tests (zseal.h's AnimTypes, filled when the anims load; an inline bool: the target materialises
+ * the test with daddiu/move and branches on it; CrouchThrowGrenade's second test is the source's) */
 static inline bool IsNoJumpAnim(short id)
 {
-    if (id == data_003DEBC8 || id == data_003DEBB8 || id == data_003DEBA8 || id == data_003DEBE8 ||
-        id == data_003DEBF0 || id == data_003DEBD8 || id == data_003DEBE0 || id == data_003DEBB8 ||
-        id == data_003DEB20 || id == data_003DEB30)
+    if (id == AnimTypes::ThrowGrenade || id == AnimTypes::CrouchThrowGrenade ||
+        id == AnimTypes::ProneThrowGrenade || id == AnimTypes::TossGrenade ||
+        id == AnimTypes::PistolTossGrenade || id == AnimTypes::ProneTossGrenade ||
+        id == AnimTypes::PistolProneTossGrenade || id == AnimTypes::CrouchThrowGrenade ||
+        id == AnimTypes::TossGrenadePeekRight || id == AnimTypes::TossGrenadePeekLeft)
         return true;
     return false;
 }
