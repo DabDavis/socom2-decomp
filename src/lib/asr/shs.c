@@ -9,8 +9,8 @@
  * Names are SOCOM 1's (s1:align, the object's order agreeing); the block's fields are named by
  * their use. ControlSHS_VUV and Lin_2_Log (round 27c) are written; round 28c spline2 (0x4C0,
  * SOCOM 1's body); round 29c CreateFreqWindow, InitSHS_VUV, ConstructSHS_VUV (over its draft),
- * SubHarmonicSummation_and_VUVDetermination (byte-exact in round 30c) and ProcessSHS_VUV (OPEN,
- * diagnosed in place). */
+ * SubHarmonicSummation_and_VUVDetermination and ProcessSHS_VUV (round 30c: the object whole,
+ * 8 of 8). */
 #include "tosblk.h"
 
 typedef struct SHS {
@@ -212,58 +212,67 @@ static void SubHarmonicSummation_and_VUVDetermination(SHS *s, void **in)
 /* one frame: the spectrum's (in[1]) peaks kept with their two neighbours each side in f64, the rest
  * zeroed, from the bin of f44 Hz; f64 smoothed (1 2 1) into f68, resampled on the log scale
  * (Lin_2_Log), windowed into f84 (0 where the log spectrum is not positive), and summed (a sibling
- * call). SOCOM 1's body, round 29c. Measured: a pointer of its own per loop (one shared walker
- * crosses the smoothing's libcalls and takes a saved register in every loop); the zeroed count
- * `n = nlin / 2 + 1` a variable (inline, fold distributes the * 4 over the + 1); the smoothing as
- * `*(x - 1) + *x + *x + *(x + 1)` -- the address of x - 1 a register, which the unroller's per-copy
- * pointers then share (round 28c's `*(p - 1)`; `x[-1]` folds the offset, `2 * x[0]` regroups); a
- * peak's last neighbour guarded by `p != pend`: jump threading merges that test with the loop's
- * (the target -- SOCOM 1's too -- exits after four copies when p is the last bin).
- * OPEN (0x638 against 0x640, 29 structural): the target's peak loop is entered by a jump over its
- * exit test, which sits above the body (the not-a-peak path branches back to it; p + 1 is formed
- * into the copy's register and moved into p there), where every loop shape tried -- do-while on
- * p++, for (;;) with a break, gotos into the body, while (1) -- keeps the test below the body; and
- * the zeroing loop's unrolled preconditioning annuls two slots the target leaves plain. */
+ * call). SOCOM 1's body, round 29c; byte-exact in round 30c. Measured: the zeroed count `n = nlin /
+ * 2 + 1` a variable (inline, fold distributes the * 4 over the + 1); the zeroing's walker the load's
+ * own variable (`z = s->f64; peaks = z;`) and the same variable the window loop's output walker: z
+ * then outlives peaks, so CSE keeps z first in their class and the unrolled preconditioning stores
+ * through z (`sw zero,0(a0)` in a plain slot) where a short-lived walker is rewritten to peaks;
+ * the peak loop a `for (;;)` whose first exit is the peak path's guard (`if (p == pend) break;`
+ * before the fifth copy): expand_end_loop rolls the code up to that exit -- the peak test, the
+ * copies, the guard -- to the loop's end, so the not-a-peak exit test and the increment sit above
+ * the body, entered by the jump over them (the target's -- and SOCOM 1's -- layout; a do-while
+ * keeps its test below the body: round 29c's 0x638); the copy's base a variable of its own for the
+ * two stores below it (`dst[-2]`, `dst[-1]`) and q a copy of it for the rest (the target's `move
+ * a0,v0`); the smoothing's end computed before its first store (`yend = y + nlin / 2; *y = 0;`:
+ * sched1 issues the nlin load between them) and as `*(x - 1) + *x + *x + *(x + 1)` -- the address
+ * of x - 1 a register, which the unroller's per-copy pointers then share (round 28c's `*(p - 1)`;
+ * `x[-1]` folds the offset, `2 * x[0]` regroups). */
 static void ProcessSHS_VUV(SHS *s, void **in)
 {
-    float *spec, *peaks, *z, *zend, *p, *pend, *q, *y, *yend, *x, *o, *oend, *w;
-    int i, n;
+    float *spec, *peaks, *z, *zend, *p, *pend, *q, *y, *yend, *x, *oend, *w, *dst;
+    int n;
     float *r, *t;
 
     if (in[0] == 0)
         return;
-    peaks = s->f64;
+    z = s->f64;
+    peaks = z;
     n = s->nlin / 2 + 1;
-    for (z = peaks, zend = z + n; z < zend; )
+    for (zend = z + n; z < zend; )
         *z++ = 0.0f;
     spec = in[1];
     pend = spec + s->nlin / 2 - 1;
     p = spec + (int)(s->f44 / ((float)s->f42 / s->nlin));
-    do {
+    for (;;) {
         if (*(p - 1) <= *p && *(p + 1) <= *p) {
-            q = peaks + (p - spec);
-            q[-2] = p[-2];
-            q[-1] = *(p - 1);
+            dst = peaks + (p - spec);
+            dst[-2] = p[-2];
+            dst[-1] = *(p - 1);
+            q = dst;
             *q++ = *p;
             r = p + 1;
             *q++ = *r++;
-            if (p != pend)
-                *q = *r;
-        }
-    } while (p++ != pend);
+            if (p == pend)
+                break;
+            *q = *r;
+        } else if (p == pend)
+            break;
+        p++;
+    }
     y = s->f68;
+    yend = y + s->nlin / 2;
     *y = 0.0f;
     x = s->f64 + 1;
-    for (yend = y + s->nlin / 2, y++; y < yend; y++, x++)
+    for (y++; y < yend; y++, x++)
         *y = (*(x - 1) + *x + *x + *(x + 1)) * 0.25;
     *y = (*(x - 1) + *x) * 0.5;
     Lin_2_Log(s);
-    o = s->f84;
-    oend = o + s->f60;
-    x = s->f80;
+    z = s->f84;
+    oend = z + s->f60;
+    t = s->f80;
     w = s->f88;
-    for (; o < oend; o++, x++, w++)
-        *o = *x > 0.0f ? *x * *w : 0.0f;
+    for (; z < oend; z++, t++, w++)
+        *z = *t > 0.0f ? *t * *w : 0.0f;
     SubHarmonicSummation_and_VUVDetermination(s, in);
 }
 
