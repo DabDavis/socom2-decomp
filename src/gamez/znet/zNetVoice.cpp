@@ -644,8 +644,8 @@ inline void StopRecording(VoiceRadio *r)
  * the stepped radio (`(VoiceRadio *)(i + (VoiceSlot *)r)`, its slot 0) keeps r + 8i. Round 20 measured
  * (1) on probes (build/scratch/onl/p1-p16.cpp, the lane's worktree): the two loads tie in MW's scheduler
  * and the tie goes to the global's load (the IR's left-to-right order) unless the radio's load ends the
- * radio's live range -- SendRadioRequest standalone (r dead after the send), or a send followed by `return
- * 1`, loads t0 first as the target; with r read after the block (`return r->x`, `g2(r)`) the conn goes
+ * radio's live range -- SendRadioRequest standalone (r dead after the send), a send followed by `return
+ * 1`, or r reassigned after it (`r = global;`), loads t0 first as the target; with r read after the block (`return r->x`, `g2(r)`) the conn goes
  * first whatever the spelling (r copied into a local, an inline's parameter, a reference, a base-class
  * or member-object inline, a cast, a void * parameter, an inline returning r, the id in a local, a
  * volatile conn: MW propagates every copy before scheduling). func_00623AE8's pair flips another way:
