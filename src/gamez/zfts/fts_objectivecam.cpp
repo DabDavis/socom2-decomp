@@ -117,15 +117,25 @@ CMissionObjectiveCam::~CMissionObjectiveCam()
 }
 
 /* an objective shown on the compass: neither complete nor invalid, its display valve on (or
- * none), and a compass one (OVL1 0x2C7370).
- * OPEN, 0xC0 against 0xA0: the target carries each step's bool in v0, re-extended (andi 0xff)
- * between the tests, as an && chain materialised into a value; here the chain branches. Tried:
- * a bool local, the tests compared == false, the bit-field compared != 0; round 8: the chain
- * accumulated in a bool step by step (0xB4), and nested inline bools (the first two tests, then
- * the display valve) -- all 0xC0. SOCOM 1's (0xAC) has the same shape with one more andi */
+ * none), and a compass one (OVL1 0x2C7370). Byte-exact since the states' round 40: three bools,
+ * each a copy of the last overwritten when it holds -- the target carries each step's bool in v0/v1,
+ * re-extended (andi 0xff) at each copy, the false paths passing the zero they hold; one bool
+ * reassigned step by step is 4 off, the && chain materialises (0xC0), a bool per && 0xB4 */
 bool CMissionObjectiveCam::IsAvailable() const
 {
-    return !IsComplete() && !IsInvalid() && IsDisplayOn() && m_isCompass;
+    bool a = !IsComplete();
+
+    if (a)
+        a = !IsInvalid();
+    bool b = a;
+
+    if (b)
+        b = IsDisplayOn();
+    bool c = b;
+
+    if (c)
+        c = m_isCompass;
+    return c;
 }
 
 /* the objective's own strings freed and its lines given up (SOCOM II's, the name ours: SOCOM 1's

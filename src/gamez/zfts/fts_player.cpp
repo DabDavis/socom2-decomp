@@ -8,12 +8,23 @@
 #include "../zanim/zanim.h"
 #include "../zsys/zsys.h"
 
+/* the body's states (zseal.h's SEAL_STATE: only its name and range, for OnStateChange's) */
+enum SEAL_STATE {
+    stateStand = 0, stateCrouch = 1, stateProne = 2, statePeek = 3, stateHang = 4,
+    stateClimbLadder = 5, stateInAir = 6, stateIdle = 7, stateDead = 8, stateCarrying = 9,
+    stateCarried = 10, stateDone = 11
+};
+
 /* a SEAL's controller (SOCOM 1's CSealCtrl, 592 bytes at SOCOM II's offsets: only what this unit
  * touches) and the three kinds ftsCreateSeal makes besides */
 class CSealCtrl {
 public:
     CSealCtrl();
     virtual ~CSealCtrl();
+    /* zseal.h's inline (slot 0x64 of the real table): CSealCtrlCopy's table, emitted here with its
+     * key function, the destructor, makes this unit emit OVL1's out-of-line copy, 0x2B3BE0 -- as
+     * the original's did (OVL2's copy is 0x58A710) */
+    virtual void OnStateChange(SEAL_STATE from, SEAL_STATE to) {}
 
     unsigned char _4[0x114 - 0x4];
     int m_copy_index;   // 0x114: the player's copies' number (LoadVehicles sets it; the name ours)
