@@ -28,11 +28,16 @@ enum MENU_STATE {
     MENU_STATE_TCM = 2
 };
 
+/* a radio command (zseal.h's, a byte enum under -enum min) */
+enum FT_COMMAND { CMD_UNKNOWN = 0, CMD_ACTION = 1, CMD_LAST = 255 };
+
 /* the controller as the menu reads it (zseal.h's CSealCtrl) */
 class CSealCtrl {
 public:
     void SetMenuState(MENU_STATE state, bool b);
     void StopRumbler();
+    /* a command's name (OVL2 0x58EF80, the SEALs' round 46: SOCOM 1's by order) */
+    static const char *GetCommandName(FT_COMMAND cmd);
 
     unsigned char _0[0x114];
     unsigned int m_padIndex;   // 0x114: its pad
@@ -441,21 +446,23 @@ void CTCM::TalkTick(float dt)
     }
 }
 
-/* the item tables of OVL2 the kind builder reads (no rows named yet): a group's parent name, a
- * kind's name, caption, node name and second line, the kind's first and end entry, and an entry's
- * name, caption, node name and second line -- each a byte argument (the callees narrow it) */
+/* the item tables of OVL2 the kind builder reads (no rows named yet but the kind's name, CSealCtrl's
+ * GetCommandName): a group's parent name, a kind's name, caption, node name and second line, the
+ * kind's first and end entry, and an entry's name, caption, node name and second line -- each a
+ * byte argument (the callees narrow it). The kind is GetCommandName's FT_COMMAND for all five of
+ * its readers (round 54): converted from an unsigned char at a call MW narrows it with an andi the
+ * target never has, so the kind builder takes the enum too (its name ours, its row renamed) */
 /* an entry of the kinds' table (ours: a byte enum -- the kind's first and end entries come back
  * unnarrowed and are zero-extended where they are compared as ints) */
 enum TCM_ENTRY { TCM_ENTRY_NONE = 0, TCM_ENTRY_LAST = 0xff };
 
 extern "C" {
 const char *func_0058DD70(unsigned char group);
-const char *func_0058EF80(unsigned char kind);
-const char *func_0058E950(unsigned char kind);
-const char *func_0058E900(unsigned char kind);
-const char *func_0058E750(unsigned char kind);
-TCM_ENTRY func_0058DF20(unsigned char kind);
-TCM_ENTRY func_0058DEB0(unsigned char kind);
+const char *func_0058E950(FT_COMMAND kind);
+const char *func_0058E900(FT_COMMAND kind);
+const char *func_0058E750(FT_COMMAND kind);
+TCM_ENTRY func_0058DF20(FT_COMMAND kind);
+TCM_ENTRY func_0058DEB0(FT_COMMAND kind);
 const char *func_0058EB00(TCM_ENTRY entry);
 const char *func_0058E4D0(TCM_ENTRY entry);
 const char *func_0058E360(TCM_ENTRY entry);
@@ -463,10 +470,10 @@ const char *func_0058E120(TCM_ENTRY entry);
 }
 
 /* the kind's item under a group's parent, its caption returned (ours) */
-static inline const char *tcmAddGroupItem(unsigned char group, unsigned char kind)
+static inline const char *tcmAddGroupItem(unsigned char group, FT_COMMAND kind)
 {
     const char *parent = func_0058DD70(group);
-    const char *name = func_0058EF80(kind);
+    const char *name = CSealCtrl::GetCommandName(kind);
     const char *caption = func_0058E950(kind);
     const char *nodename = func_0058E900(kind);
 
@@ -480,7 +487,7 @@ static inline const char *tcmAddGroupItem(unsigned char group, unsigned char kin
  * written as tcmAddItem's arguments MW calls them last to first; the group item an inline returning
  * its caption; the entries a byte enum, which gives the target's unnarrowed first entry and its
  * registers (as unsigned char locals MW narrows the first at the call and swaps two pairs) */
-void tcmAddKindItems(unsigned char kind)
+void tcmAddKindItems(FT_COMMAND kind)
 {
     tcmAddGroupItem(1, kind);
     tcmAddGroupItem(2, kind);
