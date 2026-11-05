@@ -1197,7 +1197,8 @@ public:
     unsigned char m_67c[4];   // 0x67c: an object the state CAiSPursue tests (0x60A850)
     unsigned char _680[0x6a8 - 0x680];
     unsigned int m_6a8;   // 0x6a8: the target's flags (bit 9 lets a held target interrupt: the kit lane)
-    unsigned char _6ac[0x6f4 - 0x6ac];
+    unsigned char _6ac[0x6f0 - 0x6ac];
+    float m_6f0;   // 0x6f0: the time since death (PostMortemPreTick 0x56EE80 runs it up; the name ours)
     /* a range and its goal, set together unless the range stands at 42 (0x570D90; the names ours) */
     float m_6f4;   // 0x6f4
     float m_6f8;   // 0x6f8
@@ -1243,6 +1244,8 @@ public:
     /* (0x573E60: the stack emptied, then the bases' destructors) */
     virtual ~CSealCtrlAi();
     virtual void SetThrottle(unsigned int axis, float value);
+    /* the dead AI's corpse faded and recycled, or its respawns counted down (OVL2 0x56EE80) */
+    virtual bool PostMortemPreTick(float dT);
     /* the creep's line walk, then the base's (OVL2 0x567350, seal_ai.cpp's) */
     virtual void CreepTick(float dT, bool b);
     /* the sightings, the stance, the rescue and the alertness's score (OVL2 0x56F970, seal_ai.cpp's) */

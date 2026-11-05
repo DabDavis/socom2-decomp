@@ -2154,6 +2154,8 @@ class CMission {
 public:
     void RefreshTeamValves();
     void FadeToEndMission(float time, int how);
+    /* an entity put back in the mission's pool (SOCOM 1's; OVL1 0x2B2310) */
+    void RecycleEntity(CEntity *e);
 
     unsigned char _0[0xe0];
     float m_time;   // 0xe0
@@ -3074,6 +3076,112 @@ void CSealCtrlAi::CreepTick(float dT, bool b)
             SetAiMode((AI_MODE)1);
         ClearGoal(m_goal_type);
     }
+}
+
+/* the game's camera (camera.h's CAppCamera, OVL1 bss 0x415FF0) -- only the SEAL it shows */
+class CAppCamera {
+public:
+    virtual void Tick(float dT);
+
+    unsigned char _4[0xbc - 0x4];
+    CZSealBody *m_bc;   // 0xbc: the SEAL the camera shows
+};
+
+extern CAppCamera *appCamera;
+
+extern "C" {
+/* the dead AI's times: the corpse's wait before it fades (+0xC) and, with respawns left, before it
+ * fades out to respawn (+0x10) (OVL1 data 0x436624, read as a table through a pointer local -- the
+ * target keeps its address in s0, a sixth saved register; the names ours) */
+extern float data_00436624[5];
+/* the dead SEAL's network state sent (OVL1 0x2BD640, seal_control.cpp's caller's) */
+void func_002BD640(CEntity *e, int n);
+}
+
+/* a node's opacity moved toward a value by 0.75 a second, held within -1..1 about it, the node shown
+ * while it is not transparent (an inline, the name ours: the value a by-value parameter whose address
+ * _saturate takes, the opacity a local copy) */
+static inline void FadeToward(zdb::CNode *node, float target, float dT)
+{
+    float op = node->m_Opacity;
+
+    if (op != target) {
+        float step = 0.75f * dT;
+
+        if (op >= target) {
+            op -= step;
+            _saturate(&op, target, 1.0f);
+        } else {
+            op += step;
+            _saturate(&op, -1.0f, target);
+        }
+        node->m_Opacity = op;
+    }
+    node->SetActive(op != 0.0f);
+}
+
+/* the dead AI's tick (OVL2 0x56EE80, slot 0x14; SOCOM 1's slot alike): with the AI running, out of
+ * a group and bit 5 clear -- with no respawn left and the node shown, once the corpse is out of the
+ * camera's sight for the table's +0xC (or already fading) the node faded out, its AI event's kind
+ * cleared, and the faded node hidden and the entity recycled; with respawns left the time run up --
+ * a hidden node asks for the respawn and counts one down, a shown one fades after +0x10. Online the
+ * state sent. OPEN, 77 instructions (round 51, written; the size right with the table's pointer local
+ * -- without it 0x378, one saved register short): the saved registers' assignment (the target: the
+ * entity s5, the node s1, the params s3, the table s0, the shown flag s4, this s2); the pointer
+ * declared first, after the entity, after the node or after the flag is worse (83-98) --
+ * build/scratch/seal-r51/v_pm.py; next: tools/igreplay.py --target with --movers */
+bool CSealCtrlAi::PostMortemPreTick(float dT)
+{
+    CEntity *e = m_entity;
+    zdb::CNode *node = e->GetNode();
+    AI_PARAMS &params = m_aiParams;
+    const float *times = data_00436624;
+    bool active = node->m_active;
+
+    if (!m_aibit5 && aiEnabled && !InGroup()) {
+        int n = params.respawn;
+
+        if (n == 0) {
+            if (active) {
+                bool recycle = false;
+                bool fading = node->m_Opacity < 1.0f;
+
+                if (appCamera->m_bc && !fading) {
+                    m_6f0 += dT;
+                    fading = !(m_6f0 < times[3]);
+                    if (fading)
+                        e->SetIncludeInTargetList(false);
+                }
+                if (fading) {
+                    FadeToward(node, 0.0f, dT);
+                    CAiEvent *ev = ((CZSealBody *)e)->m_aiEvent;
+
+                    recycle = !node->m_active;
+                    if (ev)
+                        ev->m_type = 0;
+                }
+                if (recycle) {
+                    node->SetActive(false);
+                    theMission.RecycleEntity(e);
+                }
+            }
+        } else {
+            m_6f0 += dT;
+            if (!active) {
+                ((CZSealBody *)e)->m_needs_respawn = 1;
+                params.respawn = n - 1;
+            } else if (!(m_6f0 < times[4])) {
+                FadeToward(node, 0.0f, dT);
+                CAiEvent *ev = ((CZSealBody *)e)->m_aiEvent;
+
+                if (ev)
+                    ev->m_type = 0;
+            }
+        }
+    }
+    if (theNetwork.m_9)
+        func_002BD640(e, 0);
+    return true;
 }
 
 /* the box around eight points -- a box's corners (OVL2 0x56ACE0, new in SOCOM II: 0x56A8E0 calls it;
