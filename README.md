@@ -2065,6 +2065,18 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the SEALs, round 46** (HandleSmokeAndGas, HandleWater, AddBlendOverlay, the satchel drop, the climb's wall
+  homing; seal_orders.cpp all hand source):
+  - an inline's by-value bounds are loaded at the call, taken by `const float &` the upper bound loads only after the
+    lower test, as the target (`!(v < lo) && v <= hi`); a result returned from several early `return p;` with p still 0 is
+    folded to the constant, one return at the end of nested ifs keeps p in a saved register zeroed at entry (the dead AI
+    SEAL's satchel drop 0x59FAC0, new in SOCOM II);
+  - a short-sized enum parameter passed to a short parameter goes unextended, `(int)type` gives the target's sign
+    extension at the call; declaring the active anim first, uninitialised, swaps the target's s0 / s1 between it and the
+    top blend (AddBlendOverlay 0x587780, SOCOM 1's, with its four setters by order);
+  - a class whose virtuals are all inline makes the unit that dynamic_casts to it emit that overlay's RTTI copy: resolve
+    it with an `ovl-copy:` data row (CParticleEx's 0x65F0C0); HandleWater 0x5B52B0 is SOCOM 1's plus a bool -- was the
+    SEAL in water before; GetCommandName 0x58EF80 / GetCommandId 0x58E0A0 named by SOCOM 1's order.
 - **Tells from the game states, round 41** (four long opens closed -- HandleBombStateRequest since round 6, SetState since
   10, CreateCustomCharTypes and NVGNoiseParse since 24 -- the accuracy rating, C2DMessage_Q::Init):
   - copying a parameter into an enum-typed local placed between two early-return tests moves the parameter's register
