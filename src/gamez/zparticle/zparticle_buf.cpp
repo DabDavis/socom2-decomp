@@ -3,8 +3,10 @@
  * SOCOM 1's (its __sinit_zparticle_buf.cpp; SOCOM II's 0x402BB0 builds <iostream>'s pair and the
  * 5000 32-byte elements at 0x45C4D0 with the constructor 0x326F40). SOCOM 1's demo holds DrawRange to the element's
  * constructor in this order. Defined in reverse of their image order (-inline deferred). Written
- * so far: DrawRange, DrawFlush and the sort's comparison. */
+ * so far: DrawRange, DrawFlush, the sort's comparison and DrawPrep (its zqsort instance, 0x326C30,
+ * declared only). */
 
+#include <eetypes.h>
 #include <iostream>
 #include "zparticle.h"
 
@@ -56,6 +58,22 @@ extern BufferElement **pParticleBuf;   // 0x4835D8
 extern zdb::CTexHandle *m_lastTexture;   // 0x4835D0
 
 int bufferPtrCompare(BufferElement *const &a, BufferElement *const &b);
+
+/* the elements buffered this frame (SOCOM 1's numParticles, 0x45C4C0) */
+extern int numParticles;
+
+}
+
+/* the system's packet ring (zsys_main.cpp) */
+u_long128 *zSysSprGetPacket(u_long128 **end);
+void zSysFifoKick(u_long128 *packet, unsigned int qwc);
+
+/* SOCOM 1's sort of a pointer array by a comparison, an explicit-stack quicksort (its instance for
+ * the elements is this unit's tail, 0x326C30: not written, so declared only) */
+template <class T>
+void zqsort(T *a, int n, int (*cmp)(T const &, T const &));
+
+namespace Particle {
 
 /* whether a depth is still inside the range (ours: the target materialises the compare as a bool
  * before the loop's other test) */
@@ -144,6 +162,37 @@ int bufferPtrCompare(BufferElement *const &a, BufferElement *const &b)
     float d = a->m_depth - b->m_depth;
 
     return *(int *)&d;
+}
+
+/* SOCOM 1's: the source boxes drawn; with any particles buffered, a packet of ten VIF flushes
+ * kicked, the elements' pointers sorted by depth and the cursor set on the last, whose depth is
+ * returned (-1 with none there; 0 with nothing buffered). SOCOM II kicks the flushes where SOCOM 1
+ * did not. The flushes' counter unsigned and bounded `<= 10`: the target's fused sltiu at / bnez
+ * at (`< 11` computes the compare into v1, which re-colours the loop) */
+float DrawPrep()
+{
+    Source::RenderBBox();
+    if (numParticles) {
+        unsigned int *p = (unsigned int *)zSysSprGetPacket(0);
+
+        p[0] = 0x1000000A;
+        p[1] = 0x19191919;
+        p[2] = 0;
+        p[3] = 0;
+        for (unsigned int i = 1; i <= 10; i++) {
+            p[i * 4] = 0x11000000;
+            p[i * 4 + 1] = 0;
+            p[i * 4 + 2] = 0;
+            p[i * 4 + 3] = 0;
+        }
+        zSysFifoKick((u_long128 *)p, 11);
+        for (int j = 0; j < numParticles; j++)
+            bufferPtr[j] = &buffer[j];
+        zqsort(bufferPtr, numParticles, bufferPtrCompare);
+        pParticleBuf = &bufferPtr[numParticles - 1];
+        return ElementDepth(*pParticleBuf);
+    }
+    return 0.0f;
 }
 
 }

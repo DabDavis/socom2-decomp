@@ -1684,6 +1684,7 @@
 0x002091B0 UpdateMPBomb__11CZNewHudMapFv
 0x00209230 UpdateExplosives__11CZNewHudMapFv
 0x00209790 Draw__11CZNewHudMapFPQ23zdb7CCamera
+0x00209EE0 TickFullScreenMap__11CZNewHudMapFP4CPad10MENU_STATE
 0x0020A330 func_0020A330
 0x0020AE50 CalcNewMatrix__11CZNewHudMapFv
 0x0020B000 CalcDrawPos__11CZNewHudMapCFf
@@ -1818,6 +1819,7 @@
 0x0021B500 HandleScrollDownState__10CWeaponSelFf
 0x0021B820 HandleScrollUpState__10CWeaponSelFf
 0x0021BB50 PulseSelectionArrows__10CWeaponSelFf
+0x0021BDA0 HandleOpenState__10CWeaponSelFP4CPadf
 0x0021C4E0 HandleOpenFirstState__10CWeaponSelFf
 0x0021C6F0 OnOpen__10CWeaponSelFv
 0x0021CBA0 UnInit__10CWeaponSelFv
@@ -5113,6 +5115,7 @@
 0x0031F430 ReserveChildren__Q23zdb6CWorldFi
 0x0031F440 UpdateShadowCasters__Q23zdb6CWorldFv
 0x0031F500 AddShadowCaster__Q23zdb6CWorldFPQ23zdb5CNode
+0x0031F570 Update__Q23zdb13CShadowCasterFv
 0x0031F9B0 GarbageCollect__Q23zdb6CWorldFv
 0x0031FA90 __ct__Q23std54vector<PQ23zdb5CNode,Q23std24allocator<PQ23zdb5CNode>>FRCQ23std54vector<PQ23zdb5CNode,Q23std24allocator<PQ23zdb5CNode>>
 0x0031FAC0 AddShadow__Q23zdb6CWorldFPQ23zdb5CNode
@@ -5180,6 +5183,7 @@
 0x00324C70 DrawRange__8ParticleFff
 0x00325080 bufferPtrCompare__8ParticleFRCPQ28Particle13BufferElementRCPQ28Particle13BufferElement
 0x003250B0 DrawFlush__8ParticleFv
+0x00326A00 DrawPrep__8ParticleFv
 0x00326C20 func_00326C20
 0x00326F40 __ct__Q28Particle13BufferElementFv
 0x00326F50 Recycle__Q28Particle20Destruction_InstanceFv
@@ -5431,6 +5435,7 @@
 0x00337F40 RenderDelayedNodes__5CPipeFv
 0x003381F0 SaveDelayedNode__5CPipeFP7CMatrixPQ23zdb5CNodeQ23zdb12tag_ZVIS_FOV
 0x003383F0 AddAlphaTextures__5CPipeFPQ23zdb5CNode
+0x00339AD0 BuildSpecMapList__5CPipeFPQ23zdb5CNode
 0x00339CF0 RenderCell__5CPipeFPQ23zdb5CCell
 0x0033B110 RenderAtom__5CPipeFPQ23zdb5CNode
 0x0033B230 PrepareAtom__5CPipeFPQ23zdb5CNode
@@ -5530,6 +5535,8 @@
 0x0033F720 snd_InitVAGStreamingEx
 0x0033F890 snd_SendCache
 0x0033F8A0 snd_StartCaching
+0x0033F8B0 snd_SendIOPCommandNoWait__FiiPcPFUiUl_vUl
+0x0033FCA0 snd_SendIOPCommandAndWait__FiiPc
 0x003400D0 snd_AutoVol
 0x00340110 snd_SetSoundParams_CB
 0x00340160 snd_SetSoundPitch
@@ -5555,6 +5562,7 @@
 0x00340570 snd_BankLoadByLoc
 0x00340760 snd_BankLoad
 0x003408C0 snd_StopSoundSystem
+0x003408F0 snd_FlushSoundCommands
 0x00340D80 snd_StartSoundSystem
 0x00340F70 SetDialogMode__4CSndFv
 0x00340F90 func_00340F90
