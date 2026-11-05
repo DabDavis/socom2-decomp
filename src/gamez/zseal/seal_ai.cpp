@@ -5150,11 +5150,6 @@ extern "C" CBoxCorners *func_0056AE40(CBoxCorners *c, const CBBox *b)
     return c;
 }
 
-extern "C" {
-/* (OVL2 0x589AA0, the body's: the anim on top let go) */
-void func_00589AA0(CZSealBody *seal);
-}
-
 /* the AI's anim of a kind stopped when it plays on top of the body's blends (0x5712F0), saying whether
  * it was (OVL2 0x571100, new in SOCOM II; CAiGroup::act_anim::Stop, 0x60DFC0, asks it with the act's
  * anim -- the kind passed through in a1) */
@@ -5164,7 +5159,7 @@ extern "C" bool func_00571100(CSealCtrlAi *ctrl, short anim)
     CZSealBody *seal = (CZSealBody *)ctrl->m_entity;
 
     if (func_005712F0(ctrl, anim)) {
-        func_00589AA0(seal);
+        seal->PopBlend();
         acted = true;
     }
     return acted;

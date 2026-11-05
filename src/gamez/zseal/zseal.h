@@ -1925,6 +1925,9 @@ public:
     CZBodyAnimBlend *Crouch();
     CZBodyAnimBlend *Stand_0(int stance, int n, float t);
     CZBodyAnimBlend *Stand(int n);
+    /* the top blend popped, the new top returned (SOCOM 1's PopBlend: OVL2 0x589AA0 -- called where
+     * SOCOM 1's is, the SEALs' round 48; it hides CBody::PopBlend, which no SEAL code calls) */
+    CZBodyAnimBlend *PopBlend();
     /* the blends popped down to a count, twelve at most; when that worked and asked, the top blend's
      * control cleared and the SEAL asked to go prone (SOCOM 1's ClearStack, after PopBlend: OVL2
      * 0x58A5E0 -- SOCOM II adds the limit; the stances inline it) */
