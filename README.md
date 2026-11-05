@@ -2065,6 +2065,17 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the online lobby, round 25** (ten functions from their drafts to source and eleven rows named -- the
+  network's message registration, SOCOM 1's zNet* names, the lobby's state handlers):
+  - a dead own function that gets an out-of-class template member generated before its tail caller does NOT make that
+    caller inline it (the deque copy constructor 0x2F5F80 still calls begin() / end() const), and `#pragma auto_inline
+    off` placed mid-header around template definitions is inert -- generation order alone does not explain the chat tail;
+  - RE-RUN igdump / igreplay AFTER A HEADER CHANGES: a "graph differs" verdict can become a single move -- insert<AcctRecord>
+    0x2FE3E0 (35, registers only; round 22 found no renumbering) gets the target's colouring on today's include/vector
+    with the end pointer numbered before `m` (the "placement new called" group): a shape for include/vector to find;
+  - names by SOCOM 1's file order and calls: zNetLeaveAndDisconnect 0x30D020, zNetClose 0x30D770, zNetTick 0x30D9B0 (SOCOM
+    1's NetTickThreadEntry calls it at the same spot), zNetInit 0x30E290; the four empty state handlers 0x2EE6A0-0x2EE6D0
+    by their handler-table slots (14, 1, 10, 6) in SOCOM 1's Open.
 - **Tells from the weapons, round 32** (hookupVisuals, unwritten before -- vis_load.cpp whole; AddDecal written; framecode's
   and finalcode's rows resized):
   - one count variable shared by two disjoint loops is split by MW, and the second range is numbered after the code
