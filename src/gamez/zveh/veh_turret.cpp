@@ -12,7 +12,6 @@
 /* the DI pool's request helpers -- RequestRay, its get and set-up and CNewDiDir -- are seal_dipool.h's
  * (the kit's round 51), shared with the SEALs' _GetTargetPerception: OVL1 0x3A7E30 / 0x3A7DD0 are this
  * unit's out-of-line copies */
-#define SEAL_DIPOOL_REQUESTS
 #include "../zseal/seal_dipool.h"
 
 using namespace zdb;

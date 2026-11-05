@@ -6,7 +6,6 @@
  * reverse of their image order (-inline deferred). */
 
 #include "zseal.h"
-#define SEAL_DIPOOL_REQUESTS
 #include "seal_dipool.h"
 
 #include <iostream>
