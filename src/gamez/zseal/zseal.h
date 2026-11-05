@@ -1392,11 +1392,11 @@ public:
     CValve *GetValve(SEAL_VALVE v) const;
     /* a loop stopped, and started when it is not playing (SOCOM 1's statics; OVL2 0x574AE0,
      * 0x574B30 -- UpdateAiMapLoc calls them), its sounds and their instances (SOCOM 1's
-     * aiSoundHandle and aiSoundInstance; OVL1 bss 0x44D4D8, 0x44D4E0). The base's PlayAiSound
-     * stays visible beside the static */
+     * aiSoundHandle and aiSoundInstance; OVL1 bss 0x44D4D8, 0x44D4E0), and the base's PlayAiSound
+     * overridden beside the static (OVL2 0x55FF60, slot 0x24: seal_ai.cpp's) */
     static void StopAiSound(AI_SOUND sound);
     static void PlayAiSound(AI_SOUND sound);
-    using CSealCtrl::PlayAiSound;
+    virtual bool PlayAiSound(CHARACTER_SOUND sound, float chance, int event);
     static class CSnd *aiSoundHandle[2];
     static class CSndInstance *aiSoundInstance[2];
     /* the aim's error cone, kept as its tangent (SOCOM 1's aiAccuracyAngle; OVL1 data 0x3DF180, the

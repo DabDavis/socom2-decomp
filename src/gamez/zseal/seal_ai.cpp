@@ -718,10 +718,11 @@ void func_00607560();
 extern float data_0066AFF0;
 extern unsigned char data_0066B008;
 extern unsigned char data_0066AFE0;
-/* the AI's tuning, twice (OVL2 bss 0x66AD20 and 0x66AE80, 0x154 bytes each: the second's fields set
- * after both are cleared) and the idle anims' kinds (OVL2 bss 0x66AD00) -- the names ours */
-extern unsigned char data_0066AD20[0x154];
-extern unsigned char data_0066AE80[0x154];
+/* a time per character sound, twice (OVL2 bss 0x66AD20 and 0x66AE80, 85 floats each: when each sound
+ * last played and the least gap before it plays again -- PlayAiSound reads both; the second's fields
+ * set after both are cleared) and the idle anims' kinds (OVL2 bss 0x66AD00) -- the names ours */
+extern float data_0066AD20[85];
+extern float data_0066AE80[85];
 extern float data_0066AE94;
 extern float data_0066AF6C;
 extern float data_0066AF70;
@@ -2663,6 +2664,72 @@ static inline bool Chance(float chance)
     const float &c = chance;
 
     return Rfloat(0.0f, 1.0f) <= c;
+}
+
+/* 0x55FEE0's body as PlayAiSound expands it (a marked device, the name ours): the target hands the raw
+ * int to GetEventRange and sign-extends the raw register for CreateAiEvent's word, while its own tests
+ * share PlayAiSound's narrowed copy -- what a CAiEvent::EVENT third parameter does (a byte-enum parameter
+ * goes on unconverted, README), the signature PlayAiSound's callers in other lanes' units cannot take yet
+ * (they pass int literals). Through 0x55FEE0 itself the cast argument is narrowed at the call (3 off) */
+extern "C" float GetEventRange__8CAiEventFQ28CAiEvent5EVENT(int event);
+static inline CAiEvent *VoiceEvent(CSealCtrl *ctrl, int event)
+{
+    CAiEvent *r = 0;
+
+    if ((CAiEvent::EVENT)event != CAiEvent::AIE_NONE) {
+        float range = GetEventRange__8CAiEventFQ28CAiEvent5EVENT(event);
+
+        r = ctrl->CreateAiEvent(CAiEvent::AIE_VOICE, data_00650380, range, false, &ctrl->m_entity->m_posW,
+            (signed char)event);
+    }
+    return r;
+}
+
+/* a sound of the SEAL's character played (SOCOM 1's PlayAiSound(CHARACTER_SOUND), which always played
+ * it; OVL2 0x55FF60, slot 0x24 of CSealCtrlAi's vtable): not again within the sound's gap since it last
+ * played, then only if the chance comes up; sound 80 only while the AI runs, out of 0x60A850's pursuit
+ * and in state 2 or 9 at least 10 s into its step; a dead SEAL's only for sounds 60 and 61. A Navy
+ * SEAL's plays from no point and makes its AI event only for event 1, any other SEAL's from where it
+ * stands (CSealCtrl's 0x5978A0); the time kept. Whether it played */
+bool CSealCtrlAi::PlayAiSound(CHARACTER_SOUND sound, float chance, int event)
+{
+    bool played = false;
+    CCharacterType *ch;
+    float *last;
+    bool ok;
+    CZSealBody *seal = (CZSealBody *)m_entity;
+
+    if (sound != CHRSND_NONE) {
+        ch = seal->GetCharacter();
+        last = &data_0066AD20[sound];
+        ok = true;
+        if (data_004365C0 - *last < data_0066AE80[sound])
+            ok = false;
+
+        if (ok && chance < 1.0f)
+            ok = Chance(chance);
+        if (sound == 80) {
+            ok = false;
+            if (aiEnabled && !func_0060A850(m_67c) && (AiStateIs((AI_STATE)2) || AiStateIs((AI_STATE)9)))
+                ok = GetAiState()->m_phaseTime >= 10.0f;
+        }
+        bool dying = sound == 60 || sound == 61;
+
+        if (ok && (seal->m_isAlive || dying)) {
+            unsigned int id = seal->m_id;
+            bool send = (CAiEvent::EVENT)event != CAiEvent::AIE_NONE;
+
+            if (m_navyseal) {
+                played = ch->PlayAt(sound, id, 0);
+                send = (CAiEvent::EVENT)event == 1;
+            } else
+                played = ch->PlayAt(sound, id, &seal->m_posW);
+            if (send)
+                VoiceEvent(this, event);
+            *last = data_004365C0;
+        }
+    }
+    return played;
 }
 
 /* neither of SOCOM 1's m_snoozing and m_sleeping set, as a bool -- the `||` MW's own (its join no
