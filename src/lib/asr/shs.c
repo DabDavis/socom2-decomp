@@ -8,10 +8,9 @@
  * object's other functions compile the same with and without it: the eleventh -ffast-math object).
  * Names are SOCOM 1's (s1:align, the object's order agreeing); the block's fields are named by
  * their use. ControlSHS_VUV and Lin_2_Log (round 27c) are written; round 28c spline2 (0x4C0,
- * SOCOM 1's body); round 29c CreateFreqWindow, InitSHS_VUV, ConstructSHS_VUV (over its draft) and
- * SubHarmonicSummation_and_VUVDetermination (OPEN, diagnosed in place). ProcessSHS_VUV is not
- * written: declared extern so the constructor's process slot resolves through the map (static
- * when it is). */
+ * SOCOM 1's body); round 29c CreateFreqWindow, InitSHS_VUV, ConstructSHS_VUV (over its draft),
+ * SubHarmonicSummation_and_VUVDetermination (byte-exact in round 30c) and ProcessSHS_VUV (OPEN,
+ * diagnosed in place). */
 #include "tosblk.h"
 
 typedef struct SHS {
@@ -153,55 +152,58 @@ static void Lin_2_Log(SHS *s)
 /* the sub-harmonic sum: the log spectrum (+84) copied into the output frame, each harmonic's shifted
  * copy added at a weight falling by f52 a harmonic; the frame is voiced (1 into the second output)
  * when its peak over the input's second word reaches f56. SOCOM 1's body (0x1F4 there: its loops
- * rolled), round 29c. Measured: a walker and a source pointer of their own per loop (one shared
- * pointer crosses the second qEnQueueOne and takes s0 for all three loops); the harmonic's offset
- * read and stepped at the top (`k = *off++`); its end set in two statements (`end = out + n; end -=
- * k;`: a pseudo set twice is no loop.c movable, so `out + n*4` stays in the outer loop as the
- * target's -- SOCOM 1's too -- where one expression hoists it), the walker for the peak search
- * copied from out before the call, `x = in[0] + 1` before it.
- * OPEN (38 words, the right size, registers and one pair's schedule): the target's copy, harmonic
- * and peak ends are three pseudos (a3, t1, a1) with out ranked above the harmonic's (out t0, n*4
- * and the harmonic end t1); here one `end` for all three keeps out first but shares its register,
- * and a harmonic end of its own outranks out (17 refs over 69 insns against 25 over 129, tools/
- * ccdump.py -f): every split of the three ends, shared or separate walkers, an inline copy bound --
- * 72 shapes (build/scratch/gcc/v_shs8.py) -- 38 the nearest. */
+ * rolled), round 29c; byte-exact in round 30c. Measured: a walker and a source pointer of their own
+ * per loop (one shared pointer crosses the second qEnQueueOne and takes s0 for all three loops); the
+ * harmonic's offset read and stepped at the top (`k = *off++`); the copy, harmonic and peak ends
+ * three variables (the target's a3, t1, a1). The harmonic end is computed in a temporary set twice
+ * and copied (`t = out + n; t -= k; hend = t;`): set twice, t is no loop.c movable, so `out + n*4`
+ * stays in the outer loop (`addu v1,t0,t5`, SOCOM 1's compile too), and the copy gives the end a
+ * pseudo of its own (combine folds `t -= k` into it: `subu t1,v1,v0`) -- `hend = out + n - k` hoists
+ * the sum, `hend = out + n; hend -= k` keeps it in hend's register (round 29c's 38 words). The
+ * copy's source and the harmonic table read after the copy end (`q = s->f84; off = s->f92;`: sched1
+ * issues the f84 load first, as the target); `x = in[0]; x++;` loads in[0] straight into x's
+ * register (the target's `lw s2,0(s2)`; `in[0] + 1` loads into v0 first); the peak's ratio tested
+ * as an expression (`max / *x < s->f56`: the quotient a pseudo of its own, $f0). */
 static void SubHarmonicSummation_and_VUVDetermination(SHS *s, void **in)
 {
     float r = s->f52;
     float h = r;
     float *out = qEnQueueOne(s->b.outputs[0].q);
     int n = s->f60;
-    int *off = s->f92;
-    int *offend = off + s->nharm;
+    int *off, *offend;
     float *src;
-    float *p, *q, *d, *q2, *end;
+    float *p, *q, *d, *q2, *end, *hend, *t, *mend;
     float max, *x;
     int k;
     unsigned char *flag;
 
     end = out + n;
-    for (d = out, q = s->f84; d < end; )
+    q = s->f84;
+    off = s->f92;
+    offend = off + s->nharm;
+    for (d = out; d < end; )
         *d++ = *q++;
     src = s->f84;
     for (; off < offend; ) {
         k = *off++;
-        end = out + n;
-        end -= k;
+        t = out + n;
+        t -= k;
+        hend = t;
         q2 = src + k;
-        for (d = out; d < end; d++, q2++)
+        for (d = out; d < hend; d++, q2++)
             *d += h * *q2;
         h *= r;
     }
     p = out;
-    x = (float *)in[0] + 1;
+    x = in[0];
+    x++;
     flag = qEnQueueOne(s->b.outputs[1].q);
     max = *p;
-    end = p + s->f60;
-    for (p++; p < end; p++)
+    mend = p + s->f60;
+    for (p++; p < mend; p++)
         if (max < *p)
             max = *p;
-    max /= *x;
-    if (max < s->f56)
+    if (max / *x < s->f56)
         *flag = 0;
     else
         *flag = 1;
