@@ -1815,13 +1815,10 @@ extern "C" bool func_0054A6D0(CZSealBody *seal, const CPnt3D *pos, zdb::Intersec
     return true;
 }
 
-extern "C" {
-/* the steepest wall normal the weapon's points are pushed back from (OVL1 bss 0x44C268, beside
- * 0x44C264; the name ours) and a switch that keeps them out of walls off (OVL2 bss 0x66B000; the name
- * ours) */
-extern float data_0044C268;
-extern unsigned char data_0066B000;
-}
+/* a switch that turns the weapon's wall push-out off -- never written, so off (OVL2 bss 0x66B000: 0x549C30
+ * and 0x549F30 give up at it, 0x5483D0 and PostPreTick test it; the name ours). The steepest wall normal
+ * the points are pushed back from is the dynamics' slope limit (0x44C268, theCharacterDynamics + 0x18) */
+extern unsigned char noWeaponWallPush;
 
 /* bit 0 of 0x258 set (an inline, the name ours: the target inserts the constant, `andi v1,zero,1`) */
 static inline void Set258(CZSealBody *seal, bool b) { seal->m_258_0 = b; }
@@ -1830,7 +1827,7 @@ static inline void Set258(CZSealBody *seal, bool b) { seal->m_258_0 = b; }
  * nodes, the top blend's flag 0x40, the body not prone, hanging or on a ladder and the switch off, the
  * points moved by the offset and the weapon's sequence weighing half or more -- each point (the fire
  * point first) behind the hit's plane pushes m_f44 back out along the normal, 0.85 of its depth, when
- * the normal faces up no more than 0x44C268, else clears bit 0 of 0x258; false when a test fails or a
+ * the normal faces up no more than the slope limit, else clears bit 0 of 0x258; false when a test fails or a
  * point is in front (OVL2 0x549C30, new in SOCOM II; the name unknown) */
 extern "C" bool func_00549C30(CZSealBody *seal, const CPnt3D *offset, zdb::IntersectStruct *hit)
 {
@@ -1842,7 +1839,7 @@ extern "C" bool func_00549C30(CZSealBody *seal, const CPnt3D *offset, zdb::Inter
         return false;
     bool push = true;
 
-    if (!(hit->m_norm.y <= data_0044C268))
+    if (!(hit->m_norm.y <= theCharacterDynamics.m_maxSlopeCos))
         push = false;
     if (!func_005551A0(((CZBodyAnimBlend *)func_00555170((CIndexedArray *)&seal->m_blends))->m_flags, 0x40))
         return false;
@@ -1850,7 +1847,7 @@ extern "C" bool func_00549C30(CZSealBody *seal, const CPnt3D *offset, zdb::Inter
         return false;
     if (seal->m_state == stateClimbLadder || seal->m_state == stateHang)
         return false;
-    if (data_0066B000)
+    if (noWeaponWallPush)
         return false;
     CPnt3D aim;
     CPnt3D fire;
