@@ -2189,17 +2189,19 @@ int CZKit::GetFireClassIndex(FIRE_CLASS c)
 /* for the two items that show their round (186 and 146), the fire point's "projectile" child made
  * active (OVL2 0x5B85A0, new in SOCOM II among the kit's additions; 0x5A78C0 jumps to it). The fire
  * point through CEntity's slot +0x64 (zentity.h's GetFirepointNode; CZSealBody's override is
- * 0x5DFAD0, SOCOM 1's GetFirepointNode -- the body is CZSealBody, its CEntity at 0).
- * OPEN, 2 instructions, scheduling only: the target materialises the name (lui/addiu) before it
- * moves the fire point into a0 for FindChild; here the move sits between the two halves. Tried:
- * the fire point in a local, the name in a local (0x98), the name as an external array, the call
- * through an inline helper (an @STRING@ pool), the id read twice in the test */
+ * 0x5DFAD0, SOCOM 1's GetFirepointNode -- the body is CZSealBody, its CEntity at 0). The fire
+ * point and the name are locals, the name defined after the fire point's call (round 39: then the
+ * target's schedule -- the name materialised whole before the fire point moves into a0; passed as
+ * a literal the move splits lui/addiu, a name defined before the call is kept in a saved register,
+ * 0x98) */
 void CZKit::ShowProjectile()
 {
     EQUIP_ITEM id = m_item[m_selected_item]->m_ID;
 
     if (id == 186 || id == 146) {
-        zdb::CNode *n = ((CEntity *)m_body)->GetFirepointNode(0)->FindChild("projectile", true);
+        zdb::CNode *fp = ((CEntity *)m_body)->GetFirepointNode(0);
+        const char *nm = "projectile";
+        zdb::CNode *n = fp->FindChild(nm, true);
 
         if (n)
             n->SetActive(true);

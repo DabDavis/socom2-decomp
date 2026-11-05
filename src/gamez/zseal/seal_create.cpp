@@ -32,6 +32,61 @@ public:
 
 extern CMission theMission;
 
+extern "C" {
+/* the top blend's representative flagged (seal_body.cpp's, OVL2 0x57B510), the body's top blend and a
+ * halfword's bits (seal.cpp's tail copies, 0x555170 and 0x5551A0) */
+bool func_0057B510(CZSealBody *seal);
+void *func_00555170(void *stack);
+bool func_005551A0(unsigned short flags, unsigned short bits);
+/* AnimTypes statics past SOCOM 1's list (OVL1 data 0x3DEF08, 0x3DEF50) */
+extern short data_003DEF08;
+extern short data_003DEF50;
+}
+
+/* the root's height followed: under a flagged anim whose top blend lacks flag 0x20, or anim 46 (an
+ * inline: the target builds the answer -- `daddiu 1` / `move zero` -- and then tests it) */
+static inline bool FollowsRoot(CZSealBody *seal)
+{
+    if ((func_0057B510(seal) &&
+         !func_005551A0(((CZBodyAnimBlend *)func_00555170(&seal->m_blends))->m_flags, 32)) ||
+        seal->IsCurrentBlend((AnimType)46))
+        return true;
+    return false;
+}
+
+/* the SEAL's altitude moved with its root part against a point: under the 0x3DEF08 anim m_fac eased
+ * down to 2.2 first (and there the SEAL lands); under the 0x3DEF50 anim the root held at 11.44; always
+ * true (OVL2 0x59B870, new in SOCOM II: 0x57A330 calls it with a point of its own; after GetSeal, before
+ * seal_dyn.cpp -- the names ours). The height is 0x41370A3E, one ulp above 11.44f (what `2.2f * 5.2`
+ * folds to); the helper's answer an if/return (the `||` of a ternary or a plain return materialises
+ * the second call's test, sltu/xori) */
+extern "C" bool func_0059B870(CZSealBody *seal, const CPnt3D *p)
+{
+    CZBodyPart *root = seal->GetRootPart();
+
+    if (seal->IsCurrentBlend((AnimType)data_003DEF08)) {
+        if (seal->m_1360 > 0.0f)
+            return true;
+        seal->m_fac += -seal->m_133c * seal->m_2e0;
+        if (seal->m_fac < 2.2f)
+            seal->m_fac = 2.2f;
+        if (seal->m_bit9)
+            seal->m_alt += p->y - root->m_pos.y;
+        else if (seal->m_fac <= 2.2f) {
+            seal->SetAirborne(false);
+            seal->m_133c = 0.0f;
+        }
+    } else if (seal->IsCurrentBlend((AnimType)data_003DEF50))
+        root->m_pos.y = 11.440001f;
+    else {
+        if (seal->m_bit9)
+            seal->m_alt += p->y - root->m_pos.y;
+        if (FollowsRoot(seal))
+            seal->m_alt += p->y - root->m_pos.y;
+    }
+    return true;
+}
+
 /* a remote SEAL unmade: its node's name dropped, its projectiles and its state cleared, dead, no
  * team, its id invalid, state 8, the team valves refreshed, its squad told (OVL2 0x5998B0; SOCOM
  * 1's with the name and the unit's clean-up) */

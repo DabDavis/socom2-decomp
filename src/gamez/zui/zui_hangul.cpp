@@ -32,8 +32,9 @@
  * copy left) -- 44 against 43 of the unit's rows; CSkbCompleteVec() is six high here (itself,
  * CSkbVec's, vector's, __vector_imp's, the deleter's and the capacity's constructors) and the target
  * inlines it whole, while its destructor keeps the two this-tests and ~vector's call.
- * OPEN, not written yet: the recursive index stepper 0x3903A0, the composer 0x391670 and its rule
- * matcher 0x3919D0; everything they call out of line keeps its placeholder or its draft. The
+ * OPEN, not written yet: the composer 0x391670 and its rule matcher 0x3919D0; everything they call
+ * out of line keeps its placeholder or its draft. The recursive index stepper 0x3903A0 is written
+ * since round 25 (CSkbSplit::Next, OPEN on a level: its note). The
  * split's sum 0x391E70 is written since round 24 (OPEN, 12: CSkbSplit::Sum's note). Round 23 wrote the split (CSkbSplit:
  * its constructor 0x391F80, Part 0x391E50) and a sequence's jamo read 0x391E20, byte-exact; the
  * composer and matcher call the parts' operator[] 0x391D80, end() 0x391D40 (the scalar vector's
@@ -240,16 +241,21 @@ void SkbParseComplete(CSkbCompleteVec *complete, _zrdr *rdr, const char *tag)
 }
 
 /* a split of n jamo into k consecutive parts, the composer's walk over every split (ours, 16
- * bytes: the total, then the parts). Its members not written yet: the stepper 0x3903A0
- * (recursive), the destructor 0x390690 (its draft matches) and the test that a split is left
- * 0x391DF0 (the parts' size); the sum of the first n parts 0x391E70 is written below (OPEN). */
+ * bytes: the total, then the parts). The stepper Next 0x3903A0 (recursive) is written at the unit's
+ * end (OPEN, the level); not written: the destructor 0x390690 (its draft matches) and the
+ * out-of-line copy of Left 0x391DF0 (only the composer calls it); the sum of the first n parts
+ * 0x391E70 is written below (OPEN). */
 class CSkbSplit {
 public:
+    CSkbSplit() : m_n(0) {}
     CSkbSplit(int n, int k);
     unsigned int Sum(int n);
     unsigned int Part(int i);
+    void Next();
     /* the parts through a reference: the walks' vector address hoisted (ours) */
     std::vector<unsigned int> &Parts() { return m_parts; }
+    /* a split is left (0x391DF0, the composer's out-of-line copy; the stepper inlines it) */
+    bool Left() { return m_parts.size() != 0; }
 
     int m_n;   // 0x0
     std::vector<unsigned int> m_parts;   // 0x4
@@ -500,4 +506,54 @@ void CSkbPieces::RemovePiece()
 void CSkbPieces::AddPiece()
 {
     resize(size() + 1);
+}
+
+/* the next split of the same total into as many parts, none (the parts cleared) after the last
+ * (0x3903A0; the composer's walk; the name ours): the split of the rest after the first part stepped
+ * by itself (recursively) and copied back, or -- that one done -- the first part grown by one with
+ * the others reset to one each and the rest last, while the first part leaves room.
+ * OPEN (UI round 25, written), 2 instructions short and one register pair off -- every block, call,
+ * loop and saved register the target's (s0 the local's parts, s1 k, s2 this, s3 &m_parts.data_):
+ *   - A LEVEL: the target's inlined destructor of the local split tests the parts' address FOUR
+ *     times (as the out-of-line ~CSkbSplit 0x390690 does), the unit's CSkbVec level; with
+ *     `CSkbVec<unsigned int> m_parts` the chain is six high (~CSkbSplit, ~CSkbVec, ~vector,
+ *     ~__vector_imp, ~__vector_pod, deallocate) and at -inline level=5 ~CSkbVec is called out of
+ *     line (0x2BC), so std::vector stays here (three tests, the rest of the unit alike either way);
+ *   - the last part's rbegin() reads the data pointer through the parts' data() reference, which
+ *     MW shares with the m_parts[0] reads (s3) -- the target reads it straight (`lw a2,12(s2)`) and
+ *     loads it again through s3 after the iterator's FPR copy: the original scalar end() reads data_
+ *     itself (include/vector's goes through the pod's end and data(), which the pointer vectors'
+ *     hoisted ends need -- the MSL's to weigh).
+ * The local's parts through a reference local (their address kept in s0 for the field reads, as a
+ * reference to a stack object does; through sub.Parts() MW hoists sp-relative field addresses and
+ * strength-reduces the copies), int counters in the copies (unsigned ones are strength-reduced), and
+ * the room test `(int)m_parts[0] <= m_n - k` (branching on `slt at`; `m_n - k >= ...` puts the compare
+ * in a register) are the target's */
+void CSkbSplit::Next()
+{
+    int k = m_parts.size();
+
+    if (k < 2) {
+        m_parts.clear();
+        return;
+    }
+    CSkbSplit sub;
+    std::vector<unsigned int> &parts = sub.m_parts;
+
+    sub.m_n = m_n - m_parts[0];
+    parts.resize(k - 1, 0);
+    for (int i = 0; i < parts.size(); i++)
+        parts[i] = Parts()[i + 1];
+    sub.Next();
+    if (sub.Left()) {
+        for (int i = 0; i < parts.size(); i++)
+            Parts()[i + 1] = parts[i];
+    } else if ((int)m_parts[0] <= m_n - k) {
+        m_parts[0]++;
+        for (int i = 1; i < k - 1; i++)
+            Parts()[i] = 1;
+        *m_parts.rbegin() = m_n - m_parts[0] - (k - 2);
+    } else {
+        m_parts.clear();
+    }
 }

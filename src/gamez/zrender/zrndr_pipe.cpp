@@ -143,12 +143,13 @@ public:
             m_next++;
             return m_next++;
         }
-        /* a line kept for the pass (SOCOM II's; the name ours) and a record put in the draw list by
-         * its range (0x336F60, not written: its list iterator kept in memory across calls) */
+        /* a line kept for the pass (SOCOM II's; the name ours), a record put in the draw list by
+         * its range (0x336F60: OPEN, see there) and the pass drawn (0x336CB0) */
         void AddLine(CPnt4D *p0, CPnt4D *p1, CPnt4D *c0, CPnt4D *c1);
         void Add(zdb::CNode *atom, zdb::CNode *node, zdb::CVisual *visual, zdb::tag_ZVIS_FOV fov,
                  float opacity);
         void Insert(tag_DelayedNode *d);
+        void Render();
 
         zdb::CCamera *m_camera;   // 0x0
         tag_DelayedNode *m_visualList;   // 0x4
@@ -967,6 +968,119 @@ static inline void PopVid()
         __I_nop();
     }
     zdb::CVisual::m_stack_vid.pop();
+}
+
+/* the particle buffer's pass (zparticle_buf.cpp's, SOCOM 1's names): its set-up, which returns the
+ * depth the first range ends at, a range drawn up to a depth, the rest flushed, and the whole pass
+ * when no translucent object waits */
+namespace Particle {
+float DrawPrep();
+float DrawRange(float depth, float end);
+void DrawFlush();
+void Draw();
+}
+
+/* the alpha pass's flags (not named): 0x3E1450 cleared and 0x3E1460 set while it draws, 0x3DFF68 set
+ * after it; NodeSetup's flag for a lit node's extra lights (vis_vu.cpp's) and their set-up
+ * (0x338FA0, not written: RenderVisual calls it too) */
+extern "C" unsigned char data_003E1450, data_003E1460, data_003DFF68;
+extern "C" bool data_003E1458;
+extern "C" void func_00338FA0(zdb::CNode *node);
+
+/* SOCOM 1's: the translucent objects drawn in their depth order between the particle ranges -- each
+ * with its lighting and fog switches, added colour and view id restored, a node set up, lit and drawn
+ * through its visual, a line drawn as one; the particles left over flushed, or the whole particle
+ * pass when nothing waits; the added colour cleared after. The world lane round 18, byte-exact: the
+ * zero colour declared at the top and assigned at the end (its frame slot above the loop's colour;
+ * built where it is declared, the function is 0x2A8, as a temporary 0x274), and the list's end in a
+ * named local beside the cursor (in the test, the end is numbered after the loop's hoisted colour
+ * addresses and takes s0 from them: 11 off) */
+void CPipe::CAlpha::Render()
+{
+    CPnt3D zero;
+
+    zdb::CVisual::AlphaEnable(true);
+    data_003E1450 = 0;
+    data_003E1460 = 1;
+    zdb::CVisual::LandmarkEnable(false);
+    data_004B4E34 = 0;
+    if (m_drawList.size()) {
+        float depth = Particle::DrawPrep();
+        std::list<void *>::iterator i, e = m_drawList.end();
+
+        for (i = m_drawList.begin(); i != e; ++i) {
+            tag_DelayedNode *d = (tag_DelayedNode *)*i;
+
+            if (!(depth <= d->m_40))
+                depth = Particle::DrawRange(depth, d->m_40);
+            zdb::CVisual::m_lightingEnable = d->m_lighting;
+            zdb::CVisual::m_fogEnable = d->m_fog;
+            CPnt3D color(d->m_addColor);
+
+            zdb::CVisual::m_addColor = color;
+            zdb::CVisual::m_stack_vid.push((void *)d->m_vid);
+            if (d->m_atom) {
+                zdb::CVisual::NodeSetup(d->m_atom, d->m_node, &d->m_matrix);
+                if (data_003E1458)
+                    func_00338FA0(d->m_node);
+                func_003B6B20(d->m_node, d->m_fov, d->m_opacity);
+                zdb::CVisual::m_GlobalLightScale = d->m_lightScale;
+                d->m_visual->VuUpdate();
+            } else
+                Draw3DLine((CPnt4D *)d, (CPnt4D *)d + 1, (CPnt4D *)d + 2, (CPnt4D *)d + 3);
+            PopVid();
+        }
+        zdb::CVisual::m_GlobalLightScale = 1.0f;
+        Particle::DrawFlush();
+    } else
+        Particle::Draw();
+    zero = CPnt3D(0.0f, 0.0f, 0.0f);
+    CPnt3D color(zero);
+
+    zdb::CVisual::m_addColor = color;
+    zdb::CVisual::AlphaEnable(false);
+    data_003E1460 = 1;
+    data_003DFF68 = 1;
+}
+
+/* the draw list's last insert, where the next one's walk starts (a static of the unit, 0x488ED8, not
+ * named: defined here it would join the unit's data) */
+extern std::list<void *>::iterator data_00488ED8;
+
+/* SOCOM 1's: a record put in the draw list in depth order, deepest first -- the walk starts at the
+ * last insert (at the list's start again after each pass: Render sets 0x3DFF68), forward while the
+ * record is nearer than the one under the cursor, else backward while it is deeper, before the first
+ * when it is deeper than every one.
+ * OPEN, 0x248 of 0x244 (the world lane round 18; build/scratch/wld/v_ins*.py): the logic and the
+ * three inserts are the target's, the cursor in memory as there (its address taken by the by-value
+ * copy for insert), the record homed for insert's `const T &`. Left: (1) the target keeps the
+ * list's first node in a3 from the head through the backward walk and builds the ternary's other
+ * arm from it (`sw a3,64(sp)`, copied through $f0) -- `b` there takes b's address (the conditional
+ * an lvalue: b in memory, 0x224), `iterator(b)` 0x21C, a fresh begin() (as here) keeps `this` in s0
+ * for it; (2) the first walk reloads the record through its home every pass where MW here hoists
+ * `&d->m_40` (the third walk hoists it in the target too; a for/break first walk changes nothing) */
+void CPipe::CAlpha::Insert(tag_DelayedNode *d)
+{
+    if (data_003DFF68) {
+        data_003DFF68 = 0;
+        data_00488ED8 = m_drawList.begin();
+    }
+    std::list<void *>::iterator it = data_00488ED8;
+    std::list<void *>::iterator b = m_drawList.begin(), e = m_drawList.end();
+
+    if (it == b) {
+        while (it != e && d->m_40 < ((tag_DelayedNode *)*it)->m_40)
+            ++it;
+        data_00488ED8 = m_drawList.insert(it, (void *const &)d);
+    } else if (!(d->m_40 < ((tag_DelayedNode *)*it)->m_40)) {
+        while (it != b && !(d->m_40 <= ((tag_DelayedNode *)*it)->m_40))
+            --it;
+        data_00488ED8 = m_drawList.insert(d->m_40 < ((tag_DelayedNode *)*b)->m_40 ? ++it : m_drawList.begin(), (void *const &)d);
+    } else {
+        while (it != e && d->m_40 < ((tag_DelayedNode *)*it)->m_40)
+            ++it;
+        data_00488ED8 = m_drawList.insert(it, (void *const &)d);
+    }
 }
 
 /* SOCOM 1's: an active UI node drawn with its children -- its view id pushed, its matrix multiplied
