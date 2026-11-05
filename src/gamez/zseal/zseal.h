@@ -432,6 +432,9 @@ public:
      * seal_unit.cpp, which declares them alike) */
     void *GetDataPtr();
     bool SetDataPtr(void *p);
+    /* the squad's order data copied out when the size asked is the size stored (OVL2 0x5EF1D0, the
+     * kit lane's seal_unit.cpp, which declares it alike) */
+    bool GetData(void *data, unsigned int size);
     /* a SEAL's squad's own clean-up of it (OVL2 0x5EDF90, the kit lane's seal_unit.cpp, which
      * declares it alike) */
     static void SealLeaveUnit(CZSealBody *seal);
