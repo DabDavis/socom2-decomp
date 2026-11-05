@@ -149,6 +149,7 @@ public:
         void Add(zdb::CNode *atom, zdb::CNode *node, zdb::CVisual *visual, zdb::tag_ZVIS_FOV fov,
                  float opacity);
         void Insert(tag_DelayedNode *d);
+        void Render();
 
         zdb::CCamera *m_camera;   // 0x0
         tag_DelayedNode *m_visualList;   // 0x4
@@ -967,6 +968,79 @@ static inline void PopVid()
         __I_nop();
     }
     zdb::CVisual::m_stack_vid.pop();
+}
+
+/* the particle buffer's pass (zparticle_buf.cpp's, SOCOM 1's names): its set-up, which returns the
+ * depth the first range ends at, a range drawn up to a depth, the rest flushed, and the whole pass
+ * when no translucent object waits */
+namespace Particle {
+float DrawPrep();
+float DrawRange(float depth, float end);
+void DrawFlush();
+void Draw();
+}
+
+/* the alpha pass's flags (not named): 0x3E1450 cleared and 0x3E1460 set while it draws, 0x3DFF68 set
+ * after it; NodeSetup's flag for a lit node's extra lights (vis_vu.cpp's) and their set-up
+ * (0x338FA0, not written: RenderVisual calls it too) */
+extern "C" unsigned char data_003E1450, data_003E1460, data_003DFF68;
+extern "C" bool data_003E1458;
+extern "C" void func_00338FA0(zdb::CNode *node);
+
+/* SOCOM 1's: the translucent objects drawn in their depth order between the particle ranges -- each
+ * with its lighting and fog switches, added colour and view id restored, a node set up, lit and drawn
+ * through its visual, a line drawn as one; the particles left over flushed, or the whole particle
+ * pass when nothing waits; the added colour cleared after. The world lane round 18, byte-exact: the
+ * zero colour declared at the top and assigned at the end (its frame slot above the loop's colour;
+ * built where it is declared, the function is 0x2A8, as a temporary 0x274), and the list's end in a
+ * named local beside the cursor (in the test, the end is numbered after the loop's hoisted colour
+ * addresses and takes s0 from them: 11 off) */
+void CPipe::CAlpha::Render()
+{
+    CPnt3D zero;
+
+    zdb::CVisual::AlphaEnable(true);
+    data_003E1450 = 0;
+    data_003E1460 = 1;
+    zdb::CVisual::LandmarkEnable(false);
+    data_004B4E34 = 0;
+    if (m_drawList.size()) {
+        float depth = Particle::DrawPrep();
+        std::list<void *>::iterator i, e = m_drawList.end();
+
+        for (i = m_drawList.begin(); i != e; ++i) {
+            tag_DelayedNode *d = (tag_DelayedNode *)*i;
+
+            if (!(depth <= d->m_40))
+                depth = Particle::DrawRange(depth, d->m_40);
+            zdb::CVisual::m_lightingEnable = d->m_lighting;
+            zdb::CVisual::m_fogEnable = d->m_fog;
+            CPnt3D color(d->m_addColor);
+
+            zdb::CVisual::m_addColor = color;
+            zdb::CVisual::m_stack_vid.push((void *)d->m_vid);
+            if (d->m_atom) {
+                zdb::CVisual::NodeSetup(d->m_atom, d->m_node, &d->m_matrix);
+                if (data_003E1458)
+                    func_00338FA0(d->m_node);
+                func_003B6B20(d->m_node, d->m_fov, d->m_opacity);
+                zdb::CVisual::m_GlobalLightScale = d->m_lightScale;
+                d->m_visual->VuUpdate();
+            } else
+                Draw3DLine((CPnt4D *)d, (CPnt4D *)d + 1, (CPnt4D *)d + 2, (CPnt4D *)d + 3);
+            PopVid();
+        }
+        zdb::CVisual::m_GlobalLightScale = 1.0f;
+        Particle::DrawFlush();
+    } else
+        Particle::Draw();
+    zero = CPnt3D(0.0f, 0.0f, 0.0f);
+    CPnt3D color(zero);
+
+    zdb::CVisual::m_addColor = color;
+    zdb::CVisual::AlphaEnable(false);
+    data_003E1460 = 1;
+    data_003DFF68 = 1;
 }
 
 /* SOCOM 1's: an active UI node drawn with its children -- its view id pushed, its matrix multiplied
