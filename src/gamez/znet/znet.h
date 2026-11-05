@@ -147,6 +147,9 @@ public:
     /* the local clock, in milliseconds (unsigned: the active lobby's refresh compares it with
      * sltu, 0x2EE540) */
     unsigned int zNetGetLocalTime();
+    /* the servers' hosts and ports set, the DME's memory routed through the sub-heap (SOCOM 1's,
+     * which read them from an rdr; 0x30E290) */
+    void zNetInit();
     int zNetUpdate();
     /* the DME's and the lobby's tick (SOCOM 1's, 0x30D9B0: the network thread's) */
     int zNetTick();
@@ -181,7 +184,11 @@ public:
     unsigned char m_menu_skip;   // 0x4
     unsigned char m_network_init;   // 0x5
     unsigned char m_monitor_ok;   // 0x6
-    unsigned char _7[0xd0 - 0x7];   // the addresses and ports (SOCOM 1's 0xf-0xbf, wider)
+    unsigned char _7[0x47 - 0x7];   // the addresses and ports (SOCOM 1's 0xf-0xbf, wider)
+    char m_lobby_server[64];   // 0x47: the lobby server's host (zNetInit's; SOCOM 1's at 0x4f, read from an rdr)
+    int m_lobby_port;   // 0x88
+    char m_muis_server[64];   // 0x8c: the universe information server's host (zNetInit's)
+    int m_muis_port;   // 0xcc
     char m_my_ip[16];   // 0xd0: our address as text (SOCOM 1's at 0xaf: zNetInitialize asks the DME for it)
     int m_WorldID;   // 0xe0 (SOCOM 1's at 0xc0)
     int m_ClientIndex;   // 0xe4

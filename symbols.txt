@@ -5331,7 +5331,7 @@
 0x0030DE30 0xAC zNetLookupHost__9CZNetworkFPCcPci  # OVL1; ours (the server list's connect 0x2FDF60 calls it on theNetwork: sceInetName2Address then sceInetAddress2String into the caller's buffer, 30 on failure)
 0x0030DEE0 0x37C zNetLoadIRX__9CZNetworkFv  # OVL1; s1:calls by hand, the online lane round 14 (SOCOM 1's zNetLoadIRX 0x321E20: the same sequence -- CSnd::WaitForCDRead and Close, the netcnf combo's start-up when m_bNetCnfRequired, zSysLoadIRX of the modules by MP_CONNECTION, memcpy/PS2FileName/strcpy/strlen for inetctl's arguments, RegisterRebootCallback with smap, sceSifMInitRpc and the libnet client, CSnd::UIOpen, the loaded flag returned; SOCOM II drops the early return when loaded and loads inet.irx and netcnf.irx with the icon arguments first; CSMInitNetwork::WaitForNetwork 0x27702C calls it on theNetwork)
 0x0030E260 0x2C func_0030E260  # OVL1
-0x0030E290 0x64 func_0030E290  # OVL1
+0x0030E290 0x64 zNetInit__9CZNetworkFv  # OVL1; s1:order+role, the online lane round 25 (SOCOM 1's zNetInit 0x322190 is zNetDme.cpp's last function, after zNetLoadIRX, as this is (0x30E260 between); SOCOM 1's reads the servers' hosts from an rdr and strcpy's the first into this+0x4F, this hard-codes 'socom2-prod.pdonline.scea.com' into this+0x47 -- the same field less SOCOM II's 8 bytes -- with port 10075, and the MUIS host with 10071, after routing the DME's memory through the sub-heap's wrappers 0x30E3C0 / 0x30E3B0; zanim_menu.cpp calls it on theNetwork; byte-exact)
 0x0030E300 0x34 func_0030E300  # OVL1
 0x0030E340 0x54 func_0030E340  # OVL1
 0x0030E3A0 0x8 func_0030E3A0  # OVL1

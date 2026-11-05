@@ -203,6 +203,25 @@ int CZNetwork::zNetInitialize()
     return r.m_err;
 }
 
+extern "C" {
+void func_006216B8(void *(*alloc)(unsigned int), void (*free)(void *));   /* (the DME's memory callbacks set) */
+void *func_0030E3C0(unsigned int size);   /* (the DME's allocations from the sub-heap, 0x45B328) */
+void func_0030E3B0(void *p);   /* (and its frees) */
+}
+
+/* the DME's memory routed through the sub-heap, then the lobby server's and the universe
+ * information server's hosts and ports set (SOCOM 1's zNetInit, the last function of zNetDme.cpp in
+ * both builds -- after zNetLoadIRX; SOCOM 1's read the hosts from an rdr into the same first field,
+ * 8 bytes later; OVL1 0x30E290: the menu's network start-up calls it on theNetwork) */
+void CZNetwork::zNetInit()
+{
+    func_006216B8(func_0030E3C0, func_0030E3B0);
+    strcpy(m_lobby_server, "socom2-prod.pdonline.scea.com");
+    m_lobby_port = 10075;
+    strcpy(m_muis_server, "socom2-prod.muis.pdonline.scea.com");
+    m_muis_port = 10071;
+}
+
 /* --- the IOP's network modules (SOCOM 1's zNetLoadIRX) ------------------------------------- */
 
 class CSnd {
