@@ -2065,6 +2065,25 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the SEALs, round 47** (SealProcessAltitude, SealAnim with its undo, the hostage-state push, the in-air test):
+  - the 8 bytes SealProcessAltitude 0x5B5D40 lacked (0x454 of 0x45C) came from the camera block, not the early return:
+    the target loads the world's camera into a saved register before calling GetRegion -- the camera is a local of its
+    own; `tools/igreplay.py --want` then put the hit pointer after the material's temporary (the hit an inline's result,
+    `best` declared after the water reset, the height plus offset a float local of its own);
+  - a second definition written `top = PopBlend()` is split by MW into a temporary coloured ahead of later named locals --
+    a named local declared uninitialised after them keeps the declaration's place; locals read before an `if` and passed
+    by value to an inline inside it reproduce "load before the branch, store after it" for parameters whose address is
+    taken; `f = pos->y + f`, `f += pos->y` and `f = f + pos->y` all give `add.s $f20,$f20,$f0`, a separate float local the
+    target's `$f20,$f0,$f20`;
+  - MW cannot inline a function generated after its caller (the lower address is generated first): when a function
+    at a lower address inlines a sibling's body, both share an inline helper (SealAnim 0x5870E0, SOCOM 1's, with the
+    anim-set undo 0x585FF0; SOCOM 1's InAirControl inlined into it, no copy in the image -- src/ABSENT.txt);
+    InStateCarried / InStateCarrying named by SealAnim's switch in SOCOM 1's case order and their place;
+    AnimTypes::ClimbOver 0x3DECA0 and MovingRifle2Pistol 0x3DEC68 by SOCOM 1's gp reads (0x3DEC80 probably StepUp: one
+    witness);
+  - a new CZSealBody field must not reuse a CEntity field's name -- it silently hides the base member (`m_bit8` broke
+    ResetAltitude and both TeleportTo until objcmp caught it: bit 8 of 0x1060 is `m_landed`); seal_ai.cpp's func_00511F80
+    / func_0052D280 stay placeholders on purpose (in-class inlines in ai.h: placeholders.py lists them as kept).
 - **Tells from completing the MSL headers, round 29** (the deque's converter built, the list's own insert measured, remove_if;
   probes and scratch in build/scratch/msl-r29/ (the probes under p29/), untracked -- dqv.py/dqvars29.py, algv.py/algvars29.py, lv_vars.py):
   - THE POINTER DEQUE CONVERTS THROUGH A CONVERTER OF ITS OWN: std::__convert_iterator (SOCOM 1's MSL name for its
