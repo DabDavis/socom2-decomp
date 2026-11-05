@@ -567,6 +567,9 @@ public:
      * CSealCtrl::PreTick calls, and its _GetTargetPerception) */
     void SensorPreTick(float dT);
     bool _GetTargetPerception(CTarget &target);
+    /* the targets' sightings (OVL2 0x5C9B30: SOCOM 1's SensorTick, which PostTick and CSealCtrlAi's
+     * SensorTick call; unwritten) */
+    void SensorTick(float dT);
     virtual ~CSealCtrl();
     virtual bool PreTick(float dT);
     virtual bool Tick(float dT);
@@ -1102,6 +1105,11 @@ public:
     /* an enemy first seen by the squad called out, by its place on the player's clock (SOCOM 1's,
      * which took the CTarget; OVL2 0x5C9930, the kit lane's seal_sensors.cpp) */
     void EnemyCallout(CEntity *e, CEntity *player);
+    /* the sensing frame: the base's with the view's sensitivity halved while in a group (SOCOM 1's;
+     * OVL2 0x5C98B0, the kit lane's seal_sensors.cpp) and whether the AI is in a group (OVL2 0x60E6E0,
+     * the kit lane's ai_group.cpp, which defines it on a view of its own) */
+    void SensorTick(float dT);
+    bool InGroup();
     /* the AI's own event set: its kind, its duration and where (SOCOM 1's, the same words with the
      * event at 0x628; OVL2 0x5FAD00, the kit lane's seal_aievent.cpp) */
     CAiEvent::EVENT SetAiEvent(CAiEvent::EVENT e, float duration, const CPnt3D *pos);

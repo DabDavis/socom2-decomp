@@ -437,6 +437,28 @@ void CSealCtrlAi::NotifyTargetDown(CZSealBody *seal)
     PlayAiSound(CHRSND_TANGO_DOWN, 1.0f, -1);
 }
 
+/* the object at 0x67C a state tests (OVL2 0x60A850, unwritten; seal_tasks.cpp's spelling) */
+extern "C" bool func_0060A850(void *target);
+
+/* the sensing frame: the base's, the view's sensitivity (the AI parameters' visual_sens) halved for
+ * it while the AI is in a group and put back after, then the object at 0x67C asked (OVL2 0x5C98B0,
+ * byte-exact as a draft before: SOCOM 1's CSealCtrlAi::SensorTick, the base's caller there too --
+ * its own work SOCOM II moved into the base and the sensor pre-tick). The parameters' address a
+ * local taken first, the saved value read in place: the target keeps the one in s0 and reads the
+ * other off `this` */
+void CSealCtrlAi::SensorTick(float dT)
+{
+    static float group_sens = 0.5f;
+    AI_PARAMS *p = &m_aiParams;
+    float sens = m_aiParams.visual_sens;
+
+    if (InGroup())
+        p->visual_sens *= group_sens;
+    CSealCtrl::SensorTick(dT);
+    p->visual_sens = sens;
+    func_0060A850(m_67c);
+}
+
 /* the view cone as the controller keeps it (SOCOM 1's DWARF: CSealCtrl's m_fov, m_fovtan, m_fovcos,
  * m_view_cone -- a CAiCone, 0x38 bytes -- and m_visrange at 0x64-0xA8, the same offsets in SOCOM II;
  * zseal.h's CSealCtrl pads them: a view) */
