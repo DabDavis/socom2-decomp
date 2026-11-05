@@ -8,8 +8,9 @@
  * whole in round 35, with its template tail: the local list's pieces 0x1EA430-0x1EA6D0 and
  * reserve<CTickLight> 0x1EA8D0), testUnload 0x1EA6E0 and testLoad 0x1EA720. The rest of the
  * template tail (0x1EA250-0x1EABCF, the pointer lists' and CNodeVector's pieces every later unit
- * links to) and SOCOM II's command-line functions (0x1EABD0-0x1EB03F) stay with the drafts. Defined
- * in reverse of their image order (-inline deferred). */
+ * links to) stays with the drafts; SOCOM II's command-line functions after it (0x1EABD0-0x1EB03F)
+ * are a unit of their own, options.cpp (its own functions, then its template tail). Defined in
+ * reverse of their image order (-inline deferred). */
 
 #include <iostream>
 

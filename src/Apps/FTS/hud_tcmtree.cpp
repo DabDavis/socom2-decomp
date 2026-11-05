@@ -45,12 +45,13 @@ class CZSealBody {
 public:
     unsigned char _0[0xc0];
     CSealCtrl *m_ctrl;   // 0xc0
+
+    void CacheReticuleSeal(bool on);   // OVL2 0x5AA620 (the SEALs' round 39: seal_env.cpp)
 };
 
 CZSealBody *ftsGetPlayer();
 
-/* OVL2's: the player's menu flag (by address) and OVL1's pad call (by address) */
-extern "C" void func_005AA620(CZSealBody *seal, int on);
+/* OVL1's pad call (by address) */
 extern "C" void func_002C5D10(CPad *pad, int a, int b);
 
 /* the HUD's compass (hud_mapcompass.h's MapCompass: only its switches) */
@@ -301,7 +302,7 @@ void CTCM::Open()
     CSealCtrl *ctrl = player->m_ctrl;
     CPad *pad = GetPad(ctrl->m_padIndex);
 
-    func_005AA620(player, 1);
+    player->CacheReticuleSeal(true);
     m_dc8 = 0;
     ctrl->SetMenuState(MENU_STATE_TCM, false);
     ctrl->StopRumbler();
@@ -330,7 +331,7 @@ void CTCM::Close(bool selected)
 
     if (player->m_ctrl->m_221 != 3)
         player->m_ctrl->SetMenuState(MENU_STATE_NONE, m_mode.m_mode == 5);
-    func_005AA620(player, 0);
+    player->CacheReticuleSeal(false);
     if (m_mode.m_mode != 6)
         Hold(false, 0.3f);
     m_mode.Set(selected ? 2 : 3);

@@ -216,11 +216,15 @@ zdb::CNode *CZSealBody::GetFirepointNode(const char *name)
  * offset from its part, the result in the world or only turned into the world's axes (OVL2
  * 0x5DF930; SOCOM 1's GetNodePos, the hand test SOCOM II's). The class an int (`li` for 1 and 2, no
  * narrowing at the index), the transform inside the table test (its failure goes straight to the
- * return).
- * OPEN, 5 instructions, the hand test's two temporaries only: the target loads the rifle (0x350) into
- * v1 and the right hand into v0 and compares `bne v1,v0` (part's parent, hand); written `parent ==
- * hand` MW gives the hand v1 and `bne v0,v1` (7), `hand == parent` the right operand order with the
- * registers still swapped (5), and a hand local or an inline `HeldBy(part, hand)` the first again */
+ * return). The hand test reads the part's parent through an inline accessor on the left of `==`: the
+ * target loads the rifle (0x350) into v1 and the right hand into v0 and compares `bne v1,v0` -- the
+ * accessor's result a temporary numbered after the hand's load (round 42; written in place, `parent ==
+ * hand` gave 7 differences, `hand == parent` 5, the accessor on the right 2) */
+static inline CZBodyPart *PartParent(const CZBodyPart *p)
+{
+    return p->m_parent;
+}
+
 bool CZSealBody::GetNodePos(const zdb::CNode *node, CPnt3D &pos, bool world)
 {
     if (!node)
@@ -229,9 +233,9 @@ bool CZSealBody::GetNodePos(const zdb::CNode *node, CPnt3D &pos, bool world)
     int fc = m_kit.GetCurItemFireClass();
 
     if (fc == 0) {
-        if (m_rhand == m_rifle->m_parent)
+        if (PartParent(m_rifle) == m_rhand)
             fc = 1;
-        else if (m_rhand == m_pistol->m_parent)
+        else if (PartParent(m_pistol) == m_rhand)
             fc = 2;
     }
     bool ok = false;

@@ -946,12 +946,13 @@ struct MPMissionInfo {
     int m_number;   // 0x10
 };
 extern std::vector<MPMissionInfo *> data_00441650;
-MPMissionView *func_002C8DB0(void *missions, int number, int arg);
 /* the same object as fts_missionlist.cpp's CMultiMissionList (a pointer vector of the missions,
- * OVL1 0x2C8840's this): only its random pick */
+ * OVL1 0x2C8840's this): only its random pick and the mission after a given one */
 class CMultiMissionList : public std::vector<MPMissionInfo *> {
 public:
     MPMissionView *GetRandom(bool multi);
+    /* the mission after the one of an id and kind (fts_missionlist.cpp's, 0x2C8DB0) */
+    MPMissionView *GetNext(int id, bool multi);
     /* a mission's multiplayer kind, by its id (fts_missionlist.cpp's, 0x2C8B80) */
     signed char GetMultiValue(int id);
 };

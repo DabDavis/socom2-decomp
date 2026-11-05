@@ -30,7 +30,9 @@ public:
     unsigned char _0[0x1c];
     CPnt3D m_posW;   // 0x1c
     CZMapNode *m_node;   // 0x28
-    unsigned char _2c[0xc8 - 0x2c];
+    unsigned char _2c[0xc0 - 0x2c];
+    class CSealCtrl *m_ctrl;   // 0xc0 (its controller: the full-screen map's tick reads it)
+    unsigned char _c4[0xc8 - 0xc4];
     unsigned int m_team;   // 0xc8
 };
 

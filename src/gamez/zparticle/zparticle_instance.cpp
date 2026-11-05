@@ -14,7 +14,10 @@
 extern "C" void sceVu0InterVector(float *v0, float *v1, float *v2, float t);
 
 /* the draw buffer's count (zparticle_buf.cpp's unit; unnamed) */
-extern "C" int data_0045C4C0;
+namespace Particle {
+/* the elements buffered this frame (SOCOM 1's numParticles) */
+extern int numParticles;
+}
 
 namespace Particle {
 
@@ -134,7 +137,7 @@ void Destruction_Instance::SetVisual(zdb::CVisual *vis)
  * calls this after its pass) */
 void Render()
 {
-    data_0045C4C0 = 0;
+    numParticles = 0;
     for (Instance *p = Instance::list.m_head; p; p = p->m_listNext)
         p->Render();
 }
