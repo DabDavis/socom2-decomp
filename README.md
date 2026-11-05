@@ -2062,6 +2062,41 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the online lobby, round 21** (the lobby queue's do_assign and the chat queue's range destroy at last):
+  - A GUARDED FUNCTION-LOCAL STATIC READ BY TWO TEMPLATE FUNCTIONS OF ONE INSTANCE is owned by an inline both call --
+    model it there and name its data rows after that inline (`__deque_imp::max_size()`: push_back and do_assign of one
+    element type read the same guarded word, in all three element types; six data rows renamed `max_size...Fv@max`);
+  - a by-value parameter copied bitwise (lwc1/swc1, lq/sq) proves its type's copy constructor implicit -- the accessor-
+    register copy-out can still be a converting return from a user-copy type kept in the frame: the circular buffer has
+    two iterator classes, cdeque<T*>::iterator keeping its accessor copy constructor inside make_iterator, a new
+    const_iterator with an implicit copy what begin() / end() return; to put one inline's by-value copies below another's
+    frame slots take them by reference at the first level and copy them one level down (`__deque_copy_to`; the buffer's
+    assign one level deep, `__deque_copy`) -- do_assign 0x2E1090, open since round 15, with the capacity and block-count
+    ternaries zero-first;
+  - A WRONG REFERENCE ON A STATIC WITH STORAGE (a static const member whose address is taken) is often just a missing
+    data row: check the target's address before treating the function as open (the chat queue's range destroy 0x2F5B10,
+    open since the MSL's round 13 -- its block-size constant at 0x3F56D8);
+  - `new (p) T(x)` for a scalar T adds a null test on p in MW; a `const T &` bound to a converted temporary inside an
+    inline is scalarised away, only volatile reproduced the target's frame store and reload (0x2E0E10, OPEN at 0x274 of
+    0x27C); libnetb.c's sceBInetRecv / sceBInetSend take their callers' seven parameters (rt_comm_platform2_receive
+    loads `li t2,2` before the call).
+- **Tells from the kit and AI states, round 41** (CSealCtrlAi::RegisterCommands, the tasks' Parse functions,
+  CAiSShotAt::Virtual14, ~CMallocBlocks):
+  - THE ORIGINAL'S BUG REPRODUCED: CTMap::Parse 0x5D69F0 tests `r == zrdr_findtag(rdr, "line")` -- `==` written for `=`
+    -- and the target compiles exactly that; RegisterCommands 0x5DE320 (0x7EC: 34 AddCmd calls, ai::SELECT's id kept in
+    `ai_cmdid[2]`) matched on the first try;
+  - a byte tested through an inline's unsigned mask parameter given `~0` keeps `dsll32/dsrl32` before the branch, `& ~0u`
+    written in place folds away; constant stores the target loads before the header's mask (`lui a0; ori a0,a0`) come
+    from a `Create(...)` whose arguments bind before the allocation -- the same stores after NewTask take other
+    registers; an int index into zanim.h's `Item(int)` is strength-reduced in a loop, zrdr.h's unsigned Item index keeps
+    the target's per-pass `i << 3` (CTMove / CTPaint / CTPlay::Parse);
+  - a one-case `switch` gives `beq; nop; b end` where an `if` gives bne; an int-typed ternary (`name ?
+    (int)FindAnimType(name) : -1`) keeps the target's join, an AnimType ternary schedules differently;
+    `FreeVector(*this)` in a derived class's destructor builds the derived class as its temporary,
+    `FreeVector<base>(*this)` gives the target's base temporary (~CMallocBlocks 0x5D9540);
+  - new string literals renumber a unit's anonymous `@N` objects, so objcmp lists functions differing only by rank;
+    with ~vector<void *> named, its copies in zcam_main.cpp, vis_main.cpp, vis_vu.cpp and fts_ovl2statics.cpp score as
+    matches (they were no-target).
 - **Tells from the AI core, round 28** (CAiMaps::WalkLine at last; AppendPathLoc and InsertPathLoc):
   - constant definitions in a loop preheader go ahead of a load pinned below stores to an escaped struct: using the
     load's value before those stores lets the dying variable and the new one share a register (WalkLine 0x5352D0: `dt`
@@ -10534,6 +10569,57 @@ ProcessTriggerLR OPEN -- SOCOM 1's body, its fields from +64 on four higher; Fin
 Init not written) -- 3 rows new to the map's byte-exact rows, one matched draft superseded
 (ConstructTriggerLR, 0x506D58); `src/lib/asr` 517 of 549 (513 of 547 before). No rows named (all had
 SOCOM 1's). No tool changed.
+
+**Round 25c: the trigger object whole but one word, four casr opens closed, CalcF2, the annul bit's mechanism.**
+
+- **max.s and min.s are -ffast-math's**: 2.96 folds `a > b ? a : b` on floats into a MAX_EXPR (`max.s`,
+  `min.s`) only under -ffast-math -- without it a compare and a branch-likely move (probes). Five rows in
+  the recogniser carry them (`build/scratch/gcc/fastmath_scan.py`): TriggerLR_FindSpeech (triggerlr.c),
+  CalcF2 and FindBestTranscription (userword.c), MelInitBands (mel.c), SpectralSubtraction (specsub.c);
+  triggerlr.c and userword.c now build with the flag (seventh and eighth -ffast-math objects), and mel.c
+  and specsub.c keep every matched function under it (not yet set: their max.s rows are unwritten).
+  `MAX(x, field)` as `x > field ? x : field` is the target's operand order (rs the field).
+- **Round 13c's definition-order rule is a nothrow note**: 2.96 marks a function it has compiled nothrow
+  (TREE_NOTHROW), so a call to one carries `REG_EH_REGION 0` -- the only difference in the call's RTL --
+  and only then does reorg leave a stolen slot plain (`bnez`) before a fall-through call; a callee only
+  declared, the slot is annulled (`bnezl`). A callee in another object never gets the note, and this cc1
+  has no `nothrow` attribute (no exceptions flag gives it): ProcessTriggerLR's last word (its fall-through
+  calls tos.c's tosBaseBlockDisableInputQueues; a stand-in body above it gives byte-exact).
+- **A void process function keeps a nested arm's tail call a `jal`**: ProcessTriggerLR is void (SOCOM 1's
+  compile makes the same call a sibling call); int and falling off the end, its `(clobber (reg v0))` kept
+  the two state stores from cross-jumping (0x194), void they merge as the target's.
+- **Where the failure return is written lays the returns out**: casrGetLastError/Warning (open since round
+  2b) write the success path first and `return 11` after it -- the success block then ends in a `jr` of
+  its own and reorg fills the null test's slot from the fall-through; guard first, one shared return takes
+  `li v0,11` into both slots. casrDoSecondPass (open since round 1): each arm tests its own pass and returns
+  1, one `return 0` after -- the three tests cross-jump into the target's branch at the join, where a
+  result assigned in the arms and tested once is a store-flag (`sltu`). casrImportContext (round 2b): one
+  guard per test, each its own `return 0` (one `||` guard 0x68).
+- **An inline's value parameter is read at the call**: ControlTriggerLR's session-in passes `*off` by value
+  to an inline that clears the histogram and voicing state first, so `arg` and the offset live apart across
+  the clears and the sum is formed after them (the target's two saved registers; the sum before the clears
+  holds one).
+- **Each loop nest its own counters**: CalcF2's first nest has no call, its second calls; one shared `i`
+  spans both and takes a saved register where the target's first counter is a temporary.
+- **A value CSE cannot fold is a computation's**: InitPitchCombiner's rings are as long as the larger of the
+  lead and the window (`f156 > nwin ? f156 : nwin`, both stored just before) -- the target's first count
+  is `andi` of a 7 CSE did not know, f156 keeping its own `li 7` (SOCOM 1's code the same pair).
+- **Shapes, measured**: TriggerLR_FindSpeech's level MAX after the two measures' reads (720 head orders,
+  ccperm: sched1's order decides local-alloc's), thr's difference an operand of its own, constant flag pairs
+  in the reverse of the target's store order, operand 0 loaded first (`lead > f84`); InitTriggerLR's last
+  two flags reversed likewise; ControlTriggerLR's divisions after both stores they feed, and the destroy's
+  `tos` read before the test (the target's beqz slot).
+- **Open, diagnosed in place**: ProcessTriggerLR (1 word, above), InitPitchCombiner (the right size, 16
+  words: the head's zero-extension order and PitchCombinerReset's last 1-store), casrGetSessionData (a loop
+  over `g[i]` gives SOCOM 1's 0x1BC shape or the same 38 words), PitchCombinerReset and InitViterbi@nbestdp
+  not revisited.
+
+Hand-written in round 25c: `asr/triggerlr.c` (TriggerLR_FindSpeech, ControlTriggerLR, InitTriggerLR new:
+4 of 5, ProcessTriggerLR 1 word), `asr/casr.c` (casrGetLastError, casrGetLastWarning, casrDoSecondPass,
+casrImportContext closed: 55 of 57), `asr/userword.c` (CalcF2 new: 12 of 14), `asr/pitchcomb.c`
+(InitPitchCombiner written, OPEN: 6 of 8) -- 8 rows new to the map's byte-exact rows (4,524 bytes), none
+superseding a draft; `src/lib/asr` 525 of 554 (517 of 549 before). 1 row named (0x4E2008 CalcF2,
+`s1:order`). No tool changed.
 
 **Round 14b: the "toolchain" opens were SCEA's shapes; LargeInt's core is assembly.**
 
