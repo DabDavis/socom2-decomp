@@ -1,6 +1,6 @@
 /* c2dstring.cpp -- C2DString (OVL1 0x361B00-0x3641EF; its initialiser 0x4035C0 builds the string
  * tables, so the unit opens with SOCOM II's string-table wrappers 0x361B00-0x361BCB, defined at the
- * file's end, and four functions 0x361BD0-0x362B1F not written yet): SOCOM 1's functions in SOCOM 1's order
+ * file's end, and MakePacket's layout 0x361BD0-0x362B1F): SOCOM 1's functions in SOCOM 1's order
  * (SetFont, UpdatePos, NewLine, AddCharacter, the Loads, SetString, Format, MakePacket, the two
  * Draws, Tick, On, Off, ClearAndWipe, the destructor and constructor), with SOCOM II's own among
  * them: a character's delete before NewLine, SetPos and the scaled Load after the Loads, the
@@ -8,12 +8,12 @@
  * 1's symbol table gives the class its own unit; the name is ours. Written, all byte-exact: the
  * constructor and destructor, ClearAndWipe, GetCharWidth (0x363C20), On, Off, Tick, both Draws,
  * Format, SetStringId, SetString, the three Loads, SetPos, AddCharacter, NewLine, DeleteCharacter,
- * UpdatePos, SetFont and FormatString (0x363F60, after the constructor). Not yet: MakePacket
- * (0x3635C0) and the four layout functions it calls (0x361BD0-0x362B1F: it builds a packet writer
- * and a layout cursor on its stack -- the cursor's constructor 0x362900 takes the string and the
- * colour -- and loops `while (*cursor.m_p) { 0x361BD0(&writer, &cursor); 0x3625E0(&cursor); }`,
- * 0x3625E0 the only caller of GetCharWidth). Defined in reverse of their image order (-inline
- * deferred). */
+ * UpdatePos, SetFont and FormatString (0x363F60, after the constructor); round 50: MakePacket
+ * (0x3635C0) and the text cursor's constructor 0x362900 -- MakePacket builds a packet writer and a
+ * layout cursor on its stack and loops `while (cursor.More()) { packet.Write(&cursor);
+ * cursor.Advance(); }`. Written, OPEN: the cursor's SeekGlyph 0x362350 and Advance 0x3625E0 (one
+ * shared FPR spot); not yet: the writer's Write 0x361BD0. Defined in reverse of their image order
+ * (-inline deferred). */
 
 #include <stdarg.h>
 #include <string.h>
@@ -30,6 +30,126 @@ public:
 /* the font (SOCOM II's C2DFont: c2dfont.h -- the widths, opacity and scale the string reads, the
  * glyphs its layout measures) */
 #include "c2dfont.h"
+
+/* the string's default colour (black, opaque: a 16-aligned block, copied with lq / sq) and the PRIM
+ * word its glyphs draw with (0x11E: textured sprites by UV; a transparent string ORs alpha blending
+ * in, for good) -- c2dstring.cpp's .data 0x3E0350 and 0x3E0360 (the names ours) */
+struct C2DStringColor {
+    int c[4];
+} __attribute__((aligned(16)));
+static C2DStringColor s_defcolor = {{0, 0, 0, 128}};
+static unsigned int s_prim = 0x11E;
+
+/* the cursor: the string, the pen's place, the next character, its glyph (a C2DGlyphRef: MakePacket's
+ * cursor deletes the owned glyph at its end, the reference's destructor), the glyph's piece by index
+ * and by address, whether the font set the colour, the bright flag ('#B' toggles it; the string's
+ * +0x8C seeds it) and the colour it writes as ints (round 50: the glyph reference and the piece read
+ * off 0x362350's GetGlyph(font, cursor + 0x10) and its piece walk) */
+class C2DStringCursor {
+public:
+    C2DStringCursor(C2DString *str, int *color);
+    /* the next character with a glyph: newlines and colour codes taken on the way (0x362350) */
+    void SeekGlyph();
+    /* whether characters are left (inline: MakePacket's loop tests through it -- the plain read
+     * shares the hoisted address with the loop's first test, the target reads it sp-relative) */
+    bool More() const { return *m_p != 0; }
+    /* the next piece, else the next character's glyph (0x3625E0) */
+    void Advance();
+    /* the glyph's current piece taken, and the font's drop-shadow colour written for a glyph without
+     * its own (inline: SeekGlyph and Advance end alike). The glyph through a local: m_piece is then
+     * loaded after Get()'s ternary, the target's order (indexing Get()'s result evaluates the
+     * subscript first) */
+    void SetPiece()
+    {
+        C2DGlyph *g = m_glyph.Get();
+
+        m_pieceptr = &g->m_pieces[m_piece];
+        if (m_str->m_font->m_3c && !m_glyph.Get()->m_1a) {
+            m_colorSet = true;
+            m_color[0] = (int)m_str->m_font->m_48.x;
+            m_color[1] = (int)m_str->m_font->m_48.y;
+            m_color[2] = (int)m_str->m_font->m_48.z;
+
+            float alpha = m_str->m_color[3];
+            float cap = (float)(int)(128.0f * m_str->m_font->m_54);
+
+            if (cap < alpha)
+                alpha = cap;
+            m_color[3] = (int)alpha;
+        }
+    }
+
+    C2DString *m_str;   // 0x0
+    float m_x;   // 0x4
+    float m_y;   // 0x8
+    const char *m_p;   // 0xc
+    C2DGlyphRef m_glyph;   // 0x10
+    int m_piece;   // 0x18
+    C2DGlyphPiece *m_pieceptr;   // 0x1c
+    bool m_colorSet;   // 0x20
+    unsigned char m_bright;   // 0x21
+    int *m_color;   // 0x24
+};
+
+/* the packet MakePacket writes the cursor's pieces into (0x2C bytes on its stack; the class and the
+ * names ours): the relocator, the string, the depth (a quadword index), whether the string is
+ * transparent (C2D's m_isTrans: its PRIM word gains alpha blending), the colour the cursor writes, the packet -- its start, its DMA tag,
+ * a word, its end --, the pieces in it and the font texture it draws from (-1: none yet). Write
+ * (0x361BD0) closes the packet when a piece needs another texture; the destructor closes the last */
+class C2DStringPacket {
+public:
+    C2DStringPacket(zdb::CTextureRelocMgr *mgr, C2DString *str, int depth, bool trans, int *color)
+        : m_mgr(mgr), m_str(str), m_depth(depth << 4), m_trans(trans), m_color(color),
+          m_texture(-1)
+    {
+        Clear();
+    }
+    ~C2DStringPacket()
+    {
+        if (m_start)
+            Flush();
+    }
+    /* the cursor's piece written (0x361BD0) */
+    void Write(C2DStringCursor *cursor);
+    /* the packet closed and handed to the relocator: the DMA tag (its quadwords, DIRECT), the GIF tag
+     * (the pieces as loops of RGBAQ, UV and XYZ2 under the PRIM word), then emptied */
+    void Flush()
+    {
+        int qwc = m_end - (m_tag + 1);
+
+        ((unsigned int *)m_tag)[0] = qwc | 0x10000000;
+        ((unsigned int *)m_tag)[2] = 0;
+        ((unsigned int *)m_tag)[3] = qwc | 0x50000000;
+        if (m_trans)
+            s_prim |= 0x40;
+        ((unsigned long *)m_tag)[2] = (unsigned long)m_count | 0x400000008000 |
+            ((unsigned long)s_prim << 47) | 0x3000000000000000;
+        ((unsigned long *)m_tag)[3] = 0x531;
+        m_mgr->TakeDrawPacket(m_start, m_end - m_start);
+        Clear();
+    }
+    /* no packet begun */
+    void Clear()
+    {
+        m_start = 0;
+        m_tag = 0;
+        m_1c = 0;
+        m_end = 0;
+        m_count = 0;
+    }
+
+    zdb::CTextureRelocMgr *m_mgr;   // 0x0
+    C2DString *m_str;   // 0x4
+    int m_depth;   // 0x8
+    bool m_trans;   // 0xc
+    int *m_color;   // 0x10
+    u_long128 *m_start;   // 0x14
+    u_long128 *m_tag;   // 0x18
+    int m_1c;   // 0x1c
+    u_long128 *m_end;   // 0x20
+    int m_count;   // 0x24
+    int m_texture;   // 0x28
+};
 
 /* the debugging allocator (zsys): file and line passed as nothing in this build */
 void *_malloc(unsigned int size, const char *file, int line);
@@ -342,6 +462,27 @@ void C2DString::Format(const char *fmt, ...)
     SetString(buf, true);
 }
 
+
+/* the string's packets made (SOCOM 1's MakePacket(CTextureRelocMgr *, int)): nothing for an empty
+ * string; else the colour starts at the default, a packet writer and a layout cursor walk the
+ * string -- each piece written, the cursor moved on -- the pen's last place kept as the short length,
+ * and the last packet drawn as the writer goes (the cursor's glyph freed first) */
+void C2DString::MakePacket(zdb::CTextureRelocMgr *mgr, int depth)
+{
+    if (!m_string || !*m_string)
+        return;
+
+    C2DStringColor color = s_defcolor;
+    C2DStringPacket packet(mgr, this, depth, m_isTrans, color.c);
+    C2DStringCursor cursor(this, color.c);
+
+    while (cursor.More()) {
+        packet.Write(&cursor);
+        cursor.Advance();
+    }
+    m_shortLength = (int)cursor.m_x;
+}
+
 /* slot 27: the string of an id in the tables, its scale and offsets with it, kept with the
  * tables' revision; an id of none only takes the revision */
 void C2DString::SetStringId(int id)
@@ -544,53 +685,6 @@ void C2DString::SetFont(C2DFont *font)
 /* ---- MakePacket's layout (SOCOM II's, 0x361BD0-0x362B1F: a cursor walking the string and the
  * packet writer it feeds; the names ours) ---- */
 
-/* the cursor: the string, the pen's place, the next character, its glyph (a C2DGlyphRef: MakePacket's
- * cursor deletes the owned glyph at its end, the reference's destructor), the glyph's piece by index
- * and by address, whether the font set the colour, the bright flag ('#B' toggles it; the string's
- * +0x8C seeds it) and the colour it writes as ints (round 50: the glyph reference and the piece read
- * off 0x362350's GetGlyph(font, cursor + 0x10) and its piece walk) */
-class C2DStringCursor {
-public:
-    C2DStringCursor(C2DString *str, int *color);
-    /* the next character with a glyph: newlines and colour codes taken on the way (0x362350) */
-    void SeekGlyph();
-    /* the next piece, else the next character's glyph (0x3625E0) */
-    void Advance();
-    /* the glyph's current piece taken, and the font's drop-shadow colour written for a glyph without
-     * its own (inline: SeekGlyph and Advance end alike). The glyph through a local: m_piece is then
-     * loaded after Get()'s ternary, the target's order (indexing Get()'s result evaluates the
-     * subscript first) */
-    void SetPiece()
-    {
-        C2DGlyph *g = m_glyph.Get();
-
-        m_pieceptr = &g->m_pieces[m_piece];
-        if (m_str->m_font->m_3c && !m_glyph.Get()->m_1a) {
-            m_colorSet = true;
-            m_color[0] = (int)m_str->m_font->m_48.x;
-            m_color[1] = (int)m_str->m_font->m_48.y;
-            m_color[2] = (int)m_str->m_font->m_48.z;
-
-            float alpha = m_str->m_color[3];
-            float cap = (float)(int)(128.0f * m_str->m_font->m_54);
-
-            if (cap < alpha)
-                alpha = cap;
-            m_color[3] = (int)alpha;
-        }
-    }
-
-    C2DString *m_str;   // 0x0
-    float m_x;   // 0x4
-    float m_y;   // 0x8
-    const char *m_p;   // 0xc
-    C2DGlyphRef m_glyph;   // 0x10
-    int m_piece;   // 0x18
-    C2DGlyphPiece *m_pieceptr;   // 0x1c
-    bool m_colorSet;   // 0x20
-    unsigned char m_bright;   // 0x21
-    int *m_color;   // 0x24
-};
 
 /* the colour's alpha scale for a bright string (.data 0x3E0338: a variable, read with lwc1; the
  * name ours) */
