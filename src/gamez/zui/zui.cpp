@@ -460,11 +460,11 @@ STICK_DIR UiGetDirStickMoved();
 bool IsStickNearCenter(float r);
 STICK_DIR GetStickDir();
 
-/* (ours: the helpers' magnitude, a ternary) */
-static inline float StickAbs(float f)
-{
-    return f >= 0.0f ? f : -f;
-}
+/* the magnitude of an axis, read straight off the static (ours: a macro, not an inline -- through an
+ * inline's parameter the negation is of a copy assigned at each expansion and MW's loop optimiser
+ * leaves it in the ternary's arm; on the static itself `-s_fStickX` is invariant and HandlePad's
+ * loop hoists it beside GetStickDir's `-s_fStickY`, as the target's f6 / f4) */
+#define STICK_ABS(v) ((v) >= 0.0f ? (v) : -(v))
 
 /* the stick moved down, once per push (SOCOM 1's) */
 bool DidStickMoveNext()
@@ -557,7 +557,7 @@ bool IsStickNearCenter(float r)
 {
     bool near = false;
 
-    if (StickAbs(s_fStickX) <= r && StickAbs(s_fStickY) <= r)
+    if (STICK_ABS(s_fStickX) <= r && STICK_ABS(s_fStickY) <= r)
         near = true;
     return near;
 }
@@ -827,21 +827,28 @@ struct KeyInput {
 };
 int GetKeyReadThisFrame(KeyInput *key);
 
+/* a button's state on the pad (ours: through an inline returning the enum, the state read is the
+ * inline's result -- a temporary numbered ahead of the caller's code-generation temporaries, so
+ * HandlePad's item loads take t0 / a3 and the state t1, as the target; read in place it is numbered
+ * after them) */
+static inline KEY_STATE PadButtonState(const CPad *pad, int b)
+{
+    return (KEY_STATE)pad->m_state[b];
+}
+
 /* the pad's input: the stick's centring and position kept, the pop-up's or the keyboard's or the
  * buttons' handling first, then the first button action whose button is in its state -- or, for
  * the four direction buttons falling, whose stick push came -- started, else the stick or the
  * pad's up and down stepping the active button, and a key 40 or 88 running event 44 (0x368650:
  * SOCOM 1's HandlePad; the stick's directions as buttons and the key SOCOM II's).
- * OPEN, 72 instructions at the target's size (0xB20; 334 before the button tests became bools of
- * their own, computed ahead of the four stick reads as the target computes them): the target's
- * loop hoists -s_fStickX into f6 beside -s_fStickY (f4), so each inlined StickAbs(x) takes the
- * negation with a mov.s and x sits in f7; ours hoists only -y (GetStickDir's) and negates x in the
- * branch, which moves x to f6 and reorders the preamble's bools. Tried: StickAbs as `f < 0 ? -f :
- * f` (0xAE0), with the negation in a local (0xB18 / 0xAD8 / 0xB28: the copies outside the loop
- * negate in the branch, as ours), DidStickMovePrev/Next for two of the reads, a dead `-x` local, the
- * item through a pointer, the count in a local, the type read through the array -- none hoists -x.
- * Measured: -y is hoisted for GetStickDir's `-s_fStickY` (with that read written another way the
- * loop hoists no -y either), so the target's loop must read -x in a hoistable place of its own */
+ * Byte-exact since round 29 (open since round 28 at 72): THE STICK'S MAGNITUDE READS THE STATIC
+ * ITSELF (STICK_ABS, a macro) -- through an inline's parameter `-f` negates a copy assigned at each
+ * expansion and stays in the ternary's arm, on `s_fStickX` it is a loop invariant MW hoists into f6
+ * beside GetStickDir's `-s_fStickY` (f4), each arm then a mov.s; the six button tests declared
+ * pressed, falling, up, down, left, right (the target's t7 down to t2: the first declared takes the
+ * highest scratch register); the pad's state through an inline returning the enum (PadButtonState:
+ * its result numbered ahead of the item loads, `igreplay --move 110=103.5` -- read in place the
+ * three loads take t1 / t0 / a3 against the target's t0 / a3 / t1) */
 void CGameMenu::HandlePad(const CPad *pad)
 {
     s_bStickCentered = IsStickNearCenter(s_bStickCentered ? 0.6f : 0.2f);
@@ -859,12 +866,12 @@ void CGameMenu::HandlePad(const CPad *pad)
         ActionItem &item = m_commands[i];
 
         if (item.Type == ACTION_TYPE_BUTTON) {
+            bool pressed = item.State == PadButtonState(pad, item.PadButton);
+            bool falling = item.State == KEY_FALLING;
             bool isUp = item.PadButton == PAD_UP;
             bool isDown = item.PadButton == PAD_DOWN;
-            bool isRight = item.PadButton == PAD_RIGHT;
-            bool falling = item.State == KEY_FALLING;
-            bool pressed = item.State == pad->m_state[item.PadButton];
             bool isLeft = item.PadButton == PAD_LEFT;
+            bool isRight = item.PadButton == PAD_RIGHT;
             bool up = UiGetDirStickMoved() == STICK_UP;
             bool down = UiGetDirStickMoved() == STICK_DOWN;
             bool right = UiGetDirStickMoved() == STICK_RIGHT;

@@ -2113,6 +2113,7 @@
 0x00239CA0 GetNewRating__12CRatingMatchFiPf
 0x00239D40 Compute__12CRatingMatchFv
 0x0023A030 AddPlayer__12CRatingMatchFiiif
+0x0023A170 AddTeam__12CRatingMatchFiibf
 0x0023A240 __dt__12CRatingMatchFv
 0x0023A2C0 __ct__12CRatingMatchFv
 0x0023A2E0 GetConfidence__5CRecoFv
@@ -3553,6 +3554,7 @@
 0x002AC410 Open__8CMissionFPCc
 0x002ACA30 func_002ACA30
 0x002ACAD0 CreateCompassNavPoints__8CMissionFv
+0x002AD290 Init__8CMissionFv
 0x002AD940 __dt__8CMissionFv
 0x002ADBC0 __ct__8CMissionFv
 0x002ADF10 NVGNoiseTick__FP14_zanim_cmd_hdrPf
@@ -3626,6 +3628,7 @@
 0x002B2310 RecycleEntity__8CMissionFP7CEntity
 0x002B23A0 RefreshTeamValves__8CMissionFv
 0x002B2840 InitalizeTeamValves__8CMissionFv
+0x002B28D0 LoadVehicle__8CMissionFP16CVehicleRdrEntryb
 0x002B2D20 func_002B2D20
 0x002B2E50 LoadVehicles__8CMissionFv
 0x002B3430 CloseVehicleRdr__8CMissionFv
@@ -3690,6 +3693,7 @@
 0x002B63B0 __dt__16C2DMessageStringFv
 0x002B6430 func_002B6430
 0x002B6D00 SetBkgColor__12C2DMessage_QFfff
+0x002B6D60 LastMessage__12C2DMessage_QFv
 0x002B6DE0 Clear_Messages__12C2DMessage_QFv
 0x002B6EE0 __dt__12C2DMessage_QFv
 0x002B6FC0 Init__12C2DMessage_QFP7C2DFontP8CRdrFile
@@ -4599,7 +4603,10 @@
 0x002F4FC0 func_002F4FC0
 0x002F5020 UpdateChatDisplay__Fv
 0x002F51E0 pop_front__Q23std71__deque_imp<17MediusChatMessage,Q23std30allocator<17MediusChatMessage>>Fv
+0x002F5290 push_back__Q23std71__deque_imp<17MediusChatMessage,Q23std30allocator<17MediusChatMessage>>FRC17MediusChatMessage
 0x002F56B0 swap__Q210Metrowerks34cdeque<PCv,Q23std14allocator<PCv>>FRQ210Metrowerks34cdeque<PCv,Q23std14allocator<PCv>>
+0x002F5700 do_assign<Q310Metrowerks34cdeque<PCv,Q23std14allocator<PCv>>14const_iterator>__Q210Metrowerks34cdeque<PCv,Q23std14allocator<PCv>>FQ310Metrowerks34cdeque<PCv,Q23std14allocator<PCv>>14const_iteratorQ310Metrowerks34cdeque<PCv,Q23std14allocator<PCv>>14const_iteratorQ23std20forward_iterator_tag_v
+0x002F5940 init__Q210Metrowerks34cdeque<PCv,Q23std14allocator<PCv>>FUiRCPCv
 0x002F5A30 clear__Q23std71__deque_imp<17MediusChatMessage,Q23std30allocator<17MediusChatMessage>>Fv
 0x002F5B10 destroy__Q23std71__deque_imp<17MediusChatMessage,Q23std30allocator<17MediusChatMessage>>FQ33std71__deque_imp<17MediusChatMessage,Q23std30allocator<17MediusChatMessage>>8iteratorQ33std71__deque_imp<17MediusChatMessage,Q23std30allocator<17MediusChatMessage>>8iterator
 0x002F5E50 __dt__10CChatQueueFv
@@ -4608,6 +4615,8 @@
 0x002F5EE0 push__Q23std100queue<17MediusChatMessage,Q23std65deque<17MediusChatMessage,Q23std30allocator<17MediusChatMessage>>>FRC17MediusChatMessage
 0x002F5EF0 __dt__Q23std65deque<17MediusChatMessage,Q23std30allocator<17MediusChatMessage>>Fv
 0x002F5F50 __ct__Q23std100queue<17MediusChatMessage,Q23std65deque<17MediusChatMessage,Q23std30allocator<17MediusChatMessage>>>FRCQ23std65deque<17MediusChatMessage,Q23std30allocator<17MediusChatMessage>>
+0x002F5FF0 __ct__Q23std71__deque_buf<17MediusChatMessage,Q23std30allocator<17MediusChatMessage>>FRCQ23std30allocator<17MediusChatMessage>
+0x002F6060 __ct__Q210Metrowerks146__compressed_pair_imp<Q23std30allocator<17MediusChatMessage>,Q210Metrowerks68cdeque<P17MediusChatMessage,Q23std31allocator<P17MediusChatMessage>>>FRCQ23std30allocator<17MediusChatMessage>RCQ210Metrowerks68cdeque<P17MediusChatMessage,Q23std31allocator<P17MediusChatMessage>>
 0x002F6230 __ct__Q23std65deque<17MediusChatMessage,Q23std30allocator<17MediusChatMessage>>Fv
 0x002F6260 func_002F6260
 0x002F6290 func_002F6290
@@ -6110,6 +6119,7 @@
 0x00359590 Load__13C2DBitmapPolyFffffffffPQ23zdb8CTexture
 0x00359640 __ct__13C2DBitmapPolyFv
 0x00359740 advance_to__Q23std38__list_imp<PCv,Q23std14allocator<PCv>>FUi
+0x00359820 AddJamo__11CHangulFontFP8C2DGlyphi4JAMOP7CLayouti
 0x003599D0 Compose__11CHangulFontFP8C2DGlyph7C2DCharP7C2DFont
 0x0035A140 __ct__Q221@unnamed@c2dfont_cpp@10CFontPointFRCQ221@unnamed@c2dfont_cpp@10CFontPoint
 0x0035A160 SetY__Q221@unnamed@c2dfont_cpp@10CFontPointFi
@@ -6124,6 +6134,7 @@
 0x0035A2B0 func_0035A2B0
 0x0035A2D0 __dt__10CJamoGlyphFv
 0x0035A350 __ct__10CJamoGlyphFv
+0x0035A3A0 GetGlyph__7C2DFontFP11C2DGlyphRefUs
 0x0035A650 Unload__7C2DFontFv
 0x0035A7B0 GetWidth__8C2DGlyphFv
 0x0035A840 ReadRect__FPC5_zrdrPC5_zrdr
@@ -6307,6 +6318,7 @@
 0x00368560 HasChildren__11CDlgObjSpecCFv
 0x00368570 Init__9CGameMenuFPQ23zdb16CTextureRelocMgrP9CZAnimZAR
 0x00368630 GetReaderFileName__9CGameMenuFv
+0x00368650 HandlePad__9CGameMenuFPC4CPad
 0x00369170 DrawForeplane__9CGameMenuFv
 0x003691C0 Draw2dOnly__9CGameMenuFv
 0x00369210 Clear__9CGameMenuFv
@@ -6774,6 +6786,7 @@
 0x0038B8A0 func_0038B8A0
 0x0038B8F0 PrepKeyBitmaps__13CSoftKeyboardFP12CBmpWithNodeP12CBmpWithNodeUcPCcPCcPQ23zdb16CTextureRelocMgr
 0x0038BAB0 func_0038BAB0
+0x0038BAC0 PrepForDisplay__13CSoftKeyboardFPQ23zdb16CTextureRelocMgrP7C2DFont
 0x0038BE40 func_0038BE40
 0x0038BE80 SwitchToNamed__13CSoftKeyboardFi
 0x0038BFE0 func_0038BFE0
@@ -6924,6 +6937,7 @@
 0x003958D0 SkbPrepDisplay__FPQ23zdb5CNodePQ23zdb16CTextureRelocMgrP7C2DFontPFPQ23zdb5CNodePQ23zdb16CTextureRelocMgr_v
 0x00395D50 SkbLoadBitmap__FP12CBmpWithNodePQ23zdb5CNodeiiPCcPQ23zdb16CTextureRelocMgr
 0x00395DE0 SkbPlaySound__FUc
+0x00395F40 SkbOpenParse__FPCcP5_zrdr
 0x00396220 SkbTogglePair__FP12CBmpWithNodeP12CBmpWithNodePFb_v
 0x00396300 SkbToggleBmp4__Fv
 0x00396BD0 SetRect__8CSkbLookFUcRC8CSkbRect
@@ -7277,6 +7291,7 @@
 0x003AFD50 Clear__6CVideoFbUcUcUcUc
 0x003AFE70 zVid_ZTestOnWriteSet__Fb
 0x003AFED0 zVid_FrameRestore__Fv
+0x003AFF30 zVid_Swap__Fbb
 0x003B04C0 SetDynamicLOD__Fi
 0x003B05E0 func_003B05E0
 0x003B0660 func_003B0660
@@ -7314,6 +7329,7 @@
 0x003B2EA0 LoadMeshNode__FPQ23zar4CZARPQ23zdb5CNode
 0x003B36F0 DereferenceDecals__Q23zdb7CVisualFUi
 0x003B37A0 RemoveDecal__Q23zdb7CVisualFPQ23zdb6CDecal
+0x003B3800 AttachDecal__Q23zdb7CVisualFUifUiPPQ23zdb10AddonPointPQ23zdb10CTexHandlei
 0x003B41D0 VuBatchProgram_Decals__Q23zdb7CVisualFP8_word128
 0x003B5250 func_003B5250
 0x003B5260 func_003B5260
@@ -7514,6 +7530,7 @@
 0x003C3570 Read__Q23zdb7CVisualFRQ23zar4CZAR
 0x003C36B0 UpdateCentroid__Q23zdb7CVisualFv
 0x003C36C0 ComputeBBox__Q23zdb7CVisualFP5CBBox
+0x003C36D0 CopyBuffer__Q23zdb7CVisualFPP8CVisBaseUi
 0x003C3C30 ResolveTextureName__Q23zdb7CVisualFP8_word128P8_word128
 0x003C3CE0 GetTextureSelectBlock_ver2__Q23zdb7CVisualFUiPP8_word128P8_word128P8_word128
 0x003C3D90 GetTextureSelectBlock__Q23zdb7CVisualFUiPP8_word128P8_word128P8_word128
@@ -7525,6 +7542,7 @@
 0x003C4390 __ct__Q23zdb7CVisualFv
 0x003C45B0 func_003C45B0
 0x003C46A0 ClearAnimations__12CZWeaponListFv
+0x003C4700 InitializeWeapons__12CZWeaponListFv
 0x003C4AB0 GetWeaponIndex__12CZWeaponListFP8CZWeapon
 0x003C4B00 GetWeaponByIndex__12CZWeaponListFi
 0x003C4B40 GetWeapon__12CZWeaponListF10EQUIP_ITEM
@@ -9076,7 +9094,7 @@
 0x005339D0 swap__Q23std74__vector_deleter<16CVehicleRdrEntry,Q23std29allocator<16CVehicleRdrEntry>>FRQ23std74__vector_deleter<16CVehicleRdrEntry,Q23std29allocator<16CVehicleRdrEntry>>
 0x00533A10 clear__Q23std64vector<16CVehicleRdrEntry,Q23std29allocator<16CVehicleRdrEntry>>Fv
 0x00533A20 __ct__Q23std64vector<16CVehicleRdrEntry,Q23std29allocator<16CVehicleRdrEntry>>Fv
-0x00533A40 func_00533A40
+0x00533A40 __ct__11CVehicleRdrFv
 0x00533A60 Load__8startvecFP5_zrdr
 0x00533C10 ParseTeams__FP5_zrdr
 0x00533CF0 GetAimConeCos__9AI_PARAMSCFv
@@ -9266,6 +9284,7 @@
 0x00543B90 func_00543B90
 0x00543D40 func_00543D40
 0x00543D50 func_00543D50
+0x00543F70 func_00543F70
 0x00544200 func_00544200
 0x00544210 SetNetLife__10CZSealBodyFUc
 0x005442C0 NetworkPlayerCreate__10CZSealBodyFv
@@ -9394,6 +9413,7 @@
 0x00555B80 func_00555B80
 0x005561C0 func_005561C0
 0x00556280 func_00556280
+0x00556EE0 func_00556EE0
 0x00557190 func_00557190
 0x00557D90 func_00557D90
 0x00557DC0 __pl__6CPnt3DCFRC6CPnt3D
@@ -9436,6 +9456,7 @@
 0x0055E660 CanPushAiState__10CAiSDeployF8AI_STATEP11CSealCtrlAi
 0x0055EAA0 func_0055EAA0
 0x0055EBE0 func_0055EBE0
+0x0055F0A0 func_0055F0A0
 0x0055F6F0 reset__13AI_FIREPARAMSFv
 0x0055F7F0 func_0055F7F0
 0x0055F940 func_0055F940
@@ -9688,6 +9709,7 @@
 0x00581C10 Stand_0__10CZSealBodyFiif
 0x00581DC0 Stand__10CZSealBodyFi
 0x00582500 StanceChanged__10CZSealBodyFv
+0x00582D10 CrouchMoveControl__10CZSealBodyFff
 0x00583350 func_00583350
 0x00583960 TurnControl__10CZSealBodyFf
 0x00584240 InStateClimbLadder__10CZSealBodyFv
@@ -9817,6 +9839,7 @@
 0x00592260 PerturbAimVector__9CSealCtrlFP6CPnt3D
 0x00592400 Cross__6CPnt3DCFPC6CPnt3DP6CPnt3Db
 0x005924B0 SetViewRange__9CSealCtrlFf
+0x00592560 PostMortemPreTick__9CSealCtrlFf
 0x00592880 GetSpeedFromThrottle__9CSealCtrlFfi
 0x00592910 GetThrottleFromSpeed__9CSealCtrlFfi
 0x005929A0 TickRumbler__9CSealCtrlFf

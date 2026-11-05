@@ -69,7 +69,7 @@ public:
     CRatingMatch();
     ~CRatingMatch();
 
-    void AddTeam(int id, int count, bool first, float rating);
+    CRatingTeam *AddTeam(int id, int count, bool first, float rating);
     int AddPlayer(int team, int player, int score, float rating);
     float Compute();
     bool GetNewRating(int player, float *rating);
@@ -97,15 +97,13 @@ CRatingMatch::~CRatingMatch()
         delete m_teams[1];
 }
 
-/* OPEN, 30 instructions: the same code with the saved registers' two groups swapped -- the target
- * numbers the parameters first (id, count, first in s5/s4/s3, then the counter s2, the new team s1,
- * the slot pointer s0), MW here numbers the counter, the new team and the slot pointer first and
- * the parameters after them (s2/s1/s0). Tried: the counter declared in the for, ahead of the team,
- * a while loop, `== 0`, the new team in a named local, the constructor's parameters by const
- * reference, as an int, reordered, the constructor out of class (auto-inlined) -- all the same 30.
- * AddPlayer had the same swap until its push_back stopped taking the player's address (Add, by
- * value): something here still makes MW number the parameters last. */
-void CRatingMatch::AddTeam(int id, int count, bool first, float rating)
+/* the new team, or none when both slots are taken (round 56: it RETURNS the team -- the target keeps
+ * `team` in v0 from the entry's `move v0,zero` to the epilogue. Returned void, MW coloured it a0 and
+ * the parameters, at exactly K = 25 neighbours (id's with team and the slot test's load), were
+ * deferred and took s0-s2 where the target's have s5-s3: the round-19 "parameters numbered last" was
+ * that deferral -- `tools/igreplay.py --drop 33-36` gave the target's registers before the source did;
+ * the caller ignores the result, and a return type is not mangled) */
+CRatingTeam *CRatingMatch::AddTeam(int id, int count, bool first, float rating)
 {
     CRatingTeam *team = 0;
     int i;
@@ -117,6 +115,7 @@ void CRatingMatch::AddTeam(int id, int count, bool first, float rating)
             team = m_teams[i];
         }
     }
+    return team;
 }
 
 int CRatingMatch::AddPlayer(int team, int player, int score, float rating)

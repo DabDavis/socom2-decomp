@@ -650,7 +650,11 @@ int tcmSelectTeam(CZSealBody *player, int team)
  * member to CanOrder with no re-extension, where any unsigned char or byte enum local gets an
  * andi (or a sign extension for a signed char parameter) at the call; an int parameter there
  * is what tcmUpdateTeamCommand's lb needs. Tried: unsigned char, signed char, char and a byte
- * enum for the local and CanOrder's member parameter, the else block first or last. */
+ * enum for the local and CanOrder's member parameter, the else block first or last. Round 56's
+ * replay (igdump, igreplay --nb): the player takes s4 in the target, so a fifth saved-register
+ * holder interferes with it there -- here the player's neighbours are r, m and unit only (caption,
+ * the target's s3, is born after the player's last use): the original keeps the player live
+ * longer, or numbers something else there. */
 int tcmUpdateTeamMember(CZSealBody *player, int member)
 {
     int r = 1;

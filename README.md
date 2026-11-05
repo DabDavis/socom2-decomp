@@ -2065,6 +2065,105 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the online lobby, round 24** (the chat deque's push_back at last, open since round 10, with its growth
+  pieces):
+  - A CLASS ELEMENT'S DEQUE GROWS THROUGH A TEMPORARY BLOCK BUFFER: `tmp(2 * size(), 0)` plus init, then `tmp = buf` (the
+    do_assign) or `reserve(2); push_back(0)` when empty; the block stored as `tmp.back()`, a null slot pushed, the element
+    copy-constructed in place (with its null test), tmp swapped in -- the element constructed on the plain path too (the
+    chat push_back 0x2F5290; cdeque<PCv>'s init(n, x) 0x2F5940 and do_assign 0x2F5700 named by shape, the buffer
+    0x2F5FF0, the pair constructor 0x2F6060, swap 0x2F56B0 to source);
+  - a constant `if` on a type trait still instantiates whatever the unused branch's non-dependent types reach, and the
+    unit emits it -- a type depending on T keeps that out (include/deque's __deque_imp::push_back class path through a
+    type-dependent growth-buffer stand-in: only the chat unit changes, proven over every unit); a dead-stripped own
+    function (ChatQueueBuffers, src/ABSENT.txt -- the device veh_vehicle.cpp's dead clear set) gives the unit's tail the
+    target's inlining: building the buffers and copying the allocator does it, requesting begin() / end() or the
+    do_assigns does not;
+  - a pointer held only in `alloc_ptr` is re-read from its stack slot after every call, taken into a named local before
+    the guard is built it stays in its saved register; an iterator constructor taking the storage pointer by const
+    reference re-reads the field for its data_ store, by value it is shared; in an out-of-line copy loop `!(x == y)`
+    turns into a stored bool, `x.p_ != y.p_` branches directly.
+- **Tells from the HUD, round 56** (CRatingMatch::AddTeam, open since round 19 -- mp_rating.cpp whole; AddJamo; GetGlyph):
+  - A VARIABLE THE TARGET KEEPS IN v0 FROM THE ENTRY TO `jr ra` IS THE RETURN VALUE -- adding the return changes the whole
+    colouring (CRatingMatch::AddTeam 0x23A170 returns the new team: 30 off to 0; as a void function `team` went to a0 and
+    the parameters sat at exactly K = 25 neighbours, deferred); `tools/igreplay.py --drop A-B` finds the single
+    interference that holds a node at K -- a drop that gives the target's registers names the live range that differs
+    (`--drop 33-36` gave AddTeam's before any source change);
+  - frame slots go by scope: an inline constructor's by-value parameter took the slot above a function-scope local, a
+    loop-scoped local the slot above that parameter -- naming the argument first makes the copy that local's own slot
+    (CHangulFont::AddJamo 0x359820); a class temporary made for a call argument goes in a later frame group under the
+    named locals -- a target with it above them declared it as a named local first (C2DFont::GetGlyph 0x35A3A0: frame 0x60
+    to 0x50, an empty C2DChar() constructor);
+  - defining a class's key function makes the unit emit its table's this-adjusting thunks (zui_2d.cpp now emits
+    0x37D060 / 0x37D070); four this-tests on a vector freed inside a deleted object's written destructor need level 6
+    when the vector is a derived class (~CUIListBox 0x375710 -- a "Level 6, or 8?" witness).
+- **Tells from the weapons, round 31** (zVid_Swap; InitializeWeapons, open since round 17; AttachDecal, since round 25;
+  CopyBuffer, since round 13):
+  - READ THE BRANCHES BEFORE TRUSTING A SWITCH'S SEMANTICS: CopyBuffer 0x3C36D0's kind-5 case had been inverted for 18
+    rounds -- both builds leave kind 5 alone, copy kind 8 and make every other kind relative (nested ifs, the length
+    before the block pointers, d / s / n declared uninitialised: a signed division by a power of two ends a block, and
+    uninitialised declarations fix volatile-register order whatever the order of assignment);
+  - a std::list walked through named node pointers (`node_base *e, *n`) numbers the walk as named locals, and a dead
+    first definition of the element pointer at the top places it ahead of them; one counter / count pair reused across
+    two walks is split by MW -- each walk's own uninitialised pair declared before the name it tests takes the replay's
+    order (CZWeaponList::InitializeWeapons 0x3C4700: round 30's igreplay numbering put into source, a marked device);
+  - comparison operands are evaluated left to right, but a by-value two-argument inline reads its last argument first
+    (zVid_Swap 0x3AFF30, SOCOM 1's with SOCOM II's second bool: the wait loop's test through FrameEarly(t, rate));
+    an if / else whose arms each call their own inline keeps the target's fall-through delay-slot fill and padded join
+    (CVisual::AttachDecal 0x3B3800: each pool's Get through GetPermDecal / GetTempDecal); initcode 0x3E0880 and
+    zVid_Swap's t0Count named (SOCOM 1's).
+- **Tells from the UI, round 29** (CSoftKeyboard::PrepForDisplay and CGameMenu::HandlePad at last; SkbOpenParse named):
+  - a member array read through a reference-returning accessor at each use (`m_texLists[i]`) makes MW strength-reduce
+    from the accessor's `this + offset` -- a reference local, or `m_lists[i]` written out, steps `this` and adds the
+    offset in a register of its own; an array read through a conversion operator adds the index first (`addu
+    v0,v0,this`), the member written out the object first (CSoftKeyboard::PrepForDisplay 0x38BAC0: its cap-font test the
+    MSL's round-31 string, its piece lists through CSkbTexLists::operator[] and Row(c)[j]);
+  - MW hoists a float negation out of a loop only when it negates the static read directly -- through an inline's
+    parameter the copy's negation stays in the ternary's arm (STICK_ABS a macro reading the static itself); an inline
+    returning an enum through a cast numbers its result ahead of the caller's code-generation temporaries
+    (PadButtonState: `igreplay --move 110=103.5` predicted it before the source; CGameMenu::HandlePad 0x368650, 72 ->
+    0); among deferred nodes the first-declared bool takes the highest scratch register (t7 downward);
+  - locals read before a call and passed to a later call are loaded before that call, read inside the argument list
+    after the call that is also an argument; MW's preprocessor substitutes a macro parameter named `f` inside the literal
+    `0.0f` ("illegal token") -- name such parameters otherwise; SkbOpenParse 0x395F40 builds exactly the record
+    SkbSetPurpose reads (C2DAnimCmdHdr::header given the _zanim_cmd_hdr bitfields); 0x3A6350 named the SSM queue's
+    cdeque begin() (util_ssm.cpp emits it at 0x70, 14 off: include/deque's open begin() colouring).
+- **Tells from the SEALs, round 49** (the network-life timeout, the recursive soil mark, the AI fire parameters,
+  PostMortemPreTick, CrouchMoveControl; the SEALs' own placeholders respelled):
+  - A CALLEE DECLARED `(T *a, float x, T *b, float z)` GETS THE SAME REGISTERS AS `(a, b, x, z)`, BUT ITS CALLERS SET THEM
+    UP IN DECLARATION ORDER (a1, $f12, a2, $f13) -- CZSealBody::CrouchMoveControl 0x582D10's callers; 0x583350's
+    parameters reordered so;
+  - a pointer field's address read through a tiny inline (`SealOf(this)`) makes the result a temporary numbered after the
+    named locals (`igreplay --movers` on CSealCtrl::PostMortemPreTick 0x592560); a CAiTimer reset that keeps the timer's
+    base address comes from inlines working through a local copy `T *t = this;` -- on `this` directly MW bases the
+    accesses on the fields' own addresses;
+  - a byte enum read into a local: lb in the first block, then andi 0xff at the compare -- compared in place it loads
+    with lbu (NET_LIFE: the online network-life timeout 0x543F70); a const AI pointer passed to bitfield-reading inlines
+    makes MW hoist the bitfield byte's address out of loops, a non-const one not; an unsigned char copy of a bit
+    re-tested as `(bool)navy == false` gives the target's andi with an sltu in both arms of the ternary before it (the AI
+    fire parameters 0x55F0A0); a callee short enough for -inline auto that the target still calls is pinned with
+    `#pragma auto_inline off` (0x55EBE0); the recursive soil mark 0x556EE0;
+  - 0x533A40 named CVehicleRdr::CVehicleRdr by the integrator: SOCOM 1's CMission::Init calls CVehicleRdr() on a new
+    12-byte object where SOCOM II's Init calls it (the game states' round 44), and it follows the entry vector's
+    constructor 0x533A20 as SOCOM 1's 0x1A38E0 follows 0x1A38C0 -- its body that constructor inlined (0x14; SOCOM 1's
+    0x34 calls the compressed pair's out of line).
+- **Tells from the game states, round 44** (CMission::LoadVehicle and Init -- unwritten before; LastMessage, open since
+  round 17):
+  - C2DMessage_Q::LastMessage 0x2B6D60 by the MSL's round-31 shape: a dead first `c_str()` ahead of the return makes the
+    short-string test a second use, which MW materialises as the target's stored, negated, narrowed bool (a marked
+    numbering device; it holds under the old and the new include/string);
+  - THE BOTTOM-UP INLINER NUMBERS TEMPORARIES FROM LEAF INLINES (those calling only out-of-line functions) BEFORE THOSE
+    OF TALLER INLINES, whatever the source order -- a local put behind a leaf inline cannot be numbered after an Item()
+    temporary (PreOpen 0x2ACC10, OPEN at 10); a count read through `int ArrayCount(z) { return z ? z->Count() : 0; }` in
+    a loop test is hoisted as a materialised `!z` bool in a saved register and compared signed;
+  - a `char x[1]` local takes a word-aligned frame slot, a plain char packs into a word's top byte; locals declared
+    uninitialised at the top take the highest frame slots ahead of loop locals, even assigned late; a class with a
+    user-declared constructor is assigned member by member (floats through the FPRs, words with lw / sw); an
+    out-of-line bool result compared `== false` or read into a bool local is narrowed with andi 0xff, tested directly
+    not; an inline setter called with a constant leaves `andi rX,zero,1` in the bitfield insert; `p = operator new(n);
+    if (p) p = func_X(p);` reproduces a new-expression whose constructor row is still a placeholder (CMission::Init
+    0x2AD290; LoadVehicle 0x2B28D0 with fts_player.cpp on the real ai_maps.h);
+  - data row 0x3F3440 NO_TIMEOUT__7CPickup (the float -1: two reads in ftsFixupAiMap, CPickup's Create, NetworkCreate and
+    TickTimers -- the name ours); 0x3F3420-0x3F3448 is fts_ovl2statics.cpp's (SEAL statics OVL2's CZSealBody reads).
 - **Tells from the world, rdr and sound, round 24** (the CWorld constructor; Particle::Source::SetActive to source):
   - zdb::CWorld::CWorld(const char *) 0x320310 is SOCOM 1's call sequence (CSaveLoad::Load calls it where SOCOM 1's does)
     with one shadow texture shared by all four slots; constants passed through an inline's by-value class parameter stay
