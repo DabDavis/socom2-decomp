@@ -303,6 +303,53 @@ void CTurret::LoadTurrets()
     ScanForTurretDefinitionHookups(world, true);
 }
 
+/* SOCOM 1's constructor: an entity of type 3, the fire timer, the trigger, the target and the AI's
+ * parameters built, the matrices made identity (twice: their constructors, then the body), the
+ * definition's settings taken through Init, the node's ancestor under the world found, the turret
+ * switched on and -- unless manual -- aimed once and placed on the AI map; listed last */
+CTurret::CTurret(CNode *node, const CTurretDef &def)
+    : CEntity((CEntity::TYPE)3, node), m_fireTimer(0.0f), m_240(0), m_254(1.0f), m_258(1.0f),
+      m_25c(0.0f), m_260(1.0f), m_def(&def), m_ammoType(0), m_ammo(0), m_weapon(0), m_shots(0),
+      m_380(CPnt3D::zero), m_38c(CPnt3D::unit_nz), m_398(CPnt3D::unit_nz), m_flags(0)
+{
+    m_yawNode = 0;
+    m_pitchNode = 0;
+    m_288 = 0;
+    m_root = 0;
+    SetHealth(1.0f);
+    m_3c0 = 0.0f;
+    m_2c0.SetIdentity();
+    m_300.SetIdentity();
+    m_340.SetIdentity();
+    SetFlag(0x40, false);
+    Init(node, def);
+
+    CNode *p = node ? node->GetParent() : 0;
+
+    if (p) {
+        do {
+            if (p == CWorld::m_world)
+                break;
+            node = p;
+            p = p->GetParent();
+        } while (p);
+    }
+    m_root = node;
+    SetFlag(1, true);
+    SetFlag(0x20, true);
+    if (!GetFlag(2) && m_yawNode && m_pitchNode) {
+        SampleDynamics(0.0f);
+        Rotate(0.0f);
+        UpdatePosW();
+
+        unsigned int loc;
+
+        if (AiMaps.GetLocation(&m_posW, *(CAiMapLoc *)&loc))
+            *(unsigned int *)&m_mapLoc = loc;
+    }
+    m_turrets.push_back(this);
+}
+
 CTurret::~CTurret()
 {
     m_turrets.Remove(this);
@@ -387,6 +434,50 @@ void CTurret::SetThermal(CNode *node, bool thermal)
         scope->SetActive(!thermal);
 }
 
+/* SOCOM 1's Init: the joints and the fire point found by the definition's part names (the pitch
+ * joint fires when the third is missing and AUTOSCAN is set), the scopes found afresh, the health,
+ * the trigger and the AI's parameters copied, the weapon and its ammunition looked up, the team
+ * joined, the aim's direction and the joints' angles read off the nodes */
+void CTurret::Init(CNode *node, const CTurretDef &def)
+{
+    if (!node)
+        return;
+    m_flags = def.m_flags.m_bits;
+    m_yawNode = node->FindChild(def.m_parts[0], true);
+    m_pitchNode = node->FindChild(def.m_parts[1], true);
+    m_288 = node->FindChild(def.m_parts[2], true);
+    if (!m_288 && GetFlag(0x10))
+        m_288 = m_pitchNode;
+    m_thermal = def.m_thermal;
+    SetFlag(0x40, def.m_compass);
+    m_thermalScope = 0;
+    m_scope = 0;
+    SetThermal(node, m_thermal);
+    SetHealth(def.m_health);
+    m_trigger = def.m_trigger;
+    m_aiParams = def.m_aiParams;
+    m_max_target_range_sq = m_aiParams.visual_range * m_aiParams.visual_range;
+    m_weapon = &CZWeapon::m_listWeapons ? CZWeapon::m_listWeapons.GetWeapon(def.m_weapon) : 0;
+    m_ammoType = &CZAmmo::m_ammolist ? CZAmmo::m_ammolist.GetAmmo(def.m_ammo) : 0;
+    if (CZWeapon *w = m_weapon) {
+        m_ammo = w->GetAmmoCapacity() * w->GetNumMags();
+        if (!m_ammoType)
+            m_ammoType = m_weapon->GetDefaultAmmo();
+        m_fireTimer.m_min = m_weapon->m_firewait;
+        m_fireTimer.m_range = 0.0f;
+        if (m_fireTimer.m_timer != CAiTimer::infinite)
+            m_fireTimer.m_timer = 0.0f;
+    }
+    SetTeamMask(def.m_team);
+    JoinTeam(27);
+    m_300.Transform(&CPnt3D::unit_nz, &m_38c, 1);
+    m_398 = m_38c;
+    if (m_yawNode)
+        m_3b0 = atan2f(m_yawNode->m_matrix.m_matrix[2][0], m_yawNode->m_matrix.m_matrix[2][2]);
+    if (m_pitchNode)
+        m_3b8 = m_pitchNode->m_matrix.m_matrix[1][2];
+}
+
 void CTurret::OnMissionStart()
 {
     if (GetFlag(2)) {
@@ -456,7 +547,7 @@ void CTurret::PreTick(float dT)
         SetFlag(1, false);
     if (GetFlag(1)) {
         SampleDynamics(dT);
-        float r = m_220;
+        float r = m_aiParams.visual_range;
 
         m_254 = r;
         m_260 = 1.0f / r;
@@ -859,7 +950,7 @@ void CTurret::Fire()
     CPnt3D dir = m_38c;
 
     if (GetFlag(2))
-        ((CAiTarget *)m_target)->ModifyAimDir(&dir, m_aimError, 0.267949f);
+        ((CAiTarget *)&m_target)->ModifyAimDir(&dir, m_aiParams.accuracy, 0.267949f);
     m_weapon->Fire(m_node, ammo, pos, &dir, &CPnt3D::zero, p, m_id, 0);
     ResetTimer(m_fireTimer);
 }
@@ -1040,10 +1131,10 @@ extern "C" void func_003A84E0(CTurret *t)
 {
     CPnt3D dir;
 
-    if (func_0060A850(t->m_target)) {
+    if (func_0060A850(&t->m_target)) {
         CPnt3D pos;
 
-        (*(CEntity **)t->m_target)->GetTargetPosW(&pos);
+        (*(CEntity **)&t->m_target)->GetTargetPosW(&pos);
         t->m_398 = pos - t->m_380;
         t->m_398.Normalize();
         TransformVectors(&t->m_340, &t->m_398, &dir, 1);
@@ -1110,9 +1201,9 @@ static inline bool TargetLost(CTurret *t)
 {
     bool lost = true;
 
-    if (func_0060A850(t->m_target)) {
+    if (func_0060A850(&t->m_target)) {
         if (!(t->m_targetFlags & 0x200))
-            lost = ((CAiTarget *)t->m_target)->GetTimeSinceLastSighting() > 3.0f;
+            lost = ((CAiTarget *)&t->m_target)->GetTimeSinceLastSighting() > 3.0f;
         else
             lost = false;
     }
@@ -1122,7 +1213,7 @@ static inline bool TargetLost(CTurret *t)
 /* the target held is this entry's entity (none: no target held -- inline; the name ours) */
 static inline bool HoldsTarget(CTurret *t, CTarget *x)
 {
-    return x ? *(CEntity **)t->m_target == x->m_ent : !*(CEntity **)t->m_target;
+    return x ? *(CEntity **)&t->m_target == x->m_ent : !*(CEntity **)&t->m_target;
 }
 
 /* the targets looked over (new in SOCOM II, not named: PrePostTick calls it under AI control): the
@@ -1138,7 +1229,7 @@ extern "C" void func_003A82C0(CTurret *t)
     v.m_flag = false;
     CTargetList &targets = t->m_targets;
 
-    CAiPerception::SetMaxRange(t->m_220);
+    CAiPerception::SetMaxRange(t->m_aiParams.visual_range);
     for (CTargetList::iterator it = targets.begin(); it != targets.end(); ++it) {
         bool vis = func_0060AFA0(&v, &*it);
 
@@ -1152,7 +1243,7 @@ extern "C" void func_003A82C0(CTurret *t)
             if (TargetLost(t))
                 func_003A7EB0(t, 0);
             else
-                func_0060A6A0(t->m_target, &*it);
+                func_0060A6A0(&t->m_target, &*it);
         }
     }
 }
@@ -1171,9 +1262,9 @@ bool CheckLineOfFire(const CEntity *self, const CTarget *target, float radius);
  * call is written on; `fire = timer > marker` gives the target's li/move pair (`!(<=)` adds xori) */
 extern "C" void func_003A8030(CTurret *t, float dT)
 {
-    ((CAiTarget *)t->m_target)->Tick(t, dT);
+    ((CAiTarget *)&t->m_target)->Tick(t, dT);
     if (t->m_flags & 8) {
-        bool held = func_0060A850(t->m_target) && (t->m_targetFlags & 0x200);
+        bool held = func_0060A850(&t->m_target) && (t->m_targetFlags & 0x200);
 
         if (held) {
             bool fire;
@@ -1186,7 +1277,7 @@ extern "C" void func_003A8030(CTurret *t, float dT)
                 fire = t->m_trigger.m_timer > t->m_trigger.m_marker;
                 t->m_trigger.m_timer -= dT;
             }
-            if (fire && ai::CheckLineOfFire(t, (CTarget *)t->m_target, 10.0f))
+            if (fire && ai::CheckLineOfFire(t, (CTarget *)&t->m_target, 10.0f))
                 t->m_flags |= 4;
             if (t->m_trigger.m_timer <= 0.0f)
                 t->m_trigger.Restart();
