@@ -15,8 +15,9 @@
  * above it, their real definitions in place) and RejectTrainUtters, SOCOM 1's bodies. Round 30c:
  * DoUserWordTraining, SOCOM 1's body as it stands (the out-parameters at +920/+924 typed in casr.h).
  * OPEN: SendLabelsToEngine (26) and SendPartOfLabelsToEngine (36s), diagnosed in place;
- * FindBestTranscription, DoDurationModeling and ScoreTranscriptions not written (declared extern
- * above DoUserWordTraining: their calls resolve through the map).
+ * FindBestTranscription (round 30c, 0x390 against 0x398) diagnosed in place; DoDurationModeling
+ * and ScoreTranscriptions not written (declared extern above DoUserWordTraining: their calls
+ * resolve through the map).
  *
  * cbDoUserWordTraining's flag test (open since round 4b: `bnezl` here, `bnez` in the target, the
  * return's `move v0,zero` in the slot with a call to ExitUserWordTraining as the fall-through) is
@@ -226,6 +227,70 @@ static void CalcF2(float *out, float *in, unsigned char n)
     }
 }
 
+#define MAX(a, b) ((a) > (b) ? (a) : (b))
+
+/* the best of the three utterances' transcriptions: each one's duration score (its own duration
+ * against the others', exp(-50 x^2) of the excess ratio over 0.5, clamped to [0, 1.305]), the
+ * duration consistency (CalcF2) and its acoustic score (twice its own over the others', less 0.9,
+ * floored at -0.923); the sum of the smaller duration term doubled and the acoustic one ranks them,
+ * and the one in *best is kept only when its total passes 1.4 and its duration score 0.6. SOCOM 1's
+ * body with SOCOM II's float calls (its empty double loop is in the image too). The index's
+ * multiplier a variable (`j * n + i`): the target multiplies through a register holding 3 (`li s2,3;
+ * mult`, SOCOM 1's too), which a literal 3 never does (synthesised, and `i * 3 + i` folds to i * 4).
+ * OPEN (0x390 against 0x398, round 30c): the target holds a second register for the second loop's
+ * 3 (s1; one variable here gives one pseudo, s2, for both), keeps the first result row's base in
+ * a register (`move s4,sp`), applies the acoustic term's `- 0.9` after its join (`mtc1 zero; sub.s`
+ * in the zero arm: here fold distributes it and folds 0 - 0.9) and copies the zeros from fsel's
+ * register in fsel, tsel, max order; a per-loop count and the subtraction after the join tried
+ * (build/scratch/gcc/v_fbt_*.py) lose 8 more bytes. */
+static int FindBestTranscription(CASR *c, float *scores, float *durs, int *best)
+{
+    float f1[3], f2[3], f3[3];
+    float sum, x, t;
+    float fsel = 0, tsel = 0, max = 0, min = 3.0f;
+    unsigned char i, j, k, m;
+    int bi = 0, cur;
+    int n = 3;
+
+    for (i = 0; i < 3; i++) {
+        sum = 0;
+        for (j = 0; j < 3; j++)
+            if (j != i)
+                sum += durs[j * n + i];
+        x = sum == 0 ? 1.305f : MIN(durs[i * n + i] / sum - 0.5f, 1.305f);
+        f1[i] = expf(-powf(MAX(x, 0.0f), 2.0f) * 50.0f);
+    }
+    CalcF2(f2, durs, 3);
+    for (i = 0; i < 3; i++) {
+        sum = 0;
+        for (j = 0; j < 3; j++)
+            if (j != i)
+                sum += scores[j * n + i];
+        x = (sum == 0 ? 0 : 2 * scores[i * n + i] / sum) - 0.9f;
+        f3[i] = expf(-powf(MAX(x, -0.923f), 2.0f) * 50.0f);
+    }
+    for (j = 0; j < 3; j++)
+        for (k = 0; k < 3; k++)
+            ;
+    cur = *best;
+    for (m = 0; m < 3; m++) {
+        t = (f1[m] < f2[m] ? 2 * f1[m] : 2 * f2[m]) + f3[m];
+        if (max < t) {
+            max = t;
+            bi = m;
+        }
+        if (t < min)
+            min = t;
+        if (m == cur) {
+            fsel = f1[m];
+            tsel = t;
+        }
+    }
+    if (tsel <= 1.4 || fsel <= 0.6)
+        *best = bi;
+    return 0;
+}
+
 /* the label stop and start (defined at their place below), as GNU extern inlines for the
  * functions between: CheckConsistency holds both bodies */
 extern __inline__ int DoLabelStop(CASR *c)
@@ -352,7 +417,6 @@ static void RejectTrainUtters(CASR *c, unsigned char *reject)
  * through the map */
 extern int ScoreTranscriptions(CASR *c, float *scores, float *durs, int *best, unsigned char *reject,
                                unsigned char *bad);
-extern int FindBestTranscription(CASR *c, float *scores, float *durs, int *best);
 extern int DoDurationModeling(CASR *c, int best);
 extern int TrainInit(CASR *c);
 extern void TrainModels(CASR *c, int best);
