@@ -645,6 +645,100 @@ CZAnim *CZAnim::ActivateEx(int cmd, ...)
     return ActivateExV(args);
 }
 
+/* an available copy activated with arguments: the list read a type and a value at a time to the
+ * zero type that ends it, each made an argument of the copy (SOCOM 1's ActivateArg, 0x1CE750,
+ * read its own va_list). SOCOM II's type 10 hands over another anim's argument list, copied
+ * argument by argument; a node of type 2 (and each copied one) is also handed to func_00270460;
+ * the command's and the valve's types set again after their constructors (as ActivateExV's) */
+CZAnim *CZAnim::ActivateArgV(char *args)
+{
+    CZAnim *anim = GetAvailable();
+
+    if (anim) {
+        if (anim->m_arg_list)
+            delete anim->m_arg_list;
+        anim->m_arg_list = 0;
+
+        int c;
+        CZAnimArg::TYPE type;
+
+        do {
+            c = va_arg(args, char);
+            type = (CZAnimArg::TYPE)c;
+            switch (type) {
+            case 10: {
+                CZAnimArgList *list = va_arg(args, CZAnimArgList *);
+
+                CZAnimArgList::iterator it;
+
+                it = list->begin();
+                CZAnimArgList::iterator e = list->end();
+
+                for (; it != e; ++it) {
+                    CZAnimArg *arg = (*it)->Copy();
+
+                    anim->AddArg(arg);
+                    if (arg->GetType() == 2)
+                        func_00270460(anim, ((CZAnimArgNode *)arg)->m_node);
+                }
+                break;
+            }
+            case CZAnimArg::TYPE_CHARP: {
+                char *str = va_arg(args, char *);
+
+                anim->AddArg(new CZAnimArgCharP(CZAnimArg::TYPE_CHARP, str));
+                break;
+            }
+            case 2: {
+                CNode *node = va_arg(args, CNode *);
+
+                anim->AddArg(new CZAnimArgNode((CZAnimArg::TYPE)2, node));
+                func_00270460(anim, node);
+                break;
+            }
+            case CZAnimArg::TYPE_NODE: {
+                CNode *node = va_arg(args, CNode *);
+
+                anim->AddArg(new CZAnimArgNode(CZAnimArg::TYPE_NODE, node));
+                break;
+            }
+            case CZAnimArg::TYPE_VALVE: {
+                CValve *valve = va_arg(args, CValve *);
+                CZAnimArg *arg = new CZAnimArgValve(valve);
+
+                arg->m_type = CZAnimArg::TYPE_VALVE;
+                anim->AddArg(arg);
+                break;
+            }
+            case CZAnimArg::TYPE_CMD: {
+                int cmd = va_arg(args, int);
+                CZAnimArg *arg = new CZAnimArgCmd(cmd);
+
+                arg->m_type = CZAnimArg::TYPE_CMD;
+                anim->AddArg(arg);
+                break;
+            }
+            case CZAnimArg::TYPE_PNT3D:
+            case 6:
+            case 7: {
+                CPnt3D *pnt = va_arg(args, CPnt3D *);
+
+                anim->AddArg(new CZAnimArgPnt3D((CZAnimArg::TYPE)c, pnt));
+                break;
+            }
+            case CZAnimArg::TYPE_INT: {
+                int value = va_arg(args, int);
+
+                anim->AddArg(new CZAnimArgInt((CZAnimArg::TYPE)c, value));
+                break;
+            }
+            }
+        } while (type);
+        anim = anim->Activate(this);
+    }
+    return anim;
+}
+
 /* activated with arguments -- none, or a list ActivateArgV reads */
 CZAnim *CZAnim::ActivateArg(int type, ...)
 {
