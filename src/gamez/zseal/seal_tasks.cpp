@@ -2751,6 +2751,32 @@ bool CTParam::Tick(_zanim_cmd_hdr *hdr, float *dT)
     return r;
 }
 
+/* the anims' end: the SEAL -- the task's, or with an entity named that SEAL (found three times over,
+ * as CTSignal::Tick's) -- left in no desired state unless the task skips its end (OVL2 0x5D2AA0;
+ * SOCOM 1's, the entity new) */
+void CTPlay::End(_zanim_cmd_hdr *hdr)
+{
+    CZSealBody *dest;
+    CEntityCtrl *ctrl;
+    TASK_SEAL(CTPlay);
+    dest = seal;
+    ctrl = dest ? dest->m_control : 0;
+    CSealCtrlAi *ai = dest ? SealAi(dest) : 0;
+
+    if (((const TASK_ENT *)&cmd->m_ent)->m_type) {
+        dest = (CZSealBody *)cmd->m_ent.GetTyped(CEntity::ENT_TYPE_SEAL);
+        CZSealBody *s = (CZSealBody *)cmd->m_ent.GetTyped(CEntity::ENT_TYPE_SEAL);
+
+        ctrl = s ? s->m_control : 0;
+        s = (CZSealBody *)cmd->m_ent.GetTyped(CEntity::ENT_TYPE_SEAL);
+        ai = s ? SealAi(s) : 0;
+    }
+    if (!dest || !ctrl)
+        return;
+    if (!cmd->m_skip_end)
+        dest->m_desiredState = (SEAL_STATE)0;
+}
+
 /* a block made for a count of anims, copied when given (OVL2 0x5D3F00: SOCOM 1's CTPlay::Create, out
  * of line in both, called from the same place in CTPlay::Parse -- SOCOM II's anims at 0x30, the
  * count a byte at 0x20, 11 at 0x22) */
