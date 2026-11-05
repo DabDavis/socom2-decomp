@@ -147,6 +147,58 @@ int func_00252F70(VadHist **pp)
 	return 0;
 }
 
+/* the noise floor (GCC round 33a): allowed to rise by 1.125 or 0.547 % below 160000, 0.137 % below
+ * 500000, 0.068 % above; a level below the floor pulls it down -- harder the lower the level, from the
+ * first frames (cInit not yet positive) through a 0.1/0.9 blend -- and a level above it, while the
+ * detector is not above, lifts it a quarter of the way; capped at 5059644, cInit counted up to 1.
+ * The constants are the vendor's truncated conversions (round 12a); the minima and maxima are
+ * conditional expressions (round 19a). Its float comes first: the driver's call says so.
+ * OPEN (right size, 26 words; GCC round 33a): the floor loaded into the result (the target's f3, the
+ * old value copied to f4) and the first-frames blend as one expression put those in place (with one
+ * fT, 0x1B8); left: the first rise computes into the result register at once where the target
+ * computes both candidates into temporaries and moves one, and the low-level pair's arms come out
+ * swapped -- reorg reverses the `fLevel < 1` branch into a bc1tl holding the then-arm's add, where
+ * the target's bc1f keeps a nop (build/scratch/gcc/v_2fe0.py). */
+void func_00252FE0(float fLevel, VadState *p)
+{
+	float fNew = p->fNoise;
+	float fNoise = fNew;
+	float fT;
+
+	if (fNoise < 160000.0F) {
+		fNew = fNoise + 1.125F;
+		if (fNew <= fNoise * 0x1.01667ap+0F)
+			fNew = fNoise * 0x1.01667ap+0F;
+	} else if (fNoise < 500000.0F)
+		fNew = fNoise * 0x1.005996p+0F;
+	else
+		fNew = fNoise * 0x1.002cd2p+0F;
+	if (fLevel < fNoise) {
+		if (p->cInit <= 0) {
+			fNew = (fNoise * 0x1.999998p-4F + (fLevel + 1.0F) * 0x1.ccccccp-1F <= fNew) ?
+				fNoise * 0x1.999998p-4F + (fLevel + 1.0F) * 0x1.ccccccp-1F : fNew;
+		}
+		if (fLevel <= fNoise * 0x1.0624dcp-10F) {
+			if (fLevel < 1.0F)
+				fT = fNoise * 0x1.4cccccp-1F + (fLevel + 1.0F) * 0x1.666666p-2F;
+			else
+				fT = fNoise * 0x1.999998p-2F + fLevel * 0x1.333332p-1F;
+		} else if (fLevel <= fNoise * 0x1.47ae14p-7F)
+			fT = fNoise * 0x1.333332p-2F + fLevel * 0x1.666666p-1F;
+		else
+			fT = fNoise * 0x1.999998p-3F + fLevel * 0x1.999998p-1F;
+		fNew = (fT <= fNew) ? fT : fNew;
+	} else if (p->bAbove == 0) {
+		fT = fNoise * 0.75F + fLevel * 0.25F;
+		fNew = (fNew <= fT) ? fT : fNew;
+	}
+	if (fNew > 0x1.34d0fp+22F)
+		fNew = 0x1.34d0fp+22F;
+	if (p->cInit <= 0)
+		p->cInit++;
+	p->fNoise = fNew;
+}
+
 /* the threshold: a quadratic in the noise level, one fit above 160000 and one below */
 void func_00253190(VadState *p, float fLevel)
 {
