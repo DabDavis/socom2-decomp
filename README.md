@@ -2062,6 +2062,21 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the AI core, round 26** (GetBilinearAltitude, CopyPlan, the planners' fcost, a depth-6 stand-in dropped):
+  - scalarised arrays and structs are numbered after the named locals: as plain scalars the steps and weights took the
+    parameters' registers, an `int s[2]` and a PNT2D gave the target's (CAiMap::GetBilinearAltitude 0x2A3170, 0x7B4, an
+    ai.h inline whose OVL1 copy fts_main.cpp emits; CAiCell::IsBilinear 0x2A3930);
+  - an implicit operator= is no inline level of its own; calling it through an inline taking both objects by reference
+    pushes its temporaries one level down, onto the frame's lowest slot (CAiPath::CopyPlan 0x527FD0);
+  - a bool local assigned from a compare, declared right after a call, is materialised (xori/sltiu), the same test in the
+    if branches; an inline returning `!m_bit` materialises the negation before an && branch, `!HasBit()` branches on the
+    bit; a bitfield read directly reuses an earlier load of the byte, through a bool accessor or an inline's pointer
+    parameter it is loaded again; in a bool inline expanded whole the order its two result bools are declared picks v0
+    or v1 (CBasicPlanner / CStealthPlanner::fcost 0x513080 / 0x512DC0, CAiMap::TransformTo 0x517050,
+    MAP_DIRCOUNT::GetBestDir 0x5350C0);
+  - char_type.cpp's depth-6 stand-in dropped by the `Last()` technique (CCharTypeVec's and CCharacterGearList's walks end
+    at a data_ + size_ iterator: zchar/ 101 of 101 at level 5, objcmp 644 units 0 differ); GetLocation and its helpers
+    are ai.h inlines (fts_main.cpp's duplicate gone).
 - **Tells from the weapons, round 24** (HandleIntersections at last, the turret's joints and Fire, a depth-6 stand-in
   dropped):
   - A SECOND WAY OFF THE DEPTH-6 STAND-IN: when an inlined helper's walk puts data() six levels deep, write the helper's
