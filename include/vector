@@ -995,9 +995,13 @@ class __vector_imp<T *, Allocator, true> : public __vector_pod<unsigned int, all
     {
         return __iter(__base::erase((unsigned int *&)first, (unsigned int *&)last));
     }
-    /* one element erased: the iterator taken by value, the pod's single erase called (the UI lane:
-     * ~CRadioStripSpec's walk) */
-    iterator erase(iterator position) { return __iter(__base::erase((unsigned int *)position.m_p)); }
+    /* the single erase's raw level, T-dependent as the raw ends (0x386920, vector<UIVarMixin *>'s: a `j`
+     * to the pod's erase 0x28F220; the name ours) */
+    unsigned int *__raw_erase(unsigned int *position) { return __base::erase(position); }
+    /* one element erased: the iterator taken by value, its base() handed to the raw erase, the iterator
+     * made again by __iter (the UI lane: ~CRadioStripSpec's walk; CUIVariable::Detach 0x3866F0's inner
+     * copy calls base() 0x386930, the raw erase 0x386920 and __iter 0x386910 out of line) */
+    iterator erase(iterator position) { return __iter(__raw_erase((unsigned int *)position.base())); }
     void clear() { __vector_pod<unsigned int, allocator<unsigned int> >::clear(); }
     void swap(__vector_imp &x) { __base::swap(x); }
     /* No reserve of its own: vector<T *> forwards to the pod's (below). The states lane's round 22
