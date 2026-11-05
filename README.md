@@ -2065,6 +2065,22 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the HUD, round 55** (c2dfont.cpp: LoadJamo, LoadVowelRangeLayouts, Load, Compose, LoadChar):
+  - CHangulFont::LoadJamo 0x35B4B0 by the online lobby's round-23 rule: ReadRect made static, the target keeps a0 across
+    it -- with the rectangle's corners a one-int class (a struct of class-typed members copies through $f0, plain ints
+    with lw / sw), each UL block found into a local before the call, an int counter with the map key passed as a
+    temporary `(int)j` (an int counter bound to map[]'s `const int &` key stays in memory), the style's name through an
+    inline (FlatFindString: wrapping a plain call in an inline numbers its result with the temporaries, after the
+    caller's named locals -- `--move name=45.5`);
+  - MW evaluates call arguments that are calls right to left -- to evaluate the left one first, put it in a local; a
+    `FindIntAt(rdr, tag, &v, def)` inline (`*v = def; findint; return *v;`) gives "default stored in the call's delay
+    slot, value loaded straight after", the ints' declaration order setting their slots (CHangulFont::Load 0x35B7F0,
+    C2DFont::LoadChar 0x35BEF0); `return i >= 0 && (unsigned)i < n ? a[i] : 0;` gives the target's lookup shape;
+  - `int s = (g->m_code = code.m_code) - K;` loads the code once; member reads taken into locals before any store let MW
+    hoist the loads above the stores (CHangulFont::Compose 0x3599D0); testing through the Type() inline loads the byte
+    once; `Own(new X)` evaluates the new first -- the target's release-then-new is `Release(); m_owned = new X;`; an
+    iterator assigned from find() is reloaded at its dereference, one initialised at its declaration is not (AddJamo 22
+    -> 2, GetGlyph at the target's size: OPEN).
 - **Tells from the UI, round 28** (CFileCD::BuildTOC, CGameMenu::Tick and ParseButtonAnim -- all unwritten before; zui.cpp
   84 of 85):
   - AN INLINE'S RESULT LEFT UNSET ON SOME PATH IS LIVE FROM FUNCTION ENTRY and takes a saved register (CGameMenu::Tick

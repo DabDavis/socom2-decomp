@@ -6103,6 +6103,7 @@
 0x00359590 Load__13C2DBitmapPolyFffffffffPQ23zdb8CTexture
 0x00359640 __ct__13C2DBitmapPolyFv
 0x00359740 advance_to__Q23std38__list_imp<PCv,Q23std14allocator<PCv>>FUi
+0x003599D0 Compose__11CHangulFontFP8C2DGlyph7C2DCharP7C2DFont
 0x0035A140 __ct__Q221@unnamed@c2dfont_cpp@10CFontPointFRCQ221@unnamed@c2dfont_cpp@10CFontPoint
 0x0035A160 SetY__Q221@unnamed@c2dfont_cpp@10CFontPointFi
 0x0035A170 SetX__Q221@unnamed@c2dfont_cpp@10CFontPointFi
@@ -6120,8 +6121,12 @@
 0x0035A7B0 GetWidth__8C2DGlyphFv
 0x0035A840 ReadRect__FPC5_zrdrPC5_zrdr
 0x0035AA80 ReadPlacement__FPC5_zrdr
+0x0035AB70 LoadVowelRangeLayouts__11CHangulFontFRQ23std48vector<9CSaferStr,Q23std21allocator<9CSaferStr>>PC5_zrdrRCQ23std48vector<9CSaferStr,Q23std21allocator<9CSaferStr>>
 0x0035B2C0 LoadLeadUsage__11CHangulFontFPC5_zrdrRCQ23std48vector<9CSaferStr,Q23std21allocator<9CSaferStr>>
+0x0035B4B0 LoadJamo__11CHangulFontFRQ23std48vector<9CSaferStr,Q23std21allocator<9CSaferStr>>PC5_zrdr4JAMO
+0x0035B7F0 Load__11CHangulFontFPC5_zrdr
 0x0035BD80 LoadElems__8C2DGlyphFPC5_zrdri
+0x0035BEF0 LoadChar__7C2DFontFPC5_zrdr
 0x0035C2C0 AddPiece__8C2DGlyphFPC5_zrdrPC5_zrdri
 0x0035C620 func_0035C620
 0x0035C630 find<Us>__Q23std186__tree<Q23std19pair<CUs,8C2DGlyph>,Q33std80map<Us,8C2DGlyph,Q23std8less<Us>,Q23std38allocator<Q23std19pair<CUs,8C2DGlyph>>>13value_compare,Q23std38allocator<Q23std19pair<CUs,8C2DGlyph>>>FRCUs_Q33std186__tree<Q23std19pair<CUs,8C2DGlyph>,Q33std80map<Us,8C2DGlyph,Q23std8less<Us>,Q23std38allocator<Q23std19pair<CUs,8C2DGlyph>>>13value_compare,Q23std38allocator<Q23std19pair<CUs,8C2DGlyph>>>8iterator
