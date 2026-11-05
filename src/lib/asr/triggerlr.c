@@ -8,7 +8,10 @@
  * a branch-likely move). Names are SOCOM 1's (s1:align, the demo's object order); the block's
  * fields are named by their use, the voicing measure's (+276 on) being voicing.c's VOICING and the
  * histogram's (+232 on) slhisto.c's HISTOHOST. SOCOM II adds a field at +64 (the speech's voiced
- * flag, which gates command 202): SOCOM 1's fields from +64 on are 4 lower. */
+ * flag, which gates command 202): SOCOM 1's fields from +64 on are 4 lower. Round 24c wrote
+ * ConstructTriggerLR (over its draft) and ProcessTriggerLR (OPEN); round 25c the speech search,
+ * the control (SOCOM 1's TriggerLR_Reset an inline in it, and two session commands SOCOM 1 does
+ * not have) and the init. */
 #include "tosblk.h"
 
 typedef struct TRIGGERLR {
@@ -85,37 +88,48 @@ extern unsigned char _tosControl(void *log, unsigned char cmd, int arg, int n);
 extern float logf(float);
 extern int abs(int);
 
+#define MAX(a, b) ((a) > (b) ? (a) : (b))
+
 /* the median of three */
 #define MEDIAN3(x, m) do { \
-        float a_ = (x)[0], b_ = (x)[1], c_ = (x)[2], lo_, hi_; \
+        float a_ = (x)[0], b_ = (x)[1], lo_, hi_; \
         if (a_ < b_) { lo_ = a_; hi_ = b_; } else { lo_ = b_; hi_ = a_; } \
-        if (hi_ < c_) (m) = hi_; else if (lo_ < c_) (m) = c_; else (m) = lo_; \
+        if (hi_ < (x)[2]) (m) = hi_; else if (lo_ < (x)[2]) (m) = (x)[2]; else (m) = lo_; \
     } while (0)
 
 /* the speech search, one frame: in[1] the energies (its [3] the level), in[2] and in[3] two
  * measures of it; a state machine over `found` -- 0 silence, 1 a rise, 2 its fall, 3 speech, 4 the
- * speech's fall -- with the voicing maxima's median and the level's histogram */
+ * speech's fall -- with the voicing maxima's median and the level's histogram. SOCOM 1's body
+ * (its ring of maxima starts at -10000, SOCOM II's at -2^31), plus SOCOM II's voiced flag and the
+ * command 202 it gates. Measured (round 25c): the level's MAX after the two measures' reads
+ * (sched1's order; with it first, p->f116's load overlaps p->f136's in local-alloc and takes f1:
+ * 7 words; 720 orders of the head, ccperm), thr's difference an operand of its own (through thr
+ * itself, 2 words); each `MAX(x, field)` is the target's max.s operand order (rs the field); a
+ * pair of constant flag stores is written in the reverse of the target's order (the last store of
+ * a constant, its REG_DEAD, issues first: found/f96, f168/f172, found/armed, found/f80), operand
+ * 0 of a compare loads first (`lead > f84`, `f132 > f128`), and the median reads its third value
+ * in the tests, after the first pair's join (read into a local with the pair, it loads before the
+ * first compare and a nop takes its place at the join). */
 static int TriggerLR_FindSpeech(TRIGGERLR *p, float **in)
 {
     int ret = 0;
     float lev, v2, v3, e0, thr, med;
 
     lev = in[1][3] + p->f136;
-    lev = p->f116 < lev ? lev : p->f116;
     v2 = *in[2];
     v3 = *in[3];
+    lev = MAX(lev, p->f116);
     e0 = in[1][0];
     if (p->f172 == 0)
         p->f160 = lev + p->f140;
-    thr = p->f160 - p->f140;
-    thr = lev < thr ? thr : lev;
+    thr = MAX(p->f160 - p->f140, lev);
     switch (p->found) {
     case 0:
-        if (p->f84 < p->lead)
+        if (p->lead > p->f84)
             p->lead = p->f84;
         if (p->f124 < v2) {
-            p->f96 = 1;
             p->found = 1;
+            p->f96 = 1;
             p->f168 = 0;
             p->f176 = 0;
             p->f180 = 0;
@@ -148,8 +162,8 @@ static int TriggerLR_FindSpeech(TRIGGERLR *p, float **in)
             *p->f196 = -2147483648.0f;
         }
         if (p->f120 < v2) {
-            p->f156 = p->f156 < v3 ? v3 : p->f156;
-            p->f132 = p->f132 < v2 ? v2 : p->f132;
+            p->f156 = MAX(v3, p->f156);
+            p->f132 = MAX(v2, p->f132);
             p->f96++;
             if (thr <= e0) {
                 p->voiced = 1;
@@ -163,22 +177,22 @@ static int TriggerLR_FindSpeech(TRIGGERLR *p, float **in)
                 if (p->f200 < med)
                     p->f184 = 1;
             }
-            p->f176 = p->f176 != 0 || (p->f96 >= p->f88 && p->f128 < p->f132 && lev <= p->f156);
+            p->f176 = p->f176 != 0 || (p->f96 >= p->f88 && p->f132 > p->f128 && lev <= p->f156);
             if (p->f96 >= p->f164 && p->f176 != 0) {
                 SlidingHisto_NewItem(p, p->f156);
-                p->f172 = 1;
                 p->f168 = 1;
+                p->f172 = 1;
                 p->f160 = SlidingHisto_LowerQuantile(p, p->f152);
                 p->f96 = p->f88;
                 p->f156 = v3;
             }
             if (p->f176 != 0 && p->f180 != 0 && p->f184 != 0) {
-                p->armed = 1;
                 p->found = 3;
+                p->armed = 1;
             }
         } else {
-            p->f80 = 1;
             p->found = 2;
+            p->f80 = 1;
         }
         break;
     case 2:
@@ -190,9 +204,9 @@ static int TriggerLR_FindSpeech(TRIGGERLR *p, float **in)
         }
         if (p->f124 < v2) {
             p->f132 = v2;
-            p->f156 = p->f156 < v3 ? v3 : p->f156;
-            p->f96 = 1;
+            p->f156 = MAX(v3, p->f156);
             p->found = 1;
+            p->f96 = 1;
             p->f176 = 0;
             p->f180 = 0;
             p->f100 = thr <= e0;
@@ -210,8 +224,8 @@ static int TriggerLR_FindSpeech(TRIGGERLR *p, float **in)
                     ret = 1;
                 else if (p->f168 == 0 && p->f176 != 0) {
                     SlidingHisto_NewItem(p, p->f156);
-                    p->f172 = 1;
                     p->f168 = 1;
+                    p->f172 = 1;
                     p->f160 = SlidingHisto_LowerQuantile(p, p->f152);
                 }
             }
@@ -220,33 +234,33 @@ static int TriggerLR_FindSpeech(TRIGGERLR *p, float **in)
     case 3:
         if (p->f120 < v2) {
             p->f96++;
-            p->f156 = p->f156 < v3 ? v3 : p->f156;
+            p->f156 = MAX(v3, p->f156);
             if (p->f96 >= p->f164) {
                 SlidingHisto_NewItem(p, p->f156);
-                p->f172 = 1;
                 p->f168 = 1;
+                p->f172 = 1;
                 p->f160 = SlidingHisto_LowerQuantile(p, p->f152);
                 p->f96 = 0;
                 p->f156 = v3;
             }
         } else {
-            p->f80 = 1;
             p->found = 4;
+            p->f80 = 1;
         }
         break;
     case 4:
         if (p->f124 < v2) {
             p->found = 3;
             p->f96++;
-            p->f156 = p->f156 < v3 ? v3 : p->f156;
+            p->f156 = MAX(v3, p->f156);
         } else {
             p->f80++;
             if (p->f80 > p->f84) {
                 p->found = 0;
                 if (p->f168 == 0) {
                     SlidingHisto_NewItem(p, p->f156);
-                    p->f172 = 1;
                     p->f168 = 1;
+                    p->f172 = 1;
                     p->f160 = SlidingHisto_LowerQuantile(p, p->f152);
                 }
             }
