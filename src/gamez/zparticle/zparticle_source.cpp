@@ -25,6 +25,26 @@ namespace Particle {
  * <iostream>'s pair and registers ~List 0x32BFD0) */
 Source::List Source::list;
 
+/* SOCOM 1's: switched on or off when it changes -- its collision node too, when it has one and the
+ * flag at 0x120 says so (SOCOM II tests the node) -- then, switched on, the shut-off flag cleared,
+ * else the good position. The flag narrowed into a byte local and compared member first (SOCOM 1's
+ * compares the parameter: the narrowed copy in v1, the raw one stored); the node's SetActive takes
+ * the byte (zparticle.h's marked device) */
+void Source::SetActive(bool on)
+{
+    unsigned char b = on;
+
+    if (m_active != b) {
+        m_active = b;
+        if (m_hasbbox && m_diNode)
+            m_diNode->SetActive(b);
+        if (on)
+            m_shuttingoff = 0;
+        else
+            m_goodPos = 0;
+    }
+}
+
 /* SOCOM 1's: the box grown to hold a particle, the radius's square kept */
 void Source::CheckExtents(CPnt4D p, float r)
 {

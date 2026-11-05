@@ -5749,7 +5749,7 @@
 0x00329A40 0x54 func_00329A40  # OVL1
 0x00329AA0 0x10 func_00329AA0  # OVL1
 0x00329AB0 0xC func_00329AB0  # OVL1
-0x00329AC0 0x7C func_00329AC0  # OVL1
+0x00329AC0 0x7C SetActive__Q28Particle6SourceFb  # OVL1; the world lane r24: s1:calls by hand (SOCOM 1's Particle::Source::SetActive(bool) 0x239410: zAnimParticleSourceTick calls it twice right after GetParticleSource, as SOCOM 1's does; the same body -- the active byte at 0 compared and set, the node (0x104, SOCOM 1's 0x100) activated through its vtable when the byte at 0x120 says so (SOCOM II tests the node), then byte 0x12C or byte 1 cleared)
 0x00329B40 0xB68 Tick__Q28Particle6SourceFf  # OVL1; s1:calls by hand (Particle::Tick calls it on every source of Source::list with dT, as SOCOM 1's Tick calls Source::Tick; 0xB68 bytes against SOCOM 1's 0xA2C) -- the rdr lane
 0x0032A6B0 0x150 __dt__Q28Particle6SourceFv  # OVL1; s1:callee by hand (CZAnim::DeleteParticleSources calls it with the delete flag on each source where SOCOM 1's calls Particle::Source's destructor)
 0x0032A800 0x58 func_0032A800  # OVL1

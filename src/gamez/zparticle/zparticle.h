@@ -187,7 +187,10 @@ public:
     virtual CNode *FindChild(const char *name, int start, int *index, bool deep);
     virtual bool IsCell();
     virtual bool Read(class CSaveLoad &io);
-    virtual bool SetActive(bool on);   // +0x38
+    /* znode.h's SetActive(bool), declared here over an unsigned char -- A MARKED MODELLING DEVICE
+     * (the world lane round 24): Source::SetActive passes the narrowed byte it compared and stored,
+     * with no bool conversion (sltu) between; the call is virtual, so no symbol depends on it */
+    virtual bool SetActive(unsigned char on);   // +0x38
 
     static CNode *Create(const char *name);
     static void Delete(CNode *node);
@@ -527,6 +530,8 @@ public:
     PARTICLE_TYPE GetDrawType() const { return m_drawType; }
     static void RenderBBox();
     void CheckExtents(CPnt4D p, float r);
+    /* SOCOM 1's (0x329AC0): ZAnim's particle tick switches a source on and off through it */
+    void SetActive(bool on);
     void GetBBox(CBBox *box);
     void Tick(float dT);
     void ScaleSequenceAdd(float fraction, float scale);
@@ -536,7 +541,8 @@ public:
     void TextureSequenceAdd(float fraction, zdb::CTexHandle *tex);
     void TextureSequenceClear();
 
-    unsigned char _0[2];   // 0x0: SOCOM 1's m_active, m_goodPos
+    unsigned char m_active;   // 0x0 (SOCOM 1's)
+    unsigned char m_goodPos;   // 0x1 (SOCOM 1's)
     unsigned char m_frozen;   // 0x2 (SOCOM 1's: an instance of a frozen source is not ticked)
     unsigned char m_outOfRange;   // 0x3 (SOCOM 1's)
     unsigned char _4[0x19 - 4];   // 0x4: SOCOM 1's m_oldPosW .. m_landmark, and SOCOM II's word
