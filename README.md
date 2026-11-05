@@ -2065,6 +2065,20 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the engine core, round 20** (CZAnimMain::Open, open since round 1; ClutterTick, OnWeaponHit and
+  ActivateArgV, all unwritten before -- the map passes 70 % of its bytes):
+  - MW'S EXIT READS v0 EVEN IN A VOID FUNCTION: v0 is live from the last call to the end and nothing after the call can
+    take it -- a target using v0 there returns a value (CZAnimMain::Open 0x26B1A0 returns bool: 18 -> 0); the replay
+    cannot find it, the interference is with v0 itself (build/scratch/core-r20/core/voidv0.py scans for it);
+  - MW calls operator new before evaluating constructor arguments: a value the target reads before `jal __nw__` went into
+    a local first; MW's implicit function-local-static guard is loaded with lb and set after the call -- one loaded with
+    lbu and set before the call is an explicit `static bool`; a `char` whose every use is unsigned folds to lbu, `int c =
+    va_arg(args, char)` keeps the target's lb plus andi 0xff (CZAnim::ActivateArgV 0x272C30);
+  - an inlined two-arm select puts the else arm in the branch's delay slot when nothing independent precedes it --
+    computing an independent value first (the list's end()) restores the target's if / else with a `b`;
+  - AN INLINE IN A SHARED HEADER WHOSE BODY USES dynamic_cast MAKES EVERY INCLUDER EMIT THE RTTI (119 units for
+    CClutterAnim(CClutter *): objcmp caught it) -- define such bodies in their unit; calling the inline GetRadius()
+    reloads the field before each fabsf call where the raw field is loaded once.
 - **Tells from the kit and AI states, round 52** (AnimSet::AddBlendable and SetMaxMotion and CZKit::TickLaserDesignator,
   all unwritten before; Timer_PlaceC4 and ~CZKit from drafts to source; the DI-pool opt-in dropped):
   - a pointer-vector walk written in the function itself with the real end() inlines whole at level 5 and reloads the data
