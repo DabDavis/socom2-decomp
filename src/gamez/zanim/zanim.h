@@ -847,6 +847,8 @@ public:
     static bool CmdTickVWatch(_zanim_cmd_hdr *hdr, float *dT);
     static _zanim_cmd_hdr *CmdParseVBit(_zrdr *rdr);
     static bool CmdTickVBit(_zanim_cmd_hdr *hdr, float *dT);
+    /* SOCOM 1's VALVE command's parser (0x3535D0; the world lane round 23, additive) */
+    static _zanim_cmd_hdr *CmdParseCmp(_zrdr *rdr);
     /* an operator's name to its code: 0x353D10, a chain of 22 strcmp calls, no `this` (the world
      * lane's round 12 measured it; declared by the integrator for the world's unit to define) */
     static int ParseOperator(const char *op);
