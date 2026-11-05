@@ -562,6 +562,11 @@ public:
     /* the scan's tick (OVL2 0x600550, the kit lane's range: the map's ScanTick__9CSealCtrlFf; CSealCtrlAi's
      * PreTick, seal_control.cpp's, calls it) */
     void ScanTick(float dT);
+    /* the targets' frame: each in view range kept or forgotten by what the SEAL perceives (OVL2
+     * 0x5CA9F0 and 0x5CC120, the kit lane's seal_sensors.cpp: SOCOM 1's SensorPreTick, which
+     * CSealCtrl::PreTick calls, and its _GetTargetPerception) */
+    void SensorPreTick(float dT);
+    bool _GetTargetPerception(CTarget &target);
     virtual ~CSealCtrl();
     virtual bool PreTick(float dT);
     virtual bool Tick(float dT);
