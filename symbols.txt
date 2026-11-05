@@ -7451,7 +7451,7 @@
 0x00397890 0x2C func_00397890  # OVL1
 0x003978C0 0xC func_003978C0  # OVL1
 0x003978D0 0x74 func_003978D0  # OVL1
-0x00397950 0x268 func_00397950  # OVL1
+0x00397950 0x268 SkbScaleDisplay__FP13CSoftKeyboardf  # OVL1; ours (the UI lane round 27: zui_skbview.cpp -- SkbScale 0x394DA0's call with the keyboard still in a0 and the scale in f12: s_bmp6/s_bmp7 placed at t of the way from (-SkbPos.x, 448 - SkbPos.y) and loaded at t of the keyboard's size, then each list's keys over their pieces' display rectangles)
 0x00397BC0 0x164 SkbFindSounds__Fv  # OVL1; the UI lane round 11: ours, by its body (zui_skbview.cpp: the six CSnd statics from CSnd::GetSoundByName of strings 2, 3, 4, 5, 6 and 1; 0x3958D0 calls it)
 0x00397D30 0x2AC ReadCapLook__8CSkbLookFUcP5_zrdrPCc  # OVL1; ours (the UI lane round 27: zui_skbview.cpp -- the look parser's three calls with this, the cap index 0-2 and the UserStringProps/PurposeStringProps/MsgPlayerStringProps tag; the block's SCALE, COLOR, FONT and POSITION into m_caps[i])
 0x00397FE0 0xE4 resize__Q23std62__vector_imp<11CSkbBgPiece,Q23std24allocator<11CSkbBgPiece>,0>FUi  # OVL1; the UI lane round 14: zui_skbview.cpp's tail, the background pieces' resize (the look parser's only request: m_sources[i].resize(size() + 1)), byte-exact from source with erase/insert named

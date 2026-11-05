@@ -303,8 +303,53 @@ void SkbSetKeyTextures(zdb::CTexHandle *tex6, zdb::CTexHandle *tex7, std::vector
     }
 }
 
-/* the display scaled to a fraction of its size (0x397950, not written yet) */
-extern "C" void func_00397950(float scale);
+/* the display scaled to t of its size, growing out of the screen's bottom-left corner: the two
+ * shared bitmaps placed and sized, then the keys of each list of ten or fewer pieces placed over
+ * their pieces' display rectangles (0x397950; SkbScale's, the name ours -- it takes the keyboard
+ * SkbScale leaves in a0). The lerp an inline: its 0.0f through a parameter is kept, `sub.s` from a
+ * zero register (written in place MW folds `0 - x` to neg.s); the list indexed `m_sources[(Uc)i]`
+ * (the look added first, not SkbPieces' hoisted base).
+ * OPEN, 3 instructions short (0x25C of 0x268): the target keeps the key's offset j*176 as an
+ * induction of its own (s1, from 0) and adds the row (s2) to it each pass, where MW here folds the
+ * row into one key pointer; the members spelled out keep the inner loop's entry threaded (`slt
+ * at,zero,v1`, as the target -- through the rows' nested operator[]s it is entered at its bottom,
+ * 0x274). Tried: a row reference or pointer local (before or after the list), the counters at
+ * function scope, a flat index, inline key accessors, a do-while with the count tested */
+static inline float SkbLerp(float a, float b, float t)
+{
+    return a + t * (b - a);
+}
+
+void SkbScaleDisplay(CSoftKeyboard *skb, float t)
+{
+    float x = (float)-skb->m_5c;
+    float y = 448.0f - (float)skb->m_60;
+    float px = SkbLerp(x, 0.0f, t);
+    float py = SkbLerp(y, 0.0f, t);
+
+    s_bmp6.m_node->SetPosition(px, py, 0.0f);
+    s_bmp7.m_node->SetPosition(px, py, 0.0f);
+    int w = (int)(t * (float)skb->m_6c);
+    int h = (int)(t * (float)skb->m_68);
+
+    s_bmp6.Load(0.0f, 0.0f, (float)w, (float)h, s_bmp6.m_pTexHandle);
+    s_bmp7.Load(0.0f, 0.0f, (float)w, (float)h, s_bmp7.m_pTexHandle);
+    for (int i = 0; i < 4; i++) {
+        CSkbBgPieces &pieces = skb->m_sources[(unsigned char)i];
+
+        if ((int)pieces.size() < 11) {
+            for (int j = 0; j < (int)pieces.size(); j++) {
+                CBmpWithNode &bmp = s_keyRows.m_rows[i].m_bmps[j];
+                CSkbBgPiece &piece = pieces[j];
+
+                bmp.m_node->SetPosition(SkbLerp(x, (float)piece.m_display.m_pos[0], t),
+                                        SkbLerp(y, (float)piece.m_display.m_pos[1], t), 0.0f);
+                bmp.Load(0.0f, 0.0f, (float)(int)(t * (float)piece.m_display.m_size[0]),
+                         (float)(int)(t * (float)piece.m_display.m_size[1]), bmp.m_pTexHandle);
+            }
+        }
+    }
+}
 /* the current menu's float at 0x9C set (zui.cpp's 0x36A210) */
 extern "C" void func_0036A210(float f);
 
@@ -323,7 +368,7 @@ unsigned char SkbScale(CSoftKeyboard *skb, float dT)
 
     if (scale > 1.0f)
         scale = 1.0f;
-    func_00397950(scale);
+    SkbScaleDisplay(skb, scale);
     if (t >= 1.0f) {
         s_scaling = SKBSCALE_NONE;
         if (up) {
