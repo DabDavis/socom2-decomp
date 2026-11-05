@@ -3462,7 +3462,7 @@
 0x002A45F0 RecoverFromNetError__8CMissionFi
 0x002A4600 _RecoverFromNetError__8CMissionFi
 0x002A47B0 func_002A47B0
-0x002A4920 func_002A4920
+0x002A4920 TickInFirefight__8CMissionFf
 0x002A4A10 func_002A4A10
 0x002A4CA0 GetMissionCamByIdentifier__8CMissionFPCc
 0x002A5290 LoadMissionCams__8CMissionFP8CRdrFile
@@ -3496,9 +3496,11 @@
 0x002A98A0 fadeToEndMissionTick__8CMissionFfPv
 0x002A98B0 FadeToEndMissionTick__8CMissionFf
 0x002A9A70 EndMission__8CMissionFv
+0x002A9B30 OnMissionComplete__8CMissionF13MISSION_STATE
 0x002A9EE0 func_002A9EE0
 0x002A9EF0 DestroyNetGame__8CMissionFv
 0x002A9F00 CreateNetGame__8CMissionFv
+0x002AA490 Tick__8CMissionFf
 0x002AA890 func_002AA890
 0x002AA910 _OnMissionComplete__Fv
 0x002AAB00 tick__8CMissionFfPv
@@ -3869,6 +3871,7 @@
 0x002C7300 swap__Q23std30vector<i,Q23std12allocator<i>>FRQ23std30vector<i,Q23std12allocator<i>>
 0x002C7340 clear__Q23std30vector<i,Q23std12allocator<i>>Fv
 0x002C7350 __ct__Q23std30vector<i,Q23std12allocator<i>>Fv
+0x002C7370 IsAvailable__20CMissionObjectiveCamCFv
 0x002C7410 func_002C7410
 0x002C7490 __dt__20CMissionObjectiveCamFv
 0x002C7530 __ct__20CMissionObjectiveCamFv

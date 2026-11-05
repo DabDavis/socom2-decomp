@@ -2065,6 +2065,21 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the game states, round 40** (OVL1's OnStateChange copy, OnMissionComplete, CMission::Tick, IsAvailable):
+  - OVL1'S OnStateChange 0x2B3BE0 NOW HAS ITS OWN EMITTER: fts_player.cpp's stand-in CSealCtrl declares the inline
+    `virtual void OnStateChange(SEAL_STATE, SEAL_STATE) {}`, so CSealCtrlCopy's table (emitted with its destructor)
+    makes the copy -- the `ovl-copy:` marker on OVL2's 0x58A710 is restored (the SEALs' round 43 lesson: each twin
+    needs its own emitter);
+  - a byte-enum field copied out of an inline's return value keeps lb + andi 0xff at each compare -- no-code block
+    boundaries (a label, `if (0)`, an empty asm, `(void)` uses, a one-pass loop) and casts all fold back to one lbu
+    (OnMissionComplete 0x2A9B30: an inline SetState returning the previous state; `bool over;` declared before `game`
+    swaps their saved registers -- found with `tools/igreplay.py --move 35=36.5 --target` before writing source; the
+    abort's menu state at +0x78, the old +0x178 a wrong reference the size mismatch had hidden);
+  - a valve tested through GetValue() keeps its own lhu apart from SetValveValue's read, a plain m_value merges into one
+    load + andi 0xffff (CMission::Tick 0x2AA490, unwritten before); a chain of bool tests the target carries as values
+    is three bools copied forward (`bool a = !X(); if (a) a = !Y(); bool b = a; if (b) b = Z(); bool c = b; if (c) c =
+    flag; return c;` -- IsAvailable 0x2C7370); `x > y ? x - y : 0` loads y first; TickInFirefight 0x2A4920 named by
+    SOCOM 1's Tick.
 - **Tells from the SEALs, round 44** (SlideTick, the level-2 alert record, seal_cfg.cpp's map teardown):
   - A DEAD-STRIPPED SOCOM 1 FUNCTION CAN BE WHAT MAKES A UNIT EMIT A TEMPLATE'S PIECES: seal_cfg.cpp's map<string, int>
     teardown 0x58D020-0x58D730 comes out of SOCOM 1's ClearBodyPartNames_Map (its demo's 0x280E80, between BodyWepPart and
