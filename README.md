@@ -2065,6 +2065,17 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the HUD, round 57** (CTCM::Select, open since round 27; HandleClosedPad, TickFullScreenAnims and SetGBarVal,
+  all unwritten before):
+  - a copy MW makes for a loop in the null test's delay slot comes from a second variable defined BEFORE the test -- here a
+    reference to an offset-0 member, which copies the pointer; defined after the test the copy lands in the next block
+    (CTCM::Select 0x234F40: the column short-lived in v0, a reference to its children in s6);
+  - an unsigned compare (sltiu) with a signed cvt.s.w on the same counter is an int counter bounded by
+    `sizeof(a)/sizeof(a[0])`; a clamp's empty then-arm (bc1f, b, mov.s) is a MIN-style ternary, an if gives a single bc1t;
+    `if (f)` on a float compares `c.eq.s f,0`, `f != 0.0f` puts the zero first;
+  - an inline parameter passed as `const float &` is read through the reference and not merged with other loads of the
+    same member -- use it when the target loads a member twice in one call; an inline's arguments evaluate right to left:
+    permuting the parameter order (try.py --variants) fixed BitmapReticule::SetGBarVal 0x213A60's FPR schedule.
 - **Tells from the online lobby, round 25** (ten functions from their drafts to source and eleven rows named -- the
   network's message registration, SOCOM 1's zNet* names, the lobby's state handlers):
   - a dead own function that gets an out-of-class template member generated before its tail caller does NOT make that
