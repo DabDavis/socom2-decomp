@@ -3486,6 +3486,7 @@
 0x002A4270 HasMessages__13CMessageQueueFv
 0x002A4290 __ct__14CQueuedMessageFv
 0x002A42A0 func_002A42A0
+0x002A42B0 Sample_ExtractionLoc__8CMissionFv
 0x002A45F0 RecoverFromNetError__8CMissionFi
 0x002A4600 _RecoverFromNetError__8CMissionFi
 0x002A47B0 func_002A47B0
@@ -3510,7 +3511,8 @@
 0x002A7560 func_002A7560
 0x002A75F0 UnInitialize__9CZNetGameFv
 0x002A7D40 OnMissionStart__8CMissionFv
-0x002A8C90 func_002A8C90
+0x002A8140 ftsFixupAiMap__FP6CAiMap
+0x002A8C90 aiMapPlaceItem__FPQ23zdb5CNodeRC6CPnt3DiPC6CPnt3DPC6CPnt3D
 0x002A8F30 __ct__6CPnt3DFfff
 0x002A8F50 GetClosestLadder__11CLadderListFPC6CPnt3Df
 0x002A90F0 GetLadderByNode__11CLadderListFPQ23zdb5CNodei

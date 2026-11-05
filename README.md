@@ -2065,6 +2065,25 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the game states, round 43** (Sample_ExtractionLoc and ftsFixupAiMap -- unblocked by the one CSaferStr;
+  fts_mission.cpp's stand-ins retired):
+  - fts_mission.cpp now includes ai_maps.h (ai.h, zentity.h): its own CAiMapLoc, CCompassAnchor, CCompass, CAiMaps (the
+    nav points are `AiMaps.m_names[1]`), CEntity / CEntityList, CAiEvent and CTarget / CTargetList stand-ins are gone,
+    CZSealBody a subclass of CEntity. A HEADER'S LITERAL BOUND TO A CONST REFERENCE EMITS AN ANONYMOUS .data WORD IN
+    EVERY UNIT THAT INCLUDES IT, used or not (ai.h's ForEachCell: two 4-byte zeros) -- every later `@N` rank shifts while
+    the code is unchanged, so plain objcmp reports DIFF; aligned by content (the states' ocdetail.py --align-anon) every
+    existing function is identical;
+  - a result assigned inside its test (`if (!(p = f()))`) branches on v0 with the copy in the delay slot, assigned first
+    and tested after, the copy comes first and the branch tests the saved register; `for (iterator i = begin(), e =
+    end(); ...)` gives the iterator and end other saved registers than declaring them before the loop
+    (CMission::Sample_ExtractionLoc 0x2A42B0);
+  - MW numbers inliner temporaries in the inliner's order, not source order -- a named local lands among them only by
+    merging into one (a reference initialised from an inline accessor: `ActionTable(map)`, a marked numbering device);
+    reusing one variable for a second lookup (`pickup = zrdr_findtag(pickup, "AMMO")`) gives one node, a separate
+    variable is numbered ahead of the loop's temporaries; an owner read through a ternary merges into the ternary's
+    temporary and spills below a later named reference; `Create(...)->m_timer = g;` loads the global before the call and
+    keeps it in $f20 across it (ftsFixupAiMap 0x2A8140, by igdump / igreplay; aiMapPlaceItem 0x2A8C90 named by SOCOM 1's
+    two calls); st_exit.cpp / st_menu.cpp call CGameMenu::Tick by name (SAME-BY-ADDRESS).
 - **Tells from the SEALs, round 48** (CSealCtrlAi::SetAiEnabled; the reticule getters to source; fourteen rows named):
   - SOCOM 1 counterparts sitting in the same run, at the same sizes and with the same bodies, name several rows at once:
     SOCOM 1's ImpactFront calls Climb three times, ClimbOver once and AlignForClimb once, exactly as 0x5B2620 does
