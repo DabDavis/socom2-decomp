@@ -106,7 +106,8 @@ struct CMaterialEx {
     /* int_material.h's flags: VOLUMETRIC (bit 0), LIQUID (bit 1) and PICKUP (bit 4) here */
     unsigned int m_volumetric : 1;   // 0x3c
     unsigned int m_liquid : 1;   // bit 1
-    unsigned int m_flags2 : 2;
+    unsigned int m_underwater : 1;   // bit 2: UNDERWATER
+    unsigned int m_particle : 1;   // bit 3: a particle system's (HandleSmokeAndGas tests it)
     unsigned int m_pickup : 1;   // bit 4: PICKUP
     unsigned int m_flags5 : 27;
 
@@ -115,6 +116,7 @@ struct CMaterialEx {
     bool IsPickup() { return m_pickup ? true : false; }
     bool IsVolumetric() { return m_volumetric ? true : false; }
     bool IsLiquid() { return m_liquid ? true : false; }
+    bool IsParticle() const { return m_particle ? true : false; }
 };
 
 /* a material's extension, the first one for an index past the table (SOCOM 1's bounds-checked
@@ -4899,6 +4901,72 @@ extern "C" void func_005A0040(CZSealBody *seal)
         func_0059F730(seal, secondary, 0);
     if (ammo)
         func_0059F730(seal, launcher, 0);
+}
+
+/* a particle effect's node extension (SOCOM 1's DWARF: CParticleEx : CNodeEx, its emitter at 4; its
+ * virtuals all CNodeEx's inline ones, so the dynamic_cast below makes the unit emit OVL2's copy of its
+ * RTTI, 0x65F0C0) */
+class CParticleEx : public zdb::CNodeEx {
+public:
+    Particle::Source *m_emitter;   // 0x4
+};
+
+/* whether a value lies in a range, and a point in a box's x/y and in the whole box (inlines returning
+ * through a result: the target's `daddiu 1` per test, each level's result zeroed ahead of the tests
+ * it holds). The bounds by reference: the target loads the upper one only after the lower test
+ * (by value both load at the call); `!(v < lo)`, as `v >= lo` materialises the test */
+static inline bool InRange(float v, const float &lo, const float &hi)
+{
+    bool r = false;
+
+    if (!(v < lo) && v <= hi)
+        r = true;
+    return r;
+}
+
+static inline bool InBoxXY(const CBBox &b, const CPnt3D &p)
+{
+    bool r = false;
+
+    if (InRange(p.x, b.m_min.x, b.m_max.x) && InRange(p.y, b.m_min.y, b.m_max.y))
+        r = true;
+    return r;
+}
+
+static inline bool InBox(const CBBox &b, const CPnt3D &p)
+{
+    bool r = false;
+
+    if (InBoxXY(b, p) && InRange(p.z, b.m_min.z, b.m_max.z))
+        r = true;
+    return r;
+}
+
+/* a hit's particle cloud entered: a point inside the cloud node's box in the world takes the tear gas
+ * (cloud type 0) or the smoke (type 1) (SOCOM 1's HandleSmokeAndGas, its box test and its stuns now
+ * helpers; OVL2 0x5B5050: SealProcessAltitude 0x5B5D40 asks it for each hit, then HandleWater, as
+ * SOCOM 1's) */
+void CZSealBody::HandleSmokeAndGas(zdb::IntersectStruct *hit, const CMaterialEx *mat, const CPnt3D *pos)
+{
+    if (mat->IsParticle()) {
+        zdb::CNode *node = hit->m_node;
+        CBBox box;
+
+        node->m_matrix.Transform(&node->GetBBox()->m_min, &box.m_min, 2);
+        box.Normalize();
+        CParticleEx *ex = node ? dynamic_cast<CParticleEx *>(node->m_nodeEx) : 0;
+        Particle::Source *src = ex->m_emitter;
+
+        if (src) {
+            if (src->m_cloudtype == 0) {
+                if (InBox(box, *pos))
+                    func_005A0B60(this);
+            } else if (src->m_cloudtype == 1) {
+                if (InBox(box, *pos))
+                    func_005A0BB0(this);
+            }
+        }
+    }
 }
 
 /* the hits under a point handled (SOCOM 1's SealProcessAltitude; OVL2 0x5B5D40, not written yet) */

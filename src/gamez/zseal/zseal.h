@@ -2000,6 +2000,9 @@ public:
     /* the ground under a point found, the SEAL's own node off for it (SOCOM 1's; OVL2 0x5B4F30,
      * seal_env.cpp), and the hits handled (SOCOM 1's SealProcessAltitude; OVL2 0x5B5D40) */
     void SealGetAltitude(CPnt3D *pos, float f);
+    /* a hit's particle cloud entered: its gas or its smoke taken (SOCOM 1's; OVL2 0x5B5050,
+     * seal_env.cpp's -- SealProcessAltitude asks it for each hit) */
+    void HandleSmokeAndGas(zdb::IntersectStruct *hit, const class CMaterialEx *mat, const CPnt3D *pos);
     /* the looks (SOCOM 1's, seal_env.cpp's in its order): the lids and the eyes turned to their looks'
      * directions, the head's direction, the head and the three parts above it turned by the look
      * anims (OVL2 0x5AD400, 0x5AD4D0, 0x5AD5A0, 0x5AD5B0); a look's goal off the current direction
