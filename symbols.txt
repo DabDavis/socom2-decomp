@@ -9585,7 +9585,7 @@
 0x005278C0 0x3C plan_complete__7CAiPathFQ27CAiPath10PATH_STATE  # OVL2; s1:callee by hand (AbortPathPlan calls it with the path and 0, then 5 in its other arm, as SOCOM 1's calls plan_complete__7CAiPathFQ27CAiPath10PATH_STATE)
 0x00527900 0x64 func_00527900  # OVL2
 0x00527970 0x6C plan_setup__7CAiPathFv  # OVL2; s1:callee by hand (PathPlanImmediate and PathPlanBegin call it where SOCOM 1's call plan_setup__7CAiPathFv; the same body at SOCOM II's offsets: points and cells cleared, maps' size zeroed, stats reset, state and the leg counts zeroed)
-0x005279E0 0x260 func_005279E0  # OVL2
+0x005279E0 0x260 GetLegBoundary__7CAiPathCFRiRii  # OVL2; s1:calls by hand, the AI core round 26 (SOCOM 1's GetLegBoundary 0x196210, its SmoothPathLeg's callee: the same leg tests, the reverse walk over the points and the legs' ends -- 0x525810, SOCOM II's SmoothPathLeg, calls it as the demo's does; PrintPath and 0x526810 too)
 0x00527C40 0x38 GetLegMap__7CAiPathFi  # OVL2; s1:callee by hand (CreatePlanner calls it with -1 for the new CAiStar's map, as SOCOM 1's calls GetLegMap__7CAiPathFi)
 0x00527C80 0x58 GetLegPoints__7CAiPathCFR9CAiMapLocR9CAiMapLoci  # OVL2; s1:callee by hand (CreatePlanner calls it with the new CAiStar's two cells and -1, as SOCOM 1's calls GetLegPoints__7CAiPathCFR9CAiMapLocR9CAiMapLoci)
 0x00527CE0 0x18C RemoveInvalidPoints__7CAiPathFv  # OVL2; ours (new in SOCOM II: SmoothPath's call after the legs -- the points on CAiMapLoc::invalid dropped through MSL's remove (find inlined, remove_copy 0x528530) and the range erase 0x528C80, the old size less the new returned; SOCOM 1's SmoothPath did it inline -- ai_path.cpp)

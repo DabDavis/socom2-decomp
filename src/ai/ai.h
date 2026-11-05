@@ -1528,6 +1528,12 @@ public:
 
             return iterator(p);
         }
+        /* the reverse walk (include/iterator's reverse_iterator, built from the ends by value:
+         * GetLegBoundary 0x5279E0 keeps both reverse iterators and their ends' temporaries in stack
+         * slots, rend() rebuilt for each pass's test) */
+        typedef std::reverse_iterator<iterator> reverse_iterator;
+        reverse_iterator rbegin() { return reverse_iterator(end()); }
+        reverse_iterator rend() { return reverse_iterator(begin()); }
     };
     /* a point on a cell: x and y agree, the map aside (SOCOM 1's std::find<point *, CAiMapLoc>
      * compares them; materialised as CAiMapLoc's ==) */
@@ -1608,6 +1614,10 @@ public:
     void IncrementPathId();
     CAiMap *GetLegMap(int leg);
     bool GetLegPoints(CAiMapLoc &start, CAiMapLoc &goal, int leg) const;
+    /* the indices of a leg's first and last points, for one leg or the one being planned, -1 for
+     * none; false past the last leg (SOCOM 1's GetLegBoundary, the demo's 0x196210, which its
+     * SmoothPathLeg calls: 0x5279E0 -- PrintPath and SOCOM II's SmoothPathLeg 0x525810 call it) */
+    bool GetLegBoundary(int &first, int &last, int leg) const;
     /* the points' length, the straight distances between neighbours on one map summed -- kept,
      * and summed again when none is kept or when forced; 0 without points (SOCOM 1's GetLength,
      * the demo's 0x196510, by its place and its call from CAiMaps::CreateGraph: 0x527E70) */
