@@ -22,6 +22,8 @@
 #include <iostream>   /* (its pair is all __sinit_zanim_anim.cpp builds, 0x3FFC30) */
 
 #include "zanim.h"
+#include "../znode/node_world.h"
+#include "../zweapon/zweapon.h"
 
 extern "C" CZAnim *func_00270BB0(CZAnim *anim);
 extern "C" bool func_00270BC0(Particle::Source *source);
@@ -87,6 +89,83 @@ void CZAnimExVector::Free()
 {
     std::for_each(begin(), end(), CZAnimExDelete());
     size_ = 0;
+}
+
+/* a weapon's hit on the extension's node (SOCOM 1's, 0x1CF660; the vtable's slot): the shot's
+ * damage taken at the node's box centre in the world -- an anim marked so (its bit 3) survives a
+ * computer's shot at 0.01 health -- and, when that destroys it or the anim has a damage sequence,
+ * an available copy of the anim told the new armour and health, run through its damage sequence
+ * and, on destruction, activated: with the root node as its node argument when there is one, and
+ * an explosion's push (1000 times the falloff, along the centre's offset from the shot's frame
+ * start -- lowered by the distance and cut to 0.707 when level with it), else the shot's velocity
+ * and the hit's point; none without a projectile. Always 0 */
+int CZAnimEx::OnWeaponHit(CNode *node, zdb::IntersectStruct *hit, CZProjectile *projectile)
+{
+    bool destroyed = false;
+    CPnt3D center(0.0f, 0.0f, 0.0f);
+
+    node->GetBBox()->GetCenter(&center);
+    node->TransformToWorld(center);
+    float before = m_health;
+
+    projectile->GetDamage(&center, &m_health, &m_armor, m_shield);
+    if (m_health <= 0.0f) {
+        if (m_anim->m_socom2_bit3 && !projectile->m_isplayer) {
+            if (!(before <= 0.0f))
+                m_health = 0.01f;
+        } else
+            destroyed = true;
+    }
+    if (destroyed || m_anim->m_damage_seq_offset > 0) {
+        CZAnim *anim = m_anim->GetAvailable();
+
+        if (anim) {
+            if (m_root_node)
+                func_00270460(anim, m_root_node);
+            if (anim->m_health) {
+                anim->m_health->armor = m_armor;
+                anim->m_health->health = m_health;
+            }
+            if (anim->m_damage_seq_offset > 0)
+                anim->ExecuteSpecialSequence(anim->m_damage_seq_offset);
+            if (destroyed) {
+                if (projectile) {
+                    CPnt3D vel = projectile->m_vel;
+
+                    if (vel.x * vel.x + vel.y * vel.y + vel.z * vel.z < 1.0f &&
+                        !(projectile->m_ammo->GetExplosionRadius() <= 0.001f)) {
+                        CPnt3D from = projectile->m_framestartpos;
+                        CPnt3D push = center - from;
+                        float dist = push.Length();
+
+                        if (fabsf(from.y - center.y) < 5.0f) {
+                            from.y -= dist;
+                            push = center - from;
+                            push.Scale(0.707f, &push);
+                            dist *= 0.707f;
+                        }
+                        push.Scale(1000.0f * ((1.0f - dist / projectile->m_ammo->GetExplosionRadius()) / dist),
+                                   &push);
+                        if (m_root_node)
+                            anim->ActivateArg(1, 2, m_root_node, 6, &push, 0);
+                        else
+                            anim->ActivateArg(1, 6, &push, 0);
+                    } else {
+                        CPnt3D at = hit->m_pos;
+
+                        if (m_root_node)
+                            anim->ActivateArg(1, 2, m_root_node, 6, &vel, 5, &at, 0);
+                        else
+                            anim->ActivateArg(1, 6, &vel, 5, &at, 0);
+                    }
+                } else if (m_root_node)
+                    anim->ActivateArg(1, 2, m_root_node, 0);
+                else
+                    anim->Activate(0);
+            }
+        }
+    }
+    return 0;
 }
 
 /* the extension's armour and health from the given values, or their maxima */
