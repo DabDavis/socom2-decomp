@@ -268,6 +268,10 @@ public:
     int NextWeapon(bool up, int index, EQUIP_ITEM type, WEAPON_KIND kind);
     /* whether the list's slot takes a weapon (0x23C390; the name ours) */
     bool CanTake(CZWeapon *weapon, EQUIP_ITEM type, WEAPON_KIND kind);
+    /* the next weapon class up or down in the page's fixed order that the list takes a weapon of
+     * (0x23C840; the name ours), and the test (inline) */
+    EQUIP_ITEM NextCategory(bool up, EQUIP_ITEM cls, WEAPON_KIND kind);
+    inline bool HasWeapons(EQUIP_ITEM cls);
 
     /* no owner, no slots yet (inline: the selector's constructor builds two) */
     SlotList()

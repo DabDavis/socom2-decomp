@@ -692,9 +692,6 @@ void CMPWeaponCategories::HandlePad(CPad *pad)
     }
 }
 
-/* the list's next weapon class up or down from a class that the page's kind allows (0x23C840;
- * no row named yet: a switch over the class starts calling NextClass) */
-extern "C" EQUIP_ITEM func_0023C840(SlotList *list, bool up, EQUIP_ITEM type, WEAPON_KIND kind);
 
 /* the page's cursor moved: a weapon on (2) or back (-2) in its class, or the class on (-1) or
  * back (1) -- the grenades' class (171) passed over when the selector lets none through -- and on
@@ -714,9 +711,9 @@ void CMPWeaponCategories::Move(signed char dir)
     case 1: {
         int old = m_type;
 
-        m_type = func_0023C840(&m_list, up, m_type, m_kind);
+        m_type = m_list.NextCategory(up, m_type, m_kind);
         if (m_type == 171 && !m_owner->m_203 && !m_owner->m_gl && !m_owner->m_f2000)
-            m_type = func_0023C840(&m_list, up, m_type, m_kind);
+            m_type = m_list.NextCategory(up, m_type, m_kind);
         if (old != m_type)
             m_index = m_list.NextWeapon(true, 0, m_type, m_kind);
         break;
@@ -784,6 +781,134 @@ EQUIP_ITEM SlotList::NextClass(bool up, EQUIP_ITEM cls)
     return (EQUIP_ITEM)id;
 }
 
+
+/* whether the list takes a weapon of a class: none (255) always does; else any id from the class's
+ * start to the next class's (inline; the name ours). The end an int: as the class's byte enum it is
+ * numbered the other way round with the id (their saved registers swap) */
+inline bool SlotList::HasWeapons(EQUIP_ITEM cls)
+{
+    if (cls == 255)
+        return true;
+
+    int end = NextClass(true, cls);
+
+    for (int id = cls; id < end; id++) {
+        if (CanTake(CZWeapon::m_listWeapons.GetWeapon((EQUIP_ITEM)id), cls, (WEAPON_KIND)3))
+            return true;
+    }
+    return false;
+}
+
+/* the page's next weapon class up or down from a class, in the selector's fixed order -- the
+ * primaries 31 51 81 91 101 141, the pistols 4, the others 121 145 151 171 185 190, 255 (none)
+ * between the ends -- on past the classes the list takes nothing of (0x23C840; the name ours --
+ * Move's class step). Pinned: the target calls itself out of line */
+#pragma auto_inline off
+EQUIP_ITEM SlotList::NextCategory(bool up, EQUIP_ITEM cls, WEAPON_KIND kind)
+{
+    EQUIP_ITEM next;
+
+    switch (cls) {
+    case 255:
+        if (kind == KIND_PRIMARY)
+            if (up)
+                next = (EQUIP_ITEM)31;
+            else
+                next = (EQUIP_ITEM)141;
+        else if (kind == KIND_SECONDARY)
+            next = (EQUIP_ITEM)4;
+        else
+            if (up)
+                next = (EQUIP_ITEM)121;
+            else
+                next = (EQUIP_ITEM)190;
+        break;
+    case 4:
+        next = (EQUIP_ITEM)4;
+        break;
+    case 31:
+        if (up)
+            next = (EQUIP_ITEM)51;
+        else
+            next = (EQUIP_ITEM)255;
+        break;
+    case 51:
+        if (up)
+            next = (EQUIP_ITEM)81;
+        else
+            next = (EQUIP_ITEM)31;
+        break;
+    case 81:
+        if (up)
+            next = (EQUIP_ITEM)91;
+        else
+            next = (EQUIP_ITEM)51;
+        break;
+    case 91:
+        if (up)
+            next = (EQUIP_ITEM)101;
+        else
+            next = (EQUIP_ITEM)81;
+        break;
+    case 101:
+        if (up)
+            next = (EQUIP_ITEM)141;
+        else
+            next = (EQUIP_ITEM)91;
+        break;
+    case 141:
+        if (up)
+            next = (EQUIP_ITEM)255;
+        else
+            next = (EQUIP_ITEM)101;
+        break;
+    case 121:
+        if (up)
+            next = (EQUIP_ITEM)145;
+        else
+            next = (EQUIP_ITEM)255;
+        break;
+    case 145:
+        if (up)
+            next = (EQUIP_ITEM)151;
+        else
+            next = (EQUIP_ITEM)121;
+        break;
+    case 151:
+        if (up)
+            next = (EQUIP_ITEM)171;
+        else
+            next = (EQUIP_ITEM)145;
+        break;
+    case 171:
+        if (up)
+            next = (EQUIP_ITEM)185;
+        else
+            next = (EQUIP_ITEM)151;
+        break;
+    case 185:
+        if (up)
+            next = (EQUIP_ITEM)190;
+        else
+            next = (EQUIP_ITEM)171;
+        break;
+    case 190:
+        if (up)
+            next = (EQUIP_ITEM)255;
+        else
+            next = (EQUIP_ITEM)185;
+        break;
+    case 201:
+    case 205:
+    case 230:
+    default:
+        return (EQUIP_ITEM)255;
+    }
+    if (!HasWeapons(next))
+        next = NextCategory(up, next, kind);
+    return next;
+}
+#pragma auto_inline reset
 
 /* where a search for the next weapon started (.data 0x3DCEB0, -1 between searches; the name ours) */
 static int s_searchstart = -1;
