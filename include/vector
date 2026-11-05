@@ -861,7 +861,14 @@ class __vector_imp : public __vector_deleter<T, Allocator> {
     T &at(unsigned int n);
     void reserve(unsigned int n);
     void insert(T *position, unsigned int n, const T &x);
-    void push_back(const T &x) { insert(this->data() + this->size_, 1, x); }
+    /* at the end through end() (the MSL headers round 27): a level taller than through data(), so
+     * hud_scorepopup.cpp's AddName (push_back of a temporary, then `*rbegin() = s`) is inlined one
+     * level into hudAddPopupDefinition and calls push_back 0x22DD60, the temporary's constructor and
+     * destructor, rbegin() 0x22DD20 (rbegin itself: its hidden return slot is the reverse *'s `this`),
+     * the reverse * 0x22DD10 and the assignment -- the target's six calls in its order, the three
+     * pieces byte-exact (0x6A4 -> 0x63C of 0x5E0: the rest is the loader's own registers and the
+     * triggers' constructors); objcmp: no other unit's code changes */
+    void push_back(const T &x) { insert(end().m_p, 1, x); }
     /* grown by default-built elements or cut (out of class). Declared AHEAD of erase, as the
      * original MSL must: a unit's template tail generates a class's out-of-class members in
      * declaration order, so a resize declared after the erase its unit's own code instantiated

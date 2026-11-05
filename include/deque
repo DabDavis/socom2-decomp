@@ -239,7 +239,34 @@ public:
  * iterator's * 0x3349B0 and ++ 0x334880 and its copy constructor 0x334820 (rows unnamed, none of the
  * names in the map) -- but the convert's ++ comes out 0x28 against 0x58 (it calls the const
  * iterator's ++ where the target inlines it) and its * 0x58 against 0x68, and the vid stack's
- * do_assign 0x3B8000 (vis_vu.cpp) 0x3D4 against 0x3A4: not measured over the units, left as it was */
+ * do_assign 0x3B8000 (vis_vu.cpp) 0x3D4 against 0x3A4: not measured over the units, left as it was.
+ * MEASURED, NOT APPLIED (the MSL headers round 27, build/p27/dqvar.py and dqvars.py, untracked):
+ *   - THE VID STACK'S do_assign IS NOT A CONVERTER'S: 0x3B8000 copies a 24-byte source (the rdr
+ *     editor's 0x334440 a 28-byte one, the converter's slot at +24 included) and dereferences its
+ *     source's * result (`lw s0,0(v0)`: a reference), its source's != 0x3B83B0 is the direct
+ *     0x14-byte compare (the converter's 0x334860 the materialised `!(==)`, 0x18). With deque<T *>'s
+ *     init handing its own iterators straight to do_assign, 0x3B8000 comes out code-exact (0x3A4, its
+ *     seven calls the target's: the rows need names) and 0x3B83B0, 0x3B83D0 and 0x3B8430 byte-exact as
+ *     __deque_imp<PCv>::const_iterator's out-of-class !=, ++ and * (round 25's shapes); its init
+ *     0x3B7E30 is then the lobby's undispatched 0x88 against 0xB0. So deque<void *> hands its iterators
+ *     straight and deque<CRDRNodeVec *> converts them -- the same template here, so not applied: what
+ *     tells the two apart in MSL (a void * case, a dispatch on T) is not found. The coordinator's
+ *     "0x3B83D0 is the convert iterator's ++" holds for the code (the converter's ++ is the wrapped
+ *     iterator's, 0x3348E0 word for word), not for the class;
+ *   - THE CONVERTER'S ++ 0x3348E0 is byte-exact (and do_assign 0x334440 stays code-exact) once the
+ *     wrapped const_iterator's ++, * and != are `inline` -- but then every do_assign walking a
+ *     const_iterator straight inlines them (the vid stack's 0x404, the lobby's), where the targets call
+ *     them. Both cannot be one class: the image holds that ++ twice (inside 0x3348E0, and 0x3B83D0 out
+ *     of line in the LATER unit), and the linker keeps the first unit's copy (the destination's ++
+ *     0x334880, zrdr_edit.cpp's, serves 0x3B8000) -- so zrdr_edit.cpp never emitted the const_iterator's
+ *     ++, and the class the converter wraps is not the one 0x3B8000 walks (or a cut, not found: every
+ *     operator inline, do_assign inlines them all, 0x354/0x444 -- no size or height cut at the walk);
+ *   - the cdeque's do_assign (0x3341C0, the lobby's 0x2E0E10) INLINES its converter's operators while
+ *     the deque's calls them: with them out of class both call (0x3341C0 0x274 -> 0x234 against 0x27C);
+ *   - THE CONVERTER'S * 0x334940 copies the wrapped iterator twice (FPU words to sp+32, then lq/sq to
+ *     sp+0) around the functor's empty temporary (`sb zero,60(sp)`) and returns through a frame word
+ *     (`sw v0,56(sp); lw v0,56(sp)`): two by-value levels (a static or member helper, with or without a
+ *     tag), a named copy, a result bound to a const reference -- each folds to one copy (0x4C). */
 template <class Iterator, class T>
 class __convert_iterator {
 public:
