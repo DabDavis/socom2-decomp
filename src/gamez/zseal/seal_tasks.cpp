@@ -630,12 +630,30 @@ struct TASK_ANIMNAME {
         if (name && ZAnim.m_CurAnim)
             m_name = ZAnim.m_CurAnim->AddName(name);
     }
+    /* the name back from the running anim, none when unset (inline; the name ours: the anim read
+     * here, so the first use shares the caller's earlier load and a later one reloads it) */
+    const char *Get() const
+    {
+        const char *s = 0;
 
-    short m_name;
+        if (m_name != data_00650AA8)
+            s = AnimName(ZAnim.m_CurAnim, m_name);
+        return s;
+    }
+    /* an anim's name of an index, none without the anim (inline: its parameter a variable of its
+     * own, copied into a0 before the test) */
+    static const char *AnimName(CZAnim *anim, int i)
+    {
+        return anim ? anim->GetName(i) : 0;
+    }
+
+    /* (unsigned: the tick's compares read it with lhu) */
+    unsigned short m_name;
 };
 
 /* ai::CREATE (SOCOM II's): an entity cloned from another under a new name (mode 2: the tag "clone"
- * and its two names) or destroyed (4: "destroy" and its name) -- the names ours but the tags' */
+ * and its two names -- the new name first, then the entity copied) or destroyed (4: "destroy" and its
+ * name); mode 1 makes the vehicle entry the block carries at 0x10 -- the names ours but the tags' */
 struct CTCreate : TASK_HDR {
     /* a block made (inline: its arguments read before the allocation, right to left) */
     static CTCreate *Create(const char *src, const char *dst, short mode)
@@ -648,10 +666,11 @@ struct CTCreate : TASK_HDR {
         return c;
     }
 
-    short m_mode;   // 0x8
+    unsigned short m_mode;   // 0x8: flags 1, 2, 4 (the tick tests each with lhu)
     TASK_ANIMNAME m_src;   // 0xa
     TASK_ANIMNAME m_dst;   // 0xc
-    unsigned char _e[0x170 - 0xe];   // 0x170 bytes
+    unsigned char _e[0x10 - 0xe];
+    unsigned char m_entry[0x160];   // 0x10: a CVehicleRdrEntry (0x160 bytes); 0x170 bytes in all
 
     static _zanim_cmd_hdr *Parse(_zrdr *rdr);    /* (RegisterCommands' handlers, unwritten) */
     static bool Tick(_zanim_cmd_hdr *hdr, float *dT);
@@ -2869,8 +2888,92 @@ _zanim_cmd_hdr *CTRegion::Parse(_zrdr *rdr)
 class CMission {
 public:
     void RefreshTeamValves();
+    /* an entry's vehicle made and an entity put back in the pool (OVL1 0x2B28D0, 0x2B2310: the
+     * states' rows; ai::CREATE's tick calls both) */
+    CEntity *LoadVehicle(CVehicleRdrEntry *entry, bool b);
+    void RecycleEntity(CEntity *e);
+
+    unsigned char _0[0x1814];
+    /* the vehicle file's entries (OVL1 bss 0x437CF4: an entity's m_vehicle_index indexes them) */
+    CVehicleRdr *m_vehicles;   // 0x1814
 };
 extern CMission theMission;
+
+extern "C" {
+/* a SEAL's health at a damage location scaled, its death handed on at none (OVL2 0x5A5790:
+ * seal_env.cpp's, unnamed) */
+void func_005A5790(CZSealBody *seal, unsigned char loc, float scale);
+}
+
+/* an entity if it is a SEAL, none else -- and one by name (inline: tested as branches, outside
+ * Get's switch; the names ours) */
+static inline CEntity *TypedEntity(CEntity *e)
+{
+    return e && e->m_type == CEntity::ENT_TYPE_SEAL ? e : 0;
+}
+static inline CEntity *TypedEntity(const char *name)
+{
+    return TypedEntity(CEntity::GetEntityList().GetEntity(name));
+}
+
+/* an entity made from another's vehicle entry under a new name, a SEAL of the AI's side joined to
+ * no squad and its brain started (mode 2), or a SEAL killed, switched off and put back in the pool
+ * (mode 4), the running anim refreshed after either; mode 1 makes the block's own entry's vehicle
+ * (Parse never sets it) -- done at once, dT untouched (OVL2 0x5DD990; SOCOM II's command, the AI
+ * asked for and unused).
+ * OPEN, 0x3BC against 0x3CC (6 structural, 29 register-only): where the anim's name is read with the
+ * running anim the caller already holds (the clone's source, the destroyed SEAL's name) the target
+ * copies s0 into a0 and tests a0 (`move a0,s0; beqz a0`, a nop padding the join), MW here tests s0
+ * and moves it in the call's delay slot -- the anim read in Get, passed to a static inline, an if in
+ * place of the ternary, `anim` declared at the top: all alike (build/scratch/kit/v_create1.py);
+ * and the registers: the target's clone source s3, new name s2, made SEAL s1 (the block's), the
+ * destroyed SEAL s1 and its node s2 -- here s2, s1, s2, s2, s1 (`tools/igreplay.py --want` over the
+ * five found no numbering in its 200 s budget: the copy's node is missing from this graph) */
+bool CTCreate::Tick(_zanim_cmd_hdr *hdr, float *dT)
+{
+    TASK_SEAL(CTCreate);
+    CSealCtrlAi *ai = seal ? SealAi(seal) : 0;
+    CZAnim *anim = ZAnim.m_CurAnim;
+
+    if (cmd->m_mode & 1)
+        theMission.LoadVehicle((CVehicleRdrEntry *)cmd->m_entry, false);
+    else if (cmd->m_mode & 2) {
+        const char *from = cmd->m_dst.Get();
+        const char *name = cmd->m_src.Get();
+        CEntity *e = name ? TypedEntity(from) : 0;
+
+        if (e) {
+            CVehicleRdr *rdr = theMission.m_vehicles;
+            unsigned int i = e->m_vehicle_index;
+            CVehicleRdrEntry *entry = i < rdr->size() ? &(*rdr)[i] : 0;
+
+            if (entry) {
+                CZSealBody *s = (CZSealBody *)TypedEntity(theMission.LoadVehicle(entry, false));
+
+                if (s) {
+                    s->m_bit13 = 1;
+                    s->m_node->SetName(name);
+                    s->SetTeamMask(1);
+                    InitalizeSealUnit__9CSealUnitFP10CZSealBodyP9CSealUnit(s, 0);
+                    SealAi(s)->InitAiBrain();
+                    anim->Refresh(false);
+                }
+            }
+        }
+    } else if (cmd->m_mode & 4) {
+        CZSealBody *s = (CZSealBody *)TypedEntity(cmd->m_src.Get());
+
+        if (s) {
+            zdb::CNode *node = s->GetNode();
+
+            func_005A5790(s, 0, 0.0f);
+            node->SetActive(false);
+            theMission.RecycleEntity(s);
+            anim->Refresh(false);
+        }
+    }
+    return true;
+}
 
 /* the SEAL joins or leaves the teams, its AI's events, its squad and the team valves brought up to
  * it; ismember does nothing here (OVL2 0x5CEA40; SOCOM 1's, which updated the AI's events only --
