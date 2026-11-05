@@ -2428,9 +2428,9 @@
 0x00247040 0xC sceBInetGetVersionStringPtr  # OVL1; s1:order (the demo's libnetb object 0x423D38 opens with sceBInetGetVersionStringPtr, 0xC bytes, returning the version string's pointer as this does)
 0x00247050 0x154 sceBInetGetBuildTimestamp  # OVL1; s1:exact
 0x002471A8 0x11C sceBInetCreate  # OVL1 unaligned; s1:calls (rt_memory_allocate_init_zero, libnetb_alloc_bufs, sceInetCreate, as the demo's sceBInetCreate 0x423EA0; after sceBInetGetBuildTimestamp as there)
-0x002472C8 0x198 func_002472C8  # OVL1 unaligned
+0x002472C8 0x198 sceBInetOpen  # OVL1 unaligned; s1:order (the demo's libnetb object holds sceBInetOpen between sceBInetCreate and sceBInetClose, as here) and its calls (libnetb_prepare_async_receive, libnetb_prepare_async_send, sceInetOpen in the demo's order, then two libnetb_trans_data: 0x198 against the demo's 0x120) -- GCC lane r31a
 0x00247460 0x98 sceBInetClose  # OVL1; s1:exact
-0x002474F8 0x144 func_002474F8  # OVL1 unaligned
+0x002474F8 0x144 sceBInetRecv  # OVL1 unaligned; s1:order (the demo's libnetb object holds sceBInetRecv between sceBInetClose and sceBInetRecvFrom, as here; its body the demo's -- the recv ring drained, its header DMAed back -- grown by the peer check) -- GCC lane r31a
 0x00247640 0x8C sceBInetRecvFrom  # OVL1; s1:exact
 0x002476D0 0x64 func_002476D0  # OVL1
 0x00247738 0x14C sceBInetSend  # OVL1 unaligned; s1:calls
@@ -6143,7 +6143,7 @@
 0x003421D0 0x40 swap__Q23std56__vector_deleter<8CSndBank,Q23std20allocator<8CSndBank>>FRQ23std56__vector_deleter<8CSndBank,Q23std20allocator<8CSndBank>>  # OVL1; the world lane r7: UnloadAllSounds' FreeVector swap of the banks vector (the class vector swaps through its deleter)
 0x00342210 0x8 clear__Q23std46vector<8CSndBank,Q23std20allocator<8CSndBank>>Fv  # OVL1; the world lane r7: UnloadAllSounds' FreeVector clear of the banks vector (a tail call into the deleter's clear 0x345F70)
 0x00342220 0x14 __ct__Q23std46vector<8CSndBank,Q23std20allocator<8CSndBank>>Fv  # OVL1; the world lane r7: UnloadAllSounds' FreeVector temporary's constructor (the banks vector, three words zeroed), its out-of-line copy after it
-0x00342240 0x428 func_00342240  # OVL1
+0x00342240 0x428 StreamSoundVolPan__4CSndFiiP12CSndInstancei  # OVL1; s1:calls by hand (the world lane round 17: SOCOM 1's PlaySoundVolPanPitch calls StreamSoundVolPan(int, int, CSndInstance *) in its stream branch where SOCOM II's calls this; the same 208-byte frame, the disabled test, then TerminateOnFinish on a one-shot sound; SOCOM II adds a fourth word, tested whole: PlaySoundVolPanPitch passes 0)
 0x00342670 0x230 CalcVolPan__4CSndFPC6CPnt3DfPiPi  # OVL1; s1:calls by hand (SOCOM 1's CalcVolPan: CSndInstance::Tick calls it at the same place with the same arguments -- the parent, &m_pos, m_vol, &vol, &pan; SOCOM II's returns the distance in $f0, which Tick keeps for its Doppler shift)
 0x003428A0 0x50 func_003428A0  # OVL1
 0x003428F0 0x1C func_003428F0  # OVL1
@@ -6157,10 +6157,10 @@
 0x00343550 0x4C PlaySound__4CSndFP12CSndInstanceUi  # OVL1; s1:align
 0x003435A0 0xC GetSubtitles__4CSndFv  # OVL1; s1:order by hand (SOCOM 1's GetSubtitles, a byte read, right after PlaySound in both builds)
 0x003435B0 0xC SetSubtitles__4CSndFb  # OVL1; s1:order by hand (SOCOM 1's SetSubtitles, the same byte stored)
-0x003435C0 0x810 func_003435C0  # OVL1
+0x003435C0 0x810 LoadCSnd__4CSndFP5_zrdr  # OVL1; s1:order+calls by hand (the world lane round 17: SOCOM 1's LoadCSnd(_zrdr *), after SetSubtitles in both builds; LoadSounds calls it on each new CSnd with the record, as SOCOM 1's LoadSounds calls LoadCSnd)
 0x00343DD0 0x1BC LoadBank__4CSndFPCc  # OVL1; s1:order by hand, the world lane round 9 (SOCOM 1's LoadBank, before AddNewCSnd in both builds, the same code but the record: the path built, off the bank archive when booted from the CD -- the key's offset inline, the stream synced, snd_BankLoadByLoc -- else snd_BankLoad, the name, bank and 1/-1 pushed as one 24-byte record, snd_ResolveBankXREFS) -- zsnd_csnd.cpp
 0x00343F90 0xFC AddNewCSnd__4CSndFP4CSnd  # OVL1; s1:calls by hand (LoadSoundGroups adds each group with it after LoadCSndGroup, as SOCOM 1's calls AddNewCSnd; after the bank loader as SOCOM 1's AddNewCSnd follows LoadBank) -- the sound lane
-0x00344090 0x32C func_00344090  # OVL1
+0x00344090 0x32C LoadSounds__4CSndFPCcPCc  # OVL1; s1:order+calls by hand (the world lane round 17: SOCOM 1's LoadSounds(const char *, const char *) after AddNewCSnd in both builds -- the disabled test, LoadBank on the second name, each record read with LoadCSnd (0x3435C0) and added with AddNewCSnd; the mission loader 0x344450 calls it with one name twice where SOCOM 1's LoadSounds(const char *) did)
 0x003443C0 0x90 CopyUpper__FPCcPci  # OVL1; SOCOM II's, name ours (a string copied upper-cased into a buffer of n characters, strlen and toupper)
 0x00344450 0x478 func_00344450  # OVL1
 0x003448D0 0x8 func_003448D0  # OVL1
@@ -6523,11 +6523,11 @@
 0x00357EE0 0x50 SetGouraud__13C2DBitmapPolyFb  # OVL1; by hand (slot 9 of C2DBitmapPoly's vtable 0x406C30: both triangles' slot 9; the inline's copy c2dbitmap_poly.cpp emits with the vtable; the name ours, as C2DBitmap's)
 0x00357F30 0x670 func_00357F30  # OVL1
 0x003585A0 0xC8 GetAssetLibs__13C2DBitmapPolyFRQ23C2D8CLibList  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x00358670 0x1C func_00358670  # OVL1
-0x00358690 0x14 func_00358690  # OVL1
-0x003586B0 0x44 func_003586B0  # OVL1
-0x00358700 0x18 func_00358700  # OVL1
-0x00358720 0xC func_00358720  # OVL1
+0x00358670 0x1C push_back__Q23std70__vector_imp<PQ23zdb9CAssetLib,Q23std28allocator<PQ23zdb9CAssetLib>,1>FRCPQ23zdb9CAssetLib  # OVL1; vector<CAssetLib *>'s out-of-line piece, the C2D GetAssetLibs' (the HUD's round 45: emitted byte-exact by the GetAssetLibs candidate on the MSL's round-24 header, `scdiff --target`)
+0x00358690 0x14 __eq__Q33std70__vector_imp<PQ23zdb9CAssetLib,Q23std28allocator<PQ23zdb9CAssetLib>,1>8iteratorCFRCQ33std70__vector_imp<PQ23zdb9CAssetLib,Q23std28allocator<PQ23zdb9CAssetLib>,1>8iterator  # OVL1; vector<CAssetLib *>'s out-of-line piece, the C2D GetAssetLibs' (the HUD's round 45: emitted byte-exact by the GetAssetLibs candidate on the MSL's round-24 header, `scdiff --target`)
+0x003586B0 0x44 find<Q33std70__vector_imp<PQ23zdb9CAssetLib,Q23std28allocator<PQ23zdb9CAssetLib>,1>8iterator,PQ23zdb9CAssetLib>__3stdFQ33std70__vector_imp<PQ23zdb9CAssetLib,Q23std28allocator<PQ23zdb9CAssetLib>,1>8iteratorQ33std70__vector_imp<PQ23zdb9CAssetLib,Q23std28allocator<PQ23zdb9CAssetLib>,1>8iteratorRCPQ23zdb9CAssetLib_Q33std70__vector_imp<PQ23zdb9CAssetLib,Q23std28allocator<PQ23zdb9CAssetLib>,1>8iterator  # OVL1; vector<CAssetLib *>'s out-of-line piece, the C2D GetAssetLibs' (the HUD's round 45: emitted byte-exact by the GetAssetLibs candidate on the MSL's round-24 header, `scdiff --target`)
+0x00358700 0x18 end__Q23std70__vector_imp<PQ23zdb9CAssetLib,Q23std28allocator<PQ23zdb9CAssetLib>,1>Fv  # OVL1; vector<CAssetLib *>'s out-of-line piece, the C2D GetAssetLibs' (the HUD's round 45: emitted byte-exact by the GetAssetLibs candidate on the MSL's round-24 header, `scdiff --target`)
+0x00358720 0xC begin__Q23std70__vector_imp<PQ23zdb9CAssetLib,Q23std28allocator<PQ23zdb9CAssetLib>,1>Fv  # OVL1; vector<CAssetLib *>'s out-of-line piece, the C2D GetAssetLibs' (the HUD's round 45: emitted byte-exact by the GetAssetLibs candidate on the MSL's round-24 header, `scdiff --target`)
 0x00358730 0x298 Rotate_Zaxis__13C2DBitmapPolyFff  # OVL1; s1:calls by hand (MapCompass::Tick calls it right after SetCenterPos, as SOCOM 1's Tick calls Rotate_Zaxis(float, float); 0x298 against SOCOM 1's 0x294, the same centre-and-rotate code); byte-exact (the HUD lane, round 40: c2dbitmap_poly.cpp -- the corners turned about their extent's centre by the static r 0x3E0300)
 0x003589D0 0x2EC Rotate_Zaxis__13C2DBitmapPolyFf  # OVL1; s1:order by hand (after Rotate_Zaxis(float, float) as in SOCOM 1's unit, 0x2EC against 0x2E4; the reticle's 0x215250 calls it after SetCenterPos); byte-exact (the HUD lane, round 40: c2dbitmap_poly.cpp -- degrees to radians, sinf/cosf into r, then as the two-parameter turn)
 0x00358CC0 0x84 FlipImage_XYaxis__13C2DBitmapPolyFv  # OVL1; s1:order by hand (c2dbitmap_poly.cpp: the first of SOCOM 1's three flips, 0x84 in both, after the two Rotate_Zaxis)
@@ -6912,7 +6912,7 @@
 0x003769C0 0x180 ParseZAnimCmd__9C2DButtonFP5_zrdr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00376B40 0x90 UpdateUIVar__9C2DButtonFP11CUIVariable  # OVL1; by hand (the HUD lane: the thunk 0x37D0E0 (-192, C2DButton's UIVarMixin table) jumps to it; its own variable's text (0x3860F0 into a 10500-byte buffer) made the caption, as SOCOM 1's C2DButton::UpdateUIVar)
 0x00376BD0 0x464 LoadSpec__9C2DButtonFRC11CButtonSpec  # OVL1; by hand (the HUD lane, round 31: SOCOM 1's C2DButton::LoadSpec -- CCheckBox::LoadSpec 0x371550 calls it first, as SOCOM 1's 0x38B380 calls 0x38F090; not written yet, zui_2d.cpp's)
-0x00377040 0x338 HandlePad__9C2DButtonFPC4CPadi  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x00377040 0x338 HandlePad__9C2DButtonFPC4CPadi  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike); by hand (the HUD lane, round 45: zui_2d.cpp -- SOCOM 1's child walk and action tests, ZAnim's lookup alone; OPEN, 10 instructions: three temporaries' colouring)
 0x00377380 0x6C SetCanHandleInput__9C2DButtonFb  # OVL1; by hand (the HUD lane, round 20: zui_2d.cpp -- C2DButton's table +0x4C, C2D's SetCanHandleInput slot, in all five button tables: the C2D flag (byte 0x14 bit 7) set, then SetNormal unless pressed (0xFC) or active (0xC8), or the disabled state (0x164) applied through 0x3773F0 -- SOCOM 1's SetCanHandleInput's shape)
 0x003773F0 0x114 ShowState__9C2DButtonFP11ButtonState  # OVL1; ours by hand (the HUD lane, round 29: zui_2d.cpp -- SetCanHandleInput(false)'s call with the disabled state: the state made current, the background loaded with its texture, the caption's scale and style and the pulse -- SetNormal's body with its four helpers inlined)
 0x00377510 0x2E8 __dt__9C2DButtonFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
@@ -6925,7 +6925,7 @@
 0x003787A0 0x264 ParseZAnimCmd__9CTeleTypeFP5_zrdr  # OVL1; by hand (the HUD lane, round 44: zui_2d.cpp -- slot 22 of CTeleType's vtable 0x4078A0 (+0x60), between TickZAnimCmd and SetString as SOCOM 1's ParseZAnimCmd 0x3904E0: CONTINUE, SCROLL_UP, SCROLL_DOWN, FINISH each a 16-byte command typed by slot 24, else CRenderableString's; byte-exact)
 0x00378A10 0xE4 SetString__9CTeleTypeFPCcb  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike); by hand (the HUD lane, round 22: zui_2d.cpp -- SOCOM II's SetString takes C2DString's translate flag (TranslateString on a2), so the override is SetString(const char *, bool), slot +0x70 of CTeleType's table 0x4078A0; byte-exact)
 0x00378B00 0xF8 LoadSpec__9CTeleTypeFRC8CTtySpec  # OVL1; by hand (the HUD lane, round 31: zui_2d.cpp -- SOCOM 1's CTeleType::LoadSpec (0x3906E0 there, the string's own inlined): CTtySpec::CreateDisplayObj's call; CRenderableString::LoadSpec 0x3792F0 first, out of line)
-0x00378C00 0x3B4 Draw__9CTeleTypeFRC7CMatrixPQ23zdb16CTextureRelocMgr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x00378C00 0x3B4 Draw__9CTeleTypeFRC7CMatrixPQ23zdb16CTextureRelocMgr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike); by hand (the HUD lane, round 45: zui_2d.cpp -- the text clipped to its window and its first lines skipped to fit, the cursor scaled by the font and placed by three statics, 0x3E0390-0x3E03A3; byte-exact)
 0x00378FC0 0xB8 Tick__9CPlainBmpFf  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00379080 0xDC LoadSpec__9CPlainBmpFRC10CImageSpecPQ23zdb10CTexHandle  # OVL1; by hand (the HUD lane, round 31: zui_2d.cpp -- SOCOM 1's CPlainBmp::LoadSpec (0x390D40 there, the same code but the variable's ternary): CImageSpec::CreateDisplayObj's call)
 0x00379160 0xFC Draw__9CPlainBmpFRC7CMatrixPQ23zdb16CTextureRelocMgr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
@@ -10205,7 +10205,7 @@
 0x005631A0 0xC SetStance__11CSealCtrlAiF11SEAL_STANCE  # OVL2; s1:calls by hand (CTStance::Begin calls it where SOCOM 1's calls SetStance; it tail-calls 0x562B70 as SOCOM 1's SetStance calls DoSetStance), after storing the stance at 0x279 and clearing 0x280 -- the SEAL lane, round 9
 0x005631B0 0xE4 SetDesiredStance__11CSealCtrlAiF11SEAL_STANCEfb  # OVL2; ours (new in SOCOM II; seal_ai.cpp): CTStance::Begin calls it with the command's stance, true and CAiTimer::infinite, End with (prone, true, 0); sets the body's byte at 0x375 and restarts the AI's CAiTimer at 0x364 when the stance is prone, the target at 0x67C is held with bit 9 of 0x6A8, or forced -- the SEAL lane, round 9; (the float second: the prologue copies the parameters in reverse declaration order, mov.s first)
 0x005632A0 0x1C8 GetDuckStance__11CSealCtrlAiCFP10CZSealBodyR11SEAL_STANCE  # OVL2; s1:order by hand (the SEALs, round 30): SOCOM 1's GetDuckStance__11CSealCtrlAiCFP10CZSealBodyR11SEAL_STANCE, after SetStance in both builds (SOCOM II's SetDesiredStance between) -- the same leader fallback, Sub/Normalize, reach and facing statics, GetStanceFromState(GetStance(false), stance) picking 1 or 2 and the true result; SOCOM II adds two bss switches, the Navy SEAL test and the CQB reach
-0x00563470 0x734 func_00563470  # OVL2
+0x00563470 0x734 ChooseWeapon__11CSealCtrlAiFR10CAiWepHint  # OVL2; by hand (the SEALs, round 36, the kit's round-37 lead): SOCOM 1's ChooseWeapon__11CSealCtrlAiFR10CAiWepHint -- SOCOM 1's CTFireMode::Begin calls it with the task's +0x8 block and SOCOM II's Begin 0x5DC9D0 calls 0x563470 with the same block; the body agrees (the same 176-byte frame and saved registers, the hint in s4, the kit's GetNumItems at the SEAL's +0x5E0, the hint's bit 1 and its 4-bit index at +1, GetItemByIndex against GetCurItem, the best accuracy kept in $f20, SetCurItemByIndex and SetTrigger(false) at the end); returns a bool (s1, 1 or 0)
 0x00563BB0 0x8 func_00563BB0  # OVL2
 0x00563BC0 0x8 func_00563BC0  # OVL2
 0x00563BD0 0x23C FireWhenReady__11CSealCtrlAiFR13AI_FIREPARAMSf  # OVL2; s1:calls
@@ -10538,7 +10538,7 @@
 0x0058C2B0 0x38 func_0058C2B0  # OVL2
 0x0058C2F0 0x60 func_0058C2F0  # OVL2
 0x0058C350 0x14C BindAnimSet__10CZSealBodyFP7AnimSet8AnimType10SEAL_STATEb  # OVL2; s1:order by hand (the SEAL lane, round 17: SOCOM 1's BindAnimSet__10CZSealBodyFP7AnimSet, after RefPoint in both builds -- SOCOM II adds the type, the state and a force flag: the carry tests, the two ClearToBase calls and DetachBody in SOCOM 1's order, then ClearBlendOverlay, ClearStack and the set swapped in)
-0x0058C4A0 0x10 func_0058C4A0  # OVL2
+0x0058C4A0 0x10 BindAnimSet__10CZSealBodyFP7AnimSetb  # OVL2; s1:calls by hand (the SEALs, round 36, the kit's round-37 lead): SOCOM 1's BindAnimSet__10CZSealBodyFP7AnimSet with SOCOM II's force flag appended -- the five calls SOCOM 1's AI states make to it (CAiSScript::OnSignal three, CAiSSurrender::Tick one, its OnSignal two) are SOCOM II's calls to this row from the same functions; its body BindAnimSet(set, 1, 0, force) on 0x58C350 (the full binder, SOCOM 1's body with the type and state added); seal_cfg.cpp
 0x0058C4B0 0x11C func_0058C4B0  # OVL2
 0x0058C5D0 0x28 func_0058C5D0  # OVL2
 0x0058C600 0x21C func_0058C600  # OVL2
@@ -10941,7 +10941,7 @@
 0x005B9110 0x70 Binocs_Enabled__5CZKitFb  # OVL2; s1:order by hand (SOCOM 1's Binocs_Enabled, after IsUsingBinocs as there: bit 5 set from the flag; SOCOM II first calls 0x592D40 on the body's controller when the binoculars go away)
 0x005B9180 0x34 InitializeSniperKick__5CZKitFv  # OVL2; s1:order by hand (SOCOM 1's InitializeSniperKick: the kick's distance zeroed, its baseline from the controller's +0x130 when there is one, AdrenalineIncr(0.5) tail-called -- the same code with the fields 0x14 on)
 0x005B91C0 0xB4 StartSniperKick__5CZKitFv  # OVL2; by hand (the kit lane, round 11): new in SOCOM II between InitializeSniperKick and SniperTick (0x5B9280) -- SOCOM 1's CZKit::Fire's kick start moved out (the same TargetMods(GetStance(..)), baseline from the controller's 0x130, KickBaseDist + KickRandomDist * rand fraction, state 1, accum 0); func_005C5340 (Fire) calls it; the name ours
-0x005B9280 0x518 func_005B9280  # OVL2
+0x005B9280 0x518 SniperTick__5CZKitFfR11CTargetModsf  # OVL2; kit round 38: SOCOM 1's SniperTick (the demo's 0x2A5040, after InitializeSniperKick as 0x5B91C0 here): the heartbeat rumble by the adrenaline, the rifle kick's two states and the sight's drift between the target mods' limits, the same constants and callees in the same order; SOCOM II adds a float (f13: CZSealBody::Tick passes its +0x138 times a global) that settles the kick's baseline at the 0.04 rate (OVL2 0x650980), and the kick and drift switches (0x650938, 0x650940, both true: each referenced only here); seal_kit.cpp's, byte-exact
 0x005B97A0 0x120 IsUsingItem__5CZKitFi  # OVL2; s1:order by hand (SOCOM 1's IsUsingItem(int), after the sniper's kick as there: the item's GetIDType (OVL1 0x3D1E10) -- binoculars (190, SOCOM 1's 182) a binocular or scope zoom class, night vision (191, SOCOM 1's 184) zoom class 3, the weapon classes (4, 31, 51 ... 151; SOCOM 1's 0, 30, 50 ... 160) the selected index, else bit 3 of m_itemstate (0x6C, SOCOM 1's 0x58))
 0x005B98C0 0xC4 IsUsingItem__5CZKitF10EQUIP_ITEM  # OVL2; s1:order by hand (SOCOM 1's IsUsingItem(EQUIP_ITEM), next as there: the same two special kinds, then the first item of the kind through IsUsingItem(int))
 0x005B9990 0x14 IsUsingScope__5CZKitFv  # OVL2; s1:order by hand (SOCOM 1's IsUsingScope, before SetWeaponInfoChanged as there: the body's byte at least 5 where SOCOM 1's is 4)
@@ -10951,7 +10951,7 @@
 0x005B9BB0 0x258 RemoveItemAndAmmo__5CZKitFi  # OVL2; s1:order by hand (the kit lane, round 12): SOCOM 1's RemoveItemAndAmmo__5CZKitFi (0x2A5830 there) opens alike -- the index wrapped on m_num_items, the item's slot, magazines and ammunition cleared, the count made the last item's place plus one, the selection reset -- with SOCOM II's closing up (0x5B9A00) and WepWaitOn added; RemoveItem (0x5B9E10) calls it; seal_kit.cpp byte-exact
 0x005B9E10 0xEC RemoveItem__5CZKitF10EQUIP_ITEM  # OVL2; by hand (the kit lane, round 11): HandlePlaceMPBomb (0x5BC200) drops the MP bomb, item 154, through it where SOCOM 1's HandlePlaceMPBomb dropped it inline; FindItemWithAmmo inlined, then 0x5B9BB0 (by its place and its opening wrap SOCOM 1's RemoveItemAndAmmo(int)) on the index -- new in SOCOM II, the name ours
 0x005B9F00 0x134 RemoveAmmo__5CZKitFi  # OVL2; s1:order by hand (the kit lane, round 20): SOCOM 1's RemoveAmmo (0x2A5A80), after RemoveItemAndAmmo and before FillAmmoPickupInstance as there -- the index wrapped twice (SOCOM 1's inline wrap then unwrap), the ten magazines zeroed, m_ammo cleared
-0x005BA040 0x390 FillAmmoPickupInstance__5CZKitFP11CZItemStashi  # OVL2; SOCOM 1's CZKit::FillAmmoPickupInstance (the SEALs' round 35: after RemoveAmmo in both builds, DropAmmo calls it as SOCOM 1's does with (stash, -1 or rounds)); unwritten -- seal_env.cpp calls it by its old placeholder, resolved by address
+0x005BA040 0x390 FillAmmoPickupInstance__5CZKitFP11CZItemStashi  # OVL2; SOCOM 1's CZKit::FillAmmoPickupInstance (the SEALs' round 35: after RemoveAmmo in both builds, DropAmmo calls it as SOCOM 1's does with (stash, -1 or rounds)); seal_kit.cpp's (kit round 38); seal_env.cpp still calls it by its old placeholder, resolved by address -- zseal.h's CZKit declares the member
 0x005BA3D0 0x1E0 AddAmmo__5CZKitFii  # OVL2; s1:order by hand (the kit lane, round 20): SOCOM 1's AddAmmo (0x2A5EB0), after FillAmmoPickupInstance and before CanAddAmmo as there -- the same magazine count, item-194 doubling and top-up walk; its tail (the item 153/187 swap) moved into 0x5C74E0
 0x005BA5B0 0x1C0 CanAddAmmo__5CZKitFii  # OVL2; s1:calls by hand (the kit lane, round 20): SOCOM 1's CanAddAmmo (0x2A6160) -- the same 10-slot and count tests, GetNumMags/GetAmmoCapacity, the item-194 (SOCOM 1's 188) find, the six classes doubled, the magazine walk; the second int unread in both builds
 0x005BA770 0x4C0 func_005BA770  # OVL2
@@ -11018,7 +11018,7 @@
 0x005C0AE0 0x4EC func_005C0AE0  # OVL2
 0x005C0FD0 0x690 func_005C0FD0  # OVL2
 0x005C1660 0x1A0 PreTick__5CZKitFf  # OVL2; s1:callee by hand (the kit lane, round 26): CZSealBody::WeaponsTick (0x5DFC80) calls it last with the frame time, from the same instruction as SOCOM 1's WeaponsTick calls PreTick__5CZKitFf (0x2AA190, 0x17C there)
-0x005C1800 0x170 func_005C1800  # OVL2
+0x005C1800 0x170 Apply_LensEffects__5CZKitFbP6CPnt3D  # OVL2; SOCOM 1's CZKit::Apply_LensEffects (kit round 38: the demo's 0x2AA310 between PreTick and TickFlashlight, the same work -- the camera's fog colour at m_world's camera +0xD0, the lens bit m_lensfx_enable at byte 1 bit 0 set in both arms -- the colour a CPnt3D *, HandleNewZoom filling three floats; a0 the kit, thezoom.cpp's HoldLensFx passing &m_seal->m_kit; 19 callers in CameraZoom and the HUD's map); seal_kit.cpp's, byte-exact
 0x005C1970 0xA8C func_005C1970  # OVL2
 0x005C2400 0x24 IsFireDelayed__5CZKitFv  # OVL2; by hand: the float at 0x820 (SOCOM 1's m_fire_delay at 0x804, before m_selected_item as there) above zero (the name ours)
 0x005C2430 0x240 func_005C2430  # OVL2
@@ -11039,7 +11039,7 @@
 0x005C3EE0 0x59C func_005C3EE0  # OVL2
 0x005C4480 0x134 NextFireMode__5CZKitFi  # OVL2; by hand (the kit lane, round 12): a kit member -- the selected item's mode (m_firemode, 0x6FC), and when it is 4 or more (a launcher ammunition's item kind) that kind's first item with ammunition (kit.h's FindItemWithAmmo inlined) and the kind, handed to 0x5C3EE0 with the selected item's firing item (GetFiringItem); 0x5C4600 calls it with the selected index, which it does not read; new in SOCOM II, the name ours; seal_kit.cpp byte-exact
 0x005C45C0 0x40 func_005C45C0  # OVL2
-0x005C4600 0x288 func_005C4600  # OVL2
+0x005C4600 0x288 CycleFireMode__5CZKitFv  # OVL2; kit round 38: SOCOM 1's CycleFireMode (the demo's 0x2AC590, after FindNextGrenadeLauncherAmmo as 0x5C4480 here): the selected item's mode incremented past m_maxfiremode, the launcher's next mode, the recursion when HasFireMode refuses, the weapon info and reticule bits and GetReticuleByIndex -- SOCOM II adds the zoom test and the hand's tail; GetAmmoCount 0x5C38A0 calls it as the selected item; seal_kit.cpp's, byte-exact
 0x005C4890 0x8 func_005C4890  # OVL2
 0x005C48A0 0x8 func_005C48A0  # OVL2
 0x005C48B0 0xA8 SetHandFireMode__5CZKitFi  # OVL2; by hand (the kit lane, round 12): a kit member storing the mode in m_firemode[bit 18 ? 1 : 0] and at 0x7EC, then -- the body alive (0xE1 bit 4) -- that slot's item kind at 0x7F0; CZSealBody::ReCreate calls it; new in SOCOM II, the name ours; seal_kit.cpp byte-exact

@@ -503,7 +503,10 @@ public:
     virtual C2DAnimCmdHdr *ParseZAnimCmd(_zrdr *rdr);
     virtual bool TickZAnimCmd(_zanim_cmd_hdr *hdr, float *dT, bool *done);
     virtual void SetString(const char *s, bool translate);
+    virtual void Draw(const CMatrix &m, zdb::CTextureRelocMgr *mgr);
     void LoadSpec(const CTtySpec &spec);
+    /* the string's scale with its font's (inline: Draw's, ours) */
+    float GetScale() { return m_scale * (m_font ? m_font->GetScaleFactor() : 1.0f); }
 
     CSaferStr m_text;   // 0xc0
     int m_cc;   // 0xcc
@@ -627,6 +630,7 @@ public:
     virtual void SetBackgroundAlpha(float a) { m_background.SetTrans(128.0f * a); }
     virtual void DrawBackground(const CMatrix &m, zdb::CTextureRelocMgr *mgr);
     virtual void SetCanHandleInput(bool val);
+    virtual bool HandlePad(const CPad *pad, int port);
     void ShowState(ButtonState *state);
     virtual void Tick(float dT);
     virtual void SetActive();
@@ -1116,6 +1120,15 @@ float g_fCounterSpeedFactor = 1.0f;
 float g_fTtySpeedFactor = 1.0f;
 }
 
+/* the teletype's cursor and window (SOCOM II's, between the speeds and the noise in the data,
+ * 0x3E0390-0x3E03A3; the names ours): the cursor's offset below the line and its width (scaled as
+ * the text is), and the window's bottom against its height -- CTeleType::Draw's alone */
+namespace {
+int g_iTtyCursorDY = -5;
+int g_iTtyCursorWidth = 8;
+int g_iTtyClipDY = -11;
+}
+
 /* the teletype's typing noise (SOCOM II's, the name ours: 1 in the image; CTeleType::Tick reads it,
  * TickZAnimCmd's finish clears it around each step it types out at once) */
 namespace {
@@ -1130,6 +1143,72 @@ void UiSetCounterSpeedFactor(float f)
 void UiSetTtySpeedFactor(float f)
 {
     g_fTtySpeedFactor = f;
+}
+
+void zVid_Scissor(int x1, int y1, int x2, int y2);
+
+/* a string's lines' height (ours: an inline over the string, its count in a local of its own: read
+ * before the spacing call and kept, where the caller's own read of the count after the call is a
+ * load of its own -- the product written in the caller, or the count read straight here, MW shares
+ * one load between the two) */
+static inline float TextHeight(C2DString *s)
+{
+    int n = s->m_numLines;
+
+    return n * s->GetSpacing();
+}
+
+/* slot 2: the text at the corner the matrix places, its first lines skipped until the rest fit
+ * the window's height, clipped to the window while it scrolls; then the cursor after the last
+ * character unless the text starts with a space (SOCOM 1's CTeleType::Draw; SOCOM II clips and
+ * scales the cursor by the font). The scale an inline member, so its two expansions share one load
+ * of the font with the height (through a free inline taking the string, each reloads it); the
+ * skipped count declared ahead of the text pointer (the other way round the two saved registers
+ * swap); the cursor's rectangle built in Load's own argument list -- as named locals MW folds the
+ * right edge into the left's conversion and sinks the left past both spacing calls (0x390) */
+void CTeleType::Draw(const CMatrix &m, zdb::CTextureRelocMgr *mgr)
+{
+    if (!IsOn())
+        return;
+    CPnt3D p = CPnt3D::zero;
+
+    m.Transform(&p, 1);
+    CMatrix mat;
+    float height = (m_font->m_displaybottom - m_font->m_displaytop) * GetScale();
+    float width = g_iTtyCursorWidth * GetScale();
+
+    C2DString::Tick(0.0f);
+    SetPos((int)p.x, (int)p.y);
+    UpdatePos();
+    int total = (int)TextHeight(this);
+    int lines = m_numLines - m_1a8;
+
+    if (m_shown > 0 && m_shown < total) {
+        int skip = 0;
+        const char *s = m_string;
+
+        while (lines * GetSpacing() > m_shown) {
+            do
+                skip++;
+            while (*s++ != '\n');
+            lines--;
+        }
+        m_firstCharPos = skip;
+    } else
+        m_firstCharPos = 0;
+    if (!strlen(m_string))
+        return;
+    if (m_1a8)
+        zVid_Scissor(0, 0, (int)(p.x + m_maxLength), (int)(g_iTtyClipDY + (p.y + m_shown)));
+    C2DString::Draw(mgr, 0, 0);
+    if (m_showCursor && m_string[0] != ' ') {
+        int x = m_shortLength;
+
+        m_cursor.Load(x + 2, g_iTtyCursorDY + (1.0f + (p.y + (lines + m_1a8) * GetSpacing())), width + (x + 2),
+                      g_iTtyCursorDY + (p.y + (lines + m_1a8) * GetSpacing() - height), 0);
+        m_cursor.Draw(mat, mgr);
+    }
+    zVid_Scissor(0, 0, 640, 448);
 }
 
 /* slot 2: a string variable naming another texture loads it in the same rectangle first */
@@ -4179,6 +4258,69 @@ inline bool ActionItem::Start() const
     else
         anim->Activate(0);
     return true;
+}
+
+/* the side the stick was pushed to since it was last centred (zui.cpp's UiGetDirStickMoved, a
+ * byte: 1 right, 2 left, 3 up, 4 down, zui.cpp's STICK_DIR) */
+unsigned char UiGetDirStickMoved();
+
+/* slot 15: with children, the pad handed to the child at the port's place; else a release of
+ * button 9 runs slot 27, and the first action whose button is in its state -- or, an action on
+ * the release of a direction button, the stick pushed that way -- runs and takes the pad (SOCOM 1's
+ * C2DButton::HandlePad, slot 15; SOCOM II asks ZAnim alone for the animation). The count before the
+ * size test (its zero in the test's delay slot), the walk's end and begin in locals in that order,
+ * and the press tested first: every saved register and both spills (this, the count and the item
+ * pointer at sp+236/208/160, two stick answers at 192/176) are the target's (tools/perm.py over the
+ * six action tests and the four combinations, 1,000 orders).
+ * OPEN, 10 instructions: the action's event, state and the pad's state for it take a1, a0, a2 in
+ * the target and a2, a1, a0 here -- MW colours the three temporaries highest-index first (igdump:
+ * the pad state's load numbered last); named locals for any of them (dead first definitions too)
+ * are copy-propagated away and change nothing, the compare's operands swapped reorders the loads
+ * (18), the tests in SOCOM 1's order (event tests first) gets the temporaries but not the saved
+ * registers (22) */
+bool C2DButton::HandlePad(const CPad *pad, int port)
+{
+    if (!CanHandleInput())
+        return false;
+    int n = 0;
+
+    if (size()) {
+        iterator e = end();
+        iterator i = begin();
+
+        for (; i != e; ++i, ++n)
+            if (n == port && (*i)->HandlePad(pad, 0))
+                return true;
+        return false;
+    }
+    if (pad->m_state[9] == 1)
+        Slot27();
+    for (int i = 0; i < m_numActions; i++) {
+        const ActionItem *a = &m_actions[i];
+
+        if (a->Type != 1) {
+            bool pressed = a->State == pad->m_state[a->Event];
+            bool falling = a->State == 1;
+            bool isUp = a->Event == 4;
+            bool isDown = a->Event == 5;
+            bool isLeft = a->Event == 3;
+            bool isRight = a->Event == 2;
+            bool stickUp = UiGetDirStickMoved() == 3;
+            bool stickDown = UiGetDirStickMoved() == 4;
+            bool stickLeft = UiGetDirStickMoved() == 1;
+            bool stickRight = UiGetDirStickMoved() == 2;
+            bool up = falling && isUp && stickUp;
+            bool down = falling && isDown && stickDown;
+            bool left = falling && isLeft && stickLeft;
+            bool right = falling && isRight && stickRight;
+
+            if (pressed || up || down || left || right) {
+                a->Run();
+                return true;
+            }
+        }
+    }
+    return false;
 }
 
 /* the menus' stick (zui.cpp's: whether it is within a radius of the centre, and the side it is

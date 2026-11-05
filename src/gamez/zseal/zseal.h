@@ -135,6 +135,9 @@ const T &_min(const T &a, const T &b)
 }
 }
 
+/* the weapons' stash, an ammunition pickup's contents (zwep_weapon.cpp's) */
+class CZItemStash;
+
 /* the SEAL's kit: its weapons and gear (SOCOM 1's CZKit, 0x87c bytes there; only its start here) */
 class CZKit {
 public:
@@ -173,6 +176,9 @@ public:
      * let go (SOCOM 1's; OVL2 0x5C8750, 0x5B9F00, the kit lane's -- CreateNetAmmoPickup asks them) */
     int GetAmmoIndex(EQUIP_AMMO ammo, int rounds);
     void RemoveAmmo(int index);
+    /* the kit's ammunition put into a stash, every item's (-1) or one index's (SOCOM 1's; OVL2
+     * 0x5BA040, the kit lane's -- DropAmmo calls it) */
+    void FillAmmoPickupInstance(CZItemStash *stash, int index);
     /* the items' set-up finished (SOCOM 1's; OVL2 0x5C7840, the kit lane's -- the SEAL's OnMissionStart
      * calls it) */
     void PostSetupItems();
@@ -218,6 +224,9 @@ public:
 };
 
 class CSealCtrlAi;
+/* the AI's weapon hints: a fire mode's eight bytes as the AI takes them (SOCOM 1's CAiWepHint; the
+ * kit lane's seal_tasks.cpp defines its fields, kit.h its statics) */
+class CAiWepHint;
 
 /* CAiState, its stack and AI_STATE are ai/ai_states.h's (the AI-states lane's header) */
 
@@ -287,7 +296,9 @@ public:
 /* the AI's maps (SOCOM 1's CAiMaps; the global AiMaps, OVL2 bss) -- only the cell's centre */
 class CAiMaps {
 public:
-    bool GetCellCenter(const CAiMapLoc &loc, CPnt3D *center);
+    /* a cell's centre, the point handed back -- none off the maps (ai_maps.h's, OVL2 0x52D480: a
+     * `CPnt3D *`, not a bool -- the callers test v0 straight, with no `andi 0xff`) */
+    CPnt3D *GetCellCenter(const CAiMapLoc &loc, CPnt3D *center);
     /* a named location's cell (ai_maps.h's, OVL2 0x52DB70) */
     bool GetLocation(const char *name, CAiMapLoc &loc);
     /* a point's cell (ai_maps.h's, OVL2 0x52DC70) */
@@ -1080,6 +1091,9 @@ public:
     virtual void NotifyTargetDown(CZSealBody *seal);
     /* the view cone set from the head (SOCOM 1's; OVL2 0x5C9400, the kit lane's seal_sensors.cpp) */
     virtual void UpdateViewCone();
+    /* the kit's weapon picked for a fire mode's hint, whether one was (SOCOM 1's; OVL2 0x563470, the
+     * SEALs' row -- the kit lane's CTFireMode::Begin calls it) */
+    bool ChooseWeapon(CAiWepHint &hint);
     /* an enemy first seen by the squad called out, by its place on the player's clock (SOCOM 1's,
      * which took the CTarget; OVL2 0x5C9930, the kit lane's seal_sensors.cpp) */
     void EnemyCallout(CEntity *e, CEntity *player);
@@ -1500,6 +1514,9 @@ public:
      * kept), the speeds and the weapon reset and the type's blend pushed in the state (SOCOM 1's took the
      * set alone; OVL2 0x58C350, seal_cfg.cpp) */
     void BindAnimSet(class AnimSet *set, AnimType type, SEAL_STATE state, bool force);
+    /* the same with the type-1 blend in state 0 (SOCOM 1's BindAnimSet(AnimSet *), the flag new; OVL2
+     * 0x58C4A0, seal_cfg.cpp) */
+    void BindAnimSet(class AnimSet *set, bool force);
     /* the carried body let go of (SOCOM 1's; OVL2 0x579220, seal_body.cpp) */
     void DetachBody();
     /* the animation set's limits on the sideways and forward motion (seal_cfg.cpp) */

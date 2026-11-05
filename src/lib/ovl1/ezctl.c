@@ -4,7 +4,7 @@
  * libezcnf beside it (README "The GCC front"): the demo's object 0x425EA0 (C), its functions in the
  * same order and sizes -- the demo reached its flag by $gp, this build by lui. Names are the demo's
  * (s1:order, each RPC number checked) and the calls' own messages. exitEzNetCtl stays a draft; dmaIOP
- * byte-exact and ezNetCtlSetProperties 3 off (the states lane, round 34: OPEN below). */
+ * byte-exact, ezNetCtlSetProperties since GCC round 31a (below). */
 
 extern int scePrintf(const char *fmt, ...);
 extern int sceSifSearchModuleByName(const char *name);
@@ -68,15 +68,15 @@ int initEzNetCtl(void)
 /* the network properties handed to the server: RPC 0 asks where its buffer is, the properties are
  * DMAed there (4928 bytes), RPC 1 applies them (the demo's, 0x120 as here; the states lane, round
  * 34: the rows lie in its range, the GCC lane not running).
- * OPEN, 3 instructions: the -2 path. The target sets the -2 in v0 and jumps past the final reload
- * to the epilogue (`li v0,-2; b; sw v0`); this, the demo's code exactly, keeps it in v1 and jumps
- * to the reload. The else arm returning on its own puts RPC 1's `li a1,1` where the target has it
- * (one shared return: 10 off); every early return of the -2 (the assignment returned, a local, a
- * pointer to the word, the store then `return -2`, the arms inverted) rematerialises the constant
- * for the return (0x128) */
+ * The result is one variable for both arms (GCC round 31a): the -2 path sets it and stores it, the
+ * other reads the word back after RPC 1's report -- so the -2 is the return value's own register
+ * (`li v0,-2; b; sw v0`, past the final reload) where the demo's text, which returns the word on
+ * both paths, keeps it in v1 and jumps to the reload (3 instructions); each early return of the -2
+ * rematerialises it (0x128), the variable initialised to -2 is 0x130. */
 int ezNetCtlSetProperties(void *props)
 {
     EZCTL_RPC *rpc = &data_00408940;
+    int ret;
 
     if (data_003DC108 == 0) {
         scePrintf("**** eznetctl RPC server not currently running\n");
@@ -86,15 +86,16 @@ int ezNetCtlSetProperties(void *props)
     if (rpc->data[0] == 0) {
         scePrintf("%s> ", "libezctl.c");
         scePrintf("eCtlGetPropertiesAddress returned 0\n");
-        rpc->data[0] = -2;
+        ret = -2;
+        rpc->data[0] = ret;
     } else {
         dmaIOP(props, rpc->data[0], 4928, 0);
         sceSifCallRpc(&data_00408900, 1, 0, rpc, 4, rpc, 4, 0, 0);
         scePrintf("%s> ", "libezctl.c");
         scePrintf("ezNetCtlSetProperties returned %d\n", rpc->data[0]);
-        return rpc->data[0];
+        ret = rpc->data[0];
     }
-    return rpc->data[0];
+    return ret;
 }
 
 int ezNetCtlSetCombination(char *fname, char *usrname)

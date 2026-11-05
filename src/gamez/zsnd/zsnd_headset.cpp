@@ -254,6 +254,183 @@ void Headset::Tick(float dT)
         ConnectedTick(dT);
 }
 
+/* ConnectedTick's: the stream's file name (a static buffer), the headset's volume scale, the VAG
+ * index's lookup and its archives' sectors (zsnd_subtitles.cpp's CSubtitleTable 0x48DC30's
+ * 0x34D480 / 0x34D470 / 0x34D460, as CSnd::StreamSoundVolPan's; names not known) */
+extern char data_0049E1A0[];
+extern float data_003E0090;
+class CSubtitleTable;
+extern CSubtitleTable data_0048DC30;
+enum VAG_WHERE { VAG_NONE = 0, VAG_INDEX = 1, VAG_STORE = 2 };   /* a byte (-enum min); names ours */
+extern "C" VAG_WHERE func_0034D480(CSubtitleTable *table, const char *name, unsigned int *offset,
+                                   int *size);
+extern "C" int func_0034D470(CSubtitleTable *table);
+extern "C" int func_0034D460(CSubtitleTable *table);
+
+/* DisconnectedTick's: the stream's file name and the headset's volume scale when it is found
+ * (static; names not known) */
+extern char data_0049E160[];
+extern float data_003E0088;
+
+/* SOCOM 1's: while no headset is connected, the voice of a stopped request let go (state 4) and a
+ * request's speaker voice stopped when a stop is wanted, or let go once it has finished; once idle
+ * the next queued sound dequeued and the device looked for -- found, the headset is set up (its
+ * stream opened unless online) and connected, and the sound's .VAG streamed to it; not found, the
+ * sound played through the speakers on a voice of its own (SOCOM II's: SOCOM 1 found it in the
+ * bank archive). A sound neither dialog nor bit 6 is refused while the headset is not free */
+void Headset::DisconnectedTick(float dT)
+{
+    bool ready = false;
+
+    if (m_state == 4) {
+        m_34 = 0;
+        m_instance = 0;
+        m_3c = -1;
+        m_state = 3;
+    }
+    if (m_state == 3)
+        ready = true;
+    else if (m_state == 1) {
+        if (m_stop && m_34) {
+            m_34->Stop();
+            CSndInstance::ReleaseSoundInstance(m_34);
+            m_34 = 0;
+            m_stop = 0;
+            m_state = 3;
+        } else if (m_34 && !m_34->IsPlaying()) {
+            CSndInstance::ReleaseSoundInstance(m_34);
+            m_34 = 0;
+            m_state = 3;
+        }
+    }
+    if (ready && DeQueue(0, &m_c, &m_sound, &m_vol)) {
+        int device;
+        int format;
+        unsigned char channels;
+        bool found = FindDevice(&device, &format, &channels);
+
+        if (found) {
+            SetDevice(device, format, channels);
+            if (theNetwork.m_bNetwork)
+                m_state = 3;
+            else {
+                snd_DoExternCall(0x12C4E67A, 0, 0xF000, 0x400, 0x5622, (m_8 << 16) | 16, m_0);
+                m_state = 3;
+            }
+            theHeadsetState = 1;
+        }
+        if (!m_b && m_sound && m_sound->m_mode != 3 && !m_sound->m_socom2_bit6) {
+            m_state = 3;
+            m_34 = 0;
+            return;
+        }
+        if (!found) {
+            m_34 = CSndInstance::AcquireSoundInstance(-1, m_sound);
+            if (m_34) {
+                if (!m_sound->StreamSoundVolPan(m_vol, 0, m_34, 0)) {
+                    m_34->m_handle = 0;
+                    CSndInstance::ReleaseSoundInstance(m_34);
+                    m_34 = 0;
+                    m_state = 3;
+                    return;
+                }
+                m_state = 1;
+                if (m_34) {
+                    if (m_sound && m_sound->m_socom2_bit4) {
+                        m_instance = m_sound;
+                        m_3c = m_c;
+                    }
+                } else {
+                    m_instance = 0;
+                    m_3c = -1;
+                }
+            }
+        } else {
+            unsigned int offset = 0;
+            int size = 0;
+
+            sprintf(data_0049E160, "%s.VAG", m_sound->m_20);
+            CSubtitleTable *table = &data_0048DC30;
+            int where = func_0034D480(table, data_0049E160, &offset, &size);
+            int loc = 0;
+
+            if (where == VAG_INDEX) {
+                loc = (offset >> 11) + func_0034D470(table);
+                offset &= 0x7FF;
+            } else if (where == VAG_STORE && func_0034D460(table)) {
+                loc = (offset >> 11) + func_0034D460(table);
+                offset &= 0x7FF;
+            }
+            if (where && loc) {
+                m_vol = (int)(m_vol * data_003E0088);
+                snd_DoExternCall_CB(0x12C4E67A, 1, loc, offset, m_vol, 2, 0, StaticSoundSysCallback,
+                                    (unsigned long)this);
+                m_state = 0;
+            }
+        }
+    }
+}
+
+/* SOCOM 1's: while the headset is connected, a stream request (state 1) sent -- a start, or a
+ * stop when one is wanted -- and once idle (state 3) the next queued sound dequeued: one neither
+ * dialog nor bit 6 refused while the headset is not free (idle again), else its .VAG found in the
+ * VAG indexes and streamed at the headset's volume scale (SOCOM II's: SOCOM 1 found it in the bank
+ * archive), a voice-over sound remembered with its entry */
+void Headset::ConnectedTick(float dT)
+{
+    bool ready = false;
+
+    if (m_state == 3)
+        ready = true;
+    else if (m_state == 1) {
+        if (m_stop) {
+            snd_DoExternCall_A(0x12C4E67A, 6, 0, 0, 0, 0, 0);
+            m_state = 3;
+            m_stop = 0;
+        } else {
+            snd_DoExternCall_CB(0x12C4E67A, 2, 0, 0, 0, 0, 0, StaticSoundSysCallback, (unsigned long)this);
+            m_state = 2;
+        }
+    }
+    if (ready && DeQueue(0, &m_c, &m_sound, &m_vol)) {
+        if (!m_b && m_sound && m_sound->m_mode != 3 && !m_sound->m_socom2_bit6) {
+            m_state = 3;
+            m_34 = 0;
+            return;
+        }
+        unsigned int offset = 0;
+        int size = 0;
+
+        sprintf(data_0049E1A0, "%s.VAG", m_sound->m_20);
+        CSubtitleTable *table = &data_0048DC30;
+        int loc = 0;
+        int where = func_0034D480(table, data_0049E1A0, &offset, &size);
+
+        if (where == VAG_INDEX) {
+            loc = (offset >> 11) + func_0034D470(table);
+            offset &= 0x7FF;
+        } else if (where == VAG_STORE && func_0034D460(table)) {
+            loc = (offset >> 11) + func_0034D460(table);
+            offset &= 0x7FF;
+        }
+        if (where && loc) {
+            m_vol = (int)(m_vol * data_003E0090);
+            if (m_sound) {
+                if (m_sound && m_sound->m_socom2_bit4) {
+                    m_instance = m_sound;
+                    m_3c = m_c;
+                }
+            } else {
+                m_instance = 0;
+                m_3c = -1;
+            }
+            snd_DoExternCall_CB(0x12C4E67A, 1, loc, offset, m_vol, 7, 0, StaticSoundSysCallback,
+                                (unsigned long)this);
+            m_state = 0;
+        }
+    }
+}
+
 #include "../zsys/zsys.h"
 
 /* SOCOM 1's: a channel's queued entries dropped (their indices back to the free ones) -- with `a`
