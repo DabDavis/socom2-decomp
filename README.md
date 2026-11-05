@@ -2062,6 +2062,35 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from completing the MSL headers, round 25** (the pointer vector's erase, MSL's find, the deque's const_iterator;
+  probes and scratch in build/scratch/msl-r25/, untracked -- p25/ the probes; base_master2.txt, run_*.txt, objcmp_*.txt):
+  - THE POINTER VECTOR'S erase(iterator) is `__iter(__raw_erase(position.base()))`, the raw erase T-dependent as the raw
+    ends (a `j` to the pod's erase): CUIVariable::Detach 0x3866F0 (written, ours: SOCOM 1's DetachUIVar inlined it) inlines
+    UIVarMixin::DetachUIVar 0x385D90 (written, its draft's code) with Detach once more inside it, cut a level -- base(),
+    the raw erase and __iter called (0x386930/0x386920/0x386910 named with ==, the copy, * and ++); its result a found
+    flag (`daddiu v0,zero,1`: a bool set true, where `return true` is li);
+  - STD::FIND TESTS `first != last` (MSL's): Detach's inner copy calls find's != and negates it -- the level-4 fit's
+    `!(first == last)` called == straight. std::remove assigns find's result, which puts find in operator='s argument
+    a level deeper: over the != find remove is six high and level 5 cuts find to its body in every remove user, where
+    the target inlines it whole -- remove searches through `__remove_find` (the == test, a level shorter: the level-5
+    fit; the original's level deeper, "Level 6, or 8?"). Over every hand-written unit 10337 -> 10346, nothing lost;
+  - THE DEQUE'S SEPARATE const_iterator, ADOPTED (round 18's measured shape): the source's *, ++ and != and the
+    destination's *, ++ and copy constructor out of class, distance and copy by value -- the lobby queue's six pieces
+    0x2E1420-0x2E1550 byte-exact (+6, nothing lost), six init rows and the lobby's do_assign renamed `14const_iterator`
+    (none matched; the deque copy constructors calling init resolve again); do_assign 0x2E1090 still 0x31C of 0x384 (the
+    source's buffer iterator copied through its user copy constructor, the target's bitwise);
+  - measured, not applied: the scalar end() reading data_ straight gives CSkbSplit::Next's `lw a2,12(s2)` but hoists the
+    headset's vector<int> ends whole (-4: IsQueued, Queue, Remove, StopSound re-read data each pass through data()'s
+    reference; Next still misses on its destructor's level); end() as `__iter(__raw_end())` (the raw end a level deeper,
+    as begin's) makes CKey::CountKeys 0x25B300 byte-exact but loses _countKeys and fixupKey (their ends in the loop test);
+    c_str five high (libc++'s chain: c_str, data, the pointer pick, __is_long, is_long) makes AnimSet::Find six and
+    0x5E3940 / 0x58C600 byte-exact with GetName plain -- four high does not -- but cuts 13 c_str wrappers the target
+    inlines (LadderItem::GetName's `return m_name.c_str()` first): c_str is at most four high at level 5, GetName's fit
+    stays; the HUD's AddName (hudAddPopupDefinition 0x22D660) with the class push_back through end() calls push_back as
+    the target (0x6A4 -> 0x63C of 0x5E0) but cuts rbegin itself where the target inlines it and calls its end();
+  - GetLegBoundary's reverse walk needs no header change (the AI core's round 27: the iterator declared before the loop
+    and assigned stays in memory); include/vector's stand-in note updated -- all eight depth-6 stand-ins are gone, refit
+    at level 5 by a `data_ + size_` `Last()` end or the helper's walk written out.
 - **Tells from the kit and AI states, round 40** (CZKit's Init, Reload, ChamberLauncherRound, UpdateScopeModel and
   ChangeItemModel; CAiSFollow::StanceCheck):
   - `mag > 9` compiles to the target's fused `slti at` / `bnez at`, `mag >= 10` computes the compare into a register
@@ -10369,7 +10398,8 @@ InitPitchCombiner, ControlPitchCombiner `s1:slot`; PitchCombinerReset `s1:calls`
 - **reorg never puts a volatile reference in a delay slot** (resource.c's resource_conflicts_p: any `volatil`
   conflicts), so a field loaded in a slot anywhere in the object is plain: LogPitchProcessing's target loads
   +156 in a bnel's and three beqz's slots. The flush's re-read of +156 after its lead test (SOCOM 1's compile
-  too) is given byte for byte by volatile, which is therefore a marked stand-in (`LEAD_STANDIN`): plain, the
+  too) is given byte for byte by volatile, which was therefore a marked stand-in (`LEAD_STANDIN`, RETIRED in round
+  24c: the vendor's `p->f156 / 2` is another load to CSE, see below): plain, the
   flush is 2 words short and the log pass 1, the re-read their only structural difference -- CSE1 merges the
   two `(mem/s:QI (plus p 156))` loads (exp_equiv_p reads no MEM flag; no store, call or label lies between);
   `-fno-cse-follow-jumps`, `-fno-cse-skip-blocks`, `-fno-gcse`, `-fno-rerun-cse-after-loop` each lose matched
@@ -10398,6 +10428,52 @@ ConstructPitchCombiner over its draft, LogPitchProcessing OPEN; +148, +166, +172
 typed; 5 of 7) -- 2 rows new to the map's byte-exact rows (1,816 bytes), one matched draft superseded
 (ConstructPitchCombiner, 0x502F10); `src/lib/asr` 513 of 547 (510 of 544 before). No rows named (all four
 had SOCOM 1's). No tool changed.
+
+**Round 24c: the lead's stand-in gone (the vendor divides), the log pass, three casr opens closed, the trigger object.**
+
+- **A division and a shift of the same field are different loads to CSE**: the vendor halves the lead as
+  `p->f156 / 2` -- the C front end shortens the division to the unsigned char's own type, so its read is
+  another RTL expression than the zero-extended one a compare or `>> 1` makes, and CSE keeps the two
+  apart. That is the "re-read" of +156 round 23c could only give with a volatile field (LEAD_STANDIN):
+  FlushPitchCombiner is byte-exact with the field plain and `len = p->f156 / 2`, and LogPitchProcessing
+  (open since round 22c) with its half-lead bounds `/ 2`, the second sum's bound read in its loop's test
+  (loop.c hoists it; through a local the division after the loop reuses its register) and the fill
+  block's cursor a block-local variable of its own: with one `s` for both arms p (the top priority)
+  takes a1 where the target's p is a2 -- every grouping of the six pointer roles scored, each that gives
+  the fill cursor its own variable matches (`build/scratch/gcc/r24c/v_roles.py`).
+- **Where a shared failure label sits decides an annul bit**: UpdateExevStatus (open since round 9c, 1
+  word) is `} else if (...) { error: return 1; } return 0;` -- with the label after a final `return 0`
+  the else-if's fall-through shared the then-arm's `return 0` block, reorg redirected the then-arm's jump
+  out of it first, the label died, and the else-if's slot came out annulled (`bnezl`; read as
+  resource.c's live-register scan from the block's head, which drops a REG_DEAD register only at the
+  next CODE_LABEL).
+- **A constant that dies before the result's assignment lets the result be born in v0**:
+  cbDoSecondPassIfEnabled (9 words) stores the second pass's two arguments before its flag (8 of the
+  arm's 24 orders), so the flag's 1 dies before `err = 0` and err, shared by three arms, takes the
+  return register (round 31a's rule).
+- **2.96's jump2 runs after sched2, and an int function returning nothing ends in `(clobber (reg v0))`**:
+  the cross-jumper compares a jump's tail with the insns before its label, and jump threading carries
+  a jump to the fall-off point past that clobber -- ProcessTriggerLR's two state stores (the target
+  merges them) never match here (`-dJ`).
+- **Shapes, measured**: the end test `f80 > f68` (operand 0 loaded first, the target's +80 then +68);
+  casrGetLastError's flag is block-local in the target (local-alloc's a0, p moved to a1), so its null
+  test is the caller's own -- `if (c == 0) return 11; if (casrCheckHandle(c) != 0) return 11;` is every
+  insn but reorg's slots (0x3C of 0x40); casrGetSessionData's four stores take one base whatever is
+  spelled (all 16 through `g` or off `s`).
+- **Open, diagnosed in place**: PitchCombinerReset (18 words: the target's last store issues in source
+  order, so in sched1 it killed neither the 1 nor p, or waited on every store -- SOCOM 1's compile the
+  same; a separate constant only moves the jump to the other 1-store), InitViterbi@nbestdp (not
+  revisited: the merged tail starts where sched1 put the count's increment), casrGetLastError/Warning
+  (above), casrGetSessionData, ProcessTriggerLR (above); InitPitchCombiner not written (its tail is its
+  own: the 1-stores grouped first, +172 cleared at the start).
+
+Hand-written in round 24c: `asr/pitchcomb.c` (LogPitchProcessing closed, the stand-in gone: 6 of 7),
+`asr/casr.c` (UpdateExevStatus, cbDoSecondPassIfEnabled closed: 51 of 57) and a new `asr/triggerlr.c`
+(SOCOM 1's TriggerLR object 0x370C90, OVL2 0x505D90-0x506D94: ConstructTriggerLR over its draft,
+ProcessTriggerLR OPEN -- SOCOM 1's body, its fields from +64 on four higher; FindSpeech, Control and
+Init not written) -- 3 rows new to the map's byte-exact rows, one matched draft superseded
+(ConstructTriggerLR, 0x506D58); `src/lib/asr` 517 of 549 (513 of 547 before). No rows named (all had
+SOCOM 1's). No tool changed.
 
 **Round 14b: the "toolchain" opens were SCEA's shapes; LargeInt's core is assembly.**
 

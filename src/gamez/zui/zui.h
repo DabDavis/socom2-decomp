@@ -138,6 +138,9 @@ public:
     void Destroy();
     CUIVariable &operator=(const char *str);
     void Attach(UIVarMixin *mixin);
+    /* the mixin no longer a watcher, detached from the variable itself first (0x3866F0; the name ours:
+     * SOCOM 1's DetachUIVar inlined it, SOCOM II's calls it) */
+    bool Detach(UIVarMixin *mixin);
     /* whether the mixin watches the variable (SOCOM 1's IsAttached, out of line there; SOCOM II's
      * inline -- Attach inlines it one level, calling the watcher vector's begin(), end(), find and
      * != out of line) */

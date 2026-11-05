@@ -142,7 +142,20 @@
  * constructor (cdeque<T *>::iterator's, lw/sw and calls) where the target copies the source bitwise
  * (lwc1/swc1, lq/sq): the const iterator's buffer iterator has an implicit copy (a const buffer
  * iterator of its own), the destination's the user one. Every init/do_assign row name would move to
- * `14const_iterator`; not applied until the whole chain closes. */
+ * `14const_iterator`; not applied until the whole chain closes.
+ * APPLIED in the MSL headers' round 25 (round 18's c2 + c3 over this header, build/p25/d/): the
+ * separate const_iterator with *, ++ and != out of class, the iterator's * and ++ out of class with an
+ * out-of-class copy constructor, std::distance and std::copy by value (__deque_distance/__deque_copy);
+ * the six init rows and the lobby's do_assign renamed to their `14const_iterator` names (no row of
+ * them matched; the four deque copy constructors calling init resolve again) -- over every hand-
+ * written unit +6, nothing lost: the lobby state queue's 24-byte iterator pieces 0x2E1420 (the
+ * destination's copy), 0x2E1460 (the source's !=), 0x2E1480 / 0x2E14E0 (the destination's and the
+ * source's word-identical prefix ++), 0x2E1540 / 0x2E1550 (the source's and the destination's *),
+ * named. Still open: do_assign 0x2E1090 (0x31C against 0x384, the source copied through the buffer
+ * iterator's user copy constructor where the target copies it bitwise: a const buffer iterator of its
+ * own, which also leaves an extra const_iterator copy constructor emitted), the init rows, and the
+ * other deques' pieces (the rdr editor's 0x334820-0x3349B0, the vid stack's 0x3B83B0-0x3B8430: their
+ * rows unnamed, the pointer deques' sources wrapped in __convert_iterator). */
 
 #ifndef _MSL_DEQUE
 #define _MSL_DEQUE
@@ -211,6 +224,26 @@ public:
     Iterator i_;
     convert c_;
 };
+
+template <class RandomAccessIterator>
+inline int __deque_distance2(RandomAccessIterator first, RandomAccessIterator last, std::random_access_iterator_tag)
+{
+    return last - first;
+}
+
+template <class RandomAccessIterator>
+inline int __deque_distance(RandomAccessIterator first, RandomAccessIterator last)
+{
+    return __deque_distance2(first, last, std::random_access_iterator_tag());
+}
+
+template <class InputIterator, class OutputIterator>
+inline OutputIterator __deque_copy(InputIterator first, InputIterator last, OutputIterator result)
+{
+    for (; first != last; ++first, ++result)
+        *result = *first;
+    return result;
+}
 
 template <class T, class Allocator>
 class __cdeque_buf {
@@ -576,16 +609,9 @@ public:
         typedef std::random_access_iterator_tag iterator_category;
 
         iterator(const buf_iterator &i, T *cur, T *last) : i_(i), cur_(cur), last_(last) {}
-        T &operator*() const { return *cur_; }
-        iterator &operator++()
-        {
-            if (++cur_ == last_) {
-                ++i_;
-                cur_ = *i_;
-                last_ = cur_ + buf_size;
-            }
-            return *this;
-        }
+        iterator(const iterator &x);
+        T &operator*() const;
+        iterator &operator++();
         friend bool operator==(const iterator &x, const iterator &y) { return x.cur_ == y.cur_; }
         friend bool operator!=(const iterator &x, const iterator &y) { return !(x == y); }
         friend int operator-(const iterator &x, const iterator &y)
@@ -597,7 +623,24 @@ public:
         T *cur_;
         T *last_;
     };
-    typedef iterator const_iterator;
+    class const_iterator {
+    public:
+        typedef typename __deque_buf<T, Allocator>::buf_type::iterator buf_iterator;
+
+        const_iterator(const buf_iterator &i, T *cur, T *last) : i_(i), cur_(cur), last_(last) {}
+        const T &operator*() const;
+        const_iterator &operator++();
+        bool operator==(const const_iterator &y) const { return cur_ == y.cur_; }
+        bool operator!=(const const_iterator &y) const;
+        friend int operator-(const const_iterator &x, const const_iterator &y)
+        {
+            return (x.i_ - y.i_) * buf_size - (x.last_ - x.cur_) + (y.last_ - y.cur_);
+        }
+
+        buf_iterator i_;
+        T *cur_;
+        T *last_;
+    };
 
     __deque_imp() {}
     explicit __deque_imp(const Allocator &a)
@@ -634,6 +677,51 @@ public:
 
 template <class T, class Allocator>
 const typename __deque_imp<T, Allocator>::size_type __deque_imp<T, Allocator>::buf_size;
+
+template <class T, class Allocator>
+__deque_imp<T, Allocator>::iterator::iterator(const iterator &x) : i_(x.i_), cur_(x.cur_), last_(x.last_)
+{
+}
+
+template <class T, class Allocator>
+T &__deque_imp<T, Allocator>::iterator::operator*() const
+{
+    return *cur_;
+}
+
+template <class T, class Allocator>
+typename __deque_imp<T, Allocator>::iterator &__deque_imp<T, Allocator>::iterator::operator++()
+{
+    if (++cur_ == last_) {
+        ++i_;
+        cur_ = *i_;
+        last_ = cur_ + buf_size;
+    }
+    return *this;
+}
+
+template <class T, class Allocator>
+const T &__deque_imp<T, Allocator>::const_iterator::operator*() const
+{
+    return *cur_;
+}
+
+template <class T, class Allocator>
+typename __deque_imp<T, Allocator>::const_iterator &__deque_imp<T, Allocator>::const_iterator::operator++()
+{
+    if (++cur_ == last_) {
+        ++i_;
+        cur_ = *i_;
+        last_ = cur_ + buf_size;
+    }
+    return *this;
+}
+
+template <class T, class Allocator>
+bool __deque_imp<T, Allocator>::const_iterator::operator!=(const const_iterator &y) const
+{
+    return cur_ != y.cur_;
+}
 
 template <class T, class Allocator>
 __deque_destroy<T, Allocator>::~__deque_destroy()
@@ -694,7 +782,7 @@ template <class T, class Allocator>
 template <class InputIterator>
 void __deque_imp<T, Allocator>::do_assign(InputIterator first, InputIterator last)
 {
-    unsigned int n = last - first;
+    unsigned int n = Metrowerks::__deque_distance(first, last);
 
     if (n == 0)
         return;
@@ -717,10 +805,7 @@ void __deque_imp<T, Allocator>::do_assign(InputIterator first, InputIterator las
     } while ((this->buf_.second_.size() ? (this->buf_.second_.size() - 1) * buf_size : 0) < n);
     this->start_ = ((this->buf_.second_.size() ? (this->buf_.second_.size() - 1) * buf_size : 0) - n) / 2;
     this->size_ = n;
-    iterator i = make_iterator(0);
-
-    for (; first != last; ++first, ++i)
-        *i = *first;
+    Metrowerks::__deque_copy(first, last, make_iterator(0));
 }
 
 /* the elements forgotten: two blocks kept, the start mid-block (0x2CF120) */
