@@ -2240,6 +2240,82 @@ extern "C" void func_00543F70(CZSealBody *seal)
     }
 }
 
+extern "C" {
+/* the wall hit the SEAL keeps (0x1120 on) taken, or its node cleared for none (OVL2 0x5B0BB0, seal_env.cpp's
+ * range, a draft; the name ours) */
+void func_005B0BB0(CZSealBody *seal, const zdb::IntersectStruct *hit);
+/* (OVL2 0x5B3890, seal_env.cpp's) */
+void func_005B3890(CZSealBody *seal, int drop_now);
+}
+
+/* PushOut, saying whether it moved the value (an inline, the name ours) */
+static inline void PushOut(float &cur, float v, bool &moved)
+{
+    if (v >= 0.0f) {
+        if (cur < v) {
+            cur = v;
+            moved = true;
+        }
+    } else if (v < 0.0f) {
+        if (cur > v) {
+            cur = v;
+            moved = true;
+        }
+    }
+}
+
+/* the push off a wall ahead: 0x54A6D0's with the point raised 5 and a step of 10 into the hit's plane
+ * -- what of it the plane cuts off within 1.3, 0.6 of it along the normal, taken into m_f44's x and z
+ * (0x5B3890 asked with 1 when either moved), the weapon put in state 2 and the controller's weapon
+ * timer restarted and run out (0x543F70's), the kept wall hit cleared when the push is under 0.1 or
+ * none is cut off; false with no node hit (OVL2 0x54A3D0, new in SOCOM II; the name unknown).
+ * OPEN, 16 instructions (the size right): the push's scale block's float registers -- the target
+ * computes the depth 1.3 - t into f2 in the limit test's delay slot and loads the step (f1) before
+ * 0.6 (f0), ours the depth into f5 and 0.6 (f1) before the step (f0). The step a local (its `neg.s`,
+ * as 0x54A6D0's parameter) and the depth named ahead of the test (in the delay slot then, 0x308 -> 0x300)
+ * are the target's; igreplay (FPR record): no placement of the depth alone gives it -- the constants'
+ * temporaries come in another order. Tried: a named limit, `0.6f * r * d`, the product named first,
+ * the test on the depth (build/scratch/seal-r50/v_3d*.py) */
+extern "C" bool func_0054A3D0(CZSealBody *seal, const CPnt3D *pos, zdb::IntersectStruct *hit)
+{
+    if (!hit->m_node)
+        return false;
+    float r = 10.0f;
+    CPnt3D p = *pos;
+
+    p.y += 5.0f;
+    CPnt3D q = p;
+    CPnt3D n = hit->m_norm;
+
+    n.Scale(-r, &n);
+    q.Add(&n, &q);
+    q.y = p.y;
+    float t = LineIntersectPlane(PlaneConstant(hit->m_norm, hit->m_pos), hit->m_norm, p, q);
+
+    float d = 1.3f - t;
+
+    if (t < 1.3f) {
+        CPnt3D push = hit->m_norm;
+        bool moved;
+
+        push.Scale(0.6f * (r * d), &push);
+        moved = false;
+        PushOut(seal->m_f44.x, push.x, moved);
+        PushOut(seal->m_f44.z, push.z, moved);
+        if (moved)
+            func_005B3890(seal, 1);
+        seal->SetWeaponState((WEAPON_STATE)2);
+        CSealCtrl *ctrl = (CSealCtrl *)seal->m_control;
+
+        ((WEP_TIMER *)&ctrl->m_wep_state)->Restart();
+        ((WEP_TIMER *)&ctrl->m_wep_state)->RunOut();
+        if (Dot(push, push) < 0.01f)
+            func_005B0BB0(seal, 0);
+    } else
+        func_005B0BB0(seal, 0);
+    return true;
+}
+
 /* the SEAL shown again, whole: its node opaque and active, the state sent with it, and order 31 given
  * to team 24's squad (OVL2 0x543B90, new in SOCOM II: CMPExitState::UnInit calls it for the player
  * once the ghost flag is cleared; the name unknown) */
