@@ -98,6 +98,36 @@ void func_0024B990(int iIndex, const float *pfCodeBook, int iEntries, float *pfV
 	pfVector[1] = pfCodeBook[1];
 }
 
+void func_0024C078(const float *pfIn, const float *pfRSMatrix, int iIndex, float *pfOut);
+int func_0024C150(const int *piIndexOfOutCell, int iNumOutCell, int iIndex);
+
+/* the 2-D vector's two-stage decode (GCC round 34a): the stage-1 codeword, plus the stage-2 one --
+ * from the outer-cell book when the stage-1 index is one of the outer cells', else the inner --
+ * rotated and scaled back by the stage-1 entry's factor */
+void func_0024BCF0(const int *piIndices, float *pfData, int iStage1Size, const float *pfStage1CB,
+		   const float *pfRotScaleCB, int iStage2Size, const float *pfStage2InCellCB,
+		   const float *pfStage2OutCellCB, int iNumOutCell, const int *piIndexOfStage2OutCell)
+{
+	float afStage2[2];
+	float afRes[2];
+	const float *pfCB;
+
+#line 632 "../../SaseEncVad/source/libquan.c"
+	assert((piIndices != NellyNull) && (pfData != NellyNull));
+	assert((pfStage1CB != NellyNull) && (pfRotScaleCB != NellyNull));
+	assert((pfStage2InCellCB != NellyNull) && (pfStage2OutCellCB != NellyNull));
+	assert(piIndexOfStage2OutCell != NellyNull);
+	func_0024B990(piIndices[0], pfStage1CB, iStage1Size, pfData);
+	if (func_0024C150(piIndexOfStage2OutCell, iNumOutCell, piIndices[0]) == 1)
+		pfCB = pfStage2OutCellCB;
+	else
+		pfCB = pfStage2InCellCB;
+	func_0024B990(piIndices[1], pfCB, iStage2Size, afStage2);
+	func_0024C078(afStage2, pfRotScaleCB, piIndices[0], afRes);
+	pfData[0] += afRes[0];
+	pfData[1] += afRes[1];
+}
+
 /* the prediction: each row of the matrix against the zero-mean coefficients */
 void func_0024BE70(const float *pfZMCoef, int iOrder, const float *pfMatrix, float *pfPredCoef,
 		   int iRows)
