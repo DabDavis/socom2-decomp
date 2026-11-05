@@ -11005,7 +11005,7 @@
 0x005BE6F0 0x298 func_005BE6F0  # OVL2
 0x005BE990 0x8 func_005BE990  # OVL2
 0x005BE9A0 0xF00 func_005BE9A0  # OVL2
-0x005BF8A0 0x21C func_005BF8A0  # OVL2
+0x005BF8A0 0x21C LobAim__5CZKitFP10CZSealBodyPC6CPnt3DPC6CPnt3DP6CPnt3Df  # OVL2; by hand (the kit lane, round 47; the name ours): new in SOCOM II, between HandleFireWeapon's place (0x5BE9A0) and FetchLaseTarget -- 0x5BE9A0 calls it on the kit with its body (a1, unread), the firepoint, the body's +0x3C0 target point, the aim and the weapon's GetMuzzleVelocity, only when the controller's IsAi (slot 0x2C) holds; it raises the aim by 0.025 at most 12 times until a round under gravity 98 comes within 5 of the target's height at its horizontal distance (_close_enough<f>); its five constants are function-local statics 0x650958-0x650978 read by it alone; byte-exact in seal_kit.cpp
 0x005BFAC0 0x378 func_005BFAC0  # OVL2
 0x005BFE40 0x18 func_005BFE40  # OVL2
 0x005BFE60 0x1C0 FetchLaseTarget__5CZKitFv  # OVL2; s1:order by hand (the kit lane, round 22): SOCOM 1's FetchLaseTarget (0x2A9360, 0x184) -- before HandlePlacingExlosive as in SOCOM 1: CAiMaps::GetLocation of the SEAL's aim point (+0x1458, SOCOM 1's m_aim_point +0x10B8), the laser names walked for a ready anim (GetAnim, state 1), name, anim and a 0.0001 timer stored at 0x68/0x64/0x60 (SOCOM 1's m_lase_mapname/anim/timer, 0x54/0x50/0x4C), bit 6 (m_lase_echo) set, RegisterTimer called; SOCOM II's range a point distance
