@@ -2862,23 +2862,23 @@ static inline float RandBetween(float lo, float hi)
  * wider), 4 more online within the far, and 1-7 at random by a fixed spread; past the near range the
  * count falls with the square of the distance, its fraction kept at random (OVL2 0x5A1620, new in SOCOM
  * II: RemoteWeaponDamageVictim and 0x5ABBC0 call it; the name unknown).
- * OPEN, 0x294 against 0x284 (the SEALs, round 40; the rest in place): the target copies the SEAL's
- * position into the frame (three loads, three stores through a pointer), subtracts *from through Sub
- * into a temporary, block-copies that (ld/sd) into operator-'s return slot and then copies the return
- * slot back over the first copy's slot with three loads then three stores at fixed offsets; `d = d -
- * *from` assigns it interleaved through two address registers (16 bytes long, the network flag's load
- * placed after), and every initialised spelling -- `CPnt3D d = pos - *from`, `CPnt3D(seal->m_posW) -
- * *from`, with or without the count declared between -- elides the last copy (0x274, 16 short). Wants
- * the shape that assigns the return slot back loads-first (a by-value CPnt3D operator result into a
- * local held in the same slot: the kit's round 39 two-point local is the nearest measured) */
+ * Byte-exact (the SEALs, round 41; 0x294 against 0x284 since round 40) by three things: the operator's
+ * return slot assigned back over the position's copy THROUGH ITS PNT3D BASE, `*(PNT3D *)&d = d -
+ * *from` -- a C struct's assignment, three loads then three stores at fixed offsets, where CPnt3D's
+ * own (and `(PNT3D &)d`, an inline `*p = *p - b`, member stores) go through two address registers and
+ * every initialised spelling elides the copy (0x274); the network flag read into an unsigned char (a
+ * bool local normalises it, sltu); the ratio assigned back over `dist` -- a reused variable is a web
+ * numbered after the named locals, so the count's conversion still colours first (f0) with the
+ * multiply's operands in the target's order (a ratio local, an inline divide or `n * (range / dist)`
+ * swap f0/f1, `s * (float)n` the operands) */
 extern "C" int func_005A1620(CZSealBody *seal, const CPnt3D *from)
 {
     CPnt3D d = seal->m_posW;
 
-    d = d - *from;
+    *(PNT3D *)&d = d - *from;
     int n = 0;
     float dist = d.x * d.x + d.y * d.y + d.z * d.z;
-    bool online = theNetwork.m_9;
+    unsigned char online = theNetwork.m_9;
     float range = online ? s_pelletNearOnline : s_pelletNear;
 
     if (dist < range)
@@ -2900,7 +2900,8 @@ extern "C" int func_005A1620(CZSealBody *seal, const CPnt3D *from)
     else if (r <= 1.0f)
         n += 7;
     if (n > 0 && !(dist <= range)) {
-        float f = (float)n * (range / dist);
+        dist = range / dist;
+        float f = (float)n * dist;
 
         n = (int)f;
         f -= (float)n;
