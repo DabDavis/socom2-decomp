@@ -41,6 +41,8 @@ public:
     ~CSched_Manager();
     /* the finished tasks freed (the scheduler's; Clear asks for all of them) */
     void ClearFreeList(bool all);
+    /* the tasks run (CGameMenu::Tick's) */
+    void Tick(float dT);
 
     unsigned char _0[0x20];
 };
@@ -213,7 +215,9 @@ public:
     void SetPosition(float x, float y, float z);
     void SetName(const char *name);
 
-    unsigned char _0[0x60];
+    unsigned char _0[0x5c];
+    unsigned int m_active : 1;   // 0x5c (znode.h's)
+    unsigned int m_5c : 31;
     virtual ~CNode();                                     /* +0x08 */
     virtual CNode *_Copy(CNode *to) const;
     virtual void UpdateGrid();
@@ -277,6 +281,11 @@ public:
     void LoadDesign(const char *name, CZAnimZAR *zar);
     /* the menu set up over a relocator, its own rdr's design loaded (SOCOM 1's) */
     bool Init(zdb::CTextureRelocMgr *mgr, CZAnimZAR *zar);
+    /* the menu's frame and the pad's input (SOCOM 1's) */
+    void Tick(float dT);
+    void HandlePad(const CPad *pad);
+    /* the pop-up is showing (ours: the tick holds the keyboard's input while it is) */
+    bool PopupShowing() { return m_popupnode && m_popupnode->m_active; }
     /* a design object's control made in the menu's font, with a node of its own under the node it
      * names (else the backplane) (0x3696D0, ours) */
     C2D *Add2dNode(CDesignDlgObj *obj);
@@ -305,7 +314,7 @@ public:
     std::vector<zdb::CNode *> m_modelNodes;   // 0x8ec: the design's models' nodes (PrepModels; SOCOM 1's at 0x878)
     bool m_8f8;                   // 0x8f8
     int m_fadeSteps;              // 0x8fc: -1, or the fade's steps left before SwitchMenu switches (the name ours)
-    int m_900;                    // 0x900
+    float m_900;                  // 0x900: a time the pad is ignored for (the tick counts it down)
     std::vector<CSaferStr> m_904; // 0x904
 
     virtual ~CGameMenu();
@@ -665,16 +674,39 @@ const char *CGameMenu::GetReaderFileName()
     return m_ReaderName.c_str();
 }
 
-/* the menus' pop-up stack (zanim_menu.h's CMenuStack: only the pop-up's clean-up), the keyboards'
- * display forgotten (zui_skb.cpp's) and the current menu's bitmap (0x49EA98: zui_skbview.cpp's
- * 0x36A210 sets its float at 0x9C; ours) */
+/* the menus' pop-up stack (zanim_menu.h's CMenuStack: its entries, the pop-up and the commands the
+ * menu's tick hands it), the keyboards' display forgotten (zui_skb.cpp's) and the current menu's node
+ * (0x49EA98: zui_skbview.cpp's 0x36A210 sets its opacity; the tick fades it; ours) */
+struct CMenuEntry {
+    int m_id;             // 0x0
+    char m_argname[48];   // 0x4
+};
 class CMenuStack {
 public:
     void CleanPopup();
+    void AddToHistory(const char *name);
+    /* the pop-up (zanim_menu.h's CPopUpDialog, a CPlainBmp: here its 2D object, whose Tick and
+     * HandlePad the menu calls) */
+    C2D *GetPopUp();
+    void HandleCommand(const char *name);
+    /* the top entry (ours: the tick reads its command and argument through it) */
+    CMenuEntry *Top() { return &m_entries[m_top]; }
+
+    CMenuEntry m_entries[40];   // 0x0
+    int m_count;                // 0x820
+    int m_top;                  // 0x824
 };
 CMenuStack *GetMenuStack();
 void InvalidateSkbsDisplay();
-extern void *data_0049EA98;
+extern zdb::CNode *data_0049EA98;
+/* the pads (zinput.h's CInput: its pads only) and the soft keyboard's tick (zui_skb.cpp's) */
+#ifndef ZINPUT_H
+class CInput {
+public:
+    static CPad *m_pads[2];
+};
+#endif
+void SkbTick(CGameMenu *menu, bool input, float dT);
 
 /* a child taken off a 2D object's list (ours: Clear erases through it, the erase's temporaries a
  * level deeper than the walk's) */
@@ -768,6 +800,102 @@ void CGameMenu::Clear()
     zUIScheduler.ClearFreeList(true);
     theUIVarManager.CollectGarbage();
     m_has_mpeg_background = false;
+}
+
+/* a pad (zinput.h's CPad, which this unit cannot include beside zui_spec.h: each button's state and
+ * the sticks only) */
+#ifndef ZINPUT_H
+class CPad {
+public:
+    unsigned char m_0;                        // 0x0
+    unsigned char m_state[PAD_MAX_BUTTONS];   // 0x1: KEY_STATE each
+    unsigned char _11[0x220 - 0x11];
+    float m_220[4];                           // 0x220: the left stick's x and y first
+};
+#endif
+/* the soft keyboard's pad input taken (0x38DC00, a draft) */
+extern "C" int func_0038DC00(const CPad *pad, CGameMenu *menu);
+/* a key read this frame (zin_keyboard.cpp's KeyInput, 32 bytes) and its reader */
+struct KeyInput {
+    unsigned char code;
+    int shift;
+    int ctrl;
+    int alt;
+    int _10;
+    int caps;
+    int _18[2];
+};
+int GetKeyReadThisFrame(KeyInput *key);
+
+/* the pad's input: the stick's centring and position kept, the pop-up's or the keyboard's or the
+ * buttons' handling first, then the first button action whose button is in its state -- or, for
+ * the four direction buttons falling, whose stick push came -- started, else the stick or the
+ * pad's up and down stepping the active button, and a key 40 or 88 running event 44 (0x368650:
+ * SOCOM 1's HandlePad; the stick's directions as buttons and the key SOCOM II's).
+ * OPEN, 72 instructions at the target's size (0xB20; 334 before the button tests became bools of
+ * their own, computed ahead of the four stick reads as the target computes them): the target's
+ * loop hoists -s_fStickX into f6 beside -s_fStickY (f4), so each inlined StickAbs(x) takes the
+ * negation with a mov.s and x sits in f7; ours hoists only -y (GetStickDir's) and negates x in the
+ * branch, which moves x to f6 and reorders the preamble's bools. Tried: StickAbs as `f < 0 ? -f :
+ * f` (0xAE0), with the negation in a local (0xB18 / 0xAD8 / 0xB28: the copies outside the loop
+ * negate in the branch, as ours), DidStickMovePrev/Next for two of the reads, a dead `-x` local, the
+ * item through a pointer, the count in a local, the type read through the array -- none hoists -x.
+ * Measured: -y is hoisted for GetStickDir's `-s_fStickY` (with that read written another way the
+ * loop hoists no -y either), so the target's loop must read -x in a hoistable place of its own */
+void CGameMenu::HandlePad(const CPad *pad)
+{
+    s_bStickCentered = IsStickNearCenter(s_bStickCentered ? 0.6f : 0.2f);
+    s_fStickX = pad->m_220[0];
+    s_fStickY = pad->m_220[1];
+    if (m_popupnode && m_popupnode->m_active) {
+        GetMenuStack()->GetPopUp()->HandlePad(pad, 0);
+        return;
+    }
+    if (Slot14() && func_0038DC00(pad, this))
+        return;
+    if (m_buttons.HandlePad(pad, m_activeButton))
+        return;
+    for (int i = 0; i < m_numCommands; i++) {
+        ActionItem &item = m_commands[i];
+
+        if (item.Type == ACTION_TYPE_BUTTON) {
+            bool isUp = item.PadButton == PAD_UP;
+            bool isDown = item.PadButton == PAD_DOWN;
+            bool isRight = item.PadButton == PAD_RIGHT;
+            bool falling = item.State == KEY_FALLING;
+            bool pressed = item.State == pad->m_state[item.PadButton];
+            bool isLeft = item.PadButton == PAD_LEFT;
+            bool up = UiGetDirStickMoved() == STICK_UP;
+            bool down = UiGetDirStickMoved() == STICK_DOWN;
+            bool right = UiGetDirStickMoved() == STICK_RIGHT;
+            bool left = UiGetDirStickMoved() == STICK_LEFT;
+            bool stickUp = falling && isUp && up;
+            bool stickDown = falling && isDown && down;
+            bool stickLeft = falling && isLeft && right;
+            bool stickRight = falling && isRight && left;
+
+            if (pressed || stickUp || stickDown || stickLeft || stickRight) {
+                CZAnim *anim = ZAnim.GetAnim(item.Animation, 0);
+
+                if (!anim)
+                    return;
+                if (item.Argument)
+                    anim->ActivateArg(1, 8, item.Argument, 0);
+                else
+                    anim->Activate(0);
+                return;
+            }
+        }
+    }
+    if (pad->m_state[PAD_DOWN] == KEY_FALLING || DidStickMoveNext())
+        MakeNextButtonActive(true);
+    else if (pad->m_state[PAD_UP] == KEY_FALLING || DidStickMovePrev())
+        MakePrevButtonActive(true);
+    KeyInput key;
+
+    GetKeyReadThisFrame(&key);
+    if (key.code == 40 || key.code == 88)
+        RunEventAnim(ActionItem::USBKBD_ENTER, 0);
 }
 
 /* the menu emptied, set up over the relocator given (else the batch relocator) and its own rdr's
@@ -982,6 +1110,179 @@ void CGameMenu::MakeButtonActive(const char *name)
     }
 }
 
+/* an action read from its rdr block: its ANIMATION and ARGUMENT, and a BUTTON with the STATE it
+ * waits for (UP, FALLING, DOWN or RISING; FALLING for none or another), or an EVENT by name (0x365D50:
+ * SOCOM 1's ParseButtonAnim; SOCOM II's 63 event names, unknown ones ONSTART) */
+void ParseButtonAnim(_zrdr *rdr, ActionItem *item)
+{
+    const char *anim = zrdr_findstring(rdr, "ANIMATION");
+    const char *arg = zrdr_findstring(rdr, "ARGUMENT");
+    const char *state = zrdr_findstring(rdr, "STATE");
+
+    if (zrdr_findtag(rdr, "BUTTON")) {
+        const char *button = zrdr_findstring(rdr, "BUTTON");
+        KEY_STATE s;
+
+        item->Type = ACTION_TYPE_BUTTON;
+        item->PadButton = GetButton(button);
+        if (!state)
+            s = KEY_FALLING;
+        else if (!strcmp(state, "UP"))
+            s = KEY_UP;
+        else if (!strcmp(state, "FALLING"))
+            s = KEY_FALLING;
+        else if (!strcmp(state, "DOWN"))
+            s = KEY_DOWN;
+        else if (!strcmp(state, "RISING"))
+            s = KEY_RISING;
+        else
+            s = KEY_FALLING;
+        item->State = s;
+        if (anim)
+            item->Animation = _strdup(anim, 0, 0);
+        if (arg)
+            item->Argument = _strdup(arg, 0, 0);
+    } else if (zrdr_findtag(rdr, "EVENT")) {
+        const char *name = zrdr_findstring(rdr, "EVENT");
+        int e;
+
+        item->Type = ACTION_TYPE_EVENT;
+        if (!strcmp(name, "ONSTART"))
+            e = 0;
+        else if (!strcmp(name, "ONEXIT"))
+            e = 1;
+        else if (!strcmp(name, "ONACTIVATE"))
+            e = 2;
+        else if (!strcmp(name, "ONMPEGEND"))
+            e = 3;
+        else if (!strcmp(name, "MP_JOIN_ROOM"))
+            e = 4;
+        else if (!strcmp(name, "ON_SKB_APPLY"))
+            e = 14;
+        else if (!strcmp(name, "ON_SKB_APPLY2"))
+            e = 15;
+        else if (!strcmp(name, "ON_STATE_POP"))
+            e = 13;
+        else if (!strcmp(name, "ON_SKB_CLOSE"))
+            e = 16;
+        else if (!strcmp(name, "MP_PLAYER_NOT_FOUND"))
+            e = 5;
+        else if (!strcmp(name, "MP_SUCCESS"))
+            e = 6;
+        else if (!strcmp(name, "MP_CREATE_CLAN_SUCCESS"))
+            e = 7;
+        else if (!strcmp(name, "MP_CREATE_CLAN_FAILURE"))
+            e = 8;
+        else if (!strcmp(name, "MP_DISBAND_CLAN_SUCCESS"))
+            e = 9;
+        else if (!strcmp(name, "MP_DISBAND_CLAN_FAILURE"))
+            e = 10;
+        else if (!strcmp(name, "MP_MEDIUS_ERROR"))
+            e = 11;
+        else if (!strcmp(name, "MP_MEDIUS_HAS_INVITES"))
+            e = 12;
+        else if (!strcmp(name, "ON_LOAD_COMPLETE"))
+            e = 17;
+        else if (!strcmp(name, "ON_CLIENT_CONNECT"))
+            e = 18;
+        else if (!strcmp(name, "ON_FORCE_NEW_DB"))
+            e = 19;
+        else if (!strcmp(name, "ON_LADDER_REFRESH"))
+            e = 20;
+        else if (!strcmp(name, "ON_TTY_DONE"))
+            e = 21;
+        else if (!strcmp(name, "MP_MEDIUS_JOIN_GAME_FAILURE"))
+            e = 22;
+        else if (!strcmp(name, "MP_MEDIUS_READY_TO_CONNECT"))
+            e = 23;
+        else if (!strcmp(name, "MP_PLAYER_ALREADY_MEMBER"))
+            e = 24;
+        else if (!strcmp(name, "MP_VERSION_NUMBER_ERROR"))
+            e = 25;
+        else if (!strcmp(name, "MP_LEADERSHIP_TRANSFER_SUCCESS"))
+            e = 26;
+        else if (!strcmp(name, "MEMCARD_ERROR"))
+            e = 27;
+        else if (!strcmp(name, "MP_MEDIUS_BECAME_LEADER"))
+            e = 28;
+        else if (!strcmp(name, "ON_SKB_CANCEL"))
+            e = 29;
+        else if (!strcmp(name, "NETCNF_ERROR"))
+            e = 30;
+        else if (!strcmp(name, "MP_MEDIUS_JOIN_ROOM_FAILURE"))
+            e = 31;
+        else if (!strcmp(name, "MP_PLAYER_IS_LEADER"))
+            e = 32;
+        else if (!strcmp(name, "MP_CLAN_DISBANDED"))
+            e = 33;
+        else if (!strcmp(name, "MP_INVALID_PASSWORD"))
+            e = 34;
+        else if (!strcmp(name, "MP_PLAYER_ALREADY_INVITED"))
+            e = 35;
+        else if (!strcmp(name, "MP_PLAYER_LOGGED_IN"))
+            e = 36;
+        else if (!strcmp(name, "MP_FILTER_FAILURE"))
+            e = 37;
+        else if (!strcmp(name, "ONFOCUS"))
+            e = 43;
+        else if (!strcmp(name, "MP_GAME_NAME_EXISTS"))
+            e = 38;
+        else if (!strcmp(name, "LOADED_FROM_MEMCARD"))
+            e = 39;
+        else if (!strcmp(name, "SLIDER_MOVED"))
+            e = 40;
+        else if (!strcmp(name, "ONSCROLL"))
+            e = 41;
+        else if (!strcmp(name, "ONSCROLL_END"))
+            e = 42;
+        else if (!strcmp(name, "USBKBD_ENTER"))
+            e = 44;
+        else if (!strcmp(name, "MP_BANNED_FROM_GAME"))
+            e = 45;
+        else if (!strcmp(name, "ON_UPDATE_UIVAR"))
+            e = 46;
+        else if (!strcmp(name, "CLAN_MESSAGE_ID_ERR"))
+            e = 47;
+        else if (!strcmp(name, "CLAN_MESSAGE_EMPTY"))
+            e = 48;
+        else if (!strcmp(name, "MP_PLAYER_IS_FRIEND"))
+            e = 49;
+        else if (!strcmp(name, "MP_FRIEND_CONFIRMATION_REQUESTED"))
+            e = 50;
+        else if (!strcmp(name, "MP_EJECT_SPECTATOR"))
+            e = 51;
+        else if (!strcmp(name, "MP_EIGHTY_READY"))
+            e = 52;
+        else if (!strcmp(name, "MP_DNAS_ERROR"))
+            e = 53;
+        else if (!strcmp(name, "MP_DOWNLOAD_ERROR"))
+            e = 54;
+        else if (!strcmp(name, "MP_MEDIUS_FILE_DOES_NOT_EXIST"))
+            e = 55;
+        else if (!strcmp(name, "MP_CLAN_FULL"))
+            e = 56;
+        else if (!strcmp(name, "MEMCARD_STATUS"))
+            e = 57;
+        else if (!strcmp(name, "MP_SYSTEM_MESSAGE"))
+            e = 58;
+        else if (!strcmp(name, "PLAYER_IS_IGNORED"))
+            e = 59;
+        else if (!strcmp(name, "MP_RANDOM_GAME_FOUND"))
+            e = 60;
+        else if (!strcmp(name, "HDD_ERROR"))
+            e = 61;
+        else if (!strcmp(name, "MP_IGNORE_LIST_FULL"))
+            e = 62;
+        else
+            e = 0;
+        item->Event = e;
+        if (anim)
+            item->Animation = _strdup(anim, 0, 0);
+        if (arg)
+            item->Argument = _strdup(arg, 0, 0);
+    }
+}
+
 /* the CD's head parked (util_sonyio.cpp's 0x39DFC0: the lowest file sector read, ours) */
 extern "C" void func_0039DFC0();
 void RebootAfterError();
@@ -1045,6 +1346,97 @@ void CGameMenu::SwitchMenu(char *name)
     m_Reloc->StartBatchReloc();
     LoadDesign(name, m_zar);
     m_Reloc->EndBatchReloc();
+}
+
+/* a node's 2D object, through its first visual (ours: the original leaves the result unset for a
+ * node without a 2D visual -- the target calls through whatever the register held, which is what
+ * keeps each copy's result in a saved register) */
+static inline C2D *NodeC2D(zdb::CNode *node)
+{
+    C2D *c2d;
+    zdb::CVisual *visual = node->GetFirstVisual();
+
+    if (visual) {
+        C2DVisual *v = visual->Get2DVisual();
+
+        if (v)
+            c2d = v->m_c2d;
+    }
+    return c2d;
+}
+
+/* the menu's frame: a fade's switch made once the fader is opaque, the pad read unless a wait runs or
+ * a fade does, the step clamped to 1/20 s, the scheduler run, a fade's menu node brought up, the
+ * menu stack's commands carried out -- a switch with its history, a switch, a button made active,
+ * a control's input taken or given back, each then handed back to the stack -- and the pop-up, the
+ * 2D objects, the buttons, the keyboard and the menu's own tick run (0x3654C0: SOCOM 1's Tick; the
+ * fade, the wait and the history switch's early return SOCOM II's). The visibility switches call
+ * through NodeC2D's unset result when the node has no 2D visual (the target does: each copy's result
+ * lives from the entry, so in a saved register); the fade's opacity clamped before the fader's call
+ * (the 0.99 the compare made moves in the call's delay slot); each walk's end taken first (the
+ * iterator numbered after it: s0 / s1 as the target) */
+void CGameMenu::Tick(float dT)
+{
+    float opacity = data_0049EA98 ? data_0049EA98->m_Opacity : 0.99f;
+
+    if (m_fadeSteps >= 0 && m_fader.GetTrans() == 128.0f) {
+        SwitchMenu((char *)m_ReaderName.c_str());
+        return;
+    }
+    if (m_900 > 0.0f)
+        m_900 -= dT;
+    else if (m_fadeSteps < 0)
+        HandlePad(CInput::m_pads[0]);
+    if (dT > 0.05f)
+        dT = 0.05f;
+    if (g_hasAnims)
+        zUIScheduler.Tick(dT);
+    if (m_fadeSteps >= 0) {
+        opacity += 2.0f * dT;
+        if (!(opacity < 0.99f)) {
+            opacity = 0.99f;
+            m_fader.SetTrans(128.0f);
+        }
+        if (data_0049EA98)
+            data_0049EA98->m_Opacity = opacity;
+    }
+    while (GetMenuStack()->m_count) {
+        switch (GetMenuStack()->Top()->m_id) {
+        case 2:
+            GetMenuStack()->AddToHistory(m_ReaderName.c_str());
+            SwitchMenu(GetMenuStack()->Top()->m_argname);
+            GetMenuStack()->HandleCommand(m_ReaderName.c_str());
+            return;
+        case 5:
+            SwitchMenu(GetMenuStack()->Top()->m_argname);
+            break;
+        case 6:
+            MakeButtonActive(GetMenuStack()->Top()->m_argname);
+            break;
+        case 7: {
+            zdb::CNode *node = m_nodeTop.FindChild(GetMenuStack()->Top()->m_argname, true);
+
+            if (node)
+                NodeC2D(node)->SetCanHandleInput(true);
+            break;
+        }
+        case 8: {
+            zdb::CNode *node = m_nodeTop.FindChild(GetMenuStack()->Top()->m_argname, true);
+
+            if (node)
+                NodeC2D(node)->SetCanHandleInput(false);
+            break;
+        }
+        }
+        GetMenuStack()->HandleCommand(m_ReaderName.c_str());
+    }
+    GetMenuStack()->GetPopUp()->Tick(dT);
+    for (std::list<C2D *>::iterator e = m_6d4.end(), i = m_6d4.begin(); i != e; ++i)
+        (*i)->Tick(dT);
+    for (std::list<C2D *>::iterator f = m_buttons.end(), j = m_buttons.begin(); j != f; ++j)
+        (*j)->Tick(dT);
+    SkbTick(this, !PopupShowing(), dT);
+    MyTick(dT);
 }
 
 /* the background movie stopped, if one runs (SOCOM 1's HaltBackgroundMPEG, 0x366B10) */

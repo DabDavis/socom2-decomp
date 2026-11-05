@@ -517,7 +517,7 @@ int CClutterAnimManager::l_Tick(float dT, void *data)
         CClutterEffector *f = *i;
 
         if (!f->m_vel) {
-            f->m_18 = PntMinus(*f->m_pos, f->m_c);
+            f->m_18 = *f->m_pos - f->m_c;
             f->m_18.Scale(1.0f / dT);
             f->m_c = *f->m_pos;
         }

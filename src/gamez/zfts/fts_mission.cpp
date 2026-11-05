@@ -17,6 +17,7 @@
 #include "../zsys/zsys.h"
 #include "../../Apps/FTS/hud_letterbox.h"
 #include "../../Apps/FTS/hud_missioncams.h"
+#include "../../ai/ai_maps.h"
 
 /* the HUD's map (hud_newhudmap.h's CZNewHudMap, 0x830 bytes: only its objective list -- at 0xE0, the
  * current objective TickObjectives anchors and the selection at SOCOM 1's
@@ -188,68 +189,11 @@ public:
 
 extern CZNetwork theNetwork;
 
-/* a cell of an AI map (zentity.h's CAiMapLoc: only its word) */
-class CAiMapLoc {
-public:
-    unsigned int m_word;
-};
-
-/* a compass anchor (zentity.h's CCompassAnchor: only what the nav points and Open set) */
-class CCompassAnchor {
-public:
-    /* (zentity.h's: a lock holds it off) */
-    void SetEnabled(bool on)
-    {
-        if (!m_locked)
-            m_enabled = on;
-    }
-
-    unsigned int m_enabled : 1;   // 0x0
-    unsigned int m_arrow_enabled : 1;
-    unsigned int m_name_enabled : 1;
-    unsigned int m_echo : 1;
-    unsigned int m_type : 16;
-    unsigned int m_locked : 1;
-    unsigned int m_unk21 : 10;
-    unsigned int m_unused : 1;
-    CPnt3D m_posW;   // 0x4
-    char *m_name;   // 0x10
-    CAiMapLoc *m_aiMapLoc;   // 0x14
-};
-
-class CCompass {
-public:
-    static CCompassAnchor *CreateAnchor(const CPnt3D &pos, const char *name);
-    static void DeleteAnchor(CCompassAnchor *anchor);   /* 0x2A27E0 */
-    void Close();   /* 0x2A2AC0 */
-    void Open();   /* 0x2A2BF0 */
-
-    unsigned char _0[0xc];
-};
-
-extern CCompass theCompass;   /* 0x436390 */
-
-/* the AI maps' nav points: a cell and its name (SOCOM 1's, 24 bytes; the names ours) */
-struct CAiNavPoint {
-    CAiMapLoc m_loc;   // 0x0
-    char m_name[20];   // 0x4
-};
-
-/* the AI's maps (OVL2's AiMaps, ai_maps.h's CAiMaps : list<CAiMap *>: only the list, the map set's
- * read, the cell's centre and the nav points) */
-class CAiMap;
-class CAiMaps : public std::list<CAiMap *> {
-public:
-    bool GetCellCenter(const CAiMapLoc &loc, CPnt3D *center);
-    void Close();   /* OVL2 0x52E780 */
-    void Reset();   /* OVL2 0x52E720 */
-    void ReadMapSet(const char *file, const char *path);   /* OVL2 0x52B0D0 */
-
-    unsigned char _c[0x48 - 0xc];
-    std::vector<CAiNavPoint> m_navpoints;   // 0x48
-};
-
-extern CAiMaps AiMaps;
+/* (a map cell CAiMapLoc, the compass and its anchors -- CCompass::CreateAnchor / DeleteAnchor
+ * 0x2A27E0, Open 0x2A2BF0, Close 0x2A2AC0, theCompass 0x436390 -- are zentity.h's; the AI's maps
+ * CAiMaps -- the map set's read OVL2 0x52B0D0, Reset 0x52E720, Close 0x52E780, the nav points its
+ * second name table -- ai_maps.h's: this unit's own stand-ins for them retired in the states' round
+ * 43, the unit object-identical by address, once the MSL's round 30 had made CSaferStr one class) */
 
 /* an objective camera's compass anchor (SOCOM 1's DWARF, 8 bytes): built empty -- both builds'
  * TickObjectives clear the temporary each push_back copies */
@@ -540,14 +484,8 @@ public:
     bool ZAnimLoad();
     bool LoadMissionCams(CRdrFile *rdr);
     bool LoadObjectiveCams(CRdrFile *rdr);   /* 0x2A4D30 */
-    /* the extraction regions' anchors (0x2A42B0, 0x338, unwritten): AiMaps' map 0's regions of type 1
-     * walked, each one's centre cell (region::GetCenter) put through ai.h's CAiMap::GetCellCenter --
-     * inlined one level, GetCell / GetAltitude / HasAction / GetDir / CPnt3D() / Scale / Add called
-     * as OVL1's copies 0x1FB3C0 and 0x2105E0-0x2106A0 -- and a compass anchor of type 6 listed for it.
-     * It needs ai.h here, and including ai.h fails before this unit's own stand-ins matter (the
-     * states' round 41): zsav_lobby.h's CSaferStr (a std::string) and zentity.h's (an opaque 12-byte
-     * class, which ai.h brings) are both defined -- two shared headers that cannot meet */
-    void Sample_ExtractionLoc();   /* 0x2A42B0 */
+    /* the extraction regions' anchors (both builds return false: v0 cleared at each exit) */
+    bool Sample_ExtractionLoc();   /* 0x2A42B0 */
     void Close();   /* 0x2AB3F0 */
     void InitalizeTeamValves();   /* 0x2B2840 */
     void CloseVehicleRdr();   /* 0x2B3430 */
@@ -714,47 +652,9 @@ CLobbySaveManager *GetLobbySaveManager()
 
 extern "C" char *strncpy(char *dst, const char *src, unsigned int n);
 
-/* the world, the entities, the AI events, the scheduler and the sound (their units'; called by their
- * map names) */
-class CEntity;
-class CEntityList : public std::list<CEntity *> {
-};
-class CQuat;
-class CEntity {
-public:
-    /* zentity.h's virtual functions up to OnMissionEnd (+0x50), for the mission's end */
-    virtual ~CEntity();                                         /* +0x08 */
-    virtual const CMatrix *GetPosW() const;
-    virtual void UpdatePosW();
-    virtual void PreTick(float dT);
-    virtual void Tick(float dT);
-    virtual void PostPreTick(float dT);                         /* +0x1C */
-    virtual void PrePostTick(float dT);
-    virtual void PostTick(float dT);
-    virtual void ComputeNextPosition(float dT);
-    virtual void UpdateNextPosition();                          /* +0x2C */
-    virtual CPnt3D *GetTargetPosW(CPnt3D *out);
-    virtual CPnt3D *GetHeadPosW(CPnt3D *out);
-    virtual CPnt3D *GetNeckPosW(CPnt3D *out);
-    virtual void TeleportTo(const CPnt3D *pos, const CQuat *quat);   /* +0x3C */
-    virtual void TeleportTo(const CMatrix *m);
-    virtual void ResetToInitialState();
-    virtual void UpdateAiMapLoc();                              /* +0x48 */
-    virtual void OnMissionStart();
-    virtual void OnMissionEnd();                                /* +0x50 */
-
-    static void RemoveAll();
-    /* the entities, const (zentity.h's) */
-    static const CEntityList &GetEntityList() { return m_list; }
-
-    static const unsigned int invalidId;   /* 0x3EFFB0 */
-    static CEntityList m_list;   /* 0x4362E0 */
-};
-class CAiEvent {
-public:
-    static void Open(unsigned int count);   /* OVL2 0x50F150 */
-    static void Close();
-};
+/* the world, the scheduler and the sound (their units'; called by their map names -- the entities
+ * and their list are zentity.h's, CEntity::invalidId 0x3EFFB0 and m_list 0x4362E0, the AI events
+ * ai.h's: CAiEvent::Open OVL2 0x50F150) */
 extern CSched_Manager zTaskScheduler;
 extern "C" void ClearFreeList__14CSched_ManagerFb(CSched_Manager *sched, bool all);
 extern "C" bool AddTask__14CSched_ManagerFPCcPFfPv_bfPv(CSched_Manager *sched, const char *name,
@@ -909,20 +809,10 @@ public:
     unsigned char m_221;   // 0x221
 };
 
-/* what an entity knows of another (zentity.h's CTarget: only the entity and its range squared) */
-class CZSealBody;
-
-struct CTarget {
-    CZSealBody *m_ent;   // 0x0 (an entity: zentity.h's CEntity)
-    unsigned char _4[0x10 - 0x4];
-    float m_distSq;   // 0x10
-    unsigned char _14[0x30 - 0x14];
-};
-
-class CTargetList : public std::vector<CTarget> {
-};
-
-class CZSealBody {
+/* a SEAL's body (zseal.h's CZSealBody: zentity.h's CEntity -- the id, the type, the position, the
+ * controller, the team, the targets the danger walks and m_isAlive, TRIGGER_POPUP's test too --
+ * and the database handles' statics) */
+class CZSealBody : public CEntity {
 public:
     static void NetworkPlayerCreate();   /* OVL2 0x5442C0 */
     static void UninitDatabaseHandles();   /* OVL2 0x5A3BB0 */
@@ -933,24 +823,9 @@ public:
 
     /* whether two entities share a team (ours: zentity.h's IsEnemy turned round) */
     bool IsFriend(const CZSealBody *e) const { return (e->m_team & m_team) != 0; }
-    /* the AI driving it, if any (zseal.h's) */
-    CSealCtrlAi *GetSealCtrlAi() { return m_control->GetSealCtrlAi(); }
-
-    unsigned char _0[0x4];
-    unsigned int m_id;   // 0x4 (zentity.h's CEntity)
-    unsigned char _8[0x10 - 0x8];
-    unsigned char m_type;   // 0x10 (zentity.h's: 2 a SEAL)
-    unsigned char _11[0x1c - 0x11];
-    CPnt3D m_posW;   // 0x1c
-    unsigned char _28[0xc0 - 0x28];
-    CSealCtrl *m_control;   // 0xc0
-    unsigned char _c4[0xc8 - 0xc4];
-    unsigned int m_team;   // 0xc8
-    unsigned char _cc[0xd0 - 0xcc];
-    CTargetList m_targets;   // 0xd0
-    unsigned char _dc[0xe1 - 0xdc];
-    unsigned char m_e1_0 : 4;   // 0xe1
-    unsigned char m_e1_4 : 1;   // 0xe1, bit 4: zentity.h's m_isAlive (TRIGGER_POPUP's test too)
+    /* the controller as a SEAL's, and the AI driving it, if any (zseal.h's) */
+    CSealCtrl *GetSealCtrl() { return (CSealCtrl *)m_control; }
+    CSealCtrlAi *GetSealCtrlAi() { return GetSealCtrl()->GetSealCtrlAi(); }
 };
 
 CZSealBody *ftsGetPlayer();
@@ -998,9 +873,9 @@ extern float data_003DE610;   /* (the danger of a SEAL near) */
 }
 
 /* the entity as a SEAL, if it is one; an AI awake; its target held (seal.cpp's) */
-inline CZSealBody *AsSeal(CZSealBody *e)
+inline CZSealBody *AsSeal(CEntity *e)
 {
-    return e && e->m_type == 2 ? e : 0;
+    return e && e->m_type == CEntity::ENT_TYPE_SEAL ? (CZSealBody *)e : 0;
 }
 
 inline bool IsAwake(CSealCtrlAi *ai)
@@ -1032,7 +907,7 @@ extern "C" float func_002A4A10(CZSealBody *self, unsigned char level, float rang
     for (CTargetList::iterator t = targets.begin(); t != targets.end(); ++t) {
         CZSealBody *seal = AsSeal(t->m_ent);
 
-        if (!seal || !seal->m_e1_4 || seal->IsFriend(self))
+        if (!seal || !seal->m_isAlive || seal->IsFriend(self))
             continue;
         CSealCtrlAi *ai = seal->GetSealCtrlAi();
 
@@ -1182,6 +1057,36 @@ bool CMission::_RecoverFromNetError(int error)
 void CMission::RecoverFromNetError(int error)
 {
     theMission._RecoverFromNetError(error);
+}
+
+/* the extraction regions' anchors: map 0's regions of type 1 walked, each one's centre cell put
+ * through the map's GetCellCenter and an anchor of type 6 listed for it -- false, always (SOCOM 1's,
+ * the same walk; OVL1 0x2A42B0). The region's centre is assigned from GetCenter()'s by-value copy
+ * (the copy constructor into the temporary, then a word copy into the cell: both builds'), the end
+ * taken once -- both iterators initialised in the for: declared apart (end first, end alone, through
+ * a reference to the table) the two trade s3 / s4; GetCellCenter is inlined one level, its pieces
+ * called as OVL1's copies (0x2106A0, 0x210630, 0x210610, 0x210600, 0x1FB3C0, 0x2105F0, 0x2105E0) */
+bool CMission::Sample_ExtractionLoc()
+{
+    CAiMap *map = AiMaps.GetMapByIndex(0);
+
+    if (!map)
+        return false;
+    for (CAiMap::regions::iterator i = map->m_regionTable.begin(), e = map->m_regionTable.end(); i != e; ++i) {
+        if ((*i).m_type == 1) {
+            CAiMapLoc loc;
+            CPnt3D pos;
+
+            loc = (*i).GetCenter();
+            if (map->GetCellCenter(loc, &pos)) {
+                CCompassAnchor *anchor = CCompass::CreateAnchor(pos, "EXTRACTION LOC");
+
+                anchor->m_type = 6;
+                m_anchor_extraction.push_back(anchor);
+            }
+        }
+    }
+    return false;
 }
 
 /* the external whispers' option: its global (0x3DE620, the HUD reads it) and EnableExternalWhispers
@@ -1343,17 +1248,18 @@ inline int FilterNavPointString(const char *s)
 }
 
 /* a compass anchor for each of the AI maps' nav points whose cell has a centre, typed by its name
- * (SOCOM 1's, the centre now tested; OVL1 0x2ACAD0) */
+ * (SOCOM 1's, the centre now tested; OVL1 0x2ACAD0). The nav points are AiMaps' names of kind 1,
+ * its second name table (CAiMaps::UpdateNameTables) */
 void CMission::CreateCompassNavPoints()
 {
-    std::vector<CAiNavPoint> &navs = AiMaps.m_navpoints;
+    CAiMap::names &navs = AiMaps.m_names[1];
     unsigned int n = navs.size();
 
     if (n) {
         for (unsigned int i = 0; i < n; i++) {
             /* the element through the data pointer itself: through the inline [] the reference
              * takes its saved register after the name's (s1 and s2 swapped) */
-            CAiNavPoint &nav = navs.data_[i];
+            CAiMap::name &nav = navs.data_[i];
             const char *name = nav.m_name;
             CPnt3D pos;
 
@@ -1673,7 +1579,8 @@ float *ftsGetAltitudeApprox(const CPnt3D *pos, float range, bool flag);
 
 /* a node set down on the ground: the point dropped to the floor found under it, the node's box
  * turned by the rotation and its lowest corner on the axis asked for put on the floor, an offset
- * added, the node lit (SOCOM II's; OVL1 0x2A8C90, ftsFixupAiMap calls it twice -- the names ours).
+ * added, the node lit (SOCOM 1's aiMapPlaceItem, by ftsFixupAiMap's two calls in both builds; OVL1
+ * 0x2A8C90 -- the parameters' names ours).
  * The box goes to the corners as an explicit TEMPORARY copy, `BoxCorners(pts, CBBox(*GetBBox()))`
  * (the states' round 33): a temporary or a local copy-constructed from a CBBox copies min and max as
  * two 12-byte blocks ($f2-$f0 each, the target's), where a by-value parameter's copy is one 24-byte
@@ -1683,10 +1590,9 @@ float *ftsGetAltitudeApprox(const CPnt3D *pos, float range, bool flag);
  * its size, its sixteen leaves called and their copies emitted (CPnt3D(fff) 0x2A8F30 and _min<f>'s
  * OVL1 copy 0x2AFC60 byte-exact from here); the translation is stored through a pointer
  * (SetTranslation above: written on the point in place, y's address is kept in a register). */
-extern "C" void func_002A8C90(zdb::CNode *node, const CPnt3D *at, int axis, const CPnt3D *offset,
-                              const CPnt3D *rot)
+void aiMapPlaceItem(zdb::CNode *node, const CPnt3D &at, int axis, const CPnt3D *offset, const CPnt3D *rot)
 {
-    CPnt3D pos = *at;
+    CPnt3D pos = at;
     float *ground = ftsGetAltitudeApprox(&pos, 10.0f, false);
 
     if (ground)
@@ -1758,7 +1664,7 @@ public:
 
 const char *GetDatabase();   /* 0x27F800 */
 CRdrFile *zrdr_read(const char *name, const char *dir, int flags);   /* 0x32F630 */
-void zrdr_free(CRdrFile *file);   /* 0x32D6E0 */
+/* (zrdr_free, 0x32D6E0, ai.h's: it returns an int) */
 
 /* the localised string tables (util_loc.cpp's; only the load), the language a word as st_mpexit.cpp
  * has it */
@@ -1805,30 +1711,61 @@ public:
     void Init();   /* 0x3D16B0 */
 };
 
-class CZWeaponList;
-class CZProjectileList;
-class CZWeapon {
-public:
-    static void Close();   /* 0x3D0350 */
-    static void OpenDecals();   /* 0x3D03C0 */
-    static void Open();   /* 0x3D03D0 */
-    static void ClearTimer(float *pCurval);
-
-    static CZWeaponList m_listWeapons;   /* 0x4B5210 */
-    static CZProjectileList *m_pProjectilelist;   /* 0x4B5220 */
-    static CZMarkList *m_pMarklist;   /* 0x4B5248 */
-};
-
 /* an item a SEAL carries (zweapon.h's EQUIP_ITEM: a byte enum, unsigned; only the bounds) */
 enum EQUIP_ITEM {
     EQUIP_PISTOL = 0,
     EQUIP_NONE = 255
 };
 
-/* the weapons by item (zweapon.h's CZWeaponList: only the lookup) */
+class CZWeaponList;
+class CZProjectileList;
+class CZWeapon {
+public:
+    /* (zweapon.h's: its table at 0, which ftsFixupAiMap's cast to CZFTSWeapon reads) */
+    virtual ~CZWeapon();
+    static void Close();   /* 0x3D0350 */
+    static void OpenDecals();   /* 0x3D03C0 */
+    static void Open();   /* 0x3D03D0 */
+    static void ClearTimer(float *pCurval);
+    static EQUIP_ITEM GetWeaponId(const char *name);   /* 0x3D19E0 */
+    char *GetModelName() const;   /* 0x3D2750 */
+
+    static CZWeaponList m_listWeapons;   /* 0x4B5210 */
+    static CZProjectileList *m_pProjectilelist;   /* 0x4B5220 */
+    static CZMarkList *m_pMarklist;   /* 0x4B5248 */
+};
+
+/* the game's weapons (zweapon.h's CZFTSWeapon : CZWeapon) */
+class CZFTSWeapon : public CZWeapon {
+};
+
+/* the weapons by item and by name (zweapon.h's CZWeaponList: only the lookups) */
 class CZWeaponList {
 public:
     CZWeapon *GetWeapon(EQUIP_ITEM item);   /* 0x3C4B40 */
+    CZWeapon *GetWeapon(const char *name);   /* 0x3C4C40 */
+};
+
+/* the ammunition by name (zweapon.h's CZAmmo and CZAmmoList: only the list and its lookup) */
+class CZAmmo;
+class CZAmmoList {
+public:
+    CZAmmo *GetAmmo(const char *name);   /* 0x3C4F70 */
+};
+
+class CZAmmo {
+public:
+    static CZAmmoList m_ammolist;   /* 0x4B5310 */
+};
+
+/* a pickup's weapons, ammunition and rounds (pickup_main.cpp's CZItemStash, 0x28 bytes: only its
+ * constructor and its add) */
+class CZItemStash {
+public:
+    CZItemStash();   /* 0x3CFF80 */
+    void Add(CZWeapon *weapon, CZAmmo *ammo, int rounds);   /* 0x3CFEF0 */
+
+    unsigned char _0[0x28];
 };
 
 /* a weapon a type carries (zchar.h's CCharacterWeap, 0xC bytes: only the item) */
@@ -1878,18 +1815,36 @@ public:
     static void Open(zdb::CWorld *world, const char *name);   /* 0x2B4F40 */
     static void Close();   /* 0x2B55E0 */
     static void Reset();   /* 0x2B5510 */
+    static CNodeAction *FindActionByValve(const CValve *valve);   /* 0x2B4E00 */
+
+    unsigned char _0[0x3c];
+    unsigned short m_id;   // 0x3c (fts_action.cpp's)
 };
+
+/* the action nearest a point, its distance given (fts_action.cpp's SOCOM 1 GetClosestAction) */
+extern "C" CNodeAction *func_002B4B40(const CPnt3D *pos, float *dist, float height);
 
 void ftsFixupAiMap(CAiMap *map);   /* 0x2A8140 */
 
-/* the pickups (OVL2's CPickup: only its open) */
+/* the pickups (OVL2's CPickup, zseal.h's: its open, its creation and its timer) */
 class CPickup {
 public:
+    /* (zseal.h's PU_TYPE: 8 a weapon, 9 ammunition) */
+    enum PU_TYPE { PU_NONE = 0, PU_WEAPON = 8, PU_AMMO = 9, PU_LAST = 255 };
+
     static void Close(bool all);   /* OVL2 0x542E50 */
     static void Open(unsigned int count);   /* OVL2 0x542FC0 */
     static void TickTimers(const CPnt3D *pos, float dT);   /* OVL2 0x542290 */
     static void NetTick(const CPnt3D *pos, float dT);   /* OVL2 0x5423E0 */
+    static CPickup *Create(unsigned int owner, PU_TYPE type, zdb::CNode *node, void *data);   /* OVL2 0x542B90 */
+
+    float m_timer;   // 0x0
 };
+
+/* a pickup's time when it never runs out (-1; Create sets it so: pickup_main.cpp's) */
+extern "C" float data_003F3440;
+
+bool zrdr_findPNT3D(const _zrdr *rdr, const char *tag, PNT3D *out);
 
 extern "C" {
 int strncmp(const char *a, const char *b, unsigned int n);
@@ -1901,6 +1856,154 @@ void func_00344910(const char *db);
 void func_003448D0(const char *name);   /* (the jukebox's lists) */
 extern const char *data_0064F950;   /* (OVL2: "aimaps.mps") */
 void func_00295660();
+}
+
+/* the map's action table (ours, a MARKED numbering device: read through an inline the reference merges
+ * into the inliner's temporary, numbered after the action walk's centre temporaries -- s2 against the
+ * iterator's s1, the target's; a named reference to map->m_actionTable is numbered among the named
+ * locals and the two swap, without one the end is re-read off the map, 8 bytes short) */
+inline CAiMap::actions &ActionTable(CAiMap *map)
+{
+    return map->m_actionTable;
+}
+
+/* the AI map fixed up for the mission: its extra data freed unless it is the 4-byte default; off the
+ * network each script cell's PICKUP placed -- a WEAPON's model at the cell's centre, turned by its
+ * rot (degrees) and moved by its pos, a pickup of the weapon for the player, and an AMMO list's
+ * fiftycal_box, turned upright, holding each entry's ammunition, rounds and weapon; then each
+ * action's id found -- a ladder's the nearest ladder's, a door's or a switch's the node action of
+ * the valve its cell's name gives, else the nearest node action (SOCOM 1's; OVL1 0x2A8140). By MW's
+ * colouring (tools/igdump.py + igreplay.py --target, the states' round 43): the action walk's point
+ * declared at the top (the frame takes it, then the distance, above the reader walk's locals, as
+ * SOCOM 1's frame does); each tag assigned inside its test (the branch then tests v0, the copy in its
+ * delay slot); the owner if/else-assigned (a named node, its spill slot above the readers'); the AMMO
+ * tag in the PICKUP variable itself (s0 for both: a variable of its own is numbered ahead of the item
+ * walk's temporaries and the deferred five pop in the wrong order); the item counter an int (an
+ * unsigned one strength-reduces the item offset into a register of its own); `Count() > 2` (`>= 3`
+ * materialises the compare); the timer stored through a pickup local (the global read after the
+ * call, not kept in $f20 across it); the box's position an uninitialised point in both builds */
+void ftsFixupAiMap(CAiMap *map)
+{
+    zdb::CWorld *world = zdb::CWorld::m_world;
+    CPnt3D apos;
+
+    if (map->m_mapex_bytes != 4)
+        map->FreeEx();
+    if (!theNetwork.m_bNetwork) {
+        CZSealBody *player = ftsGetPlayer();
+        unsigned int owner;
+
+        if (player)
+            owner = player->m_id;
+        else
+            owner = 0;
+        CAiMap::readers &readers = map->m_readerTable;
+
+        for (CAiMap::readers::iterator r = readers.begin(); r != readers.end(); ++r) {
+            _zrdr *pickup;
+
+            if (!(pickup = zrdr_findtag((const _zrdr *)(*r).m_reader, "PICKUP")))
+                continue;
+            CPnt3D pos;
+
+            if (!map->GetCellCenter((*r).m_loc, &pos))
+                continue;
+            _zrdr *weap;
+
+            if ((weap = zrdr_findtag(pickup, "WEAPON")) != 0) {
+                CPnt3D zero = CPnt3D::zero;
+                CPnt3D rot = zero;
+                CPnt3D off = zero;
+                const char *name = weap->Item(0) ? weap->Item(0)->String() : 0;
+                bool hasrot = zrdr_findPNT3D(weap, "rot", &rot);
+
+                zrdr_findPNT3D(weap, "pos", &off);
+                rot = rot * 0.017453292f;
+                CZWeapon *w = CZWeapon::m_listWeapons.GetWeapon(CZWeapon::GetWeaponId(name));
+
+                if (w && zdb::CWorld::GetModel(w->GetModelName())) {
+                    zdb::CNode *node = zdb::CNode::CreateInstance(w->GetModelName(), 0, 0);
+
+                    aiMapPlaceItem(node, pos, 1, &off, hasrot ? &rot : 0);
+                    node->m_socom2_a1_bits.bit2 = 1;
+                    node->m_bumpmap = 1;
+                    zdb::CWorld::m_world->AddTextureAssetCharacter(zdb::CHARSETCOMMON, node);
+                    CPickup *p = CPickup::Create(owner, CPickup::PU_WEAPON, node, w);
+
+                    p->m_timer = data_003F3440;
+                }
+            }
+            if (!(pickup = zrdr_findtag(pickup, "AMMO")) || (int)pickup->Count() <= 0)
+                continue;
+            CPnt3D bpos;
+            CPnt3D brot = CPnt3D(90.0f, 0.0f, 0.0f) * 0.017453292f;
+            zdb::CNode *box = zdb::CNode::CreateInstance("fiftycal_box", &bpos, 0);
+
+            if (!box)
+                continue;
+            aiMapPlaceItem(box, pos, 1, 0, &brot);
+            world->AddChild(box);
+            box->m_socom2_a1_bits.bit2 = 1;
+            box->m_bumpmap = 1;
+            zdb::CWorld::m_world->AddTextureAssetCharacter(zdb::CHARSETCOMMON, box);
+            CZItemStash *stash = new CZItemStash;
+
+            for (int i = 0; i < pickup->Count(); i++) {
+                _zrdr *item = pickup->Item(i);
+
+                if (item && item->IsArray()) {
+                    const char *aname = item->Item(0)->String();
+                    int rounds = item->Item(1)->Integer();
+                    const char *wname = item->Count() > 2 ? item->Item(2)->String() : 0;
+                    CZAmmo *a = aname ? CZAmmo::m_ammolist.GetAmmo(aname) : 0;
+                    CZWeapon *w = wname ? CZWeapon::m_listWeapons.GetWeapon(wname) : 0;
+
+                    if (a && rounds)
+                        stash->Add(dynamic_cast<CZFTSWeapon *>(w), a, rounds);
+                }
+            }
+            CPickup *p = CPickup::Create(owner, CPickup::PU_AMMO, box, stash);
+
+            p->m_timer = data_003F3440;
+        }
+    }
+    CAiMap::actions &actions = ActionTable(map);
+
+    for (CAiMap::actions::iterator a = actions.begin(); a != actions.end(); ++a) {
+        CAiCell *cell = map->GetCell((*a).m_loc, 0);
+
+        if (!map->GetCellCenter((*a).m_loc, &apos))
+            continue;
+        int id = -1;
+
+        switch ((*a).m_type) {
+        case 4:
+            id = theMission.m_ladders->GetClosestLadder(&apos, 25.0f);
+            break;
+        case 1:
+        case 2:
+        case 3:
+        case 5:
+        case 7:
+            if (cell && cell->HasName()) {
+                CNodeAction *na =
+                    CNodeAction::FindActionByValve(CValve::GetByName(map->GetCellName((*a).m_loc)->m_name));
+
+                if (na)
+                    id = na->m_id;
+            }
+            if (id == -1) {
+                float dist = 0.0f;
+                CNodeAction *na = func_002B4B40(&apos, &dist, 25.0f);
+
+                if (na)
+                    id = na->m_id;
+            }
+            break;
+        }
+        if (id != -1)
+            (*a).m_actionId = id;
+    }
 }
 
 /* the mission built (OVL1 0x2ADBC0; __sinit_fts_mission.cpp's theMission): the save module "CMission"
@@ -2164,7 +2267,7 @@ void CMission::OnMissionComplete(MISSION_STATE state)
                 Push__5CGameFP10CGameStateUi(&theGame, data_004086C8, 0);
             }
         }
-    } else if (old != m_state && (m_state == MISSION_ABORTED || ftsGetPlayer()->m_e1_4)) {
+    } else if (old != m_state && (m_state == MISSION_ABORTED || ftsGetPlayer()->m_isAlive)) {
         if (m_valve_nofade->m_value == 1) {
             SetDelayEndMission(false);
             EndMission();
@@ -3464,7 +3567,7 @@ void _OnMissionComplete()
     CSndJukebox::Stop();
     data_0048DB50 = 0;
     CZSealBody *player = ftsGetPlayer();
-    CSealCtrl *ctrl = player ? player->m_control : 0;
+    CSealCtrl *ctrl = player ? (CSealCtrl *)player->m_control : 0;
 
     if (ctrl)
         ctrl->StopRumbler();
@@ -3499,7 +3602,7 @@ void _OnMissionComplete()
 extern "C" bool func_002AA890()
 {
     CZSealBody *player = ftsGetPlayer();
-    CSealCtrl *ctrl = player ? player->m_control : 0;
+    CSealCtrl *ctrl = player ? (CSealCtrl *)player->m_control : 0;
 
     if (!(ctrl && ctrl->m_221 != 2 && ctrl->m_221 != 3 && ctrl->m_221 != 4 && ctrl->m_221 != 5))
         return false;
@@ -3947,7 +4050,7 @@ extern "C" bool func_002AE340(_zanim_cmd_hdr *hdr, float *dT)
 {
     CZSealBody *player = ftsGetPlayer();
 
-    if (player && player->m_e1_4)
+    if (player && player->m_isAlive)
         hudTriggerPopup(ZAnim.m_CurAnim->GetName(((_trigger_popup_cmd *)hdr)->name));
     return true;
 }

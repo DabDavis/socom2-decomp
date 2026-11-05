@@ -7,7 +7,6 @@
 
 /* unnamed yet (SOCOM 1's names in the comments) */
 extern "C" {
-void func_003654C0(CGameMenu *menu, float dT);   /* CGameMenu::Tick */
 void func_003AFF30(bool a, bool b);              /* zVid_Swap */
 
 }
@@ -565,7 +564,7 @@ bool CExitState::Tick(float dT)
 {
     CSnd::PostTick(dT, 0);
     CInput::Tick(dT);
-    func_003654C0(m_menu, dT);
+    m_menu->Tick(dT);
     m_menu->Draw2dOnly();
     zSysFifoEnd();
     func_003AFF30(true, true);
