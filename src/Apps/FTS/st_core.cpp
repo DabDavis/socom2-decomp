@@ -258,8 +258,8 @@ void func_0033CD50(void *arg);
 void func_0033B5B0(CPipe *pipe);
 void func_0033B570(CPipe *pipe);
 CTickItem *func_0022D590();
-void func_003AFF30(bool wait, bool swap);        /* zVid_Swap */
 }
+void zVid_Swap(bool flip, bool restore);   /* 0x3AFF30 */
 
 static void LoadThreadEntry(void *arg);
 
@@ -711,10 +711,10 @@ bool CCoreState::Tick(float dT)
     zSysFifoEnd();
     if (m_skip_swap > 0) {
         m_skip_swap--;
-        func_003AFF30(false, true);
+        zVid_Swap(false, true);
         zVid.m_90 = 0;
     } else {
-        func_003AFF30(true, true);
+        zVid_Swap(true, true);
     }
     data_00488F10.Tick();
     cam->Update(zdb::ZCAM_TYPE_0);

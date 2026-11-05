@@ -1,13 +1,14 @@
 /* sc: compiler=ee-gcc2.96; flags=-O2 -G0 -fno-strict-aliasing -funroll-loops */
-/* fftmod: the recogniser's FFT block (OVL2 ..0x4E8AE8, SOCOM 1's object at 0x355A38:
+/* fftmod: the recogniser's FFT block (OVL2 0x4E7C78-0x4E8AE8, SOCOM 1's object at 0x355A38:
  * CalcAmplitudeSpec, ProcessFFTMod, InitFFTMod, ConstructFFTMod, ControlFFTMod, all but the
  * constructor LOCAL there), ScanSoft's speech recogniser, prebuilt with ee-gcc 2.96 at -O2 -G0
  * -fno-strict-aliasing -funroll-loops (README "The GCC front"). Names are SOCOM 1's (the process
  * and init rows by the constructor's slots and the object's order). Profile 7 adds a second
  * output, which the control's command 1 hands out. Written: InitFFTMod (the bin range from the
  * profile's two frequencies: a separate variable for the clamped top bin is what gives the
- * target's movn), the constructor and the control; ProcessFFTMod (and the two rows before it,
- * 0x4E7AB8 and 0x4E7C78, which it calls) not yet. */
+ * target's movn), the constructor and the control; ProcessFFTMod and CalcAmplitudeSpec (0x4E7C78,
+ * named in round 32c by SOCOM 1's order) not yet. realfft (0x4E7AB8), which the process calls
+ * first, is fht.c's (round 32c). */
 #include "tosblk.h"
 
 typedef struct TOSLOG {

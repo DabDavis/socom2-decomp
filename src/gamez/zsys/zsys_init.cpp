@@ -26,7 +26,38 @@ int sceDevctl(const char *name, int cmd, void *arg, unsigned int arglen, void *b
               unsigned int buflen);
 int sceUmount(const char *name);
 void func_0034BCA0(void);                                  /* SOCOM II's, a sound flag cleared */
+/* the IOP's reboot (Sony's libkernl, libcdvd, libscf; MSL's rand) */
+int sceSifRebootIop(const char *img);
+int sceSifSyncIop(void);
+void sceSifInitRpc(unsigned int mode);
+int sceSifInitIopHeap(void);
+int sceSifLoadFileReset(void);
+int sceCdInit(int mode);
+int sceCdGetDiskType(void);
+int sceCdMmode(int media);
+int sceFsReset(void);
+struct sceCdCLOCK {
+    unsigned char stat, second, minute, hour, pad, day, month, year;
+};
+int sceCdReadClock(sceCdCLOCK *clock);
+void srand(unsigned int seed);
+int rand(void);
+int TRC_PreparePowerOff(unsigned char status);             /* trc.cpp */
+int func_0039D020(void);                                   /* SOCOM II's: zSysHddUnmount("hdd0:") */
+void func_003B1180(void);                                  /* SOCOM II's: zvid's packet kicked */
+void func_00340F90(unsigned char loaded);                  /* SOCOM II's: the headset's flag */
+void func_0034BCB0(void);                                  /* SOCOM II's: lgAudInit, a flag set */
 }
+
+/* util_options.cpp's: the command line's options (0x100), then the rest (0x200) */
+void ParseOptions(unsigned int flags);
+/* zvid_init.cpp's */
+void zVid_Init(_zvid_mode mode);
+/* util_sonyio.cpp's: the disc's table of contents read */
+class CFileCD {
+public:
+    static void BuildTOC();
+};
 
 /* the IOP's manager (SOCOM 1's class; SOCOM II adds reboot modes 4-6, names ours, and the mode
  * last rebooted into at 0xC, which RebootIOP tests first) */
@@ -67,6 +98,10 @@ public:
         m_mode = FirstBoot;
     }
     void RebootIOP(RebootMode mode);
+    /* remove_if's predicate: a registrant whose callback asked to be dropped (SOCOM 1's
+     * CIOPManager::delflag, 0x3502F0 right after RebootIOP as SOCOM 1's 0x2F5240 is; RebootIOP
+     * passes its address to both remove_ifs) */
+    static bool delflag(CRegistrant &r);
 
     std::vector<CRegistrant> m_reboot_callback_vec;   // 0x0 (SOCOM 1's)
     RebootMode m_mode;                                // 0xc (SOCOM II's; the name ours)
@@ -86,6 +121,35 @@ struct IRX_MODULE {
     int result;         /* 0x14: the module's start result */
 };
 
+/* 0x3E00A0: the modules loaded once the IOP is rebooted onto the DNAS image (SOCOM II's; the name
+ * ours) */
+static IRX_MODULE s_rebootModules[2] = {
+    { false, -1, "RUN\\IRX\\SIO2MAN.IRX", 0, 0, 0 },
+    { false, -1, "RUN\\IRX\\CDVDSTM.IRX", 0, 0, 0 },
+};
+
+/* the USB driver's and the sound driver's arguments (SOCOM II's; names ours) */
+static char s_usbdArgs[] = "hub=1\0" "dev=11\0" "ed=32\0" "gtd=64\0" "itd=64\0" "ioreq=128";   /* 0x3E00D0 */
+static char s_sndArgs[] = "stream_priority=18";                                          /* 0x3E0100 */
+/* the headset's and the network configuration's sound arguments (SOCOM II's; names ours) */
+static char s_headsetArgs[] = "priority=22";                                             /* 0x3E0118 */
+static char s_lgaudArgs[] = "maxstream=4096";                                            /* 0x3E0130 */
+
+/* 0x3E0140: the game's modules (SOCOM II's; the name ours) -- a single player boot loads 2-7 (USB
+ * to the sound streamer), any other all eight and DS2U_S1 after them. DEV9's start result (0x3E01B4,
+ * once read as a flag of its own) is what zSysHddInit tests: 1, its driver did not stay resident */
+static IRX_MODULE s_gameModules[9] = {
+    { false, -1, "RUN\\IRX\\DBCMAN.IRX", 0, 0, 0 },
+    { false, -1, "RUN\\IRX\\SIO2D.IRX", 0, 0, 0 },
+    { false, -1, "RUN\\IRX\\USB\\USBD.IRX", 43, s_usbdArgs, 0 },
+    { false, -1, "RUN\\IRX\\USB\\USBKB.IRX", 0, 0, 0 },
+    { true, -1, "RUN\\IRX\\DEV9.IRX", 0, 0, 0 },
+    { false, -1, "RUN\\IRX\\LIBSD.IRX", 0, 0, 0 },
+    { false, -1, "RUN\\IRX\\SOUND\\989SND.IRX", 19, s_sndArgs, 0 },
+    { false, -1, "RUN\\IRX\\SOUND\\989DSTRM.IRX", 0, 0, 0 },
+    { false, -1, "RUN\\IRX\\DS2U_S1.IRX", 0, 0, 0 },
+};
+
 /* the hard disk's arguments (SOCOM II's) */
 static char s_hddArgs[] = "-o\0" "1\0" "-n\0" "3";             /* 0x3E0218 */
 static char s_pfsArgs[] = "-m\0" "1\0" "-o\0" "1\0" "-n\0" "10";  /* 0x3E0230 */
@@ -103,9 +167,14 @@ static IRX_MODULE s_mcModules[2] = {
     { false, -1, "RUN\\IRX\\MCSERV.IRX", 0, 0, 0 },
 };
 
-int s_hddDisabled;              /* 0x3E01B4: SOCOM II's, 1 keeps the disk off (name ours) */
+/* 0x3E02D0: the headset driver's module id, -1 while not loaded (SOCOM II's; the name ours) */
+static int s_headsetId = -1;
+
 int s_hddStatus;                /* 0x49E2DC: the disk's devctl answer, -1 before (name ours) */
 bool s_hddMounted;              /* 0x49E2E0 (name ours) */
+/* SOCOM 1's file static (its zSysPostInit set it, SOCOM II's is empty); RebootIOP clears it in
+ * both builds */
+static bool postinited;         /* 0x49E2E8 */
 
 #define VIF0_FBRST ((volatile unsigned int *)0x10003810)
 #define VIF1_ERR ((volatile unsigned int *)0x10003C20)
@@ -198,6 +267,155 @@ void zSysUnloadMcIRX()
     zSys.mcIrxLoaded = 0;
 }
 
+/* SOCOM 1's (its address taken for remove_if) */
+bool CIOPManager::delflag(CRegistrant &r)
+{
+    return r.m_flag_for_deletion;
+}
+
+/* the registrants that asked to be dropped erased (name ours; inlined, not linked). An inline of its
+ * own: RebootIOP's frame holds each removal's end, remove_if's result and begin() side by side (an
+ * inline's locals in code order), the first removal's three above the second's -- written in
+ * RebootIOP's body, the four named iterators come first and the two begin()s after them */
+inline void zSysDropRegistrants(std::vector<CIOPManager::CRegistrant> &v)
+{
+    std::vector<CIOPManager::CRegistrant>::iterator e = v.end();
+    std::vector<CIOPManager::CRegistrant>::iterator r = std::remove_if(v.begin(), e, CIOPManager::delflag);
+
+    v.erase(r, e);
+}
+
+/* SOCOM II's: a table's modules loaded in order, each loaded or loaded and started (name ours;
+ * inlined, not linked). The loop calls the two loaders itself: RebootIOP's ten path buffers then lie
+ * the switch's three direct loads first and these with zSysLoadMcIRX's after them in code order (a
+ * frame goes by inline depth, then code order) -- one level deeper, through a one-module inline,
+ * they fall below the memory card's. DS2U_S1 goes through it with a count of 1: MW unrolls the
+ * one-trip loop away but keeps the module pointer a variable, in s2 (passed straight to a
+ * one-module inline it is propagated, every field addressed off the table: 0x18 bytes more) */
+inline void zSysLoadModules(IRX_MODULE *m, int n)
+{
+    for (int i = 0; i < n; i++, m++) {
+        if (!m->start)
+            m->id = zSysLoadIRX(m->name, m->argc, m->argv, true);
+        else
+            m->id = zSysLoadStartIRX(m->name, m->argc, m->argv, &m->result);
+    }
+}
+
+/* the disc drive started in its medium's mode; 1 when the medium is no PlayStation 2 disc (SOCOM
+ * 1's two copies in RebootIOP; name ours). An int: the caller's `== 0` is the xor/sltiu pair both
+ * builds have (a bool's `!` gives sltu/xori and loads its 1 with daddiu) */
+inline int zSysCdInit()
+{
+    sceCdInit(0);
+    switch (sceCdGetDiskType()) {
+    case 0x12:
+        sceCdMmode(1);
+        return 0;
+    case 0x14:
+        sceCdMmode(2);
+        return 0;
+    }
+    return 1;
+}
+
+/* SOCOM 1's, grown: unless the IOP already runs that mode's modules (a shutdown always reboots), the
+ * registrants are told before (last first, but a single player boot's) and after, each dropped that
+ * answers false; the options read, the disc drive started, a single player boot keeps the running
+ * IOP -- any other is rebooted onto the DNAS image with its two modules -- the clock seeds rand, the
+ * game's modules, then the mode's sound modules (the headset's for 1, 2, 4 and 5, network
+ * configuration's for 3), the memory card's. Byte-exact (round 25 of the world lane, unwritten
+ * before): the removals through an inline of their own, the module loops one level deep with a
+ * one-trip loop for DS2U_S1, the CD's answer an int, and the seed summed year first (the target adds
+ * the year and month first and the second last) */
+void CIOPManager::RebootIOP(RebootMode mode)
+{
+    if (mode != Shutdown && mode == m_mode)
+        return;
+    if (mode != Singleplayer) {
+        for (std::vector<CRegistrant>::reverse_iterator i = m_reboot_callback_vec.rbegin();
+             i != m_reboot_callback_vec.rend(); ++i)
+            (*i).m_flag_for_deletion = !(*i).m_pcb(PreReboot, mode, (*i).m_userdata);
+        zSysDropRegistrants(m_reboot_callback_vec);
+        func_0039D020();
+        if (mode == Shutdown)
+            return;
+    }
+    zSys.hddIrxLoaded = 0;
+    zSys.mcIrxLoaded = mode == Singleplayer;
+    ParseOptions(0x100);
+    sceSifInitRpc(0);
+    func_0034BCA0();
+    int noDisc = zSysCdInit();
+
+    if (!zSys.cdSounds)
+        zSys.isCdBoot = noDisc == 0;
+    if (zSys.isCdBoot)
+        CFileIO::SetRootPath("cdrom0:\\");
+    if (mode != Singleplayer) {
+        char img[256];
+
+        CFileIO::PS2FileName("RUN\\IRX\\DNAS271.IMG", img, false);
+        while (!sceSifRebootIop(img))
+            ;
+        while (!sceSifSyncIop())
+            ;
+        sceSifInitRpc(0);
+        sceSifInitIopHeap();
+        sceSifLoadFileReset();
+        zSysCdInit();
+        sceFsReset();
+        zSysLoadModules(s_rebootModules, 2);
+    }
+    if (mode == Singleplayer) {
+        if (zSys.isCdBoot || zSys.cdSounds)
+            CFileCD::BuildTOC();
+        sceCdCLOCK clock;
+
+        if (sceCdReadClock(&clock)) {
+            srand(clock.year + clock.month + clock.day + clock.hour * 100 + clock.minute * 10000 + clock.second);
+            srand(rand());
+        }
+    }
+    ParseOptions(0x200);
+    if (mode == Singleplayer) {
+        zVid_Init(ZVID_MODE_NTSC);
+        zSysReset();
+        func_003B1180();
+    }
+    if (mode == Singleplayer)
+        zSysLoadModules(&s_gameModules[2], 6);
+    else {
+        zSysLoadModules(s_gameModules, 8);
+        zSysLoadModules(&s_gameModules[8], 1);
+    }
+    switch (mode) {
+    case Singleplayer:
+        zSysSleep(31500);
+    case Multiplayer:
+    case RebootMode4:
+    case RebootMode5:
+        zSysLoadIRX("RUN\\IRX\\LGAUD.IRX", 0, 0, true);
+        func_0034BCB0();
+        s_headsetId = zSysLoadIRX("RUN\\IRX\\HEADSETO.IRX", 13, s_headsetArgs, true);
+        func_00340F90(s_headsetId != -1);
+        m_mode = Multiplayer;
+        break;
+    case NetConfig:
+        zSysLoadIRX("RUN\\IRX\\LGAUD.IRX", 16, s_lgaudArgs, true);
+        func_0034BCB0();
+        m_mode = NetConfig;
+        break;
+    }
+    if (mode == Singleplayer && !zSys.mcIrxLoaded)
+        zSysLoadMcIRX();
+    for (std::vector<CRegistrant>::iterator i = m_reboot_callback_vec.begin(); i != m_reboot_callback_vec.end(); ++i)
+        (*i).m_flag_for_deletion = !(*i).m_pcb(PostReboot, mode, (*i).m_userdata);
+    zSysDropRegistrants(m_reboot_callback_vec);
+    TRC_PreparePowerOff(2);
+    postinited = false;
+}
+
 void zSysReset()
 {
     sceGsResetPath();
@@ -241,7 +459,7 @@ void zSysReset()
 /* SOCOM II's: the hard disk's modules loaded once and the disk asked for (name ours) */
 bool zSysHddInit()
 {
-    if (s_hddDisabled != 1 && s_hddStatus == -1) {
+    if (s_gameModules[4].result != 1 && s_hddStatus == -1) {
         bool ok = true;
 
         if (!zSys.hddIrxLoaded) {

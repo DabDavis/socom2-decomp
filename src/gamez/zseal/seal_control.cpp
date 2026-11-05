@@ -268,13 +268,11 @@ bool CSealCtrl::CanPlaceBomb(CNodeAction *action)
 
 /* whether an action can be taken: none by the dead; the bomb's by its state (planting asks
  * CanPlaceBomb), a breach with a charge and a closed valve, a kind 5 never, any other always
- * (OVL2 0x594350; SOCOM 1's, the life test and kind 5 new).
- * OPEN, 13 instructions: the target reads the bomb's state again for the 1-or-3 test, through its
- * address built in the first test's delay slot (lbu 0(a3)); MW here reuses the first load (SOCOM
- * 1's code has the same reload). Tried: the first test through inline accessors (a parameter, an
- * int, a ternary), the second as inline calls, a reference, a pointer, a switch. Round 33: the kit's
- * const-view rule on either test or both (0x12C, or the same 13), the second test as a member inline of
- * the status (`Is13()`, `Is(1) || Is(3)`) or a static inline over its address (0x134 or 13). */
+ * (OVL2 0x594350; SOCOM 1's, the life test and kind 5 new). Byte-exact since round 50 (open since
+ * round 13, 13 off): the target reads the bomb's state again for the 1-or-3 test, through its address
+ * built in the first test's delay slot (lbu 0(a3)) -- a reference to the status taken at the case's
+ * top (a reference or pointer to the state alike); taken in the else, the same reads are 0x134, and
+ * read straight MW reuses the first test's load. */
 static inline bool IsBombState(unsigned char state)
 {
     return CZBombState::m_BombStatus.m_state == state;
@@ -298,12 +296,15 @@ bool CSealCtrl::CanPerformAction(CNodeAction *action)
     bool can = false;
 
     switch (action->m_type) {
-    case 4:
+    case 4: {
+        const CZBombState::STATUS &st = CZBombState::m_BombStatus;
+
         if (IsBombState(2))
             can = CanPlaceBomb(action);
-        else if (CZBombState::m_BombStatus.m_state == 1 || CZBombState::m_BombStatus.m_state == 3)
+        else if (st.m_state == 1 || st.m_state == 3)
             can = false;
         break;
+    }
     case 6:
         can = CanBreach(seal, action->m_valve);
         break;
