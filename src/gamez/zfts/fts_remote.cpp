@@ -108,11 +108,14 @@ public:
     virtual void TeleportTo(const CMatrix *m);                  /* +0x40 */
 
     int m_4;   // 0x4: the body's network object (SOCOM 1's m_NetObjectIndex)
-    unsigned char _8[0x28 - 0x8];
+    unsigned char _8[0x1c - 0x8];
+    CPnt3D m_posW;   // 0x1c: where it stands (zentity.h's)
     CNodeName *m_node;   // 0x28 (CEntity's)
     unsigned char _2c[0xc0 - 0x2c];
     CEntityCtrl *m_ctrl;   // 0xc0
-    unsigned char _c4[0x220 - 0xc4];
+    unsigned char _c4[0xc8 - 0xc4];
+    unsigned int m_team;   // 0xc8: the team's bits (zentity.h's)
+    unsigned char _cc[0x220 - 0xcc];
     unsigned char m_fire_count;   // 0x220 (SOCOM 1's at 0x17c)
     unsigned char _221[0x228 - 0x221];
     float m_fire_y;   // 0x228 (SOCOM 1's at 0x184)
@@ -126,6 +129,9 @@ public:
 
     /* a command given to another SEAL (OVL2's, SOCOM 1's at the same call) */
     void IssueCommand(CZSealBody *who, FT_COMMAND cmd, void *data, bool b);   /* OVL2 0x590AC0 */
+    /* whether another is on no team of this one's (zentity.h's CEntity::IsEnemy, its operands turned
+     * round: the other's team bits read first) */
+    bool IsEnemy(const CZSealBody *e) const { return !(e->m_team & m_team); }
     void RemoteWeaponDamageNonVictim(DAMAGE_LOCATION where, CZSealBody *victim, CZSealBody *shooter,
                                      unsigned char c, bool flag);
     void RemoteWeaponDamageVictim(DAMAGE_LOCATION where, float damage, float f, CZSealBody *victim,
@@ -664,7 +670,15 @@ struct CMissionInfo {
  * loads the constant ahead of the byte and extracts the flag ahead of the part; tried the four
  * locals in six orders, the product cast, swapped, split and through a constant local, the
  * bitfields as unsigned int, bool and signed char, the flag `!= 0` and as a ternary, the part
- * through an int or unsigned char local -- none moves them) */
+ * through an int or unsigned char local -- none moves them). Round 36, read off MW's colouring
+ * (igdump): the byte is numbered after the constant's lui/ori temporaries because MW generates
+ * f's product (the constant last) before the part's load, and the higher number is coloured first
+ * (v0). The constant generated after the byte -- `float f = p->m_6;` ahead of the part and flag,
+ * `f = 0.05f * f;` after them -- gives exactly the target's GPRs (the constant v0, the byte v1, the
+ * flag extracted ahead of the part) but puts the conversion in f's own register ($f20, the product
+ * `mul.s $f20,$f20,$f0`) where the target converts into a temporary ($f1) and multiplies constant
+ * first; a separate conversion local is forwarded to its single use (56 off), all 24 orders of the
+ * four locals as they stand 6-66 off */
 /* whether the mission's mode takes no hits (the name ours: the handler's test materialised) */
 inline bool NoHitMode(int mode)
 {
@@ -1775,6 +1789,68 @@ void func_002B8100(CZSealBody *body, CPnt3D *pos, CMatrix *m, int flags);   /* (
 void func_00543D50(CZSealBody *body);   /* (OVL2) */
 }
 
+/* the AI maps (ai_maps.h's CAiMaps: only the spawn points) */
+class CAiMaps {
+public:
+    bool GetSporeLocation(unsigned int type, unsigned int n, CPnt3D *pos, CPnt3D *dir);   /* OVL2 0x52B5C0 */
+};
+
+extern CAiMaps AiMaps;
+
+/* the entity as a SEAL, if it is one (seal.cpp's AsSeal) */
+inline CZSealBody *AsSeal(CEntity *e)
+{
+    return e && e->m_type == 2 ? (CZSealBody *)e : 0;
+}
+
+/* the spawn point of a kind farthest from the enemy: of the SEAL's client's share of the points (a
+ * 24th of them, from its client's index on), the one whose nearest enemy SEAL is farthest away,
+ * squared distances (SOCOM II's; OVL1 0x2B7EE0 -- 0x2B8100, the spawn point's finder, calls it with
+ * the kind's point count). The target's shape: the entity list's begin and end taken once ahead of
+ * the walk (initialised -- the end then lives in a register, the begin is assigned to the walking
+ * iterator each pass, a bitwise copy into its slot), the team test with the SEAL as `this` and the
+ * player the inline's parameter (the player's team address hoisted, the player itself dead), the
+ * kind an `int` (an `unsigned int` homes it at the entry, the target in the loop's preheader), the
+ * counts declared ahead of the best distance (the division scheduled first) and the nearest distance
+ * declared at the top, defined in the loop (it numbers below the best: $f21 against $f20) */
+extern "C" int func_002B7EE0(CZSealBody *self, int type, int count)
+{
+    CEntityList::const_iterator i;
+    float nearest;
+    int per = count / 24;
+    int first = per * self->m_fc8;
+    int last = first + per;
+    int pick = first;
+    float best = -1.0f;
+    CEntityList::const_iterator start = CEntity::GetEntityList().begin();
+    CEntityList::const_iterator end = CEntity::GetEntityList().end();
+
+    for (int k = first; k < last; k++) {
+        nearest = -1.0f;
+        CPnt3D pos, dir;
+
+        AiMaps.GetSporeLocation(type, k, &pos, &dir);
+        for (i = start; i != end; ++i) {
+            CZSealBody *seal = AsSeal(*i);
+
+            if (seal && seal->IsEnemy(self)) {
+                CPnt3D d;
+
+                pos.Sub(&seal->m_posW, &d);
+                float dist = d.x * d.x + d.y * d.y + d.z * d.z;
+
+                if (dist < nearest || nearest == -1.0f)
+                    nearest = dist;
+            }
+        }
+        if (!(nearest <= best)) {
+            best = nearest;
+            pick = k;
+        }
+    }
+    return pick;
+}
+
 /* the player's SEAL put into a network game: its network object made and set as this console's,
  * moved to its spawn point (SOCOM II's finder where SOCOM 1 asked the AI maps for a spore), given
  * the squad's order 31, made anew at the game's start when the game says so, and sent (SOCOM 1's
@@ -1832,12 +1908,7 @@ extern "C" void func_002B7C90(CTurret *turret)
     turret->m_4 = CZPlatformState::CreateLocalPlatform(turret);
 }
 
-/* the entity as a SEAL or a turret, if it is one (seal.cpp's AsSeal; the turret's the same, ours) */
-inline CZSealBody *AsSeal(CEntity *e)
-{
-    return e && e->m_type == 2 ? (CZSealBody *)e : 0;
-}
-
+/* the entity as a turret, if it is one (AsSeal's twin, ours) */
 inline CTurret *AsTurret(CEntity *e)
 {
     return e && e->m_type == 3 ? (CTurret *)e : 0;
