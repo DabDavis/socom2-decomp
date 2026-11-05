@@ -346,6 +346,7 @@ class CGNode;
 struct IPNT2D;
 class CGEdge;
 class CGraph;
+class CGRoute;
 
 /* the AI maps' graph fixups (ai_mapio.cpp; SOCOM 1's, ai_maps.cpp's there) */
 void _fixupEdge(CGraph *graph, CGEdge *edge, bool fix, unsigned int &n, void *data);
@@ -365,6 +366,10 @@ public:
     CGNode *CreateNode();
     CGEdge *CreateEdge(CGNode *a, CGNode *b);
     CGNode *GetNodeByNodeEx(const void *ex);
+    /* the edge between two nodes, and the route between two (graph_main.cpp's and graph_tree.cpp's:
+     * CAiPath::plan_addleg's detour through the map's regions) */
+    CGEdge *FindEdge(CGNode *a, CGNode *b);
+    bool BuildRoute(CGNode *start, CGNode *end, unsigned int mask, CGRoute *route);
 
     char *m_name;   // 0x0
     std::list<CGNode *> m_nodes;   // 0x4
