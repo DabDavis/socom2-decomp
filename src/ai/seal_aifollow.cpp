@@ -503,6 +503,71 @@ bool CAiSFollow::Virtual3C(CSealCtrlAi *ai)
     return m_f4 < data_00650C38 && (m_6c & 8) != 0;
 }
 
+/* the follower's stance kept with its master's (OVL2 0x5FC590: SOCOM 1's
+ * CSealCtrlAi::HandleFollowTickStance(bool, bool, float) by its place, right before the hide check
+ * in both builds -- a member of the state here, the float gone; CAiSFollow::Tick calls it; the
+ * names ours). Nothing to do but stand when the entity's flag 0x20000 is set; else the master's
+ * own stance (stand, crouch or prone, anything else the follower's) is the one to take -- asked to
+ * (`match`) or moving (`moving`): crouching for a player master when the follower stands and
+ * moves, then a duck where the AI finds one (after two to three seconds), else the master's; asked
+ * neither, crouching under a player or a Navy SEAL's AI, standing otherwise. A stance that differs
+ * is set, delayed */
+/* a random time, the minimum plus a random part of the range (SOCOM 1's Rfloat's operator float
+ * without its zero-range test: the 1.0 range's multiply stays -- written as a literal product the
+ * front end folds it away; the name ours) */
+static inline float FollowRand(float min, float range)
+{
+    float r = 4.656612873e-10f * (float)rand();
+
+    return min + range * r;
+}
+
+void CAiSFollow::StanceCheck(CSealCtrlAi *ai, bool match, bool moving)
+{
+    SEAL_STANCE cur = ai->m_stance;
+    float delay = -1.0f;
+    SEAL_STANCE stance = cur;
+
+    if (ai->m_entity->m_team & 0x20000)
+        stance = (SEAL_STANCE)0;
+    else {
+        CZSealBody *master = m_master;
+        SEAL_STANCE want;
+
+        switch (master->GetStance(false)) {
+        case 0:
+            want = (SEAL_STANCE)0;
+            break;
+        case 1:
+            want = (SEAL_STANCE)1;
+            break;
+        case 2:
+            want = (SEAL_STANCE)2;
+            break;
+        default:
+            want = cur;
+            break;
+        }
+        if (match || moving) {
+            if (moving && cur == 0) {
+                if (master->IsPlayer())
+                    stance = (SEAL_STANCE)1;
+                else
+                    stance = want;
+            }
+            if (ai->GetDuckStance(master, stance))
+                delay = FollowRand(2.0f, 1.0f);
+            else if (want != 0)
+                stance = want;
+        } else if (master->IsPlayer() || (ai->m_navyseal ? true : false))
+            stance = (SEAL_STANCE)1;
+        else
+            stance = (SEAL_STANCE)0;
+    }
+    if (stance != cur)
+        ai->SetStanceDelayed(stance, delay);
+}
+
 /* a record whose first byte's low five bits are a kind (the follow's Tick and 0x5FD790 test it;
  * the names ours) */
 struct CAiFollowKind {

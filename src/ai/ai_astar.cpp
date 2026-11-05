@@ -173,22 +173,18 @@ bool CRestrainedPlanner::is_traversable(CAiMap *map, CAiPath *path, const CAiMap
  * cell 25 (SOCOM 1's CAiPlanner::fcost; SOCOM II adds the overlays and the collision soil). Both
  * cells read through GetCell inlined one level, the overlays' walk inlined whole; the diagonal's
  * factor a ternary (constant-first, as the target's mul.s), the last occupied test the field
- * itself (through IsOccupied() MW loads the byte again).
- * OPEN, 0x380 against 0x378 (new in the AI core round 26): one load. The target keeps the far
- * cell's byte from the steep test's second compare (lbu v1, the soil andi'd off it) and the inlined
- * overlay walk's occupied test reads that register; here CAiOverlayList::Contains(cell, loc) loads
- * the byte again (and the loop head moves a word). Not through its parameter: the field read
- * directly in Contains, the cell by reference, the far soil in a local (loaded unconditionally then,
- * 88 off) all keep the reload; only the test written in the caller on `b` itself
- * (`b->m_occupied && overlays.Contains(to)`) shares the load -- but then the occupied miss jumps
- * past the walk's materialised result, which the target's inline holds (11 off) */
+ * itself (through IsOccupied() MW loads the byte again). Byte-exact since the AI core's round 27:
+ * the steep test reads the soils through CAiCell::GetSoil -- an accessor's load is shared with a
+ * later accessor's on the same cell, so the inlined overlay walk's IsOccupied (through Contains'
+ * parameter) reuses the far cell's byte as the target's does (0x380 against 0x378 with the fields
+ * read directly, round 26: the walk loaded it again; the far soil's accessor alone suffices too) */
 float CAiPlanner::fcost(CAiMap &map, const CAiMapLoc &from, CAiMap::DIR dir, const CAiMapLoc &to)
 {
     CAiCell *a = map.GetCell(from, 0);
     CAiCell *b = map.GetCell(to, 0);
     float cost = 1.0f;
 
-    if (a->m_soil == CAiMap::SOIL_STEEP || b->m_soil == CAiMap::SOIL_STEEP) {
+    if (a->GetSoil() == CAiMap::SOIL_STEEP || b->GetSoil() == CAiMap::SOIL_STEEP) {
         float ha;
         float hb;
 

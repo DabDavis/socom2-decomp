@@ -2091,6 +2091,78 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
   - GetLegBoundary's reverse walk needs no header change (the AI core's round 27: the iterator declared before the loop
     and assigned stays in memory); include/vector's stand-in note updated -- all eight depth-6 stand-ins are gone, refit
     at level 5 by a `data_ + size_` `Last()` end or the helper's walk written out.
+- **Tells from the kit and AI states, round 40** (CZKit's Init, Reload, ChamberLauncherRound, UpdateScopeModel and
+  ChangeItemModel; CAiSFollow::StanceCheck):
+  - `mag > 9` compiles to the target's fused `slti at` / `bnez at`, `mag >= 10` computes the compare into a register
+    (ChamberLauncherRound 0x5C3000, Reload 0x5C2A90 -- SOCOM 1's Reload plus SOCOM II's online free refill: a pistol
+    always, a primary other than items 142 / 143 when players respawn);
+  - MW folds a literal `1.0f * x` away as it parses, a 1.0 range passed through an inline's float parameter keeps the
+    multiply (StanceCheck 0x5FC590's random delay); an int parameter is switched on unmasked, an unsigned char or byte
+    enum one gets an andi first -- and passing an int to an unsigned char parameter masks at the call, so a callee that
+    narrows its own index wants an int parameter and a cast inside (AttachItemNode 0x5C6980, renamed);
+  - `ev = f(); if (!ev)` tests the copy (`move a1,v0; beqz a1`), `if ((ev = f()) == 0)` branches on v0; IsPersistent()'s
+    materialised bool costs 8 bytes where `!= NoExpire && <= 0.0f` written out is the target's (EventTick 0x5FAAE0, now
+    the target's size, 30 off);
+  - placing the light map at the origin, both builds store -0.0 into the projection and pass -0.0 to SetPosition through
+    one held pointer: `SetPos(0, 0, 0)` passes +0.0, and writing through m_lightMap reloads it after each store (Init
+    0x5C7E00, SOCOM 1's call for call); UpdateScopeModel 0x5B82E0 swaps the sniper rifle's "scope" / "thermal_scope"
+    nodes by item 195 (new in SOCOM II).
+- **Tells from the AI core, round 27** (the map's three direction counts, fcost, GetLegBoundary, PrintPath, Tile):
+  - an accessor's load of a byte is shared by a later accessor's read of it (`IsOpaque() && GetSoil() != SOIL_NOALT`
+    reuses the load, and so does the inlined overlay walk's IsOccupied after the steep test reads through GetSoil:
+    CAiPlanner::fcost 0x512930); a direct field read after an accessor reloads;
+  - a struct loop variable declared before the loop and assigned (`reverse_iterator r; for (r = c.rbegin(); ...)`) stays
+    in memory, initialised in the `for` it lives in a register (CAiPath::GetLegBoundary 0x5279E0, PrintPath 0x524950 --
+    include/iterator's reverse_iterator needed no change); a field read straight after a direct store puts the field's
+    address in a register for the pair, through an inline accessor both stay plain stack offsets (CAiMap::Tile 0x536230);
+  - a dead GetCell inlined one level keeps its out-of-line calls and drops the address arithmetic (CountMapExitDir
+    0x535730, new in SOCOM II); a pointer initialised to 0 and passed by reference into an inline keeps its zeroing; an
+    inline's static buffer passed on as `sprintf(p = buf, ...); return p;` keeps its address in a saved register across
+    the call, returned straight MW rebuilds it after the call (PrintPath);
+  - `if (c) w = 1; else w = -1;` keeps the branches where `?:` gives movz or folds three compares into a bit test; flags
+    read unnamed give the target's register order (CountMapTravelDir 0x535A40 / CountMapVisDir 0x535DF0, SOCOM 1's,
+    told apart by behaviour: one stops at ground a step may not end on, the other at opaque soil; MAP_DIRCOUNT laid out
+    whole).
+- **Tells from the SEALs, round 38** (the restraint capture, the restrain / stab / carry stretch of seal_body.cpp):
+  - in a function with many calls every variable needing a saved register also conflicts with 19 hardware registers, so
+    one with six long-lived variable neighbours sits exactly at K -- a bool declared first and set with if/else drops it
+    below K and gives the target's saved registers (RestrainBuddy 0x578990; as an inline bool or `busy = a && b` it stays
+    59 off); when a loop's result stays in v0 but a later result is long-lived, the original had two variables (`r = b;`);
+  - a call's argument that is an inline call (`GetNode()->SetMatrix(m_carry->GetNode()->GetMatrix())`) is expanded
+    before the call's own receiver, written as `&...->m_matrix` MW fetches the receiver first (DetachBody 0x579220); a
+    compare's constant left in an argument register before a nop'd delay slot is the next call's argument (GetStance(true));
+  - SOCOM II splits SOCOM 1's RestrainBuddy / StabBuddy in two -- these set up, an anim callback 3 seconds in finishes
+    (0x578D20 the stab's kill; PutdownBuddy 0x5794D0, PickupBuddy 0x579720, CrouchToPickupBuddy 0x579A30 named by SOCOM
+    1's order); the restraint capture 0x5784A0 and 0x58C600 match with AnimSet::GetName fitted five levels high in
+    seal_cfg.cpp's AnimSet view (the kit's anim.cpp shape; its comment says fitted).
+- **Tells from the weapons, round 25** (the lights packet send at last, the turret AI's fire control and target scan):
+  - a by-value 4D copy through a frame temporary with its field addresses hoisted out of the loop is a `CPnt4D(src)`
+    temporary passed to an inline by const reference; thread the cursor through the inline's return to get two +16 steps
+    instead of one +32 (0x3B6B20, open since round 13);
+  - MW expands an inline (Dot) ahead of an out-of-line call in the same compare whichever side the call is on -- to make
+    the call come first put its result in a local (0x3A8030); `fire = a > b` gives `li 1 / c.le.s / move zero`, `!(a <=
+    b)` adds an xori; an out-of-line `return !Lost(t)` stays byte-exact when its body moves into an inline returning lost
+    that another function tests directly (0x3A82C0 / 0x3A7FA0);
+  - a stack record's byte flag stored before the other members belongs in the mem-initializer list; a member container
+    kept in a saved register needs a reference local taken before the intervening call; `while (last) { next =
+    last->m_next; if (!next) break; last = next; }` gives the target's entry test and a bottom bnez on the new end; a float
+    parameter's position in the callee's prototype changes the caller's set-up (placed first, its mov.s $f12 schedules
+    first); each class level adds one to both a member's constructor and destructor chains -- ~CVehicle's extra
+    destructor level alone is no class shape (its depth-6 stand-in shape declined at integration: OPEN).
+- **Tells from the HUD, round 46** (the five C2D GetAssetLibs, CHandlerButton::HandlePad, ReadPlacement):
+  - a list walk's end in `this`'s register: declare the end node uninitialised first and assign it after begin() -- MW
+    numbers it at the declaration but computes it where `this` dies, so it takes this's saved register (all five C2D
+    GetAssetLibs 0x3585A0 / 0x35F8F0 / 0x360A20 / 0x361500 / 0x3641F0 from drafts to source, find<CAssetLib *> 0x3586B0
+    with them, CHandlerButton::HandlePad 0x3765A0);
+  - MW uses what an already-generated callee clobbers only when the copy is the unit's own (anonymous namespace or
+    static): a global class's inline copies could be swapped at link time, so every caller-saved register is assumed lost
+    -- CFontPoint moved into the anonymous namespace kept ReadPlacement 0x35AA80's value in a2;
+  - a lookup done inside a cut inline (`ReadPoint(rdr, tag)`) is a call, the same lookup passed as that inline's argument
+    is inlined (FlatFindTag 0x35A240, called only from those two sites); a field assigned from an address-taken local
+    right after it is read keeps the value in a saved float register across the next call;
+  - include/vector's class vector gains rbegin() / rend() (additive); hudAddPopupDefinition 0x22D660 wants its name-append
+    helper six levels high (our push_back / end / rbegin and the CSaferStr temporary two levels shallower than the
+    original's: the MSL's).
 - **Tells from the world, rdr and sound, round 18** (CSnd::PostTick, the mission's sounds, CAlpha::Render; the last
   depth-6 stand-in dropped):
   - an int `x > -1` branches slti/bnez and `x >= 0` branches bltz -- a size-only check can hide it when another

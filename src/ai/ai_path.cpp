@@ -219,13 +219,12 @@ CAiMap *CAiPath::GetLegMap(int leg)
 /* the indices of a leg's first and last points: the points walked from the back, the legs' ends
  * met in turn -- a leg's start before its goal -- each next leg's ends read on its last one's goal
  * (SOCOM 1's GetLegBoundary, the same shape: GetLegPoints inlined, the reverse walk's iterators in
- * stack slots).
- * OPEN, 0x240 against 0x260 (new in the AI core round 26): the frame. Every instruction of the
- * tests is the target's, but the target keeps the walk in memory -- rbegin()'s end temporary
- * (sp+28) copied through $f0 into the reverse iterator (sp+20), a word copy (sp+32), $f0 again into
- * `r` (sp+36); rend() rebuilt each pass the same way (sp+12 -> sp+8), the cells at sp+44/40 -- where
- * MW scalarises every iterator here. Tried: the reverse iterators built in place from end()/begin(),
- * points' own rbegin()/rend() (ai.h), a reverse iterator over an empty base class: all 0x240 */
+ * stack slots). Byte-exact since the AI core's round 27: the reverse iterator declared before the
+ * loop and ASSIGNED rbegin() stays in memory for the whole walk -- rbegin()'s end temporary copied
+ * through $f0 into the reverse iterator, a word copy into the returned temporary, $f0 again into `r`
+ * (0x240 against 0x260 with `r` initialised in the for: MW scalarised it); include/iterator's
+ * reverse_iterator is the target's as it stands. The point's index declared before the leg's count
+ * (n t1, i t2) */
 bool CAiPath::GetLegBoundary(int &first, int &last, int leg) const
 {
     first = last = -1;
@@ -238,13 +237,14 @@ bool CAiPath::GetLegBoundary(int &first, int &last, int leg) const
         last = 0;
         return true;
     }
-    unsigned int n = 0;
     int i = m_points.size() - 1;
+    unsigned int n = 0;
     CAiMapLoc start;
     CAiMapLoc goal;
+    points::reverse_iterator r;
 
     GetLegPoints(start, goal, n);
-    for (points::reverse_iterator r = ((points &)m_points).rbegin(); r != ((points &)m_points).rend(); ++r, --i) {
+    for (r = ((points &)m_points).rbegin(); r != ((points &)m_points).rend(); ++r, --i) {
         if (*r == start && n == leg)
             first = i;
         if (*r == goal) {
@@ -681,6 +681,67 @@ bool CAiPath::SetPathType(PATH_TYPE type)
     if (m_state != PLANNING)
         m_type = type;
     return type == m_type;
+}
+
+/* a cell as text, the map, x and y, into one buffer (the name ours: PrintPath's, inlined -- the
+ * buffer at OVL2 0x66A000, its only reader). The buffer handed on through a pointer assigned in
+ * the call's argument: so the target keeps its address in a saved register for the caller's
+ * sprintf (returned straight, MW rebuilt it there with lui/addiu, 4 bytes short) */
+inline const char *LocText(const CAiMapLoc &loc)
+{
+    static char buf[32];
+    char *p;
+
+    sprintf(p = buf, "%2d:%4d,%4d", loc.m_mapid, loc.x, loc.y);
+    return p;
+}
+
+/* the path drawn: each leg's bounds found, then each point from the last, its index, cell, width,
+ * link and action bits, the legs' ends and the cell's name built into a line -- whose output, and
+ * the name's, compiled out (SOCOM 1's PrintPath(), the text new in SOCOM II: its walk only, the
+ * prints compiled out there too). The walk is GetLegBoundary's, its reverse iterator assigned; the
+ * count read into an int local ahead of the text (unsigned, it and the buffer swapped registers),
+ * the point's index declared after the first leg's ends */
+void CAiPath::PrintPath(const char *name) const
+{
+    for (unsigned int leg = 0; leg < m_legcount; leg++) {
+        int first = -1;
+        int last = -1;
+
+        GetLegBoundary(first, last, leg);
+    }
+    unsigned int n = 0;
+    CAiMapLoc start;
+    CAiMapLoc goal;
+    points::reverse_iterator r;
+
+    GetLegPoints(start, goal, n);
+    int i = 0;
+
+    for (r = ((points &)m_points).rbegin(); r != ((points &)m_points).rend(); ++r, i++) {
+        char line[128];
+        int sz = m_points.size();
+
+        sprintf(line, "  pt%2d:  %s width=%d", sz - 1 - i, LocText((*r).m_loc), (*r).m_width);
+        if ((*r).m_flags & 2)
+            strcat(line, " LINK");
+        if ((*r).m_flags & 1)
+            strcat(line, " ACTION");
+        if (*r == start)
+            strcat(line, " LEG START");
+        if (*r == goal) {
+            strcat(line, " LEG_END");
+            n++;
+            GetLegPoints(start, goal, n);
+        }
+        CAiMap::name *nm = AiMaps.GetCellName((*r).m_loc);
+
+        if (nm) {
+            strcat(line, " (");
+            strcat(line, nm->m_name);
+            strcat(line, ")");
+        }
+    }
 }
 
 /* the point on the cell itself, its index handed back when asked (new in SOCOM II, the name ours:

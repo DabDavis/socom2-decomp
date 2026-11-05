@@ -892,7 +892,13 @@ struct CONE {
  * first: 0x4D8), `r -= 0.5f`, `t = r - 0.5f` and `k = 2.0f * (r - 0.5f)` locals change nothing.
  * Round 21 for (2), by the first-definition rule: a dead `id = EQUIP_NONE` at the top or just ahead,
  * the id declared at the top uninitialised, read twice, through an int or a signed-char view --
- * all fold to lbu; assigned in both arms of the detonation test (a join) it is 0x4DC */
+ * all fold to lbu; assigned in both arms of the detonation test (a join) it is 0x4DC. Round 25,
+ * MW's float colouring read off igdump (class 1: build/scratch/wep/igf.py, igcode.py): the nodes
+ * colour in descending number, each the lowest FPR free, so the target's f1 product needs the 2.0,
+ * the product and the difference's complement ONE node numbered between the 1.0 temporary (v66) and
+ * the difference (v71) -- a temporary coalesced at the 2.0's number; a k local or an inline's
+ * variable is numbered below the 1.0 and colours after it (r and 1.0 swap: 9 off); r as a
+ * temporary (`dist / rad` written out) 5 off, `1.0f < r` 7 off */
 float CZProjectile::GetDamage(const CPnt3D *pos, float minimum)
 {
     float damage;
