@@ -883,7 +883,8 @@ extern "C" const float data_003E0850;
  * step tests the cross product still in its register (a `cross` variable the clamp's copy starts
  * from) and is `cross >= 0 ? 1 : -1` (the target's bc1t to -1); `cross < 0 ? -1 : 1` or an if/else
  * branch the other way (11 more). Tried for the negation: three statements (y, x, z or x, y, z),
- * the three-float constructor, an inline Neg(CPnt3D *) -- the same two addresses or worse */
+ * the three-float constructor, an inline Neg(CPnt3D *), the axis out of an inline returning it by
+ * value (the row or the z axis) -- the same two addresses or worse; assigned, it scalarises (38) */
 extern "C" bool func_003A8910(CTurret *t, const CPnt3D *dir, float *yaw, float *pitch)
 {
     CPnt3D d = *dir;
