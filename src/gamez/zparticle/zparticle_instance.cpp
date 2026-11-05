@@ -48,6 +48,61 @@ void Instance::List::RemoveSource(Source *source)
     }
 }
 
+/* SOCOM 1's (its node's spin dropped): aged by the step; while alive a rotated one turns and
+ * stops turning when its spin changes sign, a streak's start follows the position, the position
+ * and velocity are integrated over the tick on VU0, and the friction draws the velocity toward
+ * the world's wind. Byte-exact (the world lane round 22): the draw type through the getter in each
+ * test (one `lb + andi 0xff` -- read into a local, or switched on, it folds into lbu), the step in a
+ * local for the spin (one load), `if (friction)` (its `!= 0.0f` puts the zero first in c.eq.s), the
+ * pull toward the wind written in place (its operands evaluated in their order: through an inline's
+ * parameters MW loads the world before the velocity's address) */
+void Instance::Tick(float dT)
+{
+    if (m_source->m_frozen)
+        return;
+    m_age += dT;
+    if (m_age < m_lifespan) {
+        if (m_source->GetDrawType() == PT_ROTATED) {
+            float dt = m_dT;
+
+            m_10[0] += dt * m_10[1];
+            float old = m_10[1];
+
+            m_10[1] = old + dt * m_10[2];
+            if ((old > 0.0f || m_10[1] > 0.0f) && (old < 0.0f || m_10[1] < 0.0f)) {
+                m_10[1] = 0.0f;
+                m_10[2] = 0.0f;
+            }
+        } else if (m_source->GetDrawType() == PT_STREAKED) {
+            m_10[0] = m_pos[0];
+            m_10[1] = m_pos[1];
+            m_10[2] = m_pos[2];
+            m_10[3] = m_pos[3];
+        }
+        AddScaled(m_pos, m_vel, m_dT);
+        AddScaled(m_vel, &m_props->m_accelW.x, m_dT);
+        if (m_props->m_friction) {
+            float f = FastExp(-m_props->m_friction * m_dT);
+
+            asm __volatile__ (
+                "lqc2 $vf7, 0(%0)\n"
+                "lqc2 $vf4, 0(%1)\n"
+                "mfc1 $8, %2\n"
+                "nop\n"
+                "qmtc2 $8, $vf5\n"
+                "vmulx.xyz $vf4, $vf4, $vf5\n"
+                "vsub.xyz $vf6, $vf7, $vf4\n"
+                "mfc1 $8, %3\n"
+                "nop\n"
+                "qmtc2 $8, $vf5\n"
+                "vmulx.xyz $vf6, $vf6, $vf5\n"
+                "vadd.xyz $vf7, $vf4, $vf6\n"
+                "sqc2 $vf7, 0(%0)\n"
+                : : "r"(m_vel), "r"(&zdb::CWorld::m_world->m_Wind.x), "f"(m_props->m_windFactor), "f"(f) : "$8", "memory");
+        }
+    }
+}
+
 /* SOCOM 1's: every live instance ticked -- at the LOD's age rate when its source asks -- and the
  * dead ones recycled (SOCOM II's list: linked through the instances, not a std::list) */
 void Instance::List::Tick(float dT)

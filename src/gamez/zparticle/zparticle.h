@@ -165,7 +165,9 @@ public:
     static CTexHandle *GetTexHandle(const char *name);
     static CModel *GetModel(const char *name);
 
-    unsigned char _b8[0x128 - 0xb8];
+    unsigned char _b8[0xc0 - 0xb8];
+    PNT4D m_Wind;   // 0xc0: the wind (znode.h's CWind's first member, the world's m_Wind)
+    unsigned char _d0[0x128 - 0xd0];
     CCamera *m_camera;   // 0x128
 };
 }
@@ -435,6 +437,8 @@ public:
     };
 
     ~Source();
+    /* the draw type (SOCOM 1's inline: the instance's tick reads it through a call, lb + andi) */
+    PARTICLE_TYPE GetDrawType() const { return m_drawType; }
     static void RenderBBox();
     void CheckExtents(CPnt4D p, float r);
     void GetBBox(CBBox *box);
@@ -446,7 +450,9 @@ public:
     void TextureSequenceAdd(float fraction, zdb::CTexHandle *tex);
     void TextureSequenceClear();
 
-    unsigned char _0[0x19];   // 0x0: SOCOM 1's m_active .. m_landmark, and SOCOM II's word
+    unsigned char _0[2];   // 0x0: SOCOM 1's m_active, m_goodPos
+    unsigned char m_frozen;   // 0x2 (SOCOM 1's: an instance of a frozen source is not ticked)
+    unsigned char _3[0x19 - 3];   // 0x3: SOCOM 1's m_outOfRange .. m_landmark, and SOCOM II's word
     unsigned char m_doAgeLOD;   // 0x19 (SOCOM 1: 0x15)
     unsigned char _1a[0x2c - 0x1a];   // 0x1a: SOCOM 1's m_doSpawnLOD .. m_streakFade
     float m_minRot;   // 0x2c (SOCOM 1's names, 4 bytes later: the instance constructor's ranges)
@@ -470,6 +476,50 @@ public:
     static CPnt3D referencePositionW;   // 0x4884D0: the camera's position, each tick
     static List list;   // 0x4884F0
 };
+
+/* VU0: d.xyz += s.xyz * f (SOCOM II's: the scale moved from an FPU register, where SOCOM 1's
+ * inline took it as a word; the name ours) */
+inline void AddScaled(float *d, const float *s, float f)
+{
+    asm __volatile__ (
+        "lqc2 $vf7, 0(%0)\n"
+        "lqc2 $vf4, 0(%1)\n"
+        "mfc1 $8, %2\n"
+        "nop\n"
+        "qmtc2 $8, $vf5\n"
+        "vmulx.xyz $vf6, $vf4, $vf5\n"
+        "vadd.xyz $vf7, $vf7, $vf6\n"
+        "sqc2 $vf7, 0(%0)\n"
+        : : "r"(d), "r"(s), "f"(f) : "$8", "memory");
+}
+
+/* e^x by halving into [0, 0.5], a series and squaring back (SOCOM 1's inline, in both builds'
+ * instance ticks; the name ours) */
+inline float FastExp(float x)
+{
+    int neg;
+
+    if (x < 0.0f) {
+        neg = 1;
+        x = -x;
+    } else
+        neg = 0;
+    int n = 0;
+
+    while (x > 0.5f) {
+        n++;
+        x *= 0.5f;
+    }
+    float r = 1.0f + x * (0.5f + x * (0.333333f + x * (0.25f + x * (0.2f + (0.166666f + x) * x))));
+
+    while (n != 0) {
+        n--;
+        r *= r;
+    }
+    if (neg)
+        r = 1.0f / r;
+    return r;
+}
 
 inline bool Instance::AgeLOD() const
 {
