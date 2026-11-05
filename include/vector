@@ -926,22 +926,29 @@ class __vector_imp : public __vector_deleter<T, Allocator> {
  * the size and iterator registers), CUIVariable::Attach 0x3869F0 (IsAttached cut one level, as the
  * target) and eleven pieces named (0x257B90-0x257CB0, 0x257EC0/0x257ED0, 0x34D920, 0x3869C0,
  * 0x3869D0, 0x386980, 0x386AB0). The 19 walks the four-high end cut at -inline level=5 (an inline's
- * `i != end()` six deep in its caller: end()'s body kept, the raw end and __iter called) refit as:
- *   - the source as it was, with `#pragma inline_depth(6)` at the unit's end, in the eight units
- *     whose every function scores at 6 as at 5 -- fts_missionlist.cpp, bone_archive.cpp,
- *     char_type.cpp, util_loc.cpp, zNetMediusClan.cpp, zNetMediusRoom.cpp, zsnd_positions.cpp,
- *     zwep_flyout.cpp: their objects are byte-identical to master's (objcmp), i.e. the new header at
- *     6 gives exactly what the old one gave at 5. The end taken into a local first (round 23's
- *     suggested refit) does not give the target: CMultiMissionList::Find's own copy then colours its
- *     end, flag and element differently (9 off; every spelling tried 5-11 off), FindTable's callers
- *     come out 12 bytes short;
- *   - in ztex_manager.cpp, where depth 6 costs three other functions, CDynTexList::Add(CTexPalette *)
- *     with CTexPalList::Exists written out, its parameter a local (byte-exact).
+ * `i != end()` six deep in its caller: end()'s body kept, the raw end and __iter called) were first
+ * kept by `#pragma inline_depth(6)` stand-ins at the end of eight units (round 24: the new header at
+ * 6 gives exactly what the old one gave at 5, objcmp byte-identical) -- ALL EIGHT NOW GONE: the lanes
+ * refit every walk at level 5 one of two ways, each object byte-identical to the pragma's:
+ *   - the walk ended at a `data_ + size_` iterator, a `Last()` accessor (our spelling, not proven the
+ *     original's): zNetMediusClan.cpp and zNetMediusRoom.cpp (the online lobby's round 20),
+ *     bone_archive.cpp (the engine core's round 15, a free inline `iterator((T **)v.data_ + v.size_)`
+ *     for a plain vector member), char_type.cpp (the AI core's round 26), util_loc.cpp (the UI's
+ *     round 25), zsnd_positions.cpp (the zdb world's round 18);
+ *   - the inlined helper's walk written out in each caller: zwep_flyout.cpp (the weapons' round 24,
+ *     CPlacedExplosiveList's constructor and destructor writing Clear's walk out), fts_missionlist.cpp
+ *     (the game states' round 36: `Last()` was 11 off there), and round 24's own ztex_manager.cpp,
+ *     where depth 6 cost three other functions (CDynTexList::Add(CTexPalette *) with CTexPalList::
+ *     Exists written out, its parameter a local).
+ *   The end taken into a local first (round 23's suggested refit) does not give the target:
+ *   CMultiMissionList::Find's own copy then colours its end, flag and element differently (9 off;
+ *   every spelling tried 5-11 off), FindTable's callers come out 12 bytes short.
  * So the original's walks are the natural ones and its level is deeper than 5 (README "Level 6, or
- * 8?"). Two levers measured on the way (round 23): inline_max_size counts a local's `const` and a
- * loop test's end() twice (the duplicated test), and the raw pair's constness decides whether a
- * walk's first test reuses begin's load of the data. The pod's raw `end() const` round 23 carried
- * is used by nothing (removed: neutral over every hand-written unit) */
+ * 8?"); the `Last()` ends and the written-out walks are level-5 fits. Two levers measured on the way
+ * (round 23): inline_max_size counts a local's `const` and a loop test's end() twice (the duplicated
+ * test), and the raw pair's constness decides whether a walk's first test reuses begin's load of the
+ * data. The pod's raw `end() const` round 23 carried is used by nothing (removed: neutral over every
+ * hand-written unit) */
 template <class T, class Allocator>
 class __vector_imp<T *, Allocator, true> : public __vector_pod<unsigned int, allocator<unsigned int> > {
     typedef __vector_pod<unsigned int, allocator<unsigned int> > __base;
@@ -967,7 +974,13 @@ class __vector_imp<T *, Allocator, true> : public __vector_pod<unsigned int, all
     /* end(): the raw end held in a const local first, as the subtitle walk's second level shows it
      * (the raw end inlined there, at __iter's level) -- so written, _countKeys keeps its four
      * self-inlined copies (the MSL headers round 24: byte-exact; round 23 measured MW counting the
-     * local's const and the end twice, the loop's test being duplicated, against inline_max_size) */
+     * local's const and the end twice, the loop's test being duplicated, against inline_max_size).
+     * Round 25, CKey::CountKeys 0x25B300 (its second copy calls the raw end where this inlines it and
+     * calls the pod's end): `return __iter(__raw_end());` (the raw end __iter's argument, a level
+     * deeper, as begin's raw begin) makes CountKeys byte-exact and keeps NextFile 0x34D740, but costs
+     * _countKeys 0x2578F0 (25 off) and fixupKey 0x257CC0 (23 off), whose ends sit in the loop test;
+     * a non-const local the same as now, a reference local or an iterator local lose more
+     * (build/p25/vend.py) -- not met: the walks disagree at level 5 */
     iterator end()
     {
         unsigned int *const p = __raw_end();
@@ -995,9 +1008,13 @@ class __vector_imp<T *, Allocator, true> : public __vector_pod<unsigned int, all
     {
         return __iter(__base::erase((unsigned int *&)first, (unsigned int *&)last));
     }
-    /* one element erased: the iterator taken by value, the pod's single erase called (the UI lane:
-     * ~CRadioStripSpec's walk) */
-    iterator erase(iterator position) { return __iter(__base::erase((unsigned int *)position.m_p)); }
+    /* the single erase's raw level, T-dependent as the raw ends (0x386920, vector<UIVarMixin *>'s: a `j`
+     * to the pod's erase 0x28F220; the name ours) */
+    unsigned int *__raw_erase(unsigned int *position) { return __base::erase(position); }
+    /* one element erased: the iterator taken by value, its base() handed to the raw erase, the iterator
+     * made again by __iter (the UI lane: ~CRadioStripSpec's walk; CUIVariable::Detach 0x3866F0's inner
+     * copy calls base() 0x386930, the raw erase 0x386920 and __iter 0x386910 out of line) */
+    iterator erase(iterator position) { return __iter(__raw_erase((unsigned int *)position.base())); }
     void clear() { __vector_pod<unsigned int, allocator<unsigned int> >::clear(); }
     void swap(__vector_imp &x) { __base::swap(x); }
     /* No reserve of its own: vector<T *> forwards to the pod's (below). The states lane's round 22
@@ -1080,6 +1097,14 @@ class __vector_imp<T *, Allocator, true> : public __vector_pod<unsigned int, all
          * m_c.end()` here the data is re-read every pass (0x18 short) -- end() through the     \
          * pod's end(), a const local, data_ straight or data() all alike) */                   \
         iterator __iter(unsigned int *const &p) { return iterator((elem_t *)p); }               \
+        /* the end through the pod's end (data()'s reference): a walk then re-reads the data     \
+         * pointer each pass and hoists only size*4, as the headset's vector<int> walks do       \
+         * (IsQueued 0x34A7B0, Queue, Remove, StopSound). Round 25, the UI's third witness:      \
+         * CSkbSplit::Next 0x3903A0 reads the end's data straight off this (`lw a2,12(s2)`)      \
+         * where this shares data()'s address register with m_parts[0]; `this->data_ +           \
+         * this->size_` here gives Next's read but hoists the headset's ends whole -- over every \
+         * hand-written unit -4 (the four headset walks), +0 (Next still misses on its level),   \
+         * not applied (build/p25/vector.s1) */                                                 \
         iterator begin()                                                                        \
         {                                                                                       \
             unsigned int *const p = __base::begin();                                            \

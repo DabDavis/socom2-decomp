@@ -376,9 +376,13 @@ struct MAP_FOREACH_STRUCT;
 /* a cell handed to a line walk's callback (SOCOM 1's; not laid out yet) */
 /* a cell handed to a flood fill's callback (below CAiMap: its direction is a CAiMap::DIR) */
 struct MAP_FLOODFILL_STRUCT;
+struct MAP_DIRCOUNT;
 struct MAP_LINEWALK_STRUCT {
     CAiMap *m_map;   // 0x0
-    unsigned int m_unk4[2];   // 0x4
+    /* the line's two cells (the names ours: CAiMaps::WalkLine sets the first to the start point's
+     * cell and the second to the end point's, invalid until found; the maps' WalkLines alike) */
+    CAiMapLoc m_start;   // 0x4
+    CAiMapLoc m_end;   // 0x8
     CAiMapLoc m_loc;   // 0xc: the cell reached
     CAiCell *m_cell;   // 0x10
     float m_dist;   // 0x14: how far along (the sighting callback squares it against its range)
@@ -972,6 +976,14 @@ public:
     /* how many rings of open cells surround one, up to a limit (SOCOM 1's; the walker unit's
      * 0x5396C0) */
     int GetLocationWidth(const CAiMapLoc &loc, int max);
+    /* each direction's cells counted out from one, up to the count's range, into the count (new in
+     * SOCOM II, the walker unit's; the names ours): from inside ground a step may not end on, the
+     * cells to the nearest one it may (0x535730, CAiSPathRecover::Tick's); SOCOM 1's two counts,
+     * over ground a step may end on, the soils weighed by the flags (0x535A40), and over ground the
+     * eye passes on a climb no steeper than 15 (0x535DF0) */
+    void CountMapExitDir(const CAiMapLoc &loc, MAP_DIRCOUNT *dc);
+    void CountMapTravelDir(const CAiMapLoc &loc, MAP_DIRCOUNT *dc);
+    void CountMapVisDir(const CAiMapLoc &loc, MAP_DIRCOUNT *dc);
     /* a layer index the map has (the name ours; 0x512120) */
     bool IsLayer(int layer) const { return layer >= 0 && layer < GetLayerCount(); }
     /* the layers' count (the name ours) */
@@ -1325,16 +1337,20 @@ struct MAP_FLOODFILL_STRUCT {
 /* a cell handed to a walk's callback (SOCOM 1's MAP_FOREACH_STRUCT, which its DWARF does not lay
  * out: the map, the cell and its location as the callbacks read them) */
 /* a cell's counts by direction, N to NW (new in SOCOM II, the names ours, after SOCOM 1's
- * CountMapTravelDir/CountMapVisDir count arrays: the walker unit's counters 0x535730, 0x535A40 and
- * 0x535DF0 fill it -- CAiSRush::Tick zeroes the first word and sets the second to 64 first) */
+ * CountMapTravelDir/CountMapVisDir count and cell arrays, which SOCOM II gathers with the soils'
+ * flags and the range: the walker unit's counters CountMapExitDir 0x535730, CountMapTravelDir
+ * 0x535A40 and CountMapVisDir 0x535DF0 fill it -- CAiSRush::Tick zeroes the flags and sets the
+ * range to 64 first; 0x559580 passes its mask's low half as the flags; 0x48 bytes) */
 struct MAP_DIRCOUNT {
     /* the direction of the most counts (ai_mapwalk.cpp's 0x5350C0) */
     CAiMap::DIR GetBestDir(bool smooth, const CPnt3D *heading);
 
-    int m_unk0;   // 0x0
-    int m_range;   // 0x4
+    /* the soils a count weighs: the travel count's 1 grass, brush or forest, 2 a concealing soil, 4
+     * off the road; the visibility count's 1 stops after grass, brush or forest */
+    unsigned int m_flags;   // 0x0
+    int m_range;   // 0x4: how many cells out each direction is counted
     int m_count[8];   // 0x8
-    /* (the counter 0x535A40 steps a cell at +0x28 out along each direction: not laid out yet) */
+    CAiMapLoc m_loc[8];   // 0x28: the last cell counted each way (the start where none was)
 };
 
 struct MAP_FOREACH_STRUCT {
