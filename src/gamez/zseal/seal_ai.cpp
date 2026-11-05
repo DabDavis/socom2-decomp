@@ -2214,22 +2214,22 @@ unsigned char func_0055FA90(CAiMap *map, const CAiMapLoc &loc, CAiMap::DIR dir);
 
 /* a cell to look from, and one to take cover in, near the SEAL's last good cell (its map's
  * FindLookLoc and FindCoverLoc): the side it faces handed back, 2 when none is found (OVL2 0x55F7F0
- * and 0x55F940, new in SOCOM II: CAiSPursue::Tick calls both; the names unknown).
- * OPEN, both 27 instructions, registers only (the code and its size right): the target numbers the
- * result lowest and the map highest -- map s0, radius s1, side s2, out s3, pos s4, found s5 -- where
- * MW here gives the map s5 and shifts the parameters down one. Tried: the flag declared first, every
- * local declared first and assigned after, the call made in the test. Its being numbered below the
- * parameters says the flag is not a plain local: an inline (the two finders' common body, the
- * finder its only difference?) is the next thing to try */
+ * and 0x55F940, new in SOCOM II: CAiSPursue::Tick calls both; the names unknown). Round 36, read off
+ * MW's colouring (igdump): the flag defined after the side's store -- every spill cost is 0 here, so
+ * the order is the simplify sweeps': defined at its declaration the flag has 26 neighbours and the
+ * map leaves in the second sweep ahead of the parameters (s5); defined after the store it has 24, it
+ * leaves in the second sweep instead and the map with the parameters in the third, last -- map s0,
+ * radius s1, side s2, out s3, pos s4, found s5, as the target */
 extern "C" bool func_0055F940(CSealCtrlAi *ai, const CPnt3D *pos, CAiMapLoc &out, unsigned char *side,
                               int radius)
 {
     CAiMapLoc loc(ai->m_entity->m_mapLocValid);
     CAiMap *map = AiMaps.GetMapByIndex(loc.m_mapid);
-    bool found = false;
+    bool found;
     CAiMap::DIR dir = CAiMap::DIR_COUNT;
 
     *side = 2;
+    found = false;
     if (map) {
         found = map->FindCoverLoc(loc, pos, out, dir, radius);
         if (found)
@@ -2243,10 +2243,11 @@ extern "C" bool func_0055F7F0(CSealCtrlAi *ai, const CPnt3D *pos, CAiMapLoc &out
 {
     CAiMapLoc loc(ai->m_entity->m_mapLocValid);
     CAiMap *map = AiMaps.GetMapByIndex(loc.m_mapid);
-    bool found = false;
+    bool found;
     CAiMap::DIR dir = CAiMap::DIR_COUNT;
 
     *side = 2;
+    found = false;
     if (map) {
         found = map->FindLookLoc(loc, pos, out, dir, radius);
         if (found)
