@@ -10,6 +10,9 @@
 /* what Tile hands its callbacks: the value to set, the soils a soil tile spares, and whether any
  * cell changed (SOCOM 1's Tile's data; the names ours) */
 struct TILE_DATA {
+    /* the flags (the name ours: Tile's four tests read them through it) */
+    unsigned int Flags() const { return m_flags; }
+
     unsigned int m_value;   // 0x0: read as a byte by the boundary's
     unsigned int m_flags;   // 0x4
     bool m_changed;   // 0x8
@@ -170,26 +173,23 @@ static bool _tile_occupied(const MAP_FOREACH_STRUCT &s, void *data)
  * the soil (4), the boundary (8), the shadow (16), the occupied bit (32) -- whether any cell
  * changed (SOCOM 1's Tile(region, value, flags); the layer new). Each tile is the region walk
  * inlined one level, its region's constructor and GetMapRegion called (FloodFill's walk).
- * OPEN (0x8BC against 0x8B4), 2 instructions at the start, all else the target's (the four walks
- * byte for byte): the target stores the flags and reads them back sp-relative (`sw a3,356(sp);
- * lw v1,356(sp)`, the value's store in the first test's delay slot), this build takes &t.m_flags
- * into v0 for the pair and fills the delay slot with the region's address instead. Tried: the
- * stores in either order, `= {value, flags}` (with and without the third), a local copy of the
- * flags, the struct through a pointer local (0x8E4), the tests in an inline over the data
- * pointer (not inlined), the value stored inside the first arm */
+ * Byte-exact since the AI core's round 27: the four tests read the flags through TILE_DATA's
+ * accessor -- the field read directly shares the store's address, MW taking &t.m_flags into v0 for
+ * the pair (0x8BC against 0x8B4, open since round 15 over nine spellings); through the accessor the
+ * store and the read are sp-relative and the value's store fills the first test's delay slot */
 bool CAiMap::Tile(const region *r, unsigned int value, unsigned int flags, int layer)
 {
     TILE_DATA t = {0};
 
     t.m_value = value;
     t.m_flags = flags;
-    if (t.m_flags & 4)
+    if (t.Flags() & 4)
         ForEachCell(r, _tile_soil, &t, layer);
-    else if (t.m_flags & 8)
+    else if (t.Flags() & 8)
         ForEachCell(r, _tile_boundary, &t, layer);
-    else if (t.m_flags & 0x10)
+    else if (t.Flags() & 0x10)
         ForEachCell(r, _tile_shadow, &t, layer);
-    else if (t.m_flags & 0x20)
+    else if (t.Flags() & 0x20)
         ForEachCell(r, _tile_occupied, &t, layer);
     return t.m_changed;
 }
