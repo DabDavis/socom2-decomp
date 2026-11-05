@@ -257,6 +257,8 @@ public:
     virtual void UpdateAiMapLoc();
     virtual void OnMissionStart();
     virtual void UpdateCompassAnchor();
+    /* may the SEAL mount it (CEntity's slot +0x5C: 0x3A90C0, out of line in veh_turret.cpp) */
+    virtual bool Virtual5C(CZSealBody *seal, CTurret *turret);
     /* the three new slots CTurret answers (+0x60, +0x64, +0x68; see above): two points and the
      * node at 0x288 */
     virtual bool Virtual60(CPnt3D *out)

@@ -99,7 +99,11 @@ public:
     static short CrouchThrowGrenade;   // OVL1 0x3DEBB8 (SOCOM 1's 0x47517C)
     static short ThrowGrenade;   // OVL1 0x3DEBC8 (SOCOM 1's 0x475184)
     static short ProneTossGrenade;   // OVL1 0x3DEBD8 (SOCOM 1's 0x47518C)
+    /* (the two pistol tosses, by the same order and by IsThrowing 0x5A7D10, which tests them where
+     * SOCOM 1's IsThrowing does -- the SEALs, round 44) */
+    static short PistolProneTossGrenade;   // OVL1 0x3DEBE0 (SOCOM 1's 0x475190)
     static short TossGrenade;   // OVL1 0x3DEBE8 (SOCOM 1's 0x475194)
+    static short PistolTossGrenade;   // OVL1 0x3DEBF0 (SOCOM 1's 0x475198)
     /* (SOCOM 1's eight reloads, three to ten after KickGrenade in both builds, and RifleM203Reload
      * twenty after PistolReload in both: Reload 0x5A82E0 picks them by stance, pistol or rifle,
      * moving or not and the launcher, IsReloading 0x5A7AB0 tests them -- the SEALs, round 40) */
@@ -1239,6 +1243,15 @@ public:
      * 0x264; OVL2 0x56D0C0, 0x56D6A0) */
     void SetSleeping(bool on);
     void SetSnoozing(bool on);
+    /* the "ai_pre_tick" task: the snoozer (SOCOM 1's static PreTick(float, void *); OVL2 0x5CCCD0,
+     * the kit lane's seal_sensors.cpp), whether the AI runs at all (SOCOM 1's aiEnabled, OVL1 data
+     * 0x3DF188) and the frame's counts the task clears (SOCOM 1's aiActiveCount, aiSleepingCount and
+     * aiSnoozingCount, OVL1 bss 0x44D4B8-0x44D4C8) */
+    static bool PreTick(float dT, void *data);
+    static bool aiEnabled;
+    static int aiActiveCount;
+    static int aiSleepingCount;
+    static int aiSnoozingCount;
     /* the state stack's operations as the controller offers them (SOCOM 1's, their bodies the
      * stack's now: OVL2 0x5F5BA0-0x5F5CB0 and 0x5F5FC0, the AI-states lane's seal_aistate.cpp):
      * a state set or pushed when CanPushAiState allows it -- SOCOM 1's bool now a flags word it

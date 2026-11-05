@@ -372,6 +372,64 @@ bool CMemCard::IsFormatted()
     return formatted;
 }
 
+/* the insertion poll's last command and result, the card type read and the port polled (ours) */
+extern int data_004A37D0;
+extern int data_004A37D8;
+extern int data_004A37E0;
+extern int data_004A37E8;
+
+/* a PS2 card new in the port polled: libmc's answer -1 (formatted) or -2 (not), type 2 (ours). The
+ * answer read twice into a bool local: the target's range test (`(unsigned)(r + 2) < 2`) branching
+ * over the local's clear, then the local tested -- through an inline taking the answer, or one
+ * read, MW tests each value apart (nor / xor) */
+static inline bool IsNewPS2Card()
+{
+    bool r = false;
+    bool isNew = data_004A37D8 == -1 || data_004A37D8 == -2;
+
+    if (isNew && data_004A37E0 == 2)
+        r = true;
+    return r;
+}
+
+/* the insertion poll (SOCOM II's; UIMC_Changed and UINetCnfSelectCombo call it, the name ours): a
+ * PS2 card new in a port, the two ports polled in turn and the one polled handed back --
+ * asynchronously (a poll started when none runs, its answer read when it is done) or waited for */
+bool CMemCard::HasChanged(int async, int *port)
+{
+    bool changed = false;
+
+    if (async) {
+        switch (sceMcSync(1, &data_004A37D0, &data_004A37D8)) {
+        case -1:
+            if (sceMcGetInfo(data_004A37E8, m_selSlot, &data_004A37E0, 0, 0) < 0) {
+                MemCardError();
+                return false;
+            }
+            break;
+        case 1:
+            changed = IsNewPS2Card();
+            if (port)
+                *port = data_004A37E8;
+            data_004A37E8 ^= 1;
+            break;
+        case 0:
+            break;
+        }
+    } else {
+        if (sceMcGetInfo(data_004A37E8, m_selSlot, &data_004A37E0, 0, 0) < 0) {
+            MemCardError();
+            return false;
+        }
+        sceMcSync(0, &data_004A37D0, &data_004A37D8);
+        changed = IsNewPS2Card();
+        if (port)
+            *port = data_004A37E8;
+        data_004A37E8 = data_004A37E8 == 0;
+    }
+    return changed;
+}
+
 bool CMemCard::Format()
 {
     int cmd, result;
