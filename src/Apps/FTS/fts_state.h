@@ -49,7 +49,8 @@ struct CZVidState {
     unsigned char _20[0x30 - 0x20];
     int m_30;   // 0x30
     int m_34;   // 0x34
-    unsigned char _38[0x44 - 0x38];
+    int m_38;   // 0x38: the film's texture buffer's start, in GS pages (CCinematicState::Init)
+    unsigned char _3c[0x44 - 0x3c];
     int m_44;   // 0x44
     int m_48;   // 0x48
     unsigned char _4c[0x75 - 0x4c];
@@ -153,12 +154,26 @@ public:
 
 namespace zdb {
 /* a GS texture buffer (node_world.h has the whole class): only what the states call */
+/* a texture buffer's dynamic textures (znode.h's CDynTexList: only the add) */
+class CDynTexList {
+public:
+    void Add(CTexHandle *tex, bool b);   /* 0x357950 */
+
+    unsigned char _0[0x18];
+};
+
 class CGSTexBuffer {
 public:
     void *Load(bool now);   /* (node_world.h's returns the chain, a u_long128 *: no caller reads it) */
     void WipePktBuf();
     void ReservePktBuf(unsigned int n);
-};
+    unsigned int Setup(unsigned int start, unsigned int end);   /* 0x3575A0 (the film's buffer) */
+
+    unsigned char _0[0x18];
+    u_long128 *m_chainp;   // 0x18
+    unsigned char _1c[0x28 - 0x1c];
+    CDynTexList m_dyntex_list;   // 0x28
+};   // 0x40 bytes
 }
 
 /* the sound system (zsnd.h has the whole class): its post-tick, a scheduler task the states also
@@ -166,6 +181,8 @@ public:
 class CSnd {
 public:
     static bool PostTick(float dT, void *data);
+    /* the CD's reads let finish (zsnd.h's, SOCOM 1's: 0x341940, the film's Init) */
+    static void WaitForCDRead();
     /* a sound by its name (zsnd.h's; CMenuState::Init's selection sound) */
     static void *GetSoundByName(const char *name);
     /* a sounds file's records under a bank's name loaded (zsnd.h's, SOCOM 1's; 0x344090: CMenuState::
@@ -592,13 +609,9 @@ public:
     int m_iopregh;   // 0x70
 };
 
-/* a film between missions (SOCOM 1's DWARF: the movie's name at 0xC) */
-/* something the film screen draws (its vtable pointer at 0xC: a 2D element) */
-class CCinematicItem {
-public:
-    unsigned char _0[0xc];
-    virtual ~CCinematicItem();
-};
+/* a film between missions (SOCOM 1's DWARF: the movie's name at 0xC). Its three subtitle lines are
+ * C2DStrings (ztwod.h's: Init news them, UnInit deletes them) */
+class C2DString;
 
 class CCinematicState : public CGameState {
 public:
@@ -640,10 +653,13 @@ public:
     unsigned char m_2a;   // 0x2a: the film is up
     unsigned char _2b;
     int m_2c;   // 0x2c
-    CCinematicItem *m_items[3];   // 0x30
+    C2DString *m_items[3];   // 0x30: the subtitles' lines
     unsigned char m_3c;   // 0x3c
     unsigned char m_3d;   // 0x3d
-    unsigned char _3e[0x64 - 0x3e];
+    unsigned char _3e[0x40 - 0x3e];
+    int m_40[4];   // 0x40: handed to 0x3B0B10 when m_3c is set
+    int m_50[4];   // 0x50: handed to 0x3B0A70 when m_3c is set
+    float m_time;   // 0x60: the film's time (Init zeroes it, Tick adds each frame's)
 };
 
 /* SOCOM II's states for leaving for the network GUI and rebooting the game (vtables 0x405AE0 and
@@ -733,7 +749,8 @@ class CVideo {
 public:
     static void Clear(bool on, unsigned char r, unsigned char g, unsigned char b, unsigned char a);   /* 0x3AFD50 */
     static void Fade(float f, unsigned char r, unsigned char g, unsigned char b);   /* 0x3B1760 */
-    static void MaxFrameRate(int rate);   /* 0x3B17D0 */
+    static int MaxFrameRate(int rate);   /* 0x3B17D0 (the rate before: CCinematicState::Init keeps it) */
+    static void WriteGsMemory(unsigned int addr, u_long128 *buf, unsigned int size);   /* 0x3B18D0 */
     static void ReadGsMemory(unsigned int addr, u_long128 *buf, unsigned int size);   /* 0x3B1990 */
 
     static int m_defaultFrameRate;
