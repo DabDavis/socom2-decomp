@@ -7149,6 +7149,7 @@
 0x003A9930 SetActive__7CTurretFb
 0x003A9990 UpdateCompassAnchor__7CTurretFv
 0x003A9A30 OnMissionStart__7CTurretFv
+0x003A9A80 Init__7CTurretFPQ23zdb5CNodeRC10CTurretDef
 0x003A9EA0 SetThermal__7CTurretFPQ23zdb5CNodeb
 0x003A9FB0 SetOpacity__7CTurretFf
 0x003AA020 SetVisible__7CTurretFb
@@ -7158,6 +7159,7 @@
 0x003AA2E0 swap__Q23std46vector<P7CTurret,Q23std20allocator<P7CTurret>>FRQ23std46vector<P7CTurret,Q23std20allocator<P7CTurret>>
 0x003AA320 clear__Q23std46vector<P7CTurret,Q23std20allocator<P7CTurret>>Fv
 0x003AA330 __ct__Q23std46vector<P7CTurret,Q23std20allocator<P7CTurret>>Fv
+0x003AA350 __ct__7CTurretFPQ23zdb5CNodeRC10CTurretDef
 0x003AA810 func_003AA810
 0x003AA900 func_003AA900
 0x003AA920 func_003AA920
@@ -7191,6 +7193,7 @@
 0x003AD680 PreTick__8CVehicleFf
 0x003AD760 ScanForVehicleByName__8CVehicleFPCcPC11CVehicleDefPQ23zdb5CNodeb
 0x003AD910 ScanForVehicleDefinitionHookups__8CVehicleFPQ23zdb5CNodeb
+0x003ADAB0 Init__8CVehicleFPQ23zdb5CNodeRC11CVehicleDef
 0x003ADE90 __ct__8CVehicleFPQ23zdb5CNodeRC11CVehicleDef
 0x003AE030 Spawn__8CVehicleFP16CVehicleRdrEntry
 0x003AE1A0 LoadVehicles__8CVehicleFv
@@ -7707,8 +7710,8 @@
 0x003D1F00 GetDefaultAmmo__8CZWeaponFv
 0x003D1F50 PostTick__8CZWeaponFfPv
 0x003D1F90 func_003D1F90
-0x003D2000 func_003D2000
-0x003D2010 func_003D2010
+0x003D2000 GetRecoilPct__8CZWeaponFv
+0x003D2010 SetRecoilPct__8CZWeaponFf
 0x003D2020 func_003D2020
 0x003D2030 GetArmingDistance__8CZWeaponFv
 0x003D2040 SetArmingDistance__8CZWeaponFf
@@ -7780,6 +7783,7 @@
 0x003D2C30 func_003D2C30
 0x003D2C40 func_003D2C40
 0x003D2C50 PlayFireSound__8CZWeaponFPC6CPnt3D
+0x003D2D70 Fire__8CZWeaponFPQ23zdb5CNodeP6CZAmmoPC6CPnt3DPC6CPnt3DPC6CPnt3DP12CZProjectileiPQ23zdb6CModel
 0x003D3230 GetMenuValue__8CZWeaponF10EQUIP_ITEM
 0x003D3750 func_003D3750
 0x003D3790 SetRocketPassSound__8CZWeaponFP4CSnd

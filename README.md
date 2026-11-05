@@ -2065,6 +2065,21 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the weapons, round 28** (CZWeapon::Fire at last, CTurret's Init and constructor, CVehicle::Init):
+  - MW LAYS OUT THE FRAME TOP-DOWN IN THREE GROUPS: named locals in declaration order, then return copies and
+    non-returned inline locals in code order, then by-value inlines' result locals in expansion order; an array or
+    struct declared later takes the lower slot; a dead assignment of an inline's by-value result to a declared local
+    removes the copy and the local but leaves the inline's result local in the last group (Fire's unused point behind:
+    `bpos = *pos - d`);
+  - writing an auto-inlined call out into an uninitialised named local assigned in both arms gives its spill the named
+    local's place -- CZWeapon::Fire 0x3D2D70, 31 frame offsets off since round 22, closed by the spill slots
+    `tools/igreplay.py --move 45=40.5` predicted (the GCC front's round 34a slot replay);
+  - a bool field passed to a bool parameter loads straight with lbu, an unsigned char field adds an sltu; a const member
+    inline with mutable results keeps a local struct in the frame (SOCOM 1's CAiCone), inside a loop MW hoists every one
+    of its field addresses; a named local for an inline's product moves its float register; a class other units declare
+    differently can be built in a slot struct by calling its out-of-line constructor by mangled name through an
+    `extern "C"` declaration (`__ct__9CAiTargetFv` -- a modelling device); CTurret::Init 0x3A9A80 (SOCOM 1's, first build),
+    CTurret() 0x3AA350, CVehicle::Init 0x3ADAB0 (its twin); m_weaponTickDisabled and Get / SetRecoilPct named.
 - **Tells from the SEALs, round 46** (HandleSmokeAndGas, HandleWater, AddBlendOverlay, the satchel drop, the climb's wall
   homing; seal_orders.cpp all hand source):
   - an inline's by-value bounds are loaded at the call, taken by `const float &` the upper bound loads only after the
