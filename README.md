@@ -2065,6 +2065,19 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the game states, round 39** (a box's corners, the vote-kick test, zDoClientLeavesCallback, OnMissionStart):
+  - a plain function calling an inline too big to inline whole gets that inline cut to one level (its leaves called),
+    and is itself never auto-inlined -- an "out-of-line copy" whose leaves are calls is such a caller (0x2A96B0, a box's
+    eight corners through BoxCorners; CreateLadderTable still matches);
+  - a local set through an inline's reference out-parameter stays a named variable numbered at its uninitialised
+    declaration, returned by value it merges into the inline's result temporary (numbered after the caller's locals),
+    and a dead `= 0` on it leaves no node at all (zDoClientLeavesCallback 0x2BC080: the SEAL numbered first, found with
+    `tools/igreplay.py --want`); a list walk with its end taken into a local before the loop keeps the end in a saved
+    register, `!= list.end()` every pass rebuilds the address (8 bytes longer);
+  - a byte-enum field copied into a local loads with lb + andi 0xff at each use only when the copy is not folded into
+    its first compare -- read straight into a compare it is one lbu (OnMissionComplete 0x2A9B30, OPEN 16 short);
+    OnMissionStart 0x2A7D40 and OnMissionComplete named by SOCOM 1's identical call sequences (st_core.cpp's calls
+    respelled, SAME-BY-ADDRESS).
 - **Tells from completing the MSL headers, round 27** (the data_ reader, the deques' init level, the class push_back;
   probes build/p27/, scratch build/scratch/msl-r27/, untracked -- dtorvar.py, dqvar.py/dqvars.py, vecvar.py, rowscan.py):
   - THE POD DESTRUCTOR READS data_ THROUGH data() INTO A PLAIN LOCAL (`T *p = data(); if (p) deallocate(p);`): the

@@ -3470,6 +3470,7 @@
 0x002A7510 SetE3RoundCount__9CZNetGameFi
 0x002A7560 func_002A7560
 0x002A75F0 UnInitialize__9CZNetGameFv
+0x002A7D40 OnMissionStart__8CMissionFv
 0x002A8C90 func_002A8C90
 0x002A8F30 __ct__6CPnt3DFfff
 0x002A8F50 GetClosestLadder__11CLadderListFPC6CPnt3Df
@@ -3479,6 +3480,7 @@
 0x002A94E0 func_002A94E0
 0x002A9550 func_002A9550
 0x002A9680 func_002A9680
+0x002A96B0 func_002A96B0
 0x002A97C0 FadeToEndMission__8CMissionFfi
 0x002A98A0 fadeToEndMissionTick__8CMissionFfPv
 0x002A98B0 FadeToEndMissionTick__8CMissionFf
@@ -3704,6 +3706,7 @@
 0x002BBDA0 SendHitMessage__FiiiffbUc
 0x002BBF10 SaveFireMessage__FP10CZSealBodyPC6CPnt3D
 0x002BBFA0 zRemoteDelayedAction__FPQ29CZNetwork18TypeRTimeFixStruct
+0x002BC080 zDoClientLeavesCallback__Fi
 0x002BC400 zRemoteClientLeavesCallback__Fii
 0x002BC490 zRemoteClientJoinsCallback__Fii
 0x002BC530 func_002BC530
@@ -3787,6 +3790,7 @@
 0x002C3330 func_002C3330
 0x002C34F0 func_002C34F0
 0x002C3500 func_002C3500
+0x002C3550 func_002C3550
 0x002C3920 func_002C3920
 0x002C3980 func_002C3980
 0x002C39D0 func_002C39D0
