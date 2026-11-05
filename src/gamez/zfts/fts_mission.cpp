@@ -1579,7 +1579,8 @@ float *ftsGetAltitudeApprox(const CPnt3D *pos, float range, bool flag);
 
 /* a node set down on the ground: the point dropped to the floor found under it, the node's box
  * turned by the rotation and its lowest corner on the axis asked for put on the floor, an offset
- * added, the node lit (SOCOM II's; OVL1 0x2A8C90, ftsFixupAiMap calls it twice -- the names ours).
+ * added, the node lit (SOCOM 1's aiMapPlaceItem, by ftsFixupAiMap's two calls in both builds; OVL1
+ * 0x2A8C90 -- the parameters' names ours).
  * The box goes to the corners as an explicit TEMPORARY copy, `BoxCorners(pts, CBBox(*GetBBox()))`
  * (the states' round 33): a temporary or a local copy-constructed from a CBBox copies min and max as
  * two 12-byte blocks ($f2-$f0 each, the target's), where a by-value parameter's copy is one 24-byte
@@ -1589,10 +1590,9 @@ float *ftsGetAltitudeApprox(const CPnt3D *pos, float range, bool flag);
  * its size, its sixteen leaves called and their copies emitted (CPnt3D(fff) 0x2A8F30 and _min<f>'s
  * OVL1 copy 0x2AFC60 byte-exact from here); the translation is stored through a pointer
  * (SetTranslation above: written on the point in place, y's address is kept in a register). */
-extern "C" void func_002A8C90(zdb::CNode *node, const CPnt3D *at, int axis, const CPnt3D *offset,
-                              const CPnt3D *rot)
+void aiMapPlaceItem(zdb::CNode *node, const CPnt3D &at, int axis, const CPnt3D *offset, const CPnt3D *rot)
 {
-    CPnt3D pos = *at;
+    CPnt3D pos = at;
     float *ground = ftsGetAltitudeApprox(&pos, 10.0f, false);
 
     if (ground)
@@ -1711,30 +1711,61 @@ public:
     void Init();   /* 0x3D16B0 */
 };
 
-class CZWeaponList;
-class CZProjectileList;
-class CZWeapon {
-public:
-    static void Close();   /* 0x3D0350 */
-    static void OpenDecals();   /* 0x3D03C0 */
-    static void Open();   /* 0x3D03D0 */
-    static void ClearTimer(float *pCurval);
-
-    static CZWeaponList m_listWeapons;   /* 0x4B5210 */
-    static CZProjectileList *m_pProjectilelist;   /* 0x4B5220 */
-    static CZMarkList *m_pMarklist;   /* 0x4B5248 */
-};
-
 /* an item a SEAL carries (zweapon.h's EQUIP_ITEM: a byte enum, unsigned; only the bounds) */
 enum EQUIP_ITEM {
     EQUIP_PISTOL = 0,
     EQUIP_NONE = 255
 };
 
-/* the weapons by item (zweapon.h's CZWeaponList: only the lookup) */
+class CZWeaponList;
+class CZProjectileList;
+class CZWeapon {
+public:
+    /* (zweapon.h's: its table at 0, which ftsFixupAiMap's cast to CZFTSWeapon reads) */
+    virtual ~CZWeapon();
+    static void Close();   /* 0x3D0350 */
+    static void OpenDecals();   /* 0x3D03C0 */
+    static void Open();   /* 0x3D03D0 */
+    static void ClearTimer(float *pCurval);
+    static EQUIP_ITEM GetWeaponId(const char *name);   /* 0x3D19E0 */
+    char *GetModelName() const;   /* 0x3D2750 */
+
+    static CZWeaponList m_listWeapons;   /* 0x4B5210 */
+    static CZProjectileList *m_pProjectilelist;   /* 0x4B5220 */
+    static CZMarkList *m_pMarklist;   /* 0x4B5248 */
+};
+
+/* the game's weapons (zweapon.h's CZFTSWeapon : CZWeapon) */
+class CZFTSWeapon : public CZWeapon {
+};
+
+/* the weapons by item and by name (zweapon.h's CZWeaponList: only the lookups) */
 class CZWeaponList {
 public:
     CZWeapon *GetWeapon(EQUIP_ITEM item);   /* 0x3C4B40 */
+    CZWeapon *GetWeapon(const char *name);   /* 0x3C4C40 */
+};
+
+/* the ammunition by name (zweapon.h's CZAmmo and CZAmmoList: only the list and its lookup) */
+class CZAmmo;
+class CZAmmoList {
+public:
+    CZAmmo *GetAmmo(const char *name);   /* 0x3C4F70 */
+};
+
+class CZAmmo {
+public:
+    static CZAmmoList m_ammolist;   /* 0x4B5310 */
+};
+
+/* a pickup's weapons, ammunition and rounds (pickup_main.cpp's CZItemStash, 0x28 bytes: only its
+ * constructor and its add) */
+class CZItemStash {
+public:
+    CZItemStash();   /* 0x3CFF80 */
+    void Add(CZWeapon *weapon, CZAmmo *ammo, int rounds);   /* 0x3CFEF0 */
+
+    unsigned char _0[0x28];
 };
 
 /* a weapon a type carries (zchar.h's CCharacterWeap, 0xC bytes: only the item) */
@@ -1784,18 +1815,36 @@ public:
     static void Open(zdb::CWorld *world, const char *name);   /* 0x2B4F40 */
     static void Close();   /* 0x2B55E0 */
     static void Reset();   /* 0x2B5510 */
+    static CNodeAction *FindActionByValve(const CValve *valve);   /* 0x2B4E00 */
+
+    unsigned char _0[0x3c];
+    unsigned short m_id;   // 0x3c (fts_action.cpp's)
 };
+
+/* the action nearest a point, its distance given (fts_action.cpp's SOCOM 1 GetClosestAction) */
+extern "C" CNodeAction *func_002B4B40(const CPnt3D *pos, float *dist, float height);
 
 void ftsFixupAiMap(CAiMap *map);   /* 0x2A8140 */
 
-/* the pickups (OVL2's CPickup: only its open) */
+/* the pickups (OVL2's CPickup, zseal.h's: its open, its creation and its timer) */
 class CPickup {
 public:
+    /* (zseal.h's PU_TYPE: 8 a weapon, 9 ammunition) */
+    enum PU_TYPE { PU_NONE = 0, PU_WEAPON = 8, PU_AMMO = 9, PU_LAST = 255 };
+
     static void Close(bool all);   /* OVL2 0x542E50 */
     static void Open(unsigned int count);   /* OVL2 0x542FC0 */
     static void TickTimers(const CPnt3D *pos, float dT);   /* OVL2 0x542290 */
     static void NetTick(const CPnt3D *pos, float dT);   /* OVL2 0x5423E0 */
+    static CPickup *Create(unsigned int owner, PU_TYPE type, zdb::CNode *node, void *data);   /* OVL2 0x542B90 */
+
+    float m_timer;   // 0x0
 };
+
+/* a pickup's time when it never runs out (-1; Create sets it so: pickup_main.cpp's) */
+extern "C" float data_003F3440;
+
+bool zrdr_findPNT3D(const _zrdr *rdr, const char *tag, PNT3D *out);
 
 extern "C" {
 int strncmp(const char *a, const char *b, unsigned int n);
@@ -1807,6 +1856,154 @@ void func_00344910(const char *db);
 void func_003448D0(const char *name);   /* (the jukebox's lists) */
 extern const char *data_0064F950;   /* (OVL2: "aimaps.mps") */
 void func_00295660();
+}
+
+/* the map's action table (ours, a MARKED numbering device: read through an inline the reference merges
+ * into the inliner's temporary, numbered after the action walk's centre temporaries -- s2 against the
+ * iterator's s1, the target's; a named reference to map->m_actionTable is numbered among the named
+ * locals and the two swap, without one the end is re-read off the map, 8 bytes short) */
+inline CAiMap::actions &ActionTable(CAiMap *map)
+{
+    return map->m_actionTable;
+}
+
+/* the AI map fixed up for the mission: its extra data freed unless it is the 4-byte default; off the
+ * network each script cell's PICKUP placed -- a WEAPON's model at the cell's centre, turned by its
+ * rot (degrees) and moved by its pos, a pickup of the weapon for the player, and an AMMO list's
+ * fiftycal_box, turned upright, holding each entry's ammunition, rounds and weapon; then each
+ * action's id found -- a ladder's the nearest ladder's, a door's or a switch's the node action of
+ * the valve its cell's name gives, else the nearest node action (SOCOM 1's; OVL1 0x2A8140). By MW's
+ * colouring (tools/igdump.py + igreplay.py --target, the states' round 43): the action walk's point
+ * declared at the top (the frame takes it, then the distance, above the reader walk's locals, as
+ * SOCOM 1's frame does); each tag assigned inside its test (the branch then tests v0, the copy in its
+ * delay slot); the owner if/else-assigned (a named node, its spill slot above the readers'); the AMMO
+ * tag in the PICKUP variable itself (s0 for both: a variable of its own is numbered ahead of the item
+ * walk's temporaries and the deferred five pop in the wrong order); the item counter an int (an
+ * unsigned one strength-reduces the item offset into a register of its own); `Count() > 2` (`>= 3`
+ * materialises the compare); the timer stored through a pickup local (the global read after the
+ * call, not kept in $f20 across it); the box's position an uninitialised point in both builds */
+void ftsFixupAiMap(CAiMap *map)
+{
+    zdb::CWorld *world = zdb::CWorld::m_world;
+    CPnt3D apos;
+
+    if (map->m_mapex_bytes != 4)
+        map->FreeEx();
+    if (!theNetwork.m_bNetwork) {
+        CZSealBody *player = ftsGetPlayer();
+        unsigned int owner;
+
+        if (player)
+            owner = player->m_id;
+        else
+            owner = 0;
+        CAiMap::readers &readers = map->m_readerTable;
+
+        for (CAiMap::readers::iterator r = readers.begin(); r != readers.end(); ++r) {
+            _zrdr *pickup;
+
+            if (!(pickup = zrdr_findtag((const _zrdr *)(*r).m_reader, "PICKUP")))
+                continue;
+            CPnt3D pos;
+
+            if (!map->GetCellCenter((*r).m_loc, &pos))
+                continue;
+            _zrdr *weap;
+
+            if ((weap = zrdr_findtag(pickup, "WEAPON")) != 0) {
+                CPnt3D zero = CPnt3D::zero;
+                CPnt3D rot = zero;
+                CPnt3D off = zero;
+                const char *name = weap->Item(0) ? weap->Item(0)->String() : 0;
+                bool hasrot = zrdr_findPNT3D(weap, "rot", &rot);
+
+                zrdr_findPNT3D(weap, "pos", &off);
+                rot = rot * 0.017453292f;
+                CZWeapon *w = CZWeapon::m_listWeapons.GetWeapon(CZWeapon::GetWeaponId(name));
+
+                if (w && zdb::CWorld::GetModel(w->GetModelName())) {
+                    zdb::CNode *node = zdb::CNode::CreateInstance(w->GetModelName(), 0, 0);
+
+                    aiMapPlaceItem(node, pos, 1, &off, hasrot ? &rot : 0);
+                    node->m_socom2_a1_bits.bit2 = 1;
+                    node->m_bumpmap = 1;
+                    zdb::CWorld::m_world->AddTextureAssetCharacter(zdb::CHARSETCOMMON, node);
+                    CPickup *p = CPickup::Create(owner, CPickup::PU_WEAPON, node, w);
+
+                    p->m_timer = data_003F3440;
+                }
+            }
+            if (!(pickup = zrdr_findtag(pickup, "AMMO")) || (int)pickup->Count() <= 0)
+                continue;
+            CPnt3D bpos;
+            CPnt3D brot = CPnt3D(90.0f, 0.0f, 0.0f) * 0.017453292f;
+            zdb::CNode *box = zdb::CNode::CreateInstance("fiftycal_box", &bpos, 0);
+
+            if (!box)
+                continue;
+            aiMapPlaceItem(box, pos, 1, 0, &brot);
+            world->AddChild(box);
+            box->m_socom2_a1_bits.bit2 = 1;
+            box->m_bumpmap = 1;
+            zdb::CWorld::m_world->AddTextureAssetCharacter(zdb::CHARSETCOMMON, box);
+            CZItemStash *stash = new CZItemStash;
+
+            for (int i = 0; i < pickup->Count(); i++) {
+                _zrdr *item = pickup->Item(i);
+
+                if (item && item->IsArray()) {
+                    const char *aname = item->Item(0)->String();
+                    int rounds = item->Item(1)->Integer();
+                    const char *wname = item->Count() > 2 ? item->Item(2)->String() : 0;
+                    CZAmmo *a = aname ? CZAmmo::m_ammolist.GetAmmo(aname) : 0;
+                    CZWeapon *w = wname ? CZWeapon::m_listWeapons.GetWeapon(wname) : 0;
+
+                    if (a && rounds)
+                        stash->Add(dynamic_cast<CZFTSWeapon *>(w), a, rounds);
+                }
+            }
+            CPickup *p = CPickup::Create(owner, CPickup::PU_AMMO, box, stash);
+
+            p->m_timer = data_003F3440;
+        }
+    }
+    CAiMap::actions &actions = ActionTable(map);
+
+    for (CAiMap::actions::iterator a = actions.begin(); a != actions.end(); ++a) {
+        CAiCell *cell = map->GetCell((*a).m_loc, 0);
+
+        if (!map->GetCellCenter((*a).m_loc, &apos))
+            continue;
+        int id = -1;
+
+        switch ((*a).m_type) {
+        case 4:
+            id = theMission.m_ladders->GetClosestLadder(&apos, 25.0f);
+            break;
+        case 1:
+        case 2:
+        case 3:
+        case 5:
+        case 7:
+            if (cell && cell->HasName()) {
+                CNodeAction *na =
+                    CNodeAction::FindActionByValve(CValve::GetByName(map->GetCellName((*a).m_loc)->m_name));
+
+                if (na)
+                    id = na->m_id;
+            }
+            if (id == -1) {
+                float dist = 0.0f;
+                CNodeAction *na = func_002B4B40(&apos, &dist, 25.0f);
+
+                if (na)
+                    id = na->m_id;
+            }
+            break;
+        }
+        if (id != -1)
+            (*a).m_actionId = id;
+    }
 }
 
 /* the mission built (OVL1 0x2ADBC0; __sinit_fts_mission.cpp's theMission): the save module "CMission"
