@@ -1266,7 +1266,8 @@ struct CTComm : TASK_HDR {
 struct CTPlay : TASK_HDR {
     Rfloat m_8;   // 0x8
     Rfloat m_10;   // 0x10
-    unsigned char _18[0x20 - 0x18];
+    float m_18;   // 0x18: m_8 drawn at the start (Begin's)
+    float m_1c;   // 0x1c: m_10 drawn at the start
     signed char m_count;   // 0x20: the anims (SOCOM 1's a bitfield at 0x20 bit 1)
     unsigned char _21;
     unsigned char m_22;   // 0x22: 11 when made, else the tag "stance" (0-2)
@@ -1274,7 +1275,7 @@ struct CTPlay : TASK_HDR {
     unsigned char m_blocking : 1;   // bit 1: the tag "blocking"
     unsigned char _23_2 : 6;
     TASK_ENT m_ent;   // 0x24: the tag "entity"
-    unsigned char _2c[0x30 - 0x2c];
+    int m_2c;   // 0x2c: -1 at the start (Begin's)
     unsigned int m_anims[1];   // 0x30: m_count of them (SOCOM 1's at 0x24)
 
     static CTPlay *Create(int count, unsigned int *anims, float a, float b);
@@ -2749,6 +2750,35 @@ bool CTParam::Tick(_zanim_cmd_hdr *hdr, float *dT)
 
     *dT = 0.0f;
     return r;
+}
+
+/* the anims' start, for the SEAL -- the task's, or with an entity named that SEAL (found three times
+ * over, as CTSignal::Tick's): the two waits drawn, bit 0 at 0x23 set, the byte at 0x22 cleared and
+ * the word at 0x2C made -1 (OVL2 0x5D3740; SOCOM 1's, the entity new) */
+void CTPlay::Begin(_zanim_cmd_hdr *hdr)
+{
+    CZSealBody *dest;
+    CEntityCtrl *ctrl;
+    TASK_SEAL(CTPlay);
+    dest = seal;
+    ctrl = dest ? dest->m_control : 0;
+    CSealCtrlAi *ai = dest ? SealAi(dest) : 0;
+
+    if (((const TASK_ENT *)&cmd->m_ent)->m_type) {
+        dest = (CZSealBody *)cmd->m_ent.GetTyped(CEntity::ENT_TYPE_SEAL);
+        CZSealBody *s = (CZSealBody *)cmd->m_ent.GetTyped(CEntity::ENT_TYPE_SEAL);
+
+        ctrl = s ? s->m_control : 0;
+        s = (CZSealBody *)cmd->m_ent.GetTyped(CEntity::ENT_TYPE_SEAL);
+        ai = s ? SealAi(s) : 0;
+    }
+    if (!dest || !ctrl)
+        return;
+    cmd->m_18 = cmd->m_8;
+    cmd->m_1c = cmd->m_10;
+    cmd->m_skip_end = 1;
+    cmd->m_22 = 0;
+    cmd->m_2c = -1;
 }
 
 /* the anims' end: the SEAL -- the task's, or with an entity named that SEAL (found three times over,
