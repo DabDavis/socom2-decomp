@@ -784,16 +784,21 @@ int casrStartUserWordTraining(CASR *c, void *a, void *b)
     return userwordStartUserWordTraining(c, 3, a, b);
 }
 
-/* OPEN (44 words, 6 short): the right instructions but the row pointer -- the target keeps it a
- * register stepped by 12 per row (`move a1,s1; addiu s1,a1,12`), each row's third pointer stored
- * through the stepped one; 2.96 here splits it into constant offsets of one base. Pre- and
- * post-increment, an index, three explicit rows, a while: all split it (44-119 words). The total
- * is a summing loop: the target multiplies (sum + 6) by 3 and 2, which a single expression lets
- * fold distribute. SOCOM 1's copy is rolled: unsigned counters, the store through `q`. */
+/* the segmentation's table: one block of 3 x (each utterance's length + 2) shorts per gender, and
+ * for each of the three utterances three pointers into it (one per gender). Round 26c, byte-exact:
+ * the table's own pointer `seg` is the running pointer (`*++seg`). The inner loop is unrolled
+ * first, its biv remapped to a copy of its value at the row's start (cc1's "Biv initial value
+ * remapped": the target's `move a1,s1; addiu s1,a1,12` per row); with a second pointer `q` from
+ * `seg`, CSE rewrites every row against the unchanged `seg` and the rows fold into constant offsets
+ * of one base (44 words, 6 short -- pre- and post-increment, an index, rows written out, a while
+ * all did). The product is assigned back to the total (`total *= 3`): the result is then the
+ * total's own pseudo, in a1, with 2t in v0 (`addu a1,v0,a1`); a product in the call's argument
+ * ties the result to 2t, the first operand (8 words), `(total + total * 2)` swaps the add's
+ * operands (1). SOCOM 1's copy is rolled: unsigned counters, the store through a second
+ * pointer. */
 void casrInitSegmentation(CASR *c)
 {
     short **seg = c->segtab;
-    short **q;
     short *p;
     unsigned int i, j;
     int len, total;
@@ -803,13 +808,13 @@ void casrInitSegmentation(CASR *c)
     total = 0;
     for (i = 0; i < 3; i++)
         total += c->utt[i].n + 2;
-    p = seg[0] = heap_Alloc(c->heap, total * 3 * sizeof(short));
-    q = seg;
+    total *= 3;
+    p = seg[0] = heap_Alloc(c->heap, total * sizeof(short));
     for (i = 0; i < 3; i++) {
         len = c->utt[i].n + 2;
         for (j = 0; j < 3; j++) {
             p += len;
-            *++q = p;
+            *++seg = p;
         }
     }
 }
