@@ -2060,6 +2060,88 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from completing the MSL headers, round 24** (THE POINTER VECTOR'S ORIGINAL ITERATOR ADOPTED; probes
+  build/scratch/msl-r24-p24/):
+  - include/vector's pointer vector is the image's now: raw begin/end belonging to each element type, `begin() { return
+    __iter(__raw_begin()); }`, end() taking the raw end into a const local (four inline levels high), the iterator's
+    `iterator(unsigned int *const &)` and base(), `==` through base() -- _countKeys, fixupKey, CSubtitleList::Load,
+    NextFile 0x34D740 and the records' insert 0x34DA00 byte-exact, VuLightMap 0x3B54E0 and CUIVariable::Attach 0x3869F0
+    closed with it (they had been open on exactly this end); CKey::CountKeys one call off (its second copy calls the pod's
+    end where the target calls the raw end);
+  - A STAND-IN TO KNOW ABOUT: the walks fitted to the old three-level end() are kept by `#pragma inline_depth(6)` at the
+    end of their units -- fts_missionlist.cpp, bone_archive.cpp, char_type.cpp, util_loc.cpp, zNetMediusClan.cpp,
+    zNetMediusRoom.cpp, zsnd_positions.cpp and zwep_flyout.cpp -- each object byte-identical to master's (the new end at
+    depth 6 gives what the old gave at 5); a pragma's depth is per unit, and the image's four-high end makes a natural
+    walk inside an inline six deep -- but the level is settled at 5 for the game's own source, so these pragmas mark walks
+    whose real shape is still to be refit (CMultiMissionList::Find with the end taken first is 9 off: the obvious refit
+    is not it); CDynTexList::Add (ztex_manager.cpp) refit in source instead, depth 6 costing three of its neighbours;
+  - an end() passed as an argument (`i != end()`) is cut at its children, a tall callee written as a statement at the
+    inline above it; `deep != false && ...` hoists the narrowed flag and tests it with beqz, `deep && ...` hoists `!deep`;
+    a `while ((k = f()) != 0)` loop is rotated (the test after the body, entered by a jump), `for (;;) { k = f(); if (!k)
+    break; ... }` tests at the top as the target's Load does;
+  - the class vector's operator= reads the other vector through the deleter's data() reference (CopyPlan 21 -> 2,
+    code-neutral elsewhere); 0x53AA50 needs no header change (a probe asking for the pod's erase and resize emits it
+    byte-exact: which unit emits it is open); the original c_str's depth cannot be read off the image (no caller of a
+    piece below it; both its out-of-line copies whole).
+- **Tells from the kit and AI states, round 37** (seal_tasks.cpp's fire-mode, signal, create and in-state tasks):
+  - the type test `e && e->m_type == t ? e : 0` stays a value (sltu, beqz, xori/sltiu, movz) only inside an inline that
+    also holds the switch producing `e` -- written in the caller every spelling folds it back into branches (CTTurret's
+    test reproduced; the Tick stays 8 bytes long on a block boundary);
+  - an inline member called through a reference or pointer local keeps the object's address in one saved register across
+    calls with every field at an offset from it; called as `cmd->m.f()` MW folds the address into the outer object's
+    offsets; through a cast pointer it hoists each field's address into a register of its own; locals declared ahead of
+    TASK_SEAL's renumber the saved registers (CTSignal::Tick 0x5D16E0 needed a copy of the SEAL and the controller both
+    declared first);
+  - a 1-bit field tested `== 1` compiles to andi, xori, sltiu into the bool's register; a bit or byte tested through an
+    inline `? true : false` is materialised with sltu before the branch; compares read through a const view share one
+    load and a following inline reloads the member, a switch on the same member makes a jump table instead;
+  - `x &= ~0` written in place folds away, through an inline with a `clear` parameter it stays a dsll32/dsrl32 zero
+    extension; assigning inside an inline's by-value argument, `f(s = g())`, keeps v0 for the inline's use with the copy in
+    the delay slot; a jump table's length shows the highest case label (CAiSFollow::OnSignal 0x5FDF80's runs to 7: an
+    empty `case 7:`); CTFireMode's +0x8 block is SOCOM 1's CAiWepHint; seal_tasks.cpp 72 of 76.
+- **Tells from the HUD, round 44** (zui_2d.cpp's list box on its real base, the teletype's commands):
+  - a list walk's end() in a local declared before the iterator gives the iterator s0, end() in the test swaps the two
+    (CUIListBox::UpdateUIVar 0x3754D0, TickZAnimCmd 0x372980 twice); sequential loops sharing one function-level `int i`
+    give the target's registers where loop-scoped counters swap each loop's counter with its end-node or pointer register
+    (LoadSpec 0x375E20, SetActive 0x374CB0);
+  - `push_back(x)` taking a pointer local by `const T &` makes MW reload it from its stack slot for its next use; reading
+    the element into a second local first keeps the loaded register; in an unrolled loop's remainder, a bound re-read every
+    pass comes from a `const` accessor or a const view, read straight MW hoists it;
+  - in an inline `operator=(const T &s)`, a reference local `const T &n = s;` used for the string and the trailing member
+    keeps the source's address across the call and gives the target's numbering (C2DButton::LoadSpec 0x376BD0); `float w
+    = a.x, h = a.y;` declared together loads both before converting; for `(h - s) * k` MW puts the load-only operand first
+    in the mult -- `int d = h - s; d * k` gives the target's order; a byte copied into a bool and an unsigned-char field
+    through a bool local avoids the conversion a chained assignment adds;
+  - CUIListBox derives from its real base CPlainBmp (vtable 0x407670), its commands 20-byte CListBoxCmd records
+    (ParseZAnimCmd 0x372F10, the teletype's 0x3787A0 -- both on the first try).
+- **Tells from the SEALs, round 35** (the typed stash's writers, the recursive node count, 0x571010 at last):
+  - `delete` of a type with an empty user destructor keeps the delete's own null test behind an `if`; an implicit
+    destructor inlined into a delete calls the vector members' destructors out of line with -1, last member first
+    (CPickup::Destroy 0x542470: the stash's three destructors and remove_if's copy from source, a std::list<CPickup *>
+    push_back through the base's -- the AI core's "variant vc" -- and the kind read into a PU_TYPE local first);
+  - reading a switch's value into an enum local first swaps the switch's registers; `if (!a || (b && !c)) return;` makes
+    both returns share one `b` to the epilogue (DropAmmo 0x59FD50, SOCOM 1's; CreateNetAmmoPickup 0x59E9E0 on the first
+    try over the typed stash); bare declarations at the top set MW's register numbering in declaration order (the top
+    blend's let-go 0x5781C0, seal_body.cpp's last-defined);
+  - a by-value struct parameter is homed on the stack, a plain word stays in a register; `x <= y` branches on `slt at`
+    where `y >= x` puts the result in a register first (0x571010, open since round 30: the priority a plain word, its
+    low byte an int local at entry); the CNodeVector iterator headers' depths are right (0x59A450 inlines itself twice,
+    its 11 pieces 0x59A630-0x59A720 from source, marked ovl-copy).
+- **Tells from the engine core, round 14** (GetAltitude, ParseNetworkPacketArgs, ftsGetAltitudeApprox, NetworkReceive):
+  - an inline that wraps an out-of-line call gives its result the lowest saved register (getting the map through one
+    swapped the map and cell into the target's s0/s1: ftsGetAltitudeApprox 0x2A2EB0, with OVL1's CAiMap::GetLocation copy
+    0x2A3950 emitted by fts_main.cpp through a duplicate of ai_map.cpp's inline -- ai.h only declares it);
+  - reassigning a pointer local (`anim = anim->GetAvailable()`) makes the new value a separate web numbered last; a named
+    local for the new value plus a `const` copy of the parameter defined after it gives the target's registers (SOCOM
+    II's NetworkReceive 0x273780, open for 19); two by-reference inlines called with two array elements compute the
+    second argument's address first (arguments right to left), written in place the first comes first;
+  - in a float sum of two products, naming each product keeps MW from computing the second before the first sum; reading
+    an array index into a local ahead of a constructor temporary keeps the load before the temporary's stores
+    (zdb::CDIPoly::GetAltitude 0x2DD8E0, never written before);
+  - an inline returning six in-place `&&`s joined by `||` materialises every level with no narrowing, through bool helper
+    inlines each pair gains an andi, an int return type the final andi; MW merges the empty joins of nested ifs but pads
+    their labels, a ternary leaves its labels unpadded but keeps its own join; a byte-enum field read through `(unsigned
+    char *)` gives lbu for a switch, read as the enum lb plus andi (CZAnimArgList::ParseNetworkPacketArgs 0x271B30).
 - **Tells from the game states, round 35** (LoadWorld at last, the stealth rating, CMenuState::Init, CNodeAction::Open):
   - a clamp whose upper bound is a ternary (the lower bound an if) leaves no join block, so a following constant
     assignment lands between the next call's lui and jal with the addiu in the delay slot (the stealth rating 0x1F3290,
@@ -2112,6 +2194,37 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     handle list's range erase 0x50FBD0 from CAiEventQ::Clear, in ABSENT.txt); MW still emits an 8-byte empty `__sinit`
     (`jr ra; nop`) for a static with an inline empty constructor and no destructor -- ai_vismap.cpp, between ai_maps.cpp
     and seal_ai.cpp in link order, holds only that (0x6687D0).
+- **Tells from completing the MSL headers, round 24** (the pointer vector's original iterator adopted; probes build/p24/,
+  untracked; scratch build/scratch/msl-r24/: base.txt, run_a-g.txt, objcmp_d/g.txt):
+  - THE POINTER VECTOR'S ORIGINAL ITERATOR, ADOPTED (round 23's measured shape, include/vector's comment): over every
+    hand-written unit 10212 -> 10230 byte-exact, nothing lost -- _countKeys 0x2578F0, CKey::fixupKey 0x257CC0 (SOCOM 1's
+    form, written), CSubtitleList::Load 0x34D5D0 with NextFile 0x34D740 and the records' insert 0x34DA00, VuLightMap
+    0x3B54E0 and CUIVariable::Attach 0x3869F0 (both open on their walks' ends), eleven pieces named;
+  - THE 19 WALKS IT CUT AT LEVEL 5 WANT LEVEL 6, NOT A LOCAL END: `#pragma inline_depth(6)` at the end of the eight units
+    holding them (fts_missionlist, bone_archive, char_type, util_loc, zNetMediusClan, zNetMediusRoom, zsnd_positions,
+    zwep_flyout) with their sources untouched gives all 18 there, and objcmp finds all eight objects BYTE-IDENTICAL to
+    master's -- the four-high end at 6 is exactly the three-high end at 5. The end taken into a local first (round 23's
+    suggestion) does not give the target: CMultiMissionList::Find's own copy colours its end, flag and element
+    differently (9 off; nine spellings 5-11 off), CStringTables::FindTable's callers come out 12 bytes short. With the
+    image's own end() the original's natural walks need a deeper level than 5 -- the README's "Level 6, or 8?" thesis
+    seen from the other side; ztex_manager.cpp, where depth 6 costs three functions, takes CTexPalList::Exists written
+    out in CDynTexList::Add(CTexPalette *) with its parameter copied into a local (the copy is the value std::find reads:
+    loaded early into t1 as the target, the parameter itself loads late, 13 off);
+  - MW evaluates an argument's inline tree one level below the call it is passed to: in an inline's `i != end()` the
+    end's children are cut first (end's body kept, the raw end and __iter called); a tall callee written as a statement
+    (the kit's GetName probe) cuts the inline above it instead -- AnimSet::Find's caller 0x5E3940 goes 0x154 -> 0x184
+    under the new header (target 0x180, Find's end cut at its children, where the target calls every Find piece);
+    c_str's depth is not on the image (no function calls a piece below c_str: its copies 0x578920/0x36E860 are whole);
+  - `for (...; deep != false && i != e; ...)` hoists the narrowed flag and tests it with beqz, `deep && ...` hoists
+    `!deep` (sltu/xori, bnez) -- CKey::CountKeys 0x25B300 (zar_key.cpp, its unit by address) so is every instruction the
+    target's but one call (its second copy calls the pod's end 0x34D920, the target CKey's raw end 0x257BA0;
+    inline_max_size 240-300 does not move it); a `while ((k = f()) != 0)` is rotated (test after the body, an entry `b`),
+    `for (;;) { k = f(); if (!k) break; ...}` tests at the top as Load's target;
+  - the class vector's operator= through the deleter's data() reference (the AI core's round 25): objcmp moves only
+    CAiPath::CopyPlan (21 -> 2 off), adopted; the pod resize copy 0x53AA50 comes out byte-exact from any unit asking for
+    the pod's erase and resize, either order (build/p24/rsz.cpp) -- no declaration change needed, the emitting unit open;
+  - the pod's raw `end() const` round 23 carried is used by nothing (removed, neutral); UpdateTextureSelects 0x355DE0 is
+    1 instruction off under the new header (was 11: only the palette test's beq operand order left).
 - **Tells from completing the MSL headers, round 23** (the scalar vectors' rbegin, the pointer vector's original iterator
   measured; probes build/scratch/msl-r23-p23/, the measured header build/scratch/msl-r23/vector.r23_pointer_iterator):
   - THE POINTER VECTOR'S ORIGINAL ITERATOR, read off the image: the raw begin/end belong to each element type, not the
@@ -8317,6 +8430,71 @@ they showed:
   volatile, 15 words of the plain QWC/CHCR stores' schedule), `_doCSC2` (0x1B8 against 0x1C0). Not
   reached: sceGsExecStoreImage (0x68C), `_csc_storeRefImage`, round 28a's and 26a's opens.
 
+**The tools, round 30a** (the lanes' requests): (1) **the canary's `test_stale_follows_a_callee_rename`
+uses a synthetic row**: its fixture draft was 0x2808D0's own placeholder, which the engine core's round
+14 matches from source as UIGetTextInput -- a draft whose row is renamed is stale by the own-row rule, so
+every `== set()` assertion would fail once the core names it. The fixture row is now a placeholder added
+to a copy of the map at 0xFFFFF0 (past OVL2: no row can hold it, asserted), every assertion kept (and one
+added: against the real map the same draft is stale -- its row is the copy's). Proved: with 0x2808D0
+renamed in the map the old test fails at "which the placeholder rule alone misses" and the new one passes
+(9 assertions). (2) **include/libvu0.h declares `sceVu0InterVectorXYZ`** (the SEALs' round 34 declared it
+in seal_anim.cpp; body.cpp's `float *` spelling is the same function to MW) and **include/string.h
+`strncasecmp`** (the engine core's round 13, zanim_menu.cpp and ai.h; size_t is unsigned int, as their
+`unsigned int` and si_script.cpp's `size_t`): additive, `tools/objcmp.py HEAD --auto` over every unit,
+2,197, 0 differ. No tool that scores changed (scdiff.py, sccheck.py, scdecomp.py are master's), so no MW
+or GCC unit can score differently. automatch over the lane's three ranges (`--max-size 0x400 --emit
+--no-prune --jobs 1 --obj-dir` the lane's private `src/lib` build): MAIN `18DB90 1C4CC0` 21 tried, 0 hits
+(1 build failure, 3 m2c refusals, 17 misses), OVL1 `1E7F58 1E8FD4` 0 tried, `243000 256FD0` 56 tried, 0
+hits (build failures 0x24B2F8, 0x24DBB8; m2c refuses 0x247D30, 0x247FE8, 0x2485D0, 0x2488A0, 0x24D560):
+77 tried, none byte-exact (round 28a: 102, 0).
+
+**Round 30a** (2026-11-04, the requests first, then MAIN's small rows): 15 rows newly byte-exact (4,100
+bytes) of 16 written -- the lane's `src/lib` sdk/libc/libgcc/libm/ovl1 rows 1,254 -> 1,269 of 1,326 scored
+(after merging master b2d4693b), none lost. libpad2 whole (`sdk/libpad2.c` 14 of 14: the socket's
+creation 0x1BD630, the button read 0x1BD790, the profile read 0x1BD868, the state 0x1BD938, a button's
+value 0x1BDA78, the profile's parse 0x1BDD58); a new `sdk/libvib.c` (0x1BE530, 0x1BE5B0: a profile
+received and two buffers sent over libdbc, libvib's GetProfile/SetActParam shapes -- no name given, no demo
+row, string or caller); libmpeg's demux 2 -> 5 (`sdk/mpeg_demux.c` over libmpeg.h: `_type2id`, open since
+round 19a, and `_id2type`, sceMpegAddStrCallback, `_pack_header`) and picture output (`sdk/mpeg_dec.c`:
+`_getPtsDtsFlags`, `_dispRefImage`, `_dispRefImageField`; dmaRefImage OPEN). No rows named. What they showed:
+
+- **A struct passed as an int is a union**: libpad2's receive command (a 14-bit size, a 2-bit type, two
+  bytes) is a u_long bitfield struct -- a DImode register, so the last mask keeps the upper word
+  (0xFFFFFFFF00FFFFFF) -- and passed as a union's int (its low word sign-extended into a1);
+  `*(int *)&cmd` goes through ADDRESSOF and builds it in a1 off another register (39 words). The same
+  command in libvib's object is passed as the struct itself (no truncation): two objects, two prototypes.
+- **A switch's case tree reads the table's values**: `_type2id`'s cases are the three masks `_strmap`
+  holds, 0xFFFFFFFFFF first and no default -- the root 0xFFFF<<24, the 0xFFFFFFFFFF node a bare `sltu`
+  (its shift-0 body cross-jumps with the fall-through), and the 16-byte frame the code never uses comes
+  with it; two cases are an xor and a movn. `_id2type`'s 0xFF00 class is an if/else-if (each `bne`
+  falls into its body), its 0xFFFF class a switch.
+- **What loop.c hoists says how a value is spelled**: a per-case `v = id & CONST` into one variable keeps
+  the AND in the loop and hoists only the constant (a test per case hoists the AND; a mask variable set in
+  each case hoists nothing); the switched-on id held in a variable is compared after the switch with no
+  reload; a default spelled with its case's own constant reads the hoisted constant's register (through
+  the mask variable a3 stays live and the dispatch's beq turns beql); dmaRefImage's count read once
+  into a local (through the field it is reloaded every pass).
+- **fold pairs a long OR chain, each pair in source order**: `_getPtsDtsFlags`'s six-term flags word is
+  the target's only from the highest bit down; its PTS is `last + (half + odd)`, each product a DImode
+  `__muldi3` of `& 1` terms (the odd half of the gap alternated through a parity count).
+- **A store that may alias a load stays below it**: `_dispRefImageField`'s `d->_080 = mp->pts` comes
+  before `d->_088 = 1` (a long store, a long load through another pointer); libpad2's button record is
+  copied from `q + 20`, q the table's base plus `(n * 16 + port * 820)` -- any field spelling folds the
+  20 into the symbol (4-10 words).
+- **Guard clauses and layout**: libpad2's creation returns on `s < 0` and stores the state before the
+  buffer (1 of 4); its reads' `return -1` comes first (`if (b->f04) return b->b2;` puts -1 in the
+  likely slot); the state's failure block sits inside the else before the shared `return state` (a label
+  at the end lays it last); a button's value is a switch inside `if (b.present)`, its bit case `if (x)
+  return 0; return 1;` (a movn off the known size; `x ? 0 : 1` folds to xori); libvib's `size = 40`
+  comes before the command's fields and the profile's length between the two copies (1 of 60).
+- **Open, diagnosed in place**: dmaRefImage (12 words, registers: the index and tag pointer trade t3/t2,
+  the hoisted `n - 1` before the two bases; the tag id a variable between the two stores, else fold
+  branches on it; 48 declaration orders alike); htonl/htons (inet_addr.c's note: htonl is byte-exact
+  through one reused temporary with both schedulers off, htons a register off -- code no scheduler
+  touched, a separate object or assembly the demo cannot tell). Not reached: sceGsSetDefDBuff,
+  `_ch3dmaCSC`, `_doCSC2`, 0x252D68, 0x250320 (their diagnoses stand), libcdvd's sceCdDiskReady/sceCdRead,
+  OVL1's codec and libnetb rows.
+
 **Next**: the libraries by hand, module by module, as their vendors wrote them (each `src/lib`
 unit's header says what it covers); GCC's scheduler moves independent stores, and which source
 order gives the target's is easier measured than predicted (`tools/ccperm.py PROBE
@@ -9793,6 +9971,56 @@ InitDynprogContext, FreeLanguage, NormCorrection (`s1:order`, each body SOCOM 1'
 and DynProgAccNBestOptSil (`s1:order`, `s1:ref`: InitDynprogContext stores them by the context's silence
 flag as SOCOM 1's does), FreeDistCalc (`s1:order`, `s1:calls`). No tool changed.
 
+**Round 22c: FreeDistCalc's tie broken, the pitch combiner's rows named, the context tree's allocator.**
+
+- **A priority tie with the parameter cannot be renumbered away**: FreeDistCalc's d (17 refs over
+  119 insns) and each codebook expansion's scheduler pointer (6 over 21) both rank 5714
+  (`tools/ccdump.py -f`), and a tie goes to the lower pseudo -- d, the parameter, which assign_parms
+  numbers before anything an inline expansion makes. So the target's d lives 120 insns or more (5666):
+  ONE RTL insn more inside d's life and outside both expansions' -- after the second, or anywhere past
+  the codebook frees -- gives the target byte for byte; inside an expansion's life it lowers that
+  pointer instead. No natural statement tried leaves one: a result variable (constant-propagated), a
+  split `TOSBLOCK *` parameter, a duplicated tail for cross-jumping, a guard, a goto, a label, a
+  do-while(0), the inline's parameters in every order or `const`, its pointer passed in or loaded later
+  (19 insns: it then outranks the block's own pointer too) -- `build/scratch/gcc/fd/v1-v6.py`.
+  distsil.c carries `FREEDIST_STANDIN()`, an empty asm (it emits nothing and counts in the live
+  length), marked a stand-in as rt_udp.c's RT_UDP_BARRIER is.
+- **A constructor's slots name its block's three functions**: ConstructPitchCombiner passes 0x502298
+  (process), 0x502A08 (init) and 0x5028F0 (control) where SOCOM 1's passes ProcessPitchCombiner,
+  InitPitchCombiner and ControlPitchCombiner -- SOCOM II moved the control function before the init
+  (pitchcomb.c's note had it as a new function); the control's command 200 names PitchCombinerReset
+  (0x502658, `s1:calls`) and the object's first row is LogPitchProcessing (0x501A90, `s1:order`).
+- **Round 13c's definition-order rule moves a default's constant too**: ControlPitchCombiner's
+  `return 0` puts its `move v0,zero` in the `b`'s slot, as the target, only with PitchCombinerReset --
+  command 200's call, the branch's fall-through -- defined above it; declared only, reorg puts it in the
+  `beq`'s slot (3 words).
+- **A narrowing the target keeps is a variable's**: the ring length's `andi 0xffff` of a loaded byte
+  (both builds) is an int parameter narrowed into an `unsigned short` local (as an `unsigned short`
+  parameter the conversion folds away: 10 words short); the flush's counts are ints narrowed at the
+  loops' tests (the target's `andi` after the wrap test's join).
+- **sched1 issues a constant's last-use store first**: PitchCombinerReset is the target's but one
+  store -- whichever `= 1` flag comes last in the source holds the QImode constant's REG_DEAD and
+  outranks the ring cursors' stores, which free their own registers too and otherwise go in source
+  order (36 placements, a chained assignment, a local `one`: OPEN).
+- **Shapes, measured**: the free list tested before it is read (round 6c's `if (*list)`: the target's
+  `lw v0; beqz; move s0,v0`), the release's test positive (`n < 9` first), the two clears in the other
+  source order (AllocateNodeAndFreePrevious); a padding loop's cursor stepped in its store
+  (`*p->r96.wr++ = *s`, the field's address taken once -- round 17c's), a frame written through `*q++`
+  and its last value one store at the join (FlushPitchCombiner).
+- **Open, diagnosed in place**: PitchCombinerReset (above), FlushPitchCombiner (2 words short: the
+  target -- SOCOM 1's copy too -- reads +156 again for the count after the lead test; with the field
+  volatile every block is the target's and only two locals' registers differ, but the reset reads it
+  once for two uses), InitViterbi@nbestdp (the token count's position, all ten, does not move the
+  cross-jump).
+
+Hand-written in round 22c: `asr/distsil.c` (FreeDistCalc closed: 10 of 10), `asr/pitchcomb.c` (+3:
+ControlPitchCombiner, PitchCombinerReset and FlushPitchCombiner OPEN; the record's six rings typed,
+NormE_Processing respelled on them, the same code; 2 of 4), `asr/ctxtree.c` (+1,
+AllocateNodeAndFreePrevious: 12 of 12) -- 3 rows new to the map's byte-exact rows (1,132 bytes), none
+superseding a draft; `src/lib/asr` 510 of 544 (507 of 540 before). 5 rows named (ProcessPitchCombiner,
+InitPitchCombiner, ControlPitchCombiner `s1:slot`; PitchCombinerReset `s1:calls`; LogPitchProcessing
+`s1:order`). No tool changed.
+
 **Round 14b: the "toolchain" opens were SCEA's shapes; LargeInt's core is assembly.**
 
 - **LargeInt's EE primitives are hand-written assembly** (0x628B48-0x629A44, between LargeInt.c's C and
@@ -10145,6 +10373,8 @@ What is open across lanes, and what comes next:
   10): `__sinit_zNetMediusUniverse.cpp` 0x4022D0 matches at `-inline level=6` and not at 5 once
   theAcctDB is modelled as the member at offset 0 of an outer CZUniversInformationServer (the
   destructor it registers, 0x300570, is not CAcctDB's vtable's) -- open at 5 (0xC4 vs 0x144).
+  THE IMAGE'S OWN POINTER-VECTOR end() (the MSL headers round 24) makes 19 natural walks need level 6: their
+  eight units carry `#pragma inline_depth(6)`, their objects byte-identical to the level-5 fit's.
   MEASURED OVER THE WHOLE TREE (2026-11-03, master 914fce13, `SC_FLAGS` with level=N, everything
   else as now): level 5 gives 9,295 byte-exact, 6 gives 9,246 (56 lost, 5 gained), 7 9,240, 8 and 9
   9,241 (64 lost, 14 gained). The five that every level from 6 gains are non-recursive:

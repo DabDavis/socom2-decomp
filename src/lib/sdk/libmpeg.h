@@ -31,6 +31,8 @@ typedef int u_long128 __attribute__((mode(TI)));
 #define D4_TADR		((volatile u_int *)0x1000B430)
 #define D9_CHCR		((volatile u_int *)0x1000D400)
 #define D9_QWC		((volatile u_int *)0x1000D420)
+#define D9_TADR		((volatile u_int *)0x1000D430)
+#define D9_SADR		((volatile u_int *)0x1000D480)
 #define D_ENABLER	((volatile u_int *)0x1000F520)
 
 #define D_ENABLEW	((volatile u_int *)0x1000F590)
@@ -120,9 +122,15 @@ typedef struct {
 	int height;		/* 0x08 */
 	int mbw;		/* 0x0C */
 	int mbh;		/* 0x10 */
-	char pad14[0x28 - 0x14];
+	int _14;		/* 0x14 */
+	long pts;		/* 0x18: _getPtsDtsFlags reads both (GCC round 30a) */
+	long dts;		/* 0x20 */
 	int valid;		/* 0x28 */
-	char pad2c[0x68 - 0x2C];
+	int _2c, _30, _34, _38, _3c, _40;	/* 0x2C: the picture's flags, packed into sceMpeg.flags */
+	int centre[6];		/* 0x44: copied to MpegDec._0b4 ... _0c8 (sceMpegDispCenterOffX/Y's) */
+	int dispWidth;		/* 0x5C */
+	int dispHeight;		/* 0x60 */
+	int _64;		/* 0x64 */
 } MpegRef;
 
 /* a macroblock's record (0x140 bytes, two of them from 0x590): BDEC's output and what the motion
@@ -130,7 +138,11 @@ typedef struct {
 typedef struct {
 	u_int mc;		/* 0x000: a 6 KB scratchpad buffer (uncached) */
 	u_int coef;		/* 0x004: BDEC's 384 coefficients, 768 bytes of scratchpad */
-	char pad008[0x13C - 0x008];
+	u_int src[4];		/* 0x008: dmaRefImage's REF tags, two per block (GCC round 30a) */
+	u_int dst[4];		/* 0x018 */
+	char pad028[0x12C - 0x028];
+	int nRef;		/* 0x12C: the tag pairs dmaRefImage chains */
+	char pad130[0x13C - 0x130];
 	int noCoef;		/* 0x13C: neither intra nor coded: the prediction alone */
 } MpegMB;
 
