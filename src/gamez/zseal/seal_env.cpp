@@ -521,7 +521,7 @@ extern "C" {
  * defined below -- the deaths inline them) */
 void func_0059D750(CZSealBody *seal);
 void func_005B14E0(CZSealBody::CSealClimb *climb, CZSealBody *seal);
-/* the death's end, once its anim has run (OVL2 0x5A0040, not written yet), the overlay's anims let
+/* the death's end, once its anim has run (OVL2 0x5A0040, below), the overlay's anims let
  * go (OVL2 0x5781C0, the unclaimed stretch before seal_body.cpp) and 0x5A5DA0 (not written yet) */
 void func_005A0040(CZSealBody *seal);
 void func_005781C0(CZSealBody *seal);
@@ -2758,10 +2758,62 @@ void CZSealBody::CreateNetAmmoPickup(unsigned short count, unsigned short *items
 }
 
 extern "C" {
-/* the kit's ammunition put into a stash: all of it (-1) or so many rounds (OVL2 0x5BA040, the kit
- * lane's row -- SOCOM 1's CZKit::FillAmmoPickupInstance, after RemoveAmmo in both builds) */
-void func_005BA040(CZKit *kit, CZItemStash *stash, int rounds);
+/* the MP bomb asked for while the pickups are shut, and where (OVL1 bss 0x44CDF8 and 0x44CDE8: SOCOM 1's
+ * pair at the same place, a $gp byte and a point; the names ours) */
+extern bool data_0044CDF8;
+extern CPnt3D data_0044CDE8;
 }
+
+/* the MP bomb's pickup made at a point: with the pickups shut only asked for there; else the satchel's
+ * model instanced, named MPFootBomb, put in the world, made dynamic and a character node with its
+ * textures, polygons and visuals; unless told not to, a pickup of kind 11 the player owns, and the
+ * player's bomb marker made (BOMB_GROUND, type 1) or moved there, its base marker dropped; the node kept
+ * as the bomb's (OVL2 0x59DAB0; SOCOM 1's, the owner, the bump-map bit and the marker's move new) */
+CPickup *CZSealBody::CreateMPBombPickup(const CPnt3D *pos, bool b)
+{
+    if (!CPickup::m_isOpen) {
+        data_0044CDF8 = true;
+        data_0044CDE8 = *pos;
+        return 0;
+    }
+    CQuat q;
+
+    q.MakeYXZRot(0.0f, 0.0f, 0.0f);
+    CZWeapon::m_listWeapons.GetWeapon((EQUIP_ITEM)154);
+    zdb::CNode *node = zdb::CNode::CreateInstance((zdb::CModel *)zdb::CWorld::GetModel("Satchel"), pos, &q);
+
+    if (!node)
+        return 0;
+    node->SetName("MPFootBomb");
+    zdb::CWorld::m_world->AddChild(node);
+    node->SetDynamic(true, true);
+    node->m_socom2_a1_bits.bit2 = 1;
+    node->m_bumpmap = 1;
+    zdb::CWorld::m_world->AddTextureAssetCharacter(zdb::CHARSETCOMMON, node);
+    node->SetDescendantDI(true);
+    node->SetDescendantVisuals(true);
+    CPickup *p = 0;
+
+    if (b == false) {   /* (`!b` tests the register as it came; the target narrows it first) */
+        CZSealBody *player = ftsGetPlayer();
+
+        p = CPickup::Create(player->m_id, (CPickup::PU_TYPE)11, node, 0);
+        if (!player->m_mpbomb_anchor) {
+            CCompassAnchor *a = CCompass::CreateAnchor(*pos, "BOMB_GROUND");
+
+            a->m_type = 1;
+            player->CompassAnchor_MPBomb(a);
+        } else
+            player->m_mpbomb_anchor->m_posW = *pos;
+        CCompass::DeleteAnchor(player->m_mpbase_anchor);
+        player->CompassAnchor_MPBase(0);
+    }
+    CPickup::m_mpbombnode = node;
+    return p;
+}
+
+/* (the kit's ammunition put into a stash, all of it or so many rounds, is CZKit::FillAmmoPickupInstance:
+ * SOCOM 1's, OVL2 0x5BA040, the kit lane's -- zseal.h's CZKit declares it) */
 
 /* this SEAL's ammunition dropped, all of it (-1) or so many rounds, with the pickups open and,
  * online, by a player only: the kit's rounds put into a new stash, which -- if any entry has rounds
@@ -2777,9 +2829,9 @@ void CZSealBody::DropAmmo(int rounds)
     CZItemStash *stash = new CZItemStash;
 
     if (rounds == -1)
-        func_005BA040(&m_kit, stash, -1);
+        m_kit.FillAmmoPickupInstance(stash, -1);
     else
-        func_005BA040(&m_kit, stash, rounds);
+        m_kit.FillAmmoPickupInstance(stash, rounds);
     int i;
 
     for (i = 0; i < stash->Count(); i++) {
@@ -3342,6 +3394,161 @@ extern "C" void func_005A0BB0(CZSealBody *seal)
 {
     func_005A5250(seal, (EQUIP_ITEM)122, 0, 0);
     seal->SetInSmoke(true);
+}
+
+/* a death's anim for a location and a stance, one of the table's at random: a SEAL on the player's
+ * team (the player himself aside) dies by the teammates' table -- its location 3's anim for the stance,
+ * then for standing, when that one is none -- anyone else by the deaths'; the deaths' location 3
+ * standing anim when all else is none (OVL2 0x5A0950, new in SOCOM II: FindRandomDeathAnim hands it the
+ * stance it settled on, the falling death and five more ask it -- the name unknown) */
+/* an entity's team bits (an inline: the player's are loaded first, as two inline calls are expanded
+ * left to right -- the plain loads in either order load the SEAL's first) */
+static inline unsigned int TeamOf(const CEntity *e)
+{
+    return e->m_team;
+}
+
+extern "C" AnimType func_005A0950(CZSealBody *seal, DAMAGE_LOCATION loc, SEAL_STATE state)
+{
+    short anim = -1;
+
+    if (!seal->IsPlayer() && (TeamOf(ftsGetPlayer()) & TeamOf(seal))) {
+        int n = AnimSet::teammatedeathanim[loc][state].size();
+
+        if (n > 0) {
+            anim = AnimSet::teammatedeathanim[loc][state][n == 1 ? 0 : rand() % n];
+            if (anim == -1)
+                anim = AnimSet::teammatedeathanim[3][state][0];
+            if (anim == -1)
+                anim = AnimSet::teammatedeathanim[3][0][0];
+        }
+    } else {
+        int n = AnimSet::deathanim[loc][state].size();
+
+        if (n > 0) {
+            anim = AnimSet::deathanim[loc][state][n == 1 ? 0 : rand() % n];
+            if (anim == -1)
+                anim = AnimSet::deathanim[3][state][0];
+        }
+    }
+    if (anim == -1)
+        anim = AnimSet::deathanim[3][0][0];
+    return (AnimType)anim;
+}
+
+extern "C" {
+/* the state of the topmost blend in state 0, 1 or 2, else 0 (seal_body.cpp's, OVL2 0x57DBB0: SOCOM 1's
+ * BaseState) and a halfword's bits tested (seal.cpp's tail copy, OVL2 0x5551A0) */
+unsigned char func_0057DBB0(CZSealBody *seal);
+bool func_005551A0(unsigned short flags, unsigned short bits);
+}
+
+/* a death's anim for where the SEAL was hit: the stance it dies in -- dead already, the blends' base
+ * state with the body put in state 8; carried or carrying, standing; any other but a stand, a crouch or
+ * prone, the base state; stunned, prone -- and, past half of a stance change (17, 19, 25: before half,
+ * reversed, by the top blend's flag 0x20), the stance it is going to; then one of that stance's at random
+ * (OVL2 0x5A0700; SOCOM 1's, its pick moved out into 0x5A0950) */
+AnimType CZSealBody::FindRandomDeathAnim(DAMAGE_LOCATION where, bool *b)
+{
+    *b = false;
+    SEAL_STATE state = GetStance(false);
+
+    switch (state) {
+    case stateStand:
+    case stateCrouch:
+    case stateProne:
+        break;
+    case stateCarrying:
+    case stateCarried:
+        state = stateStand;
+        break;
+    case stateDead:
+        state = (SEAL_STATE)func_0057DBB0(this);
+        BodySetState(8);
+        break;
+    default:
+        state = (SEAL_STATE)func_0057DBB0(this);
+        break;
+    }
+    if (m_am_stunned)
+        state = stateProne;
+    if (IsCurrentBlend((AnimType)17) || IsCurrentBlend((AnimType)19) || IsCurrentBlend((AnimType)25)) {
+        float t = ((CZBodyAnimBlend *)func_00555170(&m_blends))->m_tfrac;
+        bool late = false;
+        bool back = func_005551A0(((CZBodyAnimBlend *)func_00555170(&m_blends))->m_flags, 32);
+
+        if (back) {
+            if (t > 0.5f)
+                late = true;
+        } else if (t < 0.5f)
+            late = true;
+        if (late) {
+            if (IsCurrentBlend((AnimType)17)) {
+                if (back)
+                    state = stateCrouch;
+                else
+                    state = stateStand;
+            }
+            if (IsCurrentBlend((AnimType)19)) {
+                if (back)
+                    state = stateProne;
+                else
+                    state = stateCrouch;
+            }
+            if (IsCurrentBlend((AnimType)25)) {
+                if (back)
+                    state = stateProne;
+                else
+                    state = stateStand;
+            }
+        }
+    }
+    return func_005A0950(this, where, state);
+}
+
+extern "C" {
+/* a weapon of the kit dropped as a pickup (OVL2 0x59F730, not written yet: the item's index, a flag) */
+void func_0059F730(CZSealBody *seal, int index, int b);
+}
+
+/* the death's end, once its anim has run: unless the SEAL is of team 2 or remote -- or, online, one
+ * whose hits go unfelt, a ghost or in a game whose flag 0xDC is set -- its ammunition dropped, then its
+ * primary weapon and its pistol (offline only where no such weapon lies within 50), then, online, its
+ * class-145 item when that holds item 185's or 186's rounds (OVL2 0x5A0040, new in SOCOM II: the death's
+ * callbacks call it -- the name unknown) */
+extern "C" void func_005A0040(CZSealBody *seal)
+{
+    if (seal->m_team & 2)
+        return;
+
+    bool drop = true;
+
+    if (seal->IsRemote())
+        drop = false;
+    if (theNetwork.m_9 && (func_002C2FD0(seal) || seal->m_deathType == DEATH_GHOST || data_00437CE8->m_dc))
+        drop = false;
+    if (!drop)
+        return;
+
+    int primary = seal->m_kit.GetPrimaryIndex();
+    int secondary = seal->m_kit.GetSecondaryIndex();
+    int launcher = theNetwork.m_9 ? seal->m_kit.GetClass145Index() : -1;
+    bool ammo = false;
+
+    if (launcher != -1) {
+        if (seal->m_kit.HasItem((EQUIP_ITEM)185))
+            ammo = seal->m_kit.ItemHasAmmo((EQUIP_ITEM)185);
+        else if (seal->m_kit.HasItem((EQUIP_ITEM)186))
+            ammo = seal->m_kit.ItemHasAmmo((EQUIP_ITEM)186);
+    }
+    seal->DropAmmo(-1);
+    if (primary != -1 && (theNetwork.m_9 || !CPickup::IsWeaponNear(seal->m_kit.GetPrimaryEnum(), &seal->m_posW, 50.0f)))
+        func_0059F730(seal, primary, 0);
+    if (secondary != -1 &&
+        (theNetwork.m_9 || !CPickup::IsWeaponNear(seal->m_kit.GetSecondaryEnum(), &seal->m_posW, 50.0f)))
+        func_0059F730(seal, secondary, 0);
+    if (ammo)
+        func_0059F730(seal, launcher, 0);
 }
 
 /* the hits under a point handled (SOCOM 1's SealProcessAltitude; OVL2 0x5B5D40, not written yet) */

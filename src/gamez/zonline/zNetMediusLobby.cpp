@@ -352,7 +352,7 @@ extern "C" void func_002FAA80(CZOnlineLobby *lobby)
         memcpy(req.Stats, stats, sizeof(req.Stats));
         if (data_0066A648)
             memcpy(data_0066A648, stats, sizeof(data_0066A648));
-        func_002F9AC0(&data_0066A750, stats);
+        UnpackPlayerStats(&data_0066A750, stats);
         CheckMediusError(MediusAccountUpdateStats(&req, func_002FAB70));
         memset(&ladder, 0, sizeof(ladder));
         ladder.LadderType = 0;
@@ -369,7 +369,7 @@ extern "C" {
 void func_002FA8F0(int, int, int, MediusPlayerInfoResponse *resp)
 {
     if (CheckMediusCallbackStatus("MediusGetPlayerStats", resp->StatusCode)) {
-        func_002F9AC0(&data_0066A750, resp->Stats);
+        UnpackPlayerStats(&data_0066A750, resp->Stats);
         func_002F3EE0(&data_0066A750);
         CUIVariable *town = theUIVarManager.Add("PLAYERHOMETOWN", 0, UIVL_TEMPORARY);
 
@@ -564,10 +564,9 @@ struct GamePlayerStatsD {
     int m_18;   // 0xfc
 };   // 0x100
 
-extern "C" {
 /* a player's stats read out of their text: the record brought up a version at a time to the 'E' one
  * and copied out -- 'N'/'Q' the account's text form (the rating's ten digits, the side's 'S', a
- * 'j'), 'A' to 'D' the older records; anything else a new account's (SOCOM II's; OVL1 0x2F9AC0: the
+ * 'j'), 'A' to 'D' the older records; anything else a new account's (SOCOM II's, the name ours; OVL1 0x2F9AC0: the
  * ladder's, the game players', the player info's and our own stats' readers call it). Round 18, written
  * byte-exact off the target: 'E' an if ahead of the switch (tested first, `bne`), the switch's labels
  * Q N A B C D (its compare chain runs D C B A N Q); each case's record a cast of `text` of its own (s1,
@@ -575,7 +574,7 @@ extern "C" {
  * char field extracts with dsra), the text form's side its enumerators' ternary (branches, as the
  * target's: an int ternary or if/else is if-converted to sltu); the 'A'/'B' words fourteen statements
  * (a loop is unrolled seven at a time); 'C' to 'D' built without a memset */
-GamePlayerStats *func_002F9AC0(GamePlayerStats *stats, const char *text)
+GamePlayerStats *UnpackPlayerStats(GamePlayerStats *stats, const char *text)
 {
     if (*text == 'E') {
         CopyField(stats, text, sizeof(GamePlayerStats));
@@ -595,7 +594,7 @@ GamePlayerStats *func_002F9AC0(GamePlayerStats *stats, const char *text)
             a.m_side = n->m_side == 'S' ? STATS_SEALS : STATS_TERRORISTS;
             a.m_late = n->m_j == 'j';
             strncpy(a.m_desc, n->m_desc, 38);
-            return func_002F9AC0(stats, (const char *)&a);
+            return UnpackPlayerStats(stats, (const char *)&a);
         }
         case 'A': {
             const GamePlayerStatsA *a = (const GamePlayerStatsA *)text;
@@ -629,7 +628,7 @@ GamePlayerStats *func_002F9AC0(GamePlayerStats *stats, const char *text)
             b.m_aa = a->m_92;
             b.m_ab = a->m_93;
             b.m_ac = 0;
-            return func_002F9AC0(stats, (const char *)&b);
+            return UnpackPlayerStats(stats, (const char *)&b);
         }
         case 'B': {
             GamePlayerStatsC c;
@@ -639,7 +638,7 @@ GamePlayerStats *func_002F9AC0(GamePlayerStats *stats, const char *text)
             c.m_clan[0] = 0;
             c.m_e0 = 0;
             c.m_e4 = 0;
-            return func_002F9AC0(stats, (const char *)&c);
+            return UnpackPlayerStats(stats, (const char *)&c);
         }
         case 'C': {
             const GamePlayerStatsC *c = (const GamePlayerStatsC *)text;
@@ -673,7 +672,7 @@ GamePlayerStats *func_002F9AC0(GamePlayerStats *stats, const char *text)
             strncpy(d.m_40, c->m_b.m_b0, 31);
             strncpy(d.m_clan, c->m_clan, 11);
             strncpy(d.m_desc, c->m_b.m_desc, 65);
-            return func_002F9AC0(stats, (const char *)&d);
+            return UnpackPlayerStats(stats, (const char *)&d);
         }
         case 'D': {
             const GamePlayerStatsD *d = (const GamePlayerStatsD *)text;
@@ -708,14 +707,13 @@ GamePlayerStats *func_002F9AC0(GamePlayerStats *stats, const char *text)
             strncpy(e.m_40, d->m_40, 31);
             strncpy(e.m_clan, d->m_clan, 11);
             strncpy(e.m_desc, d->m_desc, 65);
-            return func_002F9AC0(stats, (const char *)&e);
+            return UnpackPlayerStats(stats, (const char *)&e);
         }
         default:
             COPY_FIELD(stats, NewAccountStats(), sizeof(GamePlayerStats));
         }
     }
     return stats;
-}
 }
 
 extern "C" {
@@ -1401,7 +1399,7 @@ void func_002F7020(int, int, int, MediusGetGamePlayersResponse *resp)
         GamePlayerStats stats;
         char tag[32];
 
-        func_002F9AC0(&stats, resp->Stats);
+        UnpackPlayerStats(&stats, resp->Stats);
         color.x = 128.0f;
         color.y = 64.0f;
         color.z = 32.0f;
@@ -1550,7 +1548,7 @@ void cbCountGamePlayers(int, int, int, MediusGetGamePlayersResponse *resp)
     if (CheckMediusCallbackStatus("MediusGetGamePlayers", resp->StatusCode)) {
         GamePlayerStats stats;
 
-        func_002F9AC0(&stats, resp->Stats);
+        UnpackPlayerStats(&stats, resp->Stats);
         if (stats.m_late)
             data_0066A990++;
         if (resp->EndOfList) {

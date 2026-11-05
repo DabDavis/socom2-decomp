@@ -3767,8 +3767,8 @@
 0x002A2D40 0xE8 AddPoint__14CCompassAnchorFPC6CPnt3D  # OVL1; new in SOCOM II: a point found in the anchor's list or pushed on it, its index returned -- the name is ours; compass.cpp
 0x002A2E30 0x80 __dt__8CCompassFv  # OVL1; s1:align by hand (SOCOM 1's __dt__8CCompassFv, 0x259040: the implicit destructor; five this-tests here -- CCompass, CCompassAnchorVec, the pointer vector's three); __sinit_compass.cpp registers it; compass.cpp
 0x002A2EB0 0x2C0 ftsGetAltitudeApprox__FPC6CPnt3Dfb  # OVL1; s1:calls (the engine core round 13: SOCOM II's ftsGetAltitudeApprox(const CPnt3D *, float, bool), SOCOM 1's callee sequence; opens the unit 0x2A2EB0-0x2A3AF8 between compass.cpp and the CDIDummy rows)
-0x002A3170 0x7B4 func_002A3170  # OVL1
-0x002A3930 0x14 func_002A3930  # OVL1
+0x002A3170 0x7B4 GetBilinearAltitude__6CAiMapCFRC9CAiMapLocPC6CPnt3DPf  # OVL1; s1:calls by hand, the AI core round 26 (queued by the engine core's round 14): SOCOM 1's CAiMap::GetBilinearAltitude 0x19A820 (the demo's name, signature and body: the cell offset, the step toward the nearer neighbour in x and z, four cells' altitudes weighted and renormalised below 0.98) -- ftsGetAltitudeApprox calls it with (map, loc, pos, &alt) for a bilinear cell as SOCOM 1's does; OVL1's only copy, ai.h's inline emitted by fts_main.cpp
+0x002A3930 0x14 IsBilinear__7CAiCellCFv  # OVL1; ours, the AI core round 26 (queued by the engine core's round 14): the cell's bit 27 (m_bilinear: lbu +3, bit 3) as a bool -- ftsGetAltitudeApprox's one-level cut of GetMapAltitude calls it to choose GetBilinearAltitude over GetAltitude(cell); ai.h's inline, fts_main.cpp's copy
 0x002A3950 0x198 func_002A3950  # OVL1; OVL1's copy of CAiMap::GetLocation (OVL2 0x515F80, the same words: the engine core round 13); ovl-copy: GetLocation__6CAiMapCFPC6CPnt3DR9CAiMapLoc
 0x002A3AF0 0x8 func_002A3AF0  # OVL1; the engine core round 14: OVL1's copy of CAiMapLoc() (0x516120, the same two words), fts_main.cpp's -- ftsGetAltitudeApprox 0x2A2EB0 calls it for the inlined map altitude's cell, the copies after the query in reverse of first use; ovl-copy: __ct__9CAiMapLocFv
 0x002A3B00 0x8 GetIntersect__8CDIDummyFPQ23zdb11DiIntersect  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
@@ -4911,7 +4911,7 @@
 0x002EFE10 0x10 func_002EFE10  # OVL1
 0x002EFE20 0x24 ChangeState__13CZOnlineLobbyF11LOBBY_STATE  # OVL1; ours (pushes its byte onto the state queue at +0x64 through the deque's push_back 0x2E1610, where SOCOM 1 pushes inline; Logout passes END_SESSION 18, the 0x2E0440 thunk SESSION_BEGIN 12)
 0x002EFE50 0x1C4 func_002EFE50  # OVL1
-0x002F0020 0xE7C func_002F0020  # OVL1
+0x002F0020 0xE7C cbGetPlayerInfo__FiiiP24MediusPlayerInfoResponse  # OVL1; ours, the online lane round 20 (MediusGetPlayerInfo's callback: func_002EFE50, UIGetPlayerInfo's request, passes it; named after the request as SOCOM 1's callbacks are -- SOCOM 1's own MediusGetPlayerInfo callback, cbGetPlayerStats__FiiiP24MediusPlayerInfoResponse 0x32D8B0, takes the same signature but reads our stats)
 0x002F0EA0 0x204 func_002F0EA0  # OVL1
 0x002F10B0 0x134 func_002F10B0  # OVL1
 0x002F11F0 0x4C func_002F11F0  # OVL1
@@ -5008,7 +5008,7 @@
 0x002F96E0 0xC func_002F96E0  # OVL1
 0x002F96F0 0x1FC func_002F96F0  # OVL1
 0x002F98F0 0x1C8 func_002F98F0  # OVL1
-0x002F9AC0 0x854 func_002F9AC0  # OVL1
+0x002F9AC0 0x854 UnpackPlayerStats__FP15GamePlayerStatsPCc  # OVL1; ours, the online lane round 20 (the stats text unpacked into the 'E' record, older records 'N'/'Q', 'A'-'D' upgraded a version at a time: the ladder item, the game players', the player info's and our own stats' readers call it; SOCOM 1 has none, reading its stats text with atoi)
 0x002FA320 0x234 Register__13CZOnlineLobbyFPCcPCc  # OVL1; s1:ui ('LobbyRegister' 0x27DDE0 calls it on theLobby where SOCOM 1's UILobbyRegister calls Register)
 0x002FA560 0x3C Logout__13CZOnlineLobbyFv  # OVL1; s1:ui ('LobbyLogout' 0x27DCC0, as SOCOM 1's UILobbyLogout calls Logout)
 0x002FA5A0 0x234 Login__13CZOnlineLobbyFPCcPCc  # OVL1; s1:ui ('LobbyLogin' 0x27DD20, as SOCOM 1's UILobbyLogin calls Login)
@@ -9585,7 +9585,7 @@
 0x005278C0 0x3C plan_complete__7CAiPathFQ27CAiPath10PATH_STATE  # OVL2; s1:callee by hand (AbortPathPlan calls it with the path and 0, then 5 in its other arm, as SOCOM 1's calls plan_complete__7CAiPathFQ27CAiPath10PATH_STATE)
 0x00527900 0x64 func_00527900  # OVL2
 0x00527970 0x6C plan_setup__7CAiPathFv  # OVL2; s1:callee by hand (PathPlanImmediate and PathPlanBegin call it where SOCOM 1's call plan_setup__7CAiPathFv; the same body at SOCOM II's offsets: points and cells cleared, maps' size zeroed, stats reset, state and the leg counts zeroed)
-0x005279E0 0x260 func_005279E0  # OVL2
+0x005279E0 0x260 GetLegBoundary__7CAiPathCFRiRii  # OVL2; s1:calls by hand, the AI core round 26 (SOCOM 1's GetLegBoundary 0x196210, its SmoothPathLeg's callee: the same leg tests, the reverse walk over the points and the legs' ends -- 0x525810, SOCOM II's SmoothPathLeg, calls it as the demo's does; PrintPath and 0x526810 too)
 0x00527C40 0x38 GetLegMap__7CAiPathFi  # OVL2; s1:callee by hand (CreatePlanner calls it with -1 for the new CAiStar's map, as SOCOM 1's calls GetLegMap__7CAiPathFi)
 0x00527C80 0x58 GetLegPoints__7CAiPathCFR9CAiMapLocR9CAiMapLoci  # OVL2; s1:callee by hand (CreatePlanner calls it with the new CAiStar's two cells and -1, as SOCOM 1's calls GetLegPoints__7CAiPathCFR9CAiMapLocR9CAiMapLoci)
 0x00527CE0 0x18C RemoveInvalidPoints__7CAiPathFv  # OVL2; ours (new in SOCOM II: SmoothPath's call after the legs -- the points on CAiMapLoc::invalid dropped through MSL's remove (find inlined, remove_copy 0x528530) and the range erase 0x528C80, the old size less the new returned; SOCOM 1's SmoothPath did it inline -- ai_path.cpp)
@@ -9759,7 +9759,7 @@
 0x00534D40 0x2F8 __ct__16CVehicleRdrEntryFRC16CVehicleRdrEntry  # OVL2; one function 0x534D40-0x535037 (merged: the seed cut it at 0x535018, a jal target of MAIN's DNAS client 0x1C5E38/0x1C6120; a leaf copying an entry field by field, 0x160 bytes, straight through to its one jr ra); by hand (an entry assigned field by field, 0x160 bytes -- the names bytewise, then the words; the insert 0x534630 calls it six times, as SOCOM 1's insert calls __as__16CVehicleRdrEntryFRC16CVehicleRdrEntry); the AI core round 12: the COPY CONSTRUCTOR, not the assignment -- the insert 0x534630 calls it right after each placement new (0x51D210) on the new slot, MSL's construct(); with the entry's user-declared constructor (0x5331D0) MW makes the implicit copy constructor member-wise and calls it out of line, the insert byte-exact so
 0x00535040 0x8 clear__Q23std74__vector_deleter<16CVehicleRdrEntry,Q23std29allocator<16CVehicleRdrEntry>>Fv  # OVL2; by hand (the entry vector's deleter clear, out of class: the entry has no destructor, so only the size is zeroed; Close calls it first, as SOCOM 1's Close calls clear__Q23std74__vector_deleter<16CVehicleRdrEntry,...>)
 0x00535050 0x68 __dt__Q23std74__vector_deleter<16CVehicleRdrEntry,Q23std29allocator<16CVehicleRdrEntry>>Fv  # OVL2; by hand (the entry vector's deleter destructor, out of class: size zeroed, data deleted, this deleted if asked; the vector destructor 0x533970 calls it)
-0x005350C0 0x210 func_005350C0  # OVL2
+0x005350C0 0x210 GetBestDir__12MAP_DIRCOUNTFbPC6CPnt3D  # OVL2; ours, the AI core round 26 (new in SOCOM II: CAiSRush::Tick calls it with the counts a counter 0x535A40 filled, false and a heading: each direction's count summed with its neighbours' when asked, the heading's closest direction and the two either side weighed, the most counts' direction returned)
 0x005352D0 0x45C WalkLine__7CAiMapsFPC6CPnt3DPC6CPnt3DPFRC19MAP_LINEWALK_STRUCTPv_bPvf  # OVL2; ours (new in SOCOM II: a walk between two points over the maps -- the visibility tests 0x538980/0x538D10/0x538E30 call it on AiMaps with a callback, its data and the step 0.2f in f12, as CAiMap's WalkLines take them)
 0x00535730 0x310 func_00535730  # OVL2
 0x00535A40 0x3B0 func_00535A40  # OVL2
@@ -10369,7 +10369,7 @@
 0x00576860 0x344 func_00576860  # OVL2
 0x00576BB0 0x280 AnimOverlay__9CSealAnimFf  # OVL2; s1:order by hand (the SEALs, round 34): SOCOM 1's AnimOverlay__9CSealAnimFf by its place, before CombineRotations in both builds -- the top frame laid over the one below by a fraction (its float the only argument, $f12) and popped, the depth left returned; SOCOM II interpolates the positions on VU0 (sceVu0InterVectorXYZ, the record's fourth word kept) and loops siNumBodyObjects records
 0x00576E30 0x1CC CombineRotations__9CSealAnimFii  # OVL2; s1:order by hand (the SEALs, round 22: SOCOM 1's CombineRotations__9CSealAnimFii, between AnimOverlay's and AnimBlend's places in seal_anim.cpp; the same weight sum, b's share, the -1 tests, the 0.001/0.999 snaps and Slerp; SOCOM II clamps the share and loops siNumBodyObjects records)
-0x00577000 0x700 func_00577000  # OVL2
+0x00577000 0x700 AnimBlend__9CSealAnimFi  # OVL2; s1:order by hand (the SEALs, round 37): SOCOM 1's AnimBlend__9CSealAnimFi (0x6EC there), between CombineRotations and AnimPop in both builds as here (0x576E30, 0x577700); 0x577EA0 calls it with the blender and the count of anims it pushed, as SOCOM 1's blends the top count frames
 0x00577700 0xCC AnimPop__9CSealAnimFv  # OVL2; s1:order by hand (SOCOM 1's AnimPop__9CSealAnimFP5CBody, after AnimBlend in both builds: the top frame's 0x20-byte records (position, id, rotation) put back on the parts by id, the count dropped and returned; SOCOM II's reads the SEAL's own parts and a record count from OVL1 data) -- the SEAL lane, round 12
 0x005777D0 0x3C4 AnimPush__9CSealAnimFP16CZSIScriptCommonffi  # OVL2; s1:order by hand (SOCOM 1's AnimPush__9CSealAnimFP10CZSealBodyP11ACTIVE_ANIM, between AnimPop's and Animate's places in both builds (0x3C4 here, 0x444 there); SOCOM II's takes the active anim's script, fraction, weight and frame -- 0x577DF0 passes them -- and stores the script into the pushed frame; the parameter types are the call's) -- the SEAL lane, round 12; the frame an int, not a short (the SEALs, round 34): 0x577DF0's call loads the short m_frame first and m_anim last, as an argument needing a conversion is evaluated earlier -- byte-exact only with an int parameter (short or unsigned short leave m_anim loaded first)
 0x00577BA0 0x24C func_00577BA0  # OVL2
