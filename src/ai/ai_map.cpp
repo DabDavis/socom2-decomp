@@ -8,7 +8,7 @@
  * ~0x53A730). Its initialiser (0x668630) builds the dummy cell (0x66A198) and the cosine of 45
  * degrees (0x65AB38). Defined here in reverse of the image's order (-inline deferred).
  * Not written yet: the
- * repel parameters 0x5169B0/0x516F10, 0x517050, ValidateCells 0x517850 (the walk with
+ * repel parameters 0x5169B0/0x516F10 (TransformTo 0x517050 since round 26), ValidateCells 0x517850 (the walk with
  * _validate_cell plus GetCell inlined one level -- IsCell 0x512140, IsLayer 0x512120 and the
  * pieces after them -- and out of line, 0x511F80), GetClosestDir(cell, point)
  * 0x518900, GetDirByName 0x518D80 (its draft matches), the scanlines' resize/insert/erase
@@ -497,6 +497,28 @@ void CAiMap::GetMapRegion(region &r) const
     r.SetSize(m_nx, m_ny);
 }
 #pragma auto_inline reset
+
+/* a cell of this map as the cell of another map under the same point, false when that map has none
+ * there (SOCOM 1's TransformTo, the demo's 0x185B50: the same map hands the cell back as it is; the
+ * cell's centre -- GetCellCenter inlined one level, its pieces called out of line -- is found on the
+ * other map through GetLocation inlined whole, and the other map's id stored again) */
+bool CAiMap::TransformTo(const CAiMapLoc &loc, CAiMap *map, CAiMapLoc &out)
+{
+    bool ok = false;
+
+    if (this == map) {
+        ok = true;
+        out = loc;
+    } else if (map) {
+        CPnt3D c;
+
+        if (GetCellCenter(loc, &c)) {
+            if (ok = map->GetLocation(&c, out))
+                out.m_mapid = map->m_mapid;
+        }
+    }
+    return ok;
+}
 
 /* n cells allocated zeroed and each reset (new in SOCOM II, the name ours: the layers' allocation
  * 0x53A8F0 calls it) */

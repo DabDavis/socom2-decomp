@@ -1268,7 +1268,9 @@ inline bool _over_box(const CBBox &b, const CPnt3D *pos)
  * compared signed) and column tests each set a bool local of their own, the _over_box shape written
  * in place: byte-exact since the AI core's round 23 -- the row test through an inline loaded m_ny
  * ahead of the `bltz` and narrowed its bool (0x1A0 against 0x198, round 22), one result local (`on
- * && ...` returned) was 0x190 */
+ * && ...` returned) was 0x190. The result declared before the row's bool (round 26): both copies
+ * colour alike either way (the result is v0's), but inlined whole in TransformTo 0x517050 the row's
+ * bool takes v0 and the result v1 only so */
 inline bool CAiMap::GetLocation(const CPnt3D *pos, CAiMapLoc &loc) const
 {
     bool inside = _over_box(m_bbox, pos);
@@ -1287,8 +1289,8 @@ inline bool CAiMap::GetLocation(const CPnt3D *pos, CAiMapLoc &loc) const
         loc.x = ((int *)p)[0];
         loc.y = (unsigned short)((int *)p)[1];
         loc.m_mapid = (unsigned char)GetMapId();
-        bool on = false;
         bool ret = false;
+        bool on = false;
 
         if (loc.y >= 0 && loc.y < m_ny)
             on = true;
