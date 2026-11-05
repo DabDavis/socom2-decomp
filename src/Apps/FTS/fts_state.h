@@ -171,6 +171,11 @@ public:
     /* a sounds file's records under a bank's name loaded (zsnd.h's, SOCOM 1's; 0x344090: CMenuState::
      * Init's three banks) */
     static int LoadSounds(const char *file, const char *bank);
+    /* the sounds unloaded, the UI's sound closed and opened (zsnd.h's; st_menu.cpp's IOP reboot
+     * callback 0x1F53D0) */
+    static void UnloadAllSounds();
+    static void Close();
+    static void UIOpen();
 };
 
 /* the mission's texture buffers: a vector of them (zdb::CTexManager::m_texmanager's) */

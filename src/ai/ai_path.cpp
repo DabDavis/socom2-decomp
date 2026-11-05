@@ -37,9 +37,6 @@ const float s_preemptPriority = 1.0f;
 
 /* what the path's functions call that is not written yet (this unit's) */
 extern "C" void func_00525810(CAiPath *path, unsigned int leg);   /* SOCOM 1's SmoothPathLeg */
-/* a cell put into the path on its map (FindDetour's last call: SOCOM 1's InsertPathLoc or
- * AppendPathLoc, by its place after PostProcess) */
-extern "C" bool func_00526C10(CAiPath *path, const CAiMapLoc &loc, CAiMap *map);
 
 
 /* a vector's storage cut to its size: a copy of it swapped in (node_world.cpp's, the name ours):
@@ -361,6 +358,131 @@ bool CAiPath::Clear()
 void CAiPath::SetTemplatePath(CAiPath *path)
 {
     m_template = path;
+}
+
+/* a cell put at the head of a finished path (its points run last to first): an empty path made
+ * of it and complete, a cell already at the head taken as done, else its point inserted first and
+ * the last waypoint moved onto it -- or, on another map, a leg begun there; the id moved on after
+ * (SOCOM 1's AppendPathLoc, 0x526F20: CAiMaps::ExtendPath's appends; SOCOM 1 compared the head's
+ * map where SOCOM II compares the cell). Byte-exact in the AI core's round 28 (116 off when first
+ * written: MW coloured `ok` s0 where the target has the cell s0, `this` s1, `ok` s2). The
+ * planning test is the inline IsIdle(): its state load is the one HasPoints() reuses, two
+ * temporaries fewer around `ok`, which then leaves MW's colouring sweep before `this` and the
+ * cell (build/scratch/ai/ig/nbdeg.py: every spill cost 0, 19 hardware neighbours each); written
+ * out, or as !IsPlanning() (materialised), the colouring turns. The head compared through
+ * CAiMapLoc's == (the friend operator gives the loads' other registers), the point inserted a named
+ * local (its slot above the empty path's temporary), and the last waypoint taken by address inside
+ * the test, as the target's &back() is computed there and kept for the store */
+bool CAiPath::AppendPathLoc(const CAiMapLoc &loc, CAiMap *map)
+{
+    bool ok = false;
+
+    if (IsIdle()) {
+        if (m_points.empty()) {
+            m_points.push_back(point(loc));
+            m_state = COMPLETE;
+            ok = true;
+        } else if (HasPoints()) {
+            if ((*m_points.begin()).m_loc == loc) {
+                ok = true;
+            } else {
+                point p(loc);
+
+                m_points.insert(m_points.begin(), p);
+                CAiMapLoc *last;
+
+                if (!m_waypts.size() || (last = &m_waypts.back(), last->m_mapid != loc.m_mapid)) {
+                    m_waypts.push_back(loc);
+                    m_waypts.push_back(loc);
+                    m_maps.push_back(map);
+                    m_legcount++;
+                } else {
+                    *last = loc;
+                }
+                ok = true;
+            }
+        }
+    }
+    if (ok)
+        IncrementPathId();
+    return ok;
+}
+
+/* a cell put at the start of a finished path, the end of its points: an empty path made of it and
+ * complete, a cell already last refused, else its point pushed; the id moved on after (SOCOM 1's
+ * InsertPathLoc, 0x526C10, by its place before AppendPathLoc; FindDetour's last call, the map
+ * unread) */
+bool CAiPath::InsertPathLoc(const CAiMapLoc &loc, CAiMap *map)
+{
+    bool ok = false;
+
+    if (IsIdle()) {
+        if (m_points.empty()) {
+            m_points.push_back(point(loc));
+            m_state = COMPLETE;
+            ok = true;
+        } else if (HasPoints()) {
+            if (m_points.back().m_loc != loc) {
+                m_points.push_back(point(loc));
+                ok = true;
+            }
+        }
+    }
+    if (ok)
+        IncrementPathId();
+    return ok;
+}
+
+/* a cell put into a path at a point index, counted from the end when asked: an empty path made of
+ * it -- its one leg, the cell and the map -- and complete; a finished path drawn ("aipath"), the
+ * index's leg found, the point inserted there and the path drawn again; false while planning, for no
+ * finished plan or an index off the points (new in SOCOM II, the name ours: 0x526810, after
+ * PostProcess; the AI states' 0x555420 and 0x5556A0 call it).
+ * OPEN (0x3EC against 0x3F4), written in the AI core's round 28: the registers are the target's
+ * (the counter shares `ok`'s s3, the leg from_end's s4), the inserted point a named local as in
+ * AppendPathLoc; the frame is not -- the target keeps operator+'s iterator copy (sp+132) above
+ * the loop's two boundaries (sp+128/124), which this build puts at sp+132/128 with the copy below,
+ * as if the leg search were an inline's (expanded later, its locals lower). As an inline helper
+ * (by value or by const reference) it takes a sixth saved register (0x3F8, the frame 16 taller) */
+bool CAiPath::InsertPathLoc(const CAiMapLoc &loc, CAiMap *map, int index, bool from_end)
+{
+    bool ok = false;
+
+    if (IsIdle()) {
+        if (m_points.empty()) {
+            m_points.push_back(point(loc));
+            m_waypts.push_back(loc);
+            m_waypts.push_back(loc);
+            m_maps.push_back(map);
+            m_state = COMPLETE;
+            ok = true;
+            m_legcount = 1;
+        } else if (HasPoints()) {
+            PrintPath("aipath");
+            if (from_end)
+                index = m_points.size() - index;
+            if (index >= 0 && index <= (int)m_points.size()) {
+                int first, last;
+                int leg = -1;
+
+                for (int i = 0; leg == -1 && i < m_legcount; i++) {
+                    int f, l;
+
+                    if (!GetLegBoundary(f, l, i))
+                        break;
+                    if (index >= l && index <= f)
+                        leg = i;
+                }
+                GetLegBoundary(first, last, leg);
+                point p(loc);
+
+                m_points.insert(m_points.begin() + index, p);
+                PrintPath("aipath");
+                ok = true;
+            }
+        }
+    }
+    return ok;
 }
 
 /* the finished path's points made, smoothed and widened, and drawn when asked (SOCOM 1's;
@@ -908,7 +1030,7 @@ bool CAiPath::FindDetour(const CAiMapLoc &from, const CPnt3D *pos, const CAiMapL
     if (d.m_found != CAiMapLoc::invalid) {
         CAiMapLoc l = on_map(d.m_found, map->m_mapid);
 
-        ok = func_00526C10(this, l, map);
+        ok = InsertPathLoc(l, map);
     }
     return ok;
 }

@@ -7,21 +7,15 @@
  * -funroll-loops (README "The GCC front"). Names are SOCOM 1's; the block's fields are named by
  * their use. NormE_Processing (round 17c), ControlPitchCombiner (round 22c: SOCOM 1's body,
  * 0x5028F0 -- the constructor's control slot, moved before InitPitchCombiner in SOCOM II),
- * FlushPitchCombiner, ProcessPitchCombiner and ConstructPitchCombiner (round 23c) are written,
- * LogPitchProcessing and PitchCombinerReset OPEN; InitPitchCombiner is not written. */
+ * FlushPitchCombiner, ProcessPitchCombiner and ConstructPitchCombiner (round 23c) and
+ * LogPitchProcessing (round 24c) are written, PitchCombinerReset OPEN; InitPitchCombiner is not
+ * written.
+ * The vendor halves the lead (+156) as `p->f156 / 2` (round 24c): the C front end shortens the
+ * division to the unsigned char's own type, so its load is another RTL expression than the
+ * zero-extended read a compare or a `>> 1` makes -- CSE keeps the two apart, which is the re-read
+ * of +156 the flush and the log pass show (round 23c's LEAD_STANDIN, a volatile field, is gone:
+ * the field is plain, as the log pass's slot-filled loads of it say it is). */
 #include "tosblk.h"
-
-/* STAND-IN (round 23c): +156 is read again where CSE would reuse an earlier read -- the flush
- * right after its lead test (SOCOM 1's compile too), the log pass's else arm after the entry test
- * -- and volatile gives the flush byte for byte (the reset then reads it once, into a local). But
- * the vendor's field is NOT volatile: the log pass's target puts +156 loads in delay slots (a
- * bnel's and three beqz's), and reorg never moves a volatile reference into one (resource.c's
- * resource_conflicts_p). So the re-read has another cause, not found: no store, call or label lies
- * between the reads; -fno-cse-follow-jumps, -fno-cse-skip-blocks, -fno-gcse and
- * -fno-rerun-cse-after-loop each lose matched functions (build/scratch/gcc/cf1.py); the lead
- * test's arm shapes do not give it (fl8.py). Plain, the flush is 2 words short (0x354) and the log
- * pass 1 (0x384) with that re-read its only structural difference. */
-#define LEAD_STANDIN volatile
 
 /* a ring of frames: its start, read and write cursors and end */
 typedef struct RING {
@@ -44,7 +38,7 @@ typedef struct PITCHCOMB {
     float f144;                         /* +144: the last frame's difference r60 - r112 */
     float *f148;                        /* +148: the log pass's weights */
     float *weights;                     /* +152: the window's weights */
-    LEAD_STANDIN unsigned char f156;    /* +156: r96's and r112's lead, doubled */
+    unsigned char f156;                 /* +156: r96's and r112's lead, doubled */
     unsigned char nwin;                 /* +157: the window's frames */
     unsigned char nring;                /* +158: the rings' length */
     unsigned char f159;
@@ -81,17 +75,18 @@ float logf(float x);
  * branch's slot and the arm -- two assignments in m2c's reading); r112's start in the else arm
  * if-converted (its end is in a register from the wrap test) where r96's reloads; the back-fill
  * loops re-read +156 each pass (the float stores may alias it: -fno-strict-aliasing).
- * OPEN (round 23c): 0x38C. With +156 plain (the vendor's: see LEAD_STANDIN) it is 0x384, every
- * block the target's but the else arm's re-read of +156, which this compile takes from the entry
- * test's register (and a loop head's alignment nop follows); with the stand-in volatile the loop
- * bound read once before the second sum (the target's, in a bnel's slot) needs a local, and the
- * slot-filled loads cannot be volatile at all -- 154 words. */
+ * Round 24c, byte-exact: the half-lead bounds are `p->f156 / 2` (see the unit's note: as `>> 1` the
+ * fill loops' first bound reuses the entry test's read, which then stays live as a QImode value --
+ * 0x384); the second sum's bound is read in the loop's own test, which loop.c hoists (through a
+ * local the division after the loop reuses its register); and the two fill blocks' pointers are
+ * block-local -- the back-fill's `s` and `d`, the fill's own `s` (one function-wide `s` for both
+ * arms outranks nothing: p, the highest priority, takes a1 first and the target's p is a2 -- every
+ * grouping of the six pointer roles was scored, build/scratch/gcc/r24c/v_roles.py: the fill's
+ * cursor must be a variable of its own, each such grouping matches). */
 static void LogPitchProcessing(PITCHCOMB *p)
 {
     float *e;
     float *w;
-    float *s;
-    float *d;
     float sum, sum2;
     unsigned char i;
     unsigned short j;
@@ -115,8 +110,7 @@ static void LogPitchProcessing(PITCHCOMB *p)
             p->r96.wr = p->r96.base;
         e = p->f76;
         sum2 = 0;
-        n = p->f156;
-        for (j = 0; j < n; j++) {
+        for (j = 0; j < p->f156; j++) {
             sum2 += *e++;
             if (e == p->r60.end)
                 e = p->r60.base;
@@ -127,13 +121,15 @@ static void LogPitchProcessing(PITCHCOMB *p)
         if (p->r112.wr == p->r112.end)
             p->r112.wr = p->r112.base;
         if (p->f163 == 1) {
+            float *s;
+            float *d;
             s = p->r112.wr - 1;
             if (s < p->r112.base)
                 s = p->r112.end - 1;
             d = s - 1;
             if (d < p->r112.base)
                 d = p->r112.end - 1;
-            for (k = 0; k < p->f156 >> 1; k++) {
+            for (k = 0; k < p->f156 / 2; k++) {
                 *d-- = *s;
                 if (d < p->r112.base)
                     d = p->r112.end - 1;
@@ -144,7 +140,7 @@ static void LogPitchProcessing(PITCHCOMB *p)
             d = s - 1;
             if (d < p->r96.base)
                 d = p->r96.end - 1;
-            for (k = 0; k < p->f156 >> 1; k++) {
+            for (k = 0; k < p->f156 / 2; k++) {
                 *d-- = *s;
                 if (d < p->r96.base)
                     d = p->r96.end - 1;
@@ -160,10 +156,11 @@ static void LogPitchProcessing(PITCHCOMB *p)
         if (p->r112.wr == p->r112.end)
             p->r112.wr = p->r112.base;
         if (p->f164 == 1) {
+            float *s;
             s = p->r112.wr - 1;
             if (s < p->r112.base)
                 s = p->r112.end - 1;
-            for (k = 0; k < p->f156 >> 1; k++) {
+            for (k = 0; k < p->f156 / 2; k++) {
                 *s++ = p->f172;
                 if (s == p->r112.end)
                     s = p->r112.base;
@@ -171,7 +168,7 @@ static void LogPitchProcessing(PITCHCOMB *p)
             s = p->r96.wr - 1;
             if (s < p->r96.base)
                 s = p->r96.end - 1;
-            for (k = 0; k < p->f156 >> 1; k++) {
+            for (k = 0; k < p->f156 / 2; k++) {
                 *s++ = p->f176;
                 if (s == p->r96.end)
                     s = p->r96.base;
@@ -232,7 +229,8 @@ static void NormE_Processing(PITCHCOMB *p)
  * 0xffff` after the wrap test's join), the frame written through `*q++` and its last value one
  * store at the join (a conditional expression).
  * Round 23c: the target -- SOCOM 1's copy too -- reads +156 again for the count after the lead
- * test, given here by LEAD_STANDIN's volatile (a stand-in: see it). The padding blocks' locals
+ * test: the count is `p->f156 / 2` (round 24c; the unit's note -- round 23c's volatile stand-in is
+ * gone; as `>> 1` CSE reuses the test's read, 2 words short). The padding blocks' locals
  * are the function's, declared at its top (C89): ONE s, len and i for all three blocks -- i then
  * spans three loops and outranks s in global-alloc (the target's i in a2, s in a3, len in a0 in
  * every block; per-block locals rank s first, 36 words; every order of the five declarations
@@ -249,7 +247,7 @@ static int FlushPitchCombiner(PITCHCOMB *p)
         if (p->f183 != 0) {
             if (p->f160 >= (unsigned char)(p->f156 - 1)) {
                 s = p->r96.wr - 1;
-                len = p->f156 >> 1;
+                len = p->f156 / 2;
                 if (s < p->r96.base)
                     s = p->r96.end - 1;
                 for (i = 0; i < (unsigned short)len; i++) {
@@ -431,7 +429,7 @@ static __inline__ void ResetRing(RING *r, int len)
  * Defined above ControlPitchCombiner, whose command 200 calls it: only so is the control's
  * default `move v0,zero` left out of the `beq`'s slot (round 13c's definition-order rule; with the
  * reset only declared, 3 words).
- * The lead is read once into a local (under LEAD_STANDIN's volatile; plain, CSE does it).
+ * The lead is read once (CSE merges its reads; `/ 2` or `>> 1`, through a local or not, alike).
  * OPEN (round 22c, the right size, 18 words: one store's place): every word is the target's but the
  * last `= 1` flag store, which the target leaves last (in `jr`'s slot) and sched1 here issues before
  * the ring cursors' stores -- the store that is the constant 1's last use (the QImode pseudo's
@@ -448,7 +446,14 @@ static __inline__ void ResetRing(RING *r, int len)
  * beside it (4 words; with -fno-schedule-insns2 the reset matches, and NormE_Processing and
  * ControlPitchCombiner do not -- sched2 is on). So the vendor's hold is in sched1 only; volatile flags,
  * inlines for the tail or the cursors, a pointer to the flags and the block's own pointer do not
- * give it (build/scratch/gcc/pr1.py). */
+ * give it (build/scratch/gcc/pr1.py).
+ * Round 24c: sched1 ranks (priority, weight, ...), so the target's store -- issued in source order,
+ * after the weight -1 cursor stores -- had weight 0: neither the 1 nor p died at it in sched1 (or it
+ * waited on every earlier store), and SOCOM 1's compile keeps the same order, so it is the source's.
+ * A separate constant (`p->f182 + 1`, `!p->f182`, `p->f182 ^ 1` ...) only moves the jump to the
+ * other 1-store (0x29C); an unused label, `if (1)`, `return;`, the address or value respelled,
+ * `/ 2` for the halvings change nothing (build/scratch/gcc/r24c/v_last.py, v_reset.py). Not
+ * found: what keeps p or the 1 live past the last store in sched1 and leaves no code. */
 static void PitchCombinerReset(PITCHCOMB *p)
 {
     int lead;

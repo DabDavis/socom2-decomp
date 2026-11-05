@@ -151,6 +151,10 @@ public:
      * SOCOM 1's CurWeaponIsM203Mode was its test's; the name ours) */
     bool CurWeaponIsLauncherMode();
     bool WeaponIsM203Mode(int index);
+    /* the other two on the item in hand (OVL2 0x5BDA00, 0x5BD6D0: tail calls on m_selected_item --
+     * SOCOM 1's CurWeaponIsM203Mode, and its grenade launcher twin, the name ours) */
+    bool CurWeaponIsM203Mode();
+    bool CurWeaponIsGrenadeLauncherMode();
     bool SetItem(unsigned int index, CZWeapon *w, void *ammo, int rounds);
     void SetItemByIndex(int index, CZWeapon *w);
     bool ItemHasFiremodeGraphic(int index);

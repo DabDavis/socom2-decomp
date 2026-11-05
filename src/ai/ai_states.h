@@ -62,21 +62,21 @@ enum AI_STATE {
  * unnamed members (0x5F6F20, 0x5F6F10, 0x5F6F00, 0x5F6F70, 0x5F6F40 -- Create's out-of-line
  * copies) */
 extern "C" {
-void *func_005EA550(void *timer, float period);
+void *__ct__8CAiTimerFf(void *timer, float period);
 void *func_00516900(void *pnt);
-void *func_00516120(void *loc);
+void *__ct__9CAiMapLocFv(void *loc);
 void *__ct__7CAiPathFv(void *path);
 void *__ct__12CAiMapLocVecFv(void *vec);
-void *func_005F6F30(void *rfloat, float f);
+void *__ct__6RfloatFf(void *rfloat, float f);
 void *func_005F6F20(void *p);
 void *func_005F6F10(void *p, int x);
 void *func_005F6F00(void *p, int a, int b);
 void *func_005F6F70(void *list);
 void *func_005F6F40(void *list);
-/* and the destructors of those members, called by hand from the states' destructors: ~CAiPath
- * (0x5281B0) and std::vector<CAiMapLoc>'s deleter's (0x515200, ai_astar.cpp's copy) */
+/* and the destructor of the route, called by hand from the states' destructors: ~CAiPath
+ * (0x5281B0; the goal vectors are destroyed as CAiMapLocVec's, an explicit ~CAiMapLocVec() whose
+ * inlined ~vector and ~__vector_imp call the deleter's destructor 0x515200, ai_astar.cpp's copy) */
 void *__dt__7CAiPathFv(void *path, int flags);
-void func_00515200(void *vec, int flags);
 }
 
 class CAiState;
@@ -535,7 +535,7 @@ public:
     {
         __ct__12CAiMapLocVecFv(_58);
         __ct__7CAiPathFv(m_path);
-        func_00516120(&m_cell);
+        __ct__9CAiMapLocFv(&m_cell);
     }
     virtual void OnSignal(SIGNAL sig, CSealCtrlAi *ai);
     virtual ~CAiSPlan();
@@ -624,13 +624,13 @@ public:
         func_00516900(m_98);
         func_00516900(m_a4);
         func_00516900(m_b0);
-        func_00516120(&m_c0);
-        func_00516120(&m_c8);
+        __ct__9CAiMapLocFv(&m_c0);
+        __ct__9CAiMapLocFv(&m_c8);
         func_00516900(m_cc);
         func_00516900(m_d8);
         func_00516900(m_e8);
         func_00516900(m_f8);
-        func_00516120(&m_104);
+        __ct__9CAiMapLocFv(&m_104);
         func_00516900(m_108);
     }
     /* +0x3C (the name ours, by slot): close behind -- its distance under the follow range, and
@@ -712,7 +712,7 @@ public:
 class CAiSUseVehicle : public CAiState {
 public:
     /* its timer, the last member, built by hand where the member's constructor would run */
-    CAiSUseVehicle() : CAiState(AI_STATE_USEVEHICLE) { func_005EA550(&m_60, 0.0f); }
+    CAiSUseVehicle() : CAiState(AI_STATE_USEVEHICLE) { __ct__8CAiTimerFf(&m_60, 0.0f); }
     virtual void OnSignal(SIGNAL sig, CSealCtrlAi *ai);
     virtual bool CanPushAiState(AI_STATE state, CSealCtrlAi *ai);
     virtual ~CAiSUseVehicle();
@@ -832,8 +832,8 @@ public:
     /* its Rfloat built by hand (Rfloat(float), 0x5F6F30), then the cell after it */
     CAiSEvent() : CAiState(AI_STATE_EVENT)
     {
-        func_005F6F30(&m_rnd_min, 0.0f);
-        func_00516120(&m_cell);
+        __ct__6RfloatFf(&m_rnd_min, 0.0f);
+        __ct__9CAiMapLocFv(&m_cell);
     }
     virtual void OnSignal(SIGNAL sig, CSealCtrlAi *ai);
     /* +0x14 (0x605800): an event interrupted by a held target or the AI's alarm */

@@ -2062,6 +2062,83 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the kit and AI states, round 41** (CSealCtrlAi::RegisterCommands, the tasks' Parse functions,
+  CAiSShotAt::Virtual14, ~CMallocBlocks):
+  - THE ORIGINAL'S BUG REPRODUCED: CTMap::Parse 0x5D69F0 tests `r == zrdr_findtag(rdr, "line")` -- `==` written for `=`
+    -- and the target compiles exactly that; RegisterCommands 0x5DE320 (0x7EC: 34 AddCmd calls, ai::SELECT's id kept in
+    `ai_cmdid[2]`) matched on the first try;
+  - a byte tested through an inline's unsigned mask parameter given `~0` keeps `dsll32/dsrl32` before the branch, `& ~0u`
+    written in place folds away; constant stores the target loads before the header's mask (`lui a0; ori a0,a0`) come
+    from a `Create(...)` whose arguments bind before the allocation -- the same stores after NewTask take other
+    registers; an int index into zanim.h's `Item(int)` is strength-reduced in a loop, zrdr.h's unsigned Item index keeps
+    the target's per-pass `i << 3` (CTMove / CTPaint / CTPlay::Parse);
+  - a one-case `switch` gives `beq; nop; b end` where an `if` gives bne; an int-typed ternary (`name ?
+    (int)FindAnimType(name) : -1`) keeps the target's join, an AnimType ternary schedules differently;
+    `FreeVector(*this)` in a derived class's destructor builds the derived class as its temporary,
+    `FreeVector<base>(*this)` gives the target's base temporary (~CMallocBlocks 0x5D9540);
+  - new string literals renumber a unit's anonymous `@N` objects, so objcmp lists functions differing only by rank;
+    with ~vector<void *> named, its copies in zcam_main.cpp, vis_main.cpp, vis_vu.cpp and fts_ovl2statics.cpp score as
+    matches (they were no-target).
+- **Tells from the AI core, round 28** (CAiMaps::WalkLine at last; AppendPathLoc and InsertPathLoc):
+  - constant definitions in a loop preheader go ahead of a load pinned below stores to an escaped struct: using the
+    load's value before those stores lets the dying variable and the new one share a register (WalkLine 0x5352D0: `dt`
+    computed before the three direction stores keeps the map in s2 -- after them `ok = true` lands ahead of the m_dx
+    load, the map and `ok` interfere and the map spills; with the xz length and the direction copy through reference
+    inlines, the map lookup through an inline, the walk's end through `t = 1.0f`, the difference an inline's own local);
+  - an inline helper `T f() { T d; ...; return d; }` puts its local below the caller's copy in the frame; `x * 1.0f` as a
+    literal folds, through a variable set to 1.0f the multiply stays; a bitfield read through an inline's reference
+    parameter is reloaded for the call where a direct read reuses the compare's byte;
+  - an inline returning `(unsigned)(s - 1) > 2` branches on `sltiu at` and shares its byte load with a later accessor --
+    the two temporaries saved move a variable one colouring sweep earlier, turning the saved registers (CAiPath::IsIdle,
+    new: AppendPathLoc 0x526F20, InsertPathLoc(loc, map) 0x526C10, SOCOM 1's by place and body); `(last = &v.back(),
+    last->f != x)` inside an `||` keeps `&back()` computed in the test block for the store (the delay slot empty, the
+    label padded); a named element local (`point p(loc); insert(it, p)`) takes its slot above an earlier branch's
+    `point(loc)` temporary; empty `asm` statements are deleted along with their if (plan_legcomplete stays OPEN);
+  - tools (build/scratch/ai-r28/ig/): igvar.py turns variants into a saved-register summary in ~4 s, nbdeg.py simulates
+    the colouring sweeps from a vreg's neighbours.
+- **Tells from the HUD, round 47** (hud_objectives.cpp whole: CZObjectiveList and vector<bool>):
+  - a local initialised from an auto-inlined accessor (`retained = GetCurrentObjectiveRetainer()`) is numbered after the
+    named locals -- s2, not s4 (RefreshList 0x207570); a const_iterator walk over a const list reference keeps its
+    begin / end temporaries in memory, a plain-iterator walk loses them (RefreshList, as SOCOM 1's const walk); a
+    for_each functor with a user-declared empty constructor is not zero-stored on the stack (FreeList 0x207030);
+  - uninitialised locals declared at the top in SOCOM 1's DWARF order set an MSL body's saved-register numbering while
+    statement order still sets the schedule (vector<bool>'s insert(n) 0x208040, shift_out 0x208600, AddObjective
+    0x207A00's bools); `size() + n` through the inline accessor puts n first, `size_ + n` keeps the target's order; in a
+    same-word arm, returning inside each branch fills the `b` delay slot, a trailing `return;` after the if/else leaves
+    a nop (set 0x208270);
+  - SOCOM II's vector<bool> uses 32-bit words, an initial capacity of 32 and a (vector, index) iterator -- SOCOM 1's
+    used 64-bit words; hud_objectives.cpp runs to 0x208ACB (vector<bool>'s members and two array destructors close it);
+    a marked stand-in: RetainSelection / GetObjectiveByTail (ours) walk through tail() one inline level down so
+    second() stays out of line as in the target -- in GetObjective itself SelectNext/PreviousObjective grow 0xA0 -> 0x22C.
+- **Tells from the SEALs, round 39** (the CanUse* stretch in SOCOM 1's order, IsReloading, GetReticuleAction, Reload):
+  - a single-use pointer local for the victim's position, declared before a stack copy, keeps its node load ahead of the
+    copy's stores (CanUseCQB 0x5A9500, CanUseRestraint 0x5A90B0) -- not when the operand is the function's own position
+    (FindDeathAnimTypeCQB, OPEN); `const CPnt3D &pos = a + b;` keeps the temporary's address in a saved register for a
+    second use; a bit returned as `b ? true : false` keeps the sltu before the branch, the bare bit is tested in place
+    (CanUseKnife 0x5A98B0);
+  - `if (f()) return false; if (f()) return false; return true;` gives the target's materialised `!f()` with an empty
+    delay slot, `return !f()` lets MW fill it; the blend stack's top through TopBlend() recomputes `this+0x1c0` at every
+    call, `func_00555170((char *)this + 0x1c0)` inside inlines folds it into a saved register (CanZoom 0x5A8DA0);
+  - a call's byte result kept unnormalised in v0 with an andi at each use is a byte-enum local (`SEAL_STATE base =
+    (SEAL_STATE)PeekBaseState()`), an unsigned char or int local normalises at the call; a range test branching on `sltiu
+    at` is `(unsigned)(x - lo) > n - 1`, `!(... < n)` or `>= n` materialise it in v0; if/else arms assigning short statics
+    load straight into the join register, a ternary sign-extends in every arm (Reload 0x5A82E0, SOCOM 1's with a flag
+    and a bool result);
+  - a recursive inline expanded one level into its caller numbers its variables after the caller's, so its result takes
+    s0 -- a static inline helper reproduces it (GetReticuleAction 0x5AA240; CNodeAction derives from zdb::CNodeEx for its
+    dynamic_cast).
+- **Tells from the game states, round 37** (CGraph::Read at last; the network chat's line add, the IOP reboot callback):
+  - REPLAY MW'S OWN COLOURING with the virtual registers moved to other indices to see which numbering the target needs
+    before writing any source (build/scratch/states-r37/ig/: igreplay.py, relabel.py, brute.py) -- that found CGraph::Read
+    0x2D0C90: one counter reused across both loops (the edge loop's counter then a second web, numbered after the loop
+    optimiser's record cursor) AND the first node a named local (numbered below that cursor) -- each alone 5 or 11 off;
+  - zmath.h's `MAX(0, x)` compiles to the target's `slt at,x,zero; beqz at`, `if (x < 0) x = 0;` and `x < 0 ? 0 : x` branch
+    with bgez; under `-enum min` an enum with a single enumerator is a signed byte (dsll32/dsra32 before the test), with
+    values {0, 1} unsigned (andi 0xff: CIOPManager::RebootPhase in 0x1F53D0, CMenuState's IOP reboot callback); a
+    `~basic_string(..., 0)` call on a local marks it a CSaferStr, not a plain string (0x1F4DF0, the network chat's line add
+    keeping the last 20, coloured by MSGTYPE);
+  - SetDynamicLOD 0x3B04C0 is a matched instance of the shape 0x2B8100 needs (else-if arms whose `b` keeps its nop, the
+    join padded to 8): numbering the share before the client with the zero arm first gives 0x2B8100's registers, 8 short.
 - **Tells from completing the MSL headers, round 25** (the pointer vector's erase, MSL's find, the deque's const_iterator;
   probes and scratch in build/scratch/msl-r25/, untracked -- p25/ the probes; base_master2.txt, run_*.txt, objcmp_*.txt):
   - THE POINTER VECTOR'S erase(iterator) is `__iter(__raw_erase(position.base()))`, the raw erase T-dependent as the raw
@@ -10398,7 +10475,8 @@ InitPitchCombiner, ControlPitchCombiner `s1:slot`; PitchCombinerReset `s1:calls`
 - **reorg never puts a volatile reference in a delay slot** (resource.c's resource_conflicts_p: any `volatil`
   conflicts), so a field loaded in a slot anywhere in the object is plain: LogPitchProcessing's target loads
   +156 in a bnel's and three beqz's slots. The flush's re-read of +156 after its lead test (SOCOM 1's compile
-  too) is given byte for byte by volatile, which is therefore a marked stand-in (`LEAD_STANDIN`): plain, the
+  too) is given byte for byte by volatile, which was therefore a marked stand-in (`LEAD_STANDIN`, RETIRED in round
+  24c: the vendor's `p->f156 / 2` is another load to CSE, see below): plain, the
   flush is 2 words short and the log pass 1, the re-read their only structural difference -- CSE1 merges the
   two `(mem/s:QI (plus p 156))` loads (exp_equiv_p reads no MEM flag; no store, call or label lies between);
   `-fno-cse-follow-jumps`, `-fno-cse-skip-blocks`, `-fno-gcse`, `-fno-rerun-cse-after-loop` each lose matched
@@ -10427,6 +10505,52 @@ ConstructPitchCombiner over its draft, LogPitchProcessing OPEN; +148, +166, +172
 typed; 5 of 7) -- 2 rows new to the map's byte-exact rows (1,816 bytes), one matched draft superseded
 (ConstructPitchCombiner, 0x502F10); `src/lib/asr` 513 of 547 (510 of 544 before). No rows named (all four
 had SOCOM 1's). No tool changed.
+
+**Round 24c: the lead's stand-in gone (the vendor divides), the log pass, three casr opens closed, the trigger object.**
+
+- **A division and a shift of the same field are different loads to CSE**: the vendor halves the lead as
+  `p->f156 / 2` -- the C front end shortens the division to the unsigned char's own type, so its read is
+  another RTL expression than the zero-extended one a compare or `>> 1` makes, and CSE keeps the two
+  apart. That is the "re-read" of +156 round 23c could only give with a volatile field (LEAD_STANDIN):
+  FlushPitchCombiner is byte-exact with the field plain and `len = p->f156 / 2`, and LogPitchProcessing
+  (open since round 22c) with its half-lead bounds `/ 2`, the second sum's bound read in its loop's test
+  (loop.c hoists it; through a local the division after the loop reuses its register) and the fill
+  block's cursor a block-local variable of its own: with one `s` for both arms p (the top priority)
+  takes a1 where the target's p is a2 -- every grouping of the six pointer roles scored, each that gives
+  the fill cursor its own variable matches (`build/scratch/gcc/r24c/v_roles.py`).
+- **Where a shared failure label sits decides an annul bit**: UpdateExevStatus (open since round 9c, 1
+  word) is `} else if (...) { error: return 1; } return 0;` -- with the label after a final `return 0`
+  the else-if's fall-through shared the then-arm's `return 0` block, reorg redirected the then-arm's jump
+  out of it first, the label died, and the else-if's slot came out annulled (`bnezl`; read as
+  resource.c's live-register scan from the block's head, which drops a REG_DEAD register only at the
+  next CODE_LABEL).
+- **A constant that dies before the result's assignment lets the result be born in v0**:
+  cbDoSecondPassIfEnabled (9 words) stores the second pass's two arguments before its flag (8 of the
+  arm's 24 orders), so the flag's 1 dies before `err = 0` and err, shared by three arms, takes the
+  return register (round 31a's rule).
+- **2.96's jump2 runs after sched2, and an int function returning nothing ends in `(clobber (reg v0))`**:
+  the cross-jumper compares a jump's tail with the insns before its label, and jump threading carries
+  a jump to the fall-off point past that clobber -- ProcessTriggerLR's two state stores (the target
+  merges them) never match here (`-dJ`).
+- **Shapes, measured**: the end test `f80 > f68` (operand 0 loaded first, the target's +80 then +68);
+  casrGetLastError's flag is block-local in the target (local-alloc's a0, p moved to a1), so its null
+  test is the caller's own -- `if (c == 0) return 11; if (casrCheckHandle(c) != 0) return 11;` is every
+  insn but reorg's slots (0x3C of 0x40); casrGetSessionData's four stores take one base whatever is
+  spelled (all 16 through `g` or off `s`).
+- **Open, diagnosed in place**: PitchCombinerReset (18 words: the target's last store issues in source
+  order, so in sched1 it killed neither the 1 nor p, or waited on every store -- SOCOM 1's compile the
+  same; a separate constant only moves the jump to the other 1-store), InitViterbi@nbestdp (not
+  revisited: the merged tail starts where sched1 put the count's increment), casrGetLastError/Warning
+  (above), casrGetSessionData, ProcessTriggerLR (above); InitPitchCombiner not written (its tail is its
+  own: the 1-stores grouped first, +172 cleared at the start).
+
+Hand-written in round 24c: `asr/pitchcomb.c` (LogPitchProcessing closed, the stand-in gone: 6 of 7),
+`asr/casr.c` (UpdateExevStatus, cbDoSecondPassIfEnabled closed: 51 of 57) and a new `asr/triggerlr.c`
+(SOCOM 1's TriggerLR object 0x370C90, OVL2 0x505D90-0x506D94: ConstructTriggerLR over its draft,
+ProcessTriggerLR OPEN -- SOCOM 1's body, its fields from +64 on four higher; FindSpeech, Control and
+Init not written) -- 3 rows new to the map's byte-exact rows, one matched draft superseded
+(ConstructTriggerLR, 0x506D58); `src/lib/asr` 517 of 549 (513 of 547 before). No rows named (all had
+SOCOM 1's). No tool changed.
 
 **Round 14b: the "toolchain" opens were SCEA's shapes; LargeInt's core is assembly.**
 
