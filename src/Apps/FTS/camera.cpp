@@ -543,25 +543,6 @@ CPnt3D GetFirstPersonCamPos(CAppCamera *cam)
     return CamPoint;
 }
 
-/* a point scaled, by value (zmath.h's operator* as an inline: the scale into a temporary, copied out
- * twice -- SOCOM II's out-of-line copies are OVL2's; the name ours) */
-inline CPnt3D ScaledBy(const CPnt3D &v, float s)
-{
-    CPnt3D r;
-
-    v.Scale(s, &r);
-    return r;
-}
-
-/* a point less another, by value (zmath.h's operator- as an inline; the name ours) */
-inline CPnt3D DiffOf(const CPnt3D &a, const CPnt3D &b)
-{
-    CPnt3D r;
-
-    a.Sub(&b, &r);
-    return r;
-}
-
 /* where the tether puts the camera, in the followed SEAL's space (SOCOM 1's): on the SEAL it follows,
  * the body's root part's place lifted by its height (SOCOM II's ramp: 10 at the origin, else 5.5 to
  * 10 as it rises from 2.17 to 5.6), moved aside by the peek and pulled 28 back, the level offset and
@@ -635,7 +616,7 @@ CPnt3D CAppCamera::GetThirdPersonCamPos(CPnt3D *CamOffset, float *tetherLen)
                     CPnt3D hit;
 
                     if (ClipChord(&chord[0], &chord[1], &hit)) {
-                        CPnt3D d = DiffOf(chord[1], hit);
+                        CPnt3D d = chord[1] - hit;
 
                         z += sqrtf(d.x * d.x + d.z * d.z);
                     }
@@ -646,7 +627,7 @@ CPnt3D CAppCamera::GetThirdPersonCamPos(CPnt3D *CamOffset, float *tetherLen)
         float wt = fabsf(vec.y);
 
         *tetherLen = *tetherLen + wt * (14.0f - *tetherLen);
-        CamPoint = ScaledBy(vec, *tetherLen);
+        CamPoint = vec * *tetherLen;
         CamPoint.Add(CamOffset, &CamPoint);
     } else {
         *CamOffset = thirdPersonPos;
@@ -691,7 +672,7 @@ extern "C" CPnt3D func_0029A660(CAppCamera *cam, CPnt3D *CamOffset, float *tethe
         float wt = fabsf(vec.y);
 
         *tetherLen = *tetherLen + wt * (50.0f - *tetherLen);
-        CamPoint = ScaledBy(vec, *tetherLen);
+        CamPoint = vec * *tetherLen;
         CamPoint.Add(CamOffset, &CamPoint);
     } else {
         *CamOffset = thirdPersonPos2;
