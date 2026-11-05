@@ -2065,6 +2065,20 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from completing the MSL headers, round 30** (the two CSaferStr made one; the vector walk's end; CPnt3D's operators):
+  - ONE CSaferStr: src/gamez/zutil/saferstr.h holds SOCOM 1's zutil.h class -- a std::string with an empty inline
+    constructor and `void operator=(const char *)` (the return SOCOM 1's DWARF gives); zentity.h and zsav_lobby.h include
+    it, only ent_main.cpp's code changes (it now emits CSaferStr(), ~CSaferStr and ~basic_string, byte-exact copies of
+    main.cpp's 0x1E7B60 / 0x1E7A50 / 0x1E7EF0), nothing gained or lost -- a unit may include zsav_lobby.h and ai.h
+    together now;
+  - a walk over a reference bound through a pointer local, the pointer an inline's result, re-reads both size and data
+    each pass even with no store in the loop -- without the inline, without the pointer local, or walking the pointer
+    itself, MW hoists the end (seal_aivehicle.cpp's 0x60F760: `CTargetList *lp = TargetsOf(seal); CTargetList &l = *lp;`,
+    `found` declared first); a const member called inside an inline on a non-const object keeps its `this` in a loop
+    register; a const walk hoists its whole end under every const end() form tried (eight); CTInView::Tick's walk needs a
+    const accessor in end() -- word for word, but -128 over every unit: not applied;
+  - CPnt3D's operator* / operator- have been inline in zmath.h since 2026-10-25: camera.cpp's ScaledBy / DiffOf and
+    znode.h's PntMinus are object-identical to them (measured; the engine core drops them).
 - **Tells from the online lobby, round 23** (setLoadImageTags and the radio tick, open since rounds 17 and 19):
   - MW KILLS AT A CALL ONLY THE REGISTERS THE CALLEE WRITES WHEN THE CALLEE HAS INTERNAL LINKAGE AND WAS GENERATED EARLIER
     IN THE UNIT (static or an anonymous namespace; under `-inline deferred` "generated earlier" means defined later in the
