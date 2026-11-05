@@ -37,8 +37,7 @@
 class CAiGroup;
 class CTarget;
 
-/* zseal.h's enums, as this unit's calls mangle them */
-enum GOAL_TYPE { GOAL_NONE = 0, GOAL_SCAN = 1, GOAL_LOOK = 2, GOAL_MOVE = 3, GOAL_SHOOT = 4, GOAL_AVOID = 5, GOAL_RECOVER = 6 };
+/* zseal.h's enums, as this unit's calls mangle them (GOAL_TYPE is ai_states.h's) */
 enum SEAL_STANCE {
     STANCE_NONE = -1, STANCE_STAND = 0, STANCE_CROUCH = 1, STANCE_PRONE = 2, STANCE_IDLE = 3,
     STANCE_MAX = 4

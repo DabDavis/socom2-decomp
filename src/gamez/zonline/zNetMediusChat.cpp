@@ -6,9 +6,17 @@
  * queues 0x44FA20 and 0x44FA50, whose destructor 0x2F5E50 and deque instances close it -- the
  * instances run on past 0x2F62B0 to 0x2F6CF7: 0x2F6340, 0x2F6600, 0x2F6A70 and 0x2F6BC0 are
  * called only from this unit's deque copy constructor 0x2F5F80, its 0x2F6090 and ~__deque_buf
- * 0x2F62B0, so they are its copies, and the lobby unit starts at 0x2F6D00). Still unwritten: the
- * game's world report 0x2EF590 and details 0x2EF7F0, the player-info callback 0x2F0020 (cbGetPlayerInfo) and the
- * player lists 0x2F0EA0-0x2F3B90 (class-vector walks and their sort) and the deque instances.
+ * 0x2F62B0, so they are its copies, and the lobby unit starts at 0x2F6D00). Every own function is
+ * written. The deque instances: push_back 0x2F5290 with init 0x2F5940 and do_assign 0x2F5700, the
+ * block buffer from an allocator 0x2F5FF0 and the pair 0x2F6060 byte-exact since the online lane's
+ * round 24 (ChatQueueBuffers below, a dead-stripped device). OPEN, the copy chain and the iterators
+ * -- the deque's copy constructor 0x2F5F80 (calls begin()/end() const where the target inlines them
+ * and calls make_iterator), the circular buffer's 0x2F6090 (0xCC of 0x19C: x.alloc() called, begin()/
+ * end() not inlined, the init's iterators not copied twice around the two empty temporaries -- the
+ * rdr editor's and the state machine's open shape), both inits 0x2F6340 / 0x2F6600 (calls to the
+ * do_assigns the target inlines whole: 0x2F6600 is our 0x444-byte do_assign's size exactly) and the
+ * make_iterators 0x2F5D10 / 0x2F6A70 (the buffer's begin() and operator+ inlined in the target) --
+ * all the tail's generation order (include/deque's comment; README "THE TAIL'S GENERATION ORDER").
  * Defined in reverse of their image order (-inline deferred). */
 
 #include <stdio.h>
@@ -1258,6 +1266,29 @@ public:
 /* the unit's two queues, built by its initialiser 0x4020E0, their destructor 0x2F5E50 registered */
 CChatQueue data_0044FA20;   /* the public lines waiting for the filter */
 CChatQueue data_0044FA50;   /* the private lines waiting for their player */
+
+/* A MODELLING DEVICE, dead-stripped (src/ABSENT.txt; the online lane, round 24): the chat queue's
+ * block buffers built in an own function of the unit. An out-of-class template member is inlined
+ * into the unit's tail only once an own function has instantiated it (README "Out-of-class template
+ * members"), and this unit's tail inlines what the lobby unit's calls: the chat's push_back 0x2F5290
+ * zeroes its temporary buffer in place (__cdeque_buf<PCv>() and allocator<PCv>(), called out of line
+ * without this), and its __deque_buf(const Allocator &) 0x2F5FF0 builds the rebound buffer temporary
+ * in place where the lobby's 0x2E09A0 calls cdeque(const Allocator &) and both allocator
+ * constructors, and the pair's constructor 0x2F6060 copies the allocator inline where the lobby's
+ * 0x2E0A80 calls its copy. What own code of the original instantiated them is not known (none
+ * survives in the image: every own function of the unit is written); this function stands for it --
+ * the two buffers __deque_buf's two constructors build (the rebound one, and the default) and the
+ * allocator copied -- and nothing calls it (veh_vehicle.cpp's dead-stripped clear is the precedent:
+ * README "Tells from completing the MSL headers, round 4"). Measured and NOT enough: requesting the
+ * deque's begin() / end() const here does not make the copy constructor 0x2F5F80 inline them, nor
+ * requesting the two do_assigns make the inits 0x2F6340 / 0x2F6600 inline them (both stay calls) */
+void ChatQueueBuffers(const std::deque<MediusChatMessage> &d)
+{
+    Metrowerks::cdeque<MediusChatMessage *, std::allocator<MediusChatMessage *> > buf(
+        (std::allocator<MediusChatMessage *>(std::allocator<MediusChatMessage>())));
+    Metrowerks::cdeque<const void *, std::allocator<const void *> > tmp;
+    std::allocator<MediusChatMessage> a(d.alloc());
+}
 
 void cbGetPlayerInfo(int, int, int, MediusPlayerInfoResponse *);   /* the player's info shown */
 

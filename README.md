@@ -2065,6 +2065,83 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the AI core, round 32** (plan_addleg and ReRoute byte-exact; RegisterPathPlan written; GetLocation(point)
+  and GetCellRepelParams closer -- resumed after the 2026-11-05 crash for its wind-down):
+  - two 4-byte class locals take the frame's top slots wherever they are declared; wrapped in ONE 8-byte struct they
+    follow declaration order (CAiPath::plan_addleg 0x5274B0's route 224, from 216, to 220; RegisterPathPlan's two cell
+    pairs); a count read into a local before a compare and live across it takes a0, its load hoisted into the first
+    branch's delay slot; `if (!fail) { ...; return true; } return false;` puts the inner `return false` after the pushes
+    (plan_addleg, 127 -> 0);
+  - a copy loop as a do-while under a hand-written guard, the counter declared ahead of the count's reference and stepped
+    in the bottom test (`while (++j < (int)cnt)`) -- a separate `j++;` gives 0x340 (CAiMap::ReRoute 0x52F8F0, 10 -> 0);
+    one cell shared by two walks, declared after the size test, takes the target's single slot, and `m_mes ? true :
+    false` its branch-built bool (CAiMaps::GetLocation(point) 0x52DC70, 279 -> 172, OPEN);
+  - include/list iterators declared and then ASSIGNED from begin() stay in memory, re-read and re-stored at each step
+    (CAiMaps::RegisterPathPlan 0x52C5C0, unstarted before: 0x5F8 of 0x608, every call the target's, OPEN);
+  - `tools/objcmp.py -j 2` can print a FALSE difference (a race in scdecomp's SymbolTable._copy_index, queued for the
+    tools): prove with -j 1 until it is fixed.
+- **Tells from the kit and AI states, round 51** (CSealUnit::IssueCommand written with the four rows only it calls; the
+  OVL2 DI-pool twins from source; GOAL_TYPE moved into ai_states.h -- resumed after the 2026-11-05 crash for its wind-down):
+  - a walk's end() taken into a local before the loop gives the target's begin in v0 and end in v1 (IssueCommand
+    0x5E8E10's three SEAL walks: 70 -> 52, OPEN); a bitfield struct COPY-CONSTRUCTED from a static inlines a
+    field-by-field copy, ASSIGNED it is a word copy 0x78 bytes shorter; `if (f()) r = p;` keeps the zero out of the delay
+    slot where a ternary puts it in; a kind tested by an if-else chain matches where a switch emits a beq to each case;
+  - a virtual called on an object is bound directly (CAiSBreach::OnSignal), through a `CAiState *` it is the vtable
+    call; float thresholds the target loads from .data are function-local statics (written as literals MW builds them
+    with lui/ori);
+  - A FUNCTION-LOCAL STATIC OBJECT IS THREE DATA ROWS: its guard `@GUARD@fn@name` (tested with lb, set to 1), the object
+    `@LOCAL@fn@name` and an anonymous destructor-chain record right after the guard (IssueCommand's breach prototype
+    0x66B8E0, 54 references, guard 0x66B8C0; the record 0x66B8C8 stays unnamed until scdecomp has a convention);
+  - an inline cut to one level (SOCOM 1's HandleSupport) emits exactly the out-of-line copies the target calls --
+    CAiState(AI_STATE) 0x5EA5D0, the CAiMapLoc copy 0x5EA7E0 and insert<FT_COMMAND> 0x5EF6D0 new, GetValidMapLoc 0x5EA870
+    (our name) from its draft to source; RequestRay / GetRequest / SetRequest / CNewDiDir in seal_dipool.h (opt-in
+    SEAL_DIPOOL_REQUESTS) bring the OVL2 twins 0x5C97D0 / 0x5C9830 to source, marked ovl-copy of OVL1's 0x3A7DD0 /
+    0x3A7E30.
+- **Tells from the engine core, round 19** (ZAnimWildcardApply and CClutter::GetMatrix, both open since round 9; the CKey
+  helpers from source):
+  - A CAST OR CONST COPY OF A PARAMETER OR OF `this` (`char *name = (char *)str`, `const CClutter *c = this`) IS A VARIABLE
+    OF ITS OWN, numbered where it is declared -- a plain copy is propagated or coalesced back into the original
+    (ZAnimWildcardApply 0x268520 with the digit index declared first; zdb::CClutter::GetMatrix 0x2D93A0's rotation path);
+  - when a recursive function inlines itself, calls up to four levels below the outer copy are inlined and the fifth level
+    is called out of line (CKey::DeleteChildren 0x25B580, three copies, OPEN: its tail wants SOCOM 1's compressed-pair
+    vector storage -- queued for the MSL); at the top level a while loop is entered by a jump to its bottom test and a
+    for gets a duplicated test up front, inlined copies of the same while get the duplicated test (CKey::Write, OPEN);
+  - MW folds the +1 of `[v + 1]` into the load offset only when v is a plain variable (`j = i + 1` named, const or in the
+    block still folds; `[stick * 2 + 1]` next to `int i = stick * 2` stays unfolded); `int n = count; NewAnimSet(n);
+    index = n;` keeps the inline's parameter in its own register, `index = count; NewAnimSet(index);` merges them;
+    FreeVector<vector<CKey *>> 0x25B9D0, for_each 0x25BA50, the vector's clear 0x25BAD0, DeleteKey 0x25BAE0, ForgetKey
+    0x25BB20 and CZAR::WriteFile 0x25B2C0 from source (the last three names ours).
+- **Tells from the online lobby, round 24** (the chat deque's push_back at last, open since round 10, with its growth
+  pieces):
+  - A CLASS ELEMENT'S DEQUE GROWS THROUGH A TEMPORARY BLOCK BUFFER: `tmp(2 * size(), 0)` plus init, then `tmp = buf` (the
+    do_assign) or `reserve(2); push_back(0)` when empty; the block stored as `tmp.back()`, a null slot pushed, the element
+    copy-constructed in place (with its null test), tmp swapped in -- the element constructed on the plain path too (the
+    chat push_back 0x2F5290; cdeque<PCv>'s init(n, x) 0x2F5940 and do_assign 0x2F5700 named by shape, the buffer
+    0x2F5FF0, the pair constructor 0x2F6060, swap 0x2F56B0 to source);
+  - a constant `if` on a type trait still instantiates whatever the unused branch's non-dependent types reach, and the
+    unit emits it -- a type depending on T keeps that out (include/deque's __deque_imp::push_back class path through a
+    type-dependent growth-buffer stand-in: only the chat unit changes, proven over every unit); a dead-stripped own
+    function (ChatQueueBuffers, src/ABSENT.txt -- the device veh_vehicle.cpp's dead clear set) gives the unit's tail the
+    target's inlining: building the buffers and copying the allocator does it, requesting begin() / end() or the
+    do_assigns does not;
+  - a pointer held only in `alloc_ptr` is re-read from its stack slot after every call, taken into a named local before
+    the guard is built it stays in its saved register; an iterator constructor taking the storage pointer by const
+    reference re-reads the field for its data_ store, by value it is shared; in an out-of-line copy loop `!(x == y)`
+    turns into a stored bool, `x.p_ != y.p_` branches directly.
+- **Tells from the HUD, round 56** (CRatingMatch::AddTeam, open since round 19 -- mp_rating.cpp whole; AddJamo; GetGlyph):
+  - A VARIABLE THE TARGET KEEPS IN v0 FROM THE ENTRY TO `jr ra` IS THE RETURN VALUE -- adding the return changes the whole
+    colouring (CRatingMatch::AddTeam 0x23A170 returns the new team: 30 off to 0; as a void function `team` went to a0 and
+    the parameters sat at exactly K = 25 neighbours, deferred); `tools/igreplay.py --drop A-B` finds the single
+    interference that holds a node at K -- a drop that gives the target's registers names the live range that differs
+    (`--drop 33-36` gave AddTeam's before any source change);
+  - frame slots go by scope: an inline constructor's by-value parameter took the slot above a function-scope local, a
+    loop-scoped local the slot above that parameter -- naming the argument first makes the copy that local's own slot
+    (CHangulFont::AddJamo 0x359820); a class temporary made for a call argument goes in a later frame group under the
+    named locals -- a target with it above them declared it as a named local first (C2DFont::GetGlyph 0x35A3A0: frame 0x60
+    to 0x50, an empty C2DChar() constructor);
+  - defining a class's key function makes the unit emit its table's this-adjusting thunks (zui_2d.cpp now emits
+    0x37D060 / 0x37D070); four this-tests on a vector freed inside a deleted object's written destructor need level 6
+    when the vector is a derived class (~CUIListBox 0x375710 -- a "Level 6, or 8?" witness).
 - **Tells from the weapons, round 31** (zVid_Swap; InitializeWeapons, open since round 17; AttachDecal, since round 25;
   CopyBuffer, since round 13):
   - READ THE BRANCHES BEFORE TRUSTING A SWITCH'S SEMANTICS: CopyBuffer 0x3C36D0's kind-5 case had been inverted for 18
