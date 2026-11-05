@@ -4010,6 +4010,61 @@ void CZSealBody::DropAmmo(int rounds)
 /* the ground under a point within a depth (fts_main.cpp's ftsGetAltitudeApprox, OVL1 0x2A2EB0) */
 zdb::IntersectStruct *ftsGetAltitudeApprox(const CPnt3D *p, float depth, bool chars);
 
+/* a dead SEAL's satchel charge dropped: the satchel gear hidden; for a SEAL this console runs, holding
+ * the charge (item 152) with rounds as a weapon, a satchel model put on the ground under the SEAL's
+ * place (DropAmmo's turned offset, looked for from 1 over it), named, made dynamic and a character
+ * node, the charge's rounds in a new stash and a pickup of kind 9 the SEAL owns, the drop anim run on
+ * its node; the pickup, or none (OVL2 0x59FAC0, new in SOCOM II: CSealCtrlAi::OnDeath calls it; the
+ * name unknown -- the anim, data_0044D518, is one ReInitDatabaseHandles never sets) */
+extern "C" CPickup *func_0059FAC0(CZSealBody *seal)
+{
+    CPickup *p = 0;
+    zdb::CNode *gear = seal->FindAuxNode("Satchel", false);
+
+    if (gear)
+        gear->SetActive(false);
+    if (!seal->IsRemote() && seal->m_kit.HasItemWithAmmo((EQUIP_ITEM)152)) {
+        CZFTSWeapon *weapon = 0;
+        int index = seal->m_kit.GetItemIndex((EQUIP_ITEM)152);
+
+        if (index != -1)
+            seal->m_kit.FillWeaponEnum(index, &weapon);
+        if (weapon) {
+            CPnt3D off = CPnt3D::zero;
+            CQuat q;
+            CPnt3D at;
+
+            q.MakeYXZRot(0.0f, 0.0f, 0.0f);
+            seal->m_quat.Apply(&off, &at, 1);
+            at.Add(&seal->m_posW, &at);
+            float &y = at.y;
+
+            y += 1.0f;
+            zdb::IntersectStruct *hit = ftsGetAltitudeApprox(&at, 8.0f, false);
+
+            if (hit)
+                y = hit->m_pos.y;
+            zdb::CNode *node =
+                zdb::CNode::CreateInstance((zdb::CModel *)zdb::CWorld::GetModel("Satchel"), &at, &q);
+
+            if (node) {
+                CZItemStash *stash = new CZItemStash;
+
+                seal->m_kit.FillAmmoPickupInstance(stash, index);
+                node->SetName("Satchel");
+                node->SetDynamic(true, true);
+                node->m_socom2_a1_bits.bit2 = 1;
+                node->m_bumpmap = 1;
+                zdb::CWorld::m_world->AddTextureAssetCharacter(zdb::CHARSETCOMMON, node);
+                p = CPickup::Create(seal->m_id, CPickup::PU_AMMO, node, stash);
+                if (p && data_0044D518)
+                    stash->SetAnim(((CZAnim *)data_0044D518)->ActivateArg(1, 3, p->m_node, 0));
+            }
+        }
+    }
+    return p;
+}
+
 extern "C" {
 /* (the kit's item at an index let go is CZKit::RemoveItemAndAmmo, zseal.h's; OVL2 0x5B9BB0, the kit
  * lane's) a weapon readied (OVL2 0x57D540, seal_body.cpp's) and the item it takes (OVL1 data

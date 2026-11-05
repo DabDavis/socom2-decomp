@@ -207,6 +207,10 @@ public:
     /* whether an item has room for rounds (SOCOM 1's; OVL2 0x5BA5B0, kit.h's -- the AI's ammunition
      * search asks it) */
     bool CanAddAmmo(int index, int rounds);
+    /* whether the kit holds an item with rounds (kit.h's; OVL2 0x5C8640) and the weapon at an index
+     * (kit.h's; OVL2 0x5BC6A0) */
+    bool HasItemWithAmmo(EQUIP_ITEM item);
+    void FillWeaponEnum(int index, class CZFTSWeapon **out);
     /* the item in hand (kit.h's: const in SOCOM II; OVL2 0x5C3780) and the item made current by its
      * index (kit.h's; OVL2 0x5C4B10) */
     class CZFTSWeapon *GetCurItem() const;
