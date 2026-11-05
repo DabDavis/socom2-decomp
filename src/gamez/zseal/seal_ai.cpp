@@ -2782,8 +2782,9 @@ static inline bool TakesTargets(CSealCtrlAi *ai, CEntity *e)
  * when the AI drives it, on no team the entity is on, while the entity takes targets. The targets
  * are kept nearest first, so the first past the range ends the walk (OVL2 0x569E40, new in SOCOM
  * II: 0x561550 and CAiSGoto::Tick ask it; the names ours).
- * OPEN, 10 structural differences and 6 register-only (the size right, round 49). Right: the range
- * squared in place (`r2 = range; r2 *= r2`: mov.s then mul.s into $f20), the kind read through a
+ * OPEN, 23 instructions (the size right; round 50 -- 24 with round 49's `r2 = range; r2 *= r2`, whose
+ * second operand MW propagates back to $f12: the parameter squared in place, `range *= range`, gives
+ * the target's `mul.s $f20,$f20,$f20`). Right: the kind read through a
  * reference-returning inline (TypeOf: its address hoisted into s0, the kind reused by the turret
  * test), the AI taken non-const (a const one hoists the bits' address 0x266 too), kind 4's
  * `r = false` (its own `b` block). Left: (1) the turret test's `e && kind == 3 ? e : 0` -- the target
@@ -2794,13 +2795,18 @@ static inline bool TakesTargets(CSealCtrlAi *ai, CEntity *e)
  * computes `bit16 && !bit17` as a value in the last operand's register (`sltu; beqz; ... xori`) and
  * negates it with one `xori` at the join -- every inline form here either folds the negation into
  * the branches (the bits read in place), sets a bool with `daddiu 1` (an `&&` of accessor calls) or
- * renormalises a bool local (`andi 0xff; sltu`) before the `xori` */
+ * renormalises a bool local (`andi 0xff; sltu`) before the `xori`. Round 50 (build/scratch/seal-r50/
+ * v_569e40*.py, 56 variants): the target's turret test is a SINGLE-CASE SWITCH's layout (`beq` to the
+ * case, `b` to the default, the case's move in the beq's delay slot) with the null test branching to
+ * the default's `move a0,zero` -- `r = 0; if (e) switch (TypeOf(e)) { case 3: r = e; }` gives the beq/b
+ * but MW drops both zero moves (a0 already 0 from TakesTargets' `r = false`): 17 with the bit test as
+ * `!(AiBit16(ai) ? !AiBit17(ai) : AiBit16(ai))` (its false arm then still a `move`), 18 as Bit16Only;
+ * `default: r = 0`, an else, or returns in the cases 18-20 or the size off */
 extern "C" CZSealBody *func_00569E40(CSealCtrlAi *ai, const CPnt3D *pos, float range)
 {
     CEntity *e = ai->m_entity;
-    float r2 = range;
 
-    r2 *= r2;
+    range *= range;
     CTargetList &targets = e->m_targets;
 
     for (CTargetList::iterator i = targets.begin(); i != targets.end(); ++i) {
@@ -2818,7 +2824,7 @@ extern "C" CZSealBody *func_00569E40(CSealCtrlAi *ai, const CPnt3D *pos, float r
         CPnt3D d;
 
         pos->Sub(&seal->m_posW, &d);
-        if (!(d.x * d.x + d.y * d.y + d.z * d.z < r2))
+        if (!(d.x * d.x + d.y * d.y + d.z * d.z < range))
             break;
         return seal;
     }
