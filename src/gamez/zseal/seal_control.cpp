@@ -6,6 +6,8 @@
 #include "zseal.h"
 #include "../zinput/zinput.h"
 #include "../zanim/zanim.h"
+#include "../zweapon/zweapon.h"
+#include "../zsnd/zsnd.h"
 
 extern "C" int rand(void);
 
@@ -120,9 +122,7 @@ extern "C" {
  * button map --, 0x2C64E0, unowned: the HUD's readers call the second the same way) */
 unsigned char func_002C6490(int button, CPad *pad);
 unsigned char func_002C64E0(int button, CPad *pad);
-/* the kit's reload (OVL2 0x5C4600, the kit lane's) and how long the button is held for it (OVL2
- * data: 0.4) */
-void func_005C4600(CZKit *kit);
+/* how long the button is held for the kit's fire-mode cycle, CZKit::CycleFireMode (OVL2 data: 0.4) */
 extern float data_00650670;
 }
 
@@ -211,7 +211,7 @@ extern "C" void func_00594B70(CSealCtrl *ctrl, float dT)
         }
     }
     if (reload)
-        func_005C4600(&((CZSealBody *)ctrl->m_entity)->m_kit);
+        ((CZSealBody *)ctrl->m_entity)->m_kit.CycleFireMode();
 }
 
 extern "C" {
@@ -459,6 +459,42 @@ CSealCtrl::~CSealCtrl()
 {
 }
 
+/* a projectile's event: a shot of direct fire or a rocket (item 185) -- not one flown out (flag 3) --
+ * passing the SEAL: within 70 an AI event 9 for its shooter; a rocket within 100 its pass sound at the
+ * nearest point, once (the projectile's flag 20), any other shot within 20 the bullet's (OVL2 0x598000;
+ * SOCOM 1's with the rocket, the position read straight where SOCOM 1's asked a virtual, event 9 for 12).
+ * The hit an unsigned char: the image narrows DistToVector's answer with `andi 0xff`, a bool's, where
+ * zmath.h declares it int (a bool local converts with sltu) */
+void CSealCtrl::OnWeaponEvent(CZProjectile *proj, unsigned int event, void *data)
+{
+    CZWeapon *weapon = proj->m_weapon;
+    bool rocket = weapon ? weapon->GetIDType() == (EQUIP_ITEM)185 : false;
+
+    if (weapon && (weapon->IsDirectFire() || rocket) && !proj->m_useflyout) {
+        const CPnt3D *pos = &m_entity->m_posW;
+        CPnt3D closest;
+        float dist = 999999.0f;
+        unsigned char hit = pos->DistToVector(&proj->m_framestartpos, &proj->m_frameendpos, &closest, &dist);
+
+        if (hit && dist < 70.0f)
+            CreateAiEvent((CAiEvent::EVENT)9, 0.5f, 1500.0f, false, pos, proj->m_shooterID);
+        if (rocket) {
+            if (hit && dist < 100.0f && !proj->m_b20) {
+                CSnd *snd = CZWeapon::GetRocketPassSound();
+
+                if (snd)
+                    snd->PlaySound3D(&closest, 1.0f, 0, 0, 255);
+                proj->SetFlag20(true);
+            }
+        } else if (hit && dist < 20.0f) {
+            CSnd *snd = CZWeapon::GetBulletPassSound();
+
+            if (snd)
+                snd->PlaySound3D(&closest, 1.0f, 0, 0, 255);
+        }
+    }
+}
+
 /* the mission begun: online, the squad told to take up its places (unless the player is a
  * ghost); the body crouched and the controls given (OVL2 0x597F50; SOCOM 1's did nothing) */
 void CSealCtrl::OnMissionStart()
@@ -481,6 +517,74 @@ void CSealCtrl::OnMissionEnd()
     ClearGoal(GOAL_NONE);
     m_input_enabled = false;
     StopRumbler();
+}
+
+/* how far the SEAL may face a flash and not be blinded through its eyes (SOCOM 1's FLASHBANG_DOT, OVL2
+ * data 0x65E640: 0 here, a variable read with lwc1) */
+float FLASHBANG_DOT = 0.0f;
+
+/* the square of the distance between two points (an inline: its difference a local of its own, below
+ * the direction's temporary on the stack) */
+static inline float DistSq(const CPnt3D *a, const CPnt3D *b)
+{
+    CPnt3D v;
+
+    a->Sub(b, &v);
+    return v.x * v.x + v.y * v.y + v.z * v.z;
+}
+
+/* a stun taken: a flash (stun type 0) from a point within 150 blinds the SEAL by how squarely it faced
+ * it and how near it was -- full past 80, falling off to 150 -- the blindplayer01-03 anim played (OVL2
+ * 0x597C00; SOCOM 1's with the HUD's flash and the sounds' dip replaced by the anims, the position read
+ * straight) */
+void CSealCtrl::OnStunDamage(STUN_TYPE type, float amount, const CPnt3D *from)
+{
+    if (!from)
+        return;
+    if (type != STUN_NONE)
+        return;
+    const CPnt3D *pos = &m_entity->m_posW;
+    const CPnt3D *fwd = (const CPnt3D *)m_entity->m_node->m_matrix.m_matrix[2];
+    CPnt3D dir = *pos - *from;
+
+    dir.Normalize();
+    float dot = fwd->x * dir.x + fwd->y * dir.y + fwd->z * dir.z;
+    float d2 = DistSq(pos, from);
+    bool facing = dot > FLASHBANG_DOT;
+
+    if (d2 < 22500.0f) {
+        float f = 1.0f;
+
+        if (!(d2 <= 6400.0f))
+            f = 1.0f - 6.2e-5f * (d2 - 6400.0f);
+        float s = 1.0f - dot * f;
+        int level;
+        bool full = false;
+
+        /* (full: facing away, or hit by a shot flagged 19 -- written here, not an inline helper: as one
+         * its result and the entity swap their scratch registers) */
+        if (m_entity) {
+            CZProjectile *p = ((CZSealBody *)m_entity)->m_tempprojectile;
+
+            if (!facing || (p && p->m_b19))
+                full = true;
+        }
+        if (full)
+            level = 1;
+        else if (s < 0.3f)
+            level = 3;
+        else if (s < 0.6f)
+            level = 2;
+        else
+            level = 1;
+        char name[16];
+
+        sprintf(name, "blindplayer0%d", level);
+        CZAnim *anim = ZAnim.GetAnim(name, 0);
+
+        if (anim)
+            anim->Activate(0);
+    }
 }
 
 extern "C" {

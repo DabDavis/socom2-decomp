@@ -191,10 +191,22 @@ struct MissionDesc {
 };
 
 /* a downloaded mission entered once: the one of its number and kind, else a new one pushed and,
- * for a multiplayer one, the "NumMultiMissions" count taken again (OVL1 0x2C91A0; 0x278B80 calls it) */
+ * for a multiplayer one, the "NumMultiMissions" count taken again (OVL1 0x2C91A0; 0x278B80 calls it).
+ * Find(int, bool)'s walk written out (see Find): the number and kind taken first as Find's arguments
+ * would be -- the kind converted to a bool --, the walk's own result in a register and the mission
+ * kept a copy of it (push_back homes only that copy) */
 CMultiMission *CMultiMissionList::Add(const MissionDesc *desc)
 {
-    CMultiMission *m = Find(desc->m_id, desc->m_multi);
+    int id = desc->m_id;
+    bool multi = desc->m_multi;
+    CMultiMission *found = 0;
+
+    for (iterator i = begin(); i != end(); ++i)
+        if (id == (*i)->m_id && multi == (*i)->m_multi) {
+            found = *i;
+            break;
+        }
+    CMultiMission *m = found;
 
     if (!m) {
         m = new CMultiMission(desc->m_name, desc->m_id, desc->m_type, desc->m_multi);
@@ -292,7 +304,18 @@ void CMultiMissionList::Purge()
 }
 
 /* the mission of an id and kind, none (OVL1 0x2C9040: the list's own walk, the kind narrowed
- * once ahead of it) */
+ * once ahead of it; the online lobby's GetGameInfo and HasMissions call it). The four callers here
+ * (GetName, both GetMultiValues, Add) hold the same walk WRITTEN OUT, not this one inlined: the
+ * pointer vector's end() is four inline levels high (include/vector), so `i != end()` -- the end an
+ * argument, a level below the != -- is five high in this copy and six inside an inlined Find, and
+ * at -inline level=5 the callers' copies would call the raw end and __iter. The end taken into a
+ * local before the loop inlines whole but colours differently: MW generates a for loop's test after
+ * its body, so the end the test's inlined end() makes is numbered after the narrowed kind and the
+ * element (the target colours it first: a0, the element a2, the kind a3, the iterator t0), where a
+ * local end is numbered ahead of them (9-11 off), and so is the online lobby's `data_ + size_` end
+ * (its round 20's Last(): 11 off here). Written out at the caller's own level the test's
+ * end() inlines whole and numbers last, as here. (The states' round 36; until then the unit carried
+ * `#pragma inline_depth(6)` -- the MSL headers' round-24 stand-in.) */
 CMultiMission *CMultiMissionList::Find(int id, bool multi)
 {
     CMultiMission *m = 0;
@@ -305,24 +328,39 @@ CMultiMission *CMultiMissionList::Find(int id, bool multi)
     return m;
 }
 
-/* a mission's name by id and kind, "unknown" without one (OVL1 0x2C8AE0, Find inlined) */
+/* a mission's name by id and kind, "unknown" without one (OVL1 0x2C8AE0: Find(int, bool)'s walk
+ * written out -- see Find) */
 const char *CMultiMissionList::GetName(int id, bool multi)
 {
     const char *name = "unknown";
-    CMultiMission *m = Find(id, multi);
+    CMultiMission *m = 0;
+
+    for (iterator i = begin(); i != end(); ++i)
+        if (id == (*i)->m_id && multi == (*i)->m_multi) {
+            m = *i;
+            break;
+        }
 
     if (m)
         name = m->m_name.c_str();
     return name;
 }
 
-/* the same by a code whose third character on is the id, 0 for a shorter code (OVL1 0x2C8A00) */
+/* the same by a code whose third character on is the id, 0 for a shorter code (OVL1 0x2C8A00:
+ * Find(id, true)'s walk written out -- see Find) */
 signed char CMultiMissionList::GetMultiValue(const char *code)
 {
     signed char v = 0;
 
     if (code && strlen(code) > 2) {
-        CMultiMission *m = Find(atoi(code + 2), true);
+        int id = atoi(code + 2);
+        CMultiMission *m = 0;
+
+        for (iterator i = begin(); i != end(); ++i)
+            if (id == (*i)->m_id && true == (*i)->m_multi) {
+                m = *i;
+                break;
+            }
 
         if (m)
             v = m->m_14;
@@ -330,11 +368,18 @@ signed char CMultiMissionList::GetMultiValue(const char *code)
     return v;
 }
 
-/* a multiplayer mission's byte at 0x14 by id, 0 without one (OVL1 0x2C8B80, Find inlined) */
+/* a multiplayer mission's byte at 0x14 by id, 0 without one (OVL1 0x2C8B80: Find(id, true)'s walk
+ * written out -- see Find) */
 signed char CMultiMissionList::GetMultiValue(int id)
 {
     signed char v = 0;
-    CMultiMission *m = Find(id, true);
+    CMultiMission *m = 0;
+
+    for (iterator i = begin(); i != end(); ++i)
+        if (id == (*i)->m_id && true == (*i)->m_multi) {
+            m = *i;
+            break;
+        }
 
     if (m)
         v = m->m_14;
@@ -354,17 +399,3 @@ CMultiMission *CMultiMissionList::Find(const char *name)
     return best;
 }
 #pragma auto_inline reset
-
-/* THE UNIT INLINES TO DEPTH 6, not the flags' 5 (a pragma acts through its state at the unit's
- * end; the MSL headers round 24). include/vector's pointer iterator is the image's since that
- * round -- end() four high: the raw end, the pod's end, data() -- and a walk testing `i != end()`
- * inside an inline is then six deep where its caller inlines it: at 5 MW keeps end()'s body and
- * calls the raw end and __iter. At 6 GetName, both GetMultiValues and Add inline Find(int, bool)'s
- * walk whole, as the target, with the source as it was written against the three-high end, and
- * every function of the unit scores as it did at 5 (measured over the unit). The end taken into a
- * local first (round 23's suggested refit) does not give the target: in fts_missionlist.cpp Find's
- * own copy then colours its end, flag and element differently (9 off) and in util_loc.cpp
- * FindTable's callers come out 12 bytes short. So the original's walks are the ones written here
- * and its level deeper than 5 (README "Level 6, or 8?")
- */
-#pragma inline_depth(6)

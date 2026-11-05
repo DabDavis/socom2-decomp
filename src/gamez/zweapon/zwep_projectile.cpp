@@ -292,6 +292,16 @@ static inline bool NoNode(CNode *node)
     return !node;
 }
 
+/* an item tested against one id (ours: the weapons' round 24) -- the id handed over BY VALUE, so
+ * the field is copied as a byte enum (`lb`) and narrowed at each test (`andi 0xff`, again after a
+ * join), each compare its own inline call so MW folds no two consecutive ids into a range test:
+ * HandleIntersections' and GetDamage's item tests. The field compared straight, through GetId()
+ * or a local, is one `lbu` with 172/173 folded */
+static inline bool IsItem(EQUIP_ITEM id, int item)
+{
+    return id == item;
+}
+
 /* the frame's hits walked nearest first, beyond the last one dealt with and within the range,
  * skipping any on a node under the shooter's: none left, a miss; else, unless the material stops
  * nothing (a penetration of 1), a bounce for the launchers' and satchels' classes and five items
@@ -389,11 +399,11 @@ bool CZProjectile::HandleIntersections(float dT)
                 pen = ex->m_penetration;
             if (pen != 1.0f) {
                 CZFTSWeapon *w = dynamic_cast<CZFTSWeapon *>(m_weapon);
-                unsigned char r;
+                PROJECTILE_HIT r;
 
-                if (w && (w->GetIDType() == 121 || w->GetIDType() == 151 || w->GetId() == 172 ||
-                          w->GetId() == 173 || w->GetId() == 178 || (w->GetId() == 185 && m_restnode) ||
-                          (w->GetId() == 186 && m_restnode)))
+                if (w && (w->GetIDType() == 121 || w->GetIDType() == 151 || IsItem(w->GetId(), 172) ||
+                          IsItem(w->GetId(), 173) || IsItem(w->GetId(), 178) ||
+                          (IsItem(w->GetId(), 185) && m_restnode) || (IsItem(w->GetId(), 186) && m_restnode)))
                     r = HandleBounce(closest, dT, &pos);
                 else
                     r = HandleImpact(closest, dT, mindist, &pos);
@@ -859,11 +869,15 @@ struct CONE {
  * matrix row field by field, one register (as SOCOM 1's): GetPosition()'s by-value copy stores
  * through a pointer; the -z axis through a row pointer keeps the node in one register; IsInCone
  * is pinned (called out of line).
- * OPEN, 0x4C8 against 0x4D0, 3 instructions: (1) the falloff's 2.0f * (r - 0.5f) -- the target
- * puts the product in f1 (the 2.0's register), here f0 (SOCOM 1's colouring is ours); (2) the
- * id -- the target copies the byte enum with `lb` and narrows it (`andi 0xff`) once for both
- * compares, here one `lbu`; the target's label pad before the 159 test (`b; nop; nop`) follows
- * from (2). Round 17: the impact arm is the target's -- `over` (dist - eff) a variable of its own,
+ * OPEN, 3 instructions (the target's size since the weapons' round 24): the falloff's 2.0f * (r -
+ * 0.5f) -- the target puts the product and the difference in f1 (the 2.0's register, r's before
+ * it), here f0 (SOCOM 1's colouring is ours). The id (2) is closed: each test an IsItem() call
+ * over GetId() by value (the byte-enum copy `lb`, narrowed once for both tests, and the label pad
+ * before the 159 test with it). Round 24 for (1): an in-place inline (`v *= s; return v;`, either
+ * argument order, Falloff(v, r) returning `1 - v`, the difference assigned back to v) and a k
+ * local (2.0 then `*=`, or the product then `k = 1 - k`, or `1 - 2k`) all put the product in the
+ * 2.0's register but swap r's and 1.0's (9 off); OneMinus(x), Falloff(r), Fall(float &d, r) and
+ * `r = 1 - 2(r - .5)` stay 3-4 off. Round 17: the impact arm is the target's -- `over` (dist - eff) a variable of its own,
  * declared ahead of `span` and assigned after it (the subtraction in the span test's delay slot,
  * span in f1 and over in f2); declared after span the two FPRs swap, inline in the division it
  * sinks below the branch. For (2): a byte enum held in a real variable is `lb` plus `andi` at the
@@ -925,9 +939,7 @@ float CZProjectile::GetDamage(const CPnt3D *pos, float minimum)
     else
         damage = 0.0f;
 
-    EQUIP_ITEM id = m_weapon->m_ID;
-
-    if (id == CLAYMORE) {
+    if (IsItem(m_weapon->GetId(), CLAYMORE)) {
         CPnt3D apex;
 
         apex = *(const CPnt3D *)m_instance->m_matrix.m_matrix[3];
@@ -940,7 +952,7 @@ float CZProjectile::GetDamage(const CPnt3D *pos, float minimum)
         dir.z = -z[2];
         if (!IsInCone(pos, &apex, &dir, 1.4726216f))
             damage /= 32.0f;
-    } else if (id == EQUIP_ITEM_159) {
+    } else if (IsItem(m_weapon->GetId(), EQUIP_ITEM_159)) {
         if (!theNetwork.m_bNetwork)
             damage = 0.0f;
         else {

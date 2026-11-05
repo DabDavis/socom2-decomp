@@ -175,7 +175,6 @@ int zrdr_free(CRdrFile *file);
 
 extern "C" {
 void func_0030E340(void *net);
-void func_00344090(const char *file, const char *bank);
 void func_003448E0(const char *bank);
 void func_0039D8C0();
 bool func_001F53D0(CIOPManager::RebootPhase phase, CIOPManager::RebootMode mode, void *data);
@@ -265,9 +264,9 @@ bool CMenuState::Init()
         }
         zrdr_free((CRdrFile *)rdr);
     }
-    func_00344090("sounds.rdr", "HUDUI");
-    func_00344090("sounds.rdr", "SMUS");
-    func_00344090("sounds.rdr", "UIVOICE");
+    CSnd::LoadSounds("sounds.rdr", "HUDUI");
+    CSnd::LoadSounds("sounds.rdr", "SMUS");
+    CSnd::LoadSounds("sounds.rdr", "UIVOICE");
     func_003448E0("UI");
     animfile = 0;
     animfile = ZAnim.OpenZAR("run/uizanim.zar");

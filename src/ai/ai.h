@@ -235,11 +235,43 @@ public:
     /* whether the cell holds an action (the name ours: GetCellCenter's test, out of line at
      * 0x516920 where the centre is inlined one level) */
     bool HasAction() const { return m_action; }
+    /* whether a link is on the cell (the name ours: the stealth planner's cover test) */
+    bool HasLink() const { return m_link; }
+    /* whether the soil hides who stands on it: water, brush, forest or grass (the name ours: MW
+     * lowers the four compares to a bit test, 0x40D over soil - 2) */
+    /* no action, no link on the cell (the names ours: the cover test's last two steps -- an inline
+     * returning the negation materialises it, sltu then xori, before the branch; `!HasAction()`
+     * branches on the bit) */
+    bool NoAction() const { return !m_action; }
+    bool NoLink() const { return !m_link; }
+    bool IsConcealingSoil() const
+    {
+        unsigned int soil = m_soil;
+
+        return soil == 2 || soil == 4 || soil == 5 || soil == 12;
+    }
+    /* whether the cell hides who stands on it: a concealing soil, no action and no link on it (the
+     * name ours: CStealthPlanner::fcost's test of both cells, each step a bool of its own) */
+    bool IsConcealing() const
+    {
+        bool r = false;
+        bool o = false;
+        bool s = IsConcealingSoil();
+
+        if (s && NoAction())
+            o = true;
+        if (o && NoLink())
+            r = true;
+        return r;
+    }
     unsigned char GetBoundary() const { return m_boundary; }
     unsigned int GetShadow() const { return m_shadow; }
     /* whether the cell is indoors (the name ours: GetInterpolatedShadow's test, out of line at
      * 0x52D280 beside GetShadow's 0x52D270 where the map's shadow is inlined one level) */
     bool IsInside() const { return m_inside; }
+    /* whether the cell's height is blended with its neighbours' (the name ours: bit 27, OVL1's copy
+     * 0x2A3930, called out of line by ftsGetAltitudeApprox's one-level cut of GetMapAltitude) */
+    bool IsBilinear() const { return m_bilinear; }
     /* the fields' setters: their arguments masked at run time, `(0 & 1) << n` for a constant
      * (the names ours) */
     void SetOccupied(unsigned int b) { m_occupied = b; }
@@ -804,6 +836,121 @@ public:
 
         return cell ? GetAltitude(cell, alt) : false;
     }
+    /* a point's place in its cell, 0 to 1 from the cell's corner across x and z, none off the map
+     * (the name ours: GetBilinearAltitude's first test, inlined whole -- IsCell's row bool then its
+     * column bool; the corner's z first, so MW converts the row IsRow narrowed before any store) */
+    PNT2D *GetCellOffset(const CAiMapLoc &loc, const CPnt3D *pos, PNT2D *t) const
+    {
+        if (IsCell(loc)) {
+            float z = m_bbox.m_min.z + loc.y * m_dy;
+            float x = m_bbox.m_min.x + loc.x * m_dx;
+
+            t->x = m_idx * (pos->x - x);
+            t->y = m_idy * (pos->z - z);
+            return t;
+        }
+        return 0;
+    }
+    /* the neighbours a point's height blends with -- a step in x and in z toward the nearer side --
+     * and the cell's own weight in each, the point's nearness to its centre (the name ours: an inline
+     * bool, materialised and tested by GetBilinearAltitude; the offset read back off the stack) */
+    bool GetBilinearWeights(const CAiMapLoc &loc, const CPnt3D *pos, int *s, PNT2D &f) const
+    {
+        PNT2D t;
+
+        if (GetCellOffset(loc, pos, &t)) {
+            if (t.x > 0.5f) {
+                s[0] = 1;
+                f.x = 1.5f - t.x;
+            } else {
+                s[0] = -1;
+                f.x = 0.5f + t.x;
+            }
+            if (t.y > 0.5f) {
+                s[1] = 1;
+                f.y = 1.5f - t.y;
+            } else {
+                s[1] = -1;
+                f.y = 0.5f + t.y;
+            }
+            return true;
+        }
+        return false;
+    }
+    /* a point's height blended over the cell and its three neighbours toward the point, each weighted
+     * by the point's nearness to its centre -- a cell of bad altitude left out, the rest renormalised
+     * when their weights sum below 0.98 -- false when no cell had one (SOCOM 1's, the demo's 0x19A820:
+     * OVL1's only copy 0x2A3170, which ftsGetAltitudeApprox calls for a bilinear cell). GetCell past
+     * inline_max_size, so inlined one level -- its pieces called out of line -- GetAltitude whole; the
+     * neighbour built by the three-field constructor, then moved field by field (y a halfword store).
+     * Byte-exact by MW's colouring (the AI core round 26, build/scratch/ai/igrun.py): the steps an
+     * `int s[2]` and the weights a PNT2D, both scalarised after the named locals -- as two ints the
+     * x step took s1 (coloured highest-index first among the variables over K, with the parameters),
+     * as two floats the weights f26/f25 -- four altitudes, one register each as the target's */
+    bool GetBilinearAltitude(const CAiMapLoc &loc, const CPnt3D *pos, float *alt) const
+    {
+        int s[2];
+        PNT2D f;
+        bool found = false;
+
+        if (GetBilinearWeights(loc, pos, s, f)) {
+            float sum = 0.0f;
+            float a0;
+            float a1;
+            float a2;
+            float a3;
+
+            *alt = 0.0f;
+            const CAiCell *cell;
+            cell = GetCell(loc, 0);
+            if (cell && !cell->m_badalt) {
+                float w = f.x * f.y;
+
+                sum += w;
+                GetAltitude(cell, a0);
+                found = true;
+                *alt += w * a0;
+            }
+            CAiMapLoc n(loc.x + s[0], loc.y, loc.m_mapid);
+
+            cell = GetCell(n, 0);
+            if (cell && !cell->m_badalt) {
+                float w = (1.0f - f.x) * f.y;
+
+                sum += w;
+                GetAltitude(cell, a1);
+                found = true;
+                *alt += w * a1;
+            }
+            n.x = loc.x;
+            n.y = loc.y + s[1];
+            cell = GetCell(n, 0);
+            if (cell && !cell->m_badalt) {
+                float w = f.x * (1.0f - f.y);
+
+                sum += w;
+                GetAltitude(cell, a2);
+                found = true;
+                *alt += w * a2;
+            }
+            n.x = loc.x + s[0];
+            cell = GetCell(n, 0);
+            if (cell && !cell->m_badalt) {
+                float w = (1.0f - f.x) * (1.0f - f.y);
+
+                sum += w;
+                GetAltitude(cell, a3);
+                found = true;
+                *alt += w * a3;
+            }
+            if (found) {
+                if (sum < 0.98f)
+                    *alt /= sum;
+                return found;
+            }
+        }
+        return found;
+    }
     /* a line of cells walked from a cell, along a direction or to another cell, each handed to a
      * callback until one returns false (SOCOM 1's WalkLine pair, 0x537400 and 0x537E50 in the map
      * walkers' unit; SOCOM II adds the step, 0.2 from every caller written) */
@@ -1093,6 +1240,67 @@ public:
     CGraph *m_graph;   // 0x15c
 };
 
+/* a value within a span, ends included, all three by reference (the name ours: GetLocation's two
+ * box tests, each materialised as an inline bool's, the value loaded first) */
+inline bool _in_span(const float &v, const float &lo, const float &hi)
+{
+    return v >= lo && v <= hi;
+}
+
+/* whether a point lies over the box in x and z (the name ours) */
+inline bool _over_box(const CBBox &b, const CPnt3D *pos)
+{
+    bool r = false;
+
+    if (_in_span(pos->x, b.m_min.x, b.m_max.x) && _in_span(pos->z, b.m_min.z, b.m_max.z))
+        r = true;
+    return r;
+}
+
+/* the cell under a point (SOCOM 1's GetLocation(CPnt3D *, loc), the demo's 0x19B0F0: the box test
+ * in x and z, the offsets scaled by the inverse cell sizes and truncated on VU0 in place, the cell
+ * stored field by field -- SOCOM II gives it the map's id where SOCOM 1 gave 0 -- and whether the
+ * cell is on the map. An inline of ai.h's (the engine core's round 14 asked for it, AI core round
+ * 26): two units emit its copy, ai_map.cpp OVL2's 0x515F80 (after SetCorners, which 0x515900 calls
+ * twice -- both inlines: their copies follow BuildFootprint, their only caller, in reverse of first
+ * use with CAiMapLoc(), GetBBox and the box's copy, 0x515DE0-0x516177, the AI core round 24) and
+ * fts_main.cpp OVL1's 0x2A3950 (ftsGetAltitudeApprox's call). The row (the halfword bitfield
+ * compared signed) and column tests each set a bool local of their own, the _over_box shape written
+ * in place: byte-exact since the AI core's round 23 -- the row test through an inline loaded m_ny
+ * ahead of the `bltz` and narrowed its bool (0x1A0 against 0x198, round 22), one result local (`on
+ * && ...` returned) was 0x190. The result declared before the row's bool (round 26): both copies
+ * colour alike either way (the result is v0's), but inlined whole in TransformTo 0x517050 the row's
+ * bool takes v0 and the result v1 only so */
+inline bool CAiMap::GetLocation(const CPnt3D *pos, CAiMapLoc &loc) const
+{
+    bool inside = _over_box(m_bbox, pos);
+
+    if (inside) {
+        sceVu0FVECTOR v;
+        float *p = v;
+
+        v[0] = m_idx * (pos->x - m_bbox.m_min.x);
+        v[1] = m_idy * (pos->z - m_bbox.m_min.z);
+        asm volatile {
+            lqc2 vf3, 0(p)
+            vftoi0.xyzw vf3, vf3
+            sqc2 vf3, 0(p)
+        }
+        loc.x = ((int *)p)[0];
+        loc.y = (unsigned short)((int *)p)[1];
+        loc.m_mapid = (unsigned char)GetMapId();
+        bool ret = false;
+        bool on = false;
+
+        if (loc.y >= 0 && loc.y < m_ny)
+            on = true;
+        if (on && loc.x < m_nx)
+            ret = true;
+        return ret;
+    }
+    return false;
+}
+
 /* a cell handed to a flood fill's callback (SOCOM 1's, which its DWARF does not lay out: the
  * fields as the callbacks read them) */
 struct MAP_FLOODFILL_STRUCT {
@@ -1116,6 +1324,19 @@ struct MAP_FLOODFILL_STRUCT {
 
 /* a cell handed to a walk's callback (SOCOM 1's MAP_FOREACH_STRUCT, which its DWARF does not lay
  * out: the map, the cell and its location as the callbacks read them) */
+/* a cell's counts by direction, N to NW (new in SOCOM II, the names ours, after SOCOM 1's
+ * CountMapTravelDir/CountMapVisDir count arrays: the walker unit's counters 0x535730, 0x535A40 and
+ * 0x535DF0 fill it -- CAiSRush::Tick zeroes the first word and sets the second to 64 first) */
+struct MAP_DIRCOUNT {
+    /* the direction of the most counts (ai_mapwalk.cpp's 0x5350C0) */
+    CAiMap::DIR GetBestDir(bool smooth, const CPnt3D *heading);
+
+    int m_unk0;   // 0x0
+    int m_range;   // 0x4
+    int m_count[8];   // 0x8
+    /* (the counter 0x535A40 steps a cell at +0x28 out along each direction: not laid out yet) */
+};
+
 struct MAP_FOREACH_STRUCT {
     /* empty, and called out of line where the walk is inlined one level (0x517780) */
     MAP_FOREACH_STRUCT() {}
@@ -1320,6 +1541,12 @@ public:
 
             return iterator(p);
         }
+        /* the reverse walk (include/iterator's reverse_iterator, built from the ends by value:
+         * GetLegBoundary 0x5279E0 keeps both reverse iterators and their ends' temporaries in stack
+         * slots, rend() rebuilt for each pass's test) */
+        typedef std::reverse_iterator<iterator> reverse_iterator;
+        reverse_iterator rbegin() { return reverse_iterator(end()); }
+        reverse_iterator rend() { return reverse_iterator(begin()); }
     };
     /* a point on a cell: x and y agree, the map aside (SOCOM 1's std::find<point *, CAiMapLoc>
      * compares them; materialised as CAiMapLoc's ==) */
@@ -1400,6 +1627,10 @@ public:
     void IncrementPathId();
     CAiMap *GetLegMap(int leg);
     bool GetLegPoints(CAiMapLoc &start, CAiMapLoc &goal, int leg) const;
+    /* the indices of a leg's first and last points, for one leg or the one being planned, -1 for
+     * none; false past the last leg (SOCOM 1's GetLegBoundary, the demo's 0x196210, which its
+     * SmoothPathLeg calls: 0x5279E0 -- PrintPath and SOCOM II's SmoothPathLeg 0x525810 call it) */
+    bool GetLegBoundary(int &first, int &last, int leg) const;
     /* the points' length, the straight distances between neighbours on one map summed -- kept,
      * and summed again when none is kept or when forced; 0 without points (SOCOM 1's GetLength,
      * the demo's 0x196510, by its place and its call from CAiMaps::CreateGraph: 0x527E70) */
