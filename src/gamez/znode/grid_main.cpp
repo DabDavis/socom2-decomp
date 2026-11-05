@@ -231,7 +231,10 @@ inline int GridCellIndex(float v, float o, float inv, const int &n)
  * the scale (each, pairs, all three) by const reference -- the same 4. Round 10: the sum taken
  * first (`(0.0001f + (v - o)) * inv`), the sum or the constant in a local (plain or const), by value
  * or by reference -- the same 4 each (build/scratch/core/v_ste.py): the block's first load is placed
- * by the scheduler, whatever the expression */
+ * by the scheduler, whatever the expression. Round 15: the target's point load waits a cycle after
+ * m_PntCnt's store (MW lets an independent constant fill a store-to-load gap it assumes aliasing:
+ * CDIPoly::GetIntersect's probes), ours issues at once -- read through a non-const cast or a local,
+ * indexed, the count stored as unsigned: the same 4 (build/scratch/core/v_ste2.py) */
 void CGrid::SetTraversalExtents(const CPnt3D *pnts, int n, bool b)
 {
     m_LineWalk = b;

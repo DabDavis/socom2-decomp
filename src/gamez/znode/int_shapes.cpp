@@ -158,11 +158,16 @@ int CDIPoly::GetAltitude(DiIntersect *di)
  * result, the hit point with a word at 12 the program zeroes for a miss, into the next hit's slot,
  * and from 0x20 the plane's normal into the slot's +0x10 -- whether every edge kept the hit (SOCOM
  * 1's, slimmed: SOCOM II syncs once a call and leaves the poly and count to the caller).
- * OPEN, 0xB0 against 0xC0: every instruction is the target's but the registers (p a3, the normal's
- * address a1 and the count v1 where the target has a1, v1 and a3), the order of the result's lwc1
- * and the zero's mtc1 (the target loads first, then a nop before c.eq.s, at both tests) and the two
- * loop-label pads that follow. GCC-style asm (the lwc1 inside or outside) and these asm blocks
- * compile alike; the normal's address hoisted to a local and `p + n - 1` give the target's set-up */
+ * THE ZERO MADE INSIDE THE ASM BLOCK (`mtc1 zero, z`, the test `z == w`) gives the target's tail at
+ * both tests -- the hit's lwc1, then the mtc1, a hazard nop, c.eq.s with the zero first -- where a C
+ * zero (a literal, a local, a C or volatile load, GCC-style asm, two blocks, an inline: the engine
+ * core's round 15, build/scratch/core/p1-p7.cpp) is scheduled into the gap MW leaves between the
+ * asm's sqc2 and its aliasing lwc1, ahead of the load; plain C code with no such store gives the
+ * lwc1-mtc1-nop order (164 matched sites) -- likely a stand-in for whatever the original wrote.
+ * OPEN, 15-16 instructions, the target's size (0xC0): the set-up's registers and order only -- the
+ * target extracts the count (a3) before it forms the hit's address and keeps p in a1 and the
+ * normal's address in v1, ours p a3, normal a1, count v1; all 120 declaration orders and every
+ * dependency-respecting initialisation order give 15 at best (build/scratch/core/v_poly_ord*.py) */
 int CDIPoly::GetIntersect(DiIntersect *di)
 {
     IntersectStruct *is = &di->m_Intersects[di->m_Cnt];
@@ -170,7 +175,7 @@ int CDIPoly::GetIntersect(DiIntersect *di)
     int n = m_flags.m_ptcount;
     CPnt4D *p = m_pnts;
     CPnt4D *last = p + n - 1;
-    float w;
+    float w, z;
 
     asm volatile {
         lqc2 vf4, 0(last)
@@ -179,8 +184,9 @@ int CDIPoly::GetIntersect(DiIntersect *di)
         qmtc2.i a0, vf0
         sqc2 vf29, 0(is)
         lwc1 w, 12(is)
+        mtc1 zero, z
     }
-    if (w == 0.0f)
+    if (z == w)
         return 0;
     do {
         p++;
@@ -192,8 +198,9 @@ int CDIPoly::GetIntersect(DiIntersect *di)
             sqc2 vf29, 0(is)
             sqc2 vf3, 0(norm)
             lwc1 w, 12(is)
+            mtc1 zero, z
         }
-        if (w == 0.0f)
+        if (z == w)
             return 0;
     } while (--n);
     return 1;
@@ -310,10 +317,14 @@ void CDI::SetEdgeVecsAndNorm()
  * 224 else), its hit and normal into the next hit's slot, whether the hit's w is set (SOCOM 1's;
  * written in the engine core's round 14). The tail numbered before the tip but set after it (the
  * target computes the tip's address first and gives the pair t3/t2).
- * OPEN, 8 instructions (0x278 against 0x280), the last test only: the target loads the hit's w
- * before the zero's mtc1 (then a nop) and puts the return 0's `move v0,zero` in the bc1f's delay
- * slot -- CDIPoly::GetIntersect's open tail exactly (MW hoists the mtc1 above the asm's lwc1); tried
- * `w != 0.0f` first and a result local (build/scratch/core/v_bbox*.py) */
+ * The zero is made inside the asm block, as in CDIPoly::GetIntersect (above), which gives the target's
+ * lwc1-mtc1-nop order and its size.
+ * OPEN, 2 instructions (the target's size, 0x280): the return 0's `move v0,zero` sits in the `b`'s
+ * delay slot where the target has it in the bc1f's -- MW's filler does not hoist it across the
+ * branch when the branch's block also writes or reads v0 (the normal's address here: a probe with the
+ * normal in a3 hoists it, build/scratch/core/p6.cpp), yet the target's block holds the same v0 uses;
+ * tried a C, GCC-style or split asm zero, `else`, a ternary, `!=` first, result locals
+ * (build/scratch/core/v_bbt*.py) */
 int CDIBBox::GetIntersect(DiIntersect *di)
 {
     const CBBox *box = m_bbox;
@@ -343,7 +354,7 @@ int CDIBBox::GetIntersect(DiIntersect *di)
         *flag = 0;
     IntersectStruct *is = &di->m_Intersects[di->m_Cnt];
     CPnt3D *norm = &is->m_norm;
-    float w;
+    float w, z;
 
     asm volatile {
         lqc2 vf3, 0(plo)
@@ -353,8 +364,9 @@ int CDIBBox::GetIntersect(DiIntersect *di)
         sqc2 vf10, 0(is)
         sqc2 vf30, 0(norm)
         lwc1 w, 12(is)
+        mtc1 zero, z
     }
-    if (w == 0.0f)
+    if (z == w)
         return 0;
     return 1;
 }

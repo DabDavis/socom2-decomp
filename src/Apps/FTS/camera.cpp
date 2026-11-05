@@ -191,11 +191,40 @@ void CAppCamera::ResetView()
     }
 }
 
+/* LookAt's pieces (the names ours): three floats set by value -- the arguments loaded z, y, x
+ * before the stores, as the eye's copy is -- the level right vector from the negated z it shares
+ * with the matrix and the direction's x read through the reference (a second load of it, as the
+ * target's), and a row set to a point's negation through the reference (its fields come off the
+ * frame, where read directly MW keeps their addresses in saved registers) */
+inline void LaSet3(float *r, float x, float y, float z)
+{
+    r[0] = x;
+    r[1] = y;
+    r[2] = z;
+}
+
+inline void LaRight(float *v, float nz, const CPnt3D &d)
+{
+    v[0] = nz;
+    v[1] = 0.0f;
+    v[2] = d.x;
+    v[3] = 1.0f;
+}
+
+inline void LaNegRow(float *r, const CPnt3D &p)
+{
+    r[0] = -p.x;
+    r[1] = -p.y;
+    r[2] = -p.z;
+}
+
 /* the camera's matrix to look from one point at another: level (its x axis in the ground plane),
- * up from the cross product, looking down -z; the eye noted.
- * OPEN (0x184 of 0x158): MW keeps the views' second and third components' addresses in saved
- * registers (as SOCOM 1's demo build did, s3/s4) where SOCOM II's reads them off the stack, and the
- * initialised vectors come from a constant; written with element stores it is 0x170 */
+ * up from the cross product, looking down -z; the eye noted (SOCOM 1's; written in the engine
+ * core's round 15, build/scratch/core/v_lookat*.py: SOCOM 1's demo build kept the view's y and z
+ * addresses in saved registers, SOCOM II's 3.0 build reads every field off the frame -- exactly
+ * one of the view's two readers going through a reference inline gives that; the right vector's
+ * negated z and the direction's x live across the cross product only as named floats, and the
+ * cross product's three results are named before row 0 is stored -- the target loads them first) */
 void CAppCamera::LookAt(const CPnt3D *from, const CPnt3D *to, CMatrix &cTw)
 {
     CPnt3D vView = *to - *from;
@@ -205,21 +234,28 @@ void CAppCamera::LookAt(const CPnt3D *from, const CPnt3D *to, CMatrix &cTw)
 
     v2D.y = 0.0f;
     v2D.Normalize();
-    sceVu0FVECTOR right = { -v2D.z, 0.0f, v2D.x, 1.0f };
-    sceVu0FVECTOR view = { vView.x, vView.y, vView.z, 1.0f };
+    float nz = -v2D.z;
+    float x = v2D.x;
     sceVu0FVECTOR up;
-
+    sceVu0FVECTOR right;
+    sceVu0FVECTOR view;
+    LaRight(right, nz, v2D);
+    view[0] = vView.x;
+    view[1] = vView.y;
+    view[2] = vView.z;
+    view[3] = 1.0f;
     sceVu0OuterProduct(up, right, view);
-    cTw.m_matrix[0][0] = -v2D.z;
+    float ux = up[0];
+    float uy = up[1];
+    float uz = up[2];
+    cTw.m_matrix[0][0] = nz;
     cTw.m_matrix[0][1] = 0.0f;
-    cTw.m_matrix[0][2] = v2D.x;
-    cTw.m_matrix[1][0] = up[0];
-    cTw.m_matrix[1][1] = up[1];
-    cTw.m_matrix[1][2] = up[2];
-    cTw.m_matrix[2][0] = -vView.x;
-    cTw.m_matrix[2][1] = -vView.y;
-    cTw.m_matrix[2][2] = -vView.z;
-    *(CPnt3D *)cTw.m_matrix[3] = *from;
+    cTw.m_matrix[0][2] = x;
+    cTw.m_matrix[1][0] = ux;
+    cTw.m_matrix[1][1] = uy;
+    cTw.m_matrix[1][2] = uz;
+    LaNegRow(cTw.m_matrix[2], vView);
+    LaSet3(cTw.m_matrix[3], from->x, from->y, from->z);
     m_wPos = *from;
 }
 
@@ -271,7 +307,10 @@ _zanim_cmd_hdr *CAppCamera::CmdParseShake(_zrdr *rdr)
  * OPEN (36 of 113 instructions, registers only): the target keeps appCamera in v1 and the level in
  * a0 (the command's register, dead after the load); MW gives the level v1 and appCamera a1 -- the
  * same with a local camera, an early return, the level read first or as an int, Shake declared
- * inline, and with the switch written out here */
+ * inline, and with the switch written out here; round 15: the level a caller local defined inside
+ * the null test (plain, const, int), declared at the top, the command cast into a local -- the same
+ * 36 (build/scratch/core/v_shake.py): by the numbering the target's camera is numbered above the
+ * inlined Shake's level, which no caller-side spelling reaches */
 void CAppCamera::CmdBeginShake(_zanim_cmd_hdr *hdr)
 {
     if (appCamera)
