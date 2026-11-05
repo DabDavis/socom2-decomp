@@ -2065,6 +2065,23 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the weapons, round 26** (CZProjectile's GetDamage, DoMiss, HandleBounce and HandleImpact; the VU0 batch add):
+  - a float product takes the lowest free FPR, so a target putting the product in its constant's register needs the
+    constant, product and result as ONE in-place local, and a 1.0 that must colour after it a named local first defined
+    between them (GetDamage 0x3C7600, round 25's open -- `one` and `k` marked stand-in names: the original's unknown);
+  - `&local` passed to an inline that null-tests its pointer folds the test, a `(const T *)&local` cast or a pointer local
+    taken later keeps it (DoMiss 0x3C9530); a class object passed by value through `...` is copied to a temporary whose
+    slot sits among the compiler temporaries, where a named copy sits above them; a declaration's initializer is inlined
+    before expression statements (`CPnt3D off = a + b * s; *pos = off;` puts the operators' temporaries first in the
+    frame); a bool initialised by a ternary is numbered after inlines' temporaries -- the lower saved register
+    (HandleBounce 0x3C8F50);
+  - `x != 0.0f` compiles as `c.eq.s zero,x` whichever side the zero is on, a truth test `&& x &&` as `c.eq.s x,zero`;
+    `a = f(); a *= b;` keeps (a, b) order where `f() * b` in one expression gives (b, f()) (HandleImpact 0x3C8920); an
+    unsigned short local passed to an unsigned int parameter adds `andi 0xffff`, declared unsigned int straight from the
+    lhu it adds nothing (the VU0 decal batch add 0x3BE5F0);
+  - m_customGlobalLightIdx__Q23zdb7CVisual 0x3E1448 named (SOCOM 1's 4-byte symbol before m_applyShadow, holding -1;
+    read only by the lights packet send 0x3B6B20); ~CVehicle 8 short, OPEN (a third destructor level's `b` makes the
+    region's constructor six high in every shape tried).
 - **Tells from the game states, round 38** (0x2B8100 at last, the online rooms' chat line, fts_net_persona.cpp whole):
   - FORWARDING IS THE IR OPTIMISER'S: MW's forwarding of a single-use local is mweppc's expression propagation
     (IroPropagate), within one flow-graph node only -- `?:`, `&&` and `||` become branches, so any of them between a
