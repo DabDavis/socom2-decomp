@@ -253,16 +253,18 @@ CAiMap::region *CAiMap::GetRegionContaining(const CAiMapLoc &loc, region::TYPE t
 
 /* the rectangle grown by so many cells on each side, kept inside the map (or inside the largest
  * map when none is given: 0x1FFF cells) -- SOCOM 1's, the corner clamped first, then the size.
- * OPEN, right size, 21 instructions in the first block: scheduling only -- the target loads x and
- * m_dx for the width before it stores y - top (SOCOM 1's build has the same order), this build
- * after; the width and height spelled five ways, the four declared first and assigned x, w, y, h,
- * and one declaration of all four were tried */
+ * Byte-exact in the AI core's round 29 (21 instructions off since round 2): the grown right and
+ * bottom edges are locals of their own, each computed right after its corner -- the edge's field
+ * loads then lead the next corner's store (x, the right edge, y, the bottom edge), as the target's
+ * do; the width and height written straight from the fields kept those loads below the store */
 void CAiMap::region::InflateRegion(int left, int top, int right, int bottom, const CAiMap *map)
 {
     int x = m_loc.x - left;
+    int r = right + (m_loc.x + m_dx);
     int y = m_loc.y - top;
-    int w = right + (m_loc.x + m_dx) - x;
-    int h = bottom + (m_loc.y + m_dy) - y;
+    int b = bottom + (m_loc.y + m_dy);
+    int w = r - x;
+    int h = b - y;
     int maxx = 0x1FFF;
     int maxy = 0x1FFF;
 
