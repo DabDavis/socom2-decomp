@@ -9099,6 +9099,44 @@ a copy was: the FPRs under K 25 (22 of 24 replay), igvar building the unchanged 
 it is)`). No tool that scores changed: scdiff.py, sccheck.py, scdecomp.py, tools/try.py and `include/`
 are master's (`git diff --quiet`), so no MW or GCC unit can score differently.
 
+**Round 32a** (2026-11-05, the tools first -- above, and the register-numbering paragraph -- then OVL1's
+codec and libcdvd): 3 rows newly byte-exact (1,416 bytes) of 7 written -- every `src/lib` unit after
+merging master d9d9cc07 scores with no regression (`--files '^lib/'`: 2,749 byte-exact of 2,890) -- all
+in Nellymoser's encoder: EncSC.c's block creation 0x249190 and the encoder's per-frame entry 0x248FB0
+(`ovl1/sase_encsc.c` 15 of 16), fftIf.c's forward transform 0x2518E8 (`ovl1/sase_fftif.c`, lines 25 and
+27, as first written). No rows named (the codec is not in SOCOM 1). What they showed:
+
+- **A caller reads a value the callee's text never returns**: 0x248FB0 stores 0x2499A8's `$f0` as the
+  frame's first pitch word and passes it on in `$f12` to 0x249A38, whose body never reads it -- so
+  0x2499A8 is a `float` function falling off its end and 0x249A38 takes a trailing float (both stay
+  byte-exact so): the call sites, not the bodies, give the prototypes.
+- **Three adjacent short flags tested by one doubleword** (`ld; dsrl -1,16; and`): fold_truthop merges
+  `a || b || c` over fields 40-45 only when the struct is 8-aligned -- EncParams is
+  `__attribute__((aligned(8)))` (its setters compile the same).
+- **Initialisers store in declaration order**: 0x248FB0's two zeroed frame slots, stored mode first,
+  are assignments in the body; and a `return 0` of its own before the last test sets v0 ahead of the
+  flag's load, which then takes v1 -- one `if (flag && (...))` gives the target's v0.
+- **The create's closing stores in field order** but one pair (tools/try.py, five orders tried).
+- **Open, diagnosed in place**: libcdvd's sceCdDiskReady (right size, structure exact once both failure
+  paths are one block after the call: 20 words in their registers alone -- global-alloc's order of the
+  call-crossing %hi pseudos, tools/ccdump.py -f), the newer disk-ready call 0x18EF70 (8 structural: the
+  client's %hi hoisted into the bind test's slot where the target computes it on both paths), sceCdInit
+  (65: the reply's version tests), the VAD's hang-over 0x253288 (two words short: a byte result loaded
+  zero-extended in the active flag's own test's slot). Not reached: round 31a's register-only opens
+  (dmaRefImage, sceBInetRecv/Send, sceGsResetGraph, 0x249B58), the codec's loops.
+
+automatch over the lane's three ranges (`--max-size 0x400 --emit --no-prune --jobs 1 --obj-dir` the
+lane's private `src/lib` build): MAIN `18DB90 1C4CC0` 14 tried, 0 hits (1 build failure, 3 m2c
+refusals, 10 misses), OVL1 `1E7F58 1E8FD4` 0 tried, `243000 256FD0` 54 tried, 0 hits (2 build failures,
+5 refusals, 47 misses): 68 tried, none byte-exact (round 31a: 73, 0). **The three build failures**:
+libmpeg's `_doMC` 0x1B5ED8 calls through m2c's int (`*(arg0 + 0x5B8 + i)(...)`: "called object is not a
+function") -- now made through a function pointer (`SC_AM_GCC_CALLS`): it builds and misses; 0x24B2F8
+adds an offset typed `char *` to m2c's frame array (`s32 sp[28]`) -- an array is now a pointer in the
+byte-sum repair (`SC_AM_GCC_ARRAYS`), and the repaired draft builds and misses by hand (0x230 against
+0x268) but automatch still counts the row a build failure (an exception in one of its variants, which
+try_one swallows -- not chased); 0x24DBB8 is a TImode operation (round 25a's kind). automatch scores
+nothing: scdiff.py, sccheck.py, scdecomp.py and `include/` are master's.
+
 **Next**: the libraries by hand, module by module, as their vendors wrote them (each `src/lib`
 unit's header says what it covers); GCC's scheduler moves independent stores, and which source
 order gives the target's is easier measured than predicted (`tools/ccperm.py PROBE
