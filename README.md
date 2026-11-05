@@ -2062,6 +2062,35 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from completing the MSL headers, round 25** (the pointer vector's erase, MSL's find, the deque's const_iterator;
+  probes and scratch in build/scratch/msl-r25/, untracked -- p25/ the probes; base_master2.txt, run_*.txt, objcmp_*.txt):
+  - THE POINTER VECTOR'S erase(iterator) is `__iter(__raw_erase(position.base()))`, the raw erase T-dependent as the raw
+    ends (a `j` to the pod's erase): CUIVariable::Detach 0x3866F0 (written, ours: SOCOM 1's DetachUIVar inlined it) inlines
+    UIVarMixin::DetachUIVar 0x385D90 (written, its draft's code) with Detach once more inside it, cut a level -- base(),
+    the raw erase and __iter called (0x386930/0x386920/0x386910 named with ==, the copy, * and ++); its result a found
+    flag (`daddiu v0,zero,1`: a bool set true, where `return true` is li);
+  - STD::FIND TESTS `first != last` (MSL's): Detach's inner copy calls find's != and negates it -- the level-4 fit's
+    `!(first == last)` called == straight. std::remove assigns find's result, which puts find in operator='s argument
+    a level deeper: over the != find remove is six high and level 5 cuts find to its body in every remove user, where
+    the target inlines it whole -- remove searches through `__remove_find` (the == test, a level shorter: the level-5
+    fit; the original's level deeper, "Level 6, or 8?"). Over every hand-written unit 10337 -> 10346, nothing lost;
+  - THE DEQUE'S SEPARATE const_iterator, ADOPTED (round 18's measured shape): the source's *, ++ and != and the
+    destination's *, ++ and copy constructor out of class, distance and copy by value -- the lobby queue's six pieces
+    0x2E1420-0x2E1550 byte-exact (+6, nothing lost), six init rows and the lobby's do_assign renamed `14const_iterator`
+    (none matched; the deque copy constructors calling init resolve again); do_assign 0x2E1090 still 0x31C of 0x384 (the
+    source's buffer iterator copied through its user copy constructor, the target's bitwise);
+  - measured, not applied: the scalar end() reading data_ straight gives CSkbSplit::Next's `lw a2,12(s2)` but hoists the
+    headset's vector<int> ends whole (-4: IsQueued, Queue, Remove, StopSound re-read data each pass through data()'s
+    reference; Next still misses on its destructor's level); end() as `__iter(__raw_end())` (the raw end a level deeper,
+    as begin's) makes CKey::CountKeys 0x25B300 byte-exact but loses _countKeys and fixupKey (their ends in the loop test);
+    c_str five high (libc++'s chain: c_str, data, the pointer pick, __is_long, is_long) makes AnimSet::Find six and
+    0x5E3940 / 0x58C600 byte-exact with GetName plain -- four high does not -- but cuts 13 c_str wrappers the target
+    inlines (LadderItem::GetName's `return m_name.c_str()` first): c_str is at most four high at level 5, GetName's fit
+    stays; the HUD's AddName (hudAddPopupDefinition 0x22D660) with the class push_back through end() calls push_back as
+    the target (0x6A4 -> 0x63C of 0x5E0) but cuts rbegin itself where the target inlines it and calls its end();
+  - GetLegBoundary's reverse walk needs no header change (the AI core's round 27: the iterator declared before the loop
+    and assigned stays in memory); include/vector's stand-in note updated -- all eight depth-6 stand-ins are gone, refit
+    at level 5 by a `data_ + size_` `Last()` end or the helper's walk written out.
 - **Tells from the kit and AI states, round 40** (CZKit's Init, Reload, ChamberLauncherRound, UpdateScopeModel and
   ChangeItemModel; CAiSFollow::StanceCheck):
   - `mag > 9` compiles to the target's fused `slti at` / `bnez at`, `mag >= 10` computes the compare into a register

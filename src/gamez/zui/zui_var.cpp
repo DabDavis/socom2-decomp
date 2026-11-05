@@ -7,8 +7,10 @@
  *
  * Round 19: the manager's Serialize and the variable's Format (0x3860F0, SOCOM 1's) byte-exact.
  * Round 20: RefreshUIVar 0x385E50 and _Refresh 0x385EA0 byte-exact (the latter once the integrator
- * named its two rdr callees). OPEN, not written yet: 0x3866F0; DetachUIVar, ~CUIVarManager, the revival 0x386B80, the watcher vector's iterator pieces
- * (0x386910-0x3869EF, 0x386AB0) and the thunks stand as generated drafts. Round 13: CUIVariable's
+ * named its two rdr callees). The MSL headers' round 25: CUIVariable::Detach 0x3866F0 and
+ * UIVarMixin::DetachUIVar 0x385D90 written, byte-exact with the watcher vector's pieces 0x386910-0x3869A0
+ * (include/vector's raw erase, include/algorithm's != find). Not written yet: ~CUIVarManager and the
+ * revival 0x386B80 stand as generated drafts, as the thunks. Round 13: CUIVariable's
  * copy constructor 0x386BF0 byte-exact (zui.h's CUIVariable : _zrdr, UIVarMixin); Attach written,
  * open (below). */
 
@@ -141,6 +143,21 @@ void CUIVariable::Attach(UIVarMixin *mixin)
     mixin->AttachUIVar(this);
 }
 
+/* the mixin taken off the watchers, detached from this variable first: DetachUIVar inlined, and in
+ * it this function once more, cut a level (0x3866F0; SOCOM 1's DetachUIVar inlined it whole) */
+bool CUIVariable::Detach(UIVarMixin *mixin)
+{
+    bool found = false;
+    std::vector<UIVarMixin *>::iterator i = std::find(m_attached_items.begin(), m_attached_items.end(), mixin);
+
+    if (i != m_attached_items.end()) {
+        (*i)->DetachUIVar(this);
+        m_attached_items.erase(i);
+        found = true;
+    }
+    return found;
+}
+
 /* every watcher detached: a successful detach changes the vector, so the walk restarts (called
  * out of line by Destroy: pinned) */
 #pragma auto_inline off
@@ -256,6 +273,20 @@ void UIVarMixin::AttachUIVar(CUIVariable *var)
     }
 }
 #pragma auto_inline reset
+
+/* the mixin detached from the variable (its own when none is given) if it watches it (SOCOM 1's
+ * DetachUIVar, its detach SOCOM II's CUIVariable::Detach, called) */
+bool UIVarMixin::DetachUIVar(CUIVariable *var)
+{
+    if (!var)
+        var = m_uivar;
+    if (var && m_uivar == var) {
+        m_uivar = 0;
+        if (var->Detach(this))
+            return true;
+    }
+    return false;
+}
 
 /* the temporary variables destroyed, the garbage collected (SOCOM 1's) */
 void CUIVarManager::Reset()
