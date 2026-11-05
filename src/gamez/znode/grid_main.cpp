@@ -71,7 +71,9 @@ CGridAtom **CGrid::gridGetAtomBasePtr(int x, int z)
  * OPEN (0x1F4 of 0x1E8): the target recomputes &m_Atoms[i] from the index at every step of the
  * inner loop (sll, addu) and tests the loop's bool twice (sltu, xori before the branch); MW
  * strength-reduces the element pointer here (a register stepped by 16) -- not an unsigned or short
- * index, pointer arithmetic, nor an accessor taking another index type */
+ * index, pointer arithmetic, nor an accessor taking another index type; round 18: `&m_Atoms[++i]`
+ * (0x1F0), `m_Atoms + i`, an accessor over the array or the grid, the ring read by index (0x1F4-0x1FC,
+ * build/scratch/core/v_bocal.py) */
 void CGrid::buildOrderedCellAtomList(const CPnt3D *view)
 {
     m_orderedCells.m_gridCellAtomCnt = 0;
@@ -791,7 +793,11 @@ bool CGrid::Read(CSaveLoad &io)
  * copy (move s4,v0; beqz s4) where MW here tests the ternary's v0, and this/z/model take s6/s5/s4
  * where ours take s5/s4/s6 -- the model through an if/else, preset, an inline, `!= 0`, a cast, a
  * declaration ahead of the key: the same 23 or 0x3C4 (build/scratch/core/v_rc*.py); the replay
- * (igreplay --want this=s6,z=s5,model=s4) finds no placement of z and model alone */
+ * (igreplay --want this=s6,z=s5,model=s4) finds no placement of z and model alone. Round 18: the
+ * model through an inline with two returns (0x3C4), with a preset local returned (17: the test on
+ * the copy, as the target, but the ternary's join and every register lost), the ternary reversed
+ * (`strcmp(...) ? GetModel : 0`, 0x3C4), the name in a local (0x3C4); the replay with this, z and
+ * model as movers found no placement in the 15 % it searched in 150 s (build/scratch/core/v_rc*.py) */
 bool CGrid::ReadClutter(const char *map, const char *dir)
 {
     if (m_ClutterCreated)

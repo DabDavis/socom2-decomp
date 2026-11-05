@@ -224,7 +224,10 @@ int CDIPoly::GetIntersect(DiIntersect *di)
  * Round 16, the replay: the target's registers need the mask's load numbered ahead of the 1.0f
  * constant (v36 below v35: every one of the 15 hits) -- the mask read before the tail's CPnt4D is
  * made; a named local is folded back into the store (README: a local read once), and a dead first
- * definition, a reference to the w or the 1.0f in a local give 6 (build/scratch/core/v_ltt3.py) */
+ * definition, a reference to the w or the 1.0f in a local give 6 (build/scratch/core/v_ltt3.py).
+ * Round 18: the mask read in an outer inline ahead of the inner constructor (15), set through an
+ * inline taking it (6), through a const reference or a pointer to the w (0xA8), from an inline
+ * getter (6) (build/scratch/core/v_ltt.py) */
 void DiIntersect::LoadTipAndTail()
 {
     CPnt4D tip, tail;
@@ -335,7 +338,8 @@ void CDI::SetEdgeVecsAndNorm()
  * branch when the branch's block also writes or reads v0 (the normal's address here: a probe with the
  * normal in a3 hoists it, build/scratch/core/p6.cpp), yet the target's block holds the same v0 uses;
  * tried a C, GCC-style or split asm zero, `else`, a ternary, `!=` first, result locals
- * (build/scratch/core/v_bbt*.py) */
+ * (build/scratch/core/v_bbt*.py); round 18: the flag a ternary (24), with the return as a ternary
+ * or `z != w` (24, 0x278) */
 int CDIBBox::GetIntersect(DiIntersect *di)
 {
     const CBBox *box = m_bbox;

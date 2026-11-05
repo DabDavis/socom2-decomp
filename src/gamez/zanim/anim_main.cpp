@@ -213,7 +213,10 @@ bool CZAnimMain::CmdTick(float *dT)
  * commands and eight free anim sets (SOCOM 1's three).
  * OPEN, 18 instructions, registers only: the inlined NewAnimSet keeps the set count in v1 where
  * the target (and SOCOM 1's NewAnimSet out of line) has v0 with count + 1 in v1, and the eight
- * flags' 1 lands in a0 not v0. The permuter found nothing in Open's own text (44,496 tries). */
+ * flags' 1 lands in a0 not v0. The permuter found nothing in Open's own text (44,496 tries).
+ * Round 18: NewAnimSet as a for, `< index + 1`, sizeof sizes, the count + 1 in a local, the step
+ * assigned -- 18 or 21 (build/scratch/core/v_open.py); the replay finds no placement of the four
+ * temporaries (@3188, v87, v88, v90) giving the target's v0 */
 void CZAnimMain::Open()
 {
     if (m_IsOpen)
@@ -762,7 +765,10 @@ const char *ZAnimWildcardNext()
  * (build/scratch/core/ig, igsteps.py): the name, the buffer coalesced into it, stays over K longest
  * and is pushed last, so it takes s0; the target colours the index first. Tried: the index first
  * defined before the second loop (0x158), declared first, the buffer returned from the branch
- * (0x168), a const copy of the name */
+ * (0x168), a const copy of the name. Round 18, the replay (igreplay --want name=s4,n=s0 --movers):
+ * every hit numbers the name after len (33.5 or 34.5) -- a parameter cannot move, and every local copy
+ * of it (after len, after found, last, assigned after the test) is copy-propagated back into the
+ * parameter (tools/igvar.py: `s0=str`, the same 10; build/scratch/core/v_wild.py) */
 const char *ZAnimWildcardApply(const char *name)
 {
     int len;

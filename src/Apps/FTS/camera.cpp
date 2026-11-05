@@ -340,7 +340,10 @@ _zanim_cmd_hdr *CAppCamera::CmdParseShake(_zrdr *rdr)
  * after it (35.5 on); a caller's named level is copy-propagated away (its node dead), and the
  * camera a named local is coalesced with the call's a0 -- the level an enum field, a local copy in
  * Shake (unsigned char, int), a cast in either, a dead first definition: the same 36
- * (build/scratch/core/v_shake*.py, the core lane's round-17 scratch) */
+ * (build/scratch/core/v_shake*.py, the core lane's round-17 scratch). Round 18: the test and the call
+ * in a free inline over the level, the command or a const reference to the level (each 0x34: Shake no
+ * longer inlined -- one level more), the level a reference local (53), the command a reference or cast
+ * through a leaf template (36) */
 void CAppCamera::CmdBeginShake(_zanim_cmd_hdr *hdr)
 {
     if (appCamera)
