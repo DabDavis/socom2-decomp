@@ -142,6 +142,21 @@ public:
     float timer;   // 0x10
 };
 
+/* the pursuit state (seal_ai.cpp's, the SEAL lane's: its table 0x6692B0, its timer at 0x58): the squad's
+ * private news builds one on the stack as the model of the pushes -- its destructor implicit here, as
+ * the target inlines it (CAiState's table stored, the stack's destructor called) */
+class CAiSPursue : public CAiState {
+public:
+    CAiSPursue() : CAiState(AI_STATE_PURSUE) {}
+    virtual void OnSignal(SIGNAL sig, CSealCtrlAi *ctrl);
+    virtual int Virtual14(CSealCtrlAi *ai, CAiState *sub);
+    virtual bool Virtual44(AI_STATE state) { return state == m_state; }
+    virtual bool Virtual48(int x, CAiState *other);
+
+    float m_timer;   // 0x58 (SOCOM 1's 0x28)
+    signed char m_5c;   // 0x5c
+};
+
 /* a squad (SOCOM 1's DWARF: CSealUnit, 0xa4 bytes; SOCOM II's 0xc8: a byte at 8 and 0x24 bytes
  * before the number added, the lists 0x24 on; zseal.h, the SEAL lane's, declares a stub of its own
  * -- this unit does not include it). Only what a written function touches */
@@ -173,6 +188,8 @@ public:
     /* a SEAL's news: 1 and 2 kept to this squad (0x5ED140), 0, 3 and 4 handed to the top squad's
      * (0x5ED4F0) -- SOCOM 1's PrivateNotify and DistributeNotify by their order (OVL2 0x5ED7B0) */
     void Notify(CZSealBody *seal, UNIT_MESSAGE msg, void *data);
+    void DistributeNotify(CZSealBody *seal, UNIT_MESSAGE msg, void *data);
+    void PrivateNotify(CZSealBody *seal, UNIT_MESSAGE msg, void *data);
     /* the top squad above this one (zseal.h's inline, the SEALs' round 14 name: its out-of-line copy
      * OVL2 0x561D20, in seal_ai.cpp's range, inlines itself eight times; Notify writes its first
      * level out and calls the copy, so this unit declares it out of line) */
@@ -1468,12 +1485,6 @@ extern "C" void func_005EAEB0(CSealUnit *unit)
         func_005EAF20(unit, 78, 0, 1.0f);
 }
 
-extern "C" {
-/* the news kept or handed out (0x5ED140, 0x5ED4F0; unwritten) */
-void func_005ED140(CSealUnit *unit, CZSealBody *seal, UNIT_MESSAGE msg, void *data);
-void func_005ED4F0(CSealUnit *unit, CZSealBody *seal, UNIT_MESSAGE msg, void *data);
-}
-
 /* (OVL2 0x5ED7B0; the compare chain tests 2, 1, 0, 4, 3: the cases in reverse) */
 void CSealUnit::Notify(CZSealBody *seal, UNIT_MESSAGE msg, void *data)
 {
@@ -1481,11 +1492,93 @@ void CSealUnit::Notify(CZSealBody *seal, UNIT_MESSAGE msg, void *data)
     case UNIT_MSG_3:
     case UNIT_MSG_4:
     case UNIT_MSG_0:
-        func_005ED4F0(m_parent ? m_parent->GetTop() : this, seal, msg, data);
+        (m_parent ? m_parent->GetTop() : this)->DistributeNotify(seal, msg, data);
         break;
     case UNIT_MSG_1:
     case UNIT_MSG_2:
-        func_005ED140(this, seal, msg, data);
+        PrivateNotify(seal, msg, data);
+        break;
+    }
+}
+
+/* (OVL2 0x5ED4F0: SOCOM 1's DistributeNotify -- recursive, inlined into itself twice, its iterator
+ * pieces 0x5ED6E0-0x5ED7A0 after it). OPEN, 14 instructions, the right size: GetSealCount's question
+ * (include/list's depths, the MSL lane's). The outer copy is the target's (the size word, begin and end
+ * in s0/s7, the walk raw); the first self-copy too but for its begin(): the target calls the base's
+ * begin() (0x510100, by hidden pointer into a frame slot) and then the wrapper iterator's constructor
+ * from that base iterator by const reference (0x5ED7A0: `lw v1,0(a1)`), where include/list inlines
+ * the base's begin() and calls the base iterator's constructor from the node -- the wrapper's begin()
+ * one level deeper, `iterator(base::begin())` (the round-15 measurement: the same shape gives
+ * GetSealCount its calls); its end() is one call (0x5ED750, `&end_` straight), its != the base's
+ * (0x5ED6E0), * and i++ out of line (0x5ED790; 0x5ED720 copy, 0x5ED700 prefix ++, 0x5ED720). The
+ * innermost copy calls empty() (0x5E8A60), begin 0x5ED780, end 0x5ED750, the wrapper's != 0x5ED730,
+ * * 0x5ED790 and i++ 0x5ED760 -- its shape `!m_sub_units.empty()` with the walk below, as written */
+void CSealUnit::DistributeNotify(CZSealBody *seal, UNIT_MESSAGE msg, void *data)
+{
+    if (!m_sub_units.empty())
+        for (ulist::iterator i = m_sub_units.begin(); i != m_sub_units.end(); i++)
+            (*i)->DistributeNotify(seal, msg, data);
+    PrivateNotify(seal, msg, data);
+}
+
+/* the AI SEAL may point out what it sees: bit 16 set, 17 clear (an inline bool -- the target
+ * materialises the `&&` before its branch; the name ours) */
+static inline bool PointsOut(CSealCtrlAi *ai) { return ai->m_aibit16 && !ai->m_aibit17; }
+
+/* (OVL2 0x5ED140: SOCOM 1's PrivateNotify -- the compare chain tests 0, 4, 2, 1, 3: the cases in
+ * reverse; SOCOM 1's walks of the squad on 0 and 3 gone into ShareTarget) */
+void CSealUnit::PrivateNotify(CZSealBody *seal, UNIT_MESSAGE msg, void *data)
+{
+    switch (msg) {
+    case UNIT_MSG_3:
+        if (m_a4) {
+            m_a4 = 0;
+            IssueCommand(0, (FT_COMMAND)3, 0, true);
+        }
+        break;
+    case UNIT_MSG_1:
+        m_a3 = 1;
+        break;
+    case UNIT_MSG_2:
+        m_a0 = 1;
+        break;
+    case UNIT_MSG_4:
+        if (data) {
+            ClearAiStates(true, false);
+            IssueCommand(seal, (FT_COMMAND)3, 0, true);
+            ShareTarget(seal, (CEntity *)data, true, 0);
+            {
+                CAiSPursue pursue;
+
+                pursue.m_timer = -1.0f;
+                PushAiState(AI_STATE_PURSUE, &pursue, false);
+            }
+        }
+        break;
+    case UNIT_MSG_0:
+        if (data) {
+            int idx = ShareTarget(seal, (CEntity *)data, false, 0);
+
+            if (idx != -1) {
+                CSealCtrlAi *ai = ((CUnitSealCtrl *)seal->m_control)->GetSealCtrlAi();
+
+                if (PointsOut(ai)) {
+                    UnitPointData *p = idx == 0 ? &m_leader_point_data : &m_follower_point_data;
+                    float d;
+
+                    p->start_anim = 1;
+                    p->start_turn = 1;
+                    p->in_point = 1;
+                    p->timer = 10.0f;
+                    d = &seal->m_posW - &((CEntity *)data)->m_posW;
+                    p->dirW.x = d;
+                    p->dirW.y = d;
+                    p->dirW.z = d;
+                    p->dirW.Normalize();
+                    m_point_ticks = 2;
+                }
+            }
+        }
         break;
     }
 }
