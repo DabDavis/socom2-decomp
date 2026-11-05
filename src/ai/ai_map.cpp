@@ -544,6 +544,74 @@ bool CAiMaps::GetCellRepelParams(const CAiMapLoc &loc, const CPnt3D *pos, float 
     return map ? map->GetCellRepelParams(loc, pos, range, dir, len, cell) : false;
 }
 
+/* how the cells beside one push a point away: none for no cell or a linked one; else, from the
+ * cell's centre, the two neighbours on the point's side (the quadrant's first direction and the
+ * next but one) that are not traversable each push it back by how far within half a cell of them
+ * (less the range) it is, along their direction -- the pushes summed into `dir`, its length into
+ * `len`, the first pushing cell handed back (SOCOM 1's, the demo's 0x1853A0; the cell new).
+ * OPEN, 0x570 against 0x558 (written in the AI core's round 30): the code is the target's in shape --
+ * GetCell inlined one level, GetCellCenter one level (its pieces the calls 0x5168E0-0x516940), the
+ * quadrant, the two neighbours through GetNeighbor (one level), the pushes -- but the frame and the
+ * float registers differ: the target's slots run the neighbour's cell 300, the centre 288, the zero
+ * copy n 272, the difference v 256, the push 240 (n above v: as if declared first, yet copy-built in
+ * the loop -- ld/sd, which an assignment does not give), and it loads v.z and v.y once into $f20/$f21
+ * ahead of the quadrant test, reading n.y and n.z through address registers in the dot product; here v
+ * sits above n and v.z is read through an address register in each arm. Tried (build/scratch/ai/
+ * v_gcrp*.py): the neighbour's cell and pointer at the top, Dot(v, n), the products written out, v and
+ * the push bound to const references (0x560: the FPR caching lost), a const v (0x568), n declared at
+ * the top and assigned (0x580). The registers (the out cell s7, pos s1, the cell s0) follow the rest */
+bool CAiMap::GetCellRepelParams(const CAiMapLoc &loc, const CPnt3D *pos, float range, CPnt3D &dir, float &len,
+                                CAiMapLoc &cell)
+{
+    CAiCell *c = GetCell(loc, 0);
+
+    if (!c)
+        return false;
+    if (c->HasLink())
+        return false;
+    CPnt3D center;
+
+    GetCellCenter(loc, &center);
+    CPnt3D v = *pos - center;
+    DIR d;
+
+    if (v.x > 0.0f)
+        d = v.z < 0.0f ? (DIR)0 : (DIR)2;
+    else
+        d = v.z < 0.0f ? (DIR)6 : (DIR)4;
+    bool found = false;
+    float half = 0.5f * m_dx;
+
+    for (int i = 0; i < 3; i += 2) {
+        CPnt3D n = CPnt3D::zero;
+        DIR nd = (DIR)((d + i + 8) % 8);
+        CAiMapLoc nloc;
+        CAiCell *ncell;
+
+        if (GetNeighbor(loc, nd, nloc, ncell) && !ncell->IsTraversable()) {
+            GetDirVec(nd, n);
+            float dot = Dot(n, v);
+
+            if (dot > 0.0f) {
+                float k = half - (dot + range);
+
+                if (k < 0.0f) {
+                    CPnt3D push = n * k;
+
+                    dir.Add(&push, &dir);
+                    if (!found) {
+                        found = true;
+                        cell = nloc;
+                    }
+                }
+            }
+        }
+    }
+    if (found)
+        len = sqrtf(Dot(dir, dir));
+    return found;
+}
+
 /* called, not inlined, by the initialiser (the target's jal 0x515720): pinned (the cell's altitude,
  * 0x516940, was defined here until the AI core's round 24: an inline in ai.h now, its copy emitted
  * after GetClosestDir(loc, point) here) */
