@@ -2860,6 +2860,58 @@ static inline float RandBetween(float lo, float hi)
     return lo + (hi - lo) * Rand01();
 }
 
+/* how many of a projectile's pellets reach the SEAL, offline: 8 within 30, and 1-7 at random by the
+ * same spread; for any weapon but the shotgun (81) one fewer crouched and three fewer prone, none
+ * below zero; past 30 the count falls with the square of the distance, its fraction kept at random
+ * (OVL2 0x5A18B0, new in SOCOM II beside 0x5A1620, written after it: 0x5A0E70 calls it; the name
+ * unknown) */
+extern "C" int func_005A18B0(CZSealBody *seal, CZProjectile *proj)
+{
+    CPnt3D d = seal->m_posW;
+
+    *(PNT3D *)&d = d - proj->m_framestartpos;
+    int n = 0;
+    float dist = d.x * d.x + d.y * d.y + d.z * d.z;
+
+    if (dist < 900.0f)
+        n += 8;
+    float r = Rand01();
+
+    if (r < 0.05f)
+        n += 1;
+    else if (r < 0.15f)
+        n += 2;
+    else if (r < 0.5f)
+        n += 4;
+    else if (r < 0.85f)
+        n += 5;
+    else if (r < 0.95f)
+        n += 6;
+    else if (r <= 1.0f)
+        n += 7;
+    if (proj->m_weapon->GetIDType() != 81) {
+        switch (seal->GetStance(false)) {
+        case stateProne:
+            n -= 3;
+            break;
+        case stateCrouch:
+            n -= 1;
+            break;
+        }
+    }
+    if (n < 0)
+        n = 0;
+    if (n > 0 && !(dist <= 900.0f)) {
+        float f = 900.0f * (float)n / dist;
+
+        n = (int)f;
+        f -= (float)n;
+        if (RandBetween(0.0f, 1.0f) <= f)
+            n++;
+    }
+    return n;
+}
+
 /* how many of a shotgun shot's pellets from a point reach the SEAL: 8 within the near range (online's
  * wider), 4 more online within the far, and 1-7 at random by a fixed spread; past the near range the
  * count falls with the square of the distance, its fraction kept at random (OVL2 0x5A1620, new in SOCOM
