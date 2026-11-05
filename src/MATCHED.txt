@@ -8048,6 +8048,7 @@
 0x004C5798 asrspi_cbTsDetected
 0x004C57F8 ContextActivate
 0x004C5960 ContextGetAction
+0x004C5AE8 ContextSetGcdData
 0x004C5C70 ContextAPIDeActivate
 0x004C5C80 ContextDeActivate
 0x004C5CC8 ContextSetCtxData
@@ -8257,6 +8258,8 @@
 0x004E1D08 InitUserWordTraining
 0x004E1E30 ExitUserWordTraining
 0x004E2008 CalcF2
+0x004E25D8 DoDurationModeling
+0x004E2C78 ScoreTranscriptions
 0x004E35C8 CheckConsistency
 0x004E37F8 RejectTrainUtters
 0x004E3A28 DoUserWordTraining
@@ -8307,6 +8310,8 @@
 0x004E8D78 FreeIsoWordTokenDp
 0x004E8EA8 InitNewUtterance
 0x004EAA28 ExpandGarbageArrays@isowdp
+0x004EAE38 GetNBest
+0x004EB078 ControlIsoWordTokenDp
 0x004EB3A0 ConstructIsoWordTokenDp
 0x004EB3E0 InitIsoWordTokenDpProcess
 0x004EB4A8 CalcNrNodes@isowdp
@@ -8409,6 +8414,7 @@
 0x004FC0E0 ControlVq1500Process
 0x004FC168 Vq1500Process
 0x004FC200 FreeVq1500
+0x004FC240 WindowFlush
 0x004FC620 ProcessWindow
 0x004FCB30 InitWindow
 0x004FCDA8 ConstructWindow
