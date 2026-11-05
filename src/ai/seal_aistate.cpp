@@ -83,9 +83,6 @@ bool GetTraversableLocation__7CAiMapsFPC6CPnt3DR9CAiMapLoc(CAiMaps *maps, const 
 bool func_005F0830(CSealCtrlAi *ai, void *loc, unsigned int mode, int kind, int step);
 void PickupObject__10CZSealBodyFP7CPickup(CEntity *seal, CPickup *pickup);
 /* (CSealCtrlAi::SetStance, SOCOM 1's, called from the same Ticks; OVL2 0x5631A0: zseal.h's) */
-/* CZSealBody::CanUseCQB (SOCOM 1's CanUseCQB__10CZSealBodyFP10CZSealBody, called from the same
- * CQB Tick; OVL2 0x5A9500, the SEAL lane's row) */
-bool func_005A9500(CEntity *seal, CEntity *target);
 /* CZSealBody::ExecuteAction_CQBAttack (named; zseal.h's CZSealBody does not declare it) */
 void ExecuteAction_CQBAttack__10CZSealBodyFP10CZSealBody(CEntity *seal, CEntity *target);
 }
@@ -1939,7 +1936,7 @@ int CAiSCQBAttack::Tick(CSealCtrlAi *ai)
         break;
     case 1:
         ai->SetStance((SEAL_STANCE)0);
-        if (func_005A9500(seal, m_target)) {
+        if (((CZSealBody *)seal)->CanUseCQB((CZSealBody *)m_target)) {
             ExecuteAction_CQBAttack__10CZSealBodyFP10CZSealBody(seal, m_target);
             m_time = StateTimer(ai) + 2.5f;
         } else
