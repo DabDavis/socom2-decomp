@@ -175,6 +175,124 @@ public:
 };
 
 #pragma auto_inline off
+/* the bits from a position on moved n up, the words first, then the bits, the word the position
+ * is in keeping the bits below it (0x208600, SOCOM 1's -- its DWARF's locals, its line table's
+ * statements -- with 32-bit words; MW unrolls both loops 8x here). The first five declared at the
+ * top, numbered there (floormask, the word shift, offset, the counter, e: the target's t8, t7, t6,
+ * t5, t4), and computed in the order the target schedules them (the word shift, the mask, e, the
+ * offset: defined where they are declared the schedule changes) */
+void vector<bool, allocator<bool> >::shift_out(iterator pos, unsigned int n)
+{
+    unsigned int floormask;
+    unsigned int wshift;
+    unsigned int offset;
+    unsigned int i;
+    unsigned int e;
+
+    wshift = n / 32;
+    floormask = ~0u << pos.n_ % 32;
+    e = (size_ + n - 1) / 32 + 1;
+    offset = pos.n_ / 32 + wshift;
+    if (wshift > 0) {
+        for (i = e - 1; i >= offset; --i)
+            data_[i] = data_[i - wshift];
+    }
+    unsigned int rshift, lshift;
+
+    lshift = n % 32;
+    rshift = 32 - lshift;
+
+    for (unsigned int i = e - 1; i > offset; --i) {
+        data_[i] <<= lshift;
+        data_[i] |= data_[i - 1] >> rshift;
+    }
+    if (wshift > 0 || floormask == ~0u)
+        data_[offset] <<= lshift;
+    else {
+        unsigned int tmp = data_[offset];
+
+        data_[offset] <<= lshift;
+        data_[offset] &= floormask;
+        data_[offset] |= ~floormask & tmp;
+    }
+}
+
+/* the bits [first, last) of other words copied in at to, a word's run at a time (0x208510,
+ * SOCOM 1's -- its DWARF's locals in their order, its line table's statements -- with 32-bit
+ * words) */
+void vector<bool, allocator<bool> >::copy_bits(const unsigned int *frmdata, unsigned int first,
+                                                unsigned int last, unsigned int to)
+{
+    while (first != last) {
+        unsigned int len = last - first;
+        unsigned int o1 = first % 32;
+        unsigned int o2 = to % 32;
+        unsigned int tmp = 32 - o1;
+
+        if (tmp < len)
+            len = tmp;
+        tmp = 32 - o2;
+        if (tmp < len)
+            len = tmp;
+        unsigned int lmask = ~0u << o1;
+        unsigned int rmask = ~0u;
+
+        tmp = 32 - (first + len) % 32;
+        if (tmp < 32)
+            rmask >>= tmp;
+        unsigned int mask = lmask & rmask;
+        unsigned int bits = frmdata[first / 32] & mask;
+
+        if (o1 < o2) {
+            bits <<= o2 - o1;
+            mask <<= o2 - o1;
+        } else if (o2 < o1) {
+            bits >>= o1 - o2;
+            mask >>= o1 - o2;
+        }
+        unsigned int &target = data_[to / 32];
+
+        target &= ~mask;
+        target |= bits;
+        first += len;
+        to += len;
+    }
+}
+
+/* n bits from pos set or cleared: the first and last words masked, the words between filled
+ * (0x208270, SOCOM 1's -- its DWARF's locals, its line table's statements -- with 32-bit words) */
+void vector<bool, allocator<bool> >::set(unsigned int pos, unsigned int n, bool x)
+{
+    unsigned int w1 = pos / 32;
+    unsigned int w2 = (pos + n - 1) / 32;
+    unsigned int bitmask1 = ~0u << pos % 32;
+    unsigned int bitmask2 = ~0u;
+    unsigned int tmp = 32 - (pos + n) % 32;
+
+    if (tmp < 32)
+        bitmask2 >>= tmp;
+    if (w1 == w2) {
+        bitmask1 &= bitmask2;
+        if (x) {
+            data_[w1] |= bitmask1;
+            return;
+        }
+        data_[w1] &= ~bitmask1;
+        return;
+    }
+    if (x) {
+        data_[w1] |= bitmask1;
+        for (unsigned int i = w1 + 1; i < w2; ++i)
+            data_[i] = ~0u;
+        data_[w2] |= bitmask2;
+    } else {
+        data_[w1] &= ~bitmask1;
+        for (unsigned int i = w1 + 1; i < w2; ++i)
+            data_[i] = 0;
+        data_[w2] &= ~bitmask2;
+    }
+}
+
 /* every size a count can hold (0x208260, SOCOM 1's) */
 unsigned int vector<bool, allocator<bool> >::max_size() const
 {
