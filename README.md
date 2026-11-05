@@ -2065,6 +2065,20 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the world, rdr and sound, round 20** (BuildLightMapList by the replay, Particle::DestructionManager):
+  - an inline helper's parameter is numbered after the caller's named locals but below its shared common-subexpression
+    temporaries: passing a loaded value into a static inline predicate can swap two volatile registers, while a named
+    local holding it is copy-propagated away (CPipe::BuildLightMapList 0x339660: the instance through `IsModelOf(inst,
+    node)` takes a1 under the type's a0 -- `tools/igreplay.py --want` showed any number below the type's works);
+  - MW's code order before colouring interleaves independent statements: a constant initialised in its declaration can
+    land between a `-4` and its `and`, so the -4 cannot take the target's register -- assigned after the declarations the
+    lui follows the and (CHeap::Alloc 0x34EEB0: 6 -> 3, OPEN); `while ((j = hi) > (i = lo) + 8)` gives the fused slt / bnez,
+    `(i = lo) + 8 < (j = hi)` puts the compare in v1 (zqsort 0x326C30, written: MW spills the cheapest node, `lo + hi`,
+    where the target spills another -- the original must make that sum cost more, OPEN);
+  - zdb::CVisual's statics are named `..._Q23zdb7CVisual` (the integrator's brief dropped the namespace): m_applyShadow
+    0x3E1450, m_applyLocalLights 0x3E1458, m_applyMultipass 0x3E1460, declared additively in znode.h; CPipe::CAlpha's
+    m_first_alpha_add 0x3DFF68 and m_last_alpha_insert 0x488ED8 (thePipe's row 0x720 -> 0x718); Create3Sided named by
+    SOCOM II's DestructionManager making SOCOM 1's call with every argument in the same register.
 - **Tells from the SEALs, round 41** (the ladder grant, FindRandomDamageAnim, the swept cylinders, the shotgun pellets,
   HandleBloodDrip):
   - AN OPERATOR'S RETURN SLOT ASSIGNED THROUGH THE C STRUCT BASE (`*(PNT3D *)&d = d - *from;`) is copied loads-first at
