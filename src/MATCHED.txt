@@ -8236,6 +8236,7 @@
 0x004E2008 CalcF2
 0x004E35C8 CheckConsistency
 0x004E37F8 RejectTrainUtters
+0x004E3A28 DoUserWordTraining
 0x004E3CC8 userwordStartUserWordTraining
 0x004E3E08 cbUserWordResultAvailable
 0x004E3ED8 cbScoreUserWordResultAvailable
@@ -8423,6 +8424,8 @@
 0x00502F10 ConstructPitchCombiner
 0x00502F50 spline2
 0x00503410 Lin_2_Log
+0x005037A8 SubHarmonicSummation_and_VUVDetermination
+0x00503B80 ProcessSHS_VUV
 0x005041C0 ControlSHS_VUV
 0x005042B8 CreateFreqWindow
 0x00504520 InitSHS_VUV
