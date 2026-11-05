@@ -11,7 +11,11 @@
  * its user-word fields by offset. The utterance callbacks index the records through a local index
  * (cbUserWordResultAvailable: every other spelling reloads it or keeps a record pointer), and the
  * accepted ones store the count, the flag, then the state (ccperm: one order fits both).
- * OPEN: SendPartOfLabelsToEngine (36s, diagnosed in place).
+ * Round 29c: CheckConsistency (DoLabelStart/DoLabelStop inlined from GNU extern inline bodies
+ * above it, their real definitions in place) and RejectTrainUtters, SOCOM 1's bodies.
+ * OPEN: SendLabelsToEngine (26) and SendPartOfLabelsToEngine (36s), diagnosed in place;
+ * FindBestTranscription, DoDurationModeling, ScoreTranscriptions and DoUserWordTraining not
+ * written.
  *
  * cbDoUserWordTraining's flag test (open since round 4b: `bnezl` here, `bnez` in the target, the
  * return's `move v0,zero` in the slot with a call to ExitUserWordTraining as the fall-through) is
