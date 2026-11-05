@@ -195,7 +195,9 @@ CGNode *CGraph::CreateNode()
  * as after it); here MW keeps the element's address in s0 across the call and enters the loop
  * through a branch to its test. Tried: the wrapper's `*` for either read, the base iterator's
  * (the walker then lives in a register), the base iterator's `*` through the conversion or
- * through i_ */
+ * through i_; round 44: the loop as a hand-written guard around a do-while (the weapons' round 30
+ * rule) rotates it as the target's but hoists the remove_if binders' frame set-up into the
+ * preheader and shortens it to 0x194 */
 void CGraph::DeleteNode(CGNode *node)
 {
     if (node) {
