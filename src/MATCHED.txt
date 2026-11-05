@@ -1386,12 +1386,13 @@
 0x001EABB0 __ct__Q23std42__list_deleter<PCv,Q23std14allocator<PCv>>Fv
 0x001EABD0 func_001EABD0
 0x001EAC80 func_001EAC80
-0x001EACE0 func_001EACE0
-0x001EAF80 func_001EAF80
-0x001EAFE0 func_001EAFE0
-0x001EAFF0 func_001EAFF0
-0x001EB000 func_001EB000
-0x001EB030 func_001EB030
+0x001EACE0 MenuStateOption__FRCQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>P5_zrdr
+0x001EAD10 destroy__Q23std244__tree<Q23std31pair<C9CSaferStr,11OPTION_INFO>,Q33std113map<9CSaferStr,11OPTION_INFO,Q23std16less<9CSaferStr>,Q23std50allocator<Q23std31pair<C9CSaferStr,11OPTION_INFO>>>13value_compare,Q23std50allocator<Q23std31pair<C9CSaferStr,11OPTION_INFO>>>FPQ33std244__tree<Q23std31pair<C9CSaferStr,11OPTION_INFO>,Q33std113map<9CSaferStr,11OPTION_INFO,Q23std16less<9CSaferStr>,Q23std50allocator<Q23std31pair<C9CSaferStr,11OPTION_INFO>>>13value_compare,Q23std50allocator<Q23std31pair<C9CSaferStr,11OPTION_INFO>>>4node
+0x001EAF80 __dt__Q23std31pair<C9CSaferStr,11OPTION_INFO>Fv
+0x001EAFE0 deallocate__Q23std269allocator<Q33std244__tree<Q23std31pair<C9CSaferStr,11OPTION_INFO>,Q33std113map<9CSaferStr,11OPTION_INFO,Q23std16less<9CSaferStr>,Q23std50allocator<Q23std31pair<C9CSaferStr,11OPTION_INFO>>>13value_compare,Q23std50allocator<Q23std31pair<C9CSaferStr,11OPTION_INFO>>>4node>FPQ33std244__tree<Q23std31pair<C9CSaferStr,11OPTION_INFO>,Q33std113map<9CSaferStr,11OPTION_INFO,Q23std16less<9CSaferStr>,Q23std50allocator<Q23std31pair<C9CSaferStr,11OPTION_INFO>>>13value_compare,Q23std50allocator<Q23std31pair<C9CSaferStr,11OPTION_INFO>>>4nodeUi
+0x001EAFF0 node_alloc__Q23std244__tree<Q23std31pair<C9CSaferStr,11OPTION_INFO>,Q33std113map<9CSaferStr,11OPTION_INFO,Q23std16less<9CSaferStr>,Q23std50allocator<Q23std31pair<C9CSaferStr,11OPTION_INFO>>>13value_compare,Q23std50allocator<Q23std31pair<C9CSaferStr,11OPTION_INFO>>>Fv
+0x001EB000 destroy__Q23std50allocator<Q23std31pair<C9CSaferStr,11OPTION_INFO>>FPQ23std31pair<C9CSaferStr,11OPTION_INFO>
+0x001EB030 alloc__Q23std244__tree<Q23std31pair<C9CSaferStr,11OPTION_INFO>,Q33std113map<9CSaferStr,11OPTION_INFO,Q23std16less<9CSaferStr>,Q23std50allocator<Q23std31pair<C9CSaferStr,11OPTION_INFO>>>13value_compare,Q23std50allocator<Q23std31pair<C9CSaferStr,11OPTION_INFO>>>Fv
 0x001EB040 SetSkipSwap__10CCoreStateFi
 0x001EB050 PreInit__10CCoreStateFv
 0x001EB060 PreUnInit__10CCoreStateFv
@@ -1591,6 +1592,7 @@
 0x001FE310 Draw__3C2DFRC7CMatrixPQ23zdb16CTextureRelocMgr
 0x001FE320 SetTrans__3C2DFf
 0x001FE330 Tick__3C2DFf
+0x001FE340 insert__Q23std38__vector_pod<Ui,Q23std13allocator<Ui>>FPUiUiRCUi
 0x001FE760 destroy__Q23std186__tree<Q23std19pair<CUs,8C2DGlyph>,Q33std80map<Us,8C2DGlyph,Q23std8less<Us>,Q23std38allocator<Q23std19pair<CUs,8C2DGlyph>>>13value_compare,Q23std38allocator<Q23std19pair<CUs,8C2DGlyph>>>FPQ33std186__tree<Q23std19pair<CUs,8C2DGlyph>,Q33std80map<Us,8C2DGlyph,Q23std8less<Us>,Q23std38allocator<Q23std19pair<CUs,8C2DGlyph>>>13value_compare,Q23std38allocator<Q23std19pair<CUs,8C2DGlyph>>>4node
 0x001FE9E0 __dt__Q23std19pair<CUs,8C2DGlyph>Fv
 0x001FEA50 deallocate__Q23std211allocator<Q33std186__tree<Q23std19pair<CUs,8C2DGlyph>,Q33std80map<Us,8C2DGlyph,Q23std8less<Us>,Q23std38allocator<Q23std19pair<CUs,8C2DGlyph>>>13value_compare,Q23std38allocator<Q23std19pair<CUs,8C2DGlyph>>>4node>FPQ33std186__tree<Q23std19pair<CUs,8C2DGlyph>,Q33std80map<Us,8C2DGlyph,Q23std8less<Us>,Q23std38allocator<Q23std19pair<CUs,8C2DGlyph>>>13value_compare,Q23std38allocator<Q23std19pair<CUs,8C2DGlyph>>>4nodeUi
@@ -3859,6 +3861,7 @@
 0x002C8AE0 GetName__17CMultiMissionListFib
 0x002C8B80 GetMultiValue__17CMultiMissionListFi
 0x002C8C10 Read__17CMultiMissionListFPC5_zrdr
+0x002C8DB0 GetNext__17CMultiMissionListFib
 0x002C9040 Find__17CMultiMissionListFib
 0x002C90B0 Purge__17CMultiMissionListFv
 0x002C91A0 Add__17CMultiMissionListFPC11MissionDesc
@@ -4725,6 +4728,7 @@
 0x00305B50 destroy__Q23std109allocator<Q23std90pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,P12CLobbyFileIO>>FPQ23std90pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,P12CLobbyFileIO>
 0x00305B90 alloc__Q23std539__tree<Q23std90pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,P12CLobbyFileIO>,Q33std289map<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,P12CLobbyFileIO,Q23std73less<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>>,Q23std109allocator<Q23std90pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,P12CLobbyFileIO>>>13value_compare,Q23std109allocator<Q23std90pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,P12CLobbyFileIO>>>Fv
 0x00305BA0 clear__Q23std539__tree<Q23std90pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,P12CLobbyFileIO>,Q33std289map<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,P12CLobbyFileIO,Q23std73less<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>>,Q23std109allocator<Q23std90pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,P12CLobbyFileIO>>>13value_compare,Q23std109allocator<Q23std90pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,P12CLobbyFileIO>>>Fv
+0x00305BE0 swap__Q23std539__tree<Q23std90pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,P12CLobbyFileIO>,Q33std289map<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,P12CLobbyFileIO,Q23std73less<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>>,Q23std109allocator<Q23std90pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,P12CLobbyFileIO>>>13value_compare,Q23std109allocator<Q23std90pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,P12CLobbyFileIO>>>FRQ23std539__tree<Q23std90pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,P12CLobbyFileIO>,Q33std289map<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,P12CLobbyFileIO,Q23std73less<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>>,Q23std109allocator<Q23std90pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,P12CLobbyFileIO>>>13value_compare,Q23std109allocator<Q23std90pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,P12CLobbyFileIO>>>
 0x00305CA0 insert_one__Q23std539__tree<Q23std90pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,P12CLobbyFileIO>,Q33std289map<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,P12CLobbyFileIO,Q23std73less<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>>,Q23std109allocator<Q23std90pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,P12CLobbyFileIO>>>13value_compare,Q23std109allocator<Q23std90pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,P12CLobbyFileIO>>>FRCQ23std90pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,P12CLobbyFileIO>
 0x00305DC0 __ct__Q23std539__tree<Q23std90pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,P12CLobbyFileIO>,Q33std289map<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,P12CLobbyFileIO,Q23std73less<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>>,Q23std109allocator<Q23std90pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,P12CLobbyFileIO>>>13value_compare,Q23std109allocator<Q23std90pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,P12CLobbyFileIO>>>FRCQ33std289map<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,P12CLobbyFileIO,Q23std73less<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>>,Q23std109allocator<Q23std90pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,P12CLobbyFileIO>>>13value_compareRCQ23std109allocator<Q23std90pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,P12CLobbyFileIO>>
 0x00305DE0 insert_node_at__Q23std539__tree<Q23std90pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,P12CLobbyFileIO>,Q33std289map<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,P12CLobbyFileIO,Q23std73less<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>>,Q23std109allocator<Q23std90pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,P12CLobbyFileIO>>>13value_compare,Q23std109allocator<Q23std90pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,P12CLobbyFileIO>>>FPQ33std19__red_black_tree<1>9node_basebbRCQ23std90pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,P12CLobbyFileIO>
@@ -6010,6 +6014,7 @@
 0x0035C6B0 find_or_insert<i,9CFontRect>__Q23std185__tree<Q23std19pair<Ci,9CFontRect>,Q33std79map<i,9CFontRect,Q23std7less<i>,Q23std38allocator<Q23std19pair<Ci,9CFontRect>>>13value_compare,Q23std38allocator<Q23std19pair<Ci,9CFontRect>>>FRCi_RQ23std19pair<Ci,9CFontRect>
 0x0035C780 find<i>__Q23std185__tree<Q23std19pair<Ci,9CFontRect>,Q33std79map<i,9CFontRect,Q23std7less<i>,Q23std38allocator<Q23std19pair<Ci,9CFontRect>>>13value_compare,Q23std38allocator<Q23std19pair<Ci,9CFontRect>>>FRCi_Q33std185__tree<Q23std19pair<Ci,9CFontRect>,Q33std79map<i,9CFontRect,Q23std7less<i>,Q23std38allocator<Q23std19pair<Ci,9CFontRect>>>13value_compare,Q23std38allocator<Q23std19pair<Ci,9CFontRect>>>8iterator
 0x0035C800 clear__Q23std186__tree<Q23std19pair<CUs,8C2DGlyph>,Q33std80map<Us,8C2DGlyph,Q23std8less<Us>,Q23std38allocator<Q23std19pair<CUs,8C2DGlyph>>>13value_compare,Q23std38allocator<Q23std19pair<CUs,8C2DGlyph>>>Fv
+0x0035C840 swap__Q23std186__tree<Q23std19pair<CUs,8C2DGlyph>,Q33std80map<Us,8C2DGlyph,Q23std8less<Us>,Q23std38allocator<Q23std19pair<CUs,8C2DGlyph>>>13value_compare,Q23std38allocator<Q23std19pair<CUs,8C2DGlyph>>>FRQ23std186__tree<Q23std19pair<CUs,8C2DGlyph>,Q33std80map<Us,8C2DGlyph,Q23std8less<Us>,Q23std38allocator<Q23std19pair<CUs,8C2DGlyph>>>13value_compare,Q23std38allocator<Q23std19pair<CUs,8C2DGlyph>>>
 0x0035C900 destroy__Q23std185__tree<Q23std19pair<Ci,9CFontRect>,Q33std79map<i,9CFontRect,Q23std7less<i>,Q23std38allocator<Q23std19pair<Ci,9CFontRect>>>13value_compare,Q23std38allocator<Q23std19pair<Ci,9CFontRect>>>FPQ33std185__tree<Q23std19pair<Ci,9CFontRect>,Q33std79map<i,9CFontRect,Q23std7less<i>,Q23std38allocator<Q23std19pair<Ci,9CFontRect>>>13value_compare,Q23std38allocator<Q23std19pair<Ci,9CFontRect>>>4node
 0x0035CB30 deallocate__Q23std210allocator<Q33std185__tree<Q23std19pair<Ci,9CFontRect>,Q33std79map<i,9CFontRect,Q23std7less<i>,Q23std38allocator<Q23std19pair<Ci,9CFontRect>>>13value_compare,Q23std38allocator<Q23std19pair<Ci,9CFontRect>>>4node>FPQ33std185__tree<Q23std19pair<Ci,9CFontRect>,Q33std79map<i,9CFontRect,Q23std7less<i>,Q23std38allocator<Q23std19pair<Ci,9CFontRect>>>13value_compare,Q23std38allocator<Q23std19pair<Ci,9CFontRect>>>4nodeUi
 0x0035CB40 node_alloc__Q23std185__tree<Q23std19pair<Ci,9CFontRect>,Q33std79map<i,9CFontRect,Q23std7less<i>,Q23std38allocator<Q23std19pair<Ci,9CFontRect>>>13value_compare,Q23std38allocator<Q23std19pair<Ci,9CFontRect>>>Fv
@@ -8594,6 +8599,7 @@
 0x00519250 _max<Us>__2aiFRCUsRCUs_RCUs
 0x00519270 _min<Us>__2aiFRCUsRCUs_RCUs
 0x00519290 _saturate<i>__FPiRCiRCi_b
+0x005192E0 func_005192E0
 0x00519700 resize__Q23std72__vector_imp<Q26CAiMap8scanline,Q23std29allocator<Q26CAiMap8scanline>,0>FUi
 0x005197A0 __dt__Q23std66__vector_deleter<Q26CAiMap4name,Q23std25allocator<Q26CAiMap4name>>Fv
 0x00519810 __dt__Q23std70__vector_deleter<Q26CAiMap6action,Q23std27allocator<Q26CAiMap6action>>Fv

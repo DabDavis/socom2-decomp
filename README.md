@@ -2080,7 +2080,9 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
   - CMultiMissionList::GetNext 0x2C8DB0 on the pointer iterator as it stands: a `for (; i != end(); ++i)` loop
     jumps to a bottom test and shares one narrowing of the bool with the next loop, a loop with an init keeps its
     entry test at the top and the narrowing in its own preheader; a loop-scoped iterator for the second search;
-  - measured, not adopted: the pod destructor's word read through an address (`T *&d = data_`) +3 / -1 (~CRadio-
+  - measured, not adopted (DECLINED at integration: a trade losing a byte-exact row is not the original's shape --
+    round 27 looks for the one reader giving all four): the pod destructor's word read through an address (`T *&d =
+    data_`) +3 / -1 (~CRadio-
     StripSpec, ~CAssetLib, ~CMenuStack against resize<CUIVariable>'s sp-relative read), through data() +1 / -34
     (the level-5 cut); __convert_iterator's operators out of class make the rdr editor's do_assign 0x334440
     code-exact but not its pieces (include/deque's note).
