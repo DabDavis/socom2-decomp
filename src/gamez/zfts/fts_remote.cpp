@@ -1785,13 +1785,35 @@ public:
 
 extern "C" {
 bool func_002C30B0(CZSealBody *body);
-void func_002B8100(CZSealBody *body, CPnt3D *pos, CMatrix *m, int flags);   /* (the spawn point) */
 void func_00543D50(CZSealBody *body);   /* (OVL2) */
 }
 
-/* the AI maps (ai_maps.h's CAiMaps: only the spawn points) */
+/* an AI map's cell, a named one and the eight directions (ai.h's CAiMapLoc, CAiMap::name, DIR) */
+class CAiMapLoc {
+public:
+    unsigned int m_word;
+};
+
+class CAiMap {
+public:
+    enum DIR { N = 0, NE = 1, E = 2, SE = 3, S = 4, SW = 5, W = 6, NW = 7, DIR_COUNT = 8 };
+    class name {
+    public:
+        CAiMapLoc m_loc;   // 0x0
+        char m_name[16];   // 0x4
+        unsigned char m_14;   // 0x14: the direction it faces
+    };
+
+    static CPnt3D &GetDirVec(DIR dir, CPnt3D &v);   /* OVL2 0x519130 */
+};
+
+/* the AI maps (ai_maps.h's CAiMaps: only the spawn points and the named cells) */
 class CAiMaps {
 public:
+    CAiMap::name *GetCellName(const CAiMapLoc &loc) const;   /* OVL2 0x52A820 */
+    bool GetLocation(const char *name, CAiMapLoc &loc);   /* OVL2 0x52DB70 */
+    CPnt3D *GetCellCenter(const CAiMapLoc &loc, CPnt3D *center);   /* OVL2 0x52D480 */
+    int GetSporeCount(unsigned int id);   /* OVL2 0x52B7E0 */
     bool GetSporeLocation(unsigned int type, unsigned int n, CPnt3D *pos, CPnt3D *dir);   /* OVL2 0x52B5C0 */
 };
 
@@ -1849,6 +1871,91 @@ extern "C" int func_002B7EE0(CZSealBody *self, int type, int count)
         }
     }
     return pick;
+}
+
+extern "C" int rand();
+
+/* the network game (OVL1 bss 0x437CE8: hud_ammo.cpp's CNetGameState stand-in) */
+extern CZNetGame *data_00437CE8;
+
+/* the cross product of two points made through VU0 and normalised (CPnt3D::Cross(b, out, true), as
+ * seal_control.cpp writes it: inlined here; the name ours) */
+static inline void CrossNormal(const CPnt3D *a, const CPnt3D *b, CPnt3D *out)
+{
+    sceVu0FVECTOR r;
+    sceVu0FVECTOR va;
+    sceVu0FVECTOR vb;
+
+    va[0] = a->x;
+    va[1] = a->y;
+    va[2] = a->z;
+    va[3] = 1.0f;
+    vb[0] = b->x;
+    vb[1] = b->y;
+    vb[2] = b->z;
+    vb[3] = 1.0f;
+    sceVu0OuterProduct(r, va, vb);
+    sceVu0Normalize(r, r);
+    out->x = r[0];
+    out->y = r[1];
+    out->z = r[2];
+}
+
+/* a SEAL's spawn point and its facing as a matrix (SOCOM II's; OVL1 0x2B8100 -- ftsNetworkPlayerInit
+ * and OVL2's RemoteRespawn call it): in a respawning game a point of the kind asked -- for kinds 0
+ * and 2 one at random from the SEAL's client's share (a 24th of them), otherwise the one farthest
+ * from the enemy (0x2B7EE0) --; a spectator at the map's "spectator" cell, facing its direction;
+ * else the point of the client's own index. Found, it is lifted a unit and the matrix's rows made the
+ * side (up crossed with the facing), up, the facing and the point.
+ * OPEN, 34 instructions (the states' round 36, first written): the operations and the size are the
+ * target's -- the random pick a ternary (`if (range) r = rand() % ...` drops the target's `b` over
+ * the empty arm: 8 bytes short) --, the saved registers and the frame are not: the target gives the
+ * found flag s0, the SEAL s1, the kind s2, the matrix s3 and the point s4 (in the random arm the
+ * client's index takes s0 and the share s1, the SEAL dead there), and lays the points out up 160,
+ * side 176, facing 192, the cell 204; here the kind s0 and the SEAL s4, up at 192. All 24 orders of
+ * up, side, facing and the flag at the top keep the shorter shape's registers */
+extern "C" void func_002B8100(CZSealBody *body, CPnt3D *pos, CMatrix *m, int type)
+{
+    CPnt3D up(0.0f, 1.0f, 0.0f);
+    CPnt3D dir;
+    bool found = false;
+
+    if (data_00437CE8 && data_00437CE8->m_respawn) {
+        int count = AiMaps.GetSporeCount(type);
+        int n;
+
+        if (type == 2 || type == 0) {
+            int client = body->m_fc8;
+            int per = count / 24;
+            int range = per - 1;
+            int r = range ? rand() % (range + 1) : 0;
+
+            n = r + per * client;
+        } else
+            n = func_002B7EE0(body, type, count);
+        found = AiMaps.GetSporeLocation(type, n, pos, &dir);
+    } else if (func_002C2FD0(body)) {
+        CAiMapLoc loc;
+
+        if (AiMaps.GetLocation("spectator", loc)) {
+            CAiMap::name *cell = AiMaps.GetCellName(loc);
+
+            found = AiMaps.GetCellCenter(loc, pos) != 0;
+            CAiMap::GetDirVec((CAiMap::DIR)cell->m_14, dir);
+        }
+    } else {
+        int client = body->m_fc8;
+
+        AiMaps.GetSporeCount(type);
+        found = AiMaps.GetSporeLocation(type, client, pos, &dir);
+    }
+    if (found) {
+        pos->y += 1.0f;
+        CPnt3D side;
+
+        CrossNormal(&up, &dir, &side);
+        m->SetRows(&side, &up, &dir, pos);
+    }
 }
 
 /* the player's SEAL put into a network game: its network object made and set as this console's,
