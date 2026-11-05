@@ -40,7 +40,8 @@ extern int SetAlarm(u_short time, void (*handler)(int, u_short, void *), void *c
 extern int DIntr(void);
 extern int EIntr(void);
 extern int sceCdSync(int mode);
-extern int scePrintf(const char *fmt, ...);
+extern void scePrintf(const char *fmt, ...);    /* void (eekernel.h): GCC r35a -- sceCdLayerSearchFile reloads
+                                                   SCE_CD_debug into v0 after each print, which an int call value keeps out */
 extern void ExitDeleteThread(void);
 extern int GetThreadId(void);
 extern int ReferThreadStatus(int thread_id, struct ThreadParam *info);

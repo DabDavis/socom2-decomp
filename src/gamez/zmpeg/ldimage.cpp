@@ -10,21 +10,16 @@
 #define D2_QWC ((volatile unsigned int *)0x1000A020)
 #define D2_TADR ((volatile unsigned int *)0x1000A030)
 
+static void setLoadImageTagsYX(unsigned int *tags, void *image, int bw, int x, int y, unsigned int dbp);
+
 /* the chain for a frame at (0, 0) of the frame buffer `dbp`, the macroblocks 1024 bytes apart
- * (Sony's; OVL1 0x30B9B0).
- * OPEN, 2 instructions, a register: the target swaps the height through v1 on its way to t0 where
- * MW takes v0 here, void or returning the call's int alike; round 17: a local copy of each argument
- * (height, dbp, width, image, tags, a named 1024, width and height in either order) changes nothing --
- * the node holding v0 in the target is not a local the source can name. Round 18: MW's own colouring
- * (the igdump tools) has the height's copy with neighbours zero, a0-a3, t0, t1 only, so it takes the
- * lowest free, v0: the target's v1 needs a node coloured v0 live across the shuffle that leaves no
- * instruction. Const locals of each argument (the engine core's round 7 rule), a dead first
- * definition, `-O4,s`, `-O3,p`, `-opt nopeephole`/`noschedule`: all 2 (SOCOM 1's 2.4 build has v1 too).
- * Round 22 (build/scratch/onl/ldi1-3.cpp): the PCode has the call define v0/v1 and the return use v0,
- * so nothing the call or the return does keeps v0 live across the shuffle -- an int function falling
- * off its end (v0 read, never set), an inline wrapper, the arguments copied into locals, 1024 named,
- * a function-pointer call, a dead test of the width, signedness casts on each argument (the radio
- * tick's tell): all 2 */
+ * (Sony's; OVL1 0x30B9B0). Byte-exact since the online lane's round 23 (open since round 17, 2 off:
+ * the height's copy took v0 where the target has v1): setLoadImageTagsYX is STATIC. MW knows the
+ * registers an internal-linkage callee generated earlier in the unit writes (-inline deferred
+ * generates in emission order, so setLoadImageTagsYX first) and kills only those at the call; it
+ * never writes v0, so the return's read of v0 keeps v0 live from the entry across the shuffle and
+ * the copy takes the next free register, v1 (as c2dfont.cpp's ReadPlacement keeps a value in a2
+ * across its anonymous-namespace callees). An external callee kills every volatile register */
 void setLoadImageTags(unsigned int *tags, void *image, int width, int height, unsigned int dbp)
 {
     setLoadImageTagsYX(tags, image, 1024, width, height, dbp);
@@ -36,8 +31,9 @@ void setLoadImageTags(unsigned int *tags, void *image, int width, int height, un
  * tag (64 qwords, EOP on the last) and a ref to the block; a DMA end closing it (Sony's; OVL1
  * 0x30B770: it sets no v0, so void). The cursor declared first (s4) but set after the counts -- x's
  * register then free for the conversion; the block address masked through a pointer cast (the target
- * keeps `& 0x0FFFFFFF` and `& -16` apart); the position a block-local of its own */
-void setLoadImageTagsYX(unsigned int *tags, void *image, int bw, int x, int y, unsigned int dbp)
+ * keeps `& 0x0FFFFFFF` and `& -16` apart); the position a block-local of its own. Static: its one
+ * caller's register shows it (setLoadImageTags above) */
+static void setLoadImageTagsYX(unsigned int *tags, void *image, int bw, int x, int y, unsigned int dbp)
 {
     unsigned int *t;
     int mbx = x >> 4;

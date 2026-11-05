@@ -434,6 +434,12 @@ inline bool points_empty(CAiPath::points &v)
     return v.count() == 0;
 }
 
+/* none of the planner's three states, read through a reference (ReRoute's wait loop: the round 30) */
+inline bool idle(const CAiPath::PATH_STATE &s)
+{
+    return (unsigned int)(s - 1) > 2;
+}
+
 inline bool path_found(CAiPath &p)
 {
     return !points_empty(p.m_points) && p.m_state == CAiPath::COMPLETE;
@@ -443,12 +449,16 @@ inline bool path_found(CAiPath &p)
  * gone, then (two way points or more) a path planned leg by leg through the planner and run to its
  * end; a finished path with points makes the route valid again, its cells copied last to first
  * (SOCOM 1's, 0x19E320; ValidateRoutes calls it when asked). True for a valid route.
- * OPEN, 0x340 against 0x348 (written in the AI core's round 29): the code is the target's but for two
- * things -- the copy loop's preheader, where the target takes the points' size address afresh (a3, the
- * label padded) and this build reuses the saved s0 the test and the resize share; and &path.m_state,
- * which the target computes into s1 ahead of the planner's wait loop (here s0, after it). Tried: the
- * loop as a while, through a points reference, unsigned, as an inline helper; a named count()
- * reference (worse). The regions' finds compute their end once (find_region's `e`, SOCOM 1's
+ * OPEN, 0x340 against 0x348 (written in the AI core's round 29): the code is the target's but for the
+ * copy loop's preheader, where the target takes the points' size address afresh (a3, the label padded)
+ * for the body and the bottom test -- its top test still reads the saved s0 the emptiness test and the
+ * resize share -- and this build reuses s0 throughout. Tried: the loop as a while, through a points
+ * reference (in or out of the loop), unsigned, size(), as an inline helper over the points or the
+ * path, the count in a local for the resize; a named count() reference (worse). The round 30 closed
+ * the wait loop: the state read through a reference local (s1 ahead of the loop, its two tests and
+ * path_found's reload through it -- MW shares no load of a reference's field with the object's own)
+ * and tested as !idle() (both tests on `sltiu at`; `< 3` materialised the bottom one)
+ * (build/scratch/ai/v_rr*.py). The regions' finds compute their end once (find_region's `e`, SOCOM 1's
  * FindByLocation shape): written through end() at each pass MW reloaded data_ in both walks here
  * (ValidateRoutes unchanged either way) */
 bool CAiMap::ReRoute(route *r)
@@ -473,7 +483,9 @@ bool CAiMap::ReRoute(route *r)
                 ai::PathPlanAbort();
             } else {
                 ai::PathPlanExecute();
-                while (path.IsPlanning())
+                const CAiPath::PATH_STATE &state = path.m_state;
+
+                while (!idle(state))
                     ai::TickPathPlanner(1.0f / 30.0f, 0);
                 if (path_found(path)) {
                     r->m_flags &= ~1;
