@@ -7975,6 +7975,7 @@
 0x004D7460 func_004D7460
 0x004D8140 Tone_Of_Final_TreeCtx
 0x004D8168 Calculate_NbrOfStatesInDict_ForChinese_TreeCtx
+0x004D98F0 cbDoSecondPassIfEnabled
 0x004D9EC8 casrOpen
 0x004DA2A0 casrClose
 0x004DA3F8 casrStart
@@ -7983,6 +7984,7 @@
 0x004DA830 casrGetActiveWords
 0x004DAA00 InitParamList
 0x004DAAE0 casrGetParam
+0x004DACA8 UpdateExevStatus
 0x004DBDB0 casrDoNormalSecondPass
 0x004DBF70 casrDoIsoWordSecondPass
 0x004DCAD0 casrInitSampleFormat
@@ -8212,6 +8214,7 @@
 0x00501958 ControlMedian
 0x005019B0 Median_Reset
 0x005019C8 InitMedian
+0x00501A90 LogPitchProcessing
 0x00501E20 NormE_Processing
 0x00501F38 FlushPitchCombiner
 0x00502298 ProcessPitchCombiner
