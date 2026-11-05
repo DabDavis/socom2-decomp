@@ -901,6 +901,73 @@ bool CZSealBody::BeginThrowItem(float t, float &out)
     return ok;
 }
 
+/* the throw the SEAL would make: a toss below both of the dynamics' toss thresholds (the throw's
+ * power, the aim's rise), the anim, the fraction into it the item leaves and the point it leaves from
+ * by the body's state -- a crouched SEAL on the move throws standing, a peeking one tosses to the side
+ * its blend leans, any other state none (OVL2 0x57FCE0: SOCOM 1's GetThrowAnim, between
+ * GetPutativeFirePointW and BeginThrowItem in both builds, its guarded points function-local statics in
+ * both; SOCOM 1's fractions STAND_TOSS_FRAC ... RIGHT_LEAN_FRAC were variables, SOCOM II's are
+ * constants, and SOCOM II asks IsCurrentBlend out of line where SOCOM 1's inlined it) */
+bool CZSealBody::GetThrowAnim(float power, AnimType &type, float &frac, float &base, CPnt3D &p)
+{
+    float aim = m_aim_goal.y;
+    CharacterDynamics::throw_params &tp = GetDynamics()->m_throw_params;
+    bool toss = power < tp.toss_power_threshold && aim < tp.toss_aim_threshold;
+
+    frac = 0.0f;
+    base = 0.0f;
+    bool ok = true;
+    static CPnt3D stand_throw(3.343816f, 19.34775f, 3.913763f);
+    static CPnt3D stand_toss(3.13f, 13.8f, -10.5f);
+    static CPnt3D crouch_throw(6.05f, 15.59f, 1.96f);
+    static CPnt3D prone_throw(6.29f, 15.05f, -0.97f);
+    static CPnt3D prone_toss(2.39f, 7.87f, -8.53f);
+    static CPnt3D right_lean(7.8f, 10.13f, -5.31f);
+    static CPnt3D left_lean(-8.83f, 11.47f, -6.48f);
+    /* (SOCOM 1's a guarded static as well; MW 3.0 lays a constant one out as plain data, OVL2 0x650578) */
+    static float moving_sq = 225.0f;
+    bool moving = Dot(m_velM, m_velM) > moving_sq;
+
+    switch (m_state) {
+    case stateStand:
+        type = (AnimType)(toss ? AnimTypes::TossGrenade : AnimTypes::ThrowGrenade);
+        frac = toss ? 0.69f : 0.46f;
+        p = toss ? stand_toss : stand_throw;
+        break;
+    case stateCrouch:
+        if (moving) {
+            type = (AnimType)AnimTypes::ThrowGrenade;
+            frac = 0.46f;
+            p = stand_throw;
+        } else {
+            type = (AnimType)AnimTypes::CrouchThrowGrenade;
+            frac = 0.7f;
+            p = crouch_throw;
+        }
+        break;
+    case stateProne:
+        type = (AnimType)(toss ? AnimTypes::ProneTossGrenade : AnimTypes::ProneThrowGrenade);
+        frac = toss ? 0.56f : 0.66f;
+        p = toss ? prone_toss : prone_throw;
+        break;
+    case statePeek:
+        if (IsCurrentBlend((AnimType)30) || IsCurrentBlend((AnimType)32)) {
+            type = (AnimType)AnimTypes::TossGrenadePeekRight;
+            frac = 0.55f;
+            p = right_lean;
+        } else if (IsCurrentBlend((AnimType)29) || IsCurrentBlend((AnimType)31)) {
+            type = (AnimType)AnimTypes::TossGrenadePeekLeft;
+            frac = 0.87f;
+            p = left_lean;
+        } else
+            ok = false;
+        break;
+    default:
+        ok = false;
+    }
+    return ok;
+}
+
 /* a SEAL this console plays, on the ground and in the anim of 0x3DEED0 or of 0x3DEED8, set on its
  * way by 0x5805B0, the second anim the other way (OVL2 0x5804E0, new in SOCOM II) */
 extern "C" bool func_005804E0(CZSealBody *seal)

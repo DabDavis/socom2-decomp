@@ -20,6 +20,7 @@
 #include "../zchar/zchar.h"
 
 class CZSealBody;
+class CharacterDynamics;
 class CZProjectile;
 class CTarget;
 class CPad;
@@ -88,7 +89,17 @@ class AnimTypes {
 public:
     /* (SOCOM 1's KickGrenade, 33 before Stand2Prone in both builds: the grenade state's kick,
      * 0x55AC20, plays it with the timed call that throws the grenade from where it lies) */
+    /* (SOCOM 1's two peek tosses, four and two before KickGrenade in both builds, and its five throws
+     * and tosses, thirteen to twenty-one after: GetThrowAnim 0x57FCE0 picks them by stance at the
+     * places SOCOM 1's GetThrowAnim does -- the SEALs, round 43) */
+    static short TossGrenadePeekRight;   // OVL1 0x3DEB20 (SOCOM 1's 0x475130)
+    static short TossGrenadePeekLeft;   // OVL1 0x3DEB30 (SOCOM 1's 0x475138)
     static short KickGrenade;   // OVL1 0x3DEB40
+    static short ProneThrowGrenade;   // OVL1 0x3DEBA8 (SOCOM 1's 0x475174)
+    static short CrouchThrowGrenade;   // OVL1 0x3DEBB8 (SOCOM 1's 0x47517C)
+    static short ThrowGrenade;   // OVL1 0x3DEBC8 (SOCOM 1's 0x475184)
+    static short ProneTossGrenade;   // OVL1 0x3DEBD8 (SOCOM 1's 0x47518C)
+    static short TossGrenade;   // OVL1 0x3DEBE8 (SOCOM 1's 0x475194)
     /* (SOCOM 1's eight reloads, three to ten after KickGrenade in both builds, and RifleM203Reload
      * twenty after PistolReload in both: Reload 0x5A82E0 picks them by stance, pistol or rifle,
      * moving or not and the launcher, IsReloading 0x5A7AB0 tests them -- the SEALs, round 40) */
@@ -1794,9 +1805,12 @@ public:
     /* where a throw or a shot would leave from, in the world (SOCOM 1's; OVL2 0x57FA70, seal_body.cpp) */
     void GetPutativeFirePointW(bool thrown, bool toss, CPnt3D &out);
     /* the throw anim the SEAL would take, its type, a fraction and a base time, a point (SOCOM 1's;
-     * OVL2 0x57FCE0, seal_body.cpp's -- not written yet) and the anim it picks pushed, the time
-     * into it given back (SOCOM 1's; OVL2 0x5802B0) */
-    bool GetThrowAnim(float t, AnimType &type, float &frac, float &base, CPnt3D &p);
+     * OVL2 0x57FCE0, seal_body.cpp's) and the anim it picks pushed, the time into it given back
+     * (SOCOM 1's; OVL2 0x5802B0) */
+    bool GetThrowAnim(float power, AnimType &type, float &frac, float &base, CPnt3D &p);
+    /* the SEALs' dynamics (SOCOM 1's GetDynamics, its unit's last function in both builds: OVL2
+     * 0x58CE60, seal_cfg.cpp's, before the unit's tail) */
+    CharacterDynamics *GetDynamics();
     bool BeginThrowItem(float t, float &out);
     /* a turn's set-up (SOCOM 1's TurnSetup(int), seal_ik.cpp's; OVL2 0x5B8270: SOCOM II only clears
      * the bits at 0x1060 6 and 7 when both feet exist, the int unread) */
@@ -2361,7 +2375,8 @@ public:
     float m_1364;   // 0x1364: 0x57E540 clears it (the name ours)
     unsigned char _1368[0x1440 - 0x1368];
     CPnt3D m_aim_dir;   // 0x1440 (SOCOM 1's 0x10a0: AimWeapon sets it)
-    unsigned char _144c[0x14a0 - 0x144c];
+    CPnt3D m_aim_goal;   // 0x144c (SOCOM 1's 0x10ac: GetThrowAnim compares its y, as SOCOM 1's)
+    unsigned char _1458[0x14a0 - 0x1458];
     /* the aim and fire points and their positions (SOCOM 1's m_curr_aimpos, m_curr_aimpt,
      * m_curr_firepos and m_curr_firept, 0x1100-0x111F there: the weapon takes look the points up by
      * name again, seal_weapon.cpp's UpdateAimParams through a view of its own) */
