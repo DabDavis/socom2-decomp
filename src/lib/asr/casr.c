@@ -920,38 +920,37 @@ int casrGetUserWordNbrRecsNeeded(CASR *c, int *n)
     return err;
 }
 
-/* OPEN (and casrGetLastWarning): the target if-converts the magic test into a flag (li 11,
- * movz 0) and branches on it, after testing the null handle by itself; SOCOM 1's build has this
- * plain guard. The guard, a ?: macro, an inline checker, a single-exit flag: all compile to
- * branches (12 words of 16).
- * Round 24c: the flag is block-local in the target -- local-alloc gives it a0 and p moves to a1
- * (`move a1,a0`) -- so the null test cannot set it: through casrCheckHandle the null path carries
- * the 6 to the flag's test (0x38-0x3C), and `if (c == 0) return 11; if (casrCheckHandle(c) != 0)
- * return 11;` (the inline's own null test then folded away) gives every insn but reorg's slots
- * (0x3C: here both branches copy the return's `li v0,11`, the target fills the null test's slot
- * from the fall-through -- its magic constant's lui scheduled ahead of the load -- leaves the flag
- * test's empty and keeps `li v0,11` in its own `jr`'s slot; build/scratch/gcc/r24c/v_gle*.py:
- * a magic-only inline, the compare's operands either way round, == first, alike). */
+/* The getters' failure return is written after the success path (round 25c): the target lays the
+ * success block first, its jump to the return turned into its own `jr` (the store in its slot), and
+ * the two failure tests' shared `return 11` last -- reorg then fills the null test's slot from the
+ * fall-through (the magic's lui).
+ * Rounds 2b-24c had the guard first (a plain guard, a ?: macro, an inline checker, a single-exit
+ * flag): one shared return, each failure branch's slot stealing the `li v0,11` (0x30-0x3C). The
+ * magic test is the inline checker's (`li 11; movz` -- its own null test folded into the caller's;
+ * round 24c). Four spellings of the layout match (an && guard, nested ifs, a goto, if/else into
+ * one result); written as the first. */
 int casrGetLastError(CASR *c)
 {
     int err;
 
-    if (c == 0 || c->magic != CASR_MAGIC)
-        return CASR_ERR_HANDLE;
-    err = c->last_error;
-    c->last_error = 0;
-    return err;
+    if (c != 0 && casrCheckHandle(c) == 0) {
+        err = c->last_error;
+        c->last_error = 0;
+        return err;
+    }
+    return CASR_ERR_HANDLE;
 }
 
 int casrGetLastWarning(CASR *c)
 {
     int err;
 
-    if (c == 0 || c->magic != CASR_MAGIC)
-        return CASR_ERR_HANDLE;
-    err = c->last_warning;
-    c->last_warning = 0;
-    return err;
+    if (c != 0 && casrCheckHandle(c) == 0) {
+        err = c->last_warning;
+        c->last_warning = 0;
+        return err;
+    }
+    return CASR_ERR_HANDLE;
 }
 
 int casrGetSignalLevel(CASR *c, unsigned short *level)
@@ -992,18 +991,22 @@ int casrGetState(CASR *c, int *state)
     return 0;
 }
 
-/* OPEN: the target sets the result 0 before testing ctx, keeps the type it loads in a1 and
- * stores data before heap; the guard and single-exit shapes tried miss by 18-25 words. */
+/* One guard per test, each its own `return 0` (round 25c, open since round 2b): the two returns
+ * share one `move v0,zero`, which the target issues at the entry ("the result 0 before testing
+ * ctx"); with one `||` guard 0x68, a single exit 0x64, a result variable 16 words. The heap is
+ * stored first in the source (the scheduler reverses the pair). */
 IMPORT *casrImportContext(void *heap, int *ctx)
 {
-    IMPORT *p = 0;
+    IMPORT *p;
 
-    if (ctx != 0 && *ctx == 6) {
-        p = heap_Alloc(heap, sizeof(IMPORT));
-        if (p != 0) {
-            p->heap = heap;
-            p->data = ctx;
-        }
+    if (ctx == 0)
+        return 0;
+    if (*ctx != 6)
+        return 0;
+    p = heap_Alloc(heap, sizeof(IMPORT));
+    if (p != 0) {
+        p->heap = heap;
+        p->data = ctx;
     }
     return p;
 }
@@ -1071,19 +1074,22 @@ int casrEnableLabelInQueue(CASR *c, unsigned char enable)
     return qQueueControl(c->queue, 8, c->queue_id, 0) == 0;
 }
 
-/* OPEN: the target tests the result at the join with a branch (bnez; li 1; move 0) where every
- * shape tried (?:, if/return, != 0, a flag variable) compiles to sltu. */
+/* Each arm tests its own pass's result (round 25c, open since round 1): `if (pass(c) != 0) return
+ * 1;` per arm and one `return 0` -- jump2 cross-jumps the three tests into the one at the join, a
+ * branch (bnez; li 1; move 0); a result assigned in the arms and tested once (?:, if/return, != 0,
+ * a flag variable) is a store-flag, sltu (0x58), and the arms returning their own `!= 0` or `?:`
+ * the same. */
 int casrDoSecondPass(CASR *c)
 {
-    int ok;
-
-    if (c->use_dp)
-        ok = casrDoSpelling(c);
-    else if (c->iso_word)
-        ok = casrDoIsoWordSecondPass(c);
-    else
-        ok = casrDoNormalSecondPass(c);
-    return ok ? 1 : 0;
+    if (c->use_dp) {
+        if (casrDoSpelling(c) != 0)
+            return 1;
+    } else if (c->iso_word) {
+        if (casrDoIsoWordSecondPass(c) != 0)
+            return 1;
+    } else if (casrDoNormalSecondPass(c) != 0)
+        return 1;
+    return 0;
 }
 
 int cbStateHandler(CASR *c, unsigned short state)
