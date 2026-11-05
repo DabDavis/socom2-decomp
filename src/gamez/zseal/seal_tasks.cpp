@@ -138,8 +138,6 @@ void InitalizeSealUnit__9CSealUnitFP10CZSealBodyP9CSealUnit(CZSealBody *seal, CS
 /* the goto's move set up (OVL2 0x5DB8F0, this unit's: the AI, the command, a flag; whether it
  * began -- not written yet) */
 bool func_005DB8F0(CSealCtrlAi *ai, void *cmd, int x);
-/* a squad command by name, 0 for none (OVL2 0x58E0A0, the SEAL lane's row; a byte) */
-FT_COMMAND func_0058E0A0(const char *name);
 /* CAiMaps::GetRegion(const CAiMapLoc &), Tile(const CAiMap::region *, unsigned int, unsigned int)
  * and SetRegionType(const CAiMap::region *, CAiMap::region::TYPE) (OVL2 0x52D950, 0x52A6B0,
  * 0x529C00, the AI core's: zseal.h's CAiMaps stub, which this unit sees, declares none of them,
@@ -1422,7 +1420,7 @@ _zanim_cmd_hdr *CTComm::Parse(_zrdr *rdr)
     unsigned int team = 0;
 
     if (zrdr_finduint(rdr, "team", &team, 1)) {
-        FT_COMMAND c = func_0058E0A0(zrdr_findstring(rdr, "cmd"));
+        FT_COMMAND c = CSealCtrl::GetCommandId(zrdr_findstring(rdr, "cmd"));
 
         if (c != CMD_UNKNOWN)
             cmd = Create(team, c);
