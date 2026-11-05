@@ -3788,7 +3788,7 @@
 0x002A45F0 0x10 RecoverFromNetError__8CMissionFi  # OVL1; s1:calls by hand (SOCOM 1's 0x10-byte static RecoverFromNetError: theMission's address loaded, a tail jump into the member _RecoverFromNetError right after it; st_load.cpp stores it as the net-error callback) -- the seed's 0x1BC row split: its j lands on the next instruction
 0x002A4600 0x1AC _RecoverFromNetError__8CMissionFi  # OVL1; s1:align (SOCOM 1's member _RecoverFromNetError, 0x108 there: the net game's minor state tested, this in a0); split off the static stub above -- the integrator
 0x002A47B0 0x168 func_002A47B0  # OVL1
-0x002A4920 0xE8 func_002A4920  # OVL1
+0x002A4920 0xE8 TickInFirefight__8CMissionFf  # OVL1; s1:calls by hand (the states lane, round 40): SOCOM 1's CMission::Tick calls TickInFirefight__8CMissionFf (0x1F2B30) on this with dT right after Tick__9CSpawnersFf, as SOCOM II's Tick 0x2AA490 calls this; both take ftsGetPlayer and set the jukebox (SOCOM 1's IsInFight twice, SOCOM II's SetIntensity twice, the danger through 0x2A4A10); fts_mission.cpp, byte-exact
 0x002A4A10 0x288 func_002A4A10  # OVL1
 0x002A4CA0 0x84 GetMissionCamByIdentifier__8CMissionFPCc  # OVL1; s1:callee
 0x002A4D30 0x560 LoadObjectiveCams__8CMissionFP8CRdrFile  # OVL1; s1:calls by hand (the states lane, round 24): CMission::Open (0x2AC410, byte-exact) calls it on hudobjectives.rdr, then zrdr_free, where SOCOM 1's Open calls LoadObjectiveCams__8CMissionFP8CRdrFile (this in a0, the file in a1, as here)
