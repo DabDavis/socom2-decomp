@@ -2065,6 +2065,73 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the AI core, round 29** (InflateRegion at last, open since round 2):
+  - MW's scheduler never moves a load through a pointer (`this`, a reference parameter) past a store to an address-taken
+    local -- an intermediate written to a local of its own before the next such store puts its loads ahead of it
+    (CAiMap::region::InflateRegion 0x5300A0: `r = right + (m_loc.x + m_dx)`, each grown edge set straight after its
+    corner);
+  - pointer analysis is off by default -- `#pragma opt_pointer_analysis on` crashes MW 3.0b52 on CAiMap::DestroyGraph,
+    and for InflateRegion alone (addr, ansi or type) changes nothing; an inline walk taking its end once keeps the end in
+    a register across two inlined copies (ReRoute 0x52F8F0, written, OPEN; ReRoute returns bool);
+  - an asm directive is not an empty statement to MW: `.set reorder` as an if's body keeps one compare, `.set noreorder`
+    reaches the target's size but reorders the code after (plan_legcomplete stays OPEN); `tools/igreplay.py --target`
+    reads integer registers only -- float-only misses (LeadTargetG) need the float mapping by hand (asked of the tools
+    lane).
+- **Tells from the HUD, round 52** (SetupNorthIndicator, the compass and full-screen map switches, four CUIListBox members):
+  - `__rsqrt(1.0f, x)` is MW's intrinsic for the image's only `rsqrt.s` (SetupNorthIndicator 0x20BE00), `1.0f /
+    sqrtf(x)` gives sqrt.s + div.s; a function-local static is reloaded after every call -- if the target computes every
+    expression of it before the first call, those expressions were named locals (its three y values reading `cy`);
+  - a value from an inline helper (GetPad) or a ternary is a temporary numbered after every named local, an if/else into
+    an uninitialised named local is numbered at its declaration (SwitchToCompassMap 0x20A470, with a dead zoom-state
+    definition -- found with `tools/igreplay.py --want`); `for (i = 0; i < n; i++) ++it;` is unrolled 8x, a counter
+    zeroed at its declaration with `for (; i < n; ...)` keeps the plain loop;
+  - a byte tested plainly (`ev && ...`) is re-masked with andi before indexing, `ev != 0` is not; `2 * h` compiles to
+    sll, the target's addu needs `h + h`; a member pointer read twice around a store is reloaded, a local pointer to the
+    field keeps one load; a new virtual in a CPlainBmp-derived class lands at +0x84, after UpdateUIVar at +0x80
+    (CUIListBox::SetPressed 0x374A50, SOCOM 1's; HighlightPrev / HighlightNext, SOCOM II's own; Tick 0x375040).
+- **Tells from the UI, round 26** (CreateDisplayObj, CGameMenu's constructor and destructor, PrepModels, HasChanged -- all
+  unwritten before):
+  - when a spec inlines a display object's constructor one level, a stand-in class with the members' REAL types is
+    enough: the cuts and the out-of-line copies follow on their own (CUIListBoxSpec::CreateDisplayObj 0x37E8B0, first
+    try, emitting list<ListItem *>() 0x37EA80 and vector<ColumnData *>() 0x37EA60; ~CGameMenu 0x3698C0 and CGameMenu()
+    0x369B60 once zui.cpp's CGameMenu had its full layout to 0x904); a stand-in CNode with no declared constructor makes
+    a member CNode construct inline, declaring `CNode();` restores the call;
+  - `bool b = g == -1 || g == -2;` reading the global twice gives MW's range test `(unsigned)(g + 2) < 2`, through an
+    inline or with a single read each compare is tested apart (nor / xor); `CPnt3D(m.x, m.y, m.z)` straight from the
+    fields gives y and z each other's float register, the fields read into locals z first give the target's; `x = x ==
+    0;` on an int gives `xor v0,v0,zero; sltiu`, `x ^= 1` gives xori (CMemCard::HasChanged 0x3A1370; zanim_menu.cpp's
+    two calls respelled by the integrator, SAME-BY-ADDRESS);
+  - CGameMenu::PrepModels 0x366730 is SOCOM 1's, found by its position; ~CSoftKeyboard OPEN (4 short: the target tests
+    each member array's address before __destroy_arr in the inlined ~CSkbLook).
+- **Tells from the kit and AI states, round 46** (PickupMPBomb, the snoozer list's pieces, the ai_pre_tick task written):
+  - AN INLINE HELPER'S EXPANDED SIZE IS MEASURED by appending `#pragma inline_max_size(N)` at the unit's END and finding
+    where the helper flips to a one-level inline -- the pragma acts only at the unit's end, around the callee or the
+    caller it does nothing; one extra forwarding member level (a list's own `insert`) can push a 200-250-unit helper past
+    the 256-unit limit, so it is inlined one level (the snoozer list's insert 0x5CD8F0 -- include/list's non-pointer
+    list<T> has none of its own: CSnoozeList, a derived class, is a marked stand-in until it does);
+  - a 1-bit field returned from a plain inline bool comes out as andi 0xff, `!` of it as sltu / xori, through `? true :
+    false` sltu, a bool local initialised from it sltu; an `&&` inside an inline returning bool is materialised (move zero
+    in the delay slot, then daddiu 1); `x--; if (x == 0)` on a static reloads it after the store, `--x == 0` reuses the
+    register; an extern "C" bool result used directly in a ternary loses its andi, held in a bool local it keeps it; a `?
+    2 : 3` stored into a 16-bit bit-field masks with 0xffff where a byte enum gives the target's andi 0xff;
+  - PickupMPBomb 0x5BBF10 is SOCOM 1's call for call plus SOCOM II's message, the bomb's sound and the dead player's
+    drop; CSealCtrlAi::PreTick 0x5CCCD0 (the ai_pre_tick task, 0xB9C) is written at the target's size, OPEN; SOCOM 1's
+    aiEnabled, aiActiveCount, aiSleepingCount, aiSnoozingCount and ai::snooze_time named from its $gp symbols.
+- **Tells from the game states, round 40** (OVL1's OnStateChange copy, OnMissionComplete, CMission::Tick, IsAvailable):
+  - OVL1'S OnStateChange 0x2B3BE0 NOW HAS ITS OWN EMITTER: fts_player.cpp's stand-in CSealCtrl declares the inline
+    `virtual void OnStateChange(SEAL_STATE, SEAL_STATE) {}`, so CSealCtrlCopy's table (emitted with its destructor)
+    makes the copy -- the `ovl-copy:` marker on OVL2's 0x58A710 is restored (the SEALs' round 43 lesson: each twin
+    needs its own emitter);
+  - a byte-enum field copied out of an inline's return value keeps lb + andi 0xff at each compare -- no-code block
+    boundaries (a label, `if (0)`, an empty asm, `(void)` uses, a one-pass loop) and casts all fold back to one lbu
+    (OnMissionComplete 0x2A9B30: an inline SetState returning the previous state; `bool over;` declared before `game`
+    swaps their saved registers -- found with `tools/igreplay.py --move 35=36.5 --target` before writing source; the
+    abort's menu state at +0x78, the old +0x178 a wrong reference the size mismatch had hidden);
+  - a valve tested through GetValue() keeps its own lhu apart from SetValveValue's read, a plain m_value merges into one
+    load + andi 0xffff (CMission::Tick 0x2AA490, unwritten before); a chain of bool tests the target carries as values
+    is three bools copied forward (`bool a = !X(); if (a) a = !Y(); bool b = a; if (b) b = Z(); bool c = b; if (c) c =
+    flag; return c;` -- IsAvailable 0x2C7370); `x > y ? x - y : 0` loads y first; TickInFirefight 0x2A4920 named by
+    SOCOM 1's Tick.
 - **Tells from the SEALs, round 44** (SlideTick, the level-2 alert record, seal_cfg.cpp's map teardown):
   - A DEAD-STRIPPED SOCOM 1 FUNCTION CAN BE WHAT MAKES A UNIT EMIT A TEMPLATE'S PIECES: seal_cfg.cpp's map<string, int>
     teardown 0x58D020-0x58D730 comes out of SOCOM 1's ClearBodyPartNames_Map (its demo's 0x280E80, between BodyWepPart and

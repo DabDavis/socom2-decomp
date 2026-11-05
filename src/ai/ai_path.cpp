@@ -311,7 +311,12 @@ void CAiPath::IncrementPathId()
  * deleted again (0x7C), as are raw `data_[i]` loads in it (const or not, by value or pointer) and
  * empty asm statements (`asm {}`, `asm volatile ("")`); `asm volatile { nop }` as each body gives the
  * target's size and branches, the nop the only difference -- the target's bodies are empty after a
- * front end that could not see them so */
+ * front end that could not see them so. The AI core round 29 (build/scratch/ai/v_plc*.py): an asm
+ * DIRECTIVE as each body is no empty statement to MW -- `asm { .set reorder }` keeps the first
+ * compare (its branch dropped, a nop left) and the second branch aimed at the exit (0xA4),
+ * `asm { .set noreorder }` gives the target's size (0xAC) but reorders the block after it (18 off);
+ * a label alone in asm, `if (0) ...`, `while (0)`, `for (;0;)`, `do {} while (0)`, `switch (0) {}`,
+ * `goto L; L:;`, self-assignments, data()/begin() calls and a dead reference local: deleted whole */
 bool CAiPath::plan_legcomplete(PATH_STATE state)
 {
     bool more = false;
@@ -443,7 +448,16 @@ bool CAiPath::InsertPathLoc(const CAiMapLoc &loc, CAiMap *map)
  * AppendPathLoc; the frame is not -- the target keeps operator+'s iterator copy (sp+132) above
  * the loop's two boundaries (sp+128/124), which this build puts at sp+132/128 with the copy below,
  * as if the leg search were an inline's (expanded later, its locals lower). As an inline helper
- * (by value or by const reference) it takes a sixth saved register (0x3F8, the frame 16 taller) */
+ * (by value or by const reference) it takes a sixth saved register (0x3F8, the frame 16 taller).
+ * The AI core round 29 (build/scratch/ai/v_ipl*.py): the target's iterator is stored from data_,
+ * reloaded, stepped and stored again in its slot -- a named `points::iterator it;` declared after
+ * `leg` (before the loop) and set by `it = m_points.begin(); it += index;` gives that slot (sp+132)
+ * and the size (0x3F4), 66 off: the scheduling. The target interleaves the iterator's stores with
+ * the point's construction (the cell's mapid byte loaded before them, x and y after), so its
+ * iterator is no escaped local; a named one blocks the cell's loads (set before the point) or is
+ * blocked by the point's stores (after it). `begin() += index` as the argument keeps the stores
+ * (0x3F4) in sp+124; inline insert helpers taking the iterator by value scalarise it (0x3EC) or copy
+ * it once more (0x3FC) */
 bool CAiPath::InsertPathLoc(const CAiMapLoc &loc, CAiMap *map, int index, bool from_end)
 {
     bool ok = false;

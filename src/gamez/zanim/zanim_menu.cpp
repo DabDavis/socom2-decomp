@@ -1977,7 +1977,7 @@ bool UIIsSpaceForSaveGameFile(C2DAnimCmdHdr *hdr, float *dT)
 bool UIMC_Changed(C2DAnimCmdHdr *hdr, float *dT)
 {
     int slot;
-    bool changed = func_003A1370(&theMemCard, 1, &slot);
+    bool changed = theMemCard.HasChanged(1, &slot);
 
     SetValveValue(CValve::Create("mc_changed_slot", (VALVE_TYPE)1), slot);
     return changed;
@@ -2837,7 +2837,7 @@ bool UINetCnfSelectCombo(C2DAnimCmdHdr *hdr, float *dT)
 {
     bool ok = false;
 
-    if (!func_003A1370(&theMemCard, 0, 0)) {
+    if (!theMemCard.HasChanged(0, 0)) {
         CValve *valve = CValve::Create(ArgText(ArgName(hdr)), (VALVE_TYPE)2);
 
         if (valve) {

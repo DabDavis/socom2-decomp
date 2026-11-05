@@ -253,16 +253,18 @@ CAiMap::region *CAiMap::GetRegionContaining(const CAiMapLoc &loc, region::TYPE t
 
 /* the rectangle grown by so many cells on each side, kept inside the map (or inside the largest
  * map when none is given: 0x1FFF cells) -- SOCOM 1's, the corner clamped first, then the size.
- * OPEN, right size, 21 instructions in the first block: scheduling only -- the target loads x and
- * m_dx for the width before it stores y - top (SOCOM 1's build has the same order), this build
- * after; the width and height spelled five ways, the four declared first and assigned x, w, y, h,
- * and one declaration of all four were tried */
+ * Byte-exact in the AI core's round 29 (21 instructions off since round 2): the grown right and
+ * bottom edges are locals of their own, each computed right after its corner -- the edge's field
+ * loads then lead the next corner's store (x, the right edge, y, the bottom edge), as the target's
+ * do; the width and height written straight from the fields kept those loads below the store */
 void CAiMap::region::InflateRegion(int left, int top, int right, int bottom, const CAiMap *map)
 {
     int x = m_loc.x - left;
+    int r = right + (m_loc.x + m_dx);
     int y = m_loc.y - top;
-    int w = right + (m_loc.x + m_dx) - x;
-    int h = bottom + (m_loc.y + m_dy) - y;
+    int b = bottom + (m_loc.y + m_dy);
+    int w = r - x;
+    int h = b - y;
     int maxx = 0x1FFF;
     int maxy = 0x1FFF;
 
@@ -415,10 +417,75 @@ void CAiMap::reader::SetReader(CRdrFile *r)
 /* the region a route's end lies on (SOCOM 1's FindByLocation<regions, region>, inlined here) */
 inline CAiMap::region *find_region(CAiMap::regions &t, const CAiMapLoc &loc)
 {
-    for (CAiMap::regions::iterator i = t.begin(); i != t.end(); ++i)
+    CAiMap::regions::iterator e = t.end();
+
+    for (CAiMap::regions::iterator i = t.begin(); i != e; ++i)
         if ((*i).m_loc == loc)
             return &*i;
     return 0;
+}
+
+/* the points' emptiness read through count()'s reference, and a finished path with points tested
+ * through it (ReRoute's test: the size's address kept in a saved register for the test, the resize
+ * and the copy's first test, the state's compare materialised into a bool -- HasPoints() reads the
+ * size straight and branches; the names ours) */
+inline bool points_empty(CAiPath::points &v)
+{
+    return v.count() == 0;
+}
+
+inline bool path_found(CAiPath &p)
+{
+    return !points_empty(p.m_points) && p.m_state == CAiPath::COMPLETE;
+}
+
+/* a route's path rebuilt between its way points: marked invalid first, refused when either region is
+ * gone, then (two way points or more) a path planned leg by leg through the planner and run to its
+ * end; a finished path with points makes the route valid again, its cells copied last to first
+ * (SOCOM 1's, 0x19E320; ValidateRoutes calls it when asked). True for a valid route.
+ * OPEN, 0x340 against 0x348 (written in the AI core's round 29): the code is the target's but for two
+ * things -- the copy loop's preheader, where the target takes the points' size address afresh (a3, the
+ * label padded) and this build reuses the saved s0 the test and the resize share; and &path.m_state,
+ * which the target computes into s1 ahead of the planner's wait loop (here s0, after it). Tried: the
+ * loop as a while, through a points reference, unsigned, as an inline helper; a named count()
+ * reference (worse). The regions' finds compute their end once (find_region's `e`, SOCOM 1's
+ * FindByLocation shape): written through end() at each pass MW reloaded data_ in both walks here
+ * (ValidateRoutes unchanged either way) */
+bool CAiMap::ReRoute(route *r)
+{
+    CAiMapLocVec &w = r->m_waypts;
+    int n = w.size();
+
+    r->m_flags |= 1;
+    if (!find_region(m_regionTable, r->m_region[0]) || !find_region(m_regionTable, r->m_region[1]))
+        return false;
+    if (n >= 2) {
+        CAiPath path;
+
+        if (ai::PathPlanBegin(&path)) {
+            int legs = n - 1;
+            int i;
+
+            for (i = 0; i < legs; i++)
+                if (!ai::PathPlanAddLeg(this, w[i], w[i + 1]))
+                    break;
+            if (legs != i) {
+                ai::PathPlanAbort();
+            } else {
+                ai::PathPlanExecute();
+                while (path.IsPlanning())
+                    ai::TickPathPlanner(1.0f / 30.0f, 0);
+                if (path_found(path)) {
+                    r->m_flags &= ~1;
+                    r->m_path.clear();
+                    r->m_path.resize(path.m_points.count());
+                    for (int j = 0; j < (int)path.m_points.count(); j++)
+                        r->m_path[j] = path.m_points[path.m_points.count() - j - 1].m_loc;
+                }
+            }
+        }
+    }
+    return (r->m_flags & 1) == 0;
 }
 
 /* whether a route is marked invalid (SOCOM 1's remove_if predicate for ValidateRoutes) */
