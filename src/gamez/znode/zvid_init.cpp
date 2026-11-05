@@ -1064,6 +1064,146 @@ void SetDynamicLOD(int rate)
     Particle::Instance::ageFactor = ageRateLimits[i];
 }
 
+/* libgraph's display register as bit-fields (Sony's tGS_DISPLAY2: unsigned int fields, so the
+ * register copies as two words) and the display environment two of which open the double buffer
+ * (sceGsDispEnv, 0x28 bytes; the GIF tags and drawing environments follow in sceGsDBuff) */
+struct tGS_DISPLAY {
+    unsigned int DX : 12;
+    unsigned int DY : 11;
+    unsigned int MAGH : 4;
+    unsigned int MAGV : 2;
+    unsigned int p0 : 3;
+    unsigned int DW : 12;
+    unsigned int DH : 11;
+    unsigned int p1 : 9;
+};
+struct sceGsDispEnv {
+    unsigned long pmode;
+    unsigned long smode2;
+    unsigned long dispfb;
+    tGS_DISPLAY display;
+    unsigned long bgcolor;
+};
+struct sceGsDBuff {
+    sceGsDispEnv disp[2];
+};
+
+/* the GS's SMODE2, DISPFB1, DISPLAY1, DISPFB2, DISPLAY2 and BGCOLOR registers */
+#define GS_SMODE2 ((volatile unsigned long *)0x12000020)
+#define GS_DISPFB1 ((volatile unsigned long *)0x12000070)
+#define GS_DISPLAY1 ((volatile unsigned long *)0x12000080)
+#define GS_DISPFB2 ((volatile unsigned long *)0x12000090)
+#define GS_DISPLAY2 ((volatile unsigned long *)0x120000A0)
+#define GS_BGCOLOR ((volatile unsigned long *)0x120000E0)
+
+/* the MPEG player's tick between frames (zmpeg.h's class: only the call) */
+class CMPEG {
+public:
+    static void IdleTick();
+};
+
+/* the GS's set-up packet, sixteen quadwords, sent when the video mode changes (SOCOM 1's initcode,
+ * which its swap sent the same way), and the frame restore's packet (SOCOM 1's framecode: SOCOM II
+ * sends its first eight quadwords, then the next seven when the second pass is on) */
+extern u_long128 initcode[16];
+extern u_long128 framecode[];
+/* whether the last vertical blank had passed when the frame closed (SOCOM 1's zvid + 0x230) */
+extern int data_004A43B0;
+/* the frame restore packet's FBP and coordinate halfwords (SOCOM 1's zvid + 0x234 / 0x238, pointers
+ * into a packet) */
+extern unsigned short *data_004A43B4;
+extern unsigned short *data_004A43B8;
+
+/* whether one vertical blank more still ends inside the frame rate's period (the name and the
+ * inline ours: the swap's wait loop tests it -- the rate passed by value is read first, so the
+ * division's 1.0 is built before the blank's 1/60, as the target builds them; written in place, or
+ * with the limit or the sum passed instead, 1/60 comes first) */
+static inline bool FrameEarly(float t, int rate)
+{
+    return t + 1.0f / 60.0f < 1.0f / rate;
+}
+
+/* the frame closed and shown: the frame rate capped by vertical blanks, the level of detail set by
+ * the rate, the video mode reset when it changed; the frame's time, number and rate; then, to flip,
+ * the buffers swapped and the PCRTC set -- the frame buffers, the display rectangle moved by the
+ * mode's offset, the fade's background or the PCRTC offset; then, to restore, the frame restore
+ * packet sent (SOCOM 1's zVid_Swap, SOCOM II's taking both flags: the second mode's packet, the
+ * mode offsets, the frame restore's second pass) */
+void zVid_Swap(bool flip, bool restore)
+{
+    static unsigned int t0Count;
+
+    sceGsSyncPath(0, 0);
+    if (CVideo::m_maxFrameRate != -1) {
+        for (float t = zVid.procTime; FrameEarly(t, CVideo::m_maxFrameRate); t += 1.0f / 60.0f)
+            sceGsSyncV(0);
+    }
+    SetDynamicLOD((int)(1.0f / zVid.procTime));
+    if (zVid.syncMode != zVid.videoMode) {
+        zvid_SetVideoMode(*(_zvid_mode *)&zVid.videoMode, true);
+        zvid_KickPacket((unsigned long *)initcode, 16, false, false);
+    }
+    CMPEG::IdleTick();
+    zVid.procTime = (float)*T0_COUNT * zSys.timerScale;
+    data_004A43B0 = !sceGsSyncV(0);
+    t0Count = *T0_COUNT;
+    *T0_COUNT = 0;
+    zVid.frameTime = (float)t0Count * zSys.timerScale;
+    zVid.frameRate = (int)(0.5f + 1.0f / zVid.frameTime);
+    zVid.runTime += zVid.frameTime;
+    zVid.frameNumber++;
+    if (flip) {
+        if ((zVid.syncMode != 2 || !zVid.swapMode) && zVid.swapMode != 1) {
+            unsigned int buf = zVid.displayBuf;
+
+            zVid.displayBuf = zVid.renderBuf;
+            zVid.renderBuf = buf;
+        }
+        if (zVid.swapMode == 2)
+            *GS_SMODE2 = (unsigned long)(unsigned int)data_004A43C8 | 2;
+        else
+            *GS_SMODE2 = (unsigned long)(unsigned int)data_004A43C8 |
+                         (unsigned long)(unsigned int)data_004A43CC << 1;
+
+        tGS_DISPLAY d = data_004A4180.disp[1].display;
+
+        d.DX += zVid.modeOffset[0] * zVid.pcrtcOffset[0];
+        d.DY += zVid.modeOffset[1];
+        *GS_DISPFB1 = (unsigned long)zVid.displayBuf | 0x1400 | (unsigned long)zVid.framePsm << 15;
+        *GS_DISPFB2 = (unsigned long)zVid.displayBuf | 0x1400 | (unsigned long)zVid.framePsm << 15;
+        *GS_DISPLAY2 = *(unsigned long *)&d;
+        if (zvid_fade[3] < 255) {
+            *GS_BGCOLOR = *(unsigned long *)zvid_fade;
+            *GS_DISPLAY1 = *(unsigned long *)&d;
+            *GS_PMODE = (unsigned long)zvid_fade[3] << 8 | 0xE1;
+        } else if (zVid.pcrtcDo) {
+            d.DX += zVid.pcrtcOffset[0];
+            d.DY += zVid.pcrtcOffset[1];
+            *GS_DISPLAY1 = *(unsigned long *)&d;
+            *GS_PMODE = 0x7F23;
+        } else {
+            *GS_PMODE = 0x62;
+        }
+        asm volatile { sync }
+    } else if (zVid.flag90) {
+        *GS_PMODE = 96;
+        asm volatile { sync }
+    }
+    if (restore) {
+        zSysFifoEnable(1);
+        if (zVid.swapMode == 0) {
+            *data_004A43B4 = zVid.renderBuf;
+            *data_004A43B8 = 0x7200;
+            FlushCache(0);
+            zvid_KickPacket((unsigned long *)framecode, 8, true, false);
+            if (zVid.flag91)
+                zvid_KickPacket((unsigned long *)&framecode[8], 7, true, false);
+        } else {
+            func_003B07B0(true);
+        }
+    }
+}
+
 void zVid_ZTestOnWriteSet(bool on)
 {
     u_long128 *p = zSysSprGetPacket(0);
