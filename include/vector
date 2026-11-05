@@ -76,7 +76,20 @@
  * level 8 still inlines it whole: its cut (FreeTables, DestroyPool, ~MapCompass, Close, WipePktBuf)
  * and the pointer TrimVector's (GarbageCollect) need the class swap 8 high and the pod's 8 -- two and
  * three forwarding levels no DWARF or image shows; with them, 6788 at 8 (+27, nothing lost), still
- * under level 5's 6800 (build/scratch/msl-r12/table.txt). */
+ * under level 5's 6800 (build/scratch/msl-r12/table.txt).
+ * MEASURED AGAIN, NOT ADOPTED (the MSL headers round 32, the engine core's round-19 witness; build/p32/vec/
+ * mkpair.py writes the model, untracked): CKey::DeleteChildren 0x25B580's deepest FreeVector calls the
+ * 4-byte pod's pieces as SOCOM 1's compressed pair has them -- the pair's constructor from the count
+ * (0x25B9C0, `sw a1,0(a0)`), then size_ and data_ zeroed in place; the pod's MEMBER swap trading the
+ * fields itself behind its this test (the pair's swap 0x25B9A0, swap<Ui *> 0x25B980, swap<Ui> 0x25B960
+ * -- no free swap between, so the pointer vector's swap stays five high); the destructor `if (data())
+ * alloc().deallocate(data(), cap())`, its calls in that order (data() 0x25B950, alloc() 0x25B940,
+ * data(), cap() 0x25B930, allocator<Ui>::deallocate(p, n) 0x25B920). With the pod's capacity so (the
+ * class deleter's left as it is) DeleteChildren is CODE-EXACT, 0x398 of 0x398, its nine calls those
+ * rows' (which keep their placeholder names: no name was given them) -- and over every hand-written
+ * unit at level 5 it is 10,908 -> 10,766: +19 (sixteen vectors' constructors and one destructor now
+ * cut out of line as the image has them, ~CSaferStr, SaveNodeStates), -253 in 98 units. A level-6/8
+ * shape, as round 12 found; "Level 6, or 8?" (README) has the witness. */
 
 #ifndef _MSL_VECTOR
 #define _MSL_VECTOR
