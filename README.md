@@ -2065,6 +2065,21 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the AI core, round 33** (FreeEvents, both CAiMap::WalkLine and FindTraversable -- 7,700 bytes, three of them
+  never started before):
+  - two lockstep cursors deleting each element and zeroing its slot are `std::transform(b, e, b, deleter)` with a functor
+    that has a declared empty constructor (CAiEvent::FreeEvents 0x50F1C0);
+  - a class-vector iterator assigned from begin() stays in a register; reused as the tail's end (`i = end(); r =
+    remove_if(begin(), i, p); erase(r, i);`) it lives in memory for the whole function -- erase's by-value copy takes its
+    address -- and its second range is split off to the frame's bottom (ValidateRoutes, OPEN); MW's CSE shares the data
+    pointer between two operator[] expansions only: `(&w[0] + w.size())[-1]` reuses `[0]`'s load, back(), `end()-1` and
+    `data()+size-1` all reload data_, `w[size-1]` indexes as (size-1)*4;
+  - ONLY A DECLARATION'S INITIALISER BLOCK-COPIES A CPnt3D (ld / sd plus lwc1 / swc1) -- placement new, a PNT3D-cast
+    assignment and assigning from a temporary or a helper's result all copy member by member;
+  - an auto-inline member defined in the unit is called whole; the same body as an `inline` helper is inlined one level
+    with its callees called, as in the target (CAiMaps::FindTraversable 0x529300); routing a lookup through one more
+    inline lays its temporaries out below every depth-1 inline's; SOCOM II's map walks test the row straight off the
+    bitfield (CAiMap::WalkLine 0x537400 / 0x537E50).
 - **Tells from the engine core, round 20** (CZAnimMain::Open, open since round 1; ClutterTick, OnWeaponHit and
   ActivateArgV, all unwritten before -- the map passes 70 % of its bytes):
   - MW'S EXIT READS v0 EVEN IN A VOID FUNCTION: v0 is live from the last call to the end and nothing after the call can
