@@ -314,13 +314,23 @@ int UTF8CharLen(const char *&s)
 }
 
 /* the UTF-8 character at s as UTF-16 (ours).
- * OPEN, 2 instructions short: the target loads the string pointer into a0 over the parameter
- * (here a1), so the three-byte block's first instruction is the load of the third byte into a0,
+ * OPEN, 5 instructions at the target's size since round 30 (the round-30 shape below; the single
+ * expression was 2 instructions short): the target loads the string pointer into a0 over the
+ * parameter (there a1), so the three-byte block's first instruction is the load of the third byte into a0,
  * the second byte re-extended in place (`andi v1,v1,0xff`) after it and the branch's delay slot
  * left empty; here MW moves that re-extension, into a fresh register, into the slot. A pointer,
  * a reference, a by-value iterator, the expression's order, the third byte in a local first,
  * if/else nesting and a single exit (which gives the in-place re-extension, but with the bytes in
- * other registers) were measured in build/scratch/ui/probe/utf.cpp. */
+ * other registers) were measured in build/scratch/ui/probe/utf.cpp. Round 30, by igdump/igreplay:
+ * the pointer takes a0 once the third byte's load (v62) is numbered below c1's re-extension (v54:
+ * `--move 62=53.5`) -- the load first in the block, the extension in place in v1, the slot empty;
+ * every single-expression spelling (the byte first, a local for it, assigned once or after a dead
+ * definition: all propagated) numbers it after. The third byte into a local assigned twice
+ * (`unsigned short ch = (unsigned short)(p[2] - 0x80); ch = hi + mid + ch;`) inside `if (c1) {
+ * ... return ch; } return c;` (as written) gives the target's size and every register but three,
+ * 5 off: the load in a1 (it wants a number near 41.5, among the front end's temporaries -- an
+ * inline helper for the byte does not do it; `ch = ch + ...` and `+=` the same) and `addu
+ * v0,v1,v0` for the target's `addu v0,v0,v1` */
 unsigned short UTF8GetChar(const char *&s)
 {
     const unsigned char *p = (const unsigned char *)s;
@@ -331,8 +341,10 @@ unsigned short UTF8GetChar(const char *&s)
         return c;
     if (c < 0xE0)
         return c1 + ((c - 0xC0) << 6) - 0x80;
-    if (!c1)
-        return c;
-    return (unsigned short)((unsigned short)((c - 0xE0) << 12) + (unsigned short)((c1 - 0x80) << 6)) +
-           (unsigned short)(p[2] - 0x80);
+    if (c1) {
+        unsigned short ch = (unsigned short)(p[2] - 0x80);
+        ch = (unsigned short)((unsigned short)((c - 0xE0) << 12) + (unsigned short)((c1 - 0x80) << 6)) + ch;
+        return ch;
+    }
+    return c;
 }

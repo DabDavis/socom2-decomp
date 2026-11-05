@@ -294,6 +294,7 @@ enum VALVE_STATE {
 class CValve {
 public:
     static CValve *Create(const char *name, VALVE_TYPE type);
+    static CValve *Create(const char *name, unsigned int value, VALVE_TYPE type);
     static CValve *GetByName(const char *name);
     void MakeCallbacks(VALVE_STATE state);
 
@@ -317,6 +318,13 @@ static inline void SetValveValue(CValve *valve, bool value)
 /* the chat recipient's valve, by name (ours: a pointer in data, 0x3FABB8 -- 0x38BFE0 sets the
  * valve, ShowElements reads it) */
 static const char *s_chatRecipientValve = "ChatRecipient";
+
+/* the recipient key toggled: the ChatRecipient valve made with its new state (0x38BFE0; the name
+ * ours -- SkbTogglePair's callback from the key handler 0x38D200 and the USB keys' tab) */
+void SkbSetChatRecipient(bool on)
+{
+    CValve::Create(s_chatRecipientValve, on, (VALVE_TYPE)1);
+}
 
 /* the display unit's: whether key 11 shows its wide cap (0x397840: a byte it keeps at 0x3E04C0;
  * passed to KeyCap's unsigned char, it is narrowed at the call) */
@@ -400,7 +408,8 @@ void SkbCursorBack(CSoftKeyboard *skb);
 void SkbCursorForward(CSoftKeyboard *skb);
 
 /* the keys unit's: the text's clearing, switching and closing, a jamo typed, a character typed
- * (0x399E90, not named yet), the recipient toggle's callback (0x38BFE0) and the lock key's */
+ * (SkbTypeCased, 0x399E90), the recipient toggle's callback (SkbSetChatRecipient, above) and the
+ * lock key's */
 bool SkbClearText(CSoftKeyboard *skb);
 void SkbTypeOrBack(CSoftKeyboard *skb);
 void SkbShowKeyRows(CPad *pad, CSoftKeyboard *skb, bool row2);
@@ -410,8 +419,8 @@ void SkbCloseText0(CSoftKeyboard *skb);
 void SkbTypeJamo(int arg, signed char jamo, CPad *pad);
 void SkbToggleBmp4();
 void SkbTogglePair(CBmpWithNode *a, CBmpWithNode *b, void (*onToggle)(bool));
-extern "C" void func_00399E90(unsigned short c, bool shifted, bool wide, CSoftKeyboard *skb);
-extern "C" void func_0038BFE0(bool on);
+void SkbTypeCased(unsigned short c, bool shifted, bool wide, CSoftKeyboard *skb);
+void SkbSetChatRecipient(bool on);
 
 /* a capital letter: A-Z, or Latin-1's capitals but the multiplication sign (ours) */
 static inline bool SkbIsAsciiUpper(unsigned short c)
@@ -455,7 +464,7 @@ void func_0038D200(const CSkbKey &key, CSoftKeyboard *skb, CPad *pad, CGameMenu 
 
         if (skb->m_320.m_node && skb->m_320.m_node->m_active)
             wide = true;
-        func_00399E90(c, SkbShifted2(pad), wide, skb);
+        SkbTypeCased(c, SkbShifted2(pad), wide, skb);
         SkbHangulClear();
         break;
     }
@@ -473,7 +482,7 @@ void func_0038D200(const CSkbKey &key, CSoftKeyboard *skb, CPad *pad, CGameMenu 
             SkbPlaySound(3);
             break;
         case 1:
-            SkbTogglePair(&skb->m_1c0, &skb->m_270, func_0038BFE0);
+            SkbTogglePair(&skb->m_1c0, &skb->m_270, SkbSetChatRecipient);
             break;
         case 6:
             SkbTakeText(menu);
@@ -705,10 +714,8 @@ struct KeyInput {
     int _18[2];
 };
 int GetKeyReadThisFrame(KeyInput *key);
-extern "C" {
-/* the USB keyboard's key handled (0x38C630, not written yet) */
-void func_0038C630(CSoftKeyboard *skb, CGameMenu *menu, KeyInput *key);
-}
+/* the USB keyboard's key handled (0x38C630, below) */
+void SkbUsbKey(CSoftKeyboard *skb, CGameMenu *menu, KeyInput *key);
 /* the other edit string selected (zui_skbkeys.cpp's, 0x399100) */
 void SkbToggleTextSel(CSoftKeyboard *skb);
 
@@ -746,7 +753,111 @@ void CSoftKeyboard::HandlePad(CPad *pad, CGameMenu *menu)
     KeyInput key;
 
     while (GetKeyReadThisFrame(&key))
-        func_0038C630(this, menu, &key);
+        SkbUsbKey(this, menu, &key);
+}
+
+/* the keys unit's USB key handlers (each given the key and the keyboard as its word), the space
+ * typed (0x39AD00), a character typed (0x399040) and the kana entry ended (0x399C00); the escape
+ * key's close (0x38BE40: ShutdownBegin, then the menu's event 29) */
+struct SKBUSBKEY;
+void SkbUsbLetter(const SKBUSBKEY *key, int arg, bool korean);
+void SkbUsbDigit(const SKBUSBKEY *key, int arg);
+void SkbUsbPunct(const SKBUSBKEY *key, int arg);
+void SkbUsbDash(const SKBUSBKEY *key, int arg);
+extern "C" {
+void func_0039AD00(CSoftKeyboard *skb);
+void func_00399040(int c, int arg);
+void func_00399C00();
+void func_0038BE40(CSoftKeyboard *skb, CGameMenu *menu);
+}
+/* the keypad's characters by HID usage from 89 (keypad 1-9, 0 and the point; zui_skb.cpp's), a
+ * halfword in a word as the keys unit's tables hold them (SKBCHAR: the name ours) */
+struct SKBCHAR {
+    unsigned short c;
+    unsigned short _2;
+};
+extern SKBCHAR s_padChars[11];
+
+/* a USB keyboard's key (0x38C630; the name ours): letters, digits and punctuation through the keys
+ * unit's handlers, the keypad's digits while num lock is on, the edit keys, the bracket keys
+ * shifted or not; the kana entry ended after any key but a letter, backspace and the grave key.
+ * HandlePad calls it for each key read this frame (written round 30: byte-exact on the first build,
+ * the switch's cases in reverse of their compare chain, keypad / taking the chain's 47 in a0) */
+void SkbUsbKey(CSoftKeyboard *skb, CGameMenu *menu, KeyInput *key)
+{
+    bool shift = key->shift != 0;
+    int code = key->code;
+    bool endKana = true;
+
+    if (code >= 4 && code < 30) {
+        SkbUsbLetter((const SKBUSBKEY *)key, (int)skb, skb->m_174);
+        endKana = false;
+    } else if (code >= 30 && code < 40)
+        SkbUsbDigit((const SKBUSBKEY *)key, (int)skb);
+    else if (code >= 49 && code < 57 && code != 53)
+        SkbUsbPunct((const SKBUSBKEY *)key, (int)skb);
+    else if (code >= 89 && code < 100) {
+        if (key->_18[0])
+            func_00399040(s_padChars[code - 89].c, (int)skb);
+    } else {
+        switch (code) {
+        case 40:
+            skb->OnEnterKey(menu);
+            break;
+        case 41:
+            func_0038BE40(skb, menu);
+            break;
+        case 42:
+            SkbTypeOrBack(skb);
+            endKana = false;
+            break;
+        case 43:
+            SkbTogglePair(&skb->m_1c0, &skb->m_270, SkbSetChatRecipient);
+            break;
+        case 44:
+            func_0039AD00(skb);
+            break;
+        case 45:
+            SkbUsbDash((const SKBUSBKEY *)key, (int)skb);
+            break;
+        case 79:
+            SkbCursorForward(skb);
+            break;
+        case 80:
+            SkbCursorBack(skb);
+            break;
+        case 84:
+            func_00399040('/', (int)skb);
+            break;
+        case 85:
+            func_00399040('*', (int)skb);
+            break;
+        case 86:
+            func_00399040('-', (int)skb);
+            break;
+        case 87:
+            func_00399040('+', (int)skb);
+            break;
+        case 88:
+            skb->OnEnterKey(menu);
+            break;
+        case 46:
+            func_00399040((char)(shift ? '+' : '='), (int)skb);
+            break;
+        case 47:
+            func_00399040((char)(shift ? '{' : '['), (int)skb);
+            break;
+        case 48:
+            func_00399040((char)(shift ? '}' : ']'), (int)skb);
+            break;
+        case 53:
+            func_00399040((char)(shift ? '~' : '`'), (int)skb);
+            endKana = false;
+            break;
+        }
+    }
+    if (endKana)
+        func_00399C00();
 }
 
 /* the enter key: nothing while 0x3999D0 says so; an unchanged string (when that counts) or an

@@ -70,9 +70,9 @@ struct SKBUSBKEY {
 
 /* a character typed into the keyboard's text (0x399040: the text's insertion 0x399EC0, then the
  * composition's 0x391350; the second word passed on) */
-extern "C" void func_00399040(unsigned short c, int arg);
-/* a letter cased (0x39A8D0, its third argument 0 here) */
-extern "C" unsigned short func_0039A8D0(int c, bool upper, int x);
+extern "C" void func_00399040(int c, int arg);
+/* a letter cased (0x39A8D0, its third argument 0 here: SkbTypeCased's wide) */
+extern "C" int func_0039A8D0(unsigned short c, bool upper, bool wide);
 /* the keyboard's text given the composed pieces (0x398AE0: the argument first; whether it took
  * them) */
 extern "C" int func_00398AE0(int arg, CSkbPieces *pieces, bool fewer);
@@ -82,12 +82,20 @@ signed char KeyToJamo(char c);
 unsigned short SkbHangulBack();
 extern "C" int toupper(int c);
 
+/* a key's character as the USB tables hold it: a halfword in a word (the tables are read with lhu
+ * at a 4-byte step, and 0x399040 takes an int -- SkbTypeCased narrows the caser's int for
+ * SkbInsertChar, SkbUsbLetter passes it on as it is; the name ours) */
+struct SKBCHAR {
+    unsigned short c;
+    unsigned short _2;
+};
+
 /* the digit row's characters, HID usages 30-39 (1 .. 0), and shifted */
-static const int s_digitChars[12] = {'1', '2', '3', '4', '5', '6', '7', '8', '9', '0'};
-static const int s_shiftDigitChars[12] = {'!', '@', '#', '$', '%', '^', '&', '*', '(', ')'};
+static const SKBCHAR s_digitChars[12] = {{'1'}, {'2'}, {'3'}, {'4'}, {'5'}, {'6'}, {'7'}, {'8'}, {'9'}, {'0'}};
+static const SKBCHAR s_shiftDigitChars[12] = {{'!'}, {'@'}, {'#'}, {'$'}, {'%'}, {'^'}, {'&'}, {'*'}, {'('}, {')'}};
 /* the punctuation's, HID usages 49-56, and shifted */
-static const int s_shiftPunctChars[12] = {'|', '}', ':', '"', '~', '<', '>', '?'};
-static const int s_punctChars[12] = {'\\', ']', ';', '\'', '`', ',', '.', '/'};
+static const SKBCHAR s_shiftPunctChars[12] = {{'|'}, {'}'}, {':'}, {'"'}, {'~'}, {'<'}, {'>'}, {'?'}};
+static const SKBCHAR s_punctChars[12] = {{'\\'}, {']'}, {';'}, {'\''}, {'`'}, {','}, {'.'}, {'/'}};
 
 /* a piece of the text the wrap lays out (ours): a word, a run of spaces, a line break */
 enum SKBTOKENTYPE {
@@ -298,13 +306,13 @@ void SkbUsbDash(const SKBUSBKEY *key, int arg)
 /* a punctuation key */
 void SkbUsbPunct(const SKBUSBKEY *key, int arg)
 {
-    func_00399040((key->m_shift ? s_shiftPunctChars : s_punctChars)[key->m_usage - 49], arg);
+    func_00399040((key->m_shift ? s_shiftPunctChars : s_punctChars)[key->m_usage - 49].c, arg);
 }
 
 /* a digit key */
 void SkbUsbDigit(const SKBUSBKEY *key, int arg)
 {
-    func_00399040((key->m_shift ? s_shiftDigitChars : s_digitChars)[key->m_usage - 30], arg);
+    func_00399040((key->m_shift ? s_shiftDigitChars : s_digitChars)[key->m_usage - 30].c, arg);
 }
 
 /* the text set and laid out (0x39A5B0), the cursor put at a character (0x39A1D0) and after the
@@ -624,6 +632,14 @@ bool SkbInsertChar(unsigned short c, CSoftKeyboard *skb)
     SkbCursorTo(pos + 1, skb, false);
     SkbPlaySound(3);
     return true;
+}
+
+/* a key's character typed: the letter cased by the shift (0x39A8D0, wide as its third argument),
+ * then inserted at the cursor (0x399E90; the name ours: the key handler 0x38D200 types a character
+ * key so) */
+void SkbTypeCased(unsigned short c, bool shifted, bool wide, CSoftKeyboard *skb)
+{
+    SkbInsertChar(func_0039A8D0(c, shifted, wide), skb);
 }
 
 /* the text cursor put at a place (0x395120, the display unit's: its node's position) */

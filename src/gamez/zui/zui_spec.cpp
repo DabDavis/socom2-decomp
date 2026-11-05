@@ -140,7 +140,12 @@ CDlgObjSpec *GetControlSpec(_zrdr *rdr, const char *type)
  * CSaferStr assignment; here MW fills the test's slot with the li, hoists the address into the
  * name test's slot and pads before "unnamed". The design object's three inline setters are what
  * give the target's loads of m_child (written out, 34 instructions differ); an early return for
- * the spec test is 8 bytes longer */
+ * the spec test is 8 bytes longer. Round 30: the target never fills a slot from the FALL-THROUGH
+ * block in this function, the radio strip's constructor or LoadDlgObjects (each empty slot here
+ * holds the next block's first instruction, dead on the taken path), while it copies from the
+ * taken target as MW does here -- not a pragma: optimization_level 2/3, optimize_for_size,
+ * global_optimizer, scheduling, schedule, peephole, tailcall, conditional_move, nomacro, padloop,
+ * trunc and 28 opt_* pragmas (build/scratch/ui/v_hb*.py) either change nothing or much more */
 CHandlerButtonSpec::CHandlerButtonSpec(_zrdr *rdr) : CButtonSpec(rdr), m_child(0)
 {
     _zrdr *sub = zrdr_findtag(rdr, "SUBORDINATE");
@@ -677,7 +682,12 @@ C2D *CCheckBoxSpec::CreateDisplayObj(C2DFont *font, zdb::CTextureRelocMgr *mgr) 
  * left behind (four words), lays out the bottom test's Count() with an empty delay slot and the
  * `sltu` at the join (here copied into both arms), and pads no label before "unnamed"; the two
  * name assignments' tag temporaries take sp+144 / sp+140 the other way round. `#pragma peephole
- * off`, `scheduling off`, `optimization_level 3`: no change */
+ * off`, `scheduling off`, `optimization_level 3`: no change (round 30: the target fills no slot from
+ * a fall-through block here -- CHandlerButtonSpec's note). The unit's no-target ~vector<CDesignDlgObj
+ * *>, ~__vector_imp<CDesignDlgObj *, ..., 1> and ~__vector_pod<Ui> (round 30, read in the object):
+ * nothing calls them -- their only relocations are their .mwcats entries -- so the link dead-strips
+ * them, as zui_cleanup.cpp's same three (~CRadioStripSpec inlines the chain): nothing in the target
+ * stands for them */
 CRadioStripSpec::CRadioStripSpec(_zrdr *rdr) : CButtonSpec(rdr)
 {
     _zrdr *subs = zrdr_findtag(rdr, "SUBORDINATES");
