@@ -413,6 +413,102 @@ C2D *CHProgressBarSpec::CreateDisplayObj(C2DFont *font, zdb::CTextureRelocMgr *m
     return bar;
 }
 
+class ListItem;
+struct ColumnData;
+
+/* the list box (zui_2d.cpp's CUIListBox, SOCOM 1's; SOCOM II's 0x610 bytes) as its spec builds it --
+ * the layout zui_2d.cpp declares, its members' names, with what that unit stands in for spelled out
+ * where the constructor stores (the two bitmaps at 0x2E0 and 0x380, the words at 0xD0 and 0x180);
+ * its virtuals only declared: the table 0x407670 (and the mixin's, 0x70 on) is zui_2d.cpp's. The
+ * constructor is inline: CreateDisplayObj inlines it one level, its members' constructors called --
+ * the item list's 0x37EA80 and the column vector's 0x37EA60 (their copies follow their first
+ * caller), CPnt3D's 0x1FB3C0, CPlainBmp's 0x20CD50, the actions' through __construct_array -- and
+ * it ends taking input (C2D's slot 17) */
+class CUIListBox : public CPlainBmp {
+public:
+    CUIListBox()
+        : m_offset(0), m_scrollY(0.0f), m_scroll(0), m_ownFont(0), m_scale(0.0f), m_d0(0),
+          m_highlightAlpha(80), m_noHighlight(false), m_followEnd(false), m_ea(false), m_texEC(0),
+          m_texF0(0), m_texF4(0), m_texF8(0), m_texFC(0), m_seqStart(0.0f), m_seqLength(0.0f),
+          m_pulseMin0(0.0f), m_pulseMax0(0.0f), m_pulseTime0(0.0f), m_pulseMin(0.0f),
+          m_pulseMax(0.0f), m_pulseTime(0.0f), m_184(60.0f), m_tex188(0), m_tex18c(0), m_190(0),
+          m_highlighted(0), m_numActions(0)
+    {
+        SetCanHandleInput(true);
+    }
+    virtual ~CUIListBox();
+    virtual C2DAnimCmdHdr *ParseZAnimCmd(_zrdr *rdr);
+    virtual int GetZAnimCmdType(const char *name);
+    virtual void SetActive();
+    virtual void SetNormal();
+    virtual void UpdateUIVar(CUIVariable *var);
+    virtual bool TickZAnimCmd(_zanim_cmd_hdr *hdr, float *dT, bool *done);
+    /* set up from its spec (0x375E20, zui_2d.cpp's) */
+    void LoadSpec(const CUIListBoxSpec &spec, zdb::CTexHandle *tex, zdb::CTextureRelocMgr *mgr);
+
+    C2DFont *m_font;   // 0xa0
+    int m_a4;   // 0xa4
+    int m_a8;   // 0xa8
+    int m_lineHeight;   // 0xac
+    int m_offset;   // 0xb0
+    float m_scrollY;   // 0xb4
+    int m_scroll;   // 0xb8
+    C2DFont *m_ownFont;   // 0xbc
+    std::list<ListItem *> m_items;   // 0xc0
+    float m_scale;   // 0xcc
+    int m_d0;   // 0xd0
+    std::vector<ColumnData *> m_columns;   // 0xd4
+    int m_highlightAlpha;   // 0xe0
+    zdb::CTextureRelocMgr *m_mgr;   // 0xe4
+    bool m_noHighlight;   // 0xe8
+    bool m_followEnd;   // 0xe9
+    bool m_ea;   // 0xea
+    zdb::CTexHandle *m_texEC;   // 0xec
+    zdb::CTexHandle *m_texF0;   // 0xf0
+    zdb::CTexHandle *m_texF4;   // 0xf4
+    zdb::CTexHandle *m_texF8;   // 0xf8
+    zdb::CTexHandle *m_texFC;   // 0xfc
+    int m_rect100[4];   // 0x100 (zui_2d.cpp's IRECTs)
+    int m_rect110[4];   // 0x110
+    int m_rect120[4];   // 0x120
+    CPnt3D m_color;   // 0x130
+    CPnt3D m_color13c;   // 0x13c
+    CPnt3D m_color148;   // 0x148
+    CPnt3D m_highlightColor;   // 0x154
+    float m_seqStart;   // 0x160
+    float m_seqLength;   // 0x164
+    float m_pulseMin0;   // 0x168
+    float m_pulseMax0;   // 0x16c
+    float m_pulseTime0;   // 0x170
+    float m_pulseMin;   // 0x174
+    float m_pulseMax;   // 0x178
+    float m_pulseTime;   // 0x17c
+    int m_180;   // 0x180
+    float m_184;   // 0x184
+    zdb::CTexHandle *m_tex188;   // 0x188
+    zdb::CTexHandle *m_tex18c;   // 0x18c
+    int m_190;   // 0x190
+    int m_highlighted;   // 0x194
+    int m_198[2];   // 0x198
+    CPlainBmp m_highlight;   // 0x1a0
+    CPlainBmp m_bar;   // 0x240
+    CPlainBmp m_bmp2e0;   // 0x2e0
+    CPlainBmp m_bmp380;   // 0x380
+    ActionItem m_actions[30];   // 0x420
+    int m_numActions;   // 0x600
+};   // 0x610 bytes
+
+/* a list box of the spec's texture, in the dialog's font (SOCOM 1's) */
+C2D *CUIListBoxSpec::CreateDisplayObj(C2DFont *font, zdb::CTextureRelocMgr *mgr) const
+{
+    CUIListBox *box = new CUIListBox;
+    zdb::CTexHandle *tex = PrepTexture(m_filename.c_str(), mgr);
+
+    box->m_font = font;
+    box->LoadSpec(*this, tex, mgr);
+    return box;
+}
+
 /* a slider of the spec's knob (SOCOM 1's): C2DButton's constructor out of line (0x377800,
  * zui_2d.cpp's; byte-exact since the HUD's round 31 named it) */
 C2D *CSliderBarSpec::CreateDisplayObj(C2DFont *font, zdb::CTextureRelocMgr *mgr) const

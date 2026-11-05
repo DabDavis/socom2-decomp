@@ -886,6 +886,21 @@ void CSoftKeyboard::PrepKeyBitmaps(CBmpWithNode *a, CBmpWithNode *b, unsigned ch
     }
 }
 
+/* every key's props deleted, then the members (0x38CCA0; the UI lane's round 26: the map walked
+ * through its iterator in the frame, ++ the tree's increment out of line).
+ * OPEN, 4 instructions short (0x47C of 0x48C): everything to the base the target's -- the walk, the
+ * six bitmaps, the fonts' array, the map's destroy, the grid's and the strings' deleters -- but in
+ * the inlined ~CSkbLook the target tests each member array's address before its __destroy_arr
+ * (`addiu a0,s2,224; beqz a0` for m_caps, `addiu a0,s2,36; beqz a0` for m_sources), as it tests the
+ * strings' before their destructors; here the arrays go straight to __destroy_arr (~CGameMenu's own
+ * ActionItem array is untested in the target too). Tried: a user-declared inline ~CSkbLook (no
+ * change). Next: the arrays as members of classes of their own (the test a wrapper's this-test) */
+CSoftKeyboard::~CSoftKeyboard()
+{
+    for (CSkbKeyMap::iterator it = m_keyProps.begin(); it != m_keyProps.end(); ++it)
+        delete (*it).second;
+}
+
 CSkbKeyProps *CSoftKeyboard::FindKeyProps(const CSkbKey &key)
 {
     CSkbKeyMap::iterator i = m_keyProps.find(key);

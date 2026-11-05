@@ -23,6 +23,7 @@
  * renamed, 40 relocations resolved). */
 
 #include "zui_2d.h"
+#include "../ztwod/c2dfont.h"
 #include <stdio.h>
 #include <iostream>   /* (its pair opens __sinit_zui.cpp, 0x403620) */
 
@@ -177,8 +178,13 @@ public:
 
 class CNode {
 public:
+    CNode();
     static CNode *Create(const char *name);
+    static CNode *CreateInstance(const char *name, const CPnt3D *pos, const CQuat *rot);
     bool AddVisual(CVisual *visual);
+    void SetDynamicLight(bool on, bool children);
+    void SetDescendantVisuals(bool on);
+    void SetRotation(const CPnt3D *rot);
     void SetPosition(float x, float y, float z);
     void SetName(const char *name);
 
@@ -195,6 +201,12 @@ public:
     unsigned char _64[0x9c - 0x64];
     float m_Opacity;   // 0x9c
     unsigned char _a0[0xc0 - 0xa0];
+};
+
+/* the world (znode.h's zdb::CWorld: only its root, the node models are added under) */
+class CWorld : public CNode {
+public:
+    static CWorld *m_world;
 };
 }
 
@@ -213,9 +225,13 @@ public:
     /* the actions on an event run, each with the argument given or its own (SOCOM 1's; SOCOM II
      * looks the animation up twice) */
     bool RunEventAnim(ActionItem::EVENT event, const char *arg);
+    /* (SOCOM 1's: 0x369B60, 0x3698C0) */
+    CGameMenu();
     /* the menu emptied (0x369210, SOCOM 1's) and built from a design (0x367950, SOCOM 1's) */
     void Clear();
     void LoadFromDesign(const CGameDlgDesign &design, CZAnimZAR *zar);
+    /* the design's models put into the world (0x366730, SOCOM 1's) */
+    void PrepModels(const CGameDlgDesign &design);
     /* the design an rdr names read and the menu built from it (SOCOM 1's Init and SwitchMenu inlined
      * it; the name ours) */
     void LoadDesign(const char *name, CZAnimZAR *zar);
@@ -230,19 +246,27 @@ public:
     zdb::CNode *m_pBackplaneNode;   // 0xc4
     zdb::CNode *m_pForeplaneNode;   // 0xc8
     zdb::CNode *m_popupnode;      // 0xcc
-    unsigned char _d0[0x210 - 0xd0];
-    unsigned char m_font[0x64];   // 0x210: the menu's C2DFont (SOCOM 1's 0x30 bytes, SOCOM II's 0x64)
-    unsigned char _274[0x278 - 0x274];
+    CPlainBmp m_bmpd0;            // 0xd0 (the names to m_font ours, by the constructor's calls)
+    CPlainBmp m_fader;            // 0x170: black, 640 by 448, half opaque
+    C2DFont m_font;               // 0x210: the menu's font (SOCOM 1's 0x30 bytes, SOCOM II's 0x64)
+    int m_274;                    // 0x274
     bool m_movierunning;          // 0x278 (SOCOM 1's at 0x244)
     bool m_has_mpeg_background;   // 0x279
     bool m_loopMPEG;              // 0x27a: SOCOM II's (TickMPEG loops the movie when set; the name ours)
     CSaferStr m_MPEGName;         // 0x27c
-    unsigned char _288[0x6f8 - 0x288];
+    C2DButton m_buttons;          // 0x290: the menu's buttons, as children (MakeButtonActive walks them)
+    int m_activeButton;           // 0x6d0
+    C2D m_6d4;                    // 0x6d4
+    std::vector<C2D *> m_6ec;     // 0x6ec (reserved 32)
     ActionItem m_commands[30];    // 0x6f8 (SOCOM 1's at 0x68c)
     int m_numCommands;            // 0x8d8
     zdb::CTextureRelocMgr *m_Reloc;   // 0x8dc
     CSaferStr m_ReaderName;     // 0x8e0: the menu's rdr
-    unsigned char _8ec[0x910 - 0x8ec];
+    std::vector<zdb::CNode *> m_modelNodes;   // 0x8ec: the design's models' nodes (PrepModels; SOCOM 1's at 0x878)
+    bool m_8f8;                   // 0x8f8
+    int m_8fc;                    // 0x8fc (-1)
+    int m_900;                    // 0x900
+    std::vector<CSaferStr> m_904; // 0x904
 
     virtual ~CGameMenu();
     virtual void MyTick(float dT);
@@ -283,7 +307,9 @@ struct _zvid_public {
     float runTime;            // 0x20
     unsigned char _24[0x34 - 0x24];
     unsigned int renderBuf;   // 0x34
-    unsigned char _38[0x7d - 0x38];
+    unsigned char _38[0x60 - 0x38];
+    float m_60;               // 0x60: the foreplane sits 1 nearer (the menu's constructor)
+    unsigned char _64[0x7d - 0x64];
     unsigned char pcrtcDo;    // 0x7d
 };
 extern _zvid_public zVid;
@@ -493,6 +519,48 @@ void UiLoadCountSound(CGameMenu *)
     s_countSound = CSnd::GetSoundByName(name.c_str());
 }
 
+/* the menu's node table (SOCOM 1's RegisterMenuNode / UnRegisterMenuNode: zanim_menu.cpp's) and the
+ * menu being built (UiGetCurMenu's static, 0x49EA90) */
+void RegisterMenuNode(zdb::CNode *node);
+void UnRegisterMenuNode();
+extern CGameMenu *data_0049EA90;
+extern unsigned char g_hasAnims;
+
+/* the menu built: its nodes, its two bitmaps, its font, its button parent, its commands, its
+ * strings and vectors, the backplane and foreplane under its node (the foreplane 1 nearer than the
+ * video's 0x60), registered, the fader black and half opaque (SOCOM 1's) */
+CGameMenu::CGameMenu() : m_popupnode(0), m_274(0), m_movierunning(false), m_has_mpeg_background(false),
+                         m_8f8(false), m_8fc(-1), m_900(0)
+{
+    data_0049EA90 = this;
+    m_MPEGName.reserve(64);
+    m_ReaderName.reserve(64);
+    m_pBackplaneNode = zdb::CNode::Create("CGameMenu backplane");
+    m_pForeplaneNode = zdb::CNode::Create("CGameMenu foreplane");
+    m_nodeTop.AddChild(m_pBackplaneNode);
+    m_nodeTop.AddChild(m_pForeplaneNode);
+    m_pForeplaneNode->SetPosition(0.0f, 0.0f, zVid.m_60 - 1.0f);
+    RegisterMenuNode(&m_nodeTop);
+    m_fader.SetHasTexture(false);
+    m_fader.Load(0.0f, 0.0f, 640.0f, 448.0f, 0);
+    m_fader.SetColor(0.0f, 0.0f, 0.0f);
+    m_fader.SetTrans(128.0f);
+    m_numCommands = 0;
+    m_activeButton = 0;
+    g_hasAnims = 0;
+    m_modelNodes.reserve(64);
+    m_6ec.reserve(32);
+}
+
+/* the menu emptied and unregistered, no menu being built, the CRTC flag set (SOCOM 1's) */
+CGameMenu::~CGameMenu()
+{
+    Clear();
+    UnRegisterMenuNode();
+    data_0049EA90 = 0;
+    zVid.pcrtcDo = 1;
+}
+
 /* a design object's control made in the menu's font, given a node of its own ("Add2dNode": the
  * control told of it, its visual added) under the menu's node the object names, else under the
  * backplane, placed at the object's position with its opacity and named after it; the control
@@ -502,7 +570,7 @@ void UiLoadCountSound(CGameMenu *)
  * ...` on one variable keeps it in a saved register from the search on: 8 bytes short) */
 C2D *CGameMenu::Add2dNode(CDesignDlgObj *obj)
 {
-    C2D *ctrl = obj->m_spec->CreateDisplayObj((C2DFont *)m_font, m_Reloc);
+    C2D *ctrl = obj->m_spec->CreateDisplayObj(&m_font, m_Reloc);
     zdb::CNode *found = *obj->m_childOf.c_str() ? m_nodeTop.FindChild(obj->m_childOf.c_str(), true) : 0;
     zdb::CNode *parent = found ? found : m_pBackplaneNode;
     zdb::CTextureRelocMgr *reloc = m_Reloc;
@@ -640,6 +708,45 @@ bool CGameMenu::TickMPEG()
         }
     }
     return m_movierunning;
+}
+
+/* the design's models put into the world: each an instance of its model -- by name, or by the
+ * string variable its name names ("" for none) -- at the place its azimuth, elevation and distance
+ * give, dynamically lit, named, added under the world, its visuals on, turned by its rotation, and
+ * kept (SOCOM 1's; 0x366730). The count compared as an int (slt), the "" preset ahead of the
+ * variable test (its addiu in that branch's delay slot), the rotation's three floats read into
+ * locals z first (the constructor's arguments straight give y and z each other's register) */
+void CGameMenu::PrepModels(const CGameDlgDesign &design)
+{
+    if (!zdb::CWorld::m_world)
+        return;
+    for (int i = 0; i < (int)design.m_models.size(); i++) {
+        const CDlgDesignModel &m = design.m_models[i];
+        CPnt3D pos(320.0f + m.m_azimuth, m.m_elev, 320.0f - m.m_distance);
+        const char *name = "";
+
+        if (m.m_useModelUIVar) {
+            CUIVariable *var = theUIVarManager.Find(m.m_model.c_str());
+
+            if (var)
+                name = var->String();
+        } else {
+            name = m.m_model.c_str();
+        }
+        zdb::CNode *node = zdb::CNode::CreateInstance(name, &pos, 0);
+
+        if (node) {
+            node->SetDynamicLight(true, true);
+            node->SetName(m.m_name.c_str());
+            zdb::CWorld::m_world->AddChild(node);
+            node->SetDescendantVisuals(true);
+            float rz = m.m_rotZ, ry = m.m_rotY, rx = m.m_rotX;
+            CPnt3D rot(rx, ry, rz);
+
+            node->SetRotation(&rot);
+            m_modelNodes.push_back(node);
+        }
+    }
 }
 
 void CDblBufTextureRelocator::Init()
