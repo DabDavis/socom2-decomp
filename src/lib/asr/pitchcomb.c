@@ -8,8 +8,8 @@
  * their use. NormE_Processing (round 17c), ControlPitchCombiner (round 22c: SOCOM 1's body,
  * 0x5028F0 -- the constructor's control slot, moved before InitPitchCombiner in SOCOM II),
  * FlushPitchCombiner, ProcessPitchCombiner and ConstructPitchCombiner (round 23c) and
- * LogPitchProcessing (round 24c) are written, PitchCombinerReset OPEN; InitPitchCombiner is not
- * written.
+ * LogPitchProcessing (round 24c) are written, PitchCombinerReset OPEN; InitPitchCombiner (round
+ * 25c) OPEN.
  * The vendor halves the lead (+156) as `p->f156 / 2` (round 24c): the C front end shortens the
  * division to the unsigned char's own type, so its load is another RTL expression than the
  * zero-extended read a compare or a `>> 1` makes -- CSE keeps the two apart, which is the re-read
@@ -53,7 +53,8 @@ typedef struct PITCHCOMB {
     char pad170[2];
     float f172;                         /* +172: r112's last frame (the run's mean) */
     float f176;                         /* +176: r96's last frame (the run's weighted mean) */
-    char pad180[2];
+    char pad180;
+    unsigned char nout;                 /* +181: the output frame's values */
     unsigned char f182;                 /* +182: set by command 201 */
     unsigned char f183;
     unsigned char f184;
@@ -514,8 +515,91 @@ static int ControlPitchCombiner(PITCHCOMB *p, unsigned char cmd)
     return 1;
 }
 
-/* (InitPitchCombiner 0x502A08 is not written) */
-int InitPitchCombiner(PITCHCOMB *p);
+/* the profile read and the allocation: the frame's values (profile 1), the queues' element sizes,
+ * the lead (7) and the window (5), the rings as long as the larger of the two, and the two weight
+ * tables; then the rings reset as PitchCombinerReset resets them, the tables filled (-3..3 and
+ * -2..2) and the state cleared -- the tail written out, not the reset called (round 24c) -- and the
+ * two thresholds read. Round 25c: the rings' length is the larger of the lead and the window (the
+ * target's first count is `andi a1,a3,0xff` of a 7 CSE cannot fold, f156 keeping its own `li 7`; a
+ * constant 7 shares f156's and is 2 words short; SOCOM 1's code has the same pair).
+ * OPEN (round 25c, the right size, 16 words): the head's schedule -- the target stores the frame's
+ * values from the call's register and zero-extends after the store; through an unsigned short
+ * local the `andi` comes first, read back from the field it is reloaded after the queue-size stores
+ * (23 words; c1/c2 copies, an int local: 17-21 or 2 words short) -- and the tail's last 1-store,
+ * PitchCombinerReset's open order: sched1 issues f183's store (the 1's REG_DEAD) first of the three,
+ * the target in source order (a do/while(0) on it: 64 words, sched2's). */
+static int InitPitchCombiner(PITCHCOMB *p)
+{
+    TOS *tos = p->b.tos;
+    unsigned short n;
+    int lead;
+
+    n = _tosGetProfileU32(p, 1, 21);
+    p->nvals = n;
+    p->nout = 5;
+    p->f172 = 0;
+    p->b.inputs[0].size = 4;
+    p->b.inputs[1].size = 1;
+    p->b.inputs[2].size = (n + 1) * sizeof(float);
+    p->b.outputs[0].size = p->nout * sizeof(float);
+    p->f156 = 7;
+    p->nwin = 5;
+    p->nring = p->f156 > p->nwin ? p->f156 : p->nwin;
+    p->e.base = heap_Calloc(tos->heap, p->nring, sizeof(float));
+    p->r60.base = heap_Calloc(tos->heap, p->nring, sizeof(float));
+    p->r80.base = heap_Calloc(tos->heap, p->nring, sizeof(float));
+    p->r96.base = heap_Calloc(tos->heap, p->nring, sizeof(float));
+    p->r112.base = heap_Calloc(tos->heap, p->nring, sizeof(float));
+    p->out.base = heap_Calloc(tos->heap, p->nring, sizeof(float));
+    p->f148 = heap_Calloc(tos->heap, p->f156, sizeof(float));
+    p->weights = heap_Calloc(tos->heap, p->nwin, sizeof(float));
+    if (p->e.base == 0 || p->r60.base == 0 || p->r80.base == 0 || p->r96.base == 0
+        || p->r112.base == 0 || p->out.base == 0 || p->f148 == 0 || p->weights == 0) {
+        _tosErrorLog(p, 2);
+        return 1;
+    }
+    ResetRing(&p->r80, p->nring);
+    ResetRing(&p->e, p->nring);
+    ResetRing(&p->r60, p->nring);
+    ResetRing(&p->r112, p->nring);
+    ResetRing(&p->r96, p->nring);
+    ResetRing(&p->out, p->nring);
+    lead = p->f156 >> 1;
+    p->r112.wr = p->r112.base + lead;
+    p->r96.wr = p->r96.base + lead;
+    p->out.wr = p->out.base + (p->nwin >> 1);
+    p->f76 = p->r60.rd;
+    p->rd = p->e.rd;
+    p->f144 = 0;
+    p->f148[0] = -3.0f;
+    p->f148[1] = -2.0f;
+    p->f148[2] = -1.0f;
+    p->f148[3] = 0.0f;
+    p->f148[4] = 1.0f;
+    p->f148[5] = 2.0f;
+    p->f148[6] = 3.0f;
+    p->f166 = 28;
+    p->weights[0] = -2.0f;
+    p->weights[1] = -1.0f;
+    p->weights[2] = 0.0f;
+    p->weights[3] = 1.0f;
+    p->weights[4] = 2.0f;
+    p->norm = 10;
+    p->f184 = 1;
+    p->fill = 1;
+    p->f183 = 1;
+    p->f159 = 0;
+    p->f161 = 0;
+    p->f162 = 0;
+    p->f160 = 0;
+    p->f163 = 0;
+    p->f164 = 0;
+    p->f182 = 0;
+    p->f185 = 0;
+    p->f188 = _tosGetProfileFloat(p, 2, 0.0f);
+    p->f192 = _tosGetProfileFloat(p, 3, 100000.0f);
+    return 0;
+}
 
 TOSBLOCK *ConstructPitchCombiner(TOS *tos, unsigned char id)
 {

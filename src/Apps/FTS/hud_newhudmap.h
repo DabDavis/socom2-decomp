@@ -6,6 +6,7 @@
 
 #include "../../gamez/ztwod/ztwod.h"
 #include "hud_mapitem.h"
+#include "hud_missioncams.h"   /* MENU_STATE */
 
 class CZSealBody;
 
@@ -45,6 +46,9 @@ public:
     virtual ~CZObjectiveList();
     virtual void Draw(zdb::CCamera *cam);
     bool IsPlayingAnimation();
+    void SelectObjective();
+    void PreviousObjective();
+    void NextObjective();
     CMissionObjectiveCam *GetCurrentObjective() const;
     void MissionEndCleanup();
 
@@ -57,6 +61,18 @@ class CSnd;
 class CZClaymoreMapItem;
 class CZMPBombMapItem;
 class CZProjectile;
+
+/* the full-screen map's four scroll permissions, screen up/left/right/down (SOCOM 1's DWARF; all
+ * false to start) */
+class CScrollBools {
+public:
+    CScrollBools() : _bUp(false), _bLeft(false), _bRight(false), _bDown(false) {}
+
+    bool _bUp;   // 0x0
+    bool _bLeft;   // 0x1
+    bool _bRight;   // 0x2
+    bool _bDown;   // 0x3
+};
 
 class CZNewHudMap : public C2D {
 public:
@@ -81,6 +97,15 @@ public:
     float GetZoomOut() const;
     void FrameObjective();
     void SwitchToCompassMap();
+    /* the full-screen map's pad: closed, objectives stepped, selected or framed, the map centred
+     * on the viewer, scrolled and zoomed, the legend shown while R2 is held (SOCOM 1's; 0x209EE0) */
+    void TickFullScreenMap(CPad *pad, enum MENU_STATE menustate);
+    /* the full-screen map scrolled by the stick (SOCOM 1's; 0x20A120) */
+    void HandleScrolling(float fStickX, float fStickY);
+    /* which ways the full-screen map may scroll (SOCOM 1's; 0x20AAC0) */
+    CScrollBools GetScrollPermissions() const;
+    /* the bounds the full-screen map scrolls inside (an inline; the name ours) */
+    const CBBox *GetScrollBounds() const;
     void CalcNewMatrix();
     /* the world window, its centre and width (no narrower than the minimum) at once: the width's
      * setter passes the centre back in, read before the clamp (the name is ours) */
@@ -114,9 +139,10 @@ public:
     CHUD *m_parent;   // 0x810 (SOCOM 1's last three, after the list as there)
     CSnd *m_zoominsound;   // 0x814
     CSnd *m_zoomoutsound;   // 0x818
-    int m_socom2_81c;   // 0x81c: SOCOM II's three, zeroed by the constructor
-    int m_socom2_820;   // 0x820
-    int m_socom2_824;   // 0x824
+    CSnd *m_socom2_81c;   // 0x81c: SOCOM II's three sounds, zeroed by the constructor -- the
+                          // full-screen map's close and select (TickFullScreenMap 0x209EE0)
+    CSnd *m_socom2_820;   // 0x820: the previous objective's
+    CSnd *m_socom2_824;   // 0x824: the next objective's
     unsigned char _828[0x830 - 0x828];
 };   // 0x830 bytes (CHUD's constructor news it)
 

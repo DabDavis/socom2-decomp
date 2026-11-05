@@ -734,7 +734,13 @@ inline float GetRatingWeight()
  * first, or at function scope, rotates s0-s5; 15 to 49 instructions). Tried for the pair: 0.5f
  * written first or last, `/ 2.0f` (div.s), a float local for the weight, for the difference, or
  * both in either order, `(float)(int)`, `(int)fOld` from a float local, an inline Blend(from, to,
- * t) (4), its difference a float local (3), the constant from an inline (3, adopted) */
+ * t) (4), its difference a float local (3), the constant from an inline (3, adopted). Round 48's
+ * replay (igdump): the 0.5 is v50, the difference's mtc1/cvt v48/v49 -- MW generates the complex
+ * right operand first, so the constant's register is numbered last and coloured first ($f0); the
+ * first 0.5 (`0.5f + fRating`, a load on the right) is numbered before its load and takes $f1 as
+ * the target's. Also tried: an int local for the difference, (float) on it, the sum's operands
+ * swapped, a Scale(int) / Weighted(float) inline, a static const weight (4), a weight local before
+ * the record (4), the negated difference (5), iOld declared then assigned */
 int ComputeNewRating()
 {
     int iRating = 0;
