@@ -179,7 +179,7 @@ public:
     int GetUsedSpace(int unused);   /* (an int both callers pass as 0; never read) */
     bool CreateReserveFile(const char *name, int kb);
     bool CreateReserveFiles();
-    void CreateIconFiles();
+    bool CreateIconFiles();
     void Uninit();
     void Reset();
     void Init();

@@ -529,6 +529,144 @@ unsigned short Ascii2Sjis(unsigned char ascii_code)
     return sjis_code;
 }
 
+/* Sony's icon.sys record (libmc.h's sceMcIconSys, 964 bytes) and the lighting libmc's icon sample
+ * writes into it (SOCOM II's values: the sample's backdrop and light directions, its light colours
+ * all zero -- so in .bss -- and a 0.78 ambient) */
+typedef int iconIVECTOR[4];
+typedef float iconFVECTOR[4];
+typedef struct {
+    unsigned char Head[4];
+    unsigned short Reserv1;
+    unsigned short OffsLF;          // 0x6
+    unsigned int Reserv2;
+    unsigned int TransRate;         // 0xc
+    iconIVECTOR BgColor[4];         // 0x10
+    iconFVECTOR LightDir[3];        // 0x50
+    iconFVECTOR LightColor[3];      // 0x80
+    iconFVECTOR Ambient;            // 0xb0
+    unsigned char TitleName[68];    // 0xc0
+    unsigned char FnameView[64];    // 0x104
+    unsigned char FnameCopy[64];    // 0x144
+    unsigned char FnameDel[64];     // 0x184
+    unsigned char Reserve3[512];    // 0x1c4
+} sceMcIconSys;
+
+extern "C" int sprintf(char *dst, const char *fmt, ...);
+extern "C" int sceOpen(const char *name, int flags);
+extern "C" int sceRead(int fd, void *buf, int nbyte);
+extern "C" int sceClose(int fd);
+extern sceMcIconSys data_004A37F0;
+extern iconIVECTOR data_003E0700[4];
+extern iconFVECTOR data_003E0740[3];
+extern iconFVECTOR data_004A3BC0[3];
+extern iconFVECTOR data_003E0770;
+
+/* the save directory's icon.sys written and its icon (RUN\ICONS\LIST.ICO off the disc) copied
+ * beside it, for the browser's view, copy and delete alike; false either way (SOCOM 1's, which
+ * copied three icons: SOCOM II's tells the menu of each failure, waits for the last asynchronous
+ * command first, and has one icon) */
+bool CMemCard::CreateIconFiles()
+{
+    int cmd;
+    int result;
+    int fd = -1;
+    char buf[1024];
+    char path[80];
+    char name[80];
+    char mcname[80];
+    const char *icon = "LIST.ICO";
+
+    sceMcSync(0, &data_004A37C0, &data_004A37C8);
+    memset(&data_004A37F0, 0, sizeof(sceMcIconSys));
+    strcpy((char *)data_004A37F0.Head, "PS2D");
+    int i;
+    int len = strlen("SOCOM II: U.S. Navy SEALS");
+
+    for (i = 0; i < len; i++) {
+        unsigned short sjis = Ascii2Sjis("SOCOM II: U.S. Navy SEALS"[i]);
+
+        ((unsigned short *)data_004A37F0.TitleName)[i] = (sjis >> 8 & 0xFF) | (sjis & 0xFF) << 8;
+    }
+    ((unsigned short *)data_004A37F0.TitleName)[i] = 0;
+    data_004A37F0.OffsLF = 18;
+    data_004A37F0.TransRate = 0x60;
+    memcpy(data_004A37F0.BgColor, data_003E0700, sizeof(data_003E0700));
+    memcpy(data_004A37F0.LightDir, data_003E0740, sizeof(data_003E0740));
+    memcpy(data_004A37F0.LightColor, data_004A3BC0, sizeof(data_004A3BC0));
+    memcpy(data_004A37F0.Ambient, data_003E0770, sizeof(data_003E0770));
+    strcpy((char *)data_004A37F0.FnameView, icon);
+    strcpy((char *)data_004A37F0.FnameCopy, icon);
+    strcpy((char *)data_004A37F0.FnameDel, icon);
+
+    if (sceMcOpen(m_selPort, m_selSlot, "icon.sys", 0x202) < 0) {
+        MemCardError();
+        return false;
+    }
+    sceMcSync(0, &cmd, &fd);
+    if (fd < 0) {
+        MemCardError();
+        return false;
+    }
+    if (sceMcWrite(fd, &data_004A37F0, sizeof(sceMcIconSys)) < 0) {
+        MemCardError();
+        return false;
+    }
+    sceMcSync(0, &cmd, &result);
+    if (sceMcClose(fd) < 0) {
+        MemCardError();
+        return false;
+    }
+    sceMcSync(0, &cmd, &result);
+
+    sprintf(path, "RUN\\ICONS\\%s", icon);
+    CFileIO::PS2FileName(path, name, false);
+    int file = sceOpen(name, 1);
+
+    if (file < 0) {
+        MemCardError();
+        return false;
+    }
+    sprintf(mcname, "%s", icon);
+    if (sceMcOpen(m_selPort, m_selSlot, mcname, 0x203) < 0) {
+        MemCardError();
+        return false;
+    }
+    sceMcSync(0, 0, &fd);
+    if (fd < 0) {
+        MemCardError();
+        return false;
+    }
+    int n;
+
+    do {
+        n = sceRead(file, buf, 1024);
+        if (sceMcWrite(fd, buf, n) < 0) {
+            MemCardError();
+            return false;
+        }
+        sceMcSync(0, 0, &result);
+        if (result < 0) {
+            MemCardError();
+            return false;
+        }
+    } while (n == 1024);
+    if (result < 0) {
+        MemCardError();
+        return false;
+    }
+    sceClose(file);
+    if (sceMcClose(fd) < 0) {
+        MemCardError();
+        return false;
+    }
+    sceMcSync(0, 0, &result);
+    if (result < 0) {
+        MemCardError();
+        return false;
+    }
+    return false;
+}
+
 bool CMemCard::Exists(const char *name)
 {
     bool found = false;
