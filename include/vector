@@ -1719,6 +1719,12 @@ public:
     using __vector_imp<T, Allocator, false>::end;
     const_iterator begin() const { return const_iterator(this->data_); }
     const_iterator end() const { return const_iterator(this->data_ + this->size_); }
+    /* the reverse walk, as the scalar vectors' (std::reverse_iterator, include/iterator; the HUD's
+     * round 46: hud_scorepopup.cpp's pop-up loader stores each new name through `*names.rbegin()`,
+     * end() 0x22DD20 and the reverse * 0x22DD10 out of line there) */
+    typedef std::reverse_iterator<typename __vector_imp<T, Allocator, false>::iterator> reverse_iterator;
+    reverse_iterator rbegin() { return reverse_iterator(this->end()); }
+    reverse_iterator rend() { return reverse_iterator(this->begin()); }
     void clear() { __vector_imp<T, Allocator, false>::clear(); }
     /* the states lane's round 17: a forwarder, as clear() is -- st_core.cpp's SetMovie calls its
      * out-of-line copy (0x1EDF10, `j` to the cue vector's reserve 0x1EF190) */
