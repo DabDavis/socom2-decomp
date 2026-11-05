@@ -1791,6 +1791,13 @@ public:
     /* the state of the topmost blend not in state 3, else 0 (SOCOM 1's PeekBaseState; OVL2
      * 0x57DC20, seal_body.cpp's -- CalcAimGoal asks it in state 3) */
     unsigned char PeekBaseState();
+    /* where a throw or a shot would leave from, in the world (SOCOM 1's; OVL2 0x57FA70, seal_body.cpp) */
+    void GetPutativeFirePointW(bool thrown, bool toss, CPnt3D &out);
+    /* the throw anim the SEAL would take, its type, a fraction and a base time, a point (SOCOM 1's;
+     * OVL2 0x57FCE0, seal_body.cpp's -- not written yet) and the anim it picks pushed, the time
+     * into it given back (SOCOM 1's; OVL2 0x5802B0) */
+    bool GetThrowAnim(float t, AnimType &type, float &frac, float &base, CPnt3D &p);
+    bool BeginThrowItem(float t, float &out);
     /* a turn's set-up (SOCOM 1's TurnSetup(int), seal_ik.cpp's; OVL2 0x5B8270: SOCOM II only clears
      * the bits at 0x1060 6 and 7 when both feet exist, the int unread) */
     void TurnSetup(int anim);

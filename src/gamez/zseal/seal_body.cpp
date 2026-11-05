@@ -868,10 +868,8 @@ extern "C" CZBodyAnimBlend *func_0057E540(CZSealBody *seal)
 }
 
 extern "C" {
-/* an anim the SEAL could take, its type, a fraction and a base time, a point (OVL2 0x57FCE0, not
- * written yet), a move begun one way or the other (OVL2 0x5805B0, below) and two anim types
- * read as variables (OVL1 data, -1 in the image) */
-bool func_0057FCE0(CZSealBody *seal, AnimType *type, float *frac, float *base, float *p);
+/* a move begun one way or the other (OVL2 0x5805B0, below) and two anim types read as variables
+ * (OVL1 data, -1 in the image) -- the throw anim's pick is CZSealBody::GetThrowAnim (0x57FCE0) */
 CZBodyAnimBlend *func_005805B0(CZSealBody *seal, bool other, int state);
 extern short data_003DEED0;
 extern short data_003DEED8;
@@ -883,20 +881,21 @@ static inline int StateOf(CZSealBody *seal)
     return seal->m_state;
 }
 
-/* the anim 0x57FCE0 picks pushed, and the time into it its fraction makes, past its base (OVL2
- * 0x5802B0, new in SOCOM II) */
-extern "C" bool func_005802B0(CZSealBody *seal, float *out)
+/* the throw anim GetThrowAnim picks pushed, and the time into it its fraction makes, past its base
+ * (OVL2 0x5802B0: SOCOM 1's BeginThrowItem, after GetThrowAnim in both builds; the float passed
+ * straight on, as SOCOM 1's) */
+bool CZSealBody::BeginThrowItem(float t, float &out)
 {
     AnimType type;
     float frac = 0.0f;
     float base = 0.0f;
-    float p[3];
+    CPnt3D p;
     bool ok = false;
 
-    if (func_0057FCE0(seal, &type, &frac, &base, p)) {
-        CZBodyAnimBlend *b = (CZBodyAnimBlend *)func_00588BC0(seal, type, StateOf(seal), 0, 0);
+    if (GetThrowAnim(t, type, frac, base, p)) {
+        CZBodyAnimBlend *b = (CZBodyAnimBlend *)func_00588BC0(this, type, StateOf(this), 0, 0);
 
-        *out = base + frac * b->Representative()->m_anim->LoopTime();
+        out = base + frac * b->Representative()->m_anim->LoopTime();
         ok = true;
     }
     return ok;
@@ -1058,6 +1057,67 @@ extern "C" CZBodyAnimBlend *func_0057F5B0(CZSealBody *seal)
     }
     func_00588B40(seal, 20);
     return b;
+}
+
+/* where a throw or a shot would leave from, in the world: for a throw the offset of the base stance's
+ * throw or toss -- a peek's to its side, a run's (faster than 20, mostly forward) with the rifle's or
+ * the pistol's -- turned by the node; else the fire point's spot while it is set, the SEAL's position
+ * added (OVL2 0x57FA70: SOCOM 1's GetPutativeFirePointW by its order -- after the ladder climbs,
+ * before GetThrowAnim and BeginThrowItem, as 0x57FCE0 and 0x5802B0 -- and its shape; SOCOM II asks
+ * the speed squared and the node's matrix out of line; CAiSDeploy::Tick calls it) */
+void CZSealBody::GetPutativeFirePointW(bool thrown, bool toss, CPnt3D &out)
+{
+    if (thrown) {
+        const CPnt3D *off;
+        /* (a float local: compared through it the z stays the compare's first operand, as in both
+         * builds -- against the literal MW puts the zero first) */
+        float zero = 0.0f;
+
+        switch (PeekBaseState()) {
+        case 0:
+            if (m_state == statePeek)
+            {
+                if (m_desiredStance == STANCE_NONE)
+                    off = &stand_peek_ltoss;
+                else
+                    off = &stand_peek_rtoss;
+            }
+            else if (Dot(m_velM, m_velM) > 400.0f &&
+                     m_velM.z != zero && fabsf(m_velM.x / m_velM.z) < 0.5f)
+            {
+                if (m_item == ITEM_RIFLE)
+                    off = &running_rifle_throw;
+                else
+                    off = &running_pistol_throw;
+            } else if (toss)
+                off = &stand_toss;
+            else
+                off = &stand_throw;
+            break;
+        case 1:
+            if (toss)
+                off = &crouch_toss;
+            else
+                off = &crouch_throw;
+            break;
+        case 2:
+            if (toss)
+                off = &prone_toss;
+            else
+                off = &prone_throw;
+            break;
+        default:
+            off = &CPnt3D::zero;
+            break;
+        }
+        m_node->m_matrix.Transform(off, &out, 1);
+    } else {
+        if (m_curr_firept)
+            out = m_curr_firepos;
+        else
+            out = CPnt3D::zero;
+        out.Add(&m_posW, &out);
+    }
 }
 
 /* 0x57F7D0's twin, word for word (OVL2 0x57F9C0, new in SOCOM II: 0x5B2620 asks both in turn) */

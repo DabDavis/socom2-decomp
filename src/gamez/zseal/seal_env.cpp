@@ -766,6 +766,59 @@ extern "C" void func_005B6490(zdb::CNode *node, CBBox *box)
     _stack.Pop();
 }
 
+/* whether a hit is one a shot goes through: a material known, not under a polygon of camera type 1,
+ * neither volumetric nor liquid, and passing under 0.98 of a shot or a pickup's */
+static inline bool ShootThrough(zdb::IntersectStruct *is)
+{
+    CMaterialEx *mat = is ? MaterialEx(is->GetMaterial()) : 0;
+
+    if (!mat || !is)
+        return false;
+    if (is->m_poly && (unsigned char)is->m_poly->m_flags.m_cameratype == 1)
+        return false;
+    if (mat->IsVolumetric() || mat->IsLiquid() || mat->m_penetration >= 0.98f && !mat->IsPickup())
+        return false;
+    return true;
+}
+
+/* the nearest hit a shot goes through on the way from one point to another, the SEAL's node switched
+ * off for the probe -- or none (OVL2 0x5B6240, new in SOCOM II: 0x5AA6E0 calls it; the name unknown) */
+extern "C" zdb::IntersectStruct *func_005B6240(CZSealBody *seal, const CPnt3D *from, const CPnt3D *to)
+{
+    /* (the node's dead first definition numbers it ahead of the world, which the target loads first
+     * and keeps in s0) */
+    zdb::CNode *node = 0;
+    zdb::CWorld *world = zdb::CWorld::m_world;
+
+    node = seal->GetNode();
+    bool active = node->m_active;
+
+    node->SetActive(false);
+    zdb::DiIntersect *di = world->GetIntersects(from, to);
+
+    node->SetActive(active);
+    int n = di ? di->m_Cnt : 0;
+    float best = 0.0f;
+    zdb::IntersectStruct *hit = 0;
+
+    for (int i = 0; i < n; i++) {
+        zdb::IntersectStruct *is = &di->m_Intersects[i];
+
+        if (ShootThrough(is)) {
+            CPnt3D v;
+
+            is->m_pos.Sub(from, &v);
+            float d = v.x * v.x + v.y * v.y + v.z * v.z;
+
+            if (!hit || d < best) {
+                hit = is;
+                best = d;
+            }
+        }
+    }
+    return hit;
+}
+
 extern "C" {
 /* the SEALs' pool of ray intersections, its count and a third word (OVL1 bss; new in SOCOM II) */
 extern zdb::DiIntersect **data_0044D588;
