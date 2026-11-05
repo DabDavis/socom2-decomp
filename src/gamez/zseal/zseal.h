@@ -2220,7 +2220,11 @@ public:
      * toward them; the names ours) */
     float m_prevx;   // 0x248
     float m_prevz;   // 0x24c
-    unsigned char _250[0x2d4 - 0x250];
+    unsigned char _250[0x258 - 0x250];
+    /* bit 0: cleared by 0x549C30 when a wall the weapon's points are behind faces up past the limit
+     * (seal.cpp; the name ours) */
+    unsigned char m_258_0 : 1;   // 0x258
+    unsigned char _259[0x2d4 - 0x259];
     /* the volumetric hits under the SEAL (SOCOM 1's m_volumetricAltitudes at 0x260: SealProcessAltitude
      * clears it and pushes each smoke or gas hit) */
     std::vector<zdb::IntersectStruct> m_volumetricAltitudes;   // 0x2d4

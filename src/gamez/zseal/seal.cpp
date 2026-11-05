@@ -1815,6 +1815,74 @@ extern "C" bool func_0054A6D0(CZSealBody *seal, const CPnt3D *pos, zdb::Intersec
     return true;
 }
 
+extern "C" {
+/* the steepest wall normal the weapon's points are pushed back from (OVL1 bss 0x44C268, beside
+ * 0x44C264; the name ours) and a switch that keeps them out of walls off (OVL2 bss 0x66B000; the name
+ * ours) */
+extern float data_0044C268;
+extern unsigned char data_0066B000;
+}
+
+/* bit 0 of 0x258 set (an inline, the name ours: the target inserts the constant, `andi v1,zero,1`) */
+static inline void Set258(CZSealBody *seal, bool b) { seal->m_258_0 = b; }
+
+/* the weapon's aim and fire points kept out of a wall: with a node hit, a unit normal, both points on
+ * nodes, the top blend's flag 0x40, the body not prone, hanging or on a ladder and the switch off, the
+ * points moved by the offset and the weapon's sequence weighing half or more -- each point (the fire
+ * point first) behind the hit's plane pushes m_f44 back out along the normal, 0.85 of its depth, when
+ * the normal faces up no more than 0x44C268, else clears bit 0 of 0x258; false when a test fails or a
+ * point is in front (OVL2 0x549C30, new in SOCOM II; the name unknown) */
+extern "C" bool func_00549C30(CZSealBody *seal, const CPnt3D *offset, zdb::IntersectStruct *hit)
+{
+    if (!hit->m_node)
+        return false;
+    if (!_close_enough(Dot(hit->m_norm, hit->m_norm), 1.0f, 0.0001f))
+        return false;
+    if (!seal->m_curr_aimpt || !seal->m_curr_firept)
+        return false;
+    bool push = true;
+
+    if (!(hit->m_norm.y <= data_0044C268))
+        push = false;
+    if (!func_005551A0(((CZBodyAnimBlend *)func_00555170((CIndexedArray *)&seal->m_blends))->m_flags, 0x40))
+        return false;
+    if (seal->m_state == stateProne)
+        return false;
+    if (seal->m_state == stateClimbLadder || seal->m_state == stateHang)
+        return false;
+    if (data_0066B000)
+        return false;
+    CPnt3D aim;
+    CPnt3D fire;
+
+    seal->m_curr_aimpos.Add(offset, &aim);
+    seal->m_curr_firepos.Add(offset, &fire);
+    if (seal->m_wep_seq.Weight() < 0.5f)
+        return false;
+    for (int i = 0; i < 2; i++) {
+        CPnt3D p;
+        CPnt3D d;
+
+        if (i == 0)
+            p = fire;
+        else
+            p = aim;
+        p.Sub(&hit->m_pos, &d);
+        float dot = Dot(d, hit->m_norm);
+
+        if (!(dot < 0.0f))
+            return false;
+        if (push) {
+            CPnt3D n = hit->m_norm;
+
+            n.Scale(0.85f * -dot, &n);
+            seal->m_f44.Add(&n, &seal->m_f44);
+        } else
+            Set258(seal, false);
+    }
+    return true;
+}
+
 /* whether the throw the trigger's power would make is clear: the throw GetThrowAnim picks (none: not
  * clear), its point to a point ahead by the state -- a toss's nearer, a run's the stand's -- both
  * turned by the node, the first lifted to the ground plane, and nothing of the world between (OVL2
