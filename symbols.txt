@@ -2053,7 +2053,7 @@
 0x00228BC0 0x240 Tick__6CFaderFf  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00228E00 0xD0 __ct__6CFaderFv  # OVL1; s1:exact by hand (hud_fader.cpp; SOCOM 1's calls, its bit stores now SOCOM II's new C2D slots)
 0x00228ED0 0xC IsPlaying__16CZHudMissionCamsFv  # OVL1; s1:order (hud_missioncams.cpp's first function as in SOCOM 1; m_animhandle at 0x1C now, C2D 4 bytes shorter)
-0x00228EE0 0x54C PlayCamera__16CZHudMissionCamsFP11CMissionCamb  # OVL1; s1:callee
+0x00228EE0 0x54C PlayCamera__16CZHudMissionCamsFP11CMissionCamb  # OVL1; s1:callee; byte-exact (the HUD lane, round 51: SOCOM 1's with SOCOM II's tests, volume cap, film mark, recogniser and lens hold)
 0x00229430 0x40 PlayCamera__16CZHudMissionCamsFPCc  # OVL1; s1:exact
 0x00229470 0xAC Draw__16CZHudMissionCamsFPQ23zdb7CCamera  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00229520 0x2F0 CleanupCamera__16CZHudMissionCamsFP4CPad  # OVL1; s1:order (hud_missioncams.cpp's order; HudTick calls it when the camera's animation stops, as SOCOM 1's); byte-exact (the HUD lane, round 51: SOCOM 1's with SOCOM II's volume, voices, lens checks and the player's controller)
