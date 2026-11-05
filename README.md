@@ -10966,6 +10966,47 @@ written, OPEN: 5 of 7) -- 4 rows new to the map's byte-exact rows (1,528 bytes),
 superseded (ConstructMel 0x4F6918, InitMel 0x4F6C78); `src/lib/asr` 531 of 558 (525 of 554 before). No rows
 named (all had SOCOM 1's). No tool changed.
 
+**Round 27c: the spectral subtraction's reset, mel.c whole, three SOCOM 1 bodies, a new smoothing unit.**
+
+- **cse2 swaps a load and the copy after it when the copy's destination lives longer** (InitSpecSub and
+  ControlSpecSub, open since rounds 15c/26c, one cause): GCSE makes the reset's after-loop read of `s->n` a
+  copy of its reaching register R, copied after the first load (`m = load; R = m`); the rerun of CSE then
+  turns `(set REG1 X) (set REG0 REG1)` into `(set REG0 X) (set REG1 REG0)` when REG0 becomes its class's
+  first register -- its last use later than REG1's. With one variable for both counts (every earlier
+  spelling) the variable lives past R and keeps the load (`lw a2; move a1,a2`); with the first loop's count
+  a block-local of its own (`unsigned int m = s->n;`) and the count after the loop another variable, m dies
+  in the loop, R outlives it and takes the load (`lw a1; move a2,a1`, the target's). `n = s->n; m = n;` is
+  3 words: copy propagation folds m back into n.
+- **A deferred static inline is expanded where it is defined and written at the end** (mel.c): ControlMel's
+  call to MelInitBands carries no nothrow note in the target (the note moves 73 of ControlMel's words), yet
+  MelInitBands leads the object. 2.96 defers a static inline whose address is not yet taken and emits it
+  after the object's other functions, in declaration order -- so the block's process, control and init are
+  `static __inline__` above MelInitBands (their calls expanded, and noted, then), written after the
+  constructor that takes their addresses: the image's order, MelInitBands, ConstructMel, ProcessMel,
+  ControlMel, InitMel. (Plain statics above it would lead the object; below it, the call is noted.)
+- **MelInitBands (0x808) as SOCOM 1 wrote it, logf/powf for log/pow**: the band count stored in both arms of
+  its if (cross-jumping merges the tails after CSE, so `m->nbands -= low` reloads +40); the weights' cursor
+  post-incremented in the store of a `?:` (`*w++ = x < c ? ... : ...`: the address taken before the value).
+- **Cross-jumping puts the merged failure where the last one was written** (smtConstruct): each failing step
+  frees the smoother and returns 0 on its own, and the nine blocks merge into the last, which so sits before
+  the success return (the target's `bnezl; swc1` into it); one `goto fail` after the success return is 52
+  words.
+- **A callback's success falls to the shared `return 0`** (ConstructQueue, and ConstructBlock's helpers):
+  `if (cb(...) != 0) return 1;` with no `return 0` of its own keeps the test a branch (`beqz v0; li v0,1`);
+  `return cb(...) != 0`, or the arm's own `return 0`, is jump.c's store-flag (`sltu`). The input helper tests
+  the block first and writes the no-block case last (`if (b != 0) ... else if`).
+- **loop.c's reduced pointer adds in the giv's order** (Lin_2_Log): the output indexed `out[k + i]` starts
+  the strength-reduced pointer at `k * 4 + out`, the target's operand order; a row pointer `out + k` adds the
+  other way (1 word). The spline's bracket indices are variables of their own (`khi = klo + 1`: the target's
+  separate `(klo + 1) * 4`; `y[n + 1]` folds into an offset of y[n]); the frame counter and the row offset
+  are stepped together in the for (`j++, k += nlog`: the counter set first, its register the target's).
+
+Hand-written in round 27c: `asr/specsub.c` (InitSpecSub and ControlSpecSub closed: 6 of 7), `asr/mel.c`
+(MelInitBands new: 5 of 5), a new `asr/smooth.c` (SOCOM 1's smoothing object 0x3644C0, OVL2 0x4F7A48-0x4F812C:
+smtConstruct new, smtDestruct over its draft, Smoothing unwritten: 2 of 3), `asr/tos.c` (ConstructQueue new,
+SOCOM 1's static: 16 of 18; ConstructBlock 148 words, 2 short), `asr/shs.c` (Lin_2_Log new: 2 of 7). No rows
+named (all had SOCOM 1's). No tool changed.
+
 **Round 14b: the "toolchain" opens were SCEA's shapes; LargeInt's core is assembly.**
 
 - **LargeInt's EE primitives are hand-written assembly** (0x628B48-0x629A44, between LargeInt.c's C and
