@@ -7,7 +7,7 @@
  * CCell, a grid square's node, is the next unit, grid_cell.cpp (0x2D79D0-0x2D7E9B): CGrid's AddClutter,
  * DeleteClutter and Create call into it out of line. Then grid_clutter.cpp's clutter animation.
  * Defined in reverse of their image order (-inline deferred).
- * Unwritten: ReadClutter (0x2D5060), gridAddNodeToGrids (0x2D7580). CGrid() is written and byte-exact once its CFRect
+ * Unwritten: gridAddNodeToGrids (0x2D7580) (ReadClutter written in the core lane's round 17). CGrid() is written and byte-exact once its CFRect
  * constructor's row is named (below). */
 
 #include <stdio.h>
@@ -767,7 +767,9 @@ bool CGrid::AddClutter(CClutter *clutter)
     return ok;
 }
 
-/* every cell's clutter let go of (SOCOM 1's) */
+/* every cell's clutter let go of (SOCOM 1's). Pinned: its one caller, ReadClutter, calls it out of
+ * line (the core lane round 17) */
+#pragma auto_inline off
 void CGrid::DeleteClutter()
 {
     int n = m_CellCount.cx * m_CellCount.cy;
@@ -776,6 +778,7 @@ void CGrid::DeleteClutter()
         m_Atoms[i]->GetCell()->DeleteClutter();
     m_ClutterCreated = 0;
 }
+#pragma auto_inline reset
 
 /* the atom's node as a cell, or none (SOCOM 1's) */
 CCell *CGridAtom::GetCell()
@@ -805,6 +808,87 @@ bool CGrid::Read(CSaveLoad &io)
     if (ok)
         ok = Create(io.m_world, &params);
     return ok;
+}
+
+/* the map's clutter read: the old clutter let go of, the animation manager made, the map's
+ * clutter.zar opened under the path given (run/, then mp/ for a name starting "mp", sp/ for one
+ * starting "m") and, at version 4, each model key under "Clutter" read -- the model found (none for
+ * "NULL") and marked as clutter, one prop made, read and handed to the cells for each of its keys,
+ * a prop no cell took deleted; the clutter marked created and the manager made if it was not
+ * (SOCOM 1's, 0x214940, sprintf'd its path; SOCOM II builds it with strcat; written in the core
+ * lane's round 17).
+ * OPEN, 23 instructions (the target's size, every call and block in place): the archive's inner
+ * calls go through a pointer to it (`z`, the target's s5 -- SOCOM 1's build kept the address so
+ * too), the key's test on the call's own value (`(key = ...) != 0`: beqz v0 with the copy in the
+ * delay slot, a declaration-initialised key tests the copy); left: the target tests the model's
+ * copy (move s4,v0; beqz s4) where MW here tests the ternary's v0, and this/z/model take s6/s5/s4
+ * where ours take s5/s4/s6 -- the model through an if/else, preset, an inline, `!= 0`, a cast, a
+ * declaration ahead of the key: the same 23 or 0x3C4 (build/scratch/core/v_rc*.py); the replay
+ * (igreplay --want this=s6,z=s5,model=s4) finds no placement of z and model alone */
+bool CGrid::ReadClutter(const char *map, const char *dir)
+{
+    if (m_ClutterCreated)
+        DeleteClutter();
+    m_ClutterCreated = 0;
+    if (!m_ClutterAnimManager)
+        m_ClutterAnimManager = new CClutterAnimManager;
+
+    char path[64];
+    int version;
+
+    path[0] = 0;
+    if (dir)
+        strcat(path, dir);
+    strcat(path, "/");
+    strcat(path, "run/");
+    if (!strncmp(map, "mp", 2))
+        strcat(path, "mp/");
+    else if (!strncmp(map, "m", 1))
+        strcat(path, "sp/");
+    strcat(path, map);
+    strcat(path, "/");
+    strcat(path, "clutter.zar");
+
+    zar::CZAR file(0, 0);
+
+    if (file.Open(path, 0, 1, 16, false)) {
+        zar::CZAR *z = &file;
+
+        if (z->Fetch("Clutter_ZAR_Version", &version, 4) && version == 4) {
+            zar::CKey *root = z->OpenKey("Clutter");
+
+            if (root) {
+                for (zar::CKey::iterator it = root->begin(); it != root->end(); ++it) {
+                    zar::CKey *key;
+
+                    if ((key = z->OpenKey(*it)) != 0) {
+                        CNode *model = strcmp(key->m_name, "NULL") == 0 ? 0 : CWorld::GetModel(key->m_name);
+
+                        if (model)
+                            model->SetApplyClutterFlag(true);
+                        for (zar::CKey::iterator j = key->begin(); j != key->end(); ++j) {
+                            CClutter *c = new CClutter(model);
+
+                            z->OpenKey(*j);
+                            if (c->Read(z)) {
+                                if (!AddClutter(c))
+                                    delete c;
+                            } else
+                                delete c;
+                            z->CloseKey(*j);
+                        }
+                        z->CloseKey(*it);
+                    }
+                }
+                z->CloseKey(root);
+            }
+        }
+        file.Close();
+        m_ClutterCreated = 1;
+    }
+    if (m_ClutterCreated && !m_ClutterAnimManager)
+        m_ClutterAnimManager = new CClutterAnimManager;
+    return true;
 }
 
 }
