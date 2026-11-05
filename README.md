@@ -10621,6 +10621,62 @@ casrImportContext closed: 55 of 57), `asr/userword.c` (CalcF2 new: 12 of 14), `a
 superseding a draft; `src/lib/asr` 525 of 554 (517 of 549 before). 1 row named (0x4E2008 CalcF2,
 `s1:order`). No tool changed.
 
+**Round 26c: the nothrow note is -fno-inline's, the casr object whole, mel.c's process block.**
+
+- **A GNU extern inline compiled for inlining marks its function nothrow; -fno-inline keeps the call**:
+  2.96 sets TREE_NOTHROW where it saves a deferred inline, before any copy would be emitted, so with
+  the scheduler's input-queue commands as `extern __inline__` bodies (tos.c's own) visible and the
+  object built `-fno-inline`, the calls stay `jal`s to tos.c's copies, no copy is emitted, and each
+  call carries `REG_EH_REGION 0` -- ProcessTriggerLR's keep test is the target's `bnez` (round 25c's
+  word). Measured: without -fno-inline the calls are inlined (0x1CC); a body the inliner refuses
+  (varargs) is "only declared" (the `lose` path exits before the flag) and gives no note. So
+  `triggerlr.c` is the ninth object with a flag of its own (`-fno-inline`): its reset and session
+  helpers are written in place (a statement macro a plain block -- `do { } while (0)` is a loop to the
+  scheduler, 19 words). Round 13c's three fits (cbDoUserWordTraining -> ExitUserWordTraining,
+  tosCallControlFunc -> ConstructBlock, ControlPitchCombiner -> PitchCombinerReset) call functions
+  their own objects define earlier, in the image's order too: genuine, unchanged. The header's other
+  functions want no body: every block calls the constructor, the loggers and the profile getters,
+  and the blocks that inline their own statics would inline those (only triggerlr.c calls the queue
+  commands, and tosblk.h's units declare qQueueControl three ways, so the bodies sit in the unit).
+- **A running pointer that is the table's own variable keeps the unrolled rows' steps**
+  (casrInitSegmentation, open since round 9c): the inner loop is unrolled first and its biv remapped
+  to a copy of its value at each row's start (cc1's "Biv initial value remapped": the target's `move
+  a1,s1; addiu s1,a1,12`); with a second pointer from `seg`, CSE rewrites every row against the
+  unchanged `seg` and the rows fold into constant offsets of one base (`-fno-rerun-cse-after-loop`
+  does not change that: the first CSE knew it).
+- **A product assigned back to its variable keeps the result in that variable's pseudo**: `total *=
+  3` gives the target's `sll v0,a1,1; addu a1,v0,a1` (the total in a1); in the call's argument the
+  sum's result is tied to the first operand that dies (the shifted copy), and `total + total * 2`
+  swaps the add's operands.
+- **The store order of a record's head decides its schedule** (casrGetSessionData, open since round
+  9c): the size stored before the kind (the reload of `n` then heads the block, the language
+  pointer takes a0) -- every placement of the two pointers matches so, none with the kind first; the
+  genders' bases are as spelled (the first and the format through `g`, the other two off s). Round
+  24c's sweep of the 16 spellings had the kind first and read "one form" from 38 words each.
+- **SOCOM 1's bodies, again**: ProcessMel byte-exact as SOCOM 1 wrote it (unrolled by
+  -funroll-loops' preconditioning), InitSpecSub at 3 words (0x40C in both builds; the float literals
+  as written land on 2.96's ulp-low bits, `3.7808886e37f` on 0x7DE38DD0; the pointers before the
+  constants and the two stores of `buf` ring-first, sched1's last-store-first tie-break: 120 orders
+  scored). Its last 3 words are ControlSpecSub's pair exactly -- GCSE makes the reset's two reads of
+  `s->n` one expression and copies its reaching register AFTER the first load (`-dG`), where the
+  target loads into it; one cause, two rows.
+- **mel.c and specsub.c are -ffast-math objects** (their own min.s/max.s rows, round 25c): every
+  function written there compiles the same with the flag, so the directives carry it.
+- **Shapes, measured**: PitchCombinerReset's last store is not a sched1-off compile
+  (`-fno-schedule-insns` loses 7 of pitchcomb.c's 8); InitPitchCombiner's head is the profile value
+  stored before it is narrowed (an `unsigned int` local, the narrowed copy after the store: the
+  target's `sh v0; andi v0`), which moves the constants' allocation (17 words) -- its tail is
+  PitchCombinerReset's.
+- **Open, diagnosed in place**: InitSpecSub and ControlSpecSub (3 words each, above),
+  PitchCombinerReset and InitPitchCombiner (the last 1-store), InitViterbi@nbestdp (not revisited).
+
+Hand-written in round 26c: `asr/triggerlr.c` (ProcessTriggerLR closed: 5 of 5, -fno-inline), `asr/casr.c`
+(casrInitSegmentation, casrGetSessionData closed: 57 of 57), `asr/mel.c` (ProcessMel new, ConstructMel and
+InitMel over their drafts, in image order: 4 of 5, MelInitBands unwritten), `asr/specsub.c` (InitSpecSub
+written, OPEN: 5 of 7) -- 4 rows new to the map's byte-exact rows (1,528 bytes), two matched drafts
+superseded (ConstructMel 0x4F6918, InitMel 0x4F6C78); `src/lib/asr` 531 of 558 (525 of 554 before). No rows
+named (all had SOCOM 1's). No tool changed.
+
 **Round 14b: the "toolchain" opens were SCEA's shapes; LargeInt's core is assembly.**
 
 - **LargeInt's EE primitives are hand-written assembly** (0x628B48-0x629A44, between LargeInt.c's C and
