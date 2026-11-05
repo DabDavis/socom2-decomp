@@ -2065,6 +2065,18 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the HUD, round 53** (ComputeNewRating, CUIListBox::HandlePad):
+  - A VALUE ASSIGNED IN TWO BRANCHES IS NEVER FOLDED BACK INTO ITS USE -- an if/else, or a ternary even with identical
+    arms: MW generates and numbers it where it is assigned, where a single assignment (a named local, `x -= y`, an inline
+    returning it) is folded back (ComputeNewRating 0x2253C0: the halfway step's difference `iChange` assigned in two
+    branches puts the 0.5 first; CUIListBox::HandlePad 0x3745E0: the pad's state a ternary with two identical arms -- a
+    MARKED numbering device, the original's two arms unknown, accepted at integration as local and lossless);
+  - in a float multiply MW generates the complex operand first, so in `0.5f * (a - b)` the constant is numbered last
+    and takes $f0, a plain variable operand after the constant; with an inline call on the left of `==` MW moves it to
+    the right in the compare; `x += -(e)` compiles to negu / addu, `x -= e` to subu;
+  - an inline function's parameter is substituted into each of its uses, so an expression argument used twice is
+    computed twice (Draw2DLine 0x35FCE0's tag setter, 4 off, OPEN); in an `asm volatile` block four pointer locals get
+    a1, a0, v1, v0 in declaration order; hud_missioncams.cpp's three CSnd calls respelled (SAME-BY-ADDRESS).
 - **Tells from the kit and AI states, round 47** (LobAim; six task handlers, four on the first build):
   - SWITCH COMPARE CHAINS TEST CASES IN REVERSE SOURCE ORDER (CTMap::Tick 0x5D6770 needs `case 4: case 3: case 5:`);
     CTSignal::Tick's three-GetTyped shape closes CTSetAnimSet::Tick 0x5D1E00, CTPlay::End 0x5D2AA0 and CTPlay::Begin
