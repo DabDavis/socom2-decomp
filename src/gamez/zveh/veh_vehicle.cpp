@@ -13,7 +13,6 @@ using namespace zdb;
 extern "C" {
 /* not yet written here (placeholders): the vehicle's half of the tick */
 void func_003ACC10(CVehicle *vehicle, float dT);
-void func_003ADAB0(CVehicle *vehicle, CNode *node, const CVehicleDef *def);
 /* the vehicles made, and the most there may be (-1: no limit) -- the unit's statics */
 extern int data_004A4120;
 extern int data_003E0860;
@@ -177,13 +176,13 @@ void CVehicle::LoadVehicles()
 CVehicle::CVehicle(CNode *node, const CVehicleDef &def) : CEntity((CEntity::TYPE)4, node), m_def(&def)
 {
     m_flags = 0;
-    m_1cc = 0;
+    m_healthy = 0;
     m_1d0 = node;
     m_root = 0;
     m_1d4 = 0;
     m_1e0.SetIdentity();
     m_220.SetIdentity();
-    func_003ADAB0(this, node, &def);
+    Init(node, def);
 
     CNode *p = node ? node->GetParent() : 0;
 
@@ -197,6 +196,95 @@ CVehicle::CVehicle(CNode *node, const CVehicleDef &def) : CEntity((CEntity::TYPE
     }
     m_root = node;
     m_flags |= 3;
+}
+
+/* the AI's overlays (ai.h's: the vehicle's region added to the list) */
+class CAiOverlay;
+namespace ai {
+void AddOverlay(CAiOverlay *overlay);
+}
+
+/* the eight corners of a box, round the bottom from the minimum's x and y at the far z, then the
+ * top (fts_mission.cpp's BoxCorners, the states' round 39): too big for inline_max_size, inlined
+ * one level where it is used, the corners' CPnt3D(fff) and assignments called (0x2A8F30, 0x20F1F0) */
+inline CPnt3D *BoxCorners(CPnt3D *p, const CBBox &b)
+{
+    p[0] = CPnt3D(b.m_min.x, b.m_min.y, b.m_max.z);
+    p[1] = b.m_min;
+    p[2] = CPnt3D(b.m_max.x, b.m_min.y, b.m_min.z);
+    p[3] = CPnt3D(b.m_max.x, b.m_min.y, b.m_max.z);
+    p[4] = CPnt3D(b.m_min.x, b.m_max.y, b.m_max.z);
+    p[5] = CPnt3D(b.m_min.x, b.m_max.y, b.m_min.z);
+    p[6] = CPnt3D(b.m_max.x, b.m_max.y, b.m_min.z);
+    p[7] = b.m_max;
+    return p;
+}
+
+/* the node's parts hooked up (0x3ADAB0; the turret's Init's twin, the name ours): the "healthy"
+ * node (the definition's ACTIVATE name), the health root, and the collision box's node -- the node
+ * itself when it is named so -- its box taken from its DI (recursively when asked), half its
+ * diagonal kept, its bottom corners and height kept, the region added to the AI's overlays; the
+ * team joined */
+void CVehicle::Init(CNode *node, const CVehicleDef &def)
+{
+    if (!node)
+        return;
+    if (def.m_20)
+        m_healthy = node->FindChild(def.m_20, true);
+    else
+        m_healthy = node->FindChild("healthy", true);
+    if (def.m_40)
+        m_1d4 = node->FindChild(def.m_40, true);
+
+    const char *name = def.m_60;
+
+    m_radius = 0.0f;
+    if (name) {
+        CNode *bb = 0;
+
+        if (!strcmp(node->m_name, name))
+            bb = node;
+        if (!bb)
+            bb = node->FindChild(name, true);
+        if (bb) {
+            m_flags |= 4;
+            bb->UpdateBBoxFromDI(def.m_80);
+
+            const CBBox *box = bb->GetBBox();
+
+            if (box) {
+                CPnt3D size;
+
+                box->GetSize(&size);
+                m_radius = 0.5f * size.Length();
+
+                CPnt3D c[8];
+                CBBox b(*box);
+
+                BoxCorners(c, b);
+                m_bounds[0] = c[3];
+                m_bounds[1] = c[2];
+                m_bounds[2] = c[1];
+                m_bounds[3] = c[0];
+
+                float lo = c[0].y;
+                float hi = lo;
+
+                for (int i = 1; i < 8; i++) {
+                    if (c[i].y < lo)
+                        lo = c[i].y;
+                    if (c[i].y > hi)
+                        hi = c[i].y;
+                }
+                m_height = hi - lo;
+            }
+            ai::AddOverlay((CAiOverlay *)&m_region);
+            bb->UpdateBBoxFromDI(true);
+        }
+    }
+    m_radiusSq = m_radius * m_radius;
+    SetTeamMask(def.m_84);
+    JoinTeam(26);
 }
 
 int CVehicle::ScanForVehicleDefinitionHookups(CNode *node, bool recurse)

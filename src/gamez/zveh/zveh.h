@@ -417,7 +417,7 @@ public:
     char m_20[0x20];   // 0x20
     char m_40[0x20];   // 0x40
     char m_60[0x20];   // 0x60
-    unsigned char m_80;   // 0x80
+    bool m_80;   // 0x80: "RECURSIVE" (the collision box taken from the node's DI recursively)
     int m_84;   // 0x84
 };   // 0x88 bytes
 
@@ -482,6 +482,10 @@ public:
      * SampleDynamics; the name ours) */
     void SampleDynamics(float dT);
     static int Init(const char *name, const char *path);
+    /* the node's parts hooked up: the "healthy" and health-root nodes, the collision box's corners
+     * and size, the AI overlay, the team (0x3ADAB0, new in SOCOM II -- the turret's Init's twin, the
+     * constructor calls it; the name ours) */
+    void Init(zdb::CNode *node, const CVehicleDef &def);
     static void LoadVehicles();
     static int ScanForVehicleDefinitionHookups(zdb::CNode *node, bool recurse);
     /* a mission entry's vehicles: its character names the definition, its name the nodes
@@ -501,16 +505,19 @@ public:
     CVehicleRegion m_region;   // 0x170
     CPnt3D m_corners[4];   // 0x198: m_bounds grown by 5 in x and z, in the world
     const CVehicleDef *m_def;   // 0x1c8
-    int m_1cc;   // 0x1cc
+    zdb::CNode *m_healthy;   // 0x1cc: the "healthy" node (the definition's ACTIVATE name; the name ours)
     zdb::CNode *m_1d0;   // 0x1d0: the node it was made for
     zdb::CNode *m_1d4;   // 0x1d4: deactivates the vehicle once switched off
     zdb::CNode *m_root;   // 0x1d8: the node's ancestor under the world
     unsigned char _1dc[0x1e0 - 0x1dc];
     CMatrix m_1e0;   // 0x1e0
     CMatrix m_220;   // 0x220
-    unsigned char _260[0x268 - 0x260];
+    /* half the collision box's diagonal, and its square (Init; the names ours) */
+    float m_radius;   // 0x260
+    float m_radiusSq;   // 0x264
     CPnt3D m_bounds[4];   // 0x268
-    unsigned char _298[0x29c - 0x298];
+    /* the collision box's height: its corners' highest y less the lowest (Init; the name ours) */
+    float m_height;   // 0x298
     /* the turn over the last frame: the cosine between the node's old and new Z (SampleDynamics; the
      * name ours) */
     float m_turn;   // 0x29c
