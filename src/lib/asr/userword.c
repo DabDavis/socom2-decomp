@@ -297,6 +297,52 @@ static int CheckConsistency(CASR *c, int k, unsigned char *keep, unsigned char *
     return 0;
 }
 
+/* the utterances marked in `reject` dropped -- all of them when two or more are -- their labels'
+ * write position reset to the buffer's start, the rest moved down into the freed slots with
+ * their label buffers; the count of utterances done lowered by the drops. SOCOM 1's body */
+static void RejectTrainUtters(CASR *c, unsigned char *reject)
+{
+    int i, j, k, n;
+    char *t;
+
+    n = 0;
+    for (k = 0; k < c->uw_recs_needed; k++)
+        n += reject[k];
+    if (n >= 2) {
+        n = c->uw_recs_needed;
+        for (k = 0; k < c->uw_recs_needed; k++)
+            reject[k] = 1;
+    }
+    for (i = 0, j = 0; i < c->uw_recs_needed; i++) {
+        if (reject[i] != 0) {
+            heap_Free(c->heap, c->utt[i].seg);
+            c->utt[i].seg = 0;
+            c->utt[i].n = 0;
+            c->lab_pos[i] = c->lab_buf[i];
+        } else {
+            if (j != i) {
+                c->utt[j].seg = c->utt[i].seg;
+                c->utt[i].seg = 0;
+                c->utt[j].n = c->utt[i].n;
+                c->utt[i].n = 0;
+                t = c->lab_buf[j];
+                c->lab_buf[j] = c->lab_buf[i];
+                c->lab_buf[i] = t;
+                t = c->lab_pos[j];
+                c->lab_pos[j] = c->lab_pos[i];
+                c->lab_pos[i] = t;
+                t = c->lab_end[j];
+                c->lab_end[j] = c->lab_end[i];
+                c->lab_end[i] = t;
+            }
+            j++;
+        }
+    }
+    c->rejected = 1;
+    c->uw_recs_done -= n;
+    c->train_state = 0;
+}
+
 
 /* labels [start, end) of utterance n -- clipped to what was written -- into the label queue one at
  * a time, the engine run on each.
