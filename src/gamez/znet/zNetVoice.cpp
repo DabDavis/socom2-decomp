@@ -61,7 +61,14 @@ struct VoiceSlot {
     int m_client;   // 0x0: 256, none
     unsigned int m_4;   // 0x4: the time it is held until (the master's tick compares it unsigned)
 };
-struct VoiceRadio {
+/* the radio -- the voice object fts_mission.cpp's CMission::Init makes (0x10DC bytes, 0x3102E0
+ * its constructor) and keeps at data_0045B718. SOCOM 1's zNetVoice.cpp held CZNetVoice, so the
+ * class keeps that name (a prediction: SOCOM II's object is new); VoiceRadio is this unit's
+ * older spelling, kept as a typedef for the placeholders */
+struct CZNetVoice {
+    /* the radio's two message types registered with the network (0x310210) */
+    void zNetRegisterVoice();
+
     unsigned char m_state;   // 0x0: 1 idle, 2 a slot asked for, 3 talking, 4 closing
     unsigned char _1[0x24 - 1];
     int m_slot;   // 0x24
@@ -93,6 +100,7 @@ struct VoiceRadio {
     unsigned char _1074[0x1078 - 0x1074];
     int m_usecodec;   // 0x1078 (VoiceChat's)
 };
+typedef CZNetVoice VoiceRadio;
 struct VoiceTalk {
     unsigned char m_state;   // 0x0
     unsigned char _1[0x1074 - 1];
@@ -153,10 +161,9 @@ void func_00310560(void *h);
 void func_00310590(void *h, void *settings);
 
 /* an application message type: its fields described, then registered by name with a handler
- * (the DME's; func_0030CFF0 is zNetDme.cpp's wrapper, a draft) */
+ * (the DME's; CZNetwork::zNetRegisterMessage, zNetDme.cpp's, registers it) */
 void func_00620BD8();
 void func_00620C60(void *msg, void *field, int size, int count);
-int func_0030CFF0(CZNetwork *net, unsigned int *id, int (*handler)(int, int, int, void *), const char *name);
 int func_0030E8E0(int, int, int, void *);   /* the "Radio" message's handler */
 int func_0030EB70(int, int, int, short *);
 }
@@ -376,7 +383,7 @@ int func_003106A0(VoiceDecoder *d, const void *packet, short *out)
 
 /* the radio's two messages registered: "Radio", three bytes, and "Channel Status", the twelve
  * slots' clients as halfwords (OVL1 0x310210) */
-void func_00310210(VoiceRadio *r)
+void CZNetVoice::zNetRegisterVoice()
 {
     unsigned char radio[3];
 
@@ -384,14 +391,13 @@ void func_00310210(VoiceRadio *r)
     func_00620C60(radio, &radio[0], 1, 1);
     func_00620C60(radio, &radio[1], 1, 1);
     func_00620C60(radio, &radio[2], 1, 1);
-    func_0030CFF0(&theNetwork, &r->m_radio_msg, func_0030E8E0, "Radio");
+    theNetwork.zNetRegisterMessage(&m_radio_msg, func_0030E8E0, "Radio");
     short status[12];
 
     func_00620BD8();
     func_00620C60(status, status, 2, 12);
-    func_0030CFF0(&theNetwork, &r->m_msg, (int (*)(int, int, int, void *))func_0030EB70,
-                  "Channel Status");
-    r->m_state = 1;
+    theNetwork.zNetRegisterMessage(&m_msg, (NetMessageCallback)func_0030EB70, "Channel Status");
+    m_state = 1;
 }
 
 /* the headset's processing switched on or off: when it changes, the echo canceller's, gain's and
