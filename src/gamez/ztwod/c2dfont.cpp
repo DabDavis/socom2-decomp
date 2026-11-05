@@ -368,18 +368,20 @@ C2DGlyphPiece *C2DGlyph::AddPiece(const _zrdr *ul, const _zrdr *lr, int height)
 
 /* a character of the faces rdr's charoffsets: by its Code, its pieces in Elems, or an item list
  * (the character, its corners); its baseline, kernings and colour; its width returned */
-/* OPEN, 8 bytes long (0x3CC against 0x3C4): the texture lookup, as Compose. */
+/* OPEN, 8 bytes long (0x3CC against 0x3C4): the texture lookup, as Compose. Round 55: the ints
+ * declared together in the target's slot order (code 120, lk 116, tex 112, baseline 108, rk 104)
+ * and read through FindIntAt, as CHangulFont::Load -- every slot and the kerning's early load now
+ * the target's; left: the lookup, this/ti swapped (s1/s2), and the first item's type byte, which
+ * the target loads once for its test and String()'s (`first->IsString()` 0x10 longer) */
 int C2DFont::LoadChar(const _zrdr *rdr)
 {
-    int tex = 1;
-
-    zrdr_findint(rdr, "texture", &tex, 1);
-    int ti = tex - 1;
+    int code, lk, tex, baseline, rk;
+    int ti = FindIntAt(rdr, "texture", &tex, 1) - 1;
     zdb::CTexHandle *h = GetTexture(ti);
     int height = h ? h->m_texture->m_height : 0;
-    int code = 0;
     C2DGlyph *g;
 
+    code = 0;
     if (zrdr_findint(rdr, "Code", &code, 1)) {
         unsigned short c = code;
 
@@ -400,18 +402,12 @@ int C2DFont::LoadChar(const _zrdr *rdr)
         g->AddPiece(rdr->Item(1), rdr->Item(2), height);
     }
     g->m_18 = ti;
-    int baseline = 0;
+    g->m_12 = FindIntAt(rdr, "baseline", &baseline, 0);
+    int l = FindIntAt(rdr, "lKerning", &lk, 0);
+    int r = FindIntAt(rdr, "rKerning", &rk, 0);
 
-    zrdr_findint(rdr, "baseline", &baseline, 1);
-    g->m_12 = baseline;
-    int lk = 0;
-
-    zrdr_findint(rdr, "lKerning", &lk, 1);
-    int rk = 0;
-
-    zrdr_findint(rdr, "rKerning", &rk, 1);
-    g->m_14 = lk;
-    g->m_16 = rk;
+    g->m_14 = l;
+    g->m_16 = r;
     if (zrdr_findtag(rdr, "color")) {
         PNT3D c;
 
