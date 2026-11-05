@@ -2065,6 +2065,77 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the game states, round 39** (a box's corners, the vote-kick test, zDoClientLeavesCallback, OnMissionStart):
+  - a plain function calling an inline too big to inline whole gets that inline cut to one level (its leaves called),
+    and is itself never auto-inlined -- an "out-of-line copy" whose leaves are calls is such a caller (0x2A96B0, a box's
+    eight corners through BoxCorners; CreateLadderTable still matches);
+  - a local set through an inline's reference out-parameter stays a named variable numbered at its uninitialised
+    declaration, returned by value it merges into the inline's result temporary (numbered after the caller's locals),
+    and a dead `= 0` on it leaves no node at all (zDoClientLeavesCallback 0x2BC080: the SEAL numbered first, found with
+    `tools/igreplay.py --want`); a list walk with its end taken into a local before the loop keeps the end in a saved
+    register, `!= list.end()` every pass rebuilds the address (8 bytes longer);
+  - a byte-enum field copied into a local loads with lb + andi 0xff at each use only when the copy is not folded into
+    its first compare -- read straight into a compare it is one lbu (OnMissionComplete 0x2A9B30, OPEN 16 short);
+    OnMissionStart 0x2A7D40 and OnMissionComplete named by SOCOM 1's identical call sequences (st_core.cpp's calls
+    respelled, SAME-BY-ADDRESS).
+- **Tells from completing the MSL headers, round 27** (the data_ reader, the deques' init level, the class push_back;
+  probes build/p27/, scratch build/scratch/msl-r27/, untracked -- dtorvar.py, dqvar.py/dqvars.py, vecvar.py, rowscan.py):
+  - THE POD DESTRUCTOR READS data_ THROUGH data() INTO A PLAIN LOCAL (`T *p = data(); if (p) deallocate(p);`): the
+    inlined accessor's reference temporary stays a variable off a member at an offset and folds into the frame for a
+    stack object -- ~CRadioStripSpec 0x387340, ~CAssetLib 0x321990 and ~CMenuStack 0x27F590 keep &data_ in a saved
+    register (computed ahead of the walk) while resize<CUIVariable> 0x2B1390 still reads its temporary sp-relative:
+    the one reader round 26 asked for (+3, nothing lost; objcmp: only those three functions change). Passed straight
+    (`deallocate(data())`) the accessor is an inline call's argument, a level deeper (round 26's -34); a reference local
+    is a variable everywhere (loses the resize); the test alone through data() keeps all three wrong;
+  - EVERY DEQUE AND BLOCK-BUFFER RANGE INIT HAS A DISPATCH LEVEL: the ends copied by value once more (FPU words, then
+    lq/sq) around two value-initialised one-byte temporaries -- two plain empty classes by value are stored (`sb
+    zero`), the std iterator tags (deriving) are not (build/p27/probe3.cpp) -- then do_assign; a pointer container
+    converts one level further down, its converters built from those copies by const reference (the third copy, lw/sw,
+    the lowest slots). include/deque's Metrowerks::__deque_init over number<bool, ...>: the lobby's 0x2E0830 and
+    0x2E0B40 byte-exact from source, the state machine's 0x3A5ED0/0x3A61E0, the vid stack's 0x3B7E30 and the rdr
+    editor's 0x333BB0/0x333EC0 once their do_assign rows have names (+16 with the named iterator pieces);
+  - THE VID STACK'S do_assign 0x3B8000 IS NOT A CONVERTER'S: it copies a 24-byte source and dereferences a reference
+    (the rdr editor's 0x334440 copies the 28-byte converter); deque<void *> hands its const_iterators straight
+    (__deque_converts<void>), 0x3B8000 code-exact, its != 0x3B83B0 byte-exact. The converter's own shape stays open:
+    its ++ 0x3348E0 inlines the wrapped iterator's ++, which the vid stack calls out of line from the LATER unit
+    (0x3B83D0) -- the linker keeps the first unit's copy of an instance (the destination's ++ 0x334880, zrdr_edit.cpp's,
+    serves 0x3B8000), so zrdr_edit.cpp never emitted it: not one class, or a cut not found (include/deque's comment);
+  - THE CLASS VECTOR'S push_back GOES THROUGH end() (`insert(end().m_p, 1, x)`): the HUD's AddName is then cut one
+    level and makes the target's six calls in its order -- 0x22DD20 is rbegin() itself (its hidden return slot is the
+    reverse *'s `this`), not its end(); push_back 0x22DD60, rbegin and the reverse * 0x22DD10 byte-exact, objcmp: no other
+    unit's code moves. hudAddPopupDefinition stays 0x63C of 0x5E0 on the loader's own registers and the triggers'
+    constructors (the HUD lane's);
+  - measured, not reached: insert<AcctRecord> 0x2FE3E0 (no new idea on the end's number), CKey::CountKeys,
+    OnIsEquipmentSelected, CSkbSplit::Next. Over every hand-written unit, master merged: 10558 -> 10585 (+27), nothing
+    lost, the thirteen draft-only regressions unchanged.
+- **Tells from the kit and AI states, round 44** (PrivateNotify, TickReticule, Recoil, GetHandFloorHit -- all unwritten
+  before):
+  - MW masks a bit-field store after folding constants, so `m_bit = false` gives the inline setter's `andi zero,1` at ~4
+    inline units less per call -- enough to bring a constructor under inline_max_size: CAiState::Reset writing its bits
+    straight into the fields lets CAiState(AI_STATE) inline under a derived constructor (CSealUnit::PrivateNotify
+    0x5ED140's stack CAiSPursue; objcmp: no other unit changed);
+  - one float variable reused for a second value (`rate = A(); rate *= dT; ... rate = B(); rate *= dT;`) splits into a new
+    web numbered after every temporary -- it takes $f0 and its multiply sinks into a delay slot, two locals take $f2; a
+    stack CPnt3D copied field by field through an inline taking its address keeps &p.y / &p.z in saved registers across
+    calls (Recoil 0x5C3360 and GetHandFloorHit 0x5C2430 -- the reverse of the open "stack point's field addresses" tell);
+  - `x = d == 0.0f ? x : f(x)` keeps the target's empty-arm `bc1f; b`, `if (d != 0.0f)` drops it; an int MIN ternary
+    converted per arm (`a < n ? (float)a : (float)n`) gives the per-arm cvt.s.w, held in a local before multiplying by a
+    field for the operand order; material bits tested `? true : false` materialise sltu before the branch;
+  - seal_kit.cpp includes ../znode/int_material.h ahead of kit.h for the real CMaterialExArray (zweapon.h carries a
+    stand-in); DistributeNotify OPEN on include/list's base begin() (queued for the MSL).
+- **Tells from the HUD, round 50** (the string cursor's constructor, C2DString::MakePacket):
+  - MW puts the constant first in `constant * load` whichever side it is written on, and numbers it first -- swapping the
+    source operands changes nothing (SeekGlyph / Advance 8 long, OPEN); an inline accessor is generated ahead of the
+    expression only sometimes (`str->GetLength()` on a parameter was, `m_str->m_font->Get...()` folded back): the
+    cursor's constructor 0x362900 reads the string's members through new accessors, each load numbered before its
+    constant;
+  - a loop test read through an inline (`while (cursor.More())`) keeps the guard's read sp-relative, the plain read
+    shares the hoisted address register with the guard; MakePacket 0x3635C0: the default colour a 16-aligned static
+    copied with lq / sq, a C2DStringPacket writer on the stack with its transparency flag passed to its inline
+    constructor, an inline Clear() shared by the constructor and Flush(), the destructor running the flush;
+  - `if (*p == 0) return;` reuses the loaded byte for the next compare where `!*p` sign-extends it again; returns in
+    different branches each jump to a shared `b` block, unlike an if/else chain or break; C2D's flag byte at 0x14 is
+    allocated from the low bit up (bit 2 m_isTrans).
 - **Tells from the SEALs, round 42** (the foot pin, the score valves' sum, GetPutativeFirePointW, SetDir, the fall begun):
   - comparing against a float LOCAL holding zero (`v.z != zero`) keeps the field as c.eq.s's first operand, the 0.0f
     literal puts the zero first (SOCOM 1's compare is field-first; the weapons' round 26: the literal is zero-first on
@@ -10966,6 +11037,64 @@ written, OPEN: 5 of 7) -- 4 rows new to the map's byte-exact rows (1,528 bytes),
 superseded (ConstructMel 0x4F6918, InitMel 0x4F6C78); `src/lib/asr` 531 of 558 (525 of 554 before). No rows
 named (all had SOCOM 1's). No tool changed.
 
+**Round 27c: the two max.s rows, the spectral subtraction's reset, mel.c and specsub.c whole, four SOCOM 1 bodies, two new units.**
+
+- **cse2 swaps a load and the copy after it when the copy's destination lives longer** (InitSpecSub and
+  ControlSpecSub, open since rounds 15c/26c, one cause): GCSE makes the reset's after-loop read of `s->n` a
+  copy of its reaching register R, copied after the first load (`m = load; R = m`); the rerun of CSE then
+  turns `(set REG1 X) (set REG0 REG1)` into `(set REG0 X) (set REG1 REG0)` when REG0 becomes its class's
+  first register -- its last use later than REG1's. With one variable for both counts (every earlier
+  spelling) the variable lives past R and keeps the load (`lw a2; move a1,a2`); with the first loop's count
+  a block-local of its own (`unsigned int m = s->n;`) and the count after the loop another variable, m dies
+  in the loop, R outlives it and takes the load (`lw a1; move a2,a1`, the target's). `n = s->n; m = n;` is
+  3 words: copy propagation folds m back into n.
+- **A deferred static inline is expanded where it is defined and written at the end** (mel.c): ControlMel's
+  call to MelInitBands carries no nothrow note in the target (the note moves 73 of ControlMel's words), yet
+  MelInitBands leads the object. 2.96 defers a static inline whose address is not yet taken and emits it
+  after the object's other functions, in declaration order -- so the block's process, control and init are
+  `static __inline__` above MelInitBands (their calls expanded, and noted, then), written after the
+  constructor that takes their addresses: the image's order, MelInitBands, ConstructMel, ProcessMel,
+  ControlMel, InitMel. (Plain statics above it would lead the object; below it, the call is noted.)
+- **MelInitBands (0x808) as SOCOM 1 wrote it, logf/powf for log/pow**: the band count stored in both arms of
+  its if (cross-jumping merges the tails after CSE, so `m->nbands -= low` reloads +40); the weights' cursor
+  post-incremented in the store of a `?:` (`*w++ = x < c ? ... : ...`: the address taken before the value).
+- **Cross-jumping puts the merged failure where the last one was written** (smtConstruct): each failing step
+  frees the smoother and returns 0 on its own, and the nine blocks merge into the last, which so sits before
+  the success return (the target's `bnezl; swc1` into it); one `goto fail` after the success return is 52
+  words.
+- **A callback's success falls to the shared `return 0`** (ConstructQueue, and ConstructBlock's helpers):
+  `if (cb(...) != 0) return 1;` with no `return 0` of its own keeps the test a branch (`beqz v0; li v0,1`);
+  `return cb(...) != 0`, or the arm's own `return 0`, is jump.c's store-flag (`sltu`). The input helper tests
+  the block first and writes the no-block case last (`if (b != 0) ... else if`).
+- **SpectralSubtraction (0x1208, SOCOM 1's 0xF88 a guide only) byte-exact, written by the lane's helper**: the
+  block's fields read into locals at the top and written back at the end (`s->ringpos = pos` last: sched1
+  issues the store where `s` dies first); the heavy spill slots in declaration order (one `end` shared by
+  every later loop, then the position, nring, the two counters, the noise, the n*4 temporary); each pointer
+  one variable with one role across all the loops, each loop's end from its own pointer (`for (end = p + n;
+  ...)` -- two more refs put the gain pointer above the frame's in global-alloc's priorities, s8 and a0 as
+  the target's); the noise update an if (`d = *r++ - *q; if (*q < d) d = *q;`: the target branches), the
+  gain floor a local read before its loop (`t > lo ? t : lo`: the seven max.s; the field read in the loop
+  reloads each pass); the band mean a variable of its own; the counter `if (f40 <= nring) f40++` (sltu/movz);
+  f96 declared before the noise pointer (reload keeps `s` in t0 for both field loads).
+- **loop.c's reduced pointer adds in the giv's order** (Lin_2_Log): the output indexed `out[k + i]` starts
+  the strength-reduced pointer at `k * 4 + out`, the target's operand order; a row pointer `out + k` adds the
+  other way (1 word). The spline's bracket indices are variables of their own (`khi = klo + 1`: the target's
+  separate `(klo + 1) * 4`; `y[n + 1]` folds into an offset of y[n]); the frame counter and the row offset
+  are stepped together in the for (`j++, k += nlog`: the counter set first, its register the target's).
+
+Hand-written in round 27c: `asr/specsub.c` (InitSpecSub and ControlSpecSub closed, SpectralSubtraction new:
+7 of 7), `asr/mel.c`
+(MelInitBands new: 5 of 5), a new `asr/smooth.c` (SOCOM 1's smoothing object 0x3644C0, OVL2 0x4F7A48-0x4F812C:
+smtConstruct new, smtDestruct over its draft, Smoothing unwritten: 2 of 3), `asr/tos.c` (ConstructQueue new,
+SOCOM 1's static: 16 of 18; ConstructBlock 148 words, 2 short), `asr/shs.c` (Lin_2_Log new: 2 of 7), a new
+`asr/secpass.c` (SOCOM 1's second-pass object 0x342708, OVL2 0x4D1C18-0x4D3318: GetSecondPassInfo new -- the
+language's and the context's accessors called through their tables, slot for slot; the word's pronunciation
+table indexed through its own pointer; the else arm's three stores written in the reverse of the target's
+order, sched1 issuing the last of equal stores first -- putWordInDict and CreateSecondPassTreeContext
+unwritten: 1 of 3) -- 8 rows new to the map's byte-exact rows (11,204 bytes), one matched draft superseded
+(smtDestruct 0x4F80A8); `src/lib/asr` 540 of 565 (531 of 558 before). No rows named (all had SOCOM 1's). No
+tool changed.
+
 **Round 14b: the "toolchain" opens were SCEA's shapes; LargeInt's core is assembly.**
 
 - **LargeInt's EE primitives are hand-written assembly** (0x628B48-0x629A44, between LargeInt.c's C and
@@ -11351,8 +11480,11 @@ What is open across lanes, and what comes next:
   0x5F8AF0: find_if's two iterator copies in parameter order -- include/algorithm), the class
   vector's destroy for elements with a virtual
   destructor (C2DPoly's deleter), __vector_imp::resize out of line (CPool), and the pod vector's
-  end() reusing begin()'s load (AddPalette, ~CAssetLib, DeleteChildren; the zdb world's round 6
-  measured `return data() + size_;`: +4, but CCharacterType::Create one level too tall).
+  end() reusing begin()'s load (AddPalette, DeleteChildren; the zdb world's round 6
+  measured `return data() + size_;`: +4, but CCharacterType::Create one level too tall -- ~CAssetLib
+  matches since the MSL headers' round 27, its destructor's data_ read through data()), and the pointer
+  deques' converter (its ++ inlines the wrapped iterator's ++ that the vid stack's do_assign calls
+  out of line: the MSL headers' round 27, include/deque).
 - **zMath** (0x306670-0x30954C, 47 of 54): CMatrix::SetRotate, CQuat::Align, CBits::Resize,
   CPnt3D::Reflect, CBBox::GetIntersect and the two DistToVectors. **zcamera**: CCamera::Update
   (13 instructions, the near plane's VU0 temporaries' stack offsets). **ZAnim**: the big handlers
