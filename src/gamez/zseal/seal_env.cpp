@@ -5153,8 +5153,106 @@ void CZSealBody::HandleSmokeAndGas(zdb::IntersectStruct *hit, const CMaterialEx 
     }
 }
 
-/* the hits under a point handled (SOCOM 1's SealProcessAltitude; OVL2 0x5B5D40, not written yet) */
-extern "C" void func_005B5D40(CZSealBody *seal, zdb::DiIntersect *di, CPnt3D *pos, float f);
+/* the SEAL the application camera shows (camera.h's CAppCamera, as much as this unit reads) */
+class CAppCamera {
+public:
+    virtual void Tick(float dT);
+    virtual bool AttachTo(CZSealBody *prey);
+
+    unsigned char _4[0xbc - 0x4];
+    CZSealBody *m_bc;   // 0xbc
+};
+
+extern CAppCamera *appCamera;
+
+/* a hit polygon's bit 31 as a bool, none for no polygon (an inline, the name ours) */
+static inline bool PolyBit31(const zdb::IntersectStruct *is)
+{
+    return is->m_poly ? (bool)is->m_poly->m_flags.m_bit31 : false;
+}
+
+/* the hits under a point handled: the volumetric ones kept and their smoke or gas taken, the water
+ * handled, any other hit -- a SEAL's only when it is down (2) or dead (8), and none of them for a
+ * player -- a candidate for the ground: the highest at or under the point's height plus the given
+ * one, else the lowest; the ripples stopped when the SEAL left the water, the ground dropped when it
+ * lies over 20 above the node, and for the camera's SEAL its regions updated, the node's bit 6 set
+ * by the polygon's bit 31 and a SEAL underfoot marked (SOCOM 1's SealProcessAltitude, SOCOM II's
+ * player test, the water's flag passed on and the node's flags new; OVL2 0x5B5D40: SealGetAltitude's
+ * tail).
+ * OPEN, 0x454 against 0x45C (written last in round 46, one try): the structure is the target's -- but
+ * the early `return 0` branches to the shared result move where the target's goes straight to the
+ * epilogue (8 bytes), and the saved registers differ throughout: the target has this s3, best s2,
+ * lowest s1, the counter s0, the hit s4, the material s5, pos s6, the hit offset s7, di s8 (this
+ * build: this s4, best s3, lowest s2, the hit s0); `f += pos->y` and `f = f + pos->y` leave the size.
+ * The call to the hits' clear resolves only once 0x555280 is named (the call names it
+ * clear__Q23std84__vector_deleter<Q23zdb15IntersectStruct,...>Fv: left a placeholder so its draft keeps
+ * scoring); next: igdump/igreplay on the colouring, then the early return's shape */
+zdb::IntersectStruct *CZSealBody::SealProcessAltitude(zdb::DiIntersect *di, const CPnt3D *pos, float f)
+{
+    m_volumetricAltitudes.clear();
+    if (m_isingas)
+        SetInGas(false);
+    if (m_isinsmoke)
+        SetInSmoke(false);
+    if (!di)
+        return 0;
+    zdb::IntersectStruct *best = 0;
+    bool wasin = m_inwater;
+
+    m_inwater = false;
+    m_waterdepth = 0.0f;
+    zdb::IntersectStruct *lowest = 0;
+
+    if (di->m_Cnt) {
+        f = pos->y + f;
+        for (int i = 0; i < di->m_Cnt; i++) {
+            zdb::IntersectStruct *hit = &di->m_Intersects[i];
+            CMaterialEx *mat = MaterialEx(hit->GetMaterial());
+
+            if (mat && mat->IsVolumetric()) {
+                m_volumetricAltitudes.push_back(*hit);
+                HandleSmokeAndGas(hit, mat, pos);
+            } else if (mat && mat->IsLiquid())
+                HandleWater(hit, mat, pos, wasin);
+            else {
+                CZSealBody *seal = GetSeal(hit->m_node);
+
+                if (seal) {
+                    if (IsPlayer())
+                        continue;
+                    if (seal->m_state != 2 && seal->m_state != 8)
+                        continue;
+                }
+                float y = hit->m_pos.y;
+
+                if (y <= f && (!best || !(y < best->m_pos.y)))
+                    best = hit;
+                if (!lowest || !(lowest->m_pos.y < y))
+                    lowest = hit;
+            }
+        }
+    }
+    if (!best)
+        best = lowest;
+    if (wasin && !m_inwater) {
+        StopRipple(m_belowwateranim);
+        StopRipple(m_inwateranim);
+    }
+    if (best && !(best->m_pos.y <= 20.0f + m_node->m_matrix.m_matrix[3][1]))
+        best = 0;
+    if (best) {
+        if (appCamera->m_bc == this) {
+            zdb::CWorld::m_world->m_camera->SetPlayerCanSeeRegions(best->GetRegion());
+            CheckForRegionTrigger(best->GetRegion());
+        }
+        bool b = PolyBit31(best);
+
+        GetNode()->m_socom2_a1_bits.bit6 = b;
+        if (GetSeal(best->m_node))
+            m_bit8 = true;
+    }
+    return best;
+}
 /* (zdb::CWorld::GetAltitudes, OVL1 0x31DEA0: SOCOM II's takes no height -- none of its five callers
  * sets $f12 -- znode.h's since the zdb lane dropped the float; called by name) */
 
@@ -5188,5 +5286,5 @@ void CZSealBody::SealGetAltitude(CPnt3D *pos, float f)
     hits = world->GetAltitudes(pos);
     SetAltitudeCharacters(di, chars);
     node->SetActive(active);
-    func_005B5D40(this, hits, pos, f);
+    SealProcessAltitude(hits, pos, f);
 }

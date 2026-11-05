@@ -2014,6 +2014,10 @@ public:
     /* a hit's water entered: the ripples by the depth and the gait, the depth and the in-water flag
      * kept (SOCOM 1's, SOCOM II's with whether the SEAL was in water before; OVL2 0x5B52B0) */
     void HandleWater(zdb::IntersectStruct *hit, const class CMaterialEx *mat, const CPnt3D *pos, bool wasin);
+    /* the hits under a point handled: the smoke, gas and water taken, the ground found -- the highest hit
+     * at or under the height, else the lowest -- and its regions and the node's flags updated (SOCOM 1's;
+     * OVL2 0x5B5D40) */
+    zdb::IntersectStruct *SealProcessAltitude(zdb::DiIntersect *di, const CPnt3D *pos, float f);
     /* the looks (SOCOM 1's, seal_env.cpp's in its order): the lids and the eyes turned to their looks'
      * directions, the head's direction, the head and the three parts above it turned by the look
      * anims (OVL2 0x5AD400, 0x5AD4D0, 0x5AD5A0, 0x5AD5B0); a look's goal off the current direction
@@ -2144,7 +2148,10 @@ public:
      * toward them; the names ours) */
     float m_prevx;   // 0x248
     float m_prevz;   // 0x24c
-    unsigned char _250[0x2e0 - 0x250];
+    unsigned char _250[0x2d4 - 0x250];
+    /* the volumetric hits under the SEAL (SOCOM 1's m_volumetricAltitudes at 0x260: SealProcessAltitude
+     * clears it and pushes each smoke or gas hit) */
+    std::vector<zdb::IntersectStruct> m_volumetricAltitudes;   // 0x2d4
     float m_2e0;   // 0x2e0: the time step the overlay ticks by (0x579EF0; the names ours)
     float m_alt;   // 0x2e4 (SOCOM 1's 0xe98)
     CZBodyPart *m_root;   // 0x2e8 (SOCOM 1's 0x26c)
