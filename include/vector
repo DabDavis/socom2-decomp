@@ -250,7 +250,18 @@ public:
     /* the storage given back through the allocator (CW 2.5's MSL: the pod's destructor calls
      * alloc() and deallocate): a pointer vector's destructor is four high, one more than its
      * constructor, so CVisual's destructor (vis_main.cpp) inlines CDynTexList's implicit one only
-     * one level and calls ~CTexList and ~CTexPalList, where its constructor builds them whole */
+     * one level and calls ~CTexList and ~CTexPalList, where its constructor builds them whole.
+     * MEASURED, NOT ADOPTED (the MSL headers round 26: a trade, the integrator's): the data word read
+     * through an address -- `T *&d = data_; if (d) deallocate(d);` (a T *const & or a T ** local
+     * alike) -- makes ~CRadioStripSpec 0x387340, ~CAssetLib 0x321990 and ~CMenuStack 0x27F590
+     * byte-exact (the target keeps begin()'s &data_ in a saved register across the walk and reads
+     * the destructor's test through it) and loses resize<CUIVariable> 0x2B1390 (its temporary's
+     * word read sp-relative in the target, through the this register so): over every hand-written
+     * unit +3 / -1. Through data() (`if (data()) deallocate(data());`) ~CRadioStripSpec matches too,
+     * but the extra inline level cuts 34 deeper destructor chains at level 5 (~CKey, ~CHUD, ~CNode,
+     * CGrid::Destroy, the resize ...: +1 / -34) -- an accessor one level the level-5 headers do not
+     * have would explain both readers ("Level 6, or 8?"), not measured; the test or the call alone
+     * through the reference loses all four */
     ~__vector_pod()
     {
         if (data_)
@@ -274,6 +285,9 @@ public:
     /* references to the fields (SOCOM 1 keeps out-of-line copies: data() is this + 8, cap() this) */
     T *&data() { return data_; }
     unsigned int &cap() { return capacity_; }
+    /* the insert's capacity test (the char pod's: read through it, the growth's capacity_ load is
+     * a separate one, as in 0x1FE340) */
+    unsigned int capacity() const { return capacity_; }
     /* the raw iterators a vector of pointers makes its own from, both through data()'s reference:
      * end() so keeps a local vector's &data_ in its register across a call (CGrid::Destroy,
      * CWorld::GenerateLandmarkList and DeleteChildren, CAssetLib::AddPalette -- the zdb world's
@@ -1270,6 +1284,66 @@ void __vector_pod<T, Allocator>::init(unsigned int n, const T &value)
         cap() = n;
         for (T *first = data_; n > 0; --n, ++first)
             *first = value;
+    }
+}
+
+/* n copies of x inserted before position (OVL1 0x1FE340, hud_main.cpp's tail the first to emit it;
+ * OVL2 0x5192E0): the char pod's insert (0x3923E0) statement for statement, its moves word loops --
+ * the in-place tail shifted up from the end, the fill re-reading x through xp each pass, the two
+ * old runs copied forward by local walkers (MW unrolls them 8x) -- and MAIN's exceptions-on copy
+ * (0x18B810, src/main/msl/msl.h) with __msl_error's fprintf and abort for the throw */
+template <class T, class Allocator>
+void __vector_pod<T, Allocator>::insert(T *position, unsigned int n, const T &x)
+{
+    if (n == 0)
+        return;
+    if (n > max_size() || size_ > max_size() - n)
+        __msl_error("vector::insert length error\n");
+    const T *xp = &x;
+    unsigned int newsize = size_ + n;
+
+    if (newsize <= capacity()) {
+        T *e = data_ + size_;
+        unsigned int m = e - position;
+
+        if (e - (m - n) <= xp && xp < e)
+            xp += n;
+        if (m)
+            for (T *i = e, *j = e + n; position < i;)
+                *--j = *--i;
+        for (unsigned int c = n; c != 0; --c, ++position)
+            *position = *xp;
+        size_ += n;
+    } else {
+        unsigned int k = position - data_;
+        T *old = data_;
+        unsigned int newcap = capacity_ ? capacity_ : 1;
+
+        while (newsize > newcap) {
+            if (newcap < max_size() / 2)
+                newcap *= 2;
+            else
+                newcap = max_size();
+        }
+        data() = allocate(newcap);
+        T *p = data_ + k;
+
+        for (unsigned int c = n; c != 0; --c, ++p)
+            *p = *xp;
+        if (old) {
+            T *s, *d = data_;
+
+            for (s = old; s < old + k; ++s, ++d)
+                *d = *s;
+            T *oldend = old + size_;
+            T *s2, *d2 = data_ + k + n;
+
+            for (s2 = old + k; s2 < oldend; ++s2, ++d2)
+                *d2 = *s2;
+            deallocate(old);
+        }
+        size_ = newsize;
+        capacity_ = newcap;
     }
 }
 

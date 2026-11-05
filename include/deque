@@ -231,7 +231,15 @@ public:
 };
 
 /* an iterator read through a conversion (MSL's __convert_iterator: the pointer containers hand
- * their own iterators to the const void * base this way) */
+ * their own iterators to the const void * base this way).
+ * MEASURED, NOT APPLIED (the MSL headers round 26, build/p26/convvar.py, untracked): with *, ++ and
+ * != declared here and defined out of class (`!=` as `!(i_ == y.i_)`), the rdr editor's do_assign
+ * 0x334440 (zrdr_edit.cpp) comes out code-exact at 0x3D4, its seven calls the target's: the
+ * convert's != 0x334860 (0x18, as the target's), * 0x334940 and ++ 0x3348E0, the destination
+ * iterator's * 0x3349B0 and ++ 0x334880 and its copy constructor 0x334820 (rows unnamed, none of the
+ * names in the map) -- but the convert's ++ comes out 0x28 against 0x58 (it calls the const
+ * iterator's ++ where the target inlines it) and its * 0x58 against 0x68, and the vid stack's
+ * do_assign 0x3B8000 (vis_vu.cpp) 0x3D4 against 0x3A4: not measured over the units, left as it was */
 template <class Iterator, class T>
 class __convert_iterator {
 public:

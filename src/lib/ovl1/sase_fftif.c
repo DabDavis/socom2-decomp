@@ -17,6 +17,38 @@ extern int func_00252098(float *a, float *b, int n);
 extern int func_00251C80(float *a, float *b, int n);
 extern int func_00252338(float *a, float *b, int n);
 
+#define NellyNull 0
+extern void __assert(const char *file, int line, const char *expr);
+#define assert(e) ((e) ? (void)0 : __assert(__FILE__, __LINE__, #e))
+extern void (*data_001D55B4)(void *pDst, const void *pSrc, int n);	/* the host's memcpy */
+extern void (*data_001D55B0)(void *p, int c, int n);			/* the host's memset */
+void func_00251AF8(float *in, int n, float *re, float *im);
+void func_00251B38(float *re, float *im, int n, float *out);
+int func_00251B78(float *a, float *b, int n);
+
+/* the forward transform of a frame (GCC round 32a; fftIf.c by its asserts, lines 25 and 27): the
+ * signal's second half first and its first half last into the transform's buffer (in place when
+ * pfSig is pfSW, whose room must then hold the half twice), the rest zeroed, split, transformed and
+ * merged back -- the encoder's long and short frames call it (EncSC.c 0x2499A8, 0x249A38). */
+void func_002518E8(const float *pfSig, int iLength, float *pfSW, int iLog2Nfft)
+{
+	float afRe[260];
+	float afIm[260];
+	int iHalfLen = iLength >> 1;
+	int iNfft = 1 << iLog2Nfft;
+
+#line 25 "../../shared/fftIf.c"
+	assert(pfSig != NellyNull && pfSW != NellyNull);
+#line 27 "../../shared/fftIf.c"
+	assert(((pfSig == pfSW)&&(iNfft>=(iLength+iHalfLen))) ||((pfSig != pfSW)&&(iNfft>=iLength)));
+	data_001D55B4(pfSW + (iNfft - iHalfLen), pfSig, iHalfLen * sizeof(float));
+	data_001D55B4(pfSW, pfSig + iHalfLen, (iLength - iHalfLen) * sizeof(float));
+	data_001D55B0(pfSW + (iLength - iHalfLen), 0, (iNfft - iLength) * sizeof(float));
+	func_00251AF8(pfSW, iNfft, afRe, afIm);
+	func_00251B78(afRe, afIm, iNfft);
+	func_00251B38(afRe, afIm, iNfft, pfSW);
+}
+
 int func_00251A28(void)
 {
 	int ret;

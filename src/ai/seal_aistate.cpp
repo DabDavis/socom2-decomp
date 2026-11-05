@@ -366,10 +366,6 @@ extern "C" void func_0052C310(CAiMaps *maps, void *path);
 /* the plan's goal cell set (OVL2 0x5F1760, a CAiSPlan member: the plan in a0 -- unnamed) */
 extern "C" void func_005F1760(CAiSPlan *plan, void *loc);
 
-/* a leg of a path planned to a cell on a map (OVL2 0x526F20, the AI core's row: ai_maps.cpp
- * declares it alike) */
-extern "C" bool func_00526F20(CAiPath *path, const CAiMapLoc &loc, CAiMap *map);
-
 /* the plan's route begun to its goal cells (its vector at 0x58): a planner it was handed given to
  * its path; with the flag bit 3 the cells taken leg by leg -- one that fails steps the plan to 3
  * and answers 4 -- the step then 1 either way; else the whole run registered with the AI maps from
@@ -397,7 +393,7 @@ extern "C" int func_005F15A0(CAiSPlan *plan, CSealCtrlAi *ai)
             for (int i = 0; i < n; i++) {
                 CAiMap *map = AiMaps.GetMapByIndex(plan->m_goals[i].m_mapid);
 
-                if (!func_00526F20((CAiPath *)plan->m_path, plan->m_goals[i], map)) {
+                if (!((CAiPath *)plan->m_path)->AppendPathLoc(plan->m_goals[i], map)) {
                     plan->UpdatePhase(3);
                     r = 4;
                     break;
