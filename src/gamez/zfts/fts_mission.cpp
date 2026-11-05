@@ -2938,6 +2938,175 @@ void CMission::Serialize(int flags)
     SaveRdr("MissionData", (CRdrFile *)&ed);
 }
 
+extern "C" int atoi(const char *s);
+void SetDatabase(const char *name);   /* 0x27F810 */
+
+/* the mission loaded from its save (slot 4 of CMission's vtable, CSaveModule's UnSerialize(const
+ * char *, CRdrFile *, int); SOCOM 1's, grown): the state; with a database, the database set and its
+ * mission number the valve CurrentMission, the career's valves, the career's stats (cleared when the
+ * save has none) and the bonus objectives' valves, then the mission's rdr read ahead of Open
+ * (OVL1 0x2A54E0). `SetValveValue(CValve::Create(...), value)` reads the address-taken value into a
+ * saved register BEFORE the call (an inline's arguments are evaluated right to left); the target
+ * reads CurrentMission's after it, which a named valve local gives */
+void CMission::UnSerialize(const char *name, CRdrFile *file, int flags)
+{
+    zrdr_findint((_zrdr *)file, "state", (int *)&m_state, 1);
+    const char *db = zrdr_findstring((_zrdr *)file, "database");
+
+    if (db) {
+        int value;
+
+        SetDatabase(db);
+        value = atoi(db + 1);
+        CValve *valve = CValve::Create("CurrentMission", (VALVE_TYPE)1);
+
+        SetValveValue(valve, value);
+        value = 0;
+        zrdr_findint((_zrdr *)file, "difficulty", &value, 1);
+        SetValveValue(CValve::Create("GameComplete", (VALVE_TYPE)1), value);
+        value = 0;
+        zrdr_findint((_zrdr *)file, "incr_miss_51", &value, 1);
+        SetValveValue(CValve::Create("incr_miss_51", (VALVE_TYPE)1), value);
+        value = 0;
+        zrdr_findint((_zrdr *)file, "incr_miss_52", &value, 1);
+        SetValveValue(CValve::Create("incr_miss_52", (VALVE_TYPE)1), value);
+        value = 0;
+        zrdr_findint((_zrdr *)file, "incr_miss_53", &value, 1);
+        SetValveValue(CValve::Create("incr_miss_53", (VALVE_TYPE)1), value);
+        value = 0;
+        zrdr_findint((_zrdr *)file, "incr_miss_61", &value, 1);
+        SetValveValue(CValve::Create("incr_miss_61", (VALVE_TYPE)1), value);
+        value = 0;
+        zrdr_findint((_zrdr *)file, "incr_miss_62", &value, 1);
+        SetValveValue(CValve::Create("incr_miss_62", (VALVE_TYPE)1), value);
+        value = 0;
+        zrdr_findint((_zrdr *)file, "incr_miss_63", &value, 1);
+        SetValveValue(CValve::Create("incr_miss_63", (VALVE_TYPE)1), value);
+        value = 0;
+        zrdr_findint((_zrdr *)file, "incr_miss_71", &value, 1);
+        SetValveValue(CValve::Create("incr_miss_71", (VALVE_TYPE)1), value);
+        value = 0;
+        zrdr_findint((_zrdr *)file, "incr_miss_72", &value, 1);
+        SetValveValue(CValve::Create("incr_miss_72", (VALVE_TYPE)1), value);
+        value = 0;
+        zrdr_findint((_zrdr *)file, "incr_miss_73", &value, 1);
+        SetValveValue(CValve::Create("incr_miss_73", (VALVE_TYPE)1), value);
+        value = 0;
+        zrdr_findint((_zrdr *)file, "incr_miss_81", &value, 1);
+        SetValveValue(CValve::Create("incr_miss_81", (VALVE_TYPE)1), value);
+        value = 0;
+        zrdr_findint((_zrdr *)file, "incr_miss_82", &value, 1);
+        SetValveValue(CValve::Create("incr_miss_82", (VALVE_TYPE)1), value);
+        value = 0;
+        zrdr_findint((_zrdr *)file, "incr_miss_83", &value, 1);
+        SetValveValue(CValve::Create("incr_miss_83", (VALVE_TYPE)1), value);
+        value = 0;
+        zrdr_findint((_zrdr *)file, "ForGameCompleteScreen", &value, 1);
+        SetValveValue(CValve::Create("ForGameCompleteScreen", (VALVE_TYPE)1), value);
+        value = 0;
+        zrdr_findint((_zrdr *)file, "ChoseRank", &value, 1);
+        SetValveValue(CValve::Create("ChoseRank", (VALVE_TYPE)1), value);
+        value = 0;
+        zrdr_findint((_zrdr *)file, "ChosenLevel", &value, 1);
+        SetValveValue(CValve::Create("ChosenLevel", (VALVE_TYPE)1), value);
+        value = 0;
+        zrdr_findint((_zrdr *)file, "ai_difficulty", &value, 1);
+        SetValveValue(CValve::Create("ai_difficulty", (VALVE_TYPE)1), value);
+        _zrdr *stats = zrdr_findtag((_zrdr *)file, "CAREER_STATS");
+
+        if (stats) {
+            int stat;
+
+            stat = 0;
+            zrdr_findint(stats, "MissionsPlayed", &stat, 1);
+            m_careerstats.m_0 = stat;
+            stat = 0;
+            zrdr_findint(stats, "AveragePlayerAccuracy", &stat, 1);
+            m_careerstats.m_4 = stat;
+            stat = 0;
+            zrdr_findint(stats, "AverageTeamAccuracy", &stat, 1);
+            m_careerstats.m_8 = stat;
+            stat = 0;
+            zrdr_findint(stats, "AverageStealth", &stat, 1);
+            m_careerstats.m_c = stat;
+            stat = 0;
+            zrdr_findint(stats, "AverageTeamwork", &stat, 1);
+            m_careerstats.m_10 = stat;
+            stat = 0;
+            zrdr_findint(stats, "AverageObjective", &stat, 1);
+            m_careerstats.m_14 = stat;
+            stat = 0;
+            zrdr_findint(stats, "EnemyKills", &stat, 1);
+            m_careerstats.m_kills = stat;
+            stat = 0;
+            zrdr_findint(stats, "EnemyCaptures", &stat, 1);
+            m_careerstats.m_18 = stat;
+            stat = 0;
+            zrdr_findint(stats, "FriendlyKills", &stat, 1);
+            m_careerstats.m_20 = stat;
+            stat = 0;
+            zrdr_findint(stats, "StealthKills", &stat, 1);
+            m_careerstats.m_24 = stat;
+            stat = 0;
+            zrdr_findint(stats, "CQBKills", &stat, 1);
+            m_careerstats.m_28 = stat;
+            stat = 0;
+            zrdr_findint(stats, "ShotsFired", &stat, 1);
+            m_careerstats.m_2c = stat;
+            stat = 0;
+            zrdr_findint(stats, "HeadShots", &stat, 1);
+            m_careerstats.m_30 = stat;
+        } else
+            m_careerstats.Clear();
+        _zrdr *bonus = zrdr_findtag((_zrdr *)file, "BONUS_OBJECTIVES");
+
+        if (bonus) {
+            int done;
+
+            done = 0;
+            zrdr_findint(bonus, "OP51_Rugova", &done, 1);
+            SetValveValue(CValve::Create("OP51_Rugova", (VALVE_TYPE)1), done);
+            done = 0;
+            zrdr_findint(bonus, "OP51_Delivery", &done, 1);
+            SetValveValue(CValve::Create("OP51_Delivery", (VALVE_TYPE)1), done);
+            done = 0;
+            zrdr_findint(bonus, "OP52_Capture", &done, 1);
+            SetValveValue(CValve::Create("OP52_Capture", (VALVE_TYPE)1), done);
+            done = 0;
+            zrdr_findint(bonus, "OP61_Map", &done, 1);
+            SetValveValue(CValve::Create("OP61_Map", (VALVE_TYPE)1), done);
+            done = 0;
+            zrdr_findint(bonus, "OP62_Bombs", &done, 1);
+            SetValveValue(CValve::Create("OP62_Bombs", (VALVE_TYPE)1), done);
+            done = 0;
+            zrdr_findint(bonus, "OP63_Stealth", &done, 1);
+            SetValveValue(CValve::Create("OP63_Stealth", (VALVE_TYPE)1), done);
+            done = 0;
+            zrdr_findint(bonus, "OP71_Tank", &done, 1);
+            SetValveValue(CValve::Create("OP71_Tank", (VALVE_TYPE)1), done);
+            done = 0;
+            zrdr_findint(bonus, "OP72_Snipers", &done, 1);
+            SetValveValue(CValve::Create("OP72_Snipers", (VALVE_TYPE)1), done);
+            done = 0;
+            zrdr_findint(bonus, "OP81_Map", &done, 1);
+            SetValveValue(CValve::Create("OP81_Map", (VALVE_TYPE)1), done);
+            done = 0;
+            zrdr_findint(bonus, "OP81_Blueprints", &done, 1);
+            SetValveValue(CValve::Create("OP81_Blueprints", (VALVE_TYPE)1), done);
+            done = 0;
+            zrdr_findint(bonus, "OP81_Nautical", &done, 1);
+            SetValveValue(CValve::Create("OP81_Nautical", (VALVE_TYPE)1), done);
+            done = 0;
+            zrdr_findint(bonus, "OP82_Freighter", &done, 1);
+            SetValveValue(CValve::Create("OP82_Freighter", (VALVE_TYPE)1), done);
+            done = 0;
+            zrdr_findint(bonus, "OP82_Blueprints", &done, 1);
+            SetValveValue(CValve::Create("OP82_Blueprints", (VALVE_TYPE)1), done);
+        }
+        PreOpen(db);
+    }
+}
+
 const char *zrdr_findstring(const _zrdr *rdr, const char *tag);
 _zrdr *zrdr_findtag(const _zrdr *rdr, const char *tag);
 
