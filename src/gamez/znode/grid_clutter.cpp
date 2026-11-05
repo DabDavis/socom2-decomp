@@ -467,6 +467,71 @@ CNode *CClutterAnim::TickForce(CPnt3D *force, CPnt3D *pos, float a, float b)
     return m_node;
 }
 
+/* an animation ticked: its wobble's clock run down, its swing timer stepped (the rest angle
+ * reversed each half second); with no push held the rest angle damped, and once the clock is out
+ * and the prop's lean all but gone (each of the rotation's x, z and y under 0.005) the animation
+ * is done -- false (ours: l_Tick's test, a bool through an inline as the target materialises it;
+ * the prop read ahead of the clock's test, into its branch's delay slot) */
+inline bool AnimTick(CClutterAnim *a, float dT)
+{
+    a->m_18 -= dT;
+    a->m_1c += dT;
+    if (a->m_1c > 0.5f) {
+        a->m_1c = 0.0f;
+        a->m_20 = -a->m_20;
+    }
+    if (a->m_14 < 0.0001f) {
+        a->m_20 *= 0.05f;
+        CClutter *c = a->m_clutter;
+
+        if (a->m_18 <= 0.0f) {
+            if (fabsf(c->m_matrix.m_matrix[1][0]) < 0.005f && fabsf(c->m_matrix.m_matrix[1][2]) < 0.005f &&
+                fabsf(c->m_matrix.m_matrix[1][1]) < 0.005f)
+                return false;
+        }
+    }
+    return true;
+}
+
+/* the animations ticked, each one done let go of by its prop, deleted and taken off the list; the
+ * effectors that bring no velocity of their own given one from their move since the last tick
+ * (SOCOM 1's, 0x217840; written in the core lane's round 17) */
+int CClutterAnimManager::l_Tick(float dT, void *data)
+{
+    std::list<CClutterAnim *>::iterator it = m_ClutterAnims.begin();
+
+    while (it != m_ClutterAnims.end()) {
+        CClutterAnim *anim = *it;
+
+        if (!AnimTick(anim, dT)) {
+            anim->m_clutter->m_anim = 0;
+            delete anim;
+            it = m_ClutterAnims.erase(it);
+        } else
+            ++it;
+    }
+
+    std::list<CClutterEffector *>::iterator i = m_ClutterEffectors.begin(), e = m_ClutterEffectors.end();
+
+    for (; i != e; ++i) {
+        CClutterEffector *f = *i;
+
+        if (!f->m_vel) {
+            f->m_18 = PntMinus(*f->m_pos, f->m_c);
+            f->m_18.Scale(1.0f / dT);
+            f->m_c = *f->m_pos;
+        }
+    }
+    return 0;
+}
+
+/* the clutter task: the world's manager ticked (SOCOM 1's) */
+int CClutterAnimManager::Tick(float dT, void *data)
+{
+    CWorld::m_world->m_grid.m_ClutterAnimManager->l_Tick(dT, data);
+    return 0;
+}
+
 /* the effectors let go of (SOCOM 1's) */
 void CClutterAnimManager::ClearEffectors()
 {

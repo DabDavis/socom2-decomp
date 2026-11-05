@@ -1644,6 +1644,11 @@ public:
     void TestCellMid(CPnt3D *mid, CPnt3D *pos);
     /* a prop's animation ticked, its node handed back (SOCOM 1's, 0x217BA0) */
     CNode *ClutterTick(CClutter *clutter);
+    /* the clutter task (the scheduler's callback, 0x2D8010): the world's manager ticked (SOCOM 1's) */
+    static int Tick(float dT, void *data);
+    /* the animations ticked, the settled ones deleted, the effectors' velocities taken from their
+     * moves (SOCOM 1's, 0x2D8040; the core lane round 17) */
+    int l_Tick(float dT, void *data);
 
     unsigned char m_CellAnimate;   // 0x0
     CMatrix m_matrix;   // 0x10
