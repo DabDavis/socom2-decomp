@@ -2428,9 +2428,9 @@
 0x00247040 0xC sceBInetGetVersionStringPtr  # OVL1; s1:order (the demo's libnetb object 0x423D38 opens with sceBInetGetVersionStringPtr, 0xC bytes, returning the version string's pointer as this does)
 0x00247050 0x154 sceBInetGetBuildTimestamp  # OVL1; s1:exact
 0x002471A8 0x11C sceBInetCreate  # OVL1 unaligned; s1:calls (rt_memory_allocate_init_zero, libnetb_alloc_bufs, sceInetCreate, as the demo's sceBInetCreate 0x423EA0; after sceBInetGetBuildTimestamp as there)
-0x002472C8 0x198 func_002472C8  # OVL1 unaligned
+0x002472C8 0x198 sceBInetOpen  # OVL1 unaligned; s1:order (the demo's libnetb object holds sceBInetOpen between sceBInetCreate and sceBInetClose, as here) and its calls (libnetb_prepare_async_receive, libnetb_prepare_async_send, sceInetOpen in the demo's order, then two libnetb_trans_data: 0x198 against the demo's 0x120) -- GCC lane r31a
 0x00247460 0x98 sceBInetClose  # OVL1; s1:exact
-0x002474F8 0x144 func_002474F8  # OVL1 unaligned
+0x002474F8 0x144 sceBInetRecv  # OVL1 unaligned; s1:order (the demo's libnetb object holds sceBInetRecv between sceBInetClose and sceBInetRecvFrom, as here; its body the demo's -- the recv ring drained, its header DMAed back -- grown by the peer check) -- GCC lane r31a
 0x00247640 0x8C sceBInetRecvFrom  # OVL1; s1:exact
 0x002476D0 0x64 func_002476D0  # OVL1
 0x00247738 0x14C sceBInetSend  # OVL1 unaligned; s1:calls
@@ -10205,7 +10205,7 @@
 0x005631A0 0xC SetStance__11CSealCtrlAiF11SEAL_STANCE  # OVL2; s1:calls by hand (CTStance::Begin calls it where SOCOM 1's calls SetStance; it tail-calls 0x562B70 as SOCOM 1's SetStance calls DoSetStance), after storing the stance at 0x279 and clearing 0x280 -- the SEAL lane, round 9
 0x005631B0 0xE4 SetDesiredStance__11CSealCtrlAiF11SEAL_STANCEfb  # OVL2; ours (new in SOCOM II; seal_ai.cpp): CTStance::Begin calls it with the command's stance, true and CAiTimer::infinite, End with (prone, true, 0); sets the body's byte at 0x375 and restarts the AI's CAiTimer at 0x364 when the stance is prone, the target at 0x67C is held with bit 9 of 0x6A8, or forced -- the SEAL lane, round 9; (the float second: the prologue copies the parameters in reverse declaration order, mov.s first)
 0x005632A0 0x1C8 GetDuckStance__11CSealCtrlAiCFP10CZSealBodyR11SEAL_STANCE  # OVL2; s1:order by hand (the SEALs, round 30): SOCOM 1's GetDuckStance__11CSealCtrlAiCFP10CZSealBodyR11SEAL_STANCE, after SetStance in both builds (SOCOM II's SetDesiredStance between) -- the same leader fallback, Sub/Normalize, reach and facing statics, GetStanceFromState(GetStance(false), stance) picking 1 or 2 and the true result; SOCOM II adds two bss switches, the Navy SEAL test and the CQB reach
-0x00563470 0x734 func_00563470  # OVL2
+0x00563470 0x734 ChooseWeapon__11CSealCtrlAiFR10CAiWepHint  # OVL2; by hand (the SEALs, round 36, the kit's round-37 lead): SOCOM 1's ChooseWeapon__11CSealCtrlAiFR10CAiWepHint -- SOCOM 1's CTFireMode::Begin calls it with the task's +0x8 block and SOCOM II's Begin 0x5DC9D0 calls 0x563470 with the same block; the body agrees (the same 176-byte frame and saved registers, the hint in s4, the kit's GetNumItems at the SEAL's +0x5E0, the hint's bit 1 and its 4-bit index at +1, GetItemByIndex against GetCurItem, the best accuracy kept in $f20, SetCurItemByIndex and SetTrigger(false) at the end); returns a bool (s1, 1 or 0)
 0x00563BB0 0x8 func_00563BB0  # OVL2
 0x00563BC0 0x8 func_00563BC0  # OVL2
 0x00563BD0 0x23C FireWhenReady__11CSealCtrlAiFR13AI_FIREPARAMSf  # OVL2; s1:calls
@@ -10538,7 +10538,7 @@
 0x0058C2B0 0x38 func_0058C2B0  # OVL2
 0x0058C2F0 0x60 func_0058C2F0  # OVL2
 0x0058C350 0x14C BindAnimSet__10CZSealBodyFP7AnimSet8AnimType10SEAL_STATEb  # OVL2; s1:order by hand (the SEAL lane, round 17: SOCOM 1's BindAnimSet__10CZSealBodyFP7AnimSet, after RefPoint in both builds -- SOCOM II adds the type, the state and a force flag: the carry tests, the two ClearToBase calls and DetachBody in SOCOM 1's order, then ClearBlendOverlay, ClearStack and the set swapped in)
-0x0058C4A0 0x10 func_0058C4A0  # OVL2
+0x0058C4A0 0x10 BindAnimSet__10CZSealBodyFP7AnimSetb  # OVL2; s1:calls by hand (the SEALs, round 36, the kit's round-37 lead): SOCOM 1's BindAnimSet__10CZSealBodyFP7AnimSet with SOCOM II's force flag appended -- the five calls SOCOM 1's AI states make to it (CAiSScript::OnSignal three, CAiSSurrender::Tick one, its OnSignal two) are SOCOM II's calls to this row from the same functions; its body BindAnimSet(set, 1, 0, force) on 0x58C350 (the full binder, SOCOM 1's body with the type and state added); seal_cfg.cpp
 0x0058C4B0 0x11C func_0058C4B0  # OVL2
 0x0058C5D0 0x28 func_0058C5D0  # OVL2
 0x0058C600 0x21C func_0058C600  # OVL2

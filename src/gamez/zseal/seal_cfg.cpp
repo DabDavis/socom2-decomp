@@ -375,6 +375,15 @@ void *func_00588BC0(CZSealBody *seal, AnimType type, int state, int flag, int ki
 void *func_00555170(void *v);
 }
 
+/* a new anim set bound in the standing state with its type-1 blend (OVL2 0x58C4A0: SOCOM 1's
+ * BindAnimSet(AnimSet *), SOCOM II's force flag appended -- SOCOM 1's five calls from the AI states,
+ * CAiSScript::OnSignal's three and CAiSSurrender's Tick and OnSignal, are SOCOM II's calls to this
+ * row; the full binder below is SOCOM 1's body with the type and the state added) */
+void CZSealBody::BindAnimSet(AnimSet *set, bool force)
+{
+    BindAnimSet(set, (AnimType)1, (SEAL_STATE)0, force);
+}
+
 /* a new anim set bound, unless none or the bound one without the force flag: a carried body let go
  * (both bodies cleared to their base in the carry states 10 and 9), the blend overlay and the stack
  * cleared, the set swapped in with the old one kept, the weapon id zeroed and the speeds set, the

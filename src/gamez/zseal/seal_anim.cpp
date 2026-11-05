@@ -233,19 +233,20 @@ int CSealAnim::CombineRotations(int a, int b)
  * each snaps (OVL2 0x576BB0: SOCOM 1's AnimOverlay by its place, before CombineRotations in both
  * builds -- SOCOM 1's weighted the positions with Scale and Add over 32 records), the depth left
  * returned. The record loops' shape (above AnimPop); `> -1` (slti) the target's tests.
- * OPEN, 22 instructions (the size the target's, round 34): registers only -- the first loop's counter
- * and the count trade s5/s1, and the second loop's record cursor (rb reassigned) is a web of its own in
- * s1 where the target keeps the first loop's s3. The locals' order is tools/perm.py's best over the
- * uninitialised declarations and the assignments (400 s; the natural order 49 off); a counter of its
- * own for the second loop, or cursors of their own, lose more (34-36). */
+ * Round 36, read off MW's colouring (igdump): the eight locals all wait for the last simplify sweep
+ * and are coloured in descending declaration order, so the counter is declared first (s5) and the
+ * count sixth (s1); the cursors are reassigned for the second loop, so each gets a second web, and
+ * with rb's first-loop assignment written first ra's second web is numbered above rb's -- ra s2 and
+ * rb s3 there, as the target (round 34's perm.py order had the counter and the count the other way
+ * round, 22 off) */
 int CSealAnim::AnimOverlay(float t)
 {
-    unsigned int n;
+    unsigned int i;
     int top;
     CSealAnimRec *rb;
     CSealAnimRec *ra;
     float r;
-    unsigned int i;
+    unsigned int n;
     CSealAnimFrame *fb;
     CSealAnimFrame *fa;
     top = m_count - 1;
@@ -253,8 +254,8 @@ int CSealAnim::AnimOverlay(float t)
     fb = &m_frames->m_frames[top - 1];
     fa = &m_frames->m_frames[top];
     n = siNumBodyObjects;
-    ra = fa->m_recs;
     rb = fb->m_recs;
+    ra = fa->m_recs;
     i = 0;
 
     if (i < *(const unsigned int *)&siNumBodyObjects) {
@@ -371,6 +372,64 @@ extern "C" void func_005765F0(CZSealBody *seal)
     seal->SavePart(seal->m_rifle);
     seal->SavePart(seal->m_pistol);
     seal->SavePart(seal->m_weapon);
+}
+
+extern "C" {
+/* the body-part ids of the rifle and the pistol, and the third one the weapon in hand moves to when
+ * a script animates it (OVL1 data, read as variables -- seal_env.cpp's) */
+extern int data_003DF148;
+extern int data_003DF150;
+extern int data_003DF160;
+}
+
+/* a script's object for a body part, none past its table (the name ours) */
+static inline CZSIObject *ObjectFor(CZSIScriptCommon *s, int id)
+{
+    CZSIObject *o;
+
+    if (id >= 0 && (unsigned int)id < s->m_objects_for_body.size())
+        o = s->m_objects_for_body[id];
+    else
+        o = 0;
+    return o;
+}
+
+/* the weapon in hand put on the part a pushed script animates: the rifle's or the pistol's own part
+ * when the script has an object for it, else the third part when it has one for that (OVL2 0x5763E0,
+ * new in SOCOM II: 0x577EA0 calls it for each anim it pushes unless the weapons are changing; the
+ * name unknown) */
+extern "C" void func_005763E0(CZSealBody *seal, CZSIScriptCommon *s)
+{
+    unsigned char item = seal->m_item;
+
+    if (item == 1) {
+        int id = data_003DF148;
+
+        if (ObjectFor(s, id)) {
+            seal->SetBodyPart(id, seal->m_rifle);
+            seal->SetBodyPart(data_003DF160, 0);
+            return;
+        }
+        if (ObjectFor(s, data_003DF160)) {
+            seal->SetBodyPart(id, 0);
+            seal->SetBodyPart(data_003DF160, seal->m_rifle);
+            return;
+        }
+    }
+    if (item == 2) {
+        int id = data_003DF150;
+
+        if (ObjectFor(s, id)) {
+            seal->SetBodyPart(id, seal->m_pistol);
+            seal->SetBodyPart(data_003DF160, 0);
+            return;
+        }
+        if (ObjectFor(s, data_003DF160)) {
+            seal->SetBodyPart(id, 0);
+            seal->SetBodyPart(data_003DF160, seal->m_pistol);
+            return;
+        }
+    }
 }
 
 /* a part's node placed where the part is (CZBodyPart::Orient's body, body.cpp's, written out: SOCOM
