@@ -576,7 +576,7 @@ void CZGameState::UpdateLocalGame(CZNetGame *game)
 }
 
 /* the game object's halfword at 0x16 (SOCOM II's; OVL1 0x2C0090) */
-extern "C" unsigned short func_002C0090(CZNetGame *game)
+extern "C" unsigned int func_002C0090(CZNetGame *game)
 {
     if (!game)
         return 0;

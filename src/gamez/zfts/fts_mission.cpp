@@ -139,7 +139,8 @@ public:
     CValve *m_pLateJoinerValve;   // 0x2c (SOCOM 1's at 0x28)
     CValve *m_p45SecondClockValve;   // 0x30: mp_45_sec_clock (SOCOM 1's at 0x2c)
     CValve *m_pLaunchSecondsValve;   // 0x34: mp_x_sec_clock (SOCOM 1's m_pXSecondClockValve at 0x30)
-    unsigned char _38[0x40 - 0x38];
+    CValve *m_38;   // 0x38: mp_hostages_by_seals (SOCOM 1's m_pHostagesKilledBySealsValve at 0x34)
+    CValve *m_3c;   // 0x3c: mp_hostages_by_turds (SOCOM 1's m_pHostagesKilledByTurdsValve at 0x38)
     CValve *m_40;   // 0x40: mp_penalty (SOCOM 1's m_pPenaltyValve at 0x3c)
     CValve *m_pPlayerJoinCountValve;   // 0x44 (SOCOM 1's at 0x40)
     CValve *m_pPlayerReadyCountValve;   // 0x48 (SOCOM 1's at 0x44)
@@ -180,7 +181,7 @@ public:
     unsigned char m_d4;   // 0xd4 (SOCOM 1's at 0x9b)
     unsigned char m_d5;   // 0xd5 (SOCOM 1's at 0x9c)
     unsigned char m_d6;   // 0xd6 (SOCOM 1's at 0x9d)
-    unsigned char _d7;
+    unsigned char m_d7;   // 0xd7 (SOCOM 1's m_bomb_owned at 0x9e)
     bool m_ten_second_launch;   // 0xd8 (SOCOM 1's at 0x9f)
     unsigned char m_d9;   // 0xd9: SOCOM II's
     unsigned char m_da;   // 0xda: SOCOM II's
@@ -218,9 +219,16 @@ public:
 
 /* the network (only its session-master flag and its clock; theNetwork at 0x45A0C0, fts_remote.cpp's
  * head says why) */
+/* a network object as CZNetwork's table hands it out (only its kind's letter) */
+struct NetObject {
+    unsigned char _0[0xd];
+    char m_d;   // 0xd: 'T' a turret's taken
+};
+
 class CZNetwork {
 public:
     int zNetGetTime();
+    NetObject *zNetGetObject(int index);   /* 0x30D630 */
 
     unsigned char m_bSessionMaster;   // 0x0
     unsigned char m_bNetwork;   // 0x1: a network game (SOCOM 1's at 0x9): no fade to the mission's end then
@@ -855,7 +863,7 @@ public:
     virtual void _slot24();
     virtual void _slot28();
     virtual void _slot2c();
-    virtual void _slot30();
+    virtual bool IsPlayer();   /* +0x30 (fts_remote.cpp's) */
     virtual void _slot34();
     virtual CSealCtrlAi *GetSealCtrlAi();   /* +0x38 */
 
@@ -931,6 +939,12 @@ extern float data_003DE610;   /* (the danger of a SEAL near) */
 inline CZSealBody *AsSeal(CEntity *e)
 {
     return e && e->m_type == CEntity::ENT_TYPE_SEAL ? (CZSealBody *)e : 0;
+}
+
+/* whether a SEAL is a player's (its controller asked; fts_remote.cpp's) */
+inline bool IsPlayerSeal(CZSealBody *seal)
+{
+    return seal->GetSealCtrl() ? seal->GetSealCtrl()->IsPlayer() : false;
 }
 
 inline bool IsAwake(CSealCtrlAi *ai)
@@ -2680,6 +2694,7 @@ bool CMission::Open(const char *name)
 class CZBombState {
 public:
     static void UninitBomb();   /* 0x2C1970 */
+    static void InitBomb();   /* 0x2C1A80 */
 };
 
 class CZGameState {
@@ -3948,6 +3963,130 @@ void CZNetGame::ResetScores()
     m_124 = 0;
     m_128 = 64;
     m_d4 = 0;
+}
+
+/* a bomb game: the game type 1 or 2 (SOCOM II's; OVL1 0x2A72A0, inlined in 0x2A6C50 below) */
+extern "C" bool func_002A72A0(CZNetGame *game)
+{
+    if (game->m_game_type == 1 || game->m_game_type == 2)
+        return true;
+    return false;
+}
+
+/* the entity as a turret, if it is one (fts_remote.cpp's) */
+inline CTurret *AsTurret(CEntity *e)
+{
+    return e && e->m_type == CEntity::ENT_TYPE_TURRET ? (CTurret *)e : 0;
+}
+
+/* the SEALs' network objects (fts_net_seal.cpp's: only the lookup) */
+class CZSealState {
+public:
+    static CZSealBody *GetBodyFromObjectIndex(int index);   /* 0x2BD4D0 */
+};
+
+/* the online lobby (zonline.h's: only its event handler) */
+typedef void (*LobbyEventHandler)(const char *event, const char *arg);
+
+class CZOnlineLobby {
+public:
+    unsigned char _0[0x58];
+    LobbyEventHandler m_event_handler;   // 0x58
+};
+
+extern CZOnlineLobby theLobby;
+
+/* an event told to the menus, when they listen (zonline.h's) */
+inline void LobbyEvent(const char *event, const char *arg)
+{
+    if (theLobby.m_event_handler)
+        theLobby.m_event_handler(event, arg);
+}
+
+extern "C" {
+unsigned int func_002C0090(CZNetGame *game);   /* (fts_net_game.cpp's: the game object's node count -- a word: this caller does not narrow it) */
+void func_002B7CF0(const char *name, CZSealBody *body);   /* (fts_remote.cpp's: a SEAL's local object) */
+void func_002B7C90(CTurret *turret);   /* (fts_remote.cpp's: a turret's local object) */
+}
+
+/* the online game's mission under way (SOCOM II's; OnMissionStart calls it, OVL1 0x2A6C50): the
+ * version checked (the node count the game object carries), the launch reset, the timer, the game
+ * over, the half rounds, the hostages, the penalty and the kills cleared, the chat emptied, the
+ * scores, winner and game type put in their valves, the round's clock from mp_max_round_time, the
+ * bomb in a bomb game; the session master loads the vehicles once and makes every player SEAL's and
+ * untaken turret's object, refreshes the team valves and launches; a client waits. The valves'
+ * values read through GetValue (unsigned: srl, and the bltz conversion to float); the half rounds'
+ * value named before the valve is read (named, or the valve or the max read into locals, gives the
+ * target's v1 for both the max valve and its value; written into the call, v0); the node count
+ * compared as a word (func_002C0090 not narrowed here) */
+extern "C" void func_002A6C50(CZNetGame *game)
+{
+    if (zdb::NodeUniverse->size() != func_002C0090(game))
+        LobbyEvent("MP_VERSION_NUMBER_ERROR", 0);
+    if (game->m_ten_second_launch && theNetwork.m_bSessionMaster) {
+        game->m_launch_time = 0;
+        game->m_launch_f4 = 0;
+    }
+    game->m_ten_second_launch = false;
+    game->m_f8 = CValve::Create("mp_timer", 1, (VALVE_TYPE)1);
+    game->m_pGameOverValve = CValve::Create("mp_game_over", 0, (VALVE_TYPE)1);
+    SetValveValue(game->m_pGameOverValve, 0);
+    unsigned int half = (game->m_pMaxRoundCountValve->GetValue() + 1) / 2;
+
+    SetValveValue(game->m_pHalfRoundCountValve, half);
+    game->m_38 = CValve::Create("mp_hostages_by_seals", 0, (VALVE_TYPE)1);
+    SetValveValue(game->m_38, 0);
+    game->m_3c = CValve::Create("mp_hostages_by_turds", 0, (VALVE_TYPE)1);
+    SetValveValue(game->m_3c, 0);
+    SetValveValue(game->m_40, 0);
+    SetValveValue(game->m_70, 0);
+    game->m_c0 = 0;
+    CRdrEditor ed;
+
+    ed.push(0);
+    ed.pop();
+    game->m_84[4]->Set(&ed);
+    CValve *score00 = CValve::Create("mp_score00", (VALVE_TYPE)1);
+    CValve *score08 = CValve::Create("mp_score08", (VALVE_TYPE)1);
+    CValve *winner = CValve::Create("mp_winner", (VALVE_TYPE)1);
+    CValve *type = CValve::Create("mp_game_type", (VALVE_TYPE)1);
+
+    SetValveValue(score00, game->m_120);
+    SetValveValue(score08, game->m_124);
+    SetValveValue(winner, 64);
+    SetValveValue(type, game->m_game_type);
+    game->m_clock_running = 1;
+    game->m_max_game_time = 1000.0f * game->m_8->GetValue();
+    if (func_002A72A0(game) && theNetwork.m_bSessionMaster)
+        CZBombState::InitBomb();
+    game->m_d7 = 0;
+    if (theNetwork.m_bSessionMaster) {
+        if (!game->m_dd) {
+            theMission.LoadVehicles();
+            CEntityList::const_iterator i;
+
+            for (i = CEntity::GetEntityList().begin(); i != CEntity::GetEntityList().end(); ++i) {
+                CEntity *e = *i;
+                CZSealBody *seal = AsSeal(e);
+                CTurret *turret = AsTurret(e);
+
+                if (seal && IsPlayerSeal(seal)) {
+                    if (!CZSealState::GetBodyFromObjectIndex(e->m_id))
+                        func_002B7CF0(seal->m_node->m_name, seal);
+                } else if (turret) {
+                    NetObject *obj = theNetwork.zNetGetObject(e->m_id);
+
+                    if (!obj || obj->m_d != 'T')
+                        func_002B7C90(turret);
+                }
+            }
+        }
+        theMission.RefreshTeamValves();
+        game->m_launch_time = theNetwork.zNetGetTime();
+        game->m_launch_f4 = 1;
+        CZGameState::UpdateLocalGame(game);
+    } else
+        game->m_dd = 1;
 }
 
 /* the master's countdown to the launch, its seconds the valve's, started or called off
