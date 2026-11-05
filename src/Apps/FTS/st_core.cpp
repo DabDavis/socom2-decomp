@@ -82,7 +82,6 @@ void func_00592CA0(void *control);
 extern "C" {
 
 /* the tick tasks (SOCOM 1's in the comments, where it had them) */
-bool func_005CCCD0(float dT, void *data);        /* CSealCtrlAi::PreTick */
 bool func_003D1F90(float dT, void *data);        /* CZWeapon::PreTick */
 bool func_0054F570(float dT, void *data);
 bool func_0060BC40(float dT, void *data);
@@ -114,6 +113,13 @@ public:
 class CSealUnit {
 public:
     static bool TickAll(float dT, void *data);
+};
+
+/* the AI SEALs' controller (zseal.h's; only its "ai_pre_tick" task: SOCOM 1's static
+ * CSealCtrlAi::PreTick(float, void *), OVL2 0x5CCCD0, the kit lane's round 46) */
+class CSealCtrlAi {
+public:
+    static bool PreTick(float dT, void *data);
 };
 
 extern CHUD *theHUD;
@@ -626,7 +632,7 @@ bool CCoreState::Init()
     CRdrArchive::CloseAll();
     CRdrArchive::RemoveArchive("readerm.zar", GetDatabase());
     zTaskScheduler.AddTask("UnitTick", CSealUnit::TickAll, 0.8f, 0);
-    zTaskScheduler.AddTask("ai_pre_tick", func_005CCCD0, 0.9f, 0);
+    zTaskScheduler.AddTask("ai_pre_tick", CSealCtrlAi::PreTick, 0.9f, 0);
     zTaskScheduler.AddTask("entity_pre_tick", CEntity::PreTickAll, 1.0f, 0);
     zTaskScheduler.AddTask("weapon_pre_tick", func_003D1F90, 3.0f, 0);
     zTaskScheduler.AddTask("CAiEventTick", CAiEvent::Tick, 4.5f, 0);
