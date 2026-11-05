@@ -757,6 +757,9 @@ public:
     void TickVictims();
     /* the actions the SEAL can take now marked (SOCOM 1's; OVL2 0x593500) */
     void SampleActionAvailable();
+    /* the ammunition near picked up, the weapons under the reticule or near and the MP bomb's
+     * pickup and node kept (SOCOM 1's; OVL2 0x593DA0) */
+    void TickPickups(float dT);
     /* the look and the scan (SOCOM 1's, OVL2 0x600D40-0x60187F: the kit lane's seal_look.cpp,
      * which reads the members through a view of its own). A setter answers whether the look was
      * taken -- a kind at least the current one's; SOCOM II's SetDefaultLookParams takes whether
@@ -868,7 +871,7 @@ public:
     MENU_STATE m_menustate;   // 0x221 (as SOCOM 1's)
     unsigned char _222[0x238 - 0x222];
     float m_bombpickuptimer;   // 0x238 (as SOCOM 1's: TickMPBomb sets it once a defusal starts)
-    unsigned char _23c[0x240 - 0x23c];
+    float m_weapon_pickup_timer;   // 0x23c (as SOCOM 1's: TickPickups waits it out before a weapon is offered)
     float m_240;   // 0x240: how long the reload button has been held (0x594B70; the name ours)
     float m_244;   // 0x244: CanPlaceBomb's wait, set to 1.5 when it refuses (the name ours)
     unsigned char _248[0x250 - 0x248];

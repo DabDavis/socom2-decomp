@@ -385,6 +385,109 @@ void CSealCtrl::TickVictims()
     }
 }
 
+extern "C" {
+/* whether the SEAL is free to take a weapon (OVL2 0x5A81D0, seal_env.cpp's) */
+bool func_005A81D0(CZSealBody *seal);
+}
+
+/* the pickups near (SOCOM 1's TickPickups, by its order and body; OVL2 0x593DA0): each ammunition
+ * pickup within 20 picked up once (the last one kept in a function-local static), the weapon under
+ * the reticule or near and its secondary's net ids while the weapon timer is out, and online the MP
+ * bomb's node kept while within 15 across and 20 up, the bomb picked up when it is near and the kit
+ * holds no charge */
+void CSealCtrl::TickPickups(float dT)
+{
+    static CPickup *last = 0;
+    CZSealBody *seal = (CZSealBody *)m_entity;
+
+    if (!seal)
+        return;
+    CPickup::iterator it = CPickup::GetFirst();
+    CPickup *p;
+    bool found = false;
+
+    while ((p = CPickup::GetNext(it, &seal->m_posW, 20.0f, CPickup::PU_AMMO)) != 0) {
+        if (p != last)
+            seal->PickupObject(p);
+        last = p;
+        found = true;
+    }
+    if (!found)
+        last = 0;
+
+    CPickup *secondary = 0;
+    CPickup *w = 0;
+
+    if (func_005A81D0(seal)) {
+        w = seal->GetReticuleWeapon(&secondary);
+        if (!w)
+            w = seal->GetProximityWeapon(&secondary);
+    }
+    if (!w)
+        m_curpickup_ID = -1;
+    else if (!(m_weapon_pickup_timer <= 0.0f)) {
+        m_weapon_pickup_timer -= dT;
+        m_curpickup_ID = -1;
+    } else if (w->m_type == CPickup::PU_WEAPON) {
+        if (!w->m_data)
+            m_curpickup_ID = -1;
+        else
+            m_curpickup_ID = w->GetPickupNetEntityID();
+    }
+    if (!secondary)
+        m_curpickup_secondary_ID = -1;
+    else if (!(m_weapon_pickup_timer <= 0.0f)) {
+        m_weapon_pickup_timer -= dT;
+        m_curpickup_secondary_ID = -1;
+    } else if (secondary->m_type == CPickup::PU_WEAPON) {
+        if (!secondary->m_data)
+            m_curpickup_secondary_ID = -1;
+        else
+            m_curpickup_secondary_ID = secondary->GetPickupNetEntityID();
+    }
+    if (!theNetwork.m_9)
+        return;
+    if (!(m_bombpickuptimer <= 0.0f)) {
+        m_bombpickuptimer -= dT;
+        m_curMPBOMBpickup_ID = -1;
+        return;
+    }
+    zdb::CNode *bomb = CPickup::m_mpbombnode;
+
+    if (bomb) {
+        m_bomb_defusal_node = bomb;
+        if (m_bomb_defusal_node) {
+            static float across = 15.0f;
+            static float up = 20.0f;
+            CPnt3D d;
+
+            ((const CPnt3D *)bomb->m_matrix.m_matrix[3])->SubXZ(&seal->m_posW, &d);
+            if (d.x * d.x + d.z * d.z < across * across) {
+                float dy = bomb->m_matrix.m_matrix[3][1] - seal->m_posW.y;
+
+                if (!(dy * dy <= up * up))
+                    m_bomb_defusal_node = 0;
+            } else
+                m_bomb_defusal_node = 0;
+        }
+    } else
+        m_bomb_defusal_node = 0;
+    CPickup *b = seal->GetProximityMPBomb();
+
+    if (!b) {
+        m_curMPBOMBpickup_ID = -1;
+        return;
+    }
+    if (b->m_type == CPickup::PU_MPBOMB && m_curMPBOMBpickup_ID == -1) {
+        if (seal->m_kit.HasItem((EQUIP_ITEM)154)) {
+            m_curMPBOMBpickup_ID = -1;
+            return;
+        }
+        seal->PickupObject(b);
+        m_bombpickuptimer = 4.0f;
+    }
+}
+
 /* the view range's floor (OVL2 data 0x6506A0, read as a variable) */
 extern "C" float data_006506A0;
 
