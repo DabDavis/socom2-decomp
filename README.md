@@ -2062,6 +2062,35 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the HUD, round 45** (CTeleType::Draw; GetAssetLibs on the new vector header):
+  - a rectangle built inside a call's own argument list keeps the target's order of work; as named locals MW merges the
+    repeated `(float)(x + 2)` into one conversion and moves it past both calls (CTeleType::Draw 0x378C00: 0x390 bytes to
+    exact, with three int statics between the teletype's speed and noise statics: -5, 8, -11);
+  - an inline member function shares the caller's member loads (one m_font load serves two expansions and the height), a
+    free inline taking the object as a parameter reloads it; a member read into an inline's own local before a virtual
+    call stays a separate load from the caller's read after it -- read directly in either place MW uses one load across
+    the call; with `(lib = expr) != 0` and lib passed by reference into an inline the store fills the null test's delay
+    slot and the test uses the register, an initialised lib passed by reference is reloaded for the test;
+  - since the MSL's round 24, `find(begin(), end(), x) == end()` plus push_back in a helper is too tall to inline whole:
+    it inlines one level and calls the five pieces out of line -- the target's shape for all five C2D GetAssetLibs
+    (vector<CAssetLib *>'s pieces 0x358670-0x358720 named at integration; GetAssetLibs 0x3585A0 3 off: the target builds
+    the list walk's end iterator in this's register, which no declaration order gets).
+- **Tells from the kit and AI states, round 38** (the kit's ammo, lens and fire-mode members, SniperTick, Find's caller):
+  - a float constant one unit in the last place off its decimal is a product of float literals folded by the compiler:
+    0x3E75C290 is `0.3f*0.8f`, 0x3F23D70B is `0.8f*0.8f` -- writing `0.24f` gives 0x3E75C28F (CZKit::Apply_LensEffects
+    0x5C1800, SOCOM 1's);
+  - an inline returning a static CPnt4D by value, read three times in one expression, shares one load of the static (one
+    temporary copied once per channel), a local read once drops the copies and comes out 0x20 short; a float the target
+    holds in a saved register across a later call and then fuses with adda/madd is a local computed before that call
+    (`pace = 0.75f + Get(); ... += dT * (0.25f + Get() + pace * r);`: SniperTick 0x5B9280, SOCOM II's third float);
+  - a mid-function `return` gives bc1f over a `b` to the epilogue, the target's single bc1t to the end is an enclosing if
+    running to the function's end; a field the target loads ahead of an update in the same block is read into a local
+    before the update; `return j != -1 ? x : 0;` gives `beq; move v0,zero` with the value on the fall-through, `j == -1 ?
+    0 : x` branches over a `b`; declaration-time numbering holds inside a block (`T type; U id = ...; type = f();`);
+    `max < mode[i]` gives v0 to the mode, `mode[i] > max` swaps them (CycleFireMode 0x5C4600, GetAmmoCount 0x5C38A0);
+  - AnimSet::Find's caller 0x5E3940 matches with anim.cpp's AnimSet::GetName fitted five inline levels high (fitted, not
+    read off the image: its comment says so), anim.cpp's copies of the SEALs' 0x5788C0 / 0x578920 matching with it;
+    FillAmmoPickupInstance 0x5BA040 declared in zseal.h's CZKit (m_kit's type).
 - **Tells from the world, rdr and sound, round 17** (CSnd's play and stream calls, the headset's ticks, the mission's
   sound groups):
   - MW counts a function's statements BEFORE inlining, an inline call counting one: PlaySound3D 0x342B20 auto-inlines
