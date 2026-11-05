@@ -2065,6 +2065,24 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the kit and AI states, round 49** (CTPlay::Tick and CTInView::Tick at last; the rush's SetTarget and
+  OnSignal, the surrender's OnSignal):
+  - A CAST THROUGH A LEAF TEMPLATE INLINE (`template <class T> T *TaskBlock(hdr) { return (T *)hdr; }`) MAKES THE LOCAL
+    THE INLINE'S RESULT TEMPORARY, numbered after every named and inline variable -- what CTPlay::Tick 0x5D2F30's block
+    needed (the replay accepted any number past the second find's counter; a cast inline with its own local stays 76
+    off); `cmd->m_2c == top->m_animType` gives the xor's operand order;
+  - a walk's end written `data_ + size()` in a local inline keeps the data pointer from the entry test and re-reads only
+    the count each pass -- in place, through a reference or a pointer local, MW hoists the whole end or re-reads both
+    (CTInView::Tick 0x5D7FD0's team walk: TaskTargetsEnd; the MSL's 0x60F760 shape gives 0x6C4 here); floats reused
+    inside an inline held in named locals are numbered with the inline's variables, ahead of the lowering temporaries
+    (the cone's depth and fraction);
+  - a call result assigned to its own local and copied to the result at once keeps the case's tests on v0, with the copy
+    in the delay slot, when the result lives in a saved register; an inline argument read after a call must be taken
+    into a local after that call, or MW reads it after a ternary argument (CAiSSurrender::OnSignal 0x607D70's inlined
+    ClearTeamMask); a function-local static object with an inline constructor (`static Rfloat s(3.0f, 5.0f)`) gives the
+    target's guard and folded stores -- `@LOCAL@` / `@GUARD@` data rows resolve every relocation (CAiSRush::OnSignal
+    0x6036B0; SetTarget 0x603690 named by SOCOM 1's 0x2E51D0, the same words, between the rush's Tick and OnSignal in
+    both builds).
 - **Tells from the engine core, round 17** (CCamera::Update; the clutter's TickForce, Render, the list's Render and the
   anim manager's tick -- SOCOM 1's; the tether and camera data rows named):
   - INLINE TEMPORARIES ARE LAID OUT IN EXPANSION ORDER: in a nested expression the outer operator's result and copy take
