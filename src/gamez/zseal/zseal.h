@@ -1655,6 +1655,8 @@ public:
     CZBodyAnimBlend *PutdownBuddy();
     /* a buddy picked up, the carrier's last blend returned (OVL2 0x579720, seal_body.cpp) */
     CZBodyAnimBlend *PickupBuddy(CZSealBody *buddy);
+    /* a crouch to pick a buddy up, its blend's timed call left to do it (OVL2 0x579A30, seal_body.cpp) */
+    CZBodyAnimBlend *CrouchToPickupBuddy(CZSealBody *buddy);
     bool ExecuteAction_ApplyRestraint(CZSealBody *victim);
     bool ExecuteAction_CQBAttack(CZSealBody *victim);
     /* a pickup taken up: a grenade thrown back, the others each their own way (SOCOM 1's; OVL2

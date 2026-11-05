@@ -215,7 +215,9 @@ extern "C" bool func_005551A0(unsigned short flags, unsigned short bits);
 /* the state the SEAL is in; asked with a flag, the top blend's anims say it first (17 stand or
  * crouch, 19 crouch or prone, 25 stand or prone, by the blend's flag 0x20) unless its flag 0x40 is
  * set, and a crouch with bit 2 of 0x21C counts as a stand (OVL2 0x58A720: SOCOM 1's GetStance, the
- * crouch bit new; seal_ai.cpp's InStance and the kit's kick ask it) */
+ * crouch bit new; seal_ai.cpp's InStance and the kit's kick ask it). Pinned out of line: short enough
+ * for -inline auto, but CrouchToPickupBuddy, this unit's one caller, calls it as the target does */
+#pragma auto_inline off
 SEAL_STATE CZSealBody::GetStance(bool flag) const
 {
     SEAL_STATE state = (SEAL_STATE)m_state;
@@ -238,6 +240,7 @@ SEAL_STATE CZSealBody::GetStance(bool flag) const
     }
     return state;
 }
+#pragma auto_inline reset
 
 /* how fast the SEAL moves, standing, crouched or prone: 1 still, 2 under 20 units a second, 3 faster
  * (1 in any other state; OVL2 0x58A820, SOCOM 1's GetSpeedState after GetStance, the speeds squared
@@ -1702,7 +1705,8 @@ extern "C" void func_00579EF0(CZSealBody *seal)
 }
 
 extern "C" {
-/* (OVL2 0x579A30, not written yet: what 0x579DA0 hands on to) */
+/* (OVL2 0x579A30, CrouchToPickupBuddy below: what 0x579DA0 hands on to -- the buddy as an int here,
+ * the placeholder resolving by its address) */
 void func_00579A30(CZSealBody *seal, int a);
 }
 
@@ -2084,6 +2088,82 @@ static inline void NegateInto(const CPnt3D *in, CPnt3D *out)
 extern "C" {
 /* the game's clock (OVL1 data, a float -- seal_ai.cpp's) */
 extern float data_004365C0;
+}
+
+/* CrouchToPickupBuddy's timed call (OVL2 0x579E90, an anim callback: the body, then the buddy) --
+ * the buddy picked up */
+extern "C" void func_00579E90(void *body, void *buddy)
+{
+    ((CZSealBody *)body)->PickupBuddy((CZSealBody *)buddy);
+}
+
+/* a crouch to pick a buddy up: unless there is none or the SEAL moves faster than 8, the buddy's root
+ * part taken into the world, its facing kept and then replaced by its spine's x axis turned round
+ * through its matrix, flat; then, with anim 18 on top its timed call picks the buddy up at 3, in a
+ * crouch (17 or 19, the top blend in state 1) at 0.99 -- from a crouched stance by 0x579DA0 -- with
+ * the representative's bit 1 cleared; otherwise a crouch asked (the stance change marked) and its
+ * blend left to pick up at 0.99 the same way; each the other's carry, the SEAL homed onto the pickup's
+ * offset from the buddy's root along the turned axis, the controller zooming out, the buddy's AI given
+ * bit 5; the top blend or the crouch's returned (OVL2 0x579A30 -- SOCOM 1's CrouchToPickupBuddy, after
+ * PickupBuddy in both builds) */
+CZBodyAnimBlend *CZSealBody::CrouchToPickupBuddy(CZSealBody *buddy)
+{
+    CZBodyAnimBlend *top = (CZBodyAnimBlend *)func_00555170(&m_blends);
+
+    if (!buddy)
+        return top;
+    if (!(m_velM.x * m_velM.x + m_velM.y * m_velM.y + m_velM.z * m_velM.z <= 64.0f))
+        return top;
+    CPnt3D root;
+
+    buddy->m_node->m_matrix.Transform(&buddy->GetRootPart()->m_pos, &root, 1);
+    CPnt3D dir;
+
+    dir = *(const CPnt3D *)buddy->m_node->m_matrix.m_matrix[2];
+    CQuat q;
+
+    buddy->PartInSpace(buddy->m_spinelo, 0, 0, &q);
+    CPnt3D v;
+
+    q.Apply(&CPnt3D::unit_x, &v, 1);
+    v.y = 0.0f;
+    v.Normalize();
+    v.Scale(-1.0f, &v);
+    TransformVectors(&buddy->m_node->m_matrix, &v, &dir, 1);
+    if (IsCurrentBlend((AnimType)18)) {
+        top->m_callback.m_func = func_00579E90;
+        top->m_callback.m_tfrac = 3.0f;
+        top->m_callback.m_userdata = buddy;
+    } else if ((IsCurrentBlend((AnimType)17) || IsCurrentBlend((AnimType)19)) && top->m_state == 1) {
+        if (GetStance(true) != 1) {
+            top->m_callback.m_func = func_00579E90;
+            top->m_callback.m_tfrac = 0.99f;
+            top->m_callback.m_userdata = buddy;
+        } else {
+            top->m_callback.m_func = (void (*)(void *, void *))func_00579DA0;
+            top->m_callback.m_tfrac = 0.99f;
+            top->m_callback.m_userdata = buddy;
+        }
+        top->Representative()->SetBit1(false);
+    } else {
+        m_desiredState = stateCrouch;
+        m_stancechanged = true;
+        top = Crouch();
+        top->m_callback.m_func = func_00579E90;
+        top->m_callback.m_tfrac = 0.99f;
+        top->m_callback.m_userdata = buddy;
+        top->Representative()->SetBit1(false);
+    }
+    m_carry = buddy;
+    buddy->m_carry = this;
+    func_005B1750(this, &pickup_offset, &root, &dir);
+    if (m_control)
+        ((CSealCtrl *)m_control)->m_zoomout = true;
+    CSealCtrlAi *ai = buddy->GetSealCtrlAi();
+
+    if (ai)
+        ai->m_aibit5 = true;
+    return top;
 }
 
 /* a buddy picked up: unless there is none, its blends popped down to one, twelve at most, it carried
