@@ -460,6 +460,9 @@ public:
     /* a SEAL's squad's own clean-up of it (OVL2 0x5EDF90, the kit lane's seal_unit.cpp, which
      * declares it alike) */
     static void SealLeaveUnit(CZSealBody *seal);
+    /* a SEAL in the squad of a number, or with `recurse` in a squad under it (SOCOM 1's; OVL2
+     * 0x5EDDD0, the kit lane's seal_unit.cpp, which declares it alike) */
+    static bool IsMemberOfUnit(unsigned int team, CZSealBody *seal, bool recurse);
 
     unsigned int m_0;   // 0x0
     virtual void IssueCommand(CZSealBody *seal, FT_COMMAND cmd, void *data, bool b);
