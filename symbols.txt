@@ -1791,7 +1791,7 @@
 0x0020A330 0x13C func_0020A330  # OVL1
 0x0020A470 0x304 SwitchToCompassMap__11CZNewHudMapFv  # OVL1; s1:callee (ReInit's one call, as SOCOM 1's)
 0x0020A780 0x33C func_0020A780  # OVL1
-0x0020AAC0 0x38C func_0020AAC0  # OVL1
+0x0020AAC0 0x38C GetScrollPermissions__11CZNewHudMapCFv  # OVL1; s1:calls by hand (the HUD lane, round 48: hud_newhudmap.cpp -- SOCOM 1's GetScrollPermissions 0x3C50F0, its CScrollBools: the viewer's facing, the same guarded fallback box as HandleScrolling's (0x3E4100, its guard 0x40BED0), the four bound tests and the eight facing sectors' permissions case for case SOCOM 1's; TickFullScreenAnims 0x209350 calls it)
 0x0020AE50 0x1A8 CalcNewMatrix__11CZNewHudMapFv  # OVL1; s1:calls
 0x0020B000 0x18 CalcDrawPos__11CZNewHudMapCFf  # OVL1; s1:exact by hand (hud_newhudmap.cpp; its fields 4 lower)
 0x0020B020 0x30 SetWorldWidth__11CZNewHudMapFf  # OVL1; s1:order by hand (hud_newhudmap.cpp; clamped to a minimum in SOCOM II)

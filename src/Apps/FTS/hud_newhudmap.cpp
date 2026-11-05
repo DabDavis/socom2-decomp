@@ -471,6 +471,77 @@ inline const CBBox *CZNewHudMap::GetScrollBounds() const
     return map ? &map->m_bbox : &boxFallback;
 }
 
+/* the full-screen map's scroll permissions: up, left, right and down on the screen, from the centre
+ * inside each bound of the scroll box and the viewer's facing -- in its eight compass sectors (0.01
+ * either side of an axis counts as the axis) each screen direction is the one or two world
+ * directions it maps to; facing nowhere, none (SOCOM 1's GetScrollPermissions, 0x3C50F0, the box
+ * the first AI map's; its CScrollBools).
+ * OPEN, 0x36C of 0x38C (27 structural, 23 registers): the logic, the bound tests and every case's
+ * pairs are the target's (each `a || b` its two sltus), but MW scalarises the facing into $f20/$f21
+ * (two saved FPRs, a 0x90 frame) where the target keeps it on the stack at sp+112 and reloads x
+ * and z after the map lookup (frame 0x80, no FPR saved). A reference bound to a temporary (as
+ * CalcNewMatrix's) keeps it in memory but holds the reference in s3 (19 off, the frame 0x90);
+ * pointers to x and z, or a reference to the named facing, are further off */
+CScrollBools CZNewHudMap::GetScrollPermissions() const
+{
+    CScrollBools bools;
+    SealDir ptDir;
+
+    GetSealDir(m_viewer, &ptDir);
+    const CBBox *box = GetScrollBounds();
+    bool bXUnderMax = m_centerx < box->m_max.x;
+    bool bXOverMin = m_centerx > box->m_min.x;
+    bool bZUnderMax = m_centerz < box->m_max.z;
+    bool bZOverMin = m_centerz > box->m_min.z;
+
+    if (ptDir.x < -0.01f) {
+        if (ptDir.z < -0.01f) {
+            bools._bUp = bXOverMin || bZOverMin;
+            bools._bLeft = bZUnderMax || bXOverMin;
+            bools._bRight = bZOverMin || bXUnderMax;
+            bools._bDown = bXUnderMax || bZUnderMax;
+        } else if (ptDir.z > 0.01f) {
+            bools._bUp = bXOverMin || bZUnderMax;
+            bools._bLeft = bZUnderMax || bXUnderMax;
+            bools._bRight = bZOverMin || bXOverMin;
+            bools._bDown = bXUnderMax || bZOverMin;
+        } else {
+            bools._bUp = bXOverMin;
+            bools._bLeft = bZUnderMax;
+            bools._bRight = bZOverMin;
+            bools._bDown = bXUnderMax;
+        }
+    } else if (ptDir.x > 0.01f) {
+        if (ptDir.z < -0.01f) {
+            bools._bUp = bXUnderMax || bZOverMin;
+            bools._bLeft = bZOverMin || bXOverMin;
+            bools._bRight = bZUnderMax || bXUnderMax;
+            bools._bDown = bXOverMin || bZUnderMax;
+        } else if (ptDir.z > 0.01f) {
+            bools._bUp = bXUnderMax || bZUnderMax;
+            bools._bLeft = bZOverMin || bXUnderMax;
+            bools._bRight = bZUnderMax || bXOverMin;
+            bools._bDown = bXOverMin || bZOverMin;
+        } else {
+            bools._bUp = bXUnderMax;
+            bools._bLeft = bZOverMin;
+            bools._bRight = bZUnderMax;
+            bools._bDown = bXOverMin;
+        }
+    } else if (ptDir.z < -0.01f) {
+        bools._bUp = bZOverMin;
+        bools._bLeft = bXOverMin;
+        bools._bRight = bXUnderMax;
+        bools._bDown = bZUnderMax;
+    } else if (ptDir.z > 0.01f) {
+        bools._bUp = bZUnderMax;
+        bools._bLeft = bXUnderMax;
+        bools._bRight = bXOverMin;
+        bools._bDown = bZOverMin;
+    }
+    return bools;
+}
+
 /* the scroll's speed at the map's scale (36 in data; SOCOM 1's literal 20; the name ours) */
 static float s_fScrollSpeed = 36.0f;
 
