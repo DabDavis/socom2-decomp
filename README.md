@@ -2065,6 +2065,21 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the AI core, round 30** (LeadTargetG at last, open since round 2; SmoothPathLeg and its line callback, SOCOM
+  1's; CAiCell::IsSoil):
+  - MW NEVER SHARES A LOAD THROUGH A REFERENCE LOCAL WITH THE OBJECT'S OWN FIELDS: a `const CPnt3D &` to w gave
+    CAi::LeadTargetG 0x50E590 its second w.x load (the float-only miss the replay could not score), and the same trick
+    put ReRoute's state address in s1 (its wait loop now the target's);
+  - a redundant store MW drops late leaves an empty block behind -- `case 7: ok = !mid;` inlined with mid false gives the
+    target's `b; nop` case block; `while (i > last)` or a negated `> 2` puts both rotated tests on at, `last < i` or `< 3`
+    materialises the bottom one; nested ifs on one bool send every failure straight to the final test, an && chain or
+    sequential ifs keep a join at each level;
+  - `bool ok;` declared uninitialised at the top, and a field read into a named local passed down through inlines, are
+    numbered among the caller's own locals -- read through an accessor's own local, the same value is numbered last as a
+    temporary: `tools/igreplay.py --move` / --movers found the placement and closed _SmoothLineCallback 0x525C80
+    (CAiPath::SmoothPathLeg 0x525810, SOCOM 1's; CAiCell::IsSoil 0x525C60 an inline's out-of-line copy, its name and
+    unsigned char parameter ours); char_type.cpp's func_0058E0A0 is CSealCtrl::GetCommandId through a local stand-in
+    (SAME-BY-ADDRESS).
 - **Tells from completing the MSL headers, round 30** (the two CSaferStr made one; the vector walk's end; CPnt3D's operators):
   - ONE CSaferStr: src/gamez/zutil/saferstr.h holds SOCOM 1's zutil.h class -- a std::string with an empty inline
     constructor and `void operator=(const char *)` (the return SOCOM 1's DWARF gives); zentity.h and zsav_lobby.h include
