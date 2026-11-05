@@ -10,10 +10,10 @@
  * shallower, so their ten out-of-line copies 0x231DD0-0x231E30 and 0x232460-0x232480 name the
  * chains' levels -- CTCMNode's accessor, CTCMNodeList's, the vector's), the sounds, and CTCM's
  * tick, push-to-talk, close, open, root, next and the item searches (ShowRoot since round 42).
- * OPEN: RemoveChild, Select (1 instruction), the open menu's pad handler HandleOpenPad 0x235D40
- * (round 54, temporaries). Written in round 41: one kind's items, tcmAddKindItems 0x2329F0 (its
- * entries go under the third group item's caption, which an inline returns). Not yet: the cache
- * builders 0x232BC0/0x2344E0, the closed menu's pad handler 0x2359A0.
+ * OPEN: RemoveChild and the open menu's pad handler HandleOpenPad 0x235D40 (round 54, temporaries).
+ * Written in round 41: one kind's items, tcmAddKindItems 0x2329F0 (its entries go under the third
+ * group item's caption, which an inline returns); round 57: Select byte-exact and the closed menu's
+ * pad handler HandleClosedPad 0x2359A0. Not yet: the cache builders 0x232BC0/0x2344E0.
  * Defined in reverse of their image order (-inline deferred). */
 
 #include <string.h>
