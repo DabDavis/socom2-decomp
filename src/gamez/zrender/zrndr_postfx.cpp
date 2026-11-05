@@ -115,12 +115,12 @@ void CPipeEffect::SetOn(bool on)
  * positive -- capped at 255 and put in the register word's high half: the pipe's colour gets the
  * mode, the colour and the word. Off, the colour's mode is cleared (written in round 25 of the
  * world lane; the names ours).
- * OPEN, 76 instructions at the target's size: the float registers -- the mode converted from the
- * unsigned word takes f20 here, f21 in the target, and the average f21 against f20 -- the average
- * summed as h1 + h2 then h0 (the target adds 0.0, h0, h1, h2 in order into f20: a summing loop does,
- * but costs 8 bytes elsewhere), and the alpha's last product `m_c * x` where the target has `x * m_c`
- * with its 1.0 and 0.5 in each other's registers. The statics are function-local (data rows
- * @LOCAL@/@GUARD@ for hist, idx and the guarded k) */
+ * The average summed by a loop into a variable starting at 0.0 (unrolled; its zero is the one the
+ * m_10 test copies, avg in f20 and the mode in f21 -- one sum written `0.0f + h0 + h1 + h2` folds
+ * the zero away and reassociates), the shaped alpha's half-cosine a local of its own
+ * (written inline, the 1.0 and 0.5 swap registers and `m_c * x` comes out with m_c first, 8 bytes
+ * longer with the summed average). The statics are function-local (data rows @LOCAL@/@GUARD@ for
+ * hist, idx and the guarded k) */
 void CPipeEffect::Tick()
 {
     static float hist[3];
@@ -148,15 +148,20 @@ void CPipeEffect::Tick()
         idx++;
         if (idx >= 3)
             idx = 0;
-        float avg = (0.0f + hist[0] + hist[1] + hist[2]) / 3.0f;
+        float avg = 0.0f;
+
+        for (int i = 0; i < 3; i++)
+            avg += hist[i];
+        avg /= 3.0f;
         float a;
 
         if (!(m_10 <= 0.0f)) {
             static float k = cosf(0.7853982f) - 0.5f;
             float t = 3.1415927f * (1.0f - avg);
             float w = k * ((m_10 - 1.0f) * sinf(2.0f * t));
+            float c = 0.5f * (1.0f + (cosf(t) - w));
 
-            a = (int)(0.5f + 0.5f * (1.0f + (cosf(t) - w)) * m_c);
+            a = (int)(0.5f + c * m_c);
         } else
             a = (int)(0.5f + avg * m_c);
         if (255.0f < a)
