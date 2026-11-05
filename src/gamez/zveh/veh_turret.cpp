@@ -9,6 +9,7 @@
 #include <string.h>
 
 #include "zveh.h"
+#include "../zseal/seal_dipool.h"
 
 using namespace zdb;
 
@@ -303,6 +304,53 @@ void CTurret::LoadTurrets()
     ScanForTurretDefinitionHookups(world, true);
 }
 
+/* SOCOM 1's constructor: an entity of type 3, the fire timer, the trigger, the target and the AI's
+ * parameters built, the matrices made identity (twice: their constructors, then the body), the
+ * definition's settings taken through Init, the node's ancestor under the world found, the turret
+ * switched on and -- unless manual -- aimed once and placed on the AI map; listed last */
+CTurret::CTurret(CNode *node, const CTurretDef &def)
+    : CEntity((CEntity::TYPE)3, node), m_fireTimer(0.0f), m_240(0), m_254(1.0f), m_258(1.0f),
+      m_25c(0.0f), m_260(1.0f), m_def(&def), m_ammoType(0), m_ammo(0), m_weapon(0), m_shots(0),
+      m_380(CPnt3D::zero), m_38c(CPnt3D::unit_nz), m_398(CPnt3D::unit_nz), m_flags(0)
+{
+    m_yawNode = 0;
+    m_pitchNode = 0;
+    m_288 = 0;
+    m_root = 0;
+    SetHealth(1.0f);
+    m_3c0 = 0.0f;
+    m_2c0.SetIdentity();
+    m_300.SetIdentity();
+    m_340.SetIdentity();
+    SetFlag(0x40, false);
+    Init(node, def);
+
+    CNode *p = node ? node->GetParent() : 0;
+
+    if (p) {
+        do {
+            if (p == CWorld::m_world)
+                break;
+            node = p;
+            p = p->GetParent();
+        } while (p);
+    }
+    m_root = node;
+    SetFlag(1, true);
+    SetFlag(0x20, true);
+    if (!GetFlag(2) && m_yawNode && m_pitchNode) {
+        SampleDynamics(0.0f);
+        Rotate(0.0f);
+        UpdatePosW();
+
+        unsigned int loc;
+
+        if (AiMaps.GetLocation(&m_posW, *(CAiMapLoc *)&loc))
+            *(unsigned int *)&m_mapLoc = loc;
+    }
+    m_turrets.push_back(this);
+}
+
 CTurret::~CTurret()
 {
     m_turrets.Remove(this);
@@ -387,6 +435,50 @@ void CTurret::SetThermal(CNode *node, bool thermal)
         scope->SetActive(!thermal);
 }
 
+/* SOCOM 1's Init: the joints and the fire point found by the definition's part names (the pitch
+ * joint fires when the third is missing and AUTOSCAN is set), the scopes found afresh, the health,
+ * the trigger and the AI's parameters copied, the weapon and its ammunition looked up, the team
+ * joined, the aim's direction and the joints' angles read off the nodes */
+void CTurret::Init(CNode *node, const CTurretDef &def)
+{
+    if (!node)
+        return;
+    m_flags = def.m_flags.m_bits;
+    m_yawNode = node->FindChild(def.m_parts[0], true);
+    m_pitchNode = node->FindChild(def.m_parts[1], true);
+    m_288 = node->FindChild(def.m_parts[2], true);
+    if (!m_288 && GetFlag(0x10))
+        m_288 = m_pitchNode;
+    m_thermal = def.m_thermal;
+    SetFlag(0x40, def.m_compass);
+    m_thermalScope = 0;
+    m_scope = 0;
+    SetThermal(node, m_thermal);
+    SetHealth(def.m_health);
+    m_trigger = def.m_trigger;
+    m_aiParams = def.m_aiParams;
+    m_max_target_range_sq = m_aiParams.visual_range * m_aiParams.visual_range;
+    m_weapon = &CZWeapon::m_listWeapons ? CZWeapon::m_listWeapons.GetWeapon(def.m_weapon) : 0;
+    m_ammoType = &CZAmmo::m_ammolist ? CZAmmo::m_ammolist.GetAmmo(def.m_ammo) : 0;
+    if (CZWeapon *w = m_weapon) {
+        m_ammo = w->GetAmmoCapacity() * w->GetNumMags();
+        if (!m_ammoType)
+            m_ammoType = m_weapon->GetDefaultAmmo();
+        m_fireTimer.m_min = m_weapon->m_firewait;
+        m_fireTimer.m_range = 0.0f;
+        if (m_fireTimer.m_timer != CAiTimer::infinite)
+            m_fireTimer.m_timer = 0.0f;
+    }
+    SetTeamMask(def.m_team);
+    JoinTeam(27);
+    m_300.Transform(&CPnt3D::unit_nz, &m_38c, 1);
+    m_398 = m_38c;
+    if (m_yawNode)
+        m_3b0 = atan2f(m_yawNode->m_matrix.m_matrix[2][0], m_yawNode->m_matrix.m_matrix[2][2]);
+    if (m_pitchNode)
+        m_3b8 = m_pitchNode->m_matrix.m_matrix[1][2];
+}
+
 void CTurret::OnMissionStart()
 {
     if (GetFlag(2)) {
@@ -456,7 +548,7 @@ void CTurret::PreTick(float dT)
         SetFlag(1, false);
     if (GetFlag(1)) {
         SampleDynamics(dT);
-        float r = m_220;
+        float r = m_aiParams.visual_range;
 
         m_254 = r;
         m_260 = 1.0f / r;
@@ -859,7 +951,7 @@ void CTurret::Fire()
     CPnt3D dir = m_38c;
 
     if (GetFlag(2))
-        ((CAiTarget *)m_target)->ModifyAimDir(&dir, m_aimError, 0.267949f);
+        ((CAiTarget *)&m_target)->ModifyAimDir(&dir, m_aiParams.accuracy, 0.267949f);
     m_weapon->Fire(m_node, ammo, pos, &dir, &CPnt3D::zero, p, m_id, 0);
     ResetTimer(m_fireTimer);
 }
@@ -1040,10 +1132,10 @@ extern "C" void func_003A84E0(CTurret *t)
 {
     CPnt3D dir;
 
-    if (func_0060A850(t->m_target)) {
+    if (func_0060A850(&t->m_target)) {
         CPnt3D pos;
 
-        (*(CEntity **)t->m_target)->GetTargetPosW(&pos);
+        (*(CEntity **)&t->m_target)->GetTargetPosW(&pos);
         t->m_398 = pos - t->m_380;
         t->m_398.Normalize();
         TransformVectors(&t->m_340, &t->m_398, &dir, 1);
@@ -1094,8 +1186,18 @@ struct CAiViewer {
 
     CEntity *m_ent;   // 0x0
     void *m_params;   // 0x4
-    unsigned char _8[0x14 - 0x8];
-    bool m_flag;   // 0x14
+    /* the eye, worked out on first use (inline; the name ours) */
+    const CPnt3D &Eye()
+    {
+        if (!m_flag) {
+            m_ent->GetHeadPosW(&m_eye);
+            m_flag = true;
+        }
+        return m_eye;
+    }
+
+    CPnt3D m_eye;   // 0x8: the entity's head, worked out on first use (the target scan's)
+    bool m_flag;   // 0x14: the eye is worked out
 };
 
 /* a target's visibility updated from its finished ray (OVL2 0x60AFA0), the target taken on or
@@ -1110,9 +1212,9 @@ static inline bool TargetLost(CTurret *t)
 {
     bool lost = true;
 
-    if (func_0060A850(t->m_target)) {
+    if (func_0060A850(&t->m_target)) {
         if (!(t->m_targetFlags & 0x200))
-            lost = ((CAiTarget *)t->m_target)->GetTimeSinceLastSighting() > 3.0f;
+            lost = ((CAiTarget *)&t->m_target)->GetTimeSinceLastSighting() > 3.0f;
         else
             lost = false;
     }
@@ -1122,7 +1224,7 @@ static inline bool TargetLost(CTurret *t)
 /* the target held is this entry's entity (none: no target held -- inline; the name ours) */
 static inline bool HoldsTarget(CTurret *t, CTarget *x)
 {
-    return x ? *(CEntity **)t->m_target == x->m_ent : !*(CEntity **)t->m_target;
+    return x ? *(CEntity **)&t->m_target == x->m_ent : !*(CEntity **)&t->m_target;
 }
 
 /* the targets looked over (new in SOCOM II, not named: PrePostTick calls it under AI control): the
@@ -1138,7 +1240,7 @@ extern "C" void func_003A82C0(CTurret *t)
     v.m_flag = false;
     CTargetList &targets = t->m_targets;
 
-    CAiPerception::SetMaxRange(t->m_220);
+    CAiPerception::SetMaxRange(t->m_aiParams.visual_range);
     for (CTargetList::iterator it = targets.begin(); it != targets.end(); ++it) {
         bool vis = func_0060AFA0(&v, &*it);
 
@@ -1152,7 +1254,7 @@ extern "C" void func_003A82C0(CTurret *t)
             if (TargetLost(t))
                 func_003A7EB0(t, 0);
             else
-                func_0060A6A0(t->m_target, &*it);
+                func_0060A6A0(&t->m_target, &*it);
         }
     }
 }
@@ -1171,9 +1273,9 @@ bool CheckLineOfFire(const CEntity *self, const CTarget *target, float radius);
  * call is written on; `fire = timer > marker` gives the target's li/move pair (`!(<=)` adds xori) */
 extern "C" void func_003A8030(CTurret *t, float dT)
 {
-    ((CAiTarget *)t->m_target)->Tick(t, dT);
+    ((CAiTarget *)&t->m_target)->Tick(t, dT);
     if (t->m_flags & 8) {
-        bool held = func_0060A850(t->m_target) && (t->m_targetFlags & 0x200);
+        bool held = func_0060A850(&t->m_target) && (t->m_targetFlags & 0x200);
 
         if (held) {
             bool fire;
@@ -1186,7 +1288,7 @@ extern "C" void func_003A8030(CTurret *t, float dT)
                 fire = t->m_trigger.m_timer > t->m_trigger.m_marker;
                 t->m_trigger.m_timer -= dT;
             }
-            if (fire && ai::CheckLineOfFire(t, (CTarget *)t->m_target, 10.0f))
+            if (fire && ai::CheckLineOfFire(t, (CTarget *)&t->m_target, 10.0f))
                 t->m_flags |= 4;
             if (t->m_trigger.m_timer <= 0.0f)
                 t->m_trigger.Restart();
@@ -1200,6 +1302,118 @@ extern "C" void func_003A8030(CTurret *t, float dT)
 extern "C" bool func_003A7FA0(CTurret *t)
 {
     return !TargetLost(t);
+}
+
+/* the teams shared (inline: the turret's mask through a reference -- the target keeps its address
+ * across the walk; the name ours) */
+static inline bool SharesTeam(const unsigned int &team, const CEntity *e)
+{
+    return (team & e->m_team) != 0;
+}
+
+/* whether a point lies in the view cone (SOCOM 1's CAiCone::ContainsPoint, inline here: the apex and
+ * the vector's home handed in), the vector to it and its depth along the cone kept */
+static inline bool ConeContains(CTurret *t, const CPnt3D *p)
+{
+    p->Sub(&t->m_264, &t->m_coneVec);
+    t->m_coneDot = t->m_270.x * t->m_coneVec.x + t->m_270.y * t->m_coneVec.y + t->m_270.z * t->m_coneVec.z;
+    if (t->m_coneDot <= 0.0f || t->m_coneDot > t->m_254)
+        return false;
+    float r = t->m_25c + t->m_coneDot * t->m_260 * t->m_258;
+
+    if (t->m_coneVec.z * t->m_coneVec.z + (t->m_coneVec.x * t->m_coneVec.x + t->m_coneVec.y * t->m_coneVec.y) -
+            t->m_coneDot * t->m_coneDot <= r * r)
+        return true;
+    return false;
+}
+
+/* the DI requests' pieces the scan calls out of line, their copies following it (drafts): a free
+ * request taken off the pool's free list or a new one made (0x3A7E30), one set up -- the ray from
+ * the eye to the target's point, the viewer, the target's node and the target (0x3A7DD0) -- and one
+ * appended to the used list (0x3A7DA0: OVL1's copy of list<dir *>::push_back); CPnt3D's
+ * assignment, called (an earlier unit's copy) */
+extern "C" {
+CDiPool::dir *func_003A7E30(CDiPool::CDirList *free);
+void func_003A7DD0(CDiPool::dir *d, const CPnt3D *tail, const CPnt3D *tip, CEntity *viewer, CNode *node,
+                   CEntity *target);
+void func_003A7DA0(CDiPool::CDiList *used, CDiPool::dir **d);
+CPnt3D *__as__6CPnt3DFRC6CPnt3D(CPnt3D *to, const CPnt3D *from);
+}
+
+/* a ray from the eye to the target's point requested for a target's slot: a request made, set up
+ * and listed when it has none, else its own re-aimed (inline; the name ours) */
+static inline void RequestRay(CDiPool::dir *&slot, const CPnt3D &eye, const CPnt3D &pos, CEntity *viewer,
+                              CNode *node, CEntity *target)
+{
+    CDiPool::dir *d = 0;
+
+    if (!slot) {
+        d = func_003A7E30(&_diPool.m_free);
+        if (d) {
+            func_003A7DD0(d, &eye, &pos, viewer, node, target);
+            d->m_limited = 0;
+            func_003A7DA0(&_diPool.m_used, &d);
+            slot = d;
+        }
+    } else {
+        d = slot;
+        __as__6CPnt3DFRC6CPnt3D(&d->m_tail, &eye);
+        __as__6CPnt3DFRC6CPnt3D(&d->m_tip, &pos);
+        d->m_2c = (int)node;
+        d->m_limited = 0;
+        d->m_30 = (int)target;
+    }
+}
+
+/* the targets' rays (new in SOCOM II, not named: 0x3A88C0 calls it under AI control -- the SEALs'
+ * _GetTargetPerception's twin): each live enemy within the visual range, not nearer than 10, in the
+ * view cone gets a ray from the turret's head to its point requested of the DI pool (a request of its
+ * own made and listed, or the one it has re-aimed); any other loses its visible bit and its
+ * request. The viewer record is 0x3A82C0's CAiViewer (the target builds it at sp+192, its flag
+ * stored twice); the request pieces are called out of line in the target -- the pool's get, the
+ * set-up and the push_back (0x3A7E30, 0x3A7DD0, 0x3A7DA0, their copies following the scan) and
+ * CPnt3D's assignment (0x20F1F0) -- as if the request were an inline cut to one level by its size.
+ * OPEN, 0x330 of 0x354 (written in the weapons' round 28): the target hoists three addresses out of
+ * the walk -- the turret's team word (s7, read `lw a0,0(s7)`), the cone's vector (s8) and its apex
+ * (spilled to sp+176: Sub's arguments) -- and keeps the slot's address (&it->m_unk28) in s4, nine
+ * saved registers and a 240-byte frame; every shape here leaves the team and the Sub arguments
+ * s5-relative inside the walk (a reference parameter for the team, a cone struct whose member
+ * inline hoists EVERY field's address instead, the request through an inline taking the slot by
+ * reference): 208 bytes, eight saved registers; SOCOM 1's CAiCone (zwep_projectile.cpp's IsInCone
+ * shape: a const member taking the apex, the axis and the point) hoists every cone field's address
+ * as the member struct did (0x37C) -- the target folds the scalars' and hoists only the vector's and
+ * the apex's */
+extern "C" void func_003A7A40(CTurret *t)
+{
+    CAiViewer v(t, (char *)t + 0x204);
+
+    v.m_flag = false;
+    float range = t->m_aiParams.visual_range * t->m_aiParams.visual_range;
+    CTargetList &targets = t->m_targets;
+
+    for (CTargetList::iterator it = targets.begin(); it != targets.end(); ++it) {
+        CEntity *e = it->m_ent;
+        bool seen = false;
+
+        if (e && e->m_isAlive && !SharesTeam(t->m_team, e) && it->m_distSq <= range &&
+            !(it->m_distSq < 100.0f) && ConeContains(t, &e->m_posW))
+            seen = true;
+        if (seen) {
+            CPnt3D pos;
+
+            e->GetTargetPosW(&pos);
+            RequestRay(*(CDiPool::dir **)&it->m_unk28, v.Eye(), pos, t, e->GetNode(), e);
+        } else {
+            it->m_flags &= ~0x200;
+
+            CDiPool::dir *d = (CDiPool::dir *)it->m_unk28;
+            CDiPool::dir **p = (CDiPool::dir **)&it->m_unk28;
+
+            if (d)
+                d->Drop();
+            *p = 0;
+        }
+    }
 }
 
 #pragma auto_inline off

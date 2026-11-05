@@ -7739,7 +7739,7 @@
 0x003A9930 0x5C SetActive__7CTurretFb  # OVL1; by hand (the wep lane: the flag word's bit 5 and m_isAlive set together; the name ours); veh_turret.cpp
 0x003A9990 0x98 UpdateCompassAnchor__7CTurretFv  # OVL1; by hand (the wep lane: CTurret's slot +0x6C, CEntity's with the anchor shown only while alive and switched on); veh_turret.cpp
 0x003A9A30 0x44 OnMissionStart__7CTurretFv  # OVL1; by hand (the wep lane: CTurret's slot +0x4C -- a "Turret" compass anchor, type 11); veh_turret.cpp
-0x003A9A80 0x41C func_003A9A80  # OVL1
+0x003A9A80 0x41C Init__7CTurretFPQ23zdb5CNodeRC10CTurretDef  # OVL1; s1:calls by hand (the weapons lane, round 28: SOCOM 1's Init__7CTurretFPQ23zdb5CNodeRC10CTurretDef -- the constructor 0x3AA350 calls it with the node and the definition as SOCOM 1's constructor does; the three part names FindChild'd into 0x280/0x284/0x288, the trigger and AI_PARAMS copied member by member, the weapon and ammo looked up, SetTeamMask/JoinTeam(27); veh_turret.cpp)
 0x003A9EA0 0x110 SetThermal__7CTurretFPQ23zdb5CNodeb  # OVL1; by hand (the wep lane: finds "scope" and "thermal_scope" under the node once, kept at 0x290/0x294, and shows one or the other; the name ours); veh_turret.cpp
 0x003A9FB0 0x68 SetOpacity__7CTurretFf  # OVL1; by hand (the wep lane, round 21: veh_turret.cpp -- the six nodes' CNode::m_Opacity (+0x9C) set, thermal scope, scope, yaw, pitch, fire-point node, root; the SEAL's UpdateTurretScope passes its value; new in SOCOM II, the name ours)
 0x003AA020 0x80 SetVisible__7CTurretFb  # OVL1; by hand (the wep lane, round 21: veh_turret.cpp -- SetOpacity(visible ? 1 : 0) with SetOpacity inlined; IncrZoomState hides the turret for its thermal view, two OVL2 zoom-state functions (0x545EE0, 0x5463C0) call it too; new in SOCOM II, the name ours)
@@ -7786,7 +7786,7 @@
 0x003AD680 0xDC PreTick__8CVehicleFf  # OVL1; by hand (the wep lane: CVehicle's vtable slot +0x14); veh_vehicle.cpp
 0x003AD760 0x1A8 ScanForVehicleByName__8CVehicleFPCcPC11CVehicleDefPQ23zdb5CNodeb  # OVL1; by hand (the wep lane: the vehicle scan's twin for one definition -- the node's whole name strcmp'd against the first argument, a vehicle made with the given definition under the unit's limit, else the children recursively; 0x3AE030 calls it twice; the name ours); veh_vehicle.cpp
 0x003AD910 0x198 ScanForVehicleDefinitionHookups__8CVehicleFPQ23zdb5CNodeb  # OVL1; by hand (the wep lane: the turret scan's twin -- PrefixMatch, new CVehicle (688 bytes) under the unit's limit, CreateEntity, else the children recursively; the name ours); veh_vehicle.cpp
-0x003ADAB0 0x3E0 func_003ADAB0  # OVL1
+0x003ADAB0 0x3E0 Init__8CVehicleFPQ23zdb5CNodeRC11CVehicleDef  # OVL1; by hand (the weapons lane, round 28: CTurret::Init's twin, the name ours -- CVehicle's constructor calls it with the node and the definition; the healthy/health-root nodes FindChild'd, the collision box's node and its corners, AddOverlay, SetTeamMask/JoinTeam(26); veh_vehicle.cpp)
 0x003ADE90 0x19C __ct__8CVehicleFPQ23zdb5CNodeRC11CVehicleDef  # OVL1; by hand (the wep lane: stores __vt__8CVehicle after CEntity's constructor with type 4; the vehicle scan news 688 bytes and calls it with the node and the definition; the name ours)
 0x003AE030 0x16C Spawn__8CVehicleFP16CVehicleRdrEntry  # OVL1; by hand (the wep lane: CMission's spawner 0x2B2E50 calls it where it calls CMission::LoadVehicle for the other entry kind; the entry's character (0x20) finds the definition case-blind, its name (0) drives the by-name vehicle scan over every landmark and the world; returns 0; the name ours); veh_vehicle.cpp
 0x003AE1A0 0x9C LoadVehicles__8CVehicleFv  # OVL1; by hand (the wep lane: LoadTurrets' twin -- every landmark of CWorld::m_world, then the world, through the vehicle scan with true; the name ours); veh_vehicle.cpp
@@ -8335,8 +8335,8 @@
 0x003D1F00 0x44 GetDefaultAmmo__8CZWeaponFv  # OVL1; s1:order by hand (SOCOM 1's: the legal ammo list's first ammo, none when it is empty)
 0x003D1F50 0x3C PostTick__8CZWeaponFfPv  # OVL1; s1:align, checked by hand (the weapons lane round 16: SOCOM 1's static, the same code -- the pause byte tested, else the projectile list's PostTick; st_core.cpp registers it as weapon_post_tick)
 0x003D1F90 0x6C func_003D1F90  # OVL1
-0x003D2000 0x8 func_003D2000  # OVL1
-0x003D2010 0x8 func_003D2010  # OVL1
+0x003D2000 0x8 GetRecoilPct__8CZWeaponFv  # OVL1; by hand (the weapons lane, round 28: the float at 0x6C, which SetRecoilPct 0x3D2010 stores from ReadWeapon's RecoilPct (the kit's round 44: CZKit::Recoil hands it to the SEAL's recoil step, seal_kit.cpp's func_003D2000); the name ours, after the rdr field)
+0x003D2010 0x8 SetRecoilPct__8CZWeaponFf  # OVL1; by hand (the weapons lane, round 28: stores $f12 at 0x6C, which GetRecoilPct 0x3D2000 returns; ZWepReader::ReadWeapon passes it the entry's RecoilPct, 0 by default; the name ours, after the rdr field)
 0x003D2020 0x8 func_003D2020  # OVL1
 0x003D2030 0x8 GetArmingDistance__8CZWeaponFv  # OVL1; by hand (the weapons lane, round 27: the float at 0x68, stored by 0x3D2040 from ReadWeapon's ArmingDistance; CZProjectile::HandleImpact 0x3C8920 bounces a hit nearer the start than it as a dud; the name ours)
 0x003D2040 0x8 SetArmingDistance__8CZWeaponFf  # OVL1; by hand (the weapons lane, round 27: stores $f12 at 0x68, which GetArmingDistance 0x3D2030 returns; ZWepReader::ReadWeapon passes it the entry's ArmingDistance, world-scaled; the name ours)
