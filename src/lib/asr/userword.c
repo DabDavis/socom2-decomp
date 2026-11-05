@@ -12,10 +12,11 @@
  * (cbUserWordResultAvailable: every other spelling reloads it or keeps a record pointer), and the
  * accepted ones store the count, the flag, then the state (ccperm: one order fits both).
  * Round 29c: CheckConsistency (DoLabelStart/DoLabelStop inlined from GNU extern inline bodies
- * above it, their real definitions in place) and RejectTrainUtters, SOCOM 1's bodies.
+ * above it, their real definitions in place) and RejectTrainUtters, SOCOM 1's bodies. Round 30c:
+ * DoUserWordTraining, SOCOM 1's body as it stands (the out-parameters at +920/+924 typed in casr.h).
  * OPEN: SendLabelsToEngine (26) and SendPartOfLabelsToEngine (36s), diagnosed in place;
- * FindBestTranscription, DoDurationModeling, ScoreTranscriptions and DoUserWordTraining not
- * written.
+ * FindBestTranscription, DoDurationModeling and ScoreTranscriptions not written (declared extern
+ * above DoUserWordTraining: their calls resolve through the map).
  *
  * cbDoUserWordTraining's flag test (open since round 4b: `bnezl` here, `bnez` in the target, the
  * return's `move v0,zero` in the slot with a call to ExitUserWordTraining as the fall-through) is
@@ -347,6 +348,67 @@ static void RejectTrainUtters(CASR *c, unsigned char *reject)
     c->train_state = 0;
 }
 
+/* the three static scorers above are not written yet: declared extern, their calls resolve
+ * through the map */
+extern int ScoreTranscriptions(CASR *c, float *scores, float *durs, int *best, unsigned char *reject,
+                               unsigned char *bad);
+extern int FindBestTranscription(CASR *c, float *scores, float *durs, int *best);
+extern int DoDurationModeling(CASR *c, int best);
+extern int TrainInit(CASR *c);
+extern void TrainModels(CASR *c, int best);
+extern void *heap_Alloc(void *heap, int size);
+extern void *memcpy(void *dst, const void *src, unsigned int n);
+
+/* the training once the last utterance is in: every utterance's transcriptions scored against the
+ * others (an inconsistent set rejects its utterances, warning 36), the best one chosen, its
+ * durations modelled, the models trained on it and checked; the best segmentation handed out
+ * through +920/+924. SOCOM 1's body */
+int DoUserWordTraining(CASR *c)
+{
+    float scores[12];
+    float durs[12];
+    unsigned char reject[16];
+    unsigned char bad;
+    int best;
+    int i;
+
+    best = 0;
+    for (i = 0; i < c->uw_recs_needed; i++)
+        reject[i] = 0;
+    *c->trans_size = 0;
+    *c->trans = 0;
+    c->rejected = 0;
+    if (ScoreTranscriptions(c, scores, durs, &best, reject, &bad) != 0)
+        return 1;
+    if (bad) {
+        c->nstates = 0;
+        RejectTrainUtters(c, reject);
+        _tosWarningLog(c->event, 36);
+        return 0;
+    }
+    c->nstates = c->utt[best].n;
+    if (FindBestTranscription(c, scores, durs, &best) != 0)
+        return 1;
+    c->nstates = c->utt[best].n;
+    if (DoDurationModeling(c, best) != 0)
+        return 1;
+    c->nstates = c->utt[best].n;
+    if (TrainInit(c) != 0)
+        return 1;
+    TrainModels(c, best);
+    CheckConsistency(c, best, reject, &bad);
+    if (bad) {
+        c->nstates = 0;
+        RejectTrainUtters(c, reject);
+        _tosWarningLog(c->event, 36);
+        return 0;
+    }
+    *c->trans_size = c->utt[best].n * 2;
+    *c->trans = heap_Alloc(c->heap, *c->trans_size);
+    memcpy(*c->trans, c->utt[best].seg, *c->trans_size);
+    return 0;
+}
+
 
 /* labels [start, end) of utterance n -- clipped to what was written -- into the label queue one at
  * a time, the engine run on each.
@@ -381,9 +443,6 @@ typedef struct UWRESULT {
     int n;                              /* +8: labels */
     short labels[1];                    /* +12 */
 } UWRESULT;
-
-extern void *heap_Alloc(void *heap, int size);
-extern void *memcpy(void *dst, const void *src, unsigned int n);
 
 /* the utterance's frames and labels kept for the training (the slot's earlier ones freed) */
 int cbUserWordResultAvailable(CASR *c, int a1, int a2, UWRESULT *r)
