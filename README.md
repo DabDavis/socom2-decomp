@@ -2065,6 +2065,19 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the kit and AI states, round 45** (GetSealCount's list pieces, SealJoinUnit, five SOCOM-II-only functions):
+  - TWO PIECE SETS FOR ONE LIST TYPE ARE ITS TWO ITERATOR KINDS, not a unit boundary: generic_iterator<0> (DistributeNotify's,
+    its constructor taking the base iterator by const reference, 0x5ED6E0-0x5ED7A0) and generic_iterator<1>
+    (GetSealCount's, by value -- word for word SOCOM 1's list<CEntity *> instance 0x321240, 0x5ED880-0x5ED9A0); a walk
+    emitting the <1> pieces belongs to a const member function (GetSealCount declared const: end / begin const
+    0x5ED8F0 / 0x5ED950 and the constructor 0x5ED980 byte-exact; its last 10 instructions are include/list's);
+  - a byte-enum local tested `!= NULL` is masked with andi before each branch, tested bare it branches on the register
+    (an order's hand signal 0x5EB190); a call's bool result held in a bool local keeps its andi (round 39's rule);
+  - two kinds tested in a switch give a beq each to the shared block and a `b` past it, written as `||` the code falls into
+    the block; a value the target loads ahead of member stores needs a local of its own declared first (the action
+    state's set-up 0x5F0180); an inline's by-value float parameter whose address is taken is stored in the inline's
+    block, not at function entry (0x5EAF20, OPEN); the formation slot's cell offset 0x5EB910 builds two function-local
+    tables on its first call.
 - **Tells from the SEALs, round 43** (GetThrowAnim, GetDynamics, the throw path's clearance, the come-along order's test):
   - an inline's own local is numbered after all of the caller's locals -- to number it among them make it an
     uninitialised caller local assigned inside the inline through a `bool &` (the come-along order's test 0x591520);
