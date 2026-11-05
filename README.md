@@ -2065,6 +2065,31 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from completing the MSL headers, round 32** (the cdeque begin() colouring closed, 0x285BB0 named and emitted, SOCOM
+  1's vector storage measured again; probes build/p32/, untracked -- bg/ (cse1-3.cpp, v*.py), rec/, vec/mkpair.py,
+  findcopies.py):
+  - MW'S FRONT-END CSE MAKES A TEMPORARY OF A SCALED INDEX ONLY WHEN THE INDEX IS A VARIABLE WHEN CSE RUNS: `p = d + s;
+    ... f = q + s;` off a named local (or a by-value inline parameter bound to one) gives `@N = s << 2`, numbered in CSE's
+    walk order between the operands' own temporaries; off a member load the LOAD is CSE'd in the same pass and the shift
+    left to the code generator, numbered after every front-end temporary (build/p32/bg/cse1-3.cpp: g3/g6/h2 against
+    g1/g7/h1; tools in build/p32/tmpdump.py with round 11's pass signatures). An index taken by const reference, or an
+    inline's own local handed to a by-reference parameter, stays the load's (h1, mk1l);
+  - SO cdeque<T *>::begin() (the lobby's 0x2E0CB0, the state machine's 0x3A6350, the rdr editor's 0x334030 -- open since
+    the online lane's round 13 at 14 off) builds its iterator through make_begin(): the start read into a named local and
+    handed BY VALUE to a first-slot constructor of the iterator's own (p_ and first_ both off it), the shift then numbered
+    between the data pointer's temporary and the three field addresses' -- the window `igreplay --want` found (34.5 /
+    35.5). end() keeps its constructor (by value there it is lost); the member passed straight scalarises t (0x30);
+  - THE GROWTH RECOMMENDATION 0x285BB0 is cdeque<const void *>::__recommend (ours: SOCOM 1's older cdeque grows inline,
+    no such member -- libc++'s name, Hinnant's): `n > max` is "cdeque max_size error", the usable capacity doubled under
+    max/2, the loop tested `n > c` (`c < n` keeps the bottom test's result in a register, 4 off); its max static is an
+    in-class __max_size()'s (inlined whatever the generation order, while max_size() stays out of line for reserve, init
+    and the converting do_assigns), min() over the allocator's max_size and numeric_limits<int>::max() -- an inline's
+    result is built on the stack before the alloc() call as the target's, a literal bound to min()'s reference is a
+    static constant (12 off). The chat unit emits it byte-exact; the forward do_assign calls it as a member;
+  - SOCOM 1's COMPRESSED-PAIR POD (the engine core's round-19 witness): with the 4-byte pod's capacity as the pair, its
+    member swap trading the fields itself and its destructor `if (data()) alloc().deallocate(data(), cap())` (the calls
+    in that order), CKey::DeleteChildren 0x25B580 is code-exact -- and the shape costs 253 functions at level 5 (+19):
+    measured, not adopted (include/vector, README "Level 6, or 8?" with ~CUIListBox 0x375710, the HUD's round 56).
 - **Tells from the engine core, round 19** (ZAnimWildcardApply and CClutter::GetMatrix, both open since round 9; the CKey
   helpers from source):
   - A CAST OR CONST COPY OF A PARAMETER OR OF `this` (`char *name = (char *)str`, `const CClutter *c = this`) IS A VARIABLE
@@ -12773,7 +12798,9 @@ What is open across lanes, and what comes next:
   matches since the MSL headers' round 27, its destructor's data_ read through data()); the pointer
   deques' converter is in since the MSL headers' round 29 (std::__convert_iterator over deque<T *>'s own
   __const_iterator: the rdr editor's do_assign and its three pieces), and the list's own insert(position,
-  x) is measured, not applied (round 29: +0 / -1, LoadVehicles).
+  x) is measured, not applied (round 29: +0 / -1, LoadVehicles); the circular buffer's begin() and its
+  growth recommendation are in since round 32 (the deques' make_iterators, which inline `begin() + n`,
+  stay open at their old sizes).
 - **zMath** (0x306670-0x30954C, 47 of 54): CMatrix::SetRotate, CQuat::Align, CBits::Resize,
   CPnt3D::Reflect, CBBox::GetIntersect and the two DistToVectors. **zcamera**: CCamera::Update
   (13 instructions, the near plane's VU0 temporaries' stack offsets). **ZAnim**: the big handlers
