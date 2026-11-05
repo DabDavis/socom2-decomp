@@ -503,7 +503,10 @@ public:
     virtual C2DAnimCmdHdr *ParseZAnimCmd(_zrdr *rdr);
     virtual bool TickZAnimCmd(_zanim_cmd_hdr *hdr, float *dT, bool *done);
     virtual void SetString(const char *s, bool translate);
+    virtual void Draw(const CMatrix &m, zdb::CTextureRelocMgr *mgr);
     void LoadSpec(const CTtySpec &spec);
+    /* the string's scale with its font's (inline: Draw's, ours) */
+    float GetScale() { return m_scale * (m_font ? m_font->GetScaleFactor() : 1.0f); }
 
     CSaferStr m_text;   // 0xc0
     int m_cc;   // 0xcc
@@ -1117,6 +1120,15 @@ float g_fCounterSpeedFactor = 1.0f;
 float g_fTtySpeedFactor = 1.0f;
 }
 
+/* the teletype's cursor and window (SOCOM II's, between the speeds and the noise in the data,
+ * 0x3E0390-0x3E03A3; the names ours): the cursor's offset below the line and its width (scaled as
+ * the text is), and the window's bottom against its height -- CTeleType::Draw's alone */
+namespace {
+int g_iTtyCursorDY = -5;
+int g_iTtyCursorWidth = 8;
+int g_iTtyClipDY = -11;
+}
+
 /* the teletype's typing noise (SOCOM II's, the name ours: 1 in the image; CTeleType::Tick reads it,
  * TickZAnimCmd's finish clears it around each step it types out at once) */
 namespace {
@@ -1131,6 +1143,66 @@ void UiSetCounterSpeedFactor(float f)
 void UiSetTtySpeedFactor(float f)
 {
     g_fTtySpeedFactor = f;
+}
+
+void zVid_Scissor(int x1, int y1, int x2, int y2);
+
+/* a string's lines' height (ours: an inline over the string) */
+static inline float TextHeight(C2DString *s)
+{
+    return s->m_numLines * s->GetSpacing();
+}
+
+/* slot 2: the text at the corner the matrix places, its first lines skipped until the rest fit
+ * the window's height, clipped to the window while it scrolls; then the cursor after the last
+ * character unless the text starts with a space (SOCOM 1's CTeleType::Draw; SOCOM II clips and
+ * scales the cursor by the font) */
+void CTeleType::Draw(const CMatrix &m, zdb::CTextureRelocMgr *mgr)
+{
+    if (!IsOn())
+        return;
+    CPnt3D p = CPnt3D::zero;
+
+    m.Transform(&p, 1);
+    CMatrix mat;
+    float height = (m_font->m_displaybottom - m_font->m_displaytop) * GetScale();
+    float width = g_iTtyCursorWidth * GetScale();
+
+    C2DString::Tick(0.0f);
+    SetPos((int)p.x, (int)p.y);
+    UpdatePos();
+    int total = (int)TextHeight(this);
+    int lines = m_numLines - m_1a8;
+
+    if (m_shown > 0 && m_shown < total) {
+        const char *s = m_string;
+        int skip = 0;
+
+        while (lines * GetSpacing() > m_shown) {
+            do
+                skip++;
+            while (*s++ != '\n');
+            lines--;
+        }
+        m_firstCharPos = skip;
+    } else
+        m_firstCharPos = 0;
+    if (!strlen(m_string))
+        return;
+    if (m_1a8)
+        zVid_Scissor(0, 0, (int)(p.x + m_maxLength), (int)(g_iTtyClipDY + (p.y + m_shown)));
+    C2DString::Draw(mgr, 0, 0);
+    if (m_showCursor && m_string[0] != ' ') {
+        int x = m_shortLength;
+        float x0 = x + 2;
+        float y0 = g_iTtyCursorDY + (1.0f + (p.y + (lines + m_1a8) * GetSpacing()));
+        float x1 = width + (x + 2);
+        float y1 = g_iTtyCursorDY + (p.y + (lines + m_1a8) * GetSpacing() - height);
+
+        m_cursor.Load(x0, y0, x1, y1, 0);
+        m_cursor.Draw(mat, mgr);
+    }
+    zVid_Scissor(0, 0, 640, 448);
 }
 
 /* slot 2: a string variable naming another texture loads it in the same rectangle first */
