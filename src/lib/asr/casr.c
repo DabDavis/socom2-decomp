@@ -204,10 +204,31 @@ int cbDoSecondPassIfEnabled(CASR *c, unsigned char a1, unsigned char a2, int arg
 
 extern void *memset(void *dst, int c, unsigned int n);
 
-/* gender i's recogniser switched (command ids[i], its warp value handed over) and its flag set */
-static __inline__ unsigned char casrSwitchGender(CASR *c, const unsigned char *ids, unsigned int i,
-                                                 unsigned char on, int value)
+/* The command tables are statics of two inline helpers, each its own function: SOCOM 1's local
+ * statics are ControlID_Disable.84, ControlID_Enable.88 and ControlID_Disable.89, and SOCOM 1's
+ * compiler (a 2.9x/2.95: build/scratch/gcc/lblprobe.py) numbers three hidden names
+ * (__FUNCTION__, __PRETTY_FUNCTION__, __func__) at every function's start -- 85 to 87 are a
+ * function boundary between the stop table and the switch tables (round 32c; 2.96 numbers
+ * statics consecutively, so SOCOM II's image cannot tell). */
+
+/* gender i's recogniser stopped (command 108 + i, its warp value handed over) and its flag set */
+static __inline__ unsigned char casrStopGender(CASR *c, unsigned int i, unsigned char on, int value)
 {
+    static const unsigned char ControlID_Disable[3] = { 108, 109, 110 };
+
+    if (_tosControl(c->event, ControlID_Disable[i], i, value) != 0)
+        return 1;
+    c->gender_on[i] = on;
+    return 0;
+}
+
+/* gender i's recogniser switched on or off (command 64 + i or 61 + i) and its flag set */
+static __inline__ unsigned char casrSwitchGender(CASR *c, unsigned int i, unsigned char on, int value)
+{
+    static const unsigned char ControlID_Enable[3] = { 64, 65, 66 };
+    static const unsigned char ControlID_Disable[3] = { 61, 62, 63 };
+    const unsigned char *ids = on ? ControlID_Enable : ControlID_Disable;
+
     if (_tosControl(c->event, ids[i], i, value) != 0)
         return 1;
     c->gender_on[i] = on;
@@ -216,24 +237,20 @@ static __inline__ unsigned char casrSwitchGender(CASR *c, const unsigned char *i
 
 /* the genders in the mask enabled, the rest disabled: 1 when the mask names none the language's
  * warp factors serve, or (but for all, 0x7FFFFFFF or -1) one they do not; each gender whose state
- * changes switched on or off, and those switched off then stopped. SOCOM 1's body (round 31c; its
- * three command tables are SOCOM 1's local statics ControlID_Disable.84, ControlID_Enable.88 and
- * ControlID_Disable.89, the last two in one scope).
- * OPEN (0x3DC against 0x400): everything but the switch loop's unrolling. loop.c sees that loop
- * with 47 real insns, hoists its three invariants (the 1 `changed` takes, both tables' %hi) and
- * unrolls it completely (3 x 33 < 100); the target hoists only the off table's %hi (s8) and keeps
- * the 1 and the on table's %hi in each copy -- a life-1 invariant left in place means a longer
- * loop at that point -- and peels one iteration ahead of a loop unrolled by two (as SOCOM 1's
- * build). The vendor's body is some ten insns longer before loop.c with the same final code;
- * tried: a result variable in the inline, the flag through if/else or ?:, the table chosen before
- * the test or as an if, both calls written out (build/scratch/gcc/v_ceg1.py-v_ceg4.py). */
+ * changes switched on or off, and those switched off then stopped. SOCOM 1's body (round 31c).
+ * Round 32c closed it: the switch loop is peeled once and unrolled by two (as SOCOM 1's build)
+ * because loop.c's second pass counts 34 insns there (3 x 34 >= 100: not unrolled completely) --
+ * each loop's flag a variable of its own block, set `on = 0; if (...) on = 1;` (jump.c keeps the
+ * set-then-branch one insn longer until if-conversion makes it the sltu); the stop loop's table a
+ * static of its helper, so its address is a register plus i (`addu v0,s3,a1`) where an argument
+ * constant gives a strength-reduced walker; the block's own flag gives each unrolled copy its
+ * own register (s1, s2) where one flag shared with the switch loop lives in s0 throughout.
+ * 33 insns at loop.c's second pass unroll the switch loop completely (the 0x3DC of round 31c). */
 static int casrEnableGenders(CASR *c, int genders)
 {
-    static const unsigned char ControlID_Disable[3] = { 108, 109, 110 };
     unsigned char changed[3];
     unsigned int n, i, mask;
     WARP *warp;
-    unsigned char on;
 
     mask = 0;
     memset(changed, 0, 3);
@@ -249,20 +266,23 @@ static int casrEnableGenders(CASR *c, int genders)
     if (genders != 0x7FFFFFFF && genders != -1 && (genders & ~mask) != 0)
         return 1;
     for (i = 0; i < 3; i++) {
-        static const unsigned char ControlID_Enable[3] = { 64, 65, 66 };
-        static const unsigned char ControlID_Disable[3] = { 61, 62, 63 };
+        unsigned char on = 0;
 
-        on = (warp[i].mask & genders) != 0;
+        if (warp[i].mask & genders)
+            on = 1;
         if (on != c->gender_on[i]) {
             changed[i] = 1;
-            if (casrSwitchGender(c, on ? ControlID_Enable : ControlID_Disable, i, on, warp[i].value))
+            if (casrSwitchGender(c, i, on, warp[i].value))
                 return 1;
         }
     }
     for (i = 0; i < 3; i++) {
-        on = (warp[i].mask & genders) != 0;
+        unsigned char on = 0;
+
+        if (warp[i].mask & genders)
+            on = 1;
         if (!on && changed[i])
-            if (casrSwitchGender(c, ControlID_Disable, i, on, warp[i].value))
+            if (casrStopGender(c, i, on, warp[i].value))
                 return 1;
     }
     return 0;
