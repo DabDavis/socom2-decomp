@@ -428,7 +428,17 @@ public:
     unsigned char _0[0x150];
 };
 
-class CVehicleRdr;
+class CVehicleRdrEntry;
+
+/* the vehicle definitions (zchar's CVehicleRdr: a vector<CVehicleRdrEntry>, 12 bytes; only what the
+ * mission calls) */
+class CVehicleRdr {
+public:
+    CVehicleRdr();   /* OVL2 0x533A40 */
+    CVehicleRdrEntry *GetEntryByName(const char *name) const;
+
+    unsigned char _0[12];
+};
 
 /* the single-player career's stats (theMission's two, at 0x191C and 0x1950: CMission() clears both
  * through the constructor -- Clear's stores, m_kills before m_18, twice; SOCOM II's, the names ours) */
@@ -2165,7 +2175,6 @@ bool func_00259240();
 void func_00259230(bool on);
 void *func_003102E0(void *p);
 void func_002CE8E0();
-void *func_00533A40(void *p);   /* CVehicleRdr's constructor */
 void func_005E30F0(int);
 void func_0058CC30();
 void func_002B7530();
@@ -2298,11 +2307,7 @@ bool CMission::Init()
     Particle::Init();
     theTCM.Init();
     SealInitCharacterDynamics();
-    void *rdr = operator new(12);
-
-    if (rdr)
-        rdr = func_00533A40(rdr);
-    m_vehicle_rdr = (CVehicleRdr *)rdr;
+    m_vehicle_rdr = new CVehicleRdr;
     func_005E30F0(0);
     func_0058CC30();
     CCharacterType::Open("character.rdr");
@@ -3643,19 +3648,13 @@ inline _zrdr *ListItem(_zrdr *rdr, unsigned int i)
     return i < rdr->Count() ? &rdr->array[i] : 0;
 }
 
-/* a vehicle definition's entry (zchar's CVehicleRdrEntry: only its character's name) and the
- * definitions */
+/* a vehicle definition's entry (zchar's CVehicleRdrEntry: only its character's name) */
 class CVehicleRdrEntry {
 public:
     void SetCharacterName(const char *name);
 
     unsigned char _0[0x20];
     char m_charname[1];   // 0x20: the character type its crew is
-};
-
-class CVehicleRdr {
-public:
-    CVehicleRdrEntry *GetEntryByName(const char *name) const;
 };
 
 

@@ -38,10 +38,7 @@ public:
     void Dequeue(CQueuedMessage *msg);   /* 0x2A3E60 */
 };
 
-extern "C" {
-void func_003AFF30(bool a, bool b);              /* zVid_Swap */
-
-}
+void zVid_Swap(bool flip, bool restore);   /* 0x3AFF30 */
 
 /* the localised string tables, the menu history, the IOP's reboot callbacks, the UI and the GS
  * FIFO's sync (their units'; only what is called) */
@@ -618,9 +615,9 @@ bool CMenuState::Tick(float dT)
     zSysFifoEnd();
     if (m_skip_swap > 0) {
         m_skip_swap--;
-        func_003AFF30(false, true);
+        zVid_Swap(false, true);
     } else {
-        func_003AFF30(true, true);
+        zVid_Swap(true, true);
     }
     return false;
 }
