@@ -9,6 +9,42 @@
 extern void __assert(const char *file, int line, const char *expr);
 #define assert(e) ((e) ? (void)0 : __assert(__FILE__, __LINE__, #e))
 
+float func_0024C000(const float *pfIn, const float *pfRef);
+
+/* the iMBest nearest 2-D codewords, best first (GCC round 34a): an insertion into the candidate
+ * list, its distances starting at the largest float the vendor wrote (0x7F7FFFED: a literal over
+ * 0x1p+127 GCC puts in .sdata and loads by lui, 8 bytes apart per object as the image holds them);
+ * the list cleared index first (the other order swaps the loop's two stores) */
+#define MAX_NUMCAND 2
+
+void func_0024B560(const float *pfData, const float *pfCB, int iCBSize, int *piMBestCand, int iMBest)
+{
+	float afDist[MAX_NUMCAND];
+	float fDist;
+	int i, j;
+
+#line 709 "../../SaseEncVad/source/libquan.c"
+	assert(iMBest <= MAX_NUMCAND);
+	assert((pfData != NellyNull) && (pfCB != NellyNull));
+	assert(piMBestCand != NellyNull);
+	for (i = 0; i < iMBest; i++) {
+		piMBestCand[i] = 0;
+		afDist[i] = 0x1.ffffdap+127F;
+	}
+	for (i = 0; i < iCBSize; i++) {
+		fDist = func_0024C000(pfData, pfCB);
+		pfCB += 2;
+		if (fDist < afDist[iMBest - 1]) {
+			for (j = iMBest - 1; j > 0 && fDist <= afDist[j - 1]; j--) {
+				afDist[j] = afDist[j - 1];
+				piMBestCand[j] = piMBestCand[j - 1];
+			}
+			afDist[j] = fDist;
+			piMBestCand[j] = i;
+		}
+	}
+}
+
 int func_0024B720(const float *pfCodeBook, int iLength, float fValue)
 {
 	float fDist, fMin;
@@ -96,6 +132,92 @@ void func_0024B990(int iIndex, const float *pfCodeBook, int iEntries, float *pfV
 	pfCodeBook += 2 * iIndex;
 	pfVector[0] = pfCodeBook[0];
 	pfVector[1] = pfCodeBook[1];
+}
+
+void func_0024C078(const float *pfIn, const float *pfRSMatrix, int iIndex, float *pfOut);
+int func_0024C150(const int *piIndexOfOutCell, int iNumOutCell, int iIndex);
+void func_0024BF50(const float *pfIn, const float *pfRSMatrix, int iIndex, float *pfOut);
+
+/* the 2-D vector's two-stage search (GCC round 34a): for each of the iNumCand nearest stage-1
+ * codewords, the residual rotated and scaled by the entry's factor, quantised in the stage-2 book
+ * its cell takes (func_0024BCF0's choice), rebuilt, and the pair whose rebuilt point lies nearest
+ * the input kept -- the input replaced by it (the start distance set before the stage-1 search:
+ * after it, the literal's load waits for the loop's entry test, 8 bytes over) */
+void func_0024BA48(int *piIndices, float *pfData, int iNumCand, int iStage1Size, const float *pfStage1CB,
+		   const float *pfRotScaleCB, int iStage2Size, const float *pfStage2InCellCB,
+		   const float *pfStage2OutCellCB, int iNumOutCell, const int *piIndexOfStage2OutCell)
+{
+	int aiCand[MAX_NUMCAND];
+	float afQ1[2];
+	float afRes[2];
+	float afRot[2];
+	float afBest[2];
+	const float *pfCB;
+	float fDist, fMin;
+	int i, i1, i2;
+
+#line 472 "../../SaseEncVad/source/libquan.c"
+	assert(iNumCand <= MAX_NUMCAND);
+	assert((piIndices != NellyNull) && (pfData != NellyNull));
+	assert((pfStage1CB != NellyNull) && (pfRotScaleCB != NellyNull));
+	assert((pfStage2InCellCB != NellyNull) && (pfStage2OutCellCB != NellyNull));
+	assert(piIndexOfStage2OutCell != NellyNull);
+	fMin = 0x1.ffffdap+127F;
+	func_0024B560(pfData, pfStage1CB, iStage1Size, aiCand, iNumCand);
+	for (i = 0; i < iNumCand; i++) {
+		i1 = aiCand[i];
+		func_0024B990(i1, pfStage1CB, iStage1Size, afQ1);
+		afRes[0] = pfData[0] - afQ1[0];
+		afRes[1] = pfData[1] - afQ1[1];
+		func_0024BF50(afRes, pfRotScaleCB, i1, afRot);
+		if (func_0024C150(piIndexOfStage2OutCell, iNumOutCell, i1) == 1)
+			pfCB = pfStage2OutCellCB;
+		else
+			pfCB = pfStage2InCellCB;
+		i2 = func_0024B8B0(afRot, pfCB, iStage2Size);
+		func_0024B990(i2, pfCB, iStage2Size, afRot);
+		func_0024C078(afRot, pfRotScaleCB, i1, afRes);
+		afQ1[0] += afRes[0];
+		afQ1[1] += afRes[1];
+		fDist = func_0024C000(pfData, afQ1);
+		if (fDist < fMin) {
+			fMin = fDist;
+			piIndices[0] = i1;
+			piIndices[1] = i2;
+			afBest[0] = afQ1[0];
+			afBest[1] = afQ1[1];
+		}
+	}
+	pfData[0] = afBest[0];
+	pfData[1] = afBest[1];
+}
+
+
+/* the 2-D vector's two-stage decode (GCC round 34a): the stage-1 codeword, plus the stage-2 one --
+ * from the outer-cell book when the stage-1 index is one of the outer cells', else the inner --
+ * rotated and scaled back by the stage-1 entry's factor */
+void func_0024BCF0(const int *piIndices, float *pfData, int iStage1Size, const float *pfStage1CB,
+		   const float *pfRotScaleCB, int iStage2Size, const float *pfStage2InCellCB,
+		   const float *pfStage2OutCellCB, int iNumOutCell, const int *piIndexOfStage2OutCell)
+{
+	float afStage2[2];
+	float afRes[2];
+	const float *pfCB;
+
+#line 632 "../../SaseEncVad/source/libquan.c"
+	assert((piIndices != NellyNull) && (pfData != NellyNull));
+	assert((pfStage1CB != NellyNull) && (pfRotScaleCB != NellyNull));
+	assert((pfStage2InCellCB != NellyNull) && (pfStage2OutCellCB != NellyNull));
+	assert(piIndexOfStage2OutCell != NellyNull);
+	func_0024B990(piIndices[0], pfStage1CB, iStage1Size, pfData);
+	if (func_0024C150(piIndexOfStage2OutCell, iNumOutCell, piIndices[0]) == 1)
+		pfCB = pfStage2OutCellCB;
+	else
+		pfCB = pfStage2InCellCB;
+	func_0024B990(piIndices[1], pfCB, iStage2Size, afStage2);
+	func_0024C078(afStage2, pfRotScaleCB, piIndices[0], afRes);
+	pfData[0] += afRes[0];
+	pfData[1] += afRes[1];
 }
 
 /* the prediction: each row of the matrix against the zero-mean coefficients */
