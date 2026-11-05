@@ -2065,6 +2065,22 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the kit and AI states, round 50** (ReParentToRifle / ReParentToPistol, SetDefaultLookParams, CAiSAvoid's and
+  CAiSStunResponse's Tick, the response-anim draw -- open since round 3; seal_look.cpp and seal_airesponse.cpp whole):
+  - `tools/igreplay.py --move 38=46.5` showed BEFORE the source was written that the launcher part had to be numbered
+    after the three walks -- read through a new inline accessor (CKitBody::AttachPart) it is: a struct field read
+    through a trivial inline accessor takes a temporary number after an earlier inlined walk's variables
+    (CZKit::ReParentToRifle 0x5C6A40, ReParentToPistol 0x5C6DA0); an if-form item pick keeps the walk index's early
+    temporary number, a ternary does not;
+  - a `rand() % n` written as its own inline leaves the zero arm's `b` unfilled, with the call's and the join's labels
+    padded; a preset result defined before an array element's address is computed pushes that index's first temporary
+    off v0 onto v1 (0x609530, open since round 3: 22 -> 5 -> 0);
+  - five switch cases over 0..5 give a compare chain, the sixth written empty gives the jump table (CAiSAvoid::Tick
+    0x601F80 -- its goal kind read `*(GOAL_TYPE *)&m_goal`, a marked device: ai_states.h comes before zseal.h's enum and a
+    plain cast loads with lbu where the target has lb); `!(a >= b)` on floats gives the target's materialise-then-xori;
+    a pointer-typed local defined before another statement makes MW read `this` from its saved register
+    (CAiSStunResponse::Tick 0x605C60); SetDefaultLookParams 0x601400 matched on the first build through zkit.h's
+    Rfloat(min, max).
 - **Tells from completing the MSL headers, round 31** (the string's short test; cdeque<PCv>::resize measured; probes
   build/p31/, untracked -- str/ (the short-test probes, v_lm2.py), dq/ (deque.resize.diff, v_rs*.py), scanshort.py,
   vrun.py: header variants over a probe):
