@@ -18,11 +18,13 @@
  * VuDetailMap are rearranged in SOCOM II into passes that each write a command quadword (the VU
  * program's tag, the context count 0x4B4AF0, a word) and take the packet's cursor by address,
  * failing when the scratchpad's room (m_sprEndOfMP) runs out; VuMapPasses (0x3B5B90) runs them
- * and 0x3B5F20 (open, not written) is VuBatchProgram's command list around it. The statics keep
+ * and 0x3B5F20 is VuBatchProgram's command list around it (byte-exact since round 29, with
+ * VuBatchProgram_Decals 0x3B41D0: SOCOM 1's two, the object header become a flag or dropped,
+ * written with the VuCommand inline on the first build). The statics keep
  * their data_ placeholders, each commented with SOCOM 1's name where its use pairs it. Still
  * open here: VuUpdate (0xCC4: its tail calls even 8-byte helpers out of line, the out-of-line
  * copies at 0x3B5250-0x3B52C0 following it, so its inline budget runs out -- likely
- * inline_max_total_size), 0x3B5F20, 0x3B41D0 (the decal program), the deque copy chain's init
+ * inline_max_total_size), the deque copy chain's init
  * 0x3B7E30, do_assign 0x3B8000 and default constructor 0x3B7FA0 (the rest of the chain is
  * byte-exact since the MSL headers' round 18: m_stack_vid, below). Round 20: the unit's
  * initialiser, the light tints (0x3B7170, 0x3B76B0, 0x3B78D0) and the header's lights (0x3B6870)
@@ -814,6 +816,104 @@ inline bool CVisual::VuSpecularMap(_word128 **cursor, unsigned int tag)
     VuSpecularSetup(q, &color, &band->m_rgb, band->m_opacity);
     *cursor = q + 11;
     return true;
+}
+
+/* the detail layers' switch (SOCOM II's; VuUpdate reads it too: not named) */
+extern "C" unsigned char data_004B4ED8;
+
+/* the visual's VU program (SOCOM 1's VuBatchProgram, 0x30BDA0 in the demo: the same command tags in
+ * the same three branches by the word at 0x1C -- 3 with the scratchpad's end set 57 quadwords on,
+ * the opening 82/102 or 112/104 by the type and flag bit 17, 6 for bit 3, then by 0x4B4EB0 the extra
+ * pass 100, the fog, lit, local-light and closing commands with the map passes after them; else 72,
+ * 4, 12 ... 44, 78 -- and 66 last; SOCOM II counts the VU contexts in 0x4B4AF0, reads the lit bit
+ * with the lighting switch, and passes a flag where SOCOM 1 took the object header and tested a
+ * static: VuUpdate's four calls hand it whether any light, shadow, specular or projected map is on,
+ * and use the result): the command count stored at the head's third word, the packet closed */
+_word128 *CVisual::VuBatchProgram(_word128 *p, bool multipass, tag_DETAIL_PARAMS *detail)
+{
+    _word128 *start = p;
+    bool extra = detail && data_004B4ED8 || multipass;
+    bool lit = m_lightingEnable && m_bits.m_b4;
+
+    if (m_1c == 3) {
+        data_004B4AF0 = 0;
+        data_004B4AE8 = p + 57;
+        if (m_utype == 1) {
+            p = VuCommand(p, 82, 0, 1);
+            p = VuCommand(p, 102, 0, 1);
+            data_004B4AF0 += 2;
+        } else {
+            if (m_bits.m_b17)
+                p = VuCommand(p, 112, 0, 1);
+            else
+                p = VuCommand(p, 104, 0, 1);
+            data_004B4AF0++;
+        }
+        if (m_flags & 8) {
+            p = VuCommand(p, 6, 0, 1);
+            data_004B4AF0++;
+        }
+        if (data_004B4EB0) {
+            if (extra) {
+                p = VuCommand(p, 100, 0, 1);
+                data_004B4AF0++;
+            }
+            p = VuCommand(p, 8, 0, 1);
+            if (m_fogEnable)
+                p = VuCommand(p, 16, data_004B4AF0, 1);
+            if (lit) {
+                p = VuCommand(p, 84, data_004B4AF0, 1);
+                if (m_applyLocalLights && m_local_light_cnt)
+                    p = VuCommand(p, 32, data_004B4AF0, m_local_light_cnt);
+                p = VuCommand(p, 24, data_004B4AF0, 1);
+            }
+            if (data_004B4A68)
+                p = VuCommand(p, 92, data_004B4AF0, 1);
+            p = VuCommand(p, 40, data_004B4AF0, 1);
+            if (multipass || detail)
+                p = VuMapPasses(p, detail);
+        } else {
+            p = VuCommand(p, 2, 0, 1);
+            data_004B4AF0++;
+            p = VuCommand(p, 10, data_004B4AF0, 1);
+            if (extra)
+                p = VuCommand(p, 100, 0, 1);
+            if (m_fogEnable)
+                p = VuCommand(p, 18, data_004B4AF0, 1);
+            if (lit) {
+                p = VuCommand(p, 86, data_004B4AF0, 1);
+                if (m_applyLocalLights && m_local_light_cnt)
+                    p = VuCommand(p, 34, data_004B4AF0, m_local_light_cnt);
+                p = VuCommand(p, 26, data_004B4AF0, 1);
+            }
+            if (data_004B4A68)
+                p = VuCommand(p, 94, data_004B4AF0, 1);
+            p = VuCommand(p, 42, data_004B4AF0, 1);
+            if (multipass || detail)
+                p = VuMapPasses(p, detail);
+            p = VuCommand(p, 76, data_004B4AF0, 1);
+        }
+    } else {
+        data_004B4AF0 = 0;
+        p = VuCommand(p, 72, 0, 1);
+        data_004B4AF0++;
+        p = VuCommand(p, 4, 0, 1);
+        data_004B4AF0++;
+        p = VuCommand(p, 12, data_004B4AF0, 1);
+        if (m_fogEnable)
+            p = VuCommand(p, 20, data_004B4AF0, 1);
+        if (lit) {
+            p = VuCommand(p, 88, data_004B4AF0, 1);
+            p = VuCommand(p, 28, data_004B4AF0, 1);
+        }
+        if (data_004B4A68)
+            p = VuCommand(p, 96, data_004B4AF0, 1);
+        p = VuCommand(p, 44, data_004B4AF0, 1);
+        p = VuCommand(p, 78, data_004B4AF0, 1);
+    }
+    p = VuCommand(p, 66, data_004B4AF0, 1);
+    data_004B4AD8->u32[2] = p - start;
+    return VuExecuteState0(p);
 }
 
 /* the map passes of a packet: the detail layer's, then a command opening the passes, the specular,
