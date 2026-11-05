@@ -2065,6 +2065,19 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the kit and AI states, round 47** (LobAim; six task handlers, four on the first build):
+  - SWITCH COMPARE CHAINS TEST CASES IN REVERSE SOURCE ORDER (CTMap::Tick 0x5D6770 needs `case 4: case 3: case 5:`);
+    CTSignal::Tick's three-GetTyped shape closes CTSetAnimSet::Tick 0x5D1E00, CTPlay::End 0x5D2AA0 and CTPlay::Begin
+    0x5D3740 as written -- the remaining handlers likely share it;
+  - a float `x + 0.0f` literal folds away, adding a zero held in a local keeps the target's `mtc1 zero; add.s`; a float
+    local initialised from an inline's return becomes the inline's result temporary, numbered after every named local
+    ($f20, above a later-declared named local); of two inline float locals, declaring `s` before `xz` swaps their volatile
+    registers into the target's; in an inline whose stores go to memory, a computation written after the stores stays
+    after them, written before MW schedules it ahead;
+  - CZKit::LobAim 0x5BF8A0 is new in SOCOM II: the AI's lob solve raises the aim in steps of 0.025, at most 12 times,
+    until a round falling at gravity 98 comes within 5 of the target's height (five function-local statics at
+    0x650958-0x650978; its one caller 0x5BE9A0 passes the weapon's muzzle velocity for AI SEALs only); CTCreate::Tick
+    written, OPEN.
 - **Tells from the online lobby, round 22** (Remove and cbRoomPlayerList at last, three converting do_assigns):
   - AN ERASE-OR-STEP WALK KEEPS A SECOND, NEVER-STORED ITERATOR AS THE VALUE REGISTER, set from begin() with `i`; `i` is
     the stored copy the dereference, erase's copy and the bottom test read -- stepped ahead of the test the second one
