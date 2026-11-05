@@ -2998,7 +2998,7 @@
 0x0026FE90 0x88 DeleteParticleSources__6CZAnimFv  # OVL1; s1:align
 0x0026FF20 0x2FC State__6CZAnimFi  # OVL1; s1:calls
 0x00270220 0x1A4 Tick__6CZAnimFf  # OVL1; s1:callee
-0x002703D0 0x90 func_002703D0  # OVL1
+0x002703D0 0x90 GetRootNode__6CZAnimFb  # OVL1; SOCOM 1's GetRootNode__6CZAnimFv (0x1CC5C0: the instance node, else 0 for no root index, else the root reference's node -- word for word) grown a create flag: when the root reference has no node yet and the flag is set it calls GetNode(root, true) first; its one out-of-line caller is OVL2's CTMap::Tick 0x5D67D0 (passes ZAnim.m_CurAnim and false, where SOCOM 1's calls GetRootNode on m_CurAnim); zanim_anim.cpp inlines it everywhere else, the core lane round 16
 0x00270460 0x10C func_00270460  # OVL1
 0x00270570 0x244 func_00270570  # OVL1
 0x002707C0 0x1A0 func_002707C0  # OVL1

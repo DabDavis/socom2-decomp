@@ -283,7 +283,7 @@ public:
     int Load(zar::CZAR &archive);
     float GetHealth();
     CNode *GetNode(int index, bool create);
-    CNode *GetRootNode();
+    CNode *GetRootNode(bool create);
     CPnt3D *GetArgPnt3D()
     {
         return m_arg_list ? m_arg_list->GetPnt3D(CZAnimArg::TYPE_PNT3D) : 0;

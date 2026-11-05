@@ -25,7 +25,6 @@
 
 extern "C" CZAnim *func_00270BB0(CZAnim *anim);
 extern "C" bool func_00270BC0(Particle::Source *source);
-extern "C" CNode *func_002703D0(CZAnim *anim, int find);
 extern "C" int func_00270460(CZAnim *anim, CNode *node);
 
 /* the extension a weapon hit reaches the anim through: made for its health's node (else its own
@@ -38,13 +37,13 @@ void CZAnim::OnWeaponHitInit()
     if (m_health)
         node = GetNode(m_health->m_health_node_index, false);
     if (!node)
-        node = GetRootNode();
+        node = GetRootNode(false);
     if (node && !node->m_nodeEx) {
         if (m_health)
             m_animEx = new CZAnimEx(this, node, m_health->shield, m_health->armor, m_health->health,
-                                    GetRootNode());
+                                    GetRootNode(false));
         else
-            m_animEx = new CZAnimEx(this, node, GetRootNode());
+            m_animEx = new CZAnimEx(this, node, GetRootNode(false));
         if (m_animEx) {
             node->SetNodeEx(m_animEx, true);
             if (ZAnim.m_CurAnimSet)
@@ -701,7 +700,7 @@ CZAnim *CZAnim::FindClones(CNode *root, CNode *node, CZAnim *last)
 void CZAnim::MakeClones()
 {
     Refresh(false);
-    CNode *root = func_002703D0(this, 0);
+    CNode *root = GetRootNode(false);
 
     if (root && root->m_name) {
         CZAnim *last = this;
@@ -747,7 +746,7 @@ void CZAnim::State(int state)
         StopLights(false);
         StopAnims();
         if (m_added_to_world_internally) {
-            CNode *root = func_002703D0(this, 0);
+            CNode *root = GetRootNode(false);
 
             if (root) {
                 zdb::CWorld::m_world->DeleteChild(root);
@@ -965,19 +964,20 @@ extern "C" int func_00270460(CZAnim *anim, CNode *node)
     return 1;
 }
 
-/* CZAnim::GetRootNode, which SOCOM II gave a flag: look the root node up when it is not
- * known yet (its one caller passes 0; the type waits on another) */
-extern "C" CNode *func_002703D0(CZAnim *anim, int find)
+/* the anim's own node: its instance, else its root reference's node -- looked up first when
+ * asked and not yet known (SOCOM 1's GetRootNode, which SOCOM II gave the flag; inlined
+ * everywhere in this unit, out of line for OVL2's CTMap::Tick) */
+CNode *CZAnim::GetRootNode(bool create)
 {
-    if (anim->m_instance_node)
-        return anim->m_instance_node;
-    int root = anim->m_root_node_index;
+    if (m_instance_node)
+        return m_instance_node;
+    int root = m_root_node_index;
 
     if (!root)
         return 0;
-    if (!anim->m_node_ref_list[root].node_ptr && find)
-        anim->GetNode(root, true);
-    return anim->m_node_ref_list[anim->m_root_node_index].node_ptr;
+    if (!m_node_ref_list[root].node_ptr && create)
+        GetNode(root, true);
+    return m_node_ref_list[m_root_node_index].node_ptr;
 }
 
 void CZAnim::DeleteParticleSources()
@@ -1038,7 +1038,7 @@ void CZAnim::CreateInstanceNode()
         return;
     if (m_instance_node)
         return;
-    CNode *root = func_002703D0(this, 1);
+    CNode *root = GetRootNode(true);
 
     if (!root)
         return;
@@ -1111,19 +1111,6 @@ void CZAnim::GetNodes()
     CreateInstanceNode();
 }
 
-/* the anim's own node: its instance, else its root reference's node (SOCOM II's; inlined into
- * GetNode, the name ours) */
-inline CNode *CZAnim::GetRootNode()
-{
-    if (m_instance_node)
-        return m_instance_node;
-    int root = m_root_node_index;
-
-    if (!root)
-        return 0;
-    return m_node_ref_list[root].node_ptr;
-}
-
 /* the node a reference names, looked up when asked and not yet known -- under its parent's node,
  * else under the root's, else (unless it searches under a root it has) the world's model for an
  * instanced root or the database's node; world lights are found elsewhere. 250 is an argument's
@@ -1135,7 +1122,7 @@ CNode *CZAnim::GetNode(int index, bool lookup)
     if (index == 250)
         return m_arg_list ? m_arg_list->GetNode(250) : 0;
     if (index == 249)
-        return GetRootNode();
+        return GetRootNode(false);
     while (index >= m_node_ref_count)
         AddNewNodeRef(0, 0, 0);
     CNode *node = m_node_ref_list[index].node_ptr;
