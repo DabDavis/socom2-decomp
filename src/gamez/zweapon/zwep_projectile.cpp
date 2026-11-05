@@ -468,6 +468,80 @@ bool CZProjectile::HandleTimers()
     return r;
 }
 
+/* no hit this frame (SOCOM 1's DoMiss, 0x318D70 there, with SOCOM II's grenade tumble): a thrown
+ * type-121 weapon's projectile not at rest turns about its node's three axes -- slowly, by how far
+ * its rotation's y axis is from upright, when it barely moved; fastest over 15 units; in between
+ * by the distance -- each angle kept under a turn; the point it reached handed back (its frame's
+ * start once it has rested, the velocity then cleared); past the weapon's range the shot is spent
+ * (4) off the network, removed (7) and missed (3) on it; within it, missed (3). The quaternion
+ * goes to the node's pointer form through a cast: `&q` itself lets MW fold the inline's null test
+ * (the target and SOCOM 1 keep it; a pointer local taken after MakeYXZRot keeps it too) */
+PROJECTILE_HIT CZProjectile::DoMiss(float dT, CPnt3D *pos)
+{
+    CPnt3D d = m_frameendpos - m_framestartpos;
+    float dist = d.Length();
+    CZFTSWeapon *w = dynamic_cast<CZFTSWeapon *>(m_weapon);
+
+    if (w && w->GetIDType() == 121 && m_state != PROJECTILE_AT_REST) {
+        float roll = 0.0f;
+        float pitch = 0.0f;
+        float heading = 0.0f;
+
+        if (dist != 0.0f && !m_hasrested) {
+            if (dist < 0.5f) {
+                CPnt3D rot = CPnt3D::zero;
+
+                if (m_instance)
+                    m_instance->GetRotation(&rot);
+                float up = Dot(rot, CPnt3D(0.0f, 1.0f, 0.0f));
+
+                if (fabs(up) > 0.2f) {
+                    roll = 0.02f * (1.0f - up);
+                    pitch = 0.4f * (1.0f - up);
+                    heading = 0.1f * (1.0f - up);
+                }
+            } else if (dist > 15.0f) {
+                roll = 50.0f;
+                pitch = 2.5f;
+                heading = 10.0f;
+            } else {
+                float t = (dist - 0.5f) / 15.0f;
+
+                roll = 50.0f - 49.5f * t;
+                pitch = 2.5f - 2.0f * t;
+                heading = 10.0f - 9.5f * t;
+            }
+        }
+        m_roll += 3.1415927f * roll * dT;
+        if (m_roll > 6.2831855f)
+            m_roll -= 6.2831855f;
+        m_pitch += 3.1415927f * pitch * dT;
+        if (m_pitch > 6.2831855f)
+            m_pitch -= 6.2831855f;
+        m_heading += 3.1415927f * heading * dT;
+        if (m_heading > 6.2831855f)
+            m_heading -= 6.2831855f;
+        CQuat q;
+
+        q.MakeYXZRot(m_heading, m_pitch, m_roll);
+        if (m_instance)
+            m_instance->SetRotation((const CQuat *)&q);
+    }
+    if (m_hasrested) {
+        *pos = m_framestartpos;
+        m_vel = CPnt3D::zero;
+    } else
+        *pos = m_frameendpos;
+    if (dist > m_weapon->GetMaxRange()) {
+        if (theNetwork.m_bNetwork) {
+            SetProjectileState((PROJECTILE_STATE)7, false);
+            return HIT_MISSED;
+        }
+        return HIT_SPENT_4;
+    }
+    return HIT_MISSED;
+}
+
 /* (a material's resistance to a blast is int_material.h's CMaterialEx::m_penetration, PENETRATION) */
 
 /* whether an explosion reaches past the other intersection's hits: none counts for a flag-9
