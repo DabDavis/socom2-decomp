@@ -2428,7 +2428,7 @@
 0x00247040 0xC sceBInetGetVersionStringPtr  # OVL1; s1:order (the demo's libnetb object 0x423D38 opens with sceBInetGetVersionStringPtr, 0xC bytes, returning the version string's pointer as this does)
 0x00247050 0x154 sceBInetGetBuildTimestamp  # OVL1; s1:exact
 0x002471A8 0x11C sceBInetCreate  # OVL1 unaligned; s1:calls (rt_memory_allocate_init_zero, libnetb_alloc_bufs, sceInetCreate, as the demo's sceBInetCreate 0x423EA0; after sceBInetGetBuildTimestamp as there)
-0x002472C8 0x198 func_002472C8  # OVL1 unaligned
+0x002472C8 0x198 sceBInetOpen  # OVL1 unaligned; s1:order (the demo's libnetb object holds sceBInetOpen between sceBInetCreate and sceBInetClose, as here) and its calls (libnetb_prepare_async_receive, libnetb_prepare_async_send, sceInetOpen in the demo's order, then two libnetb_trans_data: 0x198 against the demo's 0x120) -- GCC lane r31a
 0x00247460 0x98 sceBInetClose  # OVL1; s1:exact
 0x002474F8 0x144 sceBInetRecv  # OVL1 unaligned; s1:order (the demo's libnetb object holds sceBInetRecv between sceBInetClose and sceBInetRecvFrom, as here; its body the demo's -- the recv ring drained, its header DMAed back -- grown by the peer check) -- GCC lane r31a
 0x00247640 0x8C sceBInetRecvFrom  # OVL1; s1:exact

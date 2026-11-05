@@ -8532,7 +8532,7 @@ misses), OVL1 `1E7F58 1E8FD4` 0 tried, `243000 256FD0` 56 tried, 0 hits (2 build
 **Round 31a** (2026-11-05, the tools first, then round 30a's opens): 3 rows newly byte-exact -- htonl
 and htons (0x1C1308, 0x1C1330, open since round 6a, a new `sdk/inet_hton.c`) and libezctl's
 ezNetCtlSetProperties (open since the states' round 34: `ovl1/ezctl.c` 8 of 8) -- dmaRefImage 12 -> 9
-words, libnetb's sceBInetRecv written (0x2474F8, OPEN at 6) and named. What they showed:
+words, libnetb's sceBInetRecv written (0x2474F8, OPEN at 6) -- and 2 rows named, both s1:order: sceBInetRecv and sceBInetOpen (0x2472C8, its calls the demo's too). What they showed:
 
 - **htonl and htons are a separate object built at -O1**: both compute in source order, the result in
   v0 and one temporary in v1 for every term, which -O2's schedulers never leave (2 and 3 words); and no
@@ -8558,7 +8558,7 @@ words, libnetb's sceBInetRecv written (0x2474F8, OPEN at 6) and named. What they
 - **Open, diagnosed in place**: dmaRefImage (9: the index/tag pointer priorities), sceBInetRecv (6),
   sceGsResetGraph (4, registers only: seven more spellings of the FFMode flag and the callback test).
   Not reached: sceGsSetDefDBuff, `_ch3dmaCSC`, `_doCSC2`, 0x252D68, 0x250320 (their diagnoses stand),
-  libnetb's sceBInetOpen 0x2472C8 (the demo's 0x120, here 0x198: its name waits for its body),
+  libnetb's sceBInetOpen 0x2472C8 (named: the demo's order and calls, 0x198 against its 0x120),
   libnetb_recv_from/send_to (the demo's sizes), the codec's rows.
 
 **Next**: the libraries by hand, module by module, as their vendors wrote them (each `src/lib`
