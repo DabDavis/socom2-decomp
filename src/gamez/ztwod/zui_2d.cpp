@@ -57,10 +57,26 @@ bool zrdr_findint(const _zrdr *rdr, const char *tag, int *out, int n);
 void *_calloc(unsigned int n, unsigned int size, const char *file, int line);
 void _free(void *p, const char *file, int line);
 
-/* a ZRDR value as the UI variable's base: only the member the variable's setter calls (zrdr.h's
- * _zrdr; empty here, laid at offset 0) */
+class CUIVariable;
+
+/* a ZRDR value as the UI variable's base (zrdr.h's _zrdr: its type, flags, count and value; the
+ * flags' packed bit as the bit-field it is there). Its destructor is declared (0x32F300): a list
+ * box's column holds one by value and the box's destructor tears it down (round 56) */
 struct _zrdr {
+    ~_zrdr();
     void DeleteChildren();
+
+    unsigned char m_type;   // 0x0
+    unsigned char m_isclone : 1;   // 0x1
+    unsigned char m_packed : 1;
+    unsigned char m_flags : 6;
+    unsigned short m_length;   // 0x2: an array's count (zrdr.h's 16-bit length)
+    union {
+        const char *m_str;   // 0x4
+        float m_real;
+        int m_int;
+        CUIVariable *m_array;   // an array's items, 8 bytes each
+    };
 };
 
 /* a UI variable as the plain bitmap reads it: its type (3 a string) and the string */
@@ -109,16 +125,6 @@ public:
     bool IsArray() const { return m_type == 4; }
     unsigned int Count() const { return IsArray() ? m_length : 0; }
     CUIVariable *Item(unsigned int i) const { return i < Count() ? &m_array[i] : 0; }
-
-    unsigned char m_type;   // 0x0
-    unsigned char _1;
-    unsigned short m_length;   // 0x2: an array's count (zrdr.h's 16-bit length)
-    union {
-        const char *m_str;   // 0x4
-        float m_real;
-        int m_int;
-        CUIVariable *m_array;   // an array's items, 8 bytes each
-    };
 };
 
 /* the texture handle's name, first (zdb's) */
@@ -2671,10 +2677,27 @@ extern "C" double strtod(const char *s, char **end);
 
 class CUIListBox;
 
+/* the engine's string table (util_stable.h's CSTable, 0x20 bytes: only its destructor, 0x39FB30) */
+class CSTable {
+public:
+    ~CSTable();
+
+    unsigned char _0[0x20];
+};
+
 /* a list box's column (SOCOM 1's ColumnData: only what the items read -- its kind, 0 an image,
- * and the image's size) */
+ * and the image's size). Round 56: its texture names are a ZRDR value with a string table of its
+ * own after it -- the box's destructor (0x375710) inlines the teardown: the names' children freed
+ * unless packed, then the table and the value destroyed as members (-1), then the texture list */
 class ColumnData {
 public:
+    ~ColumnData()
+    {
+        if (!m_texNames.m_packed)
+            m_texNames.DeleteChildren();
+    }
+    const CUIVariable &Names() const { return (const CUIVariable &)m_texNames; }
+
     unsigned char m_type;   // 0x0
     int m_x;   // 0x4: the column's offset
     int m_width;   // 0x8
@@ -2683,8 +2706,9 @@ public:
     unsigned char m_justify;   // 0x14: the string's 0x6A
     float m_scale;   // 0x18: the string look's scale when not 0
     std::vector<zdb::CTexHandle *> m_textures;   // 0x1c: an image column's, prepared by the box
-    CUIVariable m_texNames;   // 0x28: their names, a ZRDR array (as zui_2d.cpp's variable reads one)
-};
+    _zrdr m_texNames;   // 0x28: their names, a ZRDR array (read as zui_2d.cpp's variable reads one)
+    CSTable m_strings;   // 0x30: the names' strings
+};   // 0x50
 
 /* a list box's item's look (SOCOM 1's CListItemTypeImpl, zui_2d.cpp's). SOCOM II's table (0x4070F0)
  * has 18 slots to SOCOM 1's 13, SOCOM 1's in its order with five of SOCOM II's among them: the
@@ -2894,7 +2918,7 @@ struct CListBoxCmd : public C2DAnimCmdHdr {
  * its vtable 0x407670 holds CPlainBmp's Draw and SetMapOffset and C2DBitmap's flag setters */
 class CUIListBox : public CPlainBmp {
 public:
-    /* slot 0 (0x375710, not written yet: its items, columns and fonts freed) */
+    /* slot 0 (0x375710: its items, columns and font freed) */
     virtual ~CUIListBox();
     /* slot 22: the box's commands parsed (SOCOM 1's; SOCOM II's eleven) */
     virtual C2DAnimCmdHdr *ParseZAnimCmd(_zrdr *rdr);
@@ -2992,7 +3016,8 @@ public:
     unsigned char _198[0x1a0 - 0x198];
     CPlainBmp m_highlight;   // 0x1a0: the highlight's bitmap
     CPlainBmp m_bar;   // 0x240
-    unsigned char _2e0[0x420 - 0x2e0];
+    CPlainBmp m_2e0;   // 0x2e0 (the destructor tears down four plain bitmaps)
+    CPlainBmp m_380;   // 0x380
     ActionItem m_actions[30];   // 0x420: the box's actions (the spec's ANIMATIONS)
     int m_numActions;   // 0x600
 };
@@ -3229,8 +3254,8 @@ void CUIListBox::LoadSpec(const CUIListBoxSpec &spec, zdb::CTexHandle *tex, zdb:
         ColumnData *col = c;
 
         if (c->m_type == 0)
-            for (int j = 0; j < col->m_texNames.Count(); j++) {
-                zdb::CTexHandle *t = PrepTexture(col->m_texNames.Item(j)->GetString(), mgr);
+            for (int j = 0; j < col->Names().Count(); j++) {
+                zdb::CTexHandle *t = PrepTexture(col->Names().Item(j)->GetString(), mgr);
 
                 col->m_textures.push_back(t);
             }
@@ -3290,6 +3315,46 @@ void CUIListBox::RemoveAllItems()
         delete m_ownFont;
         m_ownFont = 0;
     }
+}
+
+/* the box torn down (slot 0; SOCOM 1's has no DWARF here): every item's node erased before the item
+ * is deleted, as RemoveAllItems does, then every column's (the pointer vector's erase, its result
+ * kept in a register over the delete), then the box's own font under its own test (two null tests,
+ * as the target's); then the members: the actions, four plain bitmaps (0x1A0-0x41F), the columns'
+ * and items' lists, the plain bitmap's base.
+ * OPEN, 2 instructions short (0x54C of 0x554) and one swap (round 56, written): the target tests a
+ * column's texture list FOUR times before freeing it -- a class over the pointer vector (zdb::CTexList's
+ * shape, round 27's rule), one level more than this plain vector's three -- and with ColumnData's
+ * written destructor that chain is six high: `#pragma inline_depth(6)` gives the four tests (0x54C ->
+ * the target's column teardown), at level 5 a derived list is called out of line (0x524): a "Level 6,
+ * or 8?" witness. Left besides: the items' end node (this+0xC4) wants s2 and the column's erase
+ * result s1 -- `igreplay --want 41=s1,42=s2` puts the end node's temporary right after the named
+ * locals (35.5-37.5) and the result after it; here the end is CSE'd later than the result */
+CUIListBox::~CUIListBox()
+{
+    std::list<ListItem *>::iterator it;
+
+    it = m_items.begin();
+    while (it != m_items.end()) {
+        ListItem *item = *it;
+        std::list<ListItem *>::iterator next;
+
+        next = m_items.erase(it);
+
+        delete item;
+        it = next;
+    }
+    std::vector<ColumnData *>::iterator c = m_columns.begin();
+
+    while (c != m_columns.end()) {
+        ColumnData *col = *c;
+        std::vector<ColumnData *>::iterator next = m_columns.erase(c);
+
+        delete col;
+        c = next;
+    }
+    if (m_ownFont)
+        delete m_ownFont;
 }
 
 /* none for an index out of range; the walk is AddItem's (the iterator assigned from begin(), in
@@ -3552,7 +3617,10 @@ bool CUIListBox::HighlightPrev()
  * OPEN, 6 instructions (stack slots): the target puts push_back's end and returned iterators at
  * sp+60/64, below the insert's returned one at 68; here they are at 64/68 and the insert's at 60.
  * Tried: the if/else the other way round (0xEC), the iterator declared at the top, the insert's
- * result assigned or kept, insert(end(), item) for the push_back (6 each) */
+ * result assigned or kept, insert(end(), item) for the push_back (6 each); round 56: braces round
+ * the push_back, the iterator at function scope (6), the push_back through a one-level-deeper
+ * inline wrapper, by reference or by value (7, 0xF4: its temporaries then sink below the position
+ * copy) -- the target's order reads like SOCOM 1's two-level push_back (include/list's "vc") */
 void CUIListBox::AddItem(ListItem *item, int where)
 {
     item->SetFont(m_font);
@@ -4242,7 +4310,9 @@ C2DAnimCmdHdr *CRenderableString::ParseZAnimCmd(_zrdr *rdr)
  * stores it, then builds this class's and stores it (one register, v0, serialised); here both
  * addresses are built up front in v1/v0 (as the string look's constructor 0x36B330 does in the
  * target too). The rest -- the reader's count clamped to the columns (RdrCount evaluated twice),
- * the walk, the push_back through the pod insert -- is byte-exact */
+ * the walk, the push_back through the pod insert -- is byte-exact. Round 56: an empty user
+ * constructor for CListItemTypeImpl, an explicit `: CListItemTypeImpl(), m_items()` -- 10 each (the
+ * target's serialised stores read as the two addresses in two blocks, or one register reused) */
 CListItemArrayTypeImpl::CListItemArrayTypeImpl(_zrdr *rdr, const std::vector<ColumnData *> &cols)
 {
     const ZRdrNode *r = (const ZRdrNode *)rdr;

@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <string.h>
 #include "zar.h"
+#include "../zsys/zsys.h"
 
 namespace zar {
 
@@ -20,10 +21,52 @@ CKey::CKey() : m_name(0), m_size(0), m_offset(0)
 }
 
 /* SOCOM 1's destroyed only its list; SOCOM II's first forgets its children (DeleteChildren,
- * 0x25B580, not yet written) */
+ * 0x25B580) */
 CKey::~CKey()
 {
     DeleteChildren(false);
+}
+
+/* a child deleted after its own children (0x25BAE0), a child's children forgotten (0x25BB20):
+ * DeleteChildren's two for_each operations (SOCOM II's; the names ours) */
+static void DeleteKey(CKey *key)
+{
+    if (key) {
+        key->DeleteChildren(true);
+        delete key;
+    }
+}
+
+static void ForgetKey(CKey *key)
+{
+    if (key)
+        key->DeleteChildren(false);
+}
+
+/* the children forgotten -- each deleted too when asked -- and the ring's storage given up
+ * (SOCOM II's, 0x25B580: FreeDirectory calls it on the root). Recursive through its operations:
+ * the outer copy inlines both for_each walks with their operations, DeleteKey's DeleteChildren(true)
+ * and its delete's ~CKey -> DeleteChildren(false) once each; a call four levels down stays inlined,
+ * one five down is called -- so the deep copy calls for_each's pieces, DeleteKey, the base clear
+ * 0x25BAD0 and FreeVector's four, the copy under ~CKey for_each 0x25BA50, clear and FreeVector
+ * 0x25B9D0 whole (all five rows byte-exact from here, as are DeleteKey 0x25BAE0 and ForgetKey
+ * 0x25BB20). OPEN, 0x33C of 0x398, the tail only (every instruction before it the target's, the
+ * frame 16 bytes smaller): the outer FreeVector reaches the pointer pod's pieces at depth five, and
+ * the image's pod is not include/vector's -- its constructor calls a piece storing the capacity
+ * passed by value (0x25B9C0, `sw a1,0(a0)`), its member swap calls three distinct std::swap copies
+ * (0x25B9A0 the capacity at +0, 0x25B980 the data at +8, 0x25B960 the count at +4) where ours calls
+ * the free swap, and its destructor is `if (*data()) alloc().deallocate(*data(), *cap())` with each
+ * accessor a call (0x25B950 data() by reference, 0x25B940 alloc(), 0x25B930 cap(), 0x25B920 the
+ * deallocate's operator delete) -- SOCOM 1's compressed pair, include/vector's "LEVEL 8, MEASURED
+ * AND NOT ADOPTED" shape: an MSL header change, not this unit's */
+void CKey::DeleteChildren(bool del)
+{
+    if (del)
+        std::for_each(begin(), end(), DeleteKey);
+    else
+        std::for_each(begin(), end(), ForgetKey);
+    clear();
+    FreeVector<std::vector<CKey *> >(*this);
 }
 
 /* a key named so, skipping the deleted (a size of -1): SOCOM 1's predicate, the struct's name ours */
@@ -36,6 +79,35 @@ struct CKeyNamed {
 
     const char *m_name;
 };
+
+/* the key's record -- its name's offset, its data's offset and size -- then the child count and
+ * each child's own, through the archive's file (SOCOM 1's, 0x25B030: SOCOM 1's secured each word
+ * around its write; it returns 1). Recursive: it self-inlines twice -- the second copy inlines its
+ * callees one level (the count's size() 0x25B2E0, the raw begin and __iter, end(), ==, the postfix
+ * ++'s pieces called), the third calls them all (WriteFile 0x25B2C0, Count 0x25B2B0, begin, end,
+ * !=, *, postfix ++) and Write itself; every loop is entered at its bottom test by a `b`.
+ * OPEN, 0x2CC of 0x280: the outer copy and the second's prologue are the target's -- the loop a
+ * `while` (a `for` gets a guard: 0x2C4), the count through a Count() over size() (the second copy
+ * calling size() as the target's) -- but the inlined copies' while loops are rotated behind a
+ * duplicated test where the target's enter by a jump; a named key local in the body, a `for (;;)`
+ * with a break, a goto into a do-while, prefix ++: 0x264-0x2D4 (build/scratch/core/v_write19*.py) */
+bool CKey::Write(CZAR *zar)
+{
+    zar->WriteFile(&m_name, 4);
+    zar->WriteFile(&m_offset, 4);
+    zar->WriteFile(&m_size, 4);
+
+    int count = Count();
+
+    zar->WriteFile(&count, 4);
+    iterator i = begin();
+
+    while (i != end()) {
+        (*i)->Write(zar);
+        i++;
+    }
+    return true;
+}
 
 /* a key's directory record (SOCOM II's, called out of line by WriteDirectory) */
 int CKey::RecordSize()

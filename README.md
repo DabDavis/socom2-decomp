@@ -2065,6 +2065,66 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the engine core, round 19** (ZAnimWildcardApply and CClutter::GetMatrix, both open since round 9; the CKey
+  helpers from source):
+  - A CAST OR CONST COPY OF A PARAMETER OR OF `this` (`char *name = (char *)str`, `const CClutter *c = this`) IS A VARIABLE
+    OF ITS OWN, numbered where it is declared -- a plain copy is propagated or coalesced back into the original
+    (ZAnimWildcardApply 0x268520 with the digit index declared first; zdb::CClutter::GetMatrix 0x2D93A0's rotation path);
+  - when a recursive function inlines itself, calls up to four levels below the outer copy are inlined and the fifth level
+    is called out of line (CKey::DeleteChildren 0x25B580, three copies, OPEN: its tail wants SOCOM 1's compressed-pair
+    vector storage -- queued for the MSL); at the top level a while loop is entered by a jump to its bottom test and a
+    for gets a duplicated test up front, inlined copies of the same while get the duplicated test (CKey::Write, OPEN);
+  - MW folds the +1 of `[v + 1]` into the load offset only when v is a plain variable (`j = i + 1` named, const or in the
+    block still folds; `[stick * 2 + 1]` next to `int i = stick * 2` stays unfolded); `int n = count; NewAnimSet(n);
+    index = n;` keeps the inline's parameter in its own register, `index = count; NewAnimSet(index);` merges them;
+    FreeVector<vector<CKey *>> 0x25B9D0, for_each 0x25BA50, the vector's clear 0x25BAD0, DeleteKey 0x25BAE0, ForgetKey
+    0x25BB20 and CZAR::WriteFile 0x25B2C0 from source (the last three names ours).
+- **Tells from the online lobby, round 24** (the chat deque's push_back at last, open since round 10, with its growth
+  pieces):
+  - A CLASS ELEMENT'S DEQUE GROWS THROUGH A TEMPORARY BLOCK BUFFER: `tmp(2 * size(), 0)` plus init, then `tmp = buf` (the
+    do_assign) or `reserve(2); push_back(0)` when empty; the block stored as `tmp.back()`, a null slot pushed, the element
+    copy-constructed in place (with its null test), tmp swapped in -- the element constructed on the plain path too (the
+    chat push_back 0x2F5290; cdeque<PCv>'s init(n, x) 0x2F5940 and do_assign 0x2F5700 named by shape, the buffer
+    0x2F5FF0, the pair constructor 0x2F6060, swap 0x2F56B0 to source);
+  - a constant `if` on a type trait still instantiates whatever the unused branch's non-dependent types reach, and the
+    unit emits it -- a type depending on T keeps that out (include/deque's __deque_imp::push_back class path through a
+    type-dependent growth-buffer stand-in: only the chat unit changes, proven over every unit); a dead-stripped own
+    function (ChatQueueBuffers, src/ABSENT.txt -- the device veh_vehicle.cpp's dead clear set) gives the unit's tail the
+    target's inlining: building the buffers and copying the allocator does it, requesting begin() / end() or the
+    do_assigns does not;
+  - a pointer held only in `alloc_ptr` is re-read from its stack slot after every call, taken into a named local before
+    the guard is built it stays in its saved register; an iterator constructor taking the storage pointer by const
+    reference re-reads the field for its data_ store, by value it is shared; in an out-of-line copy loop `!(x == y)`
+    turns into a stored bool, `x.p_ != y.p_` branches directly.
+- **Tells from the HUD, round 56** (CRatingMatch::AddTeam, open since round 19 -- mp_rating.cpp whole; AddJamo; GetGlyph):
+  - A VARIABLE THE TARGET KEEPS IN v0 FROM THE ENTRY TO `jr ra` IS THE RETURN VALUE -- adding the return changes the whole
+    colouring (CRatingMatch::AddTeam 0x23A170 returns the new team: 30 off to 0; as a void function `team` went to a0 and
+    the parameters sat at exactly K = 25 neighbours, deferred); `tools/igreplay.py --drop A-B` finds the single
+    interference that holds a node at K -- a drop that gives the target's registers names the live range that differs
+    (`--drop 33-36` gave AddTeam's before any source change);
+  - frame slots go by scope: an inline constructor's by-value parameter took the slot above a function-scope local, a
+    loop-scoped local the slot above that parameter -- naming the argument first makes the copy that local's own slot
+    (CHangulFont::AddJamo 0x359820); a class temporary made for a call argument goes in a later frame group under the
+    named locals -- a target with it above them declared it as a named local first (C2DFont::GetGlyph 0x35A3A0: frame 0x60
+    to 0x50, an empty C2DChar() constructor);
+  - defining a class's key function makes the unit emit its table's this-adjusting thunks (zui_2d.cpp now emits
+    0x37D060 / 0x37D070); four this-tests on a vector freed inside a deleted object's written destructor need level 6
+    when the vector is a derived class (~CUIListBox 0x375710 -- a "Level 6, or 8?" witness).
+- **Tells from the weapons, round 31** (zVid_Swap; InitializeWeapons, open since round 17; AttachDecal, since round 25;
+  CopyBuffer, since round 13):
+  - READ THE BRANCHES BEFORE TRUSTING A SWITCH'S SEMANTICS: CopyBuffer 0x3C36D0's kind-5 case had been inverted for 18
+    rounds -- both builds leave kind 5 alone, copy kind 8 and make every other kind relative (nested ifs, the length
+    before the block pointers, d / s / n declared uninitialised: a signed division by a power of two ends a block, and
+    uninitialised declarations fix volatile-register order whatever the order of assignment);
+  - a std::list walked through named node pointers (`node_base *e, *n`) numbers the walk as named locals, and a dead
+    first definition of the element pointer at the top places it ahead of them; one counter / count pair reused across
+    two walks is split by MW -- each walk's own uninitialised pair declared before the name it tests takes the replay's
+    order (CZWeaponList::InitializeWeapons 0x3C4700: round 30's igreplay numbering put into source, a marked device);
+  - comparison operands are evaluated left to right, but a by-value two-argument inline reads its last argument first
+    (zVid_Swap 0x3AFF30, SOCOM 1's with SOCOM II's second bool: the wait loop's test through FrameEarly(t, rate));
+    an if / else whose arms each call their own inline keeps the target's fall-through delay-slot fill and padded join
+    (CVisual::AttachDecal 0x3B3800: each pool's Get through GetPermDecal / GetTempDecal); initcode 0x3E0880 and
+    zVid_Swap's t0Count named (SOCOM 1's).
 - **Tells from the UI, round 29** (CSoftKeyboard::PrepForDisplay and CGameMenu::HandlePad at last; SkbOpenParse named):
   - a member array read through a reference-returning accessor at each use (`m_texLists[i]`) makes MW strength-reduce
     from the accessor's `this + offset` -- a reference local, or `m_lists[i]` written out, steps `this` and adds the

@@ -171,6 +171,11 @@ class CDecal {
 public:
     static void PutPermDecal(CDecal *d);
     static void PutTempDecal(CDecal *d);
+    /* a decal taken from the permanent or the temporary pool (inline: the names ours, after the
+     * Put pair -- AttachDecal's two arms each an inlined call, which keeps the target's branch: the
+     * delay slot filled from the permanent arm, the temporary arm's own lui and its padded join) */
+    static CDecal *GetPermDecal() { return m_permPool.Get(false); }
+    static CDecal *GetTempDecal() { return m_tempPool.Get(true); }
 
     CDecal *m_next;   // 0x0
     CVisual *m_visual;   // 0x4
@@ -1295,7 +1300,11 @@ extern "C" void func_003B3AB0(CVisual *v, int vid, float size, CPnt3D *pos, CPnt
  * of n/m/inv/vid and the id as short/int/unsigned all give the same two (build/scratch/wep/v_adr*.py).
  * Round 24 (CTurret::Fire's no-op-conversion close does not carry over): the direct call over the
  * rows or the CMatrix casts, a source or a destination pointer local, void-pointer casts, the id as
- * an if/else or a zero then an if -- the same two (or 4 short) */
+ * an if/else or a zero then an if -- the same two (or 4 short). Round 31 (the HUD's round-55 call
+ * arguments and the no-op-conversion rule): the copy through CMatrix's conversion operators on
+ * either or both arguments, the source cast straight from the CMatrix pointer (also through void *
+ * and unsigned int), local inline copies taking (dst, src), (src, dst), references or the rows --
+ * the same two (build/scratch/wep/v_adr*.py) */
 void CVisual::ApplyDecalRender(CMatrix *mtw, CNode *node, float size, CPnt3D *pos, CPnt3D *normal,
                                CTexHandle *tex, CMatrix *uv)
 {
@@ -1323,6 +1332,10 @@ extern "C" void func_003BECA0(CDecal *d, float size, unsigned int flags, CTexHan
  * bottom `bnez` on the new end); the set-up's float comes first in its prototype (the target
  * moves the size into f12 first, in the null test's delay slot); the list is a reference to the
  * pod's data_ (its address spilled to sp+176, reloaded for the store).
+ * BYTE-EXACT since the weapons' round 31: each pool's Get through an inline of its own (GetPermDecal /
+ * GetTempDecal, CDecal's statics beside the Put pair; a free inline per pool, or one taking the pool
+ * by reference, match as well; one inline holding the whole if/else stays 0x144) -- an inlined call
+ * in each arm keeps the arms' first instructions where the target has them. Before:
  * OPEN, 8 bytes short (written in the weapons' round 25): the pool's branch -- the target fills
  * the bc1f's delay slot from the fall-through (the permanent pool's lui) and keeps the temporary
  * arm's own lui, its `li a1,1` in the call's delay slot, then pads the join; here MW hoists the
@@ -1346,9 +1359,9 @@ void CVisual::AttachDecal(unsigned int vid, float size, unsigned int flags, Addo
     CDecal *d;
 
     if (size < 0.0f)
-        d = CDecal::m_permPool.Get(false);
+        d = CDecal::GetPermDecal();
     else
-        d = CDecal::m_tempPool.Get(true);
+        d = CDecal::GetTempDecal();
     if (d) {
         d->m_next = 0;
         func_003BECA0(d, size, flags, tex, points, extra, this, vid);

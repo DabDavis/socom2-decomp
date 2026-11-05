@@ -343,7 +343,10 @@ _zanim_cmd_hdr *CAppCamera::CmdParseShake(_zrdr *rdr)
  * (build/scratch/core/v_shake*.py, the core lane's round-17 scratch). Round 18: the test and the call
  * in a free inline over the level, the command or a const reference to the level (each 0x34: Shake no
  * longer inlined -- one level more), the level a reference local (53), the command a reference or cast
- * through a leaf template (36) */
+ * through a leaf template (36). Round 19: the camera through a leaf template (cast or identity) or a
+ * cast copy, the command a const cast copy, the level a cast local -- 36; the level read ahead of the
+ * test (a named, const or inline-result local) moves the load above the branch (52):
+ * build/scratch/core/v_shake19*.py */
 void CAppCamera::CmdBeginShake(_zanim_cmd_hdr *hdr)
 {
     if (appCamera)

@@ -389,7 +389,7 @@ public:
     CRatingMatch();
     ~CRatingMatch();
 
-    void AddTeam(int id, int count, bool first, float rating);
+    void *AddTeam(int id, int count, bool first, float rating);
     int AddPlayer(int team, int player, int score, float rating);
     float Compute();
     bool GetNewRating(int player, float *rating);

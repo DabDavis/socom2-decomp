@@ -249,7 +249,8 @@ void CAmmoDisplay::SetTrans(float trans)
  * narrowed count (v40) must be numbered among the named locals (31.5-37.5), or the case constant 1
  * (v38) after it (40.5-42.5); a named unsigned char local before or after `own` (initialised,
  * assigned, dead-zeroed first, an int of the cast) and an inline narrowing it (by parameter, cast or
- * local) all fold back to the same temporary: 7. */
+ * local) all fold back to the same temporary: 7. Round 56: the parameter itself reassigned narrowed
+ * (`mags = (unsigned char)mags;` before the switch, 11; inside the switch's expression, 7). */
 void CAmmoDisplay::SetMags(int mags, zdb::CTexHandle *tex)
 {
     bool own = true;
