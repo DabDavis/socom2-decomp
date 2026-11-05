@@ -99,6 +99,9 @@ bool func_005CCA30(float dT, void *data);        /* CSealCtrlAi::PostTick */
  * what the states call) */
 class CMPEG {
 public:
+    static bool Done();   /* 0x3096C0 */
+    static void End();   /* 0x3096F0 */
+    static void Tick(int field);   /* 0x309850 */
     static void SetMaxHeight(int height);   /* 0x309550 */
     static int Run(const char *name, bool b1, bool b2, int i);   /* 0x3098E0 */
     static void Init(void *buf, int size);   /* 0x309B40 */
@@ -644,6 +647,106 @@ bool CCinematicState::Init()
     m_fadeTime = -1.0f;
     func_003B0660();
     return true;
+}
+
+/* a word the film's tick zeroes each frame (OVL1 0x49E9E8, among C2D's statics; not named) */
+extern int data_0049E9E8;
+
+/* a frame of the film: the cross button fades it out, the fade run down (the film ended when it is
+ * out and the film does not hold its last frame), the film ended and the state popped when it is
+ * done -- the one return after the if/else; else its time counted, the film ticked, and the
+ * subtitle line due drawn: the latest cue at or before the film's time, split at the first space
+ * past its middle when it is wider than the subtitles' width (its second half on the line, its first
+ * on the next, drawn in the same pass). The tells: the cue's index `line` is a counter of its own,
+ * stepped in the for's increment (MW strength-reduces &lines[line] to s3, `addiu s3,s3,4` in the
+ * latch; indexed by i -- which the split's i++ also steps -- it is recomputed); the line read through
+ * a reference bound before the null test (s8, computed in the test's delay slot) for the split's
+ * text and its SetString, the rest written m_items[i]; `more` set before the next line's SetString;
+ * the film's time read into a float ahead of the cue array (hoisted out of the cue walk); `half`
+ * named (the loop's bound before its counter's zero) */
+bool CCinematicState::Tick(float dT)
+{
+    CInput::Tick(dT);
+    CPad *pad = CInput::m_pads[0];
+
+    if (pad && pad->m_state[9] == 3 && m_fadeTime < 0.0f)   /* PAD_CROSS, KEY_RISING */
+        m_fadeTime = 1.1f;
+    if (m_fadeTime > 0.0f) {
+        m_fadeTime -= dT;
+        if (m_fadeTime < 0.1f || !m_28) {
+            CVideo::Fade(0.0f, 0, 0, 0);
+            if (m_fadeTime < 0.0f || !m_28) {
+                m_fadeTime = -1.0f;
+                m_movierunning = false;
+            }
+        } else {
+            CVideo::Fade(m_fadeTime - 0.1f, 0, 0, 0);
+        }
+    }
+    if (!m_movierunning || CMPEG::Done()) {
+        CMPEG::End();
+        m_movierunning = false;
+        theGame.Pop(0);
+    } else {
+        m_time += dT;
+        CMPEG::Tick(zVid.m_34);
+        data_0049E9E8 = 0;
+        int line = 0;
+
+        for (int i = 0; i < 1; i++, line++) {
+            C2DString *&cur = m_items[i];
+
+            if (cur) {
+                bool more = false;
+                float t = m_time;
+                const char *lines[3] = {"", "", ""};
+
+                for (CMovieCueVector::iterator c = s_cues.begin(); c != s_cues.end(); c++) {
+                    if (c->m_time <= t) {
+                        lines[2] = lines[1];
+                        lines[1] = lines[0];
+                        lines[0] = c->m_text;
+                    }
+                }
+                m_items[i]->SetString(lines[line], true);
+                m_items[i]->UpdatePos();
+                if (m_items[i]->m_length > s_subWidth) {
+                    char first[800];
+                    char rest[800];
+
+                    memset(first, 0, 800);
+                    char *text = cur->m_string + cur->m_firstCharPos;
+                    int len = strlen(text);
+                    int half = len / 2;
+                    int j;
+
+                    for (j = 0; j < half; j++)
+                        first[j] = text[j];
+                    for (; j < len && text[j] != ' '; j++)
+                        first[j] = text[j];
+                    for (; j < len && text[j] == ' '; j++)
+                        ;
+                    sprintf(rest, "%s", text + j);
+                    cur->SetString(rest, true);
+                    if (i < 2) {
+                        more = true;
+                        m_items[i + 1]->SetString(first, true);
+                    }
+                }
+                m_items[i]->Tick(dT);
+                m_items[i]->Draw(appCamera->m_camera);
+                if (more) {
+                    i++;
+                    m_items[i]->Tick(dT);
+                    m_items[i]->Draw(appCamera->m_camera);
+                }
+            }
+        }
+        zSysFifoEnd();
+        zVid_Swap(!s_firstFrame, true);
+        s_firstFrame = 0;
+    }
+    return false;
 }
 
 /* the film let go of: the film player, its items, its texture buffer and list, and -- if it was

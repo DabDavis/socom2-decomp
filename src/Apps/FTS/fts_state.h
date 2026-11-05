@@ -71,7 +71,9 @@ void *_memalign(unsigned int align, unsigned int size, const char *file, int lin
 /* a pad: only the actuator bytes the states clear (SOCOM 1's m_ActData at 0xC; SOCOM II's 0xB4) */
 class CPad {
 public:
-    unsigned char _0[0xb4];
+    unsigned char m_0;   // 0x0
+    unsigned char m_state[16];   // 0x1: each button's KEY_STATE (zinput.h's)
+    unsigned char _11[0xb4 - 0x11];
     unsigned char m_ActData[6];   // 0xb4
 };
 
