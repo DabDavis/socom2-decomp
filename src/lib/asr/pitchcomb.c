@@ -446,7 +446,14 @@ static __inline__ void ResetRing(RING *r, int len)
  * beside it (4 words; with -fno-schedule-insns2 the reset matches, and NormE_Processing and
  * ControlPitchCombiner do not -- sched2 is on). So the vendor's hold is in sched1 only; volatile flags,
  * inlines for the tail or the cursors, a pointer to the flags and the block's own pointer do not
- * give it (build/scratch/gcc/pr1.py). */
+ * give it (build/scratch/gcc/pr1.py).
+ * Round 24c: sched1 ranks (priority, weight, ...), so the target's store -- issued in source order,
+ * after the weight -1 cursor stores -- had weight 0: neither the 1 nor p died at it in sched1 (or it
+ * waited on every earlier store), and SOCOM 1's compile keeps the same order, so it is the source's.
+ * A separate constant (`p->f182 + 1`, `!p->f182`, `p->f182 ^ 1` ...) only moves the jump to the
+ * other 1-store (0x29C); an unused label, `if (1)`, `return;`, the address or value respelled,
+ * `/ 2` for the halvings change nothing (build/scratch/gcc/r24c/v_last.py, v_reset.py). Not
+ * found: what keeps p or the 1 live past the last store in sched1 and leaves no code. */
 static void PitchCombinerReset(PITCHCOMB *p)
 {
     int lead;
