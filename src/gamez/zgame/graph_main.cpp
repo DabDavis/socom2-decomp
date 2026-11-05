@@ -92,16 +92,13 @@ extern "C" const unsigned int data_003F3500;   /* (the version the reader takes)
 /* the nodes and edges read from a file block, each handed to its fixup with the file's word for
  * it; false for another version (its block skipped) or an empty graph (OVL1 0x2D0C90, SOCOM 1's;
  * CreateNode and GetNodeByIndex are its out-of-line calls, hence their pins).
- * OPEN, 5 instructions, registers only: in the edge loop the target colours the counter s3 and the
- * first node (held across the second GetNodeByIndex) s5, this the other way round; the record
- * cursor s4 and everything else agree. Tried (build/try-st): the two nodes as named locals (11),
- * the first one named in the loop or declared at the top or before the loop (9-11), the counter
- * declared once for both loops, before the header, as an int, or copied from a second counter
- * (all 5), a walking record pointer (0x258); round 34: the first node, or both, as const locals
- * (11), the count in a const local (0x248), the record through a const reference, the counter a
- * copy of an outer one (5) */
+ * The edge loop's registers (the counter s3, the record cursor s4, the first node s5) take BOTH of
+ * two shapes, each alone 5 or 11 off (the states' round 37, read off MW's colouring): one counter for
+ * both loops -- the edge loop's is then a second web, numbered after the loop optimiser's cursor --
+ * and the first node a named local, numbered below that cursor */
 bool CGraph::Read(CFileIO &f, NodeFixup node, EdgeFixup edge, void *data)
 {
+    unsigned int i;
     GraphHeader hdr = {0};
 
     f.fread(&hdr, sizeof(hdr));
@@ -116,14 +113,15 @@ bool CGraph::Read(CFileIO &f, NodeFixup node, EdgeFixup edge, void *data)
 
     f.fread(nodes, hdr.nodes * 4);
     f.fread(edges, hdr.edges * 16);
-    for (unsigned int i = 0; i < hdr.nodes; i++) {
+    for (i = 0; i < hdr.nodes; i++) {
         CGNode *n = CreateNode();
 
         if (node)
             node(this, n, true, nodes[i], data);
     }
-    for (unsigned int i = 0; i < hdr.edges; i++) {
-        CGEdge *e = CreateEdge(GetNodeByIndex(edges[i].from), GetNodeByIndex(edges[i].to));
+    for (i = 0; i < hdr.edges; i++) {
+        CGNode *from = GetNodeByIndex(edges[i].from);
+        CGEdge *e = CreateEdge(from, GetNodeByIndex(edges[i].to));
 
         e->m_4 = edges[i].length;
         if (edge)
