@@ -23,6 +23,16 @@ public:
 };
 extern CZNetwork theNetwork;
 
+/* the AI maps (ai_maps.h's class; OVL2's AiMaps): a point's cell, and the shadow's darkness there
+ * (0 lit .. 1 dark) -- as zwep_explosive.cpp declares them */
+class CAiMapLoc;
+class CAiMaps {
+public:
+    bool GetLocation(const CPnt3D *pos, CAiMapLoc &loc);
+    float GetInterpolatedShadow(const CAiMapLoc &loc, const CPnt3D *pos, bool inside);
+};
+extern CAiMaps AiMaps;
+
 /* the network grenade (fts_net_grenade.cpp's) */
 class CZGrenadeState {
 public:
@@ -309,6 +319,118 @@ static inline bool NoNode(CNode *node)
 static inline bool IsItem(EQUIP_ITEM id, int item)
 {
     return id == item;
+}
+
+/* a frame after the move (SOCOM 1's PostTick, 0x3C9FB0, in SOCOM II's states: 7 removed, 6 to be
+ * removed, 5 detonated): removed -- or held with both new flags set -- reported and done; detonated,
+ * its next hit handled first; a delayed detonation handled; to be removed, removed once the flag or
+ * the removal time says so (off the network, or a player's or a person-hit shot's). Then the timers
+ * run, the frame's hits are dealt with -- a shotgun's every pellet hit at once, bounced or impacted
+ * by the weapon's class and item as HandleIntersections chooses, anything else walked through
+ * HandleIntersections --, the model turned to the frame (SOCOM II: not at rest), its shadow level
+ * set from the AI map's darkness (as the placed explosive's), a direct-fire shot removed, a hit one
+ * removed unless already detonating or being removed; the timers' verdict returned, false once
+ * removed */
+bool CZProjectile::PostTick(float dT)
+{
+    PROJECTILE_STATE state = m_state;
+    unsigned char held;
+
+    if (state == 7 || ((held = m_b18) != 0 && m_b17)) {
+        if (theNetwork.m_bNetwork) {
+            m_grenadestate = REMOVE;
+            ReportGrenadeStatus();
+        }
+        return true;
+    }
+    if (state == PROJECTILE_WAS_DETONATED) {
+        if (held || HandleNextHit()) {
+            if (m_b17)
+                m_state = (PROJECTILE_STATE)7;
+            else
+                m_state = PROJECTILE_TO_BE_REMOVED;
+        }
+        return false;
+    }
+    if (state == PROJECTILE_DETONATION_TO_BE_HANDLED) {
+        HandleDelayedDetonate();
+        return false;
+    }
+    if (state == PROJECTILE_TO_BE_REMOVED) {
+        if (m_b17)
+            m_state = (PROJECTILE_STATE)7;
+        else if (m_removaltime <= 0.0f && m_removaltime != 9999999.0f) {
+            if (!theNetwork.m_bNetwork || m_isplayer || m_lastHitWasPerson)
+                m_state = (PROJECTILE_STATE)7;
+        }
+    }
+    m_grenadestate = NEWPOS;
+
+    bool hit = false;
+
+    if (m_di)
+        CWorld::m_world->ClearIgnoreNodeDelayed(m_di);
+    if (m_intersecthandle == -1 && m_di)
+        return false;
+    if (m_time != 9999999.0f)
+        m_time -= dT;
+    if (m_removaltime != 9999999.0f)
+        m_removaltime -= dT;
+    if (m_shottype == ONE_FRAME_SHOTGUN) {
+        if (m_di) {
+            int n = m_di->m_Cnt;
+
+            for (int i = 0; i < n; i++) {
+                IntersectStruct *is = &m_di->m_Intersects[i];
+                CPnt3D pos;
+
+                is->m_pos.Sub(&m_framestartpos, &pos);
+                CZFTSWeapon *w = dynamic_cast<CZFTSWeapon *>(m_weapon);
+
+                if (w && (w->GetIDType() == 121 || w->GetIDType() == 151 || IsItem(w->GetId(), 172) ||
+                          IsItem(w->GetId(), 173) || IsItem(w->GetId(), 178) ||
+                          (IsItem(w->GetId(), 185) && m_restnode) || (IsItem(w->GetId(), 186) && m_restnode)))
+                    HandleBounce(is, dT, &pos);
+                else
+                    HandleImpact(is, dT, 0.0f, &pos);
+            }
+        }
+    } else
+        hit = HandleIntersections(dT);
+    if (m_state != PROJECTILE_AT_REST) {
+        if (m_shottype == ONE_FRAME_SHOTGUN)
+            SetModelOrientation(true, &m_frameendpos);
+        else if (m_shottype == ONE_FRAME)
+            SetModelOrientation(true, &m_frameendpos);
+        else
+            SetModelOrientation(false, &m_frameendpos);
+    }
+
+    unsigned int loc;
+
+    if (AiMaps.GetLocation(&m_frameendpos, *(CAiMapLoc *)&loc)) {
+        float light = AiMaps.GetInterpolatedShadow(*(CAiMapLoc *)&loc, &m_frameendpos, false);
+
+        _saturate(&light, 0.0f, 1.0f);
+        m_instance->m_socom2_a0 = (int)(127.0f * (1.0f - light));
+    }
+    if (m_shottype == ONE_FRAME || m_shottype == ONE_FRAME_SHOTGUN)
+        m_state = (PROJECTILE_STATE)7;
+    else if (hit == true) {
+        if (m_state != PROJECTILE_TO_BE_DETONATED && m_state != PROJECTILE_DETONATION_TO_BE_HANDLED &&
+            m_state != PROJECTILE_TO_BE_REMOVED) {
+            if (!theNetwork.m_bNetwork || m_isplayer || m_lastHitWasPerson)
+                m_state = (PROJECTILE_STATE)7;
+        }
+    }
+
+    bool r = HandleTimers();
+
+    if (theNetwork.m_bNetwork && m_shottype != ONE_FRAME && m_shottype != ONE_FRAME_SHOTGUN)
+        ReportGrenadeStatus();
+    if (m_state == 7)
+        return false;
+    return r;
 }
 
 /* the frame's hits walked nearest first, beyond the last one dealt with and within the range,
@@ -861,6 +983,7 @@ bool CZProjectile::RegisterNextHit()
 
 /* the next hit, if it counts, handed to its node's extension -- an instance's to the node it
  * instances -- and the index moved on; none without both intersections */
+#pragma auto_inline off
 bool CZProjectile::HandleNextHit()
 {
     if (m_di && m_di2) {
@@ -878,6 +1001,7 @@ bool CZProjectile::HandleNextHit()
     }
     return true;
 }
+#pragma auto_inline reset
 
 /* the node cleared from every hit of a detonated projectile's intersection */
 void CZProjectile::ForgetHitNode(zdb::CNode *node)
