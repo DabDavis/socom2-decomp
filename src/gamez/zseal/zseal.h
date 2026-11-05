@@ -122,6 +122,9 @@ public:
      * 0x57D5E0, are looked up again unless it is on the stack) */
     static short SwapRifle;   // OVL1 0x3DEC78
     static short ClimbMedium;   // OVL1 0x3DEC90
+    /* (SOCOM 1's ClimbOver, 0x4751F0, eight after Stand2Prone in both builds: SealAnim 0x5870E0 tests
+     * the current blend against it where SOCOM 1's SealAnim does -- the SEALs, round 47) */
+    static short ClimbOver;   // OVL1 0x3DECA0
     /* (SOCOM II's two strafes, AnimType itself, not short -- the SEALs, round 34: SetMaxMotion passes
      * them to GetScript unconverted, the static loaded ahead of the set as an argument with no
      * conversion is) */
@@ -1815,6 +1818,7 @@ public:
     void SetInSmoke(bool on) { m_isinsmoke = on; }
     /* bits 9 and 10 of 0x1060 set (inlines: a constant true is `daddiu 1 << n`, a false `(0 & 1) <<
      * n`; the names ours) */
+    void SetLanded(bool on) { m_landed = on; }
     void SetBit9(bool on) { m_bit9 = on; }
     void SetBit10(bool on) { m_bit10 = on; }
     /* the moving and turning flags set (inlines: InStateHang clears both with `(0 & 1) << n`) */
@@ -1831,6 +1835,21 @@ public:
     bool SmoothXZThrottles(float &x, float &z);
     /* whether the throttles leave the SEAL stopped (SOCOM 1's; OVL2 0x586F00, seal_body.cpp) */
     bool IsStopped(float x, float z, float t);
+    /* the anim after a step: a blend popped when asked and the state set from what is left, then
+     * the state's own control (SOCOM 1's took three throttles; OVL2 0x5870E0, seal_body.cpp) */
+    CZBodyAnimBlend *SealAnim(bool pop);
+    /* the states' controls (SOCOM 1's, no floats in SOCOM II -- they read the throttles at 0x23c-0x244;
+     * OVL2 0x586570, 0x584C60, 0x5845C0, 0x583AF0, 0x583E70, seal_body.cpp -- SealAnim calls them for
+     * states 0, 1, 2, 10 and 9, as SOCOM 1's does) */
+    CZBodyAnimBlend *InStateStand();
+    CZBodyAnimBlend *InStateCrouch();
+    CZBodyAnimBlend *InStateProne();
+    CZBodyAnimBlend *InStateCarried();
+    CZBodyAnimBlend *InStateCarrying();
+    /* in the air: the top blend's weight made 1 and its playback set from the larger throttle, signed
+     * by the side throttle (SOCOM 1's, no floats in SOCOM II: SealAnim inlines it, then stripped --
+     * src/ABSENT.txt) */
+    CZBodyAnimBlend *InAirControl();
     /* standing, turned in place (SOCOM 1's took three throttles; OVL2 0x586050, seal_body.cpp:
      * InStateStand returns it) */
     CZBodyAnimBlend *StandTurning(float turn);
@@ -2143,7 +2162,10 @@ public:
     float m_fade_target;   // 0x230
     float m_fade_rate;   // 0x234
     unsigned char m_fade_priority;   // 0x238
-    unsigned char _239[0x240 - 0x239];
+    unsigned char _239[0x23c - 0x239];
+    /* the throttles the states' controls read (SOCOM 1's InState* took them as arguments: SealAnim
+     * 0x5870E0's idle state tests all three against none; the names ours) */
+    float m_23c;   // 0x23c
     float m_240;   // 0x240: PostCheckDILadder checks the ladder only from 0.03 up (the name ours)
     float m_244;   // 0x244: InStateHang's second throttle with 0x240 (the name ours)
     /* the side and move throttles as last eased (SOCOM 1's at 0x194/0x198: SmoothXZThrottles eases
@@ -2233,7 +2255,9 @@ public:
     class AnimSet *m_default_animset;   // 0x52c (SOCOM 1's 0x460: BindAnimSet keeps the set it replaces)
     class AnimSet *m_530;   // 0x530: the set 0x58C600 binds, kept with m_default_animset (the name ours)
     AnimType m_curblend;   // 0x534: the anim type on top of the blends (SOCOM 1's short at 0x464)
-    unsigned char _536[0x53c - 0x536];
+    unsigned char _536[0x538 - 0x536];
+    /* a ZAnim the 0x44D3F8 set holds, let go when the set is undone (0x585FF0; the name ours) */
+    class CZAnim *m_538;   // 0x538
     /* the zoom's anim, "zoom_control", while a scope or the binoculars are up (new in SOCOM II:
      * SetCurZoomState starts and releases it; the name ours) */
     class CZAnim *m_zoom_anim;   // 0x53c
@@ -2271,7 +2295,11 @@ public:
     /* a motion the position code keeps (ComputeNextPosition and PostPreTick read and write it; the
      * collision tick 0x54F570 stops checking once its length is all but zero -- the name ours) */
     CPnt3D m_f44;   // 0xf44
-    unsigned char _f50[0xf74 - 0xf50];
+    unsigned char _f50[0xf68 - 0xf50];
+    /* two heights SealAnim 0x5870E0 resets to -99 before a state's control runs (the names ours) */
+    float m_f68;   // 0xf68
+    float m_f6c;   // 0xf6c
+    unsigned char _f70[0xf74 - 0xf70];
     /* the weapon's state, bit 4 a flag GetWeaponState masks off (SOCOM 1's m_weapon_state, 0xe54) */
     unsigned int m_weapon_state;   // 0xf74
     /* an item the anim choice falls back on with no base blend (0x58C820 copies it with lb, tests it
@@ -2380,7 +2408,7 @@ public:
      * lane's seal_ik.cpp: two single-bit fields written one at a time, lbu/sb -- the names ours) */
     unsigned int m_bit6 : 1;
     unsigned int m_bit7 : 1;
-    unsigned int m_unused_bits : 1;
+    unsigned int m_landed : 1;   // bit 8: set with bit 10 when 0x59AD30 lands the SEAL, cleared in the air (the name ours)
     unsigned int m_bit9 : 1;   // bit 9: a remote SEAL with it set is skipped by 0x57DFE0 (the name ours)
     unsigned int m_bit10 : 1;   // bit 10: cleared with bit 9 set by 0x57DF20/0x57E050 (the name ours)
     unsigned int m_1060_bit11 : 1;
