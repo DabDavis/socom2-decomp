@@ -488,6 +488,13 @@ public:
     bool ZAnimLoad();
     bool LoadMissionCams(CRdrFile *rdr);
     bool LoadObjectiveCams(CRdrFile *rdr);   /* 0x2A4D30 */
+    /* the extraction regions' anchors (0x2A42B0, 0x338, unwritten): AiMaps' map 0's regions of type 1
+     * walked, each one's centre cell (region::GetCenter) put through ai.h's CAiMap::GetCellCenter --
+     * inlined one level, GetCell / GetAltitude / HasAction / GetDir / CPnt3D() / Scale / Add called
+     * as OVL1's copies 0x1FB3C0 and 0x2105E0-0x2106A0 -- and a compass anchor of type 6 listed for it.
+     * It needs ai.h here, and including ai.h fails before this unit's own stand-ins matter (the
+     * states' round 41): zsav_lobby.h's CSaferStr (a std::string) and zentity.h's (an opaque 12-byte
+     * class, which ai.h brings) are both defined -- two shared headers that cannot meet */
     void Sample_ExtractionLoc();   /* 0x2A42B0 */
     void Close();   /* 0x2AB3F0 */
     void InitalizeTeamValves();   /* 0x2B2840 */
