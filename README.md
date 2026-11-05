@@ -60,7 +60,7 @@ and data reference resolved to the address the shipped code uses.
 | `tools/structdiff.py` | one function against its row with the registers and the link normalised, so only STRUCTURAL differences show (opcodes, unrelocated immediates, order, which function is called); says how many instructions differ in their registers alone -- a register-only miss -- and `--regs` keeps the registers (the game states' round-35 structdiff.py and mydiff.py, promoted in GCC round 31a) |
 | `tools/cdis.py` | the candidate's disassembly before the link, each relocation named as the scorer resolves it (`<R_MIPS_LO16 currentDir = 0x1df400>`), `--at` at its row's addresses, `--list` the object's functions (the game states' round-35 cdis.py, promoted in GCC round 31a) |
 | `tools/igdump.py` | Metrowerks' own register colouring read out of mwccps2 3.0b52 under gdb: a unit built as sccheck builds it, every colouring one JSON line (each virtual register's variable, degree, neighbours, colour, spill cost; the colouring order; the PCode); `-f` shows a function's, `--saved` who holds each saved register (the lanes' igdump.py, promoted in GCC round 32a) |
-| `tools/igreplay.py` | MW's simplify/colour replayed offline on an igdump record (every GPR and FPR record replays exactly); `--move V=POS` renumbers a virtual register to see the registers that numbering gives, `--want`/`--movers` searches the placements, `--nb` a node's neighbours and sweeps (the MSL lane's igreplay.py, the game states' relabel.py and brute.py, the AI core's nbdeg.py: GCC round 32a) |
+| `tools/igreplay.py` | MW's simplify/colour replayed offline on an igdump record (every GPR and FPR record replays exactly); `--move V=POS` renumbers a virtual register to see the registers that numbering gives, `--want`/`--movers` searches the placements, `--nb` a node's neighbours and sweeps (the MSL lane's igreplay.py, the game states' relabel.py and brute.py, the AI core's nbdeg.py: GCC round 32a); `--target` scores the colouring a `--move` gives and lists every node whose target uses disagree, and a search has a budget, `--timeout`/`--max-iters`, with progress (GCC round 33a) |
 | `tools/igvar.py` | source variants (try.py's `--sub`/`--and`/`--variants`) each built under igdump in a scratch tree; per variant the spilled nodes and each saved register's holders by variable, or `--all` every telling node (the AI core's and the game states' igvar.py: GCC round 32a) |
 | `symbols.txt` | **the map** — `0xADDR SIZE name  # note`, kept by hand from here on |
 | `data.txt` | the map of global data, the same format and namespace |
@@ -2065,6 +2065,65 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the SEALs, round 43** (GetThrowAnim, GetDynamics, the throw path's clearance, the come-along order's test):
+  - an inline's own local is numbered after all of the caller's locals -- to number it among them make it an
+    uninitialised caller local assigned inside the inline through a `bool &` (the come-along order's test 0x591520);
+    `r = !sw || x == f();` branches on the unmasked value with the andi in the delay slot, `r = !sw; if (!r) ...` tests
+    the masked one; `f() == false` on a bool call result gives the andi before the branch (the throw path's clearance
+    0x5499E0, where declaring the second of two floats live across calls uninitialised at the top swaps $f20 / $f21);
+  - `bool m = Dot(v, v) > k;` gives the target's c.le.s / bc1f, `!(... <= k)` adds an xori; a function-local `static
+    float k = 225.0f` is plain data loaded with lwc1 (GetThrowAnim 0x57FCE0, SOCOM 1's with seven guarded function-local
+    CPnt3D statics); unsigned frame parameters passed to an int callee in a loop become a hoisted no-op conversion
+    numbered after the named locals (0x577BA0, OPEN: one numbering fits, `&seal->m_body_parts` between `part` and the
+    first hoisted conversion);
+  - AN `ovl-copy:` MARKER MOVES CREDIT: marking OVL2's 0x58A710 a copy of OnStateChange moved the SEAL units' copies off
+    OVL1's 0x2B3BE0 -- named by the game states, credited only through that cross-overlay name, its own draft retired --
+    and lost it; reverted at integration until an OVL1 unit emits the copy (check the other row has its own emitter
+    before adding a marker); seven AnimTypes rows named by SOCOM 1's order with GetThrowAnim's reads as the second
+    witness.
+- **Tells from the game states, round 39** (a box's corners, the vote-kick test, zDoClientLeavesCallback, OnMissionStart):
+  - a plain function calling an inline too big to inline whole gets that inline cut to one level (its leaves called),
+    and is itself never auto-inlined -- an "out-of-line copy" whose leaves are calls is such a caller (0x2A96B0, a box's
+    eight corners through BoxCorners; CreateLadderTable still matches);
+  - a local set through an inline's reference out-parameter stays a named variable numbered at its uninitialised
+    declaration, returned by value it merges into the inline's result temporary (numbered after the caller's locals),
+    and a dead `= 0` on it leaves no node at all (zDoClientLeavesCallback 0x2BC080: the SEAL numbered first, found with
+    `tools/igreplay.py --want`); a list walk with its end taken into a local before the loop keeps the end in a saved
+    register, `!= list.end()` every pass rebuilds the address (8 bytes longer);
+  - a byte-enum field copied into a local loads with lb + andi 0xff at each use only when the copy is not folded into
+    its first compare -- read straight into a compare it is one lbu (OnMissionComplete 0x2A9B30, OPEN 16 short);
+    OnMissionStart 0x2A7D40 and OnMissionComplete named by SOCOM 1's identical call sequences (st_core.cpp's calls
+    respelled, SAME-BY-ADDRESS).
+- **Tells from completing the MSL headers, round 27** (the data_ reader, the deques' init level, the class push_back;
+  probes build/p27/, scratch build/scratch/msl-r27/, untracked -- dtorvar.py, dqvar.py/dqvars.py, vecvar.py, rowscan.py):
+  - THE POD DESTRUCTOR READS data_ THROUGH data() INTO A PLAIN LOCAL (`T *p = data(); if (p) deallocate(p);`): the
+    inlined accessor's reference temporary stays a variable off a member at an offset and folds into the frame for a
+    stack object -- ~CRadioStripSpec 0x387340, ~CAssetLib 0x321990 and ~CMenuStack 0x27F590 keep &data_ in a saved
+    register (computed ahead of the walk) while resize<CUIVariable> 0x2B1390 still reads its temporary sp-relative:
+    the one reader round 26 asked for (+3, nothing lost; objcmp: only those three functions change). Passed straight
+    (`deallocate(data())`) the accessor is an inline call's argument, a level deeper (round 26's -34); a reference local
+    is a variable everywhere (loses the resize); the test alone through data() keeps all three wrong;
+  - EVERY DEQUE AND BLOCK-BUFFER RANGE INIT HAS A DISPATCH LEVEL: the ends copied by value once more (FPU words, then
+    lq/sq) around two value-initialised one-byte temporaries -- two plain empty classes by value are stored (`sb
+    zero`), the std iterator tags (deriving) are not (build/p27/probe3.cpp) -- then do_assign; a pointer container
+    converts one level further down, its converters built from those copies by const reference (the third copy, lw/sw,
+    the lowest slots). include/deque's Metrowerks::__deque_init over number<bool, ...>: the lobby's 0x2E0830 and
+    0x2E0B40 byte-exact from source, the state machine's 0x3A5ED0/0x3A61E0, the vid stack's 0x3B7E30 and the rdr
+    editor's 0x333BB0/0x333EC0 once their do_assign rows have names (+16 with the named iterator pieces);
+  - THE VID STACK'S do_assign 0x3B8000 IS NOT A CONVERTER'S: it copies a 24-byte source and dereferences a reference
+    (the rdr editor's 0x334440 copies the 28-byte converter); deque<void *> hands its const_iterators straight
+    (__deque_converts<void>), 0x3B8000 code-exact, its != 0x3B83B0 byte-exact. The converter's own shape stays open:
+    its ++ 0x3348E0 inlines the wrapped iterator's ++, which the vid stack calls out of line from the LATER unit
+    (0x3B83D0) -- the linker keeps the first unit's copy of an instance (the destination's ++ 0x334880, zrdr_edit.cpp's,
+    serves 0x3B8000), so zrdr_edit.cpp never emitted it: not one class, or a cut not found (include/deque's comment);
+  - THE CLASS VECTOR'S push_back GOES THROUGH end() (`insert(end().m_p, 1, x)`): the HUD's AddName is then cut one
+    level and makes the target's six calls in its order -- 0x22DD20 is rbegin() itself (its hidden return slot is the
+    reverse *'s `this`), not its end(); push_back 0x22DD60, rbegin and the reverse * 0x22DD10 byte-exact, objcmp: no other
+    unit's code moves. hudAddPopupDefinition stays 0x63C of 0x5E0 on the loader's own registers and the triggers'
+    constructors (the HUD lane's);
+  - measured, not reached: insert<AcctRecord> 0x2FE3E0 (no new idea on the end's number), CKey::CountKeys,
+    OnIsEquipmentSelected, CSkbSplit::Next. Over every hand-written unit, master merged: 10558 -> 10585 (+27), nothing
+    lost, the thirteen draft-only regressions unchanged.
 - **Tells from the kit and AI states, round 44** (PrivateNotify, TickReticule, Recoil, GetHandFloorHit -- all unwritten
   before):
   - MW masks a bit-field store after folding constants, so `m_bit = false` gives the inline setter's `andi zero,1` at ~4
@@ -2216,36 +2275,6 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
   - GetNodePos 0x5DF930 (open since round 26): the hand test `PartParent(m_rifle) == m_rhand`; seal_ailines.cpp's
     initialiser 0x668FB0 OPEN -- `#pragma defer_codegen off` after the includes separates the functions' inlining from
     the initialiser's, the copy into 0x66BAE0 member by member through $f0 is what remains.
-- **Tells from completing the MSL headers, round 27** (the data_ reader, the deques' init level, the class push_back;
-  probes build/p27/, scratch build/scratch/msl-r27/, untracked -- dtorvar.py, dqvar.py/dqvars.py, vecvar.py, rowscan.py):
-  - THE POD DESTRUCTOR READS data_ THROUGH data() INTO A PLAIN LOCAL (`T *p = data(); if (p) deallocate(p);`): the
-    inlined accessor's reference temporary stays a variable off a member at an offset and folds into the frame for a
-    stack object -- ~CRadioStripSpec 0x387340, ~CAssetLib 0x321990 and ~CMenuStack 0x27F590 keep &data_ in a saved
-    register (computed ahead of the walk) while resize<CUIVariable> 0x2B1390 still reads its temporary sp-relative:
-    the one reader round 26 asked for (+3, nothing lost; objcmp: only those three functions change). Passed straight
-    (`deallocate(data())`) the accessor is an inline call's argument, a level deeper (round 26's -34); a reference local
-    is a variable everywhere (loses the resize); the test alone through data() keeps all three wrong;
-  - EVERY DEQUE AND BLOCK-BUFFER RANGE INIT HAS A DISPATCH LEVEL: the ends copied by value once more (FPU words, then
-    lq/sq) around two value-initialised one-byte temporaries -- two plain empty classes by value are stored (`sb
-    zero`), the std iterator tags (deriving) are not (build/p27/probe3.cpp) -- then do_assign; a pointer container
-    converts one level further down, its converters built from those copies by const reference (the third copy, lw/sw,
-    the lowest slots). include/deque's Metrowerks::__deque_init over number<bool, ...>: the lobby's 0x2E0830 and
-    0x2E0B40 byte-exact from source, the state machine's 0x3A5ED0/0x3A61E0, the vid stack's 0x3B7E30 and the rdr
-    editor's 0x333BB0/0x333EC0 once their do_assign rows have names (+16 with the named iterator pieces);
-  - THE VID STACK'S do_assign 0x3B8000 IS NOT A CONVERTER'S: it copies a 24-byte source and dereferences a reference
-    (the rdr editor's 0x334440 copies the 28-byte converter); deque<void *> hands its const_iterators straight
-    (__deque_converts<void>), 0x3B8000 code-exact, its != 0x3B83B0 byte-exact. The converter's own shape stays open:
-    its ++ 0x3348E0 inlines the wrapped iterator's ++, which the vid stack calls out of line from the LATER unit
-    (0x3B83D0) -- the linker keeps the first unit's copy of an instance (the destination's ++ 0x334880, zrdr_edit.cpp's,
-    serves 0x3B8000), so zrdr_edit.cpp never emitted it: not one class, or a cut not found (include/deque's comment);
-  - THE CLASS VECTOR'S push_back GOES THROUGH end() (`insert(end().m_p, 1, x)`): the HUD's AddName is then cut one
-    level and makes the target's six calls in its order -- 0x22DD20 is rbegin() itself (its hidden return slot is the
-    reverse *'s `this`), not its end(); push_back 0x22DD60, rbegin and the reverse * 0x22DD10 byte-exact, objcmp: no other
-    unit's code moves. hudAddPopupDefinition stays 0x63C of 0x5E0 on the loader's own registers and the triggers'
-    constructors (the HUD lane's);
-  - measured, not reached: insert<AcctRecord> 0x2FE3E0 (no new idea on the end's number), CKey::CountKeys,
-    OnIsEquipmentSelected, CSkbSplit::Next. Over every hand-written unit, master merged: 10558 -> 10585 (+27), nothing
-    lost, the thirteen draft-only regressions unchanged.
 - **Tells from completing the MSL headers, round 26** (the tree's teardown and swap, the generic pod insert, the
   missions' GetNext; probes build/p26/, scratch build/scratch/msl-r26/, untracked):
   - THE OPTION MAP'S TEARDOWN 0x1EAD10 needs no header change: options.cpp (SOCOM II's unit between database.cpp and
@@ -9299,6 +9328,67 @@ byte-sum repair (`SC_AM_GCC_ARRAYS`), and the repaired draft builds and misses b
 0x268) but automatch still counts the row a build failure (an exception in one of its variants, which
 try_one swallows -- not chased); 0x24DBB8 is a TImode operation (round 25a's kind). automatch scores
 nothing: scdiff.py, sccheck.py, scdecomp.py and `include/` are master's.
+
+**The tools, round 33a** (the MW lanes' three requests of `tools/igreplay.py`): (a) **`--target` scores
+the colouring `--move`/`--drop` give** -- it printed the recorded colouring's differences whatever the move
+(zlib's inflate_blocks_new with `c` renumbered first: master's igreplay says 0 differ, this one 2 differ, "as
+recorded: 0"), so a move can be checked against the shipped code; the moves are also the base a
+`--want`/`--movers` search starts from; (b) **a node whose uses disagree in the target is listed even where
+its most frequent register is ours** ("-- the most frequent is ours": the kit's 0x5CB450 line); (c) **a
+search has a budget**: it says how many placements it will replay, prints its progress to stderr every
+`--progress` seconds and stops at `--timeout` (default 300 s; 0: none) or `--max-iters`, saying so (rc 2: the
+hits are of the part searched) -- the weapons' round-26 search on HandleBounce ran 28 minutes. A placement is
+replayed on the graph renumbered in place (`Graph.permuted`) instead of a deep copy of the record (its
+PCode, every node): 7.5x faster on inflate_blocks_new, the colours identical over 2,352 of 2,352
+single-mover placements and 40 of 40 drops against round 32a's path (kept as `replay_relabelled`). The
+canary's `test_igreplay_target_scores_the_move_and_budgets_a_search` (9 assertions): against a target with
+s2 and s3 exchanged in every word the move differs nowhere and the record in both nodes; the CLI's 2 differ;
+the disagreeing use of `s` listed; both budgets and the progress calls; the in-place replay against the deep
+copy's. No tool that scores changed: scdiff.py, sccheck.py, scdecomp.py, tools/try.py and `include/` are
+master's (`git diff --quiet`), so no MW or GCC unit can score differently. automatch over the lane's three
+ranges (`--max-size 0x400 --emit --no-prune --jobs 2 --obj-dir` the lane's private `src/lib` build): MAIN
+`18DB90 1C4CC0` 14 tried, 0 hits (3 m2c refusals, 11 misses), OVL1 `1E7F58 1E8FD4` 0 tried, `243000 256FD0`
+43 tried, 0 hits (build failures 0x24B2F8, 0x24DBB8; m2c refuses 0x247D30, 0x247FE8, 0x2485D0, 0x2488A0,
+0x24D560; 36 misses): 57 tried, none byte-exact (round 32a: 68, 0).
+
+**Round 33a** (2026-11-05, the tools first, then Nellymoser's codec): 8 rows newly byte-exact (2,868 bytes)
+of 9 written -- the lane's `src/lib` sdk/libc/libgcc/libm/ovl1 rows 1,275 -> 1,283 of 1,342 scored, none
+lost. The VAD's hang-over 0x253288 (open since round 32a) and gain step 0x252BF0 (`ovl1/sase_vad.c` 10 of
+13), its per-frame driver 0x2525C0 (a new `ovl1/sase_vadframe.c`: its own object between the real FFT and
+the parameter API), DecVcFry.c whole (`ovl1/sase_decvcfry.c` 4 of 4: the vocal-fry decision 0x248AD0 and
+its spectral distance 0x248E30), libtran.c's LPC cepstrum 0x24D8B8 (`sase_libtran.c` 8 of 8), and a new
+`ovl1/sase_rfft2g.c` (rFft2G.c whole: the real-FFT split 0x252338 and merge 0x252470). No rows named (the
+codec is not in SOCOM 1). What they showed:
+
+- **A typo names a file**: rFft2G.c's assert `(N==256) || (N=64)` assigns where it meant to test, so it
+  always holds -- GCC drops the call but keeps the side effect (the target's `xor; movn a2,64`: any N but
+  256 runs as 64) and the strings (`../../shared/rFft2G.c` after the two twiddle tables in .rodata).
+- **An int function falling off its end keeps v0 live at its exit**: the split is void (as int, the final
+  index's shift could not take v0 and the loop counter, tied to that shift's v1 through global-alloc's
+  preferences, kept every pointer off v1: 34 words of shifted registers).
+- **A call's argument order reads the callee's parameter order** (round 26a, again): the driver's calls say
+  three callees take their floats first -- 0x2531F8 (fLevel, fMax, sPeak, p), 0x252FE0 (fLevel, p), 0x253288
+  (fThresh, sLevel, usFrames, p) -- which their own code cannot show (the EABI numbers each class apart).
+- **CSE's jump equivalences delete a known assignment**: inside `if (bVcFry == 1 && ...)` an else-if chain's
+  `bVcFry = 1`s go (0x248AD0, 13 words); written as one `||`, the shared then-label has three uses, CSE knows
+  nothing there and each stays, for reorg to steal into its bc1t's slot -- and the last else's store goes
+  once both its predecessors have taken it into theirs. A reset at the block's head keeps them too but
+  inverts the last test (7 words).
+- **reload_cse deletes a constant a register still holds**: 0x253288's `ret = 1` keeps its `li v1,1` only
+  because the result's lbu runs before the branch, after the flag's own signed load (read into a local
+  first: read after the result, CSE takes the test from the result's register); and its turn-inactive path
+  reaches the exit by jumps (`goto out`: structured, the last `ret = 0` is laid out before the else; as
+  returns, each return sign-extends on its own).
+- **An object's .rodata is in definition order**: DecVcFry.c's lifter table leads it, so it is defined
+  before the first function (defined later, the double 0.1 after the strings was read as a string into the
+  table); a table pointer initialised at its declaration is formed at the entry and held in a saved register
+  across the call (0x248E30: indexed, as the target forms it after the call).
+- **Open, diagnosed in place**: the VAD's noise floor 0x252FE0 (right size, 26 words: the first rise's
+  temporaries and reorg reversing the low-level pair's branch into a bc1tl). Looked at, not closed:
+  0x249B58 (to outrank fFs, fMin needs a fourth reference or fFs one fewer -- no spelling found);
+  libmath.c's 0x24AD48 is round 26a's `union_x.l` kind. Not reached: sceCdDiskReady, 0x18EF70,
+  sceCdInit, dmaRefImage, sceBInetRecv/Send, sceGsResetGraph (their diagnoses stand), libtran.c's passes
+  0x24DBB8-0x24E788.
 
 **Next**: the libraries by hand, module by module, as their vendors wrote them (each `src/lib`
 unit's header says what it covers); GCC's scheduler moves independent stores, and which source

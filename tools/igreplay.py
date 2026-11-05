@@ -35,6 +35,19 @@ step between existing indices: the states' brute.py) and lists those giving the 
 --nb V lists V's virtual neighbours with their degrees, colours, colouring positions and the sweep
 each was pushed in (the AI core's round-28 nbdeg.py, from the replay itself). A node is named by its
 index (`87`, `v87`) or by its variable when one node has that name.
+
+--target UNIT FUNC (GCC round 33a, the lanes' requests) scores the colouring the replay gives: with
+--move/--drop the MOVED one (as recorded, a move could not be checked against the shipped code), and
+it lists every node whose uses disagree in the target even where the most frequent register is ours
+(one line of it was the kit's 0x5CB450 diagnosis). --move/--drop are the base a --want/--movers search
+starts from. A search says how many placements it will try, prints its progress to stderr every
+--progress seconds (default 5) and stops at its budget, --timeout seconds (default 300; 0: none) or
+--max-iters placements, saying so (rc 2: the hits are of the part searched) -- the weapons' round-26
+search on HandleBounce ran 28 minutes. A placement is replayed on the graph renumbered in place, not on
+a deep copy of the record (relabel(), kept for its callers): the same colours, ~20x faster.
+
+    ./tools/igreplay.py DUMP -f F -r 0 --target UNIT F_MANGLED --move 41=87.5   # the move against the target
+    ./tools/igreplay.py DUMP -f F -r 0 --target UNIT F_MANGLED --movers 41,87 --timeout 60
 """
 
 from __future__ import annotations
@@ -46,6 +59,8 @@ import json
 import re
 import struct
 import sys
+import time
+from dataclasses import dataclass, field
 from pathlib import Path
 
 REGS = ['zero', 'at', 'v0', 'v1', 'a0', 'a1', 'a2', 'a3', 't0', 't1', 't2', 't3', 't4', 't5', 't6', 't7',
@@ -190,10 +205,53 @@ class Graph:
                 bad.append((i, self.name(i), rname(colour[i], self.cls), rname(n['color'], self.cls)))
         return bad, order == self.order_rec
 
+    def permuted(self, newidx, drop=()) -> 'Graph':
+        """This graph renumbered (newidx[old] = new) with the interferences in `drop` (pairs of NEW
+        indices) removed: what Graph(relabel(rec)) holds for the replay -- adjacency, flags, costs, the
+        recorded order, names -- built without copying the record (its PCode, every node's dict)."""
+        n = len(self.adj)
+        g = copy.copy(self)
+        adj = [None] * n
+        flags = [0] * n
+        for i in range(n):
+            ni = newidx[i]
+            adj[ni] = [newidx[j] for j in self.adj[i]]
+            flags[ni] = self.flags[i]
+        for a, b in drop:
+            adj[a] = [x for x in adj[a] if x != b]
+            adj[b] = [x for x in adj[b] if x != a]
+        g.adj, g.flags = adj, flags
+        if self.costs:
+            costs = [0] * n
+            for i in range(n):
+                costs[newidx[i]] = self.costs[i]
+            g.costs = costs
+        g.order_rec = [newidx[i] for i in self.order_rec]
+        g.names = {newidx[i]: v for i, v in self.names.items()}
+        g.nodes = None                  # the record's nodes are not renumbered: check() is the record's
+        g.sweep_of = {}
+        return g
+
+
+def _newidx(rec: dict, moves: dict[int, float]) -> list[int]:
+    """newidx[old] = new: the virtual registers in the order of their keys -- each its own index, the
+    moved ones at their positions (a float) -- the hard registers as they are. relabel()'s rule."""
+    n = len(rec['nodes'])
+    nreal = rec['nreal']
+    keys = [float(i) for i in range(n)]
+    for i, p in moves.items():
+        keys[i] = p
+    virt = sorted(range(nreal, n), key=keys.__getitem__)
+    newidx = list(range(n))
+    for k, i in enumerate(virt):
+        newidx[i] = nreal + k
+    return newidx
+
 
 def relabel(rec: dict, moves: dict[int, float]) -> tuple[dict, dict[int, int]]:
     """`rec` with virtual registers renumbered: moves {old index: new position (a float)}, every other
-    node keeping its relative order. Returns the new record and {old index: new index}."""
+    node keeping its relative order. Returns the new record and {old index: new index}. (The replay
+    uses Graph.permuted and _newidx, the same rule without the copy; the canary holds them equal.)"""
     n = len(rec['nodes'])
     nreal = rec['nreal']
     keys = {i: float(i) for i in range(n)}
@@ -222,9 +280,9 @@ def relabel(rec: dict, moves: dict[int, float]) -> tuple[dict, dict[int, int]]:
     return rec, newidx
 
 
-def replay_moved(rec: dict, moves: dict[int, float], drop=()) -> tuple[list[int], dict[int, int], Graph]:
-    """Replay `rec` renumbered by `moves`, the interferences in `drop` (pairs of old indices) removed:
-    (colours by NEW index, {old: new}, the graph)."""
+def replay_relabelled(rec: dict, moves: dict[int, float], drop=()) -> tuple[list[int], dict[int, int], Graph]:
+    """replay_moved as round 32a wrote it -- the record deep-copied by relabel() and a Graph built on
+    the copy. Kept as the reference the canary holds replay_moved's faster path to."""
     rec2, newidx = relabel(rec, moves)
     g = Graph(rec2)
     for a, b in drop:
@@ -235,19 +293,74 @@ def replay_moved(rec: dict, moves: dict[int, float], drop=()) -> tuple[list[int]
     return colour, newidx, g
 
 
-def brute(rec: dict, want: dict[int, str], movers: list[int], limit: int | None = None) -> list[tuple]:
-    """Every placement of `movers` (each at a half step between existing indices) whose replay gives
-    each node of `want` its register: the positions, one tuple per hit."""
+def replay_moved(rec: dict, moves: dict[int, float], drop=(), graph: Graph | None = None
+                 ) -> tuple[list[int], dict[int, int], Graph]:
+    """Replay `rec` renumbered by `moves`, the interferences in `drop` (pairs of old indices) removed:
+    (colours by NEW index, {old: new}, the graph). `graph` is Graph(rec) when the caller has it (a
+    search builds it once); the renumbered graph is Graph.permuted's, not a copy of the record."""
+    newidx = _newidx(rec, moves)
+    g = (graph or Graph(rec)).permuted(newidx, [(newidx[a], newidx[b]) for a, b in drop])
+    colour, _, _ = g.replay()
+    return colour, dict(enumerate(newidx)), g
+
+
+@dataclass
+class Search:
+    """A --want/--movers search's result: the hits (each a tuple of the movers' positions), how many
+    placements were replayed of how many, why it stopped short (None: it searched them all; 'limit':
+    the hits wanted were found; 'max-iters' or 'timeout': the budget ran out) and its time."""
+    hits: list = field(default_factory=list)
+    tried: int = 0
+    total: int = 0
+    stopped: str | None = None
+    elapsed: float = 0.0
+
+
+def search(rec: dict, want: dict[int, str], movers: list[int], limit: int | None = None,
+           base: dict[int, float] | None = None, drop=(), max_iters: int | None = None,
+           timeout: float | None = None, progress=None, every: float = 5.0) -> Search:
+    """Every placement of `movers` (each at a half step between existing indices), the nodes `base`
+    moves held at their positions and `drop`'s interferences removed, whose replay gives each node of
+    `want` its register -- until `limit` hits, `max_iters` placements or `timeout` seconds. progress(
+    tried, total, hits, elapsed) is called every `every` seconds."""
     lo, hi = rec['nreal'], len(rec['nodes'])
     spots = [x + 0.5 for x in range(lo - 1, hi)]
-    hits = []
+    res = Search(total=len(spots) ** len(movers))
+    g0 = Graph(rec)
+    cls = rec['cls']
+    wanted = list(want.items())
+    base = dict(base or {})
+    t0 = time.monotonic()
+    tick = t0 + every
     for combo in itertools.product(spots, repeat=len(movers)):
-        colour, newidx, g = replay_moved(rec, dict(zip(movers, combo)))
-        if all(rname(colour[newidx[k]], rec['cls']) == v for k, v in want.items()):
-            hits.append(combo)
-            if limit and len(hits) >= limit:
+        if max_iters is not None and res.tried >= max_iters:
+            res.stopped = 'max-iters'
+            break
+        now = time.monotonic()
+        if timeout is not None and now - t0 >= timeout:
+            res.stopped = 'timeout'
+            break
+        if progress is not None and now >= tick:
+            progress(res.tried, res.total, len(res.hits), now - t0)
+            tick = now + every
+        moves = dict(base)
+        moves.update(zip(movers, combo))
+        colour, newidx, _ = replay_moved(rec, moves, drop, graph=g0)
+        res.tried += 1
+        if all(rname(colour[newidx[k]], cls) == v for k, v in wanted):
+            res.hits.append(combo)
+            if limit and len(res.hits) >= limit:
+                res.stopped = 'limit'
                 break
-    return hits
+    res.elapsed = time.monotonic() - t0
+    return res
+
+
+def brute(rec: dict, want: dict[int, str], movers: list[int], limit: int | None = None, **budget) -> list[tuple]:
+    """Every placement of `movers` (each at a half step between existing indices) whose replay gives
+    each node of `want` its register: the positions, one tuple per hit (search()'s hits; `budget` its
+    base, drop, max_iters, timeout, progress)."""
+    return search(rec, want, movers, limit=limit, **budget).hits
 
 
 def neighbours(rec: dict, v: int) -> list[str]:
@@ -368,6 +481,54 @@ def target_colours(rec: dict, unit: Path, func: str, img=None):
     return tmap(rec, ours, targ)
 
 
+def target_rows(tcol: dict, conflicts: dict, colour) -> list[tuple]:
+    """[(v, our register, the target's, the target's disagreeing uses or None)] for every mapped node
+    whose register (`colour[v]`) is not the target's most frequent one, AND every node whose uses
+    disagree in the target even where that most frequent register is ours -- one use elsewhere is a
+    value the target keeps in two registers (the kit's round 43: 0x5CB450's diagnosis was that line)."""
+    return [(v, colour[v], tcol[v], conflicts.get(v)) for v in sorted(tcol)
+            if tcol[v] != colour[v] or v in conflicts]
+
+
+def is_saved(c: int) -> bool:
+    return 16 <= c <= 23 or c == 30
+
+
+def target_report(rec: dict, tcol: dict, conflicts: dict, unmatched: int, moves=None, drop=()
+                  ) -> tuple[list[str], dict[int, str], int]:
+    """--target's lines, the saved registers a --movers search then wants, and how many nodes differ:
+    each mapped node scored against the colouring the record holds -- or, with `moves`/`drop` (old
+    indices), the colouring their replay gives, so a move is checked against the shipped code."""
+    g0 = Graph(rec)
+    recorded = [n['color'] for n in rec['nodes']]
+    colour = recorded
+    if moves or drop:
+        moved, newidx, _ = replay_moved(rec, moves or {}, drop, graph=g0)
+        colour = [moved[newidx[v]] for v in range(len(recorded))]
+    lines, want = [], {}
+    rows = target_rows(tcol, conflicts, colour)
+    for v, ours, targ, uses in rows:
+        if ours != targ:
+            lines.append(f"  v{v:<4} {g0.name(v)[:20]:20} ours {rname(ours):5} target {rname(targ):5}"
+                         + (f"  (uses disagree: {uses})" if uses else ""))
+        else:
+            lines.append(f"  v{v:<4} {g0.name(v)[:20]:20} ours {rname(ours):5} target {rname(targ):5}"
+                         f"  uses disagree: {uses} -- the most frequent is ours")
+    for v in sorted(tcol):
+        if is_saved(tcol[v]) or is_saved(colour[v]):
+            want[v] = rname(tcol[v])
+    differ = sum(1 for _, o, t, _ in rows if o != t)
+    agree = sum(1 for _, o, t, u in rows if o == t and u)
+    tail = ""
+    if colour is not recorded:
+        differ0 = sum(1 for v in tcol if tcol[v] != recorded[v])
+        tail = f"; scored against the colouring --move/--drop give (as recorded: {differ0} differ)"
+    lines.append(f"  {len(tcol)} virtual registers mapped, {differ} differ, {len(conflicts)} with disagreeing "
+                 f"uses ({agree} of them where the most frequent is ours), {unmatched} PCode instructions "
+                 f"unmatched{tail}")
+    return lines, want, differ
+
+
 def load(path) -> list[dict]:
     return [json.loads(ln) for ln in open(path)]
 
@@ -396,8 +557,14 @@ def main(argv=None) -> int:
     ap.add_argument("--movers", help="the nodes --want may renumber, comma-separated")
     ap.add_argument("--nb", help="list this node's neighbours")
     ap.add_argument("--target", nargs=2, metavar=("UNIT", "FUNC"),
-                    help="read each virtual register's register in the target (FUNC a map name UNIT defines); "
-                         "with --movers, the saved registers it gives are the --want")
+                    help="read each virtual register's register in the target (FUNC a map name UNIT defines) and "
+                         "score the colouring --move/--drop give against it; with --movers, the saved registers "
+                         "it gives are the --want")
+    ap.add_argument("--timeout", type=float, default=300.0,
+                    help="a --want/--movers search's budget in seconds (default 300; 0: none)")
+    ap.add_argument("--max-iters", type=int, help="a search's budget in placements replayed")
+    ap.add_argument("--progress", type=float, default=5.0,
+                    help="seconds between a search's progress lines on stderr (default 5; 0: none)")
     a = ap.parse_args(argv)
     recs = load(a.dump)
     rx = re.compile(a.func) if a.func else None
@@ -423,38 +590,6 @@ def main(argv=None) -> int:
     if a.nb:
         print("\n".join(neighbours(rec, node_index(rec, a.nb))))
         return 0
-    want = {}
-    if a.target:
-        if cls != 0:
-            raise SystemExit("--target reads the GPR class's PCode (igdump records it for class 0 only)")
-        tcol, conflicts, unmatched = target_colours(rec, Path(a.target[0]), a.target[1])
-        g0 = Graph(rec)
-        differ = 0
-        for v in sorted(tcol):
-            ours = rec['nodes'][v]['color']
-            if tcol[v] != ours:
-                differ += 1
-                print(f"  v{v:<4} {g0.name(v)[:20]:20} ours {rname(ours):5} target {rname(tcol[v]):5}"
-                      + (f"  (uses disagree: {conflicts[v]})" if v in conflicts else ""))
-            if 16 <= tcol[v] <= 23 or tcol[v] == 30 or 16 <= ours <= 23 or ours == 30:
-                want[v] = rname(tcol[v])
-        print(f"  {len(tcol)} virtual registers mapped, {differ} differ, {len(conflicts)} with disagreeing "
-              f"uses, {unmatched} PCode instructions unmatched")
-        if not a.movers:
-            return 0
-    if a.want or want:
-        if a.want:
-            want = {node_index(rec, kv.split('=')[0]): kv.split('=')[1] for kv in a.want.split(',')}
-        movers = [node_index(rec, x) for x in (a.movers or '').split(',') if x]
-        if not movers:
-            raise SystemExit("--want needs --movers")
-        hits = brute(rec, want, movers)
-        print(f"{len(hits)} placements of {', '.join(f'v{m}' for m in movers)} give "
-              + ", ".join(f"v{k}={v}" for k, v in want.items()))
-        for h in hits[:60]:
-            print("  ", "  ".join(f"v{m}->{p}" for m, p in zip(movers, h)))
-        return 0
-    watch = [node_index(rec, x) for x in a.watch.split(',')] if a.watch else []
     moves = {}
     for m in a.move:
         v, p = m.split('=')
@@ -463,6 +598,48 @@ def main(argv=None) -> int:
     for d in a.drop:
         x, y = d.split('-')
         drop.append((node_index(rec, x), node_index(rec, y)))
+    want = {}
+    if a.target:
+        if cls != 0:
+            raise SystemExit("--target reads the GPR class's PCode (igdump records it for class 0 only)")
+        tcol, conflicts, unmatched = target_colours(rec, Path(a.target[0]), a.target[1])
+        lines, want, _ = target_report(rec, tcol, conflicts, unmatched, moves, drop)
+        print("\n".join(lines))
+        if not a.movers and not a.watch:
+            return 0
+    if a.want or (want and a.movers):
+        if a.want:
+            want = {node_index(rec, kv.split('=')[0]): kv.split('=')[1] for kv in a.want.split(',')}
+        movers = [node_index(rec, x) for x in (a.movers or '').split(',') if x]
+        if not movers:
+            raise SystemExit("--want needs --movers")
+        nspots = len(rec['nodes']) - rec['nreal'] + 1
+        budget = []
+        if a.timeout:
+            budget.append(f"{a.timeout:g} s")
+        if a.max_iters is not None:
+            budget.append(f"{a.max_iters:,} placements")
+        print(f"searching {nspots ** len(movers):,} placements of {', '.join(f'v{m}' for m in movers)}"
+              + (f" from --move/--drop's numbering" if moves or drop else "")
+              + f" (budget: {' or '.join(budget) if budget else 'none'})", flush=True)
+
+        def progress(tried, total, hits, elapsed):
+            left = (total - tried) * elapsed / tried if tried else 0
+            print(f"  searched {tried:,} of {total:,} placements ({100 * tried / total:.1f} %), {hits} hits, "
+                  f"{elapsed:.0f} s, ~{left / 60:.1f} min to go", file=sys.stderr, flush=True)
+        res = search(rec, want, movers, base=moves, drop=drop, max_iters=a.max_iters,
+                     timeout=a.timeout or None, progress=progress if a.progress > 0 else None,
+                     every=a.progress or 5.0)
+        print(f"{len(res.hits)} placements of {', '.join(f'v{m}' for m in movers)} give "
+              + ", ".join(f"v{k}={v}" for k, v in want.items()))
+        for h in res.hits[:60]:
+            print("  ", "  ".join(f"v{m}->{p}" for m, p in zip(movers, h)))
+        if res.stopped in ('timeout', 'max-iters'):
+            print(f"STOPPED by the {'--timeout' if res.stopped == 'timeout' else '--max-iters'} budget after "
+                  f"{res.tried:,} of {res.total:,} placements ({res.elapsed:.0f} s): the hits are of the part searched")
+            return 2
+        return 0
+    watch = [node_index(rec, x) for x in a.watch.split(',')] if a.watch else []
     g0 = Graph(rec)
     for tag, mv, dr in (("as recorded", {}, ()), ("replayed", {}, ()), ("moved", moves, drop)):
         if tag == "moved" and not (moves or drop):
