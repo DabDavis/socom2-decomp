@@ -287,28 +287,26 @@ void CSndJukebox::PlayRandom(MUSIC_MODE mode)
     }
 }
 
-/* SOCOM 1's: an intensity's weights scaled to sum to one, or made equal when they sum to 0.
- * OPEN, registers only (75 instructions differ, the same blocks and size): the target keeps the
- * mode in a2, its offset in v1 and builds each address in a0, here a1, a2 and v1 -- CSndGroup::
- * NormalizeWeights' open register question over m_weights[mode]. Tried: a reference to the
- * mode's vector (0x208), the mode copied to an int (0x210). MW's colouring (round 14, igdump): the
- * mode's 12-byte offset (a CSE temporary, live through all three loops) is coloured after the 8x
- * unrolled sum's temporaries and gets a2 where the target's has v1 */
+/* SOCOM 1's: an intensity's weights scaled to sum to one, or made equal when they sum to 0. One
+ * counter for the three loops, declared at the top (as CSndGroup::NormalizeWeights): a counter per
+ * loop colours the mode's 12-byte offset after the unrolled sum's temporaries (75 off -- the world
+ * lane's rounds 14 and 21) */
 void CSndJukebox::NormalizeWeights(MUSIC_MODE mode)
 {
     float total = 0.0f;
+    int i;
 
-    for (int i = 0; i < m_weights[mode].size(); i++)
+    for (i = 0; i < m_weights[mode].size(); i++)
         total += m_weights[mode][i];
     if (total == 0.0f) {
         float w = 1.0f / m_weights[mode].size();
 
-        for (int i = 0; i < m_weights[mode].size(); i++)
+        for (i = 0; i < m_weights[mode].size(); i++)
             m_weights[mode][i] = w;
     } else {
         float scale = 1.0f / total;
 
-        for (int i = 0; i < m_weights[mode].size(); i++)
+        for (i = 0; i < m_weights[mode].size(); i++)
             m_weights[mode][i] *= scale;
     }
 }

@@ -317,6 +317,177 @@ bool CSealCtrl::CanPerformAction(CNodeAction *action)
     return can;
 }
 
+/* a SEAL, or none (seal_ai.cpp's inlines alike) */
+static inline CZSealBody *AsSeal(CEntity *e)
+{
+    return e && e->m_type == CEntity::ENT_TYPE_SEAL ? (CZSealBody *)e : 0;
+}
+
+static inline bool AiDriven(CZSealBody *seal)
+{
+    return seal->m_control ? ((CSealCtrl *)seal->m_control)->IsAi() : false;
+}
+
+static inline bool AiAwakeNow(const CSealCtrlAi *ai)
+{
+    return !(ai->m_aibit9 || ai->m_aibit8);
+}
+
+/* online, a SEAL the game will not let another take (OVL1 0x2C2FD0; the HUD's commands and the
+ * exit state ask it too) */
+extern "C" bool func_002C2FD0(CZSealBody *seal);
+
+/* the SEALs and the turret in reach (SOCOM 1's TickVictims, by its order and body; OVL2 0x5940D0):
+ * among the targets within 30 the nearest living SEAL with the target's bit 9 set (the victim, while
+ * none is held), the nearest body that can be carried, and the first turret -- an AI asleep passed
+ * over, and online one the game keeps (SOCOM 1's took the first living SEAL and stopped, and the
+ * first body; its reach a guarded static of 400) */
+void CSealCtrl::TickVictims()
+{
+    static float range = 900.0f;
+    CZSealBody *seal = (CZSealBody *)m_entity;
+    CTargetList &targets = seal->m_targets;
+    float nearest = -1.0f;
+    float nearest_body = nearest;
+    CTargetList::iterator i = targets.begin(), end = targets.end();
+
+    m_victimbody = 0;
+    m_corpsebody = 0;
+    m_16c = 0;
+    for (; i != end; ++i) {
+        float d = i->m_distSq;
+
+        if (!(d <= range))
+            continue;
+        CEntity *e = i->m_ent;
+        CZSealBody *s = m_victimbody ? 0 : AsSeal(e);
+
+        if (s) {
+            if (AiDriven(s) && !AiAwakeNow(s->GetSealCtrlAi()))
+                continue;
+            if (theNetwork.m_9 && func_002C2FD0(s))
+                continue;
+            if (s->m_isAlive) {
+                if (i->m_flags & 0x200) {
+                    if (nearest == -1.0f || d < nearest) {
+                        m_victimbody = s;
+                        nearest = d;
+                    }
+                }
+            } else if (!m_corpsebody && s->m_deathType != 6 && !s->m_fd1) {
+                if (nearest_body == -1.0f || d < nearest_body) {
+                    m_corpsebody = s;
+                    nearest_body = d;
+                }
+            }
+        } else if (!m_16c && e && e->m_type == CEntity::ENT_TYPE_TURRET)
+            m_16c = e;
+    }
+}
+
+extern "C" {
+/* whether the SEAL is free to take a weapon (OVL2 0x5A81D0, seal_env.cpp's) */
+bool func_005A81D0(CZSealBody *seal);
+}
+
+/* the pickups near (SOCOM 1's TickPickups, by its order and body; OVL2 0x593DA0): each ammunition
+ * pickup within 20 picked up once (the last one kept in a function-local static), the weapon under
+ * the reticule or near and its secondary's net ids while the weapon timer is out, and online the MP
+ * bomb's node kept while within 15 across and 20 up, the bomb picked up when it is near and the kit
+ * holds no charge */
+void CSealCtrl::TickPickups(float dT)
+{
+    static CPickup *last = 0;
+    CZSealBody *seal = (CZSealBody *)m_entity;
+
+    if (!seal)
+        return;
+    CPickup::iterator it = CPickup::GetFirst();
+    CPickup *p;
+    bool found = false;
+
+    while ((p = CPickup::GetNext(it, &seal->m_posW, 20.0f, CPickup::PU_AMMO)) != 0) {
+        if (p != last)
+            seal->PickupObject(p);
+        last = p;
+        found = true;
+    }
+    if (!found)
+        last = 0;
+
+    CPickup *secondary = 0;
+    CPickup *w = 0;
+
+    if (func_005A81D0(seal)) {
+        w = seal->GetReticuleWeapon(&secondary);
+        if (!w)
+            w = seal->GetProximityWeapon(&secondary);
+    }
+    if (!w)
+        m_curpickup_ID = -1;
+    else if (!(m_weapon_pickup_timer <= 0.0f)) {
+        m_weapon_pickup_timer -= dT;
+        m_curpickup_ID = -1;
+    } else if (w->m_type == CPickup::PU_WEAPON) {
+        if (!w->m_data)
+            m_curpickup_ID = -1;
+        else
+            m_curpickup_ID = w->GetPickupNetEntityID();
+    }
+    if (!secondary)
+        m_curpickup_secondary_ID = -1;
+    else if (!(m_weapon_pickup_timer <= 0.0f)) {
+        m_weapon_pickup_timer -= dT;
+        m_curpickup_secondary_ID = -1;
+    } else if (secondary->m_type == CPickup::PU_WEAPON) {
+        if (!secondary->m_data)
+            m_curpickup_secondary_ID = -1;
+        else
+            m_curpickup_secondary_ID = secondary->GetPickupNetEntityID();
+    }
+    if (!theNetwork.m_9)
+        return;
+    if (!(m_bombpickuptimer <= 0.0f)) {
+        m_bombpickuptimer -= dT;
+        m_curMPBOMBpickup_ID = -1;
+        return;
+    }
+    zdb::CNode *bomb = CPickup::m_mpbombnode;
+
+    if (bomb) {
+        m_bomb_defusal_node = bomb;
+        if (m_bomb_defusal_node) {
+            static float across = 15.0f;
+            static float up = 20.0f;
+            CPnt3D d;
+
+            ((const CPnt3D *)bomb->m_matrix.m_matrix[3])->SubXZ(&seal->m_posW, &d);
+            if (d.x * d.x + d.z * d.z < across * across) {
+                float dy = bomb->m_matrix.m_matrix[3][1] - seal->m_posW.y;
+
+                if (!(dy * dy <= up * up))
+                    m_bomb_defusal_node = 0;
+            } else
+                m_bomb_defusal_node = 0;
+        }
+    } else
+        m_bomb_defusal_node = 0;
+    CPickup *b = seal->GetProximityMPBomb();
+
+    if (!b) {
+        m_curMPBOMBpickup_ID = -1;
+        return;
+    }
+    if (b->m_type == CPickup::PU_MPBOMB && m_curMPBOMBpickup_ID == -1) {
+        if (seal->m_kit.HasItem((EQUIP_ITEM)154)) {
+            m_curMPBOMBpickup_ID = -1;
+            return;
+        }
+        seal->PickupObject(b);
+        m_bombpickuptimer = 4.0f;
+    }
+}
+
 /* the view range's floor (OVL2 data 0x6506A0, read as a variable) */
 extern "C" float data_006506A0;
 
@@ -739,6 +910,78 @@ void CSealCtrl::PerformReticleActions()
         if (unit->AllowCommand(seal, (FT_COMMAND)5, 0))
             seal->ActionAvailableMask(15, true);
     }
+}
+
+extern "C" {
+/* the body's top blend (seal.cpp's tail copy, OVL2 0x555170), and two tests of the SEAL's anim
+ * (seal_body.cpp's OVL2 0x587F50 and 0x587F10: anims 8 or 9, 10 or 11) */
+void *func_00555170(void *stack);
+bool func_00587F50(CZSealBody *seal);
+bool func_00587F10(CZSealBody *seal);
+}
+
+CZSealBody *ftsGetPlayer();
+
+/* the body's top blend (an inline: the target makes the call ahead of the static's load and
+ * keeps the blend's anim in v0; the name ours) */
+/* whether the SEAL is in the air (an inline bool: the target materialises the bit before its
+ * branch; the name ours) */
+static inline bool Airborne(CZSealBody *seal)
+{
+    return seal->m_airborne ? true : false;
+}
+
+static inline CZBodyAnimBlend *TopBlend(CZSealBody *seal)
+{
+    return (CZBodyAnimBlend *)func_00555170(&seal->m_blends);
+}
+
+/* the actions the SEAL can take now (SOCOM 1's SampleActionAvailable, by its order and body; OVL2
+ * 0x593500): none while the weapon comes up or a menu other than 3 is open, online none for a player
+ * the game keeps; through a scope or binoculars none; an action pending or shown, a carried body set
+ * down (state 9) unless the carry is being picked up, else the reticle's and the proximity's actions
+ * and the climbs when the SEAL can fire, or the climbs alone in the air or the four anims -- and in
+ * state 5 action 16 (SOCOM 1's ActionDisplayOn is the member read, its third action slot gone) */
+void CSealCtrl::SampleActionAvailable()
+{
+    CZSealBody *seal = (CZSealBody *)m_entity;
+
+    seal->m_action_available = 0;
+    seal->m_action_selection = 0;
+    if (!(seal->m_wep_upT <= 0.0f) || (m_menustate != 0 && m_menustate != 3))
+        return;
+    if (theNetwork.m_9 && func_002C2FD0(ftsGetPlayer()))
+        return;
+    bool goal = (bool)m_goal_dir_valid || (bool)m_goal_pos_valid;
+
+    if (goal)
+        m_action = false;
+    bool action = m_action;
+    CZKit *kit = &seal->m_kit;
+
+    if (kit && kit->IsUsingScope() || kit->IsUsingBinocs())
+        return;
+    if (!action && !seal->m_action_display_on)
+        return;
+    if (seal->m_state == 9 && TopBlend(seal)->m_animType != AnimTypes::BuddyCarriedPickup &&
+        TopBlend(seal)->m_animType != AnimTypes::BuddyCarryPickup)
+        seal->ActionAvailableMask(9, true);
+    else if (seal->CanFire(true, false)) {
+        PerformReticleActions();
+        PerformProximityActions();
+        if (seal->CanClimbWall())
+            seal->ActionAvailableMask(2, true);
+        if (seal->CanClimbLadder())
+            seal->ActionAvailableMask(2, true);
+    } else if (Airborne(seal) || func_00587F50(seal) || func_00587F10(seal)) {
+        if (seal->CanClimbWall())
+            seal->ActionAvailableMask(2, true);
+        if (seal->CanClimbLadder())
+            seal->ActionAvailableMask(2, true);
+        return;
+    }
+    if (seal->m_state == 5)
+        seal->ActionAvailableMask(16, true);
 }
 
 /* the scope's zoom (OVL2 0x592C70, 0x592C30, 0x592C10, 0x592BF0) */

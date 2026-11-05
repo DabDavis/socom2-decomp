@@ -2065,6 +2065,36 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the SEALs, round 45** (the new unit seal_orders.cpp; CSealCtrl's TickVictims, SampleActionAvailable,
+  TickPickups):
+  - A UNIT BETWEEN TWO: seal_orders.cpp (ours) is OVL2 0x58DBB0-0x58FBDF -- seal_cfg.cpp's template tail (0x58CE70-
+    0x58DBAF) closes seal_cfg.cpp, its tail strings end at 0x65D27A, and seal_command.cpp starts at 0x58FBE0 with
+    OnCommand as SOCOM 1's; the literal "CMD_ACTION" pooled across 0x58E750, 0x58E950 and 0x58EF80 makes the stretch one
+    unit (13 rows moved, all byte-exact; the order target's cell 0x58F230 new with it);
+  - an int function returning its bool callees' results adds andi 0xff after each call, a bool return passes them
+    through; `f() != false` on a bool call gives the andi before the branch, as `== false` does; an inline `bool f() {
+    return bit ? true : false; }` materialises the sltu before the branch, `(bool)bit` or `bit != 0` in the condition
+    don't;
+  - a CPnt3D declared at the block's top and assigned `p = CPnt3D(x, y, z)` stores x, z, y as the target, declared at its
+    use it takes another frame slot; `iterator i = begin(), e = end()` at the function's top ahead of the stores computes
+    the end once (s0), the for-init form re-reads it; `while ((p = f()) != 0)` with a flag declared after p gives the top
+    test with the first call ahead of the loop, as a for the test goes to the bottom (TickPickups 0x593DA0);
+  - an inline returning the top blend pointer (the field read outside) makes the call ahead of a static's load and keeps
+    the field in v0 (SampleActionAvailable 0x593500); the targets' reference declared ahead of two float locals fixes the
+    temporaries' registers (TickVictims 0x5940D0, SOCOM 1's grown a turret find); 0x577BA0 28 -> 14 by dead first
+    definitions of i and part (every register right, the preheader's order left).
+- **Tells from the AI core, round 29** (InflateRegion at last, open since round 2):
+  - MW's scheduler never moves a load through a pointer (`this`, a reference parameter) past a store to an address-taken
+    local -- an intermediate written to a local of its own before the next such store puts its loads ahead of it
+    (CAiMap::region::InflateRegion 0x5300A0: `r = right + (m_loc.x + m_dx)`, each grown edge set straight after its
+    corner);
+  - pointer analysis is off by default -- `#pragma opt_pointer_analysis on` crashes MW 3.0b52 on CAiMap::DestroyGraph,
+    and for InflateRegion alone (addr, ansi or type) changes nothing; an inline walk taking its end once keeps the end in
+    a register across two inlined copies (ReRoute 0x52F8F0, written, OPEN; ReRoute returns bool);
+  - an asm directive is not an empty statement to MW: `.set reorder` as an if's body keeps one compare, `.set noreorder`
+    reaches the target's size but reorders the code after (plan_legcomplete stays OPEN); `tools/igreplay.py --target`
+    reads integer registers only -- float-only misses (LeadTargetG) need the float mapping by hand (asked of the tools
+    lane).
 - **Tells from the HUD, round 52** (SetupNorthIndicator, the compass and full-screen map switches, four CUIListBox members):
   - `__rsqrt(1.0f, x)` is MW's intrinsic for the image's only `rsqrt.s` (SetupNorthIndicator 0x20BE00), `1.0f /
     sqrtf(x)` gives sqrt.s + div.s; a function-local static is reloaded after every call -- if the target computes every
