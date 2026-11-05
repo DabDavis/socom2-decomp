@@ -1073,8 +1073,8 @@ struct CTLookAt : TASK_HDR {
     unsigned char m_kind : 4;   // 0x18: what is looked at -- 2 the entity (the names ours)
     unsigned char m_looking : 4;   // 0x18 bits 4-7 (bit 4: the look to clear at the end)
     unsigned int m_flags : 16;   // 0x19: the tag "flags", look flags by name (lw/sw: a word's bits)
-    unsigned int m_18_24 : 8;
-    unsigned char _1c[0x28 - 0x1c];
+    unsigned int m_18_24 : 8;   // 0x1b: the direction looked in (kind 3, a CAiMap::DIR)
+    CPnt3D m_pos;   // 0x1c: the point looked at (kind 1)
     TASK_ENT m_ent;   // 0x28: the tag "entity"
 
     static _zanim_cmd_hdr *Parse(_zrdr *rdr);
@@ -2491,6 +2491,73 @@ void CTLookAt::End(_zanim_cmd_hdr *hdr)
         return;
     if (cmd->m_looking & 1)
         ClearLook__9CSealCtrlF7AI_LOOK((CSealCtrl *)ctrl, 3);
+}
+
+/* a countdown run down by dt, whether it ended -- an infinite one never does (inline; the name ours:
+ * TASK_TIMER::Update without the redraw, its by-value dt read ahead of the test) */
+static inline bool TaskCountdown(float &timer, float dt)
+{
+    bool done = false;
+
+    if (timer != CAiTimer::infinite) {
+        timer -= dt;
+        done = timer != CAiTimer::infinite && timer <= 0.0f;
+    }
+    return done;
+}
+
+/* the look kept up: once taken the entity's point followed, else -- while the SEAL looks at nothing
+ * above an event -- a point, the entity or a direction taken as the event look with the task's rate,
+ * flags and timer (3 unless timed); a timed look done when its time runs out, an untimed one at once
+ * (OVL2 0x5D73D0; SOCOM 1's, the entity now by TASK_ENT) */
+bool CTLookAt::Tick(_zanim_cmd_hdr *hdr, float *dT)
+{
+    TASK_SEAL(CTLookAt);
+    CEntityCtrl *ctrl = seal ? seal->m_control : 0;
+    CSealCtrlAi *ai = seal ? ((CSealCtrl *)seal->m_control)->GetSealCtrlAi() : 0;
+    bool r;
+
+    if (!seal || !ctrl) {
+        *dT = 0.0f;
+        return true;
+    }
+    if (cmd->m_looking & 4) {
+        if (cmd->m_kind == 2) {
+            CEntity *e = cmd->m_ent.Get();
+
+            if (e)
+                ((CSealCtrl *)ctrl)->SetLookPosW(AIL_EVENT, e);
+        }
+    } else if (((CSealCtrl *)ctrl)->m_look_mode < AIL_CORPSE) {
+        bool ok = false;
+
+        switch (cmd->m_kind) {
+        case 1:
+            ok = ((CSealCtrl *)ctrl)->SetLookPosW(AIL_EVENT, &cmd->m_pos);
+            break;
+        case 2:
+            ok = ((CSealCtrl *)ctrl)->SetLookPosW(AIL_EVENT, cmd->m_ent.Get());
+            break;
+        case 3:
+            ok = ((CSealCtrl *)ctrl)->SetLookDirW(AIL_EVENT, (CAiMap::DIR)cmd->m_18_24);
+            break;
+        }
+        if (ok) {
+            ((CSealCtrl *)ctrl)->SetLookRate(cmd->m_rate);
+            ((CSealCtrl *)ctrl)->SetLookFlags(cmd->m_flags);
+            cmd->m_looking |= 4;
+            if (!(cmd->m_looking & 1))
+                ((CSealCtrl *)ctrl)->SetLookTimer(3.0f);
+            else
+                ((CSealCtrl *)ctrl)->SetLookTimer(cmd->m_timer);
+        }
+    }
+    if (cmd->m_looking & 1)
+        r = TaskCountdown(cmd->m_timer, *dT);
+    else
+        r = true;
+    *dT = 0.0f;
+    return r;
 }
 
 /* the AI's bit 6 (an inline bool: its read is not merged with the set's load of the same byte) */
