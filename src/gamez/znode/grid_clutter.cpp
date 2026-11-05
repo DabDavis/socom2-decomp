@@ -167,7 +167,11 @@ CPnt3D *CClutter::GetTranslate()
  * world's load and keeps the matrix in s0; here `this` takes s0 in the test's delay slot. Tried:
  * the matrix declared first, after the quaternion, at function scope; the world, the manager or
  * `this` through a local; the rotation path as an inline helper; the translation through a
- * pointer */
+ * pointer. Round 16, the replay: the target's `this` is two variables -- a0 on the plain path
+ * (`move v0,a0`), a copy in s1 on the rotation path -- where ours is one, live across the calls
+ * (degree 26 of K 25: deferred, coloured first, s0); every copy tried (a free inline's parameter,
+ * a matrix pointer local before or after the matrix, `CClutter *c = this`) is coalesced back into
+ * it (build/scratch/core/v_gm*.py) */
 CMatrix *CClutter::GetMatrix()
 {
     if (m_quat) {

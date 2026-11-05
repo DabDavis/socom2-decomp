@@ -77,6 +77,7 @@ template <class T, int v>
 class CInit {
 public:
     CInit() : m_val(v) {}
+    CInit(T x) : m_val(x) {}
     CInit &operator=(T x)
     {
         m_val = x;
@@ -271,12 +272,23 @@ struct CSkbTexLists {
     std::vector<zdb::CTexHandle *> m_lists[4];
 };
 
+/* two ints read from an rdr pair (SOCOM 1's CIntPair: zui_skb.cpp's there, its Get1st and Get2nd) */
+struct CIntPair {
+    CIntPair(int a, int b) : m_1st(a), m_2nd(b) {}
+    int Get1st() const { return m_1st; }
+    int Get2nd() const { return m_2nd; }
+
+    CInit<int, 0> m_1st;   // 0x0
+    CInit<int, 0> m_2nd;   // 0x4
+};
+
 /* a key cap's look: a texture name, a scale and a colour (the names ours) */
 struct CSkbCapLook {
-    CSkbCapLook() : m_0(0), m_4(0), m_scale(1.0f), m_r(128), m_g(128), m_b(128) {}
+    CSkbCapLook() : m_pos(0, 0), m_scale(1.0f), m_r(128), m_g(128), m_b(128) {}
 
-    int m_0;   // 0x0
-    int m_4;   // 0x4
+    /* its POSITION, the pair as read (assigned whole by the reader: the pair's class-typed members
+     * copied a word at a time through $f0, 0x397D30) */
+    CIntPair m_pos;   // 0x0
     CSaferStr m_texture;   // 0x8
     float m_scale;   // 0x14
     int m_r;   // 0x18
@@ -284,15 +296,11 @@ struct CSkbCapLook {
     int m_b;   // 0x20
 };   // 0x24 bytes
 
-/* two ints read from an rdr pair (SOCOM 1's CIntPair: zui_skb.cpp's there, its Get1st and Get2nd) */
-struct CIntPair {
-    CIntPair(int a, int b) : m_1st(a), m_2nd(b) {}
-    int Get1st() const { return m_1st; }
-    int Get2nd() const { return m_2nd; }
-
-    int m_1st;   // 0x0
-    int m_2nd;   // 0x4
+struct CSkbCapLooks {
+    CSkbCapLook m_a[3];
+    operator CSkbCapLook *() { return m_a; }
 };
+
 
 /* an rdr array walked by index: the array a tag names, and the index (the look parser's; the Korean
  * input unit's constructor and More, 0x3909F0 and 0x3909C0, the look parser calls out of line; ours) */
@@ -414,6 +422,14 @@ struct CSkbBgPiece {
  * deleter's destructor, one level more than a plain vector's */
 struct CSkbBgPieces : public std::vector<CSkbBgPiece> {};
 
+/* the look's arrays, each a class of its own (ours): ~CSoftKeyboard's inlined ~CSkbLook tests each
+ * array's address before its __destroy_arr (`addiu a0,s2,224; beqz a0`), as a wrapper's implicit
+ * destructor tests its `this`; read through the conversion as the arrays were */
+struct CSkbBgPiecesArr {
+    CSkbBgPieces m_a[4];
+    operator CSkbBgPieces *() { return m_a; }
+};
+
 /* what the rdr says about a keyboard's look (the look parser 0x3963F0's: Name, Background,
  * ShiftBackground, the sources ... TwoEditsGrowUp, StartGridPos; the names ours) */
 struct CSkbLook {
@@ -426,7 +442,7 @@ struct CSkbLook {
     CSaferStr m_name;   // 0x0
     CSaferStr m_background;   // 0xc
     CSaferStr m_shiftBackground;   // 0x18
-    CSkbBgPieces m_sources[4];   // 0x24: the four background piece lists
+    CSkbBgPiecesArr m_sources;   // 0x24: the four background piece lists
     int m_54, m_58, m_5c, m_60, m_64, m_68, m_6c;   // 0x54
     CSkbRect m_rects[5];   // 0x70
     int m_c0;   // 0xc0
@@ -436,11 +452,14 @@ struct CSkbLook {
      * it closes (the display unit's scaling step 0x394DA0 reads them with lwc1) */
     float m_scaleUpSec;   // 0xd8
     float m_scaleDownSec;   // 0xdc
-    CSkbCapLook m_caps[3];   // 0xe0
+    CSkbCapLooks m_caps;   // 0xe0: three
     std::vector<CSaferStr> m_strings;   // 0x14c
 
     /* a rectangle set by index (the look parser's five, out of line: zui_skbview.cpp's 0x396BD0) */
     void SetRect(unsigned char i, const CSkbRect &r);
+    /* cap i's look read from the block a tag names: its SCALE, COLOR, FONT and POSITION (the look
+     * parser's three, out of line: zui_skbview.cpp's 0x397D30; ours) */
+    void ReadCapLook(unsigned char i, _zrdr *rdr, const char *tag);
 };   // 0x158 bytes
 
 /* the keyboard (SOCOM II's 0x710 bytes: the key map at 0x164 where SOCOM 1's is at 0x2C, the grid

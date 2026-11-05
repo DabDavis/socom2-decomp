@@ -277,7 +277,11 @@ public:
  * out of class, would be emitted by zrdr_edit.cpp once generated ahead of the converter's ++ and serve
  * the vid stack (the linker keeps the first unit's copy), which calls its own 0x3B83D0 -- while the vid
  * stack's init unwraps to the base's const_iterator. Not built: it needs deque<T *>'s iterator classes
- * (their names would move every init row's), and the converter's * still copies once too few. */
+ * (their names would move every init row's), and the converter's * still copies once too few.
+ * BUILT in the MSL headers round 29 (std::__convert_iterator and deque<T *>::__const_iterator, below):
+ * this converter stays the circular buffer's; the deque's is its own, its operators out of class over an
+ * in-class iterator, begin() / end() / init unchanged (the base's const_iterators, converted in the
+ * dispatch) -- the rdr editor's do_assign and its three pieces byte-exact. */
 template <class Iterator, class T>
 class __convert_iterator {
 public:
@@ -1205,12 +1209,123 @@ public:
     explicit deque(const Allocator &a) : base(a) {}
 };
 
+/* THE DEQUE'S CONVERTER (the MSL headers round 29, probes build/p29/, untracked): a pointer deque hands its
+ * range to the const void * base through a converter of its own -- std::__convert_iterator (SOCOM 1's MSL
+ * names its converter so, std::__convert_iterator<std::__implicit_convert<...> >; the circular buffer keeps
+ * Metrowerks::__convert_iterator above, its operators in class, inlined into its do_assign 0x3341C0 as the
+ * target's) -- whose *, ++ and != are out of class, so the rdr editor's do_assign 0x334440 calls them
+ * (0x334940, 0x3348E0, 0x334860) where the circular buffer's inlines its own; and it wraps deque<T *>'s
+ * own __const_iterator, the base const_iterator's code IN CLASS (below), so the converter's out-of-line
+ * copies inline the wrapped ++ and * and zrdr_edit.cpp never emits the base const_iterator's out-of-class
+ * ++ -- the vid stack's do_assign 0x3B8000 calls its own unit's copy (0x3B83D0), as the linker keeping the
+ * first unit's copy requires (round 27). The * goes through a static helper taking the wrapped iterator by
+ * value, and the functor takes it by value again: the target's two copies (FPU words to sp+32, the
+ * functor's empty temporary, lq/sq to sp+0 -- with the base const_iterator wrapped, round 27's two
+ * levels folded to one; over the in-class iterator they stay). != is `!(i_ == y.i_)` (sltiu / xori).
+ * All three byte-exact from zrdr_edit.cpp, do_assign 0x334440 byte-exact once named (open since round
+ * 18), init 0x333BB0 and the vid stack's pieces unchanged */
+template <class Iterator, class T>
+class __convert_iterator {
+public:
+    struct convert {
+        T operator()(Iterator i) const
+        {
+            T v = (T)*i;
+
+            return *(T *)&v;
+        }
+    };
+    /* built from the base's const_iterator member by member (init's third copy, lw / sw) */
+    template <class X>
+    __convert_iterator(const X &x) : i_(x) {}
+    T operator*() const;
+    __convert_iterator &operator++();
+    bool operator!=(const __convert_iterator &y) const;
+    friend bool operator==(const __convert_iterator &x, const __convert_iterator &y) { return x.i_ == y.i_; }
+    friend int operator-(const __convert_iterator &x, const __convert_iterator &y) { return x.i_ - y.i_; }
+    static T deref(Iterator i) { return convert()(i); }
+
+    Iterator i_;
+    convert c_;
+};
+
+template <class Iterator, class T>
+T __convert_iterator<Iterator, T>::operator*() const
+{
+    return deref(i_);
+}
+
+template <class Iterator, class T>
+__convert_iterator<Iterator, T> &__convert_iterator<Iterator, T>::operator++()
+{
+    ++i_;
+    return *this;
+}
+
+template <class Iterator, class T>
+bool __convert_iterator<Iterator, T>::operator!=(const __convert_iterator &y) const
+{
+    return !(i_ == y.i_);
+}
+
+/* the pointer deque's init dispatch (Metrowerks::__deque_init's levels, the converter the deque's own):
+ * deque<void *> hands the base's const_iterators straight (the vid stack), any other T * converts them
+ * through its own __const_iterator (W) */
+template <class W, class D, class InputIterator>
+inline void __deque_p_init(D *d, InputIterator first, InputIterator last, Metrowerks::number<bool, false>,
+                           Metrowerks::number<bool, false>)
+{
+    d->do_assign(first, last);
+}
+
+template <class W, class D, class InputIterator>
+inline void __deque_p_convert(D *d, InputIterator first, InputIterator last)
+{
+    d->do_assign(__convert_iterator<W, const void *>(first), __convert_iterator<W, const void *>(last));
+}
+
+template <class W, class D, class InputIterator>
+inline void __deque_p_init(D *d, InputIterator first, InputIterator last, Metrowerks::number<bool, true>,
+                           Metrowerks::number<bool, false>)
+{
+    __deque_p_convert<W>(d, first, last);
+}
+
 template <class T, class Allocator>
 class deque<T *, Allocator> : public deque<const void *, allocator<const void *> > {
     typedef deque<const void *, allocator<const void *> > base;
 
 public:
     typedef typename base::const_iterator const_iterator;
+    /* deque<T *>'s own const iterator (round 28's model, built in round 29): the base const_iterator's
+     * fields and code with its operators IN CLASS -- the converter's wrapped iterator (above). The name
+     * ours: begin() / end() still give the base's (through a const_iterator of deque<T *>'s own they
+     * copy the base subobject loads-first, 12 instructions off, and init shrinks) */
+    class __const_iterator {
+    public:
+        typedef typename base::const_iterator::buf_iterator buf_iterator;
+
+        __const_iterator(const const_iterator &x) : i_(x.i_), cur_(x.cur_), last_(x.last_) {}
+        T *const &operator*() const { return (T *const &)*cur_; }
+        __const_iterator &operator++()
+        {
+            if (++cur_ == last_) {
+                ++i_;
+                cur_ = *i_;
+                last_ = cur_ + base::buf_size;
+            }
+            return *this;
+        }
+        friend bool operator==(const __const_iterator &x, const __const_iterator &y) { return x.cur_ == y.cur_; }
+        friend int operator-(const __const_iterator &x, const __const_iterator &y)
+        {
+            return (x.i_ - y.i_) * base::buf_size - (x.last_ - x.cur_) + (y.last_ - y.cur_);
+        }
+
+        buf_iterator i_;
+        const void **cur_;
+        const void **last_;
+    };
 
     deque();
     deque(const deque &x);
@@ -1257,8 +1372,9 @@ template <class T, class Allocator>
 template <class InputIterator>
 void deque<T *, Allocator>::init(InputIterator first, InputIterator last, forward_iterator_tag)
 {
-    Metrowerks::__deque_init(this, first, last, Metrowerks::number<bool, Metrowerks::__deque_converts<T>::value>(),
-                             Metrowerks::number<bool, false>());
+    __deque_p_init<__const_iterator>(this, first, last,
+                                     Metrowerks::number<bool, Metrowerks::__deque_converts<T>::value>(),
+                                     Metrowerks::number<bool, false>());
 }
 
 }
