@@ -1,10 +1,12 @@
-/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 -fno-strict-aliasing -funroll-loops */
+/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 -fno-strict-aliasing -funroll-loops -ffast-math */
 /* specsub: the recogniser's spectral subtraction block (OVL2 0x4F8130-0x4F9DC0, SOCOM 1's object at
  * 0x364AC8: SpecSubPutSession, SpecSubGetSession, SpectralSubtraction, FreeResourcesSpecSub,
  * ControlSpecSub, InitSpecSub, ConstructSpecSub, ProcessSpecSub -- SOCOM 1's order;
  * FreeResourcesSpecSub inlined into ControlSpecSub, no copy left), ScanSoft's speech recogniser,
- * prebuilt with ee-gcc 2.96 at -O2 -G0 -fno-strict-aliasing -funroll-loops (README "The GCC
- * front"). Names are SOCOM 1's (the constructor's slots, s1:align, s1:calls); the block's fields
+ * prebuilt with ee-gcc 2.96 at -O2 -G0 -fno-strict-aliasing -funroll-loops -ffast-math (README "The
+ * GCC front": SpectralSubtraction's seven max.s are -ffast-math's, round 25c; every function written
+ * here compiles the same with and without it, round 26c, so the directive carries the object's
+ * flag). Names are SOCOM 1's (the constructor's slots, s1:align, s1:calls); the block's fields
  * are named by their use. A block of the scheduler's (asr/tosblk.h): two inputs, four outputs.
  * Only the functions written so far are here, in image order (SpectralSubtraction, 0x1208, and
  * InitSpecSub, 0x40C, are not written: declared, their rows open). The session functions copy the
