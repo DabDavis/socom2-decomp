@@ -411,8 +411,13 @@ def neighbours(rec: dict, v: int) -> list[str]:
 OPNAMES = json.loads((Path(__file__).resolve().parent / "igopnames.json").read_text())
 OPNAMES.update({'1042': 'lw*', '1025': 'la*', '1112': 'entry*', '1120': 'nop*', '976': 'br*', '982': 'br*'})
 PSEUDO = {'1042': 'lw', '1025': 'addiu', '1076': 'sw', '1078': 'swc1', '1043': 'lwc1', '966': 'sltu',
-          '968': 'sltiu', '976': 'sltu', '982': 'sltu', '974': 'sltu', '1041': 'lb', '1040': 'lbu',
-          '1074': 'sb', '1044': 'lh', '1045': 'lhu', '1075': 'sh'}
+          '968': 'sltiu', '976': 'sltu', '982': 'sltu', '974': 'sltu', '1037': 'lb', '1030': 'lbu',
+          '1074': 'sb', '1038': 'lh', '1039': 'lhu', '1075': 'sh'}
+# The byte and halfword loads (GCC round 36a): mwccps2's registrations name 1030 lbu, 1037 lb, 1038 lh
+# and 1039 lhu -- what a fixture's `signed char`/`unsigned char`/`short`/`unsigned short` loads record.
+# Rounds 32a-35a read 1040/1041/1044/1045 as lbu/lb/lh/lhu: those are ll, lld, l.s and lwc2 (none of
+# them in any lane's GPR record), so no byte or halfword load was ever matched and its register was
+# never read in the target.
 # The FPR class (GCC round 35a). mwccps2 registers every opcode at start-up -- `push "name"; push
 # <number>; call` -- and the 900 pairs read off the compiler agree with all 309 of igopnames.json;
 # these are the float ones it lacks: 1110 `fcopy` (a float register move, assembled as mov.s), the
@@ -498,16 +503,42 @@ def _rnum(name: str, cls: int = 0) -> int:
     return REGS.index(name)
 
 
-def tmap(rec: dict, ours: list[str], targ: list[str], window: int = 24):
+DISP = re.compile(r',(-?\d+)\(')
+
+
+def _pc_disp(ins) -> int | None:
+    """A PCode memory access's displacement (GCC round 36a): its `k4:` operand is two little-endian
+    words, the displacement and the Object a symbol's or a local's access names -- known before the
+    final code only where that Object is none (a pointer and a constant offset: `lh t1,42(a3)` is
+    `k4:2a00000000000000`); None otherwise (a %lo, a frame offset)."""
+    for a in ins[1]:
+        if a.startswith('k4:') and len(a) == 19:
+            disp, obj = struct.unpack('<iI', bytes.fromhex(a[3:]))
+            return disp if obj == 0 else None
+    return None
+
+
+def _disp_of(text: str) -> int | None:
+    m = DISP.search(text)
+    return int(m.group(1)) if m else None
+
+
+def tmap(rec: dict, ours: list[str], targ: list[str], window: int = 24, disp: bool = True):
     """({virtual register: its register in the target}, {vreg: disagreeing counts}, PCode unmatched),
     from a record -- GPR or (GCC round 35a) FPR -- and the candidate's and the target's final code
     (instruction texts): each PCode instruction holding one of the class's virtual registers is
     matched to the nearest unused instruction of the candidate's with its mnemonic and registers, and
-    the target's instruction at that index names the node's register there."""
+    the target's instruction at that index names the node's register there. With `disp` (GCC round
+    36a; the default), a memory access whose displacement the PCode knows (_pc_disp) takes the
+    nearest such instruction with that displacement first, the nearest without only if none is in
+    the window: an unrolled copy's identical `lh t1,N(a3)` -- each a different field, scheduled out of
+    the PCode's order -- otherwise walk the alignment into the wrong copy (c2dfont.cpp's vector
+    erase: 41 of its 68 registers lost, once round 36a's table matched its halfword loads)."""
     cls = rec['cls']
     colour = [n['color'] for n in rec['nodes']]
     fin = [_regs_of(t, cls) for t in ours]
     tfin = [_regs_of(t, cls) for t in targ]
+    fdisp = [_disp_of(t) for t in ours] if disp else None
     used, seen, pos, unmatched = set(), {}, 0, 0
     for ins in rec['code']:
         if isinstance(ins, str):
@@ -515,12 +546,16 @@ def tmap(rec: dict, ours: list[str], targ: list[str], window: int = 24):
         mn, regs, vregs = _pc_sig(ins, colour, cls)
         if not any(v >= 32 for v in vregs):
             continue
+        want = _pc_disp(ins) if disp else None
         best = None
-        for d in range(window):
-            for k in (pos + d, pos - d):
-                if 0 <= k < len(fin) and k not in used and (
-                        fin[k] == (mn, regs) if cls != 1 else _sig_eq(fin[k], mn, regs)):
-                    best = k
+        for exact in ((True, False) if want is not None else (False,)):
+            for d in range(window):
+                for k in (pos + d, pos - d):
+                    if 0 <= k < len(fin) and k not in used and (not exact or fdisp[k] == want) and (
+                            fin[k] == (mn, regs) if cls != 1 else _sig_eq(fin[k], mn, regs)):
+                        best = k
+                        break
+                if best is not None:
                     break
             if best is not None:
                 break
@@ -529,6 +564,8 @@ def tmap(rec: dict, ours: list[str], targ: list[str], window: int = 24):
             continue
         used.add(best)
         pos = best + 1
+        if best >= len(tfin):           # a candidate longer than the target (GCC round 36a: an
+            continue                    # IndexError before): nothing there to read
         tm, tr = tfin[best]
         if tm != mn or len(tr) != len(regs):
             continue
