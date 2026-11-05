@@ -2065,6 +2065,26 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the world, rdr and sound, round 23** (CWind::Tick at last, open since round 14; Particle::Draw,
+  CmdParseWind, CValve::CmdParseCmp, CSnd::LoadSounds' LoadCSnd; zparticle_props.cpp split off):
+  - ON FLOATS `v > lo ? v : lo` COMPILES AS `!(v <= lo)`: `c.le.s v,lo; bc1t` with the value's arm first, `v <= lo ? lo :
+    v` puts the bound's arm first, `y >= 0 ? a : b` is likewise `!(y < 0)` -- earlier rounds' misaligned diffs hid that
+    this fixes CWind::Tick 0x31B350's clamps (the zenith clamped by value, the sums in azimuth / zenith / speed order, the
+    wind's z through a reference local, y written into the vector and read back for the scale);
+  - a float literal passed to an inline by `const T &` is read from memory, by value or in place it is a lui immediate;
+    a reference local to a member defined between two calls keeps the member's address in a saved register from there
+    on; a value stored into a member and read back uses the forwarded register and schedules the compare late, a local
+    copy moves it up; `PNT2D r = { 0.0f, 0.0f };` zeroes in place, `PNT2D r = PNT2D();` copies a zeroed temporary and
+    costs a saved register;
+  - ONE EXTRA SAVED REGISTER IN THE PROLOGUE SHIFTS EVERY LATER LABEL and adds or removes MW's 8-byte label-pad nops: fix
+    the saved registers before chasing nops; Particle::Draw 0x324DB0 is DrawPrep's body without its depth then
+    DrawFlush's, written in place (called, neither inlines);
+  - A UNIT BOUNDARY EXPLAINED AN INLINE: Props::GetOpacity is called out of line because the properties code is a unit of
+    its own -- zparticle_props.cpp at 0x3286D0-0x3294AF (the name ours), right after ~List, the instance unit's registered
+    destructor; SOCOM 1 has the same layout; the `#pragma auto_inline off` stand-in is retired; LoadSounds' six statics
+    named by SOCOM 1's symbols (cur_mission_name, CSnd::m_curID / m_curbank, the three rdr handles) and respelled --
+    SAME-BY-ADDRESS by the GCC front's round-35a objcmp; `int Count()` measured -25 (zrdr's finders, CRdrFile::Pack,
+    hudInit, ZWepReader::Read): not applied.
 - **Tells from the game states, round 43** (Sample_ExtractionLoc and ftsFixupAiMap -- unblocked by the one CSaferStr;
   fts_mission.cpp's stand-ins retired):
   - fts_mission.cpp now includes ai_maps.h (ai.h, zentity.h): its own CAiMapLoc, CCompassAnchor, CCompass, CAiMaps (the
