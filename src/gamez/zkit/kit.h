@@ -270,8 +270,10 @@ public:
     bool ItemHasAmmo(int index) const;
     bool ItemHasAmmo(int index, FIREMODE mode) const;
     bool CurItemHasAmmo();
-    /* rounds in the current magazine (SOCOM 1's; OVL2 0x5BD530) */
-    bool CurMagHasAmmo();
+    /* rounds in the current magazine (SOCOM 1's; OVL2 0x5BD530). An unsigned char, not a bool (the
+     * return type is not mangled): its launcher arm's int result is narrowed with the target's
+     * `andi 0xff` at the join; every caller branches on v0 as on a bool */
+    unsigned char CurMagHasAmmo();
     bool ItemHasAmmo(EQUIP_ITEM item);
     /* whether the weapon selector may pick an item (SOCOM 1's; OVL2 0x5BDC30) */
     bool isSelectableItem(int index);
