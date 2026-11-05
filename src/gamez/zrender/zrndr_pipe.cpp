@@ -682,18 +682,26 @@ static inline bool LightReaches(zdb::CLightMap *l, const CPnt3D &center, float r
     return false;
 }
 
+/* whether a light map's instance is the node's model -- the node itself when it is one, none
+ * otherwise (ours: SOCOM 1's BuildLightMapList compares in place; SOCOM II's numbering needs the
+ * instance as an inline's parameter, below) */
+static inline bool IsModelOf(zdb::CNode *inst, zdb::CNode *node)
+{
+    return inst == (node->m_type == 2 ? node : 0);
+}
+
 /* SOCOM 1's: the light maps and shadows that reach a node listed afresh, six at most -- the node's
  * bounding sphere (its box's half-diagonal about the box's centre, carried by its matrix) against
  * each active light map's range; a shadow only while shadows apply and never on the model it is the
  * shadow of (SOCOM II computes the sphere once, ahead of the walk). The count and the light are
  * declared uninitialised at the top (numbered there: the count s4 and the light s3 below the list's
- * s2, as the target's -- declared where they are set, 31 off), the count unsigned (sltiu).
- * OPEN, 5 instructions at the target's size: the model test's two temporaries swap -- the target
- * loads the node's type into a0 and the light's instance into a1, this the other way round (SOCOM
- * 1's own code has this unit's pair). Tried (build/scratch/wld/v_blml2-5.py): the compare either
- * way, the model test as one `&&` or `||`, both ternaries written out, the type or the instance in
- * a local (0x460), the model local at the top or the shadow branch's top, an if/else for it, inline
- * ModelOf/InstanceOf helpers, `continue`s for the three skips */
+ * s2, as the target's -- declared where they are set, 31 off), the count unsigned (sltiu). The world
+ * lane's round 20, byte-exact: the model test's instance passed to an inline helper -- an inline's
+ * parameter is numbered after the caller's named locals, below the node type's CSE temporary
+ * (@N, shared by both ternaries), so the type is coloured first and takes a0, the instance a1, as
+ * the target's (tools/igreplay.py --want: any number for the instance below the type's gives it;
+ * compared in place, or the instance in a named local -- copy-propagated away -- the pair swaps:
+ * 5 off) */
 void CPipe::BuildLightMapList(zdb::CNode *node)
 {
     unsigned int n;
@@ -718,7 +726,7 @@ void CPipe::BuildLightMapList(zdb::CNode *node)
                     if (zdb::CVisual::m_applyShadow) {
                         zdb::CNode *model = node->m_type == 2 ? node : 0;
 
-                        if (!model || l->m_instance != (node->m_type == 2 ? node : 0)) {
+                        if (!model || !IsModelOf(l->m_instance, node)) {
                             if (LightReaches(l, center, r)) {
                                 zdb::CLightMap *kept = l;
 
