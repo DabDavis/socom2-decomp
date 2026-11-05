@@ -8335,8 +8335,8 @@
 0x003D1F00 0x44 GetDefaultAmmo__8CZWeaponFv  # OVL1; s1:order by hand (SOCOM 1's: the legal ammo list's first ammo, none when it is empty)
 0x003D1F50 0x3C PostTick__8CZWeaponFfPv  # OVL1; s1:align, checked by hand (the weapons lane round 16: SOCOM 1's static, the same code -- the pause byte tested, else the projectile list's PostTick; st_core.cpp registers it as weapon_post_tick)
 0x003D1F90 0x6C func_003D1F90  # OVL1
-0x003D2000 0x8 func_003D2000  # OVL1
-0x003D2010 0x8 func_003D2010  # OVL1
+0x003D2000 0x8 GetRecoilPct__8CZWeaponFv  # OVL1; by hand (the weapons lane, round 28: the float at 0x6C, which SetRecoilPct 0x3D2010 stores from ReadWeapon's RecoilPct (the kit's round 44: CZKit::Recoil hands it to the SEAL's recoil step, seal_kit.cpp's func_003D2000); the name ours, after the rdr field)
+0x003D2010 0x8 SetRecoilPct__8CZWeaponFf  # OVL1; by hand (the weapons lane, round 28: stores $f12 at 0x6C, which GetRecoilPct 0x3D2000 returns; ZWepReader::ReadWeapon passes it the entry's RecoilPct, 0 by default; the name ours, after the rdr field)
 0x003D2020 0x8 func_003D2020  # OVL1
 0x003D2030 0x8 GetArmingDistance__8CZWeaponFv  # OVL1; by hand (the weapons lane, round 27: the float at 0x68, stored by 0x3D2040 from ReadWeapon's ArmingDistance; CZProjectile::HandleImpact 0x3C8920 bounces a hit nearer the start than it as a dud; the name ours)
 0x003D2040 0x8 SetArmingDistance__8CZWeaponFf  # OVL1; by hand (the weapons lane, round 27: stores $f12 at 0x68, which GetArmingDistance 0x3D2030 returns; ZWepReader::ReadWeapon passes it the entry's ArmingDistance, world-scaled; the name ours)

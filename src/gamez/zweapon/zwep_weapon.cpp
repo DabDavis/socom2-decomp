@@ -271,7 +271,7 @@ CZWeapon::CZWeapon()
     m_damagebonus = 0;
     m_socom2_68 = 0;
     m_socom2_d5 = 0;
-    m_socom2_6c = 0;
+    m_recoilPct = 0;
 }
 
 /* the projectiles in flight made for a count (SOCOM 1's) */
