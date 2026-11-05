@@ -569,8 +569,10 @@ public:
     std::vector<int> m_queue;   /* 0x18: the queued entries' indices (SOCOM 1's at 0x18 too) */
     std::vector<int> m_free;    /* 0x24: the free entries' indices, 0-19 when built */
     unsigned int *m_entries;    /* 0x30: twenty entries of three words */
-    int m_34;                   /* 0x34 */
-    CSndInstance *m_instance;   /* 0x38 */
+    CSndInstance *m_34;         /* 0x34: the voice a sound plays on through the speakers while
+                                   no headset is found (DisconnectedTick) */
+    CSnd *m_instance;           /* 0x38: the voice-over sound streaming (bit 4), set as its stream
+                                   starts (ConnectedTick), with its entry's id at 0x3C */
     int m_3c;                   /* 0x3C */
 };   /* 0x40 bytes (operator new's) */
 
