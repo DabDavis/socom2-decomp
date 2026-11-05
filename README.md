@@ -10087,6 +10087,50 @@ superseding a draft; `src/lib/asr` 510 of 544 (507 of 540 before). 5 rows named 
 InitPitchCombiner, ControlPitchCombiner `s1:slot`; PitchCombinerReset `s1:calls`; LogPitchProcessing
 `s1:order`). No tool changed.
 
+**Round 23c: the pitch combiner's process and flush, a stand-in for its lead, the reset's store read off sched1.**
+
+- **C89 locals declared at the top are one pseudo across a function's blocks, and that sets global-alloc's
+  order**: FlushPitchCombiner's three padding blocks share one `s`, `len` and `i` (round 22c had them per
+  block): `i` then spans three loops and outranks `s` (the target's i in a2, s in a3, len in a0 in every
+  block -- per-block locals rank `s` first, 36 words); every order of the five declarations gives the same,
+  and the output block computes its count before `s = w - 1` (the nwin load ahead of the subtraction).
+- **A void function's trailing call is a sibling call; an int one that falls off the end keeps its `jal`**:
+  ProcessPitchCombiner's null-frame flush is `jal; nop` under the frame -- declared int (the scheduler's
+  TOSFUNC) and returning nothing. `-fno-optimize-sibling-calls` gives the same function, but the object's
+  constructor ends in `j tosBaseBlockConstruct`, so the flag is not the object's.
+- **reorg never puts a volatile reference in a delay slot** (resource.c's resource_conflicts_p: any `volatil`
+  conflicts), so a field loaded in a slot anywhere in the object is plain: LogPitchProcessing's target loads
+  +156 in a bnel's and three beqz's slots. The flush's re-read of +156 after its lead test (SOCOM 1's compile
+  too) is given byte for byte by volatile, which is therefore a marked stand-in (`LEAD_STANDIN`): plain, the
+  flush is 2 words short and the log pass 1, the re-read their only structural difference -- CSE1 merges the
+  two `(mem/s:QI (plus p 156))` loads (exp_equiv_p reads no MEM flag; no store, call or label lies between);
+  `-fno-cse-follow-jumps`, `-fno-cse-skip-blocks`, `-fno-gcse`, `-fno-rerun-cse-after-loop` each lose matched
+  functions, and the lead test's arm shapes (the skip arm first, a goto) do not give it.
+- **A store that is the last use of both its value and its base enters sched1 at weight -2**
+  (PitchCombinerReset, read off the regmove dump: REG_DEAD on the 1 and on p), so rank_for_schedule's
+  (priority, weight, luid) puts it first in every source order; the target's needs it held until the others
+  issue. `do { p->f183 = 1; } while (0)` does that in sched1 (its LOOP_BEG note makes the store a barrier:
+  sched1's output is the target's), but the barrier stands in sched2 too, where flush_pending_lists gives
+  every load one dependent more and the depend-count tie-break issues each base load before the srl beside
+  it (4 words; with `-fno-schedule-insns2` the reset matches and NormE_Processing and ControlPitchCombiner
+  do not). Volatile flags, the tail or the cursors as inlines, a pointer to the flags and the block's own
+  pointer do not give it either. CSE1 also stops its block at a LOOP_END note (CSE2, after loop.c, does not).
+- **Shapes, measured**: a frame's first value read before the scan pointer is formed (`max = f[1]` then `v
+  = f + 2`: the pointer's addiu ahead of the entry test, the load in its slot); a run's two flags with +161
+  stored first (the last source store is issued first); each quotient back into its sum (`sum /= norm;
+  *p->r96.wr = sum`, the target divides into the sum's register); a back-fill's `d = s - 1` after the wrap
+  test -- reorg's steal from the join copies it into the branch's slot and the arm, two assignments in m2c's
+  reading; an else arm's ring start if-converted where the ring's end is already in a register.
+- **Open, diagnosed in place**: PitchCombinerReset (18 words, above), LogPitchProcessing (0x3A4 against
+  0x38C under the stand-in, 0x384 plain: above), InitViterbi@nbestdp not revisited, InitPitchCombiner not
+  written (it holds the reset's body, tail and all).
+
+Hand-written in round 23c: `asr/pitchcomb.c` (+4: FlushPitchCombiner closed, ProcessPitchCombiner new,
+ConstructPitchCombiner over its draft, LogPitchProcessing OPEN; +148, +166, +172 as a float, +176 and +186
+typed; 5 of 7) -- 2 rows new to the map's byte-exact rows (1,816 bytes), one matched draft superseded
+(ConstructPitchCombiner, 0x502F10); `src/lib/asr` 513 of 547 (510 of 544 before). No rows named (all four
+had SOCOM 1's). No tool changed.
+
 **Round 14b: the "toolchain" opens were SCEA's shapes; LargeInt's core is assembly.**
 
 - **LargeInt's EE primitives are hand-written assembly** (0x628B48-0x629A44, between LargeInt.c's C and

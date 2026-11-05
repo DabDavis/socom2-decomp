@@ -445,8 +445,8 @@ static __inline__ void ResetRing(RING *r, int len)
  * while (0)` does that (its LOOP_BEG note makes the store a scheduling barrier): sched1's output is
  * then the target's, but the barrier stands in sched2 too, where flush_pending_lists gives every
  * load one dependent more and the depend-count tie-break issues each base load before the srl
- * beside it (4 words; with -fno-schedule-insns2 the reset matches, and the object's other three
- * functions do not -- sched2 is on). So the vendor's hold is in sched1 only; volatile flags,
+ * beside it (4 words; with -fno-schedule-insns2 the reset matches, and NormE_Processing and
+ * ControlPitchCombiner do not -- sched2 is on). So the vendor's hold is in sched1 only; volatile flags,
  * inlines for the tail or the cursors, a pointer to the flags and the block's own pointer do not
  * give it (build/scratch/gcc/pr1.py). */
 static void PitchCombinerReset(PITCHCOMB *p)
