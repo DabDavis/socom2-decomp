@@ -368,19 +368,17 @@ C2DGlyphPiece *C2DGlyph::AddPiece(const _zrdr *ul, const _zrdr *lr, int height)
 
 /* a character of the faces rdr's charoffsets: by its Code, its pieces in Elems, or an item list
  * (the character, its corners); its baseline, kernings and colour; its width returned */
-/* OPEN, 8 bytes long (0x3CC against 0x3C4): the texture lookup, as Compose. Round 55: the ints
- * declared together in the target's slot order (code 120, lk 116, tex 112, baseline 108, rk 104)
- * and read through FindIntAt, as CHangulFont::Load -- every slot and the kerning's early load now
- * the target's; left: the lookup, this/ti swapped (s1/s2), and the first item's type byte, which
- * the target loads once for its test and String()'s (`first->IsString()` 0x10 longer) */
+/* (byte-exact since the HUD's round 55: the ints declared together in the target's slot order --
+ * code 120, lk 116, tex 112, baseline 108, rk 104 -- and read through FindIntAt, as
+ * CHangulFont::Load; the glyph declared ahead of the texture index; GetTexture's one ternary; the
+ * first item's type through Type(), loaded once for the test and String()'s) */
 int C2DFont::LoadChar(const _zrdr *rdr)
 {
     int code, lk, tex, baseline, rk;
+    C2DGlyph *g;
     int ti = FindIntAt(rdr, "texture", &tex, 1) - 1;
     zdb::CTexHandle *h = GetTexture(ti);
     int height = h ? h->m_texture->m_height : 0;
-    C2DGlyph *g;
-
     code = 0;
     if (zrdr_findint(rdr, "Code", &code, 1)) {
         unsigned short c = code;
@@ -391,9 +389,9 @@ int C2DFont::LoadChar(const _zrdr *rdr)
     } else {
         _zrdr *first = rdr->Item(0);
 
-        if (first && first->type == ZRDR_STRING)
+        if (first && first->Type() == ZRDR_STRING)
             code = *(unsigned char *)first->String();
-        else if (first && first->type == ZRDR_INTEGER)
+        else if (first && first->Type() == ZRDR_INTEGER)
             code = first->Int();
         unsigned short c = code;
 
