@@ -74,25 +74,26 @@ int func_0018F8A0(void)
 	return func_0018FB50(0, 0, 0, 3, &data_001D6218);
 }
 
-/* OPEN (right size, 10 words: registers only). Laid out as the target's -- the blocking loop
- * inline, the single read last. GCC r24a (from r22a's 65 words, 0x190 against 0x188): each path
- * splits its own block-local result (one `ret` for both is a pseudo live in two blocks: global-alloc
- * gave it a2 and both splits read a copy, where local-alloc ties a block's own to v0), and the
- * single read's error half goes through e (s0, mode's register, as the target's). Left: `last` and
- * SCE_CD_debug's %hi tie in global-alloc's priority -- 4 refs over 88 insns and 5 over 110, both
- * 909 -- and the lower pseudo, last (declared at the top), takes s6 first; the target's %hi has s6
- * and last s7. Any extra RTL insn where both live breaks the tie the target's way, but none of 14
- * spellings tried keeps one past CSE (the split's masks, the buffer's shift and pointer forms, the
- * loop as for/while with breaks, the tests' orders: build/scratch/gcc/v_cdst.py); `last = 0`
- * before the started test breaks it too, but re-allocates that test's v0/v1 (3 words). */
+/* Laid out as the target's -- the blocking loop inline, the single read last. GCC r24a (from r22a's
+ * 65 words, 0x190 against 0x188): each path splits its own block-local result (one `ret` for both is
+ * a pseudo live in two blocks: global-alloc gave it a2 and both splits read a copy, where local-alloc
+ * ties a block's own to v0), and the single read's error half goes through e (s0, mode's register,
+ * as the target's). GCC r35a closed the last 10 words: `last` and SCE_CD_debug's %hi tie in
+ * global-alloc's priority -- 4 refs over 88 insns and 5 over 110 (flow counts a reference in the
+ * loop twice), both 909 -- and a tie goes to the LOWER PSEUDO, which is the one created first: the
+ * function's locals are made at its entry, before the first test expands the %hi, so `last` took s6.
+ * Declared in a block opened after the guard clauses, the locals are made after the %hi, which then
+ * takes s6 and last s7, the target's (only `last` in such a block does it too). 14 spellings that
+ * sought an extra reference (build/scratch/gcc/v_cdst.py) did not; the numbering did. */
 int sceCdStRead(u_int size, u_int *buf, u_int mode, u_int *err)
 {
-	u_int rbuff, i, e, ret, last;
-
 	if (SCE_CD_debug > 0)
 		scePrintf("sceCdStRead call read size= %d mode= %d\n", size, mode);
 	if (data_001CC3F8 == 0)
 		return 0;
+	{
+	u_int rbuff, i, e, ret, last;
+
 	last = 0;
 	rbuff = 0;
 	sceSifWriteBackDCache(buf, size << 11);
@@ -120,6 +121,7 @@ int sceCdStRead(u_int size, u_int *buf, u_int mode, u_int *err)
 		*err = e;
 	}
 	return rbuff;
+	}
 }
 
 int sceCdStPause(void)

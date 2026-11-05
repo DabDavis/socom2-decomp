@@ -2065,6 +2065,39 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the engine core, round 17** (CCamera::Update; the clutter's TickForce, Render, the list's Render and the
+  anim manager's tick -- SOCOM 1's; the tether and camera data rows named):
+  - INLINE TEMPORARIES ARE LAID OUT IN EXPANSION ORDER: in a nested expression the outer operator's result and copy take
+    the higher slots (CCamera::Update 0x294070: the near-plane point written as one expression -- round 15's note
+    rejected that form, the current zmath.h accepts it); a named local passed to an inline's by-value class parameter is
+    block-copied into a slot below the call's result, which gives the target's two temporaries;
+  - a length taken through an inline of its own makes the caller's later scaling reload its operands (CClutterAnim::
+    TickForce 0x2D8C60); an address-taken local point written by its constructor and read through a reference inline is
+    read off the frame, read directly its field addresses go into saved registers (CClutter::Render 0x2D8FE0); `float len
+    = sum; d = len * k;` puts the sum first in mul.s, one expression puts k first;
+  - a 64-bit field needs an `(unsigned int)` cast to load with lw (without it ld); `a ? (b ? x : 0) : 0` puts each zero in
+    its branch's delay slot; uninitialised locals declared at the top set the numbering order -- a pointer declared after
+    them takes the last named-local number (CClutterList::Render 0x2D97B0's camera); `if ((x = f()) != 0)` branches on
+    v0, `T *x = f(); if (x)` on the copy; `#pragma auto_inline off` pins a callee its only caller calls out of line
+    (CGrid::DeleteClutter; CClutterAnimManager::l_Tick 0x2D8040 and Tick from source: grid_clutter.cpp 20 of 22);
+  - data rows: 0x3DE270 short_tether_rate (ours), 0x3DE278 CamRotZ_down and 0x3DE288 CamRotZ_up (SOCOM 1's), 0x3DE280
+    CamRotZ_mounted (ours); 0x3EFD38 `ovl-copy: __RTTI__10CZSealBody` (camera.cpp emits OVL1's own copy for 0x2956E0's
+    dynamic_cast).
+- **Tells from the AI core, round 30** (LeadTargetG at last, open since round 2; SmoothPathLeg and its line callback, SOCOM
+  1's; CAiCell::IsSoil):
+  - MW NEVER SHARES A LOAD THROUGH A REFERENCE LOCAL WITH THE OBJECT'S OWN FIELDS: a `const CPnt3D &` to w gave
+    CAi::LeadTargetG 0x50E590 its second w.x load (the float-only miss the replay could not score), and the same trick
+    put ReRoute's state address in s1 (its wait loop now the target's);
+  - a redundant store MW drops late leaves an empty block behind -- `case 7: ok = !mid;` inlined with mid false gives the
+    target's `b; nop` case block; `while (i > last)` or a negated `> 2` puts both rotated tests on at, `last < i` or `< 3`
+    materialises the bottom one; nested ifs on one bool send every failure straight to the final test, an && chain or
+    sequential ifs keep a join at each level;
+  - `bool ok;` declared uninitialised at the top, and a field read into a named local passed down through inlines, are
+    numbered among the caller's own locals -- read through an accessor's own local, the same value is numbered last as a
+    temporary: `tools/igreplay.py --move` / --movers found the placement and closed _SmoothLineCallback 0x525C80
+    (CAiPath::SmoothPathLeg 0x525810, SOCOM 1's; CAiCell::IsSoil 0x525C60 an inline's out-of-line copy, its name and
+    unsigned char parameter ours); char_type.cpp's func_0058E0A0 is CSealCtrl::GetCommandId through a local stand-in
+    (SAME-BY-ADDRESS).
 - **Tells from completing the MSL headers, round 30** (the two CSaferStr made one; the vector walk's end; CPnt3D's operators):
   - ONE CSaferStr: src/gamez/zutil/saferstr.h holds SOCOM 1's zutil.h class -- a std::string with an empty inline
     constructor and `void operator=(const char *)` (the return SOCOM 1's DWARF gives); zentity.h and zsav_lobby.h include
@@ -2236,8 +2269,8 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     / s;` as its own statement schedules the divide first; `CPnt3D v = p;` copies as a block (ld / sd), declared first
     and assigned it copies field by field; a rotated while loop over a byte enum stepped as `((int)v + 1) % n` reuses the
     test's load with an andi (CAppCamera::FTSTick 0x29B0C0, the first- / third-person transitions and positions);
-  - camera.cpp carries local stand-ins ScaledBy / DiffOf for CPnt3D's inline operator* / operator- (zmath.h only declares
-    them -- queued for the MSL).
+  - camera.cpp carried local stand-ins ScaledBy / DiffOf for CPnt3D's operator* / operator- -- RETIRED in round 17: zmath.h
+    has defined both inline since 2026-10-25 (the MSL's round 30), and the object is identical with them.
 - **Tells from the kit and AI states, round 48** (CTSound::Tick; CTInView / CTPlay::Tick written):
   - a random pick as an if/else with the draw in its own local (`int r = rand(); x = r % (n + 1) + 1;`) pads the else
     label and leaves the `b` over it unfilled -- a ternary, a lone if or the draw inline fills the `b` from the join and
@@ -9914,6 +9947,87 @@ printing nothing. What they showed:
   `build/scratch/gcc/v_initbuf*.py`). Not reached: libquan.c's 12-coefficient dequantiser 0x24B2F8
   (six 2-D stages over a table of parameter blocks, 0x268) and quantiser 0x24B028, libtran.c's passes.
 
+**The tools, round 35a** (the lanes' two requests): (1) **`tools/igreplay.py --target` reads FLOAT
+registers** (the AI core's LeadTargetG, mapped by hand; the lanes' `$f20,$f0,$f20` operand misses). igdump
+records an FPR colouring's PCode (before, `code` was the GPR class's alone: an older dump's FPR record is
+refused with that said). MW colours and rewrites the GPRs before the FPRs, so an FPR record holds no virtual
+GPR (zmath_pnt3d.cpp's twelve: 0 of their operands) -- its `rN` are hard, `c1:N` the class's (virtual from
+32), `c2:N` (the condition flag, the accumulator) implicit in the code's text. **The opcode names come from
+the compiler**: mwccps2 registers each opcode at start-up (`push "name"; push <number>; call`), and the 900
+pairs read off mwccps2.exe agree with all 309 of igopnames.json; the float ones it lacks are 1110 `fcopy`
+(assembled as mov.s), 436-444 the R5900's adda.s, madd.s, madda.s, max.s, min.s, msub.s, msuba.s, mula.s,
+suba.s, 292 rsqrt.s, and the macro loads/stores 1043/1044/1078/1079, whose base is r0 for a symbol's address
+(the lui's register in the code: it matches any). Each float node's register is read as a GPR's -- the
+candidate's instruction at each use, the target's at the same index -- and --move/--want/--movers score FPR
+records as GPR ones (saved f20-f31; `--want len=f21`). The canary's
+`test_igreplay_reads_float_registers_in_the_target` (12 assertions): a float fixture keeping first in f21 and second in f20 across calls; `--move
+first after second` predicts f20/f21, which the swapped declarations compile to (igdump and the code);
+`--target` against the swapped object's code reads both nodes differing as recorded and neither under the
+move, and a --want search finds the move; CQuat::Exp(const CPnt3D *) (byte-exact) maps to its own colouring,
+0 PCode unmatched, and one of `len`'s four uses read as f22 is listed though f21 is the most frequent; a
+pre-35a record is refused. GPR records keep their code path exactly: under master's igreplay and this one
+the --target mappings and report lines of 43 of 43 (record, function) pairs (zmath_main.cpp,
+zmath_pnt3d.cpp) are identical, and every existing igdump/igreplay/igvar assertion holds (38). **Found, not
+changed**: PSEUDO's 1040/1041/1044/1045 (read as lbu/lb/lh/lhu since round 32a) are ll/lld/l.s/lwc2 by
+the registrations -- a fixture's four byte and halfword loads are 1030 lbu, 1037 lb, 1038 lh, 1039 lhu --
+so a GPR byte load has never matched; correcting it changes GPR mappings, for a lane to measure. (2)
+**`tools/objcmp.py --by-address` compares a data reference as symbol + addend** (the HUD's round 54:
+hud_missioncams.cpp's `data_0043668C` respelled `theMission+0x1AC`, PlayCamera 0x228EE0, printed DIFF while
+the scorer matched it). Both compilers write REL relocations, the addend in the field, so a respelling
+changes the symbol and the field together; each data relocation whose symbol the map resolves is now read
+as `scdiff.reloc_check` reads it and its field masked out: a %hi/%lo pair (R_MIPS_HI16/LO16) as symbol +
+(hi << 16) + (short)lo -- a Metrowerks %lo paired with the latest %hi of its symbol, a GNU one by the
+relocation table (`gnu_hi_partners`), the %hi as its first %lo's address --, R_MIPS_GPREL16 as symbol +
+(short)field (a GNU local's plus gp0), R_MIPS_32 (a table's or a pointer's word, code or data) as symbol +
+the word. A call (R_MIPS_26) stays its symbol's, a GNU literal entry (R_MIPS_LITERAL) its section's, a pair
+missing a half is compared as before; `--symbols-only` keeps round 29a's rule (`summary()`'s default, so
+round 29a's assertion that `data_001D0BB0[1]` differs stands for it). The canary's
+`test_objcmp_by_address_resolves_a_sum` (10 assertions): each kind both ways -- MW's pair
+(`data_001D0BB0+8` is __infinity's address: the same; +16 differs), a .data pointer word, GCC's -G0 pair
+and its -G8 gp-relative load (`return v + x`: GCC leaves the return's slot empty for an offset load
+returned alone, a real difference) -- the respelling listed with its addend, round 29a's rule telling each
+apart. **Proved** (`build/scratch/gcc/objproof.py`: one build of both sides scored by master's objcmp and
+this one, all 654 hand-written units): plain and --symbols-only give master's plain and --by-address unit
+for unit against 2deeccce~1 (round 29a's base; with sums 188 -> 188 differ) and 451885c2~1 (23 -> 22: the
+one unit equated is hud_missioncams.cpp, `data_0043668C -> theMission+0x1ac, data_004B52B0 ->
+m_weaponTickDisabled__8CZWeapon`); every existing objcmp assertion holds (6 + 71). (3) No tool that scores
+changed: scdiff.py, sccheck.py, scdecomp.py, tools/try.py and `include/` are master's. automatch over the
+lane's three ranges (`--max-size 0x400 --emit --no-prune --jobs 2 --obj-dir` the lane's private `src/lib`
+build): MAIN `18DB90 1C4CC0` 11 tried, 0 hits (2 m2c refusals, 9 misses), OVL1 `1E7F58 1E8FD4` 0 tried,
+`243000 256FD0` 40 tried, 0 hits (2 build failures, 5 refusals, 33 misses): 51 tried, none byte-exact
+(round 34a: 52, 0).
+
+**Round 35a** (2026-11-05, the requests first, then the priority ties): 3 rows newly byte-exact (1,684
+bytes), one matched draft superseded -- libcdvd's sceCdStRead 0x18F8D8 (open since round 22a; `sdk/cd_stream.c` whole, 10 of 10),
+sceCdLayerSearchFile 0x18E228 (0x314, unwritten until now, the demo's s1:exact) with sceCdSearchFile
+0x18E540 over its draft, and sceCdDiskReady 0x18ED78 (open since round 32a) -- `sdk/libcdvd.c` 21 of 24,
+every libcdvd.h unit 37 of 40, none lost. No rows named (all had the demo's names). What they showed:
+
+- **A global-alloc tie goes to the lower pseudo, and pseudos are numbered as they are CREATED**: a
+  function's locals at its entry, a global's %hi when its first use is expanded. sceCdStRead's `last` and
+  SCE_CD_debug's %hi tie at 909 (round 24a); declared in a block opened after the guard clauses, the
+  locals are created after the %hi, which wins the tie and takes s6, the target's -- where 14 spellings
+  seeking an extra reference had failed.
+- **A reference inside a loop counts twice** (flow's loop depth): the bind loops' flag cleared before the
+  `break` (`if (cd.serve != 0) { bind = 0; break; }`) gives its %hi 4 refs where after the loop it had 3 --
+  the first saved register after the pointers in both search and disk-ready (1176/1212 against 441/454).
+- **A path written twice is two sets of references until cross-jumping merges it**: sceCdDiskReady's
+  failure written after the SyncS test and after the call gives mode and the semaphore's %hi the target's
+  priorities (4 and 6 refs: 1081, 833); after reload the copies are identical and the first is redirected
+  into the second, the layout a goto into one copy gives (round 32a's -- which has the layout and not the
+  references).
+- **libcdvd's scePrintf is void too** (eekernel.h, round 29a's libgraph tell): after each of the search's
+  debug lines the flag's reload takes v0, which an int call value keeps out; libcdvd.h declares it so, and
+  every unit including it scores as before. The search's delays count in a variable of their own (v0;
+  the path copy's index a1).
+- **Open, diagnosed in place**: func_0018EF70 (the flag cleared in the loop changes nothing: 0x1FC
+  against 0x204, the client's %hi placement), sceCdInit and func_0018E9E8 (unchanged). Looked at, not
+  this lever: lgAudInit (its s5/s6 tie, but a different block order), sceMcWrite (the reassociation),
+  func_0024C000 (the load schedule; its two pointers already the target's s0/s1). Not reached: round 34a's
+  other opens (0x252FE0, 0x24AD48, sceCdInit, dmaRefImage, sceBInetRecv/Send, sceGsResetGraph,
+  libnetb_udp_init_buffer), libquan.c's dequantiser/quantiser, libtran.c's passes (0x24E788: a DFT over
+  an 8-bit phase table with an odd-length tail).
+
 **Next**: the libraries by hand, module by module, as their vendors wrote them (each `src/lib`
 unit's header says what it covers); GCC's scheduler moves independent stores, and which source
 order gives the target's is easier measured than predicted (`tools/ccperm.py PROBE
@@ -11781,6 +11895,45 @@ one matched draft superseded (ConstructSHS_VUV 0x504980); `src/lib/asr` 553 of 5
 named: 0x5042B8 `CreateFreqWindow` (`s1:calls+order`: SOCOM 1's InitSHS_VUV calls it at the same point, after
 the block's last table), 0x504520 `InitSHS_VUV` (`s1:slot`: ConstructSHS_VUV's init slot, as SOCOM 1's).
 casr.h gains +960 (the label scoring's result). No tool changed.
+
+**Round 30c: the SHS object whole, DoUserWordTraining, FindBestTranscription written.**
+
+- **A temporary set twice keeps a sum in its loop and gives the result a pseudo of its own**
+  (SubHarmonicSummation_and_VUVDetermination, round 29c's 38 words): the per-harmonic end as `t = out + n;
+  t -= k; hend = t;` -- set twice, t is no loop.c movable, so `out + n*4` stays in the outer loop
+  (`addu v1,t0,t5`, SOCOM 1's compile too), and the copy into hend gives the end its own register once
+  combine folds the subtraction into it (`subu t1,v1,v0`). `hend = out + n - k` hoists the sum; `end = out +
+  n; end -= k` keeps both in one register. With the sum split off, the end is set once and ranks below out
+  in global-alloc (round 29c's separate end, set twice, outranked it). Also: `x = in[0];
+  x++;` loads into x's own register (`x = in[0] + 1` loads into v0 first); a ratio tested as an expression
+  (`max / *x < s->f56`) keeps the quotient a pseudo of its own; independent loads issue in source order
+  (`q = s->f84; off = s->f92;` after the copy end).
+- **expand_end_loop rolls a `for (;;)` up to its first exit** (ProcessSHS_VUV): with the peak path's guard
+  written as `if (p == pend) break;` before the fifth copy, the code from the loop top to that exit (the
+  peak test, four copies, the guard) moves to the loop's end, so the not-a-peak exit test and the
+  increment sit above the body and the loop is entered by a jump over them -- the target's (and SOCOM
+  1's) layout, where a do-while keeps its test below the body. The entry jump into a loop's middle is
+  this rotation here, round 28c's conditional cross-jump in Smoothing.
+- **CSE's class head is the longer-lived register**: the zeroing walker loaded as `z = s->f64; peaks = z;`
+  and reused as the window loop's output walker outlives peaks, so CSE keeps z first and the unrolled
+  preconditioning stores through it (`sw zero,0(a0)` in a plain slot, peaks a copy in t2); a short-lived
+  walker is rewritten to peaks (`sw zero,0(a3)`, two slots annulled). A copy's base a variable of its own
+  (`dst[-2] = ...; dst[-1] = ...; q = dst; *q++ = ...`) for the target's `move a0,v0`.
+- **A multiply through a register holding a constant is a variable at the tree level**
+  (FindBestTranscription): the target's `li s2,3; mult v1,a0,s2` (SOCOM 1's too) comes from `j * n + i`
+  with `int n = 3` -- a literal 3 is synthesised (`sll; addu`) and `i * 3 + i` folds to `i * 4`; the
+  compares still take the immediate (CSE).
+- **Open, diagnosed in place**: FindBestTranscription (0x390 against 0x398: the second loop's own register
+  for 3, the first row's base in a register, the acoustic term's `- 0.9` after its join where fold
+  distributes and folds it, the zeros' copy order). Not reached: CreateSecondPassTreeContext,
+  DoDurationModeling, ScoreTranscriptions, ExtendNodeWheel, ConstructBlock, PitchCombinerReset/
+  InitPitchCombiner, InitViterbi@nbestdp (their diagnoses stand).
+
+Hand-written in round 30c: `asr/shs.c` (SubHarmonicSummation_and_VUVDetermination and ProcessSHS_VUV closed:
+the object whole, 8 of 8), `asr/userword.c` (DoUserWordTraining new, SOCOM 1's body as it stands;
+FindBestTranscription OPEN: 16 of 19) -- 3 rows new to the map's byte-exact rows (3,252 bytes), no draft
+superseded; `src/lib/asr` 556 of 583 (553 of 581 before). No rows named (all had SOCOM 1's). casr.h types
++920/+924 (the trained transcription's out-parameters). No tool changed.
 
 **Round 14b: the "toolchain" opens were SCEA's shapes; LargeInt's core is assembly.**
 

@@ -14,17 +14,38 @@
 #include <iostream>
 
 #include "../zanim/zanim.h"
+#include "../zcamera/zcamera.h"
+#include "../zvid/zvid.h"
 #include "znode.h"
 
 /* the unit's matrix stack (0x44F0F0): __sinit_grid_clutter.cpp 0x401CF0 builds it after <iostream>'s
  * pair -- CStack(false), the owner byte cleared and nothing pushed, as grid_di.cpp's -- and registers
- * ~CStack 0x2D4FE0. CClutter::Render, CClutterAnimManager() and ClutterTick read it (not written yet).
+ * ~CStack 0x2D4FE0. CClutter::Render (written in the core lane's round 17), CClutterAnimManager() and
+ * ClutterTick read it.
  * SOCOM 1 calls it `stack`, as grid_di.cpp's: MW names a file static by its own name, and scdiff
  * qualifies an MW object's statics as NAME@UNIT (the GCC lane's round 25a), so the map's data row
  * is stack@grid_clutter, grid_di.cpp's the bare `stack` */
 static CStack stack(false);
 
 extern CSched_Manager zTaskScheduler;
+
+/* the render pipe (zrndr_pipe.cpp's CPipe, 0x720 bytes): only what a prop's draw reaches -- the
+ * camera, the node being drawn and the two draws */
+class CPipe {
+public:
+    void RenderMesh(zdb::CNode *node, zdb::CMesh *mesh, CMatrix *matrix, zdb::tag_ZVIS_FOV fov);
+    void RenderNode(zdb::CNode *node, zdb::tag_ZVIS_FOV fov);
+
+    unsigned char _0[0x628];
+    zdb::CCamera *m_camera;   // 0x628
+    zdb::CCell *m_cell;   // 0x62c
+    zdb::CNode *m_node;   // 0x630
+};
+
+extern CPipe thePipe;   // 0x4887C0
+
+/* a packed colour as a point (vis_data.cpp's, 0x3BA300) */
+CPnt3D ColConvTo3D(unsigned int col);
 
 namespace zdb {
 
@@ -45,6 +66,14 @@ inline void ClutterInsert(CClutterList *list, CClutterList::iterator pos, CClutt
 {
     list->std::__vector_pod<unsigned int, std::allocator<unsigned int> >::insert(
         (unsigned int *)pos.m_p, 1, (const unsigned int &)x);
+}
+
+/* the visuals' added colour set, by value (ours: the two Renders' -- the call's result in a local, copied
+ * as a block into the parameter, then member by member into the static, its two temporaries laid
+ * out as the target's) */
+inline void SetAddColor(CPnt3D c)
+{
+    CVisual::m_addColor = c;
 }
 
 /* a prop listed: the list's repel flag and farthest fade kept up, room made ten at a time, the prop
@@ -108,6 +137,82 @@ struct CClutterRelease {
             delete c;
     }
 };
+
+/* the cell's props drawn from the camera's place, the visuals' local lights off meanwhile: the
+ * effectors near the cell asked first when the list holds a repelling prop; a list split at its
+ * word at 0x14 (the flag at 0x19) draws one part a frame, alternating; the fading props sit first,
+ * so the walk stops at the first one past the list's farthest fade, or past its own -- the cell's
+ * distance from the camera (its middle at the camera's height, each of x and z short by the
+ * cell's half-diagonal, scaled by the camera's zoomed range) measured once (SOCOM 1's, 0x2190C0:
+ * SOCOM II reads the camera's world place, splits the list and scales by the zoom; written in the
+ * core lane's round 17). The camera declared after the walk's locals, the prop among them (the
+ * target numbers it last of the named locals: s1); the walk's start a nested ternary (each test's
+ * zero in its branch's delay slot); midDone set ahead of the effectors' test (its delay slot) */
+void CClutterList::Render(CCell *cell)
+{
+    if (!size())
+        return;
+    bool midDone = false;
+    bool testDist;
+    int i;
+    int n;
+    CClutter *c;
+    CCamera *cam = thePipe.m_camera;
+    bool lights = CVisual::m_applyLocalLights;
+
+    CVisual::m_applyLocalLights = false;
+    CPnt3D mid;
+    CPnt3D camPos;
+
+    camPos = cam->m_worldPos;
+    testDist = true;
+
+    if (m_ContainsRepelClutter) {
+        cell->GetMidPoint(&mid);
+        midDone = true;
+        CWorld::m_world->m_grid.m_ClutterAnimManager->TestCellMid(&mid, &camPos);
+    }
+    i = m_socom2_19 ? (m_socom2_18 ? m_socom2_14 : 0) : 0;
+    n = m_socom2_19 ? (m_socom2_18 ? size() : m_socom2_14) : size();
+    float distSq;
+
+    m_socom2_18 = !m_socom2_18;
+    for (; i < n; i++) {
+        c = (*this)[i];
+
+        if (c->m_bit0) {
+            if (testDist) {
+                if (!midDone)
+                    cell->GetMidPoint(&mid);
+                mid.y = camPos.y;
+                mid.Sub(&camPos, &mid);
+                float half = 0.707f * CWorld::m_world->m_grid.m_CellDim;
+
+                mid.x = fabsf(mid.x);
+                mid.z = fabsf(mid.z);
+                if (mid.x > half)
+                    mid.x -= half;
+                else
+                    mid.x = 0.0f;
+                if (mid.z > half)
+                    mid.z -= half;
+                else
+                    mid.z = 0.0f;
+                float len = mid.x * mid.x + mid.y * mid.y + mid.z * mid.z;
+
+                distSq = len * cam->m_ZoomedRangeScale;
+                testDist = false;
+                if (distSq > m_max_farFadeSq)
+                    break;
+            }
+            if (distSq > c->m_farFadeSq)
+                break;
+        }
+        c->Render(&camPos);
+    }
+    SetAddColor(CPnt3D(0.0f, 0.0f, 0.0f));
+    CVisual::m_applyLocalLights = lights;
+}
 
 /* every prop let go of (an MSL for_each, its class iterators in stack slots), the list emptied
  * (SOCOM 1's; SOCOM II clears its word at 0x14 too) */
@@ -196,6 +301,235 @@ CMatrix *CClutter::GetMatrix()
         return m;
     }
     return &m_matrix;
+}
+
+/* a point's squared length, through a reference (ours: CClutter::Render's distance -- the point a
+ * local whose address the Sub takes, read once through the constructor's `this` and once through
+ * this reference, so MW reads its fields off the frame, as the target does; read directly, it keeps
+ * the fields' addresses in saved registers, as SOCOM 1's build did) */
+inline float LenSq(const CPnt3D &p)
+{
+    return p.x * p.x + p.y * p.y + p.z * p.z;
+}
+
+/* the prop drawn, once a frame (the frame's low fourteen bits kept in its flag word): its animation
+ * ticked first in the rotation form (the node it hands back drawn), its region asked of the camera
+ * when it has one; faded out past m_fadeOutStartSq and gone at m_farFadeSq, and faded in from
+ * m_fadeInSq, by its squared distance from the point scaled by the camera's zoomed range -- not
+ * drawn under 0.008; the node's opacity lowered for the draw, its matrix pushed, its colour and
+ * light scale set, the mesh or the node drawn and everything put back (SOCOM 1's, 0x218A10: SOCOM
+ * II draws once a frame and scales the distance by the zoom; written in the core lane's round 17).
+ * The node declared first and set after the frame's test (numbered ahead of the frame, loaded
+ * after the test); the frame read as a word (a 64-bit read through an unsigned long loads with ld);
+ * the length a named float, so the scale's product takes it first; the flip a byte (andi), the
+ * bound negated in place (mov.s in the delay slot) */
+void CClutter::Render(CPnt3D *pos)
+{
+    CNode *node;
+    unsigned int frame = (unsigned int)zVid.frameNumber & 0x3fff;
+
+    if (frame == m_bits18)
+        return;
+    node = m_node;
+    if (!node)
+        return;
+    float scale = 1.0f;
+    CCamera *cam = thePipe.m_camera;
+
+    if (m_quat)
+        node = CWorld::m_world->m_grid.m_ClutterAnimManager->ClutterTick(this);
+    if (m_regionTest && !cam->CanSeeRegion(1 << m_region))
+        return;
+    if (m_bit0 || m_bit2) {
+        CPnt3D d(pos->x, pos->y, pos->z);
+
+        d.Sub(GetTranslate(), &d);
+        float len = LenSq(d);
+        float distSq = len * cam->m_ZoomedRangeScale;
+
+        if (m_bit0) {
+            if (distSq >= m_farFadeSq)
+                return;
+            if (distSq > m_fadeOutStartSq) {
+                scale = m_fadeOutScale * (m_farFadeSq - distSq);
+                if (scale < 0.008f)
+                    return;
+            }
+        }
+        if (m_bit2) {
+            unsigned char flip = m_bit12;
+            float in = m_fadeInSq;
+            float lim = in;
+
+            if (flip)
+                lim = -in;
+            if (distSq <= lim)
+                return;
+            if (distSq < m_fadeInEndSq) {
+                if (flip)
+                    scale *= m_fadeInScale * (in + distSq);
+                else
+                    scale *= 1.0f - m_fadeInScale * (m_fadeInEndSq - distSq);
+                if (scale < 0.008f)
+                    return;
+            }
+        }
+    }
+    float saved;
+
+    if (scale < 1.0f) {
+        saved = node->m_Opacity;
+        node->m_Opacity = scale;
+    }
+    thePipe.m_node = node;
+    stack.Multiply(GetMatrix(), true);
+    CPnt3D col = ColConvTo3D(m_5c);
+
+    SetAddColor(col);
+    CVisual::m_GlobalLightScale = m_scale_inverse;
+    if (node->m_hasMesh)
+        thePipe.RenderMesh(node, 0, 0, ZVIS_FOV_CLIP);
+    else
+        thePipe.RenderNode(node, ZVIS_FOV_CLIP);
+    m_bits18 = frame;
+    CVisual::m_GlobalLightScale = 1.0f;
+    stack.Pop();
+    if (scale < 1.0f)
+        node->m_Opacity = saved;
+}
+
+/* a point's length in x and z (ours) */
+inline float LengthXZ(const CPnt3D *p)
+{
+    return sqrtf(p->x * p->x + p->z * p->z);
+}
+
+/* a point's x and z made unit length, unless both are zero (ours: TickForce's two). The length
+ * through an inline of its own: its parameter is another variable, so the scaling reloads x where
+ * the length's load would be reused (the target's reload, and the nop padding the join) */
+inline void NormalizeXZ(CPnt3D *p)
+{
+    float len = LengthXZ(p);
+
+    if (len != 0.0f) {
+        float inv = 1.0f / len;
+
+        p->x *= inv;
+        p->z *= inv;
+    }
+}
+
+/* the prop pushed: a force over a hundredth in x and z whose share of the push (1 - a / b, times
+ * the prop's stiffness) reaches what the prop already holds turns the force toward the point's
+ * distance, doubled, onto the point -- the point, unit in x and z and scaled by what the stiffness
+ * leaves of the held push, onto the lean, which stays unit length -- and the push is held; a weaker
+ * one lets the held push relax by half the frame's time, to zero. The prop's rotation slerped (at
+ * most all the way, five times the frame's time) toward the lean tipped by the held push (or by the
+ * rest angle alone when none is held); its node handed back (SOCOM 1's, 0x218600: SOCOM II takes
+ * the square roots inline) */
+CNode *CClutterAnim::TickForce(CPnt3D *force, CPnt3D *pos, float a, float b)
+{
+    float len = sqrtf(force->x * force->x + force->z * force->z);
+
+    if (len > 0.01f) {
+        float push = (1.0f - a / b) * m_clutter->Stiffness();
+
+        if (push >= m_14) {
+            *force = *force * (sqrtf(pos->x * pos->x + pos->z * pos->z) / len) * 2.0f;
+            *pos += *force;
+            float left = 1.0f - m_14 / m_clutter->Stiffness();
+
+            NormalizeXZ(pos);
+            pos->Scale(left);
+            m_lean += *pos;
+            NormalizeXZ(&m_lean);
+            m_14 = push;
+        } else {
+            if (m_14 > 0.0f)
+                m_14 -= 0.5f * zVid.frameTime;
+            if (m_14 < 0.0f)
+                m_14 = 0.0f;
+        }
+    }
+    float ang = m_14 == 0.0f ? m_20 : m_14 + m_14 * m_20;
+    CClutter *c = m_clutter;
+    CQuat q;
+
+    q.MakeYXZRot(0.0f, m_lean.z * ang, -m_lean.x * ang);
+    float t = 5.0f * zVid.frameTime;
+
+    if (t > 1.0f)
+        t = 1.0f;
+    CQuat r;
+
+    ((CQuat *)c->m_matrix.m_matrix[1])->SlerpFaster(&q, t, &r);
+    *(CQuat *)c->m_matrix.m_matrix[1] = r;
+    return m_node;
+}
+
+/* an animation ticked: its wobble's clock run down, its swing timer stepped (the rest angle
+ * reversed each half second); with no push held the rest angle damped, and once the clock is out
+ * and the prop's lean all but gone (each of the rotation's x, z and y under 0.005) the animation
+ * is done -- false (ours: l_Tick's test, a bool through an inline as the target materialises it;
+ * the prop read ahead of the clock's test, into its branch's delay slot) */
+inline bool AnimTick(CClutterAnim *a, float dT)
+{
+    a->m_18 -= dT;
+    a->m_1c += dT;
+    if (a->m_1c > 0.5f) {
+        a->m_1c = 0.0f;
+        a->m_20 = -a->m_20;
+    }
+    if (a->m_14 < 0.0001f) {
+        a->m_20 *= 0.05f;
+        CClutter *c = a->m_clutter;
+
+        if (a->m_18 <= 0.0f) {
+            if (fabsf(c->m_matrix.m_matrix[1][0]) < 0.005f && fabsf(c->m_matrix.m_matrix[1][2]) < 0.005f &&
+                fabsf(c->m_matrix.m_matrix[1][1]) < 0.005f)
+                return false;
+        }
+    }
+    return true;
+}
+
+/* the animations ticked, each one done let go of by its prop, deleted and taken off the list; the
+ * effectors that bring no velocity of their own given one from their move since the last tick
+ * (SOCOM 1's, 0x217840; written in the core lane's round 17) */
+int CClutterAnimManager::l_Tick(float dT, void *data)
+{
+    std::list<CClutterAnim *>::iterator it = m_ClutterAnims.begin();
+
+    while (it != m_ClutterAnims.end()) {
+        CClutterAnim *anim = *it;
+
+        if (!AnimTick(anim, dT)) {
+            anim->m_clutter->m_anim = 0;
+            delete anim;
+            it = m_ClutterAnims.erase(it);
+        } else
+            ++it;
+    }
+
+    std::list<CClutterEffector *>::iterator i = m_ClutterEffectors.begin(), e = m_ClutterEffectors.end();
+
+    for (; i != e; ++i) {
+        CClutterEffector *f = *i;
+
+        if (!f->m_vel) {
+            f->m_18 = PntMinus(*f->m_pos, f->m_c);
+            f->m_18.Scale(1.0f / dT);
+            f->m_c = *f->m_pos;
+        }
+    }
+    return 0;
+}
+
+/* the clutter task: the world's manager ticked (SOCOM 1's) */
+int CClutterAnimManager::Tick(float dT, void *data)
+{
+    CWorld::m_world->m_grid.m_ClutterAnimManager->l_Tick(dT, data);
+    return 0;
 }
 
 /* the effectors let go of (SOCOM 1's) */
