@@ -3976,8 +3976,8 @@
 0x002B4760 0xC0 func_002B4760  # OVL1
 0x002B4820 0xB8 func_002B4820  # OVL1
 0x002B48E0 0xB8 GetUIString__11CNodeActionFv  # OVL1; by hand (the states lane, round 35, the HUD's round-39 lead): SOCOM 1's CNodeAction::GetUIString() -- CActionTxtrMachine::Add 0x2209C0 calls it where SOCOM 1's Add calls GetUIString(); the same switch over the action type (0 a door by its valve, 2, 7, 3, 4, 6, 5) returning SOCOM II's own name table 0x3DE628 ('CLOSE DOOR', 'OPEN DOOR', ...); byte-exact from fts_action.cpp
-0x002B49A0 0x30 func_002B49A0  # OVL1
-0x002B49D0 0x20 func_002B49D0  # OVL1
+0x002B49A0 0x30 Acquire__11CNodeActionFUi  # OVL1; the states' round 36: ours -- the action's user (0x34) set to the id passed when free or already it, true then; OVL2's 0x5F0180 calls it; fts_action.cpp's, byte-exact
+0x002B49D0 0x20 Release__11CNodeActionFUi  # OVL1; the states' round 36: ours -- the action's user (the word at 0x34) back to CEntity::invalidId when it is the id passed; CAiSAction::OnSignal 0x5F0470 calls it twice for its object; fts_action.cpp's, byte-exact
 0x002B49F0 0x148 __ct__11CNodeActionFPQ23zdb5CNodeP6CZAnimP6CValvePQ23zdb10CTexHandle  # OVL1; by hand (the states lane, round 16: SOCOM 1s constructor by its stores -- the zdb::CNodeEx table then CNodeActions, the anim vector at 4, node 0x14, valve 0x18, the texture 0x28, the anim pushed when given; byte-exact from fts_action.cpp)
 0x002B4B40 0x184 func_002B4B40  # OVL1
 0x002B4CD0 0xB0 GetTCMActions__11CNodeActionFPQ23std56vector<P11CNodeAction,Q23std25allocator<P11CNodeAction>>  # OVL1; ours (the states lane, round 35, the HUD's round-39 lead): every action of the list at 0x440C5C (CNodeAction::m_actions) with bit 2 of +0x3F set pushed onto the vector passed -- the bit Open 0x2B4F40 sets for the rdr tag 'tcm' (0x3F21C8), so the command menu's actions; the HUD's tcmSetNodeActions 0x236260 calls it; byte-exact from fts_action.cpp (a static member: it walks m_actions)
@@ -5686,14 +5686,14 @@
 0x00324B20 0x104 Open__8ParticleFv  # OVL1; s1:calls
 0x00324C30 0x34 Init__8ParticleFv  # OVL1; s1:align
 0x00324C70 0x13C DrawRange__8ParticleFff  # OVL1; s1:align
-0x00324DB0 0x2CC func_00324DB0  # OVL1
+0x00324DB0 0x2CC Draw__8ParticleFv  # OVL1; s1:calls by hand (the world lane round 18: SOCOM 1's CAlpha::Render calls Draw__8ParticleFv when the draw list is empty, as SOCOM II's Render calls this there, its only caller; 0x2CC against SOCOM 1's 0x148)
 0x00325080 0x28 bufferPtrCompare__8ParticleFRCPQ28Particle13BufferElementRCPQ28Particle13BufferElement  # OVL1; s1:order by hand (SOCOM 1's bufferPtrCompare, 0x2C there, between Draw and DrawFlush: the two elements' depths at 0x1C subtracted, the float's bits returned) -- the rdr lane
 0x003250B0 0xFC DrawFlush__8ParticleFv  # OVL1; s1:align
 0x003251B0 0x3CC Draw__Q28Particle13BufferElementFRA4_A4_f  # OVL1; s1:calls by hand (DrawFlush calls it for draw type 0 with the pipe camera's view matrix, as SOCOM 1's DrawFlush calls BufferElement::Draw; the first case block) -- the rdr lane
 0x00325580 0x73C DrawRotated__Q28Particle13BufferElementFRA4_A4_f  # OVL1; s1:calls by hand (DrawFlush calls it for draw type 1, as SOCOM 1's calls DrawRotated) -- the rdr lane
 0x00325CC0 0x68C DrawXZ__Q28Particle13BufferElementFRA4_A4_f  # OVL1; s1:calls by hand (DrawFlush calls it for draw type 2, as SOCOM 1's calls DrawXZ) -- the rdr lane
 0x00326350 0x6A4 DrawStreaked__Q28Particle13BufferElementFRA4_A4_f  # OVL1; s1:calls by hand (DrawFlush calls it for draw type 3, as SOCOM 1's calls DrawStreaked) -- the rdr lane
-0x00326A00 0x21C func_00326A00  # OVL1
+0x00326A00 0x21C DrawPrep__8ParticleFv  # OVL1; s1:calls by hand (the world lane round 18: SOCOM 1's CAlpha::Render calls DrawPrep__8ParticleFv first, its float kept in $f20 for the draw ranges, as SOCOM II's Render calls this, its only caller; 0x21C against SOCOM 1's 0x144)
 0x00326C20 0xC func_00326C20  # OVL1
 0x00326C30 0x310 func_00326C30  # OVL1
 0x00326F40 0x8 __ct__Q28Particle13BufferElementFv  # OVL1; the world lane r10: SOCOM 1's (its __sinit_zparticle_buf.cpp constructs Particle::buffer through __construct_array with the element's constructor, as SOCOM II's 0x402BB0 passes this) -- byte-exact from source
@@ -7325,7 +7325,7 @@
 0x0038FFB0 0x10C init<PC7CSkbKey>__Q23std52__vector_imp<7CSkbKey,Q23std19allocator<7CSkbKey>,0>FPC7CSkbKeyPC7CSkbKeyQ23std20forward_iterator_tag_v  # OVL1; by hand (the UI lane, round 12: vector<CSkbKey>'s range init, zui_skb.cpp's tail byte-exact)
 0x003900C0 0x2D0 do_assign<PC7CSkbKey>__Q23std52__vector_imp<7CSkbKey,Q23std19allocator<7CSkbKey>,0>FPC7CSkbKeyPC7CSkbKeyQ23std20forward_iterator_tag_v  # OVL1; by hand (the UI lane, round 12: vector<CSkbKey>'s range assign, MSL's do_assign, zui_skb.cpp's tail byte-exact)
 0x00390390 0x8 @128@__dt__12CBmpWithNodeFv  # OVL1; s1:order (SOCOM 1's zui_skb.cpp ends on the same thunk: j ~CBmpWithNode, this - 128, the UIVarMixin's) -- zui_skb.cpp's last function; the UI lane round 9: out of zui_skb.cpp's unnamed namespace with the keyboard's classes, now zui_skb.h's (SOCOM II's RTTI string is plain "CBmpWithNode" where SOCOM 1's is "@unnamed@zui_skb_cpp@::CBmpWithNode"; the display unit takes zui_skb.cpp's CBmpWithNode copies, 0x398AA0/0x398A40/0x403800; ~CSkbKeyProps 0x394370 is the Korean unit's, called from here): byte-identical code under the new name
-0x003903A0 0x2E4 func_003903A0  # OVL1
+0x003903A0 0x2E4 Next__9CSkbSplitFv  # OVL1; the UI lane round 25: ours, by its body (zui_hangul.cpp: CSkbSplit's recursive stepper to the next split of the same total -- the rest's split stepped by a local CSkbSplit at sp+80 calling this row, copied back, or the first part grown with the others reset to one and the rest last through the reverse iterator; the parts cleared after the last; written, OPEN: one this-test short, the level)
 0x00390690 0x88 func_00390690  # OVL1
 0x00390720 0xC AddPiece__10CSkbPiecesFv  # OVL1; the UI lane round 10: ours (zui_hangul.cpp: resize(size() + 1) through 0x392670)
 0x00390730 0x8 func_00390730  # OVL1
@@ -11099,23 +11099,23 @@
 0x005C97A0 0x30 push_back__Q23std56list<PQ27CDiPool3dir,Q23std26allocator<PQ27CDiPool3dir>>FRCPQ27CDiPool3dir  # OVL2; by hand (the kit lane, round 25): the request list's push_back (include/list's: the base's insert at the sentinel), out of line -- target_post_tick's cut of CDiPool::PostTick calls it (and 0x5CC120); seal_sensors.cpp's copy, the first
 0x005C97D0 0x58 func_005C97D0  # OVL2
 0x005C9830 0x74 func_005C9830  # OVL2
-0x005C98B0 0x7C func_005C98B0  # OVL2
+0x005C98B0 0x7C SensorTick__11CSealCtrlAiFf  # OVL2; s1:callers by hand (the kit lane, round 39): SOCOM 1's CSealCtrlAi::SensorTick, the base's caller (0x5C9B30) as SOCOM 1's is -- written in seal_sensors.cpp (byte-exact, the draft superseded)
 0x005C9930 0x1CC EnemyCallout__11CSealCtrlAiFP7CEntityP7CEntity  # OVL2; by hand (the kit lane, round 35): SOCOM 1's EnemyCallout__11CSealCtrlAiFPC7CTargetP7CEntity by its body (the same squad Notify, is_moving at 800, the conjugated quaternion's Apply, the 0.15 high test, get_clock_direction + base, + 12 when high, PlayAiSound through slot +0x24) after CSealCtrl::UpdateViewCone as in SOCOM 1's seal_sensors.cpp; SOCOM II passes the entity (OnSetTargetVisible 0x5CA470 hands it target.m_ent and ftsGetPlayer()) and keeps a squad bit; byte-exact from seal_sensors.cpp
 0x005C9B00 0x8 NotifyTargetDown__9CSealCtrlFP10CZSealBody  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x005C9B10 0x20 NotifyTargetDown__11CSealCtrlAiFP10CZSealBody  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x005C9B30 0x63C func_005C9B30  # OVL2
-0x005CA170 0x2E4 func_005CA170  # OVL2
+0x005C9B30 0x63C SensorTick__9CSealCtrlFf  # OVL2; s1:callers by hand (the kit lane, round 39): SOCOM 1's CSealCtrl::SensorTick -- called by CSealCtrl::PostTick and by CSealCtrlAi's SensorTick (0x5C98B0), the same two callers SOCOM 1's has, in SOCOM 1's seal_sensors.cpp order (after NotifyTargetDown); unwritten
+0x005CA170 0x2E4 OnSetTargetVisible__9CSealCtrlFR7CTargetbPQ23zdb11DiIntersect  # OVL2; s1:vtable by hand (the kit lane, round 39): slot +0xAC of __vt__9CSealCtrl (and of CRemoteCtrl's and CSealCtrlSquirm's, which inherit it) -- zseal.h's OnSetTargetVisible slot, before SetTarget (+0xB0, 0x5CA460) as SOCOM 1's is; unwritten
 0x005CA460 0x8 SetTarget__9CSealCtrlFP7CTarget  # OVL2; s1:vtable (slot 0xB0, jr ra; nop as SOCOM 1's) -- the SEAL lane
-0x005CA470 0x580 func_005CA470  # OVL2
-0x005CA9F0 0x210 func_005CA9F0  # OVL2
+0x005CA470 0x580 OnSetTargetVisible__11CSealCtrlAiFR7CTargetbPQ23zdb11DiIntersect  # OVL2; s1:vtable by hand (the kit lane, round 39): slot +0xAC of __vt__11CSealCtrlAi, CSealCtrlAi's override of zseal.h's OnSetTargetVisible, after SetTarget as SOCOM 1's is; unwritten
+0x005CA9F0 0x210 SensorPreTick__9CSealCtrlFf  # OVL2; s1:order by hand (the kit lane, round 39): SOCOM 1's CSealCtrl::SensorPreTick -- CSealCtrl::PreTick calls it as SOCOM 1's PreTick does, the same target walk (live targets within the view range squared, the first beyond it ending the walk, _GetTargetPerception asked, the request dropped and OnSetTargetVisible(t, false, 0) through slot +0xAC), SOCOM 1's order between SetTarget and the AI's OnSetTargetVisible; SOCOM II sets the sensing record, works out an unused point ahead and fades the visibility by -0.15 (0x6509E0) where SOCOM 1 saturated a rise
 0x005CAC00 0x848 func_005CAC00  # OVL2
 0x005CB450 0x1D4 func_005CB450  # OVL2
 0x005CB630 0x234 func_005CB630  # OVL2
 0x005CB870 0x1AC func_005CB870  # OVL2
-0x005CBA20 0x6AC func_005CBA20  # OVL2
+0x005CBA20 0x6AC SensorPreTick__11CSealCtrlAiFf  # OVL2; s1:callers by hand (the kit lane, round 39): SOCOM 1's CSealCtrlAi::SensorPreTick -- CSealCtrlAi::PreTick calls it as SOCOM 1's does, it calls EventTick (0x5FAAE0) as SOCOM 1's does, sets the sensing record and fades unperceived targets by _visDecay as CSealCtrl::SensorPreTick (0x5CA9F0) does; unwritten
 0x005CC0D0 0x30 func_005CC0D0  # OVL2
 0x005CC100 0x1C func_005CC100  # OVL2
-0x005CC120 0x4D0 func_005CC120  # OVL2
+0x005CC120 0x4D0 _GetTargetPerception__9CSealCtrlFR7CTarget  # OVL2; s1:callee by hand (the kit lane, round 39): SOCOM 1's CSealCtrl::_GetTargetPerception(CTarget &) -- both SensorPreTicks call it where SOCOM 1's SensorPreTick does (after the view-range test, the bool tested, the target faded when false), and it sits last before CloseDiPool's group as SOCOM 1's does; it reads the sensing record's eye (_sensing, 0x66B7A0)
 0x005CC5F0 0xC4 CloseDiPool__11CSealCtrlAiFv  # OVL2; s1:calls by hand (the kit lane, round 25): SOCOM 1's ReleaseDatabaseHandles (two 8-byte memsets, then CloseDiPool) is SOCOM II's 0x574BD0 (the memsets, a new call, then 0x5CC5F0, then CAiGroup::DeleteAll); the same walk -- the used list's requests reset onto the free list, the used list cleared, the free list's requests deleted -- in SOCOM 1's order before OpenDiPool and CleanupDiPool
 0x005CC6C0 0xA4 func_005CC6C0  # OVL2; by hand (the kit lane, round 25; the names ours): the free list (0x44D5FC) emptied -- each request deleted (for_each over an inline deleter: the first iterator in the frame, copied in through $f0), then clear(); CloseDiPool 0x5CC5F0 calls it last, where SOCOM 1's CloseDiPool did it inline; ovl-copy: DeleteAll__Q27CDiPool8CDirListFv (the kit lane, round 26: the pool's classes settled with the game states' -- the free list at +0x1C is CDiPool::CDirList, an inline member whose OVL1 copy 0x2CD9F0 has the same words; this OVL2 copy follows its first caller CloseDiPool, byte-exact from seal_sensors.cpp)
 0x005CC770 0x38 clear__Q23std42__list_deleter<PCv,Q23std14allocator<PCv>>Fv  # OVL2; the same words as Clear__7CGRouteFv (0x2d1190) bar the link's addresses (tools/ovlcopies.py) -- identical code, not proven the same instance (template instances for different types and look-alike accessors share bodies); by hand (the kit lane, round 25): the pointer lists' clear() (erase(begin(), end()) with both inlined), out of line -- CloseDiPool's inlined Close calls it on the used list
@@ -11567,8 +11567,8 @@
 0x005F8C20 0x18 func_005F8C20  # OVL2
 0x005F8C40 0x100 remove_copy_if<Q33std46list<P8CAiState,Q23std21allocator<P8CAiState>>19generic_iterator<0>,Q33std46list<P8CAiState,Q23std21allocator<P8CAiState>>19generic_iterator<0>,18CAiStateDeleteKind>__3stdFQ33std46list<P8CAiState,Q23std21allocator<P8CAiState>>19generic_iterator<0>Q33std46list<P8CAiState,Q23std21allocator<P8CAiState>>19generic_iterator<0>Q33std46list<P8CAiState,Q23std21allocator<P8CAiState>>19generic_iterator<0>18CAiStateDeleteKind_Q33std46list<P8CAiState,Q23std21allocator<P8CAiState>>19generic_iterator<0>  # OVL2; by hand (the kit lane, round 5): std::remove_copy_if over the state stack with CAiStateDeleteKind (remove_if's, 0x5F8AF0), the functor inlined
 0x005F8D40 0x884 func_005F8D40  # OVL2
-0x005F95D0 0x1504 func_005F95D0  # OVL2
-0x005FAAE0 0x218 func_005FAAE0  # OVL2
+0x005F95D0 0x1504 HandleEvent__11CSealCtrlAiFPC8CAiEventf  # OVL2; s1:callers by hand (the kit lane, round 39): SOCOM 1's CSealCtrlAi::HandleEvent(const CAiEvent *) -- EventTick (0x5FAAE0) calls it in both walks as SOCOM 1's does, and it sits before EventTick as SOCOM 1's; SOCOM II passes the walk's distance squared (the iterator's +0x18) in f12, so the float added (an assumption of the signature's last parameter); unwritten
+0x005FAAE0 0x218 EventTick__11CSealCtrlAiFf  # OVL2; s1:callers by hand (the kit lane, round 39): SOCOM 1's CSealCtrlAi::EventTick -- called by CSealCtrlAi::PreTick and the AI's SensorPreTick (0x5CBA20), SOCOM 1's two callers; the same callees in order (CAiEvent::Tick, two GetFirstEvent/GetNextEvent walks handing each event to HandleEvent, SetLookPosW at the end) and SOCOM 1's seal_aievent.cpp place (after HandleEvent, before SetAiEvent); unwritten
 0x005FAD00 0x4C SetAiEvent__11CSealCtrlAiFQ28CAiEvent5EVENTfPC6CPnt3D  # OVL2; s1:order by hand (the kit lane, round 14): SOCOM 1's SetAiEvent (0x2DEFF0), the same words with the event 0x1A8 further on (0x628), between EventTick and CAiDodge::Destroy as in SOCOM 1's seal_aievent.cpp
 0x005FAD50 0x98 Destroy__8CAiDodgeFv  # OVL2; s1:order by hand (the kit lane, round 13): SOCOM 1's CAiDodge::Destroy (0x2DF040), after SetAiEvent as there (0x5FAD00 is SOCOM 1's SetAiEvent, the same words with the event 0x1A8 on) -- the same size test, front, erase and delete over m_list (0x44D648)
 0x005FADF0 0x78 __dt__10CAiSFollowFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
@@ -13357,7 +13357,7 @@
 0x00668BE0 0x30 func_00668BE0  # OVL2 data area; a static initialiser; s1~ node_util.cpp (names 0.53); the same words as __sinit_node_util.cpp (0x402960) bar the link's addresses (tools/ovlcopies.py) -- identical code, not proven the same instance (template instances for different types and look-alike accessors share bodies)
 0x00668C10 0x194 func_00668C10  # OVL2 data area; a static initialiser; s1~ seal_control.cpp (shape 0.20, a hint)
 0x00668DB0 0x94 __sinit_seal_kit.cpp  # OVL2 data area; a static initialiser; s1~ zsnd_csndinstance.cpp (shape 0.49, a hint); a static initialiser: seal_kit.cpp's (the kit lane's round 11: the same construct-array call as SOCOM 1's initialiser -- the iostream init objects, the 30 saved fire modes at 0x66B580 through their constructor 0x5C9230, then two zeroed words)
-0x00668E50 0xE0 func_00668E50  # OVL2 data area; a static initialiser
+0x00668E50 0xE0 __sinit_seal_sensors.cpp  # OVL2 data area; a static initialiser; s1:unit by hand (the kit lane, round 39): SOCOM 1's __sinit_seal_sensors.cpp -- <iostream>'s two objects, then the four debug colours _colorViewDir, _colorEntVisible, _colorEntNoBlock, _colorPlayerNoSee in SOCOM 1's order and SOCOM II's sensing record _sensing (0x66B7A0); the ctors table's entry after seal_kit.cpp's initialiser (0x668DB0), as SOCOM 1's units link
 0x00668F30 0x24 func_00668F30  # OVL2 data area; a static initialiser
 0x00668F60 0x50 func_00668F60  # OVL2 data area; a static initialiser; s1~ zwep_global.cpp (shape 0.48, a hint)
 0x00668FB0 0x110 func_00668FB0  # OVL2 data area; a static initialiser

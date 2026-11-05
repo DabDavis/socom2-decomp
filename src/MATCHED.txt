@@ -3588,8 +3588,8 @@
 0x002B4760 func_002B4760
 0x002B4820 func_002B4820
 0x002B48E0 GetUIString__11CNodeActionFv
-0x002B49A0 func_002B49A0
-0x002B49D0 func_002B49D0
+0x002B49A0 Acquire__11CNodeActionFUi
+0x002B49D0 Release__11CNodeActionFUi
 0x002B49F0 __ct__11CNodeActionFPQ23zdb5CNodeP6CZAnimP6CValvePQ23zdb10CTexHandle
 0x002B4B40 func_002B4B40
 0x002B4CD0 GetTCMActions__11CNodeActionFPQ23std56vector<P11CNodeAction,Q23std25allocator<P11CNodeAction>>
@@ -3619,6 +3619,7 @@
 0x002B7C90 func_002B7C90
 0x002B7CF0 func_002B7CF0
 0x002B7D60 ftsNetworkPlayerInit__Fv
+0x002B7EE0 func_002B7EE0
 0x002B8390 DMEDisconnectFromGameServer__Fv
 0x002B83E0 DMEJoinGameServer__Fv
 0x002B8580 DMEConnectToGameServer__Fv
@@ -5405,6 +5406,7 @@
 0x00336A10 PushNodeOpacity__5CPipeFPQ23zdb5CNode
 0x00336A60 RenderUiNodeRecursive__5CPipeFPQ23zdb5CNode
 0x00336C10 RenderUiNode__5CPipeFPQ23zdb5CNode
+0x00336CB0 Render__Q25CPipe6CAlphaFv
 0x003371B0 Add__Q25CPipe6CAlphaFPQ23zdb5CNodePQ23zdb5CNodePQ23zdb7CVisualQ23zdb12tag_ZVIS_FOVf
 0x003373B0 AddLine__Q25CPipe6CAlphaFP6CPnt4DP6CPnt4DP6CPnt4DP6CPnt4D
 0x003378A0 __dt__Q25CPipe6CAlphaFv
@@ -5561,6 +5563,7 @@
 0x00341A00 func_00341A00
 0x00341A20 func_00341A20
 0x00341A30 OnListenerDeath__4CSndFv
+0x00341A60 PostTick__4CSndFfPv
 0x00341F10 UnloadAllSounds__4CSndFv
 0x00342090 __dt__Q23std40vector<P4CSnd,Q23std17allocator<P4CSnd>>Fv
 0x00342100 swap__Q23std40vector<P4CSnd,Q23std17allocator<P4CSnd>>FRQ23std40vector<P4CSnd,Q23std17allocator<P4CSnd>>
@@ -5587,6 +5590,7 @@
 0x00343DD0 LoadBank__4CSndFPCc
 0x00343F90 AddNewCSnd__4CSndFP4CSnd
 0x003443C0 CopyUpper__FPCcPci
+0x00344450 func_00344450
 0x003448D0 func_003448D0
 0x003448E0 func_003448E0
 0x00344910 func_00344910
@@ -6939,6 +6943,7 @@
 0x003A2E80 find<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>>__Q23std531__tree<Q23std88pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,11OPTION_INFO>,Q33std285map<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,11OPTION_INFO,Q23std73less<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>>,Q23std107allocator<Q23std88pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,11OPTION_INFO>>>13value_compare,Q23std107allocator<Q23std88pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,11OPTION_INFO>>>FRCQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>_Q33std531__tree<Q23std88pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,11OPTION_INFO>,Q33std285map<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,11OPTION_INFO,Q23std73less<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>>,Q23std107allocator<Q23std88pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,11OPTION_INFO>>>13value_compare,Q23std107allocator<Q23std88pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,11OPTION_INFO>>>8iterator
 0x003A2F40 __ct__Q23std531__tree<Q23std88pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,11OPTION_INFO>,Q33std285map<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,11OPTION_INFO,Q23std73less<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>>,Q23std107allocator<Q23std88pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,11OPTION_INFO>>>13value_compare,Q23std107allocator<Q23std88pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,11OPTION_INFO>>>FRCQ33std285map<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,11OPTION_INFO,Q23std73less<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>>,Q23std107allocator<Q23std88pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,11OPTION_INFO>>>13value_compareRCQ23std107allocator<Q23std88pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,11OPTION_INFO>>
 0x003A2F60 insert_node_at__Q23std531__tree<Q23std88pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,11OPTION_INFO>,Q33std285map<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,11OPTION_INFO,Q23std73less<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>>,Q23std107allocator<Q23std88pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,11OPTION_INFO>>>13value_compare,Q23std107allocator<Q23std88pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,11OPTION_INFO>>>FPQ33std19__red_black_tree<1>9node_basebbRCQ23std88pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,11OPTION_INFO>
+0x003A3100 Find__13CStringTablesFPCcPCc
 0x003A32F0 Find__13CStringTablesFiPCc
 0x003A3490 Reload__13CStringTablesF8LANGUAGE
 0x003A36C0 GetString__13CStringTablesFiPCc
@@ -6947,6 +6952,7 @@
 0x003A3900 Load__13CStringTablesFPCc8LANGUAGE
 0x003A3BC0 __ct__Q23std48vector<P8LOCENTRY,Q23std21allocator<P8LOCENTRY>>Fv
 0x003A40E0 LanguageFromName__FPCc
+0x003A41F0 Find__9CLocTableFPCc
 0x003A43A0 Find__9CLocTableFi
 0x003A4460 GetLanguage__Fv
 0x003A44B0 SetLanguage__F8LANGUAGE
@@ -8989,6 +8995,7 @@
 0x00543B40 OpenHeartbeatSounds__10CZSealBodyFv
 0x00543B90 func_00543B90
 0x00543D40 func_00543D40
+0x00543D50 func_00543D50
 0x00544200 func_00544200
 0x00544210 SetNetLife__10CZSealBodyFUc
 0x005442C0 NetworkPlayerCreate__10CZSealBodyFv
@@ -9048,6 +9055,7 @@
 0x00547700 _rethrow_grenade__FP6CValvePv
 0x00547780 ResetToInitialState__10CZSealBodyFv
 0x005477A0 SetHealth__10CZSealBodyFf15SEAL_DEATH_TYPE
+0x00547860 func_00547860
 0x00547A90 func_00547A90
 0x00547AA0 func_00547AA0
 0x00548050 func_00548050
@@ -9331,6 +9339,7 @@
 0x00577700 AnimPop__9CSealAnimFv
 0x00577DF0 func_00577DF0
 0x00577E40 IsCurrentBlend__10CZSealBodyCF8AnimType
+0x00577EA0 func_00577EA0
 0x005780E0 func_005780E0
 0x00578110 func_00578110
 0x00578150 AdrenalineIncr__10CZSealBodyFf
@@ -9363,6 +9372,7 @@
 0x0057DFE0 func_0057DFE0
 0x0057E050 func_0057E050
 0x0057E130 func_0057E130
+0x0057E540 func_0057E540
 0x0057ED10 func_0057ED10
 0x0057EE00 DropBody__10CZSealBodyFv
 0x0057EFE0 OKToStand__FP10CZSealBody10SEAL_STATE
@@ -9378,6 +9388,7 @@
 0x005802B0 func_005802B0
 0x00580360 func_00580360
 0x005804E0 func_005804E0
+0x005805B0 func_005805B0
 0x00580A80 func_00580A80
 0x00581110 BlendedClimb__10CZSealBodyFf
 0x005812C0 Hang_0__10CZSealBodyFii
@@ -9454,6 +9465,7 @@
 0x0058C9E0 func_0058C9E0
 0x0058CA60 func_0058CA60
 0x0058CB30 func_0058CB30
+0x0058CC30 func_0058CC30
 0x0058CE60 func_0058CE60
 0x0058CE70 func_0058CE70
 0x0058CEF0 func_0058CEF0
@@ -9486,6 +9498,7 @@
 0x0058E950 func_0058E950
 0x0058EB00 func_0058EB00
 0x0058ED60 func_0058ED60
+0x0058EF80 func_0058EF80
 0x0058F190 func_0058F190
 0x0058F6E0 func_0058F6E0
 0x0058F8A0 func_0058F8A0
@@ -9544,11 +9557,13 @@
 0x005978A0 PlayAiSound__9CSealCtrlF15CHARACTER_SOUNDfi
 0x005979A0 OnDeath__9CSealCtrlFv
 0x00597B00 OnSetHealth__9CSealCtrlFff
+0x00597C00 OnStunDamage__9CSealCtrlF9STUN_TYPEfPC6CPnt3D
 0x00597E40 OnWeaponHit__9CSealCtrlFPQ23zdb15IntersectStructP12CZProjectile
 0x00597E80 Initalize__9CSealCtrlFv
 0x00597EB0 OnMissionEnd__9CSealCtrlFv
 0x00597F50 OnMissionStart__9CSealCtrlFv
 0x00597FF0 OnRecycleEntity__9CSealCtrlFP7CEntity
+0x00598000 OnWeaponEvent__9CSealCtrlFP12CZProjectileUiPv
 0x00598220 __dt__9CSealCtrlFv
 0x00598840 func_00598840
 0x005994A0 DoRespawn__10CZSealBodyFv
@@ -9577,6 +9592,7 @@
 0x0059ABC0 func_0059ABC0
 0x0059AC60 func_0059AC60
 0x0059ACD0 GetSeal__10CZSealBodyFPQ23zdb5CNode
+0x0059B870 func_0059B870
 0x0059BA80 Load__17CharacterDynamicsFRC8CRdrFile
 0x0059CF10 insert__Q23std108__vector_imp<Q217CharacterDynamics13CCameraParams,Q23std47allocator<Q217CharacterDynamics13CCameraParams>,0>FPQ217CharacterDynamics13CCameraParamsUiRCQ217CharacterDynamics13CCameraParams
 0x0059D490 reserve__Q23std108__vector_imp<Q217CharacterDynamics13CCameraParams,Q23std47allocator<Q217CharacterDynamics13CCameraParams>,0>FUi
@@ -9590,6 +9606,7 @@
 0x0059DA60 CanClimbLadder__10CZSealBodyFv
 0x0059DA70 HandleBombDefuse__10CZSealBodyFv
 0x0059DA80 AttemptBombDefuse__10CZSealBodyFv
+0x0059DAB0 CreateMPBombPickup__10CZSealBodyFPC6CPnt3Db
 0x0059DCE0 func_0059DCE0
 0x0059DD30 DropMPBomb__10CZSealBodyFv
 0x0059DDB0 DropAllItems__10CZSealBodyFv
@@ -9604,6 +9621,9 @@
 0x0059F610 func_0059F610
 0x0059F6F0 func_0059F6F0
 0x0059FD50 DropAmmo__10CZSealBodyFi
+0x005A0040 func_005A0040
+0x005A0700 FindRandomDeathAnim__10CZSealBodyF15DAMAGE_LOCATIONPb
+0x005A0950 func_005A0950
 0x005A0B60 func_005A0B60
 0x005A0BB0 func_005A0BB0
 0x005A0C00 func_005A0C00
@@ -9735,6 +9755,7 @@
 0x005B8260 OnWeaponHit__7CSealExFPQ23zdb5CNodePQ23zdb15IntersectStructP12CZProjectile
 0x005B8270 TurnSetup__10CZSealBodyFi
 0x005B82D0 func_005B82D0
+0x005B85A0 ShowProjectile__5CZKitFv
 0x005B8630 GetFireClassIndex__5CZKitFQ25CZKit10FIRE_CLASS
 0x005B8760 GetCurItemFireClass__5CZKitFv
 0x005B8820 GetItemFireClass__5CZKitF10EQUIP_ITEM
@@ -9875,11 +9896,12 @@
 0x005C97A0 push_back__Q23std56list<PQ27CDiPool3dir,Q23std26allocator<PQ27CDiPool3dir>>FRCPQ27CDiPool3dir
 0x005C97D0 func_005C97D0
 0x005C9830 func_005C9830
-0x005C98B0 func_005C98B0
+0x005C98B0 SensorTick__11CSealCtrlAiFf
 0x005C9930 EnemyCallout__11CSealCtrlAiFP7CEntityP7CEntity
 0x005C9B00 NotifyTargetDown__9CSealCtrlFP10CZSealBody
 0x005C9B10 NotifyTargetDown__11CSealCtrlAiFP10CZSealBody
 0x005CA460 SetTarget__9CSealCtrlFP7CTarget
+0x005CA9F0 SensorPreTick__9CSealCtrlFf
 0x005CB870 func_005CB870
 0x005CC0D0 func_005CC0D0
 0x005CC100 func_005CC100
@@ -11825,4 +11847,5 @@
 0x006687E0 __sinit_seal_ai.cpp
 0x00668940 __sinit_seal_body.cpp
 0x00668DB0 __sinit_seal_kit.cpp
+0x00668E50 __sinit_seal_sensors.cpp
 0x006690C0 __sinit_seal_handsig.cpp

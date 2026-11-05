@@ -168,6 +168,9 @@ public:
     static bool PostTick(float dT, void *data);
     /* a sound by its name (zsnd.h's; CMenuState::Init's selection sound) */
     static void *GetSoundByName(const char *name);
+    /* a sounds file's records under a bank's name loaded (zsnd.h's, SOCOM 1's; 0x344090: CMenuState::
+     * Init's three banks) */
+    static int LoadSounds(const char *file, const char *bank);
 };
 
 /* the mission's texture buffers: a vector of them (zdb::CTexManager::m_texmanager's) */
