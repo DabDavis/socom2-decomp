@@ -298,8 +298,8 @@ void CEntity::UpdateTargetList(bool b)
  * built once into a local and handed to remove and to erase, the new end a local -- CWorld::
  * DeleteLightMap's slots exactly (the MSL headers round 8: include/algorithm's remove joins its two
  * results through one copy, the class erase copies its iterators into its parameters).
- * remove_copy's copy (0x2A1210) is 8 bytes long: the target stores the m_ent its compare loaded, MW
- * reloads it (the compare taking the entity by reference or by value alike) */
+ * remove_copy's copy (0x2A1210) stores the m_ent its compare loaded through zentity.h's non-const
+ * operator== (the const one reloads it: 8 bytes long) */
 void CTargetList::RemoveTarget(CEntity *e)
 {
     iterator l = end();
