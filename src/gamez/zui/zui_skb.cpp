@@ -857,6 +857,72 @@ void CSoftKeyboard::AddKeyProps(const CSkbKey &key, const CSkbRect &r)
 zdb::CNode *SkbLoadBitmap(CBmpWithNode *bmp, zdb::CNode *parent, int w, int h, const char *tex,
                           zdb::CTextureRelocMgr *mgr);
 
+/* the display unit's node for a keyboard, made by its name under the display (0x3978D0), and its
+ * caret texture's name (0x397890) -- not written yet */
+extern "C" zdb::CNode *func_003978D0(const CSaferStr &name);
+extern "C" const char *func_00397890();
+/* the mission's fonts rdr (zanim_menu.cpp's, SOCOM 1's) */
+_zrdr *FetchMissionFontsRdr();
+
+/* the keyboard prepared for display (0x38BAC0: SOCOM 1's PrepForDisplay, by its calls -- SOCOM II's
+ * moves the node, the backgrounds' textures, the piece lists' textures and the caps' fonts here,
+ * the key bitmaps into PrepKeyBitmaps): its node made, its two backgrounds' and every background
+ * piece's texture prepared, the caps' fonts loaded, the four special key bitmaps loaded, rectangles
+ * 3 and 4's bitmaps loaded and placed, and every key's props prepared.
+ * OPEN, 0x350 of 0x374 (written round 27): every call and its arguments the target's; off -- (1) the
+ * piece lists' loop: the target keeps &m_lists[i] itself as the induction (s0 from this+0x184,
+ * +12 a pass) and enters the inner loop at its bottom test through a preheader after the return
+ * (the UI's round-22 nested-accessor rule), here the base steps and the entry is threaded (the
+ * pieces through m_sources[i] in the body, a list pointer: no change); (2) the caps' font test: the
+ * target computes the short-form test once as a stored, negated, narrowed bool (`sltu; xori 1;
+ * andi 0xff`) for both size() and c_str() -- include/string's open LastMessage shape (its size()
+ * tests is_long(), c_str() !is_long()), the MSL lane's */
+void CSoftKeyboard::PrepForDisplay(zdb::CTextureRelocMgr *mgr, C2DFont *font)
+{
+    m_node = func_003978D0(m_name);
+    m_17c = PrepTexture(m_background.c_str(), mgr);
+    m_180 = PrepTexture(m_shiftBackground.c_str(), mgr);
+    for (int i = 0; i < 4; i++) {
+        std::vector<zdb::CTexHandle *> &list = m_texLists.m_lists[i];
+
+        list.clear();
+        CSkbBgPieces &pieces = m_sources[(unsigned char)i];
+        int n = pieces.size();
+
+        for (int j = 0; j < n; j++)
+            list.push_back(PrepTexture(pieces[j].m_texture.c_str(), mgr));
+    }
+    for (int k = 0; k < 3; k++) {
+        unsigned char c = k;
+        CSaferStr &name = m_caps[c].m_texture;
+
+        if (name.size())
+            m_fonts.m_fonts[c].Load(FetchMissionFontsRdr(), name.c_str());
+    }
+    PrepKeyBitmaps(&m_1c0, &m_270, 1, "SkbRecipState0.tif", "SkbRecipState1.tif", mgr);
+    PrepKeyBitmaps(&m_320, &m_3d0, 11, "JapWideKeyCap.tif", "JapNarrowKeyCap.tif", mgr);
+    CSkbRect &r3 = m_rects[3];
+
+    if (r3.m_size[0]) {
+        zdb::CNode *node = SkbLoadBitmap(&m_480, m_node, r3.m_size[0], r3.m_size[1], func_00397890(), mgr);
+
+        m_480.Slot10(node);
+        m_480.m_node->SetPosition((float)r3.m_pos[0], (float)r3.m_pos[1], 0.0f);
+    }
+    CSkbRect &r4 = m_rects[4];
+
+    if (r4.m_size[0]) {
+        zdb::CNode *node = SkbLoadBitmap(&m_530, m_node, r4.m_size[0], r4.m_size[1], 0, mgr);
+
+        m_530.Slot10(node);
+        m_530.m_node->SetPosition((float)r4.m_pos[0], (float)r4.m_pos[1], 0.0f);
+    }
+    CSkbKeyMap::iterator it;
+
+    for (it = m_keyProps.begin(); it != m_keyProps.end(); ++it)
+        (*it).second->PrepForDisplay(mgr, font, m_node);
+}
+
 /* two bitmaps of a key (row 1, the code given) loaded and placed, when the keyboard maps it: each
  * under the keyboard's node at the key's place and size, its node handed to it (0x38B8F0; the name
  * ours: PrepForDisplay's recipient key 1, its two states, and key 11, its wide and narrow caps).
