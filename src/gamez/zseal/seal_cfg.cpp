@@ -68,6 +68,13 @@ extern int data_003DF160;
 extern int data_003DF168;
 }
 
+/* the SEALs' dynamics, one for all (OVL2 0x58CE60: SOCOM 1's GetDynamics, its seal_cfg.cpp's last
+ * function as here -- defined first, before the unit's template tail; no function of the unit calls it) */
+CharacterDynamics *CZSealBody::GetDynamics()
+{
+    return &theCharacterDynamics;
+}
+
 /* the body parts' names filled in once: no part handed out yet, skel_root the first, the four kept
  * back and rifle_out at the top of the slots; the next id after them (OVL2 0x58CC30, new in SOCOM II:
  * 0x58CB30 and 0x58CA60 call it -- the name ours) */

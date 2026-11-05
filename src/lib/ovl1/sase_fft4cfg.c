@@ -1,10 +1,11 @@
 /* sc: compiler=ee-gcc2.96; flags=-O2 -G8 */
-/* Nellymoser's shared FFT, fft4CFG.c and after (OVL1 0x251C80-0x2525C0): the transforms the FFT
+/* Nellymoser's shared FFT, fft4CFG.c and after (OVL1 0x251C80-0x252338): the transforms the FFT
  * interface (sase_fftif.c) dispatches to by the codec's mode -- the radix-4 transform 0x251C80
  * (its asserts fft4CFG.c's), the VU0 transform 0x252098 (its microcode at 0x3D5980, which the
- * map's OVL1 text ends in: VU0's, not VU1's) and its set-up 0x252150, the transform's last pass
- * 0x252338 -- and the bit-reversal permutation of a split complex vector (0x252290). No assert
- * names the files after fft4CFG.c's, so they are kept here by address. Written in the GCC lane's
+ * map's OVL1 text ends in: VU0's, not VU1's) and its set-up 0x252150 -- and the bit-reversal
+ * permutation of a split complex vector (0x252290). No assert names the files after fft4CFG.c's,
+ * so they are kept here by address; the real-FFT split and merge after them are rFft2G.c's
+ * (sase_rfft2g.c: its .rodata names the file, GCC round 33a). Written in the GCC lane's
  * round 26a: 0x252098, 0x252150, 0x252290. Placeholders: the codec's names are not in SOCOM 1.
  * Built as nelly.c is (ee-gcc 2.96, -O2 -G8: the encoder's range). */
 
