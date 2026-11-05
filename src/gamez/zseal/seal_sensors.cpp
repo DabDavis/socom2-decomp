@@ -964,14 +964,14 @@ void CSealCtrlAi::EnemyCallout(CEntity *e, CEntity *player)
             }
         }
     }
-    PlayAiSound(snd, 1.0f, 0);
+    PlayAiSound(snd, 1.0f, CAiEvent::AIE_UNKNOWN);
 }
 
 /* a target seen to fall: the AI calls it, "tango down", at full chance (OVL2 0x5C9B10; SOCOM 1's
  * played its sound 18 the same way, through the same slot +0x24) */
 void CSealCtrlAi::NotifyTargetDown(CZSealBody *seal)
 {
-    PlayAiSound(CHRSND_TANGO_DOWN, 1.0f, -1);
+    PlayAiSound(CHRSND_TANGO_DOWN, 1.0f, CAiEvent::AIE_NONE);
 }
 
 /* the object at 0x67C a state tests (OVL2 0x60A850, unwritten; seal_tasks.cpp's spelling) */

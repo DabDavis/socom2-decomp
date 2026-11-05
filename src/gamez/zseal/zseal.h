@@ -700,7 +700,7 @@ public:
     virtual void OnDeath();                                                 /* +0x18 */
     /* SOCOM II's takes a chance to play it and the AI event the voice makes, and says whether it
      * played */
-    virtual bool PlayAiSound(CHARACTER_SOUND sound, float chance, int event);   /* +0x24 */
+    virtual bool PlayAiSound(CHARACTER_SOUND sound, float chance, CAiEvent::EVENT event);   /* +0x24 */
     virtual bool AllowCommand(CZSealBody *seal, FT_COMMAND cmd, void *data);
     /* whether the orders to hold and to follow may go to the SEAL (SOCOM 1's; OVL2 0x591770 and
      * 0x591AB0, seal_command.cpp's -- not written yet; 0x591520 asks the first) */
@@ -1399,7 +1399,7 @@ public:
      * overridden beside the static (OVL2 0x55FF60, slot 0x24: seal_ai.cpp's) */
     static void StopAiSound(AI_SOUND sound);
     static void PlayAiSound(AI_SOUND sound);
-    virtual bool PlayAiSound(CHARACTER_SOUND sound, float chance, int event);
+    virtual bool PlayAiSound(CHARACTER_SOUND sound, float chance, CAiEvent::EVENT event);
     static class CSnd *aiSoundHandle[2];
     static class CSndInstance *aiSoundInstance[2];
     /* the aim's error cone, kept as its tangent (SOCOM 1's aiAccuracyAngle; OVL1 data 0x3DF180, the

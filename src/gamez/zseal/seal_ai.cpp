@@ -2554,9 +2554,9 @@ extern "C" void func_00560340(CSealCtrlAi *ai, CAiState *state, bool b)
         if (ai->SetLookPosW((AI_LOOK)8, leader->GetTargetPosW(&pos)))
             ai->SetLookTimer(Rfloat(0.5f, 1.0f));
         if (!b)
-            ai->PlayAiSound((CHARACTER_SOUND)56, 1.0f, -1);
+            ai->PlayAiSound((CHARACTER_SOUND)56, 1.0f, CAiEvent::AIE_NONE);
         else
-            ai->PlayAiSound((CHARACTER_SOUND)55, 1.0f, -1);
+            ai->PlayAiSound((CHARACTER_SOUND)55, 1.0f, CAiEvent::AIE_NONE);
         state->SetBit2(true);
     }
 }
@@ -2592,7 +2592,7 @@ extern "C" void func_00560280(CSealCtrl *ctrl, unsigned char item, CHARACTER_SOU
             break;
         }
     }
-    ctrl->PlayAiSound(sound, 1.0f, -1);
+    ctrl->PlayAiSound(sound, 1.0f, CAiEvent::AIE_NONE);
 }
 
 /* the random part through a local: written as one expression the join loses its pad and an
@@ -2666,32 +2666,13 @@ static inline bool Chance(float chance)
     return Rfloat(0.0f, 1.0f) <= c;
 }
 
-/* 0x55FEE0's body as PlayAiSound expands it (a marked device, the name ours): the target hands the raw
- * int to GetEventRange and sign-extends the raw register for CreateAiEvent's word, while its own tests
- * share PlayAiSound's narrowed copy -- what a CAiEvent::EVENT third parameter does (a byte-enum parameter
- * goes on unconverted, README), the signature PlayAiSound's callers in other lanes' units cannot take yet
- * (they pass int literals). Through 0x55FEE0 itself the cast argument is narrowed at the call (3 off) */
-extern "C" float GetEventRange__8CAiEventFQ28CAiEvent5EVENT(int event);
-static inline CAiEvent *VoiceEvent(CSealCtrl *ctrl, int event)
-{
-    CAiEvent *r = 0;
-
-    if ((CAiEvent::EVENT)event != CAiEvent::AIE_NONE) {
-        float range = GetEventRange__8CAiEventFQ28CAiEvent5EVENT(event);
-
-        r = ctrl->CreateAiEvent(CAiEvent::AIE_VOICE, data_00650380, range, false, &ctrl->m_entity->m_posW,
-            (signed char)event);
-    }
-    return r;
-}
-
 /* a sound of the SEAL's character played (SOCOM 1's PlayAiSound(CHARACTER_SOUND), which always played
  * it; OVL2 0x55FF60, slot 0x24 of CSealCtrlAi's vtable): not again within the sound's gap since it last
  * played, then only if the chance comes up; sound 80 only while the AI runs, out of 0x60A850's pursuit
  * and in state 2 or 9 at least 10 s into its step; a dead SEAL's only for sounds 60 and 61. A Navy
  * SEAL's plays from no point and makes its AI event only for event 1, any other SEAL's from where it
  * stands (CSealCtrl's 0x5978A0); the time kept. Whether it played */
-bool CSealCtrlAi::PlayAiSound(CHARACTER_SOUND sound, float chance, int event)
+bool CSealCtrlAi::PlayAiSound(CHARACTER_SOUND sound, float chance, CAiEvent::EVENT event)
 {
     bool played = false;
     CCharacterType *ch;
@@ -2717,15 +2698,15 @@ bool CSealCtrlAi::PlayAiSound(CHARACTER_SOUND sound, float chance, int event)
 
         if (ok && (seal->m_isAlive || dying)) {
             unsigned int id = seal->m_id;
-            bool send = (CAiEvent::EVENT)event != CAiEvent::AIE_NONE;
+            bool send = event != CAiEvent::AIE_NONE;
 
             if (m_navyseal) {
                 played = ch->PlayAt(sound, id, 0);
-                send = (CAiEvent::EVENT)event == 1;
+                send = event == CAiEvent::AIE_GENERIC;
             } else
                 played = ch->PlayAt(sound, id, &seal->m_posW);
             if (send)
-                VoiceEvent(this, event);
+                func_0055FEE0(this, event);
             *last = data_004365C0;
         }
     }
@@ -4675,7 +4656,7 @@ int CAiSGrenade::Tick(CSealCtrlAi *ai)
                             next = STEP_5;
                     }
                     p->SetLocked(true);
-                    ai->PlayAiSound((CHARACTER_SOUND)52, 1.0f, -1);
+                    ai->PlayAiSound((CHARACTER_SOUND)52, 1.0f, CAiEvent::AIE_NONE);
                     func_0055C870(this, ai);
                     if (ResetPath(ai) && ((CAiPath *)&ai->m_path)->InsertPathLoc(m_7c, 0)) {
                         ai->SetAiMode((AI_MODE)3);
@@ -4758,7 +4739,7 @@ int CAiSGrenade::Tick(CSealCtrlAi *ai)
         }
         if (!found) {
             step = STEP_6;
-            ai->PlayAiSound((CHARACTER_SOUND)53, 1.0f, -1);
+            ai->PlayAiSound((CHARACTER_SOUND)53, 1.0f, CAiEvent::AIE_NONE);
         }
         break;
     }
@@ -4925,7 +4906,7 @@ void CSealCtrlAi::OnSetHealth(float health, float old)
 
     if (old > health) {
         CSndInstance::Remove(e->m_id, true, true, false);
-        PlayAiSound((CHARACTER_SOUND)59, 2.0f, -1);
+        PlayAiSound((CHARACTER_SOUND)59, 2.0f, CAiEvent::AIE_NONE);
     }
 }
 
