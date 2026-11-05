@@ -8006,6 +8006,7 @@
 0x004D8168 Calculate_NbrOfStatesInDict_ForChinese_TreeCtx
 0x004D98F0 cbDoSecondPassIfEnabled
 0x004D9EC8 casrOpen
+0x004DA0D8 casrGetSessionData
 0x004DA2A0 casrClose
 0x004DA3F8 casrStart
 0x004DA580 casrReadLabelInQueue
@@ -8018,6 +8019,7 @@
 0x004DBF70 casrDoIsoWordSecondPass
 0x004DCAD0 casrInitSampleFormat
 0x004DD070 casrStartUserWordTraining
+0x004DDF48 casrInitSegmentation
 0x004DE048 casrAcknowledge
 0x004DE128 casrCloseContext
 0x004DE150 casrCloseData
@@ -8181,6 +8183,7 @@
 0x004F5F20 HLnOnePlusExpHFloat
 0x004F6000 LogAdd
 0x004F6918 ConstructMel
+0x004F6958 ProcessMel
 0x004F6B08 ControlMel
 0x004F6C78 InitMel
 0x004F7010 mtxConstruct
@@ -8272,6 +8275,7 @@
 0x00505BF0 Subsampler_Reset
 0x00505CC8 Subsampler_Free
 0x00505D90 TriggerLR_FindSpeech
+0x005063C0 ProcessTriggerLR
 0x00506550 ControlTriggerLR
 0x00506978 InitTriggerLR
 0x00506D58 ConstructTriggerLR
