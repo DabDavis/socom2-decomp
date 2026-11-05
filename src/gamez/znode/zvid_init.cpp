@@ -154,6 +154,153 @@ void zVid_Assert(bool ok, unsigned int color, char *file, int line)
         RebootAfterError();
 }
 
+/* a store image's BITBLTBUF and TRXREG as Sony's register structs (libgraph's sceGsBitbltbuf and
+ * sceGsTrxreg bitfields: the fields' reads narrow to the byte or halfword holding them), over the
+ * image at its own offsets -- the VIF codes and the GIF tag first (the view is ours) */
+struct GS_BITBLTBUF {
+    unsigned long SBP : 14;
+    unsigned long : 2;
+    unsigned long SBW : 6;
+    unsigned long : 2;
+    unsigned long SPSM : 6;
+    unsigned long : 2;
+    unsigned long DBP : 14;
+    unsigned long : 2;
+    unsigned long DBW : 6;
+    unsigned long : 2;
+    unsigned long DPSM : 6;
+    unsigned long : 2;
+};
+struct GS_TRXREG {
+    unsigned long RRW : 12;
+    unsigned long : 20;
+    unsigned long RRH : 12;
+    unsigned long : 20;
+};
+struct GS_STOREIMAGE_REGS {
+    u_long128 vifcode;   // 0x0
+    u_long128 giftag;   // 0x10
+    GS_BITBLTBUF bitbltbuf;   // 0x20
+    unsigned long bitbltbufaddr;   // 0x28
+    unsigned long trxpos;   // 0x30
+    unsigned long trxposaddr;   // 0x38
+    GS_TRXREG trxreg;   // 0x40
+    unsigned long trxregaddr;   // 0x48
+};
+
+/* a GS-to-host transfer's split (new in SOCOM II, not named): the image's bytes by its pixel
+ * format, the quadwords in whole 8-quadword blocks and the rest, the bytes past the last whole
+ * quadword, and -- when there are some -- the height rounded up to whole quadwords and the
+ * quadwords that adds past the blocks */
+extern "C" int data_004A45A8;
+extern "C" int data_004A45B0;
+extern "C" int data_004A45B8;
+extern "C" int data_004A45C0;
+
+#define SCE_GS_SET_TRXREG(rrw, rrh) ((u_long)(rrw) | ((u_long)(rrh) << 32))
+
+/* the transfer split worked out for a store image, its TRXREG's height rounded up in place
+ * (through the uncached mirror) when the rows end inside a quadword (new in SOCOM II, not named;
+ * the formats as libgraph's: 32, 24, 16, 8 and 4 bits; the video thread's body 0x3B1DD0 calls it on
+ * the unit's store image). The case labels in libgraph's order give the target's descending compare
+ * chain; the locals declared format, width, height, then the rounded height (the weapons' round 29:
+ * `tools/igreplay.py --target` read the three volatile registers in descending number) */
+extern "C" void func_003B28D0(GS_STOREIMAGE_REGS *si)
+{
+    int psm = si->bitbltbuf.SPSM;
+    int w = si->trxreg.RRW;
+    int h = si->trxreg.RRH;
+    int h2 = 0;
+
+    switch (psm) {
+    case 0:
+    case 48: {
+        int bytes = w * h * 4;
+
+        data_004A45C0 = bytes & 0xF;
+        data_004A45A8 = (bytes >> 4) & ~7;
+        data_004A45B8 = (bytes >> 4) & 7;
+        if (!data_004A45C0) {
+            h2 = h;
+            data_004A45B0 = 0;
+        } else {
+            h2 = (h + 3) & ~3;
+            data_004A45B0 = ((w * h2) >> 2) - data_004A45A8 - data_004A45B8 - 1;
+        }
+        break;
+    }
+    case 1:
+    case 49: {
+        int bytes = w * h * 3;
+
+        data_004A45C0 = bytes & 0xF;
+        data_004A45A8 = (bytes >> 4) & ~7;
+        data_004A45B8 = (bytes >> 4) & 7;
+        if (!data_004A45C0) {
+            h2 = h;
+            data_004A45B0 = 0;
+        } else {
+            h2 = (h + 15) & ~15;
+            data_004A45B0 = ((w * h2 * 3) >> 4) - data_004A45A8 - data_004A45B8 - 1;
+        }
+        break;
+    }
+    case 2:
+    case 10:
+    case 50:
+    case 58: {
+        int bytes = w * h * 2;
+
+        data_004A45C0 = bytes & 0xF;
+        data_004A45B8 = (bytes >> 4) & 7;
+        data_004A45A8 = (bytes >> 4) & ~7;
+        if (!data_004A45C0) {
+            h2 = h;
+            data_004A45B0 = 0;
+        } else {
+            h2 = (h + 7) & ~7;
+            data_004A45B0 = ((w * h2) >> 3) - data_004A45A8 - data_004A45B8 - 1;
+        }
+        break;
+    }
+    case 19:
+    case 27: {
+        int bytes = w * h;
+
+        data_004A45C0 = bytes & 0xF;
+        data_004A45B8 = (bytes >> 4) & 7;
+        data_004A45A8 = (bytes >> 4) & ~7;
+        if (!data_004A45C0) {
+            h2 = h;
+            data_004A45B0 = 0;
+        } else {
+            h2 = (h + 7) & ~7;
+            data_004A45B0 = ((w * h2) >> 4) - data_004A45A8 - data_004A45B8 - 1;
+        }
+        break;
+    }
+    case 20:
+    case 36:
+    case 44: {
+        int bytes = (w * h) >> 1;
+
+        data_004A45C0 = bytes & 0xF;
+        data_004A45B8 = (bytes >> 4) & 7;
+        data_004A45A8 = (bytes >> 4) & ~7;
+        if (!data_004A45C0) {
+            h2 = h;
+            data_004A45B0 = 0;
+        } else {
+            h2 = (h + 7) & ~7;
+            data_004A45B0 = ((w * h2) >> 5) - data_004A45A8 - data_004A45B8 - 1;
+        }
+        break;
+    }
+    }
+    if (data_004A45C0)
+        *(u_long *)UNCACHED(&si->trxreg) = SCE_GS_SET_TRXREG(si->trxreg.RRW, h2);
+}
+
 /* the last sixteen frames' times, a ring, and the newest's place in it (new in SOCOM II, not
  * named) */
 extern float data_004A4560[16];
