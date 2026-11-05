@@ -173,26 +173,32 @@ void CZProjectileList::Clear()
 /* a shooter's charges, of the given weapon unless it is none, each made to explode, reported and
  * taken out; then, with no weapon given, his projectiles up to the last slot used, each made to
  * explode (state 7), reported and freed (SOCOM 1's took the shooter only).
- * OPEN, 4 instructions short: the weapon test's `andi` sits in the filter branch's delay slot here
- * where the target leaves it a nop and pads after the id compare; the id and charge registers
- * (v1/s2/s3 in the target: a1/s3/s2 here) follow. The tests as `filter && item != id` first, `id ==
- * item`, `filter == false` (an extra saved register) and an unsigned char id do not give it. Round
- * 21 (HandleTimers' assigned-result lead): the flag set in an if after a false or true default (94
- * off), as a ternary (the same 16 short), the id as a ternary (8 short) or an if/else (8 long) */
+ * Byte-exact since the weapons' round 24, three things together: (1) the weapon's id a ternary
+ * into its local (`w ? w->GetId() : EQUIP_NONE`: the merged byte enum narrowed in place, so the
+ * filter branch keeps its delay slot empty and the label pads as the target's); (2) the
+ * projectiles' guard an early return (`if (last == -1 || filter) return;` -- the target's branch
+ * to a `b` to the end and its branch into the loop; the `&&` forms branch straight to the end);
+ * (3) the item copied into an INT local declared first: MW's narrowed copy of a byte-enum
+ * parameter is a temporary numbered after every named local, so, coloured highest-index first
+ * among the deferred nodes (all of them past K), it took s2 ahead of the charge `e`; an int local
+ * holding the narrowed value is numbered below `e` and colours after it (s3, the target's) -- an
+ * EQUIP_ITEM or unsigned char copy is folded back into the temporary (an unsigned char one with
+ * an EQUIP_ITEM cast at the compare works too). Before (rounds 17-21): the tests as `filter &&
+ * item != id`, `id == item`, `filter == false`, an unsigned char id, the flag set after a default
+ * or as a ternary, the id as an if/else */
 void CZProjectileList::Clear(int shooter, EQUIP_ITEM item)
 {
-    bool filter = item != EQUIP_NONE;
+    int wanted = item;
+    bool filter = wanted != EQUIP_NONE;
 
     if (m_used && m_projectiles) {
         std::vector<PlacedExplosive *>::iterator it;
 
         for (it = m_explosives.begin(); it != m_explosives.end();) {
             PlacedExplosive *e = *it;
-            EQUIP_ITEM id = EQUIP_NONE;
+            EQUIP_ITEM id = e->m_weapon ? e->m_weapon->GetId() : EQUIP_NONE;
 
-            if (e->m_weapon)
-                id = e->m_weapon->GetId();
-            if (!filter || item == id) {
+            if (!filter || wanted == id) {
                 if (shooter == e->m_shooterID) {
                     e->m_weapon->GetName();
                     (*it)->m_grenadestate = (GRENADE_STATE)3;
@@ -212,14 +218,14 @@ void CZProjectileList::Clear(int shooter, EQUIP_ITEM item)
         int i;
         int last = m_lastused;
 
-        if (last != -1 && !filter) {
-            for (i = 0; i <= last; i++) {
-                if (m_used[i] == 1 && shooter == m_projectiles[i].m_shooterID) {
-                    m_projectiles[i].m_grenadestate = (GRENADE_STATE)3;
-                    m_projectiles[i].SetProjectileState((PROJECTILE_STATE)7, false);
-                    m_projectiles[i].ReportGrenadeStatus();
-                    Free(i);
-                }
+        if (last == -1 || filter)
+            return;
+        for (i = 0; i <= last; i++) {
+            if (m_used[i] == 1 && shooter == m_projectiles[i].m_shooterID) {
+                m_projectiles[i].m_grenadestate = (GRENADE_STATE)3;
+                m_projectiles[i].SetProjectileState((PROJECTILE_STATE)7, false);
+                m_projectiles[i].ReportGrenadeStatus();
+                Free(i);
             }
         }
     }

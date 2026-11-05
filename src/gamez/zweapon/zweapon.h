@@ -178,9 +178,12 @@ public:
     /* +0x0C, new in SOCOM II (0x3D2D70): a round fired -- SOCOM 1's static Fire(node, weapon, ammo,
      * pos, dir, vel, model, projectile, shooter, f, f) made a virtual of the weapon, the model and the
      * two floats gone and a ninth word (on the stack) after the shooter; the turret's Fire calls it
-     * so. The return and the last word's meaning are not known (0x3D2D70 is not written) */
+     * so. The return and the last word's meaning are not known (0x3D2D70 is not written). The
+     * shooter an INT, where SOCOM 1's static took an unsigned int: CTurret::Fire's set-up loads the
+     * unsigned m_id first, as MW evaluates an argument needing a no-op conversion first (the
+     * weapons' round 24; as unsigned the turret's Fire was 2 instructions off) */
     virtual int Fire(zdb::CNode *node, CZAmmo *ammo, const CPnt3D *pos, const CPnt3D *dir,
-                     const CPnt3D *vel, CZProjectile *projectile, unsigned int shooter, int x);
+                     const CPnt3D *vel, CZProjectile *projectile, int shooter, int x);
     /* the item's class (SOCOM 1's two: the static one from the id's range, 0x3D1A60, and the
      * member one handing it the id, 0x3D1E10) */
     static EQUIP_ITEM GetIDType(EQUIP_ITEM id);
@@ -682,6 +685,19 @@ enum PROJECTILE_TYPE {
     ONE_FRAME_SHOTGUN = 2
 };
 
+/* what became of a shot where it was dealt with -- the hit handlers' result (ours: a byte enum,
+ * the names ours; the weapons' round 24: HandleIntersections takes HandleImpact's or HandleBounce's
+ * result as a byte enum copied out of v0 and narrows it once, at the join, where an unsigned char
+ * result narrows in each arm). 0 and 4 spend the shot, 1 stops it, 2 lets it go on to the next hit;
+ * DoMiss's 3 is a miss the shot survives */
+enum PROJECTILE_HIT {
+    HIT_SPENT = 0,
+    HIT_STOPPED = 1,
+    HIT_GOES_ON = 2,
+    HIT_MISSED = 3,
+    HIT_SPENT_4 = 4
+};
+
 /* the projectile's extension of its node: a weapon's hit on the node handed to the projectile
  * (new in SOCOM II: __vt__17CProjectileNodeEx, 0x4083F0, overriding CNodeEx's first slot; its
  * functions out of line at 0x3D4B80-0x3D4BDF, in a unit after zwep_ammo.cpp). The class needs
@@ -766,9 +782,9 @@ public:
     /* a hit dealt with: an impact (0x3C8920), a bounce (0x3C8F50: SOCOM II's never reads the
      * time, its callers pass it), no hit this frame (0x3C9530); each returns what became of the
      * shot (SOCOM 1's, HandleShotgunImpact gone) */
-    unsigned char HandleImpact(zdb::IntersectStruct *hit, float dT, float dist, CPnt3D *pos);
-    unsigned char HandleBounce(zdb::IntersectStruct *hit, float dT, CPnt3D *pos);
-    unsigned char DoMiss(float dT, CPnt3D *pos);
+    PROJECTILE_HIT HandleImpact(zdb::IntersectStruct *hit, float dT, float dist, CPnt3D *pos);
+    PROJECTILE_HIT HandleBounce(zdb::IntersectStruct *hit, float dT, CPnt3D *pos);
+    PROJECTILE_HIT DoMiss(float dT, CPnt3D *pos);
     /* the frame's hits walked nearest first until one is dealt with or none is left (SOCOM 1's,
      * 0x3C9B70) */
     bool HandleIntersections(float dT);
