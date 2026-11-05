@@ -126,10 +126,9 @@ struct FriendInvitationItem {
     FriendInvitationInfo m_info;   // 0x0
 };   // 0x40
 
-/* the invitations: a vector of them (its insert and erase out of line, 0x302AA0 and 0x302850; the
- * erase byte-exact, the insert OPEN, 27 instructions -- the class insert's in-place registers,
- * include/vector's open: the end pointer takes a0 where the target's takes v1, as the room players'
- * 0x2F2D90 and the ignore list's 0x3022F0 (38)) */
+/* the invitations: a vector of them (its insert and erase out of line, 0x302AA0 and 0x302850, both
+ * byte-exact -- the insert, with the room players' 0x2F2D90 and the ignore list's 0x3022F0, since
+ * the MSL headers' later rounds fixed the class insert's in-place registers) */
 class FriendInvitationVector : public std::vector<FriendInvitationItem> {
 public:
     /* room for 64 at the start (the initialiser calls the reserve 0x3030B0 with 64) */
