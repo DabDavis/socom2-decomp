@@ -4,7 +4,7 @@
  * flag right after the matrix, where SOCOM 1 kept its two background bitmaps -- then the objective
  * list and SOCOM 1's last three words. Defined in reverse of their image order (-inline deferred).
  * Written: the constructor, the explosives' items, CalcNewMatrix, UninitMap, RemoveItem, Draw and
- * the small ones, TickFullScreenMap (round 48); open: FrameObjective, HandleScrolling and
+ * the small ones, TickFullScreenMap (round 48), SetupNorthIndicator (round 52); open: FrameObjective, HandleScrolling and
  * GetScrollPermissions (round 48, SOCOM 1's names). The initialiser (__sinit_hud_newhudmap.cpp 0x3FDE80) is
  * code-exact once every static is defined (round 30: the legend's pictures and flag, the scroll
  * bitmaps, the three computed floats); its four __arraydtor$N references stay unresolved (scdiff
@@ -15,8 +15,7 @@
  * HandleScrolling: the zoom step, through the far zoom then the near: its m2c draft matches),
  * 0x20A780 SwitchMapToFullScreen (HudTick's; it calls 0x20BE00 and ftsGetTacMapZoom, as SOCOM 1's
  * calls the zoom),
- * 0x20BE00 SetupNorthIndicator(CZSealBody *) (the north lines twice each), 0x20C080 the
- * legend's builder (InitMap's call; the nine labels and
+ * 0x20C080 the legend's builder (InitMap's call; the nine labels and
  * bitmaps through MapCompass's anchor images and the string table). */
 
 #include "hud_newhudmap.h"
@@ -180,6 +179,9 @@ C2DBitmapPoly g_bmpScrollUp;
 COverlayLine g_lineNorthIndBarb;
 COverlayLine g_lineNorthIndFrontShaft;
 COverlayLine g_lineNorthIndRearShaft;
+/* the north indicator's texture (SOCOM 1's g_pFov, gp-25048 there: InitMap loads it, the north
+ * lines draw from it; 0x40BE70) */
+zdb::CTexture *g_pFov;
 }
 
 /* the grid lines' alpha (a variable: read with lwc1) */
@@ -200,6 +202,57 @@ extern float g_fHudLayout60;
 static float s_fullMapHeight = g_fHudLayout365 - g_fHudLayout60;
 static float s_fullMapStep = s_fullMapHeight / 8.0f;
 static float s_fullMapStepX = 480.0f / 448.0f * s_fullMapStep;
+
+/* the HUD (hud_main.cpp's CHUD): its owner, and its font (0x498) */
+class CHUD {
+public:
+    static CZSealBody *GetHUDOwner();
+
+    unsigned char _0[0x498];
+    C2DFont *m_myfont;   // 0x498
+};
+
+extern CHUD *theHUD;
+
+namespace {
+/* the north indicator turned to the viewer's facing: the facing on the x/z plane normalised, the
+ * front shaft from 10 to 30 ahead of (600, cy), the rear shaft from 10 to 30 behind, the barb from
+ * 20 ahead and 10 aside to the front's end, and the "N" (the legend's first label) above. SOCOM 1's
+ * SetupNorthIndicator (0x3C6A50 there: its centre 100, here a guarded static -- the layout's top
+ * plus 40 -- its inverse length a double sqrt, here MW's `__rsqrt(1.0f, x)` intrinsic: the image's
+ * only rsqrt.s, where `1.0f / sqrtf(x)` gives sqrt.s + div.s); the facing's z read through a
+ * pointer as SOCOM 1's (sp+72 in a register). Byte-exact (round 52) with the three y's that read
+ * cy as named locals ahead of the first Load -- the target computes every cy expression before
+ * the first call and reloads the static only for the label; written in place, each Load reloads
+ * it, and the y's of the front shaft's start may be named or not */
+void SetupNorthIndicator(CZSealBody *pViewer)
+{
+    static float cy = 40.0f + g_fHudLayout60;
+    SealDir dir;
+
+    GetSealDir(pViewer, &dir);
+    const float *z = &dir.z;
+    float fInvLength = __rsqrt(1.0f, dir.x * dir.x + *z * *z);
+    float fNormX = dir.x * fInvLength;
+    float fNormZ = *z * fInvLength;
+    float fFrontEndX = 600.0f - 30.0f * fNormX;
+    float fFrontEndY = cy + 30.0f * fNormZ;
+    float fRearStartY = cy - 10.0f * fNormZ;
+    float fRearEndY = cy - 30.0f * fNormZ;
+    float fBarbY = cy + 20.0f * fNormZ - 10.0f * fNormX;
+
+    g_lineNorthIndFrontShaft.Load(600.0f - 10.0f * fNormX, cy + 10.0f * fNormZ, fFrontEndX, fFrontEndY,
+                                  g_pFov);
+    g_lineNorthIndFrontShaft.SetUV(0.5f, 0.9375f, 0.5f, 0.9375f);
+    g_lineNorthIndRearShaft.Load(600.0f + 10.0f * fNormX, fRearStartY, 600.0f + 30.0f * fNormX,
+                                 fRearEndY, g_pFov);
+    g_lineNorthIndRearShaft.SetUV(0.5f, 0.9375f, 0.5f, 0.9375f);
+    g_lineNorthIndBarb.Load(600.0f - 20.0f * fNormX - 10.0f * fNormZ, fBarbY,
+                            fFrontEndX, fFrontEndY, g_pFov);
+    g_lineNorthIndBarb.SetUV(0.5f, 0.9375f, 0.5f, 0.9375f);
+    g_strLegend[0].Load(1.0f, "N", theHUD->m_myfont, 596.0f, 7.0f + cy, true);
+}
+}
 
 inline void CZNewHudMap::SetWorldView(float cx, float cy, float width)
 {
@@ -364,12 +417,6 @@ void CZNewHudMap::SetWorldWidth(float width)
 {
     SetWorldView(m_worldcenterx, m_worldcentery, width);
 }
-
-/* the HUD's owner (hud_main.cpp's CHUD: only the static) */
-class CHUD {
-public:
-    static CZSealBody *GetHUDOwner();
-};
 
 /* a SEAL's controller as the map reads it (zseal.h's CSealCtrl: the input bit, 0x170 bit 11) */
 class CSealCtrl {
