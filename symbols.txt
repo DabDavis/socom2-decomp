@@ -7067,8 +7067,8 @@
 0x0037E6B0 0x78 __dt__10CImageSpecFv  # OVL1; s1:vtable (slot 0x08 of CImageSpec's table 0x407F80; SOCOM 1's __dt__10CImageSpecFv; the implicit destructor zui_spec.cpp emits with CImageSpec's constructor) -- zui_spec.cpp
 0x0037E730 0x178 CreateDisplayObj__14CSliderBarSpecCFP7C2DFontPQ23zdb16CTextureRelocMgr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0037E8B0 0x1AC CreateDisplayObj__14CUIListBoxSpecCFP7C2DFontPQ23zdb16CTextureRelocMgr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x0037EA60 0x14 func_0037EA60  # OVL1
-0x0037EA80 0x28 func_0037EA80  # OVL1; tu: vis_mesh.cpp~ (1.0 beta)
+0x0037EA60 0x14 __ct__Q23std54vector<P10ColumnData,Q23std24allocator<P10ColumnData>>Fv  # OVL1; by hand (the UI lane, round 26: the list box's column vector's constructor out of line, three words zeroed -- CUIListBoxSpec::CreateDisplayObj 0x37E8B0 inlines CUIListBox() one level and calls it; zui_spec.cpp emits it byte-exact after its first caller)
+0x0037EA80 0x28 __ct__Q23std46list<P8ListItem,Q23std21allocator<P8ListItem>>Fv  # OVL1; tu: vis_mesh.cpp~ (1.0 beta); by hand (the UI lane, round 26: the list box's item list's constructor out of line, its body the pointer list's deleter constructor 0x1EABB0 -- CUIListBoxSpec::CreateDisplayObj 0x37E8B0 inlines CUIListBox() one level and calls it; zui_spec.cpp emits it byte-exact after its first caller)
 0x0037EAB0 0x17D0 __ct__14CUIListBoxSpecFP5_zrdr  # OVL1; s1:calls by hand (GetControlSpec's LISTBOX branch, as SOCOM 1's) -- the UI-widgets lane
 0x00380280 0x1E4 __ct__18CHandlerButtonSpecFP5_zrdr  # OVL1; s1:calls by hand (GetControlSpec's HANDLERBUTTON branch, as SOCOM 1's) -- the UI-widgets lane
 0x00380470 0x90 CreateDisplayObj__11CButtonSpecCFP7C2DFontPQ23zdb16CTextureRelocMgr  # OVL1; by its vtable (slot 0x10 of __vt__11CButtonSpec 0x407FB0) -- the UI-widgets lane
