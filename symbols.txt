@@ -4000,7 +4000,7 @@
 0x002B6D60 0x78 LastMessage__12C2DMessage_QFv  # OVL1; s1:order by hand (the states lane, round 17): SOCOM 1's LastMessage (0x200890) sits between SetBkgColor and Clear_Messages as this does, and does the same -- the list's last line's text, "" with none; fts_message.cpp (open)
 0x002B6DE0 0xF4 Clear_Messages__12C2DMessage_QFv  # OVL1; s1:calls by hand (the HUD lane: CHUD::ReleaseHUD's three calls on its message queues, as SOCOM 1's)
 0x002B6EE0 0xE0 __dt__12C2DMessage_QFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x002B6FC0 0x558 func_002B6FC0  # OVL1
+0x002B6FC0 0x558 Init__12C2DMessage_QFP7C2DFontP8CRdrFile  # OVL1; s1:calls by hand (the states lane, round 41): SOCOM 1's C2DMessage_Q::Init(C2DFont *, CRdrFile *) (the demo's 0x200BA0) -- the same rdr reads in the same order (scale, fadetime, left, bottom, maxsize, spacing, centered, descends, maxlength, background with XMargin/YMargin and its texture, TtySpeed), the font stored first (+0x18 here, +0x1C there); SOCOM II adds the colours' setter 0x2B7530 ahead and the SUBTITLES background; byte-exact in fts_message.cpp
 0x002B7520 0xC func_002B7520  # OVL1
 0x002B7530 0xD8 func_002B7530  # OVL1
 0x002B7610 0x110 __ct__12C2DMessage_QFv  # OVL1; by hand (the states lane, round 19: C2D's constructor, the queue's vtable 0x4063B0, the two C2DBitmapPoly backgrounds, then SOCOM 1's C2DMessage_Q() field for field)
