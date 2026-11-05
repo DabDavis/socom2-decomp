@@ -6,8 +6,8 @@
  * word at 0x10, reads through an open package (0x4A15F8/FC: util_main.cpp's CPackage, called here
  * through its placeholders) and a CD file opened by its sector (the DNAS client's).
  *
- * OPEN, not written yet: BuildTOC (0x39DFD0: the ISO 9660 walk, 0x520 -- m2c's draft is a start),
- * the hard disk's mount and reboot handlers (0x39CE80-0x39D910), 0x39DDB0 and 0x39DFC0. */
+ * OPEN, not written yet: the hard disk's mount and reboot handlers (0x39CE80-0x39D910), 0x39DDB0
+ * and 0x39DFC0 (both byte-exact as drafts). */
 
 #include <stdio.h>
 #include "zutil.h"
@@ -46,10 +46,21 @@ struct _FILECD {
     unsigned int sectorSize;    // 0xc: the file's size in bytes
 };   // 0x10 bytes
 
+/* libcdvd's read mode (Sony's sceCdRMode: the retry count, the spindle speed, the sector size) */
+struct sceCdRMode {
+    unsigned char trycount;      // 0x0
+    unsigned char spindlctrl;    // 0x1
+    unsigned char datapattern;   // 0x2
+    unsigned char pad;           // 0x3
+};
+
 /* the libcdvd read mode the reads pass and the bounce buffer for a destination not 16-byte
  * aligned (SOCOM 1's file statics, 0x4A1778 and 0x4A17B0) */
-extern int m_CDmode;
+extern sceCdRMode m_CDmode;
 extern char alignedBuffer[0x2000];
+/* the lowest sector a file of the TOC starts at (SOCOM II's: BuildTOC keeps it, 0x39DFC0 parks
+ * the head there) */
+extern int data_004A17A0;
 
 /* a CD file being read: its TOC entry, the position, the next sector to read, the sector buffer
  * and the position in it (SOCOM 1's DWARF: 0x14 bytes). The constructor and destructor are out of
@@ -63,6 +74,7 @@ public:
     bool OpenSector(unsigned int sector);
     static _FILECD *Find(const char *name);
     static char *CreatePath(char *dir, char *path);
+    static void BuildTOC();
     /* the sector the next read starts from (ours: fseek, Open and OpenSector share it) */
     void SetHeadSector(int sector)
     {
@@ -440,6 +452,100 @@ char *CFileCD::CreatePath(char *dir, char *path)
         strcpy(path + strlen(path), dir);
     }
     return path;
+}
+
+/* the disc's table of contents built: the primary volume descriptor read from sector 16, its root
+ * directory pushed, then each directory popped and its sectors' records walked -- "." and ".."
+ * skipped, a file entered in the TOC under its path, a directory pushed under its own (SOCOM 1's;
+ * SOCOM II's TOC holds 360 entries, a directory's sectors round up and the lowest file sector is
+ * kept). The UI lane's round 28, by MW's colouring (tools/igreplay.py --want, then tools/igvar.py):
+ * off and sector declared uninitialised at the top, ahead of buf (s5 / s4 / s3 as the target);
+ * the record read as buf[off + N], no pointer of its own (MW's CSE temporary takes s0, the name's
+ * address `buf + (off + 33)`); ONE sectors for the root and the walk -- MW splits the second live
+ * range into a temporary numbered after the loop optimiser's (its spill slot below the walk's
+ * pointers, sp 176); the lowest sector a signed int (lw, then sltu against the 64-bit sector);
+ * the name taken after the entry's stores, the lowest sector set first */
+void CFileCD::BuildTOC()
+{
+    _FILECD dirs[40];
+    char path[512];
+    int count;
+    int done;
+    int off;
+    unsigned long sector;
+    int sectors;
+
+    data_004A17A0 = 999999999;
+    m_CDmode.trycount = 20;
+    m_CDmode.spindlctrl = 1;
+    m_CDmode.datapattern = 0;
+    path[0] = 0;
+    count = 0;
+    done = 0;
+    m_TOC = (_FILECD *)_malloc(360 * sizeof(_FILECD), 0, 0);
+    m_TOCNum = 0;
+    unsigned char *buf = (unsigned char *)_memalign(64, 2064, 0, 0);
+    CFileCD cd;
+
+    cd.SetHeadSector(16);
+    cd.Read((char *)buf, 2048);
+    {
+        int size = buf[166] + (buf[167] << 8) + (buf[168] << 16) + (buf[169] << 24);
+        sectors = (size + 2047) / 2048;
+
+        dirs[count].startSector = buf[158] + (buf[159] << 8) + (buf[160] << 16) + (buf[161] << 24);
+        dirs[count].sectorSize = sectors;
+        dirs[count].name = (char *)_malloc(1, 0, 0);
+        strcpy(dirs[count].name, "");
+        count++;
+    }
+    while (done != count) {
+        _FILECD *dir = &dirs[done++];
+        unsigned int extent = dir->startSector;
+        int i;
+
+        sectors = dir->sectorSize;
+        strcpy(path, dir->name);
+        for (i = 0; i < sectors; i++) {
+            off = 0;
+
+            cd.SetHeadSector(extent + i);
+            cd.Read((char *)buf, 2048);
+            for (; buf[off]; off += buf[off]) {
+                sector = buf[off + 2] + (buf[off + 3] << 8) + (buf[off + 4] << 16) + (buf[off + 5] << 24);
+                unsigned long size = buf[off + 10] + (buf[off + 11] << 8) + (buf[off + 12] << 16) + (buf[off + 13] << 24);
+
+                if (buf[off + 32] == 1 && buf[off + 33] == 0)
+                    continue;
+                if (buf[off + 32] == 1 && buf[off + 33] == 1)
+                    continue;
+                if (!(buf[off + 25] & 2)) {
+                    _FILECD *f = &m_TOC[m_TOCNum++];
+
+                    f->startSector = sector;
+                    f->sectorSize = size;
+                    char *name = (char *)&buf[off + 33];
+                    f->name = (char *)_malloc(strlen(path) + 3 + strlen(name), 0, 0);
+                    f->name[0] = 0;
+                    if (sector < data_004A17A0)
+                        data_004A17A0 = sector;
+                    if (strlen(path)) {
+                        strcpy(f->name, path);
+                        strcat(f->name, "\\");
+                    }
+                    strcat(f->name, name);
+                } else {
+                    dirs[count].startSector = sector;
+                    dirs[count].sectorSize = (size + 2047) / 2048;
+                    dirs[count].name = _strdup(CreatePath((char *)&buf[off + 33], path), 0, 0);
+                    CreatePath("..", path);
+                    count++;
+                }
+            }
+        }
+    }
+    for (int j = 0; j < done; j++)
+        _free(dirs[j].name, 0, 0);
 }
 
 /* the file's TOC entry by name, under the root's directory (SOCOM 1's, the directory SOCOM II's) */

@@ -559,7 +559,15 @@ bool CAiMaps::GetCellRepelParams(const CAiMapLoc &loc, const CPnt3D *pos, float 
  * sits above n and v.z is read through an address register in each arm. Tried (build/scratch/ai/
  * v_gcrp*.py): the neighbour's cell and pointer at the top, Dot(v, n), the products written out, v and
  * the push bound to const references (0x560: the FPR caching lost), a const v (0x568), n declared at
- * the top and assigned (0x580). The registers (the out cell s7, pos s1, the cell s0) follow the rest */
+ * the top and assigned (0x580). The registers (the out cell s7, pos s1, the cell s0) follow the rest.
+ * Round 31: the neighbour's cell initialised (`= 0`) gives the target's loop -- its `move v0,zero` at
+ * the loop's top, the cell in v0, nd in s0 -- where uninitialised it lived round the loop in s0; and
+ * `CPnt3D n;` declared at the top gives exactly the target's frame (n 272, v 256) but its assignment
+ * is memberwise (three lwc1/swc1, the copy constructor's ld/sd gone: also through PNT3D, a pointer
+ * cast, memcpy 0x568, placement new 0x590); `float vz = v.z;` loads v.z once for both arms (0x560,
+ * through an address register still); v made an inline's result (`_cell_offset`, by value or bound
+ * to a reference), `dir += n * k`, the quadrant through an inline: no change of order
+ * (build/scratch/ai/v_gcrp4-8.py) */
 bool CAiMap::GetCellRepelParams(const CAiMapLoc &loc, const CPnt3D *pos, float range, CPnt3D &dir, float &len,
                                 CAiMapLoc &cell)
 {
@@ -586,7 +594,7 @@ bool CAiMap::GetCellRepelParams(const CAiMapLoc &loc, const CPnt3D *pos, float r
         CPnt3D n = CPnt3D::zero;
         DIR nd = (DIR)((d + i + 8) % 8);
         CAiMapLoc nloc;
-        CAiCell *ncell;
+        CAiCell *ncell = 0;
 
         if (GetNeighbor(loc, nd, nloc, ncell) && !ncell->IsTraversable()) {
             GetDirVec(nd, n);
