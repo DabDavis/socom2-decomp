@@ -5567,6 +5567,7 @@
 0x003421D0 swap__Q23std56__vector_deleter<8CSndBank,Q23std20allocator<8CSndBank>>FRQ23std56__vector_deleter<8CSndBank,Q23std20allocator<8CSndBank>>
 0x00342210 clear__Q23std46vector<8CSndBank,Q23std20allocator<8CSndBank>>Fv
 0x00342220 __ct__Q23std46vector<8CSndBank,Q23std20allocator<8CSndBank>>Fv
+0x00342240 StreamSoundVolPan__4CSndFiiP12CSndInstancei
 0x00342670 CalcVolPan__4CSndFPC6CPnt3DfPiPi
 0x003428A0 func_003428A0
 0x003428F0 func_003428F0
@@ -5574,6 +5575,8 @@
 0x00342990 PlaySound3D__4CSndFPC6CPnt3DbfiP12CSndInstanceUi
 0x00342A20 PlaySoundVol__4CSndFfbP12CSndInstanceUi
 0x00342AA0 PlaySound__4CSndFbP12CSndInstanceUi
+0x00342B20 PlaySound3D__4CSndFPC6CPnt3DfiP12CSndInstanceUi
+0x00343140 PlaySoundVolPanPitch__4CSndFfiiP12CSndInstanceUi
 0x00343500 PlaySoundVol__4CSndFfP12CSndInstanceUi
 0x00343550 PlaySound__4CSndFP12CSndInstanceUi
 0x003435A0 GetSubtitles__4CSndFv
@@ -5583,6 +5586,7 @@
 0x003443C0 CopyUpper__FPCcPci
 0x003448D0 func_003448D0
 0x003448E0 func_003448E0
+0x00344910 func_00344910
 0x00344E90 func_00344E90
 0x00344EA0 func_00344EA0
 0x00344EC0 func_00344EC0
@@ -5702,6 +5706,8 @@
 0x0034A910 StopSound__7HeadsetFiP4CSnd
 0x0034AA70 Interrupt__7HeadsetFv
 0x0034AAC0 Remove__7HeadsetFibb
+0x0034AD00 ConnectedTick__7HeadsetFf
+0x0034AFD0 DisconnectedTick__7HeadsetFf
 0x0034B3B0 Tick__7HeadsetFf
 0x0034B410 SoundSysCallback__7HeadsetFUi
 0x0034B4E0 StaticSoundSysCallback__7HeadsetFUiUl
@@ -5891,6 +5897,7 @@
 0x00355A50 StartBatchReloc__Q23zdb15CBatchRelocatorCFv
 0x00355A70 MIPUpdateTextureSelects__Q23zdb8CTextureFUiUi
 0x00355C70 UpdateTextureSelect__Q23zdb8CTextureFUiUi
+0x00355DE0 UpdateTextureSelects__Q23zdb12CGSTexBufferFv
 0x00355F20 ClearPktBufs__Q23zdb11CTexManagerFRQ23zdb11CTexManagerb
 0x00355FE0 FreeVector<Q23std30vector<1,Q23std12allocator<1>>>__FRQ23std30vector<1,Q23std12allocator<1>>_v
 0x00356080 DestroyBuffers__Q23zdb11CTexManagerFRQ23zdb11CTexManagerb
@@ -8181,6 +8188,8 @@
 0x005019B0 Median_Reset
 0x005019C8 InitMedian
 0x00501E20 NormE_Processing
+0x00501F38 FlushPitchCombiner
+0x00502298 ProcessPitchCombiner
 0x005028F0 ControlPitchCombiner
 0x00502F10 ConstructPitchCombiner
 0x005041C0 ControlSHS_VUV

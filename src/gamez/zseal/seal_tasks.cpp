@@ -1014,18 +1014,17 @@ struct TASK_DEPLOY : CAiState {
 };
 
 extern "C" {
-/* a cell's centre (OVL2 0x52D480, ai_maps.h's: the centre's address, or 0 -- zseal.h's stand-in
- * declares it bool, which a caller's test would not convert) */
-CPnt3D *GetCellCenter__7CAiMapsFRC9CAiMapLocP6CPnt3D(CAiMaps *maps, const CAiMapLoc *loc, CPnt3D *c);
 /* the AI's target held (OVL2 0x60A850, ai_target.cpp's: CAiTarget's, the target at 0x67C) */
 bool func_0060A850(void *target);
 }
 
-/* a fire mode as an AI takes it (the 8 bytes at a CTFireMode's 0x8, handed whole to the AI by
- * Begin -- OVL2 0x563470, the SEALs' row; the names ours, after Parse's tags). The fields Parse
+/* a fire mode as an AI takes it: SOCOM 1's CAiWepHint (the 8 bytes at a CTFireMode's 0x8, handed
+ * whole to CSealCtrlAi::ChooseWeapon by Begin -- OVL2 0x563470, the SEALs' row; zseal.h declares
+ * the class, kit.h its statics; the field names ours, after Parse's tags). The fields Parse
  * clears through a setter keep MW's unfolded inserts (`andi zero,3`, `andi zero,1` shared by bits 8
  * and 9, the 18-bit field's dsll32/dsrl32 of zero), the ones it sets straight fold to constants */
-struct TASK_FIREMODE {
+class CAiWepHint {
+public:
     void SetMode(unsigned int m) { m_mode = m; }
     void SetBit8(bool b) { m_bit8 = b; }
     void SetHasWeapon(bool b) { m_hasWeapon = b; }
@@ -1044,7 +1043,7 @@ struct TASK_FIREMODE {
 
 /* ai::FIREMODE (SOCOM 1's CTFireMode) */
 struct CTFireMode : TASK_HDR {
-    TASK_FIREMODE m_fire;   // 0x8
+    CAiWepHint m_fire;   // 0x8
     PNT2D m_trigger;   // 0x10: "trigger" (0.1, 0.8 by default)
     unsigned char m_hasTrigger : 1;   // 0x18 bit 0: "trigger" given
     unsigned char _19[0x1c - 0x19];   // 0x1c bytes
@@ -1054,10 +1053,6 @@ struct CTFireMode : TASK_HDR {
     static bool Tick(_zanim_cmd_hdr *hdr, float *dT);
 };
 
-/* the AI's weapon picked for a fire mode (OVL2 0x563470, the SEALs' row: SOCOM 1's CTFireMode::Begin
- * calls ChooseWeapon(CAiWepHint &) with the task's 0x8 there -- so TASK_FIREMODE is SOCOM 1's
- * CAiWepHint) */
-extern "C" void func_00563470(CSealCtrlAi *ai, TASK_FIREMODE *hint);
 
 /* the AI's two trigger times as one struct (zseal.h's m_734, m_73c, m_744 and m_748: Rfloats and what
  * they rolled), set and rolled through an inline member called on a REFERENCE local -- its address
@@ -1595,7 +1590,7 @@ void CTFireMode::Begin(_zanim_cmd_hdr *hdr)
     CSealCtrlAi *ai = seal ? SealAi(seal) : 0;
 
     if (ai) {
-        func_00563470(ai, &cmd->m_fire);
+        ai->ChooseWeapon(cmd->m_fire);
         if (cmd->m_hasTrigger) {
             TASK_AITRIGGER &t = *(TASK_AITRIGGER *)ai->m_734;
 
@@ -1664,7 +1659,7 @@ bool CTFireWeapon::Tick(_zanim_cmd_hdr *hdr, float *dT)
             pos = cmd->m_pos;
             ok = true;
         } else if (cmd->m_hasCell)
-            ok = GetCellCenter__7CAiMapsFRC9CAiMapLocP6CPnt3D(&AiMaps, &cmd->m_cell, &pos) != 0;
+            ok = AiMaps.GetCellCenter(cmd->m_cell, &pos) != 0;
         else if (func_0060A850(ai->m_67c)) {
             CEntity *e = *(CEntity **)ai->m_67c;
             const CPnt3D *p = e ? &e->m_posW : 0;
