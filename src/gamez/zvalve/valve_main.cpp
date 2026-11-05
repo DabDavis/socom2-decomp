@@ -152,6 +152,63 @@ CValve *VALVE_CMD_DATA::ParseValveName(const char *name, int &index)
 bool zrdr_isitemtype(const _zrdr *rdr, int index, int type);
 void *_calloc(unsigned int n, unsigned int size, const char *file, int line);
 
+/* SOCOM 1's VALVE command: the VALVE_CMD_DATA from +4 (CmdTickCmp compares it). A 16-byte block */
+struct VALVE_CMD {
+    _zanim_cmd_hdr hdr;   // 0x0
+    VALVE_CMD_DATA data;   // 0x4
+};   // 0x10 bytes
+
+/* SOCOM 1's: the VALVE command read -- a valve alone (tested true), a valve and an operator, or a
+ * valve, an operator and a value: a number, or a valve named as the first is (the one index serving
+ * both names, as in SOCOM 1) */
+_zanim_cmd_hdr *CValve::CmdParseCmp(_zrdr *rdr)
+{
+    int index = -1;
+    VALVE_CMD *cmd = (VALVE_CMD *)_calloc(1, sizeof(VALVE_CMD), 0, 0);
+
+    cmd->hdr.data_size = sizeof(VALVE_CMD);
+    if (rdr) {
+        if (rdr->Count() == 1) {
+            CValve *valve = VALVE_CMD_DATA::ParseValveName(rdr->Item(0)->String(), index);
+
+            cmd->data.op = 1;
+            cmd->data.isArg = index != -1;
+            cmd->data.isAnim = true;
+            cmd->data.ref = index != -1 ? index : (index = ZAnim.m_CurAnim->AddValve(valve->m_name));
+            cmd->data.value = 0;
+            cmd->data.SetValueFlags(false, false, false);
+        } else if (rdr->Count() == 2) {
+            CValve *valve = VALVE_CMD_DATA::ParseValveName(rdr->Item(0)->String(), index);
+
+            cmd->data.op = ParseOperator(rdr->Item(1)->String());
+            cmd->data.isArg = index != -1;
+            cmd->data.isAnim = true;
+            cmd->data.ref = index != -1 ? index : (index = ZAnim.m_CurAnim->AddValve(valve->m_name));
+            cmd->data.value = 0;
+            cmd->data.SetValueFlags(false, false, false);
+        } else if (rdr->Count() >= 3) {
+            _zrdr *name = rdr->Item(0);
+            _zrdr *v = rdr->Item(2);
+            CValve *valve = VALVE_CMD_DATA::ParseValveName(name->String(), index);
+
+            cmd->data.op = ParseOperator(rdr->Item(1)->String());
+            cmd->data.isArg = index != -1;
+            cmd->data.isAnim = true;
+            cmd->data.ref = index != -1 ? index : ZAnim.m_CurAnim->AddValve(valve->m_name);
+            if (v->type == 3) {
+                CValve *second = VALVE_CMD_DATA::ParseValveName(v->String(), index);
+
+                cmd->data.value = index != -1 ? index : ZAnim.m_CurAnim->AddValve(second->m_name);
+                cmd->data.SetValueFlags(index != -1, true, true);
+            } else {
+                cmd->data.value = v->Int();
+                cmd->data.SetValueFlags(false, false, false);
+            }
+        }
+    }
+    return (_zanim_cmd_hdr *)cmd;
+}
+
 /* SOCOM II's VWATCH command (RegisterCommands' third; the names ours): a valve named once at
  * parse time -- an anim's own (its valve index) or, by its INPUT_VALVE name, an argument's -- and
  * marked when the command runs. A 16-byte block */

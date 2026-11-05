@@ -3814,7 +3814,7 @@
 0x002A76D0 0x664 Initialize__9CZNetGameFv  # OVL1; s1:align
 0x002A7D40 0x3F4 OnMissionStart__8CMissionFv  # OVL1; s1:calls by hand (the states lane, round 39): SOCOM 1's CMission::OnMissionStart (0x1F4510), grown -- the same sequence: m_state 1, m_delay -1, ResetDeathCam, the end's two flags cleared, the five outcome valves at 0, CInput::Flush, the common and mission anim sets started, every entity's OnMissionStart (slot 0x4C), CSnd::NetOpen or Open, the listener flag cleared, CSndJukebox::Start, then in a network game CPickup::Open, the HUD's ReInit_Uninit/ReInit_Init and the master's game start; st_core.cpp's load calls it on theMission; fts_mission.cpp
 0x002A8140 0xB48 ftsFixupAiMap__FP6CAiMap  # OVL1; s1:calls by hand (the states lane, round 24): CMission::Open calls it on each of AiMaps' maps (the list walk after RefreshTeamValves) where SOCOM 1's Open calls ftsFixupAiMap__FP6CAiMap in the same walk
-0x002A8C90 0x298 func_002A8C90  # OVL1
+0x002A8C90 0x298 aiMapPlaceItem__FPQ23zdb5CNodeRC6CPnt3DiPC6CPnt3DPC6CPnt3D  # OVL1; s1:calls by hand (the states lane, round 43): SOCOM 1's ftsFixupAiMap calls aiMapPlaceItem at the same two places with the same arguments (node, the cell's centre, 1, the offset or 0, the rotation) as SOCOM II's 0x2A8140 calls this; the same callee sequence (ftsGetAltitudeApprox, two sceVu0UnitMatrix, SetRotate, GetBBox, the corners, _min<f>, Add, SetMatrix, SetDynamicLight)
 0x002A8F30 0x14 __ct__6CPnt3DFfff  # OVL1; by its body (the three floats stored at 0, 4, 8, this returned: zmath.h's inline CPnt3D(float, float, float) out of line) -- the UI-widgets lane
 0x002A8F50 0x19C GetClosestLadder__11CLadderListFPC6CPnt3Df  # OVL1; s1:align by hand (the states lane, round 23): SOCOM 1's GetClosestLadder -- the unused CMatrix, each ladder whose box's foot or top is _close_enough to the point's y, the centre (Interp 0.5) less the point, the ground-plane length against the range, LADDER_MASK (0x3DE5F8) or'd into the index -- with SOCOM II's constant tolerance (15.0 at 0x3DE600) and the box at the element's start; 0x2A8B78 calls it
 0x002A90F0 0x11C GetLadderByNode__11CLadderListFPQ23zdb5CNodei  # OVL1; ours (the states lane, round 23): the ladder whose node (+0x18) is the given one, else one among the node's children (CNode::m_child at 0x68) to a depth, recursing; the world's ladder walk 0x2A9260 calls it with depth 0 before and after its insert, the SEALs (0x5B28C4, 0x5B2BF4, 0x5B3E84) too
@@ -10446,8 +10446,8 @@
 0x005804E0 0xC8 func_005804E0  # OVL2
 0x005805B0 0x218 func_005805B0  # OVL2
 0x005807D0 0x2B0 func_005807D0  # OVL2
-0x00580A80 0xE8 func_00580A80  # OVL2
-0x00580B70 0x59C func_00580B70  # OVL2
+0x00580A80 0xE8 ClimbOver__10CZSealBodyFf  # OVL2; s1:calls by hand (the SEALs, round 48): SOCOM 1's ClimbOver__10CZSealBodyFf 0x275560 (0xCC there, 0xE8 here), before Climb and BlendedClimb in both builds; the same body -- the blends popped down to one, the stance set, AnimTypes::ClimbOver pushed (both read it twice); ImpactFront's place 0x5B2620 calls it once with $f12 set, as SOCOM 1's ImpactFront calls ClimbOver
+0x00580B70 0x59C Climb__10CZSealBodyFf  # OVL2; s1:calls by hand (the SEALs, round 48): SOCOM 1's Climb__10CZSealBodyFf 0x275630 (0x474 there, 0x59C here), between ClimbOver and BlendedClimb in both builds; two switch arms push AnimTypes::StepUp (0x3DEC80, gp-31248 there) and a third anim 19 with a2 = 1, as SOCOM 1's; ImpactFront's place 0x5B2620 calls it three times with $f12 set, as SOCOM 1's ImpactFront calls Climb
 0x00581110 0x1A8 BlendedClimb__10CZSealBodyFf  # OVL2; s1:order by hand (SOCOM 1 seal_body.cpp order, BlendedClimb to Stand one to one from 0x581110 to 0x581DC0: the same height weights 12/26.5/14.5, newanims cleared, the ClimbMedium blend; the SEALs round 16)
 0x005812C0 0x168 Hang_0__10CZSealBodyFii  # OVL2; s1:order by hand (SOCOM 1 Hang_0, after BlendedClimb: the same two switches, itself and Stand_0 called for stances 1 and 2; the SEALs round 16)
 0x00581430 0x104 SetStanceIdle__10CZSealBodyF8AnimType  # OVL2; s1:order by hand (SOCOM 1 SetStanceIdle: the same state-7 tests, the pops and the anim kept at 0x1334, SOCOM 1 0xFA4, before the push in state 7; the SEALs round 16)
@@ -10459,11 +10459,11 @@
 0x00581DC0 0x104 Stand__10CZSealBodyFi  # OVL2; s1:order by hand (SOCOM 1 Stand__10CZSealBodyFi, after Stand_0: the state-0 tests, ClearStack inlined and Stand_0 asked at the old top time; the SEALs round 16)
 0x00581ED0 0x628 SetStance__10CZSealBodyF10SEAL_STATE  # OVL2; s1:order by hand (SOCOM 1 SetStance__10CZSealBodyF10SEAL_STATE, after Stand and before StanceChanged in both builds: BodySetState first, then a switch on the state at 0x174 over 4, 2, 1, 0, Crouch and Prone called; the SEALs round 16)
 0x00582500 0x38 StanceChanged__10CZSealBodyFv  # OVL2; s1:exact (SOCOM 1's: the stance-changed bit tested and cleared; PoseBitmap::Tick calls it)
-0x00582540 0x7CC func_00582540  # OVL2
-0x00582D10 0x314 func_00582D10  # OVL2
-0x00583030 0x318 func_00583030  # OVL2
+0x00582540 0x7CC CheckAnim__10CZSealBodyFv  # OVL2; s1:calls by hand (the SEALs, round 48): SOCOM 1's CheckAnim 0x277300, the first after StanceChanged in both builds; CZSealBody::Tick calls it once, a0 alone, where SOCOM 1's Tick calls CheckAnim
+0x00582D10 0x314 CrouchMoveControl__10CZSealBodyFff  # OVL2; s1:calls by hand (the SEALs, round 48): SOCOM 1's CrouchMoveControl 0x277970 (fff there: SOCOM II passes $f12/$f13 alone), after CheckAnim in both builds; InStateCrouch calls it once, as SOCOM 1's InStateCrouch calls CrouchMoveControl
+0x00583030 0x318 MoveControl__10CZSealBodyFff  # OVL2; s1:calls by hand (the SEALs, round 48): SOCOM 1's MoveControl__10CZSealBodyFff 0x277D10, after CrouchMoveControl in both builds; called once from InStateCrouch and three times from InStateStand ($f12/$f13), exactly as SOCOM 1's
 0x00583350 0x1A4 func_00583350  # OVL2
-0x00583500 0x45C func_00583500  # OVL2
+0x00583500 0x45C ProneControl__10CZSealBodyFfff  # OVL2; s1:calls by hand (the SEALs, round 48): SOCOM 1's ProneControl__10CZSealBodyFfff 0x278230, right before TurnControl in both builds; InStateProne calls it once with $f12/$f13/$f14, as SOCOM 1's InStateProne calls ProneControl
 0x00583960 0x18C TurnControl__10CZSealBodyFf  # OVL2; s1:order by hand (SOCOM 1 TurnControl__10CZSealBodyFff, after ProneControl: the top blend weight made 1, the turn doubled and negated, capped 0.6/0.3/0.35/0.6 by state as in SOCOM 1; SOCOM II takes one float, every caller sets f12 alone; the SEALs round 16)
 0x00583AF0 0x374 InStateCarried__10CZSealBodyFv  # OVL2; s1:order by hand (the SEALs, round 47): SealAnim 0x5870E0 calls it for state 10 (stateCarried) where SOCOM 1's SealAnim calls InStateCarried__10CZSealBodyFfff, its case block first as SOCOM 1's; and SOCOM 1's stretch order (TurnControl, InStateCarried, InStateCarrying, InStateClimbLadder, InStateHang in both builds) -- no floats in SOCOM II
 0x00583E70 0x3C8 InStateCarrying__10CZSealBodyFv  # OVL2; s1:order by hand (the SEALs, round 47): SealAnim 0x5870E0 calls it for state 9 (stateCarrying) where SOCOM 1's SealAnim calls InStateCarrying__10CZSealBodyFfff; and SOCOM 1's stretch order (after InStateCarried, before InStateClimbLadder in both builds) -- no floats in SOCOM II
@@ -10474,7 +10474,7 @@
 0x00584C10 0x48 func_00584C10  # OVL2
 0x00584C60 0xB80 InStateCrouch__10CZSealBodyFv  # OVL2; s1:order by hand (the SEAL lane, round 21): SOCOM 1's InStateCrouch__10CZSealBodyFfff -- after InStateProne in both builds, before CanCrouch (0x5857E0), and the state dispatcher 0x5870E0's case 1 (stateCrouch) calls it with the SEAL alone (not written)
 0x005857E0 0xB8 func_005857E0  # OVL2
-0x005858A0 0x42C func_005858A0  # OVL2
+0x005858A0 0x42C UpdateQuadrant__10CZSealBodyFRfRfb  # OVL2; s1:calls by hand (the SEALs, round 48): SOCOM 1's UpdateQuadrant__10CZSealBodyFRfRfb 0x27A250, after InStateCrouch in both builds (CanCrouch, between them there, is inlined here); called from InStateCarrying, InStateProne and InStateCrouch as SOCOM 1's (and InStateCarried, where SOCOM 1's InStateStand calls it), two float references and a bool (a1/a2 frame addresses, a3 = 0)
 0x00585CD0 0x31C func_00585CD0  # OVL2
 0x00585FF0 0x60 func_00585FF0  # OVL2
 0x00586050 0x1E8 StandTurning__10CZSealBodyFf  # OVL2; s1:order by hand (the SEALs, round 27): SOCOM 1's StandTurning__10CZSealBodyFfff, after UpdateQuadrant and before StandStill (0x586240) and InStateStand in both builds; the same body -- the top's ThisFoot, the turn blend (16) unless current, the blends popped (ClearStack inlined), the foot kept at 0x14CC (32 or 2), TurnSetup, the turn-in-place sequence Start(0.8, 3000, 0.4) at full, the turning/moving bits, TurnControl -- one float where SOCOM 1 took three
@@ -10504,7 +10504,7 @@
 0x00588B40 0x7C func_00588B40  # OVL2
 0x00588BC0 0xD40 func_00588BC0  # OVL2
 0x00589900 0x19C func_00589900  # OVL2
-0x00589AA0 0x9C4 func_00589AA0  # OVL2
+0x00589AA0 0x9C4 PopBlend__10CZSealBodyFv  # OVL2; s1:calls by hand (the SEALs, round 48): called where SOCOM 1's PopBlend 0x27CBF0 is -- RestrainBuddy, StabBuddy, PutdownBuddy (twice), PickupBuddy (twice), DropBody, ClimbOver's and Climb's pop loops, CZSealBody::Tick; reads AnimTypes::ClimbOver then StepUp as SOCOM 1's PopBlend reads them (+0x164 / +0x5DC here, +0xC8 / +0x4CC there)
 0x0058A470 0x58 func_0058A470  # OVL2
 0x0058A4D0 0x10C ClearToBase__10CZSealBodyFb  # OVL2; s1:calls by hand (SOCOM 1 ClearToBase__10CZSealBodyFb: the same pops stopping at the base anims 1, 18 and 26 with signed counts, the extra pop when the bool says, the top blend control cleared and stance 2 asked, the top returned; SOCOM II adds a limit of twelve; the SEALs round 16)
 0x0058A5E0 0xC8 ClearStack__10CZSealBodyFUib  # OVL2; s1:order by hand (SOCOM 1 ClearStack__10CZSealBodyFUib, after PopBlend and before BodySetState in both builds: the blends popped down to a count, the top blend control cleared and stance 2 asked when the bool says; SOCOM II adds a limit of twelve; the SEALs round 16)
@@ -10835,9 +10835,9 @@
 0x005AA600 0x8 func_005AA600  # OVL2
 0x005AA610 0x8 func_005AA610  # OVL2
 0x005AA620 0x70 CacheReticuleSeal__10CZSealBodyFb  # OVL2; s1:order by hand (the SEALs, round 39): SOCOM 1's CacheReticuleSeal__10CZSealBodyFb (0x29A790), after GetAction in both builds and the same code -- m_useCachedReticuleSeal set and m_cachedReticuleSeal from the reticule's node through GetSeal, or both cleared (SOCOM 1's DWARF names, 0x178/0x174 there); respelled as a member, byte-exact as before
-0x005AA690 0x34 func_005AA690  # OVL2; tu: seal_env.cpp~ (1.0 beta)
-0x005AA6D0 0x8 func_005AA6D0  # OVL2
-0x005AA6E0 0xAD4 func_005AA6E0  # OVL2
+0x005AA690 0x34 GetReticuleSeal__10CZSealBodyFv  # OVL2; tu: seal_env.cpp~ (1.0 beta); s1:order by hand (the SEALs, round 48): SOCOM 1's GetReticuleSeal__10CZSealBodyFv 0x29A800, the same 0x34 bytes (the cached bit 0 tested, the kept SEAL or GetSeal of m_last_reticule's node -- 540/536/988 here, 376/372/860 there), after CacheReticuleSeal and before GetReticuleDi in both builds; written in seal_env.cpp
+0x005AA6D0 0x8 GetReticuleDi__10CZSealBodyFv  # OVL2; s1:order by hand (the SEALs, round 48): SOCOM 1's GetReticuleDi__10CZSealBodyFv 0x29A840, 8 bytes in both (`this + 0x3C0` here, `this + 0x340` there: m_last_reticule), after GetReticuleSeal and before CheckDIShoot in both builds; the HUD's 0x216770 calls it ahead of the range's Sub, fptodp and sprintf as SOCOM 1's DoRangeText calls GetReticuleDi; written in seal_env.cpp
+0x005AA6E0 0xAD4 CheckDIShoot__10CZSealBodyFP6CPnt3DP7CMatrix  # OVL2; s1:order by hand (the SEALs, round 48): SOCOM 1's CheckDIShoot__10CZSealBodyFP6CPnt3DP7CMatrix 0x29A850 (0xAE4 there, 0xAD4 here), right after GetReticuleDi in both builds; the app camera calls it with a CPnt3D and a matrix (camera.cpp's placeholder already notes CZSealBody::CheckDIShoot)
 0x005AB1C0 0x3CC func_005AB1C0  # OVL2
 0x005AB590 0x2B4 func_005AB590  # OVL2
 0x005AB850 0x364 HandleDamage__10CZSealBodyFP12CZProjectile  # OVL2; s1:order by hand (the SEALs, round 29): SOCOM 1's HandleDamage__10CZSealBodyFP12CZProjectile, before HandleDamageNonExplosive and HandleDamageExplosive in both builds and calling them from the same arms of the same body-part walk (the alive bit first, the last projectile kept, CBody::m_body_parts copied into a local vector, UpdateHealth(loc, 5) online and off, NotifyTargetDown and the stats' death) -- SOCOM II passes the location by address
@@ -10869,7 +10869,7 @@
 0x005AF470 0x90 RotateHead__10CZSealBodyFf  # OVL2; s1:order by hand (SOCOM 1's RotateHead__10CZSealBodyFff, after GetLookQuat and before GetLookDirW in both builds: the same body -- MakeXRot into the forward look, SOCOM 1's m_fwdlook 0xf60 = 0x1070, else the identity; every SOCOM II caller sets only $f12 (both app-camera transitions, 0x29A180, CZSealBody(), 0x594600), so its second float is gone) -- the SEAL lane, round 12
 0x005AF500 0x90 GetLookDirW__10CZSealBodyCFP6CPnt3D  # OVL2; s1:order by hand (SOCOM 1's GetLookDirW__10CZSealBodyCFP6CPnt3D, after RotateHead in both builds: the same VU0 rotation of the look's direction by the node's matrix, the look held at 0x1190) -- the SEAL lane, round 12
 0x005AF590 0x39C func_005AF590  # OVL2
-0x005AF930 0xAD4 func_005AF930  # OVL2
+0x005AF930 0xAD4 PostCheckDIDown__10CZSealBodyFRfRfRf  # OVL2; s1:calls by hand (the SEALs, round 48): SOCOM 1's PostCheckDIDown 0x29EB00, after HandleLanding before PreCheckDIDown there; CZSealBody::Tick calls it with three member addresses (a1 = x + 4, a2 = x + 8, a3 = x: 0x240/0x244/0x23C here, 0x18C/0x190/0x188 there); reads AnimTypes::StepUp once then ClimbOver three times, as SOCOM 1's
 0x005B0410 0xC func_005B0410  # OVL2
 0x005B0420 0x3E0 func_005B0420  # OVL2
 0x005B0800 0x3C func_005B0800  # OVL2
@@ -10888,9 +10888,9 @@
 0x005B1570 0x1E0 func_005B1570  # OVL2
 0x005B1750 0x13C func_005B1750  # OVL2
 0x005B1890 0x17C func_005B1890  # OVL2
-0x005B1A10 0x26C func_005B1A10  # OVL2
+0x005B1A10 0x26C AlignForClimb__10CZSealBodyFbR6CPnt3DR6CPnt3DP6CPnt3D  # OVL2; s1:calls by hand (the SEALs, round 48): SOCOM 1's AlignForClimb 0x2A05F0, called once from ImpactFront in both builds; reads AnimTypes::ClimbOver then StepUp as SOCOM 1's does (bool, two CPnt3D references and a pointer, as the call sets up a1-t0)
 0x005B1C80 0x994 func_005B1C80  # OVL2
-0x005B2620 0x700 func_005B2620  # OVL2
+0x005B2620 0x700 ImpactFront__10CZSealBodyFPQ23zdb15IntersectStructP6CPnt3D  # OVL2; s1:calls by hand (the SEALs, round 48): SOCOM 1's ImpactFront 0x2A0A40 (0x4DC there, 0x700 here) calls Climb three times, ClimbOver once and AlignForClimb once, as this does 0x580B70 / 0x580A80 / 0x5B1A10; CanTraverse calls it in both builds (a1 an intersection or 0, a2 a frame CPnt3D)
 0x005B2D20 0x61C func_005B2D20  # OVL2
 0x005B3340 0x544 func_005B3340  # OVL2
 0x005B3890 0x1C8 func_005B3890  # OVL2
@@ -11658,7 +11658,7 @@
 0x00602B20 0x1F0 ShouldAvoid__FP10CZSealBodyP10CZSealBodyf  # OVL2; by hand (the kit lane, round 21; the name ours): whether SEAL a, a squared distance (under a function-local 225.0) from SEAL b, steps out of its way -- both velocities through ai::is_moving (50.0), a's GetSealCtrlAi, b's IsAi as a ternary; not the AI's: either moving and a standing or crouched; the AI's: not when b is prone, b's AiStateIs(AI_STATE_AVOID) (the const GetState 0x5F8330) and its avoidance (GetAiState 0x5F6010 cast by kind) not on a, else true; never when a is the AI's, restrainable and not restrained; the SEAL lane's 0x558440 calls it -- seal_airesponse.cpp, between CAiSAvoid's Tick and OnSignal
 0x00602D10 0x114 OnSignal__9CAiSAvoidFQ28CAiState6SIGNALP11CSealCtrlAi  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00602E30 0x860 Tick__8CAiSRushFP11CSealCtrlAi  # OVL2; by hand: CAiSRush's vtable slot +0x10 (Tick); the kit lane, round 6: slot 0x10 takes no frame time -- CAiStateStack::Tick (0x5F8030) never sets $f12 for it and no override reads $f12 before writing it (they read the m_dT static) -- and returns an int
-0x00603690 0x1C func_00603690  # OVL2
+0x00603690 0x1C SetTarget__8CAiSRushFP10CZSealBody  # OVL2; s1:order by hand (the kit lane, round 49): SOCOM 1's CAiSRush::SetTarget (0x2E51D0, 0x20) sits between the rush's Tick and OnSignal there as this row does here; the same words, the target's id (or CEntity::invalidId) stored at 0x5C for SOCOM 1's 0x2C
 0x006036B0 0x29C OnSignal__8CAiSRushFQ28CAiState6SIGNALP11CSealCtrlAi  # OVL2; by hand: CAiSRush's vtable slot +0x8 (OnSignal)
 0x00603950 0x9E8 Tick__15CAiSPathRecoverFP11CSealCtrlAi  # OVL2; by hand: CAiSPathRecover's vtable slot +0x10 (Tick); the kit lane, round 6: slot 0x10 takes no frame time -- CAiStateStack::Tick (0x5F8030) never sets $f12 for it and no override reads $f12 before writing it (they read the m_dT static) -- and returns an int
 0x00604340 0x44 func_00604340  # OVL2

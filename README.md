@@ -2065,6 +2065,55 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the game states, round 43** (Sample_ExtractionLoc and ftsFixupAiMap -- unblocked by the one CSaferStr;
+  fts_mission.cpp's stand-ins retired):
+  - fts_mission.cpp now includes ai_maps.h (ai.h, zentity.h): its own CAiMapLoc, CCompassAnchor, CCompass, CAiMaps (the
+    nav points are `AiMaps.m_names[1]`), CEntity / CEntityList, CAiEvent and CTarget / CTargetList stand-ins are gone,
+    CZSealBody a subclass of CEntity. A HEADER'S LITERAL BOUND TO A CONST REFERENCE EMITS AN ANONYMOUS .data WORD IN
+    EVERY UNIT THAT INCLUDES IT, used or not (ai.h's ForEachCell: two 4-byte zeros) -- every later `@N` rank shifts while
+    the code is unchanged, so plain objcmp reports DIFF; aligned by content (the states' ocdetail.py --align-anon) every
+    existing function is identical;
+  - a result assigned inside its test (`if (!(p = f()))`) branches on v0 with the copy in the delay slot, assigned first
+    and tested after, the copy comes first and the branch tests the saved register; `for (iterator i = begin(), e =
+    end(); ...)` gives the iterator and end other saved registers than declaring them before the loop
+    (CMission::Sample_ExtractionLoc 0x2A42B0);
+  - MW numbers inliner temporaries in the inliner's order, not source order -- a named local lands among them only by
+    merging into one (a reference initialised from an inline accessor: `ActionTable(map)`, a marked numbering device);
+    reusing one variable for a second lookup (`pickup = zrdr_findtag(pickup, "AMMO")`) gives one node, a separate
+    variable is numbered ahead of the loop's temporaries; an owner read through a ternary merges into the ternary's
+    temporary and spills below a later named reference; `Create(...)->m_timer = g;` loads the global before the call and
+    keeps it in $f20 across it (ftsFixupAiMap 0x2A8140, by igdump / igreplay; aiMapPlaceItem 0x2A8C90 named by SOCOM 1's
+    two calls); st_exit.cpp / st_menu.cpp call CGameMenu::Tick by name (SAME-BY-ADDRESS).
+- **Tells from the SEALs, round 48** (CSealCtrlAi::SetAiEnabled; the reticule getters to source; fourteen rows named):
+  - SOCOM 1 counterparts sitting in the same run, at the same sizes and with the same bodies, name several rows at once:
+    SOCOM 1's ImpactFront calls Climb three times, ClimbOver once and AlignForClimb once, exactly as 0x5B2620 does
+    (ClimbOver 0x580A80, Climb 0x580B70, ImpactFront, AlignForClimb 0x5B1A10, PostCheckDIDown, PopBlend); CheckAnim,
+    CrouchMoveControl, MoveControl, ProneControl and UpdateQuadrant by SOCOM 1's order and callers; GetReticuleSeal
+    0x5AA690, GetReticuleDi 0x5AA6D0 and CheckDIShoot 0x5AA6E0 an exact run after CacheReticuleSeal in both builds;
+  - a data static's second witness can come from a function whose identity its callers fix: AnimTypes::StepUp 0x3DEC80
+    through Climb, which pushes it in the two switch arms where SOCOM 1's Climb pushes StepUp;
+  - MW if-converts `r = false; if (A && B) r = true;` into `r = A ? B : 0` when A is a materialised inline bool -- with A a
+    plain branch it keeps the "zero, then set" shape (0x555420, OPEN); `r = true` in a switch case while the switch's
+    constant 1 sits in a register compiles to `andi rX, rOne, 0xff`, not daddiu; SetAiEnabled 0x574830's alarm constant
+    is `0.0333f` (0x3D086595), not 1/30.
+- **Tells from the kit and AI states, round 49** (CTPlay::Tick and CTInView::Tick at last; the rush's SetTarget and
+  OnSignal, the surrender's OnSignal):
+  - A CAST THROUGH A LEAF TEMPLATE INLINE (`template <class T> T *TaskBlock(hdr) { return (T *)hdr; }`) MAKES THE LOCAL
+    THE INLINE'S RESULT TEMPORARY, numbered after every named and inline variable -- what CTPlay::Tick 0x5D2F30's block
+    needed (the replay accepted any number past the second find's counter; a cast inline with its own local stays 76
+    off); `cmd->m_2c == top->m_animType` gives the xor's operand order;
+  - a walk's end written `data_ + size()` in a local inline keeps the data pointer from the entry test and re-reads only
+    the count each pass -- in place, through a reference or a pointer local, MW hoists the whole end or re-reads both
+    (CTInView::Tick 0x5D7FD0's team walk: TaskTargetsEnd; the MSL's 0x60F760 shape gives 0x6C4 here); floats reused
+    inside an inline held in named locals are numbered with the inline's variables, ahead of the lowering temporaries
+    (the cone's depth and fraction);
+  - a call result assigned to its own local and copied to the result at once keeps the case's tests on v0, with the copy
+    in the delay slot, when the result lives in a saved register; an inline argument read after a call must be taken
+    into a local after that call, or MW reads it after a ternary argument (CAiSSurrender::OnSignal 0x607D70's inlined
+    ClearTeamMask); a function-local static object with an inline constructor (`static Rfloat s(3.0f, 5.0f)`) gives the
+    target's guard and folded stores -- `@LOCAL@` / `@GUARD@` data rows resolve every relocation (CAiSRush::OnSignal
+    0x6036B0; SetTarget 0x603690 named by SOCOM 1's 0x2E51D0, the same words, between the rush's Tick and OnSignal in
+    both builds).
 - **Tells from the engine core, round 17** (CCamera::Update; the clutter's TickForce, Render, the list's Render and the
   anim manager's tick -- SOCOM 1's; the tether and camera data rows named):
   - INLINE TEMPORARIES ARE LAID OUT IN EXPANSION ORDER: in a nested expression the outer operator's result and copy take
@@ -11895,6 +11944,45 @@ one matched draft superseded (ConstructSHS_VUV 0x504980); `src/lib/asr` 553 of 5
 named: 0x5042B8 `CreateFreqWindow` (`s1:calls+order`: SOCOM 1's InitSHS_VUV calls it at the same point, after
 the block's last table), 0x504520 `InitSHS_VUV` (`s1:slot`: ConstructSHS_VUV's init slot, as SOCOM 1's).
 casr.h gains +960 (the label scoring's result). No tool changed.
+
+**Round 30c: the SHS object whole, DoUserWordTraining, FindBestTranscription written.**
+
+- **A temporary set twice keeps a sum in its loop and gives the result a pseudo of its own**
+  (SubHarmonicSummation_and_VUVDetermination, round 29c's 38 words): the per-harmonic end as `t = out + n;
+  t -= k; hend = t;` -- set twice, t is no loop.c movable, so `out + n*4` stays in the outer loop
+  (`addu v1,t0,t5`, SOCOM 1's compile too), and the copy into hend gives the end its own register once
+  combine folds the subtraction into it (`subu t1,v1,v0`). `hend = out + n - k` hoists the sum; `end = out +
+  n; end -= k` keeps both in one register. With the sum split off, the end is set once and ranks below out
+  in global-alloc (round 29c's separate end, set twice, outranked it). Also: `x = in[0];
+  x++;` loads into x's own register (`x = in[0] + 1` loads into v0 first); a ratio tested as an expression
+  (`max / *x < s->f56`) keeps the quotient a pseudo of its own; independent loads issue in source order
+  (`q = s->f84; off = s->f92;` after the copy end).
+- **expand_end_loop rolls a `for (;;)` up to its first exit** (ProcessSHS_VUV): with the peak path's guard
+  written as `if (p == pend) break;` before the fifth copy, the code from the loop top to that exit (the
+  peak test, four copies, the guard) moves to the loop's end, so the not-a-peak exit test and the
+  increment sit above the body and the loop is entered by a jump over them -- the target's (and SOCOM
+  1's) layout, where a do-while keeps its test below the body. The entry jump into a loop's middle is
+  this rotation here, round 28c's conditional cross-jump in Smoothing.
+- **CSE's class head is the longer-lived register**: the zeroing walker loaded as `z = s->f64; peaks = z;`
+  and reused as the window loop's output walker outlives peaks, so CSE keeps z first and the unrolled
+  preconditioning stores through it (`sw zero,0(a0)` in a plain slot, peaks a copy in t2); a short-lived
+  walker is rewritten to peaks (`sw zero,0(a3)`, two slots annulled). A copy's base a variable of its own
+  (`dst[-2] = ...; dst[-1] = ...; q = dst; *q++ = ...`) for the target's `move a0,v0`.
+- **A multiply through a register holding a constant is a variable at the tree level**
+  (FindBestTranscription): the target's `li s2,3; mult v1,a0,s2` (SOCOM 1's too) comes from `j * n + i`
+  with `int n = 3` -- a literal 3 is synthesised (`sll; addu`) and `i * 3 + i` folds to `i * 4`; the
+  compares still take the immediate (CSE).
+- **Open, diagnosed in place**: FindBestTranscription (0x390 against 0x398: the second loop's own register
+  for 3, the first row's base in a register, the acoustic term's `- 0.9` after its join where fold
+  distributes and folds it, the zeros' copy order). Not reached: CreateSecondPassTreeContext,
+  DoDurationModeling, ScoreTranscriptions, ExtendNodeWheel, ConstructBlock, PitchCombinerReset/
+  InitPitchCombiner, InitViterbi@nbestdp (their diagnoses stand).
+
+Hand-written in round 30c: `asr/shs.c` (SubHarmonicSummation_and_VUVDetermination and ProcessSHS_VUV closed:
+the object whole, 8 of 8), `asr/userword.c` (DoUserWordTraining new, SOCOM 1's body as it stands;
+FindBestTranscription OPEN: 16 of 19) -- 3 rows new to the map's byte-exact rows (3,252 bytes), no draft
+superseded; `src/lib/asr` 556 of 583 (553 of 581 before). No rows named (all had SOCOM 1's). casr.h types
++920/+924 (the trained transcription's out-parameters). No tool changed.
 
 **Round 14b: the "toolchain" opens were SCEA's shapes; LargeInt's core is assembly.**
 
