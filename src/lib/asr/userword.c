@@ -15,9 +15,9 @@
  * above it, their real definitions in place) and RejectTrainUtters, SOCOM 1's bodies. Round 30c:
  * DoUserWordTraining, SOCOM 1's body as it stands (the out-parameters at +920/+924 typed in casr.h).
  * OPEN: SendLabelsToEngine (26) and SendPartOfLabelsToEngine (36s), diagnosed in place;
- * FindBestTranscription (round 30c, 0x390 against 0x398) diagnosed in place; DoDurationModeling
- * and ScoreTranscriptions not written (declared extern above DoUserWordTraining: their calls
- * resolve through the map).
+ * FindBestTranscription (round 30c, 0x390 against 0x398) diagnosed in place; ScoreTranscriptions
+ * not written (declared extern above DoUserWordTraining: its call resolves through the map).
+ * Round 31c: DoDurationModeling, SOCOM 1's body.
  *
  * cbDoUserWordTraining's flag test (open since round 4b: `bnezl` here, `bnez` in the target, the
  * return's `move v0,zero` in the slot with a call to ExitUserWordTraining as the fall-through) is
@@ -291,6 +291,90 @@ static int FindBestTranscription(CASR *c, float *scores, float *durs, int *best)
     return 0;
 }
 
+extern short *casrGetSegmStart(CASR *c, int i, int j);
+extern void casrInitSegmentation(CASR *c);
+extern void *heap_Calloc(void *heap, int n, int size);
+extern void *memcpy(void *dst, const void *src, unsigned int n);
+
+/* the best transcription's durations modelled: each training utterance's segment starts for it
+ * copied (n + 2 a row, the states last to first), each state's duration the least of the
+ * utterances' halved (rounded up; the user-word silence one frame), the transcription expanded to
+ * one label a frame, and every utterance's segment starts rewritten as that many equal steps
+ * through each state. SOCOM 1's body (round 31c), its k loops unrolled by two here where SOCOM 1's
+ * build left them: the row length a local (`(n + 2) * 2` folds to `n * 2 + 4`); the utterance
+ * counter compared unsigned (the target's beqz/sltu: the count is an int everywhere else); the
+ * expansion written through an index (`newseg[idx--]`: a walking pointer makes the body small
+ * enough to unroll by four); `total++` above `dur[k] = 1` (the preconditioned copy then stores
+ * total's register, the constant 1 there); the two inner counters apart (one counter shared
+ * takes other registers); the rewrite's row step in the for's increment after k's, so the
+ * duration pointer steps before it. */
+static int DoDurationModeling(CASR *c, int best)
+{
+    int n = c->utt[best].n;
+    unsigned short *seg = c->utt[best].seg;
+    unsigned short *buf, *p, *q, *out, *newseg;
+    unsigned int *dur;
+    unsigned int total, min, d, j, m;
+    unsigned short i, step, t;
+    unsigned int acc;
+    int k, idx;
+    int len = n + 2;
+
+    buf = heap_Calloc(c->heap, len * c->uw_recs_needed, 2);
+    p = buf;
+    for (i = 0; i < (unsigned int)c->uw_recs_needed; i++) {
+        memcpy(p, casrGetSegmStart(c, best, i), len * 2);
+        p += len;
+    }
+    dur = heap_Calloc(c->heap, n, 4);
+    total = 0;
+    p = buf;
+    for (k = n - 1; k >= 0; k--) {
+        q = p++;
+        if (seg[k] == (unsigned short)c->uw_silence) {
+            total++;
+            dur[k] = 1;
+        } else {
+            min = 10000;
+            for (i = 0; i < (unsigned int)c->uw_recs_needed; i++) {
+                d = q[0] - q[1];
+                if (d < min)
+                    min = d;
+                q += len;
+            }
+            dur[k] = (min + 1) / 2;
+            total += dur[k];
+        }
+    }
+    newseg = heap_Calloc(c->heap, total, 2);
+    idx = total - 1;
+    for (k = n - 1; k >= 0; k--)
+        for (j = 0; j < dur[k]; j++)
+            newseg[idx--] = seg[k];
+    p = buf;
+    heap_Free(c->heap, c->utt[best].seg);
+    c->utt[best].n = total;
+    c->utt[best].seg = newseg;
+    casrInitSegmentation(c);
+    for (i = 0; i < (unsigned int)c->uw_recs_needed; i++) {
+        out = casrGetSegmStart(c, best, i);
+        for (k = n - 1; k >= 0; k--, p++) {
+            t = p[0];
+            step = (unsigned short)(p[0] - p[1]) / dur[k];
+            acc = 0;
+            for (m = 0; m < dur[k]; m++) {
+                *out++ = t - acc;
+                acc += step;
+            }
+        }
+        for (; k >= -2; k--)
+            *out++ = *p++;
+    }
+    heap_Free(c->heap, dur);
+    heap_Free(c->heap, buf);
+    return 0;
+}
+
 /* the label stop and start (defined at their place below), as GNU extern inlines for the
  * functions between: CheckConsistency holds both bodies */
 extern __inline__ int DoLabelStop(CASR *c)
@@ -413,15 +497,12 @@ static void RejectTrainUtters(CASR *c, unsigned char *reject)
     c->train_state = 0;
 }
 
-/* the three static scorers above are not written yet: declared extern, their calls resolve
- * through the map */
+/* the scorer above is not written yet: declared extern, its call resolves through the map */
 extern int ScoreTranscriptions(CASR *c, float *scores, float *durs, int *best, unsigned char *reject,
                                unsigned char *bad);
-extern int DoDurationModeling(CASR *c, int best);
 extern int TrainInit(CASR *c);
 extern void TrainModels(CASR *c, int best);
 extern void *heap_Alloc(void *heap, int size);
-extern void *memcpy(void *dst, const void *src, unsigned int n);
 
 /* the training once the last utterance is in: every utterance's transcriptions scored against the
  * others (an inconsistent set rejects its utterances, warning 36), the best one chosen, its
