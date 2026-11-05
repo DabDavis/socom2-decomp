@@ -185,8 +185,16 @@ public:
     static void CloseAll();
     /* a set's anims taken from another (SOCOM 1's; OVL2 0x5E3740) */
     void Inherit(AnimSet *base);
-    /* the set's name (out of line in the SEALs' units, OVL2 0x578940; the name ours) */
-    std::string &GetName() { return m_name; }
+    /* the set's name (out of line in the SEALs' units, OVL2 0x578940; the name ours) -- five inline
+     * levels high: the depth the target's Find needs (kit round 38, fitted here, not read off the
+     * image -- no function calls a piece below GetName or c_str): with Find's whole tree over five,
+     * 0x5E3940 inlines Find one level and calls every piece, as the target does; the chain is
+     * GetName's or c_str's in the original (include/string's c_str is two levels: the MSL lane's) */
+    std::string &Name0() { return m_name; }
+    std::string &Name1() { return Name0(); }
+    std::string &Name2() { return Name1(); }
+    std::string &Name3() { return Name2(); }
+    std::string &GetName() { return Name3(); }
     /* a set by its name in the list, or 0 (SOCOM 1's Find; inlined one level in 0x5E3940, the list's
      * iterator pieces called -- OVL2 0x5788C0-0x578980, the SEALs' copies) */
     static AnimSet *Find(const char *name)
@@ -572,16 +580,12 @@ CZSIScriptCommon *AnimSet::GetVariantScript(AnimType type, int kind, int index)
 }
 
 /* a set's included sets inherited, each found by name in the list (OVL2 0x5E3940: SOCOM 1's Inherit
- * held the walk inline; the name unknown).
- * OPEN, 0x154 against 0x180: the target inlines Find one level -- every call in it (the iterator's
- * default constructor, begin, operator=, end, !=, *, GetName, c_str, postfix ++: the SEALs' copies
- * 0x5788C0-0x578980) left a call -- so Find's whole inline tree is taller than five there; here it
- * is at most five and all of it inlines. A probe with GetName five high (four wrapper levels: Find's
- * tree six) is byte-exact, four high is not. CloseAll (0x5E5070) inlines the list's begin, end, !=
- * and ++ whole, so those are at most four high in the original: the tall chain is c_str's (two
- * here, c_str -> is_long; the outer walk's own c_str inlines at depth one, so five high fits) or
- * the iterator's constructor or assignment -- include/string's and include/vector's depths, the
- * MSL lane's */
+ * held the walk inline; the name unknown). The target inlines Find one level -- every call in it
+ * (the iterator's default constructor, begin, operator=, end, !=, *, GetName, c_str, postfix ++:
+ * the SEALs' copies 0x5788C0-0x578980) left a call -- so Find's whole inline tree is taller than
+ * five there: GetName's five levels (above) make it so (four levels are 0x184 since the MSL headers'
+ * round 24, 0x154 before it). CloseAll (0x5E5070) inlines the list's begin, end, != and ++ whole,
+ * so those are at most four high in the original */
 extern "C" void func_005E3940(AnimSet *set)
 {
     for (std::vector<std::string>::iterator i = set->m_included.begin(); i != set->m_included.end(); i++) {

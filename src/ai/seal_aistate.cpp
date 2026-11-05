@@ -141,11 +141,10 @@ void CAiSAction::Virtual0C(CZAnim *anim, AI_SIGNAL sig, CSealCtrlAi *ai)
 
 extern "C" {
 /* an object's holder id dropped when it is the SEAL's (OVL1 0x2B49D0: the word at 0x34 made
- * CEntity::invalidId), an anim stopped (OVL1 0x2707C0, zanim's: SOCOM II's Stop with a flag) and the
- * SEAL's anim set bound (OVL2 0x58C4A0, seal_body.cpp's BindAnimSet wrapper) */
+ * CEntity::invalidId) and an anim stopped (OVL1 0x2707C0, zanim's: SOCOM II's Stop with a flag) --
+ * the SEAL's anim set is bound through zseal.h's BindAnimSet(AnimSet *, bool), OVL2 0x58C4A0 */
 void func_002B49D0(void *obj, unsigned int id);
 void func_002707C0(CZAnim *anim, bool now);
-void func_0058C4A0(CEntity *seal, class AnimSet *set, bool b);
 }
 
 /* the AI's bit 0 at 0x264 set through a bool (zseal.h's m_debug: the `andi zero,1` form; the name
@@ -191,7 +190,7 @@ void CAiSAction::OnSignal(SIGNAL sig, CSealCtrlAi *ai)
             m_78 = 0;
         }
         ai->m_stateStack.SetFlags(1, 0);
-        func_0058C4A0(seal, m_animset, false);
+        ((CZSealBody *)seal)->BindAnimSet(m_animset, false);
         if (((const CAiState *)this)->m_phase < 7)
             UpdatePhase(0);
         else if (((const CAiState *)this)->m_phase == 7) {
