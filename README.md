@@ -2062,6 +2062,34 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the world, rdr and sound, round 18** (CSnd::PostTick, the mission's sounds, CAlpha::Render; the last
+  depth-6 stand-in dropped):
+  - an int `x > -1` branches slti/bnez and `x >= 0` branches bltz -- a size-only check can hide it when another
+    difference cancels it (round 17 recorded `> -1` as no help for that reason: CSnd::PostTick 0x341A60, with `floor(x)
+    + -128.0` passing the constant first to dpadd where `floor(x) - 128.0` is dpsub, and the clamp `depth > 127`);
+  - a local chosen by if/else into an uninitialised declaration is numbered at its declaration, initialised by a ternary
+    after every named local (the mission's sounds 0x344450); a copy that changes the pointer's type (`void *found =
+    bestBlock`) is not propagated into a later use through a cast (CHeap::Alloc 7 -> 6); an object declared at the top but
+    assigned at the end takes the frame slot its declaration order gives it at no code cost; a list's end held in a named
+    local is numbered before the loop's hoisted address temporaries (CPipe::CAlpha::Render 0x336CB0);
+  - for a walk inside an inline, a local end built from the raw pointer in a const local (`unsigned int *const p = v.data_ +
+    v.size_`) lets it inline whole at level 5, written straight into the iterator constructor the cursor and end
+    registers swap (zsnd_positions.cpp: the eighth and last depth-6 stand-in dropped); Particle::DrawPrep / Draw named
+    by SOCOM 1's call sites.
+- **Tells from the UI, round 25** (CLocTable::Find and CStringTables::Find; a depth-6 stand-in dropped):
+  - WHEN THE CANDIDATE'S SIZE DIFFERS, scdiff masks the target at the candidate's relocation offsets and invents words --
+    read a plain text diff instead (tools/cdis.py --at against `scd show`): CLocTable::Find 0x3A41F0's "41 off, a dead
+    bnez zero in the target" was that artifact, the real miss 2 (the empty test `*name == 0` -- `!*name` makes the later
+    '_' test re-extend the byte -- and the hash's sign test an if/else assigning h, padding the join);
+  - a walk's scalarised iterator is a temporary numbered after every named local; a named pointer declared ahead of a
+    variable is numbered below it, compared through `iterator(p) != end()` it keeps the materialised test, raw `p != end`
+    branches directly (CStringTables::Find 0x3A3100); a reference local bound to a stack object's member vector keeps its
+    address saved for every field read, through an accessor MW hoists sp-relative addresses;
+  - an int counter compared with size() keeps i*4 each pass, an unsigned one is strength-reduced; `(int)a <= b - k`
+    branches on `slt at`, `b - k >= (int)a` puts the compare in a register; an inline returning a ternary leaves its join
+    unpadded, an if/else assigning the result pads it;
+  - util_loc.cpp's depth-6 stand-in dropped (FindTable's walk ends at `Last()`); CLocTable::Read 0x3A3BE0 1 off (the
+    relocation test reads m_bytes, not m_reserve); CSkbSplit::Next 0x3903A0 written (2 short).
 - **Tells from the kit and AI states, round 39** (ShowProjectile, seal_sensors.cpp's initialiser and sensor ticks):
   - a string literal passed to a virtual call on a call's result: as a local defined after the call its lui/addiu pair
     stays together before the `this` move, passed in place the move splits the pair, defined before the call it is kept
@@ -2236,7 +2264,9 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     NextFile 0x34D740 and the records' insert 0x34DA00 byte-exact, VuLightMap 0x3B54E0 and CUIVariable::Attach 0x3869F0
     closed with it (they had been open on exactly this end); CKey::CountKeys one call off (its second copy calls the pod's
     end where the target calls the raw end);
-  - A STAND-IN TO KNOW ABOUT: the walks fitted to the old three-level end() are kept by `#pragma inline_depth(6)` at the
+  - A STAND-IN, NOW GONE (all eight dropped by the lanes' next rounds, 2026-11-05: a walk ended at a `data_ + size_`
+    `Last()` iterator, or an inlined helper's walk written out -- every object byte-identical at level 5): the walks fitted
+    to the old three-level end() were kept by `#pragma inline_depth(6)` at the
     end of their units -- fts_missionlist.cpp, bone_archive.cpp, char_type.cpp, util_loc.cpp, zNetMediusClan.cpp,
     zNetMediusRoom.cpp, zsnd_positions.cpp and zwep_flyout.cpp -- each object byte-identical to master's (the new end at
     depth 6 gives what the old gave at 5); a pragma's depth is per unit, and the image's four-high end makes a natural

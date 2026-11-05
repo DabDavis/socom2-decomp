@@ -5406,6 +5406,7 @@
 0x00336A10 PushNodeOpacity__5CPipeFPQ23zdb5CNode
 0x00336A60 RenderUiNodeRecursive__5CPipeFPQ23zdb5CNode
 0x00336C10 RenderUiNode__5CPipeFPQ23zdb5CNode
+0x00336CB0 Render__Q25CPipe6CAlphaFv
 0x003371B0 Add__Q25CPipe6CAlphaFPQ23zdb5CNodePQ23zdb5CNodePQ23zdb7CVisualQ23zdb12tag_ZVIS_FOVf
 0x003373B0 AddLine__Q25CPipe6CAlphaFP6CPnt4DP6CPnt4DP6CPnt4DP6CPnt4D
 0x003378A0 __dt__Q25CPipe6CAlphaFv
@@ -5562,6 +5563,7 @@
 0x00341A00 func_00341A00
 0x00341A20 func_00341A20
 0x00341A30 OnListenerDeath__4CSndFv
+0x00341A60 PostTick__4CSndFfPv
 0x00341F10 UnloadAllSounds__4CSndFv
 0x00342090 __dt__Q23std40vector<P4CSnd,Q23std17allocator<P4CSnd>>Fv
 0x00342100 swap__Q23std40vector<P4CSnd,Q23std17allocator<P4CSnd>>FRQ23std40vector<P4CSnd,Q23std17allocator<P4CSnd>>
@@ -5588,6 +5590,7 @@
 0x00343DD0 LoadBank__4CSndFPCc
 0x00343F90 AddNewCSnd__4CSndFP4CSnd
 0x003443C0 CopyUpper__FPCcPci
+0x00344450 func_00344450
 0x003448D0 func_003448D0
 0x003448E0 func_003448E0
 0x00344910 func_00344910
@@ -6940,6 +6943,7 @@
 0x003A2E80 find<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>>__Q23std531__tree<Q23std88pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,11OPTION_INFO>,Q33std285map<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,11OPTION_INFO,Q23std73less<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>>,Q23std107allocator<Q23std88pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,11OPTION_INFO>>>13value_compare,Q23std107allocator<Q23std88pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,11OPTION_INFO>>>FRCQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>_Q33std531__tree<Q23std88pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,11OPTION_INFO>,Q33std285map<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,11OPTION_INFO,Q23std73less<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>>,Q23std107allocator<Q23std88pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,11OPTION_INFO>>>13value_compare,Q23std107allocator<Q23std88pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,11OPTION_INFO>>>8iterator
 0x003A2F40 __ct__Q23std531__tree<Q23std88pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,11OPTION_INFO>,Q33std285map<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,11OPTION_INFO,Q23std73less<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>>,Q23std107allocator<Q23std88pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,11OPTION_INFO>>>13value_compare,Q23std107allocator<Q23std88pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,11OPTION_INFO>>>FRCQ33std285map<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,11OPTION_INFO,Q23std73less<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>>,Q23std107allocator<Q23std88pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,11OPTION_INFO>>>13value_compareRCQ23std107allocator<Q23std88pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,11OPTION_INFO>>
 0x003A2F60 insert_node_at__Q23std531__tree<Q23std88pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,11OPTION_INFO>,Q33std285map<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,11OPTION_INFO,Q23std73less<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>>,Q23std107allocator<Q23std88pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,11OPTION_INFO>>>13value_compare,Q23std107allocator<Q23std88pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,11OPTION_INFO>>>FPQ33std19__red_black_tree<1>9node_basebbRCQ23std88pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,11OPTION_INFO>
+0x003A3100 Find__13CStringTablesFPCcPCc
 0x003A32F0 Find__13CStringTablesFiPCc
 0x003A3490 Reload__13CStringTablesF8LANGUAGE
 0x003A36C0 GetString__13CStringTablesFiPCc
@@ -6948,6 +6952,7 @@
 0x003A3900 Load__13CStringTablesFPCc8LANGUAGE
 0x003A3BC0 __ct__Q23std48vector<P8LOCENTRY,Q23std21allocator<P8LOCENTRY>>Fv
 0x003A40E0 LanguageFromName__FPCc
+0x003A41F0 Find__9CLocTableFPCc
 0x003A43A0 Find__9CLocTableFi
 0x003A4460 GetLanguage__Fv
 0x003A44B0 SetLanguage__F8LANGUAGE

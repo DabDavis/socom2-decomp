@@ -5686,14 +5686,14 @@
 0x00324B20 0x104 Open__8ParticleFv  # OVL1; s1:calls
 0x00324C30 0x34 Init__8ParticleFv  # OVL1; s1:align
 0x00324C70 0x13C DrawRange__8ParticleFff  # OVL1; s1:align
-0x00324DB0 0x2CC func_00324DB0  # OVL1
+0x00324DB0 0x2CC Draw__8ParticleFv  # OVL1; s1:calls by hand (the world lane round 18: SOCOM 1's CAlpha::Render calls Draw__8ParticleFv when the draw list is empty, as SOCOM II's Render calls this there, its only caller; 0x2CC against SOCOM 1's 0x148)
 0x00325080 0x28 bufferPtrCompare__8ParticleFRCPQ28Particle13BufferElementRCPQ28Particle13BufferElement  # OVL1; s1:order by hand (SOCOM 1's bufferPtrCompare, 0x2C there, between Draw and DrawFlush: the two elements' depths at 0x1C subtracted, the float's bits returned) -- the rdr lane
 0x003250B0 0xFC DrawFlush__8ParticleFv  # OVL1; s1:align
 0x003251B0 0x3CC Draw__Q28Particle13BufferElementFRA4_A4_f  # OVL1; s1:calls by hand (DrawFlush calls it for draw type 0 with the pipe camera's view matrix, as SOCOM 1's DrawFlush calls BufferElement::Draw; the first case block) -- the rdr lane
 0x00325580 0x73C DrawRotated__Q28Particle13BufferElementFRA4_A4_f  # OVL1; s1:calls by hand (DrawFlush calls it for draw type 1, as SOCOM 1's calls DrawRotated) -- the rdr lane
 0x00325CC0 0x68C DrawXZ__Q28Particle13BufferElementFRA4_A4_f  # OVL1; s1:calls by hand (DrawFlush calls it for draw type 2, as SOCOM 1's calls DrawXZ) -- the rdr lane
 0x00326350 0x6A4 DrawStreaked__Q28Particle13BufferElementFRA4_A4_f  # OVL1; s1:calls by hand (DrawFlush calls it for draw type 3, as SOCOM 1's calls DrawStreaked) -- the rdr lane
-0x00326A00 0x21C func_00326A00  # OVL1
+0x00326A00 0x21C DrawPrep__8ParticleFv  # OVL1; s1:calls by hand (the world lane round 18: SOCOM 1's CAlpha::Render calls DrawPrep__8ParticleFv first, its float kept in $f20 for the draw ranges, as SOCOM II's Render calls this, its only caller; 0x21C against SOCOM 1's 0x144)
 0x00326C20 0xC func_00326C20  # OVL1
 0x00326C30 0x310 func_00326C30  # OVL1
 0x00326F40 0x8 __ct__Q28Particle13BufferElementFv  # OVL1; the world lane r10: SOCOM 1's (its __sinit_zparticle_buf.cpp constructs Particle::buffer through __construct_array with the element's constructor, as SOCOM II's 0x402BB0 passes this) -- byte-exact from source
@@ -7325,7 +7325,7 @@
 0x0038FFB0 0x10C init<PC7CSkbKey>__Q23std52__vector_imp<7CSkbKey,Q23std19allocator<7CSkbKey>,0>FPC7CSkbKeyPC7CSkbKeyQ23std20forward_iterator_tag_v  # OVL1; by hand (the UI lane, round 12: vector<CSkbKey>'s range init, zui_skb.cpp's tail byte-exact)
 0x003900C0 0x2D0 do_assign<PC7CSkbKey>__Q23std52__vector_imp<7CSkbKey,Q23std19allocator<7CSkbKey>,0>FPC7CSkbKeyPC7CSkbKeyQ23std20forward_iterator_tag_v  # OVL1; by hand (the UI lane, round 12: vector<CSkbKey>'s range assign, MSL's do_assign, zui_skb.cpp's tail byte-exact)
 0x00390390 0x8 @128@__dt__12CBmpWithNodeFv  # OVL1; s1:order (SOCOM 1's zui_skb.cpp ends on the same thunk: j ~CBmpWithNode, this - 128, the UIVarMixin's) -- zui_skb.cpp's last function; the UI lane round 9: out of zui_skb.cpp's unnamed namespace with the keyboard's classes, now zui_skb.h's (SOCOM II's RTTI string is plain "CBmpWithNode" where SOCOM 1's is "@unnamed@zui_skb_cpp@::CBmpWithNode"; the display unit takes zui_skb.cpp's CBmpWithNode copies, 0x398AA0/0x398A40/0x403800; ~CSkbKeyProps 0x394370 is the Korean unit's, called from here): byte-identical code under the new name
-0x003903A0 0x2E4 func_003903A0  # OVL1
+0x003903A0 0x2E4 Next__9CSkbSplitFv  # OVL1; the UI lane round 25: ours, by its body (zui_hangul.cpp: CSkbSplit's recursive stepper to the next split of the same total -- the rest's split stepped by a local CSkbSplit at sp+80 calling this row, copied back, or the first part grown with the others reset to one and the rest last through the reverse iterator; the parts cleared after the last; written, OPEN: one this-test short, the level)
 0x00390690 0x88 func_00390690  # OVL1
 0x00390720 0xC AddPiece__10CSkbPiecesFv  # OVL1; the UI lane round 10: ours (zui_hangul.cpp: resize(size() + 1) through 0x392670)
 0x00390730 0x8 func_00390730  # OVL1
