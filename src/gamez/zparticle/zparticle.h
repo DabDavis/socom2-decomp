@@ -55,9 +55,20 @@ public:
 };   // 0xc bytes
 
 namespace zdb {
-class CTexHandle;
 class CTexPalette;
 class CModel;
+/* a texture and its handle, as much as the destruction manager reads: the handle's texture at 0xc,
+ * the texture's palette at 0x1c (node_world.h's classes) */
+class CTexture {
+public:
+    unsigned char _0[0x1c];   // 0x0
+    CTexPalette *m_palette;   // 0x1c
+};
+class CTexHandle {
+public:
+    unsigned char _0[0xc];   // 0x0
+    CTexture *m_texture;   // 0xc
+};
 /* a visual, as much as the particles read (znode.h's tag_VISUAL_HEAD flags word) */
 class CVisual {
 public:
@@ -70,6 +81,10 @@ class CTexPalList : public std::vector<CTexPalette *> {
 };
 class CDynTexList {
 public:
+    /* a texture or palette kept for the frame (node_world.h's) */
+    void Add(CTexHandle *tex, bool b);
+    void Add(CTexPalette *pal, bool b);
+
     CTexList m_tex_list;   // 0x0
     CTexPalList m_pal_list;   // 0xc
 };   // 0x18 bytes
@@ -79,9 +94,20 @@ class CNode;
 class CNodeVector : public std::vector<CNode *> {
 };
 class CDI;
-/* a node's collision pieces (znode.h's class: PullVisuals gathers them) */
+/* a node's collision pieces (znode.h's class: PullVisuals gathers them; its constructor sets the
+ * two search flags, the destruction manager's local inlines it) */
 class CDIVector : public std::vector<CDI *> {
-};
+public:
+    CDIVector()
+    {
+        m_bStopAtFirstIntersection = 1;
+        m_bReturnBackFaceIntersections = 0;
+    }
+
+    unsigned char m_bStopAtFirstIntersection : 1;   // 0xc
+    unsigned char m_bReturnBackFaceIntersections : 1;   // 0xc
+    unsigned char m_padding : 6;   // 0xc
+};   // 0x10 bytes
 /* zdb::CNode, as much as the particles call (znode.h would bring zmath.h's CPnt4D with it) */
 class CNode {
 public:
@@ -121,7 +147,7 @@ public:
     unsigned char _64[4];   // 0x64
     CNodeVector m_child;   // 0x68 (znode.h's)
     CDIVector m_di;   // 0x74
-    unsigned char _80[0x9c - 0x80];
+    unsigned char _84[0x9c - 0x84];
     float m_Opacity;   // 0x9c
     unsigned char _a0[0xb4 - 0xa0];
     CNode *m_model;   // 0xb4: an instance's model (znode.h's CModel *)
@@ -135,6 +161,9 @@ public:
 class CWorld : public CNode {
 public:
     static CWorld *m_world;
+    /* a loaded texture's handle and a model by name (node_world.h's statics) */
+    static CTexHandle *GetTexHandle(const char *name);
+    static CModel *GetModel(const char *name);
 
     unsigned char _b8[0x128 - 0xb8];
     CCamera *m_camera;   // 0x128
