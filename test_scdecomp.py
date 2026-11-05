@@ -861,6 +861,78 @@ def test_objcmp_by_address_resolves_a_sum():
     ck(O.summary(summed) != O.summary(named), "plain, without a map, the respelled unit differs")
 
 
+OBJCMP_ANON = """extern void ig_take(const int &v);
+{header}
+const char *ig_name(void)
+{{
+    return "{name}";
+}}
+
+void ig_pass(void)
+{{
+    ig_take({zero});
+}}
+
+const char *ig_other(void)
+{{
+    return "ig_other";
+}}
+"""
+OBJCMP_ANON_HEADER = """
+inline void ig_sat(int *v, const int &lo, const int &hi)
+{{
+    if (*v < lo)
+        *v = lo;
+    if (*v > hi)
+        *v = hi;
+}}
+
+struct IgMap {{
+    int n;
+    void Walk(int *y) {{ ig_sat(y, {lo}, n); }}
+}};
+"""
+
+
+def test_objcmp_aligns_anonymous_objects_by_content():
+    """tools/objcmp.py, GCC round 36a (the game states' round 43: ai.h's ForEachCell binds a literal 0
+    to a const reference, and every unit including ai.h gets two unreferenced 4-byte zero objects, used
+    or not -- every later `@N` rank shifted with the code unchanged, and a proof touching ai.h said
+    DIFF). Metrowerks' anonymous objects are now named by content and an unreferenced one left out
+    with its section (the linker drops it: vehicle_rdr.cpp's unreferenced zeros are not in the image).
+    A header whose uninstantiated inline binds 0 to a const reference INSERTS such a zero ahead of the
+    unit's strings and its referenced zero (`ig_take(0)` passes one's address): by content the unit is
+    the same, by rank (`--anon-by-rank`, rounds 27a-35a's rule) it differs, the ranks of every later
+    object shifted. Negatives, each by content: a referenced string changed differs, the referenced zero
+    made a 1 differs; and the inserted object changed (0 -> 1, still unreferenced) is the same."""
+    import objcmp as O
+    src = BUILD / "objcmp_anon_fixture"
+    src.mkdir(parents=True, exist_ok=True)
+
+    def obj(stem: str, header: str = "", name: str = "ig_name", zero: str = "0") -> Path:
+        p = src / f"{stem}.cpp"
+        p.write_text(OBJCMP_ANON.format(header=header, name=name, zero=zero))
+        o = BUILD / f"objcmp_anon_{stem}.o"
+        D.compile_obj(p, o, D.COMPILER, None, [HERE / "include", src])
+        return o
+    base = obj("base")
+    inserted = obj("inserted", OBJCMP_ANON_HEADER.format(lo="0"))
+    names, dropped, dead = O.anon_by_content(E.Elf.read(inserted))
+    ck(len(dead) == 1 == len(dropped) and len(names) == 3 and "@.data:00000000" in names.values(),
+       f"the header's zero is the one unreferenced object; the strings and the passed zero are named ({names}, {dead})")
+    ck(O.summary(base) == O.summary(inserted), "an unreferenced anonymous object inserted: the same, by content")
+    ck(O.summary(base, anon_rank=True) != O.summary(inserted, anon_rank=True),
+       "negative: by rank (--anon-by-rank) the same unit differs")
+    res = O.resolver(E.symbols())
+    ck(O.summary(base, res, sums=True) == O.summary(inserted, res, sums=True), "and the same by address")
+    ck(O.summary(base) != O.summary(obj("changed", OBJCMP_ANON_HEADER.format(lo="0"), name="ig_nane")),
+       "a referenced string changed: it differs")
+    ck(O.summary(base) != O.summary(obj("one", OBJCMP_ANON_HEADER.format(lo="0"), zero="1")),
+       "the referenced zero made a 1: it differs")
+    ck(O.summary(base) == O.summary(obj("dead", OBJCMP_ANON_HEADER.format(lo="1"))),
+       "the inserted object changed, still unreferenced: the same (nothing can read it)")
+
+
 def test_unit_builds_the_same_bytes_at_any_path():
     """A unit's object may not depend on where the tree lies (GCC round 34a). sase_rfft2g.c's
     asserts always hold, so GCC drops their calls -- but not their strings, __FILE__ among them,

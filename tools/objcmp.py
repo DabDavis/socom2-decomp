@@ -24,8 +24,13 @@ its source unchanged when BASE was built from a scratch copy and the tree in pla
 
 A target is named as the scorer resolves it, never by a number a header can shift: Metrowerks'
 anonymous `@N` objects (a parser-wide counter: a header's extra declarations renumber them) by
-their rank within the object, a function-local static's `name$N` as `name$`, a GNU object's
-section symbol (`.rodata`+N, `.text`+N) by its section's name -- the offset is in the field.
+their CONTENT (GCC round 36a, the game states' round 43: `@.data"name"`, `@.data:00000000`, the k-th
+repeat `#k`), an unreferenced one left out with its section -- a header's literal bound to a const
+reference (ai.h's ForEachCell) puts two unreferenced zeros in every unit including it, used or not,
+and by rank every later object shifted; MW's linker drops a data section nothing references, so it
+cannot reach the image (`--anon-by-rank`: rounds 27a-35a's rule, each by its rank) -- a
+function-local static's `name$N` as `name$`, a GNU object's section symbol (`.rodata`+N, `.text`+N)
+by its section's name -- the offset is in the field.
 
 --by-address (GCC round 29a; the game states' round-34 objcmp_addr.py and the kit's round-33
 byaddr.py folded in): every lane respells placeholders -- `func_001C5EC0()` becomes the row's real
@@ -63,6 +68,7 @@ never show), data is compared, and the scratch tree is the caller's (--work).
 from __future__ import annotations
 
 import argparse
+import hashlib
 import re
 import shutil
 import struct
@@ -218,18 +224,108 @@ def sum_addresses(elf: E.Elf, rels: list[E.Reloc], body: bytes, address, fsym: E
     return out
 
 
+ANON = re.compile(r"@\d+")
+
+
+def _spell(sec: str, data: bytes | None, size: int) -> str:
+    """An anonymous object's content as a name: a C string's text, a short object's bytes, a long
+    one's size and digest (zeroed data: its size)."""
+    if data is None:
+        return f"@{sec}:{size}"
+    text = data[:-1]
+    if data.endswith(b"\0") and text and all(32 <= c < 127 for c in text):
+        t = text.decode()
+        return f'@{sec}"{t[:32]}"' + (f"+{hashlib.sha1(data).hexdigest()[:8]}" if len(t) > 32 else "")
+    if size <= 16:
+        return f"@{sec}:{data.hex()}"
+    return f"@{sec}:{size}:{hashlib.sha1(data).hexdigest()[:10]}"
+
+
+def anon_by_content(elf: E.Elf) -> tuple[dict[str, str], set[int], set[str]]:
+    """GCC round 36a (the game states' round 43): Metrowerks' anonymous `@N` objects named by what
+    they hold, not by N or its rank -- N is a parser-wide counter, and a header's unreferenced literal
+    (ai.h's ForEachCell binds a 0 to a const reference: two 4-byte zeros in every unit including it,
+    used or not) shifts every later rank while the code is the same. Returns ({the object's symbol
+    name: its name by content}, the sections left out, the objects left out). An anonymous object nothing reaches -- no
+    relocation of a function, a named object's section or a section reached from them -- is left out
+    with its section: MW gives every data object a section of its own and the linker drops one nothing
+    references (vehicle_rdr.cpp's three unreferenced zeros, sections before its referenced 0 and 4, are
+    not in the image: those sit at 0x64F9A8/0x64F9B0 right after another unit's datum), so it cannot
+    reach the image whatever it holds. The rest are named by section and content (`@.data"name"`,
+    `@.data:00000000`, a long one by digest; one holding relocations by their targets too), the k-th
+    repeat of one name in N's order `#k` -- so a relocation reads the object it names, aligned by
+    content, and an object whose content changed is another name."""
+    secs = elf.sections
+    syms = [s for s in elf.symbols if 0 < s.shndx < len(secs)]
+    anon = sorted((s for s in syms if s.type == "OBJECT" and ANON.fullmatch(s.name or "")),
+                  key=lambda s: int(s.name[1:]))
+    if not anon:
+        return {}, set(), set()
+    anon_names = {s.name for s in anon}
+    alloc = {sec.index for sec in secs if sec.flags & SHF_ALLOC}
+    holds: dict[int, set[str]] = {}
+    for s in syms:
+        if s.type in ("OBJECT", "FUNC"):
+            holds.setdefault(s.shndx, set()).add(s.name)
+    edges: dict[int, list[tuple[str, int]]] = {}       # section -> [(anon name or '', section)]
+    relocs: dict[int, list] = {}
+    for i in alloc:
+        rels = relocs[i] = elf.relocs_for(i)
+        for r in rels:
+            if r.sym.name in anon_names:
+                edges.setdefault(i, []).append((r.sym.name, r.sym.shndx))
+            elif r.sym.type == "SECTION" and 0 < r.sym.shndx < len(secs):
+                edges.setdefault(i, []).append(("", r.sym.shndx))
+    roots = {i for i in alloc if not holds.get(i) or holds[i] - anon_names}
+    seen_secs, reached = set(roots), set()
+    todo = list(roots)
+    while todo:
+        i = todo.pop()
+        for name, j in edges.get(i, ()):
+            if name:
+                reached.add(name)
+            if j not in seen_secs:
+                seen_secs.add(j)
+                todo.append(j)
+    reached |= {s.name for s in anon if s.shndx in roots}
+    dropped = {i for i in alloc if i not in seen_secs}
+    raw = {s.name: _spell(secs[s.shndx].name, None if secs[s.shndx].type == SHT_NOBITS
+                          else secs[s.shndx].data[s.value:s.value + s.size], s.size) for s in anon}
+    out: dict[str, str] = {}
+    count: dict[str, int] = {}
+    for s in anon:
+        if s.name not in reached:
+            continue
+        name = raw[s.name]
+        inner = [(r.offset - s.value, r.type, raw.get(r.sym.name, r.sym.name)) for r in relocs.get(s.shndx, ())
+                 if s.value <= r.offset < s.value + max(s.size, 1)]
+        if inner:
+            name += "&" + hashlib.sha1(repr(inner).encode()).hexdigest()[:8]
+        k = count[name] = count.get(name, -1) + 1
+        out[s.name] = name + (f"#{k}" if k else "")
+    return out, dropped, anon_names - reached
+
+
 def summary(obj: Path, resolve=None, spelled: dict[str, list[str]] | None = None,
-            sums: bool = False) -> dict[str, object]:
+            sums: bool = False, anon_rank: bool = False) -> dict[str, object]:
     """What a unit's object holds, keyed so that two builds of one source compare equal. With
     `resolve` (--by-address: name, near -> map address or None) a name the map resolves -- a
     function's own, a relocation's target, a data object's -- is `@0xADDR`; with `sums` too (GCC
     round 35a) a data relocation the map resolves is the address it forms, symbol plus addend
     (sum_addresses), its field masked out of the bytes -- `data_0043668C` respelled `theMission+0x1AC`
     is the same reference. `spelled`, when given, receives each key's names as the object spells
-    them, in order (a summed one with its addend)."""
+    them, in order (a summed one with its addend). Metrowerks' anonymous objects are named by content
+    and an unreferenced one left out (anon_by_content, GCC round 36a); `anon_rank` keeps rounds
+    27a-35a's rule, each named by its rank among the object's `@N`."""
     elf = E.Elf.read(obj)
-    anon = sorted({int(s.name[1:]) for s in elf.symbols if re.fullmatch(r"@\d+", s.name or "")})
-    rank = {f"@{n}": f"@#{i}" for i, n in enumerate(anon)}
+    if anon_rank:
+        anon = sorted({int(s.name[1:]) for s in elf.symbols if ANON.fullmatch(s.name or "")})
+        rank, dropped, dead = {f"@{n}": f"@#{i}" for i, n in enumerate(anon)}, set(), set()
+    else:
+        rank, dropped, dead = anon_by_content(elf)
+        other = sorted({int(s.name[1:]) for s in elf.symbols if ANON.fullmatch(s.name or "")
+                        and s.name not in rank and s.name not in dead})
+        rank.update({f"@{n}": f"@#{i}" for i, n in enumerate(other)})   # an `@N` no object: by rank
 
     def target(sym: E.ElfSymbol) -> str:
         if sym.type == "SECTION" and 0 < sym.shndx < len(elf.sections):
@@ -284,6 +380,8 @@ def summary(obj: Path, resolve=None, spelled: dict[str, list[str]] | None = None
     for sec in elf.sections:
         if not sec.flags & SHF_ALLOC or sec.flags & SHF_EXECINSTR or sec.type not in (SHT_PROGBITS, SHT_NOBITS):
             continue
+        if sec.index in dropped:        # an unreferenced anonymous object's: the linker drops it
+            continue
         n = seen[sec.name] = seen.get(sec.name, 0) + 1
         body = None if sec.type == SHT_NOBITS else sec.data
         names: list[str] = []
@@ -291,7 +389,7 @@ def summary(obj: Path, resolve=None, spelled: dict[str, list[str]] | None = None
         keys, body = relocs(elf.relocs_for(sec.index), home, names, body)
         entries.append(("", key, (sec.size, body, keys), names))
     for s in elf.symbols:
-        if s.type == "OBJECT" and 0 < s.shndx < len(elf.sections):
+        if s.type == "OBJECT" and 0 < s.shndx < len(elf.sections) and s.name not in dead:
             own = target(s)
             a = at(own, home)
             entries.append((f"object @{a:#x}" if a is not None else "", f"object {own}",
@@ -333,6 +431,9 @@ def main(argv=None) -> int:
     ap.add_argument("--symbols-only", action="store_true",
                     help="with --by-address, equate symbols only (round 29a's rule: an addend is compared "
                          "in its field)")
+    ap.add_argument("--anon-by-rank", action="store_true",
+                    help="Metrowerks' anonymous @N objects by their rank in the object (rounds 27a-35a's rule: "
+                         "an unreferenced one inserted shifts every later rank), not by content")
     ap.add_argument("--work", type=Path, default=HERE / "build" / "objcmp",
                     help="the scratch tree and objects (one per concurrent user)")
     a = ap.parse_args(argv)
@@ -366,7 +467,7 @@ def main(argv=None) -> int:
         na: dict[str, list[str]] = {}
         nb: dict[str, list[str]] = {}
         sums = bool(resolve) and not a.symbols_only
-        sa, sb = summary(oa, resolve, na, sums), summary(ob, resolve, nb, sums)
+        sa, sb = summary(oa, resolve, na, sums, a.anon_by_rank), summary(ob, resolve, nb, sums, a.anon_by_rank)
         diffs = [k for k in sorted(set(sa) | set(sb)) if sa.get(k) != sb.get(k)]
         if diffs:
             return "; ".join(diffs[:6]) + (f" (+{len(diffs) - 6})" if len(diffs) > 6 else ""), []
