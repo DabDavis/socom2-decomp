@@ -131,7 +131,7 @@ public:
     int CalcVol(float dist, float vol);
     /* SOCOM 1's: a streamed sound started on a voice (0x342240; SOCOM II's adds a word, tested
      * whole for the stream's flag 2 -- PlaySoundVolPanPitch passes 0) */
-    bool StreamSoundVolPan(int vol, int pan, CSndInstance *inst, int flag);
+    int StreamSoundVolPan(int vol, int pan, CSndInstance *inst, int flag);
 
     static CSnd *GetSoundByName(const char *name);
     /* SOCOM 1's: a bank loaded by name and recorded (0x343DD0) */

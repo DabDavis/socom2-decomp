@@ -620,6 +620,104 @@ float CSnd::CalcVolPan(const CPnt3D *pos, float vol, int *outVol, int *outPan)
     return dist;
 }
 
+/* StreamSoundVolPan's: the stream's file name (a static buffer), the dialog streams allowed (a
+ * byte), the group volumes lowered for a voice-over (a byte); the VAG index's lookup -- 1 when the
+ * name is in the language's index, 2 in VAGSTORE's, 0 when in neither -- and the two archives' disc
+ * sectors (zsnd_subtitles.cpp's CSubtitleTable, 0x34D480 / 0x34D470 / 0x34D460; names not known) */
+extern char data_0048DF40[];
+extern unsigned char data_003DFFA8;
+extern unsigned char data_0048DE20;
+enum VAG_WHERE { VAG_NONE = 0, VAG_INDEX = 1, VAG_STORE = 2 };   /* a byte (-enum min); names ours */
+extern "C" VAG_WHERE func_0034D480(CSubtitleTable *table, const char *name, unsigned int *offset,
+                                   int *size);
+extern "C" int func_0034D470(CSubtitleTable *table);
+extern "C" int func_0034D460(CSubtitleTable *table);
+
+/* a streamed sound started on a voice (SOCOM 1's, its files found in the bank archive by key; SOCOM
+ * II's in the VAG indexes): a one-shot voice let finish, a dialog stream refused offline unless
+ * allowed or flagged, the sound's two files (.VAG, or .VPK music -- the second channel's names lower
+ * case) looked up and, when either is found, the stream started on the music, voice-over or dialog
+ * group with its flags -- a voice-over lowering the other groups once. -1 when it started */
+int CSnd::StreamSoundVolPan(int vol, int pan, CSndInstance *inst, int flag)
+{
+    if (m_isDisabled)
+        return 0;
+    int loc1 = 0;
+    int loc2 = 0;
+    VAG_WHERE found1 = VAG_NONE;
+    VAG_WHERE found2 = VAG_NONE;
+    unsigned int offset1;
+    unsigned int offset2;
+    int size1;
+    int size2;
+
+    if (m_isOneShot)
+        inst->TerminateOnFinish();
+    if (m_soundmode == SND_MODE_DIALOG && !data_003DFFA8 && !data_0045A0C1 && !m_socom2_bit6)
+        return 0;
+    if (m_20) {
+        if (m_soundmode == SND_MODE_MUSIC)
+            sprintf(data_0048DF40, "%s.VPK", m_20);
+        else
+            sprintf(data_0048DF40, "%s.VAG", m_20);
+        found1 = func_0034D480(&data_0048DC30, data_0048DF40, &offset1, &size1);
+        if (found1 != VAG_NONE) {
+            if (found1 == VAG_INDEX) {
+                loc1 = (offset1 >> 11) + func_0034D470(&data_0048DC30);
+                offset1 &= 0x7FF;
+            } else if (found1 == VAG_STORE) {
+                if (func_0034D460(&data_0048DC30)) {
+                    loc1 = (offset1 >> 11) + func_0034D460(&data_0048DC30);
+                    offset1 &= 0x7FF;
+                }
+            }
+        }
+    }
+    if (m_24) {
+        if (m_soundmode == SND_MODE_MUSIC)
+            sprintf(data_0048DF40, "%s.vpk", m_24);
+        else
+            sprintf(data_0048DF40, "%s.vag", m_24);
+        found2 = func_0034D480(&data_0048DC30, data_0048DF40, &offset2, &size2);
+        if (found2 != VAG_NONE) {
+            if (found2 == VAG_INDEX) {
+                loc2 = (offset2 >> 11) + func_0034D470(&data_0048DC30);
+                offset2 &= 0x7FF;
+            } else if (found2 == VAG_STORE) {
+                if (func_0034D460(&data_0048DC30)) {
+                    loc2 = (offset2 >> 11) + func_0034D460(&data_0048DC30);
+                    offset2 &= 0x7FF;
+                }
+            }
+        }
+    }
+    if (found1 || found2) {
+        m_numStreams++;
+        int group = 0;
+
+        if (m_soundmode == SND_MODE_MUSIC)
+            group = 1;
+        else if (m_socom2_bit4)
+            group = 6;
+        else if (m_soundmode == SND_MODE_DIALOG)
+            group = 2;
+        int flags = 0;
+
+        if (m_socom2_bit9)
+            flags |= 4;
+        if (flag && !m_socom2_bit3)
+            flags |= 2;
+        if (m_socom2_bit4 && !data_0048DE20) {
+            SetGroupVolTemp(1e9f, 0.6f, 0, 1, 2, 3, 4, 5, -1);
+            data_0048DE20 = 1;
+        }
+        snd_PlayVAGStreamByLoc_CB(loc1, loc2, offset1, offset2, vol, pan, group, 0, 0, flags,
+                                  CSndInstance::PlaySoundCallback, (unsigned long)inst);
+        return -1;
+    }
+    return 0;
+}
+
 extern int data_0048DB38, data_0048DB40;   /* (the loader's counts; names not known) */
 
 /* every voice stopped, the banks unloaded and every sound deleted, both lists' storage given up
