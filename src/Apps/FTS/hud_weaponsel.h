@@ -289,8 +289,6 @@ public:
 
 class CMPWeaponCategories;
 
-/* the category page's update (no row named yet) */
-extern "C" void func_0023D860(CMPWeaponCategories *page, float dT);
 
 /* the selector's category page (no vtable, so no RTTI name: the name is ours) */
 class CMPWeaponCategories {
@@ -318,7 +316,7 @@ public:
         m_bitmap1.On();
         m_bitmap2.On();
         m_list.On();
-        func_0023D860(this, 0.0f);
+        Layout(0.0f);
     }
 
     C2DString m_title;   // 0x0
@@ -330,6 +328,8 @@ public:
     C2DBitmap m_bitmap3;   // 0xea0
     /* the page made (0x23CD20; the name ours) */
     void Init();
+    /* the page laid out and on (0x23D860; the name ours) */
+    void Layout(float dT);
     /* the weapon shown: its class (GetIDType, 255 none), its kind (0 primary, 1 secondary, 2 other)
      * and its index in the weapons' list (0x23D540; the names ours) */
     void SetWeapon(CZWeapon *weapon);

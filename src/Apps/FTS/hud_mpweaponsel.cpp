@@ -29,7 +29,23 @@ class CAssetMgr {
 public:
     static CAssetList m_assets;
 };
+
+/* a texture's size, first (c2dbitmap.cpp's), and the world (its static) */
+class CTexture {
+public:
+    unsigned short m_width;   // 0x0
+    unsigned short m_height;   // 0x2
+};
+
+class CWorld {
+public:
+    static CWorld *m_world;
+};
 }
+
+/* a texture of the world's by name, and the off arrow's (hud_main.cpp's) */
+zdb::CTexture *GetTextureByName(zdb::CWorld *world, const char *name);
+extern const char *c_szArrowOffTx;
 
 /* the seal's kit: its primary weapon (OVL2) */
 class CZKit {
@@ -124,6 +140,7 @@ public:
     static bool IsPrimary(EQUIP_ITEM item);
     static bool IsSecondary(EQUIP_ITEM item);
     static bool IsLauncher(EQUIP_ITEM item);
+    static const char *GetIDTypeName(EQUIP_ITEM type);
     static CValve *GetEnableValve(EQUIP_ITEM item);
 
     static CZWeaponList m_listWeapons;
@@ -348,7 +365,7 @@ void CMPWeaponSel::SetState(SEL_STATE state)
     case SEL_PAGE: {
         m_categories.On();
         m_categories.m_bitmap3.On();
-        func_0023D860(&m_categories, 0.0f);
+        m_categories.Layout(0.0f);
         m_categories.m_state = SEL_PAGE;
 
         /* through a slot pointer, as Scroll's (indexed straight, the offset is added the other
@@ -528,6 +545,30 @@ void CMPWeaponSel::Off()
     m_bitmap3.Off();
 }
 
+/* the five selected slots' weapons given to the HUD owner's character: the weapons it has set up
+ * again, the rest pushed and set up unless empty (0x23E5E0; the name ours -- its one caller,
+ * 0x240600, is unwritten) */
+void CMPWeaponSel::SetCharacterWeapons()
+{
+    CCharacterWeapList &weapons = CHUD::GetHUDOwner()->GetCharacter()->m_weapons;
+    int i;
+
+    for (i = 0; i < 5; i++) {
+        if (i >= weapons.size())
+            break;
+        weapons[i].SetupCharacterWeapon(m_selected[i].m_weapon->m_item);
+    }
+    for (; i < 5; i++) {
+        CZWeapon *weapon = m_selected[i].m_weapon;
+        EQUIP_ITEM item;
+
+        weapons.AddWeapon(weapon->m_item);
+        item = weapon->m_item;
+        if (item != EQUIP_NONE)
+            weapons[i].SetupCharacterWeapon(item);
+    }
+}
+
 /* opened on the list: the slots emptied and given the owner's character's first five weapons (one
  * read again when it reads 0), the page shown the list's slot, the cursor round to the first
  * slot it allows, the selector on and updated, the owner's controller in the weapon menu, and the
@@ -603,29 +644,105 @@ void CMPWeaponSel::Layout(float dT)
     m_title.UpdatePos();
 }
 
-/* the five selected slots' weapons given to the HUD owner's character: the weapons it has set up
- * again, the rest pushed and set up unless empty (0x23E5E0; the name ours -- its one caller,
- * 0x240600, is unwritten) */
-void CMPWeaponSel::SetCharacterWeapons()
+
+/* the page's places further on (.data 0x3DCE30-0x3DCE88, 8 bytes apart: variables, read with lwc1;
+ * the names ours, by address): its four arrows' corners and the title's centre less half the width */
+static float s_e30 = 168.0f;
+static float s_e38 = 105.0f;
+static float s_e40 = 305.0f;
+static float s_e48 = 105.0f;
+static float s_e50 = 200.0f;
+static float s_e58 = 344.0f;
+static float s_e60 = 200.0f;
+static float s_e68 = 140.0f;
+static float s_e88 = 167.0f;
+
+/* the page laid out and on: its backdrops; its title the class's name, or by its kind ALL PRIMARY,
+ * ALL SECONDARY, ALL EQUIP or ALL UNKNOWN when it has none; its arrows; three category slots showing
+ * the weapons before, at and after the page's index (each once) and the fourth off (0x23D860; the
+ * name ours -- On, Move and the selector's state switch call it with 0) */
+void CMPWeaponCategories::Layout(float dT)
 {
-    CCharacterWeapList &weapons = CHUD::GetHUDOwner()->GetCharacter()->m_weapons;
-    int i;
+    m_bitmap1.On();
+    m_bitmap2.On();
+    m_title.On();
+    m_polys[0].On();
+    m_polys[1].On();
+    m_bitmap1.SetPos((int)s_708, (int)s_cattitley, (int)(s_708 + s_700), (int)(s_cattitley + s_cattitleheight));
+    m_bitmap1.SetColor(s_color1.x, s_color1.y, s_color1.z);
+    m_bitmap1.SetIsTrans(true);
+    m_bitmap2.SetPos((int)s_catx, (int)s_caty, (int)(s_catx + s_700), (int)(s_caty + s_db8));
+    m_bitmap2.SetColor(s_color2.x, s_color2.y, s_color2.z);
+    m_bitmap2.SetIsTrans(true);
 
-    for (i = 0; i < 5; i++) {
-        if (i >= weapons.size())
+    float x = s_e88 + s_700 / 2.0f;
+
+    if (m_type == 255) {
+        switch (m_kind) {
+        case KIND_PRIMARY:
+            m_title.Load(s_dd0, "ALL PRIMARY", theHUD->m_myfont, x, s_dd8, true);
             break;
-        weapons[i].SetupCharacterWeapon(m_selected[i].m_weapon->m_item);
+        case KIND_SECONDARY:
+            m_title.Load(s_dd0, "ALL SECONDARY", theHUD->m_myfont, x, s_dd8, true);
+            break;
+        case KIND_OTHER:
+            m_title.Load(s_dd0, "ALL EQUIP", theHUD->m_myfont, x, s_dd8, true);
+            break;
+        default:
+            m_title.Load(s_dd0, "ALL UNKNOWN", theHUD->m_myfont, x, s_dd8, true);
+            break;
+        }
+    } else {
+        m_title.Load(1.0f, CZWeapon::GetIDTypeName(m_type), theHUD->m_myfont, x, s_dd8, true);
     }
-    for (; i < 5; i++) {
-        CZWeapon *weapon = m_selected[i].m_weapon;
-        EQUIP_ITEM item;
+    m_title.SetColor(s_color3.x, s_color3.y, s_color3.z);
+    m_title.m_isCentered = 1;
+    m_title.UpdatePos();
 
-        weapons.AddWeapon(weapon->m_item);
-        item = weapon->m_item;
-        if (item != EQUIP_NONE)
-            weapons[i].SetupCharacterWeapon(item);
+    zdb::CTexture *tex = GetTextureByName(zdb::CWorld::m_world, c_szArrowOffTx);
+    float h = (float)(int)tex->m_height;
+    float w = (float)(int)tex->m_width;
+
+    m_polys[0].Load(s_e30, s_e38, s_e30, s_e38 + h, s_e30 + w, s_e38 + h, s_e30 + w, s_e38, tex);
+    m_polys[0].FlipImage_XYaxis();
+    m_polys[0].FlipImage_Xaxis();
+    m_polys[1].Load(s_e40, s_e48, s_e40, s_e48 + h, s_e40 + w, s_e48 + h, s_e40 + w, s_e48, tex);
+    m_polys[1].FlipImage_XYaxis();
+    m_polys[3].Load(s_e50, s_e58, s_e50, 20.0f + s_e58, 100.0f + s_e50, 20.0f + s_e58, 100.0f + s_e50, s_e58, tex);
+    m_polys[3].FlipImage_Xaxis();
+    m_polys[2].Load(s_e60, s_e68, s_e60, 20.0f + s_e68, 100.0f + s_e60, 20.0f + s_e68, 100.0f + s_e60, s_e68, tex);
+    m_polys[2].On();
+    m_polys[3].On();
+    m_list.On();
+
+    int prev = m_list.NextWeapon(false, m_index, m_type, m_kind);
+    int next = m_list.NextWeapon(true, m_index, m_type, m_kind);
+    CZWeapon *before = CZWeapon::m_listWeapons.GetWeaponByIndex(prev);
+    CZWeapon *cur = CZWeapon::m_listWeapons.GetWeaponByIndex(m_index);
+    CZWeapon *after = CZWeapon::m_listWeapons.GetWeaponByIndex(next);
+
+    for (int i = 0; i < 3; i++)
+        m_categories[i].On();
+    if (after == cur || after == before)
+        after = 0;
+    if (before == cur)
+        before = 0;
+    m_categories[0].SetWeapon(before);
+    m_categories[1].SetWeapon(cur);
+    m_categories[2].SetWeapon(after);
+    m_categories[3].SetWeapon(0);
+    for (int i = 0; i < 3; i++) {
+        m_categories[i].SetPos(s_6f0, s_rowheight + (s_6f8 + s_slotheight * (float)i));
+
+        PNT4D color = CHUD::m_hud_textcolor;
+
+        m_categories[i].SetColor(color.y, color.y, color.z);
     }
+    m_bitmap3.SetIsTrans(true);
+    m_bitmap3.SetPos((int)s_740, (int)s_748, (int)(s_740 + s_728), (int)(s_748 + s_720));
+    m_categories[3].Off();
 }
+
 
 /* the name and the bitmap faded together */
 void CategorySlot::SetTrans(float trans)
@@ -656,6 +773,24 @@ void CMPWeaponCategories::SetWeapon(CZWeapon *weapon)
     }
 }
 #pragma auto_inline reset
+
+/* whether the page's arrows are hidden (bss 0x4147C0, a byte; the name ours) */
+static bool s_noarrows;
+
+/* the page's four arrows off when hidden, else grey (a guarded static, 100 each) */
+void CMPWeaponCategories::ShowArrows()
+{
+    if (s_noarrows) {
+        for (int i = 0; i < 4; i++)
+            m_polys[i].Off();
+        return;
+    }
+
+    static CPnt3D s_grey(100.0f, 100.0f, 100.0f);
+
+    for (int i = 0; i < 4; i++)
+        m_polys[i].SetColor(s_grey.x, s_grey.y, s_grey.z);
+}
 
 /* the arrows' pulse, in colour blends a second (0x3DCEA8, the unit's float pool; the name ours) */
 static float s_arrowpulserate = 2.0f;
@@ -690,24 +825,6 @@ void CMPWeaponCategories::TickArrows(float dT)
         m_polys[i].SetColor(r, g, b);
 }
 
-/* whether the page's arrows are hidden (bss 0x4147C0, a byte; the name ours) */
-static bool s_noarrows;
-
-/* the page's four arrows off when hidden, else grey (a guarded static, 100 each) */
-void CMPWeaponCategories::ShowArrows()
-{
-    if (s_noarrows) {
-        for (int i = 0; i < 4; i++)
-            m_polys[i].Off();
-        return;
-    }
-
-    static CPnt3D s_grey(100.0f, 100.0f, 100.0f);
-
-    for (int i = 0; i < 4; i++)
-        m_polys[i].SetColor(s_grey.x, s_grey.y, s_grey.z);
-}
-
 /* while the page is up (state 3): up and down step the weapon, left and right the class; triangle
  * or start back to the list (2), the confirm button (0x2C64E0's 0) on to state 1 (0x23D1B0; the
  * name ours -- m2c's draft matched as it stood) */
@@ -739,6 +856,35 @@ void CMPWeaponCategories::HandlePad(CPad *pad)
     }
 }
 
+
+/* the page's cursor moved: a weapon on (2) or back (-2) in its class, or the class on (-1) or
+ * back (1) -- the grenades' class (171) passed over when the selector lets none through -- and on
+ * a new class its first weapon; then the page updated (0x23D060; the name ours) */
+void CMPWeaponCategories::Move(signed char dir)
+{
+    bool up = false;
+
+    switch (dir) {
+    case 2:
+        up = true;
+    case -2:
+        m_index = m_list.NextWeapon(up, m_index, m_type, m_kind);
+        break;
+    case -1:
+        up = true;
+    case 1: {
+        int old = m_type;
+
+        m_type = m_list.NextCategory(up, m_type, m_kind);
+        if (m_type == 171 && !m_owner->m_203 && !m_owner->m_gl && !m_owner->m_f2000)
+            m_type = m_list.NextCategory(up, m_type, m_kind);
+        if (old != m_type)
+            m_index = m_list.NextWeapon(true, 0, m_type, m_kind);
+        break;
+    }
+    }
+    Layout(0.0f);
+}
 
 /* the category page made: its arrows' pulse reset, everything off, its two backdrops loaded at the
  * page's place and the third empty, all added to the HUD's phase 1 and faded out; no class, the
@@ -783,35 +929,6 @@ void CMPWeaponCategories::Init()
     m_list.m_slots[2] = &m_categories[2];
     m_list.m_slots[3] = &m_categories[3];
     m_index = m_list.NextWeapon(true, 0, m_type, m_kind);
-}
-
-/* the page's cursor moved: a weapon on (2) or back (-2) in its class, or the class on (-1) or
- * back (1) -- the grenades' class (171) passed over when the selector lets none through -- and on
- * a new class its first weapon; then the page updated (0x23D060; the name ours) */
-void CMPWeaponCategories::Move(signed char dir)
-{
-    bool up = false;
-
-    switch (dir) {
-    case 2:
-        up = true;
-    case -2:
-        m_index = m_list.NextWeapon(up, m_index, m_type, m_kind);
-        break;
-    case -1:
-        up = true;
-    case 1: {
-        int old = m_type;
-
-        m_type = m_list.NextCategory(up, m_type, m_kind);
-        if (m_type == 171 && !m_owner->m_203 && !m_owner->m_gl && !m_owner->m_f2000)
-            m_type = m_list.NextCategory(up, m_type, m_kind);
-        if (old != m_type)
-            m_index = m_list.NextWeapon(true, 0, m_type, m_kind);
-        break;
-    }
-    }
-    func_0023D860(this, 0.0f);
 }
 
 /* the slots drawn while the list is on */
