@@ -7,10 +7,21 @@
  * size. Both assert `(N==256) || (N=64)` -- an assignment where a test was meant, so the assert
  * always holds: GCC drops the call (its strings stay in .rodata) and keeps the side effect, the
  * target's `xor; movn a2,64`: any N but 256 runs as 64. GCC round 33a. Placeholders: the codec's
- * names are not in SOCOM 1. Built as nelly.c is (ee-gcc 2.96, -O2 -G8: the encoder's range). */
+ * names are not in SOCOM 1. Built as nelly.c is (ee-gcc 2.96, -O2 -G8: the encoder's range).
+ *
+ * The file is named by `#line` (GCC round 34a), as every other codec unit names its own: the
+ * dropped asserts still put __FILE__ and #e in .rodata, and without it __FILE__ was the path this
+ * tree was built at -- so the object's .rodata (0x56B bytes here, the path's own length) differed
+ * between any two trees: objcmp's scratch copy against the tree, one worktree against another,
+ * while the scorer, which reads only the referenced tables, matched both. Named, the strings are
+ * the target's (0x3EBD90: "../../shared/rFft2G.c", then "(N==256) || (N=64)"), and the canary's
+ * test_unit_builds_the_same_bytes_at_any_path builds this unit at two paths and compares. The
+ * asserts' lines are not in the image (the call is dropped): the directive keeps this file's own
+ * numbering for the compiler's messages. */
 
 extern void __assert(const char *file, int line, const char *expr);
 #define assert(e) ((e) ? (void)0 : __assert(__FILE__, __LINE__, #e))
+#line 25 "../../shared/rFft2G.c"
 
 /* cos(pi k / 256), -sin(pi k / 256), k = 1 .. 127 (0x3EB8A0) */
 static const float afTw256[254] = {

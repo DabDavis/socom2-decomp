@@ -34,8 +34,15 @@ its neighbours -- as buildinterferencegraph left them, `color` and `fl` after co
 spilled, flags & 4 coalesced), `names` (a virtual register's variable, where it has one: a named
 local or parameter, MW's `@N` temporaries), `costs` and `remat` (as simplify read them), `reserved`
 (the class's unallocatable registers), `code` (the GPR class's pre-rewrite PCode: `B<n> w=<weight>`
-block markers and [opcode, operands]). tools/igreplay.py replays a record's simplify/colour offline;
-tools/igvar.py compares source variants by what this records.
+block markers and [opcode, operands]), and (GCC round 34a, the weapons' round-27 request) `frame`
+(the function's local area's top above sp once its frame is laid out: an Object's sp offset is this
+plus its own) and, on a colouring that spilled, `spills` -- the slot pass insertspillcode runs
+first (0x5173E0: the spilled nodes in INDEX order, each not rematerialised bumped down the local
+area by 0x4A0D30): `base` and `end` (the area's size before and after), `slots` (per node `i`, its
+variable's `name`, the `size` and `align` it was given -- a char or bool spilled takes a 16-byte
+quadword -- `before` and its `off`set, negative), `remat` (spilled nodes rematerialised: no slot).
+A function's records are written once its frame is laid out. tools/igreplay.py replays a record's
+simplify/colour offline, and its slots; tools/igvar.py compares source variants by what this records.
 
 Writes build/ig/<stem>.jsonl (or -o); the scratch object is deleted.
 """
@@ -172,6 +179,11 @@ if gdb is not None:     # ------------------------------------------------------
             state['remat'] = remat
             return False
 
+    def flush():
+        for rec in state.pop('pending', []):
+            OUT.write(json.dumps(rec) + '\n')
+        OUT.flush()
+
     class ColorExitBP(gdb.Breakpoint):
         def stop(self):
             cls, nreal, nused, base, nodes = snapshot()
@@ -188,8 +200,75 @@ if gdb is not None:     # ------------------------------------------------------
                                    color=n['color'], fl=n['flags']) for n in nodes],
                        names=names, code=pcode() if cls == 0 else [], reserved=state.get('reserved'),
                        costs=state.get('costs'), remat=state.get('remat'), proc=state.get('proc'))
-            OUT.write(json.dumps(rec) + '\n')
-            OUT.flush()
+            # held until the function's frame is laid out (or the compile ends): a colouring that
+            # spilled is followed by the spilled nodes' stack slots, and the frame's top comes last
+            state.setdefault('pending', []).append(rec)
+            return False
+
+    # The spill slots (GCC round 34a, the weapons' round-27 request): when a colouring spills,
+    # insertspillcode 0x517580 first gives each spilled node its memory -- 0x5173E0 walks the nodes
+    # in INDEX order and hands each one not rematerialised (node +8) its variable's Object, or a new
+    # temporary's (0x516EE0) for a node without one, to 0x4A0D30, a bump allocator over the local
+    # area: size += type size, rounded up to the alignment 0x45CB20 returns (ax at 0x4A0D3B), the
+    # Object's offset (+0x30) the negated total (0x5B63A8) -- the frame's top less it, at layout.
+    LOCALSIZE = 0x5b63a8
+
+    class SpillEntryBP(gdb.Breakpoint):         # 0x5173E0, the slot pass's entry
+        def stop(self):
+            state['spill'] = dict(base=u32(LOCALSIZE), slots=[])
+            return False
+
+    class SpillAlignBP(gdb.Breakpoint):         # 0x4A0D3B, inside the allocator: ebx the Object, ax its alignment
+        def stop(self):
+            sp = state.get('spill')
+            if sp is None:
+                return False
+            obj = int(gdb.parse_and_eval('$rbx')) & 0xffffffff
+            align = struct.unpack('<h', struct.pack('<H', int(gdb.parse_and_eval('$rax')) & 0xffff))[0]
+            sp['slots'].append(dict(obj=obj, align=align, size=u32(u32(obj + 0xc) + 2),
+                                    before=u32(LOCALSIZE)))
+            return False
+
+    class SpillExitBP(gdb.Breakpoint):          # 0x517578, the slot pass's exit: each Object's offset
+        def stop(self):
+            sp = state.pop('spill', None)
+            rec = (state.get('pending') or [None])[-1]
+            if sp is None or rec is None:
+                return False
+            base = u32(GRAPH)
+            nreal, nused = rec['nreal'], rec['nused']
+            of_obj = {}
+            remat = []
+            for i in range(nreal, nused):
+                a = base + i * STRIDE
+                if not u16(a + 0x14) & 1:
+                    continue
+                if u32(a + 8):
+                    remat.append(i)
+                obj = u32(a + 4)
+                if obj and obj not in of_obj:
+                    of_obj[obj] = i
+            slots = []
+            for s in sp['slots']:
+                off = struct.unpack('<i', mem(s['obj'] + 0x30, 4))[0]
+                slots.append(dict(i=of_obj.get(s['obj']), name=objname(s['obj']), size=s['size'],
+                                  align=s['align'], before=s['before'], off=off))
+            rec['spills'] = dict(base=sp['base'], end=u32(LOCALSIZE), slots=slots, remat=remat)
+            return False
+
+    # The frame, once laid out (0x4BE6F0; at 0x4BE8BE [0x5B6D90] is the local area's top above sp:
+    # the area rounded to the stack's alignment, plus the outgoing arguments and the saved
+    # registers): an Object's offset from sp is this plus its own (negative) +0x30. Every record
+    # of the function since the last layout carries it.
+    FRAMETOP = 0x5b6d90
+
+    class FrameBP(gdb.Breakpoint):              # 0x4BE8BE (not 0x4BE8B1: gdb steps over a breakpoint
+        # out of line, decoding as x86-64, where that absolute byte store reads rip-relative: SIGSEGV)
+        def stop(self):
+            top = u32(FRAMETOP)
+            for rec in state.get('pending', []):
+                rec['frame'] = top
+            flush()
             return False
 
     gdb.execute('set pagination off')
@@ -201,7 +280,12 @@ if gdb is not None:     # ------------------------------------------------------
     SimplifyBP('*0x4c4480')
     ColorEntryBP('*0x4c47f0')
     ColorExitBP('*0x4c4962')
+    SpillEntryBP('*0x5173e0')
+    SpillAlignBP('*0x4a0d3b')
+    SpillExitBP('*0x517578')
+    FrameBP('*0x4be8be')
     gdb.execute('continue')
+    flush()
     OUT.close()
 
 else:                   # ----------------------------------------------------------- the driver

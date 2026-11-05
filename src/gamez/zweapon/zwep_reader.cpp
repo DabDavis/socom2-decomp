@@ -110,7 +110,6 @@ void func_003D2C30(CZWeapon *w, float f);   /* ReloadDelay */
 void func_003D2C10(CZWeapon *w, float f);   /* ReloadDelayAfterShot */
 void func_003C5960(CZFTSWeapon *w, int n);   /* SlotCost */
 void func_003D2020(CZWeapon *w, bool on);   /* HasBackblast */
-void func_003D2010(CZWeapon *w, float f);   /* RecoilPct */
 void func_003C5A90(CTargetMods *m, int n);   /* KnockCount */
 }
 
@@ -396,7 +395,7 @@ void ZWepReader::ReadWeapon(_zrdr *entry)
         func_003D2020(w, true);
     if (!zrdr_findreal(entry, "RecoilPct", &f, 1))
         f = 0.0f;
-    func_003D2010(w, f);
+    w->SetRecoilPct(f);
     CZWeapon::m_listWeapons.AddWeapon(w);
 }
 

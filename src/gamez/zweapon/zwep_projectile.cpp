@@ -1635,31 +1635,56 @@ float CZProjectile::GetDamage(const CPnt3D *pos, float *health, float *armor, fl
     return d;
 }
 
-/* OPEN, 0x168 against 0x17C: the target keeps the cone in its frame (sp+112..124, each field
- * stored where it is computed and reloaded by the test) and the projection at sp+96, with &d and
- * its y and z addresses in registers; MW scalarises this CONE whole. Tried: the projection by
- * const reference (0x168), Contains through a CONE pointer (0x174), the cone as a volatile
- * object read through a reference (0x180), the test written out (0x164), r * tan(angle). Round 26
- * (build/scratch/wep/v_cone1.py): a user-declared destructor on CONE keeps it in the frame (0x188:
- * its field addresses then held in registers, the frame larger); a user constructor alone changes
- * nothing (0x168) */
-/* (pinned: GetDamage calls it out of line) */
+/* OPEN, 2 instructions, the frame's size only (160 against 128; the weapons' round 28 -- 0x168 against
+ * 0x17C before): SOCOM 1's CAiCone shape is the target's -- the cone a 0x20-byte object holding the
+ * depth and the vector to the point (sp+96..108) besides its four scalars (112..124), ContainsPoint a
+ * const member taking the apex, the axis and the point (SOCOM 1's 0x267E20 out of line, inline here)
+ * -- with the depth through a named local (its colour f6, the axis's x register; through the member
+ * alone f5) and the radius's product in two statements (`w = dot * inv; w *= radius`: in one
+ * expression MW swaps the operands). The target's frame holds 32 bytes more above the cone, unused:
+ * an unused CAiCone local leaves nothing (MW drops it). Round 26's CONE (four scalars, the vector a
+ * local) kept the shape scalarised: 0x168 */
+/* SOCOM 1's CAiCone (0x20 bytes): the depth along it and the vector to the point last tested, its
+ * height, radius there, radius at the apex and the height's inverse; ContainsPoint takes the apex,
+ * the axis and the point (SOCOM 1's out of line, 0x267E20 in the demo) */
+struct CAiCone {
+    mutable float m_dot;   // 0x0
+    mutable CPnt3D m_vec;   // 0x4
+    float m_height;   // 0x10
+    float m_radius;   // 0x14
+    float m_point_radius;   // 0x18
+    float m_inv_height;   // 0x1c
+
+    bool ContainsPoint(const CPnt3D *apex, const CPnt3D *dir, const CPnt3D *p) const
+    {
+        float dot;
+
+        p->Sub(apex, &m_vec);
+        m_dot = dot = dir->x * m_vec.x + dir->y * m_vec.y + dir->z * m_vec.z;
+        if (dot <= 0.0f || !(dot <= m_height))
+            return false;
+        float w = dot * m_inv_height;
+
+        w *= m_radius;
+        float r = m_point_radius + w;
+
+        if (m_vec.z * m_vec.z + (m_vec.x * m_vec.x + m_vec.y * m_vec.y) - dot * dot <= r * r)
+            return true;
+        return false;
+    }
+};
+
 #pragma auto_inline off
 bool CZProjectile::IsInCone(const CPnt3D *pos, const CPnt3D *apex, const CPnt3D *dir, float angle)
 {
     float r = m_ammo->GetExplosionRadius();
-    CONE cone;
+    CAiCone cone;
 
     cone.m_radius = tan(angle) * r;
-    cone.m_start = 0.0f;
-    cone.m_length = r;
-    cone.m_invlength = 1.0f / r;
-    CPnt3D d;
-
-    pos->Sub(apex, &d);
-    float along = Dot(*dir, d);
-
-    return cone.Contains(d, along);
+    cone.m_point_radius = 0.0f;
+    cone.m_height = r;
+    cone.m_inv_height = 1.0f / r;
+    return cone.ContainsPoint(apex, dir, pos);
 }
 #pragma auto_inline reset
 

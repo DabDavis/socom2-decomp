@@ -527,7 +527,10 @@ extern "C" STICK func_002C6220(const STICK *stick);
  * (v1, a1, a2) -- but a button held in any scalar (a local, a const local, a by-value parameter,
  * `(b = ...) != NONE`) makes MW if-convert the select (the zero in the beq's delay slot, 0x10
  * shorter), and through a reference (to the button, its CCfgButton, or GetButton) the select stays
- * two-armed and the button a late temporary again (6 or 9 off) */
+ * two-armed and the button a late temporary again (6 or 9 off). Round 41: `tools/igreplay.py --want
+ * 43=a2,33=v1` -- no single move gives it, only the joint one (the layout numbered after v48 AND the
+ * button's temporary before v34); the layout defined after the look test (declared before it,
+ * after it, or both uninitialised at the top, the test through the global) is 6 off alike */
 extern "C" float func_002C6290(const CPad *pad)
 {
     const CCtrlrConfig *config = g_pCurrentConfig;
@@ -555,7 +558,12 @@ extern "C" float func_002C6290(const CPad *pad)
  * OPEN, 2 instructions: the join's two andi's in the other order (the target narrows the constant
  * first, into v1, then the state; this the state first), the xor alike. The constant's temporary on
  * the LEFT folds its narrowing away (daddiu), as a named local, a member operator== or the
- * in-place ternary do (xori); through g_pCurrentConfig without the local, 7 off */
+ * in-place ternary do (xori); through g_pCurrentConfig without the local, 7 off. Round 41: igreplay
+ * --target finds every virtual register the target's (0 differ, 10 PCode instructions unmatched):
+ * the miss is which value each narrowing holds, not the colouring. The constant as an inline's
+ * by-value KEY_STATE parameter (`state == ButtonState(...)`) is folded (xori, 0x48); as a by-value
+ * CByteEnum<KEY_STATE> parameter it goes through the frame (0x68, 0x70); both sides as CByteEnum
+ * temporaries 0x54 */
 extern "C" bool func_002C60C0(unsigned char func, const CPad *pad)
 {
     const CCtrlrConfig *config = g_pCurrentConfig;

@@ -897,7 +897,10 @@ int tcmUpdateRadio(CZSealBody *player, int arg)
 
 /* OPEN, 7 instructions (registers only): the target keeps the constant 2 in a3 and the
  * entity's sides in a2, here swapped -- the walk is otherwise the target's (const iterators
- * initialised from the const view, the entity test written out, not AsSeal's ternary). */
+ * initialised from the const view, the entity test written out, not AsSeal's ternary). Round
+ * 53's replay: the 2 is a code-generation temporary made at the type test and hoisted (v53); the
+ * one placement of 37 giving the target's a3/a2 is 46.5 -- between the end() copy's list address
+ * and its temporary's stack address, inside the iterators' set-up */
 int tcmUpdatePlayer(CZSealBody *player, int index)
 {
     int r = 1;
