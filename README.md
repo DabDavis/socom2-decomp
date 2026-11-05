@@ -12729,7 +12729,12 @@ What is open across lanes, and what comes next:
   0x5EF8D0 (0x70 of 0x78) and its do_assign 0x5EF470 (0x1D8 of 0x198) inline the pointer list's
   end() where the target calls it out of line before each insert (OVL2's copy 0x50FED0, OVL1's
   0x2A00A0; OVL1's init 0x317720 calls it the same way) -- an end() a level taller in the original
-  than include/list's, which level 5 inlines whole.
+  than include/list's, which level 5 inlines whole. Two more (the MSL headers' round 32): ~CUIListBox
+  0x375710 (the HUD's round 56) -- four this-tests on a vector freed inside a deleted object's written
+  destructor need level 6 when the vector is a derived class; and CKey::DeleteChildren 0x25B580 (the
+  engine core's round 19), whose deepest FreeVector calls SOCOM 1's compressed-pair pieces (0x25B920-
+  0x25B9C0) -- code-exact with the 4-byte pod's capacity as that pair (include/vector's "MEASURED AGAIN"
+  note), which costs 253 functions at level 5 (+19).
   THE IMAGE'S OWN POINTER-VECTOR end() (the MSL headers round 24) makes 19 natural walks need level 6: their
   eight units carry `#pragma inline_depth(6)`, their objects byte-identical to the level-5 fit's.
   MEASURED OVER THE WHOLE TREE (2026-11-03, master 914fce13, `SC_FLAGS` with level=N, everything
