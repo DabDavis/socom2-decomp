@@ -9,6 +9,8 @@
  * from the statics below, defined in its order. Defined in reverse of their image order (-inline
  * deferred). */
 
+/* (the materials' real class ahead of zweapon.h's stand-in: GetHandFloorHit's inline lookup) */
+#include "../znode/int_material.h"
 #include "kit.h"
 #include "../zcamera/zcamera.h"
 #include "../zentity/zentity.h"
@@ -1586,6 +1588,66 @@ void CZKit::TickReticule(float dT)
                 m_retsize = m_retsizegoal;
         }
     }
+}
+
+extern "C" {
+/* a part's place in its body (CBody::PartInSpace, OVL1 0x2869D0: the body's CBody base at 0x170) */
+void PartInSpace__5CBodyCFP10CZBodyPartPC6CPnt3DP6CPnt3DP5CQuat(const void *body, void *part,
+                                                                 const CPnt3D *off, CPnt3D *pos, CQuat *rot);
+}
+
+/* a point added to another, by value (an inline returning a named point: the sum's slot below the
+ * caller's points, its copy into the caller's local -- the name ours) */
+static inline CPnt3D Added(const CPnt3D &a, const CPnt3D *b)
+{
+    CPnt3D r;
+
+    a.Add(b, &r);
+    return r;
+}
+
+/* (OVL2 0x5C2430: kit.h's; the hand's place copied through its address -- its y kept in a saved
+ * register for the hits' test, as the target does -- and each material bit tested `? true : false`,
+ * materialised before its branch) */
+zdb::IntersectStruct *CZKit::GetHandFloorHit(bool liquid)
+{
+    CPnt3D p;
+    CPnt3D zero = CPnt3D::zero;
+    CPnt3D pos = zero;
+    CPnt3D off = zero;
+
+    PartInSpace__5CBodyCFP10CZBodyPartPC6CPnt3DP6CPnt3DP5CQuat(((CKitBody *)m_body)->m_cbody,
+                                                               ((CKitBody *)m_body)->m_rhand, &off, &pos, 0);
+    ((CEntity *)m_body)->m_quat.Apply(&pos, &pos, 1);
+    CPnt3D t = Added(pos, &((CEntity *)m_body)->m_posW);
+
+    CopyPoint(&p, &t);
+    zdb::DiIntersect *di = zdb::CWorld::m_world->GetAltitudes(&p);
+    zdb::IntersectStruct *below = 0;
+    zdb::IntersectStruct *lowest = 0;
+
+    if (di->m_Cnt) {
+        float y = p.y;
+
+        for (int i = 0; i < di->m_Cnt; i++) {
+            zdb::IntersectStruct *hit = &di->m_Intersects[i];
+            CMaterialEx *mat = CMaterialExArray::GetMaterialEx(hit->GetMaterial());
+
+            if (mat) {
+                if (mat->m_volumetric ? true : false)
+                    continue;
+                if ((mat->m_liquid ? true : false) && !liquid)
+                    continue;
+            }
+            if (hit->m_pos.y <= y && (!below || !(hit->m_pos.y < below->m_pos.y)))
+                below = hit;
+            if (!lowest || !(lowest->m_pos.y < hit->m_pos.y))
+                lowest = hit;
+        }
+    }
+    if (!below)
+        below = lowest;
+    return below;
 }
 
 /* the fire delay still running (OVL2 0x5C2400, new in SOCOM II; the name ours) */

@@ -68,7 +68,9 @@ struct CKitBody {
     short m_state;   // 0x174: CBody's, the SEAL's state (zseal.h's: 9 stateCarrying)
     unsigned char _176[0x200 - 0x176];
     signed char m_200;   // 0x200: the current item's zoom class (binoculars 4, scopes 5 and up)
-    unsigned char _201[0x388 - 0x201];
+    unsigned char _201[0x300 - 0x201];
+    void *m_rhand;   // 0x300: the right hand's body part (zseal.h's m_rhand)
+    unsigned char _304[0x388 - 0x304];
     /* 0x388: attachments by kind, 8 bytes each -- the first word a record whose +0xC keeps the node
      * hung on it (0x5C6980; the names ours) */
     struct Attach {
@@ -301,6 +303,10 @@ public:
      * 0x5C2670: SOCOM II's explosives, grenades, binoculars and item class 201 hold the bounds at
      * zero, and the dilation reads the worked turret's motion) */
     void TickReticule(float dT);
+    /* the ground under the right hand: the world's altitude hits below the hand's place, the highest
+     * one at or under it, else the lowest -- volumetric materials skipped, liquid ones unless `liquid`
+     * (OVL2 0x5C2430, new in SOCOM II: the explosives' tick 0x5C1970 asks it; the name ours) */
+    zdb::IntersectStruct *GetHandFloorHit(bool liquid);
     /* a shot's kick: the rumbles, the reticle knocked up (by the wiggle on the burst's reported shot,
      * plainly past it), the knock bounded by the screen's aspect -- its vertical scale kept in
      * recoil_constscl --, the reticle dilated by the shot and the burst, and the body's recoil
