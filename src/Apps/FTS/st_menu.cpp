@@ -306,6 +306,108 @@ bool CMenuState::Init()
  * waited for while swaps are skipped. (SOCOM 1 cleared the relocator through a virtual; SOCOM II's
  * clear is an inline loop over three words, which is what keeps the second and third words'
  * addresses in s1/s0 for the second clear and, being the last values made, puts this in s2) */
+/* a ZRDR value (zrdr.h's: the array accessors only) */
+enum {
+    ZRDR_STRING = 3,
+    ZRDR_ARRAY = 4
+};
+
+struct _zrdr {
+    unsigned int type : 8;   // 0x0
+    unsigned int isclone : 1;   // 0x0
+    unsigned int packed : 1;   // 0x0
+    unsigned int nofree : 1;   // 0x0
+    unsigned int unused : 5;   // 0x0
+    unsigned int length : 16;   // 0x0: an array's count
+    union {
+        char *string;
+        _zrdr *array;
+    };   // 0x4
+
+    bool IsString() const { return type == ZRDR_STRING; }
+    bool IsArray() const { return type == ZRDR_ARRAY; }
+    unsigned int Count() const { return IsArray() ? length : 0; }
+    _zrdr *Item(unsigned int i) const { return i < Count() ? &array[i] : 0; }
+    char *String() const { return type == ZRDR_STRING ? string : 0; }
+};
+
+/* the reader editor (zrdr_edit.cpp's: the calls made here) */
+class CRdrEditor : public _zrdr {
+public:
+    CRdrEditor();
+    ~CRdrEditor();
+    bool push(const char *tag);
+    bool pop();
+    bool addstringnode(const char *s);
+
+    unsigned char _8[0x4c - 0x8];
+};
+
+/* a UI variable (zui.h's: its value set from an editor's tree) */
+class CUIVariable : public _zrdr {
+public:
+    void Set(_zrdr *value);
+};
+
+/* the network game (OVL1 bss 0x437CE8): only the chat's lines, a UI variable (the name ours) */
+class CZNetGame {
+public:
+    unsigned char _0[0x94];
+    CUIVariable *m_chat;   // 0x94
+};
+
+extern CZNetGame *data_00437CE8;
+
+/* a message added to the network game's chat lines (OVL1 0x1F4DF0, the display outside game mode
+ * 11): the last 20 lines kept, the new one coloured by its kind ("#C" and three level bytes), its
+ * sender's name and ": " before the text, a newline after (SOCOM II's; the name ours). The first
+ * line kept is zmath.h's MAX(0, count - 20) -- `if (i < 0) i = 0;` gives bgez where the target
+ * compares with slt against $zero; the line a CSaferStr (its base destroyed with 0) */
+extern "C" void func_001F4DF0(const char *text, const char *who, int a, int b, int c, unsigned char d,
+                              unsigned char e, MSGTYPE type)
+{
+    CZNetGame *game = data_00437CE8;
+    CUIVariable *chat;
+
+    if (!game || !(chat = game->m_chat))
+        return;
+    CRdrEditor ed;
+
+    ed.push(0);
+    int count = chat->Count();
+    int i = MAX(0, count - 20);
+
+    for (; i < count; i++) {
+        _zrdr *line = chat->Item(i);
+
+        if (line && line->IsString())
+            ed.addstringnode(line->String());
+    }
+    CSaferStr s;
+
+    switch (type) {
+    case MSGTYPE_ALERT:
+        s = "#C\x80@@";
+        break;
+    case MSGTYPE_SYSTEM:
+        s = "#C\x80\x80@";
+        break;
+    case MSGTYPE_PLAYER:
+    default:
+        s = "#C\x80\x80\x80";
+        break;
+    }
+    if (who) {
+        s += who;
+        s += ": ";
+    }
+    s += text;
+    s += "\n";
+    ed.addstringnode(s.c_str());
+    ed.pop();
+    chat->Set(&ed);
+}
+
 /* a message for the player (CGameState's slot 0x2C): a system message of the multiplayer kind is
  * the menu's MP_SYSTEM_MESSAGE event, any other goes to one of two displays by the mode byte (a
  * switch: the target tests the one case and branches to the default) */
