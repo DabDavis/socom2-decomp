@@ -759,21 +759,17 @@ const char *ZAnimWildcardNext()
 
 /* a name with stars given the search's current digits, in a buffer of its own; the name as it
  * is without a search or a star.
- * OPEN (0x268520), 10 instructions, the saved registers alone: the name and the digit index take
- * each other's (s0/s4). Round 9: the second loop over a local copy of the buffer (`s`, then `name
- * = s`) gives the target's &s[i] recomputed each pass (14 -> 10). MW's colouring
- * (build/scratch/core/ig, igsteps.py): the name, the buffer coalesced into it, stays over K longest
- * and is pushed last, so it takes s0; the target colours the index first. Tried: the index first
- * defined before the second loop (0x158), declared first, the buffer returned from the branch
- * (0x168), a const copy of the name. Round 18, the replay (igreplay --want name=s4,n=s0 --movers):
- * every hit numbers the name after len (33.5 or 34.5) -- a parameter cannot move, and every local copy
- * of it (after len, after found, last, assigned after the test) is copy-propagated back into the
- * parameter (tools/igvar.py: `s0=str`, the same 10; build/scratch/core/v_wild.py) */
-const char *ZAnimWildcardApply(const char *name)
+ * Byte-exact (0x268520; open rounds 9-18, 10 off on the saved registers alone): the target's
+ * name, with the buffer coalesced into it, numbered after len and the digit index ahead of len
+ * (igreplay --want name=s4,n=s0 --movers name,n). The parameter cannot move and every plain copy
+ * of it is propagated back into it -- a CAST copy (`char *name = (char *)str`) is a variable of its
+ * own, numbered where it is declared, and with the index declared first both land (round 19) */
+const char *ZAnimWildcardApply(const char *str)
 {
-    int len;
-    bool found = false;
     int n = 0;
+    int len;
+    char *name = (char *)str;
+    bool found = false;
     int i;
 
     if (_digit_count <= 0)
