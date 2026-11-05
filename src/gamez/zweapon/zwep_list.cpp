@@ -199,9 +199,16 @@ static inline zdb::CTexture *HandleTexture(zdb::CTexHandle *h)
  * second name and the zoomed thermal fire animation). The fire sounds' index is narrowed into a
  * byte variable of its own (the target's `andi s3,s4,0xff` once a pass, kept across the three
  * calls); the fire and default special animations are `a = 0; if (name) a = ...` (the zero in the
- * test's delay slot; a ternary branches round it); the walk tests `it != end()` (the end hoisted
- * into this's register, as GetWeaponIndex's).
- * OPEN, the right size (0x3AC), 51 instructions -- registers only, the walk's three: the target
+ * test's delay slot; a ternary branches round it).
+ * BYTE-EXACT since the weapons' round 31, by round 30's numbering: THE WALK OVER THE LIST'S OWN NODES
+ * through NAMED pointers (a marked modelling device -- the original's spelling is not known): the
+ * weapon given a dead first definition at the top, then the end and the node declared in that order,
+ * numbers them right after the weapon, as `--move 54=33.5 --move 53=33.6` did (a class iterator's
+ * field is a scalarised temporary, numbered after every named local: 51 off); the hit and material
+ * walks' counters and counts declared uninitialised AHEAD of the name each walk tests (i, n before
+ * hit; j, count before mat -- `igreplay --target` 0 differ with them numbered there), the material
+ * walk's its own (one pair reused is split by MW, the second range numbered late: 9 off). Before:
+ * OPEN at the right size (0x3AC), 51 instructions -- registers only, the walk's three: the target
  * colours the iterator s0, this and then the end s1 (`addiu s1,s1,4` in place) and the weapon s2;
  * here the weapon s0, the iterator s2 and this s1, the end recomputed into v1 at each test (with
  * `e = end()` in the for: this s0, the end s1, the iterator s2). The weapon or the iterators
@@ -218,10 +225,14 @@ static inline zdb::CTexture *HandleTexture(zdb::CTexHandle *h)
  * every named local, so no walk over the list's own iterators reaches that numbering */
 void CZWeaponList::InitializeWeapons()
 {
+    CZWeapon *w = 0;
+    node_base *e;
+    node_base *n;
+
     CZWeapon::SetBulletPassSound(CSnd::GetSoundByName(".BUL_PASSING"));
     CZWeapon::SetRocketPassSound(CSnd::GetSoundByName(".ROCKET_BY"));
-    for (iterator it = begin(); it != end(); ++it) {
-        CZWeapon *w = *it;
+    for (n = end_.next_, e = &end_; n != e; n = n->next_) {
+        w = (CZWeapon *)((node *)n)->data_;
 
         w->m_decalSet = CZDecalSet::GetDecalSetByName(w->GetDecalSetName());
         if (w->m_reloadsoundname)
@@ -270,12 +281,14 @@ void CZWeaponList::InitializeWeapons()
                 w->SetZoomedFireAnimTT(zoom);
         }
 
+        unsigned int i;
+        unsigned int n;
         char *hit = w->GetHitAnimName();
 
         if (hit) {
-            unsigned int n = CMaterialExArray::m_materialex_list.size();
+            n = CMaterialExArray::m_materialex_list.size();
 
-            for (unsigned int i = 0; i < n; i++) {
+            for (i = 0; i < n; i++) {
                 CMaterialEx *m = CMaterialExArray::GetWeaponAnimMaterialEx(i);
 
                 if (m) {
@@ -301,13 +314,15 @@ void CZWeaponList::InitializeWeapons()
         if (special)
             w->SetDefaultSpecialAnim(special);
 
+        unsigned int j;
+        unsigned int count;
         char *mat = w->GetSpecialMaterialAnimName();
 
         if (mat) {
-            unsigned int n = CMaterialExArray::m_materialex_list.size();
+            count = CMaterialExArray::m_materialex_list.size();
 
-            for (unsigned int i = 0; i < n; i++) {
-                CMaterialEx *m = CMaterialExArray::GetWeaponAnimMaterialEx(i);
+            for (j = 0; j < count; j++) {
+                CMaterialEx *m = CMaterialExArray::GetWeaponAnimMaterialEx(j);
 
                 if (m) {
                     char name[32];
@@ -316,9 +331,9 @@ void CZWeaponList::InitializeWeapons()
                     CZAnim *a = ZAnim.GetAnim(name, 0);
 
                     if (a)
-                        w->SetSpecialMaterialAnim(i, a);
+                        w->SetSpecialMaterialAnim(j, a);
                     else
-                        w->SetSpecialMaterialAnim(i, 0);
+                        w->SetSpecialMaterialAnim(j, 0);
                 }
             }
         }

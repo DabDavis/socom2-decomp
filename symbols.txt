@@ -7805,7 +7805,7 @@
 0x003AFD50 0x11C Clear__6CVideoFbUcUcUcUc  # OVL1; by hand (the wep lane: SOCOM 1's Clear -- the clear packet vramcode's FRAME and far XYZ2 set, 0x1C002800 the 640x448 corner, sent -- with a flag first: set, a 1024-wide clear of all GS memory in the colour; the packet sent through zvid_KickPacket); the flag a bool or an unsigned char alike (both test it with andi 0xff when compared with false/0, neither when negated): bool, as a flag
 0x003AFE70 0x54 zVid_ZTestOnWriteSet__Fb  # OVL1; s1:exact
 0x003AFED0 0x54 zVid_FrameRestore__Fv  # OVL1; s1:align
-0x003AFF30 0x590 func_003AFF30  # OVL1
+0x003AFF30 0x590 zVid_Swap__Fbb  # OVL1; by hand (the wep lane, round 31: SOCOM 1's zVid_Swap__Fb 0x307BC0 -- the same sync, frame-rate wait on vertical blanks, SetDynamicLOD, video-mode reset (its initcode), CMPEG::IdleTick, the frame time from T0_COUNT into its local static t0Count, the buffer swap and the PCRTC writes, then zSysFifoEnable and the framecode kick; SOCOM II's takes a second bool, the flip and the restore each on their own, the second swap mode's packet 0x3B07B0 and the mode offsets)
 0x003B04C0 0x120 SetDynamicLOD__Fi  # OVL1; s1:align
 0x003B05E0 0x80 func_003B05E0  # OVL1
 0x003B0660 0xA0 func_003B0660  # OVL1
