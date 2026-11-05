@@ -804,6 +804,62 @@ def test_objcmp_by_address_equates_a_respelling():
     ck(O.summary(nowhere_a, res) != O.summary(nowhere_b, res), "names no map resolves are compared by name")
 
 
+def test_unit_builds_the_same_bytes_at_any_path():
+    """A unit's object may not depend on where the tree lies (GCC round 34a). sase_rfft2g.c's
+    asserts always hold, so GCC drops their calls -- but not their strings, __FILE__ among them,
+    which was the path the unit was built at: its .rodata differed between tools/objcmp.py's
+    scratch copy and the tree (the MSL's round 28, the UI's round 26) and between worktrees, while
+    the scorer, which reads only referenced data, matched both. Its `#line` names the vendor's file
+    now. Every hand-written unit whose text names __FILE__, __DATE__, __TIME__ or __BASE_FILE__ is
+    built from two copies of src/ and include/ at paths of different lengths and the objects are
+    compared as objcmp compares them (each function's bytes and relocations, each allocated
+    section, each object); sase_rfft2g.c is built twice at one path besides, and its .rodata is the
+    target's (0x3EB8A0: the two twiddle tables, then the file and the expression). Negative: the
+    unit with its `#line` taken out differs at the two paths, in its .rodata alone."""
+    import re
+    import objcmp as O
+    src = HERE / "src"
+    rx = re.compile(r"__(FILE|DATE|TIME|BASE_FILE)__")
+    units = [p.relative_to(src) for p in C.sources(src)
+             if p.relative_to(src).parts[0] != "auto" and rx.search(p.read_text(errors="replace"))]
+    rfft = Path("lib/ovl1/sase_rfft2g.c")
+    ck(rfft in units and len(units) >= 20, f"the units naming __FILE__ are found: {len(units)}")
+    work = BUILD / "anypath"
+    if work.exists():
+        shutil.rmtree(work)
+    roots = []
+    for name in ("a", "a_second_tree_at_a_longer_path"):
+        shutil.copytree(src, work / name / "src", ignore=shutil.ignore_patterns("auto", "*.o"))
+        shutil.copytree(HERE / "include", work / name / "include")
+        roots.append(work / name)
+
+    def built(root: Path, rel: Path, tag: str) -> Path:
+        _, o, err = C.build_one(root / "src" / rel, work / f"obj-{tag}", root=root / "src",
+                                include=root / "include")
+        ck(o is not None, f"{rel} builds at {root.name}: {err.strip()[-200:]}")
+        return o
+
+    differ = [str(r) for r in units
+              if O.summary(built(roots[0], r, "a")) != O.summary(built(roots[1], r, "b"))]
+    ck(not differ, f"every unit naming __FILE__ builds the same bytes at two paths; these differ: {differ}")
+    ck(O.summary(built(roots[0], rfft, "again")) == O.summary(work / "obj-a" / rfft.with_suffix(".o")),
+       "sase_rfft2g.c built twice at one path: the same bytes")
+    elf = E.Elf.read(work / "obj-a" / rfft.with_suffix(".o"))
+    ro = next(s for s in elf.sections if s.name == ".rodata")
+    ck(ro.data == E.image().read(0x3EB8A0, ro.size) and b"../../shared/rFft2G.c\0" in ro.data,
+       "and its .rodata is the target's, the vendor's file name in it")
+    for root in roots:                  # the negative: __FILE__ the path the tree lies at
+        f = root / "src" / rfft
+        text = f.read_text()
+        bare = re.sub(r"^#line .*\n", "", text, flags=re.M)
+        ck(bare != text, "the unit's #line is there to take out")
+        f.write_text(bare)
+    a, b = O.summary(built(roots[0], rfft, "bare-a")), O.summary(built(roots[1], rfft, "bare-b"))
+    ck([k for k in sorted(set(a) | set(b)) if a.get(k) != b.get(k)] == ["section .rodata#1"],
+       "without its #line, the unit's .rodata differs at the two paths (and nothing else)")
+    shutil.rmtree(work)
+
+
 def test_explicit_instance_scores_in_its_units_overlay():
     """seal_tasks.cpp (OVL2) instantiates `ai::_max<unsigned char>` explicitly: a global, the
     unit's own, whose name the map gives OVL1's 0x2AFC40 and whose OVL2 copy is 0x5DEE70
