@@ -2065,6 +2065,22 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the SEALs, round 43** (GetThrowAnim, GetDynamics, the throw path's clearance, the come-along order's test):
+  - an inline's own local is numbered after all of the caller's locals -- to number it among them make it an
+    uninitialised caller local assigned inside the inline through a `bool &` (the come-along order's test 0x591520);
+    `r = !sw || x == f();` branches on the unmasked value with the andi in the delay slot, `r = !sw; if (!r) ...` tests
+    the masked one; `f() == false` on a bool call result gives the andi before the branch (the throw path's clearance
+    0x5499E0, where declaring the second of two floats live across calls uninitialised at the top swaps $f20 / $f21);
+  - `bool m = Dot(v, v) > k;` gives the target's c.le.s / bc1f, `!(... <= k)` adds an xori; a function-local `static
+    float k = 225.0f` is plain data loaded with lwc1 (GetThrowAnim 0x57FCE0, SOCOM 1's with seven guarded function-local
+    CPnt3D statics); unsigned frame parameters passed to an int callee in a loop become a hoisted no-op conversion
+    numbered after the named locals (0x577BA0, OPEN: one numbering fits, `&seal->m_body_parts` between `part` and the
+    first hoisted conversion);
+  - AN `ovl-copy:` MARKER MOVES CREDIT: marking OVL2's 0x58A710 a copy of OnStateChange moved the SEAL units' copies off
+    OVL1's 0x2B3BE0 -- named by the game states, credited only through that cross-overlay name, its own draft retired --
+    and lost it; reverted at integration until an OVL1 unit emits the copy (check the other row has its own emitter
+    before adding a marker); seven AnimTypes rows named by SOCOM 1's order with GetThrowAnim's reads as the second
+    witness.
 - **Tells from the game states, round 39** (a box's corners, the vote-kick test, zDoClientLeavesCallback, OnMissionStart):
   - a plain function calling an inline too big to inline whole gets that inline cut to one level (its leaves called),
     and is itself never auto-inlined -- an "out-of-line copy" whose leaves are calls is such a caller (0x2A96B0, a box's
