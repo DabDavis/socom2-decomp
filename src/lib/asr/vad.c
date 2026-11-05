@@ -6,7 +6,7 @@
  * ScanSoft's speech recogniser, prebuilt with ee-gcc 2.96 at -O2 -G0 -fno-strict-aliasing
  * -funroll-loops (README "The GCC front"). Names are SOCOM 1's. The constructor reads two
  * profile entries through a log record of its own: 45, the inputs, and 37, a flag that adds a
- * second output and that the block keeps. Written so far: ControlVad (round 32c), the session pair (round 15c: the
+ * second output and that the block keeps. Written so far: ControlVad and ProcessVad (OPEN) (round 32c), the session pair (round 15c: the
  * state copied field by field, the arrays by loops 2.96 unrolls by ten, the two ring positions
  * kept as unsigned indices), ChangeMike, TestChangeMike and CheckForAbnormalConditions
  * (round 19c; ChangeMike closed in 20c) and the constructor; the rest are declared, not yet defined. */
@@ -37,7 +37,8 @@ typedef struct VAD {
     unsigned char second;               /* +1164: profile 37 */
     char pad1165[7];
     float noise;                        /* +1172 */
-    char pad1176[16];
+    char pad1176[12];
+    float f1188;                        /* +1188: the first output's value */
     float floor;                        /* +1192 */
     unsigned char speech;               /* +1196 */
     char pad1197[3];
@@ -59,9 +60,11 @@ typedef struct VAD {
     int time;                           /* +1232 */
     unsigned short frames;              /* +1236 */
     unsigned short lastframes;          /* +1238 */
-    char pad1240[4];
+    unsigned char check;                /* +1240: abnormal conditions checked */
+    char pad1241[3];
     unsigned int timeout;               /* +1244 */
-    char pad1248[8];
+    int pad1248;
+    float mean;                         /* +1252: the inputs' mean */
 } VAD;                                  /* 1256 */
 
 /* a session: the block's state field by field, its two ring positions as indices */
@@ -332,6 +335,63 @@ static void VadPutSession(VAD *v, VADSESSION *ss)
     v->pos1160 = &v->f1076[ss->idx1160];
 }
 
+extern void VadFastTrackProcess(VAD *v, float e);
+
+/* a frame (the block's process): the single input's value, or with several the mean of those
+ * present (none present, nothing); the frame timed and fast-tracked, the first output given the
+ * value at +1188, the second (when kept) the frame's value and the five levels, and the abnormal
+ * conditions checked when enabled unless a microphone change is pending. SOCOM 1's LOCAL, written
+ * from SOCOM II's code (round 32c). The value's pointer lives in the frame, stored and reloaded at
+ * every use (SOCOM 1's too): volatile here gives exactly that. OPEN (round 32c, the right size, 2
+ * words): the target zeroes sum ($f2) and copies it into cnt ($f0), cnt taking $f0 for the loop;
+ * written so, sum's extra read (the copy) ranks it first (6,410 against 6,315) and every add's
+ * registers swap (17 words); zeroing cnt first gives the loop's registers and reverses the copy.
+ * Chained, both zeroed, x's store moved, the adds or the declarations swapped, `cnt++`, the
+ * quotient through cnt or sum: no closer. */
+static void ProcessVad(VAD *v, float **in, int n)
+{
+    float *volatile x;
+    int i = 0;
+    float sum, cnt;
+    float *q;
+
+    if (v->b.ninputs != 1) {
+        cnt = 0.0f;
+        x = 0;
+        sum = cnt;
+        for (i = 0; i < n && in[i] == 0; i++)
+            ;
+        if (i == n)
+            goto out;
+        for (i = 0; i < n; i++) {
+            if (in[i] != 0) {
+                cnt += 1.0f;
+                sum += *in[i];
+            }
+        }
+        v->mean = sum / cnt;
+        x = &v->mean;
+    } else
+        x = in[0];
+out:
+    if (x != 0) {
+        v->time++;
+        VadFastTrackProcess(v, *x);
+        *(float *)qEnQueueOne(v->b.outputs[0].q) = v->f1188;
+        if (v->second) {
+            q = qEnQueueOne(v->b.outputs[1].q);
+            *q++ = *x;
+            *q++ = v->f44[0];
+            *q++ = v->f44[1];
+            *q++ = v->f44[2];
+            *q++ = v->f44[4];
+            *q = v->f44[3];
+        }
+        if ((v->speech == 0 || TestChangeMike(v) == 0) && v->check != 0)
+            CheckForAbnormalConditions(v, *x);
+    }
+}
+
 /* the EE's largest float (no infinity): 0x7FFFFFFF through 2.96's parser (gender.c's) */
 #define FLT_MAX 6.80564694e+38f
 
@@ -443,7 +503,7 @@ static int ControlVad(VAD *v, unsigned char cmd, void *arg, int *off)
     return 1;
 }
 
-extern void ProcessVad(VAD *v, unsigned char **in, int n);
+
 extern int InitVad(VAD *v);
 
 TOSBLOCK *ConstructVad(TOS *tos, unsigned char id)
