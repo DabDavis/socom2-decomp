@@ -52,6 +52,7 @@ extern int data_003DFFB0, data_003DFFB8, data_003DFFC0, data_003DFFC8;
 static bool snd_system_initialized;     /* SOCOM 1's static (LOCAL in its symbols) */
 int zrdr_findreal(const _zrdr *rdr, const char *tag, float *out, int n);
 extern "C" int toupper(int c);
+extern "C" int atoi(const char *s);
 
 /* PlaySoundVolPanPitch's: the subtitles shown (GetSubtitles' byte), the network up (theNetwork's
  * m_bNetwork, znet.h's), the message queue the subtitle goes to (theMission + 0x6A0) and its
@@ -276,6 +277,159 @@ void CSnd::Close()
     data_003DFFC8 = -1;
     snd_AutoReverb(2, 0, 240, 3);
     data_0048DE40 = 0;
+}
+
+inline void CSnd::SetupSoundGroups(const char *name)
+{
+    if (!m_isDisabled)
+        CSndGroup::LoadSoundGroups(name);
+}
+
+/* the mission named instead (a debug override: the flag and the name; names not known) */
+extern unsigned char data_0048DEC8;
+extern char data_0048DEB8[];
+
+/* a mission's sound groups loaded (SOCOM II's; CMission::Open calls it after the mission's sounds,
+ * 0x344450; the name not known): a multiplayer map's ("mp...") the common and hostage groups, a
+ * campaign mission's the common groups and its teams' by the mission's number */
+extern "C" void func_00344910(const char *name)
+{
+    bool mp = false;
+    const char *s = data_0048DEC8 ? data_0048DEB8 : name;
+
+    strlen(s);
+    if (s[1] == 'p')
+        mp = true;
+    if (mp) {
+        CSnd::SetupSoundGroups("MP_COMMON");
+        CSnd::SetupSoundGroups("HOSTAGE");
+    } else {
+        int n = atoi(s + 1);
+
+        CSnd::SetupSoundGroups("SP_COMMON");
+        switch (n) {
+        case 51:
+            CSnd::SetupSoundGroups("BRAVO_SEAL");
+            CSnd::SetupSoundGroups("ALBANIAN");
+            break;
+        case 52:
+        case 53:
+            CSnd::SetupSoundGroups("BRAVO_SAS");
+            CSnd::SetupSoundGroups("ALBANIAN");
+            break;
+        case 61:
+        case 62:
+        case 63:
+            CSnd::SetupSoundGroups("BRAVO_SEAL");
+            CSnd::SetupSoundGroups("BRAZILIAN");
+            CSnd::SetupSoundGroups("HOSTAGE");
+            break;
+        case 71:
+        case 72:
+        case 73:
+            CSnd::SetupSoundGroups("BRAVO_SEAL");
+            CSnd::SetupSoundGroups("ALGERIAN");
+            CSnd::SetupSoundGroups("HOSTAGE");
+            break;
+        case 81:
+        case 83:
+            CSnd::SetupSoundGroups("BRAVO_SPET");
+            CSnd::SetupSoundGroups("RUSSIAN");
+            break;
+        case 82:
+            CSnd::SetupSoundGroups("BRAVO_SPET");
+            CSnd::SetupSoundGroups("RUSSIAN");
+            CSnd::SetupSoundGroups("HOSTAGE");
+            break;
+        }
+    }
+}
+
+inline void CSnd::LoadSounds(const char *name)
+{
+    if (!m_isDisabled)
+        LoadSounds(name, name);
+}
+
+/* a mission's sounds loaded (SOCOM II's; CMission::Open calls it with the mission's name, the
+ * groups after it; the name not known): the interface's, the music's and the radio's, the mission's
+ * own five files (voice, effects, ambience, the SVO and music lines), then a multiplayer map's
+ * shared sounds, or a campaign mission's headquarters' and ABLE's and its teams' by the mission's
+ * number (as func_00344910's groups).
+ * OPEN, 16 instructions at the target's size, two registers only: the target keeps the name in s1
+ * and the flag in s0, this the other way (func_00344910 below, the same head, matches with the
+ * flag declared first and the name a ternary -- the ternary's value numbered last). Tried (build/
+ * scratch/wld/v_snd*.py): either declaration order, the buffer first, the flag assigned apart or
+ * dead-first, the override written into the parameter and copied (4 off: the override then lands
+ * in s1, not a0), an inline name helper either way, an inline multiplayer test, the flag a ternary
+ * (0x468) */
+extern "C" int func_00344450(const char *name)
+{
+    const char *s = data_0048DEC8 ? data_0048DEB8 : name;
+    bool mp = false;
+    char buf[32];
+
+    strlen(s);
+    if (s[1] == 'p')
+        mp = true;
+    CSnd::LoadSounds("HUDUI");
+    CSnd::LoadSounds("SMUS");
+    CSnd::LoadSounds("TCM_ECHO");
+    sprintf(buf, "%s_vc", s);
+    CSnd::LoadSounds(s, buf);
+    sprintf(buf, "%s_fx", s);
+    CSnd::LoadSounds(s, buf);
+    sprintf(buf, "%s_am", s);
+    CSnd::LoadSounds(s, buf);
+    sprintf(buf, "%s_svo", s);
+    CSnd::LoadSounds(s, buf);
+    sprintf(buf, "%s_smu", s);
+    CSnd::LoadSounds(s, buf);
+    if (mp) {
+        CSnd::LoadSounds("MULTI");
+        CSnd::LoadSounds("HOSTAGE");
+    } else {
+        int n = atoi(s + 1);
+
+        CSnd::LoadSounds("HQ");
+        CSnd::LoadSounds("ABLE");
+        switch (n) {
+        case 51:
+            CSnd::LoadSounds("BRAVO_SEAL");
+            CSnd::LoadSounds("ALBANIAN");
+            break;
+        case 52:
+        case 53:
+            CSnd::LoadSounds("BRAVO_SAS");
+            CSnd::LoadSounds("ALBANIAN");
+            break;
+        case 61:
+        case 62:
+        case 63:
+            CSnd::LoadSounds("BRAVO_SEAL");
+            CSnd::LoadSounds("BRAZILIAN");
+            CSnd::LoadSounds("HOSTAGE");
+            break;
+        case 71:
+        case 72:
+        case 73:
+            CSnd::LoadSounds("BRAVO_SEAL");
+            CSnd::LoadSounds("ALGERIAN");
+            CSnd::LoadSounds("HOSTAGE");
+            break;
+        case 81:
+        case 83:
+            CSnd::LoadSounds("BRAVO_SPET");
+            CSnd::LoadSounds("RUSSIAN");
+            break;
+        case 82:
+            CSnd::LoadSounds("BRAVO_SPET");
+            CSnd::LoadSounds("RUSSIAN");
+            CSnd::LoadSounds("HOSTAGE");
+            break;
+        }
+    }
+    return 1;
 }
 
 /* a name copied upper-cased into a buffer of max characters (SOCOM II's; name ours) */

@@ -143,6 +143,13 @@ public:
     static void SetGroupVolTemp(float time, float pct, int g0, int g1, int g2, int g3, int g4, int g5,
                                 int g6);
     static void ResetGroupVolTemp(float dT);
+    /* SOCOM 1's (an out-of-line `if (!m_isDisabled) CSndGroup::LoadSoundGroups();` there): SOCOM
+     * II's takes the groups file's name and is inline -- no copy is left */
+    static void SetupSoundGroups(const char *name);
+    /* SOCOM 1's: a bank loaded and the sounds file's sounds read and added (0x344090); the one-name
+     * form loads both by the same name (out of line in SOCOM 1, inline here: no copy is left) */
+    static int LoadSounds(const char *bank, const char *file);
+    static void LoadSounds(const char *name);
     static void LoadReverbs(_zrdr *rdr);
     static void LoadIndoorReverbs(_zrdr *rdr);
     static void LoadOutdoorReverbs(_zrdr *rdr);

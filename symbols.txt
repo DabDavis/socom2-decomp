@@ -6157,10 +6157,10 @@
 0x00343550 0x4C PlaySound__4CSndFP12CSndInstanceUi  # OVL1; s1:align
 0x003435A0 0xC GetSubtitles__4CSndFv  # OVL1; s1:order by hand (SOCOM 1's GetSubtitles, a byte read, right after PlaySound in both builds)
 0x003435B0 0xC SetSubtitles__4CSndFb  # OVL1; s1:order by hand (SOCOM 1's SetSubtitles, the same byte stored)
-0x003435C0 0x810 func_003435C0  # OVL1
+0x003435C0 0x810 LoadCSnd__4CSndFP5_zrdr  # OVL1; s1:order+calls by hand (the world lane round 17: SOCOM 1's LoadCSnd(_zrdr *), after SetSubtitles in both builds; LoadSounds calls it on each new CSnd with the record, as SOCOM 1's LoadSounds calls LoadCSnd)
 0x00343DD0 0x1BC LoadBank__4CSndFPCc  # OVL1; s1:order by hand, the world lane round 9 (SOCOM 1's LoadBank, before AddNewCSnd in both builds, the same code but the record: the path built, off the bank archive when booted from the CD -- the key's offset inline, the stream synced, snd_BankLoadByLoc -- else snd_BankLoad, the name, bank and 1/-1 pushed as one 24-byte record, snd_ResolveBankXREFS) -- zsnd_csnd.cpp
 0x00343F90 0xFC AddNewCSnd__4CSndFP4CSnd  # OVL1; s1:calls by hand (LoadSoundGroups adds each group with it after LoadCSndGroup, as SOCOM 1's calls AddNewCSnd; after the bank loader as SOCOM 1's AddNewCSnd follows LoadBank) -- the sound lane
-0x00344090 0x32C func_00344090  # OVL1
+0x00344090 0x32C LoadSounds__4CSndFPCcPCc  # OVL1; s1:order+calls by hand (the world lane round 17: SOCOM 1's LoadSounds(const char *, const char *) after AddNewCSnd in both builds -- the disabled test, LoadBank on the second name, each record read with LoadCSnd (0x3435C0) and added with AddNewCSnd; the mission loader 0x344450 calls it with one name twice where SOCOM 1's LoadSounds(const char *) did)
 0x003443C0 0x90 CopyUpper__FPCcPci  # OVL1; SOCOM II's, name ours (a string copied upper-cased into a buffer of n characters, strlen and toupper)
 0x00344450 0x478 func_00344450  # OVL1
 0x003448D0 0x8 func_003448D0  # OVL1
