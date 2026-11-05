@@ -1532,31 +1532,35 @@ extern "C" void func_002F10B0(int, int, int, MediusPlayerInfoResponse *resp)
     }
 }
 
-/* the room player list's page (only what is read here: its height, a row's height, the first row
- * shown) */
-struct PlayerListPage {
+/* the room player list's box: zui_2d.cpp's CUIListBox, only what is read here (its height, a row's
+ * height, the first row shown) -- the class is the 2D family's and no header declares it, so this
+ * unit's view of it is a layout-only one */
+class CUIListBox {
+public:
+    /* a row's text (zui_2d.cpp's, 0x374B50; the HUD's round 41 named it) */
+    const char *GetItemText(int idx);
+
     unsigned char _0[0x78];
     int m_height;   // 0x78
     unsigned char _7c[0xac - 0x7c];
-    int m_rowheight;   // 0xac
+    int m_rowheight;   // 0xac (zui_2d.cpp's m_lineHeight)
     unsigned char _b0[0xb8 - 0xb0];
-    int m_top;   // 0xb8
+    int m_top;   // 0xb8 (zui_2d.cpp's m_scroll)
 };
 
 extern "C" {
-const char *func_00374B50(PlayerListPage *page, int row);   /* a row's text (the UI's) */
 
 /* the info of the room's players the page shows asked for, each one not yet known (its record's
  * first byte still clear) by the account id its row holds -- the request's message id carries the
  * id back (SOCOM II's; OVL1 0x2F0EA0: UIRefreshRoomPlayerList calls it on theLobby) */
 bool func_002F0EA0(CZOnlineLobby *lobby, C2D *list)
 {
-    PlayerListPage *page = 0;
+    CUIListBox *page = 0;
 
     if (!lobby->m_isopen)
         return false;
     if (list)
-        page = (PlayerListPage *)list;
+        page = (CUIListBox *)list;
     if (page) {
         /* the room and the first row numbered first; the bound `top + rows` is the loop
          * optimiser's hoisted temporary, numbered after SetSessionKey's hoisted address, so it
@@ -1569,7 +1573,7 @@ bool func_002F0EA0(CZOnlineLobby *lobby, C2D *list)
         room = data_0044F568.FindRoom(ZString(theLobby.uiv_LobbyWorldNameVar));
         if (room) {
             for (int row = top; row <= top + rows; row++) {
-                const char *s = func_00374B50(page, row);
+                const char *s = page->GetItemText(row);
 
                 if (s && s[0]) {
                     int id = atoi(s);
