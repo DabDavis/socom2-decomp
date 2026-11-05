@@ -852,9 +852,11 @@ class __vector_imp : public __vector_deleter<T, Allocator> {
      * callers, SetLOD and the in-place walks above, which want data re-read and size kept) and leaves
      * CTInView 0x6C4 (its finds' registers move); `data() + size()`, `data() + sz()`, begin() + size()
      * and the const walk's ends (eight forms: a const walk hoists the whole end under every one) do no
-     * better. No end() reproduces 0x60F760's both-through-the-register walk in its unit: an entity
-     * accessor returning the list does in a probe whose walk's result is returned at once (P1/P2), not
-     * once it is tested (P4, the unit's shape). Not applied */
+     * better. Not applied. 0x60F760's both-through-the-register walk is the CALLER's form, as written
+     * now: over a reference bound through a pointer local taken from an inline's result (seal_aivehicle
+     * .cpp's TargetsOf: byte-exact under this end(); the pointer alone, the inline alone, or the walk
+     * inside a helper keep size*48 or the whole end), and CountAwareness's in-place walk takes the
+     * same register form through the inline (`TargetsOf(e)->begin()`) -- its IsEnemy read still off */
     iterator end()
     {
         T *const p = this->data() + this->size_;
