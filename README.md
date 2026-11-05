@@ -2116,6 +2116,27 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     (CAiPath::SmoothPathLeg 0x525810, SOCOM 1's; CAiCell::IsSoil 0x525C60 an inline's out-of-line copy, its name and
     unsigned char parameter ours); char_type.cpp's func_0058E0A0 is CSealCtrl::GetCommandId through a local stand-in
     (SAME-BY-ADDRESS).
+- **Tells from completing the MSL headers, round 31** (the string's short test; cdeque<PCv>::resize measured; probes
+  build/p31/, untracked -- str/ (the short-test probes, v_lm2.py), dq/ (deque.resize.diff, v_rs*.py), scanshort.py,
+  vrun.py: header variants over a probe):
+  - MW SHARES A REPEATED INLINE PREDICATE AND THEN MATERIALISES IT: `!is_long()` used once folds into the branch
+    (`andi; beqz`, the short arm in the delay slot), used twice on one string in one function (size() and c_str(),
+    size() and operator[]) it is one value, stored as a negated, narrowed bool (`andi 1; sltu; xori 1; andi 0xff`), each
+    use a `beqz` on it with the short arm falling through and a `b` joining the forms -- so include/string's size(),
+    operator[] and at() test the short form first as c_str() does (CSoftKeyboard::PrepForDisplay 0x38BAC0's cap-font
+    test the target's, 0x350 -> 0x360 of 0x374; _preproc_filter's line walk; +0 / -0 over every hand-written unit);
+  - A DEAD FIRST USE SHARES TOO: LastMessage 0x2B6D60 is byte-exact with a named local taking the same c_str() first
+    (`const char *s = last->m_text.c_str(); return last->m_text.c_str();`) -- a discarded `x.c_str();` statement is
+    dropped before anything is shared; a form that materialises a single use (`unsigned char` over `is_long() ^ true`)
+    materialises every single use in the image (ten functions hold the four instructions adjacent, all second uses);
+  - an `insert(..., value_type())` argument is a stack temporary under every spelling (a const static is folded to
+    one too); a function-local or static-member zero is addressed `lui/addiu` but MW puts every zero-initialised
+    static in .bss -- the image's resize 0x285660 addresses a zero WORD IN .data (0x3DE1D0, after zanim_menu.cpp's
+    UICommandTable), a declaration not found;
+  - in an inlined constructor a field read twice through a `T *const &` accessor keeps its address in a register for
+    the field's store too; a parameter by const reference is re-read after the iterator's first store, by value it is
+    not; `return t += n;` keeps an operator+'s copy in memory where `t += n; return t;` lets MW merge it with its
+    source; `n += p_ - data_` reuses the parameter's register where a new local takes another.
 - **Tells from completing the MSL headers, round 30** (the two CSaferStr made one; the vector walk's end; CPnt3D's operators):
   - ONE CSaferStr: src/gamez/zutil/saferstr.h holds SOCOM 1's zutil.h class -- a std::string with an empty inline
     constructor and `void operator=(const char *)` (the return SOCOM 1's DWARF gives); zentity.h and zsav_lobby.h include
