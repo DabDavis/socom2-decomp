@@ -8,10 +8,12 @@
  * here compiles the same with and without it, round 26c, so the directive carries the object's
  * flag). Names are SOCOM 1's (the constructor's slots, s1:align, s1:calls); the block's fields
  * are named by their use. A block of the scheduler's (asr/tosblk.h): two inputs, four outputs.
- * Only the functions written so far are here, in image order (SpectralSubtraction, 0x1208, and
- * InitSpecSub, 0x40C, are not written: declared, their rows open). The session functions copy the
- * record in field order, the ring's size taken into the count's own variable (`n += s->nring * n`:
- * the target's sum into the count's register). */
+ * Only the functions written so far are here, in image order (SpectralSubtraction, 0x1208, is not
+ * written: declared, its row open). The session functions copy the record in field order, the
+ * ring's size taken into the count's own variable (`n += s->nring * n`: the target's sum into the
+ * count's register). The reset (ControlSpecSub's null session, InitSpecSub's tail) is one text in
+ * both: the first loop's count a block-local initialised at its declaration, the count after it
+ * the function's own variable (round 27c, below). */
 #include "tosblk.h"
 
 typedef struct SPECSUB {
@@ -125,12 +127,17 @@ static __inline__ void FreeResourcesSpecSub(SPECSUB *s)
     heap_Free(s->b.tos->heap, s->lim);
 }
 
-/* OPEN (3 words, the right size): the reset's first loop bound reads the field again each turn
- * beside a local copy taken before the loop (`n + s->n`: the target's two loads of +84, one kept,
- * one reloaded -- the demo's ControlSpecSub has the same pair); its own pointer per loop and `n`
- * taken again after it give every word but the first load's register: the target loads +84 into
- * a1 and copies the local to a2, here the local takes the load and a1 the copy (int, a block-local
- * declaration, the copy taken before the session test, operand orders: 3 to 17 words).
+/* The reset's first loop bound reads the field again each turn beside a copy taken before the
+ * loop (`m + s->n`: the target's two loads of +84, one kept, one reloaded). Round 27c: the copy is
+ * a block-local `m` initialised from the field and the count after the loop is ANOTHER variable
+ * (the function's `n`). GCSE makes the after-loop read a copy of its reaching register R, copied
+ * after the first load (`m = load; R = m`) and after the loop's reload; the rerun of CSE then swaps
+ * a load and the copy after it (`R = load; m = R`) when the copy's destination outlives the loaded
+ * register (cse.c's REG0/REG1 swap: R becomes its class's first register when its last use is the
+ * later one). With one variable for both counts (rounds 15c-26c) the variable lives on past R and
+ * keeps the load (`lw a2; move a1,a2`); with the first count a variable of its own, dying in the
+ * loop, R takes the load (`lw a1; move a2,a1`, the target's). (`n = s->n; m = n;` is 3 words: the
+ * copy propagation folds m back into n.)
  *
  * the block's commands (case bodies in the target's order): 2 and 1 a session in and out (a null session resets the spectra), 3 and 4
  * the second input's queue stopped and started, 255 the block destroyed */
@@ -147,9 +154,9 @@ static int ControlSpecSub(SPECSUB *s, unsigned char cmd, char *sess, int *off)
             *off += (s->nring * 4 + 20) * s->n + 20;
         } else {
             float *q;
+            unsigned int m = s->n;
 
-            n = s->n;
-            for (q = s->noise; q < s->noise + n + s->n; q++)
+            for (q = s->noise; q < s->noise + m + s->n; q++)
                 *q = 1.0f;
             n = s->n;
             s->f42 = 0;
@@ -190,13 +197,9 @@ static int ControlSpecSub(SPECSUB *s, unsigned char cmd, char *sess, int *off)
  * 0x3DCCCCCC, 0x3F68BA2E; 3.7808886e37f is 0x7DE38DD0); the pointers before the constants and the
  * two stores of `buf` ring-first, the constants 0.8, 0.2, 0.1, 0.9 (sched1's tie-breaks: the last
  * store of a value issues first; 120 orders scored, build/scratch/gcc/v_iss3.py); the ring test a
- * guard (the error path falls through), the reset's count a block-local of its own (the
- * function's `n` is a saved register).
- * OPEN (3 words, the right size): the reset's first load of +84 -- ControlSpecSub's pair exactly
- * (one cause): GCSE makes the reset's two reads of `s->n` one expression and inserts its reaching
- * register as a copy AFTER the first load (the load stays into the count, a2 here; the copy a1),
- * where the target loads into a1 and copies to a2 (as a reaching register set by the load itself
- * would be). An inline with the count as a value parameter, or the count block-local, keep it. */
+ * guard (the error path falls through); the reset as ControlSpecSub's (round 27c: the first
+ * loop's count a block-local initialised from the field, the count after it the function's `n` --
+ * any second variable there matches; one variable for both was the 3 words rounds 15c-26c left). */
 static int InitSpecSub(SPECSUB *s)
 {
     TOS *tos = s->b.tos;
@@ -262,11 +265,11 @@ static int InitSpecSub(SPECSUB *s)
 
         for (q = s->noise; q < s->noise + m + s->n; q++)
             *q = 1.0f;
-        m = s->n;
+        n = s->n;
         s->f42 = 0;
-        for (p = s->f56; p < s->f56 + m; p++)
+        for (p = s->f56; p < s->f56 + n; p++)
             *p = 1.0f;
-        for (p = s->f52; p < s->f52 + m; p++)
+        for (p = s->f52; p < s->f52 + n; p++)
             *p = 1.0f;
         s->f40 = 0;
         s->f128 = 1.0f;
