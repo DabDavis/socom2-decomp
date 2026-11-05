@@ -2065,6 +2065,20 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the kit and AI states, round 46** (PickupMPBomb, the snoozer list's pieces, the ai_pre_tick task written):
+  - AN INLINE HELPER'S EXPANDED SIZE IS MEASURED by appending `#pragma inline_max_size(N)` at the unit's END and finding
+    where the helper flips to a one-level inline -- the pragma acts only at the unit's end, around the callee or the
+    caller it does nothing; one extra forwarding member level (a list's own `insert`) can push a 200-250-unit helper past
+    the 256-unit limit, so it is inlined one level (the snoozer list's insert 0x5CD8F0 -- include/list's non-pointer
+    list<T> has none of its own: CSnoozeList, a derived class, is a marked stand-in until it does);
+  - a 1-bit field returned from a plain inline bool comes out as andi 0xff, `!` of it as sltu / xori, through `? true :
+    false` sltu, a bool local initialised from it sltu; an `&&` inside an inline returning bool is materialised (move zero
+    in the delay slot, then daddiu 1); `x--; if (x == 0)` on a static reloads it after the store, `--x == 0` reuses the
+    register; an extern "C" bool result used directly in a ternary loses its andi, held in a bool local it keeps it; a `?
+    2 : 3` stored into a 16-bit bit-field masks with 0xffff where a byte enum gives the target's andi 0xff;
+  - PickupMPBomb 0x5BBF10 is SOCOM 1's call for call plus SOCOM II's message, the bomb's sound and the dead player's
+    drop; CSealCtrlAi::PreTick 0x5CCCD0 (the ai_pre_tick task, 0xB9C) is written at the target's size, OPEN; SOCOM 1's
+    aiEnabled, aiActiveCount, aiSleepingCount, aiSnoozingCount and ai::snooze_time named from its $gp symbols.
 - **Tells from the game states, round 40** (OVL1's OnStateChange copy, OnMissionComplete, CMission::Tick, IsAvailable):
   - OVL1'S OnStateChange 0x2B3BE0 NOW HAS ITS OWN EMITTER: fts_player.cpp's stand-in CSealCtrl declares the inline
     `virtual void OnStateChange(SEAL_STATE, SEAL_STATE) {}`, so CSealCtrlCopy's table (emitted with its destructor)
