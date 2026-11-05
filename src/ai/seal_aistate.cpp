@@ -1741,7 +1741,13 @@ extern "C" bool func_005F51A0(CSealCtrlAi *ai, int x, unsigned int flags)
  * OPEN, 4 instructions, two registers in the bit's set: the target holds the SEAL's index in a1
  * and its low five bits in a2, here the other way round. Tried: the inline's parameters swapped,
  * a CBits member, a nested inline on the pickup, the mask computed first, `/ 32` and `% 32`, an
- * int index, the step assigned before, after or around it. Everything else is the target's. */
+ * int index, the step assigned before, after or around it. Everything else is the target's.
+ * Round 39, MW's colouring read (igdump, build/scratch/kit/ig/): SetBit's index is a variable
+ * numbered right after the caller's five locals (v37), so coloured last (a2), while `i & 31` is a
+ * temporary coloured earlier (a1) -- the target colours the index first, as if it were the later
+ * number; still 4 in 18 more shapes (the word and bit as separate parameters either order, the bit
+ * or word or mask a local, a reference or pointer to the word, the index reused, the bare
+ * expression in the caller, an index local in the caller) */
 int CAiSPickup::Tick(CSealCtrlAi *ai)
 {
     STEP step;
