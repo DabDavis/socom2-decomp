@@ -2336,8 +2336,12 @@ public:
     /* a motion the position code keeps (ComputeNextPosition and PostPreTick read and write it; the
      * collision tick 0x54F570 stops checking once its length is all but zero -- the name ours) */
     CPnt3D m_f44;   // 0xf44
-    unsigned char _f50[0xf68 - 0xf50];
-    /* two heights SealAnim 0x5870E0 resets to -99 before a state's control runs (the names ours) */
+    unsigned char _f50[0xf60 - 0xf50];
+    /* the crouched move's throttles as CrouchMoveControl 0x582D10 last took them (the names ours) */
+    float m_f60;   // 0xf60
+    float m_f64;   // 0xf64
+    /* two heights SealAnim 0x5870E0 resets to -99 before a state's control runs (the names ours; the
+     * crouched move keeps its two weights there) */
     float m_f68;   // 0xf68
     float m_f6c;   // 0xf6c
     unsigned char _f70[0xf74 - 0xf70];
@@ -2506,7 +2510,12 @@ public:
     } m_climb;   // 0x1328
     AnimType idlehack;   // 0x1334 (SOCOM 1's 0xfa4: SetStanceIdle keeps the idle anim it pushes)
     short m_weapon_id;   // 0x1336: the weapon in hand, looked up in the AI's kind table (the name ours)
-    unsigned char _1338[0x133c - 0x1338];
+    /* the move's quadrant (UpdateQuadrant's: 0 right, 1 ahead, 2 left, 3 behind, as the crouched
+     * move's mix reads it; the name ours) */
+    short m_quadrant;   // 0x1338
+    /* the quadrant before it, -1 for none: the crouched move eases the parts into a new one (the name
+     * ours) */
+    short m_lastquadrant;   // 0x133a
     float m_133c;   // 0x133c: the rate m_fac falls at (0x59B870; the name ours)
     float m_1340;   // 0x1340: a float the ground probes read -- not 0, 0x54F410 keeps a probe's height
                     // (the constructor, 0x5483D0 and 0x54EDF0 set it; the name ours)

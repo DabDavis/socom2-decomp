@@ -2471,8 +2471,10 @@ extern "C" void func_00585FF0(CZSealBody *seal)
  * the length turned into an angle's fraction ((2 / pi) asin, kept within 0 and 1) and the other its
  * complement, the pair's length's inverse left in a static; the length returned, at most 1 (OVL2
  * 0x583350, new in SOCOM II: the crouched and standing move controls 0x582D10, 0x583030 ask it with
- * their throttles swapped -- `this` unread; the name ours) */
-extern "C" float func_00583350(CZSealBody *seal, float *a, float *b, float x, float z)
+ * their throttles swapped -- `this` unread; the name ours). The parameters interleaved, pointer,
+ * float, pointer, float: the registers are the same either way, but the callers set them up in this
+ * order (a1, $f12, a2, $f13 -- round 49, CrouchMoveControl) */
+extern "C" float func_00583350(CZSealBody *seal, float *a, float x, float *b, float z)
 {
     static float inv = 1.0f;
 
@@ -2528,11 +2530,13 @@ struct AnimSetMoves {
  * nothing mixed, the blends cleared to one (ClearStack(1, true) inlined) and the top returned; else the
  * strafe's anims in the mix get their fraction's step zeroed and the mix becomes the top blend's (OVL2
  * 0x583030; SOCOM 1's MoveControl, its weights' split moved out to 0x583350).
- * OPEN, 14 structural differences, all scheduling (the size right, round 49): the target reloads the
- * strafe's share from its stack slot for each strafe MixAnims (`lwc1 $f13,108(sp)` first in the call's
- * set-up) where MW here keeps the compare's load in $f13 for the right strafe's call, and it sets the
- * split's a2 after $f12; swapped declarations, `> 0.0f`, the length declared apart, the weights as an
- * array or through a `const float &` do not give it (build/scratch/seal-r49/v_movecontrol*.py) */
+ * OPEN, 12 structural differences (the size right, round 49): the target reloads the strafe's share
+ * from its stack slot for each strafe MixAnims (`lwc1 $f13,108(sp)` first in the call's set-up) where
+ * MW here keeps the compare's load in $f13 for the right strafe's call, and it branches `bc1t` to the
+ * left strafe's pick at the end (the if/else, the swapped if and the ternary all give `bc1f`); swapped
+ * declarations, `> 0.0f`, the length declared apart, the weights as an array or through a `const
+ * float &` do not give it (build/scratch/seal-r49/v_movecontrol*.py). The split's a2 after $f12 is
+ * 0x583350's parameter order, (seal, a, x, b, z) -- CrouchMoveControl matches with it */
 CZBodyAnimBlend *CZSealBody::MoveControl(float z, float x)
 {
     CZBodyAnimBlend *top = (CZBodyAnimBlend *)func_00555170(&m_blends);
@@ -2541,7 +2545,7 @@ CZBodyAnimBlend *CZSealBody::MoveControl(float z, float x)
 
     newanims.Clear();
 
-    float len = func_00583350(this, &side, &fwd, x, z);
+    float len = func_00583350(this, &side, x, &fwd, z);
 
     if (!(fabsf(z) <= data_003F3428) && side < 1.0f) {
         if (!(z < 0.0f))
@@ -2576,6 +2580,69 @@ CZBodyAnimBlend *CZSealBody::MoveControl(float z, float x)
     top->SetBlendAnims(this, &newanims);
     return top;
 }
+
+/* the crouched move: the throttles split by 0x583350; the quadrant's crouched blendable mixed at the
+ * length -- the right strafe, the move, the left strafe and the back move, the last two played in
+ * reverse -- the throttles and the two weights kept; nothing mixed, the blends cleared to two
+ * (ClearStack(2, true) inlined) and the top returned; else the right strafe's anims in the mix get
+ * their fraction's step at a half and the mix becomes the top blend's -- on a new quadrant the parts
+ * saved and both interpolations set to the representative anim's blend-in time (OVL2 0x582D10;
+ * SOCOM 1's CrouchMoveControl, its weights' split moved out) */
+CZBodyAnimBlend *CZSealBody::CrouchMoveControl(float z, float x)
+{
+    CZBodyAnimBlend *top = (CZBodyAnimBlend *)func_00555170(&m_blends);
+    float side;
+    float fwd;
+
+    newanims.Clear();
+
+    float len = func_00583350(this, &side, x, &fwd, z);
+
+    switch (m_quadrant) {
+    case 0:
+        MixAnims(&newanims, &((AnimSetMoves *)m_animset)->m_crouchstrafeR_anims, len, 1.0f);
+        break;
+    case 1:
+        MixAnims(&newanims, &((AnimSetMoves *)m_animset)->m_crouchmove_anims, len, 1.0f);
+        break;
+    case 2:
+        MixAnims(&newanims, &((AnimSetMoves *)m_animset)->m_crouchstrafeL_anims, -len, 1.0f);
+        func_0058BAB0(this, &newanims, &((AnimSetMoves *)m_animset)->m_crouchstrafeL_anims, -1.0f);
+        break;
+    case 3:
+        MixAnims(&newanims, &((AnimSetMoves *)m_animset)->m_crouchmoveback_anims, -len, 1.0f);
+        func_0058BAB0(this, &newanims, &((AnimSetMoves *)m_animset)->m_crouchmoveback_anims, -1.0f);
+        break;
+    }
+    m_f60 = x;
+    m_f64 = z;
+    m_f68 = side;
+    m_f6c = fwd;
+    if (!newanims.Begin()) {
+        ClearStack(2, true);
+        return (CZBodyAnimBlend *)func_00555170(&m_blends);
+    }
+
+    CBlendable *strafe = &((AnimSetMoves *)m_animset)->m_crouchstrafeR_anims;
+
+    for (ACTIVE_ANIM *a = newanims.Begin(); a; a = newanims.Next())
+        if (strafe->Contains((AnimType)a->m_id))
+            a->m_dfrac = 0.5f;
+    top->SetBlendAnims(this, &newanims);
+
+    short last = m_lastquadrant;
+
+    if (last >= 0 && last != m_quadrant) {
+        SaveParts();
+
+        float t = top->Representative()->m_anim->m_20;
+
+        m_interp1 = t;
+        m_interp2 = t;
+    }
+    return top;
+}
+
 
 /* the stance's change taken, once (OVL2 0x582500; SOCOM 1's, the false return its own block) */
 bool CZSealBody::StanceChanged()
