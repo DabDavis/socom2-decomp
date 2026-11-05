@@ -619,7 +619,13 @@ inline bool IsRemoteSeal(CZSealBody *seal)
 extern "C" {
 bool func_002A72A0(CZNetGame *game);   /* (fts_mission.cpp's: a game type 1 or 2 -- a bomb game) */
 extern ClientConnectArgs data_00440F20;   /* (the arguments handed to the connect callback) */
-extern void *data_0045B718;   /* (zNetVoice.cpp's object) */
+/* the radio (zNetVoice.cpp's CZNetVoice: only its messages' registration, 0x310210 -- the online
+ * lane's round-25 name) */
+struct CZNetVoice {
+    void zNetRegisterVoice();
+};
+
+extern CZNetVoice *data_0045B718;   /* (zNetVoice.cpp's object) */
 void func_0030E7F0(void *voice);   /* (SOCOM 1's CZNetVoice::IAmNewSessionMaster) */
 }
 
@@ -2037,10 +2043,7 @@ struct NetMsgGameSignal {
 extern "C" {
 void func_00620BD8(void);   /* (the DME's: a message type's description begun) */
 void func_00620C60(void *base, void *field, int size, int count);   /* (a field described) */
-void func_0030CFF0(CZNetwork *net, unsigned int *type, int (*handler)(int, int, int, void *),
-                   const char *name);   /* (a message type registered with its handler) */
 void func_002C2B20();   /* (fts_net_persona.cpp's registration's twin: the platform's? -- SOCOM II's) */
-void func_00310210(void *voice);   /* (zNetVoice.cpp's: its messages registered) */
 extern unsigned int data_00440EA0;   /* (SOCOM II's: "All Switch") */
 extern void (*data_00414BFC)(void *data, int size);   /* (ZAnim's network send: the anims' packets go out through it) */
 int func_002B9B20(int, int, int, void *);
@@ -2105,57 +2108,57 @@ extern "C" void func_002B8660()
     func_00620C60(&mHit, &mHit.m_5, 1, 1);
     func_00620C60(&mHit, &mHit.m_6, 1, 1);
     func_00620C60(&mHit, &mHit.m_7, 1, 1);
-    func_0030CFF0(&theNetwork, &data_00440E00, HitPacketHandler, "Hit");
+    theNetwork.zNetRegisterMessage(&data_00440E00, HitPacketHandler, "Hit");
     data_00414BFC = SendZAnimNetworkPacket;
     func_00620BD8();
     func_00620C60(&mAnim, &mAnim.m_0, 4, 1);
     func_00620C60(&mAnim, &mAnim.m_4, 2, 1);
     func_00620C60(&mAnim, &mAnim.m_6, 2, 1);
-    func_0030CFF0(&theNetwork, &data_00440E20, ZAnimNetworkPacketHandler, "Anim");
+    theNetwork.zNetRegisterMessage(&data_00440E20, ZAnimNetworkPacketHandler, "Anim");
     func_00620BD8();
     func_00620C60(&mPushBlend, &mPushBlend.m_0, 2, 1);
     func_00620C60(&mPushBlend, &mPushBlend.m_2, 2, 1);
     func_00620C60(&mPushBlend, &mPushBlend.m_4, 2, 1);
     func_00620C60(&mPushBlend, &mPushBlend.m_6, 1, 1);
     func_00620C60(&mPushBlend, &mPushBlend.m_7, 1, 1);
-    func_0030CFF0(&theNetwork, &data_00440E18, PushBlendAnimPacketHandler, "Push Blend");
+    theNetwork.zNetRegisterMessage(&data_00440E18, PushBlendAnimPacketHandler, "Push Blend");
     func_00620BD8();
     func_00620C60(&mActionAnim, &mActionAnim.m_0, 2, 1);
     func_00620C60(&mActionAnim, &mActionAnim.m_2, 2, 1);
     func_00620C60(&mActionAnim, &mActionAnim.m_4, 2, 1);
     func_00620C60(&mActionAnim, &mActionAnim.m_8, 2, 1);
-    func_0030CFF0(&theNetwork, &data_00440E08, func_002BB310, "Action Anim");
+    theNetwork.zNetRegisterMessage(&data_00440E08, func_002BB310, "Action Anim");
     func_00620BD8();
     func_00620C60(&mActionPoints, &mActionPoints.m_0, 2, 1);
     func_00620C60(&mActionPoints, &mActionPoints.m_2, 2, 1);
-    func_0030CFF0(&theNetwork, &data_00440E10, ActionAnimPacketHandler, "Action Points");
+    theNetwork.zNetRegisterMessage(&data_00440E10, ActionAnimPacketHandler, "Action Points");
     func_00620BD8();
     func_00620C60(&mAIOrders, &mAIOrders.m_0, 2, 1);
     func_00620C60(&mAIOrders, &mAIOrders.m_4, 1, 1);
-    func_0030CFF0(&theNetwork, &data_00440E28, func_002BB8E0, "AI Orders");
+    theNetwork.zNetRegisterMessage(&data_00440E28, func_002BB8E0, "AI Orders");
     func_00620BD8();
     func_00620C60(&mE3Index, &mE3Index.m_0, 4, 1);
     func_00620C60(&mE3Index, &mE3Index.m_4, 1, 1);
-    func_0030CFF0(&theNetwork, &data_00440E30, E3IndexPacketHandler, "E3 Index");
+    theNetwork.zNetRegisterMessage(&data_00440E30, E3IndexPacketHandler, "E3 Index");
     func_00620BD8();
     func_00620C60(&mReject, &mReject.m_0, 4, 1);
-    func_0030CFF0(&theNetwork, &data_00440E90, func_002B9D80, "Reject");
+    theNetwork.zNetRegisterMessage(&data_00440E90, func_002B9D80, "Reject");
     func_00620BD8();
     func_00620C60(&mMessage, &mMessage.m_0, 2, 1);
     func_00620C60(&mMessage, &mMessage.m_4, 2, 1);
-    func_0030CFF0(&theNetwork, &data_00440E38, func_002BAC40, "Message");
+    theNetwork.zNetRegisterMessage(&data_00440E38, func_002BAC40, "Message");
     func_00620BD8();
     func_00620C60(&mChat, &mChat.m_0, 2, 1);
     func_00620C60(&mChat, &mChat.m_2, 2, 1);
     func_00620C60(&mChat, &mChat.m_4, 1, 1);
-    func_0030CFF0(&theNetwork, &data_00440E40, ChatPacketHandler, "Chat");
+    theNetwork.zNetRegisterMessage(&data_00440E40, ChatPacketHandler, "Chat");
     func_00620C60(&mWepPU, &mWepPU.m_14, 2, 1);
     func_00620C60(&mWepPU, &mWepPU.m_0, 4, 1);
     func_00620C60(&mWepPU, &mWepPU.m_8, 4, 1);
     func_00620C60(&mWepPU, &mWepPU.m_c, 4, 1);
     func_00620C60(&mWepPU, &mWepPU.m_10, 4, 1);
     func_00620C60(&mWepPU, &mWepPU.m_4, 4, 1);
-    func_0030CFF0(&theNetwork, &data_00440E48, WeaponPUPacketHandler, "Wep PU");
+    theNetwork.zNetRegisterMessage(&data_00440E48, WeaponPUPacketHandler, "Wep PU");
     func_00620BD8();
     func_00620C60(&mWepAmmoPU, &mWepAmmoPU.m_30, 1, 1);
     func_00620C60(&mWepAmmoPU, &mWepAmmoPU.m_4[0], 16, 8);
@@ -2164,61 +2167,61 @@ extern "C" void func_002B8660()
     func_00620C60(&mWepAmmoPU, &mWepAmmoPU.m_24, 4, 1);
     func_00620C60(&mWepAmmoPU, &mWepAmmoPU.m_28, 4, 1);
     func_00620C60(&mWepAmmoPU, &mWepAmmoPU.m_2c, 4, 1);
-    func_0030CFF0(&theNetwork, &data_00440E50, AmmoPUPacketHandler, "Wep Ammo PU");
+    theNetwork.zNetRegisterMessage(&data_00440E50, AmmoPUPacketHandler, "Wep Ammo PU");
     func_00620BD8();
     func_00620C60(&mPUMayI, &mPUMayI.m_16, 1, 1);
     func_00620C60(&mPUMayI, &mPUMayI.m_0, 4, 1);
     func_00620C60(&mPUMayI, &mPUMayI.m_4[0], 16, 8);
     func_00620C60(&mPUMayI, &mPUMayI.m_14, 2, 1);
-    func_0030CFF0(&theNetwork, &data_00440E58, PickupMayIPacketHandler, "PU May I");
+    theNetwork.zNetRegisterMessage(&data_00440E58, PickupMayIPacketHandler, "PU May I");
     func_00620BD8();
     func_00620C60(&mPUOK, &mPUOK.m_6, 1, 1);
     func_00620C60(&mPUOK, &mPUOK.m_0, 4, 1);
     func_00620C60(&mPUOK, &mPUOK.m_4, 2, 1);
     func_00620C60(&mPUOK, &mPUOK.m_7, 1, 1);
-    func_0030CFF0(&theNetwork, &data_00440E60, PickupAckPacketHandler, "PU OK");
+    theNetwork.zNetRegisterMessage(&data_00440E60, PickupAckPacketHandler, "PU OK");
     func_00620BD8();
     func_00620C60(&mClimbAsk, &mClimbAsk.m_0, 2, 1);
     func_00620C60(&mClimbAsk, &mClimbAsk.m_2, 2, 1);
     func_00620C60(&mClimbAsk, &mClimbAsk.m_4, 2, 1);
-    func_0030CFF0(&theNetwork, &data_00440E68, func_002B9F10, "ClimbAsk");
+    theNetwork.zNetRegisterMessage(&data_00440E68, func_002B9F10, "ClimbAsk");
     func_00620BD8();
     func_00620C60(&mClimbOK, &mClimbOK.m_0, 2, 1);
     func_00620C60(&mClimbOK, &mClimbOK.m_2, 2, 1);
-    func_0030CFF0(&theNetwork, &data_00440E70, func_002B9E20, "ClimbOK");
+    theNetwork.zNetRegisterMessage(&data_00440E70, func_002B9E20, "ClimbOK");
     func_00620BD8();
     func_00620C60(&mNames, &mNames.m_0, 2, 1);
     func_00620C60(&mNames, &mNames.m_2, 1, 1);
     func_00620C60(&mNames, &mNames.m_3, 1, 1);
     func_00620C60(&mNames, &mNames.m_4, 1, 1);
     func_00620C60(&mNames, &mNames.m_5, 1, 1);
-    func_0030CFF0(&theNetwork, &data_00440E78, func_002B9B20, "Names");
+    theNetwork.zNetRegisterMessage(&data_00440E78, func_002B9B20, "Names");
     func_00620BD8();
     func_00620C60(&mVoter, &mVoter.m_0, 2, 1);
     func_00620C60(&mVoter, &mVoter.m_2, 1, 1);
-    func_0030CFF0(&theNetwork, &data_00440E80, func_002BA040, "Voter");
+    theNetwork.zNetRegisterMessage(&data_00440E80, func_002BA040, "Voter");
     func_00620BD8();
     func_00620C60(&mSpecVote, &mSpecVote.m_0, 2, 1);
     func_00620C60(&mSpecVote, &mSpecVote.m_2, 1, 1);
-    func_0030CFF0(&theNetwork, &data_00440E88, (int (*)(int, int, int, void *))func_002B9BD0, "Spec Vote");
+    theNetwork.zNetRegisterMessage(&data_00440E88, (int (*)(int, int, int, void *))func_002B9BD0, "Spec Vote");
     func_00620BD8();
     func_00620C60(&mTeamSwitch, &mTeamSwitch.m_0, 4, 1);
-    func_0030CFF0(&theNetwork, &data_00440E98, TeamSwitchPacketHandler, "Team Switch");
+    theNetwork.zNetRegisterMessage(&data_00440E98, TeamSwitchPacketHandler, "Team Switch");
     func_00620BD8();
     func_00620C60(&mAllSwitch, &mAllSwitch.m_0, 4, 1);
-    func_0030CFF0(&theNetwork, &data_00440EA0, func_002BADC0, "All Switch");
+    theNetwork.zNetRegisterMessage(&data_00440EA0, func_002BADC0, "All Switch");
     func_00620BD8();
     func_00620C60(&mBomb, &mBomb.m_0, 4, 1);
     func_00620C60(&mBomb, &mBomb.m_4, 4, 1);
     func_00620C60(&mBomb, &mBomb.m_8, 4, 1);
     func_00620C60(&mBomb, &mBomb.m_c, 2, 1);
     func_00620C60(&mBomb, &mBomb.m_e, 1, 1);
-    func_0030CFF0(&theNetwork, &data_00440EA8, BombStatePacketHandler, "Bomb");
+    theNetwork.zNetRegisterMessage(&data_00440EA8, BombStatePacketHandler, "Bomb");
     func_00620BD8();
     func_00620C60(&mAlert, &mAlert.m_0, 4, 1);
     func_00620C60(&mAlert, &mAlert.m_4, 4, 1);
     func_00620C60(&mAlert, &mAlert.m_8, 4, 1);
-    func_0030CFF0(&theNetwork, &data_00440EB8, func_002B98B0, "Alert");
+    theNetwork.zNetRegisterMessage(&data_00440EB8, func_002B98B0, "Alert");
     func_00620BD8();
     func_00620C60(&mGameSignal, &mGameSignal.m_c, 1, 1);
     func_00620C60(&mGameSignal, &mGameSignal.m_d, 1, 1);
@@ -2226,8 +2229,8 @@ extern "C" void func_002B8660()
     func_00620C60(&mGameSignal, &mGameSignal.m_f, 1, 1);
     func_00620C60(&mGameSignal, &mGameSignal.m_8, 4, 1);
     func_00620C60(&mGameSignal, &mGameSignal.m_0[0], 1, 5);
-    func_0030CFF0(&theNetwork, &data_00440EB0, func_002B9150, "Game Signal");
-    func_00310210(data_0045B718);
+    theNetwork.zNetRegisterMessage(&data_00440EB0, func_002B9150, "Game Signal");
+    data_0045B718->zNetRegisterVoice();
 }
 
 /* the DME's set up: no session master yet, every client's word cleared, the connect and
