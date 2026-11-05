@@ -266,7 +266,20 @@ public:
  *   - THE CONVERTER'S * 0x334940 copies the wrapped iterator twice (FPU words to sp+32, then lq/sq to
  *     sp+0) around the functor's empty temporary (`sb zero,60(sp)`) and returns through a frame word
  *     (`sw v0,56(sp); lw v0,56(sp)`): two by-value levels (a static or member helper, with or without a
- *     tag), a named copy, a result bound to a const reference -- each folds to one copy (0x4C). */
+ *     tag), a named copy, a result bound to a const reference -- each folds to one copy (0x4C).
+ * The MSL headers round 28 (no new mechanism; build/p28/, untracked): the two deques hand init the same
+ * thing -- the rdr editor's begin()/end() const 0x333D30/0x333CD0 and the vid stack's 0x3B7F40/0x3B7EE0
+ * are word for word alike (make_iterator 0x334AA0 copied out) -- so whether init converts depends on T
+ * alone, and the vid stack really is deque<void *> over deque<const void *> (its ~stack 0x3B7D50 tests
+ * this twice and calls ~deque<PCv> with 0, a base; a stack<const void *> would pass -1, a member): no
+ * spelling of the element type removes __deque_converts<void>. The one model that fits both units'
+ * pieces: the converter wraps an iterator class whose ++ and * are the base const_iterator's code but
+ * IN-CLASS (inline members of a class template always inline into tail code and are emitted only when
+ * called out of line), i.e. a const_iterator of deque<T *>'s own, never the base's -- the base's ++,
+ * out of class, would be emitted by zrdr_edit.cpp once generated ahead of the converter's ++ and serve
+ * the vid stack (the linker keeps the first unit's copy), which calls its own 0x3B83D0 -- while the vid
+ * stack's init unwraps to the base's const_iterator. Not built: it needs deque<T *>'s iterator classes
+ * (their names would move every init row's), and the converter's * still copies once too few. */
 template <class Iterator, class T>
 class __convert_iterator {
 public:
