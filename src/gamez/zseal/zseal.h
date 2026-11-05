@@ -432,6 +432,9 @@ public:
      * seal_unit.cpp, which declares them alike) */
     void *GetDataPtr();
     bool SetDataPtr(void *p);
+    /* the squad's order data copied out when the size asked is the size stored (OVL2 0x5EF1D0, the
+     * kit lane's seal_unit.cpp, which declares it alike) */
+    bool GetData(void *data, unsigned int size);
     /* a SEAL's squad's own clean-up of it (OVL2 0x5EDF90, the kit lane's seal_unit.cpp, which
      * declares it alike) */
     static void SealLeaveUnit(CZSealBody *seal);
@@ -750,6 +753,13 @@ public:
      * 0x594350, 0x594480) */
     bool CanPerformAction(class CNodeAction *action);
     bool CanPlaceBomb(class CNodeAction *action);
+    /* the SEALs and the turret in reach found among the targets (SOCOM 1's; OVL2 0x5940D0) */
+    void TickVictims();
+    /* the actions the SEAL can take now marked (SOCOM 1's; OVL2 0x593500) */
+    void SampleActionAvailable();
+    /* the ammunition near picked up, the weapons under the reticule or near and the MP bomb's
+     * pickup and node kept (SOCOM 1's; OVL2 0x593DA0) */
+    void TickPickups(float dT);
     /* the look and the scan (SOCOM 1's, OVL2 0x600D40-0x60187F: the kit lane's seal_look.cpp,
      * which reads the members through a view of its own). A setter answers whether the look was
      * taken -- a kind at least the current one's; SOCOM II's SetDefaultLookParams takes whether
@@ -819,7 +829,10 @@ public:
     zdb::CNode *m_bomb_defusal_node;   // 0x158
     zdb::CNode *m_mpbomb_node;   // 0x15c
     float m_mpbomb_timer;   // 0x160
-    unsigned char _164[0x16c - 0x164];
+    /* the SEALs TickVictims finds in reach (SOCOM 1's m_victimbody and m_corpsebody, 0x160/0x164
+     * there): the nearest living one under the reticule, the nearest body to carry */
+    CZSealBody *m_victimbody;   // 0x164
+    CZSealBody *m_corpsebody;   // 0x168
     /* the entity the SEAL may work (new in SOCOM II, SOCOM 1 has no member between m_corpsebody and
      * the bits: 0x5A88C0 asks its slot 0x5C for action 19; the name ours) */
     CEntity *m_16c;   // 0x16c
@@ -858,7 +871,7 @@ public:
     MENU_STATE m_menustate;   // 0x221 (as SOCOM 1's)
     unsigned char _222[0x238 - 0x222];
     float m_bombpickuptimer;   // 0x238 (as SOCOM 1's: TickMPBomb sets it once a defusal starts)
-    unsigned char _23c[0x240 - 0x23c];
+    float m_weapon_pickup_timer;   // 0x23c (as SOCOM 1's: TickPickups waits it out before a weapon is offered)
     float m_240;   // 0x240: how long the reload button has been held (0x594B70; the name ours)
     float m_244;   // 0x244: CanPlaceBomb's wait, set to 1.5 when it refuses (the name ours)
     unsigned char _248[0x250 - 0x248];
@@ -2216,7 +2229,8 @@ public:
     CCompassAnchor *m_hostile_anchor;   // 0xecc
     unsigned int m_action_available;   // 0xed0: a bit per action (SOCOM 1's ActionAvailableMask word, 0xdc0)
     unsigned int m_action_selection;   // 0xed4: the selected action's bit (SOCOM 1's m_action_selection_mask, 0xdc4)
-    unsigned char _ed8[0xee0 - 0xed8];
+    unsigned char m_action_display_on;   // 0xed8 (SOCOM 1's 0xdc8)
+    unsigned char _ed9[0xee0 - 0xed9];
     float m_wep_upT;   // 0xee0 (SOCOM 1's 0xdd0)
     unsigned char _ee4[0xf44 - 0xee4];
     /* a motion the position code keeps (ComputeNextPosition and PostPreTick read and write it; the
@@ -2265,7 +2279,10 @@ public:
      * same order: HandleStunDamage sets the byte, CreateRemoteSeal zeroes the time and sets the
      * modifier to 1 */
     unsigned char m_stunned;   // 0xfd0
-    unsigned char _fd1[0xfd4 - 0xfd1];
+    /* a body that cannot be carried (new in SOCOM II: TickVictims passes over a body with it set;
+     * the name ours) */
+    unsigned char m_fd1;   // 0xfd1
+    unsigned char _fd2[0xfd4 - 0xfd2];
     unsigned int m_full_update_time;   // 0xfd4
     float m_movespeedmod;   // 0xfd8
     unsigned char _fdc[0xfe0 - 0xfdc];

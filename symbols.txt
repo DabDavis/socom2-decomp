@@ -1790,7 +1790,7 @@
 0x0020A120 0x208 HandleScrolling__11CZNewHudMapFff  # OVL1; s1:calls by hand (the HUD lane, round 48: hud_newhudmap.cpp -- SOCOM 1's HandleScrolling(float fStickX, float fStickY) 0x3C4950 by its code: both sticks zero or no viewer returns, the viewer's reversed facing stored (SealDir), 36/|xz| the step, a guarded static fallback box, the first AI map's (AiMaps.GetMapByIndex(0)) bounds, x then z moved while inside; TickFullScreenMap 0x209EE0's call)
 0x0020A330 0x13C func_0020A330  # OVL1
 0x0020A470 0x304 SwitchToCompassMap__11CZNewHudMapFv  # OVL1; s1:callee (ReInit's one call, as SOCOM 1's)
-0x0020A780 0x33C func_0020A780  # OVL1
+0x0020A780 0x33C SwitchMapToFullScreen__11CZNewHudMapFv  # OVL1; s1:calls by hand (the HUD lane, round 52: hud_newhudmap.cpp -- SOCOM 1's SwitchMapToFullScreen 0x3C4E20 by its calls and order: StopRumbler, the menu state put aside for state 4, the player's lens colour off and the camera's zoom put aside, HoldLensFx(4), the compass Off, the map placed, ftsGetTacMapZoom, RefreshList, SetupNorthIndicator, CHUD::SwitchToFullScreenMap, the grid lines' SetPos; HudTick's call as there)
 0x0020AAC0 0x38C GetScrollPermissions__11CZNewHudMapCFv  # OVL1; s1:calls by hand (the HUD lane, round 48: hud_newhudmap.cpp -- SOCOM 1's GetScrollPermissions 0x3C50F0, its CScrollBools: the viewer's facing, the same guarded fallback box as HandleScrolling's (0x3E4100, its guard 0x40BED0), the four bound tests and the eight facing sectors' permissions case for case SOCOM 1's; TickFullScreenAnims 0x209350 calls it)
 0x0020AE50 0x1A8 CalcNewMatrix__11CZNewHudMapFv  # OVL1; s1:calls
 0x0020B000 0x18 CalcDrawPos__11CZNewHudMapCFf  # OVL1; s1:exact by hand (hud_newhudmap.cpp; its fields 4 lower)
@@ -1804,7 +1804,7 @@
 0x0020B800 0x1FC FrameObjective__11CZNewHudMapFv  # OVL1; ours by hand (the HUD lane, round 29: hud_newhudmap.cpp -- the full-screen tick's (0x209EE0) call: centred between the viewer and the current objective when the compass shows it, widened to fit both, CalcNewMatrix between; no SOCOM 1 counterpart)
 0x0020BA00 0x218 __dt__11CZNewHudMapFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0020BC20 0x1D4 __ct__11CZNewHudMapFv  # OVL1; by hand (stores CZNewHudMap's vtable 0x405440; CHUD's constructor news 0x830 bytes and builds them with it, after ~CZNewHudMap as SOCOM 1's)
-0x0020BE00 0x274 func_0020BE00  # OVL1
+0x0020BE00 0x274 SetupNorthIndicator__27@unnamed@hud_newhudmap_cpp@FP10CZSealBody  # OVL1; s1:order by hand (the HUD lane, round 52: hud_newhudmap.cpp -- SOCOM 1's SetupNorthIndicator 0x3C6A50, after the constructor as there: the viewer's facing normalised, the three north lines Load + SetUV(0.5, 0.9375) around (600, cy), the N label; SOCOM II's centre a guarded static, 40 + g_fHudLayout60, its inverse length __rsqrt -- the image's only rsqrt.s)
 0x0020C080 0xAC4 func_0020C080  # OVL1
 0x0020CB50 0xF8 remove_if<Q23std36binder2nd<Q23std13equal_to<PCv>,PCv>>__Q23std38__list_imp<PCv,Q23std14allocator<PCv>>FQ23std36binder2nd<Q23std13equal_to<PCv>,PCv>_v  # OVL1; s1:name (SOCOM 1's remove_if of the pointer lists with an equal_to binder; CNode::Delete's list remove calls it; SOCOM II's inlines the erase)
 0x0020CC50 0x74 erase__Q23std42__list_deleter<PCv,Q23std14allocator<PCv>>FQ33std42__list_deleter<PCv,Q23std14allocator<PCv>>19generic_iterator<0>  # OVL1; the pointer lists' single erase, out of line (DeleteDeferredVisuals' pop_back calls it)
@@ -6114,13 +6114,13 @@
 0x00340F70 0x1C SetDialogMode__4CSndFv  # OVL1; SOCOM II's, name ours (CSnd's vtable slot 0x34: the 3-bit field at 0x1D bits 5-7 set to 3, which the constructor sets to 1; CSndGroup's override, 0x347CB0, calls it on every member)
 0x00340F90 0xC func_00340F90  # OVL1
 0x00340FA0 0x68 func_00340FA0  # OVL1
-0x00341010 0x50 func_00341010  # OVL1
-0x00341060 0x64 func_00341060  # OVL1
+0x00341010 0x50 ReleaseGroupVolTemp__4CSndFv  # OVL1; the world lane round 21: SOCOM II's, name ours (the held fade released: StreamSoundVolPan lowers groups 0-5 to 0.6 for a time of 1e9 and sets the flag 0x48DE20 for a radio stream; this clears the flag and turns the held 1e9 into 0.01 -- called by ReleaseSoundInstance when the last such stream goes)
+0x00341060 0x64 EndGroupVolTemp__4CSndFv  # OVL1; the world lane round 21: SOCOM II's, name ours (SOCOM 1's SetGroupVolTemp/ResetGroupVolTemp family: a running fade, m_fadetime != 0, ended at once -- m_fadeRestore set to 1 and ResetGroupVolTemp(0.01) called, which restores every group and clears the fade; called by PlayCamera, audioDecCreate and CSndInstance::StopAllSounds)
 0x003410D0 0x17C ResetGroupVolTemp__4CSndFf  # OVL1; s1:calls by hand, the world lane round 9 (SOCOM 1's ResetGroupVolTemp, called from PostTick as SOCOM 1's: SOCOM II's takes a step and moves the groups back over five seconds -- the position at 0x3DFFE0 stepped by dT/5 to 1, each group's volume set (SetGroupVol inlined) between its lowered and its own volume, the part, the time and the groups cleared at 1) -- zsnd_csnd.cpp
-0x00341250 0x94 func_00341250  # OVL1
+0x00341250 0x94 TickGroupVolTemp__4CSndFf  # OVL1; the world lane round 21: SOCOM II's, name ours (CSnd::PostTick's fade step out of line, the same code -- the time counted down unless held at 1e9, else ResetGroupVolTemp(dT) while restoring; CMenuState::Tick 0x1F467C calls it)
 0x003412F0 0x1B4 SetGroupVolTemp__4CSndFffiiiiiii  # OVL1; s1:order by hand, the world lane round 9 (SOCOM 1's SetGroupVolTemp(float, float, int x7), the same signature: a running fade only lengthened, a running reset finished through ResetGroupVolTemp(0), then the seven groups kept and each one's own volume read, kept and lowered by the part) -- zsnd_csnd.cpp
-0x003414B0 0x8 func_003414B0  # OVL1
-0x003414C0 0x8 func_003414C0  # OVL1
+0x003414B0 0x8 GetMasterVolume__4CSndFi  # OVL1; the world lane round 21: SOCOM II's, name ours (after the call it wraps -- `j snd_GetMasterVolume`, the group passed through; in zsnd_csnd.cpp between SetGroupVolTemp and SetGroupVol; the HUD's mission cameras keep the music group's volume with it, PlayCamera 0x229010)
+0x003414C0 0x8 SetMasterVolume__4CSndFii  # OVL1; the world lane round 21: SOCOM II's, name ours (after the call it wraps -- `j snd_SetMasterVolume`, both arguments passed through; PlayCamera 0x22902C lowers the music group to 768, CleanupCamera 0x229598 restores it)
 0x003414D0 0x24 SetGroupVol__4CSndFif  # OVL1; s1:order by hand (SOCOM 1's SetGroupVol, the same body: 1024 times the level to snd_SetMasterVolume for the group passed through)
 0x00341500 0x1B0 LoadOutdoorReverbs__4CSndFP5_zrdr  # OVL1; SOCOM II's, name ours (the OutdoorReverb records likewise; LoadReverbs calls it second)
 0x003416B0 0x1B0 LoadIndoorReverbs__4CSndFP5_zrdr  # OVL1; SOCOM II's, name ours (the IndoorReverb records' Depth and Seconds pushed into two tables; LoadReverbs calls it first)
@@ -6736,7 +6736,7 @@
 0x003654C0 0x538 func_003654C0  # OVL1
 0x00365A00 0x34C func_00365A00  # OVL1
 0x00365D50 0x9D8 ParseButtonAnim__FP5_zrdrP10ActionItem  # OVL1; s1:calls by hand (CCheckBoxSpec(_zrdr *) calls it with ONCHECK's and ONUNCHECK's tags and the two new ActionItems where SOCOM 1's calls ParseButtonAnim__FP5_zrdrP10ActionItem; the rdr in a0, the item filled through a1, void) -- zui.cpp
-0x00366730 0x208 func_00366730  # OVL1
+0x00366730 0x208 PrepModels__9CGameMenuFRC14CGameDlgDesign  # OVL1; s1:order by hand (the UI lane, round 26: SOCOM 1's CGameMenu::PrepModels between ParseButtonAnim and TickMPEG in both builds -- the design's models instanced at 320 + azimuth / elevation / 320 - distance, named, added under CWorld::m_world, rotated and kept in the menu's node vector at 0x8EC; byte-exact from zui.cpp)
 0x00366940 0xC0 TickMPEG__9CGameMenuFv  # OVL1; s1:order by hand (the UI lane, round 13: SOCOM 1's TickMPEG before RestartBackgroundMPEG, as 0x366940 before 0x366A00: while CMPEG::Done is false the FIFO ended and disabled around CMPEG::Tick(zVid.renderBuf), sceGsSyncPath; once done RunEventAnim(3) and, SOCOM II's, Loop or End by the byte at 0x27A) -- zui.cpp, byte-exact
 0x00366A00 0x104 RestartBackgroundMPEG__9CGameMenuFPCc  # OVL1; s1:order by hand (the UI lane, round 13: SOCOM 1's TickMPEG, RestartBackgroundMPEG, HaltBackgroundMPEG run in that order, SOCOM II's 0x366940, 0x366A00, 0x366B10 likewise; the same fields -- SOCOM 1's DWARF m_movierunning 0x244, m_has_mpeg_background 0x245, m_MPEGName 0x248, at 0x278/0x279/0x27C -- the FIFO ended and disabled around CMPEG::Run; SOCOM II's takes a name, null from CMenuState::OnPop, and halts a running movie first through Halt inlined) -- zui.cpp, byte-exact
 0x00366B10 0x48 HaltBackgroundMPEG__9CGameMenuFv  # OVL1; tu: zui.cpp~ (1.0 beta); s1:order by hand (the UI lane, round 13: SOCOM 1's HaltBackgroundMPEG after RestartBackgroundMPEG, instruction for instruction at SOCOM II's offsets: CMPEG::End when the menu has a background movie running, the flag cleared, true) -- zui.cpp, byte-exact
@@ -6891,10 +6891,10 @@
 0x00373640 0x210 GetZAnimCmdType__10CUIListBoxFPCc  # OVL1; s1:vtable by hand (the HUD lane, round 38: zui_2d.cpp -- slot 24 (+0x68) of CUIListBox's table 0x407670, SOCOM 1's CUIListBox::GetZAnimCmdType: Finish, Highlight_on/off, Has_Items, GetItemCount, Get/SetFocusIndex, AddItem, RemoveItem, RemoveAllItems (11) and GetContents (10) after C2D's count (GetUICommandType(0)), 12 for a null name; byte-exact with C2D's inline lookup standing in for every count and the fallback -- called straight, the last test lays its blocks the other way round)
 0x00373850 0x6CC Draw__10CUIListBoxFRC7CMatrixPQ23zdb16CTextureRelocMgr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00373F20 0xE4 AddItem__10CUIListBoxFP8ListItemi  # OVL1; ours (the HUD lane, round 36: zui_2d.cpp -- CUIListBox::UpdateUIVar 0x3754D0 and 0x372980 call it: the item given the box's font (+0xA0) and scale (+0xCC), then pushed onto the item list +0xC0 when the second argument is -1, else inserted before the highlighted row (+0x194); 6 instructions open, stack slots)
-0x00374010 0x2D8 func_00374010  # OVL1
-0x003742F0 0x2E8 func_003742F0  # OVL1
+0x00374010 0x2D8 HighlightPrev__10CUIListBoxFv  # OVL1; ours by hand (the HUD lane, round 52: zui_2d.cpp -- CUIListBox::HandlePad 0x3745E0 returns it on up / the stick's previous: none above returns the box's byte at 0xEA, else the highlighted row and offset stepped back, the row found by GetItemText's walk, its own action run, PlaySelectionSound, the box's actions on event 43 as SetActive's on 2; SOCOM II's, the name ours)
+0x003742F0 0x2E8 HighlightNext__10CUIListBoxFv  # OVL1; ours by hand (the HUD lane, round 52: zui_2d.cpp -- HighlightPrev's twin, HandlePad's down / the stick's next: none below the last row returns the byte at 0xEA, else a row forward; SOCOM II's, the name ours)
 0x003745E0 0x46C HandlePad__10CUIListBoxFPC4CPadi  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x00374A50 0x100 func_00374A50  # OVL1
+0x00374A50 0x100 SetPressed__10CUIListBoxFv  # OVL1; s1:vtable by hand (the HUD lane, round 52: zui_2d.cpp -- SOCOM 1's CUIListBox::SetPressed 0x38D4E0, the slot after HandlePad's call there (+0x70) and here (+0x84, after UpdateUIVar's): the pressed colour and texture into the highlight, opacity 100, 0.2 at 0xD0; its m2c draft matched)
 0x00374B50 0x15C GetItemText__10CUIListBoxFi  # OVL1; ours by hand (the HUD lane, round 41: zui_2d.cpp -- an item's text by index: none out of range, else its action's argument, its own string or its look's GetString; the walk AddItem's; the lobby's 0x2F0EA0 calls it)
 0x00374CB0 0x388 SetActive__10CUIListBoxFv  # OVL1; by hand (the HUD lane, round 44: slot 18 of CUIListBox's vtable 0x407670 (+0x50), C2D's SetActive slot beside SetNormal at 19 -- SOCOM 1's CUIListBox::SetActive 0x393D60, 0x144 there)
 0x00375040 0x488 Tick__10CUIListBoxFf  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
@@ -7067,8 +7067,8 @@
 0x0037E6B0 0x78 __dt__10CImageSpecFv  # OVL1; s1:vtable (slot 0x08 of CImageSpec's table 0x407F80; SOCOM 1's __dt__10CImageSpecFv; the implicit destructor zui_spec.cpp emits with CImageSpec's constructor) -- zui_spec.cpp
 0x0037E730 0x178 CreateDisplayObj__14CSliderBarSpecCFP7C2DFontPQ23zdb16CTextureRelocMgr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0037E8B0 0x1AC CreateDisplayObj__14CUIListBoxSpecCFP7C2DFontPQ23zdb16CTextureRelocMgr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x0037EA60 0x14 func_0037EA60  # OVL1
-0x0037EA80 0x28 func_0037EA80  # OVL1; tu: vis_mesh.cpp~ (1.0 beta)
+0x0037EA60 0x14 __ct__Q23std54vector<P10ColumnData,Q23std24allocator<P10ColumnData>>Fv  # OVL1; by hand (the UI lane, round 26: the list box's column vector's constructor out of line, three words zeroed -- CUIListBoxSpec::CreateDisplayObj 0x37E8B0 inlines CUIListBox() one level and calls it; zui_spec.cpp emits it byte-exact after its first caller)
+0x0037EA80 0x28 __ct__Q23std46list<P8ListItem,Q23std21allocator<P8ListItem>>Fv  # OVL1; tu: vis_mesh.cpp~ (1.0 beta); by hand (the UI lane, round 26: the list box's item list's constructor out of line, its body the pointer list's deleter constructor 0x1EABB0 -- CUIListBoxSpec::CreateDisplayObj 0x37E8B0 inlines CUIListBox() one level and calls it; zui_spec.cpp emits it byte-exact after its first caller)
 0x0037EAB0 0x17D0 __ct__14CUIListBoxSpecFP5_zrdr  # OVL1; s1:calls by hand (GetControlSpec's LISTBOX branch, as SOCOM 1's) -- the UI-widgets lane
 0x00380280 0x1E4 __ct__18CHandlerButtonSpecFP5_zrdr  # OVL1; s1:calls by hand (GetControlSpec's HANDLERBUTTON branch, as SOCOM 1's) -- the UI-widgets lane
 0x00380470 0x90 CreateDisplayObj__11CButtonSpecCFP7C2DFontPQ23zdb16CTextureRelocMgr  # OVL1; by its vtable (slot 0x10 of __vt__11CButtonSpec 0x407FB0) -- the UI-widgets lane
@@ -7611,7 +7611,7 @@
 0x003A1060 0x1A8 GetUsedSpace__8CMemCardFi  # OVL1; ours (when the save directory exists: the files of ./* summed in kilobytes, plus half the entry count and one when any file has bytes); the UI lane round 17: SOCOM II's takes an int -- both callers (CreateReserveFiles 0x3A193C and zanim_menu.cpp's UIIsSpaceForSaveGameFile 0x27B3F8) set a1 = 0 in the call's delay slot or before it, and the body never reads a1 (it is overwritten by sceMcSync's first argument set-up)
 0x003A1210 0xC4 GetFreeSpace__8CMemCardFv  # OVL1; s1:calls (the save handlers call it where SOCOM 1's do) -- the UI-commands lane
 0x003A12E0 0x88 Format__8CMemCardFv  # OVL1; s1:align
-0x003A1370 0x208 func_003A1370  # OVL1
+0x003A1370 0x208 HasChanged__8CMemCardFiPi  # OVL1; by hand (the UI lane, round 26: SOCOM II's insertion poll -- a PS2 card new in a port (libmc's -1/-2, type 2), the ports polled in turn, asynchronously or waited for; UIMC_Changed and UINetCnfSelectCombo call it, zanim_menu.cpp's func_003A1370; byte-exact from util_memcard.cpp, the name ours)
 0x003A1580 0xC8 IsFormatted__8CMemCardFv  # OVL1; s1:align
 0x003A1650 0xE0 IsInserted__8CMemCardFv  # OVL1; s1:align
 0x003A1730 0xA4 LoadGame__8CMemCardFPCc  # OVL1; s1:order (after the reserve-file deletes as SOCOM 1's saves follow IsInserted; the game save manager at 0x1C loads with flags 0xE, then LOADED_FROM_MEMCARD)

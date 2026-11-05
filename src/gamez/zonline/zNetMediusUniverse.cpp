@@ -260,9 +260,9 @@ struct MediusGetUniverseNewsResponse {
 };   // 0x120
 
 /* the universes and the news: room for 16 of each at the start (the initialiser calls the two
- * reserves, 0x300250 and 0x3000A0, byte-exact; the classes' names ours). Their inserts are the
- * target's size and OPEN on the class insert's in-place registers alone (include/vector's open:
- * 0x2FEE50 150 instructions, 0x2FF960 45) */
+ * reserves, 0x300250 and 0x3000A0, byte-exact; the classes' names ours). Their inserts, 0x2FEE50
+ * and 0x2FF960, byte-exact on include/vector's class insert since the MSL headers' later rounds (the
+ * open notes of rounds 13-18 here said 150 and 45 off) */
 class UniverseStatusList : public std::vector<UniverseStatus> {
 public:
     UniverseStatusList() { reserve(16); }
@@ -391,7 +391,14 @@ struct AcctMission {
  * gender, the profile's checksum and the missions' equipment, and whether the password is kept */
 struct AcctRecord {
     /* (a constructor of its own: the record is copied member by member -- the char arrays
-     * bytewise, the missions as one block) */
+     * bytewise, the missions as one block). The accounts' insert 0x2FE3E0 (include/vector's class
+     * insert over this record) is OPEN, 35 instructions, registers alone (structdiff: no structural
+     * difference) -- the only class insert of the lobby units still open: three saved registers
+     * rotate, the target giving newcap s0, the new storage (@3863 in MW's dump) s1 and the growth
+     * path's stack-object address (@4007) s6 where MW here gives @4007 s0, newcap s1, @3863 s6.
+     * The online lane's round 22 (tools/igdump.py + igreplay.py, build/scratch/onl/): no single
+     * renumbering of the three gives it, nor of @4007 and newcap together (83 % of the 196,249
+     * placements searched, 0 hits) -- the target's graph differs, not only its numbering */
     AcctRecord() {}
 
     /* the missions with a name, the entries a blob of them holds */
