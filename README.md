@@ -2065,6 +2065,18 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the HUD, round 52** (SetupNorthIndicator, the compass and full-screen map switches, four CUIListBox members):
+  - `__rsqrt(1.0f, x)` is MW's intrinsic for the image's only `rsqrt.s` (SetupNorthIndicator 0x20BE00), `1.0f /
+    sqrtf(x)` gives sqrt.s + div.s; a function-local static is reloaded after every call -- if the target computes every
+    expression of it before the first call, those expressions were named locals (its three y values reading `cy`);
+  - a value from an inline helper (GetPad) or a ternary is a temporary numbered after every named local, an if/else into
+    an uninitialised named local is numbered at its declaration (SwitchToCompassMap 0x20A470, with a dead zoom-state
+    definition -- found with `tools/igreplay.py --want`); `for (i = 0; i < n; i++) ++it;` is unrolled 8x, a counter
+    zeroed at its declaration with `for (; i < n; ...)` keeps the plain loop;
+  - a byte tested plainly (`ev && ...`) is re-masked with andi before indexing, `ev != 0` is not; `2 * h` compiles to
+    sll, the target's addu needs `h + h`; a member pointer read twice around a store is reloaded, a local pointer to the
+    field keeps one load; a new virtual in a CPlainBmp-derived class lands at +0x84, after UpdateUIVar at +0x80
+    (CUIListBox::SetPressed 0x374A50, SOCOM 1's; HighlightPrev / HighlightNext, SOCOM II's own; Tick 0x375040).
 - **Tells from the UI, round 26** (CreateDisplayObj, CGameMenu's constructor and destructor, PrepModels, HasChanged -- all
   unwritten before):
   - when a spec inlines a display object's constructor one level, a stand-in class with the members' REAL types is
