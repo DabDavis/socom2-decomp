@@ -2065,6 +2065,53 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the kit and AI states, round 47** (LobAim; six task handlers, four on the first build):
+  - SWITCH COMPARE CHAINS TEST CASES IN REVERSE SOURCE ORDER (CTMap::Tick 0x5D6770 needs `case 4: case 3: case 5:`);
+    CTSignal::Tick's three-GetTyped shape closes CTSetAnimSet::Tick 0x5D1E00, CTPlay::End 0x5D2AA0 and CTPlay::Begin
+    0x5D3740 as written -- the remaining handlers likely share it;
+  - a float `x + 0.0f` literal folds away, adding a zero held in a local keeps the target's `mtc1 zero; add.s`; a float
+    local initialised from an inline's return becomes the inline's result temporary, numbered after every named local
+    ($f20, above a later-declared named local); of two inline float locals, declaring `s` before `xz` swaps their volatile
+    registers into the target's; in an inline whose stores go to memory, a computation written after the stores stays
+    after them, written before MW schedules it ahead;
+  - CZKit::LobAim 0x5BF8A0 is new in SOCOM II: the AI's lob solve raises the aim in steps of 0.025, at most 12 times,
+    until a round falling at gravity 98 comes within 5 of the target's height (five function-local statics at
+    0x650958-0x650978; its one caller 0x5BE9A0 passes the weapon's muzzle velocity for AI SEALs only); CTCreate::Tick
+    written, OPEN.
+- **Tells from the online lobby, round 22** (Remove and cbRoomPlayerList at last, three converting do_assigns):
+  - AN ERASE-OR-STEP WALK KEEPS A SECOND, NEVER-STORED ITERATOR AS THE VALUE REGISTER, set from begin() with `i`; `i` is
+    the stored copy the dereference, erase's copy and the bottom test read -- stepped ahead of the test the second one
+    lands in the delay slot, stepped in an else arm it keeps its `b` (FriendInvitationVector::Remove 0x301CF0, open since
+    round 8; cbRoomPlayerList 0x2F13F0, open since round 16);
+  - a value stored to a frame slot and immediately reloaded is a local whose address is taken through a cast (`*(T
+    *)&v`) -- `*&v` and reference casts are scalarised away: include/deque's `__convert_iterator::convert` is now `T v =
+    (T)*i; return *(T *)&v;` (the converting do_assigns 0x2E0E10, open since round 15, 0x3A6490 and 0x3341C0) -- a body
+    change made outside the MSL lane, ACCEPTED at integration: objcmp over every unit moves only the six converting
+    do_assigns, three gain, nothing lost;
+  - in a call an argument loaded as one type and passed as another (an unsigned field to an int parameter) is loaded
+    ahead of a global argument, passed as its own type after it -- volatile and `*(unsigned *)&` reads show the same,
+    statement order does not (the radio tick 13 -> 1: the two message ids unsigned; round 20's "the radio pointer dies
+    at the send" was the wrong lead); objcmp's `.rodata` difference on sase_rfft2g.c is an assert's `__FILE__` (the
+    scratch tree's path), not the build.
+- **Tells from the world, rdr and sound, round 21** (CHeap::Alloc at last, SaveEncrypt, GetColor, TestFOV, both
+  NormalizeWeights, BuildProjectedMapList; five CSnd functions named):
+  - MW ORDERS ITS CODE BEFORE COLOURING BY WHERE AN INDEPENDENT LOAD SITS AMONG THE INITIALISATIONS: CHeap::Alloc
+    0x34EEB0's last 3 instructions came only from placing the list-head load -- every local initialised in its
+    declaration, the free list's head included (6 of 5,040 orders; all 1,957 orders of the old initialisations failed);
+  - a reference local bound to `v[k]` is a front-end temporary numbered below the data pointer's, reading `v[k]` at each
+    use colours as the target (Particle::Props::GetColor 0x328860); an array declared in the outer block before a loop
+    takes a higher frame slot than a struct copied inside the loop, and `c[i] = CPnt4D(...)` evaluates the constructor's
+    arguments right to left (CTextureAssetCharacters::TestFOV 0x31C440); one counter shared by three loops numbers the
+    size and mode-offset temporaries as the target's registers want (CSndGroup / CSndJukebox::NormalizeWeights);
+  - a member's address held in a named local and passed to an inline is read through that pointer after the first
+    block, passed straight it is folded into every load; a span test `bool t = false; if (!(v + r < lo)) if (v - r <= hi)
+    t = true;` with bounds by `const &` gives the preset false in the delay slot and loads the upper bound only when
+    needed (CPipe::BuildProjectedMapList 0x339470); the new key into an unsigned char local first, then `buf[i] ^= key;
+    key = nk;` (SaveEncrypt 0x33DC30);
+  - a value updated through an inline's `float &` parameter is reloaded after each store, on the member in place MW
+    forwards the stored value (CWind::Tick 0x414 of 0x418, OPEN); a member array whose constructor the inline budget cuts
+    is built by a loop calling CPnt3D() out of line, a local array in a helper cut one level unrolls into 8 calls
+    (CShadowCaster(), OPEN); CSnd's Get / SetMasterVolume, End / Release / TickGroupVolTemp named (ours).
 - **Tells from the SEALs, round 45** (the new unit seal_orders.cpp; CSealCtrl's TickVictims, SampleActionAvailable,
   TickPickups):
   - A UNIT BETWEEN TWO: seal_orders.cpp (ours) is OVL2 0x58DBB0-0x58FBDF -- seal_cfg.cpp's template tail (0x58CE70-
