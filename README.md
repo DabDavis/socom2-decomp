@@ -2065,6 +2065,23 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the online lobby, round 24** (the chat deque's push_back at last, open since round 10, with its growth
+  pieces):
+  - A CLASS ELEMENT'S DEQUE GROWS THROUGH A TEMPORARY BLOCK BUFFER: `tmp(2 * size(), 0)` plus init, then `tmp = buf` (the
+    do_assign) or `reserve(2); push_back(0)` when empty; the block stored as `tmp.back()`, a null slot pushed, the element
+    copy-constructed in place (with its null test), tmp swapped in -- the element constructed on the plain path too (the
+    chat push_back 0x2F5290; cdeque<PCv>'s init(n, x) 0x2F5940 and do_assign 0x2F5700 named by shape, the buffer
+    0x2F5FF0, the pair constructor 0x2F6060, swap 0x2F56B0 to source);
+  - a constant `if` on a type trait still instantiates whatever the unused branch's non-dependent types reach, and the
+    unit emits it -- a type depending on T keeps that out (include/deque's __deque_imp::push_back class path through a
+    type-dependent growth-buffer stand-in: only the chat unit changes, proven over every unit); a dead-stripped own
+    function (ChatQueueBuffers, src/ABSENT.txt -- the device veh_vehicle.cpp's dead clear set) gives the unit's tail the
+    target's inlining: building the buffers and copying the allocator does it, requesting begin() / end() or the
+    do_assigns does not;
+  - a pointer held only in `alloc_ptr` is re-read from its stack slot after every call, taken into a named local before
+    the guard is built it stays in its saved register; an iterator constructor taking the storage pointer by const
+    reference re-reads the field for its data_ store, by value it is shared; in an out-of-line copy loop `!(x == y)`
+    turns into a stored bool, `x.p_ != y.p_` branches directly.
 - **Tells from the HUD, round 56** (CRatingMatch::AddTeam, open since round 19 -- mp_rating.cpp whole; AddJamo; GetGlyph):
   - A VARIABLE THE TARGET KEEPS IN v0 FROM THE ENTRY TO `jr ra` IS THE RETURN VALUE -- adding the return changes the whole
     colouring (CRatingMatch::AddTeam 0x23A170 returns the new team: 30 off to 0; as a void function `team` went to a0 and
