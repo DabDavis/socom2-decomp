@@ -31,6 +31,17 @@ CZSealBody *ftsGetPlayer();
 extern "C" CCameraPreset *data_0044C408;          /* the views' presets */
 extern "C" void func_002956E0(CAppCamera *cam, CZSealBody *prey, int arg);
 
+/* the tether's file statics (data 0x3DE268-0x3DE28F, after the shake's): SOCOM 1's
+ * save_short_tether_length, then -- in the place its Y_FP_OFFSET held -- the rate the short tether
+ * eases by (FTSTick puts back 0.03), SOCOM 1's CamRotZ_down / CamRotZ_up (the level offset per unit
+ * of look pitch, the pitch not negative / negative: -7 / -3 in SOCOM 1) and between them SOCOM II's
+ * -5, a mounted or climbing SEAL's (two names ours) */
+static float save_short_tether_length = 10000.0f;
+static float short_tether_rate = 0.03f;
+static float CamRotZ_down = -8.0f;
+static float CamRotZ_mounted = -5.0f;
+static float CamRotZ_up = -3.0f;
+
 /* the file's statics, unnamed yet in data.txt (SOCOM 1's names where it had them; the shake's are
  * SOCOM II's: -1 is no shake) */
 extern "C" {
@@ -44,17 +55,12 @@ extern float data_003DE248;   /* its x decay */
 extern float data_003DE250;   /* its y base amplitude */
 extern float data_003DE258;   /* its y random amplitude */
 extern float data_003DE260;   /* its y decay */
-extern float data_003DE268;   /* save_short_tether_length */
 extern float data_00416018;   /* the shake's y angle */
 extern float data_00416020;   /* its x amplitude */
 extern float data_00416028;   /* its y amplitude */
 extern float data_00416208;   /* DeltaRot */
 extern float data_00416210;   /* DeltaAim */
 extern float data_00416218;   /* (SOCOM II's) */
-extern float data_003DE270;   /* the tether's rate (FTSTick puts back 0.03) */
-extern float data_003DE278;   /* the tether's offset per unit of look pitch, looking up (-8) */
-extern float data_003DE280;   /* (-5) */
-extern float data_003DE288;   /* the same, looking down (-3) */
 extern unsigned int data_0044C404;   /* the views' count (their presets follow) */
 }
 /* mode 1's camera position, its offset and length handed back (SOCOM II's: GetThirdPersonCamPos's
@@ -485,10 +491,10 @@ void CAppCamera::FTSTick()
         m_save_view = m_ctrl_view;
         if (m_ctrl_view == cam_view_first) {
             SetCameraMode(cam_mode_FP);
-            data_003DE270 = 0.03f;
+            short_tether_rate = 0.03f;
         } else {
             SetCameraMode(cam_mode_tether);
-            data_003DE270 = 0.03f;
+            short_tether_rate = 0.03f;
         }
     }
 }
@@ -610,21 +616,21 @@ CPnt3D CAppCamera::GetThirdPersonCamPos(CPnt3D *CamOffset, float *tetherLen)
 
         vec.Normalize();
         if (vec.y < 0.0f)
-            CamOffset->z = vec.y * data_003DE288;
+            CamOffset->z = vec.y * CamRotZ_up;
         else {
             CZSealBody *player = ftsGetPlayer();
 
             if (player && (func_0054F6E0(player, true, true, true) || player->CanClimbLadder()))
-                CamOffset->z = vec.y * data_003DE280;
+                CamOffset->z = vec.y * CamRotZ_mounted;
             else {
-                float z = vec.y * data_003DE278;
+                float z = vec.y * CamRotZ_down;
 
-                if (z < data_003DE280) {
+                if (z < CamRotZ_mounted) {
                     CPnt3D chord[2];
 
                     chord[0] = *CamOffset;
                     chord[1] = *CamOffset;
-                    chord[1].z += data_003DE278;
+                    chord[1].z += CamRotZ_down;
                     m_entity->GetMatrix()->Transform(chord, 2);
                     CPnt3D hit;
 
@@ -679,9 +685,9 @@ extern "C" CPnt3D func_0029A660(CAppCamera *cam, CPnt3D *CamOffset, float *tethe
 
         vec.Normalize();
         if (vec.y < 0.0f)
-            CamOffset->z = vec.y * data_003DE288;
+            CamOffset->z = vec.y * CamRotZ_up;
         else
-            CamOffset->z = vec.y * data_003DE278;
+            CamOffset->z = vec.y * CamRotZ_down;
         float wt = fabsf(vec.y);
 
         *tetherLen = *tetherLen + wt * (50.0f - *tetherLen);
@@ -1074,7 +1080,7 @@ void CAppCamera::ResetDeathCam()
 {
     m_cam_death_state = 0;
     m_auto_death_cam = 1;
-    data_003DE268 = 10000.0f;
+    save_short_tether_length = 10000.0f;
     data_00416208 = 0.0f;
     data_00416210 = 0.0f;
     data_00416218 = 0.0f;
