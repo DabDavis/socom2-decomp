@@ -2065,6 +2065,20 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the kit and AI states, round 48** (CTSound::Tick; CTInView / CTPlay::Tick written):
+  - a random pick as an if/else with the draw in its own local (`int r = rand(); x = r % (n + 1) + 1;`) pads the else
+    label and leaves the `b` over it unfilled -- a ternary, a lone if or the draw inline fills the `b` from the join and
+    leaves the label unpadded; `int s = x == 11 ? a : x;` leaves the join unpadded with s a temporary, `if (s == 11) s =
+    a;` pads it;
+  - a local with a dead first definition (`const char *ent = 0;`, assigned later) is numbered at that dead store,
+    initialised from an inline's result it merges into the inline's temporary; a field read through a trivial inline
+    accessor is a temporary numbered at the call, a plain `seal->m_id` local is numbered with the named locals;
+    `aware <= cmd->m_aware` gives slt at / bnez at, `>=` puts the slt result in v0 (CTSound::Tick 0x5D0C90: its
+    block's flag word laid out from what the parser writes, the registers by `tools/igreplay.py --target`);
+  - an inline on a struct member addresses the fields off the controller when it is a named local, through a cast
+    temporary MW keeps `&m_view_cone` in a saved register; in an inline find an index passed as a parameter is
+    numbered before the inline's type (CTPlay::Tick OPEN at the target's size: the block pointer wants numbering after
+    the second inlined SEAL find, `--move 39=58.5` gives 0 differ).
 - **Tells from the weapons, round 28** (CZWeapon::Fire at last, CTurret's Init and constructor, CVehicle::Init):
   - MW LAYS OUT THE FRAME TOP-DOWN IN THREE GROUPS: named locals in declaration order, then return copies and
     non-returned inline locals in code order, then by-value inlines' result locals in expansion order; an array or
@@ -11582,6 +11596,47 @@ object's 7), `asr/secpass.c` (putWordInDict new: 2 of 3), a new `asr/qr.c` (SOCO
 matched drafts superseded (mtxFillX 0x4F77F8, func_004F7880); `src/lib/asr` 548 of 574 (540 of 565 before).
 1 row named: 0x4F7880 `mtxFillCopy` (`s1:calls+order`: SOCOM 1's Smoothing calls it at the same instruction,
 its object holds it beside mtxFillX and QrPreMult). No tool changed.
+
+**Round 29c: the SHS/VUV object written whole, two of the training's checks.**
+
+- **The SHS object is -ffast-math (the eleventh)**: CreateFreqWindow's peeled first step folds `0 - c` to
+  `neg.s`, and both log2s (`x / ln 2`) multiply by the reciprocal -- 2.96 does neither with IEEE semantics.
+  `0.69314718f` lands an ulp low in 2.96's parser (0x3F317217), whose reciprocal is the target's 0x3FB8AA3C
+  (`0.6931472f` is exact and gives 0x3FB8AA3B). spline2, Lin_2_Log and ControlSHS_VUV compile the same with it.
+- **A conversion the source spells twice is one CSE value**: the window's divisor is an explicit
+  `(float)nlog` of an int count -- its fptodp, hoisted as a loop invariant, reuses the conversion the c
+  computation made after its logf call; through a float local the conversion is made at the top and held in
+  `$f20` (CreateFreqWindow, three spellings match, a float local does not).
+- **A pseudo set twice is no loop.c movable**: SubHarmonicSummation's per-harmonic end written `end = out +
+  n; end -= k;` keeps `out + n*4` in the outer loop, as the target (and SOCOM 1's compile) does; one
+  expression hoists it into the preheader.
+- **A guarded store merged with the loop's test**: ProcessSHS_VUV's peak copy writes the fifth neighbour
+  only when `p != pend`; jump threading merges that test with the do-while's `p++ != pend`, so the peak path
+  exits after four copies -- the target's (and SOCOM 1's) odd layout is the source's guard.
+- **Two error blocks, one in the image**: InitSHS_VUV's allocation checks each carry `_tosErrorLog(s, 2);
+  return 1;` and cross-jumping merges them; a shared `goto fail` lets jump.c hoist the success `return 0`'s
+  `v0 = 0` above the last test (the last load then takes v1, the target's v0).
+- **Measured**: `*(x - 1) + *x + *x + *(x + 1)` for the smoothing (round 28c's `*(p - 1)`: its address a
+  register the unrolled copies share; `2 * x[0]` regroups), a pointer of its own per loop (one shared
+  walker crosses the libcalls and takes a saved register in every loop), a count `n = nlin / 2 + 1` held in
+  a variable (inline, fold distributes the `* 4`); CheckConsistency's size `(lab.n + lab.one) * 2 + 16`
+  through the record's fields (CSE's registers, not a folded `+ 18`), DoLabelStart/DoLabelStop inlined from
+  GNU extern inline bodies above it with their real definitions in place and matching, each result
+  narrowed through an `unsigned char` at the join; RejectTrainUtters' count and fill loops with a counter of
+  their own (shared with the moving loop, which calls heap_Free, it took a saved register).
+- **Open, diagnosed in place**: SubHarmonicSummation_and_VUVDetermination (38 words, the right size: three
+  end pseudos with out ranked above the harmonic's -- 72 shapes, `build/scratch/gcc/v_shs8.py`),
+  ProcessSHS_VUV (0x638 against 0x640: the peak loop's exit test above its body, entered by a jump).
+  Not reached: CreateSecondPassTreeContext, ExtendNodeWheel, ConstructBlock, PitchCombinerReset/
+  InitPitchCombiner, InitViterbi@nbestdp (their diagnoses stand).
+
+Hand-written in round 29c: `asr/shs.c` (CreateFreqWindow, InitSHS_VUV new, ConstructSHS_VUV over its draft,
+SubHarmonicSummation_and_VUVDetermination and ProcessSHS_VUV OPEN: the object whole, 6 of 8), `asr/userword.c`
+(CheckConsistency, RejectTrainUtters new: 15 of 17) -- 4 rows new to the map's byte-exact rows (2,844 bytes),
+one matched draft superseded (ConstructSHS_VUV 0x504980); `src/lib/asr` 553 of 581 (548 of 574 before). 2 rows
+named: 0x5042B8 `CreateFreqWindow` (`s1:calls+order`: SOCOM 1's InitSHS_VUV calls it at the same point, after
+the block's last table), 0x504520 `InitSHS_VUV` (`s1:slot`: ConstructSHS_VUV's init slot, as SOCOM 1's).
+casr.h gains +960 (the label scoring's result). No tool changed.
 
 **Round 14b: the "toolchain" opens were SCEA's shapes; LargeInt's core is assembly.**
 
