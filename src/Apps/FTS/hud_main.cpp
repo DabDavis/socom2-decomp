@@ -563,7 +563,7 @@ static CValve *s_helpWindowsValve;
 void hudAddPolyType(_zrdr *pRdr);
 void hudAddLineType(_zrdr *pRdr);
 void hudReadPopupCommon(_zrdr *rdr);
-extern "C" void func_0022D660(_zrdr *popup);
+void hudAddPopupDefinition(_zrdr *popup);
 
 /* hud.rdr read (SOCOM 1's hudInit, CMission::Init's call): the tactical map's polygon and line
  * types, then SOCOM II's event popups -- the common look, each definition -- and the help windows'
@@ -589,7 +589,7 @@ void hudInit()
 
     if (popups)
         for (int i = 0; i < popups->Count(); i++)
-            func_0022D660(popups->Item(i));
+            hudAddPopupDefinition(popups->Item(i));
     zrdr_free((CRdrFile *)rdr);
     s_helpWindowsValve = CValve::GetByName("HelpWindowsEnabled");
 }
