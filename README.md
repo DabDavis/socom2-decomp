@@ -2062,6 +2062,24 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the online lobby, round 21** (the lobby queue's do_assign and the chat queue's range destroy at last):
+  - A GUARDED FUNCTION-LOCAL STATIC READ BY TWO TEMPLATE FUNCTIONS OF ONE INSTANCE is owned by an inline both call --
+    model it there and name its data rows after that inline (`__deque_imp::max_size()`: push_back and do_assign of one
+    element type read the same guarded word, in all three element types; six data rows renamed `max_size...Fv@max`);
+  - a by-value parameter copied bitwise (lwc1/swc1, lq/sq) proves its type's copy constructor implicit -- the accessor-
+    register copy-out can still be a converting return from a user-copy type kept in the frame: the circular buffer has
+    two iterator classes, cdeque<T*>::iterator keeping its accessor copy constructor inside make_iterator, a new
+    const_iterator with an implicit copy what begin() / end() return; to put one inline's by-value copies below another's
+    frame slots take them by reference at the first level and copy them one level down (`__deque_copy_to`; the buffer's
+    assign one level deep, `__deque_copy`) -- do_assign 0x2E1090, open since round 15, with the capacity and block-count
+    ternaries zero-first;
+  - A WRONG REFERENCE ON A STATIC WITH STORAGE (a static const member whose address is taken) is often just a missing
+    data row: check the target's address before treating the function as open (the chat queue's range destroy 0x2F5B10,
+    open since the MSL's round 13 -- its block-size constant at 0x3F56D8);
+  - `new (p) T(x)` for a scalar T adds a null test on p in MW; a `const T &` bound to a converted temporary inside an
+    inline is scalarised away, only volatile reproduced the target's frame store and reload (0x2E0E10, OPEN at 0x274 of
+    0x27C); libnetb.c's sceBInetRecv / sceBInetSend take their callers' seven parameters (rt_comm_platform2_receive
+    loads `li t2,2` before the call).
 - **Tells from the kit and AI states, round 41** (CSealCtrlAi::RegisterCommands, the tasks' Parse functions,
   CAiSShotAt::Virtual14, ~CMallocBlocks):
   - THE ORIGINAL'S BUG REPRODUCED: CTMap::Parse 0x5D69F0 tests `r == zrdr_findtag(rdr, "line")` -- `==` written for `=`
