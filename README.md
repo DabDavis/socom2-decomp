@@ -2062,6 +2062,78 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from completing the MSL headers, round 26** (the tree's teardown and swap, the generic pod insert, the
+  missions' GetNext; probes build/p26/, scratch build/scratch/msl-r26/, untracked):
+  - THE OPTION MAP'S TEARDOWN 0x1EAD10 needs no header change: options.cpp (SOCOM II's unit between database.cpp and
+    st_core.cpp, 0x1EABD0-0x1EB03F) writes all nine rows byte-exact from include/tree as it stands -- the target's
+    ~pair calls ~basic_string with 0 after a second this-test (a key DERIVED from std::string, CSaferStr; a plain
+    string member gets -1 and one test, map<string, int>'s 0x2CE4F0), and the delete tests four destructor levels
+    above the root (a class between the option map and std::map); util_options.cpp's own map keeps a plain string
+    key (its find<basic_string>, insert_node_at's inlined construct): the two units see different declarations;
+  - THE TREE SWAP 0x305BE0 trades the anchor whole (`std::swap(tail_, x.tail_)`, MSL's node_alloc_ pair): swapped
+    through root()'s reference, its `this + 4` was a value MW kept and reused for the fix-up's &tail() (hoisted into
+    the root test's delay slot) -- byte-exact with c2dfont.cpp's map swap, +12 with options.cpp, nothing lost;
+  - THE GENERIC POD INSERT (OVL1 0x1FE340, OVL2 0x5192E0) is the char pod's statement for statement with word loops,
+    the capacity test through a const capacity() (a plain read merges with the growth's load into a saved
+    register) and the second run's walkers declared apart from the first's: 75 units now emit it, every copy
+    byte-exact (their other functions' bytes unchanged, only anonymous string objects renumbered);
+  - CMultiMissionList::GetNext 0x2C8DB0 on the pointer iterator as it stands: a `for (; i != end(); ++i)` loop
+    jumps to a bottom test and shares one narrowing of the bool with the next loop, a loop with an init keeps its
+    entry test at the top and the narrowing in its own preheader; a loop-scoped iterator for the second search;
+  - measured, not adopted: the pod destructor's word read through an address (`T *&d = data_`) +3 / -1 (~CRadio-
+    StripSpec, ~CAssetLib, ~CMenuStack against resize<CUIVariable>'s sp-relative read), through data() +1 / -34
+    (the level-5 cut); __convert_iterator's operators out of class make the rdr editor's do_assign 0x334440
+    code-exact but not its pieces (include/deque's note).
+- **Tells from the world, rdr and sound, round 19** (CShadowCaster::Update, CPipe::BuildSpecMapList, 989snd.c whole,
+  Particle::DrawPrep):
+  - an unsigned loop counter bounded `i <= 10` gives the target's fused `sltiu at` / `bnez at`, `i < 11` puts the compare
+    in a register and changes the loop's registers; an inline returning int gives `li v0,1` for true where an inlined
+    bool gives `daddiu v0,zero,1`, and `while (!f())` then adds the sltu / xori conversion (989snd.c's IOP command sends
+    and flush, SOCOM 1's with SOCOM II's quiet flag -- the last two share two inlines, the done test and the fill
+    buffer's send: 50 of 50);
+  - a `+4` record offset written directly folds into the constant (`4092 - avail + 4` becomes `4096 - avail`), a pointer
+    to a struct record keeps the 4 in the store offsets and `->data[i]` keeps the loop unreduced; an array typed as
+    16-byte records rather than int with a cast changes the order a subscript's addresses are set up;
+  - a copy of a pointer pushed onto a vector, taken after an earlier store, lands in the next call's delay slot --
+    passing the original keeps it in its saved register (BuildSpecMapList 0x339AD0); two divisions written into locals
+    before a run of stack stores keep their member loads ahead of the stores, written into the stores MW reloads the
+    member after each; a loop's count and cursor declared uninitialised at the top take the target's saved registers
+    (BuildLightMapList 0x339660: 31 -> 5, OPEN);
+  - a marked stand-in: CShadowCaster::Update 0x31F570's `CMatrix *cam = &view;` before the multiply (without it the two
+    argument addresses are set up in the wrong order; the original's spelling unknown); 989snd's globals named from
+    SOCOM 1's symbols (gCommBusy, gAwaitingInts, gSyncBuffer, gSyncSendBuffer, gCommandFillBuffer, gCdCallback,
+    gLoadingFromFS) and Particle::numParticles.
+- **Tells from the HUD, round 48** (CWeaponSel::HandleOpenState at last -- hud_weaponsel.cpp whole --, TickFullScreenMap):
+  - a constant assigned before a call is taken from a register already holding that value (`andi s0,v1,0xff` for a bool
+    true), assigned after the call -- which kills that register -- it is a fresh daddiu landing in a later delay slot
+    (HandleOpenState 0x21BDA0, open since round 16: the first button read into an int local before `select = true`);
+  - a local static inside an inline is one guarded object shared by every caller, and SOCOM 1's DWARF lists it under the
+    first caller only (HandleScrolling's boxFallback); a float "literal" with a zero low half loaded from the unit's .data
+    with lwc1 is a static variable -- MW builds such literals with lui + mtc1 (s_fScrollSpeed 0x3DC498);
+  - a pointer to one member (`const float *z = &ptDir.z`) keeps a stack struct in memory with the other members read
+    sp-relative, a plain named struct is scalarised; MW hoists a stack member's address computation to the top of its
+    basic block, so moving the declaration does not change its interference; for constant x complex expression MW
+    generates the complex operand first, so the constant is numbered last and coloured first ($f0: ComputeNewRating's 0.5);
+  - the input bit of TickFullScreenMap 0x209EE0 needed hud_missioncams.cpp's `(bool)ctrl->m_input_enabled != false`;
+    HandleScrolling 0x20A120 OPEN on one swap at exactly K (z's 25 neighbours), GetScrollPermissions 0x20AAC0 on its
+    facing kept at sp+112 (build/scratch/hud-r48/ig/: the replay tools adapted to a worktree).
+- **Tells from the SEALs, round 40** (__sinit_seal_env.cpp, CanFire, GetLookQuat, the two-ray batch, the visible-bounds
+  walk; 24 data rows named):
+  - A STATIC'S `= cosf(K)` INITIALISERS, IN ORDER, EMIT `__sinit` BYTE-EXACT (0x668C10: the four facing cosines, `static
+    CStack _stack(false)`, di0 / di1 as `DiIntersect(64)`, the two fallback cosines, then projDirDown, defined after
+    <iostream> in SOCOM 1's order); MW folds `0.017453292f * 25.0f` to the target's constant, the fallbacks need
+    `57.295776f` (`57.29578f` is one ulp high); OVL2's ~CStack copy 0x5B7B20 sits in seal_env.cpp's tail;
+  - `if (x >= 0.0f)` compiles to c.lt.s with bc1t to the else, `if (x < 0.0f)` puts the `<` body first; `if (!a || !b)
+    return;` gives the target's bnez into the body plus a `b` to the exit where `if (a && b) { ... }` gives two beqz; a
+    min / max ternary over an array element loads the element first, through a reference or pointer local (or an inline
+    min / max) the other operand first;
+  - `bool f = call(); float t = p->field;` keeps the andi right after the call, the other order moves the float load
+    ahead of the call and sinks the andi into the next call's delay slot (CanFire 0x5A7DE0, SOCOM 1's, written whole);
+    an inline helper past inline_max_size taking `const CBBox &` from a caller copy declared after the array reproduces
+    the frame -- by value 8 bytes short, straight from the node 0x30 short (the visible-bounds walk 0x5B6490);
+  - seal_env.cpp's FLASHBANG_DOT 0x65F0C8 keeps its placeholder name: the map's names are unique and seal_control.cpp's
+    0x65E640 holds SOCOM 1's (a unit's static named like another unit's row reports WRONG REFERENCE); the shotgun's
+    pellets 0x5A1620 OPEN (0x294 vs 0x284: the target copies operator-'s return slot back, all three loads first).
 - **Tells from the online lobby, round 21** (the lobby queue's do_assign and the chat queue's range destroy at last):
   - A GUARDED FUNCTION-LOCAL STATIC READ BY TWO TEMPLATE FUNCTIONS OF ONE INSTANCE is owned by an inline both call --
     model it there and name its data rows after that inline (`__deque_imp::max_size()`: push_back and do_assign of one

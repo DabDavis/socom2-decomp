@@ -4,16 +4,17 @@
  * flag right after the matrix, where SOCOM 1 kept its two background bitmaps -- then the objective
  * list and SOCOM 1's last three words. Defined in reverse of their image order (-inline deferred).
  * Written: the constructor, the explosives' items, CalcNewMatrix, UninitMap, RemoveItem, Draw and
- * the small ones; FrameObjective open. The initialiser (__sinit_hud_newhudmap.cpp 0x3FDE80) is
+ * the small ones, TickFullScreenMap (round 48); open: FrameObjective, HandleScrolling and
+ * GetScrollPermissions (round 48, SOCOM 1's names). The initialiser (__sinit_hud_newhudmap.cpp 0x3FDE80) is
  * code-exact once every static is defined (round 30: the legend's pictures and flag, the scroll
  * bitmaps, the three computed floats); its four __arraydtor$N references stay unresolved (scdiff
  * compares a local function by its bytes, relocation fields included). The rest by SOCOM 1's
  * order and calls (unwritten, unnamed):
  * 0x209350 TickFullScreenAnims (it calls GetScrollPermissions), 0x209AE0 HudTick (CHUD::Tick's
- * call), 0x209EE0 TickFullScreenMap (HudTick's; SOCOM 1's TickCompassMap inlined into HudTick),
- * 0x20A120 and 0x20A330 (TickFullScreenMap's two calls; 0x20A330 is the zoom step, through the far
- * zoom then the near: its m2c draft matches), 0x20A780 SwitchMapToFullScreen (HudTick's; it calls
- * 0x20BE00 and ftsGetTacMapZoom, as SOCOM 1's calls the zoom), 0x20AAC0 GetScrollPermissions,
+ * call; SOCOM 1's TickCompassMap inlined into it), 0x20A330 (TickFullScreenMap's second call, after
+ * HandleScrolling: the zoom step, through the far zoom then the near: its m2c draft matches),
+ * 0x20A780 SwitchMapToFullScreen (HudTick's; it calls 0x20BE00 and ftsGetTacMapZoom, as SOCOM 1's
+ * calls the zoom),
  * 0x20BE00 SetupNorthIndicator(CZSealBody *) (the north lines twice each), 0x20C080 the
  * legend's builder (InitMap's call; the nine labels and
  * bitmaps through MapCompass's anchor images and the string table). */
@@ -23,6 +24,7 @@
 #include "hud_bombmapitem.h"
 #include "hud_playermapitem.h"
 #include "../../gamez/zvid/zvid.h"
+#include "../../gamez/zinput/zinput.h"
 
 #include <vector>
 
@@ -361,6 +363,233 @@ void CZNewHudMap::SetMapScreenPos(float x1, float y1, float x2, float y2)
 void CZNewHudMap::SetWorldWidth(float width)
 {
     SetWorldView(m_worldcenterx, m_worldcentery, width);
+}
+
+/* the HUD's owner (hud_main.cpp's CHUD: only the static) */
+class CHUD {
+public:
+    static CZSealBody *GetHUDOwner();
+};
+
+/* a SEAL's controller as the map reads it (zseal.h's CSealCtrl: the input bit, 0x170 bit 11) */
+class CSealCtrl {
+public:
+    unsigned char _0[0x170];
+    unsigned int _170_0 : 11;
+    unsigned int m_input_enabled : 1;   // 0x171 bit 3
+    unsigned int _170_12 : 20;
+};
+
+/* the map's sounds: the second slot plays one (zsnd.h's PlaySound(inst, flags)) */
+class CSnd {
+public:
+    virtual ~CSnd();
+    virtual void *PlaySound(void *inst, unsigned int flags);
+};
+
+/* the pad's button state as the game reads it (zinput.cpp's 0x2C64E0: a game function's button,
+ * KEY_STATE; no row named yet) */
+extern "C" unsigned char func_002C64E0(int func, CPad *pad);
+
+/* the full-screen map's zoom step (0x20A330: its m2c draft matches, under its placeholder) */
+extern "C" void func_0020A330(CZNewHudMap *map, float stick);
+
+/* the full-screen map's pad, while no objective plays and the owner's input is on: the map closed
+ * (the game's button 12 or triangle; the close sound), down / up stepping the objectives and cross
+ * selecting one (each with its sound), circle framing it, square centring the map on the viewer;
+ * then, the pad connected and the map full screen, the sticks scroll and zoom it; the legend shows
+ * while R2 is held (SOCOM 1's TickFullScreenMap, its zoom moved out to 0x20A330 and the menu state
+ * unread; the name SOCOM 1's) */
+void CZNewHudMap::TickFullScreenMap(CPad *pad, MENU_STATE menustate)
+{
+    if (m_objectivelist.IsPlayingAnimation())
+        return;
+    CZSealBody *owner = CHUD::GetHUDOwner();
+    CSealCtrl *ctrl = owner ? owner->m_ctrl : 0;
+
+    bool input = ctrl ? (bool)ctrl->m_input_enabled != false : false;
+
+    if (!input)
+        return;
+    if ((func_002C64E0(12, pad) == 1) != false || pad->m_state[PAD_TRIANGLE] == KEY_RISING) {
+        if (m_socom2_81c)
+            m_socom2_81c->PlaySound(0, 255);
+        SwitchToCompassMap();
+    } else if (pad->m_state[PAD_DOWN] == KEY_FALLING) {
+        m_objectivelist.NextObjective();
+        if (m_socom2_824)
+            m_socom2_824->PlaySound(0, 255);
+    } else if (pad->m_state[PAD_UP] == KEY_FALLING) {
+        m_objectivelist.PreviousObjective();
+        if (m_socom2_820)
+            m_socom2_820->PlaySound(0, 255);
+    } else if (pad->m_state[PAD_CROSS] == KEY_RISING) {
+        m_objectivelist.SelectObjective();
+        if (m_socom2_81c)
+            m_socom2_81c->PlaySound(0, 255);
+    } else if (pad->m_state[PAD_CIRCLE] == KEY_RISING) {
+        FrameObjective();
+    } else if (pad->m_state[PAD_SQUARE] == KEY_RISING) {
+        m_centerx = m_viewer->m_posW.x;
+        m_centerz = m_viewer->m_posW.z;
+    }
+    if (pad->m_0 && m_isFullScreen) {
+        HandleScrolling(((float *)pad->m_210)[0], ((float *)pad->m_210)[1]);
+        func_0020A330(this, ((float *)pad->m_210)[3]);
+    }
+    g_bShowLegend = pad->m_state[PAD_TRIGGER_R2] == KEY_DOWN;
+}
+
+/* a map's bounds (ai.h's CAiMap, SOCOM 1's DWARF: AIMAP_PARAMS's box first) and the AI maps' lookup
+ * by index (ai_maps.h's CAiMaps; AiMaps at 0x66A1B0) -- only what the scroll reads */
+class CAiMap {
+public:
+    CBBox m_bbox;   // 0x0
+};
+
+class CAiMaps {
+public:
+    CAiMap *GetMapByIndex(unsigned int i) const;
+};
+
+extern CAiMaps AiMaps;
+
+/* the scroll's bounds without a map (SOCOM 1's DWARF: HandleScrolling's static CBBox boxFallback,
+ * guarded -- an empty inline constructor; the class name ours) */
+class CFallbackBox : public CBBox {
+public:
+    CFallbackBox() {}
+};
+
+/* the bounds the full-screen map scrolls inside: the first AI map's, else an empty box -- one
+ * guarded static that HandleScrolling and GetScrollPermissions 0x20AAC0 both read, as SOCOM 1's
+ * both do (an inline's static; the name ours) */
+inline const CBBox *CZNewHudMap::GetScrollBounds() const
+{
+    static CFallbackBox boxFallback;
+    CAiMap *map = AiMaps.GetMapByIndex(0);
+
+    return map ? &map->m_bbox : &boxFallback;
+}
+
+/* the full-screen map's scroll permissions: up, left, right and down on the screen, from the centre
+ * inside each bound of the scroll box and the viewer's facing -- in its eight compass sectors (0.01
+ * either side of an axis counts as the axis) each screen direction is the one or two world
+ * directions it maps to; facing nowhere, none (SOCOM 1's GetScrollPermissions, 0x3C50F0, the box
+ * the first AI map's; its CScrollBools).
+ * OPEN, 0x36C of 0x38C (27 structural, 23 registers): the logic, the bound tests and every case's
+ * pairs are the target's (each `a || b` its two sltus), but MW scalarises the facing into $f20/$f21
+ * (two saved FPRs, a 0x90 frame) where the target keeps it on the stack at sp+112 and reloads x
+ * and z after the map lookup (frame 0x80, no FPR saved). A reference bound to a temporary (as
+ * CalcNewMatrix's) keeps it in memory but holds the reference in s3 (19 off, the frame 0x90);
+ * pointers to x and z, or a reference to the named facing, are further off */
+CScrollBools CZNewHudMap::GetScrollPermissions() const
+{
+    CScrollBools bools;
+    SealDir ptDir;
+
+    GetSealDir(m_viewer, &ptDir);
+    const CBBox *box = GetScrollBounds();
+    bool bXUnderMax = m_centerx < box->m_max.x;
+    bool bXOverMin = m_centerx > box->m_min.x;
+    bool bZUnderMax = m_centerz < box->m_max.z;
+    bool bZOverMin = m_centerz > box->m_min.z;
+
+    if (ptDir.x < -0.01f) {
+        if (ptDir.z < -0.01f) {
+            bools._bUp = bXOverMin || bZOverMin;
+            bools._bLeft = bZUnderMax || bXOverMin;
+            bools._bRight = bZOverMin || bXUnderMax;
+            bools._bDown = bXUnderMax || bZUnderMax;
+        } else if (ptDir.z > 0.01f) {
+            bools._bUp = bXOverMin || bZUnderMax;
+            bools._bLeft = bZUnderMax || bXUnderMax;
+            bools._bRight = bZOverMin || bXOverMin;
+            bools._bDown = bXUnderMax || bZOverMin;
+        } else {
+            bools._bUp = bXOverMin;
+            bools._bLeft = bZUnderMax;
+            bools._bRight = bZOverMin;
+            bools._bDown = bXUnderMax;
+        }
+    } else if (ptDir.x > 0.01f) {
+        if (ptDir.z < -0.01f) {
+            bools._bUp = bXUnderMax || bZOverMin;
+            bools._bLeft = bZOverMin || bXOverMin;
+            bools._bRight = bZUnderMax || bXUnderMax;
+            bools._bDown = bXOverMin || bZUnderMax;
+        } else if (ptDir.z > 0.01f) {
+            bools._bUp = bXUnderMax || bZUnderMax;
+            bools._bLeft = bZOverMin || bXUnderMax;
+            bools._bRight = bZUnderMax || bXOverMin;
+            bools._bDown = bXOverMin || bZOverMin;
+        } else {
+            bools._bUp = bXUnderMax;
+            bools._bLeft = bZOverMin;
+            bools._bRight = bZUnderMax;
+            bools._bDown = bXOverMin;
+        }
+    } else if (ptDir.z < -0.01f) {
+        bools._bUp = bZOverMin;
+        bools._bLeft = bXOverMin;
+        bools._bRight = bXUnderMax;
+        bools._bDown = bZUnderMax;
+    } else if (ptDir.z > 0.01f) {
+        bools._bUp = bZUnderMax;
+        bools._bLeft = bXUnderMax;
+        bools._bRight = bXOverMin;
+        bools._bDown = bZOverMin;
+    }
+    return bools;
+}
+
+/* the scroll's speed at the map's scale (36 in data; SOCOM 1's literal 20; the name ours) */
+static float s_fScrollSpeed = 36.0f;
+
+/* the full-screen map's centre moved by the stick, turned to the viewer's facing and kept inside
+ * the first AI map's bounds -- each axis moved only while it is inside the bound it moves toward
+ * (SOCOM 1's HandleScrolling, 0x3C4950: there the viewer's own map and 20 for the speed; the name
+ * SOCOM 1's). The facing is a stack SealDir whose z is read through a pointer kept across the map
+ * lookup (the target's s1 = sp+72, as SOCOM 1's s0); the two early returns one `||` (they share one
+ * `b` to the epilogue); the speed a static (loaded from data), the fallback box an inline's guarded
+ * static (GetScrollBounds 0x20AAC0 reads the same box and guard).
+ * OPEN, 2 instructions and 16 registers, one swap: `this` takes s1 and the z pointer s0 (SOCOM 1's
+ * own colouring), the target the reverse. Replayed (build/scratch/hud-r48/ig: rl_hs.py), z has 25
+ * neighbours -- this, the node pointer, the box, the guard's load and its 1, bMoveX -- one at K, so
+ * it is deferred with `this` (27) and coloured first; any one interference fewer, or `this`
+ * numbered above z, gives the target. MW hoists z's `addiu` to the block's top (right after the
+ * node load) wherever it is written. Tried: z declared first / at the top / after the length / in
+ * the length, through the facing inline's returned pointer, a reference (the store then goes
+ * through it), the move tests without bool locals or with one bool, a copy of `this` for the
+ * moves, the bounds an inline member, a dead first definition of the box pointer */
+void CZNewHudMap::HandleScrolling(float fStickX, float fStickY)
+{
+    float fZMove;
+    float fXMove;
+    float fConst;
+    float fDirLength;
+
+    if ((fStickX == 0.0f && fStickY == 0.0f) || !m_viewer)
+        return;
+    SealDir ptDir;
+
+    GetSealDir(m_viewer, &ptDir);
+    const float *z = &ptDir.z;
+
+    fDirLength = sqrtf(ptDir.x * ptDir.x + *z * *z);
+    fConst = s_fScrollSpeed / fDirLength;
+    const CBBox *box = GetScrollBounds();
+
+    fXMove = fConst * (fStickX * *z + fStickY * ptDir.x);
+    bool bMoveX = fXMove > 0.0f ? m_centerx < box->m_max.x : m_centerx > box->m_min.x;
+
+    if (bMoveX)
+        m_centerx += fXMove;
+    fZMove = fConst * (fStickX * -ptDir.x + fStickY * *z);
+    bool bMoveZ = fZMove > 0.0f ? m_centerz < box->m_max.z : m_centerz > box->m_min.z;
+
+    if (bMoveZ)
+        m_centerz += fZMove;
 }
 
 /* each item's PostDraw (ours: an inline, so its iterator is numbered after Draw's temporaries) */

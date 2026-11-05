@@ -177,6 +177,48 @@ CShadowCaster::CShadowCaster(CNode *node)
     }
 }
 
+/* the caster's world-to-texture matrix: a camera at the node looking down its own -z with its y
+ * up, then a scale from the box's size to the texture's half (a texel in from the edge) and a
+ * half's offset -- CLightMap::SetTexture's projection (new in SOCOM II, the name ours). The two
+ * scales are locals (the box's size is read ahead of the projection's stores, which would otherwise
+ * reload it), and the camera matrix reaches the product through a pointer taken just ahead of it:
+ * passed straight, its address is set up after the projection's (a1 before a2; the original's
+ * spelling unknown, the pointer a stand-in that orders the set-up) */
+void CShadowCaster::Update()
+{
+    CMatrix view;
+    CMatrix proj;
+    sceVu0FVECTOR zd = {0.0f, 0.0f, -1.0f, 0.0f};
+    sceVu0FVECTOR yd = {0.0f, 1.0f, 0.0f, 0.0f};
+
+    TransformVectors(&m_node->m_matrix, (CPnt3D *)yd, (CPnt3D *)yd, 1);
+    TransformVectors(&m_node->m_matrix, (CPnt3D *)zd, (CPnt3D *)zd, 1);
+    sceVu0CameraMatrix(view.m_matrix, m_node->m_matrix.m_matrix[3], zd, yd);
+    float s = (1.0f - 1.0f / (int)m_texture->m_width) / 1.414f;
+    float sx = s / m_size.x;
+    float sy = s / m_size.y;
+
+    proj(0, 0) = sx;
+    proj(0, 1) = 0.0f;
+    proj(0, 2) = 0.0f;
+    proj(0, 3) = 0.0f;
+    proj(1, 0) = 0.0f;
+    proj(1, 1) = sy;
+    proj(1, 2) = 0.0f;
+    proj(1, 3) = 0.0f;
+    proj(2, 0) = 0.0f;
+    proj(2, 1) = 0.0f;
+    proj(2, 2) = 1.0f;
+    proj(2, 3) = 0.0f;
+    proj(3, 0) = 0.5f;
+    proj(3, 1) = 0.5f;
+    proj(3, 2) = 0.0f;
+    proj(3, 3) = 1.0f;
+    CMatrix *cam = &view;
+
+    sceVu0MulMatrix(m_matrix.m_matrix, proj.m_matrix, cam->m_matrix);
+}
+
 /* a shadow caster made for the node and listed (pinned: AddChild calls it, where AddShadow, its
  * neighbour, is inlined) */
 #pragma auto_inline off
@@ -197,7 +239,7 @@ void CWorld::UpdateShadowCasters()
 
         c->m_node->SetActive(false);
         c->m_texture = c->m_node->m_visual[0]->m_dynTexList.m_tex_list[0]->m_texture;
-        func_0031F570(*it);
+        (*it)->Update();
     }
 }
 
