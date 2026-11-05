@@ -1596,6 +1596,20 @@ public:
  * the prop's rotation reset and the node deleted. The names past m_clutter are ours */
 class CClutterAnim {
 public:
+    /* a prop's new animation: no node, no lean, the wobble's clock at 5.01 (inline in both builds:
+     * ClutterTick's new -- SOCOM 1's casts the prop's node to a CModel, its result unused, as
+     * SOCOM II's does) */
+    CClutterAnim(CClutter *c)
+    {
+        m_clutter = c;
+        dynamic_cast<CModel *>(m_clutter->m_node);
+        m_node = 0;
+        m_lean = CPnt3D::zero;
+        m_14 = 0.0f;
+        m_1c = 0.0f;
+        m_18 = 5.01f;
+        m_20 = 0.0f;
+    }
     ~CClutterAnim()
     {
         if (m_clutter)
