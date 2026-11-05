@@ -147,12 +147,33 @@ public:
 class C2D::CLibList : public std::vector<zdb::CAssetLib *> {
 };
 
+/* the end node declared first and taken after the first node (the HUD's round 46): MW numbers it
+ * at its declaration, below the iterator, and builds it from `this` where `this` dies -- so a caller
+ * holding `this` in a saved register gives the end that register (`lw s0,8(s1); addiu s1,s1,4`: the
+ * five C2D GetAssetLibs, CHandlerButton::HandlePad's walk). `iterator e = end();` first (round 45)
+ * computes the end while `this` lives and gives the node this's register instead; begin() first
+ * numbers the two the other way round; end() in the test is recomputed each pass (SOCOM 1's form,
+ * 8 bytes long); an iterator assigned later stays in memory. The out-of-line copy, 0x1F6FD0, is the
+ * same either way */
 inline void C2D::GetAssetLibs(CLibList &liblist)
 {
-    iterator e = end();
+    node_base *e;
+    iterator i = begin();
 
-    for (iterator i = begin(); i != e; ++i)
+    for (e = &end_node(); i != iterator(e); ++i)
         (*i)->GetAssetLibs(liblist);
+}
+
+/* a library listed once: the five C2D GetAssetLibs' test (the name ours). Since the MSL headers'
+ * round 24 (the pointer vector's own iterator, end() four high) it is too tall to inline whole and
+ * is inlined one level, calling the library vector's begin, end, find, == and push_back out of line
+ * as the target does (0x358670-0x358728, c2dbitmap_poly.cpp's copies linked). The library taken by
+ * reference: the caller's `(lib = ...) != 0` store fills the null test's delay slot (by value the
+ * test leaves a nop and pads the join) */
+static inline void AddAssetLib(C2D::CLibList &liblist, zdb::CAssetLib *const &lib)
+{
+    if (std::find(liblist.begin(), liblist.end(), lib) == liblist.end())
+        liblist.push_back(lib);
 }
 
 class C2DFont;

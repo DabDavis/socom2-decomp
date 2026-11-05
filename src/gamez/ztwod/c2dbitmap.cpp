@@ -4,7 +4,7 @@
  * from a point and its getter, and the four flag setters that keep the GS PRIM bits (vtable slots
  * 6-9). The unit's name is ours (SOCOM 1's symbol table groups C2DBitmap's RTTI with C2D::Open and
  * Init, which SOCOM II moved to ztwod.cpp); it ends where C2D's begins. Written, all byte-exact:
- * everything but GetAssetLibs, Reset and SetUV (m2c's drafts match) and MakePacket. Defined in
+ * everything but Reset and SetUV (m2c's drafts match) and MakePacket (GetAssetLibs the HUD's round 46). Defined in
  * reverse of their image order (-inline deferred). */
 
 #include <eetypes.h>
@@ -25,7 +25,9 @@ class CTexture {
 public:
     unsigned short m_width;   // 0x0
     unsigned short m_height;   // 0x2
-    unsigned char _4[0x30 - 0x4];
+    unsigned char _4[0x10 - 0x4];
+    CAssetLib *m_assetlib;   // 0x10: the library it came from (GetAssetLibs)
+    unsigned char _14[0x30 - 0x14];
     sceVu0FVECTOR m_gsregs;   // 0x30: its GS registers, packeted first
 };
 
@@ -312,4 +314,21 @@ void C2DBitmap::TickFade()
         }
         SetTrans(trans);
     }
+}
+
+/* the handle's texture's library, once, then the children's (C2DBitmapPoly's shape, through the
+ * handle: SOCOM 1's pTex) */
+void C2DBitmap::GetAssetLibs(CLibList &liblist)
+{
+    if (m_pTexHandle) {
+        zdb::CTexture *pTex = m_pTexHandle->m_texture;
+
+        if (pTex) {
+            zdb::CAssetLib *lib;
+
+            if ((lib = pTex->m_assetlib) != 0)
+                AddAssetLib(liblist, lib);
+        }
+    }
+    C2D::GetAssetLibs(liblist);
 }
