@@ -1304,7 +1304,10 @@ float CZProjectile::GetDamage(const CPnt3D *pos, float *health, float *armor, fl
  * stored where it is computed and reloaded by the test) and the projection at sp+96, with &d and
  * its y and z addresses in registers; MW scalarises this CONE whole. Tried: the projection by
  * const reference (0x168), Contains through a CONE pointer (0x174), the cone as a volatile
- * object read through a reference (0x180), the test written out (0x164), r * tan(angle) */
+ * object read through a reference (0x180), the test written out (0x164), r * tan(angle). Round 26
+ * (build/scratch/wep/v_cone1.py): a user-declared destructor on CONE keeps it in the frame (0x188:
+ * its field addresses then held in registers, the frame larger); a user constructor alone changes
+ * nothing (0x168) */
 /* (pinned: GetDamage calls it out of line) */
 #pragma auto_inline off
 bool CZProjectile::IsInCone(const CPnt3D *pos, const CPnt3D *apex, const CPnt3D *dir, float angle)
