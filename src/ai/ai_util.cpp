@@ -48,12 +48,10 @@ inline float rand_range(float lo, float span)
 /* where to aim to meet a moving point: the two motions over a time as velocities, the meeting
  * time a root of the quadratic they make, false if there is none (SOCOM 1's; the names are
  * ours). The t == 0 return sits at the end (the body nested under t != 0), v is declared first
- * (the highest slot).
- * OPEN, 32 instructions (right size): the dot products' float registers. The target loads w.x
- * twice (once per dot product, w.y and w.z once) and multiplies x first in v.w, so its registers
- * run f4/f6/f7 where this build's run f6/f7/f8 (w.y loaded first); Dot(w, v), the products
- * written out, the sums in locals in either order all compile alike
- * (build/scratch/ai/spec_lead.py) */
+ * (the highest slot). The target loads w.x twice (once per dot product; w.y and w.z once) and
+ * multiplies x first in v.w: v.w reads w through a reference local of its own -- the AI core's
+ * round 30, byte-exact so (MW shares no load of a reference's field with the object's own; Dot(w,
+ * v), the products written out and the sums in locals in either order all kept one w.x load) */
 bool CAi::LeadTargetG(const CPnt3D *a, const CPnt3D *b, float t, const CPnt3D *c, const CPnt3D *d,
                       CPnt3D *out)
 {
@@ -71,7 +69,8 @@ bool CAi::LeadTargetG(const CPnt3D *a, const CPnt3D *b, float t, const CPnt3D *c
 
         if (k <= 0.0f)
             return false;
-        float vw = Dot(v, w);
+        const CPnt3D &dir = w;
+        float vw = Dot(v, dir);
 
         u.Scale((vw + sqrtf(k * Dot(w, w) + vw * vw)) / k, &v);
         c->Add(&v, out);
