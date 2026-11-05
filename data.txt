@@ -464,7 +464,8 @@
 0x003DFD18 0x4 DELETED_NODE  # OVL1; SOCOM 1 name (the name a node is left with as it is destroyed; ~CNode stores it after SetName(0), as SOCOM 1's)
 0x003DFE10 0x4 m_scale__Q23zdb6CWorld  # OVL1; s1:data-seq (size SOCOM 1's; via Load__17CharacterDynamicsFRC8CRdrFile)
 0x003DFE18 0x4 m_invscale__Q23zdb6CWorld  # OVL1; the world lane r24: SOCOM 1's (its CWorld(const char *) stores m_scale 10 and m_invscale 0.1 at gp-32100 / gp-32096, SOCOM II's 0x320310 at 0x3DFE10 / 0x3DFE18 in the same order); 2 references in 2 functions (the constructor, CSaveLoad::Load)
-0x003DFF68 0x1 m_first_alpha_add__Q25CPipe6CAlpha  # OVL1 data (initialised 1); SOCOM 1's static (its symbol, 1 byte, 0x474EE8 in $gp's area): CPipe::CAlpha::Render sets it after the pass as SOCOM 1's Render does (`sb v1,-32008(gp)` there), CAlpha::Insert tests and clears it and starts its walk at the draw list's start -- the world lane round 20; 3 references in 2 functions
+0x003DFEC0 0x1 @LOCAL@Render__Q28Particle8InstanceFv@OutputOnceOnly  # OVL1 data; the world lane r25: SOCOM 1's function-local static OutputOnceOnly$1584 of Particle::Instance::Render (gp-28596 there, its guard init$1585 at -28592, set 1 on first entry; tested once the draw buffer holds 5000 and cleared), laid out statically by MW 3.0 (1 in data, no guard) -- 2 references in 1 function (Instance::Render 0x327910)
+0x003DFF68 0x1 m_first_alpha_add__Q25CPipe6CAlpha  #OVL1 data (initialised 1); SOCOM 1's static (its symbol, 1 byte, 0x474EE8 in $gp's area): CPipe::CAlpha::Render sets it after the pass as SOCOM 1's Render does (`sb v1,-32008(gp)` there), CAlpha::Insert tests and clears it and starts its walk at the draw list's start -- the world lane round 20; 3 references in 2 functions
 0x003DFF70 0x4 s_specFadeNear  # OVL1 data; SOCOM II's, name ours (the world lane round 19: the specular fade CPipe::BuildSpecMapList gives a light map within 225 units, 1.0 in the image); 1 reference
 0x003DFF88 0x8 gSndCommandBuffePtr  # OVL1 data; the world lane r6: SOCOM 1's global (its symbol, 0x475370 in $gp's area, 8 bytes) -- snd_StartSoundSystem points it at the two command buffers as SOCOM 1's does
 0x003DFF90 0x8 gCommandBuffeBytesAvail  # OVL1 data; the world lane r6: SOCOM 1's global (its symbol, 0x475378, 8 bytes) -- snd_StartSoundSystem sets both to 4092 as SOCOM 1's does
@@ -475,11 +476,17 @@
 0x003DFFF0 0x80 cur_mission_name  # OVL1 data; SOCOM 1's static of zsnd_csnd.cpp (LOCAL in its symbols, 0x43A650, 128 bytes, "None" at start in both builds; m_mastervol__12CSndInstance follows at +0x80): CSnd::LoadSounds compares the mission's name with it and copies a new one in at the instructions where SOCOM 1's LoadSounds does -- the world lane round 22 found it, round 23 named it; 2 references in 1 function
 0x003E0070 0x4 m_mastervol__12CSndInstance  # OVL1; s1:data-seq (size SOCOM 1's; via SetVol__12CSndInstanceFf)
 0x003E0080 0x1 m_jukebox_stopped__11CSndJukebox  # OVL1 data; SOCOM 1's CSndJukebox static (its symbol, 0x4755B0 there): Start clears it and Cleanup sets it in both builds (was m_inFight, ours); 4 references in 4 functions
-0x003E01B4 0x4 s_hddDisabled  # OVL1 data; SOCOM II's, name ours (zSysHddInit skips the disk when it is 1; 0 in the image); 1 reference -- the sound/system lane
+0x003E00A0 0x30 s_rebootModules  # OVL1 data; SOCOM II's, name ours (the world lane r25: SIO2MAN and CDVDSTM, two 0x18-byte module rows, loaded only, after the IOP is rebooted onto the DNAS image); 1 reference (RebootIOP 0x34F9B0) -- zsys_init.cpp
+0x003E00D0 0x2B s_usbdArgs  # OVL1 data; SOCOM II's, name ours (the world lane r25: USBD.IRX's 43 bytes of arguments "hub=1 dev=11 ed=32 gtd=64 itd=64 ioreq=128", s_gameModules[2]'s argv); 0 code references -- zsys_init.cpp
+0x003E0100 0x13 s_sndArgs  # OVL1 data; SOCOM II's, name ours (the world lane r25: 989SND.IRX's "stream_priority=18", s_gameModules[6]'s argv); 0 code references -- zsys_init.cpp
+0x003E0118 0xC s_headsetArgs  # OVL1 data; SOCOM II's, name ours (the world lane r25: HEADSETO.IRX's "priority=22", loaded with 13 by RebootIOP); 1 reference (RebootIOP 0x34F9B0) -- zsys_init.cpp
+0x003E0130 0xF s_lgaudArgs  # OVL1 data; SOCOM II's, name ours (the world lane r25: LGAUD.IRX's "maxstream=4096", loaded with 16 by RebootIOP for the network configuration's mode 3); 1 reference (RebootIOP 0x34F9B0) -- zsys_init.cpp
+0x003E0140 0xD8 s_gameModules  # OVL1 data; SOCOM II's, name ours (the world lane r25: nine 0x18-byte module rows, DBCMAN SIO2D USBD USBKB DEV9 LIBSD 989SND 989DSTRM DS2U_S1, DEV9 loaded and started; RebootIOP loads 2-7 for a single player boot, else 0-7 then 8; its DEV9 row's start result at 0x3E01B4, once mapped as s_hddDisabled, is what zSysHddInit tests against 1) -- 4 references in 2 functions (RebootIOP 0x34F9B0 three, zSysHddInit 0x34F230) -- zsys_init.cpp
 0x003E0218 0x9 s_hddArgs  # OVL1 data; SOCOM II's, name ours (HDD.IRX's arguments "-o 1 -n 3", the table's argv); 0 code references -- the sound/system lane
 0x003E0230 0x10 s_pfsArgs  # OVL1 data; SOCOM II's, name ours (PFS.IRX's arguments "-m 1 -o 1 -n 10"); 0 code references -- the sound/system lane
 0x003E0250 0x48 s_hddModules  # OVL1 data; SOCOM II's, name ours (three 0x18-byte module rows: ATAD, HDD, PFS, each loaded and started); 1 reference (zSysHddInit) -- the sound/system lane
 0x003E02A0 0x30 s_mcModules  # OVL1 data; SOCOM II's, name ours (MCMAN and MCSERV, loaded only); 3 references in 3 functions -- the sound/system lane
+0x003E02D0 0x4 s_headsetId  # OVL1 data; SOCOM II's, name ours (the world lane r25: HEADSETO.IRX's module id, -1 in the image; RebootIOP stores sceSifLoadModule's answer and passes `!= -1` to 0x340F90) -- 1 reference (RebootIOP 0x34F9B0) -- zsys_init.cpp
 0x003E0300 0x10 r  # OVL1 data (initialised: the identity); SOCOM 1's static r (0x43A860, 16 bytes, c2dbitmap_poly.cpp's): the 2x2 rotation both C2DBitmapPoly::Rotate_Zaxis write ([1][0] the sine, [0][1] its negation, [0][0] and [1][1] the cosine) and turn the four corners by; 39 references in 2 functions (20 in Rotate_Zaxis(float, float), 19 in Rotate_Zaxis(float)) -- the HUD lane, round 40
 0x003E0330 0x4 zOffset  # OVL1 data (initialised 2); SOCOM 1's static zOffset (0x4753C8, small data there): c2dline.cpp's -- the depth Draw3DLine adds to both ends' projected z; 2 references in 1 function (Draw3DLine) -- the HUD lane, round 40
 0x003E0338 0x4 s_brightalpha  # OVL1 data; ours (the HUD lane, round 49): c2dstring.cpp's file static, 1.5, a bright string's alpha scale (the first of the unit's .data, after c2dline.cpp's zOffset) -- 1 reference in 1 function (C2DStringCursor's constructor 0x362900)
@@ -693,6 +700,7 @@
 0x003F6F50 0x8 __RTTI__Q28Particle20Destruction_Instance  # RTTI of Particle::Destruction_Instance: found by its RTTI's name
 0x003F7050 0x8 __RTTI__11CRdrArchive  # RTTI of CRdrArchive: found by its RTTI's name
 0x003F70F0 0x8 __RTTI__6CRdrIO  # RTTI of CRdrIO: found by its RTTI's name
+0x003F72F0 0x4 @LOCAL@Tick__11CPipeEffectFv@k  # OVL1 data (0.0 in the image); ours (the world lane r25): CPipeEffect::Tick's guarded local static, cos(pi/4) - 0.5 set on the first shaped frame -- 2 references in 1 function (Tick 0x33CD50)
 0x003F7620 0x8 __RTTI__4CSnd  # RTTI of CSnd: found by its RTTI's name
 0x003F79D0 0x8 __RTTI__14CSoundBufferIO  # RTTI of CSoundBufferIO: found by its RTTI's name
 0x003F7A20 0x8 __RTTI__9CSndGroup  # RTTI of CSndGroup: found by its RTTI's name
@@ -1504,6 +1512,9 @@
 0x004887C0 0x718 thePipe  # OVL1 bss; SOCOM 1's (0x694 bytes; SOCOM II's runs to 0x718, where CAlpha's static m_last_alpha_insert sits -- its constructor's last store is 0x70D, the states' flags 0x711 and 0x714 -- the camera at 0x628, the UI node at 0x630, its flags at 0x711 and 0x714 as the states use them): 115 references in 32 functions take 0x4887C0-0x488ED8
 0x00488ED8 0x4 m_last_alpha_insert__Q25CPipe6CAlpha  # OVL1 bss; SOCOM 1's static (its symbol, 4 bytes, 0x475C80: a list iterator): CPipe::CAlpha::Insert keeps the draw list's last insert there, where the next insert's walk starts (reset to the list's start when m_first_alpha_add is set) -- the world lane round 20; 5 references in 1 function. thePipe ends here (0x718 bytes)
 0x00488EE0 0x4 VifHandlerID  # OVL1 bss; s1:data-seq (size SOCOM 1's; via Uninit__5CPipeFv)
+0x00488F50 0xC @LOCAL@Tick__11CPipeEffectFv@hist  # OVL1 bss; ours (the world lane r25): CPipeEffect::Tick's last three eased values, averaged each frame -- 4 references in 1 function (Tick 0x33CD50)
+0x00488F60 0x4 @LOCAL@Tick__11CPipeEffectFv@idx  # OVL1 bss; ours (the world lane r25): the history's next slot, wrapped at 3 -- 5 references in 1 function (Tick 0x33CD50)
+0x00488F68 0x1 @GUARD@Tick__11CPipeEffectFv@k  # OVL1 bss; ours (the world lane r25): MW's guard for Tick's local static k -- 2 references in 1 function (Tick 0x33CD50)
 0x00488F70 0x28 gSLClientData  # OVL1 bss; the world lane r6: SOCOM 1's global (its symbol, 0x509B50, 0x28 bytes: sceSifClientData) -- the command client snd_StartSoundSystem binds (0x123456), waiting on its server word at 0x24
 0x00488F98 0x4 gCommBusy  # OVL1 bss; SOCOM 1's global (its symbol, 0x476404 in $gp's area): the command senders point it at gSyncBuffer while a call is out and test it, as SOCOM 1's -- the world lane round 19
 0x00488FA0 0x4 gAwaitingInts  # OVL1 bss; SOCOM 1's global (its symbol, 0x476408 in $gp's area): the commands whose returns the call awaits, 1 for a direct command -- the world lane round 19
@@ -1583,6 +1594,7 @@
 0x0049E2B0 0x2C zSys  # OVL1 bss; s1:data-exact (via WriteGsMemory__6CVideoFUiP1Ui); SOCOM 1's _zsys_public is 0x28 with timerScale at 0x24, SOCOM II's has it at 0x28 (CAppCamera::Tick's peek easing reads it where SOCOM 1's read 0x24), so 0x2C
 0x0049E2DC 0x4 s_hddStatus  # OVL1 bss; SOCOM II's, name ours (sceDevctl("hdd0:")'s answer, -1 before; zSysInit and zSysHddUnmount reset it); 6 references in 4 functions -- the sound/system lane
 0x0049E2E0 0x1 s_hddMounted  # OVL1 bss; SOCOM II's, name ours (zSysHddUnmount unmounts only when set); 5 references in 4 functions -- the sound/system lane
+0x0049E2E8 0x1 postinited  # OVL1 bss; SOCOM 1's file static of zsys_init.cpp (gp-26316 there, 0x476524, LOCAL: its zSysPostInit sets it once, its RebootIOP clears it last; SOCOM II's zSysPostInit is empty and RebootIOP 0x34F9B0 clears 0x49E2E8 last) -- 1 reference (the world lane r25)
 0x0049E2F0 0x4 m_last_id__Q211CIOPManager11CRegistrant  # OVL1 bss; s1:data-seq (size SOCOM 1's; via RegisterRebootCallback__11CIOPManagerFPFQ211CIOPManager11RebootPhaseQ211CIOPManager10RebootModePv_bPv)
 0x0049E2F8 0x4 mfifoDrainTADR  # OVL1 bss; SOCOM 1's (zSysFifoEnable stores the draining channel's TADR address, zSysFifoKick polls it, as SOCOM 1's gp-26308); 4 references in 2 functions -- the sound/system lane
 0x0049E300 0x1 s_fifoSync  # OVL1 bss; SOCOM II's, name ours (zSysFifoSetSync stores it, zSysFifoKick tests it); 2 references -- the sound/system lane

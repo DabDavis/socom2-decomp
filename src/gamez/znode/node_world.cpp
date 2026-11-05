@@ -850,6 +850,76 @@ int CWorld::RegProximityDelayed(DiIntersect *di, const CPnt3D *p, float radius, 
     return i;
 }
 
+/* the light reaching a point, as a luminance: the ambient (unless flag 2), the three global colours
+ * (unless 1) and the point's cell's active lights the radius reaches (unless 4) -- full within a
+ * light's minimum range, falling off to its maximum -- summed and weighted 0.4901 red, 0.4657 green,
+ * 0.0441 blue (new in SOCOM II between Segregate_CCells and RegProximityDelayed, which SOCOM 1 has
+ * side by side; nothing in the image calls it or takes its address -- the name and the parameters'
+ * order ours, after RegProximityDelayed's).
+ * OPEN, 0x354 against 0x34C (written in round 25 of the world lane; build/scratch/wld/v_gli*.py):
+ * the colour starts as a copy of CPnt3D::zero, the difference is `operator-`'s temporary copied out,
+ * and the light walk's iterator is ASSIGNED from begin() (so it lives in its stack slot, copied in
+ * through $f0, the frame then the target's: the colour at sp+184) -- all as the target. Two misses:
+ * (1) MW rotates the light walk -- its test repeated as a guard ahead of the hoisted squared radius
+ * and field addresses, where the target's preheader holds them and branches to the bottom test.
+ * Tried: the loop without its init, as a while, `i++`, `continue`s for the two skips, the iterator
+ * declared at the top, before the cell or after the squaring, the radius squared into a named local
+ * before the walk (all 0x354), squared before the cell test (0x34C, 38 off: still guarded, the
+ * multiply in a delay slot), squared in the body (rotation stops, but the preheader is laid out
+ * after the return: 0x364), a do-while (0x344), the cell's lights an inline with an early return
+ * (0x364). (2) The global colours' nine products are `mul.s d,k,col` here, `d,col,k` in the target,
+ * whichever side the constant is written on -- also through a named factor, a reference to the colour,
+ * the nine written out, `c = c + ...`, or an inline helper taking the factor */
+float CWorld::GetLightIntensity(const CPnt3D *p, float radius, unsigned int flags)
+{
+    CPnt3D c = CPnt3D::zero;
+
+    if (!(flags & 2)) {
+        c.x += m_gLight.ambient.x;
+        c.y += m_gLight.ambient.y;
+        c.z += m_gLight.ambient.z;
+    }
+    if (!(flags & 1)) {
+        for (int i = 0; i < 3; i++) {
+            c.x += m_gLight.col[i].x * 0.999999f;
+            c.y += m_gLight.col[i].y * 0.999999f;
+            c.z += m_gLight.col[i].z * 0.999999f;
+        }
+    }
+    if (!(flags & 4)) {
+        CCell *cell = m_grid.GetCell(p->x, p->z);
+        CLightList *lights = cell ? &cell->m_lightList : 0;
+
+        if (lights && lights->size()) {
+            CLightList::iterator i;
+
+            radius *= radius;
+            for (i = lights->begin(); i != lights->end(); ++i) {
+                CLight *l = *i;
+
+                if (l->m_active) {
+                    CPnt3D d = l->m_WorldPosition - *p;
+                    float dist = d.x * d.x + d.y * d.y + d.z * d.z;
+
+                    if (dist < radius + l->m_maxRangeSq && dist < l->m_maxRangeSq) {
+                        float minSq = l->m_minRange * l->m_minRange;
+                        float k;
+
+                        if (dist <= minSq)
+                            k = 1.0f;
+                        else
+                            k = 1.0f / (l->m_maxRangeSq - minSq) * (l->m_maxRangeSq - dist);
+                        c.x += l->m_diffuse.x * k;
+                        c.y += l->m_diffuse.y * k;
+                        c.z += l->m_diffuse.z * k;
+                    }
+                }
+            }
+        }
+    }
+    return 0.4901f * c.x + 0.4657f * c.y + 0.0441f * c.z;
+}
+
 /* a node's children sorted into the cells and the rest; whether the node is the world is asked
  * and the answer dropped (SOCOM 1's, the same; its this is not read) */
 void CWorld::Segregate_CCells(CNode *node, CNodeVector &cells, CNodeVector &others)
