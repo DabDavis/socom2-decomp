@@ -319,6 +319,11 @@ public:
      * ours) */
     float GetArmingDistance();
     void SetArmingDistance(float v);
+    /* the recoil's share (SOCOM II's, the float at 0x6C: 0x3D2000 and 0x3D2010; ReadWeapon's
+     * "RecoilPct", 0 by default -- the kit's Recoil hands it to the SEAL's recoil step, seal_kit.cpp
+     * calling it by address; the names ours, after the rdr field) */
+    float GetRecoilPct();
+    void SetRecoilPct(float pct);
     /* the range (SOCOM 1's, the float at 0x3C: 0x3D27F0) */
     float GetMaxRange();
     /* the range full damage reaches (SOCOM 1's GetEffectiveRange, the float at 0x40: 0x3D27E0,
@@ -414,7 +419,7 @@ public:
     /* added to the ammunition's damage by CZProjectile::GetDamage (SOCOM II's; the name ours) */
     float m_damagebonus;   // 0x64
     float m_socom2_68;   // 0x68 (SOCOM II's)
-    float m_socom2_6c;   // 0x6c
+    float m_recoilPct;   // 0x6c (SOCOM II's: "RecoilPct")
     AI_PARAMS m_ai_params;   // 0x70 (SOCOM 1: 0x54)
     EQUIP_ITEM m_ID;   // 0x7c (SOCOM 1: 0x60)
     CZAnim **m_hitanim;   // 0x80 (SOCOM 1: 0x64; ClearAnims frees it)
@@ -469,6 +474,10 @@ public:
     static CZProjectileList *m_pProjectilelist;
     /* the timer registered for the HUD, by the value it counts (SOCOM 1's static: 0x4B52C0) */
     static float *m_timer_pCurval;
+    /* the weapons' ticks switched off (SOCOM 1's static, a byte at gp-25960 there: 0x4B52B0 here --
+     * PreTick and PostTick return at once while it is set; the mission cameras' film start sets it
+     * and their end clears it, as both builds' do) */
+    static bool m_weaponTickDisabled;
     /* the HUD's timer: registered with the value it counts, its full value and its direction, taken
      * back by the HUD, cleared by the value's owner (SOCOM 1's statics, 0x3CFFC0-0x3D008F; SOCOM
      * II's ClearTimer takes the value, any when 0) */

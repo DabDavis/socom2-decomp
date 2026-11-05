@@ -2065,6 +2065,47 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the kit and AI states, round 48** (CTSound::Tick; CTInView / CTPlay::Tick written):
+  - a random pick as an if/else with the draw in its own local (`int r = rand(); x = r % (n + 1) + 1;`) pads the else
+    label and leaves the `b` over it unfilled -- a ternary, a lone if or the draw inline fills the `b` from the join and
+    leaves the label unpadded; `int s = x == 11 ? a : x;` leaves the join unpadded with s a temporary, `if (s == 11) s =
+    a;` pads it;
+  - a local with a dead first definition (`const char *ent = 0;`, assigned later) is numbered at that dead store,
+    initialised from an inline's result it merges into the inline's temporary; a field read through a trivial inline
+    accessor is a temporary numbered at the call, a plain `seal->m_id` local is numbered with the named locals;
+    `aware <= cmd->m_aware` gives slt at / bnez at, `>=` puts the slt result in v0 (CTSound::Tick 0x5D0C90: its
+    block's flag word laid out from what the parser writes, the registers by `tools/igreplay.py --target`);
+  - an inline on a struct member addresses the fields off the controller when it is a named local, through a cast
+    temporary MW keeps `&m_view_cone` in a saved register; in an inline find an index passed as a parameter is
+    numbered before the inline's type (CTPlay::Tick OPEN at the target's size: the block pointer wants numbering after
+    the second inlined SEAL find, `--move 39=58.5` gives 0 differ).
+- **Tells from the weapons, round 28** (CZWeapon::Fire at last, CTurret's Init and constructor, CVehicle::Init):
+  - MW LAYS OUT THE FRAME TOP-DOWN IN THREE GROUPS: named locals in declaration order, then return copies and
+    non-returned inline locals in code order, then by-value inlines' result locals in expansion order; an array or
+    struct declared later takes the lower slot; a dead assignment of an inline's by-value result to a declared local
+    removes the copy and the local but leaves the inline's result local in the last group (Fire's unused point behind:
+    `bpos = *pos - d`);
+  - writing an auto-inlined call out into an uninitialised named local assigned in both arms gives its spill the named
+    local's place -- CZWeapon::Fire 0x3D2D70, 31 frame offsets off since round 22, closed by the spill slots
+    `tools/igreplay.py --move 45=40.5` predicted (the GCC front's round 34a slot replay);
+  - a bool field passed to a bool parameter loads straight with lbu, an unsigned char field adds an sltu; a const member
+    inline with mutable results keeps a local struct in the frame (SOCOM 1's CAiCone), inside a loop MW hoists every one
+    of its field addresses; a named local for an inline's product moves its float register; a class other units declare
+    differently can be built in a slot struct by calling its out-of-line constructor by mangled name through an
+    `extern "C"` declaration (`__ct__9CAiTargetFv` -- a modelling device); CTurret::Init 0x3A9A80 (SOCOM 1's, first build),
+    CTurret() 0x3AA350, CVehicle::Init 0x3ADAB0 (its twin); m_weaponTickDisabled and Get / SetRecoilPct named.
+- **Tells from the SEALs, round 46** (HandleSmokeAndGas, HandleWater, AddBlendOverlay, the satchel drop, the climb's wall
+  homing; seal_orders.cpp all hand source):
+  - an inline's by-value bounds are loaded at the call, taken by `const float &` the upper bound loads only after the
+    lower test, as the target (`!(v < lo) && v <= hi`); a result returned from several early `return p;` with p still 0 is
+    folded to the constant, one return at the end of nested ifs keeps p in a saved register zeroed at entry (the dead AI
+    SEAL's satchel drop 0x59FAC0, new in SOCOM II);
+  - a short-sized enum parameter passed to a short parameter goes unextended, `(int)type` gives the target's sign
+    extension at the call; declaring the active anim first, uninitialised, swaps the target's s0 / s1 between it and the
+    top blend (AddBlendOverlay 0x587780, SOCOM 1's, with its four setters by order);
+  - a class whose virtuals are all inline makes the unit that dynamic_casts to it emit that overlay's RTTI copy: resolve
+    it with an `ovl-copy:` data row (CParticleEx's 0x65F0C0); HandleWater 0x5B52B0 is SOCOM 1's plus a bool -- was the
+    SEAL in water before; GetCommandName 0x58EF80 / GetCommandId 0x58E0A0 named by SOCOM 1's order.
 - **Tells from the game states, round 41** (four long opens closed -- HandleBombStateRequest since round 6, SetState since
   10, CreateCustomCharTypes and NVGNoiseParse since 24 -- the accuracy rating, C2DMessage_Q::Init):
   - copying a parameter into an enum-typed local placed between two early-return tests moves the parameter's register
