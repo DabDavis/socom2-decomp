@@ -1017,6 +1017,158 @@ extern short data_003DF0C8;
 bool func_0058A470(CZSealBody *seal, AnimType type);
 }
 
+extern "C" {
+/* the item in hand in an M203's or a grenade launcher's fire mode (the kit's OVL2 0x5BDA00 and
+ * 0x5BD6D0, tail calls on its selected item: SOCOM 1's CurWeaponIsM203Mode and its launcher twin --
+ * the kit lane's rows) */
+bool func_005BDA00(CZKit *kit);
+bool func_005BD6D0(CZKit *kit);
+/* the reloads SOCOM II adds (OVL1 data, anim types beside data_003DF098..0x3DF0C8) and the throwables'
+ * set's reload (0x3DF0D8, its timed call the kit's ShowProjectile: OVL2 0x5A78C0) */
+extern short data_003DF0B0;
+extern short data_003DF0D0;
+extern short data_003DF0D8;
+void func_005A78C0(void *body, void *data);
+/* (OVL2 0x5B4340: the state test of a kind, below) */
+bool func_005B4340(CZSealBody *seal, int kind);
+}
+
+/* a reload's blend pushed: the throwables' set its own; else by the stance the blends rest in -- a
+ * launcher's, an item of kind 81 when asked, item 84 or a pistol-kind (101) item but 104-106, the rifle,
+ * else the pistol, each moving or still -- in the air only a launcher's; the stack cleared to its base
+ * first when still in the state it rests in, the blend's rate set to the weapon's reload time when
+ * still (OVL2 0x5A82E0; SOCOM 1's Reload, after CanFire in both builds) */
+bool CZSealBody::Reload(bool b)
+{
+    CZFTSWeapon *item = m_kit.GetCurItem();
+    EQUIP_ITEM kind = EQUIP_NONE;
+    EQUIP_ITEM id = EQUIP_NONE;
+
+    if (item) {
+        kind = item->GetIDType();
+        id = item->m_ID;
+    }
+    TopBlend();
+    bool rifle = m_item == ITEM_RIFLE;
+
+    if (!func_005B4340(this, 3))
+        return false;
+    bool moving = m_velM.x * m_velM.x + m_velM.y * m_velM.y + m_velM.z * m_velM.z > 400.0f;
+    bool launcher = true;
+
+    if (!func_005BDA00(&m_kit) && !func_005BD6D0(&m_kit))
+        launcher = false;
+    bool pistolkind = false;
+
+    if (kind == 101 && (unsigned int)(id - 104) > 2)
+        pistolkind = true;
+    SEAL_STATE state = (SEAL_STATE)m_state;
+    SEAL_STATE base = (SEAL_STATE)PeekBaseState();
+    short anim;
+
+    if (m_animset == data_0044D408)
+        anim = data_003DF0D8;
+    else {
+        switch (base) {
+        case stateStand:
+            if (launcher) {
+                if (moving)
+                    anim = data_003DEB70;
+                else
+                    anim = data_003DEBF8;
+            } else if (b && kind == 81) {
+                if (moving)
+                    anim = data_003DF0D0;
+                else
+                    anim = data_003DF0B8;
+            } else if (id == 84 || pistolkind) {
+                if (moving)
+                    anim = data_003DF0B0;
+                else
+                    anim = data_003DF098;
+            } else if (rifle) {
+                if (moving)
+                    anim = data_003DEB70;
+                else
+                    anim = data_003DEB60;
+            } else {
+                if (moving)
+                    anim = data_003DEB68;
+                else
+                    anim = data_003DEB58;
+            }
+            break;
+        case stateCrouch:
+            if (launcher) {
+                if (moving)
+                    anim = data_003DEB70;
+                else
+                    anim = data_003DEBF8;
+            } else if (b && kind == 81) {
+                if (moving)
+                    anim = data_003DF0D0;
+                else
+                    anim = data_003DF0C0;
+            } else if (id == 84 || pistolkind) {
+                if (moving)
+                    anim = data_003DF0B0;
+                else
+                    anim = data_003DF0A0;
+            } else if (rifle) {
+                if (moving)
+                    anim = data_003DEB70;
+                else
+                    anim = data_003DEB80;
+            } else {
+                if (moving)
+                    anim = data_003DEB68;
+                else
+                    anim = data_003DEB78;
+            }
+            break;
+        case stateProne:
+            if (launcher)
+                anim = data_003DEBF8;
+            else if (b && kind == 81)
+                anim = data_003DF0C8;
+            else if (id == 84 || pistolkind)
+                anim = data_003DF0A8;
+            else if (rifle)
+                anim = data_003DEB90;
+            else
+                anim = data_003DEB88;
+            break;
+        case stateInAir:
+            if (launcher)
+                anim = data_003DEB70;
+            else
+                return true;
+            break;
+        default:
+            return true;
+        }
+    }
+    if (anim != -1) {
+        if (!moving && state == base)
+            ClearToBase(false);
+        CZBodyAnimBlend *blend = (CZBodyAnimBlend *)func_00588BC0(this, (AnimType)anim, state, 0, 0);
+
+        if (blend && anim == data_003DF0D8) {
+            blend->m_callback.m_func = func_005A78C0;
+            blend->m_callback.m_tfrac = 0.5f;
+            blend->m_callback.m_userdata = 0;
+        }
+        if (!moving) {
+            ACTIVE_ANIM *rep = blend->Representative();
+            float t = item->m_reloadtime;
+
+            if (!(t <= 0.0f))
+                rep->m_script_wt = rep->m_anim->m_10 / t;
+        }
+    }
+    return true;
+}
+
 /* whether a reload is under way: the kit's fire delay, a reload's anim on top -- or anywhere on the
  * blend stack -- or a moving reload's overlay playing (OVL2 0x5A7AB0; SOCOM 1's IsReloading, between
  * IsChangingWeapons and IsThrowing in both builds: two Top calls, the first unread; SOCOM II asks the

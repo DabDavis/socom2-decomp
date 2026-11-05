@@ -1965,6 +1965,11 @@ public:
      * written yet) */
     bool IsChangingWeapons(bool kit);
     bool IsReloading();
+    /* a reload's blend pushed for the stance the blends rest in, the item in hand and whether the SEAL
+     * moves -- none in the air unless a launcher reloads; true unless the state test of kind 3 refuses
+     * (SOCOM 1's Reload, which returned the blend; OVL2 0x5A82E0 -- CZKit::Reload and
+     * ChamberLauncherRound call it, the flag their own) */
+    bool Reload(bool b);
     bool CanChangeItem();
     /* whether a body may be picked up, the view zoomed, a victim restrained, taken by a CQB attack or
      * knifed now (SOCOM 1's, in its order around CanChangeItem and FindDeathAnimTypeCQB: OVL2

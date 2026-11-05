@@ -10816,7 +10816,7 @@
 0x005A7D10 0xD0 IsThrowing__10CZSealBodyFb  # OVL2; s1:order by hand (SOCOM 1's IsThrowing__10CZSealBodyFb, right before CanFire in both builds: the same eight anim tests on the top blend (one global compared twice), then two more unless the flag is set) -- the SEAL lane, round 12
 0x005A7DE0 0x3F0 CanFire__10CZSealBodyFbb  # OVL2; s1:order by hand (SOCOM 1's CanFire__10CZSealBodyFv, after IsThrowing and before Reload/AimWeapon in both builds, two flags added in SOCOM II: CanChangeItem calls it first where SOCOM 1's calls CanFire, and FireWhenReady calls it once as SOCOM 1's does) -- the SEAL lane, round 12
 0x005A81D0 0x108 func_005A81D0  # OVL2
-0x005A82E0 0x4B0 func_005A82E0  # OVL2
+0x005A82E0 0x4B0 Reload__10CZSealBodyFb  # OVL2; s1:order by hand (the SEALs, round 39): SOCOM 1's Reload__10CZSealBodyFv (0x298DE0), after CanFire and func_005A81D0 and before AimWeapon in both builds -- PeekBaseState's stance switch picking a reload anim, the push and the rate from the weapon's reload time; SOCOM II's takes a flag (CZKit::Reload and ChamberLauncherRound pass it) and returns a bool; seal_env.cpp byte-exact
 0x005A8790 0xC0 AimWeapon__10CZSealBodyFv  # OVL2; s1:order by hand (SOCOM 1's AimWeapon__10CZSealBodyFv, before CanUseBodyCarry and CanChangeItem in both builds: PartInSpace of the item's part, the quaternion applied to unit_x into the aim (SOCOM 1's m_aim_dir 0x10a0 = 0x1440), unit_nz otherwise; the item byte SOCOM 1's m_item 0xe58 = 0xF79) -- the SEAL lane, round 12
 0x005A8850 0x70 func_005A8850  # OVL2
 0x005A88C0 0xF8 func_005A88C0  # OVL2
