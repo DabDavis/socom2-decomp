@@ -332,14 +332,15 @@ void C2DMessage_Q::Clear_Messages()
 }
 
 /* the newest line's text, "" with none (OVL1 0x2B6D60; SOCOM 1's LastMessage, between SetBkgColor
- * and Clear_Messages as here; OVL2's 0x5BB000 calls it).
- * OPEN, 0x68 against 0x78: the walk is the target's to the nops; the text's c_str() is not -- the
- * target materialises the short-form test as a bool (`andi 1; sltu; xori; andi 0xff`, then beqz)
- * and joins the two forms with a `b` over a nop before the return's own `b`, where include/string's
- * c_str (and fts_state.h's) inline to `andi; beqz` with the short form in the delay slot. Tried: an
- * inline GetText() on the line, the ternary, a result local, the null test inverted, all over both
- * strings. The negation materialised and narrowed reads like a bool accessor one inline level
- * deeper than c_str's own (an is_short() over is_long()?) -- a request for include/string */
+ * and Clear_Messages as here; OVL2's 0x5BB000 calls it). The target materialises the short-form
+ * test as a bool (`andi 1; sltu; xori; andi 0xff`, then beqz) and joins the two forms with a `b`
+ * over a nop before the return's own `b`, where one c_str() inlines to `andi; beqz` with the short
+ * form in the delay slot. A NUMBERING DEVICE gives the target's (the MSL headers' round 31, by the
+ * integrator): a dead first c_str() ahead of the return's -- the repeated inline predicate is
+ * materialised once, stored, negated and narrowed, as the target has it (byte-exact under the old
+ * include/string and under round 31's, where `if (last && last->m_text.size() >= 0)` matches too).
+ * Tried before it: an inline GetText() on the line, the ternary, a result local, the null test
+ * inverted, all over both strings */
 const char *C2DMessage_Q::LastMessage()
 {
     C2DMessageString *last = 0;
@@ -347,7 +348,10 @@ const char *C2DMessage_Q::LastMessage()
 
     for (iterator i = begin(); i != e; ++i)
         last = (C2DMessageString *)*i;
-    if (last)
+    if (last) {
+        const char *s = last->m_text.c_str();   /* a numbering device: dead */
+
         return last->m_text.c_str();
+    }
     return "";
 }
