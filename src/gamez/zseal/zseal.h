@@ -100,6 +100,24 @@ public:
      * conversion is) */
     static AnimType ProneRStrafe;   // OVL1 0x3DECC0 (SOCOM II adds one after ClimbMedium's four)
     static AnimType ProneLStrafe;   // OVL1 0x3DECD0
+    /* (SOCOM 1's ReceiveRestraints and ApplyRestraints, adjacent in both builds: the restraint's
+     * capture 0x5784A0 pushes the first on the victim after anim 26 and the second on the captor,
+     * as SOCOM 1's RestrainBuddy does) */
+    /* (SOCOM 1's Stab and Stabbed, two apart in both builds and five before ReceiveRestraints: the
+     * stab's kill 0x578D20 pushes Stabbed on the victim and Stab on the attacker, as SOCOM 1's
+     * StabBuddy does) */
+    static short Stab;   // OVL1 0x3DEE08
+    static short Stabbed;   // OVL1 0x3DEE18
+    static short ReceiveRestraints;   // OVL1 0x3DEE40
+    static short ApplyRestraints;   // OVL1 0x3DEE48
+    /* (SOCOM 1's BuddyCarryBody, BuddyCarryPickup and BuddyCarriedPickup, the carry's -- six, ten
+     * and twelve after ReceiveRestraints there, eight, twelve and fourteen here: SOCOM II adds two
+     * after ApplyRestraints; PutdownBuddy 0x5794D0 pushes them as SOCOM 1's does) */
+    static short BuddyCarryStand;   // OVL1 0x3DEE68 (SOCOM 1's 0x47529C: PickupBuddy's)
+    static short BuddyCarriedStand;   // OVL1 0x3DEE78 (SOCOM 1's 0x4752A4)
+    static short BuddyCarryBody;   // OVL1 0x3DEE80
+    static short BuddyCarryPickup;   // OVL1 0x3DEEA0
+    static short BuddyCarriedPickup;   // OVL1 0x3DEEB0
 };
 
 /* how a SEAL died (SOCOM 1's DWARF, a byte) */
@@ -930,7 +948,10 @@ public:
      * bit 2 the one 0x56D890 sets, which a covered state keeps (0x5F6350); a breach clears 13 on
      * entry, then sets 16 from its own bit 13, clears 17 and sets 13 as it ends (0x5F3620) */
     unsigned int m_aibit2 : 1;
-    unsigned int m_bits3 : 3;
+    unsigned int m_aibit3 : 1;
+    unsigned int m_aibit4 : 1;
+    /* bit 5: set on a restrained victim's AI by RestrainBuddy (OVL2 0x578990; the name ours) */
+    unsigned int m_aibit5 : 1;
     /* bit 6: held set while CTMacro::Tick (0x5D6DC0) pushes its script state, then put back (the
      * kit lane, round 23; the name ours) */
     unsigned int m_aibit6 : 1;
@@ -1646,8 +1667,17 @@ public:
         if (m_followers > 0)
             m_followers--;
     }
-    void RestrainBuddy(CZSealBody *victim);
-    void StabBuddy(CZSealBody *victim);
+    /* the restraint begun, the top blend returned (OVL2 0x578990, seal_body.cpp; SOCOM 1's returned
+     * its blend too) */
+    CZBodyAnimBlend *RestrainBuddy(CZSealBody *victim);
+    /* the stab begun, the top blend returned (OVL2 0x578F90, seal_body.cpp) */
+    CZBodyAnimBlend *StabBuddy(CZSealBody *victim);
+    /* the body carried put down, the carrier's last blend returned (OVL2 0x5794D0, seal_body.cpp) */
+    CZBodyAnimBlend *PutdownBuddy();
+    /* a buddy picked up, the carrier's last blend returned (OVL2 0x579720, seal_body.cpp) */
+    CZBodyAnimBlend *PickupBuddy(CZSealBody *buddy);
+    /* a crouch to pick a buddy up, its blend's timed call left to do it (OVL2 0x579A30, seal_body.cpp) */
+    CZBodyAnimBlend *CrouchToPickupBuddy(CZSealBody *buddy);
     bool ExecuteAction_ApplyRestraint(CZSealBody *victim);
     bool ExecuteAction_CQBAttack(CZSealBody *victim);
     /* a pickup taken up: a grenade thrown back, the others each their own way (SOCOM 1's; OVL2
@@ -1674,6 +1704,9 @@ public:
     void ActionSelectionMask(int id);
     /* the restraint flag set (an inline: its bool is stored as `(b & 1)`) */
     void SetRestrained(bool on) { m_restrained = on; }
+    /* the restrainable flag set (an inline: 0x5784A0 clears it with `(0 & 1) << 7`, as SOCOM 1's
+     * RestrainBuddy does; the name ours) */
+    void SetRestrainable(bool on) { m_restrainable = on; }
     /* the squad-joined flag set (an inline: `(b & 1) << 6` even for a constant) */
     void SetJoinedUnit(bool on) { m_joined_unit = on; }
     /* the gas and smoke flags set (inlines: a constant true is `daddiu 1 << n`) */
@@ -2025,7 +2058,10 @@ public:
     zdb::IntersectStruct m_last_reticule;   // 0x3c0
     unsigned char _3e0[0x400 - 0x3e0];
     zdb::IntersectStruct m_last_altitude;   // 0x400 (SOCOM 1's 0x320)
-    unsigned char _420[0x428 - 0x420];
+    /* the clock when the altitude was last taken over (DetachBody 0x579220 stores the game's clock;
+     * new in SOCOM II, the name ours) */
+    float m_420;   // 0x420
+    unsigned char _424[0x428 - 0x424];
     CAiEvent *m_aiEvent;   // 0x428: the SEAL's own AI event (SOCOM 1's 0x380)
     unsigned char _42c[0x434 - 0x42c];
     unsigned char m_snakePath[4];   // 0x434: a CAiPath (SOCOM 1's 0x384)

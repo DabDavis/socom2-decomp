@@ -356,8 +356,16 @@ public:
 
     /* the set's name (out of line in the SEALs' units, OVL2 0x578940) and a set by its name in the
      * list, or 0 (SOCOM 1's Find, anim.cpp's: inlined one level in 0x58C600, the list's iterator pieces
-     * called -- OVL2 0x5788C0-0x578980, seal_body.cpp's copies) */
-    std::string &GetName() { return m_name; }
+     * called -- OVL2 0x5788C0-0x578980, seal_body.cpp's copies). GetName is five inline levels high:
+     * FITTED, not read off the image (the kit's round 38 in anim.cpp, the same chain) -- the depth
+     * the target's Find needs, so that its whole tree is over five and 0x58C600 inlines Find one
+     * level and calls every piece, as the target does; no function calls a piece below GetName or
+     * c_str, so the chain is GetName's or c_str's in the original */
+    std::string &Name0() { return m_name; }
+    std::string &Name1() { return Name0(); }
+    std::string &Name2() { return Name1(); }
+    std::string &Name3() { return Name2(); }
+    std::string &GetName() { return Name3(); }
     static AnimSet *Find(const char *name)
     {
         std::vector<AnimSet *>::iterator i;
@@ -393,16 +401,13 @@ int strcmp(const char *a, const char *b);
 /* the body readied: unless asked to keep them, every anim of the common archive and of the map's added
  * to the body; the type's first anim set found by name and bound standing with its type-1 blend, kept
  * as the default too; unless asked, the SEAL posed by the top blend's first anim and the parts saved
- * (OVL2 0x58C600, new in SOCOM II: the constructor calls it -- the name unknown).
- * OPEN, 77 instructions: AnimSet::Find. The target inlines Find ONE level -- every call in it (the
- * iterator's default constructor, begin, operator=, end, !=, *, GetName, c_str, postfix ++) left a
- * call to seal_body.cpp's copies 0x5788C0-0x578980, as in 0x5784A0 and anim.cpp's 0x5E3940 -- where
- * MW here inlines Find's body with begin's and end's (their data(), __raw_end and __iter called):
- * Find's tree is taller in the original. Probed: GetName written five high (four wrapper levels) makes
- * Find six and the function byte-exact, the loops' locals as they stand (the first archive, then its
- * counter, then its count; the second's count declared first, bare -- each loop's registers rotate:
- * build/scratch/seal/v_58c600.py, 1 of 10 orders); so the whole miss is the MSL's depth (c_str's or an
- * iterator piece's, the MSL lane's), not this body */
+ * (OVL2 0x58C600, new in SOCOM II: the constructor calls it -- the name unknown). The target inlines
+ * Find ONE level -- every call in it (the iterator's default constructor, begin, operator=, end, !=,
+ * *, GetName, c_str, postfix ++) left a call to seal_body.cpp's copies 0x5788C0-0x578980, as in
+ * 0x5784A0 and anim.cpp's 0x5E3940: byte-exact with GetName five high (the view above, fitted), the
+ * loops' locals as they stand (the first archive, then its counter, then its count; the second's
+ * count declared first, bare -- each loop's registers rotate: build/scratch/seal-r37/v_58c600.py, 1
+ * of 10 orders) */
 extern "C" bool func_0058C600(CZSealBody *seal, bool keep)
 {
     if (!keep) {
