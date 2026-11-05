@@ -255,8 +255,9 @@ public:
     /* a new state of a kind, by kind (SOCOM 1's; seal_aistate.cpp's, 0x5F6550) */
     static CAiState *Create(AI_STATE state);
 
-    /* the bits Reset sets, each through a setter taking a bool (a bool stored into a bit-field is
-     * `(b & 1) << n` even for a constant -- the target's `andi zero,1` and its shifts; the names
+    /* the bits as other code sets them, each through a setter taking a bool (a bool stored into a
+     * bit-field is `(b & 1) << n` -- Reset writes its own bits directly: MW masks a bit-field store
+     * after folding, so `m_bit2 = false` compiles to the same `andi zero,1` and its shifts; the names
      * ours) */
     void SetBit0(bool b) { m_bit0 = b; }
     void SetActive(bool b) { m_active = b; }
@@ -271,24 +272,30 @@ public:
 
     /* the state made new again: its kind, its steps and clocks zeroed, its bits as a fresh state
      * has them (SOCOM 1's Reset__8CAiStateF8AI_STATE; inline -- CAiState's constructor inlines
-     * it, Create's plain state calls its copy) */
+     * it, Create's plain state calls its copy). The bits written straight into the fields, not
+     * through the setters: the same code (`andi zero,1`, `li 0xffff; andi 0xf` -- the mask comes
+     * after constant folding), ~40 inline units fewer -- so CAiState(AI_STATE) under a derived
+     * constructor fits inline_max_size and the squad's private news 0x5ED140 inlines a stack
+     * CAiSPursue whole, as the target does (through the setters CAiState(AI_STATE) stayed a call
+     * until the limit was raised to ~300; every other unit's object unchanged -- objcmp, 646 units,
+     * the kit's round 44) */
     void Reset(AI_STATE state)
     {
-        SetBit2(false);
+        m_bit2 = false;
         m_state = state;
         m_phase = m_nextPhase = 0;
         m_time = m_delay = m_phaseTime = 0.0f;
         m_flags = 0;
-        SetBit3(false);
-        SetBit15(false);
-        SetBit0(true);
-        SetActive(false);
-        SetBit2(true);
-        SetBit3(false);
-        SetBit4(false);
-        SetNibble5(0xffff);
-        SetNibble9(1);
-        SetBit13(false);
+        m_bit3 = false;
+        m_bit15 = false;
+        m_bit0 = true;
+        m_active = false;
+        m_bit2 = true;
+        m_bit3 = false;
+        m_bit4 = false;
+        m_nibble5 = 0xffff;
+        m_nibble9 = 1;
+        m_bit13 = false;
         m_4c = 1.0f;
         *(unsigned int *)&m_loc = *(unsigned int *)&CAiMapLoc::invalid;
         m_54 = -1;
@@ -594,13 +601,16 @@ public:
     /* 0x58: the action's object, released on the way out for the SEAL (OnSignal's
      * CNodeAction::Release, OVL1 0x2B49D0, clears its holder id at 0x34; the name ours) */
     CNodeAction *m_58;
-    unsigned char _5c[0x60 - 0x5c];
+    /* 0x5c: how the action is taken, -1 for the valve's say (0x5F0180 sets it; the name ours) */
+    int m_5c;
     CPnt3D m_60;   // 0x60
     int m_6c;   // 0x6c (0 on a reset)
     CAiMapLoc m_70;   // 0x70
     CAiMapLoc m_74;   // 0x74
     int m_78;   // 0x78 (0 on a reset and when the anim is dropped)
-    unsigned char _7c[0x80 - 0x7c];
+    /* 0x7c: the AI map action's kind (0x5F0180 sets it; the name ours) */
+    unsigned char m_7c;
+    unsigned char _7d[0x80 - 0x7d];
     /* 0x80: the SEAL's anim set on entry, bound back on the way out (the name ours) */
     class AnimSet *m_animset;
     int m_84;   // 0x84: the object waited on (an id: slot 0x0C's event 1 drops it; 0x88 bytes)

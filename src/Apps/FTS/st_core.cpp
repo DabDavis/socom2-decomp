@@ -10,7 +10,6 @@
 
 /* unnamed yet (SOCOM 1's names in the comments) */
 extern "C" {
-void func_002A7D40(void *mission);               /* CMission::OnMissionStart */
 void exit(int code);
 void func_002A6950(void *mission);
 void func_002B6530(void *queue, const char *text, MSGTYPE type, int b, int c, float time);   /* C2DMessage_Q::Add_Message (the type a byte enum: CCoreState::DisplayMessage copies it lb) */
@@ -571,7 +570,7 @@ void CCoreState::OnPop(int userdata)
     if (userdata == 1) {
         CameraZoom::SetGoal(1.0f);
         theMission.ReOpen_Load();
-        func_002A7D40(&theMission);
+        theMission.OnMissionStart();
         CameraZoom::AttachSeal(ftsGetPlayer());
         m_hud->ReInit_Init();
     }
@@ -653,7 +652,7 @@ bool CCoreState::Init()
     m_world->ReleaseTextureAssetCharacters();
     zdb::CTexManager::m_texmanager.m_buffer.data_[zdb::CTexManager::TexPhase[36]]->Load(true);
     zdb::CTexManager::m_texmanager.m_buffer.data_[zdb::CTexManager::TexPhase[40]]->Load(true);
-    func_002A7D40(&theMission);
+    theMission.OnMissionStart();
     theMission.m_e8 = -1.0f;
     thePipe.SetOverlayTexture(zdb::CWorld::GetTexHandle("noise50.tif"));
     *(volatile unsigned int *)0x10003010 |= 4;

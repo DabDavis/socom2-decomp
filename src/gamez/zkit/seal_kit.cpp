@@ -9,6 +9,8 @@
  * from the statics below, defined in its order. Defined in reverse of their image order (-inline
  * deferred). */
 
+/* (the materials' real class ahead of zweapon.h's stand-in: GetHandFloorHit's inline lookup) */
+#include "../znode/int_material.h"
 #include "kit.h"
 #include "../zcamera/zcamera.h"
 #include "../zentity/zentity.h"
@@ -528,6 +530,16 @@ public:
     virtual void Virtual24();
     virtual void Virtual28();
     virtual bool IsPlayer() const;   /* +0x2C */
+};
+
+/* the local player as the recoil's screen scale reads it: the point its view starts from and the
+ * offset its aim adds to its position (new places in SOCOM II: SOCOM 1's at 0x10B8, 0x1110; the names
+ * ours) */
+struct CKitPlayerView {
+    unsigned char _0[0x1458];
+    CPnt3D m_1458;   // 0x1458
+    unsigned char _1464[0x14b0 - 0x1464];
+    CPnt3D m_14b0;   // 0x14b0
 };
 
 static inline bool KitIsPlayer(CKitBody *body)
@@ -1378,6 +1390,264 @@ bool CZKit::FetchLaseTarget()
         }
     }
     return false;
+}
+
+extern "C" {
+/* the controller's high rumble (CSealCtrl::SetHighRumbleTime, OVL2 0x592BA0: the SEALs'), the target
+ * mods' reported burst shot (an int at 0x6C, new in SOCOM II: OVL1 0x3C5AB0), the weapon's recoil
+ * step (a float at 0x6C: OVL1 0x3D2000) and the body's recoil counter raised by it, to 10 at most (a
+ * float at 0x378: OVL2 0x57D510) -- the weapons' and the SEALs' rows, unnamed */
+void SetHighRumbleTime__9CSealCtrlFf(CKitCtrl *ctrl, float time);
+void SetLowRumbleTime__9CSealCtrlFff(CKitCtrl *ctrl, float power, float time);
+int func_003C5AB0(CTargetMods *mods);
+float func_003D2000(CZFTSWeapon *w);
+void func_0057D510(CZSealBody *body, float step);
+}
+
+/* the knock's vertical screen scale, kept (SOCOM 1's recoil_constscl; OVL2 bss 0x66B678) */
+static float recoil_constscl;
+
+/* a point copied field by field through its address (the target keeps &a.y and &a.z in saved
+ * registers across the turret's call; the name ours) */
+static inline void CopyPoint(CPnt3D *dst, const CPnt3D *src)
+{
+    dst->x = src->x;
+    dst->y = src->y;
+    dst->z = src->z;
+}
+
+/* (OVL2 0x5C3360: kit.h's; SOCOM 1's Recoil) */
+void CZKit::Recoil(CZFTSWeapon *w)
+{
+    if (!KitIsPlayer((CKitBody *)m_body))
+        return;
+    CTargetMods *mods = w->TargetMods(GetStance__10CZSealBodyCFb(m_body, true));
+    float knock = mods->GetReticuleKnock();
+    float knockmax = mods->GetReticuleKnock_Max();
+    float dilate = mods->GetTarget_DilateUponFire();
+    float tmin = mods->GetTarget_Min();
+    float tmax = mods->GetTarget_Max();
+    int n = m_burst_count + 1 - w->AccuracyBurstCnt_Min();
+    float burst = 0.0f;
+
+    if (n > 0) {
+        float shots = w->AccuracyBurstCnt_Max() < n ? (float)w->AccuracyBurstCnt_Max() : (float)n;
+
+        burst = shots * w->m_accuracy_slope;
+    }
+    if (w->GetRumbleHigh_Enable()) {
+        CKitCtrl *ctrl = ((CKitBody *)m_body)->m_control;
+
+        SetHighRumbleTime__9CSealCtrlFf(ctrl, w->GetRumbleHigh_Time());
+    }
+    if (w->GetRumbleLow_Enable()) {
+        CKitCtrl *ctrl = ((CKitBody *)m_body)->m_control;
+
+        SetLowRumbleTime__9CSealCtrlFff(ctrl, w->GetRumbleLow_Time(), w->GetRumbleLow_Power());
+    }
+    signed char zc = ((CKitBody *)m_body)->m_200;
+
+    if (zc > 4 || zc == 4)
+        return;
+    int shot = func_003C5AB0(mods);
+
+    if (m_burst_count == shot)
+        m_retoffsety -= knock * mods->GetWiggleReport();
+    else if (shot < m_burst_count)
+        m_retoffsety -= knock;
+    zdb::CCamera *cam = zdb::CWorld::m_world->m_camera;
+    float aspx = cam->m_screenAspect[0];
+    float scl = cam->m_screenAspect[1];
+    CZSealBody *p = ftsGetPlayer__Fv();
+    CPnt3D a;
+    CPnt3D b;
+
+    CopyPoint(&a, &((CKitPlayerView *)p)->m_1458);
+
+    ((CKitPlayerView *)p)->m_14b0.Add(&((CEntity *)p)->m_posW, &b);
+    if (((CKitBody *)m_body)->m_eb8) {
+        ((CEntity *)((CKitBody *)m_body)->m_eb8)->Virtual60(&b);
+        CopyPoint(&a, &b);
+    }
+    float z = cam->GetZ(&a);
+    float d = z - cam->GetZ(&b);
+
+    scl = d == 0.0f ? scl : scl * d / z;
+    recoil_constscl = scl;
+    float ylim = knockmax * scl;
+    float xlim = knockmax * aspx;
+
+    if (m_retoffsety > ylim)
+        m_retoffsety = ylim;
+    else if (m_retoffsety < -ylim)
+        m_retoffsety = -ylim;
+    if (m_retoffsetx > xlim)
+        m_retoffsetx = xlim;
+    else if (m_retoffsetx < -xlim)
+        m_retoffsetx = -xlim;
+    m_prev_retsize = m_retsize;
+    m_retsize += dilate + dilate * burst;
+    if (m_retsize < tmin)
+        m_retsize = tmin;
+    else if (m_retsize > tmax)
+        m_retsize = tmax;
+    func_0057D510(m_body, func_003D2000(w));
+}
+
+/* (OVL2 0x5C2670: kit.h's; SOCOM 1's TickReticule). One rate variable for the offsets' return and the
+ * size's constriction, each a call result multiplied by dT in place: MW splits the reused variable into
+ * a new web numbered after every temporary, so both rates take $f0 and their multiplies sink into the
+ * branches' delay slots (two locals, or the products written in one statement, take $f2); the item's
+ * class declared uninitialised ahead of the cast (numbered before the weapon: the class in s3) */
+void CZKit::TickReticule(float dT)
+{
+    EQUIP_IDTYPE type;
+
+    if (!KitIsPlayer((CKitBody *)m_body))
+        return;
+    CZFTSWeapon *w = dynamic_cast<CZFTSWeapon *>((CZWeapon *)m_item[m_selected_item]);
+
+    type = IDTYPE_NONE;
+
+    if (w)
+        type = (EQUIP_IDTYPE)w->GetIDType();
+    if (!w)
+        return;
+    CTargetMods *mods = w->TargetMods(GetStance__10CZSealBodyCFb(m_body, true));
+
+    if (type == IDTYPE_EXPLOSIVE || type == IDTYPE_GRENADE || type == IDTYPE_BINOCULARS || type == 201) {
+        m_retmin = 0.0f;
+        m_retmax = 0.0f;
+    } else {
+        m_retmin = mods->GetTarget_Min();
+        m_retmax = mods->GetTarget_Max();
+    }
+    if (m_retsize < m_retmin)
+        m_retsize = m_retmin;
+    float rate = mods->GetReticuleKnock_Return();
+
+    rate *= dT;
+
+    if (m_retoffsetx > 0.0f) {
+        m_retoffsetx -= rate;
+        if (m_retoffsetx < 0.0f)
+            m_retoffsetx = 0.0f;
+    }
+    if (m_retoffsetx < 0.0f) {
+        m_retoffsetx += rate;
+        if (m_retoffsetx > 0.0f)
+            m_retoffsetx = 0.0f;
+    }
+    if (m_retoffsety > 0.0f) {
+        m_retoffsety -= rate;
+        if (m_retoffsety < 0.0f)
+            m_retoffsety = 0.0f;
+    }
+    if (m_retoffsety < 0.0f) {
+        m_retoffsety += rate;
+        if (m_retoffsety > 0.0f)
+            m_retoffsety = 0.0f;
+    }
+    CKitMover *e = ((CKitBody *)m_body)->m_eb8;
+
+    if (!e)
+        e = (CKitMover *)m_body;
+    float dilate = 1.0f / 65.0f * (e->m_velM.x * e->m_velM.x + e->m_velM.y * e->m_velM.y + e->m_velM.z * e->m_velM.z)
+                   * mods->GetTarget_DilateUponMovementMult();
+
+    dilate += 30.0f * (5.29f * (e->m_velR.x * e->m_velR.x + e->m_velR.y * e->m_velR.y + e->m_velR.z * e->m_velR.z));
+    dilate += 30.0f * (5.29f * (e->m_60 * e->m_60));
+
+    if (Airborne((CKitBody *)m_body)) {
+        CPnt3D &v = ((CKitBody *)m_body)->m_1350;
+
+        dilate += 1.0f / 65.0f * (v.x * v.x + v.y * v.y + v.z * v.z);
+    }
+    float lim = m_retmin + (m_retmax - m_retmin);
+
+    if (dilate > lim)
+        dilate = lim;
+    if (dilate < m_retmin)
+        m_retsizegoal = m_retmin;
+    else if (dilate > m_retmax)
+        m_retsizegoal = m_retmax;
+    else
+        m_retsizegoal = dilate;
+    if (m_item[m_selected_item]) {
+        rate = mods->GetTarget_Constrict();
+        rate *= dT;
+
+        m_prev_retsize = m_retsize;
+        if (m_retsize < m_retsizegoal) {
+            m_retsize += mods->GetTarget_DilateUponMovement();
+            if (m_retsize > m_retsizegoal)
+                m_retsize = m_retsizegoal;
+        } else if (m_retsize > m_retsizegoal) {
+            m_retsize -= rate;
+            if (m_retsize < m_retsizegoal)
+                m_retsize = m_retsizegoal;
+        }
+    }
+}
+
+extern "C" {
+/* a part's place in its body (CBody::PartInSpace, OVL1 0x2869D0: the body's CBody base at 0x170) */
+void PartInSpace__5CBodyCFP10CZBodyPartPC6CPnt3DP6CPnt3DP5CQuat(const void *body, void *part,
+                                                                 const CPnt3D *off, CPnt3D *pos, CQuat *rot);
+}
+
+/* a point added to another, by value (an inline returning a named point: the sum's slot below the
+ * caller's points, its copy into the caller's local -- the name ours) */
+static inline CPnt3D Added(const CPnt3D &a, const CPnt3D *b)
+{
+    CPnt3D r;
+
+    a.Add(b, &r);
+    return r;
+}
+
+/* (OVL2 0x5C2430: kit.h's; the hand's place copied through its address -- its y kept in a saved
+ * register for the hits' test, as the target does -- and each material bit tested `? true : false`,
+ * materialised before its branch) */
+zdb::IntersectStruct *CZKit::GetHandFloorHit(bool liquid)
+{
+    CPnt3D p;
+    CPnt3D zero = CPnt3D::zero;
+    CPnt3D pos = zero;
+    CPnt3D off = zero;
+
+    PartInSpace__5CBodyCFP10CZBodyPartPC6CPnt3DP6CPnt3DP5CQuat(((CKitBody *)m_body)->m_cbody,
+                                                               ((CKitBody *)m_body)->m_rhand, &off, &pos, 0);
+    ((CEntity *)m_body)->m_quat.Apply(&pos, &pos, 1);
+    CPnt3D t = Added(pos, &((CEntity *)m_body)->m_posW);
+
+    CopyPoint(&p, &t);
+    zdb::DiIntersect *di = zdb::CWorld::m_world->GetAltitudes(&p);
+    zdb::IntersectStruct *below = 0;
+    zdb::IntersectStruct *lowest = 0;
+
+    if (di->m_Cnt) {
+        float y = p.y;
+
+        for (int i = 0; i < di->m_Cnt; i++) {
+            zdb::IntersectStruct *hit = &di->m_Intersects[i];
+            CMaterialEx *mat = CMaterialExArray::GetMaterialEx(hit->GetMaterial());
+
+            if (mat) {
+                if (mat->m_volumetric ? true : false)
+                    continue;
+                if ((mat->m_liquid ? true : false) && !liquid)
+                    continue;
+            }
+            if (hit->m_pos.y <= y && (!below || !(hit->m_pos.y < below->m_pos.y)))
+                below = hit;
+            if (!lowest || !(lowest->m_pos.y < hit->m_pos.y))
+                lowest = hit;
+        }
+    }
+    if (!below)
+        below = lowest;
+    return below;
 }
 
 /* the fire delay still running (OVL2 0x5C2400, new in SOCOM II; the name ours) */
