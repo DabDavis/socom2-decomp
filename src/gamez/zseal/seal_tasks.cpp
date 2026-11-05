@@ -147,6 +147,12 @@ bool SetRegionType__7CAiMapsFPCQ26CAiMap6regionQ36CAiMap6region4TYPE(CAiMaps *ma
 const CAiMapRegion *GetRegion__7CAiMapsFPCcR9CAiMapLoc(CAiMaps *maps, const char *name, CAiMapLoc &loc);
 /* and GetLocation(const char *, CAiMapLoc &), a line's cell by name (OVL2 0x52DB70) */
 bool GetLocation__7CAiMapsFPCcR9CAiMapLoc(CAiMaps *maps, const char *name, CAiMapLoc &loc);
+/* the anim's root node, not made when missing (OVL1 0x2703D0, the engine core's row: SOCOM 1's
+ * GetRootNode with a flag), and a node's extension and its parent (zdb::CNode's inline accessors'
+ * out-of-line copies, OVL2 0x5AA610 and 0x5AA600 -- seal_env.cpp's spelling) */
+zdb::CNode *func_002703D0(CZAnim *anim, bool create);
+zdb::CNodeEx *func_005AA610(zdb::CNode *node);
+zdb::CNode *func_005AA600(zdb::CNode *node);
 }
 
 /* a region kind's name (SOCOM 1's CAiMap::region::GetTypeName, out of line there -- 0x2B9AA0, its
@@ -981,9 +987,18 @@ struct CTMap : TASK_HDR {
 };
 
 struct CTParam : TASK_HDR {
+    unsigned char _8[0x10 - 0x8];
+    TASK_ENT m_ent;   // 0x10: an entity whose SEAL is tested in the task's SEAL's place (the tick's)
+
     static _zanim_cmd_hdr *Parse(_zrdr *rdr);
     static bool Tick(_zanim_cmd_hdr *hdr, float *dT);
 };
+
+extern "C" {
+/* the parameter's test on a SEAL and its AI (OVL2 0x5D4770, this unit's, unwritten: the int and
+ * float ai::test instances' caller; the name a placeholder) */
+bool func_005D4770(CZSealBody *seal, CSealCtrlAi *ai, CTParam *cmd);
+}
 
 struct CTState : TASK_HDR {
     static _zanim_cmd_hdr *Parse(_zrdr *rdr);
@@ -1480,6 +1495,75 @@ _zanim_cmd_hdr *CTMap::Parse(_zrdr *rdr)
         }
     }
     return &cmd->hdr;
+}
+
+/* the action a node offers, up its tree (CNodeAction::GetAction(node, true) inlined one level, as
+ * seal_env.cpp's ActionOf: the accessors and the recursion called) */
+static inline CNodeAction *TaskActionOf(zdb::CNode *node)
+{
+    CNodeAction *a = 0;
+
+    if (node) {
+        a = dynamic_cast<CNodeAction *>(func_005AA610(node));
+        if (!a)
+            a = CNodeAction::GetAction(func_005AA600(node), true);
+    }
+    return a;
+}
+
+/* the AI maps changed, done at once: the running anim's node action's AI map action marked invalid
+ * and its valve set to 99 (kind 1), a region's type set (2), a line's visibility, type or id set
+ * (3-5, new in SOCOM II) (OVL2 0x5D6770; SOCOM 1's, the line kinds added) */
+bool CTMap::Tick(_zanim_cmd_hdr *hdr, float *dT)
+{
+    CTMap *cmd = (CTMap *)hdr;
+
+    switch (cmd->m_kind) {
+    case 1: {
+        CNodeAction *na = TaskActionOf(func_002703D0(ZAnim.m_CurAnim, false));
+
+        if (na) {
+            CAiMap::action *act = 0;
+            CAiMapLoc loc;
+
+            if (AiMaps.GetActionById(na->m_id, loc, &act)) {
+                act->SetTypeInvalid(1);
+                na->m_valve->SetValue(99);
+            }
+        }
+        break;
+    }
+    case 2: {
+        const CAiMapRegion *r = GetRegion__7CAiMapsFRC9CAiMapLoc(&AiMaps, cmd->m_loc);
+
+        if (r)
+            SetRegionType__7CAiMapsFPCQ26CAiMap6regionQ36CAiMap6region4TYPE(&AiMaps, r, (unsigned char)cmd->m_value);
+        break;
+    }
+    case 4:
+    case 3:
+    case 5: {
+        CAiMap *map = AiMaps.GetMapByIndex(cmd->m_loc.m_mapid);
+        CAiMap::line *l = map ? map->m_lineTable.Find(cmd->m_loc) : 0;
+
+        if (l) {
+            switch (cmd->m_kind) {
+            case 4:
+                l->m_type = cmd->m_value;
+                break;
+            case 3:
+                l->m_unk15 = cmd->m_value != 0;
+                break;
+            case 5:
+                l->m_id = cmd->m_value;
+                break;
+            }
+        }
+        break;
+    }
+    }
+    *dT = 0.0f;
+    return true;
 }
 
 /* anims played: the "anim" list's types (-1 for a name none has), a "stance" (0-2 kept in m_22),
@@ -2516,6 +2600,22 @@ bool CTPaint::Tick(_zanim_cmd_hdr *hdr, float *dT)
     }
     *dT = 0.0f;
     return true;
+}
+
+/* the parameter tested on the task's SEAL, or with an entity named on its SEAL, with its AI -- done
+ * at once (OVL2 0x5D4510; SOCOM 1's, its test inlined there, out of line here: 0x5D4770) */
+bool CTParam::Tick(_zanim_cmd_hdr *hdr, float *dT)
+{
+    TASK_SEAL(CTParam);
+    CSealCtrlAi *ai = seal ? SealAi(seal) : 0;
+
+    if (((const TASK_ENT *)&cmd->m_ent)->m_type)
+        seal = (CZSealBody *)cmd->m_ent.GetTyped(CEntity::ENT_TYPE_SEAL);
+    ai = seal ? SealAi(seal) : 0;
+    bool r = func_005D4770(seal, ai, cmd);
+
+    *dT = 0.0f;
+    return r;
 }
 
 /* a block made for a count of anims, copied when given (OVL2 0x5D3F00: SOCOM 1's CTPlay::Create, out
