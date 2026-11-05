@@ -309,13 +309,18 @@ public:
     unsigned char _0[0x1c];
 };
 
-/* an objective (fts_objectivecam.cpp's CMissionObjectiveCam, SOCOM 1's DWARF: only its destructor,
- * deleted here, and what TickObjectives reads -- its two tests, its map position, its flags) */
+/* an objective (fts_objectivecam.cpp's CMissionObjectiveCam, SOCOM 1's DWARF, 0x54 bytes: what
+ * LoadObjectiveCams makes and sets, what TickObjectives reads -- its two tests, its map position, its
+ * flags -- and its destructor, deleted here) */
 class CMissionObjectiveCam : public CMissionCam {
 public:
+    CMissionObjectiveCam();   /* 0x2C7530 */
     ~CMissionObjectiveCam();   /* 0x2C7490 */
     bool IsComplete() const;   /* 0x2C70D0 */
     bool IsAvailable() const;   /* 0x2C7370 */
+    void Set(const char *identifier, const char *name, const char *desc0, const char *desc1,
+             const char *desc2, const char *anim, const char *music, const char *valvename,
+             const char *invalidvalvename, const char *displayvalvename, const PNT2D *pos);   /* 0x2C7100 */
 
     unsigned char _1c[0x38 - 0x1c];
     PNT2D m_pos;   // 0x38
@@ -323,9 +328,13 @@ public:
     unsigned int m_isSubObjective : 1;   // 0x40
     unsigned int m_isCompass : 1;   // 0x40
     unsigned int m_bExtraction : 1;   // 0x40
-    unsigned int m_bit4 : 1;   // 0x40: SOCOM II's
+    unsigned int m_bit4 : 1;   // 0x40: SOCOM II's (ISBONUS)
     unsigned int m_unused : 27;   // 0x40
+    std::vector<int> m_vecLines;   // 0x44
+    int m_50;   // 0x50: SOCOM II's nav points, a bit per letter (0x2C7410 sets them)
 };
+
+extern "C" void func_002C7410(CMissionObjectiveCam *objective, const char *navpoint);
 
 class CMissionCamList : public std::list<CMissionCam *> {
 };
@@ -2336,6 +2345,70 @@ bool CMission::LoadMissionCams(CRdrFile *rdr)
 
         mc->Set(identifier, name, desc0, desc1, desc2, anim, music);
         m_missioncams.push_back(mc);
+    }
+    return true;
+}
+
+bool zrdr_findPNT2D(const _zrdr *rdr, const char *tag, PNT2D *out);
+
+/* the objectives: the old ones deleted and the list emptied, then each of the rdr's HUD_OBJECTIVES
+ * with a NAME made and listed -- its strings, valves and LOCATION set, its flags (ISSECONDARY,
+ * ISSUB_OBJECTIVE, no NO_COMPASS_ICON, ISEXTRACTION, SOCOM II's ISBONUS), its LINE_IDS and SOCOM
+ * II's NAV_POINTS letters (SOCOM 1's; OVL1 0x2A4D30) */
+bool CMission::LoadObjectiveCams(CRdrFile *rdr)
+{
+    for (CMissionObjectiveCamList::iterator i = m_objectivecams.begin(), e = m_objectivecams.end(); i != e; ++i)
+        delete *i;
+    m_objectivecams.erase(m_objectivecams.begin(), m_objectivecams.end());
+    if (!rdr)
+        return false;
+    _zrdr *objectives = zrdr_findtag((const _zrdr *)rdr, "HUD_OBJECTIVES");
+
+    if (!objectives)
+        return false;
+    for (int i = 0; i < objectives->Count(); i++) {
+        _zrdr *item = objectives->Item(i);
+        const char *identifier = zrdr_findstring(item, "IDENTIFIER");
+        const char *name = zrdr_findstring(item, "NAME");
+        const char *desc0 = zrdr_findstring(item, "DESCRIPTION");
+        const char *desc1 = zrdr_findstring(item, "DESCRIPTION2");
+        const char *desc2 = zrdr_findstring(item, "DESCRIPTION3");
+        const char *valve = zrdr_findstring(item, "VALVE");
+        const char *invalidvalve = zrdr_findstring(item, "INVALID_VALVE");
+        const char *displayvalve = zrdr_findstring(item, "DISPLAY_VALVE");
+        PNT2D location;
+
+        zrdr_findPNT2D(item, "LOCATION", &location);
+        const char *anim = zrdr_findstring(item, "ON_CALL_ANIMATION");
+        const char *music = zrdr_findstring(item, "ON_CALL_MUSIC");
+        bool isSub = zrdr_findtag(item, "ISSUB_OBJECTIVE") != 0;
+        bool isSecondary = zrdr_findtag(item, "ISSECONDARY") != 0;
+        bool isCompass = !zrdr_findtag(item, "NO_COMPASS_ICON");
+
+        if (!name)
+            continue;
+        CMissionObjectiveCam *objective = new CMissionObjectiveCam;
+
+        m_objectivecams.push_back(objective);
+        objective->Set(identifier, name, desc0, desc1, desc2, anim, music, valve, invalidvalve, displayvalve,
+                       &location);
+        objective->m_isSecondary = isSecondary;
+        objective->m_isSubObjective = isSub;
+        objective->m_isCompass = isCompass;
+        objective->m_bExtraction = zrdr_findtag(item, "ISEXTRACTION") != 0;
+        objective->m_bit4 = zrdr_findtag(item, "ISBONUS") != 0;
+        _zrdr *lines = zrdr_findtag(item, "LINE_IDS");
+        int count = lines ? lines->Count() : 0;
+
+        for (int j = 0; j < count; j++) {
+            int id = lines->Item(j)->Integer();
+
+            objective->m_vecLines.push_back(id);
+        }
+        _zrdr *navpoints = zrdr_findtag(item, "NAV_POINTS");
+
+        for (int j = 0; j < (navpoints ? (int)navpoints->Count() : 0); j++)
+            func_002C7410(objective, navpoints->Item(j)->String());
     }
     return true;
 }
