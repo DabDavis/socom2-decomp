@@ -2038,9 +2038,10 @@ extern unsigned char data_004086C8[];   /* (a state in theGame, at 0x208) */
  * `this` and the net game trade s0/s1 (the target keeps this in s1, the game in s0, the game-over
  * flag in s1 once this is dead). Tried: `old` const, assigned apart, a char copy cast back, a second
  * local for the new state, a reference to the field, an accessor, `old != state && true`, the change
- * as an inline (one re-reading the field -- `lbu` then `lb`, 8 short -- one taking both by value) and
- * as a ternary store (8 short): the copy needs to survive to its first compare (a branch between
- * them, round 38's forwarding rule) without costing code */
+ * as an inline (one re-reading the field -- `lbu` then `lb`, 8 short -- one taking both by value),
+ * as a ternary store (8 short), `if ((old = m_state) != state)` (8 short, still `lbu`), a bool
+ * `changed`, `?: true : false` and `|| false` in the test: the copy needs to survive to its first
+ * compare (a branch between them, round 38's forwarding rule) without costing code */
 void CMission::OnMissionComplete(MISSION_STATE state)
 {
     MISSION_STATE old = m_state;
