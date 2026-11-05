@@ -226,6 +226,9 @@ public:
     /* the soil (the name ours: read through it, the field is loaded again for a following
      * store -- _reset_cell) */
     unsigned int GetSoil() const { return m_soil; }
+    /* whether the cell is of a soil (the name ours: SmoothPathLeg's cell test calls it out of line,
+     * 0x525C60 -- the byte masked in the callee, the soil's byte read) */
+    bool IsSoil(unsigned char soil) const { return m_soil == soil; }
     /* three fields read through accessors (the names ours: the tile callbacks test a field so
      * and load it again for the setter's read-modify-write) */
     bool IsOccupied() const { return m_occupied; }
@@ -1612,6 +1615,9 @@ public:
     /* each leg smoothed, the invalid points dropped and the points' storage trimmed to them, when
      * the plan is complete and smoothing is on or forced (SOCOM 1's took no flag) */
     bool SmoothPath(bool force);
+    /* a leg's points dropped where the line from the last point kept to the one past them is clear
+     * (SOCOM 1's SmoothPathLeg, 0x525810: SmoothPath's call per leg); true when any was */
+    bool SmoothPathLeg(int leg);
     /* whether a cell suits the path's kind (0x526310, the name ours) */
     bool IsPreferredCell(const CAiCell *cell) const;
     /* points made and the plan complete (the name ours: SmoothPath materialises both tests, as a

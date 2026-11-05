@@ -49,6 +49,16 @@ a deep copy of the record (relabel(), kept for its callers): the same colours, ~
     ./tools/igreplay.py DUMP -f F -r 0 --target UNIT F_MANGLED --move 41=87.5   # the move against the target
     ./tools/igreplay.py DUMP -f F -r 0 --target UNIT F_MANGLED --movers 41,87 --timeout 60
 
+FPR records (GCC round 35a, the AI core's LeadTargetG and the lanes' `$f20,$f0,$f20` operand misses):
+--target reads a float node's register as it reads a GPR's -- the candidate's instructions at the
+node's uses, the target's at the same indices -- and --move/--want/--movers score FPR records as GPR
+ones (the saved registers f20-f31, the volatile f0-f19; `--want len=f21`). igdump records an FPR
+colouring's PCode from this round (before, the GPR class's alone: re-dump an older unit). The GPRs are
+coloured and rewritten before the FPRs, so an FPR record's GPR operands are the hard registers; its
+float operations are named from mwccps2's own opcode registrations (FOPNAMES).
+
+    ./tools/igreplay.py DUMP -f '^Exp$' --cls 1 -r 1 --target src/gamez/zmath/zmath_main.cpp Exp__5CQuatFPC6CPnt3D
+
 The spill slots (GCC round 34a, the weapons' round-27 request): a record igdump wrote with `spills`
 and `frame` also replays which stack slot each spilled node takes -- the slot pass gives them in
 INDEX order, each bumped down the local area by its size and rounded to its alignment -- so a
@@ -403,16 +413,66 @@ OPNAMES.update({'1042': 'lw*', '1025': 'la*', '1112': 'entry*', '1120': 'nop*', 
 PSEUDO = {'1042': 'lw', '1025': 'addiu', '1076': 'sw', '1078': 'swc1', '1043': 'lwc1', '966': 'sltu',
           '968': 'sltiu', '976': 'sltu', '982': 'sltu', '974': 'sltu', '1041': 'lb', '1040': 'lbu',
           '1074': 'sb', '1044': 'lh', '1045': 'lhu', '1075': 'sh'}
+# The FPR class (GCC round 35a). mwccps2 registers every opcode at start-up -- `push "name"; push
+# <number>; call` -- and the 900 pairs read off the compiler agree with all 309 of igopnames.json;
+# these are the float ones it lacks: 1110 `fcopy` (a float register move, assembled as mov.s), the
+# R5900's accumulator operations 436-444, rsqrt.s; and the macro loads and stores (1043 lwc1, 1044
+# l.s, 1078 swc1, 1079 s.s), whose base is r0 when the address is a symbol's -- assembled through a
+# `lui`'s register, so that base matches any register ('*').
+FOPNAMES = {'1110': 'mov.s', '436': 'adda.s', '437': 'madd.s', '438': 'madda.s', '439': 'max.s',
+            '440': 'min.s', '441': 'msub.s', '442': 'msuba.s', '443': 'mula.s', '444': 'suba.s',
+            '292': 'rsqrt.s', '1043': 'lwc1', '1044': 'lwc1', '1078': 'swc1', '1079': 'swc1'}
+FREG = re.compile(r'\$f(\d+)$')
 
 
-def _regs_of(text: str) -> tuple[str, list[str]]:
+def _regs_of(text: str, cls: int = 0) -> tuple[str, list[str]]:
+    """(mnemonic, registers in operand order): the GPRs, and for the FPR class (cls 1) the FPRs too,
+    spelled fN (objdump's `$f20` is f20)."""
     parts = text.split(None, 1)
     if len(parts) < 2:
         return (parts[0] if parts else ''), []
-    return parts[0], [t for t in re.split(r'[,()\s]+', parts[1]) if t in REGS]
+    toks = re.split(r'[,()\s]+', parts[1])
+    if cls != 1:
+        return parts[0], [t for t in toks if t in REGS]
+    return parts[0], [('f' + FREG.match(t).group(1)) if FREG.match(t) else t
+                      for t in toks if t in REGS or FREG.match(t)]
 
 
-def _pc_sig(ins, colour):
+def _pc_sig_fpr(ins, colour):
+    """An FPR record's PCode instruction: (mnemonic, its registers under the record's colouring,
+    each register's node -- an FPR operand's number, -1 for a GPR). The GPRs are coloured first and
+    rewritten before the FPRs are (no FPR record holds a virtual GPR: zmath_pnt3d.cpp's twelve), so
+    every `rN` is the hard register N; `c1:N` is an FPR, virtual from 32; `c2:N` (the condition flag,
+    the accumulator) is implicit in the code's text and left out."""
+    op, args = ins
+    o = str(op)
+    mn = FOPNAMES.get(o) or PSEUDO.get(o) or OPNAMES.get(o, o)
+    regs, vregs = [], []
+    for a in args:
+        if a.startswith('r'):
+            n = int(a[1:])
+            regs.append(REGS[n] if 0 <= n < 32 else '?')
+            vregs.append(-1)
+        elif a.startswith('c1:'):
+            n = int(a[3:])
+            c = n if n < 32 else colour[n]
+            regs.append(f'f{c}' if 0 <= c < 32 else '?')
+            vregs.append(n)
+    if mn in ('lwc1', 'swc1') and len(regs) == 2 and regs[1] == 'zero':
+        regs[1] = '*'                   # a symbol's address: the base is the lui's register
+    return mn, regs, vregs
+
+
+def _sig_eq(have: tuple[str, list[str]], mn: str, regs: list[str]) -> bool:
+    """Whether a final-code instruction (mnemonic, registers) is the PCode's, '*' matching any one."""
+    if have[0] != mn or len(have[1]) != len(regs):
+        return False
+    return all(w == '*' or w == h for h, w in zip(have[1], regs))
+
+
+def _pc_sig(ins, colour, cls: int = 0):
+    if cls == 1:
+        return _pc_sig_fpr(ins, colour)
     op, args = ins
     mn = PSEUDO.get(str(op), OPNAMES.get(str(op), str(op)))
     regs, vregs = [], []
@@ -431,23 +491,35 @@ def _pc_sig(ins, colour):
     return mn, regs, vregs
 
 
+def _rnum(name: str, cls: int = 0) -> int:
+    """A register's number from its name in the code: a GPR's, or for the FPR class fN's N."""
+    if cls == 1:
+        return int(name[1:]) if re.fullmatch(r'f\d+', name) else -1
+    return REGS.index(name)
+
+
 def tmap(rec: dict, ours: list[str], targ: list[str], window: int = 24):
     """({virtual register: its register in the target}, {vreg: disagreeing counts}, PCode unmatched),
-    from a GPR record and the candidate's and the target's final code (instruction texts)."""
+    from a record -- GPR or (GCC round 35a) FPR -- and the candidate's and the target's final code
+    (instruction texts): each PCode instruction holding one of the class's virtual registers is
+    matched to the nearest unused instruction of the candidate's with its mnemonic and registers, and
+    the target's instruction at that index names the node's register there."""
+    cls = rec['cls']
     colour = [n['color'] for n in rec['nodes']]
-    fin = [_regs_of(t) for t in ours]
-    tfin = [_regs_of(t) for t in targ]
+    fin = [_regs_of(t, cls) for t in ours]
+    tfin = [_regs_of(t, cls) for t in targ]
     used, seen, pos, unmatched = set(), {}, 0, 0
     for ins in rec['code']:
         if isinstance(ins, str):
             continue
-        mn, regs, vregs = _pc_sig(ins, colour)
+        mn, regs, vregs = _pc_sig(ins, colour, cls)
         if not any(v >= 32 for v in vregs):
             continue
         best = None
         for d in range(window):
             for k in (pos + d, pos - d):
-                if 0 <= k < len(fin) and k not in used and fin[k] == (mn, regs):
+                if 0 <= k < len(fin) and k not in used and (
+                        fin[k] == (mn, regs) if cls != 1 else _sig_eq(fin[k], mn, regs)):
                     best = k
                     break
             if best is not None:
@@ -466,7 +538,7 @@ def tmap(rec: dict, ours: list[str], targ: list[str], window: int = 24):
                 seen[v][r] += 1
     out, conflicts = {}, {}
     for v, d in seen.items():
-        out[v] = REGS.index(max(d, key=d.get))
+        out[v] = _rnum(max(d, key=d.get), cls)
         if len(d) > 1:
             conflicts[v] = d
     return out, conflicts, unmatched
@@ -608,8 +680,9 @@ def target_rows(tcol: dict, conflicts: dict, colour) -> list[tuple]:
             if tcol[v] != colour[v] or v in conflicts]
 
 
-def is_saved(c: int) -> bool:
-    return 16 <= c <= 23 or c == 30
+def is_saved(c: int, cls: int = 0) -> bool:
+    """A callee-saved register: s0-s7 and fp, or for the FPR class f20-f31."""
+    return 20 <= c <= 31 if cls == 1 else (16 <= c <= 23 or c == 30)
 
 
 def target_slot_report(rec: dict, code, moves=None, drop=(), late: int | None = None
@@ -643,6 +716,7 @@ def target_report(rec: dict, tcol: dict, conflicts: dict, unmatched: int, moves=
     each mapped node scored against the colouring the record holds -- or, with `moves`/`drop` (old
     indices), the colouring their replay gives, so a move is checked against the shipped code."""
     g0 = Graph(rec)
+    cls = rec['cls']
     recorded = [n['color'] for n in rec['nodes']]
     colour = recorded
     if moves or drop:
@@ -652,14 +726,14 @@ def target_report(rec: dict, tcol: dict, conflicts: dict, unmatched: int, moves=
     rows = target_rows(tcol, conflicts, colour)
     for v, ours, targ, uses in rows:
         if ours != targ:
-            lines.append(f"  v{v:<4} {g0.name(v)[:20]:20} ours {rname(ours):5} target {rname(targ):5}"
+            lines.append(f"  v{v:<4} {g0.name(v)[:20]:20} ours {rname(ours, cls):5} target {rname(targ, cls):5}"
                          + (f"  (uses disagree: {uses})" if uses else ""))
         else:
-            lines.append(f"  v{v:<4} {g0.name(v)[:20]:20} ours {rname(ours):5} target {rname(targ):5}"
+            lines.append(f"  v{v:<4} {g0.name(v)[:20]:20} ours {rname(ours, cls):5} target {rname(targ, cls):5}"
                          f"  uses disagree: {uses} -- the most frequent is ours")
     for v in sorted(tcol):
-        if is_saved(tcol[v]) or is_saved(colour[v]):
-            want[v] = rname(tcol[v])
+        if is_saved(tcol[v], cls) or is_saved(colour[v], cls):
+            want[v] = rname(tcol[v], cls)
     differ = sum(1 for _, o, t, _ in rows if o != t)
     agree = sum(1 for _, o, t, u in rows if o == t and u)
     tail = ""
@@ -766,8 +840,9 @@ def main(argv=None) -> int:
             moved, newidx, _ = replay_moved(rec, moves, drop)
             print(f"    moved        {slots_line(stack_slots(rec, moved, newidx, later_end=late))}")
     if a.target:
-        if cls != 0:
-            raise SystemExit("--target reads the GPR class's PCode (igdump records it for class 0 only)")
+        if not any(not isinstance(ins, str) for ins in rec.get('code') or ()):
+            raise SystemExit(f"record [{k}] holds no PCode: igdump recorded the GPR class's alone before GCC "
+                             "round 35a -- dump the unit again for its FPR records' PCode")
         code = final_code(Path(a.target[0]), a.target[1])
         tcol, conflicts, unmatched = target_colours(rec, Path(a.target[0]), a.target[1], code=code)
         lines, want, _ = target_report(rec, tcol, conflicts, unmatched, moves, drop)

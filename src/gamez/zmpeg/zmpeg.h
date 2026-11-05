@@ -85,9 +85,8 @@ void audioDecEndPut(AudioDec *ad, int size);
 bool audioDecIsPreset(AudioDec *ad);
 int audioDecSendToIOP(AudioDec *ad);
 
-/* ldimage.cpp */
+/* ldimage.cpp (setLoadImageTagsYX is the unit's static: ldimage.cpp's comment) */
 void loadImage(unsigned int *tags);
-void setLoadImageTagsYX(unsigned int *tags, void *image, int bw, int x, int y, unsigned int dbp);
 void setLoadImageTags(unsigned int *tags, void *image, int x, int y, unsigned int dbp);
 
 /* strfile.cpp */

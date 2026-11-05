@@ -839,7 +839,24 @@ class __vector_imp : public __vector_deleter<T, Allocator> {
      * &sz()` on the deleter, the AI core's round 18 lead -- CAiPath's count() re-reads size and data
      * each pass) every walk re-reads the size too, -6 over every hand-written unit, nothing gained
      * (GetRouteIndex, GetRegionContaining, CAiMaps::GetClosestRegion, CMesh::SetLOD, BriefingRoom::
-     * FindPlayer, the chat unit's 0x2F10B0 keep size*k hoisted: the MSL headers round 16) */
+     * FindPlayer, the chat unit's 0x2F10B0 keep size*k hoisted: the MSL headers round 16).
+     * THE CTargetList WALKS, MEASURED (the MSL headers round 30, the kit's round 48 request; probes
+     * build/p30/walk1-7.cpp, loopsig.py, untracked): CTInView::Tick 0x5D7FD0's team walk keeps the
+     * data from the entry test and re-reads ONLY the size through &m_targets in a register; 0x60F760
+     * re-reads size AND data through it, as ResetTargetsSeen 0x544B60 (a pointer local, stores in the
+     * loop: byte-exact) and CountAwareness's open walk do. The size read through a CONST accessor
+     * inside end() -- `this->data_ + size()` or `this->data_ + sz()` over `const unsigned int &sz()
+     * const` -- gives CTInView's walk word for word over its reference local (a const member's
+     * qualified `this` is not folded into the loop's load; at the entry test it is), but costs 128
+     * over every hand-written unit (+0: every class insert and resize, push_back's and back()'s
+     * callers, SetLOD and the in-place walks above, which want data re-read and size kept) and leaves
+     * CTInView 0x6C4 (its finds' registers move); `data() + size()`, `data() + sz()`, begin() + size()
+     * and the const walk's ends (eight forms: a const walk hoists the whole end under every one) do no
+     * better. Not applied. 0x60F760's both-through-the-register walk is the CALLER's form, as written
+     * now: over a reference bound through a pointer local taken from an inline's result (seal_aivehicle
+     * .cpp's TargetsOf: byte-exact under this end(); the pointer alone, the inline alone, or the walk
+     * inside a helper keep size*48 or the whole end), and CountAwareness's in-place walk takes the
+     * same register form through the inline (`TargetsOf(e)->begin()`) -- its IsEnemy read still off */
     iterator end()
     {
         T *const p = this->data() + this->size_;

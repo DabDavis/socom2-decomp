@@ -594,11 +594,15 @@ inline bool FindSlot(VoiceRadio *r, int &slot)
 }
 
 /* a slot held by another client (the name ours). The slot reached as the radio stepped by i
- * slots, its client then at +0x70: the target keeps r + 8i across the call and reads 0x70(s0)
- * twice (a stand-in spelling -- `r->m_slots[i]` read twice keeps the whole address instead) */
+ * slots, its client then at +0x70: the target keeps 8i + r across the call and reads 0x70(s0)
+ * twice (a stand-in spelling -- `r->m_slots[i]` read twice keeps the whole address instead). The
+ * step is integer arithmetic with the SHIFT WRITTEN FIRST, `(i << 3) + (unsigned int)r` (the
+ * target's `addu s0,v0,s3`, online round 23; README "`(n << 4) + (unsigned int)p`"): `i * 8`
+ * first, `(unsigned int)r + (i << 3)`, char * or VoiceSlot * steps, `&((VoiceSlot *)r)[i]` keep
+ * r first; the shift or the base in a local of its own match too */
 inline bool SlotTaken(VoiceRadio *r, int i)
 {
-    VoiceRadio *p = (VoiceRadio *)(i + (VoiceSlot *)r);
+    VoiceRadio *p = (VoiceRadio *)((i << 3) + (unsigned int)r);
     bool b = p->m_slots[0].m_client != 256;
 
     if (b)
@@ -637,7 +641,8 @@ inline void StopRecording(VoiceRadio *r)
  * goes or its time is up -- the closing tone, the slot given back (3) -- and the radio rests a
  * while (4); a channel change gives the slot back at once. The master frees the slots whose time
  * is up, telling everyone. The state returned (OVL1 0x30EC10; 0x30F990 ticks it).
- * OPEN, 1 instruction since the online lane's round 22 (13 before): THE TWELVE LOAD SWAPS WERE
+ * Byte-exact since the online lane's round 23 (open since round 19): the last instruction was
+ * SlotTaken's step, `(i << 3) + (unsigned int)r` (its comment). Round 22, 13 -> 1: THE TWELVE LOAD SWAPS WERE
  * SIGNEDNESS -- an argument loaded as one type and passed as the other is loaded ahead of the
  * connection global (the target's order), one passed as its own type after it: the radio's two
  * message ids are `unsigned int` (zNetSendApplicationMessage takes an int; the five sends right) and

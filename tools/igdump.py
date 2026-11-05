@@ -198,7 +198,7 @@ if gdb is not None:     # ------------------------------------------------------
                                    deg0=pre[4][n['i']]['degree'] if pre else None,
                                    nb=pre[4][n['i']]['nb'] if pre else n['nb'],
                                    color=n['color'], fl=n['flags']) for n in nodes],
-                       names=names, code=pcode() if cls == 0 else [], reserved=state.get('reserved'),
+                       names=names, code=pcode(), reserved=state.get('reserved'),
                        costs=state.get('costs'), remat=state.get('remat'), proc=state.get('proc'))
             # held until the function's frame is laid out (or the compile ends): a colouring that
             # spilled is followed by the spilled nodes' stack slots, and the frame's top comes last

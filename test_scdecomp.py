@@ -804,6 +804,63 @@ def test_objcmp_by_address_equates_a_respelling():
     ck(O.summary(nowhere_a, res) != O.summary(nowhere_b, res), "names no map resolves are compared by name")
 
 
+def test_objcmp_by_address_resolves_a_sum():
+    """tools/objcmp.py --by-address, GCC round 35a (the HUD's round 54: hud_missioncams.cpp's
+    data_0043668C respelled theMission+0x1AC printed DIFF though the scorer matched it): a data
+    relocation is the address it forms, symbol plus the addend REL keeps in its field, the field
+    masked. Each kind, both ways -- a respelling that keeps the address is the same, one that moves it
+    differs: Metrowerks' %hi/%lo pair (`data_001D0BB0[1]` as __infinity, the row at 0x1D0BB8, against
+    `data_001D0BB0[2]`), a .data pointer word (R_MIPS_32: `&data_001D52F8[1]` as `&data_001D52FC`),
+    GCC's %hi/%lo pair at -G0 (paired by the relocation table) and its $gp-relative load at -G8
+    (R_MIPS_GPREL16). The respelling is listed with its addend; round 29a's rule (symbols only, the
+    field compared) still tells each pair apart; and plain objcmp, without a map, still differs."""
+    import objcmp as O
+    src = BUILD / "objcmp_sum_fixture"
+    src.mkdir(parents=True, exist_ok=True)
+
+    def obj(stem: str, text: str, compiler: str = D.COMPILER, flags=None) -> Path:
+        p = src / f"{stem}.c"
+        p.write_text(text)
+        o = BUILD / f"objcmp_sum_{stem}.o"
+        D.compile_obj(p, o, compiler, flags, [HERE / "include", src])
+        return o
+
+    res = O.resolver(E.symbols())
+
+    def same(a: Path, b: Path, sums: bool = True) -> bool:
+        return O.summary(a, res, sums=sums) == O.summary(b, res, sums=sums)
+    mw = "void sceSifExitRpc(void);\nextern double {d};\ndouble sceSifGetDataTable(void) {{ sceSifExitRpc(); return {r}; }}\n"
+    named = obj("mw_named", mw.format(d="__infinity", r="__infinity"))
+    summed = obj("mw_summed", mw.format(d="data_001D0BB0[3]", r="data_001D0BB0[1]"))
+    moved = obj("mw_moved", mw.format(d="data_001D0BB0[3]", r="data_001D0BB0[2]"))
+    ck(same(summed, named), "MW %hi/%lo: data_001D0BB0+8 is __infinity's address, the same")
+    ck(not same(moved, named), "MW %hi/%lo: data_001D0BB0+16 is another address, it differs")
+    ck(not same(summed, named, sums=False), "round 29a's rule (symbols only) still tells them apart")
+    na: dict = {}
+    nb: dict = {}
+    sa, sb = O.summary(summed, res, na, sums=True), O.summary(named, res, nb, sums=True)
+    ck(sa == sb and ("data_001D0BB0+0x8", "__infinity") in O.respellings(sa, na, nb),
+       f"the respelling is listed with its addend ({O.respellings(sa, na, nb)})")
+    word = "extern int {d};\nint *ig_word_p = &{r};\n"
+    w_named = obj("mw_word_named", word.format(d="data_001D52FC", r="data_001D52FC"))
+    w_summed = obj("mw_word_summed", word.format(d="data_001D52F8[2]", r="data_001D52F8[1]"))
+    w_moved = obj("mw_word_moved", word.format(d="data_001D52F8[2]", r="data_001D52F8[0]"))
+    ck(same(w_summed, w_named) and not same(w_moved, w_named) and not same(w_summed, w_named, sums=False),
+       "a .data word (R_MIPS_32): the same address the same, another differs, symbols only differs")
+    # (`return x;` alone is no fixture at -G8: GCC leaves the return's slot empty for the offset load)
+    gnu = "extern int {d};\nint ig_load(int v) {{ return v + {r}; }}\n"
+    for flags, kind in ((["-O2", "-G0"], "R_MIPS_LO16"), (["-O2", "-G8"], "R_MIPS_GPREL16")):
+        tag = flags[1][1:]
+        g_named = obj(f"gnu_{tag}_named", gnu.format(d="data_001D52FC", r="data_001D52FC"), "ee-gcc2.96", flags)
+        g_summed = obj(f"gnu_{tag}_summed", gnu.format(d="data_001D52F8[2]", r="data_001D52F8[1]"), "ee-gcc2.96", flags)
+        g_moved = obj(f"gnu_{tag}_moved", gnu.format(d="data_001D52F8[2]", r="data_001D52F8[0]"), "ee-gcc2.96", flags)
+        _, rels, _ = E.Elf.read(g_summed).function("ig_load")
+        ck(kind in [r.type for r in rels], f"GCC {flags[1]}: the load is {kind} ({[r.type for r in rels]})")
+        ck(same(g_summed, g_named) and not same(g_moved, g_named) and not same(g_summed, g_named, sums=False),
+           f"GCC {flags[1]} ({kind}): the same address the same, another differs, symbols only differs")
+    ck(O.summary(summed) != O.summary(named), "plain, without a map, the respelled unit differs")
+
+
 def test_unit_builds_the_same_bytes_at_any_path():
     """A unit's object may not depend on where the tree lies (GCC round 34a). sase_rfft2g.c's
     asserts always hold, so GCC drops their calls -- but not their strings, __FILE__ among them,
@@ -1221,6 +1278,128 @@ def test_igreplay_target_scores_the_move_and_budgets_a_search():
             same += [fast[fi[i]] for i in range(hi)] == [ref[ri[i]] for i in range(hi)]
             n += 1
     ck(same == n, f"(c) the in-place renumbering replays as the deep copy did ({same} of {n} placements)")
+
+
+IG_FFIXTURE = """extern float ig_f(float);
+
+float ig_fpair(float a, float b)
+{
+    float first;
+    float second;
+
+    first = ig_f(a);
+    second = ig_f(b);
+    ig_f(0.0f);
+    return first + second;
+}
+"""
+IG_FDECLS = ("float first;\n    float second;", "float second;\n    float first;")
+
+
+def _swap_fprs(w: int, a: int, b: int) -> int:
+    """An instruction word with FPRs a and b exchanged in its float register fields (lwc1/swc1: ft;
+    mfc1/mtc1: fs; cfc1/ctc1, bc1x: none; COP1's other operations: ft, fs, fd); the rest as it is."""
+    op = w >> 26
+    if op in (0x31, 0x39):
+        fields = (16,)
+    elif op == 0x11:
+        rs = (w >> 21) & 31
+        fields = (11,) if rs in (0, 4) else () if rs in (2, 6, 8) else (16, 11, 6)
+    else:
+        fields = ()
+    for sh in fields:
+        r = (w >> sh) & 31
+        if r in (a, b):
+            w = w & ~(31 << sh) | ((b if r == a else a) << sh)
+    return w
+
+
+def test_igreplay_reads_float_registers_in_the_target():
+    """tools/igreplay.py's FPR class (GCC round 35a: the AI core's LeadTargetG, mapped by hand, and
+    the `$f20,$f0,$f20` operand misses): igdump records an FPR colouring's PCode (before, the GPR
+    class's alone), --target reads each float node's register in the target and --move scores an FPR
+    record. The fixture keeps first in f21 and second in f20 across the calls, as its code moves each
+    call's $f0 into them; --move first after second predicts f20 and f21 -- what the swapped
+    declarations compile to, by igdump and in the code. Read with --target against the swapped
+    object's code, the record differs in both nodes and the move in none, and a --want search finds
+    the move. CQuat::Exp(const CPnt3D *) (byte-exact) maps to its own colouring with no PCode
+    unmatched; with one of the four uses of `len` (f21) read as f22 in the target, that use is listed
+    though f21 is the most frequent; and a record from before this round (no FPR PCode) is refused,
+    not mapped."""
+    import contextlib
+    import io
+    import igdump
+    import igreplay as R
+    src = _ig_fixture("ig_ffixture.c", IG_FFIXTURE)
+    recs, _ = igdump.dump(src, BUILD / "ig_ffixture.jsonl")
+    sel = igdump.select(recs, "^ig_fpair$", 1)
+    ck(len(sel) == 1 and any(not isinstance(i, str) for i in sel[0][1]["code"]),
+       f"one FPR colouring of ig_fpair, its PCode recorded ({len(sel)})")
+    rec = sel[0][1]
+    regs = _ig_regs(rec)
+    ck((regs.get("first"), regs.get("second")) == ("f21", "f20"), f"first f21, second f20 ({regs})")
+
+    def text(obj: Path) -> list[str]:
+        code, rel, _ = E.Elf.read(obj).function("ig_fpair")
+        return [t for _, _, t in E.disasm(D.mask(code, rel), 0)]
+    ours = text(build(src, "ig_ffixture"))
+    ck("mov.s $f21,$f0" in ours and "mov.s $f20,$f0" in ours and "add.s $f0,$f21,$f20" in ours,
+       f"the recorded registers are the code's ({ours})")
+    first, second = R.node_index(rec, "first"), R.node_index(rec, "second")
+    colour, newidx, _ = R.replay_moved(rec, {first: second + 0.5})
+    predicted = (R.rname(colour[newidx[first]], 1), R.rname(colour[newidx[second]], 1))
+    swapped = _ig_fixture("ig_fswapped.c", IG_FFIXTURE.replace(*IG_FDECLS))
+    srecs, _ = igdump.dump(swapped, BUILD / "ig_fswapped.jsonl")
+    sregs = _ig_regs(igdump.select(srecs, "^ig_fpair$", 1)[0][1])
+    theirs = text(build(swapped, "ig_fswapped"))
+    ck(predicted == ("f20", "f21") == (sregs["first"], sregs["second"]) and "add.s $f0,$f20,$f21" in theirs,
+       f"--move first after second predicts the swapped source's float registers ({predicted}, {sregs})")
+    tcol, conflicts, unmatched = R.tmap(rec, ours, theirs)
+    _, want, differ_rec = R.target_report(rec, tcol, conflicts, unmatched)
+    _, _, differ_moved = R.target_report(rec, tcol, conflicts, unmatched, {first: second + 0.5})
+    ck(R.rname(tcol[first], 1) == "f20" and R.rname(tcol[second], 1) == "f21" and differ_rec == 2
+       and differ_moved == 0 and not unmatched,
+       f"--target reads the swapped code's float registers: as recorded {differ_rec} differ, moved {differ_moved}")
+    hits = R.brute(rec, want, [first])
+    ck((want.get(first), want.get(second)) == ("f20", "f21") and second + 0.5 in [h[0] for h in hits]
+       and first + 0.5 not in [h[0] for h in hits],
+       f"--want/--movers over the saved FPRs finds the move, not first's own place ({want}, {hits})")
+    unit = HERE / "src" / "gamez" / "zmath" / "zmath_main.cpp"
+    dump = BUILD / "ig_zmath_main.jsonl"
+    zrecs, _ = igdump.dump(unit, dump)
+    exp = [r for _, r in igdump.select(zrecs, "^Exp$", 1) if "t" not in _ig_regs(r)]
+    ck(len(exp) == 1, f"one FPR colouring of CQuat::Exp(const CPnt3D *) ({len(exp)})")
+    zrec = exp[0]
+    func = "Exp__5CQuatFPC6CPnt3D"
+    tcol, conflicts, unmatched = R.target_colours(zrec, unit, func)
+    ck(len(tcol) >= 10 and all(tcol[v] == zrec["nodes"][v]["color"] for v in tcol) and not conflicts
+       and not unmatched, f"a byte-exact function maps to its own float colouring ({len(tcol)} mapped, "
+       f"{unmatched} unmatched)")
+    img, st = E.image(), E.symbols()
+    row = st.get(func)
+    ln = R.node_index(zrec, "len")
+    ck(R.rname(zrec["nodes"][ln]["color"], 1) == "f21", "len is in f21")
+    a, w = [(a, w) for a, w, t in E.disasm(img.read(row.addr, row.size), row.addr) if t == "mov.s $f12,$f21"][-1]
+    patched = _PatchedImage(img, {a: _swap_fprs(w, 21, 22)})
+    tcol2, conflicts2, unm2 = R.target_colours(zrec, unit, func, img=patched)
+    lines, _, differ2 = R.target_report(zrec, tcol2, conflicts2, unm2)
+    ck(tcol2[ln] == 21 and differ2 == 0 and conflicts2.get(ln, {}).get("f22") == 1
+       and any(l.lstrip().startswith(f"v{ln} ") and "the most frequent is ours" in l for l in lines),
+       f"a disagreeing float use is listed ({[l for l in lines if 'disagree' in l]})")
+    old = BUILD / "ig_fpr_before_35a.jsonl"
+    old.write_text("".join(__import__("json").dumps(dict(r, code=[] if r["cls"] == 1 else r["code"])) + "\n"
+                           for r in zrecs))
+    try:
+        with contextlib.redirect_stdout(io.StringIO()):
+            R.main([str(old), "-f", "^Exp$", "--cls", "1", "-r", "1", "--target", str(unit), func])
+        ck(False, "a record without FPR PCode was mapped")
+    except SystemExit as e:
+        ck("dump the unit again" in str(e), f"a record without FPR PCode is refused ({e})")
+    out = io.StringIO()
+    with contextlib.redirect_stdout(out):
+        R.main([str(dump), "-f", "^Exp$", "--cls", "1", "-r", "1", "--target", str(unit), func])
+    ck(", 0 differ," in out.getvalue() and "0 PCode instructions unmatched" in out.getvalue(),
+       f"the CLI maps an FPR record ({out.getvalue().splitlines()[-1][:120]})")
 
 
 IG_SPILL = """extern int ig_g(int);

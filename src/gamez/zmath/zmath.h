@@ -82,7 +82,11 @@ public:
     /* by value through a temporary, const members as SOCOM II's own copies are named
      * (__pl__6CPnt3DCFRC6CPnt3D 0x557DC0, __ml__6CPnt3DCFf 0x557E10, the minus 0x557E90): CQuat::
      * ToMatrix keeps exactly this copy (ld/sd + lwc1/swc1 from the add's result slot into a second
-     * one), which a plain assignment would let the optimiser forward away */
+     * one), which a plain assignment would let the optimiser forward away. DEFINED below, inline (the
+     * MSL headers round 30, the engine core's round 16 request): camera.cpp's local ScaledBy / DiffOf
+     * and znode.h's PntMinus are these operators word for word -- `vec * len`, `chord[1] - hit` and
+     * `a - b` in their place leave camera.cpp, grid_di.cpp and int_shapes.cpp object-identical
+     * (tools/objcmp.py --by-address), so the stand-ins can go */
     CPnt3D operator+(const CPnt3D &b) const;
     CPnt3D operator-(const CPnt3D &b) const;
     CPnt3D operator*(float s) const;
