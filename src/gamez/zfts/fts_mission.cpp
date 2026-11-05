@@ -3807,11 +3807,14 @@ bool zrdr_findreal(const _zrdr *rdr, const char *tag, float *out, int n);
 
 /* NVG_NOISE's parser: each key's weight held to 1 at most, the command timeless without a key past
  * 0 (OVL1 0x2AE050).
- * OPEN, 6 instructions, registers only: the loop's two induction temporaries trade t0 and t1 -- the
- * target's keys cursor is t1 and the items' offset t0, here the other way round (the keys walked by
- * a named pointer, a reference to keys[i] first in the body, an int counter, the body under an if
- * instead of the continue, keys declared first: no better). The assignment in the sequence's test
- * gives the target's `beqz v0` and Type() its reuse of the type byte */
+ * Byte-exact (the states' round 41; 6 instructions off, registers only, until then): the loop's two
+ * induction temporaries -- the target's keys cursor t1, the items' offset t0 -- come out the
+ * target's way round with the key's address a pointer local made first in the body (`k = keys +
+ * i`) and every key written through it: the loop optimiser then makes the keys' induction variable
+ * first. Tried before: the keys walked by a pointer stepped in the for, a reference to keys[i] first
+ * in the body, an int counter, the body under an if instead of the continue, keys declared first;
+ * the items through ListItem (6 off). The assignment in the sequence's test gives the target's
+ * `beqz v0` and Type() its reuse of the type byte */
 _zanim_cmd_hdr *NVGNoiseParse(_zrdr *rdr)
 {
     _nvg_noise_cmd *cmd;
@@ -3829,20 +3832,21 @@ _zanim_cmd_hdr *NVGNoiseParse(_zrdr *rdr)
             nvg_noise_key *keys = (nvg_noise_key *)_calloc(sizeof(nvg_noise_key), seq->Count(), 0, 0);
 
             for (unsigned int i = 0; i < seq->Count(); i++) {
+                nvg_noise_key *k = keys + i;
                 _zrdr *item = seq->Item(i);
 
                 if (item->Count() < 2)
                     continue;
                 float t = item->Item(0)->Real();
 
-                keys[i].t = t;
+                k->t = t;
                 if (!(t <= cmd->time))
                     cmd->time = t;
                 float w = item->Item(1)->Real();
 
-                keys[i].v = w;
+                k->v = w;
                 if (!(w <= 1.0f))
-                    keys[i].v = 1.0f;
+                    k->v = 1.0f;
             }
             cmd->count = seq->Count();
             cmd->keys = cmd->hdr.data_size;
