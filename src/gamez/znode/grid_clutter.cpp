@@ -260,9 +260,7 @@ bool CClutter::Read(zar::CZAR *zar)
  * (SOCOM 1's, the same eight words) */
 CPnt3D *CClutter::GetTranslate()
 {
-    if (m_quat)
-        return (CPnt3D *)m_matrix.m_matrix[2];
-    return (CPnt3D *)m_matrix.m_matrix[3];
+    return m_quat ? (CPnt3D *)m_matrix.m_matrix[2] : (CPnt3D *)m_matrix.m_matrix[3];
 }
 
 /* the prop's matrix: its own, or -- in the rotation form -- built in the clutter manager's matrix
@@ -565,6 +563,106 @@ void CClutterAnimManager::TestCellMid(CPnt3D *mid, CPnt3D *pos)
             }
         }
     }
+}
+
+/* a prop's new animation: no node, no lean, the wobble's clock at 5.01 (inline in both builds:
+ * ClutterTick's new -- SOCOM 1's casts the prop's node to a CModel, its result unused, as SOCOM
+ * II's does) */
+inline CClutterAnim::CClutterAnim(CClutter *c)
+{
+    m_clutter = c;
+    dynamic_cast<CModel *>(m_clutter->m_node);
+    m_node = 0;
+    m_lean = CPnt3D::zero;
+    m_14 = 0.0f;
+    m_1c = 0.0f;
+    m_18 = 5.01f;
+    m_20 = 0.0f;
+}
+
+/* a prop's animation ticked (SOCOM 1's, 0x217BA0): with the cell flagged, the first effector within
+ * its radius of the prop in x, z and y pushes it -- the prop given an animation if it has none (the
+ * world's foliage sound played at it, the animation listed), the wobble's clock reset and TickForce
+ * run with the effector's velocity (its move when it has none) at the prop's offset from it; with
+ * none near, a running animation's push decays and its lean relaxes as TickForce's do, slerped at
+ * twice the frame time. The animation's node handed back, else the prop's own */
+CNode *CClutterAnimManager::ClutterTick(CClutter *clutter)
+{
+    CNode *node = 0;
+    bool found = false;
+    CClutterEffector *f;
+    CPnt3D d;
+    float radius;
+
+    if (m_CellAnimate) {
+        std::list<CClutterEffector *>::iterator it = m_ClutterEffectors.begin(), e = m_ClutterEffectors.end();
+        CPnt3D *pos = clutter->GetTranslate();
+
+        for (; it != e; ++it) {
+            f = *it;
+            if (fabsf(pos->x - f->m_pos->x) <= f->GetRadius() && fabsf(pos->z - f->m_pos->z) <= f->GetRadius() &&
+                fabsf(pos->y - f->m_pos->y) <= f->GetRadius()) {
+                radius = f->GetRadius();
+                d = *pos;
+                found = true;
+                d.Sub(f->m_pos, &d);
+                break;
+            }
+        }
+    }
+    if (found) {
+        float len = d.Length();
+        CClutterAnim *anim = clutter->m_anim;
+
+        if (!anim) {
+            static bool loaded;
+            static CSnd *snd;
+
+            if (!loaded) {
+                loaded = true;
+                snd = CSnd::GetSoundByName(CWorld::m_world->m_foliage_sound);
+            }
+            CSnd *s = snd;
+            CPnt3D *p = clutter->GetTranslate();
+
+            if (s)
+                s->PlaySound3D(p, 1.0f, 0, 0, 255);
+            CClutterAnim *a = new CClutterAnim(clutter);
+
+            m_ClutterAnims.push_back(a);
+            anim = clutter->m_anim = a;
+        }
+        if (anim) {
+            anim->m_18 = 5.01f;
+            anim->m_20 = 0.0f;
+            const CPnt3D *vel = f->m_vel ? f->m_vel : &f->m_18;
+            CPnt3D v = *vel;
+
+            node = anim->TickForce(&v, &d, len, radius);
+        }
+    } else {
+        CClutterAnim *a = clutter->m_anim;
+
+        if (a) {
+            if (a->m_14 > 0.0f)
+                a->m_14 -= 0.5f * zVid.frameTime;
+            if (a->m_14 < 0.0f)
+                a->m_14 = 0.0f;
+            float ang = a->m_14 == 0.0f ? a->m_20 : a->m_14 + a->m_14 * a->m_20;
+            CClutter *c = a->m_clutter;
+            CQuat q;
+
+            q.MakeYXZRot(0.0f, a->m_lean.z * ang, -a->m_lean.x * ang);
+            CQuat r;
+
+            ((CQuat *)c->m_matrix.m_matrix[1])->SlerpFaster(&q, 2.0f * zVid.frameTime, &r);
+            *(CQuat *)c->m_matrix.m_matrix[1] = r;
+            node = a->m_node;
+        }
+    }
+    if (!node)
+        node = clutter->m_node;
+    return node;
 }
 
 /* the clutter task taken off the scheduler, the animations and the effectors let go of (SOCOM

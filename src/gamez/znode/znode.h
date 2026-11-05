@@ -1596,6 +1596,10 @@ public:
  * the prop's rotation reset and the node deleted. The names past m_clutter are ours */
 class CClutterAnim {
 public:
+    /* a prop's new animation (inline, defined in grid_clutter.cpp: its dynamic_cast written in a
+     * class body here would make every unit including znode.h emit CNode's and CModel's RTTI --
+     * objcmp, the core lane round 20) */
+    inline CClutterAnim(CClutter *c);
     ~CClutterAnim()
     {
         if (m_clutter)

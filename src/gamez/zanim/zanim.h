@@ -658,7 +658,8 @@ public:
     ZAnimNetworkPacket *GetNetworkPacket(int size);
     void FreeNetworkPacketBuffer();
     void Close();
-    void Open();
+    /* returns true: the result no caller reads (anim_main.cpp's Open, the core lane round 20) */
+    bool Open();
     bool InitCommands();
     float InvExp(float x);
     void AddPath(const char *path);
@@ -730,7 +731,9 @@ public:
     unsigned char _pad43;   // 0x43
     CZAnim* m_UserActionAnim;   // 0x44
     LOD m_Lod;   // 0x48
-    void * m_network_activation_callback;   // 0x4c
+    /* the anims' network send (0x414BFC: the game states' 0x2B8660 sets it to fts_remote.cpp's
+     * SendZAnimNetworkPacket; CZAnim::Activate sends each networked activation through it) */
+    void (*m_network_activation_callback)(void *data, int size);   // 0x4c
     unsigned char m_block_activation_callback;   // 0x50
     _zanim_cmd_hdr m_cmd_if;   // 0x54
     _zanim_cmd_hdr m_cmd_elseif;   // 0x58

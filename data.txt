@@ -1256,7 +1256,7 @@
 0x004148E0 0xC s_hbLostColor  # OVL1 bss; hud_healthbar.cpp's static (128, 128, 64), name ours: the part just lost (the constructor); 4 references in 2 functions -- the HUD lane
 0x004148F0 0xC s_hbDeadColor  # OVL1 bss; hud_healthbar.cpp's static (100, 100, 100), name ours: the rest of the bar once its owner is dead (Update); 4 references in 2 functions -- the HUD lane
 0x00414980 0x0 cdUA  # OVL1 bss; s1:data-exact (size SOCOM 1's; via lgAudASync +5)
-0x00414BB0 0x1C8 ZAnim  # OVL1 bss; SOCOM II's CZAnimMain is 0x1C8 (Open clears m_CurrentFrame at 0x1C4); s1:data-exact (SOCOM 1's 0x1C4; via CheckForRegionTrigger__10CZSealBodyFUi +8)
+0x00414BB0 0x1C8 ZAnim  # OVL1 bss; SOCOM II's CZAnimMain is 0x1C8 (Open clears m_CurrentFrame at 0x1C4); s1:data-exact (SOCOM 1's 0x1C4; via CheckForRegionTrigger__10CZSealBodyFUi +8); +0x4C (0x414BFC) is m_network_activation_callback, the anims' network send -- the game states' 0x2B8660 stores SendZAnimNetworkPacket there (fts_remote.cpp's data_00414BFC), CZAnim::Activate 0x2734B0 calls through it (byte-exact): a member, not a row of its own (the core lane round 20)
 0x00414D78 0x4 _input_str_ptr  # OVL1 bss; SOCOM 1 name (the wildcard search's pattern; ZAnimWildcardInit sets it)
 0x00414D80 0x14 _digit_ptr  # OVL1 bss; SOCOM 1 name (the pattern's stars, five at most)
 0x00414DA0 0x14 _digit_val  # OVL1 bss; SOCOM 1 name (the digit each star stands for)
@@ -1427,6 +1427,8 @@
 0x0044F0A0 0x4 xCurCell  # OVL1 bss; SOCOM 1's grid_main.cpp file static (its symbol; the six 8 bytes apart here, 4 in SOCOM 1): the cell box CGrid::SetCellBoundary sets and GetNextCell (0x2D71C0) walks; 2 functions reference it
 0x0044F0A8 0x4 zCurCell  # OVL1 bss; SOCOM 1's grid_main.cpp file static (its symbol; the six 8 bytes apart here, 4 in SOCOM 1): the cell box CGrid::SetCellBoundary sets and GetNextCell (0x2D71C0) walks; 2 functions reference it
 0x0044F0F0 0x1 stack@grid_clutter  # OVL1 bss; SOCOM 1's grid_clutter.cpp file static `stack` (qualified: grid_di.cpp's row 0x44D750 holds the bare name; MW names both `stack`, scdiff qualifies MW statics as NAME@UNIT since the GCC lane's round 25a -- renamed from our clutterStack, the engine core round 6): the clutter's CStack, built by __sinit_grid_clutter.cpp (CStack(false), ~CStack 0x2D4FE0 registered) and read by CClutter::Render, CClutterAnimManager() and ClutterTick; 2 references (__sinit_grid_clutter.cpp), the core lane round 2
+0x0044F0F8 0x1 @LOCAL@ClutterTick__Q23zdb19CClutterAnimManagerFPQ23zdb8CClutter@loaded  # OVL1 bss; by hand, the core lane round 20: ClutterTick's function-local guard (a bool of its own, read lbu and set before the lookup -- MW's implicit guard is read lb and set after), the name ours; 2 references (ClutterTick)
+0x0044F100 0x4 @LOCAL@ClutterTick__Q23zdb19CClutterAnimManagerFPQ23zdb8CClutter@snd  # OVL1 bss; by hand, the core lane round 20: ClutterTick's function-local static CSnd * (CSnd::GetSoundByName of the world's foliage sound, CWorld+0x134, looked up once: the sound a newly pushed prop plays), the name ours; 2 references (ClutterTick)
 0x0044F108 0x8 m_pads__6CInput  # OVL1 bss; s1:data-seq (size SOCOM 1's; via DeletePad__6CInputFUi +1)
 0x0044F110 0x1 m_init__6CInput  # OVL1 bss; s1:data-seq (size SOCOM 1's; via Init__6CInputFv)
 0x0044F118 0x4 m_keyboard__6CInput  # OVL1 bss; s1:data-seq (size SOCOM 1's; via Init__6CInputFv)
