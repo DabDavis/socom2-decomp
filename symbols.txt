@@ -10835,9 +10835,9 @@
 0x005AA600 0x8 func_005AA600  # OVL2
 0x005AA610 0x8 func_005AA610  # OVL2
 0x005AA620 0x70 CacheReticuleSeal__10CZSealBodyFb  # OVL2; s1:order by hand (the SEALs, round 39): SOCOM 1's CacheReticuleSeal__10CZSealBodyFb (0x29A790), after GetAction in both builds and the same code -- m_useCachedReticuleSeal set and m_cachedReticuleSeal from the reticule's node through GetSeal, or both cleared (SOCOM 1's DWARF names, 0x178/0x174 there); respelled as a member, byte-exact as before
-0x005AA690 0x34 func_005AA690  # OVL2; tu: seal_env.cpp~ (1.0 beta)
-0x005AA6D0 0x8 func_005AA6D0  # OVL2
-0x005AA6E0 0xAD4 func_005AA6E0  # OVL2
+0x005AA690 0x34 GetReticuleSeal__10CZSealBodyFv  # OVL2; tu: seal_env.cpp~ (1.0 beta); s1:order by hand (the SEALs, round 48): SOCOM 1's GetReticuleSeal__10CZSealBodyFv 0x29A800, the same 0x34 bytes (the cached bit 0 tested, the kept SEAL or GetSeal of m_last_reticule's node -- 540/536/988 here, 376/372/860 there), after CacheReticuleSeal and before GetReticuleDi in both builds; written in seal_env.cpp
+0x005AA6D0 0x8 GetReticuleDi__10CZSealBodyFv  # OVL2; s1:order by hand (the SEALs, round 48): SOCOM 1's GetReticuleDi__10CZSealBodyFv 0x29A840, 8 bytes in both (`this + 0x3C0` here, `this + 0x340` there: m_last_reticule), after GetReticuleSeal and before CheckDIShoot in both builds; the HUD's 0x216770 calls it ahead of the range's Sub, fptodp and sprintf as SOCOM 1's DoRangeText calls GetReticuleDi; written in seal_env.cpp
+0x005AA6E0 0xAD4 CheckDIShoot__10CZSealBodyFP6CPnt3DP7CMatrix  # OVL2; s1:order by hand (the SEALs, round 48): SOCOM 1's CheckDIShoot__10CZSealBodyFP6CPnt3DP7CMatrix 0x29A850 (0xAE4 there, 0xAD4 here), right after GetReticuleDi in both builds; the app camera calls it with a CPnt3D and a matrix (camera.cpp's placeholder already notes CZSealBody::CheckDIShoot)
 0x005AB1C0 0x3CC func_005AB1C0  # OVL2
 0x005AB590 0x2B4 func_005AB590  # OVL2
 0x005AB850 0x364 HandleDamage__10CZSealBodyFP12CZProjectile  # OVL2; s1:order by hand (the SEALs, round 29): SOCOM 1's HandleDamage__10CZSealBodyFP12CZProjectile, before HandleDamageNonExplosive and HandleDamageExplosive in both builds and calling them from the same arms of the same body-part walk (the alive bit first, the last projectile kept, CBody::m_body_parts copied into a local vector, UpdateHealth(loc, 5) online and off, NotifyTargetDown and the stats' death) -- SOCOM II passes the location by address

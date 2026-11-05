@@ -1454,6 +1454,23 @@ static inline void SetBit21c0(CZSealBody *seal, bool on)
     seal->m_useCachedReticuleSeal = on;
 }
 
+/* the hit under the reticule (OVL2 0x5AA6D0: SOCOM 1's GetReticuleDi, `this + 0x340` there -- its
+ * m_last_reticule; between GetReticuleSeal and CheckDIShoot in both builds, and called where SOCOM 1's
+ * DoRangeText calls it, ahead of the range's Sub and sprintf, in the HUD's 0x216770) */
+zdb::IntersectStruct *CZSealBody::GetReticuleDi()
+{
+    return &m_last_reticule;
+}
+
+/* the SEAL under the reticule: the one kept while the cache is on, else the hit node's (OVL2
+ * 0x5AA690: SOCOM 1's GetReticuleSeal, the same 0x34 bytes, after CacheReticuleSeal in both builds) */
+CZSealBody *CZSealBody::GetReticuleSeal()
+{
+    if (m_useCachedReticuleSeal)
+        return m_cachedReticuleSeal;
+    return GetSeal(m_last_reticule.m_node);
+}
+
 /* the toggle the radio menu flips (0x235300, 0x235440): on, bit 0 of 0x21C set and the SEAL of the
  * node at 0x3DC kept; off, both cleared (OVL2 0x5AA620, new in SOCOM II; the names ours) */
 void CZSealBody::CacheReticuleSeal(bool on)

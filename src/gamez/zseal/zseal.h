@@ -2008,6 +2008,11 @@ public:
     class CPickup *GetProximityWeapon(class CPickup **secondary);
     class CPickup *GetProximityMPBomb();
     void CacheReticuleSeal(bool on);
+    /* the SEAL under the reticule -- the one kept while it is cached -- and the hit under the reticule
+     * (SOCOM 1's GetReticuleSeal and GetReticuleDi, after CacheReticuleSeal in both builds: OVL2
+     * 0x5AA690, 0x5AA6D0 -- the SEALs, round 48) */
+    CZSealBody *GetReticuleSeal();
+    zdb::IntersectStruct *GetReticuleDi();
     /* the MP bomb picked up (SOCOM 1's; OVL2 0x59DEF0) */
     void HandlePickupMPBomb(CPickup *pickup);
     /* a console's request for one of the SEAL's pickups answered: the ammunition taken and the
