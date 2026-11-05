@@ -559,6 +559,143 @@ bool CZOnlineLobby::SendChat(const char *text, const char *to)
     return true;
 }
 
+/* a response's status looked at -- true when it succeeded (SOCOM II's; OVL1 0x2F42D0: every
+ * lobby callback opens with it, the request's name first). The name is never read: a debug print
+ * of a failure, compiled out, which keeps it from auto-inlining as its out-of-line calls here show
+ * (cbFindChatPlayerID's) -- pinned, as CheckMediusError below */
+#pragma auto_inline off
+bool CheckMediusCallbackStatus(const char *what, MediusCallbackStatus status)
+{
+    return status == MediusCallbackSuccess;
+}
+
+/* a Medius call's result looked at -- true when it succeeded (SOCOM II's; OVL1 0x2F42E0: every
+ * Medius request in OVL1 0x2DF560-0x306670 hands it the call's result; SendChat, Censor and the
+ * chat's callbacks call it out of line) */
+bool CheckMediusError(MediusErrorCode err)
+{
+    bool ok = true;
+
+    if (err != MediusSuccess)
+        ok = false;
+    return ok;
+}
+#pragma auto_inline reset
+
+/* a callback status's name, the SDK's enumerator spelled out (SOCOM II's; OVL1 0x2F4300: the
+ * failed callbacks print it) -- -1000 to -954, then 0 to 4 */
+const char *LookupMediusCallbackStatus(MediusCallbackStatus status)
+{
+    switch (status) {
+    case -1000:
+        return "MediusBeginSessionFailed";
+    case -999:
+        return "MediusAccountAlreadyExists";
+    case -998:
+        return "MediusAccountNotFound";
+    case -997:
+        return "MediusAccountLoggedIn";
+    case -996:
+        return "MediusEndSessionFailed";
+    case -995:
+        return "MediusLoginFailed";
+    case -994:
+        return "MediusRegistrationFailed";
+    case -993:
+        return "MediusIncorrectLoginStep";
+    case -992:
+        return "MediusAlreadyLeaderOfClan";
+    case -991:
+        return "MediusWMError";
+    case -990:
+        return "MediusNotClanLeader";
+    case -989:
+        return "MediusPlayerNotPrivileged";
+    case -988:
+        return "MediusDBError";
+    case -987:
+        return "MediusDMEError";
+    case -986:
+        return "MediusExceedsMaxWorlds";
+    case -985:
+        return "MediusRequestDenied";
+    case -984:
+        return "MediusSetGameListFilterFailed";
+    case -983:
+        return "MediusClearGameListFilterFailed";
+    case -982:
+        return "MediusGetGameListFilterFailed";
+    case -981:
+        return "MediusNumFiltersAtMax";
+    case -980:
+        return "MediusFilterNotFound";
+    case -979:
+        return "MediusInvalidRequestMsg";
+    case -978:
+        return "MediusInvalidPassword";
+    case -977:
+        return "MediusGameNotFound";
+    case -976:
+        return "MediusChannelNotFound";
+    case -975:
+        return "MediusGameNameExists";
+    case -974:
+        return "MediusChannelNameExists";
+    case -973:
+        return "MediusGameNameNotFound";
+    case -972:
+        return "MediusPlayerBanned";
+    case -971:
+        return "MediusClanNotFound";
+    case -970:
+        return "MediusClanNameInUse";
+    case -969:
+        return "MediusSessionKeyInvalid";
+    case -968:
+        return "MediusTextStringInvalid";
+    case -967:
+        return "MediusFilterFailed";
+    case -966:
+        return "MediusFail";
+    case -965:
+        return "MediusFileInternalAccessError";
+    case -964:
+        return "MediusFileNoPermissions";
+    case -963:
+        return "MediusFileDoesNotExist";
+    case -962:
+        return "MediusFileAlreadyExists";
+    case -961:
+        return "MediusFileInvalidFilename";
+    case -960:
+        return "MediusFileQuotaExceeded";
+    case -959:
+        return "MediusCacheFailure";
+    case -958:
+        return "MediusDataAlreadyExists";
+    case -957:
+        return "MediusDataDoesNotExist";
+    case -956:
+        return "MediusMaxExceeded";
+    case -955:
+        return "MediusKeyError";
+    case -954:
+        return "MediusIncompatibleAppID";
+    case 0:
+        return "MediusSuccess";
+    case 1:
+        return "MediusNoResult";
+    case 2:
+        return "MediusRequestAccepted";
+    case 3:
+        return "MediusWorldCreatedSizeReduced";
+    case 4:
+        return "MediusPass";
+    default:
+        return "Unknown/Invalid Medius Status Code";
+    }
+}
+
 /* the online session left: the Medius and DME connections closed, the lobby with them (SOCOM 1's;
  * OVL1 0x2F4240: 'LobbyBailout') */
 bool CZOnlineLobby::Bailout()
@@ -827,5 +964,17 @@ void func_002F4030(void *msg, int type)
         func_002F3EF0((char *)msg + 140);
         break;
     }
+}
+
+/* a request put into the network's order: nothing to do (empty; OVL1 0x2F4080 -- the state
+ * handlers', the ladder's, the rooms' and the lobby's requests call it, all from other units) */
+void func_002F4080(void *msg, int type)
+{
+}
+
+/* a stats row put into the network's order: nothing to do (empty; OVL1 0x2F3EE0 -- the
+ * player-info page, zNetMediusStates.cpp's, calls it) */
+void func_002F3EE0(GamePlayerStats *stats)
+{
 }
 }
