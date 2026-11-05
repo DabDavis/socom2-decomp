@@ -49,7 +49,7 @@ and data reference resolved to the address the shipped code uses.
 | `tools/unitscan.py` | where one hand-written unit could be two: its pinned and inlined pairs, the target's own calls, every cut that separates the first and none of the second |
 | `tools/s1vtables.py` | virtual functions named slot by slot: SOCOM II's vtables found by their RTTI's class-name string, aligned with the demo's `__vt__` tables; `--holdout` measures it on names the map already has |
 | `tools/try.py` | compile one unit with one variant at a time and score one symbol, in a scratch copy of `src/` and `include/`, built as sccheck builds it (the unit's own `sc:` directive: a GCC unit's toolchain and flags, `as=`, `overlay=`); a variant is a `--sub` and the `--and`s after it, or one of `--variants FILE.py`'s; `--target ROW` scores against another row, `--all` every function of the unit (GCC round 27a) |
-| `tools/objcmp.py` | a header change proved code-neutral: every hand-written unit built at BASE's text and as it is, function by function, data section by section (GCC round 27a, the SEALs' round-26 harness); `--by-address` compares every name a map resolves as its map address, so a placeholder respelled by its row's name is the same (GCC round 29a); both sides are built at one scratch path, so a path the compiler writes (an unreferenced `__FILE__`) is no difference (GCC round 34a) |
+| `tools/objcmp.py` | a header change proved code-neutral: every hand-written unit built at BASE's text and as it is, function by function, data section by section (GCC round 27a, the SEALs' round-26 harness); `--by-address` compares every name a map resolves as its map address, so a placeholder respelled by its row's name is the same (GCC round 29a); both sides are built at one scratch path, so a path the compiler writes (an unreferenced `__FILE__`) is no difference (GCC round 34a); Metrowerks' anonymous `@N` objects are compared by content and an unreferenced one (which the linker drops) left out, so a header's literal shifting every later rank is no difference (GCC round 36a; `--anon-by-rank` the old rule) |
 | `tools/scperm.py` | the permuter: EQOA's tree-sitter mutations of one function, MW-compiled and alignment-scored (needs `.venv`) |
 | `tools/ccsweep.py` | compiler identification for the GCC front: one source over every ee-gcc toolchain and flag set (and `//==` source variants), every function it defines scored |
 | `tools/ccperm.py` | every order of a marked block of statements, for GCC's scheduled stores: which source order gives the target's |
@@ -60,7 +60,7 @@ and data reference resolved to the address the shipped code uses.
 | `tools/structdiff.py` | one function against its row with the registers and the link normalised, so only STRUCTURAL differences show (opcodes, unrelocated immediates, order, which function is called); says how many instructions differ in their registers alone -- a register-only miss -- and `--regs` keeps the registers (the game states' round-35 structdiff.py and mydiff.py, promoted in GCC round 31a) |
 | `tools/cdis.py` | the candidate's disassembly before the link, each relocation named as the scorer resolves it (`<R_MIPS_LO16 currentDir = 0x1df400>`), `--at` at its row's addresses, `--list` the object's functions (the game states' round-35 cdis.py, promoted in GCC round 31a) |
 | `tools/igdump.py` | Metrowerks' own register colouring read out of mwccps2 3.0b52 under gdb: a unit built as sccheck builds it, every colouring one JSON line (each virtual register's variable, degree, neighbours, colour, spill cost; the colouring order; the PCode); `-f` shows a function's, `--saved` who holds each saved register (the lanes' igdump.py, promoted in GCC round 32a); the spill slots each spilled node takes and the frame's top (GCC round 34a) |
-| `tools/igreplay.py` | MW's simplify/colour replayed offline on an igdump record (every GPR and FPR record replays exactly); `--move V=POS` renumbers a virtual register to see the registers that numbering gives, `--want`/`--movers` searches the placements, `--nb` a node's neighbours and sweeps (the MSL lane's igreplay.py, the game states' relabel.py and brute.py, the AI core's nbdeg.py: GCC round 32a); `--target` scores the colouring a `--move` gives and lists every node whose target uses disagree, and a search has a budget, `--timeout`/`--max-iters`, with progress (GCC round 33a); the spill slots a numbering gives, checked against the record and with `--target` against the target's (GCC round 34a) |
+| `tools/igreplay.py` | MW's simplify/colour replayed offline on an igdump record (every GPR and FPR record replays exactly); `--move V=POS` renumbers a virtual register to see the registers that numbering gives, `--want`/`--movers` searches the placements, `--nb` a node's neighbours and sweeps (the MSL lane's igreplay.py, the game states' relabel.py and brute.py, the AI core's nbdeg.py: GCC round 32a); `--target` scores the colouring a `--move` gives and lists every node whose target uses disagree, and a search has a budget, `--timeout`/`--max-iters`, with progress (GCC round 33a); the spill slots a numbering gives, checked against the record and with `--target` against the target's (GCC round 34a); `--target` reads FLOAT registers (GCC round 35a) and byte and halfword loads, a memory access aligned by its displacement first (GCC round 36a) |
 | `tools/igvar.py` | source variants (try.py's `--sub`/`--and`/`--variants`) each built under igdump in a scratch tree; per variant the spilled nodes and each saved register's holders by variable, or `--all` every telling node (the AI core's and the game states' igvar.py: GCC round 32a) |
 | `symbols.txt` | **the map** — `0xADDR SIZE name  # note`, kept by hand from here on |
 | `data.txt` | the map of global data, the same format and namespace |
@@ -2065,6 +2065,71 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the world, rdr and sound, round 24** (the CWorld constructor; Particle::Source::SetActive to source):
+  - zdb::CWorld::CWorld(const char *) 0x320310 is SOCOM 1's call sequence (CSaveLoad::Load calls it where SOCOM 1's does)
+    with one shadow texture shared by all four slots; constants passed through an inline's by-value class parameter stay
+    a stack temporary that is copied, passed as float parameters they are stored straight (the constant lights through
+    float setters, only the normalised first light through a by-value CPnt4D); the name buffer declared after the light
+    vector fixes the frame order;
+  - a CPnt3D derived from a C struct copies as ld / sd plus lwc1 / swc1, with its own float members as three lwc1 /
+    swc1; `m_active != b` loads the member before narrowing the parameter; narrowing a bool into an unsigned char local
+    and passing it to a bool parameter costs an sltu -- SetActive 0x329AC0's target passes the narrowed byte with no bool
+    conversion: the particles' CNode stand-in declares the virtual taking unsigned char (a marked device: a virtual
+    call's parameter type affects no symbol);
+  - A NAMED LOCAL ASSIGNED ONCE IS NOT A NODE IN MW'S COLOURING, so it cannot serve as a numbering device (Particle::
+    Instance::Render, OPEN at 7); BuildNodeLocalLightList 0x338FA0 and CWorld::m_invscale named by SOCOM 1's calls and
+    gp pair.
+- **Tells from the kit and AI states, round 50** (ReParentToRifle / ReParentToPistol, SetDefaultLookParams, CAiSAvoid's and
+  CAiSStunResponse's Tick, the response-anim draw -- open since round 3; seal_look.cpp and seal_airesponse.cpp whole):
+  - `tools/igreplay.py --move 38=46.5` showed BEFORE the source was written that the launcher part had to be numbered
+    after the three walks -- read through a new inline accessor (CKitBody::AttachPart) it is: a struct field read
+    through a trivial inline accessor takes a temporary number after an earlier inlined walk's variables
+    (CZKit::ReParentToRifle 0x5C6A40, ReParentToPistol 0x5C6DA0); an if-form item pick keeps the walk index's early
+    temporary number, a ternary does not;
+  - a `rand() % n` written as its own inline leaves the zero arm's `b` unfilled, with the call's and the join's labels
+    padded; a preset result defined before an array element's address is computed pushes that index's first temporary
+    off v0 onto v1 (0x609530, open since round 3: 22 -> 5 -> 0);
+  - five switch cases over 0..5 give a compare chain, the sixth written empty gives the jump table (CAiSAvoid::Tick
+    0x601F80 -- its goal kind read `*(GOAL_TYPE *)&m_goal`, a marked device: ai_states.h comes before zseal.h's enum and a
+    plain cast loads with lbu where the target has lb); `!(a >= b)` on floats gives the target's materialise-then-xori;
+    a pointer-typed local defined before another statement makes MW read `this` from its saved register
+    (CAiSStunResponse::Tick 0x605C60); SetDefaultLookParams 0x601400 matched on the first build through zkit.h's
+    Rfloat(min, max).
+- **Tells from completing the MSL headers, round 31** (the string's short test; cdeque<PCv>::resize measured; probes
+  build/p31/, untracked -- str/ (the short-test probes, v_lm2.py), dq/ (deque.resize.diff, v_rs*.py), scanshort.py,
+  vrun.py: header variants over a probe):
+  - MW SHARES A REPEATED INLINE PREDICATE AND THEN MATERIALISES IT: `!is_long()` used once folds into the branch
+    (`andi; beqz`, the short arm in the delay slot), used twice on one string in one function (size() and c_str(),
+    size() and operator[]) it is one value, stored as a negated, narrowed bool (`andi 1; sltu; xori 1; andi 0xff`), each
+    use a `beqz` on it with the short arm falling through and a `b` joining the forms -- so include/string's size(),
+    operator[] and at() test the short form first as c_str() does (CSoftKeyboard::PrepForDisplay 0x38BAC0's cap-font
+    test the target's, 0x350 -> 0x360 of 0x374; _preproc_filter's line walk; +0 / -0 over every hand-written unit);
+  - A DEAD FIRST USE SHARES TOO: LastMessage 0x2B6D60 is byte-exact with a named local taking the same c_str() first
+    (`const char *s = last->m_text.c_str(); return last->m_text.c_str();`) -- a discarded `x.c_str();` statement is
+    dropped before anything is shared; a form that materialises a single use (`unsigned char` over `is_long() ^ true`)
+    materialises every single use in the image (ten functions hold the four instructions adjacent, all second uses);
+  - an `insert(..., value_type())` argument is a stack temporary under every spelling (a const static is folded to
+    one too); a function-local or static-member zero is addressed `lui/addiu` but MW puts every zero-initialised
+    static in .bss -- the image's resize 0x285660 addresses a zero WORD IN .data (0x3DE1D0, after zanim_menu.cpp's
+    UICommandTable), a declaration not found;
+  - in an inlined constructor a field read twice through a `T *const &` accessor keeps its address in a register for
+    the field's store too; a parameter by const reference is re-read after the iterator's first store, by value it is
+    not; `return t += n;` keeps an operator+'s copy in memory where `t += n; return t;` lets MW merge it with its
+    source; `n += p_ - data_` reuses the parameter's register where a new local takes another.
+- **Tells from the AI core, round 31** (no new row; plan_addleg and GetLocation(point) written, ReRoute at the target's size):
+  - an uninitialised pointer passed by reference into an inline is live round its loop and takes a saved register --
+    initialised `= 0` it stays in v0 (GetCellRepelParams 0x5169B0's neighbour cell: its loop on the target's registers);
+    a reference local bound to a frame field gives the uses through it an address register of their own (ReRoute
+    0x52F8F0's `unsigned int &cnt`: the target's size, 10 off);
+  - 4-BYTE CLASS LOCALS (CAiMapLoc) TAKE THE TOP FRAME SLOTS, above a larger object declared before them, wherever they
+    are declared -- a target with them below has them in a later group, e.g. an inline's locals (plan_addleg 0x5274B0:
+    every call, branch and spill the target's, 127 off from that one frame difference); a reference local is numbered at
+    its definition (`int j = 0;` ahead of `CAiMapLoc &next = to;` gave what `igreplay --move 42=49.5` predicted);
+  - CAiMapLoc's hand-written copy constructor copies field by field, its implicit assignment the word (`T x; x = y;`);
+    CPnt3D's implicit assignment copies field by field, a block copy (ld / sd) needs the copy constructor at the
+    declaration; each early `return false` gets its own branch to the epilogue, `if (A && B) { ... } return false;` sends
+    both to one shared block; a list walk through a const view with postfix steps makes one more begin() / end()
+    temporary copy than through `this` (CAiMaps::GetLocation(point) 0x52DC70, OPEN).
 - **Tells from the engine core, round 18** (CountAwareness, GetCmd, the CTarget remove_copy, CGrid::GetCell and
   SetTraversalExtents -- open since round 6; the CPnt3D stand-ins retired):
   - A CLAMP WRITTEN `if (n > K) n = K;` ENDS A BLOCK, PADS ITS JOIN AND CHANGES HOW THE NEXT LOADS ARE SCHEDULED; `n = n >
@@ -10162,6 +10227,90 @@ every libcdvd.h unit 37 of 40, none lost. No rows named (all had the demo's name
   libnetb_udp_init_buffer), libquan.c's dequantiser/quantiser, libtran.c's passes (0x24E788: a DFT over
   an 8-bit phase table with an odd-length tail).
 
+**The tools, round 36a** (the integrator's two requests): (1) **`tools/igreplay.py --target` reads byte and
+halfword loads.** mwccps2's registrations (`push "name"; push <number>; call`, 900 pairs read off
+mwccps2.exe again: `build/scratch/gcc/opreg.py`) name 1030 lbu, 1037 lb, 1038 lh, 1039 lhu -- what a
+fixture's `signed char`/`unsigned char`/`short`/`unsigned short` loads record; PSEUDO read 1040/1041/1044/1045
+(ll, lld, l.s, lwc2, in no lane's GPR record) as them, so no GPR byte or halfword load had ever matched
+(a census of ten units' 1,180 records: 478 lbu, 76 lb, 287 lh, 257 lhu, every one unmatched). Two more
+fixes the measurement showed: **a memory access's displacement picks between instructions of one
+signature** -- the PCode's `k4:` operand is two little-endian words, the displacement and the Object a
+symbol's or local's access names, so a pointer + constant (`lh t1,42(a3)` is `k4:2a00000000000000`) is
+known before the final code; tmap takes the nearest instruction with that displacement first, the
+nearest by signature only if none is in the window (`disp=False` for the old alignment): with the table
+fixed and without it, c2dfont.cpp's vector<C2DGlyphPiece>::erase walked into the wrong copy of its
+unrolled copy loop (a halfword load scheduled above the pointer's step) and lost 41 of its 68 nodes;
+of 5,456 matched memory accesses 93 % already agreed with their displacement. And a candidate longer
+than its target maps what both hold (tmap raised IndexError: 32 pairs). **The verdicts, before and
+after** (`build/scratch/gcc/igverdicts.py`, `igexplain.py`: every GPR record of zmath_main, zmath_pnt3d,
+the six c2d*.cpp, seal_body.cpp and seal_tasks.cpp, each record against its own function -- the
+candidate leaving the fewest PCode unmatched): 562 records, 322 identical (round 35a's 43 zmath pairs
+all), 239 changed only by 712 byte/halfword loads newly matched and 104 nodes newly mapped, each read by
+its own load -- no mapping changed, no differ count changed, no disagreement newly seen (in 32 of them
+identical-signature instructions trade places in the alignment, no register read differently); one
+crash is a verdict now; the FPR records 219 of 219 identical. The canary's
+`test_igreplay_reads_byte_and_halfword_loads` (11 assertions; master's igreplay fails its 6th): a
+fixture loading one of each through a pointer into four values live across a call; aligned with its own
+code every PCode instruction matches (the old table: 4 unmatched); against a target whose four loads
+write s7-s4 each node's load is read as a disagreeing use (the old table, restored in place: none); two
+`lh t1,N(a1)` out of the PCode's order map each node to its own field (by signature alone they trade);
+a shorter target maps. (2) **`tools/objcmp.py` names Metrowerks' anonymous objects by CONTENT** (the game
+states' round 43: ai.h's ForEachCell binds a 0 to a const reference -- two unreferenced 4-byte zeros in
+every unit including ai.h, used or not -- and every later `@N` rank shifted with the code the same).
+`anon_by_content`: each `@N` object is `@.data"name"`, `@.data:00000000`, a long one by digest (one
+holding relocations by their targets too), the k-th repeat `#k`, so a relocation reads the object it
+names; an object nothing reaches -- no relocation of a function, of a named object's section, or of a
+section reached from them -- is left out with its section. **MW's linker drops a data section nothing
+references**: vehicle_rdr.cpp's object holds five anonymous zero/4 words, three unreferenced; the
+image has its referenced 0 and 4 at 0x64F9A8/0x64F9B0, right after another unit's datum at 0x64F9A0 --
+the three are not there. So an unreferenced object, inserted or changed, cannot reach the image; a
+referenced one changed is another name. `--anon-by-rank` (`summary(anon_rank=True)`) keeps rounds
+27a-35a's rule. **Proved** (`build/scratch/gcc/objproof36.py`: one build of both sides scored by master's
+objcmp and this one, every hand-written unit, plain, --by-address and --symbols-only): an uncommitted
+code-neutral ai.h probe (an unused inline binding 7 and 9 to const references) -- master 46 units DIFF
+in each mode, this one 0; against 451885c2~1 (654 units, 50/44/45 DIFF) and 2deeccce~1 (633 units,
+201/195/195) every verdict master's; `--anon-by-rank` gives master's verdict for every unit in every mode
+of the three runs; no unit equated less. The canary's `test_objcmp_aligns_anonymous_objects_by_content`
+(7 assertions): the inserted zero the one unreferenced object; the unit the same by content and by
+address, DIFF by rank; a referenced string changed differs, the referenced zero made a 1 differs, the
+inserted zero made a 1 is the same; every existing objcmp assertion holds (6 + 10 + 71). (3) No tool that
+scores changed: scdiff.py, sccheck.py, scdecomp.py, tools/try.py and `include/` are master's, so no MW or
+GCC unit can score differently. **automatch** over the lane's three ranges (`--max-size 0x400 --emit
+--no-prune --jobs 2 --obj-dir` the lane's private `src/lib` build): MAIN `18DB90 1C4CC0` 11 tried, 0 hits
+(2 m2c refusals, 9 misses), OVL1 `1E7F58 1E8FD4` 0 tried, `243000 256FD0` 39 tried, 0 hits (2 build
+failures, 5 refusals, 32 misses): 50 tried, none byte-exact (round 35a: 51, 0). **Why drafts fail to
+build** (round 11a: 99 of 526; the lead): the GCC repairs of rounds 12a-25a left 2 in these ranges, and
+both are compile failures, not a scoring exception try_one swallowed (`build/scratch/gcc/amwhy.py`
+prints each variant's stage and error): 0x24DBB8 "unsupported wide integer operation" in every variant
+(m2c's 128-bit arithmetic), 0x24B2F8 a byte offset m2c typed as a pointer (`var_s3 = NULL; ... var_s3 +=
+4`) added to the frame array (`sp + var_s3`: "invalid operands to binary +"), two variants also using the
+undeclared frame slot `sp44` -- neither a cheap repair.
+
+**Round 36a** (2026-11-05, the tools first, then OVL1's codec): 1 row newly byte-exact (356 bytes) of 2
+written -- libmath.c's decade fit 0x24AD48 (unwritten before; `sase_libmath.c` 3 of 3) -- and libtran.c's
+DFT 0x24E788 written (OPEN; `sase_libtran.c` 8 of 9, the 8 as before). No rows named (the codec is not in
+SOCOM 1). What they showed:
+
+- **A union GCC keeps in the frame is a float/int one**: 0x24AD48 stores its argument to the stack and
+  reloads it at every test -- `union { float l; int i; }` (or a `float a[1]` beside the float) does;
+  round 26a's float/long union sits in a register, its halves masked and ORed (0x1C8 bytes against
+  0x164). The assert's `union_x.l <= uiBoundary[0]` compiles to c.le.s: `l` is the float here.
+- **A constant the multiply reads first is a const variable**: the DFT's 256/2pi is no literal but a
+  `const float` of MAIN's small data (0x1D559C, beside the sine and cosine table pointers 0x1D5594/8,
+  used by this function alone) -- loaded so it is `mul.s $f0,$f8,$f7`'s first operand and takes $f8 ahead
+  of the 0.5's $f9; as a hex-float literal it was the second operand and the registers traded.
+- **A count `k = half; while (--k != 0)` keeps its start in the loop**: `k = half - 1` is hoisted as an
+  invariant, the pre-decrement's start is not (`addiu t4,a0,-1` each pass, the target's); a length's
+  half and parity written inside the loop are hoisted after its entry test (the target's order).
+- **Open, diagnosed in place**: 0x24E788 (51 words, registers alone: local-alloc gives the index's sum
+  a0 and the index follows by copy preference, so every inner-loop register lands one below the
+  target's and the half takes t9 for the target's a0 -- an int index masked, the update moved, a char
+  step and seven declaration orders give the same, `build/scratch/gcc/dft/`). Not reached: round 35a's
+  opens (func_0018EF70, sceCdInit, func_0018E9E8, lgAudInit, sceMcWrite, 0x24C000 -- no new idea),
+  0x252FE0, dmaRefImage, sceBInetRecv/Send, sceGsResetGraph, libnetb_udp_init_buffer, libquan.c's
+  0x24B2F8/0x24B028, libmath.c's 0x24AB48 (0x1FC: three frame arrays of 81, a log-scale resampling),
+  libtran.c's passes.
+
 **Next**: the libraries by hand, module by module, as their vendors wrote them (each `src/lib`
 unit's header says what it covers); GCC's scheduler moves independent stores, and which source
 order gives the target's is easier measured than predicted (`tools/ccperm.py PROBE
@@ -12069,6 +12218,48 @@ FindBestTranscription OPEN: 16 of 19) -- 3 rows new to the map's byte-exact rows
 superseded; `src/lib/asr` 556 of 583 (553 of 581 before). No rows named (all had SOCOM 1's). casr.h types
 +920/+924 (the trained transcription's out-parameters). No tool changed.
 
+**Round 31c: the user-word training's two scorers, the window flush, the grammar data, the iso-word block's control and N-best.**
+
+- **Values reload spills take their slots in declaration order** (ScoreTranscriptions, 0x950): i, least, buf,
+  ret, retried, first, have and same declared in the order of the target's +68 to +96 give its slots; the
+  registers' variables can go anywhere.
+- **A constant hoisted by loop.c and denied a register is folded back by reload**: a struct field set to 1
+  and read back four statements later (`size = (lab.n + lab.one) * 2 + 16`) lives long enough in the
+  utterance loop for loop.c to hoist the 1; global-alloc finds it no register and reload rematerialises
+  it into `addiu`, where the target sums a register (`li t1,1; addu`). The sum written straight after the
+  store keeps the 1 in the loop.
+- **A ?: inside a test is threaded into branches; through a local it is a movn** (`n = c > 1 ? c - 2 : 0;
+  if (cnt == n)`); **each loop's counter and walker their own variables** (one variable is one pseudo, one
+  register through every loop -- the target's differ per loop); **`while (k++ < cnt)` for a copy loop the
+  target leaves rolled** (the old-value test); **a load written before two spill stores stays ahead of
+  them** in sched2 (the !have arm's `q = c->uw_bt` before `first = j; have = 1`).
+- **GCC unrolls a loop by its RTL size at loop.c, after hoisting** (DoDurationModeling, casrEnableGenders):
+  a walking pointer for the expansion makes its body small enough to unroll by four where the target's
+  index (`newseg[idx--]`) unrolls by two; casrEnableGenders' switch loop has 47 insns at loop.c, its three
+  life-1 invariants are hoisted and the loop unrolled completely (3 x 33 < 100), where the target keeps two
+  of them in the loop (a longer loop at that point) and peels one iteration ahead of a loop unrolled by
+  two -- OPEN, diagnosed in place.
+- **Two case labels sharing a body make a range; apart, each value is tested** (ContextSetGcdData's
+  types 3 and 4: the target's two `beql` into one body cross-jumping merged); **case bodies are laid out
+  as written** (ControlIsoWordTokenDp's 37, 38, 4, 3, 5, 34 ... 27, SOCOM 1's order).
+- **A callee returning an unsigned char keeps `return f()` a jal in an int function** (qQueueControl in
+  isowdp.c: the object makes sibling calls, the target's call does not) -- the README's `_tosErrorLog` rule
+  from the caller's side; **an int accessor narrowed at the store** gives the target's andi (an unsigned
+  short accessor is trusted); **a field read back after its own store** is one load for both uses (`e->f160
+  = p->f12; e->f156 = e->f160 / 10`); **an allocation through an inline returning 1 on failure** keeps the
+  failure's `move v0,zero` ahead of the null test (SOCOM 1's shape).
+- **An append through an index** (`best[cnt]`) gives the records' base its register where a walker of its
+  own (`q++`) outranks it (GetNBest).
+
+Hand-written in round 31c: `asr/userword.c` (DoDurationModeling, ScoreTranscriptions new: 18 of 20),
+`asr/window.c` (WindowFlush new: the object whole, 5 of 5), `asr/context.c` (ContextSetGcdData new: the
+object's rows all matched), `asr/isowdp.c` (ControlIsoWordTokenDp, GetNBest new: 10 of 11), `asr/casr.c`
+(casrEnableGenders written, OPEN: 57 of 58) -- 6 rows new to the map's byte-exact rows (6,840 bytes), no
+draft superseded; `src/lib/asr` 562 of 590 (556 of 583 before). No rows named (all had SOCOM 1's names).
+casr.h types the user-word scoring result at +944 (dpscoreuw.c's SCOREUWRESULT), the back pointers'
+phoneme at SEGLABEL +16, the language's GetSilencePhenome, GetNbrWarpFactors and GetpWarpFactors slots
+and WARP. No tool changed.
+
 **Round 14b: the "toolchain" opens were SCEA's shapes; LargeInt's core is assembly.**
 
 - **LargeInt's EE primitives are hand-written assembly** (0x628B48-0x629A44, between LargeInt.c's C and
@@ -12421,6 +12612,11 @@ What is open across lanes, and what comes next:
   10): `__sinit_zNetMediusUniverse.cpp` 0x4022D0 matches at `-inline level=6` and not at 5 once
   theAcctDB is modelled as the member at offset 0 of an outer CZUniversInformationServer (the
   destructor it registers, 0x300570, is not CAcctDB's vtable's) -- open at 5 (0xC4 vs 0x144).
+  Two more (the kit's round 49, recorded by the MSL headers' round 31): seal_unit.cpp's list init
+  0x5EF8D0 (0x70 of 0x78) and its do_assign 0x5EF470 (0x1D8 of 0x198) inline the pointer list's
+  end() where the target calls it out of line before each insert (OVL2's copy 0x50FED0, OVL1's
+  0x2A00A0; OVL1's init 0x317720 calls it the same way) -- an end() a level taller in the original
+  than include/list's, which level 5 inlines whole.
   THE IMAGE'S OWN POINTER-VECTOR end() (the MSL headers round 24) makes 19 natural walks need level 6: their
   eight units carry `#pragma inline_depth(6)`, their objects byte-identical to the level-5 fit's.
   MEASURED OVER THE WHOLE TREE (2026-11-03, master 914fce13, `SC_FLAGS` with level=N, everything

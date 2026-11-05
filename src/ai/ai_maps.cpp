@@ -885,6 +885,101 @@ CPnt3D *CAiMaps::GetCellCenter(const CAiMapLoc &loc, CPnt3D *center)
     return map ? map->GetCellCenter(loc, center) : 0;
 }
 
+/* the cell under a point: the first map whose cells hold it, its index as the map id -- passed
+ * over when the first map's cell is a seam (m_mes) and the map's cell is SOIL_NOALT; when that
+ * cell is no ground a step may end on or lies more than half a unit off the point's height, and
+ * the first map's cell is a seam, the maps after it are tried too, each cell not SOIL_NOALT and
+ * no more than 10 units above the point taken when its height lies no further off than the best's
+ * (half a unit more when it is ground and the best not) (SOCOM 1's GetLocation(CPnt3D *, loc), the
+ * demo's 0x19C9B0, 0xA04 bytes; the seam, the NOALT soil and the second walk new in SOCOM II, by
+ * the code -- the AI core's round 31, written from m2c).
+ * OPEN, 0xA24 against 0xA34 (written in the AI core's round 31): every call is the target's -- the
+ * map's GetLocation and IsMapCell inlined whole, GetCell one level (IsMapCell, IsLayer, the
+ * scanlines' [], GetIndex, the layers' [] out of line; the second walk reads the cell before its
+ * row test, as the target does), _close_enough<f> on the literals 0, 0.5 and |dh| -- walked
+ * through a const view of the maps with postfix steps as GetLocation(name) is (0x9FC through
+ * `this`, 0x9CC prefix); left: the target copies begin()'s and end()'s temporaries once more
+ * (sp+228, 212 -> 272), and its frame puts dh 276, the cell 280, the best 284 (here dh 284) */
+bool CAiMaps::GetLocation(const CPnt3D *pos, CAiMapLoc &loc)
+{
+    const CAiMaps *maps = this;
+
+    if (!maps->size())
+        return false;
+    float dh = 0.0f;
+    bool found = false;
+    bool seam = false;
+    int i = 0;
+    CAiMapLoc best;
+
+    for (const_iterator it = maps->begin(); it != maps->end(); it++, i++) {
+        CAiMap *map = *it;
+        CAiMapLoc l;
+
+        if (!map->GetLocation(pos, l) || !map->IsMapCell(l))
+            continue;
+        CAiCell *cell = map->GetCell(l, 0);
+
+        if (i == 0)
+            seam = cell->m_mes;
+        if (seam && cell->m_soil == CAiMap::SOIL_NOALT)
+            continue;
+        found = true;
+        best = CAiMapLoc(l.x, l.y, i);
+        float alt;
+
+        map->GetAltitude(cell, alt);
+        dh = pos->y - alt;
+        bool ground = cell->IsTraversable();
+
+        if ((!ground || !_close_enough(dh, 0.0f, 0.5f)) && seam) {
+            int j = i + 1;
+
+            for (it++; it != maps->end(); it++, j++) {
+                CAiMap *m = *it;
+                CAiMapLoc l2;
+
+                if (!m->GetLocation(pos, l2))
+                    continue;
+                CAiCell *c = m->GetCell(l2, 0);
+
+                if (!m->IsMapCell(l2) || c->m_soil == CAiMap::SOIL_NOALT)
+                    continue;
+                float alt2;
+
+                m->GetAltitude(c, alt2);
+                float dh2 = pos->y - alt2;
+
+                if (dh2 <= -10.0f)
+                    continue;
+                bool ground2 = c->IsTraversable();
+                bool better = false;
+
+                if (!ground2 || ground) {
+                    float d = fabsf(dh);
+
+                    if (_close_enough(dh2, 0.0f, d))
+                        better = true;
+                } else {
+                    float d = 0.5f + fabsf(dh);
+
+                    if (_close_enough(dh2, 0.0f, d))
+                        better = true;
+                }
+                if (better) {
+                    ground = ground2;
+                    best = CAiMapLoc(l2.x, l2.y, j);
+                    dh = dh2;
+                }
+            }
+        }
+        break;
+    }
+    if (found)
+        loc = best;
+    return found;
+}
+
 /* the map that knows the name, the cell given its index (SOCOM 1's) */
 bool CAiMaps::GetLocation(const char *name, CAiMapLoc &loc)
 {

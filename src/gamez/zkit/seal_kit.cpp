@@ -866,6 +866,107 @@ int CZKit::GetClass145Index()
     return -1;
 }
 
+/* the pistol's version (OVL2 0x5C6DA0): the rifle's and the pistol's models taken only for an index
+ * found, and hung without testing their parts */
+void CZKit::ReParentToPistol()
+{
+    int pi = GetPrimaryIndex();
+    CZFTSWeapon *primary = 0;
+    if (pi != -1)
+        primary = m_item[pi];
+    int si = GetSecondaryIndex();
+    CZFTSWeapon *secondary = 0;
+    if (si != -1)
+        secondary = m_item[si];
+    int li = GetClass145Index();
+
+    if (primary)
+        FireClassOf(primary);
+    if (secondary)
+        FireClassOf(secondary);
+
+    CKitBody *body = (CKitBody *)m_body;
+    CKitBody::Attach::Record *rifle = body->m_rifle;
+    CKitBody::Attach::Record *pistol = body->m_pistol;
+    CKitBody::Attach::Record *launcher = body->AttachPart(4);
+    zdb::CNode *rm = 0;
+    zdb::CNode *pm = 0;
+    zdb::CNode *lm = 0;
+
+    if (pi + 1 < (int)m_itemptr.size() && pi != -1)
+        rm = (zdb::CNode *)m_itemptr[pi + 1];
+    if (si + 1 < (int)m_itemptr.size() && si != -1)
+        pm = (zdb::CNode *)m_itemptr[si + 1];
+    if (li + 1 < (int)m_itemptr.size())
+        lm = (zdb::CNode *)m_itemptr[li + 1];
+
+    if (rm) {
+        rm->SetActive(true);
+        rifle->m_node = rm;
+    }
+    if (pm) {
+        pm->SetActive(true);
+        pistol->m_node = pm;
+    }
+    if (lm && launcher) {
+        lm->SetActive(true);
+        launcher->m_node = lm;
+        ((zdb::CNode *)launcher->m_parent->m_node)->DeleteChild((zdb::CNode *)launcher->m_node);
+        ((zdb::CNode *)launcher->m_parent->m_node)->AddChild((zdb::CNode *)launcher->m_node);
+    }
+}
+
+/* the first primary weapon's, pistol's and class-145 item's models hung back on the body's rifle,
+ * pistol and launcher parts, each made active, the launcher's moved last among its parent's
+ * children (OVL2 0x5C6A40: SOCOM 1's ReParentToRifle hung items 0's and 1's on the rifle and
+ * pistol parts); the two weapons' fire classes are asked and unused */
+void CZKit::ReParentToRifle()
+{
+    int pi = GetPrimaryIndex();
+    CZFTSWeapon *primary = 0;
+    if (pi != -1)
+        primary = m_item[pi];
+    int si = GetSecondaryIndex();
+    CZFTSWeapon *secondary = 0;
+    if (si != -1)
+        secondary = m_item[si];
+    int li = GetClass145Index();
+
+    if (primary)
+        FireClassOf(primary);
+    if (secondary)
+        FireClassOf(secondary);
+
+    CKitBody *body = (CKitBody *)m_body;
+    CKitBody::Attach::Record *rifle = body->m_rifle;
+    CKitBody::Attach::Record *pistol = body->m_pistol;
+    CKitBody::Attach::Record *launcher = body->AttachPart(4);
+    zdb::CNode *rm = 0;
+    zdb::CNode *pm = 0;
+    zdb::CNode *lm = 0;
+
+    if (pi + 1 < (int)m_itemptr.size())
+        rm = (zdb::CNode *)m_itemptr[pi + 1];
+    if (si + 1 < (int)m_itemptr.size())
+        pm = (zdb::CNode *)m_itemptr[si + 1];
+    if (li + 1 < (int)m_itemptr.size())
+        lm = (zdb::CNode *)m_itemptr[li + 1];
+    if (rm && rifle) {
+        rm->SetActive(true);
+        rifle->m_node = rm;
+    }
+    if (pm && pistol) {
+        pm->SetActive(true);
+        pistol->m_node = pm;
+    }
+    if (lm && launcher) {
+        lm->SetActive(true);
+        launcher->m_node = lm;
+        ((zdb::CNode *)launcher->m_parent->m_node)->DeleteChild((zdb::CNode *)launcher->m_node);
+        ((zdb::CNode *)launcher->m_parent->m_node)->AddChild((zdb::CNode *)launcher->m_node);
+    }
+}
+
 /* the item a fire mode's ammunition is: under a launcher's mode, the mode is the ammunition's item
  * kind (OVL2 0x5C6530, new in SOCOM II: CAmmoDisplay::Update asks it for the firemode graphic; the
  * name ours) */

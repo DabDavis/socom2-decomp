@@ -24,6 +24,9 @@ extern void __assert(const char *file, int line, const char *expr);
 
 extern float asinf(float);
 extern float sinf(float);
+extern float *data_001D5594;		/* the sine table, 256 points a turn (0x3EA6E8) */
+extern float *data_001D5598;		/* the cosine table, a quarter turn on (0x3EA7E8) */
+extern const float data_001D559C;	/* 256 / 2pi, the phase's scale to a table index */
 
 #define MAX_LPC_ORDER 18
 #define TWIDDLE_PERIOD (sizeof(float[512]) / sizeof(float))
@@ -101,6 +104,66 @@ void func_0024DA70(float *pfInOut, int log2N, int iFlags)
 		fScale = 1.0F / N;
 		for (i = 0; i < N; i++)
 			pfInOut[i] *= fScale;
+	}
+}
+
+/* a DFT of iLength samples about their centre at nOut frequencies, fStep apart (GCC round 36a,
+ * unwritten before; no caller in the image): each frequency's phase is rounded to an 8-bit index
+ * of the 256-point sine and cosine tables (data_001D5594/8, sase_coder.c's cosine), the index's
+ * step that rounding, and the pairs x[c+k], x[c-k] summed outwards -- the last lower sample after
+ * the loop and, for an odd length, the last upper one. The scale 256 / 2pi is a const float of
+ * MAIN's small data (0x1D559C, used by this function alone), not a literal: loaded so, it is the
+ * multiply's first operand (fScale * fPhase) and takes $f8 ahead of the 0.5's $f9, as the target
+ * has them -- as a hex-float literal it was the second operand, its register the other one.
+ * OPEN (registers only, 51 words): the structure is the target's -- the length's half and its
+ * parity hoisted from the loop (each written inside it), the count `k = half; while (--k != 0)`
+ * (as `k = half - 1` the count is hoisted too). But local-alloc gives the index's sum a0 and the
+ * index follows it by copy preference (ccdump -f: the sum pseudo 117 = a0, ucIdx 15000 behind
+ * the two pointers), so every inner-loop register lands one below the target's (index t1, down t2,
+ * up t3, count t4, the tables t5/t6, the step t7) and the half takes t9 where the target keeps it
+ * in a0 -- an int index masked, the update moved, a char step and seven declaration orders give
+ * the same (build/scratch/gcc/dft/). */
+void func_0024E788(const float *pfIn, int iLength, int nOut, float *pfRe, float *pfIm, float fStep)
+{
+	float fPhase = 0.0F;
+
+	while (nOut != 0) {
+		const float *pfUp, *pfDown;
+		float fRe, fIm, fCos, fSin;
+		int iStep, k;
+		unsigned char ucIdx;
+
+		fPhase += fStep;
+		pfUp = pfIn + (iLength >> 1);
+		pfDown = pfUp;
+		k = iLength >> 1;
+		fRe = *pfUp++;
+		fIm = 0.0F;
+		pfDown--;
+		iStep = (int)(data_001D559C * fPhase + 0.5F);
+		ucIdx = iStep;
+		while (--k != 0) {
+			fCos = data_001D5598[ucIdx];
+			fSin = data_001D5594[ucIdx];
+			ucIdx += iStep;
+			fIm -= *pfUp * fSin;
+			fRe += *pfUp * fCos;
+			pfUp++;
+			fIm += *pfDown * fSin;
+			fRe += *pfDown * fCos;
+			pfDown--;
+		}
+		fCos = data_001D5598[ucIdx];
+		fSin = data_001D5594[ucIdx];
+		fRe += *pfDown * fCos;
+		fIm += *pfDown * fSin;
+		if (iLength & 1) {
+			fIm -= *pfUp * fSin;
+			fRe += *pfUp * fCos;
+		}
+		nOut--;
+		*pfRe++ = fRe;
+		*pfIm++ = fIm;
 	}
 }
 

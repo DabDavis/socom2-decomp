@@ -2331,6 +2331,7 @@
 0x0024A908 func_0024A908
 0x0024A9F0 func_0024A9F0
 0x0024AAE8 func_0024AAE8
+0x0024AD48 func_0024AD48
 0x0024AEB0 func_0024AEB0
 0x0024AF50 func_0024AF50
 0x0024B560 func_0024B560
@@ -5223,6 +5224,7 @@
 0x0031FC90 AddLightMap__Q23zdb6CWorldFPQ23zdb9CLightMap
 0x0031FD10 GetModel__Q23zdb6CWorldFPCc
 0x0031FD20 Initalize__Q23zdb6CWorldFv
+0x00320310 __ct__Q23zdb6CWorldFPCc
 0x00320660 __dt__Q23zdb19CProjectedMapVectorFv
 0x003206E0 __dt__Q23zdb15CLightMapVectorFv
 0x00320760 Uninit__Q23zdb6CWorldFv
@@ -5338,7 +5340,7 @@
 0x00329A40 func_00329A40
 0x00329AA0 func_00329AA0
 0x00329AB0 func_00329AB0
-0x00329AC0 func_00329AC0
+0x00329AC0 SetActive__Q28Particle6SourceFb
 0x0032A6B0 __dt__Q28Particle6SourceFv
 0x0032A800 func_0032A800
 0x0032A860 ScaleSequenceAdd__Q28Particle6SourceFff
@@ -8047,6 +8049,7 @@
 0x004C5798 asrspi_cbTsDetected
 0x004C57F8 ContextActivate
 0x004C5960 ContextGetAction
+0x004C5AE8 ContextSetGcdData
 0x004C5C70 ContextAPIDeActivate
 0x004C5C80 ContextDeActivate
 0x004C5CC8 ContextSetCtxData
@@ -8256,6 +8259,8 @@
 0x004E1D08 InitUserWordTraining
 0x004E1E30 ExitUserWordTraining
 0x004E2008 CalcF2
+0x004E25D8 DoDurationModeling
+0x004E2C78 ScoreTranscriptions
 0x004E35C8 CheckConsistency
 0x004E37F8 RejectTrainUtters
 0x004E3A28 DoUserWordTraining
@@ -8306,6 +8311,8 @@
 0x004E8D78 FreeIsoWordTokenDp
 0x004E8EA8 InitNewUtterance
 0x004EAA28 ExpandGarbageArrays@isowdp
+0x004EAE38 GetNBest
+0x004EB078 ControlIsoWordTokenDp
 0x004EB3A0 ConstructIsoWordTokenDp
 0x004EB3E0 InitIsoWordTokenDpProcess
 0x004EB4A8 CalcNrNodes@isowdp
@@ -8408,6 +8415,7 @@
 0x004FC0E0 ControlVq1500Process
 0x004FC168 Vq1500Process
 0x004FC200 FreeVq1500
+0x004FC240 WindowFlush
 0x004FC620 ProcessWindow
 0x004FCB30 InitWindow
 0x004FCDA8 ConstructWindow
@@ -10189,6 +10197,8 @@
 0x005C6920 GetAmmoByIndex__5CZKitFi
 0x005C6970 GetCurAmmo__5CZKitFv
 0x005C6980 AttachItemNode__5CZKitFiPCc
+0x005C6A40 ReParentToRifle__5CZKitFv
+0x005C6DA0 ReParentToPistol__5CZKitFv
 0x005C7110 GetClass145Index__5CZKitFv
 0x005C71A0 GetSecondaryIndex__5CZKitFv
 0x005C7230 GetPrimaryIndex__5CZKitFv
@@ -10681,6 +10691,7 @@
 0x00601070 SetLookPosW__9CSealCtrlF7AI_LOOKRC9CAiMapLoc
 0x00601200 SetLookPosW__9CSealCtrlF7AI_LOOKP7CEntity
 0x00601330 SetLookPosW__9CSealCtrlF7AI_LOOKPC6CPnt3D
+0x00601400 SetDefaultLookParams__9CSealCtrlF7AI_LOOKb
 0x00601810 SetScanRate__9CSealCtrlFf
 0x00601820 SetScanAngle__9CSealCtrlFf
 0x00601830 ModifyLookFlags__9CSealCtrlFUiUi
@@ -10693,6 +10704,7 @@
 0x00601EB0 CanScan__11CAiSHostageCFv
 0x00601EC0 CanPushAiState__11CAiSHostageF8AI_STATEP11CSealCtrlAi
 0x00601F20 OnSignal__11CAiSHostageFQ28CAiState6SIGNALP11CSealCtrlAi
+0x00601F80 Tick__9CAiSAvoidFP11CSealCtrlAi
 0x00602B20 ShouldAvoid__FP10CZSealBodyP10CZSealBodyf
 0x00602D10 OnSignal__9CAiSAvoidFQ28CAiState6SIGNALP11CSealCtrlAi
 0x00603690 SetTarget__8CAiSRushFP10CZSealBody
@@ -10716,6 +10728,7 @@
 0x00605A50 CanPursue__9CAiSEventCFP11CSealCtrlAi
 0x00605A60 CanAttack__9CAiSEventCFv
 0x00605A80 OnSignal__9CAiSEventFQ28CAiState6SIGNALP11CSealCtrlAi
+0x00605C60 Tick__16CAiSStunResponseFP11CSealCtrlAi
 0x00605F90 OnSignal__16CAiSStunResponseFQ28CAiState6SIGNALP11CSealCtrlAi
 0x00606DB0 func_00606DB0
 0x00607560 func_00607560
@@ -10735,6 +10748,7 @@
 0x00609190 func_00609190
 0x00609340 Virtual14__10CAiSShotAtFP11CSealCtrlAiP8CAiState
 0x006093F0 OnSignal__10CAiSShotAtFQ28CAiState6SIGNALP11CSealCtrlAi
+0x00609530 func_00609530
 0x00609710 __dt__9CAiSAvoidFv
 0x00609790 __dt__8CAiSRushFv
 0x00609810 __dt__15CAiSPathRecoverFv
