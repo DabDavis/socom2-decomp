@@ -2929,6 +2929,8 @@ public:
     virtual void UpdateUIVar(CUIVariable *var);
     /* slot 23: the box's commands run */
     virtual bool TickZAnimCmd(_zanim_cmd_hdr *hdr, float *dT, bool *done);
+    /* slot 12: the pulse, the scroll, the press and the rows (0x375040) */
+    virtual void Tick(float dT);
     /* slot 15: the pad (0x3745E0) */
     virtual bool HandlePad(const CPad *pad, int port);
     /* a slot of its own, +0x84 after UpdateUIVar's (0x374A50; SOCOM 1's SetPressed, its own slot
@@ -3063,6 +3065,85 @@ void CUIListBox::SetActive()
                     anim->ActivateArg(1, 8, item->GetString(), 0);
             }
     }
+}
+
+/* slot 12 (SOCOM 1's CUIListBox::Tick, 0x38D5E0 there): the bitmap's pulse; the highlighted row
+ * kept two rows clear of the bottom and above the top by scrolling, the box's actions on event 41
+ * run when it scrolled; the window slid toward the scroll at twice the distance a second (no
+ * slower than the spec's 0x118), snapped once within a step, the actions on event 42 run when it
+ * arrives; the press time run down (at its end the highlight back to active when still the
+ * pressed colour); the repeat time counted and every row ticked. SOCOM II's additions: the two
+ * events, the minimum speed, the press's end. Byte-exact (round 52) with the bottom margin a sum
+ * (`2 * h` is sll, the target's addu) and the rows' end a local ahead of the walk (in the test, the
+ * walk's two saved registers swap; ahead of the repeat's add, alike) */
+void CUIListBox::Tick(float dT)
+{
+    CPlainBmp::Tick(dT);
+
+    int scroll = m_scroll;
+
+    while (m_offset > m_iHeight - (m_lineHeight + m_lineHeight)) {
+        m_offset -= m_lineHeight;
+        m_scroll++;
+    }
+    while (m_offset < 0) {
+        m_offset += m_lineHeight;
+        m_scroll--;
+    }
+    if (scroll != m_scroll)
+        for (int i = 0; i < m_numActions; i++)
+            if (m_actions[i].Type == 1 && m_actions[i].Event == 41) {
+                CZAnim *anim = ZAnim.GetAnim(m_actions[i].Animation, 0);
+
+                if (anim) {
+                    if (m_actions[i].Argument)
+                        anim->ActivateArg(1, 8, m_actions[i].Argument, 0);
+                    else
+                        anim->Activate(0);
+                }
+            }
+
+    float target = -m_scroll * m_lineHeight;
+    float diff = target - m_scrollY;
+    float speed = 2.0f * (float)fabs(diff);
+
+    if (speed < m_184)
+        speed = m_184;
+
+    float step = speed * dT;
+
+    if (m_pressTime > 0.0f) {
+        if (m_pressTime > dT)
+            m_pressTime -= dT;
+        else {
+            m_pressTime = 0.0f;
+            if (m_highlightColor == m_color148)
+                SetActive();
+        }
+    }
+    if (step <= (float)fabs(diff)) {
+        if (diff < 0.0f)
+            step = -step;
+        m_scrollY += step;
+    } else
+        m_scrollY = target;
+    if (diff != 0.0f && m_scrollY == target)
+        for (int i = 0; i < m_numActions; i++)
+            if (m_actions[i].Type == 1 && m_actions[i].Event == 42) {
+                CZAnim *anim = ZAnim.GetAnim(m_actions[i].Animation, 0);
+
+                if (anim) {
+                    if (m_actions[i].Argument)
+                        anim->ActivateArg(1, 8, m_actions[i].Argument, 0);
+                    else
+                        anim->Activate(0);
+                }
+            }
+    std::list<ListItem *>::iterator e = m_items.end();
+
+    m_repeat += dT;
+    for (std::list<ListItem *>::iterator it = m_items.begin(); it != e; ++it)
+        (*it)->Tick(dT);
 }
 
 /* a list variable shown (nothing else): every item removed, one made from each of its values with
