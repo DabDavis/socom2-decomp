@@ -10,9 +10,10 @@
  * shallower, so their ten out-of-line copies 0x231DD0-0x231E30 and 0x232460-0x232480 name the
  * chains' levels -- CTCMNode's accessor, CTCMNodeList's, the vector's), the sounds, and CTCM's
  * tick, push-to-talk, close, open, root, next and the item searches (ShowRoot since round 42).
- * OPEN: RemoveChild, Select (registers). Written in round 41: one kind's items, tcmAddKindItems 0x2329F0 (its
+ * OPEN: RemoveChild, Select (1 instruction), the open menu's pad handler HandleOpenPad 0x235D40
+ * (round 54, temporaries). Written in round 41: one kind's items, tcmAddKindItems 0x2329F0 (its
  * entries go under the third group item's caption, which an inline returns). Not yet: the cache
- * builders 0x232BC0/0x2344E0, the open menu's and closed menu's pad handlers 0x235D40/0x2359A0.
+ * builders 0x232BC0/0x2344E0, the closed menu's pad handler 0x2359A0.
  * Defined in reverse of their image order (-inline deferred). */
 
 #include <string.h>
@@ -141,9 +142,11 @@ extern "C" void func_0030E6E0(void *radio, int on);
 extern void *data_0045B718;
 extern unsigned char data_0044D4F8;
 
-/* the menu's input by its mode (hud_tcmtree.cpp's 0x235D40 and 0x2359A0, not written yet) */
-extern "C" void func_00235D40(CTCM *tcm, CPad *pad);
+/* the menu's input by its mode (0x2359A0, not written yet) */
 extern "C" void func_002359A0(CTCM *tcm, CPad *pad);
+
+/* hud_tcmcmds.cpp's: a node closed (its parent's column shown again) */
+void tcmCloseNode(CTCMNode *node);
 
 /* the menu's tick: the hold run down, then by its mode -- 1 the open menu's input, 2 and 3 the
  * controller's menu state off (2 moving on to 3), 4 the closed menu's, 5 a close once the button is
@@ -161,7 +164,7 @@ void CTCM::Tick(CPad *pad, float dt)
         ftsGetPlayer()->m_ctrl->SetMenuState(MENU_STATE_NONE, false);
         break;
     case 1:
-        func_00235D40(this, pad);
+        HandleOpenPad(pad, dt);
         break;
     case 4:
         func_002359A0(this, pad);
@@ -192,6 +195,103 @@ void CTCM::Tick(CPad *pad, float dt)
             Close(false);
         }
         break;
+    }
+}
+
+/* the open menu's input (0x235D40, Tick's mode 1; the name ours), once the hold has run out: the menu
+ * closed when nothing in the first column can be selected and the selection is gone, hidden or
+ * disabled; then triangle backs out (the menu closed at the first depth, else the selected node's
+ * column), the game's button 11 or cross runs the selected item's command -- its children opened
+ * when it returns 1 (with no command, when there are any), the menu closed when it returns 0 -- and
+ * down / up step the open column (with the slide sound and hold). Written in round 54:
+ *  - the pad's three bytes are loaded signed (lb) and narrowed unsigned at each test (andi): `char`
+ *    locals compared through a KEY_STATE cast (KEY_STATE locals load lbu; plain char compares
+ *    sign-extend; a bool inline over the two states materialises its result);
+ *  - the command's result is the node's byte state, as Select's (TCM_STATE r from a NoChildren()
+ *    ternary: `move r,zero; li; movn` -- an int ternary gives sltu): called through TCMFunc's int MW
+ *    narrows it at the assignment, which the target never does, so the call casts the pointer to
+ *    return the state -- a MODELLING DEVICE for a command type returning it (TCMFunc stays int:
+ *    hud_tcmcmds.cpp's commands match as int functions);
+ *  - `> 1`, not `>= 2`: the latter materialises the compare in v1 where the target branches on at.
+ * OPEN, 12 instructions (code-generation temporaries only: the saved registers, the frame and the
+ * schedule are the target's): the target keeps the shared constant 1 in a0, 2 in v1 and down's byte
+ * in a1 (narrowed in place), here 1 in a1, 2 in a0, down in t0 and the narrowed bytes in v1. The
+ * replay (igreplay --want 84=a0,117=v1,115=a1,133=a1 --movers 84,117: 153 placements) wants the
+ * constant 1 numbered after the up block's narrowing temporary (~133.5) -- as if the select test's
+ * constant were generated last; every order of the three locals tried (down, cross, up is best) */
+void CTCM::HandleOpenPad(CPad *pad, float dt)
+{
+    if (m_hold <= 0.0f) {
+        if (FindNext(GetColumn(0), false) == -1) {
+            CTCMNode *sel = GetSelected();
+
+            if (!sel || (sel && (sel->m_state == TCM_HIDDEN || sel->m_741))) {
+                Close(false);
+                theReco.Suspend(true);
+            }
+        }
+        TCM_BUTTON st = func_002C64E0(11, pad);
+        char down = pad->m_state[PAD_DOWN];
+        char cross = pad->m_state[PAD_CROSS];
+        char up = pad->m_state[PAD_UP];
+
+        if (pad->m_state[PAD_TRIANGLE] == KEY_RISING) {
+            if (m_path.size() < 2) {
+                m_sounds.Play(TCM_SND_SLIDE);
+                Close(false);
+                theReco.Suspend(true);
+                pad->Flush(false);
+                return;
+            }
+            m_sounds.Play(TCM_SND_SLIDE);
+            tcmCloseNode(GetSelected());
+            return;
+        }
+        if (st == TCM_BUTTON_PRESSED || (KEY_STATE)cross == KEY_FALLING) {
+            CTCMNode *sel = GetSelected();
+            TCM_STATE r = sel->NoChildren() ? TCM_SHOWN : TCM_HIDDEN;
+            CTCMEntry *entry = sel->m_entry;
+
+            if (entry->m_action) {
+                tcmSetCurNode(sel);
+                r = ((TCM_STATE (*)(CZSealBody *, int))entry->m_action)(ftsGetPlayer(), entry->m_actionArg);
+                tcmClearCurNode();
+            }
+            switch (r) {
+            case 1:
+                tcmOpenNode(0, sel);
+                break;
+            case 0:
+                m_sounds.Play(TCM_SND_BACK);
+                Close(true);
+                theReco.Suspend(true);
+                pad->Flush(false);
+                break;
+            }
+            theTCM.Layout(dt);
+            return;
+        }
+        if ((KEY_STATE)down == KEY_DOWN || (KEY_STATE)down == KEY_FALLING) {
+            CTCMNode *col = GetColumn(m_path.size() - 1);
+
+            if (col && col->GetNumChildren() > 1) {
+                int i = FindNext(col, true);
+
+                m_path[m_path.size() - 1] = i;
+                m_sounds.Play(TCM_SND_SLIDE);
+                Hold(false, s_tcm_slidehold);
+            }
+        } else if ((KEY_STATE)up == KEY_DOWN || (KEY_STATE)up == KEY_FALLING) {
+            CTCMNode *col = GetColumn(m_path.size() - 1);
+
+            if (col && col->GetNumChildren() > 1) {
+                int i = FindPrev(col);
+
+                m_path[m_path.size() - 1] = i;
+                m_sounds.Play(TCM_SND_SLIDE);
+                Hold(false, s_tcm_slidehold);
+            }
+        }
     }
 }
 
@@ -356,15 +456,18 @@ void CTCM::Close(bool selected)
 /* the recogniser's word: the open column's item of that name selected and run -- a submenu opened,
  * else the menu closed with the back sound (a hidden item's command run in the recogniser's mode);
  * whether one was found (the counter an int, kept in memory for push_back's reference; the child
- * declared first; the column assigned in its test).
- * OPEN, 21 instructions, the size right: the target reads the count through v0 (the column's copy
- * in the test's delay slot) where MW reads it through the copy, and sets the result flag with
- * `move s5,zero ... movn s5,a0,v1` (the 1 the state's compare loaded) where MW gives `sltu` -- an
- * unsigned char or bool flag, `r = 0; if (size) r = 1;`, `!empty()`, the count assigned in the
- * column's test all tried */
-int CTCM::Select(const char *name)
+ * declared first; the column assigned in its test). Round 54: a BOOL -- the target returns the flag
+ * unconverted and sets it with daddiu (README: a bool assigned true; reco.cpp's view already
+ * declared it bool) -- and the command's result the node's byte state, as HandleOpenPad's (the
+ * NoChildren() ternary gives the target's `move s5,zero ... movn s5,a0,v1`; the call casts the
+ * command's pointer, the same modelling device): 21 instructions to 1.
+ * OPEN, 1 instruction: the target reads the column's count through v0 (`lw s0,4(v0)`, the column's
+ * copy in the test's delay slot), MW through the copy (s6) -- the count through GetNumChildren() or
+ * Count(), `int n`, n declared ahead of the test, the column declared at the top, initialised
+ * (0x264) or declared in the if's condition (0x264) all tried */
+bool CTCM::Select(const char *name)
 {
-    int done = 0;
+    bool done = false;
     CTCMNode *c;
 
     if (name && strlen(name)) {
@@ -381,16 +484,16 @@ int CTCM::Select(const char *name)
                     if (s && strlen(s) && s && !strcasecmp(s, name)) {
                         m_path.pop_back();
                         m_path.push_back(i);
-                        int r = c->m_children.size() ? 1 : 0;
+                        TCM_STATE r = c->NoChildren() ? TCM_SHOWN : TCM_HIDDEN;
                         CTCMEntry *e = c->m_entry;
 
                         if (c->m_state != TCM_HIDDEN) {
                             if (e->m_action) {
                                 tcmSetCurNode(c);
-                                r = e->m_action(ftsGetPlayer(), e->m_actionArg);
+                                r = ((TCM_STATE (*)(CZSealBody *, int))e->m_action)(ftsGetPlayer(), e->m_actionArg);
                                 tcmClearCurNode();
                             }
-                            switch ((unsigned char)r) {
+                            switch (r) {
                             case 1:
                                 tcmOpenNode(0, c);
                                 break;
@@ -400,7 +503,7 @@ int CTCM::Select(const char *name)
                                 theReco.Suspend(true);
                                 break;
                             }
-                            done = 1;
+                            done = true;
                         } else {
                             tcmSetRecoMode(true);
                             if (e->m_action)
@@ -409,7 +512,7 @@ int CTCM::Select(const char *name)
                             m_sounds.Play(TCM_SND_BACK);
                             Close(true);
                             theReco.Suspend(true);
-                            done = 1;
+                            done = true;
                         }
                     }
                 }
