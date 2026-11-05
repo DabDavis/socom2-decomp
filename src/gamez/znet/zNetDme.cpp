@@ -22,6 +22,7 @@ int NetGetObject(NetObject **obj, int index);
 int func_00620F50(int index, NetCreateObjectCallback create, NetUpdateObjectCallback update,
                   NetDestroyObjectCallback destroy);   /* NetRegisterRemoteObjectCallback */
 int func_00621458(char type, int conn, int to, int msg, int size, unsigned char *data);   /* NetSendApplicationMessage */
+int func_006210D0(int *type, NetMessageCallback cb);   /* an application message type registered */
 int func_00622CC0(int *count, int conn);   /* the connection's object count */
 int func_006220F0(int *index, NetOwnershipStatus own, NetObjectLifespan life, unsigned int a, int b,
                   unsigned int c, int d, void *data, char *name, int e);   /* NetCreateObject */
@@ -691,6 +692,15 @@ int CZNetwork::zNetCreateObject(int *index, NetOwnershipStatus own, NetObjectLif
     return err;
 }
 
+/* an application message type registered with the DME: its id handed back through `type`, the
+ * handler kept; the name stays here (`move a0,a1; j; move a1,a2` -- SOCOM II's, called as
+ * fts_remote.cpp's and the radio's registrations' last step for each type, the way
+ * zNetRegisterRemoteObjectCallback closes an object type's; the name ours; OVL1 0x30CFF0) */
+int CZNetwork::zNetRegisterMessage(unsigned int *type, NetMessageCallback handler, const char *name)
+{
+    return func_006210D0((int *)type, handler);
+}
+
 /* an application message sent now, or queued for the next update: copied whole, the payload
  * after the arguments (SOCOM 1's; OVL1 0x30CEF0) */
 int CZNetwork::zNetSendApplicationMessage(char type, int conn, int to, int msg, int size,
@@ -763,7 +773,6 @@ struct LanInfoRequest {
 extern "C" {
 void func_00620BD8(void);   /* a message type's description begun */
 void func_00620C60(void *base, void *field, int size, int count);   /* a field described */
-void func_006210D0(int *type, int (*cb)(int, int, int, void *));   /* the type registered */
 int func_00621178(int flags, void *to, int a, int type, int size, void *data);   /* a message sent */
 int func_00622C28(int *client);   /* (the DME's: our client) */
 int NetGetClient(void **client, int conn, int index);   /* a client of the connection */

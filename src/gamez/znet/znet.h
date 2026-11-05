@@ -47,6 +47,9 @@ enum MP_CONNECTION {
 typedef void (*NetCreateObjectCallback)(int, int);
 typedef void (*NetUpdateObjectCallback)(int, int, int);
 typedef void (*NetDestroyObjectCallback)(int, int);
+/* an application message type's handler (SOCOM II's DME: the client, the connection, the size and
+ * the message; fts_remote.cpp's handlers and the radio's take it) */
+typedef int (*NetMessageCallback)(int, int, int, void *);
 
 /* how a schedule decides a field has changed enough to send (SOCOM 1's NetThresholdMethod, by its
  * constructor's mangled name: its position schedules 2 with a threshold, its flags 1 with none --
@@ -159,6 +162,9 @@ public:
                                           NetUpdateObjectCallback postupdate,
                                           NetDestroyObjectCallback destroy);
     static void zNetRemoteObjectUpdateCallback(int client, int index, int field);
+    /* an application message type registered: its id handed back through `type`, the handler
+     * kept by the DME; the name is not passed on (SOCOM II's, 0x30CFF0) */
+    int zNetRegisterMessage(unsigned int *type, NetMessageCallback handler, const char *name);
     /* this console's client object set (SOCOM II's forwarder to the DME, 0x30CDE0) */
     void zNetSetMyClientObject(int object);
 

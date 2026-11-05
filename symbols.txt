@@ -5303,7 +5303,7 @@
 0x0030CDF0 0x88 zNetRemoteObjectUpdateCallback__9CZNetworkFiii  # OVL1; s1 by hand (SOCOM 1's zNetRemoteObjectUpdateCallback, the first function of zNetDme.cpp in both builds: NetGetObject, the type's update callback from the list at +0x1114, the field-update flag at +0x10B set; zNetRegisterRemoteObjectCallback registers it with the DME as SOCOM 1's does)
 0x0030CE80 0x6C zNetRegisterRemoteObjectCallback__9CZNetworkFiPFii_vPFiii_vPFiii_vPFii_v  # OVL1; s1:calls (every zNetRegister* calls it last with the index and four callbacks, as SOCOM 1's; the same 0x6C) -- the states lane
 0x0030CEF0 0x100 zNetSendApplicationMessage__9CZNetworkFciiiiPUcb  # OVL1; s1:calls by hand (the states lane: every network sender calls it at SOCOM 1's call site, 39 of them, with the same register handling and calls; zNetDme.cpp's)
-0x0030CFF0 0xC func_0030CFF0  # OVL1
+0x0030CFF0 0xC zNetRegisterMessage__9CZNetworkFPUiPFiiiPv_iPCc  # OVL1; the online lane, round 25: CZNetwork's (fts_remote.cpp's message registrations call it as (&theNetwork, &type, handler, name) after describing each type's fields, the radio's 0x310210 twice; it passes type and handler to the DME's 0x6210D0 and drops the name: 'move a0,a1; j; move a1,a2'), zNetDme.cpp's between zNetSendApplicationMessage and SOCOM 1's zNetLeaveAndDisconnect 0x30D020; the name ours, after zNetRegisterRemoteObjectCallback
 0x0030D000 0x8 func_0030D000  # OVL1
 0x0030D010 0x8 func_0030D010  # OVL1
 0x0030D020 0x40 func_0030D020  # OVL1
@@ -5363,7 +5363,7 @@
 0x0030FE40 0xAC func_0030FE40  # OVL1
 0x0030FEF0 0x188 func_0030FEF0  # OVL1
 0x00310080 0x190 func_00310080  # OVL1
-0x00310210 0xC4 func_00310210  # OVL1
+0x00310210 0xC4 zNetRegisterVoice__10CZNetVoiceFv  # OVL1; the online lane, round 25: the radio's two application message types ('Radio', three bytes; 'Channel Status', twelve halfwords) described and registered through CZNetwork::zNetRegisterMessage 0x30CFF0, state set idle; fts_remote.cpp's message registration calls it on the voice object data_0045B718 right after CZSealState::zNetRegisterSeal ... CZPlatformState::zNetRegisterPlatform, hence the zNetRegister* name (ours); the class SOCOM 1's zNetVoice.cpp's CZNetVoice (a prediction: SOCOM II's voice object is new, 0x10DC bytes, made by CMission::Init with constructor 0x3102E0)
 0x003102E0 0xE8 func_003102E0  # OVL1
 0x003103D0 0x3C func_003103D0  # OVL1
 0x00310410 0x68 func_00310410  # OVL1
