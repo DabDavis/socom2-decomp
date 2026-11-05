@@ -2403,7 +2403,11 @@ inline bool TaskScriptHeld(const CAiSScript *script)
  * OPEN, 8 bytes short: the old hold's bool is masked into its saved register at the join in the target
  * (`sltu v0` / `move v0,zero`, then `andi s4,v0,0xff`), straight into it here (`sltu s4`) -- through an
  * inline, an if-assign, an unsigned char, the anim's and run's order, the select declared at the top:
- * none moves it; and the SEAL takes s1 where the target colours it after the select and the AI (s4) */
+ * none moves it; and the SEAL takes s1 where the target colours it after the select and the AI (s4).
+ * Round 41: the target's join is `sltu v0` / `move v0,zero` then `andi s4,v0,0xff` -- a bool computed in
+ * each arm and narrowed into a byte variable: TaskScriptHeld returning unsigned char into a bool reaches
+ * the size (18: the andi lands before the sltu), returning int `!= 0` into a bool 12 (the join's sltu,
+ * the SEAL's s1/s4), into an unsigned char 15 */
 bool CTMacro::Tick(_zanim_cmd_hdr *hdr, float *dT)
 {
     TASK_SEAL(CTMacro);
