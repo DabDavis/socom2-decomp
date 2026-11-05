@@ -41,60 +41,9 @@ public:
 static CDIDummy di;
 static zdb::IntersectStruct hit;
 
-/* whether a value lies in a span, both ends in (ai_map.cpp's: CAiMap::GetLocation's box tests) */
-inline bool _in_span(const float &v, const float &lo, const float &hi)
-{
-    return v >= lo && v <= hi;
-}
-
-/* whether a point lies over the box in x and z (ai_map.cpp's) */
-inline bool _over_box(const CBBox &b, const CPnt3D *pos)
-{
-    bool r = false;
-
-    if (_in_span(pos->x, b.m_min.x, b.m_max.x) && _in_span(pos->z, b.m_min.z, b.m_max.z))
-        r = true;
-    return r;
-}
-
-/* the cell under a point (ai_map.cpp's inline, the same text: SOCOM 1's GetLocation(CPnt3D *, loc),
- * the cell given the map's id -- OVL2's copy 0x515F80; this unit emits OVL1's, 0x2A3950) */
-inline bool CAiMap::GetLocation(const CPnt3D *pos, CAiMapLoc &loc) const
-{
-    bool inside = _over_box(m_bbox, pos);
-
-    if (inside) {
-        sceVu0FVECTOR v;
-        float *p = v;
-
-        v[0] = m_idx * (pos->x - m_bbox.m_min.x);
-        v[1] = m_idy * (pos->z - m_bbox.m_min.z);
-        asm volatile {
-            lqc2 vf3, 0(p)
-            vftoi0.xyzw vf3, vf3
-            sqc2 vf3, 0(p)
-        }
-        loc.x = ((int *)p)[0];
-        loc.y = (unsigned short)((int *)p)[1];
-        loc.m_mapid = (unsigned char)GetMapId();
-        bool on = false;
-        bool ret = false;
-
-        if (loc.y >= 0 && loc.y < m_ny)
-            on = true;
-        if (on && loc.x < m_nx)
-            ret = true;
-        return ret;
-    }
-    return false;
-}
-
-/* the cell's bilinear bit, and its corners' blended height at a point (OVL1 0x2A3930, its draft;
- * SOCOM 1's CAiMap::GetBilinearAltitude 0x19A820, 0x2A3170 here: unwritten -- both by placeholder) */
-extern "C" {
-bool func_002A3930(const CAiCell *cell);
-bool func_002A3170(const CAiMap *map, const CAiMapLoc &loc, const CPnt3D *pos, float *alt);
-}
+/* (CAiMap::GetLocation(point) and its box helpers -- this unit emits OVL1's copy, 0x2A3950 --
+ * CAiCell::IsBilinear (0x2A3930) and CAiMap::GetBilinearAltitude (0x2A3170, SOCOM 1's) are ai.h's
+ * inlines since the AI core's round 26; a duplicate of ai_map.cpp's GetLocation stood here) */
 
 /* the cell's map (ours: GetMapByIndex wrapped in an inline gives its result the lowest saved
  * register, as the query's map has it -- named in the caller, the map and the cell trade s0/s1;
@@ -117,7 +66,7 @@ inline bool GetMapAltitude(const CAiMap *map, const CPnt3D *pos, float &alt)
         CAiCell *cell = map->GetCell(loc, 0);
 
         if (cell)
-            return func_002A3930(cell) ? func_002A3170(map, loc, pos, &alt) : map->GetAltitude(cell, alt);
+            return cell->IsBilinear() ? map->GetBilinearAltitude(loc, pos, &alt) : map->GetAltitude(cell, alt);
     }
     return false;
 }

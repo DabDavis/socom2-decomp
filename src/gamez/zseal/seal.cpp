@@ -1884,6 +1884,121 @@ extern "C" void func_00543B90(CZSealBody *seal)
         unit->IssueCommand(seal, (FT_COMMAND)31, 0, false);
 }
 
+/* the SEAL made a ghost: dead as one (SetHealth inlined: 0, DEATH_GHOST), its body in state 8, its node
+ * clear and inactive, the state sent with bit 6 set, and order 34 given to team 24's squad (OVL2 0x543D50,
+ * new in SOCOM II: ftsNetworkPlayerInit calls it three times and ReCreate once -- 0x543B90's undoing;
+ * the name unknown) */
+extern "C" void func_00543D50(CZSealBody *seal)
+{
+    seal->SetHealth(0.0f, DEATH_GHOST);
+    seal->BodySetState(8);
+    zdb::CNode *node = seal->GetNode();
+
+    node->m_Opacity = 0.0f;
+    node->SetActive(false);
+
+    SEAL_NET_STATE st;
+    unsigned int zero = 0;
+    unsigned int state;
+
+    memcpy(&st, &zero, sizeof(st));
+    bool active = node->m_active;
+    float opacity = node->m_Opacity;
+
+    if (active && opacity > 0.0f)
+        st.m_fade = FadeLevel(active, opacity);
+    else
+        st.m_fade = 15;
+    st.SetBit6(true);
+    memcpy(&state, &st, sizeof(st));
+    ((CSealCtrl *)seal->m_control)->SetAiNetState(state);
+
+    CSealUnit *unit = CSealUnit::GetUnitByTeam(24);
+
+    if (unit)
+        unit->IssueCommand(seal, (FT_COMMAND)34, 0, false);
+}
+
+extern "C" {
+/* (OVL1 0x2B6530, the HUD's: a message queued for show -- OVL1 bss 0x4366A0, the queue; hud_tcmcmds.cpp's
+ * reading) */
+void func_002B6530(void *queue, const char *name, int a, int b, int c, float delay);
+extern unsigned char data_004366A0[];
+}
+
+/* a remote message played as from an entity (OVL1 0x5E7F20's, the kit's: PlayRemoteMsg__FP7CEntityii) */
+void PlayRemoteMsg(CEntity *from, int msg, int flags);
+
+/* a suicide's and a frag's lines (inlines: the names are taken ahead of the weapon's name and kept in
+ * saved registers across that call -- the suicide's as a by-value parameter, the frag's as the inline's
+ * locals, the victim's first: as parameters the frag's two load in one order and number in the other) */
+static inline void SuicideLine(char *buf, const char *name, EQUIP_ITEM w)
+{
+    sprintf(buf, "%s commits suicide with %s", name, CZWeapon::GetWeaponName(w));
+}
+
+static inline void FragLine(char *buf, const CEntity *killer, const CEntity *victim, EQUIP_ITEM w)
+{
+    const char *v = victim->m_display_name;
+    const char *k = killer->m_display_name;
+
+    sprintf(buf, "%s fragged %s with %s", k, v, CZWeapon::GetWeaponName(w));
+}
+
+/* an entity's team bits by value (an inline: two inline calls expand left to right, so the player's
+ * load comes first, as the target's) */
+static inline unsigned int TeamMask(const CEntity *e)
+{
+    return e->m_team;
+}
+
+/* the victim's death told, online: none without a killer or a kind; a SEAL of team bit 17 plays message
+ * 68; else the kill's line shown -- a fall, a suicide or a frag with its weapon -- and, unless the
+ * victim is the player or its state's bit 6 is set, message 40 played for a teammate of the player's,
+ * else 39 from the killer (OVL2 0x547860, new in SOCOM II: the CQB and knife attacks call it, 0x547A90
+ * after setting the kind -- the name unknown) */
+extern "C" void func_00547860(CZSealBody *victim)
+{
+    if (!theNetwork.m_9)
+        return;
+    if (victim->m_lastkiller_id == 255)
+        return;
+    if (victim->m_fc0 <= 0)
+        return;
+    if (victim->m_team & 0x20000) {
+        PlayRemoteMsg(victim, 68, 0);
+        return;
+    }
+
+    CEntity *e = CEntity::GetEntityList().GetEntityById(victim->m_lastkiller_id);
+    int kind = victim->m_fc0;
+    CZSealBody *killer = e ? AsSeal(e) : 0;
+    char buf[256];
+
+    if (e && killer) {
+        if (kind == 253)
+            sprintf(buf, "%s falls to their death", killer->m_display_name);
+        else if (killer == victim)
+            SuicideLine(buf, killer->m_display_name, (EQUIP_ITEM)kind);
+        else
+            FragLine(buf, killer, victim, (EQUIP_ITEM)kind);
+        func_002B6530(data_004366A0, buf, 0, 0, 0, 0.0f);
+    }
+    if (ftsGetPlayer() == victim)
+        return;
+
+    SEAL_NET_STATE st;
+    unsigned int state = ((CSealCtrl *)victim->m_control)->GetAiNetState();
+
+    memcpy(&st, &state, sizeof(st));
+    if (st.m_bit6)
+        return;
+    if (TeamMask(ftsGetPlayer()) & TeamMask(victim))
+        PlayRemoteMsg(victim, 40, 0);
+    else if (killer)
+        PlayRemoteMsg(killer, 39, 0);
+}
+
 /* the entity the SEAL works as a turret, if it is one */
 static inline CTurret *AsTurret(CEntity *e)
 {

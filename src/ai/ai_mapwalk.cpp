@@ -571,3 +571,42 @@ bool CAiMaps::CanSeePoint(const CPnt3D *from, const CPnt3D *to, float rangeSq)
         seen = Chance(vis);
     return seen;
 }
+
+/* the direction of the most counts: each count summed with its two neighbours' when asked, and only
+ * the heading's closest direction and the two either side of it weighed when a heading is given --
+ * the closest the first choice, a later one taken only with more (new in SOCOM II, the names ours:
+ * 0x5350C0, the walker unit's first function, CAiSRush::Tick's call after a counter's 0x535A40). The
+ * eight directions a local aggregate, copied off its initialiser (0x64FA68, ld/sd); the counter
+ * declared ahead of the count (so n takes a1, i a2) and the candidate's count compared on the left
+ * (loaded first: `c[best] < c[dirs[i]]` was 15 off, 6 with one of the two) */
+CAiMap::DIR MAP_DIRCOUNT::GetBestDir(bool smooth, const CPnt3D *heading)
+{
+    CAiMap::DIR best = CAiMap::N;
+    int c[8];
+
+    if (!smooth) {
+        memcpy(c, m_count, sizeof(c));
+    } else {
+        for (int i = 0; i < 8; i++)
+            c[i] = m_count[(i + 7) % 8] + (m_count[i] + m_count[(i + 1) % 8]);
+    }
+    CAiMap::DIR dirs[8] = {CAiMap::N, CAiMap::NE, CAiMap::E, CAiMap::SE, CAiMap::S, CAiMap::SW, CAiMap::W, CAiMap::NW};
+    int i;
+    int n = 8;
+
+    if (heading) {
+        CPnt3D h;
+
+        heading->Normalize(&h);
+        best = dirs[0] = CAiMap::GetClosestDir(&h);
+        dirs[1] = (CAiMap::DIR)((best + 7) % 8);
+        dirs[2] = (CAiMap::DIR)((best + 9) % 8);
+        dirs[3] = (CAiMap::DIR)((best + 6) % 8);
+        dirs[4] = (CAiMap::DIR)((best + 10) % 8);
+        n = 5;
+    }
+    for (i = 0; i < n; i++)
+        if (c[dirs[i]] > c[best])
+            best = dirs[i];
+    return best;
+}

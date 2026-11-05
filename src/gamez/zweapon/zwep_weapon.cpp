@@ -889,22 +889,24 @@ bool CZWeapon::IsLauncher(EQUIP_ITEM id)
     return IsLauncherType(GetIDType(id));
 }
 
-/* OPEN, 2 instructions short (SOCOM 1's is byte-identical): the target zero-extends the halfword's
- * 32 bits to 64 (dsll32, dsrl32) before storing the ammo byte, and shifts the item out with srl;
- * masks, a modulo and casts through unsigned long all fold it away, an unsigned int copy gives the
- * srl alone, and a union of two 8-bit bitfields (unsigned int or unsigned short) is 4 bytes long.
- * Round 16: `*item = packed / 256u; *ammo = packed % 256ul;` is one instruction off -- the
- * int-promoted halfword is SIGN-extended to the unsigned long (dsll32/dsra32) and kept, where
- * every unsigned int intermediate (casts, `/ 1u`, `| 0u`, `+ 0u`, `& 0xFFFFu`, `(unsigned)(int)`)
- * lets MW fold the zero-extension away; `% 256L`, `& 0xFFL`, `& 0xFFFFFFFFUL` miss by more. Round
- * 21: bit-field unions (unsigned int or unsigned long words, as locals) and a bit-field view
- * through a pointer go through memory (0x20-0x24); an unsigned long or unsigned long long local, a
- * `w : 32` field, `% 0x100000000ul` and a subtracted product fold or grow; an int, unsigned short
- * or int-cast local with `% 256ul` is the same 1 off (dsra32) */
+/* the item and its ammunition out of one halfword (SOCOM 1's, byte-identical). Byte-exact since
+ * the weapons' round 24, by the kit's round-37 rule: `x &= ~0` folds away written in place, but
+ * through an inline with a `clear` parameter it stays a dsll32/dsrl32 zero extension -- the
+ * target's pair before the ammo byte's store; the item shifted as an unsigned int (srl; the
+ * int-promoted halfword shifts with sra). Before it (rounds 16-21): masks, a modulo, casts
+ * through unsigned long, unsigned int intermediates, bit-field unions and views, 64-bit locals
+ * and `% 256ul` either folded the extension away, went through memory or sign-extended (dsra32).
+ * The inline is ours, a stand-in for whatever mask helper the original passed the word through */
+static inline unsigned int Cleared(unsigned int v, unsigned int clear)
+{
+    v &= ~clear;
+    return v;
+}
+
 void CZWeapon::UnpackItemAndAmmoEnums(unsigned short packed, EQUIP_ITEM *item, EQUIP_AMMO *ammo)
 {
-    *item = (EQUIP_ITEM)(packed >> 8);
-    *ammo = (EQUIP_AMMO)packed;
+    *item = (EQUIP_ITEM)((unsigned int)packed >> 8);
+    *ammo = (EQUIP_AMMO)Cleared(packed, 0);
 }
 
 unsigned short CZWeapon::PackItemAndAmmoEnums(EQUIP_ITEM item, EQUIP_AMMO ammo)

@@ -99,7 +99,7 @@ CAiPath::~CAiPath()
  * CAiMapLoc *> (0x51E7A0), the maps' through the 4-byte pod's operator= (0x528C30), the points'
  * through do_assign<const point *> (0x5287D0, this unit's tail, byte-exact). The state's two tests
  * written out on one read (IsPlanning() reloads it and materialises the range test).
- * OPEN, 21 instructions, the right size: the stats' copy -- the target takes the other stats' visited
+ * Open until round 26 (21 instructions, the right size): the stats' copy -- the target takes the other stats' visited
  * cells' address into a register before the nine words (v1; the words through v0) and reads their
  * data through it, the size straight; the implicit CAiPathStats assignment here folds both reads into
  * offsets of `path` and swaps the two registers. As a CAiMapLocVec (SOCOM 1's DWARF) the visited cells
@@ -116,7 +116,16 @@ CAiPath::~CAiPath()
  * the two forward_iterator_tag slots (68/72) swapped; with m_visited as CAiMapLocVec as well, this
  * and ~CAiPath match and CAiPath() is the level too tall (an MSL-lane header change: char_type.cpp
  * scores the same either way). In include/vector since the MSL headers round 24 (no other
- * hand-written object moves): 2 off here */
+ * hand-written object moves): 2 off here. BYTE-EXACT since the AI core round 26: the stats copied
+ * through an inline taking both by reference (by pointer alike) -- the implicit assignment is no
+ * inline level of its own, so written in place the visited cells' operator= sat at the points' level
+ * and its tag temporary took the slot above theirs; one level down it takes the frame's lowest slot
+ * (68) as the target's, the kit's round-33 rule (build/scratch/ai/v_cp.py) */
+inline void _copy_stats(CAiPathStats &d, const CAiPathStats &s)
+{
+    d = s;
+}
+
 bool CAiPath::CopyPlan(const CAiPath *path)
 {
     bool ok = false;
@@ -130,7 +139,7 @@ bool CAiPath::CopyPlan(const CAiPath *path)
         m_curleg = path->m_curleg;
         m_waypts = path->m_waypts;
         m_maps = path->m_maps;
-        m_stats = path->m_stats;
+        _copy_stats(m_stats, path->m_stats);
         m_state = path->m_state;
         m_status = path->m_status;
         m_length = path->m_length;
@@ -205,6 +214,49 @@ CAiMap *CAiPath::GetLegMap(int leg)
     if (leg == -1)
         leg = m_planleg;
     return leg < m_legcount ? m_maps[leg] : 0;
+}
+
+/* the indices of a leg's first and last points: the points walked from the back, the legs' ends
+ * met in turn -- a leg's start before its goal -- each next leg's ends read on its last one's goal
+ * (SOCOM 1's GetLegBoundary, the same shape: GetLegPoints inlined, the reverse walk's iterators in
+ * stack slots).
+ * OPEN, 0x240 against 0x260 (new in the AI core round 26): the frame. Every instruction of the
+ * tests is the target's, but the target keeps the walk in memory -- rbegin()'s end temporary
+ * (sp+28) copied through $f0 into the reverse iterator (sp+20), a word copy (sp+32), $f0 again into
+ * `r` (sp+36); rend() rebuilt each pass the same way (sp+12 -> sp+8), the cells at sp+44/40 -- where
+ * MW scalarises every iterator here. Tried: the reverse iterators built in place from end()/begin(),
+ * points' own rbegin()/rend() (ai.h), a reverse iterator over an empty base class: all 0x240 */
+bool CAiPath::GetLegBoundary(int &first, int &last, int leg) const
+{
+    first = last = -1;
+    if (leg == -1)
+        leg = m_planleg;
+    if (leg >= m_legcount)
+        return false;
+    if (m_legcount == 1) {
+        first = m_points.size() - 1;
+        last = 0;
+        return true;
+    }
+    unsigned int n = 0;
+    int i = m_points.size() - 1;
+    CAiMapLoc start;
+    CAiMapLoc goal;
+
+    GetLegPoints(start, goal, n);
+    for (points::reverse_iterator r = ((points &)m_points).rbegin(); r != ((points &)m_points).rend(); ++r, --i) {
+        if (*r == start && n == leg)
+            first = i;
+        if (*r == goal) {
+            if (n == leg) {
+                last = i;
+                return true;
+            }
+            n++;
+            GetLegPoints(start, goal, n);
+        }
+    }
+    return true;
 }
 
 /* a plan begun afresh: the points, the maps and the cells dropped, the tallies reset, no state
