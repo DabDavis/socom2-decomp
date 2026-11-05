@@ -314,7 +314,13 @@ void SkbSetKeyTextures(zdb::CTexHandle *tex6, zdb::CTexHandle *tex7, std::vector
  * row into one key pointer; the members spelled out keep the inner loop's entry threaded (`slt
  * at,zero,v1`, as the target -- through the rows' nested operator[]s it is entered at its bottom,
  * 0x274). Tried: a row reference or pointer local (before or after the list), the counters at
- * function scope, a flat index, inline key accessors, a do-while with the count tested */
+ * function scope, a flat index, inline key accessors, a do-while with the count tested; round 29
+ * (build/scratch/ui/v_ssd*.py, all 0x25C): a `CBmpWithNode *keys` local before or inside the size
+ * test, `s_keyRows.m_rows[i][j]` / `s_keyRows[i].m_bmps[j]` (one accessor), a byte-offset
+ * address, a function-scope `CSkbBmpRows &` to the rows, a row pointer stepped by the outer loop
+ * (`row++`, through `(*row)[j]` too), the nested accessors inside a hand-written guard around a
+ * do-while (the guard rotates them back to 0x25C) -- MW folds the row into the key's induction in
+ * every form; the target's s1 = j*176 from 0 */
 static inline float SkbLerp(float a, float b, float t)
 {
     return a + t * (b - a);
