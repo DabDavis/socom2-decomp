@@ -8188,6 +8188,8 @@
 0x005019B0 Median_Reset
 0x005019C8 InitMedian
 0x00501E20 NormE_Processing
+0x00501F38 FlushPitchCombiner
+0x00502298 ProcessPitchCombiner
 0x005028F0 ControlPitchCombiner
 0x00502F10 ConstructPitchCombiner
 0x005041C0 ControlSHS_VUV
