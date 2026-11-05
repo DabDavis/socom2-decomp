@@ -13,6 +13,7 @@
 #include "../zcamera/zcamera.h"
 #include "../zentity/zentity.h"
 #include "../znode/node_world.h"
+#include "../zsnd/zsnd.h"
 
 #include <iostream>
 
@@ -517,6 +518,75 @@ int CZKit::GetCurNumMags()
     if (index != -1)
         return GetNumMags(index);
     return 0;
+}
+
+/* the SEAL's controller as far as Init asks it: CSealCtrl's table to IsPlayer at +0x2C (zseal.h's,
+ * which this unit does not include; the two slots before it unnamed here), and zseal.h's
+ * CZSealBody::IsPlayer over it (the controller tested, slot 0x2C called; the name zseal.h's) */
+class CKitSealCtrl : public CEntityCtrl {
+public:
+    virtual void Virtual24();
+    virtual void Virtual28();
+    virtual bool IsPlayer() const;   /* +0x2C */
+};
+
+static inline bool KitIsPlayer(CKitBody *body)
+{
+    return body->m_control ? ((CKitSealCtrl *)body->m_control)->IsPlayer() : false;
+}
+
+/* the kit set up (OVL2 0x5C7E00; SOCOM 1's Init, 0x2AE9E0, call for call): the reload, empty-click
+ * and laser designator's two sounds found by name; the flashlight's light map made, placed at the
+ * origin as -0.0 -- the projection's translation and the node's position both, through one pointer
+ * held (CLightMap::SetPos(0, 0, 0) passes +0.0 to SetPosition, mtc1 zero, where both builds pass the
+ * stores' 0x80000000; m_lightMap read for each store reloads it), ranged 20-100, named, its opacity 256 and its blend word 73; a player's lens effects
+ * dropped, its night vision off and the timer reset; the sniper, kick, heartbeat and lase state
+ * cleared -- the previous sniper x twice, as SOCOM 1's -- and SOCOM II's new words set */
+void CZKit::Init()
+{
+    m_rldsnd = CSnd::GetSoundByName(".M4A1_RLD");
+    m_clicksnd = CSnd::GetSoundByName(".GUN_EMPTY");
+    m_lasesnd_start = CSnd::GetSoundByName("~LSR_DES_LOCK");
+    m_lasesnd_fin = CSnd::GetSoundByName("~LSR_DES_MISS");
+    m_lightMap = new zdb::CLightMap;
+    zdb::CLightMap *l = m_lightMap;
+
+    l->m_worldToUV.m_matrix[3][0] = -0.0f;
+    l->m_worldToUV.m_matrix[3][1] = -0.0f;
+    l->m_worldToUV.m_matrix[3][2] = -0.0f;
+    l->SetPosition(-0.0f, -0.0f, -0.0f);
+    m_lightMap->SetRange(20.0f, 100.0f);
+    m_lightMap->SetName("flash_lightmap");
+    m_lightMap->m_opacity = 256.0f;
+    zdb::BLENDMODE blend;
+
+    blend.m_alphaWORD = 73;
+    m_lightMap->m_blendmode = blend;
+    if (m_body && KitIsPlayer((CKitBody *)m_body)) {
+        Apply_LensEffects(false, 0);
+        m_nvg_enabled = false;
+        CZWeapon::ClearTimer(0);
+    }
+    m_chill_parabola = 0.0f;
+    m_heartbeat_state = 0;
+    m_sniper_posx = 0.0f;
+    m_sniper_posy = 0.0f;
+    m_sniper_prev_posx = 0.0f;
+    m_sniper_prev_posx = 0.0f;
+    m_firerifle_kick_movedist = 0.0f;
+    m_firerifle_kick_accum = 0.0f;
+    m_firerifle_kick_state = 0;
+    m_lase_mapname = 0;
+    m_lase_anim = 0;
+    m_lase_timer = 0.0f;
+    m_lase_echo = false;
+    CZWeapon::ClearTimer(&m_lase_timer);
+    m_hotswap = false;
+    m_8 = 0;
+    m_8bc = -1.0f;
+    m_8a4 = 0.2f;
+    m_8ac = CPnt3D::zero;
+    m_8a8 = 0;
 }
 
 /* an item's node deleted unless something holds it, its slot zeroed (std::transform's function

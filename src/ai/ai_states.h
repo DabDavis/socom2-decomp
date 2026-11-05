@@ -27,6 +27,7 @@ class CSealCtrlAi;
 class CAiEvent;
 class CZSealBody;
 class CZAnim;
+class CNodeAction;
 
 /* an anim's signal to its controller (SOCOM 1's AI_SIGNAL by AnimSignal's mangled name; a byte -- the
  * switch narrows it with andi -- its cases 1 to 6, the names unknown). Here, not in zseal.h, since
@@ -590,9 +591,9 @@ public:
     virtual bool Virtual38();
     virtual ~CAiSAction();
 
-    /* 0x58: the action's object, released on the way out for the SEAL (OnSignal's 0x2B49D0 clears
-     * its holder id at 0x34; the name ours) */
-    void *m_58;
+    /* 0x58: the action's object, released on the way out for the SEAL (OnSignal's
+     * CNodeAction::Release, OVL1 0x2B49D0, clears its holder id at 0x34; the name ours) */
+    CNodeAction *m_58;
     unsigned char _5c[0x60 - 0x5c];
     CPnt3D m_60;   // 0x60
     int m_6c;   // 0x6c (0 on a reset)

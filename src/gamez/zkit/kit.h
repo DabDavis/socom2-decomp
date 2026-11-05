@@ -358,6 +358,9 @@ public:
     void SetupExplosiveDamage();
     /* with item 194 held, each rifle's magazines doubled (SOCOM 1's; OVL2 0x5C75F0) */
     void Setup2XAmmo();
+    /* the sounds found, the flashlight's light map made and the aim, kick, heartbeat and lase state
+     * cleared (SOCOM 1's; OVL2 0x5C7E00) */
+    void Init();
     /* the items' nodes deleted, each that has no parent, the pointers cleared and the list emptied,
      * the light map deleted (SOCOM 1's; OVL2 0x5C7CE0) */
     void UnInit();
@@ -484,19 +487,22 @@ public:
     unsigned int m_second_hand : 1;   // bit 18: the hand's fire mode slot 1, not 0 (0x5C48B0)
     unsigned int m_unused : 13;
     bool m_hotswap;   // 0x4: new in SOCOM II, CWeaponSel::CheckHotSwap's (the name ours)
-    unsigned char _5[0x20 - 0x5];
+    unsigned char _5[0x8 - 0x5];
+    int m_8;   // 0x8: zeroed by Init (new in SOCOM II; the name ours)
+    unsigned char _c[0x20 - 0xc];
     float m_retoffsetx;   // 0x20 (SOCOM 1's 0xc: its TickReticule's)
     float m_retoffsety;   // 0x24 (SOCOM 1's 0x10)
     float m_sniper_posx;   // 0x28 (SOCOM 1's 0x14)
     float m_sniper_posy;   // 0x2c (SOCOM 1's 0x18)
-    unsigned char _30[0x38 - 0x30];
+    float m_sniper_prev_posx;   // 0x30 (SOCOM 1's 0x1c: both builds' Init zero it twice)
+    float m_sniper_prev_posy;   // 0x34 (SOCOM 1's 0x20)
     float m_firerifle_kick_baseline;   // 0x38 (SOCOM 1's 0x24)
     float m_firerifle_kick_movedist;   // 0x3c (SOCOM 1's 0x28)
     float m_firerifle_kick_accum;   // 0x40 (SOCOM 1's 0x2c)
     int m_firerifle_kick_state;   // 0x44 (SOCOM 1's 0x30)
     unsigned int m_heartbeat_state;   // 0x48 (SOCOM 1's 0x34)
     float m_heartbeat_accum;   // 0x4c (SOCOM 1's 0x38)
-    unsigned char _50[0x54 - 0x50];
+    float m_chill_parabola;   // 0x50 (SOCOM 1's 0x3c)
     RETICULE_TYPE m_curitemreticule;   // 0x54 (SOCOM 1's int at 0x40)
     unsigned char _55[0x58 - 0x55];
     float m_screenoffset_x;   // 0x58 (SOCOM 1's 0x44)
@@ -530,10 +536,19 @@ public:
     std::vector<void *> m_itemptr;
     unsigned char _840[0x884 - 0x840];
     zdb::CLightMap *m_lightMap;   // 0x884 (SOCOM 1's 0x864)
-    unsigned char _888[0x8a0 - 0x888];
+    CSnd *m_rldsnd;   // 0x888 (SOCOM 1's 0x868)
+    CSnd *m_clicksnd;   // 0x88c (SOCOM 1's 0x86c)
+    CSnd *m_lasesnd_start;   // 0x890 (SOCOM 1's 0x870)
+    CSnd *m_lasesnd_fin;   // 0x894 (SOCOM 1's 0x874)
+    unsigned char _898[0x8a0 - 0x898];
     float m_explosiveDamage;   // 0x8a0: the first explosive's ammunition's damage (new; the name ours)
-    unsigned char _8a4[0x8b8 - 0x8a4];
+    /* 0x8a4-0x8b4, 0x8bc: new in SOCOM II, set by Init -- 0.2, zero, CPnt3D::zero, -1 (the names
+     * ours) */
+    float m_8a4;   // 0x8a4
+    int m_8a8;   // 0x8a8
+    CPnt3D m_8ac;   // 0x8ac
     float m_pickupRequestWait;   // 0x8b8 (SOCOM 1's 0x878)
+    float m_8bc;   // 0x8bc
 };
 
 #endif

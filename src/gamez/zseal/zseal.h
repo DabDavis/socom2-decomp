@@ -289,6 +289,10 @@ public:
     int ExecuteAction(class CZSealBody *body, unsigned int index);
     /* the action a node offers, searched down its tree (SOCOM 1's; OVL2 0x5AA470, seal_env.cpp's) */
     static CNodeAction *GetAction(zdb::CNode *node, bool deep);
+    /* the user's id taken when free or already it, let go when it is the one passed (fts_action.cpp's,
+     * OVL1 0x2B49A0 / 0x2B49D0; the game states' round 36 names) */
+    bool Acquire(unsigned int who);
+    void Release(unsigned int who);
 
     unsigned char _0[0x14];
     /* (SOCOM 1's m_node: CanPlaceBomb matches it against the sides' bomb sites, TickMPBomb against the
