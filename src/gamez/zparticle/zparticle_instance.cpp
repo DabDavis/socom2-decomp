@@ -259,6 +259,13 @@ Instance::Instance(const CPnt4D &pos, const CPnt4D &vel, const CPnt3D &unused, f
 extern "C" float sceVu0InnerProduct(float *v0, float *v1);
 extern "C" void sceVu0ScaleVector(float *v0, float *v1, float s);
 
+/* a source's view test, as SOCOM 1's member type (ours: Render reads it through this, its result
+ * numbered ahead of the caller's code-generation temporaries -- the README's PadButtonState rule) */
+static inline zdb::tag_ZVIS_FOV SourceFOV(const Source *s)
+{
+    return (zdb::tag_ZVIS_FOV)s->m_fovFlag;
+}
+
 /* SOCOM 1's (its camera matrix dropped): a live particle buffered for drawing -- its distance from
  * the camera, its age as a fraction of its life, its size by the properties' scale, its source's
  * extents grown, faded out by distance, its box tested against the view unless its source says
@@ -266,25 +273,13 @@ extern "C" void sceVu0ScaleVector(float *v0, float *v1, float s);
  * The full buffer's flag is SOCOM 1's function-local static OutputOnceOnly (its guard dropped by MW
  * 3.0: 1 in data, the row @LOCAL@...@OutputOnceOnly; round 25 -- before, an extern inside the
  * namespace left its two relocations unresolved).
- * OPEN, 7 instructions, registers only (the world lane round 22): the source pointer, its fov byte and
- * the constant 1 of the second fov test -- the target's a1 / a1 / a0, here a0 / a0 / a1.
- * `tools/igreplay.py` gives the target's three with the constant's code-generation temporary (v60)
- * renumbered after the fov byte's load (v62: `--move 60=62.5`); tried: the tests as a switch (0x374),
- * with `&&` (0x374), an else for `test = true` (0x374), `test` declared at the top (0x364), the
- * source or the byte in a local, `!(f != 1)`, `(int)f == 1` (7 each). Round 25 (v_rend*.py): the
- * PCode shows v60 is `bool test = true`'s own constant (an addiu just ahead of test's store, which
- * the compare then shares -- so it is numbered before the fov byte), so the target's test is not
- * initialised that way ahead of the fov load; test as int / char (10), unsigned char, `= 1`, `1 ==`,
- * a dead `test = false` first, `else if` (7 each); assigned inside the source's block with an else
- * (0x36C), both arms assigned (0x374), `test = f != 1` (0x354). --drop finds no single interference
- * (60-62 gives two of the three); --movers: v60 at 62.5-63.5, or v62 anywhere from 31.5 to 59.5 -- among the
- * front-end temporaries too, where @1054 (v38) is the front end's CSE of m_source across the three
- * statements (the fov byte's two loads are merged by the back end instead, v62). Probe: with the
- * second test `== 3` the addiu ahead of test's store disappears (test's dead int intermediate, kept
- * only because the compare reuses it). Tried in round 25 after the crash: SOCOM 1's member type
- * tag_ZVIS_FOV (a one-byte enum under -enum min) as the member's type, or as a cast with enumerators,
- * `m_source != 0`, a local Source pointer, test declared uninitialised at the top (7 each), a switch
- * with case 2 first (0x374: a compare tree). Its four floats are numbered
+ * Byte-exact since round 26 (open since round 22 at 7, registers only: the source pointer, its fov
+ * byte and the constant 1 of the second test -- the target's a1 / a1 / a0): THE FOV BYTE IS READ
+ * THROUGH AN INLINE RETURNING SOCOM 1'S ENUM BY A CAST, into a local of that type (SourceFOV) -- the
+ * inline's result is numbered ahead of the caller's code-generation temporaries (the UI's round-29
+ * PadButtonState rule), so before `bool test = true`'s constant, the window round 25's `igreplay
+ * --movers` found (v62 anywhere from 31.5 to 59.5). Read in place, as an int or unsigned char inline,
+ * or through the enum inline twice: 7 each (build/scratch/wld/v_rend_*.py). Its four floats are numbered
  * age, scale, opacity, dist by dead definitions at the top (dist by its own first definition last:
  * f20). GetOpacity, GetScale, GetColor and GetTexture are zparticle_props.cpp's: called out of line,
  * as the target calls them (one unit with them inlined GetOpacity, round 22's pin) */
@@ -320,9 +315,11 @@ void Instance::Render()
     bool test = true;
 
     if (m_source) {
-        if (m_source->m_fovFlag == 2)
+        zdb::tag_ZVIS_FOV fov = SourceFOV(m_source);
+
+        if (fov == zdb::ZVIS_FOV_ALL_OUT)
             return;
-        if (m_source->m_fovFlag == 1)
+        if (fov == zdb::ZVIS_FOV_ALL_IN)
             test = false;
     }
     if (test) {
