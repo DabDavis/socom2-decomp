@@ -616,11 +616,6 @@ unsigned int CAiMaps::GetLocationDelta(const CAiMapLoc &a, const CAiMapLoc &b)
     return ai::_max(ma->GetCellCount(), mb->GetCellCount());
 }
 
-/* ai_path.cpp's, not written yet: a cell appended to a path on its map (SOCOM 1's AppendPathLoc,
- * by its place after InsertPathLoc and its calls here, where the demo's ExtendPath calls it), and
- * the path finished after an extension (SOCOM 1's ExtendPath ended in SmoothPath and
- * UpdateTurnAngles) */
-extern "C" bool func_00526F20(CAiPath *path, const CAiMapLoc &loc, CAiMap *map);
 
 /* a path stretched to a cell (SOCOM 1's ExtendPath, the demo's 0x199220 after UpdateActionTables
  * as here; SOCOM II takes the walk's first cell too): an empty path takes the cell when the feet
@@ -645,7 +640,7 @@ bool CAiMaps::ExtendPath(CAiPath &path, const CAiMapLoc &from, const CAiMapLoc &
     if (path.m_points.size() == 0) {
         if (CanTravelLine(from, to, 0)) {
             ok = true;
-            func_00526F20(&path, to, 0);
+            path.AppendPathLoc(to, 0);
         }
     } else {
         CAiPath *t;
@@ -657,7 +652,7 @@ bool CAiMaps::ExtendPath(CAiPath &path, const CAiMapLoc &from, const CAiMapLoc &
             path.m_points.data_[path.m_points.size() - 1].m_loc = to;
             path.IncrementPathId();
         } else if (CanTravelLine(first->m_loc, to, 0)) {
-            func_00526F20(&path, to, 0);
+            path.AppendPathLoc(to, 0);
             ok = smooth = post = true;
         } else if (path.m_flags & 8) {
             unsigned int i0;
@@ -678,7 +673,7 @@ bool CAiMaps::ExtendPath(CAiPath &path, const CAiMapLoc &from, const CAiMapLoc &
                     do {
                         CAiPath::point &p = t->m_points[t->m_points.size() - i - 1];
 
-                        if (!func_00526F20(&path, p.m_loc, GetMapByIndex(p.m_loc.m_mapid))) {
+                        if (!path.AppendPathLoc(p.m_loc, GetMapByIndex(p.m_loc.m_mapid))) {
                             ok = false;
                             break;
                         }
@@ -686,7 +681,7 @@ bool CAiMaps::ExtendPath(CAiPath &path, const CAiMapLoc &from, const CAiMapLoc &
                     } while (i != i1);
                 }
                 if (ok)
-                    ok = func_00526F20(&path, to, GetMapByIndex(to.m_mapid));
+                    ok = path.AppendPathLoc(to, GetMapByIndex(to.m_mapid));
                 smooth = post = true;
             }
         }
