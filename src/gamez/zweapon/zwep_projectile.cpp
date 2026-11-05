@@ -1635,18 +1635,19 @@ float CZProjectile::GetDamage(const CPnt3D *pos, float *health, float *armor, fl
     return d;
 }
 
-/* OPEN, 2 instructions, the frame's size only (160 against 128; the weapons' round 28 -- 0x168 against
- * 0x17C before): SOCOM 1's CAiCone shape is the target's -- the cone a 0x20-byte object holding the
- * depth and the vector to the point (sp+96..108) besides its four scalars (112..124), ContainsPoint a
- * const member taking the apex, the axis and the point (SOCOM 1's 0x267E20 out of line, inline here)
- * -- with the depth through a named local (its colour f6, the axis's x register; through the member
- * alone f5) and the radius's product in two statements (`w = dot * inv; w *= radius`: in one
- * expression MW swaps the operands). The target's frame holds 32 bytes more above the cone, unused:
- * an unused CAiCone local leaves nothing (MW drops it). Round 26's CONE (four scalars, the vector a
- * local) kept the shape scalarised: 0x168 */
-/* SOCOM 1's CAiCone (0x20 bytes): the depth along it and the vector to the point last tested, its
- * height, radius there, radius at the apex and the height's inverse; ContainsPoint takes the apex,
- * the axis and the point (SOCOM 1's out of line, 0x267E20 in the demo) */
+/* SOCOM 1's CAiCone shape is the target's -- the cone a 0x38-byte object holding the depth and the
+ * vector to the point (sp+96..108) besides its four scalars (112..124), ContainsPoint a const member
+ * taking the apex, the axis and the point (SOCOM 1's 0x267E20 out of line, inline here) -- with the
+ * depth through a named local (its colour f6, the axis's x register; through the member alone f5) and
+ * the radius's product in two statements (`w = dot * inv; w *= radius`: in one expression MW swaps the
+ * operands). The frame's 32 bytes above the 0x20 the cone's code touches (160 against 128, open from
+ * round 26 to round 28) are SOCOM 1's last two members, m_cone_pos and m_cone_dir (DWARF: 0x38 bytes):
+ * a 0x38-byte local aligned to 16 fills sp+96..159 (the weapons' round 29, by the HUD's round-54 rule).
+ * Round 26's CONE (four scalars, the vector a local) kept the shape scalarised: 0x168 */
+/* SOCOM 1's CAiCone (0x38 bytes): the depth along it and the vector to the point last tested, its
+ * height, radius there, radius at the apex and the height's inverse, the cone's own apex and axis
+ * (unused here); ContainsPoint takes the apex, the axis and the point (SOCOM 1's out of line, 0x267E20
+ * in the demo) */
 struct CAiCone {
     mutable float m_dot;   // 0x0
     mutable CPnt3D m_vec;   // 0x4
@@ -1654,6 +1655,8 @@ struct CAiCone {
     float m_radius;   // 0x14
     float m_point_radius;   // 0x18
     float m_inv_height;   // 0x1c
+    CPnt3D m_cone_pos;   // 0x20
+    CPnt3D m_cone_dir;   // 0x2c
 
     bool ContainsPoint(const CPnt3D *apex, const CPnt3D *dir, const CPnt3D *p) const
     {
