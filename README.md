@@ -2065,6 +2065,30 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the kit and AI states, round 43** (CAnimTypeRec::GetGroup -- anim.cpp whole -- and CZKit::CurMagHasAmmo):
+  - a copy `y = x` reaching `return y` on a path where x is unchanged is returned as x itself, in v0 -- a conversion on
+    the copy stops it (GetGroup 0x5E56D0, open since round 10: a const cursor with the group cast back); return types
+    are not mangled: an int result returned as unsigned char gives `andi 0xff` at the join, a bool return converts with
+    sltu (CurMagHasAmmo 0x5BD530, open since round 20 -- every caller branches on v0);
+  - in a non-assigning `mask & word` with word a load MW computes the word's address before the mask whatever the order
+    or casts; only `m &= word` keeps the mask first, reusing its register (0x5CB450 / 0x5CB630 stay 2 off: the target
+    ANDs into a new register); `for (e = l.end(), u = l.begin(); u != e; ++u)` numbers the end below the iterator; a
+    loop-invariant end declared in an inner for is hoisted to the outer loop's preheader, after its guard (SetFormation
+    12 -> 6).
+- **Tells from the HUD, round 49** (hud_mpweaponsel.cpp all but one -- NextWeapon at last):
+  - a value derived from a parameter (`next = index + 1`) defined after a named local is a new variable numbered there,
+    a plain copy coalesces back into the parameter (SlotList::NextWeapon 0x23C6F0, open since round 26); f12 set in a
+    call's delay slot proves the callee takes a float parameter, even an unused one (HandlePad renamed (CPad *, float));
+  - an inline bool over many ids written as a preset false plus `r = true` in one case compiles to the target's single
+    daddiu, `return true / false` gives two assignments; `x = up ? a : b` over constants is movz -- the target's branches
+    come from if/else, reusing the compare chain's constant registers as the values; `(float)ushort_field` takes MW's
+    unsigned conversion path, the target's plain cvt.s.w needs `(float)(int)field`; a preset-then-overwrite read (`x =
+    254; if (w) x = w->m_item;`) gives `beqz; li` in the delay slot then lb, a ternary branches both arms;
+  - TU-LOCAL STATICS WITHOUT DATA ROWS ARE CHECKED BY CONTENT, so two equal-valued statics pass either way -- name them to
+    check by address (round 20's s_titley / s_titleheight were the category page's pair: renamed s_cattitley /
+    s_cattitleheight, the selector's own pair 0x3DCDF0 / 0x3DCE00); a 16-aligned global struct copied to a stack local in a
+    loop gets its member addresses hoisted into saved registers (CMPWeaponSel::Layout, twice); loop-scoped counters in
+    two loops matched where a shared int swapped registers (CMPWeaponCategories::Layout -- round 44's converse).
 - **Tells from the world, rdr and sound, round 20** (BuildLightMapList by the replay, Particle::DestructionManager):
   - an inline helper's parameter is numbered after the caller's named locals but below its shared common-subexpression
     temporaries: passing a loaded value into a static inline predicate can swap two volatile registers, while a named
