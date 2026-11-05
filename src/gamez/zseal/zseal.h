@@ -1788,6 +1788,10 @@ public:
      * the snake path's update stopped unless a player drives the SEAL or its remote console says
      * it runs one (SOCOM 1's; OVL2 0x5FCC40, seal_aifollow.cpp's) */
     void InvalidateFollowParams();
+    /* the follow parameters brought up to date: the formation's direction from the SEAL's heading,
+     * or from its movement once that has held long enough (SOCOM 1's; OVL2 0x5FC970,
+     * seal_aifollow.cpp's -- the kit, round 52) */
+    void UpdateFollowParams(float dT);
     /* a follower counted on and off (inline: SetFollowMaster steps the master's count so; the names
      * ours) */
     void AddFollower() { m_followers++; }
