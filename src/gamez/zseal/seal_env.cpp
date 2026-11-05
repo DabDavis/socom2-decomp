@@ -2619,10 +2619,10 @@ extern "C" {
 /* a location's damage taken from a projectile (OVL2 0x5A5A80, new in SOCOM II: SOCOM 1's DamageHead,
  * DamageBody and the limbs' in one, the location first), a damage and an armour pierce dealt to a
  * location (OVL2 0x5A5830), the pellets of a shot from a point that reach the SEAL (OVL2 0x5A1620)
- * and the blowback from a point (OVL2 0x57ED10, seal_body.cpp's) -- the first three not written; the
+ * and the blowback from a point (OVL2 0x57ED10, seal_body.cpp's) -- the first and third not written; the
  * names unknown */
 void func_005A5A80(CZSealBody *seal, DAMAGE_LOCATION where, CZProjectile *proj);
-void func_005A5830(CZSealBody *seal, DAMAGE_LOCATION where, float damage, float pierce);
+bool func_005A5830(CZSealBody *seal, DAMAGE_LOCATION where, float damage, float pierce);
 int func_005A1620(CZSealBody *seal, const CPnt3D *from);
 bool func_0057ED10(CZSealBody *seal, const CPnt3D *p, float a, float b);
 }
@@ -2847,6 +2847,63 @@ extern "C" void func_005AB590(CEntity *ent, zdb::IntersectStruct **hit0, const C
             }
         }
     }
+}
+
+/* the share of a hit an empty location passes on to the body (OVL2 data, 8 bytes apart: a static
+ * pool, read with lwc1) */
+static float s_passedShare = 0.3f;
+static float s_passedPierce = 10.0f;
+
+/* damage at a location, 0-5: taken against the location's value while it lasts -- the body's (3)
+ * scaling the four limbs' down to its own share of full -- an empty one but the head's passing 0.3 of
+ * it to the body at a pierce of 10; whether a value took it; every value but the totals kept from
+ * going below 0 (OVL2 0x5A5830, new in SOCOM II: RemoteWeaponDamageVictim and 0x5A1620's users call
+ * it; the name unknown). The body's case tests the value through the location, as the others do (the
+ * target indexes it, `m_ffc[3]` is a fixed offset), and takes it at the fixed one */
+extern "C" bool func_005A5830(CZSealBody *seal, DAMAGE_LOCATION loc, float damage, float pierce)
+{
+    bool took = false;
+
+    if (!(damage <= 0.0f)) {
+        switch (loc) {
+        case 3:
+            if (!(seal->m_ffc[loc] <= 0.0f)) {
+                took = true;
+                CZProjectile::ResolveDamage(&seal->m_ffc[3], &seal->m_102c[3], damage, pierce);
+                float share = seal->m_ffc[3] / seal->m_1014[3];
+
+                seal->m_ffc[2] = MIN(seal->m_ffc[2], seal->m_1014[2] * share);
+                seal->m_ffc[1] = MIN(seal->m_ffc[1], seal->m_1014[1] * share);
+                seal->m_ffc[5] = MIN(seal->m_ffc[5], seal->m_1014[5] * share);
+                seal->m_ffc[4] = MIN(seal->m_ffc[4], seal->m_1014[4] * share);
+            }
+            break;
+        case 0:
+        case 1:
+        case 2:
+        case 4:
+        case 5:
+            if (!(seal->m_ffc[loc] <= 0.0f)) {
+                CZProjectile::ResolveDamage(&seal->m_ffc[loc], &seal->m_102c[loc], damage, pierce);
+                took = true;
+            } else if (loc != 0)
+                took = func_005A5830(seal, (DAMAGE_LOCATION)3, damage * s_passedShare, s_passedPierce);
+            break;
+        }
+    }
+    if (seal->m_ffc[2] < 0.0f)
+        seal->m_ffc[2] = 0.0f;
+    if (seal->m_ffc[1] < 0.0f)
+        seal->m_ffc[1] = 0.0f;
+    if (seal->m_ffc[5] < 0.0f)
+        seal->m_ffc[5] = 0.0f;
+    if (seal->m_ffc[4] < 0.0f)
+        seal->m_ffc[4] = 0.0f;
+    if (seal->m_ffc[3] < 0.0f)
+        seal->m_ffc[3] = 0.0f;
+    if (seal->m_ffc[0] < 0.0f)
+        seal->m_ffc[0] = 0.0f;
+    return took;
 }
 
 /* a stun taken: stunned, the kind's highest amount kept, and the controller told with it (OVL2

@@ -2217,8 +2217,10 @@ public:
     unsigned char _fdc[0xfe0 - 0xfdc];
     float m_stunval[7];   // 0xfe0 (SOCOM 1's 0xedc: HandleStunDamage keeps each kind's highest)
     float m_ffc[6];   // 0xffc: six values run down at the rates below by 0x5AC620 (new; the names ours)
-    float m_1014[6];   // 0x1014
-    unsigned char _102c[0x1044 - 0x102c];
+    float m_1014[6];   // 0x1014: m_ffc's full values (0x5A5830 scales the others by the body's share)
+    /* what each location's value is taken against: CZProjectile::ResolveDamage's second (0x5A5830; the
+     * name ours) */
+    float m_102c[6];   // 0x102c
     float m_health;   // 0x1044 (SOCOM 1's 0xea0)
     /* the last explosive whose damage was taken (SOCOM 1's DWARF m_lastprojectile, 0xf44 right
      * before m_tempprojectile as here: HandleDamage keeps a detonated one) */
