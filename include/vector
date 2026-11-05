@@ -886,11 +886,15 @@ class __vector_imp : public __vector_deleter<T, Allocator> {
     /* the assignment: the other's elements copied over these through the range assign (out of class,
      * called) unless it is this one -- the empty tag a byte read off the stack, as the pods' (the AI
      * core's round 14: CCharacterType's constructor 0x53D7C0 copies its base's weapons and levels of
-     * detail so, 0x53F370 and 0x53F730) */
+     * detail so, 0x53F370 and 0x53F730). The other's data read through the deleter's data()
+     * reference, both ends (the AI core's round 25; the MSL headers round 24: objcmp -- only
+     * CAiPath::CopyPlan 0x527FD0 moves, 21 instructions off to 2, the target's v1 for the address
+     * and the size off s1; every other hand-written object byte-identical) */
     __vector_imp &operator=(const __vector_imp &x)
     {
         if (this != &x)
-            do_assign((const T *)x.data_, (const T *)x.data_ + x.size_, forward_iterator_tag());
+            do_assign((const T *)const_cast<__vector_imp &>(x).data(),
+                      (const T *)const_cast<__vector_imp &>(x).data() + x.size_, forward_iterator_tag());
         return *this;
     }
     template <class InputIterator>
