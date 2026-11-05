@@ -1331,6 +1331,88 @@ void CAiSAvoid::OnSignal(SIGNAL sig, CSealCtrlAi *ai)
     }
 }
 
+/* a free cell in a direction from a map spot (seal_ai.cpp's OVL2 0x559580, the SEAL lane's row,
+ * not written: the avoidance's step 3 asks it with a mask and a count) */
+extern "C" CAiMap::DIR func_00559580(const CAiMapLoc *loc, const CPnt3D *dir, unsigned int mask, CAiMapLoc *out,
+                                      int n, int *got);
+
+/* an avoidance's steps: done once the SEAL stepped away from is gone or dead; then by step -- 0 the
+ * wait (a function-local static nothing sets), 1 the AI's mode 4 and, with no goal yet, the point and
+ * (flag 2) the facing as the goal, 3 a free cell found the way to step within five as the avoid
+ * goal, 4 the wait run down, 5 a quarter second more unless the other SEAL's AI is still avoiding --
+ * each set-up then waits in step 4; its wait out, the state ends and its goal is dropped when the
+ * stamp's bits 1-2 hold one (OVL2 0x601F80; SOCOM 1's took dT). The goal's kind is read as the
+ * GOAL_TYPE it is through a pointer cast -- a MARKED MODELLING DEVICE: ai_states.h, ahead of zseal.h's
+ * enum, holds it as a signed char, and a byte cast to the enum loads with lbu where the target's lb
+ * wants the field declared as the enum (a view struct of the state costs a register: 0x300); the
+ * SEAL avoided and the AI's entity declared self first (the target's a0 / a1), the cell before the
+ * count (the count the lower slot) */
+int CAiSAvoid::Tick(CSealCtrlAi *ai)
+{
+    CEntity *self = ai->m_entity;
+    CZSealBody *other = (CZSealBody *)m_58;
+
+    if (!other || !other->m_isAlive)
+        return AI_DONE;
+    switch ((STEP)m_phase) {
+    case STEP_0: {
+        static float s_wait;
+
+        m_time = s_wait;
+        UpdatePhase(4);
+        break;
+    }
+    case STEP_1: {
+        ai->SetAiMode((AI_MODE)4);
+        bool has = (bool)ai->m_goal_dir_valid || (bool)ai->m_goal_pos_valid;
+
+        if (!has) {
+            ai->SetGoalPos(*(GOAL_TYPE *)&m_goal, &m_78, 3.0f);
+            if (m_flags & 2)
+                ai->SetGoalDir(*(GOAL_TYPE *)&m_goal, &m_84, true);
+            m_time = 0.25f;
+            UpdatePhase(4);
+        }
+        break;
+    }
+    case STEP_3: {
+        CAiMapLoc cell;
+        int got = 0;
+
+        if (func_00559580(&self->m_mapLocValid, &m_6c, 0x10000, &cell, 5, &got) != CAiMap::DIR_COUNT) {
+            ai->SetGoalPos(GOAL_AVOID, cell, 5.0f);
+            ai->SetAiMode((AI_MODE)4);
+            m_time = 2.0f;
+            UpdatePhase(4);
+        }
+        break;
+    }
+    case STEP_2:
+        break;
+    case STEP_4:
+        m_time -= m_dT;
+        break;
+    case STEP_5: {
+        CSealCtrlAi *oai = other->GetSealCtrlAi();
+
+        if (!oai) {
+            m_time = 0.25f;
+            UpdatePhase(4);
+        } else if (!oai->AiStateIs(AI_STATE_AVOID)) {
+            m_time = 0.25f;
+            UpdatePhase(4);
+        }
+        break;
+    }
+    }
+    if ((STEP)m_phase == STEP_4 && m_time <= 0.0f) {
+        SetActive(false);
+        if (ai->m_stamp.m_8 & 6)
+            ai->ClearGoal(GOAL_AVOID);
+    }
+    return Result();
+}
+
 /* a float of the controller's (CSealCtrl at 0xD8; zseal.h does not name it -- the name ours) */
 struct CAiCtrlD8 {
     unsigned char _0[0xd8];
