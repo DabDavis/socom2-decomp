@@ -1783,7 +1783,7 @@
 0x00209100 0xA8 FindMPBombItem__11CZNewHudMapFv  # OVL1; s1:name by hand (hud_newhudmap.cpp; SOCOM 1's bomb search, called from the bomb's half of UpdateExplosives as there)
 0x002091B0 0x78 UpdateMPBomb__11CZNewHudMapFv  # OVL1; hud_newhudmap.cpp by hand (SOCOM 1's UpdateExplosives' second half; the name ours)
 0x00209230 0x11C UpdateExplosives__11CZNewHudMapFv  # OVL1; s1:calls by hand (hud_newhudmap.cpp; the explosives walked for claymores, then the bomb, as SOCOM 1's)
-0x00209350 0x434 func_00209350  # OVL1
+0x00209350 0x434 TickFullScreenAnims__11CZNewHudMapCFf  # OVL1; s1:calls by hand (the HUD lane, round 57: hud_newhudmap.cpp -- SOCOM 1's TickFullScreenAnims (float dT) const, 0x3C3790: the scroll arrows' pulse into the four g_bmpScroll* by GetScrollPermissions, then the grid lines grown in; SOCOM II's pulse is a bouncing 0-1 clock and its lines time from guarded statics)
 0x00209790 0x348 Draw__11CZNewHudMapFPQ23zdb7CCamera  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00209AE0 0x3F8 func_00209AE0  # OVL1
 0x00209EE0 0x234 TickFullScreenMap__11CZNewHudMapFP4CPad10MENU_STATE  # OVL1; s1:calls by hand (the HUD lane, round 48: hud_newhudmap.cpp -- SOCOM 1's TickFullScreenMap(CPad *, MENU_STATE): HudTick 0x209AE0 calls it with the pad and the menu state; the objective list's animation test, the owner's input bit, the close / step / select / frame / centre buttons, then HandleScrolling and the zoom step 0x20A330 on the sticks, the legend flag from R2)

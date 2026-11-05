@@ -5,13 +5,13 @@
  * list and SOCOM 1's last three words. Defined in reverse of their image order (-inline deferred).
  * Written: the constructor, the explosives' items, CalcNewMatrix, UninitMap, RemoveItem, Draw and
  * the small ones, TickFullScreenMap (round 48), SetupNorthIndicator, SwitchToCompassMap and
- * SwitchMapToFullScreen (round 52); open: FrameObjective, HandleScrolling and
- * GetScrollPermissions (round 48, SOCOM 1's names). The initialiser (__sinit_hud_newhudmap.cpp 0x3FDE80) is
+ * SwitchMapToFullScreen (round 52), TickFullScreenAnims (round 57); open: FrameObjective,
+ * HandleScrolling and GetScrollPermissions (round 48, SOCOM 1's names). The initialiser (__sinit_hud_newhudmap.cpp 0x3FDE80) is
  * code-exact once every static is defined (round 30: the legend's pictures and flag, the scroll
  * bitmaps, the three computed floats); its four __arraydtor$N references stay unresolved (scdiff
  * compares a local function by its bytes, relocation fields included). The rest by SOCOM 1's
  * order and calls (unwritten, unnamed):
- * 0x209350 TickFullScreenAnims (it calls GetScrollPermissions), 0x209AE0 HudTick (CHUD::Tick's
+ * 0x209AE0 HudTick (CHUD::Tick's
  * call; SOCOM 1's TickCompassMap inlined into it), 0x20A330 (TickFullScreenMap's second call, after
  * HandleScrolling: the zoom step, through the far zoom then the near: its m2c draft matches),
  * 0x20C080 the legend's builder (InitMap's call; the nine labels and
@@ -934,6 +934,81 @@ void CZNewHudMap::Draw(zdb::CCamera *cam)
         }
     }
     zVid_Scissor(0, 0, zVid.renderWidth, zVid.renderHeight);
+}
+
+/* the scroll arrows' pulse: its speed and its direction, reversed at each end (OVL1 .data 0x3DC4A0,
+ * 0x3DC4A8; the names ours) */
+static float s_fArrowPulseSpeed = 1.5f;
+static float s_fArrowPulseDir = 1.0f;
+
+/* the full-screen map's animations (SOCOM 1's TickFullScreenAnims, 0x3C3790 there; SOCOM II's own
+ * pulse and line timing): the arrows pulse 0-128 where the map can scroll, 32 where it cannot; from
+ * the full-screen switch on (the clock at 0) the grid lines grow in, a tenth of a second apart --
+ * the horizontal seven across from x 230, the vertical nine down from the map's top (the first not
+ * yet growing ends their walk) -- and once the last is grown the clock stops (-1). The line timing
+ * guarded statics, after a plain one (the nine lines) */
+void CZNewHudMap::TickFullScreenAnims(float dT) const
+{
+    static float fVertLines = 9.0f;
+    static float fLastLineDelay = 0.1f * (fVertLines - 1.0f);
+    static float fAnimLength = 1.0f + fLastLineDelay;
+    static float fArrowPulseTime;
+
+    fArrowPulseTime += s_fArrowPulseDir * (dT * s_fArrowPulseSpeed);
+    if (!(fArrowPulseTime <= 1.0f)) {
+        fArrowPulseTime = 1.0f;
+        s_fArrowPulseDir *= -1.0f;
+    } else if (fArrowPulseTime < 0.0f) {
+        fArrowPulseTime = 0.0f;
+        s_fArrowPulseDir *= -1.0f;
+    }
+
+    float fTrans = 128.0f * fArrowPulseTime;
+    CScrollBools bools = GetScrollPermissions();
+
+    g_bmpScrollUp.SetTrans(bools._bUp ? fTrans : 32.0f);
+    g_bmpScrollLeft.SetTrans(bools._bLeft ? fTrans : 32.0f);
+    g_bmpScrollRight.SetTrans(bools._bRight ? fTrans : 32.0f);
+    g_bmpScrollDown.SetTrans(bools._bDown ? fTrans : 32.0f);
+
+    if (!(s_fullMapAnimTime < 0.0f)) {
+        s_fullMapAnimTime += dT;
+        for (int iHash = 0; iHash < sizeof(g_arrHorGridLines) / sizeof(g_arrHorGridLines[0]); iHash++) {
+            float fStart = 0.1f * (float)iHash;
+            float f;
+
+            if (s_fullMapAnimTime <= fStart)
+                f = 0.0f;
+            else {
+                f = s_fullMapAnimTime - fStart;
+                f = f < 1.0f ? f : 1.0f;
+            }
+            if (f) {
+                int y = (int)(g_fHudLayout60 + s_fullMapStep * (float)(iHash + 1));
+
+                g_arrHorGridLines[iHash].SetPos(230, y, (int)(230.0f + 400.0f * f), y);
+            }
+        }
+        for (int iHor = 0; iHor < sizeof(g_arrVertGridLines) / sizeof(g_arrVertGridLines[0]); iHor++) {
+            float fStart = 0.1f * (float)iHor;
+            float f;
+
+            if (s_fullMapAnimTime <= fStart)
+                f = 0.0f;
+            else {
+                f = s_fullMapAnimTime - fStart;
+                f = f < 1.0f ? f : 1.0f;
+            }
+            if (!f)
+                break;
+            int x = (int)(230.0f + s_fullMapStepX * (float)(iHor + 1));
+
+            g_arrVertGridLines[iHor].SetPos(x, (int)g_fHudLayout60, x,
+                                            (int)(g_fHudLayout60 + s_fullMapHeight * f));
+        }
+        if (!(s_fullMapAnimTime < fAnimLength))
+            s_fullMapAnimTime = -1.0f;
+    }
 }
 
 /* a claymore item for every explosive out that has none yet, its owner the SEAL that set it (if
