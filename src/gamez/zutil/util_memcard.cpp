@@ -555,11 +555,11 @@ extern "C" int sprintf(char *dst, const char *fmt, ...);
 extern "C" int sceOpen(const char *name, int flags);
 extern "C" int sceRead(int fd, void *buf, int nbyte);
 extern "C" int sceClose(int fd);
-extern sceMcIconSys data_004A37F0;
-extern iconIVECTOR data_003E0700[4];
-extern iconFVECTOR data_003E0740[3];
-extern iconFVECTOR data_004A3BC0[3];
-extern iconFVECTOR data_003E0770;
+extern sceMcIconSys s_iconSys;
+extern iconIVECTOR s_iconBgColor[4];
+extern iconFVECTOR s_iconLightDir[3];
+extern iconFVECTOR s_iconLightColor[3];
+extern iconFVECTOR s_iconAmbient;
 
 /* the save directory's icon.sys written and its icon (RUN\ICONS\LIST.ICO off the disc) copied
  * beside it, for the browser's view, copy and delete alike; false either way (SOCOM 1's, which
@@ -577,26 +577,26 @@ bool CMemCard::CreateIconFiles()
     const char *icon = "LIST.ICO";
 
     sceMcSync(0, &data_004A37C0, &data_004A37C8);
-    memset(&data_004A37F0, 0, sizeof(sceMcIconSys));
-    strcpy((char *)data_004A37F0.Head, "PS2D");
+    memset(&s_iconSys, 0, sizeof(sceMcIconSys));
+    strcpy((char *)s_iconSys.Head, "PS2D");
     int i;
     int len = strlen("SOCOM II: U.S. Navy SEALS");
 
     for (i = 0; i < len; i++) {
         unsigned short sjis = Ascii2Sjis("SOCOM II: U.S. Navy SEALS"[i]);
 
-        ((unsigned short *)data_004A37F0.TitleName)[i] = (sjis >> 8 & 0xFF) | (sjis & 0xFF) << 8;
+        ((unsigned short *)s_iconSys.TitleName)[i] = (sjis >> 8 & 0xFF) | (sjis & 0xFF) << 8;
     }
-    ((unsigned short *)data_004A37F0.TitleName)[i] = 0;
-    data_004A37F0.OffsLF = 18;
-    data_004A37F0.TransRate = 0x60;
-    memcpy(data_004A37F0.BgColor, data_003E0700, sizeof(data_003E0700));
-    memcpy(data_004A37F0.LightDir, data_003E0740, sizeof(data_003E0740));
-    memcpy(data_004A37F0.LightColor, data_004A3BC0, sizeof(data_004A3BC0));
-    memcpy(data_004A37F0.Ambient, data_003E0770, sizeof(data_003E0770));
-    strcpy((char *)data_004A37F0.FnameView, icon);
-    strcpy((char *)data_004A37F0.FnameCopy, icon);
-    strcpy((char *)data_004A37F0.FnameDel, icon);
+    ((unsigned short *)s_iconSys.TitleName)[i] = 0;
+    s_iconSys.OffsLF = 18;
+    s_iconSys.TransRate = 0x60;
+    memcpy(s_iconSys.BgColor, s_iconBgColor, sizeof(s_iconBgColor));
+    memcpy(s_iconSys.LightDir, s_iconLightDir, sizeof(s_iconLightDir));
+    memcpy(s_iconSys.LightColor, s_iconLightColor, sizeof(s_iconLightColor));
+    memcpy(s_iconSys.Ambient, s_iconAmbient, sizeof(s_iconAmbient));
+    strcpy((char *)s_iconSys.FnameView, icon);
+    strcpy((char *)s_iconSys.FnameCopy, icon);
+    strcpy((char *)s_iconSys.FnameDel, icon);
 
     if (sceMcOpen(m_selPort, m_selSlot, "icon.sys", 0x202) < 0) {
         MemCardError();
@@ -607,7 +607,7 @@ bool CMemCard::CreateIconFiles()
         MemCardError();
         return false;
     }
-    if (sceMcWrite(fd, &data_004A37F0, sizeof(sceMcIconSys)) < 0) {
+    if (sceMcWrite(fd, &s_iconSys, sizeof(sceMcIconSys)) < 0) {
         MemCardError();
         return false;
     }

@@ -776,7 +776,7 @@ struct SKBCHAR {
     unsigned short c;
     unsigned short _2;
 };
-extern SKBCHAR data_003FACF0[11];
+extern SKBCHAR s_padChars[11];
 
 /* a USB keyboard's key (0x38C630; the name ours): letters, digits and punctuation through the keys
  * unit's handlers, the keypad's digits while num lock is on, the edit keys, the bracket keys
@@ -798,7 +798,7 @@ void SkbUsbKey(CSoftKeyboard *skb, CGameMenu *menu, KeyInput *key)
         SkbUsbPunct((const SKBUSBKEY *)key, (int)skb);
     else if (code >= 89 && code < 100) {
         if (key->_18[0])
-            func_00399040(data_003FACF0[code - 89].c, (int)skb);
+            func_00399040(s_padChars[code - 89].c, (int)skb);
     } else {
         switch (code) {
         case 40:
