@@ -203,13 +203,24 @@ static float s_fullMapHeight = g_fHudLayout365 - g_fHudLayout60;
 static float s_fullMapStep = s_fullMapHeight / 8.0f;
 static float s_fullMapStepX = 480.0f / 448.0f * s_fullMapStep;
 
-/* the HUD (hud_main.cpp's CHUD): its owner, and its font (0x498) */
+/* the HUD's compass (hud_mapcompass.h's MapCompass: only its switch) */
+class MapCompass {
+public:
+    void Off();
+    void On();
+};
+
+/* the HUD (hud_main.cpp's CHUD): its owner, its font (0x498) and compass (0x4FE0), its own switch
+ * to the compass map */
 class CHUD {
 public:
     static CZSealBody *GetHUDOwner();
+    void SwitchToCompassMap();
 
     unsigned char _0[0x498];
     C2DFont *m_myfont;   // 0x498
+    unsigned char _49c[0x4fe0 - 0x49c];
+    MapCompass m_compass;   // 0x4fe0
 };
 
 extern CHUD *theHUD;
@@ -418,10 +429,25 @@ void CZNewHudMap::SetWorldWidth(float width)
     SetWorldView(m_worldcenterx, m_worldcentery, width);
 }
 
-/* a SEAL's controller as the map reads it (zseal.h's CSealCtrl: the input bit, 0x170 bit 11) */
+/* a SEAL's controller as the map reads it (zseal.h's CSealCtrl: IsPlayer its slot +0x2c, the menu
+ * state's setter, the pad's index at 0x114, the input bit, 0x170 bit 11) */
 class CSealCtrl {
 public:
-    unsigned char _0[0x170];
+    void SetMenuState(MENU_STATE state, bool flag);
+    virtual ~CSealCtrl();
+    virtual bool PreTick(float dT);
+    virtual bool Tick(float dT);
+    virtual bool PostMortemPreTick(float dT);
+    virtual void OnDeath();
+    virtual void Slot1C();
+    virtual void Slot20();
+    virtual void PlayAiSound();
+    virtual void AllowCommand();
+    virtual bool IsPlayer() const;   /* +0x2c */
+
+    unsigned char _4[0x114 - 0x4];
+    unsigned int m_port;   // 0x114: its pad
+    unsigned char _118[0x170 - 0x118];
     unsigned int _170_0 : 11;
     unsigned int m_input_enabled : 1;   // 0x171 bit 3
     unsigned int _170_12 : 20;
@@ -588,6 +614,126 @@ CScrollBools CZNewHudMap::GetScrollPermissions() const
         bools._bDown = bZOverMin;
     }
     return bools;
+}
+
+/* whether a player's controller drives the seal (inline: a null test, then the slot) */
+static inline bool IsPlayer(CZSealBody *seal)
+{
+    return seal->m_ctrl ? seal->m_ctrl->IsPlayer() : false;
+}
+
+namespace zdb {
+/* the world (zdb's CWorld): the night mission's flag and its two lens colours */
+class CWorld {
+public:
+    static CWorld *m_world;
+
+    unsigned char _0[0x5dc];
+    unsigned char m_night_mission;   // 0x5dc
+    unsigned char _5dd[3];
+    PNT4D m_lensfx_nvg;   // 0x5e0
+    PNT4D m_lensfx_starlightscope;   // 0x5f0
+};
+}
+
+/* the lens effects (thezoom.cpp's CameraZoom, SOCOM II's) */
+class CameraZoom {
+public:
+    static void HoldLensFx(unsigned char hold);
+    static void ReleaseLensFx(unsigned char hold);
+    static void SetLensFx(unsigned char fx);
+    static unsigned char LensFxOn();
+};
+
+/* the camera (camera.h's CAppCamera: only its zoom) */
+class CAppCamera {
+public:
+    void SetZoom(float zoom);
+};
+
+extern CAppCamera *appCamera;
+
+/* the camera's zoom the full-screen map put aside (OVL1 .data 0x3DC478, 1.0; the name ours) */
+static float s_mapCamZoom = 1.0f;
+
+/* the popups' trigger (hud_scorepopup.cpp's: an objective camera's popup shown) */
+class CTriggerSource;
+void hudTriggerPopup(CTriggerSource *source);
+
+/* SOCOM II's (OVL1 0x2B4380, no row named: the compass map passes 0, the full-screen map 1) */
+extern "C" void func_002B4380(int on);
+
+/* back to the compass (SOCOM 1's SwitchToCompassMap, 0x3C4C10 there): not full screen; the menu
+ * state given back; with no lens effect up on a night mission the player's night-vision or scope
+ * colour put back on its kit; the camera's zoom given back, the lens effects released, the
+ * heartbeat sensor on; the map placed in the corner (486, 2)-(614, 130) at a 1200 window, scale 1;
+ * the compass on, the objective list freed, the pad's triangle held down, the HUD switched, and
+ * the held objective's popup shown; SetMapScreenPos and SetWorldWidth inlined, their constants
+ * folded. Byte-exact (round 52, found with tools/igreplay.py --want): the zoom state a dead
+ * definition after the owner (numbering it ahead of the pad) and the pad chosen by an if/else into
+ * an uninitialised local declared next -- GetPad's inline or a ternary leaves the pad an inline
+ * temporary numbered after every named local (s0 for the target's s2) -- then the world, the zoom
+ * and the kit in that order (the target loads the world first) */
+void CZNewHudMap::SwitchToCompassMap()
+{
+    m_isFullScreen = false;
+
+    CZSealBody *seal = CHUD::GetHUDOwner();
+    ZOOMSTATE zoomstate = ZOOMSTATE_UNKNOWN;
+    CPad *pad;
+
+    if (seal->m_ctrl->m_port < CInput::NUM_PADS)
+        pad = CInput::m_pads[seal->m_ctrl->m_port];
+    else
+        pad = 0;
+
+    seal->m_ctrl->SetMenuState(m_oldmenustate, false);
+    m_oldmenustate = stateNone;
+
+    zdb::CWorld *world = zdb::CWorld::m_world;
+
+    zoomstate = seal->m_zoomstate;
+
+    CZKit *kit = &seal->m_kit;
+
+    if (!CameraZoom::LensFxOn() && world->m_night_mission && IsPlayer(seal)) {
+        if (zoomstate == ZOOMSTATE_NVG) {
+            if (!CameraZoom::LensFxOn()) {
+                PNT4D color = world->m_lensfx_nvg;
+
+                kit->Apply_LensEffects(true, (CPnt3D *)&color);
+            }
+            CameraZoom::SetLensFx(3);
+        } else if (zoomstate >= ZOOMSTATE_BINOCS) {
+            if (!CameraZoom::LensFxOn()) {
+                PNT4D color = world->m_lensfx_starlightscope;
+
+                kit->Apply_LensEffects(true, (CPnt3D *)&color);
+            }
+            CameraZoom::SetLensFx(4);
+        }
+    }
+    if (s_mapCamZoom != 1.0f) {
+        appCamera->SetZoom(s_mapCamZoom);
+        s_mapCamZoom = 1.0f;
+    }
+    CameraZoom::ReleaseLensFx(4);
+    if (kit)
+        kit->m_heartbeat_enabled = true;
+    SetMapScreenPos(486.0f, 2.0f, 614.0f, 130.0f);
+    SetWorldWidth(1200.0f);
+    m_scale = 1.0f;
+    m_parent->m_compass.On();
+    m_objectivelist.FreeList(false);
+    if (pad)
+        pad->SetButtonState(PAD_TRIANGLE, KEY_DOWN);
+    theHUD->SwitchToCompassMap();
+
+    CMissionObjectiveCam *retained = m_objectivelist.GetCurrentObjectiveRetainer();
+
+    if (retained)
+        hudTriggerPopup((CTriggerSource *)retained);
+    func_002B4380(0);
 }
 
 /* the scroll's speed at the map's scale (36 in data; SOCOM 1's literal 20; the name ours) */
