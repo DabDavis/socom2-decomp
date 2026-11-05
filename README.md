@@ -2065,6 +2065,21 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the zdb world, textures, rdr and sound, round 25** (CIOPManager::RebootIOP with delflag and its remove_if /
+  remove_copy_if instances; Destruction_Instance::Tick -- resumed after the 2026-11-05 crash):
+  - an inline's path buffers are laid out by inline depth, then code order: moving RebootIOP 0x34F9B0's module loop one
+    inline level shallower gave the target's ten-buffer order; MW unrolls a one-trip constant loop away but keeps its
+    pointer in a register -- a constant address passed straight to an inline is folded into absolute addressing, 0x18
+    bytes longer (DS2U_S1 loaded through a count-1 call of the module loop);
+  - an int returned and compared `== 0` gives xor/sltiu, a bool negated with `!` gives sltu/xori with its 1 loaded by
+    daddiu; READ THE CALL'S DELAY SLOT BEFORE CALLING AN ARGUMENT INT-LIKE: an xor with sltu in the slot is a bool `a !=
+    b` (zdb::CRenderMap::Update 0x31A180's added bool, missed in round 24);
+  - `bool b = true` leaves a dead int 1 that a later `== 1` compare reuses, numbered before later loads
+    (Particle::Instance::Render, 7, OPEN: `igreplay --movers` gives the target's registers if the flag byte's load is
+    numbered before that constant);
+  - an iterator ASSIGNED (not initialised) from begin() keeps its stack slot -- the MSL's round-15 rule and the AI core's
+    round 32 again -- it gave CWorld::GetLightIntensity 0x31D940 the target's frame (OPEN: MW guards the light loop where
+    the target enters at its bottom test).
 - **Tells from the game states, round 45** (nine unwritten functions byte-exact, 17,252 bytes -- RemoteGameUpdateCallback
   and fts_net_game.cpp whole, CMission's Serialize / UnSerialize / Read, CZNetGame::Initialize, the network's object and
   message registration 0x2B8660; resumed after the 2026-11-05 crash):
