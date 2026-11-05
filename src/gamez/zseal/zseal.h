@@ -2035,6 +2035,14 @@ public:
      * OVL2 0x587A30 and 0x587C20 not written yet, 0x587E00), and how fast it moves (SOCOM 1's; OVL2
      * 0x58A820) -- seal_body.cpp's */
     bool CanPitch();
+    /* an overlay anim pushed over the blends, the top blend returned, and the overlays it sets for the
+     * moving reloads and weapon changes (SOCOM 1's, in its order before CanPitch; OVL2 0x587780,
+     * 0x587760, 0x587740, 0x5876B0, 0x587670 -- seal_body.cpp's) */
+    class CZBodyAnimBlend *AddBlendOverlay(AnimType type);
+    void SetMovingRifleReload(ACTIVE_ANIM *a);
+    void SetMovingPistolReload(ACTIVE_ANIM *a);
+    void SetMovingChangeToRifle(ACTIVE_ANIM *a);
+    void SetMovingChangeToPistol(ACTIVE_ANIM *a);
     bool CanInterrupt();
     bool CanTurn();
     SPEED_STATE GetSpeedState();

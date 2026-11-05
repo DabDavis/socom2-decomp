@@ -330,6 +330,94 @@ bool CZSealBody::CanPitch()
     return r;
 }
 
+extern "C" {
+/* SOCOM II's overlaid anims (OVL1 data: the weapon change's, 0x3DEC68 -- SOCOM 1's MovingRifle2Pistol
+ * by position, unproven -- and four new ones the grenade and launcher code pushes) */
+extern short data_003DEC68;
+extern short data_003DF0B0;
+extern short data_003DF0D0;
+extern short data_003DF0F0;
+extern short data_003DF0F8;
+}
+
+/* an anim laid over the SEAL's blends: its trigger time, its own time and its event (an inline, the
+ * name ours: the overlays SOCOM II adds share its stores) */
+static inline void SetOverlay(CBlendOverlay &o, ACTIVE_ANIM *a, float trig, float t, short event)
+{
+    o.m_anim = a;
+    o.m_triggerT = trig;
+    o.m_ovlyT = t;
+    o.m_state = 0;
+    o.m_event = event;
+}
+
+/* an overlay anim pushed over the blends: its script looked up and an active anim taken for it, then,
+ * for the overlays the SEAL knows, the overlay set -- the moving reloads, the weapon change by the item
+ * in hand, and SOCOM II's four (events 3, 4, 8 and 10, the last two timed by their loop); the top blend,
+ * or none when the anim is missing (OVL2 0x587780; SOCOM 1's AddBlendOverlay, its overlay a member now
+ * -- 0x588BC0 calls it). The active anim declared first, uninitialised: it takes s1 and the top blend
+ * s0; the type passed through an int, which the target sign-extends at the call (the bare AnimType
+ * passes as it is) */
+CZBodyAnimBlend *CZSealBody::AddBlendOverlay(AnimType type)
+{
+    ACTIVE_ANIM *a;
+    CZBodyAnimBlend *top = (CZBodyAnimBlend *)func_00555170((char *)this + 0x1c0);
+    CZSIScriptCommon *script = m_animset->GetScript(type);
+
+    if (!script)
+        return 0;
+    a = m_active_anim_pool.GetActiveAnim(script, (int)type);
+
+    if (!a)
+        return 0;
+    if (type == AnimTypes::MovingRifleReload)
+        SetMovingRifleReload(a);
+    else if (type == AnimTypes::MovingPistolReload)
+        SetMovingPistolReload(a);
+    else if (type == data_003DEC68) {
+        if (m_item == 1)
+            SetMovingChangeToPistol(a);
+        else if (m_item == 2)
+            SetMovingChangeToRifle(a);
+    } else if (type == data_003DF0B0)
+        SetOverlay(m_overlay, a, -4.0f, 0.0f, 3);
+    else if (type == data_003DF0D0)
+        SetOverlay(m_overlay, a, -4.0f, 0.0f, 4);
+    else if (type == data_003DF0F0)
+        SetOverlay(m_overlay, a, -4.0f, a->m_anim->LoopTime(), 8);
+    else if (type == data_003DF0F8)
+        SetOverlay(m_overlay, a, -4.0f, a->m_anim->LoopTime(), 10);
+    return top;
+}
+
+/* the overlays of a moving reload, rifle and pistol (events 1 and 2) and of a weapon change on the move,
+ * to the pistol and to the rifle (events 6 and 5: triggered at once in the air, the rifle's timed by
+ * its loop) (OVL2 0x587760, 0x587740, 0x587670, 0x5876B0; SOCOM 1's, in its order -- CZSealBody::Tick
+ * calls them, AddBlendOverlay inlines them) */
+void CZSealBody::SetMovingRifleReload(ACTIVE_ANIM *a)
+{
+    SetOverlay(m_overlay, a, -4.0f, 0.0f, 1);
+}
+
+void CZSealBody::SetMovingPistolReload(ACTIVE_ANIM *a)
+{
+    SetOverlay(m_overlay, a, -4.0f, 0.0f, 2);
+}
+
+void CZSealBody::SetMovingChangeToRifle(ACTIVE_ANIM *a)
+{
+    float trig = m_airborne ? -4.0f : 0.0f;
+
+    SetOverlay(m_overlay, a, trig, a->m_anim->LoopTime(), 5);
+}
+
+void CZSealBody::SetMovingChangeToPistol(ACTIVE_ANIM *a)
+{
+    float trig = m_airborne ? -4.0f : 0.0f;
+
+    SetOverlay(m_overlay, a, trig, 0.0f, 6);
+}
+
 /* whether the SEAL's anim may be cut short: not when the top blend is done, its representative anim
  * holds, the SEAL carries a body in anim 17, or -- for the AI -- in anims 100, 99, 25, 19, 17 and the
  * pistol's stand to prone; else as the last overlay of the top blend's first anim says, the blend's time
