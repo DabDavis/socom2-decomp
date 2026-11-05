@@ -3488,6 +3488,7 @@
 0x002A4920 TickInFirefight__8CMissionFf
 0x002A4A10 func_002A4A10
 0x002A4CA0 GetMissionCamByIdentifier__8CMissionFPCc
+0x002A4D30 LoadObjectiveCams__8CMissionFP8CRdrFile
 0x002A5290 LoadMissionCams__8CMissionFP8CRdrFile
 0x002A6950 func_002A6950
 0x002A6960 DecrementRoundClockSec__9CZNetGameFi
@@ -3523,6 +3524,7 @@
 0x002A9EE0 func_002A9EE0
 0x002A9EF0 DestroyNetGame__8CMissionFv
 0x002A9F00 CreateNetGame__8CMissionFv
+0x002A9F30 TickObjectives__8CMissionFf
 0x002AA490 Tick__8CMissionFf
 0x002AA890 func_002AA890
 0x002AA910 _OnMissionComplete__Fv
@@ -3584,6 +3586,7 @@
 0x002AFBC0 at__Q23std66__vector_imp<13SCamPathPoint,Q23std26allocator<13SCamPathPoint>,0>FUi
 0x002AFC40 _max<Uc>__2aiFRCUcRCUc_RCUc
 0x002AFC60 func_002AFC60
+0x002AFC90 insert__Q23std80__vector_imp<20SObjectiveCam_Anchor,Q23std33allocator<20SObjectiveCam_Anchor>,0>FP20SObjectiveCam_AnchorUiRC20SObjectiveCam_Anchor
 0x002B00E0 reserve__Q23std80__vector_imp<20SObjectiveCam_Anchor,Q23std33allocator<20SObjectiveCam_Anchor>,0>FUi
 0x002B0260 insert__Q23std62__vector_imp<11CLadderData,Q23std24allocator<11CLadderData>,0>FP11CLadderDataUiRC11CLadderData
 0x002B1030 reserve__Q23std66__vector_imp<13SCamPathPoint,Q23std26allocator<13SCamPathPoint>,0>FUi
@@ -3611,6 +3614,7 @@
 0x002B2190 Clear__9CSpawnersFv
 0x002B21D0 Tick__9CSpawnersFf
 0x002B2310 RecycleEntity__8CMissionFP7CEntity
+0x002B23A0 RefreshTeamValves__8CMissionFv
 0x002B2840 InitalizeTeamValves__8CMissionFv
 0x002B2D20 func_002B2D20
 0x002B2E50 LoadVehicles__8CMissionFv
@@ -4888,6 +4892,7 @@
 0x0030B700 initPssAudio__FP12playPssRsrcs
 0x0030B740 loadImage__FPUi
 0x0030B770 setLoadImageTagsYX__FPUiPviiiUi
+0x0030B9B0 setLoadImageTags__FPUiPviiUi
 0x0030B9D0 strFileRead__FPvi
 0x0030BA90 strFileClose__Fv
 0x0030BAF0 strFileRewind__Fv
@@ -4967,6 +4972,7 @@
 0x0030E7F0 func_0030E7F0
 0x0030E8E0 func_0030E8E0
 0x0030EB70 func_0030EB70
+0x0030EC10 func_0030EC10
 0x0030F5F0 func_0030F5F0
 0x0030F6E0 func_0030F6E0
 0x0030F7E0 func_0030F7E0
@@ -7271,11 +7277,13 @@
 0x003B1990 ReadGsMemory__6CVideoFUiP1Ui
 0x003B1A70 RestoreImage__6CVideoFPc
 0x003B2450 func_003B2450
+0x003B28D0 func_003B28D0
 0x003B2C80 zVid_Assert__FbUiPci
 0x003B2CB0 LoadNodeVisuals__FPQ23zar4CZARPQ23zdb5CNode
 0x003B2EA0 LoadMeshNode__FPQ23zar4CZARPQ23zdb5CNode
 0x003B36F0 DereferenceDecals__Q23zdb7CVisualFUi
 0x003B37A0 RemoveDecal__Q23zdb7CVisualFPQ23zdb6CDecal
+0x003B41D0 VuBatchProgram_Decals__Q23zdb7CVisualFP8_word128
 0x003B5250 func_003B5250
 0x003B5260 func_003B5260
 0x003B5270 func_003B5270
@@ -7290,6 +7298,7 @@
 0x003B5A10 func_003B5A10
 0x003B5A30 VuDetailMap__Q23zdb7CVisualFPP8_word128UiPQ23zdb17tag_DETAIL_PARAMS
 0x003B5B90 VuMapPasses__Q23zdb7CVisualFP8_word128PQ23zdb17tag_DETAIL_PARAMS
+0x003B5F20 VuBatchProgram__Q23zdb7CVisualFP8_word128bPQ23zdb17tag_DETAIL_PARAMS
 0x003B6540 VuExecuteState0__Q23zdb7CVisualFP8_word128
 0x003B6680 VuObjectSetup__Q23zdb7CVisualFP8_word128
 0x003B6820 func_003B6820
@@ -7612,6 +7621,7 @@
 0x003C70E0 UpdateGrenadePosition__12CZProjectileFPC6CPnt3D
 0x003C7170 ReportGrenadeStatus__12CZProjectileFv
 0x003C71D0 IsInRange__12CZProjectileFPC6CPnt3Df
+0x003C7280 IsInCone__12CZProjectileFPC6CPnt3DPC6CPnt3DPC6CPnt3Df
 0x003C7400 ResolveDamage__12CZProjectileFPfPfff
 0x003C7490 GetDamage__12CZProjectileFPC6CPnt3DPfPff
 0x003C7600 GetDamage__12CZProjectileFPC6CPnt3Df
@@ -10789,6 +10799,7 @@
 0x0060F5D0 CanPushAiState__14CAiSUseVehicleF8AI_STATEP11CSealCtrlAi
 0x0060F5E0 OnSignal__14CAiSUseVehicleFQ28CAiState6SIGNALP11CSealCtrlAi
 0x0060F6C0 func_0060F6C0
+0x0060F760 func_0060F760
 0x0060F9A0 func_0060F9A0
 0x0060F9B0 func_0060F9B0
 0x0060F9F0 func_0060F9F0

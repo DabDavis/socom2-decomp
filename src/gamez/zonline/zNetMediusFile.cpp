@@ -301,12 +301,11 @@ inline void CreateFile(CLobbyFileIO *file)
         CheckMediusError(MediusFileCreate(&req, cbCreateFile));
 }
 
-/* every transfer forgotten (OVL1 0x305640: the lobby's ReleaseUIResources calls it).
- * OPEN, 2 instructions (0x5C against 0x54): FreeVector's temporary map calls include/memory's
- * out-of-line allocator() for the tree constructor's allocator argument, where the image passes a
- * bare stack slot (sp+40) -- the MSL headers' open allocator item (include/map's map(), the line
- * map's initialiser 0x3FE190); the rest -- the tree's constructor, clear, swap and the inlined
- * destructor's destroy -- is the target's */
+/* every transfer forgotten (OVL1 0x305640: the lobby's ReleaseUIResources calls it). Byte-exact
+ * (the comment had kept round 8's OPEN: 2 instructions then, FreeVector's temporary map calling
+ * include/memory's out-of-line allocator() where the image passes a bare stack slot -- closed in
+ * the MSL headers since); the tree's constructor, clear, swap and the inlined destructor's
+ * destroy */
 void ReleaseFileTransfers()
 {
     FreeVector(data_00450070);

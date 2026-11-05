@@ -2065,6 +2065,61 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from completing the MSL headers, round 30** (the two CSaferStr made one; the vector walk's end; CPnt3D's operators):
+  - ONE CSaferStr: src/gamez/zutil/saferstr.h holds SOCOM 1's zutil.h class -- a std::string with an empty inline
+    constructor and `void operator=(const char *)` (the return SOCOM 1's DWARF gives); zentity.h and zsav_lobby.h include
+    it, only ent_main.cpp's code changes (it now emits CSaferStr(), ~CSaferStr and ~basic_string, byte-exact copies of
+    main.cpp's 0x1E7B60 / 0x1E7A50 / 0x1E7EF0), nothing gained or lost -- a unit may include zsav_lobby.h and ai.h
+    together now;
+  - a walk over a reference bound through a pointer local, the pointer an inline's result, re-reads both size and data
+    each pass even with no store in the loop -- without the inline, without the pointer local, or walking the pointer
+    itself, MW hoists the end (seal_aivehicle.cpp's 0x60F760: `CTargetList *lp = TargetsOf(seal); CTargetList &l = *lp;`,
+    `found` declared first); a const member called inside an inline on a non-const object keeps its `this` in a loop
+    register; a const walk hoists its whole end under every const end() form tried (eight); CTInView::Tick's walk needs a
+    const accessor in end() -- word for word, but -128 over every unit: not applied;
+  - CPnt3D's operator* / operator- have been inline in zmath.h since 2026-10-25: camera.cpp's ScaledBy / DiffOf and
+    znode.h's PntMinus are object-identical to them (measured; the engine core drops them).
+- **Tells from the online lobby, round 23** (setLoadImageTags and the radio tick, open since rounds 17 and 19):
+  - MW KILLS AT A CALL ONLY THE REGISTERS THE CALLEE WRITES WHEN THE CALLEE HAS INTERNAL LINKAGE AND WAS GENERATED EARLIER
+    IN THE UNIT (static or an anonymous namespace; under `-inline deferred` "generated earlier" means defined later in the
+    source) -- an extern callee, or one generated later, kills every volatile register. MW's return reads v0, so a
+    function whose earlier-generated static callee never writes v0 keeps v0 live up to the call and starts its argument
+    shuffle at v1 (setLoadImageTags 0x30B9B0: setLoadImageTagsYX is static -- its extern declaration left zmpeg.h; the
+    anonymous namespace matches, extern is 2 off, the caller generated first 2 off; c2dfont.cpp's ReadPlacement keeps a2
+    across its anonymous-namespace callees the same way);
+  - a scaled index goes first in the addu written `(i << 3) + (unsigned int)p` -- `i * 8` first, the base first, char *
+    or element-pointer steps and `&((T *)p)[i]` all keep the base first (the radio tick 0x30EC10's SlotTaken step);
+  - include/deque measurements for the MSL (queued): cdeque begin() 0x2E0CB0 (the scaled start's numbering), the lobby
+    __deque_buf's out-of-line allocator pieces against the chat units' inlined ones, the chat push_back's inlined
+    cdeque<PCv>::resize (a body include/deque lacks).
+- **Tells from the weapons, round 29** (IsInCone, VuBatchProgram_Decals, VuBatchProgram, the store-image split):
+  - THE 32 "UNUSED" FRAME BYTES WERE A STRUCT'S: in SOCOM 1's DWARF CAiCone is 0x38 bytes -- its two fields the code
+    never touches (m_cone_pos, m_cone_dir) and the HUD's round-54 alignment rule give IsInCone 0x3C7280 the target's
+    160-byte frame (ours 128);
+  - MW substitutes an inline's pointer or reference parameter bound to `&t->m_x`, computes a direct call argument straight
+    into a1 / a2 and folds field reads -- only a named variable keeps an address in a register across a loop; named
+    locals assigned inside a loop body are hoisted, but MW then stops rotating the loop (the entry becomes a `b` to a
+    bottom test: the turret's target scan 0x3A7A40, at the target's size, OPEN);
+  - a packet-start copy taken where the target takes it (after the count's reset) fixed VuBatchProgram_Decals' size
+    (0x3B41D0, SOCOM 1's without its object-header argument; VuBatchProgram 0x3B5F20 SOCOM 1's with the header a bool,
+    the first build); volatile registers go to locals in descending number -- format, width, height, rounded height in
+    declaration order gave zvid_init.cpp's store-image split 0x3B28D0 its three; a `const float (*)[4]` argument's cast
+    does not change the order MW sets up a call's arguments.
+- **Tells from the game states, round 42** (TickObjectives, LoadObjectiveCams, RefreshTeamValves, the anchor vector's
+  insert -- all four unwritten before):
+  - an inline whose index parameter has another type than the caller's counter (int against unsigned) stops MW sharing
+    the scaled offset with the caller's own `v[i]`: both builds' TickObjectives recompute `i*8` in the remove-and-swap
+    (CMission::TickObjectives 0x2A9F30, SOCOM 1's; its push_backs make the unit emit __vector_imp<SObjectiveCam_Anchor>::
+    insert 0x2AFC90, include/vector's class insert as it stands);
+  - an array walked through an accessor taking an unsigned index with an int counter keeps the sll / addu each pass,
+    indexed directly MW turns the walk into a stepped pointer; one counter reused across three loops gives all three the
+    same saved register, separate counters trade s1, s2 and s3 (CMission::RefreshTeamValves 0x2B23A0: SOCOM 1's plus the
+    network client's early return and the three team tests);
+  - in a nested list walk the target's colouring needed one object pointer declared first and uninitialised for both
+    loops, then `it` before `end`, then the bool flag -- `tools/igreplay.py` plus a permutation search over the walk's
+    nodes found the order before any source was written (CMission::LoadObjectiveCams 0x2A4D30: LoadMissionCams' shape
+    plus ISBONUS and the NAV_POINTS loop); fts_patch.cpp's func_00539D00 calls DNAS.BIN's decompressor and stays a
+    placeholder (placeholders.py's KEEP list).
 - **Tells from the world, rdr and sound, round 22** (Particle::Instance::Tick, CSnd::LoadSounds, the sound list's hash
   search with its four helpers):
   - A RECURSIVE FUNCTION INLINES ITSELF ONCE: the inner copy calls the outer copy's inline helpers out of line -- the

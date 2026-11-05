@@ -18,13 +18,22 @@
 #include "../../Apps/FTS/hud_letterbox.h"
 #include "../../Apps/FTS/hud_missioncams.h"
 
-/* the HUD's map (hud_newhudmap.h's CZNewHudMap, 0x830 bytes: only its objective list's selection,
- * at SOCOM 1's m_objectivelist.m_cur_selected_objective -- Close clears it with the objectives) */
+/* the HUD's map (hud_newhudmap.h's CZNewHudMap, 0x830 bytes: only its objective list -- at 0xE0, the
+ * current objective TickObjectives anchors and the selection at SOCOM 1's
+ * m_objectivelist.m_cur_selected_objective, which Close clears with the objectives) */
 class CMissionObjectiveCam;
+class CZObjectiveList {
+public:
+    CMissionObjectiveCam *GetCurrentObjectiveRetainer() const;   /* 0x2068D0 */
+
+    unsigned char _0[0x71c];
+    CMissionObjectiveCam *m_cur_selected_objective;   // 0x71c
+};
+
 class CZNewHudMap {
 public:
-    unsigned char _0[0x7fc];
-    CMissionObjectiveCam *m_cur_selected_objective;   // 0x7fc
+    unsigned char _0[0xe0];
+    CZObjectiveList m_objectivelist;   // 0xe0
 };
 
 /* the HUD: only what the commands touch (SOCOM 1's CHUD at SOCOM II's offsets; its On and Off
@@ -242,11 +251,11 @@ public:
 
 extern CAiMaps AiMaps;
 
-/* an objective camera's compass anchor (SOCOM 1's DWARF, 8 bytes) */
-class CMissionObjectiveCam;
+/* an objective camera's compass anchor (SOCOM 1's DWARF, 8 bytes): built empty -- both builds'
+ * TickObjectives clear the temporary each push_back copies */
 class SObjectiveCam_Anchor {
 public:
-    SObjectiveCam_Anchor() {}
+    SObjectiveCam_Anchor() : m_objective(0), m_anchor(0) {}
 
     CMissionObjectiveCam *m_objective;   // 0x0
     CCompassAnchor *m_anchor;   // 0x4
@@ -255,6 +264,22 @@ public:
 /* the mission's objective anchors (SOCOM 1's CObjAnchorVec: a class over the vector -- ~CMission
  * tests `this` once more above the vector's chain) */
 class CObjAnchorVec : public std::vector<SObjectiveCam_Anchor> {
+public:
+    /* one anchor dropped, the last moved into its place (the name ours). The index an int: both
+     * builds' TickObjectives compute the element's offset afresh here, where the walk's unsigned
+     * counter's own offset is still at hand -- the conversion keeps MW from sharing it */
+    void RemoveAt(int index)
+    {
+        int last = size() - 1;
+
+        if (size() > 1 && index != last) {
+            SObjectiveCam_Anchor tmp = (*this)[index];
+
+            (*this)[index] = (*this)[last];
+            (*this)[last] = tmp;
+        }
+        pop_back();
+    }
 };
 
 /* a mission's state (SOCOM 1's DWARF: a byte) */
@@ -283,6 +308,33 @@ public:
 
     unsigned char _0[0x1c];
 };
+
+/* an objective (fts_objectivecam.cpp's CMissionObjectiveCam, SOCOM 1's DWARF, 0x54 bytes: what
+ * LoadObjectiveCams makes and sets, what TickObjectives reads -- its two tests, its map position, its
+ * flags -- and its destructor, deleted here) */
+class CMissionObjectiveCam : public CMissionCam {
+public:
+    CMissionObjectiveCam();   /* 0x2C7530 */
+    ~CMissionObjectiveCam();   /* 0x2C7490 */
+    bool IsComplete() const;   /* 0x2C70D0 */
+    bool IsAvailable() const;   /* 0x2C7370 */
+    void Set(const char *identifier, const char *name, const char *desc0, const char *desc1,
+             const char *desc2, const char *anim, const char *music, const char *valvename,
+             const char *invalidvalvename, const char *displayvalvename, const PNT2D *pos);   /* 0x2C7100 */
+
+    unsigned char _1c[0x38 - 0x1c];
+    PNT2D m_pos;   // 0x38
+    unsigned int m_isSecondary : 1;   // 0x40
+    unsigned int m_isSubObjective : 1;   // 0x40
+    unsigned int m_isCompass : 1;   // 0x40
+    unsigned int m_bExtraction : 1;   // 0x40
+    unsigned int m_bit4 : 1;   // 0x40: SOCOM II's (ISBONUS)
+    unsigned int m_unused : 27;   // 0x40
+    std::vector<int> m_vecLines;   // 0x44
+    int m_50;   // 0x50: SOCOM II's nav points, a bit per letter (0x2C7410 sets them)
+};
+
+extern "C" void func_002C7410(CMissionObjectiveCam *objective, const char *navpoint);
 
 class CMissionCamList : public std::list<CMissionCam *> {
 };
@@ -2297,6 +2349,70 @@ bool CMission::LoadMissionCams(CRdrFile *rdr)
     return true;
 }
 
+bool zrdr_findPNT2D(const _zrdr *rdr, const char *tag, PNT2D *out);
+
+/* the objectives: the old ones deleted and the list emptied, then each of the rdr's HUD_OBJECTIVES
+ * with a NAME made and listed -- its strings, valves and LOCATION set, its flags (ISSECONDARY,
+ * ISSUB_OBJECTIVE, no NO_COMPASS_ICON, ISEXTRACTION, SOCOM II's ISBONUS), its LINE_IDS and SOCOM
+ * II's NAV_POINTS letters (SOCOM 1's; OVL1 0x2A4D30) */
+bool CMission::LoadObjectiveCams(CRdrFile *rdr)
+{
+    for (CMissionObjectiveCamList::iterator i = m_objectivecams.begin(), e = m_objectivecams.end(); i != e; ++i)
+        delete *i;
+    m_objectivecams.erase(m_objectivecams.begin(), m_objectivecams.end());
+    if (!rdr)
+        return false;
+    _zrdr *objectives = zrdr_findtag((const _zrdr *)rdr, "HUD_OBJECTIVES");
+
+    if (!objectives)
+        return false;
+    for (int i = 0; i < objectives->Count(); i++) {
+        _zrdr *item = objectives->Item(i);
+        const char *identifier = zrdr_findstring(item, "IDENTIFIER");
+        const char *name = zrdr_findstring(item, "NAME");
+        const char *desc0 = zrdr_findstring(item, "DESCRIPTION");
+        const char *desc1 = zrdr_findstring(item, "DESCRIPTION2");
+        const char *desc2 = zrdr_findstring(item, "DESCRIPTION3");
+        const char *valve = zrdr_findstring(item, "VALVE");
+        const char *invalidvalve = zrdr_findstring(item, "INVALID_VALVE");
+        const char *displayvalve = zrdr_findstring(item, "DISPLAY_VALVE");
+        PNT2D location;
+
+        zrdr_findPNT2D(item, "LOCATION", &location);
+        const char *anim = zrdr_findstring(item, "ON_CALL_ANIMATION");
+        const char *music = zrdr_findstring(item, "ON_CALL_MUSIC");
+        bool isSub = zrdr_findtag(item, "ISSUB_OBJECTIVE") != 0;
+        bool isSecondary = zrdr_findtag(item, "ISSECONDARY") != 0;
+        bool isCompass = !zrdr_findtag(item, "NO_COMPASS_ICON");
+
+        if (!name)
+            continue;
+        CMissionObjectiveCam *objective = new CMissionObjectiveCam;
+
+        m_objectivecams.push_back(objective);
+        objective->Set(identifier, name, desc0, desc1, desc2, anim, music, valve, invalidvalve, displayvalve,
+                       &location);
+        objective->m_isSecondary = isSecondary;
+        objective->m_isSubObjective = isSub;
+        objective->m_isCompass = isCompass;
+        objective->m_bExtraction = zrdr_findtag(item, "ISEXTRACTION") != 0;
+        objective->m_bit4 = zrdr_findtag(item, "ISBONUS") != 0;
+        _zrdr *lines = zrdr_findtag(item, "LINE_IDS");
+        int count = lines ? lines->Count() : 0;
+
+        for (int j = 0; j < count; j++) {
+            int id = lines->Item(j)->Integer();
+
+            objective->m_vecLines.push_back(id);
+        }
+        _zrdr *navpoints = zrdr_findtag(item, "NAV_POINTS");
+
+        for (int j = 0; j < (navpoints ? (int)navpoints->Count() : 0); j++)
+            func_002C7410(objective, navpoints->Item(j)->String());
+    }
+    return true;
+}
+
 
 /* the mission's anims: from the data directories' rdrs (the paths added first), or from the
  * mission's mzanim.zar -- with the common czanim.zar when that loads, else its zanim.zar (SOCOM 1's,
@@ -2441,12 +2557,6 @@ public:
     void SetAllFlag18();   /* 0x3CCC90 */
 };
 
-/* an objective (fts_objectivecam.cpp's: only its destructor, deleted here) */
-class CMissionObjectiveCam : public CMissionCam {
-public:
-    ~CMissionObjectiveCam();   /* 0x2C7490 */
-};
-
 extern "C" {
 CZAnimSet *GetAnimSet__10CZAnimMainFPCc(CZAnimMain *main, const char *name);
 void func_00295610();
@@ -2500,7 +2610,7 @@ bool CMission::ReOpen_Unload1()
         m_objanchor_vec.pop_back();
     }
     if (theHUD && !theNetwork.m_bNetwork)
-        theHUD->m_newmap->m_cur_selected_objective = 0;
+        theHUD->m_newmap->m_objectivelist.m_cur_selected_objective = 0;
     Headset::Reset();
     zdb::CWorld *world = zdb::CWorld::m_world;
 
@@ -2614,7 +2724,7 @@ void CMission::Close()
     zBoneResetCallbacks();
     zdb::theWaterRippleManager.Clear();
     if (theHUD && !theNetwork.m_bNetwork)
-        theHUD->m_newmap->m_cur_selected_objective = 0;
+        theHUD->m_newmap->m_objectivelist.m_cur_selected_objective = 0;
     CCharacterModelCache::m_ModelCache.clear();
     CCharacterType::ClearMultiplayerMessageSounds();
     CMaterialExArray::UnInit();
@@ -3456,6 +3566,122 @@ void CMission::Tick(float dT)
         CPickup::TickTimers(&player->m_posW, dT);
     else if (theNetwork.m_bNetwork && player)
         CPickup::NetTick(&player->m_posW, dT);
+}
+
+/* the objectives' compass anchors, once a second (SOCOM 1's CMission::TickObjectives; OVL1
+ * 0x2A9F30): alone, the map's current objective (its retainer) anchored when it is available and
+ * new -- the old anchors dropped, a PRIMARY OBJ (type 7) or SECONDARY OBJ (type 8) made at its map
+ * position --, else every anchor dropped; with no current objective, or one unavailable but on the
+ * compass, and no anchor left, the first available objective anchored, or the first available
+ * secondary after an unavailable one whose next is a secondary (SOCOM II's anchor types one up
+ * from SOCOM 1's); then each completed objective's anchor dropped, the last moved into its place.
+ * The walk's registers (the states' round 42, read off MW's colouring with tools/igreplay.py --want
+ * and a permutation of the walk's nodes): ONE object pointer for both loops, declared first and
+ * uninitialised, `it` before `end`, `found` after them -- each object its own named local, or
+ * `end` first, leaves `found` coloured ahead of `this` (s0) and the iterators' registers swapped */
+void CMission::TickObjectives(float dT)
+{
+    m_objectives_timer += dT;
+    if (m_objectives_timer > 1.0f)
+        m_objectives_timer = 0.0f;
+    else
+        return;
+    CMissionObjectiveCam *cur = 0;
+
+    if (!theNetwork.m_bNetwork)
+        cur = theHUD->m_newmap->m_objectivelist.GetCurrentObjectiveRetainer();
+    if (cur && cur->IsAvailable()) {
+        if (m_prev_selected_objcam != cur) {
+            unsigned int n = m_objanchor_vec.size();
+
+            if (n) {
+                for (unsigned int i = 0; i < n; i++)
+                    CCompass::DeleteAnchor(m_objanchor_vec[i].m_anchor);
+                m_objanchor_vec.clear();
+            }
+            CPnt3D pos(cur->m_pos.x, 0.0f, cur->m_pos.y);
+
+            m_objanchor_vec.push_back(SObjectiveCam_Anchor());
+            SObjectiveCam_Anchor &anchor = m_objanchor_vec.back();
+
+            anchor.m_objective = cur;
+            if (cur->m_isSecondary) {
+                anchor.m_anchor = CCompass::CreateAnchor(pos, "SECONDARY OBJ");
+                anchor.m_anchor->m_type = 8;
+            } else {
+                anchor.m_anchor = CCompass::CreateAnchor(pos, "PRIMARY OBJ");
+                anchor.m_anchor->m_type = 7;
+            }
+            m_prev_selected_objcam = anchor.m_objective;
+            return;
+        }
+    } else {
+        unsigned int n = m_objanchor_vec.size();
+
+        if (n) {
+            for (unsigned int i = 0; i < n; i++)
+                CCompass::DeleteAnchor(m_objanchor_vec[i].m_anchor);
+            m_objanchor_vec.clear();
+            m_prev_selected_objcam = 0;
+        }
+    }
+    if ((!cur || (cur && !cur->IsAvailable() && cur->m_isCompass)) && !m_objanchor_vec.size()) {
+        CMissionObjectiveCam *obj;
+        CMissionObjectiveCamList::iterator it = m_objectivecams.begin();
+        CMissionObjectiveCamList::iterator end = m_objectivecams.end();
+        bool found = false;
+
+        for (; it != end && !found; ++it) {
+            obj = *it;
+            bool sub = true;
+            CMissionObjectiveCamList::iterator next = it;
+
+            ++next;
+            if (next != end && (*next)->m_isSecondary && !obj->IsAvailable())
+                sub = false;
+            if (obj->IsAvailable()) {
+                CPnt3D pos(obj->m_pos.x, 0.0f, obj->m_pos.y);
+
+                m_objanchor_vec.push_back(SObjectiveCam_Anchor());
+                SObjectiveCam_Anchor &anchor = m_objanchor_vec.back();
+
+                anchor.m_objective = obj;
+                anchor.m_anchor = CCompass::CreateAnchor(pos, "PRIMARY OBJ");
+                anchor.m_anchor->m_type = 7;
+                found = true;
+            } else if (!sub) {
+                for (; next != end && !found; ++next) {
+                    obj = *next;
+
+                    if (obj->m_isSecondary && obj->IsAvailable()) {
+                        CPnt3D pos(obj->m_pos.x, 0.0f, obj->m_pos.y);
+
+                        m_objanchor_vec.push_back(SObjectiveCam_Anchor());
+                        SObjectiveCam_Anchor &anchor = m_objanchor_vec.back();
+
+                        anchor.m_objective = obj;
+                        anchor.m_anchor = CCompass::CreateAnchor(pos, "SECONDARY OBJ");
+                        anchor.m_anchor->m_type = 8;
+                        found = true;
+                    }
+                }
+            }
+        }
+    }
+    unsigned int n = m_objanchor_vec.size();
+
+    if (n) {
+        for (unsigned int i = 0; i < n; i++) {
+            SObjectiveCam_Anchor &anchor = m_objanchor_vec[i];
+
+            if (anchor.m_objective->IsComplete()) {
+                CCompass::DeleteAnchor(anchor.m_anchor);
+                m_objanchor_vec.RemoveAt(i);
+                i--;
+                n = m_objanchor_vec.size();
+            }
+        }
+    }
 }
 
 /* START_IMAGE_RECORDER: the recorder's file name, its lines and rate (SOCOM 1's command; SOCOM II's
