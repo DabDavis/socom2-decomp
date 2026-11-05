@@ -307,7 +307,10 @@ _zanim_cmd_hdr *CAppCamera::CmdParseShake(_zrdr *rdr)
  * OPEN (36 of 113 instructions, registers only): the target keeps appCamera in v1 and the level in
  * a0 (the command's register, dead after the load); MW gives the level v1 and appCamera a1 -- the
  * same with a local camera, an early return, the level read first or as an int, Shake declared
- * inline, and with the switch written out here */
+ * inline, and with the switch written out here; round 15: the level a caller local defined inside
+ * the null test (plain, const, int), declared at the top, the command cast into a local -- the same
+ * 36 (build/scratch/core/v_shake.py): by the numbering the target's camera is numbered above the
+ * inlined Shake's level, which no caller-side spelling reaches */
 void CAppCamera::CmdBeginShake(_zanim_cmd_hdr *hdr)
 {
     if (appCamera)
