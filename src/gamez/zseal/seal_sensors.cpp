@@ -117,7 +117,9 @@ inline bool TestSensorBit(const CBits *bits, unsigned int i)
  * result a local, a copy of the mask, `!= 0`, a ternary, the shift as its own statement with the
  * amount a local before or after, a dead first definition, the index a local) all stay at 2 or
  * move to 4-10 -- the `m = 1; m <<= s;` forms put the AND in v0 but always trade the 1 and the
- * amount (CAiSPickup::Tick's SetBit has the same pair, its igdump reading in its note) */
+ * amount (CAiSPickup::Tick's SetBit has the same pair, its igdump reading in its note). Round 40:
+ * the AND inside an inline taking the word and the mask by value (either order, `& `, `!= 0`, a
+ * ternary, the word by pointer) gives 8 -- the word's index computed first again */
 extern "C" bool func_005CB450(CSealCtrlAi *ai, CPickup *p, CZWeapon *w)
 {
     bool go;
