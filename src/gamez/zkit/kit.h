@@ -78,11 +78,29 @@ struct CKitBody {
         } *m_rec;
         unsigned int m_4;
     } m_attach[5];
-    unsigned char _3b0[0xf79 - 0x3b0];
+    unsigned char _3b0[0xeb8 - 0x3b0];
+    /* 0xeb8: the entity the SEAL works -- a turret (zseal.h's m_eb8) */
+    struct CKitMover *m_eb8;
+    unsigned char _ebc[0xf79 - 0xebc];
     unsigned char m_f79;   // 0xf79: the item kind the body is asked for (ChangeItemModel's test; the name ours)
     unsigned char _f7a[0x105e - 0xf7a];
     unsigned char _105e : 5;   // 0x105e: zseal.h's flag word at 0x105c, its bits 16-23
     unsigned char m_airborne : 1;   // bit 21: off the ground
+    unsigned char _105e_6 : 2;
+    unsigned char _105f[0x1350 - 0x105f];
+    CPnt3D m_1350;   // 0x1350: the velocity kept in the air (zseal.h's m_1350)
+};
+
+/* an entity's motion as the reticle reads it (CEntity's: its model-frame velocity at 0x2C, its
+ * rotation's at 0x44 and the float at 0x60 -- zentity.h's m_unk60 -- read off the worked turret or
+ * the SEAL itself) */
+struct CKitMover {
+    unsigned char _0[0x2c];
+    CPnt3D m_velM;   // 0x2c
+    CPnt3D m_velW;   // 0x38
+    CPnt3D m_velR;   // 0x44
+    unsigned char _50[0x60 - 0x50];
+    float m_60;   // 0x60
 };
 
 /* a weapon as the kit reads it (CZWeapon; only the wait between shots, SOCOM 1's m_firewait --
@@ -278,6 +296,11 @@ public:
     /* whether the weapon selector may pick an item (SOCOM 1's; OVL2 0x5BDC30) */
     bool isSelectableItem(int index);
     bool IsFireDelayed();
+    /* the reticle's offsets returned to the centre and its size eased toward a goal the weapon's
+     * target mods and the SEAL's motion set -- a player's only (SOCOM 1's TickReticule; OVL2
+     * 0x5C2670: SOCOM II's explosives, grenades, binoculars and item class 201 hold the bounds at
+     * zero, and the dilation reads the worked turret's motion) */
+    void TickReticule(float dT);
     FIREMODE GetCurFireMode();
     int GetNumMags(int index);
     int GetCurNumMags();
@@ -561,7 +584,14 @@ public:
      * environment's pickup code (OVL2 0x59F0C0, 0x59F730) sets, reads and clears it through the
      * three accessors below 0x5B9020 (the names ours) */
     std::vector<void *> m_itemptr;
-    unsigned char _840[0x884 - 0x840];
+    unsigned char _840[0x84c - 0x840];
+    float m_retsize;   // 0x84c (SOCOM 1's 0x830): the reticle's size
+    float m_prev_retsize;   // 0x850 (SOCOM 1's 0x834)
+    unsigned char _854[0x86c - 0x854];
+    float m_retsizegoal;   // 0x86c (SOCOM 1's 0x850)
+    float m_retmax;   // 0x870 (SOCOM 1's 0x854)
+    float m_retmin;   // 0x874 (SOCOM 1's 0x858)
+    unsigned char _878[0x884 - 0x878];
     zdb::CLightMap *m_lightMap;   // 0x884 (SOCOM 1's 0x864)
     CSnd *m_rldsnd;   // 0x888 (SOCOM 1's 0x868)
     CSnd *m_clicksnd;   // 0x88c (SOCOM 1's 0x86c)

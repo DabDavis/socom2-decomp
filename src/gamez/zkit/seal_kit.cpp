@@ -1380,6 +1380,102 @@ bool CZKit::FetchLaseTarget()
     return false;
 }
 
+/* (OVL2 0x5C2670: kit.h's; SOCOM 1's TickReticule). One rate variable for the offsets' return and the
+ * size's constriction, each a call result multiplied by dT in place: MW splits the reused variable into
+ * a new web numbered after every temporary, so both rates take $f0 and their multiplies sink into the
+ * branches' delay slots (two locals, or the products written in one statement, take $f2); the item's
+ * class declared uninitialised ahead of the cast (numbered before the weapon: the class in s3) */
+void CZKit::TickReticule(float dT)
+{
+    EQUIP_IDTYPE type;
+
+    if (!KitIsPlayer((CKitBody *)m_body))
+        return;
+    CZFTSWeapon *w = dynamic_cast<CZFTSWeapon *>((CZWeapon *)m_item[m_selected_item]);
+
+    type = IDTYPE_NONE;
+
+    if (w)
+        type = (EQUIP_IDTYPE)w->GetIDType();
+    if (!w)
+        return;
+    CTargetMods *mods = w->TargetMods(GetStance__10CZSealBodyCFb(m_body, true));
+
+    if (type == IDTYPE_EXPLOSIVE || type == IDTYPE_GRENADE || type == IDTYPE_BINOCULARS || type == 201) {
+        m_retmin = 0.0f;
+        m_retmax = 0.0f;
+    } else {
+        m_retmin = mods->GetTarget_Min();
+        m_retmax = mods->GetTarget_Max();
+    }
+    if (m_retsize < m_retmin)
+        m_retsize = m_retmin;
+    float rate = mods->GetReticuleKnock_Return();
+
+    rate *= dT;
+
+    if (m_retoffsetx > 0.0f) {
+        m_retoffsetx -= rate;
+        if (m_retoffsetx < 0.0f)
+            m_retoffsetx = 0.0f;
+    }
+    if (m_retoffsetx < 0.0f) {
+        m_retoffsetx += rate;
+        if (m_retoffsetx > 0.0f)
+            m_retoffsetx = 0.0f;
+    }
+    if (m_retoffsety > 0.0f) {
+        m_retoffsety -= rate;
+        if (m_retoffsety < 0.0f)
+            m_retoffsety = 0.0f;
+    }
+    if (m_retoffsety < 0.0f) {
+        m_retoffsety += rate;
+        if (m_retoffsety > 0.0f)
+            m_retoffsety = 0.0f;
+    }
+    CKitMover *e = ((CKitBody *)m_body)->m_eb8;
+
+    if (!e)
+        e = (CKitMover *)m_body;
+    float dilate = 1.0f / 65.0f * (e->m_velM.x * e->m_velM.x + e->m_velM.y * e->m_velM.y + e->m_velM.z * e->m_velM.z)
+                   * mods->GetTarget_DilateUponMovementMult();
+
+    dilate += 30.0f * (5.29f * (e->m_velR.x * e->m_velR.x + e->m_velR.y * e->m_velR.y + e->m_velR.z * e->m_velR.z));
+    dilate += 30.0f * (5.29f * (e->m_60 * e->m_60));
+
+    if (Airborne((CKitBody *)m_body)) {
+        CPnt3D &v = ((CKitBody *)m_body)->m_1350;
+
+        dilate += 1.0f / 65.0f * (v.x * v.x + v.y * v.y + v.z * v.z);
+    }
+    float lim = m_retmin + (m_retmax - m_retmin);
+
+    if (dilate > lim)
+        dilate = lim;
+    if (dilate < m_retmin)
+        m_retsizegoal = m_retmin;
+    else if (dilate > m_retmax)
+        m_retsizegoal = m_retmax;
+    else
+        m_retsizegoal = dilate;
+    if (m_item[m_selected_item]) {
+        rate = mods->GetTarget_Constrict();
+        rate *= dT;
+
+        m_prev_retsize = m_retsize;
+        if (m_retsize < m_retsizegoal) {
+            m_retsize += mods->GetTarget_DilateUponMovement();
+            if (m_retsize > m_retsizegoal)
+                m_retsize = m_retsizegoal;
+        } else if (m_retsize > m_retsizegoal) {
+            m_retsize -= rate;
+            if (m_retsize < m_retsizegoal)
+                m_retsize = m_retsizegoal;
+        }
+    }
+}
+
 /* the fire delay still running (OVL2 0x5C2400, new in SOCOM II; the name ours) */
 bool CZKit::IsFireDelayed()
 {
