@@ -2065,6 +2065,24 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the game states, round 45** (nine unwritten functions byte-exact, 17,252 bytes -- RemoteGameUpdateCallback
+  and fts_net_game.cpp whole, CMission's Serialize / UnSerialize / Read, CZNetGame::Initialize, the network's object and
+  message registration 0x2B8660; resumed after the 2026-11-05 crash):
+  - MW evaluates an inline's arguments right to left: `SetValveValue(CValve::Create(..), v)` loads an address-taken `v`
+    before the call, a named valve local makes it load after (CMission::UnSerialize 0x2A54E0); an inline taking a variable
+    by value loads it before its body and an address-taken variable is reloaded for a test inside -- written in place MW
+    loads it once (CMission::Read 0x2AAB20);
+  - a string literal written twice is pooled into one (CMission::Serialize 0x2A6340's tags and valve names share
+    addresses); a chained assignment `x = y = z = k` stores z, then y, then x;
+  - a caller that does not narrow a result (no `andi 0xffff`) means the callee returns a full word (func_002C0090); an int
+    local holding a byte a call returned stores it to a wider field without narrowing again, an `unsigned char` local
+    narrows again at the store;
+  - an `unsigned int x : 16` bitfield promotes to int -- `(x + 1) / 2` divides signed and converts to float signed; the
+    target's srl and unsigned conversion come through an `unsigned int GetValue()` accessor;
+  - MW LAYS OUT STRUCT LOCALS IN THREE GROUPS, each in declaration order: 4 bytes or less on top, up to 16 bytes on 8-byte
+    slots, larger on 16-byte slots -- a struct's padding decides its group (the registration 0x2B8660, 0xAE4);
+  - a non-player SEAL falls through to the turret test: `if (seal && IsPlayerSeal(seal)) ... else if (turret)`
+    (CZGameState::RemoteGameUpdateCallback 0x2C0850, byte-exact on the first build).
 - **Tells from the AI core, round 32** (plan_addleg and ReRoute byte-exact; RegisterPathPlan written; GetLocation(point)
   and GetCellRepelParams closer -- resumed after the 2026-11-05 crash for its wind-down):
   - two 4-byte class locals take the frame's top slots wherever they are declared; wrapped in ONE 8-byte struct they
