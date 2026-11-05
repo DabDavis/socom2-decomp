@@ -125,23 +125,28 @@ CSndInstance *CSndGroup::PlaySoundVolPanPitch(float vol, int pan, int pitch, CSn
     return 0;
 }
 
+/* SOCOM 1's: the weights scaled to sum to one, or made equal when they sum to 0. One counter for the
+ * three loops, declared at the top: a counter per loop makes the size's temporary colour after the
+ * unrolled loop's data pointers (a2 for a3, 23 off; tools/igreplay.py --want placed it between the
+ * unroll bound and those pointers -- the world lane's round 21) */
 void CSndGroup::NormalizeWeights()
 {
     if (m_isDisabled)
         return;
     float total = 0.0f;
+    int i;
 
-    for (int i = 0; i < m_weights.size(); i++)
+    for (i = 0; i < m_weights.size(); i++)
         total += m_weights[i];
     if (total == 0.0f) {
         float w = 1.0f / m_weights.size();
 
-        for (int i = 0; i < m_weights.size(); i++)
+        for (i = 0; i < m_weights.size(); i++)
             m_weights[i] = w;
     } else {
         float scale = 1.0f / total;
 
-        for (int i = 0; i < m_weights.size(); i++)
+        for (i = 0; i < m_weights.size(); i++)
             m_weights[i] *= scale;
     }
 }

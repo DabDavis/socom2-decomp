@@ -5106,6 +5106,7 @@
 0x0031B770 CmdTickWind__5CWindFP14_zanim_cmd_hdrPf
 0x0031C2F0 RegisterAnimCommands__5CWindFv
 0x0031C320 __ct__Q23zdb23CTextureAssetCharactersFPQ23zdb9CAssetLibPQ23zdb5CNodePQ23zdb11CDynTexList
+0x0031C440 TestFOV__Q23zdb23CTextureAssetCharactersFPQ23zdb7CCamera
 0x0031C770 TestFOV__Q23zdb26CTextureAssetCharacterListFPQ23zdb7CCameraPPQ23zdb23CTextureAssetCharacters
 0x0031C880 RemoveDecals__Q23zdb6CWorldFv
 0x0031C930 ClearShadowList__Q23zdb6CWorldFv
@@ -5257,6 +5258,7 @@
 0x003285F0 __dt__Q38Particle8Instance4ListFv
 0x003286D0 GetOpacity__Q28Particle5PropsCFf
 0x00328750 GetScale__Q28Particle5PropsCFfRf
+0x00328860 GetColor__Q28Particle5PropsCFfR6CPnt4D
 0x00328A50 GetTexture__Q28Particle5PropsCFfRPQ23zdb10CTexHandle
 0x00328B10 DecRefCount__Q28Particle5PropsFi
 0x00328BD0 Branch__Q28Particle5PropsFv
@@ -5488,6 +5490,7 @@
 0x00337F40 RenderDelayedNodes__5CPipeFv
 0x003381F0 SaveDelayedNode__5CPipeFP7CMatrixPQ23zdb5CNodeQ23zdb12tag_ZVIS_FOV
 0x003383F0 AddAlphaTextures__5CPipeFPQ23zdb5CNode
+0x00339470 BuildProjectedMapList__5CPipeFPQ23zdb5CNode
 0x00339660 BuildLightMapList__5CPipeFPQ23zdb5CNode
 0x00339AD0 BuildSpecMapList__5CPipeFPQ23zdb5CNode
 0x00339CF0 RenderCell__5CPipeFPQ23zdb5CCell
@@ -5551,6 +5554,7 @@
 0x0033D4A0 GetHeader__12CSaveManagerFPCciPQ212CSaveManager11CSaveHeader
 0x0033D6D0 Load__12CSaveManagerFPCci
 0x0033DBA0 RemoveExtension__FPCc
+0x0033DC30 SaveEncrypt__FPci
 0x0033DE00 SaveDecrypt__FPci
 0x0033DFF0 Save__12CSaveManagerFPCciiPcPc
 0x0033E3D0 RegisterModule__12CSaveManagerFP11CSaveModule
@@ -5621,13 +5625,13 @@
 0x00340F70 SetDialogMode__4CSndFv
 0x00340F90 func_00340F90
 0x00340FA0 func_00340FA0
-0x00341010 func_00341010
-0x00341060 func_00341060
+0x00341010 ReleaseGroupVolTemp__4CSndFv
+0x00341060 EndGroupVolTemp__4CSndFv
 0x003410D0 ResetGroupVolTemp__4CSndFf
-0x00341250 func_00341250
+0x00341250 TickGroupVolTemp__4CSndFf
 0x003412F0 SetGroupVolTemp__4CSndFffiiiiiii
-0x003414B0 func_003414B0
-0x003414C0 func_003414C0
+0x003414B0 GetMasterVolume__4CSndFi
+0x003414C0 SetMasterVolume__4CSndFii
 0x003414D0 SetGroupVol__4CSndFif
 0x00341500 LoadOutdoorReverbs__4CSndFP5_zrdr
 0x003416B0 LoadIndoorReverbs__4CSndFP5_zrdr
@@ -5737,6 +5741,7 @@
 0x00347C70 GetNumSounds__9CSndGroupFv
 0x00347C80 GetSound__9CSndGroupFUi
 0x00347CB0 SetDialogMode__9CSndGroupFv
+0x00347D40 NormalizeWeights__9CSndGroupFv
 0x00347F00 LoadCSndGroup__9CSndGroupFP5_zrdr
 0x00348130 LoadSoundGroups__9CSndGroupFPCc
 0x00348270 __dt__Q23std30vector<f,Q23std12allocator<f>>Fv
@@ -5746,6 +5751,7 @@
 0x00348710 PlaySound__9CSndGroupFP12CSndInstanceUi
 0x00348860 Stop__11CSndJukeboxFv
 0x003488E0 Start__11CSndJukeboxFv
+0x00348900 NormalizeWeights__11CSndJukeboxF10MUSIC_MODE
 0x00348CE0 SetIntensity__11CSndJukeboxFf
 0x00348DC0 Play__11CSndJukeboxF10MUSIC_MODEP4CSnd
 0x00349060 ClearQueue__11CSndJukeboxFv
@@ -5870,6 +5876,7 @@
 0x0034EC30 _malloc__FUiPCci
 0x0034EC90 zsys_FullAllocAndFree__Fv
 0x0034ED00 Free__5CHeapFPv
+0x0034EEB0 Alloc__5CHeapFUi
 0x0034F000 __dt__5CHeapFv
 0x0034F060 __ct__5CHeapFUi
 0x0034F0E0 zSysSleep__Fi
@@ -9673,6 +9680,7 @@
 0x0058ED60 func_0058ED60
 0x0058EF80 func_0058EF80
 0x0058F190 func_0058F190
+0x0058F230 func_0058F230
 0x0058F6E0 func_0058F6E0
 0x0058F8A0 func_0058F8A0
 0x0058F960 func_0058F960
@@ -9710,7 +9718,10 @@
 0x00592C70 SetCameraZoom__9CSealCtrlFff
 0x00592CA0 func_00592CA0
 0x00592D40 func_00592D40
+0x00593500 SampleActionAvailable__9CSealCtrlFv
 0x00593D00 PerformReticleActions__9CSealCtrlFv
+0x00593DA0 TickPickups__9CSealCtrlFf
+0x005940D0 TickVictims__9CSealCtrlFv
 0x00594480 CanPlaceBomb__9CSealCtrlFP11CNodeAction
 0x00594B70 func_00594B70
 0x00594C90 func_00594C90
