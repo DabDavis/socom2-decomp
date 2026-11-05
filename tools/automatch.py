@@ -244,7 +244,9 @@ def gcc_repair(tmp: Path, body: str, cc: tuple[str, str], rounds: int = 3) -> st
             if "invalid operands to binary -" in msg and _on("GCC_PTRDIFF"):
                 lines[n - 1] = _byte_differences(lines[n - 1], decl)
             if "invalid operands to binary +" in msg and _on("GCC_PTRSUM"):
-                lines[n - 1] = _byte_sums(lines[n - 1], decl)
+                lines[n - 1] = _byte_sums(lines[n - 1], _with_arrays(text, decl) if _on("GCC_ARRAYS") else decl)
+            if "called object is not a function" in msg and _on("GCC_CALLS"):
+                lines[n - 1] = _calls_through_ints(lines[n - 1])
             unproto |= set(re.findall(r"too (?:many|few) arguments to function `([A-Za-z_]\w*)'", msg))
             if _on("GCC_SAVED_REGS"):
                 saved |= set(re.findall(r"`(saved_reg_\w+)' undeclared", msg))
@@ -361,6 +363,42 @@ def _byte_differences(line: str, decl: dict[str, str]) -> str:
             if left.startswith("(s32) (") or _pointerish(right, decl) is not True:
                 continue
             line = line[:lo] + f"((s32) ({left}) - (s32) ({right}))" + line[hi:]
+            done = True
+            break
+        if not done:
+            break
+    return line
+
+
+_ARRAY_DECL = re.compile(r"^\s*(?:const\s+)?(?:unsigned\s+)?[A-Za-z_]\w*(?:\s*\*+)?\s*([A-Za-z_]\w*)\[[^\]]*\];", re.M)
+
+
+def _with_arrays(text: str, decl: dict[str, str]) -> dict[str, str]:
+    """`decl` with each array the draft declares typed as the pointer it is in a sum (GCC round 32a:
+    m2c's frame `s32 sp[28]` in `M2C_FIELD((sp + var_s3), ...)`, var_s3 a `char *` -- 0x24B2F8's one
+    error, a byte sum of the frame and an offset m2c typed a pointer)."""
+    out = dict(decl)
+    for m in _ARRAY_DECL.finditer(text):
+        if m.group(1) in out and "*" not in out[m.group(1)]:
+            out[m.group(1)] = out[m.group(1)] + " *"
+    return out
+
+
+def _calls_through_ints(line: str) -> str:
+    """`*(x + k)(args)`: m2c's call through a word it loaded (GCC: "called object is not a function";
+    libmpeg's _doMC, GCC round 32a) made through a function pointer, `(*(void (**)()) (x + k))(args)`
+    -- `int (**)()` where the call's value is used."""
+    for _ in range(8):
+        done = False
+        for m in re.finditer(r"\*\(", line):
+            i = m.start()
+            if line[i + 2:].startswith(("void (**)()", "int (**)()")):
+                continue
+            j = _group(line, i + 1)
+            if j < 0 or j >= len(line) or line[j] != "(" or re.fullmatch(r"[\w\s]*\*+\s*", line[i + 2:j - 1]):
+                continue                                  # not a call, or a cast's load: `*(s32 *)(p)`
+            ret = "void" if not line[:i].strip() else "int"
+            line = line[:i] + f"(*({ret} (**)()) {line[i + 1:j]})" + line[j:]
             done = True
             break
         if not done:

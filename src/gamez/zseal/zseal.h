@@ -89,6 +89,18 @@ public:
     /* (SOCOM 1's KickGrenade, 33 before Stand2Prone in both builds: the grenade state's kick,
      * 0x55AC20, plays it with the timed call that throws the grenade from where it lies) */
     static short KickGrenade;   // OVL1 0x3DEB40
+    /* (SOCOM 1's eight reloads, three to ten after KickGrenade in both builds, and RifleM203Reload
+     * twenty after PistolReload in both: Reload 0x5A82E0 picks them by stance, pistol or rifle,
+     * moving or not and the launcher, IsReloading 0x5A7AB0 tests them -- the SEALs, round 40) */
+    static short PistolReload;   // OVL1 0x3DEB58 (SOCOM 1's 0x47514C)
+    static short RifleReload;   // OVL1 0x3DEB60
+    static short MovingPistolReload;   // OVL1 0x3DEB68
+    static short MovingRifleReload;   // OVL1 0x3DEB70
+    static short PistolCrouchReload;   // OVL1 0x3DEB78
+    static short RifleCrouchReload;   // OVL1 0x3DEB80
+    static short PistolProneReload;   // OVL1 0x3DEB88
+    static short RifleProneReload;   // OVL1 0x3DEB90
+    static short RifleM203Reload;   // OVL1 0x3DEBF8 (SOCOM 1's 0x47519C)
     static short Stand2Prone;   // OVL1 0x3DEC48
     static short PistolStand2Prone;   // OVL1 0x3DEC50
     /* (SOCOM 1's SwapRifle, six after Stand2Prone in both builds: the weapon swap's blends,
@@ -107,9 +119,19 @@ public:
      * stab's kill 0x578D20 pushes Stabbed on the victim and Stab on the attacker, as SOCOM 1's
      * StabBuddy does) */
     static short Stab;   // OVL1 0x3DEE08
+    /* (SOCOM 1's PistolStab, CQB, PistolCQB, the CQB victim's two falls and PistolApplyRestraints, in
+     * SOCOM 1's order between Stab and BuddyCarryStand in both builds: CanUseKnife 0x5A98B0, CanUseCQB
+     * 0x5A9500, FindDeathAnimTypeCQB 0x5A9420 and CanUseRestraint 0x5A90B0 test them -- the SEALs,
+     * round 40; the falls AnimType, as FindDeathAnimTypeCQB returns them) */
+    static short PistolStab;   // OVL1 0x3DEE10 (SOCOM 1's 0x475278)
     static short Stabbed;   // OVL1 0x3DEE18
+    static short CQB;   // OVL1 0x3DEE20 (SOCOM 1's 0x475280)
+    static short PistolCQB;   // OVL1 0x3DEE28
+    static AnimType CQBVictimFallBackwards;   // OVL1 0x3DEE30
+    static AnimType CQBVictimFallForwards;   // OVL1 0x3DEE38
     static short ReceiveRestraints;   // OVL1 0x3DEE40
     static short ApplyRestraints;   // OVL1 0x3DEE48
+    static short PistolApplyRestraints;   // OVL1 0x3DEE50 (SOCOM 1's 0x475298)
     /* (SOCOM 1's BuddyCarryBody, BuddyCarryPickup and BuddyCarriedPickup, the carry's -- six, ten
      * and twelve after ReceiveRestraints there, eight, twelve and fourteen here: SOCOM II adds two
      * after ApplyRestraints; PutdownBuddy 0x5794D0 pushes them as SOCOM 1's does) */
@@ -228,6 +250,10 @@ public:
      * in hand is in its launcher mode (new in SOCOM II; OVL2 0x5B9020, 0x5BD7E0 -- the kit lane's) */
     void ResetRetOffsetXY();
     bool CurWeaponIsLauncherMode();
+    /* the item in hand in an M203's or a grenade launcher's fire mode (OVL2 0x5BDA00, 0x5BD6D0: tail
+     * calls on the selected item -- kit.h's, the kit lane's rows; seal_env.cpp's Reload asks both) */
+    bool CurWeaponIsM203Mode();
+    bool CurWeaponIsGrenadeLauncherMode();
     /* the class of the item in hand (kit.h's byte enum; OVL2 0x5B8760, the kit lane's) */
     enum FIRE_CLASS { FIRE_CLASS_NONE = 0, FIRE_CLASS_RIFLE = 1, FIRE_CLASS_PISTOL = 2,
                       FIRE_CLASS_THROWN = 3, FIRE_CLASS_145 = 4, FIRE_CLASS_LAST = 255 };
@@ -2195,8 +2221,10 @@ public:
     unsigned char _fdc[0xfe0 - 0xfdc];
     float m_stunval[7];   // 0xfe0 (SOCOM 1's 0xedc: HandleStunDamage keeps each kind's highest)
     float m_ffc[6];   // 0xffc: six values run down at the rates below by 0x5AC620 (new; the names ours)
-    float m_1014[6];   // 0x1014
-    unsigned char _102c[0x1044 - 0x102c];
+    float m_1014[6];   // 0x1014: m_ffc's full values (0x5A5830 scales the others by the body's share)
+    /* what each location's value is taken against: CZProjectile::ResolveDamage's second (0x5A5830; the
+     * name ours) */
+    float m_102c[6];   // 0x102c
     float m_health;   // 0x1044 (SOCOM 1's 0xea0)
     /* the last explosive whose damage was taken (SOCOM 1's DWARF m_lastprojectile, 0xf44 right
      * before m_tempprojectile as here: HandleDamage keeps a detonated one) */

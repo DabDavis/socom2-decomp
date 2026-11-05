@@ -1386,12 +1386,13 @@
 0x001EABB0 __ct__Q23std42__list_deleter<PCv,Q23std14allocator<PCv>>Fv
 0x001EABD0 func_001EABD0
 0x001EAC80 func_001EAC80
-0x001EACE0 func_001EACE0
-0x001EAF80 func_001EAF80
-0x001EAFE0 func_001EAFE0
-0x001EAFF0 func_001EAFF0
-0x001EB000 func_001EB000
-0x001EB030 func_001EB030
+0x001EACE0 MenuStateOption__FRCQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>P5_zrdr
+0x001EAD10 destroy__Q23std244__tree<Q23std31pair<C9CSaferStr,11OPTION_INFO>,Q33std113map<9CSaferStr,11OPTION_INFO,Q23std16less<9CSaferStr>,Q23std50allocator<Q23std31pair<C9CSaferStr,11OPTION_INFO>>>13value_compare,Q23std50allocator<Q23std31pair<C9CSaferStr,11OPTION_INFO>>>FPQ33std244__tree<Q23std31pair<C9CSaferStr,11OPTION_INFO>,Q33std113map<9CSaferStr,11OPTION_INFO,Q23std16less<9CSaferStr>,Q23std50allocator<Q23std31pair<C9CSaferStr,11OPTION_INFO>>>13value_compare,Q23std50allocator<Q23std31pair<C9CSaferStr,11OPTION_INFO>>>4node
+0x001EAF80 __dt__Q23std31pair<C9CSaferStr,11OPTION_INFO>Fv
+0x001EAFE0 deallocate__Q23std269allocator<Q33std244__tree<Q23std31pair<C9CSaferStr,11OPTION_INFO>,Q33std113map<9CSaferStr,11OPTION_INFO,Q23std16less<9CSaferStr>,Q23std50allocator<Q23std31pair<C9CSaferStr,11OPTION_INFO>>>13value_compare,Q23std50allocator<Q23std31pair<C9CSaferStr,11OPTION_INFO>>>4node>FPQ33std244__tree<Q23std31pair<C9CSaferStr,11OPTION_INFO>,Q33std113map<9CSaferStr,11OPTION_INFO,Q23std16less<9CSaferStr>,Q23std50allocator<Q23std31pair<C9CSaferStr,11OPTION_INFO>>>13value_compare,Q23std50allocator<Q23std31pair<C9CSaferStr,11OPTION_INFO>>>4nodeUi
+0x001EAFF0 node_alloc__Q23std244__tree<Q23std31pair<C9CSaferStr,11OPTION_INFO>,Q33std113map<9CSaferStr,11OPTION_INFO,Q23std16less<9CSaferStr>,Q23std50allocator<Q23std31pair<C9CSaferStr,11OPTION_INFO>>>13value_compare,Q23std50allocator<Q23std31pair<C9CSaferStr,11OPTION_INFO>>>Fv
+0x001EB000 destroy__Q23std50allocator<Q23std31pair<C9CSaferStr,11OPTION_INFO>>FPQ23std31pair<C9CSaferStr,11OPTION_INFO>
+0x001EB030 alloc__Q23std244__tree<Q23std31pair<C9CSaferStr,11OPTION_INFO>,Q33std113map<9CSaferStr,11OPTION_INFO,Q23std16less<9CSaferStr>,Q23std50allocator<Q23std31pair<C9CSaferStr,11OPTION_INFO>>>13value_compare,Q23std50allocator<Q23std31pair<C9CSaferStr,11OPTION_INFO>>>Fv
 0x001EB040 SetSkipSwap__10CCoreStateFi
 0x001EB050 PreInit__10CCoreStateFv
 0x001EB060 PreUnInit__10CCoreStateFv
@@ -1591,6 +1592,7 @@
 0x001FE310 Draw__3C2DFRC7CMatrixPQ23zdb16CTextureRelocMgr
 0x001FE320 SetTrans__3C2DFf
 0x001FE330 Tick__3C2DFf
+0x001FE340 insert__Q23std38__vector_pod<Ui,Q23std13allocator<Ui>>FPUiUiRCUi
 0x001FE760 destroy__Q23std186__tree<Q23std19pair<CUs,8C2DGlyph>,Q33std80map<Us,8C2DGlyph,Q23std8less<Us>,Q23std38allocator<Q23std19pair<CUs,8C2DGlyph>>>13value_compare,Q23std38allocator<Q23std19pair<CUs,8C2DGlyph>>>FPQ33std186__tree<Q23std19pair<CUs,8C2DGlyph>,Q33std80map<Us,8C2DGlyph,Q23std8less<Us>,Q23std38allocator<Q23std19pair<CUs,8C2DGlyph>>>13value_compare,Q23std38allocator<Q23std19pair<CUs,8C2DGlyph>>>4node
 0x001FE9E0 __dt__Q23std19pair<CUs,8C2DGlyph>Fv
 0x001FEA50 deallocate__Q23std211allocator<Q33std186__tree<Q23std19pair<CUs,8C2DGlyph>,Q33std80map<Us,8C2DGlyph,Q23std8less<Us>,Q23std38allocator<Q23std19pair<CUs,8C2DGlyph>>>13value_compare,Q23std38allocator<Q23std19pair<CUs,8C2DGlyph>>>4node>FPQ33std186__tree<Q23std19pair<CUs,8C2DGlyph>,Q33std80map<Us,8C2DGlyph,Q23std8less<Us>,Q23std38allocator<Q23std19pair<CUs,8C2DGlyph>>>13value_compare,Q23std38allocator<Q23std19pair<CUs,8C2DGlyph>>>4nodeUi
@@ -1684,6 +1686,7 @@
 0x002091B0 UpdateMPBomb__11CZNewHudMapFv
 0x00209230 UpdateExplosives__11CZNewHudMapFv
 0x00209790 Draw__11CZNewHudMapFPQ23zdb7CCamera
+0x00209EE0 TickFullScreenMap__11CZNewHudMapFP4CPad10MENU_STATE
 0x0020A330 func_0020A330
 0x0020AE50 CalcNewMatrix__11CZNewHudMapFv
 0x0020B000 CalcDrawPos__11CZNewHudMapCFf
@@ -1818,6 +1821,7 @@
 0x0021B500 HandleScrollDownState__10CWeaponSelFf
 0x0021B820 HandleScrollUpState__10CWeaponSelFf
 0x0021BB50 PulseSelectionArrows__10CWeaponSelFf
+0x0021BDA0 HandleOpenState__10CWeaponSelFP4CPadf
 0x0021C4E0 HandleOpenFirstState__10CWeaponSelFf
 0x0021C6F0 OnOpen__10CWeaponSelFv
 0x0021CBA0 UnInit__10CWeaponSelFv
@@ -2267,6 +2271,8 @@
 0x00248D40 func_00248D40
 0x00248DD8 func_00248DD8
 0x00248F60 func_00248F60
+0x00248FB0 func_00248FB0
+0x00249190 func_00249190
 0x00249588 func_00249588
 0x00249608 func_00249608
 0x00249660 func_00249660
@@ -2362,6 +2368,7 @@
 0x00251638 func_00251638
 0x00251678 func_00251678
 0x00251700 func_00251700
+0x002518E8 func_002518E8
 0x00251A28 func_00251A28
 0x00251AF8 func_00251AF8
 0x00251B38 func_00251B38
@@ -3857,6 +3864,7 @@
 0x002C8AE0 GetName__17CMultiMissionListFib
 0x002C8B80 GetMultiValue__17CMultiMissionListFi
 0x002C8C10 Read__17CMultiMissionListFPC5_zrdr
+0x002C8DB0 GetNext__17CMultiMissionListFib
 0x002C9040 Find__17CMultiMissionListFib
 0x002C90B0 Purge__17CMultiMissionListFv
 0x002C91A0 Add__17CMultiMissionListFPC11MissionDesc
@@ -4723,6 +4731,7 @@
 0x00305B50 destroy__Q23std109allocator<Q23std90pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,P12CLobbyFileIO>>FPQ23std90pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,P12CLobbyFileIO>
 0x00305B90 alloc__Q23std539__tree<Q23std90pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,P12CLobbyFileIO>,Q33std289map<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,P12CLobbyFileIO,Q23std73less<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>>,Q23std109allocator<Q23std90pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,P12CLobbyFileIO>>>13value_compare,Q23std109allocator<Q23std90pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,P12CLobbyFileIO>>>Fv
 0x00305BA0 clear__Q23std539__tree<Q23std90pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,P12CLobbyFileIO>,Q33std289map<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,P12CLobbyFileIO,Q23std73less<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>>,Q23std109allocator<Q23std90pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,P12CLobbyFileIO>>>13value_compare,Q23std109allocator<Q23std90pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,P12CLobbyFileIO>>>Fv
+0x00305BE0 swap__Q23std539__tree<Q23std90pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,P12CLobbyFileIO>,Q33std289map<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,P12CLobbyFileIO,Q23std73less<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>>,Q23std109allocator<Q23std90pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,P12CLobbyFileIO>>>13value_compare,Q23std109allocator<Q23std90pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,P12CLobbyFileIO>>>FRQ23std539__tree<Q23std90pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,P12CLobbyFileIO>,Q33std289map<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,P12CLobbyFileIO,Q23std73less<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>>,Q23std109allocator<Q23std90pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,P12CLobbyFileIO>>>13value_compare,Q23std109allocator<Q23std90pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,P12CLobbyFileIO>>>
 0x00305CA0 insert_one__Q23std539__tree<Q23std90pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,P12CLobbyFileIO>,Q33std289map<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,P12CLobbyFileIO,Q23std73less<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>>,Q23std109allocator<Q23std90pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,P12CLobbyFileIO>>>13value_compare,Q23std109allocator<Q23std90pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,P12CLobbyFileIO>>>FRCQ23std90pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,P12CLobbyFileIO>
 0x00305DC0 __ct__Q23std539__tree<Q23std90pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,P12CLobbyFileIO>,Q33std289map<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,P12CLobbyFileIO,Q23std73less<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>>,Q23std109allocator<Q23std90pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,P12CLobbyFileIO>>>13value_compare,Q23std109allocator<Q23std90pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,P12CLobbyFileIO>>>FRCQ33std289map<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,P12CLobbyFileIO,Q23std73less<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>>,Q23std109allocator<Q23std90pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,P12CLobbyFileIO>>>13value_compareRCQ23std109allocator<Q23std90pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,P12CLobbyFileIO>>
 0x00305DE0 insert_node_at__Q23std539__tree<Q23std90pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,P12CLobbyFileIO>,Q33std289map<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,P12CLobbyFileIO,Q23std73less<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>>,Q23std109allocator<Q23std90pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,P12CLobbyFileIO>>>13value_compare,Q23std109allocator<Q23std90pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,P12CLobbyFileIO>>>FPQ33std19__red_black_tree<1>9node_basebbRCQ23std90pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,P12CLobbyFileIO>
@@ -5113,6 +5122,7 @@
 0x0031F430 ReserveChildren__Q23zdb6CWorldFi
 0x0031F440 UpdateShadowCasters__Q23zdb6CWorldFv
 0x0031F500 AddShadowCaster__Q23zdb6CWorldFPQ23zdb5CNode
+0x0031F570 Update__Q23zdb13CShadowCasterFv
 0x0031F9B0 GarbageCollect__Q23zdb6CWorldFv
 0x0031FA90 __ct__Q23std54vector<PQ23zdb5CNode,Q23std24allocator<PQ23zdb5CNode>>FRCQ23std54vector<PQ23zdb5CNode,Q23std24allocator<PQ23zdb5CNode>>
 0x0031FAC0 AddShadow__Q23zdb6CWorldFPQ23zdb5CNode
@@ -5180,6 +5190,7 @@
 0x00324C70 DrawRange__8ParticleFff
 0x00325080 bufferPtrCompare__8ParticleFRCPQ28Particle13BufferElementRCPQ28Particle13BufferElement
 0x003250B0 DrawFlush__8ParticleFv
+0x00326A00 DrawPrep__8ParticleFv
 0x00326C20 func_00326C20
 0x00326F40 __ct__Q28Particle13BufferElementFv
 0x00326F50 Recycle__Q28Particle20Destruction_InstanceFv
@@ -5431,6 +5442,7 @@
 0x00337F40 RenderDelayedNodes__5CPipeFv
 0x003381F0 SaveDelayedNode__5CPipeFP7CMatrixPQ23zdb5CNodeQ23zdb12tag_ZVIS_FOV
 0x003383F0 AddAlphaTextures__5CPipeFPQ23zdb5CNode
+0x00339AD0 BuildSpecMapList__5CPipeFPQ23zdb5CNode
 0x00339CF0 RenderCell__5CPipeFPQ23zdb5CCell
 0x0033B110 RenderAtom__5CPipeFPQ23zdb5CNode
 0x0033B230 PrepareAtom__5CPipeFPQ23zdb5CNode
@@ -5530,6 +5542,8 @@
 0x0033F720 snd_InitVAGStreamingEx
 0x0033F890 snd_SendCache
 0x0033F8A0 snd_StartCaching
+0x0033F8B0 snd_SendIOPCommandNoWait__FiiPcPFUiUl_vUl
+0x0033FCA0 snd_SendIOPCommandAndWait__FiiPc
 0x003400D0 snd_AutoVol
 0x00340110 snd_SetSoundParams_CB
 0x00340160 snd_SetSoundPitch
@@ -5555,6 +5569,7 @@
 0x00340570 snd_BankLoadByLoc
 0x00340760 snd_BankLoad
 0x003408C0 snd_StopSoundSystem
+0x003408F0 snd_FlushSoundCommands
 0x00340D80 snd_StartSoundSystem
 0x00340F70 SetDialogMode__4CSndFv
 0x00340F90 func_00340F90
@@ -6002,6 +6017,7 @@
 0x0035C6B0 find_or_insert<i,9CFontRect>__Q23std185__tree<Q23std19pair<Ci,9CFontRect>,Q33std79map<i,9CFontRect,Q23std7less<i>,Q23std38allocator<Q23std19pair<Ci,9CFontRect>>>13value_compare,Q23std38allocator<Q23std19pair<Ci,9CFontRect>>>FRCi_RQ23std19pair<Ci,9CFontRect>
 0x0035C780 find<i>__Q23std185__tree<Q23std19pair<Ci,9CFontRect>,Q33std79map<i,9CFontRect,Q23std7less<i>,Q23std38allocator<Q23std19pair<Ci,9CFontRect>>>13value_compare,Q23std38allocator<Q23std19pair<Ci,9CFontRect>>>FRCi_Q33std185__tree<Q23std19pair<Ci,9CFontRect>,Q33std79map<i,9CFontRect,Q23std7less<i>,Q23std38allocator<Q23std19pair<Ci,9CFontRect>>>13value_compare,Q23std38allocator<Q23std19pair<Ci,9CFontRect>>>8iterator
 0x0035C800 clear__Q23std186__tree<Q23std19pair<CUs,8C2DGlyph>,Q33std80map<Us,8C2DGlyph,Q23std8less<Us>,Q23std38allocator<Q23std19pair<CUs,8C2DGlyph>>>13value_compare,Q23std38allocator<Q23std19pair<CUs,8C2DGlyph>>>Fv
+0x0035C840 swap__Q23std186__tree<Q23std19pair<CUs,8C2DGlyph>,Q33std80map<Us,8C2DGlyph,Q23std8less<Us>,Q23std38allocator<Q23std19pair<CUs,8C2DGlyph>>>13value_compare,Q23std38allocator<Q23std19pair<CUs,8C2DGlyph>>>FRQ23std186__tree<Q23std19pair<CUs,8C2DGlyph>,Q33std80map<Us,8C2DGlyph,Q23std8less<Us>,Q23std38allocator<Q23std19pair<CUs,8C2DGlyph>>>13value_compare,Q23std38allocator<Q23std19pair<CUs,8C2DGlyph>>>
 0x0035C900 destroy__Q23std185__tree<Q23std19pair<Ci,9CFontRect>,Q33std79map<i,9CFontRect,Q23std7less<i>,Q23std38allocator<Q23std19pair<Ci,9CFontRect>>>13value_compare,Q23std38allocator<Q23std19pair<Ci,9CFontRect>>>FPQ33std185__tree<Q23std19pair<Ci,9CFontRect>,Q33std79map<i,9CFontRect,Q23std7less<i>,Q23std38allocator<Q23std19pair<Ci,9CFontRect>>>13value_compare,Q23std38allocator<Q23std19pair<Ci,9CFontRect>>>4node
 0x0035CB30 deallocate__Q23std210allocator<Q33std185__tree<Q23std19pair<Ci,9CFontRect>,Q33std79map<i,9CFontRect,Q23std7less<i>,Q23std38allocator<Q23std19pair<Ci,9CFontRect>>>13value_compare,Q23std38allocator<Q23std19pair<Ci,9CFontRect>>>4node>FPQ33std185__tree<Q23std19pair<Ci,9CFontRect>,Q33std79map<i,9CFontRect,Q23std7less<i>,Q23std38allocator<Q23std19pair<Ci,9CFontRect>>>13value_compare,Q23std38allocator<Q23std19pair<Ci,9CFontRect>>>4nodeUi
 0x0035CB40 node_alloc__Q23std185__tree<Q23std19pair<Ci,9CFontRect>,Q33std79map<i,9CFontRect,Q23std7less<i>,Q23std38allocator<Q23std19pair<Ci,9CFontRect>>>13value_compare,Q23std38allocator<Q23std19pair<Ci,9CFontRect>>>Fv
@@ -8586,6 +8602,7 @@
 0x00519250 _max<Us>__2aiFRCUsRCUs_RCUs
 0x00519270 _min<Us>__2aiFRCUsRCUs_RCUs
 0x00519290 _saturate<i>__FPiRCiRCi_b
+0x005192E0 func_005192E0
 0x00519700 resize__Q23std72__vector_imp<Q26CAiMap8scanline,Q23std29allocator<Q26CAiMap8scanline>,0>FUi
 0x005197A0 __dt__Q23std66__vector_deleter<Q26CAiMap4name,Q23std25allocator<Q26CAiMap4name>>Fv
 0x00519810 __dt__Q23std70__vector_deleter<Q26CAiMap6action,Q23std27allocator<Q26CAiMap6action>>Fv
@@ -9111,6 +9128,7 @@
 0x0054F410 func_0054F410
 0x0054F570 func_0054F570
 0x0054F6E0 func_0054F6E0
+0x00550330 func_00550330
 0x00550570 PostTick__10CZSealBodyFf
 0x00550E50 CreateAiEvent__10CZSealBodyFv
 0x00552780 func_00552780
@@ -9674,6 +9692,7 @@
 0x0059F6F0 func_0059F6F0
 0x0059FD50 DropAmmo__10CZSealBodyFi
 0x005A0040 func_005A0040
+0x005A0270 FindRandomDamageAnim__10CZSealBodyF15DAMAGE_LOCATIONPb
 0x005A0700 FindRandomDeathAnim__10CZSealBodyF15DAMAGE_LOCATIONPb
 0x005A0950 func_005A0950
 0x005A0B60 func_005A0B60
@@ -9681,6 +9700,8 @@
 0x005A0C00 func_005A0C00
 0x005A0CD0 func_005A0CD0
 0x005A0DA0 func_005A0DA0
+0x005A1620 func_005A1620
+0x005A18B0 func_005A18B0
 0x005A1B70 RemoteWeaponDamageNonVictim__10CZSealBodyF15DAMAGE_LOCATIONP10CZSealBodyP10CZSealBodyUcb
 0x005A1FD0 func_005A1FD0
 0x005A1FF0 ReportWeaponHitDamage__10CZSealBodyFP12CZProjectileii15DAMAGE_LOCATIONffbUc
@@ -9694,6 +9715,7 @@
 0x005A31C0 GetHeadPosW__10CZSealBodyFP6CPnt3D
 0x005A3220 GetTargetPosW__10CZSealBodyFP6CPnt3D
 0x005A3280 func_005A3280
+0x005A33B0 HandleBloodDrip__10CZSealBodyFf
 0x005A39B0 HandleFootfallSound__10CZSealBodyFP6CPnt3D
 0x005A3B50 Uninit_ReInitDatabaseHandles__10CZSealBodyFv
 0x005A3BB0 UninitDatabaseHandles__10CZSealBodyFv
@@ -9723,6 +9745,7 @@
 0x005A54D0 UpdateHealth__10CZSealBodyF15DAMAGE_LOCATION15SEAL_DEATH_TYPE
 0x005A56D0 func_005A56D0
 0x005A5790 func_005A5790
+0x005A5830 func_005A5830
 0x005A6B70 func_005A6B70
 0x005A6D30 func_005A6D30
 0x005A6EB0 func_005A6EB0
@@ -9741,6 +9764,7 @@
 0x005A7980 IsChangingWeapons__10CZSealBodyFb
 0x005A7AB0 IsReloading__10CZSealBodyFv
 0x005A7D10 IsThrowing__10CZSealBodyFb
+0x005A7DE0 CanFire__10CZSealBodyFbb
 0x005A81D0 func_005A81D0
 0x005A82E0 Reload__10CZSealBodyFb
 0x005A8790 AimWeapon__10CZSealBodyFv
@@ -9762,6 +9786,7 @@
 0x005AA620 CacheReticuleSeal__10CZSealBodyFb
 0x005AA690 func_005AA690
 0x005AA6D0 func_005AA6D0
+0x005AB590 func_005AB590
 0x005AB850 HandleDamage__10CZSealBodyFP12CZProjectile
 0x005ABBC0 HandleDamageNonExplosive__10CZSealBodyFP12CZProjectileP10CZBodyPartP15DAMAGE_LOCATION
 0x005AC070 HandleDamageExplosive__10CZSealBodyFP12CZProjectileP10CZBodyPartP15DAMAGE_LOCATION
@@ -9782,6 +9807,7 @@
 0x005AE4B0 SetEyeLookDir__10CZSealBodyFffPC6CPnt3Df
 0x005AE640 SetLookDir__10CZSealBodyFPC6CPnt3Df
 0x005AE6A0 InitLookAnims__10CZSealBodyFv
+0x005AE730 GetLookQuat__FP6CPnt3DffP5CQuat
 0x005AF470 RotateHead__10CZSealBodyFf
 0x005AF500 GetLookDirW__10CZSealBodyCFP6CPnt3D
 0x005B0410 func_005B0410
@@ -9794,13 +9820,16 @@
 0x005B0DD0 Slide__10CZSealBodyFPQ23zdb15IntersectStruct
 0x005B0EB0 CheckDILadder__10CZSealBodyFv
 0x005B10B0 PostCheckDILadder__10CZSealBodyFv
+0x005B1130 func_005B1130
 0x005B1350 func_005B1350
 0x005B14E0 func_005B14E0
 0x005B1570 func_005B1570
 0x005B1750 func_005B1750
 0x005B1890 func_005B1890
+0x005B3A60 func_005B3A60
 0x005B4F30 SealGetAltitude__10CZSealBodyFP6CPnt3Df
 0x005B61A0 func_005B61A0
+0x005B6490 func_005B6490
 0x005B67F0 func_005B67F0
 0x005B6890 func_005B6890
 0x005B68E0 insert__Q23std38__vector_pod<Us,Q23std13allocator<Us>>FPUsUiRCUs
@@ -10031,6 +10060,7 @@
 0x005D5B40 Tick__6CTMoveFP14_zanim_cmd_hdrPf
 0x005D64B0 Parse__6CTMoveFP5_zrdr
 0x005D69F0 Parse__5CTMapFP5_zrdr
+0x005D6DC0 Tick__7CTMacroFP14_zanim_cmd_hdrPf
 0x005D7040 Begin__7CTMacroFP14_zanim_cmd_hdr
 0x005D7170 Parse__7CTMacroFP5_zrdr
 0x005D7290 End__8CTLookAtFP14_zanim_cmd_hdr
@@ -10070,6 +10100,7 @@
 0x005DD620 Tick__7CTDebugFP14_zanim_cmd_hdrPf
 0x005DD7C0 Parse__7CTDebugFP5_zrdr
 0x005DDD60 Parse__8CTCreateFP5_zrdr
+0x005DDFA0 Tick__6CTCommFP14_zanim_cmd_hdrPf
 0x005DE250 Parse__6CTCommFP5_zrdr
 0x005DE320 RegisterCommands__11CSealCtrlAiFv
 0x005DEB10 get_param_name__F8AI_PARAM
@@ -10083,6 +10114,7 @@
 0x005DF4E0 SetAimPointW__10CZSealBodyFPC6CPnt3DPC6CPnt3Db
 0x005DF600 CalcAimGoal__10CZSealBodyFPC6CPnt3DPC6CPnt3DP6CPnt3D
 0x005DF8B0 SetAimDirR__10CZSealBodyFPC6CPnt3Db
+0x005DF930 GetNodePos__10CZSealBodyFPCQ23zdb5CNodeR6CPnt3Db
 0x005DFAD0 GetFirepointNode__10CZSealBodyFPCc
 0x005DFB70 GetFirepointPos__10CZSealBodyFR6CPnt3DPCc
 0x005DFE30 SetWeaponState__10CZSealBodyF12WEAPON_STATE
@@ -10332,6 +10364,7 @@
 0x005F8C00 func_005F8C00
 0x005F8C20 func_005F8C20
 0x005F8C40 remove_copy_if<Q33std46list<P8CAiState,Q23std21allocator<P8CAiState>>19generic_iterator<0>,Q33std46list<P8CAiState,Q23std21allocator<P8CAiState>>19generic_iterator<0>,18CAiStateDeleteKind>__3stdFQ33std46list<P8CAiState,Q23std21allocator<P8CAiState>>19generic_iterator<0>Q33std46list<P8CAiState,Q23std21allocator<P8CAiState>>19generic_iterator<0>Q33std46list<P8CAiState,Q23std21allocator<P8CAiState>>19generic_iterator<0>18CAiStateDeleteKind_Q33std46list<P8CAiState,Q23std21allocator<P8CAiState>>19generic_iterator<0>
+0x005FAAE0 EventTick__11CSealCtrlAiFf
 0x005FAD00 SetAiEvent__11CSealCtrlAiFQ28CAiEvent5EVENTfPC6CPnt3D
 0x005FADF0 __dt__10CAiSFollowFv
 0x005FC550 func_005FC550
@@ -10496,6 +10529,7 @@
 0x0060CD40 SetMemberLoc__8CAiGroupFUiRC9CAiMapLoc
 0x0060CDC0 EndStep__8CAiGroupFv
 0x0060CDD0 AddStep__8CAiGroupFUi
+0x0060CE40 RemoveMember__8CAiGroupFP11CSealCtrlAi
 0x0060D020 AddMember__8CAiGroupFP11CSealCtrlAi
 0x0060D280 Abort__8CAiGroupFv
 0x0060D310 __dt__8CAiGroupFv
@@ -11919,6 +11953,7 @@
 0x006687D0 __sinit_ai_vismap.cpp
 0x006687E0 __sinit_seal_ai.cpp
 0x00668940 __sinit_seal_body.cpp
+0x00668C10 __sinit_seal_env.cpp
 0x00668DB0 __sinit_seal_kit.cpp
 0x00668E50 __sinit_seal_sensors.cpp
 0x006690C0 __sinit_seal_handsig.cpp

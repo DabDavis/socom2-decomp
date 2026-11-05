@@ -1375,6 +1375,80 @@ void CZSealBody::PostTick(float dT)
     }
 }
 
+/* the two roots of a*t^2 - 2*b*t + c, smaller first, when real (an inline bool: 0x550330's) */
+static inline bool SolveQuadratic(float a, float b, float c, float *t0, float *t1)
+{
+    float d = b * b - a * c;
+
+    if (d < 0.0f)
+        return false;
+
+    float inv = 1.0f / a;
+    float s = sqrtf(d);
+
+    *t0 = inv * (b - s);
+    *t1 = inv * (b + s);
+    return true;
+}
+
+/* a moving upright cylinder's sweep against a standing one: the first time in 0..1 where the mover --
+ * at a point with a radius and a height, moving by a step -- overlaps the other in height and touches it
+ * in the ground plane; the hit point, and the way out of the other's axis level and unit; whether it
+ * hits (OVL2 0x550330, new in SOCOM II: 0x54F7E0 calls it, the standing cylinder's height by the
+ * stance; the name unknown) */
+extern "C" bool func_00550330(CPnt3D *hit, CPnt3D *normal, float cx, float cy, float cz, float r, float h,
+                              float px, float py, float pz, float r2, float h2, float dx, float dy, float dz)
+{
+    float t0 = 0.0f;
+    float t1;
+
+    if (dy == 0.0f) {
+        if (!(py <= cy + h) || !(cy <= py + h2))
+            return false;
+        t1 = 1.0f;
+    } else {
+        float inv = 1.0f / dy;
+
+        if (dy > 0.0f) {
+            t0 = inv * (cy - py - h2);
+            t1 = inv * (cy + h - py);
+        } else {
+            t0 = inv * (cy + h - py);
+            t1 = inv * (cy - py - h2);
+        }
+        if (t1 < 0.0f || t0 > 1.0f)
+            return false;
+        if (t0 < 0.0f)
+            t0 = 0.0f;
+        if (t1 > 1.0f)
+            t1 = 1.0f;
+    }
+
+    float rr = r + r2;
+    float ox = cx - px;
+    float oz = cz - pz;
+    float a = dx * dx + dz * dz;
+    float b = ox * dx + oz * dz;
+    float c = ox * ox + oz * oz - rr * rr;
+    float ta, tb;
+
+    if (!SolveQuadratic(a, b, c, &ta, &tb))
+        return false;
+    if (t0 > tb || t1 < ta)
+        return false;
+
+    float t = t0 <= ta ? ta : t0;
+
+    hit->x = px + t * dx;
+    hit->y = py + t * dy;
+    hit->z = pz + t * dz;
+    normal->x = hit->x - cx;
+    normal->y = 0.0f;
+    normal->z = hit->z - cz;
+    normal->Normalize();
+    return true;
+}
+
 extern "C" {
 /* three anim types the code reads as variables (OVL1 data, -1 in the image) */
 extern short data_003DEF40;

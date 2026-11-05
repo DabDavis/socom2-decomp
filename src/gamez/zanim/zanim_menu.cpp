@@ -2537,7 +2537,7 @@ bool UIAdvanceMPMission(C2DAnimCmdHdr *hdr, float *dT)
 
         if (index == 254) {
             strncpy(current, database, 16);
-            index = func_002C8DB0(&data_00441650, atoi(current + 2), 1)->m_index;
+            index = static_cast<CMultiMissionList &>(data_00441650).GetNext(atoi(current + 2), true)->m_index;
         }
         if (index == 255)
             index = static_cast<CMultiMissionList &>(data_00441650).GetRandom(true)->m_index;
