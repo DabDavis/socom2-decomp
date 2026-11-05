@@ -34,6 +34,54 @@ extern void func_0024DFB8(float *pfInOut, int log2N);
 extern void func_0024E5B0(float *pfInOut, int log2N);
 void func_0024EC40(float *pfData, int nn);
 
+/* the cepstral scale: 1, then 1 / (n 2 ln 2) -- the vendor's six-digit decimals as they converted
+ * (0x3E9EB8, 44 floats; the file name follows it in .rodata) */
+static const float afCsScale[44] = {
+	1.0F, 0x1.715476p-1F, 0x1.715486p-2F, 0x1.ec7086p-3F,
+	0x1.715486p-3F, 0x1.27768p-3F, 0x1.ec710cp-4F, 0x1.a617cp-4F,
+	0x1.7154p-4F, 0x1.484b5cp-4F, 0x1.277706p-4F, 0x1.0c9a76p-4F,
+	0x1.ec7p-5F, 0x1.c68ec4p-5F, 0x1.a617cp-5F, 0x1.89f40ap-5F,
+	0x1.7154p-5F, 0x1.5b9a5ap-5F, 0x1.484b5cp-5F, 0x1.370478p-5F,
+	0x1.2775fap-5F, 0x1.19652ap-5F, 0x1.0c9b84p-5F, 0x1.00ecfap-5F,
+	0x1.ec7p-6F, 0x1.d8be72p-6F, 0x1.c68ec4p-6F, 0x1.b5bb38p-6F,
+	0x1.a615a8p-6F, 0x1.97891ep-6F, 0x1.89f40ap-6F, 0x1.7d3d42p-6F,
+	0x1.7154p-6F, 0x1.66234ap-6F, 0x1.5b9a5ap-6F, 0x1.51ac9ap-6F,
+	0x1.484944p-6F, 0x1.3f6c26p-6F, 0x1.370478p-6F, 0x1.2f09d8p-6F,
+	0x1.277814p-6F, 0x1.204294p-6F, 0x1.19652ap-6F, 0x1.12dba4p-6F,
+};
+#define MAX_CS_TABLE_ORDER (sizeof(afCsScale) / sizeof(float) - 1)
+
+/* the LPC cepstrum (GCC round 33a): nCs coefficients of the predictor pfLPC (1-based, iOrder
+ * deep) and its gain, by the recursion n c[n] = -n a[n] - sum a[k] c[n-k] -- the first min(n, iOrder)
+ * with the n a[n] term, the rest without -- then each scaled by its table entry. The table's bound
+ * compares unsigned (sltiu): a sizeof's quotient, as TWIDDLE_PERIOD is. */
+void func_0024D8B8(const float *pfLPC, int iOrder, float *pfCs, int nCs, float fGain)
+{
+	int iOrder_Cs = nCs - 1;
+	int i, k, m;
+	float fSum;
+
+#line 235 "../../SaseEncVad/source/libtran.c"
+	assert(iOrder_Cs >= 0);
+	assert(iOrder_Cs <= MAX_CS_TABLE_ORDER);
+	m = (iOrder_Cs < iOrder) ? iOrder_Cs : iOrder;
+	pfCs[0] = fGain;
+	for (i = 1; i <= m; i++) {
+		fSum = -(float)i * pfLPC[i];
+		for (k = 1; k < i; k++)
+			fSum -= pfLPC[k] * pfCs[i - k];
+		pfCs[i] = fSum;
+	}
+	for (; i <= iOrder_Cs; i++) {
+		fSum = 0.0F;
+		for (k = 1; k <= iOrder; k++)
+			fSum -= pfLPC[k] * pfCs[i - k];
+		pfCs[i] = fSum;
+	}
+	for (i = 1; i <= iOrder_Cs; i++)
+		pfCs[i] = afCsScale[i] * pfCs[i];
+}
+
 /* the inverse FFT of 2^log2N points: the real-input merge, the bit reversal, the passes, and
  * the 1/N scale unless iFlags' bit 3 asks for none */
 void func_0024DA70(float *pfInOut, int log2N, int iFlags)

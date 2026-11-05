@@ -3812,7 +3812,7 @@
 0x002A7560 0x90 func_002A7560  # OVL1
 0x002A75F0 0xD4 UnInitialize__9CZNetGameFv  # OVL1; s1:order by hand (the states lane, round 14: SOCOM 1's UnInitialize, just ahead of Initialize as there -- the same run of cleared fields at SOCOM II's offsets, SetE3RoundCount(0) inlined; CMission::DestroyNetGame tail-calls it)
 0x002A76D0 0x664 Initialize__9CZNetGameFv  # OVL1; s1:align
-0x002A7D40 0x3F4 func_002A7D40  # OVL1
+0x002A7D40 0x3F4 OnMissionStart__8CMissionFv  # OVL1; s1:calls by hand (the states lane, round 39): SOCOM 1's CMission::OnMissionStart (0x1F4510), grown -- the same sequence: m_state 1, m_delay -1, ResetDeathCam, the end's two flags cleared, the five outcome valves at 0, CInput::Flush, the common and mission anim sets started, every entity's OnMissionStart (slot 0x4C), CSnd::NetOpen or Open, the listener flag cleared, CSndJukebox::Start, then in a network game CPickup::Open, the HUD's ReInit_Uninit/ReInit_Init and the master's game start; st_core.cpp's load calls it on theMission; fts_mission.cpp
 0x002A8140 0xB48 ftsFixupAiMap__FP6CAiMap  # OVL1; s1:calls by hand (the states lane, round 24): CMission::Open calls it on each of AiMaps' maps (the list walk after RefreshTeamValves) where SOCOM 1's Open calls ftsFixupAiMap__FP6CAiMap in the same walk
 0x002A8C90 0x298 func_002A8C90  # OVL1
 0x002A8F30 0x14 __ct__6CPnt3DFfff  # OVL1; by its body (the three floats stored at 0, 4, 8, this returned: zmath.h's inline CPnt3D(float, float, float) out of line) -- the UI-widgets lane
@@ -3823,12 +3823,12 @@
 0x002A94E0 0x68 func_002A94E0  # OVL1
 0x002A9550 0x128 func_002A9550  # OVL1
 0x002A9680 0x30 func_002A9680  # OVL1; s1:align; s1~ (the states lane, round 19: NOT a vector destructor -- it hands a matrix and an 8-point array to CMatrix::Transform(pts, pts, 8) and returns the points; called after 0x2A96B0's box corners and before 0x2A9550's bbox of them, by 0x2A9260 and by grid_main.cpp's gridAddNodeToGrids, which passes the node as the matrix: out-of-line copies of shared inlines, the first unit's kept; the s1:align name withdrawn)
-0x002A96B0 0x108 func_002A96B0  # OVL1
+0x002A96B0 0x108 func_002A96B0  # OVL1; by hand (the states lane, round 39): a box's eight corners, out of line -- a plain function calling fts_mission.cpp's BoxCorners inline, which its size cuts to one level (its CPnt3D(fff) and assignments called); the ladder walk 0x2A9260 and grid_main.cpp's gridAddNodeToGrids call it; fts_mission.cpp
 0x002A97C0 0xD4 FadeToEndMission__8CMissionFfi  # OVL1; s1:calls
 0x002A98A0 0x8 fadeToEndMissionTick__8CMissionFfPv  # OVL1; s1:exact by hand (the states lane: SOCOM 1's fadeToEndMissionTick__8CMissionFfPv is the same 8-byte jump to FadeToEndMissionTick, and FadeToEndMission hands this to AddTask as SOCOM 1's hands that) -- fts_mission.cpp
 0x002A98B0 0x1B8 FadeToEndMissionTick__8CMissionFf  # OVL1; s1:align
 0x002A9A70 0xC0 EndMission__8CMissionFv  # OVL1; by hand (the states lane, round 14; the name ours): the mission ended unless m_DelayEndMission -- _OnMissionComplete, CVideo::Clear, the HUD's flashes reset, the delay and fading bits cleared, ResetDeathCam and the exit state pushed, the tail of SOCOM 1's FadeToEndMissionTick; CCoreState::Tick calls it
-0x002A9B30 0x3AC func_002A9B30  # OVL1
+0x002A9B30 0x3AC OnMissionComplete__8CMissionF13MISSION_STATE  # OVL1; s1:calls by hand (the states lane, round 39): SOCOM 1's CMission::OnMissionComplete(MISSION_STATE) (0x1F6200) -- the same blocks in the same order: the state kept, then in a network game UninitBomb, the abort's three-second wait, strncpy of the abort dialog and CGame::Switch, else the master's GetByName of the two scores and the winner, the round counted, the major state 6 or 4, UpdateLocalGame and the Push; alone, nofade's EndMission; Tick calls it for each outcome; fts_mission.cpp (OPEN, 16 bytes short)
 0x002A9EE0 0x8 func_002A9EE0  # OVL1
 0x002A9EF0 0x8 DestroyNetGame__8CMissionFv  # OVL1; s1:ref by hand (the UI-commands lane's lead, vetted by the states lane: SOCOM 1's paired UI handler calls DestroyNetGame__8CMissionFv from the same place; SOCOM II's is SOCOM 1's 8 bytes, the online game at 0x1808 (fts_state.h's m_netGame) handed to 0x2A75F0 as a tail call)
 0x002A9F00 0x2C CreateNetGame__8CMissionFv  # OVL1; s1:align
@@ -4160,7 +4160,7 @@
 0x002C3330 0x1C0 func_002C3330  # OVL1
 0x002C34F0 0xC func_002C34F0  # OVL1
 0x002C3500 0x4C func_002C3500  # OVL1
-0x002C3550 0x3D0 func_002C3550  # OVL1
+0x002C3550 0x3D0 func_002C3550  # OVL1; by hand (the states lane, round 39): whether the player is voted out -- on the SEALs' side (0x2C30B0 inlined) or the terrorists' (0x2C31D0), the votes (0x2C3920 inlined) over half the side's personas; fts_remote.cpp's vote handler 0x2BA040 calls it; fts_net_persona.cpp
 0x002C3920 0x60 func_002C3920  # OVL1
 0x002C3980 0x50 func_002C3980  # OVL1
 0x002C39D0 0x48 func_002C39D0  # OVL1
@@ -10549,7 +10549,7 @@
 0x0058CA60 0xD0 func_0058CA60  # OVL2
 0x0058CB30 0xF4 func_0058CB30  # OVL2
 0x0058CC30 0x224 func_0058CC30  # OVL2
-0x0058CE60 0xC func_0058CE60  # OVL2
+0x0058CE60 0xC GetDynamics__10CZSealBodyFv  # OVL2; s1:callee by hand (the SEALs, round 43): SOCOM 1's GetDynamics__10CZSealBodyFv, the same 0xC body returning theCharacterDynamics' address; GetThrowAnim calls it at +0x3C where SOCOM 1's GetThrowAnim calls GetDynamics at +0x40, every caller passes the SEAL in a0; the last function before seal_cfg.cpp's template tail, as SOCOM 1's is its seal_cfg.cpp's last
 0x0058CE70 0x78 func_0058CE70  # OVL2; OVL2's copy of __ct__Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>FPCc (0x2396f0, the same words bar the link's addresses -- tools/ovlcopies.py); ovl-copy: __ct__Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>FPCc
 0x0058CEF0 0x128 func_0058CEF0  # OVL2; OVL2's copy of find_or_insert<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,i>__Q23std481__tree<Q23std76pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,i>,Q33std260map<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,i,Q23std73less<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>>,Q23std95allocator<Q23std76pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,i>>>13value_compare,Q23std95allocator<Q23std76pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,i>>>FRCQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>_RQ23std76pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,i> (0x2dec00, the same words bar the link's addresses: std::map<std::string, int>'s find_or_insert -- seal_cfg.cpp's name-to-id lookups 0x58CB30/0x58CA60 call it on the map at 0x44AF60, whose find is 0x58D090; byte-exact from include/map as a probe, the MSL headers round 22, build/p22/map1.cpp); ovl-copy: find_or_insert<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,i>__Q23std481__tree<Q23std76pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,i>,Q33std260map<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,i,Q23std73less<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>>,Q23std95allocator<Q23std76pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,i>>>13value_compare,Q23std95allocator<Q23std76pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,i>>>FRCQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>_RQ23std76pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,i>
 0x0058D020 0x70 func_0058D020  # OVL2

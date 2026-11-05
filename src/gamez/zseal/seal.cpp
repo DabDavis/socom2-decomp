@@ -1815,6 +1815,63 @@ extern "C" bool func_0054A6D0(CZSealBody *seal, const CPnt3D *pos, zdb::Intersec
     return true;
 }
 
+/* whether the throw the trigger's power would make is clear: the throw GetThrowAnim picks (none: not
+ * clear), its point to a point ahead by the state -- a toss's nearer, a run's the stand's -- both
+ * turned by the node, the first lifted to the ground plane, and nothing of the world between (OVL2
+ * 0x5499E0, new in SOCOM II: the kit's 0x5BE9A0 asks it; the name unknown -- any other state is clear).
+ * GetThrowAnim's toss test again, word for word; the aim declared uninitialised first (numbered there:
+ * the power then takes $f20, as the target -- declared where it is read the two swap), the call's bool
+ * tested `== false` (its andi), the states an if chain (a switch tests 2 first) */
+extern "C" bool func_005499E0(CZSealBody *seal)
+{
+    float aim;
+    CPnt3D ahead(1.155273f, 13.35443f, -15.75f);
+    float power = ((CSealCtrl *)seal->m_control)->m_trigger_power;
+    AnimType type;
+    float frac;
+    float base;
+    CPnt3D p;
+
+    if (seal->GetThrowAnim(power, type, frac, base, p) == false)
+        return false;
+    aim = seal->m_aim_goal.y;
+    CharacterDynamics::throw_params &tp = seal->GetDynamics()->m_throw_params;
+    bool toss = power < tp.toss_power_threshold && aim < tp.toss_aim_threshold;
+    CPnt3D from = p;
+    CPnt3D to = ahead;
+
+    if (seal->m_state == stateStand) {
+        if (toss) {
+            to.x = 3.457066f;
+            to.y = 12.454332f;
+            to.z = -10.0f;
+        } else
+            to = ahead;
+    } else if (seal->m_state == stateCrouch) {
+        to.x = 0.924411f;
+        to.y = 10.631366f;
+        to.z = -12.1f;
+    } else if (seal->m_state == stateProne) {
+        if (toss) {
+            to.x = 1.819537f;
+            to.y = 5.580177f;
+            to.z = -10.6f;
+        } else {
+            to.x = 0.59401f;
+            to.y = 9.082238f;
+            to.z = -6.75f;
+        }
+    } else
+        return true;
+    if (from.z < 0.0f)
+        from.z = 0.0f;
+    seal->m_node->m_matrix.Transform(&from, 1);
+    seal->m_node->m_matrix.Transform(&to, 1);
+    if (zdb::CWorld::m_world->GetIntersect(&from, &to, true))
+        return false;
+    return true;
+}
+
 /* the heartbeat kept at the adrenaline's pace: three loops by level (none as 1), the one playing
  * swapped when the pace changes -- none when that loop is missing (SOCOM II's test) -- or started
  * when none plays (OVL2 0x5437D0; SOCOM 1's) */

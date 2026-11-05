@@ -140,6 +140,84 @@ extern "C" void func_00577DF0(CZSealBody *seal, ACTIVE_ANIM *anim)
     data_0044CDE0->AnimPop();
 }
 
+/* a quaternion's conjugate, in place (an inline: its y and z addressed off the quaternion) */
+static inline void Conjugate(CQuat *q)
+{
+    q->vec.x = -q->vec.x;
+    q->vec.y = -q->vec.y;
+    q->vec.z = -q->vec.z;
+}
+
+/* the cross product through VU0, not normalised (CPnt3D::Cross's body, inline here) */
+static inline void CrossVU0(const CPnt3D *a, const CPnt3D *b, CPnt3D *out)
+{
+    sceVu0FVECTOR r;
+    sceVu0FVECTOR va;
+    sceVu0FVECTOR vb;
+
+    va[0] = a->x;
+    va[1] = a->y;
+    va[2] = a->z;
+    va[3] = 1.0f;
+    vb[0] = b->x;
+    vb[1] = b->y;
+    vb[2] = b->z;
+    vb[3] = 1.0f;
+    sceVu0OuterProduct(r, va, vb);
+    out->x = r[0];
+    out->y = r[1];
+    out->z = r[2];
+}
+
+/* each part a script moves turned by a share of the turn between two of its frames: the turn
+ * carrying -z to where the later frame faces, as an axis, scaled by half the share and exponentiated
+ * (OVL2 0x577BA0, new in SOCOM II: 0x57A330 passes the head-look script, anim 82, frames 1 and 2 or
+ * 1 and 0 by the look's sign; the name unknown). The code is the target's word for word (the stack:
+ * dir copy-initialised where it is used -- declared first it is copied member by member, 0x18 long --
+ * the cross product an inline over three VU0 vectors, the conjugate an inline whose y and z addresses
+ * MW hoists into s7/fp); the frames `unsigned int`: their conversion to GetRot's int is a loop-invariant
+ * temporary hoisted into the preheader, as the target's `move s0,a2` / `move s6,a3` there (as `int` the
+ * parameters are copied in the prologue).
+ * OPEN, 28 instructions: registers only. The target hoists `&seal->m_body_parts` into the preheader
+ * (s1) and the replay (build/ig, tools/igreplay.py --movers) has exactly one numbering giving every
+ * saved register: the parts' address numbered between part and the first hoisted conversion -- an
+ * inlined function's variable or the first loop-optimiser temporary. Tried: the reference at the top
+ * (numbered first: s4), inside the loop or the if (forwarded: `lw v0,468(seal)`, seal kept), assigned
+ * there through an uninitialised pointer (forwarded, or the loop no longer rotated: 0x10 long), inline
+ * helpers taking the vector, its address or the SEAL (forwarded), with the bounds test inside (a null
+ * test more), begin() + id, a const view -- the operator[] whose `this` the original kept unforwarded
+ * is not found. */
+extern "C" void func_00577BA0(CZSealBody *seal, CZSIScriptCommon *script, unsigned int f0, unsigned int f1, float t)
+{
+    std::vector<CZBodyPart *> &parts = seal->m_body_parts;
+    CZSIObject *obj = script->m_pObjects;
+
+    for (unsigned int i = 0; i < script->m_nObjects; i++, obj++) {
+        unsigned int id = obj->m_body_part_id;
+
+        if (id < siNumBodyObjects) {
+            CZBodyPart *part = parts[id];
+            CQuat qd;
+            CQuat q0;
+            CQuat q1;
+
+            obj->GetRot(f0, &q0);
+            obj->GetRot(f1, &q1);
+            Conjugate(&q0);
+            q0.Mul(&q1, &qd);
+            CPnt3D dir = CPnt3D::unit_nz;
+            CPnt3D to;
+            CPnt3D axis;
+            qd.Apply(&dir, &to, 1);
+            CrossVU0(&dir, &to, &axis);
+            axis.Scale(0.5f * t, &axis);
+            qd.Exp(&axis);
+            part->m_rot.Mul(&qd, &q1);
+            part->m_rot = q1;
+        }
+    }
+}
+
 /* THE RECORD LOOPS (the SEALs, round 34): every loop here over siNumBodyObjects records -- AnimPop,
  * CombineRotations, 0x576BB0, 0x577000 -- loads the count into a register ahead of the loop for its
  * bottom test and reads the global AGAIN for the entry test alone (`lw v0; sltu at,zero,v0; beqz`).
