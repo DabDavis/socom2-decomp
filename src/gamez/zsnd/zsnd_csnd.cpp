@@ -47,7 +47,16 @@ CSndVocalQueue data_0048DEE0;           /* SOCOM II's headset voice queue */
 /* called through a reference local, as the target's calls dispatch through the vtable (on the
  * object itself MW calls the function directly) */
 
-extern _zrdr *data_0048DF18;            /* the sounds file (GetSoundRdrFile's) */
+/* SOCOM 1's statics of this unit (LOCAL in its symbols): the sounds file (GetSoundRdrFile's), its
+ * SETS and the current mission's set (LoadSounds'), and that mission's name (0x80 bytes, "None" at
+ * start in both builds) -- named by SOCOM 1's LoadSounds, which addresses each at the same
+ * instruction (the world lane round 22). Declared, not defined: a definition would add them to the
+ * unit's data, whose layout is not modelled yet (the code is the same either way; data.txt names
+ * the addresses) */
+extern _zrdr *_sound_rdr;               /* 0x48DF18 */
+extern _zrdr *_sound_sets_rdr;          /* 0x48DF20 */
+extern _zrdr *_sound_mission_rdr;       /* 0x48DF28 */
+extern char cur_mission_name[];         /* 0x3DFFF0 */
 
 extern int data_003DFFB0, data_003DFFB8, data_003DFFC0, data_003DFFC8;
 static bool snd_system_initialized;     /* SOCOM 1's static (LOCAL in its symbols) */
@@ -91,7 +100,7 @@ extern "C" bool func_00346270(CSndInstance *except)
 
 _zrdr *GetSoundRdrFile()
 {
-    return data_0048DF18;
+    return _sound_rdr;
 }
 
 CSnd::CSnd()
@@ -203,8 +212,8 @@ void CSnd::Init()
     snd_StartSoundSystem(0);
     CSndInstance::Init();
     func_0034C4A0();
-    if (!data_0048DF18)
-        data_0048DF18 = zrdr_read("sounds.rdr", 0, 0);
+    if (!_sound_rdr)
+        _sound_rdr = zrdr_read("sounds.rdr", 0, 0);
     func_00340400(1);
     func_00340430(1, 24, 47);
     func_00340430(4, 24, 47);
@@ -236,8 +245,8 @@ void CSnd::NetOpen()
     CSndVocalQueue &q = data_0048DEE0;
 
     q.Open();
-    if (!data_0048DF18)
-        data_0048DF18 = zrdr_read("sounds.rdr", 0, 0);
+    if (!_sound_rdr)
+        _sound_rdr = zrdr_read("sounds.rdr", 0, 0);
     snd_SetMasterVolume(16, 1024);
     CFileCD::m_streamingSndActive = true;
     m_max_num_vags = 4;
@@ -250,8 +259,8 @@ void CSnd::Open()
 
     q.Open();
     CFileCD::m_streamingSndActive = true;
-    if (!data_0048DF18)
-        data_0048DF18 = zrdr_read("sounds.rdr", 0, 0);
+    if (!_sound_rdr)
+        _sound_rdr = zrdr_read("sounds.rdr", 0, 0);
     m_max_num_vags = 6;
     snd_InitVAGStreamingEx(m_max_num_vags, 0xB000, 0, 1);
     if (Headset::ftsGetHeadset())
@@ -475,12 +484,6 @@ void CopyUpper(const char *src, char *dst, int max)
     dst[i] = 0;
 }
 
-extern _zrdr *data_0048DF20;            /* SOCOM 1's _sound_sets_rdr: the sounds file's SETS */
-extern _zrdr *data_0048DF28;            /* SOCOM 1's _sound_mission_rdr: the current mission's set */
-extern char data_003DFFF0[];            /* SOCOM 1's cur_mission_name (0x80, "None" at start) */
-extern int data_0048DB38;               /* SOCOM 1's m_curID__4CSnd */
-extern int data_0048DB40;               /* SOCOM 1's m_curbank__4CSnd */
-
 /* SOCOM 1's: a set of sounds made from the sounds file -- the bank loaded, the mission's set found
  * under SETS (looked up again only for another mission, by its upper-cased name), the bank's own set
  * under it unless it is the mission's, each record read into a new CSnd and added; the error sound
@@ -493,41 +496,41 @@ int CSnd::LoadSounds(const char *name, const char *bank)
     if (m_isDisabled)
         return 0;
     LoadBank(bank);
-    data_0048DB38 = 0;
-    int id = data_0048DB40;
+    m_curID = 0;
+    int id = m_curbank;
 
-    if (!data_0048DF18) {
-        data_0048DB40++;
+    if (!_sound_rdr) {
+        m_curbank++;
         return id;
     }
-    if (!data_0048DF20) {
-        data_0048DF20 = zrdr_findtag(data_0048DF18, "SETS");
-        if (!data_0048DF20) {
-            data_0048DB40++;
+    if (!_sound_sets_rdr) {
+        _sound_sets_rdr = zrdr_findtag(_sound_rdr, "SETS");
+        if (!_sound_sets_rdr) {
+            m_curbank++;
             return id;
         }
     }
     char buf[128];
 
-    if (!data_0048DF28 || strcmp(name, data_003DFFF0)) {
-        strcpy(data_003DFFF0, name);
+    if (!_sound_mission_rdr || strcmp(name, cur_mission_name)) {
+        strcpy(cur_mission_name, name);
         CopyUpper(name, buf, 127);
-        data_0048DF28 = zrdr_findtag(data_0048DF20, buf);
-        if (!data_0048DF28) {
+        _sound_mission_rdr = zrdr_findtag(_sound_sets_rdr, buf);
+        if (!_sound_mission_rdr) {
             if (!strcmp(name, bank)) {
-                data_0048DB40++;
+                m_curbank++;
                 return id;
             }
-            data_0048DF28 = data_0048DF20;
+            _sound_mission_rdr = _sound_sets_rdr;
         }
     }
-    _zrdr *set = data_0048DF28;
+    _zrdr *set = _sound_mission_rdr;
 
     if (bank && strcmp(bank, name)) {
         CopyUpper(bank, buf, 127);
-        set = zrdr_findtag(data_0048DF28, buf);
+        set = zrdr_findtag(_sound_mission_rdr, buf);
         if (!set) {
-            data_0048DB40++;
+            m_curbank++;
             return id;
         }
     }
@@ -537,7 +540,7 @@ int CSnd::LoadSounds(const char *name, const char *bank)
         sound->LoadCSnd(set->Item(i));
         AddNewCSnd(sound);
     }
-    data_0048DB40++;
+    m_curbank++;
     m_errorsound = GetSoundByName("SND_NEG");
     return id;
 }
@@ -629,6 +632,120 @@ bool CSnd::LoadBank(const char *name)
     data_0048DBE8.push_back(b);
     snd_ResolveBankXREFS();
     return ok;
+}
+
+/* the record readers (zrdr_main.cpp) and a name's hash (0x3A59C0, not named yet) */
+bool zrdr_findint(const _zrdr *rdr, const char *tag, int *out, int n);
+char *zrdr_findstring(const _zrdr *rdr, const char *tag);
+bool zrdr_findPNT2D(const _zrdr *rdr, const char *tag, PNT2D *out);
+extern "C" unsigned int func_003A59C0(const char *name);
+
+/* SOCOM 1's: a sound made from its sounds.rdr record -- the name (hashed into m_18), the type and
+ * mode tags, a stream's ST block (its two names, priority, offsets, loop and quality flags), the
+ * range and volume, a linked sound, a subtitle with its time and valve; numbered in its bank.
+ * Byte-exact (the world lane round 23): the range brace-initialised (MW zeroes it in place, a byte
+ * loop behind a null test; `PNT2D()` builds a temporary and copies it, a saved register more) */
+void CSnd::LoadCSnd(_zrdr *rdr)
+{
+    if (m_isDisabled)
+        return;
+    m_soundmode = 4;
+    m_isOneShot = false;
+    m_socom2_bit7 = false;
+    m_18 = rdr->Item(0)->Int();
+    char *name = rdr->Item(0)->String();
+
+    if (name) {
+        m_name = name;
+        m_18 = func_003A59C0(name);
+    }
+    m_socom2_bit9 = false;
+    m_14 = 0;
+    if (zrdr_findtag(rdr, "ONESHOT"))
+        m_isOneShot = true;
+    if (zrdr_findtag(rdr, "TYPE_CONVERSATIONAL"))
+        m_mode = 1;
+    if (zrdr_findtag(rdr, "TYPE_SITREP"))
+        m_mode = 2;
+    if (zrdr_findtag(rdr, "TYPE_DEATH_DAMAGE"))
+        m_mode = 3;
+    if (zrdr_findtag(rdr, "ONESHOT"))
+        m_isOneShot = true;
+    if (zrdr_findtag(rdr, "AMBIENT"))
+        m_socom2_bit1 = true;
+    if (zrdr_findtag(rdr, "DOPPLER"))
+        m_socom2_bit8 = true;
+    if (zrdr_findtag(rdr, "STREAMING_EFX"))
+        m_soundmode = 1;
+    if (zrdr_findtag(rdr, "MUS"))
+        m_soundmode = 2;
+    _zrdr *st = zrdr_findtag(rdr, "ST");
+
+    if (st) {
+        if (m_soundmode != 1 && m_soundmode != 2)
+            m_soundmode = 3;
+        m_isStreamed = true;
+        _zrdr *t = zrdr_findtag(st, "N1");
+
+        if (t) {
+            char *s = t->Item(0)->String();
+
+            if (s)
+                m_20 = s;
+        }
+        t = zrdr_findtag(st, "N2");
+        if (t) {
+            char *s = t->Item(0)->String();
+
+            if (s)
+                m_24 = s;
+        }
+        if (zrdr_findtag(st, "PRIORITY"))
+            m_socom2_bit7 = true;
+        if (zrdr_findtag(st, "HS"))
+            m_socom2_bit3 = true;
+        zrdr_findint(st, "OFFSET1", (int *)&m_34, 1);
+        zrdr_findint(st, "OFFSET2", (int *)&m_38, 1);
+        if (zrdr_findtag(st, "LOOP"))
+            m_socom2_bit9 = true;
+        if (zrdr_findtag(st, "HQ"))
+            m_socom2_bit4 = true;
+        if (zrdr_findtag(st, "VQ"))
+            m_socom2_bit5 = true;
+        else
+            m_socom2_bit5 = false;
+        if (zrdr_findtag(st, "PD"))
+            m_socom2_bit6 = true;
+    }
+    PNT2D range = { 0.0f, 0.0f };
+
+    range.x = m_range_min;
+    range.y = m_range_max;
+    zrdr_findPNT2D(rdr, "RANGE", &range);
+    m_range_min = (unsigned int)range.x;
+    m_range_max = (unsigned int)range.y;
+    zrdr_findreal(rdr, "VOLUME", &m_vol, 1);
+    _zrdr *link = zrdr_findtag(rdr, "LINK");
+
+    if (link) {
+        char *s = link->Item(0)->String();
+
+        if (s)
+            m_14 = GetSoundByName(s);
+    }
+    char *sub = zrdr_findstring(rdr, "SUBTITLE");
+
+    if (sub) {
+        m_28 = sub;
+        m_30 = 0.0f;
+        zrdr_findreal(rdr, "SUBTITLE_TIME", &m_30, 1);
+        char *valve = zrdr_findstring(rdr, "SUBTITLE_VALVE");
+
+        if (valve)
+            m_2c = CValve::Create(valve, (VALVE_TYPE)2);
+    }
+    m_ID = m_curID++;
+    m_bank = m_curbank;
 }
 
 CSndInstance *CSnd::PlaySound(CSndInstance *inst, unsigned int flags)
@@ -970,8 +1087,6 @@ int CSnd::StreamSoundVolPan(int vol, int pan, CSndInstance *inst, int flag)
     return 0;
 }
 
-extern int data_0048DB38, data_0048DB40;   /* (the loader's counts; names not known) */
-
 /* every voice stopped, the banks unloaded and every sound deleted, both lists' storage given up
  * (SOCOM 1's, the banks now one vector of records): FreeVector's four pieces are calls, and
  * their out-of-line copies follow this function, the list's first (the image's order) */
@@ -989,8 +1104,8 @@ void CSnd::UnloadAllSounds()
             delete m_soundlist[i];
     FreeVector(m_soundlist);
     snd_ResolveBankXREFS();
-    data_0048DB40 = 0;
-    data_0048DB38 = 0;
+    m_curbank = 0;
+    m_curID = 0;
     CSndInstance::Cleanup();
     func_0034BE10();
 }

@@ -79,7 +79,13 @@ int CZAnimMain::UnloadCmdSet(int index)
  * command indexed (0x1F4) or the set read in place (0x1F0) are further off. Round 14 (igdump: the
  * offset temporary v43 is coloured first, the command v40 fourth): the command defined with the set,
  * declared outside the loop, after the index, its first point a const local, the set a reference,
- * the offset a named local stepped by 12 -- 6 to 17 (build/scratch/core/v_gcmd.py) */
+ * the offset a named local stepped by 12 -- 6 to 17 (build/scratch/core/v_gcmd.py). Round 17, the
+ * replay (igreplay --want c=s0,@3268=s3 --movers 40,43): both must move -- the offset right after j
+ * (39.5/40.5), the command after the inner index (42.5 on) -- and the source that numbers so (`for
+ * (int j = 0, off = 0; ...; j++, off += sizeof(_zanim_cmd_set))`, the set `(char *)m_cmdset_list +
+ * off`, `int i = 0; zanim_cmd *c = o->cmd_list;` in that order) gives every register (3 left): the
+ * named offset's zero sits before the loop's guard (the guard's delay slot) where the target's
+ * strength-reduced one is set in the preheader after it, j's zero in the slot */
 int CZAnimMain::GetCmd(int set, char *name, bool create)
 {
     _zanim_cmd_set *s = &m_cmdset_list[set];

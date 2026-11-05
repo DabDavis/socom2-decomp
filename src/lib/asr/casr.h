@@ -150,8 +150,8 @@ typedef struct CASR {
     int *frame_base;                    /* +912: the frame count the talk spurts are told from */
     unsigned char training;             /* +916: a user-word training is under way */
     char pad917[3];
-    int f920;                           /* +920: cleared on a cancel */
-    int f924;                           /* +924 */
+    void **trans;                       /* +920: where DoUserWordTraining puts the trained transcription */
+    int *trans_size;                    /* +924: and its size in bytes */
     int uw_recs_needed;                 /* +928 */
     unsigned short uw_recs_done;        /* +932 */
     char pad934[6];

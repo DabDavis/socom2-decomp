@@ -262,6 +262,8 @@ public:
     virtual const char *GetReaderFileName();
     virtual int Slot14();   /* SOCOM II's, before PrepControls (the name ours) */
     virtual void PrepControls(CTextureRelocMgr *reloc);
+    /* a frame of the menu (SOCOM 1's; 0x3654C0, named by SOCOM 1's calls: the UI's round 27) */
+    void Tick(float dT);
     void Draw2dOnly();
     void DrawForeplane();
     /* the menu's frame (0x3654C0: SOCOM 1's calls name it -- the UI's round 27; zui.cpp) */

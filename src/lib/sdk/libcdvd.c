@@ -3,9 +3,9 @@
  * functions in the demo's order -- the delay thread, the N-command callback and its callback
  * thread, the power-off callback, the search, the N- and S-command pre-checks, sync, init and
  * disk-ready. Prebuilt with the SDK's ee-gcc 2.9-991111-01, the dtls13010 build (README "The GCC
- * front"). Names are SOCOM 1's (s1:exact and the demo's globals, data.txt; libcdvd.h). Not yet
- * written: sceCdLayerSearchFile, sceCdInit, sceCdDiskReady and the newer 0x18EF70. The functions
- * appear in the target's order, which is the demo's but for the accessor func_0018E9E8. */
+ * front"). Names are SOCOM 1's (s1:exact and the demo's globals, data.txt; libcdvd.h). OPEN:
+ * sceCdInit, sceCdDiskReady, the newer 0x18EF70 and the accessor func_0018E9E8 (each diagnosed in
+ * place). The functions appear in the target's order, which is the demo's but for the accessor. */
 
 #include "libcdvd.h"
 
@@ -215,6 +215,105 @@ static int PowerOffCB(void)
 	Init_seq = 0;
 	_icmd_bind = 1;
 	return 1;
+}
+
+/* The search (GCC r35a): a file found by path on a layer, through its own RPC client (0x80000597)
+ * and the older inline pre-check -- the semaphore polled, the command kept, the caller's status
+ * read, sync, the bind loop with a delay on each failure (as _sceCd_ncmd_prechk's) -- the path
+ * copied to the request's 256 bytes in round 17a's peeled shape (the byte stored, then tested), the
+ * sceCdlFILE (36 bytes: SDK 2.7's has a flag word after the date) copied back from the uncached
+ * request, three debug lines each its own test (CSE threads the first failure past all three), the
+ * reply read before the semaphore is signalled. ps2sdk's sceCdSearchFile is the same call. Read off
+ * the allocation (tools/ccdump.py -f): the bind flag's %hi is the first saved register after the
+ * pointers (s1), which needs the flag's clear INSIDE the loop -- flow counts a reference in a loop
+ * twice (4 refs over 68 insns, 1176, above the path's 1066; after the loop 3 refs, 441, s6) -- and
+ * the delays count in a variable of their own (v0, the copy's index a1; one `i` for both: 9 words);
+ * the nine saved registers leave `layer` on the stack, as the target's. */
+typedef struct {
+	u_int lsn;
+	u_int size;
+	char name[16];
+	u_char date[8];
+	u_int flag;
+} sceCdlFILE;
+
+typedef struct {
+	sceCdlFILE file;
+	char name[256];
+	void *dest;
+	int layer;
+} SearchFilePkt;
+
+extern void *memcpy(void *, const void *, unsigned int);
+extern int _sf_bind;
+extern SearchFilePkt _sf_data;
+extern int sfrdata[];
+extern sceSifClientData cdrdsf;
+
+int sceCdLayerSearchFile(sceCdlFILE *fp, const char *name, int layer)
+{
+	int i, j, ret;
+
+	cmd_sem_init();
+	if (_sceCd_ncmd_semid != PollSema(_sceCd_ncmd_semid))
+		return 0;
+	ncmd_sema_keep_cmd = 1;
+	ReferThreadStatus(my_thid, &data_001D5FA0);
+	if (sceCdSync(1)) {
+		SignalSema(_sceCd_ncmd_semid);
+		return 0;
+	}
+	sceSifInitRpc(0);
+	if (_sf_bind < 0) {
+		while (1) {
+			if (sceSifBindRpc(&cdrdsf, 0x80000597, 0) < 0) {
+				if (SCE_CD_debug > 0)
+					scePrintf("Libcdvd bind err CdSearchFile\n");
+				j = 0x100000;
+				while (j--)
+					;
+				continue;
+			}
+			if (cdrdsf.serve != 0) {
+				_sf_bind = 0;
+				break;
+			}
+			j = 0x100000;
+			while (j--)
+				;
+		}
+	}
+	for (i = 0; i < 256; i++) {
+		_sf_data.name[i] = name[i];
+		if (_sf_data.name[i] == 0)
+			break;
+	}
+	if (i == 256)
+		_sf_data.name[255] = 0;
+	if (SCE_CD_debug > 0)
+		scePrintf("ee call cmd search %s\n", _sf_data.name);
+	_sf_data.layer = layer;
+	_sf_data.dest = &_sf_data;
+	sceSifWriteBackDCache(&_sf_data, sizeof(SearchFilePkt));
+	if (sceSifCallRpc(&cdrdsf, 0, 0, &_sf_data, sizeof(SearchFilePkt), sfrdata, 4, 0, 0) < 0) {
+		SignalSema(_sceCd_ncmd_semid);
+		return 0;
+	}
+	memcpy(fp, (void *)((u_int)&_sf_data | 0x20000000), sizeof(sceCdlFILE));
+	if (SCE_CD_debug > 0)
+		scePrintf("search name %s\n", fp->name);
+	if (SCE_CD_debug > 0)
+		scePrintf("search size %d\n", fp->size);
+	if (SCE_CD_debug > 0)
+		scePrintf("search loc lbn %d\n", fp->lsn);
+	ret = *(int *)((u_int)sfrdata | 0x20000000);
+	SignalSema(_sceCd_ncmd_semid);
+	return ret;
+}
+
+int sceCdSearchFile(sceCdlFILE *fp, const char *name)
+{
+	return sceCdLayerSearchFile(fp, name, 0);
 }
 
 int _sceCd_ncmd_prechk(int cmd)
@@ -454,12 +553,14 @@ int sceCdInit(int mode)
 	return ret;
 }
 
-/* OPEN (right size, structure exact: 20 words differ in their registers alone): the SyncS failure
- * and the call's failure are one block after the call (a goto into it -- two copies cross-jump into
- * the first's place), but global-alloc orders the call-crossing pseudos otherwise: the target gives
- * the bind flag's %hi s1, mode s2, the semaphore's s3, the request's s4, the client's s5, the debug
- * flag's s6, the reply's s7 -- here the request's %hi (pseudo 168: 5 refs over 132 insns) and the
- * client's lead and mode comes last (3 refs over 74: tools/ccdump.py -f). */
+/* The target gives the bind flag's %hi s1, mode s2, the semaphore's s3, the request's s4, the
+ * client's s5, the debug flag's s6, the reply's s7 -- global-alloc's order, which two shapes give
+ * (GCC r35a; r32a had the structure, 20 words in their registers): the flag cleared INSIDE the bind
+ * loop (a reference in a loop counts twice: 4 refs over 66 insns, 1212) and the failure written in
+ * both places, each copy a reference to mode and to the semaphore's %hi (4 and 6: 1081 and 833, over
+ * the request's 757) -- cross-jumping merges the copies after reload into the second, after the
+ * call, the SyncS test branching into it (one copy reached by a goto has the layout and not the
+ * references; two copies without the in-loop clear are 31 words off). */
 int sceCdDiskReady(int mode)
 {
 	int i;
@@ -470,8 +571,10 @@ int sceCdDiskReady(int mode)
 	cmd_sem_init();
 	if (_sceCd_scmd_semid != PollSema(_sceCd_scmd_semid))
 		return 6;
-	if (sceCdSyncS(1))
-		goto fail;
+	if (sceCdSyncS(1)) {
+		SignalSema(_sceCd_scmd_semid);
+		return mode != 8 ? 6 : -1;
+	}
 	sceSifInitRpc(0);
 	if (_scmd_dr_bind < 0) {
 		while (1) {
@@ -483,18 +586,18 @@ int sceCdDiskReady(int mode)
 					;
 				continue;
 			}
-			if (cddr.serve != 0)
+			if (cddr.serve != 0) {
+				_scmd_dr_bind = 0;
 				break;
+			}
 			i = 0x100000;
 			while (i--)
 				;
 		}
-		_scmd_dr_bind = 0;
 	}
 	_dr_mode = mode;
 	sceSifWriteBackDCache(&_dr_mode, 4);
 	if (sceSifCallRpc(&cddr, 0, 0, &_dr_mode, 4, _sceCd_scmdrdata, 4, 0, 0) < 0) {
-fail:
 		SignalSema(_sceCd_scmd_semid);
 		return mode != 8 ? 6 : -1;
 	}

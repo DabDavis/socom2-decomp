@@ -19,11 +19,12 @@ namespace zdb {
  * the world, and the fog. SOCOM 1's, with SOCOM II's changes: the clip matrices start a twentieth
  * of the near plane out, the field of view's clip widens with the screen offset (in double
  * precision, by fabs) and comes from the render size, not constants, and the altitude fog's VU
- * vectors and the screen shift follow. SOCOM 1's locals.
- * OPEN (0x294070): 13 instructions, all stack offsets -- the near plane point's VU0 temporaries
- * sit in the target as [the three results, then the three copies], each group in source order;
- * here the addition's pair comes first in each group. One expression (no deltaNear) gives the
- * target's order but calls CPnt4D's constructors out of line (the inline levels run out) */
+ * vectors and the screen shift follow. SOCOM 1's locals. The near plane point is one expression
+ * (the core lane round 17): the addition's inline expanded first numbers its result and copy ahead
+ * of the two scales', which lays the six VU0 temporaries out as the target's -- [the three
+ * results, then the three copies], each group in source order; a named deltaNear expanded the
+ * scales first (13 stack offsets). Rounds before CPnt4D's operators took their present shape, the
+ * one expression called its constructors out of line */
 void CCamera::Update(tag_ZCAM_TYPE type)
 {
     float nearClip;
@@ -119,8 +120,7 @@ void CCamera::Update(tag_ZCAM_TYPE type)
     sceVu0ApplyMatrix((float *)&m_ClipSet.BottomPlaneNormal, m_matrix.m_matrix, (float *)&m_ClipSet.BottomPlaneNormal);
     sceVu0ApplyMatrix((float *)&m_ClipSet.NearPlaneNormal, m_matrix.m_matrix, (float *)&m_ClipSet.NearPlaneNormal);
     m_ClipSet.ViewPlanePoint = CPnt4D(m_matrix(3, 0), m_matrix(3, 1), m_matrix(3, 2), 1.0f);
-    CPnt4D deltaNear = m_ClipSet.NearPlaneNormal * nearClip * 1.0001f;
-    m_ClipSet.NearPlanePoint = m_ClipSet.ViewPlanePoint + deltaNear;
+    m_ClipSet.NearPlanePoint = m_ClipSet.ViewPlanePoint + m_ClipSet.NearPlaneNormal * nearClip * 1.0001f;
 
     m_fogB = -255.0f / (m_fog_far - m_fog_near);
     m_fogA = 255.0f - m_fog_near * m_fogB;

@@ -2,8 +2,9 @@
  * emit instances, the properties they share (sequences of scale, colour and texture over a
  * particle's life), the draw buffer. SOCOM 1's units, by their static initialisers: zparticle_buf.cpp,
  * zparticle_instance.cpp, zparticle_source.cpp (tools/s1units.py pairs SOCOM II's 0x402BB0,
- * 0x402C40, 0x402CE0 with them). Layouts are SOCOM 1's DWARF where SOCOM II's code agrees; the
- * header's name is ours.
+ * 0x402C40, 0x402CE0 with them), and one without an initialiser, zparticle_props.cpp (the name ours:
+ * the properties' members, 0x3286D0-0x3294AF, split from the instance unit by the world lane's round
+ * 23). Layouts are SOCOM 1's DWARF where SOCOM II's code agrees; the header's name is ours.
  *
  * Self-contained: the particle units define the point classes they use here. CPnt4D's copy is the
  * implicit one (the world lane round 22: its out-of-line copy 0x328D60 is still emitted -- Branch

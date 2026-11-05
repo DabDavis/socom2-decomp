@@ -1355,11 +1355,6 @@ extern "C" bool func_0057F9C0(CZSealBody *seal)
     return func_00589900(seal);
 }
 
-extern "C" {
-/* another anim type read as a variable (OVL1 data, -1 in the image) */
-extern short data_003DECA0;
-}
-
 /* a point and two values kept for a SEAL this console plays, cleared for a remote one; whether they
  * were kept (OVL2 0x57ED10, new in SOCOM II: RemoteWeaponDamageVictim and three others call it) */
 extern "C" bool func_0057ED10(CZSealBody *seal, const CPnt3D *p, float a, float b)
@@ -1711,29 +1706,30 @@ extern "C" bool func_00580360(CZSealBody *seal, float t)
     return true;
 }
 
-/* out of the anim of 0x3DECA0: the blends popped down to one, twelve at most, as 0x57F310 does, and
- * that anim pushed; in it, only the top blend fetched (OVL2 0x580A80, new in SOCOM II) */
-extern "C" void func_00580A80(CZSealBody *seal)
+/* the climb over: out of AnimTypes::ClimbOver the blends popped down to one, twelve at most, as
+ * 0x57F310 does, and that anim pushed; in it, only the top blend fetched (OVL2 0x580A80, SOCOM 1's
+ * ClimbOver with the limit added, the round 48's name; its float never read) */
+void CZSealBody::ClimbOver(float)
 {
-    if (!seal->IsCurrentBlend((AnimType)data_003DECA0)) {
-        CZBodyAnimBlend *b = (CZBodyAnimBlend *)func_00555170(&seal->m_blends);
+    if (!IsCurrentBlend((AnimType)AnimTypes::ClimbOver)) {
+        CZBodyAnimBlend *b = (CZBodyAnimBlend *)func_00555170(&m_blends);
         int n = 12;
-        CBodyAnimBlendStack *stack = &seal->m_blends;
+        CBodyAnimBlendStack *stack = &m_blends;
 
         while (BlendCount(stack) > 1 && n > 0) {
-            b = func_00589AA0(seal);
+            b = func_00589AA0(this);
             n--;
         }
         if (n <= 0)
-            b = (CZBodyAnimBlend *)func_00555170((char *)seal + 0x1c0);
+            b = (CZBodyAnimBlend *)func_00555170((char *)this + 0x1c0);
         else {
             if (b)
                 b->m_ctrl = 0;
-            seal->m_desiredStance = STANCE_PRONE;
+            m_desiredStance = STANCE_PRONE;
         }
-        func_00588BC0(seal, (AnimType)data_003DECA0, 0, 0, 0);
+        func_00588BC0(this, (AnimType)AnimTypes::ClimbOver, 0, 0, 0);
     } else
-        func_00555170((char *)seal + 0x1c0);
+        func_00555170((char *)this + 0x1c0);
 }
 
 /* the blends popped down to one, as 0x57F310 does, then anim 45 pushed from its start and anim 46 on
