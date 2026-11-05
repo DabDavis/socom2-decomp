@@ -3,7 +3,8 @@
  * (0x218D50-0x21932F), hudStartDefuseTimer (0x219330, the unit's last), On, Off and the pause test's
  * OnPauseTest (0x215180-0x215243), in SOCOM 1's order, HideTimer (0x213610, the unit's first) and
  * TimerProgressTick (0x213680, round 41) and SOCOM II's second bar after it, ReloadTimerTick
- * (0x213840); still to write: 0x213A60-0x215170 (by SOCOM 1's order SetGBarVal and ChangeReticule
+ * (0x213840), and SetGBarVal (0x213A60, round 57); still to write: 0x213E20-0x215170 (by SOCOM 1's
+ * order ChangeReticule
  * -- UpdateGBarColor is not 0x213840), Init (0x2178C0) and the five functions 0x215250-0x2178BF. BitmapReticule is 0x12F0 bytes longer in SOCOM II, laid out whole
  * (SOCOM 1's names, SOCOM II's offsets; the reticle type is a byte now). Defined in reverse of their
  * image order (-inline deferred). */
@@ -15,6 +16,21 @@
 
 class CHUD;
 class CEntity;
+
+namespace zdb {
+/* a texture's size and a handle's texture (c2dbitmap.cpp's views) */
+class CTexture {
+public:
+    unsigned short m_width;   // 0x0
+    unsigned short m_height;   // 0x2
+};
+
+class CTexHandle {
+public:
+    unsigned char _0[0xc];
+    CTexture *m_texture;   // 0xc
+};
+}
 
 /* the seal the reticle is ticked for (zseal.h's CZSealBody, as far as this unit reads it) */
 class CZSealBody {
@@ -45,6 +61,7 @@ public:
     void HideTimer();
     void TimerProgressTick(float dT);
     void ReloadTimerTick(float dT, CZSealBody *seal);
+    void SetGBarVal(float val);
 
     /* SOCOM 1's DWARF names at SOCOM II's offsets (read off the constructor 0x218DE0 and the
      * destructor 0x219090); SOCOM II's own members named by offset */
@@ -240,6 +257,76 @@ void BitmapReticule::UnInit()
     m_lase_update.ClearAndWipe();
     m_detonation_update.ClearAndWipe();
     m_enemy_name.ClearAndWipe();
+}
+
+/* a bar's quad from its right and left, its far end and its base (the name ours): the inline's
+ * arguments evaluate right to left, so the far end, the left and the right are computed in that
+ * order, as the target's; the base by reference -- read through it, its load is not merged with the
+ * far end's (the target loads the y twice for each bar; by value the two loads are one) */
+static inline void LoadBar(C2DBitmapPoly &poly, float right, float left, float end, const float &base,
+                           zdb::CTexture *tex)
+{
+    poly.Load(right, end, right, base, left, base, left, end, tex);
+}
+
+/* the grenade bar (SOCOM 1's SetGBarVal, 0x3CD490 there; 0x213A60): for the grenade reticle only --
+ * a missing texture flags the error once -- the reticle's own picture left of the point, the full
+ * bar's two halves grown out from it by the value and the empty bar's two drawn whole, the two
+ * level bitmaps split at the value; the picture and the levels opaque. SOCOM 1's DWARF names the
+ * floats (its two statics one flag here) */
+void BitmapReticule::SetGBarVal(float val)
+{
+    static bool first = true;
+
+    if (m_rettype == 4) {
+        if (!m_reticuleTex[m_rettype] && first) {
+            m_error = 1;
+            first = false;
+        }
+        if (!m_grenadebartex_full && first) {
+            m_error = 1;
+            first = false;
+        }
+
+        zdb::CTexHandle *tex = m_reticuleTex[m_rettype];
+        float y = m_posy;
+        float x = m_posx;
+        float height = (int)tex->m_texture->m_width;
+        float half_height = 0.5f * height;
+        float half_width = 0.5f * (int)tex->m_texture->m_height;
+
+        m_bitmap.Load(x - half_width, y - half_height, x, y + half_height, tex);
+        m_bitmap.SetUV(0.0f, 0.0f, 0.5f, 1.0f);
+        m_bitmap.Off();
+
+        float d = val * half_height;
+
+        LoadBar(m_grenadeactive[0], m_posx + half_width, m_posx - half_width, m_posy - d, m_posy,
+                m_grenadebartex_full->m_texture);
+        float rest = 1.0f - val;
+
+        m_grenadeactive[0].SetUV(0.0f, rest, 1.0f, 1.0f);
+        LoadBar(m_grenadeactive[1], m_posx + half_width, m_posx - half_width, m_posy + d, m_posy,
+                m_grenadebartex_full->m_texture);
+        m_grenadeactive[1].SetUV(0.0f, rest, 1.0f, 1.0f);
+        LoadBar(m_grenadeback[0], m_posx + half_width, m_posx - half_width, m_posy - half_height, m_posy,
+                m_reticuleTex[m_rettype]->m_texture);
+        m_grenadeback[0].SetUV(0.0f, 0.0f, 1.0f, 1.0f);
+        LoadBar(m_grenadeback[1], m_posx + half_width, m_posx - half_width, m_posy + half_height, m_posy,
+                m_reticuleTex[m_rettype]->m_texture);
+        m_grenadeback[1].SetUV(0.0f, 0.0f, 1.0f, 1.0f);
+        m_grenadebitmap.Off();
+        m_grenadebitmap2.Off();
+        m_grenadebitmap.Load(m_posx, m_posy + half_height - val * height, m_posx + half_width,
+                             m_posy + half_height, m_grenadebartex_full);
+        m_grenadebitmap.SetUV(0.5f, 0.97f - val, 1.0f, 1.0f);
+        m_grenadebitmap2.Load(m_posx, m_posy - half_height, m_posx + half_width,
+                              m_posy - half_height + rest * height, m_reticuleTex[m_rettype]);
+        m_grenadebitmap2.SetUV(0.5f, 0.0f, 1.0f, rest);
+        m_bitmap.SetTrans(128.0f);
+        m_grenadebitmap.SetTrans(128.0f);
+        m_grenadebitmap2.SetTrans(128.0f);
+    }
 }
 
 /* the second bar (SOCOM II's, below the timer's; the name ours): while the seal reloads at a turret,

@@ -226,15 +226,17 @@ class Parser:
     def parse(self):
         """The length-prefixed names of one parse of the whole name, or None."""
         s = self.s
-        m = re.match(r"@(LOCAL|GUARD)@", s)
+        m = re.match(r"@(LOCAL|GUARD|CHAIN)@", s)
         if m:                                       # @LOCAL@<function>@<static>
             for j, sp in self.entity(m.end()).items():
                 if j < self.n and s[j] == "@" and IDENT.fullmatch(s, j + 1):
                     return sp
                 # @GUARD@<static member>: a class template's static member with a constructor is
                 # guarded by a byte of that name (`@GUARD@id__Q23std8ctype<w>`, MAIN's runtime round 6;
-                # SOCOM 1's 2.4 spelled it `__init__<member>`) -- the integrator, 2026-11-04
-                if j == self.n and m.group(1) == "GUARD":
+                # SOCOM 1's 2.4 spelled it `__init__<member>`) -- the integrator, 2026-11-04;
+                # @CHAIN@<object>: a file-scope object's destructor-chain record (scdiff.chain_record_row,
+                # GCC round 37a; a function-local static's is @CHAIN@<function>@<static>)
+                if j == self.n and m.group(1) in ("GUARD", "CHAIN"):
                     return sp
             return None
         m = re.match(r"@\d+@(?:\d+@)?", s)            # a thunk: @this-offset@[vtable offset@]<name>

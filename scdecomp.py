@@ -354,6 +354,7 @@ class SymbolTable:
         self.data_by_name: dict[str, Symbol] = {}
         self.data_by_addr: dict[int, Symbol] = {}
         self._addrs = []
+        self._copies: dict[tuple[str, str], int] | None = None    # _copy_index, built on first use
         if not path.exists():
             return
         for s in self._rows(path):
@@ -407,14 +408,25 @@ class SymbolTable:
         return self._copy_index().get((self.overlay_of(near), name), a)
 
     def _copy_index(self) -> dict[tuple[str, str], int]:
-        """(overlay, name) -> the address of `name`'s copy there, by the `ovl-copy:` marks."""
-        if not hasattr(self, "_copies"):
-            self._copies = {}
+        """(overlay, name) -> the address of `name`'s copy there, by the `ovl-copy:` marks.
+
+        Built in a local and published by ONE assignment (GCC round 37a, the AI core's round 32):
+        tools/objcmp.py -j N asks the map from several threads, and the index assigned empty and
+        then filled let a second thread read it half-built -- a copy not yet indexed resolved to
+        the named row in the other overlay, and objcmp's shared resolver kept that answer for one
+        side of a unit and the right one for the other (`DIFF ai/ai_astar.cpp`: __sinit's call of
+        the pointer lists' deleter constructor read as OVL1's 0x1EABB0 and as OVL2's 0x50FFA0).
+        Two threads may each build it; neither sees a partial one. Every other lazily kept table
+        here is whole when it is published (scdiff._SHARED_STEMS, the lru_cache'd image and map)."""
+        copies = self._copies
+        if copies is None:
+            copies = {}
             for s in self.symbols + self.data:     # data rows too: an RTTI's overlay copy
                 m = self._OVL_COPY.search(s.note or "")
                 if m:
-                    self._copies[(self.overlay_of(s.addr), m.group(1))] = s.addr
-        return self._copies
+                    copies[(self.overlay_of(s.addr), m.group(1))] = s.addr
+            self._copies = copies
+        return copies
 
     def overlays_of(self, name: str) -> set[str]:
         """The overlays holding a row of `name`: its own row's, and each copy's (`ovl-copy:`)."""

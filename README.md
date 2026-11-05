@@ -2065,6 +2065,28 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the HUD, round 57** (CTCM::Select, open since round 27; HandleClosedPad, TickFullScreenAnims and SetGBarVal,
+  all unwritten before):
+  - a copy MW makes for a loop in the null test's delay slot comes from a second variable defined BEFORE the test -- here a
+    reference to an offset-0 member, which copies the pointer; defined after the test the copy lands in the next block
+    (CTCM::Select 0x234F40: the column short-lived in v0, a reference to its children in s6);
+  - an unsigned compare (sltiu) with a signed cvt.s.w on the same counter is an int counter bounded by
+    `sizeof(a)/sizeof(a[0])`; a clamp's empty then-arm (bc1f, b, mov.s) is a MIN-style ternary, an if gives a single bc1t;
+    `if (f)` on a float compares `c.eq.s f,0`, `f != 0.0f` puts the zero first;
+  - an inline parameter passed as `const float &` is read through the reference and not merged with other loads of the
+    same member -- use it when the target loads a member twice in one call; an inline's arguments evaluate right to left:
+    permuting the parameter order (try.py --variants) fixed BitmapReticule::SetGBarVal 0x213A60's FPR schedule.
+- **Tells from the online lobby, round 25** (ten functions from their drafts to source and eleven rows named -- the
+  network's message registration, SOCOM 1's zNet* names, the lobby's state handlers):
+  - a dead own function that gets an out-of-class template member generated before its tail caller does NOT make that
+    caller inline it (the deque copy constructor 0x2F5F80 still calls begin() / end() const), and `#pragma auto_inline
+    off` placed mid-header around template definitions is inert -- generation order alone does not explain the chat tail;
+  - RE-RUN igdump / igreplay AFTER A HEADER CHANGES: a "graph differs" verdict can become a single move -- insert<AcctRecord>
+    0x2FE3E0 (35, registers only; round 22 found no renumbering) gets the target's colouring on today's include/vector
+    with the end pointer numbered before `m` (the "placement new called" group): a shape for include/vector to find;
+  - names by SOCOM 1's file order and calls: zNetLeaveAndDisconnect 0x30D020, zNetClose 0x30D770, zNetTick 0x30D9B0 (SOCOM
+    1's NetTickThreadEntry calls it at the same spot), zNetInit 0x30E290; the four empty state handlers 0x2EE6A0-0x2EE6D0
+    by their handler-table slots (14, 1, 10, 6) in SOCOM 1's Open.
 - **Tells from the weapons, round 32** (hookupVisuals, unwritten before -- vis_load.cpp whole; AddDecal written; framecode's
   and finalcode's rows resized):
   - one count variable shared by two disjoint loops is split by MW, and the second range is numbered after the code
@@ -10551,6 +10573,87 @@ SOCOM 1). What they showed:
   0x252FE0, dmaRefImage, sceBInetRecv/Send, sceGsResetGraph, libnetb_udp_init_buffer, libquan.c's
   0x24B2F8/0x24B028, libmath.c's 0x24AB48 (0x1FC: three frame arrays of 81, a log-scale resampling),
   libtran.c's passes.
+
+**The tools, round 37a** (the integrator's two requests): (1) **objcmp -j N's race was the map's copy
+index read half-built.** `scdecomp.SymbolTable._copy_index` assigned `self._copies = {}` and THEN filled
+it, so a thread asking the map while another built it read an index without the copy it wanted: the
+name resolved to its named row in the other overlay (the AI core's round 32: `objcmp -j 2` printed `DIFF
+ai/ai_astar.cpp`, __sinit's call of the pointer lists' deleter constructor read as OVL1's 0x1EABB0 on
+one side and OVL2's 0x50FFA0 on the other, where -j 1 was clean). The index is built in a local and
+published by one assignment (`_copies` starts None); two threads may each build it, neither reads a
+partial one. The other lazily kept tables publish whole objects already (`scdiff._SHARED_STEMS` a set
+built before it is stored, `E.image()`/`E.symbols()` lru_cache'd constructors). Measured
+(`build/scratch/gcc/r37/race.py`: a fresh table, four threads behind a barrier each asking all 146
+copies, the GIL's switch interval 1e-6): master's scdecomp read a wrong copy in 40 of 40 trials (17,281
+wrong answers), this one in 0 of 40. In objcmp itself the race is rare -- its resolver caches the
+first answer per name, so a wrong one is wrong on both sides unless two threads miss the same name as
+the build completes -- so neither one plain pre-fix run nor two under a 1e-6 switch interval (one with
+the index build slowed, 20 us a row) printed a DIFF; after the fix `tools/objcmp.py master --by-address -j 4`
+over every hand-written unit, three plain runs and two stressed: 656 units, 0 differ each. The canary's
+`test_copy_index_is_never_read_half_built` (4 assertions) makes the interleaving deterministic -- the
+marks' regex, at its first search, asks the table for OVL2's copy as a second thread would there -- and
+reads 0x50FFA0; the old shape (published, then filled) hands it 0x1EABB0, and under master's scdecomp
+the test fails at its first assertion. (2) **A destructor-chain record has a row form, `@CHAIN@`.**
+Metrowerks registers a static object with a destructor by `__register_global_object(object, dtor,
+&record)`, the record a 12-byte DestructorChain the runtime links into `__global_destructor_chain`, and
+an ANONYMOUS `@N` (a parser-wide counter no row can carry). MW gives it the `.bss` section right before
+its object's own: a function-local static is three consecutive sections, guard, record, object (the
+kit's round 51: IssueCommand's `@GUARD@...@proto` 0x66B8C0, the record 0x66B8C8, `@LOCAL@...@proto`
+0x66B8E0). Census of the hand-written objects (`build/scratch/gcc/r37/chainscan.py`): 10 function-local
+and 375 file-scope records, every one in the section right before its object -- while the counter is
+not a rule (the guard's + 3, classic_locale's + 5). The data map names one `@CHAIN@<fn>@<name>` (a
+function-local static, `<fn>` as `fn_static_row` resolves it -- it takes a `kind` now) or
+`@CHAIN@<object>` (a file-scope one, as its object's row is named), and `scdiff.chain_record_row`
+resolves a reference to the record by that row when the referencing function calls
+`__register_global_object` (never a guess: a GNU object, another size or section, no single named object
+after it, no registering call or no row leave it unchecked, as before). The record need not lie by its
+guard in the image: locale.cpp's global_locale and its guard are `$gp` small data (0x1D5638, 0x1D5634),
+its record `.bss` (0x1D5F38). `tools/manglecheck.py` reads both forms (`@CHAIN@` like `@LOCAL@`, and
+bare like `@GUARD@<static member>`). The canary's `test_mw_chain_record_resolves_by_its_object` (7
+assertions): std::locale::global's record and `__sinit_camera.cpp`'s four (dilr0-3, each 16 bytes
+before its object) resolve by temporary rows; moved, they fail; without rows they are unchecked as
+before; two objects' rows swapped fail; no registering call, no row; a slipped length does not parse --
+and under master's scdiff the test fails at its first assertion. No `@CHAIN@` row is added (none lies in
+this lane's ranges; the kit's is `0x0066B8C8 0xC
+@CHAIN@IssueCommand__9CSealUnitFP10CZSealBody10FT_COMMANDPvb@proto`). **Proved**
+(`build/scratch/gcc/r37/proof.sh`): master 86a53b05's sccheck.py, scdiff.py and scdecomp.py with its map
+and these, one frozen snapshot of src/ and include/, every unit (`--files .`, `-v`, each comparison's
+address logged): IDENTICAL, 31,104 lines; 12,296 byte-exact of 12,684 scored under both. automatch over
+the lane's three ranges (`--max-size 0x400 --emit --no-prune --jobs 2 --obj-dir` the lane's private
+`src/lib` build): MAIN `18DB90 1C4CC0` 11 tried, 0 hits (2 m2c refusals, 9 misses), OVL1 `1E7F58 1E8FD4`
+0 tried, `243000 256FD0` 36 tried, 0 hits (2 build failures, 5 refusals, 29 misses): 47 tried, none
+byte-exact (round 36a: 50, 0).
+
+**Round 37a** (2026-11-05, the tools first, then the opens and the codec's FFT passes): 1 row newly
+byte-exact -- libcdvd's id accessor func_0018E9E8 (open since round 13a; `sdk/libcdvd.c` 22 of 24,
+libcdvd's units 38 of 40) -- and libtran.c's real-FFT split 0x24E408 and merge 0x24E5B0 written (both
+unwritten before, both OPEN; `sase_libtran.c` 8 of 11). No rows named. What they showed:
+
+- **An equality chain in no sorted order, its arms after it in reverse, is ONE nested conditional
+  expression**: func_0018E9E8 tests 0x8001, 0x8003, 0x8002, 0x8004, 0x8011, 0x8013, 0x8012, 0x8014,
+  every test a beq to its arm and the value stored once -- `*out = (id == 0x8001) ? a : (id == 0x8003)
+  ? b : ... : 0;`, expand_expr emitting each COND_EXPR's test with a jump to its arm and the arms as the
+  nesting unwinds. A switch's case list is sorted (and this build tables eight cases in a range of 20),
+  the if-else chain interleaves its arms with the tests, gotos to the arms are 31-43 words off.
+- **Stores through one pointer keep the source's order**: neither scheduler moves a float store past
+  another that may alias it, so the target's store order is the vendor's statement order outright (the
+  split's [i], [N-i], [i+1], [N-i+1]) -- measured orders found it 21-29 words off, which is no evidence
+  against it while the registers differ.
+- **A variable used in two blocks is a global pseudo, and its register is one for both**: the split's
+  first pair's sum and difference take f5/f6 in the target -- the loop's ti and tr -- and its two loads
+  f1/f0 (block-local): the vendor computed them into the loop's own fTi/fTr. Read into fH1r/fH1i or
+  stored straight, every register of the prologue is another.
+- **Local-alloc ties a three-operand result to its first operand when that dies there**: the target's
+  C + tr in C's register and ti + D in ti's say sched1 computed C - tr before C + tr and D - ti before
+  ti + D -- the order that ends C's chain first, so pfInOut[i]'s load takes f0.
+- **Open, diagnosed in place**: 0x24E408 (23 words: this compile schedules ti + D first, the neg's longer
+  path to the last store, and C's chain outlives D's; 3,840 spellings swept, 21 at best), 0x24E5B0 (36:
+  the prologue's partial sums, x1 + x[N+1] the target's f7 -- the loop's ti -- and x0 + x[N] tied to x0;
+  3,393 variable assignments swept, 26 at best). Looked at, not this pattern: 0x251A98 (a range chain,
+  `< 0`, `< 2`, `== 2`). Not reached: func_0018EF70, sceCdInit, lgAudInit, sceMcWrite, 0x24C000, the
+  DFT 0x24E788 (their diagnoses stand), 0x252FE0, dmaRefImage, sceBInetRecv/Send, sceGsResetGraph,
+  libnetb_udp_init_buffer, libquan.c's 0x24B2F8/0x24B028, libtran.c's radix passes 0x24DBB8/0x24DFB8,
+  the codec's unwritten 0x24CD28 (a band search over a 256-point spectrum, up to 100 peaks).
 
 **Next**: the libraries by hand, module by module, as their vendors wrote them (each `src/lib`
 unit's header says what it covers); GCC's scheduler moves independent stores, and which source

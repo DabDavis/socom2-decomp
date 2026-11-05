@@ -398,7 +398,14 @@ struct AcctRecord {
      * path's stack-object address (@4007) s6 where MW here gives @4007 s0, newcap s1, @3863 s6.
      * The online lane's round 22 (tools/igdump.py + igreplay.py, build/scratch/onl/): no single
      * renumbering of the three gives it, nor of @4007 and newcap together (83 % of the 196,249
-     * placements searched, 0 hits) -- the target's graph differs, not only its numbering */
+     * placements searched, 0 hits) -- the target's graph differs, not only its numbering.
+     * The online lane's round 25, on today's include/vector (the end an iterator object): ONE MOVE
+     * GIVES IT -- `igreplay -f insert -r 2 --target ... --move 48=36.5` maps 129 virtual registers,
+     * 0 differ; --want over v48 alone finds 31.5-36.5 (after the arguments and xp, before m). v48 is
+     * @4476, the end pointer (data_ + size_ * 0x1318, copy_backward's cursor merged with e.m_p): the
+     * README's second population ("placement new CALLED": the end numbered before m), which the
+     * object form cost -- a header shape that numbers the end before m here and after it in the
+     * first population is still the open (include/vector's comment) */
     AcctRecord() {}
 
     /* the missions with a name, the entries a blob of them holds */

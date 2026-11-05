@@ -10,10 +10,10 @@
  * shallower, so their ten out-of-line copies 0x231DD0-0x231E30 and 0x232460-0x232480 name the
  * chains' levels -- CTCMNode's accessor, CTCMNodeList's, the vector's), the sounds, and CTCM's
  * tick, push-to-talk, close, open, root, next and the item searches (ShowRoot since round 42).
- * OPEN: RemoveChild, Select (1 instruction), the open menu's pad handler HandleOpenPad 0x235D40
- * (round 54, temporaries). Written in round 41: one kind's items, tcmAddKindItems 0x2329F0 (its
- * entries go under the third group item's caption, which an inline returns). Not yet: the cache
- * builders 0x232BC0/0x2344E0, the closed menu's pad handler 0x2359A0.
+ * OPEN: RemoveChild and the open menu's pad handler HandleOpenPad 0x235D40 (round 54, temporaries).
+ * Written in round 41: one kind's items, tcmAddKindItems 0x2329F0 (its entries go under the third
+ * group item's caption, which an inline returns); round 57: Select byte-exact and the closed menu's
+ * pad handler HandleClosedPad 0x2359A0. Not yet: the cache builders 0x232BC0/0x2344E0.
  * Defined in reverse of their image order (-inline deferred). */
 
 #include <string.h>
@@ -51,6 +51,10 @@ class CZSealBody {
 public:
     unsigned char _0[0xc0];
     CSealCtrl *m_ctrl;   // 0xc0
+    unsigned char _c4[0xe1 - 0xc4];
+    unsigned char _e1_0 : 4;
+    unsigned char m_socom2_e1_4 : 1;   // 0xe1 bit 4 (the closed menu's open test, offline)
+    unsigned char _e1_5 : 3;
 
     void CacheReticuleSeal(bool on);   // OVL2 0x5AA620 (the SEALs' round 39: seal_env.cpp)
 };
@@ -70,6 +74,8 @@ public:
 /* the HUD (hud_main.cpp's CHUD: only its compass) */
 class CHUD {
 public:
+    static CZSealBody *GetHUDOwner();
+
     unsigned char _0[0x4fe0];
     MapCompass m_compass;   // 0x4fe0
 };
@@ -93,6 +99,25 @@ public:
 };
 
 extern CZNetwork theNetwork;
+
+/* the mission (fts_mission.cpp's CMission): the menu's root item its rdr names, and bit 2 of the
+ * flags byte at 0xFC, the menu's open request -- cleared here through its bool setter, which leaves
+ * the store's `(0 & 1) << 2` to run time */
+class CMission {
+public:
+    /* the root item's name, if the mission names one (ours) */
+    const char *GetTcmRootName() { return m_20[0] ? m_20 : 0; }
+    void SetFc2(bool b) { m_fc_2 = b; }
+
+    unsigned char _0[0x20];
+    char m_20[0x40];   // 0x20: the Tcm NODEACTION_ROOTNAME
+    unsigned char _60[0xfc - 0x60];
+    unsigned char m_DelayEndMission : 1;   // 0xfc
+    unsigned char m_FadingToEndMission : 1;
+    unsigned char m_fc_2 : 1;   // the menu's open request (SOCOM II's)
+};
+
+extern CMission theMission;
 
 
 /* a pad by its index, none past the last (SOCOM 1's inline over CInput's table) */
@@ -119,12 +144,14 @@ public:
 /* the unit's float pool (0x3DCAF0-0x3DCB20, 8 bytes apart: function-local statics, written as file
  * statics -- scdiff compares them by content) */
 static float s_tcm_slidehold = 0.2f;   // 0x3DCAF0: the hold after a slide
+static float s_tcm_talkwait = 0.3f;   // 0x3DCAF8: the hold before the closed menu's talk starts
 static float s_tcm_talkmax = 10.0f;   // 0x3DCB00: the longest push-to-talk, and the close test's wait
 static float s_tcm_releasehold = 1.0f;   // 0x3DCB08: the hold after a release
 
 /* the push-to-talk state (bss 0x4130A0-0x4130B8; the names ours) */
 static bool s_tcm_talking;   // 0x4130A0
 static float s_tcm_talktime;   // 0x4130A8
+static bool s_tcm_armed;   // 0x4130B0: the closed menu's button let go out of hold (HandleClosedPad)
 static bool s_tcm_talkheld;   // 0x4130B8
 
 /* the pad's buttons as the controller unit reads them (OVL1 0x2C64E0, by address: a byte state) */
@@ -141,9 +168,6 @@ extern "C" TCM_BUTTON func_002C64E0(int button, CPad *pad);
 extern "C" void func_0030E6E0(void *radio, int on);
 extern void *data_0045B718;
 extern unsigned char data_0044D4F8;
-
-/* the menu's input by its mode (0x2359A0, not written yet) */
-extern "C" void func_002359A0(CTCM *tcm, CPad *pad);
 
 /* hud_tcmcmds.cpp's: a node closed (its parent's column shown again) */
 void tcmCloseNode(CTCMNode *node);
@@ -167,7 +191,7 @@ void CTCM::Tick(CPad *pad, float dt)
         HandleOpenPad(pad, dt);
         break;
     case 4:
-        func_002359A0(this, pad);
+        HandleClosedPad(pad, dt);
         break;
     case 3:
         ftsGetPlayer()->m_ctrl->SetMenuState(MENU_STATE_NONE, false);
@@ -290,6 +314,91 @@ void CTCM::HandleOpenPad(CPad *pad, float dt)
                 m_path[m_path.size() - 1] = i;
                 m_sounds.Play(TCM_SND_SLIDE);
                 Hold(false, s_tcm_slidehold);
+            }
+        }
+    }
+}
+
+/* the closed menu's input (0x2359A0, Tick's mode 4; the name ours): button 11 let go clears the
+ * talk clock and arms the menu (once the hold is out), anything but held clears the long-hold clock.
+ * Armed and out of hold: a mission's open request opens the menu where the player may (alive offline,
+ * the HUD's owner online -- this test's online arm, the release's offline arm: two copies, as the
+ * target has them), on the root item the mission names, and is cleared through its bool setter;
+ * else held online past the talk wait starts the radio (mode 5), held offline past the long hold
+ * opens the menu hidden (mode 6) and disarms it, and pressed opens it where the player may */
+void CTCM::HandleClosedPad(CPad *pad, float dt)
+{
+    TCM_BUTTON st = func_002C64E0(11, pad);
+
+    if (st == TCM_BUTTON_UP) {
+        m_dc8 = 0;
+        m_dcc = 1;
+        if (m_hold <= 0.0f)
+            s_tcm_armed = true;
+    }
+    if (st != TCM_BUTTON_HELD)
+        m_dd4 = 0;
+    if (m_hold <= 0.0f && s_tcm_armed) {
+        if (theMission.m_fc_2) {
+            CZSealBody *player = ftsGetPlayer();
+            bool ok = true;
+
+            if (!player)
+                ok = false;
+            else if (!theNetwork.m_bNetwork && !player->m_socom2_e1_4)
+                ok = false;
+            else if (theNetwork.m_bNetwork && player != CHUD::GetHUDOwner())
+                ok = false;
+            if (ok) {
+                Open();
+                unsigned int n = m_children.size();
+                unsigned int i = 0;
+                const char *name = theMission.GetTcmRootName();
+
+                if (name && strlen(name))
+                    for (; i < n; i++) {
+                        CTCMNode *c = m_children[i];
+                        const char *s;
+
+                        if (c && (s = c->m_text.m_string + c->m_text.m_firstCharPos) != 0 &&
+                            !strcasecmp(s, name))
+                            break;
+                    }
+                if (i && i < n)
+                    m_path[0] = i;
+                tcmOpenNode(0, GetSelected());
+            }
+            theMission.SetFc2(false);
+            return;
+        }
+        if (st == TCM_BUTTON_HELD) {
+            if (st == TCM_BUTTON_HELD && theNetwork.m_bNetwork) {
+                if (m_dcc && !(m_dc8 <= s_tcm_talkwait) && !s_tcm_talking) {
+                    m_mode.Set(5);
+                    func_0030E6E0(data_0045B718, 1);
+                }
+            } else if (st == TCM_BUTTON_HELD) {
+                m_dd4 += dt;
+                if (!(m_dd4 <= m_dd8)) {
+                    Open();
+                    m_root.Off();
+                    m_mode.Set(6);
+                    s_tcm_armed = false;
+                }
+            }
+        } else if (st == 3) {
+            if (m_dcc) {
+                CZSealBody *player = ftsGetPlayer();
+                bool ok = true;
+
+                if (!player)
+                    ok = false;
+                else if (!theNetwork.m_bNetwork && !player->m_socom2_e1_4)
+                    ok = false;
+                else if (!theNetwork.m_bNetwork && player != CHUD::GetHUDOwner())
+                    ok = false;
+                if (ok)
+                    Open();
             }
         }
     }
@@ -461,28 +570,26 @@ void CTCM::Close(bool selected)
  * declared it bool) -- and the command's result the node's byte state, as HandleOpenPad's (the
  * NoChildren() ternary gives the target's `move s5,zero ... movn s5,a0,v1`; the call casts the
  * command's pointer, the same modelling device): 21 instructions to 1.
- * OPEN, 1 instruction: the target reads the column's count through v0 (`lw s0,4(v0)`, the column's
- * copy in the test's delay slot), MW through the copy (s6) -- the count through GetNumChildren() or
- * Count(), `int n`, n declared ahead of the test, the column declared at the top, initialised
- * (0x264) or declared in the if's condition (0x264) all tried. Round 56 (igdump's PCode): here the
- * test reads the call's r2 and the count's load the variable (`lw r37,4(r36)`) -- the target's load
- * reads the call's value too; the column tested in the name's `&&` chain, n declared at the top or
- * zeroed dead, n assigned in the condition, the children through a reference, a second column
- * variable, a const column, an early return, the count through a cast: 1 each or worse */
+ * Round 57, byte-exact: the target's count reads v0 and the loop a copy in s6 made in the test's
+ * delay slot -- TWO variables, both defined ahead of the null test: the column (short-lived, so
+ * coalesced with the call's v0: the test and the count read it) and a reference to its children
+ * (m_children sits at offset 0, so the reference is a copy of the column: s6, the loop's). Taken
+ * after the test (round 56's try) the copy lands in the count's block, after the load */
 bool CTCM::Select(const char *name)
 {
     bool done = false;
     CTCMNode *c;
 
     if (name && strlen(name)) {
-        CTCMNode *column;
+        CTCMNode *column = GetColumn(m_path.size() - 1);
+        CTCMNodeList &kids = column->m_children;
 
-        if ((column = GetColumn(m_path.size() - 1)) != 0) {
+        if (column) {
             unsigned int n = column->m_children.size();
 
             if (n)
                 for (int i = 0; i < n && !done; i++) {
-                    c = column->m_children[i];
+                    c = kids[i];
                     const char *s = c ? c->m_name : 0;
 
                     if (s && strlen(s) && s && !strcasecmp(s, name)) {

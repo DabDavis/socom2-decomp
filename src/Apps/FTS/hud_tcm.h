@@ -184,6 +184,8 @@ public:
     void Tick(CPad *pad, float dt);
     /* the open menu's input (0x235D40, Tick's mode 1) */
     void HandleOpenPad(CPad *pad, float dt);
+    /* the closed menu's input (0x2359A0, Tick's mode 4) */
+    void HandleClosedPad(CPad *pad, float dt);
     void TalkTick(float dt);
     bool Select(const char *name);
     void Next();
@@ -219,7 +221,7 @@ public:
     unsigned char m_dcd;   // 0xdcd
     unsigned char m_dce;   // 0xdce
     float m_dd0;   // 0xdd0 (a float: the closing hold's clock)
-    int m_dd4;   // 0xdd4
+    float m_dd4;   // 0xdd4 (a float: the closed menu's long-hold clock)
     float m_dd8;   // 0xdd8
     C2DBitmapPoly m_items;   // 0xde0: the item list's bitmap (ClearItems empties its list)
     C2DBitmapPoly m_fd0;   // 0xfd0
