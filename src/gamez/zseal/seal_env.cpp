@@ -94,15 +94,21 @@ struct CMaterialEx {
     CSnd *m_walksound;   // 0xc
     CSnd *m_pronesound;   // 0x10
     CSnd *m_fallsound;   // 0x14: a landing's (HandleFallingDamage plays it)
-    unsigned char _18[0x3c - 0x18];
-    /* int_material.h's flags: only PICKUP here (bit 4) */
-    unsigned int m_flags0 : 4;   // 0x3c
+    unsigned char _18[0x24 - 0x18];
+    float m_penetration;   // 0x24: PENETRATION (int_material.h's)
+    unsigned char _28[0x3c - 0x28];
+    /* int_material.h's flags: VOLUMETRIC (bit 0), LIQUID (bit 1) and PICKUP (bit 4) here */
+    unsigned int m_volumetric : 1;   // 0x3c
+    unsigned int m_liquid : 1;   // bit 1
+    unsigned int m_flags2 : 2;
     unsigned int m_pickup : 1;   // bit 4: PICKUP
     unsigned int m_flags5 : 27;
 
-    /* (an inline written `? true : false`: the target converts the bit, sltu, before its test --
+    /* (inlines written `? true : false`: the target converts the bit, sltu, before its test --
      * `!= 0`, a plain return or a cast fold it away) */
     bool IsPickup() { return m_pickup ? true : false; }
+    bool IsVolumetric() { return m_volumetric ? true : false; }
+    bool IsLiquid() { return m_liquid ? true : false; }
 };
 
 /* a material's extension, the first one for an index past the table (SOCOM 1's bounds-checked
@@ -688,6 +694,74 @@ void CZSealBody::ReportWeaponHitDamage(CZProjectile *proj, int shooter_id, int v
             m_stats.m_count[1]++;
         }
     }
+}
+
+extern "C" void func_005B6490(zdb::CNode *node, CBBox *box);
+
+/* the bounds of a node tree as it is drawn, its own matrix the start: the unit matrix pushed on the
+ * matrix stack, the tree's box taken, popped again (OVL2 0x5B67F0, new in SOCOM II; the name unknown) */
+extern "C" CBBox *func_005B67F0(zdb::CNode *node, CBBox *box)
+{
+    _stack.Push(&CMatrix::identity);
+    func_005B6490(node, box);
+    _stack.Pop();
+    return box;
+}
+
+/* a box's eight corners, the minimum second and the maximum last (an inline past inline_max_size:
+ * expanded one level, its CPnt3D constructors and assignments called out of line -- OVL2's copies
+ * 0x5414F0 / 0x539E90; the box a reference to the caller's copy, declared after the corners: by value
+ * or taken straight from the node the frame or the size differ; the name ours) */
+static inline void BoxCorners(const CBBox &b, CPnt3D *c)
+{
+    c[0] = CPnt3D(b.m_min.x, b.m_min.y, b.m_max.z);
+    c[1] = b.m_min;
+    c[2] = CPnt3D(b.m_max.x, b.m_min.y, b.m_min.z);
+    c[3] = CPnt3D(b.m_max.x, b.m_min.y, b.m_max.z);
+    c[4] = CPnt3D(b.m_min.x, b.m_max.y, b.m_max.z);
+    c[5] = CPnt3D(b.m_min.x, b.m_max.y, b.m_min.z);
+    c[6] = CPnt3D(b.m_max.x, b.m_max.y, b.m_min.z);
+    c[7] = b.m_max;
+}
+
+/* an active node with visuals grown into a box: its matrix multiplied onto the stack (pushed), each
+ * active child with visuals taken in turn, then -- a node holding visuals -- its own box's eight
+ * corners through the stack's top and into the box, the stack popped (OVL2 0x5B6490, new in SOCOM II;
+ * 0x5B67F0 and itself call it; the name unknown). `if (!a || !b) return;` gives the target's bnez into
+ * the body and the `b` to the exit; the children through a reference local keep the vector's address
+ * saved for the loop's end; each corner through a reference (or a pointer, or an inline min/max
+ * helper) loads the box's coordinate first, `c[i].x <= box->m_min.x` straight loads the corner's */
+extern "C" void func_005B6490(zdb::CNode *node, CBBox *box)
+{
+    if (!node->m_active || !node->m_hasVisuals)
+        return;
+    _stack.Multiply(&node->m_matrix, true);
+    zdb::CNodeVector &kids = node->m_child;
+
+    for (zdb::CNodeVector::iterator it = kids.begin(); it != kids.end(); ++it) {
+        zdb::CNode *child = *it;
+
+        if (child->m_hasVisuals && child->m_active)
+            func_005B6490(child, box);
+    }
+    if (node->m_visual.size()) {
+        CPnt3D c[8];
+        CBBox b = node->m_bbox;
+
+        BoxCorners(b, c);
+        CStack::m_top->Transform(c, 8);
+        for (int i = 0; i < 8; i++) {
+            CPnt3D &p = c[i];
+
+            box->m_min.x = p.x <= box->m_min.x ? p.x : box->m_min.x;
+            box->m_min.y = p.y <= box->m_min.y ? p.y : box->m_min.y;
+            box->m_min.z = p.z <= box->m_min.z ? p.z : box->m_min.z;
+            box->m_max.x = p.x >= box->m_max.x ? p.x : box->m_max.x;
+            box->m_max.y = p.y >= box->m_max.y ? p.y : box->m_max.y;
+            box->m_max.z = p.z >= box->m_max.z ? p.z : box->m_max.z;
+        }
+    }
+    _stack.Pop();
 }
 
 extern "C" {
@@ -2635,6 +2709,62 @@ void CZSealBody::HandleDamage(CZProjectile *proj)
             func_00547AA0(this, id, b);
         } else
             func_00545D10(&m_stats, this);
+    }
+}
+
+/* two rays' hits at once, through the unit's two intersection sets (di0, di1) run as one batch on the
+ * world from the entity's node: for each ray the first hit that is not volumetric, not liquid, and
+ * not fully penetrable unless a pickup -- each later one is weighed against a nearest-so-far that is
+ * never kept (0.0, in the build: so the first wins) -- every hit's distance taken from the FIRST ray's
+ * tail (OVL2 0x5AB590, seal_env.cpp's range between HandleDamage and SOCOM 1's GetCharacterHit; new in
+ * SOCOM II, its one caller 0x54D620; the name unknown) */
+extern "C" void func_005AB590(CEntity *ent, zdb::IntersectStruct **hit0, const CPnt3D *tail0,
+                              const CPnt3D *tip0, zdb::IntersectStruct **hit1, const CPnt3D *tail1,
+                              const CPnt3D *tip1)
+{
+    zdb::DiIntersect *dis[2];
+
+    dis[0] = &di0;
+    dis[1] = &di1;
+    di0.m_Type = 2;
+    di0.m_Tail = *tail0;
+    di0.m_Tip = *tip0;
+    di1.m_Type = 2;
+    di1.m_Tail = *tail1;
+    di1.m_Tip = *tip1;
+    zdb::CNode *node = ent->GetNode();
+
+    di0.m_Node = node;
+    di1.m_Node = node;
+    zdb::CWorld::m_world->GetIntersectBatch(dis, 2);
+    for (int r = 0; r < 2; r++) {
+        zdb::DiIntersect *di = dis[r];
+        bool found = false;
+        float best = 0.0f;
+        int n = di->m_Cnt;
+
+        for (int i = 0; i < n; i++) {
+            zdb::IntersectStruct *is = &di->m_Intersects[i];
+            CPnt3D v;
+
+            is->m_pos.Sub(tail0, &v);
+            float d = v.x * v.x + v.y * v.y + v.z * v.z;
+            CMaterialEx *mat = MaterialEx(is->GetMaterial());
+
+            if (mat) {
+                if (mat->IsVolumetric() || mat->IsLiquid())
+                    continue;
+                if (mat->m_penetration == 1.0f && !mat->IsPickup())
+                    continue;
+            }
+            if (!found || d < best) {
+                found = true;
+                if (r == 0)
+                    *hit0 = is;
+                else
+                    *hit1 = is;
+            }
+        }
     }
 }
 
