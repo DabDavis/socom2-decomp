@@ -365,3 +365,196 @@ int func_0018E9E8(int id, u_int *out)
 	*out = v;
 	return 1;
 }
+
+extern int _sf_bind;                            /* the demo's labels (data.txt) */
+extern int _it_bind;
+extern int _scmd_dr_bind;
+extern int _sceCd_ee_read_mode;
+extern int c_cnt asm("c_cnt.60");               /* sceCdInit's static count, the demo's label */
+extern sceSifClientData cdit;                   /* the init and disk-ready clients, their requests */
+extern sceSifClientData cddr;
+extern int _i_mode;
+extern int _dr_mode;
+extern char data_001CC2C0[];                    /* the newer disk-ready call's reply */
+
+/* OPEN (0x2D4 against 0x2E0, 65 structural words): the request's three reply words are tested
+ * 255, 254, then each version / 256 < 2 -- the target keeps `ret` in s0 through a bnezl'd `li s0,2`
+ * per test where this compile if-converts the second into a movz, and its mode is s3 (here s2);
+ * the switch's case tree (bltz, slti 2, bne 5: cases 0 and 1 a break, 5 the exit) is the target's. */
+int sceCdInit(int mode)
+{
+	int ret;
+	int r;
+	int i;
+	int v1, v2, v3;
+
+	if (sceCdSyncS(1))
+		return 0;
+	sceSifInitRpc(0);
+	my_thid = GetThreadId();
+	Init_seq = 1;
+	_icmd_bind = -1;
+	_sf_bind = -1;
+	_ncmd_bind = -1;
+	_scmd_bind = -1;
+	_scmd_dr_bind = -1;
+	_sceCd_ee_read_mode = 0;
+	c_cnt++;
+	_it_bind = -1;
+	while (1) {
+		if ((r = sceSifBindRpc(&cdit, 0x80000592, 0)) < 0) {
+			if (SCE_CD_debug > 0)
+				scePrintf("Libcdvd bind err %d CD_Init %d\n", r, c_cnt);
+			i = 0x100000;
+			while (i--)
+				;
+			continue;
+		}
+		if (cdit.serve != 0)
+			break;
+		i = 0x100000;
+		while (i--)
+			;
+	}
+	_i_mode = mode;
+	_it_bind = 0;
+	sceSifWriteBackDCache(&_i_mode, 4);
+	if (sceSifCallRpc(&cdit, 0, 0, &_i_mode, 4, _sceCd_scmdrdata, 16, 0, 0) < 0) {
+		Init_seq = 0;
+		return 0;
+	}
+	v3 = *(int *)((u_int)&_sceCd_scmdrdata[12] | 0x20000000);
+	v1 = *(int *)((u_int)&_sceCd_scmdrdata[4] | 0x20000000);
+	v2 = *(int *)((u_int)&_sceCd_scmdrdata[8] | 0x20000000);
+	ret = 1;
+	if (v3 != 255) {
+		if (v3 == 254)
+			SCE_CD_debug = 1;
+		else if (v1 / 256 < 2)
+			ret = 2;
+		else if (v2 / 256 < 2)
+			ret = 2;
+	}
+	Init_seq = 0;
+	switch (mode) {
+	case 5:
+		if (SCE_CD_debug > 0)
+			scePrintf("Libcdvd Exit\n");
+		cdvd_exit();
+		_sceCd_ncmd_semid = -1;
+		_sceCd_scmd_semid = -1;
+		cb_semid = -1;
+		return ret;
+	case 0:
+	case 1:
+		break;
+	}
+	cmd_sem_init();
+	PowerOffCB();
+	return ret;
+}
+
+/* OPEN (right size, structure exact: 20 words differ in their registers alone): the SyncS failure
+ * and the call's failure are one block after the call (a goto into it -- two copies cross-jump into
+ * the first's place), but global-alloc orders the call-crossing pseudos otherwise: the target gives
+ * the bind flag's %hi s1, mode s2, the semaphore's s3, the request's s4, the client's s5, the debug
+ * flag's s6, the reply's s7 -- here the request's %hi (pseudo 168: 5 refs over 132 insns) and the
+ * client's lead and mode comes last (3 refs over 74: tools/ccdump.py -f). */
+int sceCdDiskReady(int mode)
+{
+	int i;
+	int ret;
+
+	if (SCE_CD_debug > 0)
+		scePrintf("OLD DiskReady Call\n");
+	cmd_sem_init();
+	if (_sceCd_scmd_semid != PollSema(_sceCd_scmd_semid))
+		return 6;
+	if (sceCdSyncS(1))
+		goto fail;
+	sceSifInitRpc(0);
+	if (_scmd_dr_bind < 0) {
+		while (1) {
+			if (sceSifBindRpc(&cddr, 0x8000059A, 0) < 0) {
+				if (SCE_CD_debug > 0)
+					scePrintf("Libcdvd bind err CdDiskReady\n");
+				i = 0x100000;
+				while (i--)
+					;
+				continue;
+			}
+			if (cddr.serve != 0)
+				break;
+			i = 0x100000;
+			while (i--)
+				;
+		}
+		_scmd_dr_bind = 0;
+	}
+	_dr_mode = mode;
+	sceSifWriteBackDCache(&_dr_mode, 4);
+	if (sceSifCallRpc(&cddr, 0, 0, &_dr_mode, 4, _sceCd_scmdrdata, 4, 0, 0) < 0) {
+fail:
+		SignalSema(_sceCd_scmd_semid);
+		return mode != 8 ? 6 : -1;
+	}
+	if (SCE_CD_debug > 0)
+		scePrintf("DiskReady ended\n");
+	ret = *(int *)((u_int)_sceCd_scmdrdata | 0x20000000);
+	SignalSema(_sceCd_scmd_semid);
+	return ret;
+}
+
+/* The newer disk-ready call (the demo lacks it; strfile.cpp calls it): its own semaphore and server
+ * 0x8000059C over the old call's client and request, falling back to the old call after 17 binds
+ * that find no server. OPEN (0x1FC against 0x204, 8 structural words, 16 register-only): the
+ * target computes the client's %hi on both paths of the bind test (lazy code motion's placement,
+ * `b; lui s5` and `lui s5` at the join) where this compile hoists it into the test's delay slot. */
+int func_0018EF70(int mode)
+{
+	int i;
+	int n;
+	int ret;
+
+	if (SCE_CD_debug > 0)
+		scePrintf("NEW DiskReady Call\n");
+	cmd_sem_init();
+	if (data_001CA870 != PollSema(data_001CA870))
+		return mode != 8 ? 6 : -1;
+	sceSifInitRpc(0);
+	if (_scmd_dr_bind < 0) {
+		n = 0;
+		while (1) {
+			if (sceSifBindRpc(&cddr, 0x8000059C, 0) < 0) {
+				if (SCE_CD_debug > 0)
+					scePrintf("Libcdvd bind err CdDiskReady\n");
+				i = 0x100000;
+				while (i--)
+					;
+				continue;
+			}
+			if (cddr.serve != 0)
+				break;
+			if (n >= 17) {
+				SignalSema(data_001CA870);
+				return sceCdDiskReady(mode);
+			}
+			i = 0x100000;
+			while (i--)
+				;
+			n++;
+		}
+		_scmd_dr_bind = 0;
+	}
+	_dr_mode = mode;
+	sceSifWriteBackDCache(&_dr_mode, 4);
+	if (sceSifCallRpc(&cddr, 0, 0, &_dr_mode, 4, data_001CC2C0, 4, 0, 0) < 0) {
+		SignalSema(data_001CA870);
+		return mode != 8 ? 6 : -1;
+	}
+	if (SCE_CD_debug > 0)
+		scePrintf("DiskReady ended\n");
+	ret = *(int *)((u_int)data_001CC2C0 | 0x20000000);
+	SignalSema(data_001CA870);
+	return ret;
+}
