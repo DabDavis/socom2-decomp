@@ -3,7 +3,14 @@
  * 0x33F890 written here). The file name is SOCOM 1's (its "989snd.c: RPC collision!" message);
  * the API is extern "C" but the file was compiled as C++ -- the command senders carry mangled
  * names -- hence the pragma. Defined in reverse of their image order (-inline deferred). The
- * command numbers are the IOP dispatcher's; the names are SOCOM 1's where it has the function. */
+ * command numbers are the IOP dispatcher's; the names are SOCOM 1's where it has the function.
+ * The command RPC (the world lane round 19): the two senders and the flush, SOCOM 1's with SOCOM
+ * II's quiet flag, share two inlines SOCOM 1's code inlines as well -- the done test (returning an
+ * int: an inlined bool's true is daddiu where the target's is li, and AndWait's `!` then converts
+ * it, sltu/xori) and the fill buffer's send (its returns written through a local copy of the
+ * return values' pointer, the busy word stored but not reread); the buffers' records are typed
+ * (the commands' after the count, the return definitions 16 bytes: with an int view the record's
+ * addresses are set up in another order). */
 #pragma cplusplus on
 
 #include "zsnd.h"
@@ -46,19 +53,100 @@ int sceSifBindRpc(void *cd, unsigned int num, unsigned int mode);
 }
 int gSndCommandBuffer1[0x400];
 int gSndCommandBuffer2[0x400];
-int gSndCommandReturnDef1[0x400];
-int gSndCommandReturnDef2[0x400];
+/* a queued command's return: the callback and its data (16-byte records, 256 to a buffer as there
+ * are commands; the name ours) */
+struct SndReturnDef {
+    SndCompleteProc callback;   /* 0x0 */
+    unsigned long user_data;    /* 0x8 */
+};
+SndReturnDef gSndCommandReturnDef1[256];
+SndReturnDef gSndCommandReturnDef2[256];
 int gActualReturnValues1[0x110];
 int gActualReturnValues2[0x110];
 int *gSndCommandBuffePtr[2];
 int gCommandBuffeBytesAvail[2];
-int *gSndCommandReturnDefPtr[2];
+SndReturnDef *gSndCommandReturnDefPtr[2];
 int *gReturnValuesPtr[2];
 /* the command client (SOCOM 1's gSLClientData, sceSifClientData: the server at 0x24) and the load
  * callback and its data (SOCOM 1's gLoadCB, gLoadUserData) */
 int gSLClientData[10];
 SndCompleteProc gLoadCB;
 unsigned long gLoadUserData;
+
+/* the flags and the status block, the streaming's (defined with it, below) */
+extern int gCaching;
+extern int gStreamingInited;
+extern int gSSRead;
+extern int gSSReadDone;
+extern "C" {
+int sceCdSync(int mode);
+void InvalidDCache(void *start, void *end);
+}
+/* the stream-safe read's callback, and a file load in flight (SOCOM 1's globals, its symbols, by
+ * their order beside gSSRead and gSSReadDone) and SOCOM II's own callback for that load and its data
+ * (the names ours: SOCOM 1 gave the file load gLoadCB and gLoadUserData) -- only the flush reads them
+ * here */
+void (*gCdCallback)(int);           /* 0x488FB8 */
+int gLoadingFromFS;                 /* 0x488FD0 */
+SndCompleteProc gFSLoadCB;          /* 0x48DB20 */
+unsigned long gFSLoadUserData;      /* 0x48DB28 */
+
+/* the command RPC's state (SOCOM 1's globals, its symbols): the reply a call in flight writes (the
+ * busy word points at it, 0 when none is out), the commands whose returns it awaits, the reply and
+ * the request, and the command buffer being filled */
+int *gCommBusy;                /* 0x488F98 */
+int gAwaitingInts;             /* 0x488FA0 */
+int gSyncBuffer[16];           /* 0x489000 */
+int gSyncSendBuffer[16];       /* 0x489040 */
+int gCommandFillBuffer;        /* 0x48DA40 */
+
+/* whether the call in flight is done: none out, or the RPC no longer busy and every return the
+ * IOP owes written (-1 in the reply's first word and in the last awaited one) -- the busy word then
+ * cleared (SOCOM 1's, inline in both its waits and its flush; the name ours) */
+static inline int snd_CommandsReturned(void)
+{
+    if (!gCommBusy)
+        return 1;
+    if (sceSifCheckStatRpc(gSLClientData))
+        return 0;
+    if (gCommBusy[0] == -1 && gCommBusy[gAwaitingInts + 1] == -1) {
+        gCommBusy = 0;
+        return 1;
+    }
+    if (!gQuiet)
+        printf("989snd.c: Sif says RPC isn't busy, but we still don't have returns from the IOP!\n");
+    return 0;
+}
+
+/* the buffer being filled sent, unless it is empty or the commands are being cached: its returns
+ * awaited in its return values, the buffers swapped and the new one emptied (SOCOM 1's, inline in
+ * its wait and its flush; the name ours) */
+static inline void snd_SendCommandBuffer(void)
+{
+    int count = gSndCommandBuffePtr[gCommandFillBuffer][0];
+
+    if (count && !gCaching) {
+        int *returns = gReturnValuesPtr[gCommandFillBuffer];
+
+        gAwaitingInts = count;
+        gCommBusy = returns;
+        returns[count + 1] = 0;
+        returns[0] = 0;
+        while (sceSifCheckStatRpc(gSLClientData)) {
+            if (!gQuiet)
+                printf("989snd.c: RPC collision!\n");
+            FlushCache(0);
+        }
+        sceSifCallRpc(gSLClientData, 77, 1, gSndCommandBuffePtr[gCommandFillBuffer],
+                      4096 - gCommandBuffeBytesAvail[gCommandFillBuffer],
+                      gReturnValuesPtr[gCommandFillBuffer],
+                      gSndCommandBuffePtr[gCommandFillBuffer][0] * 4 + 8, 0, 0);
+        gCommandFillBuffer = gCommandFillBuffer == 1 ? 0 : 1;
+        gSndCommandBuffePtr[gCommandFillBuffer][0] = 0;
+        gCommandBuffeBytesAvail[gCommandFillBuffer] = 4092;
+    }
+}
+
 
 /* SOCOM 1's, with SOCOM II's quiet flag (flags bit 2) and the flags passed to the IOP after the
  * status block: the buffers set up, the command and loader clients bound -- a failed bind hangs --
@@ -106,6 +194,65 @@ int snd_StartSoundSystem(int flags)
     data[0] = (int)gStats;
     data[1] = flags;
     return snd_SendIOPCommandAndWait(0, 8, (char *)data);
+}
+
+/* SOCOM 1's, with SOCOM II's quiet flag and its own file load callback: the call in flight, once
+ * its returns are in, finished -- a file load's callback given the reply, or each command's callback
+ * its return value -- a bank load's callback given the bank once the loader replies, the buffer
+ * being filled sent while no call is out, the stream-safe CD read's end noticed and its callback
+ * told; whether a call or a load is still out */
+int snd_FlushSoundCommands(void)
+{
+    if (gCommBusy) {
+        FlushCache(0);
+        if (snd_CommandsReturned()) {
+            if (gLoadingFromFS) {
+                if (gFSLoadCB)
+                    gFSLoadCB(gSyncBuffer[1], gFSLoadUserData);
+                gFSLoadCB = 0;
+                gLoadingFromFS = 0;
+            } else {
+                int b = gCommandFillBuffer == 1 ? 0 : 1;
+
+                for (int i = 0; i < gSndCommandBuffePtr[b][0]; i++)
+                    if (gSndCommandReturnDefPtr[b][i].callback)
+                        gSndCommandReturnDefPtr[b][i].callback(gReturnValuesPtr[b][i + 1],
+                                                               gSndCommandReturnDefPtr[b][i].user_data);
+            }
+        }
+    }
+    if (gLoadBusy) {
+        FlushCache(0);
+        if (gLoadReturnValue[0] != -1) {
+            if (gLoadCB) {
+                SndCompleteProc cb = gLoadCB;
+                unsigned long data = gLoadUserData;
+
+                gLoadCB = 0;
+                gLoadUserData = 0;
+                cb(gLoadReturnValue[0], data);
+            }
+            gLoadReturnValue[0] = 0;
+            gLoadBusy = 0;
+        }
+    }
+    if (!gCommBusy)
+        snd_SendCommandBuffer();
+    if (gSSRead) {
+        if (!gStreamingInited)
+            sceCdSync(1);
+        else {
+            InvalidDCache(gStats, (char *)gStats + 63);
+            gSSReadDone = !gStats[0];
+        }
+        if (gSSReadDone) {
+            gSSRead = 0;
+            gSSReadDone = 0;
+            if (gCdCallback)
+                gCdCallback(1);
+        }
+    }
+    return gCommBusy || gLoadBusy;
 }
 
 /* SOCOM 1's, with SOCOM II's error and quiet flag: a bank loaded by its file name and offset; the
@@ -380,6 +527,107 @@ void snd_AutoVol(unsigned int handle, int vol, int time, int final)
  * snd_StartCaching and snd_SendCache, by position: SOCOM II's store a word; the flag is SOCOM 1's
  * global gCaching) */
 int gCaching;
+
+/* a queued command: its number, its data's size and the data (SOCOM 1's records, after the
+ * buffer's count; the name ours) */
+struct SndCommand {
+    short command;   /* 0x0 */
+    short size;      /* 0x2 */
+    char data[4];    /* 0x4 */
+};
+
+
+/* SOCOM 1's, with SOCOM II's quiet flag: a command sent at once, its data copied into the request,
+ * once the call before it is done -- the reply awaited, the buffer being filled sent after it, the
+ * reply's second word returned */
+int snd_SendIOPCommandAndWait(int command, int size, char *data)
+{
+    for (int i = 0; i < size; i++)
+        ((char *)gSyncSendBuffer)[i] = data[i];
+    while (gCommBusy) {
+        snd_FlushSoundCommands();
+        FlushCache(0);
+    }
+    gSyncBuffer[2] = 0;
+    gSyncBuffer[0] = 0;
+    gAwaitingInts = 1;
+    gCommBusy = gSyncBuffer;
+    while (sceSifCheckStatRpc(gSLClientData)) {
+        if (!gQuiet)
+            printf("989snd.c: RPC collision!\n");
+        snd_FlushSoundCommands();
+        FlushCache(0);
+    }
+    if (size)
+        sceSifCallRpc(gSLClientData, command, 1, gSyncSendBuffer, size, gSyncBuffer, 12, 0, 0);
+    else
+        sceSifCallRpc(gSLClientData, command, 1, 0, 0, gSyncBuffer, 12, 0, 0);
+    do
+        FlushCache(0);
+    while (!snd_CommandsReturned());
+    int result = gSyncBuffer[1];
+
+    snd_SendCommandBuffer();
+    return result;
+}
+
+/* SOCOM 1's, with SOCOM II's quiet flag: a command with no data and no callback, while nothing is
+ * cached or in flight, sent at once; any other queued in the buffer being filled -- flushing until
+ * the buffer has room for it -- its return definition recorded, and the buffers flushed */
+void snd_SendIOPCommandNoWait(int command, int size, char *data, SndCompleteProc callback,
+                              unsigned long user_data)
+{
+    int recache = 0;
+
+    if (!gCaching && !gCommBusy && !size && !callback) {
+        gSyncBuffer[2] = 0;
+        gAwaitingInts = 1;
+        gCommBusy = gSyncBuffer;
+        gSyncBuffer[0] = 0;
+        while (sceSifCheckStatRpc(gSLClientData)) {
+            if (!gQuiet)
+                printf("989snd.c: RPC collision!\n");
+            snd_FlushSoundCommands();
+            FlushCache(0);
+        }
+        sceSifCallRpc(gSLClientData, command, 1, 0, 0, gSyncBuffer, 12, 0, 0);
+    } else {
+        int stalls = 0;
+        int bytes = size + 4;
+
+        if (bytes % 4)
+            bytes += 4 - bytes % 4;
+        while (gSndCommandBuffePtr[gCommandFillBuffer][0] == 256 ||
+               gCommandBuffeBytesAvail[gCommandFillBuffer] < bytes) {
+            if (gCaching) {
+                recache = 1;
+                gCaching = 0;
+            }
+            snd_FlushSoundCommands();
+            if (stalls == 1 && !gQuiet)
+                printf("snd_SendIOPCommandNoWait: BUFFER %d FULL(%d)! Sound stalled waiting for IOP comands to finish!\n",
+                       gCommandFillBuffer, gSndCommandBuffePtr[gCommandFillBuffer][0]);
+            stalls++;
+        }
+        if (stalls && !gQuiet)
+            printf("snd_SendIOPCommandNoWait: continuing (%d).\n", stalls);
+        if (recache)
+            gCaching = 1;
+        char *rec = (char *)gSndCommandBuffePtr[gCommandFillBuffer] +
+                    (4092 - gCommandBuffeBytesAvail[gCommandFillBuffer]);
+        SndCommand *cmd = (SndCommand *)(rec + 4);
+
+        cmd->command = command;
+        cmd->size = size;
+        for (int i = 0; i < size; i++)
+            cmd->data[i] = data[i];
+        gCommandBuffeBytesAvail[gCommandFillBuffer] -= bytes;
+        gSndCommandReturnDefPtr[gCommandFillBuffer][gSndCommandBuffePtr[gCommandFillBuffer][0]].callback = callback;
+        gSndCommandReturnDefPtr[gCommandFillBuffer][gSndCommandBuffePtr[gCommandFillBuffer][0]].user_data = user_data;
+        gSndCommandBuffePtr[gCommandFillBuffer][0]++;
+        snd_FlushSoundCommands();
+    }
+}
 
 void snd_StartCaching(void)
 {

@@ -368,6 +368,7 @@ public:
 class CShadowCaster {
 public:
     CShadowCaster(CNode *node);
+    void Update();
 
     CMatrix m_matrix;   // 0x0: the unit matrix at first
     CPnt3D m_size;   // 0x40: the node's box's size
@@ -377,13 +378,6 @@ public:
                     //   BuildProjectedMapList)
     unsigned char _6c[0x70 - 0x6c];
 };   // 0x70 bytes
-
-}
-
-/* each shadow caster brought up to date (0x31F570, new in SOCOM II -- not named yet) */
-extern "C" void func_0031F570(zdb::CShadowCaster *caster);
-
-namespace zdb {
 
 /* the save/load driver: the world it builds, the archive it reads and the file's name (SOCOM 1's
  * DWARF; SOCOM II's archive is 0x14 bytes longer, so the name sits at 0xbc) */
