@@ -677,7 +677,13 @@ void FriendInvitationVector::Add(FriendInvitationItem *item)
 }
 
 /* every invitation from the account dropped, and the list shown again (OVL1 0x301CF0).
- * OPEN, 35 instructions (0xC4 against 0xBC): the target keeps the assigned iterator's value in v0
+ * BYTE-EXACT since the online lane's round 22: THE WALK HAS TWO ITERATORS -- `next`, assigned with i
+ * from begin() and never address-taken, is the register the target keeps in v0 (the entry guard's
+ * operand, the step's `addiu v0,v0,64`), i is the stored one the dereference, the erase's by-value
+ * copy and the bottom test read; next is stepped AHEAD of the test and overwritten by erase's result,
+ * so the step lands in the found test's delay slot and the arms share one `i = next` store
+ * (cbRoomPlayerList 0x2F13F0, the same walk with the step in an else arm, keeps its `b`). The rounds
+ * before, on one iterator, for the record: the target keeps the assigned iterator's value in v0
  * across the loop -- the guard tests the value it just stored, the step is `addiu v0,v0,64` in the
  * found test's delay slot -- while re-reading the stored iterator for the dereference; MW here
  * reloads it for the guard and steps the reloaded copy behind a `b`. Assigned or initialised,
@@ -697,13 +703,14 @@ void FriendInvitationVector::Add(FriendInvitationItem *item)
 void FriendInvitationVector::Remove(int id)
 {
     iterator i;
+    iterator next;
 
-    i = begin();
+    i = next = begin();
     while (i != end()) {
+        ++next;
         if (id == (*i).m_info.AccountID)
-            i = erase(i);
-        else
-            ++i;
+            next = erase(i);
+        i = next;
     }
     UpdateDisplay();
 }
