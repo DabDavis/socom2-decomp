@@ -276,6 +276,10 @@ extern "C" const char *func_0058E900(unsigned char cmd)
     }
 }
 
+/* a name's value in the first and the second table, 0 for none (OVL2 0x58E020, 0x58E0A0, new in
+ * SOCOM II; CCharacterType::InitMultiplayerMessages reads the multiplayer messages through them --
+ * the second is SOCOM 1's CSealCtrl::GetCommandId). The byte value a local declared after the
+ * counter: it takes s0, the counter s1 */
 extern "C" unsigned char func_0058E0A0(const char *name)
 {
     if (name)
@@ -288,9 +292,6 @@ extern "C" unsigned char func_0058E0A0(const char *name)
     return 0;
 }
 
-/* a name's value in the first and the second table, 0 for none (OVL2 0x58E020, 0x58E0A0, new in
- * SOCOM II; CCharacterType::InitMultiplayerMessages reads the multiplayer messages through them). The
- * byte value a local declared after the counter: it takes s0, the counter s1 */
 extern "C" unsigned char func_0058E020(const char *name)
 {
     if (name)
