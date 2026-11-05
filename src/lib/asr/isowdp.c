@@ -12,8 +12,8 @@
  * nodes are blocks of the scheduler's small-block allocator (fastallo.c), given back to its free
  * lists by size; a tree node's word indexes a table of its states' offsets. Only the functions
  * written so far are here, in image order: FreeIsoWordTokenDp, InitNewUtterance,
- * ExpandGarbageArrays, ConstructIsoWordTokenDp, InitIsoWordTokenDpProcess, CalcNrNodes,
- * IdleProcess, ScoreCompare. CalcNrNodes reads the child count before its depth test (the
+ * ExpandGarbageArrays, ControlIsoWordTokenDp (round 31c), ConstructIsoWordTokenDp,
+ * InitIsoWordTokenDpProcess, CalcNrNodes, IdleProcess, ScoreCompare. CalcNrNodes reads the child count before its depth test (the
  * target's load in the test's delay slot) and steps its child pointer in the for (the unrolled
  * copies at +12, +24, +36 off one register; `c++` in the call gives a pointer per copy). */
 
@@ -86,9 +86,16 @@ typedef struct ISOWDP {
     TOSFUNC process;                    /* +24 */
     TOSFUNC control;                    /* +28 */
     unsigned char state;                /* +32 */
-    char pad33[31];
+    char pad33[7];
+    int f40;                            /* +40: command 36's four words */
+    int f44;                            /* +44 */
+    int f48;                            /* +48 */
+    int pad52;
+    int f56;                            /* +56 */
+    int nphen;                          /* +60: the language's phonemes */
     int *wordstates;                    /* +64: each word's first state */
-    int pad68;
+    short nunits;                       /* +68: the language's speech units (SOCOM II's word more) */
+    short pad70;
     WHEEL wheel;                        /* +72 */
     short f92;                          /* +92 */
     short f94;                          /* +94 */
@@ -107,16 +114,19 @@ typedef struct ISOWDP {
     unsigned short f152;                /* +152 */
     short pad154;
     int f156;                           /* +156: profile 6 */
-    int f160;                           /* +160: ten times that */
+    unsigned int f160;                  /* +160: ten times that */
     int f164;                           /* +164: profile 7 */
-    int pad168;
+    unsigned char f168;                 /* +168 */
+    char pad169[3];
     int f172;                           /* +172 */
     void *f176;                         /* +176: profile 7's eight-byte records */
     int ngarbage;                       /* +180 */
     int *garbage1;                      /* +184 */
     int *garbage2;                      /* +188 */
     int f192;                           /* +192 */
-    int pad196[4];
+    int garbage;                        /* +196: the single-word garbage phoneme */
+    int sgarbage;                       /* +200: the sentence garbage phoneme */
+    int pad204[2];
 } ISOWDP;                               /* 212 (ConstructIsoWordTokenDp's) */
 
 /* tos.c */
@@ -136,7 +146,7 @@ void *memcpy(void *dst, const void *src, unsigned int n);
 
 /* not written yet: the map's rows */
 int func_004EAB30();                    /* IsoWordTokenDpProcess */
-int ControlIsoWordTokenDp();
+static int ControlIsoWordTokenDp(struct ISOWDP *e, unsigned char cmd, void *arg, void *arg2);
 int ExtendNodeWheel(ISOWDP *e, WTOKEN ***a, WTOKEN ***b);
 
 static void FreeIsoWordTokenDp(ISOWDP *e);
@@ -352,6 +362,136 @@ static int ExpandGarbageArrays(ISOWDP *e)
         }
     }
     return err;
+}
+
+/* the language's accessors (language.c's _LangVirtualTable), as command 34 hands them over */
+typedef struct ISOLANG ISOLANG;
+struct ISOLANG {
+    void *data;
+    void *s1[5];
+    int (*GetNbrPhenome)(ISOLANG *l);                           /* +24, slot 6 */
+    void *s7[9];
+    int (*GetSingleWordGarbagePhenome)(ISOLANG *l);             /* +64, slot 16 */
+    int (*GetSentenceGarbagePhenome)(ISOLANG *l);               /* +68, slot 17 */
+    void *s18[2];
+    short (*GetNbrSpeechUnit)(ISOLANG *l);                      /* +80, slot 20 */
+    void *s21[21];
+    int *(*GetpSpeechUnit)(ISOLANG *l);                         /* +168, slot 42 */
+};
+
+/* commands 26, 27 and 36's four words */
+typedef struct ISOPARAM {
+    int f0;
+    unsigned int f4;                    /* +4: command 26's N-best count */
+    int f8;
+    unsigned int f12;                   /* +12 */
+} ISOPARAM;
+
+extern int GetNBest(ISOWDP *e, unsigned int n);
+extern int InitIsoWordTokenDpContext(ISOWDP *e, void *ctx, void *arg2);
+extern unsigned char qQueueControl(void *q, int what, int reader, void *arg);
+extern unsigned char _tosControl(void *log, int id, int a, int b);
+extern void tosBaseBlockDestruct(void *b);
+
+/* the N-best's records re-allocated for k of them: 1 when the heap has none */
+static __inline__ unsigned char AllocNBest(ISOWDP *e, ISOTOS *tos, unsigned int k)
+{
+    if (e->f176 != 0)
+        heap_Free(tos->heap, e->f176);
+    e->f176 = heap_Alloc(tos->heap, k * 8);
+    if (e->f176 == 0)
+        return 1;
+    return 0;
+}
+
+/* the block's commands: 3 runs the pass, 5 idles it, 4 ends the utterance (the N-best sent, 9, or
+ * none, 10), 26/27 set and read the N-best's parameters, 34 takes the language, 35 the context,
+ * 36 four words, 37/38 start and stop the input, 39 frees, 0xFF destroys. SOCOM 1's body (round
+ * 31c): the cases in SOCOM 1's order (37, 38, 4, 3, 5, 34 ... 27: GCC lays the bodies out as
+ * written); qQueueControl returning an unsigned char (as an int its return is a sibling call); the
+ * garbage phonemes narrowed at the store (the accessors return int: the target's andi); the
+ * record count read back from the block for the division (one load of the word); the records'
+ * allocation through an inline returning 1 on failure, as SOCOM 1's (plainly written, the failure's
+ * `move v0,zero` is folded into the null test). */
+static int ControlIsoWordTokenDp(ISOWDP *e, unsigned char cmd, void *arg, void *arg2)
+{
+    ISOPARAM *p = arg;
+    ISOLANG *l = arg;
+    int n;
+
+    switch (cmd) {
+    case 37:
+        return qQueueControl(e->inputs->q, 7, e->inputs->reader, arg);
+    case 38:
+        return qQueueControl(e->inputs->q, 6, e->inputs->reader, 0);
+    case 4:
+        n = GetNBest(e, e->f164);
+        if (InitNewUtterance(e) != 0)
+            return 0;
+        e->process = (TOSFUNC)IdleProcess;
+        if (n != 0)
+            return _tosControl(e, 9, (int)&e->f176, n) == 0;
+        return _tosControl(e, 10, 0, 0) == 0;
+    case 3:
+        e->process = (TOSFUNC)func_004EAB30;
+        break;
+    case 5:
+        e->process = (TOSFUNC)IdleProcess;
+        break;
+    case 34:
+        e->nphen = l->GetNbrPhenome(l);
+        e->garbage = (unsigned short)l->GetSingleWordGarbagePhenome(l);
+        e->sgarbage = (unsigned short)l->GetSentenceGarbagePhenome(l);
+        e->wordstates = l->GetpSpeechUnit(l);
+        e->nunits = l->GetNbrSpeechUnit(l);
+        break;
+    case 35:
+        FreeIsoWordTokenDp(e);
+        if (InitIsoWordTokenDpContext(e, arg, arg2) != 0)
+            return 0;
+        break;
+    case 36:
+        e->f44 = p->f8;
+        e->f56 = p->f4;
+        e->f48 = p->f12;
+        e->f40 = p->f0;
+        break;
+    case 39:
+        FreeIsoWordTokenDp(e);
+        return 1;
+    case 26: {
+        unsigned int k;
+        ISOTOS *tos;
+
+        e->f100 = p->f0;
+        tos = e->tos;
+        k = p->f4;
+        e->f164 = k;
+        if (AllocNBest(e, tos, k))
+            return 0;
+        e->f168 = p->f8;
+        e->f160 = p->f12;
+        e->f156 = e->f160 / 10;
+        break;
+    }
+    case 27:
+        p->f0 = e->f100;
+        p->f12 = e->f160;
+        p->f4 = e->f164;
+        p->f8 = e->f168;
+        break;
+    case 28:
+    case 29:
+    case 30:
+        break;
+    case 0xFF:
+        FreeIsoWordTokenDp(e);
+        tosBaseBlockDestruct(e);
+        return 1;
+    default:
+        return 0;
+    }
+    return 1;
 }
 
 void *ConstructIsoWordTokenDp(void *tos, unsigned char id)
