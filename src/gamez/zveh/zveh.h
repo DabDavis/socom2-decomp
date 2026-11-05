@@ -347,7 +347,13 @@ public:
      * range (Init) and copied by PreTick */
     CTurretAiParams m_aiParams;   // 0x204
     int m_240;   // 0x240: cleared at the mission's start
-    unsigned char _244[0x254 - 0x244];
+    /* the view cone (SOCOM 1's CAiCone, 0x38 bytes -- seal_sensors.cpp's CSensorCone; laid out here
+     * field by field): the depth along it and the vector to the point last tested (the target scan
+     * 0x3A7A40), its height (the AI's visual range), its radius there (the height times the
+     * definition's half-angle tangent), the radius at the apex (25) and the height's inverse, then the
+     * apex and the axis (PreTick sets them) */
+    float m_coneDot;   // 0x244
+    CPnt3D m_coneVec;   // 0x248
     float m_254;   // 0x254: PreTick's copy of m_220, its product with the definition's m_120,
     float m_258;   // 0x258: 25, and its inverse
     float m_25c;   // 0x25c

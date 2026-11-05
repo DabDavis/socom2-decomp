@@ -320,8 +320,8 @@ public:
     float GetArmingDistance();
     void SetArmingDistance(float v);
     /* the recoil's share (SOCOM II's, the float at 0x6C: 0x3D2000 and 0x3D2010; ReadWeapon's
-     * "RecoilPct", 0 by default -- the kit's Recoil hands it to the SEAL's recoil step, seal_kit.cpp's
-     * func_003D2000; the names ours, after the rdr field) */
+     * "RecoilPct", 0 by default -- the kit's Recoil hands it to the SEAL's recoil step, seal_kit.cpp
+     * calling it by address; the names ours, after the rdr field) */
     float GetRecoilPct();
     void SetRecoilPct(float pct);
     /* the range (SOCOM 1's, the float at 0x3C: 0x3D27F0) */
