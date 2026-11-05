@@ -35,6 +35,11 @@ class CNodeAction;
  * it came (zseal.h sees it through this header) */
 enum AI_SIGNAL { AI_SIGNAL_0 = 0, AI_SIGNAL_LAST = 255 };
 
+/* the goals a controller pursues (SOCOM 1's DWARF, a byte). Here, not in zseal.h, since CAiSAvoid
+ * holds one (its m_goal, loaded with lb: the enum's own type, where a signed char cast to it gives
+ * lbu) -- zseal.h and ai_group.cpp see it through this header (the kit's round 51) */
+enum GOAL_TYPE { GOAL_NONE = 0, GOAL_SCAN = 1, GOAL_LOOK = 2, GOAL_MOVE = 3, GOAL_SHOOT = 4, GOAL_AVOID = 5, GOAL_RECOVER = 6 };
+
 /* the state kinds (SOCOM 1's AI_STATE, a byte: CAiState's constructor stores it with sb). The
  * values are the ones CAiState::Create (0x5F6550) builds each state for; the names ours, after
  * the classes (0 and 5 build a plain CAiState) */
@@ -770,7 +775,7 @@ public:
     CPnt3D m_6c;   // 0x6c: the way to step (the map search's direction)
     CPnt3D m_78;   // 0x78: the point to step to (step 1's goal)
     CPnt3D m_84;   // 0x84: the way to face there (flag 2)
-    signed char m_goal;   // 0x90: the goal's kind, a GOAL_TYPE (zseal.h's, after this header: lb)
+    GOAL_TYPE m_goal;   // 0x90: the goal's kind (a byte enum: lb)
     unsigned char _91[0x94 - 0x91];   // 0x94 bytes, Create's new
 };
 

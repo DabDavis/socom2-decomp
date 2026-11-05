@@ -240,7 +240,12 @@ inline bool InsideRange(float v, float range)
  * folds the +1 into the offsets here; the flags take t1/t0 there. Not the flags' type or
  * declaration order, nor an index variable of its own; round 18: `int j = i + 1` (first or before the
  * second axis) computes it apart but goes 0x248, an axis helper inlined twice 124 off
- * (build/scratch/core/v_csv.py) */
+ * (build/scratch/core/v_csv.py). Round 19: MW folds the +1 of `[v + 1]` into the displacement only
+ * when v is a plain variable at reassociation -- a named, const or block-local `j = i + 1` is
+ * propagated and folded alike (0x238), while `[stick * 2 + 1]` with `int i = stick * 2` kept for the
+ * x axis is left unfolded, CSE'd onto i (addiu, sll) at the target's size 0x240 -- but computes
+ * stick * 40 ahead of i and colours i t2 (109 off; no placement of i and the offset's temporary
+ * gives the target's v1/t5 in that graph): build/scratch/core/v_csv19*.py */
 void CPad::CheckStickVelocity(float &x, float &y, int stick)
 {
     int i = stick * 2;
