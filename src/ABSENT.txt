@@ -15,3 +15,4 @@ Shutdown__7CAiStarFv          # ai_astar.cpp: the A* lists' storage freed (the n
 __ct__7CAiMapsFv              # ai_maps.cpp: CAiMaps' constructor (the name the class's), out of line; __sinit_ai_maps.cpp inlines it (whole at -inline level=6), so the linker stripped it
 Clear__9CAiEventQFv           # ai_events.cpp: the event queue emptied (the name ours) -- never called, dead-stripped; the handle list's range erase it instantiates survives in the tail, 0x50FBD0 (~CAiEventQ and OnDeath call it)
 ClearBodyPartNames_Map__Fv    # seal_cfg.cpp: SOCOM 1's (its demo's 0x280E80), the body parts' map cleared -- never called in SOCOM II, dead-stripped; the map's clear it instantiates survives in the tail, 0x58D150 with destroy 0x58D450 (anim.cpp's 0x5E30F0 calls it)
+InAirControl__10CZSealBodyFv  # seal_body.cpp: SOCOM 1's InAirControl (its demo's 0x278150), no floats in SOCOM II -- SealAnim 0x5870E0 inlines it (state 6), then stripped
