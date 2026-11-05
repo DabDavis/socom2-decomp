@@ -116,10 +116,9 @@ const CVehicleDef *CVehicleDefVector::PrefixMatch(const char *name)
 /* the definitions read: the vector sized to the "VEHICLE" list's pairs, each parsed from its name
  * and value (CTurretDefVector::Init's twin). The resize is include/vector's, over CVehicleDef's
  * inline constructor: it and its erase (0x3AE750, 0x3AE800) are byte-exact in this unit's template
- * tail. OPEN, its insert (0x3AF040), the target's size now (the dead-stripped stand-in at the end of
- * the unit makes the tail inline the temporary's destruction, as the target's does) but 121
- * instructions renamed: include/vector's open class insert -- the in-place branch's end pointer
- * shares data_'s register (a0) in the target where MW gives it a fresh one (a3). The tail's deleter
+ * tail, and so is its insert (0x3AF040: include/vector's class insert since the MSL lane's work on
+ * it -- the dead-stripped stand-in at the end of the unit makes the tail inline the temporary's
+ * destruction, as the target's does). The tail's deleter
  * destructor and clear at 0x3AFAA0/0x3AFB10 are NOT CVehicleDef's, though their code is the same:
  * ~CVehicle (0x3ACA60, not written) calls 0x3AFAA0 for its region's vector at 0x18C. */
 int CVehicleDefVector::Init(const char *name, const char *path)
