@@ -6167,10 +6167,10 @@
 0x003448E0 0x2C func_003448E0  # OVL1
 0x00344910 0x2D4 func_00344910  # OVL1
 0x00344BF0 0x29C func_00344BF0  # OVL1
-0x00344E90 0x10 func_00344E90  # OVL1
-0x00344EA0 0x14 func_00344EA0  # OVL1
-0x00344EC0 0x8 func_00344EC0  # OVL1
-0x00344ED0 0x10 func_00344ED0  # OVL1
+0x00344E90 0x10 HashLess__FRCUiRCUi  # OVL1; the world lane round 22: ours: the hashes' order (a < b over two references), out of line -- the sound list's binary search 0x344BF0 calls it in its self-inlined copy where its outer copy inlines the sltu (zsnd_csnd.cpp)
+0x00344EA0 0x14 HashEqual__FRCUiRCUi  # OVL1; the world lane round 22: ours: the hashes' equality (two references), out of line -- the binary search's self-inlined copy tests the key against a sound's hash with it (zsnd_csnd.cpp)
+0x00344EC0 0x8 GetHash__4CSndFv  # OVL1; the world lane round 22: ours -- the address of a sound's hash (0x18), out of line in the binary search's self-inlined copy, inline in its outer copy (zsnd_csnd.cpp, zsnd.h)
+0x00344ED0 0x10 __vc__Q23std48__vector_imp<P4CSnd,Q23std17allocator<P4CSnd>,1>FUi  # OVL1; the world lane round 22: include/vector's [] of CSnd::m_soundlist (data_ at +8), out of line in the binary search's self-inlined copy (zsnd_csnd.cpp)
 0x00344EE0 0x3C func_00344EE0  # OVL1
 0x00344F20 0x8 func_00344F20  # OVL1
 0x00344F30 0x44 GetSoundByName__4CSndFPCc  # OVL1; s1:callee
