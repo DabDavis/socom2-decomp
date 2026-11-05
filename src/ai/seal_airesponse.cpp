@@ -1104,6 +1104,66 @@ void CAiSPathRecover::OnSignal(SIGNAL sig, CSealCtrlAi *ai)
     }
 }
 
+/* the rush's count of SEALs in it (the SEALs' OVL2 bss 0x66B048: seal_ai.cpp's AI init zeroes it) */
+extern "C" int data_0066B048;
+
+/* the countdown run down by dt, whether it has run out -- an infinite one never runs (seal_ai.cpp's
+ * TickGoalTimer; the name ours) */
+static inline bool RushTimerTick(CAiTimer &t, float dt)
+{
+    bool r = false;
+
+    if (t.m_timer != CAiTimer::infinite) {
+        t.m_timer -= dt;
+        r = t.m_timer != CAiTimer::infinite && t.m_timer <= 0.0f;
+    }
+    return r;
+}
+
+/* a rush's events: reset -- no target, the wait 1-5 seconds; entering -- standing, the state's
+ * clock at 10, the flags' bits 0 and 2, the wait drawn and already run down by 0.5 to twice the
+ * delay's minimum; a sub-state (1) leaves the count of rushing SEALs one less if it was in it and
+ * drops the AI's goals; leaving (3) ends it (OVL2 0x6036B0; SOCOM 1's 0x2E51F0 cleared the target and
+ * stood the SEAL only -- its signal 0's -1 clock is 10 here, the rest new) */
+void CAiSRush::OnSignal(SIGNAL sig, CSealCtrlAi *ai)
+{
+    static Rfloat s_delay(3.0f, 5.0f);
+
+    switch (sig) {
+    case SIGNAL_4:
+        m_target = CEntity::invalidId;
+        m_timer.m_min = 1.0f;
+        m_timer.m_range = 4.0f;
+        break;
+    case SIGNAL_0:
+        SetStance__11CSealCtrlAiF11SEAL_STANCE(ai, 0);
+        m_time = 10.0f;
+        SetFlags(1, 0);
+        SetFlags(4, 0);
+        m_timer.m_timer = m_timer.Period();
+        RushTimerTick(m_timer, Rfloat(0.5f, 2.0f * s_delay.m_min));
+        break;
+    case SIGNAL_1:
+        if (m_flags & 0x10)
+            data_0066B048--;
+        func_005628F0(ai);
+        break;
+    case SIGNAL_2:
+        break;
+    case SIGNAL_3:
+        SetActive(false);
+        break;
+    }
+}
+
+/* the SEAL rushed, kept by its id -- the invalid id for none (OVL2 0x603690, between the rush's Tick
+ * and OnSignal: SOCOM 1's CAiSRush::SetTarget 0x2E51D0, between the same two, its words with the
+ * target at 0x5C for 0x2C) */
+void CAiSRush::SetTarget(CZSealBody *seal)
+{
+    m_target = seal ? seal->m_id : CEntity::invalidId;
+}
+
 /* standing or crouched (an inline taking the stance by value: its argument is read ahead of the
  * `&&` it sits in, the compare narrows it again; the name ours) */
 inline bool Upright(SEAL_STANCE s)

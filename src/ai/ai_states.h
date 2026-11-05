@@ -803,9 +803,12 @@ class CAiSRush : public CAiState {
 public:
     /* its timer a CAiTimer member (see CAiSBreach) */
     CAiSRush() : CAiState(AI_STATE_RUSH), m_timer(0.0f) {}
+    virtual void OnSignal(SIGNAL sig, CSealCtrlAi *ai);
     virtual ~CAiSRush();
+    void SetTarget(CZSealBody *seal);
 
-    unsigned char _58[0x60 - 0x58];
+    unsigned char _58[0x5c - 0x58];
+    unsigned int m_target;   // 0x5c: the target's id (SetTarget), the invalid id for none
     CAiMapLoc m_60;   // 0x60
     CAiTimer m_timer;   // 0x64 (Create builds it with 0.0; 0x70 bytes)
 };
