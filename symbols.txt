@@ -7715,9 +7715,9 @@
 0x003A76D0 0x208 func_003A76D0  # OVL1
 0x003A78E0 0x158 func_003A78E0  # OVL1
 0x003A7A40 0x354 func_003A7A40  # OVL1
-0x003A7DA0 0x30 func_003A7DA0  # OVL1
-0x003A7DD0 0x58 func_003A7DD0  # OVL1
-0x003A7E30 0x74 func_003A7E30  # OVL1
+0x003A7DA0 0x30 func_003A7DA0  # OVL1; OVL1's copy of the DI request list's push_back (OVL2 0x5C97A0, the same words): the turret's target scan 0x3A7A40 calls it out of line behind RequestRay's one-level cut, veh_turret.cpp emitting it (the wep lane, round 30); ovl-copy: push_back__Q23std56list<PQ27CDiPool3dir,Q23std26allocator<PQ27CDiPool3dir>>FRCPQ27CDiPool3dir
+0x003A7DD0 0x58 SetRequest__FPQ27CDiPool3dirRC6CPnt3DRC6CPnt3DP7CEntityPQ23zdb5CNodeP7CEntity  # OVL1; by hand (the wep lane, round 30: a DI request set up -- the ray from tail to tip, state 3, no DiIntersect, unaged, whose test, the target's node and the target -- an inline's out-of-line copy behind RequestRay's one-level cut in the turret's target scan 0x3A7A40, veh_turret.cpp; a dir member in the original by its this; OVL2's copy 0x5C97D0; the name ours)
+0x003A7E30 0x74 GetRequest__FRQ27CDiPool8CDirList  # OVL1; by hand (the wep lane, round 30: the DI pool's get -- a request taken off the free list's front, or a new 0x34-byte one made when it is empty -- an inline's out-of-line copy behind RequestRay's one-level cut in the turret's target scan 0x3A7A40, veh_turret.cpp; a CDirList member in the original by its this = &_diPool.m_free; OVL2's copy 0x5C9830 is the SEALs' twin's; the name ours)
 0x003A7EB0 0xE4 func_003A7EB0  # OVL1
 0x003A7FA0 0x8C func_003A7FA0  # OVL1
 0x003A8030 0x28C func_003A8030  # OVL1
