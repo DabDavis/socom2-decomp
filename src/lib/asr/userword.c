@@ -14,8 +14,8 @@
  * Round 29c: CheckConsistency (DoLabelStart/DoLabelStop inlined from GNU extern inline bodies
  * above it, their real definitions in place) and RejectTrainUtters, SOCOM 1's bodies. Round 30c:
  * DoUserWordTraining, SOCOM 1's body as it stands (the out-parameters at +920/+924 typed in casr.h).
- * OPEN: SendLabelsToEngine (26) and SendPartOfLabelsToEngine (36s), diagnosed in place;
- * FindBestTranscription (round 30c, 0x390 against 0x398) diagnosed in place.
+ * OPEN: SendLabelsToEngine (26) and SendPartOfLabelsToEngine (36s), diagnosed in place.
+ * FindBestTranscription (OPEN since round 30c) byte-exact in round 32c.
  * Round 31c: DoDurationModeling and ScoreTranscriptions, SOCOM 1's bodies (the object 18 of 21:
  * the scoring result at +944 typed in casr.h, the back pointers' phoneme at SEGLABEL +16).
  *
@@ -237,44 +237,61 @@ static void CalcF2(float *out, float *in, unsigned char n)
  * body with SOCOM II's float calls (its empty double loop is in the image too). The index's
  * multiplier a variable (`j * n + i`): the target multiplies through a register holding 3 (`li s2,3;
  * mult`, SOCOM 1's too), which a literal 3 never does (synthesised, and `i * 3 + i` folds to i * 4).
- * OPEN (0x390 against 0x398, round 30c): the target holds a second register for the second loop's
- * 3 (s1; one variable here gives one pseudo, s2, for both), keeps the first result row's base in
- * a register (`move s4,sp`), applies the acoustic term's `- 0.9` after its join (`mtc1 zero; sub.s`
- * in the zero arm: here fold distributes it and folds 0 - 0.9) and copies the zeros from fsel's
- * register in fsel, tsel, max order; a per-loop count and the subtraction after the join tried
- * (build/scratch/gcc/v_fbt_*.py) lose 8 more bytes. */
+ * Round 32c closed it (0x390 of 0x398 since round 30c), each piece read off the target:
+ * - the score rows are written through pointers set before their loops (`p1 = f1;`): a pointer
+ *   value is its own pseudo (the target's `move s4,sp` for the row at sp+0, which an array store
+ *   never gets: f1[i]'s frame address is the frame register itself) and indexes as `i * 4 + p`
+ *   (`addu v1,v1,s4`; an array store adds the base first);
+ * - each loop its own count (`n2 = 3`, the target's second `li s1,3`), the pointer and the count
+ *   assigned in that order ahead of the loop (the target's addiu, li, then the loop's `move s0,zero`);
+ * - each loop's sum and ratio block variables (the acoustic loop's chain all in $f12, the duration
+ *   loop's sum in $f1), and the acoustic term's `- 0.9` and floor statements of their own, so the
+ *   subtraction follows the join (`mtc1 zero; sub.s` in the zero arm) and the floor is in place;
+ * - the smaller duration term doubled into a variable of its own and added to the acoustic term
+ *   apart (`t = v + f3[m]`): the sum then lands in another register ($f0 against $f1) and the f3
+ *   load after the join, GCSE's copy of &f1[m] (`move v0,v1`) taking bc1f's delay slot. */
 static int FindBestTranscription(CASR *c, float *scores, float *durs, int *best)
 {
     float f1[3], f2[3], f3[3];
-    float sum, x, t;
+    float t, v;
     float fsel = 0, tsel = 0, max = 0, min = 3.0f;
     unsigned char i, j, k, m;
     int bi = 0, cur;
-    int n = 3;
+    int n, n2;
+    float *p1, *p3;
 
+    p1 = f1;
+    n = 3;
     for (i = 0; i < 3; i++) {
-        sum = 0;
+        float sum = 0, x;
+
         for (j = 0; j < 3; j++)
             if (j != i)
                 sum += durs[j * n + i];
         x = sum == 0 ? 1.305f : MIN(durs[i * n + i] / sum - 0.5f, 1.305f);
-        f1[i] = expf(-powf(MAX(x, 0.0f), 2.0f) * 50.0f);
+        p1[i] = expf(-powf(MAX(x, 0.0f), 2.0f) * 50.0f);
     }
     CalcF2(f2, durs, 3);
+    p3 = f3;
+    n2 = 3;
     for (i = 0; i < 3; i++) {
-        sum = 0;
+        float sum = 0, x;
+
         for (j = 0; j < 3; j++)
             if (j != i)
-                sum += scores[j * n + i];
-        x = (sum == 0 ? 0 : 2 * scores[i * n + i] / sum) - 0.9f;
-        f3[i] = expf(-powf(MAX(x, -0.923f), 2.0f) * 50.0f);
+                sum += scores[j * n2 + i];
+        x = sum == 0 ? 0 : 2 * scores[i * n2 + i] / sum;
+        x -= 0.9f;
+        x = MAX(x, -0.923f);
+        p3[i] = expf(-powf(x, 2.0f) * 50.0f);
     }
     for (j = 0; j < 3; j++)
         for (k = 0; k < 3; k++)
             ;
     cur = *best;
     for (m = 0; m < 3; m++) {
-        t = (f1[m] < f2[m] ? 2 * f1[m] : 2 * f2[m]) + f3[m];
+        v = f1[m] < f2[m] ? 2 * f1[m] : 2 * f2[m];
+        t = v + f3[m];
         if (max < t) {
             max = t;
             bi = m;
