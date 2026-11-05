@@ -2196,7 +2196,7 @@
 0x00232950 0x14 Clear__10CTCMSoundsFv  # OVL1; ours by hand (the HUD lane, round 27: hud_tcmtree.cpp -- the loaded flag and the three sounds cleared; CTCM::Reset calls it)
 0x00232970 0x58 Load__10CTCMSoundsFv  # OVL1; ours by hand (the HUD lane, round 27: hud_tcmtree.cpp -- .TCM_SLIDE, .TCM_SELECT twice by CSnd::GetSoundByName)
 0x002329D0 0x18 __ct__10CTCMSoundsFv  # OVL1; by hand (the HUD lane, round 24: the menu tree unit's -- the menu's sounds' constructor, called out of line by CTCM's constructor 0x237390 on CTCM+0xDB8, as round 23's notes had it)
-0x002329F0 0x1CC tcmAddKindItems__FUc  # OVL1; ours by hand (the HUD lane, round 41: hud_tcmtree.cpp -- one kind's items for the cache builder 0x232BC0, which calls it twenty times with byte constants: the kind's item under the first three groups' parents (0x58DD70(1..3)), then its entries (0x58DF20 to 0x58DEB0) under the third one's caption)
+0x002329F0 0x1CC tcmAddKindItems__F10FT_COMMAND  # OVL1; ours by hand (the HUD lane, round 41: hud_tcmtree.cpp -- one kind's items for the cache builder 0x232BC0, which calls it twenty times with byte constants: the kind's item under the first three groups' parents (0x58DD70(1..3)), then its entries (0x58DF20 to 0x58DEB0) under the third one's caption); the HUD lane, round 54: the kind is CSealCtrl::GetCommandName's FT_COMMAND (OVL2 0x58EF80, the SEALs' round 46) -- passed unnarrowed to it and its four sibling readers, where an unsigned char parameter converted at each call adds an andi 0xff
 0x00232BC0 0x1918 func_00232BC0  # OVL1
 0x002344E0 0xA54 func_002344E0  # OVL1
 0x00234F40 0x25C Select__4CTCMFPCc  # OVL1; ours by hand (the HUD lane, round 27: hud_tcmtree.cpp -- the recogniser's word: the open column's child of that name (+0x698) put on the path and run through its entry's command at +0x60 between tcmSetCurNode/tcmClearCurNode, a submenu opened (tcmOpenNode) or the menu closed with the back sound; a hidden item's command in the recogniser's mode; cbrecoResult calls it)
@@ -2208,7 +2208,7 @@
 0x00235760 0x110 FindPrev__4CTCMFP8CTCMNode  # OVL1; ours by hand (the HUD lane, round 27: hud_tcmtree.cpp -- the previous selectable child (not hidden, +0x741 clear) before theTCM's path back, wrapping from the last; the current one if none; 0x235D40 calls it)
 0x00235870 0x128 FindNext__4CTCMFP8CTCMNodeb  # OVL1; ours by hand (the HUD lane, round 27: hud_tcmtree.cpp -- the next selectable child after theTCM's path back, wrapping from the first; -1 for no column, the current one if asked; Next and 0x235D40 call it)
 0x002359A0 0x394 func_002359A0  # OVL1
-0x00235D40 0x384 func_00235D40  # OVL1
+0x00235D40 0x384 HandleOpenPad__4CTCMFP4CPadf  # OVL1; ours by hand (the HUD lane, round 54: hud_tcmtree.cpp -- the open menu's input, CTCM::Tick's mode 1: Tick passes its pad and dt through in a1 / f12, and the handler lays theTCM out with that f12)
 0x002360D0 0x180 Tick__4CTCMFP4CPadf  # OVL1; ours by hand (the HUD lane, round 27: hud_tcmtree.cpp -- the hold run down, then a jump table on the mode byte: 1 0x235D40, 2/3 the controller's menu state off, 4 0x2359A0, 5 and 6 the close tests on button 11 (0x2C64E0); CHUD::Tick calls it with the pad in a1)
 0x00236250 0x8 Set__8CTCMModeFi  # OVL1; ours by hand (the HUD lane, round 23: hud_tcm.cpp -- the radio command menu's mode byte at theTCM+0x750 set; the commands' layout and the tree call it out of line: the unit boundary)
 0x00236260 0x1C8 tcmSetNodeActions__Fv  # OVL1; ours by hand (the HUD lane, round 39: hud_tcm.cpp -- the action points (0x2B4CD0's list) given to the children of every NODEACTION ROOT node, their two lines set to each prompt; the builder 0x232BC0 calls it; byte-exact)
@@ -3791,7 +3791,7 @@
 0x002A4920 0xE8 TickInFirefight__8CMissionFf  # OVL1; s1:calls by hand (the states lane, round 40): SOCOM 1's CMission::Tick calls TickInFirefight__8CMissionFf (0x1F2B30) on this with dT right after Tick__9CSpawnersFf, as SOCOM II's Tick 0x2AA490 calls this; both take ftsGetPlayer and set the jukebox (SOCOM 1's IsInFight twice, SOCOM II's SetIntensity twice, the danger through 0x2A4A10); fts_mission.cpp, byte-exact
 0x002A4A10 0x288 func_002A4A10  # OVL1
 0x002A4CA0 0x84 GetMissionCamByIdentifier__8CMissionFPCc  # OVL1; s1:callee
-0x002A4D30 0x560 LoadObjectiveCams__8CMissionFP8CRdrFile  # OVL1; s1:calls by hand (the states lane, round 24): CMission::Open (0x2AC410, byte-exact) calls it on hudobjectives.rdr, then zrdr_free, where SOCOM 1's Open calls LoadObjectiveCams__8CMissionFP8CRdrFile (this in a0, the file in a1, as here)
+0x002A4D30 0x560 LoadObjectiveCams__8CMissionFP8CRdrFile  # OVL1; s1:calls by hand (the states lane, round 24): CMission::Open (0x2AC410, byte-exact) calls it on hudobjectives.rdr, then zrdr_free, where SOCOM 1's Open calls LoadObjectiveCams__8CMissionFP8CRdrFile (this in a0, the file in a1, as here); byte-exact in fts_mission.cpp since the states lane, round 42 (LoadMissionCams' shape, SOCOM II's ISBONUS and NAV_POINTS added)
 0x002A5290 0x248 LoadMissionCams__8CMissionFP8CRdrFile  # OVL1; s1:calls by hand (the states lane, round 24): CMission::Open calls it on missioncams.rdr where SOCOM 1's Open calls LoadMissionCams__8CMissionFP8CRdrFile, the same body -- the list's cameras deleted and erased, then MISSIONCAMS' seven strings per camera (IDENTIFIER .. ON_CALL_MUSIC), new CMissionCam, Set, push_back
 0x002A54E0 0xE5C UnSerialize__8CMissionFPCcP8CRdrFilei  # OVL1; s1:vtable by hand (the states lane, round 26): slot 4 of CMission's vtable 0x406290, CSaveModule's UnSerialize(const char *, CRdrFile *, int) overridden as SOCOM 1's CMission::UnSerialize 0x1F3460 does (slot 5, the CZAR overload, stays CSaveModule's 0x33D230)
 0x002A6340 0x610 Serialize__8CMissionFi  # OVL1; s1:vtable by hand (the states lane, round 26): slot 3 of CMission's vtable 0x406290 (after ~CMission), CSaveModule's Serialize(int) overridden as SOCOM 1's CMission::Serialize 0x1F3520 does
@@ -3832,7 +3832,7 @@
 0x002A9EE0 0x8 func_002A9EE0  # OVL1
 0x002A9EF0 0x8 DestroyNetGame__8CMissionFv  # OVL1; s1:ref by hand (the UI-commands lane's lead, vetted by the states lane: SOCOM 1's paired UI handler calls DestroyNetGame__8CMissionFv from the same place; SOCOM II's is SOCOM 1's 8 bytes, the online game at 0x1808 (fts_state.h's m_netGame) handed to 0x2A75F0 as a tail call)
 0x002A9F00 0x2C CreateNetGame__8CMissionFv  # OVL1; s1:align
-0x002A9F30 0x558 TickObjectives__8CMissionFf  # OVL1; s1:calls by hand (the HUD lane's lead, vetted by the states lane: SOCOM 1's CZObjectiveList::SelectPreviousObjective calls TickObjectives(theMission, 1000.0f) at each step as SOCOM II's 0x206BA0/0x206DB0/0x207570 call this with (0x4364E0, 1000.0f); SOCOM 1's CMission::Tick calls it as Tick__8CMissionFf (0x2AA490) calls this; the same head: the timer at +0x138 summed with dT, nothing below 1.0, then the current objective and IsAvailable)
+0x002A9F30 0x558 TickObjectives__8CMissionFf  # OVL1; s1:calls by hand (the HUD lane's lead, vetted by the states lane: SOCOM 1's CZObjectiveList::SelectPreviousObjective calls TickObjectives(theMission, 1000.0f) at each step as SOCOM II's 0x206BA0/0x206DB0/0x207570 call this with (0x4364E0, 1000.0f); SOCOM 1's CMission::Tick calls it as Tick__8CMissionFf (0x2AA490) calls this; the same head: the timer at +0x138 summed with dT, nothing below 1.0, then the current objective and IsAvailable); byte-exact in fts_mission.cpp since the states lane, round 42
 0x002AA490 0x3F8 Tick__8CMissionFf  # OVL1; s1:align
 0x002AA890 0x7C func_002AA890  # OVL1
 0x002AA910 0x1F0 _OnMissionComplete__Fv  # OVL1; s1:calls by hand (the states lane: FadeToEndMissionTick, byte-exact, calls it with no arguments exactly where SOCOM 1's calls _OnMissionComplete__Fv, between clearing m_DelayEndMission and the screen clear; its body opens differently -- the common anim set fetched first -- so the name is the call site's)
@@ -3897,7 +3897,7 @@
 0x002AFBC0 0x78 at__Q23std66__vector_imp<13SCamPathPoint,Q23std26allocator<13SCamPathPoint>,0>FUi  # OVL1; by hand (the states lane, round 16; the element's name ours): include/vector's at() for the camera path's 0x98-byte points ("vector::at index out of range"), out of line in fts_mission.cpp's tail for GetPoint (0x2AB260)
 0x002AFC40 0x18 _max<Uc>__2aiFRCUcRCUc_RCUc  # OVL1; by its body (ai::_max over unsigned char: lbu, lbu, slt, movn -- MW 3.0's mangling with the return type), the template tail before _min<f>'s OVL1 copy; no OVL2 copy named -- the states lane
 0x002AFC60 0x2C func_002AFC60  # OVL1; s1:align; OVL1's copy of ai::_min<float> (byte-identical to OVL2's 0x575C80, which carries the name; the states lane); ovl-copy: _min<f>__2aiFRCfRCf_RCf
-0x002AFC90 0x444 insert__Q23std80__vector_imp<20SObjectiveCam_Anchor,Q23std33allocator<20SObjectiveCam_Anchor>,0>FP20SObjectiveCam_AnchorUiRC20SObjectiveCam_Anchor  # OVL1; s1:align
+0x002AFC90 0x444 insert__Q23std80__vector_imp<20SObjectiveCam_Anchor,Q23std33allocator<20SObjectiveCam_Anchor>,0>FP20SObjectiveCam_AnchorUiRC20SObjectiveCam_Anchor  # OVL1; s1:align; the states lane, round 42: TickObjectives' three push_backs bring it (include/vector's class insert, as the cue vector's 0x1EED40) -- fts_mission.cpp emits it byte-exact
 0x002B00E0 0x180 reserve__Q23std80__vector_imp<20SObjectiveCam_Anchor,Q23std33allocator<20SObjectiveCam_Anchor>,0>FUi  # OVL1; s1:align
 0x002B0260 0x684 insert__Q23std62__vector_imp<11CLadderData,Q23std24allocator<11CLadderData>,0>FP11CLadderDataUiRC11CLadderData  # OVL1; s1:calls by hand (the states lane, round 23): CreateLadderTable's push_back calls it with (end, 1, the new CLadderData) where SOCOM 1's calls the same instance (the demo's 0x1FB300); fts_mission.cpp's template tail
 0x002B08F0 0x734 func_002B08F0  # OVL1
@@ -3926,7 +3926,7 @@
 0x002B2190 0x38 Clear__9CSpawnersFv  # OVL1; tu: node_world.cpp~ (1.0 beta); s1:exact
 0x002B21D0 0x13C Tick__9CSpawnersFf  # OVL1; s1:align
 0x002B2310 0x90 RecycleEntity__8CMissionFP7CEntity  # OVL1; s1:order by hand (the states lane: after CSpawners::Tick as in SOCOM 1; both restart the spawners' timer at 2.0, count one more spawn and call CEntity::RecycleEntity(e); SOCOM II's first stops a flagged entity's anims)
-0x002B23A0 0x4A0 RefreshTeamValves__8CMissionFv  # OVL1; s1:calls (called where SOCOM 1's calls CMission::RefreshTeamValves) -- the SEAL lane
+0x002B23A0 0x4A0 RefreshTeamValves__8CMissionFv  # OVL1; s1:calls (called where SOCOM 1's calls CMission::RefreshTeamValves) -- the SEAL lane; byte-exact in fts_player.cpp since the states lane, round 42
 0x002B2840 0x88 InitalizeTeamValves__8CMissionFv  # OVL1; s1:calls
 0x002B28D0 0x450 LoadVehicle__8CMissionFP16CVehicleRdrEntryb  # OVL1; s1:calls by hand (the states lane: CSpawners::Tick calls it on &theMission with the spawn's entry and false from the same instruction as SOCOM 1's calls LoadVehicle)
 0x002B2D20 0x124 func_002B2D20  # OVL1
@@ -6167,10 +6167,10 @@
 0x003448E0 0x2C func_003448E0  # OVL1
 0x00344910 0x2D4 func_00344910  # OVL1
 0x00344BF0 0x29C func_00344BF0  # OVL1
-0x00344E90 0x10 func_00344E90  # OVL1
-0x00344EA0 0x14 func_00344EA0  # OVL1
-0x00344EC0 0x8 func_00344EC0  # OVL1
-0x00344ED0 0x10 func_00344ED0  # OVL1
+0x00344E90 0x10 HashLess__FRCUiRCUi  # OVL1; the world lane round 22: ours: the hashes' order (a < b over two references), out of line -- the sound list's binary search 0x344BF0 calls it in its self-inlined copy where its outer copy inlines the sltu (zsnd_csnd.cpp)
+0x00344EA0 0x14 HashEqual__FRCUiRCUi  # OVL1; the world lane round 22: ours: the hashes' equality (two references), out of line -- the binary search's self-inlined copy tests the key against a sound's hash with it (zsnd_csnd.cpp)
+0x00344EC0 0x8 GetHash__4CSndFv  # OVL1; the world lane round 22: ours -- the address of a sound's hash (0x18), out of line in the binary search's self-inlined copy, inline in its outer copy (zsnd_csnd.cpp, zsnd.h)
+0x00344ED0 0x10 __vc__Q23std48__vector_imp<P4CSnd,Q23std17allocator<P4CSnd>,1>FUi  # OVL1; the world lane round 22: include/vector's [] of CSnd::m_soundlist (data_ at +8), out of line in the binary search's self-inlined copy (zsnd_csnd.cpp)
 0x00344EE0 0x3C func_00344EE0  # OVL1
 0x00344F20 0x8 func_00344F20  # OVL1
 0x00344F30 0x44 GetSoundByName__4CSndFPCc  # OVL1; s1:callee
@@ -6733,16 +6733,16 @@
 0x00365210 0x1AC PreGetSprPacket__23CDblBufTextureRelocatorFPQ23zdb10CTexHandle  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x003653C0 0xE0 Init__23CDblBufTextureRelocatorFv  # OVL1; ours by its body (the relocator's three GS buffers made with CTexManager::doAddBuffer, Reloc0-2 over 0-0.4, 0.4-0.8, 0.8-1, stored at 8, 0xC and 0x10; SOCOM 1's relocator had two)
 0x003654A0 0x1C func_003654A0  # OVL1
-0x003654C0 0x538 func_003654C0  # OVL1
-0x00365A00 0x34C func_00365A00  # OVL1
+0x003654C0 0x538 Tick__9CGameMenuFf  # OVL1; s1:calls by hand (the UI lane round 27: SOCOM 1's CGameMenu::Tick call for call -- HandlePad 0x368650 with the pad global, the scheduler's Tick, the menu stack's commands through AddToHistory/SwitchMenu/MakeButtonActive/FindChild's 2D visual/HandleCommand, GetPopUp's tick, the two child lists' ticks, the keyboard's tick and slot 0x0C; SOCOM II's fade first) -- zui.cpp, not written yet
+0x00365A00 0x34C SwitchMenu__9CGameMenuFPc  # OVL1; s1:calls by hand (the UI lane round 27: SOCOM 1's SwitchMenu's tail call for call -- Clear, WipePktBuf, Unload_MissionReader, the dlgHype/dlgNetLogin prints, the fader's flag, Load, SetColor and SetTrans, the batch round LoadDesign; SOCOM II's fade steps at 0x8FC and five names switching game states first) -- zui.cpp
 0x00365D50 0x9D8 ParseButtonAnim__FP5_zrdrP10ActionItem  # OVL1; s1:calls by hand (CCheckBoxSpec(_zrdr *) calls it with ONCHECK's and ONUNCHECK's tags and the two new ActionItems where SOCOM 1's calls ParseButtonAnim__FP5_zrdrP10ActionItem; the rdr in a0, the item filled through a1, void) -- zui.cpp
 0x00366730 0x208 PrepModels__9CGameMenuFRC14CGameDlgDesign  # OVL1; s1:order by hand (the UI lane, round 26: SOCOM 1's CGameMenu::PrepModels between ParseButtonAnim and TickMPEG in both builds -- the design's models instanced at 320 + azimuth / elevation / 320 - distance, named, added under CWorld::m_world, rotated and kept in the menu's node vector at 0x8EC; byte-exact from zui.cpp)
 0x00366940 0xC0 TickMPEG__9CGameMenuFv  # OVL1; s1:order by hand (the UI lane, round 13: SOCOM 1's TickMPEG before RestartBackgroundMPEG, as 0x366940 before 0x366A00: while CMPEG::Done is false the FIFO ended and disabled around CMPEG::Tick(zVid.renderBuf), sceGsSyncPath; once done RunEventAnim(3) and, SOCOM II's, Loop or End by the byte at 0x27A) -- zui.cpp, byte-exact
 0x00366A00 0x104 RestartBackgroundMPEG__9CGameMenuFPCc  # OVL1; s1:order by hand (the UI lane, round 13: SOCOM 1's TickMPEG, RestartBackgroundMPEG, HaltBackgroundMPEG run in that order, SOCOM II's 0x366940, 0x366A00, 0x366B10 likewise; the same fields -- SOCOM 1's DWARF m_movierunning 0x244, m_has_mpeg_background 0x245, m_MPEGName 0x248, at 0x278/0x279/0x27C -- the FIFO ended and disabled around CMPEG::Run; SOCOM II's takes a name, null from CMenuState::OnPop, and halts a running movie first through Halt inlined) -- zui.cpp, byte-exact
 0x00366B10 0x48 HaltBackgroundMPEG__9CGameMenuFv  # OVL1; tu: zui.cpp~ (1.0 beta); s1:order by hand (the UI lane, round 13: SOCOM 1's HaltBackgroundMPEG after RestartBackgroundMPEG, instruction for instruction at SOCOM II's offsets: CMPEG::End when the menu has a background movie running, the flag cleared, true) -- zui.cpp, byte-exact
-0x00366B60 0x210 func_00366B60  # OVL1
-0x00366D70 0x35C func_00366D70  # OVL1
-0x003670D0 0x35C func_003670D0  # OVL1
+0x00366B60 0x210 MakeButtonActive__9CGameMenuFPCc  # OVL1; s1:order by hand (the UI lane round 27: SOCOM 1's MakeButtonActive after HaltBackgroundMPEG; the same code -- the active button set normal through the menu's button list, the node by name through FindChild, its 2D visual's object made active, the selection sound theGame+0xA4, the list walked for the button's index) -- zui.cpp
+0x00366D70 0x35C MakePrevButtonActive__9CGameMenuFb  # OVL1; s1:order by hand (the UI lane round 27: SOCOM 1's MakePrevButtonActive after MakeButtonActive; the index stepped back and wrapped to size-1, the button that takes input searched, itself called again; SOCOM II's takes the sound flag, a1, passing false to itself) -- zui.cpp
+0x003670D0 0x35C MakeNextButtonActive__9CGameMenuFb  # OVL1; s1:order by hand (the UI lane round 27: SOCOM 1's MakeNextButtonActive after MakePrevButtonActive; the index stepped on modulo the button count, signed div as SOCOM 1's; SOCOM II's takes the sound flag) -- zui.cpp
 0x00367430 0x238 LoadDesign__9CGameMenuFPCcP9CZAnimZAR  # OVL1; the UI lane round 18: ours by its body and callers (this, an rdr name, the ZAR: a CGameDlgDesign built on the stack, "(%.2f)CGameDlgDesign::LoadFromRdr(): %s" printed into a 0x100-byte static with zVid.runTime, the rdr read from data/common/zrdr/dialog with LoadDialogsFromReader's flags, LoadFromRdr and zrdr_free, then the menu's reader name assigned and LoadFromDesign 0x367950 -- the block SOCOM 1's Init and SwitchMenu inlined; SOCOM II's Init 0x368570 and 0x365A00 call it); zui.cpp
 0x00367670 0x60 __dt__Q23std52vector<10ActionItem,Q23std23allocator<10ActionItem>>Fv  # OVL1; by its body (~vector<ActionItem>: calls 0x36AC10, the deleter's destructor, with 0) -- the UI-widgets lane
 0x003676D0 0x60 __dt__Q23std58vector<13CDesignDlgObj,Q23std26allocator<13CDesignDlgObj>>Fv  # OVL1; the UI lane round 18: by its callers and body (CGameMenu::LoadDesign 0x367430 destroys its design's two CDesignDlgObj vectors, CONTROLS and OBJECTS at 0x4C/0x58, through it: the deleter's destructor 0x36AC80 with 0, the object deleted when asked); zui.cpp's out-of-line copy after its first user, LoadDesign compiling to the target's code with every call so named
@@ -6758,7 +6758,7 @@
 0x00368560 0x8 HasChildren__11CDlgObjSpecCFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00368570 0xB4 Init__9CGameMenuFPQ23zdb16CTextureRelocMgrP9CZAnimZAR  # OVL1; the UI lane round 18: SOCOM 1's Init__9CGameMenuFPQ23zdb16CTextureRelocMgrP9CZAnimZAR by its body (Clear, the ZAR stored at 0xC0, a zVid flag cleared, the relocator given or g_relocBatch at 0x8DC, StartBatchReloc, the design of GetReaderFileName loaded, EndBatchReloc, true -- SOCOM 1's with the design load moved out to 0x367430); zui.cpp
 0x00368630 0x1C GetReaderFileName__9CGameMenuFv  # OVL1; s1:vtable by hand (slot 0x10 of __vt__9CGameMenu 0x406F80, SOCOM 1's GetReaderFileName's slot: the reader's name string returned)
-0x00368650 0xB20 func_00368650  # OVL1
+0x00368650 0xB20 HandlePad__9CGameMenuFPC4CPad  # OVL1; s1:calls by hand (the UI lane round 27: Tick 0x3654C0 calls it with this and the pad global where SOCOM 1's Tick calls CGameMenu::HandlePad) -- zui.cpp, not written yet
 0x00369170 0x48 DrawForeplane__9CGameMenuFv  # OVL1; s1:exact
 0x003691C0 0x44 Draw2dOnly__9CGameMenuFv  # OVL1; s1:exact
 0x00369210 0x4BC Clear__9CGameMenuFv  # OVL1; s1:calls by hand (called at LoadFromDesign+0x34 and ~CGameMenu+0x24, the offsets of SOCOM 1's calls to CGameMenu::Clear in both; 0x4BC against 0x51C)
@@ -7166,9 +7166,9 @@
 0x00387A90 0x1DC __ct__10CImageSpecFR10CImageSpec  # OVL1; by hand (CImageSpec's implicit copy out of line: CDlgObjSpec's copy inlined, the vtable, the members; the progress bar's and the list box's Copies call it) -- zui_cleanup.cpp
 0x00387C70 0x80 Copy__14CSliderBarSpecFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00387CF0 0x268 Copy__14CUIListBoxSpecFv  # OVL1; by its vtable (slot 0x0C of __vt__14CUIListBoxSpec 0x407E30) -- the UI-widgets lane
-0x00387F60 0x28 func_00387F60  # OVL1; tu: vis_mesh.cpp~ (1.0 beta)
+0x00387F60 0x28 __ct__Q23std48vector<P8ListItem,Q23std21allocator<P8ListItem>>FRCQ23std48vector<P8ListItem,Q23std21allocator<P8ListItem>>  # OVL1; tu: vis_mesh.cpp~ (1.0 beta); by hand (the UI lane round 27: the list box spec's item vector copied, CUIListBoxSpec::Copy 0x387CF0's call for its member at 0xEC -- zui_cleanup.cpp emits it after Copy, the pod's copy called)
 0x00387F90 0x20 __ct__6CPnt3DFRC6CPnt3D  # OVL1; s1:exact
-0x00387FB0 0x28 func_00387FB0  # OVL1; tu: vis_mesh.cpp~ (1.0 beta)
+0x00387FB0 0x28 __ct__Q23std54vector<P10ColumnData,Q23std24allocator<P10ColumnData>>FRCQ23std54vector<P10ColumnData,Q23std24allocator<P10ColumnData>>  # OVL1; tu: vis_mesh.cpp~ (1.0 beta); by hand (the UI lane round 27: the list box spec's column vector copied, CUIListBoxSpec::Copy 0x387CF0's call for its member at 0xBC -- zui_cleanup.cpp emits it after Copy, the pod's copy called)
 0x00387FE0 0xA0 CreateDisplayObj__18CHandlerButtonSpecCFP7C2DFontPQ23zdb16CTextureRelocMgr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00388080 0x64 Copy__18CHandlerButtonSpecFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x003880F0 0xF0 __dt__18CHandlerButtonSpecFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
@@ -7451,9 +7451,9 @@
 0x00397890 0x2C func_00397890  # OVL1
 0x003978C0 0xC func_003978C0  # OVL1
 0x003978D0 0x74 func_003978D0  # OVL1
-0x00397950 0x268 func_00397950  # OVL1
+0x00397950 0x268 SkbScaleDisplay__FP13CSoftKeyboardf  # OVL1; ours (the UI lane round 27: zui_skbview.cpp -- SkbScale 0x394DA0's call with the keyboard still in a0 and the scale in f12: s_bmp6/s_bmp7 placed at t of the way from (-SkbPos.x, 448 - SkbPos.y) and loaded at t of the keyboard's size, then each list's keys over their pieces' display rectangles)
 0x00397BC0 0x164 SkbFindSounds__Fv  # OVL1; the UI lane round 11: ours, by its body (zui_skbview.cpp: the six CSnd statics from CSnd::GetSoundByName of strings 2, 3, 4, 5, 6 and 1; 0x3958D0 calls it)
-0x00397D30 0x2AC func_00397D30  # OVL1
+0x00397D30 0x2AC ReadCapLook__8CSkbLookFUcP5_zrdrPCc  # OVL1; ours (the UI lane round 27: zui_skbview.cpp -- the look parser's three calls with this, the cap index 0-2 and the UserStringProps/PurposeStringProps/MsgPlayerStringProps tag; the block's SCALE, COLOR, FONT and POSITION into m_caps[i])
 0x00397FE0 0xE4 resize__Q23std62__vector_imp<11CSkbBgPiece,Q23std24allocator<11CSkbBgPiece>,0>FUi  # OVL1; the UI lane round 14: zui_skbview.cpp's tail, the background pieces' resize (the look parser's only request: m_sources[i].resize(size() + 1)), byte-exact from source with erase/insert named
 0x003980D0 0x220 erase__Q23std62__vector_imp<11CSkbBgPiece,Q23std24allocator<11CSkbBgPiece>,0>FP11CSkbBgPieceP11CSkbBgPiece  # OVL1; the UI lane round 14: zui_skbview.cpp's tail, the background pieces' range erase (resize 0x397FE0 calls it)
 0x003982F0 0x618 insert__Q23std62__vector_imp<11CSkbBgPiece,Q23std24allocator<11CSkbBgPiece>,0>FP11CSkbBgPieceUiRC11CSkbBgPiece  # OVL1; the UI lane round 14: zui_skbview.cpp's tail, the background pieces' fill insert (resize 0x397FE0 calls it)
@@ -7556,7 +7556,7 @@
 0x0039DEA0 0x50 __ct__7CFileCDFv  # OVL1; s1 by hand (SOCOM 1's CFileCD() body, out of line in SOCOM II: the head sector -1, the rest zero, a 2 KB sector buffer 64-aligned; the DNAS client calls it, Open inlines it)
 0x0039DEF0 0xD0 Find__7CFileCDFPCc  # OVL1; s1 by hand (SOCOM 1's Find(const char *): the TOC walked 16 bytes at a time with strcmp until found; SOCOM II prefixes the root's directory 0x4A1650; Open inlines it)
 0x0039DFC0 0xC func_0039DFC0  # OVL1
-0x0039DFD0 0x520 func_0039DFD0  # OVL1
+0x0039DFD0 0x520 BuildTOC__7CFileCDFv  # OVL1; s1:calls by hand (the UI lane round 27: SOCOM 1's CFileCD::BuildTOC 0x305010 by its code -- m_CDmode set, the TOC malloc'd, a local CFileCD read from sector 16, the root directory record at the PVD's 156, the directory walk with its 16-byte stack, the dot entries skipped, CreatePath and _strdup for directories, the file names joined with a backslash; SOCOM II's TOC 360 entries and the lowest sector kept at 0x4A17A0) -- util_sonyio.cpp, not written yet
 0x0039E4F0 0x110 CreatePath__7CFileCDFPcPc  # OVL1; s1:calls
 0x0039E600 0x8 fflush__7CFileIOFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0039E610 0x8 ftell__7CFileIOCFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
@@ -10465,8 +10465,8 @@
 0x00583350 0x1A4 func_00583350  # OVL2
 0x00583500 0x45C func_00583500  # OVL2
 0x00583960 0x18C TurnControl__10CZSealBodyFf  # OVL2; s1:order by hand (SOCOM 1 TurnControl__10CZSealBodyFff, after ProneControl: the top blend weight made 1, the turn doubled and negated, capped 0.6/0.3/0.35/0.6 by state as in SOCOM 1; SOCOM II takes one float, every caller sets f12 alone; the SEALs round 16)
-0x00583AF0 0x374 func_00583AF0  # OVL2
-0x00583E70 0x3C8 func_00583E70  # OVL2
+0x00583AF0 0x374 InStateCarried__10CZSealBodyFv  # OVL2; s1:order by hand (the SEALs, round 47): SealAnim 0x5870E0 calls it for state 10 (stateCarried) where SOCOM 1's SealAnim calls InStateCarried__10CZSealBodyFfff, its case block first as SOCOM 1's; and SOCOM 1's stretch order (TurnControl, InStateCarried, InStateCarrying, InStateClimbLadder, InStateHang in both builds) -- no floats in SOCOM II
+0x00583E70 0x3C8 InStateCarrying__10CZSealBodyFv  # OVL2; s1:order by hand (the SEALs, round 47): SealAnim 0x5870E0 calls it for state 9 (stateCarrying) where SOCOM 1's SealAnim calls InStateCarrying__10CZSealBodyFfff; and SOCOM 1's stretch order (after InStateCarried, before InStateClimbLadder in both builds) -- no floats in SOCOM II
 0x00584240 0x144 InStateClimbLadder__10CZSealBodyFv  # OVL2; s1:order by hand (the SEAL lane, round 21): SOCOM 1's InStateClimbLadder__10CZSealBodyFfff -- after the carry states, before InStateHang in both builds, and the state dispatcher 0x5870E0's case 5 (stateClimbLadder) calls it; the same body (the 0x3DEF50 anim's early return, the climb anim 45 pushed, popped at the ladder's foot going down for 44, the representative's playback from the rate) with SOCOM II's rate read at 0x240 instead of three float arguments
 0x00584390 0x224 InStateHang__10CZSealBodyFv  # OVL2; s1:order by hand (the SEAL lane, round 21): SOCOM 1's InStateHang__10CZSealBodyFfff -- after InStateClimbLadder in both builds, and the state dispatcher 0x5870E0's case 4 (stateHang) calls it; the same body (the throttles' length against the hang's reach, the pops down to the hang anim and its push, the moving/turning bits cleared, Stand_0(4, 1) forward, ClearStack(1, true) and Stand_0(state, -1) back) with SOCOM II's throttles read at 0x240/0x244 and Stand_0's added time
 0x005845C0 0x53C InStateProne__10CZSealBodyFv  # OVL2; s1:order by hand (the SEAL lane, round 21): SOCOM 1's InStateProne__10CZSealBodyFfff -- after InStateHang (0x584390) in both builds, and the state dispatcher 0x5870E0's case 2 (stateProne; its table at 0x65D100) calls it with the SEAL alone: SOCOM II's reads the throttles at 0x240/0x244 as InStateClimbLadder and InStateHang do (not written)
@@ -10482,7 +10482,7 @@
 0x00586570 0x694 InStateStand__10CZSealBodyFv  # OVL2; s1:order by hand (the SEAL lane, round 21): SOCOM 1's InStateStand__10CZSealBodyFfff -- after the stand helpers (SOCOM 1's UpdateQuadrant, StandTurning, StandStill), and the state dispatcher 0x5870E0's case 0 (stateStand) calls it with the SEAL alone (not written)
 0x00586C10 0x2EC SmoothXZThrottles__10CZSealBodyFRfRf  # OVL2; s1:order by hand (the SEALs, round 27): SOCOM 1's SmoothXZThrottles__10CZSealBodyFRfRf, after StandStill/InStateStand and before IsStopped (0x586F00) in both builds -- the same easing (four OVL1 floats, the eighth power of 1 - |throttle|, the step against the time step at 0x2E0 held by the rate), SOCOM II adding the AI's early exit and the snap past 0.78/0.9 (SaveParts, 0.2 into CBody's 0x8/0xC)
 0x00586F00 0x1D4 IsStopped__10CZSealBodyFfff  # OVL2; s1:order by hand (the SEALs, round 27): SOCOM 1's IsStopped__10CZSealBodyFfff, after SmoothXZThrottles (0x586C10) and before SealAnim (the state dispatcher 0x5870E0) in both builds -- the same body: the side throttle's _close_enough against a static zero, the turning bit's band (slack + t*t*(0.3 - slack), -(1.5 slack + t*t*(0.5 - 1.5 slack))), the moving bit's close test, the length's
-0x005870E0 0x584 func_005870E0  # OVL2
+0x005870E0 0x584 SealAnim__10CZSealBodyFb  # OVL2; s1:order by hand (the SEALs, round 47): SOCOM 1's SealAnim__10CZSealBodyFbfff (0x27B4D0), between IsStopped and SetMovingChangeToPistol in both builds; the same body (the top blend popped when asked, the state set from the blends, the climb-over's fall, the switch on the state calling InStateStand/Crouch/Prone/Hang/ClimbLadder, InAirControl inlined, InStateCarried/Carrying) -- SOCOM II's controls take no throttles
 0x00587670 0x40 SetMovingChangeToPistol__10CZSealBodyFP11ACTIVE_ANIM  # OVL2; s1:order by hand (the SEALs, round 46): SOCOM 1's SetMovingChangeToPistol (0x27B960), first after SealAnim in both builds; event 6, AddBlendOverlay's weapon change with the rifle in hand
 0x005876B0 0x8C SetMovingChangeToRifle__10CZSealBodyFP11ACTIVE_ANIM  # OVL2; s1:order by hand (the SEALs, round 46): SOCOM 1's SetMovingChangeToRifle (0x27B9B0, 0x9C: the loop time read), second after SealAnim in both builds; event 5, AddBlendOverlay's weapon change with the pistol in hand
 0x00587740 0x20 SetMovingPistolReload__10CZSealBodyFP11ACTIVE_ANIM  # OVL2; s1:order by hand (the SEALs, round 46): SOCOM 1's SetMovingPistolReload (0x27BA50), third after SealAnim in both builds; event 2, as AddBlendOverlay sets it for MovingPistolReload

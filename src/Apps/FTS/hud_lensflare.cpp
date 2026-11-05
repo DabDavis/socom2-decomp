@@ -5,7 +5,7 @@
  * static 0x409080, so it is hud_pausemenu.cpp's first function; this unit's bss runs 0x408FD0-0x40901B,
  * the pause menu's from 0x409020). Written: the manager's Tick, PreDITick, Init, ReInit, Reset,
  * LoadRdr and LoadLightSource; the wildcard name pair; the entry's constructor, destructor and Init;
- * the element's Place -- all byte-exact; open: Clear, the element's Load (3); unwritten: the entry's
+ * the element's Place and (round 54) its Load -- all byte-exact; unwritten: the entry's
  * Tick 0x1FF8A0 and LoadFlare 0x1FFF40. Defined in reverse of their image order (-inline deferred).
  * Its initialiser, 0x3FDAB0, builds only <iostream>'s two init objects (SOCOM 1's built only the
  * header CSTable SOCOM II dropped: SOCOM II's unit includes <iostream>). */
@@ -122,15 +122,11 @@ extern CHUD *theHUD;
 
 /* the element's settings: its texture loaded (if found) and its bitmap added to the HUD hidden, its
  * colour; its position scale (1 unless given); half its size (100 by 100 unless given); its opacity
- * and scale ranges, each kept as the second value and the first less it.
- * OPEN, 3 instructions (one stack slot): the target reads both ranges into sp+56 and leaves
- * sp+64-71 unused (frame 0x60: colour 80, size 72). One shared range array gives the frame but swaps
- * `this` and `rdr` (s0/s1, 17 off); two arrays give the target's registers with opacity's at 64.
- * Tried: the two declared the other way round, each in a block of its own, an unused third array
- * between them, a CPnt3D or float[4] colour, a CPnt3D for every array (3 to 17 off). Round 48: one
- * shared array anywhere gives a 0x50 frame (17 off: the hole at 64 is a slot the target allots and
- * never touches), reading opacity into scale's array or a dead `if (0)` array get no slot either;
- * a float[4] or CPnt4D range gives the 0x60 frame with the range at 48 (6 off) */
+ * and scale ranges, each kept as the second value and the first less it. Both ranges are read
+ * into one THREE-float array (round 54): the target's "unused" sp+64-71 is that array's third float
+ * and its padding -- MW rounds a stack object of 8-15 bytes to 8 and one of 16 or more to 16 (a
+ * float[4] range sat at 48, a float[2] left the frame at 0x50), so only a 12-byte range lands at
+ * 56 under the size (72) in a 0x60 frame (reco.cpp's AdjustVolume, the same rule) */
 bool CFlareElement::Load(_zrdr *rdr)
 {
     char *name = zrdr_findstring(rdr, "texture");
@@ -157,16 +153,15 @@ bool CFlareElement::Load(_zrdr *rdr)
         size[0] = size[1] = 100.0f;
     m_halfWidth = 0.5f * size[0];
     m_halfHeight = 0.5f * size[1];
-    float opacity[2];
-    float scale[2];
+    float range[3];
 
-    if (zrdr_findreal(rdr, "opacity", opacity, 2)) {
-        m_opacity = opacity[1];
-        m_opacityRange = opacity[0] - m_opacity;
+    if (zrdr_findreal(rdr, "opacity", range, 2)) {
+        m_opacity = range[1];
+        m_opacityRange = range[0] - m_opacity;
     }
-    if (zrdr_findreal(rdr, "scale", scale, 2)) {
-        m_scale = scale[1];
-        m_scaleRange = scale[0] - m_scale;
+    if (zrdr_findreal(rdr, "scale", range, 2)) {
+        m_scale = range[1];
+        m_scaleRange = range[0] - m_scale;
     }
     return true;
 }
@@ -312,11 +307,9 @@ void CLensFlareManager::LoadRdr(const char *name)
 }
 #pragma auto_inline reset
 
-/* every flare deleted, the list emptied, inactive.
- * OPEN (4 bytes short): the target keeps three saved registers -- this, the end (this + 4) and
- * this + 8, the address begin() reads, taken before the loop for the final clear(), which
- * recomputes the end from this. MW here keeps two; the end taken after begin(), erase(begin(), e)
- * and end() in the test all miss too */
+/* every flare deleted, the list emptied, inactive (byte-exact since the list headers settled: the
+ * target's three saved registers -- this, the end (this + 4) and this + 8 -- come from include/list's
+ * begin(), the end taken first) */
 void CLensFlareManager::Clear()
 {
     if (size()) {
