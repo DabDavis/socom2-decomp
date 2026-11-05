@@ -5306,7 +5306,7 @@
 0x0030CFF0 0xC zNetRegisterMessage__9CZNetworkFPUiPFiiiPv_iPCc  # OVL1; the online lane, round 25: CZNetwork's (fts_remote.cpp's message registrations call it as (&theNetwork, &type, handler, name) after describing each type's fields, the radio's 0x310210 twice; it passes type and handler to the DME's 0x6210D0 and drops the name: 'move a0,a1; j; move a1,a2'), zNetDme.cpp's between zNetSendApplicationMessage and SOCOM 1's zNetLeaveAndDisconnect 0x30D020; the name ours, after zNetRegisterRemoteObjectCallback
 0x0030D000 0x8 func_0030D000  # OVL1
 0x0030D010 0x8 func_0030D010  # OVL1
-0x0030D020 0x40 func_0030D020  # OVL1
+0x0030D020 0x40 zNetLeaveAndDisconnect__9CZNetworkFv  # OVL1; s1:order+calls, the online lane round 25 (SOCOM 1's zNetLeaveAndDisconnect 0x321550 sits between zNetSendApplicationMessage and zNetJoin, as this does; the DME's leave 0x623868 (SOCOM 1's NetLeave) and NetDisconnect on m_GameConnectionIndex, m_bJoined / m_bConnected / m_bSessionMaster cleared as SOCOM 1's at its offsets less 8; SOCOM II drops the leave's success test and two word resets; byte-exact)
 0x0030D060 0xA8 zNetJoin__9CZNetworkFPFii_vPFii_v  # OVL1; s1 by hand (SOCOM 1's zNetJoin, two client callbacks: here kept at +0x110C/+0x1110 and the game connection's session joined through a parameter block -- NetSetDefaultJoinParams 0x621DB8, NetJoin 0x621E50 -- m_bJoined set on success, the answer returned)
 0x0030D110 0xA0 zNetClientCallback__FP18NetClientEventInfo  # OVL1; ours (zNetJoin's client-event callback: the lobby's own connection skipped, event 0 to the join callback at +0x110C, 1 to the leave one at +0x1110)
 0x0030D1B0 0x1C8 func_0030D1B0  # OVL1
@@ -5320,7 +5320,7 @@
 0x0030D620 0x8 func_0030D620  # OVL1
 0x0030D630 0x34 zNetGetObject__9CZNetworkFi  # OVL1; s1:calls (RemoteSealDeletionCallback, as SOCOM 1's) -- the states lane
 0x0030D670 0xF8 zNetCreateObject__9CZNetworkFPi18NetOwnershipStatus17NetObjectLifespanUiiUiiPvPci  # OVL1; s1:calls (CreateLocalGame/Grenade/Bomb pass SOCOM 1's ten arguments, the stack layout included) -- the states lane
-0x0030D770 0x58 func_0030D770  # OVL1
+0x0030D770 0x58 zNetClose__9CZNetworkFv  # OVL1; s1:order+calls, the online lane round 25 (SOCOM 1's zNetClose 0x321900 follows zNetCreateObject, as this does: m_bNetwork tested, NetClose called, m_bConnected cleared, as SOCOM 1's; SOCOM II also deletes the sub-heap 0x45B328, clears m_network_init and closes eznetctl (0x30C030); the chat unit's 0x2F3xxx and zanim_menu.cpp call it on theNetwork; byte-exact)
 0x0030D7D0 0x98 zNetPlayFixList__9CZNetworkFv  # OVL1; ours (zNetUpdate calls it when the fix list at +0x1254 is not empty: each entry played through zRemoteDelayedAction and freed, the list cleared -- SOCOM 1's zNetUpdate did this in place)
 0x0030D870 0x90 AddToFixList__9CZNetworkFPQ29CZNetwork18TypeRTimeFixStruct  # OVL1; s1 by hand (SOCOM 1's AddToFixList: a 28-byte copy new'd and pushed onto the fix list, the list at +0x1254)
 0x0030D900 0xB0 zNetFlushMessages__9CZNetworkFv  # OVL1; ours (zNetUpdate calls it when the message list at +0x1248 is not empty: each queued message sent through NetSendApplicationMessage 0x621458 and freed, the list cleared -- SOCOM 1's zNetUpdate did this in place)

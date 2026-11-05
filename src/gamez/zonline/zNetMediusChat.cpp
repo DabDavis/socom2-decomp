@@ -1298,7 +1298,6 @@ MediusErrorCode MediusFindPlayer(MediusFindPlayerRequest *req,
 MediusErrorCode MediusGetPlayerInfo(MediusPlayerInfoRequest *req,
                               void (*cb)(int, int, int, MediusPlayerInfoResponse *));   /* MediusGetPlayerInfo */
 void func_00300670();   /* the Medius library closed */
-void func_0030D770(CZNetwork *net);   /* the DME left (CZNetwork's) */
 void func_0030E3A0(CZNetwork *net, int);   /* and closed (CZNetwork's) */
 MediusErrorCode MediusSendChatMessage(MediusSendDirectMessageRequest *req);   /* the direct message sent */
 extern char data_00437690[];   /* theMission's message ring (CMission::m_netQueue) */
@@ -1940,7 +1939,7 @@ bool CZOnlineLobby::Bailout()
         func_00300670();
     }
     if (theNetwork.m_network_init) {
-        func_0030D770(&theNetwork);
+        theNetwork.zNetClose();
         func_0030E3A0(&theNetwork, 0);
     }
     Close();

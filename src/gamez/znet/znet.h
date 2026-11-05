@@ -152,6 +152,10 @@ public:
     void AddToFixList(TypeRTimeFixStruct *fix);
     void zNetPlayFixList();
     int zNetJoin(NetCreateObjectCallback join, NetCreateObjectCallback leave);
+    /* the game's session left and its server disconnected (SOCOM 1's, 0x30D020) */
+    void zNetLeaveAndDisconnect();
+    /* the DME closed, its sub-heap freed, eznetctl closed (SOCOM 1's, 0x30D770) */
+    void zNetClose();
     int zNetConnect(void (*connect)(struct ClientConnectArgs *), void (*disconnect)(struct ClientConnectArgs *));
     int zNetCreateObject(int *index, NetOwnershipStatus own, NetObjectLifespan life, unsigned int a,
                          int b, unsigned int c, int d, void *data, char *name, int e);

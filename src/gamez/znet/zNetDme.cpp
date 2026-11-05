@@ -419,6 +419,34 @@ void CZNetwork::zNetPlayFixList()
 }
 #pragma auto_inline reset
 
+/* the DME's sub-heap (zsys_heap.cpp's class; the instance at 0x45B328, made by the network's start-up
+ * and wrapped at 0x30E300-0x30E3C8) */
+class CHeap {
+public:
+    ~CHeap();
+};
+extern "C" {
+extern CHeap *data_0045B328;
+bool func_0030C030();   /* (zNetCnf.cpp's: eznetctl closed) */
+}
+
+/* the network closed: when it is up, the DME closed, its sub-heap deleted, and eznetctl closed
+ * (SOCOM 1's zNetClose -- NetClose and the connected flag cleared, here the heap and the network
+ * configuration too -- where SOCOM 1 has it, after zNetCreateObject; OVL1 0x30D770: the chat unit's
+ * and zanim_menu.cpp's 0x30D770 calls on theNetwork). The flag stores ahead of the last call, the
+ * connected one in its delay slot */
+void CZNetwork::zNetClose()
+{
+    if (m_bNetwork) {
+        NetClose();
+        delete data_0045B328;
+        data_0045B328 = 0;
+        m_network_init = 0;
+        m_bConnected = 0;
+        func_0030C030();
+    }
+}
+
 /* --- the connection to a game's server (SOCOM 1's zNetConnect, SOCOM II's newer DME) ---------- */
 
 /* a server's addresses and where it is (the DME SDK's NetAddressList and NetConnectionInfo, the
@@ -663,6 +691,21 @@ int CZNetwork::zNetJoin(NetCreateObjectCallback join, NetCreateObjectCallback le
         return err;
     m_bJoined = 1;
     return err;
+}
+
+extern "C" int func_00623868(int conn);   /* (the DME: the session left -- SOCOM 1's NetLeave) */
+
+/* the game's session left and the game's server disconnected, the flags cleared (SOCOM 1's
+ * zNetLeaveAndDisconnect, between zNetSendApplicationMessage and zNetJoin in both builds; SOCOM 1's
+ * disconnected only when the leave succeeded and reset two more words; OVL1 0x30D020) */
+void CZNetwork::zNetLeaveAndDisconnect()
+{
+    func_00623868(m_GameConnectionIndex);
+    m_bJoined = 0;
+    NetDisconnect(m_GameConnectionIndex);
+    m_bConnected = 0;
+    m_bSessionMaster = 0;
+    m_monitor_ok = 0;
 }
 
 /* the connection's object count, -1 when it cannot be had (the name ours). The success arm first:
