@@ -277,7 +277,11 @@ public:
  * out of class, would be emitted by zrdr_edit.cpp once generated ahead of the converter's ++ and serve
  * the vid stack (the linker keeps the first unit's copy), which calls its own 0x3B83D0 -- while the vid
  * stack's init unwraps to the base's const_iterator. Not built: it needs deque<T *>'s iterator classes
- * (their names would move every init row's), and the converter's * still copies once too few. */
+ * (their names would move every init row's), and the converter's * still copies once too few.
+ * BUILT in the MSL headers round 29 (std::__convert_iterator and deque<T *>::__const_iterator, below):
+ * this converter stays the circular buffer's; the deque's is its own, its operators out of class over an
+ * in-class iterator, begin() / end() / init unchanged (the base's const_iterators, converted in the
+ * dispatch) -- the rdr editor's do_assign and its three pieces byte-exact. */
 template <class Iterator, class T>
 class __convert_iterator {
 public:

@@ -679,6 +679,20 @@ void __list_imp<T, Allocator>::remove_if(Predicate pred)
     }
 }
 
+/* MEASURED, NOT APPLIED (the MSL headers round 29; probes build/p29/, untracked) -- THE LIST'S OWN insert(position,
+ * x): `iterator insert(iterator position, const T &x) { return __list_deleter<T, Allocator>::insert(position, x); }`
+ * here (with `typedef typename __list_deleter<T, Allocator>::iterator iterator;`) gives both witnesses byte-exact
+ * under list<T>'s name -- the kit's snoozer list 0x5CD8F0 (seal_sensors.cpp with CSnoozeList's insert dropped, the
+ * class kept empty or a typedef of std::list<CSnoozeRec>: all thirteen snoozer pieces 0x5CD870-0x5CDBB0 still
+ * byte-exact, PreTick's 496-instruction miss unchanged) and the graph queue's 0x2D1D50 (graph_tree.cpp with
+ * CGQueue's insert dropped: BuildTree then calls it by the list's name) -- but over every hand-written unit it is
+ * +0 / -1: fts_player.cpp's CMission::LoadVehicles 0x2B2E50 (AddSpawn's `spawners.m_spawns.insert(end(), ...)`
+ * through the wrapper puts the deleter insert's position copy a level deeper, below the entity walk's end copy:
+ * sp+248 / 252 swapped, 4 instructions). Ten AddSpawn spellings tried (the end or the spawn in a named local, a
+ * third or a single level, push_back at one or two levels, the spawn made by a by-value inline): push_back at one
+ * level gets both iterator slots right but the spawn above the grid's points (12 off), none closes it. Both
+ * stand-ins match as they are, so the member gains no match until LoadVehicles is refitted (the game states'
+ * unit) -- left for the integrator (build/p29/inc_ins/list holds the variant, build/p29/lv_vars.py the refits) */
 template <class T, class Allocator = allocator<T> >
 class list : public __list_imp<T, Allocator> {
 };
