@@ -154,10 +154,8 @@ bool SetRegionType__7CAiMapsFPCQ26CAiMap6regionQ36CAiMap6region4TYPE(CAiMaps *ma
 const CAiMapRegion *GetRegion__7CAiMapsFPCcR9CAiMapLoc(CAiMaps *maps, const char *name, CAiMapLoc &loc);
 /* and GetLocation(const char *, CAiMapLoc &), a line's cell by name (OVL2 0x52DB70) */
 bool GetLocation__7CAiMapsFPCcR9CAiMapLoc(CAiMaps *maps, const char *name, CAiMapLoc &loc);
-/* the anim's root node, not made when missing (OVL1 0x2703D0, the engine core's row: SOCOM 1's
- * GetRootNode with a flag), and a node's extension and its parent (zdb::CNode's inline accessors'
- * out-of-line copies, OVL2 0x5AA610 and 0x5AA600 -- seal_env.cpp's spelling) */
-zdb::CNode *func_002703D0(CZAnim *anim, bool create);
+/* a node's extension and its parent (zdb::CNode's inline accessors' out-of-line copies, OVL2
+ * 0x5AA610 and 0x5AA600 -- seal_env.cpp's spelling) */
 zdb::CNodeEx *func_005AA610(zdb::CNode *node);
 zdb::CNode *func_005AA600(zdb::CNode *node);
 }
@@ -1576,7 +1574,7 @@ bool CTMap::Tick(_zanim_cmd_hdr *hdr, float *dT)
 
     switch (cmd->m_kind) {
     case 1: {
-        CNodeAction *na = TaskActionOf(func_002703D0(ZAnim.m_CurAnim, false));
+        CNodeAction *na = TaskActionOf(ZAnim.m_CurAnim->GetRootNode(false));
 
         if (na) {
             CAiMap::action *act = 0;
