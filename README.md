@@ -2065,6 +2065,20 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the AI core, round 31** (no new row; plan_addleg and GetLocation(point) written, ReRoute at the target's size):
+  - an uninitialised pointer passed by reference into an inline is live round its loop and takes a saved register --
+    initialised `= 0` it stays in v0 (GetCellRepelParams 0x5169B0's neighbour cell: its loop on the target's registers);
+    a reference local bound to a frame field gives the uses through it an address register of their own (ReRoute
+    0x52F8F0's `unsigned int &cnt`: the target's size, 10 off);
+  - 4-BYTE CLASS LOCALS (CAiMapLoc) TAKE THE TOP FRAME SLOTS, above a larger object declared before them, wherever they
+    are declared -- a target with them below has them in a later group, e.g. an inline's locals (plan_addleg 0x5274B0:
+    every call, branch and spill the target's, 127 off from that one frame difference); a reference local is numbered at
+    its definition (`int j = 0;` ahead of `CAiMapLoc &next = to;` gave what `igreplay --move 42=49.5` predicted);
+  - CAiMapLoc's hand-written copy constructor copies field by field, its implicit assignment the word (`T x; x = y;`);
+    CPnt3D's implicit assignment copies field by field, a block copy (ld / sd) needs the copy constructor at the
+    declaration; each early `return false` gets its own branch to the epilogue, `if (A && B) { ... } return false;` sends
+    both to one shared block; a list walk through a const view with postfix steps makes one more begin() / end()
+    temporary copy than through `this` (CAiMaps::GetLocation(point) 0x52DC70, OPEN).
 - **Tells from the engine core, round 18** (CountAwareness, GetCmd, the CTarget remove_copy, CGrid::GetCell and
   SetTraversalExtents -- open since round 6; the CPnt3D stand-ins retired):
   - A CLAMP WRITTEN `if (n > K) n = K;` ENDS A BLOCK, PADS ITS JOIN AND CHANGES HOW THE NEXT LOADS ARE SCHEDULED; `n = n >
