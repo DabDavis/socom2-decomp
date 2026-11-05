@@ -8412,6 +8412,70 @@ round 19a, and `_id2type`, sceMpegAddStrCallback, `_pack_header`) and picture ou
   `_ch3dmaCSC`, `_doCSC2`, 0x252D68, 0x250320 (their diagnoses stand), libcdvd's sceCdDiskReady/sceCdRead,
   OVL1's codec and libnetb rows.
 
+**The tools, round 31a** (the game states' round 35 request): two scratch tools promoted. (1)
+**`tools/structdiff.py SRC SYMBOL`** (states-r35's structdiff.py and mydiff.py): one function against
+its scoring row, built as sccheck builds it (scdiff's `--target`, `--compiler`, `--flags`, `-I`; ccdump's
+`--unit`; `--obj` reads a `--build-dir`'s object), with what allocation and the link change normalised on
+both sides -- the allocatable registers (`--regs` keeps them), every relocated immediate (the
+candidate's by its own relocation table, the target's by the link's rule: a lui of an image address's
+high half, the offsets through its register until it is written, every $gp offset), branch targets --
+and a call by its callee's NAME (the candidate's relocation resolved as the scorer resolves it, the
+target's destination by the map), so calling another function is a difference where masking hid it;
+opcodes, field offsets, constants, frame slots and order are kept. It says how many instructions differ
+in their registers alone. The scratch tool masked every non-sp offset (a wrong field read the same) and
+every lui. Two rules carry the target's side: a call's clobber takes effect after its delay slot (`jal
+f; addiu a0,a0,%lo(x)`), and a second alignment over offset-masked tokens pairs an instruction the rule
+missed (a lui in another block) with the candidate's relocated one. Measured on every byte-exact function
+of two private builds -- 1,326 (all of src/lib) and 859 (zlib, zanim, zmath, zdb, OVL2's 0x5xxxxx
+drafts): **0** show a difference of either kind. Over the 57 open lib rows it says which are
+register-only: ezNetCtlSetProperties, sceBInetSend, 0x249B58, sceGsResetGraph (the other 53 differ in
+structure too; dmaRefImage, "registers only" since round 30a, had its n - 1 scheduled apart). (2)
+**`tools/cdis.py SRC SYMBOL [LO HI]`** (states-r35's cdis.py): the candidate's disassembly, each relocation
+named `<TYPE label = 0xADDRESS>` -- a GNU section reference by the object's own label at that offset
+(else the sized object holding it, else `.rodata+0x40`), a `%hi` by its first `%lo`'s addend (GNU as
+writes it just before), a `.text`+N callee by the function there; `--at` at the row's addresses,
+`--list` the object's functions. The canary gains `test_structdiff_sees_structure_not_registers` (sceMcChdir
+exact, then its target changed a word at a time: a register -- 0 structural, 1 register-only; a %lo --
+nothing; a field offset, an opcode, a callee -- 1 structural each; with registers not normalised it fails)
+and `test_cdis_names_every_relocation` (17 assertions). No tool that scores changed: scdiff.py,
+sccheck.py, scdecomp.py and `include/` are master's, so no MW or GCC unit can score differently.
+automatch over the lane's three ranges (`--max-size 0x400 --emit --no-prune --jobs 1 --obj-dir` the
+lane's private build): MAIN `18DB90 1C4CC0` 17 tried, 0 hits (1 build failure, 3 m2c refusals, 13
+misses), OVL1 `1E7F58 1E8FD4` 0 tried, `243000 256FD0` 56 tried, 0 hits (2 build failures -- 0x24B2F8,
+0x24DBB8 --, 5 refusals, 49 misses): 73 tried, none byte-exact (round 30a: 77, 0).
+
+**Round 31a** (2026-11-05, the tools first, then round 30a's opens): 3 rows newly byte-exact -- htonl
+and htons (0x1C1308, 0x1C1330, open since round 6a, a new `sdk/inet_hton.c`) and libezctl's
+ezNetCtlSetProperties (open since the states' round 34: `ovl1/ezctl.c` 8 of 8) -- dmaRefImage 12 -> 9
+words, libnetb's sceBInetRecv written (0x2474F8, OPEN at 6) and named. What they showed:
+
+- **htonl and htons are a separate object built at -O1**: both compute in source order, the result in
+  v0 and one temporary in v1 for every term, which -O2's schedulers never leave (2 and 3 words); and no
+  plain C spelling of htons puts its second term in v1 on any of the thirteen toolchains at -O1 or at
+  -O2 without the schedulers (3 words each, the dying a0) -- with `register u_int r asm ("$2"), t asm
+  ("$3")` (InitTLB32MB's idiom, round 3a) both are byte-exact under dtls13010 at -O1 (htonl is so as
+  one temporary too). The reading is BSD's hand-written MIPS htonl.S/htons.S in C operand order; the
+  demo, without this library, cannot tell the C object from an assembled one (an assembled object's
+  .text is 4-aligned, a compiled one's 8, and both rows sit where either could). The library's objects
+  already differ in level (inet_bsd.c -O0, inet_addr.c and inet_sock.c -O2).
+- **A result variable shared by two arms is the return register's**: ezNetCtlSetProperties sets `ret =
+  -2; rpc->data[0] = ret;` on one path and reads the word back after the report on the other, so the -2
+  is born in v0 and the path jumps past the final reload (`li v0,-2; b; sw v0`); the demo's text --
+  the word returned on both paths -- keeps it in v1 and jumps to the reload.
+- **loop.c hoists invariants in the body's order, and the later one lives the shorter**: dmaRefImage's
+  `n - 1` was hoisted between the two bases (the id computed before the destination's read), live a
+  line longer than the second base, so global-alloc gave the base t5 first; reading the destination into
+  a local before the id puts n - 1 last, as the target's allocation says (`tools/ccdump.py -f`). The index
+  still outranks the tag pointer (11 refs over 36 insns against 9 over 37) and takes t2.
+- **A REG_EQUIV constant goes first in local-alloc**: libnetb's DMA descriptors (sceBInetSend's open
+  since round 13a, sceBInetRecv's now) give the constant size v0 before the loaded IOP address in
+  every spelling tried -- store orders, the size in a variable, Sony's u_int fields, an inline helper.
+- **Open, diagnosed in place**: dmaRefImage (9: the index/tag pointer priorities), sceBInetRecv (6),
+  sceGsResetGraph (4, registers only: seven more spellings of the FFMode flag and the callback test).
+  Not reached: sceGsSetDefDBuff, `_ch3dmaCSC`, `_doCSC2`, 0x252D68, 0x250320 (their diagnoses stand),
+  libnetb's sceBInetOpen 0x2472C8 (the demo's 0x120, here 0x198: its name waits for its body),
+  libnetb_recv_from/send_to (the demo's sizes), the codec's rows.
+
 **Next**: the libraries by hand, module by module, as their vendors wrote them (each `src/lib`
 unit's header says what it covers); GCC's scheduler moves independent stores, and which source
 order gives the target's is easier measured than predicted (`tools/ccperm.py PROBE
