@@ -541,6 +541,83 @@ void C2DString::SetFont(C2DFont *font)
         SetTrans(128.0f * m_font->m_opacity);
 }
 
+/* ---- MakePacket's layout (SOCOM II's, 0x361BD0-0x362B1F: a cursor walking the string and the
+ * packet writer it feeds; the names ours) ---- */
+
+/* the cursor: the string, the pen's place, the next character, four counters, a stop flag, the
+ * string's +0x8C flag (the colour's alpha scaled 1.5) and the colour it writes as ints */
+class C2DStringCursor {
+public:
+    C2DStringCursor(C2DString *str, int *color);
+
+    C2DString *m_str;   // 0x0
+    float m_x;   // 0x4
+    float m_y;   // 0x8
+    const char *m_p;   // 0xc
+    int m_10;   // 0x10
+    int m_14;   // 0x14
+    int m_18;   // 0x18
+    int m_1c;   // 0x1c
+    bool m_done;   // 0x20
+    unsigned char m_bright;   // 0x21
+    int *m_color;   // 0x24
+};
+
+/* the cursor's line set up (0x362350; no row named yet) */
+extern "C" void func_00362350(C2DStringCursor *cursor);
+
+/* the colour's alpha scale for a bright string (.data 0x3E0338: a variable, read with lwc1; the
+ * name ours) */
+static float s_brightalpha = 1.5f;
+
+/* the cursor at the string's place (its position and offset, whole pixels), its first shown
+ * character, centred or right-aligned by the measured length; its line set up and, unless the
+ * string is empty, the colour written (the alpha 1.5 times for a bright string) (0x362900; the
+ * name ours -- MakePacket's; round 49). The bright alpha's product written alpha first: scale first
+ * swaps its FPR pair.
+ * OPEN, 4 instructions, FPRs only: the centring's `0.5f * m_length` -- the target loads the length
+ * into f2 and the 0.5 into f1, MW here the other way round. Its replay (tools/igreplay.py --want)
+ * needs the length's node numbered before the position's float temporaries (at most v38.5 of
+ * v32-v45) and the constant after it. Tried: either operand order, `m_x = m_x - ...`, a named local
+ * for the length or the half (in the block, or declared at the top and assigned there), inline
+ * helpers holding the length in a named local, `/ 2.0f` and `/ 2` (5 off) */
+C2DStringCursor::C2DStringCursor(C2DString *str, int *color)
+{
+    m_str = str;
+    m_x = (float)(int)(str->m_posx + str->m_socom2_7c);
+    m_y = (float)(int)(str->m_posy + str->m_socom2_80);
+    m_p = str->m_string + str->m_firstCharPos;
+    m_10 = 0;
+    m_14 = 0;
+    m_18 = 0;
+    m_1c = 0;
+    m_done = false;
+    m_bright = 0;
+    m_color = color;
+    m_bright = str->m_socom2_8c;
+    if (str->m_isCentered || str->m_socom2_6a) {
+        str->UpdatePos();
+        if (str->m_isCentered)
+            m_x -= 0.5f * str->m_length;
+        if (str->m_socom2_6a)
+            m_x -= str->m_length;
+    }
+    func_00362350(this);
+    if (*m_p && !m_done) {
+        if (m_bright) {
+            m_color[0] = (int)m_str->m_color[0];
+            m_color[1] = (int)m_str->m_color[1];
+            m_color[2] = (int)m_str->m_color[2];
+            m_color[3] = (int)(m_str->m_color[3] * s_brightalpha);
+        } else {
+            m_color[0] = (int)m_str->m_color[0];
+            m_color[1] = (int)m_str->m_color[1];
+            m_color[2] = (int)m_str->m_color[2];
+            m_color[3] = (int)m_str->m_color[3];
+        }
+    }
+}
+
 /* ---- the string tables' global and its wrappers (SOCOM II's: the image's head of the unit,
  * 0x361B00-0x361BCB, so defined last; the initialiser 0x4035C0 builds the tables, registering their
  * implicit destructor 0x364170, the unit's last function) ---- */
