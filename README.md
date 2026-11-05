@@ -2065,6 +2065,23 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the kit and AI states, round 51** (CSealUnit::IssueCommand written with the four rows only it calls; the
+  OVL2 DI-pool twins from source; GOAL_TYPE moved into ai_states.h -- resumed after the 2026-11-05 crash for its wind-down):
+  - a walk's end() taken into a local before the loop gives the target's begin in v0 and end in v1 (IssueCommand
+    0x5E8E10's three SEAL walks: 70 -> 52, OPEN); a bitfield struct COPY-CONSTRUCTED from a static inlines a
+    field-by-field copy, ASSIGNED it is a word copy 0x78 bytes shorter; `if (f()) r = p;` keeps the zero out of the delay
+    slot where a ternary puts it in; a kind tested by an if-else chain matches where a switch emits a beq to each case;
+  - a virtual called on an object is bound directly (CAiSBreach::OnSignal), through a `CAiState *` it is the vtable
+    call; float thresholds the target loads from .data are function-local statics (written as literals MW builds them
+    with lui/ori);
+  - A FUNCTION-LOCAL STATIC OBJECT IS THREE DATA ROWS: its guard `@GUARD@fn@name` (tested with lb, set to 1), the object
+    `@LOCAL@fn@name` and an anonymous destructor-chain record right after the guard (IssueCommand's breach prototype
+    0x66B8E0, 54 references, guard 0x66B8C0; the record 0x66B8C8 stays unnamed until scdecomp has a convention);
+  - an inline cut to one level (SOCOM 1's HandleSupport) emits exactly the out-of-line copies the target calls --
+    CAiState(AI_STATE) 0x5EA5D0, the CAiMapLoc copy 0x5EA7E0 and insert<FT_COMMAND> 0x5EF6D0 new, GetValidMapLoc 0x5EA870
+    (our name) from its draft to source; RequestRay / GetRequest / SetRequest / CNewDiDir in seal_dipool.h (opt-in
+    SEAL_DIPOOL_REQUESTS) bring the OVL2 twins 0x5C97D0 / 0x5C9830 to source, marked ovl-copy of OVL1's 0x3A7DD0 /
+    0x3A7E30.
 - **Tells from the engine core, round 19** (ZAnimWildcardApply and CClutter::GetMatrix, both open since round 9; the CKey
   helpers from source):
   - A CAST OR CONST COPY OF A PARAMETER OR OF `this` (`char *name = (char *)str`, `const CClutter *c = this`) IS A VARIABLE
