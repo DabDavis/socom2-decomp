@@ -1316,49 +1316,88 @@ static inline bool SharesTeam(const unsigned int *team, const CEntity *e)
 static inline bool ConeContains(CTurret *t, const CPnt3D *p, const CPnt3D *apex, CPnt3D *vec)
 {
     p->Sub(apex, vec);
-    t->m_coneDot = t->m_270.x * t->m_coneVec.x + t->m_270.y * t->m_coneVec.y + t->m_270.z * t->m_coneVec.z;
-    if (t->m_coneDot <= 0.0f || t->m_coneDot > t->m_254)
+    float dot = t->m_270.x * t->m_coneVec.x + t->m_270.y * t->m_coneVec.y + t->m_270.z * t->m_coneVec.z;
+    t->m_coneDot = dot;
+    if (dot <= 0.0f || dot > t->m_254)
         return false;
-    float r = t->m_25c + t->m_coneDot * t->m_260 * t->m_258;
+    float k = dot * t->m_260;
+    float r = t->m_25c + k * t->m_258;
 
-    if (t->m_coneVec.z * t->m_coneVec.z + (t->m_coneVec.x * t->m_coneVec.x + t->m_coneVec.y * t->m_coneVec.y) -
-            t->m_coneDot * t->m_coneDot <= r * r)
+    if ((t->m_coneVec.z * t->m_coneVec.z + (t->m_coneVec.x * t->m_coneVec.x + t->m_coneVec.y * t->m_coneVec.y)) -
+            dot * dot <= r * r)
         return true;
     return false;
 }
 
-/* the DI requests' pieces the scan calls out of line, their copies following it (drafts): a free
- * request taken off the pool's free list or a new one made (0x3A7E30), one set up -- the ray from
- * the eye to the target's point, the viewer, the target's node and the target (0x3A7DD0) -- and one
- * appended to the used list (0x3A7DA0: OVL1's copy of list<dir *>::push_back); CPnt3D's
- * assignment, called (an earlier unit's copy) */
-extern "C" {
-CDiPool::dir *func_003A7E30(CDiPool::CDirList *free);
-void func_003A7DD0(CDiPool::dir *d, const CPnt3D *tail, const CPnt3D *tip, CEntity *viewer, CNode *node,
-                   CEntity *target);
-void func_003A7DA0(CDiPool::CDiList *used, CDiPool::dir **d);
-CPnt3D *__as__6CPnt3DFRC6CPnt3D(CPnt3D *to, const CPnt3D *from);
+/* a request made: SOCOM 1's CDiPool::dir() -- the state, whose test, the two words and the limit
+ * zeroed (0x3A7E30's inlined constructor). A modelling device: seal_dipool.h's dir declares no
+ * constructor (the kit's file), so the scan's `new` builds this layout-identical subclass */
+struct CNewDiDir : public CDiPool::dir {
+    CNewDiDir()
+    {
+        m_state = 0;
+        m_ent = 0;
+        m_2c = 0;
+        m_limited = 0;
+        m_30 = 0;
+    }
+};
+
+/* a request taken off the free list, or a new one made when it is empty (inline: out of line at
+ * 0x3A7E30 behind RequestRay's cut, OVL2's copy 0x5C9830 -- a member of the free list's class in the
+ * original, by its `this`: seal_dipool.h's CDirList; the name ours) */
+static inline CDiPool::dir *GetRequest(CDiPool::CDirList &free)
+{
+    CDiPool::dir *d;
+
+    if (free.empty())
+        d = new CNewDiDir;
+    else {
+        d = free.front();
+        free.pop_front();
+    }
+    return d;
+}
+
+/* a request set up: the ray from tail to tip, new, no DiIntersect yet, unaged, whose test it is,
+ * the target's node and the target (inline: out of line at 0x3A7DD0 behind RequestRay's cut, OVL2's
+ * copy 0x5C97D0 -- a dir member in the original, by its `this`; the name ours) */
+static inline void SetRequest(CDiPool::dir *d, const CPnt3D &tail, const CPnt3D &tip, CEntity *viewer,
+                              CNode *node, CEntity *target)
+{
+    d->m_tail = tail;
+    d->m_tip = tip;
+    d->m_state = 3;
+    d->m_index = -1;
+    d->m_age = 0.0f;
+    d->m_ent = viewer;
+    d->m_2c = (int)node;
+    d->m_limited = 0;
+    d->m_30 = (int)target;
 }
 
 /* a ray from the eye to the target's point requested for a target's slot: a request made, set up
- * and listed when it has none, else its own re-aimed (inline; the name ours) */
-static inline void RequestRay(CDiPool::dir *&slot, const CPnt3D &eye, const CPnt3D &pos, CEntity *viewer,
+ * and listed when it has none, else its own re-aimed (inline, cut to ONE level by its expanded size:
+ * the target calls the pool's get, the set-up, the used list's push_back (0x3A7DA0, OVL1's copy of
+ * OVL2's 0x5C97A0) and CPnt3D's implicit assignment (an earlier unit's copy, 0x20F1F0) out of line,
+ * as the SEALs' twin 0x5CC120 does; the name ours) */
+static inline void RequestRay(int &slot, const CPnt3D &eye, const CPnt3D &pos, CEntity *viewer,
                               CNode *node, CEntity *target)
 {
     CDiPool::dir *d = 0;
 
     if (!slot) {
-        d = func_003A7E30(&_diPool.m_free);
+        d = GetRequest(_diPool.m_free);
         if (d) {
-            func_003A7DD0(d, &eye, &pos, viewer, node, target);
+            SetRequest(d, eye, pos, viewer, node, target);
             d->m_limited = 0;
-            func_003A7DA0(&_diPool.m_used, &d);
-            slot = d;
+            _diPool.m_used.push_back(d);
+            slot = (int)d;
         }
     } else {
-        d = slot;
-        __as__6CPnt3DFRC6CPnt3D(&d->m_tail, &eye);
-        __as__6CPnt3DFRC6CPnt3D(&d->m_tip, &pos);
+        d = (CDiPool::dir *)slot;
+        d->m_tail = eye;
+        d->m_tip = pos;
         d->m_2c = (int)node;
         d->m_limited = 0;
         d->m_30 = (int)target;
@@ -1370,64 +1409,64 @@ static inline void RequestRay(CDiPool::dir *&slot, const CPnt3D &eye, const CPnt
  * view cone gets a ray from the turret's head to its point requested of the DI pool (a request of its
  * own made and listed, or the one it has re-aimed); any other loses its visible bit and its
  * request. The viewer record is 0x3A82C0's CAiViewer (the target builds it at sp+192, its flag
- * stored twice); the request pieces are called out of line in the target -- the pool's get, the
- * set-up and the push_back (0x3A7E30, 0x3A7DD0, 0x3A7DA0, their copies following the scan) and
- * CPnt3D's assignment (0x20F1F0) -- as if the request were an inline cut to one level by its size.
- * OPEN, 73 instructions at the target's size (written in the weapons' round 28 at 0x330 of 0x354):
- * the target holds three addresses across the walk -- the turret's team word (s7, read `lw
- * a0,0(s7)`), the cone's vector (s8) and its apex (spilled to sp+176: Sub's arguments) -- nine saved
- * registers and a 240-byte frame. ROUND 29: only VARIABLES give them -- MW substitutes an inline's
- * pointer or reference parameter bound to `&t->m_x` (the code unchanged), computes a direct call
- * argument straight into a1/a2 (never hoisted), and folds a field read; the three as named pointer
- * locals (here) give the size, the spill and the frame. The eye before GetNode is the target's order
- * (the SEALs' twin 0x5CC120 calls GetNode first: right-to-left arguments), so the slot, the eye and
- * the node are locals ahead of RequestRay (88 -> 73). What is left: (1) the target computes the three
- * in the loop's PREHEADER (after the `begin != end` guard, beside the eye's hoisted sp+200) -- as
- * locals before the `for` they come before the guard; assigned or declared inside the body MW hoists
- * them but stops rotating the loop (an entry `b` to the bottom test, 0x36C); (2) the numbering: the
- * target's e is s1 and seen s3 (here the reverse), the target list s2 and the slot s4 (reverse), the
- * apex spilled and the vector in s8 (reverse), the dot in $f6 (here $f3; IsInCone's dot local gives
- * $f7) -- for `tools/igreplay.py --target` once (1) is found. The OVL1 copies (task: name 0x3A7DA0
- * `ovl-copy:` of OVL2's push_back 0x5C97A0): spelled `_diPool.m_used.push_back(d)` here MW inlines
- * it (0x36C) and emits no copy -- the target's four out-of-line pieces (the pool's get, the set-up,
- * push_back, CPnt3D's assignment, all leaves) read as RequestRay inlined ONE level by its expanded
- * size (inline_max_size), so the marker waits on RequestRay's real body */
+ * stored twice). The three addresses the target holds across the walk -- the turret's team word
+ * (s7), the cone's vector (s8) and its apex (spilled to sp+176: Sub's arguments) -- are VARIABLES
+ * (round 29: MW substitutes an inline's pointer or reference parameter bound to `&t->m_x`), computed
+ * in the loop's preheader after the `begin != end` guard: the guard written by hand around a do-while
+ * with the three declared inside it (round 30: as locals before a `for` they come before the guard,
+ * declared in its body MW stops rotating the loop). Byte-exact since the weapons' round 30, open
+ * since round 25, by four more things: RequestRay's real body (the get, the set-up and push_back as
+ * inlines, the CPnt3D copies plain assignments: its expanded size cuts it to one level, as in the
+ * target, so all four are called and the three copies follow the scan); its slot an `int &` (the
+ * target field is an int: the int-to-pointer copy into the address-taken `d` is not forwarded to
+ * the next read, the target's `sw v0; lw v0`); the slot and node pointers given dead first
+ * definitions at the top (MW numbers a variable at its first definition: `tools/igreplay.py
+ * --move` found the numbering t < slot < node < targets < e < it), the cone's dot a named local
+ * (numbered before the expression's temporaries: $f6) and the radius' product one too (its operand
+ * order); the range read before the viewer is built (its load ahead of the viewer's stores) */
 extern "C" void func_003A7A40(CTurret *t)
 {
+    int *slot = 0;
+    CNode *node = 0;
+    float range = t->m_aiParams.visual_range * t->m_aiParams.visual_range;
     CAiViewer v(t, (char *)t + 0x204);
 
     v.m_flag = false;
-    float range = t->m_aiParams.visual_range * t->m_aiParams.visual_range;
     CTargetList &targets = t->m_targets;
-    const unsigned int *team = &t->m_team;
-    const CPnt3D *apex = &t->m_264;
-    CPnt3D *vec = &t->m_coneVec;
+    CTargetList::iterator it = targets.begin();
 
-    for (CTargetList::iterator it = targets.begin(); it != targets.end(); ++it) {
-        CEntity *e = it->m_ent;
-        bool seen = false;
+    if (it != targets.end()) {
+        const unsigned int *team = &t->m_team;
+        CPnt3D *vec = &t->m_coneVec;
+        const CPnt3D *apex = &t->m_264;
 
-        if (e && e->m_isAlive && !SharesTeam(team, e) && it->m_distSq <= range &&
-            !(it->m_distSq < 100.0f) && ConeContains(t, &e->m_posW, apex, vec))
-            seen = true;
-        if (seen) {
-            CPnt3D pos;
+        do {
+            CEntity *e = it->m_ent;
+            bool seen = false;
 
-            e->GetTargetPosW(&pos);
-            CDiPool::dir *&slot = *(CDiPool::dir **)&it->m_unk28;
-            const CPnt3D &eye = v.Eye();
-            CNode *node = e->GetNode();
-            RequestRay(slot, eye, pos, t, node, e);
-        } else {
-            it->m_flags &= ~0x200;
+            if (e && e->m_isAlive && !SharesTeam(team, e) && it->m_distSq <= range &&
+                !(it->m_distSq < 100.0f) && ConeContains(t, &e->m_posW, apex, vec))
+                seen = true;
+            if (seen) {
+                CPnt3D pos;
 
-            CDiPool::dir *d = (CDiPool::dir *)it->m_unk28;
-            CDiPool::dir **p = (CDiPool::dir **)&it->m_unk28;
+                e->GetTargetPosW(&pos);
+                slot = &it->m_unk28;
+                const CPnt3D &eye = v.Eye();
+                node = e->GetNode();
+                RequestRay(*slot, eye, pos, t, node, e);
+            } else {
+                it->m_flags &= ~0x200;
 
-            if (d)
-                d->Drop();
-            *p = 0;
-        }
+                CDiPool::dir *d = (CDiPool::dir *)it->m_unk28;
+                CDiPool::dir **p = (CDiPool::dir **)&it->m_unk28;
+
+                if (d)
+                    d->Drop();
+                *p = 0;
+            }
+            ++it;
+        } while (it != targets.end());
     }
 }
 

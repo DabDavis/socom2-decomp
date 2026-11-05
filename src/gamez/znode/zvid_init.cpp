@@ -301,6 +301,122 @@ extern "C" void func_003B28D0(GS_STOREIMAGE_REGS *si)
         *(u_long *)UNCACHED(&si->trxreg) = SCE_GS_SET_TRXREG(si->trxreg.RRW, h2);
 }
 
+/* the EE's DMA, VIF, GIF and GS registers the transfer below touches (Sony's eeregs.h names) */
+#define ZV_D1_CHCR ((volatile unsigned int *)0x10009000)
+#define ZV_D1_MADR ((volatile unsigned int *)0x10009010)
+#define ZV_D1_QWC ((volatile unsigned int *)0x10009020)
+#define ZV_GIF_CTRL ((volatile unsigned int *)0x10003000)
+#define ZV_VIF1_STAT ((volatile unsigned int *)0x10003C00)
+#define ZV_VIF1_FBRST ((volatile unsigned int *)0x10003C10)
+#define ZV_VIF1_FIFO ((volatile u_long128 *)0x10005000)
+#define ZV_GS_CSR ((volatile unsigned long *)0x12001000)
+#define ZV_GS_BUSDIR ((volatile unsigned long *)0x12001040)
+
+/* the quadword written into VIF1's FIFO when the GS never finishes (0x3E1430, initialised data; not
+ * named) */
+extern "C" u_long128 data_003E1430;
+
+/* the path reset after a timed-out read: the GS, the bus direction back to the host, GIF and VIF1
+ * (inline; the name ours) */
+static inline void StoreImageReset()
+{
+    *ZV_GS_CSR = 256;
+    *ZV_GS_BUSDIR = 0;
+    *ZV_GIF_CTRL = 1;
+    *ZV_VIF1_FBRST = 1;
+}
+
+/* a store image's pixels read back from the GS into dst through VIF1 (new in SOCOM II, not named:
+ * libgraph's sceGsExecStoreImage on the split 0x3B28D0 works out -- the video thread's body 0x3B1DD0
+ * calls it twice): the packet sent once channel 1 is free, the GS waited on to finish, the bus
+ * turned round, the whole blocks taken by DMA, the rest quadword by quadword out of the FIFO, the
+ * last quadword's bytes copied and the padding read away; every wait counts on one counter and
+ * gives up past 0x1000000 polls (-1), the later ones resetting the path first. Written in the
+ * weapons' round 30: the register tests `(x & m) == 0` (`!(x & m)` materialises sltu/xori: 0x440).
+ * OPEN, 15 instructions at the target's size: the FIFO loop's store -- the target keeps a second
+ * counter k (from the block count, t0) beside i (t1) and computes dst + (k << 4) each pass; any
+ * `dst[k++]` (int, unsigned, short, separate step, in the for's step, through a value local, a char *
+ * or shifted address, a volatile view) MW strength-reduces to a pointer stepped by 16 (45 off), and
+ * `dst[base + i]` (here) re-adds base + i each pass; the byte copy's pointer is set before the
+ * `0 < count` guard here, inside it in the target (the for-init: no better); the padding loop's
+ * counter and bound trade a1/a2 */
+extern "C" int func_003B24C0(GS_STOREIMAGE_REGS *si, u_long128 *dst)
+{
+    unsigned int count = 0;
+
+    while (*ZV_D1_CHCR & 0x100) {
+        if (count++ > 0x1000000)
+            return -1;
+    }
+    *ZV_D1_QWC = 7;
+    *ZV_D1_MADR = (unsigned int)si;
+    *ZV_D1_CHCR = 0x101;
+    while (*ZV_D1_CHCR & 0x100) {
+        if (count++ > 0x1000000)
+            return -1;
+    }
+    while ((*ZV_GS_CSR & 2) == 0) {
+        if (count++ > 0x1000000) {
+            *ZV_VIF1_FIFO = data_003E1430;
+            return -1;
+        }
+    }
+    *ZV_VIF1_STAT = 0x800000;
+    *ZV_GS_BUSDIR = 1;
+    if (data_004A45A8) {
+        *ZV_D1_QWC = data_004A45A8;
+        *ZV_D1_MADR = (unsigned int)dst;
+        *ZV_D1_CHCR = 0x100;
+        while (*ZV_D1_CHCR & 0x100) {
+            if (count++ > 0x1000000) {
+                StoreImageReset();
+                return -1;
+            }
+        }
+    }
+
+    int base = data_004A45A8;
+
+    for (int i = 0; i < data_004A45B8; i++) {
+        while ((*ZV_VIF1_STAT & 0x1F000000) == 0) {
+            if (count++ > 0x1000000) {
+                StoreImageReset();
+                return -1;
+            }
+        }
+        dst[base + i] = *ZV_VIF1_FIFO;
+    }
+    if (data_004A45C0) {
+        u_long128 q;
+
+        while ((*ZV_VIF1_STAT & 0x1F000000) == 0) {
+            if (count++ > 0x1000000) {
+                StoreImageReset();
+                return -1;
+            }
+        }
+        q = *ZV_VIF1_FIFO;
+
+        unsigned char *p;
+        int j;
+
+        for (j = 0, p = (unsigned char *)&q; j < data_004A45C0; j++)
+            ((unsigned char *)&dst[data_004A45A8 + data_004A45B8])[j] = *p++;
+        for (int j = 0; j < data_004A45B0; j++) {
+            while ((*ZV_VIF1_STAT & 0x1F000000) == 0) {
+                if (count++ > 0x1000000) {
+                    StoreImageReset();
+                    return -1;
+                }
+            }
+            q = *ZV_VIF1_FIFO;
+        }
+    }
+    *ZV_VIF1_STAT = 0;
+    *ZV_GS_BUSDIR = 0;
+    return 0;
+}
+
 /* the last sixteen frames' times, a ring, and the newest's place in it (new in SOCOM II, not
  * named) */
 extern float data_004A4560[16];
@@ -314,7 +430,11 @@ extern int data_004A45A0;
  * bound, a front-end temporary (v36, `n - 8`, defined right after idx's load) -- every placement
  * numbering the bound BEFORE idx gives the target's registers (91 of 3,481). Not found in source:
  * the step in the for, two statements, the for-init, idx unsigned, a named count, `last - i` (0x1F0),
- * a pointer walk (0x188), a while (no unrolling) */
+ * a pointer walk (0x188), a while (no unrolling). Round 30: the bound is a temporary the loop pass
+ * makes, so idx would have to be one too -- made after it (the remainder loop's induction pointer
+ * @671 is): an inline's local or parameter, a copy of a named start, a reference or pointer to the
+ * global, a dead first definition then the same load again (CSE), casts -- all still numbered ahead
+ * of the bound (17); the CSE rule that closed CMaterial_Object::Read does not reach here */
 extern "C" float func_003B1BF0(unsigned int n)
 {
     float sum = 0.0f;

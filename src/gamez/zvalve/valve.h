@@ -89,6 +89,14 @@ struct VALVE_CMD_DATA {
     unsigned char valIsValve : 1;   // 0x9: value names a valve
 
     static CValve *ParseValveName(const char *name, int &index);
+    /* the value's three flags set (ours, inline: CmdParseCmp's `false` stays `(0 & 1) << n` at run
+     * time, as VBIT's setter) */
+    void SetValueFlags(bool arg, bool anim, bool valve)
+    {
+        valIsArg = arg;
+        valIsAnim = anim;
+        valIsValve = valve;
+    }
     /* the valve's value against the block's, by its operator (0x353FD0, SOCOM 1's) */
     bool Compare();
 };
