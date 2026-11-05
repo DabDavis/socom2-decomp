@@ -365,6 +365,8 @@ public:
      * callers leave it unset; graph_main.cpp's) */
     CGNode *CreateNode();
     CGEdge *CreateEdge(CGNode *a, CGNode *b);
+    /* a node and its edges taken out (graph_main.cpp's: CAiMaps::RegisterPathPlan's two joining nodes) */
+    void DeleteNode(CGNode *node);
     CGNode *GetNodeByNodeEx(const void *ex);
     /* the edge between two nodes, and the route between two (graph_main.cpp's and graph_tree.cpp's:
      * CAiPath::plan_addleg's detour through the map's regions) */

@@ -213,12 +213,23 @@ public:
     float m_length;   // 0x4: graph_tree.h's m_4 (CreateGraph stores the walk's length)
     unsigned char _8[0xc];
     CAiMap::link *m_link;   // 0x14
+    unsigned int m_mask;   // 0x18: the path's mask RegisterPathPlan's joining edges carry
 };
 
 class CGNode {
 public:
     unsigned char _0[0x8];
     CAiMap::link *m_link;   // 0x8
+};
+
+/* a route through the graph: its nodes in order (graph_tree.h's CGRoute; its constructor and
+ * destructor graph_main.cpp's) */
+class CGRoute {
+public:
+    CGRoute();
+    ~CGRoute();
+
+    std::list<CGNode *> m_nodes;   // 0x0
 };
 
 /* the map set's graph saved and read back (ReadMapSet hands them to CGraph::Create): each node's and
@@ -590,6 +601,121 @@ inline unsigned int loc_delta(const CAiMapLoc &a, const CAiMapLoc &b)
 inline CAiMap *map_of(CAiMaps *maps, const CAiMapLoc &loc)
 {
     return maps->GetMapByIndex(loc.m_mapid);
+}
+
+/* whether a step may end on the cell: its map's IsTraversable, false off the maps (GetMap and the
+ * test out of line, the result narrowed in both arms) */
+inline bool traversable(const CAiMaps *maps, const CAiMapLoc &loc)
+{
+    CAiMap *map = maps->GetMap(loc);
+
+    return map ? map->IsTraversable(loc) : false;
+}
+
+/* a path planned from a cell through the given cells: every cell must be one a step may end on;
+ * then leg by leg -- on one map the leg itself, across maps through the map set's graph: two new
+ * nodes joined to every node whose link lies on the leg's first or last map (the edge as long as
+ * the cells' x and y distances summed, carrying the path's mask), the route between them built
+ * with the mask (or, failing that, with none), a leg added for each step of the route that stays
+ * on its map, the two nodes deleted again. The plan aborted on the first failure, run otherwise
+ * (SOCOM 1's, the demo's 0x199870; the mask, the second try and the map's IsTraversable new in
+ * SOCOM II). Written in the AI core's round 32 (unstarted before), from the target's code:
+ * OPEN, 0x5F8 against 0x608 (difflib distance 105 of 386), every call the target's. What fixed what:
+ * the leg's two cells one 8-byte struct (from 288, to 292 -- plan_addleg's shape; &to hoisted into
+ * s6), the route's two cells another, declared inside the route's block (264 / 268, below the route
+ * at 272, &step hoisted into s0), `from` assigned (a word copy: the written copy constructor works
+ * field by field), both list walks' iterators declared and then ASSIGNED from begin() (include/list:
+ * kept in memory, re-read and re-stored at each step, as the target's 332 and 304). Left: the
+ * target hoists &to.y (s6 + 2) out of the loop and spills it (176), so its frame is 16 bytes taller
+ * (336) and every slot above sits 16 higher -- here to.y is rebuilt from sp at its use (a reference
+ * local `CAiMapLoc &to = leg.to;` reads it as `lhu 2(s6)` instead, 113); the node walk's end is
+ * `&m_nodes + 4` in two adds in the target (the list reached through a pointer or reference), and
+ * mask / node take s2 / s3 there, s3 / s2 here; the route walk's begin copy (300) is one temporary
+ * more in the target */
+bool CAiMaps::RegisterPathPlan(const CAiMapLoc &start, const CAiMapLoc *goals, int count, CAiPath *path)
+{
+    if (!traversable(this, start))
+        return false;
+    for (int k = 0; k < count; k++)
+        if (!traversable(this, goals[k]))
+            return false;
+    ai::PathPlanBegin(path);
+    bool ok = true;
+    struct { CAiMapLoc from; CAiMapLoc to; } leg;
+
+    leg.from = start;
+    for (int i = 0; ok && i < count; i++) {
+        leg.to = *goals;
+        if (leg.from.m_mapid == leg.to.m_mapid) {
+            CAiMap *map = GetMapByIndex(leg.from.m_mapid);
+
+            ok = map != 0;
+            if (ok)
+                ai::PathPlanAddLeg(map, leg.from, leg.to);
+        } else {
+            CGraph *graph = m_graph;
+
+            ok = graph != 0;
+            if (ok) {
+                CGNode *n0 = graph->CreateNode();
+                CGNode *n1 = graph->CreateNode();
+                unsigned int mask = path->m_unk24;
+
+                std::list<CGNode *>::iterator it;
+
+                for (it = graph->m_nodes.begin(); it != graph->m_nodes.end(); ++it) {
+                    CGNode *node = *it;
+                    CAiMap::link *l = node->m_link;
+
+                    if (l) {
+                        if (l->m_loc.m_mapid == leg.from.m_mapid) {
+                            CGEdge *e = graph->CreateEdge(n0, node);
+
+                            e->m_length = (int)loc_delta(l->m_loc, leg.from);
+                            e->m_mask = mask;
+                        }
+                        if (l->m_loc.m_mapid == leg.to.m_mapid) {
+                            CGEdge *e = graph->CreateEdge(n1, node);
+
+                            e->m_length = (int)loc_delta(l->m_loc, leg.to);
+                            e->m_mask = mask;
+                        }
+                    }
+                }
+                CGRoute route;
+
+                if (graph->BuildRoute(n0, n1, mask, &route) || (mask && graph->BuildRoute(n0, n1, 0, &route))) {
+                    struct { CAiMapLoc from; CAiMapLoc to; } sub;
+                    std::list<CGNode *>::iterator r;
+
+                    r = route.m_nodes.begin();
+                    sub.from = leg.from;
+                    for (++r; r != route.m_nodes.end(); ++r) {
+                        CAiMap::link *l = (*r)->m_link;
+
+                        sub.to = l ? l->m_loc : leg.to;
+                        if (sub.from.m_mapid != sub.to.m_mapid) {
+                            sub.from = sub.to;
+                        } else {
+                            ai::PathPlanAddLeg(GetMapByIndex(sub.from.m_mapid), sub.from, sub.to);
+                            sub.from = sub.to;
+                        }
+                    }
+                } else {
+                    ok = false;
+                }
+                graph->DeleteNode(n0);
+                graph->DeleteNode(n1);
+            }
+        }
+        goals++;
+        leg.from = leg.to;
+    }
+    if (!ok)
+        ai::PathPlanAbort();
+    else
+        ai::PathPlanExecute();
+    return ok;
 }
 
 /* the one-goal plan: the goal as a run of one (SOCOM 1's three-argument RegisterPathPlan, the
