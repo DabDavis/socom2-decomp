@@ -3812,7 +3812,7 @@
 0x002A7560 0x90 func_002A7560  # OVL1
 0x002A75F0 0xD4 UnInitialize__9CZNetGameFv  # OVL1; s1:order by hand (the states lane, round 14: SOCOM 1's UnInitialize, just ahead of Initialize as there -- the same run of cleared fields at SOCOM II's offsets, SetE3RoundCount(0) inlined; CMission::DestroyNetGame tail-calls it)
 0x002A76D0 0x664 Initialize__9CZNetGameFv  # OVL1; s1:align
-0x002A7D40 0x3F4 func_002A7D40  # OVL1
+0x002A7D40 0x3F4 OnMissionStart__8CMissionFv  # OVL1; s1:calls by hand (the states lane, round 39): SOCOM 1's CMission::OnMissionStart (0x1F4510), grown -- the same sequence: m_state 1, m_delay -1, ResetDeathCam, the end's two flags cleared, the five outcome valves at 0, CInput::Flush, the common and mission anim sets started, every entity's OnMissionStart (slot 0x4C), CSnd::NetOpen or Open, the listener flag cleared, CSndJukebox::Start, then in a network game CPickup::Open, the HUD's ReInit_Uninit/ReInit_Init and the master's game start; st_core.cpp's load calls it on theMission; fts_mission.cpp
 0x002A8140 0xB48 ftsFixupAiMap__FP6CAiMap  # OVL1; s1:calls by hand (the states lane, round 24): CMission::Open calls it on each of AiMaps' maps (the list walk after RefreshTeamValves) where SOCOM 1's Open calls ftsFixupAiMap__FP6CAiMap in the same walk
 0x002A8C90 0x298 func_002A8C90  # OVL1
 0x002A8F30 0x14 __ct__6CPnt3DFfff  # OVL1; by its body (the three floats stored at 0, 4, 8, this returned: zmath.h's inline CPnt3D(float, float, float) out of line) -- the UI-widgets lane

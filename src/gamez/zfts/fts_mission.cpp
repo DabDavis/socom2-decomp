@@ -34,6 +34,7 @@ public:
     void On() { m_ison = true; }
     void Off() { m_ison = false; }
     void ReInit_Uninit();   /* 0x1FB790 */
+    void ReInit_Init();   /* 0x1FB420 */
 
     unsigned char _0[0x11c90];
     CZNewHudMap *m_newmap;   // 0x11c90 (SOCOM 1's map embedded, at 0xe370)
@@ -114,7 +115,11 @@ public:
     int m_40;   // 0x40 (SOCOM 1's at 0x3c)
     unsigned char _44[0x4c - 0x44];
     int m_4c;   // 0x4c (SOCOM 1's at 0x48)
-    unsigned char _50[0x84 - 0x50];
+    unsigned char _50[0x74 - 0x50];
+    CValve *m_74;   // 0x74: SOCOM II's (OnMissionStart clears it and the word at 0x7c; the names ours)
+    CValve *m_78;   // 0x78: and this with the word at 0x80
+    int m_7c;   // 0x7c
+    int m_80;   // 0x80
     int m_84[5];   // 0x84 (SOCOM 1's at 0x50)
     unsigned char _98[0xbc - 0x98];
     int m_bc;   // 0xbc (SOCOM 1's at 0x80)
@@ -504,6 +509,7 @@ public:
     unsigned int GetTimeLeft();
     void EndMission();
     void CreateLadderTable();
+    void OnMissionStart();
 
     MISSION_STATE m_state;   // 0x18 (SOCOM 1's; the save module's base ahead)
     char *m_database;   // 0x1c (SOCOM 1's)
@@ -511,7 +517,7 @@ public:
     unsigned char _21[0x60 - 0x21];
     char m_db_string[0x80];   // 0x60 (SOCOM 1's at 0x20)
     float m_timer;   // 0xe0: the mission's time in seconds, cleared by Open and before the second unload (SOCOM 1's float at 0x60)
-    unsigned char _e4[0xe8 - 0xe4];
+    float m_delay;   // 0xe4 (SOCOM 1's at 0x64; OnMissionStart sets it -1)
     float m_e8;   // 0xe8: the mission's own clock, in seconds (SOCOM 1's m_winlosstimer at 0x68; the name ours)
     float m_winlossinc;   // 0xec (SOCOM 1's at 0x6c: the constructor sets both -1)
     unsigned char _f0[0xf4 - 0xf0];
@@ -2270,6 +2276,7 @@ void UpdateMissionArchive(const char *olddb, const char *newdb);
 class CameraZoom {
 public:
     static void ClearLensFx();   /* 0x1EFF90 */
+    static void LoadLensFx();   /* 0x1F0030 */
 };
 
 void zBoneResetCallbacks();   /* 0x2875D0 */
@@ -2616,6 +2623,86 @@ CZNetGame *CMission::CreateNetGame()
 {
     m_pNetGame->Initialize();
     return m_pNetGame;
+}
+
+/* the mission under way (SOCOM 1's CMission::OnMissionStart, grown; OVL1 0x2A7D40 -- st_core.cpp's
+ * load and reload call it): running, no delay, the death camera reset, the end's two flags cleared,
+ * the five outcome valves and "scoring_alarm" at 0, in a network game the net game's two SOCOM II
+ * valves and their words cleared (read through theMission each time), the world's interval count
+ * cleared and the input flushed, 0x327E40 given 2000, the two anim sets started, the zoom's lens
+ * effects loaded, every entity told, the sound opened for the network or not, the listener
+ * invalidated and the jukebox started; in a network game the pickups opened for the entities, the
+ * HUD set up again and the net game, the master's set in play, started (0x2BB0C0, 0x2A6C50) */
+/* the input (zinput's CInput: only the flush) */
+class CInput {
+public:
+    static void Flush();   /* 0x2D9E00 */
+};
+
+extern "C" {
+void func_00327E40(int ms);
+void func_002BB0C0();
+void func_002A6C50(CZNetGame *game);
+}
+
+void CMission::OnMissionStart()
+{
+    m_state = MISSION_RUNNING;
+    m_delay = -1.0f;
+    ResetDeathCam__10CAppCameraFv(appCamera);
+    SetDelayEndMission(false);
+    SetFadingToEndMission(false);
+    SetValveValue(m_valve_complete, 0);
+    SetValveValue(m_valve_failure, 0);
+    SetValveValue(m_valve_abort, 0);
+    SetValveValue(m_valve_timeout, 0);
+    SetValveValue(m_valve_nofade, 0);
+    CValve *alarm = CValve::GetByName("scoring_alarm");
+
+    if (alarm)
+        SetValveValue(alarm, 0);
+    if (theNetwork.m_bNetwork && theMission.m_pNetGame) {
+        if (theMission.m_pNetGame->m_74)
+            SetValveValue(theMission.m_pNetGame->m_74, 0);
+        theMission.m_pNetGame->m_7c = 0;
+        if (theMission.m_pNetGame->m_78)
+            SetValveValue(theMission.m_pNetGame->m_78, 0);
+        theMission.m_pNetGame->m_80 = 0;
+    }
+    zdb::CWorld::m_world->m_diIntDelayCnt = 0;
+    CInput::Flush();
+    func_00327E40(2000);
+    CZAnimSet *set = GetAnimSet__10CZAnimMainFPCc(&ZAnim, "common");
+
+    if (set)
+        set->Start();
+    set = GetAnimSet__10CZAnimMainFPCc(&ZAnim, "mission");
+    if (set)
+        set->Start();
+    CameraZoom::LoadLensFx();
+    CEntityList::const_iterator i;
+
+    for (i = CEntity::GetEntityList().begin(); i != CEntity::GetEntityList().end(); ++i)
+        (*i)->OnMissionStart();
+    if (theNetwork.m_bNetwork)
+        CSnd::NetOpen();
+    else
+        CSnd::Open();
+    CSnd::m_listenerIsValid = false;
+    CSndJukebox::Start();
+    if (theNetwork.m_bNetwork) {
+        CPickup::Open(CEntity::GetEntityList().size());
+        theHUD->ReInit_Uninit();
+        theHUD->ReInit_Init();
+        CZNetGame *game = m_pNetGame;
+
+        if (game) {
+            if (theNetwork.m_bSessionMaster)
+                game->m_mp_major_game_state = CZNetGame::MP_MAJOR_INPLAY;
+            func_002BB0C0();
+            func_002A6C50(game);
+        }
+    }
 }
 
 /* respawning on in a game of type 5 only, and its valve (SOCOM II's; OVL1 0x2A7560) */
@@ -3113,12 +3200,6 @@ void UpdateMissionArchive(const char *olddb, const char *newdb)
     }
 }
 }
-
-/* the input (zinput's CInput: only the flush) */
-class CInput {
-public:
-    static void Flush();   /* 0x2D9E00 */
-};
 
 extern "C" {
 CZAnimSet *GetAnimSet__10CZAnimMainFPCc(CZAnimMain *main, const char *name);
