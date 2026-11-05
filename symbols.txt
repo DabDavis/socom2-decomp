@@ -1786,7 +1786,7 @@
 0x00209350 0x434 func_00209350  # OVL1
 0x00209790 0x348 Draw__11CZNewHudMapFPQ23zdb7CCamera  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00209AE0 0x3F8 func_00209AE0  # OVL1
-0x00209EE0 0x234 func_00209EE0  # OVL1
+0x00209EE0 0x234 TickFullScreenMap__11CZNewHudMapFP4CPad10MENU_STATE  # OVL1; s1:calls by hand (the HUD lane, round 48: hud_newhudmap.cpp -- SOCOM 1's TickFullScreenMap(CPad *, MENU_STATE): HudTick 0x209AE0 calls it with the pad and the menu state; the objective list's animation test, the owner's input bit, the close / step / select / frame / centre buttons, then HandleScrolling and the zoom step 0x20A330 on the sticks, the legend flag from R2)
 0x0020A120 0x208 HandleScrolling__11CZNewHudMapFff  # OVL1; s1:calls by hand (the HUD lane, round 48: hud_newhudmap.cpp -- SOCOM 1's HandleScrolling(float fStickX, float fStickY) 0x3C4950 by its code: both sticks zero or no viewer returns, the viewer's reversed facing stored (SealDir), 36/|xz| the step, a guarded static fallback box, the first AI map's (AiMaps.GetMapByIndex(0)) bounds, x then z moved while inside; TickFullScreenMap 0x209EE0's call)
 0x0020A330 0x13C func_0020A330  # OVL1
 0x0020A470 0x304 SwitchToCompassMap__11CZNewHudMapFv  # OVL1; s1:callee (ReInit's one call, as SOCOM 1's)

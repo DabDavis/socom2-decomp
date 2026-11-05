@@ -23,6 +23,7 @@
 #include "hud_bombmapitem.h"
 #include "hud_playermapitem.h"
 #include "../../gamez/zvid/zvid.h"
+#include "../../gamez/zinput/zinput.h"
 
 #include <vector>
 
@@ -361,6 +362,81 @@ void CZNewHudMap::SetMapScreenPos(float x1, float y1, float x2, float y2)
 void CZNewHudMap::SetWorldWidth(float width)
 {
     SetWorldView(m_worldcenterx, m_worldcentery, width);
+}
+
+/* the HUD's owner (hud_main.cpp's CHUD: only the static) */
+class CHUD {
+public:
+    static CZSealBody *GetHUDOwner();
+};
+
+/* a SEAL's controller as the map reads it (zseal.h's CSealCtrl: the input bit, 0x170 bit 11) */
+class CSealCtrl {
+public:
+    unsigned char _0[0x170];
+    unsigned int _170_0 : 11;
+    unsigned int m_input_enabled : 1;   // 0x171 bit 3
+    unsigned int _170_12 : 20;
+};
+
+/* the map's sounds: the second slot plays one (zsnd.h's PlaySound(inst, flags)) */
+class CSnd {
+public:
+    virtual ~CSnd();
+    virtual void *PlaySound(void *inst, unsigned int flags);
+};
+
+/* the pad's button state as the game reads it (zinput.cpp's 0x2C64E0: a game function's button,
+ * KEY_STATE; no row named yet) */
+extern "C" unsigned char func_002C64E0(int func, CPad *pad);
+
+/* the full-screen map's zoom step (0x20A330: its m2c draft matches, under its placeholder) */
+extern "C" void func_0020A330(CZNewHudMap *map, float stick);
+
+/* the full-screen map's pad, while no objective plays and the owner's input is on: the map closed
+ * (the game's button 12 or triangle; the close sound), down / up stepping the objectives and cross
+ * selecting one (each with its sound), circle framing it, square centring the map on the viewer;
+ * then, the pad connected and the map full screen, the sticks scroll and zoom it; the legend shows
+ * while R2 is held (SOCOM 1's TickFullScreenMap, its zoom moved out to 0x20A330 and the menu state
+ * unread; the name SOCOM 1's) */
+void CZNewHudMap::TickFullScreenMap(CPad *pad, MENU_STATE menustate)
+{
+    if (m_objectivelist.IsPlayingAnimation())
+        return;
+    CZSealBody *owner = CHUD::GetHUDOwner();
+    CSealCtrl *ctrl = owner ? owner->m_ctrl : 0;
+
+    bool input = ctrl ? (bool)ctrl->m_input_enabled != false : false;
+
+    if (!input)
+        return;
+    if ((func_002C64E0(12, pad) == 1) != false || pad->m_state[PAD_TRIANGLE] == KEY_RISING) {
+        if (m_socom2_81c)
+            m_socom2_81c->PlaySound(0, 255);
+        SwitchToCompassMap();
+    } else if (pad->m_state[PAD_DOWN] == KEY_FALLING) {
+        m_objectivelist.NextObjective();
+        if (m_socom2_824)
+            m_socom2_824->PlaySound(0, 255);
+    } else if (pad->m_state[PAD_UP] == KEY_FALLING) {
+        m_objectivelist.PreviousObjective();
+        if (m_socom2_820)
+            m_socom2_820->PlaySound(0, 255);
+    } else if (pad->m_state[PAD_CROSS] == KEY_RISING) {
+        m_objectivelist.SelectObjective();
+        if (m_socom2_81c)
+            m_socom2_81c->PlaySound(0, 255);
+    } else if (pad->m_state[PAD_CIRCLE] == KEY_RISING) {
+        FrameObjective();
+    } else if (pad->m_state[PAD_SQUARE] == KEY_RISING) {
+        m_centerx = m_viewer->m_posW.x;
+        m_centerz = m_viewer->m_posW.z;
+    }
+    if (pad->m_0 && m_isFullScreen) {
+        HandleScrolling(((float *)pad->m_210)[0], ((float *)pad->m_210)[1]);
+        func_0020A330(this, ((float *)pad->m_210)[3]);
+    }
+    g_bShowLegend = pad->m_state[PAD_TRIGGER_R2] == KEY_DOWN;
 }
 
 /* a map's bounds (ai.h's CAiMap, SOCOM 1's DWARF: AIMAP_PARAMS's box first) and the AI maps' lookup
