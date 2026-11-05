@@ -5622,7 +5622,7 @@
 0x0031FD10 0x10 GetModel__Q23zdb6CWorldFPCc  # OVL1; s1:exact
 0x0031FD20 0xDC Initalize__Q23zdb6CWorldFv  # OVL1; s1:align
 0x0031FE00 0x50C __dt__Q23zdb6CWorldFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x00320310 0x344 func_00320310  # OVL1
+0x00320310 0x344 __ct__Q23zdb6CWorldFPCc  # OVL1; the world lane r24: s1:calls by hand (SOCOM 1's CWorld(const char *) 0x230030: CSaveLoad::Load news 0x6BE0 bytes and calls it where SOCOM 1's Load calls the constructor, then Initalize; its own calls are SOCOM 1's in order -- CNode(), CWind::Reset, the light list's constructor, the five object constructors, CGrid(), SetName, new DiIntersect(256), sceVu0Normalize, sprintf, new CTexture(name), LoadGS)
 0x00320660 0x78 __dt__Q23zdb19CProjectedMapVectorFv  # OVL1; ~CProjectedMapVector: the world lane's round 10 by the initialiser research (0x3206E0, the same code, is ~CLightMapVector); renamed at integration
 0x003206E0 0x78 __dt__Q23zdb15CLightMapVectorFv  # OVL1; the world lane r10: the destructor vis_vu.cpp's initialiser 0x404570 registers for CVisual's m_specMapList, m_lightMapList and m_shadowMapList (the sinit research; SOCOM 1's __sinit_vis_main.cpp registers __dt__Q23zdb15CLightMapVectorFv there), a class over the pointer vector (four this-tests); like SOCOM 1's (0x2304B0) it follows CWorld's constructor in node_world.cpp
 0x00320760 0x8 Uninit__Q23zdb6CWorldFv  # OVL1; s1:order by hand (SOCOM 1's Uninit, Init, GetVersion in that order, each as empty)
