@@ -21,10 +21,10 @@
  * and 0x3B5F20 is VuBatchProgram's command list around it (byte-exact since round 29, with
  * VuBatchProgram_Decals 0x3B41D0: SOCOM 1's two, the object header become a flag or dropped,
  * written with the VuCommand inline on the first build). The statics keep
- * their data_ placeholders, each commented with SOCOM 1's name where its use pairs it. Still
- * open here: VuUpdate (0xCC4: its tail calls even 8-byte helpers out of line, the out-of-line
- * copies at 0x3B5250-0x3B52C0 following it, so its inline budget runs out -- likely
- * inline_max_total_size), the deque copy chain's init
+ * their data_ placeholders, each commented with SOCOM 1's name where its use pairs it. VuUpdate
+ * (0xCC4) is byte-exact since round 33: its tail calls even 8-byte helpers out of line because its
+ * decal walk is an inline six levels high (through GetVid), inlined one level -- not an inline
+ * budget, as rounds 13-32 guessed. Still open here: the deque copy chain's init
  * 0x3B7E30, do_assign 0x3B8000 and default constructor 0x3B7FA0 (the rest of the chain is
  * byte-exact since the MSL headers' round 18: m_stack_vid, below). Round 20: the unit's
  * initialiser, the light tints (0x3B7170, 0x3B76B0, 0x3B78D0) and the header's lights (0x3B6870)
@@ -1237,7 +1237,9 @@ void CVisual::VuSpecularSetup(_word128 *q, CPnt4D *dir, CPnt3D *rgb, float opaci
 }
 
 /* the quadwords left in the scratchpad's packet past a cursor (ours, inline: VuUpdate's decal walk
- * calls its copy, 0x3B5270) */
+ * calls its copy, 0x3B5270). Unsigned: the decal walk's test is sltiu, and std::min's first argument
+ * is then a temporary of the vector's own type -- the sends compare the room in its register and
+ * store it only for min's reference (a named or converted room is stored and reloaded first) */
 static inline unsigned int SprRoom(_word128 *p)
 {
     return CSPR::m_sprPacketEnd - p;
@@ -1245,8 +1247,10 @@ static inline unsigned int SprRoom(_word128 *p)
 
 /* qwc quadwords sent through the scratchpad's packets: copied as much as each packet has room for,
  * the packet kicked between, one more kicked when less than half again of the whole is left, the
- * last one kicked and a new one begun (ours, inline: VuUpdate's five data sends; SOCOM 1's VuUpdate
- * inlines the same loop -- the count and the room through std::min by reference) */
+ * last one kicked and a new one begun (ours, inline: VuUpdate's four sends of a local count; SOCOM
+ * 1's VuUpdate inlines the same loop -- the count left and the room through std::min by reference).
+ * The count by value, the count left a copy: a caller's count variable is the whole count's register
+ * (the target's `sw s3,180(sp)` and `beqz s3` on it); the half-again test written whole-count first */
 static inline _word128 *SprSend(_word128 *p, _word128 *src, unsigned int qwc)
 {
     unsigned int left = qwc;
@@ -1265,7 +1269,10 @@ static inline _word128 *SprSend(_word128 *p, _word128 *src, unsigned int qwc)
     return CSPR::Kick(p, true);
 }
 
-/* (the same, the count's copy taken first) */
+/* (the same with the parameter the count left and the whole a copy taken first -- the chain's send,
+ * whose count is a global read in the argument: its copy is reloaded from the parameter's slot, `sw
+ * v1,188(sp); lw s0,188(sp)`, as SOCOM 1's two sends of the global; SprSend's shape there keeps the
+ * global's register, this one's for a local count reloads it) */
 static inline _word128 *SprSendA(_word128 *p, _word128 *src, unsigned int qwc)
 {
     unsigned int total = qwc;
@@ -1340,7 +1347,18 @@ inline _word128 *CVisual::VuDecals(_word128 *p)
  * resolved; the projected maps'), the object header sent, then the chain's data under the VU program
  * -- per detail layer while the layers draw, cut at the layer that reaches the subface part, the
  * subface part, the layers past it -- and the decals: a visual's of the view in use, a mesh's own
- * when the view uses its first level of detail. The last packet kicked */
+ * when the view uses its first level of detail. The last packet kicked.
+ * BYTE-EXACT (the weapons' round 33, unwritten for 32 rounds), by these shapes: the decal walk an
+ * inline six levels high (VuDecals: its callees out of line, their copies after this one); the two
+ * send shapes (SprSendA for the chain's global count, SprSend for the locals); each send's source and
+ * count in locals ahead of the packet's begin (read in the argument list they load after the
+ * VuBatchProgram call), the source declared first (s5 / s4: igreplay --move predicted it); the
+ * detail counter declared ahead of the detail pointer (s1 / s0), the pointer a ternary (`if (on) d =
+ * ...` pads its join with a nop and shifts the loops' 8-byte label pads); the specular count stored
+ * ahead of its flag (the flag's constant then takes v0); the mesh decals' list a reference bound
+ * between the two tests (its address in the second test's delay slot, reloaded after the program
+ * call), the packet begun in the lights' store order, the room test written count first and the
+ * texture copied before `last` is set */
 void CVisual::VuUpdate()
 {
     data_004B4AA0 = 0;
@@ -1382,8 +1400,8 @@ void CVisual::VuUpdate()
         if (m_7) {
             data_004B4AA0 = CWorld::m_world->m_Material_Object.GetMaterial(m_7);
             if (data_004B4AA0->m_type == 2) {
-                data_004B4DC0 = 1;
                 data_004B4DB8 = m_specMapList.size();
+                data_004B4DC0 = 1;
             }
         }
         data_004B4E40 = m_projectedMapList.size();
@@ -1396,10 +1414,7 @@ void CVisual::VuUpdate()
     bool multipass = data_004B4DF0 || data_004B4E18 || data_004B4DB8 || data_004B4DC0 || data_004B4E40;
     _word128 *p = CSPR::Kick(VuExecuteState0(VuObjectSetup(func_003B6820())), true);
     unsigned int i;
-    tag_DETAIL_PARAMS *d = 0;
-
-    if (data_004B4ED8)
-        d = m_details;
+    tag_DETAIL_PARAMS *d = data_004B4ED8 ? m_details : 0;
 
     unsigned int n = data_004B4AD0;
     bool split = false;
@@ -1440,23 +1455,27 @@ void CVisual::VuUpdate()
     } else {
         CMesh *mesh = (CMesh *)this;
 
-        if ((_word128 *)m_lodMesh[GetVid()] == func_003B9480(mesh, 0) && mesh->m_decals) {
-            _word128 *last = 0;
-            _word128 *q = (_word128 *)zSysSprGetPacket((u_long128 **)&CSPR::m_sprPacketEnd);
+        if ((_word128 *)m_lodMesh[GetVid()] == func_003B9480(mesh, 0)) {
+            CMeshDecal *&decals = mesh->m_decals;
 
-            CSPR::m_sprPacket = q;
-            data_004B4AE0 = q;
-            data_004B4AD8 = q + 1;
-            data_004B4AD8->u128 = 0;
-            p = VuBatchProgram_Decals(data_004B4AD8 + 1);
-            for (CMeshDecal *md = mesh->m_decals; md; md = md->m_next) {
-                if (md->m_qwc + 1 > SprRoom(p))
-                    p = CSPR::Kick(p, true);
-                if (last != &md->m_tex) {
-                    *p++ = md->m_tex;
-                    last = &md->m_tex;
+            if (decals) {
+                _word128 *last = 0;
+                _word128 *q = (_word128 *)zSysSprGetPacket((u_long128 **)&CSPR::m_sprPacketEnd);
+
+                CSPR::m_sprPacket = q;
+                data_004B4AE0 = q;
+                data_004B4AD8 = q + 1;
+                data_004B4AD8->u128 = 0;
+                p = VuBatchProgram_Decals(data_004B4AD8 + 1);
+                for (CMeshDecal *md = decals; md; md = md->m_next) {
+                    if (md->m_qwc + 1 > SprRoom(p))
+                        p = CSPR::Kick(p, true);
+                    if (last != &md->m_tex) {
+                        *p++ = md->m_tex;
+                        last = &md->m_tex;
+                    }
+                    p = CSPR::Copy(p, md->m_data, md->m_qwc);
                 }
-                p = CSPR::Copy(p, md->m_data, md->m_qwc);
             }
         }
     }
