@@ -10827,14 +10827,14 @@
 0x005A9420 0xD8 FindDeathAnimTypeCQB__10CZSealBodyFP10CZSealBody  # OVL2; s1:order by hand (SOCOM 1's FindDeathAnimTypeCQB__10CZSealBodyFP10CZSealBody, after CanUseRestraint's place in both builds: the same code -- the victim's facing negated and flattened against the offset, two anim types picked by the sign) -- the SEAL lane, round 12
 0x005A9500 0x3B0 CanUseCQB__10CZSealBodyFP10CZSealBody  # OVL2; s1:order by hand (the SEALs, round 39): SOCOM 1's CanUseCQB__10CZSealBodyFP10CZSealBody (0x2999F0), after FindDeathAnimTypeCQB in both builds; PerformProximityActions, CSealCtrl::SensorPreTick and CAiSCQBAttack::Tick call it as SOCOM 1's do; seal_env.cpp byte-exact
 0x005A98B0 0x3B8 CanUseKnife__10CZSealBodyFP10CZSealBody  # OVL2; s1:order by hand (the SEALs, round 39): SOCOM 1's CanUseKnife__10CZSealBodyFP10CZSealBody (0x299D10), after CanUseCQB in both builds, KNIFE_DOT and the from-behind test; PerformProximityActions calls it as SOCOM 1's does; seal_env.cpp byte-exact
-0x005A9C70 0x2C8 func_005A9C70  # OVL2
-0x005A9F40 0x1C8 func_005A9F40  # OVL2
-0x005AA110 0x130 func_005AA110  # OVL2
+0x005A9C70 0x2C8 GetReticuleWeapon__10CZSealBodyFPP7CPickup  # OVL2; s1:order by hand (the SEALs, round 39): SOCOM 1's GetReticuleWeapon__10CZSealBodyFPP7CPickup (0x29A050), the first of the three pickup tests after CanUseKnife and before GetReticuleAction in both builds -- the reticule's hit and its material's pickup test; respelled from the free function as a member, byte-exact as before
+0x005A9F40 0x1C8 GetProximityWeapon__10CZSealBodyFPP7CPickup  # OVL2; s1:order by hand (the SEALs, round 39): SOCOM 1's GetProximityWeapon__10CZSealBodyFPP7CPickup (0x29A2D0), the second of the three in both builds -- the weapon nearest the SEAL's point; respelled as a member, byte-exact as before
+0x005AA110 0x130 GetProximityMPBomb__10CZSealBodyFv  # OVL2; s1:order by hand (the SEALs, round 39): SOCOM 1's GetProximityMPBomb__10CZSealBodyFv (0x29A450), the third in both builds, right before GetReticuleAction -- the MP bomb near the SEAL's point; respelled as a member, byte-exact as before
 0x005AA240 0x230 GetReticuleAction__10CZSealBodyFb  # OVL2; s1:order by hand (the SEALs, round 28): SOCOM 1's GetReticuleAction__10CZSealBodyFb, after the pickup tests 0x5A9C70/0x5A9F40/0x5AA110 (GetReticuleWeapon, GetProximityWeapon, GetProximityMPBomb in SOCOM 1's order) and before CNodeAction::GetAction 0x5AA470, which it calls with (node, true) after a __dynamic_cast as SOCOM 1's does; every caller passes (seal, 0 or 1) and reads a CNodeAction
 0x005AA470 0x184 GetAction__11CNodeActionFPQ23zdb5CNodeb  # OVL2; s1:order by hand (the SEALs, round 28): SOCOM 1's GetAction__11CNodeActionFPQ23zdb5CNodeb, after GetReticuleAction (which calls it) and recursive with the same __dynamic_cast chain as SOCOM 1's
 0x005AA600 0x8 func_005AA600  # OVL2
 0x005AA610 0x8 func_005AA610  # OVL2
-0x005AA620 0x70 func_005AA620  # OVL2
+0x005AA620 0x70 CacheReticuleSeal__10CZSealBodyFb  # OVL2; s1:order by hand (the SEALs, round 39): SOCOM 1's CacheReticuleSeal__10CZSealBodyFb (0x29A790), after GetAction in both builds and the same code -- m_useCachedReticuleSeal set and m_cachedReticuleSeal from the reticule's node through GetSeal, or both cleared (SOCOM 1's DWARF names, 0x178/0x174 there); respelled as a member, byte-exact as before
 0x005AA690 0x34 func_005AA690  # OVL2; tu: seal_env.cpp~ (1.0 beta)
 0x005AA6D0 0x8 func_005AA6D0  # OVL2
 0x005AA6E0 0xAD4 func_005AA6E0  # OVL2

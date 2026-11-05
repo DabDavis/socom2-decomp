@@ -1087,19 +1087,19 @@ extern "C" bool func_005A77E0(CZSealBody *seal, int state33, int anim36, int ani
 /* bit 0 of 0x21C set (a setter: a constant true is `daddiu 1`, a false `(0 & 1)`) */
 static inline void SetBit21c0(CZSealBody *seal, bool on)
 {
-    seal->m_21c_bit0 = on;
+    seal->m_useCachedReticuleSeal = on;
 }
 
 /* the toggle the radio menu flips (0x235300, 0x235440): on, bit 0 of 0x21C set and the SEAL of the
  * node at 0x3DC kept; off, both cleared (OVL2 0x5AA620, new in SOCOM II; the names ours) */
-extern "C" void func_005AA620(CZSealBody *seal, bool on)
+void CZSealBody::CacheReticuleSeal(bool on)
 {
     if (on) {
-        SetBit21c0(seal, true);
-        seal->m_218 = CZSealBody::GetSeal(seal->m_last_reticule.m_node);
+        SetBit21c0(this, true);
+        m_cachedReticuleSeal = CZSealBody::GetSeal(m_last_reticule.m_node);
     } else {
-        SetBit21c0(seal, false);
-        seal->m_218 = 0;
+        SetBit21c0(this, false);
+        m_cachedReticuleSeal = 0;
     }
 }
 
@@ -1115,9 +1115,9 @@ extern "C" void func_005AA620(CZSealBody *seal, bool on)
  * -- the next nearest handed back too when asked -- or online the MP bomb there, whichever lies
  * nearer the SEAL's fire point, that within 20 of it (OVL2 0x5A9C70: TickPickups 0x593DA0 asks it
  * before 0x5A9F40; new in SOCOM II, the name ours) */
-extern "C" CPickup *func_005A9C70(CZSealBody *seal, CPickup **secondary)
+CPickup *CZSealBody::GetReticuleWeapon(CPickup **secondary)
 {
-    zdb::IntersectStruct *hit = &seal->m_last_reticule;
+    zdb::IntersectStruct *hit = &m_last_reticule;
 
     if (!hit)
         return 0;
@@ -1126,9 +1126,9 @@ extern "C" CPickup *func_005A9C70(CZSealBody *seal, CPickup **secondary)
     if (!mat || !mat->IsPickup())
         return 0;
     float d = 9999.0f;
-    bool full = !seal->m_kit.HasPickupSlot();
+    bool full = !m_kit.HasPickupSlot();
     float zero = 0.0f;
-    CPnt3D pos = seal->m_posW + (FIREPOS_SET(seal, zero) ? seal->m_curr_firepos : CPnt3D::zero);
+    CPnt3D pos = m_posW + (FIREPOS_SET(this, zero) ? m_curr_firepos : CPnt3D::zero);
     CPickup *other = 0;
     CPickup *p = CPickup::GetClosest(&hit->m_pos, 20.0f, CPickup::PU_WEAPON, secondary ? &other : 0, full);
 
@@ -1170,12 +1170,12 @@ extern "C" CPickup *func_005A9C70(CZSealBody *seal, CPickup **secondary)
  * too when asked and within 20 -- a weapon the kit has no slot for offered only as that (OVL2
  * 0x5A9F40: TickPickups 0x593DA0 asks it; new in SOCOM II, the name ours). The distance is one
  * variable: the second weapon's replaces the first's before the last test, as the target's $f20 */
-extern "C" CPickup *func_005A9F40(CZSealBody *seal, CPickup **secondary)
+CPickup *CZSealBody::GetProximityWeapon(CPickup **secondary)
 {
     float d = 9999.0f;
-    bool full = !seal->m_kit.HasPickupSlot();
+    bool full = !m_kit.HasPickupSlot();
     float zero = 0.0f;
-    CPnt3D pos = seal->m_posW + (FIREPOS_SET(seal, zero) ? seal->m_curr_firepos : CPnt3D::zero);
+    CPnt3D pos = m_posW + (FIREPOS_SET(this, zero) ? m_curr_firepos : CPnt3D::zero);
     CPickup *other = 0;
     CPickup *p = CPickup::GetClosest(&pos, 20.0f, CPickup::PU_WEAPON, secondary ? &other : 0, full);
 
@@ -1200,12 +1200,12 @@ extern "C" CPickup *func_005A9F40(CZSealBody *seal, CPickup **secondary)
 
 /* online, the MP bomb lying within 20 of the SEAL's fire point, if any (OVL2 0x5AA110: TickPickups
  * 0x593DA0 asks it; new in SOCOM II, the name ours) */
-extern "C" CPickup *func_005AA110(CZSealBody *seal)
+CPickup *CZSealBody::GetProximityMPBomb()
 {
     if (!theNetwork.m_9)
         return 0;
     float zero = 0.0f;
-    CPnt3D pos = seal->m_posW + (FIREPOS_SET(seal, zero) ? seal->m_curr_firepos : CPnt3D::zero);
+    CPnt3D pos = m_posW + (FIREPOS_SET(this, zero) ? m_curr_firepos : CPnt3D::zero);
     CPickup *bomb = CPickup::GetClosest(&pos, 20.0f, CPickup::PU_MPBOMB, 0, true);
 
     if (bomb) {
