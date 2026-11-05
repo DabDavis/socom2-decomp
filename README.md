@@ -11903,8 +11903,8 @@ casr.h gains +960 (the label scoring's result). No tool changed.
   t -= k; hend = t;` -- set twice, t is no loop.c movable, so `out + n*4` stays in the outer loop
   (`addu v1,t0,t5`, SOCOM 1's compile too), and the copy into hend gives the end its own register once
   combine folds the subtraction into it (`subu t1,v1,v0`). `hend = out + n - k` hoists the sum; `end = out +
-  n; end -= k` keeps both in one register. With the three ends as three variables the allocation was the
-  target's -- the priority miss round 29c measured was the shared temporary's, not out's. Also: `x = in[0];
+  n; end -= k` keeps both in one register. With the sum split off, the end is set once and ranks below out
+  in global-alloc (round 29c's separate end, set twice, outranked it). Also: `x = in[0];
   x++;` loads into x's own register (`x = in[0] + 1` loads into v0 first); a ratio tested as an expression
   (`max / *x < s->f56`) keeps the quotient a pseudo of its own; independent loads issue in source order
   (`q = s->f84; off = s->f92;` after the copy end).
