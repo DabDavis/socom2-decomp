@@ -536,8 +536,14 @@ inline int CZAnimMain::NewAnimSet(int index)
 }
 
 /* a set by name (0: an unnamed or "None" one), made when asked -- in a set left available, or
- * a new one at the end. OPEN, 6 instructions short: the target walks the available sets with a
- * pointer and indexes the found one afresh (SOCOM 1's has the same shape, NewAnimSet called). */
+ * a new one at the end (SOCOM 1's has the same shape, NewAnimSet called).
+ * OPEN, 6 instructions (0x244, the target's size since round 19; 0x22C before): the inlined
+ * NewAnimSet's index is the count in its own register, copied to the result only after its loop --
+ * the count taken into a local, handed over, then assigned to the index (`index = count` first
+ * coalesces the two); the found set re-indexed through a pointer local. Left: after NewAnimSet the
+ * list and the set's offset take each other's v0 / v1 (the found path's `&list[index]` through a
+ * pointer local fixed the same swap there; a pointer local after the call, 0x23C; `(list +
+ * index)->`, the same 7) -- build/scratch/core/v_gasi19*.py */
 int CZAnimMain::GetAnimSetIndex(const char *name, bool create)
 {
     for (int i = 0; i < m_animset_count; i++) {
@@ -552,12 +558,16 @@ int CZAnimMain::GetAnimSetIndex(const char *name, bool create)
     if (create) {
         for (index = 0; index < m_animset_count; index++) {
             if (m_animset_list[index].m_IsAvailable) {
-                m_animset_list[index].m_IsAvailable = 0;
+                CZAnimSet *s = &m_animset_list[index];
+
+                s->m_IsAvailable = 0;
                 goto named;
             }
         }
-        index = m_animset_count;
-        NewAnimSet(index);
+        int n = m_animset_count;
+
+        NewAnimSet(n);
+        index = n;
         m_animset_list[index].m_IsAvailable = 0;
     named:
         if (name)
