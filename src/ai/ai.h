@@ -235,6 +235,35 @@ public:
     /* whether the cell holds an action (the name ours: GetCellCenter's test, out of line at
      * 0x516920 where the centre is inlined one level) */
     bool HasAction() const { return m_action; }
+    /* whether a link is on the cell (the name ours: the stealth planner's cover test) */
+    bool HasLink() const { return m_link; }
+    /* whether the soil hides who stands on it: water, brush, forest or grass (the name ours: MW
+     * lowers the four compares to a bit test, 0x40D over soil - 2) */
+    /* no action, no link on the cell (the names ours: the cover test's last two steps -- an inline
+     * returning the negation materialises it, sltu then xori, before the branch; `!HasAction()`
+     * branches on the bit) */
+    bool NoAction() const { return !m_action; }
+    bool NoLink() const { return !m_link; }
+    bool IsConcealingSoil() const
+    {
+        unsigned int soil = m_soil;
+
+        return soil == 2 || soil == 4 || soil == 5 || soil == 12;
+    }
+    /* whether the cell hides who stands on it: a concealing soil, no action and no link on it (the
+     * name ours: CStealthPlanner::fcost's test of both cells, each step a bool of its own) */
+    bool IsConcealing() const
+    {
+        bool r = false;
+        bool o = false;
+        bool s = IsConcealingSoil();
+
+        if (s && NoAction())
+            o = true;
+        if (o && NoLink())
+            r = true;
+        return r;
+    }
     unsigned char GetBoundary() const { return m_boundary; }
     unsigned int GetShadow() const { return m_shadow; }
     /* whether the cell is indoors (the name ours: GetInterpolatedShadow's test, out of line at
