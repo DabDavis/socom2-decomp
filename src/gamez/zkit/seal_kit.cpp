@@ -530,6 +530,16 @@ public:
     virtual bool IsPlayer() const;   /* +0x2C */
 };
 
+/* the local player as the recoil's screen scale reads it: the point its view starts from and the
+ * offset its aim adds to its position (new places in SOCOM II: SOCOM 1's at 0x10B8, 0x1110; the names
+ * ours) */
+struct CKitPlayerView {
+    unsigned char _0[0x1458];
+    CPnt3D m_1458;   // 0x1458
+    unsigned char _1464[0x14b0 - 0x1464];
+    CPnt3D m_14b0;   // 0x14b0
+};
+
 static inline bool KitIsPlayer(CKitBody *body)
 {
     return body->m_control ? ((CKitSealCtrl *)body->m_control)->IsPlayer() : false;
@@ -1378,6 +1388,108 @@ bool CZKit::FetchLaseTarget()
         }
     }
     return false;
+}
+
+extern "C" {
+/* the controller's high rumble (CSealCtrl::SetHighRumbleTime, OVL2 0x592BA0: the SEALs'), the target
+ * mods' reported burst shot (an int at 0x6C, new in SOCOM II: OVL1 0x3C5AB0), the weapon's recoil
+ * step (a float at 0x6C: OVL1 0x3D2000) and the body's recoil counter raised by it, to 10 at most (a
+ * float at 0x378: OVL2 0x57D510) -- the weapons' and the SEALs' rows, unnamed */
+void SetHighRumbleTime__9CSealCtrlFf(CKitCtrl *ctrl, float time);
+void SetLowRumbleTime__9CSealCtrlFff(CKitCtrl *ctrl, float power, float time);
+int func_003C5AB0(CTargetMods *mods);
+float func_003D2000(CZFTSWeapon *w);
+void func_0057D510(CZSealBody *body, float step);
+}
+
+/* the knock's vertical screen scale, kept (SOCOM 1's recoil_constscl; OVL2 bss 0x66B678) */
+static float recoil_constscl;
+
+/* a point copied field by field through its address (the target keeps &a.y and &a.z in saved
+ * registers across the turret's call; the name ours) */
+static inline void CopyPoint(CPnt3D *dst, const CPnt3D *src)
+{
+    dst->x = src->x;
+    dst->y = src->y;
+    dst->z = src->z;
+}
+
+/* (OVL2 0x5C3360: kit.h's; SOCOM 1's Recoil) */
+void CZKit::Recoil(CZFTSWeapon *w)
+{
+    if (!KitIsPlayer((CKitBody *)m_body))
+        return;
+    CTargetMods *mods = w->TargetMods(GetStance__10CZSealBodyCFb(m_body, true));
+    float knock = mods->GetReticuleKnock();
+    float knockmax = mods->GetReticuleKnock_Max();
+    float dilate = mods->GetTarget_DilateUponFire();
+    float tmin = mods->GetTarget_Min();
+    float tmax = mods->GetTarget_Max();
+    int n = m_burst_count + 1 - w->AccuracyBurstCnt_Min();
+    float burst = 0.0f;
+
+    if (n > 0) {
+        float shots = w->AccuracyBurstCnt_Max() < n ? (float)w->AccuracyBurstCnt_Max() : (float)n;
+
+        burst = shots * w->m_accuracy_slope;
+    }
+    if (w->GetRumbleHigh_Enable()) {
+        CKitCtrl *ctrl = ((CKitBody *)m_body)->m_control;
+
+        SetHighRumbleTime__9CSealCtrlFf(ctrl, w->GetRumbleHigh_Time());
+    }
+    if (w->GetRumbleLow_Enable()) {
+        CKitCtrl *ctrl = ((CKitBody *)m_body)->m_control;
+
+        SetLowRumbleTime__9CSealCtrlFff(ctrl, w->GetRumbleLow_Time(), w->GetRumbleLow_Power());
+    }
+    signed char zc = ((CKitBody *)m_body)->m_200;
+
+    if (zc > 4 || zc == 4)
+        return;
+    int shot = func_003C5AB0(mods);
+
+    if (m_burst_count == shot)
+        m_retoffsety -= knock * mods->GetWiggleReport();
+    else if (shot < m_burst_count)
+        m_retoffsety -= knock;
+    zdb::CCamera *cam = zdb::CWorld::m_world->m_camera;
+    float aspx = cam->m_screenAspect[0];
+    float scl = cam->m_screenAspect[1];
+    CZSealBody *p = ftsGetPlayer__Fv();
+    CPnt3D a;
+    CPnt3D b;
+
+    CopyPoint(&a, &((CKitPlayerView *)p)->m_1458);
+
+    ((CKitPlayerView *)p)->m_14b0.Add(&((CEntity *)p)->m_posW, &b);
+    if (((CKitBody *)m_body)->m_eb8) {
+        ((CEntity *)((CKitBody *)m_body)->m_eb8)->Virtual60(&b);
+        CopyPoint(&a, &b);
+    }
+    float z = cam->GetZ(&a);
+    float d = z - cam->GetZ(&b);
+
+    scl = d == 0.0f ? scl : scl * d / z;
+    recoil_constscl = scl;
+    float ylim = knockmax * scl;
+    float xlim = knockmax * aspx;
+
+    if (m_retoffsety > ylim)
+        m_retoffsety = ylim;
+    else if (m_retoffsety < -ylim)
+        m_retoffsety = -ylim;
+    if (m_retoffsetx > xlim)
+        m_retoffsetx = xlim;
+    else if (m_retoffsetx < -xlim)
+        m_retoffsetx = -xlim;
+    m_prev_retsize = m_retsize;
+    m_retsize += dilate + dilate * burst;
+    if (m_retsize < tmin)
+        m_retsize = tmin;
+    else if (m_retsize > tmax)
+        m_retsize = tmax;
+    func_0057D510(m_body, func_003D2000(w));
 }
 
 /* (OVL2 0x5C2670: kit.h's; SOCOM 1's TickReticule). One rate variable for the offsets' return and the

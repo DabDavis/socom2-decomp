@@ -301,6 +301,11 @@ public:
      * 0x5C2670: SOCOM II's explosives, grenades, binoculars and item class 201 hold the bounds at
      * zero, and the dilation reads the worked turret's motion) */
     void TickReticule(float dT);
+    /* a shot's kick: the rumbles, the reticle knocked up (by the wiggle on the burst's reported shot,
+     * plainly past it), the knock bounded by the screen's aspect -- its vertical scale kept in
+     * recoil_constscl --, the reticle dilated by the shot and the burst, and the body's recoil
+     * counter raised (SOCOM 1's Recoil; OVL2 0x5C3360: Fire 0x5C5340 calls it) */
+    void Recoil(CZFTSWeapon *w);
     FIREMODE GetCurFireMode();
     int GetNumMags(int index);
     int GetCurNumMags();
