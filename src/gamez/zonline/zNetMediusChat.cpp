@@ -622,6 +622,45 @@ void CreateRoomStateHandler(LOBBY_STATE_FLAG flag)
     }
 }
 
+void ConnectSuccessStateHandler(LOBBY_STATE_FLAG flag);
+void ConnectErrorStateHandler(LOBBY_STATE_FLAG flag);
+void SessionBeginStateHandler(LOBBY_STATE_FLAG flag);
+void AccountRegistrationStateHandler(LOBBY_STATE_FLAG flag);
+void RegistrationFailureStateHandler(LOBBY_STATE_FLAG flag);
+void AccountLoginStateHandler(LOBBY_STATE_FLAG flag);
+void LoginFailureStateHandler(LOBBY_STATE_FLAG flag);
+void LobbyActiveStateHandler(LOBBY_STATE_FLAG flag);
+void CreateNewGameStateHandler(LOBBY_STATE_FLAG flag);
+void CreateFailureStateHandler(LOBBY_STATE_FLAG flag);
+void JoinGameStateHandler(LOBBY_STATE_FLAG flag);
+void LobbyServerConnectStateHandler(LOBBY_STATE_FLAG flag);
+void LobbyReadyToConnectStateHandler(LOBBY_STATE_FLAG flag);
+void EndSessionStateHandler(LOBBY_STATE_FLAG flag);
+void JoinRoomStateHandler(LOBBY_STATE_FLAG flag);
+
+/* the state handlers set, in SOCOM 1's Open's order (CONNECT_SUCCESS first, SESSION_BEGIN third;
+ * the user, screen-name and clan states keep none), each through SetStateHandler (SOCOM II's, out of
+ * SOCOM 1's Open: CZOnlineLobby::Open calls it on itself; OVL1 0x2ED460, the name ours) */
+void CZOnlineLobby::RegisterStateHandlers()
+{
+    SetStateHandler(CONNECT_SUCCESS, ConnectSuccessStateHandler);
+    SetStateHandler(CONNECT_ERROR, ConnectErrorStateHandler);
+    SetStateHandler(SESSION_BEGIN, SessionBeginStateHandler);
+    SetStateHandler(ACCOUNT_REGISTRATION, AccountRegistrationStateHandler);
+    SetStateHandler(REGISTRATION_FAILURE, RegistrationFailureStateHandler);
+    SetStateHandler(ACCOUNT_LOGIN, AccountLoginStateHandler);
+    SetStateHandler(LOGIN_FAILURE, LoginFailureStateHandler);
+    SetStateHandler(LOBBY_ACTIVE, LobbyActiveStateHandler);
+    SetStateHandler(CREATE_NEW_GAME, CreateNewGameStateHandler);
+    SetStateHandler(CREATE_FAILURE, CreateFailureStateHandler);
+    SetStateHandler(JOIN_GAME, JoinGameStateHandler);
+    SetStateHandler(LOBBY_SERVER_CONNECT, LobbyServerConnectStateHandler);
+    SetStateHandler(READY_TO_CONNECT, LobbyReadyToConnectStateHandler);
+    SetStateHandler(END_SESSION, EndSessionStateHandler);
+    SetStateHandler(JOIN_ROOM, JoinRoomStateHandler);
+    SetStateHandler(CREATE_ROOM, CreateRoomStateHandler);
+}
+
 void cbAccountRegistration(int, int, int, MediusAccountRegistrationResponse *resp);
 
 unsigned char *GetDNASUniqueID(int *size);
@@ -1132,6 +1171,26 @@ void LobbyActiveStateHandler(LOBBY_STATE_FLAG flag)
     case UNREGISTER:
         break;
     }
+}
+
+/* four states with nothing to do, empty as SOCOM 1's: between ConnectErrorStateHandler and
+ * EndSessionStateHandler in SOCOM 1's order in both builds, and the state table 0x2ED460 sets them in
+ * SOCOM 1's Open's slots -- CONNECT_SUCCESS 1, REGISTRATION_FAILURE 6, LOGIN_FAILURE 10, CREATE_FAILURE
+ * 14 (OVL1 0x2EE6D0, 0x2EE6C0, 0x2EE6B0, 0x2EE6A0) */
+void RegistrationFailureStateHandler(LOBBY_STATE_FLAG flag)
+{
+}
+
+void LoginFailureStateHandler(LOBBY_STATE_FLAG flag)
+{
+}
+
+void ConnectSuccessStateHandler(LOBBY_STATE_FLAG flag)
+{
+}
+
+void CreateFailureStateHandler(LOBBY_STATE_FLAG flag)
+{
 }
 
 /* CONNECT_ERROR: the connection closed and the menus told (SOCOM 1's was empty; OVL1 0x2EE610) */

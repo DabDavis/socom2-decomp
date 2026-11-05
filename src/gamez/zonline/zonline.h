@@ -1058,6 +1058,16 @@ public:
     void RecoverFromNetError(int err);
     bool Bailout();
     void RunStateHandler(LOBBY_STATE state, LOBBY_STATE_FLAG flag);
+    /* a state's handler replaced: the old one unregistered, the new one registered (SOCOM 1's Open did
+     * it in place, testing the handler; SOCOM II's goes through RunStateHandler; the name ours) */
+    void SetStateHandler(LOBBY_STATE state, LobbyStateHandler handler)
+    {
+        RunStateHandler(state, UNREGISTER);
+        m_state_handler[state] = handler;
+        RunStateHandler(state, REGISTER);
+    }
+    /* every state's handler set (0x2ED460: Open calls it; the name ours) */
+    void RegisterStateHandlers();
     bool RefreshRoomList(C2D *page);
     bool RejoinRoom();
     bool JoinRoom(const char *name);
