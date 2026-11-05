@@ -2062,6 +2062,24 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the SEALs, round 36** (the cell finders, InitDecalHandles, AnimOverlay -- closed by reading MW's colouring):
+  - with every spill cost 0 MW colours in simplify-sweep order: a node at or over K leaves in a later sweep and is
+    coloured earlier, so one neighbour too many reorders the saved registers (the look and cover cell finders 0x55F7F0 /
+    0x55F940, open since round 15; Crouch 0x581990 and InStateHang 0x584390 stay 5 off on it: Stand's stance has exactly
+    25 neighbours); defining a local after a store, not at its declaration, can drop its degree below K and move it a sweep
+    (`bool found; *side = 2; found = false;`);
+  - a local assigned from a load becomes the load's temporary and a single-use local is forwarded to its use; an
+    enum-typed inline argument gets its load numbered first, `unsigned char` or `int` parameters are forwarded (0x541700:
+    pickup_main.cpp 39 of 39); MW evaluates `a[i] == p->shortfield` field first however written, reading the element into
+    an int local first reverses it (0x5609F0);
+  - a variable reused for an unrelated purpose becomes a new web numbered last -- a way to colour a value first
+    (CZSealBody::InitDecalHandles 0x5A4CF0, open since round 21: the blood tag takes s0); locals deferred to the same sweep
+    take saved registers in reverse declaration order, reassigned cursors' second webs follow their first-loop assignments
+    (CSealAnim::AnimOverlay 0x576BB0, open since round 34);
+  - a bounds-tested pick inside an inline wants if/else assignments (a ternary materialises the test); an explicit
+    `return;` closing a void function's last if-block leaves a `b` to the epilogue aimed at the next instruction (0x5763E0:
+    seal_anim.cpp 12 of 12); BindAnimSet(AnimSet *, bool) 0x58C4A0 is SOCOM 1's five AI-state calls' landing site;
+    ChooseWeapon 0x563470 named.
 - **Tells from completing the MSL headers, round 24** (THE POINTER VECTOR'S ORIGINAL ITERATOR ADOPTED; probes
   build/scratch/msl-r24-p24/):
   - include/vector's pointer vector is the image's now: raw begin/end belonging to each element type, `begin() { return
