@@ -2062,6 +2062,23 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the kit and AI states, round 41** (CSealCtrlAi::RegisterCommands, the tasks' Parse functions,
+  CAiSShotAt::Virtual14, ~CMallocBlocks):
+  - THE ORIGINAL'S BUG REPRODUCED: CTMap::Parse 0x5D69F0 tests `r == zrdr_findtag(rdr, "line")` -- `==` written for `=`
+    -- and the target compiles exactly that; RegisterCommands 0x5DE320 (0x7EC: 34 AddCmd calls, ai::SELECT's id kept in
+    `ai_cmdid[2]`) matched on the first try;
+  - a byte tested through an inline's unsigned mask parameter given `~0` keeps `dsll32/dsrl32` before the branch, `& ~0u`
+    written in place folds away; constant stores the target loads before the header's mask (`lui a0; ori a0,a0`) come
+    from a `Create(...)` whose arguments bind before the allocation -- the same stores after NewTask take other
+    registers; an int index into zanim.h's `Item(int)` is strength-reduced in a loop, zrdr.h's unsigned Item index keeps
+    the target's per-pass `i << 3` (CTMove / CTPaint / CTPlay::Parse);
+  - a one-case `switch` gives `beq; nop; b end` where an `if` gives bne; an int-typed ternary (`name ?
+    (int)FindAnimType(name) : -1`) keeps the target's join, an AnimType ternary schedules differently;
+    `FreeVector(*this)` in a derived class's destructor builds the derived class as its temporary,
+    `FreeVector<base>(*this)` gives the target's base temporary (~CMallocBlocks 0x5D9540);
+  - new string literals renumber a unit's anonymous `@N` objects, so objcmp lists functions differing only by rank;
+    with ~vector<void *> named, its copies in zcam_main.cpp, vis_main.cpp, vis_vu.cpp and fts_ovl2statics.cpp score as
+    matches (they were no-target).
 - **Tells from the AI core, round 28** (CAiMaps::WalkLine at last; AppendPathLoc and InsertPathLoc):
   - constant definitions in a loop preheader go ahead of a load pinned below stores to an escaped struct: using the
     load's value before those stores lets the dying variable and the new one share a register (WalkLine 0x5352D0: `dt`
