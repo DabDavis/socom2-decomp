@@ -1841,6 +1841,7 @@
 0x0065D0A8 0xc stand_peek_ltoss  # OVL2 data; SOCOM 1's name (the SEAL lane, round 17, the same values, eighth); 4 references: 0x57FA70 and the initialiser
 0x0065D0B8 0xc running_rifle_throw  # OVL2 data; SOCOM 1's name (the SEAL lane, round 17, the same values, ninth); 4 references: 0x57FA70 and the initialiser
 0x0065D0C8 0xc running_pistol_throw  # OVL2 data; SOCOM 1's name (the SEAL lane, round 17, the same values, last); 4 references: 0x57FA70 and the initialiser
+0x0065E640 0x4 FLASHBANG_DOT  # OVL2 data; SOCOM 1's FLASHBANG_DOT (0x453008, a float right after CDynGrenade::Initalize's statics as here -- seal_control.cpp's): 0.0, read with lwc1 as a variable -- 1 reference (CSealCtrl::OnStunDamage 0x597C00, the facing test) (the SEALs, round 37)
 0x00662748 0x8 __RTTI__11CRemoteCtrl  # RTTI of CRemoteCtrl: found by its RTTI's name
 0x00662770 0x8 __RTTI__9CSealUnit  # RTTI of CSealUnit: found by its RTTI's name
 0x006628B0 0x8 __RTTI__10CAiSAction  # RTTI of CAiSAction: found by its RTTI's name

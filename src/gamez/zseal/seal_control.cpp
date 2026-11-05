@@ -521,6 +521,74 @@ void CSealCtrl::OnMissionEnd()
     StopRumbler();
 }
 
+/* how far the SEAL may face a flash and not be blinded through its eyes (SOCOM 1's FLASHBANG_DOT, OVL2
+ * data 0x65E640: 0 here, a variable read with lwc1) */
+float FLASHBANG_DOT = 0.0f;
+
+/* the square of the distance between two points (an inline: its difference a local of its own, below
+ * the direction's temporary on the stack) */
+static inline float DistSq(const CPnt3D *a, const CPnt3D *b)
+{
+    CPnt3D v;
+
+    a->Sub(b, &v);
+    return v.x * v.x + v.y * v.y + v.z * v.z;
+}
+
+/* a stun taken: a flash (stun type 0) from a point within 150 blinds the SEAL by how squarely it faced
+ * it and how near it was -- full past 80, falling off to 150 -- the blindplayer01-03 anim played (OVL2
+ * 0x597C00; SOCOM 1's with the HUD's flash and the sounds' dip replaced by the anims, the position read
+ * straight) */
+void CSealCtrl::OnStunDamage(STUN_TYPE type, float amount, const CPnt3D *from)
+{
+    if (!from)
+        return;
+    if (type != STUN_NONE)
+        return;
+    const CPnt3D *pos = &m_entity->m_posW;
+    const CPnt3D *fwd = (const CPnt3D *)m_entity->m_node->m_matrix.m_matrix[2];
+    CPnt3D dir = *pos - *from;
+
+    dir.Normalize();
+    float dot = fwd->x * dir.x + fwd->y * dir.y + fwd->z * dir.z;
+    float d2 = DistSq(pos, from);
+    bool facing = dot > FLASHBANG_DOT;
+
+    if (d2 < 22500.0f) {
+        float f = 1.0f;
+
+        if (!(d2 <= 6400.0f))
+            f = 1.0f - 6.2e-5f * (d2 - 6400.0f);
+        float s = 1.0f - dot * f;
+        int level;
+        bool full = false;
+
+        /* (full: facing away, or hit by a shot flagged 19 -- written here, not an inline helper: as one
+         * its result and the entity swap their scratch registers) */
+        if (m_entity) {
+            CZProjectile *p = ((CZSealBody *)m_entity)->m_tempprojectile;
+
+            if (!facing || (p && p->m_b19))
+                full = true;
+        }
+        if (full)
+            level = 1;
+        else if (s < 0.3f)
+            level = 3;
+        else if (s < 0.6f)
+            level = 2;
+        else
+            level = 1;
+        char name[16];
+
+        sprintf(name, "blindplayer0%d", level);
+        CZAnim *anim = ZAnim.GetAnim(name, 0);
+
+        if (anim)
+            anim->Activate(0);
+    }
+}
+
 extern "C" {
 /* (OVL1 0x30E6E0, unowned: told of a death online, with the global at 0x45B718) */
 void func_0030E6E0(void *obj, int a);
