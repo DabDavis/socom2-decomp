@@ -250,7 +250,18 @@ public:
     /* the storage given back through the allocator (CW 2.5's MSL: the pod's destructor calls
      * alloc() and deallocate): a pointer vector's destructor is four high, one more than its
      * constructor, so CVisual's destructor (vis_main.cpp) inlines CDynTexList's implicit one only
-     * one level and calls ~CTexList and ~CTexPalList, where its constructor builds them whole */
+     * one level and calls ~CTexList and ~CTexPalList, where its constructor builds them whole.
+     * MEASURED, NOT ADOPTED (the MSL headers round 26: a trade, the integrator's): the data word read
+     * through an address -- `T *&d = data_; if (d) deallocate(d);` (a T *const & or a T ** local
+     * alike) -- makes ~CRadioStripSpec 0x387340, ~CAssetLib 0x321990 and ~CMenuStack 0x27F590
+     * byte-exact (the target keeps begin()'s &data_ in a saved register across the walk and reads
+     * the destructor's test through it) and loses resize<CUIVariable> 0x2B1390 (its temporary's
+     * word read sp-relative in the target, through the this register so): over every hand-written
+     * unit +3 / -1. Through data() (`if (data()) deallocate(data());`) ~CRadioStripSpec matches too,
+     * but the extra inline level cuts 34 deeper destructor chains at level 5 (~CKey, ~CHUD, ~CNode,
+     * CGrid::Destroy, the resize ...: +1 / -34) -- an accessor one level the level-5 headers do not
+     * have would explain both readers ("Level 6, or 8?"), not measured; the test or the call alone
+     * through the reference loses all four */
     ~__vector_pod()
     {
         if (data_)
