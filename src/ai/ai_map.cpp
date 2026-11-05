@@ -567,7 +567,16 @@ bool CAiMaps::GetCellRepelParams(const CAiMapLoc &loc, const CPnt3D *pos, float 
  * cast, memcpy 0x568, placement new 0x590); `float vz = v.z;` loads v.z once for both arms (0x560,
  * through an address register still); v made an inline's result (`_cell_offset`, by value or bound
  * to a reference), `dir += n * k`, the quadrant through an inline: no change of order
- * (build/scratch/ai/v_gcrp4-8.py) */
+ * (build/scratch/ai/v_gcrp4-8.py)
+ * Round 32 (difflib distance 58 -> 27 of 342): `CPnt3D n;` at the top (the target's frame) with v.z
+ * read once into a named float for the quadrant -- the quadrant's tests and the loop's dot then read
+ * v.y / v.z from $f21 / $f20 almost as the target does. Left: n's reset in the loop is memberwise
+ * (lui/lwc1/swc1 x3) where the target copy-constructs it (ld/sd + lwc1/swc1 from CPnt3D::zero, n
+ * at 272 above v at 256, as if declared first but built in the loop); vz lives in $f2 for the
+ * quadrant and the loop reloads v.z into $f20 (the target loads it once into $f20, sp-relative);
+ * tried on top (build/scratch/ai/v_gc1-4.py): direct-init v / n, the quadrant as ifs, vx / vy locals,
+ * the products written out (either operand order), Dot(v, n), v bound to a const reference (with n
+ * in the loop or at the top: 54-96) */
 bool CAiMap::GetCellRepelParams(const CAiMapLoc &loc, const CPnt3D *pos, float range, CPnt3D &dir, float &len,
                                 CAiMapLoc &cell)
 {
@@ -578,20 +587,22 @@ bool CAiMap::GetCellRepelParams(const CAiMapLoc &loc, const CPnt3D *pos, float r
     if (c->HasLink())
         return false;
     CPnt3D center;
+    CPnt3D n;
 
     GetCellCenter(loc, &center);
     CPnt3D v = *pos - center;
+    float vz = v.z;
     DIR d;
 
     if (v.x > 0.0f)
-        d = v.z < 0.0f ? (DIR)0 : (DIR)2;
+        d = vz < 0.0f ? (DIR)0 : (DIR)2;
     else
-        d = v.z < 0.0f ? (DIR)6 : (DIR)4;
+        d = vz < 0.0f ? (DIR)6 : (DIR)4;
     bool found = false;
     float half = 0.5f * m_dx;
 
     for (int i = 0; i < 3; i += 2) {
-        CPnt3D n = CPnt3D::zero;
+        n = CPnt3D::zero;
         DIR nd = (DIR)((d + i + 8) % 8);
         CAiMapLoc nloc;
         CAiCell *ncell = 0;

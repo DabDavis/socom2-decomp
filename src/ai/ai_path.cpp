@@ -317,19 +317,19 @@ inline bool _traversable(const CAiMap *map, const CAiMapLoc &loc)
  * joins -- while the path allows it (flag 0x20, cleared for the legs it adds) -- one leg for each
  * step of each route the graph's route between the two regions takes, then the last to the goal;
  * otherwise the leg itself, its two cells and its map pushed (SOCOM 1's, the demo's 0x195B90).
- * OPEN, right size (0x408), 127 instructions (written in the AI core's round 31): every call, branch,
- * spill and the frame's size are the target's -- the cell tests through the unit's _traversable
- * inlined one level (GetCell and the cell's test out of line), the body under one `&&` so both
- * failures reach the final `return false`, `from` ASSIGNED from start (CAiMapLoc's copy constructor
- * copies field by field, its assignment the word), the next cell through a reference local the
- * target keeps in a saved register across the recursive call (s0 = sp+220; SOCOM 1's s5 the same),
- * so that the graph spills as the target's does. `tools/igreplay.py --move` put the reference after
- * j in the numbering (49.5: next s0, j s1, rt s2, reg s3, i s6, b s7, n s8 -- the target's), hence
- * `int j = 0;` ahead of it; what is left: the frame -- to and from sit above the route here wherever
- * they are declared (4-byte locals ahead of the aggregate), below it in the target (220, 216: the
- * place an inline's locals take, as if the walk were an inline of its own), which moves every
- * offset -- and `a` shares s0 with next where the target gives it s1 (next live across the whole
- * outer loop there, hoisted ahead of it) */
+ * Byte-exact since the AI core's round 32 (127 off in round 31, every call, branch and spill already
+ * the target's): the cell tests through the unit's _traversable inlined one level (GetCell and the
+ * cell's test out of line), the body under one `&&` so both failures reach the final `return false`;
+ * the walk's two cells ONE 8-BYTE STRUCT (from, to) -- as two CAiMapLoc locals they took the frame's
+ * top slots above the route, wherever declared (4-byte class locals go first), where the struct
+ * follows declaration order: the route at 224, from 216, to 220 -- and the same struct gave `a` s1
+ * with &to hoisted into s0 ahead of the outer loop; `from` assigned after the route's first node is
+ * read (its store scheduled after that load), the next cell through a reference local kept in a
+ * saved register across the recursive call (`int j = 0;` ahead of it, round 31's numbering); the
+ * reverse step's count read into a local ahead of the compare (live across it, so a0: MW hoists the
+ * load into the first branch's delay slot -- read in the arm it took v1); the flag restored through
+ * SetFlags(0x20, 0) (its `&= ~0` the zero extension, dsll32 / dsrl32); `if (!fail) { ... return
+ * true; } return false;` puts the inner `return false` after the pushes, as the target does */
 bool CAiPath::plan_addleg(CAiMap *map, const CAiMapLoc &start, const CAiMapLoc &goal)
 {
     if (_traversable(map, start) && _traversable(map, goal)) {
@@ -350,12 +350,12 @@ bool CAiPath::plan_addleg(CAiMap *map, const CAiMapLoc &start, const CAiMapLoc &
                     CGRoute route;
 
                     if (graph->BuildRoute(n0, n1, 0, &route) && route.m_nodes.size()) {
-                        CAiMapLoc to;
-                        CAiMapLoc from;
+                        struct { CAiMapLoc from; CAiMapLoc to; } leg;
 
-                        from = start;
                         std::list<CGNode *>::iterator i = route.m_nodes.begin();
                         CGNode *a = *i;
+
+                        leg.from = start;
 
                         for (++i; i != route.m_nodes.end(); ++i) {
                             CGNode *b = *i;
@@ -379,41 +379,42 @@ bool CAiPath::plan_addleg(CAiMap *map, const CAiMapLoc &start, const CAiMapLoc &
                             }
                             int n = rt->m_path.size();
                             int j = 0;
-                            CAiMapLoc &next = to;
+                            CAiMapLoc &next = leg.to;
 
                             for (; j < n; j++) {
-                                next = reg->m_loc == rt->m_region[0] ? rt->m_path[j]
-                                                                     : rt->m_path[rt->m_path.size() - j - 1];
-                                if (!plan_addleg(map, from, next)) {
+                                int m = rt->m_path.size();
+
+                                next = reg->m_loc == rt->m_region[0] ? rt->m_path[j] : rt->m_path[m - j - 1];
+                                if (!plan_addleg(map, leg.from, next)) {
                                     fail = true;
                                     break;
                                 }
-                                from = next;
+                                leg.from = next;
                             }
                             if (fail)
                                 break;
-                            from = next;
+                            leg.from = next;
                             a = b;
                         }
                         if (!fail) {
-                            plan_addleg(map, to, goal);
+                            plan_addleg(map, leg.to, goal);
                             done = true;
                         }
                     }
                 }
             }
-            m_flags &= ~0;
-            m_flags |= 0x20;
+            SetFlags(0x20, 0);
         }
         if (done)
             return true;
-        if (fail)
-            return false;
-        m_waypts.push_back(start);
-        m_waypts.push_back(goal);
-        m_maps.push_back(map);
-        m_legcount++;
-        return true;
+        if (!fail) {
+            m_waypts.push_back(start);
+            m_waypts.push_back(goal);
+            m_maps.push_back(map);
+            m_legcount++;
+            return true;
+        }
+        return false;
     }
     return false;
 }
