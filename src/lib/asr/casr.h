@@ -6,8 +6,10 @@
 typedef struct SEGLABEL {
     int pad0;
     struct SEGLABEL *next;              /* +4 */
-    char pad8[12];
-    unsigned short label;               /* +20 */
+    char pad8[8];
+    unsigned short word;                /* +16: the phoneme (dpscoreuw.c's BTNODE) */
+    short pad18;
+    unsigned short label;               /* +20: its first frame */
 } SEGLABEL;
 
 typedef struct CBSLOT {
@@ -156,9 +158,17 @@ typedef struct CASR {
     unsigned short uw_recs_done;        /* +932 */
     char pad934[6];
     unsigned char rejected;             /* +940: the last utterance was too short */
-    char pad941[19];
+    char pad941[3];
+    /* +944: the user-word scoring's result (dpscoreuw.c's SCOREUWRESULT, cbScoreUserWordResultAvailable) */
+    int uw_score;                       /* +944 */
+    unsigned int uw_wordscore;          /* +948 */
+    unsigned int uw_nframes;            /* +952 */
+    float uw_perframe;                  /* +956 */
     int f960;                           /* +960: the last label scoring's result (CheckConsistency) */
-    char pad964[16];
+    unsigned int uw_start;              /* +964 */
+    unsigned int uw_end;                /* +968 */
+    unsigned int uw_nnodes;             /* +972: the back pointers, the two silences included */
+    SEGLABEL *uw_bt;                    /* +976: the last of them */
     UTTREC utt[3];                      /* +980 */
     short uw_silence;                   /* +1016: the language's user-word silence phoneme */
     short pad1018;
@@ -198,7 +208,8 @@ struct LANGVT {
     unsigned int (*GetNbrState)(LANGVT *l);           /* +20, slot 5 */
     void *s6[5];
     int (*GetNbrErgodicPhenomes)(LANGVT *l);          /* +44, slot 11 */
-    void *s12[3];
+    void *s12[2];
+    short (*GetSilencePhenome)(LANGVT *l);            /* +56, slot 14 */
     short (*GetUWSilencePhenome)(LANGVT *l);          /* +60, slot 15 */
     void *s16[4];
     int (*GetNbrSpeechUnit)(LANGVT *l);               /* +80, slot 20 */
