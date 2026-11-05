@@ -404,13 +404,17 @@ void CVisual::SetBuffer(_word128 *buf, unsigned int vid, CVisBase *base)
 }
 
 /* a view's VU buffer copied for this visual: a new owner of the same size (its constructor inline
- * in SOCOM II), the block copied, and when the head's list is open, each select of the list whose
- * kind is 5 made relative to the source's block and each of kind 8 given its own copy (SOCOM 1's).
- * The copies are do-while loops (no entry test), the flag's address taken once, the cursor
- * stepped in the loop's increment, the kinds a switch (tested 5 first, kind 8's code first). OPEN,
- * 8 bytes long and 7 instructions off: the switch's second test is `beq 8; b out` where the
- * target branches `bne 8, out` into kind 8's code (nested ifs not tried), and the block copy's
- * two loads are scheduled ahead of the length where the target loads them after it */
+ * in SOCOM II), the block copied, and when the head's list is open, each select of the list given
+ * what its kind needs -- kind 5 (a texture handle's) left as it is, kind 8 (a blend list) its own
+ * copy, every other kind made relative to the source's block (SOCOM 1's: the same two tests, `beq
+ * 5` to the loop's step and `bne 8` to the relative store, in both builds). The copies are do-while
+ * loops (no entry test), the flag's address taken once, the cursor stepped in the loop's increment.
+ * BYTE-EXACT since the weapons' round 31: the kinds as nested ifs (`!= 5`, then `== 8` or else; an
+ * if / else-if chain with an empty first arm matches too, a switch with a default is 8 long), the
+ * length computed before the two block pointers are loaded (the division's branch ends a block: the
+ * target loads them after it), the three declared uninitialised d, s, n so their numbering gives n
+ * v1, s a0, d a1. (Before: the switch had case 5 make the select relative and other kinds left --
+ * 8 long, 7 off.) */
 _word128 *CVisual::CopyBuffer(CVisBase **out, unsigned int vid)
 {
     CVisBase *src = (CVisBase *)((_word128 *)m_lodMesh[vid])->u32[2];
@@ -423,9 +427,13 @@ _word128 *CVisual::CopyBuffer(CVisBase **out, unsigned int vid)
 
     b->m_c = src->m_c;
 
-    _word128 *d = (_word128 *)b->m_data;
-    _word128 *s = (_word128 *)src->m_data;
-    int n = (int)src->m_size / 16;
+    _word128 *d;
+    _word128 *s;
+    int n;
+
+    n = (int)src->m_size / 16;
+    s = (_word128 *)src->m_data;
+    d = (_word128 *)b->m_data;
 
     do {
         *d = *s;
@@ -445,9 +453,9 @@ _word128 *CVisual::CopyBuffer(CVisBase **out, unsigned int vid)
 
         h++;
         for (; i < count; i++, h++, sh++) {
-            switch (h->u8[2]) {
-            case 8: {
-                unsigned int k = h->u16[0];
+            if (h->u8[2] != 5) {
+                if (h->u8[2] == 8) {
+                    unsigned int k = h->u16[0];
                 _word128 *v = (_word128 *)_malloc(k * 16, 0, 0);
                 _word128 *t = v;
                 _word128 *f = (_word128 *)h->u32[1];
@@ -458,11 +466,8 @@ _word128 *CVisual::CopyBuffer(CVisBase **out, unsigned int vid)
                     t++;
                 } while (--k);
                 h->u32[1] = (unsigned int)v;
-                break;
-            }
-            case 5:
-                h->u32[1] = sh->u32[1] - (unsigned int)base;
-                break;
+                } else
+                    h->u32[1] = sh->u32[1] - (unsigned int)base;
             }
         }
     }
