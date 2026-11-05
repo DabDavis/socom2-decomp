@@ -172,7 +172,10 @@
  * and do_assign of one element type read the same guarded word (the lobby's 0x44F520 / 0x3F3A58, the
  * pointer deques' 0x44D6C8 / 0x3F3490 from CGame's push_back and both PCv do_assigns, the chat's
  * 0x44FA68 / 0x3F5680), so it lives in an inline both call; data.txt's six rows renamed to max_size's
- * names. Over every hand-written unit +1 (0x2E1090), nothing lost. STILL OPEN: the cdeque<PCv>
+ * names. Over every hand-written unit +1 (0x2E1090), nothing lost; and with the deque iterators'
+ * buffer member the trivially copied const_iterator, the chat's range destroy 0x2F5B10 (open since the
+ * MSL headers' round 13) reads its by-value iterators in place as the target does -- byte-exact once
+ * buf_size's storage, 0x3F56D8, has its data row. STILL OPEN: the cdeque<PCv>
  * do_assign 0x2E0E10 (now 0x274 against 0x27C: the target stores each converted element to a frame
  * word and reloads it, `sw a1,248(sp); lw a1,248(sp)` -- as the rdr editor's out-of-line convert
  * operator* 0x334940 does -- where every convert/operator* spelling tried keeps it in a register;

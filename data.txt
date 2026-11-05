@@ -579,6 +579,7 @@
 0x003F3DC8 0x8 __RTTI__13TransientGame  # RTTI of TransientGame: found by its RTTI's name
 0x003F3DF0 0x8 __RTTI__7LANGame  # RTTI of LANGame: found by its RTTI's name
 0x003F5680 0x4 @LOCAL@max_size__Q23std71__deque_imp<17MediusChatMessage,Q23std30allocator<17MediusChatMessage>>Fv@max  # OVL1 data; ours (the MSL headers round 14): the deque push_back's function-local `static const unsigned int max = max_size()` (its value) for the instance at 0x2f5290; renamed by the online lane round 21: the static is the deque's max_size()'s, one object per element type that push_back and do_assign share -- read by the chat queue's push_back 0x2F5290 and range init 0x2F6600
+0x003F56D8 0x4 buf_size__Q23std71__deque_imp<17MediusChatMessage,Q23std30allocator<17MediusChatMessage>>  # OVL1 data; ours (the online lane round 21): the chat deque's block size, include/deque's static const buf_size with storage (8: 112-byte lines go 8 to a block) -- 2 references, both in the range destroy 0x2F5B10 (min over the count and the constant's address: `lw t1,22232(at)` at 0x2F5C74, `addiu v1,v1,22232` at 0x2F5CE0); every other reader folds it
 0x003F5E48 0x8 __RTTI__16CSMGetServerList  # RTTI of CSMGetServerList: found by its RTTI's name
 0x003F6358 0x8 __RTTI__12CLobbyFileIO  # RTTI of CLobbyFileIO: found by its RTTI's name
 0x003F6450 0x10 zero__5CQuat  # OVL1; s1:data-exact (size SOCOM 1's; via __sinit_zmath_main.cpp)
