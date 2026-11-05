@@ -10459,11 +10459,11 @@
 0x00581DC0 0x104 Stand__10CZSealBodyFi  # OVL2; s1:order by hand (SOCOM 1 Stand__10CZSealBodyFi, after Stand_0: the state-0 tests, ClearStack inlined and Stand_0 asked at the old top time; the SEALs round 16)
 0x00581ED0 0x628 SetStance__10CZSealBodyF10SEAL_STATE  # OVL2; s1:order by hand (SOCOM 1 SetStance__10CZSealBodyF10SEAL_STATE, after Stand and before StanceChanged in both builds: BodySetState first, then a switch on the state at 0x174 over 4, 2, 1, 0, Crouch and Prone called; the SEALs round 16)
 0x00582500 0x38 StanceChanged__10CZSealBodyFv  # OVL2; s1:exact (SOCOM 1's: the stance-changed bit tested and cleared; PoseBitmap::Tick calls it)
-0x00582540 0x7CC func_00582540  # OVL2
-0x00582D10 0x314 func_00582D10  # OVL2
-0x00583030 0x318 func_00583030  # OVL2
+0x00582540 0x7CC CheckAnim__10CZSealBodyFv  # OVL2; s1:calls by hand (the SEALs, round 48): SOCOM 1's CheckAnim 0x277300, the first after StanceChanged in both builds; CZSealBody::Tick calls it once, a0 alone, where SOCOM 1's Tick calls CheckAnim
+0x00582D10 0x314 CrouchMoveControl__10CZSealBodyFff  # OVL2; s1:calls by hand (the SEALs, round 48): SOCOM 1's CrouchMoveControl 0x277970 (fff there: SOCOM II passes $f12/$f13 alone), after CheckAnim in both builds; InStateCrouch calls it once, as SOCOM 1's InStateCrouch calls CrouchMoveControl
+0x00583030 0x318 MoveControl__10CZSealBodyFff  # OVL2; s1:calls by hand (the SEALs, round 48): SOCOM 1's MoveControl__10CZSealBodyFff 0x277D10, after CrouchMoveControl in both builds; called once from InStateCrouch and three times from InStateStand ($f12/$f13), exactly as SOCOM 1's
 0x00583350 0x1A4 func_00583350  # OVL2
-0x00583500 0x45C func_00583500  # OVL2
+0x00583500 0x45C ProneControl__10CZSealBodyFfff  # OVL2; s1:calls by hand (the SEALs, round 48): SOCOM 1's ProneControl__10CZSealBodyFfff 0x278230, right before TurnControl in both builds; InStateProne calls it once with $f12/$f13/$f14, as SOCOM 1's InStateProne calls ProneControl
 0x00583960 0x18C TurnControl__10CZSealBodyFf  # OVL2; s1:order by hand (SOCOM 1 TurnControl__10CZSealBodyFff, after ProneControl: the top blend weight made 1, the turn doubled and negated, capped 0.6/0.3/0.35/0.6 by state as in SOCOM 1; SOCOM II takes one float, every caller sets f12 alone; the SEALs round 16)
 0x00583AF0 0x374 InStateCarried__10CZSealBodyFv  # OVL2; s1:order by hand (the SEALs, round 47): SealAnim 0x5870E0 calls it for state 10 (stateCarried) where SOCOM 1's SealAnim calls InStateCarried__10CZSealBodyFfff, its case block first as SOCOM 1's; and SOCOM 1's stretch order (TurnControl, InStateCarried, InStateCarrying, InStateClimbLadder, InStateHang in both builds) -- no floats in SOCOM II
 0x00583E70 0x3C8 InStateCarrying__10CZSealBodyFv  # OVL2; s1:order by hand (the SEALs, round 47): SealAnim 0x5870E0 calls it for state 9 (stateCarrying) where SOCOM 1's SealAnim calls InStateCarrying__10CZSealBodyFfff; and SOCOM 1's stretch order (after InStateCarried, before InStateClimbLadder in both builds) -- no floats in SOCOM II
@@ -10474,7 +10474,7 @@
 0x00584C10 0x48 func_00584C10  # OVL2
 0x00584C60 0xB80 InStateCrouch__10CZSealBodyFv  # OVL2; s1:order by hand (the SEAL lane, round 21): SOCOM 1's InStateCrouch__10CZSealBodyFfff -- after InStateProne in both builds, before CanCrouch (0x5857E0), and the state dispatcher 0x5870E0's case 1 (stateCrouch) calls it with the SEAL alone (not written)
 0x005857E0 0xB8 func_005857E0  # OVL2
-0x005858A0 0x42C func_005858A0  # OVL2
+0x005858A0 0x42C UpdateQuadrant__10CZSealBodyFRfRfb  # OVL2; s1:calls by hand (the SEALs, round 48): SOCOM 1's UpdateQuadrant__10CZSealBodyFRfRfb 0x27A250, after InStateCrouch in both builds (CanCrouch, between them there, is inlined here); called from InStateCarrying, InStateProne and InStateCrouch as SOCOM 1's (and InStateCarried, where SOCOM 1's InStateStand calls it), two float references and a bool (a1/a2 frame addresses, a3 = 0)
 0x00585CD0 0x31C func_00585CD0  # OVL2
 0x00585FF0 0x60 func_00585FF0  # OVL2
 0x00586050 0x1E8 StandTurning__10CZSealBodyFf  # OVL2; s1:order by hand (the SEALs, round 27): SOCOM 1's StandTurning__10CZSealBodyFfff, after UpdateQuadrant and before StandStill (0x586240) and InStateStand in both builds; the same body -- the top's ThisFoot, the turn blend (16) unless current, the blends popped (ClearStack inlined), the foot kept at 0x14CC (32 or 2), TurnSetup, the turn-in-place sequence Start(0.8, 3000, 0.4) at full, the turning/moving bits, TurnControl -- one float where SOCOM 1 took three
