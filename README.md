@@ -2062,6 +2062,30 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the kit and AI states, round 39** (ShowProjectile, seal_sensors.cpp's initialiser and sensor ticks):
+  - a string literal passed to a virtual call on a call's result: as a local defined after the call its lui/addiu pair
+    stays together before the `this` move, passed in place the move splits the pair, defined before the call it is kept
+    saved (CZKit::ShowProjectile 0x5B85A0); a call's bool result tested through a bool local keeps the target's andi
+    0xff;
+  - a by-value CPnt3D operator result assigned into a two-point local keeps both operators' return copies and their frame
+    slots (separate points or an initialised result lose them); a float field read through an inline accessor flips the
+    target's mul/add operand order, a forwarded store's value comes out second (`dT * aware`), held in a local first
+    (CSealCtrl::SensorPreTick 0x5CA9F0, SOCOM 1's grown);
+  - __sinit_seal_sensors.cpp 0x668E50 needs the unit's statics defined after <iostream>: SOCOM 1's four debug colours and
+    SOCOM II's _sensing record (the entity, the AI parameters, the eye point and its flag); CSealCtrlAi::SensorTick
+    0x5C98B0 from its draft to source on the first try; 0x5F95D0 is HandleEvent (its callers), not EventTick.
+- **Tells from the game states, round 36** (the farthest-from-enemies spawn pick; a depth-6 stand-in dropped):
+  - MW generates a for loop's test after its body: temporaries from an inline expanded whole in the test (`i != end()`)
+    are numbered after the body's, so the end is coloured first -- an end taken into a local before the loop, or the
+    `Last()` end, is numbered first; if an inline helper's walk is cut at level 5, writing it out in each caller
+    reproduces the target byte for byte (fts_missionlist.cpp: its depth-6 stand-in dropped, 23 of 23 at level 5 -- the
+    online lobby's `Last()` was 11 off here);
+  - MW will not hoist a global list's begin / end out of an outer loop containing a call: a target with them hoisted
+    initialised the iterators before the outer loop; an unsigned parameter used only inside a loop gets its saved copy at
+    the function entry, declared int the copy lands in the loop's preheader; declaration order settles the scheduler's
+    ties (the spawn pick 0x2B7EE0: 2 of the 24 declaration orders match); `r = range ? rand() % (range + 1) : 0` keeps
+    the target's branch over the empty arm, `if (range) r = ...` is 8 bytes short (0x2B8100);
+  - CNodeAction::Release 0x2B49D0 / Acquire 0x2B49A0 named (the user word at 0x34 reset or set).
 - **Tells from the SEALs, round 37** (fourteen: the order names, the death anims, OnWeaponEvent, OnStunDamage, the pose):
   - two inline calls in an expression expand left to right, so a by-value accessor orders the loads of `a->m_team &
     b->m_team` (plain loads come out in one order however written); an inline's by-value parameters load right to left
