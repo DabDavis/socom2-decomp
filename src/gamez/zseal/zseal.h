@@ -89,6 +89,18 @@ public:
     /* (SOCOM 1's KickGrenade, 33 before Stand2Prone in both builds: the grenade state's kick,
      * 0x55AC20, plays it with the timed call that throws the grenade from where it lies) */
     static short KickGrenade;   // OVL1 0x3DEB40
+    /* (SOCOM 1's eight reloads, three to ten after KickGrenade in both builds, and RifleM203Reload
+     * twenty after PistolReload in both: Reload 0x5A82E0 picks them by stance, pistol or rifle,
+     * moving or not and the launcher, IsReloading 0x5A7AB0 tests them -- the SEALs, round 40) */
+    static short PistolReload;   // OVL1 0x3DEB58 (SOCOM 1's 0x47514C)
+    static short RifleReload;   // OVL1 0x3DEB60
+    static short MovingPistolReload;   // OVL1 0x3DEB68
+    static short MovingRifleReload;   // OVL1 0x3DEB70
+    static short PistolCrouchReload;   // OVL1 0x3DEB78
+    static short RifleCrouchReload;   // OVL1 0x3DEB80
+    static short PistolProneReload;   // OVL1 0x3DEB88
+    static short RifleProneReload;   // OVL1 0x3DEB90
+    static short RifleM203Reload;   // OVL1 0x3DEBF8 (SOCOM 1's 0x47519C)
     static short Stand2Prone;   // OVL1 0x3DEC48
     static short PistolStand2Prone;   // OVL1 0x3DEC50
     /* (SOCOM 1's SwapRifle, six after Stand2Prone in both builds: the weapon swap's blends,
@@ -107,9 +119,19 @@ public:
      * stab's kill 0x578D20 pushes Stabbed on the victim and Stab on the attacker, as SOCOM 1's
      * StabBuddy does) */
     static short Stab;   // OVL1 0x3DEE08
+    /* (SOCOM 1's PistolStab, CQB, PistolCQB, the CQB victim's two falls and PistolApplyRestraints, in
+     * SOCOM 1's order between Stab and BuddyCarryStand in both builds: CanUseKnife 0x5A98B0, CanUseCQB
+     * 0x5A9500, FindDeathAnimTypeCQB 0x5A9420 and CanUseRestraint 0x5A90B0 test them -- the SEALs,
+     * round 40; the falls AnimType, as FindDeathAnimTypeCQB returns them) */
+    static short PistolStab;   // OVL1 0x3DEE10 (SOCOM 1's 0x475278)
     static short Stabbed;   // OVL1 0x3DEE18
+    static short CQB;   // OVL1 0x3DEE20 (SOCOM 1's 0x475280)
+    static short PistolCQB;   // OVL1 0x3DEE28
+    static AnimType CQBVictimFallBackwards;   // OVL1 0x3DEE30
+    static AnimType CQBVictimFallForwards;   // OVL1 0x3DEE38
     static short ReceiveRestraints;   // OVL1 0x3DEE40
     static short ApplyRestraints;   // OVL1 0x3DEE48
+    static short PistolApplyRestraints;   // OVL1 0x3DEE50 (SOCOM 1's 0x475298)
     /* (SOCOM 1's BuddyCarryBody, BuddyCarryPickup and BuddyCarriedPickup, the carry's -- six, ten
      * and twelve after ReceiveRestraints there, eight, twelve and fourteen here: SOCOM II adds two
      * after ApplyRestraints; PutdownBuddy 0x5794D0 pushes them as SOCOM 1's does) */

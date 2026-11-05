@@ -47,8 +47,30 @@ zdb::CNode *GetDecalNode(zdb::CNode *node);
 zdb::CNode *GetVisualNode(zdb::CNode *node);
 /* (zrdr.h's: a block's tag) */
 _zrdr *zrdr_findtag(const _zrdr *rdr, const char *tag);
-/* the decals' projection, straight down (OVL2 bss, data.txt's) */
-extern CPnt3D projDirDown;
+
+#include <iostream>
+
+/* the unit's statics, in the order its initialiser (__sinit_seal_env.cpp, OVL2 0x668C10) builds them
+ * after <iostream>'s two objects -- SOCOM 1's file statics by its symbol table, less the string
+ * table, the decal defs and the look's spine tables SOCOM 1's initialiser builds besides (the SEALs,
+ * round 40): the four facing cosines, 8 bytes apart in OVL2 data from 0x65F0C8 (SOCOM 1's
+ * FLASHBANG_DOT, RESTRAINT_DOT, KNIFE_DOT and CQB_DOT: 40, 85, 25 and 65 degrees -- the first's name
+ * is seal_control.cpp's FLASHBANG_DOT's in the map, so it keeps its placeholder; nothing reads it),
+ * the matrix stack that owns nothing (OVL2 bss 0x66B468: SOCOM 1's _stack; its ~CStack copy 0x5B7B20
+ * is the unit's), the two intersection sets of 64 (0x66B490, 0x66B4F0: SOCOM 1's di0 and di1), the
+ * fallback's two cosines (0x65F0E8, 0x65F0F0: SOCOM 1's FALLBACK_DOT_MIN / MAX, 175 and 355 taken
+ * through 180/pi -- degrees made larger, not radians, in both builds; nothing reads them) and the
+ * decals' projection, straight down (0x66B540) */
+static float data_0065F0C8 = cosf(0.017453292f * 40.0f);
+static float RESTRAINT_DOT = cosf(0.017453292f * 85.0f);
+static float KNIFE_DOT = cosf(0.017453292f * 25.0f);
+static float CQB_DOT = cosf(0.017453292f * 65.0f);
+static CStack _stack(false);
+static zdb::DiIntersect di0(64);
+static zdb::DiIntersect di1(64);
+static float FALLBACK_DOT_MIN = cosf(175.0f * 57.295776f);
+static float FALLBACK_DOT_MAX = cosf(355.0f * 57.295776f);
+static CPnt3D projDirDown(0.0f, -1.0f, 0.0f);
 
 /* a random fraction of one (rand() over 2^31) */
 static inline float Rand01()
@@ -994,19 +1016,9 @@ bool CZSealBody::IsThrowing(bool started)
 }
 
 extern "C" {
-/* the reloads' anims (OVL1 data, anim types: SOCOM 1's PistolReload, RifleReload, PistolCrouchReload,
- * RifleCrouchReload, PistolProneReload, RifleProneReload and RifleM203Reload by their places among
- * AnimTypes' statics, 8 bytes apart, and six SOCOM II adds; the overlays' MovingPistolReload and
- * MovingRifleReload) */
-extern short data_003DEB58;
-extern short data_003DEB60;
-extern short data_003DEB68;
-extern short data_003DEB70;
-extern short data_003DEB78;
-extern short data_003DEB80;
-extern short data_003DEB88;
-extern short data_003DEB90;
-extern short data_003DEBF8;
+/* the reloads' anims SOCOM II adds (OVL1 data, anim types: the pistols' and the kind-81 weapon's,
+ * past SOCOM 1's AnimTypes -- SOCOM 1's eight reloads and RifleM203Reload are zseal.h's AnimTypes
+ * members) */
 extern short data_003DF098;
 extern short data_003DF0A0;
 extern short data_003DF0A8;
@@ -1073,9 +1085,9 @@ bool CZSealBody::Reload(bool b)
         case stateStand:
             if (launcher) {
                 if (moving)
-                    anim = data_003DEB70;
+                    anim = AnimTypes::MovingRifleReload;
                 else
-                    anim = data_003DEBF8;
+                    anim = AnimTypes::RifleM203Reload;
             } else if (b && kind == 81) {
                 if (moving)
                     anim = data_003DF0D0;
@@ -1088,22 +1100,22 @@ bool CZSealBody::Reload(bool b)
                     anim = data_003DF098;
             } else if (rifle) {
                 if (moving)
-                    anim = data_003DEB70;
+                    anim = AnimTypes::MovingRifleReload;
                 else
-                    anim = data_003DEB60;
+                    anim = AnimTypes::RifleReload;
             } else {
                 if (moving)
-                    anim = data_003DEB68;
+                    anim = AnimTypes::MovingPistolReload;
                 else
-                    anim = data_003DEB58;
+                    anim = AnimTypes::PistolReload;
             }
             break;
         case stateCrouch:
             if (launcher) {
                 if (moving)
-                    anim = data_003DEB70;
+                    anim = AnimTypes::MovingRifleReload;
                 else
-                    anim = data_003DEBF8;
+                    anim = AnimTypes::RifleM203Reload;
             } else if (b && kind == 81) {
                 if (moving)
                     anim = data_003DF0D0;
@@ -1116,31 +1128,31 @@ bool CZSealBody::Reload(bool b)
                     anim = data_003DF0A0;
             } else if (rifle) {
                 if (moving)
-                    anim = data_003DEB70;
+                    anim = AnimTypes::MovingRifleReload;
                 else
-                    anim = data_003DEB80;
+                    anim = AnimTypes::RifleCrouchReload;
             } else {
                 if (moving)
-                    anim = data_003DEB68;
+                    anim = AnimTypes::MovingPistolReload;
                 else
-                    anim = data_003DEB78;
+                    anim = AnimTypes::PistolCrouchReload;
             }
             break;
         case stateProne:
             if (launcher)
-                anim = data_003DEBF8;
+                anim = AnimTypes::RifleM203Reload;
             else if (b && kind == 81)
                 anim = data_003DF0C8;
             else if (id == 84 || pistolkind)
                 anim = data_003DF0A8;
             else if (rifle)
-                anim = data_003DEB90;
+                anim = AnimTypes::RifleProneReload;
             else
-                anim = data_003DEB88;
+                anim = AnimTypes::PistolProneReload;
             break;
         case stateInAir:
             if (launcher)
-                anim = data_003DEB70;
+                anim = AnimTypes::MovingRifleReload;
             else
                 return true;
             break;
@@ -1180,13 +1192,13 @@ bool CZSealBody::IsReloading()
     TopBlend();
     short type = TopBlend()->m_animType;
 
-    if (type == data_003DEB60 || type == data_003DEB58 || type == data_003DEB80 || type == data_003DEB78 ||
-        type == data_003DEB90 || type == data_003DEB88 || type == data_003DEBF8 || type == data_003DF0B8 ||
+    if (type == AnimTypes::RifleReload || type == AnimTypes::PistolReload || type == AnimTypes::RifleCrouchReload || type == AnimTypes::PistolCrouchReload ||
+        type == AnimTypes::RifleProneReload || type == AnimTypes::PistolProneReload || type == AnimTypes::RifleM203Reload || type == data_003DF0B8 ||
         type == data_003DF0C0 || type == data_003DF0C8 || type == data_003DF098 || type == data_003DF0A0 ||
-        type == data_003DF0A8 || func_0058A470(this, (AnimType)data_003DEB60) ||
-        func_0058A470(this, (AnimType)data_003DEB58) || func_0058A470(this, (AnimType)data_003DEB80) ||
-        func_0058A470(this, (AnimType)data_003DEB78) || func_0058A470(this, (AnimType)data_003DEB90) ||
-        func_0058A470(this, (AnimType)data_003DEB88) || func_0058A470(this, (AnimType)data_003DEBF8) ||
+        type == data_003DF0A8 || func_0058A470(this, (AnimType)AnimTypes::RifleReload) ||
+        func_0058A470(this, (AnimType)AnimTypes::PistolReload) || func_0058A470(this, (AnimType)AnimTypes::RifleCrouchReload) ||
+        func_0058A470(this, (AnimType)AnimTypes::PistolCrouchReload) || func_0058A470(this, (AnimType)AnimTypes::RifleProneReload) ||
+        func_0058A470(this, (AnimType)AnimTypes::PistolProneReload) || func_0058A470(this, (AnimType)AnimTypes::RifleM203Reload) ||
         func_0058A470(this, (AnimType)data_003DF0B8) || func_0058A470(this, (AnimType)data_003DF0C0) ||
         func_0058A470(this, (AnimType)data_003DF0C8) || func_0058A470(this, (AnimType)data_003DF098) ||
         func_0058A470(this, (AnimType)data_003DF0A0) || func_0058A470(this, (AnimType)data_003DF0A8))
@@ -1194,7 +1206,7 @@ bool CZSealBody::IsReloading()
     ACTIVE_ANIM *a = m_overlay.m_anim;
 
     if (a && a->m_anim) {
-        if (a->m_id == data_003DEB70 || a->m_id == data_003DEB68)
+        if (a->m_id == AnimTypes::MovingRifleReload || a->m_id == AnimTypes::MovingPistolReload)
             return true;
         return false;
     }
@@ -1519,23 +1531,8 @@ static inline void NegateInto(const CPnt3D *in, CPnt3D *out)
 }
 
 extern "C" {
-/* the CQB deaths, from in front and from behind (OVL1 data, anim types; SOCOM 1's small-data pair) */
-extern AnimType data_003DEE30;
-extern AnimType data_003DEE38;
-}
-
-extern "C" {
 /* (OVL2 0x5B4340, not written yet: a test of the SEAL's state against a kind, below) */
 bool func_005B4340(CZSealBody *seal, int kind);
-/* the stab's pistol anim and the stabbed one's, the CQB attack's two (OVL1 data, anim types: SOCOM 1's
- * PistolStab, CQB and PistolCQB by their places among AnimTypes' statics, 8 bytes apart) */
-extern short data_003DEE10;
-extern short data_003DEE20;
-extern short data_003DEE28;
-/* the cosines the knife's and the CQB attack's facings must pass (OVL2 bss: SOCOM 1's KNIFE_DOT and
- * CQB_DOT, below) */
-extern float data_0065F0D8;
-extern float data_0065F0E0;
 /* the restrained anim set (OVL1 bss, below) */
 extern AnimSet *data_0044D400;
 /* a halfword's bits tested (seal.cpp's tail copy, OVL2 0x5551A0) */
@@ -1563,7 +1560,7 @@ bool CZSealBody::CanUseKnife(CZSealBody *victim)
         return false;
     if (!func_005B4340(this, 6))
         return false;
-    if (IsCurrentBlend((AnimType)AnimTypes::Stab) || IsCurrentBlend((AnimType)data_003DEE10) ||
+    if (IsCurrentBlend((AnimType)AnimTypes::Stab) || IsCurrentBlend((AnimType)AnimTypes::PistolStab) ||
         IsCurrentBlend((AnimType)AnimTypes::Stabbed))
         return false;
     if (m_kit.IsUsingScope())
@@ -1591,7 +1588,7 @@ bool CZSealBody::CanUseKnife(CZSealBody *victim)
     d.y = 0.0f;
     fwd.Normalize();
     d.Normalize();
-    if (!(Dot(d, fwd) <= data_0065F0D8)) {
+    if (!(Dot(d, fwd) <= KNIFE_DOT)) {
         CPnt3D vfwd(*(const CPnt3D *)victim->m_node->m_matrix.m_matrix[2]);
         CPnt3D back = pos - *vpos;
 
@@ -1620,11 +1617,11 @@ bool CZSealBody::CanUseCQB(CZSealBody *victim)
         return false;
     if (!func_005B4340(this, 7))
         return false;
-    if (IsCurrentBlend((AnimType)data_003DEE20) || IsCurrentBlend((AnimType)data_003DEE28) ||
-        IsCurrentBlend((AnimType)data_003DEE30) || IsCurrentBlend((AnimType)data_003DEE38))
+    if (IsCurrentBlend((AnimType)AnimTypes::CQB) || IsCurrentBlend((AnimType)AnimTypes::PistolCQB) ||
+        IsCurrentBlend((AnimType)AnimTypes::CQBVictimFallBackwards) || IsCurrentBlend((AnimType)AnimTypes::CQBVictimFallForwards))
         return false;
-    if (victim->IsCurrentBlend((AnimType)data_003DEE20) || victim->IsCurrentBlend((AnimType)data_003DEE28) ||
-        victim->IsCurrentBlend((AnimType)data_003DEE30) || victim->IsCurrentBlend((AnimType)data_003DEE38))
+    if (victim->IsCurrentBlend((AnimType)AnimTypes::CQB) || victim->IsCurrentBlend((AnimType)AnimTypes::PistolCQB) ||
+        victim->IsCurrentBlend((AnimType)AnimTypes::CQBVictimFallBackwards) || victim->IsCurrentBlend((AnimType)AnimTypes::CQBVictimFallForwards))
         return false;
     if (NoShoot(victim))
         return false;
@@ -1651,7 +1648,7 @@ bool CZSealBody::CanUseCQB(CZSealBody *victim)
     fwd.y = 0.0f;
     d.y = 0.0f;
     fwd.Normalize();
-    if (d.Normalize() <= 30.0f && !(Dot(d, fwd) <= data_0065F0E0))
+    if (d.Normalize() <= 30.0f && !(Dot(d, fwd) <= CQB_DOT))
         return true;
     return false;
 }
@@ -1678,8 +1675,8 @@ AnimType CZSealBody::FindDeathAnimTypeCQB(CZSealBody *victim)
     fwd.y = 0.0f;
     d.y = 0.0f;
     if (Dot(d, fwd) < 0.0f)
-        return data_003DEE38;
-    return data_003DEE30;
+        return AnimTypes::CQBVictimFallForwards;
+    return AnimTypes::CQBVictimFallBackwards;
 }
 
 extern "C" {
@@ -1689,13 +1686,6 @@ bool func_005B4340(CZSealBody *seal, int kind);
 }
 
 extern "C" {
-/* the stab's, the CQB attack's and the restraint's anims besides AnimTypes' (OVL1 data, anim types:
- * SOCOM 1's PistolStab, CQB, PistolCQB and PistolApplyRestraints by their places among AnimTypes'
- * statics, 8 bytes apart -- Stab 0x3DEE08 two before) */
-extern short data_003DEE10;
-extern short data_003DEE20;
-extern short data_003DEE28;
-extern short data_003DEE50;
 /* the anim set the zoom refuses (OVL1 bss) */
 extern AnimSet *data_0044D3F8;
 /* whether a carried body's homing runs: one carried and the top blend's homing set (seal_body.cpp's
@@ -1713,7 +1703,7 @@ static inline bool IsStabbing(CZSealBody *seal)
 {
     short type = seal->TopBlend()->m_animType;
 
-    if (type == data_003DEE10 || type == AnimTypes::Stab)
+    if (type == AnimTypes::PistolStab || type == AnimTypes::Stab)
         return true;
     return false;
 }
@@ -1722,7 +1712,7 @@ static inline bool IsRestraining(CZSealBody *seal)
 {
     short type = seal->TopBlend()->m_animType;
 
-    if (type == AnimTypes::ApplyRestraints || type == data_003DEE50)
+    if (type == AnimTypes::ApplyRestraints || type == AnimTypes::PistolApplyRestraints)
         return true;
     return false;
 }
@@ -1731,7 +1721,7 @@ static inline bool IsCQBAttacking(CZSealBody *seal)
 {
     short type = seal->TopBlend()->m_animType;
 
-    if (type == data_003DEE20 || type == data_003DEE28)
+    if (type == AnimTypes::CQB || type == AnimTypes::PistolCQB)
         return true;
     return false;
 }
@@ -1739,13 +1729,8 @@ static inline bool IsCQBAttacking(CZSealBody *seal)
 extern "C" {
 /* an anim the restraint refuses on top (OVL1 data, an anim type) */
 extern short data_003DEF70;
-/* the cosines the restraint's, the knife's and the CQB attack's facings must pass (OVL2 bss:
- * SOCOM 1's RESTRAINT_DOT, KNIFE_DOT and CQB_DOT, seal_env.cpp's statics 8 bytes apart after
- * FLASHBANG_DOT in both builds -- the unit's initialiser 0x668C10 sets them to the cosines of 85,
- * 25 and 65 degrees, as SOCOM 1's __sinit_seal_env.cpp does) */
-extern float data_0065F0D0;
-extern float data_0065F0D8;
-extern float data_0065F0E0;
+/* (the cosines the restraint's, the knife's and the CQB attack's facings must pass are the unit's
+ * statics RESTRAINT_DOT, KNIFE_DOT and CQB_DOT, at the top) */
 /* a halfword's bits tested (seal.cpp's tail copy, OVL2 0x5551A0) and whether the AI's SEAL may be
  * taken hostage (seal_ai.cpp's OVL2 0x555B80, the third argument always 0) */
 bool func_005551A0(unsigned short flags, unsigned short bits);
@@ -1768,7 +1753,7 @@ bool CZSealBody::CanUseRestraint(CZSealBody *victim)
     if (!func_005B4340(this, 8))
         return false;
     if (IsCurrentBlend((AnimType)AnimTypes::ReceiveRestraints) ||
-        IsCurrentBlend((AnimType)AnimTypes::ApplyRestraints) || IsCurrentBlend((AnimType)data_003DEE50))
+        IsCurrentBlend((AnimType)AnimTypes::ApplyRestraints) || IsCurrentBlend((AnimType)AnimTypes::PistolApplyRestraints))
         return false;
     if (IsCurrentBlend((AnimType)data_003DEF70))
         return false;
@@ -1797,7 +1782,7 @@ bool CZSealBody::CanUseRestraint(CZSealBody *victim)
     d.y = 0.0f;
     fwd.Normalize();
     d.Normalize();
-    if (!(Dot(d, fwd) <= data_0065F0D0))
+    if (!(Dot(d, fwd) <= RESTRAINT_DOT))
         return true;
     return false;
 }
