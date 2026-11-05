@@ -1008,6 +1008,64 @@ extern "C" bool func_003A8910(CTurret *t, const CPnt3D *dir, float *yaw, float *
     return true;
 }
 
+/* the AI's target's validity test (OVL2 0x60A850, the kit lane's) -- declared again below */
+extern "C" bool func_0060A850(void *target);
+
+/* the sweep's threshold: the aim's dot with the rest direction past which an auto-scanning turret
+ * heads for its other yaw limit (0x3E0858, initialised data; not named) */
+extern "C" float data_003E0858;
+
+/* a point copied field by field through its address (ours, as the weapons' CopyPoint: a ternary
+ * source is re-evaluated at each field) */
+static inline void CopyPoint(CPnt3D *dst, const CPnt3D *src)
+{
+    dst->x = src->x;
+    dst->y = src->y;
+    dst->z = src->z;
+}
+
+/* a word's mask set or cleared (CTurret::SetFlag's shape, on another word; ours) */
+static inline void SetBits(int &f, int mask, bool on)
+{
+    f &= ~(on ? 0 : mask);
+    f |= on ? mask : 0;
+}
+
+/* the AI's aim (SOCOM II's: Tick's for an AI-held turret, flag 2): at a valid target, the aim the
+ * target's point's direction from the firing point, turned into the yaw frame; without one, an
+ * auto-scanning turret (flag 0x10) sweeps -- once its aim is past the threshold of the rest direction
+ * it turns for the other yaw limit (the bit at 0x240 toggled each time), else it keeps its aim; with
+ * neither, straight ahead. Then the yaw and pitch rates toward it (0x3A8910) */
+extern "C" void func_003A84E0(CTurret *t)
+{
+    CPnt3D dir;
+
+    if (func_0060A850(t->m_target)) {
+        CPnt3D pos;
+
+        (*(CEntity **)t->m_target)->GetTargetPosW(&pos);
+        t->m_398 = pos - t->m_380;
+        t->m_398.Normalize();
+        TransformVectors(&t->m_340, &t->m_398, &dir, 1);
+    } else if (t->m_flags & 0x10) {
+        if (Dot(t->m_398, t->m_38c) > data_003E0858) {
+            const TURRET_LIMIT_TRIG &trig = t->m_def->m_yawTrig;
+            CPnt3D a(-trig.m_sinmin, 0.0f, -trig.m_cosmin);
+            CPnt3D b(-trig.m_sinmax, 0.0f, -trig.m_cosmax);
+            bool first = (t->m_240 & 1) != 0;
+
+            CopyPoint(&dir, first ? &a : &b);
+            SetBits(t->m_240, 1, !first);
+            TransformVectors(&t->m_300, &dir, &t->m_398, 1);
+        } else
+            TransformVectors(&t->m_340, &t->m_398, &dir, 1);
+    } else {
+        t->m_398 = CPnt3D::unit_nz;
+        dir = CPnt3D::unit_nz;
+    }
+    func_003A8910(t, &dir, &t->m_3a8, &t->m_3ac);
+}
+
 /* (called, never inlined: ~CTurret calls it). Its remove_copy instance (0x3AB9A0) is byte-exact.
  * OPEN, 12 bytes short: the same calls and loop, but the target builds one end() temporary first
  * (sp+76) and serves both std::remove's last and erase's last from it, std::remove's result in a
