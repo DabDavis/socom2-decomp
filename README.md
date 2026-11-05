@@ -2065,6 +2065,21 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the online lobby, round 22** (Remove and cbRoomPlayerList at last, three converting do_assigns):
+  - AN ERASE-OR-STEP WALK KEEPS A SECOND, NEVER-STORED ITERATOR AS THE VALUE REGISTER, set from begin() with `i`; `i` is
+    the stored copy the dereference, erase's copy and the bottom test read -- stepped ahead of the test the second one
+    lands in the delay slot, stepped in an else arm it keeps its `b` (FriendInvitationVector::Remove 0x301CF0, open since
+    round 8; cbRoomPlayerList 0x2F13F0, open since round 16);
+  - a value stored to a frame slot and immediately reloaded is a local whose address is taken through a cast (`*(T
+    *)&v`) -- `*&v` and reference casts are scalarised away: include/deque's `__convert_iterator::convert` is now `T v =
+    (T)*i; return *(T *)&v;` (the converting do_assigns 0x2E0E10, open since round 15, 0x3A6490 and 0x3341C0) -- a body
+    change made outside the MSL lane, ACCEPTED at integration: objcmp over every unit moves only the six converting
+    do_assigns, three gain, nothing lost;
+  - in a call an argument loaded as one type and passed as another (an unsigned field to an int parameter) is loaded
+    ahead of a global argument, passed as its own type after it -- volatile and `*(unsigned *)&` reads show the same,
+    statement order does not (the radio tick 13 -> 1: the two message ids unsigned; round 20's "the radio pointer dies
+    at the send" was the wrong lead); objcmp's `.rodata` difference on sase_rfft2g.c is an assert's `__FILE__` (the
+    scratch tree's path), not the build.
 - **Tells from the world, rdr and sound, round 21** (CHeap::Alloc at last, SaveEncrypt, GetColor, TestFOV, both
   NormalizeWeights, BuildProjectedMapList; five CSnd functions named):
   - MW ORDERS ITS CODE BEFORE COLOURING BY WHERE AN INDEPENDENT LOAD SITS AMONG THE INITIALISATIONS: CHeap::Alloc
