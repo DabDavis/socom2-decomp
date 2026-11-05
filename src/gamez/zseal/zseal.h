@@ -129,6 +129,9 @@ public:
     /* (SOCOM 1's ClimbOver, 0x4751F0, eight after Stand2Prone in both builds: SealAnim 0x5870E0 tests
      * the current blend against it where SOCOM 1's SealAnim does -- the SEALs, round 47) */
     static short ClimbOver;   // OVL1 0x3DECA0
+    /* (SOCOM 1's CrouchStrafeLeft, 0x4751F8, two after ClimbOver in both builds: AnimSet::AddBlendable
+     * 0x5E0030 puts an anim of it in the crouched left blend where SOCOM 1's does -- the kit, round 52) */
+    static short CrouchStrafeLeft;   // OVL1 0x3DECB0
     /* (SOCOM II's two strafes, AnimType itself, not short -- the SEALs, round 34: SetMaxMotion passes
      * them to GetScript unconverted, the static loaded ahead of the set as an argument with no
      * conversion is) */
@@ -1785,6 +1788,10 @@ public:
      * the snake path's update stopped unless a player drives the SEAL or its remote console says
      * it runs one (SOCOM 1's; OVL2 0x5FCC40, seal_aifollow.cpp's) */
     void InvalidateFollowParams();
+    /* the follow parameters brought up to date: the formation's direction from the SEAL's heading,
+     * or from its movement once that has held long enough (SOCOM 1's; OVL2 0x5FC970,
+     * seal_aifollow.cpp's -- the kit, round 52) */
+    void UpdateFollowParams(float dT);
     /* a follower counted on and off (inline: SetFollowMaster steps the master's count so; the names
      * ours) */
     void AddFollower() { m_followers++; }

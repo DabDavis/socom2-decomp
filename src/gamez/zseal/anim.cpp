@@ -5,8 +5,9 @@
  * CAnimsByFP's accessors, BaseAnim, InitializeAnimNames, Load, CAnimAuxData::Get, Inherit, the
  * lookups SOCOM II added, AnimId, Load(_zrdr *), ... CBlendable's, the template tail. So far the
  * small accessors and the three name lookups (whose map find and string compares, OVL2's copies
- * 0x58D090, 0x58D250, 0x58D740, the unit's tail emits). Defined in reverse of their image order
- * (-inline deferred). */
+ * 0x58D090, 0x58D250, 0x58D740, the unit's tail emits); round 52 AddBlendable and SetMaxMotion,
+ * the unit's first two (CBlendable's AddBlendable and MaxTrans1 inlined). Defined in reverse of
+ * their image order (-inline deferred). */
 
 #include "zseal.h"
 
@@ -73,6 +74,42 @@ public:
             b->m_animtype = animTypeUndefined;
     }
     bool Contains(AnimType type);
+    /* the fastest anim's second speed, over the slots up to the first unused (SOCOM 1's MaxTrans1,
+     * out of line there, 0x2CD640; inline here: SetMaxMotion expands it eight times) */
+    float MaxTrans1()
+    {
+        float max = 0.0f;
+        BLENDABLE_ANIM *b = m_blendable;
+
+        for (int i = 0; i < 4; i++, b++) {
+            if (b->m_animtype == animTypeUndefined)
+                break;
+            if (b->m_trans1 > max)
+                max = b->m_trans1;
+        }
+        return max;
+    }
+
+    /* a type's speeds set in its slot, or in the first free one (SOCOM 1's AddBlendable, which filled
+     * only a free slot; inline here: AnimSet::AddBlendable expands it in each case) */
+    void AddBlendable(float t0, float t1, AnimType type)
+    {
+        BLENDABLE_ANIM *b = m_blendable;
+
+        for (int i = 0; i < 4; i++, b++) {
+            if (b->m_animtype == (short)type) {
+                b->m_trans0 = t0;
+                b->m_trans1 = t1;
+                return;
+            }
+            if (b->m_animtype == animTypeUndefined) {
+                b->m_trans0 = t0;
+                b->m_trans1 = t1;
+                b->m_animtype = type;
+                return;
+            }
+        }
+    }
 
     BLENDABLE_ANIM m_blendable[4];   // 0x0
 };
@@ -155,6 +192,23 @@ public:
     static unsigned int m_used;
 };
 
+/* a set's top speeds (SOCOM 1's DWARF: ANIMSET_PARAMS, thirteen floats; seal_cfg.cpp's view) */
+struct ANIMSET_PARAMS {
+    float m_stand_max_fwd;   // 0x0
+    float m_stand_max_back;   // 0x4
+    float m_stand_max_rt;   // 0x8
+    float m_stand_max_left;   // 0xc
+    float m_crouch_max_fwd;   // 0x10
+    float m_crouch_max_back;   // 0x14
+    float m_crouch_max_rt;   // 0x18
+    float m_crouch_max_left;   // 0x1c
+    float m_prone_max_fwd;   // 0x20
+    float m_prone_max_back;   // 0x24
+    float m_prone_max_rt;   // 0x28
+    float m_prone_max_left;   // 0x2c
+    float m_ladder_updn;   // 0x30
+};
+
 /* a SEAL's animations (SOCOM 1's DWARF: AnimSet, 0x84 bytes there) -- only what is written here:
  * SOCOM II's string name is 12 bytes, and its two short vectors became one of records */
 class AnimSet {
@@ -179,6 +233,10 @@ public:
     void SetPistolAnim(AnimType rifle, AnimType pistol);
     void SetRifleFPAnim(AnimType rifle, AnimType fp);
     void SetPistolFPAnim(AnimType rifle, AnimType fp);
+    /* the set's top speeds, standing and crouched, from its move blends (SOCOM 1's; OVL2 0x5E0450) */
+    void SetMaxMotion();
+    /* an anim's speeds put in the move blend of its type (SOCOM 1's; OVL2 0x5E0030) */
+    void AddBlendable(int id, float t0, float t1);
     /* a set closed (SOCOM 1's Close freed its anims; SOCOM II's CloseAll inlines it to nothing --
      * the walk is all that is left) and every set closed (SOCOM 1's; CGame::StopEngine calls it) */
     void Close() {}
@@ -213,7 +271,7 @@ public:
     AnimSet();
     ~AnimSet();
 
-    unsigned char m_aparams[0x34];   // 0x0: SOCOM 1's ANIMSET_PARAMS, thirteen floats
+    ANIMSET_PARAMS m_aparams;   // 0x0
     bool m_ready;   // 0x34
     std::string m_name;   // 0x38
     std::vector<CAnimTypeRec *> m_types;   // 0x44: a record per anim type, or 0
@@ -797,4 +855,78 @@ void CAnimsByFP::SetPistolAnim(AnimType rifle, AnimType pistol)
 {
     m_animgroups[rifle].m_rifle_type = rifle;
     m_animgroups[rifle].m_pistol_type = pistol;
+}
+
+/* the set's top speeds: each move blend's fastest anim, standing then crouched, the prone and ladder
+ * speeds left to the body (SOCOM 1's SetMaxMotion, its blends held whole here: MaxTrans1 inlined
+ * eight times; OVL2 0x5E0450 -- CZSealBody::SetMaxMotion calls it first) */
+void AnimSet::SetMaxMotion()
+{
+    m_aparams.m_stand_max_fwd = m_move_anims.MaxTrans1();
+    m_aparams.m_stand_max_back = m_moveback_anims.MaxTrans1();
+    m_aparams.m_stand_max_rt = m_strafeL_anims.MaxTrans1();
+    m_aparams.m_stand_max_left = m_strafeR_anims.MaxTrans1();
+    m_aparams.m_crouch_max_fwd = m_crouchmove_anims.MaxTrans1();
+    m_aparams.m_crouch_max_back = m_crouchmoveback_anims.MaxTrans1();
+    m_aparams.m_crouch_max_rt = m_crouchstrafeL_anims.MaxTrans1();
+    m_aparams.m_crouch_max_left = m_crouchstrafeR_anims.MaxTrans1();
+}
+
+/* an anim's speeds, scaled by ten, put in the move blend its type belongs to: walking and running
+ * forward, back, right and left, crouched forward, back and right -- crouched left by the anim
+ * type's variable, SOCOM 1's AnimTypes::CrouchStrafeLeft (SOCOM 1's AddBlendable, the same cases,
+ * its blends held whole here; OVL2 0x5E0030) */
+void AnimSet::AddBlendable(int id, float t0, float t1)
+{
+    AnimType type;
+    int n = 0;
+
+    for (std::vector<CAnimTypeRec *>::iterator i = m_types.begin(); i != m_types.end(); i++, n++) {
+        if (*i && (*i)->m_id == (short)id) {
+            type = (AnimType)n;
+            goto found;
+        }
+    }
+    type = animTypeUndefined;
+found:
+
+    if (type == animTypeUndefined)
+        return;
+    t0 *= 10.0f;
+    t1 *= 10.0f;
+    switch (type) {
+    case 2:   /* SOCOM 1's Sneak, Skitter, Run */
+    case 3:
+    case 4:
+        m_move_anims.AddBlendable(t0, t1, type);
+        break;
+    case 5:   /* SneakBack, SkitterBack */
+    case 6:
+        m_moveback_anims.AddBlendable(t0, t1, type);
+        break;
+    case 12:   /* StrafeRight, StrafeRightFast, RunR */
+    case 14:
+    case 66:
+        m_strafeR_anims.AddBlendable(t0, t1, type);
+        break;
+    case 13:   /* StrafeLeft, StrafeLeftFast, RunL */
+    case 15:
+    case 67:
+        m_strafeL_anims.AddBlendable(t0, t1, type);
+        break;
+    case 20:   /* CrouchWalk */
+        m_crouchmove_anims.AddBlendable(t0, t1, type);
+        break;
+    case 22:   /* CrouchStrafeR, CrouchStrafeRFast */
+    case 23:
+        m_crouchstrafeR_anims.AddBlendable(t0, t1, type);
+        break;
+    case 24:   /* CrouchWalkBack */
+        m_crouchmoveback_anims.AddBlendable(t0, t1, type);
+        break;
+    default:
+        if (type == AnimTypes::CrouchStrafeLeft)
+            m_crouchstrafeL_anims.AddBlendable(t0, t1, type);
+        break;
+    }
 }

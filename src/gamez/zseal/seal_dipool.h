@@ -221,11 +221,9 @@ extern CDiPool _diPool;
 /* A ray's request: SOCOM 1's CDiPool::dir() and the get, the set-up and the request the turret's
  * target scan (OVL1 0x3A7A40, veh_turret.cpp) and the SEALs' _GetTargetPerception (OVL2 0x5CC120,
  * seal_sensors.cpp) share -- each overlay links its own out-of-line copies (OVL1 0x3A7DD0 / 0x3A7E30,
- * OVL2's 0x5C97D0 / 0x5C9830, the weapons' round 30 and the kit's round 51). Opt-in until
- * veh_turret.cpp, which carries the same four, takes them from here: a unit defines
- * SEAL_DIPOOL_REQUESTS before including this header (the kit's round 51; the weapons' file is not
- * the kit's to edit) */
-#ifdef SEAL_DIPOOL_REQUESTS
+ * OVL2's 0x5C97D0 / 0x5C9830, the weapons' round 30 and the kit's round 51). Unconditional since
+ * the kit's round 52: veh_turret.cpp takes them from here too (the weapons' round 32), and a unit
+ * that does not call RequestRay emits none of them (objcmp -j 1 over every hand-written unit) */
 /* a request made: SOCOM 1's CDiPool::dir() -- the state, whose test, the two words and the limit
  * zeroed (the get's inlined constructor). A modelling device: dir declares no constructor, so `new`
  * builds this layout-identical subclass */
@@ -299,6 +297,5 @@ static inline void RequestRay(int &slot, const CPnt3D &eye, const CPnt3D &pos, C
         d->m_30 = (int)target;
     }
 }
-#endif
 
 #endif

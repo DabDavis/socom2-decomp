@@ -145,6 +145,8 @@ public:
 
 class CZKit {
 public:
+    /* (OVL2 0x5C8110; SOCOM 1's, the item pointers' vector freed -- the kit's round 52) */
+    ~CZKit();
     void ResetScreenOffsetXY();
     /* the reticle's offsets zeroed (OVL2 0x5B9020, new in SOCOM II beside ResetScreenOffsetXY:
      * DecrZoomState calls it where SOCOM 1's called InitializeSniperKick -- the name ours) */
@@ -246,6 +248,20 @@ public:
     /* the laser target the SEAL's aim point is near: the first of the AI maps' laser names whose cell
      * is within range of him and whose anim of that name is ready (SOCOM 1's; OVL2 0x5BFE60) */
     bool FetchLaseTarget();
+    /* the laser designator held on its target while the trigger is down: timed, its lock sound
+     * playing for a player, the target's anim set off when the time is up; dropped when the aim
+     * leaves the target's cell or the trigger comes up (SOCOM 1's; OVL2 0x5BFAC0) */
+    void TickLaserDesignator(float dT);
+    /* the lase dropped: no target, no anim, its timer cleared (inline: TickLaserDesignator's five
+     * drops; the name ours) */
+    void ClearLase()
+    {
+        m_lase_mapname = 0;
+        m_lase_anim = 0;
+        m_lase_timer = 0.0f;
+        m_lase_echo = false;
+        CZWeapon::ClearTimer(&m_lase_timer);
+    }
     /* an AI SEAL's lob: the aim raised step by step until a round at the muzzle's speed comes down
      * at the target's height (OVL2 0x5BF8A0, new in SOCOM II; the name ours) */
     void LobAim(CZSealBody *body, const CPnt3D *from, const CPnt3D *to, CPnt3D *dir, float speed);
@@ -631,7 +647,10 @@ public:
     CSnd *m_clicksnd;   // 0x88c (SOCOM 1's 0x86c)
     CSnd *m_lasesnd_start;   // 0x890 (SOCOM 1's 0x870)
     CSnd *m_lasesnd_fin;   // 0x894 (SOCOM 1's 0x874)
-    unsigned char _898[0x8a0 - 0x898];
+    /* the laser designator's lock sound playing and a second instance it stops (new in SOCOM II:
+     * TickLaserDesignator; the names ours) */
+    class CSndInstance *m_lase_inst;   // 0x898
+    class CSndInstance *m_lase_inst2;   // 0x89c
     float m_explosiveDamage;   // 0x8a0: the first explosive's ammunition's damage (new; the name ours)
     /* 0x8a4-0x8b4, 0x8bc: new in SOCOM II, set by Init -- 0.2, zero, CPnt3D::zero, -1 (the names
      * ours) */

@@ -136,6 +136,105 @@ void CZSealBody::InvalidateFollowParams()
     m_follow_params_are_current = 0;
 }
 
+/* a SEAL's follow parameters (SOCOM 1's CZSealBody fields 0x158/0x15c and 0x420-0x459, here
+ * 0x518/0x51c and 0x4dc-0x515: zseal.h keeps most of them as bytes -- the view ours, SOCOM 1's
+ * names) */
+struct CFollowParamsView {
+    unsigned char _0[0x4dc];
+    CPnt3D m_look_dir;   // 0x4dc
+    CPnt3D m_formation_dir;   // 0x4e8
+    CPnt3D m_saved_formation_dir;   // 0x4f4
+    unsigned char _500[0x510 - 0x500];
+    int m_formation_clock;   // 0x510
+    unsigned char m_follow_params_are_current;   // 0x514
+    unsigned char m_saved_formation_dir_is_valid;   // 0x515
+    unsigned char _516[0x518 - 0x516];
+    int m_MaxFollowerDistance;   // 0x518
+    int m_MaxFollowerDistanceNext;   // 0x51c
+};
+
+/* the follow parameters brought up to date once a frame: the followers' distance rolled over, the
+ * snake path's update started, and the formation's direction -- the SEAL's flat heading, or its flat
+ * velocity once that has pointed within the threshold of the heading for TimeThresh milliseconds,
+ * or the saved one (SOCOM 1's UpdateFollowParams with its function-local statics, guarded there and
+ * plain data here: the thresholds in .data, the three running values in .bss; OVL2 0x5FC970 --
+ * CAiSFollow::Tick calls it twice).
+ * OPEN, 0x2C0 against 0x2C8 (the kit, round 52; every instruction in its place but the frame and
+ * the registers): the target computes &dir.y and &dir.z once at the top (`addiu s3,sp,148` /
+ * `addiu s2,sp,152`) and keeps them in saved registers past dir.Normalize() to every later read of
+ * dir (the dot, the formation stores, the look) -- two more saved registers, 160 bytes; here MW's CSE
+ * of those addresses dies at the first call (a1/v1 before it, `116(sp)`/`120(sp)` folded after),
+ * as the target's own &vel.y does (v0 before the call, s1 after: right here). Field by field copies
+ * and dir declared before vel give every other word (a struct copy loads all three first); tried
+ * without effect: the negation, the copy or the flattening through inline helpers taking a
+ * reference or a pointer, a reference or a pointer local for dir, the row as a CPnt3D pointer.
+ * SOCOM 1's build keeps all four addresses (vel's too) from the top */
+void CZSealBody::UpdateFollowParams(float dT)
+{
+    static float VelThreshSquared = 800.0f;
+    static float cant;
+    static float DotThresh = 0.82f;
+    static float velsquared;
+    static float dotVal;
+    static int TimeThresh = 2000;
+    CFollowParamsView *v = (CFollowParamsView *)this;
+
+    if (v->m_follow_params_are_current)
+        return;
+    v->m_MaxFollowerDistance = v->m_MaxFollowerDistanceNext;
+    v->m_MaxFollowerDistanceNext = 0;
+    SetSnakePathUpdate(true, 75);
+    CPnt3D dir;
+    CPnt3D vel;
+
+    vel.x = m_velW.x;
+    vel.y = m_velW.y;
+    vel.z = m_velW.z;
+    vel.y = 0.0f;
+    const float *row = m_node->m_matrix.m_matrix[2];
+
+    dir.x = row[0];
+    dir.y = row[1];
+    dir.z = row[2];
+    dir.x = -dir.x;
+    dir.y = -dir.y;
+    dir.z = -dir.z;
+    dir.y = 0.0f;
+    dir.Normalize();
+    velsquared = Dot(m_velW, m_velW);
+    bool keep = true;
+
+    if (Dot(vel, vel) > VelThreshSquared) {
+        cant = velsquared;
+        vel.Normalize();
+        dotVal = Dot(dir, vel);
+        if (dotVal > DotThresh) {
+            v->m_formation_clock += (int)(1000.0f * dT);
+            if (v->m_formation_clock > TimeThresh) {
+                vel.Normalize();
+                keep = false;
+                v->m_formation_dir = vel;
+                v->m_saved_formation_dir = vel;
+            }
+        } else
+            v->m_formation_clock = 0;
+    } else
+        v->m_formation_clock = 0;
+    if (keep) {
+        if (v->m_saved_formation_dir_is_valid)
+            v->m_formation_dir = v->m_saved_formation_dir;
+        else {
+            v->m_formation_dir = dir;
+            v->m_saved_formation_dir = dir;
+        }
+    }
+    velsquared = cant;
+    cant = dotVal;
+    v->m_look_dir = dir;
+    v->m_saved_formation_dir_is_valid = 1;
+    v->m_follow_params_are_current = 1;
+}
+
 /* a direction to look in from a map spot, toward a point (OVL2 0x559580, the SEAL lane's range, not
  * written: seal_ai.cpp passes 0 for the point) */
 extern "C" CAiMap::DIR func_00559580(const CAiMapLoc *loc, const CPnt3D *dir, unsigned int mask, int b, int n,

@@ -362,7 +362,13 @@ void CZSealBody::SetWeaponState(WEAPON_STATE state)
  * $f0 -- `hold + down` or `down + hold` in place (CSE'd for the store) or in a local, an inline
  * returning the sum on the view, inline accessors for both, a two-float inline taking (down, hold)
  * (its arguments evaluated right to left), the comparison reversed (`>=`: c.lt.s). SOCOM 1's (0x2C02C0)
- * loads the down first and sums into the hold's register: SOCOM II's source changed here */
+ * loads the down first and sums into the hold's register: SOCOM II's source changed here. Round 52,
+ * MW's colouring replayed (tools/igreplay.py on the FPR record, --want 33=f0,34=f2,35=f0,37=f1): every
+ * placement giving the target's four is `sum < hold < currT < down` -- the sum a front-end temporary
+ * (the store's CSE) and the three loads numbered hold, currT, down, where every spelling here loads
+ * hold, down, then currT (the sum's operands first); hold in a named local (propagated: 6), the sum
+ * through an inline accessor on the view, `down + hold` or `hold + down`, in a local or twice, or the
+ * test reversed (5-7) do not reorder them */
 void CZSealBody::WeaponsTick(float dT)
 {
     CSealWepView *v = (CSealWepView *)this;
