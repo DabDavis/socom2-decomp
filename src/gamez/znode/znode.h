@@ -556,6 +556,11 @@ public:
      * the last word, handed through to the decal) */
     void AttachDecal(unsigned int vid, float size, unsigned int flags, struct AddonPoint **points,
                      CTexHandle *tex, int extra);
+    /* (the same, as SOCOM II's caller 0x3B3AB0 and the set-up 0x3BECA0 show it: SOCOM II's new
+     * argument is a point after the size -- CDecal::AddDecal keeps it -- then SOCOM 1's flags, points
+     * and texture; the wep lane's round 32, vis_vu.cpp defines this one) */
+    void AttachDecal(unsigned int vid, float size, CPnt3D *pos, unsigned int flags, struct AddonPoint **points,
+                     CTexHandle *tex);
     /* a texture select's name resolved against the world's textures, the default one failing it:
      * the handle and its palette listed, the select copied in (SOCOM 1's; the wep lane's) */
     CTexture *ResolveTextureName(_word128 *names, _word128 *select);
