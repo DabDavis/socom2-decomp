@@ -11185,6 +11185,51 @@ unwritten: 1 of 3) -- 8 rows new to the map's byte-exact rows (11,204 bytes), on
 (smtDestruct 0x4F80A8); `src/lib/asr` 540 of 565 (531 of 558 before). No rows named (all had SOCOM 1's). No
 tool changed.
 
+**Round 28c: SOCOM 1's bodies -- Smoothing, spline2, putWordInDict, the mtx object whole, a new QR unit, userwordAcknowledge.**
+
+- **Smoothing is plain loops, not gotos** (round 27c read m2c's): the restart a do-while on the dropped knot's
+  index, the back-substitution a for with a break. An entry jump into a loop's middle is jump.c's
+  CONDITIONAL cross-jump undoing the duplicated exit test: the copy above the loop jumps to the exit label,
+  which follows the loop's own opposing branch back, and when the insns before both are identical the copy
+  becomes a jump to the bottom's (the target's `b` to the store, Smoothing's `for (*py = d; (pr += r->rows)
+  < end; )`; QrDeleteCol's `for (p += r->rows; p < end; p += r->rows)`).
+- **A walker formed from its partner keeps the loop from loop.c**: spline2's loops 1, 2 and 4 set `q = p + 1`
+  and step both by `*p++`; CSE shadows `p + 4` in a register and the copied exit test's back edge is
+  threaded to a label before LOOP_BEG -- "ignored due to multiple entry points" (`-dL`): not unrolled, not
+  reversed, the shadow re-formed from p when p outlives it (`move s1,s4; addiu s4,s1,4`). Loops 3 and 5,
+  their walkers formed apart, unroll. And `while (i-- > 0)` is never unrolled: "Iteration var not live
+  before loop start" (the test reads the old value, a giv).
+- **The unroller renames per copy only what lives inside the loop**: Smoothing's curve loop on pointers
+  shared with the back-substitution made one long-lived pseudo, global-alloc's first (64 words); its own
+  pointers come out renamed per copy, as the target's (4).
+- **`*(p - 1) op= x` is one address register, `p[-1] op= x` folds the offset into both** (putWordInDict's end
+  mark, QrPreMult's diagonal entry: the target's `addiu v1,a2,-2; lhu v0,0(v1)`); an id in two halves is
+  `o[0] = ...; o[1] = ...; o += 2;` (two `*o++` keep two increments).
+- **A counter tested on its old value is `j++ < n` in the condition** (QrPreMult: the target compares a copy
+  of j and steps it in the slot; `for (k...) j = k + 1` keeps both counters, CSE turning `k++` into `k = j`);
+  a for's init in the reverse of its walkers' use (`b = vp, a = xp, i = j`); `k = r->cols` read apart from
+  the counter and an offset subtracted BEFORE `i = k` (after it CSE rewrites k to i); `pr = ... + i; pr--;`
+  for the target's `addu a1,v0,t0; addiu a1,a1,-4` (an index form reverses the sum); a chain assignment
+  stores innermost first (`iy->cols = y->rows = r->cols = a->cols`).
+- **mtx.c is a -ffast-math object** (the tenth): QrDeleteCol's `1.0 / sqrtf(...)` is a bare `sqrt.s` (SOCOM 1
+  called sqrt in double); its nine other functions compile the same with the flag.
+- **A callee's declared return type moves the caller's masks**: userword.c declared `_tosControl` int where
+  tos.c defines it `unsigned char`; userwordAcknowledge's `unsigned char` result is assigned plainly only with
+  the true type (one `andi`, after its `|=`), and the unit's twelve other matches are unchanged by it.
+- **Open, diagnosed in place**: ExtendNodeWheel (SOCOM 1's body, the right size: old, p and w rotate through
+  s0-s2 -- the target keeps the null test's load apart from old, a copy in the grow path, and old ranks
+  first; here they are one pseudo ranked last). Not reached: CreateSecondPassTreeContext (0x1180, SOCOM 1's
+  0xFD0), ConstructBlock, PitchCombinerReset/InitPitchCombiner, InitViterbi@nbestdp (their diagnoses stand).
+
+Hand-written in round 28c: `asr/smooth.c` (Smoothing new: 3 of 3), `asr/shs.c` (spline2 new: 3 written of the
+object's 7), `asr/secpass.c` (putWordInDict new: 2 of 3), a new `asr/qr.c` (SOCOM 1's object 0x364318, OVL2
+0x4F77F8-0x4F7A48, our file name: QrPreMult new, mtxFillX and mtxFillCopy over their drafts -- 3 of 3), `asr/mtx.c`
+(QrDeleteCol new: 10 of 10, now -ffast-math), `asr/userword.c` (userwordAcknowledge new: 13 of 15),
+`asr/isowdp.c` (ExtendNodeWheel OPEN: 8 of 9) -- 6 rows new to the map's byte-exact rows (4,792 bytes), two
+matched drafts superseded (mtxFillX 0x4F77F8, func_004F7880); `src/lib/asr` 548 of 574 (540 of 565 before).
+1 row named: 0x4F7880 `mtxFillCopy` (`s1:calls+order`: SOCOM 1's Smoothing calls it at the same instruction,
+its object holds it beside mtxFillX and QrPreMult). No tool changed.
+
 **Round 14b: the "toolchain" opens were SCEA's shapes; LargeInt's core is assembly.**
 
 - **LargeInt's EE primitives are hand-written assembly** (0x628B48-0x629A44, between LargeInt.c's C and
