@@ -10398,7 +10398,8 @@ InitPitchCombiner, ControlPitchCombiner `s1:slot`; PitchCombinerReset `s1:calls`
 - **reorg never puts a volatile reference in a delay slot** (resource.c's resource_conflicts_p: any `volatil`
   conflicts), so a field loaded in a slot anywhere in the object is plain: LogPitchProcessing's target loads
   +156 in a bnel's and three beqz's slots. The flush's re-read of +156 after its lead test (SOCOM 1's compile
-  too) is given byte for byte by volatile, which is therefore a marked stand-in (`LEAD_STANDIN`): plain, the
+  too) is given byte for byte by volatile, which was therefore a marked stand-in (`LEAD_STANDIN`, RETIRED in round
+  24c: the vendor's `p->f156 / 2` is another load to CSE, see below): plain, the
   flush is 2 words short and the log pass 1, the re-read their only structural difference -- CSE1 merges the
   two `(mem/s:QI (plus p 156))` loads (exp_equiv_p reads no MEM flag; no store, call or label lies between);
   `-fno-cse-follow-jumps`, `-fno-cse-skip-blocks`, `-fno-gcse`, `-fno-rerun-cse-after-loop` each lose matched
