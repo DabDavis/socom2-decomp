@@ -189,6 +189,10 @@ public:
      * depth, the vocal queue and the headset (0x341A60) */
     static bool PostTick(float dT, void *data);
     static bool m_isDisabled;           /* 0x48DD28 */
+    static int m_curID;                 /* 0x48DB38: SOCOM 1's, the sound being loaded's number
+                                           (LoadSounds zeroes it, LoadCSnd counts it) */
+    static int m_curbank;               /* 0x48DB40: SOCOM 1's, the bank sets loaded (LoadSounds
+                                           returns it and steps it on every way out) */
     static zdb::CNode *m_listener;      /* 0x48DB48: SOCOM 1's, the listening camera's node (the
                                            app camera's: database.cpp's testLoad sets it) */
     static bool m_listenerIsValid;      /* 0x48DB50: SOCOM 1's, beside m_listener (CalcVolPan gives
