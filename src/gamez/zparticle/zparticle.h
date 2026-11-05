@@ -5,9 +5,11 @@
  * 0x402C40, 0x402CE0 with them). Layouts are SOCOM 1's DWARF where SOCOM II's code agrees; the
  * header's name is ours.
  *
- * Self-contained: SOCOM II's CPnt4D has a written copy constructor (its out-of-line copy is
- * 0x328D60, in this range; ColorSequenceAdd inlines it), which zmath.h's CPnt4D does not declare,
- * so the particle units define the point classes they use here. */
+ * Self-contained: the particle units define the point classes they use here. CPnt4D's copy is the
+ * implicit one (the world lane round 22: its out-of-line copy 0x328D60 is still emitted -- Branch
+ * calls it, ColorSequenceAdd inlines it -- and only a trivial copy passes a by-value CPnt4D as the
+ * original's address, the callee copying it: Instance::Render's CheckExtents call and CheckExtents'
+ * single copy of its parameter; a written copy constructor copies in the caller instead). */
 #ifndef ZPARTICLE_H
 #define ZPARTICLE_H
 
@@ -29,7 +31,6 @@ public:
         z = az;
         w = aw;
     }
-    CPnt4D(const CPnt4D &p) : PNT4D(p) {}
 };   // 0x10 bytes
 
 class CMatrix;
@@ -155,6 +156,9 @@ public:
 
 class CCamera {
 public:
+    /* the eight corners' view test (zcamera.h's: 2 out of view) */
+    unsigned char TestFOV(PNT4D *bbox8, unsigned int *clipWord, bool testGuardBand);
+
     float m_matrix[4][4];   // 0x0: the node's matrix, its position the last row (CNode's)
 };
 /* the world, as much as the particles use (znode.h's class brings zmath.h's CPnt4D with it) */
@@ -400,6 +404,29 @@ public:
     float m_axis[3];   // 0x68
 };   // 0x74 bytes (Create's new)
 
+/* one particle as drawn (SOCOM 1's BufferElement, 0x20 bytes; no DWARF): Instance::Render fills
+ * it -- the colour, the instance, the size, the texture, the distance (the members' names ours) */
+class BufferElement {
+public:
+    /* nothing built (SOCOM 1's: the initialiser constructs the buffer through it, its out-of-line
+     * copy 0x326F40 the unit's last function) */
+    BufferElement() {}
+    void Draw(float (&m)[4][4]);
+    void DrawRotated(float (&m)[4][4]);
+    void DrawXZ(float (&m)[4][4]);
+    void DrawStreaked(float (&m)[4][4]);
+
+    CPnt4D m_color;   // 0x0: the properties' colour, its alpha by the opacity, all by 128
+    Instance *m_instance;   // 0x10
+    float m_scale;   // 0x14
+    zdb::CTexture *m_texture;   // 0x18
+    float m_depth;   // 0x1c: the distance squared from the camera
+};   // 0x20 bytes
+
+/* the frame's elements (zparticle_buf.cpp's: SOCOM 1's buffer and numParticles) */
+extern BufferElement buffer[5000];
+extern int numParticles;
+
 /* SOCOM II's: the dead instances recycled and both pools emptied (zparticle_instance.cpp; the
  * name ours) */
 void FreeInstances();
@@ -452,7 +479,8 @@ public:
 
     unsigned char _0[2];   // 0x0: SOCOM 1's m_active, m_goodPos
     unsigned char m_frozen;   // 0x2 (SOCOM 1's: an instance of a frozen source is not ticked)
-    unsigned char _3[0x19 - 3];   // 0x3: SOCOM 1's m_outOfRange .. m_landmark, and SOCOM II's word
+    unsigned char m_outOfRange;   // 0x3 (SOCOM 1's)
+    unsigned char _4[0x19 - 4];   // 0x4: SOCOM 1's m_oldPosW .. m_landmark, and SOCOM II's word
     unsigned char m_doAgeLOD;   // 0x19 (SOCOM 1: 0x15)
     unsigned char _1a[0x2c - 0x1a];   // 0x1a: SOCOM 1's m_doSpawnLOD .. m_streakFade
     float m_minRot;   // 0x2c (SOCOM 1's names, 4 bytes later: the instance constructor's ranges)
@@ -470,6 +498,8 @@ public:
     unsigned char m_hasbbox;   // 0x120
     float m_filled_volume;   // 0x124
     CParticleEx *m_particleEx;   // 0x128
+    unsigned char m_shuttingoff;   // 0x12c (SOCOM 1: 0x128)
+    unsigned char m_fovFlag;   // 0x12d (SOCOM 1's tag_ZVIS_FOV: 2 never drawn, 1 drawn untested)
 
     static float distanceFactor;   // 0x4884C0
     static float frequencyFactor;   // 0x4884C8

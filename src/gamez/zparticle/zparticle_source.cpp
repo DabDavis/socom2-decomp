@@ -28,15 +28,13 @@ Source::List Source::list;
 /* SOCOM 1's: the box grown to hold a particle, the radius's square kept */
 void Source::CheckExtents(CPnt4D p, float r)
 {
-    CPnt4D q(p);
-
     if (m_hasbbox) {
-        m_bboxMin.x = m_bboxMin.x < q.x ? m_bboxMin.x : q.x;
-        m_bboxMin.y = m_bboxMin.y < q.y ? m_bboxMin.y : q.y;
-        m_bboxMin.z = m_bboxMin.z < q.z ? m_bboxMin.z : q.z;
-        m_bboxMax.x = m_bboxMax.x > q.x ? m_bboxMax.x : q.x;
-        m_bboxMax.y = m_bboxMax.y > q.y ? m_bboxMax.y : q.y;
-        m_bboxMax.z = m_bboxMax.z > q.z ? m_bboxMax.z : q.z;
+        m_bboxMin.x = m_bboxMin.x < p.x ? m_bboxMin.x : p.x;
+        m_bboxMin.y = m_bboxMin.y < p.y ? m_bboxMin.y : p.y;
+        m_bboxMin.z = m_bboxMin.z < p.z ? m_bboxMin.z : p.z;
+        m_bboxMax.x = m_bboxMax.x > p.x ? m_bboxMax.x : p.x;
+        m_bboxMax.y = m_bboxMax.y > p.y ? m_bboxMax.y : p.y;
+        m_bboxMax.z = m_bboxMax.z > p.z ? m_bboxMax.z : p.z;
         m_filled_volume = r * r;
     }
 }

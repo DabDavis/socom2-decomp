@@ -13,11 +13,6 @@
 /* Sony's libvu0 (MAIN): v0 = v1 * t + v2 * (1 - t) */
 extern "C" void sceVu0InterVector(float *v0, float *v1, float *v2, float t);
 
-/* the draw buffer's count (zparticle_buf.cpp's unit; unnamed) */
-namespace Particle {
-/* the elements buffered this frame (SOCOM 1's numParticles) */
-extern int numParticles;
-}
 
 namespace Particle {
 
@@ -259,6 +254,98 @@ Instance::Instance(const CPnt4D &pos, const CPnt4D &vel, const CPnt3D &unused, f
     m_props->m_refCount++;
 }
 
+/* Sony's libvu0 (MAIN) */
+extern "C" float sceVu0InnerProduct(float *v0, float *v1);
+extern "C" void sceVu0ScaleVector(float *v0, float *v1, float s);
+/* set while a full buffer has not been reported (1 at start; ours) */
+extern unsigned char data_003DFEC0;
+
+/* SOCOM 1's (its camera matrix dropped): a live particle buffered for drawing -- its distance from
+ * the camera, its age as a fraction of its life, its size by the properties' scale, its source's
+ * extents grown, faded out by distance, its box tested against the view unless its source says
+ * otherwise, then an element filled: the colour by the opacity, by 128, the texture, the size.
+ * OPEN, 7 instructions, registers only (the world lane round 22): the source pointer, its fov byte and
+ * the constant 1 of the second fov test -- the target's a1 / a1 / a0, here a0 / a0 / a1.
+ * `tools/igreplay.py` gives the target's three with the constant's code-generation temporary (v60)
+ * renumbered after the fov byte's load (v62: `--move 60=62.5`); tried: the tests as a switch (0x374),
+ * with `&&` (0x374), an else for `test = true` (0x374), `test` declared at the top (0x364), the
+ * source or the byte in a local, `!(f != 1)`, `(int)f == 1` (7 each). Its four floats are numbered
+ * age, scale, opacity, dist by dead definitions at the top (dist by its own first definition last:
+ * f20); GetOpacity is kept out of line by `#pragma auto_inline off` around its definition (MW
+ * inlines it here otherwise; the target calls it) -- a stand-in for the original's reason */
+void Instance::Render()
+{
+    if (m_source->m_frozen || !(m_age < m_lifespan))
+        return;
+    float age = 0.0f, scale = 0.0f, opacity = 0.0f;
+    CPnt4D d;
+    float *cp = zdb::CWorld::m_world->m_camera->m_matrix[3];
+
+    d.x = m_pos[0] - cp[0];
+    d.y = m_pos[1] - cp[1];
+    d.z = m_pos[2] - cp[2];
+    float dist = sceVu0InnerProduct(&d.x, &d.x);
+    age = m_age * m_invLifespan;
+
+    if (m_props) {
+        float s;
+
+        m_props->GetScale(age, s);
+        scale = s * m_44;
+    } else
+        scale = m_44;
+    if (m_source)
+        m_source->CheckExtents(*(CPnt4D *)m_pos, scale);
+    opacity = m_props->GetOpacity(dist);
+
+    if (opacity <= 0.01f)
+        return;
+    if (m_source->m_outOfRange)
+        return;
+    bool test = true;
+
+    if (m_source) {
+        if (m_source->m_fovFlag == 2)
+            return;
+        if (m_source->m_fovFlag == 1)
+            test = false;
+    }
+    if (test) {
+        float x0 = m_pos[0] - scale, x1 = m_pos[0] + scale;
+        float y0 = m_pos[1] - scale, y1 = m_pos[1] + scale;
+        float z0 = m_pos[2] - scale, z1 = m_pos[2] + scale;
+        PNT4D c[8] = {
+            { x0, y0, z1, 1.0f }, { x0, y0, z0, 1.0f }, { x1, y0, z0, 1.0f }, { x1, y0, z1, 1.0f },
+            { x0, y1, z1, 1.0f }, { x0, y1, z0, 1.0f }, { x1, y1, z0, 1.0f }, { x1, y1, z1, 1.0f }
+        };
+
+        if (zdb::CWorld::m_world->m_camera->TestFOV(c, 0, true) == 2)
+            return;
+    }
+    if (numParticles >= 5000) {
+        if (data_003DFEC0)
+            data_003DFEC0 = 0;
+        return;
+    }
+    BufferElement *e = &buffer[numParticles++];
+
+    m_props->GetColor(age, e->m_color);
+    if (e->m_color.w <= 0.01f) {
+        numParticles--;
+        return;
+    }
+    e->m_color.w *= opacity;
+    sceVu0ScaleVector(&e->m_color.x, &e->m_color.x, 128.0f);
+    zdb::CTexHandle *tex = m_texture;
+
+    if (!tex)
+        m_props->GetTexture(age, tex);
+    e->m_texture = tex ? tex->m_texture : 0;
+    e->m_instance = this;
+    e->m_scale = scale;
+    e->m_depth = dist;
+}
+
 /* SOCOM 1's, the visual left to SetVisual: the base's three links cleared, the properties
  * counted, the piece's motion copied in field by field, its node taken off the pool */
 Destruction_Instance::Destruction_Instance(const CPnt4D &pos, const CPnt4D &vel, const CPnt3D &spin, float f,
@@ -467,6 +554,9 @@ found:
 /* SOCOM 1's: the opacity at a distance -- none outside the fade range, ramping in over the near
  * fade and out over the far one. One result for every arm: early returns hoist the 1.0f into
  * the last test's delay slot, as SOCOM 1's build did */
+/* (auto_inline off: Instance::Render calls it out of line in the target -- a stand-in, the reason
+ * MW did not inline it there not known) */
+#pragma auto_inline off
 float Props::GetOpacity(float dist) const
 {
     float o;
@@ -481,5 +571,6 @@ float Props::GetOpacity(float dist) const
         o = 1.0f;
     return o;
 }
+#pragma auto_inline reset
 
 }
