@@ -6992,6 +6992,8 @@
 0x003A71F0 Remove__11CTurretListFP7CTurret
 0x003A7330 func_003A7330
 0x003A7350 Rotate__7CTurretFf
+0x003A7490 func_003A7490
+0x003A76D0 func_003A76D0
 0x003A78E0 func_003A78E0
 0x003A7DA0 func_003A7DA0
 0x003A7DD0 func_003A7DD0
@@ -7000,6 +7002,7 @@
 0x003A7FA0 func_003A7FA0
 0x003A88C0 func_003A88C0
 0x003A8BD0 func_003A8BD0
+0x003A8D20 Fire__7CTurretFv
 0x003A8F50 SampleDynamics__7CTurretFf
 0x003A9310 ComputeNextPosition__7CTurretFf
 0x003A9320 UpdatePosW__7CTurretFv
@@ -7453,6 +7456,7 @@
 0x003C8740 Detonate__12CZProjectileFv
 0x003C8750 Cleanup__12CZProjectileFv
 0x003C99A0 HandleTimers__12CZProjectileFv
+0x003C9B70 HandleIntersections__12CZProjectileFf
 0x003CABE0 SetModelOrientation__12CZProjectileFbPC6CPnt3D
 0x003CAEE0 SetVelW__12CZProjectileFPC6CPnt3D
 0x003CAF60 PreFireProjectile__12CZProjectileFv
@@ -7478,6 +7482,7 @@
 0x003CCBC0 UnInit__16CZProjectileListFv
 0x003CCC90 SetAllFlag18__16CZProjectileListFv
 0x003CCD90 ForgetHitNode__16CZProjectileListFPQ23zdb5CNode
+0x003CCEB0 Clear__16CZProjectileListFi10EQUIP_ITEM
 0x003CD150 Clear__16CZProjectileListFv
 0x003CD3A0 __dt__Q23std64vector<P15PlacedExplosive,Q23std29allocator<P15PlacedExplosive>>Fv
 0x003CD410 swap__Q23std64vector<P15PlacedExplosive,Q23std29allocator<P15PlacedExplosive>>FRQ23std64vector<P15PlacedExplosive,Q23std29allocator<P15PlacedExplosive>>
@@ -7542,6 +7547,7 @@
 0x003D19E0 GetWeaponId__8CZWeaponFPCc
 0x003D1A60 GetIDType__8CZWeaponF10EQUIP_ITEM
 0x003D1C70 PackItemAndAmmoEnums__8CZWeaponF10EQUIP_ITEM10EQUIP_AMMO
+0x003D1C90 UnpackItemAndAmmoEnums__8CZWeaponFUsP10EQUIP_ITEMP10EQUIP_AMMO
 0x003D1CB0 IsLauncher__8CZWeaponF10EQUIP_ITEM
 0x003D1CE0 IsSecondary__8CZWeaponF10EQUIP_ITEM
 0x003D1D10 IsPrimary__8CZWeaponF10EQUIP_ITEM

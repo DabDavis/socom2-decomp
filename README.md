@@ -2062,6 +2062,25 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the weapons, round 24** (HandleIntersections at last, the turret's joints and Fire, a depth-6 stand-in
+  dropped):
+  - A SECOND WAY OFF THE DEPTH-6 STAND-IN: when an inlined helper's walk puts data() six levels deep, write the helper's
+    walk out in the caller instead of calling it (CPlacedExplosiveList's constructor and destructor write Clear's walk
+    out: zwep_flyout.cpp 29 of 29 at level 5, its object byte-identical to the pragma's);
+  - to get a byte-enum field copied with lb and narrowed with andi at each test (again after a join) with no range fold,
+    use one inline bool per compare with the id passed by value -- read straight, through GetId() or as a local it is one
+    lbu with consecutive ids folded (HandleIntersections 0x3C9B70: `IsItem(w->GetId(), 172)`, the hit handlers'
+    result a PROJECTILE_HIT byte enum); a byte-enum call result assigned in two arms is narrowed once at the join, an
+    unsigned char result in each arm;
+  - MW's narrowed copy of a byte-enum parameter is a temporary numbered after all named locals (coloured first among
+    the deferred), an int local copy declared first is numbered below the other locals (CZProjectileList::Clear(int,
+    EQUIP_ITEM) 0x3CCEB0); `if (a || b) return;` ahead of a loop gives the target's branch to a block jumping to the end
+    plus a branch into the loop, the && guard forms branch straight to the end;
+  - `v &= ~clear` through an inline with clear 0 keeps a 32-to-64 zero extension before a byte store, in place MW folds it
+    (UnpackItemAndAmmoEnums 0x3D1C90); the no-op-conversion rule decides argument load order in a virtual call too
+    (CTurret::Fire 0x3A8D20: CZWeapon::Fire's shooter an int); a node matrix's floats read in place in two expressions are
+    reloaded after a store to an address-taken stack CPnt3D, read into locals they load once (the yaw and pitch joints
+    0x3A76D0 / 0x3A7490).
 - **Tells from the online lobby, round 20** (CMPEG::Init at last; two depth-6 stand-ins dropped):
   - A WAY OFF THE DEPTH-6 STAND-IN: a pointer-vector walk `i != end()` inside an inline is six levels deep with the
     image's end(); ending it at a `data_ + size_` iterator (a `Last()` accessor) lets it inline whole at level 5 --
