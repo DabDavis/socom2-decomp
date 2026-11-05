@@ -68,10 +68,103 @@ extern int numParticles;
 u_long128 *zSysSprGetPacket(u_long128 **end);
 void zSysFifoKick(u_long128 *packet, unsigned int qwc);
 
-/* SOCOM 1's sort of a pointer array by a comparison, an explicit-stack quicksort (its instance for
- * the elements is this unit's tail, 0x326C30: not written, so declared only) */
+/* SOCOM 1's sort of an array by a comparison: an explicit-stack quicksort -- the median of three
+ * as the pivot, the larger side's range pushed, ranges of nine or fewer left -- finished by an
+ * insertion sort (its instance for the elements is this unit's tail, 0x326C30; SOCOM 1's 0x2360A0
+ * has the same blocks). The pivot and the swaps' value live in memory: the comparison takes them by
+ * reference. Written in the world lane's round 20 from the target: the frame (1424: three spill
+ * slots, the 300-int stack at sp+208, t and the pivot at 1416/1420), the prologue, lo and hi
+ * spilled, the loop test's reloads into i and j (`(j = hi) > (i = lo) + 8`: the assignments'
+ * values copied, the compare fused into at -- `(i = lo) + 8 < (j = hi)` materialises it) and the
+ * scans and pushes are the target's.
+ * OPEN, 47 of 196 instructions unmatched (0x308 of 0x310): (1) the median's spill pick -- MW spills
+ * the `lo + hi` CSE (cost 19 over 54 neighbours, the cheapest node: tools/igdump.py) and keeps pl in
+ * s7, where the target keeps the sum in s7 and spills pl (reloaded from sp+160 at each use; SOCOM
+ * 1's kept the sum too and spilled n): the original's sum costs more -- tried the sum as a named
+ * local (first, last, at the top), the median on array elements, pm alone or with ph named, the size
+ * test as `j - lo > hi - i` (73), an extra use of the sum; no numbering of pl, hi and the sum gives
+ * it (igreplay --want); (2) the insertion sort loads t through an outer-loop walker of its own
+ * (`addiu s6,s5,4`), the target through the inner loop's &a[j] (s2): `t = a[j]` after `j = i`
+ * and a pointer for a[j - 1] brought the inner loop to the target's shape (build/scratch/wld/
+ * v_qs.py, vscore.py) */
 template <class T>
-void zqsort(T *a, int n, int (*cmp)(T const &, T const &));
+void zqsort(T *a, int n, int (*cmp)(T const &, T const &))
+{
+    int stack[300];
+    int *sp = stack;
+    int lo = 0;
+    int hi = n - 1;
+    int i, j;
+    T pivot;
+    T t;
+
+    for (;;) {
+        while ((j = hi) > (i = lo) + 8) {
+            T *pm = &a[(lo + hi) >> 1];
+            T *pl = &a[lo];
+            T *ph;
+
+            if (cmp(*pl, *pm) > 0) {
+                pivot = *pl;
+                *pl = *pm;
+                *pm = pivot;
+            }
+            ph = &a[hi];
+            if (cmp(*pl, *ph) > 0) {
+                pivot = *pl;
+                *pl = *ph;
+                *ph = pivot;
+            }
+            if (cmp(*pm, *ph) > 0) {
+                pivot = *pm;
+                *pm = *ph;
+                *ph = pivot;
+            }
+            pivot = *pm;
+            i++;
+            j--;
+            do {
+                while (cmp(a[i], pivot) < 0)
+                    i++;
+                while (cmp(a[j], pivot) > 0)
+                    j--;
+                if (i <= j) {
+                    t = a[i];
+                    a[i] = a[j];
+                    a[j] = t;
+                    i++;
+                    j--;
+                }
+            } while (i <= j);
+            if (lo + hi < i + j) {
+                sp[0] = lo;
+                sp[1] = j;
+                lo = i;
+            } else {
+                sp[0] = i;
+                sp[1] = hi;
+                hi = j;
+            }
+            sp += 2;
+        }
+        if (!(stack < sp))
+            break;
+        hi = *--sp;
+        lo = *--sp;
+    }
+    for (i = 1; i < n; i++) {
+        j = i;
+        t = a[j];
+        do {
+            T *p = &a[j - 1];
+
+            if (cmp(*p, t) <= 0)
+                break;
+            a[j] = *p;
+        } while (--j);
+        a[j] = t;
+    }
+}
 
 namespace Particle {
 

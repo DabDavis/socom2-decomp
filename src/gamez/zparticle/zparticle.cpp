@@ -64,6 +64,55 @@ void PullVisuals(zdb::CNode *node, zdb::CDIVector *out)
         PullVisuals(instance->m_model, out);
 }
 
+/* SOCOM 1's: a three-sided piece made for each collision piece of a node (0x322800, not written:
+ * SOCOM II's call passes SOCOM 1's arguments, the second float last) */
+void Create3Sided(zdb::CDIVector *dis, zdb::CNode *node, CPnt4D *color, zdb::CTexHandle *tex, float f,
+                  zdb::CModel *model, CPnt3D *a, CPnt3D *b, CPnt3D *c, CPnt3D *d, Props *props, float g);
+
+/* SOCOM 1's: a node broken into pieces -- its collision pieces gathered, the texture (or the default
+ * "null_xmas.bmp") and its palette kept for the frame, the "fragment" model found, the pieces'
+ * properties made (the friction and the acceleration given) and the pieces made by type: 0 three-
+ * sided, 1 none (SOCOM II passes a second float on) */
+void DestructionManager(zdb::CNode *node, char *texName, CPnt4D *color, float f, CPnt3D *a, CPnt3D *b,
+                        CPnt3D *c, CPnt3D *d, int type, float g)
+{
+    if (!node)
+        return;
+    zdb::CDIVector dis;
+
+    PullVisuals(node, &dis);
+    zdb::CTexHandle *tex = zdb::CWorld::GetTexHandle(texName);
+
+    if (!tex || !tex->m_texture) {
+        tex = zdb::CWorld::GetTexHandle("null_xmas.bmp");
+        if (!tex || !tex->m_texture)
+            return;
+    }
+    m_dyntexlist.Add(tex, true);
+    if (tex->m_texture->m_palette)
+        m_dyntexlist.Add(tex->m_texture->m_palette, true);
+    zdb::CModel *model = zdb::CWorld::GetModel("fragment");
+
+    if (!model)
+        return;
+    Props *props = Props::Create();
+
+    props->m_friction = c->z;
+    props->m_accelW.x = d->x;
+    props->m_accelW.y = d->y;
+    props->m_accelW.z = d->z;
+    props->m_refCount = 0;
+    switch (type) {
+    case 0:
+        Create3Sided(&dis, node, color, tex, f, model, a, b, c, d, props, g);
+        break;
+    case 1:
+        break;
+    default:
+        return;
+    }
+}
+
 /* SOCOM 1's: the dynamic textures let go of */
 void FlushDynTexList()
 {
