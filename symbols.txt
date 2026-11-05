@@ -8908,9 +8908,9 @@
 0x004E7120 0x3C ConstructExtraEventDp  # OVL2; s1:align
 0x004E7160 0x58 ProcessExtraEventDP  # OVL2; s1:align
 0x004E71B8 0x40 InitExtraEventDP  # OVL2 unaligned; s1:align
-0x004E71F8 0x8BC func_004E71F8  # OVL2 unaligned
-0x004E7AB8 0x1C0 func_004E7AB8  # OVL2 unaligned
-0x004E7C78 0x410 func_004E7C78  # OVL2 unaligned
+0x004E71F8 0x8BC fht  # OVL2 unaligned; s1:calls (SOCOM 1's realfft calls fht where ours calls this row, 1 call site; 0x8BC here, 0x8AC there; SOCOM 1's object 0x354FD8: fht, realfft)
+0x004E7AB8 0x1C0 realfft  # OVL2 unaligned; s1:calls (SOCOM 1's ProcessFFTMod calls realfft where ours calls this row, 1 call site, and it calls fht as ours calls 0x4E71F8; 0x1C0 here, 0x1B0 there)
+0x004E7C78 0x410 CalcAmplitudeSpec  # OVL2 unaligned; s1:order (SOCOM 1's fftmod object 0x355A38 opens with CalcAmplitudeSpec before ProcessFFTMod, as this row precedes ours; ProcessFFTMod calls it after realfft)
 0x004E8088 0x684 ProcessFFTMod  # OVL2 unaligned; s1:order (the process slot ConstructFFTMod hands tosBaseBlockConstruct, as SOCOM 1's ConstructFFTMod hands its LOCAL ProcessFFTMod; the FFT object's row before InitFFTMod, as in SOCOM 1's object at 0x355A38) -- the gcc lane, round 10c
 0x004E8710 0x2AC InitFFTMod  # OVL2; s1:order (ConstructFFTMod's init slot, as SOCOM 1's LOCAL InitFFTMod; the row before the constructor, as there) -- the gcc lane, round 10c
 0x004E89C0 0x8C ConstructFFTMod  # OVL2; s1:align

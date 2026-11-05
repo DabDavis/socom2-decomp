@@ -12438,7 +12438,7 @@ casr.h types the user-word scoring result at +944 (dpscoreuw.c's SCOREUWRESULT),
 phoneme at SEGLABEL +16, the language's GetSilencePhenome, GetNbrWarpFactors and GetpWarpFactors slots
 and WARP. No tool changed.
 
-**Round 32c: casrEnableGenders' unroll, FindBestTranscription, the iso-word block's context and process, the VAD's control** (resumed after the 16:26 crash: the first agent had closed the first two and left the third at 5 words).
+**Round 32c: casrEnableGenders' unroll, FindBestTranscription, the iso-word block's context and process, the VAD's control, realfft** (resumed after the 16:26 crash: the first agent had closed the first two and left the third at 5 words).
 
 - **loop.c's second pass decides the unroll factor** (casrEnableGenders): each switch loop's flag a block
   variable (`on = 0; if (...) on = 1;`) gives 34 insns at the second pass, 3 x 34 >= 100, so the loop is
@@ -12465,6 +12465,10 @@ and WARP. No tool changed.
 - **GNU as pads a loop label to 8** (`.p2align 3` from GCC's loop alignment): a `nop` at a loop's entry,
   executed only on the way in, comes and goes with the parity of the code before it -- one word missing
   upstream moves it (SplitUp_Finals).
+- **Indexes, not pointers, when the walkers start after the entry test** (realfft): loop.c's strength
+  reduction sets its walkers up in the loop's pre-header, after the copied entry test; pointers written
+  as such are set before it, and `x[n - i]` starts from n scaled (-4 in the accesses) where a second
+  counter from `n - 1` down gives the target's `addiu s0,s0,-1; sll; addu`.
 - **A copy macro's pointers as block locals** (SplitUp_Finals): one pair shared by four copy sites lives
   across the function and takes the first registers (t0/t1, 152 words off); the macro's own block locals
   are short-lived like the target's.
@@ -12479,8 +12483,12 @@ and WARP. No tool changed.
 Hand-written in round 32c: `asr/casr.c` (casrEnableGenders closed: the object 58 of 58), `asr/userword.c`
 (FindBestTranscription closed: 19 of 21), `asr/isowdp.c` (InitIsoWordTokenDpContext and IsoWordTokenDpProcess
 new: 12 of 13), `asr/vad.c` (ControlVad new, ProcessVad written OPEN: 7 of 8), `asr/chinese.c` (SplitUp_Finals
-written OPEN: 2 of 4) -- 5 rows new to the map's byte-exact rows (4,232 bytes), no draft superseded;
-`src/lib/asr` 567 of 595 (562 of 590 before). Named (8, each with its evidence in the map): IsoWordTokenDpProcess
+written OPEN: 2 of 4) and a new unit, `asr/fht.c` (SOCOM 1's object 0x354FD8: fht, realfft; realfft
+byte-exact, 1 of 1; fht's 0x8BC not written) -- 6 rows new to the map's byte-exact rows (4,680 bytes), no
+draft superseded; `src/lib/asr` 568 of 596 (562 of 590 before). Named (11, each with its evidence in the
+map): fht 0x4E71F8 and realfft 0x4E7AB8 (s1:calls: SOCOM 1's ProcessFFTMod calls realfft, which calls
+fht, as ours call these rows), CalcAmplitudeSpec 0x4E7C78 (s1:order: the fftmod object's first row before
+ProcessFFTMod, as in SOCOM 1); IsoWordTokenDpProcess
 0x4EAB30 (s1:slot -- SOCOM 1's InitIsoWordTokenDpContext installs it as the block's process), FrameDPacoust
 0x4EA0F8 and RePruneToPho 0x4E9360 (s1:calls, 1 and 2 call sites; the object's order); the Mandarin tree
 object's Build_Tree_ForChinese_TreeCtx 0x4D5B18, Translate_Prons_Into_Items_And_Tones_TreeCtx 0x4D63A0,
