@@ -411,6 +411,32 @@ struct CAwareCtrl {
     int m_aware;   // 0xc0
 };
 
+/* a SEAL taken in: out of its old squad; one whose team carries 0x20000 (unless this is squad 17)
+ * or 0x40000 (unless squad 18) joins as an escortee (EscorteeJoinUnit inlined, twice); else onto
+ * the SEALs' list -- the follow source when it is the first, outside squads 17 and 18 -- its
+ * controller pointed here and the squad's formation reset (OVL2 0x5EE250; SOCOM 1's, the escortee
+ * teams and the formation new) */
+void CSealUnit::SealJoinUnit(CZSealBody *seal)
+{
+    SealLeaveUnit(seal);
+    unsigned int num = m_unit_num;
+
+    if (num != 17 && (((CEntity *)seal)->m_team & 0x20000)) {
+        EscorteeJoinUnit(seal);
+        return;
+    }
+    if (num != 18 && (((CEntity *)seal)->m_team & 0x40000)) {
+        EscorteeJoinUnit(seal);
+        return;
+    }
+    if (num != 17 && num != 18 && m_seals.size() == 0)
+        m_follow_source = seal;
+    m_seals.push_back(seal);
+    ((CUnitCtrl *)((CEntity *)seal)->m_control)->m_unit = this;
+    SetFormation(m_8, 0);
+    func_005E7830(this);
+}
+
 /* an escortee taken in: out of its old squad, then the leader's squad itself when this is squad
  * 17, else onto the escort list, its controller pointed here and the flag at 0xA0 set for ... (OVL2
  * 0x5EE160; SOCOM 1's, which recursed on a sub-squad) */
