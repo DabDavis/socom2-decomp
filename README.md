@@ -12305,6 +12305,11 @@ What is open across lanes, and what comes next:
   10): `__sinit_zNetMediusUniverse.cpp` 0x4022D0 matches at `-inline level=6` and not at 5 once
   theAcctDB is modelled as the member at offset 0 of an outer CZUniversInformationServer (the
   destructor it registers, 0x300570, is not CAcctDB's vtable's) -- open at 5 (0xC4 vs 0x144).
+  Two more (the kit's round 49, recorded by the MSL headers' round 31): seal_unit.cpp's list init
+  0x5EF8D0 (0x70 of 0x78) and its do_assign 0x5EF470 (0x1D8 of 0x198) inline the pointer list's
+  end() where the target calls it out of line before each insert (OVL2's copy 0x50FED0, OVL1's
+  0x2A00A0; OVL1's init 0x317720 calls it the same way) -- an end() a level taller in the original
+  than include/list's, which level 5 inlines whole.
   THE IMAGE'S OWN POINTER-VECTOR end() (the MSL headers round 24) makes 19 natural walks need level 6: their
   eight units carry `#pragma inline_depth(6)`, their objects byte-identical to the level-5 fit's.
   MEASURED OVER THE WHOLE TREE (2026-11-03, master 914fce13, `SC_FLAGS` with level=N, everything
