@@ -11075,7 +11075,7 @@
 0x005C8040 0x34 GetCurItemIDType__5CZKitFv  # OVL2; s1:order by hand (SOCOM 1's GetCurItemIDType: the selected item's GetIDType (OVL1 0x3D1E10), 254 without one; 0x34 bytes in both, before NVG_Enabled as there)
 0x005C8080 0x68 NVG_Enabled__5CZKitFb  # OVL2; s1:order by hand (SOCOM 1's NVG_Enabled(bool): bit 4 set only while zdb::CWorld::m_world's m_night_mission (0x5DC) is set, cleared otherwise)
 0x005C80F0 0x14 NVG_Enabled__5CZKitCFv  # OVL2; s1:order by hand (SOCOM 1's NVG_Enabled() const, next: the body's zoom-class byte (0x200, SOCOM 1's 0x160) == 3, SOCOM 1's 2)
-0x005C8110 0x80 func_005C8110  # OVL2
+0x005C8110 0x80 __dt__5CZKitFv  # OVL2; s1:order by hand (the kit lane, round 52): SOCOM 1's ~CZKit (0x2AED50) after NVG_Enabled() const and before the constructor as there -- the deleting destructor's flag and the item vector (0x834, SOCOM 1's pod vector at 0x818) freed through its three this-tests
 0x005C8190 0x438 func_005C8190  # OVL2
 0x005C85D0 0x70 HasSniperRifle__5CZKitFv  # OVL2; s1:order by hand (SOCOM 1's HasSniperRifle, after the constructor as there: the current item's GetIDType (OVL1 0x3D1E10) of the sniper class (101, SOCOM 1's 100), and CurItemHasAmmo)
 0x005C8640 0xB0 HasItemWithAmmo__5CZKitF10EQUIP_ITEM  # OVL2; by hand: new in SOCOM II between HasSniperRifle and HasItem -- the first item of that kind (m_equip at 0x7C), then ItemHasAmmo(int) inlined; CSealCtrl's OnActionButton and PerformProximityActions call it where SOCOM 1's call HasItem and ItemHasAmmo(EQUIP_ITEM) (the name ours)

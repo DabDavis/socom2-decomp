@@ -338,6 +338,12 @@ bool CZKit::HasSniperRifle()
     return false;
 }
 
+/* the kit gone: its members' destructors only, the item pointers' vector freed (SOCOM 1's ~CZKit by
+ * its place after NVG_Enabled, before the constructor; OVL2 0x5C8110, a draft before) */
+CZKit::~CZKit()
+{
+}
+
 /* the night vision: worn (the body's zoom class 3), allowed only on a night mission (OVL2
  * 0x5C80F0, 0x5C8080; SOCOM 1's) */
 bool CZKit::NVG_Enabled() const

@@ -145,6 +145,8 @@ public:
 
 class CZKit {
 public:
+    /* (OVL2 0x5C8110; SOCOM 1's, the item pointers' vector freed -- the kit's round 52) */
+    ~CZKit();
     void ResetScreenOffsetXY();
     /* the reticle's offsets zeroed (OVL2 0x5B9020, new in SOCOM II beside ResetScreenOffsetXY:
      * DecrZoomState calls it where SOCOM 1's called InitializeSniperKick -- the name ours) */
