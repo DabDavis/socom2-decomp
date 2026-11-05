@@ -2062,6 +2062,25 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the world, rdr and sound, round 19** (CShadowCaster::Update, CPipe::BuildSpecMapList, 989snd.c whole,
+  Particle::DrawPrep):
+  - an unsigned loop counter bounded `i <= 10` gives the target's fused `sltiu at` / `bnez at`, `i < 11` puts the compare
+    in a register and changes the loop's registers; an inline returning int gives `li v0,1` for true where an inlined
+    bool gives `daddiu v0,zero,1`, and `while (!f())` then adds the sltu / xori conversion (989snd.c's IOP command sends
+    and flush, SOCOM 1's with SOCOM II's quiet flag -- the last two share two inlines, the done test and the fill
+    buffer's send: 50 of 50);
+  - a `+4` record offset written directly folds into the constant (`4092 - avail + 4` becomes `4096 - avail`), a pointer
+    to a struct record keeps the 4 in the store offsets and `->data[i]` keeps the loop unreduced; an array typed as
+    16-byte records rather than int with a cast changes the order a subscript's addresses are set up;
+  - a copy of a pointer pushed onto a vector, taken after an earlier store, lands in the next call's delay slot --
+    passing the original keeps it in its saved register (BuildSpecMapList 0x339AD0); two divisions written into locals
+    before a run of stack stores keep their member loads ahead of the stores, written into the stores MW reloads the
+    member after each; a loop's count and cursor declared uninitialised at the top take the target's saved registers
+    (BuildLightMapList 0x339660: 31 -> 5, OPEN);
+  - a marked stand-in: CShadowCaster::Update 0x31F570's `CMatrix *cam = &view;` before the multiply (without it the two
+    argument addresses are set up in the wrong order; the original's spelling unknown); 989snd's globals named from
+    SOCOM 1's symbols (gCommBusy, gAwaitingInts, gSyncBuffer, gSyncSendBuffer, gCommandFillBuffer, gCdCallback,
+    gLoadingFromFS) and Particle::numParticles.
 - **Tells from the HUD, round 48** (CWeaponSel::HandleOpenState at last -- hud_weaponsel.cpp whole --, TickFullScreenMap):
   - a constant assigned before a call is taken from a register already holding that value (`andi s0,v1,0xff` for a bool
     true), assigned after the call -- which kills that register -- it is a fresh daddiu landing in a later delay slot
