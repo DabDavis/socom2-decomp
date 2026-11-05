@@ -10574,7 +10574,7 @@ SOCOM 1's). No tool changed.
 
 - **max.s and min.s are -ffast-math's**: 2.96 folds `a > b ? a : b` on floats into a MAX_EXPR (`max.s`,
   `min.s`) only under -ffast-math -- without it a compare and a branch-likely move (probes). Five rows in
-  the recogniser carry them (`build/scratch/gcc/fastmath_scan.py`): TriggerLR_FindSpeech (triggerlr.c),
+  the recogniser carry them (`build/scratch/gcc-r25c/fastmath_scan.py`): TriggerLR_FindSpeech (triggerlr.c),
   CalcF2 and FindBestTranscription (userword.c), MelInitBands (mel.c), SpectralSubtraction (specsub.c);
   triggerlr.c and userword.c now build with the flag (seventh and eighth -ffast-math objects), and mel.c
   and specsub.c keep every matched function under it (not yet set: their max.s rows are unwritten).
