@@ -1300,7 +1300,11 @@ extern "C" void func_003B3AB0(CVisual *v, int vid, float size, CPnt3D *pos, CPnt
  * of n/m/inv/vid and the id as short/int/unsigned all give the same two (build/scratch/wep/v_adr*.py).
  * Round 24 (CTurret::Fire's no-op-conversion close does not carry over): the direct call over the
  * rows or the CMatrix casts, a source or a destination pointer local, void-pointer casts, the id as
- * an if/else or a zero then an if -- the same two (or 4 short) */
+ * an if/else or a zero then an if -- the same two (or 4 short). Round 31 (the HUD's round-55 call
+ * arguments and the no-op-conversion rule): the copy through CMatrix's conversion operators on
+ * either or both arguments, the source cast straight from the CMatrix pointer (also through void *
+ * and unsigned int), local inline copies taking (dst, src), (src, dst), references or the rows --
+ * the same two (build/scratch/wep/v_adr*.py) */
 void CVisual::ApplyDecalRender(CMatrix *mtw, CNode *node, float size, CPnt3D *pos, CPnt3D *normal,
                                CTexHandle *tex, CMatrix *uv)
 {

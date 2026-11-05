@@ -316,7 +316,11 @@ static inline CTexture *FindTexture(CDynTexList &list, const char *name)
  * at the top and spills it (sp+176) for the last store, where here the last store reads the data word
  * off this again (the frame 16 smaller); the detail walk's two counters and offset take s1/s4/s2 in
  * the target, s4/s3/s1 here. Tried: the vector, its pointer or data()'s reference in a local (each
- * keeps this+48 or the word itself, 8 long), the reference taken only for the last store */
+ * keeps this+48 or the word itself, 8 long), the reference taken only for the last store. Round 31:
+ * `unsigned int *&lods = m_lodMesh.data();` DEFINED right after names and used only by the last
+ * store reproduces the target's head (this+56 spilled to sp+176, the frame 208) but is 8 long: the
+ * blend copy's source pointer then lands in _malloc's delay slot after a nop, and the detail walk's
+ * counters stay s4/s3/s1 (a vector reference or a pointer to data() the same) */
 void CVisual::SetBuffer(_word128 *buf, unsigned int vid, CVisBase *base)
 {
     if (!data_004B5010)

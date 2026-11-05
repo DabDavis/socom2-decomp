@@ -339,7 +339,9 @@ static inline void StoreImageReset()
  * or shifted address, a volatile view) MW strength-reduces to a pointer stepped by 16 (45 off), and
  * `dst[base + i]` (here) re-adds base + i each pass; the byte copy's pointer is set before the
  * `0 < count` guard here, inside it in the target (the for-init: no better); the padding loop's
- * counter and bound trade a1/a2 */
+ * counter and bound trade a1/a2. Round 31: the store through an integer address, `*(u_long128 *)
+ * ((unsigned int)dst + (k << 4))` with k++ apart or inside, is strength-reduced to an offset stepped
+ * by 16 (8 short); `(int)dst + k * 16`, an unsigned k, a char pointer: 45 off */
 extern "C" int func_003B24C0(GS_STOREIMAGE_REGS *si, u_long128 *dst)
 {
     unsigned int count = 0;
@@ -434,7 +436,10 @@ extern int data_004A45A0;
  * makes, so idx would have to be one too -- made after it (the remainder loop's induction pointer
  * @671 is): an inline's local or parameter, a copy of a named start, a reference or pointer to the
  * global, a dead first definition then the same load again (CSE), casts -- all still numbered ahead
- * of the bound (17); the CSE rule that closed CMaterial_Object::Read does not reach here */
+ * of the bound (17); the CSE rule that closed CMaterial_Object::Read does not reach here. Round 31:
+ * the kit's round-49 device -- idx through a leaf template inline returning its argument or a cast
+ * (Ident<int>, Cast<int>, Cast<unsigned>, Ref<int>), the element through a template accessor, a
+ * pointer through AtPtr<float> -- still 17 (the pointer forms 0x188, the accessor 0x1D0) */
 extern "C" float func_003B1BF0(unsigned int n)
 {
     float sum = 0.0f;
@@ -727,7 +732,11 @@ void zvid_SetVideoMode(_zvid_mode mode, bool reset)
  * zero byte stores (0x7C, 0x7D) sink with the fade alpha's 255 (in v0) to the 0x90 flags, where the
  * target keeps them in source order with 255 hoisted into v1 at the top, as SOCOM 1's does -- every
  * position of the two stores (a 23x23 sweep), bool/char/bitfield/volatile fields, chained and 0.0f
- * forms leave it at 11; the 255's register looks like the cause (an alpha set some other way?) */
+ * forms leave it at 11; the 255's register looks like the cause (an alpha set some other way?).
+ * Round 31: 31 off at the round's start (not 11: an earlier round's header change); the target
+ * keeps 1 in a1 from the top for flag91 AND both of Create's arguments (`move a2,a1`: one shared
+ * constant) and 255 in v1 -- the fade's two stores right after swapMode 21 off, at the top 23,
+ * the alpha alone at the top 22, through an unsigned char or int local 31 */
 void zVid_Init(_zvid_mode mode)
 {
     zVid.runTime = 0;
