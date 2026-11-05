@@ -757,6 +757,10 @@ public:
     unsigned char m_active;   // 0x0
     unsigned char _1[0x12C - 0x1];   // 0x1: m_goodPos .. m_particleEx, grown by 4
     unsigned char m_shuttingoff;   // 0x12c (SOCOM 1: 0x128)
+    unsigned char m_fovFlag;   // 0x12d (SOCOM 1: 0x129, a tag_ZVIS_FOV)
+    int m_refcount;   // 0x130 (SOCOM 1: 0x12c)
+    /* the cloud's kind: 0 tear gas, 1 smoke (SOCOM 1: 0x130; the SEALs' HandleSmokeAndGas reads it) */
+    int m_cloudtype;   // 0x134
 };
 }
 

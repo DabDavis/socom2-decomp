@@ -488,6 +488,13 @@ public:
     bool ZAnimLoad();
     bool LoadMissionCams(CRdrFile *rdr);
     bool LoadObjectiveCams(CRdrFile *rdr);   /* 0x2A4D30 */
+    /* the extraction regions' anchors (0x2A42B0, 0x338, unwritten): AiMaps' map 0's regions of type 1
+     * walked, each one's centre cell (region::GetCenter) put through ai.h's CAiMap::GetCellCenter --
+     * inlined one level, GetCell / GetAltitude / HasAction / GetDir / CPnt3D() / Scale / Add called
+     * as OVL1's copies 0x1FB3C0 and 0x2105E0-0x2106A0 -- and a compass anchor of type 6 listed for it.
+     * It needs ai.h here, and including ai.h fails before this unit's own stand-ins matter (the
+     * states' round 41): zsav_lobby.h's CSaferStr (a std::string) and zentity.h's (an opaque 12-byte
+     * class, which ai.h brings) are both defined -- two shared headers that cannot meet */
     void Sample_ExtractionLoc();   /* 0x2A42B0 */
     void Close();   /* 0x2AB3F0 */
     void InitalizeTeamValves();   /* 0x2B2840 */
@@ -3037,23 +3044,29 @@ namespace {
 /* the custom character types the "UiVehicles" list names, each a copy of the character type of
  * the vehicle entry its "Name" names -- the entry then crewed by the copy (SOCOM 1's; OVL1
  * 0x2AFA10).
- * OPEN, 10 instructions, registers only: the name and the entry's character name trade saved
- * registers (the target's name s3, the character name s2, which the copy then reuses; here s2 and
- * s3). Tried: the entry and the character name declared ahead of the name in four orders, the
- * character name at loop scope, written out twice (one register fewer, 0xC shorter), not const,
- * and the name read from the table directly (as a ternary, as an if-assign) */
+ * Byte-exact (the states' round 41; 10 instructions off, registers only, until then): the target's
+ * name is s3 and the character name s2, so the name is numbered between the entry and the
+ * character name (`tools/igreplay.py --want 37=s2,39=s3 --movers 37,39`: 10 placements, all with
+ * the name after the entry) -- the entry declared first, uninitialised, then the name a named local
+ * read from the table by an if-assign. Through GetCustomCharTypeName (auto-inlined) the name merges
+ * into the inline's result temporary, numbered after every named local; a ternary from the table
+ * merges the same way. Tried before: the entry and the character name declared ahead of the name
+ * in four orders, the character name at loop scope, written out twice (one register fewer, 0xC
+ * shorter), not const, the table read directly with the name declared first */
 void CreateCustomCharTypes(CVehicleRdr *vehicles, _zrdr *rdr)
 {
     _zrdr *list = zrdr_findtag(rdr, "UiVehicles");
 
     g_iNumUiVehicles = list ? list->Count() : 0;
     for (int i = 0; i < g_iNumUiVehicles; i++) {
-        const char *name = GetCustomCharTypeName(i);
+        CVehicleRdrEntry *entry;
+        const char *name = 0;
 
+        if (i < 32)
+            name = data_003F02B0[i];
         if (!name)
             break;
-        CVehicleRdrEntry *entry =
-            vehicles->GetEntryByName(zrdr_findstring(ListItem(list, i), "Name"));
+        entry = vehicles->GetEntryByName(zrdr_findstring(ListItem(list, i), "Name"));
 
         if (entry) {
             const char *base = entry->m_charname;
@@ -3794,11 +3807,14 @@ bool zrdr_findreal(const _zrdr *rdr, const char *tag, float *out, int n);
 
 /* NVG_NOISE's parser: each key's weight held to 1 at most, the command timeless without a key past
  * 0 (OVL1 0x2AE050).
- * OPEN, 6 instructions, registers only: the loop's two induction temporaries trade t0 and t1 -- the
- * target's keys cursor is t1 and the items' offset t0, here the other way round (the keys walked by
- * a named pointer, a reference to keys[i] first in the body, an int counter, the body under an if
- * instead of the continue, keys declared first: no better). The assignment in the sequence's test
- * gives the target's `beqz v0` and Type() its reuse of the type byte */
+ * Byte-exact (the states' round 41; 6 instructions off, registers only, until then): the loop's two
+ * induction temporaries -- the target's keys cursor t1, the items' offset t0 -- come out the
+ * target's way round with the key's address a pointer local made first in the body (`k = keys +
+ * i`) and every key written through it: the loop optimiser then makes the keys' induction variable
+ * first. Tried before: the keys walked by a pointer stepped in the for, a reference to keys[i] first
+ * in the body, an int counter, the body under an if instead of the continue, keys declared first;
+ * the items through ListItem (6 off). The assignment in the sequence's test gives the target's
+ * `beqz v0` and Type() its reuse of the type byte */
 _zanim_cmd_hdr *NVGNoiseParse(_zrdr *rdr)
 {
     _nvg_noise_cmd *cmd;
@@ -3816,20 +3832,21 @@ _zanim_cmd_hdr *NVGNoiseParse(_zrdr *rdr)
             nvg_noise_key *keys = (nvg_noise_key *)_calloc(sizeof(nvg_noise_key), seq->Count(), 0, 0);
 
             for (unsigned int i = 0; i < seq->Count(); i++) {
+                nvg_noise_key *k = keys + i;
                 _zrdr *item = seq->Item(i);
 
                 if (item->Count() < 2)
                     continue;
                 float t = item->Item(0)->Real();
 
-                keys[i].t = t;
+                k->t = t;
                 if (!(t <= cmd->time))
                     cmd->time = t;
                 float w = item->Item(1)->Real();
 
-                keys[i].v = w;
+                k->v = w;
                 if (!(w <= 1.0f))
-                    keys[i].v = 1.0f;
+                    k->v = 1.0f;
             }
             cmd->count = seq->Count();
             cmd->keys = cmd->hdr.data_size;
