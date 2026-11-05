@@ -888,8 +888,13 @@ void CCharacterType::ClearMultiplayerMessageSounds()
 }
 
 /* a command's id by name in the SEAL lane's two tables, 0 for none (OVL2 0x58E0A0, 0x58E020:
- * seal_cfg.cpp's) */
-extern "C" unsigned char func_0058E0A0(const char *name);
+ * seal_cfg.cpp's) -- the first CSealCtrl::GetCommandId (the SEALs' round 46 named the row: SOCOM 1's
+ * loop over GetCommandName), declared through a stand-in as zseal.h is not included here */
+enum FT_COMMAND { CMD_UNKNOWN = 0, CMD_ACTION = 1, CMD_LAST = 255 };
+class CSealCtrl {
+public:
+    static FT_COMMAND GetCommandId(const char *name);
+};
 extern "C" unsigned char func_0058E020(const char *name);
 
 /* the strings the messages keep (SOCOM 1's MultiplayerMsgStrings, OVL1 bss 0x44CCF0) */
@@ -920,7 +925,7 @@ void CCharacterType::InitMultiplayerMessages(_zrdr *rdr)
             sprintf(tcmtag, "%s", tag->String());
             _zrdr *id = item->Item(0);
 
-            msg->idx = func_0058E0A0(id->String());
+            msg->idx = CSealCtrl::GetCommandId(id->String());
             if (!msg->idx)
                 msg->idx = func_0058E020(id->String());
             msg->message = MultiplayerMsgStrings.CreateString(message);
