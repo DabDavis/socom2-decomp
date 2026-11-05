@@ -7,7 +7,7 @@
  * CCell, a grid square's node, is the next unit, grid_cell.cpp (0x2D79D0-0x2D7E9B): CGrid's AddClutter,
  * DeleteClutter and Create call into it out of line. Then grid_clutter.cpp's clutter animation.
  * Defined in reverse of their image order (-inline deferred).
- * Unwritten: gridAddNodeToGrids (0x2D7580) (ReadClutter written in the core lane's round 17). CGrid() is written and byte-exact once its CFRect
+ * gridAddNodeToGrids (0x2D7580) written in the core lane's round 19, OPEN (ReadClutter in round 17). CGrid() is written and byte-exact once its CFRect
  * constructor's row is named (below). */
 
 #include <stdio.h>
@@ -64,6 +64,98 @@ CGridAtom **CGrid::gridGetAtomBasePtr(int x, int z)
     z = MAX(0, z);
     z = MIN(m_CellCount.cy - 1, z);
     return &m_Atoms[x + z * m_CellCount.cx];
+}
+
+/* the box helpers fts_mission.cpp's ladder walk shares (OVL1 0x2A96B0 the box's eight corners,
+ * 0x2A9680 the points through a matrix, 0x2A9550 the box around eight points: out-of-line copies,
+ * the first unit's kept -- that unit's placeholders) */
+extern "C" CPnt3D *func_002A96B0(CPnt3D *pts, const CBBox *box);
+extern "C" CPnt3D *func_002A9680(const CMatrix *m, CPnt3D *pts);
+extern "C" void func_002A9550(CBBox *out, const CPnt3D *p);
+
+/* a node's box carried through a matrix, as fts_mission.cpp's (its corners, transformed and boxed
+ * again: the helpers called, GetBBox out of line -- one inline level here) */
+inline void GridWorldBBox(CNode *node, const CMatrix &m, CBBox *out)
+{
+    PNT3D pts[8];
+
+    func_002A96B0((CPnt3D *)pts, node->GetBBox());
+    func_002A9680(&m, (CPnt3D *)pts);
+    func_002A9550(out, (CPnt3D *)pts);
+}
+
+/* a node into the grid (not a cell): its box carried through its matrix -- the node itself, at 0 --
+ * the cells it overlaps, each side pulled in by a ten-thousandth of the box's size, clamped into the
+ * grid, the node's atom table sized, and in each cell an atom off the free list given the node and
+ * linked in after the cell's own (SOCOM 1's, 0x216A90: SOCOM 1's carried two corners, took its
+ * atoms off an array and tested an empty cell; Insert tail-calls it). The box through an inline
+ * (GetBBox then called, the corners in its frame below the box's, as the target's); the first
+ * cells' lower clamps MAX's ternary, their upper ones `if` clamps, the last cells' upper ones
+ * ternaries (movz) with the end a variable of its own (s4/s3 there).
+ * OPEN, 0x2FC of 0x314 (written in round 19): every call, the box, the four clamps and the link
+ * are the target's, but (1) the target enters the inner loop by a `b` to a preheader after the
+ * function's end (MW's hoisted-invariant shape: the entry test repeated there) where this tests
+ * inline; (2) the atom's fetch and the second first-cell clamp join unpadded there, padded here;
+ * (3) the inner counter and the ends take s5 / s4 / s3 there, s3 / s5 / s4 here. An inline atom
+ * fetch (either return), an inline first-cell helper (0x2F4 / 0x30C), the counter declared
+ * outside: no closer (build/scratch/core/v_gan19*.py) */
+void CGrid::gridAddNodeToGrids(CNode *node)
+{
+    if (!node || node->IsCell())
+        return;
+
+    CBBox box;
+
+    GridWorldBBox(node, *(CMatrix *)node, &box);
+
+    float tx = 0.0001f * (box.m_max.x - box.m_min.x);
+    int x0 = (int)(m_InvCellDim * (tx + (box.m_min.x - m_origin.x)));
+    float tz = 0.0001f * (box.m_max.z - box.m_min.z);
+
+    x0 = MAX(0, x0);
+    if (x0 > m_CellCount.cx - 1)
+        x0 = m_CellCount.cx - 1;
+    int z0 = (int)(m_InvCellDim * (tz + (box.m_min.z - m_origin.z)));
+
+    z0 = MAX(0, z0);
+    if (z0 > m_CellCount.cy - 1)
+        z0 = m_CellCount.cy - 1;
+    int x1 = (int)(m_InvCellDim * (-tx + (box.m_max.x - m_origin.x)));
+
+    x1 = MAX(0, x1);
+    x1 = x1 > m_CellCount.cx - 1 ? m_CellCount.cx - 1 : x1;
+    int xn = x1 + 1;
+    int z1 = (int)(m_InvCellDim * (-tz + (box.m_max.z - m_origin.z)));
+
+    z1 = MAX(0, z1);
+    z1 = z1 > m_CellCount.cy - 1 ? m_CellCount.cy - 1 : z1;
+    int zn = z1 + 1;
+
+    node->AllocateAtomBasePtrs(xn - x0, zn - z0);
+    for (int x = x0; x < xn; x++) {
+        for (int z = z0; z < zn; z++) {
+            CGridAtom *atom = m_FreeAtoms;
+
+            m_FreeAtoms = atom->Next;
+            if (!m_FreeAtoms)
+                atom = 0;
+            atom->Ent = node;
+            atom->Ent->InsertAtom(atom);
+
+            CGridAtom **p = gridGetAtomBasePtr(x, z);
+
+            if (!(*p)->Next) {
+                atom->Prev = *p;
+                (*p)->Next = atom;
+                atom->Next = 0;
+            } else {
+                atom->Next = (*p)->Next;
+                atom->Prev = *p;
+                (*p)->Next->Prev = atom;
+                (*p)->Next = atom;
+            }
+        }
+    }
 }
 
 /* the ordered list built from the view point: its cell first, then ring after ring of the
