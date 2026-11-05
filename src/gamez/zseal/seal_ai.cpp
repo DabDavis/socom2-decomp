@@ -641,9 +641,66 @@ class CAiGroup {
 public:
     static void DeleteAll();
     static void ResetIds();
+    /* the groups' cameras ended when asked (OVL2 0x60E280) */
+    static void EndCameras(bool end);
     /* the group's act broken off (OVL2 0x60D280) */
     void Abort();
 };
+
+/* whether the AI drives a SEAL (IsPlayer's ternary shape: the bool narrowed in each arm here) */
+static inline bool AiDriven(CZSealBody *seal)
+{
+    return seal->m_control ? ((CSealCtrl *)seal->m_control)->IsAi() : false;
+}
+
+extern "C" {
+/* (OVL2 0x5F55E0, the AI states' lane: the AI's alarm raised over a time) */
+void func_005F55E0(CSealCtrlAi *ai, float t);
+}
+
+/* the AI switched on or off: each SEAL the AI drives has its throttles let go; switched off, the
+ * suspended state (18) pushed, its flags 0x10 -- and 1 without the alarm -- set and running, the alarm
+ * raised over a thirtieth without it; switched on, that state popped and the body's parts oriented.
+ * The groups' cameras ended as the AI now stands (OVL2 0x574830: SOCOM 1's SetAiEnabled, which
+ * zeroed the throttles itself, passed a bool to the push and had no alarm or cameras; the list
+ * walked through a const view, as seal.cpp's 0x545D80) */
+void CSealCtrlAi::SetAiEnabled(bool on, bool alarm)
+{
+    if (aiEnabled == on)
+        return;
+    aiEnabled = on;
+
+    const CEntityList &list = CEntity::m_list;
+
+    for (CEntityList::const_iterator i = list.begin(); i != list.end(); ++i) {
+        CZSealBody *seal = AsSeal(*i);
+
+        if (seal && AiDriven(seal)) {
+            CSealCtrlAi *ai = seal->GetSealCtrlAi();
+
+            ai->StopThrottles(false);
+            if (!on) {
+                if (ai->PushAiState((AI_STATE)18, 1)) {
+                    CAiState *st = ai->GetAiState();
+                    unsigned int flags;
+
+                    st = st && st->m_state == 18 ? st : 0;
+                    flags = 0x10;
+                    if (!alarm)
+                        flags |= 1;
+                    st->SetFlags(flags, 0);
+                    st->SetActive(true);
+                    if (!alarm)
+                        func_005F55E0(ai, 0.0333f);
+                }
+            } else {
+                ai->PopAiState((AI_STATE)18);
+                seal->OrientParts();
+            }
+        }
+    }
+    CAiGroup::EndCameras(aiEnabled);
+}
 
 /* (declared again below where their users are: the doze count, the task anims' switch, the row) */
 namespace ai {
@@ -2613,12 +2670,6 @@ static inline bool Chance(float chance)
 static inline bool AiAwakeNow(const CSealCtrlAi *ai)
 {
     return !(ai->m_aibit9 || ai->m_aibit8);
-}
-
-/* whether the AI drives a SEAL (IsPlayer's ternary shape: the bool narrowed in each arm here) */
-static inline bool AiDriven(CZSealBody *seal)
-{
-    return seal->m_control ? ((CSealCtrl *)seal->m_control)->IsAi() : false;
 }
 
 /* the nearest SEAL among an entity's targets within a range: alive, awake when the AI drives it, on a

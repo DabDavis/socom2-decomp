@@ -1282,6 +1282,9 @@ public:
      * 0x3DF188) and the frame's counts the task clears (SOCOM 1's aiActiveCount, aiSleepingCount and
      * aiSnoozingCount, OVL1 bss 0x44D4B8-0x44D4C8) */
     static bool PreTick(float dT, void *data);
+    /* the AI switched on or off for every SEAL the AI drives, and the alarm with it (SOCOM 1's static
+     * SetAiEnabled(bool, bool): OVL2 0x574830, seal_ai.cpp) */
+    static void SetAiEnabled(bool on, bool alarm);
     static bool aiEnabled;
     static int aiActiveCount;
     static int aiSleepingCount;
