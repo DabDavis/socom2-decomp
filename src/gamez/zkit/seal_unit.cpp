@@ -56,7 +56,9 @@ enum FT_COMMAND { CMD_UNKNOWN = 0, CMD_ACTION = 1, CMD_LAST = 255 };
  * CSealCtrl, which this unit does not include; the five slots before it unnamed here) */
 class CUnitSealCtrl : public CEntityCtrl {
 public:
-    virtual void Virtual24();
+    /* (zseal.h's CSealCtrl::PlayAiSound: SOCOM II's takes a chance and the AI event the voice makes,
+     * and says whether it played) */
+    virtual bool PlayAiSound(int sound, float chance, int event);   /* +0x24 */
     virtual void Virtual28();
     virtual bool IsPlayer() const;   /* +0x2C */
     virtual bool IsAi() const;   /* +0x30 */
@@ -1490,6 +1492,66 @@ int CSealUnit::GetAwareCounter() const
     return n;
 }
 #pragma auto_inline reset
+
+/* a random draw in [min, min + range) (SOCOM 1's Rfloat's operator float without its zero-range test,
+ * the 1.0 range through the parameter so its multiply stays -- seal_aifollow.cpp's FollowRand), and
+ * whether it falls at or under a chance whose address is taken (the target stores the chance after
+ * the 1.0 test, in the draw's block, and keeps its address across rand()) */
+static inline float UnitRand(float min, float range)
+{
+    float r = 4.656613e-10f * rand();
+
+    return min + range * r;
+}
+
+static inline bool UnitChance(float chance) { return UnitRand(0.0f, 1.0f) <= *(const float *)&chance; }
+
+/* a random index up to n (0 when n is) */
+static inline int UnitPick(int n) { return n == 0 ? 0 : rand() % (n + 1); }
+
+/* the squad's voice (OVL2 0x5EAF20; new in SOCOM II, the name ours): with the chance (1 always),
+ * a random SEAL of the squad and the squads under it when `pick`, then the squad's own SEALs in
+ * turn, then each squad under it -- the first AI SEAL alive that plays the sound (its controller's
+ * PlayAiSound at full chance, no event). Whether one did.
+ * OPEN, 0x268 against 0x270, two places, the rest (registers, the walks, the hoisted ends) the
+ * target's: (1) the chance -- the target compares $f12 with 1.0, then in the draw's block stores it
+ * and keeps its address in s4 across rand() (`swc1 $f12,124(sp); jal rand; addiu s4,sp,124` ...
+ * `lwc1 $f0,0(s4)`); the inline's by-value parameter read through `*(const float *)&` gives the
+ * store in that block but reloads sp-relative; a reference or pointer inline, a pointer local (a
+ * cast or not, before the draw or across a `?:`), SOCOM 1's Rfloat with its range test, a two-level
+ * pointer inline all keep the chance in $f20 (0x27C) or reload it sp-relative (0x268); (2) the
+ * random index -- the target's zero arm is an empty block (`bnez; move a1,zero; b join; nop`, then an
+ * alignment nop before the rand() block), ours fills the b's delay slot with the join's `move a0,s2`:
+ * a ternary in or out of an inline, if/else in or out of an inline, early returns, `!n`, `n != 0`, the
+ * round-44 self arm `i = n == 0 ? i : ...`, an empty then-branch all fill it */
+extern "C" bool func_005EAF20(CSealUnit *unit, int sound, bool pick, float chance)
+{
+    bool played = false;
+
+    if (chance == 1.0f || UnitChance(chance)) {
+        if (pick) {
+            int n = unit->GetSealCount(64) - 1;
+            CZSealBody *seal = unit->GetSealByIndex(UnitPick(n), 64);
+
+            if (seal && seal->IsAi() && seal->m_isAlive)
+                played = ((CUnitSealCtrl *)((CUnitSealCtrl *)seal->m_control)->GetSealCtrlAi())
+                             ->PlayAiSound(sound, 1.0f, -1);
+        }
+        if (!played) {
+            for (CSealUnit::slist::iterator i = unit->m_seals.begin(); !played && i != unit->m_seals.end(); ++i) {
+                CZSealBody *seal = *i;
+
+                if (seal->IsAi() && seal->m_isAlive)
+                    played = ((CUnitSealCtrl *)((CUnitSealCtrl *)seal->m_control)->GetSealCtrlAi())
+                                 ->PlayAiSound(sound, 1.0f, -1);
+            }
+            if (!played)
+                for (CSealUnit::ulist::iterator u = unit->m_sub_units.begin(); !played && u != unit->m_sub_units.end(); ++u)
+                    played = func_005EAF20(*u, sound, false, 1.0f);
+        }
+    }
+    return played;
+}
 
 /* sound 79 when the squad is aware, else 78 (OVL2 0x5EAEB0) */
 extern "C" void func_005EAEB0(CSealUnit *unit)
