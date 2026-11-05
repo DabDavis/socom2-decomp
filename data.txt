@@ -699,6 +699,7 @@
 0x003F6F50 0x8 __RTTI__Q28Particle20Destruction_Instance  # RTTI of Particle::Destruction_Instance: found by its RTTI's name
 0x003F7050 0x8 __RTTI__11CRdrArchive  # RTTI of CRdrArchive: found by its RTTI's name
 0x003F70F0 0x8 __RTTI__6CRdrIO  # RTTI of CRdrIO: found by its RTTI's name
+0x003F72F0 0x4 @LOCAL@Tick__11CPipeEffectFv@k  # OVL1 data (0.0 in the image); ours (the world lane r25): CPipeEffect::Tick's guarded local static, cos(pi/4) - 0.5 set on the first shaped frame -- 2 references in 1 function (Tick 0x33CD50)
 0x003F7620 0x8 __RTTI__4CSnd  # RTTI of CSnd: found by its RTTI's name
 0x003F79D0 0x8 __RTTI__14CSoundBufferIO  # RTTI of CSoundBufferIO: found by its RTTI's name
 0x003F7A20 0x8 __RTTI__9CSndGroup  # RTTI of CSndGroup: found by its RTTI's name
@@ -1509,6 +1510,9 @@
 0x004887C0 0x718 thePipe  # OVL1 bss; SOCOM 1's (0x694 bytes; SOCOM II's runs to 0x718, where CAlpha's static m_last_alpha_insert sits -- its constructor's last store is 0x70D, the states' flags 0x711 and 0x714 -- the camera at 0x628, the UI node at 0x630, its flags at 0x711 and 0x714 as the states use them): 115 references in 32 functions take 0x4887C0-0x488ED8
 0x00488ED8 0x4 m_last_alpha_insert__Q25CPipe6CAlpha  # OVL1 bss; SOCOM 1's static (its symbol, 4 bytes, 0x475C80: a list iterator): CPipe::CAlpha::Insert keeps the draw list's last insert there, where the next insert's walk starts (reset to the list's start when m_first_alpha_add is set) -- the world lane round 20; 5 references in 1 function. thePipe ends here (0x718 bytes)
 0x00488EE0 0x4 VifHandlerID  # OVL1 bss; s1:data-seq (size SOCOM 1's; via Uninit__5CPipeFv)
+0x00488F50 0xC @LOCAL@Tick__11CPipeEffectFv@hist  # OVL1 bss; ours (the world lane r25): CPipeEffect::Tick's last three eased values, averaged each frame -- 4 references in 1 function (Tick 0x33CD50)
+0x00488F60 0x4 @LOCAL@Tick__11CPipeEffectFv@idx  # OVL1 bss; ours (the world lane r25): the history's next slot, wrapped at 3 -- 5 references in 1 function (Tick 0x33CD50)
+0x00488F68 0x1 @GUARD@Tick__11CPipeEffectFv@k  # OVL1 bss; ours (the world lane r25): MW's guard for Tick's local static k -- 2 references in 1 function (Tick 0x33CD50)
 0x00488F70 0x28 gSLClientData  # OVL1 bss; the world lane r6: SOCOM 1's global (its symbol, 0x509B50, 0x28 bytes: sceSifClientData) -- the command client snd_StartSoundSystem binds (0x123456), waiting on its server word at 0x24
 0x00488F98 0x4 gCommBusy  # OVL1 bss; SOCOM 1's global (its symbol, 0x476404 in $gp's area): the command senders point it at gSyncBuffer while a call is out and test it, as SOCOM 1's -- the world lane round 19
 0x00488FA0 0x4 gAwaitingInts  # OVL1 bss; SOCOM 1's global (its symbol, 0x476408 in $gp's area): the commands whose returns the call awaits, 1 for a direct command -- the world lane round 19
