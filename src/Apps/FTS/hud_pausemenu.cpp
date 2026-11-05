@@ -3,12 +3,25 @@
  * objectives as there; its first functions in the image are the vtable's On, Off and Draw, its
  * last the destructor and the constructor. SOCOM II's CZPauseTest is 0x13C0 bytes (SOCOM 1's
  * 0x380), laid out from its destructor. Written: On, Off, Draw, Clear, ReInit, the constructor, the
- * lines' test and the line's constructor and destructor (round 37). Defined in reverse of their
+ * lines' test and the line's constructor and destructor (round 37); ClosePauseMenu (round 51: its old
+ * menu state SOCOM 1's MENU_STATE m_oldmenustate -- a signed char field cast to the enum loads with lbu). Defined in reverse of their
  * image order (-inline deferred): the unit ends with the lines' test 0x205A70, the line's
  * constructor 0x205970 (generated before the menu's constructor, which takes its address) and the
  * menu's constructor 0x205800. */
 
 #include "../../gamez/ztwod/ztwod.h"
+#include "../../gamez/zinput/zinput.h"
+
+/* the HUD's menu state (hud_missioncams.h's; a byte under -enum min) */
+enum MENU_STATE {
+    stateNone = 0,
+    stateWeaponSel = 1,
+    stateOrders = 2,
+    statePauseTestMenu = 3,
+    stateFullScreenMapMenu = 4,
+    stateFullScreenMapAnim = 5,
+    stateLast = 6,
+};
 
 /* a menu line (0xA4 bytes: the menu's array of twelve is new'ed): a string first -- a member, not a
  * base: the line's implicit destructor (0x2057A0, which new[] and delete[] hand to the array
@@ -78,7 +91,7 @@ public:
     unsigned char m_socom2_bc1;   // 0xbc1: cleared by ReInit
     int m_bc4;   // 0xbc4
     float m_bc8;   // 0xbc8
-    signed char m_bcc;   // 0xbcc
+    MENU_STATE m_oldmenustate;   // 0xbcc: SOCOM 1's (0x364 there), put back on closing
     void *m_bd0;   // 0xbd0
     void *m_bd4;   // 0xbd4
     void *m_bd8;   // 0xbd8
@@ -127,6 +140,98 @@ public:
 };
 
 extern CZNetwork theNetwork;
+
+/* ClosePauseMenu's world (SOCOM 1's, grown for SOCOM II as hud_missioncams.cpp's): the menu state
+ * put back, the voices resumed, the player's pad, controller, zoom state and kit, the lens effects
+ * and the camera's zoom */
+enum ZOOMSTATE {
+    ZOOMSTATE_UNKNOWN = -1, ZOOMSTATE_3RDPERSON = 0, ZOOMSTATE_1STPERSON = 1, ZOOMSTATE_THERMAL = 2,
+    ZOOMSTATE_NVG = 3, ZOOMSTATE_BINOCS = 4, ZOOMSTATE_WEAPONDEF1 = 5, ZOOMSTATE_WEAPONDEF2 = 6,
+    ZOOMSTATE_WEAPONDEF3 = 7, ZOOMSTATE_WEAPONDEF4 = 8, ZOOMSTATE_WEAPONDEF5 = 9, ZOOMSTATE_WEAPONDEF6 = 10,
+    ZOOMSTATE_WEAPONDEF7 = 11, ZOOMSTATE_WEAPONDEF8 = 12, NUM_ZOOMSTATES = 13
+};
+
+/* the controller (zseal.h's CSealCtrl: IsPlayer its slot +0x2c; the pad's index at 0x114) */
+class CSealCtrl {
+public:
+    void SetMenuState(MENU_STATE state, bool flag);
+    virtual ~CSealCtrl();
+    virtual bool PreTick(float dT);
+    virtual bool Tick(float dT);
+    virtual bool PostMortemPreTick(float dT);
+    virtual void OnDeath();
+    virtual void Slot1C();
+    virtual void Slot20();
+    virtual void PlayAiSound();
+    virtual void AllowCommand();
+    virtual bool IsPlayer() const;   /* +0x2c */
+
+    unsigned char _4[0x114 - 0x4];
+    unsigned int m_port;   // 0x114: its pad
+};
+
+class CZKit {
+public:
+    void Apply_LensEffects(bool on, CPnt3D *color);
+
+    unsigned int m_bits0 : 15;
+    unsigned int m_heartbeat_enabled : 1;
+};
+
+class CZSealBody {
+public:
+    /* whether a player's controller drives it (inline: both builds call through a null test) */
+    bool IsPlayer() { return m_ctrl ? m_ctrl->IsPlayer() : false; }
+
+    unsigned char _0[0xc0];
+    CSealCtrl *m_ctrl;   // 0xc0
+    unsigned char _c4[0x200 - 0xc4];
+    ZOOMSTATE m_zoomstate;   // 0x200
+    unsigned char _201[0x5e0 - 0x201];
+    CZKit m_kit;   // 0x5e0
+};
+
+CZSealBody *ftsGetPlayer();
+
+class CSndInstance {
+public:
+    static void ResumeAllSounds();
+};
+
+class CameraZoom {
+public:
+    static void ReleaseLensFx(unsigned char hold);
+    static unsigned char LensFxOn();
+};
+
+namespace zdb {
+class CWorld {
+public:
+    static CWorld *m_world;
+
+    unsigned char _0[0x5dc];
+    unsigned char m_night_mission;   // 0x5dc
+    unsigned char _5dd[3];
+    PNT4D m_lensfx_nvg;   // 0x5e0
+    PNT4D m_lensfx_starlightscope;   // 0x5f0
+};
+}
+
+class CAppCamera {
+public:
+    void SetZoom(float zoom);
+};
+
+extern CAppCamera *appCamera;
+
+/* the camera's zoom the menu put aside (OVL1 .data 0x3DC410, 1.0; the name ours) */
+static float s_pauseCamZoom = 1.0f;
+
+/* a pad by its index, none past the last (SOCOM 1's inline over CInput's table) */
+static inline CPad *GetPad(unsigned int n)
+{
+    return n < CInput::NUM_PADS ? CInput::m_pads[n] : 0;
+}
 
 /* whether the network game is the online one (OVL1 0x2C2FA0, no row named yet) */
 extern "C" bool func_002C2FA0();
@@ -230,7 +335,7 @@ CZPauseTest::CZPauseTest()
     m_bc4 = 0;
     m_bc8 = 50.0f;
     m_20 = 0;
-    m_bcc = 0;
+    m_oldmenustate = stateNone;
     m_bd0 = 0;
     m_bd4 = 0;
     m_bd8 = 0;
@@ -239,6 +344,60 @@ CZPauseTest::CZPauseTest()
     m_socom2_bdc = 0;
     m_be0 = -1;
     m_be4 = 0;
+}
+
+/* the menu closed (CHUD::ReInit_Uninit's first call; SOCOM 1's, 0x1AC there): the voices resumed,
+ * the player's pad's four face buttons let go, the menu state put back; offline with the player
+ * driving, the night mission's lens colour put back unless a lens effect is up, the camera's zoom
+ * given back and the lens effects released; the heartbeat sensor on, the menu off and its state
+ * cleared */
+void CZPauseTest::ClosePauseMenu()
+{
+    if (!m_open)
+        return;
+    CSndInstance::ResumeAllSounds();
+
+    CZSealBody *seal = ftsGetPlayer();
+    CPad *pad = GetPad(seal->m_ctrl->m_port);
+
+    if (pad) {
+        pad->SetButtonState(PAD_CROSS, KEY_UP);
+        pad->SetButtonState(PAD_SQUARE, KEY_UP);
+        pad->SetButtonState(PAD_TRIANGLE, KEY_UP);
+        pad->SetButtonState(PAD_CIRCLE, KEY_UP);
+    }
+    seal->m_ctrl->SetMenuState(m_oldmenustate, false);
+
+    ZOOMSTATE zoomstate = seal->m_zoomstate;
+    zdb::CWorld *world = zdb::CWorld::m_world;
+    CZKit *kit = &seal->m_kit;
+
+    if (!theNetwork.m_bNetwork && seal->IsPlayer()) {
+        if (!CameraZoom::LensFxOn() && world->m_night_mission && seal->IsPlayer()) {
+            if (zoomstate == ZOOMSTATE_NVG) {
+                PNT4D color = world->m_lensfx_nvg;
+
+                kit->Apply_LensEffects(true, (CPnt3D *)&color);
+            } else if (zoomstate >= ZOOMSTATE_BINOCS) {
+                PNT4D color = world->m_lensfx_starlightscope;
+
+                kit->Apply_LensEffects(true, (CPnt3D *)&color);
+            }
+        }
+        if (s_pauseCamZoom != 1.0f) {
+            appCamera->SetZoom(s_pauseCamZoom);
+            s_pauseCamZoom = 1.0f;
+        }
+        CameraZoom::ReleaseLensFx(2);
+    }
+    if (kit)
+        kit->m_heartbeat_enabled = true;
+    Off();
+    m_socom2_bc1 = 1;
+    data_00409080 = 1;
+    m_socom2_bdc = 0;
+    m_be4 = 0;
+    m_be0 = -1;
 }
 
 /* the menu set up for a mission: the first line that can be selected (wrapping after the twelfth),

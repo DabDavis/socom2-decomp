@@ -1724,7 +1724,7 @@
 0x00204190 0x50 SetHasTexture__13C2DBitmapPolyFb  # OVL1; by hand (slot 6 of C2DBitmapPoly's vtable 0x406C30: both triangles' slot 6; an inline's out-of-line copy, this one the CZPauseTest unit's, linked first; the name ours, as C2DBitmap's)
 0x002041E0 0x854 func_002041E0  # OVL1
 0x00204A40 0x7B4 func_00204A40  # OVL1
-0x00205200 0x278 ClosePauseMenu__11CZPauseTestFv  # OVL1; s1:calls by hand (CHUD::ReInit_Uninit's first call on CHUD+0x18900, as SOCOM 1's; the last function before the pause menu's destructor and constructor, as SOCOM 1's before its constructor)
+0x00205200 0x278 ClosePauseMenu__11CZPauseTestFv  # OVL1; s1:calls by hand (CHUD::ReInit_Uninit's first call on CHUD+0x18900, as SOCOM 1's; the last function before the pause menu's destructor and constructor, as SOCOM 1's before its constructor); byte-exact (the HUD lane, round 51: SOCOM 1's with SOCOM II's lens colour and camera zoom put back offline)
 0x00205480 0x318 __dt__11CZPauseTestFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x002057A0 0x58 __dt__10CPauseItemFv  # OVL1; ours by hand (the HUD lane, round 37: hud_pausemenu.cpp -- the line's implicit destructor, handed to __construct_new_array beside the constructor; destroys the string member with -1)
 0x00205800 0x170 __ct__11CZPauseTestFv  # OVL1; by hand (stores CZPauseTest's vtable 0x405320; CHUD's constructor builds CHUD+0x18900 with it)
