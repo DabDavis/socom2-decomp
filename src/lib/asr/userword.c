@@ -11,7 +11,11 @@
  * its user-word fields by offset. The utterance callbacks index the records through a local index
  * (cbUserWordResultAvailable: every other spelling reloads it or keeps a record pointer), and the
  * accepted ones store the count, the flag, then the state (ccperm: one order fits both).
- * OPEN: SendPartOfLabelsToEngine (36s, diagnosed in place).
+ * Round 29c: CheckConsistency (DoLabelStart/DoLabelStop inlined from GNU extern inline bodies
+ * above it, their real definitions in place) and RejectTrainUtters, SOCOM 1's bodies.
+ * OPEN: SendLabelsToEngine (26) and SendPartOfLabelsToEngine (36s), diagnosed in place;
+ * FindBestTranscription, DoDurationModeling, ScoreTranscriptions and DoUserWordTraining not
+ * written.
  *
  * cbDoUserWordTraining's flag test (open since round 4b: `bnezl` here, `bnez` in the target, the
  * return's `move v0,zero` in the slot with a call to ExitUserWordTraining as the fall-through) is
@@ -219,6 +223,128 @@ static void CalcF2(float *out, float *in, unsigned char n)
             r = 1.923;
         out[u] = expf(-powf((float)r - 1.0f, 2.0f) * 25.0f);
     }
+}
+
+/* the label stop and start (defined at their place below), as GNU extern inlines for the
+ * functions between: CheckConsistency holds both bodies */
+extern __inline__ int DoLabelStop(CASR *c)
+{
+    if (_tosControl(c->event, 32, 0, 0) != 0)
+        return 1;
+    return casrEnableLabelInQueue(c, 1);
+}
+
+extern __inline__ int DoLabelStart(CASR *c)
+{
+    if (casrEnableLabelInQueue(c, 0) != 0)
+        return 1;
+    return _tosControl(c->event, 31, 0, 0);
+}
+
+/* what command 19 hands the scheduler: an utterance's segmentation to score */
+typedef struct LABELREQ {
+    int n;                              /* +0: the segmentation's length */
+    int one;                            /* +4 */
+    void *seg;                          /* +8 */
+    short *silence;                     /* +12: the user-word silence phoneme */
+} LABELREQ;
+
+extern const unsigned char LabelBlockIDs[];
+
+/* utterance k's segmentation scored against each training utterance's labels: the best score and
+ * the second best; above parameter +432 the word is consistent (*ok), and the utterance kept is the
+ * best one alone when the second is below parameter +436, else all of them. SOCOM 1's body */
+static int CheckConsistency(CASR *c, int k, unsigned char *keep, unsigned char *ok)
+{
+    LABELREQ lab;
+    int i;
+    int best, second, besti;
+    unsigned int size;
+    unsigned char err;
+
+    lab.n = c->utt[k].n;
+    lab.one = 1;
+    lab.seg = c->utt[k].seg;
+    lab.silence = &c->uw_silence;
+    size = (lab.n + lab.one) * 2 + 16;
+    best = -1000;
+    second = -1000;
+    besti = -1;
+    if (_tosControl(c->event, 23, 0, 0) != 0)
+        return 1;
+    for (i = 0; i < c->uw_recs_needed; i++) {
+        if (_tosControl(c->event, 19, (int)&lab, size) != 0)
+            return 1;
+        err = DoLabelStart(c);
+        if (err)
+            return 1;
+        if (SendLabelsToEngine(c, LabelBlockIDs, i) != 0)
+            return 1;
+        err = DoLabelStop(c);
+        if (err)
+            return 1;
+        if (best < c->f960) {
+            second = best;
+            best = c->f960;
+            besti = i;
+        } else if (second < c->f960)
+            second = c->f960;
+    }
+    if (c->p432 < best) {
+        *ok = 1;
+        if (second < c->p436)
+            keep[besti] = 1;
+        else
+            for (i = 0; i < c->uw_recs_needed; i++)
+                keep[i] = 1;
+    }
+    return 0;
+}
+
+/* the utterances marked in `reject` dropped -- all of them when two or more are -- their labels'
+ * write position reset to the buffer's start, the rest moved down into the freed slots with
+ * their label buffers; the count of utterances done lowered by the drops. SOCOM 1's body */
+static void RejectTrainUtters(CASR *c, unsigned char *reject)
+{
+    int i, j, k, n;
+    char *t;
+
+    n = 0;
+    for (k = 0; k < c->uw_recs_needed; k++)
+        n += reject[k];
+    if (n >= 2) {
+        n = c->uw_recs_needed;
+        for (k = 0; k < c->uw_recs_needed; k++)
+            reject[k] = 1;
+    }
+    for (i = 0, j = 0; i < c->uw_recs_needed; i++) {
+        if (reject[i] != 0) {
+            heap_Free(c->heap, c->utt[i].seg);
+            c->utt[i].seg = 0;
+            c->utt[i].n = 0;
+            c->lab_pos[i] = c->lab_buf[i];
+        } else {
+            if (j != i) {
+                c->utt[j].seg = c->utt[i].seg;
+                c->utt[i].seg = 0;
+                c->utt[j].n = c->utt[i].n;
+                c->utt[i].n = 0;
+                t = c->lab_buf[j];
+                c->lab_buf[j] = c->lab_buf[i];
+                c->lab_buf[i] = t;
+                t = c->lab_pos[j];
+                c->lab_pos[j] = c->lab_pos[i];
+                c->lab_pos[i] = t;
+                t = c->lab_end[j];
+                c->lab_end[j] = c->lab_end[i];
+                c->lab_end[i] = t;
+            }
+            j++;
+        }
+    }
+    c->rejected = 1;
+    c->uw_recs_done -= n;
+    c->train_state = 0;
 }
 
 

@@ -2065,6 +2065,64 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from completing the MSL headers, round 29** (the deque's converter built, the list's own insert measured, remove_if;
+  probes and scratch in build/scratch/msl-r29/ (the probes under p29/), untracked -- dqv.py/dqvars29.py, algv.py/algvars29.py, lv_vars.py):
+  - THE POINTER DEQUE CONVERTS THROUGH A CONVERTER OF ITS OWN: std::__convert_iterator (SOCOM 1's MSL name for its
+    converter) with *, ++ and != OUT OF CLASS, wrapping deque<T *>'s own __const_iterator -- the base const_iterator's
+    fields and code with its operators IN CLASS -- built from the base's const_iterators in init's converting dispatch
+    (begin() / end() / init unchanged); the circular buffer keeps Metrowerks::__convert_iterator, its operators in class
+    and inlined (0x3341C0). The rdr editor's do_assign 0x334440 (open since round 18) and its converter's != 0x334860,
+    ++ 0x3348E0 and * 0x334940 byte-exact and named; zrdr_edit.cpp stops emitting the base const_iterator's ++ and *
+    (the vid stack's own 0x3B83D0 / 0x3B8430 still match from vis_vu.cpp, round 27's linker argument met). Over every
+    hand-written unit +4, nothing lost (the two `gone` are zrdr_edit.cpp's copies of those two rows);
+  - TWO BY-VALUE LEVELS KEEP BOTH COPIES OVER AN ITERATOR WHOSE OPERATORS ARE IN CLASS: the converter's * as `return
+    deref(i_);` with `static T deref(Iterator i) { return convert()(i); }` copies the wrapped iterator twice -- FPU words
+    from `this` to sp+32, the functor's empty temporary (`sb zero`), lq/sq to sp+0 -- as the target's; round 27's same
+    two levels over the out-of-class base const_iterator folded to one copy; a named copy (`Iterator i = i_;`) is the
+    target's size but copies member by member (lw / sw, 14 off);
+  - a const_iterator of deque<T *>'s own DERIVED from the base's and returned by begin() / end() copies the base
+    subobject loads-first (12 off) and shrinks the rdr init to 0xB0: the converted walk's iterator is a class of its
+    own, built only in the converting path;
+  - THE LIST'S OWN insert(position, x), measured, not applied: `iterator insert(iterator position, const T &x) { return
+    __list_deleter<T, Allocator>::insert(position, x); }` in list<T> gives the kit's snoozer 0x5CD8F0 and the graph
+    queue's 0x2D1D50 byte-exact under list<T>'s name (their stand-in classes' inserts dropped), +0 / -1 over every
+    hand-written unit: LoadVehicles 0x2B2E50's position copy goes a level deeper, below the entity walk's end copy
+    (4 instructions); ten AddSpawn refits tried (include/list's comment). MW's frame slots read as allocated by inline
+    depth, shallower first, ties in source order: the list<T *> const end() one wrapper level deeper puts the walk's
+    end copy back under the position copy (LoadVehicles 3 off) but costs 30 functions at level 5 -- a "Level 6, or 8?"
+    witness, not a fit;
+  - remove_if's walkers (0x50F670 / 0x352500) stay 4 off: by value under 3.0b52, 3.0b50 and 3.0b38 alike MW copies
+    last first; MSL's free find_if, a non-static search, two by-value levels, a search not declared inline -- each the
+    same 4 or worse (include/algorithm's comment).
+- **Tells from the engine core, round 16** (GetRootNode named; camera.cpp to 31 of 32; CZAnim::Activate):
+  - GetRootNode__6CZAnimFb 0x2703D0 is SOCOM 1's GetRootNode (its 0x1CC5C0, word for word) plus a create flag: written as
+    the member, the unit's inline no-argument GetRootNode() folds into it as GetRootNode(false) (SAME-BY-ADDRESS);
+  - when the target calls an earlier-defined callee out of line from its only caller, pin the callee with `#pragma
+    auto_inline off` (ClipChord); a by-value inline over an argument (`anim->GetName()`) puts its local ahead of the inner
+    call, in a saved register (CZAnim::Activate 0x2734B0); giving a struct a default constructor turns an array member's
+    construction into a loop (CShakeParams); in a constructor already holding float constants in float registers a `sw
+    zero` marks an int field (the CAppCamera(zdb::CCamera *) constructor 0x29B5D0);
+  - `float a = p->f; a += d;` loads straight into the result's register (f20), `float a = p->f + d;` into a scratch first;
+    a field read into a named float local ahead of a later local gives the later local the lower register; `lift *= 2.0f
+    / s;` as its own statement schedules the divide first; `CPnt3D v = p;` copies as a block (ld / sd), declared first
+    and assigned it copies field by field; a rotated while loop over a byte enum stepped as `((int)v + 1) % n` reuses the
+    test's load with an andi (CAppCamera::FTSTick 0x29B0C0, the first- / third-person transitions and positions);
+  - camera.cpp carries local stand-ins ScaledBy / DiffOf for CPnt3D's inline operator* / operator- (zmath.h only declares
+    them -- queued for the MSL).
+- **Tells from the kit and AI states, round 48** (CTSound::Tick; CTInView / CTPlay::Tick written):
+  - a random pick as an if/else with the draw in its own local (`int r = rand(); x = r % (n + 1) + 1;`) pads the else
+    label and leaves the `b` over it unfilled -- a ternary, a lone if or the draw inline fills the `b` from the join and
+    leaves the label unpadded; `int s = x == 11 ? a : x;` leaves the join unpadded with s a temporary, `if (s == 11) s =
+    a;` pads it;
+  - a local with a dead first definition (`const char *ent = 0;`, assigned later) is numbered at that dead store,
+    initialised from an inline's result it merges into the inline's temporary; a field read through a trivial inline
+    accessor is a temporary numbered at the call, a plain `seal->m_id` local is numbered with the named locals;
+    `aware <= cmd->m_aware` gives slt at / bnez at, `>=` puts the slt result in v0 (CTSound::Tick 0x5D0C90: its
+    block's flag word laid out from what the parser writes, the registers by `tools/igreplay.py --target`);
+  - an inline on a struct member addresses the fields off the controller when it is a named local, through a cast
+    temporary MW keeps `&m_view_cone` in a saved register; in an inline find an index passed as a parameter is
+    numbered before the inline's type (CTPlay::Tick OPEN at the target's size: the block pointer wants numbering after
+    the second inlined SEAL find, `--move 39=58.5` gives 0 differ).
 - **Tells from the weapons, round 28** (CZWeapon::Fire at last, CTurret's Init and constructor, CVehicle::Init):
   - MW LAYS OUT THE FRAME TOP-DOWN IN THREE GROUPS: named locals in declaration order, then return copies and
     non-returned inline locals in code order, then by-value inlines' result locals in expansion order; an array or
@@ -11554,6 +11612,47 @@ matched drafts superseded (mtxFillX 0x4F77F8, func_004F7880); `src/lib/asr` 548 
 1 row named: 0x4F7880 `mtxFillCopy` (`s1:calls+order`: SOCOM 1's Smoothing calls it at the same instruction,
 its object holds it beside mtxFillX and QrPreMult). No tool changed.
 
+**Round 29c: the SHS/VUV object written whole, two of the training's checks.**
+
+- **The SHS object is -ffast-math (the eleventh)**: CreateFreqWindow's peeled first step folds `0 - c` to
+  `neg.s`, and both log2s (`x / ln 2`) multiply by the reciprocal -- 2.96 does neither with IEEE semantics.
+  `0.69314718f` lands an ulp low in 2.96's parser (0x3F317217), whose reciprocal is the target's 0x3FB8AA3C
+  (`0.6931472f` is exact and gives 0x3FB8AA3B). spline2, Lin_2_Log and ControlSHS_VUV compile the same with it.
+- **A conversion the source spells twice is one CSE value**: the window's divisor is an explicit
+  `(float)nlog` of an int count -- its fptodp, hoisted as a loop invariant, reuses the conversion the c
+  computation made after its logf call; through a float local the conversion is made at the top and held in
+  `$f20` (CreateFreqWindow, three spellings match, a float local does not).
+- **A pseudo set twice is no loop.c movable**: SubHarmonicSummation's per-harmonic end written `end = out +
+  n; end -= k;` keeps `out + n*4` in the outer loop, as the target (and SOCOM 1's compile) does; one
+  expression hoists it into the preheader.
+- **A guarded store merged with the loop's test**: ProcessSHS_VUV's peak copy writes the fifth neighbour
+  only when `p != pend`; jump threading merges that test with the do-while's `p++ != pend`, so the peak path
+  exits after four copies -- the target's (and SOCOM 1's) odd layout is the source's guard.
+- **Two error blocks, one in the image**: InitSHS_VUV's allocation checks each carry `_tosErrorLog(s, 2);
+  return 1;` and cross-jumping merges them; a shared `goto fail` lets jump.c hoist the success `return 0`'s
+  `v0 = 0` above the last test (the last load then takes v1, the target's v0).
+- **Measured**: `*(x - 1) + *x + *x + *(x + 1)` for the smoothing (round 28c's `*(p - 1)`: its address a
+  register the unrolled copies share; `2 * x[0]` regroups), a pointer of its own per loop (one shared
+  walker crosses the libcalls and takes a saved register in every loop), a count `n = nlin / 2 + 1` held in
+  a variable (inline, fold distributes the `* 4`); CheckConsistency's size `(lab.n + lab.one) * 2 + 16`
+  through the record's fields (CSE's registers, not a folded `+ 18`), DoLabelStart/DoLabelStop inlined from
+  GNU extern inline bodies above it with their real definitions in place and matching, each result
+  narrowed through an `unsigned char` at the join; RejectTrainUtters' count and fill loops with a counter of
+  their own (shared with the moving loop, which calls heap_Free, it took a saved register).
+- **Open, diagnosed in place**: SubHarmonicSummation_and_VUVDetermination (38 words, the right size: three
+  end pseudos with out ranked above the harmonic's -- 72 shapes, `build/scratch/gcc/v_shs8.py`),
+  ProcessSHS_VUV (0x638 against 0x640: the peak loop's exit test above its body, entered by a jump).
+  Not reached: CreateSecondPassTreeContext, ExtendNodeWheel, ConstructBlock, PitchCombinerReset/
+  InitPitchCombiner, InitViterbi@nbestdp (their diagnoses stand).
+
+Hand-written in round 29c: `asr/shs.c` (CreateFreqWindow, InitSHS_VUV new, ConstructSHS_VUV over its draft,
+SubHarmonicSummation_and_VUVDetermination and ProcessSHS_VUV OPEN: the object whole, 6 of 8), `asr/userword.c`
+(CheckConsistency, RejectTrainUtters new: 15 of 17) -- 4 rows new to the map's byte-exact rows (2,844 bytes),
+one matched draft superseded (ConstructSHS_VUV 0x504980); `src/lib/asr` 553 of 581 (548 of 574 before). 2 rows
+named: 0x5042B8 `CreateFreqWindow` (`s1:calls+order`: SOCOM 1's InitSHS_VUV calls it at the same point, after
+the block's last table), 0x504520 `InitSHS_VUV` (`s1:slot`: ConstructSHS_VUV's init slot, as SOCOM 1's).
+casr.h gains +960 (the label scoring's result). No tool changed.
+
 **Round 14b: the "toolchain" opens were SCEA's shapes; LargeInt's core is assembly.**
 
 - **LargeInt's EE primitives are hand-written assembly** (0x628B48-0x629A44, between LargeInt.c's C and
@@ -11941,9 +12040,10 @@ What is open across lanes, and what comes next:
   destructor (C2DPoly's deleter), __vector_imp::resize out of line (CPool), and the pod vector's
   end() reusing begin()'s load (AddPalette, DeleteChildren; the zdb world's round 6
   measured `return data() + size_;`: +4, but CCharacterType::Create one level too tall -- ~CAssetLib
-  matches since the MSL headers' round 27, its destructor's data_ read through data()), and the pointer
-  deques' converter (its ++ inlines the wrapped iterator's ++ that the vid stack's do_assign calls
-  out of line: the MSL headers' round 27, include/deque).
+  matches since the MSL headers' round 27, its destructor's data_ read through data()); the pointer
+  deques' converter is in since the MSL headers' round 29 (std::__convert_iterator over deque<T *>'s own
+  __const_iterator: the rdr editor's do_assign and its three pieces), and the list's own insert(position,
+  x) is measured, not applied (round 29: +0 / -1, LoadVehicles).
 - **zMath** (0x306670-0x30954C, 47 of 54): CMatrix::SetRotate, CQuat::Align, CBits::Resize,
   CPnt3D::Reflect, CBBox::GetIntersect and the two DistToVectors. **zcamera**: CCamera::Update
   (13 instructions, the near plane's VU0 temporaries' stack offsets). **ZAnim**: the big handlers

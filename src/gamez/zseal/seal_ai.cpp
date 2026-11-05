@@ -1371,10 +1371,10 @@ void CSealCtrlAi::AnimSignal(CZAnim *anim, AI_SIGNAL sig)
 
 /* whether the SEAL may be taken hostage (state 23 pushed with no flags): for kind 3 a restrainable one,
  * or online one of team bit 17; otherwise one of team bit 17 already holding the state or free to take
- * it (OVL2 0x555B80, new in SOCOM II: 0x5784A0 and 0x5A90B0 ask it; the name unknown). A switch (the
- * case's block first behind its beq, a `b` to the default) assigning one bool, masked once at the join:
- * returned from each case, the andi goes */
-extern "C" bool func_00555B80(CSealCtrlAi *ai, int kind)
+ * it (an inline, the name ours: 0x555B80 is it out of line, 0x555900 inlines it -- generated ahead of
+ * 0x555B80, it cannot inline that). A switch (the case's block first behind its beq, a `b` to the
+ * default) assigning one bool, masked once at the join: returned from each case, the andi goes */
+static inline bool CanTakeHostage(CSealCtrlAi *ai, int kind)
 {
     CZSealBody *seal = (CZSealBody *)ai->m_entity;
 
@@ -1389,6 +1389,42 @@ extern "C" bool func_00555B80(CSealCtrlAi *ai, int kind)
         break;
     }
     return r;
+}
+
+/* (OVL2 0x555B80, new in SOCOM II: 0x5784A0 and 0x5A90B0 ask it; the name unknown) */
+extern "C" bool func_00555B80(CSealCtrlAi *ai, int kind)
+{
+    return CanTakeHostage(ai, kind);
+}
+
+/* the SEAL taken hostage when it may be: the states popped down to the hostage state, the alert one
+ * (6) or the base one -- else cleared --, then the hostage state found on top or pushed, its step set
+ * to the kind with no delay pending and the given flags added; the state returned, or none (OVL2
+ * 0x555900, new in SOCOM II: 0x5784A0 calls it -- the name unknown) */
+extern "C" CAiState *func_00555900(CSealCtrlAi *ai, int kind, unsigned int flags)
+{
+    CAiState *s = 0;
+
+    if (CanTakeHostage(ai, kind)) {
+        if (ai->m_stateStack.m_10 & (1 << AI_STATE_HOSTAGE))
+            ai->PopToAiState(AI_STATE_HOSTAGE, false);
+        else if (ai->m_stateStack.m_10 & (1 << 6))
+            ai->PopToAiState((AI_STATE)6, false);
+        else if (!ai->PopToAiState((AI_STATE)1, false))
+            ai->ClearAiState(true);
+        if (ai->AiStateIs(AI_STATE_HOSTAGE) || ai->PushAiState(AI_STATE_HOSTAGE, 0)) {
+            CAiState *st = ai->GetAiState();
+
+            s = st && st->m_state == AI_STATE_HOSTAGE ? st : 0;
+            s->UpdatePhase(kind);
+            s->SetFlags(0, 0x40000000);
+            s->m_delay = 0.0f;
+            s->m_nextPhase = s->m_phase;
+            if (flags)
+                s->SetFlags(flags, 0);
+        }
+    }
+    return s;
 }
 
 /* the AI's state brought up to date, the route's state returned (OVL2 0x5558A0; the AI states'
