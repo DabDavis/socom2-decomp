@@ -114,6 +114,8 @@ public:
     int m_count;   // 0x0
 };
 
+class CValve;
+
 /* a weapon as its slot shows it: its description and its icon, its item and its class
  * (zweapon's CZWeapon) */
 class CZWeapon {
@@ -122,6 +124,8 @@ public:
     EQUIP_ITEM GetIDType();
     static bool IsPrimary(EQUIP_ITEM item);
     static bool IsSecondary(EQUIP_ITEM item);
+    static bool IsLauncher(EQUIP_ITEM item);
+    static CValve *GetEnableValve(EQUIP_ITEM item);
 
     static CZWeaponList m_listWeapons;
 
@@ -424,7 +428,7 @@ extern "C" bool func_002C30B0(CZSealBody *seal);
 inline int CMPWeaponSel::FindEquipment(EQUIP_ITEM item, int skip)
 {
     for (int i = 2; i < 5; i++) {
-        if (i != skip && m_selected[i].m_weapon && m_selected[i].m_weapon->m_item == item)
+        if (i != skip && m_selected[i].m_weapon && item == m_selected[i].m_weapon->m_item)
             return i;
     }
     return -1;
@@ -939,6 +943,146 @@ void SelectedSlot::SetColor(float r, float g, float b)
 {
     m_name.SetColor(r, g, b);
 }
+
+/* the equipment items a pick passes over when an equipment slot holds them (the names ours) */
+static inline bool IsSharedEquipment(EQUIP_ITEM item)
+{
+    bool shared = false;
+
+    switch (item) {
+    case 194:
+    case 154:
+    case 152:
+    case 195:
+    case 254:
+    case 151:
+    case 255:
+    case 141:
+    case 193:
+    case 175:
+    case 171:
+    case 172:
+    case 173:
+    case 174:
+    case 179:
+    case 143:
+    case 142:
+    case 183:
+        shared = true;
+    }
+    return shared;
+}
+
+static inline bool IsPickedEquipment(EQUIP_ITEM item)
+{
+    bool picked = false;
+
+    switch (item) {
+    case 194:
+    case 154:
+    case 152:
+    case 195:
+    case 254:
+    case 151:
+    case 255:
+    case 141:
+    case 193:
+        picked = true;
+    }
+    return picked;
+}
+
+/* an item's valve open to the player's side: bit 8 when player_team is 0, else bit 1 */
+static inline bool IsEnabledFor(CValve *valve, bool team)
+{
+    int bit = team ? 8 : 1;
+
+    return (valve ? bit & valve->m_value : 0) != 0;
+}
+
+#pragma auto_inline off
+EQUIP_ITEM CMPWeaponSel::NextFreeEquipment(EQUIP_ITEM item, int index)
+{
+    if (FindEquipment(item, -1) != -1 && IsSharedEquipment(item)) {
+        bool team = false;
+        CZWeaponList &list = CZWeapon::m_listWeapons;
+        int count = list.m_count;
+        CValve *valve = CValve::GetByName("player_team");
+
+        if (valve && valve->m_value == 0)
+            team = true;
+        if (index == -1) {
+            for (int i = 0; i < count; i++) {
+                if (list.GetWeaponByIndex(i)->m_item == item) {
+                    index = i;
+                    break;
+                }
+            }
+        }
+
+        bool ok = false;
+        EQUIP_ITEM next;
+
+        do {
+            index++;
+            if (index >= count)
+                index = 0;
+            next = list.GetWeaponByIndex(index)->m_item;
+            if (!CZWeapon::IsPrimary(next) && !CZWeapon::IsSecondary(next) && !CZWeapon::IsLauncher(next)) {
+                CValve *enable = CZWeapon::GetEnableValve(next);
+
+                if (enable)
+                    ok = IsEnabledFor(enable, team);
+            }
+        } while (!ok);
+        item = NextFreeEquipment(next, index);
+    }
+    return item;
+}
+
+EQUIP_ITEM CMPWeaponSel::PickEquipment(int index, EQUIP_ITEM item, EQUIP_ITEM other)
+{
+    int found = FindEquipment(item, -1);
+    bool picked = IsPickedEquipment(item);
+
+    if (found != -1 && picked || item == 255) {
+        bool team = false;
+        CZWeaponList &list = CZWeapon::m_listWeapons;
+        int count = list.m_count;
+        CValve *valve = CValve::GetByName("player_team");
+
+        if (valve && valve->m_value == 0)
+            team = true;
+        if (index == -1) {
+            for (int i = 0; i < count; i++) {
+                if (list.GetWeaponByIndex(i)->m_item == item && i != index) {
+                    index = i;
+                    break;
+                }
+            }
+        }
+
+        EQUIP_ITEM next;
+        bool ok = false;
+
+        do {
+            index++;
+            if (index >= count)
+                index = 0;
+            next = list.GetWeaponByIndex(index)->m_item;
+            if (!CZWeapon::IsPrimary(next) && !CZWeapon::IsSecondary(next) && !CZWeapon::IsLauncher(next)
+                && next != other) {
+                CValve *enable = CZWeapon::GetEnableValve(next);
+
+                if (enable)
+                    ok = IsEnabledFor(enable, team);
+            }
+        } while (!ok);
+        item = PickEquipment(index, next, (EQUIP_ITEM)255);
+    }
+    return item;
+}
+#pragma auto_inline reset
 
 /* the name faded */
 void SelectedSlot::SetTrans(float trans)

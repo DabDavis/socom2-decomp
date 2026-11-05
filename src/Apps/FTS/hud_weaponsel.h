@@ -372,6 +372,11 @@ public:
     /* whether a slot can be chosen (0x23E910; the name ours), the equipment slot holding an item
      * (the one asked about skipped) and the item's own test (inline) */
     bool CanSelect(int index);
+    /* an equipment item no equipment slot holds: the item, or, when a slot holds it, the next
+     * equipment item round the weapons' list that the player's side may take (0x23BC50) -- and the
+     * same for a slot left empty, passing over another item (0x23B9B0; the names ours) */
+    EQUIP_ITEM NextFreeEquipment(EQUIP_ITEM item, int index);
+    EQUIP_ITEM PickEquipment(int index, EQUIP_ITEM item, EQUIP_ITEM other);
     inline int FindEquipment(EQUIP_ITEM item, int skip);
     inline void CheckItem(EQUIP_ITEM item, int index, bool &ok);
     inline void Set203(bool on);
