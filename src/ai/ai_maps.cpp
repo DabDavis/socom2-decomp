@@ -893,35 +893,41 @@ CPnt3D *CAiMaps::GetCellCenter(const CAiMapLoc &loc, CPnt3D *center)
  * (half a unit more when it is ground and the best not) (SOCOM 1's GetLocation(CPnt3D *, loc), the
  * demo's 0x19C9B0, 0xA04 bytes; the seam, the NOALT soil and the second walk new in SOCOM II, by
  * the code -- the AI core's round 31, written from m2c).
- * OPEN, 0xA24 against 0xA34 (written in the AI core's round 31): every call is the target's -- the
+ * OPEN, 0xA44 against 0xA34 (written in the AI core's round 31): every call is the target's -- the
  * map's GetLocation and IsMapCell inlined whole, GetCell one level (IsMapCell, IsLayer, the
  * scanlines' [], GetIndex, the layers' [] out of line; the second walk reads the cell before its
  * row test, as the target does), _close_enough<f> on the literals 0, 0.5 and |dh| -- walked
  * through a const view of the maps with postfix steps as GetLocation(name) is (0x9FC through
- * `this`, 0x9CC prefix); left: the target copies begin()'s and end()'s temporaries once more
- * (sp+228, 212 -> 272), and its frame puts dh 276, the cell 280, the best 284 (here dh 284) */
+ * `this`, 0x9CC prefix). Round 32 (difflib distance 279 -> 172 of 653): ONE cell `l` for both walks
+ * (the target's single slot at 280), declared with the best after the size test -- the frame's top
+ * is then the target's (best 284, l 280, dh 276, the iterator 272, alt 268); the seam taken as
+ * `m_mes ? true : false` (the target's branches, daddiu 1 / move zero, then andi into the saved
+ * register). Left: the saved-register numbering (target this s5, map s2, i s1, cell s0, seam s3, the
+ * second walk's j s1, m s3, c s0 -- here s3, s5, s0, s1, s2 and s0, s5, s2), the iterator
+ * temporaries' middle slots (264 / 248 the begin()/end() copies, 256 / 252 the floats: here the
+ * other way round) and the target's one more begin()/end() copy (sp+228, 212 -> 272) */
 bool CAiMaps::GetLocation(const CPnt3D *pos, CAiMapLoc &loc)
 {
     const CAiMaps *maps = this;
 
     if (!maps->size())
         return false;
+    CAiMapLoc best;
+    CAiMapLoc l;
     float dh = 0.0f;
     bool found = false;
     bool seam = false;
     int i = 0;
-    CAiMapLoc best;
 
     for (const_iterator it = maps->begin(); it != maps->end(); it++, i++) {
         CAiMap *map = *it;
-        CAiMapLoc l;
 
         if (!map->GetLocation(pos, l) || !map->IsMapCell(l))
             continue;
         CAiCell *cell = map->GetCell(l, 0);
 
         if (i == 0)
-            seam = cell->m_mes;
+            seam = cell->m_mes ? true : false;
         if (seam && cell->m_soil == CAiMap::SOIL_NOALT)
             continue;
         found = true;
@@ -937,13 +943,11 @@ bool CAiMaps::GetLocation(const CPnt3D *pos, CAiMapLoc &loc)
 
             for (it++; it != maps->end(); it++, j++) {
                 CAiMap *m = *it;
-                CAiMapLoc l2;
-
-                if (!m->GetLocation(pos, l2))
+                if (!m->GetLocation(pos, l))
                     continue;
-                CAiCell *c = m->GetCell(l2, 0);
+                CAiCell *c = m->GetCell(l, 0);
 
-                if (!m->IsMapCell(l2) || c->m_soil == CAiMap::SOIL_NOALT)
+                if (!m->IsMapCell(l) || c->m_soil == CAiMap::SOIL_NOALT)
                     continue;
                 float alt2;
 
@@ -968,7 +972,7 @@ bool CAiMaps::GetLocation(const CPnt3D *pos, CAiMapLoc &loc)
                 }
                 if (better) {
                     ground = ground2;
-                    best = CAiMapLoc(l2.x, l2.y, j);
+                    best = CAiMapLoc(l.x, l.y, j);
                     dh = dh2;
                 }
             }
