@@ -869,7 +869,15 @@ struct CONE {
  * matrix row field by field, one register (as SOCOM 1's): GetPosition()'s by-value copy stores
  * through a pointer; the -z axis through a row pointer keeps the node in one register; IsInCone
  * is pinned (called out of line).
- * OPEN, 3 instructions (the target's size since the weapons' round 24): the falloff's 2.0f * (r -
+ * BYTE-EXACT since the weapons' round 26, by MW's float colouring (igdump/igreplay: the nodes
+ * colour in descending number, each taking the lowest free FPR): the product's only neighbours
+ * are the 1.0 and the damage, so no numbering alone gives it the target's f1 -- it must share a
+ * node with the 2.0 (live beside the difference's f0), and the result with it: an in-place local
+ * `k` (2.0, `*=`, `k = one - k`). As a named local k is numbered below the temporaries, so the
+ * 1.0 must be a named local too, first defined between r and k (`one`): numbered r < one < k,
+ * the difference colours f0, k f1, one f2, r f1 -- the target. `one` and `k` are stand-ins for
+ * whatever the original named them (k as a temporary, or the 1.0 a literal, is 9 off: r and
+ * the 1.0 swap). HISTORY: the falloff's 2.0f * (r -
  * 0.5f) -- the target puts the product and the difference in f1 (the 2.0's register, r's before
  * it), here f0 (SOCOM 1's colouring is ours). The id (2) is closed: each test an IsItem() call
  * over GetId() by value (the byte-enum copy `lb`, narrowed once for both tests, and the label pad
@@ -913,11 +921,17 @@ float CZProjectile::GetDamage(const CPnt3D *pos, float minimum)
         d = d - *pos;
         float dist = d.Length();
         float r = dist / m_ammo->GetExplosionRadius();
+        float one = 1.0f;
 
-        if (r > 1.0f)
+        if (r > one)
             damage = 0.0f;
-        else if (r > 0.5f)
-            damage *= 1.0f - 2.0f * (r - 0.5f);
+        else if (r > 0.5f) {
+            float k = 2.0f;
+
+            k *= r - 0.5f;
+            k = one - k;
+            damage *= k;
+        }
     } else {
         damage = m_ammo->GetImpactDamage();
         damage += m_weapon->GetDamageBonus();
