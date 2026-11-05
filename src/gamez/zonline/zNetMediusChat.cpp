@@ -1417,13 +1417,13 @@ struct PlayerWhereabouts {
  * request) are dropped and the list shown; a failed answer shows the list as it is -- either way
  * the next request may go (SOCOM 1's cbRoomPlayerList, which only added; OVL1 0x2F13F0: SOCOM 1's
  * mangled name, cbRoomPlayerList__FiiiP34MediusLobbyWorldPlayerListResponse, names the record).
- * OPEN, 34 instructions, all in the last page's walk: the target keeps the iterator's value in v0
- * from each store (begin's, the step's) for the entry test and the step, stores it once at the
- * arms' join, and reloads it only for the dereference -- include/vector's iterator reads m_p
- * through its const operator* and == and steps it non-const, so MW here reloads for the test and
- * steps the dereference's load (`i->` 40 -> 34; `(*i).`, an initialised or for-scoped iterator,
- * `i++`, `i = i + 1`, a ternary of the two arms, `!(i == end())` no nearer). The first walk, the
- * whereabouts copy and the push are the target's */
+ * BYTE-EXACT since the online lane's round 22 (open since round 16 at 34): the last page's walk has
+ * a second iterator, `next`, assigned with i from begin() and never address-taken -- the register
+ * (v0) the target keeps for the entry test and the step -- erase's result or the step stored into i
+ * once at the arms' join, i itself read for the dereference, erase's copy and the bottom test
+ * (FriendInvitationVector::Remove 0x301CF0, the same walk with the step ahead of the test). On one
+ * iterator (`i->`, `(*i).`, an initialised or for-scoped iterator, `i++`, `i = i + 1`, a ternary of
+ * the two arms, `!(i == end())`) MW reloaded i for the test and stepped the dereference's load */
 void cbRoomPlayerList(int, int, int, MediusLobbyWorldPlayerListResponse *resp)
 {
     if (resp->StatusCode == 0) {
@@ -1444,13 +1444,15 @@ void cbRoomPlayerList(int, int, int, MediusLobbyWorldPlayerListResponse *resp)
             room->m_players.push_back(*resp);
         if (resp->EndOfList) {
             std::vector<MediusLobbyWorldPlayerListResponse>::iterator i;
+            std::vector<MediusLobbyWorldPlayerListResponse>::iterator next;
 
-            i = room->m_players.begin();
+            i = next = room->m_players.begin();
             while (i != room->m_players.end()) {
                 if (i->OnlineState.ConnectStatus == 0)
-                    i = room->m_players.erase(i);
+                    next = room->m_players.erase(i);
                 else
-                    ++i;
+                    ++next;
+                i = next;
             }
             UpdateRoomPlayerListDisplay();
             data_0044F9F0 = 0;

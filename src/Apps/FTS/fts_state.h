@@ -176,6 +176,9 @@ public:
     static void UnloadAllSounds();
     static void Close();
     static void UIOpen();
+    /* the group volumes' temporary fade stepped (zsnd.h's, the world lane's round 21: OVL1 0x341250,
+     * CMenuState::Tick's call before PostTick) */
+    static void TickGroupVolTemp(float dT);
 };
 
 /* the mission's texture buffers: a vector of them (zdb::CTexManager::m_texmanager's) */
@@ -745,11 +748,8 @@ public:
 extern CAppCamera *appCamera;
 extern unsigned char gopt[0x1b];
 
-class CMissionInfo {
-public:
-    unsigned int _0;
-    unsigned short m_4;   // 0x4: 2 when the mission ends the game
-};
+/* a valve (zanim.h's CValve: the mission's abort valve, its 16-bit value at 4) */
+class CValve;
 
 struct _zrdr;
 
@@ -782,7 +782,8 @@ public:
     unsigned char _fd[0x108 - 0xfd];
     float m_108;   // 0x108
     unsigned char _10c[0x1ac - 0x10c];
-    CMissionInfo *m_1ac;   // 0x1ac
+    CValve *m_valve_abort;   // 0x1ac: the "mission_abort" valve (fts_mission.cpp's; CMission::Init makes it):
+                             // at 2 the mission ends the game, at 1 or 2 the network's hits are dropped
     unsigned char _1b0[0x1c0 - 0x1b0];
     unsigned char m_messages[0x6a0 - 0x1c0];   // 0x1c0: the first message queue (a C2DMessage_Q)
     unsigned char _6a0[0x11b0 - 0x6a0];

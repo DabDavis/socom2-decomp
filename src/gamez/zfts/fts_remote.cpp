@@ -220,7 +220,7 @@ public:
     void RefreshTeamValves();   /* 0x2B23A0 */
 
     unsigned char _0[0x1ac];
-    struct CMissionInfo *m_info;   // 0x1ac: the mission's info (its halfword at 4 the game mode)
+    CValve *m_valve_abort;   // 0x1ac: the "mission_abort" valve (fts_mission.cpp's): at 1 or 2 no hits are taken
     unsigned char _1b0[0x1c0 - 0x1b0];
     unsigned char m_messenger[0x1808 - 0x1c0];   // 0x1c0: the mission's message queue (SOCOM 1's at 0x100)
     CZNetGame *m_pNetGame;   // 0x1808 (SOCOM 1's at 0x584)
@@ -758,14 +758,9 @@ void SendHitMessage(int shooter, int victim, int part, float damage, float f, bo
     }
 }
 
-/* the mission's info: its game mode (1 and 2 take no hits from the network) */
-struct CMissionInfo {
-    unsigned int _0;
-    unsigned short m_mode;   // 0x4
-};
 
 
-/* a hit: in a game under way, outside game modes 1 and 2, the victim takes it -- its own client's
+/* a hit: in a game under way, unless the mission is aborting (its abort valve at 1 or 2), the victim takes it -- its own client's
  * damage for a local victim, the remote one's for a remote victim (SOCOM 1's; OVL1 0x2BBBD0).
  * OPEN, 2 instructions (round 38, from 6: see the end). The mode test matches with the mode passed to the inline as
  * an `int` (round 13: the parameter takes the loaded halfword, which frees v0 for the constant 1 and
@@ -804,7 +799,8 @@ struct CMissionInfo {
  * the byte's lbu, this the lbu first (same registers, same block: a scheduler tie broken by the
  * generation order, which the colouring fixes as byte-first) -- every order of the four statements
  * with the ternary, ten spellings of the flag and five of the product keep it */
-/* whether the mission's mode takes no hits (the name ours: the handler's test materialised) */
+/* whether the mission's abort valve's value takes no hits (the name ours: the handler's test
+ * materialised) */
 inline bool NoHitMode(int mode)
 {
     bool b = true;
@@ -816,7 +812,7 @@ inline bool NoHitMode(int mode)
 
 int HitPacketHandler(int, int, int, void *data)
 {
-    if (!NoHitMode(theMission.m_info->m_mode)) {
+    if (!NoHitMode(theMission.m_valve_abort->m_value)) {
         CZNetGame *game = theMission.m_pNetGame;
 
         if (game && game->m_mp_major_game_state == 3) {

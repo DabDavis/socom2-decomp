@@ -19,7 +19,12 @@
  * (the igdump tools) has the height's copy with neighbours zero, a0-a3, t0, t1 only, so it takes the
  * lowest free, v0: the target's v1 needs a node coloured v0 live across the shuffle that leaves no
  * instruction. Const locals of each argument (the engine core's round 7 rule), a dead first
- * definition, `-O4,s`, `-O3,p`, `-opt nopeephole`/`noschedule`: all 2 (SOCOM 1's 2.4 build has v1 too) */
+ * definition, `-O4,s`, `-O3,p`, `-opt nopeephole`/`noschedule`: all 2 (SOCOM 1's 2.4 build has v1 too).
+ * Round 22 (build/scratch/onl/ldi1-3.cpp): the PCode has the call define v0/v1 and the return use v0,
+ * so nothing the call or the return does keeps v0 live across the shuffle -- an int function falling
+ * off its end (v0 read, never set), an inline wrapper, the arguments copied into locals, 1024 named,
+ * a function-pointer call, a dead test of the width, signedness casts on each argument (the radio
+ * tick's tell): all 2 */
 void setLoadImageTags(unsigned int *tags, void *image, int width, int height, unsigned int dbp)
 {
     setLoadImageTagsYX(tags, image, 1024, width, height, dbp);

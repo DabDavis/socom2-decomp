@@ -10,8 +10,12 @@ objcmp -- prove a header (or any source) change code-neutral, object for object.
 Every hand-written unit (src/, not src/auto unless --auto) that REGEX names is built twice, each as
 sccheck builds it (its own directive: toolchain, flags, `as=`, its statics qualified): once from a
 scratch copy of src/ and include/ with every file that differs from BASE put back to BASE's text
-(files added since BASE taken out), once from the tree as it is. Then, unit by unit, the objects
-are compared:
+(files added since BASE taken out), once from a copy of the tree as it is -- both copies at ONE path
+(<work>/tree/, BASE's first, then the tree's in its place), so what a compiler writes of the path
+it was given is the same on both sides: GCC round 34a, the online lobby's round 22 -- an assert GCC
+drops keeps __FILE__ in .rodata, and sase_rfft2g.c's (before its #line) read as a difference with
+its source unchanged when BASE was built from a scratch copy and the tree in place (the MSL's round
+28, the UI's round 26). Then, unit by unit, the objects are compared:
 
   - every function: its bytes, and each relocation's offset, type, addend and target;
   - every allocated data section (`.data`, `.rodata`, `.sdata`, `.lit4`, `.bss`, ...): its size,
@@ -95,6 +99,28 @@ def base_tree(base: str, work: Path) -> list[str]:
         elif dst.exists():
             dst.unlink()                 # a file BASE does not have
     return [r for r in changed + added if not r.startswith("src/auto/")]
+
+
+def tree_copy(dst: Path, auto: bool = False) -> None:
+    """The tree as it is -- src/ (the drafts only with `auto`) and include/ -- copied to `dst`."""
+    if dst.exists():
+        shutil.rmtree(dst)
+    shutil.copytree(HERE / "src", dst / "src",
+                    ignore=shutil.ignore_patterns("*.o") if auto else shutil.ignore_patterns("auto", "*.o"))
+    shutil.copytree(HERE / "include", dst / "include")
+
+
+def build_side(side: Path, rels: list[Path], objdir: Path, jobs: int = 2) -> dict:
+    """{rel: (object or None, why not)}: every unit of `rels` that `side`/src holds, built as sccheck
+    builds it against `side`/include, into `objdir`."""
+    def one(rel: Path):
+        p = side / "src" / rel
+        if not p.exists():
+            return None, "absent"
+        _, o, err = sccheck.build_one(p, objdir, root=side / "src", include=side / "include")
+        return o, ((err.strip().splitlines() or ["?"])[-1][:70] if o is None else "")
+    with ThreadPoolExecutor(jobs) as ex:
+        return dict(zip(rels, ex.map(one, rels)))
 
 
 def base_map(base: str, work: Path) -> E.SymbolTable | None:
@@ -231,7 +257,8 @@ def main(argv=None) -> int:
                     help="the scratch tree and objects (one per concurrent user)")
     a = ap.parse_args(argv)
     work = a.work.resolve()
-    reverted = base_tree(a.base, work / "base")
+    side = work / "tree"                # BASE's copy, then the tree's: both sides built at one path
+    reverted = base_tree(a.base, side)
     print(f"against {a.base}: {' '.join(reverted) or '(no file differs)'}", flush=True)
     resolve = None
     if a.by_address:
@@ -240,25 +267,19 @@ def main(argv=None) -> int:
         print(f"by address: the tree's map, then {a.base}'s" if bm else
               f"by address: the tree's map ({a.base} has none that parses)", flush=True)
     rx = re.compile(a.files) if a.files else None
-    src_now, src_base = HERE / "src", work / "base" / "src"
+    src_now, src_base = HERE / "src", side / "src"
     keep = lambda rel: (a.auto or rel.parts[:1] != ("auto",)) and (not rx or rx.search(str(rel)))
     rels = sorted({p.relative_to(src_now) for p in sccheck.sources(src_now)}
                   | {p.relative_to(src_base) for p in sccheck.sources(src_base)})
     rels = [r for r in rels if keep(r)]
     if a.auto and (src_now / "auto").is_dir():
         shutil.copytree(src_now / "auto", src_base / "auto", dirs_exist_ok=True)
+    built_base = build_side(side, rels, work / "obj-base", a.jobs)
+    tree_copy(side, a.auto)             # the tree as it is, in BASE's place
+    built_now = build_side(side, rels, work / "obj-now", a.jobs)
 
     def one(rel: Path):
-        sides = []
-        for root, inc, obj in ((src_base, work / "base" / "include", work / "obj-base"),
-                               (src_now, HERE / "include", work / "obj-now")):
-            p = root / rel
-            if not p.exists():
-                sides.append((None, "absent"))
-                continue
-            _, o, err = sccheck.build_one(p, obj, root=root, include=inc)
-            sides.append((o, (err.strip().splitlines() or ["?"])[-1][:70] if o is None else ""))
-        (oa, ea), (ob, eb) = sides
+        (oa, ea), (ob, eb) = built_base[rel], built_now[rel]
         if oa is None or ob is None:
             return (f"builds on one side only: base {ea or 'ok'!r}, now {eb or 'ok'!r}"
                     if (oa is None) != (ob is None) else None), []

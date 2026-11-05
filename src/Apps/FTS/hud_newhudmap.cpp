@@ -326,7 +326,11 @@ static inline float MaxOf(float a, float b)
  * then multiplies x then z into the variables with 0.5 in f0; this `+=` form gets the loads, the
  * constant and the order but adds into f20/f21 directly; `x = (x + ox) * 0.5f` (either statement
  * first, named or helper temporaries, MidPoint-style inlines taking the sums, `/ 2.0f`, `0.5f *`,
- * a PNT2D or CPnt3D local) makes the x sum first and puts 0.5 in f1 (5-8 instructions) */
+ * a PNT2D or CPnt3D local) makes the x sum first and puts 0.5 in f1 (5-8 instructions). Round
+ * 53: the replay wants 0.5 numbered after both sums; the sums assigned in two arms (`if (obj) {
+ * oz = z + oy; ox = x + ox; } else { the same }`, then `x = ox * 0.5f; z = oz * 0.5f;`) give every
+ * register, 2 off: MW then multiplies `0.5, sum` where the target has `sum, 0.5` (a variable
+ * times a constant is put constant first; `*=`, ternaries, `0.5f *` alike) */
 void CZNewHudMap::FrameObjective()
 {
     float x, z;

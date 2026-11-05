@@ -151,17 +151,16 @@ public:
     virtual bool Start();
     /* every change of state counted on DownloadStateValve, then the base's push (inlined: its
      * copy of the member pointer is the second one, made with ld/sd).
-     * OPEN, 8 instructions: the target loads the valve's value twice -- once for the increment,
-     * once for the setter's comparison (lhu v1; lhu v0; addiu v1,v1,1) -- where every form tried
-     * shares one load: the setter as a static or as a member of a CValve subclass, the value
-     * through an accessor, a local or another pointer, `1 +` first, an Increment() member, the
-     * comparison either way round */
+     * Byte-exact (the states' round 41; 8 instructions off until then): the target loads the
+     * valve's value twice -- once for the increment, once for the setter's comparison (lhu v1;
+     * lhu v0; addiu v1,v1,1) -- which zanim.h's const member GetValue() gives (the README's
+     * round-40 tell, CMission::Tick's); a static accessor taking the valve shares SetValue's load */
     virtual void SetState(const SSMState &state)
     {
         SSMState s = state;
 
         if (m_stateValve)
-            m_stateValve->SetValue(GetValue(m_stateValve) + 1);
+            m_stateValve->SetValue(m_stateValve->GetValue() + 1);
         CSimpleStateMachine::SetState(s);
     }
     virtual void ParseURI(unsigned char event);
@@ -179,8 +178,6 @@ public:
     static void EndOfOpen(void *client, int result, void *data);
     static void EndOfTransaction(void *client, int result, void *data);
 
-    /* a valve's value (ours: CValve::GetValue's shape) */
-    static int GetValue(CValve *valve) { return valve->m_value; }
     /* the path's last component, for DownloadState */
     const char *FileName()
     {

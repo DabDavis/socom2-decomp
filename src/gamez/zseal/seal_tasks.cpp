@@ -147,6 +147,12 @@ bool SetRegionType__7CAiMapsFPCQ26CAiMap6regionQ36CAiMap6region4TYPE(CAiMaps *ma
 const CAiMapRegion *GetRegion__7CAiMapsFPCcR9CAiMapLoc(CAiMaps *maps, const char *name, CAiMapLoc &loc);
 /* and GetLocation(const char *, CAiMapLoc &), a line's cell by name (OVL2 0x52DB70) */
 bool GetLocation__7CAiMapsFPCcR9CAiMapLoc(CAiMaps *maps, const char *name, CAiMapLoc &loc);
+/* the anim's root node, not made when missing (OVL1 0x2703D0, the engine core's row: SOCOM 1's
+ * GetRootNode with a flag), and a node's extension and its parent (zdb::CNode's inline accessors'
+ * out-of-line copies, OVL2 0x5AA610 and 0x5AA600 -- seal_env.cpp's spelling) */
+zdb::CNode *func_002703D0(CZAnim *anim, bool create);
+zdb::CNodeEx *func_005AA610(zdb::CNode *node);
+zdb::CNode *func_005AA600(zdb::CNode *node);
 }
 
 /* a region kind's name (SOCOM 1's CAiMap::region::GetTypeName, out of line there -- 0x2B9AA0, its
@@ -624,12 +630,30 @@ struct TASK_ANIMNAME {
         if (name && ZAnim.m_CurAnim)
             m_name = ZAnim.m_CurAnim->AddName(name);
     }
+    /* the name back from the running anim, none when unset (inline; the name ours: the anim read
+     * here, so the first use shares the caller's earlier load and a later one reloads it) */
+    const char *Get() const
+    {
+        const char *s = 0;
 
-    short m_name;
+        if (m_name != data_00650AA8)
+            s = AnimName(ZAnim.m_CurAnim, m_name);
+        return s;
+    }
+    /* an anim's name of an index, none without the anim (inline: its parameter a variable of its
+     * own, copied into a0 before the test) */
+    static const char *AnimName(CZAnim *anim, int i)
+    {
+        return anim ? anim->GetName(i) : 0;
+    }
+
+    /* (unsigned: the tick's compares read it with lhu) */
+    unsigned short m_name;
 };
 
 /* ai::CREATE (SOCOM II's): an entity cloned from another under a new name (mode 2: the tag "clone"
- * and its two names) or destroyed (4: "destroy" and its name) -- the names ours but the tags' */
+ * and its two names -- the new name first, then the entity copied) or destroyed (4: "destroy" and its
+ * name); mode 1 makes the vehicle entry the block carries at 0x10 -- the names ours but the tags' */
 struct CTCreate : TASK_HDR {
     /* a block made (inline: its arguments read before the allocation, right to left) */
     static CTCreate *Create(const char *src, const char *dst, short mode)
@@ -642,10 +666,11 @@ struct CTCreate : TASK_HDR {
         return c;
     }
 
-    short m_mode;   // 0x8
+    unsigned short m_mode;   // 0x8: flags 1, 2, 4 (the tick tests each with lhu)
     TASK_ANIMNAME m_src;   // 0xa
     TASK_ANIMNAME m_dst;   // 0xc
-    unsigned char _e[0x170 - 0xe];   // 0x170 bytes
+    unsigned char _e[0x10 - 0xe];
+    unsigned char m_entry[0x160];   // 0x10: a CVehicleRdrEntry (0x160 bytes); 0x170 bytes in all
 
     static _zanim_cmd_hdr *Parse(_zrdr *rdr);    /* (RegisterCommands' handlers, unwritten) */
     static bool Tick(_zanim_cmd_hdr *hdr, float *dT);
@@ -700,7 +725,7 @@ struct CTSignal : TASK_HDR {
  * entity it applies to (the names ours but the tags') */
 struct CTSetAnimSet : TASK_HDR {
     unsigned int m_flags;   // 0x8
-    short m_set;   // 0xc: the tag "name", as a name of the running anim's
+    unsigned short m_set;   // 0xc: the tag "name", as a name of the running anim's (a TASK_ANIMNAME's)
     unsigned char _e[0x10 - 0xe];
     TASK_ENT m_ent;   // 0x10: the tag "entity"
 
@@ -981,9 +1006,18 @@ struct CTMap : TASK_HDR {
 };
 
 struct CTParam : TASK_HDR {
+    unsigned char _8[0x10 - 0x8];
+    TASK_ENT m_ent;   // 0x10: an entity whose SEAL is tested in the task's SEAL's place (the tick's)
+
     static _zanim_cmd_hdr *Parse(_zrdr *rdr);
     static bool Tick(_zanim_cmd_hdr *hdr, float *dT);
 };
+
+extern "C" {
+/* the parameter's test on a SEAL and its AI (OVL2 0x5D4770, this unit's, unwritten: the int and
+ * float ai::test instances' caller; the name a placeholder) */
+bool func_005D4770(CZSealBody *seal, CSealCtrlAi *ai, CTParam *cmd);
+}
 
 struct CTState : TASK_HDR {
     static _zanim_cmd_hdr *Parse(_zrdr *rdr);
@@ -1039,8 +1073,8 @@ struct CTLookAt : TASK_HDR {
     unsigned char m_kind : 4;   // 0x18: what is looked at -- 2 the entity (the names ours)
     unsigned char m_looking : 4;   // 0x18 bits 4-7 (bit 4: the look to clear at the end)
     unsigned int m_flags : 16;   // 0x19: the tag "flags", look flags by name (lw/sw: a word's bits)
-    unsigned int m_18_24 : 8;
-    unsigned char _1c[0x28 - 0x1c];
+    unsigned int m_18_24 : 8;   // 0x1b: the direction looked in (kind 3, a CAiMap::DIR)
+    CPnt3D m_pos;   // 0x1c: the point looked at (kind 1)
     TASK_ENT m_ent;   // 0x28: the tag "entity"
 
     static _zanim_cmd_hdr *Parse(_zrdr *rdr);
@@ -1232,7 +1266,8 @@ struct CTComm : TASK_HDR {
 struct CTPlay : TASK_HDR {
     Rfloat m_8;   // 0x8
     Rfloat m_10;   // 0x10
-    unsigned char _18[0x20 - 0x18];
+    float m_18;   // 0x18: m_8 drawn at the start (Begin's)
+    float m_1c;   // 0x1c: m_10 drawn at the start
     signed char m_count;   // 0x20: the anims (SOCOM 1's a bitfield at 0x20 bit 1)
     unsigned char _21;
     unsigned char m_22;   // 0x22: 11 when made, else the tag "stance" (0-2)
@@ -1240,7 +1275,7 @@ struct CTPlay : TASK_HDR {
     unsigned char m_blocking : 1;   // bit 1: the tag "blocking"
     unsigned char _23_2 : 6;
     TASK_ENT m_ent;   // 0x24: the tag "entity"
-    unsigned char _2c[0x30 - 0x2c];
+    int m_2c;   // 0x2c: -1 at the start (Begin's)
     unsigned int m_anims[1];   // 0x30: m_count of them (SOCOM 1's at 0x24)
 
     static CTPlay *Create(int count, unsigned int *anims, float a, float b);
@@ -1482,6 +1517,75 @@ _zanim_cmd_hdr *CTMap::Parse(_zrdr *rdr)
     return &cmd->hdr;
 }
 
+/* the action a node offers, up its tree (CNodeAction::GetAction(node, true) inlined one level, as
+ * seal_env.cpp's ActionOf: the accessors and the recursion called) */
+static inline CNodeAction *TaskActionOf(zdb::CNode *node)
+{
+    CNodeAction *a = 0;
+
+    if (node) {
+        a = dynamic_cast<CNodeAction *>(func_005AA610(node));
+        if (!a)
+            a = CNodeAction::GetAction(func_005AA600(node), true);
+    }
+    return a;
+}
+
+/* the AI maps changed, done at once: the running anim's node action's AI map action marked invalid
+ * and its valve set to 99 (kind 1), a region's type set (2), a line's visibility, type or id set
+ * (3-5, new in SOCOM II) (OVL2 0x5D6770; SOCOM 1's, the line kinds added) */
+bool CTMap::Tick(_zanim_cmd_hdr *hdr, float *dT)
+{
+    CTMap *cmd = (CTMap *)hdr;
+
+    switch (cmd->m_kind) {
+    case 1: {
+        CNodeAction *na = TaskActionOf(func_002703D0(ZAnim.m_CurAnim, false));
+
+        if (na) {
+            CAiMap::action *act = 0;
+            CAiMapLoc loc;
+
+            if (AiMaps.GetActionById(na->m_id, loc, &act)) {
+                act->SetTypeInvalid(1);
+                na->m_valve->SetValue(99);
+            }
+        }
+        break;
+    }
+    case 2: {
+        const CAiMapRegion *r = GetRegion__7CAiMapsFRC9CAiMapLoc(&AiMaps, cmd->m_loc);
+
+        if (r)
+            SetRegionType__7CAiMapsFPCQ26CAiMap6regionQ36CAiMap6region4TYPE(&AiMaps, r, (unsigned char)cmd->m_value);
+        break;
+    }
+    case 4:
+    case 3:
+    case 5: {
+        CAiMap *map = AiMaps.GetMapByIndex(cmd->m_loc.m_mapid);
+        CAiMap::line *l = map ? map->m_lineTable.Find(cmd->m_loc) : 0;
+
+        if (l) {
+            switch (cmd->m_kind) {
+            case 4:
+                l->m_type = cmd->m_value;
+                break;
+            case 3:
+                l->m_unk15 = cmd->m_value != 0;
+                break;
+            case 5:
+                l->m_id = cmd->m_value;
+                break;
+            }
+        }
+        break;
+    }
+    }
+    *dT = 0.0f;
+    return true;
+}
+
 /* anims played: the "anim" list's types (-1 for a name none has), a "stance" (0-2 kept in m_22),
  * "skip_end", the "prewait" and "postwait" periods, "blocking", an "entity" by the running anim's
  * name and the AI's index "ai" (OVL2 0x5D3C80; SOCOM 1's grown -- the stance, skip_end and the
@@ -1657,6 +1761,53 @@ _zanim_cmd_hdr *CTSetAnimSet::Parse(_zrdr *rdr)
         cmd->m_ent.SetName(ent);
     }
     return &cmd->hdr;
+}
+
+extern "C" {
+/* the AI's bored anim set taken (OVL2 0x5605A0, the SEALs' row: seal_ai.cpp's spelling) and a SEAL's
+ * anim set of a name bound (OVL2 0x58C4B0, the SEALs' row, unnamed) */
+bool func_005605A0(CSealCtrlAi *ai, int a);
+void func_0058C4B0(CZSealBody *seal, const char *name);
+}
+
+/* the SEAL's anim set changed -- the task's SEAL's, or with an entity named that SEAL's (found three
+ * times over, as CTSignal::Tick's) -- to the bored one through its AI (flag 2), else to the set named,
+ * made its default with flag 4; done at once (OVL2 0x5D1E00; SOCOM 1's, the entity new) */
+bool CTSetAnimSet::Tick(_zanim_cmd_hdr *hdr, float *dT)
+{
+    CZSealBody *dest;
+    CEntityCtrl *ctrl;
+    TASK_SEAL(CTSetAnimSet);
+    dest = seal;
+    ctrl = dest ? dest->m_control : 0;
+    CSealCtrlAi *ai = dest ? SealAi(dest) : 0;
+
+    if (((const TASK_ENT *)&cmd->m_ent)->m_type) {
+        dest = (CZSealBody *)cmd->m_ent.GetTyped(CEntity::ENT_TYPE_SEAL);
+        CZSealBody *s = (CZSealBody *)cmd->m_ent.GetTyped(CEntity::ENT_TYPE_SEAL);
+
+        ctrl = s ? s->m_control : 0;
+        s = (CZSealBody *)cmd->m_ent.GetTyped(CEntity::ENT_TYPE_SEAL);
+        ai = s ? SealAi(s) : 0;
+    }
+    if (!dest || !ctrl) {
+        *dT = 0.0f;
+        return true;
+    }
+    if (cmd->m_flags & 2) {
+        if (ai)
+            func_005605A0(ai, 1);
+    } else {
+        const char *name = ((const TASK_ANIMNAME *)&cmd->m_set)->Get();
+
+        if (name) {
+            func_0058C4B0(dest, name);
+            if (cmd->m_flags & 4)
+                dest->m_530 = dest->m_animset;
+        }
+    }
+    *dT = 0.0f;
+    return true;
 }
 
 /* a signal by name -- the tag "signal", else the first item when neither tag is there, else for an
@@ -2390,6 +2541,73 @@ void CTLookAt::End(_zanim_cmd_hdr *hdr)
         ClearLook__9CSealCtrlF7AI_LOOK((CSealCtrl *)ctrl, 3);
 }
 
+/* a countdown run down by dt, whether it ended -- an infinite one never does (inline; the name ours:
+ * TASK_TIMER::Update without the redraw, its by-value dt read ahead of the test) */
+static inline bool TaskCountdown(float &timer, float dt)
+{
+    bool done = false;
+
+    if (timer != CAiTimer::infinite) {
+        timer -= dt;
+        done = timer != CAiTimer::infinite && timer <= 0.0f;
+    }
+    return done;
+}
+
+/* the look kept up: once taken the entity's point followed, else -- while the SEAL looks at nothing
+ * above an event -- a point, the entity or a direction taken as the event look with the task's rate,
+ * flags and timer (3 unless timed); a timed look done when its time runs out, an untimed one at once
+ * (OVL2 0x5D73D0; SOCOM 1's, the entity now by TASK_ENT) */
+bool CTLookAt::Tick(_zanim_cmd_hdr *hdr, float *dT)
+{
+    TASK_SEAL(CTLookAt);
+    CEntityCtrl *ctrl = seal ? seal->m_control : 0;
+    CSealCtrlAi *ai = seal ? ((CSealCtrl *)seal->m_control)->GetSealCtrlAi() : 0;
+    bool r;
+
+    if (!seal || !ctrl) {
+        *dT = 0.0f;
+        return true;
+    }
+    if (cmd->m_looking & 4) {
+        if (cmd->m_kind == 2) {
+            CEntity *e = cmd->m_ent.Get();
+
+            if (e)
+                ((CSealCtrl *)ctrl)->SetLookPosW(AIL_EVENT, e);
+        }
+    } else if (((CSealCtrl *)ctrl)->m_look_mode < AIL_CORPSE) {
+        bool ok = false;
+
+        switch (cmd->m_kind) {
+        case 1:
+            ok = ((CSealCtrl *)ctrl)->SetLookPosW(AIL_EVENT, &cmd->m_pos);
+            break;
+        case 2:
+            ok = ((CSealCtrl *)ctrl)->SetLookPosW(AIL_EVENT, cmd->m_ent.Get());
+            break;
+        case 3:
+            ok = ((CSealCtrl *)ctrl)->SetLookDirW(AIL_EVENT, (CAiMap::DIR)cmd->m_18_24);
+            break;
+        }
+        if (ok) {
+            ((CSealCtrl *)ctrl)->SetLookRate(cmd->m_rate);
+            ((CSealCtrl *)ctrl)->SetLookFlags(cmd->m_flags);
+            cmd->m_looking |= 4;
+            if (!(cmd->m_looking & 1))
+                ((CSealCtrl *)ctrl)->SetLookTimer(3.0f);
+            else
+                ((CSealCtrl *)ctrl)->SetLookTimer(cmd->m_timer);
+        }
+    }
+    if (cmd->m_looking & 1)
+        r = TaskCountdown(cmd->m_timer, *dT);
+    else
+        r = true;
+    *dT = 0.0f;
+    return r;
+}
+
 /* the AI's bit 6 (an inline bool: its read is not merged with the set's load of the same byte) */
 inline bool TaskAiBit6(const CSealCtrlAi *ai)
 {
@@ -2516,6 +2734,77 @@ bool CTPaint::Tick(_zanim_cmd_hdr *hdr, float *dT)
     }
     *dT = 0.0f;
     return true;
+}
+
+/* the parameter tested on the task's SEAL, or with an entity named on its SEAL, with its AI -- done
+ * at once (OVL2 0x5D4510; SOCOM 1's, its test inlined there, out of line here: 0x5D4770) */
+bool CTParam::Tick(_zanim_cmd_hdr *hdr, float *dT)
+{
+    TASK_SEAL(CTParam);
+    CSealCtrlAi *ai = seal ? SealAi(seal) : 0;
+
+    if (((const TASK_ENT *)&cmd->m_ent)->m_type)
+        seal = (CZSealBody *)cmd->m_ent.GetTyped(CEntity::ENT_TYPE_SEAL);
+    ai = seal ? SealAi(seal) : 0;
+    bool r = func_005D4770(seal, ai, cmd);
+
+    *dT = 0.0f;
+    return r;
+}
+
+/* the anims' start, for the SEAL -- the task's, or with an entity named that SEAL (found three times
+ * over, as CTSignal::Tick's): the two waits drawn, bit 0 at 0x23 set, the byte at 0x22 cleared and
+ * the word at 0x2C made -1 (OVL2 0x5D3740; SOCOM 1's, the entity new) */
+void CTPlay::Begin(_zanim_cmd_hdr *hdr)
+{
+    CZSealBody *dest;
+    CEntityCtrl *ctrl;
+    TASK_SEAL(CTPlay);
+    dest = seal;
+    ctrl = dest ? dest->m_control : 0;
+    CSealCtrlAi *ai = dest ? SealAi(dest) : 0;
+
+    if (((const TASK_ENT *)&cmd->m_ent)->m_type) {
+        dest = (CZSealBody *)cmd->m_ent.GetTyped(CEntity::ENT_TYPE_SEAL);
+        CZSealBody *s = (CZSealBody *)cmd->m_ent.GetTyped(CEntity::ENT_TYPE_SEAL);
+
+        ctrl = s ? s->m_control : 0;
+        s = (CZSealBody *)cmd->m_ent.GetTyped(CEntity::ENT_TYPE_SEAL);
+        ai = s ? SealAi(s) : 0;
+    }
+    if (!dest || !ctrl)
+        return;
+    cmd->m_18 = cmd->m_8;
+    cmd->m_1c = cmd->m_10;
+    cmd->m_skip_end = 1;
+    cmd->m_22 = 0;
+    cmd->m_2c = -1;
+}
+
+/* the anims' end: the SEAL -- the task's, or with an entity named that SEAL (found three times over,
+ * as CTSignal::Tick's) -- left in no desired state unless the task skips its end (OVL2 0x5D2AA0;
+ * SOCOM 1's, the entity new) */
+void CTPlay::End(_zanim_cmd_hdr *hdr)
+{
+    CZSealBody *dest;
+    CEntityCtrl *ctrl;
+    TASK_SEAL(CTPlay);
+    dest = seal;
+    ctrl = dest ? dest->m_control : 0;
+    CSealCtrlAi *ai = dest ? SealAi(dest) : 0;
+
+    if (((const TASK_ENT *)&cmd->m_ent)->m_type) {
+        dest = (CZSealBody *)cmd->m_ent.GetTyped(CEntity::ENT_TYPE_SEAL);
+        CZSealBody *s = (CZSealBody *)cmd->m_ent.GetTyped(CEntity::ENT_TYPE_SEAL);
+
+        ctrl = s ? s->m_control : 0;
+        s = (CZSealBody *)cmd->m_ent.GetTyped(CEntity::ENT_TYPE_SEAL);
+        ai = s ? SealAi(s) : 0;
+    }
+    if (!dest || !ctrl)
+        return;
+    if (!cmd->m_skip_end)
+        dest->m_desiredState = (SEAL_STATE)0;
 }
 
 /* a block made for a count of anims, copied when given (OVL2 0x5D3F00: SOCOM 1's CTPlay::Create, out
@@ -2769,8 +3058,92 @@ _zanim_cmd_hdr *CTRegion::Parse(_zrdr *rdr)
 class CMission {
 public:
     void RefreshTeamValves();
+    /* an entry's vehicle made and an entity put back in the pool (OVL1 0x2B28D0, 0x2B2310: the
+     * states' rows; ai::CREATE's tick calls both) */
+    CEntity *LoadVehicle(CVehicleRdrEntry *entry, bool b);
+    void RecycleEntity(CEntity *e);
+
+    unsigned char _0[0x1814];
+    /* the vehicle file's entries (OVL1 bss 0x437CF4: an entity's m_vehicle_index indexes them) */
+    CVehicleRdr *m_vehicles;   // 0x1814
 };
 extern CMission theMission;
+
+extern "C" {
+/* a SEAL's health at a damage location scaled, its death handed on at none (OVL2 0x5A5790:
+ * seal_env.cpp's, unnamed) */
+void func_005A5790(CZSealBody *seal, unsigned char loc, float scale);
+}
+
+/* an entity if it is a SEAL, none else -- and one by name (inline: tested as branches, outside
+ * Get's switch; the names ours) */
+static inline CEntity *TypedEntity(CEntity *e)
+{
+    return e && e->m_type == CEntity::ENT_TYPE_SEAL ? e : 0;
+}
+static inline CEntity *TypedEntity(const char *name)
+{
+    return TypedEntity(CEntity::GetEntityList().GetEntity(name));
+}
+
+/* an entity made from another's vehicle entry under a new name, a SEAL of the AI's side joined to
+ * no squad and its brain started (mode 2), or a SEAL killed, switched off and put back in the pool
+ * (mode 4), the running anim refreshed after either; mode 1 makes the block's own entry's vehicle
+ * (Parse never sets it) -- done at once, dT untouched (OVL2 0x5DD990; SOCOM II's command, the AI
+ * asked for and unused).
+ * OPEN, 0x3BC against 0x3CC (6 structural, 29 register-only): where the anim's name is read with the
+ * running anim the caller already holds (the clone's source, the destroyed SEAL's name) the target
+ * copies s0 into a0 and tests a0 (`move a0,s0; beqz a0`, a nop padding the join), MW here tests s0
+ * and moves it in the call's delay slot -- the anim read in Get, passed to a static inline, an if in
+ * place of the ternary, `anim` declared at the top: all alike (build/scratch/kit/v_create1.py);
+ * and the registers: the target's clone source s3, new name s2, made SEAL s1 (the block's), the
+ * destroyed SEAL s1 and its node s2 -- here s2, s1, s2, s2, s1 (`tools/igreplay.py --want` over the
+ * five found no numbering in its 200 s budget: the copy's node is missing from this graph) */
+bool CTCreate::Tick(_zanim_cmd_hdr *hdr, float *dT)
+{
+    TASK_SEAL(CTCreate);
+    CSealCtrlAi *ai = seal ? SealAi(seal) : 0;
+    CZAnim *anim = ZAnim.m_CurAnim;
+
+    if (cmd->m_mode & 1)
+        theMission.LoadVehicle((CVehicleRdrEntry *)cmd->m_entry, false);
+    else if (cmd->m_mode & 2) {
+        const char *from = cmd->m_dst.Get();
+        const char *name = cmd->m_src.Get();
+        CEntity *e = name ? TypedEntity(from) : 0;
+
+        if (e) {
+            CVehicleRdr *rdr = theMission.m_vehicles;
+            unsigned int i = e->m_vehicle_index;
+            CVehicleRdrEntry *entry = i < rdr->size() ? &(*rdr)[i] : 0;
+
+            if (entry) {
+                CZSealBody *s = (CZSealBody *)TypedEntity(theMission.LoadVehicle(entry, false));
+
+                if (s) {
+                    s->m_bit13 = 1;
+                    s->m_node->SetName(name);
+                    s->SetTeamMask(1);
+                    InitalizeSealUnit__9CSealUnitFP10CZSealBodyP9CSealUnit(s, 0);
+                    SealAi(s)->InitAiBrain();
+                    anim->Refresh(false);
+                }
+            }
+        }
+    } else if (cmd->m_mode & 4) {
+        CZSealBody *s = (CZSealBody *)TypedEntity(cmd->m_src.Get());
+
+        if (s) {
+            zdb::CNode *node = s->GetNode();
+
+            func_005A5790(s, 0, 0.0f);
+            node->SetActive(false);
+            theMission.RecycleEntity(s);
+            anim->Refresh(false);
+        }
+    }
+    return true;
+}
 
 /* the SEAL joins or leaves the teams, its AI's events, its squad and the team valves brought up to
  * it; ismember does nothing here (OVL2 0x5CEA40; SOCOM 1's, which updated the AI's events only --
