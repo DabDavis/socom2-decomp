@@ -1379,7 +1379,10 @@ static inline void RequestRay(CDiPool::dir *&slot, const CPnt3D &eye, const CPnt
  * saved registers and a 240-byte frame; every shape here leaves the team and the Sub arguments
  * s5-relative inside the walk (a reference parameter for the team, a cone struct whose member
  * inline hoists EVERY field's address instead, the request through an inline taking the slot by
- * reference): 208 bytes, eight saved registers */
+ * reference): 208 bytes, eight saved registers; SOCOM 1's CAiCone (zwep_projectile.cpp's IsInCone
+ * shape: a const member taking the apex, the axis and the point) hoists every cone field's address
+ * as the member struct did (0x37C) -- the target folds the scalars' and hoists only the vector's and
+ * the apex's */
 extern "C" void func_003A7A40(CTurret *t)
 {
     CAiViewer v(t, (char *)t + 0x204);
