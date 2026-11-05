@@ -2065,6 +2065,25 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the world, rdr and sound, round 21** (CHeap::Alloc at last, SaveEncrypt, GetColor, TestFOV, both
+  NormalizeWeights, BuildProjectedMapList; five CSnd functions named):
+  - MW ORDERS ITS CODE BEFORE COLOURING BY WHERE AN INDEPENDENT LOAD SITS AMONG THE INITIALISATIONS: CHeap::Alloc
+    0x34EEB0's last 3 instructions came only from placing the list-head load -- every local initialised in its
+    declaration, the free list's head included (6 of 5,040 orders; all 1,957 orders of the old initialisations failed);
+  - a reference local bound to `v[k]` is a front-end temporary numbered below the data pointer's, reading `v[k]` at each
+    use colours as the target (Particle::Props::GetColor 0x328860); an array declared in the outer block before a loop
+    takes a higher frame slot than a struct copied inside the loop, and `c[i] = CPnt4D(...)` evaluates the constructor's
+    arguments right to left (CTextureAssetCharacters::TestFOV 0x31C440); one counter shared by three loops numbers the
+    size and mode-offset temporaries as the target's registers want (CSndGroup / CSndJukebox::NormalizeWeights);
+  - a member's address held in a named local and passed to an inline is read through that pointer after the first
+    block, passed straight it is folded into every load; a span test `bool t = false; if (!(v + r < lo)) if (v - r <= hi)
+    t = true;` with bounds by `const &` gives the preset false in the delay slot and loads the upper bound only when
+    needed (CPipe::BuildProjectedMapList 0x339470); the new key into an unsigned char local first, then `buf[i] ^= key;
+    key = nk;` (SaveEncrypt 0x33DC30);
+  - a value updated through an inline's `float &` parameter is reloaded after each store, on the member in place MW
+    forwards the stored value (CWind::Tick 0x414 of 0x418, OPEN); a member array whose constructor the inline budget cuts
+    is built by a loop calling CPnt3D() out of line, a local array in a helper cut one level unrolls into 8 calls
+    (CShadowCaster(), OPEN); CSnd's Get / SetMasterVolume, End / Release / TickGroupVolTemp named (ours).
 - **Tells from the SEALs, round 45** (the new unit seal_orders.cpp; CSealCtrl's TickVictims, SampleActionAvailable,
   TickPickups):
   - A UNIT BETWEEN TWO: seal_orders.cpp (ours) is OVL2 0x58DBB0-0x58FBDF -- seal_cfg.cpp's template tail (0x58CE70-
