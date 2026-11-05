@@ -4585,7 +4585,10 @@ unsigned char UiGetDirStickMoved();
  * the pad state's load numbered last); named locals for any of them (dead first definitions too)
  * are copy-propagated away and change nothing, the compare's operands swapped reorders the loads
  * (18), the tests in SOCOM 1's order (event tests first) gets the temporaries but not the saved
- * registers (22) */
+ * registers (22). Round 53: the pad's state as a two-armed value (`a->State == (a->Event ?
+ * pad->m_state[a->Event] : pad->m_state[a->Event])`, CUIListBox::HandlePad's close) gives the
+ * state a0, 8 off: the event and the pad's state then swap (a2/a1); the replay wants the pad's
+ * load numbered before the event's (v83 -> 78.5) or the event's after it (v79 -> 84.5) */
 bool C2DButton::HandlePad(const CPad *pad, int port)
 {
     if (!CanHandleInput())
