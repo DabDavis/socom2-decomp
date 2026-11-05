@@ -167,7 +167,14 @@ int CDIPoly::GetAltitude(DiIntersect *di)
  * OPEN, 15-16 instructions, the target's size (0xC0): the set-up's registers and order only -- the
  * target extracts the count (a3) before it forms the hit's address and keeps p in a1 and the
  * normal's address in v1, ours p a3, normal a1, count v1; all 120 declaration orders and every
- * dependency-respecting initialisation order give 15 at best (build/scratch/core/v_poly_ord*.py) */
+ * dependency-respecting initialisation order give 15 at best (build/scratch/core/v_poly_ord*.py).
+ * Round 16, the replay (tools/igreplay.py --want n=a3,p=a1,norm=v1,is=a2,last=v0): every hit numbers
+ * n first of the locals (33.5) and p after the hit count's shift temporary (v40, >= 40.5) -- p
+ * defined after `is`'s address is formed; the target's temporaries differ too (its Intersects load
+ * v0, the flags v1), so the flags are read before the hit's address in the original. n first, p
+ * late, a dead first definition, the count or the list in a local: 15-21 (build/scratch/core/v_poly3.py);
+ * a goto label, a do/while(0) or a label alone between the asm and the test merges away (MW keeps
+ * one block: the C zero still goes ahead of the load, v_bbt_lbl.py) */
 int CDIPoly::GetIntersect(DiIntersect *di)
 {
     IntersectStruct *is = &di->m_Intersects[di->m_Cnt];
@@ -213,7 +220,11 @@ int CDIPoly::GetIntersect(DiIntersect *di)
  * 1.0f constant trade v1/a1 (the target loads the mask into a1). The asm's operands listed tail
  * first fixed the address pair; tried for the rest (build/scratch/core/v_ltt*.py): the mask in a
  * const or plain local (top, middle, a dead first definition), the 1.0f in a local before or after,
- * the w through an int pointer, an int array index, unsigned, a float cast, tip built first */
+ * the w through an int pointer, an int array index, unsigned, a float cast, tip built first.
+ * Round 16, the replay: the target's registers need the mask's load numbered ahead of the 1.0f
+ * constant (v36 below v35: every one of the 15 hits) -- the mask read before the tail's CPnt4D is
+ * made; a named local is folded back into the store (README: a local read once), and a dead first
+ * definition, a reference to the w or the 1.0f in a local give 6 (build/scratch/core/v_ltt3.py) */
 void DiIntersect::LoadTipAndTail()
 {
     CPnt4D tip, tail;
