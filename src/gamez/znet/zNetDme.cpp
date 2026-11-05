@@ -373,6 +373,21 @@ int CZNetwork::zNetUpdate()
     return err;
 }
 
+extern "C" int func_006237E0();   /* (the DME's tick: SOCOM 1's NetTick) */
+
+/* the DME ticked, an error handed to the lobby's recovery, then the lobby's own tick; the DME's
+ * answer returned (SOCOM 1's zNetTick, a tail call to NetTick: NetTickThreadEntry calls it at the
+ * same site in both builds, and it sits just before zNetUpdate in both; OVL1 0x30D9B0) */
+int CZNetwork::zNetTick()
+{
+    int err = func_006237E0();
+
+    if (err)
+        theLobby.RecoverFromNetError(err);
+    theLobby.Tick();
+    return err;
+}
+
 /* the queued application messages sent and freed, the queue emptied (SOCOM 1's zNetUpdate did it
  * in place; OVL1 0x30D900, the name ours). The end into a local, then clear(): include/list's
  * begin() reads the first node through a reference to the sentinel, so &end_.next_ is computed

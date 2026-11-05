@@ -148,6 +148,8 @@ public:
      * sltu, 0x2EE540) */
     unsigned int zNetGetLocalTime();
     int zNetUpdate();
+    /* the DME's and the lobby's tick (SOCOM 1's, 0x30D9B0: the network thread's) */
+    int zNetTick();
     void zNetFlushMessages();
     void AddToFixList(TypeRTimeFixStruct *fix);
     void zNetPlayFixList();
