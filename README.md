@@ -2065,6 +2065,107 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the HUD, round 55** (c2dfont.cpp: LoadJamo, LoadVowelRangeLayouts, Load, Compose, LoadChar):
+  - CHangulFont::LoadJamo 0x35B4B0 by the online lobby's round-23 rule: ReadRect made static, the target keeps a0 across
+    it -- with the rectangle's corners a one-int class (a struct of class-typed members copies through $f0, plain ints
+    with lw / sw), each UL block found into a local before the call, an int counter with the map key passed as a
+    temporary `(int)j` (an int counter bound to map[]'s `const int &` key stays in memory), the style's name through an
+    inline (FlatFindString: wrapping a plain call in an inline numbers its result with the temporaries, after the
+    caller's named locals -- `--move name=45.5`);
+  - MW evaluates call arguments that are calls right to left -- to evaluate the left one first, put it in a local; a
+    `FindIntAt(rdr, tag, &v, def)` inline (`*v = def; findint; return *v;`) gives "default stored in the call's delay
+    slot, value loaded straight after", the ints' declaration order setting their slots (CHangulFont::Load 0x35B7F0,
+    C2DFont::LoadChar 0x35BEF0); `return i >= 0 && (unsigned)i < n ? a[i] : 0;` gives the target's lookup shape;
+  - `int s = (g->m_code = code.m_code) - K;` loads the code once; member reads taken into locals before any store let MW
+    hoist the loads above the stores (CHangulFont::Compose 0x3599D0); testing through the Type() inline loads the byte
+    once; `Own(new X)` evaluates the new first -- the target's release-then-new is `Release(); m_owned = new X;`; an
+    iterator assigned from find() is reloaded at its dereference, one initialised at its declaration is not (AddJamo 22
+    -> 2, GetGlyph at the target's size: OPEN).
+- **Tells from the UI, round 28** (CFileCD::BuildTOC, CGameMenu::Tick and ParseButtonAnim -- all unwritten before; zui.cpp
+  84 of 85):
+  - AN INLINE'S RESULT LEFT UNSET ON SOME PATH IS LIVE FROM FUNCTION ENTRY and takes a saved register (CGameMenu::Tick
+    0x3654C0's two visibility switches call through whatever that register held when the node has no 2D visual);
+    assigning the clamp constant before a call lets MW put it in the call's delay slot using the compare's register;
+  - one variable reused for two disjoint ranges is split by MW: the second range becomes a temporary numbered after the
+    loop optimiser's, its spill slot below the loop's pointers (CFileCD::BuildTOC 0x39DFD0's `sectors`; m_CDmode is
+    Sony's sceCdRMode, the lowest file sector a signed int); locals declared uninitialised at the top number before a
+    later-initialised local;
+  - in an if / else chain a constant assigned to an unsigned char local compiles to daddiu, to an int li; in `b = find();
+    item->Type = X; item->Pad = Get(b);` the store lands in Get's delay slot, with find() inside Get's argument in find's;
+    MW hoists a loop-invariant float negation only when some use computes it on every path (GetStickDir's `-y`; StickAbs's
+    `-x` in one ternary arm is not -- CGameMenu::HandlePad 0x368650, OPEN at 72); field compares written as named bools
+    ahead of inlined calls give the target's eager sltiu block, inside the && chain they are lazy;
+  - ParseButtonAnim 0x365D50: ActionItem::EVENT spelled with all 63 names read off its compare chain; HandlePad's event
+    44 is USBKBD_ENTER (HID usages 40 and 88: Enter and keypad Enter).
+- **Tells from the world, rdr and sound, round 23** (CWind::Tick at last, open since round 14; Particle::Draw,
+  CmdParseWind, CValve::CmdParseCmp, CSnd::LoadSounds' LoadCSnd; zparticle_props.cpp split off):
+  - ON FLOATS `v > lo ? v : lo` COMPILES AS `!(v <= lo)`: `c.le.s v,lo; bc1t` with the value's arm first, `v <= lo ? lo :
+    v` puts the bound's arm first, `y >= 0 ? a : b` is likewise `!(y < 0)` -- earlier rounds' misaligned diffs hid that
+    this fixes CWind::Tick 0x31B350's clamps (the zenith clamped by value, the sums in azimuth / zenith / speed order, the
+    wind's z through a reference local, y written into the vector and read back for the scale);
+  - a float literal passed to an inline by `const T &` is read from memory, by value or in place it is a lui immediate;
+    a reference local to a member defined between two calls keeps the member's address in a saved register from there
+    on; a value stored into a member and read back uses the forwarded register and schedules the compare late, a local
+    copy moves it up; `PNT2D r = { 0.0f, 0.0f };` zeroes in place, `PNT2D r = PNT2D();` copies a zeroed temporary and
+    costs a saved register;
+  - ONE EXTRA SAVED REGISTER IN THE PROLOGUE SHIFTS EVERY LATER LABEL and adds or removes MW's 8-byte label-pad nops: fix
+    the saved registers before chasing nops; Particle::Draw 0x324DB0 is DrawPrep's body without its depth then
+    DrawFlush's, written in place (called, neither inlines);
+  - A UNIT BOUNDARY EXPLAINED AN INLINE: Props::GetOpacity is called out of line because the properties code is a unit of
+    its own -- zparticle_props.cpp at 0x3286D0-0x3294AF (the name ours), right after ~List, the instance unit's registered
+    destructor; SOCOM 1 has the same layout; the `#pragma auto_inline off` stand-in is retired; LoadSounds' six statics
+    named by SOCOM 1's symbols (cur_mission_name, CSnd::m_curID / m_curbank, the three rdr handles) and respelled --
+    SAME-BY-ADDRESS by the GCC front's round-35a objcmp; `int Count()` measured -25 (zrdr's finders, CRdrFile::Pack,
+    hudInit, ZWepReader::Read): not applied.
+- **Tells from the game states, round 43** (Sample_ExtractionLoc and ftsFixupAiMap -- unblocked by the one CSaferStr;
+  fts_mission.cpp's stand-ins retired):
+  - fts_mission.cpp now includes ai_maps.h (ai.h, zentity.h): its own CAiMapLoc, CCompassAnchor, CCompass, CAiMaps (the
+    nav points are `AiMaps.m_names[1]`), CEntity / CEntityList, CAiEvent and CTarget / CTargetList stand-ins are gone,
+    CZSealBody a subclass of CEntity. A HEADER'S LITERAL BOUND TO A CONST REFERENCE EMITS AN ANONYMOUS .data WORD IN
+    EVERY UNIT THAT INCLUDES IT, used or not (ai.h's ForEachCell: two 4-byte zeros) -- every later `@N` rank shifts while
+    the code is unchanged, so plain objcmp reports DIFF; aligned by content (the states' ocdetail.py --align-anon) every
+    existing function is identical;
+  - a result assigned inside its test (`if (!(p = f()))`) branches on v0 with the copy in the delay slot, assigned first
+    and tested after, the copy comes first and the branch tests the saved register; `for (iterator i = begin(), e =
+    end(); ...)` gives the iterator and end other saved registers than declaring them before the loop
+    (CMission::Sample_ExtractionLoc 0x2A42B0);
+  - MW numbers inliner temporaries in the inliner's order, not source order -- a named local lands among them only by
+    merging into one (a reference initialised from an inline accessor: `ActionTable(map)`, a marked numbering device);
+    reusing one variable for a second lookup (`pickup = zrdr_findtag(pickup, "AMMO")`) gives one node, a separate
+    variable is numbered ahead of the loop's temporaries; an owner read through a ternary merges into the ternary's
+    temporary and spills below a later named reference; `Create(...)->m_timer = g;` loads the global before the call and
+    keeps it in $f20 across it (ftsFixupAiMap 0x2A8140, by igdump / igreplay; aiMapPlaceItem 0x2A8C90 named by SOCOM 1's
+    two calls); st_exit.cpp / st_menu.cpp call CGameMenu::Tick by name (SAME-BY-ADDRESS).
+- **Tells from the SEALs, round 48** (CSealCtrlAi::SetAiEnabled; the reticule getters to source; fourteen rows named):
+  - SOCOM 1 counterparts sitting in the same run, at the same sizes and with the same bodies, name several rows at once:
+    SOCOM 1's ImpactFront calls Climb three times, ClimbOver once and AlignForClimb once, exactly as 0x5B2620 does
+    (ClimbOver 0x580A80, Climb 0x580B70, ImpactFront, AlignForClimb 0x5B1A10, PostCheckDIDown, PopBlend); CheckAnim,
+    CrouchMoveControl, MoveControl, ProneControl and UpdateQuadrant by SOCOM 1's order and callers; GetReticuleSeal
+    0x5AA690, GetReticuleDi 0x5AA6D0 and CheckDIShoot 0x5AA6E0 an exact run after CacheReticuleSeal in both builds;
+  - a data static's second witness can come from a function whose identity its callers fix: AnimTypes::StepUp 0x3DEC80
+    through Climb, which pushes it in the two switch arms where SOCOM 1's Climb pushes StepUp;
+  - MW if-converts `r = false; if (A && B) r = true;` into `r = A ? B : 0` when A is a materialised inline bool -- with A a
+    plain branch it keeps the "zero, then set" shape (0x555420, OPEN); `r = true` in a switch case while the switch's
+    constant 1 sits in a register compiles to `andi rX, rOne, 0xff`, not daddiu; SetAiEnabled 0x574830's alarm constant
+    is `0.0333f` (0x3D086595), not 1/30.
+- **Tells from the kit and AI states, round 49** (CTPlay::Tick and CTInView::Tick at last; the rush's SetTarget and
+  OnSignal, the surrender's OnSignal):
+  - A CAST THROUGH A LEAF TEMPLATE INLINE (`template <class T> T *TaskBlock(hdr) { return (T *)hdr; }`) MAKES THE LOCAL
+    THE INLINE'S RESULT TEMPORARY, numbered after every named and inline variable -- what CTPlay::Tick 0x5D2F30's block
+    needed (the replay accepted any number past the second find's counter; a cast inline with its own local stays 76
+    off); `cmd->m_2c == top->m_animType` gives the xor's operand order;
+  - a walk's end written `data_ + size()` in a local inline keeps the data pointer from the entry test and re-reads only
+    the count each pass -- in place, through a reference or a pointer local, MW hoists the whole end or re-reads both
+    (CTInView::Tick 0x5D7FD0's team walk: TaskTargetsEnd; the MSL's 0x60F760 shape gives 0x6C4 here); floats reused
+    inside an inline held in named locals are numbered with the inline's variables, ahead of the lowering temporaries
+    (the cone's depth and fraction);
+  - a call result assigned to its own local and copied to the result at once keeps the case's tests on v0, with the copy
+    in the delay slot, when the result lives in a saved register; an inline argument read after a call must be taken
+    into a local after that call, or MW reads it after a ternary argument (CAiSSurrender::OnSignal 0x607D70's inlined
+    ClearTeamMask); a function-local static object with an inline constructor (`static Rfloat s(3.0f, 5.0f)`) gives the
+    target's guard and folded stores -- `@LOCAL@` / `@GUARD@` data rows resolve every relocation (CAiSRush::OnSignal
+    0x6036B0; SetTarget 0x603690 named by SOCOM 1's 0x2E51D0, the same words, between the rush's Tick and OnSignal in
+    both builds).
 - **Tells from the engine core, round 17** (CCamera::Update; the clutter's TickForce, Render, the list's Render and the
   anim manager's tick -- SOCOM 1's; the tether and camera data rows named):
   - INLINE TEMPORARIES ARE LAID OUT IN EXPANSION ORDER: in a nested expression the outer operator's result and copy take

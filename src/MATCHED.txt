@@ -3486,6 +3486,7 @@
 0x002A4270 HasMessages__13CMessageQueueFv
 0x002A4290 __ct__14CQueuedMessageFv
 0x002A42A0 func_002A42A0
+0x002A42B0 Sample_ExtractionLoc__8CMissionFv
 0x002A45F0 RecoverFromNetError__8CMissionFi
 0x002A4600 _RecoverFromNetError__8CMissionFi
 0x002A47B0 func_002A47B0
@@ -3510,7 +3511,8 @@
 0x002A7560 func_002A7560
 0x002A75F0 UnInitialize__9CZNetGameFv
 0x002A7D40 OnMissionStart__8CMissionFv
-0x002A8C90 func_002A8C90
+0x002A8140 ftsFixupAiMap__FP6CAiMap
+0x002A8C90 aiMapPlaceItem__FPQ23zdb5CNodeRC6CPnt3DiPC6CPnt3DPC6CPnt3D
 0x002A8F30 __ct__6CPnt3DFfff
 0x002A8F50 GetClosestLadder__11CLadderListFPC6CPnt3Df
 0x002A90F0 GetLadderByNode__11CLadderListFPQ23zdb5CNodei
@@ -5145,7 +5147,9 @@
 0x0031B0C0 SetFoliageSound__Q23zdb6CWorldFPCc
 0x0031B130 Reset__5CWindFv
 0x0031B1B0 TickGoal__5CWindFf
+0x0031B350 Tick__5CWindFf
 0x0031B770 CmdTickWind__5CWindFP14_zanim_cmd_hdrPf
+0x0031B9A0 CmdParseWind__5CWindFP5_zrdr
 0x0031C2F0 RegisterAnimCommands__5CWindFv
 0x0031C320 __ct__Q23zdb23CTextureAssetCharactersFPQ23zdb9CAssetLibPQ23zdb5CNodePQ23zdb11CDynTexList
 0x0031C440 TestFOV__Q23zdb23CTextureAssetCharactersFPQ23zdb7CCamera
@@ -5274,6 +5278,7 @@
 0x00324B20 Open__8ParticleFv
 0x00324C30 Init__8ParticleFv
 0x00324C70 DrawRange__8ParticleFff
+0x00324DB0 Draw__8ParticleFv
 0x00325080 bufferPtrCompare__8ParticleFRCPQ28Particle13BufferElementRCPQ28Particle13BufferElement
 0x003250B0 DrawFlush__8ParticleFv
 0x00326A00 DrawPrep__8ParticleFv
@@ -5716,6 +5721,7 @@
 0x00343550 PlaySound__4CSndFP12CSndInstanceUi
 0x003435A0 GetSubtitles__4CSndFv
 0x003435B0 SetSubtitles__4CSndFb
+0x003435C0 LoadCSnd__4CSndFP5_zrdr
 0x00343DD0 LoadBank__4CSndFPCc
 0x00343F90 AddNewCSnd__4CSndFP4CSnd
 0x00344090 LoadSounds__4CSndFPCcPCc
@@ -6001,6 +6007,7 @@
 0x003530D0 CmdParseVWatch__6CValveFP5_zrdr
 0x00353260 CmdTickVBit__6CValveFP14_zanim_cmd_hdrPf
 0x00353270 CmdParseVBit__6CValveFP5_zrdr
+0x003535D0 CmdParseCmp__6CValveFP5_zrdr
 0x00353C70 ParseValveName__14VALVE_CMD_DATAFPCcRi
 0x00353D00 CmdTickCmp__6CValveFP14_zanim_cmd_hdrPf
 0x00353D10 ParseOperator__6CValveFPCc
@@ -6096,6 +6103,7 @@
 0x00359590 Load__13C2DBitmapPolyFffffffffPQ23zdb8CTexture
 0x00359640 __ct__13C2DBitmapPolyFv
 0x00359740 advance_to__Q23std38__list_imp<PCv,Q23std14allocator<PCv>>FUi
+0x003599D0 Compose__11CHangulFontFP8C2DGlyph7C2DCharP7C2DFont
 0x0035A140 __ct__Q221@unnamed@c2dfont_cpp@10CFontPointFRCQ221@unnamed@c2dfont_cpp@10CFontPoint
 0x0035A160 SetY__Q221@unnamed@c2dfont_cpp@10CFontPointFi
 0x0035A170 SetX__Q221@unnamed@c2dfont_cpp@10CFontPointFi
@@ -6113,8 +6121,12 @@
 0x0035A7B0 GetWidth__8C2DGlyphFv
 0x0035A840 ReadRect__FPC5_zrdrPC5_zrdr
 0x0035AA80 ReadPlacement__FPC5_zrdr
+0x0035AB70 LoadVowelRangeLayouts__11CHangulFontFRQ23std48vector<9CSaferStr,Q23std21allocator<9CSaferStr>>PC5_zrdrRCQ23std48vector<9CSaferStr,Q23std21allocator<9CSaferStr>>
 0x0035B2C0 LoadLeadUsage__11CHangulFontFPC5_zrdrRCQ23std48vector<9CSaferStr,Q23std21allocator<9CSaferStr>>
+0x0035B4B0 LoadJamo__11CHangulFontFRQ23std48vector<9CSaferStr,Q23std21allocator<9CSaferStr>>PC5_zrdr4JAMO
+0x0035B7F0 Load__11CHangulFontFPC5_zrdr
 0x0035BD80 LoadElems__8C2DGlyphFPC5_zrdri
+0x0035BEF0 LoadChar__7C2DFontFPC5_zrdr
 0x0035C2C0 AddPiece__8C2DGlyphFPC5_zrdrPC5_zrdri
 0x0035C620 func_0035C620
 0x0035C630 find<Us>__Q23std186__tree<Q23std19pair<CUs,8C2DGlyph>,Q33std80map<Us,8C2DGlyph,Q23std8less<Us>,Q23std38allocator<Q23std19pair<CUs,8C2DGlyph>>>13value_compare,Q23std38allocator<Q23std19pair<CUs,8C2DGlyph>>>FRCUs_Q33std186__tree<Q23std19pair<CUs,8C2DGlyph>,Q33std80map<Us,8C2DGlyph,Q23std8less<Us>,Q23std38allocator<Q23std19pair<CUs,8C2DGlyph>>>13value_compare,Q23std38allocator<Q23std19pair<CUs,8C2DGlyph>>>8iterator
@@ -6264,7 +6276,9 @@
 0x00365210 PreGetSprPacket__23CDblBufTextureRelocatorFPQ23zdb10CTexHandle
 0x003653C0 Init__23CDblBufTextureRelocatorFv
 0x003654A0 func_003654A0
+0x003654C0 Tick__9CGameMenuFf
 0x00365A00 SwitchMenu__9CGameMenuFPc
+0x00365D50 ParseButtonAnim__FP5_zrdrP10ActionItem
 0x00366730 PrepModels__9CGameMenuFRC14CGameDlgDesign
 0x00366940 TickMPEG__9CGameMenuFv
 0x00366A00 RestartBackgroundMPEG__9CGameMenuFPCc
@@ -7021,6 +7035,7 @@
 0x0039DEA0 __ct__7CFileCDFv
 0x0039DEF0 Find__7CFileCDFPCc
 0x0039DFC0 func_0039DFC0
+0x0039DFD0 BuildTOC__7CFileCDFv
 0x0039E4F0 CreatePath__7CFileCDFPcPc
 0x0039E600 fflush__7CFileIOFv
 0x0039E610 ftell__7CFileIOCFv
@@ -9532,6 +9547,7 @@
 0x00573FF0 __dt__9CAiEventQFv
 0x00574730 get_valve__11CSealCtrlAiFPCc
 0x00574800 GetJumpFlag__11CSealCtrlAiCFv
+0x00574830 SetAiEnabled__11CSealCtrlAiFbb
 0x00574AE0 StopAiSound__11CSealCtrlAiF8AI_SOUND
 0x00574B30 PlayAiSound__11CSealCtrlAiF8AI_SOUND
 0x00574BA0 SetAiAccuracyAngle__11CSealCtrlAiFf
@@ -9647,7 +9663,7 @@
 0x005804E0 func_005804E0
 0x005805B0 func_005805B0
 0x005807D0 func_005807D0
-0x00580A80 func_00580A80
+0x00580A80 ClimbOver__10CZSealBodyFf
 0x00581110 BlendedClimb__10CZSealBodyFf
 0x005812C0 Hang_0__10CZSealBodyFii
 0x00581430 SetStanceIdle__10CZSealBodyF8AnimType
@@ -9983,8 +9999,8 @@
 0x005AA600 func_005AA600
 0x005AA610 func_005AA610
 0x005AA620 CacheReticuleSeal__10CZSealBodyFb
-0x005AA690 func_005AA690
-0x005AA6D0 func_005AA6D0
+0x005AA690 GetReticuleSeal__10CZSealBodyFv
+0x005AA6D0 GetReticuleDi__10CZSealBodyFv
 0x005AB590 func_005AB590
 0x005AB850 HandleDamage__10CZSealBodyFP12CZProjectile
 0x005ABBC0 HandleDamageNonExplosive__10CZSealBodyFP12CZProjectileP10CZBodyPartP15DAMAGE_LOCATION
@@ -10026,7 +10042,7 @@
 0x005B1570 func_005B1570
 0x005B1750 func_005B1750
 0x005B1890 func_005B1890
-0x005B1A10 func_005B1A10
+0x005B1A10 AlignForClimb__10CZSealBodyFbR6CPnt3DR6CPnt3DP6CPnt3D
 0x005B3A60 func_005B3A60
 0x005B4F30 SealGetAltitude__10CZSealBodyFP6CPnt3Df
 0x005B5050 HandleSmokeAndGas__10CZSealBodyFPQ23zdb15IntersectStructPC11CMaterialExPC6CPnt3D
@@ -10265,6 +10281,7 @@
 0x005D28A0 Parse__8CTSelectFP5_zrdr
 0x005D29F0 Create__8CTSelectFP10CZSealBody
 0x005D2AA0 End__6CTPlayFP14_zanim_cmd_hdr
+0x005D2F30 Tick__6CTPlayFP14_zanim_cmd_hdrPf
 0x005D3740 Begin__6CTPlayFP14_zanim_cmd_hdr
 0x005D3C80 Parse__6CTPlayFP5_zrdr
 0x005D3F00 Create__6CTPlayFiPUiff
@@ -10287,6 +10304,7 @@
 0x005D73D0 Tick__8CTLookAtFP14_zanim_cmd_hdrPf
 0x005D7850 Begin__8CTLookAtFP14_zanim_cmd_hdr
 0x005D7E70 Create__8CTLookAtFPCc
+0x005D7FD0 Tick__8CTInViewFP14_zanim_cmd_hdrPf
 0x005D8690 Parse__8CTInViewFP5_zrdr
 0x005D8840 Tick__9CTInStateFP14_zanim_cmd_hdrPf
 0x005D8B80 Parse__9CTInStateFP5_zrdr
@@ -10670,7 +10688,8 @@
 0x00601F20 OnSignal__11CAiSHostageFQ28CAiState6SIGNALP11CSealCtrlAi
 0x00602B20 ShouldAvoid__FP10CZSealBodyP10CZSealBodyf
 0x00602D10 OnSignal__9CAiSAvoidFQ28CAiState6SIGNALP11CSealCtrlAi
-0x00603690 func_00603690
+0x00603690 SetTarget__8CAiSRushFP10CZSealBody
+0x006036B0 OnSignal__8CAiSRushFQ28CAiState6SIGNALP11CSealCtrlAi
 0x00604340 func_00604340
 0x00604390 func_00604390
 0x006043F0 GetStatus__15CAiSPathRecoverCFv
@@ -10697,6 +10716,7 @@
 0x00607650 OnSignal__8CAiSHoldFQ28CAiState6SIGNALP11CSealCtrlAi
 0x00607830 func_00607830
 0x00607D10 CanPushAiState__13CAiSSurrenderF8AI_STATEP11CSealCtrlAi
+0x00607D70 OnSignal__13CAiSSurrenderFQ28CAiState6SIGNALP11CSealCtrlAi
 0x00608050 func_00608050
 0x00608060 Tick__10CAiSNoAmmoFP11CSealCtrlAi
 0x00608290 OnSignal__10CAiSNoAmmoFQ28CAiState6SIGNALP11CSealCtrlAi

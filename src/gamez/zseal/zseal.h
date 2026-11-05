@@ -121,6 +121,10 @@ public:
     /* (SOCOM 1's SwapRifle, six after Stand2Prone in both builds: the weapon swap's blends,
      * 0x57D5E0, are looked up again unless it is on the stack) */
     static short SwapRifle;   // OVL1 0x3DEC78
+    /* (SOCOM 1's StepUp, 0x4751E0, the next after SwapRifle and two before ClimbMedium in both
+     * builds: CanTraverse reads it where SOCOM 1's does, and Climb 0x580B70 pushes it in the two
+     * switch arms SOCOM 1's Climb pushes it in -- the SEALs, rounds 47 and 48) */
+    static short StepUp;   // OVL1 0x3DEC80
     static short ClimbMedium;   // OVL1 0x3DEC90
     /* (SOCOM 1's ClimbOver, 0x4751F0, eight after Stand2Prone in both builds: SealAnim 0x5870E0 tests
      * the current blend against it where SOCOM 1's SealAnim does -- the SEALs, round 47) */
@@ -919,7 +923,7 @@ enum SEAL_TASK { TASK_0 = 0, TASK_LAST = 255 };
 
 /* a route's state (a byte enum: copied with lb, compared with lbu; the names ours -- 1 and 2 are
  * the two a reset ends) */
-enum AI_ROUTE { ROUTE_NONE = 0, ROUTE_1 = 1, ROUTE_2 = 2 };
+enum AI_ROUTE { ROUTE_NONE = 0, ROUTE_1 = 1, ROUTE_2 = 2, ROUTE_3 = 3 };
 
 /* the destructors the AI's data runs by hand (its members' own, out of line: a route's (OVL2
  * 0x573F20, the implicit destructor of a CAiPath plus a byte), CAiEvent's (0x573F80) and
@@ -1278,6 +1282,9 @@ public:
      * 0x3DF188) and the frame's counts the task clears (SOCOM 1's aiActiveCount, aiSleepingCount and
      * aiSnoozingCount, OVL1 bss 0x44D4B8-0x44D4C8) */
     static bool PreTick(float dT, void *data);
+    /* the AI switched on or off for every SEAL the AI drives, and the alarm with it (SOCOM 1's static
+     * SetAiEnabled(bool, bool): OVL2 0x574830, seal_ai.cpp) */
+    static void SetAiEnabled(bool on, bool alarm);
     static bool aiEnabled;
     static int aiActiveCount;
     static int aiSleepingCount;
@@ -1903,6 +1910,10 @@ public:
      * lane's seal_handsig.cpp) */
     static void InitHandSignals();
     AnimType DoHandSignal(SEAL_HANDSIGNAL sig);
+    /* the climbs (SOCOM 1's ClimbOver and Climb, before BlendedClimb in both builds and called from
+     * ImpactFront in both, $f12 set: OVL2 0x580A80, 0x580B70 -- the SEALs, round 48; ClimbOver's
+     * float is never read) */
+    void ClimbOver(float h);
     /* the stances' blends (SOCOM 1's seal_body.cpp, in its order: BlendedClimb 0x581110 to Stand
      * 0x581DC0 -- Stand_0 gained a float in SOCOM II) */
     CZBodyAnimBlend *BlendedClimb(float h);
@@ -1975,6 +1986,9 @@ public:
     void SetHudHitFlag();
     bool HudUpdateViewCone();
     bool GetHudHitFlag();
+    /* a climb's homing aimed at a wall (SOCOM 1's AlignForClimb: OVL2 0x5B1A10, seal_env.cpp -- the
+     * SEALs, round 48) */
+    void AlignForClimb(bool done, CPnt3D &intpt, CPnt3D &at, CPnt3D *wall);
     /* the terrain a SEAL can cross: an int, the callers make it a bool (seal_env.cpp) */
     int CanTraverse(CDIType type);
     bool CanClimbWall();
@@ -1994,6 +2008,11 @@ public:
     class CPickup *GetProximityWeapon(class CPickup **secondary);
     class CPickup *GetProximityMPBomb();
     void CacheReticuleSeal(bool on);
+    /* the SEAL under the reticule -- the one kept while it is cached -- and the hit under the reticule
+     * (SOCOM 1's GetReticuleSeal and GetReticuleDi, after CacheReticuleSeal in both builds: OVL2
+     * 0x5AA690, 0x5AA6D0 -- the SEALs, round 48) */
+    CZSealBody *GetReticuleSeal();
+    zdb::IntersectStruct *GetReticuleDi();
     /* the MP bomb picked up (SOCOM 1's; OVL2 0x59DEF0) */
     void HandlePickupMPBomb(CPickup *pickup);
     /* a console's request for one of the SEAL's pickups answered: the ammunition taken and the

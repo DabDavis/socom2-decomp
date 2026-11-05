@@ -3,8 +3,8 @@
  * SOCOM 1's (its __sinit_zparticle_buf.cpp; SOCOM II's 0x402BB0 builds <iostream>'s pair and the
  * 5000 32-byte elements at 0x45C4D0 with the constructor 0x326F40). SOCOM 1's demo holds DrawRange to the element's
  * constructor in this order. Defined in reverse of their image order (-inline deferred). Written
- * so far: DrawRange, DrawFlush, the sort's comparison and DrawPrep (its zqsort instance, 0x326C30,
- * declared only). */
+ * so far: DrawRange, DrawFlush, the sort's comparison, DrawPrep (its zqsort instance, 0x326C30,
+ * declared only) and Draw. */
 
 #include <eetypes.h>
 #include <iostream>
@@ -270,6 +270,55 @@ float DrawPrep()
         return ElementDepth(*pParticleBuf);
     }
     return 0.0f;
+}
+
+/* SOCOM 1's: the frame's particles drawn whole (CPipe::CAlpha::Render's call when its draw list is
+ * empty): DrawPrep's body without its depth, then DrawFlush's -- written out, as the target holds
+ * both (called, neither inlines: 0x24). Byte-exact (the world lane round 23) */
+void Draw()
+{
+    Source::RenderBBox();
+    if (numParticles) {
+        unsigned int *p = (unsigned int *)zSysSprGetPacket(0);
+
+        p[0] = 0x1000000A;
+        p[1] = 0x19191919;
+        p[2] = 0;
+        p[3] = 0;
+        for (unsigned int i = 1; i <= 10; i++) {
+            p[i * 4] = 0x11000000;
+            p[i * 4 + 1] = 0;
+            p[i * 4 + 2] = 0;
+            p[i * 4 + 3] = 0;
+        }
+        zSysFifoKick((u_long128 *)p, 11);
+        for (int j = 0; j < numParticles; j++)
+            bufferPtr[j] = &buffer[j];
+        zqsort(bufferPtr, numParticles, bufferPtrCompare);
+        pParticleBuf = &bufferPtr[numParticles - 1];
+    }
+    m_lastTexture = 0;
+    while (pParticleBuf >= bufferPtr) {
+        BufferElement *e = *pParticleBuf;
+        float (&m)[4][4] = thePipe.m_camera->m_mtx->m;
+
+        switch (e->m_instance->m_source->m_drawType) {
+        case PT_BILLBOARD:
+            e->Draw(m);
+            break;
+        case PT_ROTATED:
+            e->DrawRotated(m);
+            break;
+        case PT_STREAKED:
+            e->DrawStreaked(m);
+            break;
+        case PT_XZ:
+            e->DrawXZ(m);
+            break;
+        }
+        pParticleBuf--;
+    }
+    m_lastTexture = 0;
 }
 
 }

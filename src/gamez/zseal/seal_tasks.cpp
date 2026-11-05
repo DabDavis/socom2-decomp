@@ -154,10 +154,8 @@ bool SetRegionType__7CAiMapsFPCQ26CAiMap6regionQ36CAiMap6region4TYPE(CAiMaps *ma
 const CAiMapRegion *GetRegion__7CAiMapsFPCcR9CAiMapLoc(CAiMaps *maps, const char *name, CAiMapLoc &loc);
 /* and GetLocation(const char *, CAiMapLoc &), a line's cell by name (OVL2 0x52DB70) */
 bool GetLocation__7CAiMapsFPCcR9CAiMapLoc(CAiMaps *maps, const char *name, CAiMapLoc &loc);
-/* the anim's root node, not made when missing (OVL1 0x2703D0, the engine core's row: SOCOM 1's
- * GetRootNode with a flag), and a node's extension and its parent (zdb::CNode's inline accessors'
- * out-of-line copies, OVL2 0x5AA610 and 0x5AA600 -- seal_env.cpp's spelling) */
-zdb::CNode *func_002703D0(CZAnim *anim, bool create);
+/* a node's extension and its parent (zdb::CNode's inline accessors' out-of-line copies, OVL2
+ * 0x5AA610 and 0x5AA600 -- seal_env.cpp's spelling) */
 zdb::CNodeEx *func_005AA610(zdb::CNode *node);
 zdb::CNode *func_005AA600(zdb::CNode *node);
 }
@@ -306,12 +304,21 @@ struct TASK_HDR {
  * the `if` MW branches on p), each `return p` a block of its own (`b` to the join: a `goto` alone
  * folds into the compare). Then the argument's cast and its SEAL, as the inline's GetParam/GetSeal
  * did; a handler adds its controller or AI. A macro: the original's spelling is unknown -- this is
- * the one shape found that numbers the block between the counter and the list. */
-#define TASK_SEAL(T)                                                        \
+ * the one shape found that numbers the block between the counter and the list. TASK_SEAL_AS(T, BLOCK)
+ * takes the block's expression: TaskBlock<T>(hdr), the cast through a leaf template inline, makes the
+ * block the inline's result temporary -- numbered after every named and inline variable (the kit's
+ * round 49: CTPlay::Tick, whose block follows its second, inlined find). */
+template <class T> inline T *TaskBlock(_zanim_cmd_hdr *hdr)
+{
+    return (T *)hdr;
+}
+
+#define TASK_SEAL(T) TASK_SEAL_AS(T, (T *)hdr)
+#define TASK_SEAL_AS(T, BLOCK)                                              \
     unsigned int type = ai_cmdid[2];                                        \
     int index = ((TASK_HDR *)hdr)->m_param;                                 \
     int i;                                                                  \
-    T *cmd = (T *)hdr;                                                      \
+    T *cmd = BLOCK;                                                         \
     CZAnimArgList *list = ZAnim.m_CurAnim->m_arg_list;                      \
     _zanim_cmd_hdr *found;                                                  \
                                                                             \
@@ -516,7 +523,10 @@ struct TASK_ENT {
         }
     }
     /* the entity: by the name until it is found, then by its id -- unless it carries bit 13 (new in
-     * SOCOM II), when the name is asked again each time; none for no name (inline; the name ours) */
+     * SOCOM II), when the name is asked again each time; none for no name (inline; the name ours).
+     * The name's entity a local of its own, copied to the result at once: where the result lives in
+     * a saved register the case's tests and reads stay on the call's v0 and the copy fills the first
+     * test's delay slot (CTInView::Tick 0x5D7FD0, the kit's round 49); one variable tests the copy */
     enum TYPE { TYPE_NONE = 0, TYPE_NAME = 1, TYPE_ID = 2 };
 
     CEntity *Get()
@@ -528,16 +538,18 @@ struct TASK_ENT {
         case TYPE_NONE:
             break;
         case TYPE_NAME: {
-            e = CEntity::GetEntityList().GetEntity(anim ? anim->GetName(m_name) : 0);
-            m_id = e ? e->m_id : CEntity::invalidId;
+            CEntity *n = CEntity::GetEntityList().GetEntity(anim ? anim->GetName(m_name) : 0);
+
+            e = n;
+            m_id = n ? n->m_id : CEntity::invalidId;
 
             /* preset, then cleared under two materialised tests: `else byId = byId;` keeps the
              * inner test a branch */
             bool byId = true;
-            bool gone = !(bool)e;
+            bool gone = !(bool)n;
 
             if (!gone) {
-                bool off = !(bool)e->m_bit13;
+                bool off = !(bool)n->m_bit13;
 
                 if (!off)
                     byId = false;
@@ -1576,7 +1588,7 @@ bool CTMap::Tick(_zanim_cmd_hdr *hdr, float *dT)
 
     switch (cmd->m_kind) {
     case 1: {
-        CNodeAction *na = TaskActionOf(func_002703D0(ZAnim.m_CurAnim, false));
+        CNodeAction *na = TaskActionOf(ZAnim.m_CurAnim->GetRootNode(false));
 
         if (na) {
             CAiMap::action *act = 0;
@@ -1945,7 +1957,9 @@ _zanim_cmd_hdr *CTTurret::Parse(_zrdr *rdr)
  * compares load their constants fresh (`li v1,1`) where MW here shares the 1 with `r` (`li a2,1`),
  * and it leaves the id ternary's delay slot empty (`beqz v0; nop`); CTRange::Tick (byte-exact
  * through the same TASK_ENT::Get) has neither; `r` before or after the AI, assigned apart, no AI
- * local: no change. The turret's type test, materialised in the target (sltu; beqz; lbu; xori 3;
+ * local: no change; the kit's round 49: the padded label sits between Get's anim load and its
+ * switch, after the AI's join -- the AI an if/else, an if over a 0 preset, the plain call, `r = seal ?
+ * true : true`, the block through TaskBlock<T>: 0x274 each. The turret's type test, materialised in the target (sltu; beqz; lbu; xori 3;
  * sltiu; movz -- the `&&` as a value, then the select), is TASK_ENT::GetTyped's (round 37: inside
  * the inline that holds Get's switch it stays a value; in the caller every spelling folded it into
  * branches -- build/scratch/kit-r36/v_turret*.py) */
@@ -1984,17 +1998,23 @@ _zanim_cmd_hdr *CTInView::Parse(_zrdr *rdr)
 }
 
 /* the view cone as the controller keeps it -- seal_sensors.cpp's view of zseal.h's padded CSealCtrl
- * (SOCOM 1's CAiCone at 0x70, its ContainsPoint inlined) */
+ * (SOCOM 1's CAiCone at 0x70, its ContainsPoint inlined). The depth and its fraction of the height
+ * held in named floats of the inline (`d`, `k`): numbered with the inline's variables, before the
+ * vector's temporaries, the depth keeps the target's $f6 and the fraction's product its operand
+ * order (CTInView::Tick; seal_sensors.cpp's copy, m_dot read straight, is SensorTick's) */
 struct TASK_CONE {
     bool ContainsPoint(const CPnt3D *p)
     {
         p->Sub(&m_cone_pos, &vec);
-        m_dot = m_cone_dir.x * vec.x + m_cone_dir.y * vec.y + m_cone_dir.z * vec.z;
-        if (m_dot <= 0.0f || m_dot > m_height)
-            return false;
-        float r = m_point_radius + m_dot * m_inv_height * m_radius;
+        float d = m_cone_dir.x * vec.x + m_cone_dir.y * vec.y + m_cone_dir.z * vec.z;
 
-        if (vec.z * vec.z + (vec.x * vec.x + vec.y * vec.y) - m_dot * m_dot <= r * r)
+        m_dot = d;
+        if (d <= 0.0f || d > m_height)
+            return false;
+        float k = d * m_inv_height;
+        float r = m_point_radius + k * m_radius;
+
+        if (vec.z * vec.z + (vec.x * vec.x + vec.y * vec.y) - d * d <= r * r)
             return true;
         return false;
     }
@@ -2014,25 +2034,35 @@ struct TASK_CONECTRL {
     TASK_CONE m_view_cone;   // 0x70
 };
 
+/* a target list's end as the data plus the count read through the const size() (an inline of ours,
+ * standing for an end() the original's vector likely had: include/vector's end() measured that way
+ * loses 128 functions -- the MSL headers' round 30): a walk keeps the data pointer from its entry
+ * test and re-reads only the count each pass, through &m_targets in a register (CTInView::Tick) */
+inline CTargetList::iterator TaskTargetsEnd(CTargetList &l)
+{
+    CTarget *const p = l.data_ + l.size();
+
+    return CTargetList::iterator(p);
+}
+
 /* whether the viewer -- the task's SEAL, or the entity named if a SEAL (found three times over, as
  * CTSignal::Tick's: the SEAL, then its controller and its AI, unused but for the calls) -- holds the
  * item named and sees the target entity: in its targets and visible (bit 9), and for a player's SEAL
  * inside its view cone; or, for a team, any target of the team visible (OVL2 0x5D7FD0; SOCOM 1's
- * without the cone, the item test and the entities by name or id).
- * OPEN, 0x6AC against 0x6BC: every block but the team walk's end is the target's (the cone through
- * a controller local -- its fields addressed off the controller, as the target's s0 -- the result
- * preset after the three finds). THE WALK'S END: the target keeps &m_targets in a1 and the data
- * pointer from the entry test in v0, and re-reads only the SIZE every pass (`lw a3,4(a1)`, size*48
- * rebuilt) -- seal_aivehicle.cpp's 0x60F760 open shape: written in place MW re-reads the data and
- * keeps size*48 (0x6B4), through a reference or a pointer local, a const walk or an index it hoists
- * the whole end (0x6AC; an index 0x68C). And the numbering: the target colours the result s0, the
- * viewer s1 and dT s2 -- here dT, spill-picked last, takes s0 under every declaration order tried
- * (the result or the viewer first, preset or not; igreplay --move of either moves only the rest) */
+ * without the cone, the item test and the entities by name or id). The cone through a controller
+ * local (its fields addressed off the controller, as the target's s0), the result preset after the
+ * three finds. Byte-exact (the kit's round 49, open since round 48) by four pieces: THE WALK'S END
+ * through TaskTargetsEnd (above: the target keeps the data from the entry test in v0 and re-reads
+ * only the count, `lw a3,4(a1)` -- written in place, through a reference, a pointer local, a const
+ * walk or an index MW hoisted the whole end, 0x6AC, or re-read both, 0x6C4); THE BLOCK through
+ * TaskBlock<T>(hdr), numbered as a temporary (CTPlay::Tick's: the find's variables then take the
+ * target's s4-s1 and dT s2); TASK_ENT::Get's name lookup on a local of its own (the target's tests
+ * on v0, the result's copy in the delay slot); the cone's depth and fraction in named floats */
 bool CTInView::Tick(_zanim_cmd_hdr *hdr, float *dT)
 {
     CZSealBody *dest;
     CEntityCtrl *ctrl;
-    TASK_SEAL(CTInView);
+    TASK_SEAL_AS(CTInView, TaskBlock<CTInView>(hdr));
     dest = seal;
     ctrl = dest ? dest->m_control : 0;
     CSealCtrlAi *ai = dest ? SealAi(dest) : 0;
@@ -2068,7 +2098,7 @@ bool CTInView::Tick(_zanim_cmd_hdr *hdr, float *dT)
             } else {
                 CTargetList &targets = dest->m_targets;
 
-                for (CTargetList::iterator t = targets.begin(); t != targets.end(); t++) {
+                for (CTargetList::iterator t = targets.begin(); t != TaskTargetsEnd(targets); t++) {
                     if (cmd->m_team & t->m_ent->m_team) {
                         done = (t->m_flags & 0x200) != 0;
                         if (done)
@@ -2981,21 +3011,21 @@ found_it:
  * asked for the death anim, the body dropped, the stack cleared and the SEAL killed unless
  * invincible; a CQB pushed with the AI's bit 6 set; any other pushed unless it plays on top), then
  * waiting, blocking, while it plays; the second wait run down -- done once it ends (OVL2 0x5D2F30;
- * SOCOM 1's, the states, the entity and the CQB push new).
- * OPEN, registers only (0x808 at the target's size, 514 instructions, every opcode the target's):
- * the shape is the target's -- the draw an if/else with the rand in a local (a padded label, as
- * CTSound's), the stance a ternary (an unpadded join: the stance merges into its temporary, numbered
- * after the anim's type), the killer's find an inline with the index a local after its type (s3/s2),
- * blocking an if/else of two stores, the invincible bit `? true : false` (its sltu). MW's colouring
- * replayed (tools/igreplay.py --target) gives every register of the target once the BLOCK (`cmd`) is
- * numbered after the second find's inline variables (`--move 39=58.5`: 0 differ) -- a temporary's
- * place, where the macro's named local takes s4 for s0. Tried: the block through a cast inline, a
- * template inline and a void cast (76-86 off) */
+ * SOCOM 1's, the states, the entity and the CQB push new). The draw an if/else with the rand in a
+ * local (a padded label, as CTSound's), the stance a ternary (an unpadded join: the stance merges into
+ * its temporary, numbered after the anim's type), the killer's find an inline with the index a local
+ * after its type (s3/s2), blocking an if/else of two stores, the invincible bit `? true : false` (its
+ * sltu). THE BLOCK through TaskBlock<CTPlay>(hdr), a leaf template inline returning the cast: the
+ * block becomes the inline's result temporary, numbered after the second find's variables -- MW's
+ * colouring replayed wants it anywhere past that find's counter (tools/igreplay.py --target, `--move
+ * 39=55.5` and up: 0 differ), the macro's named local took s4 for s0 (86 off); a cast inline with a
+ * local, or the cast outside the inline, stays 76 off. The last compare `cmd->m_2c ==
+ * top->m_animType` (its xor's operand order). Byte-exact (the kit's round 49). */
 bool CTPlay::Tick(_zanim_cmd_hdr *hdr, float *dT)
 {
     CZSealBody *dest;
     CEntityCtrl *ctrl;
-    TASK_SEAL(CTPlay);
+    TASK_SEAL_AS(CTPlay, TaskBlock<CTPlay>(hdr));
     dest = seal;
     ctrl = dest ? dest->m_control : 0;
     CSealCtrlAi *ai = dest ? SealAi(dest) : 0;
@@ -3069,7 +3099,7 @@ bool CTPlay::Tick(_zanim_cmd_hdr *hdr, float *dT)
         break;
     case 4: {
         CZBodyAnimBlend *top = (CZBodyAnimBlend *)func_00555170(&dest->m_blends);
-        bool same = top ? top->m_animType == cmd->m_2c : false;
+        bool same = top ? cmd->m_2c == top->m_animType : false;
 
         if (!same)
             cmd->m_22 = 3;
@@ -3428,7 +3458,14 @@ bool CTCreate::Tick(_zanim_cmd_hdr *hdr, float *dT)
  * s2, counter s3, the SEAL sharing the counter's; here the block s3, the counter and the SEAL s2) --
  * the target colours the block before the SEAL where every other handler's allocation is numbering
  * order; the find's five declarations in all 60 orders (build/scratch/kit/v_team2.py, best 17), the
- * controller/AI order, the team local first, a second block pointer after the AI: none moves it */
+ * controller/AI order, the team local first, a second block pointer after the AI: none moves it.
+ * The kit's round 49: MW's colouring replayed against the target (`tools/igreplay.py --target --movers`
+ * over the counter, the block and the SEAL) gives it in 224 numberings, every one with the SEAL --
+ * here the find's ternary temporary, numbered after every named local -- ahead of the block: the SEAL
+ * a variable numbered before `cmd`. A dead first definition (`CZSealBody *seal = 0;` first, after the
+ * index, after the counter) and a ternary reading it (`seal = param ? param->m_seal : seal`) leave the
+ * colouring as it is (MW folds the 0 in), an `if (param) seal = ...` costs 3 instructions (0x200);
+ * the block through TaskBlock<T> (a temporary, CTPlay's) stays 20 off */
 bool CTTeam::Tick(_zanim_cmd_hdr *hdr, float *dT)
 {
     TASK_SEAL(CTTeam);
