@@ -245,7 +245,11 @@ void CAmmoDisplay::SetTrans(float trans)
  * into a0. The argument is an int narrowed inside (On passes the cached word whole; an unsigned
  * char parameter makes On narrow it), and the load ternary (where an `if (own) tex = ...` pads its
  * join with a nop) fixes the tail; tried: `mags & 0xff`, a byte enum, an unsigned char local, a
- * signed char -- each leaves the same swap. */
+ * signed char -- each leaves the same swap. Round 54's replay (igreplay --want 38=v1,40=a0): the
+ * narrowed count (v40) must be numbered among the named locals (31.5-37.5), or the case constant 1
+ * (v38) after it (40.5-42.5); a named unsigned char local before or after `own` (initialised,
+ * assigned, dead-zeroed first, an int of the cast) and an inline narrowing it (by parameter, cast or
+ * local) all fold back to the same temporary: 7. */
 void CAmmoDisplay::SetMags(int mags, zdb::CTexHandle *tex)
 {
     bool own = true;
