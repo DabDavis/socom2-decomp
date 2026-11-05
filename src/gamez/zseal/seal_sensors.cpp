@@ -122,7 +122,13 @@ inline bool TestSensorBit(const CBits *bits, unsigned int i)
  * ternary, the word by pointer) gives 8 -- the word's index computed first again. Round 41: `w = m & w`
  * with the word a local (declared first or after the mask, a dead first definition of the mask) gives
  * 10, a copy of `m &= word` returned 2, the shot-at state's mask-parameter inline (TestBits, either
- * argument order) 8 */
+ * argument order) 8. Round 43, MW's colouring replayed (tools/igreplay.py on the `return (1 << (i & 31))
+ * & word` variant, `--move` of its andi, 1 and sllv below the word's address chain gives every target
+ * register): the target numbers the mask chain first and ANDs into a fresh temporary -- `m &=` keeps the
+ * order but writes the mask's own vreg (no numbering splits them), and every fresh-result shape (30
+ * more: `% 32` / `/ 32` trees, inline mask helpers, dead, self and `|= 0` definitions, a const or bool
+ * local, casts hiding the load, `1UL`) propagates the mask back and computes the word's address first
+ * (8); `m = 1; m <<= s` forms keep a fresh result but number the 1 before the amount (4) */
 extern "C" bool func_005CB450(CSealCtrlAi *ai, CPickup *p, CZWeapon *w)
 {
     bool go;
