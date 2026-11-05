@@ -920,38 +920,37 @@ int casrGetUserWordNbrRecsNeeded(CASR *c, int *n)
     return err;
 }
 
-/* OPEN (and casrGetLastWarning): the target if-converts the magic test into a flag (li 11,
- * movz 0) and branches on it, after testing the null handle by itself; SOCOM 1's build has this
- * plain guard. The guard, a ?: macro, an inline checker, a single-exit flag: all compile to
- * branches (12 words of 16).
- * Round 24c: the flag is block-local in the target -- local-alloc gives it a0 and p moves to a1
- * (`move a1,a0`) -- so the null test cannot set it: through casrCheckHandle the null path carries
- * the 6 to the flag's test (0x38-0x3C), and `if (c == 0) return 11; if (casrCheckHandle(c) != 0)
- * return 11;` (the inline's own null test then folded away) gives every insn but reorg's slots
- * (0x3C: here both branches copy the return's `li v0,11`, the target fills the null test's slot
- * from the fall-through -- its magic constant's lui scheduled ahead of the load -- leaves the flag
- * test's empty and keeps `li v0,11` in its own `jr`'s slot; build/scratch/gcc/r24c/v_gle*.py:
- * a magic-only inline, the compare's operands either way round, == first, alike). */
+/* The getters' failure return is written after the success path (round 25c): the target lays the
+ * success block first, its jump to the return turned into its own `jr` (the store in its slot), and
+ * the two failure tests' shared `return 11` last -- reorg then fills the null test's slot from the
+ * fall-through (the magic's lui).
+ * Rounds 2b-24c had the guard first (a plain guard, a ?: macro, an inline checker, a single-exit
+ * flag): one shared return, each failure branch's slot stealing the `li v0,11` (0x30-0x3C). The
+ * magic test is the inline checker's (`li 11; movz` -- its own null test folded into the caller's;
+ * round 24c). Four spellings of the layout match (an && guard, nested ifs, a goto, if/else into
+ * one result); written as the first. */
 int casrGetLastError(CASR *c)
 {
     int err;
 
-    if (c == 0 || c->magic != CASR_MAGIC)
-        return CASR_ERR_HANDLE;
-    err = c->last_error;
-    c->last_error = 0;
-    return err;
+    if (c != 0 && casrCheckHandle(c) == 0) {
+        err = c->last_error;
+        c->last_error = 0;
+        return err;
+    }
+    return CASR_ERR_HANDLE;
 }
 
 int casrGetLastWarning(CASR *c)
 {
     int err;
 
-    if (c == 0 || c->magic != CASR_MAGIC)
-        return CASR_ERR_HANDLE;
-    err = c->last_warning;
-    c->last_warning = 0;
-    return err;
+    if (c != 0 && casrCheckHandle(c) == 0) {
+        err = c->last_warning;
+        c->last_warning = 0;
+        return err;
+    }
+    return CASR_ERR_HANDLE;
 }
 
 int casrGetSignalLevel(CASR *c, unsigned short *level)
