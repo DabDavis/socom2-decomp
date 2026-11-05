@@ -2065,6 +2065,21 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the game states, round 38** (0x2B8100 at last, the online rooms' chat line, fts_net_persona.cpp whole):
+  - FORWARDING IS THE IR OPTIMISER'S: MW's forwarding of a single-use local is mweppc's expression propagation
+    (IroPropagate), within one flow-graph node only -- `?:`, `&&` and `||` become branches, so any of them between a
+    definition and its use keeps the definition in place (HitPacketHandler 6 -> 2: a ternary on the flag stops the
+    conversion local being forwarded; AddMission's cause found the same way, OPEN: no reproduction flag adopted);
+  - the first-declared local takes the highest frame slot (0x2B8100: the points declared facing, side, up -- the only
+    one of 24 orders giving up 160 / side 176 / facing 192 -- with round 37's numbering and the `rand() %` draw as an
+    inline of its own, which pads the join and keeps the nop in the zero arm's `b`);
+  - locals declared uninitialised at the top are numbered there in declaration order; a pointer read through an explicit
+    if/else bounds test stays a named variable, through an inline accessor it merges into the inline's result temporary
+    (numbered after all named locals); an inline's by-value argument is loaded ahead of the inline's first test, landing
+    in that test's delay slot (CreateLocalPersona 0x2C5450);
+  - a bool-returning call in an `||` chain keeps its andi only written `!= false`; switching on an enum held in a local
+    gives lb + andi, and `default` passes the lb value on (CheckStateSwitch 0x2C3CF0); OnStateChange 0x2B3BE0 named --
+    slot 0x64 of CSealCtrlCopy's table in both builds, `jr ra; nop` in both (OVL2's 0x58A710 its other copy).
 - **Tells from the kit and AI states, round 43** (CAnimTypeRec::GetGroup -- anim.cpp whole -- and CZKit::CurMagHasAmmo):
   - a copy `y = x` reaching `return y` on a path where x is unchanged is returned as x itself, in v0 -- a conversion on
     the copy stops it (GetGroup 0x5E56D0, open since round 10: a const cursor with the group cast back); return types
