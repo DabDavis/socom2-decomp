@@ -2065,6 +2065,20 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the game states, round 46** (CCinematicState::Init and Tick, both unwritten before -- st_core.cpp's
+  CCinematicState whole; four placeholders respelled):
+  - an array indexed by its own counter, stepped in the for's increment, is strength-reduced to a pointer stepped in the
+    loop branch's delay slot; indexed by a loop variable the body also steps (`if (more) i++`) it is recomputed
+    (CCinematicState::Tick 0x1ED010: 0x544 -> 0x54C);
+  - a reference to an element bound BEFORE the null test (`C2DString *&cur = m_items[i]; if (cur)`) puts its address in
+    the test's delay slot and gives later uses that one CSE (Tick: 61 -> 19 -> 0); a member read into a float local ahead
+    of a pointer-storing loop is loaded once, compared in place it is reloaded every iteration;
+  - one `return` after an if / else makes the early path branch to the shared `move v0,zero`, an early `return` fills its
+    own delay slot; naming a loop bound (`int half = len / 2`) computes it before the counter's zero; a flag stored to a
+    spilled local keeps its source side of a call;
+  - byte flags set through an inline setter number the reloaded object as the inline's variable after the value --
+    written in place the registers swap (CCinematicState::Init 0x1ED560: 14 -> 0); a global read through a named local
+    (`CHUD *hud = theHUD`) numbers its load ahead of the next expression's temporaries (21 -> 14).
 - **Tells from the HUD, round 57** (CTCM::Select, open since round 27; HandleClosedPad, TickFullScreenAnims and SetGBarVal,
   all unwritten before):
   - a copy MW makes for a loop in the null test's delay slot comes from a second variable defined BEFORE the test -- here a

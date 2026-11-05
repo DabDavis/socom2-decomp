@@ -1422,6 +1422,8 @@
 0x001ECCF0 UnInit__15CCinematicStateFv
 0x001ECF60 FreeVector<Q23std48vector<9CMovieCue,Q23std21allocator<9CMovieCue>>>__FRQ23std48vector<9CMovieCue,Q23std21allocator<9CMovieCue>>_v
 0x001ED000 clear__Q23std48vector<9CMovieCue,Q23std21allocator<9CMovieCue>>Fv
+0x001ED010 Tick__15CCinematicStateFf
+0x001ED560 Init__15CCinematicStateFv
 0x001EDA60 SetMovie__15CCinematicStateFPCcUcUc
 0x001EDE70 end__Q23std56__vector_imp<9CMovieCue,Q23std21allocator<9CMovieCue>,0>Fv
 0x001EDE90 begin__Q23std56__vector_imp<9CMovieCue,Q23std21allocator<9CMovieCue>,0>Fv
