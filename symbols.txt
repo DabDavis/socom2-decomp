@@ -5686,14 +5686,14 @@
 0x00324B20 0x104 Open__8ParticleFv  # OVL1; s1:calls
 0x00324C30 0x34 Init__8ParticleFv  # OVL1; s1:align
 0x00324C70 0x13C DrawRange__8ParticleFff  # OVL1; s1:align
-0x00324DB0 0x2CC func_00324DB0  # OVL1
+0x00324DB0 0x2CC Draw__8ParticleFv  # OVL1; s1:calls by hand (the world lane round 18: SOCOM 1's CAlpha::Render calls Draw__8ParticleFv when the draw list is empty, as SOCOM II's Render calls this there, its only caller; 0x2CC against SOCOM 1's 0x148)
 0x00325080 0x28 bufferPtrCompare__8ParticleFRCPQ28Particle13BufferElementRCPQ28Particle13BufferElement  # OVL1; s1:order by hand (SOCOM 1's bufferPtrCompare, 0x2C there, between Draw and DrawFlush: the two elements' depths at 0x1C subtracted, the float's bits returned) -- the rdr lane
 0x003250B0 0xFC DrawFlush__8ParticleFv  # OVL1; s1:align
 0x003251B0 0x3CC Draw__Q28Particle13BufferElementFRA4_A4_f  # OVL1; s1:calls by hand (DrawFlush calls it for draw type 0 with the pipe camera's view matrix, as SOCOM 1's DrawFlush calls BufferElement::Draw; the first case block) -- the rdr lane
 0x00325580 0x73C DrawRotated__Q28Particle13BufferElementFRA4_A4_f  # OVL1; s1:calls by hand (DrawFlush calls it for draw type 1, as SOCOM 1's calls DrawRotated) -- the rdr lane
 0x00325CC0 0x68C DrawXZ__Q28Particle13BufferElementFRA4_A4_f  # OVL1; s1:calls by hand (DrawFlush calls it for draw type 2, as SOCOM 1's calls DrawXZ) -- the rdr lane
 0x00326350 0x6A4 DrawStreaked__Q28Particle13BufferElementFRA4_A4_f  # OVL1; s1:calls by hand (DrawFlush calls it for draw type 3, as SOCOM 1's calls DrawStreaked) -- the rdr lane
-0x00326A00 0x21C func_00326A00  # OVL1
+0x00326A00 0x21C DrawPrep__8ParticleFv  # OVL1; s1:calls by hand (the world lane round 18: SOCOM 1's CAlpha::Render calls DrawPrep__8ParticleFv first, its float kept in $f20 for the draw ranges, as SOCOM II's Render calls this, its only caller; 0x21C against SOCOM 1's 0x144)
 0x00326C20 0xC func_00326C20  # OVL1
 0x00326C30 0x310 func_00326C30  # OVL1
 0x00326F40 0x8 __ct__Q28Particle13BufferElementFv  # OVL1; the world lane r10: SOCOM 1's (its __sinit_zparticle_buf.cpp constructs Particle::buffer through __construct_array with the element's constructor, as SOCOM II's 0x402BB0 passes this) -- byte-exact from source
