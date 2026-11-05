@@ -2065,6 +2065,64 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the game states, round 40** (OVL1's OnStateChange copy, OnMissionComplete, CMission::Tick, IsAvailable):
+  - OVL1'S OnStateChange 0x2B3BE0 NOW HAS ITS OWN EMITTER: fts_player.cpp's stand-in CSealCtrl declares the inline
+    `virtual void OnStateChange(SEAL_STATE, SEAL_STATE) {}`, so CSealCtrlCopy's table (emitted with its destructor)
+    makes the copy -- the `ovl-copy:` marker on OVL2's 0x58A710 is restored (the SEALs' round 43 lesson: each twin
+    needs its own emitter);
+  - a byte-enum field copied out of an inline's return value keeps lb + andi 0xff at each compare -- no-code block
+    boundaries (a label, `if (0)`, an empty asm, `(void)` uses, a one-pass loop) and casts all fold back to one lbu
+    (OnMissionComplete 0x2A9B30: an inline SetState returning the previous state; `bool over;` declared before `game`
+    swaps their saved registers -- found with `tools/igreplay.py --move 35=36.5 --target` before writing source; the
+    abort's menu state at +0x78, the old +0x178 a wrong reference the size mismatch had hidden);
+  - a valve tested through GetValue() keeps its own lhu apart from SetValveValue's read, a plain m_value merges into one
+    load + andi 0xffff (CMission::Tick 0x2AA490, unwritten before); a chain of bool tests the target carries as values
+    is three bools copied forward (`bool a = !X(); if (a) a = !Y(); bool b = a; if (b) b = Z(); bool c = b; if (c) c =
+    flag; return c;` -- IsAvailable 0x2C7370); `x > y ? x - y : 0` loads y first; TickInFirefight 0x2A4920 named by
+    SOCOM 1's Tick.
+- **Tells from the SEALs, round 44** (SlideTick, the level-2 alert record, seal_cfg.cpp's map teardown):
+  - A DEAD-STRIPPED SOCOM 1 FUNCTION CAN BE WHAT MAKES A UNIT EMIT A TEMPLATE'S PIECES: seal_cfg.cpp's map<string, int>
+    teardown 0x58D020-0x58D730 comes out of SOCOM 1's ClearBodyPartNames_Map (its demo's 0x280E80, between BodyWepPart and
+    BodyId), defined in the unit and listed in src/ABSENT.txt -- no SOCOM II code calls it, the linker dropped it (OVL2's
+    map destroy 0x58D450 new with it); the seven OVL2 rows' `ovl-copy:` notes were checked first: each OVL1 twin keeps
+    its own emitter (fts_ovl2statics.cpp, int_material.cpp), so no credit moved;
+  - a member read through a const view gives the target's second load of a value an inline also reads; a scalarised
+    `CPnt3D perp(-f.z, 0.0f, f.x)` used with Dot keeps `y * 0` as a multiply by a zero register, a literal 0.0f folds it;
+    accesses to a CPnt3D local written in the body share one saved address register, reads through reference inlines
+    become plain frame offsets;
+  - `float f = (x >= 0.0f);` converts the bool unsigned with no andi, `(unsigned int)(bool)` adds one; `bool has = (bool)a
+    || (bool)b; if (!has)` gives an sltu per bit and tests the `||` value in v0; `t = a * s; r = t * g * k` puts t first in
+    the multiply by the global, `a * s * g` the global first; in `a > b ? a - b : b - a` b is loaded first; 13-bit
+    unsigned bitfields compare with sltu, cast to (int) with slt (CSealCtrl::SlideTick 0x566940, SOCOM 1's with ClearGoal
+    inlined; the level-2 alert record 0x558030).
+- **Tells from completing the MSL headers, round 28** (the list's base begin(), the states' string stand-in, the converter;
+  probes and scratch in build/scratch/msl-r28/, untracked):
+  - THE LIST'S ORIGINAL begin() is `iterator begin() { return iterator(base::begin()); }` (SOCOM 1's CGTree::Destroy calls
+    the base begin() 0x17F770, then the wrapper constructor 0x210C90): DistributeNotify 0x5ED4F0 code-exact -- but MW
+    checks a call written as an inline call's argument one level deeper, so at level 5 it is +1 / -12 (zanim_anim.cpp's
+    eight `find_if(begin(), ...)` walks, pickup_main.cpp's three, CreateMultiPlayerUnits -- all match again at level 6):
+    not applied, recorded as "Level 6, or 8?" evidence; a lossless by-reference constructor stand-in DECLINED (SOCOM 1
+    mangles that constructor by value);
+  - GetSealCount (const) needs three header changes: the const_iterator's `*` by reference (APPLIED: no loss anywhere),
+    size() through sz() (-2) and begin() const through the base's (+1 / -2) -- the last two not applied; fts_state.h's
+    basic_string stand-in stays (its default constructor four high, include/string's two: four-high costs 47);
+  - the converter wraps an iterator class with in-class operators (a deque<T *> const_iterator of its own), not the
+    base's -- both deques' begin() / end() const are word for word alike, so conversion depends on the element type alone
+    (unbuilt; `__deque_converts<void>` stays); an empty inline default constructor counts as a level; an inline
+    function's out-of-line copy is emitted only when something calls it out of line; the list<CSealUnit *> pieces named.
+- **Tells from the weapons, round 27** (CZProjectile's PostTick, PreTick and SetProjectile; the turret's mount test and aim):
+  - a result reassigned before the return (`if (x) r = false; return r;`) pads the last join label, `if (x) return false;
+    return r;` and the ternary don't (PostTick 0x3C9FB0); `0.0f * call()` folds to a stored zero but keeps the call --
+    for each store right after its own call write three statements into an address-taken local, a 3-argument
+    constructor evaluates all three calls first (PreTick 0x3CA5A0's gravity);
+  - a self-copy through CopyPoint with a const source reads the frame slots directly, through a non-const source or field
+    by field it reads through the hoisted field addresses like the stores; a byte switch handling only some of 0..12
+    builds an 8-entry table, listing every value to 12 builds the target's 13 entries, case 12 alone gives a compare
+    chain (CVisual::SetBuffer 0x3C38C0's jump table; 8 short, OPEN);
+  - in `ok && IsControlled()` the inline predicate folds, `IsControlled() != false` materialises the sltu
+    (CTurret::Virtual5C 0x3A90C0); CZWeapon::Fire 0x3D2D70 is 31 off in stack offsets only -- igreplay gives all 57 of
+    its registers, the miss is the spill-slot order (two word spills packed into one quadword): the tools lane is asked to
+    record spill order; SetProjectile 0x3CB1A0 is SOCOM 1's without its two angles, first build.
 - **Tells from the HUD, round 51** (hud_missioncams.cpp whole -- CleanupCamera, PlayCamera -- and ClosePauseMenu):
   - a dead `= 0` at the top numbers a named local there, declared there without an initializer it is numbered at its
     assignment (CleanupCamera 0x229520: `kit = 0` numbers the kit before the loop counter -- found and confirmed with

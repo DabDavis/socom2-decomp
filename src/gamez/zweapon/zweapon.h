@@ -46,6 +46,7 @@ namespace zdb {
 class CTexture;
 class CTexHandle;
 class CNode;
+class CModel;
 }
 class CZAmmo;
 class CZWeaponList;
@@ -178,12 +179,13 @@ public:
     /* +0x0C, new in SOCOM II (0x3D2D70): a round fired -- SOCOM 1's static Fire(node, weapon, ammo,
      * pos, dir, vel, model, projectile, shooter, f, f) made a virtual of the weapon, the model and the
      * two floats gone and a ninth word (on the stack) after the shooter; the turret's Fire calls it
-     * so. The return and the last word's meaning are not known (0x3D2D70 is not written). The
+     * so -- the ninth the projectile's model (SetProjectile's), the return void (0x3D2D70, written in
+     * zwep_weapon.cpp: no value is left in v0; the backblast's call passes no model). The
      * shooter an INT, where SOCOM 1's static took an unsigned int: CTurret::Fire's set-up loads the
      * unsigned m_id first, as MW evaluates an argument needing a no-op conversion first (the
      * weapons' round 24; as unsigned the turret's Fire was 2 instructions off) */
-    virtual int Fire(zdb::CNode *node, CZAmmo *ammo, const CPnt3D *pos, const CPnt3D *dir,
-                     const CPnt3D *vel, CZProjectile *projectile, int shooter, int x);
+    virtual void Fire(zdb::CNode *node, CZAmmo *ammo, const CPnt3D *pos, const CPnt3D *dir,
+                      const CPnt3D *vel, CZProjectile *projectile, int shooter, zdb::CModel *model);
     /* the item's class (SOCOM 1's two: the static one from the id's range, 0x3D1A60, and the
      * member one handing it the id, 0x3D1E10) */
     static EQUIP_ITEM GetIDType(EQUIP_ITEM id);
@@ -302,6 +304,21 @@ public:
     EQUIP_AMMO GetDefaultAmmoId();
     CZAmmo *GetDefaultAmmo();
 
+    /* the gravity's pull (SOCOM II's, the float at 0x48: 0x3D27B0, before the muzzle velocity's
+     * getter; CZProjectile::PreTick scales the down vector by it; the name ours) */
+    float GetGravity();
+    /* the muzzle velocity (SOCOM 1's GetMuzzleVelocity, the float at 0x44: 0x3D27C0, before
+     * GetImpactRadius as in SOCOM 1; CZProjectile::SetProjectile scales the direction by it) */
+    float GetMuzzleVelocity();
+    /* the impact radius (SOCOM 1's GetImpactRadius, const, the float at 0x4C: 0x3D27D0, between
+     * the muzzle velocity's getter and GetEffectiveRange as in SOCOM 1; CZProjectile::HandleImpact
+     * scales it for the hit's AI noise) */
+    float GetImpactRadius() const;
+    /* the arming distance (SOCOM II's, the float at 0x68: 0x3D2030 and 0x3D2040; ReadWeapon's
+     * "ArmingDistance" -- an impact nearer the start bounces as a dud in HandleImpact; the names
+     * ours) */
+    float GetArmingDistance();
+    void SetArmingDistance(float v);
     /* the range (SOCOM 1's, the float at 0x3C: 0x3D27F0) */
     float GetMaxRange();
     /* the range full damage reaches (SOCOM 1's GetEffectiveRange, the float at 0x40: 0x3D27E0,
@@ -794,6 +811,10 @@ public:
     void SetVelW(const CPnt3D *vel);
     /* the shot made ready to fly (SOCOM 1's, 0x3CAF60) */
     void PreFireProjectile();
+    /* the shot set off (SOCOM 1's SetProjectile, 0x3CB1A0, without its two angles; CZWeapon's Fire
+     * calls it): false when a network grenade could not be made */
+    bool SetProjectile(zdb::CNode *owner, CZWeapon *weapon, CZAmmo *ammo, const CPnt3D *pos,
+                       const CPnt3D *dir, const CPnt3D *vel, int shooter, zdb::CModel *model);
     /* SOCOM II's: a hit on the projectile itself from another (CProjectileNodeEx hands it on; the
      * name ours) */
     void OnWeaponHit(zdb::IntersectStruct *hit, CZProjectile *projectile);
