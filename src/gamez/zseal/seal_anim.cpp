@@ -233,19 +233,20 @@ int CSealAnim::CombineRotations(int a, int b)
  * each snaps (OVL2 0x576BB0: SOCOM 1's AnimOverlay by its place, before CombineRotations in both
  * builds -- SOCOM 1's weighted the positions with Scale and Add over 32 records), the depth left
  * returned. The record loops' shape (above AnimPop); `> -1` (slti) the target's tests.
- * OPEN, 22 instructions (the size the target's, round 34): registers only -- the first loop's counter
- * and the count trade s5/s1, and the second loop's record cursor (rb reassigned) is a web of its own in
- * s1 where the target keeps the first loop's s3. The locals' order is tools/perm.py's best over the
- * uninitialised declarations and the assignments (400 s; the natural order 49 off); a counter of its
- * own for the second loop, or cursors of their own, lose more (34-36). */
+ * Round 36, read off MW's colouring (igdump): the eight locals all wait for the last simplify sweep
+ * and are coloured in descending declaration order, so the counter is declared first (s5) and the
+ * count sixth (s1); the cursors are reassigned for the second loop, so each gets a second web, and
+ * with rb's first-loop assignment written first ra's second web is numbered above rb's -- ra s2 and
+ * rb s3 there, as the target (round 34's perm.py order had the counter and the count the other way
+ * round, 22 off) */
 int CSealAnim::AnimOverlay(float t)
 {
-    unsigned int n;
+    unsigned int i;
     int top;
     CSealAnimRec *rb;
     CSealAnimRec *ra;
     float r;
-    unsigned int i;
+    unsigned int n;
     CSealAnimFrame *fb;
     CSealAnimFrame *fa;
     top = m_count - 1;
@@ -253,8 +254,8 @@ int CSealAnim::AnimOverlay(float t)
     fb = &m_frames->m_frames[top - 1];
     fa = &m_frames->m_frames[top];
     n = siNumBodyObjects;
-    ra = fa->m_recs;
     rb = fb->m_recs;
+    ra = fa->m_recs;
     i = 0;
 
     if (i < *(const unsigned int *)&siNumBodyObjects) {
