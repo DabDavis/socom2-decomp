@@ -374,6 +374,8 @@ public:
     unsigned int zNetGetLocalTime();   /* 0x30D540 (SOCOM 1's) */
     bool zNetInitialize();   /* 0x30DBB0 */
     bool zNetLoadIRX();      /* 0x30DEE0 (SOCOM 1's; the online lane's round 14) */
+    void zNetClose();        /* 0x30D770 (SOCOM 1's; named by the online lane's round 25) */
+    void zNetInit();         /* 0x30E290 (SOCOM 1's; named by the online lane's round 25) */
 
     bool m_bSessionMaster;   // 0x0 (SOCOM 1's at 8)
     bool m_bNetwork;   // 0x1
@@ -887,7 +889,6 @@ void func_0030C6E0();
 void func_00281D40(C2DAnimCmdHdr *hdr, UITextCallback cb, int lobby);
 
 /* more of the lobby (SOCOM 1's names by the calls SOCOM 1's handlers make) */
-void func_0030E290(CZNetwork *net);                                 /* (the network's initialisation started) */
 bool func_0030BF20();                                               /* (whether the network is up) */
 bool func_002F8D50(CZOnlineLobby *lobby, const char *name);         /* (game has a spectator password) */
 bool func_002F8BC0(CZOnlineLobby *lobby, const char *name);         /* (game rejects the rank) */

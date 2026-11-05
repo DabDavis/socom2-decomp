@@ -34,7 +34,6 @@ public:
 };
 extern "C" {
 extern CZLANLobby data_0044FE10;           /* a second lobby: the LAN game's */
-void func_0030D770(CZNetwork *net);
 void func_0030E3A0(CZNetwork *net, int arg);
 extern int data_00441470;
 extern char data_00437E30[];               /* the career stats */
@@ -1392,7 +1391,7 @@ bool UIUnInitNetwork(C2DAnimCmdHdr *hdr, float *dT)
 {
     theLobby.m_event_handler = 0;
     theLobby.Close();
-    func_0030D770(&theNetwork);
+    theNetwork.zNetClose();
     func_0030E3A0(&theNetwork, 0);
     return true;
 }
@@ -3075,7 +3074,7 @@ void CSMInitNetwork::Initialize(unsigned char event)
 {
     switch (event) {
     case 0:
-        func_0030E290(&theNetwork);
+        theNetwork.zNetInit();
         SetState((SSMState)&CSMInitNetwork::WaitForNetwork);
         break;
     case 1:
