@@ -974,7 +974,13 @@ class __vector_imp<T *, Allocator, true> : public __vector_pod<unsigned int, all
     /* end(): the raw end held in a const local first, as the subtitle walk's second level shows it
      * (the raw end inlined there, at __iter's level) -- so written, _countKeys keeps its four
      * self-inlined copies (the MSL headers round 24: byte-exact; round 23 measured MW counting the
-     * local's const and the end twice, the loop's test being duplicated, against inline_max_size) */
+     * local's const and the end twice, the loop's test being duplicated, against inline_max_size).
+     * Round 25, CKey::CountKeys 0x25B300 (its second copy calls the raw end where this inlines it and
+     * calls the pod's end): `return __iter(__raw_end());` (the raw end __iter's argument, a level
+     * deeper, as begin's raw begin) makes CountKeys byte-exact and keeps NextFile 0x34D740, but costs
+     * _countKeys 0x2578F0 (25 off) and fixupKey 0x257CC0 (23 off), whose ends sit in the loop test;
+     * a non-const local the same as now, a reference local or an iterator local lose more
+     * (build/p25/vend.py) -- not met: the walks disagree at level 5 */
     iterator end()
     {
         unsigned int *const p = __raw_end();
@@ -1091,6 +1097,14 @@ class __vector_imp<T *, Allocator, true> : public __vector_pod<unsigned int, all
          * m_c.end()` here the data is re-read every pass (0x18 short) -- end() through the     \
          * pod's end(), a const local, data_ straight or data() all alike) */                   \
         iterator __iter(unsigned int *const &p) { return iterator((elem_t *)p); }               \
+        /* the end through the pod's end (data()'s reference): a walk then re-reads the data     \
+         * pointer each pass and hoists only size*4, as the headset's vector<int> walks do       \
+         * (IsQueued 0x34A7B0, Queue, Remove, StopSound). Round 25, the UI's third witness:      \
+         * CSkbSplit::Next 0x3903A0 reads the end's data straight off this (`lw a2,12(s2)`)      \
+         * where this shares data()'s address register with m_parts[0]; `this->data_ +           \
+         * this->size_` here gives Next's read but hoists the headset's ends whole -- over every \
+         * hand-written unit -4 (the four headset walks), +0 (Next still misses on its level),   \
+         * not applied (build/p25/vector.s1) */                                                 \
         iterator begin()                                                                        \
         {                                                                                       \
             unsigned int *const p = __base::begin();                                            \
