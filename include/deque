@@ -273,7 +273,9 @@ public:
     struct convert {
         T operator()(Iterator i) const { return (T)*i; }
     };
-    __convert_iterator(Iterator i, convert = convert()) : i_(i) {}
+    /* from the iterator by const reference, no converter argument (the MSL headers round 27: the inits'
+     * third copy is the member's, built from the dispatch level's by-value copy) */
+    __convert_iterator(const Iterator &i) : i_(i) {}
     T operator*() const { return convert()(i_); }
     __convert_iterator &operator++()
     {
@@ -286,6 +288,48 @@ public:
 
     Iterator i_;
     convert c_;
+};
+
+/* THE RANGE INIT'S DISPATCH LEVEL (the MSL headers round 27, build/p27/dqvars.py `i2`, untracked): every
+ * deque and block-buffer init in the image copies its ends by value into one more inline level around
+ * two value-initialised one-byte temporaries (two plain empty classes by value are stored, `sb zero`;
+ * the std tags, deriving, are not) and only then hands them to do_assign -- the lobby's 0x2E0830 and
+ * 0x2E0B40, the state machine's 0x3A5ED0 and 0x3A61E0, the vid stack's 0x3B7E30, the rdr editor's
+ * 0x333BB0 and 0x333EC0 (0xB0 each for the deques, 0xC8 / 0x118 with the conversion). A pointer
+ * container converts its ends to the base's `const void *` one level further down -- the converters
+ * built from those copies by const reference, member by member (the third copy, lw/sw, the lowest
+ * slots) -- unless T * is void * already: the vid stack's deque<void *> hands its const_iterators to
+ * do_assign straight (0x3B8000: a 24-byte source, a reference *, the direct !=), the rdr editor's
+ * deque<CRDRNodeVec *> converts (0x334440: 28 bytes, the converter's own operators). What MSL passes
+ * as the two temporaries is not known (Metrowerks::number<bool, ...>, SOCOM 1's constant-as-a-type, here
+ * as the dispatch); the helpers' names are ours */
+template <class D, class InputIterator>
+inline void __deque_init(D *d, InputIterator first, InputIterator last, number<bool, false>, number<bool, false>)
+{
+    d->do_assign(first, last);
+}
+
+template <class D, class InputIterator>
+inline void __deque_convert(D *d, InputIterator first, InputIterator last)
+{
+    d->do_assign(__convert_iterator<InputIterator, const void *>(first),
+                 __convert_iterator<InputIterator, const void *>(last));
+}
+
+template <class D, class InputIterator>
+inline void __deque_init(D *d, InputIterator first, InputIterator last, number<bool, true>, number<bool, false>)
+{
+    __deque_convert(d, first, last);
+}
+
+template <class T>
+struct __deque_converts {
+    enum { value = 1 };
+};
+
+template <>
+struct __deque_converts<void> {
+    enum { value = 0 };
 };
 
 /* std::distance by value through a tag-dispatched helper: both ends copied in twice, the second
@@ -640,9 +684,8 @@ template <class T, class Allocator>
 template <class InputIterator>
 void cdeque<T *, Allocator>::init(InputIterator first, InputIterator last, std::forward_iterator_tag)
 {
-    __convert_iterator<InputIterator, const void *> f(first), l(last);
-
-    base::do_assign(f, l);
+    __deque_init(static_cast<base *>(this), first, last, number<bool, __deque_converts<T>::value>(),
+                 number<bool, false>());
 }
 
 }
@@ -1127,7 +1170,7 @@ template <class T, class Allocator>
 template <class InputIterator>
 void deque<T, Allocator>::init(InputIterator first, InputIterator last, forward_iterator_tag)
 {
-    this->do_assign(first, last);
+    Metrowerks::__deque_init(this, first, last, Metrowerks::number<bool, false>(), Metrowerks::number<bool, false>());
 }
 
 template <class Allocator>
@@ -1191,8 +1234,8 @@ template <class T, class Allocator>
 template <class InputIterator>
 void deque<T *, Allocator>::init(InputIterator first, InputIterator last, forward_iterator_tag)
 {
-    this->do_assign(Metrowerks::__convert_iterator<InputIterator, const void *>(first),
-                    Metrowerks::__convert_iterator<InputIterator, const void *>(last));
+    Metrowerks::__deque_init(this, first, last, Metrowerks::number<bool, Metrowerks::__deque_converts<T>::value>(),
+                             Metrowerks::number<bool, false>());
 }
 
 }
