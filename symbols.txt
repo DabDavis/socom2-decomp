@@ -1790,7 +1790,7 @@
 0x0020A120 0x208 HandleScrolling__11CZNewHudMapFff  # OVL1; s1:calls by hand (the HUD lane, round 48: hud_newhudmap.cpp -- SOCOM 1's HandleScrolling(float fStickX, float fStickY) 0x3C4950 by its code: both sticks zero or no viewer returns, the viewer's reversed facing stored (SealDir), 36/|xz| the step, a guarded static fallback box, the first AI map's (AiMaps.GetMapByIndex(0)) bounds, x then z moved while inside; TickFullScreenMap 0x209EE0's call)
 0x0020A330 0x13C func_0020A330  # OVL1
 0x0020A470 0x304 SwitchToCompassMap__11CZNewHudMapFv  # OVL1; s1:callee (ReInit's one call, as SOCOM 1's)
-0x0020A780 0x33C func_0020A780  # OVL1
+0x0020A780 0x33C SwitchMapToFullScreen__11CZNewHudMapFv  # OVL1; s1:calls by hand (the HUD lane, round 52: hud_newhudmap.cpp -- SOCOM 1's SwitchMapToFullScreen 0x3C4E20 by its calls and order: StopRumbler, the menu state put aside for state 4, the player's lens colour off and the camera's zoom put aside, HoldLensFx(4), the compass Off, the map placed, ftsGetTacMapZoom, RefreshList, SetupNorthIndicator, CHUD::SwitchToFullScreenMap, the grid lines' SetPos; HudTick's call as there)
 0x0020AAC0 0x38C GetScrollPermissions__11CZNewHudMapCFv  # OVL1; s1:calls by hand (the HUD lane, round 48: hud_newhudmap.cpp -- SOCOM 1's GetScrollPermissions 0x3C50F0, its CScrollBools: the viewer's facing, the same guarded fallback box as HandleScrolling's (0x3E4100, its guard 0x40BED0), the four bound tests and the eight facing sectors' permissions case for case SOCOM 1's; TickFullScreenAnims 0x209350 calls it)
 0x0020AE50 0x1A8 CalcNewMatrix__11CZNewHudMapFv  # OVL1; s1:calls
 0x0020B000 0x18 CalcDrawPos__11CZNewHudMapCFf  # OVL1; s1:exact by hand (hud_newhudmap.cpp; its fields 4 lower)

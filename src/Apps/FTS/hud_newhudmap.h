@@ -51,6 +51,7 @@ public:
     void NextObjective();
     CMissionObjectiveCam *GetCurrentObjective() const;
     void MissionEndCleanup();
+    void RefreshList();
     /* the objectives let go (the vector kept with false) and the camera the list holds on to */
     void FreeList(bool wipe_vector);
     CMissionObjectiveCam *GetCurrentObjectiveRetainer() const;
@@ -100,6 +101,8 @@ public:
     float GetZoomOut() const;
     void FrameObjective();
     void SwitchToCompassMap();
+    /* to full screen (SOCOM 1's; 0x20A780) */
+    void SwitchMapToFullScreen();
     /* the full-screen map's pad: closed, objectives stepped, selected or framed, the map centred
      * on the viewer, scrolled and zoomed, the legend shown while R2 is held (SOCOM 1's; 0x209EE0) */
     void TickFullScreenMap(CPad *pad, enum MENU_STATE menustate);
