@@ -44,24 +44,20 @@ static inline bool Expired(const CAiEvent *ev)
  * and while the AI neither sleeps nor dozes -- the persistent ones walked within a range the AI's
  * scale at 0x700 sets, each handed to HandleEvent until one is taken; then, unless the target is
  * held (0x60A850 and its bit 9), a look at the AI's own event while it lasts (OVL2 0x5FAAE0; SOCOM
- * 1's EventTick, which tested its own target and set its switches once).
- * OPEN, 30 instructions, registers only (round 40; 0x230 against 0x218 in round 39): the sleep test is
- * seal_ai.cpp's int-held `||` (Awake: bit 9 as a bool, bit 8 only when clear, a bare xori), the expiry
- * test a plain `!= NoExpire && <= 0` (IsPersistent's materialised bool cost 8 bytes), held defined after
- * the event's Tick and handled after the alternate-frame return (each lands where the target sets it),
- * and each walk's event assigned as a statement of its own and then tested (`move a1,v0; beqz a1`: the
- * assignment inside the test branches on v0). What is left is two swaps: the target has this s0, the
- * walk's &m_distSq s1, held s2, the entity s3 (here held s0, the entity s1, this s2, &m_distSq s3; pos
- * s4 and handled s5 agree). MW's colouring (igdump): this v32, e v33, held v34, handled v35, pos v36,
- * the hoisted &m_distSq v41/v42, all deferred; pushed 35 36 41 42 in one sweep and 32 33 34 in the
- * next -- the target pushes e and held before the &m_distSq pair and this last. Tried without effect:
- * the iterator's three fields through an inline (36 off), ev at the top, held or pos or handled
- * declared at the top, a copy of this; the walks as one inline over the event class (do, for and while
- * shapes, as `handled = Walk()` or `if (Walk()) handled = true`: 0x214-0x258, the two walks then share
- * one iterator slot and five saved registers) */
+ * 1's EventTick, which tested its own target and set its switches once). The sleep test is seal_ai.cpp's
+ * int-held `||` (Awake: bit 9 as a bool, bit 8 only when clear, a bare xori), the expiry test a plain
+ * `!= NoExpire && <= 0` (IsPersistent's materialised bool cost 8 bytes), held defined after the event's
+ * Tick and handled and pos assigned after the alternate-frame return (each lands where the target sets
+ * it), and each walk's event assigned as a statement of its own and then tested (`move a1,v0; beqz a1`:
+ * the assignment inside the test branches on v0). The saved registers (this s0, the walk's hoisted
+ * &m_distSq s1, held s2, the entity s3, pos s4, handled s5) want handled and pos numbered right after
+ * `this`, ahead of the entity and held: declared uninitialised at the top, in that order (round 42:
+ * MW's colouring replayed with the vregs relabelled; pos before handled, or either alone, does not) */
 void CSealCtrlAi::EventTick(float dT)
 {
     static bool alternate = true;
+    bool handled;
+    const CPnt3D *pos;
     CEntity *e = m_entity;
 
     ((CAiEvent *)m_event)->Tick(dT);
@@ -71,8 +67,8 @@ void CSealCtrlAi::EventTick(float dT)
     if (!((zVid.frameNumber ^ e->m_id) & 1) && alternate)
         return;
     float scale = m_700;
-    bool handled = false;
-    const CPnt3D *pos = &e->m_posW;
+    handled = false;
+    pos = &e->m_posW;
 
     scale *= func_005750D0(6);
     if (m_eventMask) {
