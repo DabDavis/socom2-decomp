@@ -926,22 +926,29 @@ class __vector_imp : public __vector_deleter<T, Allocator> {
  * the size and iterator registers), CUIVariable::Attach 0x3869F0 (IsAttached cut one level, as the
  * target) and eleven pieces named (0x257B90-0x257CB0, 0x257EC0/0x257ED0, 0x34D920, 0x3869C0,
  * 0x3869D0, 0x386980, 0x386AB0). The 19 walks the four-high end cut at -inline level=5 (an inline's
- * `i != end()` six deep in its caller: end()'s body kept, the raw end and __iter called) refit as:
- *   - the source as it was, with `#pragma inline_depth(6)` at the unit's end, in the eight units
- *     whose every function scores at 6 as at 5 -- fts_missionlist.cpp, bone_archive.cpp,
- *     char_type.cpp, util_loc.cpp, zNetMediusClan.cpp, zNetMediusRoom.cpp, zsnd_positions.cpp,
- *     zwep_flyout.cpp: their objects are byte-identical to master's (objcmp), i.e. the new header at
- *     6 gives exactly what the old one gave at 5. The end taken into a local first (round 23's
- *     suggested refit) does not give the target: CMultiMissionList::Find's own copy then colours its
- *     end, flag and element differently (9 off; every spelling tried 5-11 off), FindTable's callers
- *     come out 12 bytes short;
- *   - in ztex_manager.cpp, where depth 6 costs three other functions, CDynTexList::Add(CTexPalette *)
- *     with CTexPalList::Exists written out, its parameter a local (byte-exact).
+ * `i != end()` six deep in its caller: end()'s body kept, the raw end and __iter called) were first
+ * kept by `#pragma inline_depth(6)` stand-ins at the end of eight units (round 24: the new header at
+ * 6 gives exactly what the old one gave at 5, objcmp byte-identical) -- ALL EIGHT NOW GONE: the lanes
+ * refit every walk at level 5 one of two ways, each object byte-identical to the pragma's:
+ *   - the walk ended at a `data_ + size_` iterator, a `Last()` accessor (our spelling, not proven the
+ *     original's): zNetMediusClan.cpp and zNetMediusRoom.cpp (the online lobby's round 20),
+ *     bone_archive.cpp (the engine core's round 15, a free inline `iterator((T **)v.data_ + v.size_)`
+ *     for a plain vector member), char_type.cpp (the AI core's round 26), util_loc.cpp (the UI's
+ *     round 25), zsnd_positions.cpp (the zdb world's round 18);
+ *   - the inlined helper's walk written out in each caller: zwep_flyout.cpp (the weapons' round 24,
+ *     CPlacedExplosiveList's constructor and destructor writing Clear's walk out), fts_missionlist.cpp
+ *     (the game states' round 36: `Last()` was 11 off there), and round 24's own ztex_manager.cpp,
+ *     where depth 6 cost three other functions (CDynTexList::Add(CTexPalette *) with CTexPalList::
+ *     Exists written out, its parameter a local).
+ *   The end taken into a local first (round 23's suggested refit) does not give the target:
+ *   CMultiMissionList::Find's own copy then colours its end, flag and element differently (9 off;
+ *   every spelling tried 5-11 off), FindTable's callers come out 12 bytes short.
  * So the original's walks are the natural ones and its level is deeper than 5 (README "Level 6, or
- * 8?"). Two levers measured on the way (round 23): inline_max_size counts a local's `const` and a
- * loop test's end() twice (the duplicated test), and the raw pair's constness decides whether a
- * walk's first test reuses begin's load of the data. The pod's raw `end() const` round 23 carried
- * is used by nothing (removed: neutral over every hand-written unit) */
+ * 8?"); the `Last()` ends and the written-out walks are level-5 fits. Two levers measured on the way
+ * (round 23): inline_max_size counts a local's `const` and a loop test's end() twice (the duplicated
+ * test), and the raw pair's constness decides whether a walk's first test reuses begin's load of the
+ * data. The pod's raw `end() const` round 23 carried is used by nothing (removed: neutral over every
+ * hand-written unit) */
 template <class T, class Allocator>
 class __vector_imp<T *, Allocator, true> : public __vector_pod<unsigned int, allocator<unsigned int> > {
     typedef __vector_pod<unsigned int, allocator<unsigned int> > __base;
