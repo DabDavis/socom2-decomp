@@ -192,38 +192,28 @@ inline bool Driven(const CEntity *e)
     return e->m_control ? true : false;
 }
 
-/* the nearest turret among targets within a squared range with no driver and its flag clear, or 0
- * (an inline: the walk re-reads the list's end through the pointer each pass, as the target does;
- * the name ours) */
-inline CEntity *FreeTurret(CTargetList *l, float range)
+/* an entity's target list, through an inline (an accessor of the entity's in the original, likely:
+ * CEntity has none here, zentity.h being the engine core's -- the name ours) */
+inline CTargetList *TargetsOf(CEntity *e)
 {
-    CEntity *r = 0;
-
-    for (CTargetList::iterator i = l->begin(); i != l->end(); ++i) {
-        if (!(i->m_distSq <= range))
-            break;
-        CEntity *e = i->m_ent;
-        CEntity *t = e && e->m_type == CEntity::ENT_TYPE_TURRET ? e : 0;
-
-        if (t && !(((CTurretFlagsView *)t)->m_3a4 & 2) && !Driven(t)) {
-            r = t;
-            break;
-        }
-    }
-    return r;
+    return &e->m_targets;
 }
 
 /* a free turret among the SEAL's targets within 500 units taken: in the AI's mode 2, not already
  * in the vehicle state and with no target to stay for, the nearest turret with no driver and its
  * flag clear is used (func_0060F6C0's body inlined) (OVL2 0x60F760: CSealCtrlAi::PreTick calls it
  * each frame; the name ours).
- * OPEN, 0x228 against 0x240: the walk's end. The target holds &m_targets in a0 (set in the entry
- * test's delay slot) and re-reads the size and the data through it every pass (`lw t0,4(a0); lw
- * a2,8(a0)`, the end rebuilt), the entry test reading them off the SEAL; MW here keeps size * 48
- * from the entry test and reloads only the data -- the walk written in place, through a pointer or
- * a reference local, in an inline taking the pointer (returning from the loop or through a result,
- * as here), `&&` in the loop test, i++ -- all hoist it. The rest is the target's (TargetLost's
- * else-arm order, Driven's `? true : false` keeping the sltu, the 0x60F6C0 body) */
+ * THE WALK'S END (the MSL headers round 30, build/p30/av_subs.py x7, untracked): the target holds
+ * &m_targets in a0 (set in the entry test's delay slot) and re-reads the size and the data through
+ * it every pass (`lw t0,4(a0); lw a2,8(a0)`, the end rebuilt), the entry test reading them off the
+ * SEAL -- a loop with no store, so no header end() does it (include/vector's end() comment): the walk
+ * runs over a REFERENCE bound through a POINTER LOCAL taken from an inline's result. Without the
+ * inline (`lp = &seal->m_targets`), without the pointer local (`l = *TargetsOf(seal)`), walking the
+ * pointer itself, or in an inline helper taking the list (the round-48 FreeTurret: 0x228, or with
+ * the reference inside it 0x240 and 20 registers off), MW keeps size * 48 or the whole end; found
+ * declared first gives the target's a1 (after the list's locals it takes a0). The rest is the
+ * target's (TargetLost's else-arm order, Driven's `? true : false` keeping the sltu, the 0x60F6C0
+ * body) */
 extern "C" void func_0060F760(CSealCtrlAi *ai)
 {
     static float range = 250000.0f;
@@ -231,8 +221,21 @@ extern "C" void func_0060F760(CSealCtrlAi *ai)
 
     if (ai->m_26e != 2 || ai->AiStateIs(AI_STATE_USEVEHICLE) || !TargetLost(ai))
         return;
-    CEntity *found = FreeTurret(&seal->m_targets, range);
+    CEntity *found = 0;
+    CTargetList *lp = TargetsOf(seal);
+    CTargetList &l = *lp;
 
+    for (CTargetList::iterator i = l.begin(); i != l.end(); ++i) {
+        if (!(i->m_distSq <= range))
+            break;
+        CEntity *e = i->m_ent;
+        CEntity *t = e && e->m_type == CEntity::ENT_TYPE_TURRET ? e : 0;
+
+        if (t && !(((CTurretFlagsView *)t)->m_3a4 & 2) && !Driven(t)) {
+            found = t;
+            break;
+        }
+    }
     if (found) {
         unsigned int id = found->m_id;
 
