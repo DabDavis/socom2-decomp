@@ -5,6 +5,7 @@
 #include <iostream>
 #include "camera.h"
 #include "../../gamez/zsys/zsys.h"
+#include "../../gamez/zinput/zinput.h"
 
 /* SOCOM 1's, not written yet */
 char *zrdr_findstring(const _zrdr *rdr, const char *tag);
@@ -50,7 +51,22 @@ extern float data_00416028;   /* its y amplitude */
 extern float data_00416208;   /* DeltaRot */
 extern float data_00416210;   /* DeltaAim */
 extern float data_00416218;   /* (SOCOM II's) */
+extern float data_003DE270;   /* the tether's rate (FTSTick puts back 0.03) */
+extern float data_003DE278;   /* the tether's offset per unit of look pitch, looking up (-8) */
+extern float data_003DE280;   /* (-5) */
+extern float data_003DE288;   /* the same, looking down (-3) */
+extern unsigned int data_0044C404;   /* the views' count (their presets follow) */
 }
+/* mode 1's camera position, its offset and length handed back (SOCOM II's: GetThirdPersonCamPos's
+ * shape, not written) */
+extern "C" CPnt3D func_0029A660(CAppCamera *cam, CPnt3D *CamOffset, float *tetherLen);
+/* whether a SEAL is mounted (OVL2 0x54F6E0, seal.cpp's) */
+extern "C" bool func_0054F6E0(CZSealBody *seal, bool blend, bool mount, bool anims);
+/* two SEAL state tests (OVL2: seal_kit.cpp's and seal_env.cpp's) */
+extern "C" bool func_005A78D0(CZSealBody *body);
+extern "C" bool func_005A77E0(CZSealBody *seal, int state33, int anim36, int anim35);
+/* the death camera's pad handling (SOCOM II's: a member of the object at 0xF4) */
+extern "C" void func_00295260(void *deathcam, CAppCamera *cam, CPad *pad);
 
 /* what the tick reaches for (SOCOM 1's names in the comments) */
 extern "C" {
@@ -109,9 +125,12 @@ void SetCameraCollideFlagRequired(bool on);
 }
 extern "C" zdb::CNode *GetNode__7CEntityFv(CZSealBody *e);
 
+#pragma auto_inline off
 /* the chord tested against the world with the followed SEAL's node, and that of the SEAL it
  * carries (0xEAC, inside the stand-in's kit), switched off -- and the camera collision flag cleared --
- * then both switched back: whether it hit, the nearest hit point given (SOCOM II's) */
+ * then both switched back: whether it hit, the nearest hit point given (SOCOM II's). Pinned: its one
+ * caller, GetThirdPersonCamPos, calls it out of line (its statements over the auto-inline limit in the
+ * original, as compiled-out ones count) */
 bool CAppCamera::ClipChord(CPnt3D *from, CPnt3D *to, CPnt3D *hit)
 {
     bool found = false;
@@ -137,6 +156,7 @@ bool CAppCamera::ClipChord(CPnt3D *from, CPnt3D *to, CPnt3D *hit)
         GetNode__7CEntityFv(carried)->SetActive(carriedWas);
     return found;
 }
+#pragma auto_inline reset
 
 /* the hit nearest the ray's tail, skipping hits on pieces of kind 1 too close to p0 (their
  * direction from p0 measured first); the camera's tether marked as hitting something */
@@ -317,6 +337,61 @@ void CAppCamera::CmdBeginShake(_zanim_cmd_hdr *hdr)
         appCamera->Shake(((_camera_shake_cmd *)hdr)->level);
 }
 
+/* SOCOM 1's (SOCOM II's takes the camera alone): the aim, tie and goal, the camera kept, the
+ * death camera's and the views' state put back, the tether's length from the goal, the player taken
+ * up, the shake stopped and its three presets set -- SMALL, MEDIUM, LARGE */
+CAppCamera::CAppCamera(zdb::CCamera *cam)
+    : m_cameraAim(0.0f, 20.0f, 0.0f), m_cameraTie(0.0f, 20.0f, 0.0f), m_camGoalPos(40.0f, 20.0f, 0.0f),
+      m_44(1), m_45(0), m_46(1), m_short_tether_timer(-1.0f), m_padid(0), m_camera(cam),
+      m_camera_effects(0), m_bc(0), m_entity(0), m_ctrl(0), m_z_nominal(500.0f)
+{
+    m_f8 = 0.0f;
+    m_fc = 0.0f;
+    m_100 = 0.0f;
+    m_f4 = 0;
+    m_f5 = m_f4;
+    m_110 = -1;
+    m_114 = 0;
+    m_104 = 0.0f;
+    m_108 = 0.0f;
+    m_10c = 0;
+    m_118 = 1.0f;
+    m_camera_mode = cam_mode_tether;
+    m_camera_last_mode = cam_mode_tether;
+    m_cam_death_state = 0;
+    m_150 = 0;
+    m_154 = 0;
+    m_goal_t_len = m_camGoalPos.Length();
+    func_002956E0(this, ftsGetPlayer(), 0);
+    m_wiggle_cur_time = 0.0f;
+    m_wiggle_echo = 0;
+    StopShake();
+    m_shake[0].m_xAmp = 6.0f;
+    m_shake[0].m_xAmpRand = 1.0f;
+    m_shake[0].m_xDecay = 2.0f;
+    m_shake[0].m_xRate = 2000.0f;
+    m_shake[0].m_yAmp = 6.0f;
+    m_shake[0].m_yAmpRand = 0.5f;
+    m_shake[0].m_yDecay = 2.0f;
+    m_shake[0].m_yRate = 250.0f;
+    m_shake[1].m_xAmp = 20.0f;
+    m_shake[1].m_xAmpRand = 10.0f;
+    m_shake[1].m_xDecay = 2.0f;
+    m_shake[1].m_xRate = 2000.0f;
+    m_shake[1].m_yAmp = 10.0f;
+    m_shake[1].m_yAmpRand = 5.0f;
+    m_shake[1].m_yDecay = 2.0f;
+    m_shake[1].m_yRate = 2000.0f;
+    m_shake[2].m_xAmp = 60.0f;
+    m_shake[2].m_xAmpRand = 30.0f;
+    m_shake[2].m_xDecay = 4.0f;
+    m_shake[2].m_xRate = 1000.0f;
+    m_shake[2].m_yAmp = 55.0f;
+    m_shake[2].m_yAmpRand = 15.0f;
+    m_shake[2].m_yDecay = 4.0f;
+    m_shake[2].m_yRate = 1150.0f;
+}
+
 CAppCamera::~CAppCamera()
 {
     m_track = 0;
@@ -378,6 +453,379 @@ void CAppCamera::SetZoom(float zoom)
     cam->m_screenAspect[0] = x;
     cam->m_screenAspect[1] = y;
     m_camera->m_ZoomedRangeScale = m_camera->m_RangeScale / zoom;
+}
+
+/* SOCOM 1's FTSTick: the followed SEAL's pad (its controller's, a player's), its two-button view
+ * cycle stepping past the side, first person and peek views, the death camera's own pad handling
+ * (SOCOM II's, at 0xF4), then -- the view changed -- its preset taken up (ResetView, SOCOM II's
+ * call), first person or the tether entered through SetCameraMode and the tether's rate put back.
+ * The view's step casts it to an int: the loop's copy then reuses the test's load re-narrowed (the
+ * target's andi), where the plain enum reuses it as it is */
+void CAppCamera::FTSTick()
+{
+    if (!m_entity)
+        return;
+    if (m_ctrl && m_ctrl->IsPlayer())
+        m_padid = m_ctrl->m_padid;
+    CPad *pad = m_padid < CInput::NUM_PADS ? CInput::m_pads[m_padid] : 0;
+
+    if (!pad)
+        pad = CInput::m_pads[0];
+    if (pad) {
+        if (pad->GetTwoButtons(PAD_SELECT, PAD_DOWN)) {
+            m_ctrl_view = (CAMVIEW)(((int)m_ctrl_view + 1) % data_0044C404);
+            while (m_ctrl_view == cam_view_side || m_ctrl_view == cam_view_first ||
+                   m_ctrl_view == cam_view_peek_left || m_ctrl_view == cam_view_peek_right)
+                m_ctrl_view = (CAMVIEW)(((int)m_ctrl_view + 1) % data_0044C404);
+        }
+        func_00295260(&m_f4, this, pad);
+    }
+    if (m_ctrl_view != m_save_view) {
+        ResetView();
+        m_save_view = m_ctrl_view;
+        if (m_ctrl_view == cam_view_first) {
+            SetCameraMode(cam_mode_FP);
+            data_003DE270 = 0.03f;
+        } else {
+            SetCameraMode(cam_mode_tether);
+            data_003DE270 = 0.03f;
+        }
+    }
+}
+
+/* where first person puts the camera, in the followed SEAL's space (SOCOM 1's): with the camera on
+ * the SEAL it follows, the skeleton root's place (or the origin), then -- prone -- lifted by the
+ * view's pitch and scaled by the SEAL's 0x1344 (SOCOM II's), else lifted 4.4 and pulled 2.5 back
+ * unless the SEAL is in one of two states, and moved aside by the peek; on another SEAL, the
+ * file's fixed point */
+CPnt3D GetFirstPersonCamPos(CAppCamera *cam)
+{
+    CPnt3D CamPoint;
+
+    if (cam->m_entity == cam->m_bc) {
+        if (cam->m_entity && cam->m_skel_root)
+            cam->m_bc->m_body.PartInSpace(cam->m_skel_root, 0, &CamPoint, 0);
+        else
+            CamPoint = CPnt3D::zero;
+        if (cam->m_bc->m_state != 2) {
+            CamPoint.y += 4.4f;
+            if (func_005A78D0(cam->m_bc) || func_005A77E0(cam->m_bc, 1, 1, 1))
+                CamPoint.z = 0.0f;
+            else
+                CamPoint.z = -2.5f;
+        } else {
+            float lift = 6.0f * cam->m_camera->m_matrix.m_matrix[2][1];
+
+            if (lift < 0.0f)
+                lift = 0.0f;
+            lift += 1.8f;
+            CamPoint.z = -7.0f;
+            CPnt3D scale = cam->m_bc->m_1344;
+
+            if (scale.y < 0.5f)
+                scale.y = 0.5f;
+            lift *= 2.0f / scale.y;
+            CamPoint.z *= 0.7f * scale.y;
+            CamPoint.y += lift;
+        }
+        if (peekCur < 0.0f)
+            CamPoint.x += 3.3f * peekCur;
+        else if (peekCur > 0.0f)
+            CamPoint.x += 4.35f * peekCur;
+    } else
+        CamPoint = firstPersonPos;
+    return CamPoint;
+}
+
+/* a point scaled, by value (zmath.h's operator* as an inline: the scale into a temporary, copied out
+ * twice -- SOCOM II's out-of-line copies are OVL2's; the name ours) */
+inline CPnt3D ScaledBy(const CPnt3D &v, float s)
+{
+    CPnt3D r;
+
+    v.Scale(s, &r);
+    return r;
+}
+
+/* a point less another, by value (zmath.h's operator- as an inline; the name ours) */
+inline CPnt3D DiffOf(const CPnt3D &a, const CPnt3D &b)
+{
+    CPnt3D r;
+
+    a.Sub(&b, &r);
+    return r;
+}
+
+/* where the tether puts the camera, in the followed SEAL's space (SOCOM 1's): on the SEAL it follows,
+ * the body's root part's place lifted by its height (SOCOM II's ramp: 10 at the origin, else 5.5 to
+ * 10 as it rises from 2.17 to 5.6), moved aside by the peek and pulled 28 back, the level offset and
+ * the tether's length handed back, the point turned by the SEAL's look, the offset's z from the
+ * look's pitch -- looking up, unless the player is mounted or on a ladder, the chord behind the
+ * offset clipped against the world and its lost length added -- and the length eased toward 14 by
+ * the pitch; on another SEAL, the file's fixed point. The root's height read into a local of its own:
+ * numbered ahead of the ramp's t, it leaves t the lower FPR, as the target's */
+CPnt3D CAppCamera::GetThirdPersonCamPos(CPnt3D *CamOffset, float *tetherLen)
+{
+    CPnt3D CamPoint;
+
+    if (m_entity == m_bc) {
+        CZBodyPart *part = m_skel_root;
+
+        if (part != m_bc->m_root)
+            part = m_bc->m_root;
+        if (m_entity && part)
+            m_bc->m_body.PartInSpace(part, 0, &CamPoint, 0);
+        else
+            CamPoint = CPnt3D::zero;
+        float lift;
+        float h = CamPoint.y;
+
+        if (h == 0.0f)
+            lift = 10.0f;
+        else {
+            float t = 1.0f;
+
+            if (h < 5.6f) {
+                t = 0.29147339f * (h - 2.1691549f);
+                if (t < 0.0f)
+                    t = 0.0f;
+                else if (t > 1.0f)
+                    t = 1.0f;
+            }
+            lift = 5.5f + 4.5f * t;
+        }
+        CamPoint.y += lift;
+        if (peekCur < 0.0f)
+            CamPoint.x += 2.5f * peekCur;
+        else
+            CamPoint.x += 2.8f * peekCur;
+        CamPoint.z += 28.0f;
+        CamOffset->x = CamPoint.x;
+        CamOffset->y = CamPoint.y;
+        CamPoint.y = 0.0f;
+        *tetherLen = CamPoint.Length();
+        if (m_bc)
+            m_bc->m_fwdlook.Apply(&CamPoint, &CamPoint, 1);
+        CPnt3D vec = CamPoint;
+
+        vec.Normalize();
+        if (vec.y < 0.0f)
+            CamOffset->z = vec.y * data_003DE288;
+        else {
+            CZSealBody *player = ftsGetPlayer();
+
+            if (player && (func_0054F6E0(player, true, true, true) || player->CanClimbLadder()))
+                CamOffset->z = vec.y * data_003DE280;
+            else {
+                float z = vec.y * data_003DE278;
+
+                if (z < data_003DE280) {
+                    CPnt3D chord[2];
+
+                    chord[0] = *CamOffset;
+                    chord[1] = *CamOffset;
+                    chord[1].z += data_003DE278;
+                    m_entity->GetMatrix()->Transform(chord, 2);
+                    CPnt3D hit;
+
+                    if (ClipChord(&chord[0], &chord[1], &hit)) {
+                        CPnt3D d = DiffOf(chord[1], hit);
+
+                        z += sqrtf(d.x * d.x + d.z * d.z);
+                    }
+                }
+                CamOffset->z = z;
+            }
+        }
+        float wt = fabsf(vec.y);
+
+        *tetherLen = *tetherLen + wt * (14.0f - *tetherLen);
+        CamPoint = ScaledBy(vec, *tetherLen);
+        CamPoint.Add(CamOffset, &CamPoint);
+    } else {
+        *CamOffset = thirdPersonPos;
+        CamPoint = *CamOffset;
+        *tetherLen = CamPoint.Length();
+    }
+    return CamPoint;
+}
+
+/* where mode 1 puts the camera (SOCOM II's, GetThirdPersonCamPos's first shape): on the SEAL it
+ * follows, the skeleton root's place lifted 10, moved aside by the peek and pulled 49.5 back, the
+ * level offset and the tether's length handed back, the point turned by the SEAL's look, the length
+ * eased toward 50 by the look's pitch; on another SEAL, the file's fixed point */
+extern "C" CPnt3D func_0029A660(CAppCamera *cam, CPnt3D *CamOffset, float *tetherLen)
+{
+    CPnt3D CamPoint;
+
+    if (cam->m_entity == cam->m_bc) {
+        if (cam->m_entity && cam->m_skel_root)
+            cam->m_bc->m_body.PartInSpace(cam->m_skel_root, 0, &CamPoint, 0);
+        else
+            CamPoint = CPnt3D::zero;
+        CamPoint.y += 10.0f;
+        if (peekCur < 0.0f)
+            CamPoint.x += 2.5f * peekCur;
+        else
+            CamPoint.x += 2.8f * peekCur;
+        CamPoint.z += 49.5f;
+        CamOffset->x = CamPoint.x;
+        CamOffset->y = CamPoint.y;
+        CamPoint.y = 0.0f;
+        *tetherLen = CamPoint.Length();
+        if (cam->m_bc)
+            cam->m_bc->m_fwdlook.Apply(&CamPoint, &CamPoint, 1);
+        CPnt3D vec = CamPoint;
+
+        vec.Normalize();
+        if (vec.y < 0.0f)
+            CamOffset->z = vec.y * data_003DE288;
+        else
+            CamOffset->z = vec.y * data_003DE278;
+        float wt = fabsf(vec.y);
+
+        *tetherLen = *tetherLen + wt * (50.0f - *tetherLen);
+        CamPoint = ScaledBy(vec, *tetherLen);
+        CamPoint.Add(CamOffset, &CamPoint);
+    } else {
+        *CamOffset = thirdPersonPos2;
+        CamPoint = *CamOffset;
+        *tetherLen = CamPoint.Length();
+    }
+    return CamPoint;
+}
+
+/* into first person from the tether (SOCOM 1's): the pitch of the SEAL's forward look from the
+ * first-person point and that of its aim point, each wrapped into [0, 2pi], their difference added
+ * to the controller's aim pitch and the player's head turned to it (SOCOM II's tests the SEAL
+ * before using it) */
+void ThirdToFirstPersonTransition(CAppCamera *cam)
+{
+    CPnt3D CamPoint = GetFirstPersonCamPos(cam);
+    CPnt3D cam_aim_point(0.0f, 0.0f, 0.0f);
+    CPnt3D lz(0.0f, 0.0f, -1.0f);
+
+    if (cam->m_bc)
+        cam->m_bc->m_fwdlook.Apply(&lz, &cam_aim_point, 1);
+    cam_aim_point.Add(&CamPoint, &cam_aim_point);
+    float pitch0 = atan2f(cam_aim_point.y - CamPoint.y, cam_aim_point.z - CamPoint.z);
+    CZSealBody *seal = ftsGetPlayer();
+
+    cam_aim_point = seal->m_aim_point;
+    CMatrix WtoM;
+
+    if (cam->m_bc) {
+        Vu0MatrixInverseWithUniformScale(&WtoM, cam->m_bc->GetMatrix());
+        WtoM.Transform(&cam_aim_point, 1);
+    }
+    float pitch1 = atan2f(cam_aim_point.y - CamPoint.y, cam_aim_point.z - CamPoint.z);
+
+    while (pitch0 < 0.0f)
+        pitch0 += 6.2831855f;
+    while (pitch1 < 0.0f)
+        pitch1 += 6.2831855f;
+    while (pitch0 > 6.2831855f)
+        pitch0 -= 6.2831855f;
+    while (pitch1 > 6.2831855f)
+        pitch1 -= 6.2831855f;
+    float dp = pitch0 - pitch1;
+    CAppCameraCtrl *pSealCtrl = cam->m_ctrl;
+    float aimPitch = pSealCtrl->m_130;
+
+    aimPitch += dp;
+    pSealCtrl->m_130 = aimPitch;
+    ftsGetPlayer()->RotateHead(aimPitch);
+}
+
+/* into mode 1 from the tether (SOCOM II's, FirstToThirdPersonTransition's twin over mode 1's camera
+ * position, 0x29A660, without the clamp; Tick runs it): the forward look's pitch and the aim point's
+ * from the mode's offset, wrapped, their difference added to the aim pitch, the head turned to it */
+extern "C" void func_0029A180(CAppCamera *cam)
+{
+    float dummy;
+    CPnt3D CamOffset;
+    CPnt3D cam_new_pos = func_0029A660(cam, &CamOffset, &dummy);
+    CPnt3D cam_aim_point(0.0f, 0.0f, 0.0f);
+    CPnt3D lz(0.0f, 0.0f, -1000.0f);
+
+    if (cam->m_bc)
+        cam->m_bc->m_fwdlook.Apply(&lz, &cam_aim_point, 1);
+    cam_aim_point.Add(&CamOffset, &cam_aim_point);
+    float pitch0 = atan2f(cam_aim_point.y - CamOffset.y, cam_aim_point.z - CamOffset.z);
+    CZSealBody *seal = ftsGetPlayer();
+
+    cam_aim_point = seal->m_aim_point;
+    CMatrix WtoM;
+
+    if (cam->m_bc) {
+        Vu0MatrixInverseWithUniformScale(&WtoM, cam->m_bc->GetMatrix());
+        WtoM.Transform(&cam_aim_point, 1);
+    }
+    float pitch1 = atan2f(cam_aim_point.y - CamOffset.y, cam_aim_point.z - CamOffset.z);
+
+    while (pitch0 < 0.0f)
+        pitch0 += 6.2831855f;
+    while (pitch1 < 0.0f)
+        pitch1 += 6.2831855f;
+    while (pitch0 > 6.2831855f)
+        pitch0 -= 6.2831855f;
+    while (pitch1 > 6.2831855f)
+        pitch1 -= 6.2831855f;
+    float dp = pitch0 - pitch1;
+    CAppCameraCtrl *pSealCtrl = cam->m_ctrl;
+    float aimPitch = pSealCtrl->m_130;
+
+    aimPitch += dp;
+    pSealCtrl->m_130 = aimPitch;
+    ftsGetPlayer()->RotateHead(aimPitch);
+}
+
+/* into the tether from first person (SOCOM 1's): the pitch of the SEAL's forward look from the
+ * third-person offset and that of its aim point, each wrapped into [0, 2pi], their difference added
+ * to the controller's aim pitch -- held within 1.57 either way -- and the player's head turned to it
+ * (SOCOM II's tests the SEAL before using it) */
+void FirstToThirdPersonTransition(CAppCamera *cam)
+{
+    float dummy;
+    CPnt3D CamOffset;
+    CPnt3D cam_new_pos = cam->GetThirdPersonCamPos(&CamOffset, &dummy);
+    CPnt3D cam_aim_point(0.0f, 0.0f, 0.0f);
+    CPnt3D lz(0.0f, 0.0f, -1000.0f);
+
+    if (cam->m_bc)
+        cam->m_bc->m_fwdlook.Apply(&lz, &cam_aim_point, 1);
+    cam_aim_point.Add(&CamOffset, &cam_aim_point);
+    float pitch0 = atan2f(cam_aim_point.y - CamOffset.y, cam_aim_point.z - CamOffset.z);
+    CZSealBody *seal = ftsGetPlayer();
+
+    cam_aim_point = seal->m_aim_point;
+    CMatrix WtoM;
+
+    if (cam->m_bc) {
+        Vu0MatrixInverseWithUniformScale(&WtoM, cam->m_bc->GetMatrix());
+        WtoM.Transform(&cam_aim_point, 1);
+    }
+    float pitch1 = atan2f(cam_aim_point.y - CamOffset.y, cam_aim_point.z - CamOffset.z);
+
+    while (pitch0 < 0.0f)
+        pitch0 += 6.2831855f;
+    while (pitch1 < 0.0f)
+        pitch1 += 6.2831855f;
+    while (pitch0 > 6.2831855f)
+        pitch0 -= 6.2831855f;
+    while (pitch1 > 6.2831855f)
+        pitch1 -= 6.2831855f;
+    float dp = pitch0 - pitch1;
+    CAppCameraCtrl *pSealCtrl = cam->m_ctrl;
+    float aimPitch = pSealCtrl->m_130;
+
+    aimPitch += dp;
+    if (aimPitch > 1.57f)
+        aimPitch = 1.57f;
+    else if (aimPitch < -1.57f)
+        aimPitch = -1.57f;
+    pSealCtrl->m_130 = aimPitch;
+    ftsGetPlayer()->RotateHead(aimPitch);
 }
 
 /* a frame of the shake (SOCOM 1's wiggle, rewritten): each axis's angle stepped by its rate and
@@ -634,9 +1082,9 @@ void CAppCamera::ResetDeathCam()
     m_f4 = 0;
     m_f5 = m_f4;
     m_110 = -1;
-    m_114 = 0.0f;
+    m_114 = 0;
     m_104 = 0.0f;
     m_108 = 0.0f;
-    m_10c = 0.0f;
+    m_10c = 0;
     m_118 = 1.0f;
 }
