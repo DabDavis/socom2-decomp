@@ -6,6 +6,8 @@
 #include "zseal.h"
 #include "../zinput/zinput.h"
 #include "../zanim/zanim.h"
+#include "../zweapon/zweapon.h"
+#include "../zsnd/zsnd.h"
 
 extern "C" int rand(void);
 
@@ -457,6 +459,42 @@ float CDynGrenade::ComputeTimeToImpact(float scale, float b, float c)
 /* (OVL2 0x598220) */
 CSealCtrl::~CSealCtrl()
 {
+}
+
+/* a projectile's event: a shot of direct fire or a rocket (item 185) -- not one flown out (flag 3) --
+ * passing the SEAL: within 70 an AI event 9 for its shooter; a rocket within 100 its pass sound at the
+ * nearest point, once (the projectile's flag 20), any other shot within 20 the bullet's (OVL2 0x598000;
+ * SOCOM 1's with the rocket, the position read straight where SOCOM 1's asked a virtual, event 9 for 12).
+ * The hit an unsigned char: the image narrows DistToVector's answer with `andi 0xff`, a bool's, where
+ * zmath.h declares it int (a bool local converts with sltu) */
+void CSealCtrl::OnWeaponEvent(CZProjectile *proj, unsigned int event, void *data)
+{
+    CZWeapon *weapon = proj->m_weapon;
+    bool rocket = weapon ? weapon->GetIDType() == (EQUIP_ITEM)185 : false;
+
+    if (weapon && (weapon->IsDirectFire() || rocket) && !proj->m_useflyout) {
+        const CPnt3D *pos = &m_entity->m_posW;
+        CPnt3D closest;
+        float dist = 999999.0f;
+        unsigned char hit = pos->DistToVector(&proj->m_framestartpos, &proj->m_frameendpos, &closest, &dist);
+
+        if (hit && dist < 70.0f)
+            CreateAiEvent((CAiEvent::EVENT)9, 0.5f, 1500.0f, false, pos, proj->m_shooterID);
+        if (rocket) {
+            if (hit && dist < 100.0f && !proj->m_b20) {
+                CSnd *snd = CZWeapon::GetRocketPassSound();
+
+                if (snd)
+                    snd->PlaySound3D(&closest, 1.0f, 0, 0, 255);
+                proj->SetFlag20(true);
+            }
+        } else if (hit && dist < 20.0f) {
+            CSnd *snd = CZWeapon::GetBulletPassSound();
+
+            if (snd)
+                snd->PlaySound3D(&closest, 1.0f, 0, 0, 255);
+        }
+    }
 }
 
 /* the mission begun: online, the squad told to take up its places (unless the player is a

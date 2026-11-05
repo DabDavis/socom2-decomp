@@ -3344,6 +3344,46 @@ extern "C" void func_005A0BB0(CZSealBody *seal)
     seal->SetInSmoke(true);
 }
 
+/* a death's anim for a location and a stance, one of the table's at random: a SEAL on the player's
+ * team (the player himself aside) dies by the teammates' table -- its location 3's anim for the stance,
+ * then for standing, when that one is none -- anyone else by the deaths'; the deaths' location 3
+ * standing anim when all else is none (OVL2 0x5A0950, new in SOCOM II: FindRandomDeathAnim hands it the
+ * stance it settled on, the falling death and five more ask it -- the name unknown) */
+/* an entity's team bits (an inline: the player's are loaded first, as two inline calls are expanded
+ * left to right -- the plain loads in either order load the SEAL's first) */
+static inline unsigned int TeamOf(const CEntity *e)
+{
+    return e->m_team;
+}
+
+extern "C" AnimType func_005A0950(CZSealBody *seal, DAMAGE_LOCATION loc, SEAL_STATE state)
+{
+    short anim = -1;
+
+    if (!seal->IsPlayer() && (TeamOf(ftsGetPlayer()) & TeamOf(seal))) {
+        int n = AnimSet::teammatedeathanim[loc][state].size();
+
+        if (n > 0) {
+            anim = AnimSet::teammatedeathanim[loc][state][n == 1 ? 0 : rand() % n];
+            if (anim == -1)
+                anim = AnimSet::teammatedeathanim[3][state][0];
+            if (anim == -1)
+                anim = AnimSet::teammatedeathanim[3][0][0];
+        }
+    } else {
+        int n = AnimSet::deathanim[loc][state].size();
+
+        if (n > 0) {
+            anim = AnimSet::deathanim[loc][state][n == 1 ? 0 : rand() % n];
+            if (anim == -1)
+                anim = AnimSet::deathanim[3][state][0];
+        }
+    }
+    if (anim == -1)
+        anim = AnimSet::deathanim[3][0][0];
+    return (AnimType)anim;
+}
+
 /* the hits under a point handled (SOCOM 1's SealProcessAltitude; OVL2 0x5B5D40, not written yet) */
 extern "C" void func_005B5D40(CZSealBody *seal, zdb::DiIntersect *di, CPnt3D *pos, float f);
 /* (zdb::CWorld::GetAltitudes, OVL1 0x31DEA0: SOCOM II's takes no height -- none of its five callers

@@ -592,6 +592,46 @@ const char *func_0058ED60(unsigned char v);
 const char *func_0058EF80(unsigned char v);
 }
 
+/* an order's name, CMD_UNKNOWN for an order without one (OVL2 0x58EF80, new in SOCOM II; the second
+ * table 0x58E0A0 searches -- SOCOM II's own FT_COMMAND values, not SOCOM 1's: ESCORT 8, AMBUSH 30, 24
+ * and 29 unnamed). The cases in the names' order, each a block of its own (the image's), case 0's
+ * apart from the default's */
+extern "C" const char *func_0058EF80(unsigned char cmd)
+{
+    switch (cmd) {
+    case 0: return "CMD_UNKNOWN";
+    case 1: return "CMD_ACTION";
+    case 30: return "CMD_AMBUSH";
+    case 12: return "CMD_ATTACKTO";
+    case 27: return "CMD_AWAKE";
+    case 16: return "CMD_BREACH";
+    case 23: return "CMD_CLEARAREA";
+    case 14: return "CMD_COVERTARGET";
+    case 2: return "CMD_DEPLOY";
+    case 8: return "CMD_ESCORT";
+    case 22: return "CMD_EXTRACT";
+    case 3: return "CMD_FIREATWILL";
+    case 4: return "CMD_FOLLOW";
+    case 17: return "CMD_GETDOWN";
+    case 6: return "CMD_HOLDFIRE";
+    case 20: return "CMD_HOLDFIRE_OVERRIDE";
+    case 5: return "CMD_HOLDPOS";
+    case 15: return "CMD_LASETARGET";
+    case 13: return "CMD_LEADTO";
+    case 10: return "CMD_MOVETO";
+    case 19: return "CMD_OVERWATCH";
+    case 18: return "CMD_PULLOUT";
+    case 7: return "CMD_REGROUP";
+    case 26: return "CMD_REMOVEKILLS";
+    case 25: return "CMD_RESTRAIN";
+    case 9: return "CMD_RUNTO";
+    case 28: return "CMD_SLEEP";
+    case 11: return "CMD_STEALTHTO";
+    case 21: return "CMD_SUPPORT";
+    }
+    return "CMD_UNKNOWN";
+}
+
 /* a name's value in the first and the second table, 0 for none (OVL2 0x58E020, 0x58E0A0, new in
  * SOCOM II; CCharacterType::InitMultiplayerMessages reads the multiplayer messages through them). The
  * byte value a local declared after the counter: it takes s0, the counter s1 */

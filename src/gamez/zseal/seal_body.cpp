@@ -781,10 +781,10 @@ extern "C" void func_0057F310(CZSealBody *seal)
 
 extern "C" {
 /* an anim the SEAL could take, its type, a fraction and a base time, a point (OVL2 0x57FCE0, not
- * written yet), a move begun one way or the other (OVL2 0x5805B0, not written yet) and two anim types
+ * written yet), a move begun one way or the other (OVL2 0x5805B0, below) and two anim types
  * read as variables (OVL1 data, -1 in the image) */
 bool func_0057FCE0(CZSealBody *seal, AnimType *type, float *frac, float *base, float *p);
-void func_005805B0(CZSealBody *seal, bool other, int a);
+CZBodyAnimBlend *func_005805B0(CZSealBody *seal, bool other, int state);
 extern short data_003DEED0;
 extern short data_003DEED8;
 }
@@ -878,6 +878,42 @@ extern "C" {
 extern short data_003DEEF0;
 extern short data_003DEEE8;
 extern short data_003DEAD8;
+}
+
+/* a move begun: the blends cleared to the base, the anim of 0x3DEEF0 pushed (the other way, of
+ * 0x3DEEE8) in a state -- a remote SEAL's as given unless it is dead, this console's 2 alive and 8 dead
+ * -- with flag 2, and told to the network as anim 34 at 18 (17); alive, the desired state stand and the
+ * flag set once more; the root part let go; the blend back (OVL2 0x5805B0, new in SOCOM II: 0x5804E0
+ * and 0x5880E0 call it -- the name unknown) */
+extern "C" CZBodyAnimBlend *func_005805B0(CZSealBody *seal, bool other, int state)
+{
+    CZBodyAnimBlend *b;
+
+    seal->ClearToBase(false);
+    if (seal->IsRemote()) {
+        if (!seal->m_isAlive)
+            state = 8;
+    } else if (seal->m_isAlive)
+        state = 2;
+    else
+        state = 8;
+    if (other) {
+        b = (CZBodyAnimBlend *)func_00588BC0(seal, (AnimType)data_003DEEF0, state, 0, 13);
+        b->m_flags = func_0058A920(b->m_flags, 2, true);
+        if (theNetwork.m_9 && !seal->IsRemote())
+            func_002BBAF0(seal->m_id, 34, state, false, 18);
+    } else {
+        b = (CZBodyAnimBlend *)func_00588BC0(seal, (AnimType)data_003DEEE8, state, 0, 13);
+        b->m_flags = func_0058A920(b->m_flags, 2, true);
+        if (theNetwork.m_9 && !seal->IsRemote())
+            func_002BBAF0(seal->m_id, 34, state, false, 17);
+    }
+    if (seal->m_isAlive) {
+        seal->m_desiredState = stateStand;
+        b->m_flags = func_0058A920(b->m_flags, 2, true);
+    }
+    seal->m_root->SetActive(false);
+    return b;
 }
 
 /* whether the top blend is in one of the two anims 0x5804E0 starts a move from (an inline: its `||`
