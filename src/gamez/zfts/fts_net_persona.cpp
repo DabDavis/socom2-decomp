@@ -56,6 +56,13 @@ struct _zrdr {
     void *m_4;   // 0x4
 };
 
+/* a point (zmath.h's PNT3D: the editor's colour node takes one) */
+struct PNT3D {
+    float x;   // 0x0
+    float y;   // 0x4
+    float z;   // 0x8
+};
+
 class CRdrEditor : public _zrdr {
 public:
     CRdrEditor();
@@ -63,6 +70,9 @@ public:
     bool push(const char *tag);
     bool pop();
     bool addstringnode(const char *s);
+    bool addintnode(int i);
+    bool addPNT3D(const char *tag, const PNT3D &p);
+    bool addSTRING(const char *tag, const char *s);
 
     unsigned char _8[0x4c - 0x8];
 };
@@ -490,6 +500,89 @@ void CZPersonaState::UpdateLocalPersona()
     UpdatePersonaLists();
 }
 #pragma auto_inline reset
+
+inline bool IsSealTeam(unsigned int team);
+inline bool IsFlaggedTeam(unsigned int team);
+extern "C" int sprintf(char *buf, const char *format, ...);
+
+/* the menus' persona lists rebuilt while this client is in the menus: each side's players with
+ * their clan tag, rank and readiness (a 1 or a 2) and the tag's colour, the flagged personas, the
+ * rest by name (SOCOM 1's UpdatePersonaLists, SOCOM II's lists; OVL1 0x2C5010). The counter, the
+ * flag and the persona declared uninitialised ahead of the game (numbered there, in that order) and
+ * the persona read through its own bounds test: through GetPersona it merges into the inline's
+ * result temporary, numbered after the game, and the two trade s1/s2 (the target's: the induction
+ * pointer s0, the game s1, the persona s2, the flag s3, the counter s4) */
+void CZPersonaState::UpdatePersonaLists()
+{
+    int i;
+    bool ready;
+    PersonaData *p;
+    CZNetGame *game = theMission.m_pNetGame;
+
+    if (game && game->m_my_major_game_state == CZNetGame::MP_MAJOR_MENUS) {
+        CRdrEditor terrs;
+        CRdrEditor seals;
+        CRdrEditor flagged;
+        CRdrEditor rest;
+
+        terrs.push(0);
+        seals.push(0);
+        flagged.push(0);
+        rest.push(0);
+        PNT3D colour;
+
+        colour.x = 128.0f;
+        colour.y = 64.0f;
+        colour.z = 32.0f;
+        for (i = 0; i < 24; i++) {
+            if (i >= 0 && i < 24)
+                p = m_PersonaList[i].m_data;
+            else
+                p = 0;
+            if (p) {
+                ready = p->m_41 == CZNetGame::MP_MINOR_READY;
+                char text[32];
+
+                if (p->m_clan && p->m_clan[0])
+                    sprintf(text, "[%s]", p->m_clan);
+                else
+                    sprintf(text, "");
+                if (IsTerroristTeam(p->m_team)) {
+                    terrs.push(0);
+                    terrs.addstringnode(p->m_name);
+                    terrs.addintnode(p->m_42);
+                    terrs.addintnode(ready ? 2 : 1);
+                    terrs.push(0);
+                    terrs.addSTRING("VALUE", text);
+                    terrs.addPNT3D("COLOR", colour);
+                    terrs.pop();
+                    terrs.pop();
+                } else if (IsSealTeam(p->m_team)) {
+                    seals.push(0);
+                    seals.addstringnode(p->m_name);
+                    seals.addintnode(p->m_42);
+                    seals.addintnode(ready ? 2 : 1);
+                    seals.push(0);
+                    seals.addSTRING("VALUE", text);
+                    seals.addPNT3D("COLOR", colour);
+                    seals.pop();
+                    seals.pop();
+                } else if (IsFlaggedTeam(p->m_team) != false)
+                    flagged.addstringnode(p->m_name);
+                else
+                    rest.addstringnode(p->m_name);
+            }
+        }
+        terrs.pop();
+        seals.pop();
+        flagged.pop();
+        rest.pop();
+        game->m_uiv_SealList->Set(&terrs);
+        game->m_uiv_TerrList->Set(&seals);
+        game->m_uiv_NoneList->Set(&flagged);
+        game->m_uiv_ChatList->Set(&rest);
+    }
+}
 
 /* a client moved to the other side when that side has a slot free: its slot and team taken there,
  * the switch sent and the counts moved (OVL1 0x2C4290; the session master's answer to a team
