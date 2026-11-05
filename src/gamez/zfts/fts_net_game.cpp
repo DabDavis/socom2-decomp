@@ -2,8 +2,8 @@
  * the session master's game state, "GameState", that every client reads its rounds, scores and
  * flags from). OVL1 0x2C0040-0x2C141F, after fts_net_seal.cpp and before fts_net_grenade.cpp; SOCOM
  * II adds the sides' swap (0x2C0040) and a reader of the object's halfword at 0x16 (0x2C0090) after
- * UpdateLocalGame. Written but RemoteGameUpdateCallback (0x2C0850). Defined in reverse of their
- * image order (-inline deferred). */
+ * UpdateLocalGame. Whole (the states' round 45: 9 of 9). Defined in reverse of their image order
+ * (-inline deferred). */
 
 #include "../zanim/zanim.h"
 
@@ -71,6 +71,8 @@ public:
 
     MP_MAJOR_GAME_STATE MPMajorGameState(MP_MAJOR_GAME_STATE state);
     unsigned int DecrementRoundClockSec(int sec);   /* 0x2A6960 */
+    bool TenSecondLaunch(bool launch);   /* 0x2A6B90 */
+    void SetE3RoundCount(int count);   /* 0x2A7510 */
 
     CValve *m_0;   // 0x0
     unsigned char _4[0x8 - 0x4];
@@ -104,6 +106,7 @@ public:
     int m_11c;   // 0x11c
     int m_120;   // 0x120
     int m_124;   // 0x124
+    int m_128;   // 0x128: the winner (the valve mp_winner mirrors it)
 };
 
 class CMission {
@@ -111,8 +114,11 @@ public:
     /* (the name ours: the creation callback's game comes through an inline -- read as the member,
      * it takes s1 and the index s0, the target's the other way round) */
     CZNetGame *GetNetGame() { return m_pNetGame; }
+    static void RecoverFromNetError(int error);   /* 0x2A45F0 */
 
-    unsigned char _0[0x1808];
+    unsigned char _0[0x1c];
+    const char *m_1c;   // 0x1c: the mission's database name (fts_state.h's)
+    unsigned char _20[0x1808 - 0x20];
     CZNetGame *m_pNetGame;   // 0x1808 (SOCOM 1's at 0x584)
 };
 
@@ -125,7 +131,7 @@ struct TypeGameObject {
     int m_8;   // 0x8
     unsigned int m_c;   // 0xc: the game's clock in seconds
     int m_10;   // 0x10
-    short m_14;   // 0x14: 71, 2071 for the 1 and 2 of the byte at 0x437DD4
+    unsigned short m_14;   // 0x14: the version: 71, 2071 for the 1 and 2 of the byte at 0x437DD4
     unsigned short m_16;   // 0x16: the node universe's count
     /* the flags (UpdateLocalGame's, bit by bit; a word of their own, its address registered) */
     struct Flags {
@@ -174,6 +180,8 @@ public:
 };
 
 extern "C" {
+void func_002C0040(bool swapped);   /* (below: the sides swapped) */
+
 /* the fifteen fields' ids */
 extern int data_00441258;
 extern int data_00441260;
@@ -202,7 +210,26 @@ void *func_002BD120();
 void *memset(void *dst, int c, unsigned int n);
 void func_002A7560(CZNetGame *game, bool on);
 void func_002C2D50(int value);   /* (fts_net_persona.cpp's: the local persona's byte 0x43) */
-void func_002C3330(unsigned int team, int swapped);
+void func_002C3330(unsigned int team);   /* (fts_net_persona.cpp's: the player's team set) */
+void func_002A6AC0(CNetClock *clock, unsigned int time, bool set);   /* (SOCOM 1's CNetClock::SetInitialRead) */
+int strcmp(const char *a, const char *b);
+
+/* the fifteen fields' update counts */
+extern int data_004412E0;
+extern int data_004412E8;
+extern int data_004412F0;
+extern int data_004412F8;
+extern int data_00441300;
+extern int data_00441308;
+extern int data_00441310;
+extern int data_00441318;
+extern int data_00441320;
+extern int data_00441328;
+extern int data_00441330;
+extern int data_00441338;
+extern int data_00441340;
+extern int data_00441348;
+extern int data_00441350;
 
 extern unsigned char data_00437DD4;   /* (a byte the version adds 2000 for at 1 and 2) */
 extern unsigned char data_00441580[24];   /* (the mission picks the game sends) */
@@ -211,6 +238,7 @@ char *strncpy(char *dst, const char *src, unsigned int n);
 }
 
 const char *GetDatabase();   /* 0x27F800 */
+void SetDatabase(const char *name);   /* 0x27F810 */
 
 /* the SEALs' friendly-fire switch (zseal.h's) */
 class CZSealBody {
@@ -219,12 +247,25 @@ public:
 };
 
 /* the online lobby (zonline.h's: only what is called) */
+typedef void (*LobbyEventHandler)(const char *event, const char *arg);
+
 class CZOnlineLobby {
 public:
     void GetMissionSequence(unsigned char *idx, unsigned char *seq);   /* 0x2F82E0 */
+    void SetMissionSequence(unsigned char idx, unsigned char *seq);   /* 0x2F8270 */
+
+    unsigned char _0[0x58];
+    LobbyEventHandler m_event_handler;   // 0x58
 };
 
 extern CZOnlineLobby theLobby;
+
+/* an event told to the menus, when they listen (zonline.h's) */
+inline void LobbyEvent(const char *event, const char *arg)
+{
+    if (theLobby.m_event_handler)
+        theLobby.m_event_handler(event, arg);
+}
 
 /* the kind registered: its fifteen fields, their offsets taken off a pointer to a local, as
  * fts_net_grenade.cpp's (OVL1 0x2C1120) */
@@ -255,6 +296,144 @@ void CZGameState::zNetRegisterGame()
                                                 RemoteGameUpdateCallback,
                                                 RemoteGamePostUpdateCallback,
                                                 RemoteGameDeletionCallback);
+}
+
+/* a major game state the session master sends taken up: a finished game takes no new round
+ * (SOCOM II's; the name ours) */
+inline bool MajorStateChangeOK(int cur, int next)
+{
+    switch (cur) {
+    case CZNetGame::MP_MAJOR_GAMEOVER:
+        if (next == CZNetGame::MP_MAJOR_NEWROUND)
+            return false;
+        break;
+    }
+    return true;
+}
+
+/* the game object's fields taken up, each that changed (or all, at -1), and counted: the
+ * database (the menus told when it is not the mission's), the valves, the clock, the version (the
+ * menus told when it differs), the flags -- the major state, the start flag, the game type, the
+ * valves and the sides --, the round count, the winner, the scores, the mission sequence and the
+ * pick list (SOCOM 1's, grown; OVL1 0x2C0850) */
+void CZGameState::RemoteGameUpdateCallback(int client, int index, int field)
+{
+    if (field != -2) {
+        TypeGameObject *data = (TypeGameObject *)theNetwork.zNetGetObject(index)->m_data;
+        CZNetGame *game = theMission.m_pNetGame;
+
+        if (game) {
+            if (field == data_00441258 || field == -1) {
+                SetDatabase((const char *)data->m_0);
+                const char *db = theMission.m_1c;
+
+                if (!db || strcmp(db, GetDatabase()))
+                    LobbyEvent("ON_FORCE_NEW_DB", 0);
+                data_004412E0++;
+            }
+            if (field == data_00441260 || field == -1) {
+                SetValveValue(game->m_8, data->m_8);
+                data_004412E8++;
+            }
+            if (field == data_00441268 || field == -1) {
+                game->m_clock.m_max_game_time = data->m_c * 1000;
+                data_004412F0++;
+            }
+            if (field == data_00441270 || field == -1) {
+                func_002A6AC0(&game->m_clock, data->m_10, true);
+                data_004412F8++;
+            }
+            if (field == data_00441278 || field == -1) {
+                int version = 71;
+
+                if (data_00437DD4 == 1 || data_00437DD4 == 2)
+                    version += 2000;
+                if (data->m_14 != version)
+                    LobbyEvent("MP_VERSION_NUMBER_ERROR", 0);
+                data_00441300++;
+            }
+            if (field == data_00441280 || field == -1)
+                data_00441308++;
+            if (field == data_00441288 || field == -1) {
+                data_00441310++;
+                unsigned char state = data->m_18.m_b3;
+
+                if (state != game->m_mp_major_game_state) {
+                    if (MajorStateChangeOK(game->m_mp_major_game_state, state)) {
+                        game->MPMajorGameState((CZNetGame::MP_MAJOR_GAME_STATE)state);
+                        CZPersonaState::UpdateLocalPersona();
+                    } else
+                        CMission::RecoverFromNetError(754);
+                }
+                game->m_d4 = data->m_18.m_b7;
+                game->m_game_type = data->m_18.m_b8;
+                if (data->m_18.m_b0 && !game->m_d8)
+                    func_002A6AC0(&game->m_clock, data->m_10, true);
+                game->TenSecondLaunch(data->m_18.m_b0);
+                CValve *valve = CValve::Create("mp_friendly_fire", (VALVE_TYPE)1);
+
+                if (valve) {
+                    SetValveValue(valve, data->m_18.m_b13);
+                    CZSealBody::m_allow_friendly_fire = data->m_18.m_b13;
+                }
+                valve = CValve::Create("mp_locked_game", 0, (VALVE_TYPE)1);
+                if (valve)
+                    SetValveValue(valve, data->m_18.m_b14);
+                if (game->m_4c)
+                    SetValveValue(game->m_4c, data->m_18.m_b15);
+                SetValveValue(game->m_64, data->m_18.m_b16);
+                unsigned char start = data->m_18.m_b1;
+
+                if (start != game->m_net_start_flag)
+                    game->m_net_start_flag = start;
+                if (game->m_58)
+                    SetValveValue(game->m_58, data->m_18.m_b17);
+                if (game->m_5c)
+                    SetValveValue(game->m_5c, data->m_18.m_b21);
+                valve = CValve::GetByName("EQlimit");
+                if (valve)
+                    SetValveValue(valve, data->m_18.m_b25);
+                func_002C0040(data->m_18.m_b28);
+            }
+            if (field == data_00441290 || field == -1) {
+                game->SetE3RoundCount(data->m_1c);
+                data_00441318++;
+            }
+            if (field == data_00441298 || field == -1) {
+                SetValveValue(game->m_0, data->m_1d);
+                data_00441320++;
+            }
+            if (field == data_004412A0 || field == -1) {
+                game->m_128 = data->m_1e;
+                CValve *valve = CValve::GetByName("mp_winner");
+
+                if (valve)
+                    SetValveValue(valve, data->m_1e);
+                data_00441328++;
+            }
+            if (field == data_004412A8 || field == -1) {
+                game->m_120 = data->m_1f;
+                data_00441330++;
+            }
+            if (field == data_004412B0 || field == -1) {
+                game->m_124 = data->m_20;
+                data_00441338++;
+            }
+            if (field == data_004412B8 || field == -1) {
+                theLobby.SetMissionSequence(data->m_21, data->m_22);
+                data_00441340++;
+            }
+            if (field == data_004412C0 || field == -1) {
+                theLobby.SetMissionSequence(data->m_21, data->m_22);
+                data_00441348++;
+            }
+            if (field == data_004412C8 || field == -1) {
+                for (int i = 0; i < 24; i++)
+                    data_00441580[i] = data->m_42[i];
+                data_00441350++;
+            }
+        }
+    }
 }
 
 /* after an update: the valve at 0x64 set from the flag the object carries (OVL1 0x2C07B0) */
@@ -418,7 +597,7 @@ extern "C" void func_002C0040(bool swapped)
 {
     if (swapped != data_004412D8) {
         data_004412D8 = swapped;
-        func_002C3330(data_00441470, swapped);
+        func_002C3330(data_00441470);
         CZGameState::UpdateLocalGame(theMission.m_pNetGame);
         CZPersonaState::UpdateLocalPersona();
     }
