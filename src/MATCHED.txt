@@ -8012,6 +8012,7 @@
 0x004D0980 Tone_Of_Final
 0x004D09A8 Calculate_NbrOfStatesInDict_ForChinese
 0x004D1B20 FreeSecondPassContext
+0x004D1C18 GetSecondPassInfo
 0x004D3318 AllocateNodeAndFreePrevious
 0x004D45A8 CalcNrNodes10
 0x004D5058 SetIsolatedWordDpActiveWords
@@ -8205,6 +8206,7 @@
 0x004F5EB0 ResetGender
 0x004F5F20 HLnOnePlusExpHFloat
 0x004F6000 LogAdd
+0x004F6110 MelInitBands
 0x004F6918 ConstructMel
 0x004F6958 ProcessMel
 0x004F6B08 ControlMel
@@ -8225,9 +8227,13 @@
 0x004F7778 imtxDeleteCol
 0x004F77F8 mtxFillX
 0x004F7880 func_004F7880
+0x004F7A48 smtConstruct
 0x004F80A8 smtDestruct
 0x004F8130 SpecSubPutSession
 0x004F8378 SpecSubGetSession
+0x004F8468 SpectralSubtraction
+0x004F9670 ControlSpecSub
+0x004F9898 InitSpecSub
 0x004F9CA8 ConstructSpecSub
 0x004F9CE8 ProcessSpecSub
 0x004F9DC0 ChangeMike
@@ -8280,6 +8286,7 @@
 0x00502298 ProcessPitchCombiner
 0x005028F0 ControlPitchCombiner
 0x00502F10 ConstructPitchCombiner
+0x00503410 Lin_2_Log
 0x005041C0 ControlSHS_VUV
 0x00504980 ConstructSHS_VUV
 0x005049C0 SlidingHisto_NewItem
@@ -8420,6 +8427,7 @@
 0x0050AC20 qQueueJumpBackOne
 0x0050ACF0 qQueueNbrElements
 0x0050AD28 qCheckDeQueueOne
+0x0050B5C0 ConstructQueue
 0x0050B928 DestructQueue
 0x0050C0E0 DestructArchitecture
 0x0050C200 tosCallControlFunc
