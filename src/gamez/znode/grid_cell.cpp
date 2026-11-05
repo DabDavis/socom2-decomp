@@ -13,10 +13,9 @@
 namespace zdb {
 
 /* the cell's lists cleared, its box the point and the size less a thousandth (SOCOM 1's).
- * OPEN (0x130 of 0x12C): the target inlines CDynTexList's construction whole (six zero stores at
- * 0x104-0x118), where include/vector's pointer vector puts CTexList's and CTexPalList's
- * constructors a level too deep and calls them -- CHUD's unresolved case (hud_main.cpp): the same
- * class's destructor wants the extra level (0x1FC520, 0x1FC5A0 are called with four this-tests) */
+ * Byte-exact on the headers as they stand (the core lane round 17 found its old OPEN note stale:
+ * the target inlines CDynTexList's construction whole, six zero stores at 0x104-0x118, which once
+ * took a level include/vector's pointer vector did not have) */
 CCell::CCell(const CPnt3D *pos, float size)
 {
     size -= 0.001f;
@@ -38,12 +37,10 @@ CBBox *CCell::UpdateBBox(bool up)
 }
 
 /* the lights and the clutter let go of (SOCOM 1's).
- * OPEN (0x148 of 0x180): the target inlines the light list's destructor four levels (four
- * this-tests, then the range erase) and CDynTexList's one level (the two class vectors'
- * destructors called with -1, 0x1FC5A0 and 0x1FC520 -- placeholders, named here as the classes'
- * destructors they are once renamed); here ~CLightList is one call and the texture lists' calls
- * resolve to unnamed rows. Turns on the list destructors' inlining in tail-less code and on the
- * two rows' names */
+ * Byte-exact on the headers as they stand (the core lane round 17 found its old OPEN note stale:
+ * the target inlines the light list's destructor four levels -- four this-tests, then the range
+ * erase -- and CDynTexList's one level, the two class vectors' destructors 0x1FC5A0 and 0x1FC520
+ * called with -1) */
 CCell::~CCell()
 {
     m_lightList.clear();
@@ -88,13 +85,9 @@ void CCell::RenderClutter(CCell *cell)
 }
 
 /* the box's centre (SOCOM 1's).
- * OPEN, 16 instructions (right size): the target inlines all three operators whole, the inner
- * ones' results stacked below the outer (Sub's at 48, Scale's 64, Add's 80, their copies 96-128);
- * with zmath.h's free operators the nested argument sits too deep and operator- is inlined one
- * level (CPnt3D's default and copy constructors called out of line). Split into named statements
- * every operator inlines and only the stack slots differ (9 instructions: the first statement's
- * objects at the top of the frame) -- the original's operators were likely members (a temporary's
- * member call is no nested argument); zmath.h is not this lane's */
+ * Byte-exact since zmath.h's operators became inline members (the core lane round 17 found its
+ * old OPEN note stale): all three inlined whole, the inner ones' results stacked below the outer
+ * (Sub's at 48, Scale's 64, Add's 80, their copies 96-128) -- the one expression, as written */
 void CCell::GetMidPoint(CPnt3D *out)
 {
     *out = m_bbox.m_min + (m_bbox.m_max - m_bbox.m_min) * 0.5f;
