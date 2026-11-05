@@ -90,6 +90,9 @@ public:
     void IssueCommand(CZSealBody *from, FT_COMMAND cmd, void *data, bool b);
     /* a hand signal given (seal_handsig.cpp's, OVL2 0x600290: its anim type returned, unread here) */
     void DoHandSignal(SEAL_HANDSIGNAL sig);
+    /* the SEAL it is looking at (zseal.h's, seal_env.cpp's OVL2 0x5AA690: its cached one or its
+     * reticule node's -- SOCOM 1's GetReticuleSeal) */
+    CZSealBody *GetReticuleSeal();
 
     unsigned char _170[0x5e0 - sizeof(CEntity)];
     unsigned char m_kit[0x1060 - 0x5e0];   // 0x5e0: its kit (zseal.h's CZKit m_kit; bytes here)
@@ -753,11 +756,6 @@ CZSealBody *CSealUnit::GetSealByIndex(int index, int depth)
     return seal;
 }
 
-extern "C" {
-/* the SEAL a SEAL is looking at (seal_env.cpp's, OVL2 0x5AA690: its cached one or its reticule
- * node's) */
-CZSealBody *func_005AA690(CZSealBody *seal);
-}
 
 /* MSL's back_insert_iterator and copy as far as the squads use them (the target's second walk is
  * copy's: its first iterator a by-value parameter in the frame below the caller's temporaries) */
@@ -798,7 +796,7 @@ void CSealUnit::GetTeamSeals(int team, CZSealBody *seal, CSealUnit *unit, std::l
     CZSealBody *s = 0;
 
     if (seal) {
-        s = func_005AA690(seal);
+        s = seal->GetReticuleSeal();
         if (s && ((1 << team) & s->m_team)) {
             out->push_back(s);
             goto done;
