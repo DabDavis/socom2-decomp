@@ -1,9 +1,8 @@
 /* hud_missioncams.cpp -- the HUD's mission cameras (OVL1 0x228ED0-0x229C9F): SOCOM 1's unit (its
  * DWARF names it, Z:\dev\Apps\FTS\hud_missioncams.cpp), the same functions in the same order,
- * from IsPlaying to the constructor; HudTick written (the HUD's round 40). Not written yet:
- * PlayCamera(CMissionCam *, bool), which SOCOM II grew from 0x3DC to 0x54C bytes, and CleanupCamera
- * -- both call into the HUD, the seal's controller, the jukebox and the camera through rows not
- * named yet. Defined in reverse of their image order (-inline deferred). */
+ * from IsPlaying to the constructor; HudTick written (the HUD's round 40), PlayCamera(CMissionCam *,
+ * bool) -- SOCOM II's 0x54C against SOCOM 1's 0x3DC -- and CleanupCamera (round 51): the unit whole.
+ * Defined in reverse of their image order (-inline deferred). */
 
 #include <string.h>
 
@@ -18,31 +17,196 @@ public:
 extern CMission theMission;
 
 /* the HUD's owner's controller, its input bit (zseal.h's CSealCtrl: m_input_enabled, bit 11 of the
- * flags at 0x170) */
+ * flags at 0x170), and the menu state put back (OVL2 0x597740, SOCOM II's with a flag) */
 class CSealCtrl {
 public:
+    void SetMenuState(MENU_STATE state, bool flag);
+    /* the menu state (SOCOM 1's GetMenuState, out of line there: SOCOM II reads it inline) */
+    MENU_STATE GetMenuState() const { return m_menustate; }
+    /* the input flushed and the heartbeat stopped (OVL2 0x592AC0, SOCOM 1's) */
+    void StopRumbler();
+
     unsigned char _0[0x170];
     unsigned int m_flags0 : 11;
     unsigned int m_input_enabled : 1;
+    unsigned char _172[0x221 - 0x172];
+    MENU_STATE m_menustate;   // 0x221
 };
 
+/* the AI's switch (OVL2 0x574830) */
+class CSealCtrlAi {
+public:
+    static void SetAiEnabled(bool on, bool flag);
+};
+
+/* the seal's kit: the lens effects (OVL2 0x5C1800) and the heartbeat sensor's switch (kit.h's
+ * m_heartbeat_enabled, bit 15 of the flags at 0) */
+class CZKit {
+public:
+    void Apply_LensEffects(bool on, CPnt3D *color);
+
+    unsigned int m_bits0 : 15;
+    unsigned int m_heartbeat_enabled : 1;
+};
+
+/* zseal.h's (SOCOM 1's DWARF; a byte enum under -enum min) */
+enum ZOOMSTATE {
+    ZOOMSTATE_UNKNOWN = -1, ZOOMSTATE_3RDPERSON = 0, ZOOMSTATE_1STPERSON = 1, ZOOMSTATE_THERMAL = 2,
+    ZOOMSTATE_NVG = 3, ZOOMSTATE_BINOCS = 4, ZOOMSTATE_WEAPONDEF1 = 5, ZOOMSTATE_WEAPONDEF2 = 6,
+    ZOOMSTATE_WEAPONDEF3 = 7, ZOOMSTATE_WEAPONDEF4 = 8, ZOOMSTATE_WEAPONDEF5 = 9, ZOOMSTATE_WEAPONDEF6 = 10,
+    ZOOMSTATE_WEAPONDEF7 = 11, ZOOMSTATE_WEAPONDEF8 = 12, NUM_ZOOMSTATES = 13
+};
+
+/* the seal: its controller, the bit the HUD tests before a film (0xE1 bit 4, as hud_ammo.cpp's), its
+ * zoom state (SOCOM 1's m_zoomstate, 0x160 there) and its kit */
 class CZSealBody {
 public:
     unsigned char _0[0xc0];
     CSealCtrl *m_ctrl;   // 0xc0
+    unsigned char _c4[0xe1 - 0xc4];
+    unsigned char _e1_0 : 4;
+    unsigned char m_socom2_e1_4 : 1;   // 0xe1 bit 4
+    unsigned char _e2[0x200 - 0xe2];
+    ZOOMSTATE m_zoomstate;   // 0x200
+    unsigned char _201[0x5e0 - 0x201];
+    CZKit m_kit;   // 0x5e0
 };
 
-/* the HUD: its owner and its menu state (SOCOM II's offset) */
+CZSealBody *ftsGetPlayer();
+
+/* the letterbox's bars taken away (hud_letterbox.cpp's) */
+class CLetterBox {
+public:
+    void AddLetterbox();
+    void RemoveLetterbox();
+};
+
+/* the HUD: its owner, its letterbox and its menu state (SOCOM II's offsets), shown again by On */
 class CHUD {
 public:
     static CZSealBody *GetHUDOwner();
+    void Off();
+    void On();
     bool MenuUp() const { return m_menustate != stateNone; }
+    /* the HUD's font (inline: a description's text is chosen after it is read, the target's order;
+     * the name ours) */
+    C2DFont *GetFont() { return m_myfont; }
 
-    unsigned char _0[0x1a220];
+    unsigned char _0[0x498];
+    C2DFont *m_myfont;   // 0x498
+    unsigned char _49c[0x1a100 - 0x49c];
+    CLetterBox m_letterbox;   // 0x1a100
+    unsigned char _1a101[0x1a220 - 0x1a101];
     MENU_STATE m_menustate;   // 0x1a220
 };
 
 extern CHUD *theHUD;
+
+/* the camera's mission film: its music at 0x18 (SOCOM 1's DWARF: identifier, name, three
+ * descriptions, the animation, the music) */
+class CSnd;
+
+class CMissionCam {
+public:
+    char *m_identifier;   // 0x0
+    char *m_name;   // 0x4
+    char *m_description[3];   // 0x8
+    CZAnim *m_anim;   // 0x14
+    CSnd *m_music;   // 0x18
+};
+
+/* the jukebox and the paused voices (zsnd's), the master volume's wrapper (OVL1 0x3414C0, a tail call
+ * to snd_SetMasterVolume) */
+enum MUSIC_MODE {
+    MUSIC_MODE_0 = 0,
+    MUSIC_MODE_3 = 3
+};
+
+class CSndJukebox {
+public:
+    static void Play(MUSIC_MODE mode, CSnd *snd);
+    static void ClearQueue();
+    static void FadeOut();
+};
+
+enum SOUND_MODE {
+    SND_MODE_UNKNOWN = 0,
+    SND_MODE_EFX = 1,
+    SND_MODE_MUSIC = 2,
+    SND_MODE_DIALOG = 3,
+    SND_MODE_BANK_DEFINED = 4
+};
+
+class CSndInstance {
+public:
+    static void PauseAllSounds(SOUND_MODE mode);
+    static void ResumeAllSounds(SOUND_MODE mode);
+};
+
+/* the master volume's wrappers (OVL1 0x3414B0 and 0x3414C0, tail calls to snd_GetMasterVolume and
+ * snd_SetMasterVolume) and 0x341060 (no arguments; its name not known) */
+extern "C" int func_003414B0(int which);
+extern "C" void func_003414C0(int which, int volume);
+extern "C" void func_00341060();
+
+/* the score pop-up is up (hud_scorepopup.cpp's) */
+bool hudIsScorePopupOn();
+
+/* a pointer the film start tests (OVL1 bss 0x43668C, no data row yet): no film while the halfword at
+ * 4 is 1 or 2 */
+struct CFilmBlock {
+    unsigned char _0[4];
+    unsigned short m_4;   // 0x4
+};
+
+extern CFilmBlock *data_0043668C;
+
+/* the voice recogniser (reco.cpp's theReco) suspended */
+class CReco {
+public:
+    void Suspend(bool now);
+};
+
+extern CReco theReco;
+
+/* the weapons' tick switch (SOCOM 1's CZWeapon::m_weaponTickDisabled, cleared here as SOCOM 1's
+ * CleanupCamera did -- OVL1 bss 0x4B52B0, no data row yet) */
+extern unsigned char data_004B52B0;
+
+/* OVL2 0x598840 (a byte flag set when it changes) and 0x592CA0 (on the player's controller): their
+ * names not known */
+extern "C" void func_00598840(bool on);
+extern "C" void func_00592CA0(CSealCtrl *ctrl);
+
+/* the lens effects (thezoom.cpp's CameraZoom, SOCOM II's) */
+class CameraZoom {
+public:
+    static void HoldLensFx(unsigned char hold);
+    static void ReleaseLensFx(unsigned char hold);
+    static void SetLensFx(unsigned char fx);
+    static unsigned char LensFxOn();
+};
+
+/* the world's night-vision and starlight-scope lens colours (znode.h's, SOCOM 1's CPnt3Ds grown to
+ * four floats) */
+namespace zdb {
+class CWorld {
+public:
+    static CWorld *m_world;
+
+    unsigned char _0[0x5dc];
+    unsigned char m_night_mission;   // 0x5dc
+    unsigned char _5dd[3];
+    PNT4D m_lensfx_nvg;   // 0x5e0
+    PNT4D m_lensfx_starlightscope;   // 0x5f0
+};
+}
+
+/* the zoom state and the camera's zoom a film put aside, given back at its end (SOCOM 1's file
+ * statics, by its symbols: cur_zoomstate gp-30240, cur_camzoom gp-30236; OVL1 .data 0x3DC888 and
+ * 0x3DC890) */
+static ZOOMSTATE cur_zoomstate = ZOOMSTATE_UNKNOWN;
+static float cur_camzoom = 1.0f;
 
 /* the game state the skip tells to skip its buffer swaps (fts_state.h's CGameState: SetSkipSwap its
  * slot 0x28; theGame's core state, theGame + 0x110) */
@@ -73,11 +237,23 @@ extern "C" void func_002707C0(CZAnim *anim, bool now);
 class CZAnim {
 public:
     bool Running();
+    void Refresh(bool all);
+    CZAnim *ActivateArg(int arg, ...);
+};
+
+/* the camera's view, its zoom at 0x470 (SOCOM 1's at appCamera+0x34, 0x444) */
+struct CAppCameraView {
+    unsigned char _0[0x470];
+    float m_zoom;   // 0x470
 };
 
 class CAppCamera {
 public:
     void UpdateCameraRegions();
+    void SetZoom(float zoom);
+
+    unsigned char _0[0xb4];
+    CAppCameraView *m_view;   // 0xb4
 };
 
 extern CAppCamera *appCamera;
@@ -168,6 +344,87 @@ void CZHudMissionCams::HudTick(CPad *pad, float dT)
     }
 }
 
+/* a film's end: the letterbox's strings off, the animation forgotten, the master volume given back,
+ * the film's music faded and its queue cleared, the dialogue voices resumed, the weapons' tick, the
+ * AI and the menu state given back; the lens effect put aside at the start put up again unless one
+ * is up (night vision or the starlight scope with the world's colour), the camera's zoom given back,
+ * the lens effects released, the heartbeat sensor on, the player's controller told, the core state
+ * skipping a swap, the letterbox down and the HUD on (SOCOM 1's, 0x204 there: SOCOM II adds the
+ * volume, the voices, the lens checks and the player's controller; the pad no longer flushed).
+ * The registers by MW's colouring (tools/igreplay.py): the kit numbered before the loop's counter --
+ * a dead first definition at the top (the world's round-12 rule; declared there uninitialised it is
+ * numbered at its assignment, after the owner: this, the counter and the kit then take s2/s1/s0 for
+ * the target's s1/s2/s0) -- and the world read into a local ahead of the lens chain (s2, loaded in
+ * the first test's delay slot; read in each case it is loaded there instead). `> 3` keeps the
+ * target's slti into at, `>= 4` computes into v0 */
+void CZHudMissionCams::CleanupCamera(CPad *pad)
+{
+    CZKit *kit = 0;
+
+    m_letterboxobjectivename.Off();
+    m_socom2_280.Off();
+    for (int i = 0; i < 3; i++)
+        m_letterboxobjectivedescription[i].Off();
+    m_animhandle = 0;
+    m_crosstext.Off();
+    func_003414C0(1, m_socom2_3b8);
+    if (m_currentcam->m_music) {
+        CSndJukebox::FadeOut();
+        CSndJukebox::ClearQueue();
+    }
+    CSndInstance::ResumeAllSounds(SND_MODE_DIALOG);
+    data_004B52B0 = 0;
+    CSealCtrlAi::SetAiEnabled(true, true);
+    func_00598840(true);
+
+    CZSealBody *owner = CHUD::GetHUDOwner();
+
+    owner->m_ctrl->SetMenuState(m_lastmenustate, false);
+    kit = &owner->m_kit;
+
+    if (!CameraZoom::LensFxOn() && kit && cur_zoomstate != -1) {
+        zdb::CWorld *world = zdb::CWorld::m_world;
+
+        if (cur_zoomstate == 2) {
+            if (!CameraZoom::LensFxOn())
+                kit->Apply_LensEffects(false, 0);
+            CameraZoom::SetLensFx(2);
+        } else if (cur_zoomstate == 3) {
+            if (!CameraZoom::LensFxOn()) {
+                PNT4D color = world->m_lensfx_nvg;
+
+                kit->Apply_LensEffects(true, (CPnt3D *)&color);
+            }
+            CameraZoom::SetLensFx(3);
+        } else if (cur_zoomstate > 3) {
+            if (!CameraZoom::LensFxOn()) {
+                PNT4D color = world->m_lensfx_starlightscope;
+
+                kit->Apply_LensEffects(true, (CPnt3D *)&color);
+            }
+            CameraZoom::SetLensFx(4);
+        }
+        cur_zoomstate = ZOOMSTATE_UNKNOWN;
+    }
+    if (cur_camzoom != 1.0f) {
+        appCamera->SetZoom(cur_camzoom);
+        cur_camzoom = 1.0f;
+    }
+    CameraZoom::ReleaseLensFx(1);
+    if (kit)
+        kit->m_heartbeat_enabled = true;
+
+    CZSealBody *player = ftsGetPlayer();
+    CSealCtrl *ctrl = player ? player->m_ctrl : 0;
+
+    if (ctrl)
+        func_00592CA0(ctrl);
+    m_currentcam = 0;
+    theGame.m_coreState.SetSkipSwap(1);
+    theHUD->m_letterbox.RemoveLetterbox();
+    theHUD->On();
+}
+
 /* the letterbox's strings drawn while a camera plays */
 void CZHudMissionCams::Draw(zdb::CCamera *theCamera)
 {
@@ -187,6 +444,132 @@ void CZHudMissionCams::PlayCamera(const char *camname)
 
     if (cam)
         PlayCamera(cam, true);
+}
+
+/* a film started: none while one plays, the HUD's owner is down, the film block's halfword is 1 or 2,
+ * the score pop-up is up or the player is down; the held frames cleared and the core state skipping
+ * three swaps, the film's animation refreshed and started (else nothing), the film kept, the master
+ * volume kept and capped at 768, the film's music played, the dialogue voices paused, the letterbox
+ * up, the HUD off, the weapons' tick, the AI and 0x598840 off; the film's name, a mark with the first
+ * description, the three descriptions (a space for a missing one) and the cross text loaded and
+ * coloured; the camera's zoom kept and set to 1, the zoom state kept and its lens effect taken off
+ * when the lens swaps on a night mission, the kit's lens effects off, the lens effects held, the
+ * heartbeat sensor off, the rumble stopped, the recogniser suspended and the menu state kept and set
+ * to the film's (SOCOM 1's, 0x3DC there) */
+void CZHudMissionCams::PlayCamera(CMissionCam *missioncam, bool bSwapLens)
+{
+    if (!missioncam)
+        return;
+    if (m_currentcam)
+        return;
+
+    CZSealBody *seal = CHUD::GetHUDOwner();
+
+    if (!seal || !seal->m_socom2_e1_4)
+        return;
+    if (data_0043668C && (data_0043668C->m_4 == 1 || data_0043668C->m_4 == 2))
+        return;
+    if (hudIsScorePopupOn())
+        return;
+
+    CZSealBody *player = ftsGetPlayer();
+
+    if (player && !player->m_socom2_e1_4)
+        return;
+    m_pause_for_frame = 0;
+    theGame.m_coreState.SetSkipSwap(3);
+
+    CZAnim *anim = missioncam->m_anim;
+
+    if (!anim)
+        return;
+    anim->Refresh(false);
+    m_animhandle = anim->ActivateArg(0, 0);
+    if (!m_animhandle)
+        return;
+    m_currentcam = missioncam;
+    func_00341060();
+    m_socom2_3b8 = func_003414B0(1);
+    if (m_socom2_3b8 > 768)
+        func_003414C0(1, 768);
+
+    CSnd *music = missioncam->m_music;
+
+    if (music) {
+        CSndJukebox::FadeOut();
+        CSndJukebox::ClearQueue();
+        CSndJukebox::Play(MUSIC_MODE_3, music);
+    }
+    CSndInstance::PauseAllSounds(SND_MODE_DIALOG);
+    theHUD->m_letterbox.AddLetterbox();
+    theHUD->Off();
+    data_004B52B0 = 1;
+    CSealCtrlAi::SetAiEnabled(false, false);
+    func_00598840(false);
+
+    m_letterboxobjectivename.Off();
+    m_letterboxobjectivename.Load(1.2f, missioncam->m_name, theHUD->m_myfont, 0.0f, 0.0f, true);
+    m_letterboxobjectivename.m_color[0] = 128.0f;
+    m_letterboxobjectivename.m_color[1] = 128.0f;
+    m_letterboxobjectivename.m_color[2] = 128.0f;
+    m_letterboxobjectivename.m_color[3] = 80.0f;
+    m_letterboxobjectivename.SetPos(40, 54);
+    m_socom2_280.Off();
+    if (missioncam->m_description[0]) {
+        m_socom2_280.Load(0.9f, "\xa7", theHUD->m_myfont, 0.0f, 0.0f, true);
+        m_socom2_280.SetPos(20, 405);
+        m_socom2_280.m_color[0] = 128.0f;
+        m_socom2_280.m_color[1] = 128.0f;
+        m_socom2_280.m_color[2] = 128.0f;
+        m_socom2_280.m_color[3] = 80.0f;
+    }
+    for (int ii = 0; ii < 3; ii++) {
+        const char *desc = missioncam->m_description[ii];
+
+        m_letterboxobjectivedescription[ii].Off();
+        m_letterboxobjectivedescription[ii].Load(0.9f, desc ? desc : " ", theHUD->GetFont(), 0.0f, 0.0f,
+                                                 true);
+        m_letterboxobjectivedescription[ii].SetPos(40, (int)(403.0f + 16.0f * ii));
+        m_letterboxobjectivedescription[ii].m_color[0] = 128.0f;
+        m_letterboxobjectivedescription[ii].m_color[1] = 128.0f;
+        m_letterboxobjectivedescription[ii].m_color[2] = 128.0f;
+        m_letterboxobjectivedescription[ii].m_color[3] = 80.0f;
+    }
+    m_crosstext.Off();
+    m_crosstext.Load(0.8f, "\xa6 TO ABORT", theHUD->m_myfont, 520.0f, 54.0f, true);
+    m_crosstext.m_color[0] = 128.0f;
+    m_crosstext.m_color[1] = 128.0f;
+    m_crosstext.m_color[2] = 128.0f;
+    m_crosstext.m_color[3] = 80.0f;
+
+    CZSealBody *owner = CHUD::GetHUDOwner();
+    CZKit *kit = &owner->m_kit;
+
+    if (cur_camzoom == 1.0f) {
+        cur_camzoom = appCamera->m_view->m_zoom;
+        appCamera->SetZoom(1.0f);
+    }
+    if (!CameraZoom::LensFxOn()) {
+        if (kit && bSwapLens && cur_zoomstate == ZOOMSTATE_UNKNOWN &&
+            zdb::CWorld::m_world->m_night_mission) {
+            ZOOMSTATE zoomstate = owner->m_zoomstate;
+
+            if (zoomstate >= ZOOMSTATE_THERMAL)
+                cur_zoomstate = zoomstate;
+            if (zoomstate != ZOOMSTATE_UNKNOWN) {
+                kit->Apply_LensEffects(false, 0);
+                CameraZoom::SetLensFx(1);
+            }
+        }
+        kit->Apply_LensEffects(false, 0);
+    }
+    CameraZoom::HoldLensFx(1);
+    if (kit)
+        kit->m_heartbeat_enabled = false;
+    owner->m_ctrl->StopRumbler();
+    theReco.Suspend(true);
+    m_lastmenustate = owner->m_ctrl->GetMenuState();
+    owner->m_ctrl->SetMenuState(stateFullScreenMapAnim, false);
 }
 
 bool CZHudMissionCams::IsPlaying()

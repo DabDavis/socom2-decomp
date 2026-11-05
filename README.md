@@ -2065,6 +2065,35 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the HUD, round 51** (hud_missioncams.cpp whole -- CleanupCamera, PlayCamera -- and ClosePauseMenu):
+  - a dead `= 0` at the top numbers a named local there, declared there without an initializer it is numbered at its
+    assignment (CleanupCamera 0x229520: `kit = 0` numbers the kit before the loop counter -- found and confirmed with
+    `tools/igreplay.py`); a local read ahead of an if-chain is loaded once in the first test's delay slot, read inside
+    each case it is loaded per case; an inline accessor used as an argument is expanded before a ternary in the same
+    argument list (PlayCamera 0x228EE0's font);
+  - a signed char field cast to a byte enum at a call loads with lbu -- the target's lb needs the field declared as the
+    enum (ClosePauseMenu 0x205200: SOCOM 1's `MENU_STATE m_oldmenustate`); an int counter against an unsigned count keeps
+    `i * 8` recomputed each pass, an unsigned counter strength-reduces it into a saved register;
+  - an implicit struct assignment copies word by word through $f0 with the source addresses in registers only when the
+    members are class-typed (two int members copy with lw / sw); an inline member called on an address-taken pointer
+    loads it once as `this`, the same writes made in the caller reload it after every call; an inline's erase temporaries
+    take frame slots below the caller's direct inlines';
+  - hudAddPopupDefinition 0x22D660 (0x600 of 0x5E0) wants the trigger bases' implicit constructors six levels high: an
+    invented intermediate CSaferStr base closes it but loses the unit's ~CSaferStr copy and the name vector's clear --
+    DECLINED (a net loss, and the depth-6 policy), OPEN.
+- **Tells from the kit and AI states, round 45** (GetSealCount's list pieces, SealJoinUnit, five SOCOM-II-only functions):
+  - TWO PIECE SETS FOR ONE LIST TYPE ARE ITS TWO ITERATOR KINDS, not a unit boundary: generic_iterator<0> (DistributeNotify's,
+    its constructor taking the base iterator by const reference, 0x5ED6E0-0x5ED7A0) and generic_iterator<1>
+    (GetSealCount's, by value -- word for word SOCOM 1's list<CEntity *> instance 0x321240, 0x5ED880-0x5ED9A0); a walk
+    emitting the <1> pieces belongs to a const member function (GetSealCount declared const: end / begin const
+    0x5ED8F0 / 0x5ED950 and the constructor 0x5ED980 byte-exact; its last 10 instructions are include/list's);
+  - a byte-enum local tested `!= NULL` is masked with andi before each branch, tested bare it branches on the register
+    (an order's hand signal 0x5EB190); a call's bool result held in a bool local keeps its andi (round 39's rule);
+  - two kinds tested in a switch give a beq each to the shared block and a `b` past it, written as `||` the code falls into
+    the block; a value the target loads ahead of member stores needs a local of its own declared first (the action
+    state's set-up 0x5F0180); an inline's by-value float parameter whose address is taken is stored in the inline's
+    block, not at function entry (0x5EAF20, OPEN); the formation slot's cell offset 0x5EB910 builds two function-local
+    tables on its first call.
 - **Tells from the SEALs, round 43** (GetThrowAnim, GetDynamics, the throw path's clearance, the come-along order's test):
   - an inline's own local is numbered after all of the caller's locals -- to number it among them make it an
     uninitialised caller local assigned inside the inline through a `bool &` (the come-along order's test 0x591520);
@@ -11171,6 +11200,51 @@ order, sched1 issuing the last of equal stores first -- putWordInDict and Create
 unwritten: 1 of 3) -- 8 rows new to the map's byte-exact rows (11,204 bytes), one matched draft superseded
 (smtDestruct 0x4F80A8); `src/lib/asr` 540 of 565 (531 of 558 before). No rows named (all had SOCOM 1's). No
 tool changed.
+
+**Round 28c: SOCOM 1's bodies -- Smoothing, spline2, putWordInDict, the mtx object whole, a new QR unit, userwordAcknowledge.**
+
+- **Smoothing is plain loops, not gotos** (round 27c read m2c's): the restart a do-while on the dropped knot's
+  index, the back-substitution a for with a break. An entry jump into a loop's middle is jump.c's
+  CONDITIONAL cross-jump undoing the duplicated exit test: the copy above the loop jumps to the exit label,
+  which follows the loop's own opposing branch back, and when the insns before both are identical the copy
+  becomes a jump to the bottom's (the target's `b` to the store, Smoothing's `for (*py = d; (pr += r->rows)
+  < end; )`; QrDeleteCol's `for (p += r->rows; p < end; p += r->rows)`).
+- **A walker formed from its partner keeps the loop from loop.c**: spline2's loops 1, 2 and 4 set `q = p + 1`
+  and step both by `*p++`; CSE shadows `p + 4` in a register and the copied exit test's back edge is
+  threaded to a label before LOOP_BEG -- "ignored due to multiple entry points" (`-dL`): not unrolled, not
+  reversed, the shadow re-formed from p when p outlives it (`move s1,s4; addiu s4,s1,4`). Loops 3 and 5,
+  their walkers formed apart, unroll. And `while (i-- > 0)` is never unrolled: "Iteration var not live
+  before loop start" (the test reads the old value, a giv).
+- **The unroller renames per copy only what lives inside the loop**: Smoothing's curve loop on pointers
+  shared with the back-substitution made one long-lived pseudo, global-alloc's first (64 words); its own
+  pointers come out renamed per copy, as the target's (4).
+- **`*(p - 1) op= x` is one address register, `p[-1] op= x` folds the offset into both** (putWordInDict's end
+  mark, QrPreMult's diagonal entry: the target's `addiu v1,a2,-2; lhu v0,0(v1)`); an id in two halves is
+  `o[0] = ...; o[1] = ...; o += 2;` (two `*o++` keep two increments).
+- **A counter tested on its old value is `j++ < n` in the condition** (QrPreMult: the target compares a copy
+  of j and steps it in the slot; `for (k...) j = k + 1` keeps both counters, CSE turning `k++` into `k = j`);
+  a for's init in the reverse of its walkers' use (`b = vp, a = xp, i = j`); `k = r->cols` read apart from
+  the counter and an offset subtracted BEFORE `i = k` (after it CSE rewrites k to i); `pr = ... + i; pr--;`
+  for the target's `addu a1,v0,t0; addiu a1,a1,-4` (an index form reverses the sum); a chain assignment
+  stores innermost first (`iy->cols = y->rows = r->cols = a->cols`).
+- **mtx.c is a -ffast-math object** (the tenth): QrDeleteCol's `1.0 / sqrtf(...)` is a bare `sqrt.s` (SOCOM 1
+  called sqrt in double); its nine other functions compile the same with the flag.
+- **A callee's declared return type moves the caller's masks**: userword.c declared `_tosControl` int where
+  tos.c defines it `unsigned char`; userwordAcknowledge's `unsigned char` result is assigned plainly only with
+  the true type (one `andi`, after its `|=`), and the unit's twelve other matches are unchanged by it.
+- **Open, diagnosed in place**: ExtendNodeWheel (SOCOM 1's body, the right size: old, p and w rotate through
+  s0-s2 -- the target keeps the null test's load apart from old, a copy in the grow path, and old ranks
+  first; here they are one pseudo ranked last). Not reached: CreateSecondPassTreeContext (0x1180, SOCOM 1's
+  0xFD0), ConstructBlock, PitchCombinerReset/InitPitchCombiner, InitViterbi@nbestdp (their diagnoses stand).
+
+Hand-written in round 28c: `asr/smooth.c` (Smoothing new: 3 of 3), `asr/shs.c` (spline2 new: 3 written of the
+object's 7), `asr/secpass.c` (putWordInDict new: 2 of 3), a new `asr/qr.c` (SOCOM 1's object 0x364318, OVL2
+0x4F77F8-0x4F7A48, our file name: QrPreMult new, mtxFillX and mtxFillCopy over their drafts -- 3 of 3), `asr/mtx.c`
+(QrDeleteCol new: 10 of 10, now -ffast-math), `asr/userword.c` (userwordAcknowledge new: 13 of 15),
+`asr/isowdp.c` (ExtendNodeWheel OPEN: 8 of 9) -- 6 rows new to the map's byte-exact rows (4,792 bytes), two
+matched drafts superseded (mtxFillX 0x4F77F8, func_004F7880); `src/lib/asr` 548 of 574 (540 of 565 before).
+1 row named: 0x4F7880 `mtxFillCopy` (`s1:calls+order`: SOCOM 1's Smoothing calls it at the same instruction,
+its object holds it beside mtxFillX and QrPreMult). No tool changed.
 
 **Round 14b: the "toolchain" opens were SCEA's shapes; LargeInt's core is assembly.**
 

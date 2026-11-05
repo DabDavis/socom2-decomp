@@ -8,9 +8,12 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
-M2C_UNK func_004F7880(s32 arg0, s32 arg1);
+#define M2C_BITWISE(type, expr) ({ union { __typeof__(expr) _f; type _t; } _u; _u._f = (expr); _u._t; })
+#define M2C_SYNC() __asm__ __volatile__ ("sync.l")
+typedef int s128 __attribute__((mode(TI))); typedef unsigned int u128 __attribute__((mode(TI)));
 s32 heap_Alloc(s32 arg0, s32 arg1);
 M2C_UNK heap_Free(s32 arg0, s32 arg1);
+M2C_UNK mtxFillCopy(s32 arg0, s32 arg1);
 char *mtxInitCopy(char *arg0, char *arg1, char *arg2) {
     s32 temp_a1;
     s32 temp_v0;
@@ -29,6 +32,6 @@ char *mtxInitCopy(char *arg0, char *arg1, char *arg2) {
     }
     M2C_FIELD(arg0, s8 *, 0x14) = 1;
     M2C_FIELD(arg0, s32 *, 0x10) = (s32) (temp_v0 + (M2C_FIELD(arg0, s32 *, 0) * M2C_FIELD(arg0, s32 *, 4) * 4));
-    func_004F7880((s32) arg0, (s32) arg1);
+    mtxFillCopy((s32) arg0, (s32) arg1);
     return arg0;
 }

@@ -1,8 +1,9 @@
-/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 -fno-strict-aliasing -funroll-loops */
-/* mtx: the ScanSoft recogniser's float matrices (OVL2 0x4F7010-0x4F77F8: SOCOM 1's mtx object at
- * 0x363888 but its first function, QrDeleteCol, 0x4F6CE0, not written; mtxDestruct and
- * imtxDestruct moved after their constructors), prebuilt with ee-gcc 2.96 at -O2 -G0
- * -fno-strict-aliasing (README "The GCC front"). The engine allocates from its own heap (OVL1's
+/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 -fno-strict-aliasing -funroll-loops -ffast-math */
+/* mtx: the ScanSoft recogniser's float matrices (OVL2 0x4F6CE0-0x4F77F8: SOCOM 1's mtx object at
+ * 0x363888, QrDeleteCol first; mtxDestruct and imtxDestruct moved after their constructors),
+ * prebuilt with ee-gcc 2.96 at -O2 -G0 -fno-strict-aliasing -funroll-loops -ffast-math (README
+ * "The GCC front"; the tenth -ffast-math object, round 28c: QrDeleteCol's sqrt.s). The engine
+ * allocates from its own heap (OVL1's
  * heap_*, 0x2430F0). mtxConstruct hands back the allocator's result but is no sibling call: 2.96
  * refuses one when the return types differ, so the handle is a long. Names are SOCOM 1's where it
  * has them (s1:exact/align/order). Round 16c: mtxCompress, mtxMac and mtxMax -- the loops'
@@ -28,6 +29,56 @@ extern void *func_00243398(void *heap, int count, int size);    /* the heap's ca
 extern void heap_Free(void *heap, void *p);
 extern float expf(float x);
 extern float logf(float x);
+extern float fabsf(float x);
+extern float sqrtf(float x);
+
+/* r's column col deleted from its QR: each later column shifted left one, the sub-diagonal entry it
+ * leaves rotated away by a Givens rotation applied to r's later columns and to x's rows; r loses a
+ * column. SOCOM 1's body, its double sqrt now sqrtf -- a bare sqrt.s, so the object is built with
+ * -ffast-math (round 28c: every other function of it compiles the same with the flag); the
+ * rotations' loops step by the matrices' rows from the walker's own increment, which jump.c's
+ * cross-jumping turns back into an entry jump to the test (the target's `b` to the addu) */
+int QrDeleteCol(MTX *r, MTX *x, unsigned int col)
+{
+    unsigned int j, i;
+    float *end = r->data + r->rows * r->cols;
+    float *xend = x->data + x->n;
+    float *p, *q, *o, a, b, t, c, sn;
+
+    for (j = col + 1; j < r->cols; j++) {
+        q = r->data + j * r->rows;
+        o = q - r->rows;
+        p = q + j;
+        b = *p;
+        a = *--p;
+        if (fabsf(a) < fabsf(b)) {
+            t = -a / b;
+            sn = 1.0 / sqrtf(t * t + 1.0f);
+            c = sn * t;
+        } else {
+            t = -b / a;
+            c = 1.0 / sqrtf(t * t + 1.0f);
+            sn = c * t;
+        }
+        for (i = 1; i < j; i++)
+            *o++ = *q++;
+        *o = c * a - sn * b;
+        for (p += r->rows; p < end; p += r->rows) {
+            a = p[0];
+            b = p[1];
+            p[0] = c * a - sn * b;
+            p[1] = sn * a + c * b;
+        }
+        for (p = x->data + j; p < xend; p += x->rows) {
+            a = *(p - 1);
+            b = *p;
+            *(p - 1) = c * a - sn * b;
+            *p = sn * a + c * b;
+        }
+    }
+    r->cols--;
+    return 0;
+}
 
 long mtxConstruct(ASRENGINE *eng)
 {

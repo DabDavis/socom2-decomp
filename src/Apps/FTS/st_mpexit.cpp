@@ -421,7 +421,6 @@ public:
 
 extern "C" {
 void func_00544D60(CZSealBody *seal, int arg);   /* (the SEAL lane's) */
-void func_002A7D40(CMission *mission);
 void func_003654C0(CGameMenu *menu, float dT);   /* CGameMenu::Tick */
 void func_003AFF30(bool a, bool b);              /* zVid_Swap */
 }
@@ -1221,7 +1220,7 @@ bool CMPExitState::Tick(float dT)
                 pSeal->RemoteRespawn(false);
         }
         CTurret::ResetAmmo();
-        func_002A7D40(&theMission);
+        theMission.OnMissionStart();
         theGame.Pop(0);
         theUIVarManager.Reset();
         return true;
