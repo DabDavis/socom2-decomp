@@ -1979,6 +1979,105 @@ _zanim_cmd_hdr *CTInView::Parse(_zrdr *rdr)
     return 0;
 }
 
+/* the view cone as the controller keeps it -- seal_sensors.cpp's view of zseal.h's padded CSealCtrl
+ * (SOCOM 1's CAiCone at 0x70, its ContainsPoint inlined) */
+struct TASK_CONE {
+    bool ContainsPoint(const CPnt3D *p)
+    {
+        p->Sub(&m_cone_pos, &vec);
+        m_dot = m_cone_dir.x * vec.x + m_cone_dir.y * vec.y + m_cone_dir.z * vec.z;
+        if (m_dot <= 0.0f || m_dot > m_height)
+            return false;
+        float r = m_point_radius + m_dot * m_inv_height * m_radius;
+
+        if (vec.z * vec.z + (vec.x * vec.x + vec.y * vec.y) - m_dot * m_dot <= r * r)
+            return true;
+        return false;
+    }
+
+    float m_dot;   // 0x0
+    CPnt3D vec;   // 0x4
+    float m_height;   // 0x10
+    float m_radius;   // 0x14
+    float m_point_radius;   // 0x18
+    float m_inv_height;   // 0x1c
+    CPnt3D m_cone_pos;   // 0x20
+    CPnt3D m_cone_dir;   // 0x2c
+};
+
+struct TASK_CONECTRL {
+    unsigned char _0[0x70];
+    TASK_CONE m_view_cone;   // 0x70
+};
+
+/* whether the viewer -- the task's SEAL, or the entity named if a SEAL (found three times over, as
+ * CTSignal::Tick's: the SEAL, then its controller and its AI, unused but for the calls) -- holds the
+ * item named and sees the target entity: in its targets and visible (bit 9), and for a player's SEAL
+ * inside its view cone; or, for a team, any target of the team visible (OVL2 0x5D7FD0; SOCOM 1's
+ * without the cone, the item test and the entities by name or id).
+ * OPEN, 0x6AC against 0x6BC: every block but the team walk's end is the target's (the cone through
+ * a controller local -- its fields addressed off the controller, as the target's s0 -- the result
+ * preset after the three finds). THE WALK'S END: the target keeps &m_targets in a1 and the data
+ * pointer from the entry test in v0, and re-reads only the SIZE every pass (`lw a3,4(a1)`, size*48
+ * rebuilt) -- seal_aivehicle.cpp's 0x60F760 open shape: written in place MW re-reads the data and
+ * keeps size*48 (0x6B4), through a reference or a pointer local, a const walk or an index it hoists
+ * the whole end (0x6AC; an index 0x68C). And the numbering: the target colours the result s0, the
+ * viewer s1 and dT s2 -- here dT, spill-picked last, takes s0 under every declaration order tried
+ * (the result or the viewer first, preset or not; igreplay --move of either moves only the rest) */
+bool CTInView::Tick(_zanim_cmd_hdr *hdr, float *dT)
+{
+    CZSealBody *dest;
+    CEntityCtrl *ctrl;
+    TASK_SEAL(CTInView);
+    dest = seal;
+    ctrl = dest ? dest->m_control : 0;
+    CSealCtrlAi *ai = dest ? SealAi(dest) : 0;
+    bool done;
+
+    if (((const TASK_ENT *)&cmd->m_viewer)->m_type) {
+        dest = (CZSealBody *)cmd->m_viewer.GetTyped(CEntity::ENT_TYPE_SEAL);
+        CZSealBody *s = (CZSealBody *)cmd->m_viewer.GetTyped(CEntity::ENT_TYPE_SEAL);
+
+        ctrl = s ? s->m_control : 0;
+        s = (CZSealBody *)cmd->m_viewer.GetTyped(CEntity::ENT_TYPE_SEAL);
+        ai = s ? SealAi(s) : 0;
+    }
+    done = false;
+    if (dest) {
+        bool ok = true;
+
+        if (cmd->m_equip && !dest->m_kit.IsUsingItem((EQUIP_ITEM)cmd->m_equip))
+            ok = false;
+        if (ok) {
+            if (!cmd->m_team) {
+                CEntity *target = cmd->m_target.Get();
+                CTarget *t = dest->m_targets.FindTarget(target);
+
+                if (t && (t->m_flags & 0x200)) {
+                    if (dest->IsPlayer()) {
+                        TASK_CONECTRL *c = (TASK_CONECTRL *)dest->m_control;
+
+                        done = c->m_view_cone.ContainsPoint(&target->m_posW);
+                    } else
+                        done = true;
+                }
+            } else {
+                CTargetList &targets = dest->m_targets;
+
+                for (CTargetList::iterator t = targets.begin(); t != targets.end(); t++) {
+                    if (cmd->m_team & t->m_ent->m_team) {
+                        done = (t->m_flags & 0x200) != 0;
+                        if (done)
+                            break;
+                    }
+                }
+            }
+        }
+    }
+    *dT = 0.0f;
+    return done;
+}
+
 /* an AI event's type, place and parameters (OVL2 0x5DD0E0) */
 _zanim_cmd_hdr *CTEvent::Parse(_zrdr *rdr)
 {
