@@ -346,6 +346,349 @@ void CSealCtrl::SensorPreTick(float dT)
     }
 }
 
+/* the view cone as the controller keeps it (SOCOM 1's DWARF: CSealCtrl's m_fov, m_fovtan, m_fovcos,
+ * m_view_cone -- a CAiCone, 0x38 bytes -- and m_visrange at 0x64-0xA8, the same offsets in SOCOM II;
+ * zseal.h's CSealCtrl pads them: a view) */
+struct CSensorCone {
+    float m_dot;   // 0x0
+    CPnt3D vec;   // 0x4
+    float m_height;   // 0x10
+    float m_radius;   // 0x14
+    float m_point_radius;   // 0x18
+    float m_inv_height;   // 0x1c
+    CPnt3D m_cone_pos;   // 0x20
+    CPnt3D m_cone_dir;   // 0x2c
+
+    /* whether a point lies in the cone (SOCOM 1's CAiCone::ContainsPoint, out of line there and
+     * inlined here): the vector to it and its depth along the cone kept */
+    bool ContainsPoint(const CPnt3D *p)
+    {
+        p->Sub(&m_cone_pos, &vec);
+        m_dot = m_cone_dir.x * vec.x + m_cone_dir.y * vec.y + m_cone_dir.z * vec.z;
+        if (m_dot <= 0.0f || m_dot > m_height)
+            return false;
+        float r = m_point_radius + m_dot * m_inv_height * m_radius;
+
+        if (vec.z * vec.z + (vec.x * vec.x + vec.y * vec.y) - m_dot * m_dot <= r * r)
+            return true;
+        return false;
+    }
+};
+
+/* (SOCOM 1's CAiDecay, its value read through an inline: the cone's products load it before the
+ * other factor) */
+struct CSensorDecay {
+    float Get() const { return m_value; }
+
+    float m_value;   // 0x0
+    float m_goal;   // 0x4
+    float m_8;   // 0x8
+};
+
+struct CSensorConeCtrl {
+    unsigned char _0[0x64];
+    float m_fov;   // 0x64
+    float m_fovtan;   // 0x68
+    float m_fovcos;   // 0x6c
+    CSensorCone m_view_cone;   // 0x70
+    CSensorDecay m_visrange;   // 0xa8
+};
+
+/* the snoozer's counts (SOCOM 1's CSealCtrlAi statics aiActiveCount, aiSleepingCount and
+ * aiSnoozingCount -- its $gp words at -28316/-28312/-28308, cleared at its pre-tick's end as here;
+ * OVL1 bss 0x44D4B8, 0x44D4C0, 0x44D4C8), its clock (SOCOM 1's ai::snooze_time, $gp -28328 there;
+ * OVL2 bss 0x66AFF0), the online test (seal_command.cpp's 0x5750A0) */
+namespace ai {
+extern float snooze_time;
+}
+
+/* the mission's limits on awake AIs (theMission at OVL1 0x4364E0: the words at 0x178 and 0x17C --
+ * new in SOCOM II, the names ours) */
+class CMission {
+public:
+    unsigned char _0[0x178];
+    int m_ai_active_limit;   // 0x178
+    int m_ai_unsnoozable_limit;   // 0x17c
+};
+
+extern CMission theMission;
+
+int func_005750A0(void);
+CZSealBody *ftsGetPlayer();
+
+/* the scripted groups, ticked once a frame (ai_group.cpp's; OVL2 0x60E590) */
+class CAiGroup {
+public:
+    static void TickAll(float dT);
+};
+
+/* an AI and how far it is from the player's party (the snoozer's sorted lists; new in SOCOM II --
+ * the names ours) */
+struct CSnoozeRec {
+    CSnoozeRec(CSealCtrlAi *ai, float dist) : m_ai(ai), m_dist(dist) {}
+
+    CSealCtrlAi *m_ai;   // 0x0
+    float m_dist;   // 0x4
+};
+
+/* the snoozer's list: the value put in before a position through a member of its own, the
+ * position copied on into the base's insert (out of line at OVL2 0x5CD8F0; the class ours, as
+ * seal_dipool.h's CDiList -- include/list's list<T> has no insert of its own) */
+class CSnoozeList : public std::list<CSnoozeRec> {
+public:
+    iterator insert(iterator position, const CSnoozeRec &x) { return base_list::insert(position, x); }
+
+private:
+    typedef std::__list_imp<CSnoozeRec, std::allocator<CSnoozeRec> > base_list;
+};
+
+/* a band around a point: a SEAL inside it (in the XZ radius, between the heights) stays as it is
+ * (SOCOM 1's pre-tick tested the band in line; the names ours) */
+struct CSnoozeZone {
+    CSnoozeZone(float radius_sq, float max_dy, float min_dy)
+    {
+        m_valid = false;
+        m_radius_sq = radius_sq;
+        m_max_dy = max_dy;
+        m_min_dy = min_dy;
+        m_result = 0;
+    }
+    void SetCenter(const CPnt3D *p)
+    {
+        if (p) {
+            m_center = *p;
+            m_valid = true;
+        } else
+            m_valid = false;
+    }
+    /* 1 below the band, 2 above it, 3 inside its radius, 4 outside it, 0 with no centre */
+    unsigned char Classify(const CPnt3D *pos)
+    {
+        int r = 0;
+
+        if (m_valid) {
+            CPnt3D d;
+
+            pos->SubXZ(&m_center, &d);
+            m_dist_sq = d.x * d.x + d.z * d.z;
+            m_dy = pos->y - m_center.y;
+            if (m_dy < m_min_dy)
+                r = 1;
+            else if (m_dy > m_max_dy)
+                r = 2;
+            else if (m_dist_sq < m_radius_sq)
+                r = 3;
+            else
+                r = 4;
+        }
+        m_result = r;
+        return m_result;
+    }
+
+    float m_dist_sq;   // 0x0
+    float m_dy;   // 0x4
+    unsigned char m_result;   // 0x8
+    bool m_valid;   // 0x9
+    float m_max_dy;   // 0xc
+    float m_min_dy;   // 0x10
+    float m_radius_sq;   // 0x14
+    CPnt3D m_center;   // 0x18
+};
+
+/* the AI dozing (SOCOM 1's m_snoozing, bit 9), and neither dozing nor asleep (the names ours) */
+static inline bool IsSnoozing(const CSealCtrlAi *ai)
+{
+    return ai->m_aibit9;
+}
+
+static inline bool IsAwake(const CSealCtrlAi *ai)
+{
+    return !IsSnoozing(ai) && !ai->IsSleeping();
+}
+
+/* the doze bits as bools (seal_ai.cpp's SetSnoozing reads them so: `? true : false`, sltu) */
+static inline bool Snoozing(const CSealCtrlAi *ai)
+{
+    return ai->m_aibit9 ? true : false;
+}
+
+static inline bool NoSnooze(const CSealCtrlAi *ai)
+{
+    return ai->m_nosnooze ? true : false;
+}
+
+/* the XZ distance squared from a point (the name ours) */
+static inline float DistSqXZ(const CPnt3D *a, const CPnt3D *b)
+{
+    CPnt3D d;
+
+    a->SubXZ(b, &d);
+    return d.x * d.x + d.z * d.z;
+}
+
+/* the nearer of two distances (by value: the inline's copies are taken by address) */
+static inline float NearerSq(float a, float b)
+{
+    return ai::_min(a, b);
+}
+
+/* an AI put into a list in order of its distance, the nearest first (the name ours) */
+static inline void InsertSorted(CSnoozeList &l, CSealCtrlAi *ai, float d)
+{
+    for (CSnoozeList::iterator i = l.begin(); i != l.end(); i++) {
+        if (!(d < (*i).m_dist))
+            continue;
+        l.insert(i, CSnoozeRec(ai, d));
+        return;
+    }
+    l.push_back(CSnoozeRec(ai, d));
+}
+
+/* the "ai_pre_tick" task (CCoreState::Init adds it at 0.9): the awareness counted again after a
+ * pause, then once a second (unless online) the AIs among the player's targets sorted -- the awake
+ * ones that may doze and are neither seen by the player nor near him or his squad's leader, the
+ * snoozing ones far from both -- and as many woken, nearest first, as the mission's limit allows,
+ * the farthest awake ones put to sleep past it; the counts cleared, the groups ticked (SOCOM 1's
+ * CSealCtrlAi::PreTick(float, void *), the same statics; SOCOM II sorts by distance; OVL2 0x5CCCD0).
+ * Its pieces 0x5CD870-0x5CDBB0 are byte-exact from it (the kit's round 46): the sorted insert is an
+ * inline past inline_max_size -- with the list's own insert one wrapper level more than include/list
+ * gives it (the class above), 200-250 units without -- so it comes in one level, its list calls out
+ * of line as the target's; the snooze tests are the target's with the doze bit read once through a
+ * plain inline (andi) and the && materialised (IsAwake); `recount--;` then its own test reloads it.
+ * OPEN, the target's size and 743 instructions, 28 short runs apart (registers and frame slots
+ * otherwise -- the locals sit 16 bytes lower: the target spills &m_cone_pos (sp+192) and the awake
+ * list's &end_.next_ (sp+176), keeps &player->m_targets in s7 and each Classify's point in a register
+ * of its own (s6, then s2), where MW here propagates `&seal->m_posW` and keeps the player): the
+ * no-snooze test and the else-if's doze test want `? true : false` (sltu) -- written so (NoSnooze,
+ * Snoozing) they read the byte through a kept address (5 more runs); the targets reference declared
+ * after the cone, before it or through a pointer: 0xB94 */
+bool CSealCtrlAi::PreTick(float dT, void *data)
+{
+    static float snooze_rate = 1.0f;
+    static float snoozer_sleep_radius_sq = 160000.0f;
+    static float snoozer_wakeup_radius_sq = 40000.0f;
+    static float snoozer_min_dy = -100.0f;
+    static float snoozer_max_dy = 300.0f;
+    static int recount;
+    static int unsnoozable;
+    int limit = theMission.m_ai_active_limit;
+
+    if (aiEnabled) {
+        if (recount > 0) {
+            recount--;
+            if (recount == 0)
+                CEntity::CountAwareness();
+        }
+        ai::snooze_time += dT;
+        if (!(ai::snooze_time <= snooze_rate) && !func_005750A0()) {
+            ai::snooze_time = 0.0f;
+            unsnoozable = 0;
+            CZSealBody *player = ftsGetPlayer();
+            CZSealBody *leader = CSealUnit::GetUnitByTeam(3)->GetLeader();
+            CSensorConeCtrl *cone = (CSensorConeCtrl *)player->m_control;
+            CPnt3D pos = player->m_posW;
+            CSnoozeZone near_player(snoozer_sleep_radius_sq, snoozer_max_dy, snoozer_min_dy);
+
+            near_player.SetCenter(&pos);
+            const CPnt3D *lpos = leader ? &leader->m_posW : 0;
+            CSnoozeZone near_leader(snoozer_sleep_radius_sq, snoozer_max_dy, snoozer_min_dy);
+
+            near_leader.SetCenter(lpos);
+            CSnoozeList awake;
+            CSnoozeList snoozing;
+            int active = 0;
+            int queued = 0;
+            CTargetList &targets = player->m_targets;
+
+            for (CTargetList::iterator t = targets.begin(); t != targets.end(); t++) {
+                CEntity *e = t->m_ent;
+                CZSealBody *seal = e && e->m_type == CEntity::ENT_TYPE_SEAL ? (CZSealBody *)e : 0;
+
+                if (!seal)
+                    continue;
+                if (!(seal->m_control ? ((CSealCtrl *)seal->m_control)->IsAi() : false) || !seal->m_isAlive)
+                    continue;
+                CSealCtrlAi *ai = seal->GetSealCtrlAi();
+
+                if (IsAwake(ai)) {
+                    active++;
+                    if (ai->m_nosnooze || ai->m_3f4 == 7 || ai->GetGroup()) {
+                        unsnoozable++;
+                        continue;
+                    }
+                    if (t->m_visibility > 0.0f && cone->m_view_cone.ContainsPoint(&seal->m_posW))
+                        continue;
+                    if (near_player.Classify(&seal->m_posW) == 3)
+                        continue;
+                    if (near_leader.Classify(&seal->m_posW) == 3)
+                        continue;
+                    float d = near_leader.m_valid ? NearerSq(near_player.m_dist_sq, near_leader.m_dist_sq)
+                                                  : near_player.m_dist_sq;
+
+                    InsertSorted(awake, ai, d);
+                    queued++;
+                } else if (IsSnoozing(ai)) {
+                    if (cone->m_view_cone.ContainsPoint(&seal->m_posW))
+                        continue;
+                    float d = DistSqXZ(&near_player.m_center, &seal->m_posW);
+
+                    if (near_leader.m_valid) {
+                        float dl = DistSqXZ(&near_leader.m_center, &seal->m_posW);
+
+                        d = ai::_min(d, dl);
+                    }
+                    if (d <= snoozer_wakeup_radius_sq)
+                        continue;
+                    InsertSorted(snoozing, ai, d);
+                }
+            }
+            if (awake.size() || snoozing.size()) {
+                if (theMission.m_ai_unsnoozable_limit < unsnoozable)
+                    limit += theMission.m_ai_unsnoozable_limit - unsnoozable;
+                int count = active - queued;
+                CSnoozeList::iterator a = awake.begin();
+
+                for (CSnoozeList::iterator s = snoozing.begin(); s != snoozing.end(); ++s) {
+                    CSealCtrlAi *ai = (*s).m_ai;
+                    CSnoozeRec &r = *s;
+
+                    for (; a != awake.end(); a = awake.begin()) {
+                        if (!((*a).m_dist < r.m_dist))
+                            break;
+                        awake.erase(awake.begin());
+                        queued--;
+                        count++;
+                    }
+                    if (!(count < limit))
+                        break;
+                    ai->SetSnoozing(false);
+                    if (!Snoozing(ai))
+                        count++;
+                }
+                count += queued;
+                std::reverse_iterator<CSnoozeList::iterator> r;
+
+                for (r = std::reverse_iterator<CSnoozeList::iterator>(awake.end());
+                     r != std::reverse_iterator<CSnoozeList::iterator>(awake.begin()); ++r) {
+                    if (!(limit < count))
+                        break;
+                    CSealCtrlAi *ai = (*r).m_ai;
+
+                    ai->SetSnoozing(true);
+                    if (Snoozing(ai))
+                        count--;
+                }
+            }
+            recount = 3;
+        }
+    }
+    aiSnoozingCount = 0;
+    aiSleepingCount = 0;
+    aiActiveCount = 0;
+    CAiGroup::TickAll(dT);
+    return false;
+}
+
 /* the "ai_posttick" task (CCoreState::Init adds it at 10.7, after target_post_tick): three slices
  * (zseal.h's CAiSlice) moved on over the entity list, by the function's three static sizes
  * (8-byte-spaced data in definition order: 6, 5, 1) (OVL2 0x5CCA30, new in SOCOM II -- SOCOM 1's
@@ -473,39 +816,6 @@ void CSealCtrlAi::SensorTick(float dT)
     p->visual_sens = sens;
     func_0060A850(m_67c);
 }
-
-/* the view cone as the controller keeps it (SOCOM 1's DWARF: CSealCtrl's m_fov, m_fovtan, m_fovcos,
- * m_view_cone -- a CAiCone, 0x38 bytes -- and m_visrange at 0x64-0xA8, the same offsets in SOCOM II;
- * zseal.h's CSealCtrl pads them: a view) */
-struct CSensorCone {
-    float m_dot;   // 0x0
-    CPnt3D vec;   // 0x4
-    float m_height;   // 0x10
-    float m_radius;   // 0x14
-    float m_point_radius;   // 0x18
-    float m_inv_height;   // 0x1c
-    CPnt3D m_cone_pos;   // 0x20
-    CPnt3D m_cone_dir;   // 0x2c
-};
-
-/* (SOCOM 1's CAiDecay, its value read through an inline: the cone's products load it before the
- * other factor) */
-struct CSensorDecay {
-    float Get() const { return m_value; }
-
-    float m_value;   // 0x0
-    float m_goal;   // 0x4
-    float m_8;   // 0x8
-};
-
-struct CSensorConeCtrl {
-    unsigned char _0[0x64];
-    float m_fov;   // 0x64
-    float m_fovtan;   // 0x68
-    float m_fovcos;   // 0x6c
-    CSensorCone m_view_cone;   // 0x70
-    CSensorDecay m_visrange;   // 0xa8
-};
 
 /* the application's camera (camera.h's CAppCamera, OVL1 bss 0x415FF0: its zdb camera, whose matrix
  * the node's first member, and the SEAL it shows -- seal.cpp's view) */

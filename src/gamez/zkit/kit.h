@@ -263,6 +263,8 @@ public:
      * II: the name ours) */
     void StartSniperKick();
     void HandlePlaceMPBomb(const CPnt3D *pos);
+    /* the MP bomb picked up (SOCOM 1's; OVL2 0x5BBF10) */
+    void PickupMPBomb();
     bool IsUsingScope();
     void SetWeaponInfoChanged();
     void PendingPickupHandled();
