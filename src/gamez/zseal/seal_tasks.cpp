@@ -125,6 +125,10 @@ void func_005628F0(CSealCtrlAi *ai);
  * through a streamer of its own -- the sound, the entity's id, the position, then 30 and 1 (OVL1
  * 0x3428F0, the sound system's) */
 void func_0055FEE0(CSealCtrl *ctrl, int event);
+/* the body's blend stack's top (OVL2's copy of RTStack<CZBodyAnimBlend>::Top, 0x555170 -- seal_ai.cpp's
+ * stand-in) and a blend pushed for an anim type in a state (seal_body.cpp's 0x588BC0, the SEALs') */
+void *func_00555170(void *stack);
+void *func_00588BC0(CZSealBody *seal, AnimType type, int state, int flag, int kind);
 void func_003428F0(CSnd *sound, unsigned int id, const CPnt3D *pos, float a, float b);
 /* the AI's byte at 0x5BC, out of line (OVL2 0x555890: `lb` there, the caller masks it), and whether its route is done -- a path
  * at 0x508 in state 4, or 1 to 3 (OVL2 0x5629B0): the SEAL lane's rows, CTGoto::Tick's */
@@ -1290,9 +1294,11 @@ struct CTPlay : TASK_HDR {
     Rfloat m_10;   // 0x10
     float m_18;   // 0x18: m_8 drawn at the start (Begin's)
     float m_1c;   // 0x1c: m_10 drawn at the start
-    signed char m_count;   // 0x20: the anims (SOCOM 1's a bitfield at 0x20 bit 1)
-    unsigned char _21;
-    unsigned char m_22;   // 0x22: 11 when made, else the tag "stance" (0-2)
+    unsigned char m_count;   // 0x20: the anims (SOCOM 1's a bitfield at 0x20 bit 1)
+    /* 0x21: the stance the tick plays the anim in, 11 for the SEAL's own -- which nothing writes (the
+     * parser's stance goes to 0x22, Begin's state over it: the tick always plays in stance 0) */
+    unsigned char m_stance;
+    unsigned char m_22;   // 0x22: 11 when made, else the tag "stance" (0-2); the tick's state from Begin's 0
     unsigned char m_skip_end : 1;   // 0x23 bit 0: the tag "skip_end"
     unsigned char m_blocking : 1;   // bit 1: the tag "blocking"
     unsigned char _23_2 : 6;
@@ -2934,6 +2940,147 @@ void CTPlay::End(_zanim_cmd_hdr *hdr)
         return;
     if (!cmd->m_skip_end)
         dest->m_desiredState = (SEAL_STATE)0;
+}
+
+/* the first SEAL argument's SEAL, the handlers' find as an inline (CTPlay::Tick's second find, for the
+ * SEAL that kills: its index a local after the type, which MW numbers ahead of it -- as a parameter
+ * the index is numbered first and the two swap s2/s3; the name ours) */
+inline CZSealBody *TaskSealFirst()
+{
+    unsigned int type = ai_cmdid[2];
+    int index = 0;
+    int i;
+    CZAnimArgList *list = ZAnim.m_CurAnim->m_arg_list;
+    _zanim_cmd_hdr *found;
+
+    if (!list) {
+        found = 0;
+        goto found_it;
+    }
+    for (i = 0;; i++) {
+        _zanim_cmd_hdr *p = list->GetCmd(i);
+        bool end = !(bool)p;
+
+        if (end)
+            break;
+        if (p->data_type == type && index-- == 0) {
+            found = p;
+            goto found_it;
+        }
+    }
+    found = 0;
+found_it:
+    TASK_PARAM *param = found ? (TASK_PARAM *)found : 0;
+
+    return param ? param->m_seal : 0;
+}
+
+/* the anims played, for the SEAL -- the task's, or with an entity named that SEAL (found three times
+ * over, as CTSignal::Tick's): a state at 0x22 from Begin's 0 -- the first wait run down; one anim
+ * drawn and played (a CQB victim's fall as SOCOM 1's: the SEAL that kills, the first SEAL argument,
+ * asked for the death anim, the body dropped, the stack cleared and the SEAL killed unless
+ * invincible; a CQB pushed with the AI's bit 6 set; any other pushed unless it plays on top), then
+ * waiting, blocking, while it plays; the second wait run down -- done once it ends (OVL2 0x5D2F30;
+ * SOCOM 1's, the states, the entity and the CQB push new).
+ * OPEN, registers only (0x808 at the target's size, 514 instructions, every opcode the target's):
+ * the shape is the target's -- the draw an if/else with the rand in a local (a padded label, as
+ * CTSound's), the stance a ternary (an unpadded join: the stance merges into its temporary, numbered
+ * after the anim's type), the killer's find an inline with the index a local after its type (s3/s2),
+ * blocking an if/else of two stores, the invincible bit `? true : false` (its sltu). MW's colouring
+ * replayed (tools/igreplay.py --target) gives every register of the target once the BLOCK (`cmd`) is
+ * numbered after the second find's inline variables (`--move 39=58.5`: 0 differ) -- a temporary's
+ * place, where the macro's named local takes s4 for s0. Tried: the block through a cast inline, a
+ * template inline and a void cast (76-86 off) */
+bool CTPlay::Tick(_zanim_cmd_hdr *hdr, float *dT)
+{
+    CZSealBody *dest;
+    CEntityCtrl *ctrl;
+    TASK_SEAL(CTPlay);
+    dest = seal;
+    ctrl = dest ? dest->m_control : 0;
+    CSealCtrlAi *ai = dest ? SealAi(dest) : 0;
+
+    if (((const TASK_ENT *)&cmd->m_ent)->m_type) {
+        dest = (CZSealBody *)cmd->m_ent.GetTyped(CEntity::ENT_TYPE_SEAL);
+        CZSealBody *s = (CZSealBody *)cmd->m_ent.GetTyped(CEntity::ENT_TYPE_SEAL);
+
+        ctrl = s ? s->m_control : 0;
+        s = (CZSealBody *)cmd->m_ent.GetTyped(CEntity::ENT_TYPE_SEAL);
+        ai = s ? SealAi(s) : 0;
+    }
+    if (!dest || !ctrl) {
+        *dT = 0.0f;
+        return true;
+    }
+    bool done = false;
+
+    switch (cmd->m_22) {
+    case 0:
+        if ((cmd->m_18 -= *dT) <= 0.0f)
+            cmd->m_22 = 1;
+        break;
+    case 1: {
+        int state = cmd->m_stance == 11 ? dest->CBody::m_state : cmd->m_stance;
+        int n = cmd->m_count - 1;
+        int i;
+
+        if (n == 0) {
+            i = 0;
+        } else {
+            int r = rand();
+
+            i = r % (n + 1);
+        }
+        int anim = cmd->m_anims[i];
+
+        if (anim != -1) {
+            AnimType type = (AnimType)anim;
+
+            cmd->m_2c = type;
+            if (type == AnimTypes::CQBVictimFallBackwards || type == AnimTypes::CQBVictimFallForwards) {
+                AnimType death = TaskSealFirst()->FindDeathAnimTypeCQB(dest);
+
+                if (ai)
+                    ai->m_aibit6 = 1;
+                dest->DropBody();
+                dest->ClearStack(1, true);
+                if (dest->m_invincible ? true : false)
+                    dest->WeaponHitAnim(death, (SEAL_STATE)0);
+                else {
+                    dest->WeaponHitAnim(death, (SEAL_STATE)8);
+                    dest->SetHealth(0.0f, DEATH_CQB);
+                    dest->SetHudHitFlag();
+                }
+            } else if (type == AnimTypes::CQB || type == AnimTypes::PistolCQB) {
+                if (ai)
+                    ai->m_aibit6 = 1;
+                func_00588BC0(dest, type, state, 0, 0);
+            } else if (type != ((CZBodyAnimBlend *)func_00555170(&dest->m_blends))->m_animType)
+                func_00588BC0(dest, type, state, 0, 0);
+        }
+        if (cmd->m_blocking)
+            cmd->m_22 = 4;
+        else
+            cmd->m_22 = 3;
+        break;
+    }
+    case 3:
+        done = (cmd->m_1c -= *dT) <= 0.0f;
+        break;
+    case 4: {
+        CZBodyAnimBlend *top = (CZBodyAnimBlend *)func_00555170(&dest->m_blends);
+        bool same = top ? top->m_animType == cmd->m_2c : false;
+
+        if (!same)
+            cmd->m_22 = 3;
+        break;
+    }
+    default:
+        done = true;
+        break;
+    }
+    *dT = 0.0f;
+    return done;
 }
 
 /* a block made for a count of anims, copied when given (OVL2 0x5D3F00: SOCOM 1's CTPlay::Create, out
