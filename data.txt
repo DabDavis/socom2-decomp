@@ -1524,6 +1524,7 @@
 0x0048DDF0 0x1C m_fade_newvol__4CSnd  # OVL1 bss; SOCOM II's CSnd static (name ours): the world lane round 9 -- the lowered volumes, SetGroupVolTemp sets them, ResetGroupVolTemp moves from them; 2 references in 2 functions
 0x0048DE10 0x4 m_fadetime__4CSnd  # OVL1 bss; SOCOM 1's CSnd static (its symbol, gp-26500 there): the world lane round 9 -- the fade's time left (1e9 held), SetGroupVolTemp sets or lengthens it, ResetGroupVolTemp clears it; 12 references in 6 functions
 0x0048DE18 0x4 m_fadepct__4CSnd  # OVL1 bss; SOCOM 1's CSnd static (its symbol, gp-26496 there): the world lane round 9 -- the part the groups are lowered to, SetGroupVolTemp sets it, ResetGroupVolTemp clears it; 3 references in 2 functions
+0x0048DE20 0x1 m_fadeHeld__4CSnd  # OVL1 bss; SOCOM II's CSnd static (name ours): the world lane round 21 -- StreamSoundVolPan sets it with the 1e9 group fade it starts for a radio stream (tested first, so it starts once), ReleaseGroupVolTemp clears it and lets the held fade end; 4 references in 2 functions
 0x0048DF10 0x1 bnkArchiveIsOpen  # OVL1 bss; SOCOM 1's static of zsnd_csnd.cpp (LOCAL in its symbols): CSnd::Init sets it before opening the bank archive, once, as SOCOM 1's; 2 references in 1 function
 0x0048DF30 0x1 snd_system_initialized  # OVL1 bss; s1:data-seq (size SOCOM 1's; via WaitForCDRead__4CSndFv)
 0x0048DF80 0x1 m_paused__12CSndInstance  # OVL1 bss; CSndInstance static (name ours): Init clears it, PauseAllSounds sets it; 2 references in 2 functions
