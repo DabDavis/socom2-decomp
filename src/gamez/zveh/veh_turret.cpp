@@ -963,6 +963,88 @@ extern "C" bool func_003A8910(CTurret *t, const CPnt3D *dir, float *yaw, float *
 /* the AI's target's validity test (OVL2 0x60A850, the kit lane's) */
 extern "C" bool func_0060A850(void *target);
 
+/* the perception's range (OVL2 0x53AF30, ai_perception.cpp's static) */
+class CAiPerception {
+public:
+    static void SetMaxRange(float range);
+};
+
+/* the viewer's record the visibility update reads (ai_target.cpp's 0x60AFA0 and 0x60AA20: the
+ * entity, its AI parameters, a flag -- the names ours) */
+struct CAiViewer {
+    /* the flag cleared ahead of the two pointers (the target's first byte store precedes them;
+     * stored after them, both byte stores follow) */
+    CAiViewer(CEntity *ent, void *params) : m_flag(false)
+    {
+        m_ent = ent;
+        m_params = params;
+    }
+
+    CEntity *m_ent;   // 0x0
+    void *m_params;   // 0x4
+    unsigned char _8[0x14 - 0x8];
+    bool m_flag;   // 0x14
+};
+
+/* a target's visibility updated from its finished ray (OVL2 0x60AFA0), the target taken on or
+ * dropped (OVL2 0x3A7EB0's, a draft: the turret's own), and the held target refreshed from its
+ * entry (OVL2 0x60A6A0) */
+extern "C" bool func_0060AFA0(void *viewer, CTarget *t);
+extern "C" void func_003A7EB0(CTurret *t, CTarget *target);
+extern "C" void func_0060A6A0(void *target, CTarget *t);
+/* the target lost: none valid held, or a valid one not held unseen for three seconds (inline:
+ * 0x3A82C0 tests it twice, 0x3A7FA0 returns its negation -- the name ours) */
+static inline bool TargetLost(CTurret *t)
+{
+    bool lost = true;
+
+    if (func_0060A850(t->m_target)) {
+        if (!(t->m_targetFlags & 0x200))
+            lost = ((CAiTarget *)t->m_target)->GetTimeSinceLastSighting() > 3.0f;
+        else
+            lost = false;
+    }
+    return lost;
+}
+
+/* the target held is this entry's entity (none: no target held -- inline; the name ours) */
+static inline bool HoldsTarget(CTurret *t, CTarget *x)
+{
+    return x ? *(CEntity **)t->m_target == x->m_ent : !*(CEntity **)t->m_target;
+}
+
+/* the targets looked over (new in SOCOM II, not named: PrePostTick calls it under AI control): the
+ * perception's range set from the AI parameters' visual range; each entry's visibility updated and
+ * its visible bit (0x200) set to it; a visible entry taken on while the target held is lost, else
+ * the entry that is the held target dropped once lost or refreshed. The list is a reference taken
+ * before the range is set (kept in s1, its address in the call's delay slot); the lost test is an
+ * inline returning `lost` (through 0x3A7FA0's `!` MW materialises it, sltu/xori) */
+extern "C" void func_003A82C0(CTurret *t)
+{
+    CAiViewer v(t, (char *)t + 0x204);
+
+    v.m_flag = false;
+    CTargetList &targets = t->m_targets;
+
+    CAiPerception::SetMaxRange(t->m_220);
+    for (CTargetList::iterator it = targets.begin(); it != targets.end(); ++it) {
+        bool vis = func_0060AFA0(&v, &*it);
+
+        if (vis)
+            (*it).m_flags |= 0x200;
+        else
+            (*it).m_flags &= ~0x200;
+        if (vis && TargetLost(t))
+            func_003A7EB0(t, &*it);
+        else if (HoldsTarget(t, &*it)) {
+            if (TargetLost(t))
+                func_003A7EB0(t, 0);
+            else
+                func_0060A6A0(t->m_target, &*it);
+        }
+    }
+}
+
 /* the line of fire to the target clear (OVL2 0x609DF0, ai_util.cpp's) */
 namespace ai {
 bool CheckLineOfFire(const CEntity *self, const CTarget *target, float radius);
@@ -1005,15 +1087,7 @@ extern "C" void func_003A8030(CTurret *t, float dT)
  * test, the held arm last) */
 extern "C" bool func_003A7FA0(CTurret *t)
 {
-    bool lost = true;
-
-    if (func_0060A850(t->m_target)) {
-        if (!(t->m_targetFlags & 0x200))
-            lost = ((CAiTarget *)t->m_target)->GetTimeSinceLastSighting() > 3.0f;
-        else
-            lost = false;
-    }
-    return !lost;
+    return !TargetLost(t);
 }
 
 #pragma auto_inline off
