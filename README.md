@@ -2065,6 +2065,17 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the weapons, round 32** (hookupVisuals, unwritten before -- vis_load.cpp whole; AddDecal written; framecode's
+  and finalcode's rows resized):
+  - one count variable shared by two disjoint loops is split by MW, and the second range is numbered after the code
+    generator's temporaries -- `igreplay --move` predicted it for hookupVisuals 0x3B2FF0 (5 differing nodes -> 0);
+  - an inline taking an address-taken local by value copies it into a saved register for its body, and the caller's later
+    uses re-read the local; a drop-and-`continue` inside a retry block makes the first `!ok` test jump straight to the
+    following set-up; begin and end taken into locals before the count and the element give the target's loop-entry
+    order; string literals and container references held in locals right after a null test give the target's spilled
+    frame slots; `(unsigned int)p + 0x20` keeps MW's two adds where pointer arithmetic folds the offsets into one;
+  - GIF PACKETS IN DATA ARE 64-BYTE ALIGNED: a data row sized to the next object includes the pad -- framecode is 0xF0 (two
+    packets, 8 + 7 quadwords; the zero quadword after it is padding), finalcode 0x110 (kicked as 17 quadwords).
 - **Tells from the UI, round 30** (CMemCard::CreateIconFiles and SkbUsbKey, both unwritten before; SkbSetChatRecipient
   and SkbTypeCased from their drafts to source):
   - a callee's result and parameter types read from how each caller narrows: one caller adding `andi 0xffff` to the
