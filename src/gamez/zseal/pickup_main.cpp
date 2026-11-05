@@ -555,19 +555,19 @@ extern "C" void func_005418B0(CPickup *p)
 }
 
 /* a made pickup told to the other consoles in an online game, or given its time (OVL2 0x541700;
- * new in SOCOM II, its name unknown: Create calls it last), then the list walked.
- * OPEN, 10 instructions: only the first block's registers -- the target loads the kind into a3,
- * the online byte into a2 and the id's halves into a1/a0 (the kind's load second); MW here gives
- * the online byte a3, the halves a2/a1 and the kind a0 (loaded last). Tried: the two locals in
- * either order, a bool online, assigned after bare declarations, the kind in a local declared
- * first, the switch on a PU_TYPE cast, and the whole switch in an inline taking (p, netid, online,
- * kind) -- the same registers every time. */
-extern "C" void func_00541700(CPickup *p)
+ * new in SOCOM II, its name unknown: Create calls it last), then the list walked (round 36: the switch
+ * in an inline taking the kind as a PU_TYPE -- an `unsigned char` or `int` parameter, the kind read in
+ * place or a local of it, a reference to the pickup, all keep MW's order) */
+/* the made pickup's network side, by its kind (the name ours): an inline taking the kind as its enum --
+ * the argument evaluated ahead of the body numbers the kind's load first, so MW colours it last (a3),
+ * then the online byte (a2) and the id's halves (a1, a0), as the target does; read in the body, the
+ * kind is forwarded to the switch and loaded last (MW's colouring read off igdump, round 36) */
+static inline void NetCreate(CPickup *p, CPickup::PU_TYPE kind)
 {
     unsigned char online = theNetwork.m_9;
     unsigned int netid = p->GetPickupNetEntityID();
 
-    switch (p->m_type) {
+    switch (kind) {
     case CPickup::PU_AMMO: {
         CPickupAmmo *ammo = (CPickupAmmo *)p->m_data;
 
@@ -601,6 +601,11 @@ extern "C" void func_00541700(CPickup *p)
         break;
     }
     }
+}
+
+extern "C" void func_00541700(CPickup *p)
+{
+    NetCreate(p, (CPickup::PU_TYPE)p->m_type);
     CPickup::DebugPickups();
 }
 #pragma auto_inline reset
