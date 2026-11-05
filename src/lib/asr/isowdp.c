@@ -11,7 +11,8 @@
  * a word more before the node wheel (its fields from SOCOM 1's +68 on are 4 higher). The tokens'
  * nodes are blocks of the scheduler's small-block allocator (fastallo.c), given back to its free
  * lists by size; a tree node's word indexes a table of its states' offsets. Only the functions
- * written so far are here, in image order: FreeIsoWordTokenDp, InitNewUtterance,
+ * written so far are here, in image order: InitIsoWordTokenDpContext (round 32c),
+ * FreeIsoWordTokenDp, InitNewUtterance, ExtendNodeWheel (OPEN, diagnosed in place),
  * ExpandGarbageArrays, GetNBest and ControlIsoWordTokenDp (round 31c), ConstructIsoWordTokenDp,
  * InitIsoWordTokenDpProcess, CalcNrNodes, IdleProcess, ScoreCompare. CalcNrNodes reads the child count before its depth test (the
  * target's load in the test's delay slot) and steps its child pointer in the for (the unrolled
@@ -90,8 +91,8 @@ typedef struct ISOWDP {
     char pad33[7];
     int f40;                            /* +40: command 36's four words */
     int f44;                            /* +44 */
-    int f48;                            /* +48 */
-    int pad52;
+    int f48;                            /* +48: a host function, called on f40 at a new context */
+    int f52;                            /* +52: its result */
     int f56;                            /* +56 */
     int nphen;                          /* +60: the language's phonemes */
     int *wordstates;                    /* +64: each word's first state */
@@ -102,7 +103,7 @@ typedef struct ISOWDP {
     short f94;                          /* +94 */
     int f96;                            /* +96 */
     int f100;                           /* +100 */
-    int pad104;
+    int nnodes;                         /* +104: the context tree's nodes, the root's included */
     void *f108;                         /* +108 */
     int f112;                           /* +112 */
     void *f116;                         /* +116 */
@@ -127,7 +128,8 @@ typedef struct ISOWDP {
     int f192;                           /* +192 */
     int garbage;                        /* +196: the single-word garbage phoneme */
     int sgarbage;                       /* +200: the sentence garbage phoneme */
-    int pad204[2];
+    int f204;                           /* +204: the context's two words (SOCOM II's) */
+    int f208;                           /* +208 */
 } ISOWDP;                               /* 212 (ConstructIsoWordTokenDp's) */
 
 /* tos.c */
@@ -181,6 +183,89 @@ static __inline__ void FastAlloc(ISOTOS *tos, int **pp, unsigned int n)
 
 /* the wheel's next slot */
 #define NEXTSLOT(w, p)  ((p) < (w)->end ? (p) + 1 : (w)->base)
+
+extern void *heap_Calloc(void *heap, int n, int size);
+
+/* the frame buffer sized for the given frames (frames / 32 + 1 words, at most 10000; the last frame
+ * kept at +152) and grown to it: 1 when the heap has none. The helper reads the block's scheduler
+ * and does the sizing itself: the target loads e->tos ahead of the sizing (written at the call
+ * site, the load issues after it: 5 instructions off) */
+static __inline__ int AllocFrames(ISOWDP *e, int frames)
+{
+    ISOTOS *tos = e->tos;
+    unsigned int n = frames / 32 + 1;
+
+    if (n > 10000)
+        n = 10000;
+    e->f152 = n * 32 - 1;
+    if (e->f112 < n) {
+        if (e->f108 != 0)
+            heap_Free(tos->heap, e->f108);
+        e->f108 = heap_Alloc(tos->heap, n * 4);
+        if (e->f108 == 0)
+            return 1;
+        e->f112 = n;
+    }
+    return 0;
+}
+
+/* the N-best's records re-allocated for k of them: 1 when the heap has none. The helper reads the
+ * block's scheduler after its count (the target's k load ahead of e->tos's at both sites) */
+static __inline__ unsigned char AllocNBest(ISOWDP *e, unsigned int k)
+{
+    ISOTOS *tos = e->tos;
+
+    if (e->f176 != 0)
+        heap_Free(tos->heap, e->f176);
+    e->f176 = heap_Alloc(tos->heap, k * 8);
+    if (e->f176 == 0)
+        return 1;
+    return 0;
+}
+
+/* a new context (command 35): its word tree's root kept as the start token and its nodes counted
+ * (the root's own one added), SOCOM II's two words taken when given, the pass made the process,
+ * profile 9 kept, the frame buffer sized from profile 11 (its frames / 32 + 1, at most 10000), the
+ * wheel made, 300 halfwords allocated, the utterance started and the N-best's records allocated;
+ * then the host's function called on its argument. 1 on any failure. SOCOM 1's body (round 32c)
+ * with the two words; the children stepped in the for, as CalcNrNodes steps them; the two
+ * allocations' helpers read e->tos themselves (the function's own tos, loaded at the entry, serves
+ * only the 300 halfwords), the frames helper sizing its buffer from the profile's frames. */
+int InitIsoWordTokenDpContext(ISOWDP *e, WTOKEN *root, int *words)
+{
+    ISOTOS *tos = e->tos;
+    WTOKEN *child;
+    unsigned int i, n;
+    int total;
+
+    e->start = root;
+    if (words != 0) {
+        e->f204 = words[0];
+        e->f208 = words[1];
+    }
+    n = root->f10;
+    total = 1;
+    child = root->f0;
+    for (i = 0; i < n; i++, child++)
+        total += CalcNrNodes(child, 3);
+    e->nnodes = total;
+    e->process = (TOSFUNC)func_004EAB30;
+    e->f100 = _tosGetProfileU32(e, 9, 3000);
+    if (AllocFrames(e, (short)_tosGetProfileU32(e, 11, 5000)))
+        return 1;
+    if (ExtendNodeWheel(e, 0, 0) != 0)
+        return 1;
+    e->f116 = heap_Calloc(tos->heap, 300, 2);
+    if (e->f116 == 0)
+        return 1;
+    e->f120 = 300;
+    if (InitNewUtterance(e) != 0)
+        return 1;
+    if (AllocNBest(e, e->f164))
+        return 1;
+    e->f52 = ((int (*)(int))e->f48)(e->f40);
+    return 0;
+}
 
 static void FreeIsoWordTokenDp(ISOWDP *e)
 {
@@ -390,21 +475,9 @@ typedef struct ISOPARAM {
     unsigned int f12;                   /* +12 */
 } ISOPARAM;
 
-extern int InitIsoWordTokenDpContext(ISOWDP *e, void *ctx, void *arg2);
 extern unsigned char qQueueControl(void *q, int what, int reader, void *arg);
 extern unsigned char _tosControl(void *log, int id, int a, int b);
 extern void tosBaseBlockDestruct(void *b);
-
-/* the N-best's records re-allocated for k of them: 1 when the heap has none */
-static __inline__ unsigned char AllocNBest(ISOWDP *e, ISOTOS *tos, unsigned int k)
-{
-    if (e->f176 != 0)
-        heap_Free(tos->heap, e->f176);
-    e->f176 = heap_Alloc(tos->heap, k * 8);
-    if (e->f176 == 0)
-        return 1;
-    return 0;
-}
 
 #define WORST   (-33792)                /* 0xFFFF7C00: no score yet */
 
@@ -522,13 +595,11 @@ static int ControlIsoWordTokenDp(ISOWDP *e, unsigned char cmd, void *arg, void *
         return 1;
     case 26: {
         unsigned int k;
-        ISOTOS *tos;
 
         e->f100 = p->f0;
-        tos = e->tos;
         k = p->f4;
         e->f164 = k;
-        if (AllocNBest(e, tos, k))
+        if (AllocNBest(e, k))
             return 0;
         e->f168 = p->f8;
         e->f160 = p->f12;
