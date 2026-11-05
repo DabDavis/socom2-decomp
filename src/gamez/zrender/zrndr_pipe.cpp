@@ -143,8 +143,8 @@ public:
             m_next++;
             return m_next++;
         }
-        /* a line kept for the pass (SOCOM II's; the name ours) and a record put in the draw list by
-         * its range (0x336F60, not written: its list iterator kept in memory across calls) */
+        /* a line kept for the pass (SOCOM II's; the name ours), a record put in the draw list by
+         * its range (0x336F60: OPEN, see there) and the pass drawn (0x336CB0) */
         void AddLine(CPnt4D *p0, CPnt4D *p1, CPnt4D *c0, CPnt4D *c1);
         void Add(zdb::CNode *atom, zdb::CNode *node, zdb::CVisual *visual, zdb::tag_ZVIS_FOV fov,
                  float opacity);
