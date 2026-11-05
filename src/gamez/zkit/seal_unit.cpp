@@ -1321,13 +1321,17 @@ static inline CAiSFollow *GetFollowState(CSealCtrlAi *ai)
  * target's callers and its own recursion call it. The formation goes to CAiSFollow::SetFormation
  * unconverted: both take UNIT_FORMATION (round 31: with CAiSFollow's as a signed char MW
  * sign-extends it into a register of its own, 0x1E0; with this one's 0x5EB8A0 does).
- * OPEN, 12 instructions, registers and one placement: the escortees' end taken first (numbered
- * before the SEALs' walk: s6, the target's) is computed at the top, the target's after the walk's
- * guard; and the squads' walk takes the iterator s4 and the end s3, the target's the other way --
- * in all three loop forms. Tried: the three forms of each walk (27: best 14, the SEALs' end
- * first), the escortees' end declared at the top (12) or in the loop body (0x1E0), reassigned in
- * the body (0x1EC), the list through a reference (46), the leader kept, `esc` assigned later or
- * by a ternary, postfix steps */
+ * OPEN, 6 instructions, one placement: the escortees' end taken first (numbered before the SEALs'
+ * walk: s6, the target's) is computed at the top, the target's after the walk's guard. Round 43
+ * (tools/igreplay.py --target): the squads' walk wanted its end numbered below the iterator --
+ * `e = end(), u = begin()` in the for (12 -> 6); and the target's escortees' end is numbered first
+ * (f2 < the SEALs' e < i < j: s6, s5, s4, s3) yet placed after the guard. Declared in the inner for
+ * (`f2 = end(), j = begin()`) MW hoists it to the guard's far side, the target's place, but numbers it
+ * after the SEALs' walk (9: f2 s4, e s6, i s5); declared uninitialised at the top and assigned in the
+ * body or the `if (esc)` block the iterator goes through memory (0x1EC, 0x1E4); no f2 at all, 16.
+ * Tried before: the three forms of each walk (27: best 14, the SEALs' end first), the escortees' end
+ * declared at the top (12) or in the loop body (0x1E0), reassigned in the body (0x1EC), the list
+ * through a reference (46), the leader kept, `esc` assigned later or by a ternary, postfix steps */
 #pragma auto_inline off
 int CSealUnit::SetFormation(UNIT_FORMATION f, int index)
 {
@@ -1360,7 +1364,7 @@ int CSealUnit::SetFormation(UNIT_FORMATION f, int index)
     }
     if (esc)
         func_005E7830(this);
-    for (ulist::iterator u = m_sub_units.begin(); u != m_sub_units.end(); ++u)
+    for (ulist::iterator e = m_sub_units.end(), u = m_sub_units.begin(); u != e; ++u)
         index = (*u)->SetFormation(f, index);
     m_a2 = 0;
     m_8 = f;

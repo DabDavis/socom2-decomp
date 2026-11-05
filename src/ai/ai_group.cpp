@@ -836,7 +836,11 @@ bool CAiGroup::AddMember(CSealCtrlAi *ai)
  * OPEN, 11 instructions, registers only: the walk's iterator comes out in s2 and the end in s1 in
  * both loops, the target has them the other way round (the end numbered below the iterator). Tried:
  * the end declared before the switch and assigned per case (75 lines off: the assigned iterator
- * goes through memory), `done` as a bool (`daddiu` for the target's `li`: an int) */
+ * goes through memory), `done` as a bool (`daddiu` for the target's `li`: an int). Round 43
+ * (tools/igreplay.py --target --movers): the iterator numbered after both ends, or both ends before
+ * it (the first just above the step's reference), gives the target; the ends declared before the
+ * iterator with begin() in each case is 0x1AC (begin() loaded twice), one end before the switch 44,
+ * the iterator assigned in each case 0x1F8 */
 CAiGroup::step::STATE CAiGroup::TickStep()
 {
     step::STATE r = (step::STATE)0;

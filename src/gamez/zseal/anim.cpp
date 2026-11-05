@@ -366,21 +366,19 @@ int CAnimTypeRec::GetVariantIndex(int kind, int anim)
     return -1;
 }
 
-/* the group holding an anim, of any kind, or 0 (OVL2 0x5E56D0).
- * OPEN, 18 instructions, registers only: the target walks the cursor in t1 and copies it into v0
- * (the group returned) at each pass's top, the early `return 0` a `move v0,zero` in the null test's
- * delay slot; here MW returns the null cursor itself for that 0 and so walks the cursor in v0
- * (the group in t0). Tried: `if (!m_8)` before the cursor, a result local zeroed first and
- * returned, the copy assigned after the count, the group's own pointer for the single test, the
- * pairs' walk after a `continue` -- 16 to 21 instructions off */
+/* the group holding an anim, of any kind, or 0 (OVL2 0x5E56D0). A const walk, the group cast back
+ * at each pass's top (round 43): a plain copy `group = g` is propagated into the single test's
+ * `return group` (g unchanged there), so MW returns the cursor and coalesces it with v0 -- 18 off;
+ * any conversion on the copy (const either side, a void * or int cast) keeps the target's cursor in
+ * t1 and the group in v0 */
 ANIM_VARIANT_GROUP *CAnimTypeRec::GetGroup(int anim)
 {
-    ANIM_VARIANT_GROUP *g = (ANIM_VARIANT_GROUP *)m_8;
+    const ANIM_VARIANT_GROUP *g = (const ANIM_VARIANT_GROUP *)m_8;
 
     if (!g)
         return 0;
     for (unsigned int i = 0; i < Count(); i++) {
-        ANIM_VARIANT_GROUP *group = g;
+        ANIM_VARIANT_GROUP *group = (ANIM_VARIANT_GROUP *)g;
         int n = g->m_count;
 
         if (n < 2) {

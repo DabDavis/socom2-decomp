@@ -356,7 +356,18 @@ extern "C" float func_001F3290(CSealStats **stats)
  * parameter, a local struct's fields, a reference bound to one, the count read after them or
  * twice, and the five passed as by-value parameters of one inline doing the averages (a member or
  * a free function) -- MW forwards a single-use local's pure expression to its use through every
- * one of them */
+ * one of them.
+ * Round 38: THE FORWARDING IS THE IR OPTIMISER'S EXPRESSION PROPAGATION (mweppc IroPropagate.c), WHICH
+ * WORKS INSIDE ONE FLOW-GRAPH NODE: any control flow between the definitions and the averages stops
+ * it. A one-pass `for` around the averages keeps the five percentages at their definitions (a2, t1,
+ * t0, a3, a2) but leaves two blocks (0x1FC); `bool ok = true; ... if (ok) { the averages }` -- a
+ * branch IRO folds only after the propagation (its EvaluateConditionals runs later in the same pass),
+ * so the blocks merge again -- gives the target's size with n1 defined after pc (34 off: the
+ * percentages' registers and n1's $f3 the target's; left, the target converts n+1 through $f1 into
+ * $f3 and runs the first quotient through $f2/$f5 -- the scheduling the README's round-33 note
+ * describes). An inline whose constant argument decides a `?:` (folded at inlining) or `if (Always())`
+ * do not stop it. Not adopted: the flag is a reproduction's device, not a shape found in the
+ * original -- whatever the original's control flow was (an assert, a mode parameter), it is the lead */
 void CCareerStats::AddMission(float a, float b, float c, float d, float e)
 {
     int n = m_missions;
