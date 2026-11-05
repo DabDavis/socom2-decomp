@@ -2849,6 +2849,70 @@ extern "C" void func_005AB590(CEntity *ent, zdb::IntersectStruct **hit0, const C
     }
 }
 
+/* a shotgun shot's pellet ranges, squared: near offline, near online, far online (OVL2 data, 8 bytes
+ * apart: a static pool, read with lwc1) */
+static float s_pelletNear = 2500.0f;
+static float s_pelletNearOnline = 6400.0f;
+static float s_pelletFarOnline = 22500.0f;
+
+/* a random value between two (an inline: the 1.0 range through its parameters keeps the multiply) */
+static inline float RandBetween(float lo, float hi)
+{
+    return lo + (hi - lo) * Rand01();
+}
+
+/* how many of a shotgun shot's pellets from a point reach the SEAL: 8 within the near range (online's
+ * wider), 4 more online within the far, and 1-7 at random by a fixed spread; past the near range the
+ * count falls with the square of the distance, its fraction kept at random (OVL2 0x5A1620, new in SOCOM
+ * II: RemoteWeaponDamageVictim and 0x5ABBC0 call it; the name unknown).
+ * OPEN, 0x294 against 0x284 (the SEALs, round 40; the rest in place): the target copies the SEAL's
+ * position into the frame (three loads, three stores through a pointer), subtracts *from through Sub
+ * into a temporary, block-copies that (ld/sd) into operator-'s return slot and then copies the return
+ * slot back over the first copy's slot with three loads then three stores at fixed offsets; `d = d -
+ * *from` assigns it interleaved through two address registers (16 bytes long, the network flag's load
+ * placed after), and every initialised spelling -- `CPnt3D d = pos - *from`, `CPnt3D(seal->m_posW) -
+ * *from`, with or without the count declared between -- elides the last copy (0x274, 16 short). Wants
+ * the shape that assigns the return slot back loads-first (a by-value CPnt3D operator result into a
+ * local held in the same slot: the kit's round 39 two-point local is the nearest measured) */
+extern "C" int func_005A1620(CZSealBody *seal, const CPnt3D *from)
+{
+    CPnt3D d = seal->m_posW;
+
+    d = d - *from;
+    int n = 0;
+    float dist = d.x * d.x + d.y * d.y + d.z * d.z;
+    bool online = theNetwork.m_9;
+    float range = online ? s_pelletNearOnline : s_pelletNear;
+
+    if (dist < range)
+        n += 8;
+    else if (online && dist < s_pelletFarOnline)
+        n += 4;
+    float r = Rand01();
+
+    if (r < 0.05f)
+        n += 1;
+    else if (r < 0.15f)
+        n += 2;
+    else if (r < 0.5f)
+        n += 4;
+    else if (r < 0.85f)
+        n += 5;
+    else if (r < 0.95f)
+        n += 6;
+    else if (r <= 1.0f)
+        n += 7;
+    if (n > 0 && !(dist <= range)) {
+        float f = (float)n * (range / dist);
+
+        n = (int)f;
+        f -= (float)n;
+        if (RandBetween(0.0f, 1.0f) <= f)
+            n++;
+    }
+    return n;
+}
+
 /* the share of a hit an empty location passes on to the body (OVL2 data, 8 bytes apart: a static
  * pool, read with lwc1) */
 static float s_passedShare = 0.3f;
