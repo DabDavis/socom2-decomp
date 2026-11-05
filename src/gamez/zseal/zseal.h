@@ -755,6 +755,8 @@ public:
     bool CanPlaceBomb(class CNodeAction *action);
     /* the SEALs and the turret in reach found among the targets (SOCOM 1's; OVL2 0x5940D0) */
     void TickVictims();
+    /* the actions the SEAL can take now marked (SOCOM 1's; OVL2 0x593500) */
+    void SampleActionAvailable();
     /* the look and the scan (SOCOM 1's, OVL2 0x600D40-0x60187F: the kit lane's seal_look.cpp,
      * which reads the members through a view of its own). A setter answers whether the look was
      * taken -- a kind at least the current one's; SOCOM II's SetDefaultLookParams takes whether
@@ -2215,7 +2217,8 @@ public:
     CCompassAnchor *m_hostile_anchor;   // 0xecc
     unsigned int m_action_available;   // 0xed0: a bit per action (SOCOM 1's ActionAvailableMask word, 0xdc0)
     unsigned int m_action_selection;   // 0xed4: the selected action's bit (SOCOM 1's m_action_selection_mask, 0xdc4)
-    unsigned char _ed8[0xee0 - 0xed8];
+    unsigned char m_action_display_on;   // 0xed8 (SOCOM 1's 0xdc8)
+    unsigned char _ed9[0xee0 - 0xed9];
     float m_wep_upT;   // 0xee0 (SOCOM 1's 0xdd0)
     unsigned char _ee4[0xf44 - 0xee4];
     /* a motion the position code keeps (ComputeNextPosition and PostPreTick read and write it; the

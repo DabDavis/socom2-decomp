@@ -809,6 +809,78 @@ void CSealCtrl::PerformReticleActions()
     }
 }
 
+extern "C" {
+/* the body's top blend (seal.cpp's tail copy, OVL2 0x555170), and two tests of the SEAL's anim
+ * (seal_body.cpp's OVL2 0x587F50 and 0x587F10: anims 8 or 9, 10 or 11) */
+void *func_00555170(void *stack);
+bool func_00587F50(CZSealBody *seal);
+bool func_00587F10(CZSealBody *seal);
+}
+
+CZSealBody *ftsGetPlayer();
+
+/* the body's top blend (an inline: the target makes the call ahead of the static's load and
+ * keeps the blend's anim in v0; the name ours) */
+/* whether the SEAL is in the air (an inline bool: the target materialises the bit before its
+ * branch; the name ours) */
+static inline bool Airborne(CZSealBody *seal)
+{
+    return seal->m_airborne ? true : false;
+}
+
+static inline CZBodyAnimBlend *TopBlend(CZSealBody *seal)
+{
+    return (CZBodyAnimBlend *)func_00555170(&seal->m_blends);
+}
+
+/* the actions the SEAL can take now (SOCOM 1's SampleActionAvailable, by its order and body; OVL2
+ * 0x593500): none while the weapon comes up or a menu other than 3 is open, online none for a player
+ * the game keeps; through a scope or binoculars none; an action pending or shown, a carried body set
+ * down (state 9) unless the carry is being picked up, else the reticle's and the proximity's actions
+ * and the climbs when the SEAL can fire, or the climbs alone in the air or the four anims -- and in
+ * state 5 action 16 (SOCOM 1's ActionDisplayOn is the member read, its third action slot gone) */
+void CSealCtrl::SampleActionAvailable()
+{
+    CZSealBody *seal = (CZSealBody *)m_entity;
+
+    seal->m_action_available = 0;
+    seal->m_action_selection = 0;
+    if (!(seal->m_wep_upT <= 0.0f) || (m_menustate != 0 && m_menustate != 3))
+        return;
+    if (theNetwork.m_9 && func_002C2FD0(ftsGetPlayer()))
+        return;
+    bool goal = (bool)m_goal_dir_valid || (bool)m_goal_pos_valid;
+
+    if (goal)
+        m_action = false;
+    bool action = m_action;
+    CZKit *kit = &seal->m_kit;
+
+    if (kit && kit->IsUsingScope() || kit->IsUsingBinocs())
+        return;
+    if (!action && !seal->m_action_display_on)
+        return;
+    if (seal->m_state == 9 && TopBlend(seal)->m_animType != AnimTypes::BuddyCarriedPickup &&
+        TopBlend(seal)->m_animType != AnimTypes::BuddyCarryPickup)
+        seal->ActionAvailableMask(9, true);
+    else if (seal->CanFire(true, false)) {
+        PerformReticleActions();
+        PerformProximityActions();
+        if (seal->CanClimbWall())
+            seal->ActionAvailableMask(2, true);
+        if (seal->CanClimbLadder())
+            seal->ActionAvailableMask(2, true);
+    } else if (Airborne(seal) || func_00587F50(seal) || func_00587F10(seal)) {
+        if (seal->CanClimbWall())
+            seal->ActionAvailableMask(2, true);
+        if (seal->CanClimbLadder())
+            seal->ActionAvailableMask(2, true);
+        return;
+    }
+    if (seal->m_state == 5)
+        seal->ActionAvailableMask(16, true);
+}
+
 /* the scope's zoom (OVL2 0x592C70, 0x592C30, 0x592C10, 0x592BF0) */
 void CSealCtrl::SetCameraZoom(float level, float increment)
 {
