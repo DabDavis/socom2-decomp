@@ -2065,6 +2065,22 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the UI, round 29** (CSoftKeyboard::PrepForDisplay and CGameMenu::HandlePad at last; SkbOpenParse named):
+  - a member array read through a reference-returning accessor at each use (`m_texLists[i]`) makes MW strength-reduce
+    from the accessor's `this + offset` -- a reference local, or `m_lists[i]` written out, steps `this` and adds the
+    offset in a register of its own; an array read through a conversion operator adds the index first (`addu
+    v0,v0,this`), the member written out the object first (CSoftKeyboard::PrepForDisplay 0x38BAC0: its cap-font test the
+    MSL's round-31 string, its piece lists through CSkbTexLists::operator[] and Row(c)[j]);
+  - MW hoists a float negation out of a loop only when it negates the static read directly -- through an inline's
+    parameter the copy's negation stays in the ternary's arm (STICK_ABS a macro reading the static itself); an inline
+    returning an enum through a cast numbers its result ahead of the caller's code-generation temporaries
+    (PadButtonState: `igreplay --move 110=103.5` predicted it before the source; CGameMenu::HandlePad 0x368650, 72 ->
+    0); among deferred nodes the first-declared bool takes the highest scratch register (t7 downward);
+  - locals read before a call and passed to a later call are loaded before that call, read inside the argument list
+    after the call that is also an argument; MW's preprocessor substitutes a macro parameter named `f` inside the literal
+    `0.0f` ("illegal token") -- name such parameters otherwise; SkbOpenParse 0x395F40 builds exactly the record
+    SkbSetPurpose reads (C2DAnimCmdHdr::header given the _zanim_cmd_hdr bitfields); 0x3A6350 named the SSM queue's
+    cdeque begin() (util_ssm.cpp emits it at 0x70, 14 off: include/deque's open begin() colouring).
 - **Tells from the SEALs, round 49** (the network-life timeout, the recursive soil mark, the AI fire parameters,
   PostMortemPreTick, CrouchMoveControl; the SEALs' own placeholders respelled):
   - A CALLEE DECLARED `(T *a, float x, T *b, float z)` GETS THE SAME REGISTERS AS `(a, b, x, z)`, BUT ITS CALLERS SET THEM
