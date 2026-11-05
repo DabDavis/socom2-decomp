@@ -425,6 +425,99 @@ public:
 
 extern CZNetGame *data_00437CE8;
 
+/* the online lobby's rooms (zonline.h's, which this unit cannot include: fts_state.h's string stand-in
+ * and include/string are two std::basic_string -- the layouts here are zonline.h's, only what the
+ * chat's line insert reads) */
+
+/* a chat message forwarded (zonline.h's MediusChatFwdMessage, 0x80 bytes: assigned member by member,
+ * the id bytewise, the name and the text two bytes a pass) */
+struct MediusChatFwdMessage {
+    char MessageID[21];   // 0x0 (MEDIUS_MESSAGEID_MAXLEN)
+    int OriginatorAccountID;   // 0x18
+    char OriginatorAccountName[32];   // 0x1c
+    int MessageType;   // 0x3c: 1 private, 2 clan
+    char Message[64];   // 0x40
+};   // 0x80
+
+/* a room (zonline.h's BriefingRoom, 0x98 bytes): only its chat */
+class BriefingRoom {
+public:
+    unsigned char _0[0x88];
+    std::vector<MediusChatFwdMessage> m_chat;   // 0x88
+    char *m_password;   // 0x94
+};
+
+/* the room list (zonline.h's BriefingRoomDB, 0x44F568: the rooms' unit's) */
+class BriefingRoomDB : public std::vector<BriefingRoom *> {
+public:
+    BriefingRoom *FindRoom(const char *name);   /* 0x2E4470 */
+};
+extern BriefingRoomDB data_0044F568;
+
+/* the online lobby (zonline.h's CZOnlineLobby, theLobby 0x44F370: its state at 0x60, the
+ * DisplayMessage switch's data_0044F3D0, and the room's name) */
+class CZOnlineLobby {
+public:
+    unsigned char _0[0xc0];
+    CUIVariable *uiv_LobbyWorldNameVar;   // 0xc0
+};
+extern CZOnlineLobby theLobby;
+
+void UpdateChatDisplay();   /* the room's chat shown (zNetMediusChat.cpp's, 0x2F5020) */
+void UTF8Strncpy(char *dst, const char *src, int n);   /* util_stable.cpp's */
+extern "C" void *memset(void *p, int c, unsigned int n);
+
+/* a line added to a room's chat: past ten the oldest dropped, the rest moved down (the name ours) */
+static inline void AddChatLine(BriefingRoom *room, const MediusChatFwdMessage &msg)
+{
+    if (room->m_chat.size() > 10) {
+        for (int i = 1; i < room->m_chat.size(); i++)
+            room->m_chat[i - 1] = room->m_chat[i];
+        room->m_chat.pop_back();
+    }
+    room->m_chat.push_back(msg);
+}
+
+/* a message added to the online lobby's room chat (OVL1 0x1F5020, the display in game mode 11 --
+ * LOBBY_ACTIVE): made a forwarded chat line (the sender's name, the text, the kind as the chat's --
+ * a player's 0, an alert private 1, a system message clan 2), given to every room when it is a
+ * system or private line (or `d` is 2), else to the room we are in; then the chat shown (SOCOM II's;
+ * the name ours) */
+extern "C" void func_001F5020(const char *text, const char *who, int a, int b, int c, unsigned char d,
+                              unsigned char e, MSGTYPE type)
+{
+    MediusChatFwdMessage msg;
+
+    memset(&msg, 0, sizeof(msg));
+    UTF8Strncpy(msg.OriginatorAccountName, who, 32);
+    UTF8Strncpy(msg.Message, text, 64);
+    switch (type) {
+    case MSGTYPE_PLAYER:
+        msg.MessageType = 0;
+        break;
+    case MSGTYPE_ALERT:
+        msg.MessageType = 1;
+        break;
+    case MSGTYPE_SYSTEM:
+        msg.MessageType = 2;
+        break;
+    }
+    if (d != 2 && type != MSGTYPE_ALERT && type != MSGTYPE_SYSTEM) {
+        CUIVariable *var = theLobby.uiv_LobbyWorldNameVar;
+
+        if (var && var->IsString()) {
+            BriefingRoom *room = data_0044F568.FindRoom(var->String());
+
+            if (room)
+                AddChatLine(room, msg);
+        }
+    } else {
+        for (BriefingRoomDB::iterator i = data_0044F568.begin(); i != data_0044F568.end(); ++i)
+            AddChatLine(*i, msg);
+    }
+    UpdateChatDisplay();
+}
+
 /* a message added to the network game's chat lines (OVL1 0x1F4DF0, the display outside game mode
  * 11): the last 20 lines kept, the new one coloured by its kind ("#C" and three level bytes), its
  * sender's name and ": " before the text, a newline after (SOCOM II's; the name ours). The first

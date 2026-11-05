@@ -891,10 +891,11 @@ public:
     CPnt3D m_frameendpos;   // 0x54
     CPnt3D m_vel;   // 0x60
     CPnt3D m_lastPlayerHitPos;   // 0x6c
-    /* not SOCOM 1's m_lastVolumetricHit point: a word HandleImpact (0x3C8920) compares and sets,
-     * and the node the shot came to rest on -- HandleBounce stores the hit's node, the
-     * intersection walk and PreTick test it (the names ours) */
-    unsigned int m_78;   // 0x78
+    /* not SOCOM 1's m_lastVolumetricHit point: the last person hit, as the node below its tree's
+     * root -- HandleImpact (0x3C8920) compares and sets it, a second hit on the same person leaves
+     * no mark, event or anim -- and the node the shot came to rest on -- HandleBounce stores the
+     * hit's node, the intersection walk and PreTick test it (the names ours) */
+    zdb::CNode *m_78;   // 0x78
     zdb::CNode *m_restnode;   // 0x7c
     float m_80;   // 0x80
     float m_84;   // 0x84 (SOCOM II's, as 0x88)

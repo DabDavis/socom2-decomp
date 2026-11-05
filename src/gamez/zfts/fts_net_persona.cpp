@@ -56,6 +56,13 @@ struct _zrdr {
     void *m_4;   // 0x4
 };
 
+/* a point (zmath.h's PNT3D: the editor's colour node takes one) */
+struct PNT3D {
+    float x;   // 0x0
+    float y;   // 0x4
+    float z;   // 0x8
+};
+
 class CRdrEditor : public _zrdr {
 public:
     CRdrEditor();
@@ -63,6 +70,9 @@ public:
     bool push(const char *tag);
     bool pop();
     bool addstringnode(const char *s);
+    bool addintnode(int i);
+    bool addPNT3D(const char *tag, const PNT3D &p);
+    bool addSTRING(const char *tag, const char *s);
 
     unsigned char _8[0x4c - 0x8];
 };
@@ -70,7 +80,24 @@ public:
 class CUIVariable {
 public:
     void Set(_zrdr *value);
+    /* its text when it holds one (fts_net_blather.cpp's GetString) */
+    const char *GetString() const { return m_type == 3 ? m_str : 0; }
+
+    unsigned char m_type;   // 0x0
+    const char *m_str;   // 0x4
 };
+
+/* the UI's variables by name (zui.h's CUIVarManager, theUIVarManager 0x437E80) */
+class CUIVarManager {
+public:
+    CUIVariable *Find(const char *name);
+};
+
+extern CUIVarManager theUIVarManager;
+
+/* the DME's ownership and lifespan of an object (fts_net_game.cpp's) */
+enum NetOwnershipStatus {};
+enum NetObjectLifespan {};
 
 class CZNetwork {
 public:
@@ -81,6 +108,8 @@ public:
                                           void (*deletion)(int, int));
     int zNetGetMyGameClientIndex();
     NetObject *zNetGetObject(int index);
+    int zNetCreateObject(int *index, NetOwnershipStatus own, NetObjectLifespan life, unsigned int a,
+                         int b, unsigned int c, int d, void *e, char *name, int structure);
 
     unsigned char m_bSessionMaster;   // 0x0
     unsigned char m_1;   // 0x1: an online game
@@ -100,23 +129,34 @@ public:
     /* (SOCOM 1's DWARF: only the values this unit names) */
     enum MP_MAJOR_GAME_STATE {
         MP_MAJOR_UNKNOWN = 0,
+        MP_MAJOR_MENUS = 1,
+        MP_MAJOR_LOADING = 2,
+        MP_MAJOR_INPLAY = 3,
+        MP_MAJOR_GAMEOVER = 6,
         MP_MAJOR_GHOST = 14
     };
 
     MP_MINOR_GAME_STATE MyMinorGameState(MP_MINOR_GAME_STATE state);
+    MP_MAJOR_GAME_STATE MyMajorGameState(MP_MAJOR_GAME_STATE state);
+    MP_MAJOR_GAME_STATE MPMajorGameState(MP_MAJOR_GAME_STATE state);
 
     unsigned char _0[0x14];
     CValve *m_pPlayerTeamValve;   // 0x14 (SOCOM 1's at 0x10)
     unsigned char _18[0x48 - 0x18];
     CValve *m_pPlayerReadyCountValve;   // 0x48 (SOCOM 1's at 0x44)
-    unsigned char _4c[0x60 - 0x4c];
+    unsigned char _4c[0x54 - 0x4c];
+    CValve *m_54;   // 0x54: set while a side has no player and no launch is counting down (SOCOM II's;
+                    // CheckStateSwitch's, the loading held while it is up -- the name ours)
+    unsigned char _58[0x60 - 0x58];
     CValve *m_pTeamFullValve;   // 0x60: set while either side has more than eight (SOCOM II's; the name ours)
     unsigned char _64[0x84 - 0x64];
     CUIVariable *m_uiv_SealList;   // 0x84 (SOCOM 1's four at 0x50-0x5c)
     CUIVariable *m_uiv_TerrList;   // 0x88
     CUIVariable *m_uiv_NoneList;   // 0x8c
     CUIVariable *m_uiv_ChatList;   // 0x90
-    unsigned char _94[0xac - 0x94];
+    unsigned char _94[0xa8 - 0x94];
+    unsigned char m_a8;   // 0xa8: (CheckStateSwitch's: set, an empty side does not hold the loading)
+    unsigned char _a9[0xac - 0xa9];
     int m_persona_object;   // 0xac: this client's persona object (the name ours)
     unsigned char _b0[0xd8 - 0xb0];
     bool m_ten_second_launch;   // 0xd8 (SOCOM 1's at 0x9f)
@@ -196,6 +236,16 @@ public:
     static void ToggleReady();
     static void UpdatePersonaLists();
     static void UpdateLocalPersona();
+    static int CreateLocalPersona();
+    /* a client's entry taken, when free, for a persona (the name ours: an inline -- its by-value
+     * index read ahead of the first test, the target's load in that test's delay slot) */
+    static void AddPersona(int client, int index, PersonaData *data)
+    {
+        if (m_PersonaList[client].m_index == -1 && m_PersonaList[client].m_data == 0) {
+            m_PersonaList[client].m_index = index;
+            m_PersonaList[client].m_data = data;
+        }
+    }
     static void RemotePersonaDeletionCallback(int client, int index);
     static void RemotePersonaPostUpdateCallback(int client, int index, int field);
     static void RemotePersonaUpdateCallback(int client, int index, int field);
@@ -442,6 +492,79 @@ void CZPersonaState::RemotePersonaDeletionCallback(int client, int index)
 extern "C" int data_00441480[8];
 extern "C" int data_004414A0[8];
 
+extern "C" {
+int func_002F96E0(CZOnlineLobby *lobby);   /* (a word of the lobby's: the persona's 0x4) */
+bool func_002E9B30();                      /* (the lobby unit's: a word at 0x44F778 set) */
+bool func_002E99E0();
+int func_002C2C20(int mode);               /* the voice chat's mode (below) */
+int func_002C2800();                       /* the blather object made (fts_net_blather.cpp's) */
+void *memset(void *p, int c, unsigned int n);
+char *strncpy(char *dst, const char *src, unsigned int n);
+int sprintf(char *buf, const char *format, ...);
+unsigned int func_002C32E0();
+unsigned int func_002C32C0();
+void func_002C3330(unsigned int team);     /* the player's team set (below) */
+}
+
+/* this client's persona made: its network object created and cleared; for the session master the
+ * side it starts on -- the spectators' when the lobby's flag says so, the SEALs' when the lobby asks
+ * for it, else the terrorists' -- with that side's count set to one and the slot cleared; the
+ * lobby's word, the player's name (its UI variable, else "Player<n>", cut at 30), its clan (cut at
+ * 15), its client, team and slot copied in; the client's entry taken when free, the voice chat set,
+ * the blather object made, and the network error dialog shown when no team came (SOCOM 1's
+ * CreateLocalPersona, rebuilt: OVL1 0x2C5450) */
+int CZPersonaState::CreateLocalPersona()
+{
+    int index;
+
+    if (theNetwork.zNetCreateObject(&index, (NetOwnershipStatus)1, (NetObjectLifespan)2, 0, 0, 0, 1, 0,
+                                    "PersonaObject", m_NetStructIndexPersonaObject))
+        return -1;
+    PersonaData *data = (PersonaData *)theNetwork.zNetGetObject(index)->m_data;
+
+    memset(data, 0, sizeof(PersonaData));
+    if (theNetwork.m_bSessionMaster) {
+        if (func_002F6D00(&theLobby) != false) {
+            data_00441458 = 1;
+            func_002C3330(0x10000);
+            data_00441468 = 0;
+        } else if (func_002E9B30() && func_002E99E0() == true) {
+            data_00441450 = 1;
+            func_002C3330(func_002C32C0());
+            data_00441468 = 0;
+        } else {
+            data_00441448 = 1;
+            func_002C3330(func_002C32E0());
+            data_00441468 = 0;
+        }
+    }
+    data->m_4 = func_002F96E0(&theLobby);
+    CUIVariable *var = theUIVarManager.Find("PLAYERNAMEVAR");
+
+    if (var)
+        sprintf(data->m_name, "%s", var->GetString());
+    else
+        sprintf(data->m_name, "Player%d", theNetwork.zNetGetMyGameClientIndex());
+    data->m_name[30] = 0;
+    var = theUIVarManager.Find("Clan_Description");
+    const char *clan;
+
+    if (var && (clan = var->GetString()) != 0) {
+        strncpy(data->m_clan, clan, 16);
+        data->m_clan[15] = 0;
+    } else
+        strncpy(data->m_clan, "", 16);
+    data->m_44 = theNetwork.zNetGetMyGameClientIndex();
+    data->m_team = data_00441470;
+    data->m_3e = data_00441468;
+    AddPersona(data->m_44, index, data);
+    func_002C2C20(0);
+    data->m_c = func_002C2800();
+    if (!data_00441470)
+        func_002A47B0(&theMission, "dlgNetError.rdr");
+    return index;
+}
+
 /* this client's persona brought up to date: the state switch checked, the game's states, the
  * lobby's byte (4 for one name), the team, the slot and the lobby's word copied in, and the lists
  * rebuilt (OVL1 0x2C5360; pinned: the post-update callback calls it, where -inline auto would take
@@ -479,6 +602,89 @@ void CZPersonaState::UpdateLocalPersona()
     UpdatePersonaLists();
 }
 #pragma auto_inline reset
+
+inline bool IsSealTeam(unsigned int team);
+inline bool IsFlaggedTeam(unsigned int team);
+extern "C" int sprintf(char *buf, const char *format, ...);
+
+/* the menus' persona lists rebuilt while this client is in the menus: each side's players with
+ * their clan tag, rank and readiness (a 1 or a 2) and the tag's colour, the flagged personas, the
+ * rest by name (SOCOM 1's UpdatePersonaLists, SOCOM II's lists; OVL1 0x2C5010). The counter, the
+ * flag and the persona declared uninitialised ahead of the game (numbered there, in that order) and
+ * the persona read through its own bounds test: through GetPersona it merges into the inline's
+ * result temporary, numbered after the game, and the two trade s1/s2 (the target's: the induction
+ * pointer s0, the game s1, the persona s2, the flag s3, the counter s4) */
+void CZPersonaState::UpdatePersonaLists()
+{
+    int i;
+    bool ready;
+    PersonaData *p;
+    CZNetGame *game = theMission.m_pNetGame;
+
+    if (game && game->m_my_major_game_state == CZNetGame::MP_MAJOR_MENUS) {
+        CRdrEditor terrs;
+        CRdrEditor seals;
+        CRdrEditor flagged;
+        CRdrEditor rest;
+
+        terrs.push(0);
+        seals.push(0);
+        flagged.push(0);
+        rest.push(0);
+        PNT3D colour;
+
+        colour.x = 128.0f;
+        colour.y = 64.0f;
+        colour.z = 32.0f;
+        for (i = 0; i < 24; i++) {
+            if (i >= 0 && i < 24)
+                p = m_PersonaList[i].m_data;
+            else
+                p = 0;
+            if (p) {
+                ready = p->m_41 == CZNetGame::MP_MINOR_READY;
+                char text[32];
+
+                if (p->m_clan && p->m_clan[0])
+                    sprintf(text, "[%s]", p->m_clan);
+                else
+                    sprintf(text, "");
+                if (IsTerroristTeam(p->m_team)) {
+                    terrs.push(0);
+                    terrs.addstringnode(p->m_name);
+                    terrs.addintnode(p->m_42);
+                    terrs.addintnode(ready ? 2 : 1);
+                    terrs.push(0);
+                    terrs.addSTRING("VALUE", text);
+                    terrs.addPNT3D("COLOR", colour);
+                    terrs.pop();
+                    terrs.pop();
+                } else if (IsSealTeam(p->m_team)) {
+                    seals.push(0);
+                    seals.addstringnode(p->m_name);
+                    seals.addintnode(p->m_42);
+                    seals.addintnode(ready ? 2 : 1);
+                    seals.push(0);
+                    seals.addSTRING("VALUE", text);
+                    seals.addPNT3D("COLOR", colour);
+                    seals.pop();
+                    seals.pop();
+                } else if (IsFlaggedTeam(p->m_team) != false)
+                    flagged.addstringnode(p->m_name);
+                else
+                    rest.addstringnode(p->m_name);
+            }
+        }
+        terrs.pop();
+        seals.pop();
+        flagged.pop();
+        rest.pop();
+        game->m_uiv_SealList->Set(&terrs);
+        game->m_uiv_TerrList->Set(&seals);
+        game->m_uiv_NoneList->Set(&flagged);
+        game->m_uiv_ChatList->Set(&rest);
+    }
+}
 
 /* a client moved to the other side when that side has a slot free: its slot and team taken there,
  * the switch sent and the counts moved (OVL1 0x2C4290; the session master's answer to a team
@@ -850,6 +1056,89 @@ void CZPersonaState::ToggleReady()
     }
 }
 
+/* whether the sides let the loading go: both have players, or the game's byte at 0xA8 is set, or
+ * a side is full (SOCOM II's; an inline bool, its `||` chain materialised; the name ours) */
+inline bool SidesManned(CZNetGame *game)
+{
+    return data_00441448 && data_00441450 || game->m_a8 || game->m_pTeamFullValve->m_value;
+}
+
+/* the empty-side valve brought up to date after the count: up while a side has no player, unless
+ * the ten-second launch runs (the game read again: an inline of its own; the name ours) */
+inline void UpdateEmptySideValve()
+{
+    CZNetGame *game = theMission.m_pNetGame;
+
+    if (!SidesManned(game)) {
+        SetValveValue(game->m_54, 1);
+        if (game->m_ten_second_launch)
+            SetValveValue(game->m_54, 0);
+    } else
+        SetValveValue(game->m_54, 0);
+}
+
+/* the game's states moved on as the session's major state asks (SOCOM 1's CheckStateSwitch; OVL1
+ * 0x2C3CF0): the sides counted and the empty-side valve set first (SOCOM II's); in the menus the
+ * session master copies its states into its persona and starts the loading when everyone is ready
+ * and no side is empty; loading, this client follows once ready (or the lobby's flag, or the
+ * ten-second launch, says so); in play a ready client from the menus loads; at the game's end a
+ * client not in the menus ends too; any other state is taken as it is, not ready */
+void CZPersonaState::CheckStateSwitch()
+{
+    CZNetGame *game = theMission.m_pNetGame;
+
+    if (!game)
+        return;
+    func_002C4500();
+    UpdateEmptySideValve();
+    CZNetGame::MP_MAJOR_GAME_STATE state = game->m_mp_major_game_state;
+
+    switch (state) {
+    case CZNetGame::MP_MAJOR_UNKNOWN:
+        break;
+    case CZNetGame::MP_MAJOR_MENUS:
+        if (theNetwork.m_bSessionMaster) {
+            NetObject *obj = theNetwork.zNetGetObject(game->m_persona_object);
+
+            if (obj) {
+                PersonaData *data = (PersonaData *)obj->m_data;
+
+                if (data) {
+                    data->m_40 = game->m_my_major_game_state;
+                    data->m_41 = game->m_my_minor_game_state;
+                    if (AllReadyToLoad() && !game->m_54->m_value) {
+                        game->MPMajorGameState(CZNetGame::MP_MAJOR_LOADING);
+                        game->MyMajorGameState(CZNetGame::MP_MAJOR_LOADING);
+                        CZGameState::UpdateLocalGame(game);
+                    }
+                }
+            }
+        }
+        break;
+    case CZNetGame::MP_MAJOR_LOADING:
+        if (game->m_my_major_game_state == CZNetGame::MP_MAJOR_MENUS &&
+            (game->m_my_minor_game_state == CZNetGame::MP_MINOR_READY || func_002F6D00(&theLobby) != false ||
+             game->m_ten_second_launch))
+            game->MyMajorGameState(CZNetGame::MP_MAJOR_LOADING);
+        break;
+    case CZNetGame::MP_MAJOR_INPLAY:
+        if (game->m_my_major_game_state == CZNetGame::MP_MAJOR_MENUS &&
+            game->m_my_minor_game_state == CZNetGame::MP_MINOR_READY) {
+            game->MyMajorGameState(CZNetGame::MP_MAJOR_LOADING);
+            game->MyMinorGameState(CZNetGame::MP_MINOR_NOTREADY);
+        }
+        break;
+    case CZNetGame::MP_MAJOR_GAMEOVER:
+        if (game->m_my_major_game_state != CZNetGame::MP_MAJOR_MENUS)
+            game->MyMajorGameState(CZNetGame::MP_MAJOR_GAMEOVER);
+        break;
+    default:
+        game->MyMajorGameState(state);
+        game->MyMinorGameState(CZNetGame::MP_MINOR_NOTREADY);
+        break;
+    }
+}
+
 /* one of a blather object's messages, if the object is one (the name ours: inlined in both
  * readers below, its result through a local) */
 inline char *GetBlatherMessage(int index, int i, bool taunt)
@@ -1148,7 +1437,8 @@ extern "C" void func_002C2D50(signed char value)
 
 /* the voice chat put in a mode: 3 for a player not yet in, 10 for the lobby's flag, with 4 added
  * for a SEAL on the SEALs' side when the chat's byte 0x4D is clear (OVL1 0x2C2C20; the load state
- * calls it with 0 and 3) */
+ * calls it with 0 and 3). Pinned: CreateLocalPersona calls it out of line */
+#pragma auto_inline off
 extern "C" int func_002C2C20(int mode)
 {
     int extra = 0;
@@ -1166,6 +1456,7 @@ extern "C" int func_002C2C20(int mode)
     }
     return data_0045B718->m_2c;
 }
+#pragma auto_inline reset
 
 /* every client's persona forgotten (OVL1 0x2C2BB0) */
 void CZPersonaState::ClearPersonaList()

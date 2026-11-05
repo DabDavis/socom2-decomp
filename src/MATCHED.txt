@@ -1483,9 +1483,11 @@
 0x001F4860 Init__10CMenuStateFv
 0x001F4D20 DisplayMessage__10CMenuStateFPCcPCciiiUcUc7MSGTYPE
 0x001F4DF0 func_001F4DF0
+0x001F5020 func_001F5020
 0x001F53D0 func_001F53D0
 0x001F5620 GetReaderFileName__14CMenuStateMenuFv
 0x001F5630 func_001F5630
+0x001F5640 insert__Q23std80__vector_imp<20MediusChatFwdMessage,Q23std33allocator<20MediusChatFwdMessage>,0>FP20MediusChatFwdMessageUiRC20MediusChatFwdMessage
 0x001F5C30 __dt__Q23std82__vector_deleter<20MediusChatFwdMessage,Q23std33allocator<20MediusChatFwdMessage>>Fv
 0x001F5CA0 clear__Q23std82__vector_deleter<20MediusChatFwdMessage,Q23std33allocator<20MediusChatFwdMessage>>Fv
 0x001F5CB0 AddToBatch__Q23zdb16CTextureRelocMgrCFPQ23zdb10CTexHandle
@@ -3587,7 +3589,7 @@
 0x002B3B60 ftsGetSquirm__Fv
 0x002B3B70 __dt__13CSealCtrlCopyFv
 0x002B3BD0 IsPlayer__13CSealCtrlCopyCFv
-0x002B3BE0 func_002B3BE0
+0x002B3BE0 OnStateChange__9CSealCtrlF10SEAL_STATE10SEAL_STATE
 0x002B3BF0 func_002B3BF0
 0x002B3C00 func_002B3C00
 0x002B3C20 func_002B3C20
@@ -3647,6 +3649,7 @@
 0x002B7CF0 func_002B7CF0
 0x002B7D60 ftsNetworkPlayerInit__Fv
 0x002B7EE0 func_002B7EE0
+0x002B8100 func_002B8100
 0x002B8390 DMEDisconnectFromGameServer__Fv
 0x002B83E0 DMEJoinGameServer__Fv
 0x002B8580 DMEConnectToGameServer__Fv
@@ -3791,6 +3794,7 @@
 0x002C3B10 func_002C3B10
 0x002C3B60 func_002C3B60
 0x002C3C30 func_002C3C30
+0x002C3CF0 CheckStateSwitch__14CZPersonaStateFv
 0x002C3FC0 ToggleReady__14CZPersonaStateFv
 0x002C4020 func_002C4020
 0x002C40C0 AllReadyToLoad__14CZPersonaStateFv
@@ -3803,7 +3807,9 @@
 0x002C4A20 func_002C4A20
 0x002C4B50 func_002C4B50
 0x002C4DF0 func_002C4DF0
+0x002C5010 UpdatePersonaLists__14CZPersonaStateFv
 0x002C5360 UpdateLocalPersona__14CZPersonaStateFv
+0x002C5450 CreateLocalPersona__14CZPersonaStateFv
 0x002C5750 RemotePersonaDeletionCallback__14CZPersonaStateFii
 0x002C57D0 RemotePersonaPostUpdateCallback__14CZPersonaStateFiii
 0x002C5800 RemotePersonaUpdateCallback__14CZPersonaStateFiii
@@ -7285,6 +7291,7 @@
 0x003BD870 clear__Q23std82__vector_deleter<Q23zdb14CMaterial_band,Q23std33allocator<Q23zdb14CMaterial_band>>Fv
 0x003BD920 clear__Q23std82__vector_deleter<Q23zdb14CPreLight_band,Q23std33allocator<Q23zdb14CPreLight_band>>Fv
 0x003BD9A0 Uninit__Q23zdb14CMeshDecalPoolFv
+0x003BE5F0 func_003BE5F0
 0x003BE7B0 FreeMem__Q23zdb10CMeshDecalFv
 0x003BE800 RecycleTick__Q23zdb14CMeshDecalPoolFv
 0x003BE8C0 PutPermDecal__Q23zdb10CMeshDecalFPQ23zdb10CMeshDecal
@@ -7501,6 +7508,7 @@
 0x003C71D0 IsInRange__12CZProjectileFPC6CPnt3Df
 0x003C7400 ResolveDamage__12CZProjectileFPfPfff
 0x003C7490 GetDamage__12CZProjectileFPC6CPnt3DPfPff
+0x003C7600 GetDamage__12CZProjectileFPC6CPnt3Df
 0x003C7AD0 SetInstance__12CZProjectileFPQ23zdb5CNode
 0x003C7AE0 GetInstance__12CZProjectileFv
 0x003C7AF0 HandleDetonateExplosion__12CZProjectileFv
@@ -7513,6 +7521,9 @@
 0x003C8330 HandleDelayedDetonate__12CZProjectileFv
 0x003C8740 Detonate__12CZProjectileFv
 0x003C8750 Cleanup__12CZProjectileFv
+0x003C8920 HandleImpact__12CZProjectileFPQ23zdb15IntersectStructffP6CPnt3D
+0x003C8F50 HandleBounce__12CZProjectileFPQ23zdb15IntersectStructfP6CPnt3D
+0x003C9530 DoMiss__12CZProjectileFfP6CPnt3D
 0x003C99A0 HandleTimers__12CZProjectileFv
 0x003C9B70 HandleIntersections__12CZProjectileFf
 0x003CABE0 SetModelOrientation__12CZProjectileFbPC6CPnt3D
@@ -9086,6 +9097,7 @@
 0x00544C80 ActionSelectionMask__10CZSealBodyFi
 0x00544CA0 ActionAvailableMask__10CZSealBodyFUcb
 0x00544CF0 func_00544CF0
+0x00544D60 func_00544D60
 0x00544FC0 func_00544FC0
 0x00545100 func_00545100
 0x00545120 func_00545120
@@ -9139,6 +9151,7 @@
 0x0054A8B0 func_0054A8B0
 0x0054E760 func_0054E760
 0x0054E8F0 func_0054E8F0
+0x0054EA80 func_0054EA80
 0x0054ECD0 func_0054ECD0
 0x0054F330 func_0054F330
 0x0054F410 func_0054F410
@@ -9470,10 +9483,12 @@
 0x0057F7D0 func_0057F7D0
 0x0057F880 func_0057F880
 0x0057F9C0 func_0057F9C0
-0x005802B0 func_005802B0
+0x0057FA70 GetPutativeFirePointW__10CZSealBodyFbbR6CPnt3D
+0x005802B0 BeginThrowItem__10CZSealBodyFfRf
 0x00580360 func_00580360
 0x005804E0 func_005804E0
 0x005805B0 func_005805B0
+0x005807D0 func_005807D0
 0x00580A80 func_00580A80
 0x00581110 BlendedClimb__10CZSealBodyFf
 0x005812C0 Hang_0__10CZSealBodyFii
@@ -9818,6 +9833,7 @@
 0x005AD730 BlinkTick__6CBlinkFf
 0x005AD870 Blink__6CBlinkFi
 0x005AD920 LookTick__5CLookFf
+0x005AD9D0 SetDir__5CLookFPC6CPnt3Df
 0x005AE3B0 __ct__6CBlinkFv
 0x005AE450 __ct__5CLookFv
 0x005AE4B0 SetEyeLookDir__10CZSealBodyFffPC6CPnt3Df
@@ -9845,6 +9861,7 @@
 0x005B3A60 func_005B3A60
 0x005B4F30 SealGetAltitude__10CZSealBodyFP6CPnt3Df
 0x005B61A0 func_005B61A0
+0x005B6240 func_005B6240
 0x005B6490 func_005B6490
 0x005B67F0 func_005B67F0
 0x005B6890 func_005B6890
