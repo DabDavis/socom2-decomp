@@ -1266,14 +1266,20 @@ CChatQueue data_0044FA50;   /* the private lines waiting for their player */
  * zeroes its temporary buffer in place (__cdeque_buf<PCv>() and allocator<PCv>(), called out of line
  * without this), and its __deque_buf(const Allocator &) 0x2F5FF0 builds the rebound buffer temporary
  * in place where the lobby's 0x2E09A0 calls cdeque(const Allocator &) and both allocator
- * constructors. What own code of the original instantiated them is not known (none survives in the
- * image: every own function of the unit is written); this function stands for it, the two buffers
- * __deque_buf's two constructors build (the rebound one, and the default), and nothing calls it */
-void ChatQueueBuffers()
+ * constructors, and the pair's constructor 0x2F6060 copies the allocator inline where the lobby's
+ * 0x2E0A80 calls its copy. What own code of the original instantiated them is not known (none
+ * survives in the image: every own function of the unit is written); this function stands for it --
+ * the two buffers __deque_buf's two constructors build (the rebound one, and the default) and the
+ * allocator copied -- and nothing calls it (veh_vehicle.cpp's dead-stripped clear is the precedent:
+ * README "Tells from completing the MSL headers, round 4"). Measured and NOT enough: requesting the
+ * deque's begin() / end() const here does not make the copy constructor 0x2F5F80 inline them, nor
+ * requesting the two do_assigns make the inits 0x2F6340 / 0x2F6600 inline them (both stay calls) */
+void ChatQueueBuffers(const std::deque<MediusChatMessage> &d)
 {
     Metrowerks::cdeque<MediusChatMessage *, std::allocator<MediusChatMessage *> > buf(
         (std::allocator<MediusChatMessage *>(std::allocator<MediusChatMessage>())));
     Metrowerks::cdeque<const void *, std::allocator<const void *> > tmp;
+    std::allocator<MediusChatMessage> a(d.alloc());
 }
 
 void cbGetPlayerInfo(int, int, int, MediusPlayerInfoResponse *);   /* the player's info shown */
