@@ -606,11 +606,11 @@ bool CAiPath::SmoothPath(bool force)
     return done;
 }
 
-/* whether a cell suits the path's kind (new in SOCOM II, the name ours: the leg smoother 0x525C80
- * asks it twice, out of line): a stealthy path keeps to soils 2, 4, 5 and 12 (water, brush,
- * forest, grass -- one bit test), a basic one to roads, any other takes every cell */
-#pragma auto_inline off
-bool CAiPath::IsPreferredCell(const CAiCell *cell) const
+/* whether a cell suits the path's kind (new in SOCOM II, the name ours): a stealthy path keeps to
+ * soils 2, 4, 5 and 12 (water, brush, forest, grass -- one bit test), a basic one to roads, any
+ * other takes every cell. An inline: the smoothing callback's switch inlines it whole, its ends'
+ * test (inlined one level) calls it, so its copy 0x526310 follows the callback */
+inline bool CAiPath::IsPreferredCell(const CAiCell *cell) const
 {
     bool ok = true;
 
@@ -623,15 +623,121 @@ bool CAiPath::IsPreferredCell(const CAiCell *cell) const
     }
     return ok;
 }
-#pragma auto_inline reset
 
-/* what the smoothing walk carries (the name ours): the path, and what the walk has met */
+/* what the smoothing walk carries (the name ours): the path, and whether its two ends' cells suit
+ * it (1 the start's, 2 the end's) */
 struct SMOOTH_DATA {
     CAiPath *m_path;   // 0x0
     int m_state;   // 0x4
 };
 
-bool _SmoothLineCallback(const MAP_LINEWALK_STRUCT &s, void *data);
+/* the open test's steps over the cell's soil, read once by the caller (the names ours: inlines
+ * returning the tests' negations, which MW materialises -- sltiu or sltu, then xori -- before it
+ * branches, as CAiCell's NoAction does; the soils' bit test is IsTraversable's) */
+inline bool traversable_soil(unsigned int soil)
+{
+    return !(soil == 0 || soil == 10 || soil == 8 || soil == 9);
+}
+
+inline bool not_collision_soil(unsigned int soil)
+{
+    return !((unsigned char)soil == CAiMap::SOIL_COLLISION);
+}
+
+inline bool not_occupied(const CAiCell *cell)
+{
+    return !cell->IsOccupied();
+}
+
+/* a cell a smoothed line may cross: a traversable soil, not collision, not occupied -- each step a
+ * bool of its own, as CAiCell::IsConcealing's (the name ours) */
+inline bool smooth_open(const CAiCell *cell, unsigned int soil)
+{
+    bool r = false;
+    bool o = false;
+
+    if (traversable_soil(soil) && not_collision_soil(soil))
+        o = true;
+    if (o && not_occupied(cell))
+        r = true;
+    return r;
+}
+
+/* whether a line's end cell suits the path (the name ours) */
+inline bool smooth_end(const CAiMap *map, const CAiPath *path, const CAiPath::point &p)
+{
+    CAiCell *cell = map->GetCell(p.m_loc, 0);
+    bool r = false;
+
+    if (cell)
+        r = path->IsPreferredCell(cell);
+    return r;
+}
+
+/* the smoothing walk's cells: each open, no climb up a steep cell, on the template path when the
+ * path keeps to it; the first cell notes whether the line's two ends suit the path, the others
+ * must suit it as the ends do -- both ends suiting, every cell must; neither, none may; the end's
+ * alone, none before the end (SOCOM 1's _SmoothLineCallback, the template and the kinds new).
+ * Byte-exact so (the AI core's round 30, igreplay --movers): `ok` declared uninitialised at the
+ * top and the soil a named local read from the field -- both numbered among the callback's own
+ * locals, so ok takes s0 and the soil t1 as the target's; through GetSoil() or IsTraversable's own
+ * local the soil was numbered as a temporary (t0/a3/a2 rotated). The switch's cases in the order
+ * the compare chain reverses (3, 2, 0, 1; the bodies in that order), the cell re-read for them */
+static bool _SmoothLineCallback(const MAP_LINEWALK_STRUCT &s, void *data)
+{
+    bool ok;
+    const CAiCell *cell = s.m_cell;
+
+    if (!cell)
+        return false;
+    unsigned int soil = cell->m_soil;
+
+    ok = smooth_open(cell, soil);
+    if (ok && (unsigned char)soil == CAiMap::SOIL_STEEP) {
+        const CAiCell *prev = s.m_prev;
+
+        if (cell != prev && prev) {
+            float a;
+            float b;
+
+            s.m_map->GetAltitude(prev, a);
+            s.m_map->GetAltitude(cell, b);
+            if (b > a)
+                ok = false;
+        }
+    }
+    if (ok) {
+        SMOOTH_DATA *d = (SMOOTH_DATA *)data;
+        CAiPath *path = d->m_path;
+
+        if ((path->m_flags & 8) && path->m_template)
+            ok = path->m_template->PointInPath(s.m_loc, 0);
+        if (ok) {
+            if (s.m_t == 0.0f) {
+                if (smooth_end(s.m_map, path, s.m_start))
+                    d->m_state |= 1;
+                if (smooth_end(s.m_map, path, s.m_end))
+                    d->m_state |= 2;
+            } else {
+                switch (d->m_state) {
+                case 3:
+                    ok = path->IsPreferredCell(s.m_cell);
+                    break;
+                case 2:
+                    ok = s.m_loc == s.m_end || !path->IsPreferredCell(s.m_cell);
+                    break;
+                case 0:
+                    ok = !path->IsPreferredCell(s.m_cell);
+                    break;
+                case 1:
+                    ok = !path->IsPreferredCell(s.m_cell);
+                    break;
+                }
+            }
+        }
+    }
+    return ok;
+}
 
 /* whether a point's cell lets the leg be smoothed across it: no action of kind 1 or 4 on it (nor
  * 7 for the point dropped) and, without an action, no climb (the name ours) */
