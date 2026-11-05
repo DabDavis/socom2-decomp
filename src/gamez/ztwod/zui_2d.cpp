@@ -1147,16 +1147,25 @@ void UiSetTtySpeedFactor(float f)
 
 void zVid_Scissor(int x1, int y1, int x2, int y2);
 
-/* a string's lines' height (ours: an inline over the string) */
+/* a string's lines' height (ours: an inline over the string, its count in a local of its own: read
+ * before the spacing call and kept, where the caller's own read of the count after the call is a
+ * load of its own -- the product written in the caller, or the count read straight here, MW shares
+ * one load between the two) */
 static inline float TextHeight(C2DString *s)
 {
-    return s->m_numLines * s->GetSpacing();
+    int n = s->m_numLines;
+
+    return n * s->GetSpacing();
 }
 
 /* slot 2: the text at the corner the matrix places, its first lines skipped until the rest fit
  * the window's height, clipped to the window while it scrolls; then the cursor after the last
  * character unless the text starts with a space (SOCOM 1's CTeleType::Draw; SOCOM II clips and
- * scales the cursor by the font) */
+ * scales the cursor by the font). The scale an inline member, so its two expansions share one load
+ * of the font with the height (through a free inline taking the string, each reloads it); the
+ * skipped count declared ahead of the text pointer (the other way round the two saved registers
+ * swap); the cursor's rectangle built in Load's own argument list -- as named locals MW folds the
+ * right edge into the left's conversion and sinks the left past both spacing calls (0x390) */
 void CTeleType::Draw(const CMatrix &m, zdb::CTextureRelocMgr *mgr)
 {
     if (!IsOn())
@@ -1175,8 +1184,8 @@ void CTeleType::Draw(const CMatrix &m, zdb::CTextureRelocMgr *mgr)
     int lines = m_numLines - m_1a8;
 
     if (m_shown > 0 && m_shown < total) {
-        const char *s = m_string;
         int skip = 0;
+        const char *s = m_string;
 
         while (lines * GetSpacing() > m_shown) {
             do
@@ -1194,12 +1203,9 @@ void CTeleType::Draw(const CMatrix &m, zdb::CTextureRelocMgr *mgr)
     C2DString::Draw(mgr, 0, 0);
     if (m_showCursor && m_string[0] != ' ') {
         int x = m_shortLength;
-        float x0 = x + 2;
-        float y0 = g_iTtyCursorDY + (1.0f + (p.y + (lines + m_1a8) * GetSpacing()));
-        float x1 = width + (x + 2);
-        float y1 = g_iTtyCursorDY + (p.y + (lines + m_1a8) * GetSpacing() - height);
 
-        m_cursor.Load(x0, y0, x1, y1, 0);
+        m_cursor.Load(x + 2, g_iTtyCursorDY + (1.0f + (p.y + (lines + m_1a8) * GetSpacing())), width + (x + 2),
+                      g_iTtyCursorDY + (p.y + (lines + m_1a8) * GetSpacing() - height), 0);
         m_cursor.Draw(mat, mgr);
     }
     zVid_Scissor(0, 0, 640, 448);
