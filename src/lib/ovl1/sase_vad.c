@@ -31,6 +31,38 @@ typedef struct {
 	signed char bActive;    /* 0x15 */
 } VadState;
 
+extern double pow(double, double);
+
+/* the gain step for a level (GCC round 33a): the level's distance from the history's (176 when the
+ * level is not positive), less a dead band of 16 either side, as 10^(d / 56.67) - 1 clamped to
+ * +-0.0592537 and scaled by 4000 -- on the cut side 1 - 10^(-d / 56.67). The constants are the
+ * vendor's truncated conversions (round 12a). */
+short func_00252BF0(VadHist *p, short sLevel)
+{
+	int iLevel = (sLevel > 0) ? sLevel : 176;
+	float fD = (float)iLevel - p->fLevel;
+	float fE, fG;
+
+	if (fD <= 16.0F && fD >= -16.0F)
+		fE = 0.0F;
+	else if (fD < -16.0F)
+		fE = fD + 16.0F;
+	else
+		fE = fD - 16.0F;
+	if (fE == 0.0F)
+		return 0;
+	if (fE < 0.0F) {
+		fG = -pow(10.0, -fE * 0x1.21212p-6F);
+		if (fG < -0x1.0f2b4p+0F)
+			fG = -0x1.0f2b4p+0F;
+		return (short)((fG + 1.0F) * 4000.0F);
+	}
+	fG = pow(10.0, fE * 0x1.21212p-6F);
+	if (fG > 0x1.0f2b4p+0F)
+		fG = 0x1.0f2b4p+0F;
+	return (short)((fG - 1.0F) * 4000.0F);
+}
+
 /* a frame's band struck (ucX >> 3): every band decayed by 0.96875, the struck one toward 1, and the
  * level made the bands' centroid, times 8; the frame count restarted (GCC round 28a).
  * OPEN (0x110 against 0x120, every word after the first loop the target's): the target loads the
@@ -130,7 +162,7 @@ void func_00253190(VadState *p, float fLevel)
 }
 
 /* speech once the level has stood above the larger of two floors for two frames running */
-void func_002531F8(short sPeak, VadState *p, float fLevel, float fMax)
+void func_002531F8(float fLevel, float fMax, short sPeak, VadState *p)
 {
 	float fFloor, fT, fU;
 
@@ -165,7 +197,7 @@ void func_002531F8(short sPeak, VadState *p, float fLevel, float fMax)
  *   capped run and the else jump to it, the uncapped run falls into the last `ret = 0` (laid out
  *   after the else). Structured, that `ret = 0` is laid out before the else; as returns, each
  *   return sign-extends on its own (F1-F3, build/scratch/gcc/v_3288*.py, GCC round 33a). */
-signed char func_00253288(short sLevel, unsigned short usFrames, VadState *p, float fThresh)
+signed char func_00253288(float fThresh, short sLevel, unsigned short usFrames, VadState *p)
 {
 	int iLevel;
 	float fT;
