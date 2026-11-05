@@ -5,8 +5,6 @@
 
 #include "zsnd.h"
 
-extern "C" void func_00341010();        /* zsnd_csnd.cpp (not named yet) */
-extern "C" void func_00341060();        /* zsnd_csnd.cpp: the group-volume fade restarted */
 extern "C" bool func_00346270(CSndInstance *except);        /* zsnd_csnd.cpp (not named yet) */
 
 std::list<CSndInstance *> CSndInstance::m_list;
@@ -64,7 +62,7 @@ void CSndInstance::ReleaseSoundInstance(CSndInstance *instance)
     if (instance->m_parent->m_isStreamed) {
         CSnd::m_numStreams--;
         if (!func_00346270(instance))
-            func_00341010();
+            CSnd::ReleaseGroupVolTemp();
     }
     CSnd::m_numActive--;
     if (m_pool.size() == m_pool.capacity())
@@ -328,7 +326,7 @@ void CSndInstance::StopAllSounds()
 {
     if (CSnd::m_isDisabled)
         return;
-    func_00341060();
+    CSnd::EndGroupVolTemp();
     func_00340270();
     std::list<CSndInstance *>::iterator e = m_list.end();
 

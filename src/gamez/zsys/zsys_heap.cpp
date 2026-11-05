@@ -44,37 +44,27 @@ CHeap::~CHeap()
     _free(m_base, 0, 0);
 }
 
-/* OPEN, 3 instructions: registers settled by this declaration order (the later-declared takes
- * the lower temporary). The world lane's round 20: MW's pre-colouring code (tools/igdump.py) runs
- * the rounding, best's lui and the split in an interleave its scheduler picks from the statement
- * order -- with best initialised in its declaration the lui lands between the -4 and the `and`,
- * interferes with both and pushes the -4 out of v1 (6); best and exact assigned after the
- * declarations put the lui after the `and`, so the -4 takes v1 and the rounding a2 as the target's,
- * and leave bestBlock's zeroing (`move t1,zero`) one place early, ahead of need's addiu where the
- * target has it after best's ori. Tried (build/scratch/wld/v_alloc*.py): all 720 orders of the six
- * initialisations with every local declared uninitialised at the top (3 at best: found, prev and
- * bestBlock's moves never all land as the target's), the zeroings chained, prev in the for's init,
- * the rounding split over two statements (0x14C). Earlier rounds: a function-scoped `#pragma
- * opt_propagation off` (the stand-in three other functions need) fixes the split's last store but
- * not the head; the rounding spelt `~3 & (size + 3)`, `& -4`, `4 + ...`, `>> 2 << 2`, in its own
- * local, `need` declared first or after `exact` (6 to 29); best assigned after its declaration,
- * the split written through `found` from its start (7), `found = bestBlock` moved to the end (54).
- * Round 18: `found` a `void *` (the return's type) keeps the split's last store through it (v0)
- * with no pragma -- a copy that changes the pointer's type is not propagated */
+/* first a block within 8 bytes of the rounded size, else the closest larger one split. Every local
+ * initialised in its declaration, the free list's head too: the load's place among the
+ * initialisations sets MW's pre-colouring order (the world lane's round 21, a sweep of the seven
+ * initialisations' 5040 orders, build/scratch/wld/v_alloc_b.py: six match, all with the load before
+ * the rounding and found/prev before best; with the load in the for's init, as before, the best of
+ * all 1957 declaration/assignment splits was 3 -- `move t1,zero` one place early). Registers settled
+ * by the declaration order (the later-declared takes the lower temporary); `found` a `void *` (the
+ * return's type) keeps the split's last store through it (v0) -- a copy that changes the pointer's
+ * type is not propagated (round 18) */
 void *CHeap::Alloc(unsigned int size)
 {
     void *found = 0;
-    Block *b;
+    Block *b = m_free;
     Block *prev = 0;
     unsigned int need = ((size + 3) & ~3) + 4;
-    unsigned int best;
+    unsigned int best = 999999999;
     Block *bestBlock = 0;
     Block *bestPrev;
-    bool exact;
+    bool exact = false;
 
-    best = 999999999;
-    exact = false;
-    for (b = m_free; b; prev = b, b = b->next) {
+    for (; b; prev = b, b = b->next) {
         if (b->size >= need && b->size - need < 8) {
             b->size = need;
             found = b;
