@@ -2065,6 +2065,20 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the SEALs, round 50** (AllowCommandHOLDPOS / AllowCommandFOLLOW -- seal_command.cpp whole --, PlayAiSound and
+  0x549C30, all unwritten before; MoveControl and CanPerformAction, open since rounds 49 and 13 -- resumed after the
+  2026-11-05 crash):
+  - MW numbers named locals in DECLARATION order, not by first assignment: a pointer declared last but assigned before a
+    call keeps its load in the call's delay slot and takes the last number (AllowCommandFOLLOW 0x591AB0, HOLDPOS 0x591770,
+    PlayAiSound 0x55FF60); a local assigned once from an inline's result is replaced by the inline's result temporary,
+    numbered last -- read through the virtual call directly it becomes a register of its own (HOLDPOS's `ai`);
+  - an inline's bool result assigned to a caller's local narrows in place at the join (`andi s1,s1,0xff`, FOLLOW's
+    TakesFollow); with a single `return r` all arms share one `r` -- if one arm's value lives across calls the other arms'
+    `r` is pulled into a saved register too, a block-local result copied into `r` keeps them in v0;
+  - a cast argument `(E)i` bound to an inline's enum-typed parameter is re-evaluated at each use (narrowed again at each
+    call); a true enum-typed parameter is passed on raw -- PlayAiSound's event is very probably CAiEvent::EVENT (a marked
+    device, VoiceEvent, until its callers in the kit's and the engine core's files change: queued);
+  - `_close_enough(x, 1.0f, 0.0001f)`'s two literals are 8-byte .data objects (seal.cpp's 0x64FD00 and 0x64FD08).
 - **Tells from the zdb world, textures, rdr and sound, round 25** (CIOPManager::RebootIOP with delflag and its remove_if /
   remove_copy_if instances; Destruction_Instance::Tick -- resumed after the 2026-11-05 crash):
   - an inline's path buffers are laid out by inline depth, then code order: moving RebootIOP 0x34F9B0's module loop one
