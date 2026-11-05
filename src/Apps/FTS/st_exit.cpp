@@ -529,7 +529,7 @@ bool CExitState::Init()
     theMission.ReOpen_Unload1();
     func_001F21B0(&counts);
     theMission.ReOpen_Unload2();
-    if (theMission.m_1ac->m_4 == 2) {
+    if (theMission.m_valve_abort->m_value == 2) {
         theGame.Pop(1);
         return true;
     }

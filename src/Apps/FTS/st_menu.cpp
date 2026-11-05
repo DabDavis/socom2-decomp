@@ -39,7 +39,6 @@ public:
 };
 
 extern "C" {
-void func_00341250(float dT);
 void func_003654C0(CGameMenu *menu, float dT);   /* CGameMenu::Tick */
 void func_003AFF30(bool a, bool b);              /* zVid_Swap */
 
@@ -593,7 +592,7 @@ bool CMenuState::Tick(float dT)
     m_menu->TickMPEG();
     CInput::Tick(dT);
     CSnd::PostTick(dT, 0);
-    func_00341250(dT);
+    CSnd::TickGroupVolTemp(dT);
     func_003654C0(m_menu, dT);
     CMessageQueue *queue = (CMessageQueue *)theMission.m_netQueue;
     CQueuedMessage msg;
