@@ -923,7 +923,15 @@ int casrGetUserWordNbrRecsNeeded(CASR *c, int *n)
 /* OPEN (and casrGetLastWarning): the target if-converts the magic test into a flag (li 11,
  * movz 0) and branches on it, after testing the null handle by itself; SOCOM 1's build has this
  * plain guard. The guard, a ?: macro, an inline checker, a single-exit flag: all compile to
- * branches (12 words of 16). */
+ * branches (12 words of 16).
+ * Round 24c: the flag is block-local in the target -- local-alloc gives it a0 and p moves to a1
+ * (`move a1,a0`) -- so the null test cannot set it: through casrCheckHandle the null path carries
+ * the 6 to the flag's test (0x38-0x3C), and `if (c == 0) return 11; if (casrCheckHandle(c) != 0)
+ * return 11;` (the inline's own null test then folded away) gives every insn but reorg's slots
+ * (0x3C: here both branches copy the return's `li v0,11`, the target fills the null test's slot
+ * from the fall-through -- its magic constant's lui scheduled ahead of the load -- leaves the flag
+ * test's empty and keeps `li v0,11` in its own `jr`'s slot; build/scratch/gcc/r24c/v_gle*.py:
+ * a magic-only inline, the compare's operands either way round, == first, alike). */
 int casrGetLastError(CASR *c)
 {
     int err;
