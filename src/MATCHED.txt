@@ -1212,6 +1212,8 @@
 0x001C1210 func_001C1210
 0x001C1270 func_001C1270
 0x001C12B8 func_001C12B8
+0x001C1308 func_001C1308
+0x001C1330 func_001C1330
 0x001C1348 func_001C1348
 0x001C1378 func_001C1378
 0x001C1590 func_001C1590
@@ -1337,6 +1339,7 @@
 0x001E8910 ezNetCnfGetNetcnfifData
 0x001E89E8 initEzNetCtl
 0x001E8AB0 exitEzNetCtl
+0x001E8B38 ezNetCtlSetProperties
 0x001E8C58 ezNetCtlSetCombination
 0x001E8D20 ezNetCtlGetStatus
 0x001E8DC0 ezNetCtlSetAutoMode
@@ -5564,6 +5567,7 @@
 0x003421D0 swap__Q23std56__vector_deleter<8CSndBank,Q23std20allocator<8CSndBank>>FRQ23std56__vector_deleter<8CSndBank,Q23std20allocator<8CSndBank>>
 0x00342210 clear__Q23std46vector<8CSndBank,Q23std20allocator<8CSndBank>>Fv
 0x00342220 __ct__Q23std46vector<8CSndBank,Q23std20allocator<8CSndBank>>Fv
+0x00342240 StreamSoundVolPan__4CSndFiiP12CSndInstancei
 0x00342670 CalcVolPan__4CSndFPC6CPnt3DfPiPi
 0x003428A0 func_003428A0
 0x003428F0 func_003428F0
@@ -5571,6 +5575,8 @@
 0x00342990 PlaySound3D__4CSndFPC6CPnt3DbfiP12CSndInstanceUi
 0x00342A20 PlaySoundVol__4CSndFfbP12CSndInstanceUi
 0x00342AA0 PlaySound__4CSndFbP12CSndInstanceUi
+0x00342B20 PlaySound3D__4CSndFPC6CPnt3DfiP12CSndInstanceUi
+0x00343140 PlaySoundVolPanPitch__4CSndFfiiP12CSndInstanceUi
 0x00343500 PlaySoundVol__4CSndFfP12CSndInstanceUi
 0x00343550 PlaySound__4CSndFP12CSndInstanceUi
 0x003435A0 GetSubtitles__4CSndFv
@@ -5580,6 +5586,7 @@
 0x003443C0 CopyUpper__FPCcPci
 0x003448D0 func_003448D0
 0x003448E0 func_003448E0
+0x00344910 func_00344910
 0x00344E90 func_00344E90
 0x00344EA0 func_00344EA0
 0x00344EC0 func_00344EC0
@@ -5699,6 +5706,8 @@
 0x0034A910 StopSound__7HeadsetFiP4CSnd
 0x0034AA70 Interrupt__7HeadsetFv
 0x0034AAC0 Remove__7HeadsetFibb
+0x0034AD00 ConnectedTick__7HeadsetFf
+0x0034AFD0 DisconnectedTick__7HeadsetFf
 0x0034B3B0 Tick__7HeadsetFf
 0x0034B410 SoundSysCallback__7HeadsetFUi
 0x0034B4E0 StaticSoundSysCallback__7HeadsetFUiUl
@@ -5888,6 +5897,7 @@
 0x00355A50 StartBatchReloc__Q23zdb15CBatchRelocatorCFv
 0x00355A70 MIPUpdateTextureSelects__Q23zdb8CTextureFUiUi
 0x00355C70 UpdateTextureSelect__Q23zdb8CTextureFUiUi
+0x00355DE0 UpdateTextureSelects__Q23zdb12CGSTexBufferFv
 0x00355F20 ClearPktBufs__Q23zdb11CTexManagerFRQ23zdb11CTexManagerb
 0x00355FE0 FreeVector<Q23std30vector<1,Q23std12allocator<1>>>__FRQ23std30vector<1,Q23std12allocator<1>>_v
 0x00356080 DestroyBuffers__Q23zdb11CTexManagerFRQ23zdb11CTexManagerb
@@ -8178,6 +8188,8 @@
 0x005019B0 Median_Reset
 0x005019C8 InitMedian
 0x00501E20 NormE_Processing
+0x00501F38 FlushPitchCombiner
+0x00502298 ProcessPitchCombiner
 0x005028F0 ControlPitchCombiner
 0x00502F10 ConstructPitchCombiner
 0x005041C0 ControlSHS_VUV
@@ -8910,6 +8922,7 @@
 0x005416B0 GetVisibleByUnit__7CPickupFUi
 0x005416C0 GetPickupNetEntityID__7CPickupFv
 0x005416E0 GetPosW__7CPickupCFv
+0x00541700 func_00541700
 0x005418B0 func_005418B0
 0x00541910 func_00541910
 0x005419C0 GetData123__7CPickupFv
@@ -9125,11 +9138,14 @@
 0x0055EAA0 func_0055EAA0
 0x0055EBE0 func_0055EBE0
 0x0055F6F0 reset__13AI_FIREPARAMSFv
+0x0055F7F0 func_0055F7F0
+0x0055F940 func_0055F940
 0x0055FEE0 func_0055FEE0
 0x00560280 func_00560280
 0x00560340 func_00560340
 0x005604C0 func_005604C0
 0x005604D0 func_005604D0
+0x00560540 func_00560540
 0x005608A0 func_005608A0
 0x005608B0 func_005608B0
 0x00560920 func_00560920
@@ -9138,6 +9154,7 @@
 0x00560950 func_00560950
 0x00560960 __opf__6RfloatCFv
 0x005609D0 __ct__6RfloatFff
+0x005609F0 func_005609F0
 0x00560A60 GetAiAware__11CSealCtrlAiCFv
 0x00560AC0 func_00560AC0
 0x00561110 SetAiAware__11CSealCtrlAiF8AI_AWAREPC6CPnt3Df
@@ -9291,8 +9308,10 @@
 0x00576120 func_00576120
 0x005761B0 func_005761B0
 0x005762E0 func_005762E0
+0x005763E0 func_005763E0
 0x005765F0 func_005765F0
 0x00576700 func_00576700
+0x00576BB0 AnimOverlay__9CSealAnimFf
 0x00576E30 CombineRotations__9CSealAnimFii
 0x00577700 AnimPop__9CSealAnimFv
 0x00577DF0 func_00577DF0
@@ -9409,7 +9428,7 @@
 0x0058C2B0 func_0058C2B0
 0x0058C2F0 func_0058C2F0
 0x0058C350 BindAnimSet__10CZSealBodyFP7AnimSet8AnimType10SEAL_STATEb
-0x0058C4A0 func_0058C4A0
+0x0058C4A0 BindAnimSet__10CZSealBodyFP7AnimSetb
 0x0058C4B0 func_0058C4B0
 0x0058C5D0 func_0058C5D0
 0x0058C820 func_0058C820
@@ -9603,6 +9622,7 @@
 0x005A4840 ReadDeathAndFlinchAnims__7AnimSetFv
 0x005A49F0 ReInitDatabaseHandles__10CZSealBodyFv
 0x005A4CE0 InitDatabaseHandles__10CZSealBodyFv
+0x005A4CF0 InitDecalHandles__10CZSealBodyFv
 0x005A4F70 func_005A4F70
 0x005A4F80 HandleWeaponEvent__10CZSealBodyFP12CZProjectileUiPv
 0x005A50A0 TickStun__10CZSealBodyFf

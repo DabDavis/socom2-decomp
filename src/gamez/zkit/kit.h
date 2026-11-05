@@ -95,6 +95,13 @@ public:
     static float GetWeaponEffectiveRange(CZWeapon *w);
 };
 
+/* the weapons' stash, an ammunition pickup's contents (zwep_weapon.cpp's CZItemStash, three
+ * parallel lists out of line in OVL1: only the append the kit calls, 0x3CFEF0) */
+class CZItemStash {
+public:
+    void Add(CZWeapon *weapon, CZAmmo *ammo, int rounds);
+};
+
 class CZKit {
 public:
     void ResetScreenOffsetXY();
@@ -102,6 +109,13 @@ public:
      * DecrZoomState calls it where SOCOM 1's called InitializeSniperKick -- the name ours) */
     void ResetRetOffsetXY();
     void Binocs_Enabled(bool on);
+    /* the lens effects applied: on with a colour, the light maps tinted by it at once and the
+     * camera's fog the base fog by it; off, the tints back to white over a quarter second and the
+     * fog to the base (SOCOM 1's Apply_LensEffects; OVL2 0x5C1800 -- CameraZoom and the HUD's map
+     * call it) and the bit set through a bool (inline: both arms keep the target's unfolded masks;
+     * the name ours) */
+    void Apply_LensEffects(bool on, CPnt3D *color);
+    void SetLensFxEnable(bool b) { m_lensfx_enable = b; }
     void SetCurReticule(bool force);
     bool CurReticuleTypeChanged();
     float GetCurZoom();
@@ -141,6 +155,11 @@ public:
     void IncrScreenOffsetY(float dy);
     bool IsUsingBinocs();
     void InitializeSniperKick();
+    /* the scope's frame: the heartbeat's rumble paced by the adrenaline, the rifle's kick and its
+     * return -- the baseline settling by a rate -- and the sight's drift within limits the
+     * adrenaline scales (OVL2 0x5B9280; SOCOM 1's SniperTick, the settle rate and the two switches
+     * new: CZSealBody::Tick calls it while a scope or the binoculars are up) */
+    void SniperTick(float dT, CTargetMods &mods, float settle);
     /* the rounds a pull of the trigger fires, and the wait after (OVL2 0x5C0940 -- new in SOCOM II,
      * SOCOM 1's WillFireWeapon did it inline: the name ours -- and 0x5C09F0, SOCOM 1's) */
     int GetShotCount();
@@ -167,6 +186,8 @@ public:
      * 0x5C4480, new in SOCOM II: 0x5C4600 passes the selected item, which it reads again itself --
      * the index unused; the name ours) */
     int NextFireMode(int index);
+    /* the selected item's fire mode stepped (OVL2 0x5C4600; SOCOM 1's) */
+    void CycleFireMode();
     /* an explosive of a kind taken in hand and placed: the item before it kept to go back to, a
      * direct-fire weapon's selection undone, else -- the body able, the wait run out, the placing
      * allowed (0x5BD530) -- placed (0x5BE9A0), or the item before it taken back (OVL2 0x5C0020;
@@ -244,7 +265,7 @@ public:
     int GetAmmoTotal(int index);
     /* the rounds an item's magazine holds (SOCOM 1's; OVL2 0x5C3CF0) */
     int GetMaxAmmoCount(int index);
-    /* the rounds in an item's magazine (SOCOM 1's; OVL2 0x5C38A0, unwritten) */
+    /* the rounds in an item's current magazine (SOCOM 1's; OVL2 0x5C38A0) */
     int GetAmmoCount(int index);
     /* the selected item's magazine capacity and rounds (OVL2 0x5C3CE0, 0x5C3890: SOCOM 1's
      * GetCurMaxAmmoCount and GetCurAmmoCount, which did the work inline -- SOCOM II's tail-call the
@@ -366,6 +387,9 @@ public:
     /* an item's ammunition let go (OVL2 0x5B9F00; SOCOM 1's) and whether an item has room for more
      * rounds (OVL2 0x5BA5B0; SOCOM 1's, the count unread) */
     void RemoveAmmo(int index);
+    /* the kit's ammunition put into a stash -- every item's (-1) or one index's (OVL2 0x5BA040;
+     * SOCOM 1's FillAmmoPickupInstance: the SEAL's DropAmmo calls it) */
+    void FillAmmoPickupInstance(CZItemStash *stash, int index);
     bool CanAddAmmo(int index, int count);
     /* rounds added to an item's magazines, the rest returned (OVL2 0x5BA3D0; SOCOM 1's) */
     int AddAmmo(int index, int rounds);
@@ -470,7 +494,9 @@ public:
     float m_firerifle_kick_movedist;   // 0x3c (SOCOM 1's 0x28)
     float m_firerifle_kick_accum;   // 0x40 (SOCOM 1's 0x2c)
     int m_firerifle_kick_state;   // 0x44 (SOCOM 1's 0x30)
-    unsigned char _48[0x54 - 0x48];
+    unsigned int m_heartbeat_state;   // 0x48 (SOCOM 1's 0x34)
+    float m_heartbeat_accum;   // 0x4c (SOCOM 1's 0x38)
+    unsigned char _50[0x54 - 0x50];
     RETICULE_TYPE m_curitemreticule;   // 0x54 (SOCOM 1's int at 0x40)
     unsigned char _55[0x58 - 0x55];
     float m_screenoffset_x;   // 0x58 (SOCOM 1's 0x44)

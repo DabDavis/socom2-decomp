@@ -57,6 +57,8 @@ and data reference resolved to the address the shipped code uses.
 | `tools/ccdump.py` | a GCC unit compiled under its own `sc:` toolchain and flags with cc1's register-allocation and scheduler dumps (`-dl -dg -dS -dR -fsched-verbose=4`, the 2.9-991111 builds' spellings handled); `-f FUNC` splits one function's sections and prints its allocation order, each pseudo's final register and global-alloc's priority of each (floor_log2(refs) x refs / live, ties to the lower pseudo; checked against .greg's order: GCC round 29a) -- for register-only misses (GCC round 14c's harness, promoted in 15a) |
 | `tools/treesearch.py` | which source trees of a sum give the target's: every tree over a spec's leaves compiled under its GCC directive, each function's dataflow read back from cc1's RTL dump (2.96's fold regroups sums; the recogniser lane's round 18c, promoted in GCC round 20a) |
 | `tools/asmunit.py` | an assembler unit (`.s`) for a library object that was assembly: the rows transcribed (canonical instructions, labels, map names, %hi/%lo of the symbols the code addresses, the unit's own `.bss` labels), assembled by the toolchain named and scored until every function matches |
+| `tools/structdiff.py` | one function against its row with the registers and the link normalised, so only STRUCTURAL differences show (opcodes, unrelocated immediates, order, which function is called); says how many instructions differ in their registers alone -- a register-only miss -- and `--regs` keeps the registers (the game states' round-35 structdiff.py and mydiff.py, promoted in GCC round 31a) |
+| `tools/cdis.py` | the candidate's disassembly before the link, each relocation named as the scorer resolves it (`<R_MIPS_LO16 currentDir = 0x1df400>`), `--at` at its row's addresses, `--list` the object's functions (the game states' round-35 cdis.py, promoted in GCC round 31a) |
 | `symbols.txt` | **the map** — `0xADDR SIZE name  # note`, kept by hand from here on |
 | `data.txt` | the map of global data, the same format and namespace |
 | `src/` | the reconstructed source; `MATCHED.txt` (the baseline), `ABSENT.txt` (dead-stripped) |
@@ -2060,6 +2062,39 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the world, rdr and sound, round 17** (CSnd's play and stream calls, the headset's ticks, the mission's
+  sound groups):
+  - MW counts a function's statements BEFORE inlining, an inline call counting one: PlaySound3D 0x342B20 auto-inlines
+    CalcVolPan only once CalcVolPan is 15 statements -- SOCOM 1's CalcVol an inline call, the two zero stores chained, the
+    depth copy written `(z = p.z) *= -1.0f` (any one alone leaves it 16, called);
+  - a byte-enum call result put in a variable of the same enum stays unmasked and is re-extended only at compares;
+    through an `unsigned char` or `int` MW masks it at the assignment; `(int)(GetMasterVol() * (1024.0f * vol * m_vol))`
+    through an inline read gives the target's multiply order, the static read in place or written last swaps it
+    (CSnd::PlaySoundVolPanPitch 0x343140, StreamSoundVolPan 0x342240);
+  - a local initialised by a ternary is numbered after the named locals, so it takes s0 over a bool declared before it;
+    the target keeps a global table's address in a saved register across calls only when the source uses a pointer
+    local (in place each call recomputes it); `int loc = 0;` before the call lands in the jal's delay slot, after it in
+    the next branch's (Headset::ConnectedTick 0x34AD00 / DisconnectedTick 0x34AFD0, the mission's sound groups 0x344910);
+  - CGSTexBuffer::UpdateTextureSelects 0x355DE0 (open since round 2, 1 off after the vector change) closes with the
+    palette's old address read into a local and `next != old` tested.
+- **Tells from the SEALs, round 36** (the cell finders, InitDecalHandles, AnimOverlay -- closed by reading MW's colouring):
+  - with every spill cost 0 MW colours in simplify-sweep order: a node at or over K leaves in a later sweep and is
+    coloured earlier, so one neighbour too many reorders the saved registers (the look and cover cell finders 0x55F7F0 /
+    0x55F940, open since round 15; Crouch 0x581990 and InStateHang 0x584390 stay 5 off on it: Stand's stance has exactly
+    25 neighbours); defining a local after a store, not at its declaration, can drop its degree below K and move it a sweep
+    (`bool found; *side = 2; found = false;`);
+  - a local assigned from a load becomes the load's temporary and a single-use local is forwarded to its use; an
+    enum-typed inline argument gets its load numbered first, `unsigned char` or `int` parameters are forwarded (0x541700:
+    pickup_main.cpp 39 of 39); MW evaluates `a[i] == p->shortfield` field first however written, reading the element into
+    an int local first reverses it (0x5609F0);
+  - a variable reused for an unrelated purpose becomes a new web numbered last -- a way to colour a value first
+    (CZSealBody::InitDecalHandles 0x5A4CF0, open since round 21: the blood tag takes s0); locals deferred to the same sweep
+    take saved registers in reverse declaration order, reassigned cursors' second webs follow their first-loop assignments
+    (CSealAnim::AnimOverlay 0x576BB0, open since round 34);
+  - a bounds-tested pick inside an inline wants if/else assignments (a ternary materialises the test); an explicit
+    `return;` closing a void function's last if-block leaves a `b` to the epilogue aimed at the next instruction (0x5763E0:
+    seal_anim.cpp 12 of 12); BindAnimSet(AnimSet *, bool) 0x58C4A0 is SOCOM 1's five AI-state calls' landing site;
+    ChooseWeapon 0x563470 named.
 - **Tells from completing the MSL headers, round 24** (THE POINTER VECTOR'S ORIGINAL ITERATOR ADOPTED; probes
   build/scratch/msl-r24-p24/):
   - include/vector's pointer vector is the image's now: raw begin/end belonging to each element type, `begin() { return
@@ -8495,6 +8530,70 @@ round 19a, and `_id2type`, sceMpegAddStrCallback, `_pack_header`) and picture ou
   `_ch3dmaCSC`, `_doCSC2`, 0x252D68, 0x250320 (their diagnoses stand), libcdvd's sceCdDiskReady/sceCdRead,
   OVL1's codec and libnetb rows.
 
+**The tools, round 31a** (the game states' round 35 request): two scratch tools promoted. (1)
+**`tools/structdiff.py SRC SYMBOL`** (states-r35's structdiff.py and mydiff.py): one function against
+its scoring row, built as sccheck builds it (scdiff's `--target`, `--compiler`, `--flags`, `-I`; ccdump's
+`--unit`; `--obj` reads a `--build-dir`'s object), with what allocation and the link change normalised on
+both sides -- the allocatable registers (`--regs` keeps them), every relocated immediate (the
+candidate's by its own relocation table, the target's by the link's rule: a lui of an image address's
+high half, the offsets through its register until it is written, every $gp offset), branch targets --
+and a call by its callee's NAME (the candidate's relocation resolved as the scorer resolves it, the
+target's destination by the map), so calling another function is a difference where masking hid it;
+opcodes, field offsets, constants, frame slots and order are kept. It says how many instructions differ
+in their registers alone. The scratch tool masked every non-sp offset (a wrong field read the same) and
+every lui. Two rules carry the target's side: a call's clobber takes effect after its delay slot (`jal
+f; addiu a0,a0,%lo(x)`), and a second alignment over offset-masked tokens pairs an instruction the rule
+missed (a lui in another block) with the candidate's relocated one. Measured on every byte-exact function
+of two private builds -- 1,326 (all of src/lib) and 859 (zlib, zanim, zmath, zdb, OVL2's 0x5xxxxx
+drafts): **0** show a difference of either kind. Over the 57 open lib rows it says which are
+register-only: ezNetCtlSetProperties, sceBInetSend, 0x249B58, sceGsResetGraph (the other 53 differ in
+structure too; dmaRefImage, "registers only" since round 30a, had its n - 1 scheduled apart). (2)
+**`tools/cdis.py SRC SYMBOL [LO HI]`** (states-r35's cdis.py): the candidate's disassembly, each relocation
+named `<TYPE label = 0xADDRESS>` -- a GNU section reference by the object's own label at that offset
+(else the sized object holding it, else `.rodata+0x40`), a `%hi` by its first `%lo`'s addend (GNU as
+writes it just before), a `.text`+N callee by the function there; `--at` at the row's addresses,
+`--list` the object's functions. The canary gains `test_structdiff_sees_structure_not_registers` (sceMcChdir
+exact, then its target changed a word at a time: a register -- 0 structural, 1 register-only; a %lo --
+nothing; a field offset, an opcode, a callee -- 1 structural each; with registers not normalised it fails)
+and `test_cdis_names_every_relocation` (17 assertions). No tool that scores changed: scdiff.py,
+sccheck.py, scdecomp.py and `include/` are master's, so no MW or GCC unit can score differently.
+automatch over the lane's three ranges (`--max-size 0x400 --emit --no-prune --jobs 1 --obj-dir` the
+lane's private build): MAIN `18DB90 1C4CC0` 17 tried, 0 hits (1 build failure, 3 m2c refusals, 13
+misses), OVL1 `1E7F58 1E8FD4` 0 tried, `243000 256FD0` 56 tried, 0 hits (2 build failures -- 0x24B2F8,
+0x24DBB8 --, 5 refusals, 49 misses): 73 tried, none byte-exact (round 30a: 77, 0).
+
+**Round 31a** (2026-11-05, the tools first, then round 30a's opens): 3 rows newly byte-exact -- htonl
+and htons (0x1C1308, 0x1C1330, open since round 6a, a new `sdk/inet_hton.c`) and libezctl's
+ezNetCtlSetProperties (open since the states' round 34: `ovl1/ezctl.c` 8 of 8) -- dmaRefImage 12 -> 9
+words, libnetb's sceBInetRecv written (0x2474F8, OPEN at 6) -- and 2 rows named, both s1:order: sceBInetRecv and sceBInetOpen (0x2472C8, its calls the demo's too). What they showed:
+
+- **htonl and htons are a separate object built at -O1**: both compute in source order, the result in
+  v0 and one temporary in v1 for every term, which -O2's schedulers never leave (2 and 3 words); and no
+  plain C spelling of htons puts its second term in v1 on any of the thirteen toolchains at -O1 or at
+  -O2 without the schedulers (3 words each, the dying a0) -- with `register u_int r asm ("$2"), t asm
+  ("$3")` (InitTLB32MB's idiom, round 3a) both are byte-exact under dtls13010 at -O1 (htonl is so as
+  one temporary too). The reading is BSD's hand-written MIPS htonl.S/htons.S in C operand order; the
+  demo, without this library, cannot tell the C object from an assembled one (an assembled object's
+  .text is 4-aligned, a compiled one's 8, and both rows sit where either could). The library's objects
+  already differ in level (inet_bsd.c -O0, inet_addr.c and inet_sock.c -O2).
+- **A result variable shared by two arms is the return register's**: ezNetCtlSetProperties sets `ret =
+  -2; rpc->data[0] = ret;` on one path and reads the word back after the report on the other, so the -2
+  is born in v0 and the path jumps past the final reload (`li v0,-2; b; sw v0`); the demo's text --
+  the word returned on both paths -- keeps it in v1 and jumps to the reload.
+- **loop.c hoists invariants in the body's order, and the later one lives the shorter**: dmaRefImage's
+  `n - 1` was hoisted between the two bases (the id computed before the destination's read), live a
+  line longer than the second base, so global-alloc gave the base t5 first; reading the destination into
+  a local before the id puts n - 1 last, as the target's allocation says (`tools/ccdump.py -f`). The index
+  still outranks the tag pointer (11 refs over 36 insns against 9 over 37) and takes t2.
+- **A REG_EQUIV constant goes first in local-alloc**: libnetb's DMA descriptors (sceBInetSend's open
+  since round 13a, sceBInetRecv's now) give the constant size v0 before the loaded IOP address in
+  every spelling tried -- store orders, the size in a variable, Sony's u_int fields, an inline helper.
+- **Open, diagnosed in place**: dmaRefImage (9: the index/tag pointer priorities), sceBInetRecv (6),
+  sceGsResetGraph (4, registers only: seven more spellings of the FFMode flag and the callback test).
+  Not reached: sceGsSetDefDBuff, `_ch3dmaCSC`, `_doCSC2`, 0x252D68, 0x250320 (their diagnoses stand),
+  libnetb's sceBInetOpen 0x2472C8 (named: the demo's order and calls, 0x198 against its 0x120),
+  libnetb_recv_from/send_to (the demo's sizes), the codec's rows.
+
 **Next**: the libraries by hand, module by module, as their vendors wrote them (each `src/lib`
 unit's header says what it covers); GCC's scheduler moves independent stores, and which source
 order gives the target's is easier measured than predicted (`tools/ccperm.py PROBE
@@ -10020,6 +10119,50 @@ AllocateNodeAndFreePrevious: 12 of 12) -- 3 rows new to the map's byte-exact row
 superseding a draft; `src/lib/asr` 510 of 544 (507 of 540 before). 5 rows named (ProcessPitchCombiner,
 InitPitchCombiner, ControlPitchCombiner `s1:slot`; PitchCombinerReset `s1:calls`; LogPitchProcessing
 `s1:order`). No tool changed.
+
+**Round 23c: the pitch combiner's process and flush, a stand-in for its lead, the reset's store read off sched1.**
+
+- **C89 locals declared at the top are one pseudo across a function's blocks, and that sets global-alloc's
+  order**: FlushPitchCombiner's three padding blocks share one `s`, `len` and `i` (round 22c had them per
+  block): `i` then spans three loops and outranks `s` (the target's i in a2, s in a3, len in a0 in every
+  block -- per-block locals rank `s` first, 36 words); every order of the five declarations gives the same,
+  and the output block computes its count before `s = w - 1` (the nwin load ahead of the subtraction).
+- **A void function's trailing call is a sibling call; an int one that falls off the end keeps its `jal`**:
+  ProcessPitchCombiner's null-frame flush is `jal; nop` under the frame -- declared int (the scheduler's
+  TOSFUNC) and returning nothing. `-fno-optimize-sibling-calls` gives the same function, but the object's
+  constructor ends in `j tosBaseBlockConstruct`, so the flag is not the object's.
+- **reorg never puts a volatile reference in a delay slot** (resource.c's resource_conflicts_p: any `volatil`
+  conflicts), so a field loaded in a slot anywhere in the object is plain: LogPitchProcessing's target loads
+  +156 in a bnel's and three beqz's slots. The flush's re-read of +156 after its lead test (SOCOM 1's compile
+  too) is given byte for byte by volatile, which is therefore a marked stand-in (`LEAD_STANDIN`): plain, the
+  flush is 2 words short and the log pass 1, the re-read their only structural difference -- CSE1 merges the
+  two `(mem/s:QI (plus p 156))` loads (exp_equiv_p reads no MEM flag; no store, call or label lies between);
+  `-fno-cse-follow-jumps`, `-fno-cse-skip-blocks`, `-fno-gcse`, `-fno-rerun-cse-after-loop` each lose matched
+  functions, and the lead test's arm shapes (the skip arm first, a goto) do not give it.
+- **A store that is the last use of both its value and its base enters sched1 at weight -2**
+  (PitchCombinerReset, read off the regmove dump: REG_DEAD on the 1 and on p), so rank_for_schedule's
+  (priority, weight, luid) puts it first in every source order; the target's needs it held until the others
+  issue. `do { p->f183 = 1; } while (0)` does that in sched1 (its LOOP_BEG note makes the store a barrier:
+  sched1's output is the target's), but the barrier stands in sched2 too, where flush_pending_lists gives
+  every load one dependent more and the depend-count tie-break issues each base load before the srl beside
+  it (4 words; with `-fno-schedule-insns2` the reset matches and NormE_Processing and ControlPitchCombiner
+  do not). Volatile flags, the tail or the cursors as inlines, a pointer to the flags and the block's own
+  pointer do not give it either. CSE1 also stops its block at a LOOP_END note (CSE2, after loop.c, does not).
+- **Shapes, measured**: a frame's first value read before the scan pointer is formed (`max = f[1]` then `v
+  = f + 2`: the pointer's addiu ahead of the entry test, the load in its slot); a run's two flags with +161
+  stored first (the last source store is issued first); each quotient back into its sum (`sum /= norm;
+  *p->r96.wr = sum`, the target divides into the sum's register); a back-fill's `d = s - 1` after the wrap
+  test -- reorg's steal from the join copies it into the branch's slot and the arm, two assignments in m2c's
+  reading; an else arm's ring start if-converted where the ring's end is already in a register.
+- **Open, diagnosed in place**: PitchCombinerReset (18 words, above), LogPitchProcessing (0x3A4 against
+  0x38C under the stand-in, 0x384 plain: above), InitViterbi@nbestdp not revisited, InitPitchCombiner not
+  written (it holds the reset's body, tail and all).
+
+Hand-written in round 23c: `asr/pitchcomb.c` (+4: FlushPitchCombiner closed, ProcessPitchCombiner new,
+ConstructPitchCombiner over its draft, LogPitchProcessing OPEN; +148, +166, +172 as a float, +176 and +186
+typed; 5 of 7) -- 2 rows new to the map's byte-exact rows (1,816 bytes), one matched draft superseded
+(ConstructPitchCombiner, 0x502F10); `src/lib/asr` 513 of 547 (510 of 544 before). No rows named (all four
+had SOCOM 1's). No tool changed.
 
 **Round 14b: the "toolchain" opens were SCEA's shapes; LargeInt's core is assembly.**
 

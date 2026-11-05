@@ -854,6 +854,89 @@ def test_explicit_instance_scores_in_its_units_overlay():
         unmarked.unlink()
 
 
+class _PatchedImage:
+    """The image with some words of one row replaced (a target that differs as a fixture says)."""
+    def __init__(self, img, words: dict[int, int]):
+        self.img, self.words = img, words
+
+    def read(self, addr: int, size: int) -> bytes:
+        b = bytearray(self.img.read(addr, size))
+        for a, w in self.words.items():
+            if addr <= a and a + 4 <= addr + size:
+                struct.pack_into("<I", b, a - addr, w)
+        return bytes(b)
+
+
+def test_structdiff_sees_structure_not_registers():
+    """tools/structdiff.py (GCC round 31a, the game states' round-35 structdiff.py and mydiff.py):
+    one function against its row with the registers and the link normalised. libmc's sceMcChdir,
+    byte-exact, shows no difference of either kind; then the target is changed one word at a time
+    and each change is read as what it is -- a register (`li v0,-210` as `li v1,-210`): no
+    structural difference, one instruction differing in its registers alone, and one difference
+    with --regs; a relocated immediate (`addiu s0,s0,%lo(currentDir)` given another %lo): nothing
+    at all, the link's; and, each a structural difference, a field offset (`sw s0,16(s1)` as 20), an
+    opcode (that `sw` as `sh`) and a callee (`jal SignalSema` as `jal WaitSema` -- a call is named,
+    never masked)."""
+    import structdiff as S
+    img, st = E.image(), E.symbols()
+    row = st.get("sceMcChdir")
+    obj = S.build(HERE / "src" / "lib" / "sdk" / "libmc.c", tag="test")
+    try:
+        exact = S.compare(obj, row.name, row, st, img)
+        ck(S.differences(*exact)[:2] == (0, 0), "byte-exact: no structural difference, no register one")
+        ck(S.differences(*exact, regs=True)[0] == 0, "byte-exact: nothing with --regs either")
+        text = {t: (a, w) for a, w, t in E.disasm(img.read(row.addr, row.size), row.addr)}
+        li_a, li_w = text["li v0,-210"]
+        lo_a, lo_w = text["addiu s0,s0,-3072"]
+        sw_a, sw_w = text["sw s0,16(s1)"]
+        jal_a, jal_w = next((a, w) for t, (a, w) in text.items() if t.startswith("jal 0x1a3b40"))
+        wait = st.get("WaitSema").addr
+        cases = {
+            "register": ({li_a: li_w & ~(31 << 16) | (3 << 16)}, 0, 1, 1),
+            "relocated immediate": ({lo_a: lo_w & ~0xFFFF | ((-3072 + 64) & 0xFFFF)}, 0, 0, 0),
+            "field offset": ({sw_a: sw_w & ~0xFFFF | 20}, 1, 0, 1),
+            "opcode": ({sw_a: sw_w & ~(0x3F << 26) | (0x29 << 26)}, 1, 0, 1),
+            "callee": ({jal_a: jal_w & ~0x03FFFFFF | (wait >> 2)}, 1, 0, 1),
+        }
+        for what, (words, want_struct, want_regs, want_kept) in cases.items():
+            patched = _PatchedImage(img, words)
+            t, c = S.compare(obj, row.name, row, st, patched)
+            n, nreg, _ = S.differences(t, c)
+            ck((n, nreg) == (want_struct, want_regs),
+               f"a changed {what}: {want_struct} structural, {want_regs} register-only (got {n}, {nreg})")
+            ck(S.differences(t, c, regs=True)[0] == want_kept, f"a changed {what}: {want_kept} with --regs")
+    finally:
+        obj.unlink(missing_ok=True)
+
+
+def test_cdis_names_every_relocation():
+    """tools/cdis.py (GCC round 31a, the game states' round-35 cdis.py): the candidate's
+    disassembly with each relocation named as the scorer resolves it. sceMcChdir's every relocated
+    word carries its note and no other does; its calls name their callees at their rows (SignalSema
+    0x1A3B40), a GNU section-relative %hi/%lo pair the object's own label (currentDir, at data.txt's
+    address), and --at prints the row's addresses."""
+    import cdis
+    import structdiff as S
+    st = E.symbols()
+    row = st.get("sceMcChdir")
+    obj = S.build(HERE / "src" / "lib" / "sdk" / "libmc.c", tag="test")
+    try:
+        lines = cdis.listing(obj, row.name, st, row.addr)
+        _, relocs, _ = E.Elf.read(obj).function(row.name)
+    finally:
+        obj.unlink(missing_ok=True)
+    noted = [l for l in lines if "  <R_MIPS_" in l]
+    ck(len(noted) == len({r.offset for r in relocs}) > 10, f"every relocated word noted, once ({len(noted)})")
+    ck(all(int(l.split(":")[0], 16) - row.addr in {r.offset for r in relocs} for l in noted),
+       "and only the relocated words")
+    ck(lines[0].strip().startswith(f"{row.addr:08x}:"), "--at: the row's addresses")
+    ck(any("<R_MIPS_26 SignalSema = 0x1a3b40>" in l for l in lines), "a call names its callee at its row")
+    cur = st.data_by_name["currentDir"].addr
+    ck(any(f"<R_MIPS_HI16 currentDir = 0x{cur:x}>" in l for l in lines)
+       and any(f"<R_MIPS_LO16 currentDir = 0x{cur:x}>" in l for l in lines),
+       "a section-relative %hi/%lo pair by the object's label, at the data map's address")
+
+
 def test_everything_baselined_still_matches():
     rc = C.main([])
     ck(rc == 0, "sccheck: no regressions against MATCHED.txt, every TU builds")
