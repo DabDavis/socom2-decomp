@@ -5,9 +5,8 @@
  * symbol table gives the class its own unit; the name is ours. Written, all byte-exact: the
  * constructor (the UVs memcpy'd from a local's initialiser), the setters, Load, SetPos, SetUV, Draw
  * and the clip copies, the three-plane-pair clip3DLine; MakePacket and the one-plane clip3DLine
- * OPEN; Draw3DLine (SOCOM II's own body: the HUD's round 40). Not yet: Draw2DLine 0x35FCE0 and GetAssetLibs (m2c's draft
- * matches). Defined in reverse of their image order
- * (-inline deferred). */
+ * OPEN; Draw3DLine (SOCOM II's own body: the HUD's round 40); GetAssetLibs (the HUD's round 46). Not
+ * yet: Draw2DLine 0x35FCE0. Defined in reverse of their image order (-inline deferred). */
 
 #include <string.h>
 #include <eetypes.h>
@@ -24,11 +23,14 @@ extern "C" void sceVu0FTOI4Vector(sceVu0IVECTOR v0, sceVu0FVECTOR v1);
 u_long128 *zSysSprGetPacket(u_long128 **end);
 void zSysFifoKick(u_long128 *packet, unsigned int qwc);
 
-/* the texture as the line packets it: its GS registers at 0x30 */
+/* the texture as the line packets it: its GS registers at 0x30, the library it came from at 0x10
+ * (GetAssetLibs) */
 namespace zdb {
 class CTexture {
 public:
-    unsigned char _0[0x30];
+    unsigned char _0[0x10];
+    CAssetLib *m_assetlib;   // 0x10
+    unsigned char _14[0x30 - 0x14];
     sceVu0FVECTOR m_gsregs;   // 0x30
 };
 }
@@ -413,4 +415,17 @@ int clip3DLine(CPnt4D *planes, CPnt4D *p0, CPnt4D *p1)
         return false;
     ok = clip3DLine(&planes[0], &planes[6], p0, p1);
     return ok;
+}
+
+/* the texture's library, once, then the children's (C2DBitmapPoly's shape: ztwod.h's AddAssetLib
+ * inlined one level, C2D's walk) */
+void C2DLine::GetAssetLibs(CLibList &liblist)
+{
+    if (m_texture) {
+        zdb::CAssetLib *lib;
+
+        if ((lib = m_texture->m_assetlib) != 0)
+            AddAssetLib(liblist, lib);
+    }
+    C2D::GetAssetLibs(liblist);
 }

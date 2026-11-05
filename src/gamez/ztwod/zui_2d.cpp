@@ -4581,21 +4581,20 @@ void C3StateButton::Draw(const CMatrix &m, zdb::CTextureRelocMgr *mgr)
 }
 
 /* a press of button 9 (SOCOM 1's button 27) shows the button pressed and hands the pad to its
- * children, the first to take it ending the walk -- taken either way (SOCOM 1's, slot 15).
- * OPEN, 11 instructions: two saved registers swapped -- the target keeps this (then the end,
- * this + 4) in s3 and the walk's node in s2, MW here the other way round; the code is otherwise
- * the target's, the `!` of the child's answer materialised included. Tried: end declared first,
- * end in the loop test (13), an assigned iterator (0x110), a while walk (11), the base deleter's
- * iterator (11), the walk in an inline helper (0xF4) */
+ * children, the first to take it ending the walk -- taken either way (SOCOM 1's, slot 15). The walk
+ * is C2D::GetAssetLibs's (the HUD's round 46): the end node declared first and taken after the
+ * first node, so it is built in this's register (s3) as `this` dies and the node keeps s2 (with
+ * either iterator initialised first the two swap: 11 off; end in the loop test 13, an assigned
+ * iterator 0x110, a while walk 11, the base deleter's iterator 11, the walk in a helper 0xF4) */
 bool CHandlerButton::HandlePad(const CPad *pad, int port)
 {
     if (!CanHandleInput())
         return false;
     if (size() && pad->m_state[9] == 2) {
         Slot27();
+        node_base *e;
         iterator i = begin();
-        iterator e = end();
-        for (; i != e; ++i)
+        for (e = &end_node(); i != iterator(e); ++i)
             if ((*i)->HandlePad(pad, port))
                 return true;
         return true;

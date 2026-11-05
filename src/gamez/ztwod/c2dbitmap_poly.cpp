@@ -329,39 +329,18 @@ void C2DBitmapPoly::Rotate_Zaxis(float s, float c)
     CopyRow(b[1], a[2]);
 }
 
-/* the texture's library, once, then the children's.
- * OPEN, 3 instructions (m2c's draft matches, so this stays out of the build): the target calls the
- * library vector's begin, end, find, == and push_back out of line (their copies follow it,
- * 0x358670-0x358728, in reverse of first use; all five C2D GetAssetLibs call these same copies,
- * c2dbitmap_poly.cpp's being linked first). Since the MSL headers' round 24 (the pointer vector's
- * original iterator, end() four high) the test in an inline helper is too tall to inline whole and
- * is inlined one level, calling exactly those five -- this unit then emits the five copies, and its
- * find<...iterator, CAssetLib *> is byte-exact against 0x3586B0 (`./scdiff.py ... --target
- * 0x3586B0`; the row is unwritten, no draft emits it). The library is assigned in the test through
- * a pointer the helper takes by reference (`(lib = ...) != 0`): its store fills the test's delay
- * slot, as the target's, where a by-value helper leaves a nop and pads the join (0xD0), a
- * reference to a plainly initialised lib, or the test inside the helper, reload it (7). What is
- * left is C2D::GetAssetLibs's inline walk: the target loads the first node from this (s1) and
- * then makes the end in this's register (`lw s0,8(s1); addiu s1,s1,4`), MW here keeps this in s0
- * and shares it with the node (`addiu s1,s0,4; lw s0,8(s0)`) -- the end numbered before the node
- * but computed after it, which no declaration order gives (begin first swaps both, a dead first
- * definition of the end assigns it a level deeper; CHandlerButton::HandlePad 0x3765A0 misses on
- * the same sharing). Before round 24 the helper inlined whole (0x160) */
-#if 0
-static inline void AddLib(C2D::CLibList &liblist, zdb::CAssetLib *const &lib)
-{
-    if (std::find(liblist.begin(), liblist.end(), lib) == liblist.end())
-        liblist.push_back(lib);
-}
-
+/* the texture's library, once, then the children's: the test through ztwod.h's AddAssetLib (inlined
+ * one level: the library vector's begin, end, find, == and push_back called out of line, their copies
+ * following, 0x358670-0x358728 in reverse of first use -- all five C2D GetAssetLibs call these, this
+ * unit's being linked first), the walk C2D's inline (the HUD's round 46: its end node taken after
+ * the first node, in this's register) */
 void C2DBitmapPoly::GetAssetLibs(CLibList &liblist)
 {
     if (m_texture) {
         zdb::CAssetLib *lib;
 
         if ((lib = m_texture->m_assetlib) != 0)
-            AddLib(liblist, lib);
+            AddAssetLib(liblist, lib);
     }
     C2D::GetAssetLibs(liblist);
 }
-#endif
