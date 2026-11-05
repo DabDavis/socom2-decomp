@@ -2065,6 +2065,25 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the SEALs, round 41** (the ladder grant, FindRandomDamageAnim, the swept cylinders, the shotgun pellets,
+  HandleBloodDrip):
+  - AN OPERATOR'S RETURN SLOT ASSIGNED THROUGH THE C STRUCT BASE (`*(PNT3D *)&d = d - *from;`) is copied loads-first at
+    fixed stack offsets -- CPnt3D's own assignment, member stores or a reference / pointer inline go through address
+    registers (the shotgun pellets 0x5A1620, open since round 40, and their sibling 0x5A18B0); a copy-initialised
+    CPnt3D local is stored loads-first through its address, assigned it is copied member by member at fixed offsets
+    (the ladder run clamp 0x5B3A60); among CPnt3D locals the later-declared one gets the lower stack slot;
+  - a value assigned back over a variable (`hi = lo + r * (hi - hi)`, a reused inline parameter) is computed at the
+    assignment, returned as an expression MW sinks it below a later call (HandleBloodDrip 0x5A33B0, open since round
+    13); reusing a variable for a ratio (`dist = range / dist`) makes it a web numbered after the named locals, so a
+    temporary still colours first and the multiply keeps its source operand order;
+  - `count > 1` branches on slti at, `>= 2` computes into v0; a byte read into an unsigned char local is tested in place,
+    a bool local normalises it with sltu; four consecutive switch cases written for the target's one sltiu range test
+    also cost an earlier switch in the function its delay-slot fills; a field read through an accessor (`GetUsers()`)
+    reloads where the plain read reuses the earlier load;
+  - a loop's found flag set before the cast and tested inside `if (seal)` lets a null element skip the test (the ladder
+    grant 0x5B1130); FindRandomDamageAnim 0x5A0270 is SOCOM 1's with a network step moving a pick off three anims; its
+    three AnimTypes reads (0x3DEE00 / 0x3DEDF8 / 0x3DEDF0) stay unnamed -- the position rule says death anims, read in
+    a hurt picker: a second witness first.
 - **Tells from the kit and AI states, round 42** (CTComm::Tick, CTMacro::Tick, EventTick, RemoveMember, GetNodePos -- every
   one by replaying MW's colouring):
   - THE METHOD, five for five: dump MW's colouring, relabel or brute-force the virtual-register numbering until the
