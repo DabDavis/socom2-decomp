@@ -327,6 +327,10 @@ enum SEAL_STANCE {
     STANCE_MAX = 4
 };
 
+/* how fast a SEAL moves (GetSpeedState's: a byte -- its three callers narrow it with andi; the names
+ * ours) */
+enum SPEED_STATE { SPEED_NONE = 0, SPEED_STILL = 1, SPEED_SLOW = 2, SPEED_FAST = 3 };
+
 /* a random period and its countdown, CAiTimer, is aitimer.h's (included ahead of ai_states.h) */
 
 /* a value easing toward a goal (SOCOM 1's DWARF: CAiDecay, 0xc bytes; only the two floats the view
@@ -2003,6 +2007,9 @@ public:
     /* a hit's particle cloud entered: its gas or its smoke taken (SOCOM 1's; OVL2 0x5B5050,
      * seal_env.cpp's -- SealProcessAltitude asks it for each hit) */
     void HandleSmokeAndGas(zdb::IntersectStruct *hit, const class CMaterialEx *mat, const CPnt3D *pos);
+    /* a hit's water entered: the ripples by the depth and the gait, the depth and the in-water flag
+     * kept (SOCOM 1's, SOCOM II's with whether the SEAL was in water before; OVL2 0x5B52B0) */
+    void HandleWater(zdb::IntersectStruct *hit, const class CMaterialEx *mat, const CPnt3D *pos, bool wasin);
     /* the looks (SOCOM 1's, seal_env.cpp's in its order): the lids and the eyes turned to their looks'
      * directions, the head's direction, the head and the three parts above it turned by the look
      * anims (OVL2 0x5AD400, 0x5AD4D0, 0x5AD5A0, 0x5AD5B0); a look's goal off the current direction
@@ -2026,7 +2033,7 @@ public:
     bool CanPitch();
     bool CanInterrupt();
     bool CanTurn();
-    int GetSpeedState();
+    SPEED_STATE GetSpeedState();
     /* the head turned forward by a pitch, and the look's direction in the world (SOCOM 1's
      * RotateHead, its second float gone, and GetLookDirW; OVL2 0x5AF470, 0x5AF500) */
     void RotateHead(float pitch);
@@ -2414,7 +2421,13 @@ public:
     unsigned char _135c[0x1360 - 0x135c];
     float m_1360;   // 0x1360: above 0, 0x59B870 leaves m_fac alone (0x57E540 sets 0.2; the name ours)
     float m_1364;   // 0x1364: 0x57E540 clears it (the name ours)
-    unsigned char _1368[0x1440 - 0x1368];
+    unsigned char _1368[0x136c - 0x1368];
+    /* the ripples while the surface is just over the SEAL and while it wades, and the node they play
+     * at (SOCOM 1's 0xfd8, 0xfdc, 0xfe0: HandleWater's) */
+    CZAnim *m_belowwateranim;   // 0x136c
+    CZAnim *m_inwateranim;   // 0x1370
+    unsigned char _1374[0x1380 - 0x1374];
+    zdb::CNode m_wateranimnode;   // 0x1380
     CPnt3D m_aim_dir;   // 0x1440 (SOCOM 1's 0x10a0: AimWeapon sets it)
     CPnt3D m_aim_goal;   // 0x144c (SOCOM 1's 0x10ac: GetThrowAnim compares its y, as SOCOM 1's)
     unsigned char _1458[0x14a0 - 0x1458];

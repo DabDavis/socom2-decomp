@@ -250,7 +250,7 @@ SEAL_STATE CZSealBody::GetStance(bool flag) const
 /* how fast the SEAL moves, standing, crouched or prone: 1 still, 2 under 20 units a second, 3 faster
  * (1 in any other state; OVL2 0x58A820, SOCOM 1's GetSpeedState after GetStance, the speeds squared
  * -- Tick asks it) */
-int CZSealBody::GetSpeedState()
+SPEED_STATE CZSealBody::GetSpeedState()
 {
     float v = m_velM.x * m_velM.x + m_velM.y * m_velM.y + m_velM.z * m_velM.z;
 
@@ -259,10 +259,10 @@ int CZSealBody::GetSpeedState()
     case 1:
     case 2:
         if (v < 0.25f)
-            return 1;
-        return v < 400.0f ? 2 : 3;
+            return SPEED_STILL;
+        return v < 400.0f ? SPEED_SLOW : SPEED_FAST;
     }
-    return 1;
+    return SPEED_STILL;
 }
 
 /* an anim's push told to the network, for a SEAL this console plays: any anim, and anim 34 (OVL2

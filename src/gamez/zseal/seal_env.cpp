@@ -4903,6 +4903,85 @@ extern "C" void func_005A0040(CZSealBody *seal)
         func_0059F730(seal, launcher, 0);
 }
 
+extern "C" {
+/* a ZAnim let go (OVL1 0x2707C0, unowned: seal_ai.cpp's reading) */
+void func_002707C0(CZAnim *anim, bool now);
+}
+
+/* a ripple anim stopped and forgotten when it runs (an inline, the name ours) */
+static inline void StopRipple(CZAnim *&anim)
+{
+    if (anim && anim->Running()) {
+        func_002707C0(anim, false);
+        anim = 0;
+    }
+}
+
+/* a hit's water entered: the SEAL's box against the surface -- wading (the surface between its feet
+ * and its top) the big ripples by the gait, the small ones stopped, and a fall's splash on landing;
+ * just under the surface (within 10 over its top) the small ripples, the big ones stopped; the depth
+ * kept, the in-water flag set while in it, both ripples stopped once dead (SOCOM 1's HandleWater, the
+ * gait an index now -- none for a SEAL at rest, which is not in water -- and the splash new; OVL2
+ * 0x5B52B0: SealProcessAltitude asks it after HandleSmokeAndGas, with whether the SEAL was in water
+ * before) */
+void CZSealBody::HandleWater(zdb::IntersectStruct *hit, const CMaterialEx *mat, const CPnt3D *pos, bool wasin)
+{
+    const CBBox *box = GetNode()->GetBBox();
+    float top = box->m_max.y + m_posW.y;
+    float bottom = box->m_min.y + m_posW.y;
+    float water = hit->m_pos.y;
+    int gait;
+
+    switch (GetSpeedState()) {
+    case 1:
+        gait = 0;
+        break;
+    case 2:
+        gait = 1;
+        break;
+    case 3:
+        gait = 2;
+        break;
+    default:
+        gait = -1;
+        break;
+    }
+    bool moving = gait != -1;
+
+    m_waterdepth = water - bottom;
+    if (top < bottom) {
+        float t = top;
+
+        top = bottom;
+        bottom = t;
+    }
+    if (hit)
+        m_wateranimnode.SetPosition(hit->m_pos.x, hit->m_pos.y, hit->m_pos.z);
+    if (moving) {
+        if (water > bottom && water < top) {
+            StopRipple(m_belowwateranim);
+            if (data_0044D520[gait] && (!m_inwateranim || !m_inwateranim->Running()) && m_isAlive)
+                m_inwateranim = data_0044D520[gait]->ActivateArg(1, 3, &m_wateranimnode, 0);
+            if (m_airborne && !wasin && data_0044D540)
+                data_0044D540->ActivateArg(1, 5, &hit->m_pos, 0);
+            m_inwater = true;
+        } else if (water > top && water < 10.0f + top) {
+            StopRipple(m_inwateranim);
+            if (data_0044D530[gait] && (!m_belowwateranim || !m_belowwateranim->Running()) && m_isAlive)
+                m_belowwateranim = data_0044D530[gait]->ActivateArg(1, 3, &m_wateranimnode, 0);
+            m_inwater = true;
+        } else if (water > top)
+            m_inwater = true;
+        else
+            m_inwater = false;
+    } else
+        m_inwater = false;
+    if (!m_isAlive) {
+        StopRipple(m_belowwateranim);
+        StopRipple(m_inwateranim);
+    }
+}
+
 /* a particle effect's node extension (SOCOM 1's DWARF: CParticleEx : CNodeEx, its emitter at 4; its
  * virtuals all CNodeEx's inline ones, so the dynamic_cast below makes the unit emit OVL2's copy of its
  * RTTI, 0x65F0C0) */
