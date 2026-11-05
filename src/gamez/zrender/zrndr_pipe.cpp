@@ -655,6 +655,87 @@ void CPipe::BuildSpecMapList(zdb::CNode *node)
     }
 }
 
+/* whether shadows apply (SOCOM 1's CVisual::m_applyShadow, the byte its BuildLightMapList reads;
+ * CAlpha::Render clears it -- left unnamed here, declared again below) */
+extern "C" unsigned char data_003E1450;
+
+/* whether a light map reaches a sphere: its range and the sphere's radius against the distance
+ * between them -- a shadow only on the side the world's shadow vector leaves lit (SOCOM 1's test,
+ * in its BuildLightMapList's own inline; SOCOM II adds the shadow's side; the name ours) */
+static inline bool LightReaches(zdb::CLightMap *l, const CPnt3D &center, float r)
+{
+    CPnt3D d = center - *(const CPnt3D *)l->m_matrix.m_matrix[3];
+    float rr = r + l->m_maxRange;
+
+    if (l->m_isShadow) {
+        const CPnt3D &v = zdb::CWorld::m_world->m_shadow_vector;
+
+        if (d.x * v.x + d.z * v.z < -r)
+            return false;
+    }
+    if (d.x * d.x + d.y * d.y + d.z * d.z < rr * rr)
+        return true;
+    return false;
+}
+
+/* SOCOM 1's: the light maps and shadows that reach a node listed afresh, six at most -- the node's
+ * bounding sphere (its box's half-diagonal about the box's centre, carried by its matrix) against
+ * each active light map's range; a shadow only while shadows apply and never on the model it is the
+ * shadow of (SOCOM II computes the sphere once, ahead of the walk). The count and the light are
+ * declared uninitialised at the top (numbered there: the count s4 and the light s3 below the list's
+ * s2, as the target's -- declared where they are set, 31 off), the count unsigned (sltiu).
+ * OPEN, 5 instructions at the target's size: the model test's two temporaries swap -- the target
+ * loads the node's type into a0 and the light's instance into a1, this the other way round (SOCOM
+ * 1's own code has this unit's pair). Tried (build/scratch/wld/v_blml2-5.py): the compare either
+ * way, the model test as one `&&` or `||`, both ternaries written out, the type or the instance in
+ * a local (0x460), the model local at the top or the shadow branch's top, an if/else for it, inline
+ * ModelOf/InstanceOf helpers, `continue`s for the three skips */
+void CPipe::BuildLightMapList(zdb::CNode *node)
+{
+    unsigned int n;
+    zdb::CLightMap *l;
+
+    zdb::CVisual::m_lightMapList.clear();
+    zdb::CVisual::m_shadowMapList.clear();
+    zdb::CLightMapVector &lights = m_world->m_lightMaps;
+
+    if (lights.size()) {
+        CPnt3D half = (node->GetBBox()->m_max - node->GetBBox()->m_min) * 0.5f;
+        float r = half.Length();
+        CPnt3D center = node->GetBBox()->m_min + half;
+
+        node->m_matrix.Transform(&center, 1);
+        n = 0;
+        for (zdb::CLightMapVector::iterator i = lights.begin(); i != lights.end() && n < 6; ++i) {
+            l = *i;
+
+            if (l->m_active) {
+                if (l->m_isShadow) {
+                    if (data_003E1450) {
+                        zdb::CNode *model = node->m_type == 2 ? node : 0;
+
+                        if (!model || l->m_instance != (node->m_type == 2 ? node : 0)) {
+                            if (LightReaches(l, center, r)) {
+                                zdb::CLightMap *kept = l;
+
+                                if (!zdb::CVisual::m_shadowMapList.Exists(l))
+                                    zdb::CVisual::m_shadowMapList.push_back(kept);
+                                n++;
+                            }
+                        }
+                    }
+                } else if (LightReaches(l, center, r)) {
+                    zdb::CLightMap *kept = l;
+
+                    if (!zdb::CVisual::m_lightMapList.Exists(l))
+                        zdb::CVisual::m_lightMapList.push_back(kept);
+                    n++;
+                }
+            }
+        }
+    }
+}
+
 /* a span about a value reaching into [lo, hi] (ours) */
 static inline bool SpanMeets(float v, float r, float lo, float hi)
 {
