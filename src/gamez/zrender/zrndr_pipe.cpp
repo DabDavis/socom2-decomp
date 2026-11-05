@@ -1121,8 +1121,9 @@ void DrawFlush();
 void Draw();
 }
 
-/* the local lights' set-up of a lit node (0x338FA0, not written: RenderVisual calls it too) */
-extern "C" void func_00338FA0(zdb::CNode *node);
+/* the local lights' set-up of a lit node (SOCOM 1's BuildNodeLocalLightList, which also took a
+ * second node; 0x338FA0, not written: RenderVisual calls it too) */
+void BuildNodeLocalLightList(zdb::CNode *node);
 
 /* SOCOM 1's: the translucent objects drawn in their depth order between the particle ranges -- each
  * with its lighting and fog switches, added colour and view id restored, a node set up, lit and drawn
@@ -1159,7 +1160,7 @@ void CPipe::CAlpha::Render()
             if (d->m_atom) {
                 zdb::CVisual::NodeSetup(d->m_atom, d->m_node, &d->m_matrix);
                 if (zdb::CVisual::m_applyLocalLights)
-                    func_00338FA0(d->m_node);
+                    BuildNodeLocalLightList(d->m_node);
                 func_003B6B20(d->m_node, d->m_fov, d->m_opacity);
                 zdb::CVisual::m_GlobalLightScale = d->m_lightScale;
                 d->m_visual->VuUpdate();

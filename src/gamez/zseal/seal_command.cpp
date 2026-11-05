@@ -79,10 +79,8 @@ extern "C" CNodeAction *func_00591380(CZSealBody *seal, CZSealBody *other, unsig
 #pragma auto_inline reset
 
 extern "C" {
-/* whether the game is online (OVL2 0x5750A0, seal_ai.cpp's: theNetwork's second byte) and the SEAL a
- * SEAL is looking at, its cached one or its reticule node's (OVL2 0x5AA690, seal_env.cpp's) */
+/* whether the game is online (OVL2 0x5750A0, seal_ai.cpp's: theNetwork's second byte) */
 int func_005750A0(void);
-CZSealBody *func_005AA690(CZSealBody *seal);
 /* a switch that lets any order through (OVL2 bss; the name ours) */
 extern bool data_0066B3B8;
 }
@@ -119,7 +117,7 @@ extern "C" bool func_00591DC0(CZSealBody *seal, CZSealBody *other)
     if (!r) {
         r = (hostage && restrained && !state17) || (hostage && func_005750A0());
         if (r && other) {
-            r = same && seal == func_005AA690(other);
+            r = same && seal == other->GetReticuleSeal();
             if (r)
                 r = CellSteps(seal->MapLocValid(), other->MapLocValid()) < 20;
         }
@@ -151,7 +149,7 @@ static inline bool Escorts(CZSealBody *seal, CZSealBody *other, bool &sw)
 
     if (same && escort && other) {
         seal->GetSealCtrlAi();
-        r = !sw || seal == func_005AA690(other);
+        r = !sw || seal == other->GetReticuleSeal();
     }
     return r;
 }

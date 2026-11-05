@@ -2065,6 +2065,89 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the UI, round 29** (CSoftKeyboard::PrepForDisplay and CGameMenu::HandlePad at last; SkbOpenParse named):
+  - a member array read through a reference-returning accessor at each use (`m_texLists[i]`) makes MW strength-reduce
+    from the accessor's `this + offset` -- a reference local, or `m_lists[i]` written out, steps `this` and adds the
+    offset in a register of its own; an array read through a conversion operator adds the index first (`addu
+    v0,v0,this`), the member written out the object first (CSoftKeyboard::PrepForDisplay 0x38BAC0: its cap-font test the
+    MSL's round-31 string, its piece lists through CSkbTexLists::operator[] and Row(c)[j]);
+  - MW hoists a float negation out of a loop only when it negates the static read directly -- through an inline's
+    parameter the copy's negation stays in the ternary's arm (STICK_ABS a macro reading the static itself); an inline
+    returning an enum through a cast numbers its result ahead of the caller's code-generation temporaries
+    (PadButtonState: `igreplay --move 110=103.5` predicted it before the source; CGameMenu::HandlePad 0x368650, 72 ->
+    0); among deferred nodes the first-declared bool takes the highest scratch register (t7 downward);
+  - locals read before a call and passed to a later call are loaded before that call, read inside the argument list
+    after the call that is also an argument; MW's preprocessor substitutes a macro parameter named `f` inside the literal
+    `0.0f` ("illegal token") -- name such parameters otherwise; SkbOpenParse 0x395F40 builds exactly the record
+    SkbSetPurpose reads (C2DAnimCmdHdr::header given the _zanim_cmd_hdr bitfields); 0x3A6350 named the SSM queue's
+    cdeque begin() (util_ssm.cpp emits it at 0x70, 14 off: include/deque's open begin() colouring).
+- **Tells from the SEALs, round 49** (the network-life timeout, the recursive soil mark, the AI fire parameters,
+  PostMortemPreTick, CrouchMoveControl; the SEALs' own placeholders respelled):
+  - A CALLEE DECLARED `(T *a, float x, T *b, float z)` GETS THE SAME REGISTERS AS `(a, b, x, z)`, BUT ITS CALLERS SET THEM
+    UP IN DECLARATION ORDER (a1, $f12, a2, $f13) -- CZSealBody::CrouchMoveControl 0x582D10's callers; 0x583350's
+    parameters reordered so;
+  - a pointer field's address read through a tiny inline (`SealOf(this)`) makes the result a temporary numbered after the
+    named locals (`igreplay --movers` on CSealCtrl::PostMortemPreTick 0x592560); a CAiTimer reset that keeps the timer's
+    base address comes from inlines working through a local copy `T *t = this;` -- on `this` directly MW bases the
+    accesses on the fields' own addresses;
+  - a byte enum read into a local: lb in the first block, then andi 0xff at the compare -- compared in place it loads
+    with lbu (NET_LIFE: the online network-life timeout 0x543F70); a const AI pointer passed to bitfield-reading inlines
+    makes MW hoist the bitfield byte's address out of loops, a non-const one not; an unsigned char copy of a bit
+    re-tested as `(bool)navy == false` gives the target's andi with an sltu in both arms of the ternary before it (the AI
+    fire parameters 0x55F0A0); a callee short enough for -inline auto that the target still calls is pinned with
+    `#pragma auto_inline off` (0x55EBE0); the recursive soil mark 0x556EE0;
+  - 0x533A40 named CVehicleRdr::CVehicleRdr by the integrator: SOCOM 1's CMission::Init calls CVehicleRdr() on a new
+    12-byte object where SOCOM II's Init calls it (the game states' round 44), and it follows the entry vector's
+    constructor 0x533A20 as SOCOM 1's 0x1A38E0 follows 0x1A38C0 -- its body that constructor inlined (0x14; SOCOM 1's
+    0x34 calls the compressed pair's out of line).
+- **Tells from the game states, round 44** (CMission::LoadVehicle and Init -- unwritten before; LastMessage, open since
+  round 17):
+  - C2DMessage_Q::LastMessage 0x2B6D60 by the MSL's round-31 shape: a dead first `c_str()` ahead of the return makes the
+    short-string test a second use, which MW materialises as the target's stored, negated, narrowed bool (a marked
+    numbering device; it holds under the old and the new include/string);
+  - THE BOTTOM-UP INLINER NUMBERS TEMPORARIES FROM LEAF INLINES (those calling only out-of-line functions) BEFORE THOSE
+    OF TALLER INLINES, whatever the source order -- a local put behind a leaf inline cannot be numbered after an Item()
+    temporary (PreOpen 0x2ACC10, OPEN at 10); a count read through `int ArrayCount(z) { return z ? z->Count() : 0; }` in
+    a loop test is hoisted as a materialised `!z` bool in a saved register and compared signed;
+  - a `char x[1]` local takes a word-aligned frame slot, a plain char packs into a word's top byte; locals declared
+    uninitialised at the top take the highest frame slots ahead of loop locals, even assigned late; a class with a
+    user-declared constructor is assigned member by member (floats through the FPRs, words with lw / sw); an
+    out-of-line bool result compared `== false` or read into a bool local is narrowed with andi 0xff, tested directly
+    not; an inline setter called with a constant leaves `andi rX,zero,1` in the bitfield insert; `p = operator new(n);
+    if (p) p = func_X(p);` reproduces a new-expression whose constructor row is still a placeholder (CMission::Init
+    0x2AD290; LoadVehicle 0x2B28D0 with fts_player.cpp on the real ai_maps.h);
+  - data row 0x3F3440 NO_TIMEOUT__7CPickup (the float -1: two reads in ftsFixupAiMap, CPickup's Create, NetworkCreate and
+    TickTimers -- the name ours); 0x3F3420-0x3F3448 is fts_ovl2statics.cpp's (SEAL statics OVL2's CZSealBody reads).
+- **Tells from the world, rdr and sound, round 24** (the CWorld constructor; Particle::Source::SetActive to source):
+  - zdb::CWorld::CWorld(const char *) 0x320310 is SOCOM 1's call sequence (CSaveLoad::Load calls it where SOCOM 1's does)
+    with one shadow texture shared by all four slots; constants passed through an inline's by-value class parameter stay
+    a stack temporary that is copied, passed as float parameters they are stored straight (the constant lights through
+    float setters, only the normalised first light through a by-value CPnt4D); the name buffer declared after the light
+    vector fixes the frame order;
+  - a CPnt3D derived from a C struct copies as ld / sd plus lwc1 / swc1, with its own float members as three lwc1 /
+    swc1; `m_active != b` loads the member before narrowing the parameter; narrowing a bool into an unsigned char local
+    and passing it to a bool parameter costs an sltu -- SetActive 0x329AC0's target passes the narrowed byte with no bool
+    conversion: the particles' CNode stand-in declares the virtual taking unsigned char (a marked device: a virtual
+    call's parameter type affects no symbol);
+  - A NAMED LOCAL ASSIGNED ONCE IS NOT A NODE IN MW'S COLOURING, so it cannot serve as a numbering device (Particle::
+    Instance::Render, OPEN at 7); BuildNodeLocalLightList 0x338FA0 and CWorld::m_invscale named by SOCOM 1's calls and
+    gp pair.
+- **Tells from the kit and AI states, round 50** (ReParentToRifle / ReParentToPistol, SetDefaultLookParams, CAiSAvoid's and
+  CAiSStunResponse's Tick, the response-anim draw -- open since round 3; seal_look.cpp and seal_airesponse.cpp whole):
+  - `tools/igreplay.py --move 38=46.5` showed BEFORE the source was written that the launcher part had to be numbered
+    after the three walks -- read through a new inline accessor (CKitBody::AttachPart) it is: a struct field read
+    through a trivial inline accessor takes a temporary number after an earlier inlined walk's variables
+    (CZKit::ReParentToRifle 0x5C6A40, ReParentToPistol 0x5C6DA0); an if-form item pick keeps the walk index's early
+    temporary number, a ternary does not;
+  - a `rand() % n` written as its own inline leaves the zero arm's `b` unfilled, with the call's and the join's labels
+    padded; a preset result defined before an array element's address is computed pushes that index's first temporary
+    off v0 onto v1 (0x609530, open since round 3: 22 -> 5 -> 0);
+  - five switch cases over 0..5 give a compare chain, the sixth written empty gives the jump table (CAiSAvoid::Tick
+    0x601F80 -- its goal kind read `*(GOAL_TYPE *)&m_goal`, a marked device: ai_states.h comes before zseal.h's enum and a
+    plain cast loads with lbu where the target has lb); `!(a >= b)` on floats gives the target's materialise-then-xori;
+    a pointer-typed local defined before another statement makes MW read `this` from its saved register
+    (CAiSStunResponse::Tick 0x605C60); SetDefaultLookParams 0x601400 matched on the first build through zkit.h's
+    Rfloat(min, max).
 - **Tells from completing the MSL headers, round 31** (the string's short test; cdeque<PCv>::resize measured; probes
   build/p31/, untracked -- str/ (the short-test probes, v_lm2.py), dq/ (deque.resize.diff, v_rs*.py), scanshort.py,
   vrun.py: header variants over a probe):

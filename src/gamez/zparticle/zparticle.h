@@ -22,6 +22,13 @@ struct PNT4D {
     float x, y, z, w;
 };
 
+/* Sony's libvu0 (MAIN) */
+extern "C" void sceVu0AddVector(float *v0, float *v1, float *v2);
+extern "C" void sceVu0SubVector(float *v0, float *v1, float *v2);
+extern "C" void sceVu0ScaleVector(float *v0, float *v1, float s);
+extern "C" void sceVu0UnitMatrix(float m[4][4]);
+extern "C" void sceVu0MulMatrix(float m0[4][4], float m1[4][4], float m2[4][4]);
+
 class CPnt4D : public PNT4D {
 public:
     CPnt4D() {}
@@ -32,9 +39,38 @@ public:
         z = az;
         w = aw;
     }
+
+    /* zmath.h's operators, by value through VU0 (Destruction_Instance::Tick: each result copied out
+     * of its temporary, lq/sq between two stack slots, four FPR words into a member) */
+    CPnt4D operator*(float s) const
+    {
+        CPnt4D r;
+        sceVu0ScaleVector((float *)&r, (float *)this, s);
+        return r;
+    }
+    CPnt4D operator+(const CPnt4D &b) const
+    {
+        CPnt4D r;
+        sceVu0AddVector((float *)&r, (float *)this, (float *)&b);
+        return r;
+    }
+    CPnt4D operator-(const CPnt4D &b) const
+    {
+        CPnt4D r;
+        sceVu0SubVector((float *)&r, (float *)this, (float *)&b);
+        return r;
+    }
+    /* in place (SOCOM 1's Destruction_Instance::Tick adds a product's temporary onto the point) */
+    void operator+=(const CPnt4D &b) { sceVu0AddVector((float *)this, (float *)this, (float *)&b); }
 };   // 0x10 bytes
 
-class CMatrix;
+/* a matrix (zmath.h's CMatrix: `CMatrix m;` costs a sceVu0UnitMatrix) */
+class CMatrix {
+public:
+    CMatrix() { sceVu0UnitMatrix(m_matrix); }
+
+    float m_matrix[4][4];
+} __attribute__((aligned(16)));
 /* a box (zmath.h's CBBox, 0x20 bytes: nothing built for a local) */
 class CBBox {
 public:
@@ -42,8 +78,13 @@ public:
     float m_max[4];   // 0x10
 };
 
-/* a point (zmath.h's CPnt3D has no written copy either: a copy is the compiler's) */
-class CPnt3D {
+/* a point (zmath.h's CPnt3D has no written copy either: a copy is the compiler's -- over the C
+ * struct, as zmath.h's: a temporary copied ld/sd + lwc1/swc1, Destruction_Instance::Tick's spin) */
+struct PNT3D {
+    float x, y, z;
+};
+
+class CPnt3D : public PNT3D {
 public:
     CPnt3D() {}
     CPnt3D(float ax, float ay, float az)
@@ -53,7 +94,20 @@ public:
         z = az;
     }
 
-    float x, y, z;
+    /* zmath's (out of line in both builds) and its two inline operators */
+    void Scale(float s, CPnt3D *out) const;
+    void Add(const CPnt3D *b, CPnt3D *out) const;
+    CPnt3D operator*(float s) const
+    {
+        CPnt3D r;
+        Scale(s, &r);
+        return r;
+    }
+    CPnt3D &operator+=(const CPnt3D &b)
+    {
+        Add(&b, this);
+        return *this;
+    }
 };   // 0xc bytes
 
 namespace zdb {
@@ -133,11 +187,18 @@ public:
     virtual CNode *FindChild(const char *name, int start, int *index, bool deep);
     virtual bool IsCell();
     virtual bool Read(class CSaveLoad &io);
-    virtual bool SetActive(bool on);   // +0x38
+    /* znode.h's SetActive(bool), declared here over an unsigned char -- A MARKED MODELLING DEVICE
+     * (the world lane round 24): Source::SetActive passes the narrowed byte it compared and stored,
+     * with no bool conversion (sltu) between; the call is virtual, so no symbol depends on it */
+    virtual bool SetActive(unsigned char on);   // +0x38
 
     static CNode *Create(const char *name);
     static void Delete(CNode *node);
     void SetPosition(float x, float y, float z);
+    /* znode.h's: the rotation read and set, the matrix set (node_main.cpp's) */
+    void GetRotation(CPnt3D *out) const;
+    void SetRotation(const CPnt3D *rot);
+    void SetMatrix(const CMatrix *m);
     void DeleteVisuals();
     void AddVisual(CVisual *vis);
 
@@ -469,6 +530,8 @@ public:
     PARTICLE_TYPE GetDrawType() const { return m_drawType; }
     static void RenderBBox();
     void CheckExtents(CPnt4D p, float r);
+    /* SOCOM 1's (0x329AC0): ZAnim's particle tick switches a source on and off through it */
+    void SetActive(bool on);
     void GetBBox(CBBox *box);
     void Tick(float dT);
     void ScaleSequenceAdd(float fraction, float scale);
@@ -478,7 +541,8 @@ public:
     void TextureSequenceAdd(float fraction, zdb::CTexHandle *tex);
     void TextureSequenceClear();
 
-    unsigned char _0[2];   // 0x0: SOCOM 1's m_active, m_goodPos
+    unsigned char m_active;   // 0x0 (SOCOM 1's)
+    unsigned char m_goodPos;   // 0x1 (SOCOM 1's)
     unsigned char m_frozen;   // 0x2 (SOCOM 1's: an instance of a frozen source is not ticked)
     unsigned char m_outOfRange;   // 0x3 (SOCOM 1's)
     unsigned char _4[0x19 - 4];   // 0x4: SOCOM 1's m_oldPosW .. m_landmark, and SOCOM II's word

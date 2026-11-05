@@ -127,12 +127,6 @@ extern "C" bool func_0058F6E0(const CPnt3D *from, const CPnt3D *to, CAiMapLoc *o
     return ans.m_found;
 }
 
-extern "C" {
-/* the hit under the SEAL's reticule (OVL2 0x5AA6D0, seal_env.cpp's span: `this + 0x3C0`, its
- * m_last_reticule -- SOCOM 1's GetReticuleDi by its body, unproven; its draft matches) */
-zdb::IntersectStruct *func_005AA6D0(CZSealBody *seal);
-}
-
 /* the cell an order's target names (OVL2 0x58F230, new in SOCOM II; CSealCtrlAi's OnCommand and
  * AllowCommand and CSealUnit::IssueCommand ask it; the name unknown): the squad's order data (1);
  * for the crosshairs (0, 2, 21) the reticule's hit when it hit a node -- its own cell when it can be
@@ -153,10 +147,10 @@ extern "C" int func_0058F230(CSealUnit *unit, CZSealBody *seal, unsigned char ta
     case 21: {
         CAiMapLoc loc;
         CPnt3D ahead;
-        zdb::IntersectStruct *hit = seal ? func_005AA6D0(seal) : 0;
+        zdb::IntersectStruct *hit = seal ? seal->GetReticuleDi() : 0;
 
         if (hit && hit->m_node) {
-            const CPnt3D *at = &func_005AA6D0(seal)->m_pos;
+            const CPnt3D *at = &seal->GetReticuleDi()->m_pos;
 
             if (AiMaps.GetLocation(at, *out) != false)
                 return func_0058F6E0(at, &seal->m_posW, out, false);

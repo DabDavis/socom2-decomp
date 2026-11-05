@@ -3553,6 +3553,7 @@
 0x002AC410 Open__8CMissionFPCc
 0x002ACA30 func_002ACA30
 0x002ACAD0 CreateCompassNavPoints__8CMissionFv
+0x002AD290 Init__8CMissionFv
 0x002AD940 __dt__8CMissionFv
 0x002ADBC0 __ct__8CMissionFv
 0x002ADF10 NVGNoiseTick__FP14_zanim_cmd_hdrPf
@@ -3626,6 +3627,7 @@
 0x002B2310 RecycleEntity__8CMissionFP7CEntity
 0x002B23A0 RefreshTeamValves__8CMissionFv
 0x002B2840 InitalizeTeamValves__8CMissionFv
+0x002B28D0 LoadVehicle__8CMissionFP16CVehicleRdrEntryb
 0x002B2D20 func_002B2D20
 0x002B2E50 LoadVehicles__8CMissionFv
 0x002B3430 CloseVehicleRdr__8CMissionFv
@@ -3690,6 +3692,7 @@
 0x002B63B0 __dt__16C2DMessageStringFv
 0x002B6430 func_002B6430
 0x002B6D00 SetBkgColor__12C2DMessage_QFfff
+0x002B6D60 LastMessage__12C2DMessage_QFv
 0x002B6DE0 Clear_Messages__12C2DMessage_QFv
 0x002B6EE0 __dt__12C2DMessage_QFv
 0x002B6FC0 Init__12C2DMessage_QFP7C2DFontP8CRdrFile
@@ -5224,6 +5227,7 @@
 0x0031FC90 AddLightMap__Q23zdb6CWorldFPQ23zdb9CLightMap
 0x0031FD10 GetModel__Q23zdb6CWorldFPCc
 0x0031FD20 Initalize__Q23zdb6CWorldFv
+0x00320310 __ct__Q23zdb6CWorldFPCc
 0x00320660 __dt__Q23zdb19CProjectedMapVectorFv
 0x003206E0 __dt__Q23zdb15CLightMapVectorFv
 0x00320760 Uninit__Q23zdb6CWorldFv
@@ -5339,7 +5343,7 @@
 0x00329A40 func_00329A40
 0x00329AA0 func_00329AA0
 0x00329AB0 func_00329AB0
-0x00329AC0 func_00329AC0
+0x00329AC0 SetActive__Q28Particle6SourceFb
 0x0032A6B0 __dt__Q28Particle6SourceFv
 0x0032A800 func_0032A800
 0x0032A860 ScaleSequenceAdd__Q28Particle6SourceFff
@@ -6306,6 +6310,7 @@
 0x00368560 HasChildren__11CDlgObjSpecCFv
 0x00368570 Init__9CGameMenuFPQ23zdb16CTextureRelocMgrP9CZAnimZAR
 0x00368630 GetReaderFileName__9CGameMenuFv
+0x00368650 HandlePad__9CGameMenuFPC4CPad
 0x00369170 DrawForeplane__9CGameMenuFv
 0x003691C0 Draw2dOnly__9CGameMenuFv
 0x00369210 Clear__9CGameMenuFv
@@ -6773,6 +6778,7 @@
 0x0038B8A0 func_0038B8A0
 0x0038B8F0 PrepKeyBitmaps__13CSoftKeyboardFP12CBmpWithNodeP12CBmpWithNodeUcPCcPCcPQ23zdb16CTextureRelocMgr
 0x0038BAB0 func_0038BAB0
+0x0038BAC0 PrepForDisplay__13CSoftKeyboardFPQ23zdb16CTextureRelocMgrP7C2DFont
 0x0038BE40 func_0038BE40
 0x0038BE80 SwitchToNamed__13CSoftKeyboardFi
 0x0038BFE0 func_0038BFE0
@@ -6923,6 +6929,7 @@
 0x003958D0 SkbPrepDisplay__FPQ23zdb5CNodePQ23zdb16CTextureRelocMgrP7C2DFontPFPQ23zdb5CNodePQ23zdb16CTextureRelocMgr_v
 0x00395D50 SkbLoadBitmap__FP12CBmpWithNodePQ23zdb5CNodeiiPCcPQ23zdb16CTextureRelocMgr
 0x00395DE0 SkbPlaySound__FUc
+0x00395F40 SkbOpenParse__FPCcP5_zrdr
 0x00396220 SkbTogglePair__FP12CBmpWithNodeP12CBmpWithNodePFb_v
 0x00396300 SkbToggleBmp4__Fv
 0x00396BD0 SetRect__8CSkbLookFUcRC8CSkbRect
@@ -9075,7 +9082,7 @@
 0x005339D0 swap__Q23std74__vector_deleter<16CVehicleRdrEntry,Q23std29allocator<16CVehicleRdrEntry>>FRQ23std74__vector_deleter<16CVehicleRdrEntry,Q23std29allocator<16CVehicleRdrEntry>>
 0x00533A10 clear__Q23std64vector<16CVehicleRdrEntry,Q23std29allocator<16CVehicleRdrEntry>>Fv
 0x00533A20 __ct__Q23std64vector<16CVehicleRdrEntry,Q23std29allocator<16CVehicleRdrEntry>>Fv
-0x00533A40 func_00533A40
+0x00533A40 __ct__11CVehicleRdrFv
 0x00533A60 Load__8startvecFP5_zrdr
 0x00533C10 ParseTeams__FP5_zrdr
 0x00533CF0 GetAimConeCos__9AI_PARAMSCFv
@@ -9265,6 +9272,7 @@
 0x00543B90 func_00543B90
 0x00543D40 func_00543D40
 0x00543D50 func_00543D50
+0x00543F70 func_00543F70
 0x00544200 func_00544200
 0x00544210 SetNetLife__10CZSealBodyFUc
 0x005442C0 NetworkPlayerCreate__10CZSealBodyFv
@@ -9393,6 +9401,7 @@
 0x00555B80 func_00555B80
 0x005561C0 func_005561C0
 0x00556280 func_00556280
+0x00556EE0 func_00556EE0
 0x00557190 func_00557190
 0x00557D90 func_00557D90
 0x00557DC0 __pl__6CPnt3DCFRC6CPnt3D
@@ -9435,6 +9444,7 @@
 0x0055E660 CanPushAiState__10CAiSDeployF8AI_STATEP11CSealCtrlAi
 0x0055EAA0 func_0055EAA0
 0x0055EBE0 func_0055EBE0
+0x0055F0A0 func_0055F0A0
 0x0055F6F0 reset__13AI_FIREPARAMSFv
 0x0055F7F0 func_0055F7F0
 0x0055F940 func_0055F940
@@ -9687,6 +9697,7 @@
 0x00581C10 Stand_0__10CZSealBodyFiif
 0x00581DC0 Stand__10CZSealBodyFi
 0x00582500 StanceChanged__10CZSealBodyFv
+0x00582D10 CrouchMoveControl__10CZSealBodyFff
 0x00583350 func_00583350
 0x00583960 TurnControl__10CZSealBodyFf
 0x00584240 InStateClimbLadder__10CZSealBodyFv
@@ -9816,6 +9827,7 @@
 0x00592260 PerturbAimVector__9CSealCtrlFP6CPnt3D
 0x00592400 Cross__6CPnt3DCFPC6CPnt3DP6CPnt3Db
 0x005924B0 SetViewRange__9CSealCtrlFf
+0x00592560 PostMortemPreTick__9CSealCtrlFf
 0x00592880 GetSpeedFromThrottle__9CSealCtrlFfi
 0x00592910 GetThrottleFromSpeed__9CSealCtrlFfi
 0x005929A0 TickRumbler__9CSealCtrlFf
@@ -10196,6 +10208,8 @@
 0x005C6920 GetAmmoByIndex__5CZKitFi
 0x005C6970 GetCurAmmo__5CZKitFv
 0x005C6980 AttachItemNode__5CZKitFiPCc
+0x005C6A40 ReParentToRifle__5CZKitFv
+0x005C6DA0 ReParentToPistol__5CZKitFv
 0x005C7110 GetClass145Index__5CZKitFv
 0x005C71A0 GetSecondaryIndex__5CZKitFv
 0x005C7230 GetPrimaryIndex__5CZKitFv
@@ -10688,6 +10702,7 @@
 0x00601070 SetLookPosW__9CSealCtrlF7AI_LOOKRC9CAiMapLoc
 0x00601200 SetLookPosW__9CSealCtrlF7AI_LOOKP7CEntity
 0x00601330 SetLookPosW__9CSealCtrlF7AI_LOOKPC6CPnt3D
+0x00601400 SetDefaultLookParams__9CSealCtrlF7AI_LOOKb
 0x00601810 SetScanRate__9CSealCtrlFf
 0x00601820 SetScanAngle__9CSealCtrlFf
 0x00601830 ModifyLookFlags__9CSealCtrlFUiUi
@@ -10700,6 +10715,7 @@
 0x00601EB0 CanScan__11CAiSHostageCFv
 0x00601EC0 CanPushAiState__11CAiSHostageF8AI_STATEP11CSealCtrlAi
 0x00601F20 OnSignal__11CAiSHostageFQ28CAiState6SIGNALP11CSealCtrlAi
+0x00601F80 Tick__9CAiSAvoidFP11CSealCtrlAi
 0x00602B20 ShouldAvoid__FP10CZSealBodyP10CZSealBodyf
 0x00602D10 OnSignal__9CAiSAvoidFQ28CAiState6SIGNALP11CSealCtrlAi
 0x00603690 SetTarget__8CAiSRushFP10CZSealBody
@@ -10723,6 +10739,7 @@
 0x00605A50 CanPursue__9CAiSEventCFP11CSealCtrlAi
 0x00605A60 CanAttack__9CAiSEventCFv
 0x00605A80 OnSignal__9CAiSEventFQ28CAiState6SIGNALP11CSealCtrlAi
+0x00605C60 Tick__16CAiSStunResponseFP11CSealCtrlAi
 0x00605F90 OnSignal__16CAiSStunResponseFQ28CAiState6SIGNALP11CSealCtrlAi
 0x00606DB0 func_00606DB0
 0x00607560 func_00607560
@@ -10742,6 +10759,7 @@
 0x00609190 func_00609190
 0x00609340 Virtual14__10CAiSShotAtFP11CSealCtrlAiP8CAiState
 0x006093F0 OnSignal__10CAiSShotAtFQ28CAiState6SIGNALP11CSealCtrlAi
+0x00609530 func_00609530
 0x00609710 __dt__9CAiSAvoidFv
 0x00609790 __dt__8CAiSRushFv
 0x00609810 __dt__15CAiSPathRecoverFv
