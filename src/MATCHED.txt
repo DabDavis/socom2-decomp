@@ -8188,6 +8188,8 @@
 0x004E1D08 InitUserWordTraining
 0x004E1E30 ExitUserWordTraining
 0x004E2008 CalcF2
+0x004E35C8 CheckConsistency
+0x004E37F8 RejectTrainUtters
 0x004E3CC8 userwordStartUserWordTraining
 0x004E3E08 cbUserWordResultAvailable
 0x004E3ED8 cbScoreUserWordResultAvailable
@@ -8376,6 +8378,8 @@
 0x00502F50 spline2
 0x00503410 Lin_2_Log
 0x005041C0 ControlSHS_VUV
+0x005042B8 CreateFreqWindow
+0x00504520 InitSHS_VUV
 0x00504980 ConstructSHS_VUV
 0x005049C0 SlidingHisto_NewItem
 0x00504AC0 SlidingHisto_Init
