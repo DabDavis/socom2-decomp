@@ -677,7 +677,6 @@ const char *CGameMenu::GetReaderFileName()
 /* the menus' pop-up stack (zanim_menu.h's CMenuStack: its entries, the pop-up and the commands the
  * menu's tick hands it), the keyboards' display forgotten (zui_skb.cpp's) and the current menu's node
  * (0x49EA98: zui_skbview.cpp's 0x36A210 sets its opacity; the tick fades it; ours) */
-class CPopUpDialog : public CPlainBmp {};
 struct CMenuEntry {
     int m_id;             // 0x0
     char m_argname[48];   // 0x4
@@ -686,7 +685,9 @@ class CMenuStack {
 public:
     void CleanPopup();
     void AddToHistory(const char *name);
-    CPopUpDialog *GetPopUp();
+    /* the pop-up (zanim_menu.h's CPopUpDialog, a CPlainBmp: here its 2D object, whose Tick and
+     * HandlePad the menu calls) */
+    C2D *GetPopUp();
     void HandleCommand(const char *name);
     /* the top entry (ours: the tick reads its command and argument through it) */
     CMenuEntry *Top() { return &m_entries[m_top]; }
@@ -799,6 +800,100 @@ void CGameMenu::Clear()
     zUIScheduler.ClearFreeList(true);
     theUIVarManager.CollectGarbage();
     m_has_mpeg_background = false;
+}
+
+/* a pad (zinput.h's CPad, which this unit cannot include beside zui_spec.h: each button's state and
+ * the sticks only) */
+#ifndef ZINPUT_H
+class CPad {
+public:
+    unsigned char m_0;                        // 0x0
+    unsigned char m_state[PAD_MAX_BUTTONS];   // 0x1: KEY_STATE each
+    unsigned char _11[0x220 - 0x11];
+    float m_220[4];                           // 0x220: the left stick's x and y first
+};
+#endif
+/* the soft keyboard's pad input taken (0x38DC00, a draft) */
+extern "C" int func_0038DC00(const CPad *pad, CGameMenu *menu);
+/* a key read this frame (zin_keyboard.cpp's KeyInput, 32 bytes) and its reader */
+struct KeyInput {
+    unsigned char code;
+    int shift;
+    int ctrl;
+    int alt;
+    int _10;
+    int caps;
+    int _18[2];
+};
+int GetKeyReadThisFrame(KeyInput *key);
+
+/* the pad's input: the stick's centring and position kept, the pop-up's or the keyboard's or the
+ * buttons' handling first, then the first button action whose button is in its state -- or, for
+ * the four direction buttons falling, whose stick push came -- started, else the stick or the
+ * pad's up and down stepping the active button, and a key 40 or 88 running event 44 (0x368650:
+ * SOCOM 1's HandlePad; the stick's directions as buttons and the key SOCOM II's).
+ * OPEN, 72 instructions at the target's size (0xB20; 334 before the button tests became bools of
+ * their own, computed ahead of the four stick reads as the target computes them): the target's
+ * loop hoists -s_fStickX into f6 beside -s_fStickY (f4), so each inlined StickAbs(x) takes the
+ * negation with a mov.s and x sits in f7; ours hoists only -y (GetStickDir's) and negates x in the
+ * branch, which moves x to f6 and reorders the preamble's bools. Tried: StickAbs as `f < 0 ? -f :
+ * f` (0xAE0), with the negation in a local (0xB18 / 0xAD8 / 0xB28: the copies outside the loop
+ * negate in the branch, as ours), DidStickMovePrev/Next for two of the reads, a dead `-x` local, the
+ * item through a pointer, the count in a local, the type read through the array -- none hoists -x */
+void CGameMenu::HandlePad(const CPad *pad)
+{
+    s_bStickCentered = IsStickNearCenter(s_bStickCentered ? 0.6f : 0.2f);
+    s_fStickX = pad->m_220[0];
+    s_fStickY = pad->m_220[1];
+    if (m_popupnode && m_popupnode->m_active) {
+        GetMenuStack()->GetPopUp()->HandlePad(pad, 0);
+        return;
+    }
+    if (Slot14() && func_0038DC00(pad, this))
+        return;
+    if (m_buttons.HandlePad(pad, m_activeButton))
+        return;
+    for (int i = 0; i < m_numCommands; i++) {
+        ActionItem &item = m_commands[i];
+
+        if (item.Type == ACTION_TYPE_BUTTON) {
+            bool isUp = item.PadButton == PAD_UP;
+            bool isDown = item.PadButton == PAD_DOWN;
+            bool isRight = item.PadButton == PAD_RIGHT;
+            bool falling = item.State == KEY_FALLING;
+            bool pressed = item.State == pad->m_state[item.PadButton];
+            bool isLeft = item.PadButton == PAD_LEFT;
+            bool up = UiGetDirStickMoved() == STICK_UP;
+            bool down = UiGetDirStickMoved() == STICK_DOWN;
+            bool right = UiGetDirStickMoved() == STICK_RIGHT;
+            bool left = UiGetDirStickMoved() == STICK_LEFT;
+            bool stickUp = falling && isUp && up;
+            bool stickDown = falling && isDown && down;
+            bool stickLeft = falling && isLeft && right;
+            bool stickRight = falling && isRight && left;
+
+            if (pressed || stickUp || stickDown || stickLeft || stickRight) {
+                CZAnim *anim = ZAnim.GetAnim(item.Animation, 0);
+
+                if (!anim)
+                    return;
+                if (item.Argument)
+                    anim->ActivateArg(1, 8, item.Argument, 0);
+                else
+                    anim->Activate(0);
+                return;
+            }
+        }
+    }
+    if (pad->m_state[PAD_DOWN] == KEY_FALLING || DidStickMoveNext())
+        MakeNextButtonActive(true);
+    else if (pad->m_state[PAD_UP] == KEY_FALLING || DidStickMovePrev())
+        MakePrevButtonActive(true);
+    KeyInput key;
+
+    GetKeyReadThisFrame(&key);
+    if (key.code == 40 || key.code == 88)
+        RunEventAnim((ActionItem::EVENT)44, 0);
 }
 
 /* the menu emptied, set up over the relocator given (else the batch relocator) and its own rdr's
