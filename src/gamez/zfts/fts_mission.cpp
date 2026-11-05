@@ -509,6 +509,16 @@ public:
     unsigned int GetTimeLeft();
     void EndMission();
     void OnMissionComplete(MISSION_STATE state);
+    /* the state set, the one it replaces returned (OnMissionComplete's opening: the old state copied
+     * through this inline's result keeps the target's lb + andi; the name ours) */
+    MISSION_STATE SetState(MISSION_STATE state)
+    {
+        MISSION_STATE old = m_state;
+
+        if (state != old)
+            m_state = state;
+        return old;
+    }
     void CreateLadderTable();
     void OnMissionStart();
 
@@ -2019,7 +2029,6 @@ public:
 extern "C" {
 extern void *data_0045B718;
 void func_0030E6E0(void *voice, int arg);
-extern unsigned char data_00408638[];   /* (a state in theGame, at 0x178) */
 extern unsigned char data_004086C8[];   /* (a state in theGame, at 0x208) */
 }
 
@@ -2031,24 +2040,21 @@ extern unsigned char data_004086C8[];   /* (a state in theGame, at 0x208) */
  * the game object sent, the round's time totalled and the round's end pushed. Alone, on a change to
  * an abort or with the player dead: with "nofade" set the mission ended at once (EndMission
  * inlined), the end's hold cleared either way.
- * OPEN, 0x39C against 0x3AC (round 39): every block is the target's but the first and the alone
- * test's -- the target copies the old state into a register with `lb` and narrows it with `andi
- * 0xff` at both compares (SOCOM 1's does the same: an enum copied into a local, as CheckStateSwitch's
- * switch on its local), where here MW reads the field once with `lbu` into the first compare; and
- * `this` and the net game trade s0/s1 (the target keeps this in s1, the game in s0, the game-over
- * flag in s1 once this is dead). Tried: `old` const, assigned apart, a char copy cast back, a second
- * local for the new state, a reference to the field, an accessor, `old != state && true`, the change
- * as an inline (one re-reading the field -- `lbu` then `lb`, 8 short -- one taking both by value),
- * as a ternary store (8 short), `if ((old = m_state) != state)` (8 short, still `lbu`), a bool
- * `changed`, `?: true : false` and `|| false` in the test: the copy needs to survive to its first
- * compare (a branch between them, round 38's forwarding rule) without costing code */
+ * Round 40, byte-exact: the old state is the RESULT of an inline setting the new one (SetState: the
+ * old copied, the new stored when it differs, the old returned) -- copied through the inline's result
+ * temporary, the byte keeps its `lb` and is narrowed with `andi 0xff` at each compare, as the target
+ * (a copy read straight into a compare in the same block folds into one lbu: round 39's rule; every
+ * no-code node boundary -- a label, `if (0)`, an empty asm, `(void)` uses, a one-pass loop -- keeps the
+ * lbu); `state != old` puts the parameter first in the beq. The game-over flag declared ahead of the
+ * game (numbered before it: the replay's v35 moved past v36 gives the target's this s1 / game s0, as
+ * `tools/igreplay.py --move 35=36.5 --target` showed) and the abort's switch to the menu state at
+ * theGame +0x78 (the old data_00408638, +0x178, was a wrong reference the size miss hid) */
 void CMission::OnMissionComplete(MISSION_STATE state)
 {
-    MISSION_STATE old = m_state;
+    MISSION_STATE old = SetState(state);
 
-    if (old != state)
-        m_state = state;
     if (theNetwork.m_bNetwork) {
+        bool over;
         CZNetGame *game = m_pNetGame;
 
         if (!game)
@@ -2061,14 +2067,14 @@ void CMission::OnMissionComplete(MISSION_STATE state)
             else if (m_timer > m_delay) {
                 data_0044F3CC = 0;
                 theGame.m_menuState.SetDefaultMenu("dlgNetAbort.rdr");
-                theGame.Switch((CGameState *)data_00408638, 0);
+                theGame.Switch(&theGame.m_menuState, 0);
                 _OnMissionComplete();
             }
         } else if (theNetwork.m_bSessionMaster) {
             if (m_delay == -1.0f)
                 m_delay = m_timer + 3.0f;
             else if (m_timer > m_delay) {
-                bool over = game->m_pGameOverValve->m_value != 0;
+                over = game->m_pGameOverValve->m_value != 0;
                 CValve *score00 = CValve::GetByName("mp_score00");
                 CValve *score08 = CValve::GetByName("mp_score08");
                 CValve *winner = CValve::GetByName("mp_winner");
