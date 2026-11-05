@@ -17,6 +17,13 @@
  * do_assigns the target inlines whole: 0x2F6600 is our 0x444-byte do_assign's size exactly) and the
  * make_iterators 0x2F5D10 / 0x2F6A70 (the buffer's begin() and operator+ inlined in the target) --
  * all the tail's generation order (include/deque's comment; README "THE TAIL'S GENERATION ORDER").
+ * Measured in the online lane's round 25 (build/scratch/onl/v_ends.py, v_mkoff.py, untracked), for the
+ * copy constructor 0x2F5F80: a dead own function asking for the deque's begin() / end() const, defined
+ * LAST (so taken first: the object then emits them at 66/67, ahead of the copy constructor at 99), or
+ * ahead of the queues, or copying the deque, leaves both calls (0x60) -- generated first is NOT enough
+ * for an out-of-class member to inline into the tail; declared `inline`, begin() / end() take
+ * make_iterator in with them (0xC8: the target calls it); `#pragma auto_inline off` around include/
+ * deque's make_iterators changes nothing (a template follows the pragma's state at the unit's end).
  * Defined in reverse of their image order (-inline deferred). */
 
 #include <stdio.h>
