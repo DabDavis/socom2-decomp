@@ -278,14 +278,15 @@ fail:
     return 0;
 }
 
-/* OPEN (38 words, the right size): the target stores the first gender and the format through s+8
- * and the other two genders off s, and loads the language's pointer into a0; every spelling here
- * stores all four through s+8 (a loop, a sub-struct, a pointer for two of them: build/scratch/gcc/p/
- * s_gsd*.py, 30 spellings; round 24c: each of the four through `g` or off `s`, all 16, gives one form
- * -- CSE puts every store on one base whichever is spelled -- and a 3-pass loop with the fourth after
- * it, unrolled whole, stores all four off s, SOCOM 1's 0x1BC shape: build/scratch/gcc/r24c/v_gsd*.py).
- * The header's destination is a local pointer (`h`): with `s->lng` itself
- * 2.96 folds the data pointer to s+152 and computes the copy's bound once (87s), the demo's shape. */
+/* the session's data: the record (its kind, its size, the three genders' flags and the sample
+ * format, the language file's header) and the engine's own data after it, both sized by command
+ * 39. Round 26c, byte-exact: the target stores the first gender and the format through `g` (s+8)
+ * and the other two off s, each as it is spelled -- the store order decides the rest: the size
+ * before the kind (its reload of `n` then heads the block and the language's pointer takes a0;
+ * with the kind first, 38 words, every placement of `g` and `h` alike: build/scratch/gcc/v_gsd2.py).
+ * (Round 24c's sweep of the 16 spellings, the kind first, read "one form" from 38 words each.)
+ * The header's destination is a local pointer (`h`): with `s->lng` itself 2.96 folds the data
+ * pointer to s+152 and computes the copy's bound once (87s), the demo's shape. */
 static int casrGetSessionData(CASR *c, void **data, int *size)
 {
     SESSIONDATA *s;
@@ -300,12 +301,12 @@ static int casrGetSessionData(CASR *c, void **data, int *size)
     s = heap_Alloc(c->heap, n);
     if (s == 0)
         return 1;
-    s->kind = 4;
     s->size = n;
+    s->kind = 4;
     g = s->gender;
     g[0] = c->gender_on[0];
-    g[1] = c->gender_on[1];
-    g[2] = c->gender_on[2];
+    s->gender[1] = c->gender_on[1];
+    s->gender[2] = c->gender_on[2];
     g[3] = c->uw_state;
     h = &s->lng;
     *h = (*(LNGFILE **)c->data)->hdr;
