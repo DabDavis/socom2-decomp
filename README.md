@@ -2065,6 +2065,20 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the kit and AI states, round 48** (CTSound::Tick; CTInView / CTPlay::Tick written):
+  - a random pick as an if/else with the draw in its own local (`int r = rand(); x = r % (n + 1) + 1;`) pads the else
+    label and leaves the `b` over it unfilled -- a ternary, a lone if or the draw inline fills the `b` from the join and
+    leaves the label unpadded; `int s = x == 11 ? a : x;` leaves the join unpadded with s a temporary, `if (s == 11) s =
+    a;` pads it;
+  - a local with a dead first definition (`const char *ent = 0;`, assigned later) is numbered at that dead store,
+    initialised from an inline's result it merges into the inline's temporary; a field read through a trivial inline
+    accessor is a temporary numbered at the call, a plain `seal->m_id` local is numbered with the named locals;
+    `aware <= cmd->m_aware` gives slt at / bnez at, `>=` puts the slt result in v0 (CTSound::Tick 0x5D0C90: its
+    block's flag word laid out from what the parser writes, the registers by `tools/igreplay.py --target`);
+  - an inline on a struct member addresses the fields off the controller when it is a named local, through a cast
+    temporary MW keeps `&m_view_cone` in a saved register; in an inline find an index passed as a parameter is
+    numbered before the inline's type (CTPlay::Tick OPEN at the target's size: the block pointer wants numbering after
+    the second inlined SEAL find, `--move 39=58.5` gives 0 differ).
 - **Tells from the weapons, round 28** (CZWeapon::Fire at last, CTurret's Init and constructor, CVehicle::Init):
   - MW LAYS OUT THE FRAME TOP-DOWN IN THREE GROUPS: named locals in declaration order, then return copies and
     non-returned inline locals in code order, then by-value inlines' result locals in expansion order; an array or
