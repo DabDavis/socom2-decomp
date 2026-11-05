@@ -2062,6 +2062,38 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the kit and AI states, round 40** (CZKit's Init, Reload, ChamberLauncherRound, UpdateScopeModel and
+  ChangeItemModel; CAiSFollow::StanceCheck):
+  - `mag > 9` compiles to the target's fused `slti at` / `bnez at`, `mag >= 10` computes the compare into a register
+    (ChamberLauncherRound 0x5C3000, Reload 0x5C2A90 -- SOCOM 1's Reload plus SOCOM II's online free refill: a pistol
+    always, a primary other than items 142 / 143 when players respawn);
+  - MW folds a literal `1.0f * x` away as it parses, a 1.0 range passed through an inline's float parameter keeps the
+    multiply (StanceCheck 0x5FC590's random delay); an int parameter is switched on unmasked, an unsigned char or byte
+    enum one gets an andi first -- and passing an int to an unsigned char parameter masks at the call, so a callee that
+    narrows its own index wants an int parameter and a cast inside (AttachItemNode 0x5C6980, renamed);
+  - `ev = f(); if (!ev)` tests the copy (`move a1,v0; beqz a1`), `if ((ev = f()) == 0)` branches on v0; IsPersistent()'s
+    materialised bool costs 8 bytes where `!= NoExpire && <= 0.0f` written out is the target's (EventTick 0x5FAAE0, now
+    the target's size, 30 off);
+  - placing the light map at the origin, both builds store -0.0 into the projection and pass -0.0 to SetPosition through
+    one held pointer: `SetPos(0, 0, 0)` passes +0.0, and writing through m_lightMap reloads it after each store (Init
+    0x5C7E00, SOCOM 1's call for call); UpdateScopeModel 0x5B82E0 swaps the sniper rifle's "scope" / "thermal_scope"
+    nodes by item 195 (new in SOCOM II).
+- **Tells from the AI core, round 27** (the map's three direction counts, fcost, GetLegBoundary, PrintPath, Tile):
+  - an accessor's load of a byte is shared by a later accessor's read of it (`IsOpaque() && GetSoil() != SOIL_NOALT`
+    reuses the load, and so does the inlined overlay walk's IsOccupied after the steep test reads through GetSoil:
+    CAiPlanner::fcost 0x512930); a direct field read after an accessor reloads;
+  - a struct loop variable declared before the loop and assigned (`reverse_iterator r; for (r = c.rbegin(); ...)`) stays
+    in memory, initialised in the `for` it lives in a register (CAiPath::GetLegBoundary 0x5279E0, PrintPath 0x524950 --
+    include/iterator's reverse_iterator needed no change); a field read straight after a direct store puts the field's
+    address in a register for the pair, through an inline accessor both stay plain stack offsets (CAiMap::Tile 0x536230);
+  - a dead GetCell inlined one level keeps its out-of-line calls and drops the address arithmetic (CountMapExitDir
+    0x535730, new in SOCOM II); a pointer initialised to 0 and passed by reference into an inline keeps its zeroing; an
+    inline's static buffer passed on as `sprintf(p = buf, ...); return p;` keeps its address in a saved register across
+    the call, returned straight MW rebuilds it after the call (PrintPath);
+  - `if (c) w = 1; else w = -1;` keeps the branches where `?:` gives movz or folds three compares into a bit test; flags
+    read unnamed give the target's register order (CountMapTravelDir 0x535A40 / CountMapVisDir 0x535DF0, SOCOM 1's,
+    told apart by behaviour: one stops at ground a step may not end on, the other at opaque soil; MAP_DIRCOUNT laid out
+    whole).
 - **Tells from the SEALs, round 38** (the restraint capture, the restrain / stab / carry stretch of seal_body.cpp):
   - in a function with many calls every variable needing a saved register also conflicts with 19 hardware registers, so
     one with six long-lived variable neighbours sits exactly at K -- a bool declared first and set with if/else drops it
