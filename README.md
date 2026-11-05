@@ -2060,6 +2060,29 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from completing the MSL headers, round 24** (THE POINTER VECTOR'S ORIGINAL ITERATOR ADOPTED; probes
+  build/scratch/msl-r24-p24/):
+  - include/vector's pointer vector is the image's now: raw begin/end belonging to each element type, `begin() { return
+    __iter(__raw_begin()); }`, end() taking the raw end into a const local (four inline levels high), the iterator's
+    `iterator(unsigned int *const &)` and base(), `==` through base() -- _countKeys, fixupKey, CSubtitleList::Load,
+    NextFile 0x34D740 and the records' insert 0x34DA00 byte-exact, VuLightMap 0x3B54E0 and CUIVariable::Attach 0x3869F0
+    closed with it (they had been open on exactly this end); CKey::CountKeys one call off (its second copy calls the pod's
+    end where the target calls the raw end);
+  - A STAND-IN TO KNOW ABOUT: the walks fitted to the old three-level end() are kept by `#pragma inline_depth(6)` at the
+    end of their units -- fts_missionlist.cpp, bone_archive.cpp, char_type.cpp, util_loc.cpp, zNetMediusClan.cpp,
+    zNetMediusRoom.cpp, zsnd_positions.cpp and zwep_flyout.cpp -- each object byte-identical to master's (the new end at
+    depth 6 gives what the old gave at 5); a pragma's depth is per unit, and the image's four-high end makes a natural
+    walk inside an inline six deep -- but the level is settled at 5 for the game's own source, so these pragmas mark walks
+    whose real shape is still to be refit (CMultiMissionList::Find with the end taken first is 9 off: the obvious refit
+    is not it); CDynTexList::Add (ztex_manager.cpp) refit in source instead, depth 6 costing three of its neighbours;
+  - an end() passed as an argument (`i != end()`) is cut at its children, a tall callee written as a statement at the
+    inline above it; `deep != false && ...` hoists the narrowed flag and tests it with beqz, `deep && ...` hoists `!deep`;
+    a `while ((k = f()) != 0)` loop is rotated (the test after the body, entered by a jump), `for (;;) { k = f(); if (!k)
+    break; ... }` tests at the top as the target's Load does;
+  - the class vector's operator= reads the other vector through the deleter's data() reference (CopyPlan 21 -> 2,
+    code-neutral elsewhere); 0x53AA50 needs no header change (a probe asking for the pod's erase and resize emits it
+    byte-exact: which unit emits it is open); the original c_str's depth cannot be read off the image (no caller of a
+    piece below it; both its out-of-line copies whole).
 - **Tells from the kit and AI states, round 37** (seal_tasks.cpp's fire-mode, signal, create and in-state tasks):
   - the type test `e && e->m_type == t ? e : 0` stays a value (sltu, beqz, xori/sltiu, movz) only inside an inline that
     also holds the switch producing `e` -- written in the caller every spelling folds it back into branches (CTTurret's
