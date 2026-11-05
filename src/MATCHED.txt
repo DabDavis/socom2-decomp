@@ -9723,6 +9723,7 @@
 0x005A54D0 UpdateHealth__10CZSealBodyF15DAMAGE_LOCATION15SEAL_DEATH_TYPE
 0x005A56D0 func_005A56D0
 0x005A5790 func_005A5790
+0x005A5830 func_005A5830
 0x005A6B70 func_005A6B70
 0x005A6D30 func_005A6D30
 0x005A6EB0 func_005A6EB0
@@ -9741,6 +9742,7 @@
 0x005A7980 IsChangingWeapons__10CZSealBodyFb
 0x005A7AB0 IsReloading__10CZSealBodyFv
 0x005A7D10 IsThrowing__10CZSealBodyFb
+0x005A7DE0 CanFire__10CZSealBodyFbb
 0x005A81D0 func_005A81D0
 0x005A82E0 Reload__10CZSealBodyFb
 0x005A8790 AimWeapon__10CZSealBodyFv
@@ -9762,6 +9764,7 @@
 0x005AA620 CacheReticuleSeal__10CZSealBodyFb
 0x005AA690 func_005AA690
 0x005AA6D0 func_005AA6D0
+0x005AB590 func_005AB590
 0x005AB850 HandleDamage__10CZSealBodyFP12CZProjectile
 0x005ABBC0 HandleDamageNonExplosive__10CZSealBodyFP12CZProjectileP10CZBodyPartP15DAMAGE_LOCATION
 0x005AC070 HandleDamageExplosive__10CZSealBodyFP12CZProjectileP10CZBodyPartP15DAMAGE_LOCATION
@@ -9782,6 +9785,7 @@
 0x005AE4B0 SetEyeLookDir__10CZSealBodyFffPC6CPnt3Df
 0x005AE640 SetLookDir__10CZSealBodyFPC6CPnt3Df
 0x005AE6A0 InitLookAnims__10CZSealBodyFv
+0x005AE730 GetLookQuat__FP6CPnt3DffP5CQuat
 0x005AF470 RotateHead__10CZSealBodyFf
 0x005AF500 GetLookDirW__10CZSealBodyCFP6CPnt3D
 0x005B0410 func_005B0410
@@ -9801,6 +9805,7 @@
 0x005B1890 func_005B1890
 0x005B4F30 SealGetAltitude__10CZSealBodyFP6CPnt3Df
 0x005B61A0 func_005B61A0
+0x005B6490 func_005B6490
 0x005B67F0 func_005B67F0
 0x005B6890 func_005B6890
 0x005B68E0 insert__Q23std38__vector_pod<Us,Q23std13allocator<Us>>FPUsUiRCUs
@@ -11919,6 +11924,7 @@
 0x006687D0 __sinit_ai_vismap.cpp
 0x006687E0 __sinit_seal_ai.cpp
 0x00668940 __sinit_seal_body.cpp
+0x00668C10 __sinit_seal_env.cpp
 0x00668DB0 __sinit_seal_kit.cpp
 0x00668E50 __sinit_seal_sensors.cpp
 0x006690C0 __sinit_seal_handsig.cpp

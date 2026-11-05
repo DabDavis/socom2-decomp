@@ -2062,6 +2062,23 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the SEALs, round 40** (__sinit_seal_env.cpp, CanFire, GetLookQuat, the two-ray batch, the visible-bounds
+  walk; 24 data rows named):
+  - A STATIC'S `= cosf(K)` INITIALISERS, IN ORDER, EMIT `__sinit` BYTE-EXACT (0x668C10: the four facing cosines, `static
+    CStack _stack(false)`, di0 / di1 as `DiIntersect(64)`, the two fallback cosines, then projDirDown, defined after
+    <iostream> in SOCOM 1's order); MW folds `0.017453292f * 25.0f` to the target's constant, the fallbacks need
+    `57.295776f` (`57.29578f` is one ulp high); OVL2's ~CStack copy 0x5B7B20 sits in seal_env.cpp's tail;
+  - `if (x >= 0.0f)` compiles to c.lt.s with bc1t to the else, `if (x < 0.0f)` puts the `<` body first; `if (!a || !b)
+    return;` gives the target's bnez into the body plus a `b` to the exit where `if (a && b) { ... }` gives two beqz; a
+    min / max ternary over an array element loads the element first, through a reference or pointer local (or an inline
+    min / max) the other operand first;
+  - `bool f = call(); float t = p->field;` keeps the andi right after the call, the other order moves the float load
+    ahead of the call and sinks the andi into the next call's delay slot (CanFire 0x5A7DE0, SOCOM 1's, written whole);
+    an inline helper past inline_max_size taking `const CBBox &` from a caller copy declared after the array reproduces
+    the frame -- by value 8 bytes short, straight from the node 0x30 short (the visible-bounds walk 0x5B6490);
+  - seal_env.cpp's FLASHBANG_DOT 0x65F0C8 keeps its placeholder name: the map's names are unique and seal_control.cpp's
+    0x65E640 holds SOCOM 1's (a unit's static named like another unit's row reports WRONG REFERENCE); the shotgun's
+    pellets 0x5A1620 OPEN (0x294 vs 0x284: the target copies operator-'s return slot back, all three loads first).
 - **Tells from the online lobby, round 21** (the lobby queue's do_assign and the chat queue's range destroy at last):
   - A GUARDED FUNCTION-LOCAL STATIC READ BY TWO TEMPLATE FUNCTIONS OF ONE INSTANCE is owned by an inline both call --
     model it there and name its data rows after that inline (`__deque_imp::max_size()`: push_back and do_assign of one
