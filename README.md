@@ -2062,6 +2062,18 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the game states, round 37** (CGraph::Read at last; the network chat's line add, the IOP reboot callback):
+  - REPLAY MW'S OWN COLOURING with the virtual registers moved to other indices to see which numbering the target needs
+    before writing any source (build/scratch/states-r37/ig/: igreplay.py, relabel.py, brute.py) -- that found CGraph::Read
+    0x2D0C90: one counter reused across both loops (the edge loop's counter then a second web, numbered after the loop
+    optimiser's record cursor) AND the first node a named local (numbered below that cursor) -- each alone 5 or 11 off;
+  - zmath.h's `MAX(0, x)` compiles to the target's `slt at,x,zero; beqz at`, `if (x < 0) x = 0;` and `x < 0 ? 0 : x` branch
+    with bgez; under `-enum min` an enum with a single enumerator is a signed byte (dsll32/dsra32 before the test), with
+    values {0, 1} unsigned (andi 0xff: CIOPManager::RebootPhase in 0x1F53D0, CMenuState's IOP reboot callback); a
+    `~basic_string(..., 0)` call on a local marks it a CSaferStr, not a plain string (0x1F4DF0, the network chat's line add
+    keeping the last 20, coloured by MSGTYPE);
+  - SetDynamicLOD 0x3B04C0 is a matched instance of the shape 0x2B8100 needs (else-if arms whose `b` keeps its nop, the
+    join padded to 8): numbering the share before the client with the zero arm first gives 0x2B8100's registers, 8 short.
 - **Tells from completing the MSL headers, round 25** (the pointer vector's erase, MSL's find, the deque's const_iterator;
   probes and scratch in build/scratch/msl-r25/, untracked -- p25/ the probes; base_master2.txt, run_*.txt, objcmp_*.txt):
   - THE POINTER VECTOR'S erase(iterator) is `__iter(__raw_erase(position.base()))`, the raw erase T-dependent as the raw

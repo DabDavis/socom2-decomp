@@ -1836,6 +1836,7 @@
 0x0065C220 0x8 data_0065C220  # OVL2's copy of zdb::CNodeEx's RTTI (its name pointer 0x65C210 -> "zdb::CNodeEx", as OVL1's 0x3E1E40 -> 0x3E1E30; the SEAL lane's dynamic_cast to CSealEx in OVL2 needs it); ovl-copy: __RTTI__Q23zdb7CNodeEx
 0x0065C238 0x8 __RTTI__7CSealEx  # RTTI of CSealEx: found by its RTTI's name
 0x0065C288 0x8 __RTTI__10CZSealBody  # RTTI of CZSealBody: found by its RTTI's name
+0x0065C638 0x8 data_0065C638  # OVL2's copy of CNodeAction's RTTI (its name pointer 0x65C618 -> "CNodeAction", its one base OVL2's zdb::CNodeEx RTTI 0x65C220, as OVL1's 0x3E4068 -> 0x3E4048 with base 0x3E1E40; the SEALs, round 39: GetReticuleAction 0x5AA240 and CNodeAction::GetAction 0x5AA470 dynamic_cast to it -- 7 references); ovl-copy: __RTTI__11CNodeAction
 0x0065C6A0 0x8 __RTTI__9CSealCtrl  # RTTI of CSealCtrl: found by its RTTI's name
 0x0065C6D0 0x8 __RTTI__11CSealCtrlAi  # RTTI of CSealCtrlAi: found by its RTTI's name
 0x0065C738 0x8 __RTTI__8CAiState  # RTTI of CAiState: found by its RTTI's name
