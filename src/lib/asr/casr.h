@@ -156,7 +156,9 @@ typedef struct CASR {
     unsigned short uw_recs_done;        /* +932 */
     char pad934[6];
     unsigned char rejected;             /* +940: the last utterance was too short */
-    char pad941[39];
+    char pad941[19];
+    int f960;                           /* +960: the last label scoring's result (CheckConsistency) */
+    char pad964[16];
     UTTREC utt[3];                      /* +980 */
     short uw_silence;                   /* +1016: the language's user-word silence phoneme */
     short pad1018;

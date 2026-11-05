@@ -2753,7 +2753,7 @@
 0x0026FE90 DeleteParticleSources__6CZAnimFv
 0x0026FF20 State__6CZAnimFi
 0x00270220 Tick__6CZAnimFf
-0x002703D0 func_002703D0
+0x002703D0 GetRootNode__6CZAnimFb
 0x00270460 func_00270460
 0x00270570 func_00270570
 0x002707C0 func_002707C0
@@ -2800,6 +2800,7 @@
 0x00272BB0 ActivateArg__6CZAnimFie
 0x002732C0 ActivateEx__6CZAnimFie
 0x00273320 ActivateExV__6CZAnimFPc
+0x002734B0 Activate__6CZAnimFP6CZAnim
 0x00273780 func_00273780
 0x00273950 func_00273950
 0x00273960 func_00273960
@@ -3308,10 +3309,18 @@
 0x00299C00 func_00299C00
 0x00299C10 TickTask__10CAppCameraFfPv
 0x00299C40 TickCameraWiggle__10CAppCameraFfPQ23zdb7CCamera
+0x00299ED0 FirstToThirdPersonTransition__FP10CAppCamera
+0x0029A180 func_0029A180
+0x0029A3F0 ThirdToFirstPersonTransition__FP10CAppCamera
+0x0029A660 func_0029A660
+0x0029A950 GetThirdPersonCamPos__10CAppCameraFP6CPnt3DPf
+0x0029AE50 GetFirstPersonCamPos__FP10CAppCamera
+0x0029B0C0 FTSTick__10CAppCameraFv
 0x0029B2F0 SetZoom__10CAppCameraFf
 0x0029B330 SetCameraMode__10CAppCameraFUc
 0x0029B3C0 AttachTo__10CAppCameraFP10CZSealBody
 0x0029B570 __dt__10CAppCameraFv
+0x0029B5D0 __ct__10CAppCameraFPQ23zdb7CCamera
 0x0029BAA0 CmdParseShake__10CAppCameraFP5_zrdr
 0x0029BB90 CmdTick3rdPersonTest__10CAppCameraFP14_zanim_cmd_hdrPf
 0x0029BBB0 CmdParse3rdPersonTest__10CAppCameraFP5_zrdr
@@ -7149,6 +7158,7 @@
 0x003A9930 SetActive__7CTurretFb
 0x003A9990 UpdateCompassAnchor__7CTurretFv
 0x003A9A30 OnMissionStart__7CTurretFv
+0x003A9A80 Init__7CTurretFPQ23zdb5CNodeRC10CTurretDef
 0x003A9EA0 SetThermal__7CTurretFPQ23zdb5CNodeb
 0x003A9FB0 SetOpacity__7CTurretFf
 0x003AA020 SetVisible__7CTurretFb
@@ -7158,6 +7168,7 @@
 0x003AA2E0 swap__Q23std46vector<P7CTurret,Q23std20allocator<P7CTurret>>FRQ23std46vector<P7CTurret,Q23std20allocator<P7CTurret>>
 0x003AA320 clear__Q23std46vector<P7CTurret,Q23std20allocator<P7CTurret>>Fv
 0x003AA330 __ct__Q23std46vector<P7CTurret,Q23std20allocator<P7CTurret>>Fv
+0x003AA350 __ct__7CTurretFPQ23zdb5CNodeRC10CTurretDef
 0x003AA810 func_003AA810
 0x003AA900 func_003AA900
 0x003AA920 func_003AA920
@@ -7191,6 +7202,7 @@
 0x003AD680 PreTick__8CVehicleFf
 0x003AD760 ScanForVehicleByName__8CVehicleFPCcPC11CVehicleDefPQ23zdb5CNodeb
 0x003AD910 ScanForVehicleDefinitionHookups__8CVehicleFPQ23zdb5CNodeb
+0x003ADAB0 Init__8CVehicleFPQ23zdb5CNodeRC11CVehicleDef
 0x003ADE90 __ct__8CVehicleFPQ23zdb5CNodeRC11CVehicleDef
 0x003AE030 Spawn__8CVehicleFP16CVehicleRdrEntry
 0x003AE1A0 LoadVehicles__8CVehicleFv
@@ -7707,8 +7719,8 @@
 0x003D1F00 GetDefaultAmmo__8CZWeaponFv
 0x003D1F50 PostTick__8CZWeaponFfPv
 0x003D1F90 func_003D1F90
-0x003D2000 func_003D2000
-0x003D2010 func_003D2010
+0x003D2000 GetRecoilPct__8CZWeaponFv
+0x003D2010 SetRecoilPct__8CZWeaponFf
 0x003D2020 func_003D2020
 0x003D2030 GetArmingDistance__8CZWeaponFv
 0x003D2040 SetArmingDistance__8CZWeaponFf
@@ -7780,6 +7792,7 @@
 0x003D2C30 func_003D2C30
 0x003D2C40 func_003D2C40
 0x003D2C50 PlayFireSound__8CZWeaponFPC6CPnt3D
+0x003D2D70 Fire__8CZWeaponFPQ23zdb5CNodeP6CZAmmoPC6CPnt3DPC6CPnt3DPC6CPnt3DP12CZProjectileiPQ23zdb6CModel
 0x003D3230 GetMenuValue__8CZWeaponF10EQUIP_ITEM
 0x003D3750 func_003D3750
 0x003D3790 SetRocketPassSound__8CZWeaponFP4CSnd
@@ -8184,6 +8197,8 @@
 0x004E1D08 InitUserWordTraining
 0x004E1E30 ExitUserWordTraining
 0x004E2008 CalcF2
+0x004E35C8 CheckConsistency
+0x004E37F8 RejectTrainUtters
 0x004E3CC8 userwordStartUserWordTraining
 0x004E3E08 cbUserWordResultAvailable
 0x004E3ED8 cbScoreUserWordResultAvailable
@@ -8372,6 +8387,8 @@
 0x00502F50 spline2
 0x00503410 Lin_2_Log
 0x005041C0 ControlSHS_VUV
+0x005042B8 CreateFreqWindow
+0x00504520 InitSHS_VUV
 0x00504980 ConstructSHS_VUV
 0x005049C0 SlidingHisto_NewItem
 0x00504AC0 SlidingHisto_Init
@@ -10188,6 +10205,7 @@
 0x005D08A0 End__8CTStanceFP14_zanim_cmd_hdr
 0x005D09F0 Begin__8CTStanceFP14_zanim_cmd_hdr
 0x005D0B40 Parse__8CTStanceFP5_zrdr
+0x005D0C90 Tick__7CTSoundFP14_zanim_cmd_hdrPf
 0x005D1210 End__7CTSoundFP14_zanim_cmd_hdr
 0x005D1250 Begin__7CTSoundFP14_zanim_cmd_hdr
 0x005D16E0 Tick__8CTSignalFP14_zanim_cmd_hdrPf

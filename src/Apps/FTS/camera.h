@@ -93,6 +93,14 @@ public:
     unsigned char _0[0x1060 - 0x5e0];
 };
 
+/* a SEAL's body (zbody.h's CBody: only the part's place in space, OVL1 0x2869D0) */
+class CBody {
+public:
+    void PartInSpace(CZBodyPart *part, const CPnt3D *offset, CPnt3D *out, CQuat *q) const;
+
+    unsigned char _0[4];
+};
+
 /* a SEAL: its matrix (the second virtual), its controller (CEntity's at 0xC0), its body's state
  * and wanted peek (SOCOM 1's CBody::m_state at 0x11D, SOCOM II's a halfword at 0x174; its
  * m_desiredPeek at 0x305, SOCOM II's 0x375) and the zoomed flag (SOCOM 1's at 0xF5C) */
@@ -102,18 +110,32 @@ public:
     virtual CMatrix *GetMatrix();
     /* the SEAL a node belongs to, if any (zseal.h's static) */
     static CZSealBody *GetSeal(zdb::CNode *node);
+    /* the head turned to a pitch (OVL2 0x5AF470: SOCOM II's has no second float) */
+    void RotateHead(float pitch);
+    /* whether a ladder can be climbed from here (OVL2 0x59DA60, SOCOM 1's) */
+    bool CanClimbLadder();
 
     unsigned char _4[0xc0 - 4];
     CEntityCtrl *m_control;   // 0xc0
-    unsigned char _c4[0x174 - 0xc4];
-    short m_state;   // 0x174: 8 dead, 2 prone (SOCOM 1's SEAL_STATE)
-    unsigned char _176[0x375 - 0x176];
+    unsigned char _c4[0x170 - 0xc4];
+    CBody m_body;   // 0x170 (SOCOM 1: 0x110; the stand-in's first word only)
+    short m_state;   // 0x174: 8 dead, 2 prone (SOCOM 1's SEAL_STATE: the body's, at its +4)
+    unsigned char _176[0x2e8 - 0x176];
+    CZBodyPart *m_root;   // 0x2e8 (SOCOM 1's 0x26c: the body's root part)
+    unsigned char _2ec[0x375 - 0x2ec];
     SEAL_PEEK m_desiredPeek;   // 0x375
     unsigned char _376[0x5e0 - 0x376];
     CZKit m_kit;   // 0x5e0 (SOCOM 1: 0x520)
     unsigned char _b0 : 5;   // 0x1060
     unsigned char m_zooming : 1;
     unsigned char _b6 : 2;
+    unsigned char _1061[0x1070 - 0x1061];
+    CQuat m_fwdlook;   // 0x1070 (SOCOM 1: 0xf60; RotateHead sets it)
+    unsigned char _1080[0x1344 - 0x1080];
+    /* SOCOM II's: a scale the prone first-person camera reads, its y at least 0.5 (the name ours) */
+    CPnt3D m_1344;   // 0x1344
+    unsigned char _1350[0x1458 - 0x1350];
+    CPnt3D m_aim_point;   // 0x1458 (SOCOM 1: 0x10b8)
 };
 
 /* a camera position the app camera keeps per view: where it sits and where it looks, in the
@@ -127,6 +149,13 @@ struct CCameraPreset {
  * amplitude's decay per frame and the ripple's rate in degrees a second -- x's four, then y's
  * (SOCOM II's; BeginShake's arguments in order, the names ours) */
 struct CShakeParams {
+    /* a gentle default (CAppCamera's constructor builds the three, then sets them) */
+    CShakeParams()
+        : m_xAmp(1.0f), m_xAmpRand(1.0f), m_xDecay(0.25f), m_xRate(1000.0f), m_yAmp(1.0f),
+          m_yAmpRand(0.0f), m_yDecay(0.1f), m_yRate(750.0f)
+    {
+    }
+
     float m_xAmp;   // 0x0
     float m_xAmpRand;   // 0x4
     float m_xDecay;   // 0x8
@@ -163,20 +192,39 @@ enum CAMVIEW {
     cam_view_last = 5
 };
 
-/* the controller CAppCamera keeps at 0xC4: only its float at 0x130, which looking at a point zeroes
- * (SOCOM 1's CEntityCtrl had it at the same place; the names ours) */
-struct CAppCameraCtrl {
-    unsigned char _0[0x130];
+/* the controller CAppCamera keeps at 0xC4 (the followed SEAL's CSealCtrl: zseal.h's virtuals to
+ * IsPlayer at 0x2C, its pad at 0x114) and its float at 0x130, which looking at a point zeroes
+ * (SOCOM 1's CEntityCtrl had it at the same place; the class name and m_130 ours) */
+class CAppCameraCtrl {
+public:
+    virtual ~CAppCameraCtrl();
+    virtual bool PreTick(float dT);
+    virtual bool Tick(float dT);
+    virtual bool PostMortemPreTick(float dT);
+    virtual void OnDeath();
+    virtual CAppCameraCtrl *GetRemoteControl();
+    virtual void SetThrottle(unsigned int axis, float value);
+    virtual bool PlayAiSound(int sound, float chance, int event);
+    virtual bool AllowCommand(CZSealBody *seal, int cmd, void *data);
+    virtual bool IsPlayer() const;   /* +0x2C */
+
+    unsigned char _4[0x114 - 4];
+    unsigned int m_padid;   // 0x114
+    unsigned char _118[0x130 - 0x118];
     float m_130;   // 0x130
 };
 
 class CAppCamera {
 public:
+    CAppCamera(zdb::CCamera *cam);
     ~CAppCamera();
     virtual void Tick(float dT);
     virtual bool AttachTo(CZSealBody *prey);
 
     void FTSTick();
+    /* where the tether puts the camera, its offset and the tether's length handed back (SOCOM 1's,
+     * 0x29A950) */
+    CPnt3D GetThirdPersonCamPos(CPnt3D *CamOffset, float *tetherLen);
     /* the nearest hit of the world's along a chord, the followed SEAL and the one it carries kept out
      * of the test (SOCOM II's, 0x29CBB0: GetThirdPersonCamPos's; the name ours) */
     bool ClipChord(CPnt3D *from, CPnt3D *to, CPnt3D *hit);
@@ -230,9 +278,15 @@ public:
     CPnt3D m_cameraTie;   // 0x10
     CPnt3D m_camGoalPos;   // 0x1c
     float m_goal_t_len;   // 0x28
-    unsigned char _2c[0x50 - 0x2c];
+    unsigned char _2c[0x44 - 0x2c];
+    /* SOCOM II's, set by the constructor (the names ours) */
+    unsigned char m_44;   // 0x44 (1)
+    unsigned char m_45;   // 0x45 (0)
+    unsigned char m_46;   // 0x46 (1)
+    unsigned char _47[0x4c - 0x47];
+    float m_short_tether_timer;   // 0x4c (SOCOM 1: 0x2c; -1)
     CShakeParams m_shake[3];   // 0x50: SMALL, MEDIUM, LARGE (SOCOM II's)
-    unsigned char _b0[0xb4 - 0xb0];
+    unsigned int m_padid;   // 0xb0 (SOCOM 1: 0x30): the pad the views are cycled from
     zdb::CCamera *m_camera;   // 0xb4 (SOCOM 1: 0x34)
     zdb::CNode *m_camera_effects;   // 0xb8 (SOCOM 1: 0x38)
     CZSealBody *m_bc;   // 0xbc: SOCOM II's, a SEAL the mode setter asks after (the name ours)
@@ -250,12 +304,15 @@ public:
     /* SOCOM II's, put back with the death camera (the names ours) */
     signed char m_f4;   // 0xf4
     signed char m_f5;   // 0xf5
-    unsigned char _f6[0x104 - 0xf6];
+    unsigned char _f6[0xf8 - 0xf6];
+    float m_f8;   // 0xf8 (SOCOM II's, the constructor zeroes these three; the names ours)
+    float m_fc;   // 0xfc
+    float m_100;   // 0x100
     float m_104;   // 0x104
     float m_108;   // 0x108
-    float m_10c;   // 0x10c
+    int m_10c;   // 0x10c (an int: the constructor zeroes it with sw where its floats take swc1)
     int m_110;   // 0x110 (-1)
-    float m_114;   // 0x114
+    int m_114;   // 0x114 (an int, likewise)
     float m_118;   // 0x118 (1)
     unsigned char _11c[0x130 - 0x11c];
     float m_wiggle_cur_time;   // 0x130 (SOCOM 1: 0x80)
@@ -272,7 +329,11 @@ public:
     unsigned char m_cam_death_state;   // 0x144 (SOCOM 1: 0x94, a CAM_DEATH_STATE)
     unsigned char _145[0x148 - 0x145];
     float m_death_state_timer;   // 0x148 (SOCOM 1: 0x98)
-};
+    unsigned char _14c[0x150 - 0x14c];
+    void *m_150;   // 0x150 (SOCOM II's, the constructor clears these two; the names ours)
+    void *m_154;   // 0x154
+    unsigned char _158[0x188 - 0x158];
+};   // 0x188 bytes (LoadWorld news 392)
 
 extern CAppCamera *appCamera;
 

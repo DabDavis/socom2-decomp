@@ -25,7 +25,6 @@
 
 extern "C" CZAnim *func_00270BB0(CZAnim *anim);
 extern "C" bool func_00270BC0(Particle::Source *source);
-extern "C" CNode *func_002703D0(CZAnim *anim, int find);
 extern "C" int func_00270460(CZAnim *anim, CNode *node);
 
 /* the extension a weapon hit reaches the anim through: made for its health's node (else its own
@@ -38,13 +37,13 @@ void CZAnim::OnWeaponHitInit()
     if (m_health)
         node = GetNode(m_health->m_health_node_index, false);
     if (!node)
-        node = GetRootNode();
+        node = GetRootNode(false);
     if (node && !node->m_nodeEx) {
         if (m_health)
             m_animEx = new CZAnimEx(this, node, m_health->shield, m_health->armor, m_health->health,
-                                    GetRootNode());
+                                    GetRootNode(false));
         else
-            m_animEx = new CZAnimEx(this, node, GetRootNode());
+            m_animEx = new CZAnimEx(this, node, GetRootNode(false));
         if (m_animEx) {
             node->SetNodeEx(m_animEx, true);
             if (ZAnim.m_CurAnimSet)
@@ -465,6 +464,68 @@ extern "C" int func_00273780(CZAnimMain *main, ZAnimNetworkPacket *packet, ZAnim
     return packet->packet_size;
 }
 
+/* an available copy activated, if its set has started: its activation sequence run -- failing it, the
+ * copy is cleaned up and none returned -- its tick given to the set's scheduler under its name, and
+ * its root added to the world when it adds itself and is not under it (a texture character too, for
+ * a root so marked); a network anim's activation sent as a packet, with the copy's arguments, unless
+ * the callback is held off (SOCOM 1's). The task's name through GetName() (inlined: its index
+ * local is loaded ahead of the set's lookup, as the target's s0) */
+CZAnim *CZAnim::Activate(CZAnim *by)
+{
+    if (!ZAnim.GetAnimSet(m_animset_index)->m_IsStarted)
+        return 0;
+    CZAnim *anim = GetAvailable();
+
+    if (anim) {
+        anim->State(2);
+        if (anim->ExecuteSpecialSequence(anim->m_activation_seq_offset)) {
+            CSched_Manager *sched = ZAnim.GetAnimSet(anim->m_animset_index)->TaskScheduler();
+
+            sched->AddTask(anim->GetName(), CZAnimMain::AnimSchedulerTick, anim->m_priority, anim);
+            if (anim->m_auto_add_to_world && !anim->m_added_to_world_internally) {
+                CNode *root = anim->GetRootNode(false);
+
+                if (root) {
+                    CNode *top = root;
+
+                    while (top->m_parent)
+                        top = top->m_parent;
+                    if (top != zdb::CWorld::m_world) {
+                        zdb::CWorld::m_world->AddChild(root);
+                        anim->m_added_to_world_internally = 1;
+                        if (root->m_socom2_a1 & 4)
+                            zdb::CWorld::m_world->AddTextureAssetCharacter((zdb::_RenderPhase)2, root);
+                    }
+                }
+            }
+        } else {
+            anim->State(5);
+            anim = 0;
+        }
+    }
+    if (anim && m_network_anim) {
+        if (!by)
+            by = this;
+        if (ZAnim.m_network_activation_callback && !ZAnim.m_block_activation_callback) {
+            int set;
+            int index;
+
+            if (ZAnim.GetAnimIndex(by, &set, &index)) {
+                ZAnimNetworkPacket *packet = ZAnim.GetNetworkPacket(8);
+
+                packet->packet_size = 8;
+                packet->anim_set_index = set;
+                packet->anim_index = index;
+                if (anim->m_arg_list && anim->m_arg_list->size())
+                    packet = anim->m_arg_list->AddNetworkPacketArgs(anim, packet);
+                ((void (*)(ZAnimNetworkPacket *, int))ZAnim.m_network_activation_callback)(packet,
+                                                                                         packet->packet_size);
+            }
+        }
+    }
+    return anim;
+}
+
 /* an available copy activated with commands: each of the list's entries, up to and with the zero
  * that ends it, appended to the copy's user commands and given it as a command argument (SOCOM 1's
  * ActivateEx, 0x1CEEE0, which read its own va_list) */
@@ -701,7 +762,7 @@ CZAnim *CZAnim::FindClones(CNode *root, CNode *node, CZAnim *last)
 void CZAnim::MakeClones()
 {
     Refresh(false);
-    CNode *root = func_002703D0(this, 0);
+    CNode *root = GetRootNode(false);
 
     if (root && root->m_name) {
         CZAnim *last = this;
@@ -747,7 +808,7 @@ void CZAnim::State(int state)
         StopLights(false);
         StopAnims();
         if (m_added_to_world_internally) {
-            CNode *root = func_002703D0(this, 0);
+            CNode *root = GetRootNode(false);
 
             if (root) {
                 zdb::CWorld::m_world->DeleteChild(root);
@@ -965,19 +1026,20 @@ extern "C" int func_00270460(CZAnim *anim, CNode *node)
     return 1;
 }
 
-/* CZAnim::GetRootNode, which SOCOM II gave a flag: look the root node up when it is not
- * known yet (its one caller passes 0; the type waits on another) */
-extern "C" CNode *func_002703D0(CZAnim *anim, int find)
+/* the anim's own node: its instance, else its root reference's node -- looked up first when
+ * asked and not yet known (SOCOM 1's GetRootNode, which SOCOM II gave the flag; inlined
+ * everywhere in this unit, out of line for OVL2's CTMap::Tick) */
+CNode *CZAnim::GetRootNode(bool create)
 {
-    if (anim->m_instance_node)
-        return anim->m_instance_node;
-    int root = anim->m_root_node_index;
+    if (m_instance_node)
+        return m_instance_node;
+    int root = m_root_node_index;
 
     if (!root)
         return 0;
-    if (!anim->m_node_ref_list[root].node_ptr && find)
-        anim->GetNode(root, true);
-    return anim->m_node_ref_list[anim->m_root_node_index].node_ptr;
+    if (!m_node_ref_list[root].node_ptr && create)
+        GetNode(root, true);
+    return m_node_ref_list[m_root_node_index].node_ptr;
 }
 
 void CZAnim::DeleteParticleSources()
@@ -1038,7 +1100,7 @@ void CZAnim::CreateInstanceNode()
         return;
     if (m_instance_node)
         return;
-    CNode *root = func_002703D0(this, 1);
+    CNode *root = GetRootNode(true);
 
     if (!root)
         return;
@@ -1111,19 +1173,6 @@ void CZAnim::GetNodes()
     CreateInstanceNode();
 }
 
-/* the anim's own node: its instance, else its root reference's node (SOCOM II's; inlined into
- * GetNode, the name ours) */
-inline CNode *CZAnim::GetRootNode()
-{
-    if (m_instance_node)
-        return m_instance_node;
-    int root = m_root_node_index;
-
-    if (!root)
-        return 0;
-    return m_node_ref_list[root].node_ptr;
-}
-
 /* the node a reference names, looked up when asked and not yet known -- under its parent's node,
  * else under the root's, else (unless it searches under a root it has) the world's model for an
  * instanced root or the database's node; world lights are found elsewhere. 250 is an argument's
@@ -1135,7 +1184,7 @@ CNode *CZAnim::GetNode(int index, bool lookup)
     if (index == 250)
         return m_arg_list ? m_arg_list->GetNode(250) : 0;
     if (index == 249)
-        return GetRootNode();
+        return GetRootNode(false);
     while (index >= m_node_ref_count)
         AddNewNodeRef(0, 0, 0);
     CNode *node = m_node_ref_list[index].node_ptr;

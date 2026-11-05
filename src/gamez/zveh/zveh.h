@@ -245,6 +245,17 @@ public:
     void Remove(class CTurret *turret);
 };
 
+/* the AI's target: ai_target.cpp's CAiTarget, 0x2c bytes -- the units using it declare their own
+ * views of it, so the turret holds only its storage, built by its out-of-line constructor (OVL2
+ * 0x60A940, called by its mangled name; CTurret's constructor calls it between the trigger's and the
+ * AI parameters') */
+extern "C" void *__ct__9CAiTargetFv(void *target);
+struct CTurretTarget {
+    CTurretTarget() { __ct__9CAiTargetFv(this); }
+
+    unsigned char m_bytes[0x2c];
+};
+
 class CTurret : public CEntity {
 public:
     CTurret(zdb::CNode *node, const CTurretDef &def);
@@ -283,6 +294,15 @@ public:
     static int Init(const char *name, const char *path);
     static void LoadTurrets();
     static int ScanForTurretDefinitionHookups(zdb::CNode *node, bool recurse);
+    /* the node's parts and the definition's settings taken (SOCOM 1's Init, 0x3A9A80: the
+     * constructor calls it) */
+    void Init(zdb::CNode *node, const CTurretDef &def);
+    /* the health and its inverse, 0 for none (the constructor's and Init's; the name ours) */
+    void SetHealth(float h)
+    {
+        m_health = h;
+        m_invHealth = m_health ? 1.0f / m_health : 0.0f;
+    }
     /* a turret for the node universe's index, if a definition names its node (new in SOCOM II; the
      * name ours) */
     static CTurret *Create(int index);
@@ -318,17 +338,22 @@ public:
     /* the AI's target (ai_target.cpp's CAiTarget, 0x2c bytes here as in the SEALs' controller --
      * its validity test 0x60A850 takes it) and the word after it, whose bit 9 holds the target
      * (the names ours) */
-    unsigned char m_target[0x2c];   // 0x194
+    CTurretTarget m_target;   // 0x194
     unsigned int m_targetFlags;   // 0x1c0
-    unsigned char _1c4[0x208 - 0x1c4];
-    /* the AI's aim error, handed to the target's ModifyAimDir as each round is fired (the name
-     * ours) */
-    float m_aimError;   // 0x208
-    unsigned char _20c[0x220 - 0x20c];
-    float m_220;   // 0x220
-    unsigned char _224[0x240 - 0x224];
+    unsigned char _1c4[0x204 - 0x1c4];
+    /* the AI's parameters, the definition's (Init copies them member by member, as SOCOM 1's; the
+     * constructor builds the defaults in place): the accuracy is handed to the target's
+     * ModifyAimDir as each round is fired, the visual range squared made the entity's target
+     * range (Init) and copied by PreTick */
+    CTurretAiParams m_aiParams;   // 0x204
     int m_240;   // 0x240: cleared at the mission's start
-    unsigned char _244[0x254 - 0x244];
+    /* the view cone (SOCOM 1's CAiCone, 0x38 bytes -- seal_sensors.cpp's CSensorCone; laid out here
+     * field by field): the depth along it and the vector to the point last tested (the target scan
+     * 0x3A7A40), its height (the AI's visual range), its radius there (the height times the
+     * definition's half-angle tangent), the radius at the apex (25) and the height's inverse, then the
+     * apex and the axis (PreTick sets them) */
+    float m_coneDot;   // 0x244
+    CPnt3D m_coneVec;   // 0x248
     float m_254;   // 0x254: PreTick's copy of m_220, its product with the definition's m_120,
     float m_258;   // 0x258: 25, and its inverse
     float m_25c;   // 0x25c
@@ -343,7 +368,11 @@ public:
     zdb::CNode *m_scope;   // 0x290: "scope"
     zdb::CNode *m_thermalScope;   // 0x294: "thermal_scope"
     bool m_thermal;   // 0x298
-    unsigned char _299[0x2a4 - 0x299];
+    unsigned char _299[0x29c - 0x299];
+    /* the definition's health and its inverse, 0 for none (the constructor's 1, Init's the
+     * definition's; the names ours) */
+    float m_health;   // 0x29c
+    float m_invHealth;   // 0x2a0
     /* the ammunition fired, the weapon's default when none (Fire; the name ours) */
     CZAmmo *m_ammoType;   // 0x2a4
     int m_ammo;   // 0x2a8
@@ -394,7 +423,7 @@ public:
     char m_20[0x20];   // 0x20
     char m_40[0x20];   // 0x40
     char m_60[0x20];   // 0x60
-    unsigned char m_80;   // 0x80
+    bool m_80;   // 0x80: "RECURSIVE" (the collision box taken from the node's DI recursively)
     int m_84;   // 0x84
 };   // 0x88 bytes
 
@@ -459,6 +488,10 @@ public:
      * SampleDynamics; the name ours) */
     void SampleDynamics(float dT);
     static int Init(const char *name, const char *path);
+    /* the node's parts hooked up: the "healthy" and health-root nodes, the collision box's corners
+     * and size, the AI overlay, the team (0x3ADAB0, new in SOCOM II -- the turret's Init's twin, the
+     * constructor calls it; the name ours) */
+    void Init(zdb::CNode *node, const CVehicleDef &def);
     static void LoadVehicles();
     static int ScanForVehicleDefinitionHookups(zdb::CNode *node, bool recurse);
     /* a mission entry's vehicles: its character names the definition, its name the nodes
@@ -478,16 +511,19 @@ public:
     CVehicleRegion m_region;   // 0x170
     CPnt3D m_corners[4];   // 0x198: m_bounds grown by 5 in x and z, in the world
     const CVehicleDef *m_def;   // 0x1c8
-    int m_1cc;   // 0x1cc
+    zdb::CNode *m_healthy;   // 0x1cc: the "healthy" node (the definition's ACTIVATE name; the name ours)
     zdb::CNode *m_1d0;   // 0x1d0: the node it was made for
     zdb::CNode *m_1d4;   // 0x1d4: deactivates the vehicle once switched off
     zdb::CNode *m_root;   // 0x1d8: the node's ancestor under the world
     unsigned char _1dc[0x1e0 - 0x1dc];
     CMatrix m_1e0;   // 0x1e0
     CMatrix m_220;   // 0x220
-    unsigned char _260[0x268 - 0x260];
+    /* half the collision box's diagonal, and its square (Init; the names ours) */
+    float m_radius;   // 0x260
+    float m_radiusSq;   // 0x264
     CPnt3D m_bounds[4];   // 0x268
-    unsigned char _298[0x29c - 0x298];
+    /* the collision box's height: its corners' highest y less the lowest (Init; the name ours) */
+    float m_height;   // 0x298
     /* the turn over the last frame: the cosine between the node's old and new Z (SampleDynamics; the
      * name ours) */
     float m_turn;   // 0x29c
