@@ -71,9 +71,26 @@ CPnt3D g_colSelected(36.0f, 64.0f, 86.0f);
 
 /* the mission: only its objectives (theMission, fts_state.h's CMission at 0x1854) */
 class CMissionCam {
+public:
+    char *m_identifier;   // 0x0
+    char *m_name;   // 0x4
+    unsigned char _8[0x1c - 0x8];
 };
 
+/* an objective: what the list reads (fts_objectivecam.cpp's, SOCOM 1's DWARF) */
 class CMissionObjectiveCam : public CMissionCam {
+public:
+    bool IsInvalid() const;
+    bool IsDisplayOn() const;
+    bool IsComplete() const;
+
+    unsigned char _1c[0x40 - 0x1c];
+    unsigned int m_isSecondary : 1;   // 0x40
+    unsigned int m_isSubObjective : 1;   // 0x40
+    unsigned int m_isCompass : 1;   // 0x40
+    unsigned int m_bExtraction : 1;   // 0x40
+    unsigned int m_bit4 : 1;   // 0x40: SOCOM II's
+    unsigned int m_unused : 27;   // 0x40
 };
 
 class CMission {
@@ -145,6 +162,8 @@ public:
     virtual void Tick(float dT);
     void Init();
     void RefreshStatics();
+    void RefreshList();
+    bool AddObjective(const CMissionObjectiveCam &objective, float ypos);
     void SetCurColor(int index);
     static bool IsPlayingAnimation();
     /* an objective's index, if it is one (inline in SOCOM II: no copy of its own). SOCOM 1's
@@ -310,6 +329,50 @@ void CZObjectiveList::Tick(float dT)
         curstring->m_color[2] = 0.0f;
         m_strXLabel.SetTrans(0.5f * fCurLevel);
     }
+}
+
+/* the list rebuilt: freed (its vectors kept), the statics laid out again, an entry added per
+ * objective 15 apart from 104 down; the camera held before selected again if it is still
+ * selectable, else the first objective that is not secondary and is selectable, else on from
+ * the last (SOCOM 1's, the held camera SOCOM II's) */
+void CZObjectiveList::RefreshList()
+{
+    CMissionObjectiveCam *retained = m_cur_selected_objective;
+
+    FreeList(false);
+    RefreshStatics();
+    float ypos = 104.0f;
+    const std::list<CMissionObjectiveCam *> &objectives = theMission.m_objectives;
+
+    for (std::list<CMissionObjectiveCam *>::const_iterator it = objectives.begin(); it != objectives.end();
+         ++it) {
+        if (AddObjective(**it, ypos))
+            ypos += 15.0f;
+    }
+    if (retained) {
+        int i = 0;
+
+        for (std::list<CMissionObjectiveCam *>::const_iterator it = objectives.begin();
+             it != objectives.end(); ++it, ++i) {
+            if (*it == retained && m_vecSelectable[i]) {
+                m_selected_objective = i;
+                UpdateSelection();
+                return;
+            }
+        }
+    }
+    m_selected_objective = 0;
+    UpdateSelection();
+    for (std::list<CMissionObjectiveCam *>::const_iterator it = objectives.begin(); it != objectives.end();
+         ++it) {
+        if (!(*it)->m_isSecondary && m_vecSelectable[m_selected_objective])
+            return;
+        m_selected_objective++;
+        UpdateSelection();
+    }
+    m_selected_objective = m_objectivenames.size();
+    UpdateSelection();
+    NextObjective();
 }
 
 /* a list's entry deleted (std::for_each's function object; the name ours) */
