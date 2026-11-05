@@ -41,6 +41,8 @@ public:
     ~CSched_Manager();
     /* the finished tasks freed (the scheduler's; Clear asks for all of them) */
     void ClearFreeList(bool all);
+    /* the tasks run (CGameMenu::Tick's) */
+    void Tick(float dT);
 
     unsigned char _0[0x20];
 };
@@ -213,7 +215,9 @@ public:
     void SetPosition(float x, float y, float z);
     void SetName(const char *name);
 
-    unsigned char _0[0x60];
+    unsigned char _0[0x5c];
+    unsigned int m_active : 1;   // 0x5c (znode.h's)
+    unsigned int m_5c : 31;
     virtual ~CNode();                                     /* +0x08 */
     virtual CNode *_Copy(CNode *to) const;
     virtual void UpdateGrid();
@@ -277,6 +281,11 @@ public:
     void LoadDesign(const char *name, CZAnimZAR *zar);
     /* the menu set up over a relocator, its own rdr's design loaded (SOCOM 1's) */
     bool Init(zdb::CTextureRelocMgr *mgr, CZAnimZAR *zar);
+    /* the menu's frame and the pad's input (SOCOM 1's) */
+    void Tick(float dT);
+    void HandlePad(const CPad *pad);
+    /* the pop-up is showing (ours: the tick holds the keyboard's input while it is) */
+    bool PopupShowing() { return m_popupnode && m_popupnode->m_active; }
     /* a design object's control made in the menu's font, with a node of its own under the node it
      * names (else the backplane) (0x3696D0, ours) */
     C2D *Add2dNode(CDesignDlgObj *obj);
@@ -305,7 +314,7 @@ public:
     std::vector<zdb::CNode *> m_modelNodes;   // 0x8ec: the design's models' nodes (PrepModels; SOCOM 1's at 0x878)
     bool m_8f8;                   // 0x8f8
     int m_fadeSteps;              // 0x8fc: -1, or the fade's steps left before SwitchMenu switches (the name ours)
-    int m_900;                    // 0x900
+    float m_900;                  // 0x900: a time the pad is ignored for (the tick counts it down)
     std::vector<CSaferStr> m_904; // 0x904
 
     virtual ~CGameMenu();
@@ -665,16 +674,38 @@ const char *CGameMenu::GetReaderFileName()
     return m_ReaderName.c_str();
 }
 
-/* the menus' pop-up stack (zanim_menu.h's CMenuStack: only the pop-up's clean-up), the keyboards'
- * display forgotten (zui_skb.cpp's) and the current menu's bitmap (0x49EA98: zui_skbview.cpp's
- * 0x36A210 sets its float at 0x9C; ours) */
+/* the menus' pop-up stack (zanim_menu.h's CMenuStack: its entries, the pop-up and the commands the
+ * menu's tick hands it), the keyboards' display forgotten (zui_skb.cpp's) and the current menu's node
+ * (0x49EA98: zui_skbview.cpp's 0x36A210 sets its opacity; the tick fades it; ours) */
+class CPopUpDialog : public CPlainBmp {};
+struct CMenuEntry {
+    int m_id;             // 0x0
+    char m_argname[48];   // 0x4
+};
 class CMenuStack {
 public:
     void CleanPopup();
+    void AddToHistory(const char *name);
+    CPopUpDialog *GetPopUp();
+    void HandleCommand(const char *name);
+    /* the top entry (ours: the tick reads its command and argument through it) */
+    CMenuEntry *Top() { return &m_entries[m_top]; }
+
+    CMenuEntry m_entries[40];   // 0x0
+    int m_count;                // 0x820
+    int m_top;                  // 0x824
 };
 CMenuStack *GetMenuStack();
 void InvalidateSkbsDisplay();
-extern void *data_0049EA98;
+extern zdb::CNode *data_0049EA98;
+/* the pads (zinput.h's CInput: its pads only) and the soft keyboard's tick (zui_skb.cpp's) */
+#ifndef ZINPUT_H
+class CInput {
+public:
+    static CPad *m_pads[2];
+};
+#endif
+void SkbTick(CGameMenu *menu, bool input, float dT);
 
 /* a child taken off a 2D object's list (ours: Clear erases through it, the erase's temporaries a
  * level deeper than the walk's) */
@@ -1045,6 +1076,97 @@ void CGameMenu::SwitchMenu(char *name)
     m_Reloc->StartBatchReloc();
     LoadDesign(name, m_zar);
     m_Reloc->EndBatchReloc();
+}
+
+/* a node's 2D object, through its first visual (ours: the original leaves the result unset for a
+ * node without a 2D visual -- the target calls through whatever the register held, which is what
+ * keeps each copy's result in a saved register) */
+static inline C2D *NodeC2D(zdb::CNode *node)
+{
+    C2D *c2d;
+    zdb::CVisual *visual = node->GetFirstVisual();
+
+    if (visual) {
+        C2DVisual *v = visual->Get2DVisual();
+
+        if (v)
+            c2d = v->m_c2d;
+    }
+    return c2d;
+}
+
+/* the menu's frame: a fade's switch made once the fader is opaque, the pad read unless a wait runs or
+ * a fade does, the step clamped to 1/20 s, the scheduler run, a fade's menu node brought up, the
+ * menu stack's commands carried out -- a switch with its history, a switch, a button made active,
+ * a control's input taken or given back, each then handed back to the stack -- and the pop-up, the
+ * 2D objects, the buttons, the keyboard and the menu's own tick run (0x3654C0: SOCOM 1's Tick; the
+ * fade, the wait and the history switch's early return SOCOM II's). The visibility switches call
+ * through NodeC2D's unset result when the node has no 2D visual (the target does: each copy's result
+ * lives from the entry, so in a saved register); the fade's opacity clamped before the fader's call
+ * (the 0.99 the compare made moves in the call's delay slot); each walk's end taken first (the
+ * iterator numbered after it: s0 / s1 as the target) */
+void CGameMenu::Tick(float dT)
+{
+    float opacity = data_0049EA98 ? data_0049EA98->m_Opacity : 0.99f;
+
+    if (m_fadeSteps >= 0 && m_fader.GetTrans() == 128.0f) {
+        SwitchMenu((char *)m_ReaderName.c_str());
+        return;
+    }
+    if (m_900 > 0.0f)
+        m_900 -= dT;
+    else if (m_fadeSteps < 0)
+        HandlePad(CInput::m_pads[0]);
+    if (dT > 0.05f)
+        dT = 0.05f;
+    if (g_hasAnims)
+        zUIScheduler.Tick(dT);
+    if (m_fadeSteps >= 0) {
+        opacity += 2.0f * dT;
+        if (!(opacity < 0.99f)) {
+            opacity = 0.99f;
+            m_fader.SetTrans(128.0f);
+        }
+        if (data_0049EA98)
+            data_0049EA98->m_Opacity = opacity;
+    }
+    while (GetMenuStack()->m_count) {
+        switch (GetMenuStack()->Top()->m_id) {
+        case 2:
+            GetMenuStack()->AddToHistory(m_ReaderName.c_str());
+            SwitchMenu(GetMenuStack()->Top()->m_argname);
+            GetMenuStack()->HandleCommand(m_ReaderName.c_str());
+            return;
+        case 5:
+            SwitchMenu(GetMenuStack()->Top()->m_argname);
+            break;
+        case 6:
+            MakeButtonActive(GetMenuStack()->Top()->m_argname);
+            break;
+        case 7: {
+            zdb::CNode *node = m_nodeTop.FindChild(GetMenuStack()->Top()->m_argname, true);
+
+            if (node)
+                NodeC2D(node)->SetCanHandleInput(true);
+            break;
+        }
+        case 8: {
+            zdb::CNode *node = m_nodeTop.FindChild(GetMenuStack()->Top()->m_argname, true);
+
+            if (node)
+                NodeC2D(node)->SetCanHandleInput(false);
+            break;
+        }
+        }
+        GetMenuStack()->HandleCommand(m_ReaderName.c_str());
+    }
+    GetMenuStack()->GetPopUp()->Tick(dT);
+    for (std::list<C2D *>::iterator e = m_6d4.end(), i = m_6d4.begin(); i != e; ++i)
+        (*i)->Tick(dT);
+    for (std::list<C2D *>::iterator f = m_buttons.end(), j = m_buttons.begin(); j != f; ++j)
+        (*j)->Tick(dT);
+    SkbTick(this, !PopupShowing(), dT);
+    MyTick(dT);
 }
 
 /* the background movie stopped, if one runs (SOCOM 1's HaltBackgroundMPEG, 0x366B10) */
