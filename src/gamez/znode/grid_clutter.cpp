@@ -14,6 +14,7 @@
 #include <iostream>
 
 #include "../zanim/zanim.h"
+#include "../zvid/zvid.h"
 #include "znode.h"
 
 /* the unit's matrix stack (0x44F0F0): __sinit_grid_clutter.cpp 0x401CF0 builds it after <iostream>'s
@@ -196,6 +197,75 @@ CMatrix *CClutter::GetMatrix()
         return m;
     }
     return &m_matrix;
+}
+
+/* a point's length in x and z (ours) */
+inline float LengthXZ(const CPnt3D *p)
+{
+    return sqrtf(p->x * p->x + p->z * p->z);
+}
+
+/* a point's x and z made unit length, unless both are zero (ours: TickForce's two). The length
+ * through an inline of its own: its parameter is another variable, so the scaling reloads x where
+ * the length's load would be reused (the target's reload, and the nop padding the join) */
+inline void NormalizeXZ(CPnt3D *p)
+{
+    float len = LengthXZ(p);
+
+    if (len != 0.0f) {
+        float inv = 1.0f / len;
+
+        p->x *= inv;
+        p->z *= inv;
+    }
+}
+
+/* the prop pushed: a force over a hundredth in x and z whose share of the push (1 - a / b, times
+ * the prop's stiffness) reaches what the prop already holds turns the force toward the point's
+ * distance, doubled, onto the point -- the point, unit in x and z and scaled by what the stiffness
+ * leaves of the held push, onto the lean, which stays unit length -- and the push is held; a weaker
+ * one lets the held push relax by half the frame's time, to zero. The prop's rotation slerped (at
+ * most all the way, five times the frame's time) toward the lean tipped by the held push (or by the
+ * rest angle alone when none is held); its node handed back (SOCOM 1's, 0x218600: SOCOM II takes
+ * the square roots inline) */
+CNode *CClutterAnim::TickForce(CPnt3D *force, CPnt3D *pos, float a, float b)
+{
+    float len = sqrtf(force->x * force->x + force->z * force->z);
+
+    if (len > 0.01f) {
+        float push = (1.0f - a / b) * m_clutter->Stiffness();
+
+        if (push >= m_14) {
+            *force = *force * (sqrtf(pos->x * pos->x + pos->z * pos->z) / len) * 2.0f;
+            *pos += *force;
+            float left = 1.0f - m_14 / m_clutter->Stiffness();
+
+            NormalizeXZ(pos);
+            pos->Scale(left);
+            m_lean += *pos;
+            NormalizeXZ(&m_lean);
+            m_14 = push;
+        } else {
+            if (m_14 > 0.0f)
+                m_14 -= 0.5f * zVid.frameTime;
+            if (m_14 < 0.0f)
+                m_14 = 0.0f;
+        }
+    }
+    float ang = m_14 == 0.0f ? m_20 : m_14 + m_14 * m_20;
+    CClutter *c = m_clutter;
+    CQuat q;
+
+    q.MakeYXZRot(0.0f, m_lean.z * ang, -m_lean.x * ang);
+    float t = 5.0f * zVid.frameTime;
+
+    if (t > 1.0f)
+        t = 1.0f;
+    CQuat r;
+
+    ((CQuat *)c->m_matrix.m_matrix[1])->SlerpFaster(&q, t, &r);
+    *(CQuat *)c->m_matrix.m_matrix[1] = r;
+    return m_node;
 }
 
 /* the effectors let go of (SOCOM 1's) */

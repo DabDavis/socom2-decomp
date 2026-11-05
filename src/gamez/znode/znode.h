@@ -1530,6 +1530,9 @@ public:
         }
         return false;
     }
+    /* how hard the prop resists a push: the rotation form's word at 0x30, none in the matrix
+     * form (CClutterAnim::TickForce reads it twice, a bit test each; the name ours) */
+    float Stiffness() { return m_quat ? m_matrix.m_matrix[3][0] : 0.0f; }
 
     CMatrix m_matrix;   // 0x0
     unsigned char _40[0x44 - 0x40];
@@ -1570,11 +1573,15 @@ public:
             delete m_node;
         m_node = 0;
     }
-    void TickForce(CPnt3D *force, CPnt3D *pos, float a, float b);
+    /* the prop pushed by a force at a point: the push's strength past what it holds turns its lean
+     * toward the force, else the lean relaxes; its rotation slerped toward the lean -- its node
+     * handed back (SOCOM 1's, 0x218600; the core lane round 17) */
+    CNode *TickForce(CPnt3D *force, CPnt3D *pos, float a, float b);
 
     CClutter *m_clutter;   // 0x0
     CNode *m_node;   // 0x4
-    unsigned char _8[0x14 - 0x8];
+    /* the lean's direction in x and z, kept unit length (TickForce; the name ours) */
+    CPnt3D m_lean;   // 0x8
     float m_14;   // 0x14
     float m_18;   // 0x18
     float m_1c;   // 0x1c
