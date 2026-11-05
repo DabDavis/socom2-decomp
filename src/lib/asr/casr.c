@@ -278,14 +278,15 @@ fail:
     return 0;
 }
 
-/* OPEN (38 words, the right size): the target stores the first gender and the format through s+8
- * and the other two genders off s, and loads the language's pointer into a0; every spelling here
- * stores all four through s+8 (a loop, a sub-struct, a pointer for two of them: build/scratch/gcc/p/
- * s_gsd*.py, 30 spellings; round 24c: each of the four through `g` or off `s`, all 16, gives one form
- * -- CSE puts every store on one base whichever is spelled -- and a 3-pass loop with the fourth after
- * it, unrolled whole, stores all four off s, SOCOM 1's 0x1BC shape: build/scratch/gcc/r24c/v_gsd*.py).
- * The header's destination is a local pointer (`h`): with `s->lng` itself
- * 2.96 folds the data pointer to s+152 and computes the copy's bound once (87s), the demo's shape. */
+/* the session's data: the record (its kind, its size, the three genders' flags and the sample
+ * format, the language file's header) and the engine's own data after it, both sized by command
+ * 39. Round 26c, byte-exact: the target stores the first gender and the format through `g` (s+8)
+ * and the other two off s, each as it is spelled -- the store order decides the rest: the size
+ * before the kind (its reload of `n` then heads the block and the language's pointer takes a0;
+ * with the kind first, 38 words, every placement of `g` and `h` alike: build/scratch/gcc/v_gsd2.py).
+ * (Round 24c's sweep of the 16 spellings, the kind first, read "one form" from 38 words each.)
+ * The header's destination is a local pointer (`h`): with `s->lng` itself 2.96 folds the data
+ * pointer to s+152 and computes the copy's bound once (87s), the demo's shape. */
 static int casrGetSessionData(CASR *c, void **data, int *size)
 {
     SESSIONDATA *s;
@@ -300,12 +301,12 @@ static int casrGetSessionData(CASR *c, void **data, int *size)
     s = heap_Alloc(c->heap, n);
     if (s == 0)
         return 1;
-    s->kind = 4;
     s->size = n;
+    s->kind = 4;
     g = s->gender;
     g[0] = c->gender_on[0];
-    g[1] = c->gender_on[1];
-    g[2] = c->gender_on[2];
+    s->gender[1] = c->gender_on[1];
+    s->gender[2] = c->gender_on[2];
     g[3] = c->uw_state;
     h = &s->lng;
     *h = (*(LNGFILE **)c->data)->hdr;
@@ -784,16 +785,21 @@ int casrStartUserWordTraining(CASR *c, void *a, void *b)
     return userwordStartUserWordTraining(c, 3, a, b);
 }
 
-/* OPEN (44 words, 6 short): the right instructions but the row pointer -- the target keeps it a
- * register stepped by 12 per row (`move a1,s1; addiu s1,a1,12`), each row's third pointer stored
- * through the stepped one; 2.96 here splits it into constant offsets of one base. Pre- and
- * post-increment, an index, three explicit rows, a while: all split it (44-119 words). The total
- * is a summing loop: the target multiplies (sum + 6) by 3 and 2, which a single expression lets
- * fold distribute. SOCOM 1's copy is rolled: unsigned counters, the store through `q`. */
+/* the segmentation's table: one block of 3 x (each utterance's length + 2) shorts per gender, and
+ * for each of the three utterances three pointers into it (one per gender). Round 26c, byte-exact:
+ * the table's own pointer `seg` is the running pointer (`*++seg`). The inner loop is unrolled
+ * first, its biv remapped to a copy of its value at the row's start (cc1's "Biv initial value
+ * remapped": the target's `move a1,s1; addiu s1,a1,12` per row); with a second pointer `q` from
+ * `seg`, CSE rewrites every row against the unchanged `seg` and the rows fold into constant offsets
+ * of one base (44 words, 6 short -- pre- and post-increment, an index, rows written out, a while
+ * all did). The product is assigned back to the total (`total *= 3`): the result is then the
+ * total's own pseudo, in a1, with 2t in v0 (`addu a1,v0,a1`); a product in the call's argument
+ * ties the result to 2t, the first operand (8 words), `(total + total * 2)` swaps the add's
+ * operands (1). SOCOM 1's copy is rolled: unsigned counters, the store through a second
+ * pointer. */
 void casrInitSegmentation(CASR *c)
 {
     short **seg = c->segtab;
-    short **q;
     short *p;
     unsigned int i, j;
     int len, total;
@@ -803,13 +809,13 @@ void casrInitSegmentation(CASR *c)
     total = 0;
     for (i = 0; i < 3; i++)
         total += c->utt[i].n + 2;
-    p = seg[0] = heap_Alloc(c->heap, total * 3 * sizeof(short));
-    q = seg;
+    total *= 3;
+    p = seg[0] = heap_Alloc(c->heap, total * sizeof(short));
     for (i = 0; i < 3; i++) {
         len = c->utt[i].n + 2;
         for (j = 0; j < 3; j++) {
             p += len;
-            *++q = p;
+            *++seg = p;
         }
     }
 }

@@ -250,6 +250,10 @@ public:
      * in hand is in its launcher mode (new in SOCOM II; OVL2 0x5B9020, 0x5BD7E0 -- the kit lane's) */
     void ResetRetOffsetXY();
     bool CurWeaponIsLauncherMode();
+    /* the item in hand in an M203's or a grenade launcher's fire mode (OVL2 0x5BDA00, 0x5BD6D0: tail
+     * calls on the selected item -- kit.h's, the kit lane's rows; seal_env.cpp's Reload asks both) */
+    bool CurWeaponIsM203Mode();
+    bool CurWeaponIsGrenadeLauncherMode();
     /* the class of the item in hand (kit.h's byte enum; OVL2 0x5B8760, the kit lane's) */
     enum FIRE_CLASS { FIRE_CLASS_NONE = 0, FIRE_CLASS_RIFLE = 1, FIRE_CLASS_PISTOL = 2,
                       FIRE_CLASS_THROWN = 3, FIRE_CLASS_145 = 4, FIRE_CLASS_LAST = 255 };
