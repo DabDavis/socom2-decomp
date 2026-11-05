@@ -77,6 +77,7 @@ template <class T, int v>
 class CInit {
 public:
     CInit() : m_val(v) {}
+    CInit(T x) : m_val(x) {}
     CInit &operator=(T x)
     {
         m_val = x;
@@ -271,12 +272,23 @@ struct CSkbTexLists {
     std::vector<zdb::CTexHandle *> m_lists[4];
 };
 
+/* two ints read from an rdr pair (SOCOM 1's CIntPair: zui_skb.cpp's there, its Get1st and Get2nd) */
+struct CIntPair {
+    CIntPair(int a, int b) : m_1st(a), m_2nd(b) {}
+    int Get1st() const { return m_1st; }
+    int Get2nd() const { return m_2nd; }
+
+    CInit<int, 0> m_1st;   // 0x0
+    CInit<int, 0> m_2nd;   // 0x4
+};
+
 /* a key cap's look: a texture name, a scale and a colour (the names ours) */
 struct CSkbCapLook {
-    CSkbCapLook() : m_0(0), m_4(0), m_scale(1.0f), m_r(128), m_g(128), m_b(128) {}
+    CSkbCapLook() : m_pos(0, 0), m_scale(1.0f), m_r(128), m_g(128), m_b(128) {}
 
-    int m_0;   // 0x0
-    int m_4;   // 0x4
+    /* its POSITION, the pair as read (assigned whole by the reader: the pair's class-typed members
+     * copied a word at a time through $f0, 0x397D30) */
+    CIntPair m_pos;   // 0x0
     CSaferStr m_texture;   // 0x8
     float m_scale;   // 0x14
     int m_r;   // 0x18
@@ -289,15 +301,6 @@ struct CSkbCapLooks {
     operator CSkbCapLook *() { return m_a; }
 };
 
-/* two ints read from an rdr pair (SOCOM 1's CIntPair: zui_skb.cpp's there, its Get1st and Get2nd) */
-struct CIntPair {
-    CIntPair(int a, int b) : m_1st(a), m_2nd(b) {}
-    int Get1st() const { return m_1st; }
-    int Get2nd() const { return m_2nd; }
-
-    int m_1st;   // 0x0
-    int m_2nd;   // 0x4
-};
 
 /* an rdr array walked by index: the array a tag names, and the index (the look parser's; the Korean
  * input unit's constructor and More, 0x3909F0 and 0x3909C0, the look parser calls out of line; ours) */
@@ -454,6 +457,9 @@ struct CSkbLook {
 
     /* a rectangle set by index (the look parser's five, out of line: zui_skbview.cpp's 0x396BD0) */
     void SetRect(unsigned char i, const CSkbRect &r);
+    /* cap i's look read from the block a tag names: its SCALE, COLOR, FONT and POSITION (the look
+     * parser's three, out of line: zui_skbview.cpp's 0x397D30; ours) */
+    void ReadCapLook(unsigned char i, _zrdr *rdr, const char *tag);
 };   // 0x158 bytes
 
 /* the keyboard (SOCOM II's 0x710 bytes: the key map at 0x164 where SOCOM 1's is at 0x2C, the grid

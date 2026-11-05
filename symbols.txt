@@ -7453,7 +7453,7 @@
 0x003978D0 0x74 func_003978D0  # OVL1
 0x00397950 0x268 func_00397950  # OVL1
 0x00397BC0 0x164 SkbFindSounds__Fv  # OVL1; the UI lane round 11: ours, by its body (zui_skbview.cpp: the six CSnd statics from CSnd::GetSoundByName of strings 2, 3, 4, 5, 6 and 1; 0x3958D0 calls it)
-0x00397D30 0x2AC func_00397D30  # OVL1
+0x00397D30 0x2AC ReadCapLook__8CSkbLookFUcP5_zrdrPCc  # OVL1; ours (the UI lane round 27: zui_skbview.cpp -- the look parser's three calls with this, the cap index 0-2 and the UserStringProps/PurposeStringProps/MsgPlayerStringProps tag; the block's SCALE, COLOR, FONT and POSITION into m_caps[i])
 0x00397FE0 0xE4 resize__Q23std62__vector_imp<11CSkbBgPiece,Q23std24allocator<11CSkbBgPiece>,0>FUi  # OVL1; the UI lane round 14: zui_skbview.cpp's tail, the background pieces' resize (the look parser's only request: m_sources[i].resize(size() + 1)), byte-exact from source with erase/insert named
 0x003980D0 0x220 erase__Q23std62__vector_imp<11CSkbBgPiece,Q23std24allocator<11CSkbBgPiece>,0>FP11CSkbBgPieceP11CSkbBgPiece  # OVL1; the UI lane round 14: zui_skbview.cpp's tail, the background pieces' range erase (resize 0x397FE0 calls it)
 0x003982F0 0x618 insert__Q23std62__vector_imp<11CSkbBgPiece,Q23std24allocator<11CSkbBgPiece>,0>FP11CSkbBgPieceUiRC11CSkbBgPiece  # OVL1; the UI lane round 14: zui_skbview.cpp's tail, the background pieces' fill insert (resize 0x397FE0 calls it)

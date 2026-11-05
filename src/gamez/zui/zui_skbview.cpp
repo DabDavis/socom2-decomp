@@ -11,8 +11,10 @@
  *
  * Round 11 wrote the locks and shift test (bitmaps 0 and 5, CPad's L1), the six sounds, the cursor,
  * the pair and bitmap-4 toggles, the bitmap loader, the caps' text look and the key props' spec.
- * OPEN, not written yet: the tick 0x3949C0, the display's scaler 0x397950, the cap look reader
- * 0x397D30.
+ * OPEN, not written yet: the tick 0x3949C0, the display's scaler 0x397950. The cap look reader
+ * 0x397D30 (CSkbLook::ReadCapLook) is byte-exact since round 27, its POSITION pair assigned whole
+ * into the cap's m_pos (zui_skb.h's CIntPair over two CInit<int, 0>: an assignment of class-typed
+ * members copies each word through $f0 off an address register, plain ints copy with lw/sw).
  * Round 22: the key rows walked through CSkbBmpRows' and CSkbBmpRow's operator[]s (the nested
  * reference accessors keep MW from rotating the inner loop: entered at its bottom test through a
  * preheader after the return) -- SkbSetKeyTextures 0x395140 and SkbForgetDisplay 0x396F30 (open since
@@ -660,7 +662,7 @@ void SkbApplyCapLook(C2DString *str, zdb::CNode *node, CSoftKeyboard *skb, unsig
     str->SetFont(font);
     str->SetColor((float)cap->m_r, (float)cap->m_g, (float)cap->m_b);
     str->m_scale = cap->m_scale;
-    node->SetPosition((float)cap->m_0, dy + (float)cap->m_4, 0.0f);
+    node->SetPosition((float)cap->m_pos.Get1st(), dy + (float)cap->m_pos.Get2nd(), 0.0f);
     node->SetActive(false);
 }
 
@@ -693,8 +695,28 @@ void CSkbLook::SetRect(unsigned char i, const CSkbRect &r)
 }
 #pragma auto_inline reset
 
-/* a cap's look read from the block a tag names (0x397D30, not written yet) */
-extern "C" void func_00397D30(CSkbLook *look, unsigned char i, _zrdr *rdr, const char *tag);
+/* cap i's look read from the block a tag names: its SCALE (1 by default), its COLOR's three ints,
+ * its FONT's name and its POSITION pair (0x397D30; the look parser calls it out of line; ours) */
+void CSkbLook::ReadCapLook(unsigned char i, _zrdr *rdr, const char *tag)
+{
+    _zrdr *block = zrdr_findtag(rdr, tag);
+    float scale = 1.0f;
+
+    zrdr_findreal(block, "SCALE", &scale, 1);
+    CSkbCapLook &cap = m_caps[i];
+
+    cap.m_scale = scale;
+    _zrdr *color = zrdr_findtag(block, "COLOR");
+    int r = GetRdrArrayInt(color, 0);
+    int g = GetRdrArrayInt(color, 1);
+    int b = GetRdrArrayInt(color, 2);
+
+    cap.m_r = r;
+    cap.m_g = b;
+    cap.m_b = g;
+    cap.m_texture = zrdr_findstring(block, "FONT");
+    cap.m_pos = ReadIntPair(block, "POSITION");
+}
 /* the keyboard's default width (0x4A44C4; ours) */
 extern int data_004A44C4;
 
@@ -780,7 +802,7 @@ void CSoftKeyboard::ParseLook(_zrdr *rdr)
     m_68 = SkbFindInt(rdr, "SkbHeight", 0);
     m_6c = SkbFindInt(rdr, "SkbWidth", data_004A44C4);
     m_c0 = SkbFindInt(rdr, "UserStringWidth", 0);
-    func_00397D30(this, 0, rdr, "UserStringProps");
+    ReadCapLook(0, rdr, "UserStringProps");
     float lh = 0.0f;
 
     zrdr_findreal(rdr, "UserStringLineHeight", &lh, 1);
@@ -791,8 +813,8 @@ void CSoftKeyboard::ParseLook(_zrdr *rdr)
 
     m_d0 = csize.Get1st();
     m_d4 = csize.Get2nd();
-    func_00397D30(this, 1, rdr, "PurposeStringProps");
-    func_00397D30(this, 2, rdr, "MsgPlayerStringProps");
+    ReadCapLook(1, rdr, "PurposeStringProps");
+    ReadCapLook(2, rdr, "MsgPlayerStringProps");
     CSkbRect r0, r1, r2, r3, r4;
 
     ReadSkbRect(&r0, SkbFindTag(rdr, "CapsLockOn"));
@@ -915,7 +937,7 @@ CIntPair ReadIntPair(_zrdr *rdr, const char *tag)
  * 0.0f a caller passes is still added) */
 static inline void PlaceCaption(CSoftKeyboard *skb, float dy)
 {
-    s_captionNode->SetPosition((float)skb->m_caps[1].m_0, dy + (float)skb->m_caps[1].m_4, 0.0f);
+    s_captionNode->SetPosition((float)skb->m_caps[1].m_pos.Get1st(), dy + (float)skb->m_caps[1].m_pos.Get2nd(), 0.0f);
 }
 
 /* the caption's mode 2 toggled: its text, then its place (0x394920; the name ours) */
@@ -947,7 +969,7 @@ bool SkbToggleCaption1(CSoftKeyboard *skb)
     bool on = s_captionMode != CAPTION_1;
 
     s_captionMode = on ? CAPTION_1 : CAPTION_PLAIN;
-    int x = skb->m_caps[1].m_0, y = skb->m_caps[1].m_4;
+    int x = skb->m_caps[1].m_pos.Get1st(), y = skb->m_caps[1].m_pos.Get2nd();
     float dy = CaptionRaise(skb, on);
 
     s_captionNode->SetPosition((float)x, dy + (float)y, 0.0f);
@@ -1149,7 +1171,7 @@ void SkbStartDisplay(CSoftKeyboard *skb, C2DFont *font)
 
         s_caption.SetColor(r, g, b);
         s_caption.m_scale = cap->m_scale;
-        SkbPlaceNode(node, cap->m_0, cap->m_4, 0.0f);
+        SkbPlaceNode(node, cap->m_pos.Get1st(), cap->m_pos.Get2nd(), 0.0f);
         node->SetActive(false);
     }
     s_bmp1.Load(0.0f, 0.0f, (float)skb->m_d0, (float)skb->m_d4, s_bmp1.m_pTexHandle);
