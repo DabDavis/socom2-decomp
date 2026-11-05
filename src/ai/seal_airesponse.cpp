@@ -1342,11 +1342,9 @@ extern "C" CAiMap::DIR func_00559580(const CAiMapLoc *loc, const CPnt3D *dir, un
  * (flag 2) the facing as the goal, 3 a free cell found the way to step within five as the avoid
  * goal, 4 the wait run down, 5 a quarter second more unless the other SEAL's AI is still avoiding --
  * each set-up then waits in step 4; its wait out, the state ends and its goal is dropped when the
- * stamp's bits 1-2 hold one (OVL2 0x601F80; SOCOM 1's took dT). The goal's kind is read as the
- * GOAL_TYPE it is through a pointer cast -- a MARKED MODELLING DEVICE: ai_states.h, ahead of zseal.h's
- * enum, holds it as a signed char, and a byte cast to the enum loads with lbu where the target's lb
- * wants the field declared as the enum (a view struct of the state costs a register: 0x300); the
- * SEAL avoided and the AI's entity declared self first (the target's a0 / a1), the cell before the
+ * stamp's bits 1-2 hold one (OVL2 0x601F80; SOCOM 1's took dT). The goal's kind is the field's own
+ * GOAL_TYPE (ai_states.h's since the kit's round 51: a signed char cast to the enum loads with lbu
+ * where the target has lb -- round 50 read it through a pointer cast); the SEAL avoided and the AI's entity declared self first (the target's a0 / a1), the cell before the
  * count (the count the lower slot) */
 int CAiSAvoid::Tick(CSealCtrlAi *ai)
 {
@@ -1368,9 +1366,9 @@ int CAiSAvoid::Tick(CSealCtrlAi *ai)
         bool has = (bool)ai->m_goal_dir_valid || (bool)ai->m_goal_pos_valid;
 
         if (!has) {
-            ai->SetGoalPos(*(GOAL_TYPE *)&m_goal, &m_78, 3.0f);
+            ai->SetGoalPos(m_goal, &m_78, 3.0f);
             if (m_flags & 2)
-                ai->SetGoalDir(*(GOAL_TYPE *)&m_goal, &m_84, true);
+                ai->SetGoalDir(m_goal, &m_84, true);
             m_time = 0.25f;
             UpdatePhase(4);
         }

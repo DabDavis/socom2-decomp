@@ -218,4 +218,87 @@ public:
 
 extern CDiPool _diPool;
 
+/* A ray's request: SOCOM 1's CDiPool::dir() and the get, the set-up and the request the turret's
+ * target scan (OVL1 0x3A7A40, veh_turret.cpp) and the SEALs' _GetTargetPerception (OVL2 0x5CC120,
+ * seal_sensors.cpp) share -- each overlay links its own out-of-line copies (OVL1 0x3A7DD0 / 0x3A7E30,
+ * OVL2's 0x5C97D0 / 0x5C9830, the weapons' round 30 and the kit's round 51). Opt-in until
+ * veh_turret.cpp, which carries the same four, takes them from here: a unit defines
+ * SEAL_DIPOOL_REQUESTS before including this header (the kit's round 51; the weapons' file is not
+ * the kit's to edit) */
+#ifdef SEAL_DIPOOL_REQUESTS
+/* a request made: SOCOM 1's CDiPool::dir() -- the state, whose test, the two words and the limit
+ * zeroed (the get's inlined constructor). A modelling device: dir declares no constructor, so `new`
+ * builds this layout-identical subclass */
+struct CNewDiDir : public CDiPool::dir {
+    CNewDiDir()
+    {
+        m_state = 0;
+        m_ent = 0;
+        m_2c = 0;
+        m_limited = 0;
+        m_30 = 0;
+    }
+};
+
+/* a request taken off the free list, or a new one made when it is empty (inline: out of line behind
+ * RequestRay's cut, OVL1 0x3A7E30 / OVL2 0x5C9830 -- a member of the free list's class in the
+ * original, by its `this`; the name ours) */
+static inline CDiPool::dir *GetRequest(CDiPool::CDirList &free)
+{
+    CDiPool::dir *d;
+
+    if (free.empty())
+        d = new CNewDiDir;
+    else {
+        d = free.front();
+        free.pop_front();
+    }
+    return d;
+}
+
+/* a request set up: the ray from tail to tip, new, no DiIntersect yet, unaged, whose test it is,
+ * the target's node and the target (inline: out of line behind RequestRay's cut, OVL1 0x3A7DD0 /
+ * OVL2 0x5C97D0 -- a dir member in the original, by its `this`; the name ours) */
+static inline void SetRequest(CDiPool::dir *d, const CPnt3D &tail, const CPnt3D &tip, CEntity *viewer,
+                              zdb::CNode *node, CEntity *target)
+{
+    d->m_tail = tail;
+    d->m_tip = tip;
+    d->m_state = 3;
+    d->m_index = -1;
+    d->m_age = 0.0f;
+    d->m_ent = viewer;
+    d->m_2c = (int)node;
+    d->m_limited = 0;
+    d->m_30 = (int)target;
+}
+
+/* a ray from the eye to the target's point requested for a target's slot: a request made, set up
+ * and listed when it has none, else its own re-aimed (inline, cut to ONE level by its expanded size:
+ * the get, the set-up, the used list's push_back and CPnt3D's implicit assignment called out of
+ * line; the name ours) */
+static inline void RequestRay(int &slot, const CPnt3D &eye, const CPnt3D &pos, CEntity *viewer,
+                              zdb::CNode *node, CEntity *target)
+{
+    CDiPool::dir *d = 0;
+
+    if (!slot) {
+        d = GetRequest(_diPool.m_free);
+        if (d) {
+            SetRequest(d, eye, pos, viewer, node, target);
+            d->m_limited = 0;
+            _diPool.m_used.push_back(d);
+            slot = (int)d;
+        }
+    } else {
+        d = (CDiPool::dir *)slot;
+        d->m_tail = eye;
+        d->m_tip = pos;
+        d->m_2c = (int)node;
+        d->m_limited = 0;
+        d->m_30 = (int)target;
+    }
+}
+#endif
+
 #endif

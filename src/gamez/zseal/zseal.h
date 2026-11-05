@@ -332,8 +332,8 @@ struct AI_SOUND_PRIORITY {
 
 /* an anim's signal to its controller (AI_SIGNAL) is ai_states.h's: CAiState's slot +0x0C takes it */
 
-/* the goals a controller pursues (SOCOM 1's DWARF, a byte) */
-enum GOAL_TYPE { GOAL_NONE = 0, GOAL_SCAN = 1, GOAL_LOOK = 2, GOAL_MOVE = 3, GOAL_SHOOT = 4, GOAL_AVOID = 5, GOAL_RECOVER = 6 };
+/* the goals a controller pursues (GOAL_TYPE, SOCOM 1's DWARF, a byte) are ai_states.h's: CAiSAvoid
+ * holds one (the kit's round 51) */
 
 /* a SEAL's stance (SOCOM 1's DWARF, a signed byte) */
 /* a SEAL's weapon state (SOCOM 1's WEAPON_STATE, a byte: GetWeaponState narrows with andi -- the
