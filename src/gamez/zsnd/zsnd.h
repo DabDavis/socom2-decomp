@@ -80,6 +80,9 @@ void snd_StopSoundSystem(void);
 
 class CSndInstance;
 class CValve;
+namespace zdb {
+class CNode;
+}
 namespace zar {
 class CZAR;
 }
@@ -165,7 +168,13 @@ public:
     static bool GetSubtitles();
     static void SetSubtitles(bool on);
 
+    /* SOCOM 1's: the scheduler's post tick -- the listener's reverb by the camera's room, its
+     * matrix, the group fade, the voices, the jukebox, a held stream, the positions, the music
+     * depth, the vocal queue and the headset (0x341A60) */
+    static bool PostTick(float dT, void *data);
     static bool m_isDisabled;           /* 0x48DD28 */
+    static zdb::CNode *m_listener;      /* 0x48DB48: SOCOM 1's, the listening camera's node (the
+                                           app camera's: database.cpp's testLoad sets it) */
     static bool m_listenerIsValid;      /* 0x48DB50: SOCOM 1's, beside m_listener (CalcVolPan gives
                                            no volume and no pan while it is clear) */
     static CSnd *m_errorsound;          /* 0x48DD90 */

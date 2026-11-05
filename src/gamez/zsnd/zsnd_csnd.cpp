@@ -11,6 +11,7 @@
 /* the finder (zrdr_main.cpp; zanim.h still calls it by its placeholder) */
 _zrdr *zrdr_findtag(const _zrdr *rdr, const char *tag);
 #include "../zanim/zanim.h"
+#include "../zcamera/zcamera.h"
 #include "../zutil/util_stable.h"
 #include "zsnd_queue.h"
 #include "zsnd_subtitles.h"
@@ -895,6 +896,111 @@ void CSnd::UnloadAllSounds()
     data_0048DB38 = 0;
     CSndInstance::Cleanup();
     func_0034BE10();
+}
+
+/* PostTick's: the player indoors (camera.cpp's CftsPlayer), the music depth by the listener's height
+ * through the mission's fade range (fts_mission.cpp's 0x2ACA30 over theMission) and the positions'
+ * tick (zsnd_positions.cpp's 0x34BEC0); names not known */
+class CftsPlayer {
+public:
+    bool IsInside();
+};
+extern CftsPlayer ftsPlayer;
+extern char theMission[];
+extern "C" float func_002ACA30(void *range, float x);
+extern "C" void func_0034BEC0(float dT);
+extern "C" double floor(double x);
+void Vu0MatrixInverseWithUniformScale(CMatrix *dst, CMatrix *src);
+
+/* SOCOM 1's post tick (SOCOM II's adds the outdoor reverbs, the held stream, the positions' tick and
+ * the music depth): the listener made valid, then -- while there is a listener -- the reverb of the
+ * camera's room set when it changes (the indoor table while the camera or the player is inside, the
+ * outdoor one else; none past a table's end) and the listener's matrix inverted; the group fade
+ * timed or eased back; the voices and the jukebox ticked; a held stream played once a stream voice is
+ * free; the music depth from the listener's height; the vocal queue and, offline, the headset.
+ * OPEN, 0x4A4 of 0x4AC (the world lane's round 17): every instruction the target's but the two room
+ * tests, which the target makes `slti at,room,0; bnez at` where MW here branches `bltz room` -- `room
+ * > -1`, `0 <= room`, `!(room < 0)` and an inline test alike; the test in a bool local 0x4B0
+ * (build/scratch/wld/v_pt.py) */
+bool CSnd::PostTick(float dT, void *data)
+{
+    if (!m_listenerIsValid) {
+        m_listenerIsValid = true;
+        data_003DFFA8 = 1;
+    }
+    if (m_listener) {
+        zdb::CCamera *cam = zdb::CWorld::m_world->m_camera;
+        int room = cam->m_AbovePolyFlag;
+
+        if (cam->m_IsInside || ftsPlayer.IsInside()) {
+            if (room >= 0 && (data_003DFFB0 != room || data_003DFFB0 == -1)) {
+                data_003DFFB0 = room;
+                data_003DFFC0 = -1;
+                if ((unsigned int)room >= data_0048DB88.size()) {
+                    if (m_hasreverb) {
+                        snd_AutoReverb(2, 0, 240, 3);
+                        data_0048DE40 = 0;
+                        m_hasreverb = false;
+                        data_003DFFB0 = -1;
+                        data_003DFFC0 = -1;
+                    }
+                } else {
+                    snd_AutoReverb(2, data_0048DB88[room], data_0048DB68[room], 3);
+                    data_0048DE40 = data_0048DB88[data_003DFFB0];
+                    m_hasreverb = true;
+                }
+            }
+        } else if (room >= 0 && (data_003DFFC0 != room || data_003DFFC0 == -1)) {
+            data_003DFFC0 = room;
+            data_003DFFB0 = -1;
+            if ((unsigned int)room >= data_0048DBC8.size()) {
+                if (m_hasreverb) {
+                    snd_AutoReverb(2, 0, 240, 3);
+                    data_0048DE40 = 0;
+                    m_hasreverb = false;
+                    data_003DFFB0 = -1;
+                    data_003DFFC0 = -1;
+                }
+            } else {
+                snd_AutoReverb(2, data_0048DBC8[room], data_0048DBA8[room], 3);
+                data_0048DE40 = data_0048DBC8[data_003DFFC0];
+                m_hasreverb = true;
+            }
+        }
+        sceVu0CopyMatrix(m_listenermatrix.m_matrix, (float (*)[4])m_listener);
+        Vu0MatrixInverseWithUniformScale(&m_listenermatrix, &m_listenermatrix);
+    }
+    if (m_fadetime > 0.0f && m_fadetime != 1e9f)
+        m_fadetime -= dT;
+    else if (m_fadeRestore < 1.0f && m_fadetime <= 0.0f)
+        ResetGroupVolTemp(dT);
+    CSndInstance::PostTick(dT, data);
+    CSndJukebox::Tick(dT);
+    if (m_numStreams < m_max_num_vags && data_0048DE28) {
+        if (data_0048DE38)
+            data_0048DE28->PlaySound3D(data_0048DE38, 1.0f, 0, data_0048DE30, 255);
+        else
+            data_0048DE28->PlaySoundVolPanPitch(1.0f, 0, 0, data_0048DE30, 255);
+        data_0048DE28 = 0;
+        data_0048DE30 = 0;
+        data_0048DE38 = 0;
+    }
+    func_0034BEC0(dT);
+    if (m_listener) {
+        int depth = (int)(floor(255.0f * func_002ACA30(theMission, ((CMatrix *)m_listener)->m_matrix[3][1]))
+                          - 128.0);
+
+        if (depth >= 128)
+            depth = 127;
+        if (depth < -128)
+            depth = -128;
+        func_003402F0(2, (char)depth);
+    }
+    if (&data_0048DEE0)
+        data_0048DEE0.Tick(dT);
+    if (!data_0045A0C1)
+        Headset::ftsGetHeadset()->Tick(dT);
+    return false;
 }
 
 void CSnd::PlayErrorSound()
