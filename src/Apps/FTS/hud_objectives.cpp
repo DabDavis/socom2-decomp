@@ -2,11 +2,13 @@
  * it, Z:\dev\Apps\FTS\hud_objectives.cpp). IsPlayingAnimation, Draw, Tick, Init and the implicit
  * destructor so far, all byte-exact. Defined in reverse of their image order (-inline deferred). */
 
+#include <algorithm>
 #include <list>
 
 #include "../../gamez/ztwod/ztwod.h"
 #include "../../gamez/zvid/zvid.h"
 #include "hud_missioncams.h"
+#include "../../gamez/zsys/zsys.h"
 
 /* the HUD: its menu state and mission cameras placed (SOCOM II's offsets) */
 class CHUD {
@@ -105,6 +107,8 @@ public:
     vector() : capacity_(0), size_(0), data_(0) {}
     ~vector() { if (data_) operator delete(data_); }
     reference operator[](unsigned int n) { return reference(*this, n); }
+    void clear() { size_ = 0; }
+    void swap(vector &x);
     bool test_bit(unsigned int n);
 
     unsigned int capacity_;
@@ -113,6 +117,16 @@ public:
 };
 
 #pragma auto_inline off
+/* the three words traded (0x207F90, SOCOM 1's exact; FreeVector's swap, called) */
+void vector<bool, allocator<bool> >::swap(vector &x)
+{
+    if (this != &x) {
+        std::swap(capacity_, x.capacity_);
+        std::swap(size_, x.size_);
+        std::swap(data_, x.data_);
+    }
+}
+
 bool vector<bool, allocator<bool> >::test_bit(unsigned int n)
 {
     return (data_[n >> 5] & (1 << (n & 31))) != 0;
@@ -164,7 +178,25 @@ public:
             ++it;
         return *it;
     }
+    /* the same walk with the first node read through the list's sentinel, tail(): FreeList's,
+     * whose copy calls the end pair's second() out of line (0x207560) one inline level down,
+     * under RetainSelection. A STAND-IN for the original's deeper begin() (include/list's is fitted
+     * to level 5: read through tail() in GetObjective itself, GetCurrentObjective keeps its walk
+     * but SelectNext/PreviousObjective's self-inlining grows, 0xA0 -> 0x22C) */
+    CMissionObjectiveCam *GetObjectiveByTail(int index) const
+    {
+        if (!IsValidIndex(index))
+            return 0;
+        std::list<CMissionObjectiveCam *>::iterator it(std::__list_deleter<const void *,
+            std::allocator<const void *> >::iterator(theMission.m_objectives.tail().next_));
+
+        for (int i = 0; i < index; i++)
+            ++it;
+        return *it;
+    }
     CMissionObjectiveCam *GetCurrentObjective() const;
+    /* the selection's camera kept before the list is freed (inline; the name ours) */
+    void RetainSelection() { m_cur_selected_objective = GetObjectiveByTail(m_selected_objective); }
     CMissionObjectiveCam *GetCurrentObjectiveRetainer() const;
     /* the selection's camera held and the objectives ticked (inline; the name ours) */
     void UpdateSelection()
@@ -278,6 +310,34 @@ void CZObjectiveList::Tick(float dT)
         curstring->m_color[2] = 0.0f;
         m_strXLabel.SetTrans(0.5f * fCurLevel);
     }
+}
+
+/* a list's entry deleted (std::for_each's function object; the name ours) */
+template <class T>
+struct CDeleteEntry {
+    CDeleteEntry() {}
+    void operator()(T *p) const { delete p; }
+};
+
+/* the list emptied: the selection's camera kept, the children dropped, the names and their
+ * check boxes deleted and the three vectors cleared -- and, wiped, their storage traded away
+ * (SOCOM 1's, each vector through FreeVector) */
+void CZObjectiveList::FreeList(bool wipe_vector)
+{
+    RetainSelection();
+    clear();
+    std::for_each(m_objectivenames.begin(), m_objectivenames.end(), CDeleteEntry<C2DString>());
+    m_objectivenames.clear();
+    if (wipe_vector)
+        FreeVector(m_objectivenames);
+    std::for_each(m_objectivecompletedbitmap.begin(), m_objectivecompletedbitmap.end(),
+                  CDeleteEntry<C2DBitmap>());
+    m_objectivecompletedbitmap.clear();
+    if (wipe_vector)
+        FreeVector(m_objectivecompletedbitmap);
+    m_vecSelectable.clear();
+    if (wipe_vector)
+        FreeVector(m_vecSelectable);
 }
 
 /* the selected objective's name given the colour of another's (SOCOM 1's). Never inlined in the

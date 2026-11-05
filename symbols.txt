@@ -1744,16 +1744,16 @@
 0x00206E50 0x13C NextObjective__15CZObjectiveListFv  # OVL1; s1:calls by hand (SOCOM 1's NextObjective: IsAnySelectable inlined over vector<bool>::test_bit, then SelectNextObjective, SetCurColor(old) and the old name greyed)
 0x00206F90 0x98 SetCurColor__15CZObjectiveListFi  # OVL1; s1:order by hand (SOCOM 1's SetCurColor: the same two ResolveIndex tests, the colour of one name copied to the selected one, at SOCOM II's offsets; after the next-objective pair as SOCOM 1's follows NextObjective)
 0x00207030 0x308 FreeList__15CZObjectiveListFb  # OVL1; s1:order by hand (after SetCurColor where SOCOM 1's FreeList follows its inline IsAnySelectable and ResolveIndex; MissionEndCleanup calls it with true; vector erases, swaps and deletes)
-0x00207340 0x60 func_00207340  # OVL1
-0x002073A0 0x70 func_002073A0  # OVL1
-0x00207410 0x40 func_00207410  # OVL1
-0x00207450 0x8 func_00207450  # OVL1
-0x00207460 0x14 func_00207460  # OVL1
-0x00207480 0x70 func_00207480  # OVL1
-0x002074F0 0x40 func_002074F0  # OVL1
-0x00207530 0x8 func_00207530  # OVL1
-0x00207540 0x14 func_00207540  # OVL1
-0x00207560 0x8 func_00207560  # OVL1
+0x00207340 0x60 __dt__Q23std30vector<b,Q23std12allocator<b>>Fv  # OVL1; the HUD lane round 47: hud_objectives.cpp's vector<bool> destructor (its words deleted, then the vector; ~CZNewHudMap calls this copy for the map's objective list), emitted after FreeList
+0x002073A0 0x70 __dt__Q23std50vector<P9C2DBitmap,Q23std22allocator<P9C2DBitmap>>Fv  # OVL1; the HUD lane round 47: FreeVector's temporary destroyed in CZObjectiveList::FreeList (the check boxes' vector)
+0x00207410 0x40 swap__Q23std50vector<P9C2DBitmap,Q23std22allocator<P9C2DBitmap>>FRQ23std50vector<P9C2DBitmap,Q23std22allocator<P9C2DBitmap>>  # OVL1; the HUD lane round 47: FreeVector's swap in CZObjectiveList::FreeList (the check boxes' vector)
+0x00207450 0x8 clear__Q23std50vector<P9C2DBitmap,Q23std22allocator<P9C2DBitmap>>Fv  # OVL1; the HUD lane round 47: FreeVector's clear in CZObjectiveList::FreeList (the check boxes' vector)
+0x00207460 0x14 __ct__Q23std50vector<P9C2DBitmap,Q23std22allocator<P9C2DBitmap>>Fv  # OVL1; the HUD lane round 47: FreeVector's temporary in CZObjectiveList::FreeList (the check boxes' vector)
+0x00207480 0x70 __dt__Q23std50vector<P9C2DString,Q23std22allocator<P9C2DString>>Fv  # OVL1; the HUD lane round 47: FreeVector's temporary destroyed in CZObjectiveList::FreeList (the names' vector)
+0x002074F0 0x40 swap__Q23std50vector<P9C2DString,Q23std22allocator<P9C2DString>>FRQ23std50vector<P9C2DString,Q23std22allocator<P9C2DString>>  # OVL1; the HUD lane round 47: FreeVector's swap in CZObjectiveList::FreeList (the names' vector)
+0x00207530 0x8 clear__Q23std50vector<P9C2DString,Q23std22allocator<P9C2DString>>Fv  # OVL1; the HUD lane round 47: FreeVector's clear in CZObjectiveList::FreeList (the names' vector)
+0x00207540 0x14 __ct__Q23std50vector<P9C2DString,Q23std22allocator<P9C2DString>>Fv  # OVL1; the HUD lane round 47: FreeVector's temporary in CZObjectiveList::FreeList (the names' vector)
+0x00207560 0x8 second__Q310Metrowerks7details158compressed_pair_imp<Q23std66allocator<Q33std42__list_deleter<PCv,Q23std14allocator<PCv>>4node>,Q33std42__list_deleter<PCv,Q23std14allocator<PCv>>9node_base,1>Fv  # OVL1; the HUD lane round 47: the list end pair's non-const second(), out of line where CZObjectiveList::FreeList's objective walk reads the first node through tail() (FreeList emits it first; CGTree::Destroy's copies call it too)
 0x00207570 0x300 func_00207570  # OVL1
 0x00207870 0x138 Tick__15CZObjectiveListFf  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x002079B0 0x50 Init__15CZObjectiveListFv  # OVL1; s1:calls
