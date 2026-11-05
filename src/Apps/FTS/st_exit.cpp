@@ -5,11 +5,7 @@
 
 #include <iostream>
 
-/* unnamed yet (SOCOM 1's names in the comments) */
-extern "C" {
-void func_003AFF30(bool a, bool b);              /* zVid_Swap */
-
-}
+void zVid_Swap(bool flip, bool restore);   /* 0x3AFF30 */
 
 /* the localised string tables (util_loc.cpp's; only what is called: SOCOM 1 called CSnd::Close
  * where SOCOM II unloads the UI's table); the language a word here, as st_mpexit.cpp has it */
@@ -567,7 +563,7 @@ bool CExitState::Tick(float dT)
     m_menu->Tick(dT);
     m_menu->Draw2dOnly();
     zSysFifoEnd();
-    func_003AFF30(true, true);
+    zVid_Swap(true, true);
     return false;
 }
 

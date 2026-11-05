@@ -176,6 +176,7 @@ class CTurret : public CZVehicle {
 /* the turrets' network objects (fts_net_platform.cpp's) */
 class CZPlatformState {
 public:
+    static void zNetRegisterPlatform();   /* 0x2C8A00 */
     static int CreateLocalPlatform(CTurret *turret);
 };
 
@@ -230,18 +231,21 @@ extern CMission theMission;
 
 class CZSealState {
 public:
+    static void zNetRegisterSeal();   /* 0x2BF2C0 */
     static CZSealBody *GetBodyFromObjectIndex(int index);
     static int CreateLocalSeal(CZSealBody *body, bool remote);
 };
 
 class CZGameState {
 public:
+    static void zNetRegisterGame();   /* 0x2C1120 */
     static void UpdateLocalGame(CZNetGame *game);
     static int CreateLocalGame(CZNetGame *game);
 };
 
 class CZPersonaState {
 public:
+    static void zNetRegisterPersona();
     static void ClearPersonaList();
     static void UpdateLocalPersona();
     static int CreateLocalPersona();
@@ -295,6 +299,7 @@ extern "C" unsigned int strlen(const char *s);
 
 class CZBombState {
 public:
+    static void zNetRegisterBomb();
     static void HandleBombStateRequest(int who, unsigned char state, CPnt3D *pos);
     static int CreateLocalBomb();   /* 0x2C2260 */
     static void CreateBombHere(CPnt3D *pos);   /* 0x2C1BF0 */
@@ -1841,6 +1846,388 @@ void SendGameSignalMessage(int to, unsigned char a, unsigned char b, unsigned ch
         theNetwork.zNetSendApplicationMessage(64, theNetwork.GetGameConnectionIndex(), to,
             data_00440EB0, 20, (unsigned char *)&p, false);
     }
+}
+
+/* ---- the network messages' descriptions (SOCOM II's; the structs' names ours, each laid out by its
+ * fields' descriptions: offsets, sizes and counts) ---- */
+
+/* "Hit" (OVL1 0x2BBBD0's handler) */
+struct NetMsgHit {
+    unsigned short m_0;   // 0x0
+    unsigned short m_2;   // 0x2
+    unsigned char m_4;   // 0x4
+    unsigned char m_5;   // 0x5
+    unsigned char m_6;   // 0x6
+    unsigned char m_7;   // 0x7
+};
+
+/* "Anim" (OVL1 0x2BB7F0's handler) */
+struct NetMsgAnim {
+    int m_0;   // 0x0
+    unsigned short m_4;   // 0x4
+    unsigned short m_6;   // 0x6
+};
+
+/* "Push Blend" (OVL1 0x2BBA80's handler) */
+struct NetMsgPushBlend {
+    unsigned short m_0;   // 0x0
+    unsigned short m_2;   // 0x2
+    unsigned short m_4;   // 0x4
+    unsigned char m_6;   // 0x6
+    unsigned char m_7;   // 0x7
+};
+
+/* "Action Anim" (OVL1 0x2BB310's handler) */
+struct NetMsgActionAnim {
+    unsigned short m_0;   // 0x0
+    unsigned short m_2;   // 0x2
+    unsigned short m_4;   // 0x4
+    unsigned char _6[2];
+    unsigned short m_8;   // 0x8
+};
+
+/* "Action Points" (OVL1 0x2BB770's handler) */
+struct NetMsgActionPoints {
+    unsigned short m_0;   // 0x0
+    unsigned short m_2;   // 0x2
+};
+
+/* "AI Orders" (OVL1 0x2BB8E0's handler) */
+struct NetMsgAIOrders {
+    unsigned short m_0;   // 0x0
+    unsigned char _2[2];
+    unsigned char m_4;   // 0x4
+};
+
+/* "E3 Index" (OVL1 0x2BAF30's handler) */
+struct NetMsgE3Index {
+    int m_0;   // 0x0
+    unsigned char m_4;   // 0x4
+};
+
+/* "Reject" (OVL1 0x2B9D80's handler) */
+struct NetMsgReject {
+    int m_0;   // 0x0
+};
+
+/* "Message" (OVL1 0x2BAC40's handler) */
+struct NetMsgMessage {
+    unsigned short m_0;   // 0x0
+    unsigned char _2[2];
+    unsigned short m_4;   // 0x4
+};
+
+/* "Chat" (OVL1 0x2BA9D0's handler) */
+struct NetMsgChat {
+    unsigned short m_0;   // 0x0
+    unsigned short m_2;   // 0x2
+    unsigned char m_4;   // 0x4
+};
+
+/* "Wep PU" (OVL1 0x2BA4E0's handler) */
+struct NetMsgWepPU {
+    int m_0;   // 0x0
+    int m_4;   // 0x4
+    int m_8;   // 0x8
+    int m_c;   // 0xc
+    int m_10;   // 0x10
+    unsigned short m_14;   // 0x14
+};
+
+/* "Wep Ammo PU" (OVL1 0x2BA370's handler) */
+struct NetMsgWepAmmoPU {
+    int m_0;   // 0x0
+    unsigned short m_4[8];   // 0x4
+    unsigned short m_14[8];   // 0x14
+    int m_24;   // 0x24
+    int m_28;   // 0x28
+    int m_2c;   // 0x2c
+    unsigned char m_30;   // 0x30
+};
+
+/* "PU May I" (OVL1 0x2BA260's handler) */
+struct NetMsgPUMayI {
+    int m_0;   // 0x0
+    unsigned short m_4[8];   // 0x4
+    unsigned short m_14;   // 0x14
+    unsigned char m_16;   // 0x16
+};
+
+/* "PU OK" (OVL1 0x2BA1A0's handler) */
+struct NetMsgPUOK {
+    int m_0;   // 0x0
+    unsigned short m_4;   // 0x4
+    unsigned char m_6;   // 0x6
+    unsigned char m_7;   // 0x7
+};
+
+/* "ClimbAsk" (OVL1 0x2B9F10's handler) */
+struct NetMsgClimbAsk {
+    unsigned short m_0;   // 0x0
+    unsigned short m_2;   // 0x2
+    unsigned short m_4;   // 0x4
+};
+
+/* "ClimbOK" (OVL1 0x2B9E20's handler) */
+struct NetMsgClimbOK {
+    unsigned short m_0;   // 0x0
+    unsigned short m_2;   // 0x2
+};
+
+/* "Names" (OVL1 0x2B9B20's handler) */
+struct NetMsgNames {
+    unsigned short m_0;   // 0x0
+    unsigned char m_2;   // 0x2
+    unsigned char m_3;   // 0x3
+    unsigned char m_4;   // 0x4
+    unsigned char m_5;   // 0x5
+};
+
+/* "Voter" (OVL1 0x2BA040's handler) */
+struct NetMsgVoter {
+    unsigned short m_0;   // 0x0
+    unsigned char m_2;   // 0x2
+};
+
+/* "Spec Vote" (OVL1 0x2B9BD0's handler) */
+struct NetMsgSpecVote {
+    unsigned short m_0;   // 0x0
+    unsigned char m_2;   // 0x2
+};
+
+/* "Team Switch" (OVL1 0x2BAE70's handler) */
+struct NetMsgTeamSwitch {
+    int m_0;   // 0x0
+};
+
+/* "All Switch" (OVL1 0x2BADC0's handler) */
+struct NetMsgAllSwitch {
+    int m_0;   // 0x0
+};
+
+/* "Bomb" (OVL1 0x2B9A00's handler) */
+struct NetMsgBomb {
+    int m_0;   // 0x0
+    int m_4;   // 0x4
+    int m_8;   // 0x8
+    unsigned short m_c;   // 0xc
+    unsigned char m_e;   // 0xe
+};
+
+/* "Alert" (OVL1 0x2B98B0's handler) */
+struct NetMsgAlert {
+    int m_0;   // 0x0
+    int m_4;   // 0x4
+    int m_8;   // 0x8
+};
+
+/* "Game Signal" (OVL1 0x2B9150's handler) */
+struct NetMsgGameSignal {
+    unsigned char m_0[5];   // 0x0
+    unsigned char _5[3];
+    int m_8;   // 0x8
+    unsigned char m_c;   // 0xc
+    unsigned char m_d;   // 0xd
+    unsigned char m_e;   // 0xe
+    unsigned char m_f;   // 0xf
+    unsigned char m_10;   // 0x10 (GameSignalPacket's flag: not described)
+};
+
+
+extern "C" {
+void func_00620BD8(void);   /* (the DME's: a message type's description begun) */
+void func_00620C60(void *base, void *field, int size, int count);   /* (a field described) */
+void func_0030CFF0(CZNetwork *net, unsigned int *type, int (*handler)(int, int, int, void *),
+                   const char *name);   /* (a message type registered with its handler) */
+void func_002C2B20();   /* (fts_net_persona.cpp's registration's twin: the platform's? -- SOCOM II's) */
+void func_00310210(void *voice);   /* (zNetVoice.cpp's: its messages registered) */
+extern unsigned int data_00440EA0;   /* (SOCOM II's: "All Switch") */
+extern void (*data_00414BFC)(void *data, int size);   /* (ZAnim's network send: the anims' packets go out through it) */
+int func_002B9B20(int, int, int, void *);
+int func_002BADC0(int, int, int, void *);
+int func_002B9150(int, int, int, void *);
+}
+
+int PickupAckPacketHandler(int, int, int, void *data);   /* 0x2BA1A0 */
+int TeamSwitchPacketHandler(int, int, int, void *data);   /* 0x2BAE70 */
+
+class CZGrenadeState {
+public:
+    static void zNetRegisterGrenade();   /* 0x2C1630 */
+};
+
+/* the network's objects and messages registered, once, before the connection (SOCOM 1's
+ * ftsNetworkRegister, grown: the five object kinds and SOCOM II's 0x2C2B20, then 24 message types,
+ * each described field by field -- "Wep PU" without its own begin, as the target has it -- and
+ * registered with its handler, then the voice's; OVL1 0x2B8660). Every description's struct a local
+ * of its own, declared in use order: MW stacks the 4-byte ones on top, then the others by size
+ * class */
+extern "C" void func_002B8660()
+{
+    NetMsgHit mHit;
+    NetMsgAnim mAnim;
+    NetMsgPushBlend mPushBlend;
+    NetMsgActionAnim mActionAnim;
+    NetMsgActionPoints mActionPoints;
+    NetMsgAIOrders mAIOrders;
+    NetMsgE3Index mE3Index;
+    NetMsgReject mReject;
+    NetMsgMessage mMessage;
+    NetMsgChat mChat;
+    NetMsgWepPU mWepPU;
+    NetMsgWepAmmoPU mWepAmmoPU;
+    NetMsgPUMayI mPUMayI;
+    NetMsgPUOK mPUOK;
+    NetMsgClimbAsk mClimbAsk;
+    NetMsgClimbOK mClimbOK;
+    NetMsgNames mNames;
+    NetMsgVoter mVoter;
+    NetMsgSpecVote mSpecVote;
+    NetMsgTeamSwitch mTeamSwitch;
+    NetMsgAllSwitch mAllSwitch;
+    NetMsgBomb mBomb;
+    NetMsgAlert mAlert;
+    NetMsgGameSignal mGameSignal;
+
+    if (theNetwork.m_bConnected)
+        return;
+    CZSealState::zNetRegisterSeal();
+    CZPersonaState::zNetRegisterPersona();
+    func_002C2B20();
+    CZGrenadeState::zNetRegisterGrenade();
+    CZGameState::zNetRegisterGame();
+    CZBombState::zNetRegisterBomb();
+    CZPlatformState::zNetRegisterPlatform();
+    func_00620BD8();
+    func_00620C60(&mHit, &mHit.m_0, 2, 1);
+    func_00620C60(&mHit, &mHit.m_2, 2, 1);
+    func_00620C60(&mHit, &mHit.m_4, 1, 1);
+    func_00620C60(&mHit, &mHit.m_5, 1, 1);
+    func_00620C60(&mHit, &mHit.m_6, 1, 1);
+    func_00620C60(&mHit, &mHit.m_7, 1, 1);
+    func_0030CFF0(&theNetwork, &data_00440E00, HitPacketHandler, "Hit");
+    data_00414BFC = SendZAnimNetworkPacket;
+    func_00620BD8();
+    func_00620C60(&mAnim, &mAnim.m_0, 4, 1);
+    func_00620C60(&mAnim, &mAnim.m_4, 2, 1);
+    func_00620C60(&mAnim, &mAnim.m_6, 2, 1);
+    func_0030CFF0(&theNetwork, &data_00440E20, ZAnimNetworkPacketHandler, "Anim");
+    func_00620BD8();
+    func_00620C60(&mPushBlend, &mPushBlend.m_0, 2, 1);
+    func_00620C60(&mPushBlend, &mPushBlend.m_2, 2, 1);
+    func_00620C60(&mPushBlend, &mPushBlend.m_4, 2, 1);
+    func_00620C60(&mPushBlend, &mPushBlend.m_6, 1, 1);
+    func_00620C60(&mPushBlend, &mPushBlend.m_7, 1, 1);
+    func_0030CFF0(&theNetwork, &data_00440E18, PushBlendAnimPacketHandler, "Push Blend");
+    func_00620BD8();
+    func_00620C60(&mActionAnim, &mActionAnim.m_0, 2, 1);
+    func_00620C60(&mActionAnim, &mActionAnim.m_2, 2, 1);
+    func_00620C60(&mActionAnim, &mActionAnim.m_4, 2, 1);
+    func_00620C60(&mActionAnim, &mActionAnim.m_8, 2, 1);
+    func_0030CFF0(&theNetwork, &data_00440E08, func_002BB310, "Action Anim");
+    func_00620BD8();
+    func_00620C60(&mActionPoints, &mActionPoints.m_0, 2, 1);
+    func_00620C60(&mActionPoints, &mActionPoints.m_2, 2, 1);
+    func_0030CFF0(&theNetwork, &data_00440E10, ActionAnimPacketHandler, "Action Points");
+    func_00620BD8();
+    func_00620C60(&mAIOrders, &mAIOrders.m_0, 2, 1);
+    func_00620C60(&mAIOrders, &mAIOrders.m_4, 1, 1);
+    func_0030CFF0(&theNetwork, &data_00440E28, func_002BB8E0, "AI Orders");
+    func_00620BD8();
+    func_00620C60(&mE3Index, &mE3Index.m_0, 4, 1);
+    func_00620C60(&mE3Index, &mE3Index.m_4, 1, 1);
+    func_0030CFF0(&theNetwork, &data_00440E30, E3IndexPacketHandler, "E3 Index");
+    func_00620BD8();
+    func_00620C60(&mReject, &mReject.m_0, 4, 1);
+    func_0030CFF0(&theNetwork, &data_00440E90, func_002B9D80, "Reject");
+    func_00620BD8();
+    func_00620C60(&mMessage, &mMessage.m_0, 2, 1);
+    func_00620C60(&mMessage, &mMessage.m_4, 2, 1);
+    func_0030CFF0(&theNetwork, &data_00440E38, func_002BAC40, "Message");
+    func_00620BD8();
+    func_00620C60(&mChat, &mChat.m_0, 2, 1);
+    func_00620C60(&mChat, &mChat.m_2, 2, 1);
+    func_00620C60(&mChat, &mChat.m_4, 1, 1);
+    func_0030CFF0(&theNetwork, &data_00440E40, ChatPacketHandler, "Chat");
+    func_00620C60(&mWepPU, &mWepPU.m_14, 2, 1);
+    func_00620C60(&mWepPU, &mWepPU.m_0, 4, 1);
+    func_00620C60(&mWepPU, &mWepPU.m_8, 4, 1);
+    func_00620C60(&mWepPU, &mWepPU.m_c, 4, 1);
+    func_00620C60(&mWepPU, &mWepPU.m_10, 4, 1);
+    func_00620C60(&mWepPU, &mWepPU.m_4, 4, 1);
+    func_0030CFF0(&theNetwork, &data_00440E48, WeaponPUPacketHandler, "Wep PU");
+    func_00620BD8();
+    func_00620C60(&mWepAmmoPU, &mWepAmmoPU.m_30, 1, 1);
+    func_00620C60(&mWepAmmoPU, &mWepAmmoPU.m_4[0], 16, 8);
+    func_00620C60(&mWepAmmoPU, &mWepAmmoPU.m_14[0], 16, 8);
+    func_00620C60(&mWepAmmoPU, &mWepAmmoPU.m_0, 4, 1);
+    func_00620C60(&mWepAmmoPU, &mWepAmmoPU.m_24, 4, 1);
+    func_00620C60(&mWepAmmoPU, &mWepAmmoPU.m_28, 4, 1);
+    func_00620C60(&mWepAmmoPU, &mWepAmmoPU.m_2c, 4, 1);
+    func_0030CFF0(&theNetwork, &data_00440E50, AmmoPUPacketHandler, "Wep Ammo PU");
+    func_00620BD8();
+    func_00620C60(&mPUMayI, &mPUMayI.m_16, 1, 1);
+    func_00620C60(&mPUMayI, &mPUMayI.m_0, 4, 1);
+    func_00620C60(&mPUMayI, &mPUMayI.m_4[0], 16, 8);
+    func_00620C60(&mPUMayI, &mPUMayI.m_14, 2, 1);
+    func_0030CFF0(&theNetwork, &data_00440E58, PickupMayIPacketHandler, "PU May I");
+    func_00620BD8();
+    func_00620C60(&mPUOK, &mPUOK.m_6, 1, 1);
+    func_00620C60(&mPUOK, &mPUOK.m_0, 4, 1);
+    func_00620C60(&mPUOK, &mPUOK.m_4, 2, 1);
+    func_00620C60(&mPUOK, &mPUOK.m_7, 1, 1);
+    func_0030CFF0(&theNetwork, &data_00440E60, PickupAckPacketHandler, "PU OK");
+    func_00620BD8();
+    func_00620C60(&mClimbAsk, &mClimbAsk.m_0, 2, 1);
+    func_00620C60(&mClimbAsk, &mClimbAsk.m_2, 2, 1);
+    func_00620C60(&mClimbAsk, &mClimbAsk.m_4, 2, 1);
+    func_0030CFF0(&theNetwork, &data_00440E68, func_002B9F10, "ClimbAsk");
+    func_00620BD8();
+    func_00620C60(&mClimbOK, &mClimbOK.m_0, 2, 1);
+    func_00620C60(&mClimbOK, &mClimbOK.m_2, 2, 1);
+    func_0030CFF0(&theNetwork, &data_00440E70, func_002B9E20, "ClimbOK");
+    func_00620BD8();
+    func_00620C60(&mNames, &mNames.m_0, 2, 1);
+    func_00620C60(&mNames, &mNames.m_2, 1, 1);
+    func_00620C60(&mNames, &mNames.m_3, 1, 1);
+    func_00620C60(&mNames, &mNames.m_4, 1, 1);
+    func_00620C60(&mNames, &mNames.m_5, 1, 1);
+    func_0030CFF0(&theNetwork, &data_00440E78, func_002B9B20, "Names");
+    func_00620BD8();
+    func_00620C60(&mVoter, &mVoter.m_0, 2, 1);
+    func_00620C60(&mVoter, &mVoter.m_2, 1, 1);
+    func_0030CFF0(&theNetwork, &data_00440E80, func_002BA040, "Voter");
+    func_00620BD8();
+    func_00620C60(&mSpecVote, &mSpecVote.m_0, 2, 1);
+    func_00620C60(&mSpecVote, &mSpecVote.m_2, 1, 1);
+    func_0030CFF0(&theNetwork, &data_00440E88, (int (*)(int, int, int, void *))func_002B9BD0, "Spec Vote");
+    func_00620BD8();
+    func_00620C60(&mTeamSwitch, &mTeamSwitch.m_0, 4, 1);
+    func_0030CFF0(&theNetwork, &data_00440E98, TeamSwitchPacketHandler, "Team Switch");
+    func_00620BD8();
+    func_00620C60(&mAllSwitch, &mAllSwitch.m_0, 4, 1);
+    func_0030CFF0(&theNetwork, &data_00440EA0, func_002BADC0, "All Switch");
+    func_00620BD8();
+    func_00620C60(&mBomb, &mBomb.m_0, 4, 1);
+    func_00620C60(&mBomb, &mBomb.m_4, 4, 1);
+    func_00620C60(&mBomb, &mBomb.m_8, 4, 1);
+    func_00620C60(&mBomb, &mBomb.m_c, 2, 1);
+    func_00620C60(&mBomb, &mBomb.m_e, 1, 1);
+    func_0030CFF0(&theNetwork, &data_00440EA8, BombStatePacketHandler, "Bomb");
+    func_00620BD8();
+    func_00620C60(&mAlert, &mAlert.m_0, 4, 1);
+    func_00620C60(&mAlert, &mAlert.m_4, 4, 1);
+    func_00620C60(&mAlert, &mAlert.m_8, 4, 1);
+    func_0030CFF0(&theNetwork, &data_00440EB8, func_002B98B0, "Alert");
+    func_00620BD8();
+    func_00620C60(&mGameSignal, &mGameSignal.m_c, 1, 1);
+    func_00620C60(&mGameSignal, &mGameSignal.m_d, 1, 1);
+    func_00620C60(&mGameSignal, &mGameSignal.m_e, 1, 1);
+    func_00620C60(&mGameSignal, &mGameSignal.m_f, 1, 1);
+    func_00620C60(&mGameSignal, &mGameSignal.m_8, 4, 1);
+    func_00620C60(&mGameSignal, &mGameSignal.m_0[0], 1, 5);
+    func_0030CFF0(&theNetwork, &data_00440EB0, func_002B9150, "Game Signal");
+    func_00310210(data_0045B718);
 }
 
 /* the DME's set up: no session master yet, every client's word cleared, the connect and

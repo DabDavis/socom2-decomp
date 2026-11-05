@@ -6,6 +6,7 @@
  * reverse of their image order (-inline deferred). */
 
 #include "zseal.h"
+#define SEAL_DIPOOL_REQUESTS
 #include "seal_dipool.h"
 
 #include <iostream>
@@ -373,6 +374,22 @@ struct CSensorCone {
             return true;
         return false;
     }
+    /* the same with the depth worked out in a local and stored once (_GetTargetPerception's: the
+     * caller then reads the stored depth again) */
+    bool Contains(const CPnt3D *p)
+    {
+        p->Sub(&m_cone_pos, &vec);
+        float dot = m_cone_dir.x * vec.x + m_cone_dir.y * vec.y + m_cone_dir.z * vec.z;
+
+        m_dot = dot;
+        if (dot <= 0.0f || dot > m_height)
+            return false;
+        float r = m_point_radius + dot * m_inv_height * m_radius;
+
+        if (vec.z * vec.z + (vec.x * vec.x + vec.y * vec.y) - dot * dot <= r * r)
+            return true;
+        return false;
+    }
 };
 
 /* (SOCOM 1's CAiDecay, its value read through an inline: the cone's products load it before the
@@ -393,6 +410,191 @@ struct CSensorConeCtrl {
     CSensorCone m_view_cone;   // 0x70
     CSensorDecay m_visrange;   // 0xa8
 };
+
+/* the AI dozing (SOCOM 1's m_snoozing, bit 9), and neither dozing nor asleep (the names ours) */
+static inline bool IsSnoozing(const CSealCtrlAi *ai)
+{
+    return ai->m_aibit9;
+}
+
+static inline bool IsAwake(const CSealCtrlAi *ai)
+{
+    return !IsSnoozing(ai) && !ai->IsSleeping();
+}
+
+/* the doze bits as bools (seal_ai.cpp's SetSnoozing reads them so: `? true : false`, sltu) */
+static inline bool Snoozing(const CSealCtrlAi *ai)
+{
+    return ai->m_aibit9 ? true : false;
+}
+
+static inline bool NoSnooze(const CSealCtrlAi *ai)
+{
+    return ai->m_nosnooze ? true : false;
+}
+
+/* neither dozing nor asleep, the either-or materialised and negated (an inline, the name ours) */
+static inline bool NotDozing(const CSealCtrlAi *ai)
+{
+    bool r = Snoozing(ai);
+
+    if (!r)
+        r = ai->IsSleeping();
+    return r == false;
+}
+
+/* the world's camera and its far plane (zdb::CWorld holds it at 0x128, the plane at 0xEC:
+ * seal_control.cpp's view) */
+struct CSensorCamera {
+    unsigned char _0[0xec];
+    float m_far;   // 0xec
+};
+
+struct CSensorWorld {
+    unsigned char _0[0x128];
+    CSensorCamera *m_camera;   // 0x128
+};
+
+/* a turret's flag word (zveh.h's CTurret::m_flags at 0x3A4; only that) and its bits 1 and 4 (inlines,
+ * the names ours) */
+struct CSensorTurret {
+    bool Bit2() const { return m_flags & 2; }
+    bool Bit10() const { return m_flags & 0x10; }
+
+    unsigned char _0[0x3a4];
+    unsigned int m_flags;   // 0x3a4
+};
+
+/* the entity as a turret, or as a SEAL, if it is one (inlines, the names ours): the kind tested `!=` with
+ * a return in each arm lays out the target's `beq` to the entity's arm after the zero's -- a ternary
+ * (`==` or `!=`, MW turns the one into the other) puts the entity's arm first */
+static inline CSensorTurret *AsSensorTurret(CEntity *e)
+{
+    if (e) {
+        if (e->m_type != CEntity::ENT_TYPE_TURRET)
+            return 0;
+        return (CSensorTurret *)e;
+    }
+    return 0;
+}
+
+static inline CZSealBody *AsSensorSeal(CEntity *e)
+{
+    if (e) {
+        if (e->m_type != CEntity::ENT_TYPE_SEAL)
+            return 0;
+        return (CZSealBody *)e;
+    }
+    return 0;
+}
+
+/* whether an entity is of a kind there is to perceive: a living SEAL; a living turret flagged 2 and
+ * not 0x10; a living kind 4 (a vehicle) by a player only (an inline, the name ours) */
+static inline bool Perceivable(CEntity *e, bool ai)
+{
+    bool r = false;
+
+    if (e && e->m_isAlive) {
+        if (e->m_type == CEntity::ENT_TYPE_SEAL)
+            r = true;
+        else if (e->m_type == CEntity::ENT_TYPE_TURRET) {
+            CSensorTurret *t = AsSensorTurret(e);
+
+            r = t->Bit2();
+            if (r)
+                r = !t->Bit10();
+        }
+        else if (e->m_type == 4)
+            r = !ai;
+    }
+    return r;
+}
+
+/* whether the controller perceives a target: one there is, an enemy unless a player looks, of a kind
+ * there is to perceive (an AI SEAL dozing or asleep is not), within the view range (the camera's
+ * far plane at most); in the view cone, or ahead and moving faster than 50, or -- a Navy SEAL's --
+ * behind and nearer than 100. A target perceived gets a ray from the sensing record's eye (the
+ * sensing entity's head, worked out on first use) to its neck requested of the DI pool (OVL2
+ * 0x5CC120: SOCOM 1's, which kept the speed's square a guarded function-local static and asked no
+ * kind). RequestRay is seal_dipool.h's (the turret's twin's): cut to one level, its get and set-up
+ * are the OVL2 copies 0x5C9830 / 0x5C97D0, byte-exact from here (`ovl-copy:` of OVL1's 0x3A7E30 /
+ * 0x3A7DD0), with the list's push_back 0x5C97A0 and CPnt3D's assignment 0x539E90.
+ * OPEN, 230 instructions, at the target's size (0x4D0), the kit's round 51. Right: the team test on
+ * the masks in place (IsEnemy() materialises its bool), the kinds an if-else chain 2, 3, 4 (a switch
+ * branches `beq` to each case), the two casts' `beq` to the entity's arm after the zero's (the kind
+ * tested `!=` with a return in each arm: a ternary, `==` or `!=`, puts the entity's arm first or
+ * joins it at an inner label), the cone through a named controller local (through the cast MW keeps
+ * `&m_view_cone` in a saved register) with the depth a local stored once (the caller re-reads it),
+ * the two thresholds function-local statics (data 0x6509E8 / 0x6509F0: literals are built with
+ * lui / ori). Left: (1) the registers -- the target numbers this s5, the target s4, the entity s1,
+ * self s0, the result s3, the sighting s2; (2) the casts' join labels are padded here (a nop before
+ * the entity's arm and the join: statement labels inside an inline are aligned, the target's are
+ * not -- an expression-level form with this block order not found); (3) the turret's first bit
+ * lands straight in the result (`sltu a0`) where the target computes it in v0 and narrows it into
+ * a0 in the branch's delay slot; (4) the doze test: the target materialises `snoozing ? 1 :
+ * sleeping` in v0 and negates it with one xori at the join -- a bool local renormalises it (an extra
+ * sltu), `||` sets it with daddiu, `== false` folds into the branch (v_doze*.py: 19 forms; the
+ * SEALs' round-49 0x569E40 note has the same pair); (5) the radius's product order with the depth a
+ * local (`radius * (depth * inv)`; the member form gives the target's) */
+bool CSealCtrl::_GetTargetPerception(CTarget &target)
+{
+    CEntity *ent = target.m_ent;
+    CEntity *self = m_entity;
+    bool perceived = false;
+
+    if (!ent)
+        return false;
+    if (!IsPlayer() && (ent->m_team & self->m_team))
+        return false;
+    if (!Perceivable(ent, IsAi()))
+        return false;
+    CZSealBody *seal = AsSensorSeal(ent);
+
+    if (seal) {
+        CSealCtrlAi *ai = seal->GetSealCtrlAi();
+
+        if (ai && !NotDozing(ai))
+            return false;
+    }
+    float range = m_visrange.m_value * m_visrange.m_value;
+    float dist = target.m_distSq;
+    CSensorCamera *cam = ((CSensorWorld *)zdb::CWorld::m_world)->m_camera;
+
+    if (cam) {
+        float far = cam->m_far * cam->m_far;
+
+        if (far < range)
+            range = far;
+    }
+    if (!(dist <= range))
+        return false;
+    static float fastSq = 2500.0f;
+    static float nearSq = 10000.0f;
+    CPnt3D pos;
+    CSensorConeCtrl *cc = (CSensorConeCtrl *)this;
+
+    ent->GetNeckPosW(&pos);
+    bool seen = cc->m_view_cone.Contains(&pos);
+
+    if (!seen) {
+        if (cc->m_view_cone.m_dot > 0.0f) {
+            if (ent->m_velW.x * ent->m_velW.x + ent->m_velW.z * ent->m_velW.z > fastSq)
+                seen = true;
+        } else if (dist < nearSq && GetSealCtrlAi() && GetSealCtrlAi()->IsNavySeal())
+            seen = true;
+    }
+    if (seen) {
+        zdb::CNode *node = ent->GetNode();
+
+        if (!_sensing.m_eye_valid) {
+            _sensing.m_entity->GetHeadPosW(&_sensing.m_eye);
+            _sensing.m_eye_valid = true;
+        }
+        RequestRay(target.m_unk28, _sensing.m_eye, pos, self, node, ent);
+        perceived = true;
+    }
+    return perceived;
+}
 
 /* the snoozer's counts (SOCOM 1's CSealCtrlAi statics aiActiveCount, aiSleepingCount and
  * aiSnoozingCount -- its $gp words at -28316/-28312/-28308, cleared at its pre-tick's end as here;
@@ -494,28 +696,6 @@ struct CSnoozeZone {
     float m_radius_sq;   // 0x14
     CPnt3D m_center;   // 0x18
 };
-
-/* the AI dozing (SOCOM 1's m_snoozing, bit 9), and neither dozing nor asleep (the names ours) */
-static inline bool IsSnoozing(const CSealCtrlAi *ai)
-{
-    return ai->m_aibit9;
-}
-
-static inline bool IsAwake(const CSealCtrlAi *ai)
-{
-    return !IsSnoozing(ai) && !ai->IsSleeping();
-}
-
-/* the doze bits as bools (seal_ai.cpp's SetSnoozing reads them so: `? true : false`, sltu) */
-static inline bool Snoozing(const CSealCtrlAi *ai)
-{
-    return ai->m_aibit9 ? true : false;
-}
-
-static inline bool NoSnooze(const CSealCtrlAi *ai)
-{
-    return ai->m_nosnooze ? true : false;
-}
 
 /* the XZ distance squared from a point (the name ours) */
 static inline float DistSqXZ(const CPnt3D *a, const CPnt3D *b)

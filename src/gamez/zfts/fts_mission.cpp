@@ -108,7 +108,7 @@ public:
         m_clock_running = 1;
         Initialize();
     }
-    void Initialize();
+    bool Initialize();
     float UnInitialize();   /* (no value returned: see the definition) */
     bool TenSecondLaunch(bool launch);
     unsigned int DecrementRoundClockSec(int sec);
@@ -123,49 +123,73 @@ public:
     bool LateJoiner(bool late);
     void ResetScores();
 
-    unsigned char _0[0xc];
-    CValve *m_pE3RoundValve;   // 0xc
+    /* the valves (Initialize's: SOCOM 1's DWARF names those it has, SOCOM II's mp_max_round_time
+     * inserted at 0x8 moving the rest by 4) */
+    CValve *m_pMaxRoundCountValve;   // 0x0: mp_max_rounds (SOCOM 1's)
+    CValve *m_pHalfRoundCountValve;   // 0x4: mp_half_rounds (SOCOM 1's)
+    CValve *m_8;   // 0x8: mp_max_round_time (SOCOM II's)
+    CValve *m_pE3RoundValve;   // 0xc: mp_round_count (SOCOM 1's m_pRoundCountValve at 0x8)
     CValve *m_pGameOverValve;   // 0x10 (SOCOM 1's at 0xc)
-    int m_14;   // 0x14 (SOCOM 1's at 0x10)
-    int m_18;   // 0x18 (SOCOM 1's at 0x14)
-    int m_1c;   // 0x1c (SOCOM 1's at 0x18)
+    CValve *m_14;   // 0x14: player_team (SOCOM 1's m_pPlayerTeamValve at 0x10)
+    CValve *m_18;   // 0x18: mp_bomb (SOCOM 1's m_pBombStatusValve at 0x14)
+    CValve *m_1c;   // 0x1c: bomb_owner (SOCOM 1's m_pBombOwnerValve at 0x18)
     CValve *m_pMyMajorGameStateValve;   // 0x20 (SOCOM 1's at 0x1c)
     CValve *m_pMyMinorGameStateValve;   // 0x24 (SOCOM 1's at 0x20)
-    int m_28;   // 0x28 (SOCOM 1's at 0x24)
+    CValve *m_28;   // 0x28: mp_join_game (SOCOM 1's m_pJoinGameValve at 0x24)
     CValve *m_pLateJoinerValve;   // 0x2c (SOCOM 1's at 0x28)
-    unsigned char _30[0x34 - 0x30];
-    CValve *m_pLaunchSecondsValve;   // 0x34 (SOCOM 1's at 0x30)
-    unsigned char _38[0x40 - 0x38];
-    int m_40;   // 0x40 (SOCOM 1's at 0x3c)
-    unsigned char _44[0x4c - 0x44];
-    int m_4c;   // 0x4c (SOCOM 1's at 0x48)
-    unsigned char _50[0x74 - 0x50];
+    CValve *m_p45SecondClockValve;   // 0x30: mp_45_sec_clock (SOCOM 1's at 0x2c)
+    CValve *m_pLaunchSecondsValve;   // 0x34: mp_x_sec_clock (SOCOM 1's m_pXSecondClockValve at 0x30)
+    CValve *m_38;   // 0x38: mp_hostages_by_seals (SOCOM 1's m_pHostagesKilledBySealsValve at 0x34)
+    CValve *m_3c;   // 0x3c: mp_hostages_by_turds (SOCOM 1's m_pHostagesKilledByTurdsValve at 0x38)
+    CValve *m_40;   // 0x40: mp_penalty (SOCOM 1's m_pPenaltyValve at 0x3c)
+    CValve *m_pPlayerJoinCountValve;   // 0x44 (SOCOM 1's at 0x40)
+    CValve *m_pPlayerReadyCountValve;   // 0x48 (SOCOM 1's at 0x44)
+    CValve *m_4c;   // 0x4c: mp_persistent (SOCOM 1's m_pMPPersistentValve at 0x48)
+    CValve *m_pMPProgTimer1Valve;   // 0x50 (SOCOM 1's at 0x4c)
+    CValve *m_54;   // 0x54: mp_team_unbalance (0x54-0x70 SOCOM II's)
+    CValve *m_58;   // 0x58: aiteam_00
+    CValve *m_5c;   // 0x5c: aiteam_08
+    CValve *m_60;   // 0x60: mp_teams_too_big
+    CValve *m_64;   // 0x64: mp_allow_respawn
+    CValve *m_68;   // 0x68: mp_spectator
+    CValve *m_6c;   // 0x6c: skip_effects
+    CValve *m_70;   // 0x70: total_mp_kills
     CValve *m_74;   // 0x74: SOCOM II's (OnMissionStart clears it and the word at 0x7c; the names ours)
     CValve *m_78;   // 0x78: and this with the word at 0x80
     int m_7c;   // 0x7c
     int m_80;   // 0x80
-    int m_84[5];   // 0x84 (SOCOM 1's at 0x50)
+    /* the lists' UI variables BSEALLISTVAR, BTERRLISTVAR, BSPECLISTVAR, BNONELISTVAR and BCHATLISTVAR
+     * (SOCOM 1's four m_uiv_*List at 0x50; the spectators' SOCOM II's) */
+    CUIVariable *m_84[5];   // 0x84
     PNT2D m_static_radio;   // 0x98: the radio's place on the HUD (Init reads hud.rdr's; the names ours)
     PNT2D m_dynamic_radio;   // 0xa0
-    unsigned char _a8[0xbc - 0xa8];
+    unsigned char m_a8;   // 0xa8: SOCOM II's
+    unsigned char _a9[0xb0 - 0xa9];
+    int m_game_object_index;   // 0xb0 (SOCOM 1's at 0x74)
+    unsigned char _b4[0xbc - 0xb4];
     int m_bc;   // 0xbc (SOCOM 1's at 0x80)
     int m_c0;   // 0xc0 (SOCOM 1's at 0x84)
-    unsigned char _c4[0xc8 - 0xc4];
+    int m_c4;   // 0xc4 (SOCOM 1's m_gate_clock at 0x88)
     int m_c8;   // 0xc8 (SOCOM 1's at 0x8c)
     bool m_late_joiner;   // 0xcc (SOCOM 1's at 0x94)
     unsigned char _cd;
     unsigned char m_ce;   // 0xce (SOCOM 1's at 0x96)
     unsigned char m_cf;   // 0xcf (SOCOM 1's at 0x97)
-    unsigned char _d0[0xd4 - 0xd0];
+    unsigned char m_d0;   // 0xd0 (SOCOM 1's m_bdown at 0x98)
+    unsigned char m_d1;   // 0xd1 (SOCOM 1's m_ghost_ok at 0x99)
+    unsigned char _d2[0xd4 - 0xd2];
     unsigned char m_d4;   // 0xd4 (SOCOM 1's at 0x9b)
     unsigned char m_d5;   // 0xd5 (SOCOM 1's at 0x9c)
     unsigned char m_d6;   // 0xd6 (SOCOM 1's at 0x9d)
-    unsigned char _d7;
+    unsigned char m_d7;   // 0xd7 (SOCOM 1's m_bomb_owned at 0x9e)
     bool m_ten_second_launch;   // 0xd8 (SOCOM 1's at 0x9f)
     unsigned char m_d9;   // 0xd9: SOCOM II's
-    unsigned char _da[0xdc - 0xda];
+    unsigned char m_da;   // 0xda: SOCOM II's
+    unsigned char _db;
     bool m_respawn;   // 0xdc: respawning on (with the valve "Respawn")
-    unsigned char _dd[0xe0 - 0xdd];
+    unsigned char m_dd;   // 0xdd: SOCOM II's
+    unsigned char m_de;   // 0xde: SOCOM II's
+    unsigned char _df;
     unsigned int m_max_game_time;   // 0xe0: the round's clock in milliseconds (SOCOM 1's m_clock.m_max_game_time, at 0xa0)
     int m_launch_time;   // 0xe4 (SOCOM 1's at 0xa8)
     unsigned int m_time_in_round;   // 0xe8 (SOCOM 1's m_clock.m_time_in_round, at 0xac)
@@ -184,7 +208,8 @@ public:
     MP_MAJOR_GAME_STATE m_mp_major_game_state;   // 0x113 (SOCOM 1's at 0xdb)
     MP_MAJOR_GAME_STATE m_my_major_game_state;   // 0x114 (SOCOM 1's at 0xdc)
     MP_MINOR_GAME_STATE m_my_minor_game_state;   // 0x115 (SOCOM 1's at 0xdd)
-    unsigned char _116[0x11c - 0x116];
+    unsigned char _116[0x118 - 0x116];
+    float m_pos_smooth;   // 0x118 (SOCOM 1's at 0xe0: 50 at the start)
     int m_e3_round_count;   // 0x11c
     int m_120;   // 0x120
     int m_124;   // 0x124
@@ -194,9 +219,16 @@ public:
 
 /* the network (only its session-master flag and its clock; theNetwork at 0x45A0C0, fts_remote.cpp's
  * head says why) */
+/* a network object as CZNetwork's table hands it out (only its kind's letter) */
+struct NetObject {
+    unsigned char _0[0xd];
+    char m_d;   // 0xd: 'T' a turret's taken
+};
+
 class CZNetwork {
 public:
     int zNetGetTime();
+    NetObject *zNetGetObject(int index);   /* 0x30D630 */
 
     unsigned char m_bSessionMaster;   // 0x0
     unsigned char m_bNetwork;   // 0x1: a network game (SOCOM 1's at 0x9): no fade to the mission's end then
@@ -428,7 +460,17 @@ public:
     unsigned char _0[0x150];
 };
 
-class CVehicleRdr;
+class CVehicleRdrEntry;
+
+/* the vehicle definitions (zchar's CVehicleRdr: a vector<CVehicleRdrEntry>, 12 bytes; only what the
+ * mission calls) */
+class CVehicleRdr {
+public:
+    CVehicleRdr();   /* OVL2 0x533A40 */
+    CVehicleRdrEntry *GetEntryByName(const char *name) const;
+
+    unsigned char _0[12];
+};
 
 /* the single-player career's stats (theMission's two, at 0x191C and 0x1950: CMission() clears both
  * through the constructor -- Clear's stores, m_kills before m_18, twice; SOCOM II's, the names ours) */
@@ -506,7 +548,7 @@ public:
     void CloseVehicleRdr();   /* 0x2B3430 */
     void OpenVehicleRdr();   /* 0x2B3470 */
     void PreOpen(const char *database);   /* 0x2ACC10 */
-    void Read(_zrdr *rdr);   /* 0x2AAB20 */
+    bool Read(_zrdr *rdr);   /* 0x2AAB20 */
     void RefreshTeamValves();   /* 0x2B23A0 */
     bool LoadVehicles();   /* 0x2B2E50 (fts_player.cpp's) */
     void CreateCompassNavPoints();
@@ -545,14 +587,14 @@ public:
 
     MISSION_STATE m_state;   // 0x18 (SOCOM 1's; the save module's base ahead)
     char *m_database;   // 0x1c (SOCOM 1's)
-    unsigned char m_20;   // 0x20: SOCOM II's, Close clears it last (the name ours)
-    unsigned char _21[0x60 - 0x21];
-    char m_db_string[0x80];   // 0x60 (SOCOM 1's at 0x20)
+    char m_20[0x40];   // 0x20: Read's Tcm NODEACTION_ROOTNAME (SOCOM II's); Close clears it last
+    char m_db_string[0x40];   // 0x60 (SOCOM 1's at 0x20)
+    char m_description[0x40];   // 0xa0: Read's "description" (SOCOM II's)
     float m_timer;   // 0xe0: the mission's time in seconds, cleared by Open and before the second unload (SOCOM 1's float at 0x60)
     float m_delay;   // 0xe4 (SOCOM 1's at 0x64; OnMissionStart sets it -1)
     float m_e8;   // 0xe8: the mission's own clock, in seconds (SOCOM 1's m_winlosstimer at 0x68; the name ours)
     float m_winlossinc;   // 0xec (SOCOM 1's at 0x6c: the constructor sets both -1)
-    unsigned char _f0[0xf4 - 0xf0];
+    float m_goal_completion_time;   // 0xf0: Read's, in seconds (-1 for none; SOCOM II's)
     float m_elevation_max;   // 0xf4: Read's "elevation" max (127 by default; SOCOM II's, the names ours)
     float m_elevation_min;   // 0xf8: its min (-127)
     unsigned char m_DelayEndMission : 1;   // 0xfc (SOCOM 1's bytes at 0x70, 0x71)
@@ -574,7 +616,12 @@ public:
     float m_init_aim_pitch;   // 0x188: Read's "init_aim_pitch" (SOCOM II's)
     float m_seefarther_binocs;   // 0x18c (SOCOM 1's at 0xd8)
     float m_seefarther_weapzoom;   // 0x190 (SOCOM 1's at 0xdc)
-    unsigned char _194[0x1a4 - 0x194];
+    unsigned char m_194;   // 0x194: a primary weapon override read (SOCOM II's, the names ours)
+    unsigned char _195[0x198 - 0x195];
+    int m_198;   // 0x198: Read's weapon_overrides primary
+    unsigned char m_19c;   // 0x19c: a secondary weapon override read
+    unsigned char _19d[0x1a0 - 0x19d];
+    int m_1a0;   // 0x1a0: its secondary
     CValve *m_valve_complete;   // 0x1a4 (SOCOM 1's at 0xe0)
     CValve *m_valve_failure;   // 0x1a8
     CValve *m_valve_abort;   // 0x1ac
@@ -611,7 +658,9 @@ public:
     zdb::CNode *m_sealbombshack;   // 0x18ec (SOCOM 1's at 0x658)
     zdb::CNode *m_terroristbombshack;   // 0x18f0 (SOCOM 1's at 0x65c)
     unsigned char m_e3_team;   // 0x18f4 (SOCOM 1's E3_TEAMS_ENUM at 0x660, a byte)
-    unsigned char _18f5[0x1910 - 0x18f5];
+    unsigned char _18f5[0x18f8 - 0x18f5];
+    CPnt3D m_ffc_min;   // 0x18f8: Read's Free_Fly_Camera_Extents Min (-1 each by default; SOCOM II's)
+    CPnt3D m_ffc_max;   // 0x1904: its Max (1 each)
     CCamPath m_campath;   // 0x1910: SOCOM II's camera path (the name ours)
     CCareerStats m_careerstats0;   // 0x191c (SOCOM II's; the names ours)
     CCareerStats m_careerstats;   // 0x1950: the UI's CLEAR_CAREER_STATS and SET_CAREER_STATS_UI_VARS ones
@@ -811,6 +860,7 @@ class CSealCtrlAi;
 class CSealCtrl {
 public:
     void StopRumbler();   /* OVL2 0x592AC0 */
+    static unsigned char GetCommandId(const char *name);   /* OVL2 0x58E0A0 (a byte: Read narrows it) */
     virtual ~CSealCtrl();   /* +0x08 (zentity.h's CEntityCtrl's, then zseal.h's CSealCtrl's) */
     virtual void _slot0c();
     virtual void _slot10();
@@ -821,7 +871,7 @@ public:
     virtual void _slot24();
     virtual void _slot28();
     virtual void _slot2c();
-    virtual void _slot30();
+    virtual bool IsPlayer();   /* +0x30 (fts_remote.cpp's) */
     virtual void _slot34();
     virtual CSealCtrlAi *GetSealCtrlAi();   /* +0x38 */
 
@@ -897,6 +947,12 @@ extern float data_003DE610;   /* (the danger of a SEAL near) */
 inline CZSealBody *AsSeal(CEntity *e)
 {
     return e && e->m_type == CEntity::ENT_TYPE_SEAL ? (CZSealBody *)e : 0;
+}
+
+/* whether a SEAL is a player's (its controller asked; fts_remote.cpp's) */
+inline bool IsPlayerSeal(CZSealBody *seal)
+{
+    return seal->GetSealCtrl() ? seal->GetSealCtrl()->IsPlayer() : false;
 }
 
 inline bool IsAwake(CSealCtrlAi *ai)
@@ -1140,6 +1196,8 @@ public:
     bool push(const char *tag);   /* 0x3339B0 */
     bool pop();   /* 0x333770 */
     bool addstringnode(const char *s);   /* 0x333610 */
+    bool addint(const char *tag, int i);   /* 0x3334F0 */
+    bool addSTRING(const char *tag, const char *s);   /* 0x3333F0 */
 
     unsigned char _8[0x4c - 0x8];
 };
@@ -2165,7 +2223,6 @@ bool func_00259240();
 void func_00259230(bool on);
 void *func_003102E0(void *p);
 void func_002CE8E0();
-void *func_00533A40(void *p);   /* CVehicleRdr's constructor */
 void func_005E30F0(int);
 void func_0058CC30();
 void func_002B7530();
@@ -2298,11 +2355,7 @@ bool CMission::Init()
     Particle::Init();
     theTCM.Init();
     SealInitCharacterDynamics();
-    void *rdr = operator new(12);
-
-    if (rdr)
-        rdr = func_00533A40(rdr);
-    m_vehicle_rdr = (CVehicleRdr *)rdr;
+    m_vehicle_rdr = new CVehicleRdr;
     func_005E30F0(0);
     func_0058CC30();
     CCharacterType::Open("character.rdr");
@@ -2484,7 +2537,7 @@ CMission::CMission()
     m_winlossinc = -1.0f;
     m_e8 = -1.0f;
     m_e3_team = 0;
-    m_20 = 0;
+    m_20[0] = 0;
     m_vehicle_rdr = 0;
     m_183c = "ui/assetlib/junk_name";
     memset(m_team_valves, 0, sizeof(m_team_valves));
@@ -2649,6 +2702,7 @@ bool CMission::Open(const char *name)
 class CZBombState {
 public:
     static void UninitBomb();   /* 0x2C1970 */
+    static void InitBomb();   /* 0x2C1A80 */
 };
 
 class CZGameState {
@@ -2864,6 +2918,240 @@ bool CMission::ReOpen_Load()
     if (!theNetwork.m_bNetwork)
         m_e8 = -1.0f;
     return true;
+}
+
+/* the mission saved (slot 3 of CMission's vtable; SOCOM 1's Serialize, grown): the state, the
+ * database, the career's valves (GameComplete's under the tag "difficulty"), the career's stats under
+ * CAREER_STATS and the bonus objectives' valves under BONUS_OBJECTIVES, as the module's rdr
+ * "MissionData" (OVL1 0x2A6340; the editor passed as the CRdrFile it derives from, through _zrdr
+ * here) */
+void CMission::Serialize(int flags)
+{
+    CRdrEditor ed;
+
+    ed.push(0);
+    ed.addint("state", m_state);
+    ed.addSTRING("database", GetDatabase());
+    ed.addint("difficulty", CValve::Create("GameComplete", (VALVE_TYPE)1)->m_value);
+    ed.addint("incr_miss_51", CValve::Create("incr_miss_51", (VALVE_TYPE)1)->m_value);
+    ed.addint("incr_miss_52", CValve::Create("incr_miss_52", (VALVE_TYPE)1)->m_value);
+    ed.addint("incr_miss_53", CValve::Create("incr_miss_53", (VALVE_TYPE)1)->m_value);
+    ed.addint("incr_miss_61", CValve::Create("incr_miss_61", (VALVE_TYPE)1)->m_value);
+    ed.addint("incr_miss_62", CValve::Create("incr_miss_62", (VALVE_TYPE)1)->m_value);
+    ed.addint("incr_miss_63", CValve::Create("incr_miss_63", (VALVE_TYPE)1)->m_value);
+    ed.addint("incr_miss_71", CValve::Create("incr_miss_71", (VALVE_TYPE)1)->m_value);
+    ed.addint("incr_miss_72", CValve::Create("incr_miss_72", (VALVE_TYPE)1)->m_value);
+    ed.addint("incr_miss_73", CValve::Create("incr_miss_73", (VALVE_TYPE)1)->m_value);
+    ed.addint("incr_miss_81", CValve::Create("incr_miss_81", (VALVE_TYPE)1)->m_value);
+    ed.addint("incr_miss_82", CValve::Create("incr_miss_82", (VALVE_TYPE)1)->m_value);
+    ed.addint("incr_miss_83", CValve::Create("incr_miss_83", (VALVE_TYPE)1)->m_value);
+    ed.addint("ForGameCompleteScreen", CValve::Create("ForGameCompleteScreen", (VALVE_TYPE)1)->m_value);
+    ed.addint("ai_difficulty", CValve::Create("ai_difficulty", (VALVE_TYPE)1)->m_value);
+    ed.addint("ChoseRank", CValve::Create("ChoseRank", (VALVE_TYPE)1)->m_value);
+    ed.addint("ChosenLevel", CValve::Create("ChosenLevel", (VALVE_TYPE)1)->m_value);
+    ed.addstringnode("CAREER_STATS");
+    ed.push(0);
+    ed.addint("MissionsPlayed", m_careerstats.m_0);
+    ed.addint("AveragePlayerAccuracy", m_careerstats.m_4);
+    ed.addint("AverageTeamAccuracy", m_careerstats.m_8);
+    ed.addint("AverageStealth", m_careerstats.m_c);
+    ed.addint("AverageTeamwork", m_careerstats.m_10);
+    ed.addint("AverageObjective", m_careerstats.m_14);
+    ed.addint("EnemyKills", m_careerstats.m_kills);
+    ed.addint("EnemyCaptures", m_careerstats.m_18);
+    ed.addint("FriendlyKills", m_careerstats.m_20);
+    ed.addint("StealthKills", m_careerstats.m_24);
+    ed.addint("CQBKills", m_careerstats.m_28);
+    ed.addint("ShotsFired", m_careerstats.m_2c);
+    ed.addint("HeadShots", m_careerstats.m_30);
+    ed.pop();
+    ed.addstringnode("BONUS_OBJECTIVES");
+    ed.push(0);
+    ed.addint("OP51_Rugova", CValve::Create("OP51_Rugova", (VALVE_TYPE)1)->m_value);
+    ed.addint("OP51_Delivery", CValve::Create("OP51_Delivery", (VALVE_TYPE)1)->m_value);
+    ed.addint("OP52_Capture", CValve::Create("OP52_Capture", (VALVE_TYPE)1)->m_value);
+    ed.addint("OP61_Map", CValve::Create("OP61_Map", (VALVE_TYPE)1)->m_value);
+    ed.addint("OP62_Bombs", CValve::Create("OP62_Bombs", (VALVE_TYPE)1)->m_value);
+    ed.addint("OP63_Stealth", CValve::Create("OP63_Stealth", (VALVE_TYPE)1)->m_value);
+    ed.addint("OP71_Tank", CValve::Create("OP71_Tank", (VALVE_TYPE)1)->m_value);
+    ed.addint("OP72_Snipers", CValve::Create("OP72_Snipers", (VALVE_TYPE)1)->m_value);
+    ed.addint("OP81_Map", CValve::Create("OP81_Map", (VALVE_TYPE)1)->m_value);
+    ed.addint("OP81_Blueprints", CValve::Create("OP81_Blueprints", (VALVE_TYPE)1)->m_value);
+    ed.addint("OP81_Nautical", CValve::Create("OP81_Nautical", (VALVE_TYPE)1)->m_value);
+    ed.addint("OP82_Freighter", CValve::Create("OP82_Freighter", (VALVE_TYPE)1)->m_value);
+    ed.addint("OP82_Blueprints", CValve::Create("OP82_Blueprints", (VALVE_TYPE)1)->m_value);
+    ed.pop();
+    ed.pop();
+    SaveRdr("MissionData", (CRdrFile *)&ed);
+}
+
+extern "C" int atoi(const char *s);
+void SetDatabase(const char *name);   /* 0x27F810 */
+
+/* the mission loaded from its save (slot 4 of CMission's vtable, CSaveModule's UnSerialize(const
+ * char *, CRdrFile *, int); SOCOM 1's, grown): the state; with a database, the database set and its
+ * mission number the valve CurrentMission, the career's valves, the career's stats (cleared when the
+ * save has none) and the bonus objectives' valves, then the mission's rdr read ahead of Open
+ * (OVL1 0x2A54E0). `SetValveValue(CValve::Create(...), value)` reads the address-taken value into a
+ * saved register BEFORE the call (an inline's arguments are evaluated right to left); the target
+ * reads CurrentMission's after it, which a named valve local gives */
+void CMission::UnSerialize(const char *name, CRdrFile *file, int flags)
+{
+    zrdr_findint((_zrdr *)file, "state", (int *)&m_state, 1);
+    const char *db = zrdr_findstring((_zrdr *)file, "database");
+
+    if (db) {
+        int value;
+
+        SetDatabase(db);
+        value = atoi(db + 1);
+        CValve *valve = CValve::Create("CurrentMission", (VALVE_TYPE)1);
+
+        SetValveValue(valve, value);
+        value = 0;
+        zrdr_findint((_zrdr *)file, "difficulty", &value, 1);
+        SetValveValue(CValve::Create("GameComplete", (VALVE_TYPE)1), value);
+        value = 0;
+        zrdr_findint((_zrdr *)file, "incr_miss_51", &value, 1);
+        SetValveValue(CValve::Create("incr_miss_51", (VALVE_TYPE)1), value);
+        value = 0;
+        zrdr_findint((_zrdr *)file, "incr_miss_52", &value, 1);
+        SetValveValue(CValve::Create("incr_miss_52", (VALVE_TYPE)1), value);
+        value = 0;
+        zrdr_findint((_zrdr *)file, "incr_miss_53", &value, 1);
+        SetValveValue(CValve::Create("incr_miss_53", (VALVE_TYPE)1), value);
+        value = 0;
+        zrdr_findint((_zrdr *)file, "incr_miss_61", &value, 1);
+        SetValveValue(CValve::Create("incr_miss_61", (VALVE_TYPE)1), value);
+        value = 0;
+        zrdr_findint((_zrdr *)file, "incr_miss_62", &value, 1);
+        SetValveValue(CValve::Create("incr_miss_62", (VALVE_TYPE)1), value);
+        value = 0;
+        zrdr_findint((_zrdr *)file, "incr_miss_63", &value, 1);
+        SetValveValue(CValve::Create("incr_miss_63", (VALVE_TYPE)1), value);
+        value = 0;
+        zrdr_findint((_zrdr *)file, "incr_miss_71", &value, 1);
+        SetValveValue(CValve::Create("incr_miss_71", (VALVE_TYPE)1), value);
+        value = 0;
+        zrdr_findint((_zrdr *)file, "incr_miss_72", &value, 1);
+        SetValveValue(CValve::Create("incr_miss_72", (VALVE_TYPE)1), value);
+        value = 0;
+        zrdr_findint((_zrdr *)file, "incr_miss_73", &value, 1);
+        SetValveValue(CValve::Create("incr_miss_73", (VALVE_TYPE)1), value);
+        value = 0;
+        zrdr_findint((_zrdr *)file, "incr_miss_81", &value, 1);
+        SetValveValue(CValve::Create("incr_miss_81", (VALVE_TYPE)1), value);
+        value = 0;
+        zrdr_findint((_zrdr *)file, "incr_miss_82", &value, 1);
+        SetValveValue(CValve::Create("incr_miss_82", (VALVE_TYPE)1), value);
+        value = 0;
+        zrdr_findint((_zrdr *)file, "incr_miss_83", &value, 1);
+        SetValveValue(CValve::Create("incr_miss_83", (VALVE_TYPE)1), value);
+        value = 0;
+        zrdr_findint((_zrdr *)file, "ForGameCompleteScreen", &value, 1);
+        SetValveValue(CValve::Create("ForGameCompleteScreen", (VALVE_TYPE)1), value);
+        value = 0;
+        zrdr_findint((_zrdr *)file, "ChoseRank", &value, 1);
+        SetValveValue(CValve::Create("ChoseRank", (VALVE_TYPE)1), value);
+        value = 0;
+        zrdr_findint((_zrdr *)file, "ChosenLevel", &value, 1);
+        SetValveValue(CValve::Create("ChosenLevel", (VALVE_TYPE)1), value);
+        value = 0;
+        zrdr_findint((_zrdr *)file, "ai_difficulty", &value, 1);
+        SetValveValue(CValve::Create("ai_difficulty", (VALVE_TYPE)1), value);
+        _zrdr *stats = zrdr_findtag((_zrdr *)file, "CAREER_STATS");
+
+        if (stats) {
+            int stat;
+
+            stat = 0;
+            zrdr_findint(stats, "MissionsPlayed", &stat, 1);
+            m_careerstats.m_0 = stat;
+            stat = 0;
+            zrdr_findint(stats, "AveragePlayerAccuracy", &stat, 1);
+            m_careerstats.m_4 = stat;
+            stat = 0;
+            zrdr_findint(stats, "AverageTeamAccuracy", &stat, 1);
+            m_careerstats.m_8 = stat;
+            stat = 0;
+            zrdr_findint(stats, "AverageStealth", &stat, 1);
+            m_careerstats.m_c = stat;
+            stat = 0;
+            zrdr_findint(stats, "AverageTeamwork", &stat, 1);
+            m_careerstats.m_10 = stat;
+            stat = 0;
+            zrdr_findint(stats, "AverageObjective", &stat, 1);
+            m_careerstats.m_14 = stat;
+            stat = 0;
+            zrdr_findint(stats, "EnemyKills", &stat, 1);
+            m_careerstats.m_kills = stat;
+            stat = 0;
+            zrdr_findint(stats, "EnemyCaptures", &stat, 1);
+            m_careerstats.m_18 = stat;
+            stat = 0;
+            zrdr_findint(stats, "FriendlyKills", &stat, 1);
+            m_careerstats.m_20 = stat;
+            stat = 0;
+            zrdr_findint(stats, "StealthKills", &stat, 1);
+            m_careerstats.m_24 = stat;
+            stat = 0;
+            zrdr_findint(stats, "CQBKills", &stat, 1);
+            m_careerstats.m_28 = stat;
+            stat = 0;
+            zrdr_findint(stats, "ShotsFired", &stat, 1);
+            m_careerstats.m_2c = stat;
+            stat = 0;
+            zrdr_findint(stats, "HeadShots", &stat, 1);
+            m_careerstats.m_30 = stat;
+        } else
+            m_careerstats.Clear();
+        _zrdr *bonus = zrdr_findtag((_zrdr *)file, "BONUS_OBJECTIVES");
+
+        if (bonus) {
+            int done;
+
+            done = 0;
+            zrdr_findint(bonus, "OP51_Rugova", &done, 1);
+            SetValveValue(CValve::Create("OP51_Rugova", (VALVE_TYPE)1), done);
+            done = 0;
+            zrdr_findint(bonus, "OP51_Delivery", &done, 1);
+            SetValveValue(CValve::Create("OP51_Delivery", (VALVE_TYPE)1), done);
+            done = 0;
+            zrdr_findint(bonus, "OP52_Capture", &done, 1);
+            SetValveValue(CValve::Create("OP52_Capture", (VALVE_TYPE)1), done);
+            done = 0;
+            zrdr_findint(bonus, "OP61_Map", &done, 1);
+            SetValveValue(CValve::Create("OP61_Map", (VALVE_TYPE)1), done);
+            done = 0;
+            zrdr_findint(bonus, "OP62_Bombs", &done, 1);
+            SetValveValue(CValve::Create("OP62_Bombs", (VALVE_TYPE)1), done);
+            done = 0;
+            zrdr_findint(bonus, "OP63_Stealth", &done, 1);
+            SetValveValue(CValve::Create("OP63_Stealth", (VALVE_TYPE)1), done);
+            done = 0;
+            zrdr_findint(bonus, "OP71_Tank", &done, 1);
+            SetValveValue(CValve::Create("OP71_Tank", (VALVE_TYPE)1), done);
+            done = 0;
+            zrdr_findint(bonus, "OP72_Snipers", &done, 1);
+            SetValveValue(CValve::Create("OP72_Snipers", (VALVE_TYPE)1), done);
+            done = 0;
+            zrdr_findint(bonus, "OP81_Map", &done, 1);
+            SetValveValue(CValve::Create("OP81_Map", (VALVE_TYPE)1), done);
+            done = 0;
+            zrdr_findint(bonus, "OP81_Blueprints", &done, 1);
+            SetValveValue(CValve::Create("OP81_Blueprints", (VALVE_TYPE)1), done);
+            done = 0;
+            zrdr_findint(bonus, "OP81_Nautical", &done, 1);
+            SetValveValue(CValve::Create("OP81_Nautical", (VALVE_TYPE)1), done);
+            done = 0;
+            zrdr_findint(bonus, "OP82_Freighter", &done, 1);
+            SetValveValue(CValve::Create("OP82_Freighter", (VALVE_TYPE)1), done);
+            done = 0;
+            zrdr_findint(bonus, "OP82_Blueprints", &done, 1);
+            SetValveValue(CValve::Create("OP82_Blueprints", (VALVE_TYPE)1), done);
+        }
+        PreOpen(db);
+    }
 }
 
 const char *zrdr_findstring(const _zrdr *rdr, const char *tag);
@@ -3305,7 +3593,7 @@ void CMission::Close()
     if (CZWeapon::m_pProjectilelist)
         CZWeapon::m_pProjectilelist->Dump();
     theUIVarManager.CollectGarbage();
-    m_20 = 0;
+    m_20[0] = 0;
 }
 
 /* the shortest respawn time Read lets "ai_params" set, and the default (10 in data: a variable, it
@@ -3332,6 +3620,152 @@ void CMission::AI_PARAMS::Reset()
     stealth_noise = 1.0f;
     active_limit = 9;
     nosnooze_limit = 5;
+}
+
+extern "C" {
+extern float data_003DE5F0;   /* (10: the shortest respawn time) */
+}
+
+bool zrdr_findreal(const _zrdr *rdr, const char *tag, float *out, int n);
+bool zrdr_findSTRING(const _zrdr *rdr, const char *tag, const char **out);
+extern "C" char *strcpy(char *dst, const char *src);
+
+/* the mission's rdr read (SOCOM 1's CMission::Read, grown; OVL1 0x2AAB20): the goal's completion
+ * time from its hours, minutes and seconds, the description, the elevation's bounds, the AI's
+ * parameters (the respawn time at least 10, the recycling's from the respawn's, the fireteam's
+ * command by name), the weapon overrides, the node actions' root, the satchel timer, the
+ * see-farther zooms, the free-fly camera's extents and the scenic views (each a camera path point,
+ * its rotation in degrees, the pitch wrapped above 90) */
+/* a camera path point filled: where, which way and its name, cut to the buffer (the name ours;
+ * the name passed by value: read for the copy before the fields and again for the test) */
+inline void SetCamPathPoint(SCamPathPoint *p, const CPnt3D &pos, const CPnt3D &dir, const char *name)
+{
+    p->m_pos = pos;
+    p->m_dir = dir;
+    if (name) {
+        strncpy(p->m_name, name, sizeof(p->m_name));
+        p->m_name[sizeof(p->m_name) - 1] = 0;
+    } else
+        p->m_name[0] = 0;
+}
+
+bool CMission::Read(_zrdr *rdr)
+{
+    float t;
+    float e;
+
+    m_goal_completion_time = -1.0f;
+    _zrdr *goal = zrdr_findtag(rdr, "goal_completion_time");
+
+    if (goal) {
+        if (zrdr_findreal(goal, "hours", &t, 1) && t > 0.0f)
+            m_goal_completion_time += 3600.0f * t;
+        if (zrdr_findreal(goal, "minutes", &t, 1) && t > 0.0f)
+            m_goal_completion_time += 60.0f * t;
+        if (zrdr_findreal(goal, "seconds", &t, 1) && t > 0.0f)
+            m_goal_completion_time += t;
+    }
+    const char *desc = zrdr_findstring(rdr, "description");
+
+    strcpy(m_description, desc ? desc : "MISSION DESCRIPTION : MISSING");
+    _zrdr *elevation = zrdr_findtag(rdr, "elevation");
+
+    if (elevation) {
+        if (zrdr_findreal(elevation, "max", &e, 1))
+            m_elevation_max = e;
+        if (zrdr_findreal(elevation, "min", &e, 1))
+            m_elevation_min = e;
+    }
+    m_ai_params.Reset();
+    m_init_aim_pitch = 0.0f;
+    zrdr_findreal(rdr, "init_aim_pitch", &m_init_aim_pitch, 1);
+    _zrdr *ai = zrdr_findtag(rdr, "ai_params");
+
+    if (ai) {
+        zrdr_findreal(ai, "weather_factor", &m_ai_params.weather_factor, 1);
+        zrdr_findreal(ai, "respawn_time", &m_ai_params.respawn_time, 1);
+        zrdr_findreal(ai, "respawn_fade", &m_ai_params.respawn_fade, 1);
+        if (zrdr_findreal(ai, "respawn_range", &m_ai_params.respawn_range, 1))
+            m_ai_params.respawn_range *= m_ai_params.respawn_range;
+        if (m_ai_params.respawn_time < data_003DE5F0)
+            m_ai_params.respawn_time = data_003DE5F0;
+        zrdr_findreal(ai, "light_scale", &m_ai_params.light_scale, 1);
+        zrdr_findreal(ai, "light_inside", &m_ai_params.light_inside, 1);
+        zrdr_findreal(ai, "shadow_scale", &m_ai_params.shadow_scale, 1);
+        zrdr_findreal(ai, "shadow_inside", &m_ai_params.shadow_inside, 1);
+        zrdr_findreal(ai, "stealth_noise", &m_ai_params.stealth_noise, 1);
+        zrdr_findreal(ai, "ambient_noise", &m_ai_params.ambient_noise, 1);
+        zrdr_findint(ai, "active_limit", (int *)&m_ai_params.active_limit, 1);
+        zrdr_findint(ai, "nosnooze_limit", (int *)&m_ai_params.nosnooze_limit, 1);
+        m_ai_params.recycle_time = m_ai_params.respawn_time;
+        m_ai_params.recycle_range = m_ai_params.respawn_range;
+        const char *command = zrdr_findstring(ai, "fireteam_command");
+
+        if (command) {
+            int id = CSealCtrl::GetCommandId(command);
+
+            if (id)
+                m_ai_params.fireteam_command = id;
+        }
+    }
+    m_19c = 0;
+    m_194 = 0;
+    _zrdr *weapons = zrdr_findtag(rdr, "weapon_overrides");
+
+    if (weapons) {
+        if (zrdr_findint(weapons, "primary", &m_198, 1))
+            m_194 = 1;
+        if (zrdr_findint(weapons, "secondary", &m_1a0, 1))
+            m_19c = 1;
+    }
+    m_20[0] = 0;
+    _zrdr *tcm = zrdr_findtag(rdr, "Tcm");
+
+    if (tcm) {
+        const char *root = zrdr_findstring(tcm, "NODEACTION_ROOTNAME");
+
+        if (root) {
+            strncpy(m_20, root, sizeof(m_20) - 1);
+            m_20[sizeof(m_20) - 1] = 0;
+        }
+    }
+    m_satcheltimer = 10.0f;
+    zrdr_findreal(rdr, "SATCHEL_TIMER", &m_satcheltimer, 1);
+    zrdr_findreal(rdr, "SEEFARTHER_BINOCS", &m_seefarther_binocs, 1);
+    zrdr_findreal(rdr, "SEEFARTHER_WEAPZOOM", &m_seefarther_weapzoom, 1);
+    m_ffc_min.x = m_ffc_min.y = m_ffc_min.z = -1.0f;
+    m_ffc_max.x = m_ffc_max.y = m_ffc_max.z = 1.0f;
+    _zrdr *extents = zrdr_findtag(rdr, "Free_Fly_Camera_Extents");
+
+    if (extents) {
+        zrdr_findreal(extents, "Min", &m_ffc_min.x, 3);
+        zrdr_findreal(extents, "Max", &m_ffc_max.x, 3);
+    }
+    m_campath.clear();
+    _zrdr *views = zrdr_findtag(rdr, "Scenic_Views");
+
+    if (views && views->IsArray()) {
+        for (unsigned int i = 0; i < views->Count(); i++) {
+            _zrdr *view = views->Item(i);
+            CPnt3D pos;
+            CPnt3D rot;
+            const char *name = 0;
+
+            zrdr_findreal(view, "Pos", &pos.x, 3);
+            zrdr_findreal(view, "Rot", &rot.x, 3);
+            zrdr_findSTRING(view, "Desc", &name);
+            if (rot.x > 90.0f)
+                rot.x -= 360.0f;
+            rot.x *= 0.017453292f;
+            rot.y *= 0.017453292f;
+            rot.z *= 0.017453292f;
+            SCamPathPoint point;
+
+            SetCamPathPoint(&point, pos, rot, name);
+            m_campath.push_back(point);
+        }
+    }
+    return true;
 }
 
 /* the point `step` on from `index`, wrapping both ways, read out through at(); the index it lands
@@ -3480,6 +3914,101 @@ unsigned int CZNetGame::DecrementRoundClockSec(int sec)
     return GetMaxGameTimeSec();
 }
 
+/* the online game set up: its state, clock and flags cleared, its lists' UI variables made (the
+ * chat's emptied), the character type's name "0", and its valves made and the most cleared (SOCOM
+ * 1's Initialize, grown; OVL1 0x2A76D0) */
+bool CZNetGame::Initialize()
+{
+    m_f8 = 0;
+    m_100 = 0;
+    m_max_game_time = 0;
+    m_round_clock = 0;
+    m_time_in_round = 0;
+    m_launch_time = 0;
+    m_total_time = 0;
+    m_launch_f4 = 0;
+    m_clock_running = 1;
+    m_mp_major_game_state = MP_MAJOR_UNKNOWN;
+    m_my_minor_game_state = MP_MINOR_UNKNOWN;
+    m_my_major_game_state = MP_MAJOR_UNKNOWN;
+    m_bc = 0;
+    m_c8 = 0;
+    m_c0 = 0;
+    m_c4 = 0;
+    m_112 = 1;
+    m_d5 = 0;
+    m_cf = 0;
+    m_d6 = 0;
+    m_ce = 0;
+    m_ten_second_launch = false;
+    m_110 = 0;
+    m_respawn = false;
+    m_game_object_index = -1;
+    m_d1 = 0;
+    m_pos_smooth = 50.0f;
+    m_d0 = 0;
+    m_d9 = 0;
+    m_da = 0;
+    m_dd = 0;
+    m_de = 0;
+    m_84[0] = theUIVarManager.Add("BSEALLISTVAR", 0, UIVL_PERMANENT);
+    m_84[1] = theUIVarManager.Add("BTERRLISTVAR", 0, UIVL_PERMANENT);
+    m_84[2] = theUIVarManager.Add("BSPECLISTVAR", 0, UIVL_PERMANENT);
+    m_84[3] = theUIVarManager.Add("BNONELISTVAR", 0, UIVL_PERMANENT);
+    m_84[4] = theUIVarManager.Add("BCHATLISTVAR", 0, UIVL_PERMANENT);
+    CRdrEditor ed;
+
+    ed.push(0);
+    ed.pop();
+    m_84[4]->Set(&ed);
+    strncpy(m_12c, "0", sizeof(m_12c));
+    m_12c[sizeof(m_12c) - 1] = 0;
+    m_pMyMajorGameStateValve = CValve::Create("mp_major_game_state", 0, (VALVE_TYPE)1);
+    SetValveValue(m_pMyMajorGameStateValve, 0);
+    m_pMyMinorGameStateValve = CValve::Create("mp_minor_game_state", 0, (VALVE_TYPE)1);
+    SetValveValue(m_pMyMinorGameStateValve, 0);
+    m_28 = CValve::Create("mp_join_game", (VALVE_TYPE)1);
+    m_14 = CValve::Create("player_team", (VALVE_TYPE)1);
+    SetValveValue(m_14, 0);
+    m_pLateJoinerValve = CValve::Create("late_joiner", (VALVE_TYPE)1);
+    SetValveValue(m_pLateJoinerValve, 0);
+    LateJoiner(false);
+    m_p45SecondClockValve = CValve::Create("mp_45_sec_clock", (VALVE_TYPE)1);
+    SetValveValue(m_p45SecondClockValve, 0);
+    m_pLaunchSecondsValve = CValve::Create("mp_x_sec_clock", (VALVE_TYPE)1);
+    m_pMPProgTimer1Valve = CValve::Create("mp_prog_timer1", 30, (VALVE_TYPE)1);
+    m_40 = CValve::Create("mp_penalty", (VALVE_TYPE)1);
+    SetValveValue(m_40, 0);
+    m_pPlayerJoinCountValve = CValve::Create("player_join_count", (VALVE_TYPE)1);
+    SetValveValue(m_pPlayerJoinCountValve, 0);
+    m_pPlayerReadyCountValve = CValve::Create("player_ready_count", (VALVE_TYPE)1);
+    SetValveValue(m_pPlayerReadyCountValve, 0);
+    m_4c = CValve::Create("mp_persistent", (VALVE_TYPE)1);
+    m_18 = CValve::Create("mp_bomb", (VALVE_TYPE)1);
+    SetValveValue(m_18, 1);
+    m_pGameOverValve = CValve::Create("mp_game_over", 0, (VALVE_TYPE)1);
+    SetValveValue(m_pGameOverValve, 0);
+    m_1c = CValve::Create("bomb_owner", (VALVE_TYPE)1);
+    SetValveValue(m_1c, 0);
+    m_pE3RoundValve = CValve::Create("mp_round_count", 0, (VALVE_TYPE)1);
+    SetE3RoundCount(0);
+    m_54 = CValve::Create("mp_team_unbalance", 0, (VALVE_TYPE)1);
+    m_a8 = 0;
+    m_58 = CValve::Create("aiteam_00", 0, (VALVE_TYPE)1);
+    m_5c = CValve::Create("aiteam_08", 0, (VALVE_TYPE)1);
+    m_60 = CValve::Create("mp_teams_too_big", 0, (VALVE_TYPE)1);
+    m_64 = CValve::GetByName("mp_allow_respawn");
+    m_68 = CValve::Create("mp_spectator", 0, (VALVE_TYPE)1);
+    m_6c = CValve::Create("skip_effects", 0, (VALVE_TYPE)1);
+    m_pHalfRoundCountValve = CValve::Create("mp_half_rounds", 0, (VALVE_TYPE)1);
+    m_70 = CValve::Create("total_mp_kills", 0, (VALVE_TYPE)1);
+    m_pMaxRoundCountValve = CValve::GetByName("mp_max_rounds");
+    m_8 = CValve::GetByName("mp_max_round_time");
+    m_74 = CValve::GetByName("seals_team_score");
+    m_78 = CValve::GetByName("terrs_team_score");
+    return true;
+}
+
 /* the online game let go of: its state and clocks cleared, the rounds back to none (OVL1 0x2A75F0,
  * SOCOM 1's UnInitialize ahead of Initialize, the fields moved; DestroyNetGame ends calling it).
  * Declared float and returning nothing: MW 3.0's return of a void (or int) function keeps v0 live
@@ -3590,6 +4119,130 @@ void CZNetGame::ResetScores()
     m_d4 = 0;
 }
 
+/* a bomb game: the game type 1 or 2 (SOCOM II's; OVL1 0x2A72A0, inlined in 0x2A6C50 below) */
+extern "C" bool func_002A72A0(CZNetGame *game)
+{
+    if (game->m_game_type == 1 || game->m_game_type == 2)
+        return true;
+    return false;
+}
+
+/* the entity as a turret, if it is one (fts_remote.cpp's) */
+inline CTurret *AsTurret(CEntity *e)
+{
+    return e && e->m_type == CEntity::ENT_TYPE_TURRET ? (CTurret *)e : 0;
+}
+
+/* the SEALs' network objects (fts_net_seal.cpp's: only the lookup) */
+class CZSealState {
+public:
+    static CZSealBody *GetBodyFromObjectIndex(int index);   /* 0x2BD4D0 */
+};
+
+/* the online lobby (zonline.h's: only its event handler) */
+typedef void (*LobbyEventHandler)(const char *event, const char *arg);
+
+class CZOnlineLobby {
+public:
+    unsigned char _0[0x58];
+    LobbyEventHandler m_event_handler;   // 0x58
+};
+
+extern CZOnlineLobby theLobby;
+
+/* an event told to the menus, when they listen (zonline.h's) */
+inline void LobbyEvent(const char *event, const char *arg)
+{
+    if (theLobby.m_event_handler)
+        theLobby.m_event_handler(event, arg);
+}
+
+extern "C" {
+unsigned int func_002C0090(CZNetGame *game);   /* (fts_net_game.cpp's: the game object's node count -- a word: this caller does not narrow it) */
+void func_002B7CF0(const char *name, CZSealBody *body);   /* (fts_remote.cpp's: a SEAL's local object) */
+void func_002B7C90(CTurret *turret);   /* (fts_remote.cpp's: a turret's local object) */
+}
+
+/* the online game's mission under way (SOCOM II's; OnMissionStart calls it, OVL1 0x2A6C50): the
+ * version checked (the node count the game object carries), the launch reset, the timer, the game
+ * over, the half rounds, the hostages, the penalty and the kills cleared, the chat emptied, the
+ * scores, winner and game type put in their valves, the round's clock from mp_max_round_time, the
+ * bomb in a bomb game; the session master loads the vehicles once and makes every player SEAL's and
+ * untaken turret's object, refreshes the team valves and launches; a client waits. The valves'
+ * values read through GetValue (unsigned: srl, and the bltz conversion to float); the half rounds'
+ * value named before the valve is read (named, or the valve or the max read into locals, gives the
+ * target's v1 for both the max valve and its value; written into the call, v0); the node count
+ * compared as a word (func_002C0090 not narrowed here) */
+extern "C" void func_002A6C50(CZNetGame *game)
+{
+    if (zdb::NodeUniverse->size() != func_002C0090(game))
+        LobbyEvent("MP_VERSION_NUMBER_ERROR", 0);
+    if (game->m_ten_second_launch && theNetwork.m_bSessionMaster) {
+        game->m_launch_time = 0;
+        game->m_launch_f4 = 0;
+    }
+    game->m_ten_second_launch = false;
+    game->m_f8 = CValve::Create("mp_timer", 1, (VALVE_TYPE)1);
+    game->m_pGameOverValve = CValve::Create("mp_game_over", 0, (VALVE_TYPE)1);
+    SetValveValue(game->m_pGameOverValve, 0);
+    unsigned int half = (game->m_pMaxRoundCountValve->GetValue() + 1) / 2;
+
+    SetValveValue(game->m_pHalfRoundCountValve, half);
+    game->m_38 = CValve::Create("mp_hostages_by_seals", 0, (VALVE_TYPE)1);
+    SetValveValue(game->m_38, 0);
+    game->m_3c = CValve::Create("mp_hostages_by_turds", 0, (VALVE_TYPE)1);
+    SetValveValue(game->m_3c, 0);
+    SetValveValue(game->m_40, 0);
+    SetValveValue(game->m_70, 0);
+    game->m_c0 = 0;
+    CRdrEditor ed;
+
+    ed.push(0);
+    ed.pop();
+    game->m_84[4]->Set(&ed);
+    CValve *score00 = CValve::Create("mp_score00", (VALVE_TYPE)1);
+    CValve *score08 = CValve::Create("mp_score08", (VALVE_TYPE)1);
+    CValve *winner = CValve::Create("mp_winner", (VALVE_TYPE)1);
+    CValve *type = CValve::Create("mp_game_type", (VALVE_TYPE)1);
+
+    SetValveValue(score00, game->m_120);
+    SetValveValue(score08, game->m_124);
+    SetValveValue(winner, 64);
+    SetValveValue(type, game->m_game_type);
+    game->m_clock_running = 1;
+    game->m_max_game_time = 1000.0f * game->m_8->GetValue();
+    if (func_002A72A0(game) && theNetwork.m_bSessionMaster)
+        CZBombState::InitBomb();
+    game->m_d7 = 0;
+    if (theNetwork.m_bSessionMaster) {
+        if (!game->m_dd) {
+            theMission.LoadVehicles();
+            CEntityList::const_iterator i;
+
+            for (i = CEntity::GetEntityList().begin(); i != CEntity::GetEntityList().end(); ++i) {
+                CEntity *e = *i;
+                CZSealBody *seal = AsSeal(e);
+                CTurret *turret = AsTurret(e);
+
+                if (seal && IsPlayerSeal(seal)) {
+                    if (!CZSealState::GetBodyFromObjectIndex(e->m_id))
+                        func_002B7CF0(seal->m_node->m_name, seal);
+                } else if (turret) {
+                    NetObject *obj = theNetwork.zNetGetObject(e->m_id);
+
+                    if (!obj || obj->m_d != 'T')
+                        func_002B7C90(turret);
+                }
+            }
+        }
+        theMission.RefreshTeamValves();
+        game->m_launch_time = theNetwork.zNetGetTime();
+        game->m_launch_f4 = 1;
+        CZGameState::UpdateLocalGame(game);
+    } else
+        game->m_dd = 1;
+}
+
 /* the master's countdown to the launch, its seconds the valve's, started or called off
  * (OVL1 0x2A6B90; SOCOM II reads the valve ahead of the clock, and the clock into a local: in one
  * expression MW adds the product first) */
@@ -3643,19 +4296,13 @@ inline _zrdr *ListItem(_zrdr *rdr, unsigned int i)
     return i < rdr->Count() ? &rdr->array[i] : 0;
 }
 
-/* a vehicle definition's entry (zchar's CVehicleRdrEntry: only its character's name) and the
- * definitions */
+/* a vehicle definition's entry (zchar's CVehicleRdrEntry: only its character's name) */
 class CVehicleRdrEntry {
 public:
     void SetCharacterName(const char *name);
 
     unsigned char _0[0x20];
     char m_charname[1];   // 0x20: the character type its crew is
-};
-
-class CVehicleRdr {
-public:
-    CVehicleRdrEntry *GetEntryByName(const char *name) const;
 };
 
 

@@ -2090,6 +2090,38 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     member swap trading the fields itself and its destructor `if (data()) alloc().deallocate(data(), cap())` (the calls
     in that order), CKey::DeleteChildren 0x25B580 is code-exact -- and the shape costs 253 functions at level 5 (+19):
     measured, not adopted (include/vector, README "Level 6, or 8?" with ~CUIListBox 0x375710, the HUD's round 56).
+- **Tells from the AI core, round 32** (plan_addleg and ReRoute byte-exact; RegisterPathPlan written; GetLocation(point)
+  and GetCellRepelParams closer -- resumed after the 2026-11-05 crash for its wind-down):
+  - two 4-byte class locals take the frame's top slots wherever they are declared; wrapped in ONE 8-byte struct they
+    follow declaration order (CAiPath::plan_addleg 0x5274B0's route 224, from 216, to 220; RegisterPathPlan's two cell
+    pairs); a count read into a local before a compare and live across it takes a0, its load hoisted into the first
+    branch's delay slot; `if (!fail) { ...; return true; } return false;` puts the inner `return false` after the pushes
+    (plan_addleg, 127 -> 0);
+  - a copy loop as a do-while under a hand-written guard, the counter declared ahead of the count's reference and stepped
+    in the bottom test (`while (++j < (int)cnt)`) -- a separate `j++;` gives 0x340 (CAiMap::ReRoute 0x52F8F0, 10 -> 0);
+    one cell shared by two walks, declared after the size test, takes the target's single slot, and `m_mes ? true :
+    false` its branch-built bool (CAiMaps::GetLocation(point) 0x52DC70, 279 -> 172, OPEN);
+  - include/list iterators declared and then ASSIGNED from begin() stay in memory, re-read and re-stored at each step
+    (CAiMaps::RegisterPathPlan 0x52C5C0, unstarted before: 0x5F8 of 0x608, every call the target's, OPEN);
+  - `tools/objcmp.py -j 2` can print a FALSE difference (a race in scdecomp's SymbolTable._copy_index, queued for the
+    tools): prove with -j 1 until it is fixed.
+- **Tells from the kit and AI states, round 51** (CSealUnit::IssueCommand written with the four rows only it calls; the
+  OVL2 DI-pool twins from source; GOAL_TYPE moved into ai_states.h -- resumed after the 2026-11-05 crash for its wind-down):
+  - a walk's end() taken into a local before the loop gives the target's begin in v0 and end in v1 (IssueCommand
+    0x5E8E10's three SEAL walks: 70 -> 52, OPEN); a bitfield struct COPY-CONSTRUCTED from a static inlines a
+    field-by-field copy, ASSIGNED it is a word copy 0x78 bytes shorter; `if (f()) r = p;` keeps the zero out of the delay
+    slot where a ternary puts it in; a kind tested by an if-else chain matches where a switch emits a beq to each case;
+  - a virtual called on an object is bound directly (CAiSBreach::OnSignal), through a `CAiState *` it is the vtable
+    call; float thresholds the target loads from .data are function-local statics (written as literals MW builds them
+    with lui/ori);
+  - A FUNCTION-LOCAL STATIC OBJECT IS THREE DATA ROWS: its guard `@GUARD@fn@name` (tested with lb, set to 1), the object
+    `@LOCAL@fn@name` and an anonymous destructor-chain record right after the guard (IssueCommand's breach prototype
+    0x66B8E0, 54 references, guard 0x66B8C0; the record 0x66B8C8 stays unnamed until scdecomp has a convention);
+  - an inline cut to one level (SOCOM 1's HandleSupport) emits exactly the out-of-line copies the target calls --
+    CAiState(AI_STATE) 0x5EA5D0, the CAiMapLoc copy 0x5EA7E0 and insert<FT_COMMAND> 0x5EF6D0 new, GetValidMapLoc 0x5EA870
+    (our name) from its draft to source; RequestRay / GetRequest / SetRequest / CNewDiDir in seal_dipool.h (opt-in
+    SEAL_DIPOOL_REQUESTS) bring the OVL2 twins 0x5C97D0 / 0x5C9830 to source, marked ovl-copy of OVL1's 0x3A7DD0 /
+    0x3A7E30.
 - **Tells from the engine core, round 19** (ZAnimWildcardApply and CClutter::GetMatrix, both open since round 9; the CKey
   helpers from source):
   - A CAST OR CONST COPY OF A PARAMETER OR OF `this` (`char *name = (char *)str`, `const CClutter *c = this`) IS A VARIABLE
