@@ -1150,6 +1150,8 @@ public:
     bool push(const char *tag);   /* 0x3339B0 */
     bool pop();   /* 0x333770 */
     bool addstringnode(const char *s);   /* 0x333610 */
+    bool addint(const char *tag, int i);   /* 0x3334F0 */
+    bool addSTRING(const char *tag, const char *s);   /* 0x3333F0 */
 
     unsigned char _8[0x4c - 0x8];
 };
@@ -2869,6 +2871,71 @@ bool CMission::ReOpen_Load()
     if (!theNetwork.m_bNetwork)
         m_e8 = -1.0f;
     return true;
+}
+
+/* the mission saved (slot 3 of CMission's vtable; SOCOM 1's Serialize, grown): the state, the
+ * database, the career's valves (GameComplete's under the tag "difficulty"), the career's stats under
+ * CAREER_STATS and the bonus objectives' valves under BONUS_OBJECTIVES, as the module's rdr
+ * "MissionData" (OVL1 0x2A6340; the editor passed as the CRdrFile it derives from, through _zrdr
+ * here) */
+void CMission::Serialize(int flags)
+{
+    CRdrEditor ed;
+
+    ed.push(0);
+    ed.addint("state", m_state);
+    ed.addSTRING("database", GetDatabase());
+    ed.addint("difficulty", CValve::Create("GameComplete", (VALVE_TYPE)1)->m_value);
+    ed.addint("incr_miss_51", CValve::Create("incr_miss_51", (VALVE_TYPE)1)->m_value);
+    ed.addint("incr_miss_52", CValve::Create("incr_miss_52", (VALVE_TYPE)1)->m_value);
+    ed.addint("incr_miss_53", CValve::Create("incr_miss_53", (VALVE_TYPE)1)->m_value);
+    ed.addint("incr_miss_61", CValve::Create("incr_miss_61", (VALVE_TYPE)1)->m_value);
+    ed.addint("incr_miss_62", CValve::Create("incr_miss_62", (VALVE_TYPE)1)->m_value);
+    ed.addint("incr_miss_63", CValve::Create("incr_miss_63", (VALVE_TYPE)1)->m_value);
+    ed.addint("incr_miss_71", CValve::Create("incr_miss_71", (VALVE_TYPE)1)->m_value);
+    ed.addint("incr_miss_72", CValve::Create("incr_miss_72", (VALVE_TYPE)1)->m_value);
+    ed.addint("incr_miss_73", CValve::Create("incr_miss_73", (VALVE_TYPE)1)->m_value);
+    ed.addint("incr_miss_81", CValve::Create("incr_miss_81", (VALVE_TYPE)1)->m_value);
+    ed.addint("incr_miss_82", CValve::Create("incr_miss_82", (VALVE_TYPE)1)->m_value);
+    ed.addint("incr_miss_83", CValve::Create("incr_miss_83", (VALVE_TYPE)1)->m_value);
+    ed.addint("ForGameCompleteScreen", CValve::Create("ForGameCompleteScreen", (VALVE_TYPE)1)->m_value);
+    ed.addint("ai_difficulty", CValve::Create("ai_difficulty", (VALVE_TYPE)1)->m_value);
+    ed.addint("ChoseRank", CValve::Create("ChoseRank", (VALVE_TYPE)1)->m_value);
+    ed.addint("ChosenLevel", CValve::Create("ChosenLevel", (VALVE_TYPE)1)->m_value);
+    ed.addstringnode("CAREER_STATS");
+    ed.push(0);
+    ed.addint("MissionsPlayed", m_careerstats.m_0);
+    ed.addint("AveragePlayerAccuracy", m_careerstats.m_4);
+    ed.addint("AverageTeamAccuracy", m_careerstats.m_8);
+    ed.addint("AverageStealth", m_careerstats.m_c);
+    ed.addint("AverageTeamwork", m_careerstats.m_10);
+    ed.addint("AverageObjective", m_careerstats.m_14);
+    ed.addint("EnemyKills", m_careerstats.m_kills);
+    ed.addint("EnemyCaptures", m_careerstats.m_18);
+    ed.addint("FriendlyKills", m_careerstats.m_20);
+    ed.addint("StealthKills", m_careerstats.m_24);
+    ed.addint("CQBKills", m_careerstats.m_28);
+    ed.addint("ShotsFired", m_careerstats.m_2c);
+    ed.addint("HeadShots", m_careerstats.m_30);
+    ed.pop();
+    ed.addstringnode("BONUS_OBJECTIVES");
+    ed.push(0);
+    ed.addint("OP51_Rugova", CValve::Create("OP51_Rugova", (VALVE_TYPE)1)->m_value);
+    ed.addint("OP51_Delivery", CValve::Create("OP51_Delivery", (VALVE_TYPE)1)->m_value);
+    ed.addint("OP52_Capture", CValve::Create("OP52_Capture", (VALVE_TYPE)1)->m_value);
+    ed.addint("OP61_Map", CValve::Create("OP61_Map", (VALVE_TYPE)1)->m_value);
+    ed.addint("OP62_Bombs", CValve::Create("OP62_Bombs", (VALVE_TYPE)1)->m_value);
+    ed.addint("OP63_Stealth", CValve::Create("OP63_Stealth", (VALVE_TYPE)1)->m_value);
+    ed.addint("OP71_Tank", CValve::Create("OP71_Tank", (VALVE_TYPE)1)->m_value);
+    ed.addint("OP72_Snipers", CValve::Create("OP72_Snipers", (VALVE_TYPE)1)->m_value);
+    ed.addint("OP81_Map", CValve::Create("OP81_Map", (VALVE_TYPE)1)->m_value);
+    ed.addint("OP81_Blueprints", CValve::Create("OP81_Blueprints", (VALVE_TYPE)1)->m_value);
+    ed.addint("OP81_Nautical", CValve::Create("OP81_Nautical", (VALVE_TYPE)1)->m_value);
+    ed.addint("OP82_Freighter", CValve::Create("OP82_Freighter", (VALVE_TYPE)1)->m_value);
+    ed.addint("OP82_Blueprints", CValve::Create("OP82_Blueprints", (VALVE_TYPE)1)->m_value);
+    ed.pop();
+    ed.pop();
+    SaveRdr("MissionData", (CRdrFile *)&ed);
 }
 
 const char *zrdr_findstring(const _zrdr *rdr, const char *tag);
