@@ -65,7 +65,7 @@ CMenuStack *GetMenuStack();   /* 0x274930 */
 
 class CIOPManager {
 public:
-    enum RebootPhase { REBOOT_PHASE_0 };
+    enum RebootPhase { PreReboot = 0, PostReboot = 1 };   /* (util_main.cpp's values) */
     enum RebootMode { REBOOT_MODE_0 };
     int RegisterRebootCallback(bool (*cb)(RebootPhase phase, RebootMode mode, void *data), void *data);
     void UnRegisterRebootCallback(int handle);   /* 0x39C590 */
@@ -114,6 +114,8 @@ namespace {
 zdb::CAssetLib *g_pSkbLib;
 CDblBufTextureRelocator g_relocDblBuf;
 CZAnimZAR *animfile;
+/* whether the UI's sound was open when the IOP rebooted (0x1F53D0's; the name ours) */
+bool s_uiSoundOpen;
 }
 
 void zUISchedulerClear();
@@ -306,6 +308,71 @@ bool CMenuState::Init()
  * waited for while swaps are skipped. (SOCOM 1 cleared the relocator through a virtual; SOCOM II's
  * clear is an inline loop over three words, which is what keeps the second and third words'
  * addresses in s1/s0 for the second clear and, being the last values made, puts this in s2) */
+/* the memory card's state reset (zutil's CMemCard: static) and the CD's streaming flag (SOCOM 1's
+ * CFileCD static) */
+class CMemCard {
+public:
+    static void Reset();   /* 0x3A1FF0 */
+};
+
+class CFileCD {
+public:
+    static bool m_streamingSndActive;   /* 0x4A1798 */
+};
+
+extern "C" {
+void func_00340400(int a);
+void func_00340430(int a, int b, int c);
+void snd_SetReverbType(int core, int type);
+}
+
+/* the IOP's reboot callback (OVL1 0x1F53D0, CMenuState::Init registers it): the memory card reset;
+ * before the reboot the sounds unloaded and the UI's sound closed, noted if it was open; after it
+ * the sound system set up again -- CMenuState::Init's three banks and "UI" bank, the UI's sound
+ * reopened if it was open -- and the menu's sound names read again as Init's second read does
+ * (SOCOM II's; the name ours) */
+extern "C" bool func_001F53D0(CIOPManager::RebootPhase phase, CIOPManager::RebootMode mode, void *data)
+{
+    CMemCard::Reset();
+    if (phase == CIOPManager::PreReboot) {
+        CSnd::UnloadAllSounds();
+        if (CFileCD::m_streamingSndActive) {
+            s_uiSoundOpen = true;
+            CSnd::Close();
+        } else
+            s_uiSoundOpen = false;
+    } else {
+        func_00340400(1);
+        func_00340430(1, 24, 47);
+        snd_SetReverbType(2, 3);
+        CSnd::LoadSounds("sounds.rdr", "HUDUI");
+        CSnd::LoadSounds("sounds.rdr", "SMUS");
+        CSnd::LoadSounds("sounds.rdr", "UIVOICE");
+        func_003448E0("UI");
+        if (s_uiSoundOpen)
+            CSnd::UIOpen();
+
+        _zrdr *rdr = zrdr_read("uisounds.rdr", "data/common/dialog", 0);
+        const char *selection = 0;
+
+        if (rdr) {
+            _zrdr *sounds = zrdr_findtag(rdr, "SOUNDS");
+
+            if (sounds) {
+                theGame.m_menuState.TtySoundString = zrdr_findstring(sounds, "TELETYPE");
+                theGame.m_menuState.BackSoundString = zrdr_findstring(sounds, "BACK");
+                selection = zrdr_findstring(sounds, "SELECTION");
+            }
+        }
+        theGame.m_menuState.SelectionSound = CSnd::GetSoundByName(selection ? selection : "");
+        if (rdr)
+            zrdr_free((CRdrFile *)rdr);
+        if (theGame.m_menuState.m_menu)
+            UiLoadCountSound(theGame.m_menuState.m_menu);
+    }
+    return true;
+}
+
 /* a ZRDR value (zrdr.h's: the array accessors only) */
 enum {
     ZRDR_STRING = 3,
