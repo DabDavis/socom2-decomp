@@ -79,7 +79,8 @@ public:
     /* an order given to the SEAL (OVL2 0x590AC0, zseal.h's) */
     void IssueCommand(CZSealBody *from, FT_COMMAND cmd, void *data, bool b);
 
-    unsigned char _170[0x1060 - sizeof(CEntity)];
+    unsigned char _170[0x5e0 - sizeof(CEntity)];
+    unsigned char m_kit[0x1060 - 0x5e0];   // 0x5e0: its kit (zseal.h's CZKit m_kit; bytes here)
     unsigned int m_do_drop_weapons : 1;   // 0x1060 (zseal.h's bits)
     unsigned int m_fix_skel_y : 1;
     unsigned int m_inside : 1;   // bit 2
@@ -127,6 +128,9 @@ public:
     unsigned int GetLocationDelta(const CAiMapLoc &a, const CAiMapLoc &b);
     /* an action found by its id, with its cell (ai_maps.h's, OVL2 0x52DAA0) */
     bool GetActionById(unsigned int id, CAiMapLoc &loc, CAiMap::action **pa);
+    /* a cell's centre, and the map holding a cell (ai_maps.h's, OVL2 0x52D480, 0x52A180) */
+    CPnt3D *GetCellCenter(const CAiMapLoc &loc, CPnt3D *center);
+    CAiMap *GetMap(const CAiMapLoc &loc) const;
 };
 extern CAiMaps AiMaps;
 
@@ -2100,6 +2104,79 @@ public:
     unsigned char _25[0x3c - 0x25];
     unsigned short m_id;   // 0x3c
 };
+
+extern "C" {
+/* a map's cell inside (seal_ai.cpp's 0x5561C0, the SEALs': the map's own test) */
+bool func_005561C0(const CAiMap *map, const CAiMapLoc &loc);
+}
+
+class CZKit;
+
+/* an item a SEAL carries (zweapon.h's byte enum, which this unit does not include: only the bounds) */
+enum EQUIP_ITEM { EQUIP_PISTOL = 0, EQUIP_NONE = 255 };
+
+/* whether the kit can place an item at a node action (seal_command.cpp's, OVL2 0x591130, the SEALs') */
+bool CanDeploy(CZKit *kit, EQUIP_ITEM item, CNodeAction *a);
+
+/* whether a cell's map holds it, none for no map (seal_ai.cpp's CellInside) */
+static inline bool CellInside(const CAiMapLoc &loc)
+{
+    CAiMap *map = AiMaps.GetMap(loc);
+
+    return map ? func_005561C0(map, loc) : false;
+}
+
+/* an AI map action an order can be carried out at: its extra cells valid, a door of kind 5 or 1 (the
+ * names ours; the target materialises each test into a bool before it branches) */
+static inline bool OrderDoorType(const CAiMap::action *act) { return act->GetType() == 5 || act->GetType() == CAiMap::action::DOOR; }
+
+static inline bool OrderDoor(const CAiMap::action *act) { return act->m_locExValid && OrderDoorType(act); }
+
+/* whether an order with an item (17 and 18 a deployable's, 123 and 121, 19 none) can be carried out
+ * at the node action under the ordering SEAL's reticule by this AI SEAL: not with a state of kind
+ * 10 on its stack, the item deployable there, the action's AI map door one the order takes -- on the
+ * orderer's side of its direction, or else past it with its first extra cell inside its map (OVL2
+ * 0x5EC230: CSealCtrlAi::AllowCommand's, with the orderer's reticule action and the order's data;
+ * new in SOCOM II, the name ours) */
+extern "C" bool func_005EC230(CZSealBody *from, CZSealBody *seal, CNodeAction *na, int data)
+{
+    bool r = false;
+    bool ok = false;
+    CAiMapLoc loc;
+    CAiMap::action *act = 0;
+    CSealCtrlAi *ai = ((CUnitSealCtrl *)((CEntity *)seal)->m_control)->GetSealCtrlAi();
+
+    if (!na || !ai || (ai->m_stateStack.m_10 & (1 << 10)))
+        return false;
+    switch ((unsigned char)data) {
+    case 17:
+        ok = CanDeploy((CZKit *)seal->m_kit, (EQUIP_ITEM)123, na);
+        break;
+    case 18:
+        ok = CanDeploy((CZKit *)seal->m_kit, (EQUIP_ITEM)121, na);
+        break;
+    case 19:
+        ok = true;
+        break;
+    }
+    if (ok && AiMaps.GetActionById(na->m_id, loc, &act) && OrderDoor(act)) {
+        CPnt3D center;
+
+        if (AiMaps.GetCellCenter(loc, &center)) {
+            CPnt3D d;
+            CPnt3D v;
+
+            center.Sub(&((CEntity *)from)->m_posW, &d);
+            CAiMap::GetDirVec((CAiMap::DIR)act->m_direction, v);
+            if (Dot(v, d) < 0.0f) {
+                if (CellInside(act->m_locEx[0]))
+                    r = true;
+            } else
+                r = true;
+        }
+    }
+    return r;
+}
 
 /* whether a SEAL -- the player, or an AI that is a SEAL -- may take a door action from where it
  * stands: the action's word at 8 at least 2, its type 0, the range at least a half, and the AI map's
