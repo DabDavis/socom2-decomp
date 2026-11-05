@@ -627,6 +627,7 @@ public:
     virtual void SetBackgroundAlpha(float a) { m_background.SetTrans(128.0f * a); }
     virtual void DrawBackground(const CMatrix &m, zdb::CTextureRelocMgr *mgr);
     virtual void SetCanHandleInput(bool val);
+    virtual bool HandlePad(const CPad *pad, int port);
     void ShowState(ButtonState *state);
     virtual void Tick(float dT);
     virtual void SetActive();
@@ -4179,6 +4180,69 @@ inline bool ActionItem::Start() const
     else
         anim->Activate(0);
     return true;
+}
+
+/* the side the stick was pushed to since it was last centred (zui.cpp's UiGetDirStickMoved, a
+ * byte: 1 right, 2 left, 3 up, 4 down, zui.cpp's STICK_DIR) */
+unsigned char UiGetDirStickMoved();
+
+/* slot 15: with children, the pad handed to the child at the port's place; else a release of
+ * button 9 runs slot 27, and the first action whose button is in its state -- or, an action on
+ * the release of a direction button, the stick pushed that way -- runs and takes the pad (SOCOM 1's
+ * C2DButton::HandlePad, slot 15; SOCOM II asks ZAnim alone for the animation). The count before the
+ * size test (its zero in the test's delay slot), the walk's end and begin in locals in that order,
+ * and the press tested first: every saved register and both spills (this, the count and the item
+ * pointer at sp+236/208/160, two stick answers at 192/176) are the target's (tools/perm.py over the
+ * six action tests and the four combinations, 1,000 orders).
+ * OPEN, 10 instructions: the action's event, state and the pad's state for it take a1, a0, a2 in
+ * the target and a2, a1, a0 here -- MW colours the three temporaries highest-index first (igdump:
+ * the pad state's load numbered last); named locals for any of them (dead first definitions too)
+ * are copy-propagated away and change nothing, the compare's operands swapped reorders the loads
+ * (18), the tests in SOCOM 1's order (event tests first) gets the temporaries but not the saved
+ * registers (22) */
+bool C2DButton::HandlePad(const CPad *pad, int port)
+{
+    if (!CanHandleInput())
+        return false;
+    int n = 0;
+
+    if (size()) {
+        iterator e = end();
+        iterator i = begin();
+
+        for (; i != e; ++i, ++n)
+            if (n == port && (*i)->HandlePad(pad, 0))
+                return true;
+        return false;
+    }
+    if (pad->m_state[9] == 1)
+        Slot27();
+    for (int i = 0; i < m_numActions; i++) {
+        const ActionItem *a = &m_actions[i];
+
+        if (a->Type != 1) {
+            bool pressed = a->State == pad->m_state[a->Event];
+            bool falling = a->State == 1;
+            bool isUp = a->Event == 4;
+            bool isDown = a->Event == 5;
+            bool isLeft = a->Event == 3;
+            bool isRight = a->Event == 2;
+            bool stickUp = UiGetDirStickMoved() == 3;
+            bool stickDown = UiGetDirStickMoved() == 4;
+            bool stickLeft = UiGetDirStickMoved() == 1;
+            bool stickRight = UiGetDirStickMoved() == 2;
+            bool up = falling && isUp && stickUp;
+            bool down = falling && isDown && stickDown;
+            bool left = falling && isLeft && stickLeft;
+            bool right = falling && isRight && stickRight;
+
+            if (pressed || up || down || left || right) {
+                a->Run();
+                return true;
+            }
+        }
+    }
+    return false;
 }
 
 /* the menus' stick (zui.cpp's: whether it is within a radius of the centre, and the side it is
