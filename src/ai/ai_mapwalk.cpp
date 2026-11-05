@@ -10,6 +10,9 @@
 /* what Tile hands its callbacks: the value to set, the soils a soil tile spares, and whether any
  * cell changed (SOCOM 1's Tile's data; the names ours) */
 struct TILE_DATA {
+    /* the flags (the name ours: Tile's four tests read them through it) */
+    unsigned int Flags() const { return m_flags; }
+
     unsigned int m_value;   // 0x0: read as a byte by the boundary's
     unsigned int m_flags;   // 0x4
     bool m_changed;   // 0x8
@@ -170,26 +173,23 @@ static bool _tile_occupied(const MAP_FOREACH_STRUCT &s, void *data)
  * the soil (4), the boundary (8), the shadow (16), the occupied bit (32) -- whether any cell
  * changed (SOCOM 1's Tile(region, value, flags); the layer new). Each tile is the region walk
  * inlined one level, its region's constructor and GetMapRegion called (FloodFill's walk).
- * OPEN (0x8BC against 0x8B4), 2 instructions at the start, all else the target's (the four walks
- * byte for byte): the target stores the flags and reads them back sp-relative (`sw a3,356(sp);
- * lw v1,356(sp)`, the value's store in the first test's delay slot), this build takes &t.m_flags
- * into v0 for the pair and fills the delay slot with the region's address instead. Tried: the
- * stores in either order, `= {value, flags}` (with and without the third), a local copy of the
- * flags, the struct through a pointer local (0x8E4), the tests in an inline over the data
- * pointer (not inlined), the value stored inside the first arm */
+ * Byte-exact since the AI core's round 27: the four tests read the flags through TILE_DATA's
+ * accessor -- the field read directly shares the store's address, MW taking &t.m_flags into v0 for
+ * the pair (0x8BC against 0x8B4, open since round 15 over nine spellings); through the accessor the
+ * store and the read are sp-relative and the value's store fills the first test's delay slot */
 bool CAiMap::Tile(const region *r, unsigned int value, unsigned int flags, int layer)
 {
     TILE_DATA t = {0};
 
     t.m_value = value;
     t.m_flags = flags;
-    if (t.m_flags & 4)
+    if (t.Flags() & 4)
         ForEachCell(r, _tile_soil, &t, layer);
-    else if (t.m_flags & 8)
+    else if (t.Flags() & 8)
         ForEachCell(r, _tile_boundary, &t, layer);
-    else if (t.m_flags & 0x10)
+    else if (t.Flags() & 0x10)
         ForEachCell(r, _tile_shadow, &t, layer);
-    else if (t.m_flags & 0x20)
+    else if (t.Flags() & 0x20)
         ForEachCell(r, _tile_occupied, &t, layer);
     return t.m_changed;
 }
@@ -240,12 +240,15 @@ int CAiMap::GetLocationWidth(const CAiMapLoc &loc, int max)
 }
 
 /* a point between two, a fraction along: each end scaled and the two added, through CPnt3D's
- * const operators (new in SOCOM II, the name ours: CAiMaps::WalkLine's step, 0x539AA0) */
+ * const operators (new in SOCOM II, the name ours: CAiMaps::WalkLine's step, 0x539AA0 -- called
+ * out of line there, twice: never auto-inlined) */
+#pragma auto_inline off
 static CPnt3D *_lerp(const CPnt3D *a, const CPnt3D *b, CPnt3D *out, float t)
 {
     *out = *a * (1.0f - t) + *b * t;
     return out;
 }
+#pragma auto_inline reset
 
 /* a cell's altitude: the map's floor plus its quantised height (SOCOM 1's took the box's height
  * over 1023 steps; the name ours) -- none for no cell, the result then unset, as both builds have it */
@@ -570,6 +573,247 @@ bool CAiMaps::CanSeePoint(const CPnt3D *from, const CPnt3D *to, float rangeSq)
     else if (!(vis <= 0.0f))
         seen = Chance(vis);
     return seen;
+}
+
+/* a line between two points walked over the maps in steps of a fraction of the first map's cell:
+ * each new cell reached -- its map looked up when it changes -- handed to the callback with the
+ * distance and fraction walked, the cell before and the point; the walk ends when the callback
+ * says so, a point is off the maps or a cell is missing, and the end point's cell is handed on last
+ * (new in SOCOM II, the name ours: the visibility tests' walk, 0x5352D0). The step's direction
+ * normalised in x and z; _lerp called out of line, as the target calls it.
+ * OPEN, 236 instructions at the target's size (0x45C), written in the AI core's round 27: every
+ * block is the target's but the frame is 16 bytes taller -- the map is spilled (stored at its
+ * definition, reloaded at each use) where the target keeps it in s2 until the step's m_dx and then
+ * gives s2 to `ok`. MW's first colouring (build/scratch/ai/ig/) holds the addresses of the walk
+ * struct's fields from the initialisation through the loop (eight `addiu rN,sp,k` temporaries, the
+ * map interfering with all of them and with `ok`), so the map loses; the target keeps only three
+ * (m_cell s0, m_loc s1, m_pos s8) and rebuilds m_dist's, m_prev's and m_t's at each store. Tried:
+ * the struct, the cells and the map declared in every order, the tests split, `ok` declared at the
+ * top, the length and dt reordered, the x-z normalisation as an inline, the struct's start as an
+ * inline over a reference (build/scratch/ai/v_wl*.py) -- all the same 236 */
+bool CAiMaps::WalkLine(const CPnt3D *from, const CPnt3D *to, bool (*f)(const MAP_LINEWALK_STRUCT &s, void *data),
+                       void *data, float step)
+{
+    CAiMap *map = GetMapByIndex(0);
+    CAiMapLoc loc;
+
+    if (!map || !from || !to || !GetLocation(from, loc))
+        return false;
+    MAP_LINEWALK_STRUCT s;
+
+    s.m_start = loc;
+    s.m_end = CAiMapLoc::invalid;
+    s.m_map = map;
+    s.m_dist = 0.0f;
+    s.m_cell = 0;
+    s.m_prev = 0;
+    s.m_loc = CAiMapLoc::invalid;
+    s.m_t = 0.0f;
+    GetLocation(to, s.m_end);
+    CPnt3D d;
+
+    to->Sub(from, &d);
+    CPnt3D h = d;
+    float len = sqrtf(h.x * h.x + h.z * h.z);
+
+    if (len != 0.0f) {
+        float inv = 1.0f / len;
+
+        h.x *= inv;
+        h.z *= inv;
+    }
+    s.m_dir.x = h.x;
+    s.m_dir.y = h.y;
+    s.m_dir.z = h.z;
+    float dt = 1.0f / (len / (step * map->m_dx));
+    bool ok = true;
+    float t = 0.0f;
+    CAiMapLoc l;
+
+    while (ok && t < 1.0f) {
+        _lerp(from, to, (CPnt3D *)&s.m_pos, t);
+        if (GetLocation((CPnt3D *)&s.m_pos, l)) {
+            if (l != s.m_loc) {
+                if (l.m_mapid != s.m_map->m_mapid)
+                    s.m_map = GetMapByIndex(l.m_mapid);
+                s.m_dist = t * len;
+                s.m_prev = s.m_cell;
+                s.m_cell = GetCell(l);
+                s.m_loc = l;
+                s.m_t = t;
+                ok = s.m_cell ? f(s, data) : false;
+            }
+            t += dt;
+        } else
+            ok = false;
+    }
+    if (ok) {
+        _lerp(from, to, (CPnt3D *)&s.m_pos, 1.0f);
+        if (GetLocation((CPnt3D *)&s.m_pos, l) && l != s.m_loc) {
+            if (l.m_mapid != s.m_map->m_mapid)
+                s.m_map = GetMapByIndex(l.m_mapid);
+            s.m_dist = 1.0f * len;
+            s.m_prev = s.m_cell;
+            s.m_cell = GetCell(l);
+            s.m_loc = l;
+            s.m_t = 1.0f;
+            ok = s.m_cell ? f(s, data) : false;
+        }
+    }
+    return ok;
+}
+
+/* the step of a count out over ground a step may end on: GetNeighbor's, then the cell's test (the
+ * name ours: ai_astar.cpp's trace-back step, too tall to inline whole -- GetMapId, GetCell and the
+ * cell's test called out of line) */
+inline bool travel_step(CAiMap *map, const CAiMapLoc &loc, CAiMap::DIR dir, CAiMapLoc &out, CAiCell *&cell)
+{
+    int x = loc.x + CAiMap::neighbor[dir][0];
+    int y = loc.y + CAiMap::neighbor[dir][1];
+
+    if (x >= 0 && x < map->m_nx && y >= 0 && y < map->m_ny) {
+        out.x = x;
+        out.y = y;
+        out.m_mapid = map->GetMapId();
+        cell = map->GetCell(out, 0);
+        return cell ? cell->IsTraversable() : false;
+    }
+    return false;
+}
+
+/* how many cells of soil the travel count's flags weigh against it it passes (OVL2 0x64FA60, a file
+ * static: the count stops once the weight reaches it; the name ours) */
+static int s_travelSlack = 2;
+
+/* each direction's cells out from one, up to the range, a climb no steeper than 15 and ground the
+ * eye passes -- an opaque cell stops it but for SOIL_NOALT -- and no overlay's; with flag 1 it stops
+ * after grass, brush or forest; off the map from a transition cell of a map other than the first
+ * the direction counts whole (SOCOM 1's CountMapVisDir, 0x535DF0) */
+void CAiMap::CountMapVisDir(const CAiMapLoc &loc, MAP_DIRCOUNT *dc)
+{
+    CAiCell *start = GetCell(loc, 0);
+    CAiCell *cell = 0;
+    unsigned char soil = 0;
+
+    for (int i = 0; i < 8; i++) {
+        dc->m_loc[i] = loc;
+        dc->m_count[i] = 0;
+        if (!start)
+            continue;
+        for (int j = 0; j < dc->m_range; j++) {
+            CAiMapLoc next;
+
+            if (GetNeighbor(dc->m_loc[i], (DIR)i, next, cell)) {
+                if (cell->IsOpaque() && cell->GetSoil() != SOIL_NOALT)
+                    break;
+                bool high = false;
+                int d = cell->m_altitude - start->m_altitude;
+
+                if (d > 0 && d * m_alt_quant > 15.0f)
+                    high = true;
+                if (high)
+                    break;
+                if (ai::overlays.Contains(cell, next))
+                    break;
+                dc->m_loc[i] = next;
+                dc->m_count[i]++;
+                soil = cell->m_soil;
+                if ((dc->m_flags & 1) && (soil == SOIL_GRASS || soil == SOIL_BRUSH || soil == SOIL_FOREST))
+                    break;
+            } else {
+                if (m_mapid && soil == SOIL_TRANS)
+                    dc->m_count[i] = dc->m_range;
+                break;
+            }
+        }
+    }
+}
+
+/* each direction's cells out from one, up to the range, over ground a step may end on and no
+ * overlay's: the flags weigh the soils passed -- grass, brush and forest (1), a concealing soil (2)
+ * a cell for, other ground a cell against, and off the road (4) a cell for -- and the count stops
+ * once the weight reaches the slack (SOCOM 1's CountMapTravelDir, the weights new: 0x535A40) */
+void CAiMap::CountMapTravelDir(const CAiMapLoc &loc, MAP_DIRCOUNT *dc)
+{
+    for (int i = 0; i < 8; i++) {
+        CAiCell *cell = 0;
+        int weight = 0;
+
+        dc->m_loc[i] = loc;
+        dc->m_count[i] = 0;
+        for (int j = 0; j < dc->m_range; j++) {
+            CAiMapLoc next;
+
+            if (!travel_step(this, dc->m_loc[i], (DIR)i, next, cell))
+                break;
+            if (ai::overlays.Contains(cell, next))
+                break;
+            if (weight >= s_travelSlack)
+                break;
+            int w = 0;
+
+            if (dc->m_flags & 1) {
+                if (cell->m_soil == SOIL_GRASS || cell->m_soil == SOIL_BRUSH || cell->m_soil == SOIL_FOREST)
+                    w = 1;
+                else
+                    w = -1;
+            }
+            if (!w && (dc->m_flags & 2)) {
+                if (cell->IsConcealingSoil())
+                    w = 1;
+                else
+                    w = -1;
+            }
+            if (!w && (dc->m_flags & 4)) {
+                if (cell->m_soil != SOIL_ROAD)
+                    w = 1;
+                else
+                    w = -1;
+            }
+            weight += w;
+            if (weight < 0)
+                weight = 0;
+            dc->m_count[i]++;
+            dc->m_loc[i] = next;
+        }
+    }
+}
+
+/* from a cell no step may end on, each direction's cells out to the first one a step may, up to
+ * the range -- off the map, of a map other than the first, the direction counts whole; from one a
+ * step may end on every count is 0 (new in SOCOM II, the name ours: CAiSPathRecover::Tick's two
+ * calls, 0x535730) */
+void CAiMap::CountMapExitDir(const CAiMapLoc &loc, MAP_DIRCOUNT *dc)
+{
+    if (_traversable(this, loc)) {
+        for (int i = 0; i < 8; i++) {
+            dc->m_count[i] = 0;
+            dc->m_loc[i] = loc;
+        }
+        return;
+    }
+    for (int i = 0; i < 8; i++) {
+        dc->m_loc[i] = loc;
+        CAiCell *start = GetCell(loc, 0);
+
+        dc->m_count[i] = 0;
+        CAiCell *cell = 0;
+
+        for (int j = 0; j < dc->m_range; j++) {
+            CAiMapLoc next;
+
+            if (GetNeighbor(dc->m_loc[i], (DIR)i, next, cell)) {
+                dc->m_loc[i] = next;
+                dc->m_count[i]++;
+                if (cell->IsTraversable())
+                    break;
+            } else {
+                if (m_mapid)
+                    dc->m_count[i] = dc->m_range;
+                break;
+            }
+        }
+    }
 }
 
 /* the direction of the most counts: each count summed with its two neighbours' when asked, and only
