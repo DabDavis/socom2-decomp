@@ -690,6 +690,169 @@ bool CAiMaps::WalkLine(const CPnt3D *from, const CPnt3D *to, bool (*f)(const MAP
     return ok;
 }
 
+/* whether a cell is on its row's run, the row read straight off the bitfield (the map walks' test,
+ * inlined whole: IsMapCell's own copy, 0x512140, narrows the row to an unsigned short; the name
+ * ours) */
+inline bool _on_run(const CAiMap *map, const CAiMapLoc &loc)
+{
+    if (loc.y >= 0 && loc.y < map->m_ny) {
+        const CAiMap::scanline &sl = map->GetScanline(loc.y);
+        bool in = false;
+        unsigned int x = loc.x;
+
+        if (x >= sl.m_start && x < sl.m_end)
+            in = true;
+        return in;
+    }
+    return false;
+}
+
+/* a line from a cell's centre to a point walked over this map in steps of a fraction of a cell:
+ * each new cell reached on the map handed to the callback with the distance and fraction walked
+ * and the cell before; the walk ends when the callback says so or a point leaves the map, and the
+ * end point's cell is handed on last (SOCOM 1's WalkLine(loc, CPnt3D *), the demo's 0x1A6B00; the
+ * point's declared name `dir` in ai.h is SOCOM 1's). The two ends one 24-byte object (the target's
+ * 160/172), the far one copied field by field; the point stepped in x and z, its height 0 */
+bool CAiMap::WalkLine(const CAiMapLoc &from, const CPnt3D *to, bool (*f)(const MAP_LINEWALK_STRUCT &s, void *data),
+                      void *data, float step)
+{
+    if (!_on_run(this, from))
+        return false;
+    MAP_LINEWALK_STRUCT s;
+
+    s.m_start = from;
+    s.m_end = CAiMapLoc::invalid;
+    s.m_loc = CAiMapLoc::invalid;
+    s.m_map = this;
+    s.m_dist = 0.0f;
+    s.m_cell = 0;
+    s.m_prev = 0;
+    CPnt3D line[2];
+
+    GetCellCenter(from, &line[0]);
+    line[1] = *to;
+    CPnt3D h = line[1] - line[0];
+    float len = LengthXZ(h);
+
+    if (len != 0.0f) {
+        float inv = 1.0f / len;
+
+        h.x *= inv;
+        h.z *= inv;
+    }
+    float dt = 1.0f / (len / (step * m_dx));
+
+    SetDir(s, h);
+    bool ok = true;
+    float t = 0.0f;
+    CPnt3D p;
+    CAiMapLoc l;
+
+    while (ok && t < 1.0f) {
+        p.y = 0.0f;
+        p.x = line[0].x * (1.0f - t) + line[1].x * t;
+        p.z = line[0].z * (1.0f - t) + line[1].z * t;
+        if (GetLocation(&p, l) && _on_run(this, l)) {
+            if (l != s.m_loc) {
+                s.m_dist = t * len;
+                s.m_prev = s.m_cell;
+                s.m_cell = GetCell(l, 0);
+                s.m_t = t;
+                s.m_loc = l;
+                ok = s.m_cell ? f(s, data) : false;
+            }
+            t += dt;
+        } else
+            ok = false;
+    }
+    if (ok) {
+        t = 1.0f;
+        p.y = 0.0f;
+        p.x = line[0].x * (1.0f - t) + line[1].x * t;
+        p.z = line[0].z * (1.0f - t) + line[1].z * t;
+        if (GetLocation(&p, l) && _on_run(this, l) && l != s.m_loc) {
+            s.m_dist = t * len;
+            s.m_prev = s.m_cell;
+            s.m_cell = GetCell(l, 0);
+            s.m_t = t;
+            s.m_loc = l;
+            ok = s.m_cell ? f(s, data) : false;
+        }
+    }
+    return ok;
+}
+
+/* a line between two cells' centres walked over this map the same way, both ends' cells given to
+ * the walk's struct and neither centre missing (SOCOM 1's WalkLine(loc, loc), the demo's 0x1A7570:
+ * CanSeeLine and CanTravelLine's) */
+bool CAiMap::WalkLine(const CAiMapLoc &from, const CAiMapLoc &to, bool (*f)(const MAP_LINEWALK_STRUCT &s, void *data),
+                      void *data, float step)
+{
+    MAP_LINEWALK_STRUCT s;
+
+    s.m_start = from;
+    s.m_end = to;
+    s.m_loc = CAiMapLoc::invalid;
+    s.m_map = this;
+    s.m_dist = 0.0f;
+    s.m_cell = 0;
+    s.m_prev = 0;
+    s.m_t = 0.0f;
+    CPnt3D line[2];
+
+    if (!GetCellCenter(from, &line[0]) || !GetCellCenter(to, &line[1]))
+        return false;
+    CPnt3D h = line[1] - line[0];
+    float len = LengthXZ(h);
+
+    if (len != 0.0f) {
+        float inv = 1.0f / len;
+
+        h.x *= inv;
+        h.z *= inv;
+    }
+    float dt = 1.0f / (len / (step * m_dx));
+
+    SetDir(s, h);
+    bool ok = true;
+    float t = 0.0f;
+    CPnt3D p;
+    CAiMapLoc l;
+
+    while (ok && t < 1.0f) {
+        p.y = 0.0f;
+        p.x = line[0].x * (1.0f - t) + line[1].x * t;
+        p.z = line[0].z * (1.0f - t) + line[1].z * t;
+        if (GetLocation(&p, l) && _on_run(this, l)) {
+            if (l != s.m_loc) {
+                s.m_dist = t * len;
+                s.m_prev = s.m_cell;
+                s.m_cell = GetCell(l, 0);
+                s.m_t = t;
+                s.m_loc = l;
+                ok = s.m_cell ? f(s, data) : false;
+            }
+            t += dt;
+        } else
+            ok = false;
+    }
+    if (ok) {
+        t = 1.0f;
+        p.y = 0.0f;
+        p.x = line[0].x * (1.0f - t) + line[1].x * t;
+        p.z = line[0].z * (1.0f - t) + line[1].z * t;
+        if (GetLocation(&p, l) && _on_run(this, l) && l != s.m_loc) {
+            s.m_dist = t * len;
+            s.m_prev = s.m_cell;
+            s.m_cell = GetCell(l, 0);
+            s.m_t = t;
+            s.m_loc = l;
+            ok = s.m_cell ? f(s, data) : false;
+        }
+    }
+    return ok;
+}
+
 /* the step of a count out over ground a step may end on: GetNeighbor's, then the cell's test (the
  * name ours: ai_astar.cpp's trace-back step, too tall to inline whole -- GetMapId, GetCell and the
  * cell's test called out of line) */

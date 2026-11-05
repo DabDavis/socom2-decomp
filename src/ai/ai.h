@@ -1460,6 +1460,17 @@ public:
         }
         return false;
     }
+    /* whether any of them lies over the cell, occupied or not (the same walk without the cell's
+     * test: CAiMaps::FindTraversable's first test, 0x529300; the name ours) */
+    bool Contains(const CAiMapLoc &loc) const
+    {
+        const CAiOverlayList *l = this;
+
+        for (const_iterator i = l->begin(); i != l->end(); i++)
+            if ((*i)->Contains(loc))
+                return true;
+        return false;
+    }
 };
 
 namespace ai {

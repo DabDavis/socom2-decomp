@@ -138,11 +138,23 @@ CAiEvent::EVENT CAiEvent::GetEventFromString(const char *s, EVENT def)
     return def;
 }
 
+/* an event deleted and its slot zeroed: std::transform's operation over the pool (the online
+ * lobby's DeleteItem<T> and the kit's DeleteUnparented shape -- a declared empty constructor, so
+ * the object is not built on the stack; the name ours) */
+struct _delete_event {
+    _delete_event() {}
+    CAiEvent *operator()(CAiEvent *e) const
+    {
+        delete e;
+        return 0;
+    }
+};
+
 /* every event back in the pool and the pool freed (SOCOM 1's Close did this itself; SOCOM II's
- * calls it. The name is ours).
- * OPEN (0x16C against 0x180): the target's first walk keeps its iterator in memory, assigned
- * (sp+152/156, bitwise copies) and re-read each pass, and its delete loop walks two cursors;
- * a list-iterator shape for the list remodel */
+ * calls it. The name is ours). The first walk's iterator declared and then assigned from begin()
+ * (in memory, re-read each pass: the list rule); the pool's events deleted by std::transform over
+ * the pool into itself -- the target's two lockstep cursors, first read and result written (0x168
+ * against 0x180 as a walk deleting `*j` and zeroing it; byte-exact so since the AI core's round 33) */
 void CAiEvent::FreeEvents()
 {
     CAiEventList::iterator i;
@@ -150,10 +162,7 @@ void CAiEvent::FreeEvents()
     for (i = m_inuse.begin(); i != m_inuse.end(); ++i)
         m_pool.push_back(*i);
     m_inuse.clear();
-    for (CAiEventList::iterator j = m_pool.begin(), e = m_pool.end(); j != e; ++j) {
-        delete *j;
-        *j = 0;
-    }
+    std::transform(m_pool.begin(), m_pool.end(), m_pool.begin(), _delete_event());
     m_pool.clear();
 }
 

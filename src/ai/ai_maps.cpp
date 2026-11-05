@@ -1372,6 +1372,86 @@ bool CAiMaps::GetTraversableLocation(const CPnt3D *pos, CAiMapLoc &out)
     return found;
 }
 
+/* whether a step may end on the cell: CAiMap::IsTraversable(loc)'s body as an inline, cut to one
+ * level -- GetCell and the cell's test called (FindTraversable's first test; the member itself is
+ * called whole there. The name ours) */
+inline bool _traversable_cell(const CAiMap *map, const CAiMapLoc &loc)
+{
+    CAiCell *cell = map->GetCell(loc, 0);
+
+    return cell ? cell->IsTraversable() : false;
+}
+
+/* a step from a cell in a direction to a traversable cell, its cell handed back (FindTraversable's
+ * step: GetMapId, GetCell and the cell's test called out of line -- ai_mapwalk.cpp's travel_step;
+ * the name ours) */
+inline bool _traversable_step(CAiMap *map, const CAiMapLoc &loc, CAiMap::DIR dir, CAiMapLoc &out, CAiCell *&cell)
+{
+    int x = loc.x + CAiMap::neighbor[dir][0];
+    int y = loc.y + CAiMap::neighbor[dir][1];
+
+    if (x >= 0 && x < map->m_nx && y >= 0 && y < map->m_ny) {
+        out.x = x;
+        out.y = y;
+        out.m_mapid = map->GetMapId();
+        cell = map->GetCell(out, 0);
+        return cell ? cell->IsTraversable() : false;
+    }
+    return false;
+}
+
+/* a cell a step may end on at or next to one: the cell itself if it is traversable and no overlay
+ * lies over it; else the free neighbours counted (the first kept), one taken as it is, and of two
+ * or more the one with the most free neighbours beside it (new in SOCOM II, the names ours:
+ * GetTraversableLocation's second call; the maps asked through AiMaps, not `this`) */
+bool CAiMaps::FindTraversable(const CAiMapLoc &loc, CAiMapLoc &out)
+{
+    bool found = false;
+    CAiMap *map = map_of(&AiMaps, loc);
+    CAiCell *cell;
+
+    if (_traversable_cell(map, loc) && !ai::overlays.Contains(loc)) {
+        out = loc;
+        found = true;
+    } else {
+        cell = 0;
+        int counts[8] = {0};
+        int n = 0;
+
+        for (int i = 0; i < 8; i++) {
+            CAiMapLoc next;
+
+            if (_traversable_step(map, loc, (CAiMap::DIR)i, next, cell) && !ai::overlays.Contains(cell, next)) {
+                if (n++ == 0)
+                    out = next;
+                counts[i] = 1;
+                n++;
+            }
+        }
+        if (n == 1) {
+            found = true;
+        } else if (n > 1) {
+            int dir = -1;
+            int best = -1;
+
+            for (int i = 0; best < 3 && i < 8; i++) {
+                if (counts[i] > 0) {
+                    if (counts[(CAiMap::DIR)((i + 15) % 8)] > 0)
+                        counts[i]++;
+                    if (counts[(CAiMap::DIR)((i + 9) % 8)] > 0)
+                        counts[i]++;
+                    if (best < counts[i]) {
+                        best = counts[i];
+                        dir = i;
+                    }
+                }
+            }
+            found = _traversable_step(map, loc, (CAiMap::DIR)dir, out, cell) && !ai::overlays.Contains(cell, out);
+        }
+    }
+    return found;
+}
+
 float CAiMaps::GetDistance(const CAiMapLoc &a, const CAiMapLoc &b)
 {
     return sqrtf(GetDistanceSq(a, b));

@@ -576,7 +576,14 @@ bool CAiMaps::GetCellRepelParams(const CAiMapLoc &loc, const CPnt3D *pos, float 
  * quadrant and the loop reloads v.z into $f20 (the target loads it once into $f20, sp-relative);
  * tried on top (build/scratch/ai/v_gc1-4.py): direct-init v / n, the quadrant as ifs, vx / vy locals,
  * the products written out (either operand order), Dot(v, n), v bound to a const reference (with n
- * in the loop or at the top: 54-96) */
+ * in the loop or at the top: 54-96)
+ * Round 33 (build/scratch/ai/v_gc33*.py): the 6-instruction gap is n's reset (11 instructions
+ * memberwise against the target's 7: lui/addiu, ld/sd, lwc1/swc1) and the second load of v.z (2).
+ * Only a DECLARATION's initialiser gives the block copy: `CPnt3D n(CPnt3D::zero)` in the loop does
+ * (0x560) but lays n out below v (n 256, v 272: declaration order), as `= CPnt3D::zero` does;
+ * placement new copies member by member under a null test (0x588), as do the PNT3D-cast
+ * assignments, `n = CPnt3D(zero)`, a by-value helper's result (0x588) and `*&zero` (0x570). vz / vy
+ * named floats fed to the dot product: 0x568-0x570 */
 bool CAiMap::GetCellRepelParams(const CAiMapLoc &loc, const CPnt3D *pos, float range, CPnt3D &dir, float &len,
                                 CAiMapLoc &cell)
 {
