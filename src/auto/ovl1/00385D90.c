@@ -7,7 +7,7 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
-s32 func_003866F0(s32, char *);                     /* extern */
+s32 Detach__11CUIVariableFP10UIVarMixin(s32, char *); /* extern */
 
 s32 DetachUIVar__10UIVarMixinFP11CUIVariable(char *arg0, s32 arg1) {
     s32 var_a1;
@@ -18,7 +18,7 @@ s32 DetachUIVar__10UIVarMixinFP11CUIVariable(char *arg0, s32 arg1) {
     }
     if ((var_a1 != 0) && (SC_MEMBER(arg0, s32 *, 4) == var_a1)) {
         SC_MEMBER(arg0, s32 *, 4) = 0;
-        if (func_003866F0(var_a1, arg0) != 0) {
+        if (Detach__11CUIVariableFP10UIVarMixin(var_a1, arg0) != 0) {
             return 1;
         }
     }
