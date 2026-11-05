@@ -3365,14 +3365,15 @@ void CUIListBox::SetPressed()
  * above or below; else a sideways press or a stick move is taken when the box wraps. The counter
  * zeroed at the top and the walk not re-initialising it (as SOCOM 1's: `for (i = 0; ...)` is
  * unrolled 8x, 0x504 bytes); the event tested `!= 0` (a plain byte test re-masks it with andi).
- * OPEN, 1 instruction: the action test's `bne v0,v1` -- the target loads the action's state into
- * v0 and the pad's state for its event into v1 and compares them state first; MW gives the pad's
- * side v1 only when it is written first, and then compares it first (`bne v1,v0`); written state
- * first, the two swap registers and the delay slot empties (18). Tried: a continue, `!(a != b)`,
- * nested ifs, int / enum / char casts on either side, named temporaries for the event, the state,
- * the pad's state or its address (copy-propagated: state first), subscripts written as
- * `ev[pad->m_state]`, `*(pad->m_state + ev)` and on the pad's bytes (C2DButton::HandlePad's open
- * is the same three temporaries) */
+ * The action test compares the state first (`bne v0,v1`) with the pad's state for the event
+ * loaded before the state is: the pad's side a value assigned in two arms (round 53 -- the arms
+ * the original's are not known, here alike). MW compares in source order and numbers each load
+ * where it is generated, left first -- written state first, the state took v1 and the delay slot
+ * emptied (18 off); pad first, the registers were the target's but the compare `bne v1,v0` (1
+ * off). A value from a two-armed assignment is never forward-substituted into its use, so it is
+ * generated ahead of the compare and the state after it; a single assignment (a named local, an
+ * inline returning the load) is substituted back (18), and an inline for the state on the left
+ * is swapped to the right by MW (1) */
 bool CUIListBox::HandlePad(const CPad *pad, int port)
 {
     int i = 0;
@@ -3416,7 +3417,9 @@ bool CUIListBox::HandlePad(const CPad *pad, int port)
         return true;
     }
     for (int j = 0; j < m_numActions; j++)
-        if (m_actions[j].Event != 0 && pad->m_state[m_actions[j].Event] == m_actions[j].State) {
+        if (m_actions[j].Event != 0
+            && m_actions[j].State == (m_actions[j].Event ? pad->m_state[m_actions[j].Event]
+                                                         : pad->m_state[m_actions[j].Event])) {
             CZAnim *anim = ZAnim.GetAnim(m_actions[j].Animation, 0);
 
             m_repeat = 0.0f;
@@ -4582,7 +4585,10 @@ unsigned char UiGetDirStickMoved();
  * the pad state's load numbered last); named locals for any of them (dead first definitions too)
  * are copy-propagated away and change nothing, the compare's operands swapped reorders the loads
  * (18), the tests in SOCOM 1's order (event tests first) gets the temporaries but not the saved
- * registers (22) */
+ * registers (22). Round 53: the pad's state as a two-armed value (`a->State == (a->Event ?
+ * pad->m_state[a->Event] : pad->m_state[a->Event])`, CUIListBox::HandlePad's close) gives the
+ * state a0, 8 off: the event and the pad's state then swap (a2/a1); the replay wants the pad's
+ * load numbered before the event's (v83 -> 78.5) or the event's after it (v79 -> 84.5) */
 bool C2DButton::HandlePad(const CPad *pad, int port)
 {
     if (!CanHandleInput())

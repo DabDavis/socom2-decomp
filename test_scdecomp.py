@@ -804,6 +804,85 @@ def test_objcmp_by_address_equates_a_respelling():
     ck(O.summary(nowhere_a, res) != O.summary(nowhere_b, res), "names no map resolves are compared by name")
 
 
+def test_unit_builds_the_same_bytes_at_any_path():
+    """A unit's object may not depend on where the tree lies (GCC round 34a). sase_rfft2g.c's
+    asserts always hold, so GCC drops their calls -- but not their strings, __FILE__ among them,
+    which was the path the unit was built at: its .rodata differed between tools/objcmp.py's
+    scratch copy and the tree (the MSL's round 28, the UI's round 26) and between worktrees, while
+    the scorer, which reads only referenced data, matched both. Its `#line` names the vendor's file
+    now. Every hand-written unit whose text names __FILE__, __DATE__, __TIME__ or __BASE_FILE__ is
+    built from two copies of src/ and include/ at paths of different lengths and the objects are
+    compared as objcmp compares them (each function's bytes and relocations, each allocated
+    section, each object); sase_rfft2g.c is built twice at one path besides, and its .rodata is the
+    target's (0x3EB8A0: the two twiddle tables, then the file and the expression). Negative: the
+    unit with its `#line` taken out differs at the two paths, in its .rodata alone. And objcmp
+    (the online lobby's round 22: the fix belongs there too) builds both of its sides at one path:
+    that bare unit built as its BASE side and again in the tree's copy put in its place compares
+    equal, built at another path it differs."""
+    import re
+    import objcmp as O
+    src = HERE / "src"
+    rx = re.compile(r"__(FILE|DATE|TIME|BASE_FILE)__")
+    units = [p.relative_to(src) for p in C.sources(src)
+             if p.relative_to(src).parts[0] != "auto" and rx.search(p.read_text(errors="replace"))]
+    rfft = Path("lib/ovl1/sase_rfft2g.c")
+    ck(rfft in units and len(units) >= 20, f"the units naming __FILE__ are found: {len(units)}")
+    work = BUILD / "anypath"
+    if work.exists():
+        shutil.rmtree(work)
+    roots = []
+    for name in ("a", "a_second_tree_at_a_longer_path"):
+        shutil.copytree(src, work / name / "src", ignore=shutil.ignore_patterns("auto", "*.o"))
+        shutil.copytree(HERE / "include", work / name / "include")
+        roots.append(work / name)
+
+    def built(root: Path, rel: Path, tag: str) -> Path:
+        _, o, err = C.build_one(root / "src" / rel, work / f"obj-{tag}", root=root / "src",
+                                include=root / "include")
+        ck(o is not None, f"{rel} builds at {root.name}: {err.strip()[-200:]}")
+        return o
+
+    differ = [str(r) for r in units
+              if O.summary(built(roots[0], r, "a")) != O.summary(built(roots[1], r, "b"))]
+    ck(not differ, f"every unit naming __FILE__ builds the same bytes at two paths; these differ: {differ}")
+    ck(O.summary(built(roots[0], rfft, "again")) == O.summary(work / "obj-a" / rfft.with_suffix(".o")),
+       "sase_rfft2g.c built twice at one path: the same bytes")
+    elf = E.Elf.read(work / "obj-a" / rfft.with_suffix(".o"))
+    ro = next(s for s in elf.sections if s.name == ".rodata")
+    ck(ro.data == E.image().read(0x3EB8A0, ro.size) and b"../../shared/rFft2G.c\0" in ro.data,
+       "and its .rodata is the target's, the vendor's file name in it")
+    for root in roots:                  # the negative: __FILE__ the path the tree lies at
+        f = root / "src" / rfft
+        text = f.read_text()
+        bare = re.sub(r"^#line .*\n", "", text, flags=re.M)
+        ck(bare != text, "the unit's #line is there to take out")
+        f.write_text(bare)
+    a, b = O.summary(built(roots[0], rfft, "bare-a")), O.summary(built(roots[1], rfft, "bare-b"))
+    ck([k for k in sorted(set(a) | set(b)) if a.get(k) != b.get(k)] == ["section .rodata#1"],
+       "without its #line, the unit's .rodata differs at the two paths (and nothing else)")
+    # and objcmp builds both of its sides at ONE path (the online lobby's round 22): the unit without
+    # its #line, built where objcmp builds BASE's copy and again in the tree's copy put in its place,
+    # compares equal; at another path (the old sides: a scratch copy against the tree) it differs
+    bare = (roots[0] / "src" / rfft).read_text()
+
+    def side_build(side: Path, tag: str) -> dict:
+        f = side / "src" / rfft
+        f.parent.mkdir(parents=True, exist_ok=True)
+        f.write_text(bare)
+        (side / "include").mkdir(exist_ok=True)
+        (o, err), = O.build_side(side, [rfft], work / f"objcmp-{tag}").values()
+        ck(o is not None, f"objcmp's side builds at {side.name}: {err}")
+        return O.summary(o)
+
+    side = work / "objcmp" / "tree"
+    first = side_build(side, "base")
+    shutil.rmtree(side)                 # tree_copy() puts the tree's copy in BASE's place
+    ck(side_build(side, "now") == first, "objcmp: an unchanged unit naming __FILE__ bare is the same on both sides")
+    ck(side_build(work / "objcmp" / "another_tree", "other") != first,
+       "negative: the same unit built at another path differs (objcmp's old two sides)")
+    shutil.rmtree(work)
+
+
 def test_explicit_instance_scores_in_its_units_overlay():
     """seal_tasks.cpp (OVL2) instantiates `ai::_max<unsigned char>` explicitly: a global, the
     unit's own, whose name the map gives OVL1's 0x2AFC40 and whose OVL2 copy is 0x5DEE70
@@ -1142,6 +1221,81 @@ def test_igreplay_target_scores_the_move_and_budgets_a_search():
             same += [fast[fi[i]] for i in range(hi)] == [ref[ri[i]] for i in range(hi)]
             n += 1
     ck(same == n, f"(c) the in-place renumbering replays as the deep copy did ({same} of {n} placements)")
+
+
+IG_SPILL = """extern int ig_g(int);
+
+int ig_spill(int n)
+{
+    int a = ig_g(0);
+    int b = ig_g(1);
+    int c = ig_g(2);
+    int d = ig_g(3);
+    int e = ig_g(4);
+    int f = ig_g(5);
+    int g = ig_g(6);
+    int h = ig_g(7);
+    int i = ig_g(8);
+    char flag = ig_g(9);
+    int j = ig_g(10);
+
+    ig_g(n);
+    return a + b + c + d + e + f + g + h + i + flag + j;
+}
+"""
+IG_SPILL_DECLS = ("    int i = ig_g(8);\n    char flag = ig_g(9);\n", "    char flag = ig_g(9);\n    int i = ig_g(8);\n")
+
+
+def test_igreplay_replays_spill_slots():
+    """The spill slots (GCC round 34a, the weapons' round-27 request: CZWeapon::Fire 0x3D2D70 is 31 off
+    in stack offsets alone, the target packing two word spills in one quadword). igdump records the
+    slot pass after a colouring that spills (each spilled node's Object: size, alignment, offset) and
+    the function's frame top; igreplay replays it -- the spilled nodes in INDEX order, each bumped
+    down the local area by its size and rounded to its alignment -- under a --move. A fixture with
+    twelve values live across a call spills h, i and flag (a char spilled as a 16-byte quadword): in
+    index order -4, -8, -32 under a 192-byte frame top, the object's spill stores at sp 188, 184 and
+    160; the replay gives the record's slots. Numbered flag before i (`--move flag=40.5`) the replay
+    predicts -4, -32, -36 and a frame top of 208 -- and the source with the two declarations swapped
+    compiles to exactly that (its record's slots, its code's sp 204, 176, 172). Negatives: the slots
+    taken in the record's own order under the move (not by index) differ from the swapped compile's;
+    a recorded alignment changed fails the record's own check. (Fire's record under the weapons'
+    `--move 45=40.5` gives the target's 220, 216 and 192 -- README, round 34a -- not asserted here:
+    its unit is another lane's to change.)"""
+    import json
+    import igdump
+    import igreplay as R
+    recs, _ = igdump.dump(_ig_fixture("ig_spill.c", IG_SPILL), BUILD / "ig_spill.jsonl")
+    (k, rec), = igdump.select(recs, "^ig_spill$", 0)[:1]
+    sp = rec.get("spills")
+    ck(sp is not None and [(s["name"].split("@0x")[0], s["size"], s["align"], s["off"]) for s in sp["slots"]]
+       == [("h", 4, 4, -4), ("i", 4, 4, -8), ("flag", 16, 16, -32)] and rec.get("frame") == 192,
+       f"the slot pass recorded in index order: {sp and sp['slots']}, frame {rec.get('frame')}")
+    ck(R.check_slots(rec) is True, "the slot model gives the record's own slots")
+    obj = build(BUILD / "ig_spill.c", "ig_spill")
+    code, _, _ = E.Elf.read(obj).function("ig_spill")
+    text = [t for _, _, t in E.disasm(code, 0)]
+    ck({"sw v0,188(sp)", "sw v0,184(sp)", "sb v0,160(sp)"} <= set(text), "the object's spill stores at frame + offset")
+    flag, i = R.node_index(rec, "flag"), R.node_index(rec, "i")
+    moved, newidx, _ = R.replay_moved(rec, {flag: i - 0.5})
+    pred = R.stack_slots(rec, moved, newidx)
+    ck([(nm, off, spo) for _, nm, _, _, off, spo, _ in pred["slots"]] == [("h", -4, 204), ("flag", -32, 176), ("i", -36, 172)]
+       and pred["frame"] == 208, f"--move flag before i predicts the swapped slots: {pred}")
+    swapped = IG_SPILL.replace(IG_SPILL_DECLS[0], IG_SPILL_DECLS[1])
+    ck(swapped != IG_SPILL, "the swapped declarations differ")
+    srecs, _ = igdump.dump(_ig_fixture("ig_spill_swapped.c", swapped), BUILD / "ig_spill_swapped.jsonl")
+    (_, srec), = igdump.select(srecs, "^ig_spill$", 0)[:1]
+    got = [(s["name"].split("@0x")[0], s["off"]) for s in srec["spills"]["slots"]]
+    ck(got == [(nm, off) for _, nm, _, _, off, _, _ in pred["slots"]] and srec["frame"] == pred["frame"],
+       f"and the swapped source compiles to it: {got}, frame {srec['frame']}")
+    scode, _, _ = E.Elf.read(build(BUILD / "ig_spill_swapped.c", "ig_spill_swapped")).function("ig_spill")
+    ck({"sw v0,204(sp)", "sb v0,176(sp)", "sw v0,172(sp)"} <= {t for _, _, t in E.disasm(scode, 0)},
+       "the swapped object's spill stores at the predicted sp offsets")
+    by_old = R.stack_slots(rec, moved, list(range(len(rec["nodes"]))))     # the record's order kept
+    ck(by_old is None or [(nm, off) for _, nm, _, _, off, _, _ in by_old["slots"]] != got,
+       "negative: the record's own order under the move is not the swapped compile's")
+    bad = json.loads(json.dumps(rec))
+    bad["spills"]["slots"][1]["align"] = 16
+    ck(R.check_slots(bad) is False, "negative: a recorded alignment changed fails the record's check")
 
 
 def test_igvar_compares_variants():

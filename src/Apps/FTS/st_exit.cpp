@@ -78,8 +78,10 @@ class CZSealBody {
 public:
     unsigned char _0[0x58c];
     unsigned short m_58c;   // 0x58c
-    unsigned char _58e[0x594 - 0x58e];
-    unsigned short m_594;   // 0x594
+    unsigned char _58e[0x590 - 0x58e];
+    unsigned short m_590;   // 0x590: the shots that hit (the accuracy rating's)
+    unsigned char _592[0x594 - 0x592];
+    unsigned short m_594;   // 0x594: the shots fired
     unsigned char _596[0x598 - 0x596];
     unsigned short m_kills;   // 0x598
     unsigned char _59a[0x5a2 - 0x59a];
@@ -338,6 +340,55 @@ extern "C" float func_001F3290(CSealStats **stats)
 }
 
 
+/* the accuracy rating (OVL1 0x1F2E40): the player's hits over his shots as a percentage, then the
+ * team's -- every SEAL's stats summed, hits (2) over shots (4) and kills (6) -- weighed 1.3, less 1.5
+ * for each of the player's counter 3, plus 1.5 for each of his counter 0, clamped to 0..100; the
+ * player's accuracy, his kills, the team's kills and the rating shown, the rating returned as a
+ * fraction (the name ours). Byte-exact (the states' round 41): the halfwords converted through int
+ * locals (a plain unsigned short converts unsigned, bltz and all), the weighing three statements on
+ * the team's own variable (one expression fuses into suba / madd) */
+extern "C" float func_001F2E40(CSealStats **stats, int n)
+{
+    CZSealBody *player = ftsGetPlayer();
+    int hit = player->m_590;
+    int fired = player->m_594;
+    float acc;
+
+    if (fired > 0)
+        acc = 100.0f * ((float)hit / (float)fired);
+    else
+        acc = 0.0f;
+    int accuracy = Round(acc);
+    int hits = 0;
+    int shots = 0;
+    int kills = 0;
+
+    for (int i = 0; i < n; i++) {
+        hits += stats[i]->m_count[2];
+        shots += stats[i]->m_count[4];
+        kills += stats[i]->m_count[6];
+    }
+    float team = 0.0f;
+
+    if (shots > 0)
+        team = 100.0f * ((float)hits / (float)shots);
+    int c3 = stats[0]->m_count[3];
+    int c0 = stats[0]->m_count[0];
+
+    team *= 1.3f;
+    team -= 1.5f * c3;
+    team += 1.5f * c0;
+    int pct = Round(team);
+
+    pct = pct > 0 ? pct : 0;
+    pct = pct < 100 ? pct : 100;
+    UIVar("StatPlayerAccuracy") = accuracy;
+    UIVar("StatPlayerKills") = stats[0]->m_count[6];
+    UIVar("StatTeamKills") = kills;
+    UIVar("StatAccuracyPct") = pct;
+    return 0.01f * pct;
+}
+
 /* a mission taken into the career (OVL1 0x1F1FB0; SetRoundStatUiVars 0x1F21B0 calls it on
  * theMission +0x1950, the name ours): each percentage averaged in over the missions so far, the
  * count up one, the player's counters added.
@@ -478,7 +529,7 @@ bool CExitState::Init()
     theMission.ReOpen_Unload1();
     func_001F21B0(&counts);
     theMission.ReOpen_Unload2();
-    if (theMission.m_1ac->m_4 == 2) {
+    if (theMission.m_valve_abort->m_value == 2) {
         theGame.Pop(1);
         return true;
     }
