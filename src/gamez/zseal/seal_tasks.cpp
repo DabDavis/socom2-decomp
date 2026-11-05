@@ -145,6 +145,8 @@ void Tile__7CAiMapsFPCQ26CAiMap6regionUiUi(CAiMaps *maps, const CAiMapRegion *r,
 bool SetRegionType__7CAiMapsFPCQ26CAiMap6regionQ36CAiMap6region4TYPE(CAiMaps *maps, const CAiMapRegion *r, unsigned char type);
 /* and CAiMaps::GetRegion(const char *, CAiMapLoc &), a region by name with its cell (OVL2 0x52D9F0) */
 const CAiMapRegion *GetRegion__7CAiMapsFPCcR9CAiMapLoc(CAiMaps *maps, const char *name, CAiMapLoc &loc);
+/* and GetLocation(const char *, CAiMapLoc &), a line's cell by name (OVL2 0x52DB70) */
+bool GetLocation__7CAiMapsFPCcR9CAiMapLoc(CAiMaps *maps, const char *name, CAiMapLoc &loc);
 }
 
 /* a region kind's name (SOCOM 1's CAiMap::region::GetTypeName, out of line there -- 0x2B9AA0, its
@@ -956,9 +958,24 @@ struct CTPaint : TASK_HDR {
     static bool Tick(_zanim_cmd_hdr *hdr, float *dT);
 };
 
-/* ai::MAP, ai::PARAM and ai::STATE (SOCOM 1's CTMap, CTParam, CTState): their blocks not laid out yet --
- * only the handlers RegisterCommands hands on (unwritten) */
+/* ai::MAP (SOCOM 1's CTMap): the AI maps changed -- the kinds and fields its Parse (0x5D69F0) sets
+ * from the tags (the names ours); ai::PARAM and ai::STATE (SOCOM 1's CTParam, CTState): their blocks
+ * not laid out yet -- only the handlers RegisterCommands hands on (unwritten) */
 struct CTMap : TASK_HDR {
+    unsigned char m_kind;   // 0x8: 1 an action cleared, 2 a region's type, 3-5 a line's visibility, type, id
+    unsigned char _9[0xc - 0x9];
+    int m_value;   // 0xc
+    CAiMapLoc m_loc;   // 0x10: the region's or the line's cell
+
+    /* a block of a kind (inline: the kind bound ahead of the allocation, live across the header's
+     * mask -- stored after NewTask the constants colour the other way round; the name ours) */
+    static CTMap *Create(unsigned char kind)
+    {
+        CTMap *cmd = NewTask<CTMap>();
+
+        cmd->m_kind = kind;
+        return cmd;
+    }
     static _zanim_cmd_hdr *Parse(_zrdr *rdr);
     static bool Tick(_zanim_cmd_hdr *hdr, float *dT);
 };
@@ -1404,6 +1421,60 @@ _zanim_cmd_hdr *CTMacro::Parse(_zrdr *rdr)
 inline _zrdr *TaskItem(_zrdr *rdr, unsigned int i)
 {
     return i < rdr->Count() ? &rdr->array[i] : 0;
+}
+
+/* the AI maps changed: "clear_action" (kind 1); a "region" by "name" given a "set_type" (kind 2);
+ * else a "line" by "name" given "set_visible", "set_type" or "set_id" (kinds 3-5) -- the line's
+ * test compares the tag with the region's null result (`==`, not `=`: the line branch runs only
+ * when there is no line, and reads the null region) (OVL2 0x5D69F0; SOCOM 1's) */
+_zanim_cmd_hdr *CTMap::Parse(_zrdr *rdr)
+{
+    CTMap *cmd = 0;
+    bool clear;
+
+    if (zrdr_findbool(rdr, "clear_action", &clear)) {
+        cmd = Create(1);
+    } else {
+        _zrdr *r;
+
+        if ((r = zrdr_findtag(rdr, "region")) != 0) {
+            CAiMapLoc loc;
+
+            if (GetRegion__7CAiMapsFPCcR9CAiMapLoc(&AiMaps, zrdr_findstring(r, "name"), loc)) {
+                const char *type = zrdr_findstring(r, "set_type");
+
+                if (type) {
+                    CAiMap::region::TYPE t = RegionTypeByName(type);
+
+                    cmd = Create(2);
+                    cmd->m_loc = loc;
+                    cmd->m_value = t;
+                }
+            }
+        } else if (r == zrdr_findtag(rdr, "line")) {
+            CAiMapLoc loc;
+
+            if (GetLocation__7CAiMapsFPCcR9CAiMapLoc(&AiMaps, zrdr_findstring(r, "name"), loc)) {
+                bool visible;
+                int value;
+
+                if (zrdr_findbool(r, "set_visible", &visible)) {
+                    cmd = Create(3);
+                    cmd->m_loc = loc;
+                    cmd->m_value = visible;
+                } else if (zrdr_findint(r, "set_type", &value, 1)) {
+                    cmd = Create(4);
+                    cmd->m_loc = loc;
+                    cmd->m_value = value;
+                } else if (zrdr_findint(r, "set_id", &value, 1)) {
+                    cmd = Create(5);
+                    cmd->m_loc = loc;
+                    cmd->m_value = value;
+                }
+            }
+        }
+    }
+    return &cmd->hdr;
 }
 
 /* anims played: the "anim" list's types (-1 for a name none has), a "stance" (0-2 kept in m_22),
