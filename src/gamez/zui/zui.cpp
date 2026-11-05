@@ -169,11 +169,20 @@ extern _zsys_public zSys;
  * come first and its vtable pointer follows them at 0x910). Only what is written so far is placed */
 /* a node of the world (znode.h's zdb::CNode, 0xC0 bytes: only what the menu calls -- its vtable
  * pointer at 0x60, slots as SOCOM II's table 0x4067B0 holds them) and a visual (znode.h's
- * zdb::CVisual; C2DVisual, a 2D object's visual, is 0x70 bytes as the menu news it) */
+ * zdb::CVisual: its vtable pointer at 0x20, the 2D visual it is through slot 0x1C; C2DVisual, a 2D
+ * object's visual, is 0x70 bytes as the menu news it, its 2D object at 0x68) */
+class C2DVisual;
 namespace zdb {
 class CVisual {
 public:
-    unsigned char _0[0x70];
+    unsigned char _0[0x20];
+    virtual ~CVisual();                              /* +0x08 */
+    virtual void Render(CMatrix *mtw);               /* +0x0C */
+    virtual void ComputeBBox(void *box);             /* +0x10 */
+    virtual void UpdateCentroid();                   /* +0x14 */
+    virtual bool Read(void *zar);                    /* +0x18 */
+    virtual C2DVisual *Get2DVisual() { return 0; }   /* +0x1C */
+    unsigned char _24[0x68 - 0x24];
 };
 
 class CNode {
@@ -182,6 +191,7 @@ public:
     static CNode *Create(const char *name);
     static CNode *CreateInstance(const char *name, const CPnt3D *pos, const CQuat *rot);
     bool AddVisual(CVisual *visual);
+    CVisual *GetFirstVisual();
     void SetDynamicLight(bool on, bool children);
     void SetDescendantVisuals(bool on);
     void SetRotation(const CPnt3D *rot);
@@ -213,6 +223,9 @@ public:
 class C2DVisual : public zdb::CVisual {
 public:
     C2DVisual(C2D *c2d, zdb::CTextureRelocMgr *mgr);
+
+    C2D *m_c2d;   // 0x68
+    zdb::CTextureRelocMgr *m_mgr;   // 0x6c
 };
 
 class CGameMenu {
@@ -222,6 +235,11 @@ public:
     bool TickMPEG();
     bool RestartBackgroundMPEG(const char *name);
     bool HaltBackgroundMPEG();
+    /* the button a node names made the active one, and the previous or next one that takes input
+     * (SOCOM 1's; SOCOM II's Prev and Next take whether to play the selection sound) */
+    void MakeButtonActive(const char *name);
+    void MakePrevButtonActive(bool sound);
+    void MakeNextButtonActive(bool sound);
     /* the actions on an event run, each with the argument given or its own (SOCOM 1's; SOCOM II
      * looks the animation up twice) */
     bool RunEventAnim(ActionItem::EVENT event, const char *arg);
@@ -329,18 +347,28 @@ public:
 
 extern CZAnimMain ZAnim;
 
-/* a sound (zsnd.h's CSnd: only its lookup by name) */
+/* a sound (zsnd.h's CSnd: its lookup by name, and its table to the one-shot play at +0x1C) */
+class CSndInstance;
 class CSnd {
 public:
     static CSnd *GetSoundByName(const char *name);
+
+    virtual ~CSnd();
+    virtual CSndInstance *PlaySound(CSndInstance *inst, unsigned int flags);
+    virtual CSndInstance *PlaySoundVol(float vol, CSndInstance *inst, unsigned int flags);
+    virtual CSndInstance *PlaySound3D(const CPnt3D *pos, float vol, int pitch, CSndInstance *inst, unsigned int flags);
+    virtual CSndInstance *PlaySoundVolPanPitch(float vol, int pan, int pitch, CSndInstance *inst, unsigned int flags);
+    virtual CSndInstance *PlaySound(bool oneShot, CSndInstance *inst, unsigned int flags);
 };
 
 /* the game, as far as the menus' sounds read it (fts_state.h's COurGame: the menu state at 0x78,
- * its teletype sound's name at 0x14 there) */
+ * its teletype sound's name at 0x14 there, its selection sound at 0x2C) */
 class COurGame {
 public:
     unsigned char _0[0x8c];
     CSaferStr m_ttySoundString;   // 0x8c: m_menuState.TtySoundString
+    unsigned char _98[0xa4 - 0x98];
+    CSnd *m_selectionSound;       // 0xa4: m_menuState.SelectionSound
 };
 extern COurGame theGame;
 
@@ -646,6 +674,162 @@ void CGameMenu::LoadDesign(const char *name, CZAnimZAR *zar)
         return;
     m_ReaderName = name;
     LoadFromDesign(design, zar);
+}
+
+/* the next button that takes input made the active one, the selection sound played when the active
+ * one changed and a sound is asked for (0x3670D0: SOCOM 1's MakeNextButtonActive, by its place
+ * after MakePrevButtonActive and its code; SOCOM II's takes the sound flag, the recursion passing
+ * false and playing the sound itself; SOCOM 1's divides signed too). The three Make*s' shapes, by
+ * MW's colouring (tools/igreplay.py): ONE iterator walks every time -- initialised from begin(),
+ * then assigned, which keeps it in memory, so even the first walk steps through its slot (its
+ * unrolled copies each through a slot of their own) -- the end taken into a local first, one
+ * counter for both walks (the second walk's range renumbered late: v0/v1/a0 as the target), and
+ * the index saved AFTER the first walk: a copy of that walk's hoisted bound, numbered among the
+ * loop optimiser's temporaries after the end's (declared ahead of the walk, old and the end trade
+ * s1/s2). A plain `return;` after the search makes its empty test jump to that return's `b`
+ * instead of the epilogue: the else-if */
+void CGameMenu::MakeNextButtonActive(bool sound)
+{
+    if (m_buttons.size() == 0)
+        return;
+
+    std::list<C2D *>::iterator e = m_buttons.end();
+    std::list<C2D *>::iterator i = m_buttons.begin();
+    int n;
+
+    for (n = 0; n < m_activeButton; n++)
+        ++i;
+
+    int old = m_activeButton;
+
+    (*i)->SetNormal();
+    m_activeButton++;
+    m_activeButton %= (int)m_buttons.size();
+
+    i = m_buttons.begin();
+    for (n = 0; n < m_activeButton; n++)
+        ++i;
+
+    C2D *button = *i;
+
+    if (!button->CanHandleInput()) {
+        for (i = m_buttons.begin(); i != e; ++i) {
+            if ((*i)->CanHandleInput()) {
+                MakeNextButtonActive(false);
+                if (m_activeButton != old && sound) {
+                    CSnd *snd = theGame.m_selectionSound;
+
+                    if (snd)
+                        snd->PlaySound(true, 0, 255);
+                }
+                return;
+            }
+        }
+    } else if (m_activeButton != old) {
+        button->SetActive();
+        if (sound) {
+            CSnd *snd = theGame.m_selectionSound;
+
+            if (snd)
+                snd->PlaySound(true, 0, 255);
+        }
+    }
+}
+
+/* the previous button that takes input made the active one (0x366D70: SOCOM 1's
+ * MakePrevButtonActive, by its place and its code; the sound flag SOCOM II's, as Next's) */
+void CGameMenu::MakePrevButtonActive(bool sound)
+{
+    if (m_buttons.size() == 0)
+        return;
+
+    std::list<C2D *>::iterator e = m_buttons.end();
+    std::list<C2D *>::iterator i = m_buttons.begin();
+    int n;
+
+    for (n = 0; n < m_activeButton; n++)
+        ++i;
+
+    int old = m_activeButton;
+
+    (*i)->SetNormal();
+    m_activeButton--;
+    if (m_activeButton < 0)
+        m_activeButton = m_buttons.size() - 1;
+
+    i = m_buttons.begin();
+    for (n = 0; n < m_activeButton; n++)
+        ++i;
+
+    C2D *button = *i;
+
+    if (!button->CanHandleInput()) {
+        for (i = m_buttons.begin(); i != e; ++i) {
+            if ((*i)->CanHandleInput()) {
+                MakePrevButtonActive(false);
+                if (m_activeButton != old && sound) {
+                    CSnd *snd = theGame.m_selectionSound;
+
+                    if (snd)
+                        snd->PlaySound(true, 0, 255);
+                }
+                return;
+            }
+        }
+    } else if (m_activeButton != old) {
+        button->SetActive();
+        if (sound) {
+            CSnd *snd = theGame.m_selectionSound;
+
+            if (snd)
+                snd->PlaySound(true, 0, 255);
+        }
+    }
+}
+
+/* the button the named node draws made the active one, the active one set back to normal first and
+ * the selection sound played, and its place in the menu's buttons kept (0x366B60: SOCOM 1's
+ * MakeButtonActive, by its place after HaltBackgroundMPEG and its code) */
+void CGameMenu::MakeButtonActive(const char *name)
+{
+    if (m_buttons.size() == 0)
+        return;
+
+    std::list<C2D *>::iterator i = m_buttons.begin();
+
+    for (int n = 0; n < m_activeButton; n++)
+        ++i;
+    (*i)->SetNormal();
+
+    C2D *button;
+    std::list<C2D *>::iterator e = m_buttons.end();
+    zdb::CNode *node = m_nodeTop.FindChild(name, true);
+
+    if (node) {
+        zdb::CVisual *visual = node->GetFirstVisual();
+
+        if (visual) {
+            C2DVisual *v2d = visual->Get2DVisual();
+
+            if (v2d)
+                button = v2d->m_c2d;
+        }
+        button->SetActive();
+
+        CSnd *snd = theGame.m_selectionSound;
+
+        if (snd)
+            snd->PlaySound(true, 0, 255);
+    }
+
+    int n = 0;
+
+    for (i = m_buttons.begin(); i != e; ++i, n++) {
+        if (*i == button) {
+            m_activeButton = n;
+            return;
+        }
+    }
 }
 
 /* the background movie stopped, if one runs (SOCOM 1's HaltBackgroundMPEG, 0x366B10) */
