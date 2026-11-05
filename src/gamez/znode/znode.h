@@ -516,6 +516,9 @@ public:
     static bool m_applyShadow;
     static bool m_applyLocalLights;
     static bool m_applyMultipass;
+    /* the scene's custom global light (-1: none; SOCOM 1's static, 4 bytes right before
+     * m_applyShadow -- OVL1 0x3E1448): the lights' packet send scales the global light by it */
+    static int m_customGlobalLightIdx;
     /* the landmark switch: its flag (0x4B4A58, VuObjectSetup's fog choice) set and the lighting
      * switched the other way (SOCOM 1's static, the same code) */
     static void LandmarkEnable(bool on);

@@ -135,12 +135,16 @@ void *tosGetQueuePtr(TOS *t, unsigned char id);
 
 /* a block's n-th output queue: set, the queue's element size taken from the block's when it has
  * none; the scheduler's own (the record a block id's constructor may hand back is the scheduler)
- * through the host's callback, at the block's control slot. A 1 is a failure. */
+ * through the host's callback, at the block's control slot. A 1 is a failure. The callback's
+ * failure returns 1 and its success falls to the shared `return 0` (round 27c): so its result is
+ * tested by branches, the target's `beqz v0; li v0,1` -- `return cb(...) != 0`, or its own
+ * `return 0` after the test, is a store-flag (`sltu`) the target does not have. */
 static __inline__ unsigned char RegisterOutputQueue(TOSBLOCK *b, TOS *t, TOSQUEUE *q, unsigned char n)
 {
-    if (b == (TOSBLOCK *)t)
-        return ((TOS *)b)->cb.output_queue((TOS *)b, q) != 0;
-    if (b != 0 && q != 0) {
+    if (b == (TOSBLOCK *)t) {
+        if (((TOS *)b)->cb.output_queue((TOS *)b, q) != 0)
+            return 1;
+    } else if (b != 0 && q != 0) {
         b->outputs[n].q = q;
         if (q->elemsize == 0)
             q->elemsize = b->outputs[n].reader;
@@ -158,19 +162,23 @@ static __inline__ unsigned char RegisterInputQueue(TOSBLOCK *b, TOS *t, TOSQUEUE
             return 1;
         return 0;
     }
-    if (b == (TOSBLOCK *)t)
-        return ((TOS *)b)->cb.input_queue((TOS *)b, q, reader) != 0;
-    b->inputs[n].q = q;
-    b->inputs[n].reader = reader;
-    if (q != 0 && qQueueControl(q, 10, reader, 0) == 0)
-        return 1;
+    if (b == (TOSBLOCK *)t) {
+        if (((TOS *)b)->cb.input_queue((TOS *)b, q, reader) != 0)
+            return 1;
+    } else {
+        b->inputs[n].q = q;
+        b->inputs[n].reader = reader;
+        if (q != 0 && qQueueControl(q, 10, reader, 0) == 0)
+            return 1;
+    }
     return 0;
 }
 
 /* block i built: its id's constructor, its output queues (QueueWriters' entries naming it), its
  * input queues (QueueReaders'), each reader numbered down from the queue's count of readers, then
  * its init; a 1 on any failure. tosGetQueuePtr is called out of line: its body comes later.
- * OPEN (149 words, 4 short): the walks, tests and calls are the target's, but the output count is
+ * OPEN (148 words, 2 short since round 27c's callback tests): the walks, tests and calls are the
+ * target's, but the output count is
  * kept in s3 and narrowed at each use there (`andi v1,s3,0xff` before the bump) where 2.96 copies
  * it into the inline's argument registers here, and the readers' and writers' saved registers
  * trade places (s5/s6). Its definition here is what tosCallControlFunc needed (below). */
@@ -230,7 +238,85 @@ extern __inline__ void *tosGetQueuePtr(TOS *t, unsigned char id)
     return 0;
 }
 
-extern unsigned char ConstructQueue(TOS *t, unsigned char id, int i);    /* not yet written */
+extern TOSQUEUE *qQueueConstruct(TOS *t, unsigned char id, unsigned char nreaders);
+extern int qQueueInit(void *q);
+
+/* a reader of a queue added to a block: the first free input slot takes the queue and the reader,
+ * which is opened (10); with no block the reader disabled (8), the scheduler's through the host's
+ * callback. A 1 is a failure. */
+static __inline__ unsigned char AddInputQueue(TOSBLOCK *b, TOS *t, TOSQUEUE *q, unsigned short reader)
+{
+    char n;
+
+    if (b != 0) {
+        if (b == (TOSBLOCK *)t) {
+            if (((TOS *)b)->cb.input_queue((TOS *)b, q, reader) != 0)
+                return 1;
+        } else {
+            for (n = 0; n < b->ninputs; n++) {
+                if (b->inputs[n].q == 0) {
+                    b->inputs[n].q = q;
+                    b->inputs[n].reader = reader;
+                    break;
+                }
+            }
+            if (q != 0 && qQueueControl(q, 10, reader, 0) == 0)
+                return 1;
+        }
+    } else if (q != 0 && qQueueControl(q, 8, reader, 0) == 0)
+        return 1;
+    return 0;
+}
+
+/* queue i built: its readers counted (QueueReaders' entries naming it), the queue made, each block
+ * writing it (QueueWriters' entries, together) given it as its next output, each block reading it
+ * given it as a free input with its reader numbered down; then the queue initialised. A 1 on any
+ * failure. The writers' output numbers are counted per block from the table's head. SOCOM 1's
+ * static (round 27c, byte-exact): the reader's block found as each entry's own (no range test, the
+ * scheduler for id 0), its slot the first free input (a char counter, as DestructQueue's); the
+ * input helper's no-block case last (`if (b != 0) ... else if`: the target's 8-path after the
+ * 10-path, each its own qQueueControl call). */
+static unsigned char ConstructQueue(TOS *t, unsigned char id, int i)
+{
+    unsigned char *counts = func_00243398(t->heap, t->nblocks, 1);
+    unsigned char *w, *r;
+    unsigned int nreaders = 0;
+    TOSQUEUE *q;
+
+    if (counts == 0)
+        return 1;
+    for (w = t->writers; w[0] != id; w += 3)
+        counts[w[2]]++;
+    for (r = t->readers; r[0] != 255; r += 2)
+        if (r[0] == id)
+            nreaders++;
+    q = qQueueConstruct(t, id, nreaders);
+    if (q == 0) {
+        heap_Free(t->heap, counts);
+        return 1;
+    }
+    t->queues[i] = q;
+    for (; w[0] == id; w += 3) {
+        TOSBLOCK *b = w[2] != 0 ? t->blocks[w[2] - t->blockbase] : (TOSBLOCK *)t;
+
+        if (RegisterOutputQueue(b, t, q, counts[w[2]]++)) {
+            heap_Free(t->heap, counts);
+            return 1;
+        }
+    }
+    heap_Free(t->heap, counts);
+    for (r = t->readers; r[0] != 255; r += 2) {
+        if (id == r[0]) {
+            unsigned char k = id - t->queuebase;
+            TOSBLOCK *b = r[1] != 0 ? t->blocks[r[1] - t->blockbase] : (TOSBLOCK *)t;
+
+            if (AddInputQueue(b, t, t->queues[k], --nreaders))
+                return 1;
+        }
+    }
+    return qQueueInit(q) == 0;
+}
+
 int tosBaseBlockControl(TOSBLOCK *b, unsigned char cmd, int arg, int n);
 
 extern void qQueueReset(void *q);
