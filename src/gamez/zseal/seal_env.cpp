@@ -4566,49 +4566,46 @@ extern "C" {
 /* an anim's reference height when it has one, else 0 (OVL2 0x58C2B0, seal_cfg.cpp's range: its draft
  * matches) */
 float func_0058C2B0(CZSealBody *seal, AnimType type);
-/* (OVL1 data: two before and two after ClimbMedium, as SOCOM 1's StepUp and ClimbOver sit -- unproven,
- * so placeholders) */
-extern short data_003DEC80;
-extern short data_003DECA0;
 }
 
 /* a climb's homing aimed at a wall: the point it closes on taken to the given height, the anim's own
  * reference point -- for ClimbMedium mixed toward the anim's reference height by the top blend's
- * first weight once it blends two, one higher for 0x3DEC80 -- and the wall's normal turned about,
- * the target offset by the climb (11.78 up and 2.42 back for anim 33, 0.29 down and 2.42 back for
- * 0x3DECA0); none unless one of the climbs (or anim 42) is current, nor when told it is done (OVL2
- * 0x5B1A10, new in SOCOM II: 0x5B2620 calls it; the name unknown). The wall's normal copied in and
- * negated in place at the end, the offset assigned to the homing's target after the aim */
-extern "C" void func_005B1A10(CZSealBody *seal, bool done, CPnt3D *intpt, const CPnt3D *at, const CPnt3D *wall)
+ * first weight once it blends two, one higher for StepUp -- and the wall's normal turned about, the
+ * target offset by the climb (11.78 up and 2.42 back for anim 33, 0.29 down and 2.42 back for
+ * ClimbOver); none unless one of the climbs (or anim 42) is current, nor when told it is done (OVL2
+ * 0x5B1A10, SOCOM 1's AlignForClimb, called once from ImpactFront 0x5B2620 in both builds -- the
+ * round 48's name). The wall's normal copied in and negated in place at the end, the offset
+ * assigned to the homing's target after the aim */
+void CZSealBody::AlignForClimb(bool done, CPnt3D &intpt, CPnt3D &at, CPnt3D *wall)
 {
     if (done)
         return;
-    CZBodyAnimBlend *top = (CZBodyAnimBlend *)func_00555170((char *)seal + 0x1c0);
+    CZBodyAnimBlend *top = (CZBodyAnimBlend *)func_00555170((char *)this + 0x1c0);
     CPnt3D norm = *wall;
     CPnt3D ref;
 
-    func_0058C2F0(seal, top->Representative()->m_anim, &ref);
+    func_0058C2F0(this, top->Representative()->m_anim, &ref);
     CPnt3D off = CPnt3D::zero;
 
-    intpt->y = at->y;
-    if (seal->IsCurrentBlend((AnimType)33)) {
+    intpt.y = at.y;
+    if (IsCurrentBlend((AnimType)33)) {
         off.y = 11.78f;
         off.z = -2.42f;
-    } else if (seal->IsCurrentBlend((AnimType)AnimTypes::ClimbMedium)) {
+    } else if (IsCurrentBlend((AnimType)AnimTypes::ClimbMedium)) {
         if (top->CountAnims() > 1) {
             float w = top->m_anims.Begin()->m_wt;
 
-            ref.y = (1.0f - w) * func_0058C2B0(seal, (AnimType)AnimTypes::ClimbMedium) + w * ref.y;
+            ref.y = (1.0f - w) * func_0058C2B0(this, (AnimType)AnimTypes::ClimbMedium) + w * ref.y;
         }
-    } else if (seal->IsCurrentBlend((AnimType)data_003DECA0)) {
+    } else if (IsCurrentBlend((AnimType)AnimTypes::ClimbOver)) {
         off.y = -0.29f;
         off.z = -2.42f;
-    } else if (seal->IsCurrentBlend((AnimType)data_003DEC80))
+    } else if (IsCurrentBlend((AnimType)AnimTypes::StepUp))
         ref.y += 1.0f;
-    else if (!seal->IsCurrentBlend((AnimType)42))
+    else if (!IsCurrentBlend((AnimType)42))
         return;
     NegateInto(&norm, &norm);
-    HomingOf(top)->Aim(top, &ref, &norm, intpt);
+    HomingOf(top)->Aim(top, &ref, &norm, &intpt);
     top->m_homing.m_target_refpt_m = off;
 }
 

@@ -10446,8 +10446,8 @@
 0x005804E0 0xC8 func_005804E0  # OVL2
 0x005805B0 0x218 func_005805B0  # OVL2
 0x005807D0 0x2B0 func_005807D0  # OVL2
-0x00580A80 0xE8 func_00580A80  # OVL2
-0x00580B70 0x59C func_00580B70  # OVL2
+0x00580A80 0xE8 ClimbOver__10CZSealBodyFf  # OVL2; s1:calls by hand (the SEALs, round 48): SOCOM 1's ClimbOver__10CZSealBodyFf 0x275560 (0xCC there, 0xE8 here), before Climb and BlendedClimb in both builds; the same body -- the blends popped down to one, the stance set, AnimTypes::ClimbOver pushed (both read it twice); ImpactFront's place 0x5B2620 calls it once with $f12 set, as SOCOM 1's ImpactFront calls ClimbOver
+0x00580B70 0x59C Climb__10CZSealBodyFf  # OVL2; s1:calls by hand (the SEALs, round 48): SOCOM 1's Climb__10CZSealBodyFf 0x275630 (0x474 there, 0x59C here), between ClimbOver and BlendedClimb in both builds; two switch arms push AnimTypes::StepUp (0x3DEC80, gp-31248 there) and a third anim 19 with a2 = 1, as SOCOM 1's; ImpactFront's place 0x5B2620 calls it three times with $f12 set, as SOCOM 1's ImpactFront calls Climb
 0x00581110 0x1A8 BlendedClimb__10CZSealBodyFf  # OVL2; s1:order by hand (SOCOM 1 seal_body.cpp order, BlendedClimb to Stand one to one from 0x581110 to 0x581DC0: the same height weights 12/26.5/14.5, newanims cleared, the ClimbMedium blend; the SEALs round 16)
 0x005812C0 0x168 Hang_0__10CZSealBodyFii  # OVL2; s1:order by hand (SOCOM 1 Hang_0, after BlendedClimb: the same two switches, itself and Stand_0 called for stances 1 and 2; the SEALs round 16)
 0x00581430 0x104 SetStanceIdle__10CZSealBodyF8AnimType  # OVL2; s1:order by hand (SOCOM 1 SetStanceIdle: the same state-7 tests, the pops and the anim kept at 0x1334, SOCOM 1 0xFA4, before the push in state 7; the SEALs round 16)
@@ -10504,7 +10504,7 @@
 0x00588B40 0x7C func_00588B40  # OVL2
 0x00588BC0 0xD40 func_00588BC0  # OVL2
 0x00589900 0x19C func_00589900  # OVL2
-0x00589AA0 0x9C4 func_00589AA0  # OVL2
+0x00589AA0 0x9C4 PopBlend__10CZSealBodyFv  # OVL2; s1:calls by hand (the SEALs, round 48): called where SOCOM 1's PopBlend 0x27CBF0 is -- RestrainBuddy, StabBuddy, PutdownBuddy (twice), PickupBuddy (twice), DropBody, ClimbOver's and Climb's pop loops, CZSealBody::Tick; reads AnimTypes::ClimbOver then StepUp as SOCOM 1's PopBlend reads them (+0x164 / +0x5DC here, +0xC8 / +0x4CC there)
 0x0058A470 0x58 func_0058A470  # OVL2
 0x0058A4D0 0x10C ClearToBase__10CZSealBodyFb  # OVL2; s1:calls by hand (SOCOM 1 ClearToBase__10CZSealBodyFb: the same pops stopping at the base anims 1, 18 and 26 with signed counts, the extra pop when the bool says, the top blend control cleared and stance 2 asked, the top returned; SOCOM II adds a limit of twelve; the SEALs round 16)
 0x0058A5E0 0xC8 ClearStack__10CZSealBodyFUib  # OVL2; s1:order by hand (SOCOM 1 ClearStack__10CZSealBodyFUib, after PopBlend and before BodySetState in both builds: the blends popped down to a count, the top blend control cleared and stance 2 asked when the bool says; SOCOM II adds a limit of twelve; the SEALs round 16)
@@ -10869,7 +10869,7 @@
 0x005AF470 0x90 RotateHead__10CZSealBodyFf  # OVL2; s1:order by hand (SOCOM 1's RotateHead__10CZSealBodyFff, after GetLookQuat and before GetLookDirW in both builds: the same body -- MakeXRot into the forward look, SOCOM 1's m_fwdlook 0xf60 = 0x1070, else the identity; every SOCOM II caller sets only $f12 (both app-camera transitions, 0x29A180, CZSealBody(), 0x594600), so its second float is gone) -- the SEAL lane, round 12
 0x005AF500 0x90 GetLookDirW__10CZSealBodyCFP6CPnt3D  # OVL2; s1:order by hand (SOCOM 1's GetLookDirW__10CZSealBodyCFP6CPnt3D, after RotateHead in both builds: the same VU0 rotation of the look's direction by the node's matrix, the look held at 0x1190) -- the SEAL lane, round 12
 0x005AF590 0x39C func_005AF590  # OVL2
-0x005AF930 0xAD4 func_005AF930  # OVL2
+0x005AF930 0xAD4 PostCheckDIDown__10CZSealBodyFRfRfRf  # OVL2; s1:calls by hand (the SEALs, round 48): SOCOM 1's PostCheckDIDown 0x29EB00, after HandleLanding before PreCheckDIDown there; CZSealBody::Tick calls it with three member addresses (a1 = x + 4, a2 = x + 8, a3 = x: 0x240/0x244/0x23C here, 0x18C/0x190/0x188 there); reads AnimTypes::StepUp once then ClimbOver three times, as SOCOM 1's
 0x005B0410 0xC func_005B0410  # OVL2
 0x005B0420 0x3E0 func_005B0420  # OVL2
 0x005B0800 0x3C func_005B0800  # OVL2
@@ -10888,9 +10888,9 @@
 0x005B1570 0x1E0 func_005B1570  # OVL2
 0x005B1750 0x13C func_005B1750  # OVL2
 0x005B1890 0x17C func_005B1890  # OVL2
-0x005B1A10 0x26C func_005B1A10  # OVL2
+0x005B1A10 0x26C AlignForClimb__10CZSealBodyFbR6CPnt3DR6CPnt3DP6CPnt3D  # OVL2; s1:calls by hand (the SEALs, round 48): SOCOM 1's AlignForClimb 0x2A05F0, called once from ImpactFront in both builds; reads AnimTypes::ClimbOver then StepUp as SOCOM 1's does (bool, two CPnt3D references and a pointer, as the call sets up a1-t0)
 0x005B1C80 0x994 func_005B1C80  # OVL2
-0x005B2620 0x700 func_005B2620  # OVL2
+0x005B2620 0x700 ImpactFront__10CZSealBodyFPQ23zdb15IntersectStructP6CPnt3D  # OVL2; s1:calls by hand (the SEALs, round 48): SOCOM 1's ImpactFront 0x2A0A40 (0x4DC there, 0x700 here) calls Climb three times, ClimbOver once and AlignForClimb once, as this does 0x580B70 / 0x580A80 / 0x5B1A10; CanTraverse calls it in both builds (a1 an intersection or 0, a2 a frame CPnt3D)
 0x005B2D20 0x61C func_005B2D20  # OVL2
 0x005B3340 0x544 func_005B3340  # OVL2
 0x005B3890 0x1C8 func_005B3890  # OVL2
