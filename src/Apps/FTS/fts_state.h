@@ -188,6 +188,15 @@ struct TexBufferVector {
     zdb::CGSTexBuffer **data_;
 };
 
+/* SOCOM II's effect the pipe keeps at 0x688 (the world's round 25: zrndr_postfx.cpp's class, 0x58 bytes;
+ * as much of it as the states use) */
+class CPipeEffect {
+public:
+    void Tick();   /* 0x33CD50 (CCoreState::Tick calls it) */
+
+    unsigned char _0[0x58];
+};
+
 /* the render pipe (SOCOM 1's CPipe: the camera at 0x628, the UI node it draws at 0x630, a flag at
  * 0x63D -- SOCOM II's at 0x628, 0x630 and 0x711) */
 class CPipe {
@@ -209,8 +218,8 @@ public:
     unsigned char _62c[0x630 - 0x62c];
     zdb::CNode *m_uiNode;   // 0x630
     unsigned char _634[0x688 - 0x634];
-    unsigned char m_688[0x10];   // 0x688: SOCOM II's (CCoreState::Tick hands it to 0x33CD50; the name ours)
-    unsigned char _698[0x711 - 0x698];
+    CPipeEffect m_effect;   // 0x688: SOCOM II's (CCoreState::Tick ticks it; the name ours)
+    unsigned char _6e0[0x711 - 0x6e0];
     unsigned char m_renderingUi;   // 0x711
     unsigned char _712[2];
     unsigned char m_714;   // 0x714

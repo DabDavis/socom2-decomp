@@ -254,7 +254,6 @@ extern CFlareSystem data_00488F10;
 extern "C" {
 extern int data_00408C08;                        /* SOCOM 1's oddeven, a static of Tick's */
 void func_003B1160(int arg);
-void func_0033CD50(void *arg);
 void func_0033B5B0(CPipe *pipe);
 void func_0033B570(CPipe *pipe);
 CTickItem *func_0022D590();
@@ -737,7 +736,7 @@ bool CCoreState::Tick(float dT)
     if (hide)
         pEntNode->SetActive(camera_entity_active);
     if (running && !m_hud->PauseGame()) {
-        func_0033CD50(thePipe.m_688);
+        thePipe.m_effect.Tick();
         thePipe.RandomizeOverlay();
     }
     func_0033B5B0(&thePipe);
