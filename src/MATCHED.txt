@@ -8222,6 +8222,7 @@
 0x004D8140 Tone_Of_Final_TreeCtx
 0x004D8168 Calculate_NbrOfStatesInDict_ForChinese_TreeCtx
 0x004D98F0 cbDoSecondPassIfEnabled
+0x004D9AC8 casrEnableGenders
 0x004D9EC8 casrOpen
 0x004DA0D8 casrGetSessionData
 0x004DA2A0 casrClose
@@ -8298,6 +8299,7 @@
 0x004E1D08 InitUserWordTraining
 0x004E1E30 ExitUserWordTraining
 0x004E2008 CalcF2
+0x004E2240 FindBestTranscription
 0x004E25D8 DoDurationModeling
 0x004E2C78 ScoreTranscriptions
 0x004E35C8 CheckConsistency
@@ -8344,12 +8346,15 @@
 0x004E7120 ConstructExtraEventDp
 0x004E7160 ProcessExtraEventDP
 0x004E71B8 InitExtraEventDP
+0x004E7AB8 realfft
 0x004E8710 InitFFTMod
 0x004E89C0 ConstructFFTMod
 0x004E8A50 ControlFFTMod
+0x004E8AE8 InitIsoWordTokenDpContext
 0x004E8D78 FreeIsoWordTokenDp
 0x004E8EA8 InitNewUtterance
 0x004EAA28 ExpandGarbageArrays@isowdp
+0x004EAB30 IsoWordTokenDpProcess
 0x004EAE38 GetNBest
 0x004EB078 ControlIsoWordTokenDp
 0x004EB3A0 ConstructIsoWordTokenDp
@@ -8445,6 +8450,7 @@
 0x004FA200 CheckForAbnormalConditions
 0x004FA440 VadGetSession
 0x004FA620 VadPutSession
+0x004FB1C0 ControlVad
 0x004FB998 ConstructVad
 0x004FBA38 LoadCodeBooks
 0x004FC008 ConstructVq
