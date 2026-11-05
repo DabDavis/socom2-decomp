@@ -224,6 +224,9 @@ public:
 };
 
 class CSealCtrlAi;
+/* the AI's weapon hints: a fire mode's eight bytes as the AI takes them (SOCOM 1's CAiWepHint; the
+ * kit lane's seal_tasks.cpp defines its fields, kit.h its statics) */
+class CAiWepHint;
 
 /* CAiState, its stack and AI_STATE are ai/ai_states.h's (the AI-states lane's header) */
 
@@ -1088,6 +1091,9 @@ public:
     virtual void NotifyTargetDown(CZSealBody *seal);
     /* the view cone set from the head (SOCOM 1's; OVL2 0x5C9400, the kit lane's seal_sensors.cpp) */
     virtual void UpdateViewCone();
+    /* the kit's weapon picked for a fire mode's hint, whether one was (SOCOM 1's; OVL2 0x563470, the
+     * SEALs' row -- the kit lane's CTFireMode::Begin calls it) */
+    bool ChooseWeapon(CAiWepHint &hint);
     /* an enemy first seen by the squad called out, by its place on the player's clock (SOCOM 1's,
      * which took the CTarget; OVL2 0x5C9930, the kit lane's seal_sensors.cpp) */
     void EnemyCallout(CEntity *e, CEntity *player);
