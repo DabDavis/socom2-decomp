@@ -815,7 +815,10 @@ def test_unit_builds_the_same_bytes_at_any_path():
     compared as objcmp compares them (each function's bytes and relocations, each allocated
     section, each object); sase_rfft2g.c is built twice at one path besides, and its .rodata is the
     target's (0x3EB8A0: the two twiddle tables, then the file and the expression). Negative: the
-    unit with its `#line` taken out differs at the two paths, in its .rodata alone."""
+    unit with its `#line` taken out differs at the two paths, in its .rodata alone. And objcmp
+    (the online lobby's round 22: the fix belongs there too) builds both of its sides at one path:
+    that bare unit built as its BASE side and again in the tree's copy put in its place compares
+    equal, built at another path it differs."""
     import re
     import objcmp as O
     src = HERE / "src"
@@ -857,6 +860,26 @@ def test_unit_builds_the_same_bytes_at_any_path():
     a, b = O.summary(built(roots[0], rfft, "bare-a")), O.summary(built(roots[1], rfft, "bare-b"))
     ck([k for k in sorted(set(a) | set(b)) if a.get(k) != b.get(k)] == ["section .rodata#1"],
        "without its #line, the unit's .rodata differs at the two paths (and nothing else)")
+    # and objcmp builds both of its sides at ONE path (the online lobby's round 22): the unit without
+    # its #line, built where objcmp builds BASE's copy and again in the tree's copy put in its place,
+    # compares equal; at another path (the old sides: a scratch copy against the tree) it differs
+    bare = (roots[0] / "src" / rfft).read_text()
+
+    def side_build(side: Path, tag: str) -> dict:
+        f = side / "src" / rfft
+        f.parent.mkdir(parents=True, exist_ok=True)
+        f.write_text(bare)
+        (side / "include").mkdir(exist_ok=True)
+        (o, err), = O.build_side(side, [rfft], work / f"objcmp-{tag}").values()
+        ck(o is not None, f"objcmp's side builds at {side.name}: {err}")
+        return O.summary(o)
+
+    side = work / "objcmp" / "tree"
+    first = side_build(side, "base")
+    shutil.rmtree(side)                 # tree_copy() puts the tree's copy in BASE's place
+    ck(side_build(side, "now") == first, "objcmp: an unchanged unit naming __FILE__ bare is the same on both sides")
+    ck(side_build(work / "objcmp" / "another_tree", "other") != first,
+       "negative: the same unit built at another path differs (objcmp's old two sides)")
     shutil.rmtree(work)
 
 
