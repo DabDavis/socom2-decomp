@@ -2062,6 +2062,24 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the kit and AI states, round 42** (CTComm::Tick, CTMacro::Tick, EventTick, RemoveMember, GetNodePos -- every
+  one by replaying MW's colouring):
+  - THE METHOD, five for five: dump MW's colouring, relabel or brute-force the virtual-register numbering until the
+    replay gives the target's registers, then find a source shape with that numbering (build/scratch/kit-r42/ig/:
+    rl.py, igv1.py, picks.py, sregs.py, rshow.py, a fixed ig.sh);
+  - a named local initialised from a ternary merges into the ternary's temporary, numbered after every named local --
+    re-assigning it through a ternary that reads it (`e = e && ... ? e : 0`) keeps it at its declaration's number; a
+    byte held both as the callee's enum and as an int copy is one lbu in one register, the switch and the call both
+    unmasked (CTComm::Tick 0x5DDFA0: the command held twice, as FT_COMMAND and as an int);
+  - a value read through an inline accessor becomes a temporary numbered at its call, after earlier temporaries -- it
+    moved the colouring in four of the five (CTMacro::Tick 0x5D6DC0's select, RemoveMember 0x60CE40's entity); locals
+    declared uninitialised before the first statement are numbered there in declaration order (EventTick 0x5FAAE0, open
+    since round 39: only `handled` then `pos`); an inline bool whose true arm is a bool inline and whose false arm is
+    `false` puts the sltu in the arm and the andi at the join -- `0`, or an unsigned char / int return, moves the
+    conversion to the join (CTMacro::Tick's `script ? script->Held() : false`);
+  - GetNodePos 0x5DF930 (open since round 26): the hand test `PartParent(m_rifle) == m_rhand`; seal_ailines.cpp's
+    initialiser 0x668FB0 OPEN -- `#pragma defer_codegen off` after the includes separates the functions' inlining from
+    the initialiser's, the copy into 0x66BAE0 member by member through $f0 is what remains.
 - **Tells from completing the MSL headers, round 26** (the tree's teardown and swap, the generic pod insert, the
   missions' GetNext; probes build/p26/, scratch build/scratch/msl-r26/, untracked):
   - THE OPTION MAP'S TEARDOWN 0x1EAD10 needs no header change: options.cpp (SOCOM II's unit between database.cpp and

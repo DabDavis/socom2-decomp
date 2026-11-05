@@ -10050,6 +10050,7 @@
 0x005D5B40 Tick__6CTMoveFP14_zanim_cmd_hdrPf
 0x005D64B0 Parse__6CTMoveFP5_zrdr
 0x005D69F0 Parse__5CTMapFP5_zrdr
+0x005D6DC0 Tick__7CTMacroFP14_zanim_cmd_hdrPf
 0x005D7040 Begin__7CTMacroFP14_zanim_cmd_hdr
 0x005D7170 Parse__7CTMacroFP5_zrdr
 0x005D7290 End__8CTLookAtFP14_zanim_cmd_hdr
@@ -10089,6 +10090,7 @@
 0x005DD620 Tick__7CTDebugFP14_zanim_cmd_hdrPf
 0x005DD7C0 Parse__7CTDebugFP5_zrdr
 0x005DDD60 Parse__8CTCreateFP5_zrdr
+0x005DDFA0 Tick__6CTCommFP14_zanim_cmd_hdrPf
 0x005DE250 Parse__6CTCommFP5_zrdr
 0x005DE320 RegisterCommands__11CSealCtrlAiFv
 0x005DEB10 get_param_name__F8AI_PARAM
@@ -10102,6 +10104,7 @@
 0x005DF4E0 SetAimPointW__10CZSealBodyFPC6CPnt3DPC6CPnt3Db
 0x005DF600 CalcAimGoal__10CZSealBodyFPC6CPnt3DPC6CPnt3DP6CPnt3D
 0x005DF8B0 SetAimDirR__10CZSealBodyFPC6CPnt3Db
+0x005DF930 GetNodePos__10CZSealBodyFPCQ23zdb5CNodeR6CPnt3Db
 0x005DFAD0 GetFirepointNode__10CZSealBodyFPCc
 0x005DFB70 GetFirepointPos__10CZSealBodyFR6CPnt3DPCc
 0x005DFE30 SetWeaponState__10CZSealBodyF12WEAPON_STATE
@@ -10351,6 +10354,7 @@
 0x005F8C00 func_005F8C00
 0x005F8C20 func_005F8C20
 0x005F8C40 remove_copy_if<Q33std46list<P8CAiState,Q23std21allocator<P8CAiState>>19generic_iterator<0>,Q33std46list<P8CAiState,Q23std21allocator<P8CAiState>>19generic_iterator<0>,18CAiStateDeleteKind>__3stdFQ33std46list<P8CAiState,Q23std21allocator<P8CAiState>>19generic_iterator<0>Q33std46list<P8CAiState,Q23std21allocator<P8CAiState>>19generic_iterator<0>Q33std46list<P8CAiState,Q23std21allocator<P8CAiState>>19generic_iterator<0>18CAiStateDeleteKind_Q33std46list<P8CAiState,Q23std21allocator<P8CAiState>>19generic_iterator<0>
+0x005FAAE0 EventTick__11CSealCtrlAiFf
 0x005FAD00 SetAiEvent__11CSealCtrlAiFQ28CAiEvent5EVENTfPC6CPnt3D
 0x005FADF0 __dt__10CAiSFollowFv
 0x005FC550 func_005FC550
@@ -10515,6 +10519,7 @@
 0x0060CD40 SetMemberLoc__8CAiGroupFUiRC9CAiMapLoc
 0x0060CDC0 EndStep__8CAiGroupFv
 0x0060CDD0 AddStep__8CAiGroupFUi
+0x0060CE40 RemoveMember__8CAiGroupFP11CSealCtrlAi
 0x0060D020 AddMember__8CAiGroupFP11CSealCtrlAi
 0x0060D280 Abort__8CAiGroupFv
 0x0060D310 __dt__8CAiGroupFv
