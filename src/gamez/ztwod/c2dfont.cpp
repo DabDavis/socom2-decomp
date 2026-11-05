@@ -135,14 +135,21 @@ struct C2DChar {
 };
 
 /* a jamo's rectangle in the font texture (ours): the upper left and lower right corners */
+struct CFontCoord {
+    CFontCoord(int v) : m_v(v) {}
+    operator int() const { return m_v; }
+
+    int m_v;
+};
+
 struct CFontRect {
     CFontRect() : left(0), top(0), right(0), bottom(0) {}
     CFontRect(int l, int t, int r, int b) : left(l), top(t), right(r), bottom(b) {}
 
-    int left;   // 0x0
-    int top;   // 0x4
-    int right;   // 0x8
-    int bottom;   // 0xc
+    CFontCoord left;   // 0x0
+    CFontCoord top;   // 0x4
+    CFontCoord right;   // 0x8
+    CFontCoord bottom;   // 0xc
 };
 
 /* a jamo: its rectangle, and the rectangles it takes in particular layouts (ours: 0x20 bytes, the
@@ -241,6 +248,13 @@ static inline _zrdr *FlatFindTag(const _zrdr *rdr, const char *tag)
     return zrdr_flat_findtag_startidx(rdr, tag, 0);
 }
 
+/* a string a tag names, at the top level only (ours: LoadJamo's style name -- an inline's result,
+ * numbered after the style's, as the target's registers have it) */
+static inline const char *FlatFindString(const _zrdr *rdr, const char *tag)
+{
+    return zrdr_flat_findstring(rdr, tag, 0);
+}
+
 /* an array's i-th item as an int, none for a null array (ours) */
 static inline _zrdr *GetRdrArrayItem(const _zrdr *rdr, int i)
 {
@@ -323,7 +337,7 @@ static inline int FindName(const std::vector<CSaferStr> &names, const char *s)
 }
 
 /* a rectangle from two rdr points (0x35A840) */
-CFontRect ReadRect(const _zrdr *ul, const _zrdr *lr);
+static CFontRect ReadRect(const _zrdr *ul, const _zrdr *lr);
 /* a placement from an rdr block's DispPos, HorScale and VertScale (0x35AA80) */
 /* (byte-exact since the HUD's round 46: the point read through ReadPoint(rdr, tag), the scale stored as it
  * is read -- p.sx a register across the VertScale read, $f20) */
@@ -485,30 +499,38 @@ void CHangulFont::Load(const _zrdr *rdr)
 
 /* a jamo's rectangle, then its Styles: each style's layout name (added to the list if new) and the
  * rectangle the jamo takes there */
-/* OPEN, 0x20 short (0x31C against 0x33C): not yet compared closely -- the name loop's break and
- * the push of a new name, and the alternate's copy into the map (the target copies the
- * rectangle into a stack temporary and then the node through the float registers). */
+/* (byte-exact since the HUD's round 55: the rectangle's corners are a class (CFontCoord), so each
+ * copy goes word by word through $f0; ReadRect static -- generated earlier, MW keeps a0 across it;
+ * each UL block found ahead of the call, as the target's argument order has it; the entry's text
+ * read before the name's null test; an int counter, re-indexing each pass, and the alternate's key
+ * a temporary (`(int)j`, the target's copy stored at the call); the alternates' map indexed in the
+ * loop, so only the jamo's offset is shared with the rectangle's store; the style's name an
+ * inline's result, numbered after the style's -- the replay's `--move name=45.5`) */
 void CHangulFont::LoadJamo(std::vector<CSaferStr> &names, const _zrdr *rdr, JAMO which)
 {
-    CFontRect r = ReadRect(FlatFindTag(rdr, "UL"), FlatFindTag(rdr, "LR"));
+    _zrdr *ul = FlatFindTag(rdr, "UL");
+    CFontRect r = ReadRect(ul, FlatFindTag(rdr, "LR"));
 
     m_jamo[which].m_rect = r;
     _zrdr *styles = FlatFindTag(rdr, "Styles");
-    std::map<int, CFontRect> &alts = m_jamo[which].m_alts;
 
     for (int i = 0; i < (styles ? (int)styles->Count() : 0); i++) {
         _zrdr *style = styles->Item(i);
-        const char *name = zrdr_flat_findstring(style, "Name", 0);
-        unsigned int j;
+        const char *name = FlatFindString(style, "Name");
+        int j;
 
         for (j = 0; j < names.size(); j++) {
-            if (name && !strcasecmp(name, names[j].c_str()))
+            const char *s = names[j].c_str();
+
+            if (name && !strcasecmp(name, s))
                 break;
         }
         if (j >= names.size())
             names.push_back(CSaferStr(name));
-        r = ReadRect(FlatFindTag(style, "UL"), FlatFindTag(style, "LR"));
-        alts[j] = r;
+        _zrdr *sul = FlatFindTag(style, "UL");
+
+        r = ReadRect(sul, FlatFindTag(style, "LR"));
+        m_jamo[which].m_alts[(int)j] = r;
     }
 }
 
@@ -593,7 +615,7 @@ C2DPlacement ReadPlacement(const _zrdr *rdr)
     return p;
 }
 
-CFontRect ReadRect(const _zrdr *ul, const _zrdr *lr)
+static CFontRect ReadRect(const _zrdr *ul, const _zrdr *lr)
 {
     int left = GetInt(ul, 0);
     int right = GetInt(lr, 0);
