@@ -1569,7 +1569,7 @@
 0x001F53D0 0x24C func_001F53D0  # OVL1
 0x001F5620 0xC GetReaderFileName__14CMenuStateMenuFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x001F5630 0x8 func_001F5630  # OVL1
-0x001F5640 0x5E4 func_001F5640  # OVL1
+0x001F5640 0x5E4 insert__Q23std80__vector_imp<20MediusChatFwdMessage,Q23std33allocator<20MediusChatFwdMessage>,0>FP20MediusChatFwdMessageUiRC20MediusChatFwdMessage  # OVL1; by hand (the states lane, round 38): the room chat vector insert(position, n, x) -- 0x1F5020 (the line added to the online rooms chat) calls it twice through push_back, st_menu.cpp template tail emits it byte-exact after the unit functions, as the deleter destructor 0x1F5C30 and clear 0x1F5CA0 follow it
 0x001F5C30 0x68 __dt__Q23std82__vector_deleter<20MediusChatFwdMessage,Q23std33allocator<20MediusChatFwdMessage>>Fv  # OVL1; by hand (the online lane's round 7, vetted by the integrator: ~BriefingRoom calls it for the room's chat vector at +0x88; 0x1F5020 builds a 0x80-byte MediusChatFwdMessage and inserts it through 0x1F5640, whose deleter destructor this is; clear 0x1F5CA0 then the data deleted)
 0x001F5CA0 0x8 clear__Q23std82__vector_deleter<20MediusChatFwdMessage,Q23std33allocator<20MediusChatFwdMessage>>Fv  # OVL1; by hand (the online lane's round 7, vetted by the integrator: the chat vector's deleter destructor 0x1F5C30 calls it first)
 0x001F5CB0 0x8 AddToBatch__Q23zdb16CTextureRelocMgrCFPQ23zdb10CTexHandle  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
@@ -3948,7 +3948,7 @@
 0x002B3B60 0xC ftsGetSquirm__Fv  # OVL1; s1:order by hand (the states lane: after ftsCreateSeal as in SOCOM 1; returns the byte 8 before ftsPlayer, as SOCOM 1's reads the one 4 before it)
 0x002B3B70 0x60 __dt__13CSealCtrlCopyFv  # OVL1; s1:align
 0x002B3BD0 0x8 IsPlayer__13CSealCtrlCopyCFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x002B3BE0 0x8 func_002B3BE0  # OVL1
+0x002B3BE0 0x8 OnStateChange__9CSealCtrlF10SEAL_STATE10SEAL_STATE  # OVL1; s1:vtable by hand (the states lane, round 38; tools/s1vtables.py proposed it, the SEALs round 30): slot 0x64 of __vt__13CSealCtrlCopy (0x4062D0) is SOCOM 1 CSealCtrlCopy table slot 0x64, OnStateChange (0x1FE1D0) -- the flanking slots agree by name (0x5C OnMissionStart, 0x60 OnMissionEnd, 0x68 Dump, 0x6C GetAiNetState), both bodies `jr ra; nop`, and both builds link the copy among CSealCtrlCopy inline copies after ~CSealCtrlCopy and IsPlayer; OVL1 copy of the base inline (OVL2 0x58A710 is the other)
 0x002B3BF0 0x8 func_002B3BF0  # OVL1; s1~ SetAiNetState__9CSealCtrlFUi (one of 2 out-of-line copies of an inline, by s1:vtable)
 0x002B3C00 0x1C func_002B3C00  # OVL1
 0x002B3C20 0x1C func_002B3C20  # OVL1
@@ -10439,9 +10439,9 @@
 0x0057F7D0 0xA8 func_0057F7D0  # OVL2
 0x0057F880 0x134 func_0057F880  # OVL2
 0x0057F9C0 0xA8 func_0057F9C0  # OVL2
-0x0057FA70 0x270 func_0057FA70  # OVL2
-0x0057FCE0 0x5CC func_0057FCE0  # OVL2
-0x005802B0 0xAC func_005802B0  # OVL2
+0x0057FA70 0x270 GetPutativeFirePointW__10CZSealBodyFbbR6CPnt3D  # OVL2; s1:order by hand (the SEALs, round 42): SOCOM 1's GetPutativeFirePointW__10CZSealBodyFbbR6CPnt3D (0x2DC there), followed in both builds by GetThrowAnim and BeginThrowItem (0x57FCE0, 0x5802B0), after the ladder climbs; the same shape -- a throw's offset by PeekBaseState's stance (the peek's sides, a run's rifle and pistol throws, the toss or the throw, the ten offsets' values SOCOM 1's) turned by the node, else the fire point's spot or zero plus the position; SOCOM II asks the speed squared (400 for SOCOM 1's sqrtf against 20) and m_posW for SOCOM 1's virtual GetPos; byte-exact (seal_body.cpp)
+0x0057FCE0 0x5CC GetThrowAnim__10CZSealBodyFfR8AnimTypeRfRfR6CPnt3D  # OVL2; s1:order by hand (the SEALs, round 42): SOCOM 1's GetThrowAnim__10CZSealBodyFfR8AnimTypeRfRfR6CPnt3D (0x5F0 there, 0x5CC here), between GetPutativeFirePointW (0x57FA70, byte-exact as SOCOM 1's) and BeginThrowItem (0x5802B0) in both builds; its callers pass SOCOM 1's arguments -- 0x5499E0 a float in $f12 and four addresses (a short for the anim type, two floats, a point), BeginThrowItem the type, the fraction and the base zeroed, a point -- and BeginThrowItem pushes the type picked as SOCOM 1's does
+0x005802B0 0xAC BeginThrowItem__10CZSealBodyFfRf  # OVL2; s1:order by hand (the SEALs, round 42): SOCOM 1's BeginThrowItem__10CZSealBodyFfRf (0x94 there, 0xAC here), after GetThrowAnim (0x57FCE0) in both builds; the same body -- GetThrowAnim with the type, the fraction and the base (both zeroed) and a point, then the type pushed in the body's state (PushBlend there, 0x588BC0 here), the representative's loop time scaled by the fraction past the base stored and true returned; the float passed straight on in $f12 as SOCOM 1's; byte-exact (seal_body.cpp, round 33's func_005802B0)
 0x00580360 0x174 func_00580360  # OVL2
 0x005804E0 0xC8 func_005804E0  # OVL2
 0x005805B0 0x218 func_005805B0  # OVL2

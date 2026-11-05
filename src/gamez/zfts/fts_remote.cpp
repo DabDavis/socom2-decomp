@@ -660,7 +660,7 @@ struct CMissionInfo {
 
 /* a hit: in a game under way, outside game modes 1 and 2, the victim takes it -- its own client's
  * damage for a local victim, the remote one's for a remote victim (SOCOM 1's; OVL1 0x2BBBD0).
- * OPEN, 6 instructions, registers only. The mode test matches with the mode passed to the inline as
+ * OPEN, 2 instructions (round 38, from 6: see the end). The mode test matches with the mode passed to the inline as
  * an `int` (round 13: the parameter takes the loaded halfword, which frees v0 for the constant 1 and
  * a0 for the bool; read inside the inline -- straight, through a mode local, as a member of the
  * info, or as an unsigned short parameter -- they land in a0/a1, and round 12's shapes, a switch,
@@ -685,7 +685,18 @@ struct CMissionInfo {
  * as an inline (by float, unsigned int or unsigned char, through a constant parameter, a named
  * result -- all 6), `v / 20.0f` (33), part and flag in a named copy of a nested bitfield struct
  * (0x1D4, through memory) or of the packet (0x1EC); part and flag defined before the floats move the
- * byte's load and their live ranges, renumbering the saved registers (55-66) */
+ * byte's load and their live ranges, renumbering the saved registers (55-66).
+ * Round 38: 6 -> 2. The conversion a local of its own (`s`) with the flag a TERNARY between it and
+ * the product: MW's expression propagation (the IR optimiser's, mweppc IroPropagate.c) forwards a
+ * single-use local's expression to its use only inside one flow-graph node, and a `?:` (as `&&`/`||`)
+ * is linearised into branches -- so `s` stays at its definition ($f1, a temporary), the byte is
+ * generated before the constant (v1 against v0) and the flag's select folds back to the target's
+ * sltu (SOCOM 1's flag is a select too: `li 1; movz`). Without the ternary `s` is forwarded into the
+ * product (56 off); a dead second use, a const or register local, a reference, `(void)s` or an
+ * inline's out-parameter forward all the same. Left: the target issues the constant's lui ahead of
+ * the byte's lbu, this the lbu first (same registers, same block: a scheduler tie broken by the
+ * generation order, which the colouring fixes as byte-first) -- every order of the four statements
+ * with the ternary, ten spellings of the flag and five of the product keep it */
 /* whether the mission's mode takes no hits (the name ours: the handler's test materialised) */
 inline bool NoHitMode(int mode)
 {
@@ -706,9 +717,10 @@ int HitPacketHandler(int, int, int, void *data)
             CZSealBody *victim = CZSealState::GetBodyFromObjectIndex(p->victim);
             CZSealBody *shooter = CZSealState::GetBodyFromObjectIndex(p->shooter);
             float damage = p->damage;
-            float f = 0.05f * p->m_6;
+            float s = p->m_6;
             DAMAGE_LOCATION where = (DAMAGE_LOCATION)p->part;
-            bool flag = p->flag;
+            bool flag = p->flag ? true : false;
+            float f = 0.05f * s;
 
             if (victim && shooter) {
                 if (!(victim->m_ctrl ? victim->m_ctrl->IsRemote() : false))
@@ -1908,31 +1920,32 @@ static inline void CrossNormal(const CPnt3D *a, const CPnt3D *b, CPnt3D *out)
     out->z = r[2];
 }
 
+/* a draw below n, an inline of its own: its exit ends the pick's arm on a label MW pads to 8 bytes
+ * (the target's nop after the `mfhi`) and leaves the zero arm's `b` its nop -- the draw written in
+ * the arm lets MW fill that slot from the join, 8 bytes short (the AI core's round-22 shape, as
+ * CAiMaps::GetRandomLoc's _rnd and CVehicleRdrEntry::Randomize's RandomDraw; the name ours) */
+static inline int RandDraw(int n)
+{
+    return rand() % n;
+}
+
 /* a SEAL's spawn point and its facing as a matrix (SOCOM II's; OVL1 0x2B8100 -- ftsNetworkPlayerInit
  * and OVL2's RemoteRespawn call it): in a respawning game a point of the kind asked -- for kinds 0
  * and 2 one at random from the SEAL's client's share (a 24th of them), otherwise the one farthest
  * from the enemy (0x2B7EE0) --; a spectator at the map's "spectator" cell, facing its direction;
  * else the point of the client's own index. Found, it is lifted a unit and the matrix's rows made the
  * side (up crossed with the facing), up, the facing and the point.
- * OPEN, 34 instructions (the states' round 36, first written): the operations and the size are the
- * target's -- the random pick a ternary (`if (range) r = rand() % ...` drops the target's `b` over
- * the empty arm: 8 bytes short) --, the saved registers and the frame are not: the target gives the
- * found flag s0, the SEAL s1, the kind s2, the matrix s3 and the point s4 (in the random arm the
- * client's index takes s0 and the share s1, the SEAL dead there), and lays the points out up 160,
- * side 176, facing 192, the cell 204; here the kind s0 and the SEAL s4, up at 192. All 24 orders of
- * up, side, facing and the flag at the top keep the shorter shape's registers.
- * Round 37 (MW's colouring read with igdump): the random arm's client and share are both over K and
- * coloured highest-index first, so the target's client s0 / share s1 need the share numbered first
- * (`int per = count / 24; int client = body->m_fc8;`); that and the zero arm laid out first
- * (`range == 0 ? 0 : ...`, or an if/else) give the target's arm, registers and layout -- but 8 bytes
- * short: MW fills the zero arm's `b` from the join (`mult v0,s1,s0`) where the target keeps a nop and
- * pads the join to 8 (as SetDynamicLOD 0x3B04C0's else-if joins). Not moved by an inline picker
- * (ternary, if/return, if/else), `first = per * client` up front, n assigned in both arms or the pick
- * written inside n's expression (two of those the right size by compensation, 23-24 off) */
+ * Byte-exact (the states' round 38; open since round 36) from three things together: the random
+ * arm's client and share are both over K and coloured highest-index first, so the target's client
+ * s0 / share s1 need the share numbered first (round 37, MW's colouring read with igdump); the zero
+ * arm laid out first with the draw an inline of its own (RandDraw above: the join padded, the `b`
+ * keeping its nop); and the points declared facing, side, up (the frame laid out up 160, side 176,
+ * facing 192 -- the only one of the 24 orders of the three and the flag that gives it) */
 extern "C" void func_002B8100(CZSealBody *body, CPnt3D *pos, CMatrix *m, int type)
 {
-    CPnt3D up(0.0f, 1.0f, 0.0f);
     CPnt3D dir;
+    CPnt3D side;
+    CPnt3D up(0.0f, 1.0f, 0.0f);
     bool found = false;
 
     if (data_00437CE8 && data_00437CE8->m_respawn) {
@@ -1940,10 +1953,10 @@ extern "C" void func_002B8100(CZSealBody *body, CPnt3D *pos, CMatrix *m, int typ
         int n;
 
         if (type == 2 || type == 0) {
-            int client = body->m_fc8;
             int per = count / 24;
+            int client = body->m_fc8;
             int range = per - 1;
-            int r = range ? rand() % (range + 1) : 0;
+            int r = range == 0 ? 0 : RandDraw(range + 1);
 
             n = r + per * client;
         } else
@@ -1966,8 +1979,6 @@ extern "C" void func_002B8100(CZSealBody *body, CPnt3D *pos, CMatrix *m, int typ
     }
     if (found) {
         pos->y += 1.0f;
-        CPnt3D side;
-
         CrossNormal(&up, &dir, &side);
         m->SetRows(&side, &up, &dir, pos);
     }

@@ -497,7 +497,6 @@ bool CVisual::GetChainData()
 extern "C" CMatrix *data_004B4E60;
 extern "C" CMatrix data_004B4E70;
 extern "C" unsigned char data_004B4A60;
-extern "C" bool data_003E1458;
 extern "C" float m_GlobalLightScale__Q23zdb7CVisual;
 
 void CVisual::NodeSetup(CNode *atom, CNode *node, CMatrix *m)
@@ -512,10 +511,10 @@ void CVisual::NodeSetup(CNode *atom, CNode *node, CMatrix *m)
             m_GlobalLightScale__Q23zdb7CVisual = 1.0f;
         else
             m_GlobalLightScale__Q23zdb7CVisual = (1.0f / 127.0f) * s;
-        data_003E1458 = !node->m_clutter;
+        CVisual::m_applyLocalLights = !node->m_clutter;
     } else {
         m_lightingEnable = false;
-        data_003E1458 = false;
+        CVisual::m_applyLocalLights = false;
     }
 }
 
@@ -527,10 +526,9 @@ static inline _word128 *Put4D(_word128 *p, const CPnt4D &v)
 }
 
 /* the lights' packet's statics (new in SOCOM II, not named): the packets' flavour and the light
- * scale 0x3B6B20 keeps, the scene's light level (-1: none) */
+ * scale 0x3B6B20 keeps */
 extern "C" unsigned int data_004B4EB0;
 extern "C" float data_004B4A90;
-extern "C" int data_003E1448;
 extern "C" _word128 *data_004B4AD8;
 extern "C" _word128 *data_004B4AE0;
 extern "C" _word128 *func_003B6870(_word128 *q, CNode *node);
@@ -559,11 +557,11 @@ extern "C" void func_003B6B20(CNode *node, int n, float scale)
 
     bool lit = CVisual::m_lightingEnable;
 
-    if (lit && data_003E1448 != -1)
-        m_GlobalLightScale__Q23zdb7CVisual = (1.0f / 127.0f) * data_003E1448;
+    if (lit && CVisual::m_customGlobalLightIdx != -1)
+        m_GlobalLightScale__Q23zdb7CVisual = (1.0f / 127.0f) * CVisual::m_customGlobalLightIdx;
     else
         data_004B4AD8->u32[0] = 0;
-    if (lit && data_003E1458 && CVisual::m_local_light_cnt) {
+    if (lit && CVisual::m_applyLocalLights && CVisual::m_local_light_cnt) {
         CPnt4D *l = CVisual::localLightBuf[0];
 
         for (unsigned int i = 0; i < (unsigned int)CVisual::m_local_light_cnt; i++) {
