@@ -915,12 +915,19 @@ public:
 class CAiSSurrender : public CAiState {
 public:
     CAiSSurrender() : CAiState(AI_STATE_SURRENDER) {}
+    virtual void OnSignal(SIGNAL sig, CSealCtrlAi *ai);
     virtual bool CanPushAiState(AI_STATE state, CSealCtrlAi *ai);
     virtual bool CanAttack() const { return false; }
     virtual const char *GetScriptResponse() const { return "on_surrender"; }
     virtual ~CAiSSurrender();
 
-    unsigned char _58[0x6c - 0x58];   // 0x6c bytes, Create's new
+    int m_58;   // 0x58 (-1 on a reset)
+    int m_5c;   // 0x5c (-1 on a reset)
+    unsigned char m_60;   // 0x60 (1 on a reset)
+    unsigned char _61[0x64 - 0x61];
+    class CSealUnit *m_unit;   // 0x64: the squad rejoined when the surrender ends (0 on a reset)
+    unsigned int m_team;   // 0x68: the SEAL's team mask kept on entry, put back when it ends
+    /* 0x6c bytes, Create's new */
 };
 
 class CAiSNoAmmo : public CAiState {

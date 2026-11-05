@@ -126,6 +126,14 @@ bool func_005F0B30(CSealCtrlAi *ai, const CPnt3D *pos, int mode, int a, int b);
 /* the nearest ammunition for a weapon (SOCOM 1's ai::find_closest_ammo, after the no-ammunition
  * state as there; OVL2 0x6082E0) */
 CPickup *func_006082E0(const CPnt3D *pos, float range, CZKit *kit, CZFTSWeapon *w);
+/* the surrender's: the player's SEAL (OVL1 0x2B3580), the mission's team valves (CMission::
+ * RefreshTeamValves, OVL1 0x2B23A0, on theMission 0x4364E0 -- the game states'), a squad joined
+ * (CSealUnit::SealJoinUnit, OVL2 0x5EE250, seal_unit.cpp's -- zseal.h's CSealUnit does not declare
+ * it) -- spelled by their mangled names */
+CZSealBody *ftsGetPlayer__Fv();
+extern int theMission;
+void RefreshTeamValves__8CMissionFv(int *mission);
+void SealJoinUnit__9CSealUnitFP10CZSealBody(CSealUnit *unit, CZSealBody *seal);
 }
 
 /* the destructors (OVL2 0x609D60 back to 0x609710, and CAiSHostage's at 0x601880): each its own
@@ -325,6 +333,80 @@ int CAiSNoAmmo::Tick(CSealCtrlAi *ai)
     }
     UpdatePhase(phase);
     return Result();
+}
+
+/* a team mask without the team bits 4-15 and the two top bits -- but those of `keep` -- and with bit
+ * 26 (SOCOM 1's ClearTeamMask(unsigned int, unsigned int), out of line there, 0x2E9090; inlined in
+ * SOCOM II, its loop unrolled six times) */
+inline unsigned int ClearTeamMask(unsigned int mask, unsigned int keep)
+{
+    unsigned int m = 0;
+
+    for (int i = 4; i < 16; i++)
+        m |= 1 << i;
+    m |= 0xc0000000;
+    m &= ~keep;
+    return (mask & ~m) | 0x04000000;
+}
+
+/* a surrender's events: reset; entering -- no target, the team kept and cleared to the player's (as
+ * SOCOM 1's), the SEAL shootable, the surrender call (74), standing, the team valves, a script
+ * state's hold released; a sub-state (1) -- a living SEAL leaves its squad, gets its team back and
+ * rejoins the squad kept, the team valves and the anim set; a second sub-state (2) the anim set,
+ * the blends to the base and not restrainable; leaving (3) phase 4 and standing (OVL2 0x607D70;
+ * SOCOM 1's 0x2E7640, ClearTeamMask out of line there, the shootable bit, the call, the script's
+ * hold and the restrainable bit new) */
+void CAiSSurrender::OnSignal(SIGNAL sig, CSealCtrlAi *ai)
+{
+    CZSealBody *seal = ai ? (CZSealBody *)ai->m_entity : 0;
+
+    switch (sig) {
+    case SIGNAL_4:
+        m_5c = -1;
+        m_58 = -1;
+        m_60 = 1;
+        m_unit = 0;
+        m_team = 0;
+        break;
+    case SIGNAL_0: {
+        ai->SetTarget(0);
+        m_team = seal->m_team;
+        CZSealBody *player = ftsGetPlayer__Fv();
+        unsigned int mask = m_team;
+
+        seal->SetTeamMask(ClearTeamMask(mask, player ? player->m_team : 0));
+        seal->m_noshoot = false;
+        ai->PlayAiSound((CHARACTER_SOUND)74, 1.0f, -1);
+        SetStance__11CSealCtrlAiF11SEAL_STANCE(ai, 0);
+        RefreshTeamValves__8CMissionFv(&theMission);
+        CAiState *s = ai->FindAiState(AI_STATE_SCRIPT);
+        CAiSScript *script = s && s->m_state == AI_STATE_SCRIPT ? (CAiSScript *)s : 0;
+
+        if (script)
+            script->SetHold(false);
+        break;
+    }
+    case SIGNAL_1:
+        if (seal->m_isAlive) {
+            if (ai->m_unit)
+                CSealUnit::SealLeaveUnit(seal);
+            seal->SetTeamMask(m_team);
+            if (m_unit)
+                SealJoinUnit__9CSealUnitFP10CZSealBody(m_unit, seal);
+        }
+        RefreshTeamValves__8CMissionFv(&theMission);
+        seal->BindAnimSet(seal->m_530, false);
+        break;
+    case SIGNAL_2:
+        seal->BindAnimSet(seal->m_530, false);
+        seal->ClearToBase(false);
+        seal->m_restrainable = false;
+        break;
+    case SIGNAL_3:
+        UpdatePhase(4);
+        SetStance__11CSealCtrlAiF11SEAL_STANCE(ai, 0);
+        break;
+    }
 }
 
 /* a surrender takes another state only once it is past its fifth phase: any, for an entity of the
