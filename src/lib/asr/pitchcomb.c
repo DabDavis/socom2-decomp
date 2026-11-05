@@ -5,9 +5,10 @@
  * constructor LOCAL there; SOCOM II moved the control function before the init),
  * ScanSoft's speech recogniser, prebuilt with ee-gcc 2.96 at -O2 -G0 -fno-strict-aliasing
  * -funroll-loops (README "The GCC front"). Names are SOCOM 1's; the block's fields are named by
- * their use. NormE_Processing (round 17c), FlushPitchCombiner (round 23c), PitchCombinerReset (OPEN) and
- * ControlPitchCombiner (round 22c: SOCOM 1's body, 0x5028F0 -- the constructor's control slot,
- * moved before InitPitchCombiner in SOCOM II) are written. */
+ * their use. NormE_Processing (round 17c), ControlPitchCombiner (round 22c: SOCOM 1's body,
+ * 0x5028F0 -- the constructor's control slot, moved before InitPitchCombiner in SOCOM II),
+ * FlushPitchCombiner, ProcessPitchCombiner and ConstructPitchCombiner (round 23c) are written,
+ * PitchCombinerReset OPEN; LogPitchProcessing and InitPitchCombiner are not written. */
 #include "tosblk.h"
 
 /* a ring of frames: its start, read and write cursors and end */
@@ -51,12 +52,14 @@ typedef struct PITCHCOMB {
     unsigned char f183;
     unsigned char f184;
     unsigned char f185;
-    char pad186[2];
+    unsigned short nvals;               /* +186: the frame's values (in[2]'s, from [1]) */
     float f188;                         /* +188: the output's fifth value when r80's frame is 1 */
     float f192;                         /* +192: else */
 } PITCHCOMB;                            /* 196 bytes (ConstructPitchCombiner's) */
 
 /* (LogPitchProcessing 0x501A90 is not written) */
+void LogPitchProcessing(PITCHCOMB *p);
+float logf(float x);
 
 /* the window's weighted energy over the norm into the output ring, the window moved on a frame;
  * at the start the first half-window of frames takes the first value. SOCOM 1's body: the index
@@ -191,7 +194,100 @@ static int FlushPitchCombiner(PITCHCOMB *p)
     return 0;
 }
 
-/* (ProcessPitchCombiner, 0x502298, is not written) */
+/* one input frame: the largest of in[2]'s values into the energies' ring, the log of in[0]'s
+ * into r60, in[1]'s voicing flag into r80 and the voiced-run bookkeeping (+159 the run's frames,
+ * +161 voiced, +162 the last frame's, +163/+164 a run begun/ended at the lead); the log pass once
+ * the lead is in, the window's start kept or stepped, the normalisation once a window is in, and
+ * once the rings are full a frame out as the flush writes one; a null frame flushes when +182 is
+ * set. SOCOM 1's body (logf for its double log). Declared int and returning nothing (the
+ * scheduler's TOSFUNC): the null frame's flush is then no sibling call (the target's `jal; nop`
+ * under the frame; declared void, 2.96 makes it a `j` -- and the object's constructor does make
+ * one, so -fno-optimize-sibling-calls is not the cause). The frame's first value and the scan's
+ * pointer in that order (the pointer's addiu ahead of the entry test, the load in its slot), the
+ * run's two flags with +161 first (the scheduler issues the last store first) */
+static int ProcessPitchCombiner(PITCHCOMB *p, void **in)
+{
+    float *q;
+
+    if (in[0] != 0) {
+        unsigned short n = p->nvals;
+        unsigned short i;
+        float *f = in[2];
+        float max = f[1];
+        float *v = f + 2;
+
+        for (i = 1; i < n; i++) {
+            if (max < *v)
+                max = *v;
+            v++;
+        }
+        *p->e.wr++ = max;
+        if (p->e.wr == p->e.end)
+            p->e.wr = p->e.base;
+        *p->r60.wr++ = logf(*(float *)in[0]);
+        if (p->r60.wr == p->r60.end)
+            p->r60.wr = p->r60.base;
+        *p->r80.wr = *(unsigned char *)in[1];
+        p->f160++;
+        p->f162 = p->f161;
+        if (*p->r80.wr == 1.0f) {
+            if (p->f161 == 0) {
+                p->f161 = 1;
+                p->f163 = 1;
+            }
+            p->f159++;
+        } else if (p->f161 == 1) {
+            if (p->f159 == p->f156 - 1)
+                p->f164 = 1;
+            p->f161 = 0;
+            p->f159 = 0;
+        }
+        p->r80.wr++;
+        if (p->r80.wr == p->r80.end)
+            p->r80.wr = p->r80.base;
+        if (p->f160 >= p->f156)
+            LogPitchProcessing(p);
+        if (p->f161 == 0)
+            p->f76 = p->r60.wr;
+        else if (p->f185 == 1) {
+            p->f76++;
+            if (p->f76 == p->r60.end)
+                p->f76 = p->r60.base;
+            p->f185 = 0;
+        }
+        if (p->f160 >= p->nwin)
+            NormE_Processing(p);
+        if (p->f160 == p->nring) {
+            p->f144 = *p->r60.rd - *p->r112.rd;
+            q = qEnQueueOne(p->b.outputs->q);
+            *q++ = p->f144 * 32.0f;
+            *q++ = *p->r96.rd * 53.0f;
+            *q++ = *p->e.rd * 1.107;
+            *q++ = *p->out.rd * 0.832;
+            *q = *p->r80.rd == 1.0f ? p->f188 : p->f192;
+            p->r60.rd++;
+            if (p->r60.rd == p->r60.end)
+                p->r60.rd = p->r60.base;
+            p->r112.rd++;
+            if (p->r112.rd == p->r112.end)
+                p->r112.rd = p->r112.base;
+            p->r96.rd++;
+            if (p->r96.rd == p->r96.end)
+                p->r96.rd = p->r96.base;
+            p->e.rd++;
+            if (p->e.rd == p->e.end)
+                p->e.rd = p->e.base;
+            p->out.rd++;
+            if (p->out.rd == p->out.end)
+                p->out.rd = p->out.base;
+            p->r80.rd++;
+            if (p->r80.rd == p->r80.end)
+                p->r80.rd = p->r80.base;
+            p->f160--;
+        }
+    } else if (p->f182 == 1)
+        FlushPitchCombiner(p);
+}
 
 /* a ring emptied: its cursors at its start, its end n frames on, its frames zeroed. The length an
  * int narrowed into a short of its own for the loop (the target's `andi 0xffff` of the loaded byte,
@@ -291,4 +387,14 @@ static int ControlPitchCombiner(PITCHCOMB *p, unsigned char cmd)
         return 0;
     }
     return 1;
+}
+
+/* (InitPitchCombiner 0x502A08 is not written) */
+int InitPitchCombiner(PITCHCOMB *p);
+
+TOSBLOCK *ConstructPitchCombiner(TOS *tos, unsigned char id)
+{
+    return tosBaseBlockConstruct(tos, id, 3, 1, (TOSFUNC)ProcessPitchCombiner,
+                                 (TOSFUNC)InitPitchCombiner, (TOSFUNC)ControlPitchCombiner,
+                                 sizeof(PITCHCOMB));
 }
