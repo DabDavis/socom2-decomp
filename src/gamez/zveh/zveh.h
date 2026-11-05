@@ -89,6 +89,14 @@ public:
         m_marker = m_up_time;
         m_timer = m_marker + m_dn_time;
     }
+    /* a new cycle drawn from the times kept: the up time, then the cycle up plus down (SetTimes'
+     * tail; the turret's fire control 0x3A8030 draws one when the cycle runs out or the aim leaves
+     * the cone -- the name ours) */
+    void Restart()
+    {
+        m_marker = m_up_time;
+        m_timer = m_marker + m_dn_time;
+    }
 
     Rfloat m_up_time;   // 0x0
     Rfloat m_dn_time;   // 0x8
@@ -302,7 +310,9 @@ public:
     void SetVisible(bool visible);
 
     CAiTimer m_fireTimer;   // 0x170
-    unsigned char _17c[0x194 - 0x17c];
+    /* the firing cycle (the definition's, copied by the constructor: 0x3AA920 builds it, 0x3AA810
+     * sets its times; 0x3A8030 runs it) */
+    CAiTrigger m_trigger;   // 0x17c
     /* the AI's target (ai_target.cpp's CAiTarget, 0x2c bytes here as in the SEALs' controller --
      * its validity test 0x60A850 takes it) and the word after it, whose bit 9 holds the target
      * (the names ours) */

@@ -540,6 +540,10 @@ public:
     /* a decal projected onto the visual (SOCOM 1's, by name) */
     void ApplyDecalRender(CMatrix *mtw, CNode *node, float size, CPnt3D *pos, CPnt3D *normal,
                           CTexHandle *tex, CMatrix *uv);
+    /* a decal taken from a pool and appended to a view's list (SOCOM 1's, 0x3B3800; SOCOM II adds
+     * the last word, handed through to the decal) */
+    void AttachDecal(unsigned int vid, float size, unsigned int flags, struct AddonPoint **points,
+                     CTexHandle *tex, int extra);
     /* a texture select's name resolved against the world's textures, the default one failing it:
      * the handle and its palette listed, the select copied in (SOCOM 1's; the wep lane's) */
     CTexture *ResolveTextureName(_word128 *names, _word128 *select);
