@@ -465,6 +465,99 @@ void CZKit::HandlePlaceMPBomb(const CPnt3D *pos)
     SetCurReticule(false);
 }
 
+extern "C" {
+/* the MP bomb's pickup and node (CPickup's statics, zseal.h's; OVL2 0x541C60, 0x542470, OVL1 bss
+ * 0x44D4A0), the SEAL's bomb anchors and drop (zseal.h's CZSealBody members: OVL2 0x544C60, 0x544C40,
+ * 0x59DD30), the network game's side test and the mission's message queue (hud_tcmcmds.cpp's
+ * spellings: OVL1 0x2C30B0, 0x2B6530) */
+class CPickup;
+CPickup *GetMPBomb__7CPickupFv();
+void Destroy__7CPickupFP7CPickup(CPickup *pickup);
+extern zdb::CNode *m_mpbombnode__7CPickup;
+bool CompassAnchor_MPBomb__10CZSealBodyFP14CCompassAnchor(CZSealBody *seal, CCompassAnchor *anchor);
+bool CompassAnchor_MPBase__10CZSealBodyFP14CCompassAnchor(CZSealBody *seal, CCompassAnchor *anchor);
+void DropMPBomb__10CZSealBodyFv(CZSealBody *seal);
+bool func_002C30B0(const CZSealBody *seal);
+void func_002B6530(void *queue, const char *name, int a, int b, int c, float delay);
+}
+
+/* the mission as the bomb pickup reads it (theMission, OVL1 0x4364E0: its message queue at 0xB80
+ * and the two bases' nodes at 0x18EC/0x18F0 -- the names ours) */
+class CKitMission {
+public:
+    unsigned char _0[0xb80];
+    unsigned char m_messages[0x18ec - 0xb80];   // 0xb80
+    zdb::CNode *m_base0;   // 0x18ec
+    zdb::CNode *m_base1;   // 0x18f0
+};
+
+extern CKitMission theMission;
+
+/* the compass's base anchors, friendly and enemy (a byte: the kind is masked to 8 bits before it
+ * goes into the anchor's 16-bit field; the names ours) */
+enum KIT_ANCHOR_KIND { KIT_ANCHOR_OUR_BASE = 2, KIT_ANCHOR_THEIR_BASE = 3 };
+
+static inline bool KitIsPlayer(struct CKitBody *body);
+
+/* the SEAL as the bomb pickup reads it: its team (CEntity's, 0xC8) and its bomb anchor (zseal.h's
+ * at 0xEC0) */
+struct CKitBombBody {
+    unsigned char _0[0xc8];
+    unsigned int m_team;   // 0xc8
+    unsigned char _cc[0xec0 - 0xcc];
+    CCompassAnchor *m_mpbomb_anchor;   // 0xec0
+};
+
+/* the MP bomb picked up: the bomb item (154) and its ammunition (19) put in the next slot with one
+ * round, the player told and the bomb's sound played at the SEAL, the grenade model hung, the
+ * pickup destroyed, the gear shown, the player's bomb anchor taken down and the base's put up
+ * (friendly or enemy by the teams); with no bomb only the gear shown; a dead player drops it again
+ * (OVL2 0x5BBF10; SOCOM 1's, without the message, the sound and the drop) */
+void CZKit::PickupMPBomb()
+{
+    CPickup *bomb = GetMPBomb__7CPickupFv();
+
+    if (bomb) {
+        int n = m_num_items;
+        CZWeapon *w = CZWeapon::m_listWeapons.GetWeapon((EQUIP_ITEM)154);
+        CZAmmo *ammo = CZAmmo::m_ammolist.GetAmmo((EQUIP_AMMO)19);
+
+        SetItemByIndex(n, w);
+        m_ammo[n] = ammo;
+        AddAmmo(n, 1);
+        m_currentmag[n] = 0;
+        if (KitIsPlayer((CKitBody *)m_body))
+            func_002B6530(theMission.m_messages, "Satchel", 0, 0, 0, 0.0f);
+        CSnd *snd = CSnd::GetSoundByName(".FOOTBOMB");
+
+        if (snd)
+            snd->PlaySound3D(&((CEntity *)m_body)->m_posW, 1.0f, 0, 0, 255);
+        InitItemModel(w->GetModelName(), "grenade");
+        Destroy__7CPickupFP7CPickup(bomb);
+        m_mpbombnode__7CPickup = 0;
+        EnableMPBombGear__10CZSealBodyFb(m_body, true);
+        CZSealBody *p = KitIsPlayer((CKitBody *)m_body) ? m_body : ftsGetPlayer__Fv();
+
+        if (((CKitBombBody *)p)->m_mpbomb_anchor)
+            CCompass::DeleteAnchor(((CKitBombBody *)p)->m_mpbomb_anchor);
+        CompassAnchor_MPBomb__10CZSealBodyFP14CCompassAnchor(p, 0);
+        bool side = func_002C30B0(m_body);
+        zdb::CNode *base = side ? theMission.m_base0 : theMission.m_base1;
+
+        if (base) {
+            CCompassAnchor *a = CCompass::CreateAnchor(*(const CPnt3D *)base->m_matrix.m_matrix[3], "ALL_YOUR_BASE");
+
+            a->m_type = ((CKitBombBody *)m_body)->m_team & ((CKitBombBody *)p)->m_team ? KIT_ANCHOR_OUR_BASE
+                                                                                       : KIT_ANCHOR_THEIR_BASE;
+            CompassAnchor_MPBase__10CZSealBodyFP14CCompassAnchor(p, a);
+        } else
+            CompassAnchor_MPBase__10CZSealBodyFP14CCompassAnchor(p, 0);
+    } else
+        EnableMPBombGear__10CZSealBodyFb(m_body, true);
+    if (KitIsPlayer((CKitBody *)m_body) && !(((CKitBody *)m_body)->m_alive ? true : false))
+        DropMPBomb__10CZSealBodyFv(m_body);
+}
+
 void CZKit::SetCurReticule(bool force)
 {
     RETICULE_TYPE r = GetReticuleByIndex(m_selected_item);

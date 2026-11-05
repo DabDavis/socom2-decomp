@@ -51,6 +51,10 @@ public:
     void NextObjective();
     CMissionObjectiveCam *GetCurrentObjective() const;
     void MissionEndCleanup();
+    void RefreshList();
+    /* the objectives let go (the vector kept with false) and the camera the list holds on to */
+    void FreeList(bool wipe_vector);
+    CMissionObjectiveCam *GetCurrentObjectiveRetainer() const;
 
     unsigned char _18[0x730 - 0x18];
 };
@@ -97,6 +101,8 @@ public:
     float GetZoomOut() const;
     void FrameObjective();
     void SwitchToCompassMap();
+    /* to full screen (SOCOM 1's; 0x20A780) */
+    void SwitchMapToFullScreen();
     /* the full-screen map's pad: closed, objectives stepped, selected or framed, the map centred
      * on the viewer, scrolled and zoomed, the legend shown while R2 is held (SOCOM 1's; 0x209EE0) */
     void TickFullScreenMap(CPad *pad, enum MENU_STATE menustate);
@@ -133,7 +139,7 @@ public:
     float m_centerx;   // 0xd4
     float m_centerz;   // 0xd8
     bool m_isFullScreen;   // 0xdc
-    unsigned char m_oldmenustate;   // 0xdd (SOCOM 1's MENU_STATE)
+    MENU_STATE m_oldmenustate;   // 0xdd (SOCOM 1's: a byte enum, read with lb)
     unsigned char _de[0xe0 - 0xde];
     CZObjectiveList m_objectivelist;   // 0xe0 (SOCOM 1's, at 0x4d0)
     CHUD *m_parent;   // 0x810 (SOCOM 1's last three, after the list as there)

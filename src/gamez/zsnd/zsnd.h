@@ -146,6 +146,17 @@ public:
     static void SetGroupVolTemp(float time, float pct, int g0, int g1, int g2, int g3, int g4, int g5,
                                 int g6);
     static void ResetGroupVolTemp(float dT);
+    /* SOCOM II's, the names ours: the fade stepped as PostTick steps it, for a caller without the
+     * scheduler's post tick (CMenuState::Tick, 0x341250); a running fade ended at once (0x341060:
+     * the mission cameras, the movie audio and StopAllSounds call it); the held fade a streamed
+     * radio voice starts released when its last voice goes (0x341010) */
+    static void TickGroupVolTemp(float dT);
+    static void EndGroupVolTemp();
+    static void ReleaseGroupVolTemp();
+    /* SOCOM II's, the names ours (after the 989snd calls they wrap): a group's master volume read
+     * and set straight (0x3414B0, 0x3414C0; the mission cameras keep the music group's) */
+    static int GetMasterVolume(int group);
+    static void SetMasterVolume(int group, int vol);
     /* SOCOM 1's (an out-of-line `if (!m_isDisabled) CSndGroup::LoadSoundGroups();` there): SOCOM
      * II's takes the groups file's name and is inline -- no copy is left */
     static void SetupSoundGroups(const char *name);
@@ -197,6 +208,8 @@ public:
     static float m_fadetime;            /* 0x48DE10 */
     static float m_fadepct;             /* 0x48DE18 */
     static float m_fadeRestore;         /* 0x3DFFE0 */
+    static bool m_fadeHeld;             /* 0x48DE20: SOCOM II's (name ours) -- a streamed radio voice
+                                           holds the other groups lowered (time 1e9) */
 
     float m_vol;                        /* 0x04 */
     char *m_name;                       /* 0x08 */

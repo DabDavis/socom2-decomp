@@ -781,12 +781,11 @@ float CSnd::CalcVolPan(const CPnt3D *pos, float vol, int *outVol, int *outPan)
 }
 
 /* StreamSoundVolPan's: the stream's file name (a static buffer), the dialog streams allowed (a
- * byte), the group volumes lowered for a voice-over (a byte); the VAG index's lookup -- 1 when the
+ * byte) -- the group volumes lowered for a voice-over are CSnd::m_fadeHeld; the VAG index's lookup -- 1 when the
  * name is in the language's index, 2 in VAGSTORE's, 0 when in neither -- and the two archives' disc
  * sectors (zsnd_subtitles.cpp's CSubtitleTable, 0x34D480 / 0x34D470 / 0x34D460; names not known) */
 extern char data_0048DF40[];
 extern unsigned char data_003DFFA8;
-extern unsigned char data_0048DE20;
 enum VAG_WHERE { VAG_NONE = 0, VAG_INDEX = 1, VAG_STORE = 2 };   /* a byte (-enum min); names ours */
 extern "C" VAG_WHERE func_0034D480(CSubtitleTable *table, const char *name, unsigned int *offset,
                                    int *size);
@@ -867,9 +866,9 @@ int CSnd::StreamSoundVolPan(int vol, int pan, CSndInstance *inst, int flag)
             flags |= 4;
         if (flag && !m_socom2_bit3)
             flags |= 2;
-        if (m_socom2_bit4 && !data_0048DE20) {
+        if (m_socom2_bit4 && !m_fadeHeld) {
             SetGroupVolTemp(1e9f, 0.6f, 0, 1, 2, 3, 4, 5, -1);
-            data_0048DE20 = 1;
+            m_fadeHeld = 1;
         }
         snd_PlayVAGStreamByLoc_CB(loc1, loc2, offset1, offset2, vol, pan, group, 0, 0, flags,
                                   CSndInstance::PlaySoundCallback, (unsigned long)inst);
@@ -1100,6 +1099,17 @@ void CSnd::SetGroupVol(int group, float vol)
     snd_SetMasterVolume(group, (int)(1024.0f * vol));
 }
 
+/* SOCOM II's (names ours, after the calls they wrap): a group's master volume set and read straight */
+void CSnd::SetMasterVolume(int group, int vol)
+{
+    snd_SetMasterVolume(group, vol);
+}
+
+int CSnd::GetMasterVolume(int group)
+{
+    return snd_GetMasterVolume(group);
+}
+
 /* SOCOM 1's: the groups' volumes lowered to a part of their own for a time -- while a fade runs
  * only its time lengthened; a reset still running finished first, then each group's own volume
  * kept and the lowered one set */
@@ -1136,6 +1146,15 @@ void CSnd::SetGroupVolTemp(float time, float pct, int g0, int g1, int g2, int g3
     }
 }
 
+/* SOCOM II's (name ours): PostTick's fade step for a caller without the post tick (CMenuState::Tick) */
+void CSnd::TickGroupVolTemp(float dT)
+{
+    if (m_fadetime > 0.0f && m_fadetime != 1e9f)
+        m_fadetime -= dT;
+    else if (m_fadeRestore < 1.0f && m_fadetime <= 0.0f)
+        ResetGroupVolTemp(dT);
+}
+
 /* SOCOM 1's ResetGroupVolTemp, SOCOM II's over five seconds: the reset's position stepped, each
  * group set between its lowered and its own volume by it, the fade forgotten once it is done. The
  * step's two products are named: MW orders a commutative float operation's operands its own way
@@ -1161,12 +1180,24 @@ void CSnd::ResetGroupVolTemp(float dT)
     }
 }
 
-/* SOCOM II's group-volume fade restarted when idle (name not known) */
-extern "C" void func_00341060()
+/* SOCOM II's (name ours): a running group fade ended at once -- the reset's position set done and
+ * one step taken, which sets every group back to its own volume and forgets the fade */
+void CSnd::EndGroupVolTemp()
 {
-    if (CSnd::m_fadetime != 0.0f || CSnd::m_fadetime == 1.0e9f) {
-        CSnd::m_fadeRestore = 1.0f;
-        CSnd::ResetGroupVolTemp(0.01f);
+    if (m_fadetime != 0.0f || m_fadetime == 1.0e9f) {
+        m_fadeRestore = 1.0f;
+        ResetGroupVolTemp(0.01f);
+    }
+}
+
+/* SOCOM II's (name ours): the fade StreamSoundVolPan holds for a radio voice (time 1e9) released --
+ * left to end at the next step (CSndInstance::ReleaseSoundInstance, the last such voice gone) */
+void CSnd::ReleaseGroupVolTemp()
+{
+    if (m_fadeHeld) {
+        m_fadeHeld = 0;
+        if (m_fadetime == 1e9f)
+            m_fadetime = 0.01f;
     }
 }
 
