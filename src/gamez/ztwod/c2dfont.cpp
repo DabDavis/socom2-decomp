@@ -248,6 +248,15 @@ static inline _zrdr *FlatFindTag(const _zrdr *rdr, const char *tag)
     return zrdr_flat_findtag_startidx(rdr, tag, 0);
 }
 
+/* an int a tag names, a default where it names none, read into the caller's slot and returned
+ * (ours: the target sets each default just ahead of its read and takes the value straight back) */
+static inline int FindIntAt(const _zrdr *rdr, const char *tag, int *v, int def)
+{
+    *v = def;
+    zrdr_findint(rdr, tag, v, 1);
+    return *v;
+}
+
 /* a string a tag names, at the top level only (ours: LoadJamo's style name -- an inline's result,
  * numbered after the style's, as the target's registers have it) */
 static inline const char *FlatFindString(const _zrdr *rdr, const char *tag)
@@ -460,8 +469,9 @@ void CHangulFont::LoadCharLayouts(std::vector<CSaferStr> &names, const _zrdr *rd
 
 /* the Korean block: the jamo and their alternates, the layouts, the trail rows by vowel, the vowel
  * rows by lead, each lead's row; the texture, baseline and kernings every syllable takes */
-/* OPEN, 20 instructions: the four name lists' frame slots and the order of the int reads'
- * stores. */
+/* (byte-exact since the HUD's round 55: the four ints declared together at the top, kerning first
+ * -- their frame slots -- each read through FindIntAt, its default set just ahead of the read and
+ * the value taken straight back, so the left kerning is loaded before the right one is read) */
 void CHangulFont::Load(const _zrdr *rdr)
 {
     _zrdr *jamo = FlatFindTag(rdr, "Jamo");
@@ -479,22 +489,15 @@ void CHangulFont::Load(const _zrdr *rdr)
 
     LoadLeadRangeLayouts(leadNames, rdr, vowelNames);
     LoadLeadUsage(rdr, leadNames);
-    int tex = 1;
+    int lk, rk, baseline, tex;
 
-    zrdr_findint(rdr, "texture", &tex, 1);
-    m_texture.m_v = tex - 1;
-    int baseline = 0;
+    m_texture.m_v = FindIntAt(rdr, "texture", &tex, 1) - 1;
+    m_baseline.m_v = FindIntAt(rdr, "baseline", &baseline, 0);
+    int l = FindIntAt(rdr, "lKerning", &lk, 0);
+    int r = FindIntAt(rdr, "rKerning", &rk, 0);
 
-    zrdr_findint(rdr, "baseline", &baseline, 1);
-    m_baseline.m_v = baseline;
-    int lk = 0;
-
-    zrdr_findint(rdr, "lKerning", &lk, 1);
-    int rk = 0;
-
-    zrdr_findint(rdr, "rKerning", &rk, 1);
-    m_lKerning.m_v = lk;
-    m_rKerning.m_v = rk;
+    m_lKerning.m_v = l;
+    m_rKerning.m_v = r;
 }
 
 /* a jamo's rectangle, then its Styles: each style's layout name (added to the list if new) and the
@@ -575,7 +578,8 @@ void CHangulFont::LoadLeadRangeLayouts(std::vector<CSaferStr> &names, const _zrd
 
 /* VowelRangeLayouts: each named row of layouts, by trailing consonant (none first), the Default's
  * where one names none */
-/* OPEN, 26 instructions: registers, as LoadLeadRangeLayouts. */
+/* (byte-exact since the HUD's round 55: every string read through FlatFindString, an inline's
+ * result -- the registers LoadJamo's style name gave) */
 void CHangulFont::LoadVowelRangeLayouts(std::vector<CSaferStr> &names, const _zrdr *rdr, const std::vector<CSaferStr> &layoutNames)
 {
     _zrdr *list = FlatFindTag(rdr, "VowelRangeLayouts");
@@ -583,15 +587,15 @@ void CHangulFont::LoadVowelRangeLayouts(std::vector<CSaferStr> &names, const _zr
     for (int i = 0; i < (list ? (int)list->Count() : 0); i++) {
         _zrdr *item = list->Item(i);
 
-        names.push_back(CSaferStr(zrdr_flat_findstring(item, "Name", 0)));
+        names.push_back(CSaferStr(FlatFindString(item, "Name")));
         m_trailRows.resize(m_trailRows.size() + 1);
         CTrailRow *row = &m_trailRows.back();
-        int def = FindName(layoutNames, zrdr_flat_findstring(item, "Default", 0));
-        int none = FindName(layoutNames, zrdr_flat_findstring(item, "NoTrail", 0));
+        int def = FindName(layoutNames, FlatFindString(item, "Default"));
+        int none = FindName(layoutNames, FlatFindString(item, "NoTrail"));
 
         row->m_noTrail.m_v = none >= 0 ? none : def;
         for (unsigned int k = 0; k < 27; k++) {
-            int v = FindName(layoutNames, zrdr_flat_findstring(item, s_hangulJamoNames[s_hangulTrails[k]], 0));
+            int v = FindName(layoutNames, FlatFindString(item, s_hangulJamoNames[s_hangulTrails[k]]));
 
             row->m_trails[k].m_v = v >= 0 ? v : def;
         }
