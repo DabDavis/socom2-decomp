@@ -146,7 +146,9 @@ class CRenderMap : public CLightMap {
 public:
     CRenderMap(CNode *node, _tag_render_map_type type, const CTexture *tex);
     virtual ~CRenderMap();
-    void Update();
+    /* SOCOM 1's Update() grown a bool (0x31A180): whether the texture differs from the last map's
+     * RenderWorld updated -- false only clears the packet's first word (the name ours) */
+    void Update(bool newTexture);
 
     CNode *m_node;   // 0x180: the node casting it, when an instance (type 2)
     const CTexture *m_texture;   // 0x184

@@ -277,7 +277,14 @@ extern "C" void sceVu0ScaleVector(float *v0, float *v1, float s);
  * initialised that way ahead of the fov load; test as int / char (10), unsigned char, `= 1`, `1 ==`,
  * a dead `test = false` first, `else if` (7 each); assigned inside the source's block with an else
  * (0x36C), both arms assigned (0x374), `test = f != 1` (0x354). --drop finds no single interference
- * (60-62 gives two of the three); --movers: v60 at 62.5-63.5 or v62 at 52.5-59.5 only. Its four floats are numbered
+ * (60-62 gives two of the three); --movers: v60 at 62.5-63.5, or v62 anywhere from 31.5 to 59.5 -- among the
+ * front-end temporaries too, where @1054 (v38) is the front end's CSE of m_source across the three
+ * statements (the fov byte's two loads are merged by the back end instead, v62). Probe: with the
+ * second test `== 3` the addiu ahead of test's store disappears (test's dead int intermediate, kept
+ * only because the compare reuses it). Tried in round 25 after the crash: SOCOM 1's member type
+ * tag_ZVIS_FOV (a one-byte enum under -enum min) as the member's type, or as a cast with enumerators,
+ * `m_source != 0`, a local Source pointer, test declared uninitialised at the top (7 each), a switch
+ * with case 2 first (0x374: a compare tree). Its four floats are numbered
  * age, scale, opacity, dist by dead definitions at the top (dist by its own first definition last:
  * f20). GetOpacity, GetScale, GetColor and GetTexture are zparticle_props.cpp's: called out of line,
  * as the target calls them (one unit with them inlined GetOpacity, round 22's pin) */

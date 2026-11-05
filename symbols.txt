@@ -5534,7 +5534,7 @@
 0x00319F20 0x1B4 FilterAssetLibFolder__FPCcPc  # OVL1; new in SOCOM II, the name ours: LoadAssetLib_PS2 calls it with the library's name and a 256-byte buffer for run/%s/...; "common/assetlib/local/" -> "common/<dir>", else the first directory (two for sp/m, mp/m); sits where SOCOM 1's FilterMissionFolder did, which SOCOM II inlines into Load
 0x0031A0E0 0x60 __dt__Q23zdb9CSaveLoadFv  # OVL1; s1:align
 0x0031A140 0x3C __ct__Q23zdb9CSaveLoadFv  # OVL1; s1:align
-0x0031A180 0x78C func_0031A180  # OVL1
+0x0031A180 0x78C Update__Q23zdb10CRenderMapFb  # OVL1; s1:calls+order by hand (the world lane r25: SOCOM 1's CRenderMap::Update (0x22B310), after the shadow's statics and before ~CRenderMap as there, grown a bool: RenderWorld 0x339DE0 passes `map->m_texture != last` -- the xor and, in the jal's delay slot, sltu -- the last map's texture kept in s8 from 0, and false only clears the packet's first word before the kick) -- node_shadow.cpp
 0x0031A910 0x90 __dt__Q23zdb10CRenderMapFv  # OVL1; s1:align
 0x0031A9A0 0x488 __ct__Q23zdb10CRenderMapFPQ23zdb5CNodeQ23zdb20_tag_render_map_typePCQ23zdb8CTexture  # OVL1; s1:order by hand (SOCOM 1's CRenderMap constructor after ~CRenderMap: CLightMap's constructor, CRenderMap's vtable, three unit matrices, the 0x2E0-byte object AddShadow news with (node, 0, texture) as SOCOM 1's does)
 0x0031AE30 0x90 SetMaterial__FPQ23zdb5CNodei  # OVL1; s1:order by hand (SOCOM 1's SetMaterial(CNode *, int): each of the node's DIs given the material, eight bits at bit 10 of its flag word (at 8 here, 0x18 in SOCOM 1); before SetDIBBox as there)
@@ -5578,7 +5578,7 @@
 0x0031D630 0xB8 TexListHolds__3zdbFPQ23zdb8CTexListPQ23zdb8CTexList  # OVL1; new in SOCOM II, the name ours (the world lane): whether the first texture list is non-empty, no shorter than the second and holds a handle for each of its textures (GetHandle(CTexture *) per element); AddTextureAssetCharacter(lib) calls it
 0x0031D6F0 0x12C DismemberWorldModel__Q23zdb6CWorldFv  # OVL1; s1:align
 0x0031D820 0x114 Segregate_CCells__Q23zdb6CWorldFPQ23zdb5CNodeRQ23zdb11CNodeVectorRQ23zdb11CNodeVector  # OVL1; s1:align
-0x0031D940 0x34C func_0031D940  # OVL1
+0x0031D940 0x34C GetLightIntensity__Q23zdb6CWorldFPC6CPnt3DfUi  # OVL1; ours by hand (the world lane r25: new in SOCOM II between Segregate_CCells and RegProximityDelayed, which SOCOM 1 has side by side; nothing calls it or takes its address -- the ambient, the three global colours by 0.999999 and the point's cell's active lights by their falloff, each skipped by a flag bit, summed and weighted 0.4901/0.4657/0.0441: a luminance; the parameters' order after RegProximityDelayed's) -- node_world.cpp
 0x0031DC90 0xA8 RegProximityDelayed__Q23zdb6CWorldFPQ23zdb11DiIntersectPC6CPnt3DfUi  # OVL1; s1:order by hand (SOCOM 1's RegProximityDelayed before ClearIgnoreNodeDelayed: type 4, the point, the radius in the tip; SOCOM II takes a mask, handed to 0x2DC660)
 0x0031DD40 0x20 ClearIgnoreNodeDelayed__Q23zdb6CWorldFPQ23zdb11DiIntersect  # OVL1; tu: node_world.cpp~ (1.0 beta); s1:exact
 0x0031DD60 0x30 RegIgnoreNodeDelayed__Q23zdb6CWorldFPQ23zdb11DiIntersectPQ23zdb5CNode  # OVL1; tu: node_world.cpp~ (1.0 beta); s1:exact
