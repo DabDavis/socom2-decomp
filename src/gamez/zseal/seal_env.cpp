@@ -79,10 +79,16 @@ static inline float Rand01()
 }
 
 /* a size in a decal's range (an inline: its arguments are loaded before rand() runs; the range
- * is lost -- (hi - hi) -- in both builds) */
+ * is lost -- (hi - hi) -- in both builds). The sum assigned back over `hi` -- a parameter reused is
+ * computed where it is assigned, so HandleBloodDrip has it before GetDecalNode is called (the target's
+ * add in that call's delay slot, $f22 never saved: returned as an expression MW sinks it below the
+ * call, 4 bytes long) -- and the random value a local first (in place it swaps the mul's operands) */
 static inline float RandSize(float lo, float hi)
 {
-    return lo + Rand01() * (hi - hi);
+    float r = Rand01();
+
+    hi = lo + r * (hi - hi);
+    return hi;
 }
 
 /* a material's extension (int_material.cpp's, held in zweapon.h's CMaterialExArray): only the
@@ -158,13 +164,9 @@ void CZSealBody::HandleFootfallSound(CPnt3D *pos)
 
 /* now and then a wounded SEAL drips blood: offline only, a random decal of the set at random size
  * under it, along its altitude hit (OVL2 0x5A33B0; SOCOM 1's word for word, the timer at 0x214 --
- * its size range is min + r * (max - max), as both builds have it).
- * OPEN, 0x1BC against 0x1B8 (93 of 110 instructions in place): the target computes the whole size
- * before GetDecalNode is called (the sum in $f20, hi's register, in the call's delay slot) and so
- * saves only $f20/$f21; MW here keeps the random product in $f20 across the call and adds after
- * it, saving $f22 too. Tried: the size in a local, the decal node in a local, the helper's sum
- * through a local, the product written inside the argument with min and max in locals (either
- * order). The early return and the zero-first pick (`if (n == 0) def = 0; else ...`) are the
+ * its size range is min + r * (max - max), as both builds have it). Byte-exact since the SEALs' round
+ * 41 (0x1BC against 0x1B8 since round 13): RandSize assigns its sum back over its `hi` parameter
+ * (above). The early return and the zero-first pick (`if (n == 0) def = 0; else ...`) are the
  * target's. */
 void CZSealBody::HandleBloodDrip(float dT)
 {
