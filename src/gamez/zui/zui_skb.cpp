@@ -399,6 +399,121 @@ void func_0038D200(const CSkbKey &key, CSoftKeyboard *skb, CPad *pad, CGameMenu 
 void SkbCursorBack(CSoftKeyboard *skb);
 void SkbCursorForward(CSoftKeyboard *skb);
 
+/* the keys unit's: the text's clearing, switching and closing, a jamo typed, a character typed
+ * (0x399E90, not named yet), the recipient toggle's callback (0x38BFE0) and the lock key's */
+bool SkbClearText(CSoftKeyboard *skb);
+void SkbTypeOrBack(CSoftKeyboard *skb);
+void SkbShowKeyRows(CPad *pad, CSoftKeyboard *skb, bool row2);
+void SkbHangulClear();
+void SkbSwitchText(CSoftKeyboard *skb);
+void SkbCloseText0(CSoftKeyboard *skb);
+void SkbTypeJamo(int arg, signed char jamo, CPad *pad);
+void SkbToggleBmp4();
+void SkbTogglePair(CBmpWithNode *a, CBmpWithNode *b, void (*onToggle)(bool));
+extern "C" void func_00399E90(unsigned short c, bool shifted, bool wide, CSoftKeyboard *skb);
+extern "C" void func_0038BFE0(bool on);
+
+/* a capital letter: A-Z, or Latin-1's capitals but the multiplication sign (ours) */
+static inline bool SkbIsAsciiUpper(unsigned short c)
+{
+    bool r = false;
+
+    if (c >= 'A' && c <= 'Z')
+        r = true;
+    return r;
+}
+static inline bool SkbIsUpper(unsigned short c)
+{
+    return SkbIsAsciiUpper(c) || (c >= 0xC0 && c < 0xDF && c != 0xD7);
+}
+
+/* a key of the keyboard pressed (0x38D200; the name ours): a character key types its letter in
+ * lower case, a function key (row 1) does its job -- 7 the shift lock --, a jamo key types its jamo
+ * and a switch key switches keyboards; then the shift lock set by whether it was the lock key, the
+ * key rows shown again and the sound played for it. Written round 29 (the row keeps its placeholder:
+ * SkbHandleKey calls it so).
+ * OPEN, at the target's size (0x2E0), every call, case order and register the target's but the
+ * capital test: the target materialises `upper || (c >= 0xC0 && c < 0xDF && c != 0xD7)` as an
+ * int with no narrowing (`sltu v0,zero,a0` on SkbIsAsciiUpper's byte, `slti; xori` for the `>=`),
+ * where every C++ form here narrows its bools (`andi 0xff` after each stage, 2-4 words): an int
+ * return, an int chain written out (`int r = a != 0; if (!r) { r = ...; if (r) r = ...; }`: two
+ * narrowings left), an unsigned char SkbIsAsciiUpper, `!(c < 0xC0)`, `c > 0xBF`
+ * (build/scratch/ui/v_kh*.py) */
+void func_0038D200(const CSkbKey &key, CSoftKeyboard *skb, CPad *pad, CGameMenu *menu)
+{
+    switch (key.m_urow) {
+    case 0: {
+        unsigned short c = key.m_code;
+
+        if (SkbIsUpper(c))
+            c += 32;
+        else if (c == 0x160)
+            c = 0x161;
+        else if (c == 0x178)
+            c = 0xFF;
+        bool wide = false;
+
+        if (skb->m_320.m_node && skb->m_320.m_node->m_active)
+            wide = true;
+        func_00399E90(c, SkbShifted2(pad), wide, skb);
+        SkbHangulClear();
+        break;
+    }
+    case 1:
+        switch (key.m_code) {
+        case 2:
+            SkbTypeOrBack(skb);
+            break;
+        case 3:
+            SkbClearText(skb);
+            break;
+        case 0:
+            SkbToggleLock2();
+            SkbShowKeyRows(pad, skb, skb->m_174);
+            SkbPlaySound(3);
+            break;
+        case 1:
+            SkbTogglePair(&skb->m_1c0, &skb->m_270, func_0038BFE0);
+            break;
+        case 6:
+            SkbTakeText(menu);
+            SkbPlaySound(3);
+            break;
+        case 4:
+            skb->OnEnterKey(menu);
+            break;
+        case 5:
+            func_0038C000(skb, menu);
+            break;
+        case 8:
+            SkbToggleBmp4();
+            break;
+        case 12:
+            SkbSwitchText(skb);
+            break;
+        case 13:
+            SkbCloseText0(skb);
+            break;
+        }
+        break;
+    case 2:
+        SkbTypeJamo((int)skb, key.m_code, pad);
+        break;
+    case 3:
+        skb->SwitchToNamed(key.m_code - 1);
+        SkbPlaySound(3);
+        break;
+    }
+    bool lock = key.m_urow == 1;
+
+    if (lock)
+        lock = key.m_code == 7;
+    SkbToggleShiftLock(lock);
+    SkbShowKeyRows(pad, skb, skb->m_174);
+    if (lock)
+        SkbPlaySound(3);
+}
+
 /* a key event of the showing keyboard: the four cursor moves (events 1-4 move up, down, left and
  * right: 3, 1, 2, 4 -- ours), the cursor's key (5), the two edit keys (6, 7) (0x38DFE0; the name
  * ours) */
