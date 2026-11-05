@@ -149,6 +149,13 @@ struct CCameraPreset {
  * amplitude's decay per frame and the ripple's rate in degrees a second -- x's four, then y's
  * (SOCOM II's; BeginShake's arguments in order, the names ours) */
 struct CShakeParams {
+    /* a gentle default (CAppCamera's constructor builds the three, then sets them) */
+    CShakeParams()
+        : m_xAmp(1.0f), m_xAmpRand(1.0f), m_xDecay(0.25f), m_xRate(1000.0f), m_yAmp(1.0f),
+          m_yAmpRand(0.0f), m_yDecay(0.1f), m_yRate(750.0f)
+    {
+    }
+
     float m_xAmp;   // 0x0
     float m_xAmpRand;   // 0x4
     float m_xDecay;   // 0x8
@@ -209,6 +216,7 @@ public:
 
 class CAppCamera {
 public:
+    CAppCamera(zdb::CCamera *cam);
     ~CAppCamera();
     virtual void Tick(float dT);
     virtual bool AttachTo(CZSealBody *prey);
@@ -270,7 +278,13 @@ public:
     CPnt3D m_cameraTie;   // 0x10
     CPnt3D m_camGoalPos;   // 0x1c
     float m_goal_t_len;   // 0x28
-    unsigned char _2c[0x50 - 0x2c];
+    unsigned char _2c[0x44 - 0x2c];
+    /* SOCOM II's, set by the constructor (the names ours) */
+    unsigned char m_44;   // 0x44 (1)
+    unsigned char m_45;   // 0x45 (0)
+    unsigned char m_46;   // 0x46 (1)
+    unsigned char _47[0x4c - 0x47];
+    float m_short_tether_timer;   // 0x4c (SOCOM 1: 0x2c; -1)
     CShakeParams m_shake[3];   // 0x50: SMALL, MEDIUM, LARGE (SOCOM II's)
     unsigned int m_padid;   // 0xb0 (SOCOM 1: 0x30): the pad the views are cycled from
     zdb::CCamera *m_camera;   // 0xb4 (SOCOM 1: 0x34)
@@ -290,12 +304,15 @@ public:
     /* SOCOM II's, put back with the death camera (the names ours) */
     signed char m_f4;   // 0xf4
     signed char m_f5;   // 0xf5
-    unsigned char _f6[0x104 - 0xf6];
+    unsigned char _f6[0xf8 - 0xf6];
+    float m_f8;   // 0xf8 (SOCOM II's, the constructor zeroes these three; the names ours)
+    float m_fc;   // 0xfc
+    float m_100;   // 0x100
     float m_104;   // 0x104
     float m_108;   // 0x108
-    float m_10c;   // 0x10c
+    int m_10c;   // 0x10c (an int: the constructor zeroes it with sw where its floats take swc1)
     int m_110;   // 0x110 (-1)
-    float m_114;   // 0x114
+    int m_114;   // 0x114 (an int, likewise)
     float m_118;   // 0x118 (1)
     unsigned char _11c[0x130 - 0x11c];
     float m_wiggle_cur_time;   // 0x130 (SOCOM 1: 0x80)
@@ -312,7 +329,11 @@ public:
     unsigned char m_cam_death_state;   // 0x144 (SOCOM 1: 0x94, a CAM_DEATH_STATE)
     unsigned char _145[0x148 - 0x145];
     float m_death_state_timer;   // 0x148 (SOCOM 1: 0x98)
-};
+    unsigned char _14c[0x150 - 0x14c];
+    void *m_150;   // 0x150 (SOCOM II's, the constructor clears these two; the names ours)
+    void *m_154;   // 0x154
+    unsigned char _158[0x188 - 0x158];
+};   // 0x188 bytes (LoadWorld news 392)
 
 extern CAppCamera *appCamera;
 

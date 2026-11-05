@@ -337,6 +337,61 @@ void CAppCamera::CmdBeginShake(_zanim_cmd_hdr *hdr)
         appCamera->Shake(((_camera_shake_cmd *)hdr)->level);
 }
 
+/* SOCOM 1's (SOCOM II's takes the camera alone): the aim, tie and goal, the camera kept, the
+ * death camera's and the views' state put back, the tether's length from the goal, the player taken
+ * up, the shake stopped and its three presets set -- SMALL, MEDIUM, LARGE */
+CAppCamera::CAppCamera(zdb::CCamera *cam)
+    : m_cameraAim(0.0f, 20.0f, 0.0f), m_cameraTie(0.0f, 20.0f, 0.0f), m_camGoalPos(40.0f, 20.0f, 0.0f),
+      m_44(1), m_45(0), m_46(1), m_short_tether_timer(-1.0f), m_padid(0), m_camera(cam),
+      m_camera_effects(0), m_bc(0), m_entity(0), m_ctrl(0), m_z_nominal(500.0f)
+{
+    m_f8 = 0.0f;
+    m_fc = 0.0f;
+    m_100 = 0.0f;
+    m_f4 = 0;
+    m_f5 = m_f4;
+    m_110 = -1;
+    m_114 = 0;
+    m_104 = 0.0f;
+    m_108 = 0.0f;
+    m_10c = 0;
+    m_118 = 1.0f;
+    m_camera_mode = cam_mode_tether;
+    m_camera_last_mode = cam_mode_tether;
+    m_cam_death_state = 0;
+    m_150 = 0;
+    m_154 = 0;
+    m_goal_t_len = m_camGoalPos.Length();
+    func_002956E0(this, ftsGetPlayer(), 0);
+    m_wiggle_cur_time = 0.0f;
+    m_wiggle_echo = 0;
+    StopShake();
+    m_shake[0].m_xAmp = 6.0f;
+    m_shake[0].m_xAmpRand = 1.0f;
+    m_shake[0].m_xDecay = 2.0f;
+    m_shake[0].m_xRate = 2000.0f;
+    m_shake[0].m_yAmp = 6.0f;
+    m_shake[0].m_yAmpRand = 0.5f;
+    m_shake[0].m_yDecay = 2.0f;
+    m_shake[0].m_yRate = 250.0f;
+    m_shake[1].m_xAmp = 20.0f;
+    m_shake[1].m_xAmpRand = 10.0f;
+    m_shake[1].m_xDecay = 2.0f;
+    m_shake[1].m_xRate = 2000.0f;
+    m_shake[1].m_yAmp = 10.0f;
+    m_shake[1].m_yAmpRand = 5.0f;
+    m_shake[1].m_yDecay = 2.0f;
+    m_shake[1].m_yRate = 2000.0f;
+    m_shake[2].m_xAmp = 60.0f;
+    m_shake[2].m_xAmpRand = 30.0f;
+    m_shake[2].m_xDecay = 4.0f;
+    m_shake[2].m_xRate = 1000.0f;
+    m_shake[2].m_yAmp = 55.0f;
+    m_shake[2].m_yAmpRand = 15.0f;
+    m_shake[2].m_yDecay = 4.0f;
+    m_shake[2].m_yRate = 1150.0f;
+}
+
 CAppCamera::~CAppCamera()
 {
     m_track = 0;
@@ -1027,9 +1082,9 @@ void CAppCamera::ResetDeathCam()
     m_f4 = 0;
     m_f5 = m_f4;
     m_110 = -1;
-    m_114 = 0.0f;
+    m_114 = 0;
     m_104 = 0.0f;
     m_108 = 0.0f;
-    m_10c = 0.0f;
+    m_10c = 0;
     m_118 = 1.0f;
 }
