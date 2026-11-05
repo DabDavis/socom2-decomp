@@ -2179,7 +2179,7 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     0x3B54E0 and CUIVariable::Attach 0x3869F0 (both open on their walks' ends), eleven pieces named;
   - THE 19 WALKS IT CUT AT LEVEL 5 WANT LEVEL 6, NOT A LOCAL END: `#pragma inline_depth(6)` at the end of the eight units
     holding them (fts_missionlist, bone_archive, char_type, util_loc, zNetMediusClan, zNetMediusRoom, zsnd_positions,
-    zwep_flyout) with their sources untouched gives all 17 there, and objcmp finds all eight objects BYTE-IDENTICAL to
+    zwep_flyout) with their sources untouched gives all 18 there, and objcmp finds all eight objects BYTE-IDENTICAL to
     master's -- the four-high end at 6 is exactly the three-high end at 5. The end taken into a local first (round 23's
     suggestion) does not give the target: CMultiMissionList::Find's own copy colours its end, flag and element
     differently (9 off; nine spellings 5-11 off), CStringTables::FindTable's callers come out 12 bytes short. With the
