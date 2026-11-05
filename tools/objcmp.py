@@ -37,10 +37,21 @@ relocation's target, each function's own name and each data object's. The tree's
 first, then BASE's (a name the map has since renamed); a name neither resolves (a static, `@N`, a
 section) is compared by name, as without the flag. Resolution is a function of the name alone, so
 the flag can only equate more: a unit plain objcmp calls equal stays equal. A unit equal only by
-address is listed with the names respelled (`SAME-BY-ADDRESS`). Both compilers write REL
-relocations, the offset in the instruction's field: `data_001D0BB0[1]` respelled as the row at
-0x1D0BB8 still differs (its field holds 8), as the scorer would accept -- a symbol is equated, not
-a sum.
+address is listed with the names respelled (`SAME-BY-ADDRESS`).
+
+A data reference is compared as the address it forms, symbol plus addend (GCC round 35a, the HUD's
+round 54: hud_missioncams.cpp's `data_0043668C` respelled `theMission+0x1AC`, PlayCamera 0x228EE0,
+printed DIFF while the scorer matched it). Both compilers write REL relocations, the addend in the
+instruction's field, so a respelling changes the symbol AND the field; with --by-address each data
+relocation whose symbol the map resolves is read as the scorer reads it and its field masked out of
+the bytes: a %hi/%lo pair (R_MIPS_HI16/LO16) as symbol + (hi << 16) + (short)lo -- a Metrowerks %lo
+paired with the latest %hi of its symbol, a GNU one by the relocation table, a %hi as its first
+%lo's address -- a $gp-relative one (R_MIPS_GPREL16) as symbol + (short)field (a GNU local's plus
+gp0), a 32-bit word (R_MIPS_32: a table's pointer, in code or data) as symbol + the word. A call
+(R_MIPS_26) stays its symbol's, a GNU literal pool entry (R_MIPS_LITERAL) its section's, and a pair
+missing its other half is compared as before. So `data_001D0BB0[1]` respelled as the row at 0x1D0BB8
+is the same, `data_001D0BB0[2]` is not; the sum is a function of the name and the field, so the flag
+still only equates more. --symbols-only keeps round 29a's rule (a symbol equated, the field compared).
 
 Prints each unit that differs and what in it, then `N units compared, M differ`; rc 1 when any
 does (a unit that builds on one side only differs). The SEALs' round-26 harness
@@ -54,6 +65,7 @@ from __future__ import annotations
 import argparse
 import re
 import shutil
+import struct
 import subprocess
 import sys
 from concurrent.futures import ThreadPoolExecutor
@@ -158,11 +170,63 @@ def resolver(*tables: E.SymbolTable | None):
     return resolve
 
 
-def summary(obj: Path, resolve=None, spelled: dict[str, list[str]] | None = None) -> dict[str, object]:
+SUMMED = ("R_MIPS_HI16", "R_MIPS_LO16", "R_MIPS_GPREL16", "R_MIPS_32")
+
+
+def sum_addresses(elf: E.Elf, rels: list[E.Reloc], body: bytes, address, fsym: E.ElfSymbol | None = None
+                  ) -> dict[int, tuple[int, int]]:
+    """{index into `rels`: (the address the relocation forms, its addend)} for each data relocation
+    whose symbol `address(reloc)` resolves, read as the scorer reads it (scdiff.reloc_check): both
+    compilers write REL relocations, the addend in the field -- a %hi/%lo pair (R_MIPS_HI16 and
+    R_MIPS_LO16) is the symbol plus the pair's (hi << 16) + (short)lo, a Metrowerks %lo paired with
+    the latest %hi of its symbol before it, a GNU one by the relocation table (scdiff.gnu_hi_partners,
+    `fsym` its function), a %hi standing for the address of its first %lo; a $gp-relative one
+    (R_MIPS_GPREL16) the symbol plus the (short) field, a GNU local's less the object's gp0 as the
+    linker adds it back; a 32-bit word (R_MIPS_32, a table's pointer) the symbol plus the word. A
+    call (R_MIPS_26) is the symbol's, a literal pool entry (R_MIPS_LITERAL) its section's: neither
+    is summed. A pair whose other half is missing is left out."""
+    def field(off: int, mask: int = 0xFFFF) -> int:
+        return struct.unpack_from("<I", body, off)[0] & mask if off + 4 <= len(body) else 0
+    gnu = D.is_gnu(elf)
+    gp0 = next((struct.unpack_from("<i", s.data, 20)[0] for s in elf.sections
+                if s.name == ".reginfo" and len(s.data) >= 24), 0) if gnu else 0
+    partner = D.gnu_hi_partners(elf, fsym, body) if gnu and fsym is not None else {}
+    by_off = {r.offset: i for i, r in enumerate(rels) if r.type == "R_MIPS_HI16"}
+    out: dict[int, tuple[int, int]] = {}
+    pending: dict[str, int] = {}               # MW: a symbol's latest %hi, by its index
+    for i, r in enumerate(rels):
+        if r.type not in SUMMED or r.addend is not None:
+            continue
+        if r.type == "R_MIPS_HI16":
+            pending[r.sym.name] = i
+            continue
+        base = address(r)
+        if r.type == "R_MIPS_LO16":
+            h = by_off.get(partner[r.offset]) if r.offset in partner else (
+                None if gnu else pending.get(r.sym.name))
+            if h is None or base is None:
+                continue
+            add = (field(rels[h].offset) << 16) + D._s16(field(r.offset))
+            out[i] = ((base + add) & 0xFFFFFFFF, add)
+            out.setdefault(h, out[i])          # a %hi: its first %lo's address
+        elif base is not None and r.type == "R_MIPS_GPREL16":
+            add = D._s16(field(r.offset)) + (gp0 if gnu and r.sym.bind == 0 else 0)
+            out[i] = ((base + add) & 0xFFFFFFFF, add)
+        elif base is not None:                 # R_MIPS_32
+            add = field(r.offset, 0xFFFFFFFF)
+            out[i] = ((base + add) & 0xFFFFFFFF, add)
+    return out
+
+
+def summary(obj: Path, resolve=None, spelled: dict[str, list[str]] | None = None,
+            sums: bool = False) -> dict[str, object]:
     """What a unit's object holds, keyed so that two builds of one source compare equal. With
     `resolve` (--by-address: name, near -> map address or None) a name the map resolves -- a
-    function's own, a relocation's target, a data object's -- is `@0xADDR`; `spelled`, when given,
-    receives each key's names as the object spells them, in order."""
+    function's own, a relocation's target, a data object's -- is `@0xADDR`; with `sums` too (GCC
+    round 35a) a data relocation the map resolves is the address it forms, symbol plus addend
+    (sum_addresses), its field masked out of the bytes -- `data_0043668C` respelled `theMission+0x1AC`
+    is the same reference. `spelled`, when given, receives each key's names as the object spells
+    them, in order (a summed one with its addend)."""
     elf = E.Elf.read(obj)
     anon = sorted({int(s.name[1:]) for s in elf.symbols if re.fullmatch(r"@\d+", s.name or "")})
     rank = {f"@{n}": f"@#{i}" for i, n in enumerate(anon)}
@@ -176,14 +240,25 @@ def summary(obj: Path, resolve=None, spelled: dict[str, list[str]] | None = None
     def at(name: str, near: int | None = None) -> int | None:
         return resolve(name, near) if resolve else None
 
-    def relocs(rels, near: int | None, names: list[str]) -> tuple:
+    def relocs(rels, near: int | None, names: list[str], body: bytes | None = None,
+               fsym: E.ElfSymbol | None = None) -> tuple[tuple, bytes | None]:
+        """(the relocations' keys, `body` with each summed relocation's field masked out)"""
+        summed = (sum_addresses(elf, rels, body, lambda r: at(target(r.sym), near), fsym)
+                  if sums and resolve and body is not None else {})
         out = []
-        for r in rels:
+        for i, r in enumerate(rels):
             name = target(r.sym)
+            if i in summed:
+                addr, add = summed[i]
+                names.append(name + (f"+{add:#x}" if add > 0 else f"-{-add:#x}" if add < 0 else ""))
+                out.append((r.offset, r.type, f"@{addr:#x}", r.addend))
+                continue
             names.append(name)
             a = at(name, near)
             out.append((r.offset, r.type, name if a is None else f"@{a:#x}", r.addend))
-        return tuple(out)
+        if summed:
+            body = D.mask(body, [rels[i] for i in summed])
+        return tuple(out), body
 
     entries: list[tuple[str, str, object, list[str]]] = []     # (key by address, key by name, value, names)
     funcs = []
@@ -201,10 +276,10 @@ def summary(obj: Path, resolve=None, spelled: dict[str, list[str]] | None = None
             low = E.SymbolTable.overlay_of(min(a for _, _, a in funcs if a is not None))
             home = OVERLAY_AT[max(count, key=lambda o: (count[o], o == low))]
     for f, own, a in funcs:
-        code, rels, _ = elf.function(f.name)
+        code, rels, fsym = elf.function(f.name)
         names = [own]
-        val = (code, relocs(rels, a if a is not None else home, names))
-        entries.append((f"function @{a:#x}" if a is not None else "", f"function {own}", val, names))
+        keys, code = relocs(rels, a if a is not None else home, names, code, fsym)
+        entries.append((f"function @{a:#x}" if a is not None else "", f"function {own}", (code, keys), names))
     seen: dict[str, int] = {}
     for sec in elf.sections:
         if not sec.flags & SHF_ALLOC or sec.flags & SHF_EXECINSTR or sec.type not in (SHT_PROGBITS, SHT_NOBITS):
@@ -213,7 +288,8 @@ def summary(obj: Path, resolve=None, spelled: dict[str, list[str]] | None = None
         body = None if sec.type == SHT_NOBITS else sec.data
         names: list[str] = []
         key = f"section {sec.name}#{n}"
-        entries.append(("", key, (sec.size, body, relocs(elf.relocs_for(sec.index), home, names)), names))
+        keys, body = relocs(elf.relocs_for(sec.index), home, names, body)
+        entries.append(("", key, (sec.size, body, keys), names))
     for s in elf.symbols:
         if s.type == "OBJECT" and 0 < s.shndx < len(elf.sections):
             own = target(s)
@@ -252,7 +328,11 @@ def main(argv=None) -> int:
     ap.add_argument("--auto", action="store_true", help="the generated drafts too (src/auto)")
     ap.add_argument("--by-address", action="store_true",
                     help="a name the map resolves is compared as its map address (a respelled placeholder "
-                         "is the same); a name no row resolves is compared by name")
+                         "is the same), a data reference as symbol + addend (data_0043668C as "
+                         "theMission+0x1AC); a name no row resolves is compared by name")
+    ap.add_argument("--symbols-only", action="store_true",
+                    help="with --by-address, equate symbols only (round 29a's rule: an addend is compared "
+                         "in its field)")
     ap.add_argument("--work", type=Path, default=HERE / "build" / "objcmp",
                     help="the scratch tree and objects (one per concurrent user)")
     a = ap.parse_args(argv)
@@ -285,7 +365,8 @@ def main(argv=None) -> int:
                     if (oa is None) != (ob is None) else None), []
         na: dict[str, list[str]] = {}
         nb: dict[str, list[str]] = {}
-        sa, sb = summary(oa, resolve, na), summary(ob, resolve, nb)
+        sums = bool(resolve) and not a.symbols_only
+        sa, sb = summary(oa, resolve, na, sums), summary(ob, resolve, nb, sums)
         diffs = [k for k in sorted(set(sa) | set(sb)) if sa.get(k) != sb.get(k)]
         if diffs:
             return "; ".join(diffs[:6]) + (f" (+{len(diffs) - 6})" if len(diffs) > 6 else ""), []
