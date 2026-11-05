@@ -464,6 +464,68 @@ extern "C" int func_00273780(CZAnimMain *main, ZAnimNetworkPacket *packet, ZAnim
     return packet->packet_size;
 }
 
+/* an available copy activated, if its set has started: its activation sequence run -- failing it, the
+ * copy is cleaned up and none returned -- its tick given to the set's scheduler under its name, and
+ * its root added to the world when it adds itself and is not under it (a texture character too, for
+ * a root so marked); a network anim's activation sent as a packet, with the copy's arguments, unless
+ * the callback is held off (SOCOM 1's). The task's name through GetName() (inlined: its index
+ * local is loaded ahead of the set's lookup, as the target's s0) */
+CZAnim *CZAnim::Activate(CZAnim *by)
+{
+    if (!ZAnim.GetAnimSet(m_animset_index)->m_IsStarted)
+        return 0;
+    CZAnim *anim = GetAvailable();
+
+    if (anim) {
+        anim->State(2);
+        if (anim->ExecuteSpecialSequence(anim->m_activation_seq_offset)) {
+            CSched_Manager *sched = ZAnim.GetAnimSet(anim->m_animset_index)->TaskScheduler();
+
+            sched->AddTask(anim->GetName(), CZAnimMain::AnimSchedulerTick, anim->m_priority, anim);
+            if (anim->m_auto_add_to_world && !anim->m_added_to_world_internally) {
+                CNode *root = anim->GetRootNode(false);
+
+                if (root) {
+                    CNode *top = root;
+
+                    while (top->m_parent)
+                        top = top->m_parent;
+                    if (top != zdb::CWorld::m_world) {
+                        zdb::CWorld::m_world->AddChild(root);
+                        anim->m_added_to_world_internally = 1;
+                        if (root->m_socom2_a1 & 4)
+                            zdb::CWorld::m_world->AddTextureAssetCharacter((zdb::_RenderPhase)2, root);
+                    }
+                }
+            }
+        } else {
+            anim->State(5);
+            anim = 0;
+        }
+    }
+    if (anim && m_network_anim) {
+        if (!by)
+            by = this;
+        if (ZAnim.m_network_activation_callback && !ZAnim.m_block_activation_callback) {
+            int set;
+            int index;
+
+            if (ZAnim.GetAnimIndex(by, &set, &index)) {
+                ZAnimNetworkPacket *packet = ZAnim.GetNetworkPacket(8);
+
+                packet->packet_size = 8;
+                packet->anim_set_index = set;
+                packet->anim_index = index;
+                if (anim->m_arg_list && anim->m_arg_list->size())
+                    packet = anim->m_arg_list->AddNetworkPacketArgs(anim, packet);
+                ((void (*)(ZAnimNetworkPacket *, int))ZAnim.m_network_activation_callback)(packet,
+                                                                                         packet->packet_size);
+            }
+        }
+    }
+    return anim;
+}
+
 /* an available copy activated with commands: each of the list's entries, up to and with the zero
  * that ends it, appended to the copy's user commands and given it as a command argument (SOCOM 1's
  * ActivateEx, 0x1CEEE0, which read its own va_list) */
