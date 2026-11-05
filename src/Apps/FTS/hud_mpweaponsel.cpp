@@ -154,6 +154,7 @@ public:
 class CZFTSWeapon {
 public:
     static bool IsM203Weapon(EQUIP_ITEM item);
+    bool IsM203Weapon();
 };
 
 /* a valve as the selector sets it (zanim.h's CValve: its inline setter) */
@@ -290,8 +291,8 @@ void CMPWeaponSel::Init()
 {
     m_state = SEL_CLOSED;
     m_list.m_34 = 0;
-    m_1530 = 255;
-    m_1531 = 255;
+    m_1530 = EQUIP_NONE;
+    m_1531 = EQUIP_NONE;
     m_list.Off();
     m_categories.Init();
     m_categories.m_list.m_owner = this;
@@ -391,8 +392,6 @@ void CMPWeaponSel::SetState(SEL_STATE state)
     m_state = state;
 }
 
-/* a chosen weapon put in a selected slot (0x23FEF0; no row named yet) */
-extern "C" void func_0023FEF0(CMPWeaponSel *sel, int slot, CZWeapon *weapon);
 
 /* the selector's and the page's fade levels, 0 (gone) to 100 (bss 0x4147B0, 0x4147B8), and their
  * rates and ceilings (.data 0x3DCE78/0x3DCE80, 0x3DCE98/0x3DCEA0: variables; the names ours) */
@@ -435,7 +434,7 @@ void CMPWeaponSel::HudTick(CPad *pad, float dT)
             dir = 0;
         if (dir == -1 || dir == 1) {
             if (dir == 1) {
-                func_0023FEF0(this, m_list.m_34, m_categories.m_categories[1].m_weapon);
+                SetSlot(m_list.m_34, m_categories.m_categories[1].m_weapon);
                 SetCharacterWeapons();
             }
             Layout(dT);
@@ -510,6 +509,122 @@ void SlotList::SetTrans(float trans)
         if (m_slots[i])
             m_slots[i]->SetTrans(trans);
 }
+
+/* a slot's item put in its place, the equipment slots' picks redone (0x23ECA0; no row named yet) */
+extern "C" void func_0023ECA0(CMPWeaponSel *sel, int slot, EQUIP_ITEM item);
+
+/* the weapon's second slot count (zweapon's, OVL1 0x3C5970: the int at 0x27C; no row named yet) */
+extern "C" int func_003C5970(CZWeapon *weapon);
+
+/* a chosen weapon put in a selected slot: the slots' items redone; a weapon taking two slots puts
+ * its pair item (185 for 145, 186 for 146, else 254) in the next free equipment slot; an M203
+ * weapon or item 142 lets the M203's grenades through and puts 141 and 175 in slots 2 and 3, the
+ * grenade launcher (143) puts 179 in slot 2, the F2000 (63) 183, the displaced items kept in
+ * m_1530/m_1531 (0x23FEF0; the name ours -- the tick's choice and 0x23ECA0 call it). Pinned: it
+ * calls itself out of line */
+#pragma auto_inline off
+void CMPWeaponSel::SetSlot(int slot, CZWeapon *weapon)
+{
+    func_0023ECA0(this, slot, weapon ? weapon->m_item : (EQUIP_ITEM)255);
+
+    EQUIP_ITEM item = weapon->m_item;
+
+    if (func_003C5970(weapon) == 2) {
+        int next = slot + 1;
+
+        if (next >= 5)
+            next = 2;
+        for (int i = 2; i < 5; i++) {
+            EQUIP_ITEM held = (EQUIP_ITEM)254;
+
+            if (m_selected[i].m_weapon)
+                held = m_selected[i].m_weapon->m_item;
+
+            if (held == 255 && i != slot)
+                next = i;
+        }
+
+        CZWeapon *old = m_selected[next].m_weapon;
+        EQUIP_ITEM pair = (EQUIP_ITEM)254;
+
+        if (item == 145)
+            pair = (EQUIP_ITEM)185;
+        else if (item == 146)
+            pair = (EQUIP_ITEM)186;
+
+        CZWeapon *w = CZWeapon::m_listWeapons.GetWeapon(pair);
+
+        if (w)
+            SetSlot(next, w);
+        if (old)
+            m_1530 = old->m_item;
+        else
+            m_1530 = EQUIP_NONE;
+    }
+    if (((CZFTSWeapon *)weapon)->IsM203Weapon()) {
+        Set203(true);
+
+        EQUIP_ITEM saved[2];
+
+        saved[0] = (EQUIP_ITEM)255;
+        saved[1] = (EQUIP_ITEM)255;
+
+        CZWeapon *w2 = m_selected[2].m_weapon;
+        CZWeapon *w3 = m_selected[3].m_weapon;
+
+        if (w2)
+            saved[0] = w2->m_item;
+        if (w2)
+            saved[1] = w3->m_item;
+
+        CZWeapon *w = CZWeapon::m_listWeapons.GetWeapon((EQUIP_ITEM)141);
+
+        if (w)
+            SetSlot(2, w);
+        w = CZWeapon::m_listWeapons.GetWeapon((EQUIP_ITEM)175);
+        if (w)
+            SetSlot(3, w);
+        m_1530 = saved[0];
+        m_1531 = saved[1];
+    } else if (item == 143) {
+        SetGL(true);
+
+        EQUIP_ITEM held = (EQUIP_ITEM)255;
+
+        if (m_selected[2].m_weapon)
+            held = m_selected[2].m_weapon->m_item;
+
+        CZWeapon *w = CZWeapon::m_listWeapons.GetWeapon((EQUIP_ITEM)179);
+
+        if (w)
+            SetSlot(2, w);
+        m_1530 = held;
+    } else if (item == 142) {
+        Set203(true);
+
+        EQUIP_ITEM held = (EQUIP_ITEM)255;
+
+        if (m_selected[2].m_weapon)
+            held = m_selected[2].m_weapon->m_item;
+
+        CZWeapon *w = CZWeapon::m_listWeapons.GetWeapon((EQUIP_ITEM)175);
+
+        if (w)
+            SetSlot(2, w);
+        m_1530 = held;
+    } else if (item == 63) {
+        SetF2000(true);
+
+        CZWeapon *old = m_selected[2].m_weapon;
+        CZWeapon *w = CZWeapon::m_listWeapons.GetWeapon((EQUIP_ITEM)183);
+
+        if (w)
+            SetSlot(2, w);
+        m_1530 = old->m_item;
+    }
+    m_selected[slot].SetWeapon(weapon);
+}
+#pragma auto_inline reset
 
 
 /* the list's buttons: up and down scroll the slots, the confirm button (0x2C64E0's 0) opens the
@@ -690,8 +805,8 @@ void CMPWeaponSel::Open()
 
     if (!owner)
         return;
-    m_1530 = 255;
-    m_1531 = 255;
+    m_1530 = EQUIP_NONE;
+    m_1531 = EQUIP_NONE;
 
     CZWeaponList &list = CZWeapon::m_listWeapons;
     CCharacterType *character = owner->GetCharacter();

@@ -373,6 +373,8 @@ public:
     void Scroll(signed char dir);
     /* the list's buttons (0x23EBC0; the name ours -- the tick passes it dT too) */
     void HandlePad(CPad *pad, float dT);
+    /* a chosen weapon put in a selected slot (0x23FEF0; the name ours) */
+    void SetSlot(int slot, CZWeapon *weapon);
     /* the selector's tick (0x240600; the name ours, after SOCOM 1's CWeaponSel::HudTick) */
     void HudTick(CPad *pad, float dT);
     /* the selector laid out (0x23E030; the name ours) */
@@ -408,8 +410,10 @@ public:
     CMPWeaponCategories m_categories;   // 0x220
     SlotList m_list;   // 0x1160
     SelectedSlot m_selected[5];   // 0x1198
-    unsigned char m_1530;   // 0x1530: 255 from Init
-    unsigned char m_1531;   // 0x1531: 255 from Init
+    /* the items the M203's and the launchers' picks displaced from the equipment slots, 255 none
+     * (Init, Open; SetSlot and 0x23ECA0 copy them with lb: the item enum) */
+    EQUIP_ITEM m_1530;   // 0x1530: 255 from Init
+    EQUIP_ITEM m_1531;   // 0x1531: 255 from Init
     bool m_203;   // 0x1532: the M203's grenades enabled (Enable_203FRAG and the rest)
     bool m_f2000;   // 0x1533: the F2000's (Enable_F2000FRAG ...)
     bool m_gl;   // 0x1534: the grenade launcher's (Enable_GLFRAG ...)
