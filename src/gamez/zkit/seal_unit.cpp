@@ -99,6 +99,8 @@ public:
     /* the SEAL it is looking at (zseal.h's, seal_env.cpp's OVL2 0x5AA690: its cached one or its
      * reticule node's -- SOCOM 1's GetReticuleSeal) */
     CZSealBody *GetReticuleSeal();
+    /* the action under the reticule, or near it (zseal.h's, seal_env.cpp's OVL2 0x5AA240) */
+    class CNodeAction *GetReticuleAction(bool b);
 
     unsigned char _170[0x5e0 - sizeof(CEntity)];
     unsigned char m_kit[0x1060 - 0x5e0];   // 0x5e0: its kit (zseal.h's CZKit m_kit; bytes here)
@@ -410,7 +412,8 @@ public:
     /* the squad told to follow a SEAL: it made the follow's source, every other SEAL of the squad,
      * the escortees with the first of them, and every squad under it given the follow (4) -- with no
      * SEAL to give it the escortees are seen to at once (0x5E7830); the SEAL handed back (OVL2
-     * 0x5EB580, IssueCommand's four calls; new in SOCOM II, the name ours) */
+     * 0x5EB580, IssueCommand's four calls; new in SOCOM II, the name ours). The formation is
+     * unread: IssueCommand passes the squad's byte at 8 or 1 in a2 (the kit's round 51) */
     CZSealBody *FollowSeal(CZSealBody *seal, UNIT_FORMATION formation);
     /* the support squad's orders (squad 29): the air support's anim (21), a rescued hostage's
      * extraction (22) -- the valve made, a breach on the hostage's AI in a container region given it
@@ -926,7 +929,7 @@ extern "C" {
 void func_005EB190(CSealUnit *unit, CZSealBody *seal, FT_COMMAND cmd, void *data, bool quiet);
 bool func_005EAF20(CSealUnit *unit, int sound, bool pick, float chance);
 bool func_005EBF00(CZSealBody *from, CSealUnit *unit, class CNodeAction *na, CAiSBreach *proto);
-int func_0058F230(CSealUnit *unit, CZSealBody *seal, unsigned char target, CAiMapLoc *out);
+int func_0058F230(CSealUnit *unit, CZSealBody *seal, void *target, CAiMapLoc *out);
 void func_00559470(CAiSBreach *b, CValve *valve);
 }
 bool run_anim(const char *name, void *arg);
@@ -939,7 +942,6 @@ struct CUnitSealView {
     unsigned char _4dc[0x1458 - 0x434 - sizeof(CAiPath)];
     CPnt3D m_aim_point;   // 0x1458
 };
-class CNodeAction *GetReticuleAction__10CZSealBodyFb(CZSealBody *seal, bool b);
 
 /* the kinds of order that replace the squad's orders, and those put first (inlines, the cases in
  * reverse of the target's compare chains; the names ours) */
@@ -1012,11 +1014,28 @@ inline bool CSealUnit::HandleSupport(CZSealBody *seal, FT_COMMAND cmd, void *dat
  * the follow to the rest (1), the player's support squads called (7), the follow (4), the ambush
  * looking at the player (30), the targeted moves to the first SEAL that is not the giver, its follow
  * set (9-13, 23, 14), the first SEAL or squad that allows it (2, 15), the breach set up from a
- * prototype (16), else every SEAL and squad. The SEAL that took it is returned (OVL2 0x5E8E10) */
+ * prototype (16), else every SEAL and squad. The SEAL that took it is returned (OVL2 0x5E8E10).
+ * The kit's round 51: SOCOM 1's call order throughout, SOCOM 1's HandleSupport inline (cut to one
+ * level -- the four out-of-line copies it calls are byte-exact from here), EscorteeJoinUnit
+ * auto-inlined for the reticule's escortee (its parameter the stack copy the push takes the
+ * address of, the SEAL itself held in s0), the result declared just before the main switch (its
+ * s1), case 23's cell copy-constructed from CAiMapLoc::invalid (the inlined constructor's bitfield
+ * copy: assigned, it is a word copy, 0x78 short), the GetData answer an if (a ternary puts the
+ * zero in the branch's delay slot), the order data passed to 0x58F230 unnarrowed (its extern "C"
+ * declaration here takes a pointer -- a marked device), the formation's second argument to
+ * FollowSeal, the prototype signalled through a CAiState pointer (on the object MW calls
+ * CAiSBreach::OnSignal directly).
+ * OPEN, 70 instructions at the target's size (0x1640): (1) the frame -- the target's two cells sit
+ * highest (0x14C, 0x148), then the order list's erase/insert temporaries (0x144-0x12C), the
+ * escortee's copy (0x128), the prototype pointer and the four order-data words (0x124-0x114);
+ * here the temporaries sit 0x14-0x20 lower; (2) the squad-18 walk's node and sentinel swap (s2 /
+ * s5), and the three SEAL walks' begin / end (v0 / v1 swapped); (3) the breach's sub-squad walk
+ * swaps its iterator and the read-back prototype (s0 / s3); (4) the prototype's kind reloaded lb
+ * (here lbu -- a signed char cast changes nothing), the default walk's `took || b` scheduled a
+ * word later, `size() >= 4` compared into v0 (the target's sltiu at: a signed-int count, an if or
+ * a reversed ternary all worse) */
 CZSealBody *CSealUnit::IssueCommand(CZSealBody *seal, FT_COMMAND cmd, void *data, bool b)
 {
-    CZSealBody *took = 0;
-
     if (m_unit_num == 1 && IsRelayCommand(cmd)) {
         CSealUnit *u = GetUnitByTeam(3);
 
@@ -1060,21 +1079,14 @@ CZSealBody *CSealUnit::IssueCommand(CZSealBody *seal, FT_COMMAND cmd, void *data
             m_a4 = 0;
         }
     }
+    CZSealBody *took = 0;
+
     switch (cmd) {
     case 8: {
         CZSealBody *t = seal->GetReticuleSeal();
 
         if (t->m_team & 0x20000) {
-            SealLeaveUnit(t);
-            if (m_unit_num == 17)
-                SealJoinUnit(t);
-            else {
-                m_escortees.push_back(t);
-                ((CUnitCtrl *)t->m_control)->m_unit = this;
-                if (m_commands.front() == 4 || HostEscort())
-                    m_a0 = 1;
-                func_005E7830(this);
-            }
+            EscorteeJoinUnit(t);
             t->IssueCommand(m_seals.front(), (FT_COMMAND)4, 0, false);
         }
         break;
@@ -1128,14 +1140,14 @@ CZSealBody *CSealUnit::IssueCommand(CZSealBody *seal, FT_COMMAND cmd, void *data
         for (ulist::iterator u = m_sub_units.begin(); u != m_sub_units.end(); ++u)
             (*u)->IssueCommand(seal, (FT_COMMAND)30, data, b);
         if (m_unit_num == 3) {
-            CZSealBody *first = m_seals.front();
-
-            m_a8 = ((CUnitSealView *)ftsGetPlayer())->m_aim_point - first->m_posW;
+            m_a8 = ((CUnitSealView *)ftsGetPlayer())->m_aim_point - m_seals.front()->m_posW;
             m_a8.Normalize();
             IssueCommand(seal, (FT_COMMAND)5, data, b);
             IssueCommand(seal, (FT_COMMAND)6, data, b);
         } else if (m_unit_num == 2) {
-            m_a8 = ((CUnitSealView *)ftsGetPlayer())->m_aim_point - ftsGetPlayer()->m_posW;
+            CZSealBody *player = ftsGetPlayer();
+
+            m_a8 = ((CUnitSealView *)ftsGetPlayer())->m_aim_point - player->m_posW;
             IssueCommand(seal, (FT_COMMAND)6, data, b);
         }
         break;
@@ -1147,7 +1159,7 @@ CZSealBody *CSealUnit::IssueCommand(CZSealBody *seal, FT_COMMAND cmd, void *data
         else {
             CAiMapLoc loc;
 
-            if (func_0058F230(this, seal, (unsigned char)(int)data, &loc)) {
+            if (func_0058F230(this, seal, data, &loc)) {
                 for (slist::iterator i = m_seals.begin(); i != m_seals.end(); ++i) {
                     CZSealBody *s = *i;
 
@@ -1166,10 +1178,9 @@ CZSealBody *CSealUnit::IssueCommand(CZSealBody *seal, FT_COMMAND cmd, void *data
         if (m_unit_num == 1)
             GetUnitByTeam(3)->IssueCommand(seal, cmd, data, b);
         else {
-            CAiMapLoc loc;
+            CAiMapLoc loc(CAiMapLoc::invalid);
 
-            loc = CAiMapLoc::invalid;
-            if (func_0058F230(this, seal, (unsigned char)(int)data, &loc)) {
+            if (func_0058F230(this, seal, data, &loc)) {
                 IssueCommand(seal, (FT_COMMAND)3, 0, true);
                 for (slist::iterator i = m_seals.begin(); i != m_seals.end(); ++i) {
                     CZSealBody *s = *i;
@@ -1234,9 +1245,11 @@ CZSealBody *CSealUnit::IssueCommand(CZSealBody *seal, FT_COMMAND cmd, void *data
         unsigned char kind = (unsigned char)(int)data;
 
         if (kind != 1) {
+            CAiState *ps = &proto;
+
             proto.Reset((AI_STATE)proto.m_state);
-            proto.OnSignal((CAiState::SIGNAL)4, 0);
-            if (func_005EBF00(seal, this, GetReticuleAction__10CZSealBodyFb(seal, false), &proto)) {
+            ps->OnSignal((CAiState::SIGNAL)4, 0);
+            if (func_005EBF00(seal, this, seal->GetReticuleAction(false), &proto)) {
                 switch (kind) {
                 case 17:
                     proto.SetFlags(4, 0);
@@ -1263,7 +1276,10 @@ CZSealBody *CSealUnit::IssueCommand(CZSealBody *seal, FT_COMMAND cmd, void *data
                 }
             }
             void *p = 0;
-            void *pr = GetData(&p, sizeof p) ? p : 0;
+            void *pr = 0;
+
+            if (GetData(&p, sizeof p))
+                pr = p;
             void *z = 0;
 
             SetData(&z, sizeof z);
