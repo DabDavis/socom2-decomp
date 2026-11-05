@@ -176,10 +176,8 @@
  * buffer member the trivially copied const_iterator, the chat's range destroy 0x2F5B10 (open since the
  * MSL headers' round 13) reads its by-value iterators in place as the target does -- byte-exact once
  * buf_size's storage, 0x3F56D8, has its data row. STILL OPEN: the cdeque<PCv>
- * do_assign 0x2E0E10 (now 0x274 against 0x27C: the target stores each converted element to a frame
- * word and reloads it, `sw a1,248(sp); lw a1,248(sp)` -- as the rdr editor's out-of-line convert
- * operator* 0x334940 does -- where every convert/operator* spelling tried keeps it in a register;
- * the convert() temporary's `sb zero` matches), its init 0x2E0B40 (the size, 29 off: the target's
+ * do_assign 0x2E0E10 (BYTE-EXACT since the online lane's round 22: the converter's local whose
+ * address is taken, at __convert_iterator::convert), its init 0x2E0B40 (the size, 29 off: the target's
  * convert iterators take frame slots above do_assign's argument copies, named or not ours go below),
  * the lobby deque's init 0x2E0830 (0x88 against 0xB0: the target copies the ends twice, by value at two
  * inline levels, around two value-initialised 1-byte temporaries -- an int2type / category dispatch
@@ -284,7 +282,19 @@ template <class Iterator, class T>
 class __convert_iterator {
 public:
     struct convert {
-        T operator()(Iterator i) const { return (T)*i; }
+        /* the element converted through a local whose address is taken (the online lane's round 22):
+         * every converting do_assign stores the converted word to a frame slot and reloads it (`sw
+         * a1,248(sp); lw a1,248(sp)`, as the rdr editor's out-of-line operator* 0x334940 does) --
+         * `(T)*i` returned straight, `*&v` and a reference cast are scalarised; `*(T *)&v` keeps v in
+         * memory. The lobby's 0x2E0E10 (open since round 15), the state machine's 0x3A6490 and the
+         * pointer-pointer buffer's 0x3341C0 byte-exact; objcmp over every hand-written unit: only
+         * the six converting do_assigns change */
+        T operator()(Iterator i) const
+        {
+            T v = (T)*i;
+
+            return *(T *)&v;
+        }
     };
     /* from the iterator by const reference, no converter argument (the MSL headers round 27: the inits'
      * third copy is the member's, built from the dispatch level's by-value copy) */

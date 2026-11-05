@@ -81,8 +81,10 @@ struct VoiceRadio {
     unsigned char _4d[0x54 - 0x4d];
     unsigned char m_status[8];   // 0x54: our channel's state, as the DME reports it
     int m_5c;   // 0x5c
-    int m_radio_msg;   // 0x60: the "Radio" message
-    int m_msg;   // 0x64: the radio's application message
+    /* the two message ids the network hands back at registration, unsigned (the radio tick's sends
+     * load them ahead of the connection only so: the online lane's round 22) */
+    unsigned int m_radio_msg;   // 0x60: the "Radio" message
+    unsigned int m_msg;   // 0x64: the radio's application message
     unsigned int m_retry;   // 0x68: when a slot is asked for again
     unsigned int m_until;   // 0x6c: when the talk (or its closing) ends
     VoiceSlot m_slots[12];   // 0x70
@@ -154,7 +156,7 @@ void func_00310590(void *h, void *settings);
  * (the DME's; func_0030CFF0 is zNetDme.cpp's wrapper, a draft) */
 void func_00620BD8();
 void func_00620C60(void *msg, void *field, int size, int count);
-int func_0030CFF0(CZNetwork *net, int *id, int (*handler)(int, int, int, void *), const char *name);
+int func_0030CFF0(CZNetwork *net, unsigned int *id, int (*handler)(int, int, int, void *), const char *name);
 int func_0030E8E0(int, int, int, void *);   /* the "Radio" message's handler */
 int func_0030EB70(int, int, int, short *);
 }
@@ -515,7 +517,9 @@ inline void SendChannelStatus(VoiceRadio *r)
 }
 
 extern "C" {
-int func_00623AE8(int conn, int slot, void *status);   /* (the DME: our channel's state read) */
+int func_00623AE8(int conn, unsigned int slot, void *status);   /* (the DME: our channel's state read;
+                                                                 * the slot unsigned: the radio tick loads it
+                                                                 * ahead of the connection only so) */
 int func_00623D00(int conn, int *talk);   /* (the DME: the talk key held) */
 int func_00623C58(int conn, int codec);   /* (the DME: the talk over) */
 int lgAudEnumHint(int *hint);   /* (lgAud: the devices' change hint, and its async form) */
@@ -633,7 +637,18 @@ inline void StopRecording(VoiceRadio *r)
  * goes or its time is up -- the closing tone, the slot given back (3) -- and the radio rests a
  * while (4); a channel change gives the slot back at once. The master frees the slots whose time
  * is up, telling everyone. The state returned (OVL1 0x30EC10; 0x30F990 ticks it).
- * OPEN, 13 instructions (round 19, first written: every block, call and frame slot the target's,
+ * OPEN, 1 instruction since the online lane's round 22 (13 before): THE TWELVE LOAD SWAPS WERE
+ * SIGNEDNESS -- an argument loaded as one type and passed as the other is loaded ahead of the
+ * connection global (the target's order), one passed as its own type after it: the radio's two
+ * message ids are `unsigned int` (zNetSendApplicationMessage takes an int; the five sends right) and
+ * the DME's channel read takes the slot `unsigned int` (func_00623AE8's pair right). Found by
+ * `*(volatile int *)&r->m_radio_msg` and `*(unsigned int *)&...` each fixing the sends where a
+ * statement order (the id and the conn in locals, either order) changed nothing. Left: SlotTaken's
+ * `addu s0,v0,s3` (8i + r) against our r + 8i -- the stand-in below in every spelling (the step by
+ * pointer or integer arithmetic either way round, an unsigned index, a slot local) keeps r first; read
+ * as `r->m_slots[i]` (a reference, a pointer, the decayed array) it keeps the whole address (0x9E8).
+ * The rounds before, for the record:
+ * (round 19, first written: every block, call and frame slot the target's,
  * r in s3, slot s2, err s1): (1) the five sends load the connection (a2) ahead of the message id
  * (t0), and func_00623AE8's a0 ahead of a1, where the target loads the other argument first (10 + 2)
  * -- the same SendChannelStatus gives the target's order inside func_0030E8E0; an accessor, a

@@ -11,8 +11,8 @@
  * bytes, not 0x598), SetMpStatUiVars, CNetClock's two time accessors (0x224BF0/0x224C80), the round
  * result (0x224D10), and round 21's UnInit, Tick, Init, UpdateCareerRecord (0x225070: the career
  * record, 0x2F98F0/0x2F96F0) and ComputeNewRating (0x2253C0: mp_rating.cpp's Elo match). Open:
- * Init, ComputeNewRating, GetRoundResult, SetMpStatUiVars, SetFinalTeamTotalsUiVar (each says how
- * far). Defined in reverse of their image order (-inline deferred). */
+ * Init, GetRoundResult, SetMpStatUiVars, SetFinalTeamTotalsUiVar (each says how far;
+ * ComputeNewRating byte-exact since round 53). Defined in reverse of their image order (-inline deferred). */
 
 #include "fts_state.h"
 #include "../../gamez/zrdr/zrdr.h"
@@ -716,30 +716,18 @@ void SetMvpUiVars(const char *szNameVar, const char *szUiVar)
     }
 }
 
-/* how far a rating moves towards the game's result (ours: through an inline the multiply keeps
- * the target's operand order, 4 instructions to 3 -- see ComputeNewRating's OPEN) */
-inline float GetRatingWeight()
-{
-    return 0.5f;
-}
-
 /* the player's new rating from the game just played (the name ours; UnInit's call): an Elo match
  * of the two sides' living, counted SEALs -- their game scores, floored at zero, and their ratings
- * -- the result taken halfway from the career record's rating when the player has one.
- * OPEN, 3 instructions, one FPR pair: the target materialises the 0.5 in $f1 and the difference's
- * conversion in $f0 (`mul.s $f0,$f1,$f0` = 0.5 * diff); here the two swap. Every GPR, the frame
- * (the record 0xE8 bytes, overlapping the walk's iterator) and the code are the target's -- the
- * side test needed `bool bSide = false; int iTeam;` in that order in the inner block (iTeam
- * first, or at function scope, rotates s0-s5; 15 to 49 instructions). Tried for the pair: 0.5f
- * written first or last, `/ 2.0f` (div.s), a float local for the weight, for the difference, or
- * both in either order, `(float)(int)`, `(int)fOld` from a float local, an inline Blend(from, to,
- * t) (4), its difference a float local (3), the constant from an inline (3, adopted). Round 48's
- * replay (igdump): the 0.5 is v50, the difference's mtc1/cvt v48/v49 -- MW generates the complex
- * right operand first, so the constant's register is numbered last and coloured first ($f0); the
- * first 0.5 (`0.5f + fRating`, a load on the right) is numbered before its load and takes $f1 as
- * the target's. Also tried: an int local for the difference, (float) on it, the sum's operands
- * swapped, a Scale(int) / Weighted(float) inline, a static const weight (4), a weight local before
- * the record (4), the negated difference (5), iOld declared then assigned */
+ * -- the result taken halfway from the career record's rating when the player has one. The side
+ * test needs `bool bSide = false; int iTeam;` in that order in the inner block (iTeam first, or at
+ * function scope, rotates s0-s5). The halfway step's difference is assigned in two arms (round 53,
+ * the HUD lane: the replay put the 0.5's FPR ahead of the difference's -- MW generates a multiply's
+ * complex operand first, so `0.5f * (iRating - iOld)` numbers the constant last and colours it $f0;
+ * a difference held in a variable is a plain operand, generated after the constant, but a single
+ * assignment (a named local, `iRating -= iOld`, an inline returning `a - b`) is forward-substituted
+ * back into the multiply -- or keeps iRating's s7. Assigned in two branches (here a gain and a loss,
+ * alike in this build), the difference stays a variable in v0 and the 0.5 takes $f1, byte-exact; a
+ * two-armed ternary on the difference does the same, one on the weight does not) */
 int ComputeNewRating()
 {
     int iRating = 0;
@@ -796,7 +784,13 @@ int ComputeNewRating()
 
                         func_002F98F0(&rec);
                         int iOld = (int)(float)rec.m_rating;
-                        iRating = iOld + (int)(GetRatingWeight() * (iRating - iOld));
+                        int iChange;
+
+                        if (iRating > iOld)
+                            iChange = iRating - iOld;
+                        else
+                            iChange = iRating - iOld;
+                        iRating = iOld + (int)(0.5f * iChange);
                     }
                 }
             }

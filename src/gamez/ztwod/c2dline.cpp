@@ -5,8 +5,9 @@
  * symbol table gives the class its own unit; the name is ours. Written, all byte-exact: the
  * constructor (the UVs memcpy'd from a local's initialiser), the setters, Load, SetPos, SetUV, Draw
  * and the clip copies, the three-plane-pair clip3DLine; MakePacket and the one-plane clip3DLine
- * OPEN; Draw3DLine (SOCOM II's own body: the HUD's round 40); GetAssetLibs (the HUD's round 46). Not
- * yet: Draw2DLine 0x35FCE0. Defined in reverse of their image order (-inline deferred). */
+ * OPEN; Draw3DLine (SOCOM II's own body: the HUD's round 40); GetAssetLibs (the HUD's round 46);
+ * Draw2DLine 0x35FCE0 written in round 53, OPEN (4 off, registers). Defined in reverse of their
+ * image order (-inline deferred). */
 
 #include <string.h>
 #include <eetypes.h>
@@ -333,6 +334,95 @@ void Draw3DLine(CPnt4D *p0, CPnt4D *p1, CPnt4D *c0, CPnt4D *c1)
         xyz[2] += zOffset;
         p++;
     }
+
+    int qwc = p - (sceVu0FVECTOR *)tag - 1;
+
+    tag[0] = qwc | 0x10000000;
+    tag[1] = 0;
+    tag[2] = 0x11000000;
+    tag[3] = qwc | 0x50000000;
+    zSysFifoKick(packet, (u_long128 *)p - packet);
+}
+
+/* a line on the screen in one packet of its own (SOCOM 1's Draw2DLine, grown): the two points
+ * copied, their y scaled by the pixel aspect (SOCOM II's), fixed on VU0 (x and y 12.4, w whole),
+ * their depth the far one and their q zero, moved from the screen's centre to the GS's (SOCOM 1's
+ * 2048 + 320 / 224, SOCOM II's the render size's half); then a GIF tag of two loops of RGBAQ and
+ * XYZ2 under a gouraud line's PRIM, blended when either end's alpha is not 1, each end's colour
+ * scaled to the GS's (as SOCOM 1's, inline) before its point. The VU0 block's four pointers
+ * declared fixed-first (the target's a1/a0 for the fixed points, v1/v0 for the copies); the
+ * offsets added negated (`+= -(...)`: negu/addu, where `-=` gives subu).
+ * OPEN, 4 instructions (written in round 53, the size and everything else the target's): the DMA
+ * tag's count takes a2 and its first word a1, the target the other way round -- igreplay: the
+ * count must be numbered after the first word's OR (127.5), which no named local can be. Tried:
+ * the count declared late, at the top, unsigned, assigned inside the first word's expression, a
+ * two-armed ternary (not folded: 0x364), the count's expression in both words (computed twice,
+ * 0x35C) and an inline tag setter taking it (its parameter forward-substituted into both: 0x35C) */
+void Draw2DLine(CPnt4D *p0, CPnt4D *p1, CPnt4D *c0, CPnt4D *c1)
+{
+    unsigned int *tag;
+    u_long128 *packet = zSysSprGetPacket(0);
+    sceVu0FVECTOR *p = (sceVu0FVECTOR *)packet;
+    CPnt4D a = *p0;
+    CPnt4D b = *p1;
+    sceVu0IVECTOR ia;
+    sceVu0IVECTOR ib;
+
+    if (C2D::m_fYPixel != 1.0f) {
+        a.y *= C2D::m_fYPixel;
+        b.y *= C2D::m_fYPixel;
+    }
+    {
+        int *pa = ia;
+        int *pb = ib;
+        float *fa = (float *)&a;
+        float *fb = (float *)&b;
+
+        asm volatile {
+            lqc2 vf3, 0(fa)
+            vftoi4.xy vf4, vf3
+            vftoi0.w vf4, vf3
+            lqc2 vf5, 0(fb)
+            vftoi4.xy vf6, vf5
+            vftoi0.w vf6, vf5
+            sqc2 vf4, 0(pa)
+            sqc2 vf6, 0(pb)
+        }
+    }
+    ia[2] = 1000000000;
+    ib[2] = 1000000000;
+    ia[3] = 0;
+    ib[3] = 0;
+    tag = (unsigned int *)p;
+    p++;
+    ia[0] += -(((zVid.renderWidth >> 1) + 2048) << 4);
+    ia[1] += -(((zVid.renderHeight >> 1) + 2048) << 4);
+    ib[0] += -(((zVid.renderWidth >> 1) + 2048) << 4);
+    ib[1] += -(((zVid.renderHeight >> 1) + 2048) << 4);
+
+    unsigned int prim = 9;
+
+    if (c0->w != 1.0f || c1->w != 1.0f)
+        prim |= 0x40;
+    ((unsigned long *)p)[0] = 0x2000400000008002 | ((unsigned long)prim << 47);
+    ((unsigned long *)p)[1] = 0x41;
+    p++;
+    (*p)[0] = 255.0f * c0->x;
+    (*p)[1] = 255.0f * c0->y;
+    (*p)[2] = 255.0f * c0->z;
+    (*p)[3] = 128.0f * c0->w;
+    sceVu0FTOI0Vector((int *)p, *p);
+    p++;
+    sceVu0CopyVector(*p, (float *)ia);
+    p++;
+    (*p)[0] = 255.0f * c1->x;
+    (*p)[1] = 255.0f * c1->y;
+    (*p)[2] = 255.0f * c1->z;
+    (*p)[3] = 128.0f * c1->w;
+    sceVu0FTOI0Vector((int *)p, *p);
+    p++;
+    sceVu0CopyVector(*p, (float *)ib);
+    p++;
 
     int qwc = p - (sceVu0FVECTOR *)tag - 1;
 
