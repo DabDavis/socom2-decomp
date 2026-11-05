@@ -2062,6 +2062,23 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the AI core, round 28** (CAiMaps::WalkLine at last; AppendPathLoc and InsertPathLoc):
+  - constant definitions in a loop preheader go ahead of a load pinned below stores to an escaped struct: using the
+    load's value before those stores lets the dying variable and the new one share a register (WalkLine 0x5352D0: `dt`
+    computed before the three direction stores keeps the map in s2 -- after them `ok = true` lands ahead of the m_dx
+    load, the map and `ok` interfere and the map spills; with the xz length and the direction copy through reference
+    inlines, the map lookup through an inline, the walk's end through `t = 1.0f`, the difference an inline's own local);
+  - an inline helper `T f() { T d; ...; return d; }` puts its local below the caller's copy in the frame; `x * 1.0f` as a
+    literal folds, through a variable set to 1.0f the multiply stays; a bitfield read through an inline's reference
+    parameter is reloaded for the call where a direct read reuses the compare's byte;
+  - an inline returning `(unsigned)(s - 1) > 2` branches on `sltiu at` and shares its byte load with a later accessor --
+    the two temporaries saved move a variable one colouring sweep earlier, turning the saved registers (CAiPath::IsIdle,
+    new: AppendPathLoc 0x526F20, InsertPathLoc(loc, map) 0x526C10, SOCOM 1's by place and body); `(last = &v.back(),
+    last->f != x)` inside an `||` keeps `&back()` computed in the test block for the store (the delay slot empty, the
+    label padded); a named element local (`point p(loc); insert(it, p)`) takes its slot above an earlier branch's
+    `point(loc)` temporary; empty `asm` statements are deleted along with their if (plan_legcomplete stays OPEN);
+  - tools (build/scratch/ai-r28/ig/): igvar.py turns variants into a saved-register summary in ~4 s, nbdeg.py simulates
+    the colouring sweeps from a vreg's neighbours.
 - **Tells from the HUD, round 47** (hud_objectives.cpp whole: CZObjectiveList and vector<bool>):
   - a local initialised from an auto-inlined accessor (`retained = GetCurrentObjectiveRetainer()`) is numbered after the
     named locals -- s2, not s4 (RefreshList 0x207570); a const_iterator walk over a const list reference keeps its
