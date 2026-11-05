@@ -2065,6 +2065,24 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the HUD, round 54** (CReco::AdjustVolume, CFlareElement::Load, CMPInfoBox::Tick; the queued respells):
+  - MW LAYS OUT THE FRAME TOP-DOWN AND ALIGNS A STACK OBJECT OF 8-15 BYTES TO 8, ONE OF 16 OR MORE TO 16: a slot the
+    target "reserves and never touches" can be a smaller struct's alignment padding or the tail of an array read with a
+    smaller count (CFlareElement::Load 0x200D60: both ranges read into one `float range[3]`, sp+64 its third float;
+    CReco::AdjustVolume 0x23A730: lgAudOpenParam is 14 bytes, the GCC front's sid.c's size);
+  - a value returned by an inline's ternary is a temporary numbered after every named local -- round 52's rule (an
+    uninitialised local set by if/else is numbered at its declaration) placed by `tools/igreplay.py --want`, then a
+    source shape that numbers it there (CMPInfoBox::Tick 0x238500: the clan tag declared first);
+  - `v == 0 ? A : B` over a byte enum is `move x,A; li t,B; movn x,t,v`, as an int of 0/1 it folds to sltu; a byte-enum
+    result from a call through an int-returning pointer is narrowed at the assignment, through an enum-returning pointer
+    only at the switch (CTCM::HandleOpenPad / Select call the entry's command through a cast `(TCM_STATE (*)(CZSealBody
+    *, int))` -- a marked modelling device: hud_tcmcmds.cpp's commands match as int functions); `char` locals read from an
+    unsigned char field load with lb, compared through a `(KEY_STATE)` cast they narrow with andi at each test; `count >
+    1` branches on at, `count >= 2` over an inline accessor's unsigned count materialises the compare in v1;
+  - an unsigned char kind converted at each call adds an andi the target never has: tcmAddKindItems 0x2329F0 takes
+    CSealCtrl::GetCommandName's FT_COMMAND (renamed `__F10FT_COMMAND`); data respells (`theMission.m_valve_abort` for
+    data_0043668C) show DIFF under objcmp, which compares relocation symbols, not symbol + addend -- the scorer resolves
+    both to one address (PlayCamera 0x228EE0 matches).
 - **Tells from the SEALs, round 47** (SealProcessAltitude, SealAnim with its undo, the hostage-state push, the in-air test):
   - the 8 bytes SealProcessAltitude 0x5B5D40 lacked (0x454 of 0x45C) came from the camera block, not the early return:
     the target loads the world's camera into a saved register before calling GetRegion -- the camera is a local of its
