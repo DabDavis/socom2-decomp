@@ -25,7 +25,8 @@ extern "C" int data_003E14A8;
 extern "C" unsigned char data_004B5010;
 
 /* a visual let go of by its node (SOCOM 1's CNode::DeleteVisual(CVisual *, bool) by its place in
- * the drop walk; node_main.cpp's range, not written) */
+ * the drop walk -- SOCOM 1's hookupVisuals calls DeleteVisual__Q23zdb5CNodeFPQ23zdb7CVisualb there;
+ * the zdb world's row, still a placeholder) */
 extern "C" void func_003162B0(CNode *node, CVisual *visual, bool b);
 
 /* a node's visuals read into the block, and its children's (SOCOM 1's hookupVisuals, 0x30A330 in the
@@ -37,7 +38,18 @@ extern "C" void func_003162B0(CNode *node, CVisual *visual, bool b);
  * keeping their owners' counts). A model without instances, or a mesh, or one marked (SOCOM II's
  * byte at 0xC0, where SOCOM 1 tested m_bForceExport at 0xC4) reads the node's own visuals the same
  * way for view 0, both keys with their "_L" variants. A visual no key holds is let go of; the
- * children that are not instances are read in turn. True when any buffer was set */
+ * children that are not instances are read in turn. True when any buffer was set.
+ * BYTE-EXACT (the weapons' round 32), by these shapes: the format strings and the two containers
+ * (the node's visuals, the model's instances) locals defined after the null test, before the drop
+ * list (the target's frame slots 224-176); the instances' end beside its begin in the for; each
+ * visual walk's iterator, end, then the visual (address-taken: the drop list's push takes it) and
+ * the count; the two pushes and the trim through inlines taking the visual by value (the target
+ * copies it into a register for them and re-reads the local after); `i = 0` ahead of the fallback's
+ * sprintf (the target's delay slot); ONE count j for both walks -- MW splits it and numbers the
+ * second range after the copy's temporary (`tools/igreplay.py --move j=73.5`: 5 -> 0 differing); the
+ * own walk's drop-and-continue inside its retry (the first `!ok` jumps straight to the set-up);
+ * the drop walk's and the children's ends taken with their begins; a child's result materialised
+ * (`r = false; if (!instance) r = ...; if (r) result = true;`) */
 /* a view's level of detail added to a visual, its two lists each a word longer (inline: the visual
  * copied into a register for the two pushes, re-read from its address-taken local after; the name
  * ours) */
