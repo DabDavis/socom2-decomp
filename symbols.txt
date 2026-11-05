@@ -2766,7 +2766,7 @@
 0x0025AF10 0x114 Read__Q23zar4CKeyFPQ23zar4CZARP3CIOi  # OVL1; s1:calls by hand (SOCOM 1's CKey::Read 0x1DC1D0: called by ReadDirectory 0x258000 and by itself for each child, as SOCOM 1's; the 16-byte record, NewKey(0), the child pushed -- SOCOM II reserves first and clamps a negative count)
 0x0025B030 0x280 Write__Q23zar4CKeyFPQ23zar4CZAR  # OVL1; SOCOM 1 name, the core lane round 8 (SOCOM 1's CKey::Write(CZAR *) 0x1DC2D0: WriteDirectory 0x257590 calls it on m_root with this where SOCOM 1's WriteDirectory calls Write; the same record, name/offset/size then the child count, through the archive's file)
 0x0025B2B0 0x8 func_0025B2B0  # OVL1
-0x0025B2C0 0x14 func_0025B2C0  # OVL1; size 0x14 (a tail call through t9; the seed ran on into the padding)
+0x0025B2C0 0x14 WriteFile__Q23zar4CZARFPCvi  # OVL1; size 0x14 (a tail call through t9; the seed ran on into the padding); ours, the core lane round 19 (CKey::Write 0x25B030's innermost copy calls it with the archive, a record field's address and 4 where the outer copies call the archive's file's fwrite, slot 0x2C, in place: the archive's write through its file, a tail call; byte-exact from zar_key.cpp through zar.h's inline)
 0x0025B2E0 0x8 func_0025B2E0  # OVL1
 0x0025B2F0 0x8 RecordSize__Q23zar4CKeyFv  # OVL1; ours, the core lane round 8 (SOCOM II's: returns 16, a key's directory record; WriteDirectory calls it with no arguments after each CountKeys -- a static member)
 0x0025B300 0x240 CountKeys__Q23zar4CKeyFb  # OVL1; ours, the core lane round 8 (SOCOM II's: WriteDirectory 0x257590 calls it twice on m_root with true and multiplies by RecordSize's 16 to size the directory; the key itself plus its children's, recursing only when the bool is set -- the loop tests it with the iterators)

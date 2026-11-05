@@ -80,6 +80,35 @@ struct CKeyNamed {
     const char *m_name;
 };
 
+/* the key's record -- its name's offset, its data's offset and size -- then the child count and
+ * each child's own, through the archive's file (SOCOM 1's, 0x25B030: SOCOM 1's secured each word
+ * around its write; it returns 1). Recursive: it self-inlines twice -- the second copy inlines its
+ * callees one level (the count's size() 0x25B2E0, the raw begin and __iter, end(), ==, the postfix
+ * ++'s pieces called), the third calls them all (WriteFile 0x25B2C0, Count 0x25B2B0, begin, end,
+ * !=, *, postfix ++) and Write itself; every loop is entered at its bottom test by a `b`.
+ * OPEN, 0x2CC of 0x280: the outer copy and the second's prologue are the target's -- the loop a
+ * `while` (a `for` gets a guard: 0x2C4), the count through a Count() over size() (the second copy
+ * calling size() as the target's) -- but the inlined copies' while loops are rotated behind a
+ * duplicated test where the target's enter by a jump; a named key local in the body, a `for (;;)`
+ * with a break, a goto into a do-while, prefix ++: 0x264-0x2D4 (build/scratch/core/v_write19*.py) */
+bool CKey::Write(CZAR *zar)
+{
+    zar->WriteFile(&m_name, 4);
+    zar->WriteFile(&m_offset, 4);
+    zar->WriteFile(&m_size, 4);
+
+    int count = Count();
+
+    zar->WriteFile(&count, 4);
+    iterator i = begin();
+
+    while (i != end()) {
+        (*i)->Write(zar);
+        i++;
+    }
+    return true;
+}
+
 /* a key's directory record (SOCOM II's, called out of line by WriteDirectory) */
 int CKey::RecordSize()
 {

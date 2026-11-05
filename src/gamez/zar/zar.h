@@ -56,8 +56,8 @@ public:
     bool Read(CZAR *zar, CIO *io, int base);
     CKey *InsertKey(CKey *key);
     /* the key's record and its children's written through the archive's file (SOCOM 1's;
-     * 0x25B030, WriteDirectory calls it on the root as SOCOM 1's does) */
-    void Write(CZAR *zar);
+     * 0x25B030, WriteDirectory calls it on the root as SOCOM 1's does): true */
+    bool Write(CZAR *zar);
     /* the keys counted, the key itself included, the children's own when deep (SOCOM II's,
      * 0x25B300: WriteDirectory sizes the directory with it on the root, true; the name ours) */
     int CountKeys(bool deep);
@@ -65,6 +65,10 @@ public:
     static int RecordSize();
     /* the names made the string table's packed copies (SOCOM 1's; CSTable::Pack's callback) */
     static void fixupKey(CSTable *table, void *key);
+
+    /* the child count (SOCOM II's: Write's inner copies call it out of line, 0x25B2B0, and the
+     * vector's size() under it, 0x25B2E0 -- the name ours) */
+    int Count() { return size(); }
 
     /* the children forgotten, each deleted too when asked (SOCOM II's, 0x25B580: FreeDirectory
      * deletes them when the key buffer holds none of the keys -- the keys then their own
@@ -144,6 +148,10 @@ public:
     /* the files closed, the second deleted, the directory freed (SOCOM 1's Close(bool): SOCOM II's
      * callers pass true, its body never reads the flag -- as SOCOM 1's) */
     void Close(bool);
+    /* bytes written through the archive's file (SOCOM II's: CKey::Write's records, its innermost
+     * copy calling it out of line, 0x25B2C0 -- SOCOM 1's Write secured each field around the write;
+     * the name ours) */
+    int WriteFile(const void *data, int size) { return m_pFile->fwrite(data, size); }
     /* bytes appended to the buffer at 0x34, made on the first write (SOCOM II's, 0x256FD0: Insert
      * writes a key's data through it; the name ours) */
     unsigned int WriteBuffer(const void *data, unsigned int size);
