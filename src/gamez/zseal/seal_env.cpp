@@ -5179,14 +5179,22 @@ static inline bool PolyBit31(const zdb::IntersectStruct *is)
  * by the polygon's bit 31 and a SEAL underfoot marked (SOCOM 1's SealProcessAltitude, SOCOM II's
  * player test, the water's flag passed on and the node's flags new; OVL2 0x5B5D40: SealGetAltitude's
  * tail).
- * OPEN, 0x454 against 0x45C (written last in round 46, one try): the structure is the target's -- but
- * the early `return 0` branches to the shared result move where the target's goes straight to the
- * epilogue (8 bytes), and the saved registers differ throughout: the target has this s3, best s2,
- * lowest s1, the counter s0, the hit s4, the material s5, pos s6, the hit offset s7, di s8 (this
- * build: this s4, best s3, lowest s2, the hit s0); `f += pos->y` and `f = f + pos->y` leave the size.
- * The call to the hits' clear resolves only once 0x555280 is named (the call names it
- * clear__Q23std84__vector_deleter<Q23zdb15IntersectStruct,...>Fv: left a placeholder so its draft keeps
- * scoring); next: igdump/igreplay on the colouring, then the early return's shape */
+ * Byte-exact (round 47; 0x454 against 0x45C in round 46): the 8 bytes were the camera's block, not
+ * the early return -- the target loads the world's camera into a saved register ahead of the first
+ * GetRegion call, a local of its own (`w = global; w->g(call())`); then the saved registers (this s3,
+ * best s2, lowest s1, the counter s0, the hit s4, the material s5): `tools/igreplay.py --want` with
+ * the hit as the only mover put it after the material's temporary (136 of 146 placements, none
+ * among the named locals), so the hit is an inline's result -- the element's address through
+ * GetIntersect below merges into a temporary numbered after every named local; and the last two
+ * (the in-water byte's store scheduled ahead of `best = 0`, `add.s $f20,$f0,$f20`): best declared
+ * after the water's reset, the height plus the point's a float local of its own (`f = pos->y + f`,
+ * `f += pos->y` and `f = f + pos->y` all give `$f20,$f20,$f0`) */
+/* the hit at an index (an inline: its result is the loop's hit) */
+static inline zdb::IntersectStruct *GetIntersect(zdb::DiIntersect *di, int i)
+{
+    return &di->m_Intersects[i];
+}
+
 zdb::IntersectStruct *CZSealBody::SealProcessAltitude(zdb::DiIntersect *di, const CPnt3D *pos, float f)
 {
     m_volumetricAltitudes.clear();
@@ -5196,17 +5204,18 @@ zdb::IntersectStruct *CZSealBody::SealProcessAltitude(zdb::DiIntersect *di, cons
         SetInSmoke(false);
     if (!di)
         return 0;
-    zdb::IntersectStruct *best = 0;
     bool wasin = m_inwater;
 
     m_inwater = false;
     m_waterdepth = 0.0f;
+    zdb::IntersectStruct *best = 0;
     zdb::IntersectStruct *lowest = 0;
 
     if (di->m_Cnt) {
-        f = pos->y + f;
+        float top = pos->y + f;
+
         for (int i = 0; i < di->m_Cnt; i++) {
-            zdb::IntersectStruct *hit = &di->m_Intersects[i];
+            zdb::IntersectStruct *hit = GetIntersect(di, i);
             CMaterialEx *mat = MaterialEx(hit->GetMaterial());
 
             if (mat && mat->IsVolumetric()) {
@@ -5225,7 +5234,7 @@ zdb::IntersectStruct *CZSealBody::SealProcessAltitude(zdb::DiIntersect *di, cons
                 }
                 float y = hit->m_pos.y;
 
-                if (y <= f && (!best || !(y < best->m_pos.y)))
+                if (y <= top && (!best || !(y < best->m_pos.y)))
                     best = hit;
                 if (!lowest || !(lowest->m_pos.y < y))
                     lowest = hit;
@@ -5242,7 +5251,9 @@ zdb::IntersectStruct *CZSealBody::SealProcessAltitude(zdb::DiIntersect *di, cons
         best = 0;
     if (best) {
         if (appCamera->m_bc == this) {
-            zdb::CWorld::m_world->m_camera->SetPlayerCanSeeRegions(best->GetRegion());
+            zdb::CCamera *cam = zdb::CWorld::m_world->m_camera;
+
+            cam->SetPlayerCanSeeRegions(best->GetRegion());
             CheckForRegionTrigger(best->GetRegion());
         }
         bool b = PolyBit31(best);
