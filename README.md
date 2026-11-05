@@ -2062,6 +2062,23 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the SEALs, round 37** (fourteen: the order names, the death anims, OnWeaponEvent, OnStunDamage, the pose):
+  - two inline calls in an expression expand left to right, so a by-value accessor orders the loads of `a->m_team &
+    b->m_team` (plain loads come out in one order however written); an inline's by-value parameters load right to left
+    but number left to right -- to load a value first and give it the higher register make it the inline's own local
+    (the kill message 0x547860's frag line);
+  - `b == false` on a bool parameter narrows it (andi) before the branch, `!b` tests the register as it came; 11.44
+    encoded one ulp high (0x41370A3E) is what `2.2f * 5.2` folds to through double -- write a literal that rounds to it;
+    an `a && !b || c` helper written as if/return gives one true block (daddiu 1 / move zero), returned as an expression
+    it materialises the inner test; a test written in the caller and the same test as an inline helper swap their
+    scratch registers (CSealCtrl::OnStunDamage 0x597C00, FLASHBANG_DOT SOCOM 1's);
+  - a reference local to a member struct keeps its address in a register for the field tests (the pose 0x577EA0, with
+    RTList<ACTIVE_ANIM>'s Begin / Next copies 0x5780E0 / 0x578110 from source; AnimBlend 0x577000 named); the order of
+    a counter's increment and a flag store sets their scratch registers (the body-part name map 0x58CC30); a by-value
+    `operator-` temporary above a later vector on the stack means that vector is an inline's local;
+  - the order-name switch 0x58EF80 uses SOCOM II's own FT_COMMAND values (not SOCOM 1's); 0x58C600 matches with
+    AnimSet::GetName fitted five levels high (the kit's round 38 shape: queued); zmath.h's CPnt3D::DistToVector returns
+    int where the image's callers narrow it like a bool (a non-additive fix, queued).
 - **Tells from the engine core, round 15** (CAppCamera::LookAt; a depth-6 stand-in dropped; the float zero after an asm):
   - field reads of an address-taken local: when the local is copied, direct reads keep its field addresses in saved
     registers, and so do reads with both readers through a reference inline -- one reader of each kind reads off the
