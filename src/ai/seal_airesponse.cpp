@@ -167,16 +167,11 @@ CAiSFlee::~CAiSFlee()
 }
 
 /* (OVL2 0x609810) its members destroyed by hand, as ai_states.h keeps them as bytes: the vector
- * first (std::vector<CAiMapLoc>'s deleter destructor, 0x515200, behind ~vector's and
+ * first, as the CAiMapLocVec it is (its deleter's destructor 0x515200 behind ~vector's and
  * ~__vector_imp's this-tests), then the route (~CAiPath, 0x5281B0) */
 CAiSPathRecover::~CAiSPathRecover()
 {
-    unsigned char *v = m_vec;
-
-    if (v)
-        if (v)
-            if (v)
-                func_00515200(v, 0);
+    ((CAiMapLocVec *)m_vec)->~CAiMapLocVec();
     __dt__7CAiPathFv(m_path, -1);
 }
 
@@ -705,19 +700,23 @@ extern "C" void func_00609190(CAiState *s, CSealCtrlAi *ai)
     }
 }
 
+/* a word's bits under a mask, the mask a parameter (the name ours): asked for all of them (~0) the
+ * AND survives as the 32-bit zero extension `dsll32/dsrl32` before the branch -- written in place,
+ * `& ~0u` folds away */
+inline bool TestBits(unsigned int v, unsigned int mask)
+{
+    return (v & mask) != 0;
+}
+
 /* shot at, the sub-step: over after its time; before, once the AI's byte at 0x32C is set, the
- * sub-state ended and step 3 taken (OVL2 0x609340).
- * OPEN, 0x9C against 0xA4: the target zero-extends the byte it tests (`lbu; dsll32 v0,v0,0;
- * dsrl32 v0,v0,0; beqz`) -- an unsigned int widened to 64 bits; an unsigned char, an 8-bit
- * bitfield in a char, int or long container, `(unsigned long)` and `& ~0u` all branch on the lbu
- * result directly. Round 32: compared `!= 0L` (or `!= 0UL`, the byte or an 8-bit bitfield of an
- * unsigned int or long) it is 1 off -- the int is widened, but signed (dsra32); every spelling
- * that makes it unsigned first (a cast, an unsigned accessor) lets MW drop the widening again */
+ * sub-state ended and step 3 taken (OVL2 0x609340). The byte is tested through an inline's mask
+ * parameter given ~0 (round 41: the target's `lbu; dsll32; dsrl32; beqz` -- an unsigned char, a
+ * bitfield, a cast to a 64-bit type, `!= 0L` and `& ~0u` written in place all failed since round 7) */
 int CAiSShotAt::Virtual14(CSealCtrlAi *ai, CAiState *sub)
 {
     if (!(m_phaseTime < s_shotAtTime))
         SetActive(false);
-    else if (((CAiCtrl32C *)ai)->m_32c) {
+    else if (TestBits(((CAiCtrl32C *)ai)->m_32c, ~0u)) {
         sub->SetActive(false);
         UpdatePhase(3);
     }
