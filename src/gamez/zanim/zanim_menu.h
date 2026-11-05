@@ -893,7 +893,6 @@ bool func_002F8D50(CZOnlineLobby *lobby, const char *name);         /* (game has
 bool func_002F8BC0(CZOnlineLobby *lobby, const char *name);         /* (game rejects the rank) */
 bool func_002F8C60(CZOnlineLobby *lobby, const char *name);         /* (clan game closed) */
 bool func_002B85C0();                                               /* (connect to the game server) */
-bool func_003A1370(CMemCard *card, int arg, int *slot);             /* (the card changed) */
 void func_002EFE50(CZOnlineLobby *lobby, const char *name, int what);   /* (a player's info) */
 void func_002B8660();
 void func_002E6000(CZOnlineLobby *lobby, const char *name);         /* (clan member's info) */
