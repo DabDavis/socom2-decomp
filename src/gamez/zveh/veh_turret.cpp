@@ -1387,7 +1387,11 @@ static inline void RequestRay(CDiPool::dir *&slot, const CPnt3D &eye, const CPnt
  * them but stops rotating the loop (an entry `b` to the bottom test, 0x36C); (2) the numbering: the
  * target's e is s1 and seen s3 (here the reverse), the target list s2 and the slot s4 (reverse), the
  * apex spilled and the vector in s8 (reverse), the dot in $f6 (here $f3; IsInCone's dot local gives
- * $f7) -- for `tools/igreplay.py --target` once (1) is found */
+ * $f7) -- for `tools/igreplay.py --target` once (1) is found. The OVL1 copies (task: name 0x3A7DA0
+ * `ovl-copy:` of OVL2's push_back 0x5C97A0): spelled `_diPool.m_used.push_back(d)` here MW inlines
+ * it (0x36C) and emits no copy -- the target's four out-of-line pieces (the pool's get, the set-up,
+ * push_back, CPnt3D's assignment, all leaves) read as RequestRay inlined ONE level by its expanded
+ * size (inline_max_size), so the marker waits on RequestRay's real body */
 extern "C" void func_003A7A40(CTurret *t)
 {
     CAiViewer v(t, (char *)t + 0x204);
