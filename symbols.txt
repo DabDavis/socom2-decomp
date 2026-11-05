@@ -2780,11 +2780,11 @@
 0x0025B980 0x14 func_0025B980  # OVL1; tu: zrndr_pipe.cpp~ (1.0 beta)
 0x0025B9A0 0x14 func_0025B9A0  # OVL1; tu: zrndr_pipe.cpp~ (1.0 beta)
 0x0025B9C0 0xC func_0025B9C0  # OVL1
-0x0025B9D0 0x7C func_0025B9D0  # OVL1
-0x0025BA50 0x7C func_0025BA50  # OVL1
-0x0025BAD0 0x8 func_0025BAD0  # OVL1
-0x0025BAE0 0x40 func_0025BAE0  # OVL1
-0x0025BB20 0x24 func_0025BB20  # OVL1
+0x0025B9D0 0x7C FreeVector<Q23std52vector<PQ23zar4CKey,Q23std23allocator<PQ23zar4CKey>>>__FRQ23std52vector<PQ23zar4CKey,Q23std23allocator<PQ23zar4CKey>>_v  # OVL1; by hand, the core lane round 19 (zsys.h's FreeVector over vector<CKey *>, out of line with every piece inlined: the temporary's three zeroed words, the clear, the swap's this test and three trades, the temporary's storage deleted -- CKey::DeleteChildren's inner copy through ~CKey calls it; byte-exact from zar_key.cpp)
+0x0025BA50 0x7C for_each<Q33std60__vector_imp<PQ23zar4CKey,Q23std23allocator<PQ23zar4CKey>,1>8iterator,PFPQ23zar4CKey_v>__3stdFQ33std60__vector_imp<PQ23zar4CKey,Q23std23allocator<PQ23zar4CKey>,1>8iteratorQ33std60__vector_imp<PQ23zar4CKey,Q23std23allocator<PQ23zar4CKey>,1>8iteratorPFPQ23zar4CKey_v_PFPQ23zar4CKey_v  # OVL1; by hand, the core lane round 19 (std::for_each over vector<CKey *> with a function pointer, out of line: the iterators homed by value, the operation called through s2 and returned -- DeleteChildren's inner copy through ~CKey calls it with ForgetKey 0x25BB20; byte-exact from zar_key.cpp)
+0x0025BAD0 0x8 clear__Q23std60__vector_imp<PQ23zar4CKey,Q23std23allocator<PQ23zar4CKey>,1>Fv  # OVL1; by hand, the core lane round 19 (the pointer vector's base clear, the count zeroed: DeleteChildren's inner deep copy inlines vector<CKey *>::clear one level and calls it; byte-exact from zar_key.cpp)
+0x0025BAE0 0x40 DeleteKey__3zarFPQ23zar4CKey  # OVL1; ours, the core lane round 19 (DeleteChildren's deep for_each operation: the key's children deleted, then the key -- DeleteChildren(true) and the deleting ~CKey under a null test; the inner deep copy calls it through its for_each; byte-exact from zar_key.cpp)
+0x0025BB20 0x24 ForgetKey__3zarFPQ23zar4CKey  # OVL1; ours, the core lane round 19 (DeleteChildren's shallow for_each operation: DeleteChildren(false) on a non-null key -- the inner copy through ~CKey hands its address to the out-of-line for_each 0x25BA50; byte-exact from zar_key.cpp)
 0x0025BB50 0x88 __dt__Q23zar4CKeyFv  # OVL1; by hand: Insert(const char *, const void *, int) 0x25A2F0 deletes the key it could not write through it, (key, 1), where SOCOM 1's inlines ~CKey (its list's destructor, then delete)
 0x0025BBE0 0x20 __ct__Q23zar4CKeyFv  # OVL1; SOCOM 1 name, the core lane round 5 (NewKey builds its nameless key with it where SOCOM 1 calls CKey() 0x1DC4A0: the ring and the three fields zeroed; before CKey(const char *) as in SOCOM 1)
 0x0025BC00 0x20 __ct__Q23zar4CKeyFPCc  # OVL1; s1:order by hand (SOCOM 1's CKey(const char *) 0x1DC4E0, last of its zar_search.cpp: the list (here the vector) built, the name stored, size and offset zeroed; CZAR's constructor calls it with "" for the root)
