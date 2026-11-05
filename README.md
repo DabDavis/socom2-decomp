@@ -2065,6 +2065,22 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the engine core, round 18** (CountAwareness, GetCmd, the CTarget remove_copy, CGrid::GetCell and
+  SetTraversalExtents -- open since round 6; the CPnt3D stand-ins retired):
+  - A CLAMP WRITTEN `if (n > K) n = K;` ENDS A BLOCK, PADS ITS JOIN AND CHANGES HOW THE NEXT LOADS ARE SCHEDULED; `n = n >
+    K ? K : n;` does not (CGrid::GetCell 0x2D5B50, SetTraversalExtents 0x2D6C40 -- its round-6 "the int store and the float
+    load alias" was this);
+  - a loop offset MW strength-reduces and the target sets after the guard: name it inside `if (j < count) { int off = 0;
+    do { ...; j++; off += 12; } while (j < count); }` -- a `for` loop's named offset is zeroed before the guard
+    (CZAnimMain::GetCmd 0x26AA30; the weapons' round 30 found the same hand-written guard);
+  - an inline `operator==` taking const parameters makes MW reload a field the compare already loaded when the caller
+    then copies the object -- non-const parameters keep the load (zentity.h's `operator==(CTarget &, CEntity *)`:
+    remove_copy over vector<CTarget> 0x2A1210); an inline bool member taking the other entity (`te->IsEnemy(e)`) lets MW
+    hoist `&e->m_team` out of a walk, the test written in place as `cond ? true : false` keeps the load inside and still
+    materialises the bool; a value loaded before the test it guards lands in that test's delay slot (CEntity::
+    CountAwareness 0x2A08C0, the walk through TargetsOf(e) as the MSL's round 30 found);
+  - znode.h's PntMinus and grid_main.cpp's PntScale / PntPlus are gone for zmath.h's CPnt3D -, * and + (object-identical);
+    camera.cpp calls CZSealBody::CheckDIShoot by name (SAME-BY-ADDRESS).
 - **Tells from the weapons, round 30** (the turret's target scan at last, open since round 25; CMaterial_Object::Read, open
   since round 11; the DI pool's get and set-up named):
   - WRITING A LOOP GUARD BY HAND AROUND A DO-WHILE (`if (n) { T *a = ...; do { ... } while (...); }`) PUTS THE LOCALS
