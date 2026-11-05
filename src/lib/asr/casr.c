@@ -162,10 +162,11 @@ static __inline__ void casrFreeResult(CASR *c, RESULT *r)
 }
 
 /* the end of an utterance: a second pass when parameter 15 asks for one, else the result now.
- * OPEN (9 words): the result variable takes v1 here, v0 in the target (and the demo), so the iso
- * branch's `b` slot gets a move where the target's computes the `== 1`, and the second pass's three
- * stores reorder; tried: the variables in other orders, err an unsigned char, err reused for the
- * callback's result, the return as ==, ?:, if/return, unsigned char (build/scratch/gcc/p/s_dsp*.py). */
+ * Round 24c, byte-exact: the second pass's two arguments stored before its flag (8 of the 24
+ * orders of the arm's four statements match, build/scratch/gcc/r24c/v_dsp.py; round 9c's order --
+ * the flag between them -- was 9 words): the flag's constant 1 then dies before `err = 0`, so err,
+ * shared by the three arms, is born in v0, the return register (the GCC front's round-31a rule),
+ * and the iso branch's slot computes the `== 1`. */
 int cbDoSecondPassIfEnabled(CASR *c, unsigned char a1, unsigned char a2, int arg1, int arg2)
 {
     unsigned int enabled;
@@ -179,8 +180,8 @@ int cbDoSecondPassIfEnabled(CASR *c, unsigned char a1, unsigned char a2, int arg
         if (_tosControl(c->event, 2, 0, 0) != 0)
             return 1;
         c->sp_arg1 = arg1;
-        c->second_pass = 1;
         c->sp_arg2 = arg2;
+        c->second_pass = 1;
         err = 0;
     } else {
         if (_tosControl(c->event, 7, 0, 0) != 0)
@@ -280,7 +281,10 @@ fail:
 /* OPEN (38 words, the right size): the target stores the first gender and the format through s+8
  * and the other two genders off s, and loads the language's pointer into a0; every spelling here
  * stores all four through s+8 (a loop, a sub-struct, a pointer for two of them: build/scratch/gcc/p/
- * s_gsd*.py, 30 spellings). The header's destination is a local pointer (`h`): with `s->lng` itself
+ * s_gsd*.py, 30 spellings; round 24c: each of the four through `g` or off `s`, all 16, gives one form
+ * -- CSE puts every store on one base whichever is spelled -- and a 3-pass loop with the fourth after
+ * it, unrolled whole, stores all four off s, SOCOM 1's 0x1BC shape: build/scratch/gcc/r24c/v_gsd*.py).
+ * The header's destination is a local pointer (`h`): with `s->lng` itself
  * 2.96 folds the data pointer to s+152 and computes the copy's bound once (87s), the demo's shape. */
 static int casrGetSessionData(CASR *c, void **data, int *size)
 {
