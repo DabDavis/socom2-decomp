@@ -527,6 +527,15 @@ public:
     void reserve(unsigned int n);
     void resize(unsigned int n);
     unsigned int max_size() const;
+    /* THE GROWTH RECOMMENDATION (0x285BB0, out of line in an earlier unit, zanim_menu.cpp's tail; the
+     * MSL headers round 32, named for the online lane's round 24): the capacity a buffer that must hold
+     * n is given, one less than its storage -- n past max_size() is "cdeque max_size error", then the
+     * usable capacity (capacity_ - 1, or 1 for an empty buffer) doubled while it is short of n and under
+     * half max_size(), else max_size(). cdeque<PCv>::push_back 0x2858B0 asks it for size_ + 1, the
+     * forward do_assign 0x2F5700 for the range's length. SOCOM 1's older cdeque has no such member (its
+     * push_back and insert grow inline): the name ours, libc++'s `__recommend` (the vector's and the
+     * string's -- Hinnant's, who wrote MSL C++ -- the string's also returning the capacity less one) */
+    unsigned int __recommend(unsigned int n) const;
     template <class InputIterator>
     void do_assign(InputIterator first, InputIterator last);
 
@@ -623,10 +632,8 @@ void cdeque<const void *, Allocator>::init(unsigned int n, const value_type &x)
     }
 }
 
-extern "C" unsigned int func_00285BB0(void *d, unsigned int n);
-
-/* [first, last) assigned (0x2F5700): emptied, regrown to the capacity func_00285BB0 recommends when n
- * does not fit (the old storage freed first), the range copied in, then the count */
+/* [first, last) assigned (0x2F5700): emptied, regrown to the capacity __recommend gives when n does not
+ * fit (the old storage freed first), the range copied in, then the count */
 template <class Allocator>
 template <class ForwardIterator>
 void cdeque<const void *, Allocator>::do_assign(ForwardIterator first, ForwardIterator last, std::forward_iterator_tag)
@@ -636,7 +643,7 @@ void cdeque<const void *, Allocator>::do_assign(ForwardIterator first, ForwardIt
     this->size_ = 0;
     this->start_ = 0;
     if (n > (this->capacity_ == 0 ? 0 : this->capacity_ - 1)) {
-        unsigned int c = func_00285BB0(this, n);
+        unsigned int c = __recommend(n);
 
         if (this->data_) {
             this->deallocate(this->data_, this->capacity_);
