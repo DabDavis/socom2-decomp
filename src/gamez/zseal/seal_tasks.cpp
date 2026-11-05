@@ -1307,18 +1307,21 @@ inline bool TaskIsAi(CZSealBody *seal)
 }
 
 /* a squad command issued to a team's unit, the team's AI SEALs put to sleep (28) or woken (27) first
- * (OVL2 0x5DDFA0; SOCOM 1's, without its cover and hold cases).
- * OPEN, 15 instructions at the target's size: (1) the command passed to IssueCommand -- the target
- * switches on it unmasked AND passes it unmasked (SOCOM 1's switch too): an int local masks at the
- * call (`andi a2,s5,0xff`), an FT_COMMAND one masks in the switch (0x2B0), unsigned char/short, `&
- * 0xff`, an if-chain for the switch all fail; (2) the SEAL and the walk's element trade s3/s4 (the
- * element declared before TASK_SEAL changes nothing). The iterator declared outside the loop is the
+ * (OVL2 0x5DDFA0; SOCOM 1's, without its cover and hold cases). The command is held twice, as the
+ * FT_COMMAND IssueCommand takes and as the int the switch tests: one lbu, coalesced into one register
+ * that neither use masks (an int alone masks at the call, an FT_COMMAND alone in the switch; any of
+ * seven spellings of the pair matches). The walk's element is re-assigned through its ternary, `e =
+ * e && ... ? e : 0`: a named variable of two definitions keeps its declaration's number, after the
+ * command's and before the SEAL's ternary temporary -- initialised from the ternary, the element is
+ * the ternary's temporary, numbered after the SEAL's, and the two trade s3/s4 (round 42, replaying
+ * MW's colouring with the element relabelled). The iterator declared outside the loop is the
  * target's (kept in the frame, each step through $f0); inside the for it is a register (8 regs) */
 bool CTComm::Tick(_zanim_cmd_hdr *hdr, float *dT)
 {
     TASK_SEAL(CTComm);
     CSealCtrlAi *ai = seal ? SealAi(seal) : 0;
-    int c = (FT_COMMAND)cmd->m_cmd;
+    FT_COMMAND command = (FT_COMMAND)cmd->m_cmd;
+    int c = command;
     CEntityList::const_iterator it;
 
     if (c) {
@@ -1327,7 +1330,9 @@ bool CTComm::Tick(_zanim_cmd_hdr *hdr, float *dT)
         case 28:
             for (it = CEntity::GetEntityList().begin(); it != CEntity::GetEntityList().end(); ++it) {
                 CEntity *e = *it;
-                CZSealBody *s = e && e->m_type == CEntity::ENT_TYPE_SEAL ? (CZSealBody *)e : 0;
+
+                e = e && e->m_type == CEntity::ENT_TYPE_SEAL ? e : 0;
+                CZSealBody *s = (CZSealBody *)e;
 
                 if (s && (1 << cmd->m_team) & s->m_team && TaskIsAi(s))
                     SealAi(s)->SetSleeping(c == 28);
@@ -1337,7 +1342,7 @@ bool CTComm::Tick(_zanim_cmd_hdr *hdr, float *dT)
         CSealUnit *unit = CSealUnit::GetUnitByTeam(cmd->m_team);
 
         if (unit)
-            unit->IssueCommand(seal, (FT_COMMAND)c, 0, false);
+            unit->IssueCommand(seal, command, 0, false);
     }
     *dT = 0.0f;
     return true;
@@ -2391,23 +2396,27 @@ inline bool TaskAiBit6(const CSealCtrlAi *ai)
     return ai->m_aibit6;
 }
 
-/* a script state's hold, false for none (inline: its value masked at the assignment) */
+/* a script state's hold, false for none (inline: the hold's own bool inline converted in the arm --
+ * `sltu` / `move v0,zero` -- and the result masked at the assignment) */
 inline bool TaskScriptHeld(const CAiSScript *script)
 {
-    return script ? script->m_hold : false;
+    return script ? script->Held() : false;
+}
+
+/* a SEAL's select (inline: its result a temporary, numbered after the SEAL's) */
+inline void *TaskSelect(CZSealBody *seal)
+{
+    return seal->m_select;
 }
 
 /* the anim run for the SEAL, its script state pushed with it (the AI's bit 6 held set meanwhile, the
  * old script's hold carried over) -- done at once (OVL2 0x5D6DC0; the select read into a local ahead
- * of GetNode, the bit read through an inline bool: both as the target)
- * OPEN, 8 bytes short: the old hold's bool is masked into its saved register at the join in the target
- * (`sltu v0` / `move v0,zero`, then `andi s4,v0,0xff`), straight into it here (`sltu s4`) -- through an
- * inline, an if-assign, an unsigned char, the anim's and run's order, the select declared at the top:
- * none moves it; and the SEAL takes s1 where the target colours it after the select and the AI (s4).
- * Round 41: the target's join is `sltu v0` / `move v0,zero` then `andi s4,v0,0xff` -- a bool computed in
- * each arm and narrowed into a byte variable: TaskScriptHeld returning unsigned char into a bool reaches
- * the size (18: the andi lands before the sltu), returning int `!= 0` into a bool 12 (the join's sltu,
- * the SEAL's s1/s4), into an unsigned char 15 */
+ * of GetNode, the bit read through an inline bool: both as the target). Closed in round 42 by MW's
+ * colouring replayed with the vregs relabelled: the target needs the select numbered after the SEAL's
+ * ternary temporary (the SEAL then s4, the select s1, the anim s5) -- the select through an inline
+ * accessor is one; a named local is numbered first. The hold: an inline bool whose true arm is the
+ * hold's own bool inline (`m_hold != 0` or `(bool)m_hold` alike) and whose false arm is `false` --
+ * `0` there, or the inline returning unsigned char or int, leaves the conversion at the join */
 bool CTMacro::Tick(_zanim_cmd_hdr *hdr, float *dT)
 {
     TASK_SEAL(CTMacro);
@@ -2421,7 +2430,7 @@ bool CTMacro::Tick(_zanim_cmd_hdr *hdr, float *dT)
     CZAnim *run = 0;
 
     if (anim) {
-        void *select = seal->m_select;
+        void *select = TaskSelect(seal);
 
         run = anim->ActivateArg(1, 1, select, 3, seal->GetNode(), 0);
     }

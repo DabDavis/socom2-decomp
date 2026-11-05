@@ -151,6 +151,47 @@ void func_002531F8(short sPeak, VadState *p, float fLevel, float fMax)
 	p->bSpeech = 0;
 }
 
+/* active by hang-over (GCC round 32a): while speech, the run restarts and the detector turns active
+ * once the level (at most 255) reaches the threshold; otherwise the run counts on, and once it
+ * passes the frames' hang time (rounded, through a double) the detector turns inactive, the run held
+ * at 32700.
+ * OPEN (0x11C against 0x124): the target returns one byte variable, loaded zero-extended (lbu) in the
+ * delay slot of the active flag's own signed test (lb) and sign-extended once at the exit; set
+ * before the test it gives the target's paths but two words short (an unsigned char result: v1
+ * through the double calls), the flag tested with the && or nested, set to 1 or to the speech
+ * flag, alike (build/scratch/gcc/v_3288*.py, GCC round 32a). */
+signed char func_00253288(short sLevel, unsigned short usFrames, VadState *p, float fThresh)
+{
+	int iLevel;
+	float fT;
+	short sT;
+	unsigned char ret;
+
+	iLevel = (sLevel < 255) ? sLevel : 255;
+	if (p->bSpeech == 1) {
+		p->usRun = 0;
+		ret = p->bActive;
+		if (p->bActive == 0) {
+			if ((float)iLevel <= fThresh) {
+				p->bActive = 1;
+				ret = 1;
+			}
+		}
+	} else {
+		fT = usFrames * p->fRate + 0.5;
+		sT = (unsigned int)fT;
+		p->usRun++;
+		if (sT < (short)p->usRun) {
+			p->bActive = 0;
+			if ((short)p->usRun > 32700)
+				p->usRun = 32700;
+			ret = 0;
+		} else
+			ret = p->bActive;
+	}
+	return ret;
+}
+
 /* active: speech, its flag and the caller's agreeing, at a level of 0.45 or more.
  * OPEN (17 words, one short): the target holds the active flag's own lb in s0 across the two
  * double calls and selects it or 0 with movn into a2 -- the result never in a saved register; here

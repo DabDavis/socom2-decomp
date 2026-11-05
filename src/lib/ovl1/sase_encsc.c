@@ -17,7 +17,7 @@ typedef struct {
 	float f28;
 	short f32;
 	short f34;
-	char pad36[4];
+	float f36;
 	short f40;
 	short f42;
 	short f44;
@@ -25,13 +25,167 @@ typedef struct {
 	float f48;
 	float f52;
 	float f56;
-} EncParams;
+} __attribute__((aligned(8))) EncParams;   /* 8-aligned: 0x248FB0 tests f40-f44 with one ld */
 
 typedef struct {
 	char pad0[68];
 	int f68;
 	EncParams *params;
 } EncMemBlk;
+
+/* the encoder's 88-byte block as its creation fills it (GCC round 32a: 0x249190, the block whose
+ * +68 and +72 the setters below read -- EncSC.c's, by its fields; its eight closing stores in one
+ * order of the few measured, tools/try.py) */
+typedef struct {
+	void *pCirc;            /* 0: the input ring (libsnd.c, 371 samples) */
+	void *pF;               /* 4: nelly.c's float block */
+	int i8;
+	int pad12;
+	void *pLdPda;           /* 16 */
+	void *pTrack;           /* 20 */
+	void *pBlk48;           /* 24 */
+	int i28;
+	int i32;
+	int i36;
+	int i40;
+	float f44;              /* the long frame's energy */
+	float f48;              /* the pitch pair kept (0x248FB0) */
+	float f52;
+	float f56;
+	float f60;
+	int i64;
+	int f68;
+	EncParams *params;
+	int i76;
+	char pad80[8];
+} EncState;
+
+/* the pitch's conversion (GCC round 26a): its two mode flags, and the three estimators' scales
+ * (0x249C50 0x38, 0x249C60 0x30/0x34, 0x249C78 0x1C) */
+typedef struct {
+	char ac00[0x2A];
+	unsigned short usLinear;	/* 0x2A */
+	unsigned short usDirect;	/* 0x2C */
+} PITCH_CONV;
+typedef struct CircMblk CircMblk;
+
+/* the frame the encoder fills: the pitch pair at 40 (0x248FB0) */
+typedef struct {
+	char pad0[40];
+	float afPitch[2];
+	char pad48[32];
+	float f80;
+} EncFrame;
+
+extern int func_00251A28(void);
+extern void func_0024FE38(const short *psIn, float *pfOut, int iLength, void *hPreProcMblk);
+extern void func_0024C6C0(void *pvCircMblk, int iOffset, int iLength, const float *pfInBuff);
+float func_002499A8(CircMblk *pvCircMblk, void *pvLdpda, float *pfEnergy);
+void func_00249A38(void *pvState, CircMblk *pvCircMblk, float *pfRe, float *pfIm, int *piLength,
+		   int *piWinShift, float fEnergy);
+extern int func_002492A0(void *pvCircMblk, float *pfRe, float *pfIm, EncFrame *pFrame, void *pEnc,
+			 int iLength, int iWinShift, int *piMode, float *pfMax);
+extern void func_0024F010(void *p, EncFrame *pFrame, int n, short sFlag, int iMode, float fMax);
+extern void func_00248C80(const EncFrame *pfIn, void *p);
+extern void func_002525C0(int i, float fEnergy, float fPitch);
+void func_00249B58(PITCH_CONV *p, float *pfOut, float *pfPeriod);
+
+/* the encoder's frame (GCC round 32a): 160 samples preprocessed into the input ring, the long and
+ * short frames analysed (the energy 0x2499A8 leaves in $f0 is the frame's first pitch word and the
+ * short frame's unused float argument -- 0x2499A8 is a float function that falls off its end), the
+ * pitch merged, the voicing tracked, and the pitch pair converted when a flag of the parameter
+ * block asks (one doubleword test of the three: EncParams is 8-aligned). Byte-exact once the two
+ * zeroed slots are assigned in the body (as initialisers they store in declaration order) and the
+ * conversion's test is one condition with the block's flag (a `return 0` of its own sets v0 before
+ * the flag's load, which then takes v1). */
+extern void *(*data_001D55A8)(int n, int size);  /* the host's allocator (calloc's arguments) */
+extern int func_0024C5D0(int iSize, void **pvCircMblk);
+extern int func_0024FF58(void **pp, float x);
+extern int func_0024A840(void **hLD_PDA_mblk);
+extern int func_00248D40(void **ppTrack);
+extern int func_00249EE0(void **pp);
+
+int func_00248FB0(const short *psIn, EncState *pEnc, EncFrame *pFrame)
+{
+	float afIn[160];
+	float afRe[516];
+	float afIm[256];
+	int iLength;
+	int iWinShift;
+	float fMax;
+	int iMode;
+	float fOut, fPeriod;
+	float fEnergy;
+	float *pfEnergy = &pEnc->f44;
+	float *pfPitch = pFrame->afPitch;
+	CircMblk *pCirc = pEnc->pCirc;
+	EncParams *q = pEnc->params;
+
+	iMode = 0;
+	iWinShift = 0;
+	func_00251A28();
+	if ((pEnc->i40 & pEnc->i32) == 0)
+		return 1;
+	func_0024FE38(psIn, afIn, 160, pEnc->pF);
+	func_0024C6C0(pCirc, 0, 160, afIn);
+	fEnergy = func_002499A8(pCirc, pEnc->pLdPda, pfEnergy);
+	pfPitch[0] = fEnergy;
+	func_00249A38(pEnc->pBlk48, pCirc, afRe, afIm, &iLength, &iWinShift, fEnergy);
+	func_002492A0(pCirc, afRe, afIm, pFrame, pEnc, iLength, iWinShift, &iMode, &fMax);
+	func_0024F010(pEnc, pFrame, 225, pEnc->i40, iMode, fMax);
+	func_00248C80(pFrame, pEnc->pTrack);
+	pEnc->f52 = pfPitch[0];
+	pEnc->i36 = pEnc->i40;
+	pEnc->f48 = pfPitch[1];
+	if (pEnc->i76)
+		func_002525C0(pEnc->i76, *pfEnergy, pfPitch[1]);
+	if (pEnc->f68 != 0 && (q->f40 || q->f42 || q->f44)) {
+		fOut = pfPitch[1];
+		fPeriod = pfPitch[0];
+		func_00249B58((PITCH_CONV *)q, &fOut, &fPeriod);
+		pfPitch[0] = fPeriod;
+		pfPitch[1] = fOut;
+		pFrame->f80 *= q->f36;
+	}
+	return 0;
+}
+
+int func_00249190(EncState **ppEncMemBlk, int iMode)
+{
+	EncState *p;
+	EncParams *q;
+
+	p = data_001D55A8(1, sizeof(EncState));
+	*ppEncMemBlk = p;
+	if (p == NellyNull)
+		return 1;
+	p->i64 = iMode;
+	p->f68 = 1;
+	q = data_001D55A8(1, 64);
+	p->params = q;
+	if (q == NellyNull)
+		return 1;
+	if (func_0024C5D0(371, &p->pCirc))
+		return 1;
+	if (func_0024FF58(&p->pF, 0x1.fae146p-1f))
+		return 1;
+	p->i8 = 0;
+	if (func_0024A840(&p->pLdPda))
+		return 1;
+	if (func_00248D40(&p->pTrack))
+		return 1;
+	if (func_00249EE0(&p->pBlk48))
+		return 1;
+	p->i32 = 1;
+	p->i28 = 0;
+	p->i40 = 1;
+	p->f48 = 0.0F;
+	p->f52 = 100.0F;
+	p->f56 = 0.0F;
+	p->f60 = 100.0F;
+	p->i76 = 0;
+	return 0;
+}
 
 void func_00249608(EncMemBlk *pEncMemBlk, float x)
 {
@@ -128,7 +282,6 @@ void func_00249968(EncMemBlk *pEncMemBlk)
  * out of the input ring, doubled, Hamming-windowed, transformed and split into its two halves */
 #define ENC_DELAY_SIZE 145
 
-typedef struct CircMblk CircMblk;
 extern int func_00251748(void);
 extern int func_00249C88(void *pvState, CircMblk *pvCircMblk, int iDelay, int iLength, float *pfWork);
 extern void func_0024C7D0(CircMblk *pvCircMblk, int iOffset, int iLength, float *pfOutBuff);
@@ -137,13 +290,6 @@ extern void func_0024C458(float *pfWindow, int iLength);
 extern void func_002518E8(const float *pfSig, int iLength, float *pfSpec, int iLog2N);
 extern void func_0024E8D0(const float *pfIn, float *pfRe, float *pfIm, int iLength);
 
-/* the pitch's conversion (GCC round 26a): its two mode flags, and the three estimators' scales
- * (0x249C50 0x38, 0x249C60 0x30/0x34, 0x249C78 0x1C) */
-typedef struct {
-	char ac00[0x2A];
-	unsigned short usLinear;	/* 0x2A */
-	unsigned short usDirect;	/* 0x2C */
-} PITCH_CONV;
 
 extern float func_00249C50(PITCH_CONV *p, float *pf);
 extern float func_00249C60(PITCH_CONV *p, float *pf);
@@ -189,7 +335,7 @@ extern void func_0024C4D8(const float *pIn, const float *pWin, float *pOut, int 
 extern float func_00248F60(const float *pfA, const float *pfB, int iLength);
 extern void func_00249FA8(float *pfSpec, void *pvLdpda);
 
-void func_002499A8(CircMblk *pvCircMblk, void *pvLdpda, float *pfEnergy)
+float func_002499A8(CircMblk *pvCircMblk, void *pvLdpda, float *pfEnergy)
 {
 	float afFrame[512 + 2];
 
@@ -201,7 +347,7 @@ void func_002499A8(CircMblk *pvCircMblk, void *pvLdpda, float *pfEnergy)
 }
 
 void func_00249A38(void *pvState, CircMblk *pvCircMblk, float *pfRe, float *pfIm, int *piLength,
-		   int *piWinShift)
+		   int *piWinShift, float fEnergy)
 {
 	float afFrame[264];
 	int iLength;
