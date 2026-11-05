@@ -80,7 +80,24 @@ public:
 class CUIVariable {
 public:
     void Set(_zrdr *value);
+    /* its text when it holds one (fts_net_blather.cpp's GetString) */
+    const char *GetString() const { return m_type == 3 ? m_str : 0; }
+
+    unsigned char m_type;   // 0x0
+    const char *m_str;   // 0x4
 };
+
+/* the UI's variables by name (zui.h's CUIVarManager, theUIVarManager 0x437E80) */
+class CUIVarManager {
+public:
+    CUIVariable *Find(const char *name);
+};
+
+extern CUIVarManager theUIVarManager;
+
+/* the DME's ownership and lifespan of an object (fts_net_game.cpp's) */
+enum NetOwnershipStatus {};
+enum NetObjectLifespan {};
 
 class CZNetwork {
 public:
@@ -91,6 +108,8 @@ public:
                                           void (*deletion)(int, int));
     int zNetGetMyGameClientIndex();
     NetObject *zNetGetObject(int index);
+    int zNetCreateObject(int *index, NetOwnershipStatus own, NetObjectLifespan life, unsigned int a,
+                         int b, unsigned int c, int d, void *e, char *name, int structure);
 
     unsigned char m_bSessionMaster;   // 0x0
     unsigned char m_1;   // 0x1: an online game
@@ -217,6 +236,16 @@ public:
     static void ToggleReady();
     static void UpdatePersonaLists();
     static void UpdateLocalPersona();
+    static int CreateLocalPersona();
+    /* a client's entry taken, when free, for a persona (the name ours: an inline -- its by-value
+     * index read ahead of the first test, the target's load in that test's delay slot) */
+    static void AddPersona(int client, int index, PersonaData *data)
+    {
+        if (m_PersonaList[client].m_index == -1 && m_PersonaList[client].m_data == 0) {
+            m_PersonaList[client].m_index = index;
+            m_PersonaList[client].m_data = data;
+        }
+    }
     static void RemotePersonaDeletionCallback(int client, int index);
     static void RemotePersonaPostUpdateCallback(int client, int index, int field);
     static void RemotePersonaUpdateCallback(int client, int index, int field);
@@ -462,6 +491,79 @@ void CZPersonaState::RemotePersonaDeletionCallback(int client, int index)
 
 extern "C" int data_00441480[8];
 extern "C" int data_004414A0[8];
+
+extern "C" {
+int func_002F96E0(CZOnlineLobby *lobby);   /* (a word of the lobby's: the persona's 0x4) */
+bool func_002E9B30();                      /* (the lobby unit's: a word at 0x44F778 set) */
+bool func_002E99E0();
+int func_002C2C20(int mode);               /* the voice chat's mode (below) */
+int func_002C2800();                       /* the blather object made (fts_net_blather.cpp's) */
+void *memset(void *p, int c, unsigned int n);
+char *strncpy(char *dst, const char *src, unsigned int n);
+int sprintf(char *buf, const char *format, ...);
+unsigned int func_002C32E0();
+unsigned int func_002C32C0();
+void func_002C3330(unsigned int team);     /* the player's team set (below) */
+}
+
+/* this client's persona made: its network object created and cleared; for the session master the
+ * side it starts on -- the spectators' when the lobby's flag says so, the SEALs' when the lobby asks
+ * for it, else the terrorists' -- with that side's count set to one and the slot cleared; the
+ * lobby's word, the player's name (its UI variable, else "Player<n>", cut at 30), its clan (cut at
+ * 15), its client, team and slot copied in; the client's entry taken when free, the voice chat set,
+ * the blather object made, and the network error dialog shown when no team came (SOCOM 1's
+ * CreateLocalPersona, rebuilt: OVL1 0x2C5450) */
+int CZPersonaState::CreateLocalPersona()
+{
+    int index;
+
+    if (theNetwork.zNetCreateObject(&index, (NetOwnershipStatus)1, (NetObjectLifespan)2, 0, 0, 0, 1, 0,
+                                    "PersonaObject", m_NetStructIndexPersonaObject))
+        return -1;
+    PersonaData *data = (PersonaData *)theNetwork.zNetGetObject(index)->m_data;
+
+    memset(data, 0, sizeof(PersonaData));
+    if (theNetwork.m_bSessionMaster) {
+        if (func_002F6D00(&theLobby) != false) {
+            data_00441458 = 1;
+            func_002C3330(0x10000);
+            data_00441468 = 0;
+        } else if (func_002E9B30() && func_002E99E0() == true) {
+            data_00441450 = 1;
+            func_002C3330(func_002C32C0());
+            data_00441468 = 0;
+        } else {
+            data_00441448 = 1;
+            func_002C3330(func_002C32E0());
+            data_00441468 = 0;
+        }
+    }
+    data->m_4 = func_002F96E0(&theLobby);
+    CUIVariable *var = theUIVarManager.Find("PLAYERNAMEVAR");
+
+    if (var)
+        sprintf(data->m_name, "%s", var->GetString());
+    else
+        sprintf(data->m_name, "Player%d", theNetwork.zNetGetMyGameClientIndex());
+    data->m_name[30] = 0;
+    var = theUIVarManager.Find("Clan_Description");
+    const char *clan;
+
+    if (var && (clan = var->GetString()) != 0) {
+        strncpy(data->m_clan, clan, 16);
+        data->m_clan[15] = 0;
+    } else
+        strncpy(data->m_clan, "", 16);
+    data->m_44 = theNetwork.zNetGetMyGameClientIndex();
+    data->m_team = data_00441470;
+    data->m_3e = data_00441468;
+    AddPersona(data->m_44, index, data);
+    func_002C2C20(0);
+    data->m_c = func_002C2800();
+    if (!data_00441470)
+        func_002A47B0(&theMission, "dlgNetError.rdr");
+    return index;
+}
 
 /* this client's persona brought up to date: the state switch checked, the game's states, the
  * lobby's byte (4 for one name), the team, the slot and the lobby's word copied in, and the lists
@@ -1335,7 +1437,8 @@ extern "C" void func_002C2D50(signed char value)
 
 /* the voice chat put in a mode: 3 for a player not yet in, 10 for the lobby's flag, with 4 added
  * for a SEAL on the SEALs' side when the chat's byte 0x4D is clear (OVL1 0x2C2C20; the load state
- * calls it with 0 and 3) */
+ * calls it with 0 and 3). Pinned: CreateLocalPersona calls it out of line */
+#pragma auto_inline off
 extern "C" int func_002C2C20(int mode)
 {
     int extra = 0;
@@ -1353,6 +1456,7 @@ extern "C" int func_002C2C20(int mode)
     }
     return data_0045B718->m_2c;
 }
+#pragma auto_inline reset
 
 /* every client's persona forgotten (OVL1 0x2C2BB0) */
 void CZPersonaState::ClearPersonaList()
