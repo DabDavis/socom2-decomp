@@ -23,11 +23,25 @@ public:
 };
 extern CZNetwork theNetwork;
 
+/* the AI maps (ai_maps.h's class; OVL2's AiMaps): a point's cell, and the shadow's darkness there
+ * (0 lit .. 1 dark) -- as zwep_explosive.cpp declares them */
+class CAiMapLoc;
+class CAiMaps {
+public:
+    bool GetLocation(const CPnt3D *pos, CAiMapLoc &loc);
+    float GetInterpolatedShadow(const CAiMapLoc &loc, const CPnt3D *pos, bool inside);
+};
+extern CAiMaps AiMaps;
+
 /* the network grenade (fts_net_grenade.cpp's) */
 class CZGrenadeState {
 public:
     static void UpdateLocalGrenade(CZProjectile *proj);
+    static int CreateLocalGrenade(CZProjectile *proj);
 };
+
+/* five items of a kind (zwep_ftsweapon.cpp's 0x3C5AC0, not named) */
+extern "C" bool func_003C5AC0(EQUIP_ITEM id);
 
 /* a pickup (OVL2's) */
 class CPickup {
@@ -70,11 +84,6 @@ extern "C" void func_002707C0(CZAnim *anim, int b);
 
 /* the tracers' speed (0x3E1570, initialised data; not named) */
 extern "C" float data_003E1570;
-
-/* the weapon's impact radius (0x3D27D0, m_impactradius) and arming distance (0x3D2030, the float
- * at 0x68: an impact nearer the start bounces as a dud) -- zwep_weapon.cpp's getters, not named */
-extern "C" float func_003D27D0(CZWeapon *weapon);
-extern "C" float func_003D2030(CZWeapon *weapon);
 
 /* a dud's velocity scale (0x3E1510, initialised data; not named) */
 extern "C" float data_003E1510;
@@ -243,6 +252,101 @@ void CZProjectile::Init()
     m_hasrested = 0;
 }
 
+/* a thrown shot of the player's made a network grenade, announced as created (SOCOM 1's inline; a
+ * person-hit shot makes none in SOCOM II) */
+static inline bool CreateNetGrenade(CZProjectile *p)
+{
+    if (!p->m_isplayer || p->m_lastHitWasPerson)
+        return false;
+    p->m_object_index = CZGrenadeState::CreateLocalGrenade(p);
+    if (p->m_object_index < 0)
+        return false;
+    p->m_grenadestate = CREATE;
+    CZGrenadeState::UpdateLocalGrenade(p);
+    return true;
+}
+
+/* a shot set off (SOCOM 1's SetProjectile, 0x3CB1A0, without the angles: SOCOM II marks five weapon
+ * classes' shots as tracers unless the item is one of five or none, turns the model to the start,
+ * gives item 159 its owner's rotation, holds item 185's launch still when it is not the player's,
+ * takes the timers from the weapon passed, and clears its own new members): the weapon and its
+ * range, the ammunition, the frame at the start, the velocity the muzzle's along the direction
+ * plus the carrier's, the model, the owner, the timers, the flags and the shot type; then fired
+ * (PreFireProjectile), and a thrown shot of the player's in a network game announced as a grenade
+ * -- false when that fails */
+bool CZProjectile::SetProjectile(CNode *owner, CZWeapon *weapon, CZAmmo *ammo, const CPnt3D *pos,
+                                 const CPnt3D *dir, const CPnt3D *vel, int shooter, CModel *model)
+{
+    m_weapon = weapon;
+    if (m_weapon)
+        m_currange = m_weapon->GetMaxRange();
+
+    bool tracer = false;
+    EQUIP_ITEM type = m_weapon->GetIDType();
+
+    if (type == 31 || type == 51 || type == 91 || type == 141 || type == 205) {
+        EQUIP_ITEM id = m_weapon->m_ID;
+
+        if (!func_003C5AC0(id) && id != 255)
+            tracer = true;
+    }
+    SetLastHitWasVolumetric(tracer);
+    m_ammo = ammo;
+    m_framestartpos = *pos;
+    if (m_shottype == ONE_FRAME_SHOTGUN)
+        SetModelOrientation(true, pos);
+    else if (m_shottype == ONE_FRAME)
+        SetModelOrientation(true, pos);
+    else
+        SetModelOrientation(false, pos);
+    if (owner && m_weapon->m_ID == 159 && m_instance) {
+        CPnt3D rot = CPnt3D::zero;
+
+        owner->GetRotation(&rot);
+        m_instance->SetRotation(&rot);
+    }
+    m_frameendpos = *pos;
+    m_startpos = *pos;
+    m_intersecthandle = -1;
+    if (type == 185 && !m_isplayer && !m_lastHitWasPerson && owner)
+        dir->Scale(0.0f, &m_vel);
+    else
+        dir->Scale(weapon->GetMuzzleVelocity(), &m_vel);
+    m_vel.Add(vel, &m_vel);
+    if (model)
+        m_instance->SetModel(model);
+    m_owner = owner;
+    m_time = weapon->GetTimer(0);
+    m_removaltime = weapon->GetTimer(1);
+    m_pickup = 0;
+    SetDone(false);
+    m_animinstance = 0;
+    m_shottype = NORMAL;
+    m_state = PROJECTILE_FLYOUT;
+    m_shooterID = shooter;
+    SetIsFirstHit(true);
+    SetEcho(false);
+    SetFlag7(false);
+    m_lastPlayerHitPos.x = 0.0f;
+    m_lastPlayerHitPos.y = 0.0f;
+    m_lastPlayerHitPos.z = 0.0f;
+    m_78 = 0;
+    m_restnode = 0;
+    m_98 = 0.0f;
+    SetFlag9(m_ammo->GetIgnoreExplosionDI());
+    if (m_weapon->IsDirectFire())
+        m_shottype = ONE_FRAME;
+    PreFireProjectile();
+
+    bool ok = true;
+
+    if (m_weapon && !m_weapon->IsDirectFire() && theNetwork.m_bNetwork && m_isplayer) {
+        if (!CreateNetGrenade(this))
+            ok = false;
+    }
+    return ok;
+}
+
 /* made ready to fly: a launcher's fire animation started on the node (SOCOM II's), the
  * intersection taken from the direct- or the indirect-fire table and two flags cleared (SOCOM 1's
  * whole body), a volatile round's node given its first child's collision pieces and its extension,
@@ -314,6 +418,235 @@ static inline bool NoNode(CNode *node)
 static inline bool IsItem(EQUIP_ITEM id, int item)
 {
     return id == item;
+}
+
+/* switched on (inline: the bit converted to a bool, sltu, before its test -- as zwep_explosive.cpp's) */
+static inline bool NodeActive(CNode *node)
+{
+    return node->m_active;
+}
+
+/* an intersection's flags: bit 19 marks it registered for the delayed proximity test (zwep_explosive.cpp's
+ * view of zdb::DiIntersect's first word; the names ours) */
+struct DI_FLAGS {
+    unsigned int _b0 : 19;
+    unsigned int m_delayed : 1;
+    unsigned int _b20 : 12;
+};
+
+/* a point copied field by field through its address (the target keeps &a.y and &a.z in saved
+ * registers across the calls -- the kit's CopyPoint; the name ours) */
+static inline void CopyPoint(CPnt3D *dst, const CPnt3D *src)
+{
+    dst->x = src->x;
+    dst->y = src->y;
+    dst->z = src->z;
+}
+
+/* a frame before the move (SOCOM 1's PreTick, 0x3CA5A0, in SOCOM II's states): skipped while both new
+ * flags are set; a shot at rest on a node set flying again once a node it rests under is switched off;
+ * nothing more while a detonation waits, once removed, or detonated (its next hit registered unless
+ * held); else the frame starts where the last ended and moves: a normal shot in flight -- or to be
+ * removed -- by its velocity, pushed along by the ammunition's acceleration for item 185 off its rest
+ * node, pulled down by the weapon's gravity otherwise (SOCOM 1's constant 9.8 scaled); a direct-fire one
+ * to 1.1 of the weapon's range at once, its speed then 300; a shotgun's pellets' proximity registered
+ * (while weapons intersect); one to be detonated registered for the blast's proximity and handed on.
+ * The delay at 0x98 runs down; a shot that is neither a shotgun's nor a waiting detonation has its
+ * frame's ray registered (a direct-fire shot masked by the word at 0xc0) */
+bool CZProjectile::PreTick(float dT)
+{
+    if (m_b18 && m_b17)
+        return true;
+    if (m_state == PROJECTILE_AT_REST) {
+        CNode *n = m_restnode;
+
+        if (n) {
+            for (; !NoNode(n) && m_state == PROJECTILE_AT_REST; n = n->m_parent)
+                if (NodeActive(n) == false)
+                    m_state = PROJECTILE_FLYOUT;
+        }
+    }
+    if (m_state == PROJECTILE_DETONATION_TO_BE_HANDLED)
+        return true;
+    if (m_state == 7)
+        return true;
+    if (m_state == PROJECTILE_WAS_DETONATED && !m_b18) {
+        RegisterNextHit();
+        return true;
+    }
+    if (m_state == PROJECTILE_WAS_DETONATED && m_b18)
+        return true;
+    m_intersecthandle = -1;
+    m_framestartpos = m_frameendpos;
+    if (m_shottype == NORMAL && (m_state == PROJECTILE_FLYOUT || m_state == PROJECTILE_TO_BE_REMOVED)) {
+        if (m_weapon->GetIDType() == 185 && !m_restnode) {
+            CPnt3D dir;
+
+            CopyPoint(&dir, &m_vel);
+            dir.Normalize();
+            dir = dir * m_ammo->GetAccelerationFactor();
+            dir.x = dir.x;
+            dir.y = dir.y;
+            dir.z = dir.z;
+            m_vel = m_vel + dir * dT;
+            m_frameendpos = m_framestartpos + m_vel * dT;
+        } else {
+            CPnt3D g;
+
+            g.x = 0.0f * m_weapon->GetGravity();
+            g.y = -1.0f * m_weapon->GetGravity();
+            g.z = 0.0f * m_weapon->GetGravity();
+            m_vel = m_vel + g * dT;
+            m_frameendpos = m_framestartpos + m_vel * dT;
+        }
+    } else if (m_shottype == ONE_FRAME) {
+        m_vel.Normalize();
+        m_frameendpos = m_framestartpos + m_vel * (1.1f * m_weapon->GetMaxRange());
+        m_vel.Scale(300.0f);
+    } else if (m_shottype == ONE_FRAME_SHOTGUN && CZWeapon::m_allowWeaponIntersection) {
+        if (m_di) {
+            CWorld *world = CWorld::m_world;
+
+            m_intersecthandle = world->RegProximityDelayed(m_di, &m_framestartpos, m_ammo->GetExplosionRadius(),
+                                                           (unsigned int)-1);
+            CWorld::m_world->RegIgnoreNodeDelayed(m_di, m_owner);
+        }
+    } else if (m_state == PROJECTILE_TO_BE_DETONATED) {
+        if (m_di) {
+            ((DI_FLAGS *)m_di)->m_delayed = 1;
+            CWorld *world = CWorld::m_world;
+            float radius = m_ammo->GetExplosionRadius();
+
+            m_intersecthandle = world->RegProximityDelayed(m_di, &m_framestartpos, radius, (unsigned int)-1);
+        }
+        m_state = PROJECTILE_DETONATION_TO_BE_HANDLED;
+    }
+    if (m_98 > 0.0f)
+        m_98 -= dT;
+    if (CZWeapon::m_allowWeaponIntersection && m_shottype != ONE_FRAME_SHOTGUN &&
+        m_state != PROJECTILE_DETONATION_TO_BE_HANDLED && m_di) {
+        unsigned int mask = (unsigned int)-1;
+
+        if (m_shottype == ONE_FRAME)
+            mask = m_c0;
+        m_di->SetMask(mask);
+        m_intersecthandle = CWorld::m_world->RegIntersectDelayed(m_di, &m_framestartpos, &m_frameendpos,
+                                                                 (unsigned int)-1);
+        CWorld::m_world->RegIgnoreNodeDelayed(m_di, m_owner);
+    }
+    return true;
+}
+
+/* a frame after the move (SOCOM 1's PostTick, 0x3C9FB0, in SOCOM II's states: 7 removed, 6 to be
+ * removed, 5 detonated): removed -- or held with both new flags set -- reported and done; detonated,
+ * its next hit handled first; a delayed detonation handled; to be removed, removed once the flag or
+ * the removal time says so (off the network, or a player's or a person-hit shot's). Then the timers
+ * run, the frame's hits are dealt with -- a shotgun's every pellet hit at once, bounced or impacted
+ * by the weapon's class and item as HandleIntersections chooses, anything else walked through
+ * HandleIntersections --, the model turned to the frame (SOCOM II: not at rest), its shadow level
+ * set from the AI map's darkness (as the placed explosive's), a direct-fire shot removed, a hit one
+ * removed unless already detonating or being removed; the timers' verdict returned, false once
+ * removed */
+bool CZProjectile::PostTick(float dT)
+{
+    PROJECTILE_STATE state = m_state;
+    unsigned char held;
+
+    if (state == 7 || ((held = m_b18) != 0 && m_b17)) {
+        if (theNetwork.m_bNetwork) {
+            m_grenadestate = REMOVE;
+            ReportGrenadeStatus();
+        }
+        return true;
+    }
+    if (state == PROJECTILE_WAS_DETONATED) {
+        if (held || HandleNextHit()) {
+            if (m_b17)
+                m_state = (PROJECTILE_STATE)7;
+            else
+                m_state = PROJECTILE_TO_BE_REMOVED;
+        }
+        return false;
+    }
+    if (state == PROJECTILE_DETONATION_TO_BE_HANDLED) {
+        HandleDelayedDetonate();
+        return false;
+    }
+    if (state == PROJECTILE_TO_BE_REMOVED) {
+        if (m_b17)
+            m_state = (PROJECTILE_STATE)7;
+        else if (m_removaltime <= 0.0f && m_removaltime != 9999999.0f) {
+            if (!theNetwork.m_bNetwork || m_isplayer || m_lastHitWasPerson)
+                m_state = (PROJECTILE_STATE)7;
+        }
+    }
+    m_grenadestate = NEWPOS;
+
+    bool hit = false;
+
+    if (m_di)
+        CWorld::m_world->ClearIgnoreNodeDelayed(m_di);
+    if (m_intersecthandle == -1 && m_di)
+        return false;
+    if (m_time != 9999999.0f)
+        m_time -= dT;
+    if (m_removaltime != 9999999.0f)
+        m_removaltime -= dT;
+    if (m_shottype == ONE_FRAME_SHOTGUN) {
+        if (m_di) {
+            int n = m_di->m_Cnt;
+
+            for (int i = 0; i < n; i++) {
+                IntersectStruct *is = &m_di->m_Intersects[i];
+                CPnt3D pos;
+
+                is->m_pos.Sub(&m_framestartpos, &pos);
+                CZFTSWeapon *w = dynamic_cast<CZFTSWeapon *>(m_weapon);
+
+                if (w && (w->GetIDType() == 121 || w->GetIDType() == 151 || IsItem(w->GetId(), 172) ||
+                          IsItem(w->GetId(), 173) || IsItem(w->GetId(), 178) ||
+                          (IsItem(w->GetId(), 185) && m_restnode) || (IsItem(w->GetId(), 186) && m_restnode)))
+                    HandleBounce(is, dT, &pos);
+                else
+                    HandleImpact(is, dT, 0.0f, &pos);
+            }
+        }
+    } else
+        hit = HandleIntersections(dT);
+    if (m_state != PROJECTILE_AT_REST) {
+        if (m_shottype == ONE_FRAME_SHOTGUN)
+            SetModelOrientation(true, &m_frameendpos);
+        else if (m_shottype == ONE_FRAME)
+            SetModelOrientation(true, &m_frameendpos);
+        else
+            SetModelOrientation(false, &m_frameendpos);
+    }
+
+    unsigned int loc;
+
+    if (AiMaps.GetLocation(&m_frameendpos, *(CAiMapLoc *)&loc)) {
+        float light = AiMaps.GetInterpolatedShadow(*(CAiMapLoc *)&loc, &m_frameendpos, false);
+
+        _saturate(&light, 0.0f, 1.0f);
+        m_instance->m_socom2_a0 = (int)(127.0f * (1.0f - light));
+    }
+    if (m_shottype == ONE_FRAME || m_shottype == ONE_FRAME_SHOTGUN)
+        m_state = (PROJECTILE_STATE)7;
+    else if (hit == true) {
+        if (m_state != PROJECTILE_TO_BE_DETONATED && m_state != PROJECTILE_DETONATION_TO_BE_HANDLED &&
+            m_state != PROJECTILE_TO_BE_REMOVED) {
+            if (!theNetwork.m_bNetwork || m_isplayer || m_lastHitWasPerson)
+                m_state = (PROJECTILE_STATE)7;
+        }
+    }
+
+    bool r = HandleTimers();
+
+    if (theNetwork.m_bNetwork && m_shottype != ONE_FRAME && m_shottype != ONE_FRAME_SHOTGUN)
+        ReportGrenadeStatus();
+    if (m_state == 7)
+        return false;
+    return r;
 }
 
 /* the frame's hits walked nearest first, beyond the last one dealt with and within the range,
@@ -682,7 +1015,7 @@ PROJECTILE_HIT CZProjectile::HandleImpact(IntersectStruct *hit, float dT, float 
     if (!same)
         CZWeapon::m_pMarklist->AddNewMark(hit, this, 1.0f);
     if (weapon && !same) {
-        float r = func_003D27D0(m_weapon);
+        float r = m_weapon->GetImpactRadius();
 
         r *= ex->m_impact_radius_mod;
 
@@ -697,13 +1030,13 @@ PROJECTILE_HIT CZProjectile::HandleImpact(IntersectStruct *hit, float dT, float 
             CAiEvent::Create(e);
         }
     }
-    if (weapon && func_003D2030(weapon) > 0.0f) {
+    if (weapon && weapon->GetArmingDistance() > 0.0f) {
         CPnt3D d = *pos;
 
         d = d - m_startpos;
         float len = d.Length();
 
-        if (len < func_003D2030(weapon)) {
+        if (len < weapon->GetArmingDistance()) {
             m_vel = m_vel * data_003E1510;
             m_time = 9999999.0f;
             SetDone(true);
@@ -866,6 +1199,7 @@ bool CZProjectile::RegisterNextHit()
 
 /* the next hit, if it counts, handed to its node's extension -- an instance's to the node it
  * instances -- and the index moved on; none without both intersections */
+#pragma auto_inline off
 bool CZProjectile::HandleNextHit()
 {
     if (m_di && m_di2) {
@@ -883,6 +1217,7 @@ bool CZProjectile::HandleNextHit()
     }
     return true;
 }
+#pragma auto_inline reset
 
 /* the node cleared from every hit of a detonated projectile's intersection */
 void CZProjectile::ForgetHitNode(zdb::CNode *node)

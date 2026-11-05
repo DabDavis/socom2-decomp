@@ -47,7 +47,16 @@
  *     unit until the UI lane's round 6 -- then zui_spec.cpp's GetControlSpec 0x382890 (0x2CC against
  *     0x304) -- so this header stays two high and fts_state.h apart; st_core.cpp's stand-ins under
  *     the placeholders scored the members' rows by address (its func_001EF400 has no row since round
- *     21 named 0x1EF400: the other units' copies match it);
+ *     21 named 0x1EF400: the other units' copies match it). MEASURED AGAIN (the MSL headers round 28,
+ *     the states' request: zonline.h cannot join st_menu.cpp while fts_state.h defines its own
+ *     std::basic_string): fts_state.h's nine users built against this header (the stand-in replaced
+ *     by `#include <string>`, st_core.cpp's replace/append/assign definitions dropped -- this header
+ *     defines them): eight are code-neutral (their tails emit this header's out-of-class members,
+ *     byte-exact against the rows other units match), main.cpp loses four -- COurGame() 0x1E7530
+ *     WRONG, CGameState(const char *), CSaferStr() and SetDefaultMenu no longer emitted: this default
+ *     constructor is two levels high, the stand-in's four, and COurGame's inlining of CMenuState rests
+ *     on the four. Made four high here it is -47 over every hand-written unit (GetControlSpec, the
+ *     template replace's copies, the string-keyed trees' insert_node_at, ...). So the stand-in stays;
  *   - erase() is that template replace over (0, npos) with an empty range of const char *, inline
  *     (SetString__16C2DMessageStringFPCc, the menu's string handlers);
  *   - the copies, out of class (the MSL lane, 2026-10-25; each byte-exact): the copy constructor

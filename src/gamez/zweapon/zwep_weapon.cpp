@@ -499,6 +499,98 @@ int CZWeapon::GetMenuValue(EQUIP_ITEM item)
     }
 }
 
+/* something the AI notices (ai.h's CAiEvent: its fields and the pool's two calls -- as
+ * zwep_projectile.cpp declares them) */
+class CAiEvent {
+public:
+    static CAiEvent *Acquire();
+    static void Create(CAiEvent *e);
+
+    CPnt3D m_pos;   // 0x0
+    float m_rangeSq;   // 0xc
+    float m_duration;   // 0x10
+    int m_owner;   // 0x14
+    unsigned int m_id : 16;   // 0x18
+    unsigned int m_visible : 1;   // 0x1a
+    unsigned int m_type : 15;
+};
+
+/* a point copied field by field through its address (the target keeps &a.y and &a.z in saved
+ * registers across the calls -- zwep_projectile.cpp's; the name ours) */
+static inline void CopyPoint(CPnt3D *dst, const CPnt3D *src)
+{
+    dst->x = src->x;
+    dst->y = src->y;
+    dst->z = src->z;
+}
+
+/* a shot fired (SOCOM 1's Fire(CNode *, CZAmmo *, ...), the vtable's slot 0xC, 0x3D2D70 -- its two
+ * angles gone): a weapon with a backblast (the byte at 0xd5) first fires item 159's default
+ * ammunition backwards out of the same point with the carrier's velocity reversed, through a free
+ * projectile taking the shot's player and flyout flags and marked as a person hit (a point 9 units
+ * behind is worked out and never used); then the projectile set off -- given back when it cannot
+ * be --, direct fire (or class 145) heard by the AI out to the sound radius (SOCOM 1's noise, its
+ * type 7), and the fire sound played at the point (SOCOM II's).
+ * OPEN, 31 instructions, every one a frame offset: igreplay maps all 57 virtual registers to the
+ * target's (0 differ) -- the frame is 448 against 432. Two layouts differ: (1) the three spills --
+ * the target packs the two word spills (the ammo parameter at 220, the backblast's ammunition at 216)
+ * in one quadword and the bool useflyout at 192 in another, as if spilled in the order ammo,
+ * ammunition, flag (by node number), where here the flag (a named local, 41) is numbered ahead of the
+ * ammunition (GetDefaultAmmo's result temporary, 45) and each spill takes a quadword of its own; igreplay
+ * --move 45=40.5 or 41=45.5 keeps every colour, but no source shape tried numbers them so (the
+ * ammunition declared at the block's top, a dead `= 0` first, GetDefaultAmmo's body written out, the
+ * flags declared the other way round, the backblast in an inline helper taking the flags as
+ * parameters); (2) the unused point 9 units behind: the target computes it into a frame slot among the
+ * inline operators' results (240) with no return copy -- as the expression statement `*pos - d;` MW puts
+ * the result among the return copies (43 off), assigned to a declared point or initialising one the
+ * same or worse; `pos->Sub(&d, &bpos)` into a named point is the nearest (31) */
+void CZWeapon::Fire(CNode *node, CZAmmo *ammo, const CPnt3D *pos, const CPnt3D *dir, const CPnt3D *vel,
+                    CZProjectile *projectile, int shooter, CModel *model)
+{
+    if (m_socom2_d5) {
+        CPnt3D back;
+        CPnt3D bvel;
+
+        back = *dir * -1.0f;
+        bvel = *vel * -1.0f;
+        CPnt3D d;
+
+        CopyPoint(&d, &back);
+        d.Normalize();
+        d = d * 9.0f;
+        CPnt3D bpos;
+
+        pos->Sub(&d, &bpos);
+        bool isplayer = projectile->m_isplayer;
+        bool useflyout = projectile->m_useflyout;
+        CZWeapon *bb = m_listWeapons.GetWeapon((EQUIP_ITEM)159);
+        CZAmmo *bbammo = bb->GetDefaultAmmo();
+        CZProjectile *p = m_pProjectilelist->GetNextFreeProjectile();
+
+        p->SetUseFlyout(useflyout);
+        p->SetIsPlayer(isplayer);
+        p->SetLastHitWasPerson(true);
+        bb->Fire(node, bbammo, pos, &back, &bvel, p, shooter, 0);
+    }
+    if (projectile->SetProjectile(node, this, ammo, pos, dir, vel, shooter, model) == false)
+        m_pProjectilelist->RemoveProjectile(projectile);
+    else if (IsDirectFire() || GetIDType() == 145) {
+        float r = m_soundradius;
+
+        if (r > 1.0f) {
+            CAiEvent *e = CAiEvent::Acquire();
+
+            e->m_pos = *pos;
+            e->m_rangeSq = r * r;
+            e->m_duration = 0.1f;
+            e->m_type = 7;
+            e->m_owner = shooter;
+            CAiEvent::Create(e);
+        }
+    }
+    PlayFireSound(pos);
+}
+
 /* the sound listener: the app camera's camera node (0x48DB48, set where the mission opens) */
 extern "C" CNode *data_0048DB48;
 

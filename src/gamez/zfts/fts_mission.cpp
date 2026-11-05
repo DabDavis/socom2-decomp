@@ -92,6 +92,7 @@ public:
 
     /* the round's clock in whole seconds (SOCOM 1's CNetClock accessors, zfts.h: `0.001f * ms`) */
     unsigned int GetMaxGameTimeSec() { return 0.001f * m_max_game_time; }
+    unsigned int GetRoundClockSec() { return 0.001f * m_round_clock; }
     void SetE3RoundCount(int count);
     MP_MAJOR_GAME_STATE MPMajorGameState(MP_MAJOR_GAME_STATE state);
     MP_MAJOR_GAME_STATE MyMajorGameState(MP_MAJOR_GAME_STATE state);
@@ -145,9 +146,10 @@ public:
     unsigned int m_time_in_round;   // 0xe8 (SOCOM 1's m_clock.m_time_in_round, at 0xac)
     unsigned int m_round_clock;   // 0xec: the round's time left, in milliseconds (the name ours)
     unsigned int m_total_time;   // 0xf0 (SOCOM 1's m_clock.m_total_time, at 0xb4)
-    unsigned char m_launch_f4;   // 0xf4 (SOCOM 1's at 0xbc)
-    unsigned char _f5[0xf8 - 0xf5];
-    int m_f8;   // 0xf8 (SOCOM 1's at 0xc0)
+    unsigned char m_launch_f4;   // 0xf4 (SOCOM 1's at 0xbc: its clock's m_initial_read_set)
+    unsigned char m_clock_running;   // 0xf5 (SOCOM 1's clock's, at 0xbd)
+    unsigned char _f6[0xf8 - 0xf6];
+    CValve *m_f8;   // 0xf8 (SOCOM 1's m_pTimerValve, at 0xc0: the round's timer valve)
     unsigned char _fc[0x100 - 0xfc];
     int m_100;   // 0x100 (SOCOM 1's at 0xc8)
     unsigned char _104[0x110 - 0x104];
@@ -509,6 +511,19 @@ public:
     unsigned int GetTimeLeft();
     void EndMission();
     void OnMissionComplete(MISSION_STATE state);
+    void Tick(float dT);
+    void TickObjectives(float dT);   /* 0x2A9F30 */
+    void TickInFirefight(float dT);
+    /* the state set, the one it replaces returned (OnMissionComplete's opening: the old state copied
+     * through this inline's result keeps the target's lb + andi; the name ours) */
+    MISSION_STATE SetState(MISSION_STATE state)
+    {
+        MISSION_STATE old = m_state;
+
+        if (state != old)
+            m_state = state;
+        return old;
+    }
     void CreateLadderTable();
     void OnMissionStart();
 
@@ -994,8 +1009,9 @@ extern float data_003DE618;   /* (the raised intensity's hold time) */
 
 /* the music's intensity kept up with the danger around the player: above 1 it is raised and held
  * for a while, renewed when the hold runs out; once the danger passes, the hold runs down and the
- * intensity drops to nothing (SOCOM II's; OVL1 0x2A4920) */
-extern "C" void func_002A4920(CMission *mission, float dT)
+ * intensity drops to nothing (SOCOM 1's TickInFirefight, which asked the jukebox whether a fight was
+ * on: Tick calls both right after the spawners' tick; OVL1 0x2A4920) */
+void CMission::TickInFirefight(float dT)
 {
     float intensity = 0.0f;
     CZSealBody *player = ftsGetPlayer();
@@ -1003,15 +1019,15 @@ extern "C" void func_002A4920(CMission *mission, float dT)
     if (player)
         intensity = func_002A4A10(player, 2, 350.0f);
     if (intensity > 1.0f) {
-        if (mission->m_music_hold <= 0.0f) {
+        if (m_music_hold <= 0.0f) {
             CSndJukebox::SetIntensity(intensity);
-            mission->m_music_hold = data_003DE618;
+            m_music_hold = data_003DE618;
         }
-        mission->m_music_hold -= dT;
-    } else if (mission->m_music_hold != 0.0f) {
-        mission->m_music_hold -= dT;
-        if (mission->m_music_hold <= 0.0f) {
-            mission->m_music_hold = 0.0f;
+        m_music_hold -= dT;
+    } else if (m_music_hold != 0.0f) {
+        m_music_hold -= dT;
+        if (m_music_hold <= 0.0f) {
+            m_music_hold = 0.0f;
             CSndJukebox::SetIntensity(0.0f);
         }
     }
@@ -1812,6 +1828,8 @@ class CPickup {
 public:
     static void Close(bool all);   /* OVL2 0x542E50 */
     static void Open(unsigned int count);   /* OVL2 0x542FC0 */
+    static void TickTimers(const CPnt3D *pos, float dT);   /* OVL2 0x542290 */
+    static void NetTick(const CPnt3D *pos, float dT);   /* OVL2 0x5423E0 */
 };
 
 extern "C" {
@@ -2019,7 +2037,6 @@ public:
 extern "C" {
 extern void *data_0045B718;
 void func_0030E6E0(void *voice, int arg);
-extern unsigned char data_00408638[];   /* (a state in theGame, at 0x178) */
 extern unsigned char data_004086C8[];   /* (a state in theGame, at 0x208) */
 }
 
@@ -2031,24 +2048,21 @@ extern unsigned char data_004086C8[];   /* (a state in theGame, at 0x208) */
  * the game object sent, the round's time totalled and the round's end pushed. Alone, on a change to
  * an abort or with the player dead: with "nofade" set the mission ended at once (EndMission
  * inlined), the end's hold cleared either way.
- * OPEN, 0x39C against 0x3AC (round 39): every block is the target's but the first and the alone
- * test's -- the target copies the old state into a register with `lb` and narrows it with `andi
- * 0xff` at both compares (SOCOM 1's does the same: an enum copied into a local, as CheckStateSwitch's
- * switch on its local), where here MW reads the field once with `lbu` into the first compare; and
- * `this` and the net game trade s0/s1 (the target keeps this in s1, the game in s0, the game-over
- * flag in s1 once this is dead). Tried: `old` const, assigned apart, a char copy cast back, a second
- * local for the new state, a reference to the field, an accessor, `old != state && true`, the change
- * as an inline (one re-reading the field -- `lbu` then `lb`, 8 short -- one taking both by value),
- * as a ternary store (8 short), `if ((old = m_state) != state)` (8 short, still `lbu`), a bool
- * `changed`, `?: true : false` and `|| false` in the test: the copy needs to survive to its first
- * compare (a branch between them, round 38's forwarding rule) without costing code */
+ * Round 40, byte-exact: the old state is the RESULT of an inline setting the new one (SetState: the
+ * old copied, the new stored when it differs, the old returned) -- copied through the inline's result
+ * temporary, the byte keeps its `lb` and is narrowed with `andi 0xff` at each compare, as the target
+ * (a copy read straight into a compare in the same block folds into one lbu: round 39's rule; every
+ * no-code node boundary -- a label, `if (0)`, an empty asm, `(void)` uses, a one-pass loop -- keeps the
+ * lbu); `state != old` puts the parameter first in the beq. The game-over flag declared ahead of the
+ * game (numbered before it: the replay's v35 moved past v36 gives the target's this s1 / game s0, as
+ * `tools/igreplay.py --move 35=36.5 --target` showed) and the abort's switch to the menu state at
+ * theGame +0x78 (the old data_00408638, +0x178, was a wrong reference the size miss hid) */
 void CMission::OnMissionComplete(MISSION_STATE state)
 {
-    MISSION_STATE old = m_state;
+    MISSION_STATE old = SetState(state);
 
-    if (old != state)
-        m_state = state;
     if (theNetwork.m_bNetwork) {
+        bool over;
         CZNetGame *game = m_pNetGame;
 
         if (!game)
@@ -2061,14 +2075,14 @@ void CMission::OnMissionComplete(MISSION_STATE state)
             else if (m_timer > m_delay) {
                 data_0044F3CC = 0;
                 theGame.m_menuState.SetDefaultMenu("dlgNetAbort.rdr");
-                theGame.Switch((CGameState *)data_00408638, 0);
+                theGame.Switch(&theGame.m_menuState, 0);
                 _OnMissionComplete();
             }
         } else if (theNetwork.m_bSessionMaster) {
             if (m_delay == -1.0f)
                 m_delay = m_timer + 3.0f;
             else if (m_timer > m_delay) {
-                bool over = game->m_pGameOverValve->m_value != 0;
+                over = game->m_pGameOverValve->m_value != 0;
                 CValve *score00 = CValve::GetByName("mp_score00");
                 CValve *score08 = CValve::GetByName("mp_score08");
                 CValve *winner = CValve::GetByName("mp_winner");
@@ -2407,6 +2421,7 @@ public:
 class CSpawners {
 public:
     void Clear();   /* 0x2B2190 */
+    void Tick(float dT);   /* 0x2B21D0 */
 };
 
 extern CSpawners spawners;   /* 0x440C10 */
@@ -3366,6 +3381,68 @@ extern "C" bool func_002AA890()
     if (!(ctrl && ctrl->m_221 != 2 && ctrl->m_221 != 3 && ctrl->m_221 != 4 && ctrl->m_221 != 5))
         return false;
     return true;
+}
+
+/* the mission's frame (SOCOM 1's CMission::Tick; OVL1 0x2AA490): the clocks run -- the mission's
+ * time, the wait before falling, the win/loss clock while the player's controller lives (0x2AA890
+ * inlined) --; in a network game the round's clock (SOCOM 1's CNetClock::Tick, out of line there)
+ * and its timer valve dropped at zero by the master, the local game updated, its 0x112 set, and a
+ * client at the round's or the game's end completes the mission and pushes the end; alone, the
+ * objectives ticked. Then the outcome valves (only the abort while the objectives are ignored),
+ * the spawners, the firefight's music and the player's pickups */
+void CMission::Tick(float dT)
+{
+    m_timer += dT;
+    if (m_wait_before_falling > 0.0f)
+        m_wait_before_falling -= dT;
+    if (func_002AA890())
+        m_e8 += m_winlossinc * dT;
+    if (theNetwork.m_bNetwork && m_pNetGame) {
+        CZNetGame *game = m_pNetGame;
+
+        if (game->m_launch_f4 && game->m_clock_running) {
+            unsigned int now = theNetwork.zNetGetTime();
+
+            game->m_time_in_round = (unsigned int)game->m_launch_time < now ? now - game->m_launch_time : 1;
+        }
+        game->m_round_clock = game->m_max_game_time > game->m_time_in_round ?
+            game->m_max_game_time - game->m_time_in_round : 0;
+        if (game->m_f8 && game->GetRoundClockSec() == 0 && game->m_f8->GetValue() && theNetwork.m_bSessionMaster)
+            SetValveValue(game->m_f8, 0);
+        CZGameState::UpdateLocalGame(m_pNetGame);
+        if (m_pNetGame->m_112 != 1)
+            m_pNetGame->m_112 = 1;
+        if (!theNetwork.m_bSessionMaster) {
+            CZNetGame::MP_MAJOR_GAME_STATE state = m_pNetGame->m_mp_major_game_state;
+
+            if (state == CZNetGame::MP_MAJOR_ROUNDOVER || state == CZNetGame::MP_MAJOR_GAMEOVER) {
+                OnMissionComplete(m_state);
+                _OnMissionComplete();
+                m_pNetGame->m_total_time += m_pNetGame->m_time_in_round;
+                Push__5CGameFP10CGameStateUi(&theGame, data_004086C8, 0);
+            }
+        }
+    } else
+        TickObjectives(dT);
+    if (!m_ignore_objectives) {
+        if (m_valve_complete->m_value)
+            OnMissionComplete(MISSION_SUCCESS);
+        else if (m_valve_failure->m_value)
+            OnMissionComplete(MISSION_FAILURE);
+        else if (m_valve_abort->m_value)
+            OnMissionComplete(MISSION_ABORTED);
+        else if (m_valve_timeout->m_value)
+            OnMissionComplete(MISSION_TIMEDOUT);
+    } else if (m_valve_abort->m_value)
+        OnMissionComplete(MISSION_ABORTED);
+    spawners.Tick(dT);
+    TickInFirefight(dT);
+    CZSealBody *player = ftsGetPlayer();
+
+    if (!theNetwork.m_bNetwork && player)
+        CPickup::TickTimers(&player->m_posW, dT);
+    else if (theNetwork.m_bNetwork && player)
+        CPickup::NetTick(&player->m_posW, dT);
 }
 
 /* START_IMAGE_RECORDER: the recorder's file name, its lines and rate (SOCOM 1's command; SOCOM II's

@@ -186,7 +186,13 @@ static inline void CrossVU0(const CPnt3D *a, const CPnt3D *b, CPnt3D *out)
  * there through an uninitialised pointer (forwarded, or the loop no longer rotated: 0x10 long), inline
  * helpers taking the vector, its address or the SEAL (forwarded), with the bounds test inside (a null
  * test more), begin() + id, a const view -- the operator[] whose `this` the original kept unforwarded
- * is not found. */
+ * is not found. The SEALs' round 44, with igreplay's --target: `--move 36=40.5` (parts after part,
+ * before @5370) scores 0 differing against the shipped code, so the numbering is certain; still
+ * forwarded (`seal` kept in s5, parts gone): the vector's address assigned through an inline's
+ * reference or pointer out-parameter (the game states' round-39 rule), with part given a dead first
+ * definition at function or block scope and `i` declared ahead of it (round 12's), and a static
+ * inline returning the address -- by CZSealBody * or CBody * (zbody.h's ActiveAnimPool shape, whose
+ * result MW hoists, is a member; the parts' load base folds into `468(seal)` here). */
 extern "C" void func_00577BA0(CZSealBody *seal, CZSIScriptCommon *script, unsigned int f0, unsigned int f1, float t)
 {
     std::vector<CZBodyPart *> &parts = seal->m_body_parts;

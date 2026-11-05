@@ -250,6 +250,79 @@ static int InitNewUtterance(ISOWDP *e)
     return 0;
 }
 
+/* the node wheel made (256 slots) or grown by 200: the ring copied into a new block, its pointers
+ * rebased (*a and *b both to *b's slot), then the 200 new slots opened at *a -- the ring's part
+ * before *a moved up into them when *b was 200 slots in or more, else the first 200 wrapped round
+ * to the new end and the rest moved down. SOCOM 1's body, the wheel 4 bytes on. OPEN (round 28c,
+ * the right size, every block the target's but the first allocation's four closing stores --
+ * 0x4E90E8's tail, end, head, size; 24 orders tried, none closer than a word): the registers
+ * rotate through s0-s2. The target keeps the null test's load of the base apart from `old` (a
+ * `move s0,v0` in the grow path), and old then outranks p and w in global-alloc (s0, s1, s2);
+ * here CSE gives the test and old one pseudo, live from the entry, which ranks below both (p s0,
+ * w s1, old s2). The test through e->wheel, old read later or through e, the declarations in
+ * three orders, old for the copy's and free's base: no change. */
+int ExtendNodeWheel(ISOWDP *e, WTOKEN ***a, WTOKEN ***b)
+{
+    WHEEL *w = &e->wheel;
+    ISOTOS *tos = e->tos;
+    WTOKEN **old, **p, **s, **d;
+    int n, hi, ti, bi;
+
+    if (w->base == 0) {
+        n = 256;
+        w->base = heap_Alloc(tos->heap, n * sizeof(WTOKEN *));
+        if (w->base == 0)
+            return 1;
+        w->head = w->base;
+        w->tail = w->base;
+        w->end = w->base + n - 1;
+        w->size = n;
+        return 0;
+    }
+    old = w->base;
+    n = w->size + 200;
+    hi = w->head - old;
+    ti = w->tail - old;
+    bi = *b - old;
+    p = heap_Alloc(tos->heap, n * sizeof(WTOKEN *));
+    if (p == 0)
+        return 1;
+    memcpy(p, w->base, w->size * sizeof(WTOKEN *));
+    heap_Free(tos->heap, w->base);
+    w->base = p;
+    if (old != p) {
+        w->head = p + hi;
+        w->tail = p + ti;
+        *a = *b = p + bi;
+    }
+    w->end = w->base + n - 1;
+    w->size = n;
+    if (bi < 200) {
+        for (s = w->base, d = w->base + n - 200; s < *a; )
+            *d++ = *s++;
+        if (w->head < *a)
+            w->head += n - 200;
+        if (w->tail < *a)
+            w->tail += n - 200;
+        *a += n - 200;
+    } else {
+        for (s = w->base, d = w->base + n - 200; d <= w->end; )
+            *d++ = *s++;
+        for (s = w->base + 200, d = w->base; s < *a; )
+            *d++ = *s++;
+        if (w->head < w->base + 200)
+            w->head += n - 200;
+        else if (w->head < *a)
+            w->head -= 200;
+        if (w->tail < w->base + 200)
+            w->tail += n - 200;
+        else if (w->tail < *a)
+            w->tail -= 200;
+        *a -= 200;
+    }
+    return 0;
+}
+
 /* the garbage arrays grown by 150 entries (each array holds ngarbage + 1 words) */
 static int ExpandGarbageArrays(ISOWDP *e)
 {

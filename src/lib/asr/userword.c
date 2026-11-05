@@ -26,7 +26,7 @@ typedef struct UWDATA {
 } UWDATA;                               /* 36 bytes, kept at +944 */
 
 extern int casrEnableLabelInQueue(CASR *c, unsigned char enable);
-extern int _tosControl(void *event, int id, int a, int b);
+extern unsigned char _tosControl(void *event, int id, int a, int b);
 extern int ExitUserWordTraining(CASR *c);
 extern int DoUserWordTraining(CASR *c);
 extern void heap_Free(void *heap, void *p);
@@ -50,6 +50,53 @@ typedef struct UWSETUP {
     void *phen;                         /* +4 */
     short silence;                      /* +8 */
 } UWSETUP;
+
+extern unsigned char _tosErrorLog(void *log, unsigned short code);
+
+/* the host's answer to a training utterance: 1 accepted -- the scheduler told 22 or, with more
+ * utterances to come, 10; when the last was rejected in states 19 and 20 the reject commands (35
+ * and 21 in 20, then 105); in state 16 with no word yet, 2 as well -- 2 retry (12), 3 cancel
+ * (11), anything else an error (17). SOCOM 1's body, round 28c: the count test with the last
+ * utterance's case first (`>= needed - 1U`, unsigned as the target's sltu: the 10 path laid out
+ * after the 105 test), the cases' bodies in the target's order (3 before 2), the result an
+ * `unsigned char` -- _tosControl declared as tos.c defines it, so only the `|=` masks (one andi) */
+int userwordAcknowledge(CASR *c, unsigned int mode)
+{
+    unsigned char ret;
+
+    switch (mode) {
+    case 1:
+        if (c->uw_recs_done >= c->uw_recs_needed - 1U) {
+            ret = _tosControl(c->event, 22, 0, 0);
+            if (c->state == 19 || c->state == 20) {
+                if (c->rejected != 0) {
+                    if (c->state == 20) {
+                        if (_tosControl(c->event, 35, 0, 0) != 0)
+                            return 1;
+                        if (_tosControl(c->event, 21, 0, 0) != 0)
+                            return 1;
+                    }
+                    if (_tosControl(c->event, 105, 0, 0) != 0)
+                        return 1;
+                }
+            }
+        } else
+            ret = _tosControl(c->event, 10, 0, 0);
+        if (c->state == 16 && c->f456 == 0)
+            ret |= _tosControl(c->event, 2, 0, 0);
+        break;
+    case 3:
+        ret = _tosControl(c->event, 11, 0, 0);
+        break;
+    case 2:
+        ret = _tosControl(c->event, 12, 0, 0);
+        break;
+    default:
+        ret = _tosErrorLog(c->event, 17);
+        break;
+    }
+    return ret;
+}
 
 /* a training started: the scheduler told (14, then 96 and 88 with the language), the counters and
  * the utterances' segmentations reset, the language's user-word phonemes sent (15) with their
