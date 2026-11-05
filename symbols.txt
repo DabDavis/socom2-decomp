@@ -11130,20 +11130,20 @@
 0x005CC890 0x8 OpenDiPool__11CSealCtrlAiFv  # OVL2; s1:calls by hand (the kit lane, round 25): SOCOM 1's AcquireDatabaseHandles (two GetSoundByName, then OpenDiPool, an empty function) is SOCOM II's 0x574C30, which calls this empty function in that place
 0x005CC8A0 0x190 CleanupDiPool__FP10CZSealBody  # OVL2; s1:calls by hand (the kit lane, round 25): SOCOM 1's CSealCtrlAi::OnDeath calls CleanupDiPool(seal) right after its event-handle list's erase; SOCOM II's OnDeath 0x5714B0 calls 0x5CC8A0 with the seal at the same place -- the dying SEAL's requests dropped, then each of its targets' entry for it unhooked from its request
 0x005CCA30 0x298 func_005CCA30  # OVL2
-0x005CCCD0 0xB9C func_005CCCD0  # OVL2
-0x005CD870 0x30 func_005CD870  # OVL2
-0x005CD8A0 0x14 func_005CD8A0  # OVL2
-0x005CD8C0 0xC func_005CD8C0  # OVL2
-0x005CD8D0 0x14 func_005CD8D0  # OVL2
-0x005CD8F0 0x24 func_005CD8F0  # OVL2
-0x005CD920 0x10 func_005CD920  # OVL2
-0x005CD930 0x10 func_005CD930  # OVL2; tu: char_type.cpp~ (1.0 beta)
-0x005CD940 0xC func_005CD940  # OVL2
-0x005CD950 0xC func_005CD950  # OVL2
-0x005CD960 0xBC func_005CD960  # OVL2
-0x005CDA20 0x74 func_005CDA20  # OVL2
-0x005CDAA0 0x108 func_005CDAA0  # OVL2
-0x005CDBB0 0x18 func_005CDBB0  # OVL2
+0x005CCCD0 0xB9C PreTick__11CSealCtrlAiFfPv  # OVL2; s1:calls by hand (the kit lane, round 46): the "ai_pre_tick" task CCoreState::Init adds -- SOCOM 1's static CSealCtrlAi::PreTick(float, void *) (0x2B3880) with the same statics read in the same order (aiEnabled, ai::snooze_time, the active limit), the same CountAwareness / ftsGetPlayer / SetSnoozing calls and its three counts (aiSnoozingCount, aiSleepingCount, aiActiveCount) cleared at the end; SOCOM II sorts the AIs by distance into two lists (0x5CD870-0x5CDBB0, its pieces); written in seal_sensors.cpp (OPEN)
+0x005CD870 0x30 push_back__Q23std60__list_deleter<10CSnoozeRec,Q23std23allocator<10CSnoozeRec>>FRC10CSnoozeRec  # OVL2; the kit lane, round 46: the snoozer list's push_back out of line (the pre-tick's sorted insert, an inline past inline_max_size, calls it), insert(end(), x) with end() inlined; byte-exact from seal_sensors.cpp (the element type and its name ours)
+0x005CD8A0 0x14 __ne__Q33std60__list_deleter<10CSnoozeRec,Q23std23allocator<10CSnoozeRec>>19generic_iterator<0>CFRCQ33std60__list_deleter<10CSnoozeRec,Q23std23allocator<10CSnoozeRec>>19generic_iterator<0>  # OVL2; the kit lane, round 46: the snoozer list iterator's != out of line (the pre-tick's sorted insert); byte-exact from seal_sensors.cpp
+0x005CD8C0 0xC end__Q23std60__list_deleter<10CSnoozeRec,Q23std23allocator<10CSnoozeRec>>Fv  # OVL2; the kit lane, round 46: the snoozer list's end() out of line (the pre-tick's sorted insert); byte-exact from seal_sensors.cpp
+0x005CD8D0 0x14 __pp__Q33std60__list_deleter<10CSnoozeRec,Q23std23allocator<10CSnoozeRec>>19generic_iterator<0>Fi  # OVL2; the kit lane, round 46: the snoozer list iterator's postfix ++ out of line (the pre-tick's sorted insert); byte-exact from seal_sensors.cpp
+0x005CD8F0 0x24 insert__11CSnoozeListFQ33std60__list_deleter<10CSnoozeRec,Q23std23allocator<10CSnoozeRec>>19generic_iterator<0>RC10CSnoozeRec  # OVL2; the kit lane, round 46: the snoozer list's own insert(position, x) out of line, the position copied on into the deleter's insert (0x5CDAA0) -- include/list's list<T> has none, so a class of ours over it (as seal_dipool.h's CDiList's erase); byte-exact from seal_sensors.cpp
+0x005CD920 0x10 __ct__10CSnoozeRecFP11CSealCtrlAif  # OVL2; the kit lane, round 46: the snoozer record's constructor out of line (the AI at 0, its distance at 4: the pre-tick's sorted insert builds one for each insert / push_back); byte-exact from seal_sensors.cpp (the name ours)
+0x005CD930 0x10 __ct__Q33std60__list_deleter<10CSnoozeRec,Q23std23allocator<10CSnoozeRec>>19generic_iterator<0>FRCQ33std60__list_deleter<10CSnoozeRec,Q23std23allocator<10CSnoozeRec>>19generic_iterator<0>  # OVL2; tu: char_type.cpp~ (1.0 beta); the kit lane, round 46: the snoozer list iterator's copy constructor out of line (the sorted insert's by-value position); byte-exact from seal_sensors.cpp
+0x005CD940 0xC __ml__Q33std60__list_deleter<10CSnoozeRec,Q23std23allocator<10CSnoozeRec>>19generic_iterator<0>CFv  # OVL2; the kit lane, round 46: the snoozer list iterator's * out of line (the sorted insert's distance compare); byte-exact from seal_sensors.cpp
+0x005CD950 0xC begin__Q23std60__list_deleter<10CSnoozeRec,Q23std23allocator<10CSnoozeRec>>Fv  # OVL2; the kit lane, round 46: the snoozer list's begin() out of line (the pre-tick's sorted insert); byte-exact from seal_sensors.cpp
+0x005CD960 0xBC erase__Q23std60__list_deleter<10CSnoozeRec,Q23std23allocator<10CSnoozeRec>>FQ33std60__list_deleter<10CSnoozeRec,Q23std23allocator<10CSnoozeRec>>19generic_iterator<0>Q33std60__list_deleter<10CSnoozeRec,Q23std23allocator<10CSnoozeRec>>19generic_iterator<0>  # OVL2; the kit lane, round 46: the snoozer list's range erase (include/list's), the two lists' implicit destructors at the pre-tick's end calling it; byte-exact from seal_sensors.cpp
+0x005CDA20 0x74 erase__Q23std60__list_deleter<10CSnoozeRec,Q23std23allocator<10CSnoozeRec>>FQ33std60__list_deleter<10CSnoozeRec,Q23std23allocator<10CSnoozeRec>>19generic_iterator<0>  # OVL2; the kit lane, round 46: the snoozer list's single erase (include/list's), the pre-tick's merge dropping the nearest awake AI; byte-exact from seal_sensors.cpp
+0x005CDAA0 0x108 insert__Q23std60__list_deleter<10CSnoozeRec,Q23std23allocator<10CSnoozeRec>>FQ33std60__list_deleter<10CSnoozeRec,Q23std23allocator<10CSnoozeRec>>19generic_iterator<0>RC10CSnoozeRec  # OVL2; the kit lane, round 46: the snoozer list's insert(position, x) (include/list's alloc_ptr shape: the 8-byte record copied member by member into the 16-byte node); byte-exact from seal_sensors.cpp
+0x005CDBB0 0x18 __ct__Q23std60__list_deleter<10CSnoozeRec,Q23std23allocator<10CSnoozeRec>>Fv  # OVL2; the kit lane, round 46: the snoozer list's constructor (include/list's, out of class: the pre-tick builds its two lists through it); byte-exact from seal_sensors.cpp
 0x005CDBD0 0x1CC Tick__6CTWaitFP14_zanim_cmd_hdrPf  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::WAIT's tick (the first command so registered); SOCOM 1's RegisterCommands passes CTWait's tick for ai::WAIT
 0x005CDDA0 0x154 Begin__6CTWaitFP14_zanim_cmd_hdr  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::WAIT's begin (the first command so registered); SOCOM 1's RegisterCommands passes CTWait's begin for ai::WAIT
 0x005CDF00 0x140 Parse__6CTWaitFP5_zrdr  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::WAIT's parse (the first command so registered); SOCOM 1's RegisterCommands passes CTWait's parse for ai::WAIT
