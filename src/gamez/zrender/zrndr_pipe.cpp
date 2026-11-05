@@ -1043,6 +1043,46 @@ void CPipe::CAlpha::Render()
     data_003DFF68 = 1;
 }
 
+/* the draw list's last insert, where the next one's walk starts (a static of the unit, 0x488ED8, not
+ * named: defined here it would join the unit's data) */
+extern std::list<void *>::iterator data_00488ED8;
+
+/* SOCOM 1's: a record put in the draw list in depth order, deepest first -- the walk starts at the
+ * last insert (at the list's start again after each pass: Render sets 0x3DFF68), forward while the
+ * record is nearer than the one under the cursor, else backward while it is deeper, before the first
+ * when it is deeper than every one.
+ * OPEN, 0x248 of 0x244 (the world lane round 18; build/scratch/wld/v_ins*.py): the logic and the
+ * three inserts are the target's, the cursor in memory as there (its address taken by the by-value
+ * copy for insert), the record homed for insert's `const T &`. Left: (1) the target keeps the
+ * list's first node in a3 from the head through the backward walk and builds the ternary's other
+ * arm from it (`sw a3,64(sp)`, copied through $f0) -- `b` there takes b's address (the conditional
+ * an lvalue: b in memory, 0x224), `iterator(b)` 0x21C, a fresh begin() (as here) keeps `this` in s0
+ * for it; (2) the first walk reloads the record through its home every pass where MW here hoists
+ * `&d->m_40` (the third walk hoists it in the target too; a for/break first walk changes nothing) */
+void CPipe::CAlpha::Insert(tag_DelayedNode *d)
+{
+    if (data_003DFF68) {
+        data_003DFF68 = 0;
+        data_00488ED8 = m_drawList.begin();
+    }
+    std::list<void *>::iterator it = data_00488ED8;
+    std::list<void *>::iterator b = m_drawList.begin(), e = m_drawList.end();
+
+    if (it == b) {
+        while (it != e && d->m_40 < ((tag_DelayedNode *)*it)->m_40)
+            ++it;
+        data_00488ED8 = m_drawList.insert(it, (void *const &)d);
+    } else if (!(d->m_40 < ((tag_DelayedNode *)*it)->m_40)) {
+        while (it != b && !(d->m_40 <= ((tag_DelayedNode *)*it)->m_40))
+            --it;
+        data_00488ED8 = m_drawList.insert(d->m_40 < ((tag_DelayedNode *)*b)->m_40 ? ++it : m_drawList.begin(), (void *const &)d);
+    } else {
+        while (it != e && d->m_40 < ((tag_DelayedNode *)*it)->m_40)
+            ++it;
+        data_00488ED8 = m_drawList.insert(it, (void *const &)d);
+    }
+}
+
 /* SOCOM 1's: an active UI node drawn with its children -- its view id pushed, its matrix multiplied
  * onto the stack, its opacity pushed (SOCOM II's helper, out of line), its visuals' lights listed and
  * its visuals rendered, each child a mesh or a node of its own, then everything popped */
