@@ -241,6 +241,91 @@ bool CAiSAction::Virtual38()
     return m_phase < 6;
 }
 
+/* the AI map's action as the action state reads it (ai.h's CAiMap::action, which this unit cannot
+ * include: its kind, none once marked invalid -- GetType) and the valve an action holds (its word at
+ * 4, read as a halfword: on or off) -- the views ours */
+struct CActionView {
+    CAiMapLoc m_loc;   // 0x0
+    unsigned int m_direction : 4;   // 0x4
+    unsigned int m_actionId : 16;
+    unsigned int m_state : 3;
+    unsigned int m_type : 5;
+    unsigned int m_locExValid : 1;
+    unsigned int m_offset : 4;   // 0x8
+    unsigned int m_type_invalid : 1;
+
+    enum TYPE { NONE = 0, DOOR = 1, TYPE_MAX = 31 };
+
+    TYPE GetType() const { return m_type_invalid == 0 ? (TYPE)m_type : NONE; }
+};
+
+struct CActionValveView {
+    unsigned char _0[4];
+    unsigned short m_4;   // 0x4
+};
+
+extern "C" {
+/* the AI maps' action of an id with its cell, a traversable cell near one, and a map's own test
+ * (ai_maps.h's / ai.h's: OVL2 0x52DAA0, 0x529300, 0x52A090 -- by their names, as this unit cannot
+ * include ai.h) */
+bool GetActionById__7CAiMapsFUiR9CAiMapLocPPQ26CAiMap6action(CAiMaps *maps, unsigned int id, CAiMapLoc &loc,
+                                                             CActionView **pa);
+bool FindTraversable__7CAiMapsFRC9CAiMapLocR9CAiMapLoc(CAiMaps *maps, const CAiMapLoc &loc, CAiMapLoc &out);
+bool IsTraversable__6CAiMapCFRC9CAiMapLoc(const CAiMap *map, const CAiMapLoc &loc);
+}
+
+/* whether a cell can be walked, none for no map (seal_ai.cpp's CellTraversable) */
+static inline bool ActionCellTraversable(const CAiMapLoc &loc)
+{
+    CAiMap *map = AiMaps.GetMap(loc);
+
+    return map ? IsTraversable__6CAiMapCFRC9CAiMapLoc(map, loc) : false;
+}
+
+/* the action state given its node action and mode (-1: the action's valve says): the action taken
+ * for the SEAL (flag 8 set when another holds it), its AI map action found with its cell -- a
+ * traversable cell near it when the cell is not -- and its kind kept (flag 16 for kinds 2 and 1);
+ * without its AI map action, or a cell to stand in, the state ends (step 9) (OVL2 0x5F0180, before
+ * GetStatus: new in SOCOM II, the name ours). The user's id read first (the target loads it ahead of the
+ * stores), the kind through the typed GetType (its andi) and tested in a switch (`beq` to the set for
+ * each, `b` past it; an `||` falls into the set) */
+extern "C" void func_005F0180(CAiSAction *s, CSealCtrlAi *ai, CNodeAction *na, int mode)
+{
+    unsigned int id = ai->m_entity->m_id;
+
+    s->m_58 = na;
+    s->m_5c = mode;
+    if (!na)
+        return;
+    bool ok = true;
+
+    if (!na->Acquire(id))
+        s->SetFlags(8, 0);
+    CActionView *act = 0;
+    CActionValveView *valve = (CActionValveView *)na->m_valve;
+
+    if (!GetActionById__7CAiMapsFUiR9CAiMapLocPPQ26CAiMap6action(&AiMaps, na->m_id, s->m_70, &act))
+        ok = false;
+    else {
+        if (s->m_5c == -1)
+            s->m_5c = !(bool)valve->m_4;
+        *(unsigned int *)&s->m_74 = *(unsigned int *)&s->m_70;
+        if (!ActionCellTraversable(s->m_70) && !FindTraversable__7CAiMapsFRC9CAiMapLocR9CAiMapLoc(&AiMaps, s->m_70, s->m_74))
+            ok = false;
+        s->m_7c = act->GetType();
+        switch (s->m_7c) {
+        case 1:
+        case 2:
+            s->SetFlags(16, 0);
+            break;
+        }
+    }
+    if (!ok) {
+        s->UpdatePhase(9);
+        s->m_active = false;
+    }
+}
+
 /* a script takes kinds 12 and 26 only when it may be pursued from (OVL2 0x5F40F0; byte-exact in the
  * kit lane's round 33: Pursuable's result local zeroed ahead of the tests, set by the call's test
  * with a self-assigning else arm -- without it MW if-converts the test into an sltu on the call's

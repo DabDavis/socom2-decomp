@@ -9,6 +9,10 @@
  * (0x5ED9B0, open on the MSL's depths: 0x5ED8F0/0x5ED950/0x5ED980 are its iterator copies);
  * round 21: FindRescuedNear (0x5EEDB0, new) and GetMyLookDir (0x5EEF80, SOCOM 1's), the stand-in
  * controller given its real state stack for AiStateIs.
+ * round 45: GetSealCount const (its walk's pieces 0x5ED880-0x5ED9A0 are the const_iterator's: end() const,
+ * begin() const and the by-value constructor byte-exact), SealJoinUnit 0x5EE250 and five new in SOCOM II
+ * -- the hand signal 0x5EB190, the formation offset 0x5EB910, the breach set-up 0x5EBF00, the order-at-
+ * a-door test 0x5EC230 and the squad's voice 0x5EAF20 (OPEN).
  * round 33: the breach push 0x5EBB50 with CAiState's implicit operator= 0x5EBDC0 and CAiTimer's
  * 0x5EBDA0 after it, and the list assignment's advance_to 0x5EF7F0 and splice 0x5EF950 in the tail.
  * OPEN, 0x1D8 against 0x198: the assignment's do_assign 0x5EF470 (include/list's) -- the target
@@ -52,11 +56,19 @@ enum UNIT_MESSAGE { UNIT_MSG_0 = 0, UNIT_MSG_1 = 1, UNIT_MSG_2 = 2, UNIT_MSG_3 =
 /* a squad command (zseal.h's FT_COMMAND, which this unit does not include: the same byte enum) */
 enum FT_COMMAND { CMD_UNKNOWN = 0, CMD_ACTION = 1, CMD_LAST = 255 };
 
+/* a hand signal (zseal.h's SEAL_HANDSIGNAL, a byte enum) */
+enum SEAL_HANDSIGNAL {
+    HANDSIGNAL_NULL = 0, HANDSIGNAL_FOLLOW = 1, HANDSIGNAL_HOLDPOSITION = 2, HANDSIGNAL_FIREATWILL = 3,
+    HANDSIGNAL_DEPLOY = 4, HANDSIGNAL_POINT = 5, HANDSIGNAL_COUNT = 6, HANDSIGNAL_LAST = 255
+};
+
 /* the SEAL's controller as far as its AI: CSealCtrl's table to slot 0x38, GetSealCtrlAi (zseal.h's
  * CSealCtrl, which this unit does not include; the five slots before it unnamed here) */
 class CUnitSealCtrl : public CEntityCtrl {
 public:
-    virtual void Virtual24();
+    /* (zseal.h's CSealCtrl::PlayAiSound: SOCOM II's takes a chance and the AI event the voice makes,
+     * and says whether it played) */
+    virtual bool PlayAiSound(int sound, float chance, int event);   /* +0x24 */
     virtual void Virtual28();
     virtual bool IsPlayer() const;   /* +0x2C */
     virtual bool IsAi() const;   /* +0x30 */
@@ -76,8 +88,11 @@ public:
     bool IsPlayer() { return m_control ? ((CUnitSealCtrl *)m_control)->IsPlayer() : false; }
     /* an order given to the SEAL (OVL2 0x590AC0, zseal.h's) */
     void IssueCommand(CZSealBody *from, FT_COMMAND cmd, void *data, bool b);
+    /* a hand signal given (seal_handsig.cpp's, OVL2 0x600290: its anim type returned, unread here) */
+    void DoHandSignal(SEAL_HANDSIGNAL sig);
 
-    unsigned char _170[0x1060 - sizeof(CEntity)];
+    unsigned char _170[0x5e0 - sizeof(CEntity)];
+    unsigned char m_kit[0x1060 - 0x5e0];   // 0x5e0: its kit (zseal.h's CZKit m_kit; bytes here)
     unsigned int m_do_drop_weapons : 1;   // 0x1060 (zseal.h's bits)
     unsigned int m_fix_skel_y : 1;
     unsigned int m_inside : 1;   // bit 2
@@ -125,6 +140,11 @@ public:
     unsigned int GetLocationDelta(const CAiMapLoc &a, const CAiMapLoc &b);
     /* an action found by its id, with its cell (ai_maps.h's, OVL2 0x52DAA0) */
     bool GetActionById(unsigned int id, CAiMapLoc &loc, CAiMap::action **pa);
+    /* a cell's centre, and the map holding a cell (ai_maps.h's, OVL2 0x52D480, 0x52A180) */
+    CPnt3D *GetCellCenter(const CAiMapLoc &loc, CPnt3D *center);
+    CAiMap *GetMap(const CAiMapLoc &loc) const;
+    /* a clear line between two cells (ai_maps.h's, OVL2 0x52CBD0) */
+    bool CanSeeLine(const CAiMapLoc &from, const CAiMapLoc &to, CAiMapLoc *out);
 };
 extern CAiMaps AiMaps;
 
@@ -247,8 +267,8 @@ public:
     bool IsMemberOfUnit(CZSealBody *seal, bool recurse);
     static bool IsMemberOfUnit(unsigned int team, CZSealBody *seal, bool recurse);
     /* the squad's SEALs counted, with those of the squads under it to a depth (OVL2 0x5ED9B0, new in
-     * SOCOM II: recursive, inlined into itself twice; the name ours) */
-    int GetSealCount(int depth);
+     * SOCOM II: recursive, inlined into itself twice; the name ours, const by its walk's pieces) */
+    int GetSealCount(int depth) const;
     /* the index'th SEAL of the squad, counted on through the squads under it to a depth, or 0
      * (SOCOM 1's GetSealByIndex(unsigned int), the depth new; OVL2 0x5EDBB0) */
     CZSealBody *GetSealByIndex(int index, int depth);
@@ -404,6 +424,32 @@ struct CAwareCtrl {
     unsigned char _0[0xc0];
     int m_aware;   // 0xc0
 };
+
+/* a SEAL taken in: out of its old squad; one whose team carries 0x20000 (unless this is squad 17)
+ * or 0x40000 (unless squad 18) joins as an escortee (EscorteeJoinUnit inlined, twice); else onto
+ * the SEALs' list -- the follow source when it is the first, outside squads 17 and 18 -- its
+ * controller pointed here and the squad's formation reset (OVL2 0x5EE250; SOCOM 1's, the escortee
+ * teams and the formation new) */
+void CSealUnit::SealJoinUnit(CZSealBody *seal)
+{
+    SealLeaveUnit(seal);
+    unsigned int num = m_unit_num;
+
+    if (num != 17 && (((CEntity *)seal)->m_team & 0x20000)) {
+        EscorteeJoinUnit(seal);
+        return;
+    }
+    if (num != 18 && (((CEntity *)seal)->m_team & 0x40000)) {
+        EscorteeJoinUnit(seal);
+        return;
+    }
+    if (num != 17 && num != 18 && m_seals.size() == 0)
+        m_follow_source = seal;
+    m_seals.push_back(seal);
+    ((CUnitCtrl *)((CEntity *)seal)->m_control)->m_unit = this;
+    SetFormation(m_8, 0);
+    func_005E7830(this);
+}
 
 /* an escortee taken in: out of its old squad, then the leader's squad itself when this is squad
  * 17, else onto the escort list, its controller pointed here and the flag at 0xA0 set for ... (OVL2
@@ -656,13 +702,28 @@ bool CSealUnit::GetMyPointOutTurnDir(CZSealBody *seal, CPnt3D **dir)
  * begin()'s and end()'s base iterators in stack slots and copies each into the wrapper's through $f0
  * (the by-value parameter kept in memory), then loads the iterator into s0; MW scalarises all of it
  * here. Not it: the iterator assigned from begin() (0x1F4, but in memory through the whole walk), direct
- * initialisation, a while loop, the base iterator's field in a base class (no change) */
-int CSealUnit::GetSealCount(int depth)
+ * initialisation, a while loop, the base iterator's field in a base class (no change).
+ * THE WALK IS A CONST ONE (the kit lane, round 45): the pieces 0x5ED880-0x5ED9A0 are not a second copy
+ * of DistributeNotify's 0x5ED6E0-0x5ED7A0 but list<CSealUnit *>'s generic_iterator<1> -- the wrapper's
+ * constructor 0x5ED980 takes the base's const_iterator BY VALUE, 0x1C, word for word SOCOM 1's
+ * list<CEntity *>::generic_iterator<1>(generic_iterator<1>) 0x321240, where DistributeNotify's 0x5ED7A0
+ * takes generic_iterator<0> by const reference, and 0x5ED9A0 is the base's begin() const (the same
+ * words as OVL2's begin() 0x510100, yet emitted again: another instance). So the function is const (the
+ * name ours: the row renamed CFi): with the const walk the outer copy's by-value temporaries are the
+ * target's -- 0x1F8, the target's size -- and the unit emits the walk's pieces in the target's order,
+ * end() const 0x5ED8F0, begin() const 0x5ED950 and the by-value constructor 0x5ED980 byte-exact.
+ * OPEN, 10 instructions, the first self-copy's size() and begin() and the third's element read, all
+ * include/list's (the MSL lane's): the target calls sz() 0x5E8A80 and loads the count through it (ours
+ * inlines size() whole), calls the base's begin() const 0x5ED9A0 (ours inlines the wrapper's begin()
+ * const: tail_ptr() and the base iterator's constructor called), and its const_iterator's operator*
+ * 0x5ED940 returns the element BY REFERENCE (`addiu v0,v0,8`, the caller loading it: `lw a0,0(v0)`),
+ * where include/list's const_iterator returns it by value (fitted to GetEntity) */
+int CSealUnit::GetSealCount(int depth) const
 {
     int n = m_seals.size();
 
     if (depth > 0)
-        for (ulist::iterator i = m_sub_units.begin(); i != m_sub_units.end(); i++)
+        for (ulist::const_iterator i = m_sub_units.begin(); i != m_sub_units.end(); i++)
             n += (*i)->GetSealCount(depth - 1);
     return n;
 }
@@ -1303,6 +1364,51 @@ extern "C" bool func_005EBB50(CAiSBreach *proto, CSealCtrlAi *ai)
     return r;
 }
 
+/* a follower's place in a formation, in map cells (two ints built by a constructor, so the tables
+ * below are made on the first call; the name ours) */
+struct UnitCellOffset {
+    UnitCellOffset(int x, int z) : m_x(x), m_z(z) {}
+
+    int m_x;
+    int m_z;
+};
+
+/* the first cell of the single file (OVL2 data 0x650B00, holding 1; read only by 0x5EB910 -- the
+ * name ours) */
+static int s_fileStart = 1;
+
+/* the cell offset of a formation's slot (OVL2 0x5EB910: CAiSFollow::SetFormation's, the follower's
+ * m_5c; new in SOCOM II, the name ours): formation 2 a single file straight back from the first cell,
+ * 1 and any other a staggered column */
+extern "C" void func_005EB910(UNIT_FORMATION formation, int slot, int *cells)
+{
+    static UnitCellOffset stagger[8] = {
+        UnitCellOffset(2, 2), UnitCellOffset(3, -2), UnitCellOffset(4, -3), UnitCellOffset(5, -2),
+        UnitCellOffset(6, 3), UnitCellOffset(7, 5), UnitCellOffset(8, -4), UnitCellOffset(9, -5),
+    };
+    static UnitCellOffset file[8] = {
+        UnitCellOffset(s_fileStart, 0), UnitCellOffset(s_fileStart + 1, 0),
+        UnitCellOffset(s_fileStart + 2, 0), UnitCellOffset(s_fileStart + 3, 0),
+        UnitCellOffset(s_fileStart + 4, 0), UnitCellOffset(s_fileStart + 5, 0),
+        UnitCellOffset(s_fileStart + 6, 0), UnitCellOffset(s_fileStart + 7, 0),
+    };
+
+    switch (formation) {
+    case FORMATION_2:
+        cells[0] = file[slot].m_x;
+        cells[1] = file[slot].m_z;
+        break;
+    case FORMATION_1:
+        cells[0] = stagger[slot].m_x;
+        cells[1] = stagger[slot].m_z;
+        break;
+    default:
+        cells[0] = stagger[slot].m_x;
+        cells[1] = stagger[slot].m_z;
+        break;
+    }
+}
+
 /* the formation set to the leader's: 2 inside, else 1, when it differs (OVL2 0x5EB8A0; the
  * formation byte and the name ours) */
 extern "C" void func_005EB8A0(CSealUnit *unit)
@@ -1475,6 +1581,128 @@ int CSealUnit::GetAwareCounter() const
     return n;
 }
 #pragma auto_inline reset
+
+extern "C" {
+/* the online game's byte (seal_command.cpp's 0x5750A0, the SEALs': reads data 0x45A0C1) */
+int func_005750A0(void);
+}
+
+/* the hand signal an order makes, given by the ordering SEAL unless quiet or online: follow for the
+ * moves (12, 13, 9, 11), fire at will for 3, hold for 5, 17 and 6, follow for 4 unless the squad's
+ * first order is 4, deploy for 15 and 2. A player ordering squad 3, or squad 1 when squad 2 is one
+ * SEAL (its tail its leader), signals only in sight of squad 3's leader -- squad 3's first SEAL when
+ * this is it (OVL2 0x5EB190: new in SOCOM II, the name ours). The signal tested `!= HANDSIGNAL_NULL`
+ * (the target masks the byte before each test, a bare `sig` branches on the register) and the line
+ * through a bool local (the andi on the call's result) */
+extern "C" void func_005EB190(CSealUnit *unit, CZSealBody *seal, FT_COMMAND cmd, void *data, bool quiet)
+{
+    if (quiet || !seal || func_005750A0())
+        return;
+    SEAL_HANDSIGNAL sig = HANDSIGNAL_NULL;
+
+    switch (cmd) {
+    case 2:
+        sig = HANDSIGNAL_DEPLOY;
+        break;
+    case 15:
+        sig = HANDSIGNAL_DEPLOY;
+        break;
+    case 4:
+        if (*unit->m_commands.begin() != 4)
+            sig = HANDSIGNAL_FOLLOW;
+        break;
+    case 5:
+    case 17:
+    case 6:
+        sig = HANDSIGNAL_HOLDPOSITION;
+        break;
+    case 3:
+        sig = HANDSIGNAL_FIREATWILL;
+        break;
+    case 11:
+    case 9:
+    case 13:
+    case 12:
+        sig = HANDSIGNAL_FOLLOW;
+        break;
+    }
+    if ((sig != HANDSIGNAL_NULL && seal->IsPlayer() && unit->m_unit_num == 3)
+        || (unit->m_unit_num == 1
+            && CSealUnit::GetUnitByTeam(2)->GetTail() == CSealUnit::GetUnitByTeam(2)->GetLeader())) {
+        CZSealBody *other = unit->m_unit_num == 3 ? *unit->m_seals.begin() : CSealUnit::GetUnitByTeam(3)->GetLeader();
+
+        if (other) {
+            bool seen = AiMaps.CanSeeLine(CAiMapLoc(((CEntity *)seal)->m_mapLocValid),
+                                          CAiMapLoc(((CEntity *)other)->m_mapLocValid), 0);
+
+            if (!seen)
+                sig = HANDSIGNAL_NULL;
+        } else
+            sig = HANDSIGNAL_NULL;
+    }
+    if (sig != HANDSIGNAL_NULL && !quiet)
+        seal->DoHandSignal(sig);
+}
+
+/* a random draw in [min, min + range) (SOCOM 1's Rfloat's operator float without its zero-range test,
+ * the 1.0 range through the parameter so its multiply stays -- seal_aifollow.cpp's FollowRand), and
+ * whether it falls at or under a chance whose address is taken (the target stores the chance after
+ * the 1.0 test, in the draw's block, and keeps its address across rand()) */
+static inline float UnitRand(float min, float range)
+{
+    float r = 4.656613e-10f * rand();
+
+    return min + range * r;
+}
+
+static inline bool UnitChance(float chance) { return UnitRand(0.0f, 1.0f) <= *(const float *)&chance; }
+
+/* a random index up to n (0 when n is) */
+static inline int UnitPick(int n) { return n == 0 ? 0 : rand() % (n + 1); }
+
+/* the squad's voice (OVL2 0x5EAF20; new in SOCOM II, the name ours): with the chance (1 always),
+ * a random SEAL of the squad and the squads under it when `pick`, then the squad's own SEALs in
+ * turn, then each squad under it -- the first AI SEAL alive that plays the sound (its controller's
+ * PlayAiSound at full chance, no event). Whether one did.
+ * OPEN, 0x268 against 0x270, two places, the rest (registers, the walks, the hoisted ends) the
+ * target's: (1) the chance -- the target compares $f12 with 1.0, then in the draw's block stores it
+ * and keeps its address in s4 across rand() (`swc1 $f12,124(sp); jal rand; addiu s4,sp,124` ...
+ * `lwc1 $f0,0(s4)`); the inline's by-value parameter read through `*(const float *)&` gives the
+ * store in that block but reloads sp-relative; a reference or pointer inline, a pointer local (a
+ * cast or not, before the draw or across a `?:`), SOCOM 1's Rfloat with its range test, a two-level
+ * pointer inline all keep the chance in $f20 (0x27C) or reload it sp-relative (0x268); (2) the
+ * random index -- the target's zero arm is an empty block (`bnez; move a1,zero; b join; nop`, then an
+ * alignment nop before the rand() block), ours fills the b's delay slot with the join's `move a0,s2`:
+ * a ternary in or out of an inline, if/else in or out of an inline, early returns, `!n`, `n != 0`, the
+ * round-44 self arm `i = n == 0 ? i : ...`, an empty then-branch all fill it */
+extern "C" bool func_005EAF20(CSealUnit *unit, int sound, bool pick, float chance)
+{
+    bool played = false;
+
+    if (chance == 1.0f || UnitChance(chance)) {
+        if (pick) {
+            int n = unit->GetSealCount(64) - 1;
+            CZSealBody *seal = unit->GetSealByIndex(UnitPick(n), 64);
+
+            if (seal && seal->IsAi() && seal->m_isAlive)
+                played = ((CUnitSealCtrl *)((CUnitSealCtrl *)seal->m_control)->GetSealCtrlAi())
+                             ->PlayAiSound(sound, 1.0f, -1);
+        }
+        if (!played) {
+            for (CSealUnit::slist::iterator i = unit->m_seals.begin(); !played && i != unit->m_seals.end(); ++i) {
+                CZSealBody *seal = *i;
+
+                if (seal->IsAi() && seal->m_isAlive)
+                    played = ((CUnitSealCtrl *)((CUnitSealCtrl *)seal->m_control)->GetSealCtrlAi())
+                                 ->PlayAiSound(sound, 1.0f, -1);
+            }
+            if (!played)
+                for (CSealUnit::ulist::iterator u = unit->m_sub_units.begin(); !played && u != unit->m_sub_units.end(); ++u)
+                    played = func_005EAF20(*u, sound, false, 1.0f);
+        }
+    }
+    return played;
+}
 
 /* sound 79 when the squad is aware, else 78 (OVL2 0x5EAEB0) */
 extern "C" void func_005EAEB0(CSealUnit *unit)
@@ -1978,6 +2206,119 @@ public:
     unsigned char _25[0x3c - 0x25];
     unsigned short m_id;   // 0x3c
 };
+
+extern "C" {
+/* a map's cell inside (seal_ai.cpp's 0x5561C0, the SEALs': the map's own test) */
+bool func_005561C0(const CAiMap *map, const CAiMapLoc &loc);
+}
+
+class CZKit;
+
+/* an item a SEAL carries (zweapon.h's byte enum, which this unit does not include: only the bounds) */
+enum EQUIP_ITEM { EQUIP_PISTOL = 0, EQUIP_NONE = 255 };
+
+/* whether the kit can place an item at a node action (seal_command.cpp's, OVL2 0x591130, the SEALs') */
+bool CanDeploy(CZKit *kit, EQUIP_ITEM item, CNodeAction *a);
+
+/* whether a cell's map holds it, none for no map (seal_ai.cpp's CellInside) */
+static inline bool CellInside(const CAiMapLoc &loc)
+{
+    CAiMap *map = AiMaps.GetMap(loc);
+
+    return map ? func_005561C0(map, loc) : false;
+}
+
+/* an AI map action an order can be carried out at: its extra cells valid, a door of kind 5 or 1 (the
+ * names ours; the target materialises each test into a bool before it branches) */
+static inline bool OrderDoorType(const CAiMap::action *act) { return act->GetType() == 5 || act->GetType() == CAiMap::action::DOOR; }
+
+static inline bool OrderDoor(const CAiMap::action *act) { return act->m_locExValid && OrderDoorType(act); }
+
+/* the squad's breach prototype set up at the node action under the ordering SEAL's reticule: made
+ * new (its kind kept), told signal 4, the action held, then the action's AI map door found -- the
+ * breach point five units off the door's cell centre along its direction (toward the orderer's
+ * side, flag 1 set when the orderer stands against it) and nine up. Whether the door was found
+ * (OVL2 0x5EBF00: IssueCommand's, with its static prototype 0x66B8E0; new in SOCOM II, the name
+ * ours -- the squad passed and unread) */
+extern "C" bool func_005EBF00(CZSealBody *from, CSealUnit *unit, CNodeAction *na, CAiSBreach *proto)
+{
+    static float back = 5.0f;
+    static float up = 9.0f;
+
+    proto->Reset(proto->m_state);
+    proto->OnSignal(CAiState::SIGNAL_4, 0);
+    proto->m_74 = (unsigned int)na;
+    bool r = false;
+
+    proto->m_78 = 0;
+    if (na && AiMaps.GetActionById(na->m_id, proto->m_80, &proto->m_78)) {
+        CPnt3D center;
+
+        if (AiMaps.GetCellCenter(proto->m_80, &center)) {
+            CPnt3D d;
+            CPnt3D v;
+
+            center.Sub(&((CEntity *)from)->m_posW, &d);
+            CAiMap::GetDirVec((CAiMap::DIR)proto->m_78->m_direction, v);
+            float dist = back;
+
+            if (Dot(v, d) < 0.0f)
+                proto->SetFlags(1, 0);
+            else
+                dist = -dist;
+            center.y += up;
+            proto->m_58 = center + v * dist;
+            r = true;
+        }
+    }
+    return r;
+}
+
+/* whether an order with an item (17 and 18 a deployable's, 123 and 121, 19 none) can be carried out
+ * at the node action under the ordering SEAL's reticule by this AI SEAL: not with a state of kind
+ * 10 on its stack, the item deployable there, the action's AI map door one the order takes -- on the
+ * orderer's side of its direction, or else past it with its first extra cell inside its map (OVL2
+ * 0x5EC230: CSealCtrlAi::AllowCommand's, with the orderer's reticule action and the order's data;
+ * new in SOCOM II, the name ours) */
+extern "C" bool func_005EC230(CZSealBody *from, CZSealBody *seal, CNodeAction *na, int data)
+{
+    bool r = false;
+    bool ok = false;
+    CAiMapLoc loc;
+    CAiMap::action *act = 0;
+    CSealCtrlAi *ai = ((CUnitSealCtrl *)((CEntity *)seal)->m_control)->GetSealCtrlAi();
+
+    if (!na || !ai || (ai->m_stateStack.m_10 & (1 << 10)))
+        return false;
+    switch ((unsigned char)data) {
+    case 17:
+        ok = CanDeploy((CZKit *)seal->m_kit, (EQUIP_ITEM)123, na);
+        break;
+    case 18:
+        ok = CanDeploy((CZKit *)seal->m_kit, (EQUIP_ITEM)121, na);
+        break;
+    case 19:
+        ok = true;
+        break;
+    }
+    if (ok && AiMaps.GetActionById(na->m_id, loc, &act) && OrderDoor(act)) {
+        CPnt3D center;
+
+        if (AiMaps.GetCellCenter(loc, &center)) {
+            CPnt3D d;
+            CPnt3D v;
+
+            center.Sub(&((CEntity *)from)->m_posW, &d);
+            CAiMap::GetDirVec((CAiMap::DIR)act->m_direction, v);
+            if (Dot(v, d) < 0.0f) {
+                if (CellInside(act->m_locEx[0]))
+                    r = true;
+            } else
+                r = true;
+        }
+    }
+    return r;
+}
 
 /* whether a SEAL -- the player, or an AI that is a SEAL -- may take a door action from where it
  * stands: the action's word at 8 at least 2, its type 0, the range at least a half, and the AI map's

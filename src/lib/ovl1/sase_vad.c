@@ -31,6 +31,38 @@ typedef struct {
 	signed char bActive;    /* 0x15 */
 } VadState;
 
+extern double pow(double, double);
+
+/* the gain step for a level (GCC round 33a): the level's distance from the history's (176 when the
+ * level is not positive), less a dead band of 16 either side, as 10^(d / 56.67) - 1 clamped to
+ * +-0.0592537 and scaled by 4000 -- on the cut side 1 - 10^(-d / 56.67). The constants are the
+ * vendor's truncated conversions (round 12a). */
+short func_00252BF0(VadHist *p, short sLevel)
+{
+	int iLevel = (sLevel > 0) ? sLevel : 176;
+	float fD = (float)iLevel - p->fLevel;
+	float fE, fG;
+
+	if (fD <= 16.0F && fD >= -16.0F)
+		fE = 0.0F;
+	else if (fD < -16.0F)
+		fE = fD + 16.0F;
+	else
+		fE = fD - 16.0F;
+	if (fE == 0.0F)
+		return 0;
+	if (fE < 0.0F) {
+		fG = -pow(10.0, -fE * 0x1.21212p-6F);
+		if (fG < -0x1.0f2b4p+0F)
+			fG = -0x1.0f2b4p+0F;
+		return (short)((fG + 1.0F) * 4000.0F);
+	}
+	fG = pow(10.0, fE * 0x1.21212p-6F);
+	if (fG > 0x1.0f2b4p+0F)
+		fG = 0x1.0f2b4p+0F;
+	return (short)((fG - 1.0F) * 4000.0F);
+}
+
 /* a frame's band struck (ucX >> 3): every band decayed by 0.96875, the struck one toward 1, and the
  * level made the bands' centroid, times 8; the frame count restarted (GCC round 28a).
  * OPEN (0x110 against 0x120, every word after the first loop the target's): the target loads the
@@ -115,6 +147,58 @@ int func_00252F70(VadHist **pp)
 	return 0;
 }
 
+/* the noise floor (GCC round 33a): allowed to rise by 1.125 or 0.547 % below 160000, 0.137 % below
+ * 500000, 0.068 % above; a level below the floor pulls it down -- harder the lower the level, from the
+ * first frames (cInit not yet positive) through a 0.1/0.9 blend -- and a level above it, while the
+ * detector is not above, lifts it a quarter of the way; capped at 5059644, cInit counted up to 1.
+ * The constants are the vendor's truncated conversions (round 12a); the minima and maxima are
+ * conditional expressions (round 19a). Its float comes first: the driver's call says so.
+ * OPEN (right size, 26 words; GCC round 33a): the floor loaded into the result (the target's f3, the
+ * old value copied to f4) and the first-frames blend as one expression put those in place (with one
+ * fT, 0x1B8); left: the first rise computes into the result register at once where the target
+ * computes both candidates into temporaries and moves one, and the low-level pair's arms come out
+ * swapped -- reorg reverses the `fLevel < 1` branch into a bc1tl holding the then-arm's add, where
+ * the target's bc1f keeps a nop (build/scratch/gcc/v_2fe0.py). */
+void func_00252FE0(float fLevel, VadState *p)
+{
+	float fNew = p->fNoise;
+	float fNoise = fNew;
+	float fT;
+
+	if (fNoise < 160000.0F) {
+		fNew = fNoise + 1.125F;
+		if (fNew <= fNoise * 0x1.01667ap+0F)
+			fNew = fNoise * 0x1.01667ap+0F;
+	} else if (fNoise < 500000.0F)
+		fNew = fNoise * 0x1.005996p+0F;
+	else
+		fNew = fNoise * 0x1.002cd2p+0F;
+	if (fLevel < fNoise) {
+		if (p->cInit <= 0) {
+			fNew = (fNoise * 0x1.999998p-4F + (fLevel + 1.0F) * 0x1.ccccccp-1F <= fNew) ?
+				fNoise * 0x1.999998p-4F + (fLevel + 1.0F) * 0x1.ccccccp-1F : fNew;
+		}
+		if (fLevel <= fNoise * 0x1.0624dcp-10F) {
+			if (fLevel < 1.0F)
+				fT = fNoise * 0x1.4cccccp-1F + (fLevel + 1.0F) * 0x1.666666p-2F;
+			else
+				fT = fNoise * 0x1.999998p-2F + fLevel * 0x1.333332p-1F;
+		} else if (fLevel <= fNoise * 0x1.47ae14p-7F)
+			fT = fNoise * 0x1.333332p-2F + fLevel * 0x1.666666p-1F;
+		else
+			fT = fNoise * 0x1.999998p-3F + fLevel * 0x1.999998p-1F;
+		fNew = (fT <= fNew) ? fT : fNew;
+	} else if (p->bAbove == 0) {
+		fT = fNoise * 0.75F + fLevel * 0.25F;
+		fNew = (fNew <= fT) ? fT : fNew;
+	}
+	if (fNew > 0x1.34d0fp+22F)
+		fNew = 0x1.34d0fp+22F;
+	if (p->cInit <= 0)
+		p->cInit++;
+	p->fNoise = fNew;
+}
+
 /* the threshold: a quadratic in the noise level, one fit above 160000 and one below */
 void func_00253190(VadState *p, float fLevel)
 {
@@ -130,7 +214,7 @@ void func_00253190(VadState *p, float fLevel)
 }
 
 /* speech once the level has stood above the larger of two floors for two frames running */
-void func_002531F8(short sPeak, VadState *p, float fLevel, float fMax)
+void func_002531F8(float fLevel, float fMax, short sPeak, VadState *p)
 {
 	float fFloor, fT, fU;
 
@@ -155,27 +239,32 @@ void func_002531F8(short sPeak, VadState *p, float fLevel, float fMax)
  * once the level (at most 255) reaches the threshold; otherwise the run counts on, and once it
  * passes the frames' hang time (rounded, through a double) the detector turns inactive, the run held
  * at 32700.
- * OPEN (0x11C against 0x124): the target returns one byte variable, loaded zero-extended (lbu) in the
- * delay slot of the active flag's own signed test (lb) and sign-extended once at the exit; set
- * before the test it gives the target's paths but two words short (an unsigned char result: v1
- * through the double calls), the flag tested with the && or nested, set to 1 or to the speech
- * flag, alike (build/scratch/gcc/v_3288*.py, GCC round 32a). */
-signed char func_00253288(short sLevel, unsigned short usFrames, VadState *p, float fThresh)
+ * Byte-exact (GCC round 33a; open since round 32a at 0x11C) by two readings of the target:
+ * - the flag is tested from its own signed copy (lb), read BEFORE the result's zero-extended load
+ *   (lbu): read after it, CSE takes the test from the result's register (`lbu; sll 24; bnez`); the
+ *   lbu then stands before the branch, so reorg moves it into the bnez's slot, and the then-arm's
+ *   `ret = 1` keeps its `li v1,1` -- with the result loaded only on the else path, v1 still holds
+ *   the speech test's 1 there and reload_cse deletes it (round 32a's "two words short");
+ * - the turn-inactive path's two `ret = 0`s and the else's reload reach one exit by jumps: the
+ *   capped run and the else jump to it, the uncapped run falls into the last `ret = 0` (laid out
+ *   after the else). Structured, that `ret = 0` is laid out before the else; as returns, each
+ *   return sign-extends on its own (F1-F3, build/scratch/gcc/v_3288*.py, GCC round 33a). */
+signed char func_00253288(float fThresh, short sLevel, unsigned short usFrames, VadState *p)
 {
 	int iLevel;
 	float fT;
 	short sT;
 	unsigned char ret;
+	int iActive;
 
 	iLevel = (sLevel < 255) ? sLevel : 255;
 	if (p->bSpeech == 1) {
 		p->usRun = 0;
+		iActive = p->bActive;
 		ret = p->bActive;
-		if (p->bActive == 0) {
-			if ((float)iLevel <= fThresh) {
-				p->bActive = 1;
-				ret = 1;
-			}
+		if (iActive == 0 && (float)iLevel <= fThresh) {
+			p->bActive = 1;
+			ret = 1;
 		}
 	} else {
 		fT = usFrames * p->fRate + 0.5;
@@ -183,12 +272,18 @@ signed char func_00253288(short sLevel, unsigned short usFrames, VadState *p, fl
 		p->usRun++;
 		if (sT < (short)p->usRun) {
 			p->bActive = 0;
-			if ((short)p->usRun > 32700)
+			if ((short)p->usRun > 32700) {
 				p->usRun = 32700;
-			ret = 0;
-		} else
+				ret = 0;
+				goto out;
+			}
+		} else {
 			ret = p->bActive;
+			goto out;
+		}
+		ret = 0;
 	}
+out:
 	return ret;
 }
 

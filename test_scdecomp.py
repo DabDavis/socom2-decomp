@@ -1056,6 +1056,94 @@ def test_igreplay_replays_and_predicts():
     ck(s in conflicts2 and conflicts2[s].get("s4") == 1, f"the target's s4 use of `s` is read ({conflicts2.get(s)})")
 
 
+def _swap_gprs(w: int, a: int, b: int) -> int:
+    """An integer instruction word with GPRs a and b exchanged in its register fields (SPECIAL and
+    MMI: rs, rt, rd; REGIMM: rs; j/jal: none; the rest, I-type: rs, rt)."""
+    op = w >> 26
+    fields = {0: (21, 16, 11), 0x1C: (21, 16, 11), 1: (21,), 2: (), 3: ()}.get(op, (21, 16))
+    for sh in fields:
+        r = (w >> sh) & 31
+        if r in (a, b):
+            w = w & ~(31 << sh) | ((b if r == a else a) << sh)
+    return w
+
+
+def test_igreplay_target_scores_the_move_and_budgets_a_search():
+    """tools/igreplay.py, GCC round 33a (the lanes' three requests). (a) --target scores the colouring
+    --move gives: zlib's byte-exact inflate_blocks_new with `c` renumbered first gives z s2 and c s3
+    (recorded s3, s2); against a target whose s2 and s3 are exchanged in every word that move differs
+    nowhere and the recorded colouring in both nodes -- and against the real target the CLI says 2
+    differ (round 32a's --target printed the recorded colouring's 0 whatever the move). (b) a node whose
+    target uses disagree is listed even where its most frequent register is ours (one use of `s` read as
+    s4: round 32a listed only a differing majority). (c) a search has a budget -- --max-iters and
+    --timeout stop it and say so (rc 2), progress is reported -- and its faster replay (the graph
+    renumbered in place) gives round 32a's deep-copied replay's colours placement for placement."""
+    import contextlib
+    import io
+    import igdump
+    import igreplay as R
+    unit = HERE / "src" / "zlib" / "infblock.c"
+    dump = BUILD / "ig_infblock.jsonl"
+    zrecs, _ = igdump.dump(unit, dump)
+    zrec = igdump.select(zrecs, "^inflate_blocks_new$", 0)[0][1]
+    z, c, s = (R.node_index(zrec, n) for n in ("z", "c", "s"))
+    rec_regs = tuple(R.rname(zrec["nodes"][v]["color"]) for v in (z, c))
+    colour, newidx, _ = R.replay_moved(zrec, {c: zrec["nreal"] - 0.5})
+    moved = tuple(R.rname(colour[newidx[v]]) for v in (z, c))
+    ck(rec_regs == ("s3", "s2") and moved == ("s2", "s3"), f"the fixture's move swaps z and c ({rec_regs} -> {moved})")
+    img, st = E.image(), E.symbols()
+    row = st.get("inflate_blocks_new")
+    words = {a: _swap_gprs(w, 18, 19) for a, w, _ in E.disasm(img.read(row.addr, row.size), row.addr)}
+    tcol, conflicts, unmatched = R.target_colours(zrec, unit, "inflate_blocks_new", img=_PatchedImage(img, words))
+    _, _, differ_moved = R.target_report(zrec, tcol, conflicts, unmatched, {c: zrec["nreal"] - 0.5})
+    _, _, differ_rec = R.target_report(zrec, tcol, conflicts, unmatched)
+    ck(differ_moved == 0 and differ_rec >= 2, f"(a) the move is scored against the target: moved {differ_moved} "
+       f"differ, as recorded {differ_rec}")
+    out = io.StringIO()
+    with contextlib.redirect_stdout(out):
+        R.main([str(dump), "-f", "^inflate_blocks_new$", "--cls", "0", "--target", str(unit),
+                "inflate_blocks_new", "--move", f"c={zrec['nreal'] - 0.5}"])
+    ck(", 2 differ," in out.getvalue() and "(as recorded: 0 differ)" in out.getvalue(),
+       f"(a) the CLI scores the moved colouring ({out.getvalue().splitlines()[-1][:150]})")
+    # (b): one use of `s` (in s0 throughout) read as s4 in the target
+    a, w = next((a, w) for a, w, t in E.disasm(img.read(row.addr, row.size), row.addr) if t == "move s0,v0")
+    tcol2, conflicts2, unm2 = R.target_colours(zrec, unit, "inflate_blocks_new",
+                                               img=_PatchedImage(img, {a: w & ~(31 << 11) | (20 << 11)}))
+    lines, _, differ2 = R.target_report(zrec, tcol2, conflicts2, unm2)
+    ck(tcol2[s] == zrec["nodes"][s]["color"] and differ2 == 0
+       and any(l.lstrip().startswith(f"v{s} ") and "the most frequent is ours" in l for l in lines),
+       f"(b) a node whose uses disagree is listed though its majority is ours ({[l for l in lines if 'disagree' in l]})")
+    # (c): budgets, progress, and the faster replay equal to round 32a's
+    frecs, _ = igdump.dump(_ig_fixture(), BUILD / "ig_fixture.jsonl")
+    rec = igdump.select(frecs, "^ig_pair$", 0)[0][1]
+    first, second = R.node_index(rec, "first"), R.node_index(rec, "second")
+    want = {first: "s0", second: "s1"}
+    whole = R.search(rec, want, [first, second])
+    ck(whole.stopped is None and whole.tried == whole.total == (len(rec["nodes"]) - rec["nreal"] + 1) ** 2
+       and whole.hits == R.brute(rec, want, [first, second]) and whole.hits,
+       f"(c) an unbudgeted search replays every placement ({whole.tried} of {whole.total}, {len(whole.hits)} hits)")
+    ticks = []
+    cut = R.search(rec, want, [first, second], max_iters=3, progress=lambda *t: ticks.append(t), every=0.0)
+    ck(cut.stopped == "max-iters" and cut.tried == 3 and len(ticks) == 3,
+       f"(c) --max-iters stops it ({cut.stopped}, {cut.tried} tried, {len(ticks)} progress calls)")
+    ck(R.search(rec, want, [first, second], timeout=0.0).stopped == "timeout", "(c) --timeout stops it")
+    out = io.StringIO()
+    with contextlib.redirect_stdout(out):
+        rc = R.main([str(BUILD / "ig_fixture.jsonl"), "-f", "^ig_pair$", "--cls", "0", "--want",
+                     "first=s0,second=s1", "--movers", "first,second", "--max-iters", "3", "--progress", "0"])
+    ck(rc == 2 and "STOPPED by the --max-iters budget after 3 of" in out.getvalue(),
+       f"(c) the CLI says the search stopped short (rc {rc})")
+    lo, hi = zrec["nreal"], len(zrec["nodes"])
+    g0, same, n = R.Graph(zrec), 0, 0
+    for v in range(lo, hi):
+        for p in [x + 0.5 for x in range(lo - 1, hi, 3)]:
+            fast, fi, _ = R.replay_moved(zrec, {v: p}, graph=g0)
+            ref, ri, _ = R.replay_relabelled(zrec, {v: p})
+            same += [fast[fi[i]] for i in range(hi)] == [ref[ri[i]] for i in range(hi)]
+            n += 1
+    ck(same == n, f"(c) the in-place renumbering replays as the deep copy did ({same} of {n} placements)")
+
+
 def test_igvar_compares_variants():
     """tools/igvar.py (GCC round 32a: the AI core's round-28 igvar.py and the game states' round-37
     one): each variant of a unit built under igdump in a scratch tree, the saved registers' holders
