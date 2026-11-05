@@ -317,6 +317,59 @@ CZSealBody *CZSealBody::GetSeal(zdb::CNode *node)
     return 0;
 }
 
+extern "C" {
+/* the height above the ground a SEAL counts as in the air from (OVL1 bss 0x44C264), the probe for
+ * ground under a falling SEAL and the landing's hit taken (seal.cpp's OVL2 0x54A8B0 and 0x5B0C10) */
+extern float data_0044C264;
+bool func_0054A8B0(CZSealBody *seal);
+void func_005B0C10(CZSealBody *seal, zdb::IntersectStruct *hit);
+}
+
+/* whether the SEAL is in the air over a point: in the 0x3DEF08 anim, or with no air bit yet, at the
+ * in-air height above the point it is airborne (bit 8 cleared, and under the anim bit 9 set and 10
+ * cleared); else, out of a flagged anim and played here, the ground probed when it is 5 above (3
+ * prone); a SEAL with bit 9 and not 10 that sinks under the point while m_1360 has run out is set on
+ * it -- bits 10 and 8 set, 9 cleared, the landing taken (OVL2 0x59AD30, new in SOCOM II: 0x5B0420
+ * calls it; after GetSeal -- the name unknown) */
+extern "C" bool func_0059AD30(CZSealBody *seal, const CPnt3D *pos)
+{
+    float h = data_0044C264;
+
+    if (seal->IsCurrentBlend((AnimType)data_003DEF08) && !(seal->m_alt < pos->y + h)) {
+        seal->SetAirborne(true);
+        seal->SetBit8(false);
+        seal->SetBit9(true);
+        seal->SetBit10(false);
+    }
+    if (!seal->m_airborne) {
+        if (!(seal->m_alt < pos->y + h)) {
+            seal->SetAirborne(true);
+            seal->SetBit8(false);
+            if (!func_0057B510(seal) && !seal->IsRemote())
+                func_0054A8B0(seal);
+        } else if (!func_0057B510(seal) && !seal->IsRemote()) {
+            float d = 5.0f;
+
+            if (seal->m_state == stateProne)
+                d = 3.0f;
+            if (!(seal->m_alt <= pos->y + d))
+                func_0054A8B0(seal);
+        }
+    }
+    if (seal->m_bit9 && !seal->m_bit10) {
+        float y = pos->y;
+
+        if (seal->m_alt < y && seal->m_1360 <= 0.0f) {
+            seal->m_alt = y;
+            seal->SetBit9(false);
+            seal->SetBit10(true);
+            seal->SetBit8(true);
+            func_005B0C10(seal, 0);
+        }
+    }
+    return seal->m_airborne;
+}
+
 /* the body-part commands (new in SOCOM II, ZAnim commands this unit registers at 0x59AC60:
  * RESET_BODY_PARTS, parsed at 0x59ABC0 and ticked at 0x59AB30, and BODY_FALL_ON_MATERIAL_SOUND,
  * parsed at 0x59AA60 and ticked at 0x59A8E0; the functions' names unknown) -- a timeless command
