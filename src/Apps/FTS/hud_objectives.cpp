@@ -147,6 +147,22 @@ public:
     void push_back(const bool &x) { insert(end(), x); }
     iterator insert(iterator position, const bool &x);
     void insert(iterator position, unsigned int n, const bool &x);
+    unsigned int size() const { return size_; }
+    unsigned int capacity() const { return capacity_; }
+    unsigned int max_size() const;
+    static unsigned int num_words(unsigned int capacity) { return (capacity - 1) / 32 + 1; }
+    void set(unsigned int pos, unsigned int n, bool x);
+    void copy_bits(const unsigned int *frmdata, unsigned int first, unsigned int last, unsigned int to);
+    void shift_out(iterator pos, unsigned int n);
+    static unsigned int *allocate(unsigned int n)
+    {
+        unsigned int *p = (unsigned int *)operator new(n * sizeof(unsigned int));
+
+        if (!p)
+            __msl_error("Memory allocation failure");
+        return p;
+    }
+
     ~vector() { if (data_) operator delete(data_); }
     reference operator[](unsigned int n) { return reference(*this, n); }
     void clear() { size_ = 0; }
@@ -159,6 +175,63 @@ public:
 };
 
 #pragma auto_inline off
+/* every size a count can hold (0x208260, SOCOM 1's) */
+unsigned int vector<bool, allocator<bool> >::max_size() const
+{
+    return (unsigned int)-1;
+}
+
+/* n values put in before a position: shifted up in place if they fit, else into new words grown
+ * from 32 by doubling, the old bits copied round them (0x208040, SOCOM 1's with 32-bit words).
+ * The five locals declared at the top in SOCOM 1's DWARF order (its block lists them reversed:
+ * pos, newcap, newsize, olddata, ms) -- each defined in place they swap a dozen saved registers;
+ * the old words read before the capacity and the position (the target's delay-slot load); the
+ * size read in place, `size_ + n` (through size() MW puts n first) */
+void vector<bool, allocator<bool> >::insert(iterator position, unsigned int n, const bool &x)
+{
+    unsigned int ms;
+    unsigned int *olddata;
+    unsigned int newsize;
+    unsigned int newcap;
+    unsigned int pos;
+
+    if (n == 0)
+        return;
+    ms = max_size();
+    if (n > ms || size() > ms - n)
+        __msl_error("vector::insert length error\n");
+    newsize = size_ + n;
+    if (newsize <= capacity()) {
+        pos = position.n_;
+        if (size_ - pos != 0)
+            shift_out(position, n);
+        set(pos, n, x);
+        size_ += n;
+    } else {
+        olddata = data_;
+        newcap = capacity_;
+        pos = position.n_;
+        if (newcap == 0)
+            newcap = 32;
+        while (newsize > newcap) {
+            if (newcap < ms / 2)
+                newcap *= 2;
+            else
+                newcap = ms;
+        }
+        data_ = allocate(num_words(newcap));
+        if (pos > 0)
+            copy_bits(olddata, 0, pos, 0);
+        set(pos, n, x);
+        if (pos < size())
+            copy_bits(olddata, pos, size(), pos + n);
+        if (olddata)
+            operator delete(olddata);
+        size_ = newsize;
+        capacity_ = newcap;
+    }
+}
+
 /* one value put in before a position, the position given back (0x207FD0, SOCOM 1's) */
 vector<bool, allocator<bool> >::iterator vector<bool, allocator<bool> >::insert(iterator position,
                                                                                 const bool &x)

@@ -1763,10 +1763,10 @@
 0x00207F90 0x40 swap__Q23std30vector<b,Q23std12allocator<b>>FRQ23std30vector<b,Q23std12allocator<b>>  # OVL1; s1:exact
 0x00207FD0 0x6C insert__Q23std30vector<b,Q23std12allocator<b>>FQ33std30vector<b,Q23std12allocator<b>>8iteratorRCb  # OVL1; s1:calls by hand (the HUD lane, round 47: vector<bool>'s insert(position, x), SOCOM 1's -- insert(position, 1, x) called, begin() + the position's index given back; AddObjective's push_back)
 0x00208040 0x214 insert__Q23std30vector<b,Q23std12allocator<b>>FQ33std30vector<b,Q23std12allocator<b>>8iteratorUiRCb  # OVL1; s1:calls
-0x00208260 0x8 func_00208260  # OVL1
-0x00208270 0x298 func_00208270  # OVL1
-0x00208510 0xF0 func_00208510  # OVL1
-0x00208600 0x48C func_00208600  # OVL1
+0x00208260 0x8 max_size__Q23std30vector<b,Q23std12allocator<b>>CFv  # OVL1; s1:calls by hand (the HUD lane, round 47: vector<bool>'s max_size, SOCOM 1's 8-byte `return -1`; insert(position, n, x)'s first call)
+0x00208270 0x298 set__Q23std30vector<b,Q23std12allocator<b>>FUiUib  # OVL1; s1:calls by hand (the HUD lane, round 47: vector<bool>'s set(pos, n, x), SOCOM 1's -- insert(position, n, x) calls it with the position's index, the count and the value, as SOCOM 1's does)
+0x00208510 0xF0 copy_bits__Q23std30vector<b,Q23std12allocator<b>>FPCUiUiUiUi  # OVL1; s1:calls by hand (the HUD lane, round 47: vector<bool>'s copy_bits(frmdata, first, last, to), SOCOM 1's with SOCOM II's 32-bit words (SOCOM 1's took const unsigned long *) -- insert's two copies round the new bits)
+0x00208600 0x48C shift_out__Q23std30vector<b,Q23std12allocator<b>>FQ33std30vector<b,Q23std12allocator<b>>8iteratorUi  # OVL1; s1:calls by hand (the HUD lane, round 47: vector<bool>'s shift_out(position, n), SOCOM 1's -- insert(position, n, x)'s in-place call when bits follow the position)
 0x00208A90 0x1C func_00208A90  # OVL1
 0x00208AB0 0x1C func_00208AB0  # OVL1
 0x00208AD0 0xB0 __dt__17CZClaymoreMapItemFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
