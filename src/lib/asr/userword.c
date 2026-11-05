@@ -221,6 +221,82 @@ static void CalcF2(float *out, float *in, unsigned char n)
     }
 }
 
+/* the label stop and start (defined at their place below), as GNU extern inlines for the
+ * functions between: CheckConsistency holds both bodies */
+extern __inline__ int DoLabelStop(CASR *c)
+{
+    if (_tosControl(c->event, 32, 0, 0) != 0)
+        return 1;
+    return casrEnableLabelInQueue(c, 1);
+}
+
+extern __inline__ int DoLabelStart(CASR *c)
+{
+    if (casrEnableLabelInQueue(c, 0) != 0)
+        return 1;
+    return _tosControl(c->event, 31, 0, 0);
+}
+
+/* what command 19 hands the scheduler: an utterance's segmentation to score */
+typedef struct LABELREQ {
+    int n;                              /* +0: the segmentation's length */
+    int one;                            /* +4 */
+    void *seg;                          /* +8 */
+    short *silence;                     /* +12: the user-word silence phoneme */
+} LABELREQ;
+
+extern const unsigned char LabelBlockIDs[];
+
+/* utterance k's segmentation scored against each training utterance's labels: the best score and
+ * the second best; above parameter +432 the word is consistent (*ok), and the utterance kept is the
+ * best one alone when the second is below parameter +436, else all of them. SOCOM 1's body */
+static int CheckConsistency(CASR *c, int k, unsigned char *keep, unsigned char *ok)
+{
+    LABELREQ lab;
+    int i;
+    int best, second, besti;
+    unsigned int size;
+    unsigned char err;
+
+    lab.n = c->utt[k].n;
+    lab.one = 1;
+    lab.seg = c->utt[k].seg;
+    lab.silence = &c->uw_silence;
+    size = (lab.n + lab.one) * 2 + 16;
+    best = -1000;
+    second = -1000;
+    besti = -1;
+    if (_tosControl(c->event, 23, 0, 0) != 0)
+        return 1;
+    for (i = 0; i < c->uw_recs_needed; i++) {
+        if (_tosControl(c->event, 19, (int)&lab, size) != 0)
+            return 1;
+        err = DoLabelStart(c);
+        if (err)
+            return 1;
+        if (SendLabelsToEngine(c, LabelBlockIDs, i) != 0)
+            return 1;
+        err = DoLabelStop(c);
+        if (err)
+            return 1;
+        if (best < c->f960) {
+            second = best;
+            best = c->f960;
+            besti = i;
+        } else if (second < c->f960)
+            second = c->f960;
+    }
+    if (c->p432 < best) {
+        *ok = 1;
+        if (second < c->p436)
+            keep[besti] = 1;
+        else
+            for (i = 0; i < c->uw_recs_needed; i++)
+                keep[i] = 1;
+    }
+    return 0;
+}
+
 
 /* labels [start, end) of utterance n -- clipped to what was written -- into the label queue one at
  * a time, the engine run on each.
