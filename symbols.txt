@@ -3948,7 +3948,7 @@
 0x002B3B60 0xC ftsGetSquirm__Fv  # OVL1; s1:order by hand (the states lane: after ftsCreateSeal as in SOCOM 1; returns the byte 8 before ftsPlayer, as SOCOM 1's reads the one 4 before it)
 0x002B3B70 0x60 __dt__13CSealCtrlCopyFv  # OVL1; s1:align
 0x002B3BD0 0x8 IsPlayer__13CSealCtrlCopyCFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x002B3BE0 0x8 func_002B3BE0  # OVL1
+0x002B3BE0 0x8 OnStateChange__9CSealCtrlF10SEAL_STATE10SEAL_STATE  # OVL1; s1:vtable by hand (the states lane, round 38; tools/s1vtables.py proposed it, the SEALs round 30): slot 0x64 of __vt__13CSealCtrlCopy (0x4062D0) is SOCOM 1 CSealCtrlCopy table slot 0x64, OnStateChange (0x1FE1D0) -- the flanking slots agree by name (0x5C OnMissionStart, 0x60 OnMissionEnd, 0x68 Dump, 0x6C GetAiNetState), both bodies `jr ra; nop`, and both builds link the copy among CSealCtrlCopy inline copies after ~CSealCtrlCopy and IsPlayer; OVL1 copy of the base inline (OVL2 0x58A710 is the other)
 0x002B3BF0 0x8 func_002B3BF0  # OVL1; s1~ SetAiNetState__9CSealCtrlFUi (one of 2 out-of-line copies of an inline, by s1:vtable)
 0x002B3C00 0x1C func_002B3C00  # OVL1
 0x002B3C20 0x1C func_002B3C20  # OVL1
