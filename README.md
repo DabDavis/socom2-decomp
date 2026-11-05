@@ -2065,6 +2065,21 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the engine core, round 16** (GetRootNode named; camera.cpp to 31 of 32; CZAnim::Activate):
+  - GetRootNode__6CZAnimFb 0x2703D0 is SOCOM 1's GetRootNode (its 0x1CC5C0, word for word) plus a create flag: written as
+    the member, the unit's inline no-argument GetRootNode() folds into it as GetRootNode(false) (SAME-BY-ADDRESS);
+  - when the target calls an earlier-defined callee out of line from its only caller, pin the callee with `#pragma
+    auto_inline off` (ClipChord); a by-value inline over an argument (`anim->GetName()`) puts its local ahead of the inner
+    call, in a saved register (CZAnim::Activate 0x2734B0); giving a struct a default constructor turns an array member's
+    construction into a loop (CShakeParams); in a constructor already holding float constants in float registers a `sw
+    zero` marks an int field (the CAppCamera(zdb::CCamera *) constructor 0x29B5D0);
+  - `float a = p->f; a += d;` loads straight into the result's register (f20), `float a = p->f + d;` into a scratch first;
+    a field read into a named float local ahead of a later local gives the later local the lower register; `lift *= 2.0f
+    / s;` as its own statement schedules the divide first; `CPnt3D v = p;` copies as a block (ld / sd), declared first
+    and assigned it copies field by field; a rotated while loop over a byte enum stepped as `((int)v + 1) % n` reuses the
+    test's load with an andi (CAppCamera::FTSTick 0x29B0C0, the first- / third-person transitions and positions);
+  - camera.cpp carries local stand-ins ScaledBy / DiffOf for CPnt3D's inline operator* / operator- (zmath.h only declares
+    them -- queued for the MSL).
 - **Tells from the kit and AI states, round 48** (CTSound::Tick; CTInView / CTPlay::Tick written):
   - a random pick as an if/else with the draw in its own local (`int r = rand(); x = r % (n + 1) + 1;`) pads the else
     label and leaves the `b` over it unfilled -- a ternary, a lone if or the draw inline fills the `b` from the join and
