@@ -379,7 +379,10 @@ struct MAP_FLOODFILL_STRUCT;
 struct MAP_DIRCOUNT;
 struct MAP_LINEWALK_STRUCT {
     CAiMap *m_map;   // 0x0
-    unsigned int m_unk4[2];   // 0x4
+    /* the line's two cells (the names ours: CAiMaps::WalkLine sets the first to the start point's
+     * cell and the second to the end point's, invalid until found; the maps' WalkLines alike) */
+    CAiMapLoc m_start;   // 0x4
+    CAiMapLoc m_end;   // 0x8
     CAiMapLoc m_loc;   // 0xc: the cell reached
     CAiCell *m_cell;   // 0x10
     float m_dist;   // 0x14: how far along (the sighting callback squares it against its range)

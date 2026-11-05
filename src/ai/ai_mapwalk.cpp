@@ -240,12 +240,15 @@ int CAiMap::GetLocationWidth(const CAiMapLoc &loc, int max)
 }
 
 /* a point between two, a fraction along: each end scaled and the two added, through CPnt3D's
- * const operators (new in SOCOM II, the name ours: CAiMaps::WalkLine's step, 0x539AA0) */
+ * const operators (new in SOCOM II, the name ours: CAiMaps::WalkLine's step, 0x539AA0 -- called
+ * out of line there, twice: never auto-inlined) */
+#pragma auto_inline off
 static CPnt3D *_lerp(const CPnt3D *a, const CPnt3D *b, CPnt3D *out, float t)
 {
     *out = *a * (1.0f - t) + *b * t;
     return out;
 }
+#pragma auto_inline reset
 
 /* a cell's altitude: the map's floor plus its quantised height (SOCOM 1's took the box's height
  * over 1023 steps; the name ours) -- none for no cell, the result then unset, as both builds have it */
@@ -570,6 +573,94 @@ bool CAiMaps::CanSeePoint(const CPnt3D *from, const CPnt3D *to, float rangeSq)
     else if (!(vis <= 0.0f))
         seen = Chance(vis);
     return seen;
+}
+
+/* a line between two points walked over the maps in steps of a fraction of the first map's cell:
+ * each new cell reached -- its map looked up when it changes -- handed to the callback with the
+ * distance and fraction walked, the cell before and the point; the walk ends when the callback
+ * says so, a point is off the maps or a cell is missing, and the end point's cell is handed on last
+ * (new in SOCOM II, the name ours: the visibility tests' walk, 0x5352D0). The step's direction
+ * normalised in x and z; _lerp called out of line, as the target calls it.
+ * OPEN, 236 instructions at the target's size (0x45C), written in the AI core's round 27: every
+ * block is the target's but the frame is 16 bytes taller -- the map is spilled (stored at its
+ * definition, reloaded at each use) where the target keeps it in s2 until the step's m_dx and then
+ * gives s2 to `ok`. MW's first colouring (build/scratch/ai/ig/) holds the addresses of the walk
+ * struct's fields from the initialisation through the loop (eight `addiu rN,sp,k` temporaries, the
+ * map interfering with all of them and with `ok`), so the map loses; the target keeps only three
+ * (m_cell s0, m_loc s1, m_pos s8) and rebuilds m_dist's, m_prev's and m_t's at each store. Tried:
+ * the struct, the cells and the map declared in every order, the tests split, `ok` declared at the
+ * top, the length and dt reordered, the x-z normalisation as an inline, the struct's start as an
+ * inline over a reference (build/scratch/ai/v_wl*.py) -- all the same 236 */
+bool CAiMaps::WalkLine(const CPnt3D *from, const CPnt3D *to, bool (*f)(const MAP_LINEWALK_STRUCT &s, void *data),
+                       void *data, float step)
+{
+    CAiMap *map = GetMapByIndex(0);
+    CAiMapLoc loc;
+
+    if (!map || !from || !to || !GetLocation(from, loc))
+        return false;
+    MAP_LINEWALK_STRUCT s;
+
+    s.m_start = loc;
+    s.m_end = CAiMapLoc::invalid;
+    s.m_map = map;
+    s.m_dist = 0.0f;
+    s.m_cell = 0;
+    s.m_prev = 0;
+    s.m_loc = CAiMapLoc::invalid;
+    s.m_t = 0.0f;
+    GetLocation(to, s.m_end);
+    CPnt3D d;
+
+    to->Sub(from, &d);
+    CPnt3D h = d;
+    float len = sqrtf(h.x * h.x + h.z * h.z);
+
+    if (len != 0.0f) {
+        float inv = 1.0f / len;
+
+        h.x *= inv;
+        h.z *= inv;
+    }
+    s.m_dir.x = h.x;
+    s.m_dir.y = h.y;
+    s.m_dir.z = h.z;
+    float dt = 1.0f / (len / (step * map->m_dx));
+    bool ok = true;
+    float t = 0.0f;
+    CAiMapLoc l;
+
+    while (ok && t < 1.0f) {
+        _lerp(from, to, (CPnt3D *)&s.m_pos, t);
+        if (GetLocation((CPnt3D *)&s.m_pos, l)) {
+            if (l != s.m_loc) {
+                if (l.m_mapid != s.m_map->m_mapid)
+                    s.m_map = GetMapByIndex(l.m_mapid);
+                s.m_dist = t * len;
+                s.m_prev = s.m_cell;
+                s.m_cell = GetCell(l);
+                s.m_loc = l;
+                s.m_t = t;
+                ok = s.m_cell ? f(s, data) : false;
+            }
+            t += dt;
+        } else
+            ok = false;
+    }
+    if (ok) {
+        _lerp(from, to, (CPnt3D *)&s.m_pos, 1.0f);
+        if (GetLocation((CPnt3D *)&s.m_pos, l) && l != s.m_loc) {
+            if (l.m_mapid != s.m_map->m_mapid)
+                s.m_map = GetMapByIndex(l.m_mapid);
+            s.m_dist = 1.0f * len;
+            s.m_prev = s.m_cell;
+            s.m_cell = GetCell(l);
+            s.m_loc = l;
+            s.m_t = 1.0f;
+            ok = s.m_cell ? f(s, data) : false;
+        }
+    }
+    return ok;
 }
 
 /* the step of a count out over ground a step may end on: GetNeighbor's, then the cell's test (the
