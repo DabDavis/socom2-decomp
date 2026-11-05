@@ -2266,13 +2266,15 @@ static inline void PushOut(float &cur, float v, bool &moved)
  * (0x5B3890 asked with 1 when either moved), the weapon put in state 2 and the controller's weapon
  * timer restarted and run out (0x543F70's), the kept wall hit cleared when the push is under 0.1 or
  * none is cut off; false with no node hit (OVL2 0x54A3D0, new in SOCOM II; the name unknown).
- * OPEN, 16 instructions (the size right): the push's scale block's float registers -- the target
- * computes the depth 1.3 - t into f2 in the limit test's delay slot and loads the step (f1) before
- * 0.6 (f0), ours the depth into f5 and 0.6 (f1) before the step (f0). The step a local (its `neg.s`,
- * as 0x54A6D0's parameter) and the depth named ahead of the test (in the delay slot then, 0x308 -> 0x300)
- * are the target's; igreplay (FPR record): no placement of the depth alone gives it -- the constants'
- * temporaries come in another order. Tried: a named limit, `0.6f * r * d`, the product named first,
- * the test on the depth (build/scratch/seal-r50/v_3d*.py) */
+ * OPEN, 1 instruction (round 51, from 16): the step's product's operands -- the target multiplies
+ * `mul.s $f1,$f1,$f2`, the step (f1) by the depth (f2), ours the depth by the step. igreplay's FPR record
+ * (round 51): the target's registers need the depth numbered AFTER the push's three loads and 0.6 after
+ * the step -- the depth an unnamed temporary of the scale's expression, evaluated first: `(1.3f - t) * r
+ * * 0.6f` (MW swaps the literal 0.6 to the left at the emit, not the step) gives every register and the
+ * delay slot's sub.s. Any shape evaluating the step first (`r * (1.3f - t)`, a literal 10.0f, an inline
+ * Mul(r, depth) whose arguments go right to left) or the depth named (anywhere, even defined after the
+ * push) loses the delay slot (0x308); `0.6f * ((1.3f - t) * r)`, `+r`, `-t + 1.3f`, `1.3f + -t`, a named
+ * product and an assigned step all give this one (build/scratch/seal-r51/v_3d*.py) */
 extern "C" bool func_0054A3D0(CZSealBody *seal, const CPnt3D *pos, zdb::IntersectStruct *hit)
 {
     if (!hit->m_node)
@@ -2289,13 +2291,11 @@ extern "C" bool func_0054A3D0(CZSealBody *seal, const CPnt3D *pos, zdb::Intersec
     q.y = p.y;
     float t = LineIntersectPlane(PlaneConstant(hit->m_norm, hit->m_pos), hit->m_norm, p, q);
 
-    float d = 1.3f - t;
-
     if (t < 1.3f) {
         CPnt3D push = hit->m_norm;
         bool moved;
 
-        push.Scale(0.6f * (r * d), &push);
+        push.Scale((1.3f - t) * r * 0.6f, &push);
         moved = false;
         PushOut(seal->m_f44.x, push.x, moved);
         PushOut(seal->m_f44.z, push.z, moved);
