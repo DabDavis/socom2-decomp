@@ -7166,9 +7166,9 @@
 0x00387A90 0x1DC __ct__10CImageSpecFR10CImageSpec  # OVL1; by hand (CImageSpec's implicit copy out of line: CDlgObjSpec's copy inlined, the vtable, the members; the progress bar's and the list box's Copies call it) -- zui_cleanup.cpp
 0x00387C70 0x80 Copy__14CSliderBarSpecFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00387CF0 0x268 Copy__14CUIListBoxSpecFv  # OVL1; by its vtable (slot 0x0C of __vt__14CUIListBoxSpec 0x407E30) -- the UI-widgets lane
-0x00387F60 0x28 func_00387F60  # OVL1; tu: vis_mesh.cpp~ (1.0 beta)
+0x00387F60 0x28 __ct__Q23std48vector<P8ListItem,Q23std21allocator<P8ListItem>>FRCQ23std48vector<P8ListItem,Q23std21allocator<P8ListItem>>  # OVL1; tu: vis_mesh.cpp~ (1.0 beta); by hand (the UI lane round 27: the list box spec's item vector copied, CUIListBoxSpec::Copy 0x387CF0's call for its member at 0xEC -- zui_cleanup.cpp emits it after Copy, the pod's copy called)
 0x00387F90 0x20 __ct__6CPnt3DFRC6CPnt3D  # OVL1; s1:exact
-0x00387FB0 0x28 func_00387FB0  # OVL1; tu: vis_mesh.cpp~ (1.0 beta)
+0x00387FB0 0x28 __ct__Q23std54vector<P10ColumnData,Q23std24allocator<P10ColumnData>>FRCQ23std54vector<P10ColumnData,Q23std24allocator<P10ColumnData>>  # OVL1; tu: vis_mesh.cpp~ (1.0 beta); by hand (the UI lane round 27: the list box spec's column vector copied, CUIListBoxSpec::Copy 0x387CF0's call for its member at 0xBC -- zui_cleanup.cpp emits it after Copy, the pod's copy called)
 0x00387FE0 0xA0 CreateDisplayObj__18CHandlerButtonSpecCFP7C2DFontPQ23zdb16CTextureRelocMgr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00388080 0x64 Copy__18CHandlerButtonSpecFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x003880F0 0xF0 __dt__18CHandlerButtonSpecFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
