@@ -2062,6 +2062,32 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the SEALs, round 38** (the restraint capture, the restrain / stab / carry stretch of seal_body.cpp):
+  - in a function with many calls every variable needing a saved register also conflicts with 19 hardware registers, so
+    one with six long-lived variable neighbours sits exactly at K -- a bool declared first and set with if/else drops it
+    below K and gives the target's saved registers (RestrainBuddy 0x578990; as an inline bool or `busy = a && b` it stays
+    59 off); when a loop's result stays in v0 but a later result is long-lived, the original had two variables (`r = b;`);
+  - a call's argument that is an inline call (`GetNode()->SetMatrix(m_carry->GetNode()->GetMatrix())`) is expanded
+    before the call's own receiver, written as `&...->m_matrix` MW fetches the receiver first (DetachBody 0x579220); a
+    compare's constant left in an argument register before a nop'd delay slot is the next call's argument (GetStance(true));
+  - SOCOM II splits SOCOM 1's RestrainBuddy / StabBuddy in two -- these set up, an anim callback 3 seconds in finishes
+    (0x578D20 the stab's kill; PutdownBuddy 0x5794D0, PickupBuddy 0x579720, CrouchToPickupBuddy 0x579A30 named by SOCOM
+    1's order); the restraint capture 0x5784A0 and 0x58C600 match with AnimSet::GetName fitted five levels high in
+    seal_cfg.cpp's AnimSet view (the kit's anim.cpp shape; its comment says fitted).
+- **Tells from the weapons, round 25** (the lights packet send at last, the turret AI's fire control and target scan):
+  - a by-value 4D copy through a frame temporary with its field addresses hoisted out of the loop is a `CPnt4D(src)`
+    temporary passed to an inline by const reference; thread the cursor through the inline's return to get two +16 steps
+    instead of one +32 (0x3B6B20, open since round 13);
+  - MW expands an inline (Dot) ahead of an out-of-line call in the same compare whichever side the call is on -- to make
+    the call come first put its result in a local (0x3A8030); `fire = a > b` gives `li 1 / c.le.s / move zero`, `!(a <=
+    b)` adds an xori; an out-of-line `return !Lost(t)` stays byte-exact when its body moves into an inline returning lost
+    that another function tests directly (0x3A82C0 / 0x3A7FA0);
+  - a stack record's byte flag stored before the other members belongs in the mem-initializer list; a member container
+    kept in a saved register needs a reference local taken before the intervening call; `while (last) { next =
+    last->m_next; if (!next) break; last = next; }` gives the target's entry test and a bottom bnez on the new end; a float
+    parameter's position in the callee's prototype changes the caller's set-up (placed first, its mov.s $f12 schedules
+    first); each class level adds one to both a member's constructor and destructor chains -- ~CVehicle's extra
+    destructor level alone is no class shape (its depth-6 stand-in shape declined at integration: OPEN).
 - **Tells from the HUD, round 46** (the five C2D GetAssetLibs, CHandlerButton::HandlePad, ReadPlacement):
   - a list walk's end in `this`'s register: declare the end node uninitialised first and assign it after begin() -- MW
     numbers it at the declaration but computes it where `this` dies, so it takes this's saved register (all five C2D

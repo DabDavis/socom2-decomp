@@ -7011,6 +7011,8 @@
 0x003A7E30 func_003A7E30
 0x003A7EB0 func_003A7EB0
 0x003A7FA0 func_003A7FA0
+0x003A8030 func_003A8030
+0x003A82C0 func_003A82C0
 0x003A88C0 func_003A88C0
 0x003A8BD0 func_003A8BD0
 0x003A8D20 Fire__7CTurretFv
@@ -7139,6 +7141,7 @@
 0x003B6680 VuObjectSetup__Q23zdb7CVisualFP8_word128
 0x003B6820 func_003B6820
 0x003B6870 func_003B6870
+0x003B6B20 func_003B6B20
 0x003B6D10 NodeSetup__Q23zdb7CVisualFPQ23zdb5CNodePQ23zdb5CNodeP7CMatrix
 0x003B6E10 GetChainData__Q23zdb7CVisualFv
 0x003B6FA0 SaveTextureSelect__Q23zdb7CVisualFP8_word128PQ23zdb8CTextureUl
@@ -9348,6 +9351,7 @@
 0x00578150 AdrenalineIncr__10CZSealBodyFf
 0x005781B0 Adrenaline__10CZSealBodyFv
 0x005781C0 func_005781C0
+0x005784A0 func_005784A0
 0x005788C0 __ne__Q33std54__vector_imp<P7AnimSet,Q23std20allocator<P7AnimSet>,1>8iteratorCFRCQ33std54__vector_imp<P7AnimSet,Q23std20allocator<P7AnimSet>,1>8iterator
 0x005788E0 end__Q23std54__vector_imp<P7AnimSet,Q23std20allocator<P7AnimSet>,1>Fv
 0x00578900 __pp__Q33std54__vector_imp<P7AnimSet,Q23std20allocator<P7AnimSet>,1>8iteratorFi
@@ -9357,8 +9361,15 @@
 0x00578960 __as__Q33std54__vector_imp<P7AnimSet,Q23std20allocator<P7AnimSet>,1>8iteratorFRCQ33std54__vector_imp<P7AnimSet,Q23std20allocator<P7AnimSet>,1>8iterator
 0x00578970 begin__Q23std54__vector_imp<P7AnimSet,Q23std20allocator<P7AnimSet>,1>Fv
 0x00578980 __ct__Q33std54__vector_imp<P7AnimSet,Q23std20allocator<P7AnimSet>,1>8iteratorFv
+0x00578990 RestrainBuddy__10CZSealBodyFP10CZSealBody
 0x00578D10 func_00578D10
+0x00578D20 func_00578D20
+0x00578F90 StabBuddy__10CZSealBodyFP10CZSealBody
 0x00579210 func_00579210
+0x00579220 DetachBody__10CZSealBodyFv
+0x005794D0 PutdownBuddy__10CZSealBodyFv
+0x00579720 PickupBuddy__10CZSealBodyFP10CZSealBody
+0x00579A30 CrouchToPickupBuddy__10CZSealBodyFP10CZSealBody
 0x00579DA0 func_00579DA0
 0x00579E90 func_00579E90
 0x00579EA0 func_00579EA0
@@ -9462,6 +9473,7 @@
 0x0058C4A0 BindAnimSet__10CZSealBodyFP7AnimSetb
 0x0058C4B0 func_0058C4B0
 0x0058C5D0 func_0058C5D0
+0x0058C600 func_0058C600
 0x0058C820 func_0058C820
 0x0058C960 func_0058C960
 0x0058C970 func_0058C970
