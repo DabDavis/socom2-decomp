@@ -151,7 +151,12 @@ static inline const CBBox *NodeBBox(CNode *node)
  * temporary (the first corner copied whole into 0xD0, from there whole into the temporary's
  * minimum at 0x50 and field by field into its maximum at 0x5C, the temporary assigned to m_bbox
  * field by field: a CBBox made from one point, by value?), the minimum kept with `<=` and the
- * maximum with `<` */
+ * maximum with `<`. The world lane's round 21 (build/scratch/wld/v_sc.py): the construction LOOP is
+ * a member array's -- `struct { const CBBox *m_box; CPnt3D m_pts[8]; }` built by a constructor
+ * taking the node, `m_box(node->GetBBox())` in its mem-initializers (the recursive GetBBox cuts it
+ * one level: GetBBox straight, then the loop calling CPnt3D(), then GetBBoxCorners) gives the
+ * target's order at 0x230 -- the box pointer then stored in the struct (sp+112) where the target
+ * keeps it in s3; a local array in a helper cut one level unrolls into eight calls instead (h1) */
 CShadowCaster::CShadowCaster(CNode *node)
 {
     m_node = node;
