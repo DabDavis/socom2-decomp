@@ -6733,7 +6733,7 @@
 0x00365210 0x1AC PreGetSprPacket__23CDblBufTextureRelocatorFPQ23zdb10CTexHandle  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x003653C0 0xE0 Init__23CDblBufTextureRelocatorFv  # OVL1; ours by its body (the relocator's three GS buffers made with CTexManager::doAddBuffer, Reloc0-2 over 0-0.4, 0.4-0.8, 0.8-1, stored at 8, 0xC and 0x10; SOCOM 1's relocator had two)
 0x003654A0 0x1C func_003654A0  # OVL1
-0x003654C0 0x538 func_003654C0  # OVL1
+0x003654C0 0x538 Tick__9CGameMenuFf  # OVL1; s1:calls by hand (the UI lane round 27: SOCOM 1's CGameMenu::Tick call for call -- HandlePad 0x368650 with the pad global, the scheduler's Tick, the menu stack's commands through AddToHistory/SwitchMenu/MakeButtonActive/FindChild's 2D visual/HandleCommand, GetPopUp's tick, the two child lists' ticks, the keyboard's tick and slot 0x0C; SOCOM II's fade first) -- zui.cpp, not written yet
 0x00365A00 0x34C SwitchMenu__9CGameMenuFPc  # OVL1; s1:calls by hand (the UI lane round 27: SOCOM 1's SwitchMenu's tail call for call -- Clear, WipePktBuf, Unload_MissionReader, the dlgHype/dlgNetLogin prints, the fader's flag, Load, SetColor and SetTrans, the batch round LoadDesign; SOCOM II's fade steps at 0x8FC and five names switching game states first) -- zui.cpp
 0x00365D50 0x9D8 ParseButtonAnim__FP5_zrdrP10ActionItem  # OVL1; s1:calls by hand (CCheckBoxSpec(_zrdr *) calls it with ONCHECK's and ONUNCHECK's tags and the two new ActionItems where SOCOM 1's calls ParseButtonAnim__FP5_zrdrP10ActionItem; the rdr in a0, the item filled through a1, void) -- zui.cpp
 0x00366730 0x208 PrepModels__9CGameMenuFRC14CGameDlgDesign  # OVL1; s1:order by hand (the UI lane, round 26: SOCOM 1's CGameMenu::PrepModels between ParseButtonAnim and TickMPEG in both builds -- the design's models instanced at 320 + azimuth / elevation / 320 - distance, named, added under CWorld::m_world, rotated and kept in the menu's node vector at 0x8EC; byte-exact from zui.cpp)
@@ -6758,7 +6758,7 @@
 0x00368560 0x8 HasChildren__11CDlgObjSpecCFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00368570 0xB4 Init__9CGameMenuFPQ23zdb16CTextureRelocMgrP9CZAnimZAR  # OVL1; the UI lane round 18: SOCOM 1's Init__9CGameMenuFPQ23zdb16CTextureRelocMgrP9CZAnimZAR by its body (Clear, the ZAR stored at 0xC0, a zVid flag cleared, the relocator given or g_relocBatch at 0x8DC, StartBatchReloc, the design of GetReaderFileName loaded, EndBatchReloc, true -- SOCOM 1's with the design load moved out to 0x367430); zui.cpp
 0x00368630 0x1C GetReaderFileName__9CGameMenuFv  # OVL1; s1:vtable by hand (slot 0x10 of __vt__9CGameMenu 0x406F80, SOCOM 1's GetReaderFileName's slot: the reader's name string returned)
-0x00368650 0xB20 func_00368650  # OVL1
+0x00368650 0xB20 HandlePad__9CGameMenuFPC4CPad  # OVL1; s1:calls by hand (the UI lane round 27: Tick 0x3654C0 calls it with this and the pad global where SOCOM 1's Tick calls CGameMenu::HandlePad) -- zui.cpp, not written yet
 0x00369170 0x48 DrawForeplane__9CGameMenuFv  # OVL1; s1:exact
 0x003691C0 0x44 Draw2dOnly__9CGameMenuFv  # OVL1; s1:exact
 0x00369210 0x4BC Clear__9CGameMenuFv  # OVL1; s1:calls by hand (called at LoadFromDesign+0x34 and ~CGameMenu+0x24, the offsets of SOCOM 1's calls to CGameMenu::Clear in both; 0x4BC against 0x51C)
@@ -7556,7 +7556,7 @@
 0x0039DEA0 0x50 __ct__7CFileCDFv  # OVL1; s1 by hand (SOCOM 1's CFileCD() body, out of line in SOCOM II: the head sector -1, the rest zero, a 2 KB sector buffer 64-aligned; the DNAS client calls it, Open inlines it)
 0x0039DEF0 0xD0 Find__7CFileCDFPCc  # OVL1; s1 by hand (SOCOM 1's Find(const char *): the TOC walked 16 bytes at a time with strcmp until found; SOCOM II prefixes the root's directory 0x4A1650; Open inlines it)
 0x0039DFC0 0xC func_0039DFC0  # OVL1
-0x0039DFD0 0x520 func_0039DFD0  # OVL1
+0x0039DFD0 0x520 BuildTOC__7CFileCDFv  # OVL1; s1:calls by hand (the UI lane round 27: SOCOM 1's CFileCD::BuildTOC 0x305010 by its code -- m_CDmode set, the TOC malloc'd, a local CFileCD read from sector 16, the root directory record at the PVD's 156, the directory walk with its 16-byte stack, the dot entries skipped, CreatePath and _strdup for directories, the file names joined with a backslash; SOCOM II's TOC 360 entries and the lowest sector kept at 0x4A17A0) -- util_sonyio.cpp, not written yet
 0x0039E4F0 0x110 CreatePath__7CFileCDFPcPc  # OVL1; s1:calls
 0x0039E600 0x8 fflush__7CFileIOFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0039E610 0x8 ftell__7CFileIOCFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
