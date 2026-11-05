@@ -1569,7 +1569,7 @@
 0x001F53D0 0x24C func_001F53D0  # OVL1
 0x001F5620 0xC GetReaderFileName__14CMenuStateMenuFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x001F5630 0x8 func_001F5630  # OVL1
-0x001F5640 0x5E4 func_001F5640  # OVL1
+0x001F5640 0x5E4 insert__Q23std80__vector_imp<20MediusChatFwdMessage,Q23std33allocator<20MediusChatFwdMessage>,0>FP20MediusChatFwdMessageUiRC20MediusChatFwdMessage  # OVL1; by hand (the states lane, round 38): the room chat vector insert(position, n, x) -- 0x1F5020 (the line added to the online rooms chat) calls it twice through push_back, st_menu.cpp template tail emits it byte-exact after the unit functions, as the deleter destructor 0x1F5C30 and clear 0x1F5CA0 follow it
 0x001F5C30 0x68 __dt__Q23std82__vector_deleter<20MediusChatFwdMessage,Q23std33allocator<20MediusChatFwdMessage>>Fv  # OVL1; by hand (the online lane's round 7, vetted by the integrator: ~BriefingRoom calls it for the room's chat vector at +0x88; 0x1F5020 builds a 0x80-byte MediusChatFwdMessage and inserts it through 0x1F5640, whose deleter destructor this is; clear 0x1F5CA0 then the data deleted)
 0x001F5CA0 0x8 clear__Q23std82__vector_deleter<20MediusChatFwdMessage,Q23std33allocator<20MediusChatFwdMessage>>Fv  # OVL1; by hand (the online lane's round 7, vetted by the integrator: the chat vector's deleter destructor 0x1F5C30 calls it first)
 0x001F5CB0 0x8 AddToBatch__Q23zdb16CTextureRelocMgrCFPQ23zdb10CTexHandle  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
