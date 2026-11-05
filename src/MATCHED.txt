@@ -1631,6 +1631,7 @@
 0x00202370 ReInit__11CZPauseTestFv
 0x00204140 SetIsTrans__13C2DBitmapPolyFb
 0x00204190 SetHasTexture__13C2DBitmapPolyFb
+0x00205200 ClosePauseMenu__11CZPauseTestFv
 0x00205480 __dt__11CZPauseTestFv
 0x002057A0 __dt__10CPauseItemFv
 0x00205800 __ct__11CZPauseTestFv
@@ -1917,8 +1918,10 @@
 0x00228BC0 Tick__6CFaderFf
 0x00228E00 __ct__6CFaderFv
 0x00228ED0 IsPlaying__16CZHudMissionCamsFv
+0x00228EE0 PlayCamera__16CZHudMissionCamsFP11CMissionCamb
 0x00229430 PlayCamera__16CZHudMissionCamsFPCc
 0x00229470 Draw__16CZHudMissionCamsFPQ23zdb7CCamera
+0x00229520 CleanupCamera__16CZHudMissionCamsFP4CPad
 0x00229810 HudTick__16CZHudMissionCamsFP4CPadf
 0x002299F0 UnInit__16CZHudMissionCamsFv
 0x00229A70 Init__16CZHudMissionCamsFv
@@ -8043,6 +8046,7 @@
 0x004D09A8 Calculate_NbrOfStatesInDict_ForChinese
 0x004D1B20 FreeSecondPassContext
 0x004D1C18 GetSecondPassInfo
+0x004D1EA0 putWordInDict
 0x004D3318 AllocateNodeAndFreePrevious
 0x004D45A8 CalcNrNodes10
 0x004D5058 SetIsolatedWordDpActiveWords
@@ -8131,6 +8135,7 @@
 0x004E1368 CalcEntropy4bit
 0x004E14E0 CalcEntropyMerged
 0x004E1708 CalcEntropyMerged4bit
+0x004E1B28 userwordAcknowledge
 0x004E1D08 InitUserWordTraining
 0x004E1E30 ExitUserWordTraining
 0x004E2008 CalcF2
@@ -8241,6 +8246,7 @@
 0x004F6958 ProcessMel
 0x004F6B08 ControlMel
 0x004F6C78 InitMel
+0x004F6CE0 QrDeleteCol
 0x004F7010 mtxConstruct
 0x004F7038 func_004F7038
 0x004F7088 mtxAssociateEntr
@@ -8256,8 +8262,10 @@
 0x004F76F0 imtxInit
 0x004F7778 imtxDeleteCol
 0x004F77F8 mtxFillX
-0x004F7880 func_004F7880
+0x004F7880 mtxFillCopy
+0x004F78A8 QrPreMult
 0x004F7A48 smtConstruct
+0x004F7C48 Smoothing
 0x004F80A8 smtDestruct
 0x004F8130 SpecSubPutSession
 0x004F8378 SpecSubGetSession
@@ -8316,6 +8324,7 @@
 0x00502298 ProcessPitchCombiner
 0x005028F0 ControlPitchCombiner
 0x00502F10 ConstructPitchCombiner
+0x00502F50 spline2
 0x00503410 Lin_2_Log
 0x005041C0 ControlSHS_VUV
 0x00504980 ConstructSHS_VUV
