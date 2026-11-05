@@ -363,6 +363,87 @@ void CZNewHudMap::SetWorldWidth(float width)
     SetWorldView(m_worldcenterx, m_worldcentery, width);
 }
 
+/* a map's bounds (ai.h's CAiMap, SOCOM 1's DWARF: AIMAP_PARAMS's box first) and the AI maps' lookup
+ * by index (ai_maps.h's CAiMaps; AiMaps at 0x66A1B0) -- only what the scroll reads */
+class CAiMap {
+public:
+    CBBox m_bbox;   // 0x0
+};
+
+class CAiMaps {
+public:
+    CAiMap *GetMapByIndex(unsigned int i) const;
+};
+
+extern CAiMaps AiMaps;
+
+/* the scroll's bounds without a map (SOCOM 1's DWARF: HandleScrolling's static CBBox boxFallback,
+ * guarded -- an empty inline constructor; the class name ours) */
+class CFallbackBox : public CBBox {
+public:
+    CFallbackBox() {}
+};
+
+/* the bounds the full-screen map scrolls inside: the first AI map's, else an empty box -- one
+ * guarded static that HandleScrolling and GetScrollPermissions 0x20AAC0 both read, as SOCOM 1's
+ * both do (an inline's static; the name ours) */
+inline const CBBox *CZNewHudMap::GetScrollBounds() const
+{
+    static CFallbackBox boxFallback;
+    CAiMap *map = AiMaps.GetMapByIndex(0);
+
+    return map ? &map->m_bbox : &boxFallback;
+}
+
+/* the scroll's speed at the map's scale (36 in data; SOCOM 1's literal 20; the name ours) */
+static float s_fScrollSpeed = 36.0f;
+
+/* the full-screen map's centre moved by the stick, turned to the viewer's facing and kept inside
+ * the first AI map's bounds -- each axis moved only while it is inside the bound it moves toward
+ * (SOCOM 1's HandleScrolling, 0x3C4950: there the viewer's own map and 20 for the speed; the name
+ * SOCOM 1's). The facing is a stack SealDir whose z is read through a pointer kept across the map
+ * lookup (the target's s1 = sp+72, as SOCOM 1's s0); the two early returns one `||` (they share one
+ * `b` to the epilogue); the speed a static (loaded from data), the fallback box an inline's guarded
+ * static (GetScrollBounds 0x20AAC0 reads the same box and guard).
+ * OPEN, 2 instructions and 16 registers, one swap: `this` takes s1 and the z pointer s0 (SOCOM 1's
+ * own colouring), the target the reverse. Replayed (build/scratch/hud-r48/ig: rl_hs.py), z has 25
+ * neighbours -- this, the node pointer, the box, the guard's load and its 1, bMoveX -- one at K, so
+ * it is deferred with `this` (27) and coloured first; any one interference fewer, or `this`
+ * numbered above z, gives the target. MW hoists z's `addiu` to the block's top (right after the
+ * node load) wherever it is written. Tried: z declared first / at the top / after the length / in
+ * the length, through the facing inline's returned pointer, a reference (the store then goes
+ * through it), the move tests without bool locals or with one bool, a copy of `this` for the
+ * moves, the bounds an inline member, a dead first definition of the box pointer */
+void CZNewHudMap::HandleScrolling(float fStickX, float fStickY)
+{
+    float fZMove;
+    float fXMove;
+    float fConst;
+    float fDirLength;
+
+    if ((fStickX == 0.0f && fStickY == 0.0f) || !m_viewer)
+        return;
+    SealDir ptDir;
+
+    GetSealDir(m_viewer, &ptDir);
+    const float *z = &ptDir.z;
+
+    fDirLength = sqrtf(ptDir.x * ptDir.x + *z * *z);
+    fConst = s_fScrollSpeed / fDirLength;
+    const CBBox *box = GetScrollBounds();
+
+    fXMove = fConst * (fStickX * *z + fStickY * ptDir.x);
+    bool bMoveX = fXMove > 0.0f ? m_centerx < box->m_max.x : m_centerx > box->m_min.x;
+
+    if (bMoveX)
+        m_centerx += fXMove;
+    fZMove = fConst * (fStickX * -ptDir.x + fStickY * *z);
+    bool bMoveZ = fZMove > 0.0f ? m_centerz < box->m_max.z : m_centerz > box->m_min.z;
+
+    if (bMoveZ)
+        m_centerz += fZMove;
+}
+
 /* each item's PostDraw (ours: an inline, so its iterator is numbered after Draw's temporaries) */
 inline void CZNewHudMap::PostDrawItems(const std::list<CZMapItem *>::iterator &first,
                                        zdb::CCamera *cam)

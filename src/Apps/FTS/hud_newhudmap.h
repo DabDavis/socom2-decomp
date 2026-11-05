@@ -81,6 +81,10 @@ public:
     float GetZoomOut() const;
     void FrameObjective();
     void SwitchToCompassMap();
+    /* the full-screen map scrolled by the stick (SOCOM 1's; 0x20A120) */
+    void HandleScrolling(float fStickX, float fStickY);
+    /* the bounds the full-screen map scrolls inside (an inline; the name ours) */
+    const CBBox *GetScrollBounds() const;
     void CalcNewMatrix();
     /* the world window, its centre and width (no narrower than the minimum) at once: the width's
      * setter passes the centre back in, read before the clamp (the name is ours) */
