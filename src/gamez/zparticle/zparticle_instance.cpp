@@ -325,15 +325,11 @@ found:
 }
 
 /* SOCOM 1's: the colour at `age`, interpolated between the keys around it (held at the ends);
- * with no keys white, fading out over the first unit of age.
- * OPEN, 15 instructions: registers only -- the target keeps the found index in t0 apart from the
- * loop counter (t1) and the data pointer in t1, where here the index shares t1 with the counter
- * and the data takes t0 (GetScale's identical search allocates as the target; tried: the two
- * declaration orders, `int k, i`, a copy of the index, break/for-scoped forms, a found test after
- * the loop). MW's colouring (the world lane's round 14, the MSL lane's igdump): the interpolation's
- * data-pointer temporary is coloured before k and takes t0, so k falls to i's t1; tried there: `b`
- * as a second reference (0x1E4), `a` a pointer, k + 1 in a local (15), a named data pointer with a
- * dead first definition ahead of k (0x1D4: the element addresses change) */
+ * with no keys white, fading out over the first unit of age. The key is read as m_colorSeq[k] at
+ * each use: a reference local for it (`const SequenceEntry<CPnt4D> &a = m_colorSeq[k];`) is a
+ * front-end temporary numbered below the data pointer's, which then colours first and takes k's t0
+ * (15 differing; tools/igreplay.py --want: the data pointer anywhere below the reference -- the world
+ * lane's rounds 14 and 21) */
 void Props::GetColor(float age, CPnt4D &color) const
 {
     int n = m_colorSeq.size();
@@ -371,9 +367,8 @@ found:
         color = m_colorSeq[n - 1].m_data;
         return;
     }
-    const SequenceEntry<CPnt4D> &a = m_colorSeq[k];
-    float t = (age - a.m_fraction) / (m_colorSeq[k + 1].m_fraction - a.m_fraction);
-    CPnt4D c0(a.m_data);
+    float t = (age - m_colorSeq[k].m_fraction) / (m_colorSeq[k + 1].m_fraction - m_colorSeq[k].m_fraction);
+    CPnt4D c0(m_colorSeq[k].m_data);
     CPnt4D c1(m_colorSeq[k + 1].m_data);
 
     sceVu0InterVector((float *)&color, (float *)&c1, (float *)&c0, t);

@@ -2065,6 +2065,107 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the HUD, round 53** (ComputeNewRating, CUIListBox::HandlePad):
+  - A VALUE ASSIGNED IN TWO BRANCHES IS NEVER FOLDED BACK INTO ITS USE -- an if/else, or a ternary even with identical
+    arms: MW generates and numbers it where it is assigned, where a single assignment (a named local, `x -= y`, an inline
+    returning it) is folded back (ComputeNewRating 0x2253C0: the halfway step's difference `iChange` assigned in two
+    branches puts the 0.5 first; CUIListBox::HandlePad 0x3745E0: the pad's state a ternary with two identical arms -- a
+    MARKED numbering device, the original's two arms unknown, accepted at integration as local and lossless);
+  - in a float multiply MW generates the complex operand first, so in `0.5f * (a - b)` the constant is numbered last
+    and takes $f0, a plain variable operand after the constant; with an inline call on the left of `==` MW moves it to
+    the right in the compare; `x += -(e)` compiles to negu / addu, `x -= e` to subu;
+  - an inline function's parameter is substituted into each of its uses, so an expression argument used twice is
+    computed twice (Draw2DLine 0x35FCE0's tag setter, 4 off, OPEN); in an `asm volatile` block four pointer locals get
+    a1, a0, v1, v0 in declaration order; hud_missioncams.cpp's three CSnd calls respelled (SAME-BY-ADDRESS).
+- **Tells from the kit and AI states, round 47** (LobAim; six task handlers, four on the first build):
+  - SWITCH COMPARE CHAINS TEST CASES IN REVERSE SOURCE ORDER (CTMap::Tick 0x5D6770 needs `case 4: case 3: case 5:`);
+    CTSignal::Tick's three-GetTyped shape closes CTSetAnimSet::Tick 0x5D1E00, CTPlay::End 0x5D2AA0 and CTPlay::Begin
+    0x5D3740 as written -- the remaining handlers likely share it;
+  - a float `x + 0.0f` literal folds away, adding a zero held in a local keeps the target's `mtc1 zero; add.s`; a float
+    local initialised from an inline's return becomes the inline's result temporary, numbered after every named local
+    ($f20, above a later-declared named local); of two inline float locals, declaring `s` before `xz` swaps their volatile
+    registers into the target's; in an inline whose stores go to memory, a computation written after the stores stays
+    after them, written before MW schedules it ahead;
+  - CZKit::LobAim 0x5BF8A0 is new in SOCOM II: the AI's lob solve raises the aim in steps of 0.025, at most 12 times,
+    until a round falling at gravity 98 comes within 5 of the target's height (five function-local statics at
+    0x650958-0x650978; its one caller 0x5BE9A0 passes the weapon's muzzle velocity for AI SEALs only); CTCreate::Tick
+    written, OPEN.
+- **Tells from the online lobby, round 22** (Remove and cbRoomPlayerList at last, three converting do_assigns):
+  - AN ERASE-OR-STEP WALK KEEPS A SECOND, NEVER-STORED ITERATOR AS THE VALUE REGISTER, set from begin() with `i`; `i` is
+    the stored copy the dereference, erase's copy and the bottom test read -- stepped ahead of the test the second one
+    lands in the delay slot, stepped in an else arm it keeps its `b` (FriendInvitationVector::Remove 0x301CF0, open since
+    round 8; cbRoomPlayerList 0x2F13F0, open since round 16);
+  - a value stored to a frame slot and immediately reloaded is a local whose address is taken through a cast (`*(T
+    *)&v`) -- `*&v` and reference casts are scalarised away: include/deque's `__convert_iterator::convert` is now `T v =
+    (T)*i; return *(T *)&v;` (the converting do_assigns 0x2E0E10, open since round 15, 0x3A6490 and 0x3341C0) -- a body
+    change made outside the MSL lane, ACCEPTED at integration: objcmp over every unit moves only the six converting
+    do_assigns, three gain, nothing lost;
+  - in a call an argument loaded as one type and passed as another (an unsigned field to an int parameter) is loaded
+    ahead of a global argument, passed as its own type after it -- volatile and `*(unsigned *)&` reads show the same,
+    statement order does not (the radio tick 13 -> 1: the two message ids unsigned; round 20's "the radio pointer dies
+    at the send" was the wrong lead); objcmp's `.rodata` difference on sase_rfft2g.c is an assert's `__FILE__` (the
+    scratch tree's path), not the build.
+- **Tells from the world, rdr and sound, round 21** (CHeap::Alloc at last, SaveEncrypt, GetColor, TestFOV, both
+  NormalizeWeights, BuildProjectedMapList; five CSnd functions named):
+  - MW ORDERS ITS CODE BEFORE COLOURING BY WHERE AN INDEPENDENT LOAD SITS AMONG THE INITIALISATIONS: CHeap::Alloc
+    0x34EEB0's last 3 instructions came only from placing the list-head load -- every local initialised in its
+    declaration, the free list's head included (6 of 5,040 orders; all 1,957 orders of the old initialisations failed);
+  - a reference local bound to `v[k]` is a front-end temporary numbered below the data pointer's, reading `v[k]` at each
+    use colours as the target (Particle::Props::GetColor 0x328860); an array declared in the outer block before a loop
+    takes a higher frame slot than a struct copied inside the loop, and `c[i] = CPnt4D(...)` evaluates the constructor's
+    arguments right to left (CTextureAssetCharacters::TestFOV 0x31C440); one counter shared by three loops numbers the
+    size and mode-offset temporaries as the target's registers want (CSndGroup / CSndJukebox::NormalizeWeights);
+  - a member's address held in a named local and passed to an inline is read through that pointer after the first
+    block, passed straight it is folded into every load; a span test `bool t = false; if (!(v + r < lo)) if (v - r <= hi)
+    t = true;` with bounds by `const &` gives the preset false in the delay slot and loads the upper bound only when
+    needed (CPipe::BuildProjectedMapList 0x339470); the new key into an unsigned char local first, then `buf[i] ^= key;
+    key = nk;` (SaveEncrypt 0x33DC30);
+  - a value updated through an inline's `float &` parameter is reloaded after each store, on the member in place MW
+    forwards the stored value (CWind::Tick 0x414 of 0x418, OPEN); a member array whose constructor the inline budget cuts
+    is built by a loop calling CPnt3D() out of line, a local array in a helper cut one level unrolls into 8 calls
+    (CShadowCaster(), OPEN); CSnd's Get / SetMasterVolume, End / Release / TickGroupVolTemp named (ours).
+- **Tells from the SEALs, round 45** (the new unit seal_orders.cpp; CSealCtrl's TickVictims, SampleActionAvailable,
+  TickPickups):
+  - A UNIT BETWEEN TWO: seal_orders.cpp (ours) is OVL2 0x58DBB0-0x58FBDF -- seal_cfg.cpp's template tail (0x58CE70-
+    0x58DBAF) closes seal_cfg.cpp, its tail strings end at 0x65D27A, and seal_command.cpp starts at 0x58FBE0 with
+    OnCommand as SOCOM 1's; the literal "CMD_ACTION" pooled across 0x58E750, 0x58E950 and 0x58EF80 makes the stretch one
+    unit (13 rows moved, all byte-exact; the order target's cell 0x58F230 new with it);
+  - an int function returning its bool callees' results adds andi 0xff after each call, a bool return passes them
+    through; `f() != false` on a bool call gives the andi before the branch, as `== false` does; an inline `bool f() {
+    return bit ? true : false; }` materialises the sltu before the branch, `(bool)bit` or `bit != 0` in the condition
+    don't;
+  - a CPnt3D declared at the block's top and assigned `p = CPnt3D(x, y, z)` stores x, z, y as the target, declared at its
+    use it takes another frame slot; `iterator i = begin(), e = end()` at the function's top ahead of the stores computes
+    the end once (s0), the for-init form re-reads it; `while ((p = f()) != 0)` with a flag declared after p gives the top
+    test with the first call ahead of the loop, as a for the test goes to the bottom (TickPickups 0x593DA0);
+  - an inline returning the top blend pointer (the field read outside) makes the call ahead of a static's load and keeps
+    the field in v0 (SampleActionAvailable 0x593500); the targets' reference declared ahead of two float locals fixes the
+    temporaries' registers (TickVictims 0x5940D0, SOCOM 1's grown a turret find); 0x577BA0 28 -> 14 by dead first
+    definitions of i and part (every register right, the preheader's order left).
+- **Tells from the AI core, round 29** (InflateRegion at last, open since round 2):
+  - MW's scheduler never moves a load through a pointer (`this`, a reference parameter) past a store to an address-taken
+    local -- an intermediate written to a local of its own before the next such store puts its loads ahead of it
+    (CAiMap::region::InflateRegion 0x5300A0: `r = right + (m_loc.x + m_dx)`, each grown edge set straight after its
+    corner);
+  - pointer analysis is off by default -- `#pragma opt_pointer_analysis on` crashes MW 3.0b52 on CAiMap::DestroyGraph,
+    and for InflateRegion alone (addr, ansi or type) changes nothing; an inline walk taking its end once keeps the end in
+    a register across two inlined copies (ReRoute 0x52F8F0, written, OPEN; ReRoute returns bool);
+  - an asm directive is not an empty statement to MW: `.set reorder` as an if's body keeps one compare, `.set noreorder`
+    reaches the target's size but reorders the code after (plan_legcomplete stays OPEN); `tools/igreplay.py --target`
+    reads integer registers only -- float-only misses (LeadTargetG) need the float mapping by hand (asked of the tools
+    lane).
+- **Tells from the HUD, round 52** (SetupNorthIndicator, the compass and full-screen map switches, four CUIListBox members):
+  - `__rsqrt(1.0f, x)` is MW's intrinsic for the image's only `rsqrt.s` (SetupNorthIndicator 0x20BE00), `1.0f /
+    sqrtf(x)` gives sqrt.s + div.s; a function-local static is reloaded after every call -- if the target computes every
+    expression of it before the first call, those expressions were named locals (its three y values reading `cy`);
+  - a value from an inline helper (GetPad) or a ternary is a temporary numbered after every named local, an if/else into
+    an uninitialised named local is numbered at its declaration (SwitchToCompassMap 0x20A470, with a dead zoom-state
+    definition -- found with `tools/igreplay.py --want`); `for (i = 0; i < n; i++) ++it;` is unrolled 8x, a counter
+    zeroed at its declaration with `for (; i < n; ...)` keeps the plain loop;
+  - a byte tested plainly (`ev && ...`) is re-masked with andi before indexing, `ev != 0` is not; `2 * h` compiles to
+    sll, the target's addu needs `h + h`; a member pointer read twice around a store is reloaded, a local pointer to the
+    field keeps one load; a new virtual in a CPlainBmp-derived class lands at +0x84, after UpdateUIVar at +0x80
+    (CUIListBox::SetPressed 0x374A50, SOCOM 1's; HighlightPrev / HighlightNext, SOCOM II's own; Tick 0x375040).
 - **Tells from the UI, round 26** (CreateDisplayObj, CGameMenu's constructor and destructor, PrepModels, HasChanged -- all
   unwritten before):
   - when a spec inlines a display object's constructor one level, a stand-in class with the members' REAL types is

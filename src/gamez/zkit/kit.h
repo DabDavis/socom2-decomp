@@ -233,6 +233,9 @@ public:
     /* the laser target the SEAL's aim point is near: the first of the AI maps' laser names whose cell
      * is within range of him and whose anim of that name is ready (SOCOM 1's; OVL2 0x5BFE60) */
     bool FetchLaseTarget();
+    /* an AI SEAL's lob: the aim raised step by step until a round at the muzzle's speed comes down
+     * at the target's height (OVL2 0x5BF8A0, new in SOCOM II; the name ours) */
+    void LobAim(CZSealBody *body, const CPnt3D *from, const CPnt3D *to, CPnt3D *dir, float speed);
     /* the SEAL's remote charges in range set off, the detonator taken up (SOCOM 1's; OVL2 0x5C0130) */
     void DetonateRemoteExplosives();
     /* the item of a kind taken in hand (OVL2 0x5C8A20: SOCOM 1's, unwritten) and the item at an

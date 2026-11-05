@@ -126,10 +126,9 @@ struct FriendInvitationItem {
     FriendInvitationInfo m_info;   // 0x0
 };   // 0x40
 
-/* the invitations: a vector of them (its insert and erase out of line, 0x302AA0 and 0x302850; the
- * erase byte-exact, the insert OPEN, 27 instructions -- the class insert's in-place registers,
- * include/vector's open: the end pointer takes a0 where the target's takes v1, as the room players'
- * 0x2F2D90 and the ignore list's 0x3022F0 (38)) */
+/* the invitations: a vector of them (its insert and erase out of line, 0x302AA0 and 0x302850, both
+ * byte-exact -- the insert, with the room players' 0x2F2D90 and the ignore list's 0x3022F0, since
+ * the MSL headers' later rounds fixed the class insert's in-place registers) */
 class FriendInvitationVector : public std::vector<FriendInvitationItem> {
 public:
     /* room for 64 at the start (the initialiser calls the reserve 0x3030B0 with 64) */
@@ -677,7 +676,13 @@ void FriendInvitationVector::Add(FriendInvitationItem *item)
 }
 
 /* every invitation from the account dropped, and the list shown again (OVL1 0x301CF0).
- * OPEN, 35 instructions (0xC4 against 0xBC): the target keeps the assigned iterator's value in v0
+ * BYTE-EXACT since the online lane's round 22: THE WALK HAS TWO ITERATORS -- `next`, assigned with i
+ * from begin() and never address-taken, is the register the target keeps in v0 (the entry guard's
+ * operand, the step's `addiu v0,v0,64`), i is the stored one the dereference, the erase's by-value
+ * copy and the bottom test read; next is stepped AHEAD of the test and overwritten by erase's result,
+ * so the step lands in the found test's delay slot and the arms share one `i = next` store
+ * (cbRoomPlayerList 0x2F13F0, the same walk with the step in an else arm, keeps its `b`). The rounds
+ * before, on one iterator, for the record: the target keeps the assigned iterator's value in v0
  * across the loop -- the guard tests the value it just stored, the step is `addiu v0,v0,64` in the
  * found test's delay slot -- while re-reading the stored iterator for the dereference; MW here
  * reloads it for the guard and steps the reloaded copy behind a `b`. Assigned or initialised,
@@ -697,13 +702,14 @@ void FriendInvitationVector::Add(FriendInvitationItem *item)
 void FriendInvitationVector::Remove(int id)
 {
     iterator i;
+    iterator next;
 
-    i = begin();
+    i = next = begin();
     while (i != end()) {
+        ++next;
         if (id == (*i).m_info.AccountID)
-            i = erase(i);
-        else
-            ++i;
+            next = erase(i);
+        i = next;
     }
     UpdateDisplay();
 }

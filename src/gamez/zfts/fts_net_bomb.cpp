@@ -399,18 +399,23 @@ void CZBombState::RequestNewBombState(int who, EnumBombState state, const CPnt3D
 
 /* a SEAL's request, on the session master: picked up when grounded, dropped or placed by its
  * holder, defused once placed -- then the bomb updated (OVL1 0x2C1F10; SOCOM 1's).
- * OPEN, 0x180 against 0x178: right but for where the state's copy into s2 lands -- the target (and
- * SOCOM 1's build) sinks `move s2,a1` into GetBodyFromObjectIndex's delay slot, past the session
- * master's test, where MW keeps it in the entry block; the empty slot then shifts every label pad.
- * Tried: the two tests joined (|| and an enclosing &&), the body in a local, the state copied to a
- * local (uchar, int, before and after the test), switch on (EnumBombState) or (int), pos copied */
+ * Byte-exact (the states' round 41; 0x180 against 0x178 until then): the target (and SOCOM 1's build)
+ * copies the state into s2 in GetBodyFromObjectIndex's delay slot, past the session master's test --
+ * the copy is a local of the enum's type defined BETWEEN the two tests (MW numbers and places a
+ * variable at its first definition: the parameter's copy into it lands there, where a parameter used
+ * straight is copied in the entry block). An unsigned char local there keeps the entry copy (0x180),
+ * an int one drops the switch's narrowing (0x170). Tried before: the two tests joined (|| and an
+ * enclosing &&), the body in a local, the state copied to a local before or after both tests, the
+ * switch on (EnumBombState) or (int), pos copied */
 void CZBombState::HandleBombStateRequest(int who, unsigned char state, CPnt3D *pos)
 {
     if (!theNetwork.m_bSessionMaster)
         return;
+    EnumBombState s = (EnumBombState)state;
+
     if (!CZSealState::GetBodyFromObjectIndex(who))
         return;
-    switch (state) {
+    switch (s) {
     case BOMB_GROUNDED:
         if (m_BombStatus.CurrentBombState == BOMB_CAPTURED && m_BombStatus.HolderObjectIndex == who) {
             m_BombStatus.NewBombState = BOMB_GROUNDED;

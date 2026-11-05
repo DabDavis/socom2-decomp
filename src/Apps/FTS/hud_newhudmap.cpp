@@ -4,7 +4,8 @@
  * flag right after the matrix, where SOCOM 1 kept its two background bitmaps -- then the objective
  * list and SOCOM 1's last three words. Defined in reverse of their image order (-inline deferred).
  * Written: the constructor, the explosives' items, CalcNewMatrix, UninitMap, RemoveItem, Draw and
- * the small ones, TickFullScreenMap (round 48); open: FrameObjective, HandleScrolling and
+ * the small ones, TickFullScreenMap (round 48), SetupNorthIndicator, SwitchToCompassMap and
+ * SwitchMapToFullScreen (round 52); open: FrameObjective, HandleScrolling and
  * GetScrollPermissions (round 48, SOCOM 1's names). The initialiser (__sinit_hud_newhudmap.cpp 0x3FDE80) is
  * code-exact once every static is defined (round 30: the legend's pictures and flag, the scroll
  * bitmaps, the three computed floats); its four __arraydtor$N references stay unresolved (scdiff
@@ -13,10 +14,7 @@
  * 0x209350 TickFullScreenAnims (it calls GetScrollPermissions), 0x209AE0 HudTick (CHUD::Tick's
  * call; SOCOM 1's TickCompassMap inlined into it), 0x20A330 (TickFullScreenMap's second call, after
  * HandleScrolling: the zoom step, through the far zoom then the near: its m2c draft matches),
- * 0x20A780 SwitchMapToFullScreen (HudTick's; it calls 0x20BE00 and ftsGetTacMapZoom, as SOCOM 1's
- * calls the zoom),
- * 0x20BE00 SetupNorthIndicator(CZSealBody *) (the north lines twice each), 0x20C080 the
- * legend's builder (InitMap's call; the nine labels and
+ * 0x20C080 the legend's builder (InitMap's call; the nine labels and
  * bitmaps through MapCompass's anchor images and the string table). */
 
 #include "hud_newhudmap.h"
@@ -88,6 +86,7 @@ public:
  * globals' order, PreOpen's "TacMapZoom" items and the callers; the zoom step 0x20A330 calls it,
  * then ftsGetTacMapZoomNear 0x2AF860, and SwitchMapToFullScreen 0x20A780 ftsGetTacMapZoom 0x2AF880) */
 float ftsGetTacMapZoomFar();
+float ftsGetTacMapZoom();
 /* an empty function of hud_linemap.cpp's (0x210120; SOCOM II's, unnamed) */
 extern "C" void func_00210120();
 
@@ -180,6 +179,9 @@ C2DBitmapPoly g_bmpScrollUp;
 COverlayLine g_lineNorthIndBarb;
 COverlayLine g_lineNorthIndFrontShaft;
 COverlayLine g_lineNorthIndRearShaft;
+/* the north indicator's texture (SOCOM 1's g_pFov, gp-25048 there: InitMap loads it, the north
+ * lines draw from it; 0x40BE70) */
+zdb::CTexture *g_pFov;
 }
 
 /* the grid lines' alpha (a variable: read with lwc1) */
@@ -200,6 +202,69 @@ extern float g_fHudLayout60;
 static float s_fullMapHeight = g_fHudLayout365 - g_fHudLayout60;
 static float s_fullMapStep = s_fullMapHeight / 8.0f;
 static float s_fullMapStepX = 480.0f / 448.0f * s_fullMapStep;
+
+/* the HUD's compass (hud_mapcompass.h's MapCompass: only its switch) */
+class MapCompass {
+public:
+    void Off();
+    void On();
+};
+
+/* the HUD (hud_main.cpp's CHUD): its owner, its font (0x498) and compass (0x4FE0), its own switch
+ * to the compass map */
+class CHUD {
+public:
+    static CZSealBody *GetHUDOwner();
+    void SwitchToCompassMap();
+    void SwitchToFullScreenMap();
+
+    unsigned char _0[0x498];
+    C2DFont *m_myfont;   // 0x498
+    unsigned char _49c[0x4fe0 - 0x49c];
+    MapCompass m_compass;   // 0x4fe0
+};
+
+extern CHUD *theHUD;
+
+namespace {
+/* the north indicator turned to the viewer's facing: the facing on the x/z plane normalised, the
+ * front shaft from 10 to 30 ahead of (600, cy), the rear shaft from 10 to 30 behind, the barb from
+ * 20 ahead and 10 aside to the front's end, and the "N" (the legend's first label) above. SOCOM 1's
+ * SetupNorthIndicator (0x3C6A50 there: its centre 100, here a guarded static -- the layout's top
+ * plus 40 -- its inverse length a double sqrt, here MW's `__rsqrt(1.0f, x)` intrinsic: the image's
+ * only rsqrt.s, where `1.0f / sqrtf(x)` gives sqrt.s + div.s); the facing's z read through a
+ * pointer as SOCOM 1's (sp+72 in a register). Byte-exact (round 52) with the three y's that read
+ * cy as named locals ahead of the first Load -- the target computes every cy expression before
+ * the first call and reloads the static only for the label; written in place, each Load reloads
+ * it, and the y's of the front shaft's start may be named or not */
+void SetupNorthIndicator(CZSealBody *pViewer)
+{
+    static float cy = 40.0f + g_fHudLayout60;
+    SealDir dir;
+
+    GetSealDir(pViewer, &dir);
+    const float *z = &dir.z;
+    float fInvLength = __rsqrt(1.0f, dir.x * dir.x + *z * *z);
+    float fNormX = dir.x * fInvLength;
+    float fNormZ = *z * fInvLength;
+    float fFrontEndX = 600.0f - 30.0f * fNormX;
+    float fFrontEndY = cy + 30.0f * fNormZ;
+    float fRearStartY = cy - 10.0f * fNormZ;
+    float fRearEndY = cy - 30.0f * fNormZ;
+    float fBarbY = cy + 20.0f * fNormZ - 10.0f * fNormX;
+
+    g_lineNorthIndFrontShaft.Load(600.0f - 10.0f * fNormX, cy + 10.0f * fNormZ, fFrontEndX, fFrontEndY,
+                                  g_pFov);
+    g_lineNorthIndFrontShaft.SetUV(0.5f, 0.9375f, 0.5f, 0.9375f);
+    g_lineNorthIndRearShaft.Load(600.0f + 10.0f * fNormX, fRearStartY, 600.0f + 30.0f * fNormX,
+                                 fRearEndY, g_pFov);
+    g_lineNorthIndRearShaft.SetUV(0.5f, 0.9375f, 0.5f, 0.9375f);
+    g_lineNorthIndBarb.Load(600.0f - 20.0f * fNormX - 10.0f * fNormZ, fBarbY,
+                            fFrontEndX, fFrontEndY, g_pFov);
+    g_lineNorthIndBarb.SetUV(0.5f, 0.9375f, 0.5f, 0.9375f);
+    g_strLegend[0].Load(1.0f, "N", theHUD->m_myfont, 596.0f, 7.0f + cy, true);
+}
+}
 
 inline void CZNewHudMap::SetWorldView(float cx, float cy, float width)
 {
@@ -261,7 +326,11 @@ static inline float MaxOf(float a, float b)
  * then multiplies x then z into the variables with 0.5 in f0; this `+=` form gets the loads, the
  * constant and the order but adds into f20/f21 directly; `x = (x + ox) * 0.5f` (either statement
  * first, named or helper temporaries, MidPoint-style inlines taking the sums, `/ 2.0f`, `0.5f *`,
- * a PNT2D or CPnt3D local) makes the x sum first and puts 0.5 in f1 (5-8 instructions) */
+ * a PNT2D or CPnt3D local) makes the x sum first and puts 0.5 in f1 (5-8 instructions). Round
+ * 53: the replay wants 0.5 numbered after both sums; the sums assigned in two arms (`if (obj) {
+ * oz = z + oy; ox = x + ox; } else { the same }`, then `x = ox * 0.5f; z = oz * 0.5f;`) give every
+ * register, 2 off: MW then multiplies `0.5, sum` where the target has `sum, 0.5` (a variable
+ * times a constant is put constant first; `*=`, ternaries, `0.5f *` alike) */
 void CZNewHudMap::FrameObjective()
 {
     float x, z;
@@ -365,19 +434,32 @@ void CZNewHudMap::SetWorldWidth(float width)
     SetWorldView(m_worldcenterx, m_worldcentery, width);
 }
 
-/* the HUD's owner (hud_main.cpp's CHUD: only the static) */
-class CHUD {
-public:
-    static CZSealBody *GetHUDOwner();
-};
-
-/* a SEAL's controller as the map reads it (zseal.h's CSealCtrl: the input bit, 0x170 bit 11) */
+/* a SEAL's controller as the map reads it (zseal.h's CSealCtrl: IsPlayer its slot +0x2c, the menu
+ * state's setter, the pad's index at 0x114, the input bit, 0x170 bit 11) */
 class CSealCtrl {
 public:
-    unsigned char _0[0x170];
+    void SetMenuState(MENU_STATE state, bool flag);
+    void StopRumbler();
+    MENU_STATE GetMenuState() const { return m_menustate; }
+    virtual ~CSealCtrl();
+    virtual bool PreTick(float dT);
+    virtual bool Tick(float dT);
+    virtual bool PostMortemPreTick(float dT);
+    virtual void OnDeath();
+    virtual void Slot1C();
+    virtual void Slot20();
+    virtual void PlayAiSound();
+    virtual void AllowCommand();
+    virtual bool IsPlayer() const;   /* +0x2c */
+
+    unsigned char _4[0x114 - 0x4];
+    unsigned int m_port;   // 0x114: its pad
+    unsigned char _118[0x170 - 0x118];
     unsigned int _170_0 : 11;
     unsigned int m_input_enabled : 1;   // 0x171 bit 3
     unsigned int _170_12 : 20;
+    unsigned char _174[0x221 - 0x174];
+    MENU_STATE m_menustate;   // 0x221
 };
 
 /* the map's sounds: the second slot plays one (zsnd.h's PlaySound(inst, flags)) */
@@ -541,6 +623,205 @@ CScrollBools CZNewHudMap::GetScrollPermissions() const
         bools._bDown = bZOverMin;
     }
     return bools;
+}
+
+/* whether a player's controller drives the seal (inline: a null test, then the slot) */
+static inline bool IsPlayer(CZSealBody *seal)
+{
+    return seal->m_ctrl ? seal->m_ctrl->IsPlayer() : false;
+}
+
+namespace zdb {
+/* the world (zdb's CWorld): the night mission's flag and its two lens colours */
+class CWorld {
+public:
+    static CWorld *m_world;
+
+    unsigned char _0[0x5dc];
+    unsigned char m_night_mission;   // 0x5dc
+    unsigned char _5dd[3];
+    PNT4D m_lensfx_nvg;   // 0x5e0
+    PNT4D m_lensfx_starlightscope;   // 0x5f0
+};
+}
+
+/* the lens effects (thezoom.cpp's CameraZoom, SOCOM II's) */
+class CameraZoom {
+public:
+    static void HoldLensFx(unsigned char hold);
+    static void ReleaseLensFx(unsigned char hold);
+    static void SetLensFx(unsigned char fx);
+    static unsigned char LensFxOn();
+};
+
+/* the camera's view, its zoom at 0x470 (SOCOM 1's at appCamera+0x34, 0x444) */
+struct CAppCameraView {
+    unsigned char _0[0x470];
+    float m_zoom;   // 0x470
+};
+
+/* the camera (camera.h's CAppCamera: its zoom, its view) */
+class CAppCamera {
+public:
+    void SetZoom(float zoom);
+
+    unsigned char _0[0xb4];
+    CAppCameraView *m_view;   // 0xb4
+};
+
+extern CAppCamera *appCamera;
+
+/* the camera's zoom the full-screen map put aside (OVL1 .data 0x3DC478, 1.0; the name ours) */
+static float s_mapCamZoom = 1.0f;
+
+/* the popups' trigger (hud_scorepopup.cpp's: an objective camera's popup shown) */
+class CTriggerSource;
+void hudTriggerPopup(CTriggerSource *source);
+
+/* SOCOM II's (OVL1 0x2B4380, no row named: the compass map passes 0, the full-screen map 1) */
+extern "C" void func_002B4380(int on);
+
+/* zinput.cpp's (OVL1 0x2C5D10, no row named: a pad and a game function's button, the full-screen map
+ * passes its close button 12 and 1) */
+extern "C" void func_002C5D10(CPad *pad, int func, int state);
+
+/* the full-screen map's animation time (OVL1 .data 0x3DC488, -1 until opened; the full-screen
+ * animations' tick 0x209350 runs it; the name ours) */
+static float s_fullMapAnimTime = -1.0f;
+
+/* to full screen (SOCOM 1's SwitchMapToFullScreen, 0x3C4E20 there): full screen; the rumbler
+ * stopped, the pad's close button set, the menu state put aside for the full-screen map's; for
+ * the player, the lens colour taken off unless a lens effect is up, the camera's zoom put aside
+ * and reset, the lens effects held, the heartbeat sensor off; the compass off; the map placed
+ * (232, 62)-(628, 365) at the tactical zoom's window, centred on the viewer, its clipper four
+ * half-widths round; the objectives refreshed, the north indicator set, the HUD switched, the
+ * open sound, the animation restarted and the grid lines emptied. Byte-exact (round 52): the
+ * viewer's position through SOCOM 1's `CPnt3D *center` (read twice through m_viewer, the store
+ * between reloads it); the pad chosen as SwitchToCompassMap's */
+void CZNewHudMap::SwitchMapToFullScreen()
+{
+    m_isFullScreen = true;
+
+    CZSealBody *seal = CHUD::GetHUDOwner();
+    CSealCtrl *ctrl = seal->m_ctrl;
+    CPad *pad;
+
+    if (ctrl->m_port < CInput::NUM_PADS)
+        pad = CInput::m_pads[ctrl->m_port];
+    else
+        pad = 0;
+    ctrl->StopRumbler();
+    func_002C5D10(pad, 12, 1);
+    m_oldmenustate = ctrl->GetMenuState();
+    ctrl->SetMenuState(stateFullScreenMapMenu, false);
+    if (IsPlayer(seal)) {
+        if (!CameraZoom::LensFxOn())
+            seal->m_kit.Apply_LensEffects(false, 0);
+        if (s_mapCamZoom == 1.0f) {
+            s_mapCamZoom = appCamera->m_view->m_zoom;
+            appCamera->SetZoom(1.0f);
+        }
+        CameraZoom::HoldLensFx(4);
+
+        CZKit *kit = &seal->m_kit;
+
+        if (kit)
+            kit->m_heartbeat_enabled = false;
+    }
+    m_parent->m_compass.Off();
+    SetMapScreenPos(232.0f, 62.0f, 628.0f, 365.0f);
+    SetWorldWidth(2200.0f / ftsGetTacMapZoom());
+    m_scale = 1.0f;
+    const CPnt3D *center = &m_viewer->m_posW;
+
+    m_centerx = center->x;
+    m_centerz = center->z;
+    m_circleclipper->Set(m_screencenterx + C2D::m_topx, m_screencentery + C2D::m_topy,
+                         4.0f * (m_screencenterx - m_screenx1));
+    m_objectivelist.RefreshList();
+    SetupNorthIndicator(m_viewer);
+    theHUD->SwitchToFullScreenMap();
+    if (m_socom2_81c)
+        m_socom2_81c->PlaySound(0, 255);
+    s_fullMapAnimTime = 0.0f;
+    for (unsigned int i = 0; i < 7; i++)
+        g_arrHorGridLines[i].SetPos(0, 0, 0, 0);
+    for (unsigned int i = 0; i < 9; i++)
+        g_arrVertGridLines[i].SetPos(0, 0, 0, 0);
+    func_002B4380(1);
+}
+
+/* back to the compass (SOCOM 1's SwitchToCompassMap, 0x3C4C10 there): not full screen; the menu
+ * state given back; with no lens effect up on a night mission the player's night-vision or scope
+ * colour put back on its kit; the camera's zoom given back, the lens effects released, the
+ * heartbeat sensor on; the map placed in the corner (486, 2)-(614, 130) at a 1200 window, scale 1;
+ * the compass on, the objective list freed, the pad's triangle held down, the HUD switched, and
+ * the held objective's popup shown; SetMapScreenPos and SetWorldWidth inlined, their constants
+ * folded. Byte-exact (round 52, found with tools/igreplay.py --want): the zoom state a dead
+ * definition after the owner (numbering it ahead of the pad) and the pad chosen by an if/else into
+ * an uninitialised local declared next -- GetPad's inline or a ternary leaves the pad an inline
+ * temporary numbered after every named local (s0 for the target's s2) -- then the world, the zoom
+ * and the kit in that order (the target loads the world first) */
+void CZNewHudMap::SwitchToCompassMap()
+{
+    m_isFullScreen = false;
+
+    CZSealBody *seal = CHUD::GetHUDOwner();
+    ZOOMSTATE zoomstate = ZOOMSTATE_UNKNOWN;
+    CPad *pad;
+
+    if (seal->m_ctrl->m_port < CInput::NUM_PADS)
+        pad = CInput::m_pads[seal->m_ctrl->m_port];
+    else
+        pad = 0;
+
+    seal->m_ctrl->SetMenuState(m_oldmenustate, false);
+    m_oldmenustate = stateNone;
+
+    zdb::CWorld *world = zdb::CWorld::m_world;
+
+    zoomstate = seal->m_zoomstate;
+
+    CZKit *kit = &seal->m_kit;
+
+    if (!CameraZoom::LensFxOn() && world->m_night_mission && IsPlayer(seal)) {
+        if (zoomstate == ZOOMSTATE_NVG) {
+            if (!CameraZoom::LensFxOn()) {
+                PNT4D color = world->m_lensfx_nvg;
+
+                kit->Apply_LensEffects(true, (CPnt3D *)&color);
+            }
+            CameraZoom::SetLensFx(3);
+        } else if (zoomstate >= ZOOMSTATE_BINOCS) {
+            if (!CameraZoom::LensFxOn()) {
+                PNT4D color = world->m_lensfx_starlightscope;
+
+                kit->Apply_LensEffects(true, (CPnt3D *)&color);
+            }
+            CameraZoom::SetLensFx(4);
+        }
+    }
+    if (s_mapCamZoom != 1.0f) {
+        appCamera->SetZoom(s_mapCamZoom);
+        s_mapCamZoom = 1.0f;
+    }
+    CameraZoom::ReleaseLensFx(4);
+    if (kit)
+        kit->m_heartbeat_enabled = true;
+    SetMapScreenPos(486.0f, 2.0f, 614.0f, 130.0f);
+    SetWorldWidth(1200.0f);
+    m_scale = 1.0f;
+    m_parent->m_compass.On();
+    m_objectivelist.FreeList(false);
+    if (pad)
+        pad->SetButtonState(PAD_TRIANGLE, KEY_DOWN);
+    theHUD->SwitchToCompassMap();
+
+    CMissionObjectiveCam *retained = m_objectivelist.GetCurrentObjectiveRetainer();
+
+    if (retained)
+        hudTriggerPopup((CTriggerSource *)retained);
+    func_002B4380(0);
 }
 
 /* the scroll's speed at the map's scale (36 in data; SOCOM 1's literal 20; the name ours) */

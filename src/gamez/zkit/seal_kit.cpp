@@ -1485,6 +1485,75 @@ bool CZKit::FetchLaseTarget()
     return false;
 }
 
+/* the aim raised by a step and rescaled so it stays a unit vector, false past straight up; the
+ * horizontal part's length handed back (inline; the name ours). `s` declared ahead of the squares'
+ * sum (the sum takes z's register, the scale the next) and the length computed after the three
+ * stores (before them MW schedules it ahead of x's store, its product in f1) */
+static inline bool RaiseAim(CPnt3D &aim, float step, float &horiz)
+{
+    float y = aim.y + step;
+
+    if (y > 1.0f)
+        return false;
+    float s;
+    float xz = aim.x * aim.x + aim.z * aim.z;
+
+    s = sqrtf((1.0f - y * y) / xz);
+    aim.x *= s;
+    aim.y = y;
+    aim.z *= s;
+    horiz = sqrtf(xz * (s * s));
+    return true;
+}
+
+/* a point's length in the horizontal (inline; the name ours): LobAim's distance, as its result
+ * temporary, is numbered after the named locals -- $f20 under the length's $f21 (a plain
+ * `sqrtf(...)` local swaps them) */
+static inline float LengthXZ(const CPnt3D &p)
+{
+    return sqrtf(p.x * p.x + p.z * p.z);
+}
+
+/* (OVL2 0x5BF8A0, new in SOCOM II: the fire path 0x5BE9A0 calls it for an AI SEAL's weapon with its
+ * muzzle velocity -- the aim raised until the round, falling at 98 a second squared, is within 5 of
+ * the target's height at its distance, at most 12 steps of 0.025; the name ours). The constants are
+ * function-local statics, as the data's 8-byte spacing shows (OVL2 0x650958-0x650978). The height
+ * adds a zero the target keeps in a register (`mtc1 zero` / add.s): a literal 0.0f folds away -- a
+ * zero local is a marked stand-in for whatever the original added (an offset, a scalarised point's
+ * y); the body unread */
+void CZKit::LobAim(CZSealBody *body, const CPnt3D *from, const CPnt3D *to, CPnt3D *dir, float speed)
+{
+    static float gravity = 98.0f;
+    static int tries = 12;
+    static float step = 0.025f;
+    static float target = 0.0f;
+    static float tolerance = 5.0f;
+    CPnt3D d = *to - *from;
+    float zero = 0.0f;
+    float height = d.y + zero;
+    float dist = LengthXZ(d);
+
+    d.Normalize();
+    CPnt3D aim = *dir;
+    float horiz;
+
+    for (int i = 0; i < tries; i++) {
+        if (!RaiseAim(aim, step, horiz))
+            break;
+        horiz *= speed;
+        if (horiz <= 0.0f)
+            break;
+        float t = dist / horiz;
+        float err = speed * aim.y * t - 0.5f * gravity * (t * t) - height;
+
+        if (err > 0.0f)
+            break;
+        if (_close_enough(err, target, tolerance))
+            break;
+    }
+    *dir = aim;
+}
+
 extern "C" {
 /* the controller's high rumble (CSealCtrl::SetHighRumbleTime, OVL2 0x592BA0: the SEALs'), the target
  * mods' reported burst shot (an int at 0x6C, new in SOCOM II: OVL1 0x3C5AB0), the weapon's recoil

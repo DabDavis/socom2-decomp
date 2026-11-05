@@ -102,9 +102,18 @@ public:
 
 extern CHUD *theHUD;
 
+/* the sound (zsnd.h's CSnd: the zdb world's round 21 named its statics) -- a running group fade
+ * ended at once (0x341060) and a group's master volume read and set straight (0x3414B0, 0x3414C0:
+ * tail calls to snd_GetMasterVolume and snd_SetMasterVolume) */
+class CSnd {
+public:
+    static void EndGroupVolTemp();
+    static int GetMasterVolume(int group);
+    static void SetMasterVolume(int group, int vol);
+};
+
 /* the camera's mission film: its music at 0x18 (SOCOM 1's DWARF: identifier, name, three
  * descriptions, the animation, the music) */
-class CSnd;
 
 class CMissionCam {
 public:
@@ -115,8 +124,7 @@ public:
     CSnd *m_music;   // 0x18
 };
 
-/* the jukebox and the paused voices (zsnd's), the master volume's wrapper (OVL1 0x3414C0, a tail call
- * to snd_SetMasterVolume) */
+/* the jukebox and the paused voices (zsnd's) */
 enum MUSIC_MODE {
     MUSIC_MODE_0 = 0,
     MUSIC_MODE_3 = 3
@@ -142,12 +150,6 @@ public:
     static void PauseAllSounds(SOUND_MODE mode);
     static void ResumeAllSounds(SOUND_MODE mode);
 };
-
-/* the master volume's wrappers (OVL1 0x3414B0 and 0x3414C0, tail calls to snd_GetMasterVolume and
- * snd_SetMasterVolume) and 0x341060 (no arguments; its name not known) */
-extern "C" int func_003414B0(int which);
-extern "C" void func_003414C0(int which, int volume);
-extern "C" void func_00341060();
 
 /* the score pop-up is up (hud_scorepopup.cpp's) */
 bool hudIsScorePopupOn();
@@ -367,7 +369,7 @@ void CZHudMissionCams::CleanupCamera(CPad *pad)
         m_letterboxobjectivedescription[i].Off();
     m_animhandle = 0;
     m_crosstext.Off();
-    func_003414C0(1, m_socom2_3b8);
+    CSnd::SetMasterVolume(1, m_socom2_3b8);
     if (m_currentcam->m_music) {
         CSndJukebox::FadeOut();
         CSndJukebox::ClearQueue();
@@ -488,10 +490,10 @@ void CZHudMissionCams::PlayCamera(CMissionCam *missioncam, bool bSwapLens)
     if (!m_animhandle)
         return;
     m_currentcam = missioncam;
-    func_00341060();
-    m_socom2_3b8 = func_003414B0(1);
+    CSnd::EndGroupVolTemp();
+    m_socom2_3b8 = CSnd::GetMasterVolume(1);
     if (m_socom2_3b8 > 768)
-        func_003414C0(1, 768);
+        CSnd::SetMasterVolume(1, 768);
 
     CSnd *music = missioncam->m_music;
 

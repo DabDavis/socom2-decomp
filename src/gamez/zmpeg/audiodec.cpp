@@ -6,14 +6,10 @@
  * Sony's file's). Defined in reverse of their image order (-inline deferred). */
 
 #include "zmpeg.h"
+#include "../zsnd/zsnd.h"   /* CSnd::EndGroupVolTemp, 989snd's movie sound */
 
 extern "C" {
 void FlushCache(int mode);
-int snd_GetTransStatus(void);
-void snd_StartMovieSound(int buf, int size, int end, int freq, int channels);
-void snd_CloseMovieSound(void);
-void snd_ResetMovieSound(void);
-int snd_InitMovieSound(int bytes, int a, int vol, int b, int c, int mode);
 
 /* a SIF DMA transfer to the IOP (Sony's sceSifDmaData) */
 struct sceSifDmaData {
@@ -27,7 +23,6 @@ int sceSifDmaStat(unsigned int id);
 
 int func_00341A20(void);   /* (zsnd: a setting read, put back by audioDecDelete) */
 void func_00341A00(int v);   /* (zsnd: the setting written) */
-void func_00341060(void);   /* (zsnd) */
 }
 
 /* the setting audioDecCreate saves and audioDecDelete restores (SOCOM II's; the name ours) */
@@ -51,7 +46,7 @@ int audioDecCreate(AudioDec *ad, unsigned char *buff, int buffSize, int iopBuffS
     ad->iopPausePos = 0;
     savedSndSetting = func_00341A20();
     func_00341A00(0);
-    func_00341060();
+    CSnd::EndGroupVolTemp();
     ad->iopBuff = snd_InitMovieSound(iopBuffSize, 0, 0x366, 0, 2, 2);
     return ad->iopBuff >= 0;
 }
@@ -68,7 +63,7 @@ int audioDecDelete(AudioDec *ad)
 /* the IOP buffer started playing (Sony's; OVL1 0x30A730) */
 void audioDecStart(AudioDec *ad)
 {
-    snd_StartMovieSound(ad->iopBuff, ad->iopBuffSize / UNIT_SIZE * UNIT_SIZE,
+    snd_StartMovieSound((void *)ad->iopBuff, ad->iopBuffSize / UNIT_SIZE * UNIT_SIZE,
                         ad->iopBuff + ad->iopPausePos, 0, 0);
     ad->state = AU_STATE_PLAYING;
 }

@@ -36,7 +36,12 @@ const T &_max(const T &a, const T &b)
  * round (the iterator's scalar @7178 is numbered below the cursor's @7190), and the count walk's
  * cursor and end take a0/v1 where this build's take a2/a0. A named reference to m_names[k] (0x360),
  * the push walk's iterator declared outside its for, a postfix push step, `e` before `mapid`: no
- * change */
+ * change. The AI core round 29 (tools/igreplay.py --target): four virtual registers differ -- the
+ * push iterator's scalar (v41, @7452: ours s1, the target s0) and the cursor (v42, @7464: s0 / s1),
+ * and the count walk's cursor and end (v76/v77, code-generation temporaries: v1/v0 against a0/v1).
+ * --movers finds each pair alone (v41 past @7498 at 50.5 with v42 anywhere from 40.5; v76 at 31.5
+ * or 32.5 -- ahead of `k`, even of `this`), never the four together: the count walk's pair wants no
+ * numbering a source gives, so its interference differs -- the walk's shape, not its order */
 void CAiMaps::UpdateNameTables()
 {
     for (int k = 1; k < 6; k++) {
