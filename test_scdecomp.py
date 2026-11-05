@@ -1200,6 +1200,81 @@ def test_igreplay_target_scores_the_move_and_budgets_a_search():
     ck(same == n, f"(c) the in-place renumbering replays as the deep copy did ({same} of {n} placements)")
 
 
+IG_SPILL = """extern int ig_g(int);
+
+int ig_spill(int n)
+{
+    int a = ig_g(0);
+    int b = ig_g(1);
+    int c = ig_g(2);
+    int d = ig_g(3);
+    int e = ig_g(4);
+    int f = ig_g(5);
+    int g = ig_g(6);
+    int h = ig_g(7);
+    int i = ig_g(8);
+    char flag = ig_g(9);
+    int j = ig_g(10);
+
+    ig_g(n);
+    return a + b + c + d + e + f + g + h + i + flag + j;
+}
+"""
+IG_SPILL_DECLS = ("    int i = ig_g(8);\n    char flag = ig_g(9);\n", "    char flag = ig_g(9);\n    int i = ig_g(8);\n")
+
+
+def test_igreplay_replays_spill_slots():
+    """The spill slots (GCC round 34a, the weapons' round-27 request: CZWeapon::Fire 0x3D2D70 is 31 off
+    in stack offsets alone, the target packing two word spills in one quadword). igdump records the
+    slot pass after a colouring that spills (each spilled node's Object: size, alignment, offset) and
+    the function's frame top; igreplay replays it -- the spilled nodes in INDEX order, each bumped
+    down the local area by its size and rounded to its alignment -- under a --move. A fixture with
+    twelve values live across a call spills h, i and flag (a char spilled as a 16-byte quadword): in
+    index order -4, -8, -32 under a 192-byte frame top, the object's spill stores at sp 188, 184 and
+    160; the replay gives the record's slots. Numbered flag before i (`--move flag=40.5`) the replay
+    predicts -4, -32, -36 and a frame top of 208 -- and the source with the two declarations swapped
+    compiles to exactly that (its record's slots, its code's sp 204, 176, 172). Negatives: the slots
+    taken in the record's own order under the move (not by index) differ from the swapped compile's;
+    a recorded alignment changed fails the record's own check. (Fire's record under the weapons'
+    `--move 45=40.5` gives the target's 220, 216 and 192 -- README, round 34a -- not asserted here:
+    its unit is another lane's to change.)"""
+    import json
+    import igdump
+    import igreplay as R
+    recs, _ = igdump.dump(_ig_fixture("ig_spill.c", IG_SPILL), BUILD / "ig_spill.jsonl")
+    (k, rec), = igdump.select(recs, "^ig_spill$", 0)[:1]
+    sp = rec.get("spills")
+    ck(sp is not None and [(s["name"].split("@0x")[0], s["size"], s["align"], s["off"]) for s in sp["slots"]]
+       == [("h", 4, 4, -4), ("i", 4, 4, -8), ("flag", 16, 16, -32)] and rec.get("frame") == 192,
+       f"the slot pass recorded in index order: {sp and sp['slots']}, frame {rec.get('frame')}")
+    ck(R.check_slots(rec) is True, "the slot model gives the record's own slots")
+    obj = build(BUILD / "ig_spill.c", "ig_spill")
+    code, _, _ = E.Elf.read(obj).function("ig_spill")
+    text = [t for _, _, t in E.disasm(code, 0)]
+    ck({"sw v0,188(sp)", "sw v0,184(sp)", "sb v0,160(sp)"} <= set(text), "the object's spill stores at frame + offset")
+    flag, i = R.node_index(rec, "flag"), R.node_index(rec, "i")
+    moved, newidx, _ = R.replay_moved(rec, {flag: i - 0.5})
+    pred = R.stack_slots(rec, moved, newidx)
+    ck([(nm, off, spo) for _, nm, _, _, off, spo, _ in pred["slots"]] == [("h", -4, 204), ("flag", -32, 176), ("i", -36, 172)]
+       and pred["frame"] == 208, f"--move flag before i predicts the swapped slots: {pred}")
+    swapped = IG_SPILL.replace(IG_SPILL_DECLS[0], IG_SPILL_DECLS[1])
+    ck(swapped != IG_SPILL, "the swapped declarations differ")
+    srecs, _ = igdump.dump(_ig_fixture("ig_spill_swapped.c", swapped), BUILD / "ig_spill_swapped.jsonl")
+    (_, srec), = igdump.select(srecs, "^ig_spill$", 0)[:1]
+    got = [(s["name"].split("@0x")[0], s["off"]) for s in srec["spills"]["slots"]]
+    ck(got == [(nm, off) for _, nm, _, _, off, _, _ in pred["slots"]] and srec["frame"] == pred["frame"],
+       f"and the swapped source compiles to it: {got}, frame {srec['frame']}")
+    scode, _, _ = E.Elf.read(build(BUILD / "ig_spill_swapped.c", "ig_spill_swapped")).function("ig_spill")
+    ck({"sw v0,204(sp)", "sb v0,176(sp)", "sw v0,172(sp)"} <= {t for _, _, t in E.disasm(scode, 0)},
+       "the swapped object's spill stores at the predicted sp offsets")
+    by_old = R.stack_slots(rec, moved, list(range(len(rec["nodes"]))))     # the record's order kept
+    ck(by_old is None or [(nm, off) for _, nm, _, _, off, _, _ in by_old["slots"]] != got,
+       "negative: the record's own order under the move is not the swapped compile's")
+    bad = json.loads(json.dumps(rec))
+    bad["spills"]["slots"][1]["align"] = 16
+    ck(R.check_slots(bad) is False, "negative: a recorded alignment changed fails the record's check")
+
+
 def test_igvar_compares_variants():
     """tools/igvar.py (GCC round 32a: the AI core's round-28 igvar.py and the game states' round-37
     one): each variant of a unit built under igdump in a scratch tree, the saved registers' holders
