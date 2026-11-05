@@ -1,10 +1,12 @@
-/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 -fno-strict-aliasing -funroll-loops */
+/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 -fno-strict-aliasing -funroll-loops -ffast-math */
 /* specsub: the recogniser's spectral subtraction block (OVL2 0x4F8130-0x4F9DC0, SOCOM 1's object at
  * 0x364AC8: SpecSubPutSession, SpecSubGetSession, SpectralSubtraction, FreeResourcesSpecSub,
  * ControlSpecSub, InitSpecSub, ConstructSpecSub, ProcessSpecSub -- SOCOM 1's order;
  * FreeResourcesSpecSub inlined into ControlSpecSub, no copy left), ScanSoft's speech recogniser,
- * prebuilt with ee-gcc 2.96 at -O2 -G0 -fno-strict-aliasing -funroll-loops (README "The GCC
- * front"). Names are SOCOM 1's (the constructor's slots, s1:align, s1:calls); the block's fields
+ * prebuilt with ee-gcc 2.96 at -O2 -G0 -fno-strict-aliasing -funroll-loops -ffast-math (README "The
+ * GCC front": SpectralSubtraction's seven max.s are -ffast-math's, round 25c; every function written
+ * here compiles the same with and without it, round 26c, so the directive carries the object's
+ * flag). Names are SOCOM 1's (the constructor's slots, s1:align, s1:calls); the block's fields
  * are named by their use. A block of the scheduler's (asr/tosblk.h): two inputs, four outputs.
  * Only the functions written so far are here, in image order (SpectralSubtraction, 0x1208, and
  * InitSpecSub, 0x40C, are not written: declared, their rows open). The session functions copy the
@@ -30,16 +32,17 @@ typedef struct SPECSUB {
     unsigned int n;                     /* +84: profile 8 */
     unsigned short f88;                 /* +88: profile 6, less one */
     short pad90;
-    float f92;                          /* +92 */
-    float f96;                          /* +96 */
+    float f92;                          /* +92: profile 7 */
+    float f96;                          /* +96: profile 4 */
     float f100;
-    float f104;                         /* +104 */
-    float f108;                         /* +108 */
-    int pad112;
-    void *f116;                         /* +116: freed with the block */
-    int pad120[2];
+    float f104;                         /* +104: profile 3 */
+    float f108;                         /* +108: profile 2 */
+    unsigned int nlim;                  /* +112: profile 30, the limits' count */
+    unsigned int *lim;                  /* +116: profiles 31-33, each at most n; freed with the block */
+    float f120;                         /* +120: -log 11 */
+    float f124;                         /* +124: 10/11 */
     float f128;                         /* +128 */
-    float f132;                         /* +132 */
+    float f132;                         /* +132: the log of the largest level */
     float f136;
     float f140;
     float f144;
@@ -60,7 +63,7 @@ extern void heap_Free(void *heap, void *p);
 
 /* not written yet (their rows open) */
 int SpectralSubtraction(SPECSUB *s, unsigned char flag, void *frame, float *out1, float *out0);
-int InitSpecSub(SPECSUB *s);
+static int InitSpecSub(SPECSUB *s);
 static void ProcessSpecSub(SPECSUB *s, void **in);
 
 /* a session read back: the spectra copied in, the noise's half log recomputed, the ring's
@@ -119,7 +122,7 @@ static void SpecSubGetSession(SPECSUB *s, SPECSUBSESSION *ss)
 static __inline__ void FreeResourcesSpecSub(SPECSUB *s)
 {
     heap_Free(s->b.tos->heap, s->ring);
-    heap_Free(s->b.tos->heap, s->f116);
+    heap_Free(s->b.tos->heap, s->lim);
 }
 
 /* OPEN (3 words, the right size): the reset's first loop bound reads the field again each turn
@@ -177,6 +180,98 @@ static int ControlSpecSub(SPECSUB *s, unsigned char cmd, char *sess, int *off)
         return 0;
     }
     return ret;
+}
+
+/* the profile read: the queues' element sizes (n bins, profile 8), the counts and the levels, one
+ * block for the ring ((nring + 1) frames) and the five spectra after it, the constants, the
+ * limits (profiles 31-33, each at most n; more than three is error 103), then the spectra reset
+ * as the null session resets them. SOCOM 1's body (0x40C in both builds). Round 26c: the float
+ * literals land on the target's bits as written (2.96's parse an ulp low: 0x3F4CCCCC, 0x3E4CCCCC,
+ * 0x3DCCCCCC, 0x3F68BA2E; 3.7808886e37f is 0x7DE38DD0); the pointers before the constants and the
+ * two stores of `buf` ring-first, the constants 0.8, 0.2, 0.1, 0.9 (sched1's tie-breaks: the last
+ * store of a value issues first; 120 orders scored, build/scratch/gcc/v_iss3.py); the ring test a
+ * guard (the error path falls through), the reset's count a block-local of its own (the
+ * function's `n` is a saved register).
+ * OPEN (3 words, the right size): the reset's first load of +84 -- ControlSpecSub's pair exactly
+ * (one cause): GCSE makes the reset's two reads of `s->n` one expression and inserts its reaching
+ * register as a copy AFTER the first load (the load stays into the count, a2 here; the copy a1),
+ * where the target loads into a1 and copies to a2 (as a reaching register set by the load itself
+ * would be). An inline with the count as a value parameter, or the count block-local, keep it. */
+static int InitSpecSub(SPECSUB *s)
+{
+    TOS *tos = s->b.tos;
+    unsigned int n, i;
+    unsigned short k;
+    float *buf, *q, *p;
+
+    s->n = n = _tosGetProfileU32(s, 8, 21);
+    s->b.inputs[0].size = n * sizeof(float);
+    s->b.inputs[1].size = 1;
+    s->b.outputs[0].size = 4;
+    s->b.outputs[1].size = n * sizeof(float);
+    s->b.outputs[2].size = n * sizeof(float);
+    s->b.outputs[3].size = 4;
+    s->f88 = _tosGetProfileU32(s, 6, 1) - 1;
+    s->nring = _tosGetProfileU32(s, 1, 3);
+    s->f108 = _tosGetProfileFloat(s, 2, 0.01f);
+    s->f104 = _tosGetProfileFloat(s, 3, 1.0f);
+    s->f96 = _tosGetProfileFloat(s, 4, 40.0f);
+    s->f92 = _tosGetProfileFloat(s, 7, 0.99f);
+    buf = heap_Calloc(tos->heap, n * (s->nring + 6), sizeof(float));
+    s->ring = buf;
+    s->ringpos = buf;
+    s->f64 = buf + n * (s->nring + 1);
+    s->noise = s->f64;
+    s->lognoise = s->noise + n;
+    s->f52 = s->lognoise + n;
+    s->f56 = s->f52 + n;
+    s->f80 = s->f56 + n;
+    s->f136 = 0.8f;
+    s->f140 = 0.2f;
+    s->f144 = 0.1f;
+    s->f148 = 0.9f;
+    s->f132 = logf(3.7808886e37f);
+    s->f128 = 1.0f;
+    s->f120 = -logf(11.0f);
+    s->f124 = 0.90909091f;
+    s->nlim = (unsigned short)_tosGetProfileU32(s, 30, 1);
+    s->lim = heap_Calloc(tos->heap, s->nlim, sizeof(unsigned int));
+    for (i = 0; i < s->nlim; i++) {
+        switch (i) {
+        case 0:
+            k = _tosGetProfileU32(s, 31, n);
+            s->lim[0] = n < k ? n : k;
+            break;
+        case 1:
+            k = _tosGetProfileU32(s, 32, n);
+            s->lim[1] = n < k ? n : k;
+            break;
+        case 2:
+            k = _tosGetProfileU32(s, 33, n);
+            s->lim[2] = n < k ? n : k;
+            break;
+        default:
+            _tosErrorLog(s, 103);
+            return 1;
+        }
+    }
+    if (s->ring == 0)
+        return _tosErrorLog(s, 102);
+    {
+        unsigned int m = s->n;
+
+        for (q = s->noise; q < s->noise + m + s->n; q++)
+            *q = 1.0f;
+        m = s->n;
+        s->f42 = 0;
+        for (p = s->f56; p < s->f56 + m; p++)
+            *p = 1.0f;
+        for (p = s->f52; p < s->f52 + m; p++)
+            *p = 1.0f;
+        s->f40 = 0;
+        s->f128 = 1.0f;
+    }
+    return 0;
 }
 
 TOSBLOCK *ConstructSpecSub(TOS *tos, unsigned char id)

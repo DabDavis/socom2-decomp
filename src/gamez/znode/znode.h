@@ -507,6 +507,15 @@ public:
      * each, just ahead of m_GlobalLightScale: OVL1 0x3E1468, 0x3E1470) */
     static bool m_fogEnable;
     static bool m_lightingEnable;
+    /* whether shadows, the local lights and the multipass effects apply (SOCOM 1's statics, 1 byte
+     * each, between m_customGlobalLightIdx and m_fogEnable in SOCOM 1's order -- OVL1 0x3E1450,
+     * 0x3E1458, 0x3E1460, each 1 in the image): the pipe's BuildLightMapList and RenderWorld test
+     * m_applyShadow and CAlpha::Render clears it, as SOCOM 1's; CAlpha::Render tests
+     * m_applyLocalLights before the node's local lights are built, as SOCOM 1's before
+     * BuildNodeLocalLightList */
+    static bool m_applyShadow;
+    static bool m_applyLocalLights;
+    static bool m_applyMultipass;
     /* the landmark switch: its flag (0x4B4A58, VuObjectSetup's fog choice) set and the lighting
      * switched the other way (SOCOM 1's static, the same code) */
     static void LandmarkEnable(bool on);

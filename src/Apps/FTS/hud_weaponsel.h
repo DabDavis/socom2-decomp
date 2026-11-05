@@ -266,6 +266,12 @@ public:
     /* the next weapon's index up or down the weapons' list that the slot takes (0x23C6F0; the name
      * ours: its last two arguments passed through to the slot's test) */
     int NextWeapon(bool up, int index, EQUIP_ITEM type, WEAPON_KIND kind);
+    /* whether the list's slot takes a weapon (0x23C390; the name ours) */
+    bool CanTake(CZWeapon *weapon, EQUIP_ITEM type, WEAPON_KIND kind);
+    /* the next weapon class up or down in the page's fixed order that the list takes a weapon of
+     * (0x23C840; the name ours), and the test (inline) */
+    EQUIP_ITEM NextCategory(bool up, EQUIP_ITEM cls, WEAPON_KIND kind);
+    inline bool HasWeapons(EQUIP_ITEM cls);
 
     /* no owner, no slots yet (inline: the selector's constructor builds two) */
     SlotList()
@@ -283,8 +289,6 @@ public:
 
 class CMPWeaponCategories;
 
-/* the category page's update (no row named yet) */
-extern "C" void func_0023D860(CMPWeaponCategories *page, float dT);
 
 /* the selector's category page (no vtable, so no RTTI name: the name is ours) */
 class CMPWeaponCategories {
@@ -312,7 +316,7 @@ public:
         m_bitmap1.On();
         m_bitmap2.On();
         m_list.On();
-        func_0023D860(this, 0.0f);
+        Layout(0.0f);
     }
 
     C2DString m_title;   // 0x0
@@ -322,6 +326,12 @@ public:
     SlotList m_list;   // 0x960
     CategorySlot m_categories[4];   // 0x9a0
     C2DBitmap m_bitmap3;   // 0xea0
+    /* the page made (0x23CD20; the name ours) */
+    void Init();
+    /* the page laid out and on (0x23D860; the name ours) */
+    void Layout(float dT);
+    /* the page faded out (closing) or in (0x23D610; the name ours) */
+    void Fade(bool closing, float dT);
     /* the weapon shown: its class (GetIDType, 255 none), its kind (0 primary, 1 secondary, 2 other)
      * and its index in the weapons' list (0x23D540; the names ours) */
     void SetWeapon(CZWeapon *weapon);
@@ -342,8 +352,8 @@ public:
     bool m_pulseup;   // 0xf2c: the blend rising
     unsigned char _f2d[0xf30 - 0xf2d];
     class CMPWeaponSel *m_owner;   // 0xf30: the selector (its Init sets it)
-    float m_f34;   // 0xf34: 1 from the constructor
-    int m_f38;   // 0xf38
+    float m_f34;   // 0xf34: 1 from the constructor: the cursor bar's pulse direction (1 or -1)
+    float m_f38;   // 0xf38: the cursor bar's pulse, 0 to 1 (the selector's tick reads it with lwc1)
     unsigned char _f3c[0xf40 - 0xf3c];
 } __attribute__((aligned(16)));   // 0xf40 bytes
 
@@ -361,8 +371,14 @@ public:
     /* the cursor moved a slot on (2) or back (-2), round the five, on past the slots its test
      * refuses; the category page shows the slot's weapon (0x23EAE0; the name ours) */
     void Scroll(signed char dir);
-    /* the list's buttons (0x23EBC0; the name ours) */
-    void HandlePad(CPad *pad);
+    /* the list's buttons (0x23EBC0; the name ours -- the tick passes it dT too) */
+    void HandlePad(CPad *pad, float dT);
+    /* a chosen weapon put in a selected slot (0x23FEF0; the name ours) */
+    void SetSlot(int slot, CZWeapon *weapon);
+    /* the selector's tick (0x240600; the name ours, after SOCOM 1's CWeaponSel::HudTick) */
+    void HudTick(CPad *pad, float dT);
+    /* the selector laid out (0x23E030; the name ours) */
+    void Layout(float dT);
     /* the five selected slots' weapons given to the HUD owner's character (0x23E5E0; the name ours) */
     void SetCharacterWeapons();
     /* opened on the list, the slots filled from the owner's weapons (0x23E370; the name ours) */
@@ -372,7 +388,15 @@ public:
     /* whether a slot can be chosen (0x23E910; the name ours), the equipment slot holding an item
      * (the one asked about skipped) and the item's own test (inline) */
     bool CanSelect(int index);
+    /* an equipment item no equipment slot holds: the item, or, when a slot holds it, the next
+     * equipment item round the weapons' list that the player's side may take (0x23BC50) -- and the
+     * same for a slot left empty, passing over another item (0x23B9B0; the names ours) */
+    EQUIP_ITEM NextFreeEquipment(EQUIP_ITEM item, int index);
+    EQUIP_ITEM PickEquipment(int index, EQUIP_ITEM item, EQUIP_ITEM other);
     inline int FindEquipment(EQUIP_ITEM item, int skip);
+    inline bool HasClassElsewhere(EQUIP_ITEM cls);
+    inline bool IsSelectedElsewhere(CZWeapon *weapon);
+    inline EQUIP_ITEM CursorItem();
     inline void CheckItem(EQUIP_ITEM item, int index, bool &ok);
     inline void Set203(bool on);
     inline void SetGL(bool on);
@@ -386,14 +410,16 @@ public:
     CMPWeaponCategories m_categories;   // 0x220
     SlotList m_list;   // 0x1160
     SelectedSlot m_selected[5];   // 0x1198
-    unsigned char m_1530;   // 0x1530: 255 from Init
-    unsigned char m_1531;   // 0x1531: 255 from Init
+    /* the items the M203's and the launchers' picks displaced from the equipment slots, 255 none
+     * (Init, Open; SetSlot and 0x23ECA0 copy them with lb: the item enum) */
+    EQUIP_ITEM m_1530;   // 0x1530: 255 from Init
+    EQUIP_ITEM m_1531;   // 0x1531: 255 from Init
     bool m_203;   // 0x1532: the M203's grenades enabled (Enable_203FRAG and the rest)
     bool m_f2000;   // 0x1533: the F2000's (Enable_F2000FRAG ...)
     bool m_gl;   // 0x1534: the grenade launcher's (Enable_GLFRAG ...)
     unsigned char _1535[0x1538 - 0x1535];
-    float m_1538;   // 0x1538: 1 from the constructor
-    int m_153c;   // 0x153c
+    float m_1538;   // 0x1538: 1 from the constructor: the cursor bar's pulse direction (1 or -1)
+    float m_153c;   // 0x153c: the cursor bar's pulse, 0 to 1 (the tick reads it with lwc1)
 } __attribute__((aligned(16)));   // 0x1540 bytes
 
 #endif

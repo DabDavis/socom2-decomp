@@ -811,7 +811,10 @@ FIREMODE CZKit::GetCurFireMode()
  * if/else, a result local (0x1DC), a static inline capacity helper (three bodies, either arm), a
  * shared `return 0` at the end, a goto, `== 0` and `!(bool)` in the if, the item through
  * GetItemByIndex (9); round 30, the launcher arm as one ternary over `i != -1 && m_item[i]` (the shape
- * that closed GetFiremodeGraphic: 0x1F4) */
+ * that closed GetFiremodeGraphic: 0x1F4). Round 43: the six matched functions with the target's
+ * `bnez; move v0,zero; b end; nop; pad; jal` (Logout, ScanForVehicleByName, UIJoinGameServer,
+ * ChooseSlotForCharacter, PlaySound3D, ActivateSequence) all have code after the call -- here the call
+ * is the function's tail, which MW lays out first */
 int CZKit::GetMaxAmmoCount(int index)
 {
     index = wrap(index, m_num_items);
@@ -1746,21 +1749,23 @@ struct CKitAmmoBody {
  * otherwise in the selected item's (OVL2 0x5BD530; SOCOM 1's, in its place before
  * WeaponIsGrenadeLauncherMode -- SOCOM II still asks the current item's kind and no longer reads it,
  * where SOCOM 1's answered true for two kinds).
- * OPEN, 31 instructions at the right size, registers only: the target keeps the inlined
- * FindItemWithAmmo's counter in v0 and its temporaries in v1 (ours the other way round), and the
- * launcher arm's `&&` as a bool in v1 narrowed at the join (`b end; andi v0,v1,0xff`) where ours
- * branches straight to the end with the zero. Tried: the index declared at the top, the `&&` in a
- * bool local (declared there or at the top, or `r = i != -1; if (r) r = ...`), static inline
- * helpers taking the index (the `&&`, the if-form, the return-true form, the find as the argument),
- * GetAmmoItemIndex(GetCurFireMode()) and the fire mode through GetCurFireMode */
-bool CZKit::CurMagHasAmmo()
+ * Round 43: the launcher arm's `&&` is an int result preset to the index test and set under it --
+ * the bool value branched on (nor/sltu/beqz) and the inlined find's counter in v0, as the target --
+ * returned through an unsigned char (the return type is not mangled; kit.h's declaration), so the
+ * join narrows with `andi 0xff`; a bool result swaps the find's registers (38 off), an int or
+ * unsigned char one returned as bool converts with sltu (1 off), `i == -1 ? 0 : ...` gives 7, inline
+ * compositions `i != -1 ? MagLoaded() : false` 10-15 (round 42's CTMacro::Tick shape) */
+unsigned char CZKit::CurMagHasAmmo()
 {
     if (((CKitAmmoBody *)m_body)->m_infiniteammo ? true : false)
         return true;
     if (CurWeaponIsLauncherMode()) {
         int i = FindItemWithAmmo((EQUIP_ITEM)m_firemode[m_selected_item]);
+        int r = i != -1;
 
-        return i != -1 && m_reloads[i][m_currentmag[i]] > 0;
+        if (r)
+            r = m_reloads[i][m_currentmag[i]] > 0;
+        return r;
     }
     GetCurItemEnum();
     return m_reloads[m_selected_item][m_currentmag[m_selected_item]] > 0;

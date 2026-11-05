@@ -1427,11 +1427,9 @@ extern "C" void func_00555820(CSealCtrlAi *ai, bool keep)
     }
 }
 
-extern "C" {
-/* a path started over from a cell of a map (OVL2 0x526810, the AI core's: the route's legs begun at the
- * SEAL's cell); a path's plan is copied from another by CAiPath::CopyPlan (OVL2 0x527FD0, ai.h's) */
-void func_00526810(CAiPathBytes *path, const CAiMapLoc &loc, CAiMap *map, int a, int b);
-}
+/* a path started over from a cell of a map: CAiPath::InsertPathLoc(loc, map, 0, true) (OVL2 0x526810,
+ * the AI core's: the route's legs begun at the SEAL's cell); a path's plan is copied from another by
+ * CAiPath::CopyPlan (OVL2 0x527FD0, ai.h's) */
 
 /* a path's plan under way (states 1-3: ai.h's CAiPath::IsPlanning) and one held complete (state 4 with
  * points: IsState4Held's test on a path) */
@@ -1462,12 +1460,12 @@ extern "C" bool func_005556A0(CSealCtrlAi *ai, const CAiPathBytes *path, CAiRout
     bool r = false;
 
     if (PathPlanning(path)) {
-        func_00526810(&route->m_path, loc, AiMaps.GetMapByIndex(loc.m_mapid), 0, 1);
+        ((CAiPath *)&route->m_path)->InsertPathLoc(loc, AiMaps.GetMapByIndex(loc.m_mapid), 0, true);
         route->m_state = ROUTE_2;
         r = true;
     } else if (PathHeld(path)) {
         ((CAiPath *)&route->m_path)->CopyPlan((const CAiPath *)path);
-        func_00526810(&route->m_path, loc, AiMaps.GetMapByIndex(loc.m_mapid), 0, 1);
+        ((CAiPath *)&route->m_path)->InsertPathLoc(loc, AiMaps.GetMapByIndex(loc.m_mapid), 0, true);
         route->m_state = ROUTE_1;
         r = true;
     }
@@ -3831,11 +3829,10 @@ int CAiSGrenade::Virtual14(CSealCtrlAi *ai, CAiState *sub)
 
 extern "C" {
 /* the grenade's landing point solved from its flight, whether found (OVL2 0x55CDC0, not written
- * yet), the dodge's look and sound (0x55C870, not written yet) and a path planned to a cell (the AI
- * core's 0x526C10) */
+ * yet) and the dodge's look and sound (0x55C870, not written yet); a path is planned to a cell by the
+ * AI core's CAiPath::InsertPathLoc(loc, map) 0x526C10 */
 bool func_0055CDC0(CZProjectile *proj, CPnt3D *pos, float *fuse);
 void func_0055C870(CAiSGrenade *g, CSealCtrlAi *ai);
-bool func_00526C10(CAiPath *path, const CAiMapLoc *loc, int flags);
 /* (below: a map's cell inside; the AI states' range: a plan pushed to a cell) */
 bool func_005561C0(const CAiMap *map, const CAiMapLoc &loc);
 bool func_005F0830(CSealCtrlAi *ai, void *loc, unsigned int mode, int kind, int step);
@@ -4044,7 +4041,7 @@ int CAiSGrenade::Tick(CSealCtrlAi *ai)
                     p->SetLocked(true);
                     ai->PlayAiSound((CHARACTER_SOUND)52, 1.0f, -1);
                     func_0055C870(this, ai);
-                    if (ResetPath(ai) && func_00526C10((CAiPath *)&ai->m_path, &m_7c, 0)) {
+                    if (ResetPath(ai) && ((CAiPath *)&ai->m_path)->InsertPathLoc(m_7c, 0)) {
                         ai->SetAiMode((AI_MODE)3);
                         step = STEP_2;
                     } else {

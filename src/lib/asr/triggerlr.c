@@ -1,17 +1,18 @@
-/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 -fno-strict-aliasing -funroll-loops -ffast-math */
+/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 -fno-strict-aliasing -funroll-loops -ffast-math -fno-inline */
 /* triggerlr: the recogniser's speech trigger block (OVL2 0x505D90-0x506D94, SOCOM 1's object at
  * 0x370C90: TriggerLR_FindSpeech, ProcessTriggerLR, TriggerLR_Reset, ControlTriggerLR,
  * InitTriggerLR -- all LOCAL there -- and ConstructTriggerLR; SOCOM II has no row for
- * TriggerLR_Reset, which its control function holds), ScanSoft's speech recogniser, prebuilt with
- * ee-gcc 2.96 at -O2 -G0 -fno-strict-aliasing -funroll-loops -ffast-math (README "The GCC
- * front"): the speech search's max.s are -ffast-math's (without it `a < b ? b : a` is a compare and
- * a branch-likely move). Names are SOCOM 1's (s1:align, the demo's object order); the block's
+ * TriggerLR_Reset, whose statements its control function holds), ScanSoft's speech recogniser,
+ * prebuilt with ee-gcc 2.96 at -O2 -G0 -fno-strict-aliasing -funroll-loops -ffast-math
+ * -fno-inline (README "The GCC front"): the speech search's max.s are -ffast-math's (without it
+ * `a < b ? b : a` is a compare and a branch-likely move); -fno-inline is round 26c's (the input-queue
+ * commands below). Names are SOCOM 1's (s1:align, the demo's object order); the block's
  * fields are named by their use, the voicing measure's (+276 on) being voicing.c's VOICING and the
  * histogram's (+232 on) slhisto.c's HISTOHOST. SOCOM II adds a field at +64 (the speech's voiced
  * flag, which gates command 202): SOCOM 1's fields from +64 on are 4 lower. Round 24c wrote
- * ConstructTriggerLR (over its draft) and ProcessTriggerLR (OPEN); round 25c the speech search,
- * the control (SOCOM 1's TriggerLR_Reset an inline in it, and two session commands SOCOM 1 does
- * not have) and the init. */
+ * ConstructTriggerLR (over its draft) and ProcessTriggerLR; round 25c the speech search, the
+ * control (SOCOM 1's TriggerLR_Reset in it, and two session commands SOCOM 1 does not have) and
+ * the init; round 26c closed ProcessTriggerLR (the object whole). */
 #include "tosblk.h"
 
 typedef struct TRIGGERLR {
@@ -87,6 +88,49 @@ extern unsigned char qQueueControl(void *q, unsigned char cmd, int arg, int n);
 extern unsigned char _tosControl(void *log, unsigned char cmd, int arg, int n);
 extern float logf(float);
 extern int abs(int);
+
+/* the scheduler's input-queue commands as GNU extern inlines -- tos.c's own (which inlines them into
+ * tosBaseBlockControl and defines their real copies at their place), so the vendor's scheduler
+ * header -- and this object is the only block that calls them. Under -fno-inline they are never
+ * inlined here, and no copy is emitted, but cc1 still compiles each body for inlining, and 2.96
+ * marks a function it has compiled nothrow (TREE_NOTHROW, set where a deferred inline is saved),
+ * so every call to them carries `REG_EH_REGION 0`: ProcessTriggerLR's keep test then keeps its
+ * stolen `li v0,1` unannulled before the disable call (`bnez`, the target's; `bnezl` with the
+ * functions only declared -- round 25c's one word). Measured (round 26c): without -fno-inline the
+ * calls are inlined (0x1CC); a body the inliner refuses (varargs) is "only declared" and gives no
+ * note; with all three bodies or the disable alone, the object is byte-exact. */
+extern __inline__ unsigned char tosBaseBlockStopInputQueues(TOSBLOCK *b)
+{
+    unsigned char err = 0;
+    unsigned int i;
+
+    for (i = 0; i < b->ninputs; i++)
+        err |= !qQueueControl(b->inputs[i].q, 6, b->inputs[i].reader, 0);
+    return err;
+}
+
+extern __inline__ unsigned char tosBaseBlockDisableInputQueues(TOSBLOCK *b)
+{
+    unsigned char err = 0;
+    unsigned int i;
+
+    for (i = 0; i < b->ninputs; i++)
+        if (b->inputs[i].q != 0)
+            err |= !qQueueControl(b->inputs[i].q, 8, b->inputs[i].reader, 0);
+    return err;
+}
+
+extern __inline__ unsigned char tosBaseBlockStartInputQueues(TOSBLOCK *b, int n)
+{
+    unsigned char err = 0;
+    unsigned char cmd = n ? 7 : 5;
+    unsigned int i;
+
+    for (i = 0; i < b->ninputs; i++)
+        if (b->inputs[i].q != 0)
+            err |= !qQueueControl(b->inputs[i].q, cmd, b->inputs[i].reader, n);
+    return err;
+}
 
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
 
@@ -278,16 +322,9 @@ static int TriggerLR_FindSpeech(TRIGGERLR *p, float **in)
  * call; 2.96 keeps it a `jal` in its nested arm, measured -- the target's); the end test
  * `f80 > f68` (operand 0 expanded first: the target loads +80 first). Round 24c had it int (falling off the end, its
  * `(clobber (reg v0))` kept the two state stores from cross-jumping: 0x194); void they merge as
- * the target's.
- * OPEN (round 25c, the right size, 1 word): the keep test's `bnez` -- the target keeps its stolen
- * `li v0,1` slot unannulled, this compile annuls it (`bnezl`) -- is round 13c's definition-order
- * word, and its mechanism is the call on the fall-through: 2.96 marks a function it has compiled
- * nothrow (TREE_NOTHROW), so a call to one carries `REG_EH_REGION 0`, and only with that note on
- * the disable call does reorg leave the slot plain (a stand-in body of
- * tosBaseBlockDisableInputQueues above this function gives byte-exact; the call's RTL differs in
- * that note alone, build/scratch/gcc/ann/). The callee is tos.c's, another object, and this cc1
- * has no `nothrow` attribute; -fno-exceptions, -fexceptions, -fsjlj-exceptions,
- * -fno-asynchronous-exceptions and -funwind-tables do not give the note. */
+ * the target's. The keep test's `bnez` (its stolen `li v0,1` unannulled before the disable call)
+ * is the disable call's nothrow note: round 25c's last word, closed in round 26c by the extern
+ * inline above and -fno-inline (the note's mechanism: round 25c, build/scratch/gcc-r25c/ann/). */
 static void ProcessTriggerLR(TRIGGERLR *p, void **in)
 {
     if (in[0] != 0) {
@@ -326,52 +363,41 @@ static void ProcessTriggerLR(TRIGGERLR *p, void **in)
     }
 }
 
-/* SOCOM 1's TriggerLR_Reset, inlined: the counters and the search's state cleared, the voicing
- * measure reset */
-static __inline__ void TriggerLR_Reset(TRIGGERLR *p)
-{
-    p->nframes = 0;
-    p->start = 0;
-    p->lead = 0;
-    p->f96 = 0;
-    p->f80 = 0;
-    p->armed = 0;
-    p->f184 = 0;
-    p->found = 0;
-    Voicing_Reset(p);
-}
-
-/* the histogram and the voicing measure cleared (a null session) */
-static __inline__ void TriggerLR_ClearSession(TRIGGERLR *p)
-{
-    SlidingHisto_Clear(p);
-    Voicing_Reset(p);
-    p->f172 = 0;
-}
-
-/* a session in, at `sess + off`: the histogram flag, then the histogram's ring */
-static __inline__ void TriggerLR_PutSession(TRIGGERLR *p, char *sess, unsigned int off)
-{
-    TriggerLR_ClearSession(p);
-    p->f172 = *(int *)(sess + off);
-    func_00504E58(p, sess + off + 4);
-    if (p->f172 != 0)
-        p->f160 = SlidingHisto_LowerQuantile(p, p->f152);
-}
+/* the histogram and the voicing measure cleared (a null session) -- a statement macro: the object
+ * is built with -fno-inline, so a function would be called; a plain block (a `do { } while (0)`
+ * is a loop to the scheduler, its notes a barrier: 19 words) */
+#define TRIGGERLR_CLEAR_SESSION(p) { \
+        SlidingHisto_Clear(p); \
+        Voicing_Reset(p); \
+        (p)->f172 = 0; \
+    }
 
 /* the commands: 100 the reset (the inputs restarted, or the first three stopped when the inputs
  * are kept, else all disabled), 101 the start frame's address, 102 and 103 the six parameters
  * out and in, 104 the start's report, 105 and 106 a session in and out (the histogram flag and
- * the histogram's ring after it), 255 the block destroyed */
+ * the histogram's ring after it), 255 the block destroyed. The reset's first statements are SOCOM
+ * 1's TriggerLR_Reset (the counters and the search's state cleared, the voicing measure reset),
+ * written in place: under -fno-inline a helper would stay a call, and SOCOM II has no row for it.
+ * The session in reads its offset before the clears (round 25c: the offset and `arg` live apart
+ * across them, the sum formed after -- the target's two saved registers). */
 static int ControlTriggerLR(TRIGGERLR *p, unsigned char cmd, void *arg, unsigned int *off)
 {
     int err;
     float t;
     char *s;
+    unsigned int o;
 
     switch (cmd) {
     case TOS_RESET:
-        TriggerLR_Reset(p);
+        p->nframes = 0;
+        p->start = 0;
+        p->lead = 0;
+        p->f96 = 0;
+        p->f80 = 0;
+        p->armed = 0;
+        p->f184 = 0;
+        p->found = 0;
+        Voicing_Reset(p);
         if (p->restart != 0) {
             p->state = 0;
             if (tosBaseBlockStartInputQueues(&p->b, 0) != 0)
@@ -419,10 +445,15 @@ static int ControlTriggerLR(TRIGGERLR *p, unsigned char cmd, void *arg, unsigned
         break;
     case 105:
         if (arg != 0) {
-            TriggerLR_PutSession(p, arg, *off);
+            o = *off;
+            TRIGGERLR_CLEAR_SESSION(p);
+            p->f172 = *(int *)((char *)arg + o);
+            func_00504E58(p, (char *)arg + o + 4);
+            if (p->f172 != 0)
+                p->f160 = SlidingHisto_LowerQuantile(p, p->f152);
             *off += func_00504E48(p) + 4;
         } else
-            TriggerLR_ClearSession(p);
+            TRIGGERLR_CLEAR_SESSION(p);
         break;
     case 106:
         if (arg != 0) {
