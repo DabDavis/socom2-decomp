@@ -1545,6 +1545,8 @@ extern "C" {
 bool GetLocation__7CAiMapsFPC6CPnt3DR9CAiMapLoc(CKitAiMapsView *maps, const CPnt3D *pos, CAiMapLoc &loc);
 CPnt3D *GetCellCenter__7CAiMapsFRC9CAiMapLocP6CPnt3D(CKitAiMapsView *maps, const CAiMapLoc &loc, CPnt3D *c);
 CZAnim *GetAnim__10CZAnimMainFPCcPCc(CZAnimMain *zanim, const char *name, const char *set);
+/* CZAnim::Activate(CZAnim *by) (OVL1 0x2734B0: TickLaserDesignator sets the lased anim off) */
+CZAnim *Activate__6CZAnimFP6CZAnim(CZAnim *anim, CZAnim *by);
 /* the laser's reach (an int, converted at the compare) and its time (OVL1 data 0x3DF1E0, 0x3DF1D8) */
 extern int data_003DF1E0;
 extern float data_003DF1D8;
@@ -1584,6 +1586,77 @@ bool CZKit::FetchLaseTarget()
         }
     }
     return false;
+}
+
+/* the SEAL controller's trigger (zseal.h's CSealCtrl::m_trigger at 0x118, a byte enum: 0 up, 1 down,
+ * 3 rising -- zseal.h is not included here; the view ours) */
+struct CKitTriggerView {
+    unsigned char _0[0x118];
+    unsigned char m_trigger;   // 0x118
+};
+
+/* a map cell's grid distance from another, x and y steps summed (seal_aifollow.cpp's FollowCellDist;
+ * the name ours) */
+static inline int KitCellDist(const CAiMapLoc &a, const CAiMapLoc &b)
+{
+    int dx = a.x > b.x ? a.x - b.x : b.x - a.x;
+    int dy = a.y > b.y ? a.y - b.y : b.y - a.y;
+
+    return dx + dy;
+}
+
+/* the laser designator's tick (SOCOM 1's TickLaserDesignator, its grid test kept; SOCOM II plays the
+ * lock sound for a player and stops it once the lase is gone, where SOCOM 1 played the error sound on
+ * the anim's start; OVL2 0x5BFAC0). Without a target the lock sound is stopped and released. With
+ * the trigger down the aim must stay in the target's cell's reach and the anim ready, the timer
+ * runs; up or rising, the lase is dropped; past its time the target's anim is set off. The location's
+ * bool tested `!= false` (the target's andi before the branch; plain, MW branches on v0) */
+void CZKit::TickLaserDesignator(float dT)
+{
+    if (!m_lase_mapname || !m_lase_anim) {
+        if (KitIsPlayer((CKitBody *)m_body) && m_lase_inst) {
+            m_lase_inst->Stop();
+            CSndInstance::ReleaseSoundInstance(m_lase_inst);
+            m_lase_inst = 0;
+        }
+        return;
+    }
+    unsigned char trig = ((CKitTriggerView *)((CEntity *)m_body)->m_control)->m_trigger;
+
+    if (trig == 1) {
+        CAiMapLoc loc;
+        bool ok = false;
+
+        if (GetLocation__7CAiMapsFPC6CPnt3DR9CAiMapLoc(&AiMaps, &((CKitAimView *)m_body)->m_aim_point, loc) != false)
+            ok = true;
+        if (ok && KitCellDist(m_lase_mapname->m_loc, loc) < data_003DF1E0) {
+            if (((CKitAnimView *)m_lase_anim)->m_state != 1)
+                ok = false;
+        } else
+            ok = false;
+        if (!ok)
+            ClearLase();
+        if (ok) {
+            m_lase_timer += dT;
+            if (KitIsPlayer((CKitBody *)m_body)) {
+                if (m_lasesnd_start && !m_lase_inst)
+                    m_lase_inst = m_lasesnd_start->PlaySound((CSndInstance *)0, 255);
+                if (m_lase_inst2) {
+                    m_lase_inst2->Stop();
+                    m_lase_inst2 = 0;
+                }
+            }
+        } else
+            ClearLase();
+    } else if (trig == 0)
+        ClearLase();
+    else if (trig == 3)
+        ClearLase();
+    if (m_lase_timer > data_003DF1D8) {
+        Activate__6CZAnimFP6CZAnim(m_lase_anim, 0);
+        m_lase_deploy_echo = true;
+        ClearLase();
+    }
 }
 
 /* the aim raised by a step and rescaled so it stays a unit vector, false past straight up; the
