@@ -214,6 +214,9 @@ public:
     /* whether a scope or the binoculars are up (SOCOM 1's; OVL2 0x5B9990, 0x5B90F0 -- kit.h's) */
     bool IsUsingScope();
     bool IsUsingBinocs();
+    /* whether the weapon in hand waits out a fire delay (kit.h's; OVL2 0x5C2400 -- IsReloading asks
+     * it first) */
+    bool IsFireDelayed();
     /* whether a weapon picked up has a slot to go in (kit.h's; OVL2 0x5BAC30, the kit lane's: the
      * SEAL's pickup tests 0x5A9C70 and 0x5A9F40 ask it) */
     bool HasPickupSlot();
@@ -301,7 +304,9 @@ enum NODEACTION_TYPE { NODEACTION_0 = 0, NODEACTION_BOMB = 4, NODEACTION_5 = 5, 
 
 class CValve;
 
-class CNodeAction {
+/* (a node's extension, as fts_action.cpp's: GetReticuleAction's dynamic_cast from the node's
+ * extension names OVL2's copy of its RTTI, 0x65C638, whose one base is CNodeEx's at offset 0) */
+class CNodeAction : public zdb::CNodeEx {
 public:
     /* the anim run on a SEAL (SOCOM 1's; OVL1 0x2B44E0, fts_action.cpp's) */
     int ExecuteAction(class CZSealBody *body, unsigned int index);
@@ -312,12 +317,15 @@ public:
     bool Acquire(unsigned int who);
     void Release(unsigned int who);
 
-    unsigned char _0[0x14];
+    unsigned char _4[0x14 - 0x4];
     /* (SOCOM 1's m_node: CanPlaceBomb matches it against the sides' bomb sites, TickMPBomb against the
      * bomb's node) */
     zdb::CNode *m_node;   // 0x14
     CValve *m_valve;   // 0x18
-    unsigned char _1c[0x24 - 0x1c];
+    /* how near the action can be taken, across and (SOCOM II's; -1 for any) up (fts_action.cpp's m_range
+     * and m_20: GetReticuleAction tests the fire point's offset against them) */
+    float m_range;   // 0x1c
+    float m_20;   // 0x20
     NODEACTION_TYPE m_type;   // 0x24
     unsigned char _25[0x30 - 0x25];
     unsigned int m_teams;   // 0x30: the sides that may use it (fts_action.cpp's m_30)
@@ -2069,7 +2077,9 @@ public:
      * reticule pair, which SOCOM II moved ahead of the altitude): the weapon pickup's test 0x5A9C70
      * reads its point and material, the radio toggle 0x5AA620 takes the SEAL of its node (0x3dc) */
     zdb::IntersectStruct m_last_reticule;   // 0x3c0
-    unsigned char _3e0[0x400 - 0x3e0];
+    /* the hit under the reticule that an action takes (SOCOM 1's m_last_reticule_action, 0x360 right
+     * after m_last_reticule as here: GetReticuleAction prefers its node) */
+    zdb::IntersectStruct m_last_reticule_action;   // 0x3e0
     zdb::IntersectStruct m_last_altitude;   // 0x400 (SOCOM 1's 0x320)
     /* the clock when the altitude was last taken over (DetachBody 0x579220 stores the game's clock;
      * new in SOCOM II, the name ours) */

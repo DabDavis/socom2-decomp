@@ -993,6 +993,62 @@ bool CZSealBody::IsThrowing(bool started)
     return false;
 }
 
+extern "C" {
+/* the reloads' anims (OVL1 data, anim types: SOCOM 1's PistolReload, RifleReload, PistolCrouchReload,
+ * RifleCrouchReload, PistolProneReload, RifleProneReload and RifleM203Reload by their places among
+ * AnimTypes' statics, 8 bytes apart, and six SOCOM II adds; the overlays' MovingPistolReload and
+ * MovingRifleReload) */
+extern short data_003DEB58;
+extern short data_003DEB60;
+extern short data_003DEB68;
+extern short data_003DEB70;
+extern short data_003DEB78;
+extern short data_003DEB80;
+extern short data_003DEB88;
+extern short data_003DEB90;
+extern short data_003DEBF8;
+extern short data_003DF098;
+extern short data_003DF0A0;
+extern short data_003DF0A8;
+extern short data_003DF0B8;
+extern short data_003DF0C0;
+extern short data_003DF0C8;
+/* whether an anim type is anywhere on the blend stack (seal_body.cpp's OVL2 0x58A470) */
+bool func_0058A470(CZSealBody *seal, AnimType type);
+}
+
+/* whether a reload is under way: the kit's fire delay, a reload's anim on top -- or anywhere on the
+ * blend stack -- or a moving reload's overlay playing (OVL2 0x5A7AB0; SOCOM 1's IsReloading, between
+ * IsChangingWeapons and IsThrowing in both builds: two Top calls, the first unread; SOCOM II asks the
+ * kit and the whole stack too, and six reloads more) */
+bool CZSealBody::IsReloading()
+{
+    if (m_kit.IsFireDelayed())
+        return true;
+    TopBlend();
+    short type = TopBlend()->m_animType;
+
+    if (type == data_003DEB60 || type == data_003DEB58 || type == data_003DEB80 || type == data_003DEB78 ||
+        type == data_003DEB90 || type == data_003DEB88 || type == data_003DEBF8 || type == data_003DF0B8 ||
+        type == data_003DF0C0 || type == data_003DF0C8 || type == data_003DF098 || type == data_003DF0A0 ||
+        type == data_003DF0A8 || func_0058A470(this, (AnimType)data_003DEB60) ||
+        func_0058A470(this, (AnimType)data_003DEB58) || func_0058A470(this, (AnimType)data_003DEB80) ||
+        func_0058A470(this, (AnimType)data_003DEB78) || func_0058A470(this, (AnimType)data_003DEB90) ||
+        func_0058A470(this, (AnimType)data_003DEB88) || func_0058A470(this, (AnimType)data_003DEBF8) ||
+        func_0058A470(this, (AnimType)data_003DF0B8) || func_0058A470(this, (AnimType)data_003DF0C0) ||
+        func_0058A470(this, (AnimType)data_003DF0C8) || func_0058A470(this, (AnimType)data_003DF098) ||
+        func_0058A470(this, (AnimType)data_003DF0A0) || func_0058A470(this, (AnimType)data_003DF0A8))
+        return true;
+    ACTIVE_ANIM *a = m_overlay.m_anim;
+
+    if (a && a->m_anim) {
+        if (a->m_id == data_003DEB70 || a->m_id == data_003DEB68)
+            return true;
+        return false;
+    }
+    return false;
+}
+
 /* whether a weapon change is under way: the kit's asked item when told to count it, a change's blend
  * on top, or its overlay running (OVL2 0x5A7980; SOCOM 1's IsChangingWeapons, first of the stretch
  * IsChangingWeapons, IsReloading, IsThrowing, CanFire in both builds -- SOCOM II's takes the flag and
@@ -1160,6 +1216,62 @@ extern "C" CPickup *func_005AA110(CZSealBody *seal)
             return bomb;
     }
     return 0;
+}
+
+extern "C" {
+/* a node's extension and its parent (zdb::CNode's inline accessors: their out-of-line copies follow
+ * CNodeAction::GetAction, OVL2 0x5AA610 and 0x5AA600 -- the drafts') */
+zdb::CNodeEx *func_005AA610(zdb::CNode *node);
+zdb::CNode *func_005AA600(zdb::CNode *node);
+}
+
+/* the action under the reticule: the node of the action's hit, else of the reticule's, offering one
+ * itself or up its tree -- none when its valve reads 99 or it takes no action; and when asked, only
+ * within its range across of the SEAL's fire point and (unless -1) its range up (OVL2 0x5AA240; SOCOM
+ * 1's GetReticuleAction, after the pickup tests in both builds: GetAction(node, true) inlined one level,
+ * the accessors and the recursion called; SOCOM 1's built the node's matrix, SOCOM II's only makes one) */
+/* the action a node offers, up its tree (CNodeAction::GetAction(node, true) as the image inlines it into
+ * its caller: one level, its accessors and its recursion called -- an inline so its variables number
+ * after the caller's, as the inlined original's did) */
+static inline CNodeAction *ActionOf(zdb::CNode *node)
+{
+    CNodeAction *a = 0;
+
+    if (node) {
+        a = dynamic_cast<CNodeAction *>(func_005AA610(node));
+        if (!a)
+            a = CNodeAction::GetAction(func_005AA600(node), true);
+    }
+    return a;
+}
+
+CNodeAction *CZSealBody::GetReticuleAction(bool b)
+{
+    zdb::CNode *node = m_last_reticule_action.m_node ? m_last_reticule_action.m_node : m_last_reticule.m_node;
+    CNodeAction *action = ActionOf(node);
+    CNodeAction *r = 0;
+
+    if (action && action->m_valve->m_value != 99 && action->m_type != NODEACTION_NONE) {
+        if (b) {
+            CMatrix m;
+            float zero = 0.0f;
+            CPnt3D pos = m_posW + (FIREPOS_SET(this, zero) ? m_curr_firepos : CPnt3D::zero);
+            CPnt3D at((m_last_reticule_action.m_node ? &m_last_reticule_action : &m_last_reticule)->m_pos);
+            CPnt3D d = at - pos;
+
+            at.y = 0.0f;
+            float dy = d.y * d.y;
+
+            if (d.x * d.x + d.z * d.z < action->m_range * action->m_range) {
+                if (action->m_20 == -1.0f)
+                    r = action;
+                else if (dy < action->m_20 * action->m_20)
+                    r = action;
+            }
+        } else
+            r = action;
+    }
+    return r;
 }
 
 /* the head's place and its look's direction in the world, each when asked (OVL2 0x5A3070; SOCOM 1's
