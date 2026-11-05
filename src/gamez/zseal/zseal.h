@@ -1247,6 +1247,9 @@ public:
     /* the kit's weapon picked for a fire mode's hint, whether one was (SOCOM 1's; OVL2 0x563470, the
      * SEALs' row -- the kit lane's CTFireMode::Begin calls it) */
     bool ChooseWeapon(CAiWepHint &hint);
+    /* the stance and pace factor on the aim (OVL2 0x5C9270, the kit lane's seal_kit.cpp, which reads
+     * the controller through a view of its own; 0x55F0A0 asks it for the spread) */
+    float GetAccuracyFactor();
     /* an enemy first seen by the squad called out, by its place on the player's clock (SOCOM 1's,
      * which took the CTarget; OVL2 0x5C9930, the kit lane's seal_sensors.cpp) */
     void EnemyCallout(CEntity *e, CEntity *player);

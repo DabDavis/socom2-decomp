@@ -3249,9 +3249,121 @@ extern "C" bool func_0055EAA0(CSealCtrlAi *ai, AI_FIREPARAMS *p, bool clear)
     return r;
 }
 
+/* the AI's weapon hints (the kit lane's kit.h CAiWepHint, completed here with the static this unit
+ * calls: a weapon's accuracy at a distance -- OVL2 0x5C9340) */
+class CAiWepHint {
+public:
+    static float GetWeaponAccuracy(CZWeapon *w, float d, bool b);
+};
+
+extern "C" {
+/* the fire parameters aimed straight at the target's spot (OVL2 0x55EBE0, below) and shot (OVL2
+ * 0x55ECC0, not written yet; the names unknown) */
+bool func_0055EBE0(CSealCtrlAi *ai, AI_FIREPARAMS *p);
+bool func_0055ECC0(CSealCtrlAi *ai, AI_FIREPARAMS *p);
+}
+
+/* a vector's length on the ground plane (an inline reading through a reference: the x read again
+ * for the scaling after it) */
+static inline float FlatLength(const CPnt3D &v)
+{
+    return sqrtf(v.x * v.x + v.z * v.z);
+}
+
+/* a fire parameters' flags changed: some cleared, some set (an inline: two read-modify-writes, `&= ~0`
+ * a bare zero extension; the name ours) */
+static inline void ModifyFireFlags(AI_FIREPARAMS *p, unsigned int set, unsigned int clear)
+{
+    p->m_flags &= ~clear;
+    p->m_flags |= set;
+}
+
+/* the fire parameters worked out, unless flag 0x4000000 holds them: thrown by 0x55E670 (flag 0x40000)
+ * or aimed straight by 0x55EBE0 (flag 0x80000) -- the trigger let go twice -- else shot by 0x55ECC0;
+ * once worked out, under flag 0x2000000 the look flattened onto the ground, flag 0x200000 set and the
+ * wait cleared, and with a weapon the spread from its accuracy at the distance (1 in state 4, held to
+ * [0.25, 1]) times the row's first figure (1.5 for a Navy SEAL; halved against a valid target whose
+ * SEAL is in state 2) times the AI's accuracy factor, held to [0, 1]; whether flag 0x200000 is on
+ * (OVL2 0x55F0A0, new in SOCOM II: CAiSDeploy::Tick and 0x563E10 call it; the name unknown).
+ * Byte-exact (round 49): 0x55EBE0 pinned out of line; the look's ground length through a reference
+ * inline (x read again for the scaling); the Navy SEAL bit an `unsigned char` local (andi 0xff),
+ * tested again as `(bool)navy == false` (the sltu in both arms of the ternary before it); the target
+ * pointer taken first and tested after the validity call */
+extern "C" bool func_0055F0A0(CSealCtrlAi *ai, AI_FIREPARAMS *p)
+{
+    unsigned int flags = p->m_flags;
+
+    if (!(flags & 0x4000000)) {
+        bool done;
+
+        if (flags & 0x40000) {
+            done = func_0055E670(ai, p);
+            ai->SetTrigger(false);
+            ai->SetTrigger(false);
+        } else if (flags & 0x80000) {
+            done = func_0055EBE0(ai, p);
+            ai->SetTrigger(false);
+            ai->SetTrigger(false);
+        } else
+            done = func_0055ECC0(ai, p);
+        if (done) {
+            if ((p->m_flags & 0x2000000) && p->m_lookDirW.y != 0.0f) {
+                p->m_lookDirW.y = 0.0f;
+
+                float len = FlatLength(p->m_lookDirW);
+
+                if (len != 0.0f) {
+                    float inv = 1.0f / len;
+
+                    p->m_lookDirW.x *= inv;
+                    p->m_lookDirW.z *= inv;
+                }
+            }
+            ModifyFireFlags(p, 0x200000, 0);
+            p->m_timeout = 0.0f;
+
+            CZWeapon *w = *(CZWeapon **)p->_0;
+
+            if (w) {
+                float dist = p->m_dist;
+                float acc;
+
+                if (ai->AiStateIs((AI_STATE)4))
+                    acc = 1.0f;
+                else
+                    acc = CAiWepHint::GetWeaponAccuracy(w, dist, false);
+                _saturate(&acc, 0.25f, 1.0f);
+
+                unsigned char navy = ai->m_navyseal;
+                float f = navy ? 1.5f : data_0064FE60[data_0066AFD8][0];
+
+                if ((bool)navy == false) {
+                    static float against_down = 0.5f;
+                    void *t = ai->m_67c;
+
+                    if (func_0060A850(t) && t) {
+                        CZSealBody *seal = AsSeal(*(CEntity **)t);
+
+                        if (seal && seal->m_state == 2)
+                            f *= against_down;
+                    }
+                }
+
+                float spread = f * (acc * ai->GetAccuracyFactor());
+
+                _saturate(&spread, 0.0f, 1.0f);
+                p->m_spread = spread;
+            }
+        }
+    }
+    return (p->m_flags & 0x200000) != 0;
+}
+
 /* the fire parameters aimed straight at the target's spot: the look along the line to it, the aim
  * point the spot, the model's aim down -z, flag 0x100000 on and 0x800000 off, the distance kept
- * (OVL2 0x55EBE0, new in SOCOM II: 0x55F0A0 picks it by flag 0x80000; the name unknown) */
+ * (OVL2 0x55EBE0, new in SOCOM II: 0x55F0A0 picks it by flag 0x80000 and calls it out of line --
+ * short enough for -inline auto there: pinned; the name unknown) */
+#pragma auto_inline off
 extern "C" bool func_0055EBE0(CSealCtrlAi *ai, AI_FIREPARAMS *p)
 {
     CPnt3D *target = &p->m_targetPos;
@@ -3266,6 +3378,7 @@ extern "C" bool func_0055EBE0(CSealCtrlAi *ai, AI_FIREPARAMS *p)
     p->m_dist = dist;
     return true;
 }
+#pragma auto_inline reset
 
 /* whether the body holds a weapon of the kind: kind 1 is rows 2 and 3 (OVL2 0x5609F0; round 36: a
  * result local set in an if/else, kind 1's rows through an inline -- and the other kind's row read
