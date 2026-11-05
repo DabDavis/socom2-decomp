@@ -663,6 +663,10 @@ public:
      * played */
     virtual bool PlayAiSound(CHARACTER_SOUND sound, float chance, int event);   /* +0x24 */
     virtual bool AllowCommand(CZSealBody *seal, FT_COMMAND cmd, void *data);
+    /* whether the orders to hold and to follow may go to the SEAL (SOCOM 1's; OVL2 0x591770 and
+     * 0x591AB0, seal_command.cpp's -- not written yet; 0x591520 asks the first) */
+    bool AllowCommandHOLDPOS(CZSealBody *seal);
+    bool AllowCommandFOLLOW(CZSealBody *seal);
     virtual bool IsPlayer() const;
     virtual bool IsAi() const { return false; }
     virtual bool IsRemote() const { return false; }                         /* +0x34 */
