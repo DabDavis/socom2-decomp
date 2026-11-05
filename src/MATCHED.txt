@@ -8941,6 +8941,7 @@
 0x00527300 SetTemplatePath__7CAiPathFP7CAiPath
 0x00527310 Clear__7CAiPathFv
 0x00527470 IncrementPathId__7CAiPathFv
+0x005274B0 plan_addleg__7CAiPathFP6CAiMapRC9CAiMapLocRC9CAiMapLoc
 0x005278C0 plan_complete__7CAiPathFQ27CAiPath10PATH_STATE
 0x00527900 func_00527900
 0x00527970 plan_setup__7CAiPathFv
@@ -9041,6 +9042,7 @@
 0x0052F400 GetRouteIndex__6CAiMapFPCQ26CAiMap5route
 0x0052F470 GetRoute__6CAiMapFUi
 0x0052F8E0 _invalid_route__FRQ26CAiMap5route
+0x0052F8F0 ReRoute__6CAiMapFPQ26CAiMap5route
 0x0052FC40 SetReader__Q26CAiMap6readerFP8CRdrFile
 0x0052FC90 __dt__Q26CAiMap7readersFv
 0x0052FD70 __ct__Q26CAiMap6readerFv

@@ -2065,6 +2065,21 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the AI core, round 32** (plan_addleg and ReRoute byte-exact; RegisterPathPlan written; GetLocation(point)
+  and GetCellRepelParams closer -- resumed after the 2026-11-05 crash for its wind-down):
+  - two 4-byte class locals take the frame's top slots wherever they are declared; wrapped in ONE 8-byte struct they
+    follow declaration order (CAiPath::plan_addleg 0x5274B0's route 224, from 216, to 220; RegisterPathPlan's two cell
+    pairs); a count read into a local before a compare and live across it takes a0, its load hoisted into the first
+    branch's delay slot; `if (!fail) { ...; return true; } return false;` puts the inner `return false` after the pushes
+    (plan_addleg, 127 -> 0);
+  - a copy loop as a do-while under a hand-written guard, the counter declared ahead of the count's reference and stepped
+    in the bottom test (`while (++j < (int)cnt)`) -- a separate `j++;` gives 0x340 (CAiMap::ReRoute 0x52F8F0, 10 -> 0);
+    one cell shared by two walks, declared after the size test, takes the target's single slot, and `m_mes ? true :
+    false` its branch-built bool (CAiMaps::GetLocation(point) 0x52DC70, 279 -> 172, OPEN);
+  - include/list iterators declared and then ASSIGNED from begin() stay in memory, re-read and re-stored at each step
+    (CAiMaps::RegisterPathPlan 0x52C5C0, unstarted before: 0x5F8 of 0x608, every call the target's, OPEN);
+  - `tools/objcmp.py -j 2` can print a FALSE difference (a race in scdecomp's SymbolTable._copy_index, queued for the
+    tools): prove with -j 1 until it is fixed.
 - **Tells from the kit and AI states, round 51** (CSealUnit::IssueCommand written with the four rows only it calls; the
   OVL2 DI-pool twins from source; GOAL_TYPE moved into ai_states.h -- resumed after the 2026-11-05 crash for its wind-down):
   - a walk's end() taken into a local before the loop gives the target's begin in v0 and end in v1 (IssueCommand
