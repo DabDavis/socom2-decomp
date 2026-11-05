@@ -382,6 +382,9 @@ public:
     /* the gear of that name, none for no name (SOCOM 1's FindGear, const there; SOCOM II's is not -- the
      * walk reads the size and data off `this` each pass: 0x53EFF0, called on m_gear_list) */
     CCharacterGear *FindGear(const char *name);
+    /* the end built straight from the storage (CCharTypeVec's Last(), below: FindGear's walk through
+     * it inlines whole into CCharacterType::Parse at level 5, the AI core round 26) */
+    iterator Last() { return iterator((elem_t *)this->data_ + this->size_); }
 };
 
 /* a kind of character: model, sounds, gear, weapons, AI and health (SOCOM 1's DWARF, 0x2FC bytes;
@@ -538,6 +541,12 @@ public:
 
 /* the types (SOCOM 1's DWARF: a vector of pointers and nothing more) */
 class CCharTypeVec : public std::vector<CCharacterType *> {
+public:
+    /* the end built straight from the storage (the online lobby's round-20 Last(): with the image's
+     * own end(), four high, a walk testing `i != end()` inside an inline is six deep where its caller
+     * expands it, so at level 5 MW keeps end()'s body and calls the raw end and __iter; through Last()
+     * the type list's walks inline whole at the settled level, the AI core round 26) */
+    iterator Last() { return iterator((elem_t *)this->data_ + this->size_); }
 };
 
 bool DeleteTemporaryCharType(CCharacterType *t);
