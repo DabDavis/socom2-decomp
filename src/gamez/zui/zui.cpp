@@ -178,7 +178,11 @@ public:
 class CNode {
 public:
     static CNode *Create(const char *name);
+    static CNode *CreateInstance(const char *name, const CPnt3D *pos, const CQuat *rot);
     bool AddVisual(CVisual *visual);
+    void SetDynamicLight(bool on, bool children);
+    void SetDescendantVisuals(bool on);
+    void SetRotation(const CPnt3D *rot);
     void SetPosition(float x, float y, float z);
     void SetName(const char *name);
 
@@ -195,6 +199,12 @@ public:
     unsigned char _64[0x9c - 0x64];
     float m_Opacity;   // 0x9c
     unsigned char _a0[0xc0 - 0xa0];
+};
+
+/* the world (znode.h's zdb::CWorld: only its root, the node models are added under) */
+class CWorld : public CNode {
+public:
+    static CWorld *m_world;
 };
 }
 
@@ -216,6 +226,8 @@ public:
     /* the menu emptied (0x369210, SOCOM 1's) and built from a design (0x367950, SOCOM 1's) */
     void Clear();
     void LoadFromDesign(const CGameDlgDesign &design, CZAnimZAR *zar);
+    /* the design's models put into the world (0x366730, SOCOM 1's) */
+    void PrepModels(const CGameDlgDesign &design);
     /* the design an rdr names read and the menu built from it (SOCOM 1's Init and SwitchMenu inlined
      * it; the name ours) */
     void LoadDesign(const char *name, CZAnimZAR *zar);
@@ -242,7 +254,8 @@ public:
     int m_numCommands;            // 0x8d8
     zdb::CTextureRelocMgr *m_Reloc;   // 0x8dc
     CSaferStr m_ReaderName;     // 0x8e0: the menu's rdr
-    unsigned char _8ec[0x910 - 0x8ec];
+    std::vector<zdb::CNode *> m_modelNodes;   // 0x8ec: the design's models' nodes (PrepModels; SOCOM 1's at 0x878)
+    unsigned char _8f8[0x910 - 0x8f8];
 
     virtual ~CGameMenu();
     virtual void MyTick(float dT);
@@ -640,6 +653,45 @@ bool CGameMenu::TickMPEG()
         }
     }
     return m_movierunning;
+}
+
+/* the design's models put into the world: each an instance of its model -- by name, or by the
+ * string variable its name names ("" for none) -- at the place its azimuth, elevation and distance
+ * give, dynamically lit, named, added under the world, its visuals on, turned by its rotation, and
+ * kept (SOCOM 1's; 0x366730). The count compared as an int (slt), the "" preset ahead of the
+ * variable test (its addiu in that branch's delay slot), the rotation's three floats read into
+ * locals z first (the constructor's arguments straight give y and z each other's register) */
+void CGameMenu::PrepModels(const CGameDlgDesign &design)
+{
+    if (!zdb::CWorld::m_world)
+        return;
+    for (int i = 0; i < (int)design.m_models.size(); i++) {
+        const CDlgDesignModel &m = design.m_models[i];
+        CPnt3D pos(320.0f + m.m_azimuth, m.m_elev, 320.0f - m.m_distance);
+        const char *name = "";
+
+        if (m.m_useModelUIVar) {
+            CUIVariable *var = theUIVarManager.Find(m.m_model.c_str());
+
+            if (var)
+                name = var->String();
+        } else {
+            name = m.m_model.c_str();
+        }
+        zdb::CNode *node = zdb::CNode::CreateInstance(name, &pos, 0);
+
+        if (node) {
+            node->SetDynamicLight(true, true);
+            node->SetName(m.m_name.c_str());
+            zdb::CWorld::m_world->AddChild(node);
+            node->SetDescendantVisuals(true);
+            float rz = m.m_rotZ, ry = m.m_rotY, rx = m.m_rotX;
+            CPnt3D rot(rx, ry, rz);
+
+            node->SetRotation(&rot);
+            m_modelNodes.push_back(node);
+        }
+    }
 }
 
 void CDblBufTextureRelocator::Init()
