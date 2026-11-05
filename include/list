@@ -692,7 +692,12 @@ void __list_imp<T, Allocator>::remove_if(Predicate pred)
  * third or a single level, push_back at one or two levels, the spawn made by a by-value inline): push_back at one
  * level gets both iterator slots right but the spawn above the grid's points (12 off), none closes it. Both
  * stand-ins match as they are, so the member gains no match until LoadVehicles is refitted (the game states'
- * unit) -- left for the integrator (build/p29/inc_ins/list holds the variant, build/p29/lv_vars.py the refits) */
+ * unit) -- left for the integrator (build/p29/inc_ins/list holds the variant, build/p29/lv_vars.py the refits).
+ * The frame slots read as allocated by inline depth, shallower first (ties in source order): the position copy is
+ * at depth 3 through the wrapper and the walk's end copy at 3, so the target's order wants that end deeper -- the
+ * list<T *> const end() one wrapper level deeper takes LoadVehicles to 3 off (only the end's base-iterator
+ * temporary against the insert's return slot left) but costs 30 functions over every hand-written unit at level 5
+ * (the ent_main.cpp walks, st_mpexit.cpp's, hud_tcmcmds.cpp's ...): one more "Level 6, or 8?" witness */
 template <class T, class Allocator = allocator<T> >
 class list : public __list_imp<T, Allocator> {
 };

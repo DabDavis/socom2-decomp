@@ -2289,7 +2289,10 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     __list_deleter<T, Allocator>::insert(position, x); }` in list<T> gives the kit's snoozer 0x5CD8F0 and the graph
     queue's 0x2D1D50 byte-exact under list<T>'s name (their stand-in classes' inserts dropped), +0 / -1 over every
     hand-written unit: LoadVehicles 0x2B2E50's position copy goes a level deeper, below the entity walk's end copy
-    (4 instructions); ten AddSpawn refits tried (include/list's comment), and a deeper const end() makes it 0x5D0;
+    (4 instructions); ten AddSpawn refits tried (include/list's comment). MW's frame slots read as allocated by inline
+    depth, shallower first, ties in source order: the list<T *> const end() one wrapper level deeper puts the walk's
+    end copy back under the position copy (LoadVehicles 3 off) but costs 30 functions at level 5 -- a "Level 6, or 8?"
+    witness, not a fit;
   - remove_if's walkers (0x50F670 / 0x352500) stay 4 off: by value under 3.0b52, 3.0b50 and 3.0b38 alike MW copies
     last first; MSL's free find_if, a non-static search, two by-value levels, a search not declared inline -- each the
     same 4 or worse (include/algorithm's comment).
