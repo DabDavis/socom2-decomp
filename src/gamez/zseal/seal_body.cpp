@@ -967,6 +967,72 @@ extern short data_003DEEE8;
 extern short data_003DEAD8;
 }
 
+extern "C" {
+/* the overlay's last anim let go (OVL2 0x5A5DA0, seal_env.cpp's -- not written yet), the SEAL off its
+ * ladder and its hold on one let go (OVL2 0x59D750, 0x5B14E0: seal_env.cpp's), the two item swaps
+ * back to the gear (OVL2 0x5A7690 the pistol's, 0x5A7480 the rifle's: seal_env.cpp's) and an anim set
+ * a SEAL may be bound to (OVL1 bss 0x44D410: one 0x5807D0 unbinds; the name unknown) */
+void func_005A5DA0(CZSealBody *seal);
+void func_0059D750(CZSealBody *seal);
+void func_005B14E0(CZSealBody::CSealClimb *climb, CZSealBody *seal);
+void func_005A7690(CZSealBody *seal);
+void func_005A7480(CZSealBody *seal);
+extern AnimSet *data_0044D410;
+/* the top blend's held object let go (OVL2 0x5781C0, below) and a SEAL's 0x545EE0 (seal.cpp's) */
+void func_005781C0(CZSealBody *seal);
+void func_00545EE0(CZSealBody *seal, int n);
+}
+
+/* a fall begun: the body carried let go, the overlay's anims, the ladder and its hold let go; bound
+ * to the set of 0x44D410, the SEAL unbound -- a remote one's 0x545EE0 told first -- with the item in
+ * hand put back and the default set bound again; the blends cleared to the base and the anim of
+ * 0x3DEED8 pushed (the other way, of 0x3DEED0) in a state -- a remote SEAL's as given unless it is
+ * dead, this console's 0 alive and 8 dead -- with flag 2, and told to the network as anim 34 at 11
+ * (10); bit 9 set and 10 cleared, m_1364 -1; the blend back (OVL2 0x5807D0, new in SOCOM II: 0x57E770
+ * and 0x5880E0 call it, as 0x5805B0; the name unknown) */
+extern "C" CZBodyAnimBlend *func_005807D0(CZSealBody *seal, bool other, int state)
+{
+    CZBodyAnimBlend *b;
+
+    seal->DropBody();
+    func_005781C0(seal);
+    func_005A5DA0(seal);
+    func_0059D750(seal);
+    func_005B14E0(&seal->m_climb, seal);
+    if (seal->m_animset == data_0044D410) {
+        if (seal->IsRemote())
+            func_00545EE0(seal, 1);
+        if (seal->m_item == ITEM_PISTOL)
+            func_005A7690(seal);
+        else
+            func_005A7480(seal);
+        seal->BindAnimSet(seal->m_default_animset, false);
+    }
+    seal->ClearToBase(false);
+    if (seal->IsRemote()) {
+        if (!seal->m_isAlive)
+            state = 8;
+    } else if (seal->m_isAlive)
+        state = 0;
+    else
+        state = 8;
+    if (other) {
+        b = (CZBodyAnimBlend *)func_00588BC0(seal, (AnimType)data_003DEED8, state, 0, 13);
+        b->m_flags = func_0058A920(b->m_flags, 2, true);
+        if (theNetwork.m_9 && !seal->IsRemote())
+            func_002BBAF0(seal->m_id, 34, state, false, 11);
+    } else {
+        b = (CZBodyAnimBlend *)func_00588BC0(seal, (AnimType)data_003DEED0, state, 0, 13);
+        b->m_flags = func_0058A920(b->m_flags, 2, true);
+        if (theNetwork.m_9 && !seal->IsRemote())
+            func_002BBAF0(seal->m_id, 34, state, false, 10);
+    }
+    seal->SetBit9(true);
+    seal->SetBit10(false);
+    seal->m_1364 = -1.0f;
+    return b;
+}
+
 /* a move begun: the blends cleared to the base, the anim of 0x3DEEF0 pushed (the other way, of
  * 0x3DEEE8) in a state -- a remote SEAL's as given unless it is dead, this console's 2 alive and 8 dead
  * -- with flag 2, and told to the network as anim 34 at 18 (17); alive, the desired state stand and the
@@ -1172,7 +1238,17 @@ extern "C" bool func_005857E0(CZSealBody *seal);
  * blend's state byte, the prone constant), so it waits for the second simplify sweep and is coloured
  * ahead of the stack pointer (23, the first sweep) -- the target's graph has one interference fewer
  * somewhere; ClearStack's fallback read spelled through `stack` or `&m_blends`, or its locals
- * reordered, does not do it (5-15 off) */
+ * reordered, does not do it (5-15 off). Round 42, by the replay (tools/igreplay.py --target, --want
+ * --movers): no single dropped interference gives the target (dropping one of the stance's temporaries
+ * gives it s3), and the only numberings that do put the INNER ClearStack's counter (v43, @7504)
+ * ahead of Stand's stance (v38, @7481): the stance moved to 43.5, or the counter anywhere in 31.5-37.5
+ * -- pushed first in sweep 1 it drops the stance under K, and the stance, coloured after the inner
+ * stack pointer (s0), takes s1. MW numbers Crouch's own ClearStack (v40/v41) between Stand's locals
+ * and Stand's inner ClearStack (v42-v44): an inline's own inlines are numbered a level later, so the
+ * counter would have to come out of that later level. Not it (igvar, build/scratch/seal/v_crouch*.py):
+ * the stance or the whole body in a nested block, ClearStack's counter first or its stack declared
+ * first and defined late, the stack an inline's parameter (BlendCount(&m_blends): unhoisted, 4 bytes
+ * short), the stance through a value or a reference inline, `(stance = m_state) == 0` */
 CZBodyAnimBlend *CZSealBody::Crouch()
 {
     CZBodyAnimBlend *b = (CZBodyAnimBlend *)func_00555170(&m_blends);
@@ -1949,7 +2025,8 @@ void CZSealBody::BodySetState(int state)
  * (OVL2 0x584390: SOCOM 1's InStateHang by order and the state dispatcher's case 4, its throttles read
  * at 0x240/0x244, the sqrt inline, Stand_0's time new). The pulled-back arm is Stand(-1), inlined: its
  * two returns join at one `move s0,v0`, as only an inline's result does; one result for the three arms.
- * OPEN, 5 instructions (the size right): Crouch's miss (0x581990) exactly -- in the inlined Stand the
+ * OPEN, 5 instructions (the size right): Crouch's miss (0x581990) exactly (round 42's replay there:
+ * the inner ClearStack's counter must be numbered ahead of Stand's stance) -- in the inlined Stand the
  * target gives the stance s2 and ClearStack's stack pointer s0, ours the other way round. Tried: the
  * declaration orders of ClearStack's and Stand's locals (Stand and ClearStack still match out of line).
  * Round 36, MW's colouring: the same cause as Crouch's -- Stand's stance has exactly K = 25 neighbours */
