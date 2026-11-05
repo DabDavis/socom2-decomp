@@ -188,6 +188,7 @@
 
 #include <memory>
 #include <msl_utility>
+#include <limits>
 #include <new>
 #include <iterator>
 #include <stdio.h>
@@ -527,6 +528,28 @@ public:
     void reserve(unsigned int n);
     void resize(unsigned int n);
     unsigned int max_size() const;
+    /* THE GROWTH RECOMMENDATION (0x285BB0, out of line in an earlier unit, zanim_menu.cpp's tail; the
+     * MSL headers round 32, named for the online lane's round 24): the capacity a buffer that must hold
+     * n is given, one less than its storage -- n past max_size() is "cdeque max_size error", then the
+     * usable capacity (capacity_ - 1, or 1 for an empty buffer) doubled while it is short of n and under
+     * half max_size(), else max_size(). cdeque<PCv>::push_back 0x2858B0 asks it for size_ + 1, the
+     * forward do_assign 0x2F5700 for the range's length. SOCOM 1's older cdeque has no such member (its
+     * push_back and insert grow inline): the name ours, libc++'s `__recommend` (the vector's and the
+     * string's -- Hinnant's, who wrote MSL C++ -- the string's also returning the capacity less one).
+     * Defined below; the chat unit emits it (the forward do_assign's request) word for word the target */
+    unsigned int __recommend(unsigned int n) const;
+    /* THE MAX STATIC (guard 0x415D20, value 0x3EF7E0): one object __recommend inlines (its guard test
+     * at the top, the allocator's alloc() called out of line, min() through two stack temporaries --
+     * the difference type's largest built before the call, an inline's result) and the out-of-line
+     * max_size 0x285CE0 reads (alloc() inlined there, the min folded to one temporary). In class, so
+     * __recommend inlines it whatever the generation order; max_size() itself stays out of line --
+     * reserve 0x285A50, init 0x2F5940 and the three converting do_assigns call it. The name ours */
+    unsigned int __max_size() const
+    {
+        static const unsigned int max = std::min(this->alloc().max_size(), (unsigned int)std::numeric_limits<int>::max()) - 1;
+
+        return max;
+    }
     template <class InputIterator>
     void do_assign(InputIterator first, InputIterator last);
 
@@ -623,10 +646,28 @@ void cdeque<const void *, Allocator>::init(unsigned int n, const value_type &x)
     }
 }
 
-extern "C" unsigned int func_00285BB0(void *d, unsigned int n);
+/* the capacity for n (0x285BB0): the loop's test `n > c` (`c < n` gives the same blocks but MW keeps the
+ * bottom test's result in a register of its own, 4 off) */
+template <class Allocator>
+unsigned int cdeque<const void *, Allocator>::__recommend(unsigned int n) const
+{
+    const unsigned int m = __max_size();
 
-/* [first, last) assigned (0x2F5700): emptied, regrown to the capacity func_00285BB0 recommends when n
- * does not fit (the old storage freed first), the range copied in, then the count */
+    if (n > m)
+        __msl_error("cdeque max_size error");
+    unsigned int c = this->capacity_ ? this->capacity_ - 1 : 1;
+
+    while (n > c) {
+        if (c < m / 2)
+            c *= 2;
+        else
+            c = m;
+    }
+    return c;
+}
+
+/* [first, last) assigned (0x2F5700): emptied, regrown to the capacity __recommend gives when n does not
+ * fit (the old storage freed first), the range copied in, then the count */
 template <class Allocator>
 template <class ForwardIterator>
 void cdeque<const void *, Allocator>::do_assign(ForwardIterator first, ForwardIterator last, std::forward_iterator_tag)
@@ -636,7 +677,7 @@ void cdeque<const void *, Allocator>::do_assign(ForwardIterator first, ForwardIt
     this->size_ = 0;
     this->start_ = 0;
     if (n > (this->capacity_ == 0 ? 0 : this->capacity_ - 1)) {
-        unsigned int c = func_00285BB0(this, n);
+        unsigned int c = __recommend(n);
 
         if (this->data_) {
             this->deallocate(this->data_, this->capacity_);
@@ -699,6 +740,19 @@ public:
          * the target's size; nothing else in 633 units moves) */
         iterator(T **p, T **data, const unsigned int &start, const unsigned int &cap)
             : p_(p), data_(data), first_(data_ + start), last_(data_ + cap)
+        {
+        }
+        /* THE FIRST SLOT'S ITERATOR (the MSL headers round 32: begin() 0x2E0CB0 / 0x3A6350 byte-exact,
+         * open since round 13): the start BY VALUE, the element pointer and first_ both off it. MW's
+         * front-end CSE makes a temporary of `start << 2` only when the index is a VARIABLE when CSE
+         * runs -- the by-value parameter (from a named local) is; the member load is CSE'd as the load
+         * and the shift left to the code generator, numbered after every front-end temporary. So the
+         * shift is numbered after the data pointer's temporary and before the three field addresses',
+         * as the target colours it (the online lane's round-24 window, 34.5-35.5). By const reference,
+         * or the start read straight from the member, the shift stays a code-generation temporary (14
+         * off); by value through end()'s constructor end() 0x2E0C10 is lost (round 22) */
+        iterator(T **data, unsigned int start, const unsigned int &cap)
+            : p_(data + start), data_(data), first_(data_ + start), last_(data_ + cap)
         {
         }
         iterator(const iterator &x) { p_ = x.p(); data_ = x.data(); first_ = x.first(); last_ = x.last(); }
@@ -808,11 +862,17 @@ public:
     cdeque() {}
     explicit cdeque(const Allocator &a);
     cdeque(const cdeque &x);
-    /* OPEN, begin() (0x334030 the rdr editor's, 0x2E0CB0 the lobby's: the target's size, 14 off --
-     * the colouring alone): the target numbers start*4, which p and first_ share, BEFORE the three
-     * field addresses of the in-memory t (it is coloured after them: t1, the addresses t0/a3/a2),
-     * this header after them (a2; the addresses t1/t0/a3) -- as if the target's CSE of the index
-     * were the optimiser's and ours the code generator's. Measured (the MSL headers round 22,
+    /* begin() (0x2E0CB0 the lobby's, 0x3A6350 the state machine's), OPEN from the online lane's round 13
+     * to the MSL headers' round 32 at 14 off in the colouring alone: the target numbers start*4, which
+     * p and first_ share, BEFORE the three field addresses of the in-memory t (coloured after them: t1,
+     * the addresses t0/a3/a2), this header had it after them (a2; the addresses t1/t0/a3). CLOSED
+     * (round 32, build/p32/bg/, untracked): make_begin() below -- the start read into a named local
+     * and handed BY VALUE to the first slot's constructor (iterator's, above), so MW's front-end CSE
+     * makes the shift a temporary of its own between the data pointer's and the field addresses'
+     * (cse1.cpp-cse3.cpp: `s << 2` is CSE'd only off a variable, h2 by value gives @78 data, @80 the
+     * shift, @82 the field address). Without the named local (the member passed straight) t is
+     * scalarised (0x30); with the start by value through end()'s constructor end() is lost. The
+     * measurements that did not reach it, kept: (the MSL headers round 22,
      * build/p22/dqv.py, untracked; end() 0x333F90 / 0x2E0C10 kept by all but where noted): make_
      * iterator's index taken as `&data_[n]`, the data in a local, p in a local first (14 each);
      * make_iterator taking n by const reference, begin() reading start_ into a local, begin()
@@ -829,6 +889,14 @@ public:
     const_iterator make_iterator(unsigned int n) const
     {
         iterator t((T **)this->data_ + n, (T **)this->data_, this->start_, this->capacity_);
+
+        return t;
+    }
+    /* the first slot's iterator (begin()'s; the name ours): built in the frame as make_iterator's t is */
+    const_iterator make_begin() const
+    {
+        unsigned int s = this->start_;
+        iterator t((T **)this->data_, s, this->capacity_);
 
         return t;
     }
@@ -857,7 +925,7 @@ cdeque<T *, Allocator>::cdeque(const cdeque &x) : base(x.alloc())
 template <class T, class Allocator>
 typename cdeque<T *, Allocator>::const_iterator cdeque<T *, Allocator>::begin() const
 {
-    return make_iterator(this->start_);
+    return make_begin();
 }
 
 template <class T, class Allocator>
