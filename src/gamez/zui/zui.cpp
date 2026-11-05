@@ -839,7 +839,9 @@ int GetKeyReadThisFrame(KeyInput *key);
  * branch, which moves x to f6 and reorders the preamble's bools. Tried: StickAbs as `f < 0 ? -f :
  * f` (0xAE0), with the negation in a local (0xB18 / 0xAD8 / 0xB28: the copies outside the loop
  * negate in the branch, as ours), DidStickMovePrev/Next for two of the reads, a dead `-x` local, the
- * item through a pointer, the count in a local, the type read through the array -- none hoists -x */
+ * item through a pointer, the count in a local, the type read through the array -- none hoists -x.
+ * Measured: -y is hoisted for GetStickDir's `-s_fStickY` (with that read written another way the
+ * loop hoists no -y either), so the target's loop must read -x in a hoistable place of its own */
 void CGameMenu::HandlePad(const CPad *pad)
 {
     s_bStickCentered = IsStickNearCenter(s_bStickCentered ? 0.6f : 0.2f);
@@ -893,7 +895,7 @@ void CGameMenu::HandlePad(const CPad *pad)
 
     GetKeyReadThisFrame(&key);
     if (key.code == 40 || key.code == 88)
-        RunEventAnim((ActionItem::EVENT)44, 0);
+        RunEventAnim(ActionItem::USBKBD_ENTER, 0);
 }
 
 /* the menu emptied, set up over the relocator given (else the batch relocator) and its own rdr's
@@ -1105,6 +1107,179 @@ void CGameMenu::MakeButtonActive(const char *name)
             m_activeButton = n;
             return;
         }
+    }
+}
+
+/* an action read from its rdr block: its ANIMATION and ARGUMENT, and a BUTTON with the STATE it
+ * waits for (UP, FALLING, DOWN or RISING; FALLING for none or another), or an EVENT by name (0x365D50:
+ * SOCOM 1's ParseButtonAnim; SOCOM II's 63 event names, unknown ones ONSTART) */
+void ParseButtonAnim(_zrdr *rdr, ActionItem *item)
+{
+    const char *anim = zrdr_findstring(rdr, "ANIMATION");
+    const char *arg = zrdr_findstring(rdr, "ARGUMENT");
+    const char *state = zrdr_findstring(rdr, "STATE");
+
+    if (zrdr_findtag(rdr, "BUTTON")) {
+        const char *button = zrdr_findstring(rdr, "BUTTON");
+        KEY_STATE s;
+
+        item->Type = ACTION_TYPE_BUTTON;
+        item->PadButton = GetButton(button);
+        if (!state)
+            s = KEY_FALLING;
+        else if (!strcmp(state, "UP"))
+            s = KEY_UP;
+        else if (!strcmp(state, "FALLING"))
+            s = KEY_FALLING;
+        else if (!strcmp(state, "DOWN"))
+            s = KEY_DOWN;
+        else if (!strcmp(state, "RISING"))
+            s = KEY_RISING;
+        else
+            s = KEY_FALLING;
+        item->State = s;
+        if (anim)
+            item->Animation = _strdup(anim, 0, 0);
+        if (arg)
+            item->Argument = _strdup(arg, 0, 0);
+    } else if (zrdr_findtag(rdr, "EVENT")) {
+        const char *name = zrdr_findstring(rdr, "EVENT");
+        int e;
+
+        item->Type = ACTION_TYPE_EVENT;
+        if (!strcmp(name, "ONSTART"))
+            e = 0;
+        else if (!strcmp(name, "ONEXIT"))
+            e = 1;
+        else if (!strcmp(name, "ONACTIVATE"))
+            e = 2;
+        else if (!strcmp(name, "ONMPEGEND"))
+            e = 3;
+        else if (!strcmp(name, "MP_JOIN_ROOM"))
+            e = 4;
+        else if (!strcmp(name, "ON_SKB_APPLY"))
+            e = 14;
+        else if (!strcmp(name, "ON_SKB_APPLY2"))
+            e = 15;
+        else if (!strcmp(name, "ON_STATE_POP"))
+            e = 13;
+        else if (!strcmp(name, "ON_SKB_CLOSE"))
+            e = 16;
+        else if (!strcmp(name, "MP_PLAYER_NOT_FOUND"))
+            e = 5;
+        else if (!strcmp(name, "MP_SUCCESS"))
+            e = 6;
+        else if (!strcmp(name, "MP_CREATE_CLAN_SUCCESS"))
+            e = 7;
+        else if (!strcmp(name, "MP_CREATE_CLAN_FAILURE"))
+            e = 8;
+        else if (!strcmp(name, "MP_DISBAND_CLAN_SUCCESS"))
+            e = 9;
+        else if (!strcmp(name, "MP_DISBAND_CLAN_FAILURE"))
+            e = 10;
+        else if (!strcmp(name, "MP_MEDIUS_ERROR"))
+            e = 11;
+        else if (!strcmp(name, "MP_MEDIUS_HAS_INVITES"))
+            e = 12;
+        else if (!strcmp(name, "ON_LOAD_COMPLETE"))
+            e = 17;
+        else if (!strcmp(name, "ON_CLIENT_CONNECT"))
+            e = 18;
+        else if (!strcmp(name, "ON_FORCE_NEW_DB"))
+            e = 19;
+        else if (!strcmp(name, "ON_LADDER_REFRESH"))
+            e = 20;
+        else if (!strcmp(name, "ON_TTY_DONE"))
+            e = 21;
+        else if (!strcmp(name, "MP_MEDIUS_JOIN_GAME_FAILURE"))
+            e = 22;
+        else if (!strcmp(name, "MP_MEDIUS_READY_TO_CONNECT"))
+            e = 23;
+        else if (!strcmp(name, "MP_PLAYER_ALREADY_MEMBER"))
+            e = 24;
+        else if (!strcmp(name, "MP_VERSION_NUMBER_ERROR"))
+            e = 25;
+        else if (!strcmp(name, "MP_LEADERSHIP_TRANSFER_SUCCESS"))
+            e = 26;
+        else if (!strcmp(name, "MEMCARD_ERROR"))
+            e = 27;
+        else if (!strcmp(name, "MP_MEDIUS_BECAME_LEADER"))
+            e = 28;
+        else if (!strcmp(name, "ON_SKB_CANCEL"))
+            e = 29;
+        else if (!strcmp(name, "NETCNF_ERROR"))
+            e = 30;
+        else if (!strcmp(name, "MP_MEDIUS_JOIN_ROOM_FAILURE"))
+            e = 31;
+        else if (!strcmp(name, "MP_PLAYER_IS_LEADER"))
+            e = 32;
+        else if (!strcmp(name, "MP_CLAN_DISBANDED"))
+            e = 33;
+        else if (!strcmp(name, "MP_INVALID_PASSWORD"))
+            e = 34;
+        else if (!strcmp(name, "MP_PLAYER_ALREADY_INVITED"))
+            e = 35;
+        else if (!strcmp(name, "MP_PLAYER_LOGGED_IN"))
+            e = 36;
+        else if (!strcmp(name, "MP_FILTER_FAILURE"))
+            e = 37;
+        else if (!strcmp(name, "ONFOCUS"))
+            e = 43;
+        else if (!strcmp(name, "MP_GAME_NAME_EXISTS"))
+            e = 38;
+        else if (!strcmp(name, "LOADED_FROM_MEMCARD"))
+            e = 39;
+        else if (!strcmp(name, "SLIDER_MOVED"))
+            e = 40;
+        else if (!strcmp(name, "ONSCROLL"))
+            e = 41;
+        else if (!strcmp(name, "ONSCROLL_END"))
+            e = 42;
+        else if (!strcmp(name, "USBKBD_ENTER"))
+            e = 44;
+        else if (!strcmp(name, "MP_BANNED_FROM_GAME"))
+            e = 45;
+        else if (!strcmp(name, "ON_UPDATE_UIVAR"))
+            e = 46;
+        else if (!strcmp(name, "CLAN_MESSAGE_ID_ERR"))
+            e = 47;
+        else if (!strcmp(name, "CLAN_MESSAGE_EMPTY"))
+            e = 48;
+        else if (!strcmp(name, "MP_PLAYER_IS_FRIEND"))
+            e = 49;
+        else if (!strcmp(name, "MP_FRIEND_CONFIRMATION_REQUESTED"))
+            e = 50;
+        else if (!strcmp(name, "MP_EJECT_SPECTATOR"))
+            e = 51;
+        else if (!strcmp(name, "MP_EIGHTY_READY"))
+            e = 52;
+        else if (!strcmp(name, "MP_DNAS_ERROR"))
+            e = 53;
+        else if (!strcmp(name, "MP_DOWNLOAD_ERROR"))
+            e = 54;
+        else if (!strcmp(name, "MP_MEDIUS_FILE_DOES_NOT_EXIST"))
+            e = 55;
+        else if (!strcmp(name, "MP_CLAN_FULL"))
+            e = 56;
+        else if (!strcmp(name, "MEMCARD_STATUS"))
+            e = 57;
+        else if (!strcmp(name, "MP_SYSTEM_MESSAGE"))
+            e = 58;
+        else if (!strcmp(name, "PLAYER_IS_IGNORED"))
+            e = 59;
+        else if (!strcmp(name, "MP_RANDOM_GAME_FOUND"))
+            e = 60;
+        else if (!strcmp(name, "HDD_ERROR"))
+            e = 61;
+        else if (!strcmp(name, "MP_IGNORE_LIST_FULL"))
+            e = 62;
+        else
+            e = 0;
+        item->Event = e;
+        if (anim)
+            item->Animation = _strdup(anim, 0, 0);
+        if (arg)
+            item->Argument = _strdup(arg, 0, 0);
     }
 }
 
