@@ -95,6 +95,19 @@ public:
         MP_MAJOR_GHOST = 14
     };
 
+    /* built (inline: CMission::Init's new, as SOCOM 1's): the clock cleared and running (SOCOM 1's
+     * CNetClock, its members at 0xe0 here, two of its words gone), then initialised */
+    CZNetGame()
+    {
+        m_max_game_time = 0;
+        m_round_clock = 0;
+        m_time_in_round = 0;
+        m_launch_time = 0;
+        m_total_time = 0;
+        m_launch_f4 = 0;
+        m_clock_running = 1;
+        Initialize();
+    }
     void Initialize();
     float UnInitialize();   /* (no value returned: see the definition) */
     bool TenSecondLaunch(bool launch);
@@ -132,7 +145,9 @@ public:
     int m_7c;   // 0x7c
     int m_80;   // 0x80
     int m_84[5];   // 0x84 (SOCOM 1's at 0x50)
-    unsigned char _98[0xbc - 0x98];
+    PNT2D m_static_radio;   // 0x98: the radio's place on the HUD (Init reads hud.rdr's; the names ours)
+    PNT2D m_dynamic_radio;   // 0xa0
+    unsigned char _a8[0xbc - 0xa8];
     int m_bc;   // 0xbc (SOCOM 1's at 0x80)
     int m_c0;   // 0xc0 (SOCOM 1's at 0x84)
     unsigned char _c4[0xc8 - 0xc4];
@@ -508,6 +523,7 @@ public:
     void SetFc2(bool b) { m_fc_2 = b; }
     void SetFc3(unsigned int v) { m_fc_3 = v; }
     bool ReOpen_Unload1();
+    bool Init();   /* 0x2AD290 */
     unsigned int GetTimeLeft();
     void EndMission();
     void OnMissionComplete(MISSION_STATE state);
@@ -573,7 +589,8 @@ public:
     class CLadderList *m_ladders;   // 0x1804 (SOCOM 1's at 0x580)
     CZNetGame *m_pNetGame;   // 0x1808 (SOCOM 1's at 0x584)
     unsigned char m_chars_loaded;   // 0x180c (SOCOM 1's at 0x588)
-    unsigned char _180d[0x1814 - 0x180d];
+    unsigned char _180d[0x1810 - 0x180d];
+    int m_sema;   // 0x1810: SOCOM II's semaphore, made by Init (SOCOM 1's at 0x58c; the name ours)
     CVehicleRdr *m_vehicle_rdr;   // 0x1814 (SOCOM 1's at 0x590; fts_player.cpp's name)
     CRdrFile *m_ordersRdr;   // 0x1818 (SOCOM 1's at 0x594)
     CRdrFile *m_materialsRdr;   // 0x181c (SOCOM 1's at 0x598)
@@ -844,6 +861,7 @@ class CSealCtrlAi {
 public:
     static void ReleaseDatabaseHandles();   /* OVL2 0x574BD0 */
     static void AcquireDatabaseHandles();   /* OVL2 0x574C30 */
+    static bool RegisterCommands();   /* OVL2 0x5DE320 */
 
     unsigned char _0[0xb4];
     float m_alert;   // 0xb4
@@ -1884,6 +1902,7 @@ void FlushDynTexList();   /* 0x3246F0 */
 void FreeNodePool();   /* 0x3248E0 */
 void ReserveNodePool();   /* 0x3249D0 (SOCOM 1's, at ReOpen_Load's call) */
 void FreeInstances();   /* 0x326FF0 */
+void Init();   /* 0x324C30 */
 }
 
 /* the materials (int_material.cpp's CMaterialExArray: only the default's setter) */
@@ -1922,6 +1941,7 @@ public:
     static void Close();   /* 0x3D0350 */
     static void OpenDecals();   /* 0x3D03C0 */
     static void Open();   /* 0x3D03D0 */
+    static void Init();   /* 0x3D0420 */
     static void ClearTimer(float *pCurval);
     static EQUIP_ITEM GetWeaponId(const char *name);   /* 0x3D19E0 */
     char *GetModelName() const;   /* 0x3D2750 */
@@ -1987,6 +2007,7 @@ public:
     static void ClearMultiplayerMessageSounds();   /* OVL2 0x53BB00 */
     static void CleanupTemporary();   /* OVL2 0x53DF50 */
     static void ResetGears();   /* OVL2 0x53F0B0 */
+    static void Open(const char *name);   /* OVL2 0x53E220 */
 
     char *m_name;   // 0x0
     unsigned char _4[0x2e8 - 0x4];
@@ -2060,6 +2081,248 @@ void func_00295660();
  * into the inliner's temporary, numbered after the action walk's centre temporaries -- s2 against the
  * iterator's s1, the target's; a named reference to map->m_actionTable is numbered among the named
  * locals and the two swap, without one the end is re-read off the map, 8 bytes short) */
+/* ---- what CMission::Init calls (their units'; the placeholders by their map names) ---- */
+
+/* the camera's, the application camera's, the player's and the world's ZAnim commands (their units':
+ * only the registrations) */
+namespace zdb {
+class CCamera {
+public:
+    static void RegisterAnimCommands();   /* 0x293890 */
+};
+}
+
+/* the application's camera (camera.h's CAppCamera: its two virtuals, declared only, the zoom, the
+ * controlled view and its commands' registration) */
+class CAppCamera {
+public:
+    virtual void Tick(float dT);
+    virtual bool AttachTo(CZSealBody *prey);   /* its table's third word */
+    void SetZoom(float zoom);   /* 0x29B2F0 */
+    static void RegisterAnimCommands();   /* 0x29BC20 */
+
+    unsigned char _4[0xe4 - 0x4];
+    unsigned char m_ctrl_view;   // 0xe4 (camera.h's CAMVIEW: cam_view_third 0)
+};
+
+class CftsPlayer {
+public:
+    static void RegisterAnimCommands();   /* 0x2B3930 */
+};
+
+/* the radio menu (hud_tcm.h's CTCM: only its init) */
+class CTCM {
+public:
+    void Init();   /* 0x237350 */
+};
+
+extern CTCM theTCM;
+
+/* the multiplayer missions' list (fts_missionlist.cpp's: only its read) */
+class CMultiMissionList {
+public:
+    void Read(const _zrdr *rdr);   /* 0x2C8C10 */
+};
+
+extern "C" CMultiMissionList data_00441650;
+
+/* the controller layouts (fts_controller.cpp's CCtrlrConfigs: only its init) */
+class CCtrlrConfigs {
+public:
+    static void Init();   /* 0x2C5E70 */
+};
+
+/* the turrets and vehicles (zveh's: only their inits) */
+class CTurret {
+public:
+    static void Init(const char *name, const char *dir);   /* 0x3AAA90 */
+};
+
+class CVehicle {
+public:
+    static void Init(const char *name, const char *dir);   /* 0x3AE240 */
+};
+
+/* the kernel's semaphore parameters (eekernel.h's struct SemaParam) and the mission's (an fts_mission.cpp
+ * static after the file's tables, SOCOM 1's likewise -- unnamed in both builds) */
+struct SemaParam {
+    int currentCount;
+    int maxCount;
+    int initCount;
+    int numWaitThreads;
+    unsigned int attr;
+    unsigned int option;
+};
+
+extern "C" {
+int CreateSema(SemaParam *param);
+extern SemaParam data_00440BE0;
+extern void *data_0045B718;   /* (an OVL1 object of 4316 bytes Init makes) */
+void func_002DC7A0();
+void func_00354470();   /* zanim.h's CValve has no RegisterCommands: its row, by address */
+void func_0059AC60();
+void func_002B4190();
+bool func_00259240();
+void func_00259230(bool on);
+void *func_003102E0(void *p);
+void func_002CE8E0();
+void *func_00533A40(void *p);   /* CVehicleRdr's constructor */
+void func_005E30F0(int);
+void func_0058CC30();
+void func_002B7530();
+void func_002B7520();
+_zanim_cmd_hdr *func_002AE3A0(_zrdr *rdr);
+bool func_002AE340(_zanim_cmd_hdr *hdr, float *dT);
+}
+
+void zBoneResetCallbacks();   /* 0x2875D0 */
+void zBoneLoad();   /* 0x288B80 */
+void SealInitCharacterDynamics();   /* OVL2 0x5550D0 */
+void SkbLoadUiParams();   /* 0x3943E0 */
+void hudInit();   /* 0x1FDEE0 */
+bool zrdr_findPNT2D(const _zrdr *rdr, const char *tag, PNT2D *out);
+
+/* the mission's commands (this unit's, below) */
+_zanim_cmd_hdr *HUDCmdParseOn(_zrdr *rdr);
+_zanim_cmd_hdr *HUDCmdParseOff(_zrdr *rdr);
+bool HUDCmdTickControlSwitch(_zanim_cmd_hdr *hdr, float *dT);
+_zanim_cmd_hdr *HUDLetterBoxCmdParseOn(_zrdr *rdr);
+_zanim_cmd_hdr *HUDLetterBoxCmdParseOff(_zrdr *rdr);
+bool HUDLetterBoxCmdTick(_zanim_cmd_hdr *hdr, float *dT);
+_zanim_cmd_hdr *HUDTriggerMissionCamParse(_zrdr *rdr);
+void HUDTriggerMissionCamBegin(_zanim_cmd_hdr *hdr);
+bool HUDTriggerMissionCamTick(_zanim_cmd_hdr *hdr, float *dT);
+_zanim_cmd_hdr *HUDStartDefuseTimerParse(_zrdr *rdr);
+bool HUDStartDefuseTimerTick(_zanim_cmd_hdr *hdr, float *dT);
+_zanim_cmd_hdr *HUDClearTimerParse(_zrdr *rdr);
+bool HUDClearTimerTick(_zanim_cmd_hdr *hdr, float *dT);
+_zanim_cmd_hdr *NVGNoiseParse(_zrdr *rdr);
+bool NVGNoiseTick(_zanim_cmd_hdr *hdr, float *dT);
+_zanim_cmd_hdr *StartImageRecorderParse(_zrdr *rdr);
+bool StartImageRecorderTick(_zanim_cmd_hdr *hdr, float *dT);
+_zanim_cmd_hdr *StopImageRecorderParse(_zrdr *rdr);
+bool StopImageRecorderTick(_zanim_cmd_hdr *hdr, float *dT);
+
+/* the mission's one-time set-up (SOCOM 1's CMission::Init; OVL1 0x2AD290): the world's interiors,
+ * ZAnim opened and every command set registered (the AI's, the SEALs', the valves', the cameras',
+ * the player's, the wind's, the HUD's and the mission's own, the world's), the bones reset, the
+ * characters unloaded, the semaphore made; the archives read through a scratch block taken and given
+ * back; the bones and the sounds loaded; the network game built (its radio's two places read from
+ * hud.rdr), the 4316-byte object made; the global valves and the outcome valves, the weapons, the
+ * rdrs kept for the mission, the multiplayer missions, the particles, the radio menu, the SEALs'
+ * dynamics, the vehicles' rdr, the characters, the controller layouts, the soft keyboard, the HUD,
+ * the turrets and vehicles; the archives dropped and the HUD's string table loaded */
+bool CMission::Init()
+{
+    func_002DC7A0();
+    ZAnim.Open();
+    CSealCtrlAi::RegisterCommands();
+    func_0059AC60();
+    func_00354470();
+    zdb::CCamera::RegisterAnimCommands();
+    CAppCamera::RegisterAnimCommands();
+    CftsPlayer::RegisterAnimCommands();
+    CWind::RegisterAnimCommands();
+    ZAnim.AddCmd("HUD_ON", HUDCmdParseOn, 0, HUDCmdTickControlSwitch, 0);
+    ZAnim.AddCmd("HUD_OFF", HUDCmdParseOff, 0, HUDCmdTickControlSwitch, 0);
+    ZAnim.AddCmd("HUD_LETTERBOX_ON", HUDLetterBoxCmdParseOn, 0, HUDLetterBoxCmdTick, 0);
+    ZAnim.AddCmd("HUD_LETTERBOX_OFF", HUDLetterBoxCmdParseOff, 0, HUDLetterBoxCmdTick, 0);
+    ZAnim.AddCmd("HUD_TRIGGER_MISSION_CAM", HUDTriggerMissionCamParse, HUDTriggerMissionCamBegin,
+                 HUDTriggerMissionCamTick, 0);
+    ZAnim.AddCmd("HUD_START_DEFUSE_TIMER", HUDStartDefuseTimerParse, 0, HUDStartDefuseTimerTick, 0);
+    ZAnim.AddCmd("HUD_STOP_DEFUSE_TIMER", HUDClearTimerParse, 0, HUDClearTimerTick, 0);
+    ZAnim.AddCmd("HUD_TRIGGER_POPUP", func_002AE3A0, 0, func_002AE340, 0);
+    ZAnim.AddCmd("NVG_NOISE", NVGNoiseParse, 0, NVGNoiseTick, 0);
+    ZAnim.AddCmd("START_IMAGE_RECORDER", StartImageRecorderParse, 0, StartImageRecorderTick, 0);
+    ZAnim.AddCmd("STOP_IMAGE_RECORDER", StopImageRecorderParse, 0, StopImageRecorderTick, 0);
+    func_002B4190();
+    zdb::CWorld::RegisterAnimCommands();
+    zBoneResetCallbacks();
+    m_chars_loaded = 0;
+    data_00440BE0.maxCount = 1;
+    data_00440BE0.initCount = 0;
+    data_00440BE0.option = 0;
+    m_sema = CreateSema(&data_00440BE0);
+    void *block = _malloc(0x75e000, 0, 0);
+    bool mode = func_00259240();
+
+    func_00259230(false);
+    CRdrArchive::AddArchive("readerc.zar", "run/ui");
+    CRdrArchive::AddArchive("readerc.zar", "run");
+    CRdrArchive::AddArchive("zweapon.zar", "run");
+    CRdrArchive::AddArchive("soundrdr.zar", "run");
+    CRdrArchive::OpenAll();
+    func_00259230(mode);
+    _free(block, 0, 0);
+    zBoneLoad();
+    CSnd::Init();
+    m_pNetGame = new CZNetGame;
+    void *obj = operator new(4316);
+
+    if (obj)
+        obj = func_003102E0(obj);
+    data_0045B718 = obj;
+    func_002CE8E0();
+    if (m_pNetGame) {
+        CRdrFile *rdr = zrdr_read("hud.rdr", 0, 0);
+        CZNetGame *game = m_pNetGame;   /* read ahead of the test: its load in the test's delay slot */
+
+        if (rdr) {
+            zrdr_findPNT2D((_zrdr *)rdr, "static_radio", &game->m_static_radio);
+            zrdr_findPNT2D((_zrdr *)rdr, "dynamic_radio", &game->m_dynamic_radio);
+        }
+        zrdr_free(rdr);
+    }
+    CValve::Open("global_valves.rdr", VALVE_PERM);
+    CValve::Create("UiCharLocked", VALVE_PERM);
+    m_valve_complete = CValve::Create("mission_complete", VALVE_PERM);
+    m_valve_failure = CValve::Create("mission_failure", VALVE_PERM);
+    m_valve_abort = CValve::Create("mission_abort", VALVE_PERM);
+    m_valve_timeout = CValve::Create("mission_timeout", VALVE_PERM);
+    m_valve_nofade = CValve::Create("nofade", VALVE_PERM);
+    CZWeapon::Init();
+    m_ordersRdr = 0;
+    m_materialsRdr = zrdr_read("materials.rdr", 0, 0);
+    m_decalsRdr = zrdr_read("decals.rdr", 0, 0);
+    m_fontsRdr = zrdr_read("fonts.rdr", 0, 0);
+    m_messagesRdr = zrdr_read("messages.rdr", 0, 0);
+    m_subtitlesRdr = zrdr_read("subtitles.rdr", 0, 0);
+    m_smallmessagesRdr = zrdr_read("small_messages.rdr", 0, 0);
+    m_1838 = zrdr_read("motion.rdr", 0, 0);
+    m_subtitles = (_zrdr *)zrdr_read("mpeg_subtitles.rdr", 0, 0);
+    CRdrFile *missions = zrdr_read("missionlist.rdr", 0, 4);
+
+    if (missions) {
+        data_00441650.Read((_zrdr *)missions);
+        zrdr_free(missions);
+    }
+    Particle::Init();
+    theTCM.Init();
+    SealInitCharacterDynamics();
+    void *rdr = operator new(12);
+
+    if (rdr)
+        rdr = func_00533A40(rdr);
+    m_vehicle_rdr = (CVehicleRdr *)rdr;
+    func_005E30F0(0);
+    func_0058CC30();
+    CCharacterType::Open("character.rdr");
+    CCtrlrConfigs::Init();
+    SkbLoadUiParams();
+    hudInit();
+    CTurret::Init("ai_turrets.rdr", "data/common/zrdr");
+    CVehicle::Init("ai_vehicles.rdr", "data/common/zrdr");
+    CRdrArchive::RemoveArchive("readerc.zar", "run");
+    CRdrArchive::RemoveArchive("zweapon.zar", "run");
+    CRdrArchive::RemoveArchive("soundrdr.zar", "run");
+    func_002B7530();
+    func_002B7520();
+    CStringTables *tables = GetStringTables();
+
+    tables->Load("HudC", GetLanguage());
+    return true;
+}
+
 inline CAiMap::actions &ActionTable(CAiMap *map)
 {
     return map->m_actionTable;
@@ -2500,17 +2763,7 @@ void CMission::FadeToEndMission(float time, int counter)
     }
 }
 
-/* the application's camera (camera.h's CAppCamera: its two virtuals, declared only, the zoom and the
- * controlled view) */
-class CAppCamera {
-public:
-    virtual void Tick(float dT);
-    virtual bool AttachTo(CZSealBody *prey);   /* its table's third word */
-    void SetZoom(float zoom);   /* 0x29B2F0 */
-
-    unsigned char _4[0xe4 - 0x4];
-    unsigned char m_ctrl_view;   // 0xe4 (camera.h's CAMVIEW: cam_view_third 0)
-};
+/* (the application's camera: CAppCamera, declared above with what CMission::Init calls) */
 
 /* the second half of a reload's unload: the entities and AI events gone, the world's lists and
  * garbage cleared (SOCOM 1's), then -- SOCOM II's -- the scheduler's free list, the headset and
