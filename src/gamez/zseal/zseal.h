@@ -406,8 +406,8 @@ public:
     /* the squad of a team, and a member by its index (OVL2 0x5EF2F0, 0x5EDBB0: the kit lane's
      * seal_unit.cpp, which declares them alike) */
     static CSealUnit *GetUnitByTeam(unsigned int team);
-    /* the squad's SEALs counted, with its sub-squads' to a depth (OVL2 0x5ED9B0, the kit lane's) */
-    int GetSealCount(int depth);
+    /* the squad's SEALs counted, with its sub-squads' to a depth (OVL2 0x5ED9B0, the kit lane's: const, round 45) */
+    int GetSealCount(int depth) const;
     CZSealBody *GetSealByIndex(int index, int depth);
     /* the squad's leader (SOCOM 1's const GetLeader; OVL2 0x5E8A90, the kit lane's) */
     CZSealBody *GetLeader() const;

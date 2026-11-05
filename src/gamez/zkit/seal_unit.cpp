@@ -247,8 +247,8 @@ public:
     bool IsMemberOfUnit(CZSealBody *seal, bool recurse);
     static bool IsMemberOfUnit(unsigned int team, CZSealBody *seal, bool recurse);
     /* the squad's SEALs counted, with those of the squads under it to a depth (OVL2 0x5ED9B0, new in
-     * SOCOM II: recursive, inlined into itself twice; the name ours) */
-    int GetSealCount(int depth);
+     * SOCOM II: recursive, inlined into itself twice; the name ours, const by its walk's pieces) */
+    int GetSealCount(int depth) const;
     /* the index'th SEAL of the squad, counted on through the squads under it to a depth, or 0
      * (SOCOM 1's GetSealByIndex(unsigned int), the depth new; OVL2 0x5EDBB0) */
     CZSealBody *GetSealByIndex(int index, int depth);
@@ -656,13 +656,28 @@ bool CSealUnit::GetMyPointOutTurnDir(CZSealBody *seal, CPnt3D **dir)
  * begin()'s and end()'s base iterators in stack slots and copies each into the wrapper's through $f0
  * (the by-value parameter kept in memory), then loads the iterator into s0; MW scalarises all of it
  * here. Not it: the iterator assigned from begin() (0x1F4, but in memory through the whole walk), direct
- * initialisation, a while loop, the base iterator's field in a base class (no change) */
-int CSealUnit::GetSealCount(int depth)
+ * initialisation, a while loop, the base iterator's field in a base class (no change).
+ * THE WALK IS A CONST ONE (the kit lane, round 45): the pieces 0x5ED880-0x5ED9A0 are not a second copy
+ * of DistributeNotify's 0x5ED6E0-0x5ED7A0 but list<CSealUnit *>'s generic_iterator<1> -- the wrapper's
+ * constructor 0x5ED980 takes the base's const_iterator BY VALUE, 0x1C, word for word SOCOM 1's
+ * list<CEntity *>::generic_iterator<1>(generic_iterator<1>) 0x321240, where DistributeNotify's 0x5ED7A0
+ * takes generic_iterator<0> by const reference, and 0x5ED9A0 is the base's begin() const (the same
+ * words as OVL2's begin() 0x510100, yet emitted again: another instance). So the function is const (the
+ * name ours: the row renamed CFi): with the const walk the outer copy's by-value temporaries are the
+ * target's -- 0x1F8, the target's size -- and the unit emits the walk's pieces in the target's order,
+ * end() const 0x5ED8F0, begin() const 0x5ED950 and the by-value constructor 0x5ED980 byte-exact.
+ * OPEN, 10 instructions, the first self-copy's size() and begin() and the third's element read, all
+ * include/list's (the MSL lane's): the target calls sz() 0x5E8A80 and loads the count through it (ours
+ * inlines size() whole), calls the base's begin() const 0x5ED9A0 (ours inlines the wrapper's begin()
+ * const: tail_ptr() and the base iterator's constructor called), and its const_iterator's operator*
+ * 0x5ED940 returns the element BY REFERENCE (`addiu v0,v0,8`, the caller loading it: `lw a0,0(v0)`),
+ * where include/list's const_iterator returns it by value (fitted to GetEntity) */
+int CSealUnit::GetSealCount(int depth) const
 {
     int n = m_seals.size();
 
     if (depth > 0)
-        for (ulist::iterator i = m_sub_units.begin(); i != m_sub_units.end(); i++)
+        for (ulist::const_iterator i = m_sub_units.begin(); i != m_sub_units.end(); i++)
             n += (*i)->GetSealCount(depth - 1);
     return n;
 }
