@@ -280,6 +280,129 @@ CTexture *CVisual::ResolveTextureName(_word128 *names, _word128 *select)
     return tex;
 }
 
+/* whether the views' buffers share their owners' counts (a byte in bss, 0x4B5010: set, SetBuffer
+ * leaves the owner's count alone; not named) */
+extern "C" unsigned char data_004B5010;
+
+/* a texture found by name, the null texture's when it is missing, its handle and palette listed
+ * (ours: SetBuffer's two lookups) */
+static inline CTexture *FindTexture(CDynTexList &list, const char *name)
+{
+    CTexture *tex = 0;
+    CTexHandle *h = CWorld::GetTexHandle(name);
+
+    if (!h)
+        h = CWorld::GetTexHandle("null_xmas.bmp");
+    if (h) {
+        tex = h->m_texture;
+        list.Add(h, true);
+        if (tex->m_palette)
+            list.Add(tex->m_palette, true);
+    }
+    return tex;
+}
+
+/* a view's VU buffer kept for this visual (SOCOM 1's SetBuffer, 0x3C38C0): its owner counted (unless
+ * the flag at 0x4B5010 says not), the buffer stored for the view, and once per buffer (the head's
+ * flag) the owner noted and the head's list made ready -- texture names (6) resolved, the select
+ * before a blend list (3) shortened by one, a texture handle's (5) texture remembered, a blend list
+ * (3) under a texture copied into a block of its own when it has entries (kept in the blend words)
+ * and made absolute otherwise, the plain references (1, 2, 4, 7) made absolute; the detail layers'
+ * texture names resolved once (their flag at 6). The switch lists all thirteen kinds so MW builds the
+ * target's 13-entry jump table (with only the handled kinds it builds 8, with case 12 alone a compare
+ * chain); the lookup an inline shared by both loops and the select copied in by the caller, through
+ * the kind pointer (ResolveTextureName inlined stores through the select: the kind and count
+ * registers swap). OPEN, 0x368 against 0x370: the target takes &m_lodMesh's data word (this+56) once
+ * at the top and spills it (sp+176) for the last store, where here the last store reads the data word
+ * off this again (the frame 16 smaller); the detail walk's two counters and offset take s1/s4/s2 in
+ * the target, s4/s3/s1 here. Tried: the vector, its pointer or data()'s reference in a local (each
+ * keeps this+48 or the word itself, 8 long), the reference taken only for the last store */
+void CVisual::SetBuffer(_word128 *buf, unsigned int vid, CVisBase *base)
+{
+    if (!data_004B5010)
+        base->m_refs++;
+
+    char *names = (char *)base->m_data;
+
+    m_lodMesh[vid] = (CMesh *)buf;
+    _word128 *h = (_word128 *)m_lodMesh[vid];
+
+    if (h->u8[2])
+        return;
+    h->u32[2] = (unsigned int)base;
+
+    CTexture *tex = 0;
+    unsigned int n = h->u16[0];
+    _word128 *p = h + 1;
+
+    for (unsigned int i = 0; i < n; i++, p++) {
+        unsigned char *kind = &p->u8[2];
+
+        switch (*kind) {
+        case 6:
+            tex = FindTexture(m_dynTexList, names + p->u32[1]);
+            if (tex) {
+                p->u128 = tex->m_dmaRefVu;
+                *kind = 5;
+            }
+            if (p[1].u8[2] == 3)
+                p->u16[0]--;
+            break;
+        case 5:
+            if (!tex)
+                tex = ((CTexHandle *)p->u32[1])->m_texture;
+            break;
+        case 3:
+            if (tex) {
+                if (p->u16[6]) {
+                    unsigned int k = p->u16[0];
+                    _word128 *f = (_word128 *)(p->u32[1] + (unsigned int)names);
+                    _word128 *v = (_word128 *)_malloc(k * 16, 0, 0);
+                    _word128 *t = v;
+
+                    do {
+                        *t = *f;
+                        f++;
+                        t++;
+                    } while (--k);
+                    p->u32[1] = (unsigned int)v;
+                    *kind = 8;
+                    BLENDMODE *bm = (BLENDMODE *)v;
+
+                    m_blendmodes.push_back(bm);
+                } else
+                    p->u32[1] += (unsigned int)names;
+            }
+            break;
+        case 1:
+        case 2:
+        case 4:
+        case 7:
+            p->u32[1] += (unsigned int)names;
+            break;
+        case 0:
+        case 8:
+        case 9:
+        case 10:
+        case 11:
+        case 12:
+            break;
+        }
+    }
+
+    DETAIL *d = m_details;
+
+    if (d && !d->m_6) {
+        for (unsigned int j = 0; j < m_numDetails; j++, d++) {
+            for (unsigned int e = 0; e < d->m_count; e++) {
+                d->m_data[e].m_tex = FindTexture(m_dynTexList, names + (unsigned int)d->m_data[e].m_tex);
+            }
+        }
+        m_details->m_6 = 1;
+    }
+    ((_word128 *)m_lodMesh[vid])->u8[2] = 1;
+}
+
 /* a view's VU buffer copied for this visual: a new owner of the same size (its constructor inline
  * in SOCOM II), the block copied, and when the head's list is open, each select of the list whose
  * kind is 5 made relative to the source's block and each of kind 8 given its own copy (SOCOM 1's).

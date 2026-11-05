@@ -568,6 +568,60 @@ void CTurret::ComputeNextPosition(float dT)
 {
 }
 
+/* two points' dot product over x and z (ours: the mount test's facing and side compares) */
+static inline float DotXZ(const CPnt3D &a, const CPnt3D &b)
+{
+    return a.x * b.x + a.z * b.z;
+}
+
+/* the mount test's backward cone, degrees (0x3E0830, initialised data; not named) and the height
+ * difference allowed, squared (0x3E0828) */
+extern "C" float data_003E0830;
+extern "C" float data_003E0828;
+
+/* may the SEAL mount it (CEntity's slot +0x5C, SOCOM II's; the SEAL asks the entity its controller
+ * holds, with that entity again when it is a turret): not while flagged (bit 1) or controlled; with
+ * a turret, the SEAL within the definition's mount range of it, close in height, facing within the
+ * definition's mount angle of the turret's forward (over x and z) and standing behind it -- its offset
+ * within a fixed cone of the turret's backward direction, the cone's cosine kept in a static */
+bool CTurret::Virtual5C(CZSealBody *seal, CTurret *turret)
+{
+    bool ok = true;
+
+    if (m_flags & 2)
+        ok = false;
+    if (ok && IsControlled() != false)
+        ok = false;
+    if (ok && turret) {
+        CPnt3D sp = ((CEntity *)seal)->m_posW;
+        CPnt3D d = turret->m_posW - sp;
+
+        if (Dot(d, d) > m_def->m_mountRange)
+            ok = false;
+        if (d.y * d.y > data_003E0828)
+            ok = false;
+        if (ok) {
+            CPnt3D a = *(CPnt3D *)((CEntity *)seal)->m_node->m_matrix.m_matrix[2];
+
+            a.y = 0.0f;
+            a.Normalize();
+            CPnt3D b = *(CPnt3D *)turret->m_node->m_matrix.m_matrix[2];
+
+            b.y = 0.0f;
+            b.Normalize();
+            if (DotXZ(a, b) < m_def->m_mountAngle)
+                ok = false;
+            static float limit = cosf(0.017453292f * data_003E0830);
+
+            d.y = 0.0f;
+            d.Normalize();
+            if (DotXZ(d, b) > -limit)
+                ok = false;
+        }
+    }
+    return ok;
+}
+
 /* the turret's frame sampled: its matrix from the yaw node's parent and the inverse, the fire
  * point's position (the origin without its node) and the velocity as the step over the frame
  * (SOCOM 1's) */
@@ -952,6 +1006,64 @@ extern "C" bool func_003A8910(CTurret *t, const CPnt3D *dir, float *yaw, float *
         pv = cross2 >= 0.0f ? 1.0f : -1.0f;
     *pitch = t->m_def->m_pitchRate * pv;
     return true;
+}
+
+/* the AI's target's validity test (OVL2 0x60A850, the kit lane's) -- declared again below */
+extern "C" bool func_0060A850(void *target);
+
+/* the sweep's threshold: the aim's dot with the rest direction past which an auto-scanning turret
+ * heads for its other yaw limit (0x3E0858, initialised data; not named) */
+extern "C" float data_003E0858;
+
+/* a point copied field by field through its address (ours, as the weapons' CopyPoint: a ternary
+ * source is re-evaluated at each field) */
+static inline void CopyPoint(CPnt3D *dst, const CPnt3D *src)
+{
+    dst->x = src->x;
+    dst->y = src->y;
+    dst->z = src->z;
+}
+
+/* a word's mask set or cleared (CTurret::SetFlag's shape, on another word; ours) */
+static inline void SetBits(int &f, int mask, bool on)
+{
+    f &= ~(on ? 0 : mask);
+    f |= on ? mask : 0;
+}
+
+/* the AI's aim (SOCOM II's: Tick's for an AI-held turret, flag 2): at a valid target, the aim the
+ * target's point's direction from the firing point, turned into the yaw frame; without one, an
+ * auto-scanning turret (flag 0x10) sweeps -- once its aim is past the threshold of the rest direction
+ * it turns for the other yaw limit (the bit at 0x240 toggled each time), else it keeps its aim; with
+ * neither, straight ahead. Then the yaw and pitch rates toward it (0x3A8910) */
+extern "C" void func_003A84E0(CTurret *t)
+{
+    CPnt3D dir;
+
+    if (func_0060A850(t->m_target)) {
+        CPnt3D pos;
+
+        (*(CEntity **)t->m_target)->GetTargetPosW(&pos);
+        t->m_398 = pos - t->m_380;
+        t->m_398.Normalize();
+        TransformVectors(&t->m_340, &t->m_398, &dir, 1);
+    } else if (t->m_flags & 0x10) {
+        if (Dot(t->m_398, t->m_38c) > data_003E0858) {
+            const TURRET_LIMIT_TRIG &trig = t->m_def->m_yawTrig;
+            CPnt3D a(-trig.m_sinmin, 0.0f, -trig.m_cosmin);
+            CPnt3D b(-trig.m_sinmax, 0.0f, -trig.m_cosmax);
+            bool first = (t->m_240 & 1) != 0;
+
+            CopyPoint(&dir, first ? &a : &b);
+            SetBits(t->m_240, 1, !first);
+            TransformVectors(&t->m_300, &dir, &t->m_398, 1);
+        } else
+            TransformVectors(&t->m_340, &t->m_398, &dir, 1);
+    } else {
+        t->m_398 = CPnt3D::unit_nz;
+        dir = CPnt3D::unit_nz;
+    }
+    func_003A8910(t, &dir, &t->m_3a8, &t->m_3ac);
 }
 
 /* (called, never inlined: ~CTurret calls it). Its remove_copy instance (0x3AB9A0) is byte-exact.

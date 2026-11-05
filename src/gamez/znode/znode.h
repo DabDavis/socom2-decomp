@@ -582,6 +582,9 @@ public:
     /* a view's VU buffer copied for this visual: a new owner with its own block, its first list's
      * references made relative to the source's block and its texture lists copied (SOCOM 1's) */
     _word128 *CopyBuffer(CVisBase **out, unsigned int vid);
+    /* a view's VU buffer kept for this visual, its head's list made ready once (SOCOM 1's,
+     * 0x3C38C0, vis_main.cpp) */
+    void SetBuffer(_word128 *buf, unsigned int vid, CVisBase *base);
     /* the view's VU chain found: its start, its quadwords and its subface part, and whether the
      * detail layers draw (SOCOM 1's, 0x3B6E10) */
     bool GetChainData();

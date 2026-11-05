@@ -99,7 +99,11 @@ public:
     static short CrouchThrowGrenade;   // OVL1 0x3DEBB8 (SOCOM 1's 0x47517C)
     static short ThrowGrenade;   // OVL1 0x3DEBC8 (SOCOM 1's 0x475184)
     static short ProneTossGrenade;   // OVL1 0x3DEBD8 (SOCOM 1's 0x47518C)
+    /* (the two pistol tosses, by the same order and by IsThrowing 0x5A7D10, which tests them where
+     * SOCOM 1's IsThrowing does -- the SEALs, round 44) */
+    static short PistolProneTossGrenade;   // OVL1 0x3DEBE0 (SOCOM 1's 0x475190)
     static short TossGrenade;   // OVL1 0x3DEBE8 (SOCOM 1's 0x475194)
+    static short PistolTossGrenade;   // OVL1 0x3DEBF0 (SOCOM 1's 0x475198)
     /* (SOCOM 1's eight reloads, three to ten after KickGrenade in both builds, and RifleM203Reload
      * twenty after PistolReload in both: Reload 0x5A82E0 picks them by stance, pistol or rifle,
      * moving or not and the launcher, IsReloading 0x5A7AB0 tests them -- the SEALs, round 40) */
@@ -417,8 +421,8 @@ public:
     /* the squad of a team, and a member by its index (OVL2 0x5EF2F0, 0x5EDBB0: the kit lane's
      * seal_unit.cpp, which declares them alike) */
     static CSealUnit *GetUnitByTeam(unsigned int team);
-    /* the squad's SEALs counted, with its sub-squads' to a depth (OVL2 0x5ED9B0, the kit lane's) */
-    int GetSealCount(int depth);
+    /* the squad's SEALs counted, with its sub-squads' to a depth (OVL2 0x5ED9B0, the kit lane's: const, round 45) */
+    int GetSealCount(int depth) const;
     CZSealBody *GetSealByIndex(int index, int depth);
     /* the squad's leader (SOCOM 1's const GetLeader; OVL2 0x5E8A90, the kit lane's) */
     CZSealBody *GetLeader() const;

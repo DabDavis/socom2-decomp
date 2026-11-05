@@ -3033,6 +3033,109 @@ bool CSealCtrlAi::SlideTick(float dT)
     return slid;
 }
 
+extern "C" {
+/* one over the tick (SOCOM 1's _dTI, a static of its unit: OVL2 bss 0x66B100 -- SlideTick sets it,
+ * CreepTick, 0x567900 and CSealCtrlAi::PreTick read it) */
+extern float data_0066B100;
+}
+
+/* the goal's countdown run down, true once it has (an infinite one never runs: the turret's
+ * TickTimer, veh_turret.cpp) */
+static inline bool GoalExpired(const CAiTimer &t)
+{
+    return t.m_timer != CAiTimer::infinite && t.m_timer <= 0.0f;
+}
+
+/* a vector's length on the ground plane */
+static inline float LengthXZ(const CPnt3D &v)
+{
+    return sqrtf(v.x * v.x + v.z * v.z);
+}
+
+static inline bool TickGoalTimer(CAiTimer &t, float dT)
+{
+    bool r = false;
+
+    if (t.m_timer != CAiTimer::infinite) {
+        t.m_timer -= dT;
+        r = GoalExpired(t);
+    }
+    return r;
+}
+
+/* the slide toward the goal stepped: the share of what is left this tick (all of it once the goal's
+ * time is up), the place's share as the world fudge velocity, the turn's as the rotation's; the goal
+ * cleared when it is reached (OVL2 0x566940; SOCOM 1's, its SetGoalPos call now ClearGoal inlined,
+ * returning whether the SEAL still slides). Byte-exact (the SEALs, round 44): the dead `sliding =
+ * false` ahead of `ent` numbers it first (s3 over ent's s2); the goal bits turned to bools into a
+ * local (the target branches on the || value in v0); the time left read through a const view (a
+ * second load, the tick's own first); the length and the dot through reference inlines and the side
+ * through a scalarised `perp` (a zero register, not a folded literal) keep only &facing.z and
+ * &delta.z in saved registers; a bool into a float converts as unsigned; the turn's product taken
+ * first, then times _dTI */
+bool CSealCtrl::SlideTick(float dT)
+{
+    bool sliding = false;
+    data_0066B100 = 1.0f / dT;
+    CEntity *ent = m_entity;
+
+    bool has = (bool)m_goal_dir_valid || (bool)m_goal_pos_valid;
+
+    if (!has)
+        return false;
+
+    sliding = true;
+    float left = ((const CSealCtrl *)this)->m_goal_timer.m_timer;
+    float scale;
+
+    if (TickGoalTimer(m_goal_timer, dT)) {
+        scale = 1.0f;
+        sliding = false;
+    } else if (left < dT) {
+        scale = 1.0f;
+        sliding = false;
+    } else
+        scale = dT / left;
+
+    const CMatrix &m = m_entity->m_node->m_matrix;
+    CPnt3D facing(-m.m_matrix[2][0], 0.0f, -m.m_matrix[2][2]);
+
+    facing.Normalize();
+
+    CPnt3D delta(0.0f, 0.0f, 0.0f);
+
+    if (m_goal_pos_valid) {
+        m_goal_pos.SubXZ(&ent->m_posW, &delta);
+        float dist = LengthXZ(delta);
+
+        if (0.0f != dist) {
+            float inv = 1.0f / dist;
+
+            delta.x *= inv;
+            delta.z *= inv;
+        }
+        delta.Scale(data_0066B100 * (dist * scale), &m_fudge_velW);
+        if (1.0f == scale)
+            m_goal_pos_valid = false;
+    }
+    if (m_goal_dir_valid) {
+        float dot = Dot(facing, m_goal_dir);
+        CPnt3D perp(-facing.z, 0.0f, facing.x);
+        float side = Dot(m_goal_dir, perp);
+        float right = side >= 0.0f;
+
+        if (dot < 1.0f) {
+            float a = acosf(dot);
+            float turn = a * scale;
+
+            m_fudge_velR.y = turn * data_0066B100 * (right ? -1.0f : 1.0f);
+        }
+    }
+    if (!sliding)
+        ClearGoal(m_goal_type);
+    return sliding;
+}
+
 /* the AI-map collision bit, kept off in mode 7 and stored only when it changes (OVL2 0x557EE0,
  * slot 0xB4) */
 void CSealCtrlAi::SetDoAiMapCollide(bool on)
@@ -4707,6 +4810,63 @@ extern "C" bool func_005582C0(CAlertLevel *a, CSealCtrlAi *ai, const CPnt3D *pos
         break;
     }
     return a->m_c == 0 && a->m_level == 4;
+}
+
+extern "C" {
+/* (OVL2 data 0x6504A8 and 0x6504B0, ints read as variables: how many changes a level-2 record keeps
+ * its cell through, and how many cells away a new one must be to restart it) */
+extern int data_006504A8;
+extern int data_006504B0;
+}
+
+/* how many cells apart two cells are, across and along (an inline: x compared unsigned, as the
+ * fields are, y as ints -- the target's sltu / slt; `a > b ?` loads b first) */
+static inline int CellSteps(const CAiMapLoc &a, const CAiMapLoc &b)
+{
+    unsigned int dx = a.x > b.x ? a.x - b.x : b.x - a.x;
+    int dy = (int)a.y > (int)b.y ? (int)a.y - (int)b.y : (int)b.y - (int)a.y;
+
+    return dx + dy;
+}
+
+/* a disturbance at a cell (level 2): a first one keeps the cell and the flag; more of it with the
+ * flag newly set take the amount back off (the change undone), the flag newly cleared restarts the
+ * record on the cell, set again only restarts it, and unflagged at another cell -- after enough
+ * changes, or far enough -- restarts it there; whether the record now holds an untaken level 2 (OVL2
+ * 0x558030, new in SOCOM II beside 0x5582C0 and 0x558440; the name unknown) */
+extern "C" bool func_00558030(CAlertLevel *a, CSealCtrlAi *ai, const CAiMapLoc *loc, bool flag, float amount)
+{
+    int c = a->m_c;
+
+    switch (func_00557F60(a, ai, 2, amount)) {
+    case ALERT_NONE:
+        break;
+    case ALERT_SET:
+        a->m_loc = *loc;
+        a->m_avoid = flag;
+        break;
+    case ALERT_ADDED:
+        if (flag && !a->m_avoid) {
+            a->m_amount -= amount;
+            a->m_c = c;
+        } else if (!flag && a->m_avoid) {
+            a->Reset();
+            func_00557F60(a, ai, 2, amount);
+            a->m_loc = *loc;
+            a->m_avoid = false;
+        } else if (flag) {
+            a->Reset();
+        } else if (a->m_loc != *loc) {
+            if (a->m_c >= data_006504A8 || CellSteps(a->m_loc, *loc) >= data_006504B0) {
+                a->Reset();
+                func_00557F60(a, ai, 2, amount);
+                a->m_loc = *loc;
+                a->m_avoid = flag;
+            }
+        }
+        break;
+    }
+    return a->m_c == 0 && a->m_level == 2;
 }
 
 /* whether one SEAL should keep away from another within a range (seal_airesponse.cpp's), and the
