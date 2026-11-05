@@ -782,6 +782,77 @@ bool CAiMap::WalkLine(const CAiMapLoc &from, const CPnt3D *to, bool (*f)(const M
     return ok;
 }
 
+/* a line between two cells' centres walked over this map the same way, both ends' cells given to
+ * the walk's struct and neither centre missing (SOCOM 1's WalkLine(loc, loc), the demo's 0x1A7570:
+ * CanSeeLine and CanTravelLine's) */
+bool CAiMap::WalkLine(const CAiMapLoc &from, const CAiMapLoc &to, bool (*f)(const MAP_LINEWALK_STRUCT &s, void *data),
+                      void *data, float step)
+{
+    MAP_LINEWALK_STRUCT s;
+
+    s.m_start = from;
+    s.m_end = to;
+    s.m_loc = CAiMapLoc::invalid;
+    s.m_map = this;
+    s.m_dist = 0.0f;
+    s.m_cell = 0;
+    s.m_prev = 0;
+    s.m_t = 0.0f;
+    CPnt3D line[2];
+
+    if (!GetCellCenter(from, &line[0]) || !GetCellCenter(to, &line[1]))
+        return false;
+    CPnt3D h = line[1] - line[0];
+    float len = LengthXZ(h);
+
+    if (len != 0.0f) {
+        float inv = 1.0f / len;
+
+        h.x *= inv;
+        h.z *= inv;
+    }
+    float dt = 1.0f / (len / (step * m_dx));
+
+    SetDir(s, h);
+    bool ok = true;
+    float t = 0.0f;
+    CPnt3D p;
+    CAiMapLoc l;
+
+    while (ok && t < 1.0f) {
+        p.y = 0.0f;
+        p.x = line[0].x * (1.0f - t) + line[1].x * t;
+        p.z = line[0].z * (1.0f - t) + line[1].z * t;
+        if (GetLocation(&p, l) && _on_run(this, l)) {
+            if (l != s.m_loc) {
+                s.m_dist = t * len;
+                s.m_prev = s.m_cell;
+                s.m_cell = GetCell(l, 0);
+                s.m_t = t;
+                s.m_loc = l;
+                ok = s.m_cell ? f(s, data) : false;
+            }
+            t += dt;
+        } else
+            ok = false;
+    }
+    if (ok) {
+        t = 1.0f;
+        p.y = 0.0f;
+        p.x = line[0].x * (1.0f - t) + line[1].x * t;
+        p.z = line[0].z * (1.0f - t) + line[1].z * t;
+        if (GetLocation(&p, l) && _on_run(this, l) && l != s.m_loc) {
+            s.m_dist = t * len;
+            s.m_prev = s.m_cell;
+            s.m_cell = GetCell(l, 0);
+            s.m_t = t;
+            s.m_loc = l;
+            ok = s.m_cell ? f(s, data) : false;
+        }
+    }
+    return ok;
+}
+
 /* the step of a count out over ground a step may end on: GetNeighbor's, then the cell's test (the
  * name ours: ai_astar.cpp's trace-back step, too tall to inline whole -- GetMapId, GetCell and the
  * cell's test called out of line) */
