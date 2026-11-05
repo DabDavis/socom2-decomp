@@ -6809,7 +6809,7 @@
 0x0038BAC0 PrepForDisplay__13CSoftKeyboardFPQ23zdb16CTextureRelocMgrP7C2DFont
 0x0038BE40 func_0038BE40
 0x0038BE80 SwitchToNamed__13CSoftKeyboardFi
-0x0038BFE0 func_0038BFE0
+0x0038BFE0 SkbSetChatRecipient__Fb
 0x0038C000 func_0038C000
 0x0038C040 OnEnterKey__13CSoftKeyboardFP9CGameMenu
 0x0038C130 SkbMoveAlong__FP13CSoftKeyboard7SKBAXISPFi_i
@@ -6817,6 +6817,7 @@
 0x0038C4B0 func_0038C4B0
 0x0038C4C0 func_0038C4C0
 0x0038C4D0 InvalidateDisplay__13CSoftKeyboardFv
+0x0038C630 SkbUsbKey__FP13CSoftKeyboardP9CGameMenuP8KeyInput
 0x0038C990 HandlePad__13CSoftKeyboardFP4CPadP9CGameMenu
 0x0038CB80 func_0038CB80
 0x0038CB90 GetCurKey__13CSoftKeyboardCFv
@@ -7011,7 +7012,7 @@
 0x00399C10 func_00399C10
 0x00399C20 SkbTypeOrBack__FP13CSoftKeyboard
 0x00399D20 SkbTakeText__FP9CGameMenu
-0x00399E90 func_00399E90
+0x00399E90 SkbTypeCased__FUsbbP13CSoftKeyboard
 0x00399EC0 SkbInsertChar__FUsP13CSoftKeyboard
 0x0039A1D0 SkbCursorTo__FiP13CSoftKeyboardb
 0x0039A3E0 SkbAtOrBefore__Fii
@@ -7124,6 +7125,7 @@
 0x003A07D0 chdir__8CMemCardFPCc
 0x003A0890 mkdir__8CMemCardFPCc
 0x003A0950 Exists__8CMemCardFPCc
+0x003A0A10 CreateIconFiles__8CMemCardFv
 0x003A0EE0 Ascii2Sjis__FUc
 0x003A1060 GetUsedSpace__8CMemCardFi
 0x003A1210 GetFreeSpace__8CMemCardFv

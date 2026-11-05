@@ -2065,6 +2065,19 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the UI, round 30** (CMemCard::CreateIconFiles and SkbUsbKey, both unwritten before; SkbSetChatRecipient
+  and SkbTypeCased from their drafts to source):
+  - a callee's result and parameter types read from how each caller narrows: one caller adding `andi 0xffff` to the
+    result and another passing it straight fixes the result as int and the parameter as the type needing no conversion
+    (the letter caser 0x39A8D0 takes an unsigned short and returns an int -- SkbTypeCased 0x399E90 settled it);
+  - a struct field written through a cast of its own address is strength-reduced from the field's address; indexing the
+    struct directly folds the field offset into the store (CMemCard::CreateIconFiles 0x3A0A10: libmc.h's real layout, the
+    title `unsigned char[68]` written through an `(unsigned short *)` cast; declared bool -- false on every path);
+  - a no-target template copy whose only relocation is its `.mwcats` entry is dead-stripped at link: no row is expected
+    for it (zui_spec.cpp's three vector destructors);
+  - a local assigned once, or after a dead first definition, is propagated before register numbering; assigned twice it
+    keeps its statement's place, so a load can be numbered ahead of the expression's temporaries (UTF8GetChar, at the
+    target's size, 5, OPEN).
 - **Tells from completing the MSL headers, round 32** (the cdeque begin() colouring closed, 0x285BB0 named and emitted, SOCOM
   1's vector storage measured again; probes build/p32/, untracked -- bg/ (cse1-3.cpp, v*.py), rec/, vec/mkpair.py,
   findcopies.py):
