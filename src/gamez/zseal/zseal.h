@@ -174,6 +174,11 @@ enum SEAL_DEATH_TYPE {
     DEATH_BULLET = 5, DEATH_GHOST = 6, DEATH_FALLING = 7, DEATH_MAX = 8
 };
 
+/* the SEAL's life as the network reports it (a byte enum: 0x543F70 copies the field with `lb` and
+ * compares the copy after `andi 0xff`, SetNetLife compares the field itself with `lbu`; the names
+ * ours -- 2 and 3 down, 1 up) */
+enum NET_LIFE { NETLIFE_0 = 0, NETLIFE_UP = 1, NETLIFE_DOWN = 2, NETLIFE_DEAD = 3 };
+
 /* the orders (SOCOM 1's DWARF, a byte: only the size matters here) */
 enum FT_COMMAND { CMD_UNKNOWN = 0, CMD_ACTION = 1, CMD_LAST = 255 };
 
@@ -890,7 +895,10 @@ public:
     float m_event_time[15];   // 0x1c8
     unsigned char _204[0x221 - 0x204];
     MENU_STATE m_menustate;   // 0x221 (as SOCOM 1's)
-    unsigned char _222[0x238 - 0x222];
+    unsigned char _222[0x22c - 0x222];
+    /* the weapon state's timer (SOCOM 1's m_wep_state, a CAiTimer at 0x22c in both builds: 0x543F70
+     * restarts it and runs it out) */
+    CAiTimer m_wep_state;   // 0x22c
     float m_bombpickuptimer;   // 0x238 (as SOCOM 1's: TickMPBomb sets it once a defusal starts)
     float m_weapon_pickup_timer;   // 0x23c (as SOCOM 1's: TickPickups waits it out before a weapon is offered)
     float m_240;   // 0x240: how long the reload button has been held (0x594B70; the name ours)
@@ -2332,8 +2340,12 @@ public:
     unsigned char m_item;   // 0xf79
     /* the SEAL's life as the network reports it: 2 and 3 down, 1 up again (0x544210 sets it;
      * the names ours) */
-    unsigned char m_netlife;   // 0xf7a
-    unsigned char _f7b[0xf88 - 0xf7b];
+    NET_LIFE m_netlife;   // 0xf7a
+    unsigned char _f7b;
+    /* how long, online, the SEAL's network life has not been 1 (up): past 20 s it is ended
+     * (0x543F70 runs it by the time step at 0x2e0; the name ours) */
+    float m_f7c;   // 0xf7c
+    unsigned char _f80[0xf88 - 0xf80];
     float m_waterdepth;   // 0xf88 (SOCOM 1's 0xe70, by its use: in water a SEAL crouches only up to 8.5
                           // deep, 0x5857E0, and goes prone only up to 2, Prone)
     /* the feet's spots in the world while a turn in place pins one (0x54EA80 takes the right's

@@ -357,7 +357,7 @@ void CZSealBody::Virtual8C()
         func_005A0040(this);
         SetDeathPending(this, false);
         if (!IsRemote() && m_netlife != 3) {
-            m_netlife = 3;
+            m_netlife = NETLIFE_DEAD;
             IsRemote();
         }
     }
@@ -1232,7 +1232,7 @@ void CZSealBody::SetNetLife(unsigned char life)
 
         if (down && life == 1)
             respawn = 1;
-        m_netlife = life;
+        m_netlife = (NET_LIFE)life;
         if (IsRemote() && respawn)
             m_needs_respawn = 1;
     }
@@ -2064,6 +2064,112 @@ extern "C" float floorf(float);
 static inline unsigned int FadeLevel(bool active, float opacity)
 {
     return active ? (unsigned int)floorf(15.0f * (1.0f - opacity)) : 0;
+}
+
+extern "C" {
+/* the top blend's held object let go (OVL2 0x5781C0, seal_body.cpp's), the overlay's last anim let go
+ * (OVL2 0x5A5DA0), the SEAL off its ladder and its hold on one let go (OVL2 0x59D750, 0x5B14E0), an
+ * anim type for a hit and a state (OVL2 0x5A0950: seal_env.cpp's) and the anim pushed on the body
+ * (OVL2 0x588BC0, seal_body.cpp's) */
+void func_005781C0(CZSealBody *seal);
+void func_005A5DA0(CZSealBody *seal);
+void func_0059D750(CZSealBody *seal);
+void func_005B14E0(CZSealBody::CSealClimb *climb, CZSealBody *seal);
+AnimType func_005A0950(CZSealBody *seal, DAMAGE_LOCATION loc, SEAL_STATE state);
+void *func_00588BC0(CZSealBody *seal, AnimType type, int state, int flag, int kind);
+}
+
+/* SOCOM 1's CAiTimer as the controller's weapon timer is read here: an Rfloat-shaped period (its
+ * operator float inline, an early return and the random factor through a local) and the countdown,
+ * restarted and run out (an infinite one left as drawn). Each inline works through a local copy of
+ * `this`: the target keeps the timer's base in s1 across rand() -- the range's first read folded off
+ * the controller -- and takes it again for the run-out's store; on `this` itself MW bases the
+ * accesses on the range's and the countdown's own addresses */
+struct WEP_PERIOD {
+    operator float() const
+    {
+        if (m_range == 0.0f)
+            return m_min;
+        float r = 4.656613e-10f * (float)rand();
+
+        return m_min + m_range * r;
+    }
+
+    float m_min;   // 0x0
+    float m_range;   // 0x4
+};
+
+struct WEP_TIMER {
+    void Restart()
+    {
+        WEP_TIMER *t = this;
+
+        t->m_timer = t->m_period;
+    }
+    void RunOut()
+    {
+        WEP_TIMER *t = this;
+
+        if (t->m_timer != CAiTimer::infinite)
+            t->m_timer = 0.0f;
+    }
+
+    WEP_PERIOD m_period;   // 0x0
+    float m_timer;   // 0x8
+};
+
+/* online, a SEAL whose network life is not up for more than 20 s ended: killed while alive (DEATH_MAX),
+ * its hold, body, overlay, ladder and climb let go, unstunned, the weapon in state 2, the controller's
+ * weapon timer restarted and run out, the weapon's envelope cleared, the blends cleared to the base
+ * and the hit anim of location 3 pushed in state 8 -- the body set to state 8, or with bit 10 of
+ * 0x105C the body's two interpolations zeroed and the blend's fraction full -- the network life 3
+ * and bit 13 of 0x1060 set; then the time run on (OVL2 0x543F70, new in SOCOM II: CZSealBody::PreTick
+ * calls it; the name unknown). Byte-exact (the SEALs, round 49): the network life a byte enum read
+ * into a local ahead of the network test (the target's `lb` in the first block, its `andi 0xff` at
+ * the compare); SetHealth inlined under an alive test of its own (the bit read once) */
+extern "C" void func_00543F70(CZSealBody *seal)
+{
+    NET_LIFE life = seal->m_netlife;
+
+    if (theNetwork.m_9 && life != NETLIFE_UP) {
+        if (seal->m_f7c > 20.0f) {
+            if (seal->m_isAlive)
+                seal->SetHealth(0.0f, DEATH_MAX);
+            func_005781C0(seal);
+            seal->DropBody();
+            func_005A5DA0(seal);
+            func_0059D750(seal);
+            func_005B14E0(&seal->m_climb, seal);
+            seal->m_am_stunned = false;
+            seal->SetWeaponState((WEAPON_STATE)2);
+
+            CSealCtrl *ctrl = (CSealCtrl *)seal->m_control;
+
+            if (ctrl) {
+                ((WEP_TIMER *)&ctrl->m_wep_state)->Restart();
+                ((WEP_TIMER *)&ctrl->m_wep_state)->RunOut();
+            }
+            seal->m_wep_seq.Clear();
+            seal->ClearToBase(false);
+
+            CZBodyAnimBlend *b = (CZBodyAnimBlend *)func_00588BC0(seal,
+                func_005A0950(seal, (DAMAGE_LOCATION)3, (SEAL_STATE)2), 8, 0, 13);
+
+            if (!seal->m_limp)
+                seal->BodySetState(8);
+            else {
+                seal->m_interp1 = 0.0f;
+                seal->m_interp2 = 0.0f;
+                b->m_tfrac = 1.0f;
+            }
+            if (seal->m_netlife != NETLIFE_DEAD) {
+                seal->m_netlife = NETLIFE_DEAD;
+                seal->IsRemote();
+            }
+            seal->m_1060_bit13 = true;
+        }
+        seal->m_f7c += seal->m_2e0;
+    }
 }
 
 /* the SEAL shown again, whole: its node opaque and active, the state sent with it, and order 31 given
