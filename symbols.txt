@@ -10397,8 +10397,8 @@
 0x00578F90 0x27C StabBuddy__10CZSealBodyFP10CZSealBody  # OVL2; s1:calls (ExecuteAction_KnifeAttack calls it where SOCOM 1's does)
 0x00579210 0x8 func_00579210  # OVL2
 0x00579220 0x2AC DetachBody__10CZSealBodyFv  # OVL2; s1:order by hand (the SEAL lane, round 17: SOCOM 1's DetachBody__10CZSealBodyFv, after StabBuddy and the 8-byte RestoreCameraPosition in both builds; BindAnimSet calls it on the SEAL and on the carried body where SOCOM 1's BindAnimSet calls DetachBody, as DropBody does)
-0x005794D0 0x244 func_005794D0  # OVL2
-0x00579720 0x30C func_00579720  # OVL2
+0x005794D0 0x244 PutdownBuddy__10CZSealBodyFv  # OVL2; s1:order by hand (the SEALs, round 38): SOCOM 1's PutdownBuddy__10CZSealBodyFv, right after DetachBody in both builds and with SOCOM 1's pushes -- the carried body carried (10) with BuddyCarryBody dead and BuddyCarriedPickup, the carrier's altitude copy, the carrier carrying (9) with anim 18 and BuddyCarryPickup; SOCOM II limits the pops to twelve and returns the last push
+0x00579720 0x30C PickupBuddy__10CZSealBodyFP10CZSealBody  # OVL2; s1:order by hand (the SEALs, round 38): SOCOM 1's PickupBuddy__10CZSealBodyFP10CZSealBody, after PutdownBuddy in both builds and with SOCOM 1's pushes -- the buddy carried (10) with BuddyCarriedStand and BuddyCarriedPickup, its root part parented to the carrier's, the carrier carrying (9) with BuddyCarryStand and BuddyCarryPickup, the zoom state 0; SOCOM II limits the pops to twelve, deactivates the root and hips parts and resets the carrier's homing
 0x00579A30 0x370 func_00579A30  # OVL2
 0x00579DA0 0xF0 func_00579DA0  # OVL2
 0x00579E90 0x8 func_00579E90  # OVL2

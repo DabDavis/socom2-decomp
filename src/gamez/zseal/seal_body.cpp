@@ -2081,6 +2081,174 @@ static inline void NegateInto(const CPnt3D *in, CPnt3D *out)
     out->z = -in->z;
 }
 
+extern "C" {
+/* the game's clock (OVL1 data, a float -- seal_ai.cpp's) */
+extern float data_004365C0;
+}
+
+/* a buddy picked up: unless there is none, its blends popped down to one, twelve at most, it carried
+ * (10) with BuddyCarriedStand and BuddyCarriedPickup pushed, the carrier its carry, its root and hips
+ * parts inactive, its root part parented to the carrier's, its node at the carrier's and its position
+ * updated; the carrier's homing reset, its blends popped likewise, BuddyCarryStand and
+ * BuddyCarryPickup pushed carrying (9), the buddy its carry, the body carrying, the zoom state 0; the
+ * last push returned (OVL2 0x579720 -- SOCOM 1's PickupBuddy, after PutdownBuddy in both builds) */
+CZBodyAnimBlend *CZSealBody::PickupBuddy(CZSealBody *buddy)
+{
+    if (!buddy)
+        return (CZBodyAnimBlend *)func_00555170(&m_blends);
+    CZBodyAnimBlend *b = (CZBodyAnimBlend *)func_00555170(&buddy->m_blends);
+    int n = 12;
+    CBodyAnimBlendStack *stack = &buddy->m_blends;
+
+    while (BlendCount(stack) > 1 && n > 0) {
+        b = func_00589AA0(buddy);
+        n--;
+    }
+    if (n <= 0)
+        b = (CZBodyAnimBlend *)func_00555170((char *)buddy + 0x1c0);
+    else {
+        if (b)
+            b->m_ctrl = 0;
+        buddy->m_desiredStance = STANCE_PRONE;
+    }
+    func_00588BC0(buddy, (AnimType)AnimTypes::BuddyCarriedStand, stateCarried, 0, 0);
+    func_00588BC0(buddy, (AnimType)AnimTypes::BuddyCarriedPickup, stateCarried, 0, 0);
+    buddy->BodySetState(stateCarried);
+    buddy->m_carry = this;
+    buddy->GetRootPart()->SetActive(false);
+    buddy->m_hips->SetActive(false);
+    buddy->GetRootPart()->m_parent = GetRootPart();
+    buddy->GetNode()->SetPosition((const CPnt3D *)GetNode()->m_matrix.m_matrix[3]);
+    buddy->UpdatePosW();
+    ((CZBodyAnimBlend *)func_00555170(&m_blends))->m_homing.Reset();
+    b = (CZBodyAnimBlend *)func_00555170(&m_blends);
+    n = 12;
+    stack = &m_blends;
+    while (BlendCount(stack) > 1 && n > 0) {
+        b = func_00589AA0(this);
+        n--;
+    }
+    if (n <= 0)
+        b = (CZBodyAnimBlend *)func_00555170((char *)this + 0x1c0);
+    else {
+        if (b)
+            b->m_ctrl = 0;
+        m_desiredStance = STANCE_PRONE;
+    }
+    func_00588BC0(this, (AnimType)AnimTypes::BuddyCarryStand, stateCarrying, 0, 0);
+    CZBodyAnimBlend *r = (CZBodyAnimBlend *)func_00588BC0(this, (AnimType)AnimTypes::BuddyCarryPickup, stateCarrying, 0, 0);
+
+    m_carry = buddy;
+    BodySetState(stateCarrying);
+    SetCurZoomState(ZOOMSTATE_3RDPERSON);
+    return r;
+}
+
+/* the body carried put down: unless there is none, its blends popped down to one, twelve at most,
+ * it carried (10) with BuddyCarryBody pushed dead and BuddyCarriedPickup carried, the carrier's
+ * altitude hit given it (the point alone when that stands on a SEAL) and the clock kept; then the
+ * carrier's blends popped likewise, it carrying (9) with anim 18 and BuddyCarryPickup pushed, the
+ * last returned (OVL2 0x5794D0 -- SOCOM 1's PutdownBuddy, right after DetachBody in both builds, the
+ * same pushes; SOCOM II limits the pops) */
+CZBodyAnimBlend *CZSealBody::PutdownBuddy()
+{
+    CZSealBody *c = m_carry;
+    CZBodyAnimBlend *r = 0;
+
+    if (c) {
+        CZBodyAnimBlend *b = (CZBodyAnimBlend *)func_00555170(&c->m_blends);
+        int n = 12;
+        CBodyAnimBlendStack *stack = &c->m_blends;
+
+        while (BlendCount(stack) > 1 && n > 0) {
+            b = func_00589AA0(c);
+            n--;
+        }
+        if (n <= 0)
+            b = (CZBodyAnimBlend *)func_00555170((char *)c + 0x1c0);
+        else {
+            if (b)
+                b->m_ctrl = 0;
+            c->m_desiredStance = STANCE_PRONE;
+        }
+        c->BodySetState(stateCarried);
+        func_00588BC0(c, (AnimType)AnimTypes::BuddyCarryBody, stateDead, 0, 0);
+        func_00588BC0(c, (AnimType)AnimTypes::BuddyCarriedPickup, stateCarried, 1, 0);
+        const zdb::IntersectStruct *alt = &m_last_altitude;
+
+        if (GetSeal(alt->m_node))
+            c->m_last_altitude.m_pos = alt->m_pos;
+        else
+            c->m_last_altitude = *alt;
+        c->m_420 = data_004365C0;
+        b = (CZBodyAnimBlend *)func_00555170(&m_blends);
+        n = 12;
+        stack = &m_blends;
+        while (BlendCount(stack) > 1 && n > 0) {
+            b = func_00589AA0(this);
+            n--;
+        }
+        if (n <= 0)
+            b = (CZBodyAnimBlend *)func_00555170((char *)this + 0x1c0);
+        else {
+            if (b)
+                b->m_ctrl = 0;
+            m_desiredStance = STANCE_PRONE;
+        }
+        BodySetState(stateCarrying);
+        func_00588BC0(this, (AnimType)18, stateCrouch, 0, 0);
+        r = (CZBodyAnimBlend *)func_00588BC0(this, (AnimType)AnimTypes::BuddyCarryPickup, stateCrouch, 1, 0);
+    }
+    return r;
+}
+
+/* the body carried let go: the root part's place in the world turned by the node's rotation alone
+ * and, level, added to the SEAL's position; the root part back at the origin but for its height,
+ * unturned, its saved pose the same; the node given the carried body's matrix and the SEAL its turn,
+ * the node set at the place found, the position updated, the root part oriented, unparented and the
+ * parts saved; the carried body's altitude hit taken (its point alone when it stands on a SEAL), the
+ * clock kept, bit 8 set, the carry cleared both ways (OVL2 0x579220; SOCOM 1's DetachBody, the order
+ * changed). The carried body's matrix through CNode::GetMatrix (an inline argument, expanded ahead of
+ * the call's own `this`: written `&...->m_matrix`, the SEAL's node is fetched first); its altitude
+ * through a pointer local taken ahead of GetSeal, as the target keeps it in s1 */
+void CZSealBody::DetachBody()
+{
+    CPnt3D pos;
+    CQuat q;
+
+    PartInSpace(m_root, 0, &pos, &q);
+    CPnt3D w;
+
+    TransformVectors(&m_node->m_matrix, &pos, &w, 1);
+    w.y = 0.0f;
+    w.Add(&m_posW, &w);
+    pos.x = 0.0f;
+    pos.z = 0.0f;
+    m_root->m_pos = pos;
+    m_root->m_saved_pos = pos;
+    m_root->m_rot = CQuat::identity;
+    m_root->m_saved_rot = m_root->m_rot;
+    GetNode()->SetMatrix(m_carry->GetNode()->GetMatrix());
+    m_quat = m_carry->m_quat;
+    GetNode()->SetPosition(&w);
+    UpdatePosW();
+    m_root->Orient();
+    m_root->m_parent = 0;
+    SaveParts();
+    const zdb::IntersectStruct *alt = &m_carry->m_last_altitude;
+
+    if (GetSeal(alt->m_node))
+        m_last_altitude.m_pos = alt->m_pos;
+    else
+        m_last_altitude = *alt;
+    m_420 = data_004365C0;
+    m_bit8 = true;
+    if (m_carry) {
+        m_carry->m_carry = 0;
+        m_carry = 0;
+    }
+}
+
 /* StabBuddy's timed call (OVL2 0x579210, an anim callback: the body, then the victim) -- the kill */
 extern "C" void func_00579210(void *body, void *victim)
 {

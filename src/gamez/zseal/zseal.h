@@ -110,6 +110,14 @@ public:
     static short Stabbed;   // OVL1 0x3DEE18
     static short ReceiveRestraints;   // OVL1 0x3DEE40
     static short ApplyRestraints;   // OVL1 0x3DEE48
+    /* (SOCOM 1's BuddyCarryBody, BuddyCarryPickup and BuddyCarriedPickup, the carry's -- six, ten
+     * and twelve after ReceiveRestraints there, eight, twelve and fourteen here: SOCOM II adds two
+     * after ApplyRestraints; PutdownBuddy 0x5794D0 pushes them as SOCOM 1's does) */
+    static short BuddyCarryStand;   // OVL1 0x3DEE68 (SOCOM 1's 0x47529C: PickupBuddy's)
+    static short BuddyCarriedStand;   // OVL1 0x3DEE78 (SOCOM 1's 0x4752A4)
+    static short BuddyCarryBody;   // OVL1 0x3DEE80
+    static short BuddyCarryPickup;   // OVL1 0x3DEEA0
+    static short BuddyCarriedPickup;   // OVL1 0x3DEEB0
 };
 
 /* how a SEAL died (SOCOM 1's DWARF, a byte) */
@@ -1643,6 +1651,10 @@ public:
     CZBodyAnimBlend *RestrainBuddy(CZSealBody *victim);
     /* the stab begun, the top blend returned (OVL2 0x578F90, seal_body.cpp) */
     CZBodyAnimBlend *StabBuddy(CZSealBody *victim);
+    /* the body carried put down, the carrier's last blend returned (OVL2 0x5794D0, seal_body.cpp) */
+    CZBodyAnimBlend *PutdownBuddy();
+    /* a buddy picked up, the carrier's last blend returned (OVL2 0x579720, seal_body.cpp) */
+    CZBodyAnimBlend *PickupBuddy(CZSealBody *buddy);
     bool ExecuteAction_ApplyRestraint(CZSealBody *victim);
     bool ExecuteAction_CQBAttack(CZSealBody *victim);
     /* a pickup taken up: a grenade thrown back, the others each their own way (SOCOM 1's; OVL2
@@ -2023,7 +2035,10 @@ public:
     zdb::IntersectStruct m_last_reticule;   // 0x3c0
     unsigned char _3e0[0x400 - 0x3e0];
     zdb::IntersectStruct m_last_altitude;   // 0x400 (SOCOM 1's 0x320)
-    unsigned char _420[0x428 - 0x420];
+    /* the clock when the altitude was last taken over (DetachBody 0x579220 stores the game's clock;
+     * new in SOCOM II, the name ours) */
+    float m_420;   // 0x420
+    unsigned char _424[0x428 - 0x424];
     CAiEvent *m_aiEvent;   // 0x428: the SEAL's own AI event (SOCOM 1's 0x380)
     unsigned char _42c[0x434 - 0x42c];
     unsigned char m_snakePath[4];   // 0x434: a CAiPath (SOCOM 1's 0x384)
