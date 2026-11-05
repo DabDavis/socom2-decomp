@@ -8,9 +8,8 @@
  * (-inline deferred).
  *
  * OPEN, not written yet: CGameMenu itself (Tick 0x3654C0?, SwitchMenu, LoadFromDesign 0x367950,
- * HandlePad 0x368650, Clear 0x369210, the constructor and destructor -- SOCOM 1's DWARF has the
- * layout, SOCOM II's grew the vtable pointer at 0x910), the design's loaders, MakeButtonActive and
- * its neighbours (0x366B60-0x367430), HookupLib 0x36A430 (its CGSTexBuffer local's constructor
+ * HandlePad 0x368650 -- SOCOM 1's DWARF has the layout, SOCOM II's grew the vtable pointer at
+ * 0x910), the design's loaders, HookupLib 0x36A430 (its CGSTexBuffer local's constructor
  * 0x357BC0 and Hookup 0x3571D0 are rows outside the lane), 0x369880 (reads a string member of
  * theGame, +0x8C, for a sound), and the vector instances closing the unit (0x36AE50 among the
  * clears). Generated drafts stand for the rest. Round 15 wrote RunEventAnim (0x367810) and
@@ -40,6 +39,8 @@ class CSched_Manager {
 public:
     CSched_Manager();
     ~CSched_Manager();
+    /* the finished tasks freed (the scheduler's; Clear asks for all of them) */
+    void ClearFreeList(bool all);
 
     unsigned char _0[0x20];
 };
@@ -70,8 +71,12 @@ public:
     unsigned char _0[0x10];
 };
 
+class CAssetLib;
 class CAssetMgr {
 public:
+    /* a library's reference given back (Clear's, for the menu's libraries) */
+    static void ReleaseLibRef(CAssetLib *lib);
+
     static CAssetList m_assets;
 };
 
@@ -98,6 +103,8 @@ class CDynTexList {
 public:
     void Add(CTexPalette *pal, bool b);
     void Add(CTexHandle *tex, bool b);
+    /* both lists freed (an inline's out-of-line copy, the world lane's: Clear calls it) */
+    void Free();
     /* (ours: both lists emptied) */
     void Clear()
     {
@@ -116,6 +123,9 @@ public:
     ~CGSTexBuffer();
     void Load(bool b);
     void Hookup(CAssetLib *lib);
+    /* (inline copies the world lane names; Clear calls them out of line) */
+    void ClearDynTex();
+    void FreePktBuf();
 
     unsigned char _0[0x18];
     void *m_chainp;                  // 0x18
@@ -135,6 +145,8 @@ public:
 class CTexManager {
 public:
     int doAddBuffer(const char *name, float start, float end);
+    /* the packet buffer wiped (SwitchMenu's, SOCOM 1's) */
+    static void WipePktBuf();
 
     std::vector<CGSTexBuffer *> m_buffers;   // 0x0
 
@@ -162,6 +174,8 @@ struct _zsys_public {
     sceDmaChan *DmaToVif0;   // 0x0
     sceDmaChan *DmaToVif1;   // 0x4
     sceDmaChan *DmaToGif;    // 0x8
+    unsigned char _c[0x1d - 0xc];
+    unsigned char isCdBoot;   // 0x1d: a CD boot (SwitchMenu parks the head before a reboot)
 };
 extern _zsys_public zSys;
 
@@ -169,11 +183,20 @@ extern _zsys_public zSys;
  * come first and its vtable pointer follows them at 0x910). Only what is written so far is placed */
 /* a node of the world (znode.h's zdb::CNode, 0xC0 bytes: only what the menu calls -- its vtable
  * pointer at 0x60, slots as SOCOM II's table 0x4067B0 holds them) and a visual (znode.h's
- * zdb::CVisual; C2DVisual, a 2D object's visual, is 0x70 bytes as the menu news it) */
+ * zdb::CVisual: its vtable pointer at 0x20, the 2D visual it is through slot 0x1C; C2DVisual, a 2D
+ * object's visual, is 0x70 bytes as the menu news it, its 2D object at 0x68) */
+class C2DVisual;
 namespace zdb {
 class CVisual {
 public:
-    unsigned char _0[0x70];
+    unsigned char _0[0x20];
+    virtual ~CVisual();                              /* +0x08 */
+    virtual void Render(CMatrix *mtw);               /* +0x0C */
+    virtual void ComputeBBox(void *box);             /* +0x10 */
+    virtual void UpdateCentroid();                   /* +0x14 */
+    virtual bool Read(void *zar);                    /* +0x18 */
+    virtual C2DVisual *Get2DVisual() { return 0; }   /* +0x1C */
+    unsigned char _24[0x68 - 0x24];
 };
 
 class CNode {
@@ -181,7 +204,9 @@ public:
     CNode();
     static CNode *Create(const char *name);
     static CNode *CreateInstance(const char *name, const CPnt3D *pos, const CQuat *rot);
+    static void Delete(CNode *node);
     bool AddVisual(CVisual *visual);
+    CVisual *GetFirstVisual();
     void SetDynamicLight(bool on, bool children);
     void SetDescendantVisuals(bool on);
     void SetRotation(const CPnt3D *rot);
@@ -198,6 +223,10 @@ public:
     virtual void DeleteChildren();
     virtual CNode *FindChild(const char *name, bool deep);   /* +0x24 */
     virtual CNode *FindChild(CNode *node, bool deep);     /* +0x28 */
+    virtual CNode *FindChild(const char *name, int start, int *index, bool deep);
+    virtual bool IsCell();
+    virtual bool Read(void *io);
+    virtual bool SetActive(bool on);                      /* +0x38 */
     unsigned char _64[0x9c - 0x64];
     float m_Opacity;   // 0x9c
     unsigned char _a0[0xc0 - 0xa0];
@@ -213,15 +242,26 @@ public:
 class C2DVisual : public zdb::CVisual {
 public:
     C2DVisual(C2D *c2d, zdb::CTextureRelocMgr *mgr);
+
+    C2D *m_c2d;   // 0x68
+    zdb::CTextureRelocMgr *m_mgr;   // 0x6c
 };
 
 class CGameMenu {
 public:
+    /* the menu an rdr names switched to (SOCOM 1's SwitchMenu; SOCOM II's fades first, and goes to a
+     * game state for five names) */
+    void SwitchMenu(char *name);
     /* the background movie (SOCOM 1's TickMPEG/RestartBackgroundMPEG/HaltBackgroundMPEG, SOCOM II's
      * restart taking a name) */
     bool TickMPEG();
     bool RestartBackgroundMPEG(const char *name);
     bool HaltBackgroundMPEG();
+    /* the button a node names made the active one, and the previous or next one that takes input
+     * (SOCOM 1's; SOCOM II's Prev and Next take whether to play the selection sound) */
+    void MakeButtonActive(const char *name);
+    void MakePrevButtonActive(bool sound);
+    void MakeNextButtonActive(bool sound);
     /* the actions on an event run, each with the argument given or its own (SOCOM 1's; SOCOM II
      * looks the animation up twice) */
     bool RunEventAnim(ActionItem::EVENT event, const char *arg);
@@ -249,7 +289,7 @@ public:
     CPlainBmp m_bmpd0;            // 0xd0 (the names to m_font ours, by the constructor's calls)
     CPlainBmp m_fader;            // 0x170: black, 640 by 448, half opaque
     C2DFont m_font;               // 0x210: the menu's font (SOCOM 1's 0x30 bytes, SOCOM II's 0x64)
-    int m_274;                    // 0x274
+    zdb::CAssetLib *m_274;        // 0x274: a library the menu holds (Clear gives it back)
     bool m_movierunning;          // 0x278 (SOCOM 1's at 0x244)
     bool m_has_mpeg_background;   // 0x279
     bool m_loopMPEG;              // 0x27a: SOCOM II's (TickMPEG loops the movie when set; the name ours)
@@ -257,21 +297,23 @@ public:
     C2DButton m_buttons;          // 0x290: the menu's buttons, as children (MakeButtonActive walks them)
     int m_activeButton;           // 0x6d0
     C2D m_6d4;                    // 0x6d4
-    std::vector<C2D *> m_6ec;     // 0x6ec (reserved 32)
+    std::vector<zdb::CAssetLib *> m_libs;   // 0x6ec (reserved 32): the libraries the menu holds (Clear gives them back, last first)
     ActionItem m_commands[30];    // 0x6f8 (SOCOM 1's at 0x68c)
     int m_numCommands;            // 0x8d8
     zdb::CTextureRelocMgr *m_Reloc;   // 0x8dc
     CSaferStr m_ReaderName;     // 0x8e0: the menu's rdr
     std::vector<zdb::CNode *> m_modelNodes;   // 0x8ec: the design's models' nodes (PrepModels; SOCOM 1's at 0x878)
     bool m_8f8;                   // 0x8f8
-    int m_8fc;                    // 0x8fc (-1)
+    int m_fadeSteps;              // 0x8fc: -1, or the fade's steps left before SwitchMenu switches (the name ours)
     int m_900;                    // 0x900
     std::vector<CSaferStr> m_904; // 0x904
 
     virtual ~CGameMenu();
     virtual void MyTick(float dT);
     virtual const char *GetReaderFileName();
-    virtual void Slot14();
+    /* slot 0x14: whether the menu holds a soft keyboard (ours: Clear forgets the keyboards' display
+     * when it does) */
+    virtual bool Slot14();
     virtual void PrepControls(zdb::CTextureRelocMgr *mgr);
 };
 
@@ -322,25 +364,56 @@ public:
     void Activate(CZAnim *parent);
 };
 
+/* an animation set (zanim.h's CZAnimSet: only what Clear calls) */
+class CZAnimSet {
+public:
+    void Stop();
+    void Unload();
+};
+
 class CZAnimMain {
 public:
+    CZAnimSet *GetAnimSet(const char *name);
     CZAnim *GetAnim(const char *name, const char *set);
 };
 
 extern CZAnimMain ZAnim;
 
-/* a sound (zsnd.h's CSnd: only its lookup by name) */
+/* a sound (zsnd.h's CSnd: its lookup by name, and its table to the one-shot play at +0x1C) */
+class CSndInstance;
 class CSnd {
 public:
     static CSnd *GetSoundByName(const char *name);
+
+    virtual ~CSnd();
+    virtual CSndInstance *PlaySound(CSndInstance *inst, unsigned int flags);
+    virtual CSndInstance *PlaySoundVol(float vol, CSndInstance *inst, unsigned int flags);
+    virtual CSndInstance *PlaySound3D(const CPnt3D *pos, float vol, int pitch, CSndInstance *inst, unsigned int flags);
+    virtual CSndInstance *PlaySoundVolPanPitch(float vol, int pan, int pitch, CSndInstance *inst, unsigned int flags);
+    virtual CSndInstance *PlaySound(bool oneShot, CSndInstance *inst, unsigned int flags);
+};
+
+/* a game state, and the game's state switches (fts_state.h's CGameState and CGame: opaque here) */
+class CGameState;
+class CGame {
+public:
+    void Switch(CGameState *state, unsigned int flags);
+    void Pop(unsigned int flags);
 };
 
 /* the game, as far as the menus' sounds read it (fts_state.h's COurGame: the menu state at 0x78,
- * its teletype sound's name at 0x14 there) */
-class COurGame {
+ * its teletype sound's name at 0x14 there, its selection sound at 0x2C), and the states SwitchMenu
+ * goes to by name (the menu state, the load state at 0xEC and the shutdown state at 0x298; ours) */
+class COurGame : public CGame {
 public:
+    CGameState *MenuState() { return (CGameState *)((char *)this + 0x78); }
+    CGameState *LoadState() { return (CGameState *)((char *)this + 0xec); }
+    CGameState *ShutdownState() { return (CGameState *)((char *)this + 0x298); }
+
     unsigned char _0[0x8c];
     CSaferStr m_ttySoundString;   // 0x8c: m_menuState.TtySoundString
+    unsigned char _98[0xa4 - 0x98];
+    CSnd *m_selectionSound;       // 0xa4: m_menuState.SelectionSound
 };
 extern COurGame theGame;
 
@@ -530,7 +603,7 @@ extern unsigned char g_hasAnims;
  * strings and vectors, the backplane and foreplane under its node (the foreplane 1 nearer than the
  * video's 0x60), registered, the fader black and half opaque (SOCOM 1's) */
 CGameMenu::CGameMenu() : m_popupnode(0), m_274(0), m_movierunning(false), m_has_mpeg_background(false),
-                         m_8f8(false), m_8fc(-1), m_900(0)
+                         m_8f8(false), m_fadeSteps(-1), m_900(0)
 {
     data_0049EA90 = this;
     m_MPEGName.reserve(64);
@@ -549,7 +622,7 @@ CGameMenu::CGameMenu() : m_popupnode(0), m_274(0), m_movierunning(false), m_has_
     m_activeButton = 0;
     g_hasAnims = 0;
     m_modelNodes.reserve(64);
-    m_6ec.reserve(32);
+    m_libs.reserve(32);
 }
 
 /* the menu emptied and unregistered, no menu being built, the CRTC flag set (SOCOM 1's) */
@@ -590,6 +663,111 @@ C2D *CGameMenu::Add2dNode(CDesignDlgObj *obj)
 const char *CGameMenu::GetReaderFileName()
 {
     return m_ReaderName.c_str();
+}
+
+/* the menus' pop-up stack (zanim_menu.h's CMenuStack: only the pop-up's clean-up), the keyboards'
+ * display forgotten (zui_skb.cpp's) and the current menu's bitmap (0x49EA98: zui_skbview.cpp's
+ * 0x36A210 sets its float at 0x9C; ours) */
+class CMenuStack {
+public:
+    void CleanPopup();
+};
+CMenuStack *GetMenuStack();
+void InvalidateSkbsDisplay();
+extern void *data_0049EA98;
+
+/* a child taken off a 2D object's list (ours: Clear erases through it, the erase's temporaries a
+ * level deeper than the walk's) */
+static inline std::list<C2D *>::iterator EraseChild(std::list<C2D *> &l, std::list<C2D *>::iterator i)
+{
+    return l.erase(i);
+}
+
+/* the menu emptied: the pop-up off, the backplane and foreplane made again, the menu's GS buffer,
+ * font and libraries freed, its animations unloaded, its buttons and its 2D objects deleted, the
+ * first ten actions' strings freed, the movie ended, the models deleted, the scheduler and the UI
+ * variables collected (0x369210: SOCOM 1's Clear, its font and buffer vectors' swaps SOCOM II's
+ * Unload and the buffer's frees; the animations and the keyboard test SOCOM II's) */
+void CGameMenu::Clear()
+{
+    m_900 = 0;
+    if (m_popupnode) {
+        m_popupnode->SetActive(false);
+        m_popupnode = 0;
+    }
+    GetMenuStack()->CleanPopup();
+    m_nodeTop.DeleteChild(m_pBackplaneNode);
+    delete m_pBackplaneNode;
+    m_pBackplaneNode = 0;
+    m_nodeTop.DeleteChild(m_pForeplaneNode);
+    data_0049EA98 = 0;
+    if (Slot14())
+        InvalidateSkbsDisplay();
+    delete m_pForeplaneNode;
+    m_pForeplaneNode = 0;
+    m_pBackplaneNode = zdb::CNode::Create("CGameMenu backplane");
+    m_pForeplaneNode = zdb::CNode::Create("CGameMenu foreplane");
+    m_nodeTop.AddChild(m_pBackplaneNode);
+    m_nodeTop.AddChild(m_pForeplaneNode);
+    m_pForeplaneNode->SetPosition(0.0f, 0.0f, zVid.m_60 - 1.0f);
+    zdb::CGSTexBuffer *buf = zdb::CTexManager::m_texmanager.m_buffers[0];
+
+    buf->ClearDynTex();
+    buf->m_dyntex_list.Free();
+    buf->FreePktBuf();
+    m_font.Unload();
+    if (m_274)
+        zdb::CAssetMgr::ReleaseLibRef(m_274);
+    m_274 = 0;
+    for (int k = m_libs.size() - 1; k >= 0; k--)
+        zdb::CAssetMgr::ReleaseLibRef(m_libs[k]);
+    m_libs.clear();
+    if (g_hasAnims) {
+        g_hasAnims = 0;
+        for (std::vector<CSaferStr>::iterator a = m_904.begin(); a != m_904.end(); ++a) {
+            CZAnimSet *set = ZAnim.GetAnimSet((*a).c_str());
+
+            if (set) {
+                set->Stop();
+                set->Unload();
+            }
+        }
+        m_904.clear();
+    }
+    std::list<C2D *>::iterator i, next;
+
+    for (i = m_buttons.begin(); i != m_buttons.end(); i = next) {
+        C2D *c = *i;
+
+        next = EraseChild(m_buttons, i);
+        delete c;
+    }
+    for (i = m_6d4.begin(); i != m_6d4.end(); i = next) {
+        C2D *c = *i;
+
+        next = EraseChild(m_6d4, i);
+        delete c;
+    }
+    for (int j = 0; j < 10; j++) {
+        if (m_commands[j].Animation)
+            _free(m_commands[j].Animation, 0, 0);
+        m_commands[j].Animation = 0;
+        if (m_commands[j].Argument)
+            _free(m_commands[j].Argument, 0, 0);
+        m_commands[j].Argument = 0;
+    }
+    m_numCommands = 0;
+    m_activeButton = 0;
+    if (m_has_mpeg_background && m_movierunning)
+        CMPEG::End();
+    m_movierunning = false;
+    for (int n = 0; n < m_modelNodes.size(); n++)
+        zdb::CNode::Delete(m_modelNodes[n]);
+    m_modelNodes.clear();
+    s_countSound = 0;
+    zUIScheduler.ClearFreeList(true);
+    theUIVarManager.CollectGarbage();
+    m_has_mpeg_background = false;
 }
 
 /* the menu emptied, set up over the relocator given (else the batch relocator) and its own rdr's
@@ -646,6 +824,227 @@ void CGameMenu::LoadDesign(const char *name, CZAnimZAR *zar)
         return;
     m_ReaderName = name;
     LoadFromDesign(design, zar);
+}
+
+/* the next button that takes input made the active one, the selection sound played when the active
+ * one changed and a sound is asked for (0x3670D0: SOCOM 1's MakeNextButtonActive, by its place
+ * after MakePrevButtonActive and its code; SOCOM II's takes the sound flag, the recursion passing
+ * false and playing the sound itself; SOCOM 1's divides signed too). The three Make*s' shapes, by
+ * MW's colouring (tools/igreplay.py): ONE iterator walks every time -- initialised from begin(),
+ * then assigned, which keeps it in memory, so even the first walk steps through its slot (its
+ * unrolled copies each through a slot of their own) -- the end taken into a local first, one
+ * counter for both walks (the second walk's range renumbered late: v0/v1/a0 as the target), and
+ * the index saved AFTER the first walk: a copy of that walk's hoisted bound, numbered among the
+ * loop optimiser's temporaries after the end's (declared ahead of the walk, old and the end trade
+ * s1/s2). A plain `return;` after the search makes its empty test jump to that return's `b`
+ * instead of the epilogue: the else-if */
+void CGameMenu::MakeNextButtonActive(bool sound)
+{
+    if (m_buttons.size() == 0)
+        return;
+
+    std::list<C2D *>::iterator e = m_buttons.end();
+    std::list<C2D *>::iterator i = m_buttons.begin();
+    int n;
+
+    for (n = 0; n < m_activeButton; n++)
+        ++i;
+
+    int old = m_activeButton;
+
+    (*i)->SetNormal();
+    m_activeButton++;
+    m_activeButton %= (int)m_buttons.size();
+
+    i = m_buttons.begin();
+    for (n = 0; n < m_activeButton; n++)
+        ++i;
+
+    C2D *button = *i;
+
+    if (!button->CanHandleInput()) {
+        for (i = m_buttons.begin(); i != e; ++i) {
+            if ((*i)->CanHandleInput()) {
+                MakeNextButtonActive(false);
+                if (m_activeButton != old && sound) {
+                    CSnd *snd = theGame.m_selectionSound;
+
+                    if (snd)
+                        snd->PlaySound(true, 0, 255);
+                }
+                return;
+            }
+        }
+    } else if (m_activeButton != old) {
+        button->SetActive();
+        if (sound) {
+            CSnd *snd = theGame.m_selectionSound;
+
+            if (snd)
+                snd->PlaySound(true, 0, 255);
+        }
+    }
+}
+
+/* the previous button that takes input made the active one (0x366D70: SOCOM 1's
+ * MakePrevButtonActive, by its place and its code; the sound flag SOCOM II's, as Next's) */
+void CGameMenu::MakePrevButtonActive(bool sound)
+{
+    if (m_buttons.size() == 0)
+        return;
+
+    std::list<C2D *>::iterator e = m_buttons.end();
+    std::list<C2D *>::iterator i = m_buttons.begin();
+    int n;
+
+    for (n = 0; n < m_activeButton; n++)
+        ++i;
+
+    int old = m_activeButton;
+
+    (*i)->SetNormal();
+    m_activeButton--;
+    if (m_activeButton < 0)
+        m_activeButton = m_buttons.size() - 1;
+
+    i = m_buttons.begin();
+    for (n = 0; n < m_activeButton; n++)
+        ++i;
+
+    C2D *button = *i;
+
+    if (!button->CanHandleInput()) {
+        for (i = m_buttons.begin(); i != e; ++i) {
+            if ((*i)->CanHandleInput()) {
+                MakePrevButtonActive(false);
+                if (m_activeButton != old && sound) {
+                    CSnd *snd = theGame.m_selectionSound;
+
+                    if (snd)
+                        snd->PlaySound(true, 0, 255);
+                }
+                return;
+            }
+        }
+    } else if (m_activeButton != old) {
+        button->SetActive();
+        if (sound) {
+            CSnd *snd = theGame.m_selectionSound;
+
+            if (snd)
+                snd->PlaySound(true, 0, 255);
+        }
+    }
+}
+
+/* the button the named node draws made the active one, the active one set back to normal first and
+ * the selection sound played, and its place in the menu's buttons kept (0x366B60: SOCOM 1's
+ * MakeButtonActive, by its place after HaltBackgroundMPEG and its code) */
+void CGameMenu::MakeButtonActive(const char *name)
+{
+    if (m_buttons.size() == 0)
+        return;
+
+    std::list<C2D *>::iterator i = m_buttons.begin();
+
+    for (int n = 0; n < m_activeButton; n++)
+        ++i;
+    (*i)->SetNormal();
+
+    C2D *button;
+    std::list<C2D *>::iterator e = m_buttons.end();
+    zdb::CNode *node = m_nodeTop.FindChild(name, true);
+
+    if (node) {
+        zdb::CVisual *visual = node->GetFirstVisual();
+
+        if (visual) {
+            C2DVisual *v2d = visual->Get2DVisual();
+
+            if (v2d)
+                button = v2d->m_c2d;
+        }
+        button->SetActive();
+
+        CSnd *snd = theGame.m_selectionSound;
+
+        if (snd)
+            snd->PlaySound(true, 0, 255);
+    }
+
+    int n = 0;
+
+    for (i = m_buttons.begin(); i != e; ++i, n++) {
+        if (*i == button) {
+            m_activeButton = n;
+            return;
+        }
+    }
+}
+
+/* the CD's head parked (util_sonyio.cpp's 0x39DFC0: the lowest file sector read, ours) */
+extern "C" void func_0039DFC0();
+void RebootAfterError();
+void Unload_MissionReader();
+/* the menu an rdr names switched to, or the game state a name stands for (0x365A00: SOCOM 1's
+ * SwitchMenu -- the menu cleared, the packet buffer wiped, the mission reader unloaded, the fader
+ * set black and the design loaded inside one batch; SOCOM II's fades first: the first call keeps
+ * the name and starts three steps, each later one steps while the fader is opaque, the last
+ * switches -- to the load screen, the menu state (popped first, or not), shutdown, a reboot, or the
+ * menu) */
+void CGameMenu::SwitchMenu(char *name)
+{
+    if (m_fadeSteps <= -1) {
+        if (!strcmp(name, "REBOOT") && zSys.isCdBoot)
+            func_0039DFC0();
+        m_fadeSteps = 3;
+        m_ReaderName = name;
+        return;
+    }
+    if (m_fadeSteps > 0) {
+        if (m_fader.GetTrans() == 128.0f || !strcmp(name, "REBOOT")) {
+            m_pBackplaneNode->SetActive(false);
+            m_fadeSteps--;
+        }
+        return;
+    }
+    m_pBackplaneNode->SetActive(true);
+    m_fadeSteps = -1;
+    if (!strcmp(name, "LOAD_SCREEN")) {
+        theGame.Switch(theGame.LoadState(), 0);
+        return;
+    }
+    if (!strcmp(name, "POP_TO_MENU_STATE")) {
+        theGame.Pop(0);
+        theGame.Switch(theGame.MenuState(), 0);
+        return;
+    }
+    if (!strcmp(name, "MENU_SCREEN")) {
+        theGame.Switch(theGame.MenuState(), 0);
+        return;
+    }
+    if (!strcmp(name, "SHUTDOWN")) {
+        theGame.Switch(theGame.ShutdownState(), 0);
+        return;
+    }
+    if (!strcmp(name, "REBOOT")) {
+        RebootAfterError();
+        return;
+    }
+    Clear();
+    zdb::CTexManager::WipePktBuf();
+    Unload_MissionReader();
+    if (name && strstr(name, "dlgHype"))
+        printf("");
+    if (name && strstr(name, "dlgNetLogin"))
+        printf("");
+    m_fader.SetHasTexture(false);
+    m_fader.Load(0.0f, 0.0f, 640.0f, 448.0f, 0);
+    m_fader.SetColor(0.0f, 0.0f, 0.0f);
+    m_fader.SetTrans(128.0f);
+    m_Reloc->StartBatchReloc();
+    LoadDesign(name, m_zar);
+    m_Reloc->EndBatchReloc();
 }
 
 /* the background movie stopped, if one runs (SOCOM 1's HaltBackgroundMPEG, 0x366B10) */

@@ -442,6 +442,8 @@ public:
 };   // 0x134 bytes
 
 /* a list box: an image with columns and items (SOCOM 1's CUIListBoxSpec; SOCOM II's 0x120 bytes) */
+class ListItem;
+struct ColumnData;
 class CUIListBoxSpec : public CImageSpec {
 public:
     CUIListBoxSpec(_zrdr *rdr);
@@ -449,7 +451,43 @@ public:
     C2D *CreateDisplayObj(C2DFont *font, zdb::CTextureRelocMgr *mgr) const;
     const char *GetType() { return "LISTBOX"; }
 
-    unsigned char _24[0x120 - 0x24];
+    /* the members by Copy's implicit copy (0x387CF0) and ~CUIListBoxSpec (0x389540) -- the words
+     * with lw/sw, the floats with lwc1/swc1, the bytes one by one, the strings' and vectors' copies
+     * called; the names zui_2d.cpp's (the HUD lane's view, by the box's fields LoadSpec sets) */
+    int m_lineHeight;   // 0x24
+    float m_scale;   // 0x28
+    int m_2c;   // 0x2c
+    int m_30;   // 0x30
+    bool m_hasFont;   // 0x34
+    bool m_followEnd;   // 0x35
+    bool m_noHighlight;   // 0x36
+    bool m_37;   // 0x37
+    CSaferStr m_font;   // 0x38
+    CSaferStr m_tex44;   // 0x44
+    CSaferStr m_tex50;   // 0x50
+    CSaferStr m_tex5c;   // 0x5c
+    CSaferStr m_tex68;   // 0x68
+    CSaferStr m_tex74;   // 0x74
+    CSaferStr m_tex80;   // 0x80
+    /* three rectangles, each two pairs (zui_2d.cpp's IRECTs): six IPNT2Ds, each copied as two words
+     * through the FPRs (a rectangle as a member of its own, IPNT2D[2], is copied four words at a
+     * time) */
+    IPNT2D m_rect8c, m_rect94;   // 0x8c
+    IPNT2D m_rect9c, m_recta4;   // 0x9c
+    IPNT2D m_rectac, m_rectb4;   // 0xac
+    std::vector<ColumnData *> m_columns;   // 0xbc
+    CPnt3D m_color;   // 0xc8
+    CPnt3D m_color13c;   // 0xd4
+    CPnt3D m_color148;   // 0xe0
+    std::vector<ListItem *> m_items;   // 0xec
+    std::vector<ActionItem> m_commands;   // 0xf8
+    float m_seqStart;   // 0x104
+    float m_seqLength;   // 0x108
+    float m_pulseMin;   // 0x10c
+    float m_pulseMax;   // 0x110
+    float m_pulseTime;   // 0x114
+    float m_118;   // 0x118
+    int m_11c;   // 0x11c
 };   // 0x120 bytes
 
 /* one object of a dialog's design: its spec, where it sits and under which parent (SOCOM 1's

@@ -2065,6 +2065,58 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the game states, round 42** (TickObjectives, LoadObjectiveCams, RefreshTeamValves, the anchor vector's
+  insert -- all four unwritten before):
+  - an inline whose index parameter has another type than the caller's counter (int against unsigned) stops MW sharing
+    the scaled offset with the caller's own `v[i]`: both builds' TickObjectives recompute `i*8` in the remove-and-swap
+    (CMission::TickObjectives 0x2A9F30, SOCOM 1's; its push_backs make the unit emit __vector_imp<SObjectiveCam_Anchor>::
+    insert 0x2AFC90, include/vector's class insert as it stands);
+  - an array walked through an accessor taking an unsigned index with an int counter keeps the sll / addu each pass,
+    indexed directly MW turns the walk into a stepped pointer; one counter reused across three loops gives all three the
+    same saved register, separate counters trade s1, s2 and s3 (CMission::RefreshTeamValves 0x2B23A0: SOCOM 1's plus the
+    network client's early return and the three team tests);
+  - in a nested list walk the target's colouring needed one object pointer declared first and uninitialised for both
+    loops, then `it` before `end`, then the bool flag -- `tools/igreplay.py` plus a permutation search over the walk's
+    nodes found the order before any source was written (CMission::LoadObjectiveCams 0x2A4D30: LoadMissionCams' shape
+    plus ISBONUS and the NAV_POINTS loop); fts_patch.cpp's func_00539D00 calls DNAS.BIN's decompressor and stays a
+    placeholder (placeholders.py's KEEP list).
+- **Tells from the world, rdr and sound, round 22** (Particle::Instance::Tick, CSnd::LoadSounds, the sound list's hash
+  search with its four helpers):
+  - A RECURSIVE FUNCTION INLINES ITSELF ONCE: the inner copy calls the outer copy's inline helpers out of line -- the
+    four rows 0x344E90-0x344ED0 (HashLess, HashEqual, GetHash, the pointer vector's operator[]) are those copies of the
+    sound list's binary search by hash 0x344BF0; two-argument calls with no object rule out std::less / equal_to (they
+    would pass `this`);
+  - MW passes a by-value trivially-copyable class as the original's address and the callee copies it, a written copy
+    constructor makes the caller copy instead (the particles' CPnt4D: its copy now implicit, as Render's call to
+    CheckExtents shows; CheckExtents, Props::Branch and the copy constructor 0x328D60 stay byte-exact);
+  - a byte enum read through an inline getter in each test of an if / else-if chain gives one lb + andi 0xff, read into
+    a local or switched on it folds to one lbu (Particle::Instance::Tick 0x3282B0); `if (f)` on a float gives `c.eq.s f,
+    zero`, `f != 0.0f` puts the zero first; dead first definitions at the top (`float age = 0.0f, scale = 0.0f, ...;`)
+    number those floats ahead of one defined earlier in the code, which fixes the saved float registers;
+  - an inline asm statement's operands are evaluated in operand order, through an inline function's parameters MW picks
+    its own; a loop over `Count()` with a signed test and the item offset recomputed each pass is `for (unsigned i = 0;
+    (int)i < (int)Count(); i++)` -- an int counter strength-reduces the offset (+2): SOCOM 1 compares signed too, so the
+    original Count() may return int (CSnd::LoadSounds 0x344090; its statics' SOCOM 1 names queued as data rows).
+- **Tells from the UI, round 27** (CGameMenu's button walks, SwitchMenu and Clear, ~CSoftKeyboard, CUIListBoxSpec::Copy,
+  ReadCapLook, CLocTable::Read):
+  - a list iterator assigned again later stays in memory even for its first, initialised walk -- each unrolled `++`
+    steps through a slot of its own (CGameMenu::MakeButtonActive 0x366B60, MakePrevButtonActive / MakeNextButtonActive,
+    named by SOCOM 1's order); an index saved after a walk bounded by the same member is numbered among the loop
+    optimiser's temporaries, after the end's -- declared before the walk, it and the end swap s1 / s2; one counter reused
+    for two walks renumbers the second walk's range late;
+  - a plain `return;` after a search loop sends its empty test to that return's `b`, an else-if jumps straight to the
+    epilogue; `x <= -1` gives `slti at,x,0`, `x < 0` a bgez; `id > max ? id : max` keeps `slt at,max,zero` when id is the
+    constant 0, `max < id` folds to bgez and the if-form pads the join;
+  - a member array wrapped in a class of its own gets a this-test before `__destroy_arr` in an inlined implicit
+    destructor (~CSoftKeyboard 0x38CCA0, open since round 26); assigning a struct whose members are class types
+    (CInit<int,0>) copies each word through $f0, plain ints with lw / sw; six IPNT2D members copy two words at a time, an
+    `IPNT2D[2]` member four; an erase called through an inline helper puts its temporaries below the walk's own; a lerp
+    written as an inline keeps `0 - x` as a sub.s from a zero register;
+  - defining a class's key function (CUIListBoxSpec::Copy 0x387CF0) makes the unit emit its vtable, its inline virtuals
+    and the member copies its implicit copy constructor calls -- zui_cleanup.cpp now emits ~CUIListBoxSpec, GetType,
+    CPnt3D's copy constructor (no unit emitted it at level 5 before) and the two pointer-vector copy constructors
+    (0x387F60 / 0x387FB0, named); CLocTable::Read 0x3A3BE0 (open since round 8); CGameMenu::Tick 0x3654C0, HandlePad
+    0x368650 and CFileCD::BuildTOC 0x39DFD0 named by SOCOM 1's calls, unwritten.
 - **Tells from the HUD, round 54** (CReco::AdjustVolume, CFlareElement::Load, CMPInfoBox::Tick; the queued respells):
   - MW LAYS OUT THE FRAME TOP-DOWN AND ALIGNS A STACK OBJECT OF 8-15 BYTES TO 8, ONE OF 16 OR MORE TO 16: a slot the
     target "reserves and never touches" can be a smaller struct's alignment padding or the tail of an array read with a
