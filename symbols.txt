@@ -4871,7 +4871,7 @@
 0x002ED1E0 0x180 __selection_sort<Q33std62__vector_imp<P10LadderItem,Q23std24allocator<P10LadderItem>,1>8iterator,14compare_ladder>__3stdFQ33std62__vector_imp<P10LadderItem,Q23std24allocator<P10LadderItem>,1>8iteratorQ33std62__vector_imp<P10LadderItem,Q23std24allocator<P10LadderItem>,1>8iterator14compare_ladder_v  # OVL1; ours (the MSL headers round 6: include/algorithm's std::sort, SOCOM 1's MSL; __selection_sort of the ladder unit's player ladder (UpdateLadderBestDisplay and 0x2EB900; SOCOM 1's compare_ladder inlined); byte-exact as written, its shuffle static's relocations aside)
 0x002ED360 0x80 __dt__14ClanLadderListFv  # OVL1; ours, the online lane round 10 (the clan ladder lists' destructor: __sinit_zNetMediusLadder.cpp registers it for 0x44F820 and 0x44F850; byte-exact)
 0x002ED3E0 0x80 __dt__10LadderListFv  # OVL1; ours, the online lane round 10 (the player ladder lists' destructor, `DeleteAll();` then the pointer vector's: __sinit_zNetMediusLadder.cpp registers it for 0x44F7B0 and 0x44F7E0; byte-exact)
-0x002ED460 0x2DC func_002ED460  # OVL1
+0x002ED460 0x2DC RegisterStateHandlers__13CZOnlineLobbyFv  # OVL1; the online lane round 25 (CZOnlineLobby::Open 0x2DF8E0 calls it on itself where SOCOM 1's Open registered the handlers in place: for each state the old handler run with UNREGISTER (RunStateHandler 0x2DFE10), the slot of m_state_handler set, the new one run with REGISTER -- CONNECT_SUCCESS, CONNECT_ERROR, SESSION_BEGIN, ACCOUNT_REGISTRATION, REGISTRATION_FAILURE, ACCOUNT_LOGIN, LOGIN_FAILURE, LOBBY_ACTIVE, CREATE_NEW_GAME, CREATE_FAILURE, JOIN_GAME, LOBBY_SERVER_CONNECT, READY_TO_CONNECT, END_SESSION, JOIN_ROOM, CREATE_ROOM; the name ours; byte-exact)
 0x002ED740 0x108 CreateRoomStateHandler__F16LOBBY_STATE_FLAG  # OVL1; s1 by hand (registered for CREATE_ROOM, 20, by the lobby's state table 0x2ED460, as SOCOM 1's Open registers CreateRoomStateHandler: the room the menu names found in the room list 0x44F568 and handed to MediusCreateChannel 0x648840 with 0x2ED850, 'CreateRoom')
 0x002ED850 0x170 cbCreateRoom__FiiiP27MediusCreateChannelResponse  # OVL1; s1 by hand (CreateRoomStateHandler's MediusCreateChannel callback, as SOCOM 1's cbCreateRoom: reports 'CreateRoom', keeps LobbyWorldID and goes to JOIN_ROOM; a name taken, -974, looks the room up with MediusFindWorldByName and 0x2ED9C0)
 0x002ED9C0 0xA0 func_002ED9C0  # OVL1
@@ -4884,10 +4884,10 @@
 0x002EE3A0 0x1A0 cbJoinRoom__FiiiP25MediusJoinChannelResponse  # OVL1; s1 by hand (JoinRoomStateHandler's MediusJoinChannel callback, as SOCOM 1's cbJoinRoom: reports 'JoinRoom', keeps the room's lobby server 0x66A540 and goes to LOBBY_SERVER_CONNECT, else MP_MEDIUS_JOIN_ROOM_FAILURE)
 0x002EE540 0xCC LobbyActiveStateHandler__F16LOBBY_STATE_FLAG  # OVL1; s1 by hand (registered for LOBBY_ACTIVE, 11, by 0x2ED460: the player's info asked for on entry and every five minutes)
 0x002EE610 0x84 ConnectErrorStateHandler__F16LOBBY_STATE_FLAG  # OVL1; s1 by hand (registered for CONNECT_ERROR, 2, by 0x2ED460; SOCOM 1's was an empty stub, SOCOM II's closes the connection and reports MP_MEDIUS_ERROR)
-0x002EE6A0 0x8 func_002EE6A0  # OVL1
-0x002EE6B0 0x8 func_002EE6B0  # OVL1
-0x002EE6C0 0x8 func_002EE6C0  # OVL1
-0x002EE6D0 0x8 func_002EE6D0  # OVL1
+0x002EE6A0 0x8 CreateFailureStateHandler__F16LOBBY_STATE_FLAG  # OVL1; s1:order+table, the online lane round 25 (SOCOM 1's four empty handlers sit between ConnectErrorStateHandler and EndSessionStateHandler as these four 8-byte `jr ra` do; the state table 0x2ED460 stores this one in slot 14 (+0x38) where SOCOM 1's Open stores CreateFailureStateHandler 0x32C150; byte-exact)
+0x002EE6B0 0x8 ConnectSuccessStateHandler__F16LOBBY_STATE_FLAG  # OVL1; s1:order+table, the online lane round 25 (SOCOM 1's four empty handlers sit between ConnectErrorStateHandler and EndSessionStateHandler as these four do; the state table 0x2ED460 stores this one in slot 1 (+0x4) where SOCOM 1's Open stores ConnectSuccessStateHandler 0x32C160; byte-exact)
+0x002EE6C0 0x8 LoginFailureStateHandler__F16LOBBY_STATE_FLAG  # OVL1; s1:order+table, the online lane round 25 (SOCOM 1's four empty handlers sit between ConnectErrorStateHandler and EndSessionStateHandler as these four do; the state table 0x2ED460 stores this one in slot 10 (+0x28) where SOCOM 1's Open stores LoginFailureStateHandler 0x32C170; byte-exact)
+0x002EE6D0 0x8 RegistrationFailureStateHandler__F16LOBBY_STATE_FLAG  # OVL1; s1:order+table, the online lane round 25 (SOCOM 1's four empty handlers sit between ConnectErrorStateHandler and EndSessionStateHandler as these four do; the state table 0x2ED460 stores this one in slot 6 (+0x18) where SOCOM 1's Open stores RegistrationFailureStateHandler 0x32C180; byte-exact)
 0x002EE6E0 0xC4 EndSessionStateHandler__F16LOBBY_STATE_FLAG  # OVL1; s1 by hand (the lobby's state table 0x2ED460 registers it for END_SESSION, 18, where SOCOM 1's Open registers EndSessionStateHandler; MediusSessionEnd 0x647D88 with cbSessionEnd 0x2EE7B0, as SOCOM 1's)
 0x002EE7B0 0x80 func_002EE7B0  # OVL1
 0x002EE830 0xD4 SessionBeginStateHandler__F16LOBBY_STATE_FLAG  # OVL1; s1 by hand (registered for SESSION_BEGIN, 12, by 0x2ED460; MediusSessionBegin 0x647CE8 then MediusVersionServer 0x647548, as SOCOM 1's SessionBeginStateHandler)
@@ -5303,10 +5303,10 @@
 0x0030CDF0 0x88 zNetRemoteObjectUpdateCallback__9CZNetworkFiii  # OVL1; s1 by hand (SOCOM 1's zNetRemoteObjectUpdateCallback, the first function of zNetDme.cpp in both builds: NetGetObject, the type's update callback from the list at +0x1114, the field-update flag at +0x10B set; zNetRegisterRemoteObjectCallback registers it with the DME as SOCOM 1's does)
 0x0030CE80 0x6C zNetRegisterRemoteObjectCallback__9CZNetworkFiPFii_vPFiii_vPFiii_vPFii_v  # OVL1; s1:calls (every zNetRegister* calls it last with the index and four callbacks, as SOCOM 1's; the same 0x6C) -- the states lane
 0x0030CEF0 0x100 zNetSendApplicationMessage__9CZNetworkFciiiiPUcb  # OVL1; s1:calls by hand (the states lane: every network sender calls it at SOCOM 1's call site, 39 of them, with the same register handling and calls; zNetDme.cpp's)
-0x0030CFF0 0xC func_0030CFF0  # OVL1
+0x0030CFF0 0xC zNetRegisterMessage__9CZNetworkFPUiPFiiiPv_iPCc  # OVL1; the online lane, round 25: CZNetwork's (fts_remote.cpp's message registrations call it as (&theNetwork, &type, handler, name) after describing each type's fields, the radio's 0x310210 twice; it passes type and handler to the DME's 0x6210D0 and drops the name: 'move a0,a1; j; move a1,a2'), zNetDme.cpp's between zNetSendApplicationMessage and SOCOM 1's zNetLeaveAndDisconnect 0x30D020; the name ours, after zNetRegisterRemoteObjectCallback
 0x0030D000 0x8 func_0030D000  # OVL1
 0x0030D010 0x8 func_0030D010  # OVL1
-0x0030D020 0x40 func_0030D020  # OVL1
+0x0030D020 0x40 zNetLeaveAndDisconnect__9CZNetworkFv  # OVL1; s1:order+calls, the online lane round 25 (SOCOM 1's zNetLeaveAndDisconnect 0x321550 sits between zNetSendApplicationMessage and zNetJoin, as this does; the DME's leave 0x623868 (SOCOM 1's NetLeave) and NetDisconnect on m_GameConnectionIndex, m_bJoined / m_bConnected / m_bSessionMaster cleared as SOCOM 1's at its offsets less 8; SOCOM II drops the leave's success test and two word resets; byte-exact)
 0x0030D060 0xA8 zNetJoin__9CZNetworkFPFii_vPFii_v  # OVL1; s1 by hand (SOCOM 1's zNetJoin, two client callbacks: here kept at +0x110C/+0x1110 and the game connection's session joined through a parameter block -- NetSetDefaultJoinParams 0x621DB8, NetJoin 0x621E50 -- m_bJoined set on success, the answer returned)
 0x0030D110 0xA0 zNetClientCallback__FP18NetClientEventInfo  # OVL1; ours (zNetJoin's client-event callback: the lobby's own connection skipped, event 0 to the join callback at +0x110C, 1 to the leave one at +0x1110)
 0x0030D1B0 0x1C8 func_0030D1B0  # OVL1
@@ -5320,18 +5320,18 @@
 0x0030D620 0x8 func_0030D620  # OVL1
 0x0030D630 0x34 zNetGetObject__9CZNetworkFi  # OVL1; s1:calls (RemoteSealDeletionCallback, as SOCOM 1's) -- the states lane
 0x0030D670 0xF8 zNetCreateObject__9CZNetworkFPi18NetOwnershipStatus17NetObjectLifespanUiiUiiPvPci  # OVL1; s1:calls (CreateLocalGame/Grenade/Bomb pass SOCOM 1's ten arguments, the stack layout included) -- the states lane
-0x0030D770 0x58 func_0030D770  # OVL1
+0x0030D770 0x58 zNetClose__9CZNetworkFv  # OVL1; s1:order+calls, the online lane round 25 (SOCOM 1's zNetClose 0x321900 follows zNetCreateObject, as this does: m_bNetwork tested, NetClose called, m_bConnected cleared, as SOCOM 1's; SOCOM II also deletes the sub-heap 0x45B328, clears m_network_init and closes eznetctl (0x30C030); the chat unit's 0x2F3xxx and zanim_menu.cpp call it on theNetwork; byte-exact)
 0x0030D7D0 0x98 zNetPlayFixList__9CZNetworkFv  # OVL1; ours (zNetUpdate calls it when the fix list at +0x1254 is not empty: each entry played through zRemoteDelayedAction and freed, the list cleared -- SOCOM 1's zNetUpdate did this in place)
 0x0030D870 0x90 AddToFixList__9CZNetworkFPQ29CZNetwork18TypeRTimeFixStruct  # OVL1; s1 by hand (SOCOM 1's AddToFixList: a 28-byte copy new'd and pushed onto the fix list, the list at +0x1254)
 0x0030D900 0xB0 zNetFlushMessages__9CZNetworkFv  # OVL1; ours (zNetUpdate calls it when the message list at +0x1248 is not empty: each queued message sent through NetSendApplicationMessage 0x621458 and freed, the list cleared -- SOCOM 1's zNetUpdate did this in place)
-0x0030D9B0 0x48 func_0030D9B0  # OVL1
+0x0030D9B0 0x48 zNetTick__9CZNetworkFv  # OVL1; s1:calls+order, the online lane round 25 (SOCOM 1's NetTickThreadEntry 0x20B0D0 calls zNetTick 0x3219E0 at the site SOCOM II's 0x2CE930 calls this, and both sit just before zNetUpdate; SOCOM 1's a tail call to NetTick, SOCOM II's the DME tick 0x6237E0 with the lobby's error recovery and Tick after it, the answer returned; byte-exact)
 0x0030DA00 0x1B0 zNetUpdate__9CZNetworkFv  # OVL1; s1 by hand (SOCOM 1's zNetUpdate: game_main.cpp calls it at SOCOM 1's call site; the messages flushed, the Medius or DME update and the lobby's Tick, the delayed actions, the post-update callbacks over the 4096 field flags, NetGetLocalTime and NetGetTime into +0x104/+0x100)
 0x0030DBB0 0x130 zNetInitialize__9CZNetworkFv  # OVL1; s1:calls by hand, the online lane round 11 (SOCOM 1's zNetInitialize 0x321CA0: NetSetDefaultInitializeParams, NetInitialize, the network's init flag set when it answers no error, our address asked for into the object at 0xD0 (SOCOM 1's 0xAF), the 4096 object-field flags cleared, the error returned; SOCOM II's adds the DME state from DMEInit, a server-message callback 0x30DCE0 and the buffer sizes; UIDMEInit 0x276CF0 calls it on theNetwork)
 0x0030DCE0 0x148 func_0030DCE0  # OVL1
 0x0030DE30 0xAC zNetLookupHost__9CZNetworkFPCcPci  # OVL1; ours (the server list's connect 0x2FDF60 calls it on theNetwork: sceInetName2Address then sceInetAddress2String into the caller's buffer, 30 on failure)
 0x0030DEE0 0x37C zNetLoadIRX__9CZNetworkFv  # OVL1; s1:calls by hand, the online lane round 14 (SOCOM 1's zNetLoadIRX 0x321E20: the same sequence -- CSnd::WaitForCDRead and Close, the netcnf combo's start-up when m_bNetCnfRequired, zSysLoadIRX of the modules by MP_CONNECTION, memcpy/PS2FileName/strcpy/strlen for inetctl's arguments, RegisterRebootCallback with smap, sceSifMInitRpc and the libnet client, CSnd::UIOpen, the loaded flag returned; SOCOM II drops the early return when loaded and loads inet.irx and netcnf.irx with the icon arguments first; CSMInitNetwork::WaitForNetwork 0x27702C calls it on theNetwork)
 0x0030E260 0x2C func_0030E260  # OVL1
-0x0030E290 0x64 func_0030E290  # OVL1
+0x0030E290 0x64 zNetInit__9CZNetworkFv  # OVL1; s1:order+role, the online lane round 25 (SOCOM 1's zNetInit 0x322190 is zNetDme.cpp's last function, after zNetLoadIRX, as this is (0x30E260 between); SOCOM 1's reads the servers' hosts from an rdr and strcpy's the first into this+0x4F, this hard-codes 'socom2-prod.pdonline.scea.com' into this+0x47 -- the same field less SOCOM II's 8 bytes -- with port 10075, and the MUIS host with 10071, after routing the DME's memory through the sub-heap's wrappers 0x30E3C0 / 0x30E3B0; zanim_menu.cpp calls it on theNetwork; byte-exact)
 0x0030E300 0x34 func_0030E300  # OVL1
 0x0030E340 0x54 func_0030E340  # OVL1
 0x0030E3A0 0x8 func_0030E3A0  # OVL1
@@ -5363,7 +5363,7 @@
 0x0030FE40 0xAC func_0030FE40  # OVL1
 0x0030FEF0 0x188 func_0030FEF0  # OVL1
 0x00310080 0x190 func_00310080  # OVL1
-0x00310210 0xC4 func_00310210  # OVL1
+0x00310210 0xC4 zNetRegisterVoice__10CZNetVoiceFv  # OVL1; the online lane, round 25: the radio's two application message types ('Radio', three bytes; 'Channel Status', twelve halfwords) described and registered through CZNetwork::zNetRegisterMessage 0x30CFF0, state set idle; fts_remote.cpp's message registration calls it on the voice object data_0045B718 right after CZSealState::zNetRegisterSeal ... CZPlatformState::zNetRegisterPlatform, hence the zNetRegister* name (ours); the class SOCOM 1's zNetVoice.cpp's CZNetVoice (a prediction: SOCOM II's voice object is new, 0x10DC bytes, made by CMission::Init with constructor 0x3102E0)
 0x003102E0 0xE8 func_003102E0  # OVL1
 0x003103D0 0x3C func_003103D0  # OVL1
 0x00310410 0x68 func_00310410  # OVL1

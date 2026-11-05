@@ -22,6 +22,7 @@ int NetGetObject(NetObject **obj, int index);
 int func_00620F50(int index, NetCreateObjectCallback create, NetUpdateObjectCallback update,
                   NetDestroyObjectCallback destroy);   /* NetRegisterRemoteObjectCallback */
 int func_00621458(char type, int conn, int to, int msg, int size, unsigned char *data);   /* NetSendApplicationMessage */
+int func_006210D0(int *type, NetMessageCallback cb);   /* an application message type registered */
 int func_00622CC0(int *count, int conn);   /* the connection's object count */
 int func_006220F0(int *index, NetOwnershipStatus own, NetObjectLifespan life, unsigned int a, int b,
                   unsigned int c, int d, void *data, char *name, int e);   /* NetCreateObject */
@@ -202,6 +203,25 @@ int CZNetwork::zNetInitialize()
     return r.m_err;
 }
 
+extern "C" {
+void func_006216B8(void *(*alloc)(unsigned int), void (*free)(void *));   /* (the DME's memory callbacks set) */
+void *func_0030E3C0(unsigned int size);   /* (the DME's allocations from the sub-heap, 0x45B328) */
+void func_0030E3B0(void *p);   /* (and its frees) */
+}
+
+/* the DME's memory routed through the sub-heap, then the lobby server's and the universe
+ * information server's hosts and ports set (SOCOM 1's zNetInit, the last function of zNetDme.cpp in
+ * both builds -- after zNetLoadIRX; SOCOM 1's read the hosts from an rdr into the same first field,
+ * 8 bytes later; OVL1 0x30E290: the menu's network start-up calls it on theNetwork) */
+void CZNetwork::zNetInit()
+{
+    func_006216B8(func_0030E3C0, func_0030E3B0);
+    strcpy(m_lobby_server, "socom2-prod.pdonline.scea.com");
+    m_lobby_port = 10075;
+    strcpy(m_muis_server, "socom2-prod.muis.pdonline.scea.com");
+    m_muis_port = 10071;
+}
+
 /* --- the IOP's network modules (SOCOM 1's zNetLoadIRX) ------------------------------------- */
 
 class CSnd {
@@ -372,6 +392,21 @@ int CZNetwork::zNetUpdate()
     return err;
 }
 
+extern "C" int func_006237E0();   /* (the DME's tick: SOCOM 1's NetTick) */
+
+/* the DME ticked, an error handed to the lobby's recovery, then the lobby's own tick; the DME's
+ * answer returned (SOCOM 1's zNetTick, a tail call to NetTick: NetTickThreadEntry calls it at the
+ * same site in both builds, and it sits just before zNetUpdate in both; OVL1 0x30D9B0) */
+int CZNetwork::zNetTick()
+{
+    int err = func_006237E0();
+
+    if (err)
+        theLobby.RecoverFromNetError(err);
+    theLobby.Tick();
+    return err;
+}
+
 /* the queued application messages sent and freed, the queue emptied (SOCOM 1's zNetUpdate did it
  * in place; OVL1 0x30D900, the name ours). The end into a local, then clear(): include/list's
  * begin() reads the first node through a reference to the sentinel, so &end_.next_ is computed
@@ -417,6 +452,34 @@ void CZNetwork::zNetPlayFixList()
     m_fix_list.clear();
 }
 #pragma auto_inline reset
+
+/* the DME's sub-heap (zsys_heap.cpp's class; the instance at 0x45B328, made by the network's start-up
+ * and wrapped at 0x30E300-0x30E3C8) */
+class CHeap {
+public:
+    ~CHeap();
+};
+extern "C" {
+extern CHeap *data_0045B328;
+bool func_0030C030();   /* (zNetCnf.cpp's: eznetctl closed) */
+}
+
+/* the network closed: when it is up, the DME closed, its sub-heap deleted, and eznetctl closed
+ * (SOCOM 1's zNetClose -- NetClose and the connected flag cleared, here the heap and the network
+ * configuration too -- where SOCOM 1 has it, after zNetCreateObject; OVL1 0x30D770: the chat unit's
+ * and zanim_menu.cpp's 0x30D770 calls on theNetwork). The flag stores ahead of the last call, the
+ * connected one in its delay slot */
+void CZNetwork::zNetClose()
+{
+    if (m_bNetwork) {
+        NetClose();
+        delete data_0045B328;
+        data_0045B328 = 0;
+        m_network_init = 0;
+        m_bConnected = 0;
+        func_0030C030();
+    }
+}
 
 /* --- the connection to a game's server (SOCOM 1's zNetConnect, SOCOM II's newer DME) ---------- */
 
@@ -664,6 +727,21 @@ int CZNetwork::zNetJoin(NetCreateObjectCallback join, NetCreateObjectCallback le
     return err;
 }
 
+extern "C" int func_00623868(int conn);   /* (the DME: the session left -- SOCOM 1's NetLeave) */
+
+/* the game's session left and the game's server disconnected, the flags cleared (SOCOM 1's
+ * zNetLeaveAndDisconnect, between zNetSendApplicationMessage and zNetJoin in both builds; SOCOM 1's
+ * disconnected only when the leave succeeded and reset two more words; OVL1 0x30D020) */
+void CZNetwork::zNetLeaveAndDisconnect()
+{
+    func_00623868(m_GameConnectionIndex);
+    m_bJoined = 0;
+    NetDisconnect(m_GameConnectionIndex);
+    m_bConnected = 0;
+    m_bSessionMaster = 0;
+    m_monitor_ok = 0;
+}
+
 /* the connection's object count, -1 when it cannot be had (the name ours). The success arm first:
  * MW lays the count's load on the fall-through and retargets the branch past the -1, which goes
  * into its delay slot (`bnez v0,join; li v1,-1; lw v1,n`) -- `f() ? -1 : n` lays the -1 arm first
@@ -689,6 +767,15 @@ int CZNetwork::zNetCreateObject(int *index, NetOwnershipStatus own, NetObjectLif
     if (err)
         theLobby.RecoverFromNetError(333);
     return err;
+}
+
+/* an application message type registered with the DME: its id handed back through `type`, the
+ * handler kept; the name stays here (`move a0,a1; j; move a1,a2` -- SOCOM II's, called as
+ * fts_remote.cpp's and the radio's registrations' last step for each type, the way
+ * zNetRegisterRemoteObjectCallback closes an object type's; the name ours; OVL1 0x30CFF0) */
+int CZNetwork::zNetRegisterMessage(unsigned int *type, NetMessageCallback handler, const char *name)
+{
+    return func_006210D0((int *)type, handler);
 }
 
 /* an application message sent now, or queued for the next update: copied whole, the payload
@@ -763,7 +850,6 @@ struct LanInfoRequest {
 extern "C" {
 void func_00620BD8(void);   /* a message type's description begun */
 void func_00620C60(void *base, void *field, int size, int count);   /* a field described */
-void func_006210D0(int *type, int (*cb)(int, int, int, void *));   /* the type registered */
 int func_00621178(int flags, void *to, int a, int type, int size, void *data);   /* a message sent */
 int func_00622C28(int *client);   /* (the DME's: our client) */
 int NetGetClient(void **client, int conn, int index);   /* a client of the connection */

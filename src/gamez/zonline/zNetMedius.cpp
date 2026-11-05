@@ -231,7 +231,6 @@ extern GamePlayerStats data_0066A750;   /* our stats (zonline.h's: the side's tw
 extern int data_0066A838;   /* our performance figure, after them (0xE8; SOCOM 1's
                                UniversalGamePerformanceMetric) */
 extern NetConnectionInfo data_0066A540;   /* the lobby server (OVL2 bss) */
-void func_002ED460(CZOnlineLobby *lobby);   /* the state handlers registered (the chat unit's table) */
 MediusErrorCode MediusVersionClient(char *version);
 int MediusGetBuildTimeStamp(char *stamp);
 void func_0064A750(NetConnectionInfo *info, int type, const char *ip, int port, int flags);   /* (the info built for an address) */
@@ -275,7 +274,7 @@ bool CZOnlineLobby::Open(const char *host, int port)
         m_state_handler[i] = 0;
     while (!m_state_change_fifo.empty())
         m_state_change_fifo.pop();
-    func_002ED460(this);
+    RegisterStateHandlers();
     CreateUIResources();
     char ip[64];
     char server[64];
