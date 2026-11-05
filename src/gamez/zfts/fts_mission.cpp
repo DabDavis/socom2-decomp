@@ -2034,11 +2034,13 @@ public:
     static void NetTick(const CPnt3D *pos, float dT);   /* OVL2 0x5423E0 */
     static CPickup *Create(unsigned int owner, PU_TYPE type, zdb::CNode *node, void *data);   /* OVL2 0x542B90 */
 
+    /* a pickup's time when it never runs out: -1, read as a variable (OVL1 data 0x3F3440, in
+     * fts_ovl2statics.cpp's data among the SEALs' statics: SOCOM II's, the name ours -- Create,
+     * NetworkCreate and TickTimers read it too) */
+    static const float NO_TIMEOUT;
+
     float m_timer;   // 0x0
 };
-
-/* a pickup's time when it never runs out (-1; Create sets it so: pickup_main.cpp's) */
-extern "C" float data_003F3440;
 
 bool zrdr_findPNT3D(const _zrdr *rdr, const char *tag, PNT3D *out);
 
@@ -2126,7 +2128,7 @@ void ftsFixupAiMap(CAiMap *map)
                     zdb::CWorld::m_world->AddTextureAssetCharacter(zdb::CHARSETCOMMON, node);
                     CPickup *p = CPickup::Create(owner, CPickup::PU_WEAPON, node, w);
 
-                    p->m_timer = data_003F3440;
+                    p->m_timer = CPickup::NO_TIMEOUT;
                 }
             }
             if (!(pickup = zrdr_findtag(pickup, "AMMO")) || (int)pickup->Count() <= 0)
@@ -2160,7 +2162,7 @@ void ftsFixupAiMap(CAiMap *map)
             }
             CPickup *p = CPickup::Create(owner, CPickup::PU_AMMO, box, stash);
 
-            p->m_timer = data_003F3440;
+            p->m_timer = CPickup::NO_TIMEOUT;
         }
     }
     CAiMap::actions &actions = ActionTable(map);
