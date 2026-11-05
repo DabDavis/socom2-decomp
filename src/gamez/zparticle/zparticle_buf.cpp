@@ -30,23 +30,7 @@ extern CPipe thePipe;   // 0x4887C0
 
 namespace Particle {
 
-/* one particle as drawn (SOCOM 1's BufferElement, 0x20 bytes; no DWARF): its instance at 0x10,
- * its depth at 0x1C (the members' names ours) */
-class BufferElement {
-public:
-    /* nothing built (SOCOM 1's: the initialiser constructs the buffer through it, its out-of-line
-     * copy 0x326F40 the unit's last function) */
-    BufferElement() {}
-    void Draw(float (&m)[4][4]);
-    void DrawRotated(float (&m)[4][4]);
-    void DrawXZ(float (&m)[4][4]);
-    void DrawStreaked(float (&m)[4][4]);
-
-    unsigned char _0[0x10];   // 0x0
-    Instance *m_instance;   // 0x10
-    unsigned char _14[0x8];   // 0x14
-    float m_depth;   // 0x1c
-};   // 0x20 bytes
+/* one particle as drawn: zparticle.h's BufferElement */
 
 /* the frame's elements (SOCOM 1's buffer, 5000 of them: the unit's initialiser 0x402BB0 constructs
  * them in place, 0x45C4D0) */

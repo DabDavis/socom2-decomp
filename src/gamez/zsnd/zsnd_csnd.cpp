@@ -293,6 +293,32 @@ extern char data_0048DEB8[];
 /* a mission's sound groups loaded (SOCOM II's; CMission::Open calls it after the mission's sounds,
  * 0x344450; the name not known): a multiplayer map's ("mp...") the common and hostage groups, a
  * campaign mission's the common groups and its teams' by the mission's number */
+/* SOCOM II's: the sound list searched for a hash between two indices (the name not known) -- the
+ * index's sound when the range is one and its hash is the key, else the half that holds it, the
+ * middle through floor() of a double. Recursive: MW inlines it into itself once, the inner copy
+ * calling the list's [], the hash and the two compares out of line (0x344E90-0x344ED0) */
+extern "C" double floor(double x);
+
+/* the hashes' order and equality (SOCOM II's; out of line in the search's inner copy, 0x344E90 and
+ * 0x344EA0: two arguments, no object -- the names ours) */
+inline bool HashLess(const unsigned int &a, const unsigned int &b) { return a < b; }
+inline bool HashEqual(const unsigned int &a, const unsigned int &b) { return a == b; }
+
+extern "C" CSnd *func_00344BF0(const unsigned int *key, int lo, int hi)
+{
+    if (lo == hi) {
+        if (HashEqual(*key, *CSnd::m_soundlist[lo]->GetHash()))
+            return CSnd::m_soundlist[lo];
+        return 0;
+    }
+    int mid = (int)floor(lo + (hi - lo) / 2);
+    unsigned int *k = CSnd::m_soundlist[mid]->GetHash();
+
+    if (k && HashLess(*k, *key))
+        return func_00344BF0(key, mid + 1, hi);
+    return func_00344BF0(key, lo, mid);
+}
+
 extern "C" void func_00344910(const char *name)
 {
     bool mp = false;
@@ -447,6 +473,73 @@ void CopyUpper(const char *src, char *dst, int max)
     for (i = 0; i < n && i < max; i++)
         dst[i] = toupper(src[i]);
     dst[i] = 0;
+}
+
+extern _zrdr *data_0048DF20;            /* SOCOM 1's _sound_sets_rdr: the sounds file's SETS */
+extern _zrdr *data_0048DF28;            /* SOCOM 1's _sound_mission_rdr: the current mission's set */
+extern char data_003DFFF0[];            /* SOCOM 1's cur_mission_name (0x80, "None" at start) */
+extern int data_0048DB38;               /* SOCOM 1's m_curID__4CSnd */
+extern int data_0048DB40;               /* SOCOM 1's m_curbank__4CSnd */
+
+/* SOCOM 1's: a set of sounds made from the sounds file -- the bank loaded, the mission's set found
+ * under SETS (looked up again only for another mission, by its upper-cased name), the bank's own set
+ * under it unless it is the mission's, each record read into a new CSnd and added; the error sound
+ * looked up again. The bank's number returned, the count stepped on every way out. Byte-exact (the
+ * world lane round 22): the loop's test signed (slt, as SOCOM 1's) with the item's index unsigned and
+ * recomputed each pass -- an int counter against `(int)Count()` strength-reduces the item's offset
+ * into a register of its own (+2 instructions), an unsigned one compared as an int does not */
+int CSnd::LoadSounds(const char *name, const char *bank)
+{
+    if (m_isDisabled)
+        return 0;
+    LoadBank(bank);
+    data_0048DB38 = 0;
+    int id = data_0048DB40;
+
+    if (!data_0048DF18) {
+        data_0048DB40++;
+        return id;
+    }
+    if (!data_0048DF20) {
+        data_0048DF20 = zrdr_findtag(data_0048DF18, "SETS");
+        if (!data_0048DF20) {
+            data_0048DB40++;
+            return id;
+        }
+    }
+    char buf[128];
+
+    if (!data_0048DF28 || strcmp(name, data_003DFFF0)) {
+        strcpy(data_003DFFF0, name);
+        CopyUpper(name, buf, 127);
+        data_0048DF28 = zrdr_findtag(data_0048DF20, buf);
+        if (!data_0048DF28) {
+            if (!strcmp(name, bank)) {
+                data_0048DB40++;
+                return id;
+            }
+            data_0048DF28 = data_0048DF20;
+        }
+    }
+    _zrdr *set = data_0048DF28;
+
+    if (bank && strcmp(bank, name)) {
+        CopyUpper(bank, buf, 127);
+        set = zrdr_findtag(data_0048DF28, buf);
+        if (!set) {
+            data_0048DB40++;
+            return id;
+        }
+    }
+    for (unsigned int i = 0; (int)i < (int)set->Count(); i++) {
+        CSnd *sound = new CSnd;
+
+        sound->LoadCSnd(set->Item(i));
+        AddNewCSnd(sound);
+    }
+    data_0048DB40++;
+    m_errorsound = GetSoundByName("SND_NEG");
+    return id;
 }
 
 extern char data_004A1750[];            /* CFileIO's file-name suffix (SOCOM 1's m_file_version) */

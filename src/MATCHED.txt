@@ -3488,6 +3488,7 @@
 0x002A4920 TickInFirefight__8CMissionFf
 0x002A4A10 func_002A4A10
 0x002A4CA0 GetMissionCamByIdentifier__8CMissionFPCc
+0x002A4D30 LoadObjectiveCams__8CMissionFP8CRdrFile
 0x002A5290 LoadMissionCams__8CMissionFP8CRdrFile
 0x002A6950 func_002A6950
 0x002A6960 DecrementRoundClockSec__9CZNetGameFi
@@ -3523,6 +3524,7 @@
 0x002A9EE0 func_002A9EE0
 0x002A9EF0 DestroyNetGame__8CMissionFv
 0x002A9F00 CreateNetGame__8CMissionFv
+0x002A9F30 TickObjectives__8CMissionFf
 0x002AA490 Tick__8CMissionFf
 0x002AA890 func_002AA890
 0x002AA910 _OnMissionComplete__Fv
@@ -3584,6 +3586,7 @@
 0x002AFBC0 at__Q23std66__vector_imp<13SCamPathPoint,Q23std26allocator<13SCamPathPoint>,0>FUi
 0x002AFC40 _max<Uc>__2aiFRCUcRCUc_RCUc
 0x002AFC60 func_002AFC60
+0x002AFC90 insert__Q23std80__vector_imp<20SObjectiveCam_Anchor,Q23std33allocator<20SObjectiveCam_Anchor>,0>FP20SObjectiveCam_AnchorUiRC20SObjectiveCam_Anchor
 0x002B00E0 reserve__Q23std80__vector_imp<20SObjectiveCam_Anchor,Q23std33allocator<20SObjectiveCam_Anchor>,0>FUi
 0x002B0260 insert__Q23std62__vector_imp<11CLadderData,Q23std24allocator<11CLadderData>,0>FP11CLadderDataUiRC11CLadderData
 0x002B1030 reserve__Q23std66__vector_imp<13SCamPathPoint,Q23std26allocator<13SCamPathPoint>,0>FUi
@@ -3611,6 +3614,7 @@
 0x002B2190 Clear__9CSpawnersFv
 0x002B21D0 Tick__9CSpawnersFf
 0x002B2310 RecycleEntity__8CMissionFP7CEntity
+0x002B23A0 RefreshTeamValves__8CMissionFv
 0x002B2840 InitalizeTeamValves__8CMissionFv
 0x002B2D20 func_002B2D20
 0x002B2E50 LoadVehicles__8CMissionFv
@@ -5282,6 +5286,7 @@
 0x00328040 Render__8ParticleFv
 0x003280A0 RemoveDead__Q38Particle8Instance4ListFv
 0x00328170 Tick__Q38Particle8Instance4ListFf
+0x003282B0 Tick__Q28Particle8InstanceFf
 0x00328570 Uninit__Q38Particle8Instance4ListFv
 0x003285F0 __dt__Q38Particle8Instance4ListFv
 0x003286D0 GetOpacity__Q28Particle5PropsCFf
@@ -5703,15 +5708,17 @@
 0x003435B0 SetSubtitles__4CSndFb
 0x00343DD0 LoadBank__4CSndFPCc
 0x00343F90 AddNewCSnd__4CSndFP4CSnd
+0x00344090 LoadSounds__4CSndFPCcPCc
 0x003443C0 CopyUpper__FPCcPci
 0x00344450 func_00344450
 0x003448D0 func_003448D0
 0x003448E0 func_003448E0
 0x00344910 func_00344910
-0x00344E90 func_00344E90
-0x00344EA0 func_00344EA0
-0x00344EC0 func_00344EC0
-0x00344ED0 func_00344ED0
+0x00344BF0 func_00344BF0
+0x00344E90 HashLess__FRCUiRCUi
+0x00344EA0 HashEqual__FRCUiRCUi
+0x00344EC0 GetHash__4CSndFv
+0x00344ED0 __vc__Q23std48__vector_imp<P4CSnd,Q23std17allocator<P4CSnd>,1>FUi
 0x00344EE0 func_00344EE0
 0x00344F20 func_00344F20
 0x00344F30 GetSoundByName__4CSndFPCc

@@ -3791,7 +3791,7 @@
 0x002A4920 0xE8 TickInFirefight__8CMissionFf  # OVL1; s1:calls by hand (the states lane, round 40): SOCOM 1's CMission::Tick calls TickInFirefight__8CMissionFf (0x1F2B30) on this with dT right after Tick__9CSpawnersFf, as SOCOM II's Tick 0x2AA490 calls this; both take ftsGetPlayer and set the jukebox (SOCOM 1's IsInFight twice, SOCOM II's SetIntensity twice, the danger through 0x2A4A10); fts_mission.cpp, byte-exact
 0x002A4A10 0x288 func_002A4A10  # OVL1
 0x002A4CA0 0x84 GetMissionCamByIdentifier__8CMissionFPCc  # OVL1; s1:callee
-0x002A4D30 0x560 LoadObjectiveCams__8CMissionFP8CRdrFile  # OVL1; s1:calls by hand (the states lane, round 24): CMission::Open (0x2AC410, byte-exact) calls it on hudobjectives.rdr, then zrdr_free, where SOCOM 1's Open calls LoadObjectiveCams__8CMissionFP8CRdrFile (this in a0, the file in a1, as here)
+0x002A4D30 0x560 LoadObjectiveCams__8CMissionFP8CRdrFile  # OVL1; s1:calls by hand (the states lane, round 24): CMission::Open (0x2AC410, byte-exact) calls it on hudobjectives.rdr, then zrdr_free, where SOCOM 1's Open calls LoadObjectiveCams__8CMissionFP8CRdrFile (this in a0, the file in a1, as here); byte-exact in fts_mission.cpp since the states lane, round 42 (LoadMissionCams' shape, SOCOM II's ISBONUS and NAV_POINTS added)
 0x002A5290 0x248 LoadMissionCams__8CMissionFP8CRdrFile  # OVL1; s1:calls by hand (the states lane, round 24): CMission::Open calls it on missioncams.rdr where SOCOM 1's Open calls LoadMissionCams__8CMissionFP8CRdrFile, the same body -- the list's cameras deleted and erased, then MISSIONCAMS' seven strings per camera (IDENTIFIER .. ON_CALL_MUSIC), new CMissionCam, Set, push_back
 0x002A54E0 0xE5C UnSerialize__8CMissionFPCcP8CRdrFilei  # OVL1; s1:vtable by hand (the states lane, round 26): slot 4 of CMission's vtable 0x406290, CSaveModule's UnSerialize(const char *, CRdrFile *, int) overridden as SOCOM 1's CMission::UnSerialize 0x1F3460 does (slot 5, the CZAR overload, stays CSaveModule's 0x33D230)
 0x002A6340 0x610 Serialize__8CMissionFi  # OVL1; s1:vtable by hand (the states lane, round 26): slot 3 of CMission's vtable 0x406290 (after ~CMission), CSaveModule's Serialize(int) overridden as SOCOM 1's CMission::Serialize 0x1F3520 does
@@ -3832,7 +3832,7 @@
 0x002A9EE0 0x8 func_002A9EE0  # OVL1
 0x002A9EF0 0x8 DestroyNetGame__8CMissionFv  # OVL1; s1:ref by hand (the UI-commands lane's lead, vetted by the states lane: SOCOM 1's paired UI handler calls DestroyNetGame__8CMissionFv from the same place; SOCOM II's is SOCOM 1's 8 bytes, the online game at 0x1808 (fts_state.h's m_netGame) handed to 0x2A75F0 as a tail call)
 0x002A9F00 0x2C CreateNetGame__8CMissionFv  # OVL1; s1:align
-0x002A9F30 0x558 TickObjectives__8CMissionFf  # OVL1; s1:calls by hand (the HUD lane's lead, vetted by the states lane: SOCOM 1's CZObjectiveList::SelectPreviousObjective calls TickObjectives(theMission, 1000.0f) at each step as SOCOM II's 0x206BA0/0x206DB0/0x207570 call this with (0x4364E0, 1000.0f); SOCOM 1's CMission::Tick calls it as Tick__8CMissionFf (0x2AA490) calls this; the same head: the timer at +0x138 summed with dT, nothing below 1.0, then the current objective and IsAvailable)
+0x002A9F30 0x558 TickObjectives__8CMissionFf  # OVL1; s1:calls by hand (the HUD lane's lead, vetted by the states lane: SOCOM 1's CZObjectiveList::SelectPreviousObjective calls TickObjectives(theMission, 1000.0f) at each step as SOCOM II's 0x206BA0/0x206DB0/0x207570 call this with (0x4364E0, 1000.0f); SOCOM 1's CMission::Tick calls it as Tick__8CMissionFf (0x2AA490) calls this; the same head: the timer at +0x138 summed with dT, nothing below 1.0, then the current objective and IsAvailable); byte-exact in fts_mission.cpp since the states lane, round 42
 0x002AA490 0x3F8 Tick__8CMissionFf  # OVL1; s1:align
 0x002AA890 0x7C func_002AA890  # OVL1
 0x002AA910 0x1F0 _OnMissionComplete__Fv  # OVL1; s1:calls by hand (the states lane: FadeToEndMissionTick, byte-exact, calls it with no arguments exactly where SOCOM 1's calls _OnMissionComplete__Fv, between clearing m_DelayEndMission and the screen clear; its body opens differently -- the common anim set fetched first -- so the name is the call site's)
@@ -3897,7 +3897,7 @@
 0x002AFBC0 0x78 at__Q23std66__vector_imp<13SCamPathPoint,Q23std26allocator<13SCamPathPoint>,0>FUi  # OVL1; by hand (the states lane, round 16; the element's name ours): include/vector's at() for the camera path's 0x98-byte points ("vector::at index out of range"), out of line in fts_mission.cpp's tail for GetPoint (0x2AB260)
 0x002AFC40 0x18 _max<Uc>__2aiFRCUcRCUc_RCUc  # OVL1; by its body (ai::_max over unsigned char: lbu, lbu, slt, movn -- MW 3.0's mangling with the return type), the template tail before _min<f>'s OVL1 copy; no OVL2 copy named -- the states lane
 0x002AFC60 0x2C func_002AFC60  # OVL1; s1:align; OVL1's copy of ai::_min<float> (byte-identical to OVL2's 0x575C80, which carries the name; the states lane); ovl-copy: _min<f>__2aiFRCfRCf_RCf
-0x002AFC90 0x444 insert__Q23std80__vector_imp<20SObjectiveCam_Anchor,Q23std33allocator<20SObjectiveCam_Anchor>,0>FP20SObjectiveCam_AnchorUiRC20SObjectiveCam_Anchor  # OVL1; s1:align
+0x002AFC90 0x444 insert__Q23std80__vector_imp<20SObjectiveCam_Anchor,Q23std33allocator<20SObjectiveCam_Anchor>,0>FP20SObjectiveCam_AnchorUiRC20SObjectiveCam_Anchor  # OVL1; s1:align; the states lane, round 42: TickObjectives' three push_backs bring it (include/vector's class insert, as the cue vector's 0x1EED40) -- fts_mission.cpp emits it byte-exact
 0x002B00E0 0x180 reserve__Q23std80__vector_imp<20SObjectiveCam_Anchor,Q23std33allocator<20SObjectiveCam_Anchor>,0>FUi  # OVL1; s1:align
 0x002B0260 0x684 insert__Q23std62__vector_imp<11CLadderData,Q23std24allocator<11CLadderData>,0>FP11CLadderDataUiRC11CLadderData  # OVL1; s1:calls by hand (the states lane, round 23): CreateLadderTable's push_back calls it with (end, 1, the new CLadderData) where SOCOM 1's calls the same instance (the demo's 0x1FB300); fts_mission.cpp's template tail
 0x002B08F0 0x734 func_002B08F0  # OVL1
@@ -3926,7 +3926,7 @@
 0x002B2190 0x38 Clear__9CSpawnersFv  # OVL1; tu: node_world.cpp~ (1.0 beta); s1:exact
 0x002B21D0 0x13C Tick__9CSpawnersFf  # OVL1; s1:align
 0x002B2310 0x90 RecycleEntity__8CMissionFP7CEntity  # OVL1; s1:order by hand (the states lane: after CSpawners::Tick as in SOCOM 1; both restart the spawners' timer at 2.0, count one more spawn and call CEntity::RecycleEntity(e); SOCOM II's first stops a flagged entity's anims)
-0x002B23A0 0x4A0 RefreshTeamValves__8CMissionFv  # OVL1; s1:calls (called where SOCOM 1's calls CMission::RefreshTeamValves) -- the SEAL lane
+0x002B23A0 0x4A0 RefreshTeamValves__8CMissionFv  # OVL1; s1:calls (called where SOCOM 1's calls CMission::RefreshTeamValves) -- the SEAL lane; byte-exact in fts_player.cpp since the states lane, round 42
 0x002B2840 0x88 InitalizeTeamValves__8CMissionFv  # OVL1; s1:calls
 0x002B28D0 0x450 LoadVehicle__8CMissionFP16CVehicleRdrEntryb  # OVL1; s1:calls by hand (the states lane: CSpawners::Tick calls it on &theMission with the spawn's entry and false from the same instruction as SOCOM 1's calls LoadVehicle)
 0x002B2D20 0x124 func_002B2D20  # OVL1
@@ -6167,10 +6167,10 @@
 0x003448E0 0x2C func_003448E0  # OVL1
 0x00344910 0x2D4 func_00344910  # OVL1
 0x00344BF0 0x29C func_00344BF0  # OVL1
-0x00344E90 0x10 func_00344E90  # OVL1
-0x00344EA0 0x14 func_00344EA0  # OVL1
-0x00344EC0 0x8 func_00344EC0  # OVL1
-0x00344ED0 0x10 func_00344ED0  # OVL1
+0x00344E90 0x10 HashLess__FRCUiRCUi  # OVL1; the world lane round 22: ours: the hashes' order (a < b over two references), out of line -- the sound list's binary search 0x344BF0 calls it in its self-inlined copy where its outer copy inlines the sltu (zsnd_csnd.cpp)
+0x00344EA0 0x14 HashEqual__FRCUiRCUi  # OVL1; the world lane round 22: ours: the hashes' equality (two references), out of line -- the binary search's self-inlined copy tests the key against a sound's hash with it (zsnd_csnd.cpp)
+0x00344EC0 0x8 GetHash__4CSndFv  # OVL1; the world lane round 22: ours -- the address of a sound's hash (0x18), out of line in the binary search's self-inlined copy, inline in its outer copy (zsnd_csnd.cpp, zsnd.h)
+0x00344ED0 0x10 __vc__Q23std48__vector_imp<P4CSnd,Q23std17allocator<P4CSnd>,1>FUi  # OVL1; the world lane round 22: include/vector's [] of CSnd::m_soundlist (data_ at +8), out of line in the binary search's self-inlined copy (zsnd_csnd.cpp)
 0x00344EE0 0x3C func_00344EE0  # OVL1
 0x00344F20 0x8 func_00344F20  # OVL1
 0x00344F30 0x44 GetSoundByName__4CSndFPCc  # OVL1; s1:callee
@@ -7852,7 +7852,7 @@
 0x003B3800 0x14C AttachDecal__Q23zdb7CVisualFUifUiPPQ23zdb10AddonPointPQ23zdb10CTexHandlei  # OVL1; s1:align; the wep lane, round 25: SOCOM II's takes a sixth word (t1, kept in s8 and handed to the decal set-up 0x3BECA0 as its t0) -- the source's mangled name
 0x003B3950 0x160 ApplyDecalRender__Q23zdb7CVisualFP7CMatrixPQ23zdb5CNodefP6CPnt3DP6CPnt3DPQ23zdb10CTexHandleP7CMatrix  # OVL1; s1:calls
 0x003B3AB0 0x714 func_003B3AB0  # OVL1
-0x003B41D0 0x3A4 func_003B41D0  # OVL1
+0x003B41D0 0x3A4 VuBatchProgram_Decals__Q23zdb7CVisualFP8_word128  # OVL1; s1:order by hand (the weapons lane, round 29: SOCOM 1's VuBatchProgram_Decals 0x30C9C0 -- the same VU command tags in the same order: 82/102 or 70 by m_type, 6 for flag bit 3, then by 0x4B4EB0 the fog 16/18, lit 84/86, local-light 32/34, 24/26, 92/94 and closing 40 or 42+76 commands, 66 last; between the decal builder 0x3B3AB0 and VuUpdate as SOCOM 1's sits before VuUpdate; SOCOM II drops the object header SOCOM 1 took -- VuUpdate's two calls 0x3B503C/0x3B5174 pass only the visual and the packet and keep the result; vis_vu.cpp)
 0x003B4580 0xCC4 VuUpdate__Q23zdb7CVisualFv  # OVL1; s1:calls by hand (the wep lane: SOCOM 1's VuUpdate__Q23zdb7CVisualFf -- its only callers are CVisual::Render and CPipe::CAlpha::Render, as here; Kick, zSysSprGetPacket and Copy as its callees; SOCOM II's takes no argument: neither caller sets $f12 (SOCOM 1's Render passed 1.0f) and it reads only a0. Its map setups moved under 0x3B5F20/0x3B5B90, which call the light (0x3B54E0, m_lightMapList), shadow (0x3B5730, m_shadowMapList) and projected (0x3B58B0, m_projectedMapList) setups with the packet by address)
 0x003B5250 0x8 func_003B5250  # OVL1
 0x003B5260 0x10 func_003B5260  # OVL1
@@ -7869,7 +7869,7 @@
 0x003B5A10 0x20 func_003B5A10  # OVL1
 0x003B5A30 0x158 VuDetailMap__Q23zdb7CVisualFPP8_word128UiPQ23zdb17tag_DETAIL_PARAMS  # OVL1; s1:order by hand (the wep lane, round 13: SOCOM 1's VuDetailMap -- 0x3B5B90 calls it first on &cursor with the tag 48/50 and its detail-layer argument; per texture while m_rangeSqdToCamera is within the layer's range: CopyTextureSelect, the entry's halfword and float at the same offsets as SOCOM 1's; SOCOM II adds the command quadword and the texture base offset)
 0x003B5B90 0x388 VuMapPasses__Q23zdb7CVisualFP8_word128PQ23zdb17tag_DETAIL_PARAMS  # OVL1; by hand (the wep lane, round 13: one of the two rearranged parts of SOCOM 1's VuBatchProgram -- 0x3B5F20 calls it with the packet and the detail layer; VuDetailMap, an opening command 114, the specular pass inlined (tag 52/54, VuSpecularSetup), VuProjectedMap, VuShadowMap and VuLightMap as their counts say, a closing command 116, the tags two apart by 0x4B4EB0. SOCOM II's; the name ours)
-0x003B5F20 0x61C func_003B5F20  # OVL1
+0x003B5F20 0x61C VuBatchProgram__Q23zdb7CVisualFP8_word128bPQ23zdb17tag_DETAIL_PARAMS  # OVL1; s1:order by hand (the weapons lane, round 29: SOCOM 1's VuBatchProgram 0x30BDA0 -- the same command tags in the same three branches by the visual's word at 0x1C (82/102 or 112/104, 6, the extra pass 100, 8/2+10, fog 16/18, lit 84/86, local 32/34, 24/26, 92/94, 40 or 42+76, else 72, 4, 12 ... 44, 78; 66 last), the map passes 0x3B5B90 inside; SOCOM 1's object header become a bool -- VuUpdate's four calls pass the any-multipass-map flag in a2, the detail in a3, and use the result; vis_vu.cpp)
 0x003B6540 0x140 VuExecuteState0__Q23zdb7CVisualFP8_word128  # OVL1; s1:order by hand (the wep lane, round 13: SOCOM 1's VuExecuteState0, the same code with the packet's head the static 0x4B4AE0 (0x3B6820 keeps it) instead of an argument -- the flush when _savedTS is at m_savedTS (0x4B4610), the head's DMA tag and unpack from the packet's length, the saved selects copied with CSPR::Copy and a flush; VuUpdate, 0x3B5F20 and 0x3B6B20 call it, 0x3B41D0 tail-calls it)
 0x003B6680 0x198 VuObjectSetup__Q23zdb7CVisualFP8_word128  # OVL1; s1:order by hand (the wep lane, round 13: SOCOM 1's VuObjectSetup's first part, the same code -- the clip word (63 for 0x1c == -2, else m_fovClipWord >> 8), m_GlobalLightScale/m_AmbientLightScale by flags 0x40/0x20, the fog plane and vector (the landmark's, the camera's alternate, or NoAltFogBottomV 0x3FC200) through m_WorldToModel with 255/0 or the camera's range; SOCOM II adds the 0x4B4D30 quadword and the head flag; VuUpdate calls it twice, 0x3B6820's packet after it)
 0x003B6820 0x4C func_003B6820  # OVL1
