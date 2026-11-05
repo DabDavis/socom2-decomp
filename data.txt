@@ -251,6 +251,7 @@
 0x003DC3D0 0x1B gopt  # OVL1; SOCOM 1's (27 bytes, the game options; CCoreState's Init and Tick test its first byte, as SOCOM 1's): 15 references in 10 functions take 0x3DC3D0-0x3DC3E0
 0x003DC468 0x4 m_U1__17CZClaymoreMapItem  # OVL1 data; SOCOM 1's static (1.0: CZClaymoreMapItem's Tick reads it where SOCOM 1's does, and a CZNewHudMap function (0x20B2C0) sets it): 2 references in 2 functions
 0x003DC470 0x4 m_V1__17CZClaymoreMapItem  # OVL1 data; SOCOM 1's static (1.0, after m_U1 as in SOCOM 1): 2 references in 2 functions
+0x003DC498 0x4 s_fScrollSpeed  # OVL1 data; ours (the HUD lane, round 48: hud_newhudmap.cpp -- the full-screen map's scroll speed, 36.0 in data where SOCOM 1's HandleScrolling built the literal 20; a file static, the name ours) -- 1 reference in 1 function (HandleScrolling 0x20A120)
 0x003DC4B0 0x4 m_U1__15CZMPBombMapItem  # OVL1 data; SOCOM 1's static (its symbol table: m_U1__15CZMPBombMapItem, the bomb's right U; 1.0 in data, as the claymore's m_U1) -- 1 reference in 1 function (the HUD lane round 43: CZMPBombMapItem::Tick 0x20D010 reads it where SOCOM 1's Tick does)
 0x003DC4B8 0x4 m_V1__15CZMPBombMapItem  # OVL1 data; SOCOM 1's static (m_V1__15CZMPBombMapItem, after m_U1 as in SOCOM 1; 1.0 in data) -- 1 reference in 1 function (the HUD lane round 43: CZMPBombMapItem::Tick 0x20D010 reads it where SOCOM 1's Tick does)
 0x003DC4C0 0x4 g_fPulseTrans__25@unnamed@hud_linemap_cpp@  # OVL1 data; SOCOM 1's file static (its symbol table: hud_linemap.cpp's unnamed namespace; 60.0 in the image), the tactical map's pulse alpha -- the HUD lane, round 31 -- 8 references in 2 functions: CZLineMap::Tick x7, hudGetTacMapPulseTrans
@@ -507,6 +508,7 @@
 0x003E4028 0x8 __RTTI__9CZMapItem  # RTTI of CZMapItem: found by its RTTI's name
 0x003E4040 0x8 __RTTI__17CZClaymoreMapItem  # RTTI of CZClaymoreMapItem: found by its RTTI's name
 0x003E4068 0x8 __RTTI__11CNodeAction  # RTTI of CNodeAction: found by its RTTI's name
+0x003E4100 0x18 @LOCAL@GetScrollBounds__11CZNewHudMapCFv@boxFallback  # OVL1 data; ours (the HUD lane, round 48: hud_newhudmap.cpp -- SOCOM 1's DWARF: HandleScrolling's static CBBox boxFallback, 0x560480 there, read by GetScrollPermissions too; zeros): the scroll box without an AI map, an inline's guarded static (the inline's name ours) -- 2 references in 2 functions (HandleScrolling 0x20A120, GetScrollPermissions 0x20AAC0)
 0x003E4150 0x8 __RTTI__15CZMPBombMapItem  # RTTI of CZMPBombMapItem: found by its RTTI's name
 0x003E4190 0x8 __RTTI__11CZNewHudMap  # RTTI of CZNewHudMap: found by its RTTI's name
 0x003E4290 0x8 __RTTI__7C2DLine  # RTTI of C2DLine: found by its RTTI's name
@@ -997,6 +999,7 @@
 0x0040BC70 0xA0 g_lineNorthIndBarb__27@unnamed@hud_newhudmap_cpp@  # OVL1 bss; SOCOM 1's static (its symbol table: the north indicator's barb, the first of its three COverlayLines; the constructor sets the three's alpha FrontShaft, RearShaft, Barb as SOCOM 1's; the HUD lane, round 29) -- 4 references in 3 functions: the constructor, Draw, 0x20BE00 (SOCOM 1's SetupNorthIndicator) twice
 0x0040BD20 0xA0 g_lineNorthIndFrontShaft__27@unnamed@hud_newhudmap_cpp@  # OVL1 bss; SOCOM 1's static (the north indicator's front shaft; the HUD lane, round 29) -- 4 references in 3 functions: the constructor, Draw, 0x20BE00 twice
 0x0040BDD0 0xA0 g_lineNorthIndRearShaft__27@unnamed@hud_newhudmap_cpp@  # OVL1 bss; SOCOM 1's static (the north indicator's rear shaft; the HUD lane, round 29) -- 4 references in 3 functions: the constructor, Draw, 0x20BE00 twice
+0x0040BED0 0x1 @GUARD@GetScrollBounds__11CZNewHudMapCFv@boxFallback  # OVL1 bss; ours (the HUD lane, round 48: hud_newhudmap.cpp -- the fallback box's guard, SOCOM 1's `init` at gp-25044, set 1 by both readers) -- 4 references in 2 functions (HandleScrolling 0x20A120, GetScrollPermissions 0x20AAC0: a load and a store each)
 0x0040BEF0 0x4 m_mpbombtex__15CZMPBombMapItem  # OVL1 bss; SOCOM 1's static (gp-25036 in the demo, which SOCOM 1's CHUD::ReleaseHUD zeroes last, after m_claymoretex, as SOCOM II's does here): 3 references in 3 functions (CHUD::ReleaseHUD, CZNewHudMap::InitMap, CZMPBombMapItem::Tick)
 0x0040BEF8 0x4 m_U0__15CZMPBombMapItem  # OVL1 bss; SOCOM 1's static (m_U0__15CZMPBombMapItem, after m_mpbombtex as in SOCOM 1) -- 1 reference in 1 function (the HUD lane round 43: CZMPBombMapItem::Tick 0x20D010 reads it where SOCOM 1's Tick does)
 0x0040BF00 0x4 m_V0__15CZMPBombMapItem  # OVL1 bss; SOCOM 1's static (m_V0__15CZMPBombMapItem) -- 1 reference in 1 function (the HUD lane round 43: CZMPBombMapItem::Tick 0x20D010 reads it where SOCOM 1's Tick does)

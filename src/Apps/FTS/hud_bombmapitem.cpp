@@ -71,7 +71,11 @@ CZMPBombMapItem::CZMPBombMapItem(zdb::CNode *node)
  * gone: true, the map drops it), then a burst grown in place, true once past 154 (SOCOM 1's Tick;
  * the game-type test SOCOM II's call).
  * OPEN, 2 instructions (claymore's Tick's: the target sums the grown size into $f0, stores it and
- * copies it to $f23 for the four CalcDrawPos calls, where MW sums straight into $f23) */
+ * copies it to $f23 for the four CalcDrawPos calls, where MW sums straight into $f23 -- SOCOM 1's
+ * own claymore Tick sums into $f23 as ours does). Round 48 tried, none moving it: `float size =
+ * (m_size += k)`, a chained `size = m_size = m_size + k`, the sum first then stored, size declared
+ * first / at function scope for both branches, the growth in a local, a sum local copied, a
+ * reference to m_size, an inline grower returning the new size, the store after the copy */
 bool CZMPBombMapItem::Tick(CZNewHudMap *map, float dT)
 {
     if (!m_wasdetonated) {

@@ -8,7 +8,7 @@
  * OnScrollUp, OnScrollDown, AfterCloseFirst, OnClose, HandleScrollDownState, HandleScrollUpState,
  * PulseSelectionArrows, UnInit (which inlines OnClose as SOCOM 1's called it), Init and
  * PlaceWeaponText, the hot-swap check (CheckHotSwap, 0x21A1F0: ours), OnOpen, the constructor and
- * the unit's initialiser (0x3FE500; round 16); written and OPEN: HandleOpenState. SOCOM 1's static
+ * the unit's initialiser (0x3FE500; round 16), HandleOpenState (round 48): the unit whole. SOCOM 1's static
  * Increment is an inline here (no copy linked). The layout is hud_weaponsel.h's. Defined in reverse
  * of their image order (-inline deferred). */
 
@@ -535,13 +535,10 @@ void CWeaponSel::HandleOpenFirstState(float dT)
  * allowing it) takes the item, the sound played and the controller told -- the menu closes on a
  * select or after five seconds; the clock restarts on any other press; the arrows pulse (SOCOM
  * 1's; the clock and its five seconds SOCOM II's).
- * OPEN, 12 instructions, one cause: the select's `true` (the target's `daddiu s0,zero,1` in the
- * delay slot after the first GetButtonState) is taken here from the pad tests' `li v1,1` (`andi
- * s0,v1,0xff`, scheduled before the call), which moves the `== 1` tests' materialisation by a
- * slot. Everything else is the target's. Tried: the test as `!= 1 &&` (branched, 0x72C), `(f() ==
- * 1) != false ||` (0x720), an initialised `bool select = true`, the assignment first in the block,
- * select declared before the pad chain (161 off), a KEY_STATE cast on the pad tests, inline bool
- * helpers (`return f() == 1`, its `||` in a second inline, an if/return form: 0x730). */
+ * The first button read goes into an int local BEFORE `select = true` (round 48): assigned after
+ * the call, the bool's `true` is a fresh `daddiu s0,zero,1` (a call kills the pad tests' `li v1,1`)
+ * that MW schedules into the first test's delay slot, as the target has it; assigned first in the
+ * block, MW took it from that v1 (`andi s0,v1,0xff`, open since round 16 on that alone). */
 void CWeaponSel::HandleOpenState(CPad *pad, float dT)
 {
     CZSealBody *seal = CHUD::GetHUDOwner();
@@ -602,10 +599,11 @@ void CWeaponSel::HandleOpenState(CPad *pad, float dT)
         restart = false;
         data_0040C100 += dT;
 
+        int b0 = func_002C64E0(0, pad);
         bool select;
 
         select = true;
-        if ((func_002C64E0(0, pad) == 1) == false && (func_002C64E0(4, pad) == 1) == false)
+        if ((b0 == 1) == false && (func_002C64E0(4, pad) == 1) == false)
             select = false;
 
         select = select && seal->CanChangeItem();
