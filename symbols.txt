@@ -1460,13 +1460,13 @@
 0x001EABB0 0x18 __ct__Q23std42__list_deleter<PCv,Q23std14allocator<PCv>>Fv  # OVL1; s1:callee
 0x001EABD0 0xA4 func_001EABD0  # OVL1
 0x001EAC80 0x60 func_001EAC80  # OVL1
-0x001EACE0 0x2C func_001EACE0  # OVL1
-0x001EAD10 0x26C func_001EAD10  # OVL1
-0x001EAF80 0x60 func_001EAF80  # OVL1
-0x001EAFE0 0x8 func_001EAFE0  # OVL1
-0x001EAFF0 0x8 func_001EAFF0  # OVL1
-0x001EB000 0x2C func_001EB000  # OVL1
-0x001EB030 0x8 func_001EB030  # OVL1
+0x001EACE0 0x2C MenuStateOption__FRCQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>P5_zrdr  # OVL1; ours (options.cpp, the MSL headers round 26: the "menu_state" option's handler -- the value's string, or none, copied into the 64-byte menu-state name at 0x408568; registered by 0x1EABD0)
+0x001EAD10 0x26C destroy__Q23std244__tree<Q23std31pair<C9CSaferStr,11OPTION_INFO>,Q33std113map<9CSaferStr,11OPTION_INFO,Q23std16less<9CSaferStr>,Q23std50allocator<Q23std31pair<C9CSaferStr,11OPTION_INFO>>>13value_compare,Q23std50allocator<Q23std31pair<C9CSaferStr,11OPTION_INFO>>>FPQ33std244__tree<Q23std31pair<C9CSaferStr,11OPTION_INFO>,Q33std113map<9CSaferStr,11OPTION_INFO,Q23std16less<9CSaferStr>,Q23std50allocator<Q23std31pair<C9CSaferStr,11OPTION_INFO>>>13value_compare,Q23std50allocator<Q23std31pair<C9CSaferStr,11OPTION_INFO>>>4node  # OVL1; include/tree (options.cpp, the MSL headers round 26: the option map's tree destroy, self-inlined twice; its key destroyed as a class over std::string -- CSaferStr here -- ~basic_string called with 0 after a second this-test)
+0x001EAF80 0x60 __dt__Q23std31pair<C9CSaferStr,11OPTION_INFO>Fv  # OVL1; include/tree (options.cpp, the MSL headers round 26: ~pair<const CSaferStr, OPTION_INFO>, the key's base destructor called with 0; destroy's middle level calls it with -1)
+0x001EAFE0 0x8 deallocate__Q23std269allocator<Q33std244__tree<Q23std31pair<C9CSaferStr,11OPTION_INFO>,Q33std113map<9CSaferStr,11OPTION_INFO,Q23std16less<9CSaferStr>,Q23std50allocator<Q23std31pair<C9CSaferStr,11OPTION_INFO>>>13value_compare,Q23std50allocator<Q23std31pair<C9CSaferStr,11OPTION_INFO>>>4node>FPQ33std244__tree<Q23std31pair<C9CSaferStr,11OPTION_INFO>,Q33std113map<9CSaferStr,11OPTION_INFO,Q23std16less<9CSaferStr>,Q23std50allocator<Q23std31pair<C9CSaferStr,11OPTION_INFO>>>13value_compare,Q23std50allocator<Q23std31pair<C9CSaferStr,11OPTION_INFO>>>4nodeUi  # OVL1; include/memory (options.cpp, the MSL headers round 26: the option map's node allocator's deallocate, operator delete; destroy's innermost level calls it)
+0x001EAFF0 0x8 node_alloc__Q23std244__tree<Q23std31pair<C9CSaferStr,11OPTION_INFO>,Q33std113map<9CSaferStr,11OPTION_INFO,Q23std16less<9CSaferStr>,Q23std50allocator<Q23std31pair<C9CSaferStr,11OPTION_INFO>>>13value_compare,Q23std50allocator<Q23std31pair<C9CSaferStr,11OPTION_INFO>>>Fv  # OVL1; include/tree (options.cpp, the MSL headers round 26: the option map's node_alloc(), this + 4)
+0x001EB000 0x2C destroy__Q23std50allocator<Q23std31pair<C9CSaferStr,11OPTION_INFO>>FPQ23std31pair<C9CSaferStr,11OPTION_INFO>  # OVL1; include/memory (options.cpp, the MSL headers round 26: the value allocator's destroy, ~pair inlined -- two this-tests, ~basic_string with 0)
+0x001EB030 0x8 alloc__Q23std244__tree<Q23std31pair<C9CSaferStr,11OPTION_INFO>,Q33std113map<9CSaferStr,11OPTION_INFO,Q23std16less<9CSaferStr>,Q23std50allocator<Q23std31pair<C9CSaferStr,11OPTION_INFO>>>13value_compare,Q23std50allocator<Q23std31pair<C9CSaferStr,11OPTION_INFO>>>Fv  # OVL1; include/tree (options.cpp, the MSL headers round 26: the option map's alloc(), this)
 0x001EB040 0x8 SetSkipSwap__10CCoreStateFi  # OVL1; the name ours (CGameState's new slot 0x28, set in CCoreState: m_skip_swap)
 0x001EB050 0x8 PreInit__10CCoreStateFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x001EB060 0x8 PreUnInit__10CCoreStateFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
