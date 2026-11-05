@@ -768,11 +768,11 @@ static inline ZOOMSTATE ZoomState(CEntity *e)
  * twice (the target's `beqz v0; beqz v0` on one load: through IsControlled() it is reloaded, through
  * a `c ? c->m_entity : 0` inline the null is materialised) and the flag is set to an int 1 (`andi
  * a1,t0,0xff` off the 1 the tracer index stored; `true` is a daddiu of its own).
- * OPEN, 2 instructions: the weapon's call loads the shooter id (t3) ahead of the node (a1), here the
- * node first -- the same set-up otherwise. Tried: the id or the node in a local (before the call, at
- * the top, before the anim), the call through an inline wrapper in SOCOM 1's static parameter order
- * and in the member's, accessors for the id and the node, the weapon in a local, `false` for the last
- * word -- none moves the two loads */
+ * Byte-exact since the weapons' round 24 by the SEALs' round-34 rule (an argument needing a no-op
+ * conversion is evaluated first): the virtual's shooter parameter is an INT, so the unsigned m_id
+ * is converted and its load (t3) goes ahead of the node's (a1) -- as unsigned it came after. Before
+ * (rounds 15-21): the id or the node in a local, an inline wrapper in either parameter order,
+ * accessors, the weapon in a local, `false` for the last word */
 void CTurret::Fire()
 {
     if (!m_weapon || m_weapon->m_ID == EQUIP_NONE)
