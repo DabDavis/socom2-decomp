@@ -84,12 +84,9 @@ CAssetLib::CAssetLib(const char *name)
 }
 
 /* the models let go of and deleted, the buffers freed, the textures and palettes freed, the names
- * freed (SOCOM 1's).
- * OPEN, 4 instructions short (0x2D8 of 0x2E8; 0x2D0 before the world lane's round 10 wrote the
- * palette functor's null test, which the target has): the target keeps &m_models.data_ and
- * &m_palettes.data_ in s1/s0 from the walks' begin() to the vectors' destructors, as a pod
- * destructor reading data_ through data()'s reference would -- the MSL headers' open item ("Open,
- * and next": the pod vector's end() reusing begin()'s load) */
+ * freed (SOCOM 1's). The target keeps &m_models.data_ and &m_palettes.data_ in s1/s0 from the
+ * walks' begin() to the vectors' destructors: the pod destructor reading data_ through data()'s
+ * reference into a local (include/vector, the MSL headers' round 27) -- byte-exact since */
 CAssetLib::~CAssetLib()
 {
     std::transform(m_models.begin(), m_models.end(), m_models.begin(), DeleteModel());
