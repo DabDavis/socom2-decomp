@@ -1724,7 +1724,7 @@
 0x00204190 0x50 SetHasTexture__13C2DBitmapPolyFb  # OVL1; by hand (slot 6 of C2DBitmapPoly's vtable 0x406C30: both triangles' slot 6; an inline's out-of-line copy, this one the CZPauseTest unit's, linked first; the name ours, as C2DBitmap's)
 0x002041E0 0x854 func_002041E0  # OVL1
 0x00204A40 0x7B4 func_00204A40  # OVL1
-0x00205200 0x278 ClosePauseMenu__11CZPauseTestFv  # OVL1; s1:calls by hand (CHUD::ReInit_Uninit's first call on CHUD+0x18900, as SOCOM 1's; the last function before the pause menu's destructor and constructor, as SOCOM 1's before its constructor)
+0x00205200 0x278 ClosePauseMenu__11CZPauseTestFv  # OVL1; s1:calls by hand (CHUD::ReInit_Uninit's first call on CHUD+0x18900, as SOCOM 1's; the last function before the pause menu's destructor and constructor, as SOCOM 1's before its constructor); byte-exact (the HUD lane, round 51: SOCOM 1's with SOCOM II's lens colour and camera zoom put back offline)
 0x00205480 0x318 __dt__11CZPauseTestFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x002057A0 0x58 __dt__10CPauseItemFv  # OVL1; ours by hand (the HUD lane, round 37: hud_pausemenu.cpp -- the line's implicit destructor, handed to __construct_new_array beside the constructor; destroys the string member with -1)
 0x00205800 0x170 __ct__11CZPauseTestFv  # OVL1; by hand (stores CZPauseTest's vtable 0x405320; CHUD's constructor builds CHUD+0x18900 with it)
@@ -2053,10 +2053,10 @@
 0x00228BC0 0x240 Tick__6CFaderFf  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00228E00 0xD0 __ct__6CFaderFv  # OVL1; s1:exact by hand (hud_fader.cpp; SOCOM 1's calls, its bit stores now SOCOM II's new C2D slots)
 0x00228ED0 0xC IsPlaying__16CZHudMissionCamsFv  # OVL1; s1:order (hud_missioncams.cpp's first function as in SOCOM 1; m_animhandle at 0x1C now, C2D 4 bytes shorter)
-0x00228EE0 0x54C PlayCamera__16CZHudMissionCamsFP11CMissionCamb  # OVL1; s1:callee
+0x00228EE0 0x54C PlayCamera__16CZHudMissionCamsFP11CMissionCamb  # OVL1; s1:callee; byte-exact (the HUD lane, round 51: SOCOM 1's with SOCOM II's tests, volume cap, film mark, recogniser and lens hold)
 0x00229430 0x40 PlayCamera__16CZHudMissionCamsFPCc  # OVL1; s1:exact
 0x00229470 0xAC Draw__16CZHudMissionCamsFPQ23zdb7CCamera  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x00229520 0x2F0 CleanupCamera__16CZHudMissionCamsFP4CPad  # OVL1; s1:order (hud_missioncams.cpp's order; HudTick calls it when the camera's animation stops, as SOCOM 1's)
+0x00229520 0x2F0 CleanupCamera__16CZHudMissionCamsFP4CPad  # OVL1; s1:order (hud_missioncams.cpp's order; HudTick calls it when the camera's animation stops, as SOCOM 1's); byte-exact (the HUD lane, round 51: SOCOM 1's with SOCOM II's volume, voices, lens checks and the player's controller)
 0x00229810 0x1E0 HudTick__16CZHudMissionCamsFP4CPadf  # OVL1; s1:order (hud_missioncams.cpp's order; it calls CleanupCamera); byte-exact (the HUD lane, round 40: hud_missioncams.cpp -- SOCOM 1's with SOCOM II's skip: cross released while the owner's input is on, theGame.m_coreState's SetSkipSwap(3) through its vtable)
 0x002299F0 0x7C UnInit__16CZHudMissionCamsFv  # OVL1; s1:exact by hand (hud_missioncams.cpp)
 0x00229A70 0x104 Init__16CZHudMissionCamsFv  # OVL1; s1:exact by hand (hud_missioncams.cpp)
@@ -7728,7 +7728,7 @@
 0x003A8BD0 0x14C func_003A8BD0  # OVL1
 0x003A8D20 0x224 Fire__7CTurretFv  # OVL1; by hand (the wep lane, round 15: veh_turret.cpp -- SOCOM 1's Fire__7CTurretFv shape: a projectile from m_pProjectilelist numbered for the tracers (0xB4 = 1, 0xB8 = ++0x2B0), the weapon's fire animation (0x3D22B0, SOCOM 1's GetFireAnim(bool): the zoomed one while the gunner's SEAL zooms, 0x200) activated with the fire node 0x288, the AI's ModifyAimDir on 0x194 (tan 15 deg, SOCOM 1's tan 20), then the weapon's virtual Fire (slot 0xC, SOCOM 1's static Fire made a member) and the fire timer reset; Tick's call when the timer runs out)
 0x003A8F50 0x164 SampleDynamics__7CTurretFf  # OVL1; s1:calls
-0x003A90C0 0x248 func_003A90C0  # OVL1
+0x003A90C0 0x248 Virtual5C__7CTurretFP10CZSealBodyP7CTurret  # OVL1; s1:vtable by hand (the weapons lane, round 27: __vt__7CTurret's slot +0x5C, CEntity's Virtual5C (zentity.h: the SEAL asks the entity its controller holds, OVL2 0x5A88C0) -- CTurret's override: not while flagged or controlled, the SEAL within the definition's MOUNTABLE_RANGE and height, facing within MOUNTABLE_ANGLE of the turret over x and z and behind it (a static cone's cosine); the name follows CEntity's slot)
 0x003A9310 0x8 ComputeNextPosition__7CTurretFf  # OVL1; s1:vtable by hand (the wep lane: CTurret's slot +0x28, empty, as SOCOM 1's ComputeNextPosition__7CTurretFf); veh_turret.cpp
 0x003A9320 0x1C UpdatePosW__7CTurretFv  # OVL1; by hand (the wep lane: CTurret's slot +0x10 -- the position copied out of the matrix at 0x300's translation row); veh_turret.cpp
 0x003A9340 0xA8 PrePostTick__7CTurretFf  # OVL1; by hand (the wep lane: CTurret's slot +0x20); veh_turret.cpp
@@ -8234,7 +8234,7 @@
 0x003CABE0 0x300 SetModelOrientation__12CZProjectileFbPC6CPnt3D  # OVL1; s1:order by hand (the wep lane: SOCOM 1's SetModelOrientation, 0x300 bytes in both builds, after PreTick; UpdateGrenadePosition calls it as SOCOM 1's UpdateGrenade does)
 0x003CAEE0 0x80 SetVelW__12CZProjectileFPC6CPnt3D  # OVL1; s1:calls (called where SOCOM 1's calls it; 0x80 against SOCOM 1's 0x7C) -- the SEAL lane
 0x003CAF60 0x234 PreFireProjectile__12CZProjectileFv  # OVL1; s1:calls by hand (the wep lane, round 21: zwep_projectile.cpp -- SOCOM 1's PreFireProjectile 0x319F90 as its middle: the shot type's direct- or indirect-fire DI from the projectile list, then the flags cleared; SOCOM II adds a launcher's fire anim ahead (m_allowFireAnimations, SOCOM 1's static) and a volatile round's DI copy after; 0x3CB1A0 calls it)
-0x003CB1A0 0x454 func_003CB1A0  # OVL1
+0x003CB1A0 0x454 SetProjectile__12CZProjectileFPQ23zdb5CNodeP8CZWeaponP6CZAmmoPC6CPnt3DPC6CPnt3DPC6CPnt3DiPQ23zdb6CModel  # OVL1; s1:order by hand (the weapons lane, round 27: SOCOM 1's SetProjectile 0x319FF0 in its place between PreFireProjectile and the constructor's Init -- the same stores and calls in its order (the weapon and its range, the ammunition, the frame, the muzzle velocity along the direction plus the carrier's, the model, the owner, the timers, the flags, PreFireProjectile, the network grenade's inline), without its two angles; byte-exact)
 0x003CB600 0x1E0 Init__12CZProjectileFv  # OVL1; by hand (the wep lane: CZProjectile's constructor calls it between the owner's store and the extension's SetProjectile -- SOCOM 1's constructor's inline stores (rotation 0, time 9999999, the flags, handles -1, flyout index 1), with SOCOM II's members; the name ours)
 0x003CB7E0 0xC0 __dt__12CZProjectileFv  # OVL1; s1:align, checked by hand (stores __vt__12CZProjectile, cleans up; PlacedExplosive's destructor calls it as its base's)
 0x003CB8A0 0x50 __ct__12CZProjectileFv  # OVL1; s1:calls by hand (the wep lane: stores __vt__12CZProjectile first; PlacedExplosive's constructor calls it before storing its own table, as SOCOM 1's calls CZProjectile's constructor)
@@ -8338,8 +8338,8 @@
 0x003D2000 0x8 func_003D2000  # OVL1
 0x003D2010 0x8 func_003D2010  # OVL1
 0x003D2020 0x8 func_003D2020  # OVL1
-0x003D2030 0x8 func_003D2030  # OVL1
-0x003D2040 0x8 func_003D2040  # OVL1
+0x003D2030 0x8 GetArmingDistance__8CZWeaponFv  # OVL1; by hand (the weapons lane, round 27: the float at 0x68, stored by 0x3D2040 from ReadWeapon's ArmingDistance; CZProjectile::HandleImpact 0x3C8920 bounces a hit nearer the start than it as a dud; the name ours)
+0x003D2040 0x8 SetArmingDistance__8CZWeaponFf  # OVL1; by hand (the weapons lane, round 27: stores $f12 at 0x68, which GetArmingDistance 0x3D2030 returns; ZWepReader::ReadWeapon passes it the entry's ArmingDistance, world-scaled; the name ours)
 0x003D2050 0x8 GetDamageBonus__8CZWeaponFv  # OVL1; by hand (the wep lane: returns the float at 0x64, which CZProjectile::GetDamage adds to the ammunition's impact or explosion damage; the name ours)
 0x003D2060 0x8 func_003D2060  # OVL1
 0x003D2070 0x64 func_003D2070  # OVL1
@@ -8375,9 +8375,9 @@
 0x003D2750 0x8 GetModelName__8CZWeaponCFv  # OVL1; s1:order by hand (the weapons lane, round 23: SOCOM 1's GetModelName__8CZWeaponCFv 0x31EBE0, between GetIconTextureName and GetAssociatedGearName as here -- m_modelname, 0x18 in SOCOM 1 and 0x1C here, both neighbours shifted by the same word; its callers hand it to CWorld::GetModel); zwep_weapon.cpp
 0x003D2760 0x8 GetAssociatedGearName__8CZWeaponFv  # OVL1; s1:calls by hand (the kit lane's round 12, vetted by the integrator: called where SOCOM 1's SetItemByIndex calls CZWeapon::GetAssociatedGearName, with the same arguments)
 0x003D2770 0x34 func_003D2770  # OVL1
-0x003D27B0 0x8 func_003D27B0  # OVL1
-0x003D27C0 0x8 func_003D27C0  # OVL1
-0x003D27D0 0x8 func_003D27D0  # OVL1
+0x003D27B0 0x8 GetGravity__8CZWeaponFv  # OVL1; by hand (the weapons lane, round 27: returns the float at 0x48, m_gravity, which ReadWeapon's Gravity_Acceleration sets through SetGravity (-1 in the constructor); CZProjectile::PreTick 0x3CA5A0 pulls a normal shot down by it, SOCOM 1's constant 9.8 scaled; before the muzzle velocity's getter 0x3D27C0; the name ours)
+0x003D27C0 0x8 GetMuzzleVelocity__8CZWeaponFv  # OVL1; s1:order by hand (the weapons lane, round 27: SOCOM 1's GetMuzzleVelocity__8CZWeaponFv 0x31EC50 in the same run of getters, before GetImpactRadius 0x3D27D0; the float at 0x44, m_muzzlevel; CZProjectile::SetProjectile 0x3CB1A0 scales the shot's direction by it where SOCOM 1's SetProjectile calls GetMuzzleVelocity)
+0x003D27D0 0x8 GetImpactRadius__8CZWeaponCFv  # OVL1; s1:order by hand (the weapons lane, round 27: SOCOM 1's GetImpactRadius__8CZWeaponCFv 0x31EC60 in the same run of getters -- after the muzzle velocity's 0x3D27C0 (the float at 0x44), before GetEffectiveRange 0x3D27E0 as in SOCOM 1; the float at 0x4C, m_impactradius, ReadWeapon's ImpactRadius; CZProjectile::HandleImpact 0x3C8920 scales it for the hit's AI noise)
 0x003D27E0 0x8 GetEffectiveRange__8CZWeaponFv  # OVL1; s1:order by hand (the weapons lane round 16: the float at 0x40, m_effectiverange -- SOCOM 1's GetEffectiveRange (0x31EC70) right before GetMaxRange (0x31EC80), as 0x3D27E0 before 0x3D27F0; CZProjectile::GetDamage calls it where SOCOM 1's does)
 0x003D27F0 0x8 GetMaxRange__8CZWeaponFv  # OVL1; s1:order by hand (the wep lane: the float at 0x3C -- SOCOM 1's m_maxrange at 0x38, shifted by the word SOCOM II inserts before m_ammocap; CZProjectile::Reset stores it to m_currange where SOCOM 1's Reset stores GetMaxRange's; right before GetNumMags, as SOCOM 1's is but for GetEncumbrance)
 0x003D2800 0x8 GetNumMags__8CZWeaponFv  # OVL1; s1:order by hand (the wep lane, on the kit lane's lead: returns the word at 0x2C, SOCOM 1's m_nummags at 0x28 four bytes on as m_maxfiremode is; in SOCOM 1's order, GetNumMags then GetAmmoCapacity before GetDescription)
@@ -8408,7 +8408,7 @@
 0x003D2C30 0x8 func_003D2C30  # OVL1
 0x003D2C40 0x8 func_003D2C40  # OVL1
 0x003D2C50 0x11C PlayFireSound__8CZWeaponFPC6CPnt3D  # OVL1; by hand (the wep lane: picks m_firesound[0..2] (0xE0) by the listener's squared distance against the WEAPON_GLOBAL sound distances 0x4B52F8/0x4B52F4 and plays it through CSnd's slot +0x14, PlaySound3D(pos, 1.0, 0, 0, 255); the name ours); zwep_weapon.cpp
-0x003D2D70 0x4B4 func_003D2D70  # OVL1
+0x003D2D70 0x4B4 Fire__8CZWeaponFPQ23zdb5CNodeP6CZAmmoPC6CPnt3DPC6CPnt3DPC6CPnt3DP12CZProjectileiPQ23zdb6CModel  # OVL1; s1:vtable by hand (the weapons lane, round 27: __vt__8CZWeapon's slot 0xC, SOCOM 1's member Fire 0x31F2B0 (node, ammo, pos, dir, vel, projectile, shooter, model) without its two angles -- SetProjectile, RemoveProjectile on a failure, the AI noise of direct fire; SOCOM II's backblast (item 159 fired backwards through a free projectile) ahead of it and PlayFireSound inlined after; CTurret::Fire calls it through the table)
 0x003D3230 0x520 GetMenuValue__8CZWeaponF10EQUIP_ITEM  # OVL1; by hand (the weapons lane, round 22: a switch from items to their weapon-menu values, -1 for none -- zanim_menu.cpp walks every item for the one whose value the UiWeapon valve holds, as the engine core's round 7 found; m2c's draft was byte-exact; the name ours); zwep_weapon.cpp
 0x003D3750 0x40 func_003D3750  # OVL1
 0x003D3790 0xC SetRocketPassSound__8CZWeaponFP4CSnd  # OVL1; by hand (the wep lane, round 17: InitializeWeapons hands it the ".ROCKET_BY" sound right after the bullets' -- new in SOCOM II, the name ours; stores the static 0x4B52A8)
@@ -9012,7 +9012,7 @@
 0x004F76F0 0x88 imtxInit  # OVL2; s1:calls (SOCOM 1's smtConstruct calls imtxInit where ours call this row, 1 call site; the same position in SOCOM 1's object)
 0x004F7778 0x80 imtxDeleteCol  # OVL2 unaligned; s1:align
 0x004F77F8 0x88 mtxFillX  # OVL2 unaligned; s1:align
-0x004F7880 0x24 func_004F7880  # OVL2
+0x004F7880 0x24 mtxFillCopy  # OVL2; s1:calls+order -- the gcc lane, round 28c: SOCOM 1's Smoothing calls mtxFillCopy at the instruction ours calls this row (the first call, s->bcopy from s->b), and SOCOM 1's object 0x364318 holds mtxFillCopy beside mtxFillX and QrPreMult as this one does (here after mtxFillX); the body is SOCOM 1's memcpy of the destination's count (qr.c)
 0x004F78A8 0x19C QrPreMult  # OVL2 unaligned; s1:calls (SOCOM 1's Smoothing calls QrPreMult where ours call this row, 1 call site; the same position in SOCOM 1's object)
 0x004F7A48 0x200 smtConstruct  # OVL2 unaligned; s1:calls
 0x004F7C48 0x45C Smoothing  # OVL2 unaligned; s1:calls

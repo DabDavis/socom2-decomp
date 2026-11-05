@@ -5,7 +5,7 @@
  * speech recogniser, prebuilt with ee-gcc 2.96 at -O2 -G0 -fno-strict-aliasing -funroll-loops
  * (README "The GCC front"). Names are SOCOM 1's (s1:align, the object's order agreeing); the
  * block's fields are named by their use. ControlSHS_VUV and Lin_2_Log (round 27c) are written;
- * spline2 (0x4C0) is declared, its row open. */
+ * round 28c spline2 (0x4C0, SOCOM 1's body). */
 #include "tosblk.h"
 
 typedef struct SHS {
@@ -28,6 +28,68 @@ typedef struct SHS {
 
 static int ControlSHS_VUV(SHS *s, unsigned char cmd);
 static void spline2(float *y, float *y2, SHS *s);
+
+/* the spectrum's spline: y2 (n = nlin / 2 + 1 points) from y over unit spacing, the tridiagonal
+ * system solved through the block's five tables -- the differences, the eliminated diagonal, its
+ * inverses, the right-hand side and the forward sweep -- then back-substituted (the last diagonal
+ * is 2 - diag[n - 2], as the vendor's code has it). Round 28c, SOCOM 1's body: four walkers shared
+ * by all five loops (one register each, as the target's), counters counting down as written. Where
+ * a walker's partner is formed from it (`q = p + 1`) and both step by `*p++`, CSE keeps `p + 4` in
+ * a shadow register and the duplicated exit test's back edge is threaded to a label before the
+ * loop notes: loop.c ignores the loop ("multiple entry points") -- not unrolled, not reversed, the
+ * shadow re-formed from p (`move s1,s4; addiu s4,s1,4`) because p outlives it -- loops 1, 2 and 4;
+ * loops 3 and 5 form their walkers apart and are unrolled. The last point's quotient goes through
+ * the back-substitution's own walker, copied (`t = y2 + n - 1; r = t; *t-- = ...`: the target's
+ * `move s0,a0`). */
+static void spline2(float *y, float *y2, SHS *s)
+{
+    float **tab = (float **)s->f72;
+    float *d = tab[0];
+    float *diag = tab[1];
+    float *inv = tab[2];
+    float *rhs = tab[3];
+    float *w = tab[4];
+    int n = s->nlin / 2 + 1;
+    float *p, *q, *r, *t;
+    int i;
+
+    p = y;
+    q = p + 1;
+    r = d + 1;
+    for (i = n - 1; i > 0; i--)
+        *r++ = *q++ - *p++;
+    p = diag;
+    q = p + 1;
+    r = inv + 1;
+    *p = 2.0f;
+    for (i = n - 2; i > 0; i--) {
+        *r = 1.0 / *p++;
+        *q++ = 4.0f - *r++;
+    }
+    *r = 1.0 / *p;
+    *q = 2.0f - *p;
+    r = rhs;
+    p = d + 1;
+    q = d + 2;
+    *r++ = *p * 3.0f;
+    for (i = n - 2; i > 0; i--)
+        *r++ = (*p++ + *q++) * 3.0f;
+    *r = *p * 3.0f;
+    p = inv + 1;
+    q = rhs;
+    r = w;
+    t = r + 1;
+    *r = *q++;
+    for (i = n - 1; i > 0; i--)
+        *t++ = *q++ - *p++ * *r++;
+    p = diag + n - 1;
+    q = w + n - 1;
+    t = y2 + n - 1;
+    r = t;
+    *t-- = *q-- / *p--;
+    for (i = n - 2; i >= 0; i--)
+        *t-- = (*q-- - *r--) / *p--;
+}
 
 extern float powf(float x, float y);
 
