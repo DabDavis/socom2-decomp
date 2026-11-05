@@ -1957,7 +1957,9 @@ _zanim_cmd_hdr *CTTurret::Parse(_zrdr *rdr)
  * compares load their constants fresh (`li v1,1`) where MW here shares the 1 with `r` (`li a2,1`),
  * and it leaves the id ternary's delay slot empty (`beqz v0; nop`); CTRange::Tick (byte-exact
  * through the same TASK_ENT::Get) has neither; `r` before or after the AI, assigned apart, no AI
- * local: no change. The turret's type test, materialised in the target (sltu; beqz; lbu; xori 3;
+ * local: no change; the kit's round 49: the padded label sits between Get's anim load and its
+ * switch, after the AI's join -- the AI an if/else, an if over a 0 preset, the plain call, `r = seal ?
+ * true : true`, the block through TaskBlock<T>: 0x274 each. The turret's type test, materialised in the target (sltu; beqz; lbu; xori 3;
  * sltiu; movz -- the `&&` as a value, then the select), is TASK_ENT::GetTyped's (round 37: inside
  * the inline that holds Get's switch it stays a value; in the caller every spelling folded it into
  * branches -- build/scratch/kit-r36/v_turret*.py) */
@@ -3456,7 +3458,14 @@ bool CTCreate::Tick(_zanim_cmd_hdr *hdr, float *dT)
  * s2, counter s3, the SEAL sharing the counter's; here the block s3, the counter and the SEAL s2) --
  * the target colours the block before the SEAL where every other handler's allocation is numbering
  * order; the find's five declarations in all 60 orders (build/scratch/kit/v_team2.py, best 17), the
- * controller/AI order, the team local first, a second block pointer after the AI: none moves it */
+ * controller/AI order, the team local first, a second block pointer after the AI: none moves it.
+ * The kit's round 49: MW's colouring replayed against the target (`tools/igreplay.py --target --movers`
+ * over the counter, the block and the SEAL) gives it in 224 numberings, every one with the SEAL --
+ * here the find's ternary temporary, numbered after every named local -- ahead of the block: the SEAL
+ * a variable numbered before `cmd`. A dead first definition (`CZSealBody *seal = 0;` first, after the
+ * index, after the counter) and a ternary reading it (`seal = param ? param->m_seal : seal`) leave the
+ * colouring as it is (MW folds the 0 in), an `if (param) seal = ...` costs 3 instructions (0x200);
+ * the block through TaskBlock<T> (a temporary, CTPlay's) stays 20 off */
 bool CTTeam::Tick(_zanim_cmd_hdr *hdr, float *dT)
 {
     TASK_SEAL(CTTeam);
