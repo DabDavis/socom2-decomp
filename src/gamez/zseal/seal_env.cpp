@@ -3981,7 +3981,11 @@ public:
     unsigned char _0[0x1c];
     int m_users;   // 0x1c (the names ours)
     unsigned int m_owner;   // 0x20: the entity id of the SEAL holding it
-    unsigned char _24[0x28 - 0x24];
+    int m_index;   // 0x24: the index a SEAL taking it holds (0x5B1130 stores it to m_ladder)
+
+    /* the count read through an accessor: 0x5B1130 tests it, then loads it again to count itself in
+     * (the field read straight is reused from the test, 10 off) */
+    int GetUsers() const { return m_users; }
 };
 
 class CLadderList {
@@ -4093,6 +4097,58 @@ extern "C" void func_005B1350(CZSealBody *seal, int b, int index)
         if (CanTakeLadder(seal, index) && ladder->m_owner == CEntity::invalidId) {
             ladder->m_owner = seal->m_id;
             func_002B9E50(seal, b, index);
+        }
+    }
+}
+
+/* the SEAL's ladder, or with none a free one taken: its users counted, the SEAL's index set from the
+ * ladder's, the ladder's owner cleared (an inline bool: 0x5B1130's) */
+static inline bool TakeLadder(CZSealBody *seal, unsigned int index)
+{
+    if (seal->m_ladder == index)
+        return true;
+    if (seal->m_ladder != data_003F3438)
+        return false;
+
+    CLadderData *ladder = theMission.m_ladders->GetLadderByIndex(index);
+
+    if (ladder) {
+        if (ladder->GetUsers() > 0)
+            return false;
+        ladder->m_users++;
+        seal->m_ladder = ladder->m_index;
+        ladder->m_owner = CEntity::invalidId;
+        return true;
+    }
+    return false;
+}
+
+/* a ladder's grant passed on: the first SEAL holding the ladder in state 1 under the byte takes it,
+ * its hold moved to state 3 when it could (OVL2 0x5B1130, new in SOCOM II: the game states' handler
+ * OVL1 0x2B9E20 calls it; the name unknown). The index an int (an unsigned short param narrows it,
+ * the target only copies it: s1 for the hold's test, s0 the inline's unsigned copy); the flag set
+ * before the cast and tested inside `if (seal)` (a null SEAL steps on past the test); the compares
+ * with the parameter on the left (`bne s2,v1`) */
+extern "C" void func_005B1130(unsigned char b, int index)
+{
+    CEntityList::const_iterator it;
+
+    for (it = CEntity::GetEntityList().begin(); it != CEntity::GetEntityList().end(); ++it) {
+        bool done = false;
+        CEntity *e = *it;
+        CZSealBody *seal = e && e->m_type == CEntity::ENT_TYPE_SEAL ? (CZSealBody *)e : 0;
+
+        if (seal) {
+            switch (seal->m_climb.m_state) {
+            case 1:
+                if (b == seal->m_climb.m_active && index == seal->m_climb.m_ladder) {
+                    if (TakeLadder(seal, index))
+                        seal->m_climb.m_state = 3;
+                    done = true;
+                }
+            }
+            if (done)
+                break;
         }
     }
 }
@@ -4478,6 +4534,124 @@ AnimType CZSealBody::FindRandomDeathAnim(DAMAGE_LOCATION where, bool *b)
         }
     }
     return func_005A0950(this, where, state);
+}
+
+extern "C" {
+/* three hurt anims a pick moves off when the flag is set (OVL1 data, the AnimTypes statics two to four
+ * before Stab -- SOCOM 1's there are DeathStandChest03 and its pistol pair: not named, SOCOM II's
+ * order changed) and the flag (OVL1 0x45A0C1, seal_ai.cpp's) */
+extern short data_003DEE00;
+extern short data_003DEDF8;
+extern short data_003DEDF0;
+extern unsigned char data_0045A0C1;
+}
+
+/* a hurt anim for where the SEAL was hit: the stance as for a death (idle, carrying and carried count as
+ * standing), past half of a stance change the stance it is going to, stunned prone -- the state kept
+ * as the desired one unless the body is idle, dead, carrying or carried; then one of that stance's at
+ * random, none when there are none -- with the flag set, a pick of the three anims above moves on to
+ * the next of the others, up to eight, one of them at random (OVL2 0x5A0270; SOCOM 1's, the move-on
+ * new). The body's state test one unsigned range (`sltiu at` branched on: a switch over the four
+ * gives a compare chain and costs the first switch its delay-slot fills, 0x40 long); `count > 1`
+ * branches on `slti at` where `>= 2` computes into v0; the control's IsRemote called, its result
+ * unused (a compiled-out print's test, likely) */
+AnimType CZSealBody::FindRandomDamageAnim(DAMAGE_LOCATION where, bool *b)
+{
+    *b = false;
+    SEAL_STATE state = GetStance(false);
+
+    switch (state) {
+    case stateStand:
+    case stateCrouch:
+    case stateProne:
+        break;
+    case stateIdle:
+    case stateCarrying:
+    case stateCarried:
+        state = stateStand;
+        break;
+    case stateDead:
+        state = (SEAL_STATE)func_0057DBB0(this);
+        BodySetState(8);
+        break;
+    default:
+        state = (SEAL_STATE)func_0057DBB0(this);
+        break;
+    }
+    if (IsCurrentBlend((AnimType)17) || IsCurrentBlend((AnimType)19) || IsCurrentBlend((AnimType)25)) {
+        float t = ((CZBodyAnimBlend *)func_00555170(&m_blends))->m_tfrac;
+        bool late = false;
+        bool back = func_005551A0(((CZBodyAnimBlend *)func_00555170(&m_blends))->m_flags, 32);
+
+        if (back) {
+            if (t > 0.5f)
+                late = true;
+        } else if (t < 0.5f)
+            late = true;
+        if (late) {
+            if (IsCurrentBlend((AnimType)17)) {
+                if (back)
+                    state = stateCrouch;
+                else
+                    state = stateStand;
+            }
+            if (IsCurrentBlend((AnimType)19)) {
+                if (back)
+                    state = stateProne;
+                else
+                    state = stateCrouch;
+            }
+            if (IsCurrentBlend((AnimType)25)) {
+                if (back)
+                    state = stateProne;
+                else
+                    state = stateStand;
+            }
+        }
+    }
+    if (m_am_stunned)
+        state = stateProne;
+    if ((unsigned int)(m_state - stateIdle) > stateCarried - stateIdle)
+        m_desiredState = state;
+
+    int n = AnimSet::damageanim[where][state].size();
+
+    if (n <= 0)
+        return (AnimType)-1;
+
+    AnimType anim;
+
+    if (n == 1)
+        anim = AnimSet::damageanim[where][state][0];
+    else {
+        int r = rand() % n;
+
+        anim = AnimSet::damageanim[where][state][r];
+        if (data_0045A0C1) {
+            if (m_control)
+                ((CSealCtrl *)m_control)->IsRemote();
+            if (anim == data_003DEE00 || anim == data_003DEDF8 || anim == data_003DEDF0) {
+                int picks[8];
+                int count = 0;
+
+                for (int i = (r + 1) % n; i != r; i = (i + 1) % n) {
+                    anim = AnimSet::damageanim[where][state][i];
+                    if (anim != data_003DEE00 && anim != data_003DEDF8 && anim != data_003DEDF0) {
+                        picks[count++] = i;
+                        if (count >= 8)
+                            break;
+                    }
+                }
+                if (count == 1)
+                    r = picks[0];
+                else if (count > 1)
+                    r = picks[rand() % count];
+                if (count > 0)
+                    anim = AnimSet::damageanim[where][state][r];
+            }
+        }
+    }
+    return anim;
 }
 
 extern "C" {
