@@ -101,7 +101,7 @@ public:
 
     unsigned char _0[0xc];
     CValve *m_pE3RoundValve;   // 0xc
-    int m_10;   // 0x10 (SOCOM 1's at 0xc)
+    CValve *m_pGameOverValve;   // 0x10 (SOCOM 1's at 0xc)
     int m_14;   // 0x14 (SOCOM 1's at 0x10)
     int m_18;   // 0x18 (SOCOM 1's at 0x14)
     int m_1c;   // 0x1c (SOCOM 1's at 0x18)
@@ -142,9 +142,9 @@ public:
     unsigned char _dd[0xe0 - 0xdd];
     unsigned int m_max_game_time;   // 0xe0: the round's clock in milliseconds (SOCOM 1's m_clock.m_max_game_time, at 0xa0)
     int m_launch_time;   // 0xe4 (SOCOM 1's at 0xa8)
-    unsigned char _e8[0xec - 0xe8];
+    unsigned int m_time_in_round;   // 0xe8 (SOCOM 1's m_clock.m_time_in_round, at 0xac)
     unsigned int m_round_clock;   // 0xec: the round's time left, in milliseconds (the name ours)
-    unsigned char _f0[0xf4 - 0xf0];
+    unsigned int m_total_time;   // 0xf0 (SOCOM 1's m_clock.m_total_time, at 0xb4)
     unsigned char m_launch_f4;   // 0xf4 (SOCOM 1's at 0xbc)
     unsigned char _f5[0xf8 - 0xf5];
     int m_f8;   // 0xf8 (SOCOM 1's at 0xc0)
@@ -508,6 +508,7 @@ public:
     bool ReOpen_Unload1();
     unsigned int GetTimeLeft();
     void EndMission();
+    void OnMissionComplete(MISSION_STATE state);
     void CreateLadderTable();
     void OnMissionStart();
 
@@ -2002,6 +2003,102 @@ bool CMission::Open(const char *name)
     return true;
 }
 
+/* the bomb's network object (fts_net_bomb.cpp's), the game's (fts_net_game.cpp's), the voice
+ * (zNetVoice.cpp's object and SOCOM 1's IAmNotSessionMaster-like call) and the two states the end
+ * of a network game reaches (theGame's at 0x178 and 0x208) */
+class CZBombState {
+public:
+    static void UninitBomb();   /* 0x2C1970 */
+};
+
+class CZGameState {
+public:
+    static void UpdateLocalGame(CZNetGame *game);   /* 0x2C00F0 */
+};
+
+extern "C" {
+extern void *data_0045B718;
+void func_0030E6E0(void *voice, int arg);
+extern unsigned char data_00408638[];   /* (a state in theGame, at 0x178) */
+extern unsigned char data_004086C8[];   /* (a state in theGame, at 0x208) */
+}
+
+/* the mission's outcome taken (SOCOM 1's CMission::OnMissionComplete; OVL1 0x2A9B30 -- Tick calls it
+ * for each outcome). The state kept; in a network game, the bomb's object gone: an abort waits three
+ * seconds of the mission's clock, then drops the net-error handler and switches to the abort dialog;
+ * otherwise the session master, after the same wait, ends the round -- the game-over valve, the two
+ * scores and the winner read, the round counted, the major state 6 (game over) or 4 (round over),
+ * the game object sent, the round's time totalled and the round's end pushed. Alone, on a change to
+ * an abort or with the player dead: with "nofade" set the mission ended at once (EndMission
+ * inlined), the end's hold cleared either way.
+ * OPEN, 0x39C against 0x3AC (round 39): every block is the target's but the first and the alone
+ * test's -- the target copies the old state into a register with `lb` and narrows it with `andi
+ * 0xff` at both compares (SOCOM 1's does the same: an enum copied into a local, as CheckStateSwitch's
+ * switch on its local), where here MW reads the field once with `lbu` into the first compare; and
+ * `this` and the net game trade s0/s1 (the target keeps this in s1, the game in s0, the game-over
+ * flag in s1 once this is dead). Tried: `old` const, assigned apart, a char copy cast back, a second
+ * local for the new state, a reference to the field, an accessor, `old != state && true`, the change
+ * as an inline (one re-reading the field -- `lbu` then `lb`, 8 short -- one taking both by value) and
+ * as a ternary store (8 short): the copy needs to survive to its first compare (a branch between
+ * them, round 38's forwarding rule) without costing code */
+void CMission::OnMissionComplete(MISSION_STATE state)
+{
+    MISSION_STATE old = m_state;
+
+    if (old != state)
+        m_state = state;
+    if (theNetwork.m_bNetwork) {
+        CZNetGame *game = m_pNetGame;
+
+        if (!game)
+            return;
+        CZBombState::UninitBomb();
+        if (state == MISSION_ABORTED) {
+            func_0030E6E0(data_0045B718, 0);
+            if (m_delay == -1.0f)
+                m_delay = m_timer + 3.0f;
+            else if (m_timer > m_delay) {
+                data_0044F3CC = 0;
+                theGame.m_menuState.SetDefaultMenu("dlgNetAbort.rdr");
+                theGame.Switch((CGameState *)data_00408638, 0);
+                _OnMissionComplete();
+            }
+        } else if (theNetwork.m_bSessionMaster) {
+            if (m_delay == -1.0f)
+                m_delay = m_timer + 3.0f;
+            else if (m_timer > m_delay) {
+                bool over = game->m_pGameOverValve->m_value != 0;
+                CValve *score00 = CValve::GetByName("mp_score00");
+                CValve *score08 = CValve::GetByName("mp_score08");
+                CValve *winner = CValve::GetByName("mp_winner");
+
+                if (score00)
+                    game->m_120 = score00->m_value;
+                if (score08)
+                    game->m_124 = score08->m_value;
+                if (winner)
+                    game->m_128 = winner->m_value;
+                game->m_d4 = over;
+                game->SetE3RoundCount(game->m_e3_round_count + 1);
+                if (over)
+                    game->m_mp_major_game_state = CZNetGame::MP_MAJOR_GAMEOVER;
+                else
+                    game->m_mp_major_game_state = CZNetGame::MP_MAJOR_ROUNDOVER;
+                CZGameState::UpdateLocalGame(game);
+                _OnMissionComplete();
+                game->m_total_time += game->m_time_in_round;
+                Push__5CGameFP10CGameStateUi(&theGame, data_004086C8, 0);
+            }
+        }
+    } else if (old != m_state && (m_state == MISSION_ABORTED || ftsGetPlayer()->m_e1_4)) {
+        if (m_valve_nofade->m_value == 1) {
+            SetDelayEndMission(false);
+            EndMission();
+        } else
+            SetDelayEndMission(false);
+    }
+}
+
 /* the task's callback (SOCOM 1's fadeToEndMissionTick, the same jump; OVL1 0x2A98A0) */
 bool CMission::fadeToEndMissionTick(float dT, void *data)
 {
@@ -2769,7 +2866,7 @@ float CZNetGame::UnInitialize()
     m_ten_second_launch = false;
     m_110 = 0;
     m_18 = 0;
-    m_10 = 0;
+    m_pGameOverValve = 0;
     m_1c = 0;
     m_d9 = 0;
     m_84[0] = 0;
