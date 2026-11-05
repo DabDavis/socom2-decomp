@@ -2065,6 +2065,20 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the world, rdr and sound, round 24** (the CWorld constructor; Particle::Source::SetActive to source):
+  - zdb::CWorld::CWorld(const char *) 0x320310 is SOCOM 1's call sequence (CSaveLoad::Load calls it where SOCOM 1's does)
+    with one shadow texture shared by all four slots; constants passed through an inline's by-value class parameter stay
+    a stack temporary that is copied, passed as float parameters they are stored straight (the constant lights through
+    float setters, only the normalised first light through a by-value CPnt4D); the name buffer declared after the light
+    vector fixes the frame order;
+  - a CPnt3D derived from a C struct copies as ld / sd plus lwc1 / swc1, with its own float members as three lwc1 /
+    swc1; `m_active != b` loads the member before narrowing the parameter; narrowing a bool into an unsigned char local
+    and passing it to a bool parameter costs an sltu -- SetActive 0x329AC0's target passes the narrowed byte with no bool
+    conversion: the particles' CNode stand-in declares the virtual taking unsigned char (a marked device: a virtual
+    call's parameter type affects no symbol);
+  - A NAMED LOCAL ASSIGNED ONCE IS NOT A NODE IN MW'S COLOURING, so it cannot serve as a numbering device (Particle::
+    Instance::Render, OPEN at 7); BuildNodeLocalLightList 0x338FA0 and CWorld::m_invscale named by SOCOM 1's calls and
+    gp pair.
 - **Tells from the kit and AI states, round 50** (ReParentToRifle / ReParentToPistol, SetDefaultLookParams, CAiSAvoid's and
   CAiSStunResponse's Tick, the response-anim draw -- open since round 3; seal_look.cpp and seal_airesponse.cpp whole):
   - `tools/igreplay.py --move 38=46.5` showed BEFORE the source was written that the launcher part had to be numbered

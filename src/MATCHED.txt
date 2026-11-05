@@ -5224,6 +5224,7 @@
 0x0031FC90 AddLightMap__Q23zdb6CWorldFPQ23zdb9CLightMap
 0x0031FD10 GetModel__Q23zdb6CWorldFPCc
 0x0031FD20 Initalize__Q23zdb6CWorldFv
+0x00320310 __ct__Q23zdb6CWorldFPCc
 0x00320660 __dt__Q23zdb19CProjectedMapVectorFv
 0x003206E0 __dt__Q23zdb15CLightMapVectorFv
 0x00320760 Uninit__Q23zdb6CWorldFv
@@ -5339,7 +5340,7 @@
 0x00329A40 func_00329A40
 0x00329AA0 func_00329AA0
 0x00329AB0 func_00329AB0
-0x00329AC0 func_00329AC0
+0x00329AC0 SetActive__Q28Particle6SourceFb
 0x0032A6B0 __dt__Q28Particle6SourceFv
 0x0032A800 func_0032A800
 0x0032A860 ScaleSequenceAdd__Q28Particle6SourceFff
