@@ -599,6 +599,108 @@ void CTurret::SampleDynamics(float dT)
     }
 }
 
+/* the yaw joint turned by its rate over the step: the node's x axis's (x, z) turned by the step's
+ * angle; inside the definition's yaw limits (both 2D crosses with the limits' (sin, cos) of the
+ * right sign) or clamped to the limit it passed, the joint's matrix rebuilt about y from the
+ * normalised direction and its angle written out; whether it moved (0x3A76D0) */
+extern "C" bool func_003A76D0(CTurret *t, float dT, float rate, CNode *node, CMatrix *m, float *angle)
+{
+    static CMatrix unit;
+    float a = rate * dT;
+    float s = sinf(a);
+    float c = cosf(a);
+    CPnt3D d;
+    float x0 = node->m_matrix.m_matrix[0][0];
+    float z0 = node->m_matrix.m_matrix[2][0];
+
+    d.x = s * x0 + c * z0;
+    d.y = 0.0f;
+    d.z = c * x0 - s * z0;
+    d.Normalize();
+
+    const TURRET_LIMIT_TRIG &lim = t->m_def->m_yawTrig;
+    float x = -d.x;
+    float z = -d.z;
+    float cmin = z * -lim.m_sinmin - x * -lim.m_cosmin;
+    float cmax = z * -lim.m_sinmax - x * -lim.m_cosmax;
+    bool moved = cmin <= 0.0f && cmax >= 0.0f;
+
+    if (!moved) {
+        if (cmin > 0.0f) {
+            d.x = lim.m_sinmin;
+            moved = true;
+            d.z = t->m_def->m_yawTrig.m_cosmin;
+        } else if (cmax < 0.0f) {
+            d.x = lim.m_sinmax;
+            moved = true;
+            d.z = t->m_def->m_yawTrig.m_cosmax;
+        }
+    }
+    if (moved) {
+        d.Normalize();
+        sceVu0CopyMatrix(m->m_matrix, node->m_matrix.m_matrix);
+        m->m_matrix[0][0] = d.z;
+        m->m_matrix[0][2] = -d.x;
+        m->m_matrix[2][0] = d.x;
+        m->m_matrix[2][2] = d.z;
+        *angle = atan2f(d.x, d.z);
+    }
+    return moved;
+}
+
+/* the pitch joint turned by its rate over the step from the angle kept (0x3B8): its direction's
+ * (sin, cos), inside the definition's pitch limits or clamped to the one it passed; then the angle
+ * written out (asin of the direction's x) and, with an extra angle to add, the direction turned by
+ * it; the joint's matrix rebuilt about x; whether it moved (0x3A7490) */
+extern "C" bool func_003A7490(CTurret *t, float dT, float rate, float extra, CNode *node, CMatrix *m,
+                              float *angle)
+{
+    static CMatrix unit;
+    float a = rate * dT;
+    float c = cosf(t->m_3b8 + a);
+    float s = sinf(t->m_3b8 + a);
+    CPnt3D d;
+
+    d.x = s;
+    d.y = 0.0f;
+    d.z = c;
+    d.Normalize();
+
+    const TURRET_LIMIT_TRIG &lim = t->m_def->m_pitchTrig;
+    float z = -d.z;
+    float cmin = d.x * -lim.m_cosmin - z * lim.m_sinmin;
+    float cmax = d.x * -lim.m_cosmax - z * lim.m_sinmax;
+    bool moved = cmin <= 0.0f && cmax >= 0.0f;
+
+    if (!moved) {
+        if (cmin > 0.0f) {
+            d.x = lim.m_sinmin;
+            moved = true;
+            d.z = t->m_def->m_pitchTrig.m_cosmin;
+        } else if (cmax < 0.0f) {
+            d.x = lim.m_sinmax;
+            moved = true;
+            d.z = t->m_def->m_pitchTrig.m_cosmax;
+        }
+    }
+    if (moved) {
+        *angle = asinf(d.x);
+        if (fabsf(extra) > 0.001f) {
+            c = cosf(*angle + extra);
+            s = sinf(*angle + extra);
+            d.x = s;
+            d.z = c;
+        }
+        d.Normalize();
+        sceVu0CopyMatrix(m->m_matrix, node->m_matrix.m_matrix);
+        m->m_matrix[1][1] = d.z;
+        m->m_matrix[1][2] = d.x;
+        m->m_matrix[2][1] = -d.x;
+        m->m_matrix[2][2] = d.z;
+    }
+    return moved;
+}
+
 /* the joints turned: the yaw's angle kept in 0x3B0, the pitch's in 0x3B8 (its extra cleared), then
  * the aim -- the pitch joint's world Z negated -- and bit 3 set, and while bit 1 is clear the scope's
  * frame from the pitch joint (SOCOM 1's Rotate, split; the name ours) */
