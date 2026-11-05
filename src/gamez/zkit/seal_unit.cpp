@@ -1180,11 +1180,16 @@ bool func_005EAF20(CSealUnit *unit, int sound, bool b, float chance);
 /* (the sound's answer and its bool argument: the two command voicings use the one and pass the
  * other unextended), and a command that takes an item (seal_cfg.cpp's 0x58DFA0, the SEALs': kinds 2, 9-13 and 16) */
 bool func_0058DFA0(unsigned char item);
-/* a command's and an item's names (seal_cfg.cpp's 0x58EF80 -- "CMD_" and the name, the prefix skipped
- * here -- and 0x58EB00, the SEALs') */
-const char *func_0058EF80(unsigned char cmd);
+/* an item's name (seal_cfg.cpp's 0x58EB00, the SEALs') */
 const char *func_0058EB00(unsigned char item);
 }
+
+/* a command's name (zseal.h's CSealCtrl::GetCommandName, seal_cfg.cpp's 0x58EF80: "CMD_" and the
+ * name, the prefix skipped here) -- the one member this unit calls */
+class CSealCtrl {
+public:
+    static const char *GetCommandName(FT_COMMAND cmd);
+};
 
 /* whether the squads answer orders over the radio (SOCOM 1's ShouldConfirmVoiceCommands, gp-30916
  * there: its ConfirmCommand reads it first; SOCOM II's OVL1 data 0x3DF1D0, which UIStoreOptions sets
@@ -1260,7 +1265,7 @@ bool CSealUnit::ConfirmCommand(FT_COMMAND cmd, unsigned char item, int flags)
             GetAiModes((signed char *)&a, (signed char *)&b);
             mb = b;
             ma = a;
-            const char *what = func_0058EF80(cmd) + 4;
+            const char *what = CSealCtrl::GetCommandName((FT_COMMAND)cmd) + 4;
 
             if (item == 0)
                 sprintf(name, "SND_%d%d_%s", mb, ma, what);
