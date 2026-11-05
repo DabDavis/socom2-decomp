@@ -155,27 +155,32 @@ void func_002531F8(short sPeak, VadState *p, float fLevel, float fMax)
  * once the level (at most 255) reaches the threshold; otherwise the run counts on, and once it
  * passes the frames' hang time (rounded, through a double) the detector turns inactive, the run held
  * at 32700.
- * OPEN (0x11C against 0x124): the target returns one byte variable, loaded zero-extended (lbu) in the
- * delay slot of the active flag's own signed test (lb) and sign-extended once at the exit; set
- * before the test it gives the target's paths but two words short (an unsigned char result: v1
- * through the double calls), the flag tested with the && or nested, set to 1 or to the speech
- * flag, alike (build/scratch/gcc/v_3288*.py, GCC round 32a). */
+ * Byte-exact (GCC round 33a; open since round 32a at 0x11C) by two readings of the target:
+ * - the flag is tested from its own signed copy (lb), read BEFORE the result's zero-extended load
+ *   (lbu): read after it, CSE takes the test from the result's register (`lbu; sll 24; bnez`); the
+ *   lbu then stands before the branch, so reorg moves it into the bnez's slot, and the then-arm's
+ *   `ret = 1` keeps its `li v1,1` -- with the result loaded only on the else path, v1 still holds
+ *   the speech test's 1 there and reload_cse deletes it (round 32a's "two words short");
+ * - the turn-inactive path's two `ret = 0`s and the else's reload reach one exit by jumps: the
+ *   capped run and the else jump to it, the uncapped run falls into the last `ret = 0` (laid out
+ *   after the else). Structured, that `ret = 0` is laid out before the else; as returns, each
+ *   return sign-extends on its own (F1-F3, build/scratch/gcc/v_3288*.py, GCC round 33a). */
 signed char func_00253288(short sLevel, unsigned short usFrames, VadState *p, float fThresh)
 {
 	int iLevel;
 	float fT;
 	short sT;
 	unsigned char ret;
+	int iActive;
 
 	iLevel = (sLevel < 255) ? sLevel : 255;
 	if (p->bSpeech == 1) {
 		p->usRun = 0;
+		iActive = p->bActive;
 		ret = p->bActive;
-		if (p->bActive == 0) {
-			if ((float)iLevel <= fThresh) {
-				p->bActive = 1;
-				ret = 1;
-			}
+		if (iActive == 0 && (float)iLevel <= fThresh) {
+			p->bActive = 1;
+			ret = 1;
 		}
 	} else {
 		fT = usFrames * p->fRate + 0.5;
@@ -183,12 +188,18 @@ signed char func_00253288(short sLevel, unsigned short usFrames, VadState *p, fl
 		p->usRun++;
 		if (sT < (short)p->usRun) {
 			p->bActive = 0;
-			if ((short)p->usRun > 32700)
+			if ((short)p->usRun > 32700) {
 				p->usRun = 32700;
-			ret = 0;
-		} else
+				ret = 0;
+				goto out;
+			}
+		} else {
 			ret = p->bActive;
+			goto out;
+		}
+		ret = 0;
 	}
+out:
 	return ret;
 }
 
