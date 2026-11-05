@@ -2918,6 +2918,10 @@ public:
     /* an item's text: its action's argument, else its own string, else its look's (SOCOM II's,
      * 0x374B50, the name ours: the lobby's 0x2F0EA0 calls it) */
     const char *GetItemText(int idx);
+    /* the row above or below highlighted, the box's actions on event 43 run (SOCOM II's, 0x374010
+     * and 0x3742F0, the names ours: HandlePad's up and down return them) */
+    bool HighlightPrev();
+    bool HighlightNext();
     /* every item erased and deleted, then the box's own font (SOCOM II's, 0x375C70, the name ours:
      * UpdateUIVar and 0x372980 call it) */
     void RemoveAllItems();
@@ -2925,6 +2929,11 @@ public:
     virtual void UpdateUIVar(CUIVariable *var);
     /* slot 23: the box's commands run */
     virtual bool TickZAnimCmd(_zanim_cmd_hdr *hdr, float *dT, bool *done);
+    /* slot 15: the pad (0x3745E0) */
+    virtual bool HandlePad(const CPad *pad, int port);
+    /* a slot of its own, +0x84 after UpdateUIVar's (0x374A50; SOCOM 1's SetPressed, its own slot
+     * there too: HandlePad calls it through the table) */
+    virtual void SetPressed();
 
     /* the highlighted row set and the window scrolled to it (inline: UpdateUIVar and the
      * focus command do it alike, the row read back for the product) */
@@ -2945,7 +2954,7 @@ public:
     C2DFont *m_ownFont;   // 0xbc: a font of the box's own, deleted with its items
     std::list<ListItem *> m_items;   // 0xc0
     float m_scale;   // 0xcc: the items' scale
-    unsigned char _d0[0xd4 - 0xd0];
+    float m_pressTime;   // 0xd0: 0.2 once pressed (SetPressed's, SOCOM 1's; the name ours)
     std::vector<ColumnData *> m_columns;   // 0xd4
     int m_highlightAlpha;   // 0xe0
     zdb::CTextureRelocMgr *m_mgr;   // 0xe4: the items' textures' relocator
@@ -2972,7 +2981,7 @@ public:
     float m_pulseMin;   // 0x174
     float m_pulseMax;   // 0x178
     float m_pulseTime;   // 0x17c
-    unsigned char _180[0x184 - 0x180];
+    float m_repeat;   // 0x180: the held direction's repeat time (HandlePad zeroes it, steps past 0.4; the name ours)
     float m_184;   // 0x184 (the spec's 0x118)
     zdb::CTexHandle *m_tex188;   // 0x188: the spec's textures by their names at 0x80 and 0x74
     zdb::CTexHandle *m_tex18c;   // 0x18c
@@ -3226,6 +3235,231 @@ const char *CUIListBox::GetItemText(int idx)
             text = item->GetString();
     }
     return text;
+}
+
+/* the pad as the buttons read it: each button's key state (zinput.h's CPad::m_state from
+ * 0x1; 2 a press, 1 a release) */
+class CPad {
+public:
+    unsigned char m_0;   // 0x0
+    unsigned char m_state[16];   // 0x1
+    unsigned char _11[0x21c - 0x11];
+    float m_zoom;   // 0x21c: a stick's axis (the map control zooms by it)
+};
+
+void PlaySelectionSound();
+/* zui.cpp's: the stick pushed up or down since it was last centred (UiGetDirStickMoved 3 or 4) */
+bool DidStickMovePrev();
+bool DidStickMoveNext();
+
+/* pressed (SOCOM 1's CUIListBox::SetPressed, 0x38D4E0 there): the highlight's colour the pressed
+ * one, the highlight's bitmap loaded from the pressed texture (textured when there is one --
+ * SOCOM II sets it through the table, SOCOM 1 the bit), white, its opacity the box's then 100,
+ * and the press time 0.2 (SetActive's head with the pressed colour and texture) */
+void CUIListBox::SetPressed()
+{
+    m_highlightColor = m_color148;
+
+    zdb::CTexHandle *t = m_texF0;
+
+    m_texF8 = t;
+    m_highlight.Load(0.0f, 0.0f, 10.0f, 10.0f, m_texF8);
+    if (!t)
+        m_highlight.SetHasTexture(false);
+    else
+        m_highlight.SetHasTexture(true);
+    m_highlight.SetColor(255.0f, 255.0f, 255.0f);
+    m_highlight.SetTrans(m_highlightAlpha);
+    m_highlight.SetTrans(100.0f);
+    m_highlightAlpha = 100;
+    m_pressTime = 0.2f;
+}
+
+/* slot 15: the pad (SOCOM 1's CUIListBox::HandlePad, 0x38D010 there): nothing without input or
+ * rows; the highlighted row brought back inside the list (and the window to it), found by the
+ * GetItemText walk; the row's own action on its button's press runs (its argument, else its text)
+ * and presses the box; else the first of the box's actions whose event is in its state runs (its
+ * argument, else the row's text or string, as SetActive's), pressing the box when the row passes
+ * its text on; else up / down (or the stick, or held past the repeat time) highlight the row
+ * above or below; else a sideways press or a stick move is taken when the box wraps. The counter
+ * zeroed at the top and the walk not re-initialising it (as SOCOM 1's: `for (i = 0; ...)` is
+ * unrolled 8x, 0x504 bytes); the event tested `!= 0` (a plain byte test re-masks it with andi).
+ * OPEN, 1 instruction: the action test's `bne v0,v1` -- the target loads the action's state into
+ * v0 and the pad's state for its event into v1 and compares them state first; MW gives the pad's
+ * side v1 only when it is written first, and then compares it first (`bne v1,v0`); written state
+ * first, the two swap registers and the delay slot empties (18). Tried: a continue, `!(a != b)`,
+ * nested ifs, int / enum / char casts on either side, named temporaries for the event, the state,
+ * the pad's state or its address (copy-propagated: state first), subscripts written as
+ * `ev[pad->m_state]`, `*(pad->m_state + ev)` and on the pad's bytes (C2DButton::HandlePad's open
+ * is the same three temporaries) */
+bool CUIListBox::HandlePad(const CPad *pad, int port)
+{
+    int i = 0;
+
+    if (!CanHandleInput())
+        return false;
+    if (!m_items.size())
+        return false;
+    if ((unsigned int)m_highlighted >= m_items.size()) {
+        m_highlighted = m_items.size() - 1;
+        if (m_highlighted < m_scroll)
+            m_scroll = m_highlighted;
+
+        int d = m_highlighted - m_scroll;
+
+        m_offset = d * m_lineHeight;
+    }
+
+    std::list<ListItem *>::iterator it;
+
+    it = m_items.begin();
+    for (; i < m_highlighted; i++)
+        ++it;
+
+    ListItem *item = *it;
+
+    if (item->m_action.Event < 16 && pad->m_state[item->m_action.Event] == 1 && item->m_24) {
+        m_repeat = 0.0f;
+
+        CZAnim *anim = ZAnim.GetAnim(item->m_action.Animation, 0);
+
+        if (!anim)
+            return false;
+        if (item->m_action.Argument)
+            anim->ActivateArg(1, 8, item->m_action.Argument, 0);
+        else if (item->m_text)
+            anim->ActivateArg(1, 8, item->m_text, 0);
+        else
+            anim->Activate(0);
+        SetPressed();
+        return true;
+    }
+    for (int j = 0; j < m_numActions; j++)
+        if (m_actions[j].Event != 0 && pad->m_state[m_actions[j].Event] == m_actions[j].State) {
+            CZAnim *anim = ZAnim.GetAnim(m_actions[j].Animation, 0);
+
+            m_repeat = 0.0f;
+            if (!anim)
+                return false;
+            if (m_actions[j].Argument)
+                anim->ActivateArg(1, 8, m_actions[j].Argument, 0);
+            else if (item->m_text && item->m_24)
+                anim->ActivateArg(1, 8, item->m_text, 0);
+            else if (item->m_24)
+                anim->ActivateArg(1, 8, item->GetString(), 0);
+            if (item->m_24)
+                SetPressed();
+            return true;
+        }
+    if (pad->m_state[4] == 1 || DidStickMovePrev()) {
+        m_repeat = 0.0f;
+        return HighlightPrev();
+    }
+    if (pad->m_state[4] == 2 && m_repeat > 0.4f)
+        return HighlightPrev();
+    if (pad->m_state[5] == 1 || DidStickMoveNext()) {
+        m_repeat = 0.0f;
+        return HighlightNext();
+    }
+    if (pad->m_state[5] == 2 && m_repeat > 0.4f)
+        return HighlightNext();
+    if (m_ea && (pad->m_state[3] == 1 || pad->m_state[2] == 1 || DidStickMoveNext() || DidStickMovePrev()))
+        return true;
+    return false;
+}
+
+/* the next row highlighted (SOCOM II's, 0x3742F0: HandlePad's down, the name ours): at the last
+ * row, the box's wrap flag returned; else the row below taken -- the offset a row further, the
+ * row found by the GetItemText walk -- its own action run, the selection sound, and the box's
+ * actions on event 43, as SetActive's on event 2 (the row's index printed and unused) */
+bool CUIListBox::HighlightNext()
+{
+    if (m_highlighted >= (int)m_items.size() - 1)
+        return m_ea;
+    m_highlighted++;
+    m_offset += m_lineHeight;
+
+    std::list<ListItem *>::iterator it;
+
+    it = m_items.begin();
+    for (int i = 0; i < m_highlighted; i++)
+        ++it;
+
+    ListItem *item = *it;
+
+    if (((const ListItem *)item)->m_action2.Animation) {
+        CZAnim *anim = ZAnim.GetAnim(item->m_action2.Animation, 0);
+
+        if (anim) {
+            if (item->m_action2.Argument)
+                anim->ActivateArg(1, 8, item->m_action2.Argument, 0);
+            else
+                anim->Activate(0);
+        }
+    }
+    PlaySelectionSound();
+
+    char buf[12];
+
+    sprintf(buf, "%d", m_highlighted);
+    for (int i = 0; i < m_numActions; i++)
+        if (m_actions[i].Type == 1 && m_actions[i].Event == 43) {
+            CZAnim *anim = ZAnim.GetAnim(m_actions[i].Animation, 0);
+
+            if (m_actions[i].Argument)
+                anim->ActivateArg(1, 8, m_actions[i].Argument, 0);
+            else if (item->m_text && item->m_24)
+                anim->ActivateArg(1, 8, item->m_text, 0);
+            else if (item->m_24)
+                anim->ActivateArg(1, 8, item->GetString(), 0);
+        }
+    return true;
+}
+
+/* the previous row highlighted (SOCOM II's, 0x374010: HandlePad's up, the name ours): at the
+ * first row, the box's wrap flag returned; else as HighlightNext, a row back */
+bool CUIListBox::HighlightPrev()
+{
+    if (m_highlighted <= 0)
+        return m_ea;
+    m_highlighted--;
+    m_offset -= m_lineHeight;
+
+    std::list<ListItem *>::iterator it;
+
+    it = m_items.begin();
+    for (int i = 0; i < m_highlighted; i++)
+        ++it;
+
+    ListItem *item = *it;
+
+    if (((const ListItem *)item)->m_action2.Animation) {
+        CZAnim *anim = ZAnim.GetAnim(item->m_action2.Animation, 0);
+
+        if (anim) {
+            if (item->m_action2.Argument)
+                anim->ActivateArg(1, 8, item->m_action2.Argument, 0);
+            else
+                anim->Activate(0);
+        }
+    }
+    PlaySelectionSound();
+
+    char buf[12];
+
+    sprintf(buf, "%d", m_highlighted);
+    for (int i = 0; i < m_numActions; i++)
+        if (m_actions[i].Type == 1 && m_actions[i].Event == 43) {
+            CZAnim *anim = ZAnim.GetAnim(m_actions[i].Animation, 0);
+
+            if (m_actions[i].Argument)
+                anim->ActivateArg(1, 8, m_actions[i].Argument, 0);
+            else if (item->m_text && item->m_24)
+                anim->ActivateArg(1, 8, item->m_text, 0);
+            else if (item->m_24)
+                anim->ActivateArg(1, 8, item->GetString(), 0);
+        }
+    return true;
 }
 
 /* the iterator taken from begin() is a local in memory (ASSIGNED from begin(), its copy goes through
@@ -4217,16 +4451,6 @@ void CRenderableString::Draw(const CMatrix &m, zdb::CTextureRelocMgr *mgr)
     }
     C2DString::Draw(mgr, 0, (int)p.z);
 }
-
-/* the pad as the buttons read it: each button's key state (zinput.h's CPad::m_state from
- * 0x1; 2 a press, 1 a release) */
-class CPad {
-public:
-    unsigned char m_0;   // 0x0
-    unsigned char m_state[16];   // 0x1
-    unsigned char _11[0x21c - 0x11];
-    float m_zoom;   // 0x21c: a stick's axis (the map control zooms by it)
-};
 
 /* an action's animation started, handed its argument if it has one (the check box's two arms:
  * an inline member whose copy of `this` -- the item, a variable of its own -- stays in a saved
