@@ -264,6 +264,8 @@ public:
     virtual void PrepControls(CTextureRelocMgr *reloc);
     void Draw2dOnly();
     void DrawForeplane();
+    /* the menu's frame (0x3654C0: SOCOM 1's calls name it -- the UI's round 27; zui.cpp) */
+    void Tick(float dT);
     /* the menu set up over a relocator, its own rdr's design loaded (SOCOM 1's; 0x368570, the UI's
      * round 18 -- zui.cpp) */
     bool Init(zdb::CTextureRelocMgr *mgr, CZAnimZAR *zar);
