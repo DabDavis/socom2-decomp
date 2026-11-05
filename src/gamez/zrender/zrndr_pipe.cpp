@@ -748,33 +748,41 @@ void CPipe::BuildLightMapList(zdb::CNode *node)
     }
 }
 
-/* a span about a value reaching into [lo, hi] (ours) */
-static inline bool SpanMeets(float v, float r, float lo, float hi)
+/* a span about a value reaching into [lo, hi] (ours): the bounds by reference, so the upper one is
+ * read only once the lower has passed; false preset and set true in the nested test */
+static inline bool SpanMeets(float v, float r, const float &lo, const float &hi)
 {
-    if (v + r >= lo && v - r <= hi)
-        return true;
-    return false;
+    bool t = false;
+
+    if (!(v + r < lo))
+        if (v - r <= hi)
+            t = true;
+    return t;
 }
 
-/* a sphere meeting a box, axis by axis (ours) */
+/* a sphere meeting a box, axis by axis (ours): x and y into one preset bool, z into another */
 static inline bool SphereMeetsBox(const CPnt3D *p, float r, const CBBox *b)
 {
-    return SpanMeets(p->x, r, b->m_min.x, b->m_max.x) && SpanMeets(p->y, r, b->m_min.y, b->m_max.y) &&
-           SpanMeets(p->z, r, b->m_min.z, b->m_max.z);
+    bool xyz = false;
+    bool xy = false;
+
+    if (SpanMeets(p->x, r, b->m_min.x, b->m_max.x))
+        if (SpanMeets(p->y, r, b->m_min.y, b->m_max.y))
+            xy = true;
+    if (xy)
+        if (SpanMeets(p->z, r, b->m_min.z, b->m_max.z))
+            xyz = true;
+    return xyz;
 }
 
 /* SOCOM II's (the name ours; RenderDelayedNodes and PrepareAtom call it after BuildLightMapList):
  * with any shadow casters the projected maps listed afresh -- for a pipe's node marked to take them,
  * each caster whose box the node's bounding sphere meets.
- * OPEN, 42 instructions (the size the target's): the walk, its out-of-line preheader (the node's
- * position hoisted into it), the pushed copy and the calls are the target's; the box test is not --
- * the target takes the box's address into a register first (a2), presets each axis's false in the
- * first compare's delay slot and sets true with daddiu after both, then folds the three as
- * `xy = 0; if (x) if (y) xy = 1; xyz = 0; if (xy) if (z) xyz = 1;` (a0, a1 cleared up front).
- * Tried (build/scratch/wld/v_bpml*.py): the span as `return a && b`, `if (a && b) return true;
- * return false;` (this one, nearest), a bool local set in an if or an if/else, two early returns;
- * the box as one `&&` chain, an XY inline under a Z one, bool locals set in nested ifs, either
- * declaration order -- 42 to 0x220 bytes */
+ * The box's address a named local of the walk, passed to the box test: MW then reads the box
+ * through it (a2) after the first block, where `&c->m_bbox` passed straight is folded into every
+ * load (s2 + 0x54...); each axis presets its false in the first compare's delay slot (the span a
+ * preset bool set in nested ifs, the bounds by reference), x and y fold into one preset bool and z
+ * into another -- the world lane's rounds 19 and 21 (build/scratch/wld/v_bpml.py) */
 void CPipe::BuildProjectedMapList(zdb::CNode *node)
 {
     if (m_world->m_shadow_casters.size()) {
@@ -786,8 +794,9 @@ void CPipe::BuildProjectedMapList(zdb::CNode *node)
                 zdb::CShadowCaster *c = *i;
                 float r = node->GetRadius();
                 const CPnt3D *pos = (const CPnt3D *)node->m_matrix.m_matrix[3];
+                const CBBox *box = &c->m_bbox;
 
-                if (SphereMeetsBox(pos, r, &c->m_bbox)) {
+                if (SphereMeetsBox(pos, r, box)) {
                     zdb::CShadowCaster *kept = c;
 
                     zdb::CVisual::m_projectedMapList.push_back(kept);
