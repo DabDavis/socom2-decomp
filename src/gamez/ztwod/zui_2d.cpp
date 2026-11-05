@@ -3617,7 +3617,10 @@ bool CUIListBox::HighlightPrev()
  * OPEN, 6 instructions (stack slots): the target puts push_back's end and returned iterators at
  * sp+60/64, below the insert's returned one at 68; here they are at 64/68 and the insert's at 60.
  * Tried: the if/else the other way round (0xEC), the iterator declared at the top, the insert's
- * result assigned or kept, insert(end(), item) for the push_back (6 each) */
+ * result assigned or kept, insert(end(), item) for the push_back (6 each); round 56: braces round
+ * the push_back, the iterator at function scope (6), the push_back through a one-level-deeper
+ * inline wrapper, by reference or by value (7, 0xF4: its temporaries then sink below the position
+ * copy) -- the target's order reads like SOCOM 1's two-level push_back (include/list's "vc") */
 void CUIListBox::AddItem(ListItem *item, int where)
 {
     item->SetFont(m_font);
@@ -4307,7 +4310,9 @@ C2DAnimCmdHdr *CRenderableString::ParseZAnimCmd(_zrdr *rdr)
  * stores it, then builds this class's and stores it (one register, v0, serialised); here both
  * addresses are built up front in v1/v0 (as the string look's constructor 0x36B330 does in the
  * target too). The rest -- the reader's count clamped to the columns (RdrCount evaluated twice),
- * the walk, the push_back through the pod insert -- is byte-exact */
+ * the walk, the push_back through the pod insert -- is byte-exact. Round 56: an empty user
+ * constructor for CListItemTypeImpl, an explicit `: CListItemTypeImpl(), m_items()` -- 10 each (the
+ * target's serialised stores read as the two addresses in two blocks, or one register reused) */
 CListItemArrayTypeImpl::CListItemArrayTypeImpl(_zrdr *rdr, const std::vector<ColumnData *> &cols)
 {
     const ZRdrNode *r = (const ZRdrNode *)rdr;
