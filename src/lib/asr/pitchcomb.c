@@ -5,7 +5,7 @@
  * constructor LOCAL there; SOCOM II moved the control function before the init),
  * ScanSoft's speech recogniser, prebuilt with ee-gcc 2.96 at -O2 -G0 -fno-strict-aliasing
  * -funroll-loops (README "The GCC front"). Names are SOCOM 1's; the block's fields are named by
- * their use. NormE_Processing (round 17c), FlushPitchCombiner and PitchCombinerReset (OPEN) and
+ * their use. NormE_Processing (round 17c), FlushPitchCombiner (round 23c), PitchCombinerReset (OPEN) and
  * ControlPitchCombiner (round 22c: SOCOM 1's body, 0x5028F0 -- the constructor's control slot,
  * moved before InitPitchCombiner in SOCOM II) are written. */
 #include "tosblk.h"
@@ -31,7 +31,8 @@ typedef struct PITCHCOMB {
     float f144;                         /* +144: the last frame's difference r60 - r112 */
     void *f148;                         /* +148 */
     float *weights;                     /* +152: the window's weights */
-    unsigned char f156;                 /* +156: r96's and r112's lead, doubled */
+    volatile unsigned char f156;        /* +156: r96's and r112's lead, doubled (volatile: the
+                                         * flush reads it again after its test, SOCOM 1's too) */
     unsigned char nwin;                 /* +157: the window's frames */
     unsigned char nring;                /* +158: the rings' length */
     unsigned char f159;
@@ -107,23 +108,23 @@ static void NormE_Processing(PITCHCOMB *p)
  * target's `addiu t0,s0,104`), the count an int narrowed at the loop's test (the target's `andi
  * 0xffff` after the wrap test's join), the frame written through `*q++` and its last value one
  * store at the join (a conditional expression).
- * OPEN (round 22c, 0x354 against 0x35C, 2 words short): the target -- SOCOM 1's copy too -- reads
- * +156 again for the count where this compile reuses the lead test's read (and a loop head's
- * alignment nop follows). With +156 volatile the size and every block are the target's and only
- * registers differ (36 words: s and i swap a2/a3 in each padding block, every declaration order
- * alike, build/scratch/gcc/fd/fl4.py) -- but the reset reads +156 once for two uses, so the field
- * is left plain; the second read's cause is not known */
+ * Round 23c: the target -- SOCOM 1's copy too -- reads +156 again for the count after the lead
+ * test: the field is volatile (the reset reads it once, into a local). The padding blocks' locals
+ * are the function's, declared at its top (C89): ONE s, len and i for all three blocks -- i then
+ * spans three loops and outranks s in global-alloc (the target's i in a2, s in a3, len in a0 in
+ * every block; per-block locals rank s first, 36 words; every order of the five declarations
+ * alike); the output block computes its count before s (the nwin load ahead of `s = w - 1`) */
 static int FlushPitchCombiner(PITCHCOMB *p)
 {
     float *q;
+    float *s;
+    float *w;
+    int len;
+    unsigned short i;
 
     if (p->f160 != 0) {
         if (p->f183 != 0) {
             if (p->f160 >= (unsigned char)(p->f156 - 1)) {
-                float *s;
-                int len;
-                unsigned short i;
-
                 s = p->r96.wr - 1;
                 len = p->f156 >> 1;
                 if (s < p->r96.base)
@@ -145,11 +146,9 @@ static int FlushPitchCombiner(PITCHCOMB *p)
             p->f183 = 0;
         }
         if (p->f184 != 0) {
-            float *w = p->out.wr;
-            float *s = w - 1;
-            int len = p->nwin >> 1;
-            unsigned short i;
-
+            w = p->out.wr;
+            len = p->nwin >> 1;
+            s = w - 1;
             if (s < p->out.base)
                 s = p->out.end - 1;
             for (i = 0; i < (unsigned short)len; i++) {
@@ -216,23 +215,37 @@ static __inline__ void ResetRing(RING *r, int len)
  * Defined above ControlPitchCombiner, whose command 200 calls it: only so is the control's
  * default `move v0,zero` left out of the `beq`'s slot (round 13c's definition-order rule; with the
  * reset only declared, 3 words).
+ * The lead is read once into a local (+156 is volatile: the flush re-reads it).
  * OPEN (round 22c, the right size, 18 words: one store's place): every word is the target's but the
  * last `= 1` flag store, which the target leaves last (in `jr`'s slot) and sched1 here issues before
  * the ring cursors' stores -- the store that is the constant 1's last use (the QImode pseudo's
  * REG_DEAD) outranks the cursor stores, which free their own registers too and then go in source
  * order; whichever of the three 1-flags comes last in the source jumps so (all 36 placements of
  * each, build/scratch/gcc/fd/pc3.py), and a chained assignment, a local `one`, the flags before the
- * cursors or copied from +184 do not stop it (pc4.py) */
+ * cursors or copied from +184 do not stop it (pc4.py).
+ * Round 23c, read off cc1's dumps: the store enters sched1 with REG_DEAD on both the 1 and p
+ * (weight -2), so under rank_for_schedule's (priority, weight, luid) every source order puts it
+ * first; the target's order needs it held back until the other stores issue. `do { p->f183 = 1; }
+ * while (0)` does that (its LOOP_BEG note makes the store a scheduling barrier): sched1's output is
+ * then the target's, but the barrier stands in sched2 too, where flush_pending_lists gives every
+ * load one dependent more and the depend-count tie-break issues each base load before the srl
+ * beside it (4 words; with -fno-schedule-insns2 the reset matches, and the object's other three
+ * functions do not -- sched2 is on). So the vendor's hold is in sched1 only; volatile flags,
+ * inlines for the tail or the cursors, a pointer to the flags and the block's own pointer do not
+ * give it (build/scratch/gcc/pr1.py). */
 static void PitchCombinerReset(PITCHCOMB *p)
 {
+    int lead;
+
     ResetRing(&p->r80, p->nring);
     ResetRing(&p->e, p->nring);
     ResetRing(&p->r60, p->nring);
     ResetRing(&p->r112, p->nring);
     ResetRing(&p->r96, p->nring);
     ResetRing(&p->out, p->nring);
-    p->r112.wr = p->r112.base + (p->f156 >> 1);
-    p->r96.wr = p->r96.base + (p->f156 >> 1);
+    lead = p->f156 >> 1;
+    p->r112.wr = p->r112.base + lead;
+    p->r96.wr = p->r96.base + lead;
     p->out.wr = p->out.base + (p->nwin >> 1);
     p->f76 = p->r60.rd;
     p->rd = p->e.rd;
