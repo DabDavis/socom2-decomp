@@ -634,6 +634,120 @@ bool CSnd::LoadBank(const char *name)
     return ok;
 }
 
+/* the record readers (zrdr_main.cpp) and a name's hash (0x3A59C0, not named yet) */
+bool zrdr_findint(const _zrdr *rdr, const char *tag, int *out, int n);
+char *zrdr_findstring(const _zrdr *rdr, const char *tag);
+bool zrdr_findPNT2D(const _zrdr *rdr, const char *tag, PNT2D *out);
+extern "C" unsigned int func_003A59C0(const char *name);
+
+/* SOCOM 1's: a sound made from its sounds.rdr record -- the name (hashed into m_18), the type and
+ * mode tags, a stream's ST block (its two names, priority, offsets, loop and quality flags), the
+ * range and volume, a linked sound, a subtitle with its time and valve; numbered in its bank.
+ * Byte-exact (the world lane round 23): the range brace-initialised (MW zeroes it in place, a byte
+ * loop behind a null test; `PNT2D()` builds a temporary and copies it, a saved register more) */
+void CSnd::LoadCSnd(_zrdr *rdr)
+{
+    if (m_isDisabled)
+        return;
+    m_soundmode = 4;
+    m_isOneShot = false;
+    m_socom2_bit7 = false;
+    m_18 = rdr->Item(0)->Int();
+    char *name = rdr->Item(0)->String();
+
+    if (name) {
+        m_name = name;
+        m_18 = func_003A59C0(name);
+    }
+    m_socom2_bit9 = false;
+    m_14 = 0;
+    if (zrdr_findtag(rdr, "ONESHOT"))
+        m_isOneShot = true;
+    if (zrdr_findtag(rdr, "TYPE_CONVERSATIONAL"))
+        m_mode = 1;
+    if (zrdr_findtag(rdr, "TYPE_SITREP"))
+        m_mode = 2;
+    if (zrdr_findtag(rdr, "TYPE_DEATH_DAMAGE"))
+        m_mode = 3;
+    if (zrdr_findtag(rdr, "ONESHOT"))
+        m_isOneShot = true;
+    if (zrdr_findtag(rdr, "AMBIENT"))
+        m_socom2_bit1 = true;
+    if (zrdr_findtag(rdr, "DOPPLER"))
+        m_socom2_bit8 = true;
+    if (zrdr_findtag(rdr, "STREAMING_EFX"))
+        m_soundmode = 1;
+    if (zrdr_findtag(rdr, "MUS"))
+        m_soundmode = 2;
+    _zrdr *st = zrdr_findtag(rdr, "ST");
+
+    if (st) {
+        if (m_soundmode != 1 && m_soundmode != 2)
+            m_soundmode = 3;
+        m_isStreamed = true;
+        _zrdr *t = zrdr_findtag(st, "N1");
+
+        if (t) {
+            char *s = t->Item(0)->String();
+
+            if (s)
+                m_20 = s;
+        }
+        t = zrdr_findtag(st, "N2");
+        if (t) {
+            char *s = t->Item(0)->String();
+
+            if (s)
+                m_24 = s;
+        }
+        if (zrdr_findtag(st, "PRIORITY"))
+            m_socom2_bit7 = true;
+        if (zrdr_findtag(st, "HS"))
+            m_socom2_bit3 = true;
+        zrdr_findint(st, "OFFSET1", (int *)&m_34, 1);
+        zrdr_findint(st, "OFFSET2", (int *)&m_38, 1);
+        if (zrdr_findtag(st, "LOOP"))
+            m_socom2_bit9 = true;
+        if (zrdr_findtag(st, "HQ"))
+            m_socom2_bit4 = true;
+        if (zrdr_findtag(st, "VQ"))
+            m_socom2_bit5 = true;
+        else
+            m_socom2_bit5 = false;
+        if (zrdr_findtag(st, "PD"))
+            m_socom2_bit6 = true;
+    }
+    PNT2D range = { 0.0f, 0.0f };
+
+    range.x = m_range_min;
+    range.y = m_range_max;
+    zrdr_findPNT2D(rdr, "RANGE", &range);
+    m_range_min = (unsigned int)range.x;
+    m_range_max = (unsigned int)range.y;
+    zrdr_findreal(rdr, "VOLUME", &m_vol, 1);
+    _zrdr *link = zrdr_findtag(rdr, "LINK");
+
+    if (link) {
+        char *s = link->Item(0)->String();
+
+        if (s)
+            m_14 = GetSoundByName(s);
+    }
+    char *sub = zrdr_findstring(rdr, "SUBTITLE");
+
+    if (sub) {
+        m_28 = sub;
+        m_30 = 0.0f;
+        zrdr_findreal(rdr, "SUBTITLE_TIME", &m_30, 1);
+        char *valve = zrdr_findstring(rdr, "SUBTITLE_VALVE");
+
+        if (valve)
+            m_2c = CValve::Create(valve, (VALVE_TYPE)2);
+    }
+    m_ID = m_curID++;
+    m_bank = m_curbank;
+}
+
 CSndInstance *CSnd::PlaySound(CSndInstance *inst, unsigned int flags)
 {
     if (m_isDisabled)
