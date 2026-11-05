@@ -665,6 +665,50 @@ C2D *CCheckBoxSpec::CreateDisplayObj(C2DFont *font, zdb::CTextureRelocMgr *mgr) 
     return box;
 }
 
+/* the strip's buttons: each item of its SUBORDINATES made a design object -- its NAME ("unnamed" if
+ * none), TYPE, XPOS, YPOS and SPEC, the CHILDOF read from the SPEC block (the target passes the spec
+ * rdr, not the item) -- and listed (0x37DA50: SOCOM 1's, by GetControlSpec's RADIOSTRIP branch,
+ * written round 29; the object a local whose address the push_back takes, zeroed ahead of the spec
+ * test -- its store in that test's delay slot; the counter an int against the unsigned Count(), the
+ * item's i*8 recomputed each pass as LoadDlgObjects' -- `unsigned int i` strength-reduces it).
+ * OPEN, 0x2C0 against 0x2D8, every call, stack slot and saved register the target's: LoadDlgObjects'
+ * open layout (its note) -- the target keeps Item()'s two inlined ternaries as then-arm, `b join`,
+ * else-arm with the else's instruction copied into the branch's delay slot and the dead else block
+ * left behind (four words), lays out the bottom test's Count() with an empty delay slot and the
+ * `sltu` at the join (here copied into both arms), and pads no label before "unnamed"; the two
+ * name assignments' tag temporaries take sp+144 / sp+140 the other way round. `#pragma peephole
+ * off`, `scheduling off`, `optimization_level 3`: no change */
+CRadioStripSpec::CRadioStripSpec(_zrdr *rdr) : CButtonSpec(rdr)
+{
+    _zrdr *subs = zrdr_findtag(rdr, "SUBORDINATES");
+
+    if (!subs)
+        return;
+    for (int i = 0; i < subs->Count(); i++) {
+        _zrdr *item = subs->Item(i);
+        const char *name = zrdr_findstring(item, "NAME");
+        const char *type = zrdr_findstring(item, "TYPE");
+        int x, y;
+
+        zrdr_findint(item, "XPOS", &x, 1);
+        zrdr_findint(item, "YPOS", &y, 1);
+        _zrdr *specRdr = zrdr_findtag(item, "SPEC");
+        if (specRdr) {
+            CDlgObjSpec *spec = GetControlSpec(specRdr, type);
+            CDesignDlgObj *o = 0;
+
+            if (spec) {
+                o = new CDesignDlgObj;
+                o->SetSpec(spec);
+                o->SetPos(x, y);
+                o->SetName(name);
+                o->m_childOf = zrdr_findstring(specRdr, "CHILDOF");
+                m_items.push_back(o);
+            }
+        }
+    }
+}
+
 /* the design object's spec deleted, its strings destroyed (SOCOM II's, an ordinary function: zui.cpp's
  * tail and the radio strip's and handler button's destructors call it) */
 CDesignDlgObj::~CDesignDlgObj()
