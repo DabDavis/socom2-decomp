@@ -725,7 +725,7 @@ struct CTSignal : TASK_HDR {
  * entity it applies to (the names ours but the tags') */
 struct CTSetAnimSet : TASK_HDR {
     unsigned int m_flags;   // 0x8
-    short m_set;   // 0xc: the tag "name", as a name of the running anim's
+    unsigned short m_set;   // 0xc: the tag "name", as a name of the running anim's (a TASK_ANIMNAME's)
     unsigned char _e[0x10 - 0xe];
     TASK_ENT m_ent;   // 0x10: the tag "entity"
 
@@ -1760,6 +1760,53 @@ _zanim_cmd_hdr *CTSetAnimSet::Parse(_zrdr *rdr)
         cmd->m_ent.SetName(ent);
     }
     return &cmd->hdr;
+}
+
+extern "C" {
+/* the AI's bored anim set taken (OVL2 0x5605A0, the SEALs' row: seal_ai.cpp's spelling) and a SEAL's
+ * anim set of a name bound (OVL2 0x58C4B0, the SEALs' row, unnamed) */
+bool func_005605A0(CSealCtrlAi *ai, int a);
+void func_0058C4B0(CZSealBody *seal, const char *name);
+}
+
+/* the SEAL's anim set changed -- the task's SEAL's, or with an entity named that SEAL's (found three
+ * times over, as CTSignal::Tick's) -- to the bored one through its AI (flag 2), else to the set named,
+ * made its default with flag 4; done at once (OVL2 0x5D1E00; SOCOM 1's, the entity new) */
+bool CTSetAnimSet::Tick(_zanim_cmd_hdr *hdr, float *dT)
+{
+    CZSealBody *dest;
+    CEntityCtrl *ctrl;
+    TASK_SEAL(CTSetAnimSet);
+    dest = seal;
+    ctrl = dest ? dest->m_control : 0;
+    CSealCtrlAi *ai = dest ? SealAi(dest) : 0;
+
+    if (((const TASK_ENT *)&cmd->m_ent)->m_type) {
+        dest = (CZSealBody *)cmd->m_ent.GetTyped(CEntity::ENT_TYPE_SEAL);
+        CZSealBody *s = (CZSealBody *)cmd->m_ent.GetTyped(CEntity::ENT_TYPE_SEAL);
+
+        ctrl = s ? s->m_control : 0;
+        s = (CZSealBody *)cmd->m_ent.GetTyped(CEntity::ENT_TYPE_SEAL);
+        ai = s ? SealAi(s) : 0;
+    }
+    if (!dest || !ctrl) {
+        *dT = 0.0f;
+        return true;
+    }
+    if (cmd->m_flags & 2) {
+        if (ai)
+            func_005605A0(ai, 1);
+    } else {
+        const char *name = ((const TASK_ANIMNAME *)&cmd->m_set)->Get();
+
+        if (name) {
+            func_0058C4B0(dest, name);
+            if (cmd->m_flags & 4)
+                dest->m_530 = dest->m_animset;
+        }
+    }
+    *dT = 0.0f;
+    return true;
 }
 
 /* a signal by name -- the tag "signal", else the first item when neither tag is there, else for an
