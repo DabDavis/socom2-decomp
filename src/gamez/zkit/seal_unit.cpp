@@ -52,6 +52,12 @@ enum UNIT_MESSAGE { UNIT_MSG_0 = 0, UNIT_MSG_1 = 1, UNIT_MSG_2 = 2, UNIT_MSG_3 =
 /* a squad command (zseal.h's FT_COMMAND, which this unit does not include: the same byte enum) */
 enum FT_COMMAND { CMD_UNKNOWN = 0, CMD_ACTION = 1, CMD_LAST = 255 };
 
+/* a hand signal (zseal.h's SEAL_HANDSIGNAL, a byte enum) */
+enum SEAL_HANDSIGNAL {
+    HANDSIGNAL_NULL = 0, HANDSIGNAL_FOLLOW = 1, HANDSIGNAL_HOLDPOSITION = 2, HANDSIGNAL_FIREATWILL = 3,
+    HANDSIGNAL_DEPLOY = 4, HANDSIGNAL_POINT = 5, HANDSIGNAL_COUNT = 6, HANDSIGNAL_LAST = 255
+};
+
 /* the SEAL's controller as far as its AI: CSealCtrl's table to slot 0x38, GetSealCtrlAi (zseal.h's
  * CSealCtrl, which this unit does not include; the five slots before it unnamed here) */
 class CUnitSealCtrl : public CEntityCtrl {
@@ -78,6 +84,8 @@ public:
     bool IsPlayer() { return m_control ? ((CUnitSealCtrl *)m_control)->IsPlayer() : false; }
     /* an order given to the SEAL (OVL2 0x590AC0, zseal.h's) */
     void IssueCommand(CZSealBody *from, FT_COMMAND cmd, void *data, bool b);
+    /* a hand signal given (seal_handsig.cpp's, OVL2 0x600290: its anim type returned, unread here) */
+    void DoHandSignal(SEAL_HANDSIGNAL sig);
 
     unsigned char _170[0x5e0 - sizeof(CEntity)];
     unsigned char m_kit[0x1060 - 0x5e0];   // 0x5e0: its kit (zseal.h's CZKit m_kit; bytes here)
@@ -131,6 +139,8 @@ public:
     /* a cell's centre, and the map holding a cell (ai_maps.h's, OVL2 0x52D480, 0x52A180) */
     CPnt3D *GetCellCenter(const CAiMapLoc &loc, CPnt3D *center);
     CAiMap *GetMap(const CAiMapLoc &loc) const;
+    /* a clear line between two cells (ai_maps.h's, OVL2 0x52CBD0) */
+    bool CanSeeLine(const CAiMapLoc &from, const CAiMapLoc &to, CAiMapLoc *out);
 };
 extern CAiMaps AiMaps;
 
@@ -1567,6 +1577,68 @@ int CSealUnit::GetAwareCounter() const
     return n;
 }
 #pragma auto_inline reset
+
+extern "C" {
+/* the online game's byte (seal_command.cpp's 0x5750A0, the SEALs': reads data 0x45A0C1) */
+int func_005750A0(void);
+}
+
+/* the hand signal an order makes, given by the ordering SEAL unless quiet or online: follow for the
+ * moves (12, 13, 9, 11), fire at will for 3, hold for 5, 17 and 6, follow for 4 unless the squad's
+ * first order is 4, deploy for 15 and 2. A player ordering squad 3, or squad 1 when squad 2 is one
+ * SEAL (its tail its leader), signals only in sight of squad 3's leader -- squad 3's first SEAL when
+ * this is it (OVL2 0x5EB190: new in SOCOM II, the name ours). The signal tested `!= HANDSIGNAL_NULL`
+ * (the target masks the byte before each test, a bare `sig` branches on the register) and the line
+ * through a bool local (the andi on the call's result) */
+extern "C" void func_005EB190(CSealUnit *unit, CZSealBody *seal, FT_COMMAND cmd, void *data, bool quiet)
+{
+    if (quiet || !seal || func_005750A0())
+        return;
+    SEAL_HANDSIGNAL sig = HANDSIGNAL_NULL;
+
+    switch (cmd) {
+    case 2:
+        sig = HANDSIGNAL_DEPLOY;
+        break;
+    case 15:
+        sig = HANDSIGNAL_DEPLOY;
+        break;
+    case 4:
+        if (*unit->m_commands.begin() != 4)
+            sig = HANDSIGNAL_FOLLOW;
+        break;
+    case 5:
+    case 17:
+    case 6:
+        sig = HANDSIGNAL_HOLDPOSITION;
+        break;
+    case 3:
+        sig = HANDSIGNAL_FIREATWILL;
+        break;
+    case 11:
+    case 9:
+    case 13:
+    case 12:
+        sig = HANDSIGNAL_FOLLOW;
+        break;
+    }
+    if ((sig != HANDSIGNAL_NULL && seal->IsPlayer() && unit->m_unit_num == 3)
+        || (unit->m_unit_num == 1
+            && CSealUnit::GetUnitByTeam(2)->GetTail() == CSealUnit::GetUnitByTeam(2)->GetLeader())) {
+        CZSealBody *other = unit->m_unit_num == 3 ? *unit->m_seals.begin() : CSealUnit::GetUnitByTeam(3)->GetLeader();
+
+        if (other) {
+            bool seen = AiMaps.CanSeeLine(CAiMapLoc(((CEntity *)seal)->m_mapLocValid),
+                                          CAiMapLoc(((CEntity *)other)->m_mapLocValid), 0);
+
+            if (!seen)
+                sig = HANDSIGNAL_NULL;
+        } else
+            sig = HANDSIGNAL_NULL;
+    }
+    if (sig != HANDSIGNAL_NULL && !quiet)
+        seal->DoHandSignal(sig);
+}
 
 /* a random draw in [min, min + range) (SOCOM 1's Rfloat's operator float without its zero-range test,
  * the 1.0 range through the parameter so its multiply stays -- seal_aifollow.cpp's FollowRand), and
