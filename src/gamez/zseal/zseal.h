@@ -214,6 +214,9 @@ public:
     /* whether a scope or the binoculars are up (SOCOM 1's; OVL2 0x5B9990, 0x5B90F0 -- kit.h's) */
     bool IsUsingScope();
     bool IsUsingBinocs();
+    /* whether the weapon in hand waits out a fire delay (kit.h's; OVL2 0x5C2400 -- IsReloading asks
+     * it first) */
+    bool IsFireDelayed();
     /* whether a weapon picked up has a slot to go in (kit.h's; OVL2 0x5BAC30, the kit lane's: the
      * SEAL's pickup tests 0x5A9C70 and 0x5A9F40 ask it) */
     bool HasPickupSlot();
@@ -301,7 +304,9 @@ enum NODEACTION_TYPE { NODEACTION_0 = 0, NODEACTION_BOMB = 4, NODEACTION_5 = 5, 
 
 class CValve;
 
-class CNodeAction {
+/* (a node's extension, as fts_action.cpp's: GetReticuleAction's dynamic_cast from the node's
+ * extension names OVL2's copy of its RTTI, 0x65C638, whose one base is CNodeEx's at offset 0) */
+class CNodeAction : public zdb::CNodeEx {
 public:
     /* the anim run on a SEAL (SOCOM 1's; OVL1 0x2B44E0, fts_action.cpp's) */
     int ExecuteAction(class CZSealBody *body, unsigned int index);
@@ -312,12 +317,15 @@ public:
     bool Acquire(unsigned int who);
     void Release(unsigned int who);
 
-    unsigned char _0[0x14];
+    unsigned char _4[0x14 - 0x4];
     /* (SOCOM 1's m_node: CanPlaceBomb matches it against the sides' bomb sites, TickMPBomb against the
      * bomb's node) */
     zdb::CNode *m_node;   // 0x14
     CValve *m_valve;   // 0x18
-    unsigned char _1c[0x24 - 0x1c];
+    /* how near the action can be taken, across and (SOCOM II's; -1 for any) up (fts_action.cpp's m_range
+     * and m_20: GetReticuleAction tests the fire point's offset against them) */
+    float m_range;   // 0x1c
+    float m_20;   // 0x20
     NODEACTION_TYPE m_type;   // 0x24
     unsigned char _25[0x30 - 0x25];
     unsigned int m_teams;   // 0x30: the sides that may use it (fts_action.cpp's m_30)
@@ -1860,6 +1868,14 @@ public:
     /* the action under the reticule, or near it (SOCOM 1's GetReticuleAction, by its order after the
      * pickup tests 0x5A9C70-0x5AA110 and its call of CNodeAction::GetAction 0x5AA470; OVL2 0x5AA240) */
     class CNodeAction *GetReticuleAction(bool b);
+    /* the weapon pickup under the reticule, the weapon pickup nearest the fire point and the MP bomb
+     * there, each with a second when asked (SOCOM 1's, in its order before GetReticuleAction; OVL2
+     * 0x5A9C70, 0x5A9F40, 0x5AA110 -- CSealCtrl::TickPickups asks them) and the reticule's SEAL kept or
+     * let go (SOCOM 1's, after GetAction; OVL2 0x5AA620 -- the HUD's radio menu flips it) */
+    class CPickup *GetReticuleWeapon(class CPickup **secondary);
+    class CPickup *GetProximityWeapon(class CPickup **secondary);
+    class CPickup *GetProximityMPBomb();
+    void CacheReticuleSeal(bool on);
     /* the MP bomb picked up (SOCOM 1's; OVL2 0x59DEF0) */
     void HandlePickupMPBomb(CPickup *pickup);
     /* a console's request for one of the SEAL's pickups answered: the ammunition taken and the
@@ -1949,7 +1965,21 @@ public:
      * written yet) */
     bool IsChangingWeapons(bool kit);
     bool IsReloading();
+    /* a reload's blend pushed for the stance the blends rest in, the item in hand and whether the SEAL
+     * moves -- none in the air unless a launcher reloads; true unless the state test of kind 3 refuses
+     * (SOCOM 1's Reload, which returned the blend; OVL2 0x5A82E0 -- CZKit::Reload and
+     * ChamberLauncherRound call it, the flag their own) */
+    bool Reload(bool b);
     bool CanChangeItem();
+    /* whether a body may be picked up, the view zoomed, a victim restrained, taken by a CQB attack or
+     * knifed now (SOCOM 1's, in its order around CanChangeItem and FindDeathAnimTypeCQB: OVL2
+     * 0x5A89C0, 0x5A8DA0, 0x5A90B0, 0x5A9500, 0x5A98B0 -- CSealCtrl::PerformProximityActions asks all
+     * but CanZoom, which PreTick asks, as SOCOM 1's) */
+    bool CanUseBodyCarry(CZSealBody *victim);
+    bool CanZoom();
+    bool CanUseRestraint(CZSealBody *victim);
+    bool CanUseCQB(CZSealBody *victim);
+    bool CanUseKnife(CZSealBody *victim);
     /* the SEAL's own AI event made where it stands (SOCOM 1's; OVL2 0x550E50, seal.cpp) */
     void CreateAiEvent();
     /* the SEAL's adrenaline, its level first (SOCOM 1's; OVL2 0x5781B0, seal_anim.cpp's last) */
@@ -1982,8 +2012,8 @@ public:
     float m_blooddriptimer;   // 0x214 (SOCOM 1's 0x170)
     /* the SEAL whose node 0x3DC holds, kept while bit 0 of 0x21C is set (0x5AA620, the radio menu's
      * toggle; the names ours) */
-    CZSealBody *m_218;   // 0x218
-    unsigned char m_21c_bit0 : 1;   // 0x21c
+    CZSealBody *m_cachedReticuleSeal;   // 0x218 (SOCOM 1's DWARF names, 0x174/0x178 there)
+    unsigned char m_useCachedReticuleSeal : 1;   // 0x21c
     unsigned char m_altitude_characters : 1;   // bit 1: SealGetAltitude hits characters too (SOCOM 1's
                                                // flag at 0xde8 bit 0; the name ours)
     unsigned char m_21c_bit2 : 1;   // bit 2: a crouch 0x58A720 reports as a stand (the name ours)
@@ -2060,7 +2090,9 @@ public:
      * reticule pair, which SOCOM II moved ahead of the altitude): the weapon pickup's test 0x5A9C70
      * reads its point and material, the radio toggle 0x5AA620 takes the SEAL of its node (0x3dc) */
     zdb::IntersectStruct m_last_reticule;   // 0x3c0
-    unsigned char _3e0[0x400 - 0x3e0];
+    /* the hit under the reticule that an action takes (SOCOM 1's m_last_reticule_action, 0x360 right
+     * after m_last_reticule as here: GetReticuleAction prefers its node) */
+    zdb::IntersectStruct m_last_reticule_action;   // 0x3e0
     zdb::IntersectStruct m_last_altitude;   // 0x400 (SOCOM 1's 0x320)
     /* the clock when the altitude was last taken over (DetachBody 0x579220 stores the game's clock;
      * new in SOCOM II, the name ours) */

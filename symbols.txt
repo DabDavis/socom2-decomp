@@ -1744,29 +1744,29 @@
 0x00206E50 0x13C NextObjective__15CZObjectiveListFv  # OVL1; s1:calls by hand (SOCOM 1's NextObjective: IsAnySelectable inlined over vector<bool>::test_bit, then SelectNextObjective, SetCurColor(old) and the old name greyed)
 0x00206F90 0x98 SetCurColor__15CZObjectiveListFi  # OVL1; s1:order by hand (SOCOM 1's SetCurColor: the same two ResolveIndex tests, the colour of one name copied to the selected one, at SOCOM II's offsets; after the next-objective pair as SOCOM 1's follows NextObjective)
 0x00207030 0x308 FreeList__15CZObjectiveListFb  # OVL1; s1:order by hand (after SetCurColor where SOCOM 1's FreeList follows its inline IsAnySelectable and ResolveIndex; MissionEndCleanup calls it with true; vector erases, swaps and deletes)
-0x00207340 0x60 func_00207340  # OVL1
-0x002073A0 0x70 func_002073A0  # OVL1
-0x00207410 0x40 func_00207410  # OVL1
-0x00207450 0x8 func_00207450  # OVL1
-0x00207460 0x14 func_00207460  # OVL1
-0x00207480 0x70 func_00207480  # OVL1
-0x002074F0 0x40 func_002074F0  # OVL1
-0x00207530 0x8 func_00207530  # OVL1
-0x00207540 0x14 func_00207540  # OVL1
-0x00207560 0x8 func_00207560  # OVL1
-0x00207570 0x300 func_00207570  # OVL1
+0x00207340 0x60 __dt__Q23std30vector<b,Q23std12allocator<b>>Fv  # OVL1; the HUD lane round 47: hud_objectives.cpp's vector<bool> destructor (its words deleted, then the vector; ~CZNewHudMap calls this copy for the map's objective list), emitted after FreeList
+0x002073A0 0x70 __dt__Q23std50vector<P9C2DBitmap,Q23std22allocator<P9C2DBitmap>>Fv  # OVL1; the HUD lane round 47: FreeVector's temporary destroyed in CZObjectiveList::FreeList (the check boxes' vector)
+0x00207410 0x40 swap__Q23std50vector<P9C2DBitmap,Q23std22allocator<P9C2DBitmap>>FRQ23std50vector<P9C2DBitmap,Q23std22allocator<P9C2DBitmap>>  # OVL1; the HUD lane round 47: FreeVector's swap in CZObjectiveList::FreeList (the check boxes' vector)
+0x00207450 0x8 clear__Q23std50vector<P9C2DBitmap,Q23std22allocator<P9C2DBitmap>>Fv  # OVL1; the HUD lane round 47: FreeVector's clear in CZObjectiveList::FreeList (the check boxes' vector)
+0x00207460 0x14 __ct__Q23std50vector<P9C2DBitmap,Q23std22allocator<P9C2DBitmap>>Fv  # OVL1; the HUD lane round 47: FreeVector's temporary in CZObjectiveList::FreeList (the check boxes' vector)
+0x00207480 0x70 __dt__Q23std50vector<P9C2DString,Q23std22allocator<P9C2DString>>Fv  # OVL1; the HUD lane round 47: FreeVector's temporary destroyed in CZObjectiveList::FreeList (the names' vector)
+0x002074F0 0x40 swap__Q23std50vector<P9C2DString,Q23std22allocator<P9C2DString>>FRQ23std50vector<P9C2DString,Q23std22allocator<P9C2DString>>  # OVL1; the HUD lane round 47: FreeVector's swap in CZObjectiveList::FreeList (the names' vector)
+0x00207530 0x8 clear__Q23std50vector<P9C2DString,Q23std22allocator<P9C2DString>>Fv  # OVL1; the HUD lane round 47: FreeVector's clear in CZObjectiveList::FreeList (the names' vector)
+0x00207540 0x14 __ct__Q23std50vector<P9C2DString,Q23std22allocator<P9C2DString>>Fv  # OVL1; the HUD lane round 47: FreeVector's temporary in CZObjectiveList::FreeList (the names' vector)
+0x00207560 0x8 second__Q310Metrowerks7details158compressed_pair_imp<Q23std66allocator<Q33std42__list_deleter<PCv,Q23std14allocator<PCv>>4node>,Q33std42__list_deleter<PCv,Q23std14allocator<PCv>>9node_base,1>Fv  # OVL1; the HUD lane round 47: the list end pair's non-const second(), out of line where CZObjectiveList::FreeList's objective walk reads the first node through tail() (FreeList emits it first; CGTree::Destroy's copies call it too)
+0x00207570 0x300 RefreshList__15CZObjectiveListFv  # OVL1; s1:order by hand (the HUD lane, round 47: hud_objectives.cpp -- SOCOM 1's RefreshList: the list freed, RefreshStatics, AddObjective per objective with its y stepped by 15, the first selectable picked; SOCOM II frees through FreeList(false), starts at 104 and reselects the held camera first)
 0x00207870 0x138 Tick__15CZObjectiveListFf  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x002079B0 0x50 Init__15CZObjectiveListFv  # OVL1; s1:calls
-0x00207A00 0x460 func_00207A00  # OVL1
+0x00207A00 0x460 AddObjective__15CZObjectiveListFRC20CMissionObjectiveCamf  # OVL1; s1:calls by hand (the HUD lane, round 47: hud_objectives.cpp -- SOCOM 1's AddObjective: a C2DString and a C2DBitmap newed and listed, IsComplete/IsInvalid/IsDisplayOn, the selectable bit pushed; RefreshList's call per objective with the y in f12)
 0x00207E60 0xF8 __ct__15CZObjectiveListFv  # OVL1; s1:order by hand (the HUD lane, round 29: hud_objectives.cpp -- SOCOM 1's CZObjectiveList(), its body's stores in its order (reserve(4), -1, three zeros and the byte 1); CZNewHudMap's constructor calls it for its member at 0xE0)
 0x00207F60 0x2C test_bit__Q23std30vector<b,Q23std12allocator<b>>FUi  # OVL1; s1:calls by hand (SOCOM 1's Select*Objective call vector<bool>::test_bit at the same place; a bit test on the data word at +8, out of line in hud_objectives.cpp's template tail)
 0x00207F90 0x40 swap__Q23std30vector<b,Q23std12allocator<b>>FRQ23std30vector<b,Q23std12allocator<b>>  # OVL1; s1:exact
-0x00207FD0 0x6C func_00207FD0  # OVL1
+0x00207FD0 0x6C insert__Q23std30vector<b,Q23std12allocator<b>>FQ33std30vector<b,Q23std12allocator<b>>8iteratorRCb  # OVL1; s1:calls by hand (the HUD lane, round 47: vector<bool>'s insert(position, x), SOCOM 1's -- insert(position, 1, x) called, begin() + the position's index given back; AddObjective's push_back)
 0x00208040 0x214 insert__Q23std30vector<b,Q23std12allocator<b>>FQ33std30vector<b,Q23std12allocator<b>>8iteratorUiRCb  # OVL1; s1:calls
-0x00208260 0x8 func_00208260  # OVL1
-0x00208270 0x298 func_00208270  # OVL1
-0x00208510 0xF0 func_00208510  # OVL1
-0x00208600 0x48C func_00208600  # OVL1
+0x00208260 0x8 max_size__Q23std30vector<b,Q23std12allocator<b>>CFv  # OVL1; s1:calls by hand (the HUD lane, round 47: vector<bool>'s max_size, SOCOM 1's 8-byte `return -1`; insert(position, n, x)'s first call)
+0x00208270 0x298 set__Q23std30vector<b,Q23std12allocator<b>>FUiUib  # OVL1; s1:calls by hand (the HUD lane, round 47: vector<bool>'s set(pos, n, x), SOCOM 1's -- insert(position, n, x) calls it with the position's index, the count and the value, as SOCOM 1's does)
+0x00208510 0xF0 copy_bits__Q23std30vector<b,Q23std12allocator<b>>FPCUiUiUiUi  # OVL1; s1:calls by hand (the HUD lane, round 47: vector<bool>'s copy_bits(frmdata, first, last, to), SOCOM 1's with SOCOM II's 32-bit words (SOCOM 1's took const unsigned long *) -- insert's two copies round the new bits)
+0x00208600 0x48C shift_out__Q23std30vector<b,Q23std12allocator<b>>FQ33std30vector<b,Q23std12allocator<b>>8iteratorUi  # OVL1; s1:calls by hand (the HUD lane, round 47: vector<bool>'s shift_out(position, n), SOCOM 1's -- insert(position, n, x)'s in-place call when bits follow the position)
 0x00208A90 0x1C func_00208A90  # OVL1
 0x00208AB0 0x1C func_00208AB0  # OVL1
 0x00208AD0 0xB0 __dt__17CZClaymoreMapItemFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
@@ -10816,25 +10816,25 @@
 0x005A7D10 0xD0 IsThrowing__10CZSealBodyFb  # OVL2; s1:order by hand (SOCOM 1's IsThrowing__10CZSealBodyFb, right before CanFire in both builds: the same eight anim tests on the top blend (one global compared twice), then two more unless the flag is set) -- the SEAL lane, round 12
 0x005A7DE0 0x3F0 CanFire__10CZSealBodyFbb  # OVL2; s1:order by hand (SOCOM 1's CanFire__10CZSealBodyFv, after IsThrowing and before Reload/AimWeapon in both builds, two flags added in SOCOM II: CanChangeItem calls it first where SOCOM 1's calls CanFire, and FireWhenReady calls it once as SOCOM 1's does) -- the SEAL lane, round 12
 0x005A81D0 0x108 func_005A81D0  # OVL2
-0x005A82E0 0x4B0 func_005A82E0  # OVL2
+0x005A82E0 0x4B0 Reload__10CZSealBodyFb  # OVL2; s1:order by hand (the SEALs, round 39): SOCOM 1's Reload__10CZSealBodyFv (0x298DE0), after CanFire and func_005A81D0 and before AimWeapon in both builds -- PeekBaseState's stance switch picking a reload anim, the push and the rate from the weapon's reload time; SOCOM II's takes a flag (CZKit::Reload and ChamberLauncherRound pass it) and returns a bool; seal_env.cpp byte-exact
 0x005A8790 0xC0 AimWeapon__10CZSealBodyFv  # OVL2; s1:order by hand (SOCOM 1's AimWeapon__10CZSealBodyFv, before CanUseBodyCarry and CanChangeItem in both builds: PartInSpace of the item's part, the quaternion applied to unit_x into the aim (SOCOM 1's m_aim_dir 0x10a0 = 0x1440), unit_nz otherwise; the item byte SOCOM 1's m_item 0xe58 = 0xF79) -- the SEAL lane, round 12
 0x005A8850 0x70 func_005A8850  # OVL2
 0x005A88C0 0xF8 func_005A88C0  # OVL2
-0x005A89C0 0x2E4 func_005A89C0  # OVL2
+0x005A89C0 0x2E4 CanUseBodyCarry__10CZSealBodyFP10CZSealBody  # OVL2; s1:order by hand (the SEALs, round 39): SOCOM 1's CanUseBodyCarry__10CZSealBodyFP10CZSealBody (0x299170), after AimWeapon and before CanChangeItem in both builds; CSealCtrl::PerformProximityActions calls it as SOCOM 1's does; seal_env.cpp byte-exact
 0x005A8CB0 0xF0 CanChangeItem__10CZSealBodyFv  # OVL2; s1:calls (the HUD lane's round 16, vetted by the integrator: CWeaponSel::OnOpen/HandleOpenState call it where SOCOM 1's call CanChangeItem__10CZSealBodyFv; 0xF0 here against SOCOM 1's 0x78)
-0x005A8DA0 0x310 func_005A8DA0  # OVL2
-0x005A90B0 0x370 func_005A90B0  # OVL2
+0x005A8DA0 0x310 CanZoom__10CZSealBodyFv  # OVL2; s1:order by hand (the SEALs, round 39): SOCOM 1's CanZoom__10CZSealBodyFv (0x2993E0), after CanChangeItem in both builds, the same state switch and throw/stab/restraint/CQB tests; CSealCtrl::PreTick calls it as SOCOM 1's does; seal_env.cpp byte-exact
+0x005A90B0 0x370 CanUseRestraint__10CZSealBodyFP10CZSealBody  # OVL2; s1:order by hand (the SEALs, round 39): SOCOM 1's CanUseRestraint__10CZSealBodyFP10CZSealBody (0x299600), after CanZoom and before FindDeathAnimTypeCQB in both builds, the restraint anims and RESTRAINT_DOT; PerformProximityActions calls it as SOCOM 1's does; seal_env.cpp byte-exact
 0x005A9420 0xD8 FindDeathAnimTypeCQB__10CZSealBodyFP10CZSealBody  # OVL2; s1:order by hand (SOCOM 1's FindDeathAnimTypeCQB__10CZSealBodyFP10CZSealBody, after CanUseRestraint's place in both builds: the same code -- the victim's facing negated and flattened against the offset, two anim types picked by the sign) -- the SEAL lane, round 12
-0x005A9500 0x3B0 func_005A9500  # OVL2
-0x005A98B0 0x3B8 func_005A98B0  # OVL2
-0x005A9C70 0x2C8 func_005A9C70  # OVL2
-0x005A9F40 0x1C8 func_005A9F40  # OVL2
-0x005AA110 0x130 func_005AA110  # OVL2
+0x005A9500 0x3B0 CanUseCQB__10CZSealBodyFP10CZSealBody  # OVL2; s1:order by hand (the SEALs, round 39): SOCOM 1's CanUseCQB__10CZSealBodyFP10CZSealBody (0x2999F0), after FindDeathAnimTypeCQB in both builds; PerformProximityActions, CSealCtrl::SensorPreTick and CAiSCQBAttack::Tick call it as SOCOM 1's do; seal_env.cpp byte-exact
+0x005A98B0 0x3B8 CanUseKnife__10CZSealBodyFP10CZSealBody  # OVL2; s1:order by hand (the SEALs, round 39): SOCOM 1's CanUseKnife__10CZSealBodyFP10CZSealBody (0x299D10), after CanUseCQB in both builds, KNIFE_DOT and the from-behind test; PerformProximityActions calls it as SOCOM 1's does; seal_env.cpp byte-exact
+0x005A9C70 0x2C8 GetReticuleWeapon__10CZSealBodyFPP7CPickup  # OVL2; s1:order by hand (the SEALs, round 39): SOCOM 1's GetReticuleWeapon__10CZSealBodyFPP7CPickup (0x29A050), the first of the three pickup tests after CanUseKnife and before GetReticuleAction in both builds -- the reticule's hit and its material's pickup test; respelled from the free function as a member, byte-exact as before
+0x005A9F40 0x1C8 GetProximityWeapon__10CZSealBodyFPP7CPickup  # OVL2; s1:order by hand (the SEALs, round 39): SOCOM 1's GetProximityWeapon__10CZSealBodyFPP7CPickup (0x29A2D0), the second of the three in both builds -- the weapon nearest the SEAL's point; respelled as a member, byte-exact as before
+0x005AA110 0x130 GetProximityMPBomb__10CZSealBodyFv  # OVL2; s1:order by hand (the SEALs, round 39): SOCOM 1's GetProximityMPBomb__10CZSealBodyFv (0x29A450), the third in both builds, right before GetReticuleAction -- the MP bomb near the SEAL's point; respelled as a member, byte-exact as before
 0x005AA240 0x230 GetReticuleAction__10CZSealBodyFb  # OVL2; s1:order by hand (the SEALs, round 28): SOCOM 1's GetReticuleAction__10CZSealBodyFb, after the pickup tests 0x5A9C70/0x5A9F40/0x5AA110 (GetReticuleWeapon, GetProximityWeapon, GetProximityMPBomb in SOCOM 1's order) and before CNodeAction::GetAction 0x5AA470, which it calls with (node, true) after a __dynamic_cast as SOCOM 1's does; every caller passes (seal, 0 or 1) and reads a CNodeAction
 0x005AA470 0x184 GetAction__11CNodeActionFPQ23zdb5CNodeb  # OVL2; s1:order by hand (the SEALs, round 28): SOCOM 1's GetAction__11CNodeActionFPQ23zdb5CNodeb, after GetReticuleAction (which calls it) and recursive with the same __dynamic_cast chain as SOCOM 1's
 0x005AA600 0x8 func_005AA600  # OVL2
 0x005AA610 0x8 func_005AA610  # OVL2
-0x005AA620 0x70 func_005AA620  # OVL2
+0x005AA620 0x70 CacheReticuleSeal__10CZSealBodyFb  # OVL2; s1:order by hand (the SEALs, round 39): SOCOM 1's CacheReticuleSeal__10CZSealBodyFb (0x29A790), after GetAction in both builds and the same code -- m_useCachedReticuleSeal set and m_cachedReticuleSeal from the reticule's node through GetSeal, or both cleared (SOCOM 1's DWARF names, 0x178/0x174 there); respelled as a member, byte-exact as before
 0x005AA690 0x34 func_005AA690  # OVL2; tu: seal_env.cpp~ (1.0 beta)
 0x005AA6D0 0x8 func_005AA6D0  # OVL2
 0x005AA6E0 0xAD4 func_005AA6E0  # OVL2

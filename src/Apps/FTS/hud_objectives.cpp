@@ -1,12 +1,16 @@
-/* hud_objectives.cpp -- the objectives list (OVL1 0x205C40-0x208254): SOCOM 1's unit (its DWARF names
- * it, Z:\dev\Apps\FTS\hud_objectives.cpp). IsPlayingAnimation, Draw, Tick, Init and the implicit
- * destructor so far, all byte-exact. Defined in reverse of their image order (-inline deferred). */
+/* hud_objectives.cpp -- the objectives list (OVL1 0x205C40-0x208ACB): SOCOM 1's unit (its DWARF names
+ * it, Z:\dev\Apps\FTS\hud_objectives.cpp). Every CZObjectiveList member byte-exact (FreeList,
+ * RefreshList and AddObjective since the HUD's round 47, with FreeList's FreeVector pieces); its
+ * tail is vector<bool>'s out-of-line members (0x207F60-0x208A8B) and the two array destructors.
+ * Defined in reverse of their image order (-inline deferred). */
 
+#include <algorithm>
 #include <list>
 
 #include "../../gamez/ztwod/ztwod.h"
 #include "../../gamez/zvid/zvid.h"
 #include "hud_missioncams.h"
+#include "../../gamez/zsys/zsys.h"
 
 /* the HUD: its menu state and mission cameras placed (SOCOM II's offsets) */
 class CHUD {
@@ -37,7 +41,11 @@ public:
 /* how fast the selected name pulses (data 0x3DC460: a variable, read with lwc1) */
 static float s_pulserate = 1000.0f;
 /* an unselected name's alpha (data 0x3DC450) */
+/* a check box's alpha (data 0x3DC458) */
+static float s_checktrans = 96.0f;
 static float s_unselectedtrans = 80.0f;
+/* a completed objective's name's alpha (data 0x3DC448) */
+static float s_completetrans = 128.0f;
 /* the map frame's alpha (data 0x3DC440: a variable, read with lwc1) */
 static float s_frametrans = 128.0f;
 
@@ -69,9 +77,26 @@ CPnt3D g_colSelected(36.0f, 64.0f, 86.0f);
 
 /* the mission: only its objectives (theMission, fts_state.h's CMission at 0x1854) */
 class CMissionCam {
+public:
+    char *m_identifier;   // 0x0
+    char *m_name;   // 0x4
+    unsigned char _8[0x1c - 0x8];
 };
 
+/* an objective: what the list reads (fts_objectivecam.cpp's, SOCOM 1's DWARF) */
 class CMissionObjectiveCam : public CMissionCam {
+public:
+    bool IsInvalid() const;
+    bool IsDisplayOn() const;
+    bool IsComplete() const;
+
+    unsigned char _1c[0x40 - 0x1c];
+    unsigned int m_isSecondary : 1;   // 0x40
+    unsigned int m_isSubObjective : 1;   // 0x40
+    unsigned int m_isCompass : 1;   // 0x40
+    unsigned int m_bExtraction : 1;   // 0x40
+    unsigned int m_bit4 : 1;   // 0x40: SOCOM II's
+    unsigned int m_unused : 27;   // 0x40
 };
 
 class CMission {
@@ -102,9 +127,46 @@ public:
         unsigned int n_;
     };
 
+    /* a position as SOCOM 1's DWARF has it: the vector and the index */
+    class iterator {
+    public:
+        iterator(vector *v, unsigned int n) : vec_(v), n_(n) {}
+        iterator &operator+=(int n)
+        {
+            n_ += n;
+            return *this;
+        }
+
+        vector *vec_;
+        unsigned int n_;
+    };
+
     vector() : capacity_(0), size_(0), data_(0) {}
+    iterator begin() { return iterator(this, 0); }
+    iterator end() { return iterator(this, size_); }
+    void push_back(const bool &x) { insert(end(), x); }
+    iterator insert(iterator position, const bool &x);
+    void insert(iterator position, unsigned int n, const bool &x);
+    unsigned int size() const { return size_; }
+    unsigned int capacity() const { return capacity_; }
+    unsigned int max_size() const;
+    static unsigned int num_words(unsigned int capacity) { return (capacity - 1) / 32 + 1; }
+    void set(unsigned int pos, unsigned int n, bool x);
+    void copy_bits(const unsigned int *frmdata, unsigned int first, unsigned int last, unsigned int to);
+    void shift_out(iterator pos, unsigned int n);
+    static unsigned int *allocate(unsigned int n)
+    {
+        unsigned int *p = (unsigned int *)operator new(n * sizeof(unsigned int));
+
+        if (!p)
+            __msl_error("Memory allocation failure");
+        return p;
+    }
+
     ~vector() { if (data_) operator delete(data_); }
     reference operator[](unsigned int n) { return reference(*this, n); }
+    void clear() { size_ = 0; }
+    void swap(vector &x);
     bool test_bit(unsigned int n);
 
     unsigned int capacity_;
@@ -113,6 +175,199 @@ public:
 };
 
 #pragma auto_inline off
+/* the bits from a position on moved n up, the words first, then the bits, the word the position
+ * is in keeping the bits below it (0x208600, SOCOM 1's -- its DWARF's locals, its line table's
+ * statements -- with 32-bit words; MW unrolls both loops 8x here). The first five declared at the
+ * top, numbered there (floormask, the word shift, offset, the counter, e: the target's t8, t7, t6,
+ * t5, t4), and computed in the order the target schedules them (the word shift, the mask, e, the
+ * offset: defined where they are declared the schedule changes) */
+void vector<bool, allocator<bool> >::shift_out(iterator pos, unsigned int n)
+{
+    unsigned int floormask;
+    unsigned int wshift;
+    unsigned int offset;
+    unsigned int i;
+    unsigned int e;
+
+    wshift = n / 32;
+    floormask = ~0u << pos.n_ % 32;
+    e = (size_ + n - 1) / 32 + 1;
+    offset = pos.n_ / 32 + wshift;
+    if (wshift > 0) {
+        for (i = e - 1; i >= offset; --i)
+            data_[i] = data_[i - wshift];
+    }
+    unsigned int rshift, lshift;
+
+    lshift = n % 32;
+    rshift = 32 - lshift;
+
+    for (unsigned int i = e - 1; i > offset; --i) {
+        data_[i] <<= lshift;
+        data_[i] |= data_[i - 1] >> rshift;
+    }
+    if (wshift > 0 || floormask == ~0u)
+        data_[offset] <<= lshift;
+    else {
+        unsigned int tmp = data_[offset];
+
+        data_[offset] <<= lshift;
+        data_[offset] &= floormask;
+        data_[offset] |= ~floormask & tmp;
+    }
+}
+
+/* the bits [first, last) of other words copied in at to, a word's run at a time (0x208510,
+ * SOCOM 1's -- its DWARF's locals in their order, its line table's statements -- with 32-bit
+ * words) */
+void vector<bool, allocator<bool> >::copy_bits(const unsigned int *frmdata, unsigned int first,
+                                                unsigned int last, unsigned int to)
+{
+    while (first != last) {
+        unsigned int len = last - first;
+        unsigned int o1 = first % 32;
+        unsigned int o2 = to % 32;
+        unsigned int tmp = 32 - o1;
+
+        if (tmp < len)
+            len = tmp;
+        tmp = 32 - o2;
+        if (tmp < len)
+            len = tmp;
+        unsigned int lmask = ~0u << o1;
+        unsigned int rmask = ~0u;
+
+        tmp = 32 - (first + len) % 32;
+        if (tmp < 32)
+            rmask >>= tmp;
+        unsigned int mask = lmask & rmask;
+        unsigned int bits = frmdata[first / 32] & mask;
+
+        if (o1 < o2) {
+            bits <<= o2 - o1;
+            mask <<= o2 - o1;
+        } else if (o2 < o1) {
+            bits >>= o1 - o2;
+            mask >>= o1 - o2;
+        }
+        unsigned int &target = data_[to / 32];
+
+        target &= ~mask;
+        target |= bits;
+        first += len;
+        to += len;
+    }
+}
+
+/* n bits from pos set or cleared: the first and last words masked, the words between filled
+ * (0x208270, SOCOM 1's -- its DWARF's locals, its line table's statements -- with 32-bit words) */
+void vector<bool, allocator<bool> >::set(unsigned int pos, unsigned int n, bool x)
+{
+    unsigned int w1 = pos / 32;
+    unsigned int w2 = (pos + n - 1) / 32;
+    unsigned int bitmask1 = ~0u << pos % 32;
+    unsigned int bitmask2 = ~0u;
+    unsigned int tmp = 32 - (pos + n) % 32;
+
+    if (tmp < 32)
+        bitmask2 >>= tmp;
+    if (w1 == w2) {
+        bitmask1 &= bitmask2;
+        if (x) {
+            data_[w1] |= bitmask1;
+            return;
+        }
+        data_[w1] &= ~bitmask1;
+        return;
+    }
+    if (x) {
+        data_[w1] |= bitmask1;
+        for (unsigned int i = w1 + 1; i < w2; ++i)
+            data_[i] = ~0u;
+        data_[w2] |= bitmask2;
+    } else {
+        data_[w1] &= ~bitmask1;
+        for (unsigned int i = w1 + 1; i < w2; ++i)
+            data_[i] = 0;
+        data_[w2] &= ~bitmask2;
+    }
+}
+
+/* every size a count can hold (0x208260, SOCOM 1's) */
+unsigned int vector<bool, allocator<bool> >::max_size() const
+{
+    return (unsigned int)-1;
+}
+
+/* n values put in before a position: shifted up in place if they fit, else into new words grown
+ * from 32 by doubling, the old bits copied round them (0x208040, SOCOM 1's with 32-bit words).
+ * The five locals declared at the top in SOCOM 1's DWARF order (its block lists them reversed:
+ * pos, newcap, newsize, olddata, ms) -- each defined in place they swap a dozen saved registers;
+ * the old words read before the capacity and the position (the target's delay-slot load); the
+ * size read in place, `size_ + n` (through size() MW puts n first) */
+void vector<bool, allocator<bool> >::insert(iterator position, unsigned int n, const bool &x)
+{
+    unsigned int ms;
+    unsigned int *olddata;
+    unsigned int newsize;
+    unsigned int newcap;
+    unsigned int pos;
+
+    if (n == 0)
+        return;
+    ms = max_size();
+    if (n > ms || size() > ms - n)
+        __msl_error("vector::insert length error\n");
+    newsize = size_ + n;
+    if (newsize <= capacity()) {
+        pos = position.n_;
+        if (size_ - pos != 0)
+            shift_out(position, n);
+        set(pos, n, x);
+        size_ += n;
+    } else {
+        olddata = data_;
+        newcap = capacity_;
+        pos = position.n_;
+        if (newcap == 0)
+            newcap = 32;
+        while (newsize > newcap) {
+            if (newcap < ms / 2)
+                newcap *= 2;
+            else
+                newcap = ms;
+        }
+        data_ = allocate(num_words(newcap));
+        if (pos > 0)
+            copy_bits(olddata, 0, pos, 0);
+        set(pos, n, x);
+        if (pos < size())
+            copy_bits(olddata, pos, size(), pos + n);
+        if (olddata)
+            operator delete(olddata);
+        size_ = newsize;
+        capacity_ = newcap;
+    }
+}
+
+/* one value put in before a position, the position given back (0x207FD0, SOCOM 1's) */
+vector<bool, allocator<bool> >::iterator vector<bool, allocator<bool> >::insert(iterator position,
+                                                                                const bool &x)
+{
+    insert(position, 1, x);
+    return begin() += position.n_;
+}
+
+/* the three words traded (0x207F90, SOCOM 1's exact; FreeVector's swap, called) */
+void vector<bool, allocator<bool> >::swap(vector &x)
+{
+    if (this != &x) {
+        std::swap(capacity_, x.capacity_);
+        std::swap(size_, x.size_);
+        std::swap(data_, x.data_);
+    }
+}
+
 bool vector<bool, allocator<bool> >::test_bit(unsigned int n)
 {
     return (data_[n >> 5] & (1 << (n & 31))) != 0;
@@ -131,6 +386,8 @@ public:
     virtual void Tick(float dT);
     void Init();
     void RefreshStatics();
+    void RefreshList();
+    bool AddObjective(const CMissionObjectiveCam &objective, float ypos);
     void SetCurColor(int index);
     static bool IsPlayingAnimation();
     /* an objective's index, if it is one (inline in SOCOM II: no copy of its own). SOCOM 1's
@@ -164,7 +421,25 @@ public:
             ++it;
         return *it;
     }
+    /* the same walk with the first node read through the list's sentinel, tail(): FreeList's,
+     * whose copy calls the end pair's second() out of line (0x207560) one inline level down,
+     * under RetainSelection. A STAND-IN for the original's deeper begin() (include/list's is fitted
+     * to level 5: read through tail() in GetObjective itself, GetCurrentObjective keeps its walk
+     * but SelectNext/PreviousObjective's self-inlining grows, 0xA0 -> 0x22C) */
+    CMissionObjectiveCam *GetObjectiveByTail(int index) const
+    {
+        if (!IsValidIndex(index))
+            return 0;
+        std::list<CMissionObjectiveCam *>::iterator it(std::__list_deleter<const void *,
+            std::allocator<const void *> >::iterator(theMission.m_objectives.tail().next_));
+
+        for (int i = 0; i < index; i++)
+            ++it;
+        return *it;
+    }
     CMissionObjectiveCam *GetCurrentObjective() const;
+    /* the selection's camera kept before the list is freed (inline; the name ours) */
+    void RetainSelection() { m_cur_selected_objective = GetObjectiveByTail(m_selected_objective); }
     CMissionObjectiveCam *GetCurrentObjectiveRetainer() const;
     /* the selection's camera held and the objectives ticked (inline; the name ours) */
     void UpdateSelection()
@@ -278,6 +553,144 @@ void CZObjectiveList::Tick(float dT)
         curstring->m_color[2] = 0.0f;
         m_strXLabel.SetTrans(0.5f * fCurLevel);
     }
+}
+
+/* an objective's name and check box made and listed, at the given height: its name indented
+ * further for a secondary objective, greyed if it cannot be done, green when done, blue when
+ * marked; whether it can be selected (not done, possible and shown) recorded; nothing shown if
+ * the objective is not displayed (SOCOM 1's; the mark and the display test SOCOM II's) */
+/* (the two bools declared at the top are numbered there, ahead of bSecondary -- SOCOM 1's
+ * locals; defined where they are computed, they swap three saved registers; the texture picked
+ * before the corners are summed, as the target's branch comes first) */
+bool CZObjectiveList::AddObjective(const CMissionObjectiveCam &objective, float ypos)
+{
+    bool bComplete;
+    bool bValid;
+    C2DString *string = new C2DString;
+    C2DBitmap *bitmap = new C2DBitmap;
+
+    m_objectivecompletedbitmap.push_back(bitmap);
+    m_objectivenames.push_back(string);
+    bool bSecondary = objective.m_isSecondary;
+
+    string->Load(0.765f, objective.m_name, theHUD->m_myfont, 10.0f + (float)(bSecondary ? 45 : 30),
+                 ypos, true);
+    bComplete = objective.IsComplete();
+    bValid = !objective.IsInvalid();
+    bool bMarked = objective.m_bit4;
+    bool bSelectable = !bComplete && bValid && objective.IsDisplayOn();
+
+    m_vecSelectable.push_back(bSelectable);
+    if (!objective.IsDisplayOn()) {
+        string->Off();
+        bitmap->Off();
+        return false;
+    }
+    float fXOffset = (float)(bSecondary ? 25 : 10);
+    zdb::CTexHandle *tex = bComplete ? m_checktex : m_checkboxtex;
+    float fLeftX = 10.0f + fXOffset;
+    float fTopY = 1.0f + (-13.0f + ypos);
+
+    bitmap->Load(fLeftX, fTopY, 15.0f + fLeftX, 15.0f + fTopY, tex);
+    if (bMarked) {
+        string->SetColor(g_colSelected.x, g_colSelected.y, g_colSelected.z);
+        string->SetTrans(s_unselectedtrans);
+        bitmap->SetColor(g_colSelected);
+        bitmap->SetTrans(s_checktrans);
+    } else if (bComplete) {
+        string->SetColor(g_colComplete.x, g_colComplete.y, g_colComplete.z);
+        string->SetTrans(s_completetrans);
+        bitmap->SetColor(g_colComplete);
+        bitmap->SetTrans(s_checktrans);
+    } else if (!bValid) {
+        string->SetColor(g_colUnavailable.x, g_colUnavailable.y, g_colUnavailable.z);
+        string->SetTrans(s_unselectedtrans);
+        bitmap->SetColor(g_colUnavailable);
+        bitmap->SetTrans(s_checktrans);
+    } else {
+        string->SetColor(g_colNormal.x, g_colNormal.y, g_colNormal.z);
+        string->SetTrans(s_unselectedtrans);
+        bitmap->SetColor(g_colNormal);
+        bitmap->SetTrans(s_checktrans);
+    }
+    push_back(bitmap);
+    push_back(string);
+    return true;
+}
+
+/* the list rebuilt: freed (its vectors kept), the statics laid out again, an entry added per
+ * objective 15 apart from 104 down; the camera held before selected again if it is still
+ * selectable, else the first objective that is not secondary and is selectable, else on from
+ * the last (SOCOM 1's, the held camera SOCOM II's). The walks are const_iterators over a const
+ * reference (SOCOM 1's const tail() and generic_iterator<1>): plain iterators lose the begin/end
+ * temporaries. The held camera read through GetCurrentObjectiveRetainer(), auto-inlined, is
+ * numbered after the named locals and takes s2 (read straight off the member it takes s4) */
+void CZObjectiveList::RefreshList()
+{
+    CMissionObjectiveCam *retained = GetCurrentObjectiveRetainer();
+
+    FreeList(false);
+    RefreshStatics();
+    float ypos = 104.0f;
+    const std::list<CMissionObjectiveCam *> &objectives = theMission.m_objectives;
+
+    for (std::list<CMissionObjectiveCam *>::const_iterator it = objectives.begin(); it != objectives.end();
+         ++it) {
+        if (AddObjective(**it, ypos))
+            ypos += 15.0f;
+    }
+    if (retained) {
+        int i = 0;
+
+        for (std::list<CMissionObjectiveCam *>::const_iterator it = objectives.begin();
+             it != objectives.end(); ++it, ++i) {
+            if (*it == retained && m_vecSelectable[i]) {
+                m_selected_objective = i;
+                UpdateSelection();
+                return;
+            }
+        }
+    }
+    m_selected_objective = 0;
+    UpdateSelection();
+    for (std::list<CMissionObjectiveCam *>::const_iterator it = objectives.begin(); it != objectives.end();
+         ++it) {
+        if (!(*it)->m_isSecondary && m_vecSelectable[m_selected_objective])
+            return;
+        m_selected_objective++;
+        UpdateSelection();
+    }
+    m_selected_objective = m_objectivenames.size();
+    UpdateSelection();
+    NextObjective();
+}
+
+/* a list's entry deleted (std::for_each's function object; the name ours) */
+template <class T>
+struct CDeleteEntry {
+    CDeleteEntry() {}
+    void operator()(T *p) const { delete p; }
+};
+
+/* the list emptied: the selection's camera kept, the children dropped, the names and their
+ * check boxes deleted and the three vectors cleared -- and, wiped, their storage traded away
+ * (SOCOM 1's, each vector through FreeVector) */
+void CZObjectiveList::FreeList(bool wipe_vector)
+{
+    RetainSelection();
+    clear();
+    std::for_each(m_objectivenames.begin(), m_objectivenames.end(), CDeleteEntry<C2DString>());
+    m_objectivenames.clear();
+    if (wipe_vector)
+        FreeVector(m_objectivenames);
+    std::for_each(m_objectivecompletedbitmap.begin(), m_objectivecompletedbitmap.end(),
+                  CDeleteEntry<C2DBitmap>());
+    m_objectivecompletedbitmap.clear();
+    if (wipe_vector)
+        FreeVector(m_objectivecompletedbitmap);
+    m_vecSelectable.clear();
+    if (wipe_vector)
+        FreeVector(m_vecSelectable);
 }
 
 /* the selected objective's name given the colour of another's (SOCOM 1's). Never inlined in the
