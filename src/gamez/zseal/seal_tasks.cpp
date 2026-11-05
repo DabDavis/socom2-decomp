@@ -121,6 +121,11 @@ void ClearLook__9CSealCtrlF7AI_LOOK(CSealCtrl *ctrl, int look);
  * range) and a CSealCtrlAi function the goto's end calls first (OVL2 0x5628F0) */
 void func_005F3FC0(CAiSScript *s, CSealCtrlAi *ai, bool b);
 void func_005628F0(CSealCtrlAi *ai);
+/* the voice's AI event made where the SEAL stands (OVL2 0x55FEE0, seal_ai.cpp's) and a sound played
+ * through a streamer of its own -- the sound, the entity's id, the position, then 30 and 1 (OVL1
+ * 0x3428F0, the sound system's) */
+void func_0055FEE0(CSealCtrl *ctrl, int event);
+void func_003428F0(CSnd *sound, unsigned int id, const CPnt3D *pos, float a, float b);
 /* the AI's byte at 0x5BC, out of line (OVL2 0x555890: `lb` there, the caller masks it), and whether its route is done -- a path
  * at 0x508 in state 4, or 1 to 3 (OVL2 0x5629B0): the SEAL lane's rows, CTGoto::Tick's */
 unsigned char func_00555890(CSealCtrlAi *ai);
@@ -422,15 +427,34 @@ struct CTSound : TASK_HDR {
     void SetStarted(bool b) { m_started = b; }
     void SetBit7(bool b) { m_bit7 = b; }
 
-    unsigned char m_8_0 : 7;   // 0x8
-    unsigned char m_bit7 : 1;   // 0x8 bit 7
-    unsigned char m_started : 1;   // 0x9 bit 0
-    unsigned char m_9_1 : 7;
-    unsigned char _a[0xc - 0xa];
+    /* the n'th name, 0 past the last: the entity's first, then the sounds (inline; the name ours) */
+    const char *GetName(int n)
+    {
+        if (n <= m_count) {
+            const char *p = m_names;
+
+            while (n--)
+                p += strlen(p) + 1;
+            return p;
+        }
+        return 0;
+    }
+
+    /* one word of flags, each access narrowed by MW (the parser's tags) */
+    unsigned int m_blocking : 1;   // 0x8 bit 0: "blocking" -- the task runs until the sound ends
+    unsigned int m_sitrep : 1;   // bit 1: "sitrep" -- the sound's mode made 2
+    unsigned int m_broadcast : 1;   // bit 2: "broadcast" -- played flat, not at the SEAL
+    unsigned int m_aware : 4;   // bits 3-6: "aware" (4 unless read) -- the highest alertness it plays at
+    unsigned int m_bit7 : 1;   // bit 7
+    unsigned int m_started : 1;   // 0x9 bit 0
+    unsigned int m_count : 8;   // bits 9-16: the sounds' names
+    unsigned int m_items : 8;   // bits 17-24: the "name" tag's items, the random pick's range
+    unsigned int m_event : 7;   // bits 25-31: "event" (x127) -- the SEAL's voice event raised
     CSndInstance *m_inst;   // 0xc: the sound playing
+    char m_names[4];   // 0x10: the entity's name, then the sounds', each ended by a zero
 
     static void Begin(_zanim_cmd_hdr *hdr);
-    static void End(_zanim_cmd_hdr *hdr);    /* (RegisterCommands' handlers, unwritten) */
+    static void End(_zanim_cmd_hdr *hdr);
     static _zanim_cmd_hdr *Parse(_zrdr *rdr);
     static bool Tick(_zanim_cmd_hdr *hdr, float *dT);
 };
@@ -1339,6 +1363,14 @@ bool CSealCtrlAi::RegisterCommands()
 inline bool TaskIsAi(CZSealBody *seal)
 {
     return seal->m_control ? ((CSealCtrl *)seal->m_control)->IsAi() : false;
+}
+
+/* an entity's id (inline; the name ours): read through it, the id is a temporary numbered at the call
+ * -- after the earlier temporaries, before the later -- where a plain `seal->m_id` local is numbered
+ * with the named locals (CTSound::Tick) */
+inline unsigned int TaskEntId(CEntity *e)
+{
+    return e->m_id;
 }
 
 /* a squad command issued to a team's unit, the team's AI SEALs put to sleep (28) or woken (27) first
@@ -3338,6 +3370,96 @@ void CTSound::End(_zanim_cmd_hdr *hdr)
     if (cmd->m_inst)
         cmd->m_inst->TerminateOnFinish();
     cmd->m_inst = 0;
+}
+
+/* a sound named in the block, picked at random among its names, played once on the SEAL -- or on the
+ * entity named, if a SEAL and alive -- while its alertness is at most the task's: through a streamer
+ * of its own when the sound has one and the task does not wait, flat when broadcast or the SEAL is a
+ * player's, else at the SEAL's position, the AI's voice event raised; with no SEAL and no entity
+ * named, a broadcast is played flat; done once played, or, blocking, once the sound has ended (OVL2
+ * 0x5D0C90; SOCOM 1's without the streamer, the alive test, the event and the SEAL-less broadcast).
+ * Byte-exact by MW's colouring (tools/igreplay.py): the pick an if/else with the random draw in a
+ * local of its own (a padded label and the `b` over it unfilled -- a ternary or a lone `if` leaves the
+ * label unpadded and fills the `b`), the entity's name a named local with a dead first definition
+ * ahead of the pick (numbered there: s6, the pick s5 -- initialised from GetName(0) it merges into the
+ * inline's result, numbered after every named local, and the two swap), the id read through an inline
+ * (a temporary between the name's and the AI's: s5 -- a plain local takes s0 and shifts the four
+ * deferred above it), the alertness compared `aware <= m_aware` (`>=` materialises the slt in v0) */
+bool CTSound::Tick(_zanim_cmd_hdr *hdr, float *dT)
+{
+    TASK_SEAL(CTSound);
+    const char *ent = 0;
+    int pick = 1;
+    bool done = true;
+
+    if (cmd->m_started) {
+        ent = cmd->m_names;
+        int n = cmd->m_items - 1;
+
+        if (n == 0) {
+            pick = 1;
+        } else {
+            int r = rand();
+
+            pick = r % (n + 1) + 1;
+        }
+        const char *name = cmd->GetName(pick);
+
+        if (!name) {
+            *dT = 0.0f;
+            return true;
+        }
+        if (*ent) {
+            CEntity *e = CEntity::GetEntityList().GetEntity(ent);
+
+            seal = e && e->m_type == CEntity::ENT_TYPE_SEAL ? (CZSealBody *)e : 0;
+        }
+        if (seal && seal->m_isAlive) {
+            unsigned int id = TaskEntId(seal);
+            AI_AWARE aware = TaskIsAi(seal) ? SealAi(seal)->GetAiAware() : (AI_AWARE)0;
+
+            if (aware <= cmd->m_aware) {
+                CSnd *snd = CSnd::GetSoundByName(name);
+
+                if (snd) {
+                    CSealCtrlAi *ai = SealAi(seal);
+
+                    if (cmd->m_sitrep)
+                        snd->m_mode = 2;
+                    if (cmd->m_broadcast || seal->IsPlayer()) {
+                        if (!cmd->m_blocking && (snd->m_socom2_bit4 || snd->m_socom2_bit5)) {
+                            func_003428F0(snd, id, 0, 30.0f, 1.0f);
+                            cmd->m_inst = 0;
+                        } else
+                            cmd->m_inst = snd->PlaySound((CSndInstance *)0, seal->m_id);
+                    } else if (!cmd->m_blocking && (snd->m_socom2_bit4 || snd->m_socom2_bit5)) {
+                        func_003428F0(snd, seal->m_id, &seal->m_posW, 30.0f, 1.0f);
+                        cmd->m_inst = 0;
+                    } else
+                        cmd->m_inst = snd->PlaySound3D(&seal->m_posW, 1.0f, 0, 0, seal->m_id);
+                    if (ai && cmd->m_event)
+                        func_0055FEE0(ai, 0);
+                }
+            }
+        } else if (!ent || !*ent) {
+            if (cmd->m_broadcast) {
+                CSnd *snd = CSnd::GetSoundByName(name);
+
+                if (snd) {
+                    if (cmd->m_sitrep)
+                        snd->m_mode = 2;
+                    cmd->m_inst = snd->PlaySound((CSndInstance *)0, 0);
+                }
+            }
+        }
+        cmd->SetStarted(false);
+        if (cmd->m_blocking)
+            done = false;
+    }
+    if (!cmd->m_started && cmd->m_blocking && cmd->m_inst)
+        done = !cmd->m_inst->IsPlaying();
+    *dT = 0.0f;
+    return done;
 }
 
 /* (OVL2 0x5D1250) */
