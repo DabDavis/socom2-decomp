@@ -1928,6 +1928,7 @@
 0x00669F20 0x14 __vt__Q28CAiGroup8act_anim  # vtable of CAiGroup::act_anim: found by its RTTI's name
 0x00669F40 0x14 __vt__Q28CAiGroup9act_sound  # vtable of CAiGroup::act_sound: found by its RTTI's name
 0x00669F60 0x50 __vt__14CAiSUseVehicle  # vtable of CAiSUseVehicle: found by its RTTI's name
+0x0066A000 0x20 @LOCAL@LocText__FRC9CAiMapLoc@buf  # OVL2 bss; ours, the AI core round 27 (ai_path.cpp's LocText inline's buffer: PrintPath 0x524950 formats each point's cell into it, '%2d:%4d,%4d', and hands it to the line's sprintf; up to 32 bytes, m_pool__8CAiEvent at 0x66A020; 1 reference in 1 function)
 0x0066A020 0xC m_pool__8CAiEvent  # OVL2 bss; s1:data-exact (size SOCOM 1's; via __sinit_ai_events.cpp)
 0x0066A040 0xC m_inuse__8CAiEvent  # OVL2 bss; s1:data-exact (size SOCOM 1's; via __sinit_ai_events.cpp)
 0x0066A060 0xC m_persist__8CAiEvent  # OVL2 bss; s1:data-exact (size SOCOM 1's; via __sinit_ai_events.cpp)
