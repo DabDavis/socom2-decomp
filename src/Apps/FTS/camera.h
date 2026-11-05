@@ -110,6 +110,8 @@ public:
     virtual CMatrix *GetMatrix();
     /* the SEAL a node belongs to, if any (zseal.h's static) */
     static CZSealBody *GetSeal(zdb::CNode *node);
+    /* the head turned to a pitch (OVL2 0x5AF470: SOCOM II's has no second float) */
+    void RotateHead(float pitch);
 
     unsigned char _4[0xc0 - 4];
     CEntityCtrl *m_control;   // 0xc0
@@ -123,9 +125,13 @@ public:
     unsigned char _b0 : 5;   // 0x1060
     unsigned char m_zooming : 1;
     unsigned char _b6 : 2;
-    unsigned char _1061[0x1344 - 0x1061];
+    unsigned char _1061[0x1070 - 0x1061];
+    CQuat m_fwdlook;   // 0x1070 (SOCOM 1: 0xf60; RotateHead sets it)
+    unsigned char _1080[0x1344 - 0x1080];
     /* SOCOM II's: a scale the prone first-person camera reads, its y at least 0.5 (the name ours) */
     CPnt3D m_1344;   // 0x1344
+    unsigned char _1350[0x1458 - 0x1350];
+    CPnt3D m_aim_point;   // 0x1458 (SOCOM 1: 0x10b8)
 };
 
 /* a camera position the app camera keeps per view: where it sits and where it looks, in the
@@ -204,6 +210,9 @@ public:
     virtual bool AttachTo(CZSealBody *prey);
 
     void FTSTick();
+    /* where the tether puts the camera, its offset and the tether's length handed back (SOCOM 1's,
+     * 0x29A950) */
+    CPnt3D GetThirdPersonCamPos(CPnt3D *CamOffset, float *tetherLen);
     /* the nearest hit of the world's along a chord, the followed SEAL and the one it carries kept out
      * of the test (SOCOM II's, 0x29CBB0: GetThirdPersonCamPos's; the name ours) */
     bool ClipChord(CPnt3D *from, CPnt3D *to, CPnt3D *hit);

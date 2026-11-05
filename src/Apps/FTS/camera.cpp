@@ -388,6 +388,44 @@ void CAppCamera::SetZoom(float zoom)
     m_camera->m_ZoomedRangeScale = m_camera->m_RangeScale / zoom;
 }
 
+/* SOCOM 1's FTSTick: the followed SEAL's pad (its controller's, a player's), its two-button view
+ * cycle stepping past the side, first person and peek views, the death camera's own pad handling
+ * (SOCOM II's, at 0xF4), then -- the view changed -- its preset taken up (ResetView, SOCOM II's
+ * call), first person or the tether entered through SetCameraMode and the tether's rate put back.
+ * The view's step casts it to an int: the loop's copy then reuses the test's load re-narrowed (the
+ * target's andi), where the plain enum reuses it as it is */
+void CAppCamera::FTSTick()
+{
+    if (!m_entity)
+        return;
+    if (m_ctrl && m_ctrl->IsPlayer())
+        m_padid = m_ctrl->m_padid;
+    CPad *pad = m_padid < CInput::NUM_PADS ? CInput::m_pads[m_padid] : 0;
+
+    if (!pad)
+        pad = CInput::m_pads[0];
+    if (pad) {
+        if (pad->GetTwoButtons(PAD_SELECT, PAD_DOWN)) {
+            m_ctrl_view = (CAMVIEW)(((int)m_ctrl_view + 1) % data_0044C404);
+            while (m_ctrl_view == cam_view_side || m_ctrl_view == cam_view_first ||
+                   m_ctrl_view == cam_view_peek_left || m_ctrl_view == cam_view_peek_right)
+                m_ctrl_view = (CAMVIEW)(((int)m_ctrl_view + 1) % data_0044C404);
+        }
+        func_00295260(&m_f4, this, pad);
+    }
+    if (m_ctrl_view != m_save_view) {
+        ResetView();
+        m_save_view = m_ctrl_view;
+        if (m_ctrl_view == cam_view_first) {
+            SetCameraMode(cam_mode_FP);
+            data_003DE270 = 0.03f;
+        } else {
+            SetCameraMode(cam_mode_tether);
+            data_003DE270 = 0.03f;
+        }
+    }
+}
+
 /* where first person puts the camera, in the followed SEAL's space (SOCOM 1's): with the camera on
  * the SEAL it follows, the skeleton root's place (or the origin), then -- prone -- lifted by the
  * view's pitch and scaled by the SEAL's 0x1344 (SOCOM II's), else lifted 4.4 and pulled 2.5 back
@@ -432,42 +470,94 @@ CPnt3D GetFirstPersonCamPos(CAppCamera *cam)
     return CamPoint;
 }
 
-/* SOCOM 1's FTSTick: the followed SEAL's pad (its controller's, a player's), its two-button view
- * cycle stepping past the side, first person and peek views, the death camera's own pad handling
- * (SOCOM II's, at 0xF4), then -- the view changed -- its preset taken up (ResetView, SOCOM II's
- * call), first person or the tether entered through SetCameraMode and the tether's rate put back.
- * The view's step casts it to an int: the loop's copy then reuses the test's load re-narrowed (the
- * target's andi), where the plain enum reuses it as it is */
-void CAppCamera::FTSTick()
+/* into first person from the tether (SOCOM 1's): the pitch of the SEAL's forward look from the
+ * first-person point and that of its aim point, each wrapped into [0, 2pi], their difference added
+ * to the controller's aim pitch and the player's head turned to it (SOCOM II's tests the SEAL
+ * before using it) */
+void ThirdToFirstPersonTransition(CAppCamera *cam)
 {
-    if (!m_entity)
-        return;
-    if (m_ctrl && m_ctrl->IsPlayer())
-        m_padid = m_ctrl->m_padid;
-    CPad *pad = m_padid < CInput::NUM_PADS ? CInput::m_pads[m_padid] : 0;
+    CPnt3D CamPoint = GetFirstPersonCamPos(cam);
+    CPnt3D cam_aim_point(0.0f, 0.0f, 0.0f);
+    CPnt3D lz(0.0f, 0.0f, -1.0f);
 
-    if (!pad)
-        pad = CInput::m_pads[0];
-    if (pad) {
-        if (pad->GetTwoButtons(PAD_SELECT, PAD_DOWN)) {
-            m_ctrl_view = (CAMVIEW)(((int)m_ctrl_view + 1) % data_0044C404);
-            while (m_ctrl_view == cam_view_side || m_ctrl_view == cam_view_first ||
-                   m_ctrl_view == cam_view_peek_left || m_ctrl_view == cam_view_peek_right)
-                m_ctrl_view = (CAMVIEW)(((int)m_ctrl_view + 1) % data_0044C404);
-        }
-        func_00295260(&m_f4, this, pad);
+    if (cam->m_bc)
+        cam->m_bc->m_fwdlook.Apply(&lz, &cam_aim_point, 1);
+    cam_aim_point.Add(&CamPoint, &cam_aim_point);
+    float pitch0 = atan2f(cam_aim_point.y - CamPoint.y, cam_aim_point.z - CamPoint.z);
+    CZSealBody *seal = ftsGetPlayer();
+
+    cam_aim_point = seal->m_aim_point;
+    CMatrix WtoM;
+
+    if (cam->m_bc) {
+        Vu0MatrixInverseWithUniformScale(&WtoM, cam->m_bc->GetMatrix());
+        WtoM.Transform(&cam_aim_point, 1);
     }
-    if (m_ctrl_view != m_save_view) {
-        ResetView();
-        m_save_view = m_ctrl_view;
-        if (m_ctrl_view == cam_view_first) {
-            SetCameraMode(cam_mode_FP);
-            data_003DE270 = 0.03f;
-        } else {
-            SetCameraMode(cam_mode_tether);
-            data_003DE270 = 0.03f;
-        }
+    float pitch1 = atan2f(cam_aim_point.y - CamPoint.y, cam_aim_point.z - CamPoint.z);
+
+    while (pitch0 < 0.0f)
+        pitch0 += 6.2831855f;
+    while (pitch1 < 0.0f)
+        pitch1 += 6.2831855f;
+    while (pitch0 > 6.2831855f)
+        pitch0 -= 6.2831855f;
+    while (pitch1 > 6.2831855f)
+        pitch1 -= 6.2831855f;
+    float dp = pitch0 - pitch1;
+    CAppCameraCtrl *pSealCtrl = cam->m_ctrl;
+    float aimPitch = pSealCtrl->m_130;
+
+    aimPitch += dp;
+    pSealCtrl->m_130 = aimPitch;
+    ftsGetPlayer()->RotateHead(aimPitch);
+}
+
+/* into the tether from first person (SOCOM 1's): the pitch of the SEAL's forward look from the
+ * third-person offset and that of its aim point, each wrapped into [0, 2pi], their difference added
+ * to the controller's aim pitch -- held within 1.57 either way -- and the player's head turned to it
+ * (SOCOM II's tests the SEAL before using it) */
+void FirstToThirdPersonTransition(CAppCamera *cam)
+{
+    float dummy;
+    CPnt3D CamOffset;
+    CPnt3D cam_new_pos = cam->GetThirdPersonCamPos(&CamOffset, &dummy);
+    CPnt3D cam_aim_point(0.0f, 0.0f, 0.0f);
+    CPnt3D lz(0.0f, 0.0f, -1000.0f);
+
+    if (cam->m_bc)
+        cam->m_bc->m_fwdlook.Apply(&lz, &cam_aim_point, 1);
+    cam_aim_point.Add(&CamOffset, &cam_aim_point);
+    float pitch0 = atan2f(cam_aim_point.y - CamOffset.y, cam_aim_point.z - CamOffset.z);
+    CZSealBody *seal = ftsGetPlayer();
+
+    cam_aim_point = seal->m_aim_point;
+    CMatrix WtoM;
+
+    if (cam->m_bc) {
+        Vu0MatrixInverseWithUniformScale(&WtoM, cam->m_bc->GetMatrix());
+        WtoM.Transform(&cam_aim_point, 1);
     }
+    float pitch1 = atan2f(cam_aim_point.y - CamOffset.y, cam_aim_point.z - CamOffset.z);
+
+    while (pitch0 < 0.0f)
+        pitch0 += 6.2831855f;
+    while (pitch1 < 0.0f)
+        pitch1 += 6.2831855f;
+    while (pitch0 > 6.2831855f)
+        pitch0 -= 6.2831855f;
+    while (pitch1 > 6.2831855f)
+        pitch1 -= 6.2831855f;
+    float dp = pitch0 - pitch1;
+    CAppCameraCtrl *pSealCtrl = cam->m_ctrl;
+    float aimPitch = pSealCtrl->m_130;
+
+    aimPitch += dp;
+    if (aimPitch > 1.57f)
+        aimPitch = 1.57f;
+    else if (aimPitch < -1.57f)
+        aimPitch = -1.57f;
+    pSealCtrl->m_130 = aimPitch;
+    ftsGetPlayer()->RotateHead(aimPitch);
 }
 
 /* a frame of the shake (SOCOM 1's wiggle, rewritten): each axis's angle stepped by its rate and
