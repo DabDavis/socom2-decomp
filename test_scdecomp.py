@@ -443,6 +443,68 @@ def test_mw_function_static_resolves_by_its_function():
         rows.unlink()
 
 
+def test_mw_chain_record_resolves_by_its_object():
+    """GCC round 37a (the kit's round 51): Metrowerks registers a static object with a destructor by
+    __register_global_object(object, destructor, &record), the record an ANONYMOUS 12-byte `@N` in the
+    .bss section right before the object's (a function-local static: its guard, the record, the object
+    -- IssueCommand's 0x66B8C0, 0x66B8C8, 0x66B8E0). The data map names it `@CHAIN@<fn>@<name>` or, for
+    a file-scope object, `@CHAIN@<object>`, and a reference resolves by that row. std::locale::global
+    (0x18CF20, byte-exact) registers its function-local global_locale with the record at 0x1D5F38, and
+    __sinit_camera.cpp (0x3FFDD0) its four file-scope DiIntersects dilr0-3 with theirs, 16 bytes before
+    each. Negatives: a row moved fails; with no row the record is unchecked, as before; a row naming
+    another object's record fails; no registering call, no row taken; and a slipped length in the new
+    name form does not parse."""
+    import manglecheck as M
+    img = E.image()
+    rows = HERE / "build" / "tmp" / f"data_chain.{os.getpid()}.txt"
+    rows.parent.mkdir(parents=True, exist_ok=True)
+
+    def scored(unit: str, fn: str, extra: str):
+        rows.write_text(E.DATA.read_text() + extra)
+        st = E.SymbolTable(E.SYMBOLS, rows)
+        _, obj, err = C.build_one(HERE / "src" / unit, BUILD / "chain")
+        assert obj is not None, err
+        return D.compare(obj, fn, st.get(fn), img, st)
+
+    loc = "@CHAIN@global__Q23std6localeFv@global_locale"
+    try:
+        r = scored("main/msl/locale.cpp", "global__Q23std6localeFv", f"0x001D5F38 0xC {loc}  # test\n")
+        ck(r.match and any(f.symbol == loc and f.want == 0x1D5F38 and f.status == "ok" for f in r.relocs),
+           f"a function-local static's record resolves by its row: {r.verdict}")
+        unchecked = len(r.reloc_unchecked)
+        r = scored("main/msl/locale.cpp", "global__Q23std6localeFv", f"0x001D5F48 0xC {loc}  # test\n")
+        ck(not r.match and any(f.symbol == loc and f.status == "MISMATCH" for f in r.relocs),
+           "the row moved fails")
+        r = scored("main/msl/locale.cpp", "global__Q23std6localeFv", "")
+        ck(r.match and len(r.reloc_unchecked) == unchecked + 1
+           and any(f.symbol.startswith("@") and f.symbol.endswith("(local)") and f.want == 0x1D5F38
+                   for f in r.reloc_unchecked), "with no row, unchecked as before")
+        cam = "".join(f"0x{a:08X} 0xC @CHAIN@dilr{i}  # test\n"
+                      for i, a in enumerate((0x416040, 0x4160A0, 0x416100, 0x416160)))
+        r = scored("Apps/FTS/camera.cpp", "__sinit_camera.cpp", cam)
+        ck(r.match and sorted(f.want for f in r.relocs if f.symbol.startswith("@CHAIN@dilr") and f.status == "ok")
+           == [0x416040, 0x4160A0, 0x416100, 0x416160], f"four file-scope records by their objects' rows: {r.verdict}")
+        swapped = cam.replace("@CHAIN@dilr0", "@CHAIN@dilrX").replace("@CHAIN@dilr1", "@CHAIN@dilr0") \
+                     .replace("@CHAIN@dilrX", "@CHAIN@dilr1")
+        r = scored("Apps/FTS/camera.cpp", "__sinit_camera.cpp", swapped)
+        ck(not r.match and sum(f.status == "MISMATCH" for f in r.relocs) == 2, "two objects' rows swapped fail")
+        rows.write_text(E.DATA.read_text() + f"0x001D5F38 0xC {loc}  # test\n")
+        st = E.SymbolTable(E.SYMBOLS, rows)
+        elf = E.Elf.read(BUILD / "chain" / "main" / "msl" / "locale.o")
+        rec = next(s for s in elf.symbols if s.size == 12 and D._ANON_OBJECT.match(s.name)
+                   and elf.symbols[0] is not s and elf.sections[s.shndx].type == 8
+                   and any(x.shndx == s.shndx + 1 and x.name.startswith("global_locale$") for x in elf.symbols))
+        fsym = next(f for f in elf.functions() if f.name == "global__Q23std6localeFv")
+        ck(D.chain_record_row(elf, rec, fsym, st, 0x18CF20, True) == loc
+           and D.chain_record_row(elf, rec, fsym, st, 0x18CF20, False) is None,
+           "a record is taken only from a function that registers it")
+    finally:
+        rows.unlink(missing_ok=True)
+    ck(M.parses("@CHAIN@IssueCommand__9CSealUnitFP10CZSealBody10FT_COMMANDPvb@proto") and M.parses("@CHAIN@dilr0x__4CCam")
+       and not M.parses("@CHAIN@IssueCommand__8CSealUnitFP10CZSealBody10FT_COMMANDPvb@proto"),
+       "manglecheck reads both forms and a slipped length")
+
+
 def test_mw_local_function_resolves_by_its_code():
     """A Metrowerks static initialiser registers each static array's destructor, a local function
     `__arraydtor$N` -- N a per-unit counter that shifts with any header edit, so no map row can carry
@@ -759,6 +821,59 @@ def test_stale_follows_a_callee_rename():
         shutil.rmtree(auto, ignore_errors=True)
         sym.unlink(missing_ok=True)
         dat.unlink(missing_ok=True)
+
+
+def test_copy_index_is_never_read_half_built():
+    """GCC round 37a (the AI core's round 32: `tools/objcmp.py -j 2` printed `DIFF ai/ai_astar.cpp`
+    where -j 1 was clean): SymbolTable._copy_index published an EMPTY index and then filled it, so a
+    thread asking the map while another built it read the index half-built -- OVL2's copy of the
+    pointer lists' deleter constructor (0x50FFA0) not yet indexed, the call resolved to the named
+    row in OVL1 (0x1EABB0), and objcmp's shared resolver kept one answer for a unit's one side and
+    the other for its other. The index is built in a local and published once. A reader that
+    interleaves with the build is made deterministic here: the marks' regex, at its first search,
+    asks the table for that copy, as a second thread scheduled there would -- it must read
+    0x50FFA0. The negative control is the old shape (published, then filled), which must read
+    0x1EABB0; and every copy of the finished index is the one the marks give."""
+    import types
+    name = "__ct__Q23std42__list_deleter<PCv,Q23std14allocator<PCv>>Fv"
+    ovl2 = 0x4C5380
+
+    def published_first(self):                   # the method before round 37a, in its own shape
+        if self._copies is None:
+            self._copies = {}
+            for s in self.symbols + self.data:
+                m = self._OVL_COPY.search(s.note or "")
+                if m:
+                    self._copies[(self.overlay_of(s.addr), m.group(1))] = s.addr
+        return self._copies
+
+    def interleaved(method=None):
+        """(what a reader mid-build got, the finished index) for a fresh table"""
+        st = E.SymbolTable()
+        if method is not None:
+            st._copy_index = types.MethodType(method, st)
+        real, seen = st._OVL_COPY, []
+
+        class Reader:                             # the marks' regex, with a second reader inside it
+            def search(self, note):
+                if not seen:
+                    seen.append(None)
+                    seen[0] = st.address_in(name, ovl2)
+                return real.search(note)
+        st._OVL_COPY = Reader()
+        return seen, st._copy_index()
+
+    seen, index = interleaved()
+    ck(seen == [0x50FFA0], f"a reader during the build reads OVL2's copy: {seen}")
+    ck(index.get(("OVL2", name)) == 0x50FFA0 and index == E.SymbolTable()._copy_index(),
+       "and the index it publishes is whole")
+    seen, _ = interleaved(published_first)
+    ck(seen == [0x1EABB0], f"the old shape (published, then filled) hands it the half-built index: {seen}")
+    st = E.symbols()
+    row = lambda a: st.at_addr(a) or st.data_by_addr.get(a)
+    ck(all(row(a) is not None and f"ovl-copy: {n}" in row(a).note and st.overlay_of(a) == o
+           for (o, n), a in st._copy_index().items()),
+       "every indexed copy is a row carrying its mark, in its overlay")
 
 
 def test_objcmp_by_address_equates_a_respelling():
