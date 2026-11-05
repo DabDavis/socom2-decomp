@@ -4,6 +4,8 @@
 
 #include "fts_state.h"
 #include "../../gamez/zrdr/zrdr.h"
+#include "../../gamez/ztwod/ztwod.h"
+#include "../../gamez/ztwod/c2dfont.h"
 
 #include <algorithm>
 #include <iostream>
@@ -75,6 +77,9 @@ public:
 extern "C" {
 void func_003B0B90(int a, int b, int w, int h);
 void func_003B09E0(int a, int b, int w, int h);
+void func_003B0B10(int *rect);
+void func_003B0A70(int *rect);
+void func_003B0660();
 void func_00592CA0(void *control);
 
 }
@@ -94,15 +99,47 @@ bool func_005CCA30(float dT, void *data);        /* CSealCtrlAi::PostTick */
  * what the states call) */
 class CMPEG {
 public:
+    static bool Done();   /* 0x3096C0 */
+    static void End();   /* 0x3096F0 */
+    static void Tick(int field);   /* 0x309850 */
+    static void SetMaxHeight(int height);   /* 0x309550 */
+    static int Run(const char *name, bool b1, bool b2, int i);   /* 0x3098E0 */
+    static void Init(void *buf, int size);   /* 0x309B40 */
     static void Uninit();   /* 0x309A10 */
 };
 
 u_long128 *zBoneMotionRdrBuffer();   /* 0x288930 */
+int zBoneMotionRdrSize();   /* 0x288920 */
 
 class CSndInstance {
 public:
+    static void PauseAllSounds();   /* 0x346740 */
     static void ResumeAllSounds();   /* 0x3466F0 */
 };
+
+/* the headset (zsnd.h's): the one there is, and its queue flushed -- by the row's own name: the
+ * film's Init hands the flush a flag (a1 = 1) its body never reads, where zsnd.h's Flush() takes
+ * none */
+class Headset {
+public:
+    static Headset *ftsGetHeadset();   /* 0x34BB80 */
+};
+
+extern "C" void Flush__7HeadsetFv(Headset *headset, bool b);   /* 0x34A6F0 */
+extern "C" int snd_StreamSafeCheckCDIdle(int block);   /* 0x33F550 */
+
+/* the system's public state (zsys_public.h's _zsys_public: only its timer, as camera.cpp's) */
+struct _zsys_public {
+    unsigned char _0[0x24];
+    unsigned int timerTicksPerSecond;   // 0x24
+    float timerScale;   // 0x28
+};
+
+extern _zsys_public zSys;
+
+/* the timer's count register and the GIF's mode (Sony's T0_COUNT and GIF_MODE) */
+#define T0_COUNT ((volatile unsigned int *)0x10000000)
+#define GIF_MODE ((volatile unsigned int *)0x10003010)
 
 class CValve {
 public:
@@ -187,7 +224,9 @@ public:
     void Tick(float dT);
     void DrawPhase(zdb::_RenderPhase phase, zdb::CCamera *cam);
 
-    unsigned char _0[0x4fe0];
+    unsigned char _0[0x498];
+    C2DFont *m_myfont;   // 0x498
+    unsigned char _49c[0x4fe0 - 0x49c];
     MapCompass m_compass;   // 0x4fe0
     unsigned char _4fe1[0x18900 - 0x4fe1];
     CTickItem m_18900;   // 0x18900
@@ -254,7 +293,6 @@ extern CFlareSystem data_00488F10;
 extern "C" {
 extern int data_00408C08;                        /* SOCOM 1's oddeven, a static of Tick's */
 void func_003B1160(int arg);
-void func_0033CD50(void *arg);
 void func_0033B5B0(CPipe *pipe);
 void func_0033B570(CPipe *pipe);
 CTickItem *func_0022D590();
@@ -381,6 +419,10 @@ static PNT3D s_subColor;
 static int s_subSpacing;
 static int s_subWidth;
 
+/* the film's first frame to come (OVL1 bss 0x408C00, the name ours): Init sets it, Tick's first
+ * swap is made without the flip and clears it */
+static unsigned char s_firstFrame;
+
 /* the cues let go of (the name ours): an inline helper MW inlines one level (FreeVector makes it
  * taller than the budget), so UnInit calls clear() and FreeVector out of line, as the image does */
 static inline void FreeCues()
@@ -485,6 +527,226 @@ void CCinematicState::SetMovie(const char *name, unsigned char flag, unsigned ch
     }
     m_moviename = _strdup(name, 0, 0);
     m_28 = flag;
+}
+
+/* a subtitle line centred, or set flush right (ours: C2DString's flags at 0x69 and 0x6A set through
+ * an inline -- each a call whose object, the line reloaded, is numbered as the inline's variable,
+ * after the store's value: written in place, the reloads take v0 and the values v1) */
+static inline void SetCentered(C2DString *s, bool on)
+{
+    s->m_isCentered = on;
+}
+
+static inline void SetRight(C2DString *s, bool on)
+{
+    s->m_socom2_6a = on;
+}
+
+/* the film started: the sounds paused, the CD read let finish and the stream left idle for half a
+ * second; with the film up the frame rate saved, the screen set up for it (the full height halved
+ * for an interlaced mode, a window kept or the whole screen), path 3 masked, the bone motions'
+ * buffer lent to the film's GS memory and the player given it, and -- with subtitles -- the film's
+ * texture buffer loaded with the HUD's font and the three lines built; then the film run */
+bool CCinematicState::Init()
+{
+    CSndInstance::PauseAllSounds();
+    CSnd::WaitForCDRead();
+    Headset *headset = Headset::ftsGetHeadset();
+
+    if (headset)
+        Flush__7HeadsetFv(headset, true);
+    *T0_COUNT = 0;
+    unsigned int start = 0;
+    unsigned int now = start;
+
+    while (now < start + zSys.timerTicksPerSecond / 2) {
+        if (!snd_StreamSafeCheckCDIdle(1))
+            now = start = *T0_COUNT;
+        else
+            now = *T0_COUNT;
+    }
+    m_movierunning = false;
+    s_firstFrame = 1;
+    m_time = 0.0f;
+    if (m_2a) {
+        m_savedFrameRate = CVideo::MaxFrameRate(-1);
+        if (m_29) {
+            if (zVid.m_75 == 2) {
+                int h = zVid.m_48;
+
+                func_003B0B90(0, 0, zVid.m_44, 224);
+                func_003B09E0(0, 0, zVid.m_44, h);
+            } else {
+                m_1c = zVid.m_48;
+                if (zVid.m_48 == 448) {
+                    m_videoSave[0] = zVid.m_30;
+                    m_videoSave[1] = zVid.m_34;
+                    if (zVid.m_30 == 0) {
+                        zVid.m_30 = 0;
+                        zVid.m_34 = 70;
+                    } else {
+                        zVid.m_34 = 0;
+                        zVid.m_30 = 70;
+                    }
+                }
+            }
+            zVid.m_7c = 2;
+        } else {
+            zVid.m_7c = 1;
+            m_20 = zVid.m_92;
+            zVid.m_92 = m_3d;
+            if (m_3c) {
+                func_003B0B10(m_40);
+                func_003B0A70(m_50);
+            } else {
+                func_003B0B90(0, 0, 640, 448);
+                func_003B09E0(0, 0, 640, 448);
+            }
+        }
+        *GIF_MODE &= ~4;
+        asm volatile {
+            sync
+        }
+        u_long128 *buf = zBoneMotionRdrBuffer();
+        zBoneMotionRdrSize();
+        CVideo::WriteGsMemory(0x2400, buf, 0x1c0000);
+        unsigned int height = m_29 ? (unsigned int)zVid.m_48 / 2 : zVid.m_48;
+
+        CMPEG::SetMaxHeight(m_2a ? height / 2 : height);
+        CMPEG::Init(buf, 0x1c0000);
+        zVid.m_48 = height;
+        if (s_cues.size()) {
+            zdb::CGSTexBuffer *texbuf =
+                zdb::CTexManager::m_texmanager.m_buffer.data_[zdb::CTexManager::TexPhase[54]];
+            CHUD *hud = theHUD;
+            C2DFont *font = hud->m_myfont;
+
+            texbuf->Setup(zVid.m_38 * 32, 0x2440);
+            for (int i = 0; i < 1; i++) {
+                texbuf->m_dyntex_list.Add(font->GetTexture(i), true);
+                texbuf->m_chainp = 0;
+            }
+            texbuf->Load(true);
+            for (int i = 0; i < 3; i++) {
+                m_items[i] = new C2DString;
+                int y;
+                int off = i * s_subSpacing;
+                y = (int)s_subPos.y;
+                m_items[i]->Load("", font, (int)s_subPos.x, y - off, true);
+                m_items[i]->m_scale = s_subScale;
+                SetCentered(m_items[i], s_subJustify == 1);
+                SetRight(m_items[i], s_subJustify == 2);
+                m_items[i]->SetColor(s_subColor.x, s_subColor.y, s_subColor.z);
+                m_items[i]->On();
+            }
+            zdb::CVisual::AlphaEnable(true);
+        }
+    }
+    if (m_moviename)
+        m_movierunning = CMPEG::Run(m_moviename, true, false, m_2c) != 0;
+    m_fadeTime = -1.0f;
+    func_003B0660();
+    return true;
+}
+
+/* a word the film's tick zeroes each frame (OVL1 0x49E9E8, among C2D's statics; not named) */
+extern int data_0049E9E8;
+
+/* a frame of the film: the cross button fades it out, the fade run down (the film ended when it is
+ * out and the film does not hold its last frame), the film ended and the state popped when it is
+ * done -- the one return after the if/else; else its time counted, the film ticked, and the
+ * subtitle line due drawn: the latest cue at or before the film's time, split at the first space
+ * past its middle when it is wider than the subtitles' width (its second half on the line, its first
+ * on the next, drawn in the same pass). The tells: the cue's index `line` is a counter of its own,
+ * stepped in the for's increment (MW strength-reduces &lines[line] to s3, `addiu s3,s3,4` in the
+ * latch; indexed by i -- which the split's i++ also steps -- it is recomputed); the line read through
+ * a reference bound before the null test (s8, computed in the test's delay slot) for the split's
+ * text and its SetString, the rest written m_items[i]; `more` set before the next line's SetString;
+ * the film's time read into a float ahead of the cue array (hoisted out of the cue walk); `half`
+ * named (the loop's bound before its counter's zero) */
+bool CCinematicState::Tick(float dT)
+{
+    CInput::Tick(dT);
+    CPad *pad = CInput::m_pads[0];
+
+    if (pad && pad->m_state[9] == 3 && m_fadeTime < 0.0f)   /* PAD_CROSS, KEY_RISING */
+        m_fadeTime = 1.1f;
+    if (m_fadeTime > 0.0f) {
+        m_fadeTime -= dT;
+        if (m_fadeTime < 0.1f || !m_28) {
+            CVideo::Fade(0.0f, 0, 0, 0);
+            if (m_fadeTime < 0.0f || !m_28) {
+                m_fadeTime = -1.0f;
+                m_movierunning = false;
+            }
+        } else {
+            CVideo::Fade(m_fadeTime - 0.1f, 0, 0, 0);
+        }
+    }
+    if (!m_movierunning || CMPEG::Done()) {
+        CMPEG::End();
+        m_movierunning = false;
+        theGame.Pop(0);
+    } else {
+        m_time += dT;
+        CMPEG::Tick(zVid.m_34);
+        data_0049E9E8 = 0;
+        int line = 0;
+
+        for (int i = 0; i < 1; i++, line++) {
+            C2DString *&cur = m_items[i];
+
+            if (cur) {
+                bool more = false;
+                float t = m_time;
+                const char *lines[3] = {"", "", ""};
+
+                for (CMovieCueVector::iterator c = s_cues.begin(); c != s_cues.end(); c++) {
+                    if (c->m_time <= t) {
+                        lines[2] = lines[1];
+                        lines[1] = lines[0];
+                        lines[0] = c->m_text;
+                    }
+                }
+                m_items[i]->SetString(lines[line], true);
+                m_items[i]->UpdatePos();
+                if (m_items[i]->m_length > s_subWidth) {
+                    char first[800];
+                    char rest[800];
+
+                    memset(first, 0, 800);
+                    char *text = cur->m_string + cur->m_firstCharPos;
+                    int len = strlen(text);
+                    int half = len / 2;
+                    int j;
+
+                    for (j = 0; j < half; j++)
+                        first[j] = text[j];
+                    for (; j < len && text[j] != ' '; j++)
+                        first[j] = text[j];
+                    for (; j < len && text[j] == ' '; j++)
+                        ;
+                    sprintf(rest, "%s", text + j);
+                    cur->SetString(rest, true);
+                    if (i < 2) {
+                        more = true;
+                        m_items[i + 1]->SetString(first, true);
+                    }
+                }
+                m_items[i]->Tick(dT);
+                m_items[i]->Draw(appCamera->m_camera);
+                if (more) {
+                    i++;
+                    m_items[i]->Tick(dT);
+                    m_items[i]->Draw(appCamera->m_camera);
+                }
+            }
+        }
+        zSysFifoEnd();
+        zVid_Swap(!s_firstFrame, true);
+        s_firstFrame = 0;
+    }
+    return false;
 }
 
 /* the film let go of: the film player, its items, its texture buffer and list, and -- if it was
@@ -737,7 +999,7 @@ bool CCoreState::Tick(float dT)
     if (hide)
         pEntNode->SetActive(camera_entity_active);
     if (running && !m_hud->PauseGame()) {
-        func_0033CD50(thePipe.m_688);
+        thePipe.m_effect.Tick();
         thePipe.RandomizeOverlay();
     }
     func_0033B5B0(&thePipe);

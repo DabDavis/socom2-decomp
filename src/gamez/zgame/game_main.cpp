@@ -51,12 +51,12 @@ void *_memalign(unsigned int align, unsigned int size, const char *file, int lin
 class CZNetwork {
 public:
     void zNetUpdate();   /* 0x30DA00 (SOCOM 1's call here) */
+    int zNetTick();   /* 0x30D9B0 (the online lane's round-25 name) */
 
     unsigned char m_8;   // 0x0
     unsigned char m_9;   // 0x1: an online game
 };
 extern CZNetwork theNetwork;
-extern "C" int func_0030D9B0(CZNetwork *net);    /* CZNetwork::zNetTick */
 
 /* the console (con_ps2.cpp's: only the tick, and SOCOM 1's theConsole -- CConsole::m_console,
  * 0x416240 -- ticked here) */
@@ -126,7 +126,7 @@ void NetTickThreadEntry(void *arg)
     data_003DF1F0 = true;
     while (data_003DF1F0) {
         zSysSleep(data_0044D698);
-        if (func_0030D9B0(&theNetwork))
+        if (theNetwork.zNetTick())
             data_0044D698 = data_0049E2D4;
     }
     data_003DF1F0 = true;

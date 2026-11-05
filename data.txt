@@ -1013,6 +1013,7 @@
 0x00408BEC 0xC s_subColor  # OVL1 bss; ours (the states lane, round 18): st_core.cpp's file static, the subtitles' colour (a PNT3D: 255 each, then COLOR) -- 8 references in 2 functions (SetMovie x5, CCinematicState::Init x3)
 0x00408BF8 0x4 s_subSpacing  # OVL1 bss; ours (the states lane, round 18): st_core.cpp's file static, the subtitles' line spacing (20, then SPACING) -- 4 references in 2 functions (SetMovie x3, CCinematicState::Init)
 0x00408BFC 0x4 s_subWidth  # OVL1 bss; ours (the states lane, round 18): st_core.cpp's file static, the subtitles' width (zVid.m_44, the screen's, then WIDTH) -- 4 references in 2 functions (SetMovie x3, CCinematicState::Tick)
+0x00408C00 0x1 s_firstFrame  # OVL1 bss; ours (the states lane, round 46): st_core.cpp's file static, the film's first frame to come -- CCinematicState::Init sets it, Tick's first swap is made without the flip (zVid_Swap(!s_firstFrame, true)) and clears it; 3 references in 2 functions (Init x1, Tick x2)
 0x00408C10 0x4 load_thread_stack  # OVL1 bss; SOCOM 1's name (its static array for the load thread's stack; SOCOM II's is a pointer to one allocated once): 7 references in 2 functions take 0x408C10 (CCoreState's StartLoadThread and FreeLoadThread)
 0x00408C48 0x4 m_increment__10CameraZoom  # OVL1 bss; SOCOM 1's (m_increment__10CameraZoom): the zoom's step a second; 9 references in 4 functions (Tick, HandleZoomIn, HandleNewZoom, Reset)
 0x00408C50 0x1 m_iszoom__10CameraZoom  # OVL1 bss; SOCOM 1's (m_iszoom__10CameraZoom): zooming; 8 references in 3 functions (HandleZoomIn, OnGoal, Reset)
