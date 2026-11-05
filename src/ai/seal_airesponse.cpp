@@ -649,36 +649,37 @@ struct CAiAnimList {
 };
 
 /* an index in [0, max], drawn (inline: zero without a draw for none) */
+static inline int RandMod(int n)
+{
+    return rand() % n;
+}
+
 static inline int RandIndex(int max)
 {
-    return max == 0 ? 0 : rand() % (max + 1);
+    return max == 0 ? 0 : RandMod(max + 1);
 }
 
 /* one of a list's anim types drawn, -1 for none (inline) */
-static inline AnimType PickAnim(const CAiAnimList *l)
+static inline AnimType PickAnim(const CAiAnimList *lists, unsigned char kind)
 {
+    AnimType r = animTypeUndefined;
+    const CAiAnimList *l = &lists[kind];
     const AnimType *anims = l->m_anims;
     int count = l->m_count;
 
-    if (!anims || count <= 0)
-        return animTypeUndefined;
-    return anims[RandIndex(count - 1)];
+    if (anims && count > 0)
+        r = anims[RandIndex(count - 1)];
+    return r;
 }
 
 /* a response anim of a kind drawn from its list, the four lists filled on the first call (five,
  * five, one and five types; OVL2 0x609530, the shot-at state's, the event state's and the
- * callouts' orders take it -- the names ours).
- * OPEN, 22 instructions, the draw's early return only (the fill matches): the target loads the
- * count before the list's null test and branches both failed tests straight to the epilogue, the
- * -1 in the first test's delay slot; through a list pointer (here) MW keeps the list in s1 and the
- * last index in s0 as the target does, but lays the -1 out as a block of its own ahead of the draw
- * (`||`, `&&`, two ifs, a result local, ternaries); by-value (list, count) parameters load the
- * count first but fold `(count - 1) + 1` back into the count (the target divides by last + 1).
- * Round 43: a result preset to animTypeUndefined (`r = -1; if (anims && count > 0) r = anims[...];
- * return r;`) gives the target's early part -- the -1 in the first test's delay slot, both tests to
- * the end -- at 0x1D4 against 0x1DC: what is left is the draw's `b` over the rand call, whose delay
- * slot the target leaves empty with the call's and the join's labels padded to 8, where MW fills it
- * from the join (the ternary or an if/else, in RandIndex, in PickAnim or written in place, b50 too) */
+ * callouts' orders take it -- the names ours). Round 43's result preset (`r = -1; if (anims && count
+ * > 0) r = anims[...]; return r;`) gives the early return; the kit's round 50: the `rand() % n` an
+ * inline of its own (RandMod) leaves the zero arm's `b` unfilled with the call's and the join's
+ * labels padded (the AI core's round-22 rule; 22 -> 5), and the preset defined before the list's
+ * address is taken -- PickAnim indexing the lists itself -- moves the index's first temporary off
+ * v0 onto v1 (5 -> 0) */
 AnimType func_00609530(unsigned char kind)
 {
     static bool first = true;
@@ -707,7 +708,7 @@ AnimType func_00609530(unsigned char kind)
         lists[3].m_anims[3] = data_003DF008;
         lists[3].m_anims[4] = data_003DF000;
     }
-    return PickAnim(&lists[kind]);
+    return PickAnim(lists, kind);
 }
 
 /* shot at: the stance noted and a short random wait on entry, an order (kind 11) in the AI's
