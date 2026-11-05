@@ -2158,6 +2158,46 @@ static inline bool OrderDoorType(const CAiMap::action *act) { return act->GetTyp
 
 static inline bool OrderDoor(const CAiMap::action *act) { return act->m_locExValid && OrderDoorType(act); }
 
+/* the squad's breach prototype set up at the node action under the ordering SEAL's reticule: made
+ * new (its kind kept), told signal 4, the action held, then the action's AI map door found -- the
+ * breach point five units off the door's cell centre along its direction (toward the orderer's
+ * side, flag 1 set when the orderer stands against it) and nine up. Whether the door was found
+ * (OVL2 0x5EBF00: IssueCommand's, with its static prototype 0x66B8E0; new in SOCOM II, the name
+ * ours -- the squad passed and unread) */
+extern "C" bool func_005EBF00(CZSealBody *from, CSealUnit *unit, CNodeAction *na, CAiSBreach *proto)
+{
+    static float back = 5.0f;
+    static float up = 9.0f;
+
+    proto->Reset(proto->m_state);
+    proto->OnSignal(CAiState::SIGNAL_4, 0);
+    proto->m_74 = (unsigned int)na;
+    bool r = false;
+
+    proto->m_78 = 0;
+    if (na && AiMaps.GetActionById(na->m_id, proto->m_80, &proto->m_78)) {
+        CPnt3D center;
+
+        if (AiMaps.GetCellCenter(proto->m_80, &center)) {
+            CPnt3D d;
+            CPnt3D v;
+
+            center.Sub(&((CEntity *)from)->m_posW, &d);
+            CAiMap::GetDirVec((CAiMap::DIR)proto->m_78->m_direction, v);
+            float dist = back;
+
+            if (Dot(v, d) < 0.0f)
+                proto->SetFlags(1, 0);
+            else
+                dist = -dist;
+            center.y += up;
+            proto->m_58 = center + v * dist;
+            r = true;
+        }
+    }
+    return r;
+}
+
 /* whether an order with an item (17 and 18 a deployable's, 123 and 121, 19 none) can be carried out
  * at the node action under the ordering SEAL's reticule by this AI SEAL: not with a state of kind
  * 10 on its stack, the item deployable there, the action's AI map door one the order takes -- on the
