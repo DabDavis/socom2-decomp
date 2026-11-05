@@ -1019,6 +1019,10 @@ public:
     bool HasMipLevel(CTexture *tex);
     /* its GIF select copied into a packet (SOCOM 1's; the VU map setups call it -- the wep lane) */
     void CopyTextureSelect(_word128 *to);
+    /* its pixels loaded into GS memory at an address, the size taken back (SOCOM 1's, ztex_main.cpp:
+     * the world's constructor loads its shadow texture so) */
+    unsigned int LoadGS(unsigned int addr, char *name, void *data, unsigned int width, unsigned int height,
+                        unsigned int psm);
 
     /* the GS memory textures may use, from and to (SOCOM 1's statics) */
     static unsigned int m_baseAddress;
@@ -1417,6 +1421,8 @@ struct _zrdr;
  * read the goals at 0x10 and the angles at 0x28, 0x10 later than SOCOM 1's) */
 class CWind {
 public:
+    /* reset when made (inline: CWorld's constructor calls Reset first, as SOCOM 1's does) */
+    CWind() { Reset(); }
     void Reset();
     void TickGoal(float dt);
     void Tick(float dt);
@@ -1622,17 +1628,6 @@ struct CClutterEffector {
     /* inline: TestCellMid reads it ahead of each fabsf call, held in $f21 across it */
     float GetRadius() const { return m_radius; }
 };
-
-/* a vector between two points, by value: Sub out of line into a temporary, copied out (ld/sd and
- * lwc1/swc1) -- the collision code's differences (grid_di.cpp, int_main.cpp; SOCOM II's CPnt3D
- * operator-, which zmath.h lacks; the name is ours) */
-inline CPnt3D PntMinus(const CPnt3D &a, const CPnt3D &b)
-{
-    CPnt3D r;
-
-    a.Sub(&b, &r);
-    return r;
-}
 
 /* the clutter's animation: the props pushed about by effectors (SOCOM 1's grid_clutter.cpp class,
  * 0x70 bytes, its DWARF) */
@@ -2002,6 +1997,11 @@ public:
     /* the world's scale (SOCOM 1's static, 0x3DFE10 in data.txt; zwep_reader.cpp and seal_dyn.cpp
      * read it as data_003DFE10) */
     static float m_scale;
+    /* its inverse (SOCOM 1's m_invscale, 0x3DFE18: the constructor sets both, 10 and 0.1) */
+    static float m_invscale;
+    /* made with its name: the lights, the shadow texture and the defaults set (SOCOM 1's,
+     * node_world.cpp; CSaveLoad::Load news it) */
+    CWorld(const char *name);
     /* a texture's handle by name, from the asset manager's list (SOCOM 1's four words, out of
      * line at 0x1EC940; the wep lane's) */
     static CTexHandle *GetTexHandle(const char *name);

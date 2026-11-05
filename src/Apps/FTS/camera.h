@@ -114,6 +114,9 @@ public:
     void RotateHead(float pitch);
     /* whether a ladder can be climbed from here (OVL2 0x59DA60, SOCOM 1's) */
     bool CanClimbLadder();
+    /* the reticule's hit taken along the camera's matrix (OVL2 0x5AA6E0, SOCOM 1's CheckDIShoot:
+     * the SEALs' round 48) */
+    void CheckDIShoot(CPnt3D *pos, CMatrix *cTw);
 
     unsigned char _4[0xc0 - 4];
     CEntityCtrl *m_control;   // 0xc0

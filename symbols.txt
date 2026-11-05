@@ -5622,7 +5622,7 @@
 0x0031FD10 0x10 GetModel__Q23zdb6CWorldFPCc  # OVL1; s1:exact
 0x0031FD20 0xDC Initalize__Q23zdb6CWorldFv  # OVL1; s1:align
 0x0031FE00 0x50C __dt__Q23zdb6CWorldFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x00320310 0x344 func_00320310  # OVL1
+0x00320310 0x344 __ct__Q23zdb6CWorldFPCc  # OVL1; the world lane r24: s1:calls by hand (SOCOM 1's CWorld(const char *) 0x230030: CSaveLoad::Load news 0x6BE0 bytes and calls it where SOCOM 1's Load calls the constructor, then Initalize; its own calls are SOCOM 1's in order -- CNode(), CWind::Reset, the light list's constructor, the five object constructors, CGrid(), SetName, new DiIntersect(256), sceVu0Normalize, sprintf, new CTexture(name), LoadGS)
 0x00320660 0x78 __dt__Q23zdb19CProjectedMapVectorFv  # OVL1; ~CProjectedMapVector: the world lane's round 10 by the initialiser research (0x3206E0, the same code, is ~CLightMapVector); renamed at integration
 0x003206E0 0x78 __dt__Q23zdb15CLightMapVectorFv  # OVL1; the world lane r10: the destructor vis_vu.cpp's initialiser 0x404570 registers for CVisual's m_specMapList, m_lightMapList and m_shadowMapList (the sinit research; SOCOM 1's __sinit_vis_main.cpp registers __dt__Q23zdb15CLightMapVectorFv there), a class over the pointer vector (four this-tests); like SOCOM 1's (0x2304B0) it follows CWorld's constructor in node_world.cpp
 0x00320760 0x8 Uninit__Q23zdb6CWorldFv  # OVL1; s1:order by hand (SOCOM 1's Uninit, Init, GetVersion in that order, each as empty)
@@ -5749,7 +5749,7 @@
 0x00329A40 0x54 func_00329A40  # OVL1
 0x00329AA0 0x10 func_00329AA0  # OVL1
 0x00329AB0 0xC func_00329AB0  # OVL1
-0x00329AC0 0x7C func_00329AC0  # OVL1
+0x00329AC0 0x7C SetActive__Q28Particle6SourceFb  # OVL1; the world lane r24: s1:calls by hand (SOCOM 1's Particle::Source::SetActive(bool) 0x239410: zAnimParticleSourceTick calls it twice right after GetParticleSource, as SOCOM 1's does; the same body -- the active byte at 0 compared and set, the node (0x104, SOCOM 1's 0x100) activated through its vtable when the byte at 0x120 says so (SOCOM II tests the node), then byte 0x12C or byte 1 cleared)
 0x00329B40 0xB68 Tick__Q28Particle6SourceFf  # OVL1; s1:calls by hand (Particle::Tick calls it on every source of Source::list with dT, as SOCOM 1's Tick calls Source::Tick; 0xB68 bytes against SOCOM 1's 0xA2C) -- the rdr lane
 0x0032A6B0 0x150 __dt__Q28Particle6SourceFv  # OVL1; s1:callee by hand (CZAnim::DeleteParticleSources calls it with the delete flag on each source where SOCOM 1's calls Particle::Source's destructor)
 0x0032A800 0x58 func_0032A800  # OVL1
@@ -5975,7 +5975,7 @@
 0x003383F0 0x88 AddAlphaTextures__5CPipeFPQ23zdb5CNode  # OVL1; the rdr lane: SOCOM II's, the name ours (CDynTexList::Add(CDynTexList *) of each of the node's visuals' lists (CNode 0x84, CVisual 0x48) into the alpha pass's at 0x650 = CAlpha (0x638) + 0x18, SOCOM 1's CAlpha::m_dyntexlist; SaveDelayedNode calls it)
 0x00338480 0x538 RenderMesh__5CPipeFPQ23zdb5CNodePQ23zdb5CMeshP7CMatrixQ23zdb12tag_ZVIS_FOV  # OVL1; the world lane r7: s1:calls (RenderAtom calls it with (node, 0, 0, 0) for a node with a mesh where SOCOM 1's calls RenderMesh; its callers SOCOM 1's RenderMesh's alike: CClutter::Render, the UI node walk, itself, RenderNode)
 0x003389C0 0x5E0 RenderNode__5CPipeFPQ23zdb5CNodeQ23zdb12tag_ZVIS_FOV  # OVL1; the world lane r7: s1:calls (RenderAtom calls it with (node, 0) for a node without a mesh where SOCOM 1's calls RenderNode; its callers SOCOM 1's RenderNode's alike: CClutter::Render, the delayed nodes, itself, the world pass)
-0x00338FA0 0x4D0 func_00338FA0  # OVL1
+0x00338FA0 0x4D0 BuildNodeLocalLightList__FPQ23zdb5CNode  # OVL1; the world lane r24: s1:calls by hand (SOCOM 1's BuildNodeLocalLightList(CNode *, CNode *) 0x243C10: RenderVisual and CAlpha::Render call it right after NodeSetup under the same byte test, as SOCOM 1's two do; its calls are SOCOM 1's -- GetBBox, SetCellBoundary, the cell's light walk, AddLocalLight, GetNextCell; SOCOM II's takes the node alone, a1 written before any read)
 0x00339470 0x1F0 BuildProjectedMapList__5CPipeFPQ23zdb5CNode  # OVL1; the world lane round 8: ours -- CVisual::m_projectedMapList (0x4B4E30) emptied and refilled with the world's shadow casters (0x580) whose box the node's sphere meets, for a pipe's node with bit 6 of 0xA1; called after BuildLightMapList by RenderDelayedNodes and PrepareAtom
 0x00339660 0x468 BuildLightMapList__5CPipeFPQ23zdb5CNode  # OVL1; the world lane round 8: s1:calls -- GetBBox, Sub, Scale, Add, Transform, Sub, then CLightMapVector::Exists and the pod insert, twice, as SOCOM 1's BuildLightMapList (0x2442F0); called by RenderDelayedNodes and PrepareAtom
 0x00339AD0 0x218 BuildSpecMapList__5CPipeFPQ23zdb5CNode  # OVL1; ours (the world lane round 19: m_specMapList (0x4B4DA8) cleared and refilled with the light maps but shadows within 250 units of the stack top's place, their specular fade set; RenderNode and RenderUiNodeRecursive call it before the visuals)

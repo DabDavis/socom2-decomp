@@ -761,15 +761,17 @@ class CAiSAvoid : public CAiState {
 public:
     CAiSAvoid() : CAiState(AI_STATE_AVOID) {}
     virtual void OnSignal(SIGNAL sig, CSealCtrlAi *ai);
+    virtual int Tick(CSealCtrlAi *ai);
     virtual ~CAiSAvoid();
 
-    unsigned int m_58;   // 0x58 (cleared on a reset)
+    unsigned int m_58;   // 0x58: the SEAL stepped away from (cleared on a reset)
     CPnt3D m_5c;   // 0x5c
     unsigned char _68[0x6c - 0x68];
-    CPnt3D m_6c;   // 0x6c
-    CPnt3D m_78;   // 0x78
-    CPnt3D m_84;   // 0x84
-    unsigned char _90[0x94 - 0x90];   // 0x94 bytes, Create's new
+    CPnt3D m_6c;   // 0x6c: the way to step (the map search's direction)
+    CPnt3D m_78;   // 0x78: the point to step to (step 1's goal)
+    CPnt3D m_84;   // 0x84: the way to face there (flag 2)
+    signed char m_goal;   // 0x90: the goal's kind, a GOAL_TYPE (zseal.h's, after this header: lb)
+    unsigned char _91[0x94 - 0x91];   // 0x94 bytes, Create's new
 };
 
 /* the path recovery (SOCOM 1's; 0x15C bytes, Create's: a route at 0x5C, a word triple at 0x104,
@@ -885,10 +887,12 @@ public:
     virtual bool CanAttack() const { return false; }
     virtual ~CAiSStunResponse();
 
+    virtual int Tick(CSealCtrlAi *ai);
+
     unsigned int m_58;   // 0x58
-    int m_5c;   // 0x5c (-1 on a reset)
+    int m_5c;   // 0x5c (-1 on a reset): the anim the response plays (passed as a short)
     float m_wait;   // 0x60: a random wait (under 0.75) on entry (SOCOM 1's at 0x30)
-    unsigned int m_64;   // 0x64
+    class CSnd *m_snd;   // 0x64: a sound played at the SEAL each time the timer runs out (0 on a reset)
     CAiTimer m_timer;   // 0x68 (Create builds it with 0.0)
 };
 

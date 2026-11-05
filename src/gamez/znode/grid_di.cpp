@@ -82,7 +82,7 @@ void DiIntersect::SortNearToFar(int *idx, float *dist)
         return;
     for (int i = 0; i < m_Cnt; i++) {
         idx[i] = i;
-        CPnt3D d = PntMinus(m_Intersects[i].m_pos, RayTail(this));
+        CPnt3D d = m_Intersects[i].m_pos - RayTail(this);
 
         dist[i] = d.x * d.x + d.y * d.y + d.z * d.z;
     }
@@ -101,11 +101,11 @@ IntersectStruct *DiIntersect::GetNearestIntersect()
     if (m_Cnt <= 0)
         return 0;
     int best = 0;
-    CPnt3D d = PntMinus(m_Intersects[0].m_pos, m_Tail);
+    CPnt3D d = m_Intersects[0].m_pos - m_Tail;
     float bestDist = d.x * d.x + d.y * d.y + d.z * d.z;
 
     for (int i = 1; i < m_Cnt; i++) {
-        CPnt3D d2 = PntMinus(m_Intersects[i].m_pos, m_Tail);
+        CPnt3D d2 = m_Intersects[i].m_pos - m_Tail;
         float dist = d2.x * d2.x + d2.y * d2.y + d2.z * d2.z;
 
         if (dist <= bestDist) {

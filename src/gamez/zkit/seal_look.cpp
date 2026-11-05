@@ -29,6 +29,7 @@ struct CSealLook {
     unsigned int m_look_flags;   // 0x4c
     float m_scan_angle;   // 0x50
     CAiTimer m_scan_timer;   // 0x54
+    float m_scan_limits;   // 0x60 (SOCOM 1's, the same place)
 };
 
 static inline CSealLook *Look(CSealCtrl *c)
@@ -77,6 +78,94 @@ void CSealCtrl::SetScanRate(float rate)
     t->m_timer = rate;
     t->m_min = rate;
     t->m_range = 0.0f;
+}
+
+/* the scan's timer given a random period, its countdown drawn from it (inline; the name ours: the
+ * range compared and the minimum read back as CAiTimer's Period does) */
+static inline void SetScanTimer(CAiTimer *t, const Rfloat &r)
+{
+    t->m_min = r.m_min;
+    t->m_range = r.m_range;
+    t->m_timer = t->Period();
+}
+
+/* the look's defaults for its kind: a first wait of one to three seconds, the flags 0x80 and no bias,
+ * then by kind the turn rate, the wait and the flags -- and, when the point's kind changed, the scan
+ * reset to the controller's limits (OVL2 0x601400: SOCOM 1's SetDefaultLookParams(AI_LOOK), its rate
+ * a function-local static there, with SOCOM II's bool and kinds 9-11). The kind kept unless it is the
+ * same and nothing changed */
+void CSealCtrl::SetDefaultLookParams(AI_LOOK look, bool changed)
+{
+    CSealLook *l = Look(this);
+
+    l->m_look_timer = Rfloat(1.0f, 3.0f);
+    l->m_look_flags = 0x80;
+    l->m_look_bias = CPnt3D::zero;
+    switch (look) {
+    case AIL_NORMAL:
+        if (changed) {
+            l->m_scan_angle = l->m_scan_limits;
+            SetScanTimer(&l->m_scan_timer, Rfloat(4.0f, 7.0f));
+        }
+        l->m_look_rate = Rfloat(0.1f, 0.3f);
+        l->m_look_timer = CAiTimer::infinite;
+        l->m_look_flags |= 6;
+        break;
+    case AIL_EVENT:
+        l->m_look_rate = Rfloat(0.5f, 0.8f);
+        l->m_look_timer = CAiTimer::infinite;
+        break;
+    case AIL_FRANTIC:
+        if (changed) {
+            l->m_scan_angle = l->m_scan_limits;
+            SetScanTimer(&l->m_scan_timer, Rfloat(0.5f, 1.2f));
+        }
+        l->m_look_rate = 0.8f;
+        l->m_look_flags |= 0xa;
+        break;
+    case AIL_BUDDY:
+        l->m_look_timer = Rfloat(1.0f, 2.5f);
+        l->m_look_rate = 1.0f;
+        break;
+    case AIL_CORPSE:
+    case AIL_TASK:
+        if (changed) {
+            l->m_scan_angle = l->m_scan_limits;
+            SetScanTimer(&l->m_scan_timer, Rfloat(0.5f, 2.5f));
+        }
+        l->m_look_flags |= 5;
+        l->m_look_rate = 0.8f;
+        break;
+    case AIL_TURNING:
+        l->m_look_rate = 0.8f;
+        l->m_look_timer = 0.25f;
+        break;
+    case AIL_TARGET:
+        l->m_look_flags |= 1;
+        l->m_look_rate = 1.0f;
+        l->m_look_timer = CAiTimer::infinite;
+        break;
+    case AIL_DEPLOY:
+        l->m_look_flags |= 5;
+        l->m_look_rate = 1.0f;
+        l->m_look_timer = 3.0f;
+        if (changed) {
+            SetScanRate(0.25f);
+            SetScanAngle(0.2617994f);
+        }
+        break;
+    case AIL_10:
+        l->m_look_rate = 1.0f;
+        l->m_look_timer = CAiTimer::infinite;
+        break;
+    case AIL_11:
+        l->m_look_flags |= 1;
+        l->m_look_rate = 1.0f;
+        l->m_look_timer = CAiTimer::infinite;
+        break;
+    }
+    if (l->m_look_mode != look || changed)
+        l->m_look_mode = look;
 }
 
 /* a difference in the ground plane, by value, and a squared length taken through a reference: the

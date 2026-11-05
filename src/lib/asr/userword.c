@@ -15,9 +15,9 @@
  * above it, their real definitions in place) and RejectTrainUtters, SOCOM 1's bodies. Round 30c:
  * DoUserWordTraining, SOCOM 1's body as it stands (the out-parameters at +920/+924 typed in casr.h).
  * OPEN: SendLabelsToEngine (26) and SendPartOfLabelsToEngine (36s), diagnosed in place;
- * FindBestTranscription (round 30c, 0x390 against 0x398) diagnosed in place; DoDurationModeling
- * and ScoreTranscriptions not written (declared extern above DoUserWordTraining: their calls
- * resolve through the map).
+ * FindBestTranscription (round 30c, 0x390 against 0x398) diagnosed in place.
+ * Round 31c: DoDurationModeling and ScoreTranscriptions, SOCOM 1's bodies (the object 18 of 21:
+ * the scoring result at +944 typed in casr.h, the back pointers' phoneme at SEGLABEL +16).
  *
  * cbDoUserWordTraining's flag test (open since round 4b: `bnezl` here, `bnez` in the target, the
  * return's `move v0,zero` in the slot with a call to ExitUserWordTraining as the fall-through) is
@@ -291,6 +291,90 @@ static int FindBestTranscription(CASR *c, float *scores, float *durs, int *best)
     return 0;
 }
 
+extern short *casrGetSegmStart(CASR *c, int i, int j);
+extern void casrInitSegmentation(CASR *c);
+extern void *heap_Calloc(void *heap, int n, int size);
+extern void *memcpy(void *dst, const void *src, unsigned int n);
+
+/* the best transcription's durations modelled: each training utterance's segment starts for it
+ * copied (n + 2 a row, the states last to first), each state's duration the least of the
+ * utterances' halved (rounded up; the user-word silence one frame), the transcription expanded to
+ * one label a frame, and every utterance's segment starts rewritten as that many equal steps
+ * through each state. SOCOM 1's body (round 31c), its k loops unrolled by two here where SOCOM 1's
+ * build left them: the row length a local (`(n + 2) * 2` folds to `n * 2 + 4`); the utterance
+ * counter compared unsigned (the target's beqz/sltu: the count is an int everywhere else); the
+ * expansion written through an index (`newseg[idx--]`: a walking pointer makes the body small
+ * enough to unroll by four); `total++` above `dur[k] = 1` (the preconditioned copy then stores
+ * total's register, the constant 1 there); the two inner counters apart (one counter shared
+ * takes other registers); the rewrite's row step in the for's increment after k's, so the
+ * duration pointer steps before it. */
+static int DoDurationModeling(CASR *c, int best)
+{
+    int n = c->utt[best].n;
+    unsigned short *seg = c->utt[best].seg;
+    unsigned short *buf, *p, *q, *out, *newseg;
+    unsigned int *dur;
+    unsigned int total, min, d, j, m;
+    unsigned short i, step, t;
+    unsigned int acc;
+    int k, idx;
+    int len = n + 2;
+
+    buf = heap_Calloc(c->heap, len * c->uw_recs_needed, 2);
+    p = buf;
+    for (i = 0; i < (unsigned int)c->uw_recs_needed; i++) {
+        memcpy(p, casrGetSegmStart(c, best, i), len * 2);
+        p += len;
+    }
+    dur = heap_Calloc(c->heap, n, 4);
+    total = 0;
+    p = buf;
+    for (k = n - 1; k >= 0; k--) {
+        q = p++;
+        if (seg[k] == (unsigned short)c->uw_silence) {
+            total++;
+            dur[k] = 1;
+        } else {
+            min = 10000;
+            for (i = 0; i < (unsigned int)c->uw_recs_needed; i++) {
+                d = q[0] - q[1];
+                if (d < min)
+                    min = d;
+                q += len;
+            }
+            dur[k] = (min + 1) / 2;
+            total += dur[k];
+        }
+    }
+    newseg = heap_Calloc(c->heap, total, 2);
+    idx = total - 1;
+    for (k = n - 1; k >= 0; k--)
+        for (j = 0; j < dur[k]; j++)
+            newseg[idx--] = seg[k];
+    p = buf;
+    heap_Free(c->heap, c->utt[best].seg);
+    c->utt[best].n = total;
+    c->utt[best].seg = newseg;
+    casrInitSegmentation(c);
+    for (i = 0; i < (unsigned int)c->uw_recs_needed; i++) {
+        out = casrGetSegmStart(c, best, i);
+        for (k = n - 1; k >= 0; k--, p++) {
+            t = p[0];
+            step = (unsigned short)(p[0] - p[1]) / dur[k];
+            acc = 0;
+            for (m = 0; m < dur[k]; m++) {
+                *out++ = t - acc;
+                acc += step;
+            }
+        }
+        for (; k >= -2; k--)
+            *out++ = *p++;
+    }
+    heap_Free(c->heap, dur);
+    heap_Free(c->heap, buf);
+    return 0;
+}
+
 /* the label stop and start (defined at their place below), as GNU extern inlines for the
  * functions between: CheckConsistency holds both bodies */
 extern __inline__ int DoLabelStop(CASR *c)
@@ -316,6 +400,195 @@ typedef struct LABELREQ {
 } LABELREQ;
 
 extern const unsigned char LabelBlockIDs[];
+
+extern void casrStoreSegmentation(CASR *c, int i, int j, SEGLABEL *l);
+
+/* each training utterance's transcription (its user-word silences made the language's silence)
+ * scored against every utterance's labels: the scores, per-frame scores and durations kept in
+ * the n x n tables, each segmentation stored; the first transcription shorter than the utterance's
+ * own is kept, and every later one must repeat it -- else all are rejected (*bad). With the last
+ * utterance scored, a repeated one replaces the utterance's own (none: the utterance rejected);
+ * otherwise the pass is run once more from the first utterance before the first one's is
+ * rejected. The utterance with the least total is *best. SOCOM 1's body (round 31c): the values
+ * reload spills declared in the order of their slots (i, least, buf, ret, retried, first, have,
+ * same: slots +68 to +96, the pseudos numbered as declared); the size summed straight after
+ * lab.one's store (four statements later, loop.c hoists the 1 out of the utterance loop, global-alloc
+ * finds it no register and reload folds it into an addiu); the scoring arm first (the skip's
+ * `total += score[j]` laid out at the end); the repeat's count through a local (`n = ...; if (cnt
+ * == n)`: inside the test jump threading splits the ?: into branches where the target's movn
+ * computes it); each loop its own counter and the two list walks their own pointer (one shared
+ * variable is one pseudo, one register for all); the replacement copied as `while (k++ < cnt)`
+ * (tested on the old value: never unrolled, as the target's is not); the first transcription's
+ * pointer read before `first` and `have` are set (sched2 keeps the load ahead of the two spill
+ * stores, and reload's 1 for have reuses the dead count's register). */
+static int ScoreTranscriptions(CASR *c, float *scores, float *durs, int *best, unsigned char *reject,
+                               unsigned char *bad)
+{
+    LANGVT *l = c->lng;
+    int score[3];
+    int len[3];
+    LABELREQ lab;
+    unsigned int i, least;
+    unsigned short *buf;
+    int ret, retried, first, have, same;
+    unsigned int max, total, size;
+    int j, k, m, w, cnt, n, eq;
+    unsigned short *p, *end;
+    unsigned short sil;
+    unsigned char err;
+    SEGLABEL *q, *r;
+
+    max = 0;
+    *bad = 0;
+    least = -1;
+    buf = 0;
+    ret = 0;
+    first = 0;
+    if (_tosControl(c->event, 89, (int)l, 0) != 0) {
+        ret = 1;
+        goto out;
+    }
+    if (_tosControl(c->event, 17, 0, 0) != 0) {
+        ret = 1;
+        goto out;
+    }
+    if (_tosControl(c->event, 34, 0, 0) != 0) {
+        ret = 1;
+        goto out;
+    }
+    for (i = 0; i < c->uw_recs_needed; i++)
+        if (max < c->utt[i].n)
+            max = c->utt[i].n;
+    buf = heap_Calloc(c->heap, max, 2);
+    casrInitSegmentation(c);
+    c->uw_silence = l->GetSilencePhenome(l);
+    for (i = 0; i < c->uw_recs_needed; i++) {
+        total = 0;
+        cnt = 0;
+        p = c->utt[i].seg;
+        end = p + c->utt[i].n;
+        sil = l->GetUWSilencePhenome(l);
+        have = 0;
+        same = 0;
+        for (; p < end; p++)
+            if (*p == sil)
+                *p = l->GetSilencePhenome(l);
+        for (j = 0; j < c->uw_recs_needed; j++) {
+            score[j] = 0;
+            len[j] = 0;
+        }
+        lab.n = c->utt[i].n;
+        lab.one = 1;
+        size = (lab.n + lab.one) * 2 + 16;
+        lab.seg = c->utt[i].seg;
+        lab.silence = &c->uw_silence;
+        if (_tosControl(c->event, 23, 1, 0) != 0) {
+            ret = 1;
+            goto out;
+        }
+        retried = 0;
+        for (j = 0; j < c->uw_recs_needed; j++) {
+            if (len[j] != c->utt[i].n) {
+                if (_tosControl(c->event, 19, (int)&lab, size) != 0) {
+                    ret = 1;
+                    goto out;
+                }
+                err = DoLabelStart(c);
+                if (err) {
+                    ret = 1;
+                    goto out;
+                }
+                if (SendLabelsToEngine(c, LabelBlockIDs, j) != 0) {
+                    ret = 1;
+                    goto out;
+                }
+                err = DoLabelStop(c);
+                if (err) {
+                    ret = 1;
+                    goto out;
+                }
+                score[j] = c->uw_score;
+                total += score[j];
+                scores[i * 3 + j] = c->uw_perframe;
+                durs[i * 3 + j] = c->uw_nframes;
+                casrStoreSegmentation(c, i, j, c->uw_bt);
+                len[j] = c->uw_nnodes - 2;
+                if (c->uw_nnodes < c->utt[i].n + 2) {
+                    if (!have) {
+                        cnt = c->uw_nnodes > 1 ? c->uw_nnodes - 2 : 0;
+                        q = c->uw_bt;
+                        first = j;
+                        have = 1;
+                        for (k = cnt - 1; k >= 0; k--) {
+                            buf[k] = q->word;
+                            q = q->next;
+                        }
+                    } else {
+                        n = c->uw_nnodes > 1 ? c->uw_nnodes - 2 : 0;
+                        if (cnt == n) {
+                            r = c->uw_bt;
+                            eq = 1;
+                            for (m = cnt - 1; m >= 0 && eq; m--) {
+                                eq = r->word == buf[m];
+                                r = r->next;
+                            }
+                        } else
+                            eq = 0;
+                        if (eq)
+                            same = 1;
+                        else {
+                            for (m = 0; m < c->uw_recs_needed; m++)
+                                reject[m] = 1;
+                            *bad = 1;
+                            goto out;
+                        }
+                    }
+                }
+            } else
+                total += score[j];
+            if (j == c->uw_recs_needed - 1 && have) {
+                if (same) {
+                    if (cnt == 0) {
+                        *bad = 1;
+                        reject[i] = 1;
+                        total = -1;
+                        break;
+                    }
+                    c->utt[i].n = cnt;
+                    p = c->utt[i].seg;
+                    w = 0;
+                    while (w++ < cnt)
+                        *p++ = buf[w];
+                    lab.n = c->utt[i].n;
+                    size = (lab.n + lab.one) * 2 + 16;
+                } else if (_tosControl(c->event, 23, 0, 0) != 0) {
+                    ret = 1;
+                    goto out;
+                }
+                if (retried) {
+                    *bad = 1;
+                    reject[first] = 1;
+                    total = -1;
+                } else {
+                    have = 0;
+                    total = 0;
+                    same = 0;
+                    cnt = 0;
+                    retried = 1;
+                    j = -1;
+                }
+            }
+        }
+        if (total < least) {
+            *best = i;
+            least = total;
+        }
+    }
+out:
+    if (buf != 0)
+        heap_Free(c->heap, buf);
+    return ret;
+}
 
 /* utterance k's segmentation scored against each training utterance's labels: the best score and
  * the second best; above parameter +432 the word is consistent (*ok), and the utterance kept is the
@@ -413,15 +686,9 @@ static void RejectTrainUtters(CASR *c, unsigned char *reject)
     c->train_state = 0;
 }
 
-/* the three static scorers above are not written yet: declared extern, their calls resolve
- * through the map */
-extern int ScoreTranscriptions(CASR *c, float *scores, float *durs, int *best, unsigned char *reject,
-                               unsigned char *bad);
-extern int DoDurationModeling(CASR *c, int best);
 extern int TrainInit(CASR *c);
 extern void TrainModels(CASR *c, int best);
 extern void *heap_Alloc(void *heap, int size);
-extern void *memcpy(void *dst, const void *src, unsigned int n);
 
 /* the training once the last utterance is in: every utterance's transcriptions scored against the
  * others (an inconsistent set rejects its utterances, warning 36), the best one chosen, its

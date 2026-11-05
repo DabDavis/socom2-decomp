@@ -413,4 +413,61 @@ void Destruction_Instance::Render()
     }
 }
 
+/* the matrix's diagonal set from three floats (ours: by value, MW loads them right to left) */
+static inline void SetDiagonal(CMatrix &m, float x, float y, float z)
+{
+    m.m_matrix[0][0] = x;
+    m.m_matrix[1][1] = y;
+    m.m_matrix[2][2] = z;
+}
+
+/* SOCOM 1's: aged by the step, the node deactivated once dead; else the position and velocity
+ * integrated over the tick, the node falling, turned by its spin past the first tick, scaled by
+ * the axis and its opacity and matrix set, and the friction drawing the velocity toward the
+ * world's wind (the operators zparticle.h's, as zmath.h's: CPnt3D over the C struct for its
+ * ld/sd + lwc1/swc1 copy, the diagonal through an inline's by-value floats, loaded z, y, x).
+ * OPEN, 4 instructions (the world lane round 24): the frame slots of the last line's three
+ * results -- the target puts operator+'s at sp+80, operator*'s at sp+64 and operator-'s at sp+48
+ * (the outer first, as the three return copies at 160 / 144 / 128 here and there), MW here the
+ * inner first (operator-'s at 80). Tried: by-value operands (+0x10 / +0x18), out-of-class and
+ * free operators, static and inline helper functions, Sub / Add / Scale as inline members under
+ * the operators, named locals for each step (12-19), explicit operator calls (4 each) */
+void Destruction_Instance::Tick(float dT)
+{
+    m_age += dT;
+    if (!(m_age < m_lifespan)) {
+        m_node->SetActive(false);
+        return;
+    }
+    *(CPnt4D *)m_pos += *(CPnt4D *)m_vel * m_dT;
+    *(CPnt4D *)m_vel += m_props->m_accelW * m_dT;
+    if (m_node) {
+        CMatrix m;
+
+        m_vel[1] -= 20.0f * m_dT;
+        if (m_age != m_dT) {
+            CPnt3D rot;
+
+            m_node->GetRotation(&rot);
+            rot += *(CPnt3D *)m_spin * m_dT;
+            m_node->SetRotation(&rot);
+        }
+        SetDiagonal(m, m_axis[0], m_axis[1], m_axis[2]);
+        sceVu0MulMatrix(m.m_matrix, *(float (*)[4][4])m_node, m.m_matrix);
+        m_node->m_Opacity = m_opacity;
+        m_node->SetMatrix(&m);
+    }
+    if (m_props->m_friction) {
+        CPnt4D wind;
+
+        wind.x = m_props->m_windFactor * zdb::CWorld::m_world->m_Wind.x;
+        wind.y = m_props->m_windFactor * zdb::CWorld::m_world->m_Wind.y;
+        wind.z = m_props->m_windFactor * zdb::CWorld::m_world->m_Wind.z;
+        wind.w = 0.0f;
+        float f = FastExp(-m_props->m_friction * m_dT);
+
+        *(PNT4D *)m_vel = wind + (*(CPnt4D *)m_vel - wind) * f;
+    }
+}
+
 }
