@@ -1167,26 +1167,32 @@ inline T WindMax(const T &a, const T &b)
     return a < b ? b : a;
 }
 
+/* an offset wandered at random by its rate, kept below its upper bound and above its lower (ours:
+ * CWind::Tick's three offsets, each through references -- MW reloads the offset after each store) */
+static inline void WindOffset(float &off, const float &vel, const float &lo, const float &hi, float dt)
+{
+    off += dt * (vel * (2.0f * (4.656613e-10f * rand()) - 1.0f));
+    off = off < hi ? off : hi;
+    off = off <= lo ? lo : off;
+}
+
 /* the gusts: each offset wandered at random by its rate and kept in its range; the wind vector from
  * the azimuth, the zenith (a speed below zero turning it about) and the speed (SOCOM 1's).
- * OPEN, 0x404 of 0x418: the target reads each offset afresh after every store to it (the +=, the
- * upper bound, the lower) where MW forwards the stored value here, and tests the lower bound as
- * `c.le.s off,min; bc1t` (this: c.lt.s min,off; bc1f); the frame has a saved s1 more (the wind's z
- * address, s0 + 8, held from the cosf on). Tried: the selects returning references (address
- * selects), `<=`/`>=`/negated forms of the lower bound */
+ * OPEN, 0x414 of 0x418: each offset wandered and clamped through a helper taking it and its bounds
+ * by reference -- the target reads each offset afresh after every store to it, as this now does
+ * (written in place MW forwards the stored value: 0x404). Left: the lower bound's test, which the
+ * target makes as `c.le.s off,lo; bc1t` to the bound's arm with the offset's arm first (here
+ * bc1f, the arms the other way: `off <= lo ? lo : off`, `off > lo ? off : lo`, `!(off <= lo) ?`, a
+ * negated if/else and WindMax all tried -- the world lane's round 21, build/scratch/wld/v_wind.py),
+ * and a saved s1 more in the target's frame (the wind's z address, s0 + 8, held from the cosf on).
+ * Tried before: the selects returning references (address selects) */
 void CWind::Tick(float dt)
 {
     if (m_TickGoal)
         TickGoal(dt);
-    m_AzimuthOffset += dt * (m_AzimuthOffsetVelocity * (2.0f * (4.656613e-10f * rand()) - 1.0f));
-    m_AzimuthOffset = WindMin(m_MaxAzimuthOffset, m_AzimuthOffset);
-    m_AzimuthOffset = WindMax(m_MinAzimuthOffset, m_AzimuthOffset);
-    m_ZenithOffset += dt * (m_ZenithOffsetVelocity * (2.0f * (4.656613e-10f * rand()) - 1.0f));
-    m_ZenithOffset = WindMin(m_MaxZenithOffset, m_ZenithOffset);
-    m_ZenithOffset = WindMax(m_MinZenithOffset, m_ZenithOffset);
-    m_SpeedOffset += dt * (m_SpeedOffsetVelocity * (2.0f * (4.656613e-10f * rand()) - 1.0f));
-    m_SpeedOffset = WindMin(m_MaxSpeedOffset, m_SpeedOffset);
-    m_SpeedOffset = WindMax(m_MinSpeedOffset, m_SpeedOffset);
+    WindOffset(m_AzimuthOffset, m_AzimuthOffsetVelocity, m_MinAzimuthOffset, m_MaxAzimuthOffset, dt);
+    WindOffset(m_ZenithOffset, m_ZenithOffsetVelocity, m_MinZenithOffset, m_MaxZenithOffset, dt);
+    WindOffset(m_SpeedOffset, m_SpeedOffsetVelocity, m_MinSpeedOffset, m_MaxSpeedOffset, dt);
     float speed = m_Speed + m_SpeedOffset;
     float azimuth = m_Azimuth + m_AzimuthOffset;
     float zenith = m_Zenith + m_ZenithOffset;
