@@ -20,21 +20,11 @@
 
 class CLobbySaveModule;
 
-/* a string that is never null (SOCOM 1's zutil.h inline, as fts_state.h carries it): the module's
- * constructor assigns its name through it -- written out there, erase()'s category byte takes the
- * frame slot above the registered pointer's copy, the target's other way round */
-class CSaferStr : public std::string {
-public:
-    CSaferStr() {}
-    CSaferStr &operator=(const char *sz)
-    {
-        if (sz)
-            assign(sz);
-        else
-            erase();
-        return *this;
-    }
-};
+/* a string that is never null (SOCOM 1's zutil.h class, zutil/saferstr.h -- the one declaration
+ * zentity.h shares, the MSL headers round 30): the module's constructor assigns its name through
+ * its inline operator= -- written out there, erase()'s category byte takes the frame slot above the
+ * registered pointer's copy, the target's other way round */
+#include "../zutil/saferstr.h"
 
 /* a file transferred through Medius: zNetMediusFile.cpp's class (0x9C bytes), its constructor
  * inline as the manager's constructor inlines it (the CIO base's vtable stored first) */
