@@ -8,9 +8,8 @@
  * (-inline deferred).
  *
  * OPEN, not written yet: CGameMenu itself (Tick 0x3654C0?, SwitchMenu, LoadFromDesign 0x367950,
- * HandlePad 0x368650, Clear 0x369210, the constructor and destructor -- SOCOM 1's DWARF has the
- * layout, SOCOM II's grew the vtable pointer at 0x910), the design's loaders, MakeButtonActive and
- * its neighbours (0x366B60-0x367430), HookupLib 0x36A430 (its CGSTexBuffer local's constructor
+ * HandlePad 0x368650 -- SOCOM 1's DWARF has the layout, SOCOM II's grew the vtable pointer at
+ * 0x910), the design's loaders, HookupLib 0x36A430 (its CGSTexBuffer local's constructor
  * 0x357BC0 and Hookup 0x3571D0 are rows outside the lane), 0x369880 (reads a string member of
  * theGame, +0x8C, for a sound), and the vector instances closing the unit (0x36AE50 among the
  * clears). Generated drafts stand for the rest. Round 15 wrote RunEventAnim (0x367810) and
@@ -40,6 +39,8 @@ class CSched_Manager {
 public:
     CSched_Manager();
     ~CSched_Manager();
+    /* the finished tasks freed (the scheduler's; Clear asks for all of them) */
+    void ClearFreeList(bool all);
 
     unsigned char _0[0x20];
 };
@@ -70,8 +71,12 @@ public:
     unsigned char _0[0x10];
 };
 
+class CAssetLib;
 class CAssetMgr {
 public:
+    /* a library's reference given back (Clear's, for the menu's libraries) */
+    static void ReleaseLibRef(CAssetLib *lib);
+
     static CAssetList m_assets;
 };
 
@@ -98,6 +103,8 @@ class CDynTexList {
 public:
     void Add(CTexPalette *pal, bool b);
     void Add(CTexHandle *tex, bool b);
+    /* both lists freed (an inline's out-of-line copy, the world lane's: Clear calls it) */
+    void Free();
     /* (ours: both lists emptied) */
     void Clear()
     {
@@ -116,6 +123,9 @@ public:
     ~CGSTexBuffer();
     void Load(bool b);
     void Hookup(CAssetLib *lib);
+    /* (inline copies the world lane names; Clear calls them out of line) */
+    void ClearDynTex();
+    void FreePktBuf();
 
     unsigned char _0[0x18];
     void *m_chainp;                  // 0x18
@@ -190,6 +200,7 @@ public:
     CNode();
     static CNode *Create(const char *name);
     static CNode *CreateInstance(const char *name, const CPnt3D *pos, const CQuat *rot);
+    static void Delete(CNode *node);
     bool AddVisual(CVisual *visual);
     CVisual *GetFirstVisual();
     void SetDynamicLight(bool on, bool children);
@@ -208,6 +219,10 @@ public:
     virtual void DeleteChildren();
     virtual CNode *FindChild(const char *name, bool deep);   /* +0x24 */
     virtual CNode *FindChild(CNode *node, bool deep);     /* +0x28 */
+    virtual CNode *FindChild(const char *name, int start, int *index, bool deep);
+    virtual bool IsCell();
+    virtual bool Read(void *io);
+    virtual bool SetActive(bool on);                      /* +0x38 */
     unsigned char _64[0x9c - 0x64];
     float m_Opacity;   // 0x9c
     unsigned char _a0[0xc0 - 0xa0];
@@ -267,7 +282,7 @@ public:
     CPlainBmp m_bmpd0;            // 0xd0 (the names to m_font ours, by the constructor's calls)
     CPlainBmp m_fader;            // 0x170: black, 640 by 448, half opaque
     C2DFont m_font;               // 0x210: the menu's font (SOCOM 1's 0x30 bytes, SOCOM II's 0x64)
-    int m_274;                    // 0x274
+    zdb::CAssetLib *m_274;        // 0x274: a library the menu holds (Clear gives it back)
     bool m_movierunning;          // 0x278 (SOCOM 1's at 0x244)
     bool m_has_mpeg_background;   // 0x279
     bool m_loopMPEG;              // 0x27a: SOCOM II's (TickMPEG loops the movie when set; the name ours)
@@ -275,7 +290,7 @@ public:
     C2DButton m_buttons;          // 0x290: the menu's buttons, as children (MakeButtonActive walks them)
     int m_activeButton;           // 0x6d0
     C2D m_6d4;                    // 0x6d4
-    std::vector<C2D *> m_6ec;     // 0x6ec (reserved 32)
+    std::vector<zdb::CAssetLib *> m_libs;   // 0x6ec (reserved 32): the libraries the menu holds (Clear gives them back, last first)
     ActionItem m_commands[30];    // 0x6f8 (SOCOM 1's at 0x68c)
     int m_numCommands;            // 0x8d8
     zdb::CTextureRelocMgr *m_Reloc;   // 0x8dc
@@ -289,7 +304,9 @@ public:
     virtual ~CGameMenu();
     virtual void MyTick(float dT);
     virtual const char *GetReaderFileName();
-    virtual void Slot14();
+    /* slot 0x14: whether the menu holds a soft keyboard (ours: Clear forgets the keyboards' display
+     * when it does) */
+    virtual bool Slot14();
     virtual void PrepControls(zdb::CTextureRelocMgr *mgr);
 };
 
@@ -340,8 +357,16 @@ public:
     void Activate(CZAnim *parent);
 };
 
+/* an animation set (zanim.h's CZAnimSet: only what Clear calls) */
+class CZAnimSet {
+public:
+    void Stop();
+    void Unload();
+};
+
 class CZAnimMain {
 public:
+    CZAnimSet *GetAnimSet(const char *name);
     CZAnim *GetAnim(const char *name, const char *set);
 };
 
@@ -577,7 +602,7 @@ CGameMenu::CGameMenu() : m_popupnode(0), m_274(0), m_movierunning(false), m_has_
     m_activeButton = 0;
     g_hasAnims = 0;
     m_modelNodes.reserve(64);
-    m_6ec.reserve(32);
+    m_libs.reserve(32);
 }
 
 /* the menu emptied and unregistered, no menu being built, the CRTC flag set (SOCOM 1's) */
@@ -618,6 +643,111 @@ C2D *CGameMenu::Add2dNode(CDesignDlgObj *obj)
 const char *CGameMenu::GetReaderFileName()
 {
     return m_ReaderName.c_str();
+}
+
+/* the menus' pop-up stack (zanim_menu.h's CMenuStack: only the pop-up's clean-up), the keyboards'
+ * display forgotten (zui_skb.cpp's) and the current menu's bitmap (0x49EA98: zui_skbview.cpp's
+ * 0x36A210 sets its float at 0x9C; ours) */
+class CMenuStack {
+public:
+    void CleanPopup();
+};
+CMenuStack *GetMenuStack();
+void InvalidateSkbsDisplay();
+extern void *data_0049EA98;
+
+/* a child taken off a 2D object's list (ours: Clear erases through it, the erase's temporaries a
+ * level deeper than the walk's) */
+static inline std::list<C2D *>::iterator EraseChild(std::list<C2D *> &l, std::list<C2D *>::iterator i)
+{
+    return l.erase(i);
+}
+
+/* the menu emptied: the pop-up off, the backplane and foreplane made again, the menu's GS buffer,
+ * font and libraries freed, its animations unloaded, its buttons and its 2D objects deleted, the
+ * first ten actions' strings freed, the movie ended, the models deleted, the scheduler and the UI
+ * variables collected (0x369210: SOCOM 1's Clear, its font and buffer vectors' swaps SOCOM II's
+ * Unload and the buffer's frees; the animations and the keyboard test SOCOM II's) */
+void CGameMenu::Clear()
+{
+    m_900 = 0;
+    if (m_popupnode) {
+        m_popupnode->SetActive(false);
+        m_popupnode = 0;
+    }
+    GetMenuStack()->CleanPopup();
+    m_nodeTop.DeleteChild(m_pBackplaneNode);
+    delete m_pBackplaneNode;
+    m_pBackplaneNode = 0;
+    m_nodeTop.DeleteChild(m_pForeplaneNode);
+    data_0049EA98 = 0;
+    if (Slot14())
+        InvalidateSkbsDisplay();
+    delete m_pForeplaneNode;
+    m_pForeplaneNode = 0;
+    m_pBackplaneNode = zdb::CNode::Create("CGameMenu backplane");
+    m_pForeplaneNode = zdb::CNode::Create("CGameMenu foreplane");
+    m_nodeTop.AddChild(m_pBackplaneNode);
+    m_nodeTop.AddChild(m_pForeplaneNode);
+    m_pForeplaneNode->SetPosition(0.0f, 0.0f, zVid.m_60 - 1.0f);
+    zdb::CGSTexBuffer *buf = zdb::CTexManager::m_texmanager.m_buffers[0];
+
+    buf->ClearDynTex();
+    buf->m_dyntex_list.Free();
+    buf->FreePktBuf();
+    m_font.Unload();
+    if (m_274)
+        zdb::CAssetMgr::ReleaseLibRef(m_274);
+    m_274 = 0;
+    for (int k = m_libs.size() - 1; k >= 0; k--)
+        zdb::CAssetMgr::ReleaseLibRef(m_libs[k]);
+    m_libs.clear();
+    if (g_hasAnims) {
+        g_hasAnims = 0;
+        for (std::vector<CSaferStr>::iterator a = m_904.begin(); a != m_904.end(); ++a) {
+            CZAnimSet *set = ZAnim.GetAnimSet((*a).c_str());
+
+            if (set) {
+                set->Stop();
+                set->Unload();
+            }
+        }
+        m_904.clear();
+    }
+    std::list<C2D *>::iterator i, next;
+
+    for (i = m_buttons.begin(); i != m_buttons.end(); i = next) {
+        C2D *c = *i;
+
+        next = EraseChild(m_buttons, i);
+        delete c;
+    }
+    for (i = m_6d4.begin(); i != m_6d4.end(); i = next) {
+        C2D *c = *i;
+
+        next = EraseChild(m_6d4, i);
+        delete c;
+    }
+    for (int j = 0; j < 10; j++) {
+        if (m_commands[j].Animation)
+            _free(m_commands[j].Animation, 0, 0);
+        m_commands[j].Animation = 0;
+        if (m_commands[j].Argument)
+            _free(m_commands[j].Argument, 0, 0);
+        m_commands[j].Argument = 0;
+    }
+    m_numCommands = 0;
+    m_activeButton = 0;
+    if (m_has_mpeg_background && m_movierunning)
+        CMPEG::End();
+    m_movierunning = false;
+    for (int n = 0; n < m_modelNodes.size(); n++)
+        zdb::CNode::Delete(m_modelNodes[n]);
+    m_modelNodes.clear();
+    s_countSound = 0;
+    zUIScheduler.ClearFreeList(true);
+    theUIVarManager.CollectGarbage();
+    m_has_mpeg_background = false;
 }
 
 /* the menu emptied, set up over the relocator given (else the batch relocator) and its own rdr's
