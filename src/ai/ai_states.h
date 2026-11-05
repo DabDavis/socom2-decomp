@@ -887,10 +887,12 @@ public:
     virtual bool CanAttack() const { return false; }
     virtual ~CAiSStunResponse();
 
+    virtual int Tick(CSealCtrlAi *ai);
+
     unsigned int m_58;   // 0x58
-    int m_5c;   // 0x5c (-1 on a reset)
+    int m_5c;   // 0x5c (-1 on a reset): the anim the response plays (passed as a short)
     float m_wait;   // 0x60: a random wait (under 0.75) on entry (SOCOM 1's at 0x30)
-    unsigned int m_64;   // 0x64
+    class CSnd *m_snd;   // 0x64: a sound played at the SEAL each time the timer runs out (0 on a reset)
     CAiTimer m_timer;   // 0x68 (Create builds it with 0.0)
 };
 

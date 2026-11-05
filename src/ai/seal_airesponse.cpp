@@ -1419,6 +1419,80 @@ struct CAiCtrlD8 {
     float m_d8;   // 0xd8
 };
 
+extern "C" {
+/* an anim played in a state, or not, and whether it still runs (seal_ai.cpp's OVL2 0x571150 and
+ * 0x5712F0, the SEAL lane's rows, unnamed) */
+bool func_00571150(CSealCtrlAi *ai, short anim, SEAL_STATE stance);
+bool func_005712F0(CSealCtrlAi *ai, short anim);
+}
+
+/* the countdown run down by dt, whether it has run out -- then drawn again from its period (the
+ * rush's RushTimerTick with the restart; the name ours) */
+static inline bool StunTimerTick(CAiTimer &t, float dt)
+{
+    bool r = false;
+
+    if (t.m_timer != CAiTimer::infinite) {
+        t.m_timer -= dt;
+        r = t.m_timer != CAiTimer::infinite && t.m_timer <= 0.0f;
+        if (r)
+            t.m_timer = t.Period();
+    }
+    return r;
+}
+
+/* a stun response: its wait run down, the response's anim played in the SEAL's stance (step 2 while
+ * it runs, else straight to 3 with the flags' bit 0), then until the AI's state clock reaches the
+ * state's time with bit 0, at once without; while it runs, the sound at the SEAL each time the timer
+ * runs out unless bit 2 is set without bit 1 -- bit 2 set after (OVL2 0x605C60; SOCOM 1's took dT).
+ * The SEAL a local for the stance's call alone (in a0 across the dispatch; the sound reads the
+ * entity again), declared ahead of the step so the step's load goes through `this`'s home; the
+ * clock test `!(clock >= time)` (materialised, then flipped); the frame time read ahead of the
+ * sound and flag tests, in their block */
+int CAiSStunResponse::Tick(CSealCtrlAi *ai)
+{
+    CEntity *self = ai->m_entity;
+    unsigned int step = m_phase;
+
+    switch (step) {
+    case 0:
+        if (!(m_wait <= 0.0f)) {
+            m_wait -= m_dT;
+            break;
+        }
+    case 1:
+        if (!func_00571150(ai, (short)m_5c, ((CZSealBody *)self)->GetStance(false))) {
+            step = 3;
+            SetFlags(1, 0);
+        } else
+            step = 2;
+        break;
+    case 2:
+        if (!func_005712F0(ai, (short)m_5c))
+            step = 3;
+        break;
+    case 3:
+        if (m_flags & 1)
+            SetActive(!(ai->m_stateStack.m_timer >= m_time));
+        else
+            SetActive(false);
+        break;
+    }
+    if (m_active) {
+        float dt = m_dT;
+
+        if (m_snd && ((m_flags & 2) || !(m_flags & 4)) && StunTimerTick(m_timer, dt)) {
+            CSndInstance *inst = m_snd->PlaySound3D(&ai->m_entity->m_posW, 1.0f, 0, 0, 255);
+
+            if (inst)
+                inst->TerminateOnFinish();
+            SetFlags(4, 0);
+        }
+    }
+    UpdatePhase(step);
+    return Result();
+}
+
 /* a stun response's events: reset; on entry a random wait under 0.75 and the AI's mode 2; done
  * on the way out (OVL2 0x605F90; SOCOM 1's) */
 void CAiSStunResponse::OnSignal(SIGNAL sig, CSealCtrlAi *ai)
@@ -1427,7 +1501,7 @@ void CAiSStunResponse::OnSignal(SIGNAL sig, CSealCtrlAi *ai)
     case SIGNAL_4:
         m_wait = 0.0f;
         m_5c = -1;
-        m_64 = 0;
+        m_snd = 0;
         m_time = 0.0f;
         break;
     case SIGNAL_0: {
