@@ -34,6 +34,7 @@ public:
     void On() { m_ison = true; }
     void Off() { m_ison = false; }
     void ReInit_Uninit();   /* 0x1FB790 */
+    void ReInit_Init();   /* 0x1FB420 */
 
     unsigned char _0[0x11c90];
     CZNewHudMap *m_newmap;   // 0x11c90 (SOCOM 1's map embedded, at 0xe370)
@@ -100,7 +101,7 @@ public:
 
     unsigned char _0[0xc];
     CValve *m_pE3RoundValve;   // 0xc
-    int m_10;   // 0x10 (SOCOM 1's at 0xc)
+    CValve *m_pGameOverValve;   // 0x10 (SOCOM 1's at 0xc)
     int m_14;   // 0x14 (SOCOM 1's at 0x10)
     int m_18;   // 0x18 (SOCOM 1's at 0x14)
     int m_1c;   // 0x1c (SOCOM 1's at 0x18)
@@ -114,7 +115,11 @@ public:
     int m_40;   // 0x40 (SOCOM 1's at 0x3c)
     unsigned char _44[0x4c - 0x44];
     int m_4c;   // 0x4c (SOCOM 1's at 0x48)
-    unsigned char _50[0x84 - 0x50];
+    unsigned char _50[0x74 - 0x50];
+    CValve *m_74;   // 0x74: SOCOM II's (OnMissionStart clears it and the word at 0x7c; the names ours)
+    CValve *m_78;   // 0x78: and this with the word at 0x80
+    int m_7c;   // 0x7c
+    int m_80;   // 0x80
     int m_84[5];   // 0x84 (SOCOM 1's at 0x50)
     unsigned char _98[0xbc - 0x98];
     int m_bc;   // 0xbc (SOCOM 1's at 0x80)
@@ -137,9 +142,9 @@ public:
     unsigned char _dd[0xe0 - 0xdd];
     unsigned int m_max_game_time;   // 0xe0: the round's clock in milliseconds (SOCOM 1's m_clock.m_max_game_time, at 0xa0)
     int m_launch_time;   // 0xe4 (SOCOM 1's at 0xa8)
-    unsigned char _e8[0xec - 0xe8];
+    unsigned int m_time_in_round;   // 0xe8 (SOCOM 1's m_clock.m_time_in_round, at 0xac)
     unsigned int m_round_clock;   // 0xec: the round's time left, in milliseconds (the name ours)
-    unsigned char _f0[0xf4 - 0xf0];
+    unsigned int m_total_time;   // 0xf0 (SOCOM 1's m_clock.m_total_time, at 0xb4)
     unsigned char m_launch_f4;   // 0xf4 (SOCOM 1's at 0xbc)
     unsigned char _f5[0xf8 - 0xf5];
     int m_f8;   // 0xf8 (SOCOM 1's at 0xc0)
@@ -503,7 +508,9 @@ public:
     bool ReOpen_Unload1();
     unsigned int GetTimeLeft();
     void EndMission();
+    void OnMissionComplete(MISSION_STATE state);
     void CreateLadderTable();
+    void OnMissionStart();
 
     MISSION_STATE m_state;   // 0x18 (SOCOM 1's; the save module's base ahead)
     char *m_database;   // 0x1c (SOCOM 1's)
@@ -511,7 +518,7 @@ public:
     unsigned char _21[0x60 - 0x21];
     char m_db_string[0x80];   // 0x60 (SOCOM 1's at 0x20)
     float m_timer;   // 0xe0: the mission's time in seconds, cleared by Open and before the second unload (SOCOM 1's float at 0x60)
-    unsigned char _e4[0xe8 - 0xe4];
+    float m_delay;   // 0xe4 (SOCOM 1's at 0x64; OnMissionStart sets it -1)
     float m_e8;   // 0xe8: the mission's own clock, in seconds (SOCOM 1's m_winlosstimer at 0x68; the name ours)
     float m_winlossinc;   // 0xec (SOCOM 1's at 0x6c: the constructor sets both -1)
     unsigned char _f0[0xf4 - 0xf0];
@@ -1319,9 +1326,9 @@ extern "C" void func_002A94E0(CornerBox *box)
 /* the box around eight points -- a box's corners carried through a matrix -- each bound a ternary
  * keeping the point when it is beyond (`p <= min ? p : min`, `p >= max ? p : max`: MIN/MAX's operand
  * order compares the other way round). OVL1 0x2A9550: the copy the world's ladder walk (0x2A9260)
- * and grid_main.cpp's gridAddNodeToGrids call, after the corners (0x2A96B0, open: its CPnt3D(fff)
- * and assignments are calls in the target's copy, inlined in every shape tried -- a class, a member,
- * a class template, a template member out of class) and their transform (0x2A9680) */
+ * and grid_main.cpp's gridAddNodeToGrids call, after the corners (0x2A96B0, below BoxCorners: a
+ * wrapper inlining them one level, their CPnt3D(fff) and assignments called) and their transform
+ * (0x2A9680) */
 extern "C" void func_002A9550(CBBox *out, const CPnt3D *p)
 {
     out->m_min = p[0];
@@ -1386,15 +1393,14 @@ inline CLadderData *AddLadder(CLadderList *ladders, zdb::CNode *node, const CBBo
     return ladder;
 }
 
-/* a node's box carried through a matrix: its corners (0x2A96B0, open: the copy calls CPnt3D(fff) and
- * the assignments out of line), transformed (0x2A9680) and boxed again (0x2A9550) -- one inline
- * level here, as the world's ladder walk and gridAddNodeToGrids call all four (ours).
+/* a node's box carried through a matrix: its corners (0x2A96B0, BoxCorners' wrapper below, the
+ * corners' CPnt3D(fff) and assignments called), transformed (0x2A9680) and boxed again (0x2A9550)
+ * -- one inline level here, as the world's ladder walk and gridAddNodeToGrids call all four (ours).
  * Measured (the states' round 30, build/scratch/states/p_corners.cpp): the eight corners as an inline
  * `CPnt3D *f(CPnt3D *p, const CBBox *b)` (eight `p[i] = CPnt3D(...)` / `= b->m_min` stores) expand past
  * inline_max_size, so a caller inlines it one level with the sixteen leaves called -- 0x2A8C90's
- * shape, no pragma needed; but its out-of-line copy inlines the leaves (0xC8) in every order of
- * generation tried, and reproduces 0x2A96B0 byte-exact only under `#pragma dont_inline on` at the
- * unit's end -- which no unit can carry whole */
+ * shape, no pragma needed; an out-of-line copy of f inlines the leaves (0xC8) -- 0x2A96B0 is a
+ * plain function CALLING f (round 39), so f is cut one level inside it as well */
 extern "C" CPnt3D *func_002A96B0(CPnt3D *pts, const CBBox *box);
 extern "C" CPnt3D *func_002A9680(const CMatrix *m, CPnt3D *pts);
 
@@ -1564,6 +1570,17 @@ inline CPnt3D *BoxCorners(CPnt3D *p, const CBBox &b)
     p[6] = CPnt3D(b.m_max.x, b.m_max.y, b.m_min.z);
     p[7] = b.m_max;
     return p;
+}
+
+/* a box's eight corners, out of line (OVL1 0x2A96B0: the world's ladder walk 0x2A9260 and
+ * grid_main.cpp's gridAddNodeToGrids call it; the name ours). A function of its own, not
+ * BoxCorners' copy: the corners are too big to inline whole, so here, as in 0x2A8C90, they are
+ * inlined one level -- their sixteen leaves called, the target's shape -- and a function holding a
+ * call that cannot inline whole is never auto-inlined, so its callers call it (the states' round
+ * 39; round 30's out-of-line copy of the corners inlined the leaves, 0xC8) */
+extern "C" CPnt3D *func_002A96B0(CPnt3D *pts, const CBBox *box)
+{
+    return BoxCorners(pts, *box);
 }
 
 /* a matrix's translation set from a point, read through the pointer (ours: the three stores
@@ -1986,6 +2003,103 @@ bool CMission::Open(const char *name)
     return true;
 }
 
+/* the bomb's network object (fts_net_bomb.cpp's), the game's (fts_net_game.cpp's), the voice
+ * (zNetVoice.cpp's object and SOCOM 1's IAmNotSessionMaster-like call) and the two states the end
+ * of a network game reaches (theGame's at 0x178 and 0x208) */
+class CZBombState {
+public:
+    static void UninitBomb();   /* 0x2C1970 */
+};
+
+class CZGameState {
+public:
+    static void UpdateLocalGame(CZNetGame *game);   /* 0x2C00F0 */
+};
+
+extern "C" {
+extern void *data_0045B718;
+void func_0030E6E0(void *voice, int arg);
+extern unsigned char data_00408638[];   /* (a state in theGame, at 0x178) */
+extern unsigned char data_004086C8[];   /* (a state in theGame, at 0x208) */
+}
+
+/* the mission's outcome taken (SOCOM 1's CMission::OnMissionComplete; OVL1 0x2A9B30 -- Tick calls it
+ * for each outcome). The state kept; in a network game, the bomb's object gone: an abort waits three
+ * seconds of the mission's clock, then drops the net-error handler and switches to the abort dialog;
+ * otherwise the session master, after the same wait, ends the round -- the game-over valve, the two
+ * scores and the winner read, the round counted, the major state 6 (game over) or 4 (round over),
+ * the game object sent, the round's time totalled and the round's end pushed. Alone, on a change to
+ * an abort or with the player dead: with "nofade" set the mission ended at once (EndMission
+ * inlined), the end's hold cleared either way.
+ * OPEN, 0x39C against 0x3AC (round 39): every block is the target's but the first and the alone
+ * test's -- the target copies the old state into a register with `lb` and narrows it with `andi
+ * 0xff` at both compares (SOCOM 1's does the same: an enum copied into a local, as CheckStateSwitch's
+ * switch on its local), where here MW reads the field once with `lbu` into the first compare; and
+ * `this` and the net game trade s0/s1 (the target keeps this in s1, the game in s0, the game-over
+ * flag in s1 once this is dead). Tried: `old` const, assigned apart, a char copy cast back, a second
+ * local for the new state, a reference to the field, an accessor, `old != state && true`, the change
+ * as an inline (one re-reading the field -- `lbu` then `lb`, 8 short -- one taking both by value),
+ * as a ternary store (8 short), `if ((old = m_state) != state)` (8 short, still `lbu`), a bool
+ * `changed`, `?: true : false` and `|| false` in the test: the copy needs to survive to its first
+ * compare (a branch between them, round 38's forwarding rule) without costing code */
+void CMission::OnMissionComplete(MISSION_STATE state)
+{
+    MISSION_STATE old = m_state;
+
+    if (old != state)
+        m_state = state;
+    if (theNetwork.m_bNetwork) {
+        CZNetGame *game = m_pNetGame;
+
+        if (!game)
+            return;
+        CZBombState::UninitBomb();
+        if (state == MISSION_ABORTED) {
+            func_0030E6E0(data_0045B718, 0);
+            if (m_delay == -1.0f)
+                m_delay = m_timer + 3.0f;
+            else if (m_timer > m_delay) {
+                data_0044F3CC = 0;
+                theGame.m_menuState.SetDefaultMenu("dlgNetAbort.rdr");
+                theGame.Switch((CGameState *)data_00408638, 0);
+                _OnMissionComplete();
+            }
+        } else if (theNetwork.m_bSessionMaster) {
+            if (m_delay == -1.0f)
+                m_delay = m_timer + 3.0f;
+            else if (m_timer > m_delay) {
+                bool over = game->m_pGameOverValve->m_value != 0;
+                CValve *score00 = CValve::GetByName("mp_score00");
+                CValve *score08 = CValve::GetByName("mp_score08");
+                CValve *winner = CValve::GetByName("mp_winner");
+
+                if (score00)
+                    game->m_120 = score00->m_value;
+                if (score08)
+                    game->m_124 = score08->m_value;
+                if (winner)
+                    game->m_128 = winner->m_value;
+                game->m_d4 = over;
+                game->SetE3RoundCount(game->m_e3_round_count + 1);
+                if (over)
+                    game->m_mp_major_game_state = CZNetGame::MP_MAJOR_GAMEOVER;
+                else
+                    game->m_mp_major_game_state = CZNetGame::MP_MAJOR_ROUNDOVER;
+                CZGameState::UpdateLocalGame(game);
+                _OnMissionComplete();
+                game->m_total_time += game->m_time_in_round;
+                Push__5CGameFP10CGameStateUi(&theGame, data_004086C8, 0);
+            }
+        }
+    } else if (old != m_state && (m_state == MISSION_ABORTED || ftsGetPlayer()->m_e1_4)) {
+        if (m_valve_nofade->m_value == 1) {
+            SetDelayEndMission(false);
+            EndMission();
+        } else
+            SetDelayEndMission(false);
+    }
+}
+
 /* the task's callback (SOCOM 1's fadeToEndMissionTick, the same jump; OVL1 0x2A98A0) */
 bool CMission::fadeToEndMissionTick(float dT, void *data)
 {
@@ -2260,6 +2374,7 @@ void UpdateMissionArchive(const char *olddb, const char *newdb);
 class CameraZoom {
 public:
     static void ClearLensFx();   /* 0x1EFF90 */
+    static void LoadLensFx();   /* 0x1F0030 */
 };
 
 void zBoneResetCallbacks();   /* 0x2875D0 */
@@ -2608,6 +2723,86 @@ CZNetGame *CMission::CreateNetGame()
     return m_pNetGame;
 }
 
+/* the mission under way (SOCOM 1's CMission::OnMissionStart, grown; OVL1 0x2A7D40 -- st_core.cpp's
+ * load and reload call it): running, no delay, the death camera reset, the end's two flags cleared,
+ * the five outcome valves and "scoring_alarm" at 0, in a network game the net game's two SOCOM II
+ * valves and their words cleared (read through theMission each time), the world's interval count
+ * cleared and the input flushed, 0x327E40 given 2000, the two anim sets started, the zoom's lens
+ * effects loaded, every entity told, the sound opened for the network or not, the listener
+ * invalidated and the jukebox started; in a network game the pickups opened for the entities, the
+ * HUD set up again and the net game, the master's set in play, started (0x2BB0C0, 0x2A6C50) */
+/* the input (zinput's CInput: only the flush) */
+class CInput {
+public:
+    static void Flush();   /* 0x2D9E00 */
+};
+
+extern "C" {
+void func_00327E40(int ms);
+void func_002BB0C0();
+void func_002A6C50(CZNetGame *game);
+}
+
+void CMission::OnMissionStart()
+{
+    m_state = MISSION_RUNNING;
+    m_delay = -1.0f;
+    ResetDeathCam__10CAppCameraFv(appCamera);
+    SetDelayEndMission(false);
+    SetFadingToEndMission(false);
+    SetValveValue(m_valve_complete, 0);
+    SetValveValue(m_valve_failure, 0);
+    SetValveValue(m_valve_abort, 0);
+    SetValveValue(m_valve_timeout, 0);
+    SetValveValue(m_valve_nofade, 0);
+    CValve *alarm = CValve::GetByName("scoring_alarm");
+
+    if (alarm)
+        SetValveValue(alarm, 0);
+    if (theNetwork.m_bNetwork && theMission.m_pNetGame) {
+        if (theMission.m_pNetGame->m_74)
+            SetValveValue(theMission.m_pNetGame->m_74, 0);
+        theMission.m_pNetGame->m_7c = 0;
+        if (theMission.m_pNetGame->m_78)
+            SetValveValue(theMission.m_pNetGame->m_78, 0);
+        theMission.m_pNetGame->m_80 = 0;
+    }
+    zdb::CWorld::m_world->m_diIntDelayCnt = 0;
+    CInput::Flush();
+    func_00327E40(2000);
+    CZAnimSet *set = GetAnimSet__10CZAnimMainFPCc(&ZAnim, "common");
+
+    if (set)
+        set->Start();
+    set = GetAnimSet__10CZAnimMainFPCc(&ZAnim, "mission");
+    if (set)
+        set->Start();
+    CameraZoom::LoadLensFx();
+    CEntityList::const_iterator i;
+
+    for (i = CEntity::GetEntityList().begin(); i != CEntity::GetEntityList().end(); ++i)
+        (*i)->OnMissionStart();
+    if (theNetwork.m_bNetwork)
+        CSnd::NetOpen();
+    else
+        CSnd::Open();
+    CSnd::m_listenerIsValid = false;
+    CSndJukebox::Start();
+    if (theNetwork.m_bNetwork) {
+        CPickup::Open(CEntity::GetEntityList().size());
+        theHUD->ReInit_Uninit();
+        theHUD->ReInit_Init();
+        CZNetGame *game = m_pNetGame;
+
+        if (game) {
+            if (theNetwork.m_bSessionMaster)
+                game->m_mp_major_game_state = CZNetGame::MP_MAJOR_INPLAY;
+            func_002BB0C0();
+            func_002A6C50(game);
+        }
+    }
+}
+
 /* respawning on in a game of type 5 only, and its valve (SOCOM II's; OVL1 0x2A7560) */
 extern "C" bool func_002A7560(CZNetGame *game, bool on)
 {
@@ -2672,7 +2867,7 @@ float CZNetGame::UnInitialize()
     m_ten_second_launch = false;
     m_110 = 0;
     m_18 = 0;
-    m_10 = 0;
+    m_pGameOverValve = 0;
     m_1c = 0;
     m_d9 = 0;
     m_84[0] = 0;
@@ -3103,12 +3298,6 @@ void UpdateMissionArchive(const char *olddb, const char *newdb)
     }
 }
 }
-
-/* the input (zinput's CInput: only the flush) */
-class CInput {
-public:
-    static void Flush();   /* 0x2D9E00 */
-};
 
 extern "C" {
 CZAnimSet *GetAnimSet__10CZAnimMainFPCc(CZAnimMain *main, const char *name);

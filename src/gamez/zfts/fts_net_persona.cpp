@@ -1245,6 +1245,47 @@ extern "C" int func_002C3920()
     return n;
 }
 
+/* whether the player is voted out: on the SEALs' side (else the terrorists'), more votes against
+ * him (the personas flagged at 0x48, 0x2C3920's count) than half his side's players (OVL1 0x2C3550:
+ * fts_remote.cpp's vote handler 0x2BA040 asks it after counting a vote; the name ours) */
+extern "C" bool func_002C30B0(CZSealBody *body);
+extern "C" bool func_002C31D0(CZSealBody *body);
+
+extern "C" bool func_002C3550()
+{
+    CZSealBody *player = ftsGetPlayer();
+    bool out = false;
+
+    if (func_002C30B0(player)) {
+        int n = 0;
+
+        for (int i = 0; i < 24; i++) {
+            PersonaData *p = CZPersonaState::GetPersona(i);
+
+            if (p && IsSealTeam(p->m_team))
+                n++;
+        }
+        float half = n / 2.0f;
+
+        if (func_002C3920() > half)
+            out = true;
+    } else if (func_002C31D0(player)) {
+        int n = 0;
+
+        for (int i = 0; i < 24; i++) {
+            PersonaData *p = CZPersonaState::GetPersona(i);
+
+            if (p && IsTerroristTeam(p->m_team))
+                n++;
+        }
+        float half = n / 2.0f;
+
+        if (func_002C3920() > half)
+            out = true;
+    }
+    return out;
+}
+
 /* a SEAL's persona's word at 8 (OVL1 0x2C3500) */
 extern "C" int func_002C3500(CZSealBody *body)
 {

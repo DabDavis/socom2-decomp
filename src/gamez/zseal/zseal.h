@@ -20,6 +20,7 @@
 #include "../zchar/zchar.h"
 
 class CZSealBody;
+class CharacterDynamics;
 class CZProjectile;
 class CTarget;
 class CPad;
@@ -88,7 +89,17 @@ class AnimTypes {
 public:
     /* (SOCOM 1's KickGrenade, 33 before Stand2Prone in both builds: the grenade state's kick,
      * 0x55AC20, plays it with the timed call that throws the grenade from where it lies) */
+    /* (SOCOM 1's two peek tosses, four and two before KickGrenade in both builds, and its five throws
+     * and tosses, thirteen to twenty-one after: GetThrowAnim 0x57FCE0 picks them by stance at the
+     * places SOCOM 1's GetThrowAnim does -- the SEALs, round 43) */
+    static short TossGrenadePeekRight;   // OVL1 0x3DEB20 (SOCOM 1's 0x475130)
+    static short TossGrenadePeekLeft;   // OVL1 0x3DEB30 (SOCOM 1's 0x475138)
     static short KickGrenade;   // OVL1 0x3DEB40
+    static short ProneThrowGrenade;   // OVL1 0x3DEBA8 (SOCOM 1's 0x475174)
+    static short CrouchThrowGrenade;   // OVL1 0x3DEBB8 (SOCOM 1's 0x47517C)
+    static short ThrowGrenade;   // OVL1 0x3DEBC8 (SOCOM 1's 0x475184)
+    static short ProneTossGrenade;   // OVL1 0x3DEBD8 (SOCOM 1's 0x47518C)
+    static short TossGrenade;   // OVL1 0x3DEBE8 (SOCOM 1's 0x475194)
     /* (SOCOM 1's eight reloads, three to ten after KickGrenade in both builds, and RifleM203Reload
      * twenty after PistolReload in both: Reload 0x5A82E0 picks them by stance, pistol or rifle,
      * moving or not and the launcher, IsReloading 0x5A7AB0 tests them -- the SEALs, round 40) */
@@ -462,7 +473,13 @@ public:
     CValve *m_3c;   // 0x3c
     unsigned char _40[0x70 - 0x40];
     CValve *m_70;   // 0x70: a valve each kill steps (0x545290; the name ours)
-    unsigned char _74[0xd2 - 0x74];
+    /* the two sides' scores as valves, and what each side earned beyond its SEALs' own scores
+     * (0x544D60 sets the valves to the sums online; the names ours) */
+    CValve *m_score1;   // 0x74: the side 0x2C31D0 says
+    CValve *m_score2;   // 0x78: the side 0x2C30B0 says
+    int m_bonus1;   // 0x7c
+    int m_bonus2;   // 0x80
+    unsigned char _84[0xd2 - 0x84];
     unsigned char m_ghost;   // 0xd2
     unsigned char _d3[0xdc - 0xd3];
     unsigned char m_dc;   // 0xdc: a SEAL's death sends no squad order unless set (the name ours)
@@ -646,6 +663,10 @@ public:
      * played */
     virtual bool PlayAiSound(CHARACTER_SOUND sound, float chance, int event);   /* +0x24 */
     virtual bool AllowCommand(CZSealBody *seal, FT_COMMAND cmd, void *data);
+    /* whether the orders to hold and to follow may go to the SEAL (SOCOM 1's; OVL2 0x591770 and
+     * 0x591AB0, seal_command.cpp's -- not written yet; 0x591520 asks the first) */
+    bool AllowCommandHOLDPOS(CZSealBody *seal);
+    bool AllowCommandFOLLOW(CZSealBody *seal);
     virtual bool IsPlayer() const;
     virtual bool IsAi() const { return false; }
     virtual bool IsRemote() const { return false; }                         /* +0x34 */
@@ -1785,6 +1806,16 @@ public:
     /* the state of the topmost blend not in state 3, else 0 (SOCOM 1's PeekBaseState; OVL2
      * 0x57DC20, seal_body.cpp's -- CalcAimGoal asks it in state 3) */
     unsigned char PeekBaseState();
+    /* where a throw or a shot would leave from, in the world (SOCOM 1's; OVL2 0x57FA70, seal_body.cpp) */
+    void GetPutativeFirePointW(bool thrown, bool toss, CPnt3D &out);
+    /* the throw anim the SEAL would take, its type, a fraction and a base time, a point (SOCOM 1's;
+     * OVL2 0x57FCE0, seal_body.cpp's) and the anim it picks pushed, the time into it given back
+     * (SOCOM 1's; OVL2 0x5802B0) */
+    bool GetThrowAnim(float power, AnimType &type, float &frac, float &base, CPnt3D &p);
+    /* the SEALs' dynamics (SOCOM 1's GetDynamics, its unit's last function in both builds: OVL2
+     * 0x58CE60, seal_cfg.cpp's, before the unit's tail) */
+    CharacterDynamics *GetDynamics();
+    bool BeginThrowItem(float t, float &out);
     /* a turn's set-up (SOCOM 1's TurnSetup(int), seal_ik.cpp's; OVL2 0x5B8270: SOCOM II only clears
      * the bits at 0x1060 6 and 7 when both feet exist, the int unread) */
     void TurnSetup(int anim);
@@ -2193,7 +2224,13 @@ public:
     unsigned char _f7b[0xf88 - 0xf7b];
     float m_waterdepth;   // 0xf88 (SOCOM 1's 0xe70, by its use: in water a SEAL crouches only up to 8.5
                           // deep, 0x5857E0, and goes prone only up to 2, Prone)
-    unsigned char _f8c[0xfac - 0xf8c];
+    /* the feet's spots in the world while a turn in place pins one (0x54EA80 takes the right's
+     * about the turn anim's middle, else the left's -- each once, bits 7 and 6 at 0x1060 saying
+     * which is held; the names ours) */
+    CPnt3D m_lfootW;   // 0xf8c
+    unsigned char _f98[0xf9c - 0xf98];
+    CPnt3D m_rfootW;   // 0xf9c
+    unsigned char _fa8[0xfac - 0xfa8];
     /* a height eased down by m_133c a step, held from 2.2 (0x59B870, under the 0x3DEF08 anim: there
      * the SEAL lands, m_airborne and m_133c cleared; the names ours) */
     float m_fac;   // 0xfac
@@ -2300,7 +2337,11 @@ public:
     /* the last weapon hit (SOCOM 1's m_wephit, an IntersectStruct * at 0xf84; SOCOM II holds it:
      * HandleDamage takes this + 0x10E0 when its node is set, HandleWepHit clears the node) */
     zdb::IntersectStruct m_wephit;   // 0x10e0
-    unsigned char _1100[0x1190 - 0x1100];
+    unsigned char _1100[0x1160 - 0x1100];
+    /* the weapon's draw and put-away envelope (SOCOM 1's m_weapon_seq, a CSequence * at 0xf88;
+     * seal_weapon.cpp's view names it so too) */
+    CSequence m_wep_seq;   // 0x1160
+    unsigned char _1170[0x1190 - 0x1170];
     /* the head's look, the eyes' and the lids' blink (SOCOM 1's m_look, m_eyelook, m_blink were
      * pointers at 0xf90-0xf98; SOCOM II's are held: GetLookDir returns this + 0x11A0, SetLookDir
      * hands this + 0x1190 on, the eyes and lids align to 0x1210 and 0x1280) */
@@ -2338,7 +2379,8 @@ public:
     float m_1364;   // 0x1364: 0x57E540 clears it (the name ours)
     unsigned char _1368[0x1440 - 0x1368];
     CPnt3D m_aim_dir;   // 0x1440 (SOCOM 1's 0x10a0: AimWeapon sets it)
-    unsigned char _144c[0x14a0 - 0x144c];
+    CPnt3D m_aim_goal;   // 0x144c (SOCOM 1's 0x10ac: GetThrowAnim compares its y, as SOCOM 1's)
+    unsigned char _1458[0x14a0 - 0x1458];
     /* the aim and fire points and their positions (SOCOM 1's m_curr_aimpos, m_curr_aimpt,
      * m_curr_firepos and m_curr_firept, 0x1100-0x111F there: the weapon takes look the points up by
      * name again, seal_weapon.cpp's UpdateAimParams through a view of its own) */

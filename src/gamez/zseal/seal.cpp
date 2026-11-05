@@ -25,11 +25,14 @@ struct CWorldCamera {
     zdb::CCamera *m_camera;   // 0x128
 };
 
-/* a halfword test: any of the bits (OVL2 0x5551A0; in the unit's tail) */
+/* a halfword test: any of the bits (OVL2 0x5551A0; in the unit's tail, called where 0x54EA80 asks
+ * it -- a template member's copy like 0x555170's, so pinned) */
+#pragma auto_inline off
 extern "C" bool func_005551A0(unsigned short flags, unsigned short bits)
 {
     return (flags & bits) != 0;
 }
+#pragma auto_inline reset
 
 /* an indexed array's current element, or none (OVL2 0x555170; in the unit's tail) */
 struct CIndexedArray {
@@ -254,6 +257,50 @@ extern "C" void func_00544FC0(CSealStats *s, const CZSealBody *seal)
         UpdateHitPercent(s);
 }
 
+/* the entity as a SEAL, if it is one */
+static inline CZSealBody *AsSeal(CEntity *e)
+{
+    return e && e->m_type == CEntity::ENT_TYPE_SEAL ? (CZSealBody *)e : 0;
+}
+
+/* an entity's team bits, by reference (an inline: the address is taken once, ahead of the walk) */
+static inline const unsigned int &TeamOf(const CEntity *e)
+{
+    return e->m_team;
+}
+
+/* the sides' scores passed on, online: each SEAL's score summed into its side's (the two tests of
+ * 0x2C31D0 and 0x2C30B0), and when asked a side's earnings stepped for each living SEAL of the
+ * scorer's team on it; each side's valve set to its sum and its earnings (OVL2 0x544D60, new in
+ * SOCOM II: the stats' events end on it; the list walked through a const view, as 0x545D80, and
+ * the team test through TeamOf, the scorer's first: its address taken once, ahead of the walk) */
+extern "C" void func_00544D60(const CZSealBody *seal, int a)
+{
+    if (theNetwork.m_9 && data_00437CE8->m_score1 && data_00437CE8->m_score2) {
+        int score1 = 0;
+        int score2 = 0;
+        const CEntityList &list = CEntity::m_list;
+
+        for (CEntityList::const_iterator i = list.begin(); i != list.end(); ++i) {
+            CZSealBody *other = AsSeal(*i);
+
+            if (func_002C31D0(other)) {
+                score1 += other->m_stats.m_score;
+                if (a && other->m_isAlive && (TeamOf(seal) & TeamOf(other)))
+                    data_00437CE8->m_bonus1++;
+            } else if (func_002C30B0(other)) {
+                score2 += other->m_stats.m_score;
+                if (a && other->m_isAlive && (TeamOf(seal) & TeamOf(other)))
+                    data_00437CE8->m_bonus2++;
+            }
+        }
+        score1 += data_00437CE8->m_bonus1;
+        score2 += data_00437CE8->m_bonus2;
+        data_00437CE8->m_score1->SetValue(score1);
+        data_00437CE8->m_score2->SetValue(score2);
+    }
+}
+
 /* the SEAL's stats (OVL2 0x545890; the stats events' member pointer) */
 CSealStats *CZSealBody::GetStats()
 {
@@ -283,18 +330,6 @@ extern "C" void func_00545290(CSealStats *s, const CZSealBody *seal)
  * for these) */
 typedef CSealStats *(CZSealBody::*SEAL_STATS_GETTER)();
 typedef void (CSealStats::*SEAL_STATS_EVENT)(const CZSealBody *seal, bool teammate);
-
-/* the entity as a SEAL, if it is one */
-static inline CZSealBody *AsSeal(CEntity *e)
-{
-    return e && e->m_type == CEntity::ENT_TYPE_SEAL ? (CZSealBody *)e : 0;
-}
-
-/* an entity's team bits, by reference (an inline: the address is taken once, ahead of the walk) */
-static inline const unsigned int &TeamOf(const CEntity *e)
-{
-    return e->m_team;
-}
 
 extern "C" {
 /* the death's end, once its anim has run (OVL2 0x5A0040, seal_env.cpp's range, not written yet) */
@@ -1579,6 +1614,54 @@ extern "C" float func_0054ECD0(const CMatrix *m, const CPnt3D *dir, const CPnt3D
     return r.y;
 }
 
+extern "C" {
+/* 1.09 (OVL1 data): how far along its part a planted foot's spot sits */
+extern float data_003F3430;
+}
+
+/* a foot pinned through a turn in place: with both feet, under a turn anim (the top blend's flag
+ * 0x40) while the SEAL stands turning with nothing in hand and no draw running, the right foot
+ * about the anim's middle (within 0.2499 of 0.65), else the left -- its spot in the world taken
+ * once (its bit set, the other's cleared), and the SEAL's push m_f44 made what keeps it there
+ * (OVL2 0x54EA80, new in SOCOM II: ComputeNextPosition calls it; TurnSetup clears the two bits;
+ * the name unknown) */
+extern "C" void func_0054EA80(CZSealBody *seal)
+{
+    if (!seal->m_lfoot || !seal->m_rfoot)
+        return;
+    if (func_005551A0(((CZBodyAnimBlend *)func_00555170((CIndexedArray *)&seal->m_blends))->m_flags, 0x40) &&
+        seal->m_is_turning && seal->m_state == stateStand && seal->m_weapon_id == 0 &&
+        seal->m_wep_seq.LinearWeight() == 0.0f) {
+        float t = ((CZBodyAnimBlend *)func_00555170((CIndexedArray *)&seal->m_blends))->m_tfrac;
+        CPnt3D p, q, d;
+        CPnt3D off(data_003F3430, 0.0f, 0.0f);
+        static float mid = 0.65f;
+        static float range = 0.2499f;
+
+        if (_close_enough(t, mid, range)) {
+            seal->PartInSpace(seal->m_rfoot, &off, &p, 0);
+            if (!seal->m_bit7) {
+                seal->m_node->m_matrix.Transform(&p, &seal->m_rfootW, 1);
+                seal->m_bit7 = true;
+                seal->m_bit6 = false;
+            }
+            seal->m_next_quat.Apply(&p, &q, 1);
+            seal->m_rfootW.Sub(&q, &d);
+            d.Sub(&seal->m_posW, &seal->m_f44);
+        } else {
+            seal->PartInSpace(seal->m_lfoot, &off, &p, 0);
+            if (!seal->m_bit6) {
+                seal->m_node->m_matrix.Transform(&p, &seal->m_lfootW, 1);
+                seal->m_bit6 = true;
+                seal->m_bit7 = false;
+            }
+            seal->m_next_quat.Apply(&p, &q, 1);
+            seal->m_lfootW.Sub(&q, &d);
+            d.Sub(&seal->m_posW, &seal->m_f44);
+        }
+    }
+}
+
 /* where the item in hand is held out from the SEAL: the aim point's height on the SEAL's spot, and that
  * spot pushed back along the node's forward axis by twice the item's width and m_f44 added, at the same
  * height -- none without the item's part and node, each half only while its point is set (OVL2
@@ -1729,6 +1812,63 @@ extern "C" bool func_0054A6D0(CZSealBody *seal, const CPnt3D *pos, zdb::Intersec
         PushOut(seal->m_f44.x, push.x);
         PushOut(seal->m_f44.z, push.z);
     }
+    return true;
+}
+
+/* whether the throw the trigger's power would make is clear: the throw GetThrowAnim picks (none: not
+ * clear), its point to a point ahead by the state -- a toss's nearer, a run's the stand's -- both
+ * turned by the node, the first lifted to the ground plane, and nothing of the world between (OVL2
+ * 0x5499E0, new in SOCOM II: the kit's 0x5BE9A0 asks it; the name unknown -- any other state is clear).
+ * GetThrowAnim's toss test again, word for word; the aim declared uninitialised first (numbered there:
+ * the power then takes $f20, as the target -- declared where it is read the two swap), the call's bool
+ * tested `== false` (its andi), the states an if chain (a switch tests 2 first) */
+extern "C" bool func_005499E0(CZSealBody *seal)
+{
+    float aim;
+    CPnt3D ahead(1.155273f, 13.35443f, -15.75f);
+    float power = ((CSealCtrl *)seal->m_control)->m_trigger_power;
+    AnimType type;
+    float frac;
+    float base;
+    CPnt3D p;
+
+    if (seal->GetThrowAnim(power, type, frac, base, p) == false)
+        return false;
+    aim = seal->m_aim_goal.y;
+    CharacterDynamics::throw_params &tp = seal->GetDynamics()->m_throw_params;
+    bool toss = power < tp.toss_power_threshold && aim < tp.toss_aim_threshold;
+    CPnt3D from = p;
+    CPnt3D to = ahead;
+
+    if (seal->m_state == stateStand) {
+        if (toss) {
+            to.x = 3.457066f;
+            to.y = 12.454332f;
+            to.z = -10.0f;
+        } else
+            to = ahead;
+    } else if (seal->m_state == stateCrouch) {
+        to.x = 0.924411f;
+        to.y = 10.631366f;
+        to.z = -12.1f;
+    } else if (seal->m_state == stateProne) {
+        if (toss) {
+            to.x = 1.819537f;
+            to.y = 5.580177f;
+            to.z = -10.6f;
+        } else {
+            to.x = 0.59401f;
+            to.y = 9.082238f;
+            to.z = -6.75f;
+        }
+    } else
+        return true;
+    if (from.z < 0.0f)
+        from.z = 0.0f;
+    seal->m_node->m_matrix.Transform(&from, 1);
+    seal->m_node->m_matrix.Transform(&to, 1);
+    if (zdb::CWorld::m_world->GetIntersect(&from, &to, true))
+        return false;
     return true;
 }
 

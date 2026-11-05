@@ -868,10 +868,8 @@ extern "C" CZBodyAnimBlend *func_0057E540(CZSealBody *seal)
 }
 
 extern "C" {
-/* an anim the SEAL could take, its type, a fraction and a base time, a point (OVL2 0x57FCE0, not
- * written yet), a move begun one way or the other (OVL2 0x5805B0, below) and two anim types
- * read as variables (OVL1 data, -1 in the image) */
-bool func_0057FCE0(CZSealBody *seal, AnimType *type, float *frac, float *base, float *p);
+/* a move begun one way or the other (OVL2 0x5805B0, below) and two anim types read as variables
+ * (OVL1 data, -1 in the image) -- the throw anim's pick is CZSealBody::GetThrowAnim (0x57FCE0) */
 CZBodyAnimBlend *func_005805B0(CZSealBody *seal, bool other, int state);
 extern short data_003DEED0;
 extern short data_003DEED8;
@@ -883,21 +881,89 @@ static inline int StateOf(CZSealBody *seal)
     return seal->m_state;
 }
 
-/* the anim 0x57FCE0 picks pushed, and the time into it its fraction makes, past its base (OVL2
- * 0x5802B0, new in SOCOM II) */
-extern "C" bool func_005802B0(CZSealBody *seal, float *out)
+/* the throw anim GetThrowAnim picks pushed, and the time into it its fraction makes, past its base
+ * (OVL2 0x5802B0: SOCOM 1's BeginThrowItem, after GetThrowAnim in both builds; the float passed
+ * straight on, as SOCOM 1's) */
+bool CZSealBody::BeginThrowItem(float t, float &out)
 {
     AnimType type;
     float frac = 0.0f;
     float base = 0.0f;
-    float p[3];
+    CPnt3D p;
     bool ok = false;
 
-    if (func_0057FCE0(seal, &type, &frac, &base, p)) {
-        CZBodyAnimBlend *b = (CZBodyAnimBlend *)func_00588BC0(seal, type, StateOf(seal), 0, 0);
+    if (GetThrowAnim(t, type, frac, base, p)) {
+        CZBodyAnimBlend *b = (CZBodyAnimBlend *)func_00588BC0(this, type, StateOf(this), 0, 0);
 
-        *out = base + frac * b->Representative()->m_anim->LoopTime();
+        out = base + frac * b->Representative()->m_anim->LoopTime();
         ok = true;
+    }
+    return ok;
+}
+
+/* the throw the SEAL would make: a toss below both of the dynamics' toss thresholds (the throw's
+ * power, the aim's rise), the anim, the fraction into it the item leaves and the point it leaves from
+ * by the body's state -- a crouched SEAL on the move throws standing, a peeking one tosses to the side
+ * its blend leans, any other state none (OVL2 0x57FCE0: SOCOM 1's GetThrowAnim, between
+ * GetPutativeFirePointW and BeginThrowItem in both builds, its guarded points function-local statics in
+ * both; SOCOM 1's fractions STAND_TOSS_FRAC ... RIGHT_LEAN_FRAC were variables, SOCOM II's are
+ * constants, and SOCOM II asks IsCurrentBlend out of line where SOCOM 1's inlined it) */
+bool CZSealBody::GetThrowAnim(float power, AnimType &type, float &frac, float &base, CPnt3D &p)
+{
+    float aim = m_aim_goal.y;
+    CharacterDynamics::throw_params &tp = GetDynamics()->m_throw_params;
+    bool toss = power < tp.toss_power_threshold && aim < tp.toss_aim_threshold;
+
+    frac = 0.0f;
+    base = 0.0f;
+    bool ok = true;
+    static CPnt3D stand_throw(3.343816f, 19.34775f, 3.913763f);
+    static CPnt3D stand_toss(3.13f, 13.8f, -10.5f);
+    static CPnt3D crouch_throw(6.05f, 15.59f, 1.96f);
+    static CPnt3D prone_throw(6.29f, 15.05f, -0.97f);
+    static CPnt3D prone_toss(2.39f, 7.87f, -8.53f);
+    static CPnt3D right_lean(7.8f, 10.13f, -5.31f);
+    static CPnt3D left_lean(-8.83f, 11.47f, -6.48f);
+    /* (SOCOM 1's a guarded static as well; MW 3.0 lays a constant one out as plain data, OVL2 0x650578) */
+    static float moving_sq = 225.0f;
+    bool moving = Dot(m_velM, m_velM) > moving_sq;
+
+    switch (m_state) {
+    case stateStand:
+        type = (AnimType)(toss ? AnimTypes::TossGrenade : AnimTypes::ThrowGrenade);
+        frac = toss ? 0.69f : 0.46f;
+        p = toss ? stand_toss : stand_throw;
+        break;
+    case stateCrouch:
+        if (moving) {
+            type = (AnimType)AnimTypes::ThrowGrenade;
+            frac = 0.46f;
+            p = stand_throw;
+        } else {
+            type = (AnimType)AnimTypes::CrouchThrowGrenade;
+            frac = 0.7f;
+            p = crouch_throw;
+        }
+        break;
+    case stateProne:
+        type = (AnimType)(toss ? AnimTypes::ProneTossGrenade : AnimTypes::ProneThrowGrenade);
+        frac = toss ? 0.56f : 0.66f;
+        p = toss ? prone_toss : prone_throw;
+        break;
+    case statePeek:
+        if (IsCurrentBlend((AnimType)30) || IsCurrentBlend((AnimType)32)) {
+            type = (AnimType)AnimTypes::TossGrenadePeekRight;
+            frac = 0.55f;
+            p = right_lean;
+        } else if (IsCurrentBlend((AnimType)29) || IsCurrentBlend((AnimType)31)) {
+            type = (AnimType)AnimTypes::TossGrenadePeekLeft;
+            frac = 0.87f;
+            p = left_lean;
+        } else
+            ok = false;
+        break;
+    default:
+        ok = false;
     }
     return ok;
 }
@@ -966,6 +1032,72 @@ extern "C" {
 extern short data_003DEEF0;
 extern short data_003DEEE8;
 extern short data_003DEAD8;
+}
+
+extern "C" {
+/* the overlay's last anim let go (OVL2 0x5A5DA0, seal_env.cpp's -- not written yet), the SEAL off its
+ * ladder and its hold on one let go (OVL2 0x59D750, 0x5B14E0: seal_env.cpp's), the two item swaps
+ * back to the gear (OVL2 0x5A7690 the pistol's, 0x5A7480 the rifle's: seal_env.cpp's) and an anim set
+ * a SEAL may be bound to (OVL1 bss 0x44D410: one 0x5807D0 unbinds; the name unknown) */
+void func_005A5DA0(CZSealBody *seal);
+void func_0059D750(CZSealBody *seal);
+void func_005B14E0(CZSealBody::CSealClimb *climb, CZSealBody *seal);
+void func_005A7690(CZSealBody *seal);
+void func_005A7480(CZSealBody *seal);
+extern AnimSet *data_0044D410;
+/* the top blend's held object let go (OVL2 0x5781C0, below) and a SEAL's 0x545EE0 (seal.cpp's) */
+void func_005781C0(CZSealBody *seal);
+void func_00545EE0(CZSealBody *seal, int n);
+}
+
+/* a fall begun: the body carried let go, the overlay's anims, the ladder and its hold let go; bound
+ * to the set of 0x44D410, the SEAL unbound -- a remote one's 0x545EE0 told first -- with the item in
+ * hand put back and the default set bound again; the blends cleared to the base and the anim of
+ * 0x3DEED8 pushed (the other way, of 0x3DEED0) in a state -- a remote SEAL's as given unless it is
+ * dead, this console's 0 alive and 8 dead -- with flag 2, and told to the network as anim 34 at 11
+ * (10); bit 9 set and 10 cleared, m_1364 -1; the blend back (OVL2 0x5807D0, new in SOCOM II: 0x57E770
+ * and 0x5880E0 call it, as 0x5805B0; the name unknown) */
+extern "C" CZBodyAnimBlend *func_005807D0(CZSealBody *seal, bool other, int state)
+{
+    CZBodyAnimBlend *b;
+
+    seal->DropBody();
+    func_005781C0(seal);
+    func_005A5DA0(seal);
+    func_0059D750(seal);
+    func_005B14E0(&seal->m_climb, seal);
+    if (seal->m_animset == data_0044D410) {
+        if (seal->IsRemote())
+            func_00545EE0(seal, 1);
+        if (seal->m_item == ITEM_PISTOL)
+            func_005A7690(seal);
+        else
+            func_005A7480(seal);
+        seal->BindAnimSet(seal->m_default_animset, false);
+    }
+    seal->ClearToBase(false);
+    if (seal->IsRemote()) {
+        if (!seal->m_isAlive)
+            state = 8;
+    } else if (seal->m_isAlive)
+        state = 0;
+    else
+        state = 8;
+    if (other) {
+        b = (CZBodyAnimBlend *)func_00588BC0(seal, (AnimType)data_003DEED8, state, 0, 13);
+        b->m_flags = func_0058A920(b->m_flags, 2, true);
+        if (theNetwork.m_9 && !seal->IsRemote())
+            func_002BBAF0(seal->m_id, 34, state, false, 11);
+    } else {
+        b = (CZBodyAnimBlend *)func_00588BC0(seal, (AnimType)data_003DEED0, state, 0, 13);
+        b->m_flags = func_0058A920(b->m_flags, 2, true);
+        if (theNetwork.m_9 && !seal->IsRemote())
+            func_002BBAF0(seal->m_id, 34, state, false, 10);
+    }
+    seal->SetBit9(true);
+    seal->SetBit10(false);
+    seal->m_1364 = -1.0f;
+    return b;
 }
 
 /* a move begun: the blends cleared to the base, the anim of 0x3DEEF0 pushed (the other way, of
@@ -1060,6 +1192,67 @@ extern "C" CZBodyAnimBlend *func_0057F5B0(CZSealBody *seal)
     return b;
 }
 
+/* where a throw or a shot would leave from, in the world: for a throw the offset of the base stance's
+ * throw or toss -- a peek's to its side, a run's (faster than 20, mostly forward) with the rifle's or
+ * the pistol's -- turned by the node; else the fire point's spot while it is set, the SEAL's position
+ * added (OVL2 0x57FA70: SOCOM 1's GetPutativeFirePointW by its order -- after the ladder climbs,
+ * before GetThrowAnim and BeginThrowItem, as 0x57FCE0 and 0x5802B0 -- and its shape; SOCOM II asks
+ * the speed squared and the node's matrix out of line; CAiSDeploy::Tick calls it) */
+void CZSealBody::GetPutativeFirePointW(bool thrown, bool toss, CPnt3D &out)
+{
+    if (thrown) {
+        const CPnt3D *off;
+        /* (a float local: compared through it the z stays the compare's first operand, as in both
+         * builds -- against the literal MW puts the zero first) */
+        float zero = 0.0f;
+
+        switch (PeekBaseState()) {
+        case 0:
+            if (m_state == statePeek)
+            {
+                if (m_desiredStance == STANCE_NONE)
+                    off = &stand_peek_ltoss;
+                else
+                    off = &stand_peek_rtoss;
+            }
+            else if (Dot(m_velM, m_velM) > 400.0f &&
+                     m_velM.z != zero && fabsf(m_velM.x / m_velM.z) < 0.5f)
+            {
+                if (m_item == ITEM_RIFLE)
+                    off = &running_rifle_throw;
+                else
+                    off = &running_pistol_throw;
+            } else if (toss)
+                off = &stand_toss;
+            else
+                off = &stand_throw;
+            break;
+        case 1:
+            if (toss)
+                off = &crouch_toss;
+            else
+                off = &crouch_throw;
+            break;
+        case 2:
+            if (toss)
+                off = &prone_toss;
+            else
+                off = &prone_throw;
+            break;
+        default:
+            off = &CPnt3D::zero;
+            break;
+        }
+        m_node->m_matrix.Transform(off, &out, 1);
+    } else {
+        if (m_curr_firept)
+            out = m_curr_firepos;
+        else
+            out = CPnt3D::zero;
+        out.Add(&m_posW, &out);
+    }
+}
+
 /* 0x57F7D0's twin, word for word (OVL2 0x57F9C0, new in SOCOM II: 0x5B2620 asks both in turn) */
 extern "C" bool func_0057F9C0(CZSealBody *seal)
 {
@@ -1112,7 +1305,17 @@ extern "C" bool func_005857E0(CZSealBody *seal);
  * blend's state byte, the prone constant), so it waits for the second simplify sweep and is coloured
  * ahead of the stack pointer (23, the first sweep) -- the target's graph has one interference fewer
  * somewhere; ClearStack's fallback read spelled through `stack` or `&m_blends`, or its locals
- * reordered, does not do it (5-15 off) */
+ * reordered, does not do it (5-15 off). Round 42, by the replay (tools/igreplay.py --target, --want
+ * --movers): no single dropped interference gives the target (dropping one of the stance's temporaries
+ * gives it s3), and the only numberings that do put the INNER ClearStack's counter (v43, @7504)
+ * ahead of Stand's stance (v38, @7481): the stance moved to 43.5, or the counter anywhere in 31.5-37.5
+ * -- pushed first in sweep 1 it drops the stance under K, and the stance, coloured after the inner
+ * stack pointer (s0), takes s1. MW numbers Crouch's own ClearStack (v40/v41) between Stand's locals
+ * and Stand's inner ClearStack (v42-v44): an inline's own inlines are numbered a level later, so the
+ * counter would have to come out of that later level. Not it (igvar, build/scratch/seal/v_crouch*.py):
+ * the stance or the whole body in a nested block, ClearStack's counter first or its stack declared
+ * first and defined late, the stack an inline's parameter (BlendCount(&m_blends): unhoisted, 4 bytes
+ * short), the stance through a value or a reference inline, `(stance = m_state) == 0` */
 CZBodyAnimBlend *CZSealBody::Crouch()
 {
     CZBodyAnimBlend *b = (CZBodyAnimBlend *)func_00555170(&m_blends);
@@ -1889,7 +2092,8 @@ void CZSealBody::BodySetState(int state)
  * (OVL2 0x584390: SOCOM 1's InStateHang by order and the state dispatcher's case 4, its throttles read
  * at 0x240/0x244, the sqrt inline, Stand_0's time new). The pulled-back arm is Stand(-1), inlined: its
  * two returns join at one `move s0,v0`, as only an inline's result does; one result for the three arms.
- * OPEN, 5 instructions (the size right): Crouch's miss (0x581990) exactly -- in the inlined Stand the
+ * OPEN, 5 instructions (the size right): Crouch's miss (0x581990) exactly (round 42's replay there:
+ * the inner ClearStack's counter must be numbered ahead of Stand's stance) -- in the inlined Stand the
  * target gives the stance s2 and ClearStack's stack pointer s0, ours the other way round. Tried: the
  * declaration orders of ClearStack's and Stand's locals (Stand and ClearStack still match out of line).
  * Round 36, MW's colouring: the same cause as Crouch's -- Stand's stance has exactly K = 25 neighbours */

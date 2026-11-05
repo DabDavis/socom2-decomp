@@ -1168,10 +1168,10 @@ CMenuStack::CMenuStack()
 }
 #pragma auto_inline reset
 
-/* OPEN, 1 instruction (round 2: the size now right, written as FlushHistory(true) and CleanPopup()):
- * the history's member destruction reads m_free's data_ through the pointer its this-tests use,
- * `addiu v0,s2,3636 ... lw a0,8(v0)`, where MW folds it into lw a0,0xE3C(s2) -- m_used's, destroyed
- * after, is folded in the target too (lw a0,2096(s2)). Round 1: with FlushHistory written out the
+/* Byte-exact since the MSL headers' round 27 (round 2: the size right, written as FlushHistory(true)
+ * and CleanPopup()): the history's member destruction reads m_free's data_ through the pointer its
+ * this-tests use, `addiu v0,s2,3636 ... lw a0,8(v0)` -- include/vector's pod destructor reading data_
+ * through data()'s reference into a local; m_used's, destroyed after, folds (lw a0,2096(s2)). Round 1: with FlushHistory written out the
  * same instruction was left; m_used as CMenuHistory's base gives the same fold. include/vector's
  * pointer back() and push_back a level lower would likely settle the first form. Round 3 (the core
  * lane): a user-declared ~CMenuHistory() {}, m_free or m_used as vector<void *>/<const char *>, a

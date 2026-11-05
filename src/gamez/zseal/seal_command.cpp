@@ -127,6 +127,67 @@ extern "C" bool func_00591DC0(CZSealBody *seal, CZSealBody *other)
     return r;
 }
 
+extern "C" {
+/* a switch that lets an escort's order through (OVL2 bss 0x66B3B0, beside 0x66B3B8; the name ours) and
+ * whether the AI may take a stance (OVL2 0x562C80, seal_ai.cpp's) */
+extern bool data_0066B3B0;
+bool func_00562C80(CSealCtrlAi *ai, SEAL_STANCE stance);
+}
+
+/* whether a SEAL is one an escort's order may concern: alive, on the asker's side, an escort (team bit
+ * 18) asked by another SEAL -- through the switch, or by the SEAL it looks at (an inline, the name ours:
+ * 0x591DC0's shape, its AI asked and not used). The switch read into the caller's local through a
+ * reference: as the inline's own local MW numbers it after the caller's and it takes s0 (the target's
+ * s2, between the result and the SEAL) */
+static inline bool Escorts(CZSealBody *seal, CZSealBody *other, bool &sw)
+{
+    sw = data_0066B3B0;
+    if (!seal || !seal->m_isAlive)
+        return false;
+    unsigned int team = seal->m_team;
+    bool escort = (team & 0x40000) != 0;
+    bool same = other ? (other->m_team & team) != 0 : true;
+    bool r = false;
+
+    if (same && escort && other) {
+        seal->GetSealCtrlAi();
+        r = !sw || seal == func_005AA690(other);
+    }
+    return r;
+}
+
+/* whether an order to come along may go to the SEAL: as one to hold position, else not prone and the
+ * AI in its following state for its side -- a hostage's state 23, an escort's or a SEAL's state 2 --
+ * and free to stand (OVL2 0x591520, new in SOCOM II: CSealCtrlAi::AllowCommand calls it; the name
+ * unknown) */
+extern "C" bool func_00591520(CSealCtrl *ctrl, CZSealBody *other)
+{
+    CSealCtrlAi *ai = ctrl->GetSealCtrlAi();
+    bool ok = false;
+    bool sw;
+
+    if (ai) {
+        CZSealBody *seal = (CZSealBody *)ai->m_entity;
+
+        ok = ctrl->AllowCommandHOLDPOS(other);
+        if (!ok && !ai->InStance((SEAL_STANCE)2, true)) {
+            unsigned int team = seal->m_team;
+            bool escort = (team & 0x40000) != 0;
+            bool seal_side = (team & 2) != 0;
+
+            if (team & 0x20000)
+                ok = ai->AiStateIs((AI_STATE)23);
+            else if (escort && Escorts(seal, other, sw))
+                ok = ai->AiStateIs((AI_STATE)2);
+            else if (seal_side)
+                ok = ai->AiStateIs((AI_STATE)2);
+        }
+        if (ok && ai)
+            ok = func_00562C80(ai, (SEAL_STANCE)2);
+    }
+    return ok;
+}
+
 /* whether an order to act may go to another SEAL: the action it names (0x591380) for the SEAL's side,
  * able to start and not in use, the AI free to take it on (state 11); a map action of kind 3 always, of
  * kind 1 or 2 only for a Navy SEAL -- the squad's order data then pointed at it (OVL2 0x5911F0, new in
