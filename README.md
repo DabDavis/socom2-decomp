@@ -2127,6 +2127,37 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     handle list's range erase 0x50FBD0 from CAiEventQ::Clear, in ABSENT.txt); MW still emits an 8-byte empty `__sinit`
     (`jr ra; nop`) for a static with an inline empty constructor and no destructor -- ai_vismap.cpp, between ai_maps.cpp
     and seal_ai.cpp in link order, holds only that (0x6687D0).
+- **Tells from completing the MSL headers, round 24** (the pointer vector's original iterator adopted; probes build/p24/,
+  untracked; scratch build/scratch/msl-r24/: base.txt, run_a-g.txt, objcmp_d/g.txt):
+  - THE POINTER VECTOR'S ORIGINAL ITERATOR, ADOPTED (round 23's measured shape, include/vector's comment): over every
+    hand-written unit 10212 -> 10230 byte-exact, nothing lost -- _countKeys 0x2578F0, CKey::fixupKey 0x257CC0 (SOCOM 1's
+    form, written), CSubtitleList::Load 0x34D5D0 with NextFile 0x34D740 and the records' insert 0x34DA00, VuLightMap
+    0x3B54E0 and CUIVariable::Attach 0x3869F0 (both open on their walks' ends), eleven pieces named;
+  - THE 19 WALKS IT CUT AT LEVEL 5 WANT LEVEL 6, NOT A LOCAL END: `#pragma inline_depth(6)` at the end of the eight units
+    holding them (fts_missionlist, bone_archive, char_type, util_loc, zNetMediusClan, zNetMediusRoom, zsnd_positions,
+    zwep_flyout) with their sources untouched gives all 17 there, and objcmp finds all eight objects BYTE-IDENTICAL to
+    master's -- the four-high end at 6 is exactly the three-high end at 5. The end taken into a local first (round 23's
+    suggestion) does not give the target: CMultiMissionList::Find's own copy colours its end, flag and element
+    differently (9 off; nine spellings 5-11 off), CStringTables::FindTable's callers come out 12 bytes short. With the
+    image's own end() the original's natural walks need a deeper level than 5 -- the README's "Level 6, or 8?" thesis
+    seen from the other side; ztex_manager.cpp, where depth 6 costs three functions, takes CTexPalList::Exists written
+    out in CDynTexList::Add(CTexPalette *) with its parameter copied into a local (the copy is the value std::find reads:
+    loaded early into t1 as the target, the parameter itself loads late, 13 off);
+  - MW evaluates an argument's inline tree one level below the call it is passed to: in an inline's `i != end()` the
+    end's children are cut first (end's body kept, the raw end and __iter called); a tall callee written as a statement
+    (the kit's GetName probe) cuts the inline above it instead -- AnimSet::Find's caller 0x5E3940 goes 0x154 -> 0x184
+    under the new header (target 0x180, Find's end cut at its children, where the target calls every Find piece);
+    c_str's depth is not on the image (no function calls a piece below c_str: its copies 0x578920/0x36E860 are whole);
+  - `for (...; deep != false && i != e; ...)` hoists the narrowed flag and tests it with beqz, `deep && ...` hoists
+    `!deep` (sltu/xori, bnez) -- CKey::CountKeys 0x25B300 (zar_key.cpp, its unit by address) so is every instruction the
+    target's but one call (its second copy calls the pod's end 0x34D920, the target CKey's raw end 0x257BA0;
+    inline_max_size 240-300 does not move it); a `while ((k = f()) != 0)` is rotated (test after the body, an entry `b`),
+    `for (;;) { k = f(); if (!k) break; ...}` tests at the top as Load's target;
+  - the class vector's operator= through the deleter's data() reference (the AI core's round 25): objcmp moves only
+    CAiPath::CopyPlan (21 -> 2 off), adopted; the pod resize copy 0x53AA50 comes out byte-exact from any unit asking for
+    the pod's erase and resize, either order (build/p24/rsz.cpp) -- no declaration change needed, the emitting unit open;
+  - the pod's raw `end() const` round 23 carried is used by nothing (removed, neutral); UpdateTextureSelects 0x355DE0 is
+    1 instruction off under the new header (was 11: only the palette test's beq operand order left).
 - **Tells from completing the MSL headers, round 23** (the scalar vectors' rbegin, the pointer vector's original iterator
   measured; probes build/scratch/msl-r23-p23/, the measured header build/scratch/msl-r23/vector.r23_pointer_iterator):
   - THE POINTER VECTOR'S ORIGINAL ITERATOR, read off the image: the raw begin/end belong to each element type, not the
@@ -10210,6 +10241,8 @@ What is open across lanes, and what comes next:
   10): `__sinit_zNetMediusUniverse.cpp` 0x4022D0 matches at `-inline level=6` and not at 5 once
   theAcctDB is modelled as the member at offset 0 of an outer CZUniversInformationServer (the
   destructor it registers, 0x300570, is not CAcctDB's vtable's) -- open at 5 (0xC4 vs 0x144).
+  THE IMAGE'S OWN POINTER-VECTOR end() (the MSL headers round 24) makes 19 natural walks need level 6: their
+  eight units carry `#pragma inline_depth(6)`, their objects byte-identical to the level-5 fit's.
   MEASURED OVER THE WHOLE TREE (2026-11-03, master 914fce13, `SC_FLAGS` with level=N, everything
   else as now): level 5 gives 9,295 byte-exact, 6 gives 9,246 (56 lost, 5 gained), 7 9,240, 8 and 9
   9,241 (64 lost, 14 gained). The five that every level from 6 gains are non-recursive:
