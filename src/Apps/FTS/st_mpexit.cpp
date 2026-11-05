@@ -421,7 +421,6 @@ public:
 
 extern "C" {
 void func_00544D60(CZSealBody *seal, int arg);   /* (the SEAL lane's) */
-void func_003654C0(CGameMenu *menu, float dT);   /* CGameMenu::Tick */
 void func_003AFF30(bool a, bool b);              /* zVid_Swap */
 }
 
@@ -1229,7 +1228,7 @@ bool CMPExitState::Tick(float dT)
     SetStatLbUiVar(true, "GameStatLbContentsSeals", &CZSealBody::GetGameStats, true);
     SetStatLbUiVar(false, "GameStatLbContentsTerrs", &CZSealBody::GetGameStats, true);
     SetMvpUiVars("MvpName", "MvpLbContents");
-    func_003654C0(m_menu, dT);
+    m_menu->Tick(dT);
     m_menu->Draw2dOnly();
     zSysFifoEnd();
     func_003AFF30(true, true);
