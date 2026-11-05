@@ -531,19 +531,16 @@ static inline void CopyPoint(CPnt3D *dst, const CPnt3D *src)
  * behind is worked out and never used); then the projectile set off -- given back when it cannot
  * be --, direct fire (or class 145) heard by the AI out to the sound radius (SOCOM 1's noise, its
  * type 7), and the fire sound played at the point (SOCOM II's).
- * OPEN, 31 instructions, every one a frame offset: igreplay maps all 57 virtual registers to the
- * target's (0 differ) -- the frame is 448 against 432. Two layouts differ: (1) the three spills --
- * the target packs the two word spills (the ammo parameter at 220, the backblast's ammunition at 216)
- * in one quadword and the bool useflyout at 192 in another, as if spilled in the order ammo,
- * ammunition, flag (by node number), where here the flag (a named local, 41) is numbered ahead of the
- * ammunition (GetDefaultAmmo's result temporary, 45) and each spill takes a quadword of its own; igreplay
- * --move 45=40.5 or 41=45.5 keeps every colour, but no source shape tried numbers them so (the
- * ammunition declared at the block's top, a dead `= 0` first, GetDefaultAmmo's body written out, the
- * flags declared the other way round, the backblast in an inline helper taking the flags as
- * parameters); (2) the unused point 9 units behind: the target computes it into a frame slot among the
- * inline operators' results (240) with no return copy -- as the expression statement `*pos - d;` MW puts
- * the result among the return copies (43 off), assigned to a declared point or initialising one the
- * same or worse; `pos->Sub(&d, &bpos)` into a named point is the nearest (31) */
+ * Byte-exact in the weapons' round 28 (31 frame offsets off since round 22), by the GCC front's round
+ * 34a spill slots (MW assigns them in node-index order, each bumped down the local area; `igreplay
+ * --move 45=40.5` gave the target's 220/216/192): the backblast's ammunition is GetDefaultAmmo written
+ * out into a named local declared uninitialised between the two flags and assigned in both arms (the
+ * states' round 41 and the HUD's round 53: through the auto-inlined call its result merged into a
+ * temporary numbered after every named local, spilled in its own quadword); and the unused point
+ * behind is `bpos = *pos - d` into a declared point -- the assignment is dead, so the copy and the
+ * point go, leaving operator-'s result local in the frame's late group (240, after the three
+ * operator* locals) with no return copy, as the target has it (`*pos - d;` or a reference bound to
+ * it put the result among the early temporaries; a void inline's local or a named point the same) */
 void CZWeapon::Fire(CNode *node, CZAmmo *ammo, const CPnt3D *pos, const CPnt3D *dir, const CPnt3D *vel,
                     CZProjectile *projectile, int shooter, CModel *model)
 {
@@ -560,11 +557,17 @@ void CZWeapon::Fire(CNode *node, CZAmmo *ammo, const CPnt3D *pos, const CPnt3D *
         d = d * 9.0f;
         CPnt3D bpos;
 
-        pos->Sub(&d, &bpos);
+        bpos = *pos - d;
         bool isplayer = projectile->m_isplayer;
+        CZAmmo *bbammo;
         bool useflyout = projectile->m_useflyout;
         CZWeapon *bb = m_listWeapons.GetWeapon((EQUIP_ITEM)159);
-        CZAmmo *bbammo = bb->GetDefaultAmmo();
+        CZAmmoList *list = &bb->m_LegalAmmoList;
+
+        if (list && (int)list->size() > 0)
+            bbammo = list->GetAmmo(0);
+        else
+            bbammo = 0;
         CZProjectile *p = m_pProjectilelist->GetNextFreeProjectile();
 
         p->SetUseFlyout(useflyout);
