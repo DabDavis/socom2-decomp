@@ -1503,6 +1503,9 @@ public:
     CClutter(CNode *node);
     CMatrix *GetMatrix();
     CPnt3D *GetTranslate();
+    /* the prop drawn once a frame, faded by its distance from the point (SOCOM 1's, 0x218A10;
+     * the core lane round 17) */
+    void Render(CPnt3D *pos);
     /* its parameters (the first 0x60 bytes) and its inverse scale read from the archive's open key,
      * its node made dynamic first (SOCOM 1's; SOCOM II clears the 4-bit count before the second
      * read) */
@@ -1535,23 +1538,34 @@ public:
     float Stiffness() { return m_quat ? m_matrix.m_matrix[3][0] : 0.0f; }
 
     CMatrix m_matrix;   // 0x0
-    unsigned char _40[0x44 - 0x40];
+    /* the squared distance its fade out starts at (Render, m_bit0 set; the names to 0x58 ours) */
+    float m_fadeOutStartSq;   // 0x40
     /* the squared distance it fades out at (CClutterList::Add keeps the list's farthest, SOCOM 1's
      * m_max_farFadeSq, and orders the fading props by it; the name ours) */
     float m_farFadeSq;   // 0x44
-    unsigned char _48[0x4c - 0x48];
+    /* the fade out's slope: the opacity per squared unit short of m_farFadeSq */
+    float m_fadeOutScale;   // 0x48
+    /* m_bit0: faded out with distance; m_bit2: faded in (Render) */
     unsigned int m_bit0 : 1;   // 0x4c
     unsigned int m_quat : 1;   // 0x4c
     unsigned int m_bit2 : 1;   // 0x4c
     unsigned int m_bit3 : 1;   // 0x4c
     unsigned int m_bits4 : 2;   // 0x4c
-    unsigned int m_bits6 : 6;   // 0x4c
-    unsigned int m_bit12 : 1;   // 0x4c (SOCOM II's: SOCOM 1's last twenty bits are split)
+    /* drawn only when the camera can see its region (Render; SOCOM 1's six bits split, the names
+     * ours) */
+    unsigned int m_regionTest : 1;   // 0x4c
+    unsigned int m_region : 5;   // 0x4c
+    unsigned int m_bit12 : 1;   // 0x4c (SOCOM II's: SOCOM 1's last twenty bits are split; Render: the fade in's bound negated)
     unsigned int m_bit13 : 1;   // 0x4c
     unsigned int m_count : 4;   // 0x4c (bits 14-17: Read clears it)
+    /* the frame it was last drawn in, its low fourteen bits (SOCOM II's: Render) */
     unsigned int m_bits18 : 14;   // 0x4c
-    unsigned char _50[0x5c - 0x50];
-    int m_5c;   // 0x5c (the constructor sets -1)
+    /* the fade in: not drawn within m_fadeInSq (or past its negation), faded in to m_fadeInEndSq
+     * by m_fadeInScale */
+    float m_fadeInSq;   // 0x50
+    float m_fadeInEndSq;   // 0x54
+    float m_fadeInScale;   // 0x58
+    int m_5c;   // 0x5c (the constructor sets -1; Render's colour, ColConvTo3D's)
     float m_scale_inverse;   // 0x60 (the archive's "scale_inverse")
     CNode *m_node;   // 0x64
     /* the animation moving the prop, cleared when it is deleted (ClearAnimations, l_Tick; the
@@ -1628,6 +1642,8 @@ public:
     void UnRegisterEffector(const void *owner);
     /* whether an effector is near a cell: m_CellAnimate set when one is (SOCOM 1's) */
     void TestCellMid(CPnt3D *mid, CPnt3D *pos);
+    /* a prop's animation ticked, its node handed back (SOCOM 1's, 0x217BA0) */
+    CNode *ClutterTick(CClutter *clutter);
 
     unsigned char m_CellAnimate;   // 0x0
     CMatrix m_matrix;   // 0x10

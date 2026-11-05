@@ -14,18 +14,38 @@
 #include <iostream>
 
 #include "../zanim/zanim.h"
+#include "../zcamera/zcamera.h"
 #include "../zvid/zvid.h"
 #include "znode.h"
 
 /* the unit's matrix stack (0x44F0F0): __sinit_grid_clutter.cpp 0x401CF0 builds it after <iostream>'s
  * pair -- CStack(false), the owner byte cleared and nothing pushed, as grid_di.cpp's -- and registers
- * ~CStack 0x2D4FE0. CClutter::Render, CClutterAnimManager() and ClutterTick read it (not written yet).
+ * ~CStack 0x2D4FE0. CClutter::Render (written in the core lane's round 17), CClutterAnimManager() and
+ * ClutterTick read it.
  * SOCOM 1 calls it `stack`, as grid_di.cpp's: MW names a file static by its own name, and scdiff
  * qualifies an MW object's statics as NAME@UNIT (the GCC lane's round 25a), so the map's data row
  * is stack@grid_clutter, grid_di.cpp's the bare `stack` */
 static CStack stack(false);
 
 extern CSched_Manager zTaskScheduler;
+
+/* the render pipe (zrndr_pipe.cpp's CPipe, 0x720 bytes): only what a prop's draw reaches -- the
+ * camera, the node being drawn and the two draws */
+class CPipe {
+public:
+    void RenderMesh(zdb::CNode *node, zdb::CMesh *mesh, CMatrix *matrix, zdb::tag_ZVIS_FOV fov);
+    void RenderNode(zdb::CNode *node, zdb::tag_ZVIS_FOV fov);
+
+    unsigned char _0[0x628];
+    zdb::CCamera *m_camera;   // 0x628
+    zdb::CCell *m_cell;   // 0x62c
+    zdb::CNode *m_node;   // 0x630
+};
+
+extern CPipe thePipe;   // 0x4887C0
+
+/* a packed colour as a point (vis_data.cpp's, 0x3BA300) */
+CPnt3D ColConvTo3D(unsigned int col);
 
 namespace zdb {
 
@@ -197,6 +217,109 @@ CMatrix *CClutter::GetMatrix()
         return m;
     }
     return &m_matrix;
+}
+
+/* a point's squared length, through a reference (ours: CClutter::Render's distance -- the point a
+ * local whose address the Sub takes, read once through the constructor's `this` and once through
+ * this reference, so MW reads its fields off the frame, as the target does; read directly, it keeps
+ * the fields' addresses in saved registers, as SOCOM 1's build did) */
+inline float LenSq(const CPnt3D &p)
+{
+    return p.x * p.x + p.y * p.y + p.z * p.z;
+}
+
+/* the visuals' added colour set, by value (ours: Render's -- the call's result in a local, copied
+ * as a block into the parameter, then member by member into the static, its two temporaries laid
+ * out as the target's) */
+inline void SetAddColor(CPnt3D c)
+{
+    CVisual::m_addColor = c;
+}
+
+/* the prop drawn, once a frame (the frame's low fourteen bits kept in its flag word): its animation
+ * ticked first in the rotation form (the node it hands back drawn), its region asked of the camera
+ * when it has one; faded out past m_fadeOutStartSq and gone at m_farFadeSq, and faded in from
+ * m_fadeInSq, by its squared distance from the point scaled by the camera's zoomed range -- not
+ * drawn under 0.008; the node's opacity lowered for the draw, its matrix pushed, its colour and
+ * light scale set, the mesh or the node drawn and everything put back (SOCOM 1's, 0x218A10: SOCOM
+ * II draws once a frame and scales the distance by the zoom; written in the core lane's round 17).
+ * The node declared first and set after the frame's test (numbered ahead of the frame, loaded
+ * after the test); the frame read as a word (a 64-bit read through an unsigned long loads with ld);
+ * the length a named float, so the scale's product takes it first; the flip a byte (andi), the
+ * bound negated in place (mov.s in the delay slot) */
+void CClutter::Render(CPnt3D *pos)
+{
+    CNode *node;
+    unsigned int frame = (unsigned int)zVid.frameNumber & 0x3fff;
+
+    if (frame == m_bits18)
+        return;
+    node = m_node;
+    if (!node)
+        return;
+    float scale = 1.0f;
+    CCamera *cam = thePipe.m_camera;
+
+    if (m_quat)
+        node = CWorld::m_world->m_grid.m_ClutterAnimManager->ClutterTick(this);
+    if (m_regionTest && !cam->CanSeeRegion(1 << m_region))
+        return;
+    if (m_bit0 || m_bit2) {
+        CPnt3D d(pos->x, pos->y, pos->z);
+
+        d.Sub(GetTranslate(), &d);
+        float len = LenSq(d);
+        float distSq = len * cam->m_ZoomedRangeScale;
+
+        if (m_bit0) {
+            if (distSq >= m_farFadeSq)
+                return;
+            if (distSq > m_fadeOutStartSq) {
+                scale = m_fadeOutScale * (m_farFadeSq - distSq);
+                if (scale < 0.008f)
+                    return;
+            }
+        }
+        if (m_bit2) {
+            unsigned char flip = m_bit12;
+            float in = m_fadeInSq;
+            float lim = in;
+
+            if (flip)
+                lim = -in;
+            if (distSq <= lim)
+                return;
+            if (distSq < m_fadeInEndSq) {
+                if (flip)
+                    scale *= m_fadeInScale * (in + distSq);
+                else
+                    scale *= 1.0f - m_fadeInScale * (m_fadeInEndSq - distSq);
+                if (scale < 0.008f)
+                    return;
+            }
+        }
+    }
+    float saved;
+
+    if (scale < 1.0f) {
+        saved = node->m_Opacity;
+        node->m_Opacity = scale;
+    }
+    thePipe.m_node = node;
+    stack.Multiply(GetMatrix(), true);
+    CPnt3D col = ColConvTo3D(m_5c);
+
+    SetAddColor(col);
+    CVisual::m_GlobalLightScale = m_scale_inverse;
+    if (node->m_hasMesh)
+        thePipe.RenderMesh(node, 0, 0, ZVIS_FOV_CLIP);
+    else
+        thePipe.RenderNode(node, ZVIS_FOV_CLIP);
+    m_bits18 = frame;
+    CVisual::m_GlobalLightScale = 1.0f;
+    stack.Pop();
+    if (scale < 1.0f)
+        node->m_Opacity = saved;
 }
 
 /* a point's length in x and z (ours) */
