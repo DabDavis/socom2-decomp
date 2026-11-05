@@ -3283,6 +3283,65 @@ void CBlink::BlinkTick(float dT)
     }
 }
 
+/* the look aimed at a direction over a time: unless it is the goal already, the start's quaternion
+ * taken from straight ahead to where the look points and the time kept; none means done at once,
+ * else the turn's angle (the arc of the two directions' dot product, held to [0, pi]) over the time
+ * is the step, the direction the goal and the turn's axis (the cross product through VU0, as
+ * CPnt3D::Cross) scaled to half the angle -- straight up when the two all but agree (OVL2 0x5AD9D0;
+ * SOCOM 1's SetDir without its second quaternion and its start direction: SOCOM II's look turns
+ * from where it points). Out of line: Blink, BlinkTick, SetLookDir and SetEyeLookDir call it */
+#pragma auto_inline off
+void CLook::SetDir(const CPnt3D *dir, float rate)
+{
+    if (*dir == m_goal_dir)
+        return;
+    m_quat0.Align(CPnt3D::unit_nz, m_curr_dir);
+    m_rate = rate;
+    if (rate == 0.0f) {
+        m_fracT = 1.0f;
+        m_done = 1;
+        return;
+    }
+    m_fracT = 0.0f;
+    m_done = 0;
+    float d = dir->x * m_curr_dir.x + dir->y * m_curr_dir.y + dir->z * m_curr_dir.z;
+
+    float angle;
+
+    if (d >= 1.0f)
+        angle = 0.0f;
+    else if (d <= -1.0f)
+        angle = 3.1415927f;
+    else
+        angle = acosf(d);
+    m_deltaT = angle / m_rate;
+    m_goal_dir = *dir;
+    sceVu0FVECTOR r;
+    sceVu0FVECTOR va;
+    sceVu0FVECTOR vb;
+
+    va[0] = m_curr_dir.x;
+    va[1] = m_curr_dir.y;
+    va[2] = m_curr_dir.z;
+    va[3] = 1.0f;
+    vb[0] = dir->x;
+    vb[1] = dir->y;
+    vb[2] = dir->z;
+    vb[3] = 1.0f;
+    sceVu0OuterProduct(r, va, vb);
+    m_cross.x = r[0];
+    m_cross.y = r[1];
+    m_cross.z = r[2];
+    float len = m_cross.Length();
+
+    if (len < 0.001f) {
+        m_cross = CPnt3D::unit_y;
+        m_cross.Scale(0.5f * angle, &m_cross);
+    } else
+        m_cross.Scale(0.5f * angle / len, &m_cross);
+}
+#pragma auto_inline reset
+
 /* the look stepped: the fraction run up to its end, the direction the start's quaternion turned
  * by the eased part of the turn (OVL2 0x5AD920; SOCOM 1's) */
 void CLook::LookTick(float dT)
