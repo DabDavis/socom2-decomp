@@ -65,7 +65,7 @@ CMenuStack *GetMenuStack();   /* 0x274930 */
 
 class CIOPManager {
 public:
-    enum RebootPhase { REBOOT_PHASE_0 };
+    enum RebootPhase { PreReboot = 0, PostReboot = 1 };   /* (util_main.cpp's values) */
     enum RebootMode { REBOOT_MODE_0 };
     int RegisterRebootCallback(bool (*cb)(RebootPhase phase, RebootMode mode, void *data), void *data);
     void UnRegisterRebootCallback(int handle);   /* 0x39C590 */
@@ -114,6 +114,8 @@ namespace {
 zdb::CAssetLib *g_pSkbLib;
 CDblBufTextureRelocator g_relocDblBuf;
 CZAnimZAR *animfile;
+/* whether the UI's sound was open when the IOP rebooted (0x1F53D0's; the name ours) */
+bool s_uiSoundOpen;
 }
 
 void zUISchedulerClear();
@@ -306,6 +308,173 @@ bool CMenuState::Init()
  * waited for while swaps are skipped. (SOCOM 1 cleared the relocator through a virtual; SOCOM II's
  * clear is an inline loop over three words, which is what keeps the second and third words'
  * addresses in s1/s0 for the second clear and, being the last values made, puts this in s2) */
+/* the memory card's state reset (zutil's CMemCard: static) and the CD's streaming flag (SOCOM 1's
+ * CFileCD static) */
+class CMemCard {
+public:
+    static void Reset();   /* 0x3A1FF0 */
+};
+
+class CFileCD {
+public:
+    static bool m_streamingSndActive;   /* 0x4A1798 */
+};
+
+extern "C" {
+void func_00340400(int a);
+void func_00340430(int a, int b, int c);
+void snd_SetReverbType(int core, int type);
+}
+
+/* the IOP's reboot callback (OVL1 0x1F53D0, CMenuState::Init registers it): the memory card reset;
+ * before the reboot the sounds unloaded and the UI's sound closed, noted if it was open; after it
+ * the sound system set up again -- CMenuState::Init's three banks and "UI" bank, the UI's sound
+ * reopened if it was open -- and the menu's sound names read again as Init's second read does
+ * (SOCOM II's; the name ours) */
+extern "C" bool func_001F53D0(CIOPManager::RebootPhase phase, CIOPManager::RebootMode mode, void *data)
+{
+    CMemCard::Reset();
+    if (phase == CIOPManager::PreReboot) {
+        CSnd::UnloadAllSounds();
+        if (CFileCD::m_streamingSndActive) {
+            s_uiSoundOpen = true;
+            CSnd::Close();
+        } else
+            s_uiSoundOpen = false;
+    } else {
+        func_00340400(1);
+        func_00340430(1, 24, 47);
+        snd_SetReverbType(2, 3);
+        CSnd::LoadSounds("sounds.rdr", "HUDUI");
+        CSnd::LoadSounds("sounds.rdr", "SMUS");
+        CSnd::LoadSounds("sounds.rdr", "UIVOICE");
+        func_003448E0("UI");
+        if (s_uiSoundOpen)
+            CSnd::UIOpen();
+
+        _zrdr *rdr = zrdr_read("uisounds.rdr", "data/common/dialog", 0);
+        const char *selection = 0;
+
+        if (rdr) {
+            _zrdr *sounds = zrdr_findtag(rdr, "SOUNDS");
+
+            if (sounds) {
+                theGame.m_menuState.TtySoundString = zrdr_findstring(sounds, "TELETYPE");
+                theGame.m_menuState.BackSoundString = zrdr_findstring(sounds, "BACK");
+                selection = zrdr_findstring(sounds, "SELECTION");
+            }
+        }
+        theGame.m_menuState.SelectionSound = CSnd::GetSoundByName(selection ? selection : "");
+        if (rdr)
+            zrdr_free((CRdrFile *)rdr);
+        if (theGame.m_menuState.m_menu)
+            UiLoadCountSound(theGame.m_menuState.m_menu);
+    }
+    return true;
+}
+
+/* a ZRDR value (zrdr.h's: the array accessors only) */
+enum {
+    ZRDR_STRING = 3,
+    ZRDR_ARRAY = 4
+};
+
+struct _zrdr {
+    unsigned int type : 8;   // 0x0
+    unsigned int isclone : 1;   // 0x0
+    unsigned int packed : 1;   // 0x0
+    unsigned int nofree : 1;   // 0x0
+    unsigned int unused : 5;   // 0x0
+    unsigned int length : 16;   // 0x0: an array's count
+    union {
+        char *string;
+        _zrdr *array;
+    };   // 0x4
+
+    bool IsString() const { return type == ZRDR_STRING; }
+    bool IsArray() const { return type == ZRDR_ARRAY; }
+    unsigned int Count() const { return IsArray() ? length : 0; }
+    _zrdr *Item(unsigned int i) const { return i < Count() ? &array[i] : 0; }
+    char *String() const { return type == ZRDR_STRING ? string : 0; }
+};
+
+/* the reader editor (zrdr_edit.cpp's: the calls made here) */
+class CRdrEditor : public _zrdr {
+public:
+    CRdrEditor();
+    ~CRdrEditor();
+    bool push(const char *tag);
+    bool pop();
+    bool addstringnode(const char *s);
+
+    unsigned char _8[0x4c - 0x8];
+};
+
+/* a UI variable (zui.h's: its value set from an editor's tree) */
+class CUIVariable : public _zrdr {
+public:
+    void Set(_zrdr *value);
+};
+
+/* the network game (OVL1 bss 0x437CE8): only the chat's lines, a UI variable (the name ours) */
+class CZNetGame {
+public:
+    unsigned char _0[0x94];
+    CUIVariable *m_chat;   // 0x94
+};
+
+extern CZNetGame *data_00437CE8;
+
+/* a message added to the network game's chat lines (OVL1 0x1F4DF0, the display outside game mode
+ * 11): the last 20 lines kept, the new one coloured by its kind ("#C" and three level bytes), its
+ * sender's name and ": " before the text, a newline after (SOCOM II's; the name ours). The first
+ * line kept is zmath.h's MAX(0, count - 20) -- `if (i < 0) i = 0;` gives bgez where the target
+ * compares with slt against $zero; the line a CSaferStr (its base destroyed with 0) */
+extern "C" void func_001F4DF0(const char *text, const char *who, int a, int b, int c, unsigned char d,
+                              unsigned char e, MSGTYPE type)
+{
+    CZNetGame *game = data_00437CE8;
+    CUIVariable *chat;
+
+    if (!game || !(chat = game->m_chat))
+        return;
+    CRdrEditor ed;
+
+    ed.push(0);
+    int count = chat->Count();
+    int i = MAX(0, count - 20);
+
+    for (; i < count; i++) {
+        _zrdr *line = chat->Item(i);
+
+        if (line && line->IsString())
+            ed.addstringnode(line->String());
+    }
+    CSaferStr s;
+
+    switch (type) {
+    case MSGTYPE_ALERT:
+        s = "#C\x80@@";
+        break;
+    case MSGTYPE_SYSTEM:
+        s = "#C\x80\x80@";
+        break;
+    case MSGTYPE_PLAYER:
+    default:
+        s = "#C\x80\x80\x80";
+        break;
+    }
+    if (who) {
+        s += who;
+        s += ": ";
+    }
+    s += text;
+    s += "\n";
+    ed.addstringnode(s.c_str());
+    ed.pop();
+    chat->Set(&ed);
+}
+
 /* a message for the player (CGameState's slot 0x2C): a system message of the multiplayer kind is
  * the menu's MP_SYSTEM_MESSAGE event, any other goes to one of two displays by the mode byte (a
  * switch: the target tests the one case and branches to the default) */

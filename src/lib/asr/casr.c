@@ -162,10 +162,11 @@ static __inline__ void casrFreeResult(CASR *c, RESULT *r)
 }
 
 /* the end of an utterance: a second pass when parameter 15 asks for one, else the result now.
- * OPEN (9 words): the result variable takes v1 here, v0 in the target (and the demo), so the iso
- * branch's `b` slot gets a move where the target's computes the `== 1`, and the second pass's three
- * stores reorder; tried: the variables in other orders, err an unsigned char, err reused for the
- * callback's result, the return as ==, ?:, if/return, unsigned char (build/scratch/gcc/p/s_dsp*.py). */
+ * Round 24c, byte-exact: the second pass's two arguments stored before its flag (8 of the 24
+ * orders of the arm's four statements match, build/scratch/gcc/r24c/v_dsp.py; round 9c's order --
+ * the flag between them -- was 9 words): the flag's constant 1 then dies before `err = 0`, so err,
+ * shared by the three arms, is born in v0, the return register (the GCC front's round-31a rule),
+ * and the iso branch's slot computes the `== 1`. */
 int cbDoSecondPassIfEnabled(CASR *c, unsigned char a1, unsigned char a2, int arg1, int arg2)
 {
     unsigned int enabled;
@@ -179,8 +180,8 @@ int cbDoSecondPassIfEnabled(CASR *c, unsigned char a1, unsigned char a2, int arg
         if (_tosControl(c->event, 2, 0, 0) != 0)
             return 1;
         c->sp_arg1 = arg1;
-        c->second_pass = 1;
         c->sp_arg2 = arg2;
+        c->second_pass = 1;
         err = 0;
     } else {
         if (_tosControl(c->event, 7, 0, 0) != 0)
@@ -280,7 +281,10 @@ fail:
 /* OPEN (38 words, the right size): the target stores the first gender and the format through s+8
  * and the other two genders off s, and loads the language's pointer into a0; every spelling here
  * stores all four through s+8 (a loop, a sub-struct, a pointer for two of them: build/scratch/gcc/p/
- * s_gsd*.py, 30 spellings). The header's destination is a local pointer (`h`): with `s->lng` itself
+ * s_gsd*.py, 30 spellings; round 24c: each of the four through `g` or off `s`, all 16, gives one form
+ * -- CSE puts every store on one base whichever is spelled -- and a 3-pass loop with the fourth after
+ * it, unrolled whole, stores all four off s, SOCOM 1's 0x1BC shape: build/scratch/gcc/r24c/v_gsd*.py).
+ * The header's destination is a local pointer (`h`): with `s->lng` itself
  * 2.96 folds the data pointer to s+152 and computes the copy's bound once (87s), the demo's shape. */
 static int casrGetSessionData(CASR *c, void **data, int *size)
 {
@@ -614,13 +618,16 @@ int casrGetParam(CASR *c, int id, unsigned int *value)
     return 0;
 }
 
-/* OPEN (1 word): the last test's branch -- the target's `bnez v0` keeps `li v0,1` in a plain delay
- * slot (the fall-through's `move v0,zero` overwrites it), 2.96 here annuls it (`bnezl`): reorg's view
- * of v0 at the fall-through. SOCOM 1's copy tests a copy (`move v1,v0; bnez v1`). Tried: the return
- * as unsigned char/int/long/short, _tosControl as int/unsigned char/signed char/unsigned short, every
- * error exit a `return 1` or one `goto error`, the else-if and nested forms (build/scratch/gcc/p/
- * s_ues*.py, 30 spellings: 1 to 44s); no switch of 2.96-ee-001003-1 moves it either (round 12c's
- * build/scratch/gcc-r12c/bnez_sweep.sh): a later SCE 2.96's reorg. */
+/* the extra events' state sent to the engine: on (the language's bit 64) the start, the counter's
+ * address, the context info and the info itself, else the stop; 1 on any failure (the context
+ * info freed when it was made). Round 24c, byte-exact: the shared failure return is the else-if's
+ * own body, its label inside the block (`} else if (...) { error: return 1; } return 0;`) -- with
+ * the label after a final `return 0` (round 9c-13c's 30 spellings) the else-if's fall-through
+ * shares the then-arm's `return 0` block (its label's one jump is the then-arm's last test: the
+ * -dd dump), reorg copies that block's `move v0,zero` into the then-arm's beqzl and redirects it,
+ * the label dies, and the else-if's slot is annulled (`bnezl`, 1 word) -- read as resource.c's
+ * live-register scan from the block's head, which drops a REG_DEAD register (v0, the call's
+ * value) only at the next CODE_LABEL. */
 static unsigned char UpdateExevStatus(CASR *c)
 {
     if (c->exev != 0 && c->lng->CheckBitField(c->lng, 64)) {
@@ -634,11 +641,11 @@ static unsigned char UpdateExevStatus(CASR *c)
             FreeCtxInfo(c);
             goto error;
         }
-    } else if (_tosControl(c->event, 101, 0, 0) != 0)
-        goto error;
-    return 0;
+    } else if (_tosControl(c->event, 101, 0, 0) != 0) {
 error:
-    return 1;
+        return 1;
+    }
+    return 0;
 }
 
 /* the second pass over the labelled utterance: its own context (the Chinese one when the language
@@ -916,7 +923,15 @@ int casrGetUserWordNbrRecsNeeded(CASR *c, int *n)
 /* OPEN (and casrGetLastWarning): the target if-converts the magic test into a flag (li 11,
  * movz 0) and branches on it, after testing the null handle by itself; SOCOM 1's build has this
  * plain guard. The guard, a ?: macro, an inline checker, a single-exit flag: all compile to
- * branches (12 words of 16). */
+ * branches (12 words of 16).
+ * Round 24c: the flag is block-local in the target -- local-alloc gives it a0 and p moves to a1
+ * (`move a1,a0`) -- so the null test cannot set it: through casrCheckHandle the null path carries
+ * the 6 to the flag's test (0x38-0x3C), and `if (c == 0) return 11; if (casrCheckHandle(c) != 0)
+ * return 11;` (the inline's own null test then folded away) gives every insn but reorg's slots
+ * (0x3C: here both branches copy the return's `li v0,11`, the target fills the null test's slot
+ * from the fall-through -- its magic constant's lui scheduled ahead of the load -- leaves the flag
+ * test's empty and keeps `li v0,11` in its own `jr`'s slot; build/scratch/gcc/r24c/v_gle*.py:
+ * a magic-only inline, the compare's operands either way round, == first, alike). */
 int casrGetLastError(CASR *c)
 {
     int err;
