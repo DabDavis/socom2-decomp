@@ -211,7 +211,8 @@ struct LANGVT {
     void *s12[2];
     short (*GetSilencePhenome)(LANGVT *l);            /* +56, slot 14 */
     short (*GetUWSilencePhenome)(LANGVT *l);          /* +60, slot 15 */
-    void *s16[4];
+    void *s16[3];
+    unsigned int (*GetNbrWarpFactors)(LANGVT *l);     /* +76, slot 19 */
     int (*GetNbrSpeechUnit)(LANGVT *l);               /* +80, slot 20 */
     void *s21[4];
     int (*GetNbrPhenUserWordTraining)(LANGVT *l);     /* +100, slot 25 */
@@ -219,7 +220,7 @@ struct LANGVT {
     unsigned int (*GetSecondCdbSize)(void *cb);       /* +124, slot 31 */
     void *s32;
     unsigned int (*GetNbrGastone)(void *cb);          /* +132, slot 33 */
-    void *s34;
+    struct WARP *(*GetpWarpFactors)(LANGVT *l);       /* +136, slot 34 */
     unsigned short *(*GetpGastone)(LANGVT *l);        /* +140, slot 35 */
     void *s36[5];
     void *(*GetpCodeBook)(LANGVT *l, int n);          /* +164, slot 41 */
@@ -232,6 +233,12 @@ struct LANGVT {
     unsigned char *(*GetpProbMatrix)(void *cb);       /* +244, slot 61 */
     void *s62[17];
 };
+
+/* a warp factor (the language's, _langGetpWarpFactors): the genders it serves and its value */
+typedef struct WARP {
+    unsigned int mask;                  /* +0 */
+    int value;                          /* +4 */
+} WARP;
 
 typedef struct SAMPLEFMT {
     int pad[2];

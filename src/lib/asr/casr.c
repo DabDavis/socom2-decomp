@@ -19,7 +19,7 @@ extern void *heap_Alloc(void *heap, int size);
 extern void heap_Free(void *heap, void *p);
 extern int userwordAcknowledge(CASR *c);
 extern int userwordStartUserWordTraining(CASR *c, int what, void *a, void *b);
-extern int casrEnableGenders(CASR *c, int genders);
+static int casrEnableGenders(CASR *c, int genders);
 extern int casrActivateContext(CASR *c, void *ctx, int a);
 extern int SetIsolatedWordDpActiveWords(CASR *c, unsigned int *ids, unsigned int n);
 extern int casrDoSecondPass(CASR *c);
@@ -200,6 +200,72 @@ int cbDoSecondPassIfEnabled(CASR *c, unsigned char a1, unsigned char a2, int arg
         }
     }
     return err == 1;
+}
+
+extern void *memset(void *dst, int c, unsigned int n);
+
+/* gender i's recogniser switched (command ids[i], its warp value handed over) and its flag set */
+static __inline__ unsigned char casrSwitchGender(CASR *c, const unsigned char *ids, unsigned int i,
+                                                 unsigned char on, int value)
+{
+    if (_tosControl(c->event, ids[i], i, value) != 0)
+        return 1;
+    c->gender_on[i] = on;
+    return 0;
+}
+
+/* the genders in the mask enabled, the rest disabled: 1 when the mask names none the language's
+ * warp factors serve, or (but for all, 0x7FFFFFFF or -1) one they do not; each gender whose state
+ * changes switched on or off, and those switched off then stopped. SOCOM 1's body (round 31c; its
+ * three command tables are SOCOM 1's local statics ControlID_Disable.84, ControlID_Enable.88 and
+ * ControlID_Disable.89, the last two in one scope).
+ * OPEN (0x3DC against 0x400): everything but the switch loop's unrolling. loop.c sees that loop
+ * with 47 real insns, hoists its three invariants (the 1 `changed` takes, both tables' %hi) and
+ * unrolls it completely (3 x 33 < 100); the target hoists only the off table's %hi (s8) and keeps
+ * the 1 and the on table's %hi in each copy -- a life-1 invariant left in place means a longer
+ * loop at that point -- and peels one iteration ahead of a loop unrolled by two (as SOCOM 1's
+ * build). The vendor's body is some ten insns longer before loop.c with the same final code;
+ * tried: a result variable in the inline, the flag through if/else or ?:, the table chosen before
+ * the test or as an if, both calls written out (build/scratch/gcc/v_ceg1.py-v_ceg4.py). */
+static int casrEnableGenders(CASR *c, int genders)
+{
+    static const unsigned char ControlID_Disable[3] = { 108, 109, 110 };
+    unsigned char changed[3];
+    unsigned int n, i, mask;
+    WARP *warp;
+    unsigned char on;
+
+    mask = 0;
+    memset(changed, 0, 3);
+    if (c->lng == 0)
+        return 0;
+    i = 0;
+    n = c->lng->GetNbrWarpFactors(c->lng);
+    warp = c->lng->GetpWarpFactors(c->lng);
+    for (i = 0; i < n; i++)
+        mask |= warp[i].mask;
+    if ((genders & mask) == 0)
+        return 1;
+    if (genders != 0x7FFFFFFF && genders != -1 && (genders & ~mask) != 0)
+        return 1;
+    for (i = 0; i < 3; i++) {
+        static const unsigned char ControlID_Enable[3] = { 64, 65, 66 };
+        static const unsigned char ControlID_Disable[3] = { 61, 62, 63 };
+
+        on = (warp[i].mask & genders) != 0;
+        if (on != c->gender_on[i]) {
+            changed[i] = 1;
+            if (casrSwitchGender(c, on ? ControlID_Enable : ControlID_Disable, i, on, warp[i].value))
+                return 1;
+        }
+    }
+    for (i = 0; i < 3; i++) {
+        on = (warp[i].mask & genders) != 0;
+        if (!on && changed[i])
+            if (casrSwitchGender(c, ControlID_Disable, i, on, warp[i].value))
+                return 1;
+    }
+    return 0;
 }
 
 /* the scheduler's callbacks into the engine (tos.c's TOSCB) */
