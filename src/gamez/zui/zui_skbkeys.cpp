@@ -72,7 +72,7 @@ struct SKBUSBKEY {
  * composition's 0x391350; the second word passed on) */
 extern "C" void func_00399040(int c, int arg);
 /* a letter cased (0x39A8D0, its third argument 0 here: SkbTypeCased's wide) */
-extern "C" int func_0039A8D0(int c, bool upper, bool wide);
+extern "C" int func_0039A8D0(unsigned short c, bool upper, bool wide);
 /* the keyboard's text given the composed pieces (0x398AE0: the argument first; whether it took
  * them) */
 extern "C" int func_00398AE0(int arg, CSkbPieces *pieces, bool fewer);
@@ -637,7 +637,7 @@ bool SkbInsertChar(unsigned short c, CSoftKeyboard *skb)
 /* a key's character typed: the letter cased by the shift (0x39A8D0, wide as its third argument),
  * then inserted at the cursor (0x399E90; the name ours: the key handler 0x38D200 types a character
  * key so) */
-void SkbTypeCased(int c, bool shifted, bool wide, CSoftKeyboard *skb)
+void SkbTypeCased(unsigned short c, bool shifted, bool wide, CSoftKeyboard *skb)
 {
     SkbInsertChar(func_0039A8D0(c, shifted, wide), skb);
 }

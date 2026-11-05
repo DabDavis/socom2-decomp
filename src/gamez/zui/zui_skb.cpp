@@ -419,7 +419,7 @@ void SkbCloseText0(CSoftKeyboard *skb);
 void SkbTypeJamo(int arg, signed char jamo, CPad *pad);
 void SkbToggleBmp4();
 void SkbTogglePair(CBmpWithNode *a, CBmpWithNode *b, void (*onToggle)(bool));
-void SkbTypeCased(int c, bool shifted, bool wide, CSoftKeyboard *skb);
+void SkbTypeCased(unsigned short c, bool shifted, bool wide, CSoftKeyboard *skb);
 void SkbSetChatRecipient(bool on);
 
 /* a capital letter: A-Z, or Latin-1's capitals but the multiplication sign (ours) */
