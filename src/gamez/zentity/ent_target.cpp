@@ -176,13 +176,18 @@ bool CEntity::OnUpdateTargetList(bool force, bool sort)
 /* how many enemies are aware of each entity: every live entity that keeps a target list counts
  * itself against each target it is aware of (flag 0x200) that shares none of its teams (new in
  * SOCOM II, called from OVL2; the names are ours). The const walk initialises its iterator from
- * begin() (two copies, then a register; the ticks assign theirs); the target list's end is
- * re-read every pass.
- * OPEN, 8 bytes long: the outer walk's copies are right, but MW folds the target walk's first
- * test (begin against begin + size) into a test of the size -- the README's one-level begin()
- * tell, on the class vector this time (include/vector gives the pointer vector's begin() three
- * levels, the class vector's one) -- and hoists &e->m_team; `!(t == end())`, a raw team test
- * and a const entity pointer are no better */
+ * begin() (two copies, then a register; the ticks assign theirs); the target walk runs through
+ * TargetsOf (the size and the data re-read through &m_targets each pass: the MSL's round 30); the
+ * target's entity is read ahead of the flag test (its load in the test's delay slot), the team
+ * test a materialised bool written in place -- IsEnemy (member or free, const or not) has MW hoist
+ * &e->m_team out of the walk (0x150), the plain `!(a & b)` branches on the and (bnez) */
+/* an entity's target list, through an inline (seal_aivehicle.cpp's TargetsOf: the MSL headers' round
+ * 30 -- the walk through it re-reads the size and the data each pass; the name ours) */
+inline CTargetList *TargetsOf(CEntity *e)
+{
+    return &e->m_targets;
+}
+
 void CEntity::CountAwareness()
 {
     for (CEntityList::const_iterator it = GetEntityList().begin(); it != GetEntityList().end(); ++it) {
@@ -190,13 +195,13 @@ void CEntity::CountAwareness()
 
         e->m_aware_counter = 0;
         if (e->m_type != ENT_TYPE_RECYCLE && e->m_isAlive && e->m_update_targetlist)
-            for (CTargetList::iterator t = e->m_targets.begin(); t != e->m_targets.end(); ++t)
-                if ((*t).m_flags & 0x200) {
-                    CEntity *te = (*t).m_ent;
+            for (CTargetList::iterator t = TargetsOf(e)->begin(); t != TargetsOf(e)->end(); ++t)
+            {
+                CEntity *te = (*t).m_ent;
 
-                    if (te->IsEnemy(e))
-                        te->m_aware_counter++;
-                }
+                if (((*t).m_flags & 0x200) && (!(te->m_team & e->m_team) ? true : false))
+                    te->m_aware_counter++;
+            }
     }
 }
 
@@ -293,8 +298,8 @@ void CEntity::UpdateTargetList(bool b)
  * built once into a local and handed to remove and to erase, the new end a local -- CWorld::
  * DeleteLightMap's slots exactly (the MSL headers round 8: include/algorithm's remove joins its two
  * results through one copy, the class erase copies its iterators into its parameters).
- * remove_copy's copy (0x2A1210) is 8 bytes long: the target stores the m_ent its compare loaded, MW
- * reloads it (the compare taking the entity by reference or by value alike) */
+ * remove_copy's copy (0x2A1210) stores the m_ent its compare loaded through zentity.h's non-const
+ * operator== (the const one reloads it: 8 bytes long) */
 void CTargetList::RemoveTarget(CEntity *e)
 {
     iterator l = end();

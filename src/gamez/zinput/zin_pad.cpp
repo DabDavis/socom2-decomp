@@ -238,7 +238,9 @@ inline bool InsideRange(float v, float range)
  * OPEN, 2 instructions (0x238 of 0x240): the target indexes the y axis by i + 1 computed and scaled
  * on its own (addiu, sll -- for the last value, the dead time and the final store alike), where MW
  * folds the +1 into the offsets here; the flags take t1/t0 there. Not the flags' type or
- * declaration order, nor an index variable of its own */
+ * declaration order, nor an index variable of its own; round 18: `int j = i + 1` (first or before the
+ * second axis) computes it apart but goes 0x248, an axis helper inlined twice 124 off
+ * (build/scratch/core/v_csv.py) */
 void CPad::CheckStickVelocity(float &x, float &y, int stick)
 {
     int i = stick * 2;
