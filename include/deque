@@ -188,6 +188,7 @@
 
 #include <memory>
 #include <msl_utility>
+#include <limits>
 #include <new>
 #include <iterator>
 #include <stdio.h>
@@ -534,8 +535,21 @@ public:
      * half max_size(), else max_size(). cdeque<PCv>::push_back 0x2858B0 asks it for size_ + 1, the
      * forward do_assign 0x2F5700 for the range's length. SOCOM 1's older cdeque has no such member (its
      * push_back and insert grow inline): the name ours, libc++'s `__recommend` (the vector's and the
-     * string's -- Hinnant's, who wrote MSL C++ -- the string's also returning the capacity less one) */
+     * string's -- Hinnant's, who wrote MSL C++ -- the string's also returning the capacity less one).
+     * Defined below; the chat unit emits it (the forward do_assign's request) word for word the target */
     unsigned int __recommend(unsigned int n) const;
+    /* THE MAX STATIC (guard 0x415D20, value 0x3EF7E0): one object __recommend inlines (its guard test
+     * at the top, the allocator's alloc() called out of line, min() through two stack temporaries --
+     * the difference type's largest built before the call, an inline's result) and the out-of-line
+     * max_size 0x285CE0 reads (alloc() inlined there, the min folded to one temporary). In class, so
+     * __recommend inlines it whatever the generation order; max_size() itself stays out of line --
+     * reserve 0x285A50, init 0x2F5940 and the three converting do_assigns call it. The name ours */
+    unsigned int __max_size() const
+    {
+        static const unsigned int max = std::min(this->alloc().max_size(), (unsigned int)std::numeric_limits<int>::max()) - 1;
+
+        return max;
+    }
     template <class InputIterator>
     void do_assign(InputIterator first, InputIterator last);
 
@@ -630,6 +644,26 @@ void cdeque<const void *, Allocator>::init(unsigned int n, const value_type &x)
         for (value_type *p = this->data_; n > 0; --n, ++p)
             *p = x;
     }
+}
+
+/* the capacity for n (0x285BB0): the loop's test `n > c` (`c < n` gives the same blocks but MW keeps the
+ * bottom test's result in a register of its own, 4 off) */
+template <class Allocator>
+unsigned int cdeque<const void *, Allocator>::__recommend(unsigned int n) const
+{
+    const unsigned int m = __max_size();
+
+    if (n > m)
+        __msl_error("cdeque max_size error");
+    unsigned int c = this->capacity_ ? this->capacity_ - 1 : 1;
+
+    while (n > c) {
+        if (c < m / 2)
+            c *= 2;
+        else
+            c = m;
+    }
+    return c;
 }
 
 /* [first, last) assigned (0x2F5700): emptied, regrown to the capacity __recommend gives when n does not

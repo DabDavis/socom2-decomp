@@ -106,6 +106,9 @@ public:
     void deallocate(pointer p, size_type) { operator delete(p); }
     void construct(pointer p, const value_type &x) { new (p) value_type(x); }
     void destroy(pointer) {}
+    /* the most elements an allocation can hold (the circular buffer's max static reads it: 0x3FFFFFFF
+     * in 0x285BB0 and 0x285CE0) */
+    size_type max_size() const throw() { return size_type(-1) / sizeof(value_type); }
 };
 
 template <class T>
