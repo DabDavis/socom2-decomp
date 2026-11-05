@@ -122,9 +122,7 @@ extern "C" {
  * button map --, 0x2C64E0, unowned: the HUD's readers call the second the same way) */
 unsigned char func_002C6490(int button, CPad *pad);
 unsigned char func_002C64E0(int button, CPad *pad);
-/* the kit's reload (OVL2 0x5C4600, the kit lane's) and how long the button is held for it (OVL2
- * data: 0.4) */
-void func_005C4600(CZKit *kit);
+/* how long the button is held for the kit's fire-mode cycle, CZKit::CycleFireMode (OVL2 data: 0.4) */
 extern float data_00650670;
 }
 
@@ -213,7 +211,7 @@ extern "C" void func_00594B70(CSealCtrl *ctrl, float dT)
         }
     }
     if (reload)
-        func_005C4600(&((CZSealBody *)ctrl->m_entity)->m_kit);
+        ((CZSealBody *)ctrl->m_entity)->m_kit.CycleFireMode();
 }
 
 extern "C" {

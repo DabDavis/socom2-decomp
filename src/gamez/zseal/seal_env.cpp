@@ -2812,11 +2812,8 @@ CPickup *CZSealBody::CreateMPBombPickup(const CPnt3D *pos, bool b)
     return p;
 }
 
-extern "C" {
-/* the kit's ammunition put into a stash: all of it (-1) or so many rounds (OVL2 0x5BA040, the kit
- * lane's row -- SOCOM 1's CZKit::FillAmmoPickupInstance, after RemoveAmmo in both builds) */
-void func_005BA040(CZKit *kit, CZItemStash *stash, int rounds);
-}
+/* (the kit's ammunition put into a stash, all of it or so many rounds, is CZKit::FillAmmoPickupInstance:
+ * SOCOM 1's, OVL2 0x5BA040, the kit lane's -- zseal.h's CZKit declares it) */
 
 /* this SEAL's ammunition dropped, all of it (-1) or so many rounds, with the pickups open and,
  * online, by a player only: the kit's rounds put into a new stash, which -- if any entry has rounds
@@ -2832,9 +2829,9 @@ void CZSealBody::DropAmmo(int rounds)
     CZItemStash *stash = new CZItemStash;
 
     if (rounds == -1)
-        func_005BA040(&m_kit, stash, -1);
+        m_kit.FillAmmoPickupInstance(stash, -1);
     else
-        func_005BA040(&m_kit, stash, rounds);
+        m_kit.FillAmmoPickupInstance(stash, rounds);
     int i;
 
     for (i = 0; i < stash->Count(); i++) {

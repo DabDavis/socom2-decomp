@@ -187,6 +187,9 @@ public:
     /* the kit's ammunition put into a stash, every item's (-1) or one index's (SOCOM 1's; OVL2
      * 0x5BA040, the kit lane's -- DropAmmo calls it) */
     void FillAmmoPickupInstance(CZItemStash *stash, int index);
+    /* the weapon in hand's fire mode stepped to the next (SOCOM 1's; OVL2 0x5C4600, the kit lane's --
+     * CSealCtrl's button handling calls it) */
+    void CycleFireMode();
     /* the items' set-up finished (SOCOM 1's; OVL2 0x5C7840, the kit lane's -- the SEAL's OnMissionStart
      * calls it) */
     void PostSetupItems();
