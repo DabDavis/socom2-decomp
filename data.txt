@@ -1409,10 +1409,14 @@
 0x004887C0 0x720 thePipe  # OVL1 bss; SOCOM 1's (0x694 bytes; SOCOM II's runs to VifHandlerID at 0x720: the camera at 0x628, the UI node at 0x630, its flags at 0x711 and 0x714 as the states use them): 115 references in 32 functions take 0x4887C0-0x488ED8
 0x00488EE0 0x4 VifHandlerID  # OVL1 bss; s1:data-seq (size SOCOM 1's; via Uninit__5CPipeFv)
 0x00488F70 0x28 gSLClientData  # OVL1 bss; the world lane r6: SOCOM 1's global (its symbol, 0x509B50, 0x28 bytes: sceSifClientData) -- the command client snd_StartSoundSystem binds (0x123456), waiting on its server word at 0x24
+0x00488F98 0x4 gCommBusy  # OVL1 bss; SOCOM 1's global (its symbol, 0x476404 in $gp's area): the command senders point it at gSyncBuffer while a call is out and test it, as SOCOM 1's -- the world lane round 19
+0x00488FA0 0x4 gAwaitingInts  # OVL1 bss; SOCOM 1's global (its symbol, 0x476408 in $gp's area): the commands whose returns the call awaits, 1 for a direct command -- the world lane round 19
 0x00488FA8 0x4 gLastLoadError  # OVL1 bss; the world lane r6: SOCOM II's (the name ours) -- snd_BankLoad and snd_BankLoadByLoc clear it on entry and store 262 when their RPC call fails; 4 references in 2 functions
 0x00488FB0 0x4 gStreamingInited  # OVL1 bss; s1:data-seq (size SOCOM 1's; via snd_StopSoundSystem +1)
 0x00488FC0 0x4 gSSRead  # OVL1 bss; SOCOM 1's global (its symbol): snd_StreamSafeCdRead sets it as SOCOM 1's does (gp 0x476414 there); 3 references in 2 functions
 0x00488FC8 0x4 gSSReadDone  # OVL1 bss; SOCOM 1's global (its symbol): snd_StreamSafeCdSync stores the status block's !busy in it as SOCOM 1's does (0x476418 there); 13 references in 6 functions
+0x00489000 0x40 gSyncBuffer  # OVL1 bss; SOCOM 1's global (its symbol, 0x509B80, 0x40 bytes): the command RPC's reply, words 0 and 2 cleared before a call -- the world lane round 19
+0x00489040 0x40 gSyncSendBuffer  # OVL1 bss; SOCOM 1's global (its symbol, 0x509BC0, 0x40 bytes): snd_SendIOPCommandAndWait's request, the data copied in -- the world lane round 19
 0x00489080 0x100 gSyncStringBuffer  # OVL1 bss; the world lane r6: SOCOM 1's global (its symbol, 0x509C00, 0x100 bytes) -- snd_BankLoad's request, the offset at 0 and the name from 4, as SOCOM 1's; 3 references in 1 function
 0x00489180 0x1000 gSndCommandBuffer1  # OVL1 bss; the world lane r6: SOCOM 1's global (its symbol, 0x509D00, 0x1000 bytes) -- snd_StartSoundSystem's first pointer, its first word cleared
 0x0048A180 0x1000 gSndCommandBuffer2  # OVL1 bss; the world lane r6: SOCOM 1's global (its symbol, 0x50AD00, 0x1000 bytes) -- snd_StartSoundSystem's second pointer, its first word cleared
@@ -1421,6 +1425,7 @@
 0x0048D180 0x440 gActualReturnValues1  # OVL1 bss; the world lane r6: SOCOM 1's global (its symbol, 0x50DD00, 0x420 bytes there; 0x440 to the next here)
 0x0048D5C0 0x440 gActualReturnValues2  # OVL1 bss; the world lane r6: SOCOM 1's global (its symbol, 0x50E140, 0x420 bytes there; 0x440 to gStats here)
 0x0048DA00 0x40 gStats  # OVL1 bss; SOCOM 1's global (its symbol, 32 bytes there): the status block the IOP writes (word 0 busy, word 4 the read's error), invalidated by snd_StreamSafeCdSync, registered by snd_StartSoundSystem; 22 references in 7 functions
+0x0048DA40 0x4 gCommandFillBuffer  # OVL1 bss; SOCOM 1's global (its symbol, 0x476420 in $gp's area): which of the two command buffers is being filled, flipped by each send -- the world lane round 19
 0x0048DA48 0x4 gCaching  # OVL1 bss; SOCOM 1's global (its symbol, 0x476424): snd_StartCaching sets it, snd_SendCache clears it, the senders test it; 8 references in 5 functions
 0x0048DA50 0x28 gSLClientLoaderData  # OVL1 bss; the world lane r6: SOCOM 1's global (its symbol, 0x50E5A0, 0x28 bytes: sceSifClientData) -- the loader's RPC client, checked and called by both loads, bound by snd_StartSoundSystem (0x123457) as SOCOM 1's; 7 references in 3 functions
 0x0048DA78 0x4 gLoadBusy  # OVL1 bss; SOCOM 1's global (its symbol, 0x476428): tested before streaming starts or stops as SOCOM 1's is; 8 references in 6 functions
