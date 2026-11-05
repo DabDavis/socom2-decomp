@@ -336,7 +336,12 @@ _zanim_cmd_hdr *CAppCamera::CmdParseShake(_zrdr *rdr)
  * inline, and with the switch written out here; round 15: the level a caller local defined inside
  * the null test (plain, const, int), declared at the top, the command cast into a local -- the same
  * 36 (build/scratch/core/v_shake.py): by the numbering the target's camera is numbered above the
- * inlined Shake's level, which no caller-side spelling reaches */
+ * inlined Shake's level, which no caller-side spelling reaches. Round 17, the replay (--want
+ * @3377=v1,level=a0): the level's node must sit before the camera's (31.5 or 32.5), or the camera's
+ * after it (35.5 on); a caller's named level is copy-propagated away (its node dead), and the
+ * camera a named local is coalesced with the call's a0 -- the level an enum field, a local copy in
+ * Shake (unsigned char, int), a cast in either, a dead first definition: the same 36
+ * (build/scratch/core/v_shake*.py, the core lane's round-17 scratch) */
 void CAppCamera::CmdBeginShake(_zanim_cmd_hdr *hdr)
 {
     if (appCamera)
