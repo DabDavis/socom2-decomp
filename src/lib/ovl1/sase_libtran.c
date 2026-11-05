@@ -24,6 +24,8 @@ extern void __assert(const char *file, int line, const char *expr);
 
 extern float asinf(float);
 extern float sinf(float);
+extern const float *data_001D5570;	/* the FFT's quarter-wave sine table, read forwards (0x3EA038) */
+extern const float *data_001D5574;	/* ... and its end, read backwards for the cosine (0x3EA238) */
 extern float *data_001D5594;		/* the sine table, 256 points a turn (0x3EA6E8) */
 extern float *data_001D5598;		/* the cosine table, a quarter turn on (0x3EA7E8) */
 extern const float data_001D559C;	/* 256 / 2pi, the phase's scale to a table index */
@@ -104,6 +106,113 @@ void func_0024DA70(float *pfInOut, int log2N, int iFlags)
 		fScale = 1.0F / N;
 		for (i = 0; i < N; i++)
 			pfInOut[i] *= fScale;
+	}
+}
+
+/* the real-input split after the forward passes (GCC round 37a, unwritten before): the N/2-point
+ * complex FFT in pfInOut[0..N-1] made the spectrum of N real samples in pfInOut[0..N+1] -- Numerical
+ * Recipes' realft unpacking, the twiddles stepping TWIDDLE_PERIOD / N through the quarter-wave table
+ * (0x1D5570/4: $gp words), the sine forwards and the cosine backwards from its end; the middle bin
+ * conjugated last. Read off the target: the data is indexed (pfInOut[i], pfInOut[N - i]: loop.c's
+ * givs, formed in the preheader after the entry test, i kept for the last store), the stores in the
+ * source's order (through one pointer they cannot pass each other: [i], [N-i], [i+1], [N-i+1]), the
+ * cosine pointer loaded first, and the first pair's sum and difference are the loop's fTi and fTr --
+ * global pseudos, which takes them to f5/f6 and the two loads to f1/f0 as the target has them (read
+ * into fH1r/fH1i, or stored straight, every prologue register is another).
+ * OPEN (23 words: 8 structural, 18 registers alone): the target's sched1 computes the tail C - tr,
+ * C + tr, D - ti, ti + D (local-alloc ties C + tr to C and ti + D to ti), so the C chain dies first and
+ * the load of pfInOut[i] takes f0, pfInOut[i + 1] f1; this compile schedules ti + D first (the neg's
+ * longer path to the last store), C's chain outlives D's and the two take f1/f0 -- 3,840 spellings
+ * swept (the 0.5's side, each product's and sum's operand order, tr/ti first, the h statements' and
+ * the stores' orders, the last store's form: build/scratch/gcc/r37/p/gen_e408*.py), 21 words at best
+ * (the stores out of their order). */
+void func_0024E408(float *pfInOut, int log2N)
+{
+	int N = 1 << log2N;
+	int i, iStep;
+	const float *pfSin, *pfCos;
+	float fRe, fIm, fH1r, fH1i, fH2r, fH2i, fTr, fTi, fC, fS;
+
+#line 1361 "../../SaseEncVad/source/libtran.c"
+	assert(pfInOut != NellyNull);
+	assert(N >= 8);
+	assert(N <= TWIDDLE_PERIOD);
+	fRe = pfInOut[0];
+	fIm = pfInOut[1];
+	fTi = fRe + fIm;
+	fTr = fRe - fIm;
+	pfInOut[N] = fTr;
+	pfInOut[0] = fTi;
+	pfInOut[N + 1] = 0.0F;
+	pfInOut[1] = 0.0F;
+	iStep = TWIDDLE_PERIOD >> log2N;
+	pfCos = data_001D5574;
+	pfSin = data_001D5570;
+	for (i = 2; i < (N >> 1); i += 2) {
+		pfCos -= iStep;
+		pfSin += iStep;
+		fC = *pfCos;
+		fS = *pfSin;
+		fH1r = 0.5F * (pfInOut[i] + pfInOut[N - i]);
+		fH1i = 0.5F * (pfInOut[i + 1] - pfInOut[N - i + 1]);
+		fH2r = 0.5F * (pfInOut[i + 1] + pfInOut[N - i + 1]);
+		fH2i = 0.5F * (pfInOut[i] - pfInOut[N - i]);
+		fTr = fC * fH2r - fS * fH2i;
+		fTi = fC * fH2i + fS * fH2r;
+		pfInOut[i] = fH1r + fTr;
+		pfInOut[N - i] = fH1r - fTr;
+		pfInOut[i + 1] = fH1i - fTi;
+		pfInOut[N - i + 1] = -(fTi + fH1i);
+	}
+	pfInOut[i + 1] = -pfInOut[i + 1];
+}
+
+/* the real-input merge before the inverse passes (GCC round 37a, unwritten before): the spectrum of
+ * N real samples in pfInOut[0..N+1] folded back into the N/2-point complex spectrum the passes
+ * invert -- the split's inverse (no 0.5: the 1/N scale is the driver's), the middle bin doubled and
+ * conjugated in the prologue (x * 2.0F is fold's x + x, the target's add.s; -2.0F a lui constant),
+ * the twiddles as the split steps them, the stores in the target's order.
+ * OPEN (36 words, the size and the shape the target's): registers. The target's prologue keeps
+ * x1 + x[N+1] in f7, the loop's ti (a global pseudo, as the split's first sum and difference are its
+ * ti/tr), and x0 + x[N] tied to x0's f2 (block-local); which variable holds each of the four partial
+ * sums -- a local or any of the loop's eight, 3,393 variants (build/scratch/gcc/r37/p/gen_e5b0.py) --
+ * reaches 26 words at best, with reuse no vendor would write (fC as a partial sum). */
+void func_0024E5B0(float *pfInOut, int log2N)
+{
+	int N = 1 << log2N;
+	int i, iStep;
+	const float *pfSin, *pfCos;
+	float fH1r, fH1i, fH2r, fH2i, fTr, fTi, fC, fS;
+
+#line 1449 "../../SaseEncVad/source/libtran.c"
+	assert(pfInOut != NellyNull);
+	assert(N >= 8);
+	assert(N <= TWIDDLE_PERIOD);
+	assert(log2N >= 3);
+	fTr = pfInOut[0] + pfInOut[N];
+	fTi = pfInOut[1] + pfInOut[N + 1];
+	pfInOut[1] = (pfInOut[0] - pfInOut[N]) + (pfInOut[1] - pfInOut[N + 1]);
+	pfInOut[0] = fTr - fTi;
+	pfInOut[N >> 1] *= 2.0F;
+	pfInOut[(N >> 1) + 1] *= -2.0F;
+	iStep = TWIDDLE_PERIOD >> log2N;
+	pfCos = data_001D5574;
+	pfSin = data_001D5570;
+	for (i = 2; i < (N >> 1); i += 2) {
+		pfCos -= iStep;
+		pfSin += iStep;
+		fC = *pfCos;
+		fS = *pfSin;
+		fH1r = pfInOut[i] + pfInOut[N - i];
+		fH1i = pfInOut[i + 1] - pfInOut[N - i + 1];
+		fH2r = pfInOut[i + 1] + pfInOut[N - i + 1];
+		fH2i = pfInOut[i] - pfInOut[N - i];
+		fTr = fC * fH2r + fS * fH2i;
+		fTi = fC * fH2i - fS * fH2r;
+		pfInOut[i] = fH1r - fTr;
+		pfInOut[N - i] = fH1r + fTr;
+		pfInOut[i + 1] = fH1i + fTi;
+		pfInOut[N - i + 1] = -(fH1i - fTi);
 	}
 }
 

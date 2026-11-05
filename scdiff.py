@@ -437,20 +437,21 @@ _FN_STATIC = re.compile(r"^(@GUARD@)?([A-Za-z_]\w*)\$\d+$")
 
 
 def fn_static_row(elf: E.Elf, s: E.ElfSymbol, fsym: E.ElfSymbol, st: E.SymbolTable,
-                  taddr: int | None = None) -> str | None:
+                  taddr: int | None = None, kind: str | None = None) -> str | None:
     """The data row (`@LOCAL@<fn>@name` or `@GUARD@<fn>@name`) a Metrowerks object's
     function-local static `name$N` (or its guard `@GUARD@name$N`) is, or None. Its function is the
     one under comparison (by its object name, else its map row's at `taddr`); failing that, the one
     function of the object the data map gives such a row (a static of a function inlined into the
     one compared). Never a guess: a GNU object, a static the object holds two of by that name (two
     functions' `s_grey`, which the counter alone cannot tell apart), or several candidate rows
-    leave it None -- unresolved, as before."""
+    leave it None -- unresolved, as before. `kind` names another row of the static's by the same
+    rule (`@CHAIN@`: its destructor-chain record, chain_record_row)."""
     if s.bind != 0 or s.type in ("FUNC", "SECTION", "FILE") or is_gnu(elf):
         return None
     m = _FN_STATIC.match(s.name or "")
     if m is None:
         return None
-    kind, base = ("@GUARD@" if m.group(1) else "@LOCAL@"), m.group(2)
+    kind, base = (kind or ("@GUARD@" if m.group(1) else "@LOCAL@")), m.group(2)
     twins = [x for x in elf.symbols if x.bind == 0 and x.name and (mm := _FN_STATIC.match(x.name))
              and mm.group(2) == base and bool(mm.group(1)) == bool(m.group(1))]
     if len(twins) != 1:
@@ -463,6 +464,45 @@ def fn_static_row(elf: E.Elf, s: E.ElfSymbol, fsym: E.ElfSymbol, st: E.SymbolTab
             return f"{kind}{fn}@{base}"
     others = {f"{kind}{f.name}@{base}" for f in elf.functions()} & st.data_by_name.keys()
     return others.pop() if len(others) == 1 else None
+
+
+# Metrowerks registers a static object that has a destructor with __register_global_object(object,
+# destructor, &record) -- a file-scope one in its unit's static initialiser, a function-local one
+# under its guard -- the record a 12-byte DestructorChain {next, destructor, object} the runtime links
+# into __global_destructor_chain (0x1D5948). The record is an ANONYMOUS object (`@N`, a parser-wide
+# counter no row can carry), and MW gives it the .bss section right before its object's own: a
+# function-local static's three sections are its guard, the record, the object (the kit's round 51:
+# IssueCommand's @GUARD@...@proto 0x66B8C0, the record 0x66B8C8, @LOCAL@...@proto 0x66B8E0; all 10
+# function-local and 375 file-scope records in the hand-written objects on 2026-11-05 lie so, while the
+# counter does not: classic_locale's record is its guard's + 5, every other + 3). The data map names
+# one `@CHAIN@<fn>@<name>` (a function-local static, its function as fn_static_row resolves it) or
+# `@CHAIN@<object>` (a file-scope one, as the object's own row is named), and a reference resolves by
+# that row (GCC round 37a). The record need not lie by its guard in the image: locale.cpp's
+# global_locale and its guard are $gp small data (0x1D5638, 0x1D5634), its record .bss (0x1D5F38).
+_ANON_OBJECT = re.compile(r"^@\d+$")
+CHAIN_RECORD = 12                   # sizeof(DestructorChain)
+
+
+def chain_record_row(elf: E.Elf, s: E.ElfSymbol, fsym: E.ElfSymbol, st: E.SymbolTable,
+                     taddr: int | None, registers: bool) -> str | None:
+    """The data row (`@CHAIN@<fn>@<name>` or `@CHAIN@<object>`) a Metrowerks object's anonymous
+    destructor-chain record is, or None: a local `@N` of 12 bytes in .bss, the next section holding
+    one named object -- a function-local static `name$M` (resolved as fn_static_row resolves it) or a
+    file-scope object -- referenced by a function that calls __register_global_object (`registers`).
+    Never a guess: a GNU object, another size or section, no single object after it, a guard after it,
+    no registering call or no such row leave it None -- unresolved, as before."""
+    if (not registers or s.bind != 0 or s.type != "OBJECT" or s.size != CHAIN_RECORD
+            or not _ANON_OBJECT.match(s.name or "") or is_gnu(elf)
+            or not 0 < s.shndx < len(elf.sections) - 1 or elf.sections[s.shndx].type != 8):
+        return None
+    after = [x for x in elf.symbols if x.shndx == s.shndx + 1 and x.type == "OBJECT" and x.name]
+    if len(after) != 1 or after[0].name.startswith("@"):
+        return None
+    obj = after[0]
+    if _FN_STATIC.match(obj.name):
+        return fn_static_row(elf, obj, fsym, st, taddr, kind="@CHAIN@")
+    row = f"@CHAIN@{obj.name}"
+    return row if row in st.data_by_name else None
 
 
 def code_label(elf: E.Elf, sec_index: int, off: int, st: E.SymbolTable) -> tuple[str, int] | None:
@@ -559,6 +599,7 @@ def reloc_check(elf: E.Elf, fsym: E.ElfSymbol, relocs: list[E.Reloc], target: by
     partner = gnu_hi_partners(elf, fsym, cand) if gnu else {}
     gp0 = next((struct.unpack_from("<i", s.data, 20)[0] for s in elf.sections
                 if s.name == ".reginfo" and len(s.data) >= 24), 0) if gnu else 0
+    registers = any(r.type == "R_MIPS_26" and r.sym.name == "__register_global_object" for r in relocs)
 
     def code_symbol(sec_index: int, value: int) -> str | None:
         """A GNU object's local reference into its own code (`.text`+N): the function there."""
@@ -619,6 +660,10 @@ def reloc_check(elf: E.Elf, fsym: E.ElfSymbol, relocs: list[E.Reloc], target: by
         # an MW function-local static of a function emitted once (`s_grey$678`): by its function's
         # `@LOCAL@<fn>@s_grey` row, and its guard by `@GUARD@<fn>@s_grey` (fn_static_row)
         if (row := fn_static_row(elf, s, fsym, st, taddr)) is not None:
+            return row, st.data_by_name[row].addr, None, 0
+        # an MW destructor-chain record (`@N`, handed to __register_global_object): by the
+        # `@CHAIN@<fn>@<name>` / `@CHAIN@<object>` row of the object after it (chain_record_row)
+        if (row := chain_record_row(elf, s, fsym, st, taddr, registers)) is not None:
             return row, st.data_by_name[row].addr, None, 0
         ok = 0 < s.shndx < len(elf.sections)
         name = s.name or (elf.sections[s.shndx].name if ok else "?")
