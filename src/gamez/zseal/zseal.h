@@ -753,6 +753,8 @@ public:
      * 0x594350, 0x594480) */
     bool CanPerformAction(class CNodeAction *action);
     bool CanPlaceBomb(class CNodeAction *action);
+    /* the SEALs and the turret in reach found among the targets (SOCOM 1's; OVL2 0x5940D0) */
+    void TickVictims();
     /* the look and the scan (SOCOM 1's, OVL2 0x600D40-0x60187F: the kit lane's seal_look.cpp,
      * which reads the members through a view of its own). A setter answers whether the look was
      * taken -- a kind at least the current one's; SOCOM II's SetDefaultLookParams takes whether
@@ -822,7 +824,10 @@ public:
     zdb::CNode *m_bomb_defusal_node;   // 0x158
     zdb::CNode *m_mpbomb_node;   // 0x15c
     float m_mpbomb_timer;   // 0x160
-    unsigned char _164[0x16c - 0x164];
+    /* the SEALs TickVictims finds in reach (SOCOM 1's m_victimbody and m_corpsebody, 0x160/0x164
+     * there): the nearest living one under the reticule, the nearest body to carry */
+    CZSealBody *m_victimbody;   // 0x164
+    CZSealBody *m_corpsebody;   // 0x168
     /* the entity the SEAL may work (new in SOCOM II, SOCOM 1 has no member between m_corpsebody and
      * the bits: 0x5A88C0 asks its slot 0x5C for action 19; the name ours) */
     CEntity *m_16c;   // 0x16c
@@ -2259,7 +2264,10 @@ public:
      * same order: HandleStunDamage sets the byte, CreateRemoteSeal zeroes the time and sets the
      * modifier to 1 */
     unsigned char m_stunned;   // 0xfd0
-    unsigned char _fd1[0xfd4 - 0xfd1];
+    /* a body that cannot be carried (new in SOCOM II: TickVictims passes over a body with it set;
+     * the name ours) */
+    unsigned char m_fd1;   // 0xfd1
+    unsigned char _fd2[0xfd4 - 0xfd2];
     unsigned int m_full_update_time;   // 0xfd4
     float m_movespeedmod;   // 0xfd8
     unsigned char _fdc[0xfe0 - 0xfdc];

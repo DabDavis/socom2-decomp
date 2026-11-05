@@ -317,6 +317,74 @@ bool CSealCtrl::CanPerformAction(CNodeAction *action)
     return can;
 }
 
+/* a SEAL, or none (seal_ai.cpp's inlines alike) */
+static inline CZSealBody *AsSeal(CEntity *e)
+{
+    return e && e->m_type == CEntity::ENT_TYPE_SEAL ? (CZSealBody *)e : 0;
+}
+
+static inline bool AiDriven(CZSealBody *seal)
+{
+    return seal->m_control ? ((CSealCtrl *)seal->m_control)->IsAi() : false;
+}
+
+static inline bool AiAwakeNow(const CSealCtrlAi *ai)
+{
+    return !(ai->m_aibit9 || ai->m_aibit8);
+}
+
+/* online, a SEAL the game will not let another take (OVL1 0x2C2FD0; the HUD's commands and the
+ * exit state ask it too) */
+extern "C" bool func_002C2FD0(CZSealBody *seal);
+
+/* the SEALs and the turret in reach (SOCOM 1's TickVictims, by its order and body; OVL2 0x5940D0):
+ * among the targets within 30 the nearest living SEAL with the target's bit 9 set (the victim, while
+ * none is held), the nearest body that can be carried, and the first turret -- an AI asleep passed
+ * over, and online one the game keeps (SOCOM 1's took the first living SEAL and stopped, and the
+ * first body; its reach a guarded static of 400) */
+void CSealCtrl::TickVictims()
+{
+    static float range = 900.0f;
+    CZSealBody *seal = (CZSealBody *)m_entity;
+    CTargetList &targets = seal->m_targets;
+    float nearest = -1.0f;
+    float nearest_body = nearest;
+    CTargetList::iterator i = targets.begin(), end = targets.end();
+
+    m_victimbody = 0;
+    m_corpsebody = 0;
+    m_16c = 0;
+    for (; i != end; ++i) {
+        float d = i->m_distSq;
+
+        if (!(d <= range))
+            continue;
+        CEntity *e = i->m_ent;
+        CZSealBody *s = m_victimbody ? 0 : AsSeal(e);
+
+        if (s) {
+            if (AiDriven(s) && !AiAwakeNow(s->GetSealCtrlAi()))
+                continue;
+            if (theNetwork.m_9 && func_002C2FD0(s))
+                continue;
+            if (s->m_isAlive) {
+                if (i->m_flags & 0x200) {
+                    if (nearest == -1.0f || d < nearest) {
+                        m_victimbody = s;
+                        nearest = d;
+                    }
+                }
+            } else if (!m_corpsebody && s->m_deathType != 6 && !s->m_fd1) {
+                if (nearest_body == -1.0f || d < nearest_body) {
+                    m_corpsebody = s;
+                    nearest_body = d;
+                }
+            }
+        } else if (!m_16c && e && e->m_type == CEntity::ENT_TYPE_TURRET)
+            m_16c = e;
+    }
+}
+
 /* the view range's floor (OVL2 data 0x6506A0, read as a variable) */
 extern "C" float data_006506A0;
 
