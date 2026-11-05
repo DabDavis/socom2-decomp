@@ -2062,6 +2062,28 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from completing the MSL headers, round 26** (the tree's teardown and swap, the generic pod insert, the
+  missions' GetNext; probes build/p26/, scratch build/scratch/msl-r26/, untracked):
+  - THE OPTION MAP'S TEARDOWN 0x1EAD10 needs no header change: options.cpp (SOCOM II's unit between database.cpp and
+    st_core.cpp, 0x1EABD0-0x1EB03F) writes all nine rows byte-exact from include/tree as it stands -- the target's
+    ~pair calls ~basic_string with 0 after a second this-test (a key DERIVED from std::string, CSaferStr; a plain
+    string member gets -1 and one test, map<string, int>'s 0x2CE4F0), and the delete tests four destructor levels
+    above the root (a class between the option map and std::map); util_options.cpp's own map keeps a plain string
+    key (its find<basic_string>, insert_node_at's inlined construct): the two units see different declarations;
+  - THE TREE SWAP 0x305BE0 trades the anchor whole (`std::swap(tail_, x.tail_)`, MSL's node_alloc_ pair): swapped
+    through root()'s reference, its `this + 4` was a value MW kept and reused for the fix-up's &tail() (hoisted into
+    the root test's delay slot) -- byte-exact with c2dfont.cpp's map swap, +12 with options.cpp, nothing lost;
+  - THE GENERIC POD INSERT (OVL1 0x1FE340, OVL2 0x5192E0) is the char pod's statement for statement with word loops,
+    the capacity test through a const capacity() (a plain read merges with the growth's load into a saved
+    register) and the second run's walkers declared apart from the first's: 75 units now emit it, every copy
+    byte-exact (their other functions' bytes unchanged, only anonymous string objects renumbered);
+  - CMultiMissionList::GetNext 0x2C8DB0 on the pointer iterator as it stands: a `for (; i != end(); ++i)` loop
+    jumps to a bottom test and shares one narrowing of the bool with the next loop, a loop with an init keeps its
+    entry test at the top and the narrowing in its own preheader; a loop-scoped iterator for the second search;
+  - measured, not adopted: the pod destructor's word read through an address (`T *&d = data_`) +3 / -1 (~CRadio-
+    StripSpec, ~CAssetLib, ~CMenuStack against resize<CUIVariable>'s sp-relative read), through data() +1 / -34
+    (the level-5 cut); __convert_iterator's operators out of class make the rdr editor's do_assign 0x334440
+    code-exact but not its pieces (include/deque's note).
 - **Tells from the SEALs, round 40** (__sinit_seal_env.cpp, CanFire, GetLookQuat, the two-ray batch, the visible-bounds
   walk; 24 data rows named):
   - A STATIC'S `= cosf(K)` INITIALISERS, IN ORDER, EMIT `__sinit` BYTE-EXACT (0x668C10: the four facing cosines, `static
