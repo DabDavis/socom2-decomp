@@ -326,7 +326,7 @@ void func_005B0C10(CZSealBody *seal, zdb::IntersectStruct *hit);
 }
 
 /* whether the SEAL is in the air over a point: in the 0x3DEF08 anim, or with no air bit yet, at the
- * in-air height above the point it is airborne (bit 8 cleared, and under the anim bit 9 set and 10
+ * in-air height above the point it is airborne (the landed bit 8 cleared, and under the anim bit 9 set and 10
  * cleared); else, out of a flagged anim and played here, the ground probed when it is 5 above (3
  * prone); a SEAL with bit 9 and not 10 that sinks under the point while m_1360 has run out is set on
  * it -- bits 10 and 8 set, 9 cleared, the landing taken (OVL2 0x59AD30, new in SOCOM II: 0x5B0420
@@ -337,14 +337,14 @@ extern "C" bool func_0059AD30(CZSealBody *seal, const CPnt3D *pos)
 
     if (seal->IsCurrentBlend((AnimType)data_003DEF08) && !(seal->m_alt < pos->y + h)) {
         seal->SetAirborne(true);
-        seal->SetBit8(false);
+        seal->SetLanded(false);
         seal->SetBit9(true);
         seal->SetBit10(false);
     }
     if (!seal->m_airborne) {
         if (!(seal->m_alt < pos->y + h)) {
             seal->SetAirborne(true);
-            seal->SetBit8(false);
+            seal->SetLanded(false);
             if (!func_0057B510(seal) && !seal->IsRemote())
                 func_0054A8B0(seal);
         } else if (!func_0057B510(seal) && !seal->IsRemote()) {
@@ -363,7 +363,7 @@ extern "C" bool func_0059AD30(CZSealBody *seal, const CPnt3D *pos)
             seal->m_alt = y;
             seal->SetBit9(false);
             seal->SetBit10(true);
-            seal->SetBit8(true);
+            seal->SetLanded(true);
             func_005B0C10(seal, 0);
         }
     }

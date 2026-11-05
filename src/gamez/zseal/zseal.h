@@ -1818,7 +1818,7 @@ public:
     void SetInSmoke(bool on) { m_isinsmoke = on; }
     /* bits 9 and 10 of 0x1060 set (inlines: a constant true is `daddiu 1 << n`, a false `(0 & 1) <<
      * n`; the names ours) */
-    void SetBit8(bool on) { m_bit8 = on; }
+    void SetLanded(bool on) { m_landed = on; }
     void SetBit9(bool on) { m_bit9 = on; }
     void SetBit10(bool on) { m_bit10 = on; }
     /* the moving and turning flags set (inlines: InStateHang clears both with `(0 & 1) << n`) */
@@ -2408,7 +2408,7 @@ public:
      * lane's seal_ik.cpp: two single-bit fields written one at a time, lbu/sb -- the names ours) */
     unsigned int m_bit6 : 1;
     unsigned int m_bit7 : 1;
-    unsigned int m_bit8 : 1;   // bit 8: set with bit 10 when 0x59AD30 lands the SEAL (the name ours)
+    unsigned int m_landed : 1;   // bit 8: set with bit 10 when 0x59AD30 lands the SEAL, cleared in the air (the name ours)
     unsigned int m_bit9 : 1;   // bit 9: a remote SEAL with it set is skipped by 0x57DFE0 (the name ours)
     unsigned int m_bit10 : 1;   // bit 10: cleared with bit 9 set by 0x57DF20/0x57E050 (the name ours)
     unsigned int m_1060_bit11 : 1;
