@@ -7849,7 +7849,7 @@
 0x003B2FF0 0x700 func_003B2FF0  # OVL1
 0x003B36F0 0xB0 DereferenceDecals__Q23zdb7CVisualFUi  # OVL1; s1:align
 0x003B37A0 0x60 RemoveDecal__Q23zdb7CVisualFPQ23zdb6CDecal  # OVL1; by hand (the wep lane: SOCOM 1's CVisual::RemoveDecal, between DereferenceDecals and AttachDecal as in SOCOM 1 -- the decal unlinked from its view's list; CDecalPool::RecycleTick calls it)
-0x003B3800 0x14C AttachDecal__Q23zdb7CVisualFUifUiPPQ23zdb10AddonPointPQ23zdb10CTexHandle  # OVL1; s1:align
+0x003B3800 0x14C AttachDecal__Q23zdb7CVisualFUifUiPPQ23zdb10AddonPointPQ23zdb10CTexHandlei  # OVL1; s1:align; the wep lane, round 25: SOCOM II's takes a sixth word (t1, kept in s8 and handed to the decal set-up 0x3BECA0 as its t0) -- the source's mangled name
 0x003B3950 0x160 ApplyDecalRender__Q23zdb7CVisualFP7CMatrixPQ23zdb5CNodefP6CPnt3DP6CPnt3DPQ23zdb10CTexHandleP7CMatrix  # OVL1; s1:calls
 0x003B3AB0 0x714 func_003B3AB0  # OVL1
 0x003B41D0 0x3A4 func_003B41D0  # OVL1
