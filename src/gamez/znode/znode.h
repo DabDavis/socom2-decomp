@@ -2061,6 +2061,9 @@ public:
     int RegIgnoreNodeDelayed(DiIntersect *di, CNode *node);
     int ClearIgnoreNodeDelayed(DiIntersect *di);
     int RegProximityDelayed(DiIntersect *di, const CPnt3D *p, float radius, unsigned int mask);
+    /* the light reaching a point, as a luminance (node_world.cpp's, 0x31D940: new in SOCOM II,
+     * nothing calls it; the name ours) */
+    float GetLightIntensity(const CPnt3D *p, float radius, unsigned int flags);
     void AddTextureAssetDecals(CTexHandle *tex);
     void AddTextureAssetCharacterAll(CTexHandle *tex);
     void RemoveDecals();

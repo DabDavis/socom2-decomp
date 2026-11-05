@@ -80,7 +80,7 @@ extern "C" CNodeAction *func_00591380(CZSealBody *seal, CZSealBody *other, unsig
 
 extern "C" {
 /* whether the game is online (OVL2 0x5750A0, seal_ai.cpp's: theNetwork's second byte) */
-int func_005750A0(void);
+bool func_005750A0(void);
 /* a switch that lets any order through (OVL2 bss; the name ours) */
 extern bool data_0066B3B8;
 }
@@ -136,20 +136,182 @@ bool func_00562C80(CSealCtrlAi *ai, SEAL_STANCE stance);
  * 18) asked by another SEAL -- through the switch, or by the SEAL it looks at (an inline, the name ours:
  * 0x591DC0's shape, its AI asked and not used). The switch read into the caller's local through a
  * reference: as the inline's own local MW numbers it after the caller's and it takes s0 (the target's
- * s2, between the result and the SEAL) */
+ * s2, between the result and the SEAL). The result declared first and set late: numbered ahead of the
+ * escort bit it takes a0 and the bit v1 in AllowCommandFOLLOW, as the target has them (declared after
+ * them, the two swap; set where it is declared, 0x591520 is lost) */
 static inline bool Escorts(CZSealBody *seal, CZSealBody *other, bool &sw)
 {
     sw = data_0066B3B0;
     if (!seal || !seal->m_isAlive)
         return false;
+    bool r;
     unsigned int team = seal->m_team;
     bool escort = (team & 0x40000) != 0;
     bool same = other ? (other->m_team & team) != 0 : true;
-    bool r = false;
+
+    r = false;
 
     if (same && escort && other) {
         seal->GetSealCtrlAi();
         r = !sw || seal == other->GetReticuleSeal();
+    }
+    return r;
+}
+
+extern "C" {
+/* whether two SEALs' AIs share a group (OVL2 0x5EF340, the kit lane's range: both controllers' group
+ * words, none for either -- its draft matches) */
+bool func_005EF340(CZSealBody *a, CZSealBody *b);
+}
+
+/* a negation as a value (a marked device, the name ours): the target materialises `!x` (sltu, xori)
+ * before branching on it where a plain `!` in the condition branches on x -- the offline test of
+ * AllowCommandFOLLOW / HOLDPOS's Navy flag and the tests below (README: an inline bool returning a
+ * negation, used inside `&&`, is materialised) */
+static inline bool NotB(bool b) { return !b; }
+
+/* whether an escort's AI may take the following state: no state of kind 1 on the stack, not in state 9,
+ * and free to push it (an inline, the name ours: the target narrows its result into the caller's `r`
+ * at the join, `andi s1,s1,0xff`, as an inline's bool returned into a local does) */
+static inline bool TakesFollow(CSealCtrlAi *ai)
+{
+    bool r = false;
+    bool free = false;
+
+    if (NotB(ai->m_stateStack.m_10 & 2) && NotB(ai->AiStateIs((AI_STATE)9)))
+        free = true;
+    if (free && ai->CanPushAiState((AI_STATE)9, 0))
+        r = true;
+    return r;
+}
+
+/* whether an order to follow may go to the SEAL (SOCOM 1's AllowCommandFOLLOW; OVL2 0x591AB0, SOCOM
+ * II's by the SEAL's side): none from a player's controller or with no SEAL named; a hostage (team bit
+ * 17) as 0x591DC0 says, in squad 17 -- or offline in squad 3; an escort (bit 18) as Escorts says, in
+ * squad 18, its AI (when it has one) with no state of kind 1 on the stack, not in state 9 and free to
+ * take it; a Navy SEAL's side (bit 1) offline when its AI is not in state 9. The SEAL is DECLARED LAST
+ * and assigned first: MW numbers named locals in declaration order, and only numbered after `sw` does
+ * it take s0 with the result in s1 and the online flag in s2 (`igreplay --movers`: any place after
+ * `sw`); declared last and assigned after the call, its load leaves the call's delay slot (+8) */
+bool CSealCtrl::AllowCommandFOLLOW(CZSealBody *other)
+{
+    if (!other || IsPlayer())
+        return false;
+    bool online;
+    unsigned int team;
+    bool hostage;
+    bool escort;
+    bool navy;
+    bool r;
+    bool sw;
+    CZSealBody *seal;
+
+    seal = (CZSealBody *)m_entity;
+    online = func_005750A0();
+    team = seal->m_team;
+    hostage = (team & 0x20000) != 0;
+    escort = (team & 0x40000) != 0;
+    navy = false;
+
+    if ((team & 2) && NotB(online))
+        navy = true;
+    r = false;
+    if (hostage) {
+        r = func_00591DC0(seal, other);
+        if (r)
+            r = CSealUnit::IsMemberOfUnit(17, seal, true) || (!online && CSealUnit::IsMemberOfUnit(3, seal, true));
+    } else if (escort) {
+        r = Escorts(seal, other, sw) && CSealUnit::IsMemberOfUnit(18, seal, true);
+        if (r) {
+            CSealCtrlAi *ai = GetSealCtrlAi();
+
+            if (ai)
+                r = TakesFollow(ai);
+        }
+    } else if (navy) {
+        CSealCtrlAi *ai = GetSealCtrlAi();
+
+        if (ai)
+            r = !ai->AiStateIs((AI_STATE)9);
+    }
+    return r;
+}
+
+/* whether the AI's current state is of kind 2 with flag 0x20 / 0x80 (inlines, the names ours:
+ * seal_ai.cpp's 0x559000 shape) */
+static inline bool IsKind2Flag(CAiState *s, unsigned int flag)
+{
+    bool r = false;
+
+    AI_STATE st = s->m_state;
+
+    if (st == (AI_STATE)2 && (s->m_flags & flag))
+        r = true;
+    return r;
+}
+
+static inline bool InKind2Flag(const CAiStateStack &st, unsigned int flag)
+{
+    CAiState *s;
+
+    if (st.size() == 0)
+        s = 0;
+    else
+        s = st.GetState();
+    return s ? IsKind2Flag(s, flag) : false;
+}
+
+/* whether an order to hold position may go to the SEAL (SOCOM 1's AllowCommandHOLDPOS; OVL2 0x591770,
+ * SOCOM II's by the SEAL's side): none from a player's controller or with no SEAL named; a hostage
+ * (team bit 17) as 0x591DC0 says, out of squad 17 and online only in the asker's group; an escort (bit
+ * 18) as Escorts says, out of squad 18; a Navy SEAL's side (bit 1) offline when its AI is not following
+ * (state 2) or follows with flag 0x20, or else with flag 0x80. FOLLOW's numbering: the SEAL declared
+ * last (s0, sharing `this`'s register), and the AI a node of its own declared first (s2) -- asked
+ * through the control's virtual directly; through CZSealBody's inline GetSealCtrlAi the assigned-once
+ * local is the inline's result temporary, numbered last, and takes s0 (`igreplay --move 34=40.5
+ * --move 55=34.5`). The Navy block's result is a block local copied into `r`: the hostage's `r` then
+ * stays in v0, the block's in s1 (with `r` itself preset to true, one web over every arm, the hostage's
+ * takes a saved register) */
+bool CSealCtrl::AllowCommandHOLDPOS(CZSealBody *other)
+{
+    if (!other || IsPlayer())
+        return false;
+    CSealCtrlAi *ai;
+    bool online;
+    unsigned int team;
+    bool hostage;
+    bool escort;
+    bool navy;
+    bool r;
+    bool sw;
+    CZSealBody *seal;
+
+    seal = (CZSealBody *)m_entity;
+    ai = ((CSealCtrl *)seal->GetControl())->GetSealCtrlAi();
+    online = func_005750A0();
+    team = seal->m_team;
+    hostage = (team & 0x20000) != 0;
+    escort = (team & 0x40000) != 0;
+    navy = false;
+
+    if ((team & 2) && NotB(online))
+        navy = true;
+    r = false;
+    if (hostage) {
+        r = func_00591DC0(seal, other);
+        if (r)
+            r = !CSealUnit::IsMemberOfUnit(17, seal, true) && (!online || func_005EF340(seal, other));
+    } else if (escort)
+        r = Escorts(seal, other, sw) && !CSealUnit::IsMemberOfUnit(18, seal, true);
+    else if (navy && ai) {
+        bool res = true;
+        bool ok = true;
+
+        if (!NotB(ai->AiStateIs((AI_STATE)2)) && !InKind2Flag(ai->m_stateStack, 0x20))
+            ok = false;
+        if (!ok && !InKind2Flag(ai->m_stateStack, 0x80))
+            res = false;
+        r = res;
     }
     return r;
 }

@@ -258,19 +258,33 @@ Instance::Instance(const CPnt4D &pos, const CPnt4D &vel, const CPnt3D &unused, f
 /* Sony's libvu0 (MAIN) */
 extern "C" float sceVu0InnerProduct(float *v0, float *v1);
 extern "C" void sceVu0ScaleVector(float *v0, float *v1, float s);
-/* set while a full buffer has not been reported (1 at start; ours) */
-extern unsigned char data_003DFEC0;
 
 /* SOCOM 1's (its camera matrix dropped): a live particle buffered for drawing -- its distance from
  * the camera, its age as a fraction of its life, its size by the properties' scale, its source's
  * extents grown, faded out by distance, its box tested against the view unless its source says
  * otherwise, then an element filled: the colour by the opacity, by 128, the texture, the size.
+ * The full buffer's flag is SOCOM 1's function-local static OutputOnceOnly (its guard dropped by MW
+ * 3.0: 1 in data, the row @LOCAL@...@OutputOnceOnly; round 25 -- before, an extern inside the
+ * namespace left its two relocations unresolved).
  * OPEN, 7 instructions, registers only (the world lane round 22): the source pointer, its fov byte and
  * the constant 1 of the second fov test -- the target's a1 / a1 / a0, here a0 / a0 / a1.
  * `tools/igreplay.py` gives the target's three with the constant's code-generation temporary (v60)
  * renumbered after the fov byte's load (v62: `--move 60=62.5`); tried: the tests as a switch (0x374),
  * with `&&` (0x374), an else for `test = true` (0x374), `test` declared at the top (0x364), the
- * source or the byte in a local, `!(f != 1)`, `(int)f == 1` (7 each). Its four floats are numbered
+ * source or the byte in a local, `!(f != 1)`, `(int)f == 1` (7 each). Round 25 (v_rend*.py): the
+ * PCode shows v60 is `bool test = true`'s own constant (an addiu just ahead of test's store, which
+ * the compare then shares -- so it is numbered before the fov byte), so the target's test is not
+ * initialised that way ahead of the fov load; test as int / char (10), unsigned char, `= 1`, `1 ==`,
+ * a dead `test = false` first, `else if` (7 each); assigned inside the source's block with an else
+ * (0x36C), both arms assigned (0x374), `test = f != 1` (0x354). --drop finds no single interference
+ * (60-62 gives two of the three); --movers: v60 at 62.5-63.5, or v62 anywhere from 31.5 to 59.5 -- among the
+ * front-end temporaries too, where @1054 (v38) is the front end's CSE of m_source across the three
+ * statements (the fov byte's two loads are merged by the back end instead, v62). Probe: with the
+ * second test `== 3` the addiu ahead of test's store disappears (test's dead int intermediate, kept
+ * only because the compare reuses it). Tried in round 25 after the crash: SOCOM 1's member type
+ * tag_ZVIS_FOV (a one-byte enum under -enum min) as the member's type, or as a cast with enumerators,
+ * `m_source != 0`, a local Source pointer, test declared uninitialised at the top (7 each), a switch
+ * with case 2 first (0x374: a compare tree). Its four floats are numbered
  * age, scale, opacity, dist by dead definitions at the top (dist by its own first definition last:
  * f20). GetOpacity, GetScale, GetColor and GetTexture are zparticle_props.cpp's: called out of line,
  * as the target calls them (one unit with them inlined GetOpacity, round 22's pin) */
@@ -323,9 +337,11 @@ void Instance::Render()
         if (zdb::CWorld::m_world->m_camera->TestFOV(c, 0, true) == 2)
             return;
     }
+    static bool OutputOnceOnly = true;
+
     if (numParticles >= 5000) {
-        if (data_003DFEC0)
-            data_003DFEC0 = 0;
+        if (OutputOnceOnly)
+            OutputOnceOnly = false;
         return;
     }
     BufferElement *e = &buffer[numParticles++];
@@ -426,12 +442,13 @@ static inline void SetDiagonal(CMatrix &m, float x, float y, float z)
  * the axis and its opacity and matrix set, and the friction drawing the velocity toward the
  * world's wind (the operators zparticle.h's, as zmath.h's: CPnt3D over the C struct for its
  * ld/sd + lwc1/swc1 copy, the diagonal through an inline's by-value floats, loaded z, y, x).
- * OPEN, 4 instructions (the world lane round 24): the frame slots of the last line's three
- * results -- the target puts operator+'s at sp+80, operator*'s at sp+64 and operator-'s at sp+48
- * (the outer first, as the three return copies at 160 / 144 / 128 here and there), MW here the
- * inner first (operator-'s at 80). Tried: by-value operands (+0x10 / +0x18), out-of-class and
- * free operators, static and inline helper functions, Sub / Add / Scale as inline members under
- * the operators, named locals for each step (12-19), explicit operator calls (4 each) */
+ * The last line stores through CPnt4D's own (implicit) assignment, not PNT4D's (the world lane
+ * round 25: open since round 24 at 4 instructions): the assignment is an inline call at the
+ * expression's root, and with it the three operators' results are laid out as the target's --
+ * operator+'s at sp+80, operator*'s at 64, operator-'s at 48, the outer first as their return
+ * copies at 160 / 144 / 128; stored through PNT4D's the inner came first (operator-'s at 80). The
+ * operators' heights, their order in the class, by-value operands, helpers and named steps
+ * changed nothing or more (round 24's variants; round 25's v_dt*.py) */
 void Destruction_Instance::Tick(float dT)
 {
     m_age += dT;
@@ -466,7 +483,7 @@ void Destruction_Instance::Tick(float dT)
         wind.w = 0.0f;
         float f = FastExp(-m_props->m_friction * m_dT);
 
-        *(PNT4D *)m_vel = wind + (*(CPnt4D *)m_vel - wind) * f;
+        *(CPnt4D *)m_vel = wind + (*(CPnt4D *)m_vel - wind) * f;
     }
 }
 

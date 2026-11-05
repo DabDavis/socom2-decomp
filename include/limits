@@ -16,6 +16,15 @@ public:
     static float max() { return 3.40282347e+38f; }
 };
 
+/* the circular buffer's max static bounds its count by the difference type's largest (0x7FFFFFFF,
+ * built on the stack before the allocator's call in 0x285BB0: an inline call's result, where a
+ * literal bound to min()'s reference is a static constant) */
+template <>
+class numeric_limits<int> {
+public:
+    static int max() { return 0x7FFFFFFF; }
+};
+
 }
 
 #endif

@@ -2065,6 +2065,78 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from completing the MSL headers, round 32** (the cdeque begin() colouring closed, 0x285BB0 named and emitted, SOCOM
+  1's vector storage measured again; probes build/p32/, untracked -- bg/ (cse1-3.cpp, v*.py), rec/, vec/mkpair.py,
+  findcopies.py):
+  - MW'S FRONT-END CSE MAKES A TEMPORARY OF A SCALED INDEX ONLY WHEN THE INDEX IS A VARIABLE WHEN CSE RUNS: `p = d + s;
+    ... f = q + s;` off a named local (or a by-value inline parameter bound to one) gives `@N = s << 2`, numbered in CSE's
+    walk order between the operands' own temporaries; off a member load the LOAD is CSE'd in the same pass and the shift
+    left to the code generator, numbered after every front-end temporary (build/p32/bg/cse1-3.cpp: g3/g6/h2 against
+    g1/g7/h1; tools in build/p32/tmpdump.py with round 11's pass signatures). An index taken by const reference, or an
+    inline's own local handed to a by-reference parameter, stays the load's (h1, mk1l);
+  - SO cdeque<T *>::begin() (the lobby's 0x2E0CB0, the state machine's 0x3A6350, the rdr editor's 0x334030 -- open since
+    the online lane's round 13 at 14 off) builds its iterator through make_begin(): the start read into a named local and
+    handed BY VALUE to a first-slot constructor of the iterator's own (p_ and first_ both off it), the shift then numbered
+    between the data pointer's temporary and the three field addresses' -- the window `igreplay --want` found (34.5 /
+    35.5). end() keeps its constructor (by value there it is lost); the member passed straight scalarises t (0x30);
+  - THE GROWTH RECOMMENDATION 0x285BB0 is cdeque<const void *>::__recommend (ours: SOCOM 1's older cdeque grows inline,
+    no such member -- libc++'s name, Hinnant's): `n > max` is "cdeque max_size error", the usable capacity doubled under
+    max/2, the loop tested `n > c` (`c < n` keeps the bottom test's result in a register, 4 off); its max static is an
+    in-class __max_size()'s (inlined whatever the generation order, while max_size() stays out of line for reserve, init
+    and the converting do_assigns), min() over the allocator's max_size and numeric_limits<int>::max() -- an inline's
+    result is built on the stack before the alloc() call as the target's, a literal bound to min()'s reference is a
+    static constant (12 off). The chat unit emits it byte-exact; the forward do_assign calls it as a member;
+  - SOCOM 1's COMPRESSED-PAIR POD (the engine core's round-19 witness): with the 4-byte pod's capacity as the pair, its
+    member swap trading the fields itself and its destructor `if (data()) alloc().deallocate(data(), cap())` (the calls
+    in that order), CKey::DeleteChildren 0x25B580 is code-exact -- and the shape costs 253 functions at level 5 (+19):
+    measured, not adopted (include/vector, README "Level 6, or 8?" with ~CUIListBox 0x375710, the HUD's round 56).
+- **Tells from the SEALs, round 50** (AllowCommandHOLDPOS / AllowCommandFOLLOW -- seal_command.cpp whole --, PlayAiSound and
+  0x549C30, all unwritten before; MoveControl and CanPerformAction, open since rounds 49 and 13 -- resumed after the
+  2026-11-05 crash):
+  - MW numbers named locals in DECLARATION order, not by first assignment: a pointer declared last but assigned before a
+    call keeps its load in the call's delay slot and takes the last number (AllowCommandFOLLOW 0x591AB0, HOLDPOS 0x591770,
+    PlayAiSound 0x55FF60); a local assigned once from an inline's result is replaced by the inline's result temporary,
+    numbered last -- read through the virtual call directly it becomes a register of its own (HOLDPOS's `ai`);
+  - an inline's bool result assigned to a caller's local narrows in place at the join (`andi s1,s1,0xff`, FOLLOW's
+    TakesFollow); with a single `return r` all arms share one `r` -- if one arm's value lives across calls the other arms'
+    `r` is pulled into a saved register too, a block-local result copied into `r` keeps them in v0;
+  - a cast argument `(E)i` bound to an inline's enum-typed parameter is re-evaluated at each use (narrowed again at each
+    call); a true enum-typed parameter is passed on raw -- PlayAiSound's event is very probably CAiEvent::EVENT (a marked
+    device, VoiceEvent, until its callers in the kit's and the engine core's files change: queued);
+  - `_close_enough(x, 1.0f, 0.0001f)`'s two literals are 8-byte .data objects (seal.cpp's 0x64FD00 and 0x64FD08).
+- **Tells from the zdb world, textures, rdr and sound, round 25** (CIOPManager::RebootIOP with delflag and its remove_if /
+  remove_copy_if instances; Destruction_Instance::Tick -- resumed after the 2026-11-05 crash):
+  - an inline's path buffers are laid out by inline depth, then code order: moving RebootIOP 0x34F9B0's module loop one
+    inline level shallower gave the target's ten-buffer order; MW unrolls a one-trip constant loop away but keeps its
+    pointer in a register -- a constant address passed straight to an inline is folded into absolute addressing, 0x18
+    bytes longer (DS2U_S1 loaded through a count-1 call of the module loop);
+  - an int returned and compared `== 0` gives xor/sltiu, a bool negated with `!` gives sltu/xori with its 1 loaded by
+    daddiu; READ THE CALL'S DELAY SLOT BEFORE CALLING AN ARGUMENT INT-LIKE: an xor with sltu in the slot is a bool `a !=
+    b` (zdb::CRenderMap::Update 0x31A180's added bool, missed in round 24);
+  - `bool b = true` leaves a dead int 1 that a later `== 1` compare reuses, numbered before later loads
+    (Particle::Instance::Render, 7, OPEN: `igreplay --movers` gives the target's registers if the flag byte's load is
+    numbered before that constant);
+  - an iterator ASSIGNED (not initialised) from begin() keeps its stack slot -- the MSL's round-15 rule and the AI core's
+    round 32 again -- it gave CWorld::GetLightIntensity 0x31D940 the target's frame (OPEN: MW guards the light loop where
+    the target enters at its bottom test).
+- **Tells from the game states, round 45** (nine unwritten functions byte-exact, 17,252 bytes -- RemoteGameUpdateCallback
+  and fts_net_game.cpp whole, CMission's Serialize / UnSerialize / Read, CZNetGame::Initialize, the network's object and
+  message registration 0x2B8660; resumed after the 2026-11-05 crash):
+  - MW evaluates an inline's arguments right to left: `SetValveValue(CValve::Create(..), v)` loads an address-taken `v`
+    before the call, a named valve local makes it load after (CMission::UnSerialize 0x2A54E0); an inline taking a variable
+    by value loads it before its body and an address-taken variable is reloaded for a test inside -- written in place MW
+    loads it once (CMission::Read 0x2AAB20);
+  - a string literal written twice is pooled into one (CMission::Serialize 0x2A6340's tags and valve names share
+    addresses); a chained assignment `x = y = z = k` stores z, then y, then x;
+  - a caller that does not narrow a result (no `andi 0xffff`) means the callee returns a full word (func_002C0090); an int
+    local holding a byte a call returned stores it to a wider field without narrowing again, an `unsigned char` local
+    narrows again at the store;
+  - an `unsigned int x : 16` bitfield promotes to int -- `(x + 1) / 2` divides signed and converts to float signed; the
+    target's srl and unsigned conversion come through an `unsigned int GetValue()` accessor;
+  - MW LAYS OUT STRUCT LOCALS IN THREE GROUPS, each in declaration order: 4 bytes or less on top, up to 16 bytes on 8-byte
+    slots, larger on 16-byte slots -- a struct's padding decides its group (the registration 0x2B8660, 0xAE4);
+  - a non-player SEAL falls through to the turret test: `if (seal && IsPlayerSeal(seal)) ... else if (turret)`
+    (CZGameState::RemoteGameUpdateCallback 0x2C0850, byte-exact on the first build).
 - **Tells from the AI core, round 32** (plan_addleg and ReRoute byte-exact; RegisterPathPlan written; GetLocation(point)
   and GetCellRepelParams closer -- resumed after the 2026-11-05 crash for its wind-down):
   - two 4-byte class locals take the frame's top slots wherever they are declared; wrapped in ONE 8-byte struct they
@@ -12761,7 +12833,12 @@ What is open across lanes, and what comes next:
   0x5EF8D0 (0x70 of 0x78) and its do_assign 0x5EF470 (0x1D8 of 0x198) inline the pointer list's
   end() where the target calls it out of line before each insert (OVL2's copy 0x50FED0, OVL1's
   0x2A00A0; OVL1's init 0x317720 calls it the same way) -- an end() a level taller in the original
-  than include/list's, which level 5 inlines whole.
+  than include/list's, which level 5 inlines whole. Two more (the MSL headers' round 32): ~CUIListBox
+  0x375710 (the HUD's round 56) -- four this-tests on a vector freed inside a deleted object's written
+  destructor need level 6 when the vector is a derived class; and CKey::DeleteChildren 0x25B580 (the
+  engine core's round 19), whose deepest FreeVector calls SOCOM 1's compressed-pair pieces (0x25B920-
+  0x25B9C0) -- code-exact with the 4-byte pod's capacity as that pair (include/vector's "MEASURED AGAIN"
+  note), which costs 253 functions at level 5 (+19).
   THE IMAGE'S OWN POINTER-VECTOR end() (the MSL headers round 24) makes 19 natural walks need level 6: their
   eight units carry `#pragma inline_depth(6)`, their objects byte-identical to the level-5 fit's.
   MEASURED OVER THE WHOLE TREE (2026-11-03, master 914fce13, `SC_FLAGS` with level=N, everything
@@ -12800,7 +12877,9 @@ What is open across lanes, and what comes next:
   matches since the MSL headers' round 27, its destructor's data_ read through data()); the pointer
   deques' converter is in since the MSL headers' round 29 (std::__convert_iterator over deque<T *>'s own
   __const_iterator: the rdr editor's do_assign and its three pieces), and the list's own insert(position,
-  x) is measured, not applied (round 29: +0 / -1, LoadVehicles).
+  x) is measured, not applied (round 29: +0 / -1, LoadVehicles); the circular buffer's begin() and its
+  growth recommendation are in since round 32 (the deques' make_iterators, which inline `begin() + n`,
+  stay open at their old sizes).
 - **zMath** (0x306670-0x30954C, 47 of 54): CMatrix::SetRotate, CQuat::Align, CBits::Resize,
   CPnt3D::Reflect, CBBox::GetIntersect and the two DistToVectors. **zcamera**: CCamera::Update
   (13 instructions, the near plane's VU0 temporaries' stack offsets). **ZAnim**: the big handlers
