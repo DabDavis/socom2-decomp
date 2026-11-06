@@ -865,6 +865,7 @@
 0x003F9B28 0x8 __RTTI__11CDlgObjSpec  # RTTI of CDlgObjSpec: found by its RTTI's name
 0x003F9B50 0x8 __RTTI__9CTextSpec  # RTTI of CTextSpec: found by its RTTI's name
 0x003F9B78 0x8 __RTTI__10CClockSpec  # RTTI of CClockSpec: found by its RTTI's name
+0x003F9EF8 0xB s_onActivate  # OVL1 data; zui_spec.cpp's static (name ours, the UI lane round 39): "ONACTIVATE" in the unit's strings, passed to the event chain in CUIListBoxSpec's constructor 0x37EAB0 (63 references, by its code)
 0x003FA1E8 0x8 __RTTI__12CCounterSpec  # RTTI of CCounterSpec: found by its RTTI's name
 0x003FA530 0x8 __RTTI__7CSTable  # RTTI of CSTable: found by its RTTI's name
 0x003FA558 0x8 __RTTI__12CUIVarSTable  # RTTI of CUIVarSTable: found by its RTTI's name
@@ -902,6 +903,8 @@
 0x003FB170 0x84 s_jamoNames  # OVL1 data; zui_hangul.cpp's static (name ours): the 33 jamo's names, alphabetical (A_Hang .. Yu); 2 references in 2 functions (FindJamo, 0x390C40)
 0x003FB388 0xC s_padKeys  # OVL1 data; zui_skbview.cpp's static (name ours): the four cursor events by stick direction or pad button, {dir, button, event} -- 2 references in 1 function (SkbPadKeyEvent 0x394F60) -- the UI lane round 19
 0x003FB840 0xE s_shiftJamo  # OVL1 data; zui_skbkeys.cpp's static (name ours): seven {jamo, doubled jamo} byte pairs a shifted key composes (0x19->0x17, 0x01->0x1C ...); 2 references in 1 function (SkbTypeJamo 0x399070)
+0x003FB860 0x170 s_kanaForms  # OVL1 data; zui_skbkeys.cpp's static (name ours, the UI lane round 39): 92 {full-sized flag, half-width katakana} records by a kana's place in its block; 0x39A8D0's only (three references, by its code)
+0x003FB9D0 0x20 s_kanaPunct  # OVL1 data; zui_skbkeys.cpp's static (name ours, the UI lane round 39): 8 {kana-block punctuation, its half-width form} pairs; 0x39A8D0's only (two references, by its code)
 0x003FB9F0 0x30 s_shiftPunctChars  # OVL1 data; zui_skbkeys.cpp's static (name ours): the shifted punctuation's characters for HID usages 49-56 (| } : " ~ < > ?), ints; 1 reference in 1 function (SkbUsbPunct)
 0x003FBA20 0x30 s_punctChars  # OVL1 data; zui_skbkeys.cpp's static (name ours): the punctuation's characters for HID usages 49-56 (backslash ] ; ' ` , . /), ints; 1 reference in 1 function (SkbUsbPunct)
 0x003FBA50 0x30 s_digitChars  # OVL1 data; zui_skbkeys.cpp's static (name ours): the digit row's characters for HID usages 30-39 (1 .. 0), ints; 1 reference in 1 function (SkbUsbDigit)

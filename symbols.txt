@@ -7326,11 +7326,11 @@
 0x003900C0 0x2D0 do_assign<PC7CSkbKey>__Q23std52__vector_imp<7CSkbKey,Q23std19allocator<7CSkbKey>,0>FPC7CSkbKeyPC7CSkbKeyQ23std20forward_iterator_tag_v  # OVL1; by hand (the UI lane, round 12: vector<CSkbKey>'s range assign, MSL's do_assign, zui_skb.cpp's tail byte-exact)
 0x00390390 0x8 @128@__dt__12CBmpWithNodeFv  # OVL1; s1:order (SOCOM 1's zui_skb.cpp ends on the same thunk: j ~CBmpWithNode, this - 128, the UIVarMixin's) -- zui_skb.cpp's last function; the UI lane round 9: out of zui_skb.cpp's unnamed namespace with the keyboard's classes, now zui_skb.h's (SOCOM II's RTTI string is plain "CBmpWithNode" where SOCOM 1's is "@unnamed@zui_skb_cpp@::CBmpWithNode"; the display unit takes zui_skb.cpp's CBmpWithNode copies, 0x398AA0/0x398A40/0x403800; ~CSkbKeyProps 0x394370 is the Korean unit's, called from here): byte-identical code under the new name
 0x003903A0 0x2E4 Next__9CSkbSplitFv  # OVL1; the UI lane round 25: ours, by its body (zui_hangul.cpp: CSkbSplit's recursive stepper to the next split of the same total -- the rest's split stepped by a local CSkbSplit at sp+80 calling this row, copied back, or the first part grown with the others reset to one and the rest last through the reverse iterator; the parts cleared after the last; written, OPEN: one this-test short, the level)
-0x00390690 0x88 func_00390690  # OVL1
+0x00390690 0x88 __dt__9CSkbSplitFv  # OVL1; the UI lane round 39: ours (zui_hangul.cpp: ~CSkbSplit, four this-tests on the parts under its own: the composer's cuts call it)
 0x00390720 0xC AddPiece__10CSkbPiecesFv  # OVL1; the UI lane round 10: ours (zui_hangul.cpp: resize(size() + 1) through 0x392670)
-0x00390730 0x8 func_00390730  # OVL1
-0x00390740 0x20 func_00390740  # OVL1
-0x00390760 0x88 func_00390760  # OVL1
+0x00390730 0x8 RemovePiece__10CSkbPiecesFv  # OVL1; the UI lane round 39: ours (zui_hangul.cpp: j PopPiece; the composer and the matcher call it)
+0x00390740 0x20 PopPiece__10CSkbPiecesFv  # OVL1; the UI lane round 39: ours (zui_hangul.cpp: the last piece destroyed, size - 1 and ~SKBPIECE 0x390760 with flag -1)
+0x00390760 0x88 __dt__8SKBPIECEFv  # OVL1; the UI lane round 39: ours (zui_hangul.cpp: a piece's destructor, its jamo string's chain inlined: six this-tests)
 0x003907F0 0x2C PrevCode__10CSkbPiecesFv  # OVL1; the UI lane round 10: ours (zui_hangul.cpp: the code of the piece before the last, 0 for fewer than two)
 0x00390820 0x38 LastCode__10CSkbPiecesFv  # OVL1; the UI lane round 10: ours (zui_hangul.cpp: the last piece's code)
 0x00390860 0x40 LastJamo__10CSkbPiecesFi  # OVL1; the UI lane round 10: ours (zui_hangul.cpp: the last piece's jamo i, read through the end iterator copied by value)
@@ -7352,27 +7352,27 @@
 0x00391450 0x48 KeyToJamo__Fc  # OVL1; ours (zui_hangul.cpp: a letter key's jamo, a-z through the table at 0x3FB000, else the shifted table at 0x3FB020 indexed from 'A'; 0x39ADA0 calls it)
 0x003914A0 0x1C4 SkbHangulRestart__FP10CSkbPieces  # OVL1; the UI lane round 10: ours, by its body (zui_hangul.cpp: the composition's single jamo string -- s_compose resized to one, the string emptied through resize(0, 0) -- refilled with the last piece's jamo through LastJamo 0x390860; 0x390A30 calls it)
 0x00391670 0x358 SkbHangulCompose__FP10CSkbPiecesPQ23std30vector<c,Q23std12allocator<c>>  # OVL1; the UI lane, round 13: ours, by its callers (zui_hangul.cpp: the jamo composed into pieces by the rules -- SkbHangulType 0x390A30 and SkbHangulBack 0x3910E0 call it with the pieces and a vector<char> of jamo and test its bool; it calls the rule matcher 0x3919D0); not written yet
-0x003919D0 0x360 func_003919D0  # OVL1
+0x003919D0 0x360 SkbMatchComplete__FP10CSkbPiecesPQ23std30vector<c,Q23std12allocator<c>>ii  # OVL1; the UI lane round 39: ours, by its body (zui_hangul.cpp: jamo [start,end) composed into pieces by one complete character's rules, walking every split; the composer's second half calls it twice; a dead CSkbSplit::Sum inlined in it leaves MW's empty-loop guards)
 0x00391D30 0xC __ml__Q23std75reverse_iterator<Q33std40__vector_imp<Ui,Q23std13allocator<Ui>,1>8iterator>CFv  # OVL1; by hand, the MSL headers round 23: vector<unsigned int>'s reverse iterator *, the base copied and stepped back (include/iterator over include/vector's scalar rbegin(): its out-of-line copy is these three words) -- the soft keyboard's matcher 0x3919D0 calls it beside the scalar end() 0x391D40 (whose 0x38 bytes keep __iter's two temporaries and an FPR copy, where the isolated copy is 0x18: not named)
-0x00391D40 0x38 func_00391D40  # OVL1
-0x00391D80 0x10 func_00391D80  # OVL1
-0x00391D90 0xC func_00391D90  # OVL1
-0x00391DA0 0x14 func_00391DA0  # OVL1
-0x00391DC0 0xC func_00391DC0  # OVL1
-0x00391DD0 0x8 func_00391DD0  # OVL1
-0x00391DE0 0x8 func_00391DE0  # OVL1
-0x00391DF0 0xC func_00391DF0  # OVL1
-0x00391E00 0x14 func_00391E00  # OVL1
+0x00391D40 0x38 rbegin__Q23std40__vector_imp<Ui,Q23std13allocator<Ui>,1>Fv  # OVL1; the UI lane round 39: vector<unsigned int>::rbegin() out of line, the matcher's one-level cut of CSkbSplit(n, k) calls it (hidden return slot, the end built and copied through an FPR)
+0x00391D80 0x10 __vc__11CSkbVec<Ui>FUi  # OVL1; the UI lane round 39: ours (zui_hangul.h: the split's parts' operator[], called out of line by the matcher's one-level cut of CSkbSplit(n, k))
+0x00391D90 0xC resize__11CSkbVec<Ui>FUi  # OVL1; the UI lane round 39: ours (zui_hangul.h: the split's parts' resize(n), a tail call to the pod's resize(n, 0): the matcher's one-level cut of CSkbSplit(n, k))
+0x00391DA0 0x14 __ct__11CSkbVec<Ui>Fv  # OVL1; the UI lane round 39: ours (zui_hangul.h: the split's parts' constructor, the matcher's one-level cut of CSkbSplit(n, k))
+0x00391DC0 0xC __ct__10CInit<i,0>Fi  # OVL1; the UI lane round 39: CInit<int, 0>(int), the split's total, the matcher's one-level cut of CSkbSplit(n, k)
+0x00391DD0 0x8 size__Q23std38__vector_imp<c,Q23std12allocator<c>,1>CFv  # OVL1; the UI lane round 39: vector<char>::size(), the composer's second half's one-level cut calls it
+0x00391DE0 0x8 size__Q23std62__vector_imp<11SKBCOMPLETE,Q23std24allocator<11SKBCOMPLETE>,0>CFv  # OVL1; the UI lane round 39: the completions' size(), the composer's one-level cut of its first half calls it
+0x00391DF0 0xC Left__9CSkbSplitFv  # OVL1; the UI lane round 39: ours (zui_hangul.cpp: the split's parts not empty; both one-level cuts in the composer call it)
+0x00391E00 0x14 Val2__15CSkbCompleteVecFi  # OVL1; the UI lane round 39: ours (zui_hangul.cpp: completion i's Val2 flag at 0xC of the 16-byte element; the composer's one-level cut calls it)
 0x00391E20 0x10 SkbSeqJamo__FP6SKBSEQi  # OVL1; the UI lane round 23: ours, by its body and its caller (zui_hangul.cpp: a SKBSEQ's jamo byte i, sign-extended -- the composer 0x391670 calls it with the sequence from SKBRULE::Seq and compares it with the jamo string's byte; byte-exact)
-0x00391E30 0xC func_00391E30  # OVL1
-0x00391E40 0x8 func_00391E40  # OVL1
+0x00391E30 0xC __vc__Q23std38__vector_imp<c,Q23std12allocator<c>,1>FUi  # OVL1; the UI lane round 39: vector<char>::operator[], the composer's one-level cut calls it
+0x00391E40 0x8 Size__6SKBSEQFv  # OVL1; the UI lane round 39: ours (zui_hangul.cpp: a sequence's jamo count, a word at 4; the composer's one-level cut calls it; apart from 0x391DD0, its code the same)
 0x00391E50 0x14 Part__9CSkbSplitFi  # OVL1; tu: zui_cleanup.cpp~ (1.0 beta); the UI lane round 23: ours, by its body and its caller (zui_hangul.cpp: the composer's split, a total and a vector of parts at 4 -- its part i; the composer 0x391670 calls it with the split built by 0x391F80 at sp+256; byte-exact)
 0x00391E70 0xD0 Sum__9CSkbSplitFi  # OVL1; the UI lane round 24: ours, by its body (zui_hangul.cpp, OPEN 12: the sum of a CSkbSplit's first n parts, unrolled by 8, through the parts vector at this+4; the composer calls it out of line)
-0x00391F40 0x8 func_00391F40  # OVL1
-0x00391F50 0x10 func_00391F50  # OVL1
-0x00391F60 0x20 func_00391F60  # OVL1
+0x00391F40 0x8 SeqCount__7SKBRULEFv  # OVL1; the UI lane round 39: ours (zui_hangul.cpp: a production's sequence count, the word at 0x10; the composer's one-level cut calls it)
+0x00391F50 0x10 __vc__Q23std54__vector_imp<P7SKBRULE,Q23std20allocator<P7SKBRULE>,1>FUi  # OVL1; the UI lane round 39: vector<SKBRULE *>::operator[], the composer's one-level cut calls it with s_rules
+0x00391F60 0x20 Rule__15CSkbCompleteVecFii  # OVL1; the UI lane round 39: ours (zui_hangul.cpp: completion i's rule index r; the composer's one-level cut calls it)
 0x00391F80 0x190 __ct__9CSkbSplitFii  # OVL1; the UI lane round 23: ours, by its body and its callers (zui_hangul.cpp: the composer's split of n jamo into k parts -- k-1 parts of 1 and the rest last, through OVL1's pod resize 0x28B0E0 and a reverse iterator; the composer 0x391670 builds one at sp+256 and at sp+240; byte-exact)
-0x00392110 0x14 func_00392110  # OVL1
+0x00392110 0x14 RuleCount__15CSkbCompleteVecFi  # OVL1; the UI lane round 39: ours (zui_hangul.cpp: completion i's rule count; the composer's one-level cut calls it)
 0x00392130 0x2A4 SkbParseComplete__FP15CSkbCompleteVecP5_zrdrPCc  # OVL1; the UI lane round 10: ours, by its body (zui_hangul.cpp: CompleteCharacter's entries -- each Seq's production names by their index in s_rules, pushed onto the entry's index vector, and a Val2 flag -- the vector grown to each index through 0x392770; 0x390C40 calls it with s_complete); the UI lane round 10: ours, by its body (zui_hangul.cpp: CompleteCharacter's entries, each Seq's production names by index in s_rules pushed onto the entry's index vector, a Val2 flag; the vector grown through 0x392770; 0x390C40 calls it with s_complete)
 0x003923E0 0x220 insert__Q23std36__vector_pod<c,Q23std12allocator<c>>FPcUiRCc  # OVL1; the MSL headers round 9: include/vector's 1-byte pod insert (memmove, memset, memcpy), byte-exact as a probe (build/p9/vc1.cpp); zui_hangul.cpp's template tail, the composition's push_backs call it
 0x00392600 0x64 resize__Q23std36__vector_pod<c,Q23std12allocator<c>>FUiRCc  # OVL1; the MSL headers round 9: include/vector's 1-byte pod resize(n, c), insert or erase, byte-exact as a probe (build/p9/vc1.cpp); zui_hangul.cpp's tail
@@ -7493,7 +7493,7 @@
 0x0039A400 0x1B0 SkbCursorToEnd__FP13CSoftKeyboard  # OVL1; the UI lane round 21: ours, by its body (zui_skbkeys.cpp: s_textCount1 set from string 2 holding characters, the cursor's string's characters counted into s_textCount0, the cursor placed after them as SkbCursorBack 0x399530 places it; SkbCloseText0 and SkbSwitchText call it)
 0x0039A5B0 0x1DC SkbSetText__FPCcP13CSoftKeyboard  # OVL1; the UI lane round 21: ours, by its body (zui_skbkeys.cpp: the text wrapped by SkbWrapText 0x39AE50 to the look's width at the edited string's scale times its font's, refused past one line while string 0 is edited or two when the look has a line height; line 0 set into the edited string, line 1 into string 2; SkbClearText calls it with "")
 0x0039A790 0x138 SkbEditCharLen__Fi  # OVL1; ours (the UI lane round 17: the byte length (UTF8CharLen) of the character at a byte offset of the edited text -- string 0's while it is edited (0x4A1330), else string 1's with string 2's appended when it has any; 0x398C40 calls it; zui_skbkeys.cpp)
-0x0039A8D0 0x424 func_0039A8D0  # OVL1
+0x0039A8D0 0x424 SkbCaseLetter__FUsbb  # OVL1; the UI lane round 39: ours, by its body (zui_skbkeys.cpp: a letter cased: upper, a capital (the capital test on c - 32), s/y-diaeresis, a small kana's full partner; wide, ASCII to full-width; else a kana or its punctuation to half-width, a full-width form to ASCII)
 0x0039AD00 0xC func_0039AD00  # OVL1
 0x0039AD10 0x8 func_0039AD10  # OVL1
 0x0039AD20 0x30 SkbUsbDigit__FPC9SKBUSBKEYi  # OVL1; ours (zui_skbkeys.cpp: the USB keyboard's digit row, HID usages 30-39 through the tables at 0x3FBA50 and, shifted, 0x3FBA80, typed through 0x399040; 0x38C630 calls it)
@@ -9055,8 +9055,8 @@
 0x004FD4E8 0xDC ResizeQueues  # OVL2 unaligned; s1:align
 0x004FD5C8 0x22C func_004FD5C8  # OVL2 unaligned
 0x004FD7F8 0x60C LoadLanguage  # OVL2 unaligned; s1:align
-0x004FDE08 0x8C0 func_004FDE08  # OVL2 unaligned
-0x004FE6C8 0xA90 func_004FE6C8  # OVL2 unaligned
+0x004FDE08 0x8C0 DistCalc  # OVL2 unaligned; s1:order+body -- the gcc lane, round 40c: SOCOM 1's distsil object has ResizeQueues, LoadLanguage, DistCalc, DistCalc4Bit, FreeLanguage; this is its third row, set as the block's +104 pass
+0x004FE6C8 0xA90 DistCalc4Bit  # OVL2 unaligned; s1:order+body -- the gcc lane, round 40c: the fourth row of SOCOM 1's distsil object, its table entries nibbles as SOCOM 1's CalculateDistance4Bit (the 8-bit pass's twin)
 0x004FF158 0x228 FreeLanguage  # OVL2 unaligned; s1:order -- the gcc lane, round 21c: SOCOM 1's distance object (0x369590) holds its LOCAL FreeLanguage (0x248) after DistCalc4Bit, at this row's place after the two distance passes; the same body (both codebook lists' tables, the ten byte tables, the caches at +176/+180, the cached distances at +108)
 0x004FF380 0x224 FreeDistCalc  # OVL2; s1:order, s1:calls -- the gcc lane, round 21c: SOCOM 1's distance object holds its LOCAL FreeDistCalc (0x25C) after FreeLanguage, as this row follows it; ControlDistSilProcess calls it where SOCOM 1's calls FreeDistCalc; the same body (the +312/+292 tables, both codebook lists, the ten tables, the caches, tosBaseBlockDestruct)
 0x004FF5A8 0x518 InitDistSilProcess  # OVL2 unaligned; s1:align

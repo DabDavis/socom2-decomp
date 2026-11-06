@@ -22,9 +22,13 @@
  * copy constructor 0x3854C0 is byte-exact since the MSL headers' round 18 (include/string's copy
  * constructor reads the long size through a reference accessor: the second string's address of it
  * kept in s3 across reserve).
- * OPEN, not written yet: the button family's constructors (CButtonSpec's 0x380620, 0xC8C bytes,
- * CRadioStripSpec's 0x37DA50, CUIListBoxSpec's 0x37EAB0), the list box's CreateDisplayObj 0x37E8B0
- * (CUIListBox's constructor, zui_2d.cpp's class), and the rest of the template tail
+ * Round 39: the two big constructors written, byte-exact: CButtonSpec's 0x380620 (0xC8C) and CUIListBoxSpec's
+ * 0x37EAB0 (0x17D0; its local ColumnData and ListItem classes). RANGE's clear is the compiler's, not a loop of
+ * anyone's: `float range[2] = {0.0f};` gives `addiu; beqz; li 8` and a byte loop with two nops and no aligned
+ * head, where every written loop form comes out 8 bytes long. The focus action's "ONACTIVATE" is an array apart
+ * (s_onActivate: passed to the inlined event chain, it would merge with the chain's own literal and leave
+ * `move a1,a0` at that compare; `#pragma dont_reuse_strings` does not part them. A modelling device: ours).
+ * OPEN, not written yet: the rest of the template tail
  * 0x3836E0-0x3855FF; the ActionItem and CDesignDlgObj erases (0x383E00 and 0x384410) need MSL's destroy loop
  * in the class vector's erase (probed: erase<ActionItem> byte-exact with `for (p = first + n; p < e;
  * ++p) p->~T();` after the copy -- a request), the CDesignDlgObj ones also MSL's out-of-line
@@ -131,6 +135,493 @@ CDlgObjSpec *GetControlSpec(_zrdr *rdr, const char *type)
     if (!strcmp("MAPCONTROL", type))
         return new CUIMapCtrlSpec(rdr);
     return GetObjectSpec(rdr, type);
+}
+
+/* a list box's column and item, as zui_2d.cpp's (only what the list box's spec builds and reads) */
+class ColumnData {
+public:
+    ColumnData() : m_type(1), m_x(0), m_width(0), m_height(0), m_y(0), m_justify(0), m_scale(0.0f), m_texNames(0, 0), m_strings(0, 0x400) {}
+
+    unsigned char m_type;   // 0x0
+    int m_x;   // 0x4
+    int m_width;   // 0x8
+    int m_height;   // 0xc
+    int m_y;   // 0x10
+    unsigned char m_justify;   // 0x14
+    float m_scale;   // 0x18
+    std::vector<zdb::CTexHandle *> m_textures;   // 0x1c
+    _zrdr m_texNames;   // 0x28
+    CSTable m_strings;   // 0x30
+};   // 0x50
+
+class ListItem {
+public:
+    ListItem(_zrdr *rdr, const std::vector<ColumnData *> &cols);
+
+    ActionItem m_action;   // 0x0
+    ActionItem m_action2;   // 0x10
+    char *m_text;   // 0x20
+    bool m_24;   // 0x24
+    void *m_impl;   // 0x28
+    int m_2c;   // 0x2c
+};
+
+/* the focus action's event name (ours: a literal in the list box's constructor; an array apart from the
+ * chain's own "ONACTIVATE", which the target compares it with: the two never merged) */
+static const char s_onActivate[] = "ONACTIVATE";
+
+/* an event by its name (ParseButtonAnim's chain) */
+static inline int SpecEventByName(const char *name)
+{
+    int e;
+
+    if (!strcmp(name, "ONSTART"))
+        e = 0;
+    else if (!strcmp(name, "ONEXIT"))
+        e = 1;
+    else if (!strcmp(name, "ONACTIVATE"))
+        e = 2;
+    else if (!strcmp(name, "ONMPEGEND"))
+        e = 3;
+    else if (!strcmp(name, "MP_JOIN_ROOM"))
+        e = 4;
+    else if (!strcmp(name, "ON_SKB_APPLY"))
+        e = 14;
+    else if (!strcmp(name, "ON_SKB_APPLY2"))
+        e = 15;
+    else if (!strcmp(name, "ON_STATE_POP"))
+        e = 13;
+    else if (!strcmp(name, "ON_SKB_CLOSE"))
+        e = 16;
+    else if (!strcmp(name, "MP_PLAYER_NOT_FOUND"))
+        e = 5;
+    else if (!strcmp(name, "MP_SUCCESS"))
+        e = 6;
+    else if (!strcmp(name, "MP_CREATE_CLAN_SUCCESS"))
+        e = 7;
+    else if (!strcmp(name, "MP_CREATE_CLAN_FAILURE"))
+        e = 8;
+    else if (!strcmp(name, "MP_DISBAND_CLAN_SUCCESS"))
+        e = 9;
+    else if (!strcmp(name, "MP_DISBAND_CLAN_FAILURE"))
+        e = 10;
+    else if (!strcmp(name, "MP_MEDIUS_ERROR"))
+        e = 11;
+    else if (!strcmp(name, "MP_MEDIUS_HAS_INVITES"))
+        e = 12;
+    else if (!strcmp(name, "ON_LOAD_COMPLETE"))
+        e = 17;
+    else if (!strcmp(name, "ON_CLIENT_CONNECT"))
+        e = 18;
+    else if (!strcmp(name, "ON_FORCE_NEW_DB"))
+        e = 19;
+    else if (!strcmp(name, "ON_LADDER_REFRESH"))
+        e = 20;
+    else if (!strcmp(name, "ON_TTY_DONE"))
+        e = 21;
+    else if (!strcmp(name, "MP_MEDIUS_JOIN_GAME_FAILURE"))
+        e = 22;
+    else if (!strcmp(name, "MP_MEDIUS_READY_TO_CONNECT"))
+        e = 23;
+    else if (!strcmp(name, "MP_PLAYER_ALREADY_MEMBER"))
+        e = 24;
+    else if (!strcmp(name, "MP_VERSION_NUMBER_ERROR"))
+        e = 25;
+    else if (!strcmp(name, "MP_LEADERSHIP_TRANSFER_SUCCESS"))
+        e = 26;
+    else if (!strcmp(name, "MEMCARD_ERROR"))
+        e = 27;
+    else if (!strcmp(name, "MP_MEDIUS_BECAME_LEADER"))
+        e = 28;
+    else if (!strcmp(name, "ON_SKB_CANCEL"))
+        e = 29;
+    else if (!strcmp(name, "NETCNF_ERROR"))
+        e = 30;
+    else if (!strcmp(name, "MP_MEDIUS_JOIN_ROOM_FAILURE"))
+        e = 31;
+    else if (!strcmp(name, "MP_PLAYER_IS_LEADER"))
+        e = 32;
+    else if (!strcmp(name, "MP_CLAN_DISBANDED"))
+        e = 33;
+    else if (!strcmp(name, "MP_INVALID_PASSWORD"))
+        e = 34;
+    else if (!strcmp(name, "MP_PLAYER_ALREADY_INVITED"))
+        e = 35;
+    else if (!strcmp(name, "MP_PLAYER_LOGGED_IN"))
+        e = 36;
+    else if (!strcmp(name, "MP_FILTER_FAILURE"))
+        e = 37;
+    else if (!strcmp(name, "ONFOCUS"))
+        e = 43;
+    else if (!strcmp(name, "MP_GAME_NAME_EXISTS"))
+        e = 38;
+    else if (!strcmp(name, "LOADED_FROM_MEMCARD"))
+        e = 39;
+    else if (!strcmp(name, "SLIDER_MOVED"))
+        e = 40;
+    else if (!strcmp(name, "ONSCROLL"))
+        e = 41;
+    else if (!strcmp(name, "ONSCROLL_END"))
+        e = 42;
+    else if (!strcmp(name, "USBKBD_ENTER"))
+        e = 44;
+    else if (!strcmp(name, "MP_BANNED_FROM_GAME"))
+        e = 45;
+    else if (!strcmp(name, "ON_UPDATE_UIVAR"))
+        e = 46;
+    else if (!strcmp(name, "CLAN_MESSAGE_ID_ERR"))
+        e = 47;
+    else if (!strcmp(name, "CLAN_MESSAGE_EMPTY"))
+        e = 48;
+    else if (!strcmp(name, "MP_PLAYER_IS_FRIEND"))
+        e = 49;
+    else if (!strcmp(name, "MP_FRIEND_CONFIRMATION_REQUESTED"))
+        e = 50;
+    else if (!strcmp(name, "MP_EJECT_SPECTATOR"))
+        e = 51;
+    else if (!strcmp(name, "MP_EIGHTY_READY"))
+        e = 52;
+    else if (!strcmp(name, "MP_DNAS_ERROR"))
+        e = 53;
+    else if (!strcmp(name, "MP_DOWNLOAD_ERROR"))
+        e = 54;
+    else if (!strcmp(name, "MP_MEDIUS_FILE_DOES_NOT_EXIST"))
+        e = 55;
+    else if (!strcmp(name, "MP_CLAN_FULL"))
+        e = 56;
+    else if (!strcmp(name, "MEMCARD_STATUS"))
+        e = 57;
+    else if (!strcmp(name, "MP_SYSTEM_MESSAGE"))
+        e = 58;
+    else if (!strcmp(name, "PLAYER_IS_IGNORED"))
+        e = 59;
+    else if (!strcmp(name, "MP_RANDOM_GAME_FOUND"))
+        e = 60;
+    else if (!strcmp(name, "HDD_ERROR"))
+        e = 61;
+    else if (!strcmp(name, "MP_IGNORE_LIST_FULL"))
+        e = 62;
+    else
+        e = 0;
+    return e;
+}
+
+/* a list box's spec from its rdr (SOCOM 1's, 0x37EAB0; a column for each of COLUMNS, or one of its own;
+ * an item for each of OPTIONS) */
+CUIListBoxSpec::CUIListBoxSpec(_zrdr *rdr) : CImageSpec(rdr), m_seqStart(0.0f), m_seqLength(0.0f)
+{
+    zrdr_findint(rdr, "SPACING", &m_lineHeight, 1);
+    zrdr_findreal(rdr, "SCALE", &m_scale, 1);
+    zrdr_findint(rdr, "TOP_MARGIN", &m_30, 1);
+    zrdr_findint(rdr, "LEFT_MARGIN", &m_2c, 1);
+    m_noHighlight = zrdr_findtag(rdr, "NOSELECT") != 0;
+    m_followEnd = zrdr_findtag(rdr, "AUTOSCROLL") != 0;
+    m_37 = zrdr_findtag(rdr, "PADHOG") != 0;
+    const char *normal = zrdr_findstring(rdr, "NORMAL");
+    const char *pressed = zrdr_findstring(rdr, "PRESSED");
+    const char *active = zrdr_findstring(rdr, "ACTIVE");
+
+    m_tex50 = normal;
+    m_tex5c = pressed;
+    m_tex44 = active;
+    m_11c = 0;
+    zrdr_findint(rdr, "HIGHLIGHT_OFFSET", &m_11c, 1);
+    _zrdr *down = zrdr_findtag(rdr, "DOWN_ARROW");
+
+    if (down) {
+        m_tex80 = zrdr_findstring(down, "TEXTURE");
+        zrdr_findIPNT2D(down, "SIZE", &m_rectb4);
+        zrdr_findIPNT2D(down, "OFFSET", &m_rectac);
+    }
+    _zrdr *up = zrdr_findtag(rdr, "UP_ARROW");
+
+    if (up) {
+        m_tex74 = zrdr_findstring(up, "TEXTURE");
+        zrdr_findIPNT2D(up, "SIZE", &m_recta4);
+        zrdr_findIPNT2D(up, "OFFSET", &m_rect9c);
+    }
+    _zrdr *bg = zrdr_findtag(rdr, "ACTIVE_BACKGROUND");
+
+    if (bg) {
+        m_rect94.y = 0;
+        m_rect94.x = 0;
+        m_rect8c.y = 0;
+        m_rect8c.x = 0;
+        zrdr_findIPNT2D(bg, "OFFSET", &m_rect8c);
+        zrdr_findIPNT2D(bg, "SIZE", &m_rect94);
+        m_tex68 = zrdr_findstring(bg, "IMAGE");
+    }
+    if (zrdr_findtag(rdr, "NORMAL_COLOR"))
+        zrdr_findPNT3D(rdr, "NORMAL_COLOR", (PNT3D *)&m_color);
+    else
+        m_color = CPnt3D(128.0f, 128.0f, 128.0f);
+    _zrdr *pulse = zrdr_findtag(rdr, "ACTIVE_COLOR");
+
+    if (pulse) {
+        float range[2] = {0.0f};
+
+        zrdr_findPNT3D(rdr, "ACTIVE_COLOR", (PNT3D *)&m_color13c);
+        zrdr_findreal(pulse, "RANGE", range, 2);
+        m_pulseMin = range[0];
+        m_pulseMax = range[1];
+        m_pulseTime = 0.0f;
+        zrdr_findreal(pulse, "TIME", &m_pulseTime, 1);
+    } else {
+        m_color13c = CPnt3D(128.0f, 128.0f, 128.0f);
+    }
+    if (zrdr_findtag(rdr, "PRESSED_COLOR"))
+        zrdr_findPNT3D(rdr, "PRESSED_COLOR", (PNT3D *)&m_color148);
+    else
+        m_color148 = CPnt3D(128.0f, 128.0f, 128.0f);
+    _zrdr *cols = zrdr_findtag(rdr, "COLUMNS");
+
+    if (cols) {
+        m_columns.reserve(cols ? cols->Count() : 0);
+        for (int i = 0; i < (cols ? (int)cols->Count() : 0); i++) {
+            _zrdr *item = cols->Item(i);
+            ColumnData *col = new ColumnData;
+            int pos = 0;
+
+            zrdr_findint(item, "POSITION", &pos, 1);
+            col->m_x = pos;
+            int top = 0;
+
+            zrdr_findint(item, "TOP_OFFSET", &top, 1);
+            col->m_y = top;
+            _zrdr *image = zrdr_findtag(item, "IMAGE");
+
+            if (image) {
+                IPNT2D size;
+
+                col->m_type = 0;
+                zrdr_findIPNT2D(image, "SIZE", &size);
+                col->m_width = size.x;
+                col->m_height = size.y;
+                _zrdr *textures = zrdr_findtag(image, "TEXTURES");
+
+                if (textures)
+                    col->m_texNames.Clone(textures, &col->m_strings);
+            } else {
+                if (zrdr_findtag(item, "TIMED_TEXT"))
+                    col->m_type = 2;
+                if (zrdr_findtag(item, "WRAPPED_TEXT"))
+                    col->m_type = 3;
+                if (zrdr_findtag(item, "MAXWIDTH"))
+                    zrdr_findint(item, "MAXWIDTH", &col->m_width, 1);
+                else
+                    col->m_width = 1000;
+                if (zrdr_findtag(item, "RIGHT_JUSTIFIED"))
+                    col->m_justify = 1;
+                else
+                    col->m_justify = 0;
+                if (zrdr_findtag(item, "SCALE"))
+                    zrdr_findreal(item, "SCALE", &col->m_scale, 1);
+                else
+                    col->m_scale = 0.0f;
+                col->m_height = m_lineHeight;
+            }
+            m_columns.push_back(col);
+        }
+    } else {
+        ColumnData *col = new ColumnData;
+
+        m_columns.push_back(col);
+    }
+    const char *font = zrdr_findstring(rdr, "FONT");
+
+    if (font) {
+        m_hasFont = true;
+        m_font = font;
+    } else {
+        m_hasFont = false;
+    }
+    _zrdr *options = zrdr_findtag(rdr, "OPTIONS");
+
+    for (int k = 0; k < (options ? (int)options->Count() : 0); k++) {
+        _zrdr *option = options->Item(k);
+        _zrdr *caption = zrdr_findtag(option, "CAPTION");
+        ListItem *item = new ListItem(caption, m_columns);
+
+        ParseButtonAnim(option, &item->m_action);
+        const char *focusAnim = zrdr_findstring(option, "FOCUS_ANIM");
+        const char *focusArg = zrdr_findstring(option, "FOCUS_ARG");
+        const char *user = zrdr_findstring(option, "USERDATA");
+
+        if (focusAnim)
+            item->m_action2.Animation = _strdup(focusAnim, 0, 0);
+        if (focusArg)
+            item->m_action2.Argument = _strdup(focusArg, 0, 0);
+        if (user)
+            item->m_text = _strdup(user, 0, 0);
+        item->m_action2.Type = ACTION_TYPE_EVENT;
+        item->m_action2.Event = SpecEventByName(s_onActivate);
+        m_items.push_back(item);
+    }
+    _zrdr *anims = zrdr_findtag(rdr, "ANIMATIONS");
+
+    for (int j = 0; j < (anims ? (int)anims->Count() : 0); j++) {
+        m_commands.resize(m_commands.size() + 1);
+        ParseButtonAnim(anims->Item(j), &m_commands.back());
+    }
+    if (zrdr_findtag(rdr, "SPEED"))
+        zrdr_findreal(rdr, "SPEED", &m_118, 1);
+    else
+        m_118 = 60.0f;
+    float start = 0.0f;
+
+    zrdr_findreal(rdr, "SEQUENCE_DELAY", &start, 1);
+    m_seqStart = start;
+    float length = 0.0f;
+
+    zrdr_findreal(rdr, "SEQUENCE_INTERVAL", &length, 1);
+    m_seqLength = length;
+}
+
+bool zrdr_IsComplex(_zrdr *rdr);
+
+/* a state read from a block of its own: IMAGE, TEXT_COLOR, PULSE, SCALE, a TEXT_GLOW's RANGE and TIME */
+inline void ButtonState::Parse(_zrdr *rdr)
+{
+    if (rdr) {
+        _TexName = zrdr_findstring(rdr, "IMAGE");
+        zrdr_findPNT3D(rdr, "TEXT_COLOR", (PNT3D *)&_pntTextColor);
+        zrdr_findreal(rdr, "PULSE", &_fPulseTime, 1);
+        zrdr_findreal(rdr, "SCALE", &_fScale, 1);
+        _zrdr *glow = zrdr_findtag(rdr, "TEXT_GLOW");
+
+        if (glow) {
+            float range[2];
+
+            _bGlowy = true;
+            zrdr_findreal(glow, "RANGE", range, 2);
+            _iGlowStart = range[0];
+            _iGlowEnd = range[1];
+            zrdr_findreal(glow, "TIME", &_fGlowTime, 1);
+        } else {
+            _bGlowy = false;
+        }
+    }
+}
+
+/* a button's spec from its rdr (SOCOM 1's, 0x380620; each state a block of its own or the older flat
+ * NAME, NAMEGLOW and NAME_COLOR) */
+CButtonSpec::CButtonSpec(_zrdr *rdr) : CDlgObjSpec(rdr), m_scale(1.0f), m_hcentered(false)
+{
+    int range[2];
+    _zrdr *state;
+    _zrdr *glow;
+
+    m_size.y = 0;
+    m_size.x = 0;
+    m_offset.y = 0;
+    m_offset.x = 0;
+    zrdr_findint(rdr, "XSIZE", &m_size.x, 1);
+    zrdr_findint(rdr, "YSIZE", &m_size.y, 1);
+    zrdr_findIPNT2D(rdr, "SIZE", &m_size);
+    zrdr_findint(rdr, "XOFFSET", &m_offset.x, 1);
+    zrdr_findint(rdr, "YOFFSET", &m_offset.y, 1);
+    zrdr_findIPNT2D(rdr, "OFFSET", &m_offset);
+    zrdr_findreal(rdr, "SCALE", &m_scale, 1);
+    m_caption = zrdr_findstring(rdr, "CAPTION");
+    state = zrdr_findtag(rdr, "NORMAL");
+    m_normal._fScale = m_scale;
+    m_pressed._fScale = m_scale;
+    m_active._fScale = m_scale;
+    m_disabled._fScale = m_scale;
+    if (state && zrdr_IsComplex(state)) {
+        m_normal.Parse(state);
+    } else {
+        m_normal._TexName = zrdr_findstring(rdr, "NORMAL");
+        glow = zrdr_findtag(rdr, "NORMALGLOW");
+        if (glow) {
+            m_normal._bGlowy = true;
+            zrdr_findint(glow, "RANGE", range, 2);
+            m_normal._iGlowStart = (float)range[0];
+            m_normal._iGlowEnd = (float)range[1];
+            zrdr_findreal(glow, "TIME", &m_normal._fGlowTime, 1);
+        } else {
+            m_normal._bGlowy = false;
+        }
+        if (zrdr_findtag(rdr, "NORMAL_COLOR"))
+            zrdr_findPNT3D(rdr, "NORMAL_COLOR", (PNT3D *)&m_normal._pntTextColor);
+        else
+            m_normal._pntTextColor = CPnt3D(128.0f, 128.0f, 128.0f);
+    }
+    state = zrdr_findtag(rdr, "ACTIVE");
+    if (state && zrdr_IsComplex(state)) {
+        m_active.Parse(state);
+    } else {
+        m_active._TexName = zrdr_findstring(rdr, "ACTIVE");
+        glow = zrdr_findtag(rdr, "ACTIVEGLOW");
+        if (glow) {
+            m_active._bGlowy = true;
+            zrdr_findint(glow, "RANGE", range, 2);
+            m_active._iGlowStart = (float)range[0];
+            m_active._iGlowEnd = (float)range[1];
+            zrdr_findreal(glow, "TIME", &m_active._fGlowTime, 1);
+        } else {
+            m_active._bGlowy = false;
+        }
+        if (zrdr_findtag(rdr, "ACTIVE_COLOR"))
+            zrdr_findPNT3D(rdr, "ACTIVE_COLOR", (PNT3D *)&m_active._pntTextColor);
+        else
+            m_active._pntTextColor = CPnt3D(128.0f, 128.0f, 128.0f);
+    }
+    state = zrdr_findtag(rdr, "PRESSED");
+    if (state && zrdr_IsComplex(state)) {
+        m_pressed.Parse(state);
+    } else {
+        m_pressed._TexName = zrdr_findstring(rdr, "PRESSED");
+        glow = zrdr_findtag(rdr, "PRESSEDGLOW");
+        if (glow) {
+            m_pressed._bGlowy = true;
+            zrdr_findint(glow, "RANGE", range, 2);
+            m_pressed._iGlowStart = (float)range[0];
+            m_pressed._iGlowEnd = (float)range[1];
+            zrdr_findreal(glow, "TIME", &m_pressed._fGlowTime, 1);
+        } else {
+            m_pressed._bGlowy = false;
+        }
+        if (zrdr_findtag(rdr, "PRESSED_COLOR"))
+            zrdr_findPNT3D(rdr, "PRESSED_COLOR", (PNT3D *)&m_pressed._pntTextColor);
+        else
+            m_pressed._pntTextColor = CPnt3D(128.0f, 128.0f, 128.0f);
+    }
+    state = zrdr_findtag(rdr, "DISABLED");
+    if (state && zrdr_IsComplex(state)) {
+        m_disabled.Parse(state);
+    } else {
+        zrdr_findstring(rdr, "DISABLED");
+        glow = zrdr_findtag(rdr, "DISABLEDGLOW");
+        if (glow) {
+            m_disabled._bGlowy = true;
+            zrdr_findint(glow, "RANGE", range, 2);
+            m_disabled._iGlowStart = (float)range[0];
+            m_disabled._iGlowEnd = (float)range[1];
+            zrdr_findreal(glow, "TIME", &m_disabled._fGlowTime, 1);
+        } else {
+            m_disabled._bGlowy = false;
+        }
+        if (zrdr_findtag(rdr, "DISABLED_COLOR"))
+            zrdr_findPNT3D(rdr, "DISABLED_COLOR", (PNT3D *)&m_disabled._pntTextColor);
+        else
+            m_disabled._pntTextColor = CPnt3D(128.0f, 128.0f, 128.0f);
+    }
+    m_hcentered = zrdr_findtag(rdr, "HCENTERED") != 0;
+    const char *font = zrdr_findstring(rdr, "FONT");
+
+    if (font) {
+        m_108 = true;
+        m_font = font;
+    } else {
+        m_108 = false;
+    }
+    _zrdr *anims = zrdr_findtag(rdr, "ANIMATIONS");
+
+    for (int j = 0; j < (anims ? (int)anims->Count() : 0); j++) {
+        m_commands.resize(m_commands.size() + 1);
+        ParseButtonAnim(anims->Item(j), &m_commands.back());
+    }
 }
 
 /* the button and the object its SUBORDINATE block describes: its NAME ("unnamed" if none), TYPE,

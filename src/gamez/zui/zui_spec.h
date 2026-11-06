@@ -326,6 +326,13 @@ void ParseButtonAnim(_zrdr *rdr, ActionItem *item);
 /* one state's look, as a button spec reads it (SOCOM 1's ButtonState, 0x2C bytes there; SOCOM II's
  * 0x34 with the 12-byte string): IMAGE, the TEXT_GLOW's RANGE and TIME, PULSE, TEXT_COLOR, SCALE */
 struct ButtonState {
+    ButtonState() : _Texture(0), _iGlowStart(0.0f), _iGlowEnd(0.0f), _bGlowy(false), _fPulseTime(0.0f),
+        _fGlowTime(0.0f), _pntTextColor(128.0f, 128.0f, 128.0f)
+    {
+    }
+    /* a state read from a block of its own (0x380620's four copies) */
+    void Parse(_zrdr *rdr);
+
     CSaferStr _TexName;           // 0x0: IMAGE
     zdb::CTexHandle *_Texture;    // 0xc
     float _iGlowStart;            // 0x10: TEXT_GLOW's RANGE
@@ -452,7 +459,7 @@ public:
 
 /* a list box: an image with columns and items (SOCOM 1's CUIListBoxSpec; SOCOM II's 0x120 bytes) */
 class ListItem;
-struct ColumnData;
+class ColumnData;
 class CUIListBoxSpec : public CImageSpec {
 public:
     CUIListBoxSpec(_zrdr *rdr);
