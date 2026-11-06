@@ -1997,6 +1997,49 @@ def test_igvar_compares_variants():
     ck(src.read_text() == IG_FIXTURE, "the unit itself untouched")
 
 
+def test_try_prints_each_variants_distance():
+    """tools/try.py prints each variant's difflib distance beside its verdict (GCC round 39a, the AI
+    core's round-34 vd.py): the words of every unequal stretch of the candidate's and the row's bodies,
+    each masked by the candidate's relocations, the longer side counted. tty.c's byte-exact sceTtyRead
+    is MATCH with no distance; its newline test made a tab's is one word away (d=1, the sizes equal);
+    returning `i + 2` for `i + 1` costs the loop's shared increment, a body two words shorter and 25
+    away (vd.py's figure for it) -- each verdict, distance and both sizes on the variant's line;
+    --no-dist prints the verdict as before, and the exit code and score_obj's verdict are unchanged."""
+    import contextlib
+    import importlib
+    import io
+    T = importlib.import_module("try")
+    unit = HERE / "src" / "lib" / "sdk" / "tty.c"
+    old = os.environ.get("SC_TRY_WORK")
+    T.WORK = BUILD / "trywork"
+
+    def run(*args):
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            rc = T.main([str(unit), "sceTtyRead", *args])
+        return rc, [l for l in buf.getvalue().splitlines() if l.strip()]
+    try:
+        rc, lines = run("--sub", "buf[i] == '\\n'", "buf[i] == '\\t'", "--sub", "return i + 1;", "return i + 2;")
+        ck(rc == 0 and len(lines) == 2 and all(l.startswith("FAIL") and " d=" in l for l in lines)
+           and lines[1].rstrip().endswith("| return i + 2;"), f"two misses: verdict, distance, label ({lines})")
+        size = E.symbols().get("sceTtyRead").size
+        ck(f"d=1 ({size:#x} vs {size:#x})" in lines[0], f"one immediate changed is one word away ({lines[0]})")
+        ck(f"d=25 ({size - 8:#x} vs {size:#x})" in lines[1] and "size" in lines[1],
+           f"two words short, 25 away ({lines[1]})")
+        rc, lines = run("--sub", "return i + 1;", "return i + 2;", "--no-dist")
+        ck(rc == 0 and lines[0].startswith("FAIL") and " d=" not in lines[0], f"--no-dist: the verdict alone ({lines})")
+        rc, lines = run()
+        ck(rc == 0 and lines == ["MATCH"], f"as it is: MATCH, no distance ({lines})")
+        T.prepare()
+        obj, _ = T.build(unit, unit, None)
+        ck(T.distance(obj, unit, "sceTtyRead") == (0, *(2 * [E.symbols().get("sceTtyRead").size // 4])),
+           "a byte-exact body is distance 0, its sizes the row's")
+        ck(T.score_obj(obj, unit, "sceTtyRead") == "MATCH" and T.distance(obj, unit, "no_such_function") is None,
+           "score_obj unchanged; a missing symbol has no distance")
+    finally:
+        T.WORK = Path(old).resolve() if old else HERE / "build" / "try"
+
+
 def test_everything_baselined_still_matches():
     rc = C.main([])
     ck(rc == 0, "sccheck: no regressions against MATCHED.txt, every TU builds")
