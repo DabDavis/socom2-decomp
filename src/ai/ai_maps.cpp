@@ -31,7 +31,7 @@ const T &_max(const T &a, const T &b)
  * kinds' loop is a loop invariant MW hoists into the kinds' loop's preheader (the field addresses,
  * both ends, then a jump to the `k < 6` test), and the count walk's postfix step hoists its end into
  * the walk's own (the online lane's postfix rule).
- * OPEN, right size, 34 instructions: registers only -- the target gives the push walk's names
+ * OPEN, right size, 12 instructions since round 36 (34 before): registers only -- the target gives the push walk's names
  * iterator s0 and the name-table cursor (m_names[k], strength-reduced) s1, this build the other way
  * round (the iterator's scalar @7178 is numbered below the cursor's @7190), and the count walk's
  * cursor and end take a0/v1 where this build's take a2/a0. A named reference to m_names[k] (0x360),
@@ -52,7 +52,15 @@ const T &_max(const T &a, const T &b)
  * cursor) wants the iterator scalarised only in pass 1, as MW does for an object some access conflicts
  * with in pass 0 (resize<reader>'s end().m_p temporary, ai_mapio.cpp: a named iterator scalarises in
  * pass 0, the temporary in pass 1). The push walk's iterator stepped by postfix, assigned outside its
- * for (prefix or postfix) or direct-initialised: still pass 0, 34 off each */
+ * for (prefix or postfix) or direct-initialised: still pass 0, 34 off each. TAKING ITS ADDRESS in pass
+ * 0 does it (build/scratch/ai/v_unt36b-d.py): a reference local bound to the walk's iterator (or a
+ * pointer to it), folded away by pass 0's propagation, leaves the object noregister for pass 0's
+ * scalariser and scalarisable in pass 1 -- 34 -> 14 in the push walk, 12 with the count walk's alike
+ * (the modelling shape below: `iterator &rn = n`, its test through rn); an inline test taking the
+ * iterator by (const) reference is substituted by the plain object and changes nothing (34). Left (12
+ * instructions): the count walk's cursor and end (v76 / v77, code generation's own registers: v1 / v0
+ * against the target's a0 / v1) -- `igreplay --movers 76,77` still wants v76 at 31.5, ahead of `this`,
+ * so the count walk's shape, not a numbering, as round 29 found */
 void CAiMaps::UpdateNameTables()
 {
     for (int k = 1; k < 6; k++) {
@@ -65,9 +73,12 @@ void CAiMaps::UpdateNameTables()
         for (i = begin(); i != last; ++i) {
             CAiMap::names &names = (*i)->m_namesTable;
 
-            for (CAiMap::names::iterator n = names.begin(); n != names.end(); n++)
-                if ((*n).m_15 == k)
+            for (CAiMap::names::iterator n = names.begin(); n != names.end(); n++) {
+                CAiMap::names::iterator &rn = n;
+
+                if ((*rn).m_15 == k)
                     count++;
+            }
         }
         if (count > 0) {
             m_names[k].reserve(count);
@@ -78,7 +89,9 @@ void CAiMaps::UpdateNameTables()
                 CAiMap::names &names = (*i)->m_namesTable;
 
                 for (CAiMap::names::iterator n = names.begin(); n != names.end(); ++n) {
-                    if ((*n).m_15 == k) {
+                    CAiMap::names::iterator &rn = n;
+
+                    if ((*rn).m_15 == k) {
                         CAiMap::name nm = *n;
 
                         nm.m_loc.m_mapid = mapid;
