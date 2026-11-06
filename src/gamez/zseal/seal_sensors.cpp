@@ -522,6 +522,15 @@ static inline bool ConeContains(CSealCtrlAi *c, CSensorProjView2 *proj)
     return false;
 }
 
+/* how far a grenade is, squared (inline: its point below the function's own, as the target's; the name ours) */
+static inline float GrenadeDistSq(CEntity *e, CSensorProjView2 *proj)
+{
+    CPnt3D d;
+
+    proj->m_pos.Sub(&e->m_posW, &d);
+    return d.x * d.x + d.y * d.y + d.z * d.z;
+}
+
 /* a grenade in range and in line of sight (inline; the name ours) */
 static inline bool InReach(CEntity *e, CSensorProjView2 *proj)
 {
@@ -608,10 +617,7 @@ extern "C" bool func_005CAC00(CSealCtrlAi *ai, CPickup *p, CSensorProjView2 *pro
                     told = saw;
                 } else {
                     if (!ConeContains(ai, proj)) {
-                        CPnt3D d;
-
-                        proj->m_pos.Sub(&e->m_posW, &d);
-                        if (data_00650A28 <= d.x * d.x + d.y * d.y + d.z * d.z)
+                        if (data_00650A28 <= GrenadeDistSq(e, proj))
                             goto notseen;
                         if (AiMaps.ComputeLineVisibility(e->m_mapLocValid, &proj->m_pos, 0, 18.0f) <= data_00650A30)
                             goto notseen;
