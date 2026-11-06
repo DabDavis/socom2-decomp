@@ -279,6 +279,82 @@ static void Build_Tree_ForChinese(CASR *c, TREEITEM *items, TREELINK *links, uns
     *pnnodes = nnodes;
 }
 
+/* the word tree's node translated into items, one per phoneme after the first of its pronunciation (a phrase boundary, id -2,
+ * is one item of the silence phoneme), each linked to the next; the last carries the node's word and pronunciation and, at a
+ * leaf, no link; then its children in turn, linked in order; node 0 is the root item. SOCOM 1's body (round 41c). */
+static void Translate_Prons_Into_Items_And_Tones(unsigned int node, unsigned int *nitems, unsigned int *nlinks, FSTREE *t)
+{
+    unsigned int c;
+    unsigned int prev;
+
+    if (node == 0) {
+        c = t->tree[0].link;
+        t->items[0].kind = 0;
+        t->items[0].tone = -1;
+        t->items[0].child = 0;
+        t->links[0].node = 1;
+    } else {
+        int leaf = t->tree[node].link == 0xFFFF;
+
+        if (t->tree[node].pron != -2) {
+            unsigned short *p = t->lex + t->begin[t->tree[node].pron];
+            unsigned short *end = t->lex + t->begin[t->tree[node].pron + 1];
+            unsigned short kind = *p++;
+
+            for (; p < end; p++) {
+                t->items[*nitems].kind = kind == 1;
+                if (p == end - 1) {
+                    t->items[*nitems].f4 = t->tree[node].id;
+                    t->items[*nitems].f8 = t->tree[node].pron;
+                } else {
+                    t->items[*nitems].f4 = -4;
+                    t->items[*nitems].f8 = -4;
+                }
+                t->items[*nitems].pron = *p;
+                if (t->items[*nitems].kind == 1)
+                    t->items[*nitems].tone = ((unsigned short *)t->su)[t->su[*p] + 1];
+                else
+                    t->items[*nitems].tone = t->ntones;
+                if (leaf && p == end - 1) {
+                    t->items[(*nitems)++].child = 0xFFFF;
+                } else {
+                    t->items[*nitems].child = *nlinks;
+                    t->links[*nlinks].node = ++(*nitems);
+                    t->links[(*nlinks)++].next = 0xFFFF;
+                }
+            }
+        } else {
+            t->items[*nitems].kind = 0;
+            t->items[*nitems].f4 = t->tree[node].id;
+            t->items[*nitems].f8 = t->tree[node].pron;
+            t->items[*nitems].pron = t->c->lng->GetSilPhenome(t->c->lng);
+            t->items[*nitems].tone = 0;
+            if (leaf) {
+                t->items[(*nitems)++].child = 0xFFFF;
+            } else {
+                t->items[*nitems].child = *nlinks;
+                t->links[*nlinks].node = ++(*nitems);
+                t->links[(*nlinks)++].next = 0xFFFF;
+            }
+        }
+        if (!leaf)
+            (*nlinks)--;
+        c = t->tree[node].link;
+    }
+    while (c != 0xFFFF) {
+        node = t->treelinks[c].node;
+        prev = (*nlinks)++;
+        Translate_Prons_Into_Items_And_Tones(node, nitems, nlinks, t);
+        c = t->treelinks[c].next;
+        if (c == 0xFFFF) {
+            t->links[prev].next = c;
+        } else {
+            t->links[prev].next = *nlinks;
+            t->links[*nlinks].node = *nitems;
+        }
+    }
+}
+
 /* item n copied into the split tree's slot i, its child link apart (the pointers the block's own) */
 #define COPYITEM(t, i, n)                                               \
     {                                                                   \
@@ -646,9 +722,6 @@ void FreeSecondPassContext_ForChinese(CASR *c)
         c->sp_ctx = 0;
     }
 }
-
-extern void Translate_Prons_Into_Items_And_Tones(unsigned int node, unsigned int *pnitems, unsigned int *pnlinks,
-                                                 FSTREE *t);
 
 /* the context for Mandarin: the word tree, its pronunciations translated into items and tones, the finals split up
  * and swapped; SOCOM 1's body (round 41c). What the code said: one variable holds the table's sum and then the total (`move
