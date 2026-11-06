@@ -6,7 +6,7 @@
  * lines' test and the line's constructor and destructor (round 37); ClosePauseMenu (round 51: its old
  * menu state SOCOM 1's MENU_STATE m_oldmenustate -- a signed char field cast to the enum loads with lbu); TickOffState (round 59: the
  * unit's first function, 0x2011F0, as SOCOM 1's; HudTick 0x201690, Init 0x202520, HandleSelectionInput
- * 0x2041E0 and OpenPauseMenu 0x204A40 named by SOCOM 1's calls, unwritten). Defined in reverse of their
+ * 0x2041E0 and OpenPauseMenu 0x204A40 named by SOCOM 1's calls, unwritten); OpenPauseMenu (round 65). Defined in reverse of their
  * image order (-inline deferred): the unit ends with the lines' test 0x205A70, the line's
  * constructor 0x205970 (generated before the menu's constructor, which takes its address) and the
  * menu's constructor 0x205800. */
@@ -48,6 +48,13 @@ struct CPauseItem {
     unsigned int _a0_27 : 5;
 };
 
+/* an object the menu keeps at 0xBD0 (no name yet): told when the menu opens, slot +0xC */
+class CPauseSub {
+public:
+    virtual ~CPauseSub();
+    virtual void Notify(int a, int b);
+};
+
 /* the pause menu, laid out from its destructor (0x205480): the lines through a pointer at 0x18, the
  * background (a bitmap of two triangles), bitmaps, strings and three more two-triangle bitmaps, the
  * open flag that On and Off keep and a flag that swaps the lines for the third panel; the members'
@@ -66,7 +73,7 @@ public:
     bool IsSelectable(signed char line);
     /* the menu closed: the start button opens it (SOCOM 1's TickOffState, 0x2011F0), the faded
      * parts fade out; and the menu's tick, set-up, pad and opening (SOCOM 1's HudTick, Init,
-     * HandleSelectionInput and OpenPauseMenu: 0x201690, 0x202520, 0x2041E0, 0x204A40, unwritten) */
+     * and HandleSelectionInput: 0x201690, 0x202520, 0x2041E0, unwritten) */
     void TickOffState(const CPad &pad, float dT);
     void HudTick(CPad *pad, float dT);
     void Init();
@@ -93,10 +100,10 @@ public:
     C2DString m_textb28;   // 0xb28
     unsigned char m_open;   // 0xbc0
     unsigned char m_socom2_bc1;   // 0xbc1: cleared by ReInit
-    int m_bc4;   // 0xbc4
+    float m_bc4;   // 0xbc4
     float m_bc8;   // 0xbc8
     MENU_STATE m_oldmenustate;   // 0xbcc: SOCOM 1's (0x364 there), put back on closing
-    void *m_bd0;   // 0xbd0
+    CPauseSub *m_bd0;   // 0xbd0
     void *m_bd4;   // 0xbd4
     void *m_bd8;   // 0xbd8
     unsigned char m_socom2_bdc;   // 0xbdc: the third panel drawn instead of the lines
@@ -138,9 +145,21 @@ extern unsigned char data_00409070;
 extern float data_00409088;
 
 /* the HUD (hud_main.cpp's, theHUD 0x408E58): turned back on once the menu has closed */
+class CZNewHudMap {
+public:
+    void SwitchToCompassMap();
+
+    unsigned char _0[0xdc];
+    bool m_isFullScreen;   // 0xdc
+};
+
 class CHUD {
 public:
     void On();
+    void Off();
+
+    unsigned char _0[0x11c90];
+    CZNewHudMap *m_map;   // 0x11c90
 };
 
 extern CHUD *theHUD;
@@ -168,6 +187,7 @@ enum ZOOMSTATE {
 class CSealCtrl {
 public:
     void SetMenuState(MENU_STATE state, bool flag);
+    void StopRumbler();
     virtual ~CSealCtrl();
     virtual bool PreTick(float dT);
     virtual bool Tick(float dT);
@@ -217,11 +237,18 @@ CZSealBody *ftsGetPlayer();
 class CSndInstance {
 public:
     static void ResumeAllSounds();
+    static void PauseAllSounds();
+};
+
+class CSnd {
+public:
+    static void PostTick(float dT, void *arg);
 };
 
 class CameraZoom {
 public:
     static void ReleaseLensFx(unsigned char hold);
+    static void HoldLensFx(unsigned char hold);
     static unsigned char LensFxOn();
 };
 
@@ -238,9 +265,18 @@ public:
 };
 }
 
+class CCameraZoomView {
+public:
+    unsigned char _0[0x470];
+    float m_zoom;   // 0x470
+};
+
 class CAppCamera {
 public:
     void SetZoom(float zoom);
+
+    unsigned char _0[0xb4];
+    CCameraZoomView *m_camera;   // 0xb4: the camera, its zoom
 };
 
 extern CAppCamera *appCamera;
@@ -530,6 +566,180 @@ void CZPauseTest::On()
 {
     m_open = 1;
     C2D::On();
+}
+
+/* the radio menu and the voice recogniser (hud_tcm.h's, reco.cpp's) */
+class CTCM {
+public:
+    void Close(bool now);
+};
+
+extern CTCM theTCM;
+
+class CReco {
+public:
+    void Suspend(bool on);
+};
+
+extern CReco theReco;
+
+/* the options the lines show (their owners' globals: the look's inversion, the auto-aim, the text
+ * messages, the fire-mode swap, the run-and-talk, the voice modulation, the spectator HUD; the last
+ * three have no rows yet) */
+extern float hackPitchFactor;
+extern unsigned char _AutoAim;
+extern unsigned char g_bExternalWhispers;
+extern unsigned char FireModeSwapIsOn;
+extern unsigned char data_0044D4F8;
+extern unsigned char data_003DF1A8;
+extern unsigned char data_003DC3E0;
+extern int data_00409078;
+bool IsRumbleOn();
+bool hudHelpWindowsEnabled();
+const char *GetString(int id);
+const char *TranslateString(const char *s);
+
+/* the mission (fts_mission's) and its name (no row name yet) */
+class CMission;
+extern CMission theMission;
+extern "C" const char *func_002A42A0(CMission *mission);
+
+/* the menu opened (SOCOM 1's OpenPauseMenu, 0x3BF210 there, its body much grown): the radio and the
+ * recogniser shut, the rumble stopped, the player's pad's start held, offline the sounds paused; the
+ * map back to the compass, the menu state kept and set, the HUD off and the menu's parts on; offline
+ * with the player driving, the lens effects off and the camera's zoom put aside; every line's text
+ * by its kind and the options' states, centred; the mission's name */
+void CZPauseTest::OpenPauseMenu()
+{
+    theTCM.Close(false);
+    theReco.Suspend(true);
+
+    CZSealBody *seal = ftsGetPlayer();
+    CSealCtrl *ctrl = seal->m_ctrl;
+
+    ctrl->StopRumbler();
+
+    CPad *pad = GetPad(ctrl->m_port);
+
+    if (pad)
+        pad->SetButtonState(PAD_START, KEY_DOWN);
+    if (!theNetwork.m_bNetwork) {
+        CSndInstance::PauseAllSounds();
+        CSnd::PostTick(0.0f, 0);
+    }
+    On();
+    CHUD *hud = theHUD;
+    CZNewHudMap *map = hud->m_map;
+
+    if ((map ? map->m_isFullScreen : false) && map)
+        hud->m_map->SwitchToCompassMap();
+    m_oldmenustate = (MENU_STATE)*(signed char *)&ctrl->m_menustate;
+    ctrl->SetMenuState(statePauseTestMenu, false);
+    theHUD->Off();
+    m_background.On();
+    m_panel.On();
+    m_bitmap2a0.On();
+    m_bitmap320.On();
+    m_bitmap3a0.On();
+    m_poly6b0.On();
+    m_texta90.On();
+    m_textb28.On();
+    m_sel = 0;
+    m_poly6b0.SetPos(171.0f, (float)(int)(m_items->m_text.m_posy + m_items->m_text.m_socom2_80) - 21.0f - -2.0f, 297.0f,
+                     21.0f);
+    if (!theNetwork.m_bNetwork && seal->IsPlayer()) {
+        if (!CameraZoom::LensFxOn())
+            seal->m_kit.Apply_LensEffects(false, 0);
+        if (s_pauseCamZoom == 1.0f) {
+            s_pauseCamZoom = appCamera->m_camera->m_zoom;
+            appCamera->SetZoom(1.0f);
+        }
+        CameraZoom::HoldLensFx(2);
+    }
+    if (seal->IsPlayer()) {
+        CZKit *kit = &seal->m_kit;
+
+        if (kit)
+            kit->m_heartbeat_enabled = false;
+    }
+    m_background.SetTrans(0, 100.0f);
+    m_background.SetTrans(3, 100.0f);
+    m_panel.SetTrans(80.0f);
+    m_bitmap2a0.SetTrans(100.0f);
+    m_poly6b0.SetTrans(100.0f);
+    m_bitmap320.SetTrans(80.0f);
+    m_bitmap3a0.SetTrans(100.0f);
+    m_text420.SetTrans(110.0f);
+    m_texta90.SetTrans(110.0f);
+    m_textb28.SetTrans(110.0f);
+    data_00409078 = 0;
+    for (unsigned int i = 0; i < 12; i++) {
+        CPauseItem *item;
+        CPauseItem *items = m_items;
+
+        item = &items[(signed char)i];
+
+        C2DString *text = &item->m_text;
+
+        if (!item->m_flag2) {
+            text->SetString(GetString(item->m_id), false);
+        } else {
+            switch ((signed char)item->m_kind) {
+            case 3:
+                ((C2DString *)&items[3].m_text)->SetString(GetString(hackPitchFactor < 0.0f ? 0xEC67 : 0xEC68), false);
+                break;
+            case 6: {
+                int id = hudHelpWindowsEnabled() ? 0xEC65 : 0xEC66;
+                C2DString *help = &m_items[6].m_text;
+
+                help->SetString(GetString(id), false);
+                break;
+            }
+            case 7:
+                ((C2DString *)&items[7].m_text)->SetString(GetString(_AutoAim ? 0xEC63 : 0xEC64), false);
+                break;
+            case 11:
+                ((C2DString *)&items[11].m_text)->SetString(g_bExternalWhispers ? "IN-GAME TEXT MESSAGES : ON" : "IN-GAME TEXT MESSAGES : OFF", true);
+                break;
+            case 8: {
+                const char *t = IsRumbleOn() ? "VIBRATION: ON" : "VIBRATION OFF";
+
+                ((C2DString *)&m_items[8].m_text)->SetString(t, true);
+                break;
+            }
+            case 5:
+                ((C2DString *)&items[5].m_text)->SetString(data_0044D4F8 ? "RUN AND TALK: ON" : "RUN AND TALK: OFF", true);
+                break;
+            case 9:
+                ((C2DString *)&items[9].m_text)->SetString(theNetwork.m_bNetwork ? (FireModeSwapIsOn ? "FIREMODE/SCOREBOARD: ALTERNATE" : "FIREMODE/SCOREBOARD: DEFAULT")
+                                                                               : (FireModeSwapIsOn ? "FIREMODE/TACMAP: ALTERNATE" : "FIREMODE/TACMAP: DEFAULT"),
+                                                           true);
+                break;
+            case 4:
+                ((C2DString *)&items[4].m_text)->SetString(data_003DF1A8 ? "VOICE MODULATION: ON" : "VOICE MODULATION: OFF", true);
+                break;
+            case 10:
+                ((C2DString *)&items[10].m_text)->SetString(data_003DC3E0 ? "SPECTATOR HUD: ON" : "SPECTATOR HUD: OFF", true);
+                break;
+            default:
+                text->SetString("DYNAMIC TEXT: MISSING", true);
+                break;
+            }
+        }
+        item->m_text.m_isCentered = 1;
+        item->m_text.m_color[0] = 100.0f;
+        item->m_text.m_color[1] = 100.0f;
+        item->m_text.m_color[2] = 100.0f;
+        text->SetTrans(128.0f);
+        item->m_text.UpdatePos();
+    }
+    m_text420.SetString(TranslateString(func_002A42A0(&theMission)), true);
+    m_bc4 = 1.0f;
+    m_socom2_bdc = 0;
+    m_be4 = 0;
+    m_be0 = -1;
+    if (m_bd0)
+        m_bd0->Notify(0, 255);
 }
 
 /* the menu closed (SOCOM 1's TickOffState, its unit's first function as here): nothing until two
