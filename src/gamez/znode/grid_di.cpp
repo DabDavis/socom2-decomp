@@ -9,8 +9,8 @@
  * (checked, round 6): a recursive search over the graph's edge lists through the pointer list's
  * out-of-line begin() (0x2A00B0) and tiny iterator helpers -- graph_tree.cpp's neighbourhood.
  * The node walk NodeGetIntersect 0x2D2890 (SOCOM 1's NodeGetIntersect and NodeGetAltitude in one)
- * since the engine core's round 25; CGrid::GetIntersectBatch 0x2D3CF0 since round 26. Unwritten:
- * the batch walk 0x2D3030 (SOCOM 1's NodeGetIntersectBatch). */
+ * since the engine core's round 25; the batch walk 0x2D3030 (SOCOM 1's NodeGetIntersectBatch) and
+ * CGrid::GetIntersectBatch 0x2D3CF0 since round 26 (both open). The unit is now whole. */
 
 #include "node_world.h"
 #include "int_material.h"
@@ -499,9 +499,15 @@ static inline void MarkDone(DiIntersect *d, CNode *node)
 /* whether the batch walk's cell marks the i-th set: SOCOM II's test as the target has it, the
  * cell's marks tested for any and the set's bit for itself (a logical and, never the bitwise one;
  * ours, inline) */
-static inline bool BatchMarked(int i)
+static inline int BatchMarked(int i)
 {
     return NodeCheck && (1 << (i % 32));
+}
+
+/* a vector's first polygon (ours, inline: the vector's address held for the read) */
+static inline CDI *FirstDI(CDIVector &v)
+{
+    return *v.begin();
 }
 
 /* a coordinate within a radius of a centre's (ours, inline) */
@@ -513,7 +519,9 @@ static inline bool InSpan(float v, float r, float c)
 /* a point within a radius of a centre on every axis (ours, inline) */
 static inline bool InCube(const CPnt3D *p, float r, const CPnt3D &c)
 {
-    return InSpan(p->x, r, c.x) && InSpan(p->y, r, c.y) && InSpan(p->z, r, c.z);
+    bool xy = InSpan(p->x, r, c.x) && InSpan(p->y, r, c.y);
+
+    return xy && InSpan(p->z, r, c.z);
 }
 
 /* a node's tree searched for a batch of sets (SOCOM 1's NodeGetIntersectBatch, SOCOM II's per-type
@@ -525,7 +533,20 @@ static inline bool InCube(const CPnt3D *p, float r, const CPnt3D &c)
  * its box); a sphere (4) recorded as a hit on the node itself when its centre's cube holds the box's
  * centre, a character's node ending the set, the node's first polygon noted -- then the node's
  * polygons tested in turn for the rays and points; then the children; then every set this node
- * ended released */
+ * ended released.
+ * OPEN, 101 instructions (unwritten before the engine core's round 26; the target's size, 0xCB4,
+ * its blocks and calls): (1) the sphere's cube test -- the target tests each axis's and the x-and-y
+ * results unnarrowed and narrows the whole (andi 0xff) once, where this narrows every axis's and
+ * the pair's and tests the whole as it is; int returns, bool / int locals, explicit flags, the test
+ * written in the body: no shape gives it (build/scratch/core/v_ngib1-4.py, 7); (2) `hit = stop` --
+ * NodeGetIntersect's one open word again: the spilled flag narrowed where the target moves it;
+ * (3) the frame: the point case's two ray ends sit above the sphere's centre in the target (declared
+ * first), and declaring them ahead (assigned, not copy-initialised) costs 35 more. Measured on the
+ * way: the cell-mark test an int inline (`!BatchMarked(i)` narrowed as the target does), the tail
+ * pairs through NodeGetIntersect's accessors (Transform's and the segment test's a2, a1, a0 order),
+ * the axis test `v + r >= c` (an explicit `!(v + r < c)` materialises the not), the node's first
+ * polygon read through an inline taking the vector by reference (its address held, the target's
+ * `addiu a1,s5,116`), `node == di[k]->m_TreeDoneNode` in the release loop */
 void CGrid::NodeGetIntersectBatch(CNode *node, DiIntersect **di, int n)
 {
     CDIVector::iterator it;
@@ -607,7 +628,7 @@ void CGrid::NodeGetIntersectBatch(CNode *node, DiIntersect **di, int n)
                             MarkDone(d, node);
                         if (!d->m_socom2_bit19 || d->m_socom2_bit19 && node->m_nodeEx) {
                             if (node->m_di.size())
-                                d->m_Intersects[d->m_Cnt].m_poly = *node->m_di.begin();
+                                d->m_Intersects[d->m_Cnt].m_poly = FirstDI(node->m_di);
                             d->m_Intersects[cnt].m_node = node;
                             d->m_Cnt++;
                         }
@@ -735,7 +756,7 @@ void CGrid::NodeGetIntersectBatch(CNode *node, DiIntersect **di, int n)
             stack.Pop();
     }
     for (int k = 0; k < n; k++) {
-        if (di[k]->m_TreeDoneNode == node)
+        if (node == di[k]->m_TreeDoneNode)
             BatchReset(di[k]);
     }
 }
