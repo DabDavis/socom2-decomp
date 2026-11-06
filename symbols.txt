@@ -1712,18 +1712,18 @@
 0x00200D60 0x1C8 Load__13CFlareElementFP5_zrdr  # OVL1; ours (the HUD lane, round 36: hud_lensflare.cpp -- the element's record: texture, color, position_scale, size, opacity, scale; LoadFlare 0x1FFF40 calls it on each new element and keeps the element when it returns true; 3 instructions open)
 0x00200F30 0x118 NextFlareName__Fv  # OVL1; ours (the HUD lane, round 36: hud_lensflare.cpp -- the loader's next name: the wildcards' digits counted up as an odometer, 0 when they come round; byte-exact)
 0x00201050 0x1A0 FirstFlareName__FPc  # OVL1; ours (the HUD lane, round 36: hud_lensflare.cpp -- the flare loader 0x1FF630 calls it on a strdup'd node name, then 0x200F30 until it returns 0, finding a node by each: up to five '*' wildcards in the name counted through as digits; byte-exact)
-0x002011F0 0x384 func_002011F0  # OVL1
+0x002011F0 0x384 TickOffState__11CZPauseTestFRC4CPadf  # OVL1; s1:order by hand (the HUD lane, round 59: hud_pausemenu.cpp's first function in the image, as SOCOM 1's TickOffState 0x3BE590 is that unit's first; the menu's HudTick 0x201690 calls it first with the pad and dT, as SOCOM 1's HudTick does; it calls 0x204A40 where SOCOM 1's calls OpenPauseMenu)
 0x00201580 0xC On__11CZPauseTestFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00201590 0x8 Off__11CZPauseTestFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x002015A0 0xF0 Draw__11CZPauseTestFPQ23zdb7CCamera  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x00201690 0xB78 func_00201690  # OVL1
+0x00201690 0xB78 HudTick__11CZPauseTestFP4CPadf  # OVL1; s1:calls (the HUD lane, round 59: CHUD::Tick 0x1F7FF0 calls it at 0x1F8848 on CHUD+0x18900 with the pad, as SOCOM 1's CHUD::Tick calls CZPauseTest::HudTick; after Draw in the unit as SOCOM 1's)
 0x00202210 0x154 Clear__11CZPauseTestFv  # OVL1; s1:calls by hand (CHUD::ReInit_Uninit's second call on CHUD+0x18900, after ClosePauseMenu, as SOCOM 1's; right after HudTick in hud_pausemenu.cpp, as SOCOM 1's)
 0x00202370 0x1B0 ReInit__11CZPauseTestFv  # OVL1; by hand (hud_pausemenu.cpp: CHUD::ReInit_Init's call on CHUD+0x18900; the first selectable line through 0x205A70 into the signed char at 0x1C, the ACCEPT/BACK prompts, the abort and replay questions and YES/NO set through C2DString's slot 26; the name ours)
-0x00202520 0x1C20 func_00202520  # OVL1
+0x00202520 0x1C20 Init__11CZPauseTestFv  # OVL1; s1:calls (the HUD lane, round 59: CHUD::Init 0x1FA360 calls it at 0x1FAFB0, as SOCOM 1's CHUD::Init calls CZPauseTest::Init; after ReInit in the unit as SOCOM 1's)
 0x00204140 0x50 SetIsTrans__13C2DBitmapPolyFb  # OVL1; by hand (slot 8 of C2DBitmapPoly's vtable 0x406C30: both triangles' slot 8; an inline's out-of-line copy, the CZPauseTest unit's, linked first; the name ours, as C2DBitmap's)
 0x00204190 0x50 SetHasTexture__13C2DBitmapPolyFb  # OVL1; by hand (slot 6 of C2DBitmapPoly's vtable 0x406C30: both triangles' slot 6; an inline's out-of-line copy, this one the CZPauseTest unit's, linked first; the name ours, as C2DBitmap's)
-0x002041E0 0x854 func_002041E0  # OVL1
-0x00204A40 0x7B4 func_00204A40  # OVL1
+0x002041E0 0x854 HandleSelectionInput__11CZPauseTestFRC4CPad  # OVL1; s1:calls (the HUD lane, round 59: the menu's HudTick 0x201690 calls it at 0x201BE8, as SOCOM 1's HudTick calls HandleSelectionInput; after Init in the unit as SOCOM 1's)
+0x00204A40 0x7B4 OpenPauseMenu__11CZPauseTestFv  # OVL1; s1:calls (the HUD lane, round 59: TickOffState 0x2011F0 calls it at 0x201328 where SOCOM 1's TickOffState calls OpenPauseMenu; between HandleSelectionInput and ClosePauseMenu 0x205200 as SOCOM 1's)
 0x00205200 0x278 ClosePauseMenu__11CZPauseTestFv  # OVL1; s1:calls by hand (CHUD::ReInit_Uninit's first call on CHUD+0x18900, as SOCOM 1's; the last function before the pause menu's destructor and constructor, as SOCOM 1's before its constructor); byte-exact (the HUD lane, round 51: SOCOM 1's with SOCOM II's lens colour and camera zoom put back offline)
 0x00205480 0x318 __dt__11CZPauseTestFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x002057A0 0x58 __dt__10CPauseItemFv  # OVL1; ours by hand (the HUD lane, round 37: hud_pausemenu.cpp -- the line's implicit destructor, handed to __construct_new_array beside the constructor; destroys the string member with -1)
