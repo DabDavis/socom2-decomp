@@ -313,7 +313,9 @@ int func_00620B40(int arg0)
     return result;
 }
 
-int func_00620BD8(void)
+/* gcc r21b: NetRegisterMessageStart and NetMessageField by the game's registration 0x2B8660, which
+ * calls them where SOCOM 1's DMERegister calls those two; their bodies 0x623EF8/0x623F00 are stubs here. */
+int NetRegisterMessageStart(void)
 {
     int result;
 
@@ -329,7 +331,7 @@ int func_00620BD8(void)
     return result;
 }
 
-int func_00620C60(int arg0, int arg1, int arg2, int arg3)
+int NetMessageField(int arg0, int arg1, int arg2, int arg3)
 {
     int result;
 

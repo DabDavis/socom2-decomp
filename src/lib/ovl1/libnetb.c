@@ -9,7 +9,7 @@
  * IOP (LIBNETB_RING: the async receive and send calls, RPC 100/101, fill them); a datagram ring holds
  * 64-byte datagram headers (libnetb_udp.c). The newer release adds a 2-byte receive and send
  * (func_002476D0/func_00247F58, func_00247920/func_002481F8) and a connection-state check
- * (func_00247BD8). Not yet written: Open, Recv, recv_from, send_to. */
+ * (func_00247BD8). Not yet written: recv_from, send_to. */
 
 typedef unsigned int u_int;
 
@@ -43,7 +43,8 @@ typedef struct LIBNETB_RING {           /* a buffer's 80-byte header, shared wit
     int avail;                          /* 0x04 */
     u_int hdrsize;                      /* 0x08 */
     int state;                          /* 0x0C: 3 once the peer is gone */
-    int pad10[2];
+    int id;                             /* 0x10: the libnet socket (sceBInetOpen) */
+    int f14;                            /* 0x14 */
     int size;                           /* 0x18: the data's bytes */
     char *buf;                          /* 0x1C: the EE's copy */
     struct LIBNETB_RING *self;          /* 0x20: this header's IOP address */
@@ -52,7 +53,7 @@ typedef struct LIBNETB_RING {           /* a buffer's 80-byte header, shared wit
     char *iop_buf;                      /* 0x2C: the IOP's copy of the data */
     int pad30;
     int type;                           /* 0x34: 0 or 3 a datagram ring */
-    int pad38;
+    int proto;                          /* 0x38 */
     int off;                            /* 0x3C: the read position */
     int pad40[4];
 } LIBNETB_RING;
@@ -170,6 +171,76 @@ int sceBInetCreate(void *cd, u_int *net_buf, int *ps, sceBInetParam *param)
     n->id = s;
     *ps = (int)n;
     return 0;
+}
+
+static int libnetb_prepare_async_receive(void *cd, LIBNETB_RING *r);
+static int libnetb_prepare_async_send(void *cd, LIBNETB_RING *r);
+int libnetb_trans_data(void *src, void *dst, int size);
+extern int sceInetOpen(void *cd, u_int *net_buf, int s, int ms);
+
+/* a socket opened (GCC round 40a; the demo's sceBInetOpen 0x423F80, by its object's order between
+ * Create and Close and its calls, grown here): both rings set up and handed to the IOP's async
+ * receive and send, then the libnet open -- unless the socket is type 1 and opened with no timeout,
+ * which waits passive (state 2) and returns at once; the rings' state then follows the open (0, or 3
+ * on a failure) and each header goes back to the IOP. Byte-exact by five shapes (tools/try.py,
+ * build/scratch/gcc/r40/v_open*.py, d=64 -> 0): the state tested `passive == 1` (the target's `xor`
+ * with 1 and movn; `passive ? 2 : 1` gives movz); the send ring through a pointer of its own (its
+ * header in v0, the receive ring's in a2); the receive ring's buf stored last and the send ring's
+ * zero word last (each ring's final store in its call's delay slot); and the passive arm LAST, as an
+ * else -- `ret = 0` ahead of the test, or in a first arm, is hoisted above the branch by the jump
+ * optimiser (ret is dead on the open's path) and reorg fills the slot from above (`bnez`); at the
+ * branch's target it is stolen into an annulled slot, the target's `bnezl`. */
+int sceBInetOpen(void *cd, u_int *net_buf, LIBNETB *s, int ms)
+{
+    LIBNETB_RING *r;
+    LIBNETB_RING *w;
+    int passive = 0;
+    int state;
+    int ret;
+
+    if (s == 0)
+        return -512;
+    if (ms == 0)
+        passive = s->type == 1;
+    state = passive == 1 ? 2 : 1;
+    r = s->recv_mirror;
+    r->state = state;
+    r->type = s->type;
+    r->proto = s->proto;
+    r->id = s->id;
+    r->hdrsize = s->hdrsize;
+    r->f14 = 0;
+    r->size = 8192;
+    r->buf = (char *)r + 64;
+    if (libnetb_prepare_async_receive(cd, r) != 0)
+        return -501;
+    w = s->send_mirror;
+    w->state = state;
+    w->buf = (char *)w + 64;
+    w->type = s->type;
+    w->proto = s->proto;
+    w->id = s->id;
+    w->hdrsize = s->hdrsize;
+    w->size = 8192;
+    w->f14 = 0;
+    if (libnetb_prepare_async_send(cd, w) != 0)
+        return -501;
+    if (!passive) {
+        ret = sceInetOpen(cd, net_buf, s->id, ms);
+        if (ret == 0) {
+            s->send_mirror->state = 0;
+            s->recv_mirror->state = 0;
+        } else {
+            s->send_mirror->state = 3;
+            s->recv_mirror->state = 3;
+        }
+        if (libnetb_trans_data(s->send_mirror, s->send_mirror->self, 16) != 0)
+            return -501;
+        if (libnetb_trans_data(s->recv_mirror, s->recv_mirror->self, 16) != 0)
+            return -501;
+    } else
+        ret = 0;
+    return ret;
 }
 
 int sceBInetClose(void *cd, u_int *net_buf, LIBNETB *s, int ms)
