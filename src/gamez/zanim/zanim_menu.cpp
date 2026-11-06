@@ -290,7 +290,13 @@ namespace {
  * base() compares, == by value, const references to the fields) all hoist the end (0x120); a const
  * view's size() re-reads only the size (0x140), a const self pointer the data (0x128). SOCOM 1's
  * DWARF and symtab: vector's iterators are raw pointers there (do_assign<PC14CCharacterWeap>), the
- * only vector iterator class vector<bool>'s {vec_, pos_}. No header change */
+ * only vector iterator class vector<bool>'s {vec_, pos_}. No header change. Round 36, read in
+ * mwccps2's optimiser log (igdump --iro): IRO's own loop passes leave the latch's end loads in the
+ * loop (could_error loads, not marked invariant); it is IRO_CommonSubs that merges the guard's end
+ * with the latch's along the back edge (its @N first appears after that pass) -- so the target's
+ * latch end is an expression the guard's does not equal or the loop kills (the iterator scalarised
+ * early here, IRO_ScalarizeClassDataMembers, so ++i kills nothing the end depends on); a postfix,
+ * `+= 1`, `i = i + 1` or assigned iterator, `i->`, copy initialisation all 0x120 */
 bool OnIsEquipmentSelected(C2DAnimCmdHdr *hdr, float *dT)
 {
     EQUIP_ITEM item = CZWeapon::GetWeaponId(ArgName(hdr));
@@ -845,13 +851,8 @@ inline void ReplaceAccessory(const CSelectedCharsItr &it, EQUIP_ITEM what, EQUIP
     }
 }
 
-/* whether the kept item goes into this slot: the first time, slot 3 (ours) */
-inline bool KeepFirst(bool first, int s)
-{
-    return first && s == 3;
-}
-
-/* the same for an M203 rifle's grenades: slot 3, the first time, the kept second item (ours) */
+/* the same for an M203 rifle's grenades: slot 3, the first time, the kept second item (ours; the
+ * flag `k` defined ahead of `first`, so MW keeps it a value -- ReleaseSlotItem's note) */
 inline void ReplaceGrenade(const CSelectedCharsItr &it, EQUIP_ITEM what, EQUIP_ITEM &pick, bool &used,
                            EQUIP_ITEM keep, int keepSlot)
 {
@@ -860,9 +861,12 @@ inline void ReplaceGrenade(const CSelectedCharsItr &it, EQUIP_ITEM what, EQUIP_I
     while (s != -1) {
         data_003DD060[it.m_index].a = EQUIP_NONE;
         pick = NextPickBesides(it, pick, EQUIP_NONE, EQUIP_NONE);
+        bool k = false;
         bool first = !used;
 
-        ChooseSlotForCharacter(it, KeepFirst(first, s) ? keep : pick, s);
+        if (first && s == 3)
+            k = true;
+        ChooseSlotForCharacter(it, k ? keep : pick, s);
         s = FindItemSlot(it, what, 1);
         used = first ? keepSlot == 3 : false;
     }
@@ -874,15 +878,19 @@ inline void ReplaceGrenade(const CSelectedCharsItr &it, EQUIP_ITEM what, EQUIP_I
  * its grenades (175, 171, 173) by picks, 143's 179, 178 and 176, 63's 183, 182 and 181, and a
  * two-slot item's second (185 for 145, 186 for 146, else EQUIP_END) by picks besides the new item --
  * the saved picks (data_003DD060) cycled on, a 145/146 pick dropped when it is the new item.
- * Written in the UI's round 35 (unwritten before). OPEN, 58 instructions at the target's size
- * (0x9D8): every call, block and loop the target's but ReplaceGrenade's slot-3 test -- the target
- * MATERIALISES the flag (`move v1,zero` in the first test's delay slot, `daddiu v1,zero,1` when
- * both hold, then `beqz v1` choosing a1), where every form here is jump-threaded into the choice's
- * branches: `use ? keep : pick` over a bool set in an if, an inline returning `first && s == 3`
- * (or `if (...) return true; return false;`: an if/else of two assignments, 0x9E0, or a local
- * `r`), an int, an unsigned char, a ternary, a direct condition, a reference out-parameter, the
- * flag a caller-scope variable passed by reference (build/scratch/ui/v_rsi*.py) -- then the
- * registers (43 instructions differ in them alone). Measured on the way, each the target's: the
+ * Written in the UI's round 35 (unwritten before). OPEN, 34 instructions at the target's size
+ * (0x9D8), saved registers alone: the M203 case's `used` / the grenade loops' `first` take s0 and the
+ * loops' slot s3 where the target has s3 and s0 (s141 s2 since round 36: declared bare ahead of
+ * `used`, assigned after it; 40 -> 34). igreplay --want finds only placements of `used` and s141
+ * among the SECOND grenade copy's own variables (v54.5-56.5), none for the copies' slots or flags
+ * alone -- the original's locals are not these. Round 36 closed the flag: the target MATERIALISES
+ * ReplaceGrenade's `first && s == 3` (`move v1,zero`, `daddiu v1,zero,1`, `beqz v1`) because MW's
+ * RebuildLogicalExpressions (IroExprRegeneration.c: it folds the linearised `t = 0; if (!a) goto L;
+ * if (!b) goto L; t = 1; L:` back into an && only when nothing but the tests' own expressions lies
+ * between `t = 0` and the tests -- CheckForTopLevelExpressions) found a statement there: the flag
+ * `k = false` defined BEFORE `first = !used` (58 -> 40; every other form -- inlines, locals, ints,
+ * ternaries -- was rebuilt and then folded into the choice's branches by RebuildCondExpressions:
+ * read in mwccps2's own optimiser log, igdump --iro). Measured on the way, each the target's: the
  * saved picks read field by field with the second into a local ahead of the first NextPick (a
  * struct copy goes through the frame); each loop a while with its FindItemSlot before the flag's
  * update (`first = true` / `used = ...` in the back branch's delay slot); a `return` closing the
@@ -924,8 +932,10 @@ void ReleaseSlotItem(const CSelectedCharsItr &it, int slot, EQUIP_ITEM item)
                         ChooseSlotForCharacter(it, wa.m_wepId, s);
                     }
                 } else if (CZFTSWeapon::IsM203Weapon(old) || old == 142) {
+                    int s141;
                     bool used = false;
-                    int s141 = FindItemSlot(it, (EQUIP_ITEM)141, 1);
+
+                    s141 = FindItemSlot(it, (EQUIP_ITEM)141, 1);
 
                     if (s141 != -1) {
                         data_003DD060[it.m_index].a = EQUIP_NONE;
@@ -1388,37 +1398,43 @@ namespace {
 /* the item put on one selected character: none when the character has it already or carries fewer
  * than two weapons, else a primary or a secondary through its pick, anything else into the first free
  * equipment slot (-1); whether it took, the character's UI variables updated (SOCOM 1's, which set the
- * two weapons up itself and pushed the rest when four slots allowed). OPEN, 0x154 against 0x184:
- * the walk and the early return are the target's (its `i != e` narrowed and reused after the loop;
- * a1/a2 swapped), the three picks are not -- the target materialises each pick's result into the
- * bool (`move s0,zero; beqz v0; daddiu s0,zero,1; andi s0,s0,0xff` in every arm, the secondary's
- * inlined pick behind a `daddiu a1,zero,1; beqz a1` test of its own), where a bool assigned a bool
- * call is a move. `ok = false; if (f()) ok = true;` in the two calling arms gives their first three
- * instructions (0x16C); ternaries, int-returning picks (sltu), if-return wrappers, `&&` forms and a
- * ternary chain fold or lose (build/scratch/core/v_cefc.py). Round 9: each pick `!= false`, `?
- * true : false`, `!!`, `== true` or `!= 0`, and the three picks as an inline returning each (or
- * through a bool local) -- 0x154 to 0x16C. The target's secondary arm tests a constant 1 (`daddiu
- * a1,zero,1; beqz a1`) ahead of the inlined pick and narrows the pick's result (andi) at the join:
- * the pick sits inside an inline of its own whose bool MW does not fold */
+ * two weapons up itself and pushed the rest when four slots allowed). OPEN, 6 instructions at the
+ * target's size (0x184; round 35: 0x154), all in the inlined secondary pick's compare: the target
+ * generates the element's load ahead of the item's narrowing (`lbu` numbered before the `andi`, the
+ * andi into v0 and the pointer chain into v1), here the narrowing comes first -- the element in the
+ * compare, a pointer or list local, casts on either side and a by-reference item change nothing,
+ * and the inline's operand order is UIChooseSecondary's (swapped it costs that one an instruction).
+ * Round 36 (the materialised-flag rule, ReleaseSlotItem's): each pick is `ok = ok && pick` with `ok`
+ * true from its declaration -- the constant left operand folds away, the one test left cannot be
+ * rebuilt into an `&&` (RebuildLogicalExpressions wants two tests), so the logical temporary stays
+ * materialised (`move s0,zero; beqz; daddiu s0,1; andi s0,s0,0xff`), and the secondary's inline
+ * keeps its `daddiu a1,1; beqz a1` (0x154 -> 0x184, 18 off); the walk with no end local (the end
+ * re-read, a common subexpression numbered after the hoisted item) and the element read into a
+ * named local compared `item == w`, the item first in the beq (18 -> 6). Round 9 tried each pick
+ * `!= false`, `? true : false`, `!!`, `== true`, `!= 0`, inline wrappers and bool locals (0x154 -
+ * 0x16C) */
 bool ChooseEquipmentForCharacter(const CSelectedCharsItr &it, EQUIP_ITEM item)
 {
     CCharacterWeapList *weapons = (CCharacterWeapList *)it.m_weapons;
-    CCharacterWeapList::iterator i = weapons->begin(), e = weapons->end();
+    CCharacterWeapList::iterator i = weapons->begin();
 
-    for (; i != e; ++i)
-        if ((*i).m_wepId == item)
+    for (; i != weapons->end(); ++i) {
+        EQUIP_ITEM w = (*i).m_wepId;
+
+        if (item == w)
             break;
-    if (i != e || weapons->size() < 2)
+    }
+    if (i != weapons->end() || weapons->size() < 2)
         return false;
 
-    bool ok;
+    bool ok = true;
 
     if (CZWeapon::IsPrimary(item))
-        ok = ChoosePrimaryForCharacter(it, item);
+        ok = ok && ChoosePrimaryForCharacter(it, item);
     else if (CZWeapon::IsSecondary(item))
-        ok = ChooseSecondaryForCharacter(it, item);
+        ok = ok && ChooseSecondaryForCharacter(it, item);
     else
-        ok = ChooseSlotForCharacter(it, item, -1);
+        ok = ok && ChooseSlotForCharacter(it, item, -1);
     UpdateCharWeaponUiVars(it.m_index);
     return ok;
 }
