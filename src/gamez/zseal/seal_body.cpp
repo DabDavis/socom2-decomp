@@ -2279,6 +2279,115 @@ void CZSealBody::BodySetState(int state)
     CBody::BodySetState(state);   /* (OVL1 0x28DFB0, the body lane's: the state stored) */
 }
 
+extern "C" {
+extern AnimSet *data_0044D3F8;
+extern float data_003F3420;
+}
+static inline void IdleSet(CZSealBody *seal, float x, float y, float z);
+
+/* whether the SEAL can go prone: not in water deeper than 2 (OVL2 0x584C10, new in SOCOM II beside
+ * SOCOM 1's CanProneAim: the state test 0x552EC0 asks it, InStateProne inlines it; the name unknown) */
+extern "C" bool func_00584C10(CZSealBody *seal)
+{
+    if (seal->m_inwater && !(seal->m_waterdepth <= 2.0f))
+        return false;
+    return true;
+}
+
+/* ClearStack (below) over a stack pointer already held: InStateProne's second clear keeps the first's
+ * saved register (ClearStack's own local recomputes it) */
+static inline CZBodyAnimBlend *ClearStackOf(CZSealBody *seal, CBodyAnimBlendStack *stack, unsigned int count)
+{
+    CZBodyAnimBlend *b = (CZBodyAnimBlend *)func_00555170(&seal->m_blends);
+    int n = 12;
+
+    while (BlendCount(stack) > count && n > 0)
+        b = seal->PopBlend(), n--;
+    if (n <= 0)
+        return (CZBodyAnimBlend *)func_00555170((char *)seal + 0x1c0);
+    if (b)
+        b->m_ctrl = 0;
+    seal->m_desiredStance = STANCE_PRONE;
+    return b;
+}
+
+/* prone: a SEAL this console plays too deep to lie down crouches instead; else the set of 0x44D3F8 undone
+ * by a throttle, and at a stop the blends kept to two -- no turn, anim 26 alone and whole, the flags
+ * cleared -- or the turn's anim 28, the foot kept (32 for a foot in 17-47, else 2) and the turn
+ * controlled; moving, the crawl (OVL2 0x5845C0: SOCOM 1's InStateProne, its throttles read at 0x240,
+ * 0x244 and 0x23C) */
+CZBodyAnimBlend *CZSealBody::InStateProne()
+{
+    if (!IsRemote() && !func_00584C10(this)) {
+        m_desiredState = stateCrouch;
+        m_stancechanged = true;
+        return Crouch();
+    }
+    float x = m_240;
+    float z = m_244;
+    float t = m_23c;
+
+    if (m_animset == data_0044D3F8)
+        IdleSet(this, x, t, z);
+    UpdateQuadrant(z, x, false);
+
+    CZBodyAnimBlend *top;
+    int foot = ((CZBodyAnimBlend *)func_00555170(&m_blends))->ThisFoot();
+
+    if (IsStopped(x, z, t)) {
+        static float zero_t = 0.0f;
+
+        if (_close_enough(t, zero_t, data_003F3420)) {
+            CBodyAnimBlendStack *stack;
+
+            {
+                CZBodyAnimBlend *b = (CZBodyAnimBlend *)func_00555170(&m_blends);
+                int n = 12;
+
+                stack = &m_blends;
+                while (BlendCount(stack) > 2 && n > 0)
+                    b = PopBlend(), n--;
+                if (n <= 0)
+                    func_00555170((char *)this + 0x1c0);
+                else {
+                    if (b)
+                        b->m_ctrl = 0;
+                    m_desiredStance = STANCE_PRONE;
+                }
+            }
+            if (!IsCurrentBlend((AnimType)26)) {
+                ClearStackOf(this, stack, 1);
+                func_00588BC0(this, (AnimType)26, 2, 0, 0);
+            }
+            top = (CZBodyAnimBlend *)func_00555170(&m_blends);
+            top->SetRepresentativeWt(1.0f);
+            SetIsMoving(false);
+            SetIsTurning(false);
+        } else {
+            if (!IsCurrentBlend((AnimType)28)) {
+                ClearStack(2, true);
+                func_00588BC0(this, (AnimType)28, 2, 0, 0);
+
+                short last;
+
+                if (foot >= 17 && foot < 48)
+                    last = 32;
+                else
+                    last = 2;
+                m_last_foot = last;
+            }
+            SetIsMoving(false);
+            SetIsTurning(true);
+            top = TurnControl(t);
+        }
+    } else {
+        SetIsMoving(true);
+        SetIsTurning(false);
+        top = ProneControl(x, t, z);
+    }
+    return top;
+}
+
 /* hanging: with the throttles within the hang's reach the blends popped down to the hang (34) -- or to
  * one -- the hang pushed if it is not on top, the top made whole and the moving and turning flags
  * cleared; pushed forward, a stand from the hang (stance 4); pulled back from a top blend still
