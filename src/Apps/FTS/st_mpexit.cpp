@@ -163,9 +163,6 @@ public:
     void EnableMPBombGear(bool b);
 };
 
-/* a SEAL's clan tag, or none (unnamed yet) */
-extern "C" const char *func_002C3AC0(int id);
-
 /* a thing in the world (st_exit.cpp's stub: the list, the purge and the type byte) */
 /* a SEAL's scene node (zdb's CNode: its vtable pointer at 0x60, only the slot at 0x38 called --
  * the name ours) */
@@ -528,6 +525,7 @@ public:
 class CZPersonaState {
 public:
     static void UpdateLocalPersona();
+    static const char *GetPersonaClanTag(int client);   /* 0x2C3AC0: a SEAL's clan tag, or "" (the game states' round 50) */
 };
 
 extern "C" {
@@ -695,7 +693,7 @@ void SetMvpUiVars(const char *szNameVar, const char *szUiVar)
     }
     if (pMvp) {
         char szName[128];
-        const char *szClan = func_002C3AC0(pMvp->m_fc8);
+        const char *szClan = CZPersonaState::GetPersonaClanTag(pMvp->m_fc8);
 
         if (szClan && *szClan)
             sprintf(szName, "[%s] %s", szClan, pMvp->m_name);
@@ -1019,7 +1017,7 @@ void SetStatLbUiVar(bool bSeals, const char *szUiVar, CSealStats &(CZSealBody::*
         char szTag[8];
 
         edStats.push(0);
-        const char *szClan = func_002C3AC0(vecSeals[iSeal]->m_fc8);
+        const char *szClan = CZPersonaState::GetPersonaClanTag(vecSeals[iSeal]->m_fc8);
         if (szClan && *szClan)
             sprintf(szTag, "[%s]", szClan);
         else

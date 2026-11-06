@@ -83,10 +83,12 @@ public:
 
 extern CHUD *theHUD;
 
-/* a player's clan tag, or "" (the player list's; no name yet) */
-extern "C" const char *func_002C3AC0(int player);
-/* a player's name, or 0 (the player list's; no name yet) */
-extern "C" const char *func_002C3A70(int player);
+/* the network game's personas (fts_net_persona.cpp's; the game states' round 50 named both rows) */
+class CZPersonaState {
+public:
+    static const char *GetPersonaName(int client);      /* 0x2C3A70: a player's name, or 0 */
+    static const char *GetPersonaClanTag(int client);   /* 0x2C3AC0: a player's clan tag, or "" */
+};
 
 /* the box's places, in their data order (variables: read with lwc1), then the bss ones the unit's
  * initialiser (0x3FF680) computes from them, in this order: the static icon and the icons' size,
@@ -332,8 +334,8 @@ void CWhosTalking::Tick(float dT)
 
     if (func_0030E790(data_0045B718)) {
         int player = data_0045B718->m_slots[data_0045B718->m_talker].m_player;
-        const char *clan = func_002C3AC0(player);
-        const char *name = func_002C3A70(player);
+        const char *clan = CZPersonaState::GetPersonaClanTag(player);
+        const char *name = CZPersonaState::GetPersonaName(player);
 
         if (!name)
             return;
@@ -446,7 +448,7 @@ void CMPInfoBox::Tick(float dT)
     m_healthbar.Update(owner, true);
     m_healthbar.Tick(dT);
     if (owner)
-        clan = func_002C3AC0(owner->m_player);
+        clan = CZPersonaState::GetPersonaClanTag(owner->m_player);
     else
         clan = 0;
     const char *name = owner->m_name;

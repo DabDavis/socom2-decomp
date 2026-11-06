@@ -210,7 +210,6 @@ void func_002B9B60(int from, bool remove);
 int func_002C2FA0();
 int func_002C2C20(int channel);
 const char *func_002C3B60(CZSealBody *seal, int i);
-const char *func_002C3C30(CZSealBody *seal, int i);
 /* the voice chat's */
 bool func_0030E540(void *chat);
 void func_0030E490(void *chat);
@@ -220,6 +219,13 @@ void func_0030E580(void *chat, CZNetPersona *persona, bool muted);
 struct CTCMRepeat;
 CTCMRepeat *func_0034A620();
 }
+
+/* the network game's personas (fts_net_persona.cpp's; SOCOM 1's GetSOUPString, the persona's i-th of
+ * five SOP strings -- the game states' round 50 named the row 0x2C3C30) */
+class CZPersonaState {
+public:
+    static char *GetSOUPString(CZSealBody *body, int i);
+};
 
 class CTCMRepeatTarget {
 public:
@@ -828,7 +834,7 @@ int tcmUpdateMessage(CZSealBody *player, int msg)
     case 51:
     case 52:
     case 53: {
-        const char *s = func_002C3C30(ftsGetPlayer(), msg - 49);
+        const char *s = CZPersonaState::GetSOUPString(ftsGetPlayer(), msg - 49);
         const char *caption;
 
         if (s && *s)
