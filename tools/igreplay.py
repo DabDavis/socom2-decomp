@@ -55,6 +55,10 @@ a deep copy of the record (relabel(), kept for its callers): the same colours, ~
 
     ./tools/igreplay.py DUMP -f F -r 0 --target UNIT F_MANGLED --move 41=87.5   # the move against the target
     ./tools/igreplay.py DUMP -f F -r 0 --target UNIT F_MANGLED --movers 41,87 --timeout 60
+    ./tools/igreplay.py DUMP -f F -r 0 --target UNIT F_MANGLED --greedy    # the single moves that help, one at a time (round 45a)
+
+What this search cannot finish, or does not ask (ten movers; the precedences every hit shares; spill picks; a changed
+interference): tools/igsearch.py anneal / allperm / picks / edges (GCC round 45a).
 
 FPR records (GCC round 35a, the AI core's LeadTargetG and the lanes' `$f20,$f0,$f20` operand misses):
 A dump igdump made with --compiler (a unit's colouring under another build than its directive's: GCC round 44a, the
@@ -412,6 +416,49 @@ def search(rec: dict, want: dict[int, str], movers: list[int], limit: int | None
                 break
     res.elapsed = time.monotonic() - t0
     return res
+
+
+def greedy(rec: dict, tcol: dict, base: dict[int, float] | None = None, drop=(), timeout: float | None = 240.0,
+           rounds: int = 8) -> tuple[list[tuple[int, float, list[int]]], dict[int, float], list[int], bool]:
+    """The weapons' round 40 single-move search (GCC round 45a; greedy.py, at --target): from `base`, repeatedly the one renumbering
+    of one node, to any half step, that most reduces the nodes whose register disagrees with `tcol` (target_colours' {node: register},
+    a number or a name), until no single move helps. Returns (each step's (node, position, the nodes still wrong), the moves, the
+    nodes wrong at the end, whether the budget ended it). A greedy search: a hit needing two moves at once is not found by it,
+    --movers finds those."""
+    g = Graph(rec)
+    cls = rec['cls']
+    n = len(rec['nodes'])
+    active = [i for i in range(g.nreal, n) if g.adj[i]]
+    slots = [a + 0.5 for a in active]
+
+    def wrong(moves):
+        colour, mp, _ = replay_moved(rec, moves, drop, graph=g)
+        return [v for v, w in tcol.items() if rname(colour[mp[v]], cls) != (w if isinstance(w, str) else rname(w, cls))]
+
+    cur = dict(base or {})
+    best = wrong(cur)
+    steps: list[tuple[int, float, list[int]]] = []
+    t0 = time.monotonic()
+    stopped = False
+    for _ in range(rounds):
+        improved = None
+        for v in active:
+            if timeout is not None and time.monotonic() - t0 > timeout:
+                stopped = True
+                break
+            for p in slots:
+                m = dict(cur)
+                m[v] = p
+                b = wrong(m)
+                if len(b) < len(best):
+                    best, improved = b, (v, p)
+        if improved is None:
+            break
+        cur[improved[0]] = improved[1]
+        steps.append((improved[0], improved[1], list(best)))
+        if not best or stopped:
+            break
+    return steps, cur, best, stopped
 
 
 def brute(rec: dict, want: dict[int, str], movers: list[int], limit: int | None = None, **budget) -> list[tuple]:
@@ -899,6 +946,9 @@ def main(argv=None) -> int:
                     help="read each virtual register's register in the target (FUNC a map name UNIT defines) and "
                          "score the colouring --move/--drop give against it; with --movers, the saved registers "
                          "it gives are the --want")
+    ap.add_argument("--greedy", action="store_true",
+                    help="with --target: repeatedly the single renumbering that most reduces the nodes the target "
+                         "disagrees with (the weapons' round 40 search; --timeout its budget, --move/--drop its base)")
     ap.add_argument("--compiler", metavar="BUILD",
                     help="build --target's candidate with this toolchain, not the one the unit's directive names "
                          "(default: the build the dump's records name, igdump --compiler; GCC round 44a); the "
@@ -919,6 +969,8 @@ def main(argv=None) -> int:
            if (a.cls < 0 or r['cls'] == a.cls) and r['cls'] in VOLATILE
            and (rx is None or rx.search((r.get('proc') or '').split('@0x')[0]))
            and (lrx is None or (r.get('link') and lrx.search(r['link'])))]
+    if a.greedy and not a.target:
+        raise SystemExit("--greedy needs --target")
     if a.permute and not (a.movers and (a.want or a.target)):
         raise SystemExit("--permute needs --movers, and --want or --target")
     single = a.move or a.drop or a.want or a.nb or a.watch or a.target
@@ -973,6 +1025,14 @@ def main(argv=None) -> int:
         print("\n".join(lines))
         if rec.get('spills'):
             print("\n".join(target_slot_report(rec, code, moves, drop, late)[0]))
+        if a.greedy:
+            steps, cur, left, stopped = greedy(rec, tcol, moves, drop, a.timeout or None)
+            for v, p, wrong in steps:
+                print(f"  greedy: --move {v}={p:g}: {len(wrong)} nodes still wrong"
+                      + (f" ({', '.join(f'v{x}' for x in wrong[:12])})" if wrong else ""))
+            print(f"  greedy: {len(steps)} moves, {len(left)} nodes wrong at the end"
+                  + (" (STOPPED by the --timeout budget)" if stopped else "")
+                  + ("" if steps else ": no single renumbering helps"))
         if not a.movers and not a.watch:
             return 0
     if a.want or (want and a.movers):

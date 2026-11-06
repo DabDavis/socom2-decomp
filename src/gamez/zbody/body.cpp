@@ -1114,18 +1114,42 @@ CBody::~CBody()
     Destroy();
 }
 
-/* the overlay cleared, every blend popped, the parts deleted (SOCOM 1's).
- * OPEN, 0x1A8 bytes short: the target inlines each transform whole -- the iterators, the functor,
- * the part's destructor and Clear's stores, then operator delete -- where MW inlines it one level
- * and calls the iterator operators and the functor out of line. Measured (probes p_tf2.cpp,
- * ims.py): with `~CZBodyPart() { Clear(); }` the transform's tree is SIX high (transform, the
- * functor, the destructor, Clear, CQuat's implicit assignment, CPnt3D's), cut at level 5 at any
- * inline_max_size; with Clear's stores written into the destructor it is five high but 299 units
- * (a CPnt3D copy costs ~49, a CQuat copy ~30, the empty transform 80, a user destructor 17), and
- * `#pragma inline_max_size(300)` then inlines it: 0x434 against 0x42C, only end() reloading data_
- * where the target reuses begin()'s load. Clear inside the functor (`if (p) { p->Clear(); delete
- * p; }`, no destructor) is five high and still over 256. The original fits both limits: its copies
- * (zmath.h) or the MSL pieces were a level shorter and ~45 units leaner -- not in this lane's files */
+/* the overlay cleared, every blend popped, the parts deleted (SOCOM 1's). The target inlines each transform
+ * whole -- the iterators, the functor, the part's destructor and Clear's stores, then operator delete -- where
+ * through std::transform and DeleteBodyPart MW inlines one level and calls the pieces: with `~CZBodyPart() {
+ * Clear(); }` the tree is six high, with Clear's stores in the destructor five high but 299 units, over
+ * inline_max_size (a CPnt3D copy costs ~49, a CQuat copy ~30, the empty transform 80, a user destructor 17). */
+
+/* std::transform(first, last, result, DeleteBodyPart()) with the functor and the destructor written out: a marked
+ * stand-in, the original's spelling unknown. The two CPnt3D copies written field by field are the units that bring
+ * it under inline_max_size (`#pragma inline_max_size(400)` at the unit's end did as much, at seven other rows' cost:
+ * Clear, Reset, PushBlend, AttachAuxNode, AddBodyPart, NewBodyPart, BodySetup) */
+typedef std::vector<CZBodyPart *>::iterator PartIter;
+
+static inline void DeleteParts(PartIter first, PartIter last, PartIter result)
+{
+    for (; first != last; ++first, ++result) {
+        CZBodyPart *p = *first;
+
+        if (p) {
+            p->m_node = 0;
+            p->m_parent = 0;
+            p->m_pos.x = CPnt3D::zero.x;
+            p->m_pos.y = CPnt3D::zero.y;
+            p->m_pos.z = CPnt3D::zero.z;
+            p->m_rot = CQuat::identity;
+            p->m_saved_pos.x = CPnt3D::zero.x;
+            p->m_saved_pos.y = CPnt3D::zero.y;
+            p->m_saved_pos.z = CPnt3D::zero.z;
+            p->m_saved_rot = CQuat::identity;
+            p->m_bit0 = true;
+            p->m_bit1 = true;
+            p->m_id = -1;
+            operator delete(p);
+        }
+        *result = 0;
+    }
+}
 
 void CBody::Destroy()
 {
@@ -1133,9 +1157,9 @@ void CBody::Destroy()
     m_blends.Top();
     while (m_blends.Size())
         PopBlend();
-    std::transform(m_body_parts.begin(), m_body_parts.end(), m_body_parts.begin(), DeleteBodyPart());
+    DeleteParts(m_body_parts.begin(), m_body_parts.end(), m_body_parts.begin());
     m_body_parts.clear();
-    std::transform(m_body_parts_aux.begin(), m_body_parts_aux.end(), m_body_parts_aux.begin(), DeleteBodyPart());
+    DeleteParts(m_body_parts_aux.begin(), m_body_parts_aux.end(), m_body_parts_aux.begin());
     m_body_parts_aux.clear();
 }
 

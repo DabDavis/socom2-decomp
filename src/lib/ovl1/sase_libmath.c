@@ -134,7 +134,7 @@ extern float func_002517D8(float fX);		/* the encoder's fast log2 (shared) */
  * two points interpolated linearly back into pfSpec. iLength - 1 written out twice: GCSE (one pass) reuses the integer, spilled
  * at 1312(sp) with every saved register taken, and not its conversion to float, reloaded by lwc1 (one variable: the float
  * kept in $f23, the frame 16 smaller; GCC round 44a). */
-void func_0024AB48(float *pfSpec, int iLength, float fStep)
+void func_0024AB48(float fStep, float *pfSpec, int iLength)
 {
 	float afBuf[328];
 	float *pfLog, *pfFreq;

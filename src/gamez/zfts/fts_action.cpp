@@ -265,8 +265,9 @@ static inline CNodeAction *_close_action(CNodeAction *action)
  * headers' round 40, under `#pragma inline_depth(7)` at the file's end and `__MSL_POD_DTOR_ARGS`
  * (a modelling device, a "Level 6, or 8?" witness): transform (pass 0), the op (1), ~CNodeAction
  * (2), the vector's three this-tests (3, 4, 5), deallocate (6), and its two accessor arguments would
- * be expanded at pass 7, so they stay calls, cap() 0x2B5750 then alloc() 0x2B5740, the data word held
- * across them. The height check does not count an argument's wait, so all of it is admitted */
+ * be expanded at pass 7, so they stay calls, the capacity pair's second() 0x2B5750 then first() 0x2B5740,
+ * the data word held across them. The height check does not count an argument's wait, so all of it is
+ * admitted */
 void CNodeAction::Close()
 {
     std::transform(m_actions.begin(), m_actions.end(), m_actions.begin(), _close_action);

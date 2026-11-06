@@ -156,8 +156,7 @@ public:
     const Allocator &alloc() const { return *(const Allocator *)&capacity_; }
 #ifdef __MSL_POD_DTOR_ARGS
     /* the destructor's two accessors, as the pods' (the opt-in's comment at the head of the 1-byte pod below) */
-    Allocator &alloc() { return *(Allocator *)&capacity_; }
-    unsigned int &cap() { return capacity_.n_; }
+    typedef Metrowerks::details::compressed_pair_imp<Allocator, unsigned int, 1> __cap_pair;
 #endif
     /* clear declared ahead of the destructor: both are defined after the class (see there), and
      * MW emits a unit's out-of-class template members in their declaration order -- clear first
@@ -260,7 +259,7 @@ __vector_deleter<T, Allocator>::~__vector_deleter()
     clear();
 #ifdef __MSL_POD_DTOR_ARGS
     if (data_)
-        alloc().deallocate(data_, cap());
+        ((__cap_pair *)&capacity_)->first().deallocate(data_, ((__cap_pair *)&capacity_)->second());
 #else
     if (data_)
         operator delete(data_);
@@ -280,6 +279,30 @@ __vector_deleter<T, Allocator>::~__vector_deleter()
 template <class T, class Allocator>
 class __vector_pod;
 
+/* __MSL_VECTOR_POD_PAIR, an opt-in by unit, A MODELLING DEVICE (the engine core's round 28, from the MSL headers'
+ * round 32 model, build/p32/vec/mkpair.py): the pointer pod's capacity as SOCOM 1's compressed pair -- the allocator
+ * an empty base, the count its second --, its member swap trading the fields itself and its destructor calling
+ * data(), alloc(), data(), cap(), as CKey::DeleteChildren 0x25B580's outer FreeVector calls them out of line
+ * (0x25B9C0, 0x25B9A0, 0x25B980, 0x25B960, 0x25B950, 0x25B940, 0x25B930, 0x25B920). A level-6/8 shape (over every
+ * unit at level 5: +19, -253), so one unit's, zar_key.cpp's. __VPOD_CAP names the count either way */
+#ifdef __MSL_VECTOR_POD_PAIR
+template <class A>
+class __vector_pod_pair : public A {
+public:
+    __vector_pod_pair() {}
+    explicit __vector_pod_pair(unsigned int y) : second_(y) {}
+    A &first() { return *this; }
+    unsigned int &second() { return second_; }
+    void swap(__vector_pod_pair &y) { std::swap(second_, y.second_); }
+    operator unsigned int() const { return second_; }
+
+    unsigned int second_;
+};
+#define __VPOD_CAP capacity_.second_
+#else
+#define __VPOD_CAP capacity_
+#endif
+
 template <class T>
 class __vector_pod<T, allocator<unsigned int> > {
 public:
@@ -291,6 +314,14 @@ public:
      * calls the members' constructors out of line (0x3FFCE0), while CHUD's, CCell's and CVisual's
      * constructors and __sinit_compass.cpp still inline theirs whole. A level more instead (the
      * stores in a helper) cuts those four too */
+#ifdef __MSL_VECTOR_POD_PAIR
+    __vector_pod() : capacity_(0)
+    {
+        size_ = 0;
+        data_ = 0;
+    }
+    __vector_pod(unsigned int n, const T &value) : capacity_(0) { size_ = 0; data_ = 0; init(n, value); }
+#else
 #ifdef __MSL_POD_DTOR_ARGS
     /* the capacity pair's two levels (the opt-in's comment at the head of the 1-byte pod below) */
     void __zero_cap2() { capacity_ = 0; }
@@ -313,6 +344,7 @@ public:
 #endif
     /* n copies of value: the words zeroed, then init (CVisual's m_lodMesh(0): init called out of line) */
     __vector_pod(unsigned int n, const T &value) { capacity_ = 0; size_ = 0; data_ = 0; init(n, value); }
+#endif
     __vector_pod(const __vector_pod &x);
     /* the storage given back through the allocator (CW 2.5's MSL: the pod's destructor calls
      * alloc() and deallocate): a pointer vector's destructor is four high, one more than its
@@ -329,15 +361,21 @@ public:
      * `deallocate(data())` checks it a level deeper and cuts 34 deeper destructor chains at level 5:
      * the round 26 measurement); a reference local (`T *&d = data_;` or `T *&d = data();`) is a
      * variable at every site and loses the resize, the test alone through data() all three */
-#ifdef __MSL_POD_DTOR_ARGS
+#ifdef __MSL_VECTOR_POD_PAIR
+    ~__vector_pod()
+    {
+        if (data())
+            alloc().deallocate(data(), cap());
+    }
+#elif defined(__MSL_POD_DTOR_ARGS)
     /* THE DESTRUCTOR'S ACCESSORS (the MSL headers round 40, the UI's round 39 request): SOCOM 1's
      * `if (data_) alloc().deallocate(data_, cap())`, the opt-in's comment at the head of the 1-byte pod below */
+    typedef Metrowerks::details::compressed_pair_imp<allocator<unsigned int>, unsigned int, 1> __cap_pair;
     ~__vector_pod()
     {
         if (data_)
-            alloc().deallocate(data_, cap());
+            ((__cap_pair *)this)->first().deallocate(data_, ((__cap_pair *)this)->second());
     }
-    allocator<unsigned int> &alloc() { return *(allocator<unsigned int> *)this; }
 #else
     ~__vector_pod()
     {
@@ -361,13 +399,29 @@ public:
      * hand-written unit: the 32 FreeVector/TrimVector functions level 5 lost come back (CFlashFXVector::
      * Reset, CCompass::Close, CWorld's three, CSndJukebox::Cleanup, Headset::Flush and their copies),
      * nothing else moves */
+#ifdef __MSL_VECTOR_POD_PAIR
+    void swap(__vector_pod &x)
+    {
+        if (this != &x) {
+            capacity_.swap(x.capacity_);
+            std::swap(data_, x.data_);
+            std::swap(size_, x.size_);
+        }
+    }
+#else
     void swap(__vector_pod &x) { std::swap(*this, x); }
+#endif
     /* references to the fields (SOCOM 1 keeps out-of-line copies: data() is this + 8, cap() this) */
     T *&data() { return data_; }
+#ifdef __MSL_VECTOR_POD_PAIR
+    unsigned int &cap() { return capacity_.second(); }
+    allocator<unsigned int> &alloc() { return capacity_.first(); }
+#else
     unsigned int &cap() { return capacity_; }
+#endif
     /* the insert's capacity test (the char pod's: read through it, the growth's capacity_ load is
      * a separate one, as in 0x1FE340) */
-    unsigned int capacity() const { return capacity_; }
+    unsigned int capacity() const { return __VPOD_CAP; }
     /* the raw iterators a vector of pointers makes its own from, both through data()'s reference:
      * end() so keeps a local vector's &data_ in its register across a call (CGrid::Destroy,
      * CWorld::GenerateLandmarkList and DeleteChildren, CAssetLib::AddPalette -- the zdb world's
@@ -423,7 +477,11 @@ public:
      * now emits four list-iterator copies out of line from a function that does not match yet) */
     void push_back(const T &x) { insert(data() + size_, 1, x); }
 public:
+#ifdef __MSL_VECTOR_POD_PAIR
+    __vector_pod_pair<allocator<unsigned int> > capacity_;
+#else
     unsigned int capacity_;
+#endif
     unsigned int size_;
     T *data_;
 };
@@ -532,7 +590,9 @@ inline void __pod_fill_n(unsigned short *first, unsigned int n, const unsigned s
  *     temporary's in resize: clear<SKBCOMPLETE> 0x393E40 cut at the leaves, resize<SKBCOMPLETE> 0x392770 whole; clear<SKBPIECE> 0x3929C0, too tall,
  *     keeps the implicit destructor a call, `li a1,-1`), and the pods' default constructors two levels taller (the capacity pair's: SKBPIECE() eight
  *     high, cut to its own body in resize<SKBPIECE> 0x392670 -- CJamoStr() and CInit<Us,0>() called -- SKBCOMPLETE() seven, whole).
- * Rows named: the uint pod's cap() 0x2B5750 and alloc() 0x2B5740, the char pod's 0x392750 and 0x392740. Over every hand-written unit (objcmp master
+ * The leaves carry SOCOM 1's names, the pair's first() and second() (0x173590 / 0x1735A0: the pod's own alloc() and cap() are other rows, 0x25B940 / 0x25B930,
+ * the cut one pass earlier -- __MSL_VECTOR_POD_PAIR's), here called straight from the destructor, a level shallower than the original's. Rows named: the uint pod's
+ * second() 0x2B5750 and first() 0x2B5740, the char pod's 0x392750 and 0x392740, the class deleters' 0x38FDC0 / 0x38FDB0 and 0x51CCE0 / 0x51CCD0. Over every hand-written unit (objcmp master
  * --by-address) only the two units carrying the define differ. */
 template <class T, class Allocator>
 class __vector_pod {
@@ -547,12 +607,12 @@ public:
 #endif
     __vector_pod(const __vector_pod &x);
 #ifdef __MSL_POD_DTOR_ARGS
+    typedef Metrowerks::details::compressed_pair_imp<Allocator, unsigned int, 1> __cap_pair;
     ~__vector_pod()
     {
         if (data_)
-            alloc().deallocate(data_, cap());
+            ((__cap_pair *)this)->first().deallocate(data_, ((__cap_pair *)this)->second());
     }
-    Allocator &alloc() { return *(Allocator *)this; }
 #else
     ~__vector_pod()
     {
@@ -1405,7 +1465,7 @@ T *__vector_pod<T, allocator<unsigned int> >::erase(T *position)
 template <class T>
 __vector_pod<T, allocator<unsigned int> >::__vector_pod(const __vector_pod &x)
 {
-    capacity_ = 0;
+    __VPOD_CAP = 0;
     size_ = 0;
     data_ = 0;
     init((const T *)x.data_, (const T *)x.data_ + x.size_, forward_iterator_tag());
@@ -1447,17 +1507,17 @@ void __vector_pod<T, allocator<unsigned int> >::do_assign(InputIterator first, I
 {
     unsigned int n = last - first;
 
-    if (n > capacity_) {
+    if (n > __VPOD_CAP) {
         if (n > max_size())
             __msl_error("vector::assign length error\n");
         size_ = 0;
         if (data_) {
             deallocate(data_);
             data_ = 0;
-            capacity_ = 0;
+            __VPOD_CAP = 0;
         }
         data() = allocate(n);
-        capacity_ = n;
+        __VPOD_CAP = n;
     }
     T *d = data_;
 
@@ -1513,7 +1573,7 @@ void __vector_pod<T, allocator<unsigned int> >::insert(T *position, unsigned int
     } else {
         unsigned int k = position - data_;
         T *old = data_;
-        unsigned int newcap = capacity_ ? capacity_ : 1;
+        unsigned int newcap = __VPOD_CAP ? __VPOD_CAP : 1;
 
         while (newsize > newcap) {
             if (newcap < max_size() / 2)
@@ -1539,7 +1599,7 @@ void __vector_pod<T, allocator<unsigned int> >::insert(T *position, unsigned int
             deallocate(old);
         }
         size_ = newsize;
-        capacity_ = newcap;
+        __VPOD_CAP = newcap;
     }
 }
 

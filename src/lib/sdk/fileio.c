@@ -768,6 +768,99 @@ int sceWrite(int fd, const void *buf, int nbyte)
 	return result;
 }
 
+/* sceIoctl's request: the descriptor and request, the argument copied in whole (GCC round 45a) */
+struct _sceFsIoctl {
+	int sema;
+	int *result;
+	int rsize;
+	int fd;
+	int request;
+	char arg[1024];
+	int f1044;
+	int f1048;
+	int arglen;
+};
+
+extern void *data_001DBF88;	/* the request's argument, for the reply */
+extern int data_001CCD48;	/* the receive buffer the last reply used */
+
+/* requests 1-3 answered here: whether a queued request's semaphore is waiting, and the last reply's first word or doubleword read
+ * uncached out of its 1088-byte buffer; the rest go to the IOP. OPEN (GCC round 45a, right size, the first time written, all but the
+ * first 0x40 bytes and the registers they shift): the target holds the constant 1 in s5 from the top (`li s5,1` under get_iob, one
+ * use: the switch's `beql s1,s5`); an unused `int one = 1` is not emitted, a `(void)` use of it changes nothing. */
+int sceIoctl(int fd, int request, void *arg)
+{
+	struct _sceFsIoctl *p = (struct _sceFsIoctl *)&_send_data;
+	struct _sceFsIob *io;
+	int i, sema, ret;
+	struct SemaParam s;
+	int result;
+
+	io = get_iob(fd);
+	_sceFsWaitS(5);
+	data_001DBF88 = arg;
+	if (!_fs_init)
+		sceFsInit();
+	if (io == 0 || io->i_flag == 0) {
+		_sceFsSigSema();
+		return -9;
+	}
+	p->f1044 = 0;
+	p->f1048 = 0;
+	switch (request) {
+	case 1:
+		WaitSema(_fs_fsq_semid);
+		for (i = 0; i < 32; i++)
+			if (_sceFs_q[i] != -1)
+				break;
+		if (i == 32)
+			*(int *)data_001DBF88 = 0;
+		else
+			*(int *)data_001DBF88 = 1;
+		SignalSema(_fs_fsq_semid);
+		_sceFsSigSema();
+		return 0;
+	case 2:
+		*(int *)arg = *(int *)UNCACHED(_rcv_data_cmd + data_001CCD48 * 1088);
+		_sceFsSigSema();
+		return 0;
+	case 3:
+		*(long *)arg = *(long *)UNCACHED(_rcv_data_cmd + data_001CCD48 * 1088);
+		_sceFsSigSema();
+		return 0;
+	}
+	p->fd = io->i_fd;
+	p->request = request;
+	if (arg == 0)
+		p->arglen = 0;
+	else {
+		p->arglen = 1024;
+		memcpy(p->arg, arg, 1024);
+	}
+	s.initCount = 0;
+	s.maxCount = 1;
+	s.option = 0;
+	sema = CreateSema(&s);
+	p->sema = sema;
+	p->result = &result;
+	p->rsize = 4;
+	sceSifWriteBackDCache(&_send_data, sizeof(struct _sceFsIoctl));
+	if (sceSifCallRpc(&_cd, 5, 0, &_send_data, sizeof(struct _sceFsIoctl), _rcv_data_rpc, 4, 0, 0) < 0) {
+		DeleteSema(sema);
+		_sceFsSigSema();
+		return -11;
+	}
+	ret = *(int *)UNCACHED(_rcv_data_rpc);
+	_sceFsSigSema();
+	if (ret == 0) {
+		DeleteSema(sema);
+		return -11;
+	}
+	WaitSema(sema);
+	DeleteSema(sema);
+	return result;
+}
+
 int sceIoctl2(int fd, int request, void *argp, u_int arglen, void *bufp, u_int buflen)
 {
 	struct _sceFsIoctl2 *p = (struct _sceFsIoctl2 *)&_send_data;
