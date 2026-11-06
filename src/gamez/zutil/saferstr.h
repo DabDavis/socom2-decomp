@@ -24,6 +24,8 @@
 class CSaferStr : public std::string {
 public:
     CSaferStr() {}
+    /* (the kit, round 62: PlayMessage 0x5E7960's two locals, each operator=(const char *) a level deeper: its dead erase()'s tag keeps a frame slot below the body's) */
+    CSaferStr(const char *sz) { *this = sz; }
     void operator=(const char *sz)
     {
         if (sz)

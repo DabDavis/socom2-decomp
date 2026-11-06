@@ -26,6 +26,8 @@
  * image order (-inline deferred) where it matters. */
 
 #include <list>
+#include <string>
+#include <vector>
 #include <stdio.h>
 #include <string.h>
 
@@ -102,6 +104,9 @@ public:
     class CSealCtrlAi *GetSealCtrlAi() { return ((CUnitSealCtrl *)m_control)->GetSealCtrlAi(); }
     /* whether the player drives it (zseal.h's IsPlayer: the controller tested, slot 0x2C called) */
     bool IsPlayer() { return m_control ? ((CUnitSealCtrl *)m_control)->IsPlayer() : false; }
+    bool IsFriend(CEntity *o) { return (m_team & o->m_team) != 0; }
+    /* the character type (zseal.h's, OVL2 0x599810) */
+    class CCharacterType *GetCharacter();
     /* an order given to the SEAL (OVL2 0x590AC0, zseal.h's) */
     void IssueCommand(CZSealBody *from, FT_COMMAND cmd, void *data, bool b);
     /* a hand signal given (seal_handsig.cpp's, OVL2 0x600290: its anim type returned, unread here) */
@@ -1448,9 +1453,121 @@ bool CZSealBody::IsAi()
 enum R_SEND_TO { R_SEND_TO_3 = -3, R_SEND_TO_2, R_SEND_TO_ALL };
 void SendMessageMessage(int who, R_SEND_TO to, int msg);
 
-extern "C" {
-/* a squad message played (OVL2 0x5E7960, unwritten: SOCOM 1's PlayRemoteMsg's body) */
-void func_005E7960(CEntity *e, int msg);
+/* a character type's multiplayer message (zchar.h's) */
+struct MultiplayerMsg {
+    unsigned int idx;   // 0x0
+    char *message;   // 0x4
+    char *sound;   // 0x8
+    char *tcmtag;   // 0xc
+    CSnd *sound_pointer;   // 0x10
+};
+
+/* as far as this unit reads them (zchar.h's and zseal.h's) */
+class CCharacterType {
+public:
+    unsigned char _0[0x3a0];
+    std::vector<MultiplayerMsg *> m_mpMessages;   // 0x3a0
+};
+
+/* the message's owner on its controller (CSealCtrl's m_seal, 0x4) */
+struct CMsgCtrl {
+    void *m_vtable;
+    CZSealBody *m_seal;   // 0x4
+};
+
+/* the mission's first message queue (theMission + 0x1C0) */
+enum MSGTYPE {
+    MSGTYPE_PLAYER = 0,
+    MSGTYPE_SYSTEM = 1,
+    MSGTYPE_NOTICE = 3,
+    MSGTYPE_ALERT = 5
+};
+
+class C2DMessage_Q {
+public:
+    void Add_Message(const char *text, MSGTYPE type, bool centered, int time, float scale);
+};
+
+extern C2DMessage_Q data_004366A0;
+
+/* the persona's strings (fts_net_persona.cpp's: SOP strings 0x2C3C30, its neighbour 0x2C3B60) */
+class CZPersonaState {
+public:
+    static char *GetSOUPString(CZSealBody *body, int i);
+};
+
+extern "C" char *func_002C3B60(CZSealBody *body, int i);
+const char *TranslateString(const char *s);
+
+/* a squad message played: its text from the persona's strings or the character's messages, its sound
+ * played (at the SEAL unless it is the player's), the text queued on screen (SOCOM 1's PlayRemoteMsg
+ * without its null test and the sends, which 0x5E7F20 keeps; OVL2 0x5E7960, the name ours) */
+void PlayMessage(CEntity *e, int msg)
+{
+    char buf[260];
+    CSaferStr text("");
+    CSaferStr sound("");
+    CSnd *snd = 0;
+    CZSealBody *seal = e ? (CZSealBody *)e : 0;
+    const char *name = seal ? seal->m_display_name : "unknown";
+
+    if (msg >= 49 && msg < 54) {
+        int i = msg - 49;
+
+        if (!e)
+            return;
+        text = CZPersonaState::GetSOUPString((CZSealBody *)e, i);
+        sprintf(buf, "%s : %s", name, TranslateString(text.c_str()));
+    } else if (msg >= 54 && msg < 59) {
+        int i = msg - 54;
+
+        if (!e)
+            return;
+        text = func_002C3B60((CZSealBody *)e, i);
+        sprintf(buf, "%s : %s", name, TranslateString(text.c_str()));
+    } else {
+        if (!seal)
+            return;
+        for (std::vector<MultiplayerMsg *>::iterator i = ((CMsgCtrl *)seal->m_control)->m_seal->GetCharacter()->m_mpMessages.begin();
+             i != ((CMsgCtrl *)seal->m_control)->m_seal->GetCharacter()->m_mpMessages.end(); i++) {
+            MultiplayerMsg *m = *i;
+
+            if (m->idx == msg) {
+                text = m->message;
+                sound = m->sound;
+                snd = m->sound_pointer;
+                if (!snd && *sound.c_str()) {
+                    snd = m->sound_pointer = CSnd::GetSoundByName(sound.c_str());
+                }
+                break;
+            }
+        }
+        if (msg == 43 && !ftsGetPlayer()->IsFriend(seal))
+            strcpy(buf, TranslateString(text.c_str()));
+        else
+            sprintf(buf, TranslateString(text.c_str()), name);
+    }
+    if (!snd && *sound.c_str())
+        snd = CSnd::GetSoundByName(sound.c_str());
+    if (snd && seal) {
+        CSndInstance *inst;
+
+        if (seal->IsPlayer())
+            inst = snd->PlaySound(0, 255);
+        else
+            inst = snd->PlaySound3D(&seal->m_posW, 1.0f, 0, 0, 255);
+        if (inst)
+            inst->TerminateOnFinish();
+    }
+    if (strlen(buf) == 0)
+        return;
+    MSGTYPE type = MSGTYPE_PLAYER;
+
+    if (msg < 54)
+        type = MSGTYPE_NOTICE;
+    else if (msg < 66)
+        type = MSGTYPE_ALERT;
+    data_004366A0.Add_Message(buf, type, false, 0, 0.0f);
 }
 
 /* a squad message played for a SEAL (SOCOM 1's PlayRemoteMsg(CEntity *, int): the same callers --
@@ -1465,10 +1582,10 @@ void PlayRemoteMsg(CEntity *e, int msg, int remote)
     case 43:
         if (remote != 1)
             SendMessageMessage(e->m_id, R_SEND_TO_ALL, msg);
-        func_005E7960(e, msg);
+        PlayMessage(e, msg);
         break;
     default:
-        func_005E7960(e, msg);
+        PlayMessage(e, msg);
     }
 }
 

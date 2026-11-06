@@ -10,6 +10,7 @@
  * their image order (-inline deferred). */
 
 #include "zseal.h"
+#include "../zrdr/zrdr.h"
 
 #include <map>
 #include <string.h>
@@ -30,8 +31,26 @@ class CAnimsByFP {
 public:
     enum { MAX_TYPES = 312 };
 
+    /* (inline: DefineFPAnims expands it -- the groups allocated without a file or line) */
+    CAnimsByFP()
+    {
+        m_animgroups = (ANIMTYPE_GROUP *)_malloc(MAX_TYPES * sizeof(ANIMTYPE_GROUP), 0, 0);
+        Clear();
+    }
     /* (inline: AnimSet's destructor expands it -- the groups freed without a file or line) */
     ~CAnimsByFP() { _free(m_animgroups, 0, 0); }
+    /* every group's anims none (SOCOM 1's Clear) */
+    void Clear()
+    {
+        ANIMTYPE_GROUP *g = m_animgroups;
+
+        for (int i = 0; i < MAX_TYPES; i++, g++) {
+            g->m_rifle_type = animTypeUndefined;
+            g->m_pistol_type = animTypeUndefined;
+            g->m_rifle_fp_type = animTypeUndefined;
+            g->m_pistol_fp_type = animTypeUndefined;
+        }
+    }
     void SetPistolAnim(AnimType rifle, AnimType pistol);
     /* a rifle anim type's first-person variants set (inline: AnimSet's setters expand them) */
     void SetRifleFPAnim(AnimType rifle, AnimType fp)
@@ -170,6 +189,15 @@ public:
     /* the same over every record in use, the pool made first (OVL2 0x5E5B10, 0x5E5BF0:
      * CScriptArchive::Register and Unregister call them) */
     static int MarkStateAll(int state, int anim);
+    /* a record from the pool, the pool made first, or 0 when it is used up (inline: the loader expands it twice) */
+    static CAnimTypeRec *Alloc()
+    {
+        if (m_used >= 600)
+            return 0;
+        if (!m_pool)
+            m_pool = new CAnimTypeRec[600];
+        return &m_pool[m_used++];
+    }
     static void ClearStateAll(int state);
     ANIM_VARIANT_GROUP *GetGroup(int anim);
     int GetVariantIndex(int kind, int anim);
@@ -243,6 +271,57 @@ public:
     static void CloseAll();
     /* a set's anims taken from another (SOCOM 1's; OVL2 0x5E3740) */
     void Inherit(AnimSet *base);
+    /* every set read from animset.rdr, again over the same sets for reload (SOCOM 1's Load; OVL2
+     * 0x5E30F0) and one set from its record (SOCOM 1's Load(_zrdr *); OVL2 0x5E3FF0) */
+    static bool Load(bool reload);
+    bool Load(_zrdr *rdr, bool reload);
+    /* the rifle anim types' variants (SOCOM 1's DefineFPAnims; OVL2 0x5E0690) */
+    void DefineFPAnims();
+    /* a type's record's bit 1 set, when it has one (inline: DefineFPAnims expands it) */
+    void SetTypeBit1(AnimType type)
+    {
+        if (type >= 0 && type < m_types.size()) {
+            CAnimTypeRec *rec = m_types[type];
+
+            if (rec)
+                rec->SetBit1(true);
+        }
+    }
+    /* (seal_env.cpp's: the death and flinch tables; SOCOM 1's) */
+    static void InitDeathAndFlinchAnimations();
+    static void ReadDeathAndFlinchAnims();
+    static std::vector<AnimType> deathanim[6][3];
+    /* the sets' array, new AnimSet[n] (OVL1 bss 0x44D418; the name ours -- SOCOM 1 new'd each) */
+    static AnimSet *m_sets;
+    /* the record list sized, the new ones null (inline: the loader's) */
+    void ResizeTypes(unsigned int n)
+    {
+        CAnimTypeRec *none = 0;
+
+        m_types.resize(n, (const unsigned int &)none);
+    }
+    /* a type's record made and filed, the list grown first to reach it (inline: the loader expands
+     * it for a type's anim and for its modes) */
+    static void NewRec(AnimSet *set, short anim, int type, bool reload)
+    {
+        set = set;
+        if (!reload) {
+            int g = (AnimType)type;
+
+            while (g >= set->m_types.size())
+                set->m_types.push_back(0);
+        }
+        int t = (AnimType)type;
+        CAnimTypeRec *rec = CAnimTypeRec::Alloc();
+
+        if (rec) {
+            rec->m_id = anim;
+            rec->m_base = (AnimType)type;
+            rec->SetBit0(false);
+            rec->m_count = 1;
+            set->m_types[t] = rec;
+        }
+    }
     /* the set's name (out of line in the SEALs' units, OVL2 0x578940; the name ours) -- five inline
      * levels high: the depth the target's Find needs (kit round 38, fitted here, not read off the
      * image -- no function calls a piece below GetName or c_str): with Find's whole tree over five,
@@ -542,6 +621,12 @@ void AnimSet::CloseAll()
  * (FindAnimType's, as SOCOM 1's newNamesMap) and a name's variant kind (0x5E4F20's) */
 extern std::map<std::string, int> data_0044C420;
 extern std::map<std::string, int> data_0044C460;
+extern int numAnimTypes;
+extern int loadCount;
+extern int data_0066B808;
+extern const char *data_00661060[];
+extern std::map<std::string, int> data_0044C440;
+extern char data_0044C470[];
 
 /* an anim type by name, -1 for none or an unknown one (SOCOM 1's FindAnimType: CTPlay::Parse
  * calls it; OVL2 0x5E5000). The test around the lookup, not an early return: `if (!name) return
@@ -550,8 +635,9 @@ AnimType FindAnimType(const char *name)
 {
     if (name) {
         std::map<std::string, int>::iterator i = data_0044C420.find(name);
+        std::map<std::string, int>::iterator e = data_0044C420.end();
 
-        if (i != data_0044C420.end())
+        if (i != e)
             return (AnimType)(*i).second;
     }
     return animTypeUndefined;
@@ -577,8 +663,9 @@ int FindAnimKind(const char *name)
 {
     if (name) {
         std::map<std::string, int>::iterator i = data_0044C460.find(name);
+        std::map<std::string, int>::iterator e = data_0044C460.end();
 
-        if (i != data_0044C460.end())
+        if (i != e)
             return (*i).second;
     }
     return -1;
@@ -690,6 +777,270 @@ void AnimSet::Inherit(AnimSet *base)
             fp->SetPistolFPAnim(g->m_rifle_type, g->m_pistol_fp_type);
     }
     m_ready = true;
+}
+
+/* an anim's extra data (SOCOM 1's CAnimAuxData, one per anim type; only its first bit, cleared) */
+class CAnimAuxData {
+public:
+    CAnimAuxData() : m_bit0(false) {}
+
+    unsigned int m_bit0 : 1;
+
+    /* (inline: the loaders expand it) */
+    static void Add() { list.push_back(new CAnimAuxData); }
+
+    static std::vector<CAnimAuxData *> list;
+};
+
+void InitializeAnimNames();
+
+static inline void AddAnimKind(const char *name)
+{
+    std::string s(name);
+
+    data_0044C460[s] = data_0066B808;
+    data_0066B808++;
+}
+
+enum RDR_READ { RDR_ARCHIVED, RDR_FROM_DISC };
+
+/* the sets the SEAL looks for by name (OVL1 bss; SOCOM 1's four anim set pointers) */
+extern AnimSet *data_0044D3F8;
+extern AnimSet *data_0044D400;
+extern AnimSet *data_0044D408;
+extern AnimSet *data_0044D410;
+/* where the next variant group goes (OVL1 data 0x3DEA08, into a buffer at 0x44C470) */
+extern ANIM_VARIANT_GROUP *s_variantCursor;
+
+/* a set from its record: its name and includes, then each anim type's record -- the anim, or the
+ * variant groups of its "modes" (SOCOM 1's Load(_zrdr *) over per-type records; OVL2 0x5E3FF0).
+ * OPEN, 7 instructions: only the network_log bit's store -- the target has the value in a0 and the
+ * index and the element in a1, ours the reverse: the value (generated first, reading the call's v0) must
+ * colour before them, so numbered after them, and every spelling of the store and its holders keeps it
+ * below (v_lz7, v_lz8, v_lz9: inlines, Get, named const locals, field types). Measured devices, marked:
+ * NewRec's `set = set;` -- a parameter the callee modifies gets its copy (CInline_SetupArgsExpression: only
+ * an unmodified one is substituted), the target's s1 --, the one-member structs c and pw -- scalarised,
+ * numbered after the linearizer's `?:` temporaries, the target's a0 over the item's a1; name and tag reused
+ * (IRO_SplitLifetimes' late webs, the two word slots below every spilled temporary) */
+bool AnimSet::Load(_zrdr *rdr, bool reload)
+{
+    _zrdr *name = zrdr_findtag(rdr, "anim_set_name");
+
+    if (name) {
+    if (!reload) {
+        m_ready = false;
+        m_name = name->Item(0)->String();
+        if (!strcmp(GetName().c_str(), "defusebomb anim set"))
+            data_0044D3F8 = this;
+        else if (!strcmp(GetName().c_str(), "Restrained anim set"))
+            data_0044D400 = this;
+        else if (!strcmp(GetName().c_str(), "launcher anim set"))
+            data_0044D408 = this;
+        else if (!strcmp(GetName().c_str(), "turret anim set"))
+            data_0044D410 = this;
+        int i;
+        _zrdr *inc = zrdr_flat_findtag_startidx(rdr, "include", 0);
+
+        if (inc && inc->IsArray()) {
+            for (i = 0; i < inc->Count(); i++)
+                if (inc->Item(i)->IsString())
+                    m_included.push_back(std::string(inc->Item(i)->String()));
+        }
+    }
+    name = zrdr_findtag(rdr, "anim_set_anims");
+
+    if (name) {
+        unsigned int n = name->Count();
+
+        ResizeTypes(n);
+        for (unsigned int i = 0; i < n; i++) {
+            _zrdr *item = name->Item(i);
+            int anim = -1;
+            const char *tname = item->Item(1)->Item(0)->String();
+            int type = FindAnimType(tname);
+
+            if (type < 0 && !reload) {
+                type = numAnimTypes++;
+                data_0044C420[std::string(tname)] = type;
+                CAnimAuxData::Add();
+            }
+            _zrdr *tag = zrdr_findtag(item, "anim_name");
+
+            if (tag) {
+                int id = data_0044C440[std::string(tag->Item(0)->String())];
+
+                if (id > 0)
+                    anim = id;
+                NewRec(this, anim, type, reload);
+            }
+            tag = zrdr_findtag(item, "modes");
+
+            if (tag) {
+                NewRec(this, -1, type, reload);
+                CAnimTypeRec *r = m_types[type];
+                unsigned int nmodes = tag->Count();
+
+                r->m_count = nmodes;
+                struct { ANIM_VARIANT_GROUP *v; } c;
+
+                c.v = s_variantCursor;
+
+                if (nmodes == 1) {
+                    if (tag->Item(0)->Item(1)->IsArray())
+                        r->m_8 = c.v;
+                    else
+                        r->m_8 = 0;
+                } else
+                    r->m_8 = c.v;
+                for (unsigned int m = 0; m < nmodes; m++) {
+                    _zrdr *mode = tag->Item(m);
+                    const char *kname = mode->Item(0)->String();
+                    int kind = FindAnimKind(kname);
+
+                    if (kind < 0) {
+                        kind = data_0066B808++;
+                        data_0044C460[std::string(kname)] = kind;
+                    }
+                    if (mode->Item(1)->IsArray()) {
+                        unsigned int cnt = mode->Count() - 1;
+                        float sum = 0.0f;
+
+                        s_variantCursor->m_kind = kind;
+                        s_variantCursor->m_count = cnt;
+                        s_variantCursor->SetState(0);
+                        s_variantCursor->m_anim = -1;
+                        s_variantCursor++;
+                        for (unsigned int j = 1; j <= cnt; j++) {
+                            _zrdr *p = mode->Item(j);
+                            int id = data_0044C440[std::string(p->Item(0)->String())];
+
+                            if (id > 0)
+                                anim = id;
+                            if (r->m_id < 0)
+                                r->m_id = anim;
+                            *(int *)s_variantCursor = anim;
+                            s_variantCursor++;
+                            struct { float *v; } pw;
+
+                            pw.v = (float *)s_variantCursor;
+                            float w = p->Item(1)->Real();
+
+                            *(int *)pw.v = *(int *)&w;
+                            s_variantCursor++;
+                            sum += w;
+                        }
+                        _close_enough(sum, 1.0f, 0.001f);
+                    } else {
+                        int id = data_0044C440[std::string(mode->Item(1)->String())];
+
+                        if (id > 0)
+                            anim = id;
+                        if (r->m_id < 0)
+                            r->m_id = anim;
+                        if (nmodes == 1)
+                            break;
+                        {
+                            s_variantCursor->m_kind = kind;
+                            s_variantCursor->m_count = 1;
+                            s_variantCursor->SetState(0);
+                            s_variantCursor->m_anim = anim;
+                            s_variantCursor++;
+                        }
+                    }
+                }
+            }
+            _zrdr *logged = zrdr_findtag(item, "network_log");
+
+            if (logged)
+                CAnimAuxData::list[type]->m_bit0 = logged != 0;
+            if (zrdr_findtag(item, "looped"))
+                m_types[type]->SetBit0(true);
+        }
+    }
+    if (!reload)
+        list.push_back(this);
+    return true;
+    }
+    return false;
+}
+
+/* every set read: the names' maps filled, the sets' records read, the transitions' speeds added and
+ * the variants, the death tables and the included sets resolved (SOCOM 1's Load; OVL2 0x5E30F0) */
+bool AnimSet::Load(bool reload)
+{
+    unsigned int nanims;
+
+    numAnimTypes = 137;
+    loadCount++;
+    if (!reload) {
+        data_0044C420.clear();
+        data_0044C460.clear();
+        data_0066B808 = 0;
+        AddAnimKind("default");
+        int n = numAnimTypes;
+
+        if (n) {
+            CAnimAuxData::list.reserve(n);
+            while (n--)
+                CAnimAuxData::list.push_back(new CAnimAuxData);
+        }
+    }
+    for (int i = 0; i < numAnimTypes; i++)
+        data_0044C420[std::string(data_00661060[i])] = i;
+    data_0044C440.clear();
+    _zrdr *rdr = zrdr_read("motion.rdr", "data/common/zrdr", 0);
+    _zrdr *anims = zrdr_findtag(rdr, "animations");
+    nanims = anims->Count();
+
+    for (unsigned int j = 0; j < nanims; j++) {
+        _zrdr *name = zrdr_findtag(anims->Item(j), "anim_name");
+
+        data_0044C440[std::string(name->Item(0)->String())] = j;
+    }
+    zrdr_free((CRdrFile *)rdr);
+    if (!reload) {
+        list.clear();
+        if (list.capacity() < 32)
+            list.reserve(32);
+    }
+    rdr = zrdr_read("animset.rdr", "data/common/zrdr", reload ? RDR_FROM_DISC : RDR_ARCHIVED);
+    bool ok = false;
+
+    if (rdr) {
+        unsigned int k;
+        unsigned int nsets = rdr->Count();
+
+        if (!reload)
+            m_sets = new AnimSet[nsets];
+        s_variantCursor = (ANIM_VARIANT_GROUP *)data_0044C470;
+        for (k = 0; k < nsets; k++)
+            m_sets[k].Load(rdr->Item(k), reload);
+        zrdr_free((CRdrFile *)rdr);
+        ok = true;
+    }
+    data_0044C440.clear();
+    InitializeAnimNames();
+    CScriptArchive *archive = zBoneArchive();
+
+    for (std::vector<AnimSet *>::iterator a = list.begin(); a != list.end(); a++) {
+        AnimSet *set = *a;
+
+        for (std::vector<MOTION_TRANSITION *>::iterator t = archive->m_transitions.begin();
+             t != archive->m_transitions.end(); t++)
+            set->AddBlendable((*t)->m_index, (*t)->m_speedA, (*t)->m_speedB);
+    }
+    if (!reload)
+        archive->Register();
+    if (reload)
+        return ok;
+    for (std::vector<AnimSet *>::iterator b = list.begin(); b != list.end(); b++)
+        (*b)->DefineFPAnims();
+    InitDeathAndFlinchAnimations();
+    if (deathanim[0][0].empty())
+        ReadDeathAndFlinchAnims();
+    for (std::vector<AnimSet *>::iterator c = list.begin(); c != list.end(); c++)
+        func_005E3940(*c);
+    return ok;
 }
 
 /* (OVL2 0x5E3D90) */
@@ -855,6 +1206,269 @@ void CAnimsByFP::SetPistolAnim(AnimType rifle, AnimType pistol)
 {
     m_animgroups[rifle].m_rifle_type = rifle;
     m_animgroups[rifle].m_pistol_type = pistol;
+}
+
+
+extern short data_003DEA10;
+extern short data_003DEA18;
+extern short data_003DEA20;
+extern short data_003DEA28;
+extern short data_003DEA30;
+extern short data_003DEA38;
+extern short data_003DEA40;
+extern short data_003DEA48;
+extern short data_003DEA50;
+extern short data_003DEA58;
+extern short data_003DEA60;
+extern short data_003DEA68;
+extern short data_003DEA70;
+extern short data_003DEA78;
+extern short data_003DEA80;
+extern short data_003DEA88;
+extern short data_003DEA90;
+extern short data_003DEA98;
+extern short data_003DEAA0;
+extern short data_003DEAA8;
+extern short data_003DEAB0;
+extern short data_003DEAB8;
+extern short data_003DEAC8;
+extern short data_003DEAD0;
+extern short data_003DEB00;
+extern short data_003DEB08;
+extern short data_003DEB10;
+extern short data_003DEB18;
+extern short data_003DEB28;
+extern short data_003DEB38;
+extern short data_003DEB48;
+extern short data_003DEB50;
+extern short data_003DEB98;
+extern short data_003DEBA0;
+extern short data_003DEBB0;
+extern short data_003DEBC0;
+extern short data_003DEBD0;
+extern short data_003DEC18;
+extern short data_003DEC20;
+extern short data_003DEC28;
+extern short data_003DEC30;
+extern short data_003DEC38;
+extern short data_003DEC40;
+extern short data_003DEC58;
+extern short data_003DEC60;
+extern short data_003DEC88;
+extern short data_003DEC98;
+extern short data_003DECA8;
+extern short data_003DECB8;
+extern short data_003DECC0;
+extern short data_003DECC8;
+extern short data_003DECD0;
+extern short data_003DECD8;
+extern short data_003DECE0;
+extern short data_003DECE8;
+extern short data_003DECF0;
+extern short data_003DECF8;
+extern short data_003DED00;
+extern short data_003DED08;
+extern short data_003DED10;
+extern short data_003DED18;
+extern short data_003DED20;
+extern short data_003DED28;
+extern short data_003DED30;
+extern short data_003DED38;
+extern short data_003DED40;
+extern short data_003DED48;
+extern short data_003DED50;
+extern short data_003DED58;
+extern short data_003DED60;
+extern short data_003DED68;
+extern short data_003DED70;
+extern short data_003DED78;
+extern short data_003DED80;
+extern short data_003DED88;
+extern short data_003DED90;
+extern short data_003DED98;
+extern short data_003DEDA0;
+extern short data_003DEDA8;
+extern short data_003DEE70;
+extern short data_003DEE90;
+extern short data_003DEEA8;
+extern short data_003DEEC0;
+extern short data_003DEF10;
+extern short data_003DEF18;
+extern short data_003DEF20;
+extern short data_003DEF28;
+extern short data_003DEF30;
+extern short data_003DEF38;
+extern short data_003DEF40;
+extern short data_003DEF50;
+extern short data_003DEF60;
+
+/* every anim type's variants: the groups made all -1, then the pistol, first-person rifle and
+ * first-person pistol anims of the rifle types (SOCOM 1's DefineFPAnims, which inlined all three
+ * setters over its 142 types; here the setters are calls), and the records of the types whose bit 1
+ * is set (OVL2 0x5E0690) */
+void AnimSet::DefineFPAnims()
+{
+    m_animsbyfp = new CAnimsByFP;
+    SetPistolAnim((AnimType)1, (AnimType)83);
+    SetPistolAnim((AnimType)18, (AnimType)84);
+    SetPistolAnim((AnimType)26, (AnimType)85);
+    SetPistolAnim((AnimType)34, (AnimType)86);
+    SetPistolAnim((AnimType)45, (AnimType)87);
+    SetPistolAnim((AnimType)39, (AnimType)115);
+    SetPistolAnim((AnimType)2, (AnimType)88);
+    SetPistolAnim((AnimType)3, (AnimType)89);
+    SetPistolAnim((AnimType)4, (AnimType)90);
+    SetPistolAnim((AnimType)5, (AnimType)91);
+    SetPistolAnim((AnimType)6, (AnimType)92);
+    SetPistolAnim((AnimType)7, (AnimType)93);
+    SetPistolAnim((AnimType)12, (AnimType)94);
+    SetPistolAnim((AnimType)13, (AnimType)95);
+    SetPistolAnim((AnimType)14, (AnimType)94);
+    SetPistolAnim((AnimType)15, (AnimType)95);
+    SetPistolAnim((AnimType)16, (AnimType)98);
+    SetPistolAnim((AnimType)17, (AnimType)99);
+    SetPistolAnim((AnimType)19, (AnimType)100);
+    SetPistolAnim((AnimType)20, (AnimType)101);
+    SetPistolAnim((AnimType)21, (AnimType)102);
+    SetPistolAnim((AnimType)22, (AnimType)103);
+    SetPistolAnim((AnimType)23, (AnimType)103);
+    SetPistolAnim((AnimType)AnimTypes::CrouchStrafeLeft, (AnimType)data_003DECB8);
+    SetPistolAnim((AnimType)24, (AnimType)104);
+    SetPistolAnim((AnimType)27, (AnimType)105);
+    SetPistolAnim((AnimType)29, (AnimType)106);
+    SetPistolAnim((AnimType)30, (AnimType)107);
+    SetPistolAnim((AnimType)31, (AnimType)108);
+    SetPistolAnim((AnimType)32, (AnimType)109);
+    SetPistolAnim((AnimType)data_003DEB00, (AnimType)data_003DEB10);
+    SetPistolAnim((AnimType)data_003DEB08, (AnimType)data_003DEB18);
+    SetPistolAnim((AnimType)AnimTypes::TossGrenadePeekRight, (AnimType)data_003DEB28);
+    SetPistolAnim((AnimType)AnimTypes::TossGrenadePeekLeft, (AnimType)data_003DEB38);
+    SetPistolAnim((AnimType)33, (AnimType)110);
+    SetPistolAnim((AnimType)35, (AnimType)111);
+    SetPistolAnim((AnimType)36, (AnimType)112);
+    SetPistolAnim((AnimType)37, (AnimType)113);
+    SetPistolAnim((AnimType)38, (AnimType)114);
+    SetPistolAnim((AnimType)40, (AnimType)116);
+    SetPistolAnim((AnimType)41, (AnimType)117);
+    SetPistolAnim((AnimType)42, (AnimType)118);
+    SetPistolAnim((AnimType)43, (AnimType)119);
+    SetPistolAnim((AnimType)44, (AnimType)120);
+    SetPistolAnim((AnimType)46, (AnimType)121);
+    SetPistolAnim((AnimType)47, (AnimType)122);
+    SetPistolAnim((AnimType)48, (AnimType)123);
+    SetPistolAnim((AnimType)49, (AnimType)124);
+    SetPistolAnim((AnimType)56, (AnimType)126);
+    SetPistolAnim((AnimType)57, (AnimType)127);
+    SetPistolAnim((AnimType)58, (AnimType)128);
+    SetPistolAnim((AnimType)59, (AnimType)129);
+    SetPistolAnim((AnimType)61, (AnimType)130);
+    SetPistolAnim((AnimType)62, (AnimType)131);
+    SetPistolAnim((AnimType)63, (AnimType)132);
+    SetPistolAnim((AnimType)64, (AnimType)133);
+    SetPistolAnim((AnimType)65, (AnimType)134);
+    SetPistolAnim((AnimType)66, (AnimType)135);
+    SetPistolAnim((AnimType)67, (AnimType)136);
+    SetPistolAnim((AnimType)AnimTypes::ThrowGrenade, (AnimType)data_003DEBD0);
+    SetPistolAnim((AnimType)AnimTypes::CrouchThrowGrenade, (AnimType)data_003DEBC0);
+    SetPistolAnim((AnimType)AnimTypes::ProneThrowGrenade, (AnimType)data_003DEBB0);
+    SetPistolAnim((AnimType)AnimTypes::TossGrenade, (AnimType)AnimTypes::PistolTossGrenade);
+    SetPistolAnim((AnimType)AnimTypes::CrouchThrowGrenade, (AnimType)data_003DEBC0);
+    SetPistolAnim((AnimType)AnimTypes::ProneTossGrenade, (AnimType)AnimTypes::PistolProneTossGrenade);
+    SetPistolAnim((AnimType)data_003DEC18, (AnimType)data_003DEC20);
+    SetPistolAnim((AnimType)data_003DEC28, (AnimType)data_003DEC30);
+    SetPistolAnim((AnimType)data_003DEC38, (AnimType)data_003DEC40);
+    SetPistolAnim((AnimType)AnimTypes::Stand2Prone, (AnimType)AnimTypes::PistolStand2Prone);
+    SetPistolAnim((AnimType)data_003DEC58, (AnimType)data_003DEC60);
+    SetPistolAnim((AnimType)data_003DECF0, (AnimType)data_003DECF8);
+    SetPistolAnim((AnimType)data_003DED00, (AnimType)data_003DED08);
+    SetPistolAnim((AnimType)data_003DED10, (AnimType)data_003DED18);
+    SetPistolAnim((AnimType)data_003DED20, (AnimType)data_003DED28);
+    SetPistolAnim((AnimType)data_003DED30, (AnimType)data_003DED38);
+    SetPistolAnim((AnimType)data_003DED40, (AnimType)data_003DED48);
+    SetPistolAnim((AnimType)data_003DED50, (AnimType)data_003DED58);
+    SetPistolAnim((AnimType)data_003DED60, (AnimType)data_003DED68);
+    SetPistolAnim((AnimType)data_003DED70, (AnimType)data_003DED78);
+    SetPistolAnim((AnimType)data_003DED80, (AnimType)data_003DED88);
+    SetPistolAnim((AnimType)data_003DED90, (AnimType)data_003DED98);
+    SetPistolAnim((AnimType)data_003DEDA0, (AnimType)data_003DEDA8);
+    SetPistolAnim((AnimType)AnimTypes::Stab, (AnimType)AnimTypes::PistolStab);
+    SetPistolAnim((AnimType)AnimTypes::CQB, (AnimType)AnimTypes::PistolCQB);
+    SetPistolAnim((AnimType)data_003DEB48, (AnimType)data_003DEB50);
+    SetPistolAnim((AnimType)AnimTypes::RifleReload, (AnimType)AnimTypes::PistolReload);
+    SetPistolAnim((AnimType)AnimTypes::RifleCrouchReload, (AnimType)AnimTypes::PistolCrouchReload);
+    SetPistolAnim((AnimType)AnimTypes::RifleProneReload, (AnimType)AnimTypes::PistolProneReload);
+    SetPistolAnim((AnimType)data_003DEBA0, (AnimType)data_003DEB98);
+    SetPistolAnim((AnimType)data_003DECC0, (AnimType)data_003DECC8);
+    SetPistolAnim((AnimType)data_003DECD0, (AnimType)data_003DECD8);
+    SetPistolAnim((AnimType)data_003DECE0, (AnimType)data_003DECE8);
+    SetPistolAnim((AnimType)AnimTypes::StepUp, (AnimType)data_003DEC88);
+    SetPistolAnim((AnimType)AnimTypes::ClimbMedium, (AnimType)data_003DEC98);
+    SetPistolAnim((AnimType)AnimTypes::ClimbOver, (AnimType)data_003DECA8);
+    SetPistolAnim((AnimType)AnimTypes::BuddyCarryStand, (AnimType)data_003DEE70);
+    SetPistolAnim((AnimType)AnimTypes::BuddyCarryWalk, (AnimType)data_003DEE90);
+    SetPistolAnim((AnimType)AnimTypes::BuddyCarryPickup, (AnimType)data_003DEEA8);
+    SetPistolAnim((AnimType)AnimTypes::BuddyCarryStep, (AnimType)data_003DEEC0);
+    SetPistolAnim((AnimType)data_003DEF10, (AnimType)data_003DEF18);
+    SetPistolAnim((AnimType)data_003DEF20, (AnimType)data_003DEF28);
+    SetPistolAnim((AnimType)data_003DEF30, (AnimType)data_003DEF38);
+    SetRifleFPAnim((AnimType)1, (AnimType)data_003DEA10);
+    SetRifleFPAnim((AnimType)18, (AnimType)data_003DEA18);
+    SetRifleFPAnim((AnimType)26, (AnimType)data_003DEA20);
+    SetRifleFPAnim((AnimType)2, (AnimType)data_003DEA30);
+    SetRifleFPAnim((AnimType)3, (AnimType)data_003DEA38);
+    SetRifleFPAnim((AnimType)4, (AnimType)data_003DEA40);
+    SetRifleFPAnim((AnimType)5, (AnimType)data_003DEA48);
+    SetRifleFPAnim((AnimType)6, (AnimType)data_003DEA50);
+    SetRifleFPAnim((AnimType)16, (AnimType)data_003DEA60);
+    SetRifleFPAnim((AnimType)20, (AnimType)data_003DEA28);
+    SetRifleFPAnim((AnimType)24, (AnimType)data_003DEA58);
+    SetRifleFPAnim((AnimType)21, (AnimType)data_003DEAC8);
+    SetPistolFPAnim((AnimType)1, (AnimType)data_003DEA68);
+    SetPistolFPAnim((AnimType)18, (AnimType)data_003DEA70);
+    SetPistolFPAnim((AnimType)26, (AnimType)data_003DEA78);
+    SetPistolFPAnim((AnimType)2, (AnimType)data_003DEA88);
+    SetPistolFPAnim((AnimType)3, (AnimType)data_003DEA90);
+    SetPistolFPAnim((AnimType)4, (AnimType)data_003DEA98);
+    SetPistolFPAnim((AnimType)5, (AnimType)data_003DEAA0);
+    SetPistolFPAnim((AnimType)6, (AnimType)data_003DEAA8);
+    SetPistolFPAnim((AnimType)16, (AnimType)data_003DEAB8);
+    SetPistolFPAnim((AnimType)20, (AnimType)data_003DEA80);
+    SetPistolFPAnim((AnimType)24, (AnimType)data_003DEAB0);
+    SetPistolFPAnim((AnimType)21, (AnimType)data_003DEAD0);
+    SetPistolFPAnim((AnimType)12, (AnimType)94);
+    SetPistolFPAnim((AnimType)13, (AnimType)95);
+    SetPistolFPAnim((AnimType)14, (AnimType)94);
+    SetPistolFPAnim((AnimType)15, (AnimType)95);
+    SetPistolFPAnim((AnimType)66, (AnimType)135);
+    SetPistolFPAnim((AnimType)67, (AnimType)136);
+    SetTypeBit1((AnimType)1);
+    SetTypeBit1((AnimType)18);
+    SetTypeBit1((AnimType)26);
+    SetTypeBit1((AnimType)34);
+    SetTypeBit1((AnimType)16);
+    SetTypeBit1((AnimType)45);
+    SetTypeBit1((AnimType)39);
+    SetTypeBit1((AnimType)33);
+    SetTypeBit1((AnimType)35);
+    SetTypeBit1((AnimType)AnimTypes::RifleReload);
+    SetTypeBit1((AnimType)AnimTypes::RifleCrouchReload);
+    SetTypeBit1((AnimType)AnimTypes::RifleProneReload);
+    SetTypeBit1((AnimType)data_003DEBA0);
+    SetTypeBit1((AnimType)AnimTypes::Stab);
+    SetTypeBit1((AnimType)AnimTypes::CQB);
+    SetTypeBit1((AnimType)AnimTypes::ApplyRestraints);
+    SetTypeBit1((AnimType)AnimTypes::BuddyCarryStand);
+    SetTypeBit1((AnimType)AnimTypes::BuddyCarryWalk);
+    SetTypeBit1((AnimType)AnimTypes::BuddyCarryPickup);
+    SetTypeBit1((AnimType)AnimTypes::BuddyCarryStep);
+    SetTypeBit1((AnimType)AnimTypes::TossGrenadePeekRight);
+    SetTypeBit1((AnimType)AnimTypes::TossGrenadePeekLeft);
+    SetTypeBit1((AnimType)data_003DEF40);
+    SetTypeBit1((AnimType)data_003DEF50);
+    SetTypeBit1((AnimType)data_003DEF60);
+    SetTypeBit1((AnimType)data_003DEF10);
+    SetTypeBit1((AnimType)data_003DEF20);
+    SetTypeBit1((AnimType)data_003DEF30);
 }
 
 /* the set's top speeds: each move blend's fastest anim, standing then crouched, the prone and ladder
