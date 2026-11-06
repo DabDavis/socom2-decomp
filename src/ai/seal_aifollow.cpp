@@ -1,7 +1,7 @@
 /* seal_aifollow.cpp -- the follow state, CAiSFollow (SOCOM 1's unit, __sinit_seal_aifollow.cpp).
  * OVL2 0x5FADF0-0x5FE1EF: the destructor first, as SOCOM 1's. So far only the destructor and the
  * new slot +0x3C. Defined in reverse of their image order (-inline deferred). The kit's round 53 adds
- * the wedge test 0x5FE1F0 (OPEN) and its edge test 0x5FE4C0 (declared) here, between the follow and
+ * the wedge test 0x5FE1F0 (byte-exact since round 54) and its edge test 0x5FE4C0 (declared) here, between the follow and
  * seal_squirm.cpp's CSealCtrlSquirm (0x5FE830 on): their unit is unproven. */
 
 #include "../gamez/zseal/zseal.h"
@@ -62,14 +62,15 @@ int func_005FE4C0(const CPnt3D *e0, const CPnt3D *e1, const CPnt3D *s0, const CP
  * behind, its far edge `len` ahead and `len * spread` to either side, the segment's ends taken
  * relative to the point; the edge tests summed until three agree (OVL2 0x5FE1F0, new in SOCOM II:
  * 0x5FD150 asks it with the follower's view; the name and the unit ours -- after the follow state,
- * before seal_squirm.cpp).
- * OPEN, 0x2BC against 0x2C8: every call, temporary and frame slot is the target's but one saved
- * register short -- the target keeps &tri[1], &tri[2] and &seg[1] in s1, s0 and s2 from the copy
- * into each (its x stored through the register, y and z sp-relative) to the edge tests, where MW
- * here recomputes each address at its call (`addiu`), saving s0-s3 only (frame 0x1E0 against
- * 0x1F0). Tried: pointer locals (declared at the top they sink to the calls, 0x2D8; declared at
- * each copy 0x2CC), reference locals (every store through the register, 0x2CC / 0x2D8), `tri + 1`
- * arguments (as it is), the edge tests as a loop (0x2C4) */
+ * before seal_squirm.cpp). Byte-exact (the kit's round 54) with the points after the first handed to
+ * the edge tests by their first field's address, `(const CPnt3D *)&tri[1].x`: that is the address
+ * the copy into each stores its x through, so MW computes it once into a saved register (s1, s0, s2
+ * -- the target's) and folds the y and z stores into frame offsets; written `&tri[1]` it recomputes
+ * each address at its call (0x2BC, one saved register short), as `(char *)tri + 12` it stores all
+ * three fields through the register (12 off), `tri + 1` folds it away (0x2BC) -- the SEALs' round-52
+ * rule (an address written as a pointer expression is CSE'd, as a member's it is recomputed) one
+ * field deep. Tried before: pointer locals (declared at the top they sink to the calls, 0x2D8; at
+ * each copy 0x2CC), reference locals (0x2CC / 0x2D8), the edge tests as a loop (0x2C4) */
 extern "C" bool func_005FE1F0(const CPnt3D *origin, const CPnt3D *dir, const CPnt3D *a, const CPnt3D *b,
                                float len, float back, float spread)
 {
@@ -85,12 +86,12 @@ extern "C" bool func_005FE1F0(const CPnt3D *origin, const CPnt3D *dir, const CPn
     seg[0] = *a - *origin;
     seg[1] = *b - *origin;
 
-    int n = func_005FE4C0(&tri[0], &tri[1], &seg[0], &seg[1]);
+    int n = func_005FE4C0(&tri[0], (const CPnt3D *)&tri[1].x, &seg[0], (const CPnt3D *)&seg[1].x);
 
     if (n < 3) {
-        n += func_005FE4C0(&tri[1], &tri[2], &seg[0], &seg[1]);
+        n += func_005FE4C0((const CPnt3D *)&tri[1].x, (const CPnt3D *)&tri[2].x, &seg[0], (const CPnt3D *)&seg[1].x);
         if (n < 3)
-            n += func_005FE4C0(&tri[2], &tri[0], &seg[0], &seg[1]);
+            n += func_005FE4C0((const CPnt3D *)&tri[2].x, &tri[0], &seg[0], (const CPnt3D *)&seg[1].x);
     }
     return n >= 3;
 }
