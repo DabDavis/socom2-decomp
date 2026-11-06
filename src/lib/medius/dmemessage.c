@@ -527,7 +527,14 @@ int func_00620008(unsigned int nWorld, int *pMax)
 /* a message being reassembled from its fragments (0x2C bytes, 256 of them) */
 typedef struct DmeFragment {
     int nState;                         /* 0x00: 2 while fragments arrive */
-    int field_04[7];
+    unsigned int nSlots;                /* 0x04 */
+    int nBytes;                         /* 0x08 */
+    int nHave;                          /* 0x0C */
+    int nConnection;                    /* 0x10 */
+    int nClient;                        /* 0x14 */
+    int nKind;                          /* 0x18 */
+    unsigned char nA;                   /* 0x1C */
+    unsigned char nB;                   /* 0x1D */
     unsigned int nTime;                 /* 0x20: when the last one came */
     void *pBuffer;                      /* 0x24 */
     void *pData;                        /* 0x28 */
@@ -600,7 +607,7 @@ int func_0061F2B8(int nConnection, int nUnused, int nClient, unsigned char *pMsg
     return 1;
 }
 
-extern int func_006200D0(int nConnection, int nClient, void *pMsg, unsigned char **ppFrag);
+extern int func_006200D0();
 extern void *memcpy(void *dst, const void *src, unsigned int n);
 extern int func_0063CB48(int nA, int nB, int (**ppfn)(int, int, int, void *));
 
@@ -1205,3 +1212,219 @@ update:
     return nLength;
 }
 /*</func_0061E8B8>*/
+
+/*<func_0061EFB0>*/
+/* SOCOM 1's DataStreamUpdatePacketHandler grown (0x61EFB0): the stream opened on its first message, the data kept in its circular buffer
+ * when it is a buffered stream, the type's callback told. */
+typedef struct DmeStreamMsg {
+    unsigned char nStream;              /* 0x00 */
+    unsigned char bToHost;              /* 0x01 */
+    unsigned char nType;                /* 0x02 */
+    unsigned char bReplace;             /* 0x03 */
+    unsigned char bBuffered;            /* 0x04 */
+    char pad05;
+    unsigned short nSize;               /* 0x06 */
+    char pad08[2];
+    unsigned short nLength;             /* 0x0A */
+} DmeStreamMsg;                         /* 0x0C: the data follows */
+
+typedef struct DmeRemoteStream {
+    unsigned char nState;               /* 0x00: 2 open */
+    unsigned char field_01;
+    unsigned char field_02;
+    unsigned char nType;                /* 0x03 */
+    unsigned char bClosing;             /* 0x04 */
+    unsigned char bToHost;              /* 0x05 */
+    int nTarget;                        /* 0x08 */
+    int nOwner;                         /* 0x0C */
+    char *pBuffer;                      /* 0x10 */
+    char *pEnd;                         /* 0x14 */
+    char *pRead;                        /* 0x18 */
+    int field_1C;                       /* 0x1C */
+    int nRate;                          /* 0x20 */
+    int field_24;
+    int field_28;                       /* 0x28 */
+    char circ[8];                       /* 0x2C: its rt_circ_buf */
+    int nUsed;                          /* 0x34 */
+    int field_38;
+    char *pStart;                       /* 0x3C */
+} DmeRemoteStream;
+
+typedef struct DmeStreamClient {        /* clients.c's record, as far as this reads it */
+    char pad00[10];
+    unsigned short nFirstStream;        /* 0x0A */
+    unsigned short nStreams;            /* 0x0C */
+} DmeStreamClient;
+
+extern int rt_circ_buf_create(void *pCirc, int nSize, void *pBuffer);
+extern int rt_circ_buf_get_avail(void *pCircBuf, unsigned int *pnAvail);
+extern int rt_circ_buf_free(void *pCircBuf, int nBytes);
+extern int rt_circ_buf_store(void *pCircBuf, void *pData, int nBytes);
+extern int rt_circ_buf_normalize(void *pCircBuf, unsigned char bUseBuffer);
+extern void (*data_00686988[])(int nClient, unsigned char nStream, void *pData, unsigned short nLength);
+
+int func_0061EFB0(int nConnection, int nUnused, int nClient, DmeStreamMsg *pMsg)
+{
+    DmeRemoteStream *pStream = 0;
+    int nHost = 256;
+    DmeStreamClient *pClient = 0;
+    unsigned int nAvail;
+    char *pData;
+    int i;
+
+    if (pMsg == 0)
+        return -1;
+    if (func_00614F58(pMsg->nStream, (unsigned char **)&pStream) != 0 || pStream == 0)
+        return pMsg->nLength + 12;
+    if (pStream->nState != 2) {
+        if (pMsg->bBuffered != 0) {
+            pStream->pBuffer = DMEmalloc(pMsg->nSize);
+            if (pStream->pBuffer == 0) {
+                pStream->nState = 0;
+                return pMsg->nLength + 12;
+            }
+            if (rt_circ_buf_create(pStream->circ, pMsg->nSize, pStream->pBuffer) != 0) {
+                func_00614888((void **)&pStream->pBuffer);
+                pStream->pBuffer = 0;
+                return pMsg->nLength + 12;
+            }
+            pStream->pEnd = pStream->pBuffer + pMsg->nSize;
+            pStream->nType = pMsg->nType;
+            pStream->bToHost = pMsg->bToHost;
+            pStream->pRead = pStream->pBuffer;
+            pStream->field_1C = 0;
+            pStream->field_01 = pMsg->bReplace;
+            pStream->field_02 = pMsg->bBuffered;
+            pStream->bClosing = 0;
+            pStream->nRate = 90000;
+            pStream->field_28 = 0;
+        }
+        pStream->nState = 2;
+        func_00615090(&nHost, nConnection);
+        if (nClient != nHost) {
+            pStream->nOwner = nClient;
+        } else {
+            for (i = 0; i < DME_MAX_CLIENTS; i++) {
+                if (func_006126E8((char **)&pClient, nConnection, i) != 0)
+                    continue;
+                if (pClient == 0)
+                    continue;
+                if (pMsg->nStream - pClient->nFirstStream >= pClient->nStreams)
+                    continue;
+                pStream->nOwner = i;
+                break;
+            }
+        }
+    }
+    pData = (char *)pMsg + 12;
+    if (pMsg->bBuffered != 0) {
+        nAvail = 0;
+        if (rt_circ_buf_get_avail(pStream->circ, &nAvail) == 0) {
+            if (pMsg->bReplace != 0) {
+                if (rt_circ_buf_free(pStream->circ, pMsg->nLength - nAvail) == 0) {
+                    rt_circ_buf_store(pStream->circ, pData, pMsg->nLength);
+                    rt_circ_buf_normalize(pStream->circ, 1);
+                    memcpy(pStream->pBuffer, pStream->pStart, pStream->nUsed);
+                }
+            } else if (nAvail != 0) {
+                nAvail = pMsg->nLength < nAvail ? pMsg->nLength : nAvail;
+                rt_circ_buf_store(pStream->circ, pData, nAvail);
+                memcpy(pStream->pBuffer, pStream->pStart, pStream->nUsed);
+            }
+        }
+    }
+    if (data_00686988[pMsg->nType] != 0)
+        data_00686988[pMsg->nType](nClient, pMsg->nStream, pData, pMsg->nLength);
+    pStream->field_28 = CurrentNetTime;
+    return pMsg->nLength + 12;
+}
+/*</func_0061EFB0>*/
+
+/*<func_006200D0>*/
+/* a fragmented message's record (0x6200D0; func_0061E510 fills it): the one already gathering this message, or a free one made for it; a
+ * record in any other state is cleared on the way. */
+typedef struct DmeFragHeader {
+    unsigned char nA;                   /* 0x00 */
+    unsigned char nB;                   /* 0x01 */
+    unsigned short nLength;             /* 0x02 */
+    unsigned short nSlots;              /* 0x04 */
+    unsigned short nSlot;               /* 0x06 */
+    unsigned char nKind;                /* 0x08 */
+    int nBytes;                         /* 0x0C */
+} DmeFragHeader;
+
+int func_006200D0(int nConnection, int nClient, DmeFragHeader *pMsg, DmeFragment **ppFrag)
+{
+    int nFree = -1;
+    unsigned int i;
+    DmeFragment *pFrag;
+
+    if (ppFrag == 0)
+        return 23;
+    *ppFrag = 0;
+    if (pMsg == 0)
+        return 23;
+    if (nConnection < 0 || (nConnection >= DME_MAX_WORLDS && nConnection != 0xFFFF))
+        return 23;
+    if ((unsigned int)(nClient + 1) > DME_MAX_CLIENTS && nClient != 0xFFFF)
+        return 23;
+    for (i = 0; i < DME_MAX_CLIENTS; i++) {
+        switch (data_0066F408[i].nState) {
+        case 2:
+            if (nConnection == data_0066F408[i].nConnection && nClient == data_0066F408[i].nClient && pMsg->nSlots == data_0066F408[i].nSlots
+                && pMsg->nBytes == data_0066F408[i].nBytes && pMsg->nKind == (unsigned char)data_0066F408[i].nKind && pMsg->nA == data_0066F408[i].nA
+                && pMsg->nB == data_0066F408[i].nB)
+                *ppFrag = &data_0066F408[i];
+            break;
+        case 0:
+            if (nFree == -1)
+                nFree = i;
+            break;
+        default:
+            if (data_0066F408[i].pData != 0) {
+                func_00614888((void **)&data_0066F408[i].pData);
+                data_0066F408[i].pData = 0;
+            }
+            if (data_0066F408[i].pBuffer != 0) {
+                func_00614888((void **)&data_0066F408[i].pBuffer);
+                data_0066F408[i].pBuffer = 0;
+            }
+            data_0066F408[i].nState = 0;
+            if (nFree == -1)
+                nFree = i;
+            break;
+        }
+    }
+    if (*ppFrag == 0) {
+        if (nFree != -1) {
+            pFrag = &data_0066F408[nFree];
+            pFrag->nState = 2;
+            pFrag->nSlots = pMsg->nSlots;
+            pFrag->nBytes = pMsg->nBytes;
+            pFrag->nConnection = nConnection;
+            pFrag->nHave = 0;
+            pFrag->nClient = nClient;
+            pFrag->nKind = pMsg->nKind;
+            pFrag->nA = pMsg->nA;
+            pFrag->nB = pMsg->nB;
+            pFrag->pData = DMEmalloc(pMsg->nBytes);
+            pFrag->pBuffer = DMEmalloc(pMsg->nSlots);
+            if (pFrag->pData == 0 || pFrag->pBuffer == 0) {
+                func_00614888((void **)&pFrag->pData);
+                pFrag->pData = 0;
+                if (pFrag->pBuffer != 0) {
+                    func_00614888((void **)&pFrag->pBuffer);
+                    pFrag->pBuffer = 0;
+                }
+                pFrag->nState = 0;
+                return 22;
+            } else {
+                *ppFrag = pFrag;
+            }
+        } else {
+            return 25;
+        }
+    }
+    return 0;
+}
+/*</func_006200D0>*/
