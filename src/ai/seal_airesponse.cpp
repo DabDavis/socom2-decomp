@@ -483,7 +483,7 @@ extern unsigned char data_0066BBA0;
  * once nothing blends (its callback fixed); the kneel and the "No_weapon anim set" bound; the squad
  * left -- and, for a player-team SEAL, team 17's joined --, the idle stance and restrainable; then,
  * every ten seconds, done once no SEAL of its kept team is within 250 or the mission's flag is set
- * (OVL2 0x6078A0; SOCOM 1's 0x2E7340 grown) */
+ * (OVL2 0x6078A0; SOCOM 1's Tick(float, CSealCtrlAi *) 0x2E7340, 0x2F8, grown) */
 int CAiSSurrender::Tick(CSealCtrlAi *ai)
 {
     unsigned int step = m_phase;
@@ -1895,7 +1895,7 @@ void func_00545160(CSealStats *s, int n);
  * has it, else a short crouch, and its captor -- a SEAL -- credited, by the surrender's kept team when
  * the AI surrendered; moving (2), crouched; then every five seconds (three once asked to) the nearest
  * SEAL within 250 looked at: a team-mate acknowledged, an enemy called out and reported; crouched
- * again (6) (OVL2 0x601910; SOCOM 1's 0x2E6620 grown) */
+ * again (6) (OVL2 0x601910; SOCOM 1's Tick(float, CSealCtrlAi *) 0x2DA2D0, 0x17C, much grown) */
 /* the AI's entity (inline: read through it the SEAL is a temporary, numbered after the walk's -- the
  * target's s3 under this and ai; a named local read straight is numbered after the parameters, s1) */
 static inline CEntity *HostageEntity(CSealCtrlAi *ai)
