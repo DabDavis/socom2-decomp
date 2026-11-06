@@ -153,7 +153,9 @@ AnimType func_0058C820(CZSealBody *seal, AnimType type, SEAL_ITEM_BYTE item);
  * coloured highest index first; the target wants the stack's index above the counter's -- a web made
  * late, as the split rule's). Tried: the counter defined or declared first (a dead `i = 0` too), the
  * prefix step, a while loop, the stack and counter both in the for's init, an inline accessor
- * returning the stack's address (22: its temporary s3), the member indexed straight (0x10C) */
+ * returning the stack's address (22: its temporary s3), the member indexed straight (0x10C). Round 53:
+ * `#pragma opt_strength_reduction off` (0x58A470's fix) changes nothing here (9, or 0x10C plain); the
+ * stack a block-local of the loop, or declared bare and set in it, loses the entry (0x108) */
 extern "C" void func_0057D5E0(CZSealBody *seal, SEAL_ITEM_BYTE item)
 {
     if (seal->IsCurrentBlend((AnimType)AnimTypes::SwapRifle))
@@ -1872,7 +1874,10 @@ extern "C" bool func_0057F7D0(CZSealBody *seal)
  * OPEN, 7 instructions: the target lays the anim test's false return right after it (`bnez v0` to
  * the call's block, which follows); MW puts the call first and the false block last. Tried: the
  * test positive with the call inside, an else, a ternary, `== false`, `||` and `&&` joins of both
- * tests, a result local. */
+ * tests, a result local. Round 53 (build/scratch/seal-r53/v_f530*.py): the test through an inline
+ * `return IsCurrentBlend(45) ? true : false;` gives the target's LAYOUT (bnez to the call, the false
+ * block after it) but adds the bool's `andi` and drops the label's pad (5); an if-form IsRemote, an
+ * if-set inline, nested ifs, a goto and `bool r` returns are worse (7-0x94). */
 extern "C" bool func_0057F530(CZSealBody *seal)
 {
     if (seal->IsRemote())
@@ -2128,7 +2133,9 @@ extern short data_003DF130;
  * OPEN, 6 instructions (the size right): in both AnimSet calls the target loads the kind (a2) and the
  * set (a0) before the type's global (a1), ours the type first -- the same as member calls on a
  * declared AnimSet, with the global volatile, const or typed AnimType, the arguments cast to int, or
- * the set assigned in the call; rep declared ahead of b fixed their saved registers */
+ * the set assigned in the call; rep declared ahead of b fixed their saved registers. Round 53: the two
+ * calls through inline wrappers reading the type inside (VariantIndex / VariantScript, int or short
+ * weapon) keep the type's lui and lh together, as before (6) */
 extern "C" CZBodyAnimBlend *func_0057DCC0(CZSealBody *seal, int variant)
 {
     ACTIVE_ANIM *rep;
