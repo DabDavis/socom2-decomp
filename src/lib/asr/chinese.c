@@ -329,7 +329,7 @@ static int FillOut_Syntax_Statedict_And_Wordprops_ForChinese(CASR *c, DICTITEM *
     WORDMAP *map;
     int *b, *t;
     int *syn, *off;
-    unsigned int l;
+    unsigned int ch;
     unsigned int i;
     int msize;
     int fsize;
@@ -360,10 +360,9 @@ static int FillOut_Syntax_Statedict_And_Wordprops_ForChinese(CASR *c, DICTITEM *
     if (p == 0 || w == 0 || map == 0 || b == 0 || t == 0 || o == 0)
         return 1;
     memset(p, 0, size);
-    for (l = items[0].child; l != 0xFFFF; l = links[l].next)
-        props[links[l].node - 1] = 1;
+    for (ch = items[0].child; ch != 0xFFFF; ch = links[ch].next)
+        props[links[ch].node - 1] = 1;
     for (i = 1; i <= n; i++) {
-        unsigned int ch;
         unsigned int k;
 
         map->id = items[i].f4;
