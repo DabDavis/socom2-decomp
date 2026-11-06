@@ -173,10 +173,11 @@ typedef struct ClientUpdateMsg {
     char szName[14];                    /* 0x16 */
 } ClientUpdateMsg;                      /* 0x24 */
 
-/* OPEN (19 words, the size right): the target keeps the 36 it returns live in v0 from the state
- * test on (the range tests then use v1, and the null-create path sets v0 before its branch); 2.96
- * here materialises the constant at the end. Guard clauses, one `||` guard, a result variable set
- * before the tests and m2c's single exit tried. */
+/* Byte-exact since round 25b (19 words before, the size right; open since round 5b). The chain to the state test
+ * is positive, so its failures share the last `return 36`; inside it the range tests and the null create are
+ * guards, each `return 36` hoisted, so v0 holds the 36 from there on and the compares take v1 (round 14b's rule,
+ * both ways in one function). The client byte is read before the connection test: the target's slot holds that
+ * load, which can only come from above the branch. */
 int ClientUpdatePacketHandler(int nConnection, int nUnused, int nClient, ClientUpdateMsg *pMsg)
 {
     char *pClient = 0;
@@ -188,23 +189,26 @@ int ClientUpdatePacketHandler(int nConnection, int nUnused, int nClient, ClientU
         return -1;
     if (func_0061C600(nConnection, &pWorld) == 0 && pWorld != 0) {
         if (func_0061C720(nConnection, pWorld->nMyClient, &pLocal) == 0 && pLocal != 0) {
-            if ((unsigned int)(*(int *)(pLocal + 20) - 4) < 2 && (unsigned int)nConnection < DME_MAX_WORLDS) {
+            if ((unsigned int)(*(int *)(pLocal + 20) - 4) < 2) {
                 nIndex = pMsg->nClient;
-                if (nIndex < DME_MAX_CLIENTS) {
-                    func_006126E8(&pClient, nConnection, nIndex);
+                if ((unsigned int)nConnection >= DME_MAX_WORLDS)
+                    return sizeof(ClientUpdateMsg);
+                if (nIndex >= DME_MAX_CLIENTS)
+                    return sizeof(ClientUpdateMsg);
+                func_006126E8(&pClient, nConnection, nIndex);
+                if (pClient == 0) {
+                    pClient = NetCreateClient(nConnection, nIndex);
                     if (pClient == 0)
-                        pClient = NetCreateClient(nConnection, nIndex);
-                    if (pClient != 0) {
-                        *(unsigned short *)(pClient + 4) = pMsg->w[0];
-                        *(unsigned short *)(pClient + 6) = pMsg->w[1];
-                        *(unsigned short *)(pClient + 8) = pMsg->w[2];
-                        *(unsigned short *)(pClient + 10) = pMsg->w[3];
-                        *(unsigned short *)(pClient + 12) = pMsg->w[4];
-                        strcpy(pClient + 14, pMsg->szName);
-                        if (*(int *)pClient == 0)
-                            NetClientJoins(nConnection, nIndex);
-                    }
+                        return sizeof(ClientUpdateMsg);
                 }
+                *(unsigned short *)(pClient + 4) = pMsg->w[0];
+                *(unsigned short *)(pClient + 6) = pMsg->w[1];
+                *(unsigned short *)(pClient + 8) = pMsg->w[2];
+                *(unsigned short *)(pClient + 10) = pMsg->w[3];
+                *(unsigned short *)(pClient + 12) = pMsg->w[4];
+                strcpy(pClient + 14, pMsg->szName);
+                if (*(int *)pClient == 0)
+                    NetClientJoins(nConnection, nIndex);
             }
         }
     }
@@ -688,4 +692,72 @@ void func_0061FE18(int nWorld, int nClient, int nObjects, int nStreams)
     func_006192A0(nClient);
     func_006192A0(nClient);
     func_006192A0(nClient);
+}
+
+typedef struct DmePingMsg {             /* 8 bytes */
+    int nTime;                          /* 0x00: the sender's time */
+    unsigned char nSlot;                /* 0x04: its ping slot */
+    signed char bRequest;               /* 0x05: 0 in the answer */
+} DmePingMsg;
+
+typedef struct DmePingSlot {            /* dmelocal.c's (round 20b) */
+    unsigned char abIp[4];              /* 0x00 */
+    unsigned short nPort;               /* 0x04 */
+    short field_06;
+    int bTimebase;                      /* 0x08 */
+    void (*pfnCallback)();              /* 0x0C */
+    int nSent;                          /* 0x10 */
+    int nWorld;                         /* 0x14 */
+    int nClient;                        /* 0x18 */
+} DmePingSlot;                          /* 0x1C */
+
+extern DmePingSlot data_0067B7B8[];
+extern char data_006766D0[];
+extern int data_00686A0C;               /* the ping's message type */
+extern int func_00615068(int *pnTime);
+extern int func_00615028(int *pnTime);
+extern int func_006158F8(char nMsgClass, unsigned int nWorld, int nTarget, unsigned int nType,
+                         unsigned int nSubType, int nLength, void *pData);
+
+/* a ping (0x61E300): a request answered with this client's time, an answer handed to its slot's callback with the
+ * round trip and the sender's address, then the slot freed. Round 25b, unwritten before. */
+int func_0061E300(int nConnection, int nUnused, int nClient, DmePingMsg *pMsg)
+{
+    DmePingMsg reply;
+    char szIp[16];
+    DmeClientInfo *pInfo;
+    int nNow;
+    void (*pfn)();
+    int nRoundTrip;
+
+    if (pMsg == 0)
+        return -1;
+    if (pMsg->bRequest != 0) {
+        if ((unsigned int)nConnection < DME_MAX_WORLDS && nClient != 256) {
+            pInfo = 0;
+            if (func_0061C720(nConnection, nClient, (char **)&pInfo) == 0 && pInfo != 0 && pInfo->bConnected == 1) {
+                func_00615068(&reply.nTime);
+                reply.nSlot = pMsg->nSlot;
+                reply.bRequest = 0;
+                func_006158F8(-128, nConnection, nClient, 0, data_00686A0C, sizeof(reply), &reply);
+            }
+        }
+    } else {
+        func_00615028(&nNow);
+        pfn = data_0067B7B8[pMsg->nSlot].pfnCallback;
+        if (pfn != 0) {
+            func_00615028(&nNow);
+            nRoundTrip = nNow - data_0067B7B8[pMsg->nSlot].nSent;
+            NetIpBinaryToString(szIp, data_0067B7B8[pMsg->nSlot].abIp);
+            NetIpBinaryToString(data_006766D0, data_0067B7B8[pMsg->nSlot].abIp);
+            data_0067B7A8 = data_0067B7B8[pMsg->nSlot].nPort;
+            if (data_0067B7B8[pMsg->nSlot].bTimebase == 1)
+                pfn(0, szIp, nRoundTrip, pMsg->nTime, data_0067B7B8[pMsg->nSlot].nWorld,
+                    data_0067B7B8[pMsg->nSlot].nClient);
+            else
+                pfn(0, szIp, nRoundTrip);
+            data_0067B7B8[pMsg->nSlot].pfnCallback = 0;
+        }
+    }
+    return 8;
 }
