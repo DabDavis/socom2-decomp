@@ -282,6 +282,12 @@ public:
     virtual bool GetIntersect(DiIntersect *di) = 0;
 };
 
+/* the set's tail and its model-space pair (ours, inline: MW sets up a call's arguments holding an
+ * inline's call first, right to left -- Transform's and the segment test's a2, a1, a0 order) */
+static inline const CPnt3D *TailOf(DiIntersect *di) { return &di->m_Tail; }
+static inline CPnt3D *MTailOf(DiIntersect *di) { return &di->m_MTail; }
+static inline CPnt3D *MTipOf(DiIntersect *di) { return &di->m_MTip; }
+
 /* a polygon's camera type and DI type as bytes (ours, inline) */
 static inline unsigned char CameraTypeOf(const CDI *d)
 {
@@ -325,19 +331,21 @@ static inline bool PolyCollides(const CDI *d)
  * turn, each hit taken back to the world through the stack's top and recorded, the first stopping
  * the search when the vector says so; then its children (SOCOM II's one walk under GetIntersect
  * and GetAltitude, where SOCOM 1 had NodeGetIntersect and NodeGetAltitude).
- * OPEN, 5 instructions (unwritten before the engine core's round 25; the target's size, 0x560, its
- * frame and every register): Transform's and the segment test's arguments are set up left to right
- * where the target's go right to left (a2, a1, then a0 in the delay slot: a pointer local for the
- * matrix, a node member stand-in, the tail in a local -- no change), and `done = stop` narrows the
- * spilled flag (andi 0xff) where the target moves it (bool, unsigned char or int flags, `!!stop`,
- * the flag declared bare at the top: the same). Measured on the way: a PLAIN `asm { }` block -- a
- * volatile one disables the whole IR optimiser for the function (DisableDueToAsm: no CSE, no loop
- * invariants, the hit's n * 32 recomputed after the block, 0x568); the iterators declared at the
- * top and assigned from begin() (their slots 348 / 344, begin's temporaries above the postfix
- * copies); the DI vector a POINTER declared after the flag (its address in s1 for the flag reads,
- * the size read through the node) and the children through a reference (end()'s vector address
- * held in s0, begin read through the node), SOCOM 1's shape too; GetIntersect answering a bool
- * (the CDIHit stand-in above: SOCOM 1's caller narrows it the same way) */
+ * OPEN, 1 instruction (unwritten before the engine core's round 25; the target's size, 0x560, its
+ * frame, every register and call): `done = stop` narrows the spilled flag (andi 0xff, MW's 8-bit
+ * zero-extension in the PCode) where the target moves it -- bool, unsigned char, char or int flags,
+ * `!!stop`, `(bool)`, `!= 0`, const, the flag assigned apart or declared at the top, read through an
+ * inline: the same or worse (build/scratch/core/v_ngi3-9.py). Measured on the way: a PLAIN `asm { }`
+ * block -- a volatile one disables the whole IR optimiser for the function (DisableDueToAsm: no CSE,
+ * no loop invariants, the hit's n * 32 recomputed after the block, 0x568); MW passes a call's
+ * arguments that hold a call -- an inline accessor's, one expression is enough -- first, right to
+ * left, then the plain ones in parameter order (mweppc's evaluate_nested_function_calls): the tail
+ * pair through accessors gives Transform's and the segment test's a2, a1, a0 order; the iterators
+ * declared at the top and assigned from begin() (their slots 348 / 344, begin's temporaries above
+ * the postfix copies); the DI vector a POINTER declared after the flag (its address in s1 for the
+ * flag reads, the size read through the node) and the children through a reference (end()'s
+ * vector address held in s0, begin read through the node), SOCOM 1's shape too; GetIntersect
+ * answering a bool (the CDIHit stand-in above: SOCOM 1's caller narrows it the same way) */
 void CGrid::NodeGetIntersect(CNode *node, DiIntersect *di)
 {
     CDIVector::iterator it;
@@ -357,8 +365,8 @@ void CGrid::NodeGetIntersect(CNode *node, DiIntersect *di)
     CMatrix inv;
 
     Vu0MatrixInverseWithUniformScale(&inv, CStack::m_top);
-    inv.Transform(&di->m_Tail, &di->m_MTail, 2);
-    if (func_003124F0(node, &di->m_MTip, &di->m_MTail))
+    inv.Transform(TailOf(di), MTailOf(di), 2);
+    if (func_003124F0(node, MTipOf(di), MTailOf(di)))
         skip = true;
     else if ((m_node->m_socom2_a1 & 4) && node == m_node) {
         CBBox *box = (CBBox *)node->GetBBox();
