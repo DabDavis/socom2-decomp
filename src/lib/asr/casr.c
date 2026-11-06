@@ -122,7 +122,7 @@ typedef struct RESWORD {
 typedef struct RESITEM {
     int n;                              /* +0: words */
     int conf;                           /* +4: the confidence, 0-10000 */
-    unsigned int score;                 /* +8 */
+    int score;                          /* +8 */
     int start;                          /* +12: ms */
     int end;                            /* +16 */
     RESWORD *words;                     /* +20: heap */
@@ -1606,6 +1606,85 @@ int casrStartUserWordTraining(CASR *c, void *a, void *b)
     c->lab_pos[2] = c->lab_buf[2];
     c->train_state = 4;
     return userwordStartUserWordTraining(c, 3, a, b);
+}
+
+/* the user-word confusion check's record (casrCheckUserWordConfusion's, the host data of its
+ * result callback): the word trained, and per word of the context its worst confusion so far */
+typedef struct CONFREC {
+    unsigned short conf;                /* +0: 0-100 */
+    short pad2;
+    int pad4;
+} CONFREC;
+
+typedef struct CONFCHECK {
+    int word;                           /* +0 */
+    CONFREC *conf;                      /* +4: by word */
+} CONFCHECK;
+
+/* the result callback of the confusion check: every item must be a three-word sequence whose
+ * second word is one word (else 37); the score of the item naming the trained word, then each
+ * item's confusion with it, 2e / (1 + e) of e = exp(-0.0006 x the score difference), capped at 1,
+ * kept per word as a percentage when worse than the one kept. SOCOM 1's body, exp become expf.
+ * Round 38c, byte-exact: the two `return 37` checks apart (one `||` leaves the first loop 23 RTL
+ * insns in loop.c's second pass, unrolled by four; apart, 25 and by two, as the target -- and only a
+ * region of that size is scheduled across its blocks); the word and the score read into locals
+ * before the checks (the target loads them above the first test even in the unroller's odd-count
+ * copy, which is no region), the score's variable shared by both loops and declared before the first
+ * loop's word (refs 4 over 8 insns: 10000, the tie to the lower pseudo -- score a0, word a1, the
+ * walker a2) and the second loop's word a variable of its own (one variable lives across the second
+ * loop's calls and takes an s-register in the first); the percentage an unsigned int narrowed at the
+ * test (`move a0,v0`, the store of the whole word); the record's address an integer sum written
+ * index first (`addu s0,v0,v1`: c-typeck rebuilds every pointer sum pointer first, and the integer
+ * sum written base first is the miss). */
+int cbCheckConfusion(RESULT *r, CASRINFO *info)
+{
+    RESITEM item;
+    RESWORD w;
+    RESREC rec;
+    RESREC rec2;
+    CONFCHECK *cc;
+    CONFREC *p;
+    int i, best, score, id, word;
+    double e, ratio;
+    unsigned int v;
+
+    best = 0x7FFFFFFF;
+    cc = info->user;
+    for (i = 0; i < r->n; i++) {
+        item = r->items[i];
+        w = item.words[1];
+        rec = *w.p;
+        id = rec.word;
+        score = item.score;
+        if (item.n != 3)
+            return 37;
+        if (w.n != 1)
+            return 37;
+        if (id == cc->word) {
+            best = score;
+            break;
+        }
+    }
+    for (i = 0; i < r->n; i++) {
+        item = r->items[i];
+        w = item.words[1];
+        rec2 = *w.p;
+        word = rec2.word;
+        if (item.n != 3)
+            return 37;
+        if (w.n != 1)
+            return 37;
+        score = item.score;
+        e = expf((score - best) * -0.0006);
+        ratio = (e + e) / (e + 1.0);
+        if (ratio > 1.0)
+            ratio = 1.0;
+        p = (CONFREC *)(word * sizeof(CONFREC) + (unsigned int)cc->conf);
+        v = ratio * 100.0;
+        if (p->conf < (unsigned short)v)
+            p->conf = v;
+    }
+    return 0;
 }
 
 /* the segmentation's table: one block of 3 x (each utterance's length + 2) shorts per gender, and
