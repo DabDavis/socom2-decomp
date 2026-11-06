@@ -2065,6 +2065,25 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the kit and AI states, round 55** (ai_target.cpp's 0x60B470 -- the shadow and the indoor flag averaged over
+  a cell and the neighbours a step can end on -- and 0x60B120 -- the first half of SOCOM 1's ComputeVisibility, the ray's
+  hits walked near to far -- both unwritten before, byte-exact; the visibility score 0x60AA20 written, OPEN at the size,
+  14, registers only):
+  - an inline helper taking an object BY POINTER holds the addresses of its fields in saved registers across a loop;
+    taken by reference they are read off the object's own register (0x60B470: 0x394 -> 0x37C);
+  - MW folds a literal `1.0f *` on either side; a 1.0 that reaches the multiply through an inline's parameter
+    (`Blend(a, 1.0f, t)`) or through a local survives -- the target's mula.s / madd.s and its trailing multiply by 1.0
+    (0x60AA20);
+  - a 1-bit bitfield written through `x ? true : false` keeps the target's andi + sltu before the branch; a (bool) cast,
+    `!= 0`, a bool local and a bool-returning inline all drop the sltu (0x60B120); an inline's result set false before a
+    `while` loop puts `move v0,zero` in the loop's entry delay slot, a `for` with an early `return true` sets the false
+    after the loop;
+  - an inline called from inside another inline takes the frame's lower slots, and MW expands inlines one level at a
+    time, so the directly called copy's temporaries are numbered before the nested copy's; a pointer declared before an
+    out-of-line call is computed in that call's delay slot, declared after it is computed after and the next copy's
+    stores reschedule (0x60AA20);
+  - function statics lie in the unit's reverse definition order (ai_target.cpp: the light inline's at 0x651080-0x651090,
+    then 0x60B120's, 0x60AFA0's, then 0x60AA20's own at 0x6510E8).
 - **Tells from the UI, round 33** (zanim_menu.cpp, the integrator's unit until now, delegated and then kept: fifteen menu
   handlers unwritten before byte-exact -- UIGetAvailableMPMissions, UIGetMUISPersonaInfo, UICharacterProfile,
   UIDeleteMUISPersona, UILobbyConnect, UINetCnfOpen, UIGetLadderInfo, UIHardDriveOperation, UISetMPMissionSeq, UIPlayMPEG,
