@@ -767,7 +767,7 @@ public:
     float m_retmin;   // 0x874 (SOCOM 1's 0x858)
     int m_tracercount;   // 0x878 (SOCOM 1's 0x85c)
     float m_firetime;   // 0x87c (SOCOM 1's 0x860)
-    unsigned char _880[0x884 - 0x880];
+    int m_shot;   // 0x880: the projectile of a shot being fired (HandleFireWeapon)
     zdb::CLightMap *m_lightMap;   // 0x884 (SOCOM 1's 0x864)
     CSnd *m_rldsnd;   // 0x888 (SOCOM 1's 0x868)
     CSnd *m_clicksnd;   // 0x88c (SOCOM 1's 0x86c)
