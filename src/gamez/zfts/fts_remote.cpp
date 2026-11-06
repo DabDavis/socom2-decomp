@@ -1029,43 +1029,17 @@ void SendHitMessage(int shooter, int victim, int part, float damage, float f, bo
 
 /* a hit: in a game under way, unless the mission is aborting (its abort valve at 1 or 2), the victim takes it -- its own client's
  * damage for a local victim, the remote one's for a remote victim (SOCOM 1's; OVL1 0x2BBBD0).
- * OPEN, 2 instructions (round 38, from 6: see the end). The mode test matches with the mode passed to the inline as
- * an `int` (round 13: the parameter takes the loaded halfword, which frees v0 for the constant 1 and
- * a0 for the bool; read inside the inline -- straight, through a mode local, as a member of the
- * info, or as an unsigned short parameter -- they land in a0/a1, and round 12's shapes, a switch,
- * early returns, bool locals and `||`, all miss), and the victim's damage is SOCOM 1's member
- * RemoteWeaponDamageVictim (0x5A1B80, named by the SEAL lane: `this` loaded last, the call's moves
- * the target's). Left: the bitfield byte's v0/v1 trade places with the 0.05 constant's (the target
- * loads the constant ahead of the byte and extracts the flag ahead of the part; tried the four
- * locals in six orders, the product cast, swapped, split and through a constant local, the
- * bitfields as unsigned int, bool and signed char, the flag `!= 0` and as a ternary, the part
- * through an int or unsigned char local -- none moves them). Round 36, read off MW's colouring
- * (igdump): the byte is numbered after the constant's lui/ori temporaries because MW generates
- * f's product (the constant last) before the part's load, and the higher number is coloured first
- * (v0). The constant generated after the byte -- `float f = p->m_6;` ahead of the part and flag,
- * `f = 0.05f * f;` after them -- gives exactly the target's GPRs (the constant v0, the byte v1, the
- * flag extracted ahead of the part) but puts the conversion in f's own register ($f20, the product
- * `mul.s $f20,$f20,$f0`) where the target converts into a temporary ($f1) and multiplies constant
- * first; a separate conversion local is forwarded to its single use (56 off), all 24 orders of the
- * four locals as they stand 6-66 off.
- * Round 37 (igdump): the constant's lui/ori temporaries are v66/v67 and the byte v68, coloured
- * highest first -- the byte must be generated before the constant, and MW generates the product's
- * constant after its converted operand, so no single-expression product allows it. Tried: the scale
- * as an inline (by float, unsigned int or unsigned char, through a constant parameter, a named
- * result -- all 6), `v / 20.0f` (33), part and flag in a named copy of a nested bitfield struct
- * (0x1D4, through memory) or of the packet (0x1EC); part and flag defined before the floats move the
- * byte's load and their live ranges, renumbering the saved registers (55-66).
- * Round 38: 6 -> 2. The conversion a local of its own (`s`) with the flag a TERNARY between it and
- * the product: MW's expression propagation (the IR optimiser's, mweppc IroPropagate.c) forwards a
- * single-use local's expression to its use only inside one flow-graph node, and a `?:` (as `&&`/`||`)
- * is linearised into branches -- so `s` stays at its definition ($f1, a temporary), the byte is
- * generated before the constant (v1 against v0) and the flag's select folds back to the target's
- * sltu (SOCOM 1's flag is a select too: `li 1; movz`). Without the ternary `s` is forwarded into the
- * product (56 off); a dead second use, a const or register local, a reference, `(void)s` or an
- * inline's out-parameter forward all the same. Left: the target issues the constant's lui ahead of
- * the byte's lbu, this the lbu first (same registers, same block: a scheduler tie broken by the
- * generation order, which the colouring fixes as byte-first) -- every order of the four statements
- * with the ternary, ten spellings of the flag and five of the product keep it */
+ * Byte-exact since round 53. The mode test matches with the mode passed to the inline as an `int`
+ * (round 13: the parameter takes the loaded halfword, which frees v0 for the constant 1 and a0 for the
+ * bool; read inside the inline -- straight, through a mode local, as a member of the info, or as an
+ * unsigned short parameter -- they land in a0/a1, and round 12's shapes, a switch, early returns, bool
+ * locals and `||`, all miss), and the victim's damage is SOCOM 1's member RemoteWeaponDamageVictim
+ * (0x5A1B80, named by the SEAL lane: `this` loaded last, the call's moves the target's).
+ * The last miss was the order of the product, the flag and the part (rounds 36-38 worked at it with a
+ * separate conversion local `s` and the byte generated first): written product, flag, part the
+ * constant is generated ahead of the byte, so MW's scheduler keeps its lui first, and the byte, live
+ * across the flag's shift because the part's andi comes after it, is coloured v1 where the constant
+ * takes v0. The flag still a ternary (`!= 0` or a plain copy: 6 off). */
 /* whether the mission's abort valve's value takes no hits (the name ours: the handler's test
  * materialised) */
 inline bool NoHitMode(int mode)
@@ -1087,10 +1061,9 @@ int HitPacketHandler(int, int, int, void *data)
             CZSealBody *victim = CZSealState::GetBodyFromObjectIndex(p->victim);
             CZSealBody *shooter = CZSealState::GetBodyFromObjectIndex(p->shooter);
             float damage = p->damage;
-            float s = p->m_6;
-            DAMAGE_LOCATION where = (DAMAGE_LOCATION)p->part;
+            float f = 0.05f * p->m_6;
             bool flag = p->flag ? true : false;
-            float f = 0.05f * s;
+            DAMAGE_LOCATION where = (DAMAGE_LOCATION)p->part;
 
             if (victim && shooter) {
                 if (!(victim->m_ctrl ? victim->m_ctrl->IsRemote() : false))
