@@ -10,7 +10,8 @@
  * shallower, so their ten out-of-line copies 0x231DD0-0x231E30 and 0x232460-0x232480 name the
  * chains' levels -- CTCMNode's accessor, CTCMNodeList's, the vector's), the sounds, and CTCM's
  * tick, push-to-talk, close, open, root, next and the item searches (ShowRoot since round 42).
- * OPEN: RemoveChild and the open menu's pad handler HandleOpenPad 0x235D40 (round 54, temporaries).
+ * OPEN: the open menu's pad handler HandleOpenPad 0x235D40 (round 54, temporaries); RemoveChild
+ * byte-exact since round 62.
  * Written in round 41: one kind's items, tcmAddKindItems 0x2329F0 (its entries go under the third
  * group item's caption, which an inline returns); round 57: Select byte-exact and the closed menu's
  * pad handler HandleClosedPad 0x2359A0. Not yet: the cache builders 0x232BC0/0x2344E0.
@@ -890,14 +891,16 @@ void CTCMNode::SetText2(const char *s)
 /* a child taken out of the list and returned (as the target does it: every later child copied
  * into its slot in turn, and the parent cleared through the found pointer before it is set --
  * never the child's; a signed counter, or MW unrolls the copy 8x).
- * OPEN, 5 instructions, registers: the target computes `n - 1` into t1 and the data pointer into
- * t0 and adds the store's address data first (`addu a2,t0,t2`), MW swaps the two and adds the
- * outer offset first -- `n - 1` as a local, `n - 1 != i`, begin()/data() indexing, a local for the
- * copied child, signed outer counters all tried. Round 53's replay (igdump, igreplay --target):
- * `n - 1` is a code-generation temporary here (v44, hoisted by the back end) and the inner loop's
- * data pointer the IRO's @1490; every placement giving the target's t0/t1 puts `n - 1` after the
- * outer counter's strength-reduced @1482 and before @1490 -- a front-end temporary the IRO made
- * between the two, which no named local (numbered before @1482: 2 off) gives */
+ * Byte-exact since round 62, by two shapes (open since round 27 on t0/t1 and an add's operands):
+ * - `(int)(n - 1)`: IRO_IsSubableExpression refuses `register local +/- constant` (mweppc
+ *   IroSubable.c), so `n - 1` stayed in the outer loop for the back end to hoist as a code-generation
+ *   temporary, numbered after every IRO temporary; a widening-or-equal int ETYPCON IS subable, so the
+ *   outer loop's IRO_MoveInvariantExpressions hoists it into a temporary made right after the strength
+ *   reduction's i * 4 and before the inner loop's data common subexpression -- the target's t1 / t0;
+ * - the slot through a reference local: IRO_MoveInvarianceInAddressExpr (IroLoop.c) rewrites an
+ *   EINDIRECT(EADD) in a loop with its loop-invariant addends first, so `m_children[i]` in the inner
+ *   loop became (i * 4) + data; through a local the store's address is a variable while the loops are
+ *   transformed, and copy propagation puts data + i * 4 back afterwards in its written order */
 CTCMNode *CTCMNode::RemoveChild(CTCMNode *child)
 {
     CTCMNode *found = 0;
@@ -905,9 +908,11 @@ CTCMNode *CTCMNode::RemoveChild(CTCMNode *child)
 
     for (unsigned int i = 0; i < n && !found; i++) {
         if (m_children[i] == child) {
-            if (i != n - 1) {
-                for (int j = i + 1; j < n; j++)
-                    m_children[i] = m_children[j];
+            if (i != (int)(n - 1)) {
+                for (int j = i + 1; j < n; j++) {
+                    CTCMNode *&slot = m_children[i];
+                    slot = m_children[j];
+                }
                 found->m_parent = 0;
                 found = child;
             }

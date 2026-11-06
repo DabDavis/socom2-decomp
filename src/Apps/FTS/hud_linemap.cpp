@@ -451,7 +451,12 @@ inline C2DLine *CZLineMap::NewLine()
  * `IsLineVisible(...) ? NewLine() : 0` gives the target's size and its this / line registers, 18
  * off: the zero then leaves the visibility test's delay slot and the count is not reloaded after
  * its store (the target's m_lastline - 1 reads it again: the if form's); the ternary alone 0x210,
- * a result variable in NewLine 0x220 (0x260 with the ternary), the comma form 0x230 / 0x240 */
+ * a result variable in NewLine 0x220 (0x260 with the ternary), the comma form 0x230 / 0x240.
+ * Round 62: SOCOM 1's LineTo (0x3CA5E0) is the target's shape without the `b` -- the line zeroed in
+ * the visibility test's delay slot, the 400-line test's false arm empty -- so the `b join` is an
+ * inline's early-return goto; NewLine with no return on its false path keeps the b but its
+ * uninitialised result takes a third saved register (0x22C); NewLine filling a C2DLine *& / ** (with
+ * or without `return;`, or returning a bool) drops the b (0x220) */
 C2DLine *CZLineMap::LineTo(const CPnt3D *p)
 {
     m_pointB = WorldToDraw(p);
