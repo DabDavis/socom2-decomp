@@ -7,6 +7,8 @@
  * parser's functions take it as an argument. Defined in reverse of their image order (-inline
  * deferred). */
 
+/* erase<zrdr_sym> 0x3323F0's end a scalarised iterator: include/vector's opt-in, a marked modelling device */
+#define __MSL_VECTOR_ERASE_ITER
 #include "zrdr.h"
 #include <string>
 #include <list>
@@ -276,32 +278,20 @@ int CRdrFile::ReadToken(CRdrIO *io, _zrdr **out)
  * off with erase(begin()), MSL's own pop_front: include/list's pop_front builds the iterator a
  * level shallower and its temporaries then sit below the push_backs' (the target's are above) --
  * an inline height: include/list's pop_front may serve once the headers are refitted for level 5.
- * OPEN, 17 instructions (23 with include/list as it stands): (1) the list's destructor, inlined
- * down to the range erase, reads end_.next_ through the sentinel's address held in s1 and stores
- * the end iterator first -- include/list's ~__list_deleter written as its constructor is, `node_base
- * *t = &end_; erase(iterator(t->next_), iterator(t));`, gives exactly that (measured with a shadow
- * <list>, build/scratch/rdr/inc/list); (2) the depth test: the target branches on `depth != 0` to
- * the allocation placed after a `b` over it (the depth-0 path an empty then-block), where every
- * spelling tried here falls through into it (`if (!depth) {} else`, if/else with `array = this`
- * or `array = array`, ternaries -- the forms that leave `array` uninitialised at its declaration
- * lose the coalescing of `array` with `this` in s0 and move every register); the loop label's
- * alignment nop follows from it. Part (1) no longer differs (17 instructions, all the depth test's).
- * Round 5 of the world lane, every one 17 or 47: `if (!depth) ; else`, a do/while(0) with a break,
- * a goto over the call, a switch, a while with a break, an unsigned count, the count read back
- * from array->length; and the shape a block emptied only after allocation would give (an
- * explicit `array = this` arm, either way round, with `array` initialised or not; an inline helper
- * returning `this` early, or its ternary) -- each loses the this/array coalescing (47). Round 33
- * (build/scratch/wld/v_ra*.py): the pragma scan's peephole off only moves the loop label's pad (10):
- * the layout is not the peephole's; a no-op conversion in the arm (`array = (_zrdr *)(int)array`,
- * 36), `depth && (array = ...)`, void ternaries, two gotos, a switch either way round (36), a while
- * or for that breaks: none leaves the `b` over the allocation */
+ * Byte-exact since round 34 (17 off since round 3): the depth test is `if (depth == 0) array = this; else array =
+ * ...` with `array` left uninitialised -- the copy is what coalescing removes after the branches are laid out, so the
+ * target's `b` over the allocation and the two filled delay slots are an arm emptied late. `!depth` swaps the arms and
+ * loses the coalescing (47, the HUD's round 65 rule: `!x` swaps ternary and if arms, `x == 0` keeps them), and every
+ * spelling that keeps `array = this` at the top falls through into the allocation. include/list's ~__list_deleter
+ * written as its constructor is, `node_base *t = &end_; erase(iterator(t->next_), iterator(t));`, is what the list's
+ * destructor needs (s1, the sentinel's address, the end iterator stored first). */
 _zrdr *CRdrFile::ReadArray(CRdrIO *io, int depth)
 {
     _zrdr *rdr = 0;
     int token = 1;
     int done = 0;
     std::list<_zrdr *> list;
-    _zrdr *array = this;
+    _zrdr *array;
 
     while (!done && token) {
         token = ReadToken(io, &rdr);
@@ -315,8 +305,11 @@ _zrdr *CRdrFile::ReadArray(CRdrIO *io, int depth)
                 done = 1;
         }
     }
-    if (depth)
+    if (depth == 0) {
+        array = this;
+    } else {
         array = func_00335BC0(ZRDR_ARRAY, 1);
+    }
     int n = list.size();
     array->length = n;
     array->type = ZRDR_ARRAY;
@@ -471,10 +464,7 @@ bool _preproc_filter(CRdrIO *io)
     if (!CRdrFile::ValidateFormat(io))
         return false;
     io->fseek(0, 0);
-    bool skip[8];
-
-    for (int k = 0; k < 8; k++)
-        skip[k] = false;
+    bool skip[8] = {0};
     int depth = 0;
     bool skipping = false;
     int error = 0;

@@ -1559,6 +1559,19 @@ T *__vector_imp<T, Allocator, IsPOD>::erase(T *first, T *last)
 {
     if (first == last)
         return first;
+#ifdef __MSL_VECTOR_ERASE_ITER
+    /* an opt-in by unit, A MODELLING DEVICE (the world's round 34: `#define __MSL_VECTOR_ERASE_ITER` ahead of the
+     * includes): round 18's measure above, for a unit whose class erases are the strings' population only -- zrdr_parse.cpp's
+     * 0x3323F0. A trait read by an `if` here, as __insert_end_pointer below, is not neutral: the dead arm's size changes what
+     * the others' callers inline (ReadCellTable 0x51B770) */
+    iterator e = end();
+    int n = e.m_p - last;
+
+    if (n)
+        std::copy(last, e.m_p, first);
+    for (T *p = first + n; p < e.m_p; ++p)
+        p->~T();
+#else
     T *e = this->data_ + this->size_;
     int n = e - last;
 
@@ -1566,6 +1579,7 @@ T *__vector_imp<T, Allocator, IsPOD>::erase(T *first, T *last)
         std::copy(last, e, first);
     for (T *p = first + n; p < e; ++p)
         p->~T();
+#endif
     this->size_ -= last - first;
     return first;
 }
