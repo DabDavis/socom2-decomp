@@ -2616,6 +2616,45 @@ def test_try_sub_all_replaces_every_occurrence():
         T.WORK = Path(old).resolve() if old else HERE / "build" / "try"
 
 
+def test_try_decodes_escapes_in_new_when_asked():
+    """tools/try.py takes OLD and NEW as typed -- the HUD's round 63 read `--sub OLD 'x;\\n'` writing a
+    backslash and an n as a bug -- and -e/--escapes (GCC round 43a) decodes the usual escapes in each
+    NEW alone: tty.c's sceTtyRead with a line break and a comment after its `return i + 1;` MATCHes
+    under -e, and as typed is a BUILD-FAIL that says on stderr what -e and -n do (the behaviour kept,
+    and named); under -e OLD stays as typed (the C escape `'\\n'` in OLD is found) and `\\\\t` in NEW is a
+    literal backslash-t, the existing d=1 variant's text; -n is unchanged; decode_escapes leaves an
+    unknown escape as written and literal_escape tells `\\n` from `\\\\n`."""
+    import contextlib
+    import importlib
+    import io
+    T = importlib.import_module("try")
+    unit = HERE / "src" / "lib" / "sdk" / "tty.c"
+    old = os.environ.get("SC_TRY_WORK")
+    T.WORK = BUILD / "trywork"
+
+    def run(*args):
+        buf, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(buf), contextlib.redirect_stderr(err):
+            rc = T.main([str(unit), "sceTtyRead", "--no-dist", *args])
+        return rc, [l for l in buf.getvalue().splitlines() if l.strip()], err.getvalue()
+    try:
+        brk = ("return i + 1;", "return i + 1;\\n\\t/* x */")
+        rc, lines, err = run("--sub", *brk)
+        ck(rc == 0 and lines[0].startswith("BUILD-FAIL") and "-e decodes" in err,
+           f"as typed: a backslash and an n, the build fails and stderr says so ({lines}, {err!r})")
+        rc, lines, err = run("-e", "--sub", *brk, "--sub", "buf[i] == '\\n'", "buf[i] == '\\\\t'")
+        ck(rc == 0 and lines[0].startswith("MATCH") and lines[1].startswith("FAIL (1 differing") and not err,
+           f"-e: NEW's escapes decoded, OLD as typed, \\\\t a literal backslash-t ({lines}, {err!r})")
+        rc, lines, _ = run("-n", "--sub", *brk)
+        ck(rc == 0 and lines[0].startswith("MATCH"), f"-n unchanged ({lines})")
+        ck(T.decode_escapes("a\\nb\\tc\\\\n\\\"\\'\\x41\\0") == "a\nb\tc\\n\"'\\x41\\0",
+           "decode_escapes: the usual six, any other backslash kept")
+        ck(T.literal_escape("x;\\n") and T.literal_escape("\\t") and not T.literal_escape("a\\\\n")
+           and not T.literal_escape("x\n"), "literal_escape: a typed \\n or \\t, not an escaped backslash")
+    finally:
+        T.WORK = Path(old).resolve() if old else HERE / "build" / "try"
+
+
 def test_ccdump_takes_a_dump_flag_as_its_own_argument():
     """tools/ccdump.py --dump -dL (GCC round 43a, the GCC c lane's round 38c): argparse reads a lone
     value that starts with `-` as an option of its own, so `--dump -dL` was refused and only
