@@ -116,6 +116,29 @@ typedef struct RT_P2P_MSG2 {            /* 0x63C3D0's message, type 7 (12 bytes)
     int x08;
 } RT_P2P_MSG2;
 
+typedef struct RT_P2P_PEER_ADDR {       /* a peer's two addresses, as 0x63B2F0 matches them */
+    char x00[64];
+    char szAddress[16];                 /* 0x40: its first connection's (nWhich 0) */
+    char szAddress2[16];                /* 0x50: its second's (nWhich 1) */
+    unsigned short nPort;               /* 0x60 */
+    unsigned short nPort2;              /* 0x62 */
+} RT_P2P_PEER_ADDR;
+
+int func_0063B2F0(RT_P2P *pP2p, RT_P2P_PEER_ADDR *pAddr, int *pnIndex);
+int func_0063B520(RT_P2P *pP2p, int *pnIndex);
+
+typedef struct RT_P2P_CONNECT {         /* rt_udp's connect parameters (24 bytes) */
+    char szAddress[16];                 /* 0x00 */
+    unsigned short nPort;               /* 0x10 */
+    int nIndex;                         /* 0x14 */
+} RT_P2P_CONNECT;
+
+extern int func_0063F2D8(RT_UDP *pUdp, RT_P2P_CONNECT *pConnect, int *pnConn);
+extern int func_0063E5E8(RT_UDP *pUdp, RT_P2P_CONNECT *pConnect, int *pnConn);
+extern int KM_SetPublicKey(int nKMID, int nClientID, void *pKey);
+extern void *GetKeyMaster(int nKMID);
+extern int GetKeyChain(void *pMaster, int nClientID);
+
 extern int rt_time_start(void *pTime);
 extern int rt_time_elapsed(void *pTime, unsigned int *pnMsecs);
 extern int KM_CreateRandomRCKey(void *pKey);
@@ -325,6 +348,136 @@ int func_00639FB8(RT_P2P *pP2p, int *pnIndex)
         return 0;
     }
     return 9;
+}
+
+/* a peer joins (0x63A038, state 7 only): its public key and a fresh symmetric key taken, then a connection to each of
+ * its two addresses, the second cleared when both are the same; 9 for a peer already known, 10 for no free entry */
+int func_0063A038(RT_P2P *pP2p, RT_P2P_PEER_ADDR *pAddr)
+{
+    RT_P2P_CONNECT connect;
+    char abKey[64];
+    int nState = 0;
+    int nIndex = -2;
+    int result;
+    RT_P2P_ENTRY *pEntry;
+
+    if (pP2p == 0)
+        return 2;
+    if (pAddr == 0)
+        return 2;
+    func_0063B480(pP2p, &nState, &nIndex);
+    if (nState == 7) {
+        nIndex = -2;
+        result = func_0063B2F0(pP2p, pAddr, &nIndex);
+        if (result != 0)
+            return result;
+        if (nIndex == -2) {
+            result = func_0063B520(pP2p, &nIndex);
+            if (result != 0)
+                return result;
+            if (nIndex == -2)
+                return 10;
+            pEntry = &pP2p->pEntries[nIndex];
+            KM_SetPublicKey(-1, nIndex, pAddr);
+            pEntry->x24 = GetKeyChain(GetKeyMaster(-1), nIndex);
+            KM_CreateRandomRCKey(abKey);
+            KM_AddSymmetricKey(-1, nIndex, abKey);
+            connect.nIndex = nIndex;
+            if (strncmp(pAddr->szAddress, pAddr->szAddress2, 16) == 0 && pAddr->nPort == pAddr->nPort2) {
+                pAddr->szAddress[0] = 0;
+                pAddr->nPort = 0;
+            }
+            if (pAddr->szAddress[0] != 0 && pAddr->nPort != 0) {
+                strncpy(connect.szAddress, pAddr->szAddress, 16);
+                connect.nPort = pAddr->nPort;
+                result = func_0063F2D8(pP2p->pUdp, &connect, &pEntry->nConn);
+                if (result != 21) {
+                    if (result != 0)
+                        return 7;
+                    pEntry->nState = 2;
+                }
+            }
+            if (pAddr->szAddress2[0] != 0 && pAddr->nPort2 != 0) {
+                strncpy(connect.szAddress, pAddr->szAddress2, 16);
+                connect.nPort = pAddr->nPort2;
+                result = func_0063F2D8(pP2p->pUdp, &connect, &pEntry->nConn2);
+                if (result != 21) {
+                    if (result != 0)
+                        return 7;
+                    pEntry->nState = 2;
+                }
+            }
+        } else
+            return 9;
+    }
+    return 0;
+}
+
+/* the table opens with this peer in entry 0 (0x63A250, state 0 only): its key, then a listening connection on each of
+ * its addresses; one must take, and the reset callback is kept */
+int func_0063A250(RT_P2P *pP2p, RT_P2P_PEER_ADDR *pAddr, void (*pfnReset)(int nIndex, int n, int nError))
+{
+    RT_P2P_CONNECT connect;
+    RT_P2P_CONNECT connect2;
+    char abKey[64];
+    int nState = 0;
+    int nIndex = -2;
+    int result;
+    RT_P2P_ENTRY *pEntry;
+
+    if (pP2p == 0)
+        return 2;
+    if (pAddr == 0)
+        return 2;
+    if (pfnReset == 0)
+        return 2;
+    func_0063B480(pP2p, &nState, &nIndex);
+    if (nState != 0)
+        return 9;
+    pEntry = pP2p->pEntries;
+    memset(pEntry, 0, sizeof(RT_P2P_ENTRY));
+    pEntry->nConn = -1;
+    pEntry->nConn2 = -1;
+    KM_SetPublicKey(-1, 0, pAddr);
+    pEntry->x24 = GetKeyChain(GetKeyMaster(-1), 0);
+    KM_CreateRandomRCKey(abKey);
+    KM_AddSymmetricKey(-1, 0, abKey);
+    if (strncmp(pAddr->szAddress, pAddr->szAddress2, 16) == 0 && pAddr->nPort == pAddr->nPort2) {
+        pAddr->szAddress[0] = 0;
+        pAddr->nPort = 0;
+    }
+    if (pAddr->szAddress2[0] != 0 && pAddr->nPort2 != 0) {
+        memset(&connect2, 0, sizeof(connect2));
+        strncpy(connect2.szAddress, pAddr->szAddress2, 16);
+        connect2.nPort = pAddr->nPort2;
+        connect2.nIndex = 0;
+        result = func_0063E5E8(pP2p->pUdp, &connect2, &pEntry->nConn2);
+        if (result != 21) {
+            if (result != 0)
+                return 7;
+            if (pEntry->nConn2 == -1)
+                return 7;
+            pEntry->nState = 1;
+        }
+    }
+    if (pAddr->szAddress[0] != 0 && pAddr->nPort != 0) {
+        memset(&connect, 0, sizeof(connect));
+        strncpy(connect.szAddress, pAddr->szAddress, 16);
+        connect.nPort = pAddr->nPort;
+        connect.nIndex = 0;
+        result = func_0063E5E8(pP2p->pUdp, &connect, &pEntry->nConn);
+        if (result != 21) {
+            if (result != 0)
+                return 7;
+            if (pEntry->nConn == -1)
+                return 7;
+            pEntry->nState = 1;
+        }
+    }
+    if (pEntry->nState != 1)
+        return 7;
+    pP2p->pfnReset = pfnReset;
+    return 0;
 }
 
 int func_0063A4A0(RT_P2P *pP2p)
@@ -595,13 +748,6 @@ void func_0063B2D0(RT_P2P *pP2p, int nConn, int nError)
     RT_P2P_RELAY(pP2p, nConn, nError);
 }
 
-typedef struct RT_P2P_PEER_ADDR {       /* a peer's two addresses, as 0x63B2F0 matches them */
-    char x00[64];
-    char szAddress[16];                 /* 0x40: its first connection's (nWhich 0) */
-    char szAddress2[16];                /* 0x50: its second's (nWhich 1) */
-    unsigned short nPort;               /* 0x60 */
-    unsigned short nPort2;              /* 0x62 */
-} RT_P2P_PEER_ADDR;
 
 /* the peer whose second address and port are pAddr's: each peer's first address is compared too, its
  * verdict never read (only its strncmp call is left; one verdict variable assigned twice moves the
@@ -1048,5 +1194,55 @@ int func_00639B08(RT_P2P *pP2p, unsigned int *pnBytes, int *pnZero, int *pnPerce
         *pnPercent2 = nZero / nTotal * 100;
     else
         *pnPercent2 = 0;
+    return 0;
+}
+
+
+/* a connection held in a slot turns out to be a peer's (0x63C4F0): its address and port are one of the peer's two; the
+ * entry takes the connection and a fresh symmetric key. 1 when found */
+int func_0063C4F0(RT_P2P *pP2p, RT_P2P_INFO *pInfo, RT_P2P_ENTRY *pEntry)
+{
+    char szAddress[16];
+    unsigned short nPort;
+    unsigned int i;
+
+    if (pP2p == 0)
+        return 0;
+    if (pInfo == 0)
+        return 0;
+    for (i = 0; i < 32; i++) {
+        if (pP2p->aSlots[i].nConn == -1)
+            continue;
+        if (func_0063E4A0(pP2p->pUdp, pP2p->aSlots[i].nConn, szAddress, &nPort) != 0)
+            return 0;
+        if (strncmp(szAddress, pInfo->szAddress, 16) == 0 && nPort == pInfo->nPort && nPort != 0) {
+            char abKey[64];
+
+            func_0063E8E8(pP2p->pUdp, pP2p->aSlots[i].nConn, pInfo->nIndex);
+            KM_CreateRandomRCKey(abKey);
+            KM_AddSymmetricKey(-1, pInfo->nIndex, abKey);
+            func_0063F168(pP2p->pUdp, pP2p->aSlots[i].nConn);
+            strncpy(pEntry->szAddress, pInfo->szAddress2, 16);
+            pEntry->nPort = pInfo->nPort2;
+            pEntry->nConn = pP2p->aSlots[i].nConn;
+            pEntry->nState = 2;
+            pP2p->aSlots[i].nConn = -1;
+            return 1;
+        }
+        if (strncmp(szAddress, pInfo->szAddress2, 16) == 0 && nPort == pInfo->nPort2 && nPort != 0) {
+            char abKey2[64];
+
+            func_0063E8E8(pP2p->pUdp, pP2p->aSlots[i].nConn, pInfo->nIndex);
+            KM_CreateRandomRCKey(abKey2);
+            KM_AddSymmetricKey(-1, pInfo->nIndex, abKey2);
+            func_0063F168(pP2p->pUdp, pP2p->aSlots[i].nConn);
+            strncpy(pEntry->szAddress, pInfo->szAddress, 16);
+            pEntry->nPort = pInfo->nPort;
+            pEntry->nConn2 = pP2p->aSlots[i].nConn;
+            pEntry->nState = 2;
+            pP2p->aSlots[i].nConn = -1;
+            return 1;
+        }
+    }
     return 0;
 }
