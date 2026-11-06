@@ -1603,6 +1603,75 @@ unsigned char func_00635940(unsigned int nKind, rt_msg_client_comm *pComm, unsig
     return result;
 }
 
+extern void *memcpy(void *dst, const void *src, unsigned int n);
+unsigned char func_006387E0(unsigned int nType, char *pa, char *pb, char *pc);
+extern int rt_msg_set_u4byte(unsigned char *msg, unsigned int value);
+extern int KM_GetSoftwareID(void);
+extern void KM_GetSoftwareKeyPair(void *pPub, void *pPriv);
+extern int KM_DigiSign(int nKMID, int nClientID, void *pPub, void *pPriv, void *pSignature);
+
+/* the connect message's body (0x635A70): the client's version bytes, the port, the title's id, the signature (zero when the
+ * connection has no key) and the data; 0x49 bytes and the data, as 0x635CD0 says */
+unsigned char func_00635A70(void *pMsg, unsigned short nSize, unsigned int nKind, unsigned short nId, unsigned short nPort,
+                            void *pData, unsigned short nDataLength)
+{
+    char abPub[64];
+    char abPriv[64];
+    unsigned char bKey = 0;
+    unsigned short nHave = 0;
+    char b0;
+    char b1;
+    char b2;
+    unsigned char *p;
+    unsigned char result;
+
+    if (data_00655614 != 1)
+        return 5;
+    if (pData == 0 && nDataLength != 0)
+        return 2;
+    if (pMsg == 0)
+        return 2;
+    result = func_00635CD0(nDataLength, &nHave);
+    if (result != 0)
+        return result;
+    if (nSize != nHave)
+        return 2;
+    p = pMsg;
+    result = func_006387E0(nKind, &b0, &b1, &b2);
+    if (result != 0)
+        return result;
+    if (rt_msg_set_ubyte(p, b0) != 0)
+        return 7;
+    p++;
+    if (rt_msg_set_ubyte(p, b1) != 0)
+        return 7;
+    p++;
+    if (rt_msg_set_ubyte(p, b2) != 0)
+        return 7;
+    p++;
+    if (rt_msg_set_u2byte(p, nPort) != 0)
+        return 7;
+    p += 2;
+    rt_msg_set_u4byte(p, KM_GetSoftwareID());
+    p += 4;
+    result = func_00638740(nId, &bKey);
+    if (result != 0)
+        return result;
+    if (bKey == 1) {
+        char abSign[64];
+
+        KM_GetSoftwareKeyPair(abPub, abPriv);
+        if (KM_DigiSign(nId, 0xFFFF, abPub, abPriv, abSign) != 0)
+            return 27;
+        memcpy(p, abSign, 64);
+    } else
+        memset(p, 0, 64);
+    p += 64;
+    if (pData != 0 && nDataLength != 0)
+        memcpy(p, pData, nDataLength);
+    return 0;
+}
+
 unsigned char func_00635CD0(unsigned short nConnection, unsigned short *pnId)
 {
     if (pnId == 0)
