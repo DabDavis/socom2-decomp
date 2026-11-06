@@ -238,8 +238,21 @@ __vector_deleter<T, Allocator>::~__vector_deleter()
         operator delete(data_);
 }
 
+/* The pods. The PRIMARY template is the byte pod (defined after this one, below): every one-byte
+ * scalar element -- char, an enum of one byte under -enum min (the item lists' EQUIP_ITEM) -- runs on
+ * __vector_pod<T> over its own type, each its own instance (zui_hangul.cpp's char insert 0x3923E0 and
+ * zanim_menu.cpp's EQUIP_ITEM one 0x284BA0 are two copies in one overlay, so two names); the 4-byte
+ * pod (every pointer and 4-byte scalar vector, __vector_pod<unsigned int>) and the 2-byte one
+ * (__vector_pod<unsigned short>, SOCOM 1's name for vector<AnimType>'s) are partial specialisations --
+ * the 4-byte one on its allocator, so T stays a template parameter: a member typedef T of a
+ * non-dependent base would hide the pointer vectors' own T
+ * (the MSL headers round 36: objcmp, every hand-written unit's object byte-identical but
+ * zanim_menu.cpp's) */
 template <class T, class Allocator>
-class __vector_pod {
+class __vector_pod;
+
+template <class T>
+class __vector_pod<T, allocator<unsigned int> > {
 public:
     /* the three words cleared, the zero held in a local first: the same three stores, but more
      * inline units than three plain ones (the MSL headers' round 4) -- SOCOM II's pointer vector
@@ -375,8 +388,11 @@ inline void swap(__vector_pod<T, Allocator> &x, __vector_pod<T, Allocator> &y)
     }
 }
 
-/* A 1-byte pod (vector<char>, the soft keyboard's Korean unit: zui_hangul.cpp's template tail
- * 0x3923E0-0x393FB0) moves its bytes through memcpy, memmove and memset where the 4-byte pod
+/* A 1-byte pod -- __vector_pod's primary template since the MSL headers round 36, so every one-byte
+ * scalar element runs on it over its own type: vector<char> (the soft keyboard's Korean unit,
+ * zui_hangul.cpp's template tail 0x3923E0-0x393FB0) and vector<EQUIP_ITEM> (zanim_menu.cpp's insert
+ * 0x284BA0, byte-exact so with the unit's own specialisation gone) -- moves its bytes through memcpy,
+ * memmove and memset where the 4-byte pod
  * (above, SOCOM 1's) walks them in loops -- SOCOM II's 2-byte pod (OVL2's 0x5B68E0, after this one)
  * is the same insert again, memmove and memcpy with a fill loop -- so MSL 3.0's copy, copy_backward and fill_n
  * dispatch to the C library for the narrow types. The structure is the 4-byte pod's (0x1FE340's
@@ -428,6 +444,13 @@ inline void __pod_fill_n(char *first, unsigned int n, const char &value)
     memset(first, (unsigned char)value, n);
 }
 
+/* (any other one-byte element: an enum of one byte -- the item lists' EQUIP_ITEM, zanim_menu.cpp) */
+template <class T>
+inline void __pod_fill_n(T *first, unsigned int n, const T &value)
+{
+    memset(first, (unsigned char)value, n);
+}
+
 /* the 2-byte pod's fill (below): include/algorithm's counted loop, the value re-read each pass as a
  * SIGNED halfword -- SOCOM II's 0x5B68E0 loads it with lh in both branches, where SOCOM 1's insert of
  * the same pod (0x2CD740 in the demo, otherwise this one instruction for instruction) loads lhu; a
@@ -437,11 +460,9 @@ inline void __pod_fill_n(unsigned short *first, unsigned int n, const unsigned s
     std::fill_n(first, n, *(const short *)&value);
 }
 
-template <class Allocator>
-class __vector_pod<char, Allocator> {
+template <class T, class Allocator>
+class __vector_pod {
 public:
-    typedef char T;
-
     __vector_pod() { capacity_ = 0; size_ = 0; data_ = 0; }
     __vector_pod(const __vector_pod &x);
     ~__vector_pod()
@@ -480,8 +501,8 @@ public:
 };
 
 /* the copy (0x393D80): zeroed, then init over the other's bytes */
-template <class Allocator>
-__vector_pod<char, Allocator>::__vector_pod(const __vector_pod &x)
+template <class T, class Allocator>
+__vector_pod<T, Allocator>::__vector_pod(const __vector_pod &x)
 {
     capacity_ = 0;
     size_ = 0;
@@ -490,8 +511,8 @@ __vector_pod<char, Allocator>::__vector_pod(const __vector_pod &x)
 }
 
 /* the assignment (0x393D30): assign over the other's bytes unless it is this one */
-template <class Allocator>
-__vector_pod<char, Allocator> &__vector_pod<char, Allocator>::operator=(const __vector_pod &x)
+template <class T, class Allocator>
+__vector_pod<T, Allocator> &__vector_pod<T, Allocator>::operator=(const __vector_pod &x)
 {
     if (this != &x)
         do_assign((const T *)x.data_, (const T *)x.data_ + x.size_, forward_iterator_tag());
@@ -499,9 +520,9 @@ __vector_pod<char, Allocator> &__vector_pod<char, Allocator>::operator=(const __
 }
 
 /* a range copied into an empty vector (0x393F00) */
-template <class Allocator>
+template <class T, class Allocator>
 template <class InputIterator>
-void __vector_pod<char, Allocator>::init(InputIterator first, InputIterator last, forward_iterator_tag)
+void __vector_pod<T, Allocator>::init(InputIterator first, InputIterator last, forward_iterator_tag)
 {
     size_ = cap() = distance(first, last);
     if (size_ > max_size())
@@ -513,9 +534,9 @@ void __vector_pod<char, Allocator>::init(InputIterator first, InputIterator last
 }
 
 /* a range copied over the contents (0x393FB0): a fresh block when it does not fit, the old freed */
-template <class Allocator>
+template <class T, class Allocator>
 template <class InputIterator>
-void __vector_pod<char, Allocator>::do_assign(InputIterator first, InputIterator last, forward_iterator_tag)
+void __vector_pod<T, Allocator>::do_assign(InputIterator first, InputIterator last, forward_iterator_tag)
 {
     unsigned int n = distance(first, last);
 
@@ -536,8 +557,8 @@ void __vector_pod<char, Allocator>::do_assign(InputIterator first, InputIterator
 }
 
 /* the tail moved down over the range (0x392A30) */
-template <class Allocator>
-char *__vector_pod<char, Allocator>::erase(T *first, T *last)
+template <class T, class Allocator>
+T *__vector_pod<T, Allocator>::erase(T *first, T *last)
 {
     if (first == last)
         return first;
@@ -550,8 +571,8 @@ char *__vector_pod<char, Allocator>::erase(T *first, T *last)
 }
 
 /* copies of c inserted at the end, or the tail erased (0x392600) */
-template <class Allocator>
-void __vector_pod<char, Allocator>::resize(unsigned int sz, const T &c)
+template <class T, class Allocator>
+void __vector_pod<T, Allocator>::resize(unsigned int sz, const T &c)
 {
     if (sz > size())
         insert(end(), sz - size(), c);
@@ -561,8 +582,8 @@ void __vector_pod<char, Allocator>::resize(unsigned int sz, const T &c)
 
 /* n copies of x inserted before position (0x3923E0): shifted up and filled in place, or a fresh
  * block filled, the old bytes copied around the gap and freed */
-template <class Allocator>
-void __vector_pod<char, Allocator>::insert(T *position, unsigned int n, const T &x)
+template <class T, class Allocator>
+void __vector_pod<T, Allocator>::insert(T *position, unsigned int n, const T &x)
 {
     if (n == 0)
         return;
@@ -1212,8 +1233,8 @@ class __vector_imp<T *, Allocator, true> : public __vector_pod<unsigned int, all
 
 /* the bounds-checked element reads, out of line (a template member defined outside its class is
  * never auto-inlined here): each unit that calls one emits its copy, with its own message */
-template <class T, class Allocator>
-T &__vector_pod<T, Allocator>::at(unsigned int n)
+template <class T>
+T &__vector_pod<T, allocator<unsigned int> >::at(unsigned int n)
 {
     if (n >= size_)
         __msl_error("vector::at index out of range");
@@ -1225,8 +1246,8 @@ T &__vector_pod<T, Allocator>::at(unsigned int n)
 /* the tail moved down over the range (SOCOM 1's erase__ of __vector_pod<Ui>, line for line; MW
  * 3.0 unrolls the copy 8x, its walker a local). The source walker is declared first and the
  * destination initialised first: their registers and their moves' order each follow one */
-template <class T, class Allocator>
-T *__vector_pod<T, Allocator>::erase(T *first, T *last)
+template <class T>
+T *__vector_pod<T, allocator<unsigned int> >::erase(T *first, T *last)
 {
     if (first == last)
         return first;
@@ -1245,8 +1266,8 @@ T *__vector_pod<T, Allocator>::erase(T *first, T *last)
 /* one element erased: the words after it moved down one, the size counted down (SOCOM 1's
  * erase__ of __vector_pod<Ui> taking one position, 0x1DEF80; SOCOM II's 0x28F220, the copy unrolled
  * 8x as the range erase's) */
-template <class T, class Allocator>
-T *__vector_pod<T, Allocator>::erase(T *position)
+template <class T>
+T *__vector_pod<T, allocator<unsigned int> >::erase(T *position)
 {
     T *e = data_ + size_;
 
@@ -1260,8 +1281,8 @@ T *__vector_pod<T, Allocator>::erase(T *position)
     return position;
 }
 
-template <class T, class Allocator>
-__vector_pod<T, Allocator>::__vector_pod(const __vector_pod &x)
+template <class T>
+__vector_pod<T, allocator<unsigned int> >::__vector_pod(const __vector_pod &x)
 {
     capacity_ = 0;
     size_ = 0;
@@ -1269,9 +1290,9 @@ __vector_pod<T, Allocator>::__vector_pod(const __vector_pod &x)
     init((const T *)x.data_, (const T *)x.data_ + x.size_, forward_iterator_tag());
 }
 
-template <class T, class Allocator>
+template <class T>
 template <class InputIterator>
-void __vector_pod<T, Allocator>::init(InputIterator first, InputIterator last, forward_iterator_tag)
+void __vector_pod<T, allocator<unsigned int> >::init(InputIterator first, InputIterator last, forward_iterator_tag)
 {
     size_ = cap() = last - first;
     if (size_ > max_size())
@@ -1288,8 +1309,8 @@ void __vector_pod<T, Allocator>::init(InputIterator first, InputIterator last, f
 
 /* the assignment (0x259AF0): assign over the other's words unless it is this one -- the empty tag a
  * byte read off the stack, as the char pod's (0x393D30) */
-template <class T, class Allocator>
-__vector_pod<T, Allocator> &__vector_pod<T, Allocator>::operator=(const __vector_pod &x)
+template <class T>
+__vector_pod<T, allocator<unsigned int> > &__vector_pod<T, allocator<unsigned int> >::operator=(const __vector_pod &x)
 {
     if (this != &x)
         do_assign((const T *)x.data_, (const T *)x.data_ + x.size_, forward_iterator_tag());
@@ -1299,9 +1320,9 @@ __vector_pod<T, Allocator> &__vector_pod<T, Allocator>::operator=(const __vector
 /* a range copied over the contents (0x259D20): a fresh block when it does not fit (the count
  * cleared, the old block freed and forgotten), then the words copied by a local walker (MW unrolls
  * it 8x, as init's) and the count set */
-template <class T, class Allocator>
+template <class T>
 template <class InputIterator>
-void __vector_pod<T, Allocator>::do_assign(InputIterator first, InputIterator last, forward_iterator_tag)
+void __vector_pod<T, allocator<unsigned int> >::do_assign(InputIterator first, InputIterator last, forward_iterator_tag)
 {
     unsigned int n = last - first;
 
@@ -1327,8 +1348,8 @@ void __vector_pod<T, Allocator>::do_assign(InputIterator first, InputIterator la
 /* n copies of value: the length checked, the block allocated and stored through data()'s
  * reference, size and capacity set, value re-read for every element (0x3C45B0; written under
  * that placeholder in vis_main.cpp until now) */
-template <class T, class Allocator>
-void __vector_pod<T, Allocator>::init(unsigned int n, const T &value)
+template <class T>
+void __vector_pod<T, allocator<unsigned int> >::init(unsigned int n, const T &value)
 {
     if (n) {
         if (n > max_size())
@@ -1346,8 +1367,8 @@ void __vector_pod<T, Allocator>::init(unsigned int n, const T &value)
  * the in-place tail shifted up from the end, the fill re-reading x through xp each pass, the two
  * old runs copied forward by local walkers (MW unrolls them 8x) -- and MAIN's exceptions-on copy
  * (0x18B810, src/main/msl/msl.h) with __msl_error's fprintf and abort for the throw */
-template <class T, class Allocator>
-void __vector_pod<T, Allocator>::insert(T *position, unsigned int n, const T &x)
+template <class T>
+void __vector_pod<T, allocator<unsigned int> >::insert(T *position, unsigned int n, const T &x)
 {
     if (n == 0)
         return;
@@ -1410,8 +1431,8 @@ void __vector_pod<T, Allocator>::insert(T *position, unsigned int n, const T &x)
  * and the pointer vectors' size() cannot parse the pod's: it is their own and one high (each element
  * type's out-of-line copy is its own -- CTCMNode's 0x231E20, CKey's 0x25B2E0 -- and HideAll 0x231BA0
  * cuts a two-high size() a level early). Through the pod's begin() the erase's first is the same code */
-template <class T, class Allocator>
-void __vector_pod<T, Allocator>::resize(unsigned int sz, const T &c)
+template <class T>
+void __vector_pod<T, allocator<unsigned int> >::resize(unsigned int sz, const T &c)
 {
     const unsigned int &n = size_;
 
@@ -1423,8 +1444,8 @@ void __vector_pod<T, Allocator>::resize(unsigned int sz, const T &c)
 
 /* reserve: the old elements copied into a fresh block -- word by word for the POD storage, by
  * copy construction into a temporary deleter, swapped in, for a class */
-template <class T, class Allocator>
-void __vector_pod<T, Allocator>::reserve(unsigned int n)
+template <class T>
+void __vector_pod<T, allocator<unsigned int> >::reserve(unsigned int n)
 {
     if (n > cap()) {
         if (n > max_size())
@@ -1889,54 +1910,88 @@ void __vector_imp<T, Allocator, IsPOD>::do_assign(InputIterator first, InputIter
     }
 }
 
+/* whether a vector's element is a one-byte scalar, which runs on the byte pod over its own type (a
+ * char type, an enum of one byte under -enum min; bool is MSL's bit vector, its own specialisation:
+ * hud_objectives.cpp) -- MW 3.0's SFINAE class test first, so no class element's size is asked */
+template <class T, bool IsClass>
+struct __vector_byte_test {
+    enum { value = sizeof(T) == 1 };
+};
+
+template <class T>
+struct __vector_byte_test<T, true> {
+    enum { value = 0 };
+};
+
+template <class T>
+struct __vector_is_byte {
+    enum { value = __vector_byte_test<T, Metrowerks::is_class<T>::value>::value };
+};
+
+template <>
+struct __vector_is_byte<bool> {
+    enum { value = 0 };
+};
+
 template <class T, class Allocator = allocator<T> >
-class vector : public __vector_imp<T, Allocator, false> {
+class vector : public __vector_imp<T, Allocator, __vector_is_byte<T>::value> {
+    typedef __vector_imp<T, Allocator, __vector_is_byte<T>::value> __imp;
+
 public:
-    typedef typename __vector_imp<T, Allocator, false>::const_iterator const_iterator;
+    typedef typename __imp::const_iterator const_iterator;
 
     /* the base's ends (the class iterators), and a const walk's pair of its own, straight off the
      * members, hiding the base's raw const ends: SOCOM II's const walks return a class (the AI lane,
      * round 16: CAiMapLocVec::ComputeLength, inlined one level into CAiMap::CreateGraph, calls them
      * out of line -- OVL2 0x52F3E0 and 0x52F310, ai_maptable.cpp's own copies apart from the
      * non-const 0x529E90/0x529EB0), while the base's copy constructor reads through raw ones (above) */
-    using __vector_imp<T, Allocator, false>::begin;
-    using __vector_imp<T, Allocator, false>::end;
+    using __imp::begin;
+    using __imp::end;
     const_iterator begin() const { return const_iterator(this->data_); }
     const_iterator end() const { return const_iterator(this->data_ + this->size_); }
     /* the reverse walk, as the scalar vectors' (std::reverse_iterator, include/iterator; the HUD's
      * round 46: hud_scorepopup.cpp's pop-up loader stores each new name through `*names.rbegin()`,
      * end() 0x22DD20 and the reverse * 0x22DD10 out of line there) */
-    typedef std::reverse_iterator<typename __vector_imp<T, Allocator, false>::iterator> reverse_iterator;
+    typedef std::reverse_iterator<typename __imp::iterator> reverse_iterator;
     reverse_iterator rbegin() { return reverse_iterator(this->end()); }
     reverse_iterator rend() { return reverse_iterator(this->begin()); }
-    void clear() { __vector_imp<T, Allocator, false>::clear(); }
+    void clear() { __imp::clear(); }
     /* the states lane's round 17: a forwarder, as clear() is -- st_core.cpp's SetMovie calls its
      * out-of-line copy (0x1EDF10, `j` to the cue vector's reserve 0x1EF190) */
-    void reserve(unsigned int n) { __vector_imp<T, Allocator, false>::reserve(n); }
+    void reserve(unsigned int n) { __imp::reserve(n); }
 };
 
 __MSL_VECTOR_SCALAR(float)
 __MSL_VECTOR_SCALAR(int)
 __MSL_VECTOR_SCALAR(unsigned int)
 
-/* vector<char>: the 1-byte pod above, its iterators the scalar vectors' */
-template <class Allocator>
-class __vector_imp<char, Allocator, true> : public __vector_pod<char, Allocator> {
-    typedef __vector_pod<char, Allocator> __base;
+/* a vector of a one-byte scalar (vector<char>, an enum's: __vector_is_byte above): the byte pod over
+ * the element type, its iterators the scalar vectors' (the const one for the primary vector's const
+ * walk, which nothing here calls) */
+template <class T, class Allocator>
+class __vector_imp<T, Allocator, true> : public __vector_pod<T, Allocator> {
+    typedef __vector_pod<T, Allocator> __base;
 
 public:
-    __MSL_VECTOR_ITERATOR(char)
+    __MSL_VECTOR_ITERATOR(T)
+    class const_iterator {
+    public:
+        const_iterator(const elem_t *p) : m_p(p) {}
+        const_iterator(const iterator &i) : m_p(i.m_p) {}
+        bool operator==(const const_iterator &o) const { return m_p == o.m_p; }
+        bool operator!=(const const_iterator &o) const { return !(*this == o); }
+        const_iterator &operator++() { ++m_p; return *this; }
+        const elem_t &operator*() const { return *m_p; }
+
+        const elem_t *m_p;
+    };
     iterator begin() { return iterator(__base::begin()); }
     iterator end() { return iterator(__base::end()); }
     unsigned int size() const { return this->size_; }
-    char &operator[](unsigned int n) { return __base::data()[n]; }
+    T &operator[](unsigned int n) { return __base::data()[n]; }
     void clear() { this->size_ = 0; }
     /* the last character dropped (the UI lane's round 10: zui_hangul.cpp's SkbHangulBack) */
     void pop_back() { this->size_--; }
-};
-
-template <class Allocator>
-class vector<char, Allocator> : public __vector_imp<char, Allocator, true> {
 };
 
 template <class T, class Allocator>
