@@ -674,7 +674,10 @@ int tcmSelectTeam(CZSealBody *player, int team)
  * holder interferes with it there -- here the player's neighbours are r, m and unit only (caption,
  * the target's s3, is born after the player's last use): the original keeps the player live
  * longer, or numbers something else there. Round 62: igreplay --want 32=s4,34=s2,35=s1 over every
- * placement of r, m and caption (54,872): none -- no numbering gives it, the graph needs an edge */
+ * placement of r, m and caption (54,872): none -- no numbering gives it, the graph needs an edge. Round 65: the edge is a read of
+ * the player while caption lives -- `asm { beq player, player, L1; L1: }` (the weapons' round 40's no-code read) at the return gives
+ * the size and the frame, 10 off: an int member (`int m = (unsigned char)member`, the compare through a KEY cast) passes it with no andi,
+ * but the player then takes s3 and caption s4, and the virtual call's arguments go a0, a1, a2 where the target's go a2, a1, a0 */
 int tcmUpdateTeamMember(CZSealBody *player, int member)
 {
     int r = 1;
@@ -930,7 +933,9 @@ int tcmUpdateRadio(CZSealBody *player, int arg)
  * `igreplay --permute` over the three movers (v39 the sides' CSE, v47 the end copy's address, v53 the
  * 2) -- none of their 6 orders gives the target, a single --want over v53 again only 46.5; the end
  * iterator set up first (25), s_tcmTarget cleared before the iterators or both iterators in the for's
- * init (16), the walk a while loop (7) */
+ * init (16), the walk a while loop (7) 
+ * Round 65: the replay wants the constant 2 numbered between nodes 46 and 47, a code-generation temporary inside the
+ * iterators' set-up; const and enum holders do not reach it. */
 int tcmUpdatePlayer(CZSealBody *player, int index)
 {
     int r = 1;

@@ -205,7 +205,9 @@ static inline void SetTextColor(C2DString *s)
  * through an inline accessor, the bool assigned apart, the locals swapped. Everything else (the
  * `= {0}` buffer, the reference in memory, the colour through an inline) matches. Round 61: x through
  * an inline (int or float, the string by reference or pointer, with a body of its own or not) is
- * further off (d 50) */
+ * further off (d 50) 
+ * Round 65's tries, all no closer (0x2A4 or more): const x, const float x, a const 510, an enum offset, a const offset,
+ * const y, const ix and iy, a const row. */
 void CTeamNames::SetupTeamNameEntry(int index, CZSealBody *seal, bool add)
 {
     if (!seal)
