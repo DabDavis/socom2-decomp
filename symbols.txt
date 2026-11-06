@@ -4601,7 +4601,7 @@
 0x002DC660 0x20 SetMask__Q23zdb11DiIntersectFUi  # OVL1; new in SOCOM II, the name ours (the world lane): the mask at 0x44 set to the argument with its low bit forced on, or to -1 for none; RegIntersectDelayed and RegProximityDelayed call it after setting the type
 0x002DC680 0x60 __dt__Q23zdb11DiIntersectFv  # OVL1; s1:align
 0x002DC6E0 0xB4 __ct__Q23zdb11DiIntersectFi  # OVL1; s1:align
-0x002DC7A0 0x52C func_002DC7A0  # OVL1
+0x002DC7A0 0x52C SetCDIBBox__Q23zdb7CDIBBoxFv  # OVL1; s1:name by hand, the engine core round 23 (SOCOM 1's static zdb::CDIBBox::SetCDIBBox(), 0x21C7F0 there: the unit box (-0.5..0.5) built behind a guard byte (0x44F308, lbu and set first), its eight corners -- SOCOM II's through GetBBoxCorners 0x2DCCD0, the next function -- and six CDIPoly quads newed into 0x44F2F0-0x44F304 (Allocate(4), DI type 2, four 12-byte memcpys, SetEdgeVecsAndNorm), as SOCOM 1's; CMission::Init calls it; int_shapes.cpp's header named it so since round 9)
 0x002DCCD0 0xC4 GetBBoxCorners__3zdbFP6CPnt3DPC5CBBox  # OVL1; new in SOCOM II, the name ours: a CBBox's eight corners into a CPnt3D array (min/max picked per corner); the CShadowCaster constructor and SetCDIBBox's successor 0x2DC7A0 call it
 0x002DCDA0 0x280 GetIntersect__Q23zdb7CDIBBoxFPQ23zdb11DiIntersect  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x002DD020 0x8 GetAltitude__Q23zdb7CDIBBoxFPQ23zdb11DiIntersect  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
