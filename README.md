@@ -15250,6 +15250,61 @@ none superseding a draft; no rows named (the bodies keep placeholders: DME's API
 wrappers, round 7b), data names used (CurrentNetTime, NetStructureList, MyClientIsJoined, ActiveNetObjectCount). No
 tool changed.
 
+**Round 25b: the guard rule again, what a call's declaration moves, and where a loop's arms go -- 19 rows written, 6 opens closed.**
+
+- **Round 14b's positive test closes opens as old as round 5b**: where a target has `li v0,K` in an annulled or stolen slot and v0
+  free for a compare, the `return K` is not if-converted, so the test is positive with its return in an else, or a shared last
+  return. 0x61A118 (its owner tests: the -1 then takes v0 and the creator a0, d=28 -> 1, and 0x618F70 keeps its match), 0x63E4A0
+  (the -2 test), rt_msg_client_iget_metrics (open since round 12b: the connection test round the call and the copy, which also keeps
+  the `return result` a block of its own, the fall-through `b` that round 12b stood in for with an empty asm),
+  ClientUpdatePacketHandler (open since round 5b, 19 words: positive up to the state test, then GUARDS inside it, so v0 holds the 36
+  from there on and the compares take v1 -- both forms in one function). A sweep of every WRONG row with each top-level guard and
+  pair of guards made positive (`gcc-r25b`'s posguard.py and possweep.py) found no further close: the rest are not this.
+- **A callee's declared return type moves the next block's registers**: a call that sets v0 just before a block's first `lui` keeps
+  the `lui` off v0 and hands v0 to the load after it; a void call leaves v0 to the `lui`. 0x61C2F0's two loads (func_0063C810 and
+  func_0061C5A0 are int), 0x61E510 (func_00614888 is void; the unit's `extern int` was wrong) and 0x626658 (func_0062A218 is void).
+  The matches are measured; the mechanism is our reading of local-alloc's extended lifetimes (a qty is allocated over its neighbouring
+  insns), recalled, as no GCC source is on this box. So declare a callee as it is defined: an unused result's type is not neutral.
+- **Round 13c's callee rule, both ways, and one case against it**: 0x61D1B0's `bnez` needs 0x61C600 compiled above it (the rule as
+  stated), 0x63AAC0's `bnel` needs its callee 0x63B520 NOT yet compiled, so it sits at its image place. Placement follows: 0x61C600 is
+  written just above 0x61D1B0, below the object update path at the unit's end, whose calls keep no note as the image has them.
+  AGAINST the rule as stated: 0x61A118's first arm is the target's `bnel` only with the send it falls into, func_00615DE0, compiled
+  above (its `bne` while merely declared), so the two send wrappers 0x615D88 / 0x615DE0 are written at their place. Measured, not explained.
+  Definedness does not reach 0x63C170 (three orders of its later callees tried; its fall-through call is through a pointer).
+- **Where a loop's arms go**: an arm ending in `break` is moved by loop.c to the barrier nearest before its target, so 0x63FC08's found
+  arm lands before the loop's entry, past the `return 10` -- a plain `while`, and the `b` over it needs no shape of its own. expand_end_loop's
+  scan reaches the LAST early exit, so 0x641BA0's layout, step first and an entry jump over it, is a plain `while` too, everything up to
+  the found arm's `break` moved below the step. 0x640B70's backward branch is round 22b's rotated `do { ... break; ... } while (0)`.
+  **The rotation orders the frame**: ADDRESSOFs are purged in insn order after it, so 0x640B70's pData and nLength and 0x63FA28's trailer
+  take their slots before the moved head's pMsg -- a frame the declarations could not give is a reading of the layout.
+- **Forward jumps the layout shows**: 0x626140 (9 words) has the 0 store as the second test's fall-through and the 1 store after it, both
+  tests branching forward: a `goto` past the 0 (if/else, negated `||`, a nested else and returns all lay the 1 first). 0x63FA28's stage 0
+  jumps to the failure block past `i++`: a `goto fail`.
+- **A slot holding a load came from above the branch**: a load through a pointer can trap, so reorg will not take it from the fall-through
+  -- ClientUpdatePacketHandler reads the client byte before the connection test (1 word).
+- **A reload is the jump's target**: ClientConnectsPacketHandler (round 23b's two words) is `if (x == 0) n = y; else n = x;`, `==` first;
+  the three `!=` spellings let CSE reuse the tested value. Our reading: the else arm starts the jump's target, off CSE's path.
+- **Shapes, measured**: bytes a target reloads from memory are 1-byte memcpys (0x641308: `memcpy(&nType, pData, 1)`, then the unaligned word);
+  `lw; andi 6` and `(word & 0xFFFF8000) == 0x408000` read the header's first word through a cast (perhaps SCEA's bit-fields merged by fold,
+  untested); one slot read for a run of stores is a local pointer (0x61C150, its order 3 of 720 by ccperm with four stores grouped); one
+  variable for a first loop and a later inner loop (0x61C2F0: s0 for both); guard copies of `status = 23; return 23` cross-jump into the
+  last (0x6184E8); the second arm's call written first so two calls cross-jump (0x63B0B8); the getter's result and its pointer tested
+  together keep a `return -1` its own `b` (0x61E128); a pointer walk the full-table path recomputes (0x626658).
+- **Open, diagnosed in place**: func_0061F7B0 (3: sched1 ties the two loads that feed the store, and *pMsg wins on register weight as pMsg
+  dies there; the target issues the pLocal reload first); 0x63C170 (2: the target's slot means nLocal's load sat above the branch, with a
+  reload after the indirect call -- it looks like PRE, which this compile does not do); 0x639A90 / 0x63B410 (three two-predecessor forms of
+  the second `return 2` are worse, d=12 against 6); and the earlier opens, not reached.
+- **Correction**: the commit of 0x626140 says "grid.c whole". It is not: every row it has written is byte-exact (32 of 32), but 0x624830,
+  0x624DC0, 0x6250D0, 0x6253B8 and 0x625690 in its span are unwritten.
+
+Hand-written in round 25b: `medius/dmelocal.c` (+9: 0x61A118 closed; 0x615D88, 0x615DE0, 0x61C600 over their drafts; 0x61C2F0, 0x61C150,
+0x61D1B0, 0x6184E8, 0x6195E0 written; 105 of 108), `medius/dmemessage.c` (+7: ClientConnectsPacketHandler and ClientUpdatePacketHandler closed;
+0x61E128, 0x61E300, 0x61E510, 0x61F2B8, 0x61FE18 written; 18 of 19), `medius/grid.c` (+2: 0x626140 closed, 0x626658 written; 32 of 32),
+`medius/rt_msg_client.c` (+1, iget_metrics closed; 91 of 95), `medius/rt_p2p.c` (+3: 0x63AAC0, 0x63B0B8, 0x63BED0 written; 32 of 37),
+`medius/rt_udp.c` (+6: 0x63E4A0 closed; 0x63FA28, 0x63FC08, 0x640B70, 0x641308, 0x641BA0 written; 48 of 54) -- 25 rows new to the map's
+byte-exact rows (9,604 bytes; `src/lib/medius` 985 -> 1,013 of 1,027 -> 1,049), 3 superseding matched drafts; unwritten rows 84 -> 65. No
+rows named: DME's API names are Dme.c's wrappers' (round 7b), and these bodies' own names have no evidence past their position. No tool changed.
+
 ## Open, and next
 
 The work runs in lanes (see "Working in parallel"), each an address range with its own units;

@@ -1005,8 +1005,8 @@ void func_0030C6A0();
 void func_0030C6E0();
 
 
-/* the text entry the chat commands open (SOCOM II's) */
-void func_00281D40(C2DAnimCmdHdr *hdr, UITextCallback cb, int lobby);
+/* the chat commands' body (SOCOM II's; zanim_menu.cpp's, 0x281D40) */
+void SendChatLine(C2DAnimCmdHdr *hdr, UITextCallback cb, int lobby);
 
 /* more of the lobby (SOCOM 1's names by the calls SOCOM 1's handlers make) */
 bool func_0030BF20();                                               /* (whether the network is up) */
