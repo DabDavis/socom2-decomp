@@ -3036,9 +3036,11 @@ bool CZKit::CanPickup(CZFTSWeapon *w, void *ammo, int count)
 /* whether a picked-up item has a slot: no launcher held, and a slot of 2-4 free for it (OVL2
  * 0x5BAC30, new in SOCOM II: GetPickupSlot inlined whole; the SEAL's pickup tests call it -- the
  * name ours).
- * OPEN, 0x220 against 0x228: the saved registers numbered otherwise -- the target gives `this` s0,
- * the launcher walk's cursor s1 and its index (the result) s2, here the index takes s0 and `this`
- * s1; the inlined GetPickupSlot's registers follow (GetPickupSlot's own miss, below) */
+ * OPEN, 0x220 against 0x228 (the kit's round 60: `r = l == -1; if (r) ...` gives the target's materialised test, GetPickupSlot(-1)
+ * takes the hoisted -1; written as a ternary it has the target's size, 90 registers off): the target's `li v0,2` cannot
+ * fill the test's delay slot, so its index must take v0 (the result's register there), the item cursor s1 and the inner
+ * cursor t7 -- coloured after ItemHasAmmo's two locals, so numbered below them or pushed first; no placement of the index,
+ * those locals and the cursor over the search's budget gives it (build/scratch/kit/hps_want.txt) */
 bool CZKit::HasPickupSlot()
 {
     bool r = GetLauncherIndex() == -1;

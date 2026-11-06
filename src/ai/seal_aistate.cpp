@@ -2337,12 +2337,6 @@ void CAiSGoto::OnSignal(SIGNAL sig, CSealCtrlAi *ai)
     }
 }
 
-/* a bit of a CBits set (inlined; zmath.h's CBits has Test and Clear only -- the name ours) */
-inline void SetBit(CBits *bits, unsigned int i)
-{
-    bits->m_vec[i >> 5] |= 1 << (i & 31);
-}
-
 /* the pickup gone for, its network id kept to check it still stands, and the flags (OVL2
  * 0x5F5520; the name ours) */
 void CAiSPickup::SetPickup(CPickup *p, unsigned int flags)
@@ -2384,6 +2378,7 @@ extern "C" bool func_005F51A0(CSealCtrlAi *ai, int x, unsigned int flags)
  * variable alone, so the argument's temporary stays where the replay of round 59 wanted it, numbered
  * before SetBit's index -- 40 integer spellings over rounds 39-59 stayed at 4 off) */
 enum PickBit_ { PICKBIT_MAX = 0x7fffffff };
+/* a bit of a CBits set (inlined; zmath.h's CBits has Test and Clear only -- the name ours) */
 inline void SetBitE(CBits *bits, unsigned int i, PickBit_ bit)
 {
     bits->m_vec[i >> 5] |= 1 << bit;

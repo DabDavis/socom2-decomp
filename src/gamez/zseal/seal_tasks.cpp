@@ -3721,7 +3721,10 @@ bool CTCreate::Tick(_zanim_cmd_hdr *hdr, float *dT)
  * a variable numbered before `cmd`. A dead first definition (`CZSealBody *seal = 0;` first, after the
  * index, after the counter) and a ternary reading it (`seal = param ? param->m_seal : seal`) leave the
  * colouring as it is (MW folds the 0 in), an `if (param) seal = ...` costs 3 instructions (0x200);
- * the block through TaskBlock<T> (a temporary, CTPlay's) stays 20 off */
+ * the block through TaskBlock<T> (a temporary, CTPlay's) stays 20 off. The kit's round 60: igreplay on the block alone wants it
+ * numbered 43.5-45.5, among the linearizer's ternary temporaries (the SEAL's and the controller's); the block in a one-member
+ * struct (numbered by the scalariser, after them) or declared after the find gives the counter's register right but
+ * swaps the block with the AI (14 off) */
 bool CTTeam::Tick(_zanim_cmd_hdr *hdr, float *dT)
 {
     TASK_SEAL(CTTeam);
