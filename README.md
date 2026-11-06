@@ -2065,6 +2065,59 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from completing the MSL headers, round 35** (the pod's resize 0x53AA50 byte-exact; WHAT DECIDES A WALKED
+  MEMBER'S PLACE, read out of MW's front end -- doldecomp/mweppc CScope.c, CInline.c, CTemplateNew.c, in
+  build/scratch/msl-r35/mweppc/ -- and proven on probes; build/p35/, untracked: pod/pr*.cpp, mkv*.py and the
+  inc_* shadow headers, olist.py / order.py / sdiff.py, runcheck.sh, cmpcheck.py):
+  - THE WALK VISITS A CLASS TEMPLATE INSTANCE'S MEMBERS IN DECLARATION ORDER because a template's scope APPENDS
+    its names (CScope_AddObject's CLASS_IS_TEMPL_ANY branch; an ordinary class's scope inserts at the head),
+    overloads under their name's first declaration (round 34's rule, now with its reason);
+  - A WALKED MEMBER IS GENERATED ON THE SPOT ONLY IF EVERY IN-CLASS INLINE IT CALLS IS ALREADY PARSED
+    (CInline_GenFunc -> CInline_CheckDependencies: an in-class template member whose body was never parsed, a
+    not-yet-generated implicit member or a pending action defers it to the export list, generated after the
+    walk once the inlines are parsed -- last deferred first); a member's auto-inline data is packed when its
+    body is parsed, so anything generated later -- a deferred member of the same walk included -- inlines it.
+    Round 7's "a member inlines another only when generated after it" is "after it is PARSED". Probes: a unit
+    instantiating only the pod's resize gets resize 0x6C calling erase; add an own function that erases and
+    the walk generates erase on the spot (no in-class callee) while resize, reading the pod's size() and
+    begin() that nothing parsed, waits and inlines it (0x94) -- with resize declared first and size() /
+    begin() parsed by own code, resize comes first again (pr3.cpp);
+  - APPLIED (request 1): include/vector's resize declared ahead of reserve / insert / erase (SOCOM 1's
+    <vector> defines resize 337, reserve 363, insert 486, erase 548), its body calling only end() and data()
+    -- which a pointer vector's begin() / end() parse -- the size read through a const reference and the
+    erase's first through data(); ai_maplayer.cpp's dead-stripped ResizeLayers (src/ABSENT.txt) emits it
+    ahead of the erase DeleteLayers calls: 11153 -> 11154 over every hand-written unit, nothing lost, objcmp
+    HEAD --by-address 659 units, 1 differs (ai_maplayer.cpp, by the device's copies);
+  - MW'S CSE KEEPS A LOAD THROUGH A CONST LVALUE APART FROM A PLAIN ONE: resize's compares through `size()
+    const` (or `const unsigned int &n = size_`, or a const self pointer) share one load and end()'s
+    `data() + size_` reloads, the target's; through `size_` itself all merge (14 off), end() through size()
+    likewise;
+  - THE POINTER VECTORS' size() IS THEIR OWN: CTCMNode's 0x231E20 and CKey's 0x25B2E0 are separate copies
+    in one overlay (a shared pod size() links once), and a size() forwarding to the pod's is two high and
+    costs HideAll 0x231BA0 (measured: +1 -1) -- so the pod's resize cannot lean on the pod's size();
+  - the deque tail (request 2): deferral reorders out-of-class members only walk by walk, a class at a time
+    in declaration order, so it cannot give the lobby chain's depth-first, cross-class order (the copy
+    constructor; init, end, begin; __deque_buf(A) -> ~cdeque, the pair's constructor, the buffer's copy
+    constructor ...): that is the export list's, cut inlines -- round 34's conclusion stands. Measured on
+    the way: the lobby's const make_iterator 0x2E18A0 is deferred (unparsed in-class callees) and generated
+    before the buffer's begin() const is instantiated; generated after it (a probe reference from own code)
+    it inlines it, 0xE4 -> 0xF4, still 77 off -- the target keeps begin()'s iterator and the const_iterator
+    converted from it in memory (sp+0..12, sp+16..28) where ours folds the conversion's copy. And the five
+    deque() rows (0x2E0D90, 0x2F6230, 0x3A6410, 0x3B7FA0, 0x3340F0: allocator<PCv>() called where the target
+    inlines it) are the same rule: deque() waits past the walk on its unparsed __deque_imp(), the copy
+    constructor waits on __deque_imp(const A &), so allocator<PCv>() is first referenced after the walk and
+    instantiated after both. With __deque_imp(const A &) parsed by own code (a probe), the copy constructor
+    is generated in the walk, its reference instantiates allocator<PCv>() in the same walk, and the deferred
+    deque() inlines it: 0x2E0D90 byte-exact, the copy constructor 0x2E07B0 still exact. No natural shape
+    parses it there: the copy constructor in class does (the deque() rows match or reach their callee's
+    row) but the queue's constructor then inlines it, losing CZOnlineLobby() 0x2E0710, the chat queue's
+    0x2F5F50 and CSimpleStateMachine() 0x3A5DD0 (build/p35/dq/inc_cc: the deque units' board 274 -> 270);
+  - cdeque<PCv>::erase 0x285D30 (request 4), its shape read, not written: MSL's deque erase -- pos = first -
+    begin(), back = end() - last, n = last - first through the friend operator- of cdeque<T *>'s
+    const_iterator form (x's fields re-read), then, when pos < back, copy_backward(begin(), first, last)
+    over four-word walkers held in memory and stepped by -- with start_ = (start_ + n) % capacity_, else
+    copy(last, end(), first) over register walkers wrapping to the storage; size_ -= n; `return begin() +
+    pos`.
 - **Tells from the game states, round 49** (C2DMessage_Q::Tick 0x2B5DB0 -- 38 off since round 48 -- and C2DMessage_Q::Draw
   0x2B5830, unwritten before and named by its vtable slot 0xC, byte-exact; CMission::UpdateLocalGame 0x2A9EE0 and
   DestroyNetGame 0x2A9EF0 hand-written over their drafts; fts_net_persona.cpp's four lobby / clan placeholders respelled):
