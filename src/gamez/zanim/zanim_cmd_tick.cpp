@@ -1895,7 +1895,8 @@ static inline float AccDist(float v, float a, float t)
  * OPEN, 5 instructions: the target materialises the 0.5f right after the call, before the
  * distance's copy (whose source pointer then takes a1); MW puts it with its first use. The
  * first pass's v1 in a local, hi declared before lo and a block-local midpoint are each
- * load-bearing (each was a register or a reload off). */
+ * load-bearing (each was a register or a reload off). Round 21: the 0.5f a named or const local
+ * (top, after the distance, after lo), the difference a declared, assigned or Sub'd local -- 15 each (v_crt21*.py). */
 float CZAnimFromToAcc::ComputeRunTime(CPnt3D *from, CPnt3D *to)
 {
     float dist = (*from - *to).Length();
@@ -2362,7 +2363,8 @@ struct zanim_script_track {
  * along it to its end -- on into the next frame without a stop when that frame carries the same
  * tracks and starts by then. Returns the time used, *dT left what is not.
  * OPEN, 13 instructions: `used` and `step` take each other's FP register ($f20/$f21). Not the
- * declaration order, not which is defined first, not the early return's spelling. */
+ * declaration order, not which is defined first, not the early return's spelling. Round 21, the FPR replay: `used` must be numbered after
+ * ~60 temporaries (v33 >= 96.5) or @4963 past 160 -- no source placement reaches either (asf_want.txt) */
 float apply_script_frame(_zanim_object_motion_script *cmd, _zanim_si_script *script, CNode *node,
                          zanim_script_frame_header *frame, float t, float *dT)
 {
@@ -3153,7 +3155,9 @@ static inline int NestLevelOf(_zanim_cmd_hdr *hdr)
  * delay slot, then the load) where CmdHdr's ternary -- which BreakTick, GoToEndIf and the
  * FOR_CHILDREN handler need -- branches over; an if-assign accessor here fixes the comparisons
  * but not the ProcExpr test before them (two delay slots unfilled), still 0x1C8. Every other
- * spelling tried reloads it, or (with the type in a local) shares the read, 0x20 short. */
+ * spelling tried reloads it, or (with the type in a local) shares the read, 0x20 short. Round 21: CmdHdr as an inline assigning its own parameter
+ * (`if (seq) h = pc; return h;`, the UI's round-31 if-mode) for every read, the three compares, the first, the
+ * last two -- 0x1C8, the level's read 0x1D0 (v_iftick21.py) */
 bool zAnimIfTick(_zanim_cmd_hdr *hdr, float *dT)
 {
     bool found;

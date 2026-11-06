@@ -544,7 +544,8 @@ inline int CZAnimMain::NewAnimSet(int index)
  * coalesces the two); the found set re-indexed through a pointer local. Left: after NewAnimSet the
  * list and the set's offset take each other's v0 / v1 (the found path's `&list[index]` through a
  * pointer local fixed the same swap there; a pointer local after the call, 0x23C; `(list +
- * index)->`, the same 7) -- build/scratch/core/v_gasi19*.py */
+ * index)->`, the same 7) -- build/scratch/core/v_gasi19*.py; round 21: `(index + list)->`, `index[list]`, the same with n -- 6
+ * (MW canonicalises the add: v_gasi21.py) */
 int CZAnimMain::GetAnimSetIndex(const char *name, bool create)
 {
     for (int i = 0; i < m_animset_count; i++) {

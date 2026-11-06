@@ -17,6 +17,10 @@
  * parameters of the controller sensing now -- the sensor ticks set them -- and its eye, worked out on
  * first use through the entity's slot +0x34 (_GetTargetPerception, 0x5CC120); the constructor
  * zeroes the two pointers and the flag */
+/* SOCOM 1's diNonVolCount (its file static, $gp -27440 there): read by the two OnSetTargetVisible as
+ * whether a ray's sighting is fresh, never written (OVL2 bss 0x66B758, before the colours) */
+static int diNonVolCount;
+
 static CPnt3D _colorViewDir(127.0f, 0.0f, 0.0f);
 static CPnt3D _colorEntVisible(0.0f, 127.0f, 0.0f);
 static CPnt3D _colorEntNoBlock(0.0f, 0.0f, 127.0f);
@@ -343,6 +347,84 @@ void CSealCtrl::SensorPreTick(float dT)
             d->Drop();
         t->m_unk28 = 0;
         OnSetTargetVisible(*t, false, 0);
+    }
+}
+
+/* the online test (seal_command.cpp's 0x5750A0) */
+extern "C" int func_005750A0(void);
+
+/* an anchor brought back onto the compass: unlocked, then enabled with its arrow (inline; the name
+ * ours) */
+static inline void ShowAnchor(CCompassAnchor *a)
+{
+    a->m_locked = false;
+    a->SetEnabled(true);
+    a->SetArrowEnabled(true);
+}
+
+/* a SEAL's compass anchor and an anchor's kind, -1 for none (inlines; the names ours) */
+static inline CCompassAnchor *SealAnchor(CZSealBody *seal)
+{
+    return seal ? seal->m_compass_anchor : 0;
+}
+
+static inline int AnchorType(const CCompassAnchor *a)
+{
+    return a ? (int)a->m_type : -1;
+}
+
+/* an entity's anchor (CEntity's, 0xC4), and the entity as a turret or a kind 4 (inlines; the names
+ * ours) */
+static inline CCompassAnchor *EntityAnchor(CEntity *e)
+{
+    return e ? e->m_anchor : 0;
+}
+
+static inline CEntity *AsKind(CEntity *e, int kind)
+{
+    return e && e->m_type == kind ? e : 0;
+}
+
+/* a target seen or lost: its fresh-sighting bit (1: no ray, or diNonVolCount up) and its visible bit
+ * (9) set; a target seen that is no friend told to the squad (message 0); offline, a hostage or
+ * escortee SEAL seen (team bits 0x20000, 0x40000) shows its anchor of kind 4 or 5, and a turret's or a
+ * kind 4's own anchor is shown (OVL2 0x5CA170; SOCOM 1's set the two bits only) */
+void CSealCtrl::OnSetTargetVisible(CTarget &target, bool visible, zdb::DiIntersect *di)
+{
+    bool fresh = di ? diNonVolCount > 0 : true;
+
+    if (fresh)
+        target.m_flags |= 2;
+    else
+        target.m_flags &= ~2;
+    if (visible)
+        target.m_flags |= 0x200;
+    else
+        target.m_flags &= ~0x200;
+    if (visible) {
+        CEntity *e = target.m_ent;
+
+        if (!(e->m_team & m_entity->m_team))
+            m_unit->Notify((CZSealBody *)m_entity, (UNIT_MESSAGE)0, e);
+        if (!func_005750A0()) {
+            if (e && ((e->m_team & 0x20000) || (e->m_team & 0x40000))) {
+                CCompassAnchor *a = SealAnchor((CZSealBody *)AsKind(e, CEntity::ENT_TYPE_SEAL));
+                int type = AnchorType(a);
+
+                if (type == 4 || type == 5)
+                    ShowAnchor(a);
+            }
+            CEntity *t = target.m_ent;
+            CCompassAnchor *a = EntityAnchor(t);
+
+            if (a) {
+                CEntity *turret = AsKind(t, CEntity::ENT_TYPE_TURRET);
+                CEntity *kind4 = AsKind(t, 4);
+
+                if (turret || kind4)
+                    ShowAnchor(a);
+            }
+        }
     }
 }
 
