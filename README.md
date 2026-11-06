@@ -2066,6 +2066,26 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the SEALs, round 57** (five rows, all unwritten before, byte-exact: CSealCtrl::CSealCtrl 0x598280 -- 0x5B8,
+  on the first compile --, the grenade stretch 0x564D20-0x5657BF complete -- the choice 0x565110, the throw test 0x565460,
+  the deploy 0x564D20 -- and the vehicle dodge 0x569550; zseal.h: CAiDecay's third word SOCOM 1's one-byte TYPE, sixteen
+  CSealCtrl members named, CSealCtrlAi::m_770 a float):
+  - a constructor matches when its members are built in declaration order (the timers as `CAiTimer(0.0f)`, the decays, the
+    parameters' inline defaults, the scalars as mem-initializers between them) and its body is written in the target's store
+    order, one bitfield per statement (round 56's rule, again on the first compile);
+  - a bool call result used as an `&&` operand converts with sltu, assigned to a bool with andi; an inline that assigns `ok`
+    in each arm and has one exit gives the target's merge, two returns add an andi at the join (0x565110);
+  - a byte-enum field read straight into a byte-enum variable loads with lb, unnormalised, even for EQUIP_ITEM's unsigned
+    values -- a signed char field cast to the enum gives lbu; MW keeps `(unsigned char)item` in one saved register across
+    inline conversions only if every compare and switch is spelled with that cast, a plain `item != EQUIP_NONE`
+    re-normalises it (0x564D20);
+  - a materialised negated test (sltu / xori / bnez) comes from an inline returning `!((a & b) != 0)` over the masks by
+    value -- written over the two entity pointers, MW hoists the second entity's field address out of the loop; an inline's
+    reference parameter bound to a named reference local keeps that address in a saved register for both of the inline's
+    calls (0x565460); a pointer local declared ahead of a float difference flips the scheduler's operand loads;
+  - 0x57F530 written as explicit gotos is laid out the same way: MW's branch optimiser, not the front end, sets its block
+    order; the pragma scan's lead for 0x57D710 (CSE and propagation off: 6 off, the SEAL / stack register swap gone) leaves
+    the hoisted stack address's placement.
 - **Tells from completing the MSL headers, round 38** (the three requests measured, none applied -- comments only in
   include/vector and include/deque; probes build/p38/, untracked: permall.py runs tools/igreplay.py --permute keeping
   every hit and prints each pair's relation, board.py / mkv.py / vrun.py / gen38.py score class-insert variants over the
