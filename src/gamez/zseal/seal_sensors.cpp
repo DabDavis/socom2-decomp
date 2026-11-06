@@ -547,10 +547,10 @@ static inline bool InReach(CEntity *e, CSensorProjView2 *proj)
  * its view cone or within reach and in line of sight; its comrades' throws let pass; a callout when an
  * enemy's frag is seen; the grenade state pushed when the grenade is inside its blast radius and, when it
  * should react first, an event state ahead of it (OVL2 0x5CAC00, new in SOCOM II: 0x5CB870 calls it; the
- * name ours). OPEN, the size right (d=101 by try.py): the three m_pos2 reads -- the target branches over a
- * dead `move v0,zero` arm with a plain `b` each (a null-checked conversion of &CPnt3D::zero the back end
- * folds; written the arm stays, a beqz), saw in s2 for the target's s6 (the numbering: igreplay --greedy),
- * the unseen test's first sb one slot early; the rest aligns. Measured: a cast of a parameter at an inline's
+ * name ours). OPEN, the size 0x840 against 0x848: the m_pos2 reads' dead arms are SetEvent's now (`(pos2 ? pos2 :
+ * &CPnt3D::zero)->x` with a literal 0: a `b` over `move v0,zero` each). Left: saw in s2 for the target's s6, type in fp
+ * for s2, told in s6 for fp (24 declaration orders scored, the best d=72; igreplay --greedy), the range==0 arm's surviving
+ * `b; nop` (the block optimization's copy, three forms tried) and the unseen test's first sb one slot early. Measured: a cast of a parameter at an inline's
  * argument (ETYPCON(ai)) makes every field address subable, in saved registers -- hence the array members,
  * the projectile view as the parameter type and CEntity's own m_index; the
  * name ours) */

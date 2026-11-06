@@ -1383,7 +1383,10 @@ public:
     CAiMapLoc m_61c;   // 0x61c: the constructor sets both invalid, 0x620 first
     CAiMapLoc m_620;   // 0x620
     unsigned char _624[0x628 - 0x624];
-    unsigned char m_event[0x28];   // 0x628: a CAiEvent (SOCOM 1's m_event, 0x480)
+    union {
+        unsigned char m_event[0x28];   // 0x628: a CAiEvent (SOCOM 1's m_event, 0x480)
+        CAiEvent m_ev;
+    };
     unsigned char m_eventQueue[0xc];   // 0x650: a CAiEventQ (SOCOM 1's m_eventQueue, 0x4a8: SOCOM II's lists are 0xc bytes)
     /* the kinds of event the AI hears (SOCOM 1's m_eventMask, 0x4b8: UpdateEventMask, OVL2 0x572D70,
      * stores it at 0x65c) */
