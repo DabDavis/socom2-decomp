@@ -247,7 +247,10 @@ struct CFollowParamsView {
  * and dir declared before vel give every other word (a struct copy loads all three first); tried
  * without effect: the negation, the copy or the flattening through inline helpers taking a
  * reference or a pointer, a reference or a pointer local for dir, the row as a CPnt3D pointer.
- * SOCOM 1's build keeps all four addresses (vel's too) from the top */
+ * SOCOM 1's build keeps all four addresses (vel's too) from the top. The kit's round 60, a lead: dir's y and z read everywhere
+ * through named `float *` locals gives the target's s3 / s2 (build/scratch/kit/v_ufp.py), but vel's own addresses then
+ * survive the first call too (0x2E0: its first block's CSE no longer dies there); vel's read through two more named
+ * pointers taken after the call has the target's 0x2C8 at 101 off, their definitions drawn up into the first block */
 void CZSealBody::UpdateFollowParams(float dT)
 {
     static float VelThreshSquared = 800.0f;
