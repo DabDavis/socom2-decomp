@@ -138,7 +138,10 @@ static inline const float &StringWidth(const C2DString &s)
  * reference to the piece, a for loop, an int index; round 19: `tokens.data()[i]`, `&tokens[i]` into a
  * pointer, `(&*begin())[i]`, a reference to the vector, the const operator[] -- all 5 off (the
  * pre-colouring code has the index's sll/addu ahead of the data load in every one; the inner loop's
- * `SKBTOKEN &t = tokens[i]` loads the data first in both builds) */
+ * `SKBTOKEN &t = tokens[i]` loads the data first in both builds). Round 38, reasoned from the colouring,
+ * not replayed: the numbering looks the target's (index chain, then data, then sum) and its first
+ * shift's v1 wants the data load live before the index's addu, which here follows it (sll, addu, lw,
+ * sll). What orders that block is not established */
 bool SkbWrapTokens(std::vector<CSaferStr> &lines, std::vector<SKBTOKEN> &tokens, C2DFont *font, float scale,
                    float width)
 {
