@@ -715,7 +715,7 @@ void CSkbSplit::Next()
         m_parts[0]++;
         for (int i = 1; i < k - 1; i++)
             Parts()[i] = 1;
-        *m_parts.rbegin() = (int)m_n - m_parts[0] - (k - 2);
+        *Parts().rbegin() = (int)m_n - m_parts[0] - (k - 2);
     } else {
         m_parts.clear();
     }

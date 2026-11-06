@@ -7493,7 +7493,7 @@
 0x0039A400 0x1B0 SkbCursorToEnd__FP13CSoftKeyboard  # OVL1; the UI lane round 21: ours, by its body (zui_skbkeys.cpp: s_textCount1 set from string 2 holding characters, the cursor's string's characters counted into s_textCount0, the cursor placed after them as SkbCursorBack 0x399530 places it; SkbCloseText0 and SkbSwitchText call it)
 0x0039A5B0 0x1DC SkbSetText__FPCcP13CSoftKeyboard  # OVL1; the UI lane round 21: ours, by its body (zui_skbkeys.cpp: the text wrapped by SkbWrapText 0x39AE50 to the look's width at the edited string's scale times its font's, refused past one line while string 0 is edited or two when the look has a line height; line 0 set into the edited string, line 1 into string 2; SkbClearText calls it with "")
 0x0039A790 0x138 SkbEditCharLen__Fi  # OVL1; ours (the UI lane round 17: the byte length (UTF8CharLen) of the character at a byte offset of the edited text -- string 0's while it is edited (0x4A1330), else string 1's with string 2's appended when it has any; 0x398C40 calls it; zui_skbkeys.cpp)
-0x0039A8D0 0x424 func_0039A8D0  # OVL1
+0x0039A8D0 0x424 SkbCaseLetter__FUsbb  # OVL1; the UI lane round 39: ours, by its body (zui_skbkeys.cpp: a letter cased: upper, a capital (the capital test on c - 32), s/y-diaeresis, a small kana's full partner; wide, ASCII to full-width; else a kana or its punctuation to half-width, a full-width form to ASCII)
 0x0039AD00 0xC func_0039AD00  # OVL1
 0x0039AD10 0x8 func_0039AD10  # OVL1
 0x0039AD20 0x30 SkbUsbDigit__FPC9SKBUSBKEYi  # OVL1; ours (zui_skbkeys.cpp: the USB keyboard's digit row, HID usages 30-39 through the tables at 0x3FBA50 and, shifted, 0x3FBA80, typed through 0x399040; 0x38C630 calls it)
