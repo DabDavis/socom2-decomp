@@ -52,10 +52,43 @@ void SetTemplatePath__7CAiPathFP7CAiPath(FOLLOW_PATH *path, FOLLOW_PATH *t);
 bool InStance__11CSealCtrlAiF11SEAL_STANCEb(CSealCtrlAi *ai, SEAL_STANCE stance, bool b);
 }
 
-extern "C" {
-/* a segment against a triangle's edge, in the XZ plane (OVL2 0x5FE4C0, unwritten: the edge's two
- * ends, then the segment's -- what it adds to 0x5FE1F0's count) */
-int func_005FE4C0(const CPnt3D *e0, const CPnt3D *e1, const CPnt3D *s0, const CPnt3D *s1);
+/* a segment against a triangle's edge, in the XZ plane: none when both ends lie off the edge's line
+ * on its outer side, one when both lie on its inner side, else -- the ends straddling the line --
+ * three when the edge's ends straddle the segment's line too, the crossing, none otherwise; each side
+ * the cross product's sign past a zero tolerance (OVL2 0x5FE4C0, new in SOCOM II: 0x5FE1F0 sums it
+ * over the wedge's three edges until three agree -- three insides, or one crossing; the name ours).
+ * The four results and the tolerance are function-local statics (the tolerance an unsigned zero,
+ * negated and converted at each compare; .bss 0x66BA40 / 0x66BA48, .data 0x650C40 / 0x650C48 -- eight
+ * bytes apart in declaration order) */
+extern "C" int func_005FE4C0(const CPnt3D *e0, const CPnt3D *e1, const CPnt3D *s0, const CPnt3D *s1)
+{
+    static unsigned int eps = 0;
+    static int outside = 0;
+    static int inside = 1;
+    static int crossing = 3;
+    float nz = e0->x - e1->x;
+    float nx = e1->z - e0->z;
+    CPnt3D d1 = *s1 - *e1;
+    CPnt3D d0 = *s0 - *e1;
+    float a = nx * d1.x + nz * d1.z;
+    float b = nx * d0.x + nz * d0.z;
+
+    if (a < -eps && b < -eps)
+        return outside;
+    if (!(a <= eps) && !(b <= eps))
+        return inside;
+    nz = s0->x - s1->x;
+    nx = s1->z - s0->z;
+    CPnt3D d2 = *e1 - *s1;
+    CPnt3D d3 = *e0 - *s1;
+
+    a = nx * d2.x + nz * d2.z;
+    b = nx * d3.x + nz * d3.z;
+    if (a < -eps && b < -eps)
+        return outside;
+    if (!(a <= eps) && !(b <= eps))
+        return outside;
+    return crossing;
 }
 
 /* whether a segment crosses a wedge laid along a direction from a point: the wedge's apex `back`
