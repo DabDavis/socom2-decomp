@@ -20,7 +20,7 @@
  * ~__deque_buf) after -- the layout of inline functions referenced but not expanded, each generated
  * right after its user (README "MAIN's Metrowerks runtime", round 6), where ours shows out-of-class
  * members' rounds (a reading, not yet a shape: declaring the chain's members `inline` expands them,
- * CZOnlineLobby() lost) -- for include/deque, with the chat unit's (whose inits come at the end). */
+ * CZOnlineLobby() lost) -- for include/deque, with the chat unit's (whose inits come at the end).
  * The deque instances still open are include/deque's (the MSL lane's); measured in the online
  * lane's round 23 (build/scratch/onl/dq1.py, dqb.py): the cdeque begin() 0x2E0CB0 wants the scaled
  * start (start_ << 2, a code-generator temporary here, v41 in MW's dump) numbered between the
