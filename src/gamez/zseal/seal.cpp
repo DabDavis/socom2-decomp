@@ -2494,7 +2494,14 @@ static inline void PushOut(float &cur, float v, bool &moved)
  * before that (so `depth * 10.0f`, `10.0f * depth`, `r * depth` all number the 10.0 first: a tie). The
  * target -- 10.0 numbered after the depth and emitted first -- is that order with the depth HEAVIER than
  * the step: some shape where `1.3 - t` weighs more than a lone constant (the CSE'd 1.3 and a register t
- * weigh as one); the inlines `r * Under(1.3f, t)` / `UnderT(t)` / by-reference keep the tie (0x308) */
+ * weigh as one); the inlines `r * Under(1.3f, t)` / `UnderT(t)` / by-reference keep the tie (0x308).
+ * Round 54 (build/scratch/seal-r54/v_3d*.py): making the depth heavier does flip the EMISSION --
+ * `(t, 1.3f - t) * r` (a comma with a dead variable left) and `lim - t` with a variable lim used only
+ * there both give the target's `mul.s step, depth` -- but they number the step before the depth too
+ * (igreplay --target on the comma's dump: v59 the step, v61 the depth, the target needs v61 below
+ * v59), and lose the delay slot (0x308): in every shape the first-emitted operand is the first
+ * numbered, where the target emits the step first yet numbers it after; `/ 1.0f`, a copy of t, `+ -t`,
+ * `r * 1.0f`, `register`/bare/early-declared r change nothing (1 off) */
 extern "C" bool func_0054A3D0(CZSealBody *seal, const CPnt3D *pos, zdb::IntersectStruct *hit)
 {
     if (!hit->m_node)
