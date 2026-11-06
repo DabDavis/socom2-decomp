@@ -136,29 +136,27 @@ public:
 };
 
 /* (OVL2 0x5FAD50; SOCOM 1's: each taken off the front and deleted -- the null test before the
- * delete is an inline destructor's).
- * OPEN, 0x90 against 0x98: the target loads the size twice at entry, the loop's guard first (`lw
- * v1` then `lw v0` for the early return) and tests the guard with `beqz v1` after it; MW here
- * reuses the early return's load for the guard (`beqz v0`). The plain `while` drops the guard
- * (0x80, SOCOM 1's shape); the size taken into a local first gives 0x90 too; a reference local
- * to the list gives 0x98 with its address in v1 (11 instructions). Round 41: either test read through a
- * const view of the list (`((const CList &)m_list).size()`), or the guard's size a local ahead of the
- * early return, stays 0x90 -- MW merges the global's two loads anyway. Round 53: empty() (through
- * the count pair's reference, sz()) for either test with size() for the other, the loop as a for or a
- * while, and the loop moved into a static inline helper (an inlined while gets the duplicated test):
- * 0x90 or 0x80; the unit under 3.0b50 changes nothing. Round 56: opt_propagation, opt_common_subs,
- * opt_lifetimes, opt_dead_assignments or opt_loop_invariants off in the body, over the do-while and the
- * plain while: 0x80-0xA8 -- no pragma keeps the guard's load ahead of the early return's */
+ * delete is an inline destructor's). Byte-exact (round 58, open since round 13) under `#pragma
+ * opt_common_subs off` in the body (reset after): the target loads the size twice at entry -- the
+ * loop's guard first (`lw v1`), then the early return's (`lw v0`), the guard tested after -- which
+ * only CSE off keeps apart (with it on MW merges the global's two loads, every spelling: rounds 13-56);
+ * the guard's size a local read ahead of the early return; and the front read through one iterator
+ * local handed to erase (front() and pop_front() each load the first node with CSE off: 0xA0) */
 bool CAiDodge::Destroy()
 {
+#pragma opt_common_subs off
+    unsigned int n = m_list.size();
+
     if (m_list.size() == 0)
         return false;
-    if (m_list.size() != 0)
+    if (n != 0)
         do {
-            CAiDodge *d = m_list.front();
+            CList::iterator i = m_list.begin();
+            CAiDodge *d = *i;
 
-            m_list.pop_front();
+            m_list.erase(i);
             delete d;
         } while (m_list.size() != 0);
     return true;
 }
+#pragma opt_common_subs reset
