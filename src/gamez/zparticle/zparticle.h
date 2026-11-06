@@ -71,13 +71,6 @@ public:
 
     float m_matrix[4][4];
 } __attribute__((aligned(16)));
-/* a box (zmath.h's CBBox, 0x20 bytes: nothing built for a local) */
-class CBBox {
-public:
-    float m_min[4];   // 0x0
-    float m_max[4];   // 0x10
-};
-
 /* a point (zmath.h's CPnt3D has no written copy either: a copy is the compiler's -- over the C
  * struct, as zmath.h's: a temporary copied ld/sd + lwc1/swc1, Destruction_Instance::Tick's spin) */
 struct PNT3D {
@@ -97,6 +90,13 @@ public:
     /* zmath's (out of line in both builds) and its two inline operators */
     void Scale(float s, CPnt3D *out) const;
     void Add(const CPnt3D *b, CPnt3D *out) const;
+    void Sub(const CPnt3D *b, CPnt3D *out) const;
+    CPnt3D operator-(const CPnt3D &b) const
+    {
+        CPnt3D r;
+        Sub(&b, &r);
+        return r;
+    }
     CPnt3D operator*(float s) const
     {
         CPnt3D r;
@@ -109,6 +109,13 @@ public:
         return *this;
     }
 };   // 0xc bytes
+
+/* a box (zmath.h's CBBox: two points, 0x18 bytes; nothing built for a local) */
+class CBBox {
+public:
+    CPnt3D m_min;   // 0x0
+    CPnt3D m_max;   // 0xc
+};
 
 namespace zdb {
 class CTexPalette;
@@ -180,12 +187,17 @@ public:
     virtual ~CDI();
     virtual void Allocate(int n);
 
+    /* the normal of the first three points (znode.h's) */
+    void SetEdgeVecsAndNorm();
+
     PNT4D *m_pnts;   // 0x10
 };
 class CDIPoly : public CDI {
 public:
     CDIPoly();
 };   // 0x14 bytes
+/* a box's eight corners (node_world.h's, int_main.cpp's) */
+void GetBBoxCorners(CPnt3D *out, const CBBox *b);
 /* a node's collision pieces (znode.h's class: PullVisuals gathers them; its constructor sets the
  * two search flags, the destruction manager's local inlines it) */
 class CDIVector : public std::vector<CDI *> {
@@ -203,7 +215,8 @@ public:
 /* zdb::CNode, as much as the particles call (znode.h would bring zmath.h's CPnt4D with it) */
 class CNode {
 public:
-    unsigned char _0[0x58];   // 0x0: tag_NODE_PARAMS
+    unsigned char _0[0x40];   // 0x0: tag_NODE_PARAMS
+    CBBox m_bbox;   // 0x40 (znode.h's)
     unsigned short m_type;   // 0x58: 2 for an instance of a model (znode.h's)
     unsigned char _5a[2];   // 0x5a
     unsigned int _5c : 7;   // 0x5c
@@ -238,6 +251,8 @@ public:
     static CNode *Create(const char *name);
     static void Delete(CNode *node);
     void SetPosition(float x, float y, float z);
+    /* znode.h's: a point's (inline) */
+    void SetPosition(const CPnt3D &p) { SetPosition(p.x, p.y, p.z); }
     /* znode.h's: the rotation read and set, the matrix set (node_main.cpp's) */
     void GetRotation(CPnt3D *out) const;
     void SetRotation(const CPnt3D *rot);
@@ -602,7 +617,8 @@ public:
     unsigned char m_goodPos;   // 0x1 (SOCOM 1's)
     unsigned char m_frozen;   // 0x2 (SOCOM 1's: an instance of a frozen source is not ticked)
     unsigned char m_outOfRange;   // 0x3 (SOCOM 1's)
-    unsigned char _4[0x19 - 4];   // 0x4: SOCOM 1's m_oldPosW .. m_landmark, and SOCOM II's word
+    CPnt3D m_oldPosW;   // 0x4 (SOCOM 1's)
+    unsigned char _10[0x19 - 0x10];   // 0x10: SOCOM 1's m_applyGlobalLighting .. m_landmark, and SOCOM II's word
     unsigned char m_doAgeLOD;   // 0x19 (SOCOM 1: 0x15)
     unsigned char _1a[0x2c - 0x1a];   // 0x1a: SOCOM 1's m_doSpawnLOD .. m_streakFade
     float m_minRot;   // 0x2c (SOCOM 1's names, 4 bytes later: the instance constructor's ranges)

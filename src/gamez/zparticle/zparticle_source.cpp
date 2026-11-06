@@ -6,6 +6,7 @@
  * Source::List::Uninit. */
 
 #include <iostream>
+#include <string.h>
 #include "zparticle.h"
 
 /* SOCOM II's pointer-list begin() builds its first node from a reference to the sentinel's link,
@@ -56,6 +57,78 @@ void Source::CheckExtents(CPnt4D p, float r)
         m_bboxMax.y = m_bboxMax.y > p.y ? m_bboxMax.y : p.y;
         m_bboxMax.z = m_bboxMax.z > p.z ? m_bboxMax.z : p.z;
         m_filled_volume = r * r;
+    }
+}
+
+/* the box's corners laid onto the six faces, each face's normal worked out (ours -- A MARKED
+ * MODELLING DEVICE: the target builds the corners through CPnt3D()'s out-of-line copy 0x1FB3C0 in a
+ * loop, which only a MEMBER array built by a constructor too big to expand whole gives -- MW inlines
+ * the constructor one level, its member array's construction a loop calling CPnt3D(); a local array
+ * in such an inline unrolls into eight calls, one in the function none at all. CShadowCaster's
+ * constructor in node_world.cpp shows the same loop: the world lane's round 21) */
+struct FaceCorners {
+    FaceCorners(Source *s, const CBBox *box)
+    {
+        zdb::GetBBoxCorners(m_pts, box);
+        memcpy(&s->m_diPolies[0]->m_pnts[0], &m_pts[7], sizeof(CPnt3D));
+        memcpy(&s->m_diPolies[0]->m_pnts[1], &m_pts[6], sizeof(CPnt3D));
+        memcpy(&s->m_diPolies[0]->m_pnts[2], &m_pts[5], sizeof(CPnt3D));
+        memcpy(&s->m_diPolies[0]->m_pnts[3], &m_pts[4], sizeof(CPnt3D));
+        s->m_diPolies[0]->SetEdgeVecsAndNorm();
+        memcpy(&s->m_diPolies[1]->m_pnts[0], &m_pts[0], sizeof(CPnt3D));
+        memcpy(&s->m_diPolies[1]->m_pnts[1], &m_pts[3], sizeof(CPnt3D));
+        memcpy(&s->m_diPolies[1]->m_pnts[2], &m_pts[7], sizeof(CPnt3D));
+        memcpy(&s->m_diPolies[1]->m_pnts[3], &m_pts[4], sizeof(CPnt3D));
+        s->m_diPolies[1]->SetEdgeVecsAndNorm();
+        memcpy(&s->m_diPolies[2]->m_pnts[0], &m_pts[2], sizeof(CPnt3D));
+        memcpy(&s->m_diPolies[2]->m_pnts[1], &m_pts[6], sizeof(CPnt3D));
+        memcpy(&s->m_diPolies[2]->m_pnts[2], &m_pts[7], sizeof(CPnt3D));
+        memcpy(&s->m_diPolies[2]->m_pnts[3], &m_pts[3], sizeof(CPnt3D));
+        s->m_diPolies[2]->SetEdgeVecsAndNorm();
+        memcpy(&s->m_diPolies[3]->m_pnts[0], &m_pts[5], sizeof(CPnt3D));
+        memcpy(&s->m_diPolies[3]->m_pnts[1], &m_pts[6], sizeof(CPnt3D));
+        memcpy(&s->m_diPolies[3]->m_pnts[2], &m_pts[2], sizeof(CPnt3D));
+        memcpy(&s->m_diPolies[3]->m_pnts[3], &m_pts[1], sizeof(CPnt3D));
+        s->m_diPolies[3]->SetEdgeVecsAndNorm();
+        memcpy(&s->m_diPolies[4]->m_pnts[0], &m_pts[4], sizeof(CPnt3D));
+        memcpy(&s->m_diPolies[4]->m_pnts[1], &m_pts[5], sizeof(CPnt3D));
+        memcpy(&s->m_diPolies[4]->m_pnts[2], &m_pts[1], sizeof(CPnt3D));
+        memcpy(&s->m_diPolies[4]->m_pnts[3], &m_pts[0], sizeof(CPnt3D));
+        s->m_diPolies[4]->SetEdgeVecsAndNorm();
+        memcpy(&s->m_diPolies[5]->m_pnts[0], &m_pts[0], sizeof(CPnt3D));
+        memcpy(&s->m_diPolies[5]->m_pnts[1], &m_pts[3], sizeof(CPnt3D));
+        memcpy(&s->m_diPolies[5]->m_pnts[2], &m_pts[2], sizeof(CPnt3D));
+        memcpy(&s->m_diPolies[5]->m_pnts[3], &m_pts[1], sizeof(CPnt3D));
+        s->m_diPolies[5]->SetEdgeVecsAndNorm();
+    }
+
+    CPnt3D m_pts[8];
+};
+
+/* SOCOM 1's: the box of the particles about the source's position, given to its collision node
+ * (its box and position) and laid onto the six faces' corners -- SOCOM II's, for a source with a
+ * box and a node (SOCOM 1's took the box apart further, 0x7D4 bytes). Written in the world lane's
+ * round 28: the position built from m_oldPosW's three floats (the constructor's arguments read z, y,
+ * x), the box's corners through FaceCorners above (the construction loop), the node's position
+ * through CNode's point overload (in place, MW keeps &pos.y and &pos.z in saved registers).
+ * OPEN, 0x3F8 of 0x404: every statement in the target's order, the frame one saved register short --
+ * the target keeps all eight corner addresses in s0-s4/s6/s7 (the first, sp+144, in s2 from face 1 on),
+ * where MW rematerialises the first here (`addiu a1,sp,128` at each use); a member ahead of the array
+ * (`const CBBox *m_box`) gives the eighth register but stores and reloads it and moves the frame 16
+ * bytes (0x40C) */
+void Source::GetBBox(CBBox *box)
+{
+    if (!m_hasbbox || !m_diNode)
+        return;
+    {
+        CPnt3D pos(m_oldPosW.x, m_oldPosW.y, m_oldPosW.z);
+
+        box->m_max = m_bboxMax - pos;
+        box->m_min = m_bboxMin - pos;
+        m_diNode->m_bbox = *box;
+        m_diNode->SetPosition(pos);
+
+        FaceCorners faces(this, box);
     }
 }
 
