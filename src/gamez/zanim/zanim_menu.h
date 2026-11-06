@@ -422,7 +422,10 @@ public:
     CValve *m_10;   // 0x10: a valve AdvanceMPMission tests (a longer wait when on)
     unsigned char _14[0x28 - 0x14];
     CValve *m_pJoinGameValve;   // 0x28 (SOCOM 1's at 0x24)
-    unsigned char _2c[0xac - 0x2c];
+    unsigned char _2c[0x30 - 0x2c];
+    CValve *m_p45SecondClockValve;   // 0x30 (SOCOM 1's at 0x2C): the seconds to the launch
+    CValve *m_pXSecondClockValve;   // 0x34 (SOCOM 1's at 0x30): the seconds of the ten-second launch
+    unsigned char _38[0xac - 0x38];
     int m_persona_object_index;   // 0xac (SOCOM 1's at 0x70)
     unsigned char _b0[0xc8 - 0xb0];
     unsigned int m_c8;   // 0xc8: when the next mission launches (AdvanceMPMission)
@@ -441,6 +444,7 @@ public:
 class CZPersonaState {
 public:
     static void ToggleReady();
+    static void UpdateLocalPersona();   /* 0x2C5360 */
 };
 
 
@@ -533,6 +537,18 @@ public:
 class CCinematicState {
 public:
     void SetMovie(const char *movie, unsigned char a, unsigned char b);   /* 0x1EDA60 */
+
+    unsigned char _0[0x29];
+    unsigned char m_29;   // 0x29: interlaced (PlayMPEG's settings, fts_state.h's names)
+    unsigned char m_2a;   // 0x2a: in game
+    unsigned char _2b;
+    int m_2c;   // 0x2c: the audio stream
+    unsigned char _30[0x3c - 0x30];
+    unsigned char m_3c;   // 0x3c: the rectangles given
+    unsigned char m_3d;   // 0x3d: bilinear
+    unsigned char _3e[0x40 - 0x3e];
+    int m_40[4];   // 0x40: the source rectangle
+    int m_50[4];   // 0x50: the destination rectangle
 };
 
 class COurGame : public CGame {

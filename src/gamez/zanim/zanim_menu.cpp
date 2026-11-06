@@ -42,13 +42,21 @@ extern int data_00441470;
 extern char data_00437E30[];               /* the career stats */
 }
 
-/* the online armory (an object at 0x45B718; only the flag VCButton tests) */
+/* the online armory (an object at 0x45B718; only the flag VCButton tests, and the selected
+ * player CheckForcedLaunch names) */
 struct COnlineArmoryView {
-    unsigned char _0[0x4a];
+    unsigned char _0[0x24];
+    int m_24;   // 0x24: the selected entry
+    unsigned char _28[0x4a - 0x28];
     unsigned char m_4a;   // 0x4a
     unsigned char _4b[0x4f - 0x4b];
     unsigned char m_4f;   // 0x4f: the scale defaulted
     unsigned char m_50;   // 0x50: the range defaulted
+    unsigned char _51[0x70 - 0x51];
+    struct {
+        int m_id;   // a persona's id
+        int m_4;
+    } m_entries[1];   // 0x70
 };
 
 /* a character type's figures the armory is told (six floats: the last three a range and a scale,
@@ -1773,6 +1781,57 @@ bool UISwitchSides(C2DAnimCmdHdr *hdr, float *dT)
     return true;
 }
 
+/* the armory's view brought up to date, whether it has an entry selected (not named yet), and a
+ * persona's name and clan tag by its id (not named yet) */
+extern "C" {
+void func_0030E710(COnlineArmoryView *p);
+bool func_0030E790(COnlineArmoryView *p);
+const char *func_002C3A70(int id);
+const char *func_002C3AC0(int id);
+}
+
+/* the milliseconds from the network's clock to a time (ours) */
+inline int TimeLeft(unsigned int when) { return when - theNetwork.zNetGetTime(); }
+
+/* the multiplayer game's launch clocks shown, in whole seconds, in their valves, and the player the
+ * armory has selected named in PLAYERTACOVAR (with the clan's tag), unless a late joiner; the
+ * session master's persona updated once the ten-second launch has run out */
+bool UICheckForcedLaunch(C2DAnimCmdHdr *hdr, float *dT)
+{
+    CZNetGame *game = theMission.m_pNetGame;
+
+    if (!game || game->m_late_joiner)
+        return true;
+    func_0030E710(data_0045B718);
+    if (func_0030E790(data_0045B718)) {
+        int id = data_0045B718->m_entries[data_0045B718->m_24].m_id;
+        const char *name = func_002C3A70(id);
+        const char *tag = func_002C3AC0(id);
+
+        if (name) {
+            char text[256];
+
+            if (tag && *tag)
+                sprintf(text, "#C\x80@ [%s] #C\x80\x80\x80%s", tag, name);
+            else
+                sprintf(text, "%s", name);
+            *theUIVarManager.Add("PLAYERTACOVAR", 0, UIVAR_SESSION) = text;
+        }
+    } else {
+        *theUIVarManager.Add("PLAYERTACOVAR", 0, UIVAR_SESSION) = " ";
+    }
+    int left = TimeLeft(game->m_c8);
+
+    SetValveValue(game->m_p45SecondClockValve, (unsigned int)(left > 0 ? 0.001f * left : 0.0f));
+    if (game->m_ten_second_launch) {
+        left = TimeLeft(game->m_launch_time);
+        SetValveValue(game->m_pXSecondClockValve, (unsigned int)(left > 0 ? 0.001f * left : 0.0f));
+        if (theNetwork.m_bSessionMaster && left <= 0)
+            CZPersonaState::UpdateLocalPersona();
+    }
+    return true;
+}
+
 bool UIForceMPLaunch(C2DAnimCmdHdr *hdr, float *dT)
 {
     CZNetGame *game = theMission.m_pNetGame;
@@ -1944,6 +2003,129 @@ bool UISetScreenOrigin(C2DAnimCmdHdr *hdr, float *dT)
     return true;
 }
 
+/* the options screen's valves stored into the options: the sound's mode, the pitch, the fire
+ * mode swap, auto aim, vibration, subtitles, dialog, the order responses, the first pad's stick
+ * preset, the controller configuration, the whispers, the first-person bobbing and the screen's
+ * origin (SOCOM 1's stored fewer) */
+extern "C" float data_003DF198;            /* the pitch's direction: inverted when not above 0 (not named yet) */
+extern "C" unsigned char data_003DD4A0;    /* the dialog option (not named yet) */
+extern unsigned char ShouldConfirmVoiceCommands;   /* 0x3DF1D0 (SOCOM 1's) */
+extern "C" unsigned char data_003DF190;    /* the first-person bobbing (not named yet) */
+extern "C" unsigned char data_0044D500;    /* the fire mode swap, as func_00592050 last toggled it */
+extern "C" void func_002A41F0(int on);     /* (the whispers on or off) */
+extern "C" void func_00592050();           /* (the fire mode swap toggled) */
+void SetRumbleOn(bool on);                 /* 0x592BE0 (SOCOM 1's) */
+void RefreshSystemTuners();                /* 0x389C60 (zui_tuners.cpp's) */
+
+bool UIStoreOptions(C2DAnimCmdHdr *hdr, float *dT)
+{
+    CValve *stereo = CValve::Create("STEREO_CONTROLLER", (VALVE_TYPE)2);
+    CValve *invert = CValve::Create("INVERT_PITCH_CONTROLLER", (VALVE_TYPE)2);
+    CValve *firemode = CValve::Create("FIREMODESWAP_CONTROLLER", (VALVE_TYPE)2);
+    CValve *vibration = CValve::Create("VIBRATION_CONTROLLER", (VALVE_TYPE)2);
+    CValve *subtitle = CValve::Create("SUBTITLE_CONTROLLER", (VALVE_TYPE)2);
+    CValve *dialog = CValve::Create("DIALOG_CONTROLLER", (VALVE_TYPE)2);
+    CValve *order = CValve::Create("ORDER_RESPONSE_CONTROLLER", (VALVE_TYPE)2);
+    CValve *bobbing = CValve::Create("BOBBING_1ST_PERSON", (VALVE_TYPE)2);
+    CValve *stickswap = CValve::Create("STICK_SWAP_CONTROLLER", (VALVE_TYPE)2);
+    CValve *video = CValve::Create("video_mode", (VALVE_TYPE)2);
+    CValve *config = CValve::Create("SelectedControllerConfig", (VALVE_TYPE)2);
+    CValve *whispers = CValve::Create("EnableExternalWhispers", (VALVE_TYPE)2);
+    CValve *autoaim = CValve::Create("AutoAim", (VALVE_TYPE)2);
+    CPad *pad = CInput::m_pads[0];
+
+    if (whispers->m_value)
+        func_002A41F0(1);
+    else
+        func_002A41F0(0);
+    if (bobbing->m_value)
+        data_003DF190 = 1;
+    else
+        data_003DF190 = 0;
+    switch (stereo->m_value) {
+    case 1:
+        snd_SetPlaybackMode(2);
+        break;
+    case 2:
+        snd_SetPlaybackMode(0);
+        break;
+    case 0:
+        snd_SetPlaybackMode(1);
+        break;
+    }
+    if (invert->m_value)
+        data_003DF198 = -1.0f;
+    else
+        data_003DF198 = 1.0f;
+    if (firemode->m_value) {
+        if (!data_0044D500)
+            func_00592050();
+        data_0044D500 = 1;
+    } else {
+        if (data_0044D500)
+            func_00592050();
+        data_0044D500 = 0;
+    }
+    if (autoaim)
+        data_003DF1A0 = autoaim->m_value != 0;
+    if (vibration->m_value)
+        SetRumbleOn(true);
+    else
+        SetRumbleOn(false);
+    if (subtitle->m_value)
+        CSnd::SetSubtitles(true);
+    else
+        CSnd::SetSubtitles(false);
+    if (dialog->m_value)
+        data_003DD4A0 = 1;
+    else
+        data_003DD4A0 = 0;
+    if (order->m_value)
+        ShouldConfirmVoiceCommands = 1;
+    else
+        ShouldConfirmVoiceCommands = 0;
+    if (pad) {
+        unsigned int preset = CValve::Create("stick_preset", (VALVE_TYPE)2)->m_value;
+
+        if (preset < 3) {
+            pad->SetPreset(1, preset);
+            CUIVariable *sensitivity = theUIVarManager.Add("STICK_SENSITIVITY", 0, UIVAR_SESSION);
+            CUIVariable *inertia = theUIVarManager.Add("STICK_INERTIA", 0, UIVAR_SESSION);
+            CUIVariable *deadzone = theUIVarManager.Add("STICK_DEADZONE", 0, UIVAR_SESSION);
+
+            sensitivity->SetReal(pad->GetAcceleration(1));
+            inertia->SetReal(1.0f - pad->m_stickType[1].m_socom2_20);
+            deadzone->SetReal(pad->GetDeadZone(1) - 0.02f);
+        }
+    }
+    switch (config->m_value) {
+    case 1:
+        CCtrlrConfigs::SelectConfig("Default");
+        break;
+    case 2:
+        CCtrlrConfigs::SelectConfig("Reverse");
+        break;
+    case 3:
+        CCtrlrConfigs::SelectConfig("Config4");
+        break;
+    case 4:
+        CCtrlrConfigs::SelectConfig("Goldeneye");
+        break;
+    default:
+        CCtrlrConfigs::SelectConfig("Default");
+        break;
+    }
+    RefreshSystemTuners();
+    int y = CValve::Create("ScreenOriginY", (VALVE_TYPE)1)->m_value;
+    int x = CValve::Create("ScreenOriginX", (VALVE_TYPE)1)->m_value;
+
+    if (zVid.videoMode == 2)
+        y += 18;
+    zVid.pcrtcOffsetX = x - 128;
+    zVid.pcrtcOffsetY = y - 128;
+    return true;
+}
+
 /* the first pad's right stick given the preset the valve picks, its figures shown in the UI
  * variables (the sensitivity, the inertia as 1 less it, the dead zone less 0.02) */
 bool UISetStickPreset(C2DAnimCmdHdr *hdr, float *dT)
@@ -1964,6 +2146,43 @@ bool UISetStickPreset(C2DAnimCmdHdr *hdr, float *dT)
             deadzone->SetReal(pad->GetDeadZone(1) - 0.02f);
         }
     }
+    return true;
+}
+
+/* the options as the options screen's valves show them (SOCOM 1's had the pitch inverted at 1.0,
+ * and asked the SEAL unit for the confirmations) */
+bool IsRumbleOn();                         /* 0x592BD0 (SOCOM 1's) */
+
+bool UIInitializeOptions(C2DAnimCmdHdr *hdr, float *dT)
+{
+    CValve *stereo = CValve::Create("STEREO_CONTROLLER", (VALVE_TYPE)2);
+    CValve *invert = CValve::Create("INVERT_PITCH_CONTROLLER", (VALVE_TYPE)2);
+    CValve *vibration = CValve::Create("VIBRATION_CONTROLLER", (VALVE_TYPE)2);
+    CValve *subtitle = CValve::Create("SUBTITLE_CONTROLLER", (VALVE_TYPE)2);
+    CValve *dialog = CValve::Create("DIALOG_CONTROLLER", (VALVE_TYPE)2);
+    CValve *order = CValve::Create("ORDER_RESPONSE_CONTROLLER", (VALVE_TYPE)2);
+
+    if (CSnd::GetSubtitles())
+        SetValveValue(subtitle, 1);
+    else
+        SetValveValue(subtitle, 0);
+    SetValveValue(invert, !(data_003DF198 > 0.0f));
+    if (IsRumbleOn())
+        SetValveValue(vibration, 1);
+    else
+        SetValveValue(vibration, 0);
+    if (ShouldConfirmVoiceCommands)
+        SetValveValue(order, 1);
+    else
+        SetValveValue(order, 0);
+    if (data_003DD4A0)
+        SetValveValue(dialog, 1);
+    else
+        SetValveValue(dialog, 0);
+    if (snd_GetPlaybackMode())
+        SetValveValue(stereo, 1);
+    else
+        SetValveValue(stereo, 0);
     return true;
 }
 
@@ -2117,6 +2336,65 @@ _zanim_cmd_hdr *UIPlayMPEGParse(const char *name, _zrdr *rdr)
     cmd->m_bilinear = false;
     zrdr_findbool(rdr, "BILINEAR", &cmd->m_bilinear);
     return (_zanim_cmd_hdr *)cmd;
+}
+
+/* the cinematic sub-state (theGame's, at a constant address: each access addressed absolutely) */
+inline CCinematicState *Cinematic() { return (CCinematicState *)theGame.m_cinematicSubState; }
+
+/* PlayMPEG's toggle (a function-local static in the original, as NoFade's below) */
+extern "C" bool data_00414EA0;
+
+/* the film the record names played over the menu (the player's flag permitting, as NoFade's):
+ * every other run, the cinematic state given the film, how it plays, the rectangles and the audio
+ * stream -- a number, a valve's value or a UI variable's -- and pushed (SOCOM 1's took the name
+ * alone) */
+bool UIPlayMPEG(C2DAnimCmdHdr *hdr, float *dT)
+{
+    UIPlayMPEGCmd *cmd = (UIPlayMPEGCmd *)hdr;
+    CZSealBody *player = ftsGetPlayer();
+
+    if (player && !player->m_e1_4)
+        return true;
+    bool was = data_00414EA0;
+
+    data_00414EA0 = !was;
+    if (!was) {
+        CZAnim *anim = ZAnim.m_CurAnim;
+        Cinematic()->SetMovie(anim->GetName(cmd->m_argument_index), cmd->m_fade, cmd->m_by_index);
+        Cinematic()->m_29 = cmd->m_interlace;
+        Cinematic()->m_3c = cmd->m_has_dest;
+        Cinematic()->m_3d = cmd->m_bilinear;
+        Cinematic()->m_40[0] = cmd->m_source[0];
+        Cinematic()->m_40[1] = cmd->m_source[1];
+        Cinematic()->m_40[2] = cmd->m_source[2];
+        Cinematic()->m_40[3] = cmd->m_source[3];
+        Cinematic()->m_50[0] = cmd->m_dest[0];
+        Cinematic()->m_50[1] = cmd->m_dest[1];
+        Cinematic()->m_50[2] = cmd->m_dest[2];
+        Cinematic()->m_50[3] = cmd->m_dest[3];
+        Cinematic()->m_2a = cmd->m_ingame;
+        switch (cmd->m_stream_type) {
+        case 0:
+            Cinematic()->m_2c = cmd->m_stream;
+            break;
+        case 1: {
+            CValve *valve = CValve::GetByName(anim->GetName(cmd->m_stream));
+
+            if (valve)
+                Cinematic()->m_2c = valve->m_value;
+            break;
+        }
+        case 2: {
+            CUIVariable *var = theUIVarManager.Find(anim->GetName(cmd->m_stream));
+
+            if (var && var->type == 1)
+                Cinematic()->m_2c = var->Int();
+            break;
+        }
+        }
+        theGame.Push((CGameState *)theGame.m_cinematicSubState, 0);
+    }
+    return was;
 }
 
 /* PlayMPEGNoFade's toggle: a function-local static in the original (SOCOM 1's UIPlayMPEG has one,
