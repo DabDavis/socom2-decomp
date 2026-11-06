@@ -19,7 +19,9 @@
  * `move a0,zero` on the else: the target's) -- 3 words, the right size: only the loop's pair is left
  * (the target reads SR into v0 and the mask into v1, the AND into v0; here SR v1, mask v0, the AND
  * into the mask's v0; `eie &= 0x10000; if (eie)` in the loop keeps eie's v1 throughout, 4; a second
- * variable for the loop's SR, 5: build/scratch/gcc/r43/v_dintr.py). */
+ * variable for the loop's SR masked in place, 5 -- the loop then the target's word for word, the
+ * first block's pair swapped instead, in all 13 declaration orders and scopes tried:
+ * build/scratch/gcc/r43/v_dintr.py, v_dintr2.py). */
 int DIntr(void)
 {
 	int eie, res;
