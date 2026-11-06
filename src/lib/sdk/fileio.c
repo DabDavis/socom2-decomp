@@ -787,7 +787,7 @@ int sceWrite(int fd, const void *buf, int nbyte)
 {
 	struct _sceFsWrite *p = (struct _sceFsWrite *)&_send_data;
 	struct _sceFsIob *io;
-	int i, sema, ret, flag, head;
+	int i, j, sema, ret, flag, head;
 	struct SemaParam s;
 	int result;
 
@@ -802,8 +802,8 @@ int sceWrite(int fd, const void *buf, int nbyte)
 		return -9;
 	}
 	p->fd = io->i_fd;
-	p->buf = buf;
 	p->nbyte = nbyte;
+	p->buf = buf;
 	p->iob = io - _iob;
 	s.initCount = 0;
 	s.maxCount = 1;
@@ -823,18 +823,18 @@ int sceWrite(int fd, const void *buf, int nbyte)
 		}
 		SignalSema(_fs_fsq_semid);
 	}
-	if ((u_int)buf & 15)
-		head = (((u_int)buf >> 4) << 4) + 16 - (u_int)buf;
-	else
+	if (((u_int)buf & 15) == 0)
 		head = 0;
+	else
+		head = (((u_int)buf >> 4) << 4) + 16 - (u_int)buf;
 	if (nbyte < head)
 		head = nbyte;
 	if (!(flag & 0x20000000))
 		sceSifWriteBackDCache((void *)buf, nbyte);
 	buf = (const void *)UNCACHED(buf);
 	p->head = head;
-	for (i = 0; i < head; i++)
-		p->data[i] = ((const char *)buf)[i];
+	for (j = 0; j < head; j++)
+		p->data[j] = ((const char *)buf)[j];
 	if (sceSifCallRpc(&_cd, 3, 0, &_send_data, sizeof(struct _sceFsWrite), _rcv_data_rpc, 4, 0, 0) < 0) {
 		DeleteSema(sema);
 		_sceFsSigSema();
