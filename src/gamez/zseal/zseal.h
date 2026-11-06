@@ -1616,6 +1616,24 @@ public:
      * does, SetRoundStatUiVars for its defaults, CMPExitState::UnInit for a round's -- the game states'
      * round 50 took it for the constructor, but it returns nothing) */
     void Reset();
+    /* SOCOM 1's events, named by their callers and bodies (the SEALs, round 56; seal.cpp's, SOCOM 1's
+     * order where both have them): a hit taken (OVL2 0x544CF0: RemoteWeaponDamageVictim and
+     * ReportWeaponHitDamage call it right after Hit, as SOCOM 1's), a shot (0x544FC0), the rounds fired
+     * by a primary and a secondary and a grenade used (0x545120, 0x545100, 0x545140: the kit's fire
+     * calls them under IsPrimaryType / IsSecondaryType / item 121, in SOCOM 1's Fire's order), a
+     * target's sighting (0x5451E0: OnSetTargetVisible, as SOCOM 1's), a kill (0x545290: HandleKiller's
+     * enemy arm), a hit scored -- SOCOM II passes the SEAL hit as well (0x5458A0) --, a head shot
+     * (0x5459C0) and a death (0x545D10: HandleKiller's last call and HandleDamage's, SOCOM 1's two) */
+    void WasHit(const class CZSealBody &seal);
+    void Shot(const class CZSealBody &seal);
+    void IncrSecondaryRoundsFired(int n);
+    void IncrPrimaryRoundsFired(int n);
+    void IncrGrenadesUsed(int n);
+    void IncrTimesSeen(int n);
+    void Kill(const class CZSealBody &seal);
+    void Hit(const class CZSealBody &seal, const class CZSealBody &other);
+    void HeadShot(const class CZSealBody &seal);
+    void Death(const class CZSealBody &seal);
 
     unsigned short m_count[0x3c / 2];   // 0x0
     short m_score;   // 0x3c: the MVP score (SOCOM 1's m_sMvpScore, a short there too)

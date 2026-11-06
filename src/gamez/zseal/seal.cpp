@@ -157,11 +157,13 @@ extern "C" unsigned short func_00545390(CSealStats *s, const CZSealBody *seal)
 
 /* the stats' events: a counter stepped and the score moved when it counts, the score passed on
  * (OVL2 0x545D10, 0x545C90, 0x545C10, 0x545B90, 0x545B10, 0x5459C0, 0x5455D0, 0x545530,
- * 0x544CF0; SOCOM 1's Kill, Hit, Death and the rest by their shape, not yet named) */
-extern "C" void func_00545D10(CSealStats *s, const CZSealBody *seal)
+ * 0x544CF0 -- SOCOM 1's Death, HeadShot and WasHit named by their callers, the round 56; the
+ * suicide 0x545C90 and the team-mate's kill 0x545C10 are SOCOM 1's DeductKill split in two, the
+ * rest new) */
+void CSealStats::Death(const CZSealBody &seal)
 {
-    if (StatCounts(seal))
-        s->m_count[0x12 / 2]++;
+    if (StatCounts(&seal))
+        m_count[0x12 / 2]++;
 }
 
 extern "C" void func_00545C90(CSealStats *s, const CZSealBody *seal)
@@ -199,10 +201,10 @@ extern "C" void func_00545B10(CSealStats *s, const CZSealBody *seal)
     func_00544D60(seal, 0);
 }
 
-extern "C" void func_005459C0(CSealStats *s, const CZSealBody *seal)
+void CSealStats::HeadShot(const CZSealBody &seal)
 {
-    if (StatCounts(seal))
-        s->m_count[0]++;
+    if (StatCounts(&seal))
+        m_count[0]++;
 }
 
 extern "C" void func_005455D0(CSealStats *s, const CZSealBody *seal)
@@ -223,10 +225,10 @@ extern "C" void func_00545530(CSealStats *s, const CZSealBody *seal, int points)
     func_00544D60(seal, 1);
 }
 
-extern "C" void func_00544CF0(CSealStats *s, const CZSealBody *seal)
+void CSealStats::WasHit(const CZSealBody &seal)
 {
-    if (StatCounts(seal))
-        s->m_count[0x10 / 2]++;
+    if (StatCounts(&seal))
+        m_count[0x10 / 2]++;
 }
 
 /* the hit percentage made again from the hits and the shots (the counters converted as unsigned
@@ -239,31 +241,31 @@ static inline void UpdateHitPercent(CSealStats *s)
 }
 
 /* a hit: counted (a second count when the two share a team) and, when it counts, the hit
- * percentage made again (OVL2 0x5458A0; SOCOM 1's Hit by its shape) */
-extern "C" void func_005458A0(CSealStats *s, const CZSealBody *seal, const CZSealBody *other)
+ * percentage made again (OVL2 0x5458A0; SOCOM 1's Hit, its callers SOCOM 1's -- the SEAL hit is new) */
+void CSealStats::Hit(const CZSealBody &seal, const CZSealBody &other)
 {
-    s->m_count[4 / 2]++;
-    if (other->m_team & seal->m_team)
-        s->m_count[6 / 2]++;
-    if (StatCounts(seal))
-        UpdateHitPercent(s);
+    m_count[4 / 2]++;
+    if (other.m_team & seal.m_team)
+        m_count[6 / 2]++;
+    if (StatCounts(&seal))
+        UpdateHitPercent(this);
 }
 
 /* a shot: counted, and offline a shot by someone off the player's team counted in the player's
  * stats; when it counts, the hit percentage made again (OVL2 0x544FC0; SOCOM 1's Shot by its shape:
  * a weapon's fire, 0x5BE9A0, calls it) */
-extern "C" void func_00544FC0(CSealStats *s, const CZSealBody *seal)
+void CSealStats::Shot(const CZSealBody &seal)
 {
-    s->m_count[8 / 2]++;
+    m_count[8 / 2]++;
     if (!theNetwork.m_9) {
         /* (the player's team taken first: a local keeps its load ahead of the shooter's) */
         unsigned int team = ftsGetPlayer()->m_team;
 
-        if (!(team & seal->m_team))
+        if (!(team & seal.m_team))
             ftsGetPlayer()->m_stats.m_count[0xa / 2]++;
     }
-    if (StatCounts(seal))
-        UpdateHitPercent(s);
+    if (StatCounts(&seal))
+        UpdateHitPercent(this);
 }
 
 /* the entity as a SEAL, if it is one */
@@ -318,21 +320,21 @@ CSealStats *CZSealBody::GetStats()
 
 /* a kill: counted, the score up two and, for the local player in a squad whose order is 19, a
  * second counter; the game's kill valve stepped (OVL2 0x545290; the killer's credit, 0x59EE20, calls
- * it) */
-extern "C" void func_00545290(CSealStats *s, const CZSealBody *seal)
+ * it -- SOCOM 1's Kill, HandleKiller's enemy arm in both) */
+void CSealStats::Kill(const CZSealBody &seal)
 {
-    if (StatCounts(seal)) {
-        s->m_count[0xc / 2]++;
-        s->m_score += 2;
-        if (seal == ftsGetPlayer()) {
-            CSealUnit *unit = ((CSealCtrl *)seal->m_control)->m_unit;
+    if (StatCounts(&seal)) {
+        m_count[0xc / 2]++;
+        m_score += 2;
+        if (&seal == ftsGetPlayer()) {
+            CSealUnit *unit = ((CSealCtrl *)seal.m_control)->m_unit;
 
             if (unit && unit->m_9c->m_8 == 19)
-                s->m_count[0xe / 2]++;
+                m_count[0xe / 2]++;
         }
         data_00437CE8->m_70->SetValue(data_00437CE8->m_70->m_value + 1);
     }
-    func_00544D60(seal, 0);
+    func_00544D60(&seal, 0);
 }
 
 /* a SEAL's stats, and a stats event told to a SEAL (member pointers: 12 bytes, {0, -1, function}
@@ -596,10 +598,12 @@ void CSealStats::Reset()
 }
 
 /* eight counters each added to (OVL2 0x5451E0, 0x5451C0, 0x5451A0, 0x545180, 0x545160, 0x545140,
- * 0x545120, 0x545100; SOCOM 1's Incr* took ints) */
-extern "C" void func_005451E0(CSealStats *s, int n)
+ * 0x545120, 0x545100; SOCOM 1's Incr* took ints -- its four are the first and the last three, by their
+ * callers: the sightings, then a grenade, a primary's and a secondary's rounds; the four between them
+ * new: HandleKiller's two AI tallies and CAiSHostage::Tick's two) */
+void CSealStats::IncrTimesSeen(int n)
 {
-    s->m_count[0x1e / 2] += (unsigned short)n;
+    m_count[0x1e / 2] += (unsigned short)n;
 }
 
 extern "C" void func_005451C0(CSealStats *s, int n)
@@ -622,19 +626,19 @@ extern "C" void func_00545160(CSealStats *s, int n)
     s->m_count[0x28 / 2] += (unsigned short)n;
 }
 
-extern "C" void func_00545140(CSealStats *s, int n)
+void CSealStats::IncrGrenadesUsed(int n)
 {
-    s->m_count[0x2a / 2] += (unsigned short)n;
+    m_count[0x2a / 2] += (unsigned short)n;
 }
 
-extern "C" void func_00545120(CSealStats *s, int n)
+void CSealStats::IncrPrimaryRoundsFired(int n)
 {
-    s->m_count[0x2e / 2] += (unsigned short)n;
+    m_count[0x2e / 2] += (unsigned short)n;
 }
 
-extern "C" void func_00545100(CSealStats *s, int n)
+void CSealStats::IncrSecondaryRoundsFired(int n)
 {
-    s->m_count[0x30 / 2] += (unsigned short)n;
+    m_count[0x30 / 2] += (unsigned short)n;
 }
 
 /* a picked-up grenade thrown back along the pickup's facing, lofted (OVL2 0x547700; SOCOM 1's
