@@ -28,7 +28,7 @@
  *  - the BSD calls (GCC round 21a): socket 0x1C2B90, bind 0x1C2CD8, connect 0x1C2DD0, listen 0x1C3120
  *    (a libinet listener per backlog slot, 0x1C2F38), send/recv 0x1C3660/0x1C3810, sendto/recvfrom
  *    0x1C39B0/0x1C3B20, close 0x1C3CE8, accept 0x1C32A8 (OPEN), gethostbyaddr 0x1C4A20 (OPEN), the
- *    socket's abort 0x1C28F8, and around them the thread's buffer resize 0x1C2648, its
+ *    socket's abort 0x1C28F8, poll 0x1C3E60, getsockopt 0x1C4140, setsockopt 0x1C43D0 (GCC round 45a) and around them the thread's buffer resize 0x1C2648, its
  *    context's drop 0x1C2A98, the send side's lazy open 0x1C35A0, an option setter 0x1C4088, the
  *    abort 0x1C4C20; each takes the thread's context with the lock,
  *    releases the lock around every libinet call (func_001C2140 ... func_001C20D8) and returns
@@ -1003,6 +1003,200 @@ int func_001C4088(int id, int val)
 		return func_001C2310(c, 9);
 	func_001C2140();
 	r = sceInetControl(c->client, c->abuf, s->cid, 16, &val, 4);
+	if (func_001C20D8() < 0)
+		return func_001C2310(c, -1);
+	if (r < 0)
+		return func_001C2310(c, func_001C24D0(r));
+	return func_001C2310(c, 0);
+}
+
+/* poll() over libinet's poll (0x245CD0, OVL1: RPC 20): each descriptor swapped for its connection's id
+ * (the socket's first pending connection for a listening TCP socket, else the socket's own, opened
+ * on the way; 0 for what has none), the ids put back afterwards */
+extern int func_00245CD0(void *cd, void *buf, void *fds, int nfds, int ms);
+
+struct pollfd_ {
+	int fd;
+	short events;
+	short revents;
+};
+
+int func_001C3E60(struct pollfd_ *fds, int nfds, int timeout)
+{
+	CTX *c;
+	SOCK *s;
+	struct pollfd_ *p;
+	int *saved;
+	int i, r;
+
+	c = func_001C2160(0);
+	if (c == 0)
+		return -1;
+	if (fds == 0 || nfds <= 0)
+		return func_001C2310(c, 22);
+	saved = func_001C1CD0(nfds * 4);
+	if (saved == 0)
+		return func_001C2310(c, 12);
+	for (i = 0; i < nfds; i++)
+		saved[i] = fds[i].fd;
+	p = fds;
+	for (i = 0; i < nfds; i++) {
+		s = func_001C23D8(p->fd);
+		if (s == 0)
+			p->fd = 0;
+		else if (s->param.type == 2 && s->conn != 0)
+			p->fd = s->conn->cid;
+		else if (func_001C35A0(c, s) != 0)
+			p->fd = 0;
+		else
+			p->fd = s->cid;
+		p++;
+	}
+	func_001C2140();
+	r = func_00245CD0(c->client, c->abuf, fds, nfds, timeout);
+	if (func_001C20D8() < 0) {
+		func_001C1D08(saved);
+		return func_001C2310(c, -1);
+	}
+	for (i = 0; i < nfds; i++)
+		fds[i].fd = saved[i];
+	func_001C1D08(saved);
+	if (r < 0)
+		return func_001C2310(c, func_001C24D0(r));
+	func_001C2310(c, 0);
+	return r;
+}
+
+/* getsockopt(): TCP's one option (level 6, name 1: bit 0 of libinet's flags), IP's three (level 0: 9 the
+ * multicast interface, 10 and 11 two words), each through libinet's control call */
+int func_001C4140(int id, int level, int name, void *val, u_int *len)
+{
+	sceInetAddress_t addr;
+	u_int flags;
+	CTX *c;
+	SOCK *s;
+	int r = -1;
+	u_int size;
+
+	c = func_001C2160(0);
+	if (c == 0)
+		return -1;
+	s = func_001C23D8(id);
+	if (s == 0)
+		return func_001C2310(c, 9);
+	if (level == 6) {
+		if (s->cid == 0)
+			return func_001C2310(c, 9);
+		if ((s->param.type != 1 && s->param.type != 2) || name != 1)
+			return func_001C2310(c, 109);
+		size = 4;
+	} else if (level == 0) {
+		if (s->param.type != 0)
+			return func_001C2310(c, 109);
+		if (name == 9)
+			size = 4;
+		else if (name == 10)
+			size = 4;
+		else if (name == 11)
+			size = 4;
+		else
+			return func_001C2310(c, 109);
+		r = func_001C35A0(c, s);
+		if (r != 0)
+			return func_001C2310(c, r);
+	} else
+		return func_001C2310(c, 109);
+	if (val == 0 || len == 0 || *len < 4)
+		return func_001C2310(c, 22);
+	func_001C2140();
+	if (level == 6 && name == 1) {
+		r = sceInetControl(c->client, c->abuf, s->cid, 2, &flags, 4);
+		*(int *)val = flags & 1;
+	} else if (level == 0) {
+		if (name == 9) {
+			r = sceInetControl(c->client, c->abuf, s->cid, 5, &addr, sizeof(addr));
+			func_001C2458(val, &addr);
+		} else if (name == 10)
+			r = sceInetControl(c->client, c->abuf, s->cid, 7, val, 4);
+		else if (name == 11)
+			r = sceInetControl(c->client, c->abuf, s->cid, 9, val, 4);
+	}
+	if (func_001C20D8() < 0)
+		return func_001C2310(c, -1);
+	if (r < 0)
+		return func_001C2310(c, func_001C24D0(r));
+	*len = size;
+	return func_001C2310(c, 0);
+}
+
+/* setsockopt(): the same options, and IP's two group memberships (12, 13: two addresses, 8 bytes) */
+int func_001C43D0(int id, int level, int name, void *val, u_int len)
+{
+	sceInetAddress_t addr;
+	sceInetAddress_t grp[2];
+	sceInetAddress_t grp2[2];
+	int flag;
+	CTX *c;
+	SOCK *s;
+	int r = -1;
+	u_int size;
+
+	c = func_001C2160(0);
+	if (c == 0)
+		return -1;
+	s = func_001C23D8(id);
+	if (s == 0)
+		return func_001C2310(c, 9);
+	if (level == 6) {
+		if (s->cid == 0)
+			return func_001C2310(c, 109);
+		if ((s->param.type != 1 && s->param.type != 2) || name != 1)
+			return func_001C2310(c, 109);
+		size = 4;
+	} else if (level == 0) {
+		if (s->param.type != 0)
+			return func_001C2310(c, 109);
+		if (name == 9)
+			size = 4;
+		else if (name == 10)
+			size = 4;
+		else if (name == 11)
+			size = 4;
+		else if (name == 12)
+			size = 8;
+		else if (name == 13)
+			size = 8;
+		else
+			return func_001C2310(c, 109);
+		r = func_001C35A0(c, s);
+		if (r != 0)
+			return func_001C2310(c, r);
+	} else
+		return func_001C2310(c, 109);
+	if (val == 0 || len < size)
+		return func_001C2310(c, 22);
+	func_001C2140();
+	if (level == 6 && name == 1) {
+		flag = *(int *)val != 0;
+		r = sceInetControl(c->client, c->abuf, s->cid, 3, &flag, 4);
+	} else if (level == 0) {
+		if (name == 9) {
+			func_001C2410(&addr, val);
+			r = sceInetControl(c->client, c->abuf, s->cid, 4, &addr, sizeof(addr));
+		} else if (name == 10)
+			r = sceInetControl(c->client, c->abuf, s->cid, 6, val, size);
+		else if (name == 11)
+			r = sceInetControl(c->client, c->abuf, s->cid, 8, val, size);
+		else if (name == 12) {
+			func_001C2410(&grp[0], val);
+			func_001C2410(&grp[1], (u_int *)val + 1);
+			r = sceInetControl(c->client, c->abuf, s->cid, 10, grp, sizeof(grp));
+		} else if (name == 13) {
+			func_001C2410(&grp2[0], val);
+			func_001C2410(&grp2[1], (u_int *)val + 1);
+			r = sceInetControl(c->client, c->abuf, s->cid, 11, grp2, sizeof(grp2));
+		}
+	}
 	if (func_001C20D8() < 0)
 		return func_001C2310(c, -1);
 	if (r < 0)

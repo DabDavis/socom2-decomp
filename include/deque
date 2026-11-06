@@ -1139,7 +1139,11 @@ public:
         T **last_;
     };
 
+#ifdef __MSL_DEQUE_DEFAULT_INLINE
+    cdeque() {}
+#else
     cdeque();
+#endif
     explicit cdeque(const Allocator &a);
     cdeque(const cdeque &x);
     ~cdeque();
@@ -1202,10 +1206,12 @@ public:
     void pop_back() { base::pop_back(); }
 };
 
+#ifndef __MSL_DEQUE_DEFAULT_INLINE
 template <class T, class Allocator>
 cdeque<T *, Allocator>::cdeque()
 {
 }
+#endif
 
 template <class T, class Allocator>
 cdeque<T *, Allocator>::~cdeque()
@@ -1264,7 +1270,19 @@ class __deque_buf {
 public:
     typedef Metrowerks::cdeque<T *, allocator<T *> > buf_type;
 
+    /* THE SECOND T-FREE CHAIN, BY UNIT (the MSL headers round 40, the integrator's request; build/p40/mkd2.py, untracked: a modelling
+     * device, `#define __MSL_DEQUE_DEFAULT_INLINE` ahead of a unit's includes). game_main.cpp's deque<T *>() 0x2CEE00 inlines deque<PCv>() and
+     * __deque_imp(), calling __deque_buf<PCv>() 0x2CEE40 and allocator<PCv>() 0x2CEE30, __deque_buf() calling cdeque<PPCv>() 0x2CEE70: this
+     * chain out of class, each member a call. The rdr editor's and the vid stack's deque<T *>() (0x3340F0, 0x3B7FA0, 0x28 bytes) call a
+     * different pair, the same words under other names in the overlay: 0x334120 -> 0x334150. They are the same chain ALL IN CLASS, by the
+     * level alone: deque<PCv>() is eight high with __deque_buf() and cdeque<T *>() inline, too tall, so it is admitted at the last pass,
+     * its own body, calling __deque_imp<PCv>() 0x334120, whose own copy holds __deque_buf()'s body the same way and calls
+     * compressed_pair() 0x334150, four high and whole (the sixteen zeroed bytes). Named so; both words checked in vis_vu.cpp */
+#ifdef __MSL_DEQUE_DEFAULT_INLINE
+    __deque_buf() { this->start_ = 0; this->size_ = 0; }
+#else
     __deque_buf();
+#endif
     explicit __deque_buf(const Allocator &a);
     ~__deque_buf();
     const Allocator &alloc() const;
@@ -1274,12 +1292,14 @@ public:
     unsigned int size_;   // 0x14
 };
 
+#ifndef __MSL_DEQUE_DEFAULT_INLINE
 template <class T, class Allocator>
 __deque_buf<T, Allocator>::__deque_buf()
 {
     this->start_ = 0;
     this->size_ = 0;
 }
+#endif
 
 template <class T, class Allocator>
 __deque_buf<T, Allocator>::__deque_buf(const Allocator &a) : buf_(a, buf_type(allocator<T *>(a))), start_(0), size_(0)
@@ -1435,19 +1455,6 @@ public:
     }
     void pop_front();
     void pop_back();
-    /* the room behind the end, in elements, for pop_back's walk (ours: see pop_back) */
-    unsigned int __back_room()
-    {
-        enum __Zero { __zero_max = 0xffffffffu } z = (__Zero)0;
-        unsigned int n;
-
-        if (this->buf_.second_.size() != 0) {
-            n = (this->buf_.second_.size() - 1) * buf_size;
-        } else {
-            n = z;
-        }
-        return n - (this->start_ + this->size_);
-    }
     /* a no-op only the pointer deques' clear names (the MSL headers round 39): there clear waits past the walk that reaches cdeque<PCv>::pop_front, and
      * inlines it (game_main.cpp's 0x2CF120, 0xA8); the lobby's and the state machine's call it (0x2E1B20, 0x3A6FA0, 0x88: their pop_front, deferred, references it
      * only after that walk) */
@@ -1676,25 +1683,9 @@ void __deque_imp<T, Allocator>::pop_front()
 
 /* the back dropped; whole blocks behind the end freed, the slot after the last block kept null
  * (the rdr lane's 0x3349C0: the buffer popped, its new back deleted and cleared).
- * OPEN, 8 bytes short (0xCC against 0xD4): the target lays the capacity ternary's zero arm out
- * first and jumps from it to the join (start_'s load in both arms); this form, an inline
- * accessor, an if/return and `n == 0 ? 0 : ...` all if-convert the zero into beqz's delay slot.
- * The MSL headers' round 4 (probe build/m4/p/dq.cpp): the multiply after the ternary, `(size() ?
- * size() - 1 : 0) * buf_size`, keeps the zero arm a block of its own -- the right size, five
- * instructions off: the arms come in the other order (the nonzero one falls through) and the
- * zero is built in v1 before the multiply where the target puts it straight into the product's
- * a1; `== 0`, `!`, empty(), an unsigned zero, a for/break test and the multiply written first
- * change nothing. A LEAD from the MSL headers round 14: push_back's same two block counts lay their
- * zero arm out first only written `size() == 0 ? 0 : (size() - 1) * buf_size` (no hand-written unit
- * emits pop_back to test it on: 0x3349C0 is a draft's) MEASURED (round 39,
- * build/p39/vx.py, zrdr_edit.cpp's copy): that spelling is beqz with the zero in its delay slot where the target's bnez jumps over
- * `b join` (start_'s load copied into that b's delay slot): 18 off, as with a helper returning the count or the test's operands
- * swapped; written with a break, 41.
- * BYTE-EXACT SINCE THE WORLD'S ROUND 34 (__back_room above): the target's `move a1,zero` in the bnez's delay slot is NOT the
- * zero arm's -- it is a zero defined AHEAD of the test, the arm a copy of it that coalescing removes after the branches are
- * laid out (so its `b join` takes start_'s load from the join, as CRdrFile::ReadArray's `array = this`, with no pad at the other
- * arm's label): an if / else on `size() != 0`, the arm `n = z`, z an unsigned 4-byte enum so IRO does not propagate the zero
- * (a `const` local is folded: 0xCC). The enum is A MARKED MODELLING DEVICE; the original's holder of the zero is unknown */
+ * Byte-exact since the MSL headers' round 40 (build/p40/vpop.py, untracked; open from the rdr lane to round 39): the capacity's test written `size() != 0`
+ * (or `> 0`, `>= 1`) lays the zero arm out first, the target's bnez over `b join` with start_'s load copied into its delay slot. Written `size() ? ...`,
+ * `== 0`, `!`, `<= 0`, `< 1`, a bool or a cast, the zero goes into beqz's delay slot (18 off, 8 short); through `(n ? n - 1 : 0) * buf_size` 5 off. */
 template <class T, class Allocator>
 void __deque_imp<T, Allocator>::pop_back()
 {
@@ -1703,7 +1694,8 @@ void __deque_imp<T, Allocator>::pop_back()
         return;
     }
     --this->size_;
-    while (__back_room() >= 2 * buf_size) {
+    while ((this->buf_.second_.size() != 0 ? (this->buf_.second_.size() - 1) * buf_size : 0) - (this->start_ + this->size_) >=
+           2 * buf_size) {
         this->buf_.second_.pop_back();
         T *&b = this->buf_.second_.back();
 

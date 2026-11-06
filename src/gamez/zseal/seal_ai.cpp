@@ -3080,6 +3080,16 @@ extern "C" AI_WEAPON_KIND func_00560540(CSealCtrlAi *ai)
 #pragma auto_inline reset
 
 /* (OVL2 0x5605A0, not written yet: a weapon of a kind chosen) */
+/* OPEN, unwritten (OVL2 0x5605A0, 0x2F4 bytes; round 59 parked it, nothing here depends on it): `bool F(ai, kind)`:
+ * seal = 0x560950(ai) [ai->m_entity]; dead reads 0x560940(seal) [seal->m_id] and 0x560930(ai) [(signed char)ai->m_26c];
+ * if (!InGroup || kind == 6) { if (kind == 1) F(chance ? 2 : 3) else { w = data_0066AD00[kind]; if (w != 0x5608A0(seal))
+ * { r = 0x58C5D0(seal, w); 0x571000(ai) } } } return r. 0x560920 is a one-float class's constructor and 0x5608B0 its
+ * `operator bool`; Rfloat's true constructor is (min, max). `r = F(ai, c ? 2 : 3)` has the right selects but expands the
+ * second level's operator bool whole (CInline's second walk: 0x344 vs 0x2F4); `kind = c ? 2 : 3; r = F(ai, kind)` has its
+ * Rfloat calls and literal but regenerates the select (0x31C); if/else passes the 15-statement auto limit (`inline`
+ * escapes it, then the constructor is called at level 1 and 0x5604D0 inlines F); the level 0's IsKind is one level too
+ * deep in all three. Written, it lost 0x5604D0, 0x5609F0 and 0x567690, so it stays out: 0x570F90 and 0x571000 are
+ * structurally exact from source, 0x5609F0 as real recursion 1 off. */
 extern "C" bool func_005605A0(CSealCtrlAi *ai, int a);
 
 /* a weapon chosen; the kind held before it kept once it is (OVL2 0x5604D0) */
@@ -4840,6 +4850,127 @@ static inline bool TickGoalTimer(CAiTimer &t, float dT)
     return r;
 }
 
+/* zero a small object's bytes (an inline: the target's byte loop, with the address's null test) */
+
+static inline float LenXZ(const CPnt3D &v)
+{
+    return sqrtf(v.x * v.x + v.z * v.z);
+}
+
+extern "C" {
+extern float data_00650128;
+extern float data_0065012C;
+extern float data_00650130;
+extern float data_00650134;
+extern float data_0064FDA0;
+extern float data_006501D8;
+extern float data_006501E0;
+extern float data_006501E8;
+}
+
+static inline float DotP(const CPnt3D &a, const CPnt3D &b)
+{
+    return a.x * b.x + a.y * b.y + a.z * b.z;
+}
+
+/* the creep toward the goals: the goal's timer run down, an expired goal cleared; the facing laid flat; a
+ * goal position walked at -- the throttles a critically damped pull along and across, held within the speed
+ * (the side's to 1), the point dropped once within its tolerance; a goal direction turned to by the slot
+ * 0x9C's throttle, while at the point or an AI in mode 7, and dropped when reached; the three throttles set
+ * (OVL2 0x566DC0, slot 0x88: SOCOM 1's CreepTick, the flag new) */
+void CSealCtrl::CreepTick(float dT, bool walk)
+{
+    float dot;
+    float hi;
+    float x;
+    float lo;
+    float top;
+    float z;
+    float vz;
+
+    data_0066B100 = 1.0f / dT;
+
+    bool has = (bool)m_goal_dir_valid || (bool)m_goal_pos_valid;
+
+    if (!has)
+        return;
+    if (TickGoalTimer(m_goal_timer, dT)) {
+        ClearGoal(m_goal_type);
+        return;
+    }
+    const CMatrix *m = &m_entity->m_node->m_matrix;
+    CPnt3D dir(-m->m_matrix[2][0], 0.0f, -m->m_matrix[2][2]);
+
+    dir.Normalize();
+
+    CPnt3D right(-dir.z, 0.0f, dir.x);
+    CPnt3D delta(0.0f, 0.0f, 0.0f);
+    float t[3] = { 0.0f };
+    bool arrived = true;
+
+    if (m_goal_pos_valid && walk) {
+        m_goal_pos.SubXZ(&m_entity->m_posW, &delta);
+
+        float dist = LenXZ(delta);
+
+        if (dist != 0.0f) {
+            float inv = 1.0f / dist;
+
+            delta.x *= inv;
+            delta.z *= inv;
+        }
+
+        float along = DotP(dir, delta);
+        float across = DotP(right, delta);
+
+        if (dist < data_006501D8)
+            arrived = false;
+
+        float vx = m_throttle[0];
+        static float rest0 = data_00650130;
+
+        float speed = m_speed;
+        float goal = 0.0f;
+
+        x = rest0 * goal - (data_00650130 * (-dist * along) + data_00650134 * vx);
+        x *= data_0066B0F8;
+        x += vx;
+        hi = speed;
+        lo = -speed;
+        _saturate(&x, lo, hi);
+        t[0] = x;
+
+        vz = m_throttle[1];
+
+        static float rest1 = data_00650128;
+
+        top = ai::_min((float)m_speed, data_0064FDA0);
+        z = rest1 * goal - (data_00650128 * (-dist * across) + data_0065012C * vz);
+        z *= data_0066B0F8;
+        z += vz;
+        _saturate(&z, -top, top);
+        t[1] = z;
+        t[2] = 0.0f;
+        if (dist <= m_goal_tolerance) {
+            m_goal_pos_valid = false;
+            arrived = true;
+        }
+    }
+
+    CSealCtrlAi *ai = GetSealCtrlAi();
+    bool turn = !m_goal_pos_valid || arrived || (ai && ai->m_3f4 == 7);
+    dot = 0.0f;
+    if (m_goal_dir_valid && turn) {
+        t[2] = ComputeTurnThrottle(&dir, &m_goal_dir, &dot);
+        if (_close_enough(t[2], data_006501E0, data_006501E8))
+            m_goal_dir_valid = false;
+    }
+    SetThrottle(0, t[0]);
+    SetThrottle(1, t[1]);
+    SetThrottle(2, t[2]);
+}
+
+
 /* the slide toward the goal stepped: the share of what is left this tick (all of it once the goal's
  * time is up), the place's share as the world fudge velocity, the turn's as the rotation's; the goal
  * cleared when it is reached (OVL2 0x566940; SOCOM 1's, its SetGoalPos call now ClearGoal inlined,
@@ -6407,6 +6538,117 @@ void CAiSPursue::OnSignal(SIGNAL sig, CSealCtrlAi *ctrl)
     }
 }
 
+/* the squad (an inline accessor: read through it the squad's register comes after the AsSeal inline's result,
+ * as OnDeath's target has it -- written `unit = m_unit` the two swap, s0 and s1; the name ours) */
+static inline CSealUnit *UnitOf(CSealCtrl *c)
+{
+    return c->m_unit;
+}
+
+extern "C" {
+/* the chance of a dying burst for a SEAL at least alert, the anger's chance and the rage it stops at
+ * (OVL2 data; the names unknown); the pickup a Navy SEAL's satchel drops (OVL2 0x59FAC0, seal_env.cpp's) */
+extern float data_00650018;
+extern float data_0064FE10;
+extern float data_0064FE18;
+class CPickup *func_0059FAC0(CZSealBody *seal);
+}
+
+/* dead: whatever it did stopped -- the alive valve shut, the three others closed, its group aborted, the
+ * throttles zeroed, its sounds cut -- its node's bit 22 set (SOCOM 1's m_NOTUSED), the cry by how it died, the killer
+ * of its own team's anger raised; the squad told, the AI state cleared, the target and the map's bit let
+ * go; an alert SEAL's dying burst on a chance, a Navy SEAL's satchel dropped, the events forgotten
+ * (OVL2 0x5714B0, slot 0x18; SOCOM 1's OnDeath grown) */
+void CSealCtrlAi::OnDeath()
+{
+    zdb::CNode *node;
+    CZSealBody *seal = (CZSealBody *)m_entity;
+    CZSealBody *killer;
+    CSealUnit *unit;
+
+    node = seal->GetNode();
+    killer = AsSeal(CEntity::m_list.GetEntityById(seal->m_lastshooter_id));
+    unit = UnitOf(this);
+
+    CValve *valve = m_valve[SEAL_VALVE_ALIVE];
+
+    if (valve)
+        SetValveValue(valve, 0);
+    func_00574EF0(this, 0);
+
+    CAiGroup *group = GetGroup();
+
+    if (group)
+        group->Abort();
+    SetThrottle(1, 0.0f);
+    SetThrottle(2, 0.0f);
+    SetThrottle(0, 0.0f);
+    SetThrottle(3, 0.0f);
+    m_throttle[1] = 0.0f;
+    m_throttle[2] = 0.0f;
+    m_throttle[0] = 0.0f;
+    m_throttle[3] = 0.0f;
+    CSndInstance::Remove(seal->m_id, true, true, true);
+    node->m_NOTUSED = true;
+
+    SEAL_DEATH_TYPE type = seal->m_deathType;
+
+    static Rfloat s_burst(1.5f, 1.5f);
+    float chance = 0.0f;
+
+    switch (type) {
+    case DEATH_KNIFE_KILL:
+    case DEATH_CQB:
+        PlayAiSound((CHARACTER_SOUND)61, 1.0f, CAiEvent::AIE_NONE);
+        break;
+    case DEATH_HEADSHOT:
+        PlayAiSound((CHARACTER_SOUND)61, 1.0f, (CAiEvent::EVENT)3);
+        break;
+    case DEATH_GHOST:
+        break;
+    case DEATH_FALLING:
+        if (seal->m_aiEvent)
+            seal->m_aiEvent->m_type = 0;
+        break;
+    default:
+        PlayAiSound((CHARACTER_SOUND)60, 1.0f, (CAiEvent::EVENT)4);
+        if (AlertBand(((CAlertness *)this)->m_alert) >= ALERT_BAND_2)
+            chance = data_00650018;
+        break;
+    }
+    if (killer && (seal->m_team & killer->m_team) && killer->IsPlayer()) {
+        float t = data_0064FE10;
+
+        if (m_408 < data_0064FE18)
+            t *= m_408;
+        if (data_0064FDF8) {
+            if (!(t <= 1.0f))
+                PlayAiSound((CHARACTER_SOUND)81, 1.0f, CAiEvent::AIE_NONE);
+            m_400 += data_0064FE00 * t;
+        }
+        func_00561B90(this, false);
+    }
+    if (unit)
+        unit->Notify(seal, UNIT_MESSAGE_DEATH, 0);
+    ClearAiState(true);
+    SetTarget(0);
+    SetAiAware(0.0f, 3);
+    seal->m_restrained = false;
+    if (m_aiParams.respawn)
+        seal->SetIncludeInTargetList(false);
+    if (!(chance <= 0.0f) && Chance(chance)) {
+        float t = s_burst;
+
+        SetSprayTimer(t);
+    }
+    if (IsNavySeal())
+        func_0059FAC0(seal);
+    ((CAiEventQ *)m_eventQueue)->clear();
+    CleanupDiPool(seal);
+    seal->SetUpdateTargetList(false);
+    SetDoAiMapCollide(false);
+}
+
 /* hurt: the SEAL's other sounds cut off and the pain cry, always (OVL2 0x571AB0; SOCOM 1's with
  * SOCOM II's extra arguments). The entity is read ahead of the test, as both builds do: only a
  * local taken first gives that `lw` its place before the branch. */
@@ -7024,9 +7266,8 @@ extern "C" void func_00567340(CEntityCtrl *ctrl, unsigned int axis, float value)
     ctrl->m_throttle[axis] = value;
 }
 
-/* the template tail's other two instances, explicit until their callers are written: ai::_min over
- * floats (OVL2 0x575C80: CSealCtrl::CreepTick 0x566DC0 and 0x567900 call it) and _close_enough over
- * ints (OVL2 0x575CB0: 0x567900 calls it twice, as UpdateAiMapLoc does) -- _max<f> (0x575C50), the
- * tail's first, comes with seal_control.cpp's caller */
-template const float &ai::_min<float>(const float &, const float &);
+/* the template tail's other instance, explicit until its callers are written: _close_enough over ints
+ * (OVL2 0x575CB0: 0x567900 calls it twice, as UpdateAiMapLoc does) -- _max<f> (0x575C50), the tail's first,
+ * comes with seal_control.cpp's caller, _min<f> (0x575C80) with CSealCtrl::CreepTick's: an explicit
+ * instantiation in the unit makes it auto-inline at the call */
 template bool _close_enough<int>(const int &, const int &, const int &);

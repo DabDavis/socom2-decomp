@@ -9,7 +9,7 @@
  * IOP (LIBNETB_RING: the async receive and send calls, RPC 100/101, fill them); a datagram ring holds
  * 64-byte datagram headers (libnetb_udp.c). The newer release adds a 2-byte receive and send
  * (func_002476D0/func_00247F58, func_00247920/func_002481F8) and a connection-state check
- * (func_00247BD8). Not yet written: recv_from, send_to. */
+ * (func_00247BD8). */
 
 typedef unsigned int u_int;
 
@@ -546,6 +546,170 @@ int libnetb_trans_data(void *src, void *dst, int size)
         ;
     return 0;
 }
+
+/* a datagram's 64-byte header in full, as recv_from and send_to read it (the same 64 bytes as LIBNETB_DGRAM) */
+typedef struct LIBNETB_UDPHDR {
+    int used;                           /* 0x00 */
+    int valid;                          /* 0x04: another piece follows */
+    int size;                           /* 0x08 */
+    u_int capacity;                     /* 0x0C */
+    sceBInetAddress addr;               /* 0x10 */
+    int port;                           /* 0x20 */
+    int flags;                          /* 0x24 */
+    int err;                            /* 0x28 */
+    int self;                           /* 0x2C: its IOP address */
+    int pad30[3];
+    int end;                            /* 0x3C */
+} LIBNETB_UDPHDR;
+
+extern int libnetb_is_data_waiting(LIBNETB_RING *n, unsigned char type, unsigned char peek, unsigned char *waiting);
+extern int libnetb_udp_create_space(LIBNETB_RING *n, int size, int *space, unsigned char *ok);
+
+/* a datagram taken off the receive ring: its header's fields, the data (at most count), the header
+ * handed back to the IOP, the read position moved on; a header marked valid has no data of its own
+ * and the next is read instead */
+int libnetb_recv_from(LIBNETB *s, void *ptr, int count, int *pflags, sceBInetAddress *addr, int *port,
+                      int *plen, int *perr)
+{
+    unsigned char waiting = 0;
+    LIBNETB_RING *r;
+    LIBNETB_UDPHDR *h;
+    u_int n;
+    int more, ret;
+
+    if (plen == 0)
+        return 2;
+    *plen = 0;
+    if (ptr == 0)
+        return 2;
+    if (count <= 0)
+        return 2;
+    if (pflags == 0)
+        return 2;
+    *pflags = 0;
+    if (addr == 0)
+        return 2;
+    if (port == 0)
+        return 2;
+    if (perr == 0)
+        return 2;
+    *perr = 0;
+    if (s == 0)
+        return 2;
+    r = s->recv_mirror;
+    if (r == 0)
+        return 2;
+    FlushCache(0);
+    ret = libnetb_is_data_waiting(r, 1, 0, &waiting);
+    if (ret != 0)
+        return ret;
+    if (waiting == 0) {
+        *plen = 0;
+        *pflags = 0;
+        *perr = 0;
+        return ret;
+    }
+    h = (LIBNETB_UDPHDR *)(r->buf + r->off);
+    more = h->valid != 0;
+    if (more == 0) {
+        n = h->capacity < count ? h->capacity : count;
+        if (n != 0)
+            memcpy(ptr, (char *)h + 64, n);
+        *addr = h->addr;
+        *pflags = h->flags;
+        *port = h->port;
+        *plen = n;
+        *perr = h->err;
+    }
+    h->used = 0;
+    h->capacity = h->size;
+    h->end = 0;
+    h->valid = 0;
+    ret = libnetb_trans_data(h, (void *)h->self, 64);
+    if (ret != 0)
+        return ret;
+    r->off = r->off + h->size + 64;
+    if (r->off >= r->size)
+        r->off = 0;
+    if (more == 1) {
+        ret = libnetb_recv_from(s, ptr, count, pflags, addr, port, plen, perr);
+        if (ret != 0)
+            return ret;
+    }
+    return 0;
+}
+
+/* a datagram put on the send ring: space made, the header filled, the data and the header handed to the IOP */
+int libnetb_send_to(LIBNETB *s, void *ptr, int count, int flags, sceBInetAddress *addr, int port,
+                    int *plen, int *perr)
+{
+    unsigned char ok = 0;
+    int space;
+    LIBNETB_RING *w;
+    LIBNETB_UDPHDR *h;
+    char *data;
+    int off, off2, n, ret;
+
+    if (plen == 0)
+        return 2;
+    *plen = 0;
+    if (ptr == 0)
+        return 2;
+    if (count <= 0)
+        return 2;
+    if (addr == 0)
+        return 2;
+    if (perr == 0)
+        return 2;
+    if (s == 0)
+        return 2;
+    w = s->send_mirror;
+    if (w == 0)
+        return 2;
+    if ((int)w->hdrsize < count)
+        return 2;
+    if (count >= w->size - 64)
+        return 2;
+    FlushCache(0);
+    if (w->pending < 0) {
+        *perr = w->pending;
+        return 1;
+    }
+    ret = libnetb_udp_create_space(w, count, &space, &ok);
+    if (ret != 0)
+        return ret;
+    if (ok == 1) {
+        off = w->off;
+        off2 = off + 64;
+        h = (LIBNETB_UDPHDR *)(w->buf + off);
+        n = space - 64;
+        h->used = 1;
+        h->valid = 0;
+        data = (char *)h + 64;
+        h->size = space - 64;
+        h->capacity = count;
+        h->addr = *addr;
+        h->port = port;
+        h->flags = flags;
+        h->end = 1;
+        h->self = (int)h;
+        memcpy(data, ptr, count);
+        ret = libnetb_trans_data(data, w->iop_buf + off2, n);
+        if (ret != 0)
+            return ret;
+        ret = libnetb_trans_data(h, w->iop_buf + off, 64);
+        if (ret != 0)
+            return ret;
+        w->off += space;
+        if (w->off >= w->size)
+            w->off = 0;
+        *plen = count;
+    } else
+        *plen = 0;
+    *perr = *plen;
+    return 0;
+}
+
 
 int func_00247F58(LIBNETB *s, void *ptr, sceBInetAddress *addr, int *pdone, int *perr)
 {

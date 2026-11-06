@@ -130,21 +130,41 @@ def compile_cmd(src: Path, obj: Path, compiler: str = COMPILER, flags: list[str]
     return cmd + [str(src), "-o", str(obj)]
 
 
+def gcc_relative(src: Path, includes: list[Path] | None = None) -> tuple[str, Path, list[Path]]:
+    """(cwd, src, includes) for a GCC compile with no absolute path in it: cwd the tree the unit lies in (the
+    parent of the path's last `src` directory, else the unit's own directory), the rest relative to it.
+
+    A tree's path reached GCC's code: dmelocal.c's 0x617060 and 0x619DD8 matched in a 71-character tree and
+    missed in the main tree's 29, the same source, while built this way every GCC unit gave one object from
+    either tree (integrator, 2026-11-06; README "A GCC UNIT'S CODE DEPENDED ON THE TREE'S PATH"). The object's
+    own path does not matter (measured), so it stays as the caller gave it."""
+    a = Path(os.path.abspath(src))
+    at = [i for i, x in enumerate(a.parts) if x == "src"]
+    cwd = Path(*a.parts[:at[-1]]) if at else a.parent
+    return (str(cwd), Path(os.path.relpath(a, cwd)),
+            [Path(os.path.relpath(os.path.abspath(i), cwd)) for i in includes or []])
+
+
 def compile_obj(src: Path, obj: Path, compiler: str = COMPILER, flags: list[str] | None = None,
                 includes: list[Path] | None = None) -> subprocess.CompletedProcess:
     obj.parent.mkdir(parents=True, exist_ok=True)
     if obj.exists():
         obj.unlink()
     env = dict(os.environ, WINEDEBUG="-all")
+    cwd = None
     if is_gcc(compiler):
         # the driver's temporaries (the .i and .s it hands on) go where $TMPDIR says: never /tmp
         tmp = HERE / "build" / "tmp"
-        tmp.mkdir(parents=True, exist_ok=True)
+        if not os.environ.get("SC_GCC_ABSOLUTE"):   # set: the old absolute paths (the canary's negatives)
+            cwd, src, includes = gcc_relative(src, includes)
+            obj = Path(os.path.abspath(obj))
+            tmp = Path("build") / "tmp"
+        (Path(cwd or ".") / tmp).mkdir(parents=True, exist_ok=True)
         env.update(TMPDIR=str(tmp), TMP=str(tmp), TEMP=str(tmp))
     try:
         # a build that wants a licence (mwcps2-2.3.3-000906 does) waits forever under wine
         r = subprocess.run(compile_cmd(src, obj, compiler, flags, includes), capture_output=True,
-                           text=True, env=env, timeout=120)
+                           text=True, env=env, timeout=120, cwd=cwd)
     except subprocess.TimeoutExpired:
         raise RuntimeError(f"compile timed out (a licence prompt?): {compiler} {src}") from None
     if r.returncode != 0 or not obj.exists():
@@ -197,6 +217,7 @@ def _sym_address(st: E.SymbolTable, name: str, near: int | None = None) -> int |
     return None
 
 
+GP_VALUE = 0x1DD2F0                 # $gp, as the header says
 SHF_EXECINSTR = 0x4
 
 # the bytes a load or store moves, by its major opcode (lb lh lw lbu lhu lwu sb sh sw lwc1 swc1 ld sd,
@@ -814,6 +835,7 @@ class Result:
     relocs: list[RelocFinding] = field(default_factory=list)
     diff_lines: list[str] = field(default_factory=list)
     differing: int = 0
+    data_refs: list[str] = field(default_factory=list)      # the report's sets, when the code differs (round 45a)
 
     @property
     def reloc_bad(self) -> list[RelocFinding]:
@@ -889,7 +911,86 @@ def compare(obj: Path, name: str, sym: E.Symbol, img: E.Image, st: E.SymbolTable
             [f"{w:08x}  {x}" for _, w, x in dt], [f"{w:08x}  {x}" for _, w, x in dc],
             fromfile=f"target {sym.name} 0x{sym.addr:08X}", tofile=f"candidate {name}",
             lineterm="", n=context))
+        res.data_refs = data_refs_report(res, img.read(sym.addr, sym.size), st)
     return res
+
+
+def target_data_refs(code: bytes, addr: int, gp: int | None = None) -> set[int]:
+    """The addresses the target's own code makes: each `lui` paired with the %lo uses of its register (until the register is set
+    again or a jump's slot ends the straight line), and, given gp, each $gp-relative access. Its code alone: no relocation exists for it."""
+    hi: dict[int, int] = {}
+    full: set[int] = set()                  # a register `addiu r,r,%lo` completed: the other arm's addiu may still use its %hi
+    refs: set[int] = set()
+    for off in range(0, len(code) - 3, 4):
+        w = int.from_bytes(code[off:off + 4], "little")
+        op, rs, rt = w >> 26, (w >> 21) & 31, (w >> 16) & 31
+        imm = _s16(w & 0xFFFF)
+        if op == 0x0F:                      # lui
+            hi[rt] = (w & 0xFFFF) << 16
+            full.discard(rt)
+        elif op == 0x09 or op == 0x0D:      # addiu, ori: a full address, kept in rt
+            if rs in hi:
+                refs.add((hi[rs] + imm) & 0xFFFFFFFF if op == 0x09 else hi[rs] | (w & 0xFFFF))
+                if rt == rs:
+                    full.add(rt)
+                else:
+                    hi.pop(rt, None)
+                    full.discard(rt)
+            elif rt in hi:
+                del hi[rt]
+                full.discard(rt)
+        elif op in ACCESS_WIDTH or op in (0x31, 0x35, 0x39, 0x3D, 0x1E, 0x1F):   # a load or store through %lo, or $gp
+            if rs in hi and rs not in full:
+                refs.add((hi[rs] + imm) & 0xFFFFFFFF)
+            elif rs == 28 and gp is not None:
+                refs.add((gp + imm) & 0xFFFFFFFF)
+            if op in (0x20, 0x21, 0x23, 0x24, 0x25, 0x27, 0x37, 0x1E) and rt in hi:   # a load overwrites rt
+                del hi[rt]
+        elif op == 0 and (w & 0x3F) in (0x20, 0x21, 0x22, 0x23, 0x24, 0x25, 0x26, 0x27, 0x2A, 0x2B, 0x2C, 0x2D, 0x2E, 0x2F, 0x00, 0x02, 0x03):
+            # (`addu v1,v1,s3` keeps a %hi for a later `lw v1,%lo(v1)`: an indexed table's base)
+            rd = (w >> 11) & 31
+            if rd in hi and (w & 0x3F) not in (0x21, 0x2D) or (rd in hi and rs != rd and rt != rd):
+                del hi[rd]
+    return refs
+
+
+def data_refs_report(res: Result, target: bytes, st: E.SymbolTable) -> list[str]:
+    """Data references compared as sets (the weapons' round 40): when the code differs a relocation has no partner by position, so the
+    verdict says nothing of the data; which addresses does each side reach? The candidate's by its relocations (symbol + addend), the
+    target's from its code alone. An object's own unnamed data has no address to compare, on either side, and is only counted. A
+    report: no verdict reads it, and a miss it cannot read is said in one line."""
+    try:
+        cand: set[int] = set()
+        own = 0
+        for f in res.relocs:
+            if f.type in ("R_MIPS_LO16", "R_MIPS_GPREL16", "R_MIPS_LITERAL"):
+                if f.symbol.startswith(".") or f.got is None:
+                    own += 1
+                else:
+                    cand.add(f.got)
+        rows = target_data_refs(target, res.addr, GP_VALUE)
+
+        def row(a: int) -> str | None:
+            d = st.data_containing(a)
+            if d is not None:
+                return d.name if d.addr == a else f"{d.name}+0x{a - d.addr:X}"
+            f = st.at_addr(a)
+            return f.name if f else None
+
+        both = cand & rows
+        only_c = sorted(cand - rows)
+        only_t = sorted(rows - cand)
+        named_t = [a for a in only_t if row(a)]
+        out = [f"  data references as sets: {len(both)} in both, {len(only_t)} only the target's "
+               f"({len(only_t) - len(named_t)} of them unnamed), {len(only_c)} only this candidate's"
+               + (f", {own} of this object's own not compared" if own else "")]
+        if named_t:
+            out.append("    only the target: " + " ".join(row(a) for a in named_t[:16]))
+        if only_c:
+            out.append("    only the candidate: " + " ".join(row(a) or f"0x{a:08X}" for a in only_c[:16]))
+        return out
+    except Exception as e:      # a report's line, never a verdict
+        return [f"  data references as sets: not read ({e})"]
 
 
 def report(res: Result, verbose: bool = False) -> str:
@@ -898,6 +999,8 @@ def report(res: Result, verbose: bool = False) -> str:
     shown = res.relocs if verbose else res.reloc_bad + res.reloc_unchecked
     for f in shown:
         out.append(f"    {f}")
+    if res.data_refs:
+        out.extend(res.data_refs)
     if res.diff_lines:
         out.append("")
         out.extend(res.diff_lines)

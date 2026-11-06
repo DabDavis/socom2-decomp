@@ -1,6 +1,8 @@
 /* char_type.cpp (OVL2, the press beta's file name: its asserts name char_type.cpp): the character
  * types. Only one function so far. */
 
+/* (this file's end: THE LEVEL) */
+#define __MSL_POD_DTOR_ARGS
 #include <algorithm>
 #include <new>
 #include <stdio.h>
@@ -1357,3 +1359,8 @@ float CVoiceFont::GetWhisperFactor() const
  * `data_ + size_` iterator, the online lobby's round-20 refit -- and Create, KorusGetPackedWeapons,
  * Open, Parse and RdrFetch_CharacterType inline them whole at the settled level 5, every function of
  * the unit scoring as under the stand-in) */
+
+/* A MODELLING DEVICE, a "Level 6, or 8?" witness, with `__MSL_POD_DTOR_ARGS` at this file's head (include/vector; the MSL headers round 40): the levels of
+ * detail's clear 0x540990 and deleter destructor 0x540A50 whole, and their insert 0x540410 calling that destructor with -1 (out of class and too tall for it at
+ * any pass: LOD's destructor carries a no-code chain, zchar.h) */
+#pragma inline_depth(6)

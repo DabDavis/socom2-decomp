@@ -368,8 +368,13 @@ void func_0024B028(float *pfCoef, int *piIndices, int iOrder, float fMid)
 }
 
 /* the set's decoder, the quantiser's inverse: each subvector rebuilt from its indices, its prediction added, the mean added
- * back. OPEN (GCC round 44a, right size): the giv of i * 4 serves apVQ[i] and the table as the target's, whose address is
- * `addu v0,sp,s3; lw v1,80(v0)` (here sp + 80 first), and three saved registers rotate (pfBase, the offset, piIndices). */
+ * back. OPEN (GCC round 45a, 8 bytes over, every saved register right since the last loop reads afX directly -- its hoisted
+ * base `move a1,s7` is post-loop CSE's, one ref less on pfBase): the giv of i * 4 serves apVQ[i] and the table, whose address is
+ * `addu v0,sp,s3; lw v1,80(v0)` in the target. Here sp + 80 is a pseudo of its own (`addiu v1,sp,80; addu v0,v1,s3`) because
+ * loop.c's second pass hoists it: threshold * savings * life >= the loop's real insns, with life 1 and savings 1, moves it at 63
+ * insns and not at 71 or 72 (an added statement proved it: at 71 the target's form comes back, combine then folding the add
+ * into the address). The target's loop has more real insns at that pass than this text: index variables, `&afX[2 * i]`
+ * and the prediction add's spellings leave the count at 63. */
 void func_0024B2F8(const int *piIndices, float *pfCoef, int iOrder, float fMid)
 {
 	float afX[SUB_VECTORS * SUB_DIMENSION];
@@ -415,5 +420,5 @@ void func_0024B2F8(const int *piIndices, float *pfCoef, int iOrder, float fMid)
 		*pfX++ += afPred[1];
 	}
 	for (i = 0; i < iOrder; i++)
-		pfCoef[i] = pfBase[i] + pfMean[i];
+		pfCoef[i] = afX[i] + pfMean[i];
 }

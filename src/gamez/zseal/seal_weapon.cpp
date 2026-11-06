@@ -127,12 +127,6 @@ bool CZSealBody::SetAimDirR(const CPnt3D *dir, bool reset)
     return ok;
 }
 
-extern "C" {
-/* the aim's direction brought up to date (SOCOM 1's UpdateAimDir__10CZSealBodyFb; OVL2 0x5DEEC0,
- * unwritten) */
-bool func_005DEEC0(CZSealBody *seal, bool keep);
-}
-
 /* the aim at a point: the point kept, and the reticle's too unless asked to keep it, the normal
  * when there is one; with none the aim falls back on the unit -z from the aim's origin (OVL2
  * 0x5DF4E0; SOCOM 1's SetAimPointW, the fields 0x3A0 on) */
@@ -156,7 +150,7 @@ bool CZSealBody::SetAimPointW(const CPnt3D *aimpt, const CPnt3D *aimnorm, bool k
         CalcAimGoal(&v->m_aim_from, &CPnt3D::unit_nz, &v->m_aim_goal);
         return false;
     }
-    return func_005DEEC0(this, keep);
+    return UpdateAimDir(keep);
 }
 
 /* the aim and fire points and their positions (SOCOM 1's m_curr_aimpos, m_curr_aimpt,
@@ -289,6 +283,120 @@ bool CZSealBody::GetFirepointPos(CPnt3D &pos, const char *name)
     return ok;
 }
 
+/* the point's place in the world, kept from the frame's UpdateAimParams or looked up by name (inlines: UpdateAimDir's; the
+ * names ours) */
+static inline bool CurAimPos(CZSealBody *s, CPnt3D &pos)
+{
+    CSealAimPoints *a = (CSealAimPoints *)s;
+
+    if (a->m_curr_aimpt) {
+        pos = a->m_curr_aimpos;
+        pos.Add(&((CEntity *)s)->m_posW, &pos);
+        return true;
+    }
+    return s->GetFirepointPos(pos, "aimpoint");
+}
+
+static inline bool PlainFirePos(CZSealBody *s, CPnt3D &pos)
+{
+    CSealAimPoints *a = (CSealAimPoints *)s;
+
+    if (a->m_curr_firept) {
+        pos = a->m_curr_firepos;
+        pos.Add(&((CEntity *)s)->m_posW, &pos);
+        return true;
+    }
+    return s->GetFirepointPos(pos, "firepoint");
+}
+
+static inline bool CurFirePos(CZSealBody *s, CPnt3D &pos)
+{
+    if (s->m_kit.CurWeaponIsM203Mode())
+        return s->GetFirepointPos(pos, "firepoint_203");
+    return PlainFirePos(s, pos);
+}
+
+/* a vector turned about (inline; the name ours) */
+static inline void NegatePoint(CPnt3D &v)
+{
+    v.x = -v.x;
+    v.y = -v.y;
+    v.z = -v.z;
+}
+
+/* whether the aim may stand: any but a player's, a moving one's, or the camera within the prone limits of the body's
+ * direction (inline: SOCOM 1's CanAttainAim, out of line there; the name kept) */
+static inline bool AimAttainable(CZSealBody *s)
+{
+    if (!s->IsPlayer())
+        return true;
+    CEntity *e = (CEntity *)s;
+
+    if (e->m_velM.x * e->m_velM.x + e->m_velM.y * e->m_velM.y + e->m_velM.z * e->m_velM.z < 0.001f) {
+        /* (read through a const reference and written direct: the target keeps &v.y and &v.z for the reads alone, frame
+         * slots for the stores) */
+        CPnt3D v = *(const CPnt3D *)((char *)zdb::CWorld::m_world->m_camera + 0x20);
+        const CPnt3D &p = v;
+
+        v.x = -p.x;
+        v.y = -p.y;
+        v.z = -p.z;
+        float d = p.x * s->m_1344.x + p.y * s->m_1344.y + p.z * s->m_1344.z;
+
+        if (d < theCharacterDynamics.m_cosProneMinAimPitch)
+            return false;
+        if (!(d <= theCharacterDynamics.m_cosProneMaxAimPitch))
+            return false;
+    }
+    return true;
+}
+
+/* (OVL2 0x5DEEC0: zseal.h's; SOCOM 1's UpdateAimDir) */
+bool CZSealBody::UpdateAimDir(bool keep)
+{
+    CPnt3D aimpos;
+    CSealAimView *v = (CSealAimView *)this;
+
+    m_kit.GetCurItemFireClass();
+    if (!m_aim_point_valid)
+        return false;
+    if (!CurAimPos(this, aimpos)) {
+        CPnt3D firepos;
+
+        if (!CurFirePos(this, firepos))
+        {
+            bool g = CalcAimGoal(&v->m_aim_from, &CPnt3D::unit_nz, &v->m_aim_goal);
+
+            return g;
+        }
+        aimpos = firepos;
+    }
+    aimpos.x = m_posW.x;
+    aimpos.z = m_posW.z;
+    CPnt3D pt = m_1464;
+    CPnt3D dir;
+    CQuat q = m_quat;
+
+    NegatePoint(q.vec);
+    dir = pt - aimpos;
+    q.Apply(&dir, &dir, 1);
+    dir.Normalize();
+    if (m_state == 2 || (m_state == 3 && PeekBaseState() == 2)) {
+        if (!AimAttainable(this)) {
+            m_1458 = m_prev_1458;
+            m_1470 = m_prev_1470;
+            m_1464 = m_prev_1464;
+            m_have_aim_norm = m_prev_have_aim_norm;
+        }
+        dir = m_1464 - aimpos;
+        q.Apply(&dir, &dir, 1);
+        dir.Normalize();
+    }
+    bool g = CalcAimGoal(&v->m_aim_from, &dir, &v->m_aim_goal);
+
+    return g;
+}
+
 /* the weapon's timing and its sequence (SOCOM 1's 0xDD0-0xDDF and its m_weapon_seq pointer at 0xF88:
  * the times 276 bytes on here, the sequence held at 0x1160 -- zseal.h keeps them as bytes; the view
  * and the names ours) */
@@ -356,29 +464,9 @@ void CZSealBody::SetWeaponState(WEAPON_STATE state)
  * a finished draw or put-away turns into the other's state; then the aim's direction, the aim and the
  * kit's frame -- but in state 16, which returns at once. The state read once into the byte enum
  * (GetWeaponState inlined loads the word again for the bit test).
- * OPEN, 5 instructions, the draw's hold test alone (case 1): the target loads the hold time (0xEE8)
- * into $f2, then the down time into $f0, the sequence's time into $f1, and sums `add.s $f0,$f0,$f2`
- * (down + hold, the sum in the down's register); every spelling here gives the down $f1 and the time
- * $f0 -- `hold + down` or `down + hold` in place (CSE'd for the store) or in a local, an inline
- * returning the sum on the view, inline accessors for both, a two-float inline taking (down, hold)
- * (its arguments evaluated right to left), the comparison reversed (`>=`: c.lt.s). SOCOM 1's (0x2C02C0)
- * loads the down first and sums into the hold's register: SOCOM II's source changed here. Round 52,
- * MW's colouring replayed (tools/igreplay.py on the FPR record, --want 33=f0,34=f2,35=f0,37=f1): every
- * placement giving the target's four is `sum < hold < currT < down` -- the sum a front-end temporary
- * (the store's CSE) and the three loads numbered hold, currT, down, where every spelling here loads
- * hold, down, then currT (the sum's operands first); hold in a named local (propagated: 6), the sum
- * through an inline accessor on the view, `down + hold` or `hold + down`, in a local or twice, or the
- * test reversed (5-7) do not reorder them */
-/* OPEN, 5 instructions, the hold time's sum only: the target loads the hold time first ($f2) and the
- * down time second ($f0), adds them as `add.s $f0,$f0,$f2` (the down time the first source, the sum in
- * its register) with the current time in $f1; MW puts the first-loaded operand first. Round 56: the
- * sum either way round in the test, the store or both, `>=` with the sum on the left, the sum in a
- * local (in one statement or two), and every declaration order of named locals for the hold, down
- * and current times (2 and 3 of them, each sum and compare way round, 36 variants): 5-7 off
- * (build/scratch/kit/v_wt.py); igreplay's float record: the colouring follows the numbering, the
- * operand order does not. Round 59: the test through a three-float inline taking (down, current,
- * hold) or (hold, current, down) -- its by-value copies bound last argument first, the numbering
- * the replay wants -- with the sum either way round, the store's sum either way: 5-6 */
+ * Byte-exact (the kit's round 61, open since round 52): the hold time a `const float` local read first and added second --
+ * the const keeps its number where a plain local propagates, which is the numbering `sum < hold < currT < down` the colouring
+ * replay asked for in round 52 */
 void CZSealBody::WeaponsTick(float dT)
 {
     CSealWepView *v = (CSealWepView *)this;
@@ -391,8 +479,12 @@ void CZSealBody::WeaponsTick(float dT)
         case 4:
             break;
         case 1:
-            if (v->m_wep_seq.m_currT <= v->m_wep_holdT + v->m_wep_downT) {
-                v->m_wep_seq.m_currT = v->m_wep_holdT + v->m_wep_downT;
+            /* (a const holder keeps its number, below the current time's and the down time's: the sum f0, the time f1 --
+             * the kit's round 61, after 40-odd spellings of the plain field) */
+            const float hold = v->m_wep_holdT;
+
+            if (v->m_wep_seq.m_currT <= v->m_wep_downT + hold) {
+                v->m_wep_seq.m_currT = v->m_wep_downT + hold;
                 m_weapon_state &= ~0x10;
             } else
                 v->m_wep_seq.Tick(dT);
@@ -421,7 +513,7 @@ void CZSealBody::WeaponsTick(float dT)
             break;
         }
     }
-    func_005DEEC0(this, false);
+    UpdateAimDir(false);
     AimWeapon();
     m_kit.PreTick(dT);
 }
