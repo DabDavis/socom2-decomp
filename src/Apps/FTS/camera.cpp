@@ -1243,6 +1243,17 @@ inline float LengthXZ(const CPnt3D *p)
     return sqrtf(p->x * p->x + p->z * p->z);
 }
 
+/* a matrix's rows, held in a local before they are returned (ours, inline, as vis_vu.cpp's: an
+ * argument made of an inline with a body of its own is set up before the call's other arguments --
+ * the death camera's turn loads rot_mtx into a1 first and into a0 in the call's delay slot; a
+ * one-expression inline is substituted and set up in argument order, the weapons' round 36) */
+static inline float (*MatrixRows(CMatrix *m))[4]
+{
+    float (*r)[4] = m->m_matrix;
+
+    return r;
+}
+
 
 /* the death camera's own look (SOCOM 1's GetDeadCamPoints' place and signature -- GetTetherCamPoints
  * calls it, it calls UpdateDeathCamState first -- SOCOM II's body): the turn taken from the stick
@@ -1250,15 +1261,13 @@ inline float LengthXZ(const CPnt3D *p)
  * slow spin, 3 the point carried about the killed SEAL and turned toward the killer, looking at
  * it -- the angles wrapped, the pitch held, the point turned by both and at state 3 raised and
  * pushed out. Returns whether the camera looks at the killer.
- * OPEN, 2 instructions (unwritten before round 23; build/scratch/core/v_dc*.py): the rotation's
- * arguments -- the target moves rot_mtx into a1 first and into a0 in the call's delay slot (SOCOM
- * 1's GetDeadCamPoints too, both its calls), ours a0 first. The no-op conversion that closed
- * GetTetherCamPoints' (an address) does nothing to a register parameter: casts on either or both
- * arguments, through unsigned int, int, void * or an address of an element, a void * or const
- * prototype, the CMatrix conversion operator and member or free inlines taking the matrix all
- * leave a0 first (build/scratch/core/t_rot*.cpp: every spelling of f(p->m, p->m) does). Settled
- * on the way: the angle reuses turn_x (the target keeps it in turn_x's $f22), the turn's rate a
- * local ahead of the right vector, which is built field by field (x read first) */
+ * BYTE-EXACT since round 24 (written in round 23, 2 off; build/scratch/core/v_dc24.py): the
+ * rotation's source through MatrixRows (above) -- the target moves rot_mtx into a1 first and into a0
+ * in the call's delay slot (SOCOM 1's GetDeadCamPoints too, both its calls); the direct call, casts
+ * on either or both arguments, a void * or const prototype, the CMatrix conversion operator and
+ * one-expression inlines all set a0 first (round 23: build/scratch/core/t_rot*.cpp). Settled on the
+ * way: the angle reuses turn_x (the target keeps it in turn_x's $f22), the turn's rate a local
+ * ahead of the right vector, which is built field by field (x read first) */
 unsigned char CAppCamera::GetDeadCamPoints(CPnt3D *CamPoint, CPnt3D *CamAimPoint, CMatrix *rot_mtx, float dT)
 {
     unsigned char dead_cam_aim_point = 0;
@@ -1288,7 +1297,7 @@ unsigned char CAppCamera::GetDeadCamPoints(CPnt3D *CamPoint, CPnt3D *CamAimPoint
         float speed_multiplier = 1.5f;
         CPnt3D cam_pos = *CamPoint;
 
-        sceVu0RotMatrixY(rot_mtx->m_matrix, rot_mtx->m_matrix, data_00416208);
+        sceVu0RotMatrixY(rot_mtx->m_matrix, MatrixRows(rot_mtx), data_00416208);
         TransformVectors(rot_mtx, &cam_pos, &cam_pos, 1);
         rot_mtx->SetIdentity();
         CPnt3D ent_pos = m_killed->m_posW;

@@ -167,8 +167,16 @@ public:
     static short BuddyCarryStand;   // OVL1 0x3DEE68 (SOCOM 1's 0x47529C: PickupBuddy's)
     static short BuddyCarriedStand;   // OVL1 0x3DEE78 (SOCOM 1's 0x4752A4)
     static short BuddyCarryBody;   // OVL1 0x3DEE80
+    /* (SOCOM 1's BuddyCarryWalk and BuddyCarryStep, four and ten after BuddyCarryStand there, as here 8
+     * bytes apart: InStateCarrying 0x583E70 pushes them where SOCOM 1's does) */
+    static short BuddyCarryWalk;   // OVL1 0x3DEE88 (SOCOM 1's 0x4752AC)
+    static short BuddyCarryStep;   // OVL1 0x3DEEB8 (SOCOM 1's 0x4752C4)
+    /* (SOCOM 1's BuddyCarriedWalk and BuddyCarriedStep, six and twelve after BuddyCarryStand there,
+     * as here 8 bytes apart: InStateCarried 0x583AF0 pushes them where SOCOM 1's does) */
+    static short BuddyCarriedWalk;   // OVL1 0x3DEE98 (SOCOM 1's 0x4752B4)
     static short BuddyCarryPickup;   // OVL1 0x3DEEA0
     static short BuddyCarriedPickup;   // OVL1 0x3DEEB0
+    static short BuddyCarriedStep;   // OVL1 0x3DEEC8 (SOCOM 1's 0x4752CC)
 };
 
 /* how a SEAL died (SOCOM 1's DWARF, a byte) */
@@ -714,6 +722,10 @@ enum AI_LOOK {
 class CSealCtrl : public CEntityCtrl {
 public:
     CSealCtrl();
+    /* the controllers switched on or off (OVL2 0x598840, new in SOCOM II, seal_control.cpp's: CTStopAll::Tick
+     * calls it beside CSealCtrlAi::SetAiEnabled, the mission cameras with false while one plays; the name
+     * ours) */
+    static void SetEnabled(bool on);
     /* the scan's tick (OVL2 0x600550, the kit lane's range: the map's ScanTick__9CSealCtrlFf; CSealCtrlAi's
      * PreTick, seal_control.cpp's, calls it) */
     void ScanTick(float dT);
@@ -1596,6 +1608,12 @@ public:
  * counters by halfword offset, as the events step them (seal.cpp) */
 class CSealStats {
 public:
+    /* every counter zeroed (SOCOM 1's Reset; OVL2 0x545200, seal.cpp's, between the Incr* counters and
+     * Kill as SOCOM 1's: CZSealBody's constructor calls it for both of the SEAL's stats, as SOCOM 1's
+     * does, SetRoundStatUiVars for its defaults, CMPExitState::UnInit for a round's -- the game states'
+     * round 50 took it for the constructor, but it returns nothing) */
+    void Reset();
+
     unsigned short m_count[0x3c / 2];   // 0x0
     short m_score;   // 0x3c: the MVP score (SOCOM 1's m_sMvpScore, a short there too)
     unsigned short m_count2[3];   // 0x3e
@@ -1917,6 +1935,9 @@ public:
     bool SmoothXZThrottles(float &x, float &z);
     /* whether the throttles leave the SEAL stopped (SOCOM 1's; OVL2 0x586F00, seal_body.cpp) */
     bool IsStopped(float x, float z, float t);
+    /* the move's quadrant taken from the throttles, which it snaps onto the quadrant's axis when asked
+     * (SOCOM 1's; OVL2 0x5858A0, seal_body.cpp: the carry states call it with their z and x throttles) */
+    void UpdateQuadrant(float &z, float &x, bool b);
     /* the anim after a step: a blend popped when asked and the state set from what is left, then
      * the state's own control (SOCOM 1's took three throttles; OVL2 0x5870E0, seal_body.cpp) */
     CZBodyAnimBlend *SealAnim(bool pop);
@@ -2011,7 +2032,7 @@ public:
     /* the blends popped down to a count, twelve at most; when that worked and asked, the top blend's
      * control cleared and the SEAL asked to go prone (SOCOM 1's ClearStack, after PopBlend: OVL2
      * 0x58A5E0 -- SOCOM II adds the limit; the stances inline it) */
-    void ClearStack(unsigned int count, bool clear);
+    CZBodyAnimBlend *ClearStack(unsigned int count, bool clear);
     /* the blends popped down to a base stance's (anims 1, 18 or 26 on top), twelve at most, and one
      * more when asked; the top blend's control cleared and stance 2 asked; the new top returned
      * (SOCOM 1's ClearToBase: OVL2 0x58A4D0 -- SOCOM II asks IsCurrentBlend and adds the limit) */
@@ -2154,7 +2175,8 @@ public:
     /* (whether a goal came of it: CalcAimGoal, 0x5DF600, keeps the bool -- the kit lane, round 14) */
     bool CalcGoalDir(const CPnt3D *cur, const CPnt3D *dir, CPnt3D *goal, float up, float down, float left,
                      float right);
-    bool SetEyeLookDir(float pitch, float yaw, const CPnt3D *dir, float rate);
+    /* (SOCOM 1's took the direction third; SOCOM II's one caller, CLook::SetLookDir 0x5ADC70, passes none) */
+    bool SetEyeLookDir(float pitch, float yaw, float rate);
     bool SetLookDir(const CPnt3D *dir, float rate);
     static void InitLookAnims();
     bool CanHeadLook();
@@ -2402,7 +2424,9 @@ public:
     /* a motion the position code keeps (ComputeNextPosition and PostPreTick read and write it; the
      * collision tick 0x54F570 stops checking once its length is all but zero -- the name ours) */
     CPnt3D m_f44;   // 0xf44
-    unsigned char _f50[0xf60 - 0xf50];
+    unsigned char _f50[0xf54 - 0xf50];
+    /* the gunner's place on the turret (0x585CD0 puts it there each frame anim 1 plays; the name ours) */
+    CPnt3D m_gunner_pos;   // 0xf54
     /* the crouched move's throttles as CrouchMoveControl 0x582D10 last took them (the names ours) */
     float m_f60;   // 0xf60
     float m_f64;   // 0xf64

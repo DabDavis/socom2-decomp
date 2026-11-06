@@ -53,6 +53,19 @@ extern "C" {
 extern bool data_00650698;   /* the rumble switch (SOCOM 1's file static) */
 extern float data_006505E8;  /* (the weapon's raise time a closed menu restarts) */
 extern CNetGameState *data_00437CE8;
+/* the controllers' switch (OVL1 data 0x3DF1B0, 1 to begin with: SetEnabled below sets it; PreTick, Tick
+ * and PostTick each do nothing while it is off -- the name unknown) */
+extern bool data_003DF1B0;
+}
+
+/* the controllers switched on or off, the switch written only when it changes (OVL2 0x598840, new in
+ * SOCOM II -- SOCOM 1 has nothing between the constructor and DrawFunc<CDynGrenade>: the unit's first
+ * definition, its draft's body. CTStopAll::Tick calls it with the AI's CSealCtrlAi::SetAiEnabled, the
+ * mission cameras with false while one plays and true after, as they switch the AI; the name ours) */
+void CSealCtrl::SetEnabled(bool on)
+{
+    if (data_003DF1B0 != on)
+        data_003DF1B0 = on;
 }
 
 /* a vector's length squared on the ground plane (OVL2 0x5975B0: an inline's copy, before the
@@ -71,11 +84,7 @@ extern "C" void func_00597530(const CMatrix *m, CPnt3D *p, int count)
 }
 
 extern "C" {
-/* the controllers' switch (OVL1 data 0x3DF1B0, 1 to begin with: 0x598840 sets it, CTStopAll::Tick and
- * the mission cameras call that; PreTick, Tick and PostTick each do nothing while it is off -- the
- * name unknown) and a flag nothing sets (OVL2 bss 0x66B3E0, read only here: the look's tick below
- * never runs) */
-extern bool data_003DF1B0;
+/* a flag nothing sets (OVL2 bss 0x66B3E0, read only here: the look's tick below never runs) */
 extern bool data_0066B3E0;
 /* (CSealCtrl::ScanTick -- SOCOM 1's ScanTick__9CSealCtrlFf, which its Tick calls in the same place;
  * OVL2 0x600550, the kit lane's seal_look.cpp range -- is zseal.h's, called by name) */

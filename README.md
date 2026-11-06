@@ -2065,6 +2065,43 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the engine core, round 24** (GetDeadCamPoints 0x297A30 -- the weapons' round-36 rule: the rotation's second
+  argument through a `static inline MatrixRows(CMatrix *)` that assigns a local and returns it -- and CZAnim::Copy 0x26D940,
+  unwritten before, byte-exact; zdb::CDIBBox::SetCDIBBox 0x2DC7A0 written under its name, OPEN at the size, 32):
+  - an argument made of an inline with a body of its own is set up first even when it is a register parameter; casts and
+    one-expression inlines do not change the order;
+  - `&local.member[0]` at offset 0 (the object's own address) is never a common subexpression -- only a no-op integer
+    conversion makes MW hold it in a register (SetCDIBBox's first corner, a marked stand-in);
+  - one loop counter shared by every loop of a function changes a later loop's counter / offset numbering and allows
+    strength reduction, a fresh counter per loop merges with the count or is not reduced (CZAnim::Copy);
+  - `*p++` loads and then steps the pointer; the target's step-then-load-at-minus-4 is `p++; ... p[-1]`; a member pointer
+    read into a local before a `new` stays in a saved register, read through `this` it is reloaded after the call;
+  - `struct { ctor(box) { GetBBoxCorners(m_pts, box); } CPnt3D m_pts[8]; }` gives the CPnt3D() construction loop -- the
+    device of zparticle_source.cpp's FaceCorners and node_model.cpp's BoxCorners.
+- **Tells from the zdb world, textures, rdr and sound, round 30** (zdb::CSaveLoad::Load 0x318DA0, 0x7D8 and unwritten
+  before, byte-exact -- SOCOM 1's FilterMissionFolder inlined with root "/run"; UpdateBBoxFromDI's children call corrected
+  to vtable slot 0x40; CVisual::m_basefog_near named, SOCOM 1's):
+  - MW EVALUATES AN INLINED CALL'S ARGUMENTS RIGHT TO LEFT (they are bound to the inline's parameters) and an out-of-line
+    call's left to right; conversions inside an inlined body keep left to right (build/scratch/world-r30/wld/p_args*.cpp);
+    calls passed as arguments to an inline wrapper are inlined one level deeper than written directly (BuildMTW);
+  - `key = f(); if (key)` moves the result to a saved register and tests that, `if ((key = f()) != 0)` tests v0 with the
+    move in the delay slot -- a declaration inside the condition behaves like the first form; a pointer declared
+    uninitialised mid-block, ahead of the local it is later assigned from, is numbered first;
+  - `s = 1/x; g1 = s; g2 = 1/s;` puts both divisions ahead of the stores, `g1 = 1/x; g2 = 1/g1;` stores between and costs
+    two instructions; `obj->f = call()` loads obj after the call -- to hold it in a saved register across the call, as
+    the target does, assign it to a pointer local first.
+- **Tells from the UI, round 35** (UpdateSelItemValves 0x282140, unwritten before, and zAnimUIMenuTick 0x2745A0, open since
+  round 12, byte-exact; ReleaseSlotItem 0x283170 written, OPEN at the size):
+  - a member of a stack object read through an inline accessor is read off the frame; read directly it shares the
+    constructor's hoisted address in a spare saved register (UpdateSelItemValves' `it.Weapons()`);
+  - `igreplay --move` with `--target` worked twice: move a named local's node out among the late temporaries -- the shape
+    is "drop the named local" -- and number an inline's local at a chosen place -- "a by-reference out-parameter into a
+    variable the caller declares there" (zAnimUIMenuTick's GetCommandC2D overload);
+  - a loop whose body always returns keeps MW's unrotated layout (a jump to the test at the bottom, no guard copy); a
+    `return` at the end of a branch repeats the destructor calls of the scope's objects at that exit; a flag set after the
+    step's call in while form lands in the back branch's delay slot, in a `for` in the step call's slot;
+  - a float operator's operands are numbered left first, and nothing tried makes MW generate the right operand first
+    (PowerPC MW does so only when the right operand contains a call).
 - **Tells from completing the MSL headers, round 36** (every one-byte scalar vector on the byte pod; the list's range init
   through push_back; the HUD's frame-slot hypothesis confirmed and measured; probes build/p36/, untracked: mkbyte.py,
   rmequip.py, oies.py, additem.py, imsprobe.py, runcheck.sh, cmpcheck.py; runs and objcmp output in build/scratch/msl-r36/.
