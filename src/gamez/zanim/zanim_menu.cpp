@@ -575,8 +575,10 @@ inline bool ChooseSecondaryForCharacter(const CSelectedCharsItr &it, EQUIP_ITEM 
     return true;
 }
 
-/* the item set into a slot after its old one is let go (SOCOM II's, 0x283170: not named yet) */
-extern "C" void func_00283170(const CSelectedCharsItr &it, int slot, EQUIP_ITEM item);
+/* the item in a slot let go before another goes in (SOCOM II's, 0x283170, below) */
+namespace {
+void ReleaseSlotItem(const CSelectedCharsItr &it, int slot, EQUIP_ITEM item);
+}
 /* the equipment slots a weapon takes in a loadout, 1 for an unknown item (zwep_weapon.cpp's 0x3D3750,
  * not named yet: char_type.cpp declares it alike) */
 extern "C" int func_003D3750(EQUIP_ITEM item);
@@ -651,7 +653,7 @@ bool ChoosePrimaryForCharacter(const CSelectedCharsItr &it, EQUIP_ITEM item)
 
     if (item == first)
         return true;
-    func_00283170(it, 0, item);
+    ReleaseSlotItem(it, 0, item);
     (*weapons)[0].SetupCharacterWeapon(item);
 
     CZFTSWeapon *w = m_listWeapons__8CZWeapon.GetWeapon(item);
@@ -903,6 +905,153 @@ EQUIP_ITEM NextPickBesides(const CSelectedCharsItr &it, int index, EQUIP_ITEM it
     return item;
 }
 
+/* every slot holding an accessory of the old item given a pick instead: the first such slot the
+ * kept item, the rest the next picks besides (ours: ReleaseSlotItem's 143 and 63 cases) */
+inline void ReplaceAccessory(const CSelectedCharsItr &it, EQUIP_ITEM what, EQUIP_ITEM &pick, bool &first,
+                             EQUIP_ITEM keep)
+{
+    int s = FindItemSlot(it, what, 1);
+
+    while (s != -1) {
+        data_003DD060[it.m_index].a = EQUIP_NONE;
+        pick = NextPickBesides(it, pick, EQUIP_NONE, EQUIP_NONE);
+        ChooseSlotForCharacter(it, first ? pick : keep, s);
+        s = FindItemSlot(it, what, 1);
+        first = true;
+    }
+}
+
+/* whether the kept item goes into this slot: the first time, slot 3 (ours) */
+inline bool KeepFirst(bool first, int s)
+{
+    return first && s == 3;
+}
+
+/* the same for an M203 rifle's grenades: slot 3, the first time, the kept second item (ours) */
+inline void ReplaceGrenade(const CSelectedCharsItr &it, EQUIP_ITEM what, EQUIP_ITEM &pick, bool &used,
+                           EQUIP_ITEM keep, int keepSlot)
+{
+    int s = FindItemSlot(it, what, 1);
+
+    while (s != -1) {
+        data_003DD060[it.m_index].a = EQUIP_NONE;
+        pick = NextPickBesides(it, pick, EQUIP_NONE, EQUIP_NONE);
+        bool first = !used;
+
+        ChooseSlotForCharacter(it, KeepFirst(first, s) ? keep : pick, s);
+        s = FindItemSlot(it, what, 1);
+        used = first ? keepSlot == 3 : false;
+    }
+}
+
+/* the item in a selected character's slot let go before another goes in (SOCOM II's, 0x283170; the
+ * name ours): the old item's accessories elsewhere in the equipment slots replaced by picks -- a
+ * type-101 single-slot item's 195 by the first saved pick, an M203 rifle's or 142's 141 likewise and
+ * its grenades (175, 171, 173) by picks, 143's 179, 178 and 176, 63's 183, 182 and 181, and a
+ * two-slot item's second (185 for 145, 186 for 146, else EQUIP_END) by picks besides the new item --
+ * the saved picks (data_003DD060) cycled on, a 145/146 pick dropped when it is the new item.
+ * Written in the UI's round 35 (unwritten before). OPEN, 58 instructions at the target's size
+ * (0x9D8): every call, block and loop the target's but ReplaceGrenade's slot-3 test -- the target
+ * MATERIALISES the flag (`move v1,zero` in the first test's delay slot, `daddiu v1,zero,1` when
+ * both hold, then `beqz v1` choosing a1), where every form here is jump-threaded into the choice's
+ * branches: `use ? keep : pick` over a bool set in an if, an inline returning `first && s == 3`
+ * (or `if (...) return true; return false;`: an if/else of two assignments, 0x9E0, or a local
+ * `r`), an int, an unsigned char, a ternary, a direct condition, a reference out-parameter, the
+ * flag a caller-scope variable passed by reference (build/scratch/ui/v_rsi*.py) -- then the
+ * registers (43 instructions differ in them alone). Measured on the way, each the target's: the
+ * saved picks read field by field with the second into a local ahead of the first NextPick (a
+ * struct copy goes through the frame); each loop a while with its FindItemSlot before the flag's
+ * update (`first = true` / `used = ...` in the back branch's delay slot); a `return` closing the
+ * single-slot cases (the target runs the two destructors at each exit) */
+void ReleaseSlotItem(const CSelectedCharsItr &it, int slot, EQUIP_ITEM item)
+{
+    CCharacterWeapList *weapons = (CCharacterWeapList *)it.m_weapons;
+
+    if (slot < weapons->size()) {
+        EQUIP_ITEM old = (*weapons)[slot].m_wepId;
+        EQUIP_ITEM pick = EQUIP_NONE;
+
+        if (old != EQUIP_NONE) {
+            EQUIP_ITEM pb = data_003DD060[it.m_index].b;
+            EQUIP_ITEM a = NextPick(it, data_003DD060[it.m_index].a, -1);
+            EQUIP_ITEM b = NextPick(it, pb, -1);
+
+            if (item == a && (a == 145 || a == 146))
+                a = EQUIP_NONE;
+            if (item == b && (b == 145 || b == 146))
+                b = EQUIP_NONE;
+            CCharacterWeap wa;
+            CCharacterWeap wb;
+
+            if (CZFTSWeapon::IsM203Weapon(old) || old == 143 || func_003D3750(old) == 2 || old == 142 ||
+                old == 63) {
+                wa.SetupCharacterWeapon(a);
+                wb.SetupCharacterWeapon(b);
+            }
+            EQUIP_ITEM ia = wa.m_wepId;
+            EQUIP_ITEM ib = wb.m_wepId;
+
+            if (func_003D3750(old) == 1) {
+                if (CZWeapon::GetIDType(old) == 101 && CZWeapon::GetIDType(item) != 101) {
+                    int s = FindItemSlot(it, (EQUIP_ITEM)195, 1);
+
+                    if (s != -1) {
+                        data_003DD060[it.m_index].a = EQUIP_NONE;
+                        ChooseSlotForCharacter(it, wa.m_wepId, s);
+                    }
+                } else if (CZFTSWeapon::IsM203Weapon(old) || old == 142) {
+                    bool used = false;
+                    int s141 = FindItemSlot(it, (EQUIP_ITEM)141, 1);
+
+                    if (s141 != -1) {
+                        data_003DD060[it.m_index].a = EQUIP_NONE;
+                        ChooseSlotForCharacter(it, wa.m_wepId, s141);
+                    }
+                    ReplaceGrenade(it, (EQUIP_ITEM)175, pick, used, ib, s141);
+                    ReplaceGrenade(it, (EQUIP_ITEM)171, pick, used, ib, s141);
+                    ReplaceGrenade(it, (EQUIP_ITEM)173, pick, used, ib, s141);
+                } else if (old == 143) {
+                    bool first = false;
+
+                    ReplaceAccessory(it, (EQUIP_ITEM)179, pick, first, ia);
+                    ReplaceAccessory(it, (EQUIP_ITEM)178, pick, first, ia);
+                    ReplaceAccessory(it, (EQUIP_ITEM)176, pick, first, ia);
+                } else if (old == 63) {
+                    bool first = false;
+
+                    ReplaceAccessory(it, (EQUIP_ITEM)183, pick, first, ia);
+                    ReplaceAccessory(it, (EQUIP_ITEM)182, pick, first, ia);
+                    ReplaceAccessory(it, (EQUIP_ITEM)181, pick, first, ia);
+                }
+                return;
+            }
+            if (func_003D3750(old) == 2) {
+                EQUIP_ITEM second = EQUIP_END;
+
+                if (old == 145)
+                    second = (EQUIP_ITEM)185;
+                else if (old == 146)
+                    second = (EQUIP_ITEM)186;
+                bool first = false;
+
+                if (ia == item)
+                    first = true;
+                int s = FindItemSlot(it, second, slot);
+
+                while (s != -1) {
+                    data_003DD060[it.m_index].a = EQUIP_NONE;
+                    pick = NextPickBesides(it, pick, EQUIP_NONE, EQUIP_NONE);
+                    while (pick == item)
+                        pick = NextPickBesides(it, -1, EQUIP_NONE, item);
+                    ChooseSlotForCharacter(it, first ? pick : ia, s);
+                    s = FindItemSlot(it, second, 1);
+                    first = true;
+                }
+            }
+        }
+    }
+}
+
 /* a weapon put into a selected character's slot (SOCOM II's, 0x282F20; the name ours): an item taking
  * two slots first takes the next free one past it (round the equipment slots, past any locked) for
  * its second -- 185 for a 145, 186 for a 146, else EQUIP_END: what the slot held let go and kept in
@@ -937,7 +1086,7 @@ void PutInSlot(const CSelectedCharsItr &it, const CCharacterWeap &w, int slot)
         else if (id == 146)
             second = (EQUIP_ITEM)186;
         if (s < weapons->size()) {
-            func_00283170(it, s, id);
+            ReleaseSlotItem(it, s, id);
             data_003DD060[it.m_index].a = (*weapons)[s].m_wepId;
 
             CCharacterWeap tmp;
@@ -1006,7 +1155,7 @@ bool ChooseSlotForCharacter(const CSelectedCharsItr &it, EQUIP_ITEM item, int sl
         UpdateCharWeaponUiVars(it.m_index);
         return true;
     }
-    func_00283170(it, slot, item);
+    ReleaseSlotItem(it, slot, item);
     if (cur == EQUIP_NONE) {
         if (slot < weapons->size())
             PutInSlot(it, w, slot);

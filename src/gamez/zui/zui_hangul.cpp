@@ -291,7 +291,12 @@ CSkbSplit::CSkbSplit(int n, int k) : m_n(n)
  * or a value local, a pointer local, `(unsigned int)`, `s = s + x` and `s = x + s`, an int sum, an
  * accessor returning the part by value, by reference or by const reference through Parts(), a
  * named reference or a pointer inside it, a vector reference local inside the loop, the pointer
- * form `(*PParts())[i]`: all 12; an unsigned counter 27, `*(begin() + i)` 53. */
+ * form `(*PParts())[i]`: all 12; an unsigned counter 27, `*(begin() + i)` 53. Round 35: igreplay
+ * --movers puts the element address below the unroller's bound (36.5-37.5) and the hoisted data
+ * pointer after every other temporary (50.5 on) -- the optimiser's own temporaries; `#pragma
+ * opt_propagation off` in the body (the kit's round 56) 13, opt_common_subs off 0x108,
+ * opt_loop_invariants off 0xB0, opt_strength_reduction / opt_lifetimes off 12 (build/scratch/ui/
+ * v_sum.py). */
 unsigned int CSkbSplit::Sum(int n)
 {
     unsigned int s = 0;
