@@ -45,6 +45,8 @@ bool func_003C5C20(CZFTSWeapon *w);
 /* a fire mode found from an item index on, for the item a mode fires from and an ammunition kind
  * (OVL2 0x5C3EE0, this unit's, unwritten: NextFireMode and 0x5C45C0 call it) */
 int func_005C3EE0(CZKit *kit, int index, CZFTSWeapon *w, EQUIP_ITEM kind);
+/* whether a weapon's ammunition is of a launcher class (OVL1 0x3C5B20) */
+bool func_003C5B20(CZFTSWeapon *w, int cls);
 /* a body's part by name (CBody::FindPart, OVL1 0x28E7B0): its node at +0xC */
 struct CKitBodyPart {
     unsigned char _0[0xc];
@@ -1431,6 +1433,46 @@ void CZKit::CycleFireMode()
         if (((CKitBody *)m_body)->m_alive)
             m_hand_item = m_item[m_selected_item] ? m_item[m_selected_item]->m_ID : m_hand_item;
     }
+}
+
+/* a weapon's byte at 0x24 (the view and the name ours) */
+struct CZKitModeView {
+    unsigned char _0[0x24];
+    unsigned char m_24;   // 0x24
+};
+
+/* the next item past an index of a launcher's ammunition class, with rounds, other than the kind in use -- its kind is the
+ * fire mode -- else the weapon's own mode (inlined per class; the name ours) */
+inline int NextLauncherMode(CZKit *kit, int index, int cls, EQUIP_ITEM kind)
+{
+    for (int i = index + 1; i < kit->m_num_items; i++)
+        if (kit->m_item[i] && func_003C5B20(kit->m_item[i], cls) && kit->ItemHasAmmo(i) && kind != kit->m_item[i]->m_ID)
+            return kit->m_item[i]->m_ID;
+    if (((CZKitModeView *)kit->m_item[kit->m_selected_item])->m_24)
+        return 1;
+    return 0;
+}
+
+/* a launcher's next fire mode (OVL2 0x5C3EE0, new in SOCOM II where SOCOM 1's FindNextGrenadeLauncherAmmo was: NextFireMode
+ * and 0x5C45C0 call it -- the name unknown); -1 when the weapon has none */
+int func_005C3EE0(CZKit *kit, int index, CZFTSWeapon *w, EQUIP_ITEM kind)
+{
+    if (w) {
+        unsigned char id = w->m_ID;
+
+        if (id == 143)
+            return NextLauncherMode(kit, index, 1, kind);
+        if (id == 142 || w->IsM203Weapon())
+            return NextLauncherMode(kit, index, 2, kind);
+        if (id == 145)
+            return NextLauncherMode(kit, index, 3, kind);
+        if (id == 146)
+            return NextLauncherMode(kit, index, 4, kind);
+        if (id == 63)
+            return NextLauncherMode(kit, index, 5, kind);
+        return -1;
+    }
+    return -1;
 }
 
 /* (OVL2 0x5C4480) The mode read in place each time, MW sharing the one load: taken into a local
