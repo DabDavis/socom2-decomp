@@ -133,6 +133,153 @@ CDlgObjSpec *GetControlSpec(_zrdr *rdr, const char *type)
     return GetObjectSpec(rdr, type);
 }
 
+bool zrdr_IsComplex(_zrdr *rdr);
+
+/* a state read from a block of its own: IMAGE, TEXT_COLOR, PULSE, SCALE, a TEXT_GLOW's RANGE and TIME */
+inline void ButtonState::Parse(_zrdr *rdr)
+{
+    if (rdr) {
+        _TexName = zrdr_findstring(rdr, "IMAGE");
+        zrdr_findPNT3D(rdr, "TEXT_COLOR", (PNT3D *)&_pntTextColor);
+        zrdr_findreal(rdr, "PULSE", &_fPulseTime, 1);
+        zrdr_findreal(rdr, "SCALE", &_fScale, 1);
+        _zrdr *glow = zrdr_findtag(rdr, "TEXT_GLOW");
+
+        if (glow) {
+            float range[2];
+
+            _bGlowy = true;
+            zrdr_findreal(glow, "RANGE", range, 2);
+            _iGlowStart = range[0];
+            _iGlowEnd = range[1];
+            zrdr_findreal(glow, "TIME", &_fGlowTime, 1);
+        } else {
+            _bGlowy = false;
+        }
+    }
+}
+
+/* a button's spec from its rdr (SOCOM 1's, 0x380620; each state a block of its own or the older flat
+ * NAME, NAMEGLOW and NAME_COLOR) */
+CButtonSpec::CButtonSpec(_zrdr *rdr) : CDlgObjSpec(rdr), m_scale(1.0f), m_hcentered(false)
+{
+    int range[2];
+    _zrdr *state;
+    _zrdr *glow;
+
+    m_size.y = 0;
+    m_size.x = 0;
+    m_offset.y = 0;
+    m_offset.x = 0;
+    zrdr_findint(rdr, "XSIZE", &m_size.x, 1);
+    zrdr_findint(rdr, "YSIZE", &m_size.y, 1);
+    zrdr_findIPNT2D(rdr, "SIZE", &m_size);
+    zrdr_findint(rdr, "XOFFSET", &m_offset.x, 1);
+    zrdr_findint(rdr, "YOFFSET", &m_offset.y, 1);
+    zrdr_findIPNT2D(rdr, "OFFSET", &m_offset);
+    zrdr_findreal(rdr, "SCALE", &m_scale, 1);
+    m_caption = zrdr_findstring(rdr, "CAPTION");
+    state = zrdr_findtag(rdr, "NORMAL");
+    m_normal._fScale = m_scale;
+    m_pressed._fScale = m_scale;
+    m_active._fScale = m_scale;
+    m_disabled._fScale = m_scale;
+    if (state && zrdr_IsComplex(state)) {
+        m_normal.Parse(state);
+    } else {
+        m_normal._TexName = zrdr_findstring(rdr, "NORMAL");
+        glow = zrdr_findtag(rdr, "NORMALGLOW");
+        if (glow) {
+            m_normal._bGlowy = true;
+            zrdr_findint(glow, "RANGE", range, 2);
+            m_normal._iGlowStart = (float)range[0];
+            m_normal._iGlowEnd = (float)range[1];
+            zrdr_findreal(glow, "TIME", &m_normal._fGlowTime, 1);
+        } else {
+            m_normal._bGlowy = false;
+        }
+        if (zrdr_findtag(rdr, "NORMAL_COLOR"))
+            zrdr_findPNT3D(rdr, "NORMAL_COLOR", (PNT3D *)&m_normal._pntTextColor);
+        else
+            m_normal._pntTextColor = CPnt3D(128.0f, 128.0f, 128.0f);
+    }
+    state = zrdr_findtag(rdr, "ACTIVE");
+    if (state && zrdr_IsComplex(state)) {
+        m_active.Parse(state);
+    } else {
+        m_active._TexName = zrdr_findstring(rdr, "ACTIVE");
+        glow = zrdr_findtag(rdr, "ACTIVEGLOW");
+        if (glow) {
+            m_active._bGlowy = true;
+            zrdr_findint(glow, "RANGE", range, 2);
+            m_active._iGlowStart = (float)range[0];
+            m_active._iGlowEnd = (float)range[1];
+            zrdr_findreal(glow, "TIME", &m_active._fGlowTime, 1);
+        } else {
+            m_active._bGlowy = false;
+        }
+        if (zrdr_findtag(rdr, "ACTIVE_COLOR"))
+            zrdr_findPNT3D(rdr, "ACTIVE_COLOR", (PNT3D *)&m_active._pntTextColor);
+        else
+            m_active._pntTextColor = CPnt3D(128.0f, 128.0f, 128.0f);
+    }
+    state = zrdr_findtag(rdr, "PRESSED");
+    if (state && zrdr_IsComplex(state)) {
+        m_pressed.Parse(state);
+    } else {
+        m_pressed._TexName = zrdr_findstring(rdr, "PRESSED");
+        glow = zrdr_findtag(rdr, "PRESSEDGLOW");
+        if (glow) {
+            m_pressed._bGlowy = true;
+            zrdr_findint(glow, "RANGE", range, 2);
+            m_pressed._iGlowStart = (float)range[0];
+            m_pressed._iGlowEnd = (float)range[1];
+            zrdr_findreal(glow, "TIME", &m_pressed._fGlowTime, 1);
+        } else {
+            m_pressed._bGlowy = false;
+        }
+        if (zrdr_findtag(rdr, "PRESSED_COLOR"))
+            zrdr_findPNT3D(rdr, "PRESSED_COLOR", (PNT3D *)&m_pressed._pntTextColor);
+        else
+            m_pressed._pntTextColor = CPnt3D(128.0f, 128.0f, 128.0f);
+    }
+    state = zrdr_findtag(rdr, "DISABLED");
+    if (state && zrdr_IsComplex(state)) {
+        m_disabled.Parse(state);
+    } else {
+        zrdr_findstring(rdr, "DISABLED");
+        glow = zrdr_findtag(rdr, "DISABLEDGLOW");
+        if (glow) {
+            m_disabled._bGlowy = true;
+            zrdr_findint(glow, "RANGE", range, 2);
+            m_disabled._iGlowStart = (float)range[0];
+            m_disabled._iGlowEnd = (float)range[1];
+            zrdr_findreal(glow, "TIME", &m_disabled._fGlowTime, 1);
+        } else {
+            m_disabled._bGlowy = false;
+        }
+        if (zrdr_findtag(rdr, "DISABLED_COLOR"))
+            zrdr_findPNT3D(rdr, "DISABLED_COLOR", (PNT3D *)&m_disabled._pntTextColor);
+        else
+            m_disabled._pntTextColor = CPnt3D(128.0f, 128.0f, 128.0f);
+    }
+    m_hcentered = zrdr_findtag(rdr, "HCENTERED") != 0;
+    const char *font = zrdr_findstring(rdr, "FONT");
+
+    if (font) {
+        m_108 = true;
+        m_font = font;
+    } else {
+        m_108 = false;
+    }
+    _zrdr *anims = zrdr_findtag(rdr, "ANIMATIONS");
+
+    for (int j = 0; j < (anims ? (int)anims->Count() : 0); j++) {
+        m_commands.resize(m_commands.size() + 1);
+        ParseButtonAnim(anims->Item(j), &m_commands.back());
+    }
+}
+
 /* the button and the object its SUBORDINATE block describes: its NAME ("unnamed" if none), TYPE,
  * XPOS, YPOS and SPEC (SOCOM 1's). The design object's three inline setters are what give the
  * target's loads of m_child (written out, 34 instructions differ); an early return for the spec test
