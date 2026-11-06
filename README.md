@@ -2066,6 +2066,34 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the SEALs, round 58** (22 byte-exact: seal_ai.cpp's OnWeaponEvent 0x5729F0, OnWeaponHit 0x572330, 0x5743C0,
+  0x56A8E0; seal_env.cpp's HandleLanding 0x5AF590, DropItem 0x59F730, PickupItem 0x59F0C0, HandleSealStep 0x5A3570,
+  RemoteWeaponDamageVictim 0x5A1B80, HandleGrenadeExplosion 0x5A0E70, CanTraverse 0x5B3CE0 and seven more; seal_create.cpp's
+  PostCreateSeal 0x599F00 and ReCreate 0x599B60; AnimPush 0x5777D0, PrePostTick 0x5506A0; five rows named; 0x60A850 back to
+  bool at no cost; SetAiMode, SetTarget and ImpactFront written open):
+  - SEARCH THE TREE FOR A SHAPE FIRST: CSealCtrlAi::AiStateIs already has the explicit-false-arm shape (`b J; sltiu; nop; E:
+    move; nop; J:`), and the stack's Is threads it away -- many tries went before finding it;
+  - reading `w->m_x` twice with a call between keeps the value through IRO_CommonSubs, numbered above the loop's scalarised
+    iterator, where named locals number below it (PostCreateSeal); values read through an expression inline get temporaries
+    above all named locals, spilled in 16-byte slots where named locals take 4 (ReCreate); a bare declaration at the top
+    sets the volatile numbering too (AnimPush);
+  - a `for` over a local bound unrolls eightfold, a guarded do-while does not; with a global bound the `for` does not unroll
+    either but reloads the global each pass (AnimPush);
+  - `(unsigned char)bit != 0` gives andi; sltu where the bare cast folds; an int-returning inline of a float compare keeps
+    li 1; c.le; bc1t; move zero; andi where a bool inline folds into the branch; `bool r = f(); return r;` adds an andi that
+    `return f();` does not; `x = !(a || b)` has no pad at its join; a value `&&` of plain `f() != 0` builds in v0 with no
+    join labels, an inline per test takes a saved register per step, and `if (ok) ok = ...` pads the joins;
+  - `fabsf(a > b)` takes the bool through the unsigned-to-float sequence; `if (float)` gives `c.eq x,0`, `x != 0.0f` puts
+    the constant first; `f()->m_float = 0.0f` holds the zero in f20 across the call, a named pointer avoids it;
+    `f()->g(h())` evaluates the object first, a named pointer puts the argument's call first; `recs[id].m` adds the base
+    last, through a pointer or an inline taking `&recs[id]` the base is the first operand; `node->SetRotation(&rot)` folds
+    its null test, a cast through void keeps it;
+  - a dead statement's shape can flip delay-slot fills across a whole function (SetAiMode); `CPnt3D t = v * k` puts named t
+    above the inline's result with an ld / sd copy; `(char *)seal + K` repeated is CSE'd into a saved register, `&seal->m`
+    is not; `((const CPnt3D &)p).x` reads a stack object directly, `float &y = p.y` keeps an address temporary; `anim > K`
+    branches on slti at, `>= 0` on bltz; seven contiguous `||` values fold the first six into sltiu at; a byte parameter
+    cast to an enum at several calls is a CSE temporary with a 16-byte slot; functions every caller calls out of line need
+    `#pragma auto_inline off` even when defined earlier in the unit.
 - **Tells from the engine core, round 27** (22 rows new, five units whole -- grid_di, grid_main, grid_clutter, int_shapes,
   zanim_anim: NodeGetIntersect 0x2D2890 and NodeGetIntersectBatch 0x2D3030 by the world's `.set noreorder`,
   GetIntersectBatch 0x2D3CF0, SetCDIBBox 0x2DC7A0, CDIBBox and CDIPoly::GetIntersect, LoadTipAndTail, SetCellBoundary,
@@ -9772,7 +9800,7 @@ online lane's round 10 renamed their rows, the lobby queue's 0x2E0DC0 (its draft
 ~CLobbySaveModule's copy 0x2FD070, once listed with it, matches from source since the online lane's round 18, and the
 lobby's and the chat's deque() 0x2E0D90 and 0x2F6230 since its round 29 -- whose names added the lobby buffer's
 allocator constructor 0x2E0D50, 0x2C against 0x18, and the chat's __deque_buf() 0x2F6260, 0x20 against 0x30, each
-draft with an `sc: as=` line: twelve still), and since the UI lane's round 12 the hangul pieces' clear 0x3929C0 (its element's destructor one inline level deeper in the original; a draft with an `sc: as=` line -- the keyboard grid's clear 0x38FEF0, listed with it, matches from source since the UI's round 13), and since the integrator's renames after the MSL headers' round 14 ~__vector_imp<zrdr_sym> 0x333330 (zrdr_parse.cpp's copy inlines the deleter's destructor, 0x108 against 0x58; its draft carries an `sc: as=` line), and since the weapons lane's round 17 renamed it, the callback list's ~__list_imp<WEAPON_CALLBACK_STRUCT> 0x3C6880 (zwep_global.cpp's copy 0xB8 against 0x80: include/list's open teardown shape), since the world's round 11 ~list<CRipple *> 0x322370 (node_wave.cpp's copy 0xD4 against 0x60: the deleter destructor one level taller; matched from hand source since the MSL headers' round 36 -- the range erase's step through ++), and since the weapons' round 20 deque<void *>() 0x3B7FA0 (vis_vu.cpp's copy 0x30 against 0x28: include/deque's middle level; its draft carries an `sc: as=` line) -- THIRTEEN rows in all, TWELVE since the MSL headers' round 36 -- 0x29FF60 and
+draft with an `sc: as=` line: twelve still -- and 0x2E0D50, 0x2E0DC0, 0x2F6260 and the rdr editor's 0x3340B0 match from source since the MSL headers' round 39: EIGHT left, 0x1EF8C0, 0x32C5F0, 0x333330, 0x3340F0, 0x3929C0, 0x3B7FA0, 0x3C6880, 0x510080), and since the UI lane's round 12 the hangul pieces' clear 0x3929C0 (its element's destructor one inline level deeper in the original; a draft with an `sc: as=` line -- the keyboard grid's clear 0x38FEF0, listed with it, matches from source since the UI's round 13), and since the integrator's renames after the MSL headers' round 14 ~__vector_imp<zrdr_sym> 0x333330 (zrdr_parse.cpp's copy inlines the deleter's destructor, 0x108 against 0x58; its draft carries an `sc: as=` line), and since the weapons lane's round 17 renamed it, the callback list's ~__list_imp<WEAPON_CALLBACK_STRUCT> 0x3C6880 (zwep_global.cpp's copy 0xB8 against 0x80: include/list's open teardown shape), since the world's round 11 ~list<CRipple *> 0x322370 (node_wave.cpp's copy 0xD4 against 0x60: the deleter destructor one level taller; matched from hand source since the MSL headers' round 36 -- the range erase's step through ++), and since the weapons' round 20 deque<void *>() 0x3B7FA0 (vis_vu.cpp's copy 0x30 against 0x28: include/deque's middle level; its draft carries an `sc: as=` line) -- THIRTEEN rows in all, TWELVE since the MSL headers' round 36 -- 0x29FF60 and
 0x2D02B0 match from hand source since the MSL headers' completion). Since the GCC front's round 38a
 sccheck tells such a row from a real loss itself: a row a partial check loses ONLY by inline copies is
 built and scored against its other emitters outside `--files` (its draft, and the hand-written units
