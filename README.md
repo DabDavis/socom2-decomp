@@ -10013,8 +10013,8 @@ outside --files still matches: <row> by <emitter>`, rc 0 -- the thirteen each by
 `REGRESSIONS` line is a loss; a strong definition's miss is never held ("The GCC front: the prebuilt
 libraries", "The tools, round 38a").
 Since the UI's round 39 seven remain: 0x1EF8C0, 0x32C5F0, 0x333330, 0x3340F0, 0x3B7FA0, 0x3C6880, 0x510080 (0x2E0D50, 0x2E0DC0, 0x2F6260 and 0x3340B0 match from source since the
-MSL headers' round 39, 0x3929C0 since the UI's round 39, in zui_hangul.cpp under its level). Since the MSL headers' round 40 five: 0x3B7FA0 and 0x3C6880 match from source; 0x3340F0 goes with
-zrdr_edit.cpp's `#define __MSL_DEQUE_DEFAULT_INLINE`.
+MSL headers' round 39, 0x3929C0 since the UI's round 39, in zui_hangul.cpp under its level). Since the MSL headers' round 40 four: 0x1EF8C0, 0x32C5F0, 0x333330, 0x510080 (0x3B7FA0 and 0x3C6880 match from source, and 0x3340F0 with
+zrdr_edit.cpp's `#define __MSL_DEQUE_DEFAULT_INLINE`; their drafts are gone).
 
 ## The generated tier: `src/auto/`
 

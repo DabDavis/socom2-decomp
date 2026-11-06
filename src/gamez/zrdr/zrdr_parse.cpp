@@ -721,3 +721,7 @@ _zrdr *zrdr_read(const char *name, const char *path, int flags)
 /* insert<zrdr_sym> 0x3325E0's end numbered before m: include/vector's __insert_end_pointer, a marked modelling device (the AI
  * core's round 37 measured this opt-in, +1 and nothing lost in this unit; what the original wrote is not found) */
 namespace std { template <> struct __insert_end_pointer<zrdr_sym> { enum { value = 1 }; }; }
+
+/* 0x3323F0's end as the erase's last parameter: include/vector's __erase_end_object, a marked modelling device (the MSL's round 40 measured it byte-exact);
+ * what the original wrote is not known. */
+namespace std { template <> struct __erase_end_object<zrdr_sym> { enum { value = 1 }; }; }
