@@ -163,7 +163,7 @@ void func_00251678(const float *pfIn, float *pfOut)
 	}
 }
 
-/* Not written (GCC round 26a, measured): the fast log2 0x2517D8 and exp2 0x251850 after the warp
+/* Not written (GCC round 26a, measured): the fast log2 0x2517D8 (exp2 0x251850: written below, OPEN) after the warp
  * (the float's exponent and mantissa split and rebuilt by bits). The target reads the bits with
  * mfc1 and widens them with an `and` of 0xFFFFFFFF -- an unsigned 32-bit field extracted from a
  * 64-bit word, as the codec's `union { float f; long l; }` (its own asserts name `union_x.l`) is
@@ -186,4 +186,32 @@ float func_00251700(float x)                    /* a frequency warp (the .lit4 c
     if (x > 97.0f)
         return x * (x * -0.0016021727351471782f + 1.40234375f) + 1.7890625f;
     return x * 1.26953125f;
+}
+
+/* the encoder's fast exp2 (GCC round 40a, written; OPEN, d=33 of 38 words, 0x94 for 0x98 --
+ * build/scratch/gcc/r40/v_exp2*.py, 30 shapes): 2^fX from the integer part i (fX less 0.9999F, the
+ * .lit4 constant at 0x1D530C, when fX <= 0, then truncated and one added) and a linear mantissa
+ * rebuilt by bits. Measured: the input's `mfc1; and 0xFFFFFFFF` is round 39a's rule (a float/long
+ * union cleared first); a long result read back through a pointer is truncated before its mtc1
+ * (dsll32/dsra32), a union's is not; `i` set in BOTH arms keeps the target's `(i + 1) + 126` unfolded
+ * (one assignment after the test lets CSE fold it to i + 127) -- but here each arm keeps its own
+ * conversion, where the target converts once after the merge. Not reproduced: that single
+ * conversion; the target's 16-byte frame no instruction touches (an address-taken local's slot,
+ * ADDRESSOF's footprint: `*(u_int *)&x` makes the frame but keeps x in memory); its zero loaded as
+ * `li at,0; mtc1` (a CONST_DOUBLE 0.0 that is not CONST0_RTX -- `mtc1 zero` for every 0.0F, (float)0,
+ * 0 or the cleared union's float tried). */
+float func_00251850(float fX)
+{
+    union { float f; long l; } m;
+    union { float f; long l; } r;
+    int i;
+
+    if (fX > 0.0F)
+        i = (int)fX + 1;
+    else
+        i = (int)(fX - 0.9999F) + 1;
+    m.l = 0;
+    m.f = (fX - (float)i) * 0.5F + 1.0F;
+    r.l = (m.l & 0x7FFFFF) | (((long)(i + 126) << 23) & 0x7F800000);
+    return r.f;
 }
