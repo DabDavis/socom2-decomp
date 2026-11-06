@@ -2065,6 +2065,23 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the UI, round 34** (six byte-exact: the state queue's push 0x2852B0 -- include/deque's as it stands once
+  zanim_menu.h's CSimpleStateMachine holds a real std::queue, util_ssm.cpp's CStateQueue --, zanim_menu.cpp's pick cyclers
+  NextPick 0x283E60 and NextPickBesides 0x283B50, unwritten before, and util_sonyio.cpp's HddUnmountGame 0x39D020,
+  HddRebootCallback 0x39D910 and HddRegisterReboot 0x39D8C0 by hand over their drafts):
+  - a 22-way `||` equality chain over 141-255 compiles to sllv bitset range tests; the target's linear compare chain is
+    a `switch` with its cases in reverse;
+  - a switch inside an inline bool returning true / false branches straight to the caller's targets; `bool r = false;
+    switch ... r = true; break; return r;` materialises the result in v0 before the caller's test;
+  - a side-effect-free argument to an inline is evaluated after the inline's own null test; passed through a named local
+    defined before the call it is computed ahead of the test (`li 1; li 8; movz` before the beqz);
+  - a global object's address used as `this` in a loop is rematerialised with lui / addiu at each call, held in a named
+    pointer local it takes a saved register; `if (A && B) { ...; item = recurse(...); } return item;` gives the target's
+    shared exit, an early `return item;` after each test a `move v0` at every return site;
+  - OPEN, not a numbering: SelCharsHaveEquip 0x281160 and UIDoAllSelCharsHaveWeapon -- igdump's PCode shows the target
+    one node more (the loop guard reads the position straight off the frame, c_str() gets a fresh &m_word); and
+    OnIsEquipmentSelected's `i != end()` is a materialised `!(i == end)`, a class iterator's operator!= re-reading end()
+    where include/vector's iterator is a pointer.
 - **Tells from the HUD, round 60** (hud_linemap.cpp's CZLineMap::Clip 0x20D5F0, TickWayPoints 0x20DAC0 and SetupPolygon
   0x20F5C0, all unwritten before, byte-exact from SOCOM 1's bodies and its debug info's local names; TickAnchors 0x20E750
   written, OPEN at 0x46C of 0x474; 0x360260 named C2DLine::SetClipInfo):
