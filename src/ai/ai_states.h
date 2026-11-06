@@ -883,6 +883,18 @@ public:
     virtual bool CanAttack() const { return !(m_flags & 0xc); }
     virtual bool CanPursue(CSealCtrlAi *ai) const { return false; }
     virtual ~CAiSEvent();
+    /* what happened and where, a second point or none (inline: 0x5CAC00 with none -- its null test folded behind a
+     * `b` over the dead arm -- and 0x5F8D40; the name ours) */
+    void SetEvent(unsigned char kind, const CPnt3D *pos, const CPnt3D *pos2)
+    {
+        m_58 = kind;
+        m_pos.x = pos->x;
+        m_pos.y = pos->y;
+        m_pos.z = pos->z;
+        m_pos2.x = (pos2 ? pos2 : &CPnt3D::zero)->x;
+        m_pos2.y = (pos2 ? pos2 : &CPnt3D::zero)->y;
+        m_pos2.z = (pos2 ? pos2 : &CPnt3D::zero)->z;
+    }
     /* the event's name copied in, or cleared (OVL2 0x605A10; the name ours) */
     void SetName(const char *name);
 

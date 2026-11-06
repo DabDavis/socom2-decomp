@@ -4,8 +4,8 @@
  * under src/ai). OVL2 from after seal_aistate.cpp's tail (0x5F8D40) to 0x5FADEF, before
  * seal_aifollow.cpp's ~CAiSFollow. So far SetAiEvent (round 14: zseal.h includes ai.h for
  * CAiEvent::EVENT), CAiDodge::Destroy and EventTick (round 39); 0x5F95D0 (HandleEvent: EventTick's
- * two walks call it, as SOCOM 1's -- an earlier note had it EventTick by size) and 0x5F8D40 are
- * open. Defined in reverse of their image order (-inline deferred). */
+ * two walks call it, as SOCOM 1's -- an earlier note had it EventTick by size) is open; 0x5F8D40 round 62;
+ * defined in reverse of their image order (-inline deferred). */
 
 #include <list>
 
@@ -15,7 +15,7 @@
 /* a table's float (OVL2 0x5750D0, the SEALs' seal_ai.cpp) and the object at 0x67C a state tests
  * (OVL2 0x60A850, unwritten; seal_tasks.cpp's spelling) */
 extern "C" float func_005750D0(unsigned char i);
-extern "C" bool func_0060A850(void *target);
+extern "C" int func_0060A850(void *target);
 
 /* the walks' and the look's tests, each a value the target materialises (inline; the names ours):
  * an event the AI did not take, the AI neither asleep nor dozing (bits 8 and 9 at 0x264), its own
@@ -160,3 +160,170 @@ bool CAiDodge::Destroy()
     return true;
 }
 #pragma opt_common_subs reset
+
+/* what the reaction below reads and calls besides (the event's view, seal_ai.cpp's functions; the names ours) */
+struct CSoundEventView {
+    CPnt3D m_pos;   // 0x0
+    float m_radius;   // 0xc
+    unsigned char _10[0x18 - 0x10];
+    unsigned int m_18 : 16;   // 0x18
+    unsigned int m_1a_0 : 1;   // 0x1a
+    unsigned int m_type : 15;
+    signed char m_kind;   // 0x1c
+};
+
+extern "C" float GetTimeSinceLastSighting__9CAiTargetCFv(const void *target);
+extern "C" void func_00560B20(CSealCtrlAi *ai, CSealCtrlAi *other, bool b);
+extern "C" void func_00572240(CSealCtrlAi *ai, CEntity *alert, float amount);
+extern "C" void func_00605770(CSealCtrlAi *ai, bool order, CHARACTER_SOUND sound, float vol);
+extern "C" void func_00570D20(CSealCtrlAi *ai, float v);
+extern "C" float func_00570D50(CSealCtrlAi *ai, float scale);
+extern float data_00650C08;
+extern float data_00650C10;
+extern float data_00650C18;
+extern float data_00650C20;
+extern float data_0064FF70;
+
+/* (an int-returning inline of a float compare: the target's li 1, c.le, bc1f, move zero, the andi at its use) */
+static inline int Stale(float t)
+{
+    return t > 3.0f;
+}
+
+/* whether the AI's target is lost to it: none, or none held and not seen for three seconds (inline: the reaction's
+ * tests; the name ours) */
+static inline unsigned char TargetGone(CSealCtrlAi *ai)
+{
+    unsigned char gone = true;
+
+    if (func_0060A850(ai->m_67c)) {
+        bool held = func_0060A850(ai->m_67c) != 0;
+
+        held = held ? (ai->m_6a8 & 0x200) != 0 : held;
+        if (!held) {
+            gone = Stale(GetTimeSinceLastSighting__9CAiTargetCFv(ai->m_67c));
+        } else
+            gone = false;
+    }
+    return gone;
+}
+
+/* a comrade's or an enemy's noise the AI can reach: by its kind -- a call for help, taken up when the AI's target is
+ * gone and the caller has one: the alarm shared, an event state run to the place at a speed set by the distance and
+ * the alert; a comrade's alarm remembered; a shot's noise: the Navy SEAL's answer, or the alert raised by how near and
+ * how clear it was (OVL2 0x5F8D40, new in SOCOM II: HandleEvent calls it; the name ours) */
+extern "C" bool func_005F8D40(CSealCtrlAi *ai, CSoundEventView *ev, CZSealBody *seal, bool seen, float dist)
+{
+    bool taken = false;
+    signed char kind;
+    CEntity *e = ai->m_entity;
+
+    kind = ev->m_kind;
+    signed char type = ev->m_type;
+    CAiMapLoc loc;
+
+    AiMaps.GetLocation(&ev->m_pos, loc);
+    bool can = AiMaps.CanSeePoint(&e->m_posW, &ev->m_pos, ev->m_radius);
+
+    if (!can)
+        return false;
+    switch (kind) {
+    case 3:
+    case 4:
+    case 2:
+        if (seal) {
+            unsigned char gone = TargetGone(ai);
+
+            if (gone && seen) {
+                CSealCtrlAi *other = seal->GetSealCtrlAi();
+
+                if (other && other->m_730 != CEntity::invalidId) {
+                    if ((unsigned char)ai->GetAiAware() >= 2) {
+                        func_00560B20(ai, other, true);
+                        func_00572240(ai, CEntity::m_list.GetEntityById(other->m_730), 0.0f);
+                    } else {
+                        func_00560B20(ai, other, true);
+                        if (TargetGone(ai) && ai->PushAiState(AI_STATE_EVENT, 0)) {
+                            CAiState *s = ai->GetAiState();
+                            CAiSEvent *st = s && s->m_state == AI_STATE_EVENT ? (CAiSEvent *)s : 0;
+
+                            if (TargetGone(other)) {
+                                st->SetFlags(2, 0);
+                                st->SetEvent(type, &ev->m_pos, 0);
+                            } else {
+                                st->SetFlags(3, 0);
+                                CEntity *t = *(CEntity **)other->m_67c;
+                                const CPnt3D *q = t ? &t->m_posW : 0;
+
+                                st->SetEvent(type, &ev->m_pos, q);
+                            }
+                            st->SetFlags(0x14, 0);
+                            float r = ev->m_radius;
+                            float near;
+
+                            if (!(r <= 0.0f)) {
+                                CPnt3D d;
+
+                                ev->m_pos.Sub(&e->m_posW, &d);
+                                near = (d.x * d.x + d.y * d.y + d.z * d.z) / r;
+                            } else
+                                near = 1.0f;
+                            float speed = near * (2.0f - (float)other->GetAiAware());
+
+                            speed = ai::_min<float>(data_00650C08, speed);
+                            st->m_rnd_min = speed;
+                            st->m_rnd_range = 0.0f;
+                            st->m_80 = data_00650C08;
+                            st->m_time = 2.0f + 2.0f * (4.656613e-10f * (float)rand());
+                        }
+                    }
+                    taken = true;
+                }
+            }
+        }
+        break;
+    case 0:
+        if (seen) {
+            taken = true;
+            CAiEvent *own = (CAiEvent *)ai->m_event;
+
+            own->m_type = (CAiEvent::EVENT)2;
+            own->m_duration = 1.5f;
+            own->m_pos = ev->m_pos;
+        }
+        break;
+    case 1:
+        if (seen) {
+            if (ai->IsNavySeal() && seal->IsPlayer())
+                ai->PlayAiSound((CHARACTER_SOUND)5, 1.0f, (CAiEvent::EVENT)kind);
+        } else {
+            float raise = data_00650C10 * (1.0f - ai->m_aware.m_value);
+            float radius = ev->m_radius;
+
+            if (!(radius <= 0.0f))
+            {
+                float f = dist / radius;
+
+                raise += (1.0f - f) * data_00650C18;
+            }
+            if (!AiMaps.CanSeeLine(e->m_mapLocValid, loc, 0))
+                raise *= data_00650C20;
+            bool call = false;
+
+            if (TargetGone(ai) || (unsigned char)ai->GetAiAware() < 3)
+                call = true;
+            CAiEvent *own = (CAiEvent *)ai->m_event;
+
+            own->m_type = (CAiEvent::EVENT)2;
+            own->m_duration = 1.5f;
+            own->m_pos = ev->m_pos;
+            if (call)
+                func_00605770(ai, true, (CHARACTER_SOUND)70, 0.5f);
+            func_00570D20(ai, func_00570D50(ai, 1.0f) - raise);
+            ai->m_404 += data_0064FF70;
+        }
+        break;
+    }
+    return taken;
+}
+

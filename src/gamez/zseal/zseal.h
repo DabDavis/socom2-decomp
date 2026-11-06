@@ -498,6 +498,9 @@ public:
     /* how much of a line between two points the maps' cells let the eye through (ai_maps.h's, OVL2
      * 0x538E30: the visibility score 0x60AA20 asks it of the ray, flags 1) */
     float ComputeLineVisibility(const CPnt3D *from, const CPnt3D *to, unsigned int flags);
+    /* (ai_maps.h's; the kit, round 62: 0x5F8D40's) */
+    bool CanSeePoint(const CPnt3D *from, const CPnt3D *to, float rangeSq);
+    bool CanSeeLine(const CAiMapLoc &from, const CAiMapLoc &to, CAiMapLoc *out);
     /* a cell to a point, raised by a height (ai_maps.h's; the kit, round 62: 0x5CAC00) */
     float ComputeLineVisibility(const CAiMapLoc &from, const CPnt3D *to, unsigned int flags, float height);
 };

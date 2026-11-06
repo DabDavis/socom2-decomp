@@ -654,27 +654,25 @@ extern "C" bool func_005CAC00(CSealCtrlAi *ai, CPickup *p, CSensorProjView2 *pro
             if (react && ai->PushAiState(AI_STATE_EVENT, 2)) {
                 float delay = 1.5f * (1.2f - ai->m_aiParams.training);
 
-                if (ai->IsNavySeal())
+                if (ai->m_navyseal)
                     delay = 0.2f;
                 float dist = (d.x * d.x + d.y * d.y + d.z * d.z) / r;
                 CAiState *s = ai->GetAiState();
                 CAiSEvent *ev = s && s->m_state == AI_STATE_EVENT ? (CAiSEvent *)s : 0;
                 const CPnt3D *pos = p->GetPosW();
 
-                ev->m_58 = 1;
-                ev->m_pos.x = pos->x;
-                ev->m_pos.y = pos->y;
-                ev->m_pos.z = pos->z;
-                ev->m_pos2.x = (&CPnt3D::zero ? &CPnt3D::zero : (const CPnt3D *)0)->x;
-                ev->m_pos2.y = (&CPnt3D::zero ? &CPnt3D::zero : (const CPnt3D *)0)->y;
-                ev->m_pos2.z = (&CPnt3D::zero ? &CPnt3D::zero : (const CPnt3D *)0)->z;
+                ev->SetEvent(1, pos, 0);
                 float t = delay * dist;
                 float range = 2.0f * t - t;
 
                 ev->SetFlags(4, 0);
-                if (range != 0.0f)
-                    t += range * (4.656613e-10f * (float)rand());
-                *(float *)&ev->m_88 = data_00650A38 + t;
+                float v = t;
+
+                if (range == 0.0f)
+                    v = t;
+                else
+                    v += range * (4.656613e-10f * (float)rand());
+                *(float *)&ev->m_88 = data_00650A38 + v;
                 ev->m_rnd_min = data_00650A38;
                 ev->m_rnd_range = 0.0f;
                 ev->m_active = true;
