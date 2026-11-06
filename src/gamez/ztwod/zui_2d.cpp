@@ -816,14 +816,17 @@ public:
     virtual void Tick(float dT);
     virtual bool HandlePad(const CPad *pad, int port);
     virtual int GetZAnimCmdType(const char *name);
+    bool Load(zdb::CTextureRelocMgr *mgr);
 
-    /* a plain bitmap (Draw inlines CPlainBmp's), its text a 2D object at 0xB0 placed at an offset;
-     * the parts its Tick ticks (SOCOM II's two members, through their tables; SOCOM 1 ticked the
-     * pointer alone), each with an offset after it, drawn when 0x330 is set; the 2D object drawn
-     * instead of it all when 0x32C points at one -- C2D stand-ins, their real classes unknown */
-    unsigned char _a0[0xb0 - 0xa0];
-    C2DString m_text;   // 0xb0 (a string: HandlePad empties it through slot 26)
-    unsigned char _148[0x304 - 0x148];
+    /* a plain bitmap (Draw inlines CPlainBmp's), its text wrapped text at 0xB0 placed at an offset
+     * (Load sets its scale, width and spacing and calls its Update, slot +0xA0 -- CWrappedText's
+     * 0x250 bytes end at the font); the parts its Tick ticks (SOCOM II's two members, through
+     * their tables; SOCOM 1 ticked the pointer alone), each with an offset after it, drawn when
+     * 0x330 is set; the 2D object drawn instead of it all when 0x32C points at one */
+    zdb::CTextureRelocMgr *m_mgr;   // 0xa0: the relocator Load was given
+    unsigned char _a4[0xb0 - 0xa4];
+    CWrappedText m_text;   // 0xb0 (HandlePad empties it through slot 26)
+    C2DFont *m_font;   // 0x300: the font (UiSys::LoadFromDesign stores it before Load)
     IPNT2D m_textOffset;   // 0x304
     unsigned char _30c[0x32c - 0x30c];
     C2D *m_32c;   // 0x32c
@@ -955,6 +958,23 @@ void CPopUpDialog::Draw(const CMatrix &m, zdb::CTextureRelocMgr *mgr)
     mat(3, 1) = pos.y;
     mat(3, 2) = pos.z;
     m_text.Draw(mat, mgr);
+}
+
+/* the relocator kept and the font given to the text and the two buttons' captions; the text at
+ * scale 1, wrapped to 100 with a spacing of 20, and brought up to date (SOCOM 1's
+ * CPopUpDialog::Load, 0x389770 there: the same body, its spacing an int; UiSys::LoadFromDesign
+ * calls it with the menu's relocator right after storing the font) */
+bool CPopUpDialog::Load(zdb::CTextureRelocMgr *mgr)
+{
+    m_mgr = mgr;
+    m_text.SetFont(m_font);
+    m_340._strCaption.SetFont(m_font);
+    m_790._strCaption.SetFont(m_font);
+    m_text.m_scale = 1.0f;
+    m_text.m_width = 100.0f;
+    m_text.m_height = 20.0f;
+    m_text.Update();
+    return false;
 }
 
 /* slot 2: the wrapped lines' strings laid out from the corner the matrix places, side by side

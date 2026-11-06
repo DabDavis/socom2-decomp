@@ -6857,7 +6857,7 @@
 0x00370280 0xBC Tick__11CScrollTextFf  # OVL1; s1:calls
 0x00370340 0x8 LoadSpec__11CScrollTextFRC11CScrollSpec  # OVL1; by hand (the HUD lane, round 31: zui_2d.cpp -- CScrollSpec::CreateDisplayObj's call where SOCOM 1's calls CScrollText::LoadSpec; SOCOM II's is empty)
 0x00370350 0x2BC Draw__11CScrollTextFRC7CMatrixPQ23zdb16CTextureRelocMgr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x00370610 0x74 func_00370610  # OVL1; tu: zui_2d.cpp~ (1.0 beta)
+0x00370610 0x74 Load__12CPopUpDialogFPQ23zdb16CTextureRelocMgr  # OVL1; tu: zui_2d.cpp~ (1.0 beta); s1:exact by hand (the HUD lane, round 58: zui_2d.cpp -- SOCOM 1's CPopUpDialog::Load 0x389770, the same body at SOCOM II's offsets; UiSys::LoadFromDesign calls it at the same point with (pop-up, relocator) right after the font's store at +0x300, the UI's round 31)
 0x00370690 0x28C Draw__12CPopUpDialogFRC7CMatrixPQ23zdb16CTextureRelocMgr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00370920 0x6C Tick__12CPopUpDialogFf  # OVL1; s1:vtable by hand (the HUD lane, round 20: zui_2d.cpp -- slot +0x38 of CPopUpDialog's table 0x4073A0 (Tick, as SOCOM 1's Tick__12CPopUpDialogFf, which ticks the pointer at its 0x18C alone): SOCOM II ticks two parts at 0x340 and 0x790 through their tables, then the pointer at 0x32C)
 0x00370990 0x284 HandlePad__12CPopUpDialogFPC4CPadi  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
