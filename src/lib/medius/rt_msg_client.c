@@ -12,10 +12,9 @@
  * Round 12b: the object starts at 0x6325B8 (below); the startup, shutdown, ishutdown, iupdate_all
  * and create_send_buf_space written from SOCOM 1's bodies, byte-exact (a positive test around the
  * shutdown's mutex teardown and the space's refill; the table cleared before its count, by store
- * order). OPEN: rt_msg_client_iget_metrics (37s: its copy -- thirteen field assignments, floats
- * through FPRs, tStart a struct member -- is exact; the call's `return result` is a block of its
- * own in the target, a fall-through `b`, as rt_udp's length tests -- an empty asm statement there
- * gives 1 word, the shape rt_udp.c's RT_UDP_BARRIER stands in for), rt_msg_client_iudp_disable_
+ * order). rt_msg_client_iget_metrics, open then, is byte-exact since round 25b (the connection test
+ * positive, its `return 3` in an else round the call and the copy -- round 14b's rule; the call's
+ * `return result` then stays a block of its own, the target's fall-through `b`). OPEN: rt_msg_client_iudp_disable_
  * heartbeat (9: SOCOM II's UDP poll under SOCOM 1's name, whose body it is not; the flag's reload
  * takes v1 where the target's takes v0).
  * Round 14b: the UDP poll closed -- its loop `break`s to the one `return 0` (a `return 0` inside the
@@ -1062,11 +1061,10 @@ unsigned char rt_msg_client_iget_metrics(int nConnection, rt_msg_client_metrics 
 
     if (pMetrics == 0)
         return 2;
-    if (nConnection != 0)
-        return 3;
-    result = rt_msg_client_map_comm_error(rt_comm_get_metrics(&metrics));
-    if (result != 0)
-        return result;
+    if (nConnection == 0) {
+        result = rt_msg_client_map_comm_error(rt_comm_get_metrics(&metrics));
+        if (result != 0)
+            return result;
     pMetrics->tStart = metrics.tStart;
     pMetrics->sends.nCount = metrics.sends.nCount;
     pMetrics->sends.fRate = metrics.sends.fRate;
@@ -1080,6 +1078,8 @@ unsigned char rt_msg_client_iget_metrics(int nConnection, rt_msg_client_metrics 
     pMetrics->bytesReceived.nCount = metrics.bytesReceived.nCount;
     pMetrics->bytesReceived.fRate = metrics.bytesReceived.fRate;
     pMetrics->bytesReceived.fMaxRate = metrics.bytesReceived.fMaxRate;
+    } else
+        return 3;
     return 0;
 }
 

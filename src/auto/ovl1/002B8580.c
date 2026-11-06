@@ -4,14 +4,15 @@ typedef signed char s8; typedef unsigned char u8; typedef short s16; typedef uns
 typedef int s32; typedef unsigned int u32; typedef long s64; typedef unsigned long u64;
 typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK32;
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
+#define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
 s32 func_0030D1B0(s8 *, M2C_UNK *, M2C_UNK *);      /* extern */
-extern s8 data_0045A0C0;
-extern M2C_UNK func_002BC530;
-extern M2C_UNK func_002BC620;
+extern s8 theNetwork;
+extern M2C_UNK zRemoteClientConnectsCallback__FP17ClientConnectArgs;
+extern M2C_UNK zRemoteClientDisconnectsCallback__FP17ClientConnectArgs;
 
 s32 DMEConnectToGameServer__Fv(void) {
-    data_0045A0C0 = 0;
-    return func_0030D1B0(&data_0045A0C0, &func_002BC620, &func_002BC530) == 0;
+    theNetwork = 0;
+    return func_0030D1B0(&theNetwork, &zRemoteClientConnectsCallback__FP17ClientConnectArgs, &zRemoteClientDisconnectsCallback__FP17ClientConnectArgs) == 0;
 }

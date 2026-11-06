@@ -864,7 +864,9 @@ unsigned char _tosWarningLog(TOSLOG *log, unsigned short code)
  * target (the log record still built on the stack, so the logger is a public __inline__ -- its
  * own copy stays byte-exact so), but the target computes the code inside the `error == 0` test
  * where this inlining computes it before (computing it inside in the logger's source breaks the
- * logger, 22 words), and keeps the outputs' address in a1 for the stores that follow. */
+ * logger, 22 words), and keeps the outputs' address in a1 for the stores that follow. Round 39c: an
+ * `extern __inline__` logger computing inside the test, the real one below the constructor (round 37c's trick),
+ * is 38s (the stack record goes), the stores in reverse 25. */
 TOSBLOCK *tosBaseBlockConstruct(TOS *tos, unsigned char id, unsigned char ninputs, unsigned char noutputs,
                                 TOSFUNC process, TOSFUNC init, TOSFUNC control, unsigned int size)
 {
