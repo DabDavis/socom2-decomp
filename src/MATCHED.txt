@@ -9062,6 +9062,7 @@
 0x0051BED0 func_0051BED0
 0x0051C1C0 __dt__12CAiMapLocVecFv
 0x0051C350 __dt__Q26CAiMap5routeFv
+0x0051C3F0 resize__Q23std68__vector_imp<Q26CAiMap6reader,Q23std27allocator<Q26CAiMap6reader>,0>FUi
 0x0051C4A0 resize__Q23std56__vector_imp<9CAiMapLoc,Q23std21allocator<9CAiMapLoc>,0>FUi
 0x0051C510 erase__Q23std56__vector_imp<9CAiMapLoc,Q23std21allocator<9CAiMapLoc>,0>FP9CAiMapLocP9CAiMapLoc
 0x0051C630 resize__Q23std64__vector_imp<Q26CAiMap4name,Q23std25allocator<Q26CAiMap4name>,0>FUi

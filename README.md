@@ -2065,6 +2065,22 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the AI core, round 36** (resize<reader> 0x51C3F0 -- open since round 22 at 6 off -- byte-exact through a
+  marked device, ai_mapio.cpp's explicit specialisation; UpdateNameTables 0x52B820 from 34 to 12 instructions off;
+  GetCellRepelParams 0x5169B0 to the target's size, 0x570 -> 0x558):
+  - MW'S CLASS SCALARISER RUNS FIRST IN EACH OPTIMISER PASS (igdump's pass labels): a named iterator initialised from a call
+    is scalarised in pass 0, an iterator temporary read as `end().m_p` only in pass 1, so its member is numbered after pass
+    0's common-subexpression and loop temporaries -- resize<reader>'s target needs the end numbered first (`igreplay
+    --permute`), which a named end iterator declared inside the insert arm gives;
+  - that body in include/vector is +1 / -16 (measured over the 20 units that emit class resizes, reverted): every class
+    resize whose element constructor inlines loses, its end then computed before the element's stores -- so the difference
+    is the element (reader() is a call into ai_maptable.cpp); why the original scalarised it in pass 0 is not found, and the
+    device stands in for that;
+  - taking a local object's address in pass 0 -- a reference or pointer local that pass 0's propagation folds away -- defers
+    its scalarisation to pass 1 at no code cost (UpdateNameTables: `iterator &rn = n`, marked as a modelling shape); an
+    inline taking the object by reference does not, the plain object is substituted;
+  - reading a CPnt3D member directly in two places shares only its address temporary (`&v + 8`) with a loop invariant, never
+    the load; a named float read once gives the target's single load (GetCellRepelParams).
 - **Tells from the game states, round 52** (CameraZoom::HandleNewZoom 0x1F0750 -- 0xD1C, unwritten before: SOCOM 1's body
   with SetLensFx inlined per zoom state, SOCOM II's thermal state and starlight scope --, SetRoundStatUiVars 0x1F21B0 -- 6
   off since round 50 -- and the teamwork rating 0x1F27C0 -- 0x678 of 0x680 since round 47 -- byte-exact; st_exit.cpp's
