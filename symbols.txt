@@ -5519,8 +5519,8 @@
 0x003186B0 0x214 func_003186B0  # OVL1
 0x003188D0 0x60 Release__Q23zdb6CModelFPQ23zdb5CNode  # OVL1; s1:exact (SOCOM 1's CModel::Release(CNode *): the instance taken off the list, the model's 0x64 cleared if it was it; ~CNode calls it)
 0x00318930 0x1AC __dt__Q23zdb6CModelFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x00318AE0 0x150 func_00318AE0  # OVL1
-0x00318C30 0x8 func_00318C30  # OVL1
+0x00318AE0 0x150 RemoveModel__Q23zdb9CAssetLibFPQ23zdb6CModel  # OVL1; the online lane r28 (node_model.cpp): ~CModel calls it with the library's own copy of the model, found by name (0x318C30) -- std::remove's find inlined, remove_copy called, the pod erase, CAssetMgr::m_assets' model cache cleared, the model's library cleared -- the code SOCOM 1's ~CModel wrote out; CModel::Create (node_io.cpp) inlines its body; an inline's out-of-line copy, the name ours
+0x00318C30 0x8 GetModel__Q23zdb9CAssetLibFPCc  # OVL1; the online lane r28 (node_model.cpp): ~CModel calls it on its library with its name (j CModelVector::GetModel on the library's models at 8), where SOCOM 1's ~CModel called the model vector's GetModel itself; an inline's out-of-line copy, the name ours
 0x00318C40 0x6C __ct__Q23zdb6CModelFPCc  # OVL1; s1:calls
 0x00318CB0 0xEC Read__Q23zdb6CWorldFRQ23zdb9CSaveLoad  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00318DA0 0x7D8 Load__Q23zdb9CSaveLoadFPCc  # OVL1; s1:order by hand (SOCOM 1's CSaveLoad::Load: after CWorld::Read as there; the version open, new CWorld (0x6BE0 bytes) through 0x320310, Initalize, the world's fetches, the cameras, CGrid::Read, the asset libs, the world tree; FilterMissionFolder inlined)

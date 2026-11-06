@@ -28,20 +28,6 @@ public:
     std::vector<unsigned int> m_flares;   // 0xcc
 };   // 0xd8 bytes (0xe0 with the matrix's alignment)
 
-/* a model taken off the library's list (std::remove, the tail erased), the asset manager's model
- * cache emptied and the model no longer the library's -- SOCOM 1's Create wrote the first two out
- * (SOCOM II's inline: its tree is taller than the level, so CModel::Create inlines its body alone
- * and calls every piece out of line, 0x311AD0-0x311C30; the name ours) */
-inline void CAssetLib::RemoveModel(CModel *model)
-{
-    CModelVector::iterator e = m_models.end();
-    CModelVector::iterator it = std::remove(m_models.begin(), e, model);
-
-    m_models.erase(it, e);
-    CAssetMgr::GetAssets()->ClearCache();
-    model->SetAssetLib(0);
-}
-
 /* a model read from the archive's open key, made the library's; one that fails to read is taken
  * off the library again and deleted (SOCOM 1's) */
 CModel *CModel::Create(CSaveLoad &io, CAssetLib *lib)
@@ -51,7 +37,7 @@ CModel *CModel::Create(CSaveLoad &io, CAssetLib *lib)
     if (lib && model)
         lib->AddModel(model);
     if (!model->Read(io)) {
-        if (lib && model)
+        if (lib)
             lib->RemoveModel(model);
         delete model;
         model = 0;

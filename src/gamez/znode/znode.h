@@ -1240,9 +1240,10 @@ public:
     CTexHandle *AddTexture(CTexture *tex);
     CModel *AddModel(CModel *model);
     CTexPalette *AddPalette(CTexPalette *pal, bool check);
-    /* a model taken off the list again (node_io.cpp defines it: CModel::Create's failure path
-     * inlines its body and calls its pieces out of line, 0x311AD0-0x311C30; the name ours) */
+    /* a model taken off the list again (inline, node_world.h defines it; the name ours) and a model
+     * by name off the list (inline: ~CModel calls its out-of-line copy, 0x318C30; the name ours) */
     inline void RemoveModel(CModel *model);
+    CModel *GetModel(const char *name) { return m_models.GetModel(name); }
     bool IsNamed(const char *name);
     char *RootName();
     /* the render phase by value (inline: CAssetList::FindLib(_RenderPhase) narrows its argument
