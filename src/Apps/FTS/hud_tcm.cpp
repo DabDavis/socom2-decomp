@@ -52,7 +52,7 @@ CTCMCache spCache("spCache");
  * item's two lines set to its prompt (0x236260: the tree's builder calls it; the name ours). The
  * child and its action are declared ahead of the inner walk: inside it they take the walk's index's
  * saved register and it theirs (MW spills the node to the frame either way, as the target does) */
-void tcmSetNodeActions()
+void CTCM::SetNodeActions()
 {
     std::vector<CNodeAction *> actions;
 
@@ -147,7 +147,7 @@ CTCM::CTCM() : m_cache(0), m_da8(0), m_dac(0), m_db0(1.0f), m_hold(-1.0f)
 
 void CTCM::Init()
 {
-    func_002344E0();
+    tcmBuildCaches();
     m_path.reserve(5);
     m_children.reserve(32);
 }

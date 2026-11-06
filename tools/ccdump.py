@@ -213,14 +213,25 @@ def main(argv=None) -> int:
     out.mkdir(parents=True, exist_ok=True)
     for old in out.glob(src.name + ".*"):
         old.unlink()                          # a stale pass from an earlier run must not be read
-    tmp = HERE / "build" / "tmp"
-    tmp.mkdir(parents=True, exist_ok=True)
-    env = dict(os.environ, TMPDIR=str(tmp), TMP=str(tmp), TEMP=str(tmp))
+    (out / "build" / "tmp").mkdir(parents=True, exist_ok=True)
+    env = dict(os.environ, TMPDIR="build/tmp", TMP="build/tmp", TEMP="build/tmp")
     obj = out / (src.stem + ".o")
     # the include path sccheck gives a unit (include/, src/), the source's own directory first as
-    # GCC's quoted includes have it; the dumps are written into the compiler's cwd
+    # GCC's quoted includes have it; the dumps are written into the compiler's cwd. The tree's own
+    # relative paths, through links in that cwd, so a unit's dump compiles the code sccheck builds:
+    # a path's length reaches GCC's code (scdiff.gcc_relative). A probe outside the tree has its own.
+    tree, rsrc, rinc = D.gcc_relative(src, [INCLUDE, SRC])
+    paths = [rsrc] + rinc
+    if any(".." in p.parts for p in paths):
+        rsrc, rinc = src, [INCLUDE, SRC]
+    else:
+        for top in {p.parts[0] for p in paths}:
+            link = out / top
+            if link.is_symlink():
+                link.unlink()
+            link.symlink_to(Path(tree) / top)
     cmd = D.gcc_driver(compiler) + ["-c"] + flags + a.dump.split() + a.extra + [
-        "-I" + str(INCLUDE), "-I" + str(SRC), str(src), "-o", str(obj)]
+        "-I" + str(i) for i in rinc] + [str(rsrc), "-o", str(obj)]
     r = subprocess.run(cmd, cwd=out, env=env, capture_output=True, text=True, timeout=300)
     if r.returncode != 0 and "Invalid option `-fsched-verbose=" in r.stderr:
         # the 2.9-991111 builds' cc1 spells it -fsched-verbose-N (2.96's -fsched-verbose=N)

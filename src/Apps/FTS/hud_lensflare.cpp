@@ -5,8 +5,8 @@
  * static 0x409080, so it is hud_pausemenu.cpp's first function; this unit's bss runs 0x408FD0-0x40901B,
  * the pause menu's from 0x409020). Written: the manager's Tick, PreDITick, Init, ReInit, Reset,
  * LoadRdr and LoadLightSource; the wildcard name pair; the entry's constructor, destructor and Init;
- * the element's Place and (round 54) its Load -- all byte-exact; unwritten: the entry's
- * Tick 0x1FF8A0 and LoadFlare 0x1FFF40. Defined in reverse of their image order (-inline deferred).
+ * the element's Place and (round 54) its Load; the entry's Tick 0x1FF8A0 and LoadFlare 0x1FFF40
+ * (round 66) -- all byte-exact. Defined in reverse of their image order (-inline deferred).
  * Its initialiser, 0x3FDAB0, builds only <iostream>'s two init objects (SOCOM 1's built only the
  * header CSTable SOCOM II dropped: SOCOM II's unit includes <iostream>). */
 
@@ -179,7 +179,7 @@ extern CAppCamera *appCamera;
 /* shown on screen at the point, centred on the screen less the point's offset scaled by the position
  * scale, sized and faded by `t` through the ranges -- or hidden, when not visible or off screen. The
  * size's two products are taken before the position's (the target's float order) */
-void CFlareElement::Place(float t, bool visible, const CPnt3D *pos)
+void CFlareElement::Place(bool visible, const CPnt3D *pos, float t)
 {
     if (visible) {
         CPnt3D xy;
@@ -247,6 +247,276 @@ void CLensFlareEntry::Init()
     m_dc = 1.0f;
     SetColor(225.0f, 224.0f, 133.0f);
     Off();
+}
+
+/* the record's settings: its active item decides whether it is on; the angle's cosine and scale;
+ * lens_flare, the node (the named child, or the given node if it has that name or no name is asked
+ * for), mobile, a handle in the flare system with the visibility tolerance, the opacity and its
+ * range; light_glare, the bitmap's colour, brightness, fade range and texture; lens_element, the
+ * elements element1, element2 ... */
+void CLensFlareEntry::LoadFlare(_zrdr *rdr, zdb::CNode *node)
+{
+    if (rdr && rdr->type == ZRDR_ARRAY) {
+        const _zrdr *active = zrdr_flat_findtag_startidx(rdr, "active", 0);
+
+        if (active && active->Item(0)->type == ZRDR_STRING) {
+            if (!strcmp(active->Item(0)->String(), "on"))
+                SetOn(true);
+            else
+                SetOn(false);
+        }
+        if (m_on) {
+            if (zrdr_findreal(rdr, "max_angle", &m_84, 1)) {
+                m_84 = m_84 * 0.017453292f;
+                m_84 = cosf(m_84);
+                m_88 = 1.0f / (1.0f - m_84);
+            }
+            const _zrdr *name;
+            _zrdr *tag = zrdr_findtag(rdr, "lens_flare");
+
+            if (tag) {
+                bool b;
+                float v[3];
+
+                m_node = 0;
+                name = zrdr_findtag(tag, "node");
+
+                if (name && name->type == ZRDR_ARRAY && name->Item(0)->type == ZRDR_STRING) {
+                    zdb::CNode *child = node->FindChild(name->Item(0)->String(), true);
+
+                    if (child)
+                        m_node = child;
+                    else if (!strcmp(name->Item(0)->String(), node->GetName()))
+                        m_node = node;
+                } else
+                    m_node = node;
+                zrdr_findbool(tag, "mobile", &b);
+                m_tracking = b;
+                if (m_node) {
+                    m_pos = CPnt3D::zero;
+                    m_node->TransformToWorld(m_pos);
+                    m_size = 0.0f;
+                    if (zrdr_findreal(tag, "visibility_tolerance", v, 1))
+                        m_size = v[0];
+                    m_handle = data_00488F10.Add(&m_pos, m_size);
+                }
+                if (zrdr_findreal(tag, "opacity", v, 2)) {
+                    m_d8 = v[0];
+                    m_dc = v[1] - m_d8;
+                }
+                if (zrdr_findbool(tag, "always_on", &b))
+                    m_flag6 = b;
+                zrdr_findbool(tag, "angle_opacity", &b);
+                m_angleOpacity = b;
+                if (zrdr_findtag(tag, "opacity_range_off"))
+                    SetRangeOpacity(false);
+                else
+                    SetRangeOpacity(true);
+                if (zrdr_findreal(tag, "opacity_range", v, 2)) {
+                    m_c8 = v[0];
+                    m_cc = 1.0f / (v[1] - m_c8);
+                }
+            }
+            tag = zrdr_findtag(rdr, "light_glare");
+            if (tag) {
+                const _zrdr *on = zrdr_findtag(tag, "active");
+
+                if (on && on->Item(0)->type == ZRDR_STRING) {
+                    if (!strcmp(on->Item(0)->String(), "on"))
+                        SetFlag3(true);
+                    else
+                        SetFlag3(false);
+                }
+                if (m_flag3) {
+                    float c[3];
+
+                    if (zrdr_findreal(tag, "color", c, 3))
+                        SetColor(c[0], c[1], c[2]);
+                    zrdr_findreal(tag, "max_brightness", &m_a4, 1);
+                    if (zrdr_findreal(tag, "fade_range", c, 2)) {
+                        m_fadeEnd = c[1];
+                        m_fadeScale = 1.0f / (m_fadeEnd - c[0]);
+                    }
+                    SetHasTexture(false);
+                    char *tex = zrdr_findstring(tag, "texture");
+
+                    if (tex) {
+                        zdb::CTexHandle *h = zdb::CAssetMgr::m_assets.GetTexHandle(tex);
+
+                        if (h) {
+                            Load(0.0f, 0.0f, 640.0f, 448.0f, h);
+                            SetHasTexture(true);
+                        }
+                    }
+                    if (m_flag3)
+                        theHUD->Add2D(this, -1, false);
+                }
+            }
+            tag = zrdr_findtag(rdr, "lens_element");
+            if (tag) {
+                const _zrdr *on = zrdr_findtag(tag, "active");
+
+                if (on && on->Item(0)->type == ZRDR_STRING) {
+                    if (!strcmp(on->Item(0)->String(), "on"))
+                        SetFlag4(true);
+                    else
+                        SetFlag4(false);
+                }
+                if (m_flag4) {
+                    int i = 0;
+                    _zrdr *item;
+
+                    do {
+                        char key[16];
+
+                        i++;
+                        sprintf(key, "element%d", i);
+                        item = zrdr_findtag(tag, key);
+                        if (item) {
+                            CFlareElement *elem = new CFlareElement;
+
+                            if (elem->Load(item))
+                                m_elements.push_back(elem);
+                            else
+                                delete elem;
+                        }
+                    } while (item);
+                }
+            }
+        }
+    }
+}
+
+/* each frame while on: how near the camera looks along the line to the flare; the node's scale and
+ * opacity brought up or down by whether it shows; the glare's alpha moved towards its goal; the
+ * elements placed */
+void CLensFlareEntry::Tick(float dT)
+{
+    if (m_on) {
+        float dot = 0.0f;
+
+        if (m_visible)
+            SetFlag1(true);
+        if (m_flag1 && (m_angleOpacity || m_flag3 || m_flag4)) {
+            CMatrix *camera_mtx = (CMatrix *)appCamera->m_camera;
+            CPnt3D camera_pos;
+            CPnt3D camera_dir, light_dir;
+
+            camera_pos.x = camera_mtx->m_matrix[3][0];
+            camera_pos.y = camera_mtx->m_matrix[3][1];
+            camera_pos.z = camera_mtx->m_matrix[3][2];
+            camera_dir = *(CPnt3D *)camera_mtx->m_matrix[2];
+            light_dir.x = camera_pos.x - m_pos.x;
+            light_dir.y = camera_pos.y - m_pos.y;
+            light_dir.z = camera_pos.z - m_pos.z;
+            camera_dir.Normalize();
+            light_dir.Normalize();
+            float d = Dot(camera_dir, light_dir);
+
+            if (d <= m_84)
+                dot = 0.0f;
+            else
+                dot = m_88 * (d - m_84);
+        }
+        if (m_visible) {
+            if (!m_flag6) {
+                m_node->SetActive(true);
+                if (m_d4 < 0.9999f) {
+                    m_d4 += 25.0f * dT;
+                    if (!(m_d4 <= 1.0f))
+                        m_d4 = 1.0f;
+                }
+                if (m_d0 < 0.9999f) {
+                    float rate = 1.0f;
+
+                    m_d0 += rate * dT;
+                    if (!(m_d0 <= 1.0f))
+                        m_d0 = 1.0f;
+                    m_node->SetScale(m_d0);
+                }
+            }
+        } else if (m_flag1) {
+            SetFlag1(false);
+            if (!m_flag6) {
+                float rate = 1.0f;
+
+                m_d0 -= rate * dT;
+                if (m_d0 < 0.01f)
+                    m_d0 = 0.01f;
+                m_node->SetScale(m_d0);
+                m_d4 -= 25.0f * dT;
+                if (m_d4 < 0.0f)
+                    m_d4 = 0.0f;
+                if (m_d0 < 0.011f && m_d4 < 0.001f)
+                    m_node->SetActive(false);
+            }
+        }
+        if (m_flag1) {
+            float a = 1.0f;
+            unsigned char angle = m_angleOpacity;
+
+            if (angle)
+                a = m_d8 + dot * m_dc;
+            float o = 1.0f;
+            unsigned char range = m_rangeOpacity;
+
+            if (range) {
+                o = m_d8;
+                if (!(m_90 <= m_c8)) {
+                    o += m_cc * (m_90 - m_c8);
+                    if (!(o <= 1.0f))
+                        o = 1.0f;
+                }
+            }
+            if (!m_flag6 || angle || range)
+                m_node->m_Opacity = o * (m_d4 * a);
+        }
+        if (m_flag3) {
+            if (m_flag1) {
+                if (!m_visible)
+                    m_a0 = 0.0f;
+                else
+                    m_a0 = dot * m_a4;
+                float glare_delta = m_a0 - m_9c;
+                float abs_delta = fabsf(glare_delta);
+                float step = 3.0f * dT;
+
+                if (!(abs_delta <= step))
+                    abs_delta = step;
+                if (glare_delta < 0.0f)
+                    abs_delta = abs_delta * -1.0f;
+                m_9c += abs_delta;
+                float fade;
+
+                if (!(m_90 < m_fadeEnd))
+                    fade = 0.0f;
+                else {
+                    fade = m_fadeScale * (m_fadeEnd - m_90);
+                    if (!(fade <= 1.0f))
+                        fade = 1.0f;
+                }
+                float opacity = m_9c * fade;
+
+                if (!(opacity <= 1.0f))
+                    opacity = 1.0f;
+                else if (opacity < 0.0f)
+                    opacity = 0.0f;
+                SetTrans(128.0f * opacity);
+                if (opacity < 0.025f)
+                    Off();
+                else
+                    On();
+            } else {
+                SetTrans(0.0f);
+                Off();
+            }
+        }
+        if (m_flag4 && m_elements.size()) {
+            bool visible = IsSeen() && IsVisible();
+            for (std::vector<CFlareElement *>::iterator i = m_elements.begin(); i != m_elements.end(); ++i)
+                (*i)->Place(visible, &m_pos, dot);
+        }
+    }
 }
 
 /* when the record's active item is "on": the group_node name copied and expanded through its
@@ -376,7 +646,7 @@ void CLensFlareManager::PreDITick(float dT)
             CLensFlareEntry *flare = *i;
 
             if (flare->m_on && flare->m_handle >= 0) {
-                if (func_00336520(&data_00488F10, flare->m_handle, flare->m_90))
+                if (func_00336520(&data_00488F10, flare->m_handle, &flare->m_90))
                     flare->m_visible = true;
                 else
                     flare->m_visible = false;

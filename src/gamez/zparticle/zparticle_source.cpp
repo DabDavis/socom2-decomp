@@ -86,35 +86,37 @@ struct FaceCorners {
     FaceCorners(Source *s, const CBBox *box)
     {
         zdb::GetBBoxCorners(m_pts, box);
-        memcpy(&s->m_diPolies[0]->m_pnts[0], &m_pts[7], sizeof(CPnt3D));
-        memcpy(&s->m_diPolies[0]->m_pnts[1], &m_pts[6], sizeof(CPnt3D));
-        memcpy(&s->m_diPolies[0]->m_pnts[2], &m_pts[5], sizeof(CPnt3D));
-        memcpy(&s->m_diPolies[0]->m_pnts[3], &m_pts[4], sizeof(CPnt3D));
+        int w2, w3, w0, w6, w7, w5, w4, w1;
+
+        memcpy(&s->m_diPolies[0]->m_pnts[0], (CPnt3D *)(w7 = (int)&m_pts[7]), sizeof(CPnt3D));
+        memcpy(&s->m_diPolies[0]->m_pnts[1], (CPnt3D *)(w6 = (int)&m_pts[6]), sizeof(CPnt3D));
+        memcpy(&s->m_diPolies[0]->m_pnts[2], (CPnt3D *)(w5 = (int)&m_pts[5]), sizeof(CPnt3D));
+        memcpy(&s->m_diPolies[0]->m_pnts[3], (CPnt3D *)(w4 = (int)&m_pts[4]), sizeof(CPnt3D));
         s->m_diPolies[0]->SetEdgeVecsAndNorm();
-        memcpy(&s->m_diPolies[1]->m_pnts[0], (CPnt3D *)(int)&m_pts[0], sizeof(CPnt3D));
-        memcpy(&s->m_diPolies[1]->m_pnts[1], &m_pts[3], sizeof(CPnt3D));
-        memcpy(&s->m_diPolies[1]->m_pnts[2], &m_pts[7], sizeof(CPnt3D));
-        memcpy(&s->m_diPolies[1]->m_pnts[3], &m_pts[4], sizeof(CPnt3D));
+        memcpy(&s->m_diPolies[1]->m_pnts[0], (CPnt3D *)(w0 = (int)&m_pts[0]), sizeof(CPnt3D));
+        memcpy(&s->m_diPolies[1]->m_pnts[1], (CPnt3D *)(w3 = (int)&m_pts[3]), sizeof(CPnt3D));
+        memcpy(&s->m_diPolies[1]->m_pnts[2], (CPnt3D *)w7, sizeof(CPnt3D));
+        memcpy(&s->m_diPolies[1]->m_pnts[3], (CPnt3D *)w4, sizeof(CPnt3D));
         s->m_diPolies[1]->SetEdgeVecsAndNorm();
-        memcpy(&s->m_diPolies[2]->m_pnts[0], &m_pts[2], sizeof(CPnt3D));
-        memcpy(&s->m_diPolies[2]->m_pnts[1], &m_pts[6], sizeof(CPnt3D));
-        memcpy(&s->m_diPolies[2]->m_pnts[2], &m_pts[7], sizeof(CPnt3D));
-        memcpy(&s->m_diPolies[2]->m_pnts[3], &m_pts[3], sizeof(CPnt3D));
+        memcpy(&s->m_diPolies[2]->m_pnts[0], (CPnt3D *)(w2 = (int)&m_pts[2]), sizeof(CPnt3D));
+        memcpy(&s->m_diPolies[2]->m_pnts[1], (CPnt3D *)w6, sizeof(CPnt3D));
+        memcpy(&s->m_diPolies[2]->m_pnts[2], (CPnt3D *)w7, sizeof(CPnt3D));
+        memcpy(&s->m_diPolies[2]->m_pnts[3], (CPnt3D *)w3, sizeof(CPnt3D));
         s->m_diPolies[2]->SetEdgeVecsAndNorm();
-        memcpy(&s->m_diPolies[3]->m_pnts[0], &m_pts[5], sizeof(CPnt3D));
-        memcpy(&s->m_diPolies[3]->m_pnts[1], &m_pts[6], sizeof(CPnt3D));
-        memcpy(&s->m_diPolies[3]->m_pnts[2], &m_pts[2], sizeof(CPnt3D));
-        memcpy(&s->m_diPolies[3]->m_pnts[3], &m_pts[1], sizeof(CPnt3D));
+        memcpy(&s->m_diPolies[3]->m_pnts[0], (CPnt3D *)w5, sizeof(CPnt3D));
+        memcpy(&s->m_diPolies[3]->m_pnts[1], (CPnt3D *)w6, sizeof(CPnt3D));
+        memcpy(&s->m_diPolies[3]->m_pnts[2], (CPnt3D *)w2, sizeof(CPnt3D));
+        memcpy(&s->m_diPolies[3]->m_pnts[3], (CPnt3D *)(w1 = (int)&m_pts[1]), sizeof(CPnt3D));
         s->m_diPolies[3]->SetEdgeVecsAndNorm();
-        memcpy(&s->m_diPolies[4]->m_pnts[0], &m_pts[4], sizeof(CPnt3D));
-        memcpy(&s->m_diPolies[4]->m_pnts[1], &m_pts[5], sizeof(CPnt3D));
-        memcpy(&s->m_diPolies[4]->m_pnts[2], &m_pts[1], sizeof(CPnt3D));
-        memcpy(&s->m_diPolies[4]->m_pnts[3], (CPnt3D *)(int)&m_pts[0], sizeof(CPnt3D));
+        memcpy(&s->m_diPolies[4]->m_pnts[0], (CPnt3D *)w4, sizeof(CPnt3D));
+        memcpy(&s->m_diPolies[4]->m_pnts[1], (CPnt3D *)w5, sizeof(CPnt3D));
+        memcpy(&s->m_diPolies[4]->m_pnts[2], (CPnt3D *)w1, sizeof(CPnt3D));
+        memcpy(&s->m_diPolies[4]->m_pnts[3], (CPnt3D *)w0, sizeof(CPnt3D));
         s->m_diPolies[4]->SetEdgeVecsAndNorm();
-        memcpy(&s->m_diPolies[5]->m_pnts[0], (CPnt3D *)(int)&m_pts[0], sizeof(CPnt3D));
-        memcpy(&s->m_diPolies[5]->m_pnts[1], &m_pts[3], sizeof(CPnt3D));
-        memcpy(&s->m_diPolies[5]->m_pnts[2], &m_pts[2], sizeof(CPnt3D));
-        memcpy(&s->m_diPolies[5]->m_pnts[3], &m_pts[1], sizeof(CPnt3D));
+        memcpy(&s->m_diPolies[5]->m_pnts[0], (CPnt3D *)w0, sizeof(CPnt3D));
+        memcpy(&s->m_diPolies[5]->m_pnts[1], (CPnt3D *)w3, sizeof(CPnt3D));
+        memcpy(&s->m_diPolies[5]->m_pnts[2], (CPnt3D *)w2, sizeof(CPnt3D));
+        memcpy(&s->m_diPolies[5]->m_pnts[3], (CPnt3D *)w1, sizeof(CPnt3D));
         s->m_diPolies[5]->SetEdgeVecsAndNorm();
     }
 
@@ -127,14 +129,12 @@ struct FaceCorners {
  * round 28: the position built from m_oldPosW's three floats (the constructor's arguments read z, y,
  * x), the box's corners through FaceCorners above (the construction loop), the node's position
  * through CNode's point overload (in place, MW keeps &pos.y and &pos.z in saved registers).
- * OPEN, 32 instructions at the target's size (0x404; round 33): the first corner's address through
- * a no-op conversion in FaceCorners (the engine core's round 24: `&local.member[0]` at offset 0 is
- * never a common subexpression) gives the eighth saved register; left is a pure permutation of the
- * eight address temporaries. `igreplay --permute` over them: 8 of the 40,320 orders, all p2, p3, p0,
- * p6, p7, p5, p4 with p1 anywhere, where IRO_CommonSubs (IroCSE.c: at each expression's first reuse
- * in linear order) gives p7, p4, p6, p3, p5, p2, p1, p0 -- the bottom ring numbered before the top,
- * each ring in its order of first use from the third face on (zdb::CDIBBox::SetCDIBBox wants
- * the same shape, c3, c2, c0, c6, c7, c5, c4). No source shape yet */
+ * Byte-exact since round 34 (32 off since round 28; the engine core's round 27 on zdb::CDIBBox::SetCDIBBox, the
+ * same shape): the eight corner addresses' saved registers are a pure numbering. All eight were
+ * IRO_CommonSubs temporaries, numbered by each corner's first reuse (p7, p4, p6, p3, p5, p2, p1, p0), and
+ * `igreplay --permute` (8 of the 40,320 orders) wants p2, p3, p0, p6, p7, p5, p4 with p1 anywhere: each address
+ * held in an int local (FaceCorners': a MARKED DEVICE, a conversion stops propagation and the common
+ * subexpression) declared in that order and assigned at its first use */
 void Source::GetBBox(CBBox *box)
 {
     if (!m_hasbbox || !m_diNode)

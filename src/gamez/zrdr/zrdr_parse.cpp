@@ -276,32 +276,20 @@ int CRdrFile::ReadToken(CRdrIO *io, _zrdr **out)
  * off with erase(begin()), MSL's own pop_front: include/list's pop_front builds the iterator a
  * level shallower and its temporaries then sit below the push_backs' (the target's are above) --
  * an inline height: include/list's pop_front may serve once the headers are refitted for level 5.
- * OPEN, 17 instructions (23 with include/list as it stands): (1) the list's destructor, inlined
- * down to the range erase, reads end_.next_ through the sentinel's address held in s1 and stores
- * the end iterator first -- include/list's ~__list_deleter written as its constructor is, `node_base
- * *t = &end_; erase(iterator(t->next_), iterator(t));`, gives exactly that (measured with a shadow
- * <list>, build/scratch/rdr/inc/list); (2) the depth test: the target branches on `depth != 0` to
- * the allocation placed after a `b` over it (the depth-0 path an empty then-block), where every
- * spelling tried here falls through into it (`if (!depth) {} else`, if/else with `array = this`
- * or `array = array`, ternaries -- the forms that leave `array` uninitialised at its declaration
- * lose the coalescing of `array` with `this` in s0 and move every register); the loop label's
- * alignment nop follows from it. Part (1) no longer differs (17 instructions, all the depth test's).
- * Round 5 of the world lane, every one 17 or 47: `if (!depth) ; else`, a do/while(0) with a break,
- * a goto over the call, a switch, a while with a break, an unsigned count, the count read back
- * from array->length; and the shape a block emptied only after allocation would give (an
- * explicit `array = this` arm, either way round, with `array` initialised or not; an inline helper
- * returning `this` early, or its ternary) -- each loses the this/array coalescing (47). Round 33
- * (build/scratch/wld/v_ra*.py): the pragma scan's peephole off only moves the loop label's pad (10):
- * the layout is not the peephole's; a no-op conversion in the arm (`array = (_zrdr *)(int)array`,
- * 36), `depth && (array = ...)`, void ternaries, two gotos, a switch either way round (36), a while
- * or for that breaks: none leaves the `b` over the allocation */
+ * Byte-exact since round 34 (17 off since round 3): the depth test is `if (depth == 0) array = this; else array =
+ * ...` with `array` left uninitialised -- the copy is what coalescing removes after the branches are laid out, so the
+ * target's `b` over the allocation and the two filled delay slots are an arm emptied late. `!depth` swaps the arms and
+ * loses the coalescing (47, the HUD's round 65 rule: `!x` swaps ternary and if arms, `x == 0` keeps them), and every
+ * spelling that keeps `array = this` at the top falls through into the allocation. include/list's ~__list_deleter
+ * written as its constructor is, `node_base *t = &end_; erase(iterator(t->next_), iterator(t));`, is what the list's
+ * destructor needs (s1, the sentinel's address, the end iterator stored first). */
 _zrdr *CRdrFile::ReadArray(CRdrIO *io, int depth)
 {
     _zrdr *rdr = 0;
     int token = 1;
     int done = 0;
     std::list<_zrdr *> list;
-    _zrdr *array = this;
+    _zrdr *array;
 
     while (!done && token) {
         token = ReadToken(io, &rdr);
@@ -315,8 +303,11 @@ _zrdr *CRdrFile::ReadArray(CRdrIO *io, int depth)
                 done = 1;
         }
     }
-    if (depth)
+    if (depth == 0) {
+        array = this;
+    } else {
         array = func_00335BC0(ZRDR_ARRAY, 1);
+    }
     int n = list.size();
     array->length = n;
     array->type = ZRDR_ARRAY;
@@ -366,8 +357,11 @@ bool CRdrIO::Open(void *buf, unsigned int size)
     return CBufferIO::Open(buf, size);
 }
 
+static inline void line_erase(std::string &s) { s.erase(); }
+static inline std::string &string_erase2(std::string &s, unsigned int pos, unsigned int n) { return string_erase(s, pos, n); }
+
 /* a string trimmed of the characters given at both ends (ours, inline) */
-static inline void zrdr_trim(std::string &s, const char *set)
+static inline std::string &zrdr_trim(std::string &s, const char *set)
 {
     unsigned int i = s.find_first_not_of(set, 0);
 
@@ -376,6 +370,7 @@ static inline void zrdr_trim(std::string &s, const char *set)
     i = s.find_last_not_of(set, (unsigned int)std::string::npos);
     if (i + 1 != s.size())
         string_erase(s, i + 1, (unsigned int)std::string::npos);
+    return s;
 }
 
 /* the preprocessor's directives (SOCOM 1's _get_pptoken, its codes 1, 2 and 4 the same; SOCOM II
@@ -456,9 +451,14 @@ bool CRdrFile::ValidateFormat(CRdrIO *io)
  * function in reverse of their first use; #ifdef's and the substitution's Find inline whole. Written
  * so, the unit's template tail comes out as the target's: the element's copy constructor 0x332B50,
  * the insert 0x3325E0 and its helpers.
- * OPEN, 1196 instructions at the target's size (0x1588): not reconciled yet -- the skip stack's
- * zeroing loop keeps a null test of its address in the target, the line's c_str() bases are hoisted
- * into stack slots (0xA0, 0xB0), and the registers differ throughout */
+ * Byte-exact since round 34 (open since round 4). What settled it: the skip stack `= {0}`, MW's null-tested byte clear; the
+ * depth defined ahead of it; zrdr_trim returning its string and CALLED IN THE ARGUMENTS of Define, Undefine and Find (`&name`
+ * in a saved register after each trim, an arm's value frame-relative where it is not trimmed: an inline's by-reference
+ * argument that is a call is not substituted, so the parameter is a variable; the two-argument Define's trims still run
+ * left to right); the empty value a temporary of the call (its slot the last of the strings), two small wrappers
+ * (line_erase, string_erase2: ours) a pass deeper for the frame slots of the first two erases' tags; the directive's
+ * code an int narrowed at the switch; a line's character an int (no sign extension of a char variable); the word's
+ * marks `start = mark = i`; a directive inside a string ends the file's loop (`break`). */
 bool _preproc_filter(CRdrIO *io)
 {
     std::string white(" \t");
@@ -471,11 +471,8 @@ bool _preproc_filter(CRdrIO *io)
     if (!CRdrFile::ValidateFormat(io))
         return false;
     io->fseek(0, 0);
-    bool skip[8];
-
-    for (int k = 0; k < 8; k++)
-        skip[k] = false;
     int depth = 0;
+    bool skip[8] = {0};
     bool skipping = false;
     int error = 0;
 
@@ -489,7 +486,7 @@ bool _preproc_filter(CRdrIO *io)
     std::string line;
 
     while (!error && !eof) {
-        line.erase();
+        line_erase(line);
         bool end = false;
         char c;
 
@@ -508,17 +505,17 @@ bool _preproc_filter(CRdrIO *io)
         bool directive = pos != (unsigned int)std::string::npos && line.at(pos) == '#';
 
         if (directive && pos)
-            string_erase(line, 0, pos);
+            string_erase2(line, 0, pos);
         if (directive) {
-            unsigned short token = _get_pptoken(line.c_str());
+            int token = _get_pptoken(line.c_str());
 
             if (quoted)
-                continue;
+                break;
             unsigned int end = line.find_first_of(comment, 0);
 
             if (end != (unsigned int)std::string::npos)
                 string_erase(line, end, (unsigned int)std::string::npos);
-            switch (token) {
+            switch ((unsigned short)token) {
             case ZRDR_PP_INCLUDE:
                 if (!skipping) {
                     std::string name(line, line.find_first_of(white, 0), (unsigned int)std::string::npos);
@@ -555,14 +552,9 @@ bool _preproc_filter(CRdrIO *io)
                     if (last != (unsigned int)std::string::npos) {
                         std::string value(line, last, (unsigned int)std::string::npos);
 
-                        zrdr_trim(name, " \t\n\r\f");
-                        zrdr_trim(value, " \t\n\r\f");
-                        g_symbols.Define(name, value);
+                        g_symbols.Define(zrdr_trim(name, " \t\n\r\f"), zrdr_trim(value, " \t\n\r\f"));
                     } else {
-                        std::string value("");
-
-                        zrdr_trim(name, " \t\n\r\f");
-                        g_symbols.Define(name, value);
+                        g_symbols.Define(zrdr_trim(name, " \t\n\r\f"), std::string(""));
                     }
                 }
                 break;
@@ -570,8 +562,7 @@ bool _preproc_filter(CRdrIO *io)
                 if (!skipping) {
                     std::string name(line, line.find_first_of(white, 0), (unsigned int)std::string::npos);
 
-                    zrdr_trim(name, " \t\n\r\f");
-                    g_symbols.Undefine(name);
+                    g_symbols.Undefine(zrdr_trim(name, " \t\n\r\f"));
                 }
                 break;
             case ZRDR_PP_IFDEF: {
@@ -579,8 +570,7 @@ bool _preproc_filter(CRdrIO *io)
 
                 depth++;
                 if (!skipping) {
-                    zrdr_trim(name, " \t\n\r\f");
-                    if (g_symbols.Find(name, false, false))
+                    if (g_symbols.Find(zrdr_trim(name, " \t\n\r\f"), false, false))
                         skip[depth] = false;
                     else
                         skip[depth] = true;
@@ -620,7 +610,7 @@ bool _preproc_filter(CRdrIO *io)
             unsigned int mark = (unsigned int)std::string::npos;
 
             for (; i < line.size(); i++) {
-                char ch = line[i];
+                int ch = line[i];
 
                 if (quoted) {
                     if (ch == '"')
@@ -634,19 +624,18 @@ bool _preproc_filter(CRdrIO *io)
                     quoted = true;
                 else if (rdr_isspace(ch) || ch == '(' || ch == ')') {
                     if (start == mark)
-                        mark = start = i;
+                        start = mark = i;
                     else {
                         std::string word = line.substr(start, i - start);
 
-                        zrdr_trim(word, " \t\n\r\f");
-                        zrdr_sym *sym = g_symbols.Find(word, false, false);
+                        zrdr_sym *sym = g_symbols.Find(zrdr_trim(word, " \t\n\r\f"), false, false);
 
                         if (sym && sym->m_value.size()) {
                             string_erase(line, start, word.size());
                             line.replace(start, 0, sym->m_value);
                             i = start + sym->m_value.size();
                         }
-                        mark = start = i;
+                        start = mark = i;
                     }
                 } else if (start == mark)
                     start = i;
@@ -721,3 +710,7 @@ _zrdr *zrdr_read(const char *name, const char *path, int flags)
 /* insert<zrdr_sym> 0x3325E0's end numbered before m: include/vector's __insert_end_pointer, a marked modelling device (the AI
  * core's round 37 measured this opt-in, +1 and nothing lost in this unit; what the original wrote is not found) */
 namespace std { template <> struct __insert_end_pointer<zrdr_sym> { enum { value = 1 }; }; }
+
+/* 0x3323F0's end as the erase's last parameter: include/vector's __erase_end_object, a marked modelling device (the MSL's round 40 measured it byte-exact);
+ * what the original wrote is not known. */
+namespace std { template <> struct __erase_end_object<zrdr_sym> { enum { value = 1 }; }; }

@@ -1822,6 +1822,11 @@ void LightList_Search(CNode *node, CLightList &lights);
 class CRenderMapVector : public std::vector<CRenderMap *> {
 };   // 0xc bytes
 
+/* the world's shadow casters (new in SOCOM II, the name ours: a class over the vector, ~CWorld tests the member's
+ * address four times as it does its neighbours', where a plain vector's destructor has three) */
+class CShadowCasterVector : public std::vector<CShadowCaster *> {
+};   // 0xc bytes
+
 /* the world's characters with textures of their own (SOCOM 1's DWARF: a list) */
 class CTextureAssetCharacterList : public std::list<CTextureAssetCharacters *> {
 public:
@@ -2202,7 +2207,7 @@ public:
     CLightList m_lights;   // 0x55c
     CRenderMapVector m_shadows;   // 0x568
     CLightMapVector m_lightMaps;   // 0x574
-    std::vector<CShadowCaster *> m_shadow_casters;   // 0x580: SOCOM II's (the name ours)
+    CShadowCasterVector m_shadow_casters;   // 0x580: SOCOM II's (the name ours)
     CLOD_Object m_LOD_Object;   // 0x58c
     CMaterial_Object m_Material_Object;   // 0x59c
     CSubSurf_Object m_SubSurf_Object;   // 0x5ac

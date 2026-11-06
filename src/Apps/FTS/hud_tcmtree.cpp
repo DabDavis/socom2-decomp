@@ -14,7 +14,7 @@
  * byte-exact since round 62.
  * Written in round 41: one kind's items, tcmAddKindItems 0x2329F0 (its entries go under the third
  * group item's caption, which an inline returns); round 57: Select byte-exact and the closed menu's
- * pad handler HandleClosedPad 0x2359A0. Not yet: the cache builders 0x232BC0/0x2344E0.
+ * pad handler HandleClosedPad 0x2359A0; round 66: the cache builders 0x232BC0/0x2344E0.
  * Defined in reverse of their image order (-inline deferred). */
 
 #include <string.h>
@@ -76,6 +76,7 @@ public:
 class CHUD {
 public:
     static CZSealBody *GetHUDOwner();
+    void Add2D(C2D *p2d, int phase, bool add_to_back);
 
     unsigned char _0[0x4fe0];
     MapCompass m_compass;   // 0x4fe0
@@ -642,6 +643,364 @@ bool CTCM::Select(const char *name)
     return done;
 }
 
+/* the commands and tests the caches hold (hud_tcmcmds.cpp's) */
+int tcmCharacterTaunt(CZSealBody *player, int arg);
+int tcmCueScaryMusic(CZSealBody *player, int arg);
+int tcmIntimidate(CZSealBody *player, int arg);
+int tcmMute(CZSealBody *player, int arg);
+int tcmNiceOne(CZSealBody *player, int arg);
+int tcmNodeAction(CZSealBody *player, int arg);
+int tcmRadioOnOff(CZSealBody *player, int arg);
+int tcmReportStatus(CZSealBody *player, int arg);
+int tcmSayAgain(CZSealBody *player, int arg);
+int tcmSelectPlayer(CZSealBody *player, int arg);
+int tcmSelectTeam(CZSealBody *player, int arg);
+int tcmSendMessage(CZSealBody *player, int arg);
+int tcmSetChannel(CZSealBody *player, int arg);
+int tcmTeamCommand(CZSealBody *player, int arg);
+int tcmTeamMember(CZSealBody *player, int arg);
+int tcmUpdateIntimidate(CZSealBody *player, int arg);
+int tcmUpdateMessage(CZSealBody *player, int arg);
+int tcmUpdateMute(CZSealBody *player, int arg);
+int tcmUpdateNodeAction(CZSealBody *player, int arg);
+int tcmUpdatePlayer(CZSealBody *player, int arg);
+int tcmUpdateRadio(CZSealBody *player, int arg);
+int tcmUpdateRadioOnOff(CZSealBody *player, int arg);
+int tcmUpdateTeam(CZSealBody *player, int arg);
+int tcmUpdateTeamCommand(CZSealBody *player, int arg);
+int tcmUpdateTeamMember(CZSealBody *player, int arg);
+int tcmUpdateVote(CZSealBody *player, int arg);
+int tcmUpdateVoteAll(CZSealBody *player, int arg);
+int tcmVote(CZSealBody *player, int arg);
+int tcmVoteAll(CZSealBody *player, int arg);
+int tcmWhassup(CZSealBody *player, int arg);
+/* an entry of the kinds' table (ours: a byte enum -- the kind's first and end entries come back
+ * unnarrowed and are zero-extended where they are compared as ints) */
+enum TCM_ENTRY { TCM_ENTRY_NONE = 0, TCM_ENTRY_LAST = 0xff };
+
+/* OVL2's item tables: a team's name (and its text, func_0058DBB0), and the kinds' (below) */
+extern "C" {
+const char *func_0058DD70(signed char group);
+const char *func_0058DBB0(signed char group);
+const char *func_0058E950(FT_COMMAND kind);
+const char *func_0058E900(FT_COMMAND kind);
+const char *func_0058E750(FT_COMMAND kind);
+TCM_ENTRY func_0058DF20(FT_COMMAND kind);
+TCM_ENTRY func_0058DEB0(FT_COMMAND kind);
+const char *func_0058EB00(TCM_ENTRY entry);
+const char *func_0058E4D0(TCM_ENTRY entry);
+const char *func_0058E360(TCM_ENTRY entry);
+const char *func_0058E120(TCM_ENTRY entry);
+}
+extern CTCMCache spCache;
+extern CTCMCache mpCache;
+
+/* the six teams' numbers (.data 0x3DCAE8, bytes: the two builders read them) */
+static signed char s_tcmTeams[6] = { 1, 2, 3, 17, 18, 29 };
+
+/* the caches filled: the single player's teams, the teammates' FT_COMMAND names, the team commands and a
+ * few words; then the network game's radio menu (0x2344E0: the menu's Init calls it; the name ours) */
+void tcmBuildCaches()
+{
+    int i;
+
+    spCache.m_entries.reserve(96);
+    mpCache.m_entries.reserve(64);
+    for (i = 0; i < 6; i++) {
+        signed char t = s_tcmTeams[i];
+        unsigned char id = t;
+
+        spCache.Add(func_0058DD70(t), tcmSelectTeam, id, tcmUpdateTeam, id);
+    }
+    spCache.Add("INTIMIDATE", tcmIntimidate, 0, tcmUpdateIntimidate, 0);
+    for (i = 0; i < 24; i++)
+        spCache.Add(CSealCtrl::GetCommandName((FT_COMMAND)i), tcmTeamMember, i, tcmUpdateTeamMember, i);
+    for (i = 1; i < 42; i++)
+        spCache.Add(func_0058EB00((TCM_ENTRY)i), tcmTeamCommand, i, tcmUpdateTeamCommand, i);
+    spCache.Add("NICE ONE", tcmNiceOne, 0, 0, 0);
+    spCache.Add("WHASSUP", tcmWhassup, 0, 0, 0);
+    spCache.Add("REPORT STATUS", tcmReportStatus, 0, 0, 0);
+    spCache.Add("CUE SCARY MUSIC", tcmCueScaryMusic, 0, 0, 0);
+    spCache.Add("SAY AGAIN", tcmSayAgain, 0, 0, 0);
+    mpCache.Add("NODEACTION ROOT", 0, 0, tcmUpdateRadio, 0);
+    mpCache.Add("NODEACTION 01", tcmNodeAction, 1, tcmUpdateNodeAction, 1);
+    mpCache.Add("NODEACTION 02", tcmNodeAction, 2, tcmUpdateNodeAction, 2);
+    mpCache.Add("NODEACTION 03", tcmNodeAction, 3, tcmUpdateNodeAction, 3);
+    mpCache.Add("NODEACTION 04", tcmNodeAction, 4, tcmUpdateNodeAction, 4);
+    mpCache.Add("NODEACTION 05", tcmNodeAction, 5, tcmUpdateNodeAction, 5);
+    mpCache.Add("NODEACTION 06", tcmNodeAction, 6, tcmUpdateNodeAction, 6);
+    mpCache.Add("NODEACTION 07", tcmNodeAction, 7, tcmUpdateNodeAction, 7);
+    mpCache.Add("NODEACTION 08", tcmNodeAction, 8, tcmUpdateNodeAction, 8);
+    mpCache.Add("TACTICAL ORDERS", tcmSelectTeam, 31, tcmUpdateTeam, 31);
+    mpCache.Add("MP HOLD FIRE", tcmSendMessage, 6, tcmUpdateMessage, 6);
+    mpCache.Add("MP FIRE AT WILL", tcmSendMessage, 3, tcmUpdateMessage, 3);
+    mpCache.Add("MP CLEAR AREA", tcmSendMessage, 23, tcmUpdateMessage, 23);
+    mpCache.Add("MP COVER ME", tcmSendMessage, 45, tcmUpdateMessage, 45);
+    mpCache.Add("MP DEFUSE BOMB", tcmSendMessage, 46, tcmUpdateMessage, 46);
+    mpCache.Add("MP PROTECT", tcmSendMessage, 47, tcmUpdateMessage, 47);
+    mpCache.Add("MP POINT", tcmSendMessage, 48, tcmUpdateMessage, 48);
+    mpCache.Add("TAUNTS", 0, 0, tcmUpdateRadio, 0);
+    mpCache.Add("CHARACTER TAUNT", tcmCharacterTaunt, 0, 0, 0);
+    mpCache.Add("CUSTOM TAUNT 01", tcmSendMessage, 54, tcmUpdateMessage, 54);
+    mpCache.Add("CUSTOM TAUNT 02", tcmSendMessage, 55, tcmUpdateMessage, 55);
+    mpCache.Add("CUSTOM TAUNT 03", tcmSendMessage, 56, tcmUpdateMessage, 56);
+    mpCache.Add("CUSTOM TAUNT 04", tcmSendMessage, 57, tcmUpdateMessage, 57);
+    mpCache.Add("CUSTOM TAUNT 05", tcmSendMessage, 58, tcmUpdateMessage, 58);
+    mpCache.Add("MESSAGES", tcmSelectTeam, 31, tcmUpdateTeam, 31);
+    mpCache.Add("CUSTOM MSG 1", tcmSendMessage, 49, tcmUpdateMessage, 49);
+    mpCache.Add("CUSTOM MSG 2", tcmSendMessage, 50, tcmUpdateMessage, 50);
+    mpCache.Add("CUSTOM MSG 3", tcmSendMessage, 51, tcmUpdateMessage, 51);
+    mpCache.Add("CUSTOM MSG 4", tcmSendMessage, 52, tcmUpdateMessage, 52);
+    mpCache.Add("CUSTOM MSG 5", tcmSendMessage, 53, tcmUpdateMessage, 53);
+    mpCache.Add("RADIO", 0, 0, tcmUpdateRadio, 0);
+    mpCache.Add("RADIO ONOFF", tcmRadioOnOff, 0, tcmUpdateRadioOnOff, 0);
+    mpCache.Add("ACTIVE CHANNEL", 0, 0, 0, 0);
+    mpCache.Add("TEAM", tcmSetChannel, 0, 0, 0);
+    mpCache.Add("OFFENSE", tcmSetChannel, 2, 0, 0);
+    mpCache.Add("DEFENSE", tcmSetChannel, 1, 0, 0);
+    mpCache.Add("TEAMMATES", 0, 0, 0, 0);
+    mpCache.Add("SPECTATORS", 0, 0, 0, 0);
+    mpCache.Add("PLAYER 1", tcmSelectPlayer, 0, tcmUpdatePlayer, 0);
+    mpCache.Add("PLAYER 2", tcmSelectPlayer, 1, tcmUpdatePlayer, 1);
+    mpCache.Add("PLAYER 3", tcmSelectPlayer, 2, tcmUpdatePlayer, 2);
+    mpCache.Add("PLAYER 4", tcmSelectPlayer, 3, tcmUpdatePlayer, 3);
+    mpCache.Add("PLAYER 5", tcmSelectPlayer, 4, tcmUpdatePlayer, 4);
+    mpCache.Add("PLAYER 6", tcmSelectPlayer, 5, tcmUpdatePlayer, 5);
+    mpCache.Add("PLAYER 7", tcmSelectPlayer, 6, tcmUpdatePlayer, 6);
+    mpCache.Add("PLAYER 8", tcmSelectPlayer, 7, tcmUpdatePlayer, 7);
+    mpCache.Add("VOTE RETAIN:REMOVE", tcmVote, 0, tcmUpdateVote, 0);
+    mpCache.Add("MUTE ON:OFF", tcmMute, 0, tcmUpdateMute, 0);
+    mpCache.Add("VOTE ALL ON:OFF", tcmVoteAll, 0, tcmUpdateVoteAll, 0);
+}
+
+void tcmAddKindItems(FT_COMMAND kind);
+
+namespace zdb {
+class CTexture;
+class CTexHandle {
+public:
+    unsigned char _0[0xc];
+    CTexture *m_texture;   // 0xc
+};
+class CWorld {
+public:
+    static CTexHandle *GetTexHandle(const char *name);
+};
+}
+
+/* a poly textured from a handle (hud_tcm.cpp's inline, through `this`: here the bool comes first, the poly in the
+ * call's delay slot) */
+inline void C2DBitmapPoly::SetTexture(zdb::CTexHandle *h)
+{
+    zdb::CTexture *tex = h ? h->m_texture : 0;
+
+    m_texture = tex;
+    m_tris[0].m_texture = tex;
+    m_tris[1].m_texture = tex;
+    SetHasTexture(tex != 0);
+}
+
+/* an item of a kind with its entries, under a group's parent (ours: the builder's ten copies of it): the
+ * kind's item, then each entry under the kind's caption */
+static inline void tcmAddKindEntries(signed char group, FT_COMMAND kind)
+{
+    const char *parent = func_0058DD70(group);
+    const char *name = CSealCtrl::GetCommandName(kind);
+    const char *caption = func_0058E950(kind);
+    const char *nodename = func_0058E900(kind);
+
+    tcmAddItem(name, parent, caption, nodename, func_0058E750(kind), false);
+
+    TCM_ENTRY first = func_0058DF20(kind);
+    TCM_ENTRY end = func_0058DEB0(kind);
+
+    for (int i = first; i < end; i++) {
+        TCM_ENTRY e = (TCM_ENTRY)i;
+        const char *ename = func_0058EB00(e);
+        const char *ecaption = func_0058E4D0(e);
+        const char *enodename = func_0058E360(e);
+
+        tcmAddItem(ename, caption, ecaption, enodename, func_0058E120(e), false);
+    }
+}
+
+/* the menu built for the game's kind (0x232BC0: CHUD's call, 0x1FAF68; the name ours): the bars listed under the
+ * root; the current cache's items -- the single player's teams and orders (0), the network game's whole
+ * menu (1) or only its radio (2); the node actions and the mission's prompt on them; the bars' textures, the
+ * root and the item bars given to the HUD, the action icon hidden and the sounds loaded */
+void CTCM::Build(unsigned char mode)
+{
+    GetRoot()->push_back(&m_7d0);
+    GetRoot()->push_back(&m_9c0);
+    GetRoot()->push_back(&m_bb0);
+    switch (mode) {
+    case 2:
+        SetCache(&mpCache);
+        tcmAddItem("RADIO", 0, 0, 0, "Use the radio", false);
+        tcmAddItem("RADIO ONOFF", "RADIO", 0, 0, "Radio (On, Off)", false);
+        break;
+    case 1:
+        SetCache(&mpCache);
+        tcmAddItem("NODEACTION ROOT", 0, 0, 0, "mission.rdr, 'tcm::nodeaction_root'", false);
+        tcmAddItem("NODEACTION 01", "NODEACTION ROOT", 0, 0, "actions.rdr, 'descriptor'", false);
+        tcmAddItem("NODEACTION 02", "NODEACTION ROOT", 0, 0, "actions.rdr, 'descriptor'", false);
+        tcmAddItem("NODEACTION 03", "NODEACTION ROOT", 0, 0, "actions.rdr, 'descriptor'", false);
+        tcmAddItem("NODEACTION 04", "NODEACTION ROOT", 0, 0, "actions.rdr, 'descriptor'", false);
+        tcmAddItem("NODEACTION 05", "NODEACTION ROOT", 0, 0, "actions.rdr, 'descriptor'", false);
+        tcmAddItem("NODEACTION 06", "NODEACTION ROOT", 0, 0, "actions.rdr, 'descriptor'", false);
+        tcmAddItem("NODEACTION 07", "NODEACTION ROOT", 0, 0, "actions.rdr, 'descriptor'", false);
+        tcmAddItem("NODEACTION 08", "NODEACTION ROOT", 0, 0, "actions.rdr, 'descriptor'", false);
+        tcmAddItem("TACTICAL ORDERS", 0, 0, 0, "Issue tactical orders to your allies", false);
+        tcmAddItem("MP HOLD FIRE", "TACTICAL ORDERS", "MP HOLD FIRE", "MP HOLD FIRE", "Tactical: Hold your fire", false);
+        tcmAddItem("MP FIRE AT WILL", "TACTICAL ORDERS", "MP FIRE AT WILL", "MP FIRE AT WILL", "Tactical: Fire at will", false);
+        tcmAddItem("MP CLEAR AREA", "TACTICAL ORDERS", "MP CLEAR AREA", "MP CLEAR AREA", "Tactical: Clear the area of hostiles", false);
+        tcmAddItem("MP COVER ME", "TACTICAL ORDERS", "MP COVER ME", "MP COVER ME", "Tactical: Cover me", false);
+        tcmAddItem("MP DEFUSE BOMB", "TACTICAL ORDERS", "MP DEFUSE BOMB", "MP DEFUSE BOMB", "Tactical: Defuse the bomb", false);
+        tcmAddItem("MP PROTECT", "TACTICAL ORDERS", "MP PROTECT", "MP PROTECT", "Tactical: Protect target", false);
+        tcmAddItem("MP POINT", "TACTICAL ORDERS", "MP POINT", "MP POINT", "Tactical: I'll take point", false);
+        tcmAddItem("TAUNTS", 0, 0, 0, "Taunt your enemies", false);
+        tcmAddItem("CHARACTER TAUNT", "TAUNTS", 0, 0, "Your character will taunt the enemies", false);
+        tcmAddItem("CUSTOM TAUNT 01", "TAUNTS", 0, 0, "Send a custom taunt to your enemies", false);
+        tcmAddItem("CUSTOM TAUNT 02", "TAUNTS", 0, 0, "Send a custom taunt to your enemies", false);
+        tcmAddItem("CUSTOM TAUNT 03", "TAUNTS", 0, 0, "Send a custom taunt to your enemies", false);
+        tcmAddItem("CUSTOM TAUNT 04", "TAUNTS", 0, 0, "Send a custom taunt to your enemies", false);
+        tcmAddItem("CUSTOM TAUNT 05", "TAUNTS", 0, 0, "Send a custom taunt to your enemies", false);
+        tcmAddItem("RADIO", 0, 0, 0, "Use the radio", false);
+        tcmAddItem("ACTIVE CHANNEL", "RADIO", 0, 0, "Set the active radio channel", false);
+        tcmAddItem("RADIO ONOFF", "RADIO", 0, 0, "Radio (On, Off)", false);
+        tcmAddItem("TEAM", "ACTIVE CHANNEL", "TEAM", "TEAM", "Set radio channel to TEAM", false);
+        tcmAddItem("OFFENSE", "ACTIVE CHANNEL", 0, 0, "Set radio channel to OFFENSE ", false);
+        tcmAddItem("DEFENSE", "ACTIVE CHANNEL", 0, 0, "Set radio channel to DEFENSE", false);
+        tcmAddItem("TEAMMATES", 0, 0, 0, "Teammate controls", false);
+        tcmAddItem("PLAYER 1", "TEAMMATES", 0, 0, "Player 1", false);
+        tcmAddItem("PLAYER 2", "TEAMMATES", 0, 0, "Player 2", false);
+        tcmAddItem("PLAYER 3", "TEAMMATES", 0, 0, "Player 3", false);
+        tcmAddItem("PLAYER 4", "TEAMMATES", 0, 0, "Player 4", false);
+        tcmAddItem("PLAYER 5", "TEAMMATES", 0, 0, "Player 5", false);
+        tcmAddItem("PLAYER 6", "TEAMMATES", 0, 0, "Player 6", false);
+        tcmAddItem("PLAYER 7", "TEAMMATES", 0, 0, "Player 7", false);
+        tcmAddItem("PLAYER 8", "TEAMMATES", 0, 0, "Player 8", false);
+        tcmAddItem("VOTE RETAIN:REMOVE", "PLAYER 1", 0, 0, "Vote to Retain or Remove the selected player", false);
+        tcmAddItem("MUTE ON:OFF", "PLAYER 1", 0, 0, "Mute (On, Off)", false);
+        tcmAddItem("VOTE RETAIN:REMOVE", "PLAYER 2", 0, 0, "Vote to Retain or Remove the selected player", false);
+        tcmAddItem("MUTE ON:OFF", "PLAYER 2", 0, 0, "Mute (On, Off)", false);
+        tcmAddItem("VOTE RETAIN:REMOVE", "PLAYER 3", 0, 0, "Vote to Retain or Remove the selected player", false);
+        tcmAddItem("MUTE ON:OFF", "PLAYER 3", 0, 0, "Mute (On, Off)", false);
+        tcmAddItem("VOTE RETAIN:REMOVE", "PLAYER 4", 0, 0, "Vote to Retain or Remove the selected player", false);
+        tcmAddItem("MUTE ON:OFF", "PLAYER 4", 0, 0, "Mute (On, Off)", false);
+        tcmAddItem("VOTE RETAIN:REMOVE", "PLAYER 5", 0, 0, "Vote to Retain or Remove the selected player", false);
+        tcmAddItem("MUTE ON:OFF", "PLAYER 5", 0, 0, "Mute (On, Off)", false);
+        tcmAddItem("VOTE RETAIN:REMOVE", "PLAYER 6", 0, 0, "Vote to Retain or Remove the selected player", false);
+        tcmAddItem("MUTE ON:OFF", "PLAYER 6", 0, 0, "Mute (On, Off)", false);
+        tcmAddItem("VOTE RETAIN:REMOVE", "PLAYER 7", 0, 0, "Vote to Retain or Remove the selected player", false);
+        tcmAddItem("MUTE ON:OFF", "PLAYER 7", 0, 0, "Mute (On, Off)", false);
+        tcmAddItem("VOTE RETAIN:REMOVE", "PLAYER 8", 0, 0, "Vote to Retain or Remove the selected player", false);
+        tcmAddItem("MUTE ON:OFF", "PLAYER 8", 0, 0, "Mute (On, Off)", false);
+        tcmAddItem("SPECTATORS", 0, 0, 0, "Spectator controls", false);
+        tcmAddItem("VOTE ALL ON:OFF", "SPECTATORS", 0, 0, "Vote to Retain or Remove all players", false);
+        tcmAddItem("MESSAGES", 0, 0, 0, "Send custom text messages", false);
+        tcmAddItem("CUSTOM MSG 1", "MESSAGES", 0, 0, "Custom Team Message 1", false);
+        tcmAddItem("CUSTOM MSG 2", "MESSAGES", 0, 0, "Custom Team Message 2", false);
+        tcmAddItem("CUSTOM MSG 3", "MESSAGES", 0, 0, "Custom Team Message 3", false);
+        tcmAddItem("CUSTOM MSG 4", "MESSAGES", 0, 0, "Custom Team Message 4", false);
+        tcmAddItem("CUSTOM MSG 5", "MESSAGES", 0, 0, "Custom Team Message 5", false);
+        break;
+    case 0: {
+        SetCache(&spCache);
+        for (int i = 0; i < 6; i++) {
+            const signed char t = s_tcmTeams[i];
+            const char *name = func_0058DD70(t);
+
+            tcmAddItem(name, 0, 0, 0, func_0058DBB0(t), false);
+        }
+        tcmAddItem("INTIMIDATE", 0, 0, 0, "Intimidate nearby enemies . . .", true);
+        tcmAddItem("INTIMIDATE", 0, "DROP YOUR WEAPONS", "DROP YOUR WEAPONS", "Intimidate nearby enemies . . .", true);
+        const char *name = CSealCtrl::GetCommandName((FT_COMMAND)20);
+        const char *caption = func_0058E950((FT_COMMAND)20);
+        const char *nodename = func_0058E900((FT_COMMAND)20);
+        const char *text2 = func_0058E750((FT_COMMAND)20);
+
+        tcmAddItem(name, func_0058DD70(1), caption, nodename, text2, true);
+        tcmAddItem(name, func_0058DD70(2), caption, nodename, text2, true);
+        tcmAddItem(name, func_0058DD70(3), caption, nodename, text2, true);
+        tcmAddKindItems((FT_COMMAND)6);
+        tcmAddKindItems((FT_COMMAND)3);
+        tcmAddKindItems((FT_COMMAND)2);
+        tcmAddKindItems((FT_COMMAND)15);
+        tcmAddKindItems((FT_COMMAND)1);
+        tcmAddKindItems((FT_COMMAND)8);
+        tcmAddKindItems((FT_COMMAND)14);
+        tcmAddKindItems((FT_COMMAND)16);
+        tcmAddKindItems((FT_COMMAND)23);
+        tcmAddKindItems((FT_COMMAND)10);
+        tcmAddKindItems((FT_COMMAND)9);
+        tcmAddKindItems((FT_COMMAND)11);
+        tcmAddKindItems((FT_COMMAND)12);
+        tcmAddKindItems((FT_COMMAND)13);
+        tcmAddKindItems((FT_COMMAND)7);
+        tcmAddKindItems((FT_COMMAND)4);
+        tcmAddKindItems((FT_COMMAND)5);
+        tcmAddKindItems((FT_COMMAND)17);
+        tcmAddKindItems((FT_COMMAND)19);
+        tcmAddKindEntries(17, (FT_COMMAND)4);
+        tcmAddKindEntries(17, (FT_COMMAND)17);
+        tcmAddKindEntries(17, (FT_COMMAND)5);
+        tcmAddKindEntries(18, (FT_COMMAND)4);
+        tcmAddKindEntries(18, (FT_COMMAND)17);
+        tcmAddKindEntries(18, (FT_COMMAND)5);
+        tcmAddKindEntries(18, (FT_COMMAND)18);
+        tcmAddKindEntries(18, (FT_COMMAND)1);
+        tcmAddKindEntries(29, (FT_COMMAND)21);
+        tcmAddKindEntries(29, (FT_COMMAND)22);
+        tcmAddItem("NICE ONE", 0, 0, 0, 0, true);
+        tcmAddItem("WHASSUP", 0, 0, 0, 0, true);
+        tcmAddItem("REPORT STATUS", 0, 0, 0, 0, true);
+        tcmAddItem("CUE SCARY MUSIC", 0, 0, 0, 0, true);
+        tcmAddItem("SAY AGAIN", 0, 0, 0, 0, true);
+        break;
+    }
+    }
+    theTCM.SetNodeActions();
+
+    const char *prompt = theMission.GetTcmRootName();
+
+    if (prompt && strlen(prompt)) {
+        std::vector<CTCMNode *> found;
+
+        theTCM.Find("NODEACTION ROOT", found, true);
+
+        unsigned int n = found.size();
+
+        if (n) {
+            for (unsigned int i = 0; i < n; i++) {
+                CTCMNode *node = found[i];
+
+                if (node) {
+                    node->m_text.SetString(prompt, true);
+                    node->m_text2.SetString(prompt, true);
+                }
+            }
+        }
+    }
+    zdb::CTexHandle *tex = zdb::CWorld::GetTexHandle("TCM.tif");
+
+    m_9c0.SetTrans(0.0f);
+    m_9c0.SetTexture(tex);
+    m_9c0.SetUV(0.7f, 0.0f, 0.3f, 1.0f);
+    m_bb0.SetTrans(0.0f);
+    m_bb0.SetTexture(tex);
+    m_bb0.SetUV(0.7f, 0.0f, 0.3f, 1.0f);
+    theHUD->Add2D(&m_root, -1, true);
+    SetupItemBars();
+    m_items.SetTexture(zdb::CWorld::GetTexHandle("action_TCM.tif"));
+    m_items.SetColor(0.0f, 0.0f, 0.0f);
+    m_items.SetTrans(0.0f);
+    m_items.SetPos(100.0f, 100.0f, 132.0f, 132.0f);
+    m_items.Off();
+    theHUD->Add2D(&m_items, -1, true);
+    m_sounds.Load();
+}
+
 /* push-to-talk while the menu is closed in a network game: the radio on while the button is held
  * (for at most the longest talk), off with a short hold when it is let go */
 void CTCM::TalkTick(float dt)
@@ -676,25 +1035,9 @@ void CTCM::TalkTick(float dt)
  * byte argument (the callees narrow it). The kind is GetCommandName's FT_COMMAND for all five of
  * its readers (round 54): converted from an unsigned char at a call MW narrows it with an andi the
  * target never has, so the kind builder takes the enum too (its name ours, its row renamed) */
-/* an entry of the kinds' table (ours: a byte enum -- the kind's first and end entries come back
- * unnarrowed and are zero-extended where they are compared as ints) */
-enum TCM_ENTRY { TCM_ENTRY_NONE = 0, TCM_ENTRY_LAST = 0xff };
-
-extern "C" {
-const char *func_0058DD70(unsigned char group);
-const char *func_0058E950(FT_COMMAND kind);
-const char *func_0058E900(FT_COMMAND kind);
-const char *func_0058E750(FT_COMMAND kind);
-TCM_ENTRY func_0058DF20(FT_COMMAND kind);
-TCM_ENTRY func_0058DEB0(FT_COMMAND kind);
-const char *func_0058EB00(TCM_ENTRY entry);
-const char *func_0058E4D0(TCM_ENTRY entry);
-const char *func_0058E360(TCM_ENTRY entry);
-const char *func_0058E120(TCM_ENTRY entry);
-}
 
 /* the kind's item under a group's parent, its caption returned (ours) */
-static inline const char *tcmAddGroupItem(unsigned char group, FT_COMMAND kind)
+static inline const char *tcmAddGroupItem(signed char group, FT_COMMAND kind)
 {
     const char *parent = func_0058DD70(group);
     const char *name = CSealCtrl::GetCommandName(kind);
@@ -711,6 +1054,7 @@ static inline const char *tcmAddGroupItem(unsigned char group, FT_COMMAND kind)
  * written as tcmAddItem's arguments MW calls them last to first; the group item an inline returning
  * its caption; the entries a byte enum, which gives the target's unnarrowed first entry and its
  * registers (as unsigned char locals MW narrows the first at the call and swaps two pairs) */
+#pragma auto_inline off
 void tcmAddKindItems(FT_COMMAND kind)
 {
     tcmAddGroupItem(1, kind);
@@ -729,6 +1073,7 @@ void tcmAddKindItems(FT_COMMAND kind)
         tcmAddItem(ename, gcaption, ecaption, enodename, func_0058E120(e), false);
     }
 }
+#pragma auto_inline reset
 
 CTCMSounds::CTCMSounds()
 {
@@ -738,6 +1083,7 @@ CTCMSounds::CTCMSounds()
     m_select = 0;
 }
 
+#pragma auto_inline off
 void CTCMSounds::Load()
 {
     m_loaded = true;
@@ -745,6 +1091,7 @@ void CTCMSounds::Load()
     m_select = CSnd::GetSoundByName(".TCM_SELECT");
     m_back = CSnd::GetSoundByName(".TCM_SELECT");
 }
+#pragma auto_inline reset
 
 void CTCMSounds::Clear()
 {

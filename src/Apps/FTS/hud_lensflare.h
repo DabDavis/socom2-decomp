@@ -19,13 +19,15 @@ struct _zrdr;
  * virtual call: the implicit destructor of a class with no virtuals) */
 class CFlareElement {
 public:
+    /* off, opaque to begin with, scaled from a thousandth to a hundredth (inlined at LoadFlare's new) */
+    CFlareElement() : m_opacity(0.0f), m_opacityRange(1.0f), m_scale(0.001f), m_scaleRange(0.01f - m_scale) {}
     /* the bitmap hidden first (an inline written destructor: deleting one tests it once, the
      * delete's null test merged with the destructor's this-test, then the bitmap member's own) */
     ~CFlareElement() { m_bmp.Off(); }
     /* the element's settings from its record (texture, color, position_scale, size, opacity, scale) */
     bool Load(_zrdr *rdr);
     /* shown at a point of the flare's line, or hidden: `t` how far through its range */
-    void Place(float t, bool visible, const CPnt3D *pos);
+    void Place(bool visible, const CPnt3D *pos, float t);
 
     C2DBitmap m_bmp;   // 0x0
     float m_posScale;   // 0x80: position_scale (the screen offset from the centre scaled by it)
@@ -57,6 +59,9 @@ public:
     void SetFlag3(bool on) { m_flag3 = on; }
     void SetFlag4(bool on) { m_flag4 = on; }
     void SetFlag6(bool on) { m_flag6 = on; }
+    void SetRangeOpacity(bool on) { m_rangeOpacity = on; }
+    bool IsSeen() { return m_flag1; }
+    bool IsVisible() { return m_visible; }
 
     unsigned char m_on : 1;   // 0x80 bit 0: PreDITick asks the flare system only about these
     unsigned char m_flag1 : 1;
@@ -65,11 +70,14 @@ public:
     unsigned char m_flag4 : 1;   // bit 4: LoadFlare sets it from "on"
     unsigned char m_tracking : 1;   // bit 5: the position follows the node each frame
     unsigned char m_flag6 : 1;
-    unsigned char _80_7 : 1;
+    unsigned char m_angleOpacity : 1;   // bit 7: "angle_opacity"
+    unsigned char m_rangeOpacity : 1;   // 0x81 bit 0: unless "opacity_range_off"
     float m_84;   // 0x84: 0.75 to begin with
     float m_88;   // 0x88: 1 / (1 - m_84)
     int m_handle;   // 0x8c
-    unsigned char m_90[0xc];   // what PreDITick hands the flare system's query
+    float m_90;   // 0x90: what PreDITick has the flare system's query write
+    float m_fadeEnd;   // 0x94: "fade_range"'s second value
+    float m_fadeScale;   // 0x98: one over the range
     float m_9c;   // 0x9c
     float m_a0;   // 0xa0
     float m_a4;   // 0xa4: 0.5 to begin with

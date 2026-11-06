@@ -40,6 +40,17 @@ def ck(cond, msg):
     assert cond, msg
 
 
+class gcc_absolute:
+    """GCC built by the old absolute paths inside the block (scdiff.compile_obj's SC_GCC_ABSOLUTE): what makes
+    a unit's code a function of where the tree lies, for the negatives and for objcmp's padded sides."""
+
+    def __enter__(self):
+        os.environ["SC_GCC_ABSOLUTE"] = "1"
+
+    def __exit__(self, *exc):
+        del os.environ["SC_GCC_ABSOLUTE"]
+
+
 def build(src: Path, name: str, compiler: str = D.COMPILER, flags=None) -> Path:
     obj = BUILD / f"{name}.o"
     D.compile_obj(src, obj, compiler, flags, [HERE / "include", src.parent])
@@ -1268,6 +1279,10 @@ def test_objcmp_verdict_is_independent_of_its_work_directory():
         O.build_side(side, [], root / "obj-stems")
         ck(D.shared_stems(side / "src") == set(), "each side's stems are read again (BASE's set never stands)")
         shutil.rmtree(side)
+        rel = run(base, short)
+        ck(rel[0] == 0 and not any(l.startswith(("PATH-DEPENDENT", "DIFF")) for l in rel[1]),
+           f"built by relative paths the path-length unit has no path to depend on: {rel}")
+        os.environ["SC_GCC_ABSOLUTE"] = "1"     # the machinery below stands for MW, which keeps absolute paths
         rs, rl = run(base, short), run(base, longer)
         ck(rs == rl, f"the same verdict from two work directories: {rs} / {rl}")
         ck(rs[0] == 0 and any(l.startswith("PATH-DEPENDENT fx/pathlen.c: function fx_pathlen at a 160-character")
@@ -1282,7 +1297,43 @@ def test_objcmp_verdict_is_independent_of_its_work_directory():
         ck(r[0] == 1 and any(l.startswith("DIFF fx/pathlen.c") for l in r[1])
            and not any(l.startswith("PATH-DEPENDENT") for l in r[1]), f"a real change differs at both lengths: {r}")
     finally:
+        os.environ.pop("SC_GCC_ABSOLUTE", None)
         shutil.rmtree(root, ignore_errors=True)
+
+
+def test_gcc_code_does_not_depend_on_the_trees_path():
+    """dmelocal.c's 0x617060 and 0x619DD8 matched in a 71-character tree and missed in the main tree's 29: the same
+    source, the compiler given a longer path (integrator, 2026-11-06: found when a lane's row went missing at merge). So
+    GCC gets no absolute path (scdiff.gcc_relative). A unit whose code reads its own path's length builds one object from
+    trees at two lengths and sees its path relative to its tree; by the old absolute paths the same two differ (the negative)."""
+    work = BUILD / "gccpath"
+    if work.exists():
+        shutil.rmtree(work)
+    unit = Path("fx") / "pathlen.c"
+    roots = [work / "a", work / "a_second_tree_at_a_longer_path_by_an_odd_count"]
+    ck((len(str(roots[1])) - len(str(roots[0]))) % 2 == 1, "the two trees' lengths differ by an odd count")
+    for r in roots:
+        (r / "src" / "fx").mkdir(parents=True)
+        (r / "include").mkdir()
+        (r / "src" / unit).write_text("/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 */\n"
+                                      "int fx_pathlen(void) { return sizeof(__FILE__); }\n")
+
+    def code(root: Path, tag: str) -> tuple[bytes, bytes]:
+        _, o, err = C.build_one(root / "src" / unit, work / f"obj-{tag}", root=root / "src", include=root / "include")
+        ck(o is not None, f"{unit} builds at {root.name}: {err.strip()[-200:]}")
+        return E.Elf.read(o).function("fx_pathlen")[0], o.read_bytes()
+
+    (a, oa), (b, ob) = code(roots[0], "a"), code(roots[1], "b")
+    ck(a == b and oa == ob, "built by relative paths: one object from either tree, every byte")
+    n = len("src/fx/pathlen.c") + 1
+    ck(struct.pack("<I", 0x24020000 | n) in a, f"and its __FILE__ is the path from its tree ({n} bytes)")
+    cwd, src, inc = D.gcc_relative(roots[0] / "src" / unit, [roots[0] / "include", roots[0] / "src"])
+    ck(cwd == str(roots[0]) and str(src) == "src/fx/pathlen.c" and [str(i) for i in inc] == ["include", "src"],
+       f"cwd the tree, nothing absolute: {cwd} {src} {inc}")
+    with gcc_absolute():
+        c, d = code(roots[0], "abs-a")[0], code(roots[1], "abs-b")[0]
+    ck(c != d, "negative: by absolute paths the two trees' code differs")
+    shutil.rmtree(work)
 
 
 def test_unit_builds_the_same_bytes_at_any_path():
@@ -1308,6 +1359,7 @@ def test_unit_builds_the_same_bytes_at_any_path():
              if p.relative_to(src).parts[0] != "auto" and rx.search(p.read_text(errors="replace"))]
     rfft = Path("lib/ovl1/sase_rfft2g.c")
     ck(rfft in units and len(units) >= 20, f"the units naming __FILE__ are found: {len(units)}")
+    units.append(Path("lib/medius/dmelocal.c"))   # names none of them, and its code followed the path's length
     work = BUILD / "anypath"
     if work.exists():
         shutil.rmtree(work)
@@ -1339,8 +1391,13 @@ def test_unit_builds_the_same_bytes_at_any_path():
         ck(bare != text, "the unit's #line is there to take out")
         f.write_text(bare)
     a, b = O.summary(built(roots[0], rfft, "bare-a")), O.summary(built(roots[1], rfft, "bare-b"))
+    ck(a == b, "without its #line, built by relative paths, the unit is the same at the two paths")
+    ro = next(s for s in E.Elf.read(work / "obj-bare-a" / rfft.with_suffix(".o")).sections if s.name == ".rodata")
+    ck(b"../../shared/rFft2G.c\0" not in ro.data, "but its .rodata is not the target's: the #line gives the vendor's name")
+    with gcc_absolute():
+        a, b = O.summary(built(roots[0], rfft, "abs-a")), O.summary(built(roots[1], rfft, "abs-b"))
     ck([k for k in sorted(set(a) | set(b)) if a.get(k) != b.get(k)] == ["section .rodata#1"],
-       "without its #line, the unit's .rodata differs at the two paths (and nothing else)")
+       "by the old absolute paths, without its #line, the unit's .rodata differs at the two paths (and nothing else)")
     # and objcmp builds both of its sides at ONE path (the online lobby's round 22): the unit without
     # its #line, built where objcmp builds BASE's copy and again in the tree's copy put in its place,
     # compares equal; at another path (the old sides: a scratch copy against the tree) it differs
@@ -1356,11 +1413,12 @@ def test_unit_builds_the_same_bytes_at_any_path():
         return O.summary(o)
 
     side = work / "objcmp" / "tree"
-    first = side_build(side, "base")
-    shutil.rmtree(side)                 # tree_copy() puts the tree's copy in BASE's place
-    ck(side_build(side, "now") == first, "objcmp: an unchanged unit naming __FILE__ bare is the same on both sides")
-    ck(side_build(work / "objcmp" / "another_tree", "other") != first,
-       "negative: the same unit built at another path differs (objcmp's old two sides)")
+    with gcc_absolute():                # what objcmp's one path is still for: MW keeps absolute paths
+        first = side_build(side, "base")
+        shutil.rmtree(side)             # tree_copy() puts the tree's copy in BASE's place
+        ck(side_build(side, "now") == first, "objcmp: an unchanged unit naming __FILE__ bare is the same on both sides")
+        ck(side_build(work / "objcmp" / "another_tree", "other") != first,
+           "negative: the same unit built at another path differs (objcmp's old two sides)")
     shutil.rmtree(work)
 
 
@@ -2025,6 +2083,72 @@ def test_igreplay_replays_and_predicts():
     tcol2, conflicts2, _ = R.target_colours(zrec, unit, "inflate_blocks_new",
                                             img=_PatchedImage(img, {a: w & ~(31 << 11) | (20 << 11)}))
     ck(s in conflicts2 and conflicts2[s].get("s4") == 1, f"the target's s4 use of `s` is read ({conflicts2.get(s)})")
+
+
+def test_igsearch_finds_a_known_numbering_and_greedy_follows():
+    """tools/igsearch.py (GCC round 45a: the AI core's round 37 iganneal.py, igallperm.py, igpicks.py, igedges.py) and igreplay
+    --greedy (the weapons' round 40 greedy.py). The fixture's ig_pair: declared first then second gives first s1 and second s0, and
+    the swapped declaration s0 and s1 (test_igreplay_replays_and_predicts, measured by igdump). So asked for s0 and s1 anneal finds the
+    swap at once, allperm reports the one order and its precedence -- second before first -- and every order was tried; asked for the
+    registers as recorded, the other order; greedy reaches them in one move and finds nothing to do from the record's own registers.
+    NEGATIVES: two nodes wanted in one register no numbering gives, anneal stops at a miss and allperm reports none; picks finds
+    the record's own registers with no pick needed and not the swapped ones; edges finds that dropping first-second ALLOWS both in
+    one register (a hit only an interference's removal can give), and no order did."""
+    import igdump
+    import igreplay as R
+    import igsearch as S
+    frecs, _ = igdump.dump(_ig_fixture(), BUILD / "ig_fixture.jsonl")
+    rec = igdump.select(frecs, "^ig_pair$", 0)[0][1]
+    first, second = R.node_index(rec, "first"), R.node_index(rec, "second")
+    regs = lambda f, s: {first: R._rnum(f), second: R._rnum(s)}
+    score, order, evals = S.anneal(rec, regs("s0", "s1"), seconds=30)
+    ck(score == 0 and order == [second, first], f"anneal finds the swap ({score}, {order}, {evals} evaluations)")
+    score, order, _ = S.anneal(rec, regs("s1", "s0"), seconds=30)
+    ck(score == 0 and order == [first, second], f"anneal keeps the record's own order for its own registers ({score}, {order})")
+    orders, common, complete = S.allperm(rec, regs("s0", "s1"), [first, second], seconds=30)
+    ck(complete and orders == [[second, first]] and common == [(second, first)],
+       f"allperm: one order, its precedence, every order tried ({orders}, {common}, {complete})")
+    score, _, _ = S.anneal(rec, regs("s0", "s0"), seconds=2)
+    ck(score == 1, f"anneal: a conflict no numbering removes stops at a miss ({score})")
+    orders, common, complete = S.allperm(rec, regs("s0", "s0"), [first, second], seconds=30)
+    ck(complete and not orders and not common, f"allperm: none, said ({orders}, {common})")
+    hits, leaves = S.picks(rec, regs("s1", "s0"))
+    ck(leaves == 1 and hits == [[]], f"picks: the record's own registers, no pick needed ({hits}, {leaves})")
+    hits, leaves = S.picks(rec, regs("s0", "s1"))
+    ck(leaves == 1 and not hits, f"picks: not the swapped ones ({hits}, {leaves})")
+    missed, found = S.edge_search(rec, regs("s0", "s0"), seconds=30)
+    ck(missed and (("drop", min(first, second), max(first, second)),) in found,
+       f"edges: dropping the interference gives both one register ({missed}, {found})")
+    steps, cur, left, stopped = R.greedy(rec, {first: "s0", second: "s1"})
+    ck(len(steps) == 1 and not left and not stopped, f"greedy reaches the swap in one move ({steps}, {left})")
+    colour, mp, _ = R.replay_moved(rec, cur)
+    ck((R.rname(colour[mp[first]]), R.rname(colour[mp[second]])) == ("s0", "s1"), f"its move replays so ({cur})")
+    steps, cur, left, stopped = R.greedy(rec, {first: "s1", second: "s0"})
+    ck(not steps and not left and not cur, f"greedy: nothing to do from the record's own registers ({steps}, {cur})")
+    steps, cur, left, stopped = R.greedy(rec, {first: "s0", second: "s0"})
+    ck(not steps and left, f"greedy: no single move helps a conflict, said ({steps}, {left})")
+
+
+def test_scdiff_reports_data_references_as_sets():
+    """scdiff's report, GCC round 45a (the weapons' round 40): when the code differs, the data each side reaches, as sets -- a
+    relocation has no partner by position then. target_data_refs reads lui/%lo pairs and $gp from the target's code alone. On a real
+    open row the two sides' sets are printed; a byte-exact function has no such line; and it is a report: the verdict of a miss with
+    the same code and a wrong symbol (WRONG REFERENCE) comes from the relocations as before. A NEGATIVE: an `addu` onto the %hi keeps
+    it for the %lo through the sum (an indexed table's base), a second lui replaces it, and an unrelated register's %lo reads nothing."""
+    lui = lambda rt, hi: (0x0F << 26 | rt << 16 | hi).to_bytes(4, "little")
+    lw = lambda rt, rs, imm: (0x23 << 26 | rs << 21 | rt << 16 | (imm & 0xFFFF)).to_bytes(4, "little")
+    addu = lambda rd, rs, rt: (rs << 21 | rt << 16 | rd << 11 | 0x21).to_bytes(4, "little")
+    ck(D.target_data_refs(lui(3, 0x1D) + lw(4, 3, 0x5548), 0) == {0x1D5548}, "lui + %lo")
+    ck(D.target_data_refs(lui(3, 0x1D) + addu(3, 3, 19) + lw(3, 3, 0x5548), 0) == {0x1D5548}, "lui, addu an index, %lo: the table's base")
+    ck(D.target_data_refs(lui(3, 0x1D) + lui(3, 0x3E) + lw(4, 3, 0x10), 0) == {0x3E0010}, "a second lui replaces the first")
+    ck(D.target_data_refs(lui(3, 0x1D) + lw(4, 5, 0x10), 0) == set(), "another register's offset reads nothing")
+    ck(D.target_data_refs(lw(4, 28, -32064), 0, 0x1DD2F0) == {0x1D55B0}, "$gp")
+    import subprocess
+    unit = HERE / "src" / "lib" / "ovl1" / "sase_libquan.c"
+    r = subprocess.run([sys.executable, str(HERE / "scdiff.py"), str(unit), "func_0024B2F8"], capture_output=True, text=True, cwd=HERE)
+    ck("data references as sets:" in r.stdout, f"an open row's report holds the sets ({r.stdout[:300]!r})")
+    r = subprocess.run([sys.executable, str(HERE / "scdiff.py"), str(unit), "func_0024B720"], capture_output=True, text=True, cwd=HERE)
+    ck("MATCH" in r.stdout and "data references as sets" not in r.stdout, f"a byte-exact row's report has none ({r.stdout[:200]!r})")
 
 
 def _swap_gprs(w: int, a: int, b: int) -> int:

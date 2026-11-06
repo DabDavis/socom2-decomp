@@ -51,6 +51,8 @@ public:
         TYPE_NODE = 3,          /* a node (GetNode, FindNode) */
         TYPE_VALVE = 4,
         TYPE_PNT3D = 5,         /* a point (zAnimRangeTestTick) */
+        TYPE_DIR = 6,           /* OBJECT_MOTION's direction and its push (the name ours) */
+        TYPE_VEL = 7,           /* OBJECT_MOTION's velocity and the plane it reflects in (the name ours) */
         TYPE_CHARP = 8,         /* a string (GetCharP) */
         TYPE_INT = 9            /* SOCOM II's network activation adds one */
     };
@@ -296,6 +298,13 @@ public:
     CPnt3D *GetArgPnt3D()
     {
         return m_arg_list ? m_arg_list->GetPnt3D(CZAnimArg::TYPE_PNT3D) : 0;
+    }
+    /* OBJECT_MOTION's typed reads (if / return, not GetArgPnt3D's ternary) */
+    CPnt3D *GetArgOf(CZAnimArg::TYPE type)
+    {
+        if (m_arg_list)
+            return m_arg_list->GetPnt3D(type);
+        return 0;
     }
     /* an argument added, the list made first if there is none (inline: ActivateExV hands it the
      * new argument by value and it pushes it by reference, so the caller's pointer stays in a
@@ -771,15 +780,178 @@ public:
 };   // 0x1c8 bytes (SOCOM 1's 0x1c4; ZAnim ends where the wildcard state starts, 0x414D78)
 
 namespace Particle {
-/* a particle source (SOCOM 1's DWARF, 0x134 bytes; SOCOM II's has 4 more before m_shuttingoff) */
+/* the properties sources share, copied on write (zparticle.h's whole class; only what PARTICLE_SOURCE sets) */
+class Props {
+public:
+    Props *Branch();
+
+    /* a fade's squared range: its reciprocal for the fade, zero for none (SOCOM 1's inline setters) */
+    void SetNearFade(float a, float b)
+    {
+        m_nearFade1 = a;
+        m_nearFade2 = b;
+        m_invNearFade = a == b ? 0.0f : 1.0f / (m_nearFade2 - m_nearFade1);
+        m_checkFade = 1;
+    }
+    void SetFarFade(float a, float b)
+    {
+        m_farFade1 = a;
+        m_farFade2 = b;
+        m_invFarFade = a == b ? 0.0f : 1.0f / (m_farFade2 - m_farFade1);
+        m_checkFade = 1;
+    }
+
+    unsigned char _0[0x28];
+    zdb::CModel *m_model;   // 0x28
+    float m_friction;   // 0x2c
+    CPnt4D m_accelW;   // 0x30
+    float m_windFactor;   // 0x40
+    float m_priority;   // 0x44
+    float m_nearFade1;   // 0x48
+    float m_nearFade2;   // 0x4c
+    float m_farFade1;   // 0x50
+    float m_farFade2;   // 0x54
+    float m_invNearFade;   // 0x58
+    float m_invFarFade;   // 0x5c
+    float m_visualDensity;   // 0x60
+    unsigned char m_checkFade;   // 0x64
+};
+
+struct Range {
+    float m_min;
+    float m_max;
+};
+
+/* a particle source (SOCOM 1's DWARF, 0x134 bytes; SOCOM II's has 4 more before m_shuttingoff; zparticle.h's
+ * whole class, what ZAnim's commands read and set here) */
 class Source {
 public:
     ~Source();
     /* a free source taken from the pool (zparticle.h's, 0x32B120) */
     static Source *Create();
+    void SetActive(bool on);
+    void SetHasBBox(bool on);
+    void ScaleSequenceAdd(float fraction, float scale);
+    void ScaleSequenceClear();
+    void ColorSequenceAdd(float fraction, float r, float g, float b, float a);
+    void ColorSequenceClear();
+    void TextureSequenceAdd(float fraction, zdb::CTexHandle *tex);
+    void TextureSequenceClear();
+
+    /* three floats by value: loaded z, y, x, then stored x, y, z */
+    void SetOffset(float x, float y, float z)
+    {
+        m_offset.x = x;
+        m_offset.y = y;
+        m_offset.z = z;
+    }
+    void SetLocalVelocity(float x, float y, float z)
+    {
+        m_localVelocity.x = x;
+        m_localVelocity.y = y;
+        m_localVelocity.z = z;
+    }
+    void SetWorldVelocity(float x, float y, float z)
+    {
+        m_worldVelocity.x = x;
+        m_worldVelocity.y = y;
+        m_worldVelocity.z = z;
+    }
+    void SetRange(Range &r, float lo, float hi)
+    {
+        r.m_min = lo;
+        r.m_max = hi;
+    }
+    /* the shared properties copied on write */
+    void SetAccel(float x, float y, float z)
+    {
+        m_props = m_props->Branch();
+        m_props->m_accelW.x = x;
+        m_props->m_accelW.y = y;
+        m_props->m_accelW.z = z;
+    }
+    void SetFriction(float f)
+    {
+        m_props = m_props->Branch();
+        m_props->m_friction = f;
+    }
+    void SetWindFactor(float f)
+    {
+        m_props = m_props->Branch();
+        m_props->m_windFactor = f;
+    }
+    void SetPriority(float f)
+    {
+        m_props = m_props->Branch();
+        m_props->m_priority = f;
+    }
+    void SetVisualDensity(float f)
+    {
+        m_props = m_props->Branch();
+        m_props->m_visualDensity = f;
+    }
+    void SetModel(zdb::CModel *model)
+    {
+        m_props = m_props->Branch();
+        m_props->m_model = model;
+    }
+    void SetNearFade(float a, float b)
+    {
+        m_props = m_props->Branch();
+        m_props->SetNearFade(a, b);
+    }
+    void SetFarFade(float a, float b)
+    {
+        m_props = m_props->Branch();
+        m_props->SetFarFade(a, b);
+    }
 
     unsigned char m_active;   // 0x0
-    unsigned char _1[0x12C - 0x1];   // 0x1: m_goodPos .. m_particleEx, grown by 4
+    unsigned char m_goodPos;   // 0x1
+    unsigned char _2[0x10 - 2];
+    int m_tint;   // 0x10
+    unsigned char _14[0x17 - 0x14];
+    unsigned char m_freezable;   // 0x17
+    unsigned char m_landmark;   // 0x18
+    unsigned char m_doAgeLOD;   // 0x19
+    unsigned char m_doSpawnLOD;   // 0x1a
+    unsigned char m_distInterval;   // 0x1b
+    float m_period;   // 0x1c
+    float m_invPeriod;   // 0x20
+    float m_streakLen;   // 0x24
+    float m_streakFade;   // 0x28
+    float m_minRot;   // 0x2c
+    float m_maxRot;   // 0x30
+    float m_minRotAcc;   // 0x34
+    float m_maxRotAcc;   // 0x38
+    unsigned char m_drawType;   // 0x3c
+    unsigned char _3d[3];
+    int m_numPeriods;   // 0x40
+    float m_phase;   // 0x44
+    int m_number;   // 0x48
+    float m_distance;   // 0x4c
+    zdb::CNode *m_node;   // 0x50
+    CPnt3D m_offset;   // 0x54
+    Range m_perturbPositionX;   // 0x60
+    Range m_perturbPositionY;   // 0x68
+    Range m_perturbPositionZ;   // 0x70
+    Range m_rotationX;   // 0x78
+    Range m_rotationY;   // 0x80
+    Range m_rotationZ;   // 0x88
+    CPnt3D m_localVelocity;   // 0x90
+    CPnt3D m_worldVelocity;   // 0x9c
+    unsigned char m_inheritVelocity;   // 0xa8
+    unsigned char m_perParticleVelocity;   // 0xa9
+    unsigned char _aa[2];
+    Range m_perturbVelocityX;   // 0xac
+    Range m_perturbVelocityY;   // 0xb4
+    Range m_perturbVelocityZ;   // 0xbc
+    Range m_radiusRange;   // 0xc4
+    Range m_lifespanRange;   // 0xcc
+    Range m_initialAgeRange;   // 0xd4
+    unsigned char _dc[0xe8 - 0xdc];
+    Props *m_props;   // 0xe8
+    unsigned char _ec[0x12c - 0xec];
     unsigned char m_shuttingoff;   // 0x12c (SOCOM 1: 0x128)
     unsigned char m_fovFlag;   // 0x12d (SOCOM 1: 0x129, a tag_ZVIS_FOV)
     int m_refcount;   // 0x130 (SOCOM 1: 0x12c)

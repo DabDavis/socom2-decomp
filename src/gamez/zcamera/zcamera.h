@@ -126,6 +126,7 @@ public:
      * plane and TestFOG's fog loaded ahead of inlined code, TestFOG's altitude switch converted to
      * a bool before it is tested); the names are ours */
     float GetMidPlane() { return m_mid_plane; }
+    float GetFarPlane() { return m_far_plane; }
     float GetFogNear() { return m_fog_near; }
     float GetFogTop() { return m_fog_top; }
     bool GetFogAltEnabled() { return m_fog_alt_enabled; }

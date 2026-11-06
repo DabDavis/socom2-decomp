@@ -180,6 +180,8 @@ public:
     void RandomizeOverlay();
     void SetOverlayTexture(zdb::CTexHandle *tex);
     void RenderAtom(zdb::CNode *node);
+    /* the frame (SOCOM 1's); which of the two buffer sets is in use */
+    int RenderWorld(zdb::CWorld *world);
     void SaveDelayedNode(CMatrix *matrix, zdb::CNode *node, zdb::tag_ZVIS_FOV fov);
     void RenderDelayedNodes();
     void RenderNodeShadow(zdb::CNode *node);
@@ -367,6 +369,23 @@ int InterruptFromVIF1(int cause)
     return 0;
 }
 
+/* the texture commands' FIFO packet: a tag whose marker word the interrupt handler's trace reads, the FLUSH and the
+ * rest (ours, inline: with it written out FIFO_Load and FIFO_Signal are over MW's 15 statements, and RenderWorld inlines
+ * both in the target) */
+static inline void FifoPacket(unsigned int *p, unsigned int mark)
+{
+    p[0] = 0x10000002;
+    p[1] = mark;
+    p[2] = 0x11000000;
+    p[3] = 0x50000001;
+    ((u_long *)p)[2] = 0x0000400000008000;
+    ((u_long *)p)[3] = 0;
+    p[8] = 0x13000000;
+    p[9] = 0;
+    p[10] = 0;
+    p[11] = 0x80000000;
+}
+
 /* a buffer uploaded, then a command queued and a FIFO packet kicked that interrupts when the
  * GS reaches it (its marker word 0x44444444). SOCOM 1's FIFO_Signal(CGSTexBuffer *, unsigned int *)
  * (0x2460A0: the same Load, the command's buffer to load set, the one to signal cleared) less its
@@ -386,16 +405,7 @@ void CPipe::FIFO_Load(zdb::CGSTexBuffer *buf)
     c.m_signal = 0;
     unsigned int *p = (unsigned int *)zSysSprGetPacket(0);
 
-    p[0] = 0x10000002;
-    p[1] = 0x44444444;
-    p[2] = 0x11000000;
-    p[3] = 0x50000001;
-    ((u_long *)p)[2] = 0x0000400000008000;
-    ((u_long *)p)[3] = 0;
-    p[8] = 0x13000000;
-    p[9] = 0;
-    p[10] = 0;
-    p[11] = 0x80000000;
+    FifoPacket(p, 0x44444444);
     zSysFifoKick((u_long128 *)p, 3);
 }
 
@@ -412,16 +422,7 @@ void CPipe::FIFO_Signal(zdb::CGSTexBuffer *buf)
     c.m_signal = buf;
     unsigned int *p = (unsigned int *)zSysSprGetPacket(0);
 
-    p[0] = 0x10000002;
-    p[1] = 0x55555555;
-    p[2] = 0x11000000;
-    p[3] = 0x50000001;
-    ((u_long *)p)[2] = 0x0000400000008000;
-    ((u_long *)p)[3] = 0;
-    p[8] = 0x13000000;
-    p[9] = 0;
-    p[10] = 0;
-    p[11] = 0x80000000;
+    FifoPacket(p, 0x55555555);
     zSysFifoKick((u_long128 *)p, 3);
 }
 
@@ -601,6 +602,314 @@ void CPipe::RenderAtom(zdb::CNode *node)
         else
             RenderNode(node, (zdb::tag_ZVIS_FOV)0);
     }
+}
+
+/* the view ids' pop, below (RenderWorld calls it ahead of its definition) */
+static inline void PopVid();
+/* SOCOM II's frame time (fts_patch.cpp's); the shadow pass's flag and the particles' texture list, not named; the fog's
+ * colour through the frame's tint (vis_vu.cpp's, 0x3B5A10, not named) */
+extern float data_004A449C;
+extern "C" unsigned char data_004B4A60, data_004B4A80;
+extern unsigned int data_004887A0;
+extern "C" void func_003B5A10(const CPnt4D *in, CPnt4D *out);
+extern "C" zdb::CTexList *func_00324A60();
+void SetGSReg(short reg, unsigned long data);
+void zVid_ClearColor(unsigned int *rgb);
+void zVid_FrameRestore();
+namespace Particle {
+void Render();
+}
+
+/* a dynamic texture listed in a buffer, its chain dropped (ours, inline) */
+static inline void AddDynTex(zdb::CGSTexBuffer *b, zdb::CTexHandle *tex)
+{
+    b->m_dyntex_list.Add(tex, true);
+    b->m_chainp = 0;
+}
+
+/* a view id pushed (ours, inline: its temporary takes a slot a pass later) */
+static inline void PushVid(unsigned int vid)
+{
+    zdb::CVisual::m_stack_vid.push((void *)vid);
+}
+
+/* whether a node moves and is lit as it moves (ours, inline: the `&&` materialised, each stage's bool in v0) */
+static inline bool NodeDynamic(zdb::CNode *n)
+{
+    return n->m_dynamic_motion && n->m_dynamic_light;
+}
+
+/* the walk's end (ours, inline: the target materialises the test, sltu then xori, and branches on it) */
+static inline bool AtomDone(zdb::CGridAtom *a)
+{
+    return !(a != 0);
+}
+
+/* a count of none, as AtomDone (ours, inline) */
+static inline bool IsNone(int n)
+{
+    return !(n != 0);
+}
+
+/* a character node marked in view and active (ours, inline, as NodeDynamic) */
+static inline bool NodeInView(zdb::CNode *n)
+{
+    return n->m_socom2_a1_bits.bit4 && n->m_active;
+}
+
+/* SOCOM 1's (0x244780): the frame -- no delayed nodes or texture commands yet; the fog's colour set in the GS and as the
+ * clear colour; deferred visuals deleted, decals recycled, empty character sets dropped; the unit matrix and view id 0
+ * pushed; the world updated and the camera's matrices kicked. The shadows drawn (SOCOM II's: each map updated, each
+ * node a mesh or a node), the ordered grid walk in two stretches -- the three nearest rings with shadows on or off by the
+ * node, then the rest, tested against the mid plane when the world has nodes beyond it -- its cells kept and drawn again;
+ * the landmarks; the particles; each visible character set in its own texture buffers, the alpha buffer's textures, the
+ * common set and the delayed nodes, the alpha pass, and everything popped. Returns which of the two buffer sets is in use.
+ * Unwritten before round 34, byte-exact as written from the target through the unit's own idioms: FIFO_Load and FIFO_Signal
+ * inline here (with their packet in FifoPacket they are under MW's 15 statements), the walk's `set = *it` read ahead of the
+ * end test (the load fills the branch's slot from before it: set is live at the exit), the `&&`s as bool inlines, the
+ * materialised `!(x != 0)` tests as inlines (sltu; xori; bnez), the phase and the buffer read into locals ahead of their
+ * test, the frame slots by the iterator ahead of `common` and the view id's temporary a pass deeper (PushVid). The draw list
+ * held through an unsigned enum at its clear is A MARKED DEVICE (a1 = the list, v1 = a1 + 4, where a reference, a pointer or
+ * the list in place folds v1 to the pipe's own offset) */
+int CPipe::RenderWorld(zdb::CWorld *world)
+{
+    int frame = 0;
+
+    m_delayedNodeNum = 0;
+    m_texLoadIdx = 0;
+    m_texIntIdx = 0;
+    CPnt4D fog = m_camera->GetFogColor();
+
+    fog.x *= 255.0f;
+    fog.y *= 255.0f;
+    fog.z *= 255.0f;
+    func_003B5A10(&fog, &fog);
+    unsigned int rgb[3];
+
+    rgb[0] = (int)fog.x;
+    rgb[1] = (int)fog.y;
+    rgb[2] = (int)fog.z;
+    SetGSReg(61, (unsigned long)rgb[2] << 16 | ((unsigned long)rgb[0] | (unsigned long)rgb[1] << 8));
+    zVid_ClearColor(rgb);
+    zdb::CNode::DeleteDeferredVisuals();
+    zdb::CDecal::m_tempPool.RecycleTick();
+    zdb::CMeshDecal::m_tempPool.RecycleTick();
+    world->RemoveEmptyTextureAssetCharacters();
+    FlushCache(0);
+    m_polys = 0;
+    m_world = world;
+    zdb::CGrid *grid = &world->m_grid;
+
+    s_stack.Push(&CMatrix::identity);
+    PushVid(0);
+    world->Update();
+    zSysFifoKick((u_long128 *)m_camera->GetVuMtxSet(), 25);
+    zdb::CVisual::AlphaEnable(false);
+    zdb::CVisual::UpdateLightTints(data_004A449C);
+    m_drawCharacters = true;
+    FIFO_Signal(zdb::CTexManager::m_texmanager[zdb::CTexManager::TexPhase[0][0]]);
+    if (world->m_shadows.size()) {
+        zdb::CVisual::m_applyShadow = false;
+        data_004B4A60 = 1;
+        zdb::CVisual::m_lightingEnable = false;
+        zdb::CVisual::m_fogEnable = false;
+        zdb::CVisual::AlphaEnable(true);
+        const zdb::CTexture *last = 0;
+        zdb::CRenderMapVector &shadows = world->m_shadows;
+
+        for (zdb::CRenderMapVector::iterator i = shadows.begin(); i != shadows.end(); ++i) {
+            zdb::CRenderMap *map = *i;
+            zdb::CNode *node = map->m_node;
+
+            if (node) {
+                m_node = node;
+                map->Update(map->m_texture != last);
+                last = map->m_texture;
+                if (node->m_hasMesh)
+                    RenderMeshShadow(node, 0, 0);
+                else
+                    RenderNodeShadow(node);
+            }
+        }
+        data_004B4A60 = 0;
+        zVid_FrameRestore();
+        zSysFifoKick((u_long128 *)m_camera->GetVuMtxSet(), 25);
+    }
+    m_alpha.m_camera = m_camera;
+    m_drawCharacters = false;
+    grid->SetTraversalBoundaryOrdered((const CPnt3D *)m_camera->m_matrix.m_matrix[3], m_camera->m_fullfrustum,
+                                      m_camera->m_fullfrustum_points, false);
+    zdb::CGridAtom *atom = grid->StartTraversalOrdered();
+
+    if (data_00488790.capacity() < data_004887A0)
+        data_00488790.reserve(data_004887A0 + 5);
+    data_004887A0 = 0;
+    while (!AtomDone(atom) && grid->m_ring < 3) {
+        zdb::CCell *cell = atom->GetCell();
+
+        if (cell) {
+            m_cell = cell;
+            cell->SetClutterFlag(true);
+            RenderCell(m_cell);
+            data_00488790.push_back(cell);
+            data_004887A0++;
+        } else {
+            m_node = atom->Ent;
+            data_004B4A80 = m_node->m_socom2_a1_bits.bit6 == 1;
+            unsigned char lit = 0;
+
+            if (NodeDynamic(m_node))
+                if (m_node->m_socom2_a1_bits.bit5 == 1)
+                    lit = 1;
+            zdb::CVisual::m_applyShadow = !lit;
+            RenderAtom(m_node);
+        }
+        atom = grid->GetNextAtomOrdered();
+    }
+    zdb::CTextureAssetCharacterList &sets = m_world->m_TextureAssetCharacters;
+    zdb::CTextureAssetCharacterList::iterator it;
+    zdb::CTextureAssetCharacters *common;
+
+    m_assetCommon = 0;
+    it = sets.TestFOV(m_camera, &common);
+    zdb::CTextureAssetCharacters *set;
+
+    if (it != sets.end()) {
+        set = *it;
+        zdb::_RenderPhase phase = set->m_lib->GetRenderPhase();
+        zdb::CGSTexBuffer *b = set->m_buffer;
+
+        if (b) {
+            m_assetCharacter[0] = b;
+            m_assetCharacter[0]->Setup(0.0f, zdb::CTexManager::TexBufParams[0]);
+        } else
+            m_assetCharacter[0] = zdb::CTexManager::m_texmanager[zdb::CTexManager::TexPhase[(unsigned char)phase][2]];
+        FIFO_Load(m_assetCharacter[0]);
+    } else
+        set = 0;
+    zdb::CVisual::m_applyShadow = false;
+    bool midplane = m_world->m_numNoFarClipNodes && m_camera->m_far_plane != m_camera->m_mid_plane;
+
+    while (atom) {
+        zdb::CCell *cell = atom->GetCell();
+
+        if (cell) {
+            m_cell = cell;
+            if (!midplane || m_camera->InsideMidPlane(cell)) {
+                m_cell->SetClutterFlag(true);
+                RenderCell(m_cell);
+                data_00488790.push_back(m_cell);
+                data_004887A0++;
+            }
+        } else {
+            m_node = atom->Ent;
+            if (!midplane || m_camera->InsideMidPlane(m_node) || !m_node->m_apply_clip)
+                RenderAtom(m_node);
+        }
+        atom = grid->GetNextAtomOrdered();
+    }
+    for (std::vector<zdb::CCell *>::iterator c = data_00488790.begin(), ce = data_00488790.end(); c != ce; ++c) {
+        m_cell = *c;
+        RenderCell(m_cell);
+        m_cell->SetClutterFlag(false);
+    }
+    data_00488790.clear();
+    zdb::CNodeVector &marks = world->m_landmarks;
+
+    if (marks.size()) {
+        data_004B4DE4 = 0;
+        data_004B4E34 = 0;
+        data_004B4E0C = 0;
+        data_004B4DAC = 0;
+        m_camera->m_fovMask = 16175;
+        for (zdb::CNodeVector::iterator l = marks.begin(); l != marks.end(); ++l) {
+            m_node = *l;
+            zdb::CNode *n = m_node;
+
+            m_doFog = n->m_fog ? m_camera->TestLandmarkFOG((const CPnt3D *)n->m_matrix.m_matrix[3], n->GetRadius()) : false;
+            zdb::CVisual::LandmarkEnable(!n->m_socom2_5a_bit2);
+            RenderNode(m_node, (zdb::tag_ZVIS_FOV)0);
+        }
+        m_camera->m_fovMask = 16191;
+        zdb::CVisual::LandmarkEnable(false);
+    }
+    Particle::Render();
+    m_drawCharacters = true;
+    if (set) {
+        while (it != sets.end()) {
+            zdb::CNodeVector &nodes = set->m_nodes;
+
+            do {
+                ++it;
+                set = *it;
+                if (it == sets.end())
+                    break;
+            } while (IsNone(set->m_visible));
+            if (it != sets.end()) {
+                zdb::_RenderPhase phase = set->m_lib->GetRenderPhase();
+                zdb::CGSTexBuffer *b = set->m_buffer;
+
+                if (b) {
+                    m_assetCharacter[1] = b;
+                    m_assetCharacter[1]->Setup(frame ? zdb::CTexManager::TexBufParams[1] : zdb::CTexManager::TexBufParams[0],
+                                               frame ? 1.0f : zdb::CTexManager::TexBufParams[1]);
+                } else
+                    m_assetCharacter[1] = zdb::CTexManager::m_texmanager[zdb::CTexManager::TexPhase[(unsigned char)phase][frame]];
+                FIFO_Load(m_assetCharacter[1]);
+            } else {
+                m_assetCommon = zdb::CTexManager::m_texmanager[zdb::CTexManager::TexPhase[2][frame]];
+                FIFO_Load(m_assetCommon);
+            }
+            FIFO_Signal(m_assetCharacter[0]);
+            for (zdb::CNodeVector::iterator n = nodes.begin(); n != nodes.end(); ++n) {
+                zdb::CNode *node = *n;
+
+                if (NodeInView(node))
+                    RenderAtom(node);
+            }
+            m_assetCharacter[0] = m_assetCharacter[1];
+            frame ^= 1;
+        }
+        zdb::CVisual::m_GlobalLightScale = 1.0f;
+    } else {
+        m_assetCommon = zdb::CTexManager::m_texmanager[zdb::CTexManager::TexPhase[2][0]];
+        FIFO_Load(m_assetCommon);
+        frame ^= 1;
+    }
+    m_assetAlpha = zdb::CTexManager::m_texmanager[zdb::CTexManager::TexPhase[11][frame]];
+    m_assetAlpha->SetDynTexList(&m_alpha.m_dyntexlist);
+    if (zdb::CVisual::m_lightMapTexture)
+        AddDynTex(m_assetAlpha, zdb::CVisual::m_lightMapTexture);
+    if (m_overlay)
+        AddDynTex(m_assetAlpha, m_overlay);
+    m_assetAlpha->Add(&m_world->m_TextureDecals, true);
+    m_assetAlpha->Add(func_00324A60(), true);
+    FIFO_Load(m_assetAlpha);
+    if (m_assetCommon && (common || m_delayedNodeNum)) {
+        FIFO_Signal(m_assetCommon);
+        if (common) {
+            zdb::CNodeVector &nodes = common->m_nodes;
+
+            for (zdb::CNodeVector::iterator n = nodes.begin(); n != nodes.end(); ++n)
+                RenderAtom(*n);
+        }
+        zdb::CVisual::m_applyLocalLights = true;
+        RenderDelayedNodes();
+        zdb::CVisual::m_applyLocalLights = false;
+        zdb::CVisual::m_GlobalLightScale = 1.0f;
+    }
+    m_assetHUD1 = zdb::CTexManager::m_texmanager[zdb::CTexManager::TexPhase[12][frame ^ 1]];
+    FIFO_Load(m_assetHUD1);
+    FIFO_Signal(m_assetAlpha);
+    m_alpha.Render();
+    m_alpha.m_next = m_alpha.m_visualList;
+    enum DrawListHolder { kDrawListMax = 0xffffffffu } dl = (DrawListHolder)(unsigned int)&m_alpha.m_drawList;
+
+    ((std::list<void *> *)dl)->clear();
+    m_alpha.m_dyntexlist.Clear();
+    s_stack.Pop();
+    PopVid();
+    return frame;
 }
 
 /* SOCOM II's (the name ours; RenderWorld's three cell passes call it): a cell's fog flag from its
@@ -914,14 +1223,14 @@ static inline bool LightTaken(zdb::CLight *light)
  * light walk's iterator ASSIGNED from begin() with the end in a local (the target keeps it in its
  * stack slot, copied in through $f0), the stamp test `stamp != field` taking its then-arm as the
  * store, the light's position a pointer local (the target's a1 ahead of the sphere test).
- * OPEN, 6 instructions at the target's size (round 33; d=48 and 0x4D8 before): the box a class with
- * SOCOM II's two-point constructor (CornerBox, below: zmath.h's CBBox has none), assigned from a
- * temporary -- member-wise, so ld / sd at the aligned first corner and three FPRs at +12, as
- * CRenderMap::Update's -- and widened through AddPoint (the first field's minimum a ternary in place,
- * so it is read after the corner's x). Left: &box.m_max (s1) is hoisted to the walk's preheader,
- * after SetCellBoundary's call, where the target sets it ahead and passes it (`move a2,s1`) -- not
- * moved by a pointer or reference local, an accessor, a by-reference or pointer wrapper around the
- * call, a char * offset or an index off the first corner (the by-value argument stays frame-relative).
+ * The box a class with SOCOM II's two-point constructor (CornerBox, below: zmath.h's CBBox has none),
+ * assigned from a temporary -- member-wise, so ld / sd at the aligned first corner and three FPRs at +12,
+ * as CRenderMap::Update's -- and widened through AddPoint (the first field's minimum a ternary in place, so
+ * it is read after the corner's x). Byte-exact since round 34 (6 off since round 31): &box.m_max (s1) is
+ * SetCellBoundary's argument and the sphere test's x bound through ONE common subexpression, `move a2,s1`,
+ * only when the read's address is typed as the argument's -- IRO_ExprsSame compares the pointer's type, so
+ * `b->m_max.x` (a float *) never shared with `box.m_max` (a CPnt3D *) under any spelling of the argument,
+ * and a reference to the corner (`const CPnt3D &mx = b->m_max; mx.x`) does.
  * The world pointer and the light took s4 / s3 (the target's s3 / s4) until the round-32
  * `igreplay --permute` (movers world, light: the light numbered first) -- the light declared at
  * the top, its first definition still in the walk */
@@ -943,6 +1252,22 @@ static inline void AddPoint(CornerBox &b, const CPnt3D &p)
     b.m_max.x = MaxOf(p.x, b.m_max.x);
     b.m_max.y = MaxOf(p.y, b.m_max.y);
     b.m_max.z = MaxOf(p.z, b.m_max.z);
+}
+
+/* the sphere test over this box (SphereMeetsBox's), its upper corner a reference: see above */
+static inline bool SphereMeetsBox(const CPnt3D *p, float r, CornerBox *b)
+{
+    bool xyz = false;
+    bool xy = false;
+    const CPnt3D &mx = b->m_max;
+
+    if (SpanMeets(p->x, r, b->m_min.x, mx.x))
+        if (SpanMeets(p->y, r, b->m_min.y, b->m_max.y))
+            xy = true;
+    if (xy)
+        if (SpanMeets(p->z, r, b->m_min.z, b->m_max.z))
+            xyz = true;
+    return xyz;
 }
 
 void BuildNodeLocalLightList(zdb::CNode *node)
@@ -982,7 +1307,7 @@ void BuildNodeLocalLightList(zdb::CNode *node)
                     if (light->m_active && !LightTaken(light) && !(light->m_region_mask & node->m_region_mask)) {
                         const CPnt3D *pos = &light->m_WorldPosition;
 
-                        if (SphereMeetsBox(pos, light->m_maxRange, (CBBox *)&box)) {
+                        if (SphereMeetsBox(pos, light->m_maxRange, &box)) {
                             CPnt3D local;
 
                             zdb::CVisual::m_WorldToModel.Transform(pos, &local, 1);
@@ -1417,19 +1742,11 @@ void BuildNodeLocalLightList(zdb::CNode *node);
  * strength reduction at no code cost), which retires round 21's function-scoped `#pragma
  * opt_strength_reduction off` and round 28's hand-rotated `if (k < n) { det = ...; do ... while (++k
  * < n); }` -- both stand-ins -- at the same 20 (the same diff, word for word).
- * OPEN, 20 instructions at the target's size, every register the target's -- placement only: the
- * vector's address (s6) is computed at the top and the texture list's (s7) fills the entry test's
- * delay slot, where the target computes the list's in the loop's preheader (the vector's in the
- * slot, then the fov narrowing, then the list's). Round 31: the vector read in place keeps its
- * address at the top (the guard's copy of the test shares it), the list read in place is
- * copy-propagated (0x3D4), a list pointer local changes nothing (20). Round 28 measured: any
- * definition at the top of the visual loop's body (the list as a reference
- * declared there, or a pointer assigned there) turns MW's guarded loop into a jump to its bottom
- * test (0x3F0); assigned later in the body, or written in place, the list is copy-propagated and
- * s7 is never allocated (0x3D4); the two references in any order at the top keep 21-25. Named
- * locals keep their definitions' place, and every form that leaves them to LICM (the vector read in
- * place, the list or the layers assigned inside the loop, accessors, pointers, other orders) loses
- * the registers (22-36) */
+ * Byte-exact since round 34 (20 off since round 21, placement only): the alpha pass's texture list is an address the
+ * target's loop preheader computes, in a saved register, with the vector's in the entry test's slot -- an assignment in the
+ * body that LICM hoists. Held through an unsigned 4-byte enum at its first use (A MARKED DEVICE: enums are not propagated,
+ * the weapons' round 40): a reference declared at the top keeps the place of the top, the read in place is propagated
+ * back (0x3D4), and a definition at the body's top turned MW's guarded loop into a jump to its bottom test (0x3F0) */
 static inline CMatrix *StackTop()
 {
     return CStack::m_top;
@@ -1442,7 +1759,6 @@ bool CPipe::RenderVisual(zdb::CNode *node, zdb::tag_ZVIS_FOV fov)
     CMatrix *m = StackTop();
     float opacity = m_opacity_stack[m_opacity_stack_index];
     zdb::CVisualVector &v = node->m_visual;
-    zdb::CDynTexList &dyn = m_alpha.m_dyntexlist;
 
     for (zdb::CVisualVector::iterator i = v.begin(); i != v.end(); ++i) {
         zdb::CVisual *vis = *i;
@@ -1478,14 +1794,16 @@ bool CPipe::RenderVisual(zdb::CNode *node, zdb::tag_ZVIS_FOV fov)
             if (opacity <= 1.0f / 128)
                 continue;
             m_alpha.Add(m_node, node, vis, fov, opacity);
-            dyn.Add(&vis->m_dynTexList);
+            enum DynHolder { kDynMax = 0xffffffffu } dyn = (DynHolder)(unsigned int)&m_alpha.m_dyntexlist;
+
+            ((zdb::CDynTexList *)dyn)->Add(&vis->m_dynTexList);
             unsigned int mat = vis->m_7;
 
             if (mat) {
                 zdb::CTexHandle *tex = zdb::CWorld::m_world->m_Material_Object.GetMaterial(mat)->m_tex;
 
                 if (tex)
-                    dyn.Add(tex, true);
+                    ((zdb::CDynTexList *)dyn)->Add(tex, true);
             }
         } else {
             if (FirstVisDrawn) {
@@ -1664,14 +1982,13 @@ void CPipe::CAlpha::Render()
  * last insert (at the list's start again after each pass: Render sets 0x3DFF68), forward while the
  * record is nearer than the one under the cursor, else backward while it is deeper, before the first
  * when it is deeper than every one.
- * OPEN, 0x248 of 0x244 (the world lane round 18; build/scratch/wld/v_ins*.py): the logic and the
- * three inserts are the target's, the cursor in memory as there (its address taken by the by-value
- * copy for insert), the record homed for insert's `const T &`. Left: (1) the target keeps the
- * list's first node in a3 from the head through the backward walk and builds the ternary's other
- * arm from it (`sw a3,64(sp)`, copied through $f0) -- `b` there takes b's address (the conditional
- * an lvalue: b in memory, 0x224), `iterator(b)` 0x21C, a fresh begin() (as here) keeps `this` in s0
- * for it; (2) the first walk reloads the record through its home every pass where MW here hoists
- * `&d->m_40` (the third walk hoists it in the target too; a for/break first walk changes nothing) */
+ * ONE iterator, though the frame shows two (the world lane round 34): 76 the first local's and 28 below
+ * every inline temporary. `it = begin()` is the implicit bitwise assignment, so `it` stays a class
+ * object in memory through IRO_ScalarizeClassDataMembers; the word it holds after that assignment or
+ * `++it` is a web of its own, and IRO_SplitLifetimes gives the walks' web a new object
+ * (create_temp_object, so last in the frame) -- `pos` beside `it` could never reach that frame. The
+ * explicit returns send all three arms past the preheader MW appends at the function's end for the
+ * third walk's hoisted &d->m_40 (without them the first two branch to a lone `b` before it). */
 void CPipe::CAlpha::Insert(tag_DelayedNode *d)
 {
     if (m_first_alpha_add) {
@@ -1682,17 +1999,33 @@ void CPipe::CAlpha::Insert(tag_DelayedNode *d)
     std::list<void *>::iterator b = m_drawList.begin(), e = m_drawList.end();
 
     if (it == b) {
-        while (it != e && d->m_40 < ((tag_DelayedNode *)*it)->m_40)
+        while (it != e) {
+            if (!(d->m_40 < ((tag_DelayedNode *)*it)->m_40))
+                break;
             ++it;
-        m_last_alpha_insert = m_drawList.insert(it, (void *const &)d);
+        }
+        m_last_alpha_insert = m_drawList.insert_at(it, (void *const &)d);
+        return;
     } else if (!(d->m_40 < ((tag_DelayedNode *)*it)->m_40)) {
-        while (it != b && !(d->m_40 <= ((tag_DelayedNode *)*it)->m_40))
+        while (it != b) {
+            if (d->m_40 <= ((tag_DelayedNode *)*it)->m_40)
+                break;
             --it;
-        m_last_alpha_insert = m_drawList.insert(d->m_40 < ((tag_DelayedNode *)*b)->m_40 ? ++it : m_drawList.begin(), (void *const &)d);
-    } else {
-        while (it != e && d->m_40 < ((tag_DelayedNode *)*it)->m_40)
+        }
+        if (!(d->m_40 < ((tag_DelayedNode *)*b)->m_40))
+            it = m_drawList.begin();
+        else
             ++it;
-        m_last_alpha_insert = m_drawList.insert(it, (void *const &)d);
+        m_last_alpha_insert = m_drawList.insert_at(it, (void *const &)d);
+        return;
+    } else {
+        while (it != e) {
+            if (!(d->m_40 < ((tag_DelayedNode *)*it)->m_40))
+                break;
+            ++it;
+        }
+        m_last_alpha_insert = m_drawList.insert_at(it, (void *const &)d);
+        return;
     }
 }
 

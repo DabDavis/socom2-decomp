@@ -11,6 +11,7 @@
 #define ZANIM_ARG_CTORS_CALLED
 #include "zanim.h"
 #include "../zcamera/zcamera.h"
+#include "../znode/node_world.h"
 #include "../znode/vis_ripple.h"
 #include "../znode/vis_texfx.h"
 
@@ -112,6 +113,979 @@ extern "C" bool func_002633A0(_zanim_cmd_hdr *hdr, float *dT)
             cmd->from.Slerp(&cmd->to, (step + ZAnim.m_CurSeq->cmd_timer) / cmd->time, &q);
             node->SetRotation(q);
         }
+    }
+    return done;
+}
+
+extern "C" void func_00269170(CPnt3D *dir, zdb::CNode *node);
+zdb::IntersectStruct *ftsGetAltitudeApprox(const CPnt3D *p, float h, bool exact);
+
+/* a material's extension (int_material.h's: _zrdr's stand-ins keep that header out of this unit) */
+class CMaterialEx {
+public:
+    /* OBJECT_MOTION's tick materialises it (the name ours) */
+    bool GetLiquid() const
+    {
+        if (m_liquid)
+            return true;
+        return false;
+    }
+
+    unsigned char _0[0x3c];
+    unsigned int m_volumetric : 1;   // 0x3c
+    unsigned int m_liquid : 1;
+};
+
+class CMaterialExArray {
+public:
+    static CMaterialEx *GetMaterialEx(unsigned int i)
+    {
+        if (i >= m_materialex_list.size())
+            i = 0;
+        return m_materialex_list[i];
+    }
+
+    static std::vector<CMaterialEx *> m_materialex_list;
+};
+
+/* OBJECT_MOTION: a node thrown: a velocity (flag 8), a heading (0x10), the anim's arguments
+ * (0x1000, 0x2000, 0x4000, 0x800), each with a random spread when the record has one (the offset at
+ * 0x7A); the tick flies it. The record's layout read off the handlers, as SOCOM 1's (a word longer
+ * here). */
+struct zanim_cmd_motion {
+    _zanim_cmd_hdr hdr;
+    unsigned int flags;             /* 0x4 */
+    unsigned char node;             /* 0x8 */
+    unsigned char ref;              /* 0x9: the node the heading is in */
+    unsigned char seq;              /* 0xa: the sequence the first bounce starts */
+    unsigned char sound;            /* 0xb: its sound */
+    float fade;                     /* 0xc: the sound's fade speed */
+    float gravity;                  /* 0x10: the set's gravity's multiple */
+    float _14;
+    float arg_scale;                /* 0x18 */
+    unsigned char _1c;
+    char surf_count;                /* 0x1d */
+    short surfaces;                 /* 0x1e: the surface list's offset */
+    short vel_rand;                 /* 0x20 */
+    short heading_range;            /* 0x22 */
+    CPnt3D vel;                     /* 0x24 */
+    CPnt3D acc;                     /* 0x30 */
+    CPnt3D cur_vel;                 /* 0x3c */
+    CPnt3D cur_acc;                 /* 0x48 */
+    CPnt3D dir;                     /* 0x54 */
+    float bounce;                   /* 0x60 */
+    float probe;                    /* 0x64 */
+    CPnt3D rot;                     /* 0x68 */
+    short alpha;                    /* 0x74 */
+    short spin;                     /* 0x76 */
+    short scale;                    /* 0x78 */
+    short spread;                   /* 0x7a */
+    float time;                     /* 0x7c */
+};
+
+/* a random value in [0, 1) (rand()'s full range scaled, as the other handlers write it out) */
+static inline float Rand01()
+{
+    return rand() * 4.656613e-10f;
+}
+
+/* the current set's gravity (an accessor: read ahead of the product, its operands kept) */
+static inline float CurSetGravity()
+{
+    return ZAnim.m_CurAnimSet->m_gravity;
+}
+
+/* a level over TransformVectors: its two vectors below the other call's in the frame */
+static inline void TransformVectorInPlace(const CMatrix *m, CPnt3D *p)
+{
+    TransformVectors(m, p, p, 1);
+}
+
+void zAnimObjectMotionBegin(_zanim_cmd_hdr *hdr)
+{
+    CPnt3D spreadDir;
+    zanim_cmd_motion *cmd = (zanim_cmd_motion *)hdr;
+    CZAnim *anim = ZAnim.m_CurAnim;
+    CNode *node = anim->GetNode(cmd->node, false);
+
+    if (!node)
+        return;
+    if (!(cmd->flags & 1))
+        cmd->time = 0.0f;
+
+    bool spread = false;
+    float a, b;
+
+    if (cmd->spread > 0) {
+        float *v = (float *)((char *)cmd + cmd->spread);
+        float *r;
+
+        spread = true;
+        r = v + 4;
+        float heading = v[0] + r[0] * Rand01();
+        float pitch = v[1] + r[1] * Rand01();
+
+        a = v[2] + r[2] * Rand01();
+        b = v[3] + r[3] * Rand01();
+        zAnimHeadingToDir(&spreadDir, heading, pitch);
+    }
+    if (cmd->flags & 8) {
+        float *v = (float *)((char *)cmd + cmd->vel_rand);
+
+        if (cmd->flags & 0x1000) {
+            CPnt3D *arg = anim->GetArgOf(CZAnimArg::TYPE_VEL);
+
+            if (arg) {
+                if (spread) {
+                    CPnt3D p;
+
+                    p = *arg + spreadDir;
+                    cmd->vel = p * (v[2] + a);
+                    cmd->acc = p * (v[3] + b);
+                } else {
+                    cmd->vel = *arg * v[2];
+                    cmd->acc = *arg * v[3];
+                }
+            }
+        } else if ((cmd->flags & 0x2000) || (cmd->flags & 0x4000)) {
+            CPnt3D *arg = anim->GetArgOf(CZAnimArg::TYPE_DIR);
+
+            if (arg) {
+                CPnt3D d(arg->x, arg->y, arg->z);
+
+                if (cmd->flags & 0x8000)
+                    d.Normalize();
+                if (cmd->flags & 0x4000) {
+                    CPnt3D *plane = anim->GetArgOf(CZAnimArg::TYPE_VEL);
+
+                    if (plane)
+                        d.Reflect(plane);
+                }
+                if (cmd->flags & 0x20000) {
+                    CMatrix m;
+
+                    node->BuildMTW(m);
+                    Vu0MatrixInverseWithUniformScale(&m, &m);
+                    TransformVectorInPlace(&m, &d);
+                }
+                if (spread) {
+                    CPnt3D e;
+
+                    e = spreadDir * d.Length();
+                    d = d + e;
+                    cmd->vel = d * (v[2] + a);
+                    cmd->acc = d * (v[3] + b);
+                } else {
+                    cmd->vel = d * v[2];
+                    cmd->acc = d * v[3];
+                }
+            }
+        } else if (cmd->ref != 0) {
+            CNode *ref = ZAnim.m_CurAnim->GetNode(cmd->ref, false);
+
+            if (ref) {
+                CPnt3D d(cmd->dir);
+
+                func_00269170(&d, ref);
+                if (spread) {
+                    CPnt3D e;
+
+                    e = d + spreadDir;
+                    cmd->vel = e * (v[2] + a);
+                    cmd->acc = e * (v[3] + b);
+                } else {
+                    cmd->vel = d * v[2];
+                    cmd->acc = d * v[3];
+                }
+            }
+        }
+        memcpy(&cmd->cur_vel, &cmd->vel, 12);
+        memcpy(&cmd->cur_acc, &cmd->acc, 12);
+    }
+    if (cmd->flags & 0x10) {
+        float *v = (float *)((char *)cmd + cmd->vel_rand);
+        float *r = (float *)((char *)cmd + cmd->heading_range);
+        float heading = v[0] + r[0] * Rand01();
+        float pitch = v[1] + r[1] * Rand01();
+        float s = v[2] + r[2] * Rand01();
+        float t = v[3] + r[3] * Rand01();
+
+        zAnimHeadingToDir(&cmd->dir, heading, pitch);
+        CPnt3D d;
+
+        d = cmd->dir;
+        if (cmd->ref != 0) {
+            CNode *ref = ZAnim.m_CurAnim->GetNode(cmd->ref, false);
+
+            if (ref)
+                func_00269170(&d, ref);
+        }
+        if (spread) {
+            CPnt3D e;
+
+            e = spreadDir + d;
+            cmd->vel = e * (s + a);
+            cmd->acc = e * (t + b);
+        } else {
+            cmd->vel = d * s;
+            cmd->acc = d * t;
+        }
+        memcpy(&cmd->cur_vel, &cmd->vel, 12);
+        memcpy(&cmd->cur_acc, &cmd->acc, 12);
+    }
+    if (cmd->flags & 2)
+        cmd->cur_acc.y += cmd->gravity * CurSetGravity();
+    if (cmd->flags & 0x100) {
+        char *q = (char *)cmd + cmd->spin;
+
+        memcpy(q + 24, q, 12);
+        node->GetRotation(&cmd->rot);
+    }
+    if ((cmd->flags & 0x200) || (cmd->flags & 0x400)) {
+        char *q = (char *)cmd + cmd->alpha;
+
+        memcpy(q + 8, q, 4);
+    }
+    if (cmd->flags & 0x800) {
+        CPnt3D *arg = ZAnim.m_CurAnim->GetArgOf(CZAnimArg::TYPE_DIR);
+
+        if (arg) {
+            if (cmd->flags & 0x20000) {
+                CMatrix m;
+                CPnt3D d;
+
+                node->BuildMTW(m);
+                Vu0MatrixInverseWithUniformScale(&m, &m);
+                TransformVectors(&m, arg, &d, 1);
+                cmd->cur_vel = cmd->cur_vel + d * cmd->arg_scale;
+            } else
+                cmd->cur_vel = cmd->cur_vel + *arg * cmd->arg_scale;
+        }
+    }
+    if (cmd->flags & 0x10000) {
+        char *q = (char *)cmd + cmd->scale;
+
+        memcpy(q + 24, q, 12);
+    }
+}
+
+/* the texture sequence's other form: a list of handles, its clear and its add (zparticle_source.cpp's) */
+extern "C" void func_0032B110(Particle::Source *src);
+extern "C" void func_0032AAE0(Particle::Source *src, zdb::CTexHandle *tex);
+
+/* PARTICLE_SOURCE's record: flags, a second word of flags, the source, the node, the sequences' counts and the
+ * values each flag sets (SOCOM 1's, the layout read off the handler) */
+struct zanim_cmd_particle {
+    _zanim_cmd_hdr hdr;
+    unsigned int flags;             /* 0x4 */
+    unsigned int flags2;            /* 0x8 */
+    unsigned char name;             /* 0xc */
+    unsigned char node;             /* 0xd */
+    unsigned char number;           /* 0xe */
+    unsigned char model;            /* 0xf */
+    unsigned char num_tex;          /* 0x10 */
+    unsigned char num_color;        /* 0x11 */
+    unsigned char num_scale;        /* 0x12 */
+    unsigned char type : 4;         /* 0x13 */
+    unsigned char cloud_type : 4;
+    CPnt3D offset;                  /* 0x14 */
+    CPnt3D velocity;                /* 0x20 */
+    CPnt3D world_velocity;          /* 0x2c */
+    float perturb_vel[6];           /* 0x38 */
+    float perturb_pos[6];           /* 0x50 */
+    float rotation[6];              /* 0x68 */
+    float period;                   /* 0x80 */
+    float accel[3];                 /* 0x84 */
+    float friction;                 /* 0x90 */
+    float wind;                     /* 0x94 */
+    float priority;                 /* 0x98 */
+    float radius[2];                /* 0x9c */
+    float initial_age[2];           /* 0xa4 */
+    float lifespan[2];              /* 0xac */
+    float near_fade[2];             /* 0xb4 */
+    float far_fade[2];              /* 0xbc */
+    unsigned short pos_rand;        /* 0xc4 */
+    short num_periods;              /* 0xc6 */
+    unsigned short tex_seq;         /* 0xc8 */
+    unsigned short color_seq;       /* 0xca */
+    unsigned short scale_seq;       /* 0xcc */
+    unsigned short rot_ranges;      /* 0xce */
+    unsigned short streak;          /* 0xd0 */
+    unsigned short tint;            /* 0xd2 */
+    float visual_density;           /* 0xd4 */
+    float distance;                 /* 0xd8 */
+};
+
+struct zanim_particle_tex_key {
+    short name;
+    float fraction;
+};
+
+/* an argument of a type (GetArgPnt3D's ternary) */
+static inline CPnt3D *ArgOfType(CZAnim *anim, CZAnimArg::TYPE type)
+{
+    return anim->m_arg_list ? anim->m_arg_list->GetPnt3D(type) : 0;
+}
+
+/* PARTICLE_SOURCE: a source's settings changed, each by its flag (SOCOM 1's; the second flag word's point
+ * through the node, its reflect and normalise flags, the streak and the bounding box SOCOM II's or moved) */
+bool zAnimParticleSourceTick(_zanim_cmd_hdr *hdr, float *dT)
+{
+    zanim_cmd_particle *cmd = (zanim_cmd_particle *)hdr;
+    CZAnim *anim = ZAnim.m_CurAnim;
+    Particle::Source *src = anim->GetParticleSource(cmd->name);
+
+    if (src) {
+        if (cmd->flags & 1) {
+            if (cmd->flags & 2)
+                src->SetActive(true);
+            else
+                src->SetActive(false);
+        }
+        if (cmd->type != 4) {
+            src->m_drawType = cmd->type;
+            if (cmd->type == 3) {
+                if (cmd->streak > 0) {
+                    float *v = (float *)((char *)cmd + cmd->streak);
+
+                    src->m_streakLen = v[0];
+                    src->m_streakFade = v[1];
+                }
+            } else if (cmd->type == 1) {
+                float a, b, c, d;
+
+                if (cmd->rot_ranges > 0) {
+                    float *v = (float *)((char *)cmd + cmd->rot_ranges);
+
+                    a = v[0];
+                    b = v[1];
+                    c = v[2];
+                    d = v[3];
+                } else {
+                    b = 0.0f;
+                    a = b;
+                    d = b;
+                    c = b;
+                }
+                src->m_minRot = a;
+                src->m_maxRot = b;
+                src->m_minRotAcc = c;
+                src->m_maxRotAcc = d;
+            }
+        }
+        if (cmd->flags & 0x10) {
+            src->m_node = anim->GetNode(cmd->node, false);
+            src->m_goodPos = 0;
+        }
+
+        CPnt3D pos(0.0f, 0.0f, 0.0f);
+        bool moved = false;
+
+        if (cmd->flags & 8) {
+            CPnt3D *arg = ArgOfType(anim, CZAnimArg::TYPE_PNT3D);
+
+            if (arg) {
+                pos = pos + *arg;
+                moved = true;
+            }
+        }
+        if (cmd->flags & 4) {
+            pos = pos + cmd->offset;
+            moved = true;
+        }
+        if (cmd->flags & 0x20) {
+            CNode *node = anim->GetNode(cmd->node, false);
+
+            if (node) {
+                CPnt3D p(0.0f, 0.0f, 0.0f);
+
+                node->TransformToWorld(p);
+                pos = pos + p;
+                moved = true;
+            }
+        }
+        if (moved && (cmd->flags2 & 8) && cmd->pos_rand > 0) {
+            float *r = (float *)((char *)cmd + cmd->pos_rand);
+
+            pos.x += r[0] + r[3] * Rand01();
+            pos.y += r[1] + r[4] * Rand01();
+            pos.z += r[2] + r[5] * Rand01();
+        }
+        if (moved) {
+            src->SetOffset(pos.x, pos.y, pos.z);
+            src->m_goodPos = 0;
+        }
+        if (cmd->flags2 & 2) {
+            CPnt3D *arg = ArgOfType(anim, CZAnimArg::TYPE_VEL);
+
+            if (arg) {
+                CPnt3D v(arg->x, arg->y, arg->z);
+
+                v.Scale(cmd->velocity.x, &v);
+                src->SetLocalVelocity(v.x, v.y, v.z);
+            }
+        } else if (cmd->flags2 & 0x40) {
+            CPnt3D *arg = ArgOfType(anim, CZAnimArg::TYPE_DIR);
+
+            if (arg) {
+                CPnt3D v(arg->x, arg->y, arg->z);
+
+                if (cmd->flags2 & 0x400)
+                    v.Normalize();
+                if (cmd->flags2 & 0x100) {
+                    CPnt3D *plane = ArgOfType(anim, CZAnimArg::TYPE_VEL);
+
+                    if (plane)
+                        v = v.Reflect(plane);
+                }
+                v.Scale(cmd->velocity.x, &v);
+                src->SetLocalVelocity(v.x, v.y, v.z);
+            }
+        } else if (cmd->flags2 & 0x100) {
+            CPnt3D *plane = ArgOfType(anim, CZAnimArg::TYPE_VEL);
+            CPnt3D *arg = ArgOfType(anim, CZAnimArg::TYPE_DIR);
+
+            if (arg) {
+                CPnt3D v(arg->x, arg->y, arg->z);
+
+                if (cmd->flags2 & 0x400)
+                    v.Normalize();
+                v.Scale(cmd->velocity.x, &v);
+                if (plane)
+                    v = v.Reflect(plane);
+                src->SetLocalVelocity(v.x, v.y, v.z);
+            }
+        } else if (cmd->flags & 0x40)
+            src->SetLocalVelocity(cmd->velocity.x, cmd->velocity.y, cmd->velocity.z);
+        if (cmd->flags2 & 4) {
+            CPnt3D *arg = ArgOfType(anim, CZAnimArg::TYPE_VEL);
+
+            if (arg) {
+                CPnt3D v(arg->x, arg->y, arg->z);
+
+                v.Scale(cmd->world_velocity.x, &v);
+                src->SetWorldVelocity(v.x, v.y, v.z);
+            }
+        } else if (cmd->flags2 & 0x80) {
+            CPnt3D *arg = ArgOfType(anim, CZAnimArg::TYPE_DIR);
+
+            if (arg) {
+                CPnt3D v(arg->x, arg->y, arg->z);
+
+                if (cmd->flags2 & 0x800)
+                    v.Normalize();
+                v.Scale(cmd->world_velocity.x, &v);
+                src->SetWorldVelocity(v.x, v.y, v.z);
+            }
+        } else if (cmd->flags2 & 0x200) {
+            CPnt3D *plane = ArgOfType(anim, CZAnimArg::TYPE_VEL);
+            CPnt3D *arg = ArgOfType(anim, CZAnimArg::TYPE_DIR);
+
+            if (arg) {
+                CPnt3D v(arg->x, arg->y, arg->z);
+
+                if (cmd->flags2 & 0x800)
+                    v.Normalize();
+                v.Scale(cmd->world_velocity.x, &v);
+                if (plane)
+                    v = v.Reflect(plane);
+                src->SetWorldVelocity(v.x, v.y, v.z);
+            }
+        } else if (cmd->flags & 0x80)
+            src->SetWorldVelocity(cmd->world_velocity.x, cmd->world_velocity.y, cmd->world_velocity.z);
+        if (cmd->flags2 & 0x10)
+            src->m_inheritVelocity = (cmd->flags2 & 0x20) != 0;
+        if (cmd->flags2 & 0x80000)
+            src->m_perParticleVelocity = 1;
+        if (cmd->flags & 0x100)
+            src->SetRange(src->m_perturbVelocityX, cmd->perturb_vel[0], cmd->perturb_vel[1]);
+        if (cmd->flags & 0x200)
+            src->SetRange(src->m_perturbVelocityY, cmd->perturb_vel[2], cmd->perturb_vel[3]);
+        if (cmd->flags & 0x400)
+            src->SetRange(src->m_perturbVelocityZ, cmd->perturb_vel[4], cmd->perturb_vel[5]);
+        if (cmd->flags & 0x800)
+            src->SetRange(src->m_perturbPositionX, cmd->perturb_pos[0], cmd->perturb_pos[1]);
+        if (cmd->flags & 0x1000)
+            src->SetRange(src->m_perturbPositionY, cmd->perturb_pos[2], cmd->perturb_pos[3]);
+        if (cmd->flags & 0x2000)
+            src->SetRange(src->m_perturbPositionZ, cmd->perturb_pos[4], cmd->perturb_pos[5]);
+        if (cmd->flags & 0x4000) {
+            float period;
+
+            src->m_distInterval = 1;
+            period = cmd->period;
+            src->m_period = period;
+            src->m_invPeriod = 1.0f / period;
+        }
+        if (cmd->flags & 0x8000) {
+            float period;
+
+            src->m_distInterval = 0;
+            period = cmd->period;
+            src->m_period = period;
+            src->m_invPeriod = 1.0f / period;
+        }
+        if (cmd->flags2 & 1) {
+            int n = cmd->num_periods;
+
+            src->m_numPeriods = n;
+            src->m_freezable = n == -1;
+        }
+        if (cmd->flags & 0x10000)
+            src->m_number = cmd->number;
+        if (cmd->flags & 0x20000)
+            src->SetAccel(cmd->accel[0], cmd->accel[1], cmd->accel[2]);
+        if (cmd->flags & 0x40000)
+            src->SetFriction(cmd->friction);
+        if (cmd->flags & 0x80000)
+            src->SetWindFactor(cmd->wind);
+        if (cmd->flags & 0x100000)
+            src->SetRange(src->m_radiusRange, cmd->radius[0], cmd->radius[1]);
+        if (cmd->flags & 0x200000)
+            src->SetRange(src->m_initialAgeRange, cmd->initial_age[0], cmd->initial_age[1]);
+        if (cmd->flags & 0x400000)
+            src->SetRange(src->m_lifespanRange, cmd->lifespan[0], cmd->lifespan[1]);
+        if (cmd->flags & 0x800000)
+            src->SetNearFade(cmd->near_fade[0] * cmd->near_fade[0], cmd->near_fade[1] * cmd->near_fade[1]);
+        if (cmd->flags & 0x1000000)
+            src->SetFarFade(cmd->far_fade[0] * cmd->far_fade[0], cmd->far_fade[1] * cmd->far_fade[1]);
+        if (cmd->flags2 & 0x100000)
+            src->m_tint = cmd->tint;
+        if (cmd->flags2 & 0x1000)
+            src->m_distance = cmd->distance * cmd->distance;
+        if (cmd->flags2 & 0x2000) {
+            if (cmd->flags2 & 0x4000)
+                src->m_landmark = 1;
+            else
+                src->m_landmark = 0;
+        }
+        if (cmd->flags2 & 0x8000) {
+            if (cmd->flags2 & 0x10000)
+                src->m_doAgeLOD = 1;
+            else
+                src->m_doAgeLOD = 0;
+        }
+        if (cmd->flags2 & 0x20000) {
+            if (cmd->flags2 & 0x40000)
+                src->m_doSpawnLOD = 1;
+            else
+                src->m_doSpawnLOD = 0;
+        }
+        if (cmd->flags & 0x40000000) {
+            src->SetHasBBox(true);
+            src->SetVisualDensity(cmd->visual_density);
+            src->m_cloudtype = cmd->cloud_type;
+        }
+        if (cmd->flags & 0x2000000)
+            src->SetPriority(cmd->priority);
+        if ((cmd->flags & 0x4000000) || (cmd->flags & 0x8000000)) {
+            zanim_particle_tex_key *key = (zanim_particle_tex_key *)((char *)cmd + cmd->tex_seq);
+
+            if (cmd->flags & 0x4000000)
+                func_0032B110(src);
+            else
+                src->TextureSequenceClear();
+            for (int i = 0; i < cmd->num_tex; i++, key++) {
+                CTexHandle *tex = anim->GetTexture(key->name);
+
+                if (tex) {
+                    if (cmd->flags & 0x4000000)
+                        func_0032AAE0(src, tex);
+                    else
+                        src->TextureSequenceAdd(key->fraction, tex);
+                }
+            }
+        }
+        if (cmd->flags & 0x10000000) {
+            float *key = (float *)((char *)cmd + cmd->color_seq);
+
+            src->ColorSequenceClear();
+            for (int i = 0; i < cmd->num_color; i++, key += 5)
+                src->ColorSequenceAdd(key[0], key[1], key[2], key[3], key[4]);
+        }
+        if (cmd->flags & 0x80000000) {
+            zdb::CModel *model = (zdb::CModel *)zdb::CWorld::GetModel(anim->GetName(cmd->model));
+
+            src->SetModel(model);
+            src->SetRange(src->m_rotationX, cmd->rotation[0], cmd->rotation[1]);
+            src->SetRange(src->m_rotationY, cmd->rotation[2], cmd->rotation[3]);
+            src->SetRange(src->m_rotationZ, cmd->rotation[4], cmd->rotation[5]);
+        }
+        if (cmd->flags & 0x20000000) {
+            float *key = (float *)((char *)cmd + cmd->scale_seq);
+
+            src->ScaleSequenceClear();
+            for (int i = 0; i < cmd->num_scale; i++, key += 2)
+                src->ScaleSequenceAdd(key[0], key[1]);
+        }
+    }
+    return true;
+}
+
+/* a surface's reaction in the record's list (SOCOM 1's, a word with SOCOM II's extra bits): the material
+ * it answers, the sound and the sequence to start, the sound's fade distance and the bounce */
+struct zanim_motion_surface {
+    unsigned int has_fade : 1;
+    unsigned int has_bounce : 1;
+    unsigned int material : 8;
+    unsigned int sound : 8;
+    unsigned int seq : 8;
+    unsigned int _bits : 6;
+    float fade;                     /* 0x4 */
+    float bounce;                   /* 0x8 */
+};
+
+/* the lowest walkable ground of the altitudes under a point (inline: SOCOM 1 called GetAltitude) */
+static inline zdb::IntersectStruct *LowestGround(zdb::DiIntersect *di)
+{
+    zdb::IntersectStruct *best = 0;
+    float *y = 0;
+    int i;
+    int n = di->m_Cnt;
+
+    for (i = 0; i < n; i++) {
+        zdb::IntersectStruct *is = &di->m_Intersects[i];
+
+        if (is && is->m_node && !(is->m_node->m_socom2_a1 & 4)) {
+            if (!y) {
+                y = &is->m_pos.y;
+                best = is;
+            } else if (is->m_pos.y < *y) {
+                y = &is->m_pos.y;
+                best = is;
+            }
+        }
+    }
+    return best;
+}
+
+/* the object of the tick's first call: an inline with a body is evaluated ahead of the plain arguments,
+ * so a0 is loaded ahead of the node index and the index reads cmd's saved register, not a0 -- a stand-in,
+ * the original's spelling unknown (SOCOM 1's prologue reads the same) */
+static inline CZAnim *TickAnim(CZAnim *a)
+{
+    CZAnim *r = a;
+
+    return r;
+}
+
+/* OBJECT_MOTION's tick: the node flown one step, ground (flag 0x40) and walls (0x80) bouncing it
+ * through the surfaces' list, a sound and a sequence at the first bounce; then its velocity, spin
+ * (0x100), roll from its travel (0x200, 0x400) and scale (0x10000) stepped (SOCOM 1's; the walk over
+ * the altitudes and the characters' flag SOCOM II's) */
+bool zAnimObjectMotionTick(_zanim_cmd_hdr *hdr, float *dT)
+{
+    CZAnim *anim = ZAnim.m_CurAnim;
+    zanim_cmd_motion *cmd = (zanim_cmd_motion *)hdr;
+    CPnt3D delta(0.0f, 0.0f, 0.0f);
+    CNode *node = TickAnim(anim)->GetNode(cmd->node, false);
+    bool done;
+    float step;
+
+    if (!node)
+        return true;
+    if ((cmd->flags & 1) && !(*dT + ZAnim.m_CurSeq->cmd_timer <= cmd->time)) {
+        step = cmd->time - ZAnim.m_CurSeq->cmd_timer;
+        done = true;
+        *dT -= step;
+    } else {
+        done = false;
+        step = *dT;
+        *dT = 0.0f;
+    }
+
+    float left;
+    float velStep = step;
+
+    left = step;
+
+    if ((cmd->flags & 8) || (cmd->flags & 0x10) || (cmd->flags & 0x800)) {
+        CPnt3D pos(0.0f, 0.0f, 0.0f);
+        CPnt3D to;
+        bool hitGround = false;
+        bool hitWall = false;
+        const CBBox *box = node->GetBBox();
+        CPnt3D ext;
+        CPnt3D size;
+        float speed;
+        float probe;
+        float half;
+
+        box->m_max.Sub(&box->m_min, &ext);
+        TransformVectors(&node->m_matrix, &ext, &size, 1);
+        half = fabsf(size.y);
+        probe = half * cmd->probe;
+        half = half * 0.5f;
+        delta = cmd->cur_vel * left;
+
+        zanim_motion_surface *surfA = 0;
+
+        pos.x = node->m_matrix.m_matrix[3][0];
+        pos.y = node->m_matrix.m_matrix[3][1];
+        pos.z = node->m_matrix.m_matrix[3][2];
+
+        zanim_motion_surface *surfB = 0;
+
+        if ((cmd->flags & 0x40) || (cmd->flags & 0x80)) {
+            bool characters = (cmd->flags & 0x40000) ? true : false;
+
+            while (left > 0.01f) {
+                bool moved = false;
+                bool stop = false;
+                bool steep = false;
+                float xz = delta.x * delta.x + delta.z * delta.z;
+
+                if (cmd->flags & 0x80) {
+                    if (delta.y >= 0.0f || xz > delta.y * delta.y || xz > 0.1f)
+                        steep = true;
+                }
+                if ((cmd->flags & 0x40) && cmd->cur_vel.y < 0.0f && !steep) {
+                    CPnt3D p(pos.x, pos.y, pos.z);
+                    zdb::IntersectStruct *hit;
+
+                    moved = true;
+                    bool was = node->m_active;
+
+                    node->SetActive(false);
+                    hit = ftsGetAltitudeApprox(&p, half, false);
+                    if (!hit) {
+                        CPnt3D q(p.x, p.y + 100.0f, p.z);
+
+                        hit = LowestGround(zdb::CWorld::m_world->GetAltitudes(&q));
+                    }
+                    node->SetActive(was);
+
+                    CMaterialEx *ex = 0;
+
+                    if (hit)
+                        ex = CMaterialExArray::GetMaterialEx(hit->GetMaterial());
+                    if (ex && !ex->GetLiquid()) {
+                        hit->m_pos.y += probe;
+                        if (pos.y < hit->m_pos.y - probe) {
+                            done = true;
+                            left = 0.0f;
+                            pos.x = hit->m_pos.x;
+                            pos.y = hit->m_pos.y;
+                            pos.z = hit->m_pos.z;
+                            delta = CPnt3D::zero;
+                        } else if (hit->m_pos.y >= pos.y + delta.y) {
+                            hitGround = true;
+                            speed = cmd->cur_vel.Length();
+                            if (cmd->surfaces > 0) {
+                                zanim_motion_surface *surf = (zanim_motion_surface *)((char *)cmd + cmd->surfaces);
+
+                                for (int i = 0; i < cmd->surf_count; surf++, i++) {
+                                    if (surf->material == hit->GetMaterial()) {
+                                        surfA = surf;
+                                        break;
+                                    }
+                                }
+                            }
+
+                            CPnt3D n;
+
+                            cmd->cur_vel.Normalize(&n);
+
+                            float cosine = fabsf(n.x * hit->m_norm.x + n.y * hit->m_norm.y + n.z * hit->m_norm.z);
+
+                            left *= 1.0f - (hit->m_pos.y - pos.y) / delta.y;
+                            cmd->cur_vel = cmd->cur_vel.Reflect(&hit->m_norm);
+
+                            float bounce;
+
+                            if (surfA && surfA->has_bounce)
+                                bounce = surfA->bounce;
+                            else
+                                bounce = cmd->bounce;
+
+                            if (bounce < 1.0f) {
+                                bounce = (1.0f - bounce) * cosine;
+                                cmd->cur_vel.Scale(1.0f - bounce, &cmd->cur_vel);
+                            } else
+                                cmd->cur_vel.Scale(bounce, &cmd->cur_vel);
+                            pos.x = hit->m_pos.x;
+                            pos.y = hit->m_pos.y;
+                            pos.z = hit->m_pos.z;
+                            if (cmd->cur_vel.Length() < 0.08f * cmd->cur_acc.Length()) {
+                                done = true;
+                                delta = CPnt3D::zero;
+                            } else {
+                                delta = cmd->cur_vel * left;
+                                velStep = left;
+                                cmd->cur_acc.y = cmd->gravity * CurSetGravity();
+                            }
+                        } else {
+                            stop = true;
+                            left = 0.0f;
+                        }
+                    } else {
+                        stop = true;
+                        left = 0.0f;
+                    }
+                }
+                if (!done && ((cmd->flags & 0x80) || steep) && !stop) {
+                    moved = true;
+                    to = pos + delta;
+
+                    bool was = node->m_active;
+
+                    node->SetActive(false);
+
+                    zdb::IntersectStruct *hit = zdb::CWorld::m_world->GetIntersect(&pos, &to, characters);
+
+                    node->SetActive(was);
+
+                    CMaterialEx *ex = 0;
+
+                    if (hit)
+                        ex = CMaterialExArray::GetMaterialEx(hit->GetMaterial());
+                    if (ex && !ex->GetLiquid()) {
+                        float y0 = cmd->cur_vel.y;
+
+                        hitWall = true;
+                        if (cmd->surfaces > 0) {
+                            zanim_motion_surface *surf = (zanim_motion_surface *)((char *)cmd + cmd->surfaces);
+
+                            for (int i = 0; i < cmd->surf_count; surf++, i++) {
+                                if (surf->material == hit->GetMaterial()) {
+                                    surfB = surf;
+                                    break;
+                                }
+                            }
+                        }
+                        if (cmd->flags & 0x20)
+                            speed = cmd->cur_vel.Length();
+                        cmd->cur_vel = cmd->cur_vel.Reflect(&hit->m_norm);
+
+                        float bounce;
+
+                        if (surfB && surfB->has_bounce)
+                            bounce = surfB->bounce;
+                        else
+                            bounce = cmd->bounce;
+                        cmd->cur_vel.Scale(bounce, &cmd->cur_vel);
+
+                        CPnt3D toHit = hit->m_pos - pos;
+
+                        left *= 1.0f - toHit.Length() / delta.Length();
+
+                        float t = 1.0f - half / toHit.Length();
+
+                        if (t > 1.0f)
+                            t = 1.0f;
+                        pos += toHit * t;
+                        float lenAcc = cmd->cur_acc.Length();
+                        float lenVel = cmd->cur_vel.Length();
+
+                        if (hit->m_norm.y > 0.3f && y0 <= 0.0f && lenVel < 0.08f * lenAcc) {
+                            done = true;
+                            delta = CPnt3D::zero;
+                        } else {
+                            delta = cmd->cur_vel * left;
+                            if (hit->m_norm.y > 0.3f) {
+                                velStep = left;
+                                cmd->cur_acc.y = cmd->gravity * CurSetGravity();
+                            }
+                        }
+                    } else
+                        left = 0.0f;
+                }
+                if (!moved)
+                    left = 0.0f;
+            }
+        }
+        to = pos + delta;
+        node->SetPosition(to.x, to.y, to.z);
+        if (hitGround || hitWall) {
+            zanim_motion_surface *surf = 0;
+
+            if (surfA)
+                surf = surfA;
+            else if (surfB)
+                surf = surfB;
+            if (surf && surf->seq != 0)
+                ZAnim.ActivateSequence(anim->GetName(surf->seq));
+            else if (cmd->seq != 0)
+                ZAnim.ActivateSequence(anim->GetName(cmd->seq));
+            if (cmd->flags & 0x20) {
+                _zanim_sound *snd = 0;
+
+                if (surf && surf->sound != 0)
+                    snd = anim->GetSoundRef(surf->sound);
+                else if (cmd->sound != 0)
+                    snd = anim->GetSoundRef(cmd->sound);
+                if (snd) {
+                    float vol = 1.0f;
+                    float fade;
+
+                    if (surf && surf->has_fade)
+                        fade = surf->fade;
+                    else
+                        fade = cmd->fade;
+
+                    if (!(fade < 0.0f) && speed < fade)
+                        vol = speed / fade;
+                    snd->sound_handle->PlaySound3D(&to, true, vol, 0, 0, 255);
+                }
+            }
+        }
+        if ((cmd->flags & 2) && cmd->cur_vel.y < 0.0f) {
+            float e = cmd->cur_vel.y * cmd->_14;
+
+            e = ZAnim.InvExp(e);
+            cmd->cur_vel.y += step * (cmd->cur_acc.y * e);
+            cmd->cur_vel.x += cmd->cur_acc.x * step;
+            cmd->cur_vel.z += cmd->cur_acc.z * step;
+        } else
+            cmd->cur_vel += cmd->cur_acc * velStep;
+    }
+    if (cmd->flags & 0x100) {
+        CPnt3D *v = (CPnt3D *)((char *)cmd + cmd->spin);
+        CPnt3D r = v[2] * step;
+        CQuat cur;
+        CQuat d;
+        CQuat q;
+
+        node->GetRotation(&cur);
+        d.MakeYXZRot(r.y, r.x, r.z);
+        cur.Mul(&d, &q);
+        q.Normalize();
+        node->SetRotation(q);
+        v[2] += v[1] * step;
+    }
+    if (cmd->flags & 0x200) {
+        float *a = (float *)((char *)cmd + cmd->alpha);
+        CPnt3D r;
+
+        r.x = a[2] * delta.z;
+        r.y = 0.0f;
+        r.z = -(a[2] * delta.x);
+        cmd->rot.Add(&r, &cmd->rot);
+        node->SetRotation(&cmd->rot);
+    }
+    if (cmd->flags & 0x400) {
+        float *a = (float *)((char *)cmd + cmd->alpha);
+        CPnt3D d(cmd->cur_vel);
+
+        d.Normalize();
+
+        CPnt3D r;
+
+        r.x = step * (a[2] * d.z);
+        r.y = 0.0f;
+        r.z = -(step * (a[2] * d.x));
+        cmd->rot.Add(&r, &cmd->rot);
+        node->SetRotation(&cmd->rot);
+        a[2] += a[1] * step;
+    }
+    if (cmd->flags & 0x10000) {
+        CPnt3D *v = (CPnt3D *)((char *)cmd + cmd->scale);
+        CPnt3D sc;
+
+        node->GetScale(&sc);
+        sc += v[2] * step;
+        node->SetScale(&sc);
+        v[2] += v[1] * step;
     }
     return done;
 }
@@ -1797,9 +2771,10 @@ struct zanim_cmd_scroll_motion {
     float time;                     /* 0x44 */
 };
 
-/* OPEN, 11 instructions (the target's size, 0x468; 221 before the engine core's round 27): the first
- * read of cmd->node through a0 where the target has s3 (a0's a valid copy source there: the copy
- * forward is below the IR -- a `const`, int or enum copy alike), and the length's registers: the
+/* OPEN, 9 instructions (the target's size, 0x468; 221 before the engine core's round 27, 11 before the object of each
+ * GetNode went through TickAnim, round 28): the first read of cmd->node through a0 where the target has s3 (a0's a valid
+ * copy source there: the copy forward is below the IR -- a `const`, int or enum copy alike; TickAnim directly on that
+ * call: 0x460), and the length's registers: the
  * target's z (f3) is numbered above the sum (`igreplay --cls 1 --want` over z: only v33 -> 112.5 or
  * 113.5, a code-generation register though it is read again by the dot; no spelling found). Closed in
  * round 27: the frame's two holes -- an unused local whose address is taken in a pointer keeps its slot
@@ -1819,14 +2794,14 @@ extern "C" bool func_00260B40(_zanim_cmd_hdr *hdr, float *dT)
 {
     zanim_cmd_scroll_motion *cmd;
     bool done = false;
-    int anim = (int)ZAnim.m_CurAnim;
+    CZAnim *anim = TickAnim(ZAnim.m_CurAnim);
 
-    cmd = (zanim_cmd_scroll_motion *)(int)hdr;
-    CNode *node = ((CZAnim *)anim)->GetNode(cmd->node, false);
+    cmd = (zanim_cmd_scroll_motion *)hdr;
+    CNode *node = anim->GetNode(cmd->node, false);
 
     if (!node)
         return true;
-    CNode *center = ZAnim.m_CurAnim->GetNode(cmd->center, false);
+    CNode *center = TickAnim(ZAnim.m_CurAnim)->GetNode(cmd->center, false);
     if (!center)
         return true;
     CPnt3D c(0.0f, 0.0f, 0.0f);
@@ -3474,3 +4449,9 @@ bool zAnimStopSequenceTick(_zanim_cmd_hdr *hdr, float *dT)
     ZAnim.StopSequence(ZAnim.m_CurAnim->GetName(((zanim_cmd_sequence *)hdr)->name));
     return true;
 }
+
+/* The unit inlines to depth 8, not the flags' 5, as seal_ai.cpp does for CSealUnit::GetTop's copy (a pragma
+ * acts through its state at the unit's end): zdb::CNode::GetBBox's out-of-line copy 0x262550, the
+ * self-recursive inline, holds seven self-copies and then a call, README "Level 6, or 8?" -- every other
+ * function of the unit compiles the same (objcmp against the unit without it: GetBBox alone differs). */
+#pragma inline_depth(8)

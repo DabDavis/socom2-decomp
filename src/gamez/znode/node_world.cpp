@@ -95,14 +95,12 @@ static inline void SetAmbient(CWorld *w, float r, float g, float b, float a)
 
 /* SOCOM 1's: the children deleted, the landmarks and shadow casters, the camera, the intersection
  * and the shadow texture let go of, the assets cleared, every character set deleted, the node
- * universe gone, the world no longer current. OPEN, 0x49C of 0x50C (the world lane's round 33,
- * unwritten before; every statement, and each member's destructor, in the target's order): (1) THE
- * LEVEL, as Wipeout / RemoveEmptyTextureAssetCharacters: `delete t` inlines the set's destructor and
- * its nodes' vector whole in the target (four this-tests, the block freed), and `delete NodeUniverse`
- * five tests, where include/vector's pointer vector makes each a call at level 5; `#pragma
- * inline_depth(6)` at the unit's end gives those but loses GarbageCollect and
- * AddTextureAssetCharacter, which call the same destructors out of line (README "Level 6, or 8?");
- * (2) the registers follow from it: the target keeps this in s1, the flag in s0, the walks in s2-s4 */
+ * universe gone, the world no longer current. Byte-exact since round 34 (0x49C of 0x50C since round 33; every
+ * statement, and each member's destructor, in the target's order), at level 5: `delete t` and `delete NodeUniverse`
+ * written out, ~CNodeVector called on each from here (the weapons' round 40: a destructor called from the function's
+ * own text inlines whole, a marked stand-in for "Level 6, or 8?" -- `#pragma inline_depth(6)` at the unit's end loses
+ * GarbageCollect and AddTextureAssetCharacter, which call the same destructors out of line); a shadow caster has an
+ * inline destructor (delete's null test) and the casters' vector is a class of its own (the fourth this-test) */
 CWorld::~CWorld()
 {
     DeleteChildren();
@@ -127,11 +125,20 @@ CWorld::~CWorld()
         CTextureAssetCharacters *t = m_TextureAssetCharacters.front();
 
         m_TextureAssetCharacters.pop_front();
-        delete t;
+        if (t) {
+            CTexManager::m_texmanager.doDelBuffer(t->m_buffer);
+            t->m_nodes.~CNodeVector();
+            operator delete(t);
+        }
     }
     if (NodeUniverse) {
         NodeUniverse->clear();
-        delete NodeUniverse;
+        CNodeVector *u = NodeUniverse;
+
+        if (u) {
+            u->~CNodeVector();
+            operator delete(u);
+        }
         NodeUniverse = 0;
     }
     m_world = 0;
@@ -1135,16 +1142,10 @@ void CWorld::DeleteTextureAssetCharacter(_RenderPhase phase, CNode *node)
 
 /* the character sets no node is drawn with any more deleted, the walk begun again after each (new
  * in SOCOM II: SOCOM 1's DeleteTextureAssetCharacter did this as it went).
- * OPEN, 0x11C of 0x144: `delete c` inlines the destructor and the nodes' vector teardown whole in
- * the target (the set's null test, doDelBuffer, then four this-tests of &m_nodes and the block
- * freed) -- five destructor levels under the delete, where include/vector's pointer vector makes
- * ~CNodeVector a call (-1) here; it turns on the vector remodel. MEASURED (the world lane's round
- * 16, build/scratch/wld/podsub.py): with the pointer pod's destructor deleting its block directly
- * (`operator delete(data_)`, the pointer vector's destructor three high, not four) this source is
- * byte-exact -- the set read into a second local, `p`, which the target keeps in s0 across the
- * remove while `c`, whose address the remove's binder takes, stays in its stack home (one local,
- * reloaded after the call, is 0x14C). Not applied: the same header change loses six destructors
- * that need the deallocate level (README "Level 6, or 8?") */
+ * Byte-exact since round 34 (0x11C of 0x144 since round 3), at level 5, as WipeoutTextureAssetCharacters below: the
+ * delete written out, ~CNodeVector called from here. The set read into a second local, `p`, which the target keeps in
+ * s0 across the remove while `c`, whose address the remove's binder takes, stays in its stack home (one local, reloaded
+ * after the call, is 0x14C: the world lane's round 16) */
 void CWorld::RemoveEmptyTextureAssetCharacters()
 {
     CTextureAssetCharacterList::iterator it = m_TextureAssetCharacters.begin(),
@@ -1156,7 +1157,11 @@ void CWorld::RemoveEmptyTextureAssetCharacters()
 
         if (p->m_nodes.size() == 0) {
             m_TextureAssetCharacters.remove(c);
-            delete p;
+            if (p) {
+                CTexManager::m_texmanager.doDelBuffer(p->m_buffer);
+                p->m_nodes.~CNodeVector();
+                operator delete(p);
+            }
             it = m_TextureAssetCharacters.begin();
             e = m_TextureAssetCharacters.end();
         } else
@@ -1175,13 +1180,9 @@ void CWorld::ReleaseTextureAssetCharacters()
 }
 
 /* every character set's nodes let go of and the set deleted, the list emptied (SOCOM 1's).
- * OPEN, 0xF0 of 0x124: as RemoveEmptyTextureAssetCharacters, `delete c` inlines ~CNodeVector's four
- * this-tested levels in the target and calls it here (the vector remodel); FreeVector's
- * constructor, clear, swap and destructor calls and the list's clear already line up. MEASURED
- * (round 16): byte-exact as it stands once the pointer pod's destructor deletes its block directly
- * (the pointer vector's destructor three high) -- which also closes ClearGroups 0x3C2A10 and
- * vector<SKBCOMPLETE>'s resize and loses ~CNodeVector (database.cpp's copy), ~CCell, ~CHUD,
- * ~CVisual, CPipe::~CAlpha and ~CGSTexBuffer: level 6's split, so not applied */
+ * Byte-exact since round 34 (0xFC of 0x124 since round 3), at level 5: `delete c` written out, the buffer's release
+ * and ~CNodeVector called on the member from here (the weapons' round 40: a destructor called from the function's own
+ * text inlines whole, five high under a delete of a destructor six high; a marked stand-in for "Level 6, or 8?") */
 void CWorld::WipeoutTextureAssetCharacters()
 {
     CTextureAssetCharacterList::iterator it, e = m_TextureAssetCharacters.end();
@@ -1190,7 +1191,11 @@ void CWorld::WipeoutTextureAssetCharacters()
         CTextureAssetCharacters *c = *it;
 
         FreeVector<std::vector<CNode *> >(c->m_nodes);
-        delete c;
+        if (c) {
+            CTexManager::m_texmanager.doDelBuffer(c->m_buffer);
+            c->m_nodes.~CNodeVector();
+            operator delete(c);
+        }
     }
     m_TextureAssetCharacters.clear();
 }

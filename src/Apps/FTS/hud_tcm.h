@@ -184,6 +184,7 @@ public:
     CTCMNode *GetSelected();
     /* hud_tcmcmds.cpp's layout (the names ours) */
     void AlignRoot(CTCMNode *cur);
+    void LayoutColumn(CTCMNode *cur, float x, float y, float dir, unsigned int depth, bool b);
     bool FadeCursor(CTCMNode *cur, bool in, float dt);
     bool SlideRoot(CTCMNode *cur, bool out, float dt);
     void PlaceCursor(CTCMNode *cur);
@@ -211,6 +212,10 @@ public:
     void SetupItemBars();
     void ClearItems();
     void Init();
+    /* the menu built for the game's kind (the tree's 0x232BC0; the name ours) and the node actions on it (hud_tcm.cpp's
+     * 0x236260: the builder's call passes theTCM, unused) */
+    void Build(unsigned char mode);
+    void SetNodeActions();
 
     CTCMMode m_mode;   // 0x750
     std::vector<int> m_path;   // 0x754: the open column's selections, one per depth
@@ -258,10 +263,8 @@ public:
 
 extern CTCMColumn g_tcmColumns[8];
 
-/* the tree's menu builder (0x2344E0, hud_tcmtree.cpp's: not written yet) */
-extern "C" {
-void func_002344E0();
-}
+/* the tree's menu builder (0x2344E0, hud_tcmtree.cpp's) */
+void tcmBuildCaches();
 
 /* an item's node from the current cache's entry of that name, under every node named `parent`
  * (hud_tcm.cpp's 0x237000: the tree's cache builders call it) */
