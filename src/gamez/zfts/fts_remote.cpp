@@ -260,6 +260,18 @@ public:
 
 extern CMission theMission;
 
+/* the message queue (fts_message.cpp's C2DMessage_Q: only its line add, OVL1 0x2B6530) and the
+ * message kind its colour is indexed by (fts_state.h's MSGTYPE) */
+enum MSGTYPE {
+    MSGTYPE_PLAYER = 0,
+    MSGTYPE_SYSTEM = 1,
+    MSGTYPE_ALERT = 5
+};
+class C2DMessage_Q {
+public:
+    void Add_Message(const char *text, MSGTYPE type, bool centered, int time, float scale);
+};
+
 class CZSealState {
 public:
     static void zNetRegisterSeal();   /* 0x2BF2C0 */
@@ -381,7 +393,6 @@ int func_00273950(CZAnimMain *zanim, void *data);
 void func_00273780(CZAnimMain *zanim, void *data, int who);
 void func_00545530(void *list, CZSealBody *body, int arg);
 void func_005880E0(CZSealBody *body, short a, unsigned char b, bool c, unsigned short d);
-void func_002B6530(void *queue, const char *text, int a, int b, int c, float d);   /* C2DMessage_Q::Add_Message */
 bool func_002C2FA0();
 void func_002A47B0(CMission *mission, const char *dialog);
 extern int data_00440EC0[];
@@ -1843,7 +1854,7 @@ extern "C" int func_002BA040(int, int, int who, void *data)
     char text[128];
 
     sprintf(text, "Voting: You have %d votes against you.", after);
-    func_002B6530(theMission.m_messenger, text, 2, 0, 0, 0.0f);
+    ((C2DMessage_Q *)theMission.m_messenger)->Add_Message(text, (MSGTYPE)2, false, 0, 0.0f);
     func_002C3550();
     VoteTally m = {0};
 
@@ -1928,7 +1939,7 @@ extern "C" int func_002B9E20(int, int, int, void *data)
  * client sent to its dialog; OVL1 0x2B9D80) */
 extern "C" int func_002B9D80(int, int, int, void *)
 {
-    func_002B6530(theMission.m_messenger, "Spectators EJECTED from this game.", 2, 0, 0, 0.0f);
+    ((C2DMessage_Q *)theMission.m_messenger)->Add_Message("Spectators EJECTED from this game.", (MSGTYPE)2, false, 0, 0.0f);
     CValve *valve = CValve::GetByName("MaxSpectatorsValve");
 
     if (valve)
@@ -1959,7 +1970,7 @@ extern "C" int func_002B9BD0(int, int, int who, VotePacket *p)
         else
             sprintf(text, " %s voting for spectators: %d votes against.", body->m_node->m_name,
                     votes);
-        func_002B6530(theMission.m_messenger, text, 2, 0, 0, 0.0f);
+        ((C2DMessage_Q *)theMission.m_messenger)->Add_Message(text, (MSGTYPE)2, false, 0, 0.0f);
         if (theNetwork.m_bSessionMaster && func_002C2E30()) {
             count = votes;
             theNetwork.zNetSendApplicationMessage(64, theNetwork.GetGameConnectionIndex(), -1,
