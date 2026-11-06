@@ -711,6 +711,7 @@ enum MSGTYPE { MSGTYPE_PLAYER = 0 };
 class C2DMessage_Q {
 public:
     void Add_Message(const char *text, MSGTYPE type, bool centered, int time, float scale);
+    const char *LastMessage();
 };
 
 /* the mission as the bomb pickup reads it (theMission, OVL1 0x4364E0: its message queue at 0xB80
@@ -2855,6 +2856,81 @@ unsigned char CZKit::CurMagHasAmmo()
     return m_reloads[m_selected_item][m_currentmag[m_selected_item]] > 0;
 }
 
+/* the screen's size (zVid's, OVL1 bss 0x4A44C4 / 0x4A44C8; no rows) and tanf (MAIN's) */
+extern "C" unsigned int data_004A44C4;
+extern "C" unsigned int data_004A44C8;
+extern "C" float tanf(float);
+
+/* the body's zoom class held in a local through an enum (enums are not propagated: the class's lb then
+ * numbered below the -1.0's lui, the target's a0 and v1; as a char the two swap) */
+enum KIT_ZOOM_CLASS { KIT_ZOOM_NONE = -1, KIT_ZOOM_LAST = 127 };
+
+/* the reticle's offsets and size made the body's accuracy factors: a scope's or binoculars' zoom class
+ * holds the size at zero and takes the sniper's drift into the offsets, the point the player's aim
+ * reaches scales them, the half-angle per pixel turns them to an angle (OVL2 0x5BD100; SOCOM 1's
+ * SetCurAccuracy, after FireGrenade and its GetTotalEnc, its constants -- 640, 448, 320, 224 -- the
+ * screen's size here, its burst term gone) */
+void CZKit::SetCurAccuracy()
+{
+    zdb::CCamera *cam = zdb::CWorld::m_world->m_camera;
+    const float scrz = cam->m_scrZ;
+    float fovx = data_004A44C4 / scrz;
+    float fovy = fovx * data_004A44C8 / data_004A44C4;
+    float x = m_retoffsetx;
+    float y = -1.0f * m_retoffsety;
+    float size = m_retsize;
+    KIT_ZOOM_CLASS zc = (KIT_ZOOM_CLASS)((CKitBody *)m_body)->m_200;
+
+    if (zc > 4 || zc == 4) {
+        size = 0.0f;
+        m_screenoffset_x += m_sniper_posx;
+        m_retoffsetx = -m_sniper_posx;
+        m_screenoffset_y -= m_sniper_posy;
+        m_retoffsety = -m_sniper_posy;
+        x = m_retoffsetx;
+        y = m_retoffsety;
+    }
+    float scl = cam->m_screenAspect[1];
+    CZSealBody *p = ftsGetPlayer__Fv();
+    CPnt3D a;
+    CPnt3D b;
+
+    CopyPoint(&a, &((CKitPlayerView *)p)->m_1458);
+    ((CKitPlayerView *)p)->m_14b0.Add(&((CEntity *)p)->m_posW, &b);
+    if (((CKitBody *)m_body)->m_eb8) {
+        ((CEntity *)((CKitBody *)m_body)->m_eb8)->Virtual60(&b);
+        CopyPoint(&a, &b);
+    }
+    float z = cam->GetZ(&a);
+    float d = z - cam->GetZ(&b);
+
+    if (d == 0.0f)
+        scl = 1.0f;
+    else
+        scl = z / (scl * d);
+    float h = data_004A44C8;
+    CKitBody::CKitAccuracy &acc = ((CKitBody *)m_body)->m_accuracy;
+    float hw = 0.5f * data_004A44C4;
+
+    if (hw == 0.0f)
+        acc.m_factorX = 0.0f;
+    else
+        acc.m_factorX = x * scl * (tanf(0.5f * fovx) / hw);
+    float hh = 0.5f * h;
+
+    if (hh == 0.0f)
+        acc.m_factorY = 0.0f;
+    else
+        acc.m_factorY = y * scl * (tanf(0.5f * fovy) / hh);
+    CKitBody::CKitAccuracy &acc2 = ((CKitBody *)m_body)->m_accuracy;
+
+    hh = 0.5f * data_004A44C8;
+    if (hh == 0.0f)
+        acc2.m_factor = 0.0f;
+    else
+        acc2.m_factor = 0.707f * (size * (tanf(0.5f * fovy) / hh));
+}
+
 extern "C" {
 /* the kit's fire (SOCOM 1's CZKit::Fire(int, const CPnt3D *, const CPnt3D *, const CPnt3D *); OVL2
  * 0x5C5340, unwritten) and an explosive placed (SOCOM 1's HandleRemotePlaceExplosive, which took the
@@ -3001,6 +3077,186 @@ void CZKit::SetHotSwap(bool b)
     m_hotswap = b;
 }
 
+/* a pickup's answer, one byte (fts_remote.cpp's AckUnion, seal_env.cpp's spelling: a bit per entry of the stash), its
+ * message and the request's (OVL1 0x2BA1F0, 0x2BA2C0, fts_remote.cpp's) */
+union AckUnion {
+    struct {
+        unsigned char m_0 : 1;
+        unsigned char m_1 : 1;
+        unsigned char m_2 : 1;
+        unsigned char m_3 : 1;
+        unsigned char m_4 : 1;
+        unsigned char m_5 : 1;
+        unsigned char m_6 : 1;
+        unsigned char m_7 : 1;
+    } ammo;
+    unsigned char b;
+};
+
+extern "C" {
+void SendPickupAckMessage__Fiii8AckUnion(int who, int id, int obj, AckUnion ack);
+void func_002BA2C0(int count, unsigned int netid, short *ids, unsigned int id, unsigned int owner);
+int strcasecmp(const char *a, const char *b);
+}
+
+/* the pickup as the kit reads it (zseal.h's CPickup: its stash and its owner's id; zseal.h is not included here) */
+class CPickup {
+public:
+    unsigned int GetPickupNetEntityID();
+
+    unsigned char _0[0x8];
+    CZItemStash *m_data;   // 0x8
+    unsigned char _c[0x10 - 0xc];
+    unsigned int m_owner;   // 0x10
+};
+
+/* the body's entity id (CEntity's, +4) */
+struct CKitIdBody {
+    unsigned char _0[4];
+    unsigned int m_id;   // 0x4
+};
+
+/* a pickup's stash taken into the kit -- entry by entry, each entry's rounds put back and, the entry emptied, the ack
+ * bit set; in an online game a pickup another console owns is asked for instead (OVL2 0x5BB990; SOCOM 1's PickupAmmo,
+ * the stash's now) */
+void CZKit::PickupAmmo(CPickup *pickup)
+{
+    if (PickupPending())
+        return;
+    CZItemStash *stash = pickup->m_data;
+    int count = stash->Count();
+    int w = 0;
+    int a = 0;
+    unsigned short asked = 0;
+    int n = 0;
+
+    if (data_0045A0C1 && PickupPending())
+        return;
+    AckUnion ack;
+    short ids[8];
+    unsigned int owner = pickup->m_owner;
+    bool send = false;
+
+    ack.ammo.m_0 = false;
+    ack.ammo.m_1 = false;
+    ack.ammo.m_2 = false;
+    ack.ammo.m_3 = false;
+    ack.ammo.m_4 = false;
+    ack.ammo.m_5 = false;
+    ack.ammo.m_6 = false;
+    ack.ammo.m_7 = false;
+    for (int i = 0; i < count; i++) {
+        stash->Get(i, &w, &a, &n);
+        if (data_0045A0C1 && owner != ((CKitIdBody *)m_body)->m_id) {
+            if (CanPickup((CZFTSWeapon *)w, (void *)a, n)) {
+                /* (a call in the arm keeps the if -- RegenerateExpressions would fold two plain assignments into a
+                 * conditional, no labels, no pads) */
+                unsigned short wid;
+
+                if (w)
+                    wid = ((CZWeapon *)w)->GetId();
+                else
+                    wid = 255;
+                ids[asked++] = (unsigned short)(wid << 8) | ((CZAmmo *)a)->m_ID;
+                m_current_requested_ammo = true;
+                m_pickupRequestWait = 1.0f;
+            }
+        } else {
+            PickupAmmo((CZFTSWeapon *)w, (CZAmmo *)a, &n);
+            stash->Set(i, (CZWeapon *)w, (CZAmmo *)a, n);
+            int j;
+            int left = n;
+
+            if (left == 0 && data_0045A0C1)
+                send = true;
+            for (j = 0; j < count; j++) {
+                if (j == 0 && left == 0)
+                    ack.ammo.m_0 = true;
+                if (j == 1 && left == 0)
+                    ack.ammo.m_1 = true;
+                if (j == 2 && left == 0)
+                    ack.ammo.m_2 = true;
+                if (j == 3 && left == 0)
+                    ack.ammo.m_3 = true;
+                if (j == 4 && left == 0)
+                    ack.ammo.m_4 = true;
+                if (j == 5 && left == 0)
+                    ack.ammo.m_5 = true;
+                if (j == 6 && left == 0)
+                    ack.ammo.m_6 = true;
+                if (j == 7 && left == 0)
+                    ack.ammo.m_7 = true;
+            }
+        }
+    }
+    if (!data_0045A0C1 && stash->Count() == 0)
+        Destroy__7CPickupFP7CPickup(pickup);
+    if (send)
+        SendPickupAckMessage__Fiii8AckUnion(8, pickup->GetPickupNetEntityID(), ((CKitIdBody *)m_body)->m_id, ack);
+    if (data_0045A0C1 && asked > 0)
+        func_002BA2C0(asked, pickup->GetPickupNetEntityID(), ids, ((CKitIdBody *)m_body)->m_id, pickup->m_owner);
+}
+
+/* a weapon's or ammunition's rounds taken into the kit: with a weapon, its launcher's grenades need the launcher, a
+ * weapon held tops up (FindItemWithAmmo), else a slot takes it (two for a weapon of two slots), its model hung; with
+ * ammunition, every weapon it suits tops up; rounds taken, the reload sound at the SEAL, the player's message, the bomb's
+ * gear by the kit (OVL2 0x5BB000; SOCOM 1's, without the launcher's test, the slots and the gear) */
+void CZKit::PickupAmmo(CZFTSWeapon *w, CZAmmo *ammo, int *rounds)
+{
+    int before = *rounds;
+
+    if (w && w->m_ID != 255) {
+        bool ok = true;
+
+        if (w->GetIDType() == 185 && GetLauncherIndex() == -1)
+            ok = false;
+        if (ok) {
+            int i = FindItemWithAmmo(w->GetId());
+
+            if (i != -1)
+                *rounds = AddAmmo(i, *rounds);
+            else {
+                int slot = GetPickupSlot(-1);
+
+                if (func_003C5970(w) == 2) {
+                    int slot2 = -1;
+
+                    if (slot)
+                        slot2 = GetPickupSlot(slot2);
+                    if (slot2 == -1)
+                        slot = -1;
+                }
+                if (slot != -1) {
+                    SetItemByIndex(slot, w);
+                    m_ammo[slot] = ammo;
+                    *rounds = AddAmmo(slot, *rounds);
+                    InitItemModel(w->GetModelName(), "grenade");
+                }
+            }
+        }
+    } else {
+        for (int i = 0; i < m_num_items; i++) {
+            if (m_item[i] && IsLegalAmmo__8CZWeaponFP6CZAmmo(m_item[i], ammo)) {
+                m_ammo[i] = ammo;
+                *rounds = AddAmmo(i, *rounds);
+            }
+        }
+    }
+    if (*rounds < before) {
+        if (m_rldsnd)
+            m_rldsnd->PlaySound3D(&((CEntity *)m_body)->m_posW, 1.0f, 0, 0, 255);
+        if (KitIsPlayer((CKitBody *)m_body)) {
+            if (strcasecmp(((C2DMessage_Q *)theMission.m_messages)->LastMessage(), ammo->GetDescription()))
+                ((C2DMessage_Q *)theMission.m_messages)->Add_Message(ammo->GetDescription(), MSGTYPE_PLAYER, false, 0, 0.0f);
+        }
+        if ((HasItem((EQUIP_ITEM)152) && ItemHasAmmo((EQUIP_ITEM)152))
+            || (HasItem((EQUIP_ITEM)154) && ItemHasAmmo((EQUIP_ITEM)154)))
+            EnableMPBombGear__10CZSealBodyFb(m_body, true);
+        else
+            EnableMPBombGear__10CZSealBodyFb(m_body, false);
+    }
+}
+
 /* whether a weapon or ammunition pickup can be taken: a weapon the kit holds tops it up, a new one needs a slot (two
  * for a weapon of two slots); ammunition must suit a weapon held with room for it (OVL2 0x5BA770, new in SOCOM II:
  * 0x5BB990's test -- the name ours).
@@ -3036,11 +3292,8 @@ bool CZKit::CanPickup(CZFTSWeapon *w, void *ammo, int count)
 /* whether a picked-up item has a slot: no launcher held, and a slot of 2-4 free for it (OVL2
  * 0x5BAC30, new in SOCOM II: GetPickupSlot inlined whole; the SEAL's pickup tests call it -- the
  * name ours).
- * OPEN, 0x220 against 0x228 (the kit's round 60: `r = l == -1; if (r) ...` gives the target's materialised test, GetPickupSlot(-1)
- * takes the hoisted -1; written as a ternary it has the target's size, 90 registers off): the target's `li v0,2` cannot
- * fill the test's delay slot, so its index must take v0 (the result's register there), the item cursor s1 and the inner
- * cursor t7 -- coloured after ItemHasAmmo's two locals, so numbered below them or pushed first; no placement of the index,
- * those locals and the cursor over the search's budget gives it (build/scratch/kit/hps_want.txt) */
+ * `r = l == -1; if (r) ...` gives the target's materialised test, GetPickupSlot(-1) takes the hoisted -1 (the kit's
+ * round 60); byte-exact once GetPickupSlot's last test read the item through GetId() (round 61: the target's numbering) */
 bool CZKit::HasPickupSlot()
 {
     bool r = GetLauncherIndex() == -1;
@@ -3064,7 +3317,7 @@ int CZKit::GetPickupSlot(int skip)
             return m_num_items;
         if (!ItemHasAmmo(i) && UsesAmmo(i))
             return i;
-        if (m_item[i] && m_item[i]->m_ID == 255)
+        if (m_item[i] && m_item[i]->GetId() == 255)
             return i;
     }
     return -1;

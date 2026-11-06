@@ -98,7 +98,14 @@ struct CKitBody {
     /* 0x3c0: the hit under the reticule (zseal.h's m_last_reticule: 0x5BE6F0 copies it whole and
      * reads its node) */
     zdb::IntersectStruct m_last_reticule;
-    unsigned char _3e0[0xeb8 - 0x3e0];
+    unsigned char _3e0[0x5d4 - 0x3e0];
+    /* 0x5d4: CAccuracy (SOCOM 1's 0x514: FactorX, FactorY, Factor) -- SetCurAccuracy's */
+    struct CKitAccuracy {
+        float m_factorX;
+        float m_factorY;
+        float m_factor;
+    } m_accuracy;
+    unsigned char _5e0[0xeb8 - 0x5e0];
     /* 0xeb8: the entity the SEAL works -- a turret (zseal.h's m_eb8) */
     struct CKitMover *m_eb8;
     unsigned char _ebc[0xf79 - 0xebc];
@@ -145,7 +152,10 @@ public:
  * parallel lists out of line in OVL1: only the append the kit calls, 0x3CFEF0) */
 class CZItemStash {
 public:
+    int Count();
     void Add(CZWeapon *weapon, CZAmmo *ammo, int rounds);
+    void Set(int i, CZWeapon *weapon, CZAmmo *ammo, int rounds);
+    bool Get(int i, int *a, int *b, int *c);
 };
 
 extern "C" int IsLauncherWeapon__11CZFTSWeaponFv(CZFTSWeapon *w);
@@ -190,6 +200,9 @@ public:
     /* a grenade thrown from a point at a velocity, an explosive placed instead (OVL2 0x5BD030;
      * SOCOM 1's) */
     CZProjectile *FireGrenade(const CPnt3D *pos, const CPnt3D *vel);
+    /* the reticle's offsets and size turned into the body's accuracy factors, in the world at the
+     * player's aim (OVL2 0x5BD100; SOCOM 1's SetCurAccuracy, whose burst term SOCOM II dropped) */
+    void SetCurAccuracy();
     /* whether an item is in its launcher's fire mode, by the launcher's kind (OVL2 0x5BD6E0,
      * 0x5BD7F0, 0x5BD8F0: SOCOM 1's WeaponIsGrenadeLauncherMode and, on an index, its
      * CurWeaponIsM203Mode; the middle one new -- its name ours) */
@@ -470,6 +483,21 @@ public:
         return -1;
     }
     bool HasPickupSlot();
+    /* a weapon's or ammunition's rounds taken into the kit, what will not fit left in *rounds, a new weapon in the slot
+     * it finds, the reload sound, the player's message, the bomb's gear (OVL2 0x5BB000; SOCOM 1's) and a pickup's stash
+     * taken -- or, in an online game, asked for from the console that owns it (OVL2 0x5BB990; SOCOM 1's) */
+    void PickupAmmo(CZFTSWeapon *w, CZAmmo *ammo, int *rounds);
+    void PickupAmmo(class CPickup *pickup);
+    /* the wait for a pickup's answer run out, the request finished, whether one is pending (inline: PickupAmmo's two
+     * tests; the name ours) */
+    bool PickupPending()
+    {
+        if (m_pickupRequestWait <= 0.0f) {
+            m_current_requested_ammo = false;
+            m_pickupRequestWait = 0.0f;
+        }
+        return m_current_requested_ammo;
+    }
     /* whether a pickup can be taken (OVL2 0x5BA770; the name ours) */
     bool CanPickup(CZFTSWeapon *w, void *ammo, int count);
     /* the fire point's "projectile" child shown, for items 186 and 146 (OVL2 0x5B85A0; the name ours) */
