@@ -1548,6 +1548,102 @@ def test_igdump_names_every_record():
        "negative: the old 24-byte reader leaves both unnamed and -f selects nothing")
 
 
+IG_INLINE_FIXTURE = """extern "C" float ig_h(float);
+
+static inline float Blend(float a, float b, float t)
+{
+    float d = b - a;
+    return a + d * t;
+}
+
+static inline float Twice(float x, float y)
+{
+    float z = Blend(x, y, 0.5f);
+    return Blend(z, ig_h(z), 0.25f) + z;
+}
+
+float ig_probe(float p, float q)
+{
+    float r = Blend(p, q, ig_h(p));
+    float s = Twice(r, q);
+    return Blend(s, r, ig_h(s));
+}
+"""
+
+
+def test_igdump_pcode_view_names_each_temporarys_inline():
+    """tools/igdump.py --pcode (GCC round 40a: the AI core's round-35 pcode.py folded in) and each
+    `@N`'s maker (the kit's round 55). A fixture inlining Blend three times -- twice from its own
+    text (lines 17 and 19), once inside Twice's copy (line 18, the inliner's second level) -- records
+    which expansion made each temporary: Blend's non-trivial argument t at lines 17 and 19 (level 0),
+    its argument b inside Twice's copy at line 18 (level 1); every `@N` node of the record has a maker.
+    The view prints every PCode instruction, each virtual operand with the register its node took
+    (the object's own: `mov.s $f21,$f12` is p's), the callee named, the GPR record's float operands
+    coloured from the FPR record. Negatives: with the inliner's breakpoints off (IGDUMP_NO_ORIGINS=1)
+    no maker is recorded and the first assertion's check fails; with Blend never inlined (`#pragma
+    dont_inline on`) no temporary is an inline's and the view calls Blend by name."""
+    import contextlib
+    import io
+    import igdump
+    src = _ig_fixture("ig_inline.cpp", IG_INLINE_FIXTURE)
+    recs, out = igdump.dump(src, BUILD / "ig_inline.jsonl")
+    fsel = igdump.select(recs, "^ig_probe$", 1)
+    ck(len(fsel) == 1 and "origins" in fsel[0][1] and "syms" in fsel[0][1],
+       f"one FPR record of ig_probe, with origins and syms ({len(fsel)})")
+    k, rec = fsel[0]
+
+    def made(r):
+        return {(o.get("inline"), o.get("role"), o.get("var"), o.get("line"), o.get("level"),
+                 tuple(o.get("within", ()))) for o in (r.get("origins") or {}).values() if "inline" in o}
+    want = {("Blend", "argument", "t", 17, 0, ()), ("Blend", "argument", "t", 19, 0, ()),
+            ("Blend", "argument", "b", 18, 1, ("Twice",))}
+    ck(made(rec) == want, f"each temporary's expansion: function, role, variable, line, level ({made(rec)})")
+    unique = [i for i in range(rec["nreal"], rec["nused"]) if igdump.var_name(rec, i)[1:].isdigit()]
+    ck(unique and all(str(i) in rec["origins"] for i in unique),
+       f"every @N node has a maker ({len(unique)}: {sorted(rec['origins'])})")
+
+    def view(path, *args):
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            rc = igdump.main(["--read", str(path), "-f", "^ig_probe$", "--pcode", *args])
+        return rc, buf.getvalue().splitlines()
+    rc, lines = view(out, "--cls", "1")
+    body = [l for l in lines if l.startswith("    ") and l.strip().split()[0].isdigit()]
+    n_ins = sum(1 for c in rec["code"] if not isinstance(c, str))
+    ck(rc == 0 and len(body) == n_ins and n_ins > 10, f"every instruction listed ({len(body)} of {n_ins})")
+    colour = {n["i"]: igdump.reg_name(1, n["color"]) for n in rec["nodes"]}
+    seen = [(int(v), r) for l in body for v, r in __import__("re").findall(r"\bv(\d+)(?:<[^>]*>)?=(f\d+)", l)]
+    ck(seen and all(colour[v] == r for v, r in seen), f"each virtual operand its node's register ({len(seen)})")
+    ck(any(" mov.s " in l and "v32<p>=f21, f12" in l for l in body)
+       and any(" jal " in l and "ig_h" in l for l in body), "p's move from f12 into f21, the callee named")
+    obj = build(src, "ig_inline")
+    text = [t for _, _, t in E.disasm(E.Elf.read(obj).function("ig_probe__Fff")[0], 0)]
+    ck("mov.s $f21,$f12" in text, "the view's register is the object's: mov.s $f21,$f12")
+    legend = [l for l in lines if "inlined at line" in l]
+    ck(any("Blend's argument b, inlined at line 18 (level 1, inside Twice's copy)" in l for l in legend)
+       and any("Blend's argument t, inlined at line 17 (level 0)" in l for l in legend),
+       f"the variables' makers in the view ({legend})")
+    rc, glines = view(out, "--cls", "0")
+    ck(rc == 0 and any("fv32<p>=f21" in l for l in glines), "a GPR record's float operand coloured by the FPR record")
+    old = os.environ.get("IGDUMP_NO_ORIGINS")
+    os.environ["IGDUMP_NO_ORIGINS"] = "1"
+    try:
+        nrecs, _ = igdump.dump(src, BUILD / "ig_inline_off.jsonl")
+    finally:
+        if old is None:
+            os.environ.pop("IGDUMP_NO_ORIGINS", None)
+        else:
+            os.environ["IGDUMP_NO_ORIGINS"] = old
+    nrec = igdump.select(nrecs, "^ig_probe$", 1)[0][1]
+    ck(not nrec["origins"] and made(nrec) != want and nrec["code"] == rec["code"],
+       "negative: the inliner's breakpoints off, no maker recorded (the same code)")
+    di = _ig_fixture("ig_inline_off.cpp", "#pragma dont_inline on\n" + IG_INLINE_FIXTURE)
+    drecs, dout = igdump.dump(di, BUILD / "ig_dont_inline.jsonl")
+    ck(not any(made(r) for r in drecs), "negative: Blend never inlined, no temporary is an inline's")
+    rc, dlines = view(dout, "--cls", "-1")
+    ck(any(" jal " in l and "Blend" in l for l in dlines), "and the view calls it by name")
+
+
 def test_igreplay_replays_and_predicts():
     """tools/igreplay.py (GCC round 32a: the MSL lane's round-11 igreplay.py, the game states' round-37
     relabel.py and brute.py, the AI core's round-28 nbdeg.py): MW's simplify/colour replayed offline

@@ -13,6 +13,8 @@ runs it from its own worktree.
     ./tools/igdump.py src/gamez/zmath/zmath_pnt3d.cpp -f '^Interp$'     # and those records' nodes
     ./tools/igdump.py src/Apps/FTS/graph.cpp -f Read --saved            # who holds each saved register
     ./tools/igdump.py --read build/ig/graph.jsonl -f Read --cls 1       # an earlier dump, the FPRs
+    ./tools/igdump.py --read build/ig/ai_target.jsonl -f '^func_0060AA20$' --pcode   # its PCode, coloured
+    ./tools/igdump.py src/ai/ai_target.cpp -f '^func_0060AA20$' --origins --cls -1  # who made each @N
 
 The allocator (README "Tells from completing the MSL headers, round 10"): mwccps2 3.0b52's colouring
 driver calls buildinterferencegraph 0x4BC7B0, simplifygraph 0x4C4480 and colorgraph 0x4C47F0 (its
@@ -45,6 +47,24 @@ variable's `name`, the `size` and `align` it was given -- a char or bool spilled
 quadword -- `before` and its `off`set, negative), `remat` (spilled nodes rematerialised: no slot).
 A function's records are written once its frame is laid out. tools/igreplay.py replays a record's
 simplify/colour offline, and its slots; tools/igvar.py compares source variants by what this records.
+
+GCC round 40a adds two fields (an older dump has neither: dump the unit again). `syms`: the pointers
+the PCode's operands carry, named -- a k4 (memory) operand's Object, its second word (a global, a
+local, a call's callee: `ig_h`), a k6 operand's label by the block it labels (`B7`); a k3 operand's
+immediate is not in the eight bytes `code` keeps (0.5f's lui holds it at the operand's +12), so it is
+shown as recorded. `origins`: per node named `@N`, its MAKER (the kit's round 55) -- an inline
+expansion as `inline` (the function), `role` (`argument` -- one the copy needs an object for: a
+trivial argument is substituted and makes none --, `local`, `result`: a statement-level copy's),
+`var` (the inline's own name for it), `line` (the call site: the statement being expanded -- a copy's
+statements keep the call's line, so a nested copy has its outer call's), `level` (the inliner's pass:
+0 a call in the function's own text, 1 one inside a copy, `within` naming the copies expanded at that
+line a level up); any other `@N` as `creator` and `caller` (create_temp_object 0x477270 and the call
+into it: the optimiser's and code generation's temporaries) or `at`. The `@no_name@`/`@temp_ptr@`
+hidden parameters are not `@N`s. --pcode prints a record's PCode instruction by instruction, every
+operand as the colouring left it (`v45<@6305>=s3`: the virtual register -- its node -- its variable
+and the register it took; a GPR record's float operands `fv32<p>=f21`, from its function's FPR
+record), then its variables with their makers; --origins lists the makers alone. How the inliner was
+read is the dumper's comment (UniqBP and its neighbours).
 
 Every record is named (GCC round 39a, the engine core's round 21): names are read in full -- the
 reader took 24 bytes and refused a name that filled them, so a function named in 24 characters or
@@ -170,8 +190,19 @@ if gdb is not None:     # ------------------------------------------------------
             return z
         return None
 
-    def pcode():
+    def pcode(syms=None):
+        """The blocks' PCode: `B<n> w=<weight>` markers and [opcode, operands]. With `syms` (a dict, GCC
+        round 40a) each pointer an operand carries is named in it: a k4 (memory) operand's Object (its
+        second word: a memory access's symbol or local, a call's callee) by its bare name, a k6
+        operand's label (its first word) by the block it labels (`B7`: a PCodeLabel's +4 is its
+        block). A k3 (immediate) operand's layout is not known -- its value is not in the eight bytes
+        recorded -- so nothing in it is read as a pointer."""
         out = []
+        blocks = {}
+        blk = u32(0x5b639c)
+        while blk and len(blocks) < 5000:
+            blocks[blk] = len(blocks)
+            blk = u32(blk)
         blk = u32(0x5b639c)
         nb = 0
         while blk and nb < 5000:
@@ -189,10 +220,127 @@ if gdb is not None:     # ------------------------------------------------------
                         args.append(('r' if rcls == 0 else f'c{rcls}:') + str(r))
                     else:
                         args.append(f'k{kind}:' + raw[2:10].hex())
+                        if syms is not None:
+                            w0, w1 = struct.unpack_from('<II', raw, 2)
+                            if kind == 6 and w0 and f'{w0:#x}' not in syms:
+                                try:
+                                    b = blocks.get(u32(w0 + 4))
+                                except Exception:
+                                    b = None
+                                if b is not None:
+                                    syms[f'{w0:#x}'] = f'B{b}'
+                            elif kind == 4 and w1 and f'{w1:#x}' not in syms:
+                                z = objname(w1)
+                                if z:
+                                    syms[f'{w1:#x}'] = z.split('@0x')[0]
                 out.append((op, args))
                 pc = u32(pc)
             blk = u32(blk)
             nb += 1
+        return out
+
+    # Which expansion made each `@N` (GCC round 40a, the kit's round 55: what stands between 0x60AA20
+    # and its last two registers). Every `@N` name is CParser_GetUniqueName's (0x42F620: '@' and the
+    # unit's running id, 0x5841AA), and the inliner's variables are CInline_NewLocalObject's (0x466D00,
+    # mweppc CInline.c's shape exactly): an expansion -- the expression-level CInline_InlineFunction-
+    # Expression 0x4672F0 and the statement-level CInline_ExpandStatements 0x4687F0 alike -- sets up its
+    # copy in CInline_SetupArgsExpression 0x466E90 (the function's Object, its CI_FuncData: +0 the
+    # variables' count, +2 the arguments', +4 the variables, 0x14 bytes each, the arguments first, each
+    # named at +0), whose two NewLocalObject calls hold the variable in ebp: an argument the copy needs
+    # an object for (a non-trivial or modified one; a trivial one is substituted and makes none) and
+    # each local the copy uses; CInline_ExtractInlineFunction 0x468D20 makes a statement-level copy's
+    # RESULT object first (ebp its function). The call site is the statement CInline_ExpandStatement
+    # 0x468E20 is expanding (its line at +0x16: the copied statements keep the call's), the level the
+    # inliner's pass (cinline_level 0x584E06: 0 a call in the function's own text, 1 a call inside a
+    # copy made at level 0 -- MW expands one level a pass, so a nested copy's temporaries are numbered
+    # after the direct one's). Every other `@N` records its creator's call (create_temp_object 0x477270:
+    # its caller -- the optimiser's and code generation's temporaries). Labels (newlabel 0x47713B)
+    # draw from the same ids, which is why a unit's temporaries skip numbers.
+    UNIQ_DONE = 0x42f63c        # inside GetUniqueName, its name made (eax): the creator's return at [esp+0x10]
+    NEWLOCAL_RET = 0x466d13     # CInline_NewLocalObject's return from GetUniqueName
+    SETUP_NEWLOCAL = (0x466ff3, 0x467025)   # CInline_SetupArgsExpression's NewLocalObject calls (ebp: the CI_Var)
+    EXTRACT_NEWLOCAL = (0x468da4, 0x468dbf)  # CInline_ExtractInlineFunction's result objects (ebp: the function)
+    TEMP_RET = 0x477283         # create_temp_object 0x477270's return from GetUniqueName
+    LABEL_RET = 0x47714a        # newlabel 0x47713B's: a label, no variable
+    INL_LEVEL = 0x584e06
+    temps = {}
+
+    def reg32(r):
+        return int(gdb.parse_and_eval('$' + r)) & 0xffffffff
+
+    def site():
+        st = dict(state.get('stmt') or {})
+        st['level'] = s16(INL_LEVEL)
+        return st
+
+    class InlStmtBP(gdb.Breakpoint):            # 0x468E20 CInline_ExpandStatement(Statement *)
+        def stop(self):
+            s = u32(reg32('rsp') + 4)
+            st = dict(line=struct.unpack('<i', mem(s + 0x16, 4))[0])
+            f = u32(s + 0x1a)
+            if f:
+                st['file'] = hashname(f) or f'{f:#x}'
+            state['stmt'] = st
+            return False
+
+    class InlSetupBP(gdb.Breakpoint):           # 0x466E90 CInline_SetupArgsExpression(func, funcdata, args)
+        def stop(self):
+            esp = reg32('rsp')
+            fobj, data = u32(esp + 4), u32(esp + 8)
+            name = (objname(fobj) or '?').split('@0x')[0]
+            inl = dict(inline=name, **site())
+            link = linkname(fobj, name)
+            if link and link != name:
+                inl['link'] = link
+            seen = state.setdefault('expanded', {})
+            within = seen.get((inl.get('file'), inl['line'], inl['level'] - 1))
+            if within:
+                inl['within'] = sorted(set(within))
+            seen.setdefault((inl.get('file'), inl['line'], inl['level']), []).append(name)
+            state['inl'] = (inl, u32(data + 4), s16(data + 2))
+            return False
+
+    class UniqBP(gdb.Breakpoint):               # 0x42F63C: a new `@N`, and who asked for it
+        def stop(self):
+            esp = reg32('rsp')
+            ret = u32(esp + 0x10)
+            if ret == LABEL_RET:
+                return False
+            name = hashname(reg32('rax'))
+            if not name:
+                return False
+            caller = u32(esp + 0x18)
+            ebp = reg32('rbp')
+            o = None
+            if ret == NEWLOCAL_RET and caller in SETUP_NEWLOCAL and state.get('inl'):
+                inl, vars_, nargs = state['inl']
+                k = (ebp - vars_) // 0x14
+                o = dict(inl, role='argument' if 0 <= k < nargs else 'local')
+                try:
+                    v = hashname(u32(ebp))
+                except Exception:
+                    v = None
+                if v:
+                    o['var'] = v
+            elif ret == NEWLOCAL_RET and caller in EXTRACT_NEWLOCAL:
+                fn = (objname(ebp) or '?').split('@0x')[0]
+                o = dict(inline=fn, **site(), role='result')
+            elif ret == NEWLOCAL_RET:
+                o = dict(creator='0x466d00', caller=f'{caller:#x}')
+            elif ret == TEMP_RET:
+                o = dict(creator='0x477270', caller=f'{caller:#x}')
+            else:                                   # another maker: its call of GetUniqueName
+                o = dict(at=f'{ret - 5:#x}')
+            temps[name] = o
+            return False
+
+    def origins(names):
+        """{node: origin} for the record's `@N` variables whose making was seen."""
+        out = {}
+        for i, nm in names.items():
+            bare = (nm or '').split('@0x')[0]
+            if bare.startswith('@') and bare in temps:
+                out[i] = temps[bare]
         return out
 
     class BuildBP(gdb.Breakpoint):
@@ -246,15 +394,19 @@ if gdb is not None:     # ------------------------------------------------------
                 if obj:
                     names[n['i']] = objname(obj)
             pre = state.get('pre')
+            syms = {}
             rec = dict(cls=cls, nreal=nreal, nused=nused, order=state.get('order', []),
                        nodes=[dict(i=n['i'], flags=pre[4][n['i']]['flags'] if pre else None,
                                    deg0=pre[4][n['i']]['degree'] if pre else None,
                                    nb=pre[4][n['i']]['nb'] if pre else n['nb'],
                                    color=n['color'], fl=n['flags']) for n in nodes],
-                       names=names, code=pcode(), reserved=state.get('reserved'),
+                       names=names, code=pcode(syms), reserved=state.get('reserved'),
                        costs=state.get('costs'), remat=state.get('remat'), proc=state.get('proc'))
             if state.get('link'):
                 rec['link'] = state['link']
+            # GCC round 40a: the pointers the operands carry, named (--pcode), and the `@N`s' makers
+            rec['syms'] = syms
+            rec['origins'] = origins(names)
             # held until the function's frame is laid out (or the compile ends): a colouring that
             # spilled is followed by the spilled nodes' stack slots, and the frame's top comes last
             state.setdefault('pending', []).append(rec)
@@ -339,6 +491,10 @@ if gdb is not None:     # ------------------------------------------------------
     SpillAlignBP('*0x4a0d3b')
     SpillExitBP('*0x517578')
     FrameBP('*0x4be8be')
+    if not os.environ.get('IGDUMP_NO_ORIGINS'):     # the canary's negative control: no maker recorded
+        InlStmtBP('*0x468e20')
+        InlSetupBP('*0x466e90')
+        UniqBP('*0x42f63c')
     gdb.execute('continue')
     flush()
     OUT.close()
@@ -348,11 +504,13 @@ else:                   # ------------------------------------------------------
     import json
     import os
     import re
+    import struct
     import subprocess
     import sys
     from pathlib import Path
 
     HERE = Path(__file__).resolve().parent.parent
+    sys.path.insert(0, str(HERE / "tools"))
     sys.path.insert(0, str(HERE))
     import scdiff as D
     import sccheck
@@ -462,9 +620,30 @@ else:                   # ------------------------------------------------------
                 owners.setdefault(reg_name(cls, n["color"]), []).append(nm)
         return spilled, dict(sorted(owners.items(), key=lambda kv: (len(kv[0]), kv[0])))
 
+    def origin_text(o: dict | None) -> str:
+        """An `@N`'s maker (GCC round 40a): `Blend's argument t, inlined at line 17 (level 0)`; a
+        temporary another pass made, by its maker and the call into it."""
+        if not o:
+            return ""
+        if "inline" in o:
+            what = {"argument": f"argument {o.get('var', '?')}", "local": f"local {o.get('var', '?')}",
+                    "result": "result"}.get(o.get("role"), o.get("role", "?"))
+            where = f"line {o.get('line', '?')}" + (f" of {o['file']}" if o.get("file") else "")
+            within = f", inside {'/'.join(o['within'])}'s copy" if o.get("within") else ""
+            return f"{o['inline']}'s {what}, inlined at {where} (level {o.get('level', '?')}{within})"
+        if o.get("creator") == "0x477270":
+            return f"a temporary: create_temp_object, called from {o.get('caller', '?')}"
+        if o.get("creator"):
+            return f"made by {o['creator']}, called from {o.get('caller', '?')}"
+        return f"named at {o.get('at', '?')}"
+
+    def origin(rec: dict, i: int) -> dict | None:
+        return (rec.get("origins") or {}).get(str(i))
+
     def show(k: int, rec: dict, every: bool = False) -> list[str]:
         """One record's virtual registers: index, variable, colour, initial degree, position in the
-        colouring order (0 first), DEF (deferred), coal / SPILL, neighbour counts (virtual, hard).
+        colouring order (0 first), DEF (deferred), coal / SPILL, neighbour counts (virtual, hard) --
+        and (GCC round 40a) an `@N`'s maker: the inline expansion that made it, or the pass.
         Without `every`, only the named ones, the deferred, the saved-register holders and the
         spilled."""
         cls, nreal = rec["cls"], rec["nreal"]
@@ -479,9 +658,109 @@ else:                   # ------------------------------------------------------
             if not (every or nm or i in dfr or spill or is_saved(cls, c)):
                 continue
             virt = sum(1 for x in n["nb"] if x >= nreal)
+            o = origin_text(origin(rec, i))
             lines.append(f"  v{i:<4} {nm[:22]:22} {reg_name(cls, c):5} deg0={n['deg0']!s:<3} "
                          f"pos={pos.get(i, '-')!s:<4} {'DEF' if i in dfr else '   '} "
-                         f"{'SPILL' if spill else 'coal' if coal else '':5} nb={virt}+{len(n['nb']) - virt}")
+                         f"{'SPILL' if spill else 'coal' if coal else '':5} nb={virt}+{len(n['nb']) - virt}"
+                         + (f"  <- {o}" if o else ""))
+        return lines
+
+    # --- the PCode view (GCC round 40a, the AI core's round-35 pcode.py folded in) ----------------
+    def opname(op, cls: int) -> str:
+        """A PCode opcode's name: igreplay's tables (mwccps2's own registrations), a macro starred."""
+        import igreplay as R
+        o = str(op)
+        if o in ("1112", "1113"):       # mwccps2's registrations (0x4AD3DC, 0x4AD3F9): the bounds of the code
+            return ".start" if o == "1112" else ".end"
+        if o in R.OPNAMES:
+            return R.OPNAMES[o]
+        if o in R.FOPNAMES:
+            return R.FOPNAMES[o] + ("*" if o in ("1043", "1044", "1078", "1079") else "")
+        return R.PSEUDO[o] + "*" if o in R.PSEUDO else f"op{o}"
+
+    def fpr_record(recs: list[dict], k: int) -> dict | None:
+        """The FPR colouring of record k's function (the first class-1 record after it, before the
+        function's records end): what a GPR record's float operands, not yet coloured, take."""
+        rec = recs[k]
+        for r in recs[k + 1:]:
+            if (r.get("proc"), r.get("link")) != (rec.get("proc"), rec.get("link")):
+                return None
+            if r["cls"] == 1:
+                return r
+        return None
+
+    def operand(rec: dict, a: str, fpr: dict | None = None) -> str:
+        """One PCode operand as the colouring left it: a hard register by name; a virtual one as
+        `vN=reg` (the virtual register is its interference-graph node: MW's PCode is renamed as it
+        coalesces, so no coalesced node is ever an operand) with its variable `<name>`; a class-1
+        operand in a GPR record (not yet coloured) as `fvN`, `=fK` from its function's FPR record;
+        a memory operand as its displacement and the Object it names, a label as its block (the
+        pointers named by the dump's `syms`: `ig_h`, `B7`); an immediate as recorded (`k3:...`)."""
+        cls, nreal = rec["cls"], rec["nreal"]
+        syms = rec.get("syms") or {}
+        m = re.fullmatch(r"(r|c(\d+):)(-?\d+)", a)
+        if m:
+            rc = 0 if m.group(1) == "r" else int(m.group(2))
+            n = int(m.group(3))
+            if rc not in (0, 1):
+                return f"c{rc}:{n}"
+            if n < 32:
+                return REGS[n] if rc == 0 else f"f{n}"
+            own = rec if rc == cls else (fpr if rc == 1 else None)
+            pre = "v" if rc == cls else ("fv" if rc == 1 else "rv")
+            if own is None or n >= len(own["nodes"]):
+                return f"{pre}{n}"
+            nm = var_name(own, n)
+            return f"{pre}{n}" + (f"<{nm}>" if nm else "") + "=" + reg_name(rc, own["nodes"][n]["color"])
+        m = re.fullmatch(r"k(\d+):([0-9a-f]{16})", a)
+        if not m:
+            return a
+        kind, raw = int(m.group(1)), bytes.fromhex(m.group(2))
+        w0, w1 = struct.unpack("<iI", raw)
+        if kind == 6:
+            return syms.get(f"{w0 & 0xffffffff:#x}", f"L{w0 & 0xffffffff:#x}")
+        if kind == 4:                   # a memory operand: its displacement and the Object it names
+            sym = (syms.get(f"{w1:#x}") or f"obj{w1:#x}") if w1 else None
+            return (sym + (f"{w0:+d}" if w0 else "")) if sym else str(w0)
+        # an immediate's value is NOT in the eight bytes recorded (0.5f's lui holds 0x3F000000 at the
+        # operand's +12, `addiu 1` all eight zero): shown as recorded, not decoded
+        return a
+
+    def pcode_view(recs: list[dict], k: int) -> list[str]:
+        """Record k's PCode, instruction by instruction, every operand coloured (`operand`), each
+        instruction numbered as igreplay --target counts them; then the virtual registers it names,
+        each `@N` with its maker (the inline expansion: its function, its role in the copy, the call
+        site's line and level)."""
+        rec = recs[k]
+        cls = rec["cls"]
+        fpr = fpr_record(recs, k) if cls == 0 else None
+        code = rec.get("code") or []
+        n_ins = sum(1 for c in code if not isinstance(c, str))
+        lines = [f"[{k}] {proc_name(rec) or '?'} cls {cls}: {n_ins} instructions in "
+                 f"{sum(1 for c in code if isinstance(c, str))} blocks, {rec['nused'] - rec['nreal']} virtual"]
+        if not code:
+            lines.append("  (no PCode recorded)")
+        used, q = [], 0
+        for c in code:
+            if isinstance(c, str):
+                lines.append(f"  {c}")
+                continue
+            op, args = c
+            ops = [operand(rec, a, fpr) for a in args]
+            for a in args:
+                m = re.fullmatch(r"(?:r|c1:)(\d+)", a)
+                rc = 0 if a.startswith("r") else 1
+                if m and rc == cls and int(m.group(1)) >= rec["nreal"] and int(m.group(1)) not in used:
+                    used.append(int(m.group(1)))
+            lines.append(f"    {q:4} {opname(op, cls):9} {', '.join(ops)}")
+            q += 1
+        named = [i for i in range(rec["nreal"], rec["nused"]) if var_name(rec, i)]
+        if named:
+            lines.append("  its variables:")
+            for i in named:
+                o = origin_text(origin(rec, i))
+                lines.append(f"    v{i:<4} {var_name(rec, i)[:22]:22} {reg_name(cls, rec['nodes'][i]['color']):5}"
+                             + ("" if i in used else " (no operand)") + (f" {o}" if o else ""))
         return lines
 
     def main(argv=None) -> int:
@@ -495,6 +774,11 @@ else:                   # ------------------------------------------------------
         ap.add_argument("--cls", type=int, default=0, help="register class: 0 GPR (default), 1 FPR, -1 every")
         ap.add_argument("-a", "--all", action="store_true", help="every virtual register, not only the telling")
         ap.add_argument("--saved", action="store_true", help="per record: the spilled and the saved registers' holders")
+        ap.add_argument("--pcode", action="store_true", help="per record: its PCode, each operand coloured (the "
+                        "virtual register -- its node -- and the register it took), the variables named with "
+                        "each `@N`'s maker (GCC round 40a)")
+        ap.add_argument("--origins", action="store_true", help="per record: each `@N` variable's maker -- the "
+                        "inline expansion (function, role, call site) or the pass (GCC round 40a)")
         ap.add_argument("--flags", help="compile with these flags, not the unit's")
         a = ap.parse_args(argv)
         if a.read:
@@ -512,7 +796,16 @@ else:                   # ------------------------------------------------------
         print(f"{out}: {len(recs)} colourings, {sum(1 for r in recs if r['cls'] == 0)} GPR; "
               f"{len(sel)} selected")
         for k, r in sel:
-            if a.saved:
+            if a.pcode:
+                print("\n".join(pcode_view(recs, k)))
+            elif a.origins:
+                print(f"[{k}] {proc_name(r) or '?'} cls {r['cls']}:")
+                if "origins" not in r:
+                    print("  (an older dump: no maker recorded -- dump the unit again)")
+                for i in sorted(int(x) for x in (r.get("origins") or {})):
+                    print(f"  v{i:<4} {var_name(r, i)[:22]:22} {reg_name(r['cls'], r['nodes'][i]['color']):5} "
+                          f"{origin_text(origin(r, i))}")
+            elif a.saved:
                 sp, own = saved(r)
                 print(f"[{k}] {proc_name(r)} cls {r['cls']}: spilled {' '.join(sp) or '-'}; "
                       + " ".join(f"{reg}={'/'.join(v)}" for reg, v in own.items()))
