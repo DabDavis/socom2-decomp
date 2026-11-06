@@ -43,7 +43,9 @@
  * file's end): the target inlines the element's two- and one-CAiMapLocVec constructor whole; the
  * line's temporary's bits are line_data()'s, the route's flags cleared by route(), ai.h. */
 
-/* the device (above): include/vector's resize for the readers, the end iterator named */
+/* the device (above): include/vector's resize for the readers, the end iterator named (pinned: an explicit specialisation is an own
+ * function, auto-inlined into its one caller ReadCellTable 0x51B770 where the target calls it, 0x51C3F0) */
+#pragma auto_inline off
 namespace std {
 template <>
 void __vector_imp<CAiMap::reader, allocator<CAiMap::reader>, false>::resize(unsigned int n)
@@ -55,6 +57,7 @@ void __vector_imp<CAiMap::reader, allocator<CAiMap::reader>, false>::resize(unsi
         erase(begin().m_p + n, end().m_p);
 }
 }
+#pragma auto_inline reset
 
 inline void table_resize(CAiMapLocVec &t, unsigned int n) { t.resize(n); }
 inline void table_resize(CAiMap::readers &t, unsigned int n) { t.resize(n); }

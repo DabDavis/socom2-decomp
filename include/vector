@@ -2102,7 +2102,11 @@ void __vector_imp<T, Allocator, IsPOD>::do_assign(InputIterator first, InputIter
     } else {
         if (n > max_size())
             __msl_error("vector::assign length error\n");
+#ifdef __MSL_POD_DTOR_ARGS
+        __vector_deleter<T, Allocator>::clear();
+#else
         this->clear();
+#endif
         if (this->data_) {
             operator delete(this->data_);
             this->data_ = 0;
