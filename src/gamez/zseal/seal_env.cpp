@@ -3028,6 +3028,87 @@ extern "C" int func_005A1620(CZSealBody *seal, const CPnt3D *from)
     return n;
 }
 
+extern "C" {
+/* (OVL2 0x5A60D0, below: a stance change, a kind and a flag) */
+void func_005A60D0(CZSealBody *seal, int a, int b);
+}
+
+/* a callback made, and made and cleared once (inlines, the names ours: the call's own test, through a
+ * const pointer, reloads the function the caller's test read) */
+static inline void CallBack(const ANIM_CALLBACK *cb, void *body)
+{
+    if (cb->m_func)
+        cb->m_func(body, cb->m_userdata);
+}
+
+static inline void CallOnce(ANIM_CALLBACK &cb, void *body)
+{
+    if (cb.m_func) {
+        CallBack(&cb, body);
+        cb.Clear();
+    }
+}
+
+/* a weapon change cut short: with none of the change's blends on top, the change's overlay -- the
+ * rifle to the pistol, or either way of 0x3DF0F0 / 0x3DF0F8 -- has its callback made and the stance
+ * change it was heading for (0x5A60D0) made at once, then goes back to the pool; with one on top its
+ * callback is made and the change made by the blend's flag 0x20 (OVL2 0x5A5DA0, new in SOCOM II:
+ * before a death and a weapon's drop; the name unknown). The blend's path first, ended by a `return`
+ * (its last if/else's join keeps its own branch out), the overlay's block ended by one too (the
+ * target's branch to the very next instruction); the second top fetch through &m_blends (the same
+ * address spelt `seal + 0x1c0` twice is computed once, in a third saved register) */
+extern "C" void func_005A5DA0(CZSealBody *seal)
+{
+    if (seal->IsCurrentBlend((AnimType)53) || seal->IsCurrentBlend((AnimType)54) ||
+        seal->IsCurrentBlend((AnimType)55) || seal->IsCurrentBlend((AnimType)data_003DF0E0) ||
+        seal->IsCurrentBlend((AnimType)data_003DF0E8)) {
+        CZBodyAnimBlend *top = (CZBodyAnimBlend *)func_00555170((char *)seal + 0x1c0);
+
+        CallOnce(top->m_callback, seal);
+        bool flag = func_005551A0(((CZBodyAnimBlend *)func_00555170(&seal->m_blends))->m_flags, 0x20);
+
+        if (seal->IsCurrentBlend((AnimType)data_003DF0E0) && flag) {
+            func_005A60D0(seal, 1, 4);
+            return;
+        }
+        if (seal->IsCurrentBlend((AnimType)data_003DF0E8) && flag) {
+            func_005A60D0(seal, 2, 4);
+            return;
+        }
+        if (flag)
+            func_005A60D0(seal, 1, 0);
+        else
+            func_005A60D0(seal, 2, 0);
+        return;
+    }
+    {
+        CBlendOverlay &ov = seal->m_overlay;
+
+        if (ov.m_anim && ov.m_anim->m_anim) {
+            short id = ov.m_anim->m_id;
+
+            if (id == data_003DEC68) {
+                CallOnce(ov.m_callback, seal);
+                if (ov.m_state == -1)
+                    func_005A60D0(seal, 1, 0);
+                else
+                    func_005A60D0(seal, 2, 0);
+            } else if (id == data_003DF0F0) {
+                CallOnce(ov.m_callback, seal);
+                if (ov.m_state == -1)
+                    func_005A60D0(seal, 1, 4);
+            } else if (id == data_003DF0F8) {
+                CallOnce(ov.m_callback, seal);
+                if (ov.m_state == -1)
+                    func_005A60D0(seal, 2, 4);
+            }
+            seal->m_active_anim_pool.PutBack(ov.m_anim);
+            ov.Clear();
+            return;
+        }
+    }
+}
+
 /* a projectile's first-hit bit (an inline bool accessor on a const pointer: its test reloads the byte
  * for the bit's store, as the target's -- tested in place the load is shared) */
 static inline bool FirstHit(const CZProjectile *p)
