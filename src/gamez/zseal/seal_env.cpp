@@ -1146,6 +1146,7 @@ void ParentPistolToRHandCallback(void *data, void *arg)
  * slung on the back -- still the body's rifle --, the third part none, the pistol the item in hand
  * (OVL2 0x5A7260; SOCOM 1's ChangeToPistolMode, its kit call ReParentToPistol -- OVL2 0x5C6DA0 --
  * in the same place, after ChangeToRifleMode as here) */
+#pragma auto_inline off
 void CZSealBody::ChangeToPistolMode(bool hand)
 {
     m_kit.ReParentToPistol();
@@ -1161,6 +1162,7 @@ void CZSealBody::ChangeToPistolMode(bool hand)
     SetBodyPart(data_003DF160, 0);
     m_item = ITEM_PISTOL;
 }
+#pragma auto_inline reset
 
 /* the rifle taken: the kit's rifle chosen, the rifle into the right hand, the pistol holstered as
  * gear when asked -- the callback's work written through the SEAL, which the target reloads (the
@@ -3313,6 +3315,182 @@ static inline void CallOnce(ANIM_CALLBACK &cb, void *body)
 
 extern "C" void func_0057D5E0(CZSealBody *seal, SEAL_ITEM_BYTE item);
 extern AnimSet *data_0044D408;
+
+extern "C" {
+/* the swap's anims' first (OVL1 data 0x3DEC68: AnimTypes', read as a variable) and the changes to and from
+ * a launcher (OVL2 0x5A6B70, 0x5A6D30, below) */
+extern short data_003DEC68;
+void func_005A60D0(CZSealBody *seal, unsigned char item, unsigned char mode);
+}
+
+/* the aim and fire points found again (an inline: three times here; the name ours) */
+static inline void FindFirepoints(CZSealBody *seal)
+{
+    seal->m_curr_aimpt = seal->GetFirepointNode("aimpoint");
+    seal->m_curr_firept = seal->GetFirepointNode("firepoint");
+}
+
+/* an item in hand changed, from one to another, or at once the kit's parts put right: a launcher's change
+ * apart; a change neither end of which is a hand's, or one already in the hand, the parts saved and eased;
+ * otherwise the swap's anim by the stance -- stood or crouched and moving the walking swap -- or, with no
+ * anim to play, the change made at once (OVL2 0x5A64C0, new in SOCOM II: CZSealBody::Tick and CZKit::PreTick
+ * call it; the name unknown) */
+extern "C" bool func_005A64C0(CZSealBody *seal, SEAL_ITEM_BYTE from, SEAL_ITEM_BYTE to, bool now)
+{
+    func_00555170(&seal->m_blends);
+    if (now) {
+        if (seal->m_item == 1)
+            seal->m_kit.ReParentToRifle();
+        else if (seal->m_item == 2)
+            seal->m_kit.ReParentToPistol();
+        else if (seal->m_rifle->m_parent == seal->m_rhand)
+            seal->m_kit.ReParentToRifle();
+        else if (seal->m_pistol->m_parent == seal->m_rhand)
+            seal->m_kit.ReParentToPistol();
+        FindFirepoints(seal);
+        return false;
+    }
+
+    bool fromHand = from == ITEM_RIFLE || from == ITEM_PISTOL;
+    bool toHand = to == ITEM_RIFLE || to == ITEM_PISTOL;
+
+    if (from == 4) {
+        if (to == 4)
+            return true;
+        bool r = func_005A6B70(seal, to);
+
+        return r;
+    }
+    if (to == 4) {
+        if (!fromHand) {
+            if (seal->m_rifle->m_parent == seal->m_rhand)
+                from = ITEM_RIFLE;
+            else if (seal->m_pistol->m_parent == seal->m_rhand)
+                from = ITEM_PISTOL;
+            else
+                from = ITEM_RIFLE;
+        }
+        bool r = func_005A6D30(seal, from);
+
+        return r;
+    }
+
+    bool same = false;
+
+    if (fromHand && !toHand)
+        same = true;
+    if (!fromHand && !toHand)
+        same = true;
+    if (!fromHand) {
+        if (to == 1) {
+            if (seal->m_rifle->m_parent == seal->m_rhand) {
+                seal->m_item = 1;
+                same = true;
+            } else
+                from = ITEM_PISTOL;
+        } else if (to == 2) {
+            if (seal->m_pistol->m_parent == seal->m_rhand) {
+                seal->m_item = 2;
+                same = true;
+            } else
+                from = ITEM_RIFLE;
+        }
+    }
+    if (same) {
+        seal->SaveParts();
+        seal->m_interp1 = 0.3f;
+        seal->m_interp2 = 0.3f;
+        return true;
+    }
+
+    bool moving = seal->m_velM.x * seal->m_velM.x + seal->m_velM.y * seal->m_velM.y + seal->m_velM.z * seal->m_velM.z > 400.0f;
+
+    switch (to) {
+    case 1:
+        if (from != 1 && from != 3) {
+            switch (seal->m_state) {
+            case 0:
+                if (moving)
+                    func_00588BC0(seal, (AnimType)data_003DEC68, 0, 0, 0);
+                else {
+                    seal->ChangeToPistolMode(false);
+                    func_00588BC0(seal, (AnimType)53, 0, 1, 0);
+                }
+                break;
+            case 1:
+                if (moving)
+                    func_00588BC0(seal, (AnimType)data_003DEC68, 1, 0, 0);
+                else {
+                    seal->ChangeToPistolMode(false);
+                    func_00588BC0(seal, (AnimType)54, 1, 1, 0);
+                }
+                break;
+            case 2:
+                seal->ChangeToPistolMode(false);
+                func_00588BC0(seal, (AnimType)55, 2, 1, 0);
+                break;
+            default:
+                seal->ChangeToRifleMode(true);
+                func_005A60D0(seal, 1, 0);
+                break;
+            }
+        } else {
+            seal->ChangeToRifleMode(true);
+            func_005A60D0(seal, 1, 0);
+        }
+        break;
+    case 2:
+        if (from != 2 && from != 3) {
+            switch (seal->m_state) {
+            case 0:
+                if (moving)
+                    func_00588BC0(seal, (AnimType)data_003DEC68, 0, 0, 0);
+                else {
+                    seal->ChangeToPistolMode(false);
+                    func_0057D5E0(seal, (SEAL_ITEM_BYTE)2);
+                    func_00588BC0(seal, (AnimType)53, 0, 0, 0);
+                }
+                break;
+            case 1:
+                if (moving)
+                    func_00588BC0(seal, (AnimType)data_003DEC68, 1, 0, 0);
+                else {
+                    seal->ChangeToPistolMode(false);
+                    func_0057D5E0(seal, (SEAL_ITEM_BYTE)2);
+                    func_00588BC0(seal, (AnimType)54, 1, 0, 0);
+                }
+                break;
+            case 2:
+                seal->ChangeToPistolMode(false);
+                func_0057D5E0(seal, (SEAL_ITEM_BYTE)2);
+                func_00588BC0(seal, (AnimType)55, 2, 0, 0);
+                break;
+            default:
+                seal->ChangeToPistolMode(true);
+                func_0057D5E0(seal, (SEAL_ITEM_BYTE)2);
+                func_005A60D0(seal, 2, 0);
+                break;
+            }
+        } else {
+            seal->ChangeToPistolMode(true);
+            func_005A60D0(seal, 2, 0);
+        }
+        break;
+    default:
+        if (from == 1) {
+            seal->ChangeToRifleMode(true);
+            func_005A60D0(seal, 1, 0);
+        } else if (from == 2) {
+            seal->ChangeToPistolMode(true);
+            func_0057D5E0(seal, (SEAL_ITEM_BYTE)2);
+            func_005A60D0(seal, 2, 0);
+        }
+        seal->m_item = to;
+        break;
+    }
+    FindFirepoints(seal);
+    return true;
+}
 
 /* the launcher's part back on the spine and set as gear (an inline, four times in 0x5A60D0, once in
  * PickupItem; the name ours) */
