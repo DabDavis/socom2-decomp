@@ -20,7 +20,7 @@
  * erase 0x60EA90 and Tick's erase(position) 0x60EB60 come out of this unit byte-exact.
  * OPEN: Start and TickStep (registers / the camera flag's negation), RemoveMember (two registers),
  * the group remove_if (the list remove_if family), Tick (the cell index's strength reduction),
- * AddMember (Is() materialised), act_camera::Tick, LookAt and FaceXZ (frame-address CSE and the
+ * AddMember (Is() materialised) and act_camera::Tick (the
  * translation row's copy) -- each with its note. Defined in reverse of
  * their image order (-inline deferred) where it matters. */
 
@@ -1111,22 +1111,38 @@ bool CAiGroup::campoint::Get(CAiGroup *g, CPnt3D *out) const
 
 /* the matrix at one point looking at another: level (its x axis in the ground plane), up from the
  * cross product, looking down -z (OVL2 0x60DCF0: CAppCamera::LookAt's body, 0x29BC90, the eye not
- * noted; the name ours).
- * OPEN, 0x140 against 0x138 (0x154 before round 58), two instructions: FaceXZ's shape (CSE off in the
- * body) gives every load, register and slot but the two struct copies' addresses -- the target's copy
- * of the difference into vView, and of vView into v2D, stores through a0, the address Normalize gets
- * as `this`; with CSE off MW computes the destination twice (v1 for the copy, a0 for the call). With
- * CSE on (the old shape) MW kept the addresses of vView.y, vView.z and v2D.z in saved registers and
- * read v2D.x once. The rest of the fit: -v2D.z and v2D.x locals ahead of the call (the target's
- * $f21/$f20, v2D.x read a second time for right[2]), the vectors declared up, right, view (the target's
- * slots: up highest), `view[3] = right[3] = 1.0f` (one lui), up read into locals before the matrix's
- * stores, the translation through CPnt3D's three-float constructor. Tried for the copies (round 58):
- * `(vView = d).Normalize()` and a reference to the assignment (0x150), a pointer to the copy (0x154),
- * inline copy-and-normalise helpers by pointer (member-wise copies, 0x154) or by value (0x150-0x180),
- * direct initialisation, a pointer or a reference to the copy for the call (all 0x140, the same code) */
+ * noted; the name ours). Byte-exact in the kit's round 59 by camera.cpp's own source shape (the
+ * engine core's round 15, byte-exact there): the optimiser left on, the right vector and the
+ * negated row through reference inlines, the translation through a by-value setter -- with them
+ * the copy's destination and Normalize's `this` share a0 as in the target (rounds 16-58 had fitted
+ * the body by hand, 0x140-0x154, CSE off at the last) */
+/* LookAt's pieces, camera.cpp's (the names ours): three floats set by value, the level right vector
+ * from the negated z it shares with the matrix and the direction's x read through the reference, and a
+ * row set to a point's negation through the reference */
+inline void LaSet3(float *r, float x, float y, float z)
+{
+    r[0] = x;
+    r[1] = y;
+    r[2] = z;
+}
+
+inline void LaRight(float *v, float nz, const CPnt3D &d)
+{
+    v[0] = nz;
+    v[1] = 0.0f;
+    v[2] = d.x;
+    v[3] = 1.0f;
+}
+
+inline void LaNegRow(float *r, const CPnt3D &p)
+{
+    r[0] = -p.x;
+    r[1] = -p.y;
+    r[2] = -p.z;
+}
+
 static void LookAt(const CPnt3D *from, const CPnt3D *to, CMatrix *m)
 {
-#pragma opt_common_subs off
     CPnt3D vView = *to - *from;
 
     vView.Normalize();
@@ -1139,31 +1155,24 @@ static void LookAt(const CPnt3D *from, const CPnt3D *to, CMatrix *m)
     sceVu0FVECTOR up;
     sceVu0FVECTOR right;
     sceVu0FVECTOR view;
-
-    view[3] = right[3] = 1.0f;
-    right[1] = 0.0f;
-    right[2] = v2D.x;
+    LaRight(right, nz, v2D);
     view[0] = vView.x;
     view[1] = vView.y;
     view[2] = vView.z;
-    right[0] = nz;
+    view[3] = 1.0f;
     sceVu0OuterProduct(up, right, view);
     float ux = up[0];
     float uy = up[1];
     float uz = up[2];
-
     m->m_matrix[0][0] = nz;
     m->m_matrix[0][1] = 0.0f;
     m->m_matrix[0][2] = x;
     m->m_matrix[1][0] = ux;
     m->m_matrix[1][1] = uy;
     m->m_matrix[1][2] = uz;
-    m->m_matrix[2][0] = -vView.x;
-    m->m_matrix[2][1] = -vView.y;
-    m->m_matrix[2][2] = -vView.z;
-    *(CPnt3D *)m->m_matrix[3] = CPnt3D(from->x, from->y, from->z);
+    LaNegRow(m->m_matrix[2], vView);
+    LaSet3(m->m_matrix[3], from->x, from->y, from->z);
 }
-#pragma opt_common_subs reset
 
 /* (OVL2 0x60DB60: the camera put at the start point once the step's clock reaches the move's time,
  * turned by the end point's angles or to look at it; done the tick after -- at once when the
