@@ -2826,23 +2826,22 @@ _zanim_cmd_hdr *UIPlayMPEGParse(const char *name, _zrdr *rdr)
 /* the cinematic sub-state (theGame's, at a constant address: each access addressed absolutely) */
 inline CCinematicState *Cinematic() { return (CCinematicState *)theGame.m_cinematicSubState; }
 
-/* PlayMPEG's toggle (a function-local static in the original, as NoFade's below) */
-extern "C" bool data_00414EA0;
-
 /* the film the record names played over the menu (the player's flag permitting, as NoFade's):
  * every other run, the cinematic state given the film, how it plays, the rectangles and the audio
  * stream -- a number, a valve's value or a UI variable's -- and pushed (SOCOM 1's took the name
- * alone) */
+ * alone). The toggle a function-local static, SOCOM 1's `alt` (0x414EA0; uninitialised here, no
+ * guard) */
 bool UIPlayMPEG(C2DAnimCmdHdr *hdr, float *dT)
 {
+    static bool alt;
     UIPlayMPEGCmd *cmd = (UIPlayMPEGCmd *)hdr;
     CZSealBody *player = ftsGetPlayer();
 
     if (player && !player->m_e1_4)
         return true;
-    bool was = data_00414EA0;
+    bool was = alt;
 
-    data_00414EA0 = !was;
+    alt = !was;
     if (!was) {
         CZAnim *anim = ZAnim.m_CurAnim;
         Cinematic()->SetMovie(anim->GetName(cmd->m_argument_index), cmd->m_fade, cmd->m_by_index);
@@ -2882,19 +2881,18 @@ bool UIPlayMPEG(C2DAnimCmdHdr *hdr, float *dT)
     return was;
 }
 
-/* PlayMPEGNoFade's toggle: a function-local static in the original (SOCOM 1's UIPlayMPEG has one,
- * alt), held to its address by its placeholder -- scdiff leaves a local static's object unchecked */
-extern "C" bool data_00414EA8;
-
+/* (the toggle a function-local static, SOCOM 1's UIPlayMPEG's `alt`: 0x414EA8, its data row named
+ * so the scorer resolves it) */
 bool UIPlayMPEGNoFade(C2DAnimCmdHdr *hdr, float *dT)
 {
+    static bool alt;
     CZSealBody *player = ftsGetPlayer();
 
     if (player && !player->m_e1_4)
         return true;
-    bool was = data_00414EA8;
+    bool was = alt;
 
-    data_00414EA8 = !was;
+    alt = !was;
     if (!was) {
         ((CCinematicState *)theGame.m_cinematicSubState)->SetMovie(ArgName(hdr), 0, 0);
         theGame.Push((CGameState *)theGame.m_cinematicSubState, 0);
@@ -3429,8 +3427,8 @@ bool UIBanSelfFromGame(C2DAnimCmdHdr *hdr, float *dT)
 
 /* the hard disk operation's last result (a byte; the name ours) */
 extern "C" unsigned char data_00414EB0;
-/* whether the game runs off the hard disk (a byte of util_sonyio.cpp's; not named yet) */
-extern "C" unsigned char data_004A37B0;
+/* whether the game's partition is open (util_sonyio.cpp's byte, 0x4A37B0) */
+extern unsigned char s_hddOpen;
 
 bool UIQuitClan(C2DAnimCmdHdr *hdr, float *dT)
 {
@@ -3567,7 +3565,7 @@ bool UIHardDriveOperation(C2DAnimCmdHdr *hdr, float *dT)
             data_00414EB0 = HddMountGame();
             if (data_00414EB0 == 0) {
                 CFileIO::SetErrorHandler((void (*)(int))HardDriveOperationCallback);
-                data_004A37B0 = 1;
+                s_hddOpen = 1;
                 done = true;
             } else {
                 int code;
@@ -3604,8 +3602,8 @@ bool UIHardDriveOperation(C2DAnimCmdHdr *hdr, float *dT)
                 m->m_on_hdd = 1;
             }
         } else if (!strcasecmp(op, "CLOSE")) {
-            func_0039D020();
-            data_004A37B0 = 0;
+            HddUnmountGame();
+            s_hddOpen = 0;
             static_cast<CMultiMissionList &>(data_00441650).Purge();
         }
     }

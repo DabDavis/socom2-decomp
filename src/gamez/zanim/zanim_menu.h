@@ -875,10 +875,10 @@ enum LANGUAGE {
 };
 LANGUAGE LanguageFromName(const char *name);   /* 0x3A40E0 */
 /* the game's partition on the hard disk (util_sonyio.cpp's): mounted (0 or an error), its files
- * found, and unmounted (0x39D020, not named yet) */
+ * found, and unmounted (0x39D020) */
 int HddMountGame();                                                                  /* 0x39D050 */
 int HddFindFiles(const char *pattern, void *out, int size, unsigned int index);     /* 0x39CE80 */
-extern "C" int func_0039D020();
+int HddUnmountGame();                                                                /* 0x39D020 */
 void SetLanguage(LANGUAGE lang);               /* 0x3A44B0 */
 
 extern "C" int ezNetCnfGetNetcnfifData(const char *device, const char *name, void *out);   /* 0x1E8910 */
