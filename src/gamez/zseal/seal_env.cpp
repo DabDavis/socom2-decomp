@@ -4497,6 +4497,139 @@ void CZSealBody::DropAmmo(int rounds)
 /* the ground under a point within a depth (fts_main.cpp's ftsGetAltitudeApprox, OVL1 0x2A2EB0) */
 zdb::IntersectStruct *ftsGetAltitudeApprox(const CPnt3D *p, float depth, bool chars);
 
+extern "C" {
+/* (OVL1 data: SOCOM 1's AnimTypes::SwapRifle, seal_env.cpp reads it as a variable) */
+extern short data_003DEC78;
+/* whether the launcher's item may be swapped now (OVL2 0x589900, seal_body.cpp's range) */
+bool func_00589900(CZSealBody *seal);
+void *func_00588BC0(CZSealBody *seal, AnimType type, int state, int flag, int kind);
+}
+
+/* a weapon picked up: the class's item the SEAL holds dropped (a remote's only let go), the node off the
+ * pickup and on the part -- an anim of the swap played -- the launcher's rest re-parented to the spine and
+ * set as gear, the kit given the node and the weapon, in the slot of the class or a new one, a launcher's
+ * ammunition item added, the HUD told, the pickup destroyed (OVL2 0x59F0C0: SOCOM 1's PickupItem, which took
+ * the path a remote's took here) */
+void CZSealBody::PickupItem(CPickup *pickup)
+{
+    if (!pickup)
+        return;
+    if (pickup->m_type != CPickup::PU_WEAPON || !pickup->m_data || !pickup->m_node)
+        return;
+
+    bool remote = ((CSealCtrl *)m_control)->IsRemote();
+    CZWeapon *weapon = pickup->GetWeapon();
+    CZKit::FIRE_CLASS fc = CZKit::GetItemFireClass(weapon->m_ID);
+    CPickup *dropped = 0;
+    zdb::CNode *parent;
+    int index;
+    CZBodyPart *part = m_item_gear[fc].m_part;
+    CZBodyPart *p;
+    int slot;
+
+    parent = 0;
+    if (part && part->m_node)
+        parent = part->m_node->m_parent;
+    index = m_kit.GetFireClassIndex(fc);
+    if (!remote && index != -1) {
+        DropAmmo(index);
+        dropped = DropItem(index, true);
+    }
+
+    zdb::CNode *node = pickup->m_node;
+
+    zdb::CWorld::m_world->DeleteTextureAssetCharacter(zdb::CHARSETCOMMON, node);
+    pickup->m_node = 0;
+    if (node->m_parent)
+        node->m_parent->DeleteChild(node);
+
+    short anim = data_003DEC78;
+
+    if (remote && parent) {
+        parent->DeleteChild(part->m_node);
+
+        zdb::CNode *old = index != -1 ? (zdb::CNode *)m_kit.GetItemPtr(index) : 0;
+
+        if (old) {
+            if (part && old == part->m_node)
+                part->m_node = 0;
+            zdb::CNode::Delete(old);
+        }
+        part->m_node = node;
+    } else if (dropped) {
+        dropped->GetPickupNetEntityID();
+        func_00588BC0(this, (AnimType)anim, GetStance(false), 0, 0);
+        if (data_0044D508)
+            ((CZAnim *)data_0044D508)->ActivateArg(1, 3, dropped->m_node, 0);
+    } else if (fc == CZKit::FIRE_CLASS_145 && func_00589900(this)) {
+        CZBodyAnimBlend *b = (CZBodyAnimBlend *)func_00588BC0(this, (AnimType)anim, m_state, 0, 0);
+
+        m_rifle->SetActive(false);
+        b->m_24 = 0;
+    }
+    if (parent)
+        parent->AddChild(node);
+    else
+        part->m_node = node;
+    switch (fc) {
+    case CZKit::FIRE_CLASS_RIFLE:
+        node->SetName("rifle");
+        break;
+    case CZKit::FIRE_CLASS_PISTOL:
+        node->SetName("pistol");
+        break;
+    case CZKit::FIRE_CLASS_145: {
+        node->SetName("launcher");
+        m_e9c = 0;
+
+        p = m_item_gear[4].m_part;
+        if (p && p->m_node) {
+            p->m_parent->m_node->DeleteChild(p->m_node);
+            p->m_parent = m_spinehi;
+            p->m_parent->m_node->AddChild(p->m_node);
+            p->SetActive(false);
+        }
+        SetPartAsGear(m_item_gear[4].m_part, m_item_gear[4].m_gear);
+        break;
+    }
+    }
+    if (index != -1) {
+        m_kit.ClearItemPtr(index);
+        m_kit.SetItemPtr(index, node);
+        m_kit.SetItemByIndex(index, pickup->GetWeapon());
+    } else {
+        bool select = false;
+        slot = -1;
+
+        if (fc == CZKit::FIRE_CLASS_145) {
+            slot = m_kit.GetPickupSlot(-1);
+            if (slot == m_kit.GetSelectedItemNum())
+                select = true;
+        }
+        if (slot == -1)
+            slot = m_kit.GetNumItems();
+        m_kit.SetItemByIndex(slot, pickup->GetWeapon());
+        m_kit.SetItemPtr(slot, node);
+        if (select) {
+            int cur = 0;
+
+            if (!m_kit.isSelectableItem(0))
+                cur = 1;
+            m_kit.SetCurItemByIndex(cur);
+        }
+    }
+    if (fc == CZKit::FIRE_CLASS_145) {
+        int n = m_kit.GetNumItems();
+
+        m_kit.SetItem(n, weapon->m_ID == 146 ? (EQUIP_ITEM)186 : (EQUIP_ITEM)185);
+        m_kit.AddAmmo(n, 1);
+    }
+    m_kit.m_requested_item = 1;
+    m_kit.m_bit13 = 1;
+    ((CSealCtrl *)m_control)->m_HudUpdateWeapon = 1;
+    CPickup::Destroy(pickup);
+}
+
 /* a weapon of the kit dropped as a pickup: refused with pickups shut, or online by a SEAL no player drives;
  * the part of its fire class taken off its parent where it hangs, the item's node let go by the kit and put
  * in the world there, dynamic and a character node, a pickup of kind 8 the SEAL owns made of it, its flag

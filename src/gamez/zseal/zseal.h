@@ -238,9 +238,16 @@ public:
      * (kit.h's; OVL2 0x5BC6A0) */
     bool HasItemWithAmmo(EQUIP_ITEM item);
     void FillWeaponEnum(int index, class CZFTSWeapon **out);
-    /* the item pointer of an index, and cleared (OVL2 0x5B8FF0, 0x5B8FC0: the kit lane's) */
+    /* the item pointer of an index, cleared and set (OVL2 0x5B8FF0, 0x5B8FC0, 0x5B8F20: the kit lane's) */
     void *GetItemPtr(int index);
     void ClearItemPtr(int index);
+    void SetItemPtr(int index, void *p);
+    /* a weapon set at an index (SOCOM 1's; OVL2 0x5BC410), the rounds added, the slot a weapon picked up
+     * takes and whether an item can be selected (OVL2 0x5BA3D0, 0x5BAE60, 0x5BDC30: the kit lane's) */
+    void SetItemByIndex(int index, class CZWeapon *w);
+    void AddAmmo(int index, int rounds);
+    int GetPickupSlot(int index);
+    bool isSelectableItem(int index);
     /* the item in hand (kit.h's: const in SOCOM II; OVL2 0x5C3780) and the item made current by its
      * index (kit.h's; OVL2 0x5C4B10) */
     class CZFTSWeapon *GetCurItem() const;
@@ -321,6 +328,8 @@ public:
     /* an item's fire class, no kit asked (the kit lane's round 32 name: a static member, the item in
      * a0; OVL2 0x5B8820 -- seal_env.cpp compares it with the pistol's 2) */
     static FIRE_CLASS GetItemFireClass(EQUIP_ITEM item);
+    /* the index of the item of a fire class, or -1 (OVL2 0x5B8630, the kit lane's) */
+    int GetFireClassIndex(FIRE_CLASS fc);
     /* a weapon's ammunition taken in, the rounds read and handed back (SOCOM 1's PickupAmmo by its
      * arguments, the kit lane's round 32; OVL2 0x5BB000 -- HandlePickupAck's eight takes call it) */
     void PickupAmmo(class CZFTSWeapon *weapon, class CZAmmo *ammo, int *rounds);
@@ -338,7 +347,8 @@ public:
     /* kit.h's flags (the kit lane's names): only bit 12 here */
     unsigned int m_bits0 : 12;   // 0x0
     unsigned int m_requested_item : 1;   // bit 12: an item asked for (IsChangingWeapons tests it)
-    unsigned int m_bits13 : 19;
+    unsigned int m_bit13 : 1;   // bit 13: set with bit 12 as a weapon is picked up (PickupItem; the name ours)
+    unsigned int m_bits14 : 18;
 };
 
 class CSealCtrlAi;
@@ -2497,7 +2507,10 @@ public:
     CSealStats m_stats;   // 0x58c
     CAccuracy m_accuracy;   // 0x5d4 (SOCOM 1's 0x514: PerturbAimVector reads it)
     CZKit m_kit;   // 0x5e0 (SOCOM 1's 0x520)
-    unsigned char _5e4[0xeac - 0x5e4];
+    unsigned char _5e4[0xe9c - 0x5e4];
+    /* (inside the kit: zeroed as a launcher is picked up -- PickupItem; the name ours) */
+    int m_e9c;   // 0xe9c
+    unsigned char _ea0[0xeac - 0xea0];
     /* the body carried (SOCOM 1's m_carry, 0xda8 -- right before m_adrenaline in both builds;
      * 0x5A88C0 refuses while one is) */
     CZSealBody *m_carry;   // 0xeac
