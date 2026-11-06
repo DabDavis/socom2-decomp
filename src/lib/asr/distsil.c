@@ -202,8 +202,79 @@ static int FreeDistCalc(DISTSIL *d)
     return 0;
 }
 
-/* (InitDistSilProcess, 0x4FF5A8, is not written) */
 extern float logf(float x);
+extern float expf(float x);
+
+/* the block's init (s1:align: SOCOM 1's LOCAL InitDistSilProcess, 0x524, the same body but its exp):
+ * the queues sized from profiles 32 and 33 (the output's n33 shorts, the third input's n33 triples);
+ * the period (19, as an unsigned short); the level scale from 0 down to -9.22306 in 255 steps, its
+ * linear values (expf) at +292; per count up to the period, a byte per level -- the level after
+ * adding count x profile 18's step to its linear value, rescaled to the 255 steps below the top of
+ * the scale and rounded, clamped to 0..255 -- the rows in one allocation (1 when it fails); the
+ * counters cleared, profile 20 at +288. Written in round 34c from SOCOM II's code. OPEN (3 words,
+ * the right size): the float-to-unsigned conversion's 2^31 constant takes $f3 here, $f12 there
+ * (global-alloc's pass over registers already used: $f3 is call-clobbered, so "used", and first;
+ * the target's choice of $f12 needs $f3..$f11 preferred by a lower-priority neighbour or $f12
+ * preferred by the constant -- neither shows here). The clamp as ?: or upper-first, the store
+ * through a row pointer or an unsigned local, the inner expression split into temporaries: no
+ * closer (build/scratch/gcc/r34/v_ids*.py). */
+static int InitDistSilProcess(DISTSIL *d)
+{
+    TOS *tos = d->b.tos;
+    unsigned short n32, n33;
+    unsigned int i, j;
+    unsigned char *p;
+    float lmax, x, v;
+
+    d->f290 = 1;
+    n32 = _tosGetProfileU32(d, 32, 4);
+    n33 = _tosGetProfileU32(d, 33, 1);
+    d->f150 = 0xFFFF;
+    d->f152 = _tosGetProfileU32(d, 30, 0);
+    d->f154 = _tosGetProfileU32(d, 31, 0);
+    if (d->b.ninputs != 0) {
+        d->dist = d->b.outputs;
+        d->b.inputs[1].size = n32;
+        d->b.inputs[0].size = 1;
+        d->dist->size = n33 * 2;
+        if (d->b.ninputs == 3)
+            d->b.inputs[2].size = n33 * 3;
+    }
+    d->f308 = (unsigned short)_tosGetProfileU32(d, 19, 4);
+    d->f296 = 0;
+    d->f300 = -9.22306f;
+    d->f292 = heap_Alloc(tos->heap, 1024);
+    for (i = 0; i < 256; i++)
+        d->f292[i] = expf(d->f296 - i * (d->f296 - d->f300) * (1.0 / 255));
+    d->f304 = _tosGetProfileFloat(d, 18, 0.002f);
+    d->f312 = heap_Alloc(tos->heap, d->f308 * 4 + 4);
+    p = heap_Alloc(tos->heap, d->f308 * 256 + 256);
+    if (p == 0)
+        return 1;
+    for (i = 0; i <= d->f308; i++) {
+        d->f312[i] = p;
+        p += 256;
+    }
+    lmax = logf(d->f308 * d->f304 + 1.0);
+    for (j = 0; j <= d->f308; j++) {
+        x = j * d->f304;
+        for (i = 0; i < 256; i++) {
+            v = (logf(expf(d->f296 - (d->f296 - d->f300) * i * (1.0 / 255)) + x) - lmax - d->f296)
+                * -255.0 / (d->f296 - d->f300) + 0.5;
+            if (v < 0)
+                v = 0;
+            else if (v > 255)
+                v = 255;
+            d->f312[j][i] = v;
+        }
+    }
+    d->f280 = 0;
+    d->f284 = 0;
+    d->f288 = _tosGetProfileU32(d, 20, 0);
+    d->f289 = 1;
+    d->f108 = 0;
+    return 0;
+}
 
 /* a frame's codeword bytes corrected for the frame's level: the log of the bytes' table sum,
  * scaled to the byte range over the table's span (+296 - +300) and rounded, added to every byte,
@@ -306,7 +377,6 @@ static void DistSilProcess(DISTSIL *d, unsigned char **in)
 
 /* (ControlDistSilProcess .. InitCalculateDistances, -0x500DF8, are not written but
  * ControlDistSilProcess's prototype) */
-extern int InitDistSilProcess(DISTSIL *d);
 extern int ControlDistSilProcess(DISTSIL *d, unsigned char cmd, void *arg, void *arg2);
 static void IdleDistCalcProcess(DISTSIL *d, void **in);
 
