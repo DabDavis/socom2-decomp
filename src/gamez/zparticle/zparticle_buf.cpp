@@ -3,8 +3,8 @@
  * SOCOM 1's (its __sinit_zparticle_buf.cpp; SOCOM II's 0x402BB0 builds <iostream>'s pair and the
  * 5000 32-byte elements at 0x45C4D0 with the constructor 0x326F40). SOCOM 1's demo holds DrawRange to the element's
  * constructor in this order. Defined in reverse of their image order (-inline deferred). Written
- * so far: everything (the world lane's rounds 32 and 33); only the zqsort instance's spill pick is
- * open. VU0 ASM: a `.set` directive in a block splits the scheduling block there. */
+ * so far: everything (the world lane's rounds 32 and 33; the zqsort instance round 34): the unit is whole.
+ * VU0 ASM: a `.set` directive in a block splits the scheduling block there. */
 
 #include <eetypes.h>
 #include <iostream>
@@ -106,16 +106,12 @@ struct CTexDmaRef {
  * spilled, the loop test's reloads into i and j (`(j = hi) > (i = lo) + 8`: the assignments'
  * values copied, the compare fused into at -- `(i = lo) + 8 < (j = hi)` materialises it) and the
  * scans and pushes are the target's.
- * OPEN, 47 of 196 instructions unmatched (0x308 of 0x310): (1) the median's spill pick -- MW spills
- * the `lo + hi` CSE (cost 19 over 54 neighbours, the cheapest node: tools/igdump.py) and keeps pl in
- * s7, where the target keeps the sum in s7 and spills pl (reloaded from sp+160 at each use; SOCOM
- * 1's kept the sum too and spilled n): the original's sum costs more -- tried the sum as a named
- * local (first, last, at the top), the median on array elements, pm alone or with ph named, the size
- * test as `j - lo > hi - i` (73), an extra use of the sum; no numbering of pl, hi and the sum gives
- * it (igreplay --want); (2) the insertion sort loads t through an outer-loop walker of its own
- * (`addiu s6,s5,4`), the target through the inner loop's &a[j] (s2): `t = a[j]` after `j = i`
- * and a pointer for a[j - 1] brought the inner loop to the target's shape (build/scratch/wld/
- * v_qs.py, vscore.py) */
+ * Byte-exact since round 34 (0x308 of 0x310 since round 20): the median's spill pick -- MW kept pl in s7 and spilled the
+ * `lo + hi` CSE (19 over 54 neighbours), the target keeps the sum and spills pl -- was never the numbering: the swap's
+ * test is `if (i > j) break;` in the do-while, not `if (i <= j)`. That break makes the block reading the sum a loop exit,
+ * and its weight takes the sum's cost from 19 to 131 (`tools/igdump.py`'s costs), past pl's 83 / 37, with no other change.
+ * Each arm of the size test steps `sp` itself. The insertion sort's `t = a[j = i]`: `j = i; t = a[j];` is copy-propagated
+ * to a[i] ahead of the loop phase, so it took an outer-loop walker of its own, where this read is the inner loop's &a[j] */
 template <class T>
 void zqsort(T *a, int n, int (*cmp)(T const &, T const &))
 {
@@ -157,24 +153,25 @@ void zqsort(T *a, int n, int (*cmp)(T const &, T const &))
                     i++;
                 while (cmp(a[j], pivot) > 0)
                     j--;
-                if (i <= j) {
-                    t = a[i];
-                    a[i] = a[j];
-                    a[j] = t;
-                    i++;
-                    j--;
-                }
+                if (i > j)
+                    break;
+                t = a[i];
+                a[i] = a[j];
+                a[j] = t;
+                i++;
+                j--;
             } while (i <= j);
             if (lo + hi < i + j) {
                 sp[0] = lo;
                 sp[1] = j;
                 lo = i;
+                sp += 2;
             } else {
                 sp[0] = i;
                 sp[1] = hi;
                 hi = j;
+                sp += 2;
             }
-            sp += 2;
         }
         if (!(stack < sp))
             break;
@@ -182,8 +179,7 @@ void zqsort(T *a, int n, int (*cmp)(T const &, T const &))
         lo = *--sp;
     }
     for (i = 1; i < n; i++) {
-        j = i;
-        t = a[j];
+        t = a[j = i];
         do {
             T *p = &a[j - 1];
 
