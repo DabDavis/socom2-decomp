@@ -714,6 +714,10 @@ enum AI_LOOK {
 class CSealCtrl : public CEntityCtrl {
 public:
     CSealCtrl();
+    /* the controllers switched on or off (OVL2 0x598840, new in SOCOM II, seal_control.cpp's: CTStopAll::Tick
+     * calls it beside CSealCtrlAi::SetAiEnabled, the mission cameras with false while one plays; the name
+     * ours) */
+    static void SetEnabled(bool on);
     /* the scan's tick (OVL2 0x600550, the kit lane's range: the map's ScanTick__9CSealCtrlFf; CSealCtrlAi's
      * PreTick, seal_control.cpp's, calls it) */
     void ScanTick(float dT);
@@ -1596,6 +1600,12 @@ public:
  * counters by halfword offset, as the events step them (seal.cpp) */
 class CSealStats {
 public:
+    /* every counter zeroed (SOCOM 1's Reset; OVL2 0x545200, seal.cpp's, between the Incr* counters and
+     * Kill as SOCOM 1's: CZSealBody's constructor calls it for both of the SEAL's stats, as SOCOM 1's
+     * does, SetRoundStatUiVars for its defaults, CMPExitState::UnInit for a round's -- the game states'
+     * round 50 took it for the constructor, but it returns nothing) */
+    void Reset();
+
     unsigned short m_count[0x3c / 2];   // 0x0
     short m_score;   // 0x3c: the MVP score (SOCOM 1's m_sMvpScore, a short there too)
     unsigned short m_count2[3];   // 0x3e

@@ -553,6 +553,48 @@ extern "C" void func_00545750(CSealStats *s, const CZSealBody *seal, bool teamma
         s->m_count[0x32 / 2]++;
 }
 
+/* the stats zeroed (SOCOM 1's Reset, between IncrTimesSeen and Kill there too; OVL2 0x545200, its
+ * draft's stores in its order: the halfwords by offset, the hit percentage, then the MVP score and the
+ * counters around it) */
+void CSealStats::Reset()
+{
+    m_count[0x0 / 2] = 0;
+    m_count[0x2 / 2] = 0;
+    m_count[0x4 / 2] = 0;
+    m_count[0x6 / 2] = 0;
+    m_count[0x8 / 2] = 0;
+    m_count[0xa / 2] = 0;
+    m_count[0xc / 2] = 0;
+    m_count[0xe / 2] = 0;
+    m_count[0x14 / 2] = 0;
+    m_count[0x10 / 2] = 0;
+    m_count[0x12 / 2] = 0;
+    m_count[0x16 / 2] = 0;
+    m_count[0x18 / 2] = 0;
+    m_count[0x1e / 2] = 0;
+    m_count[0x20 / 2] = 0;
+    m_count[0x22 / 2] = 0;
+    m_count[0x24 / 2] = 0;
+    m_count[0x2c / 2] = 0;
+    m_count[0x26 / 2] = 0;
+    m_count[0x28 / 2] = 0;
+    m_count[0x2a / 2] = 0;
+    m_count[0x2e / 2] = 0;
+    m_count[0x30 / 2] = 0;
+    m_count[0x32 / 2] = 0;
+    m_count[0x34 / 2] = 0;
+    m_count[0x1c / 2] = 0;
+    m_count[0x1a / 2] = 0;
+    m_hit_percent = 0.0f;
+    m_score = 0;
+    m_count2[0] = 0;
+    m_count2[1] = 0;
+    m_count2[2] = 0;
+    m_count[0x36 / 2] = 0;
+    m_count[0x38 / 2] = 0;
+    m_count[0x3a / 2] = 0;
+}
+
 /* eight counters each added to (OVL2 0x5451E0, 0x5451C0, 0x5451A0, 0x545180, 0x545160, 0x545140,
  * 0x545120, 0x545100; SOCOM 1's Incr* took ints) */
 extern "C" void func_005451E0(CSealStats *s, int n)

@@ -9967,7 +9967,7 @@
 0x005451A0 0x14 func_005451A0  # OVL2
 0x005451C0 0x14 func_005451C0  # OVL2
 0x005451E0 0x14 func_005451E0  # OVL2
-0x00545200 0x90 func_00545200  # OVL2
+0x00545200 0x90 Reset__10CSealStatsFv  # OVL2; by hand (the SEALs, round 55, the game states' round-50 lead, which took it for the constructor -- it returns nothing, no move v0,a0): SOCOM 1's Reset__10CSealStatsFv (0x24E8A0, every counter zeroed, between IncrTimesSeen and Kill as here: the eight Incr* counters 0x545100-0x5451E0 below, Kill 0x545290 above); SOCOM 1's CZSealBody constructor calls it twice and CMPExitState::Init once, as SOCOM II's constructor 0x553EA0 (its stats at 0x544 and 0x58C), SetRoundStatUiVars 0x1F21B0 and CMPExitState::UnInit 0x223390 do; seal.cpp
 0x00545290 0xF8 func_00545290  # OVL2
 0x00545390 0xE8 func_00545390  # OVL2
 0x00545480 0xA4 func_00545480  # OVL2
@@ -10667,7 +10667,7 @@
 0x00598000 0x218 OnWeaponEvent__9CSealCtrlFP12CZProjectileUiPv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00598220 0x60 __dt__9CSealCtrlFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00598280 0x5B8 __ct__9CSealCtrlFv  # OVL2; s1:calls (ftsCreateSeal's new of 0x5B8... constructs it where SOCOM 1's calls __ct__9CSealCtrlFv; ftsCreateSeal byte-exact with it) -- the states lane
-0x00598840 0x20 func_00598840  # OVL2
+0x00598840 0x20 SetEnabled__9CSealCtrlFb  # OVL2; by hand (the SEALs, round 55): seal_control.cpp's first definition (the integrator's lead: SOCOM 1 has nothing between CSealCtrl's constructor 0x288330 and DrawFunc<CDynGrenade> 0x2889A0, so new in SOCOM II) -- the controllers' switch, OVL1 data 0x3DF1B0, which CSealCtrl's PreTick, Tick and PostTick test first, written when it changes; CTStopAll::Tick 0x5CF800 calls it with the enable it passes CSealCtrlAi::SetAiEnabled, PlayCamera(CMissionCam *, bool) 0x228EE0 with false and CleanupCamera 0x229520 with true beside SetAiEnabled(false/true) -- a static, the name ours
 0x00598860 0x32C DrawFunc<11CDynGrenade>__2aiFQ22ai9LINE_TYPEffUi11CDynGrenade_v  # OVL2; s1:order by hand (the SEALs, round 54): SOCOM 1's DrawFunc<11CDynGrenade>__2aiFQ22ai9LINE_TYPEffUi11CDynGrenade 0x2889A0, seal_control.cpp's template tail right after the constructor in both builds (SOCOM II's 0x598840 between); the same body: the grenade's flight drawn from t0 to t1 in steps, the opacity blended; MW 3.0's return-type suffix
 0x00598B90 0x910 RemoteRespawn__10CZSealBodyFb  # OVL2; s1:order (seal_create.cpp's first function after the controller's unit, as SOCOM 1's); calls CZSealState::GetPackedWeaponData first, as SOCOM 1's; SOCOM 1's signature, unproven
 0x005994A0 0x1EC DoRespawn__10CZSealBodyFv  # OVL2; s1:order (after RemoteRespawn, before CreateRemoteSeal); SOCOM 1's signature, unproven
