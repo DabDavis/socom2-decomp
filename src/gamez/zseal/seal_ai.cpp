@@ -6538,6 +6538,117 @@ void CAiSPursue::OnSignal(SIGNAL sig, CSealCtrlAi *ctrl)
     }
 }
 
+/* the squad (an inline accessor: read through it the squad's register comes after the AsSeal inline's result,
+ * as OnDeath's target has it -- written `unit = m_unit` the two swap, s0 and s1; the name ours) */
+static inline CSealUnit *UnitOf(CSealCtrl *c)
+{
+    return c->m_unit;
+}
+
+extern "C" {
+/* the chance of a dying burst for a SEAL at least alert, the anger's chance and the rage it stops at
+ * (OVL2 data; the names unknown); the pickup a Navy SEAL's satchel drops (OVL2 0x59FAC0, seal_env.cpp's) */
+extern float data_00650018;
+extern float data_0064FE10;
+extern float data_0064FE18;
+class CPickup *func_0059FAC0(CZSealBody *seal);
+}
+
+/* dead: whatever it did stopped -- the alive valve shut, the three others closed, its group aborted, the
+ * throttles zeroed, its sounds cut -- its node's bit 22 set (SOCOM 1's m_NOTUSED), the cry by how it died, the killer
+ * of its own team's anger raised; the squad told, the AI state cleared, the target and the map's bit let
+ * go; an alert SEAL's dying burst on a chance, a Navy SEAL's satchel dropped, the events forgotten
+ * (OVL2 0x5714B0, slot 0x18; SOCOM 1's OnDeath grown) */
+void CSealCtrlAi::OnDeath()
+{
+    zdb::CNode *node;
+    CZSealBody *seal = (CZSealBody *)m_entity;
+    CZSealBody *killer;
+    CSealUnit *unit;
+
+    node = seal->GetNode();
+    killer = AsSeal(CEntity::m_list.GetEntityById(seal->m_lastshooter_id));
+    unit = UnitOf(this);
+
+    CValve *valve = m_valve[SEAL_VALVE_ALIVE];
+
+    if (valve)
+        SetValveValue(valve, 0);
+    func_00574EF0(this, 0);
+
+    CAiGroup *group = GetGroup();
+
+    if (group)
+        group->Abort();
+    SetThrottle(1, 0.0f);
+    SetThrottle(2, 0.0f);
+    SetThrottle(0, 0.0f);
+    SetThrottle(3, 0.0f);
+    m_throttle[1] = 0.0f;
+    m_throttle[2] = 0.0f;
+    m_throttle[0] = 0.0f;
+    m_throttle[3] = 0.0f;
+    CSndInstance::Remove(seal->m_id, true, true, true);
+    node->m_NOTUSED = true;
+
+    SEAL_DEATH_TYPE type = seal->m_deathType;
+
+    static Rfloat s_burst(1.5f, 1.5f);
+    float chance = 0.0f;
+
+    switch (type) {
+    case DEATH_KNIFE_KILL:
+    case DEATH_CQB:
+        PlayAiSound((CHARACTER_SOUND)61, 1.0f, CAiEvent::AIE_NONE);
+        break;
+    case DEATH_HEADSHOT:
+        PlayAiSound((CHARACTER_SOUND)61, 1.0f, (CAiEvent::EVENT)3);
+        break;
+    case DEATH_GHOST:
+        break;
+    case DEATH_FALLING:
+        if (seal->m_aiEvent)
+            seal->m_aiEvent->m_type = 0;
+        break;
+    default:
+        PlayAiSound((CHARACTER_SOUND)60, 1.0f, (CAiEvent::EVENT)4);
+        if (AlertBand(((CAlertness *)this)->m_alert) >= ALERT_BAND_2)
+            chance = data_00650018;
+        break;
+    }
+    if (killer && (seal->m_team & killer->m_team) && killer->IsPlayer()) {
+        float t = data_0064FE10;
+
+        if (m_408 < data_0064FE18)
+            t *= m_408;
+        if (data_0064FDF8) {
+            if (!(t <= 1.0f))
+                PlayAiSound((CHARACTER_SOUND)81, 1.0f, CAiEvent::AIE_NONE);
+            m_400 += data_0064FE00 * t;
+        }
+        func_00561B90(this, false);
+    }
+    if (unit)
+        unit->Notify(seal, UNIT_MESSAGE_DEATH, 0);
+    ClearAiState(true);
+    SetTarget(0);
+    SetAiAware(0.0f, 3);
+    seal->m_restrained = false;
+    if (m_aiParams.respawn)
+        seal->SetIncludeInTargetList(false);
+    if (!(chance <= 0.0f) && Chance(chance)) {
+        float t = s_burst;
+
+        SetSprayTimer(t);
+    }
+    if (IsNavySeal())
+        func_0059FAC0(seal);
+    ((CAiEventQ *)m_eventQueue)->clear();
+    CleanupDiPool(seal);
+    seal->SetUpdateTargetList(false);
+    SetDoAiMapCollide(false);
+}
+
 /* hurt: the SEAL's other sounds cut off and the pain cry, always (OVL2 0x571AB0; SOCOM 1's with
  * SOCOM II's extra arguments). The entity is read ahead of the test, as both builds do: only a
  * local taken first gives that `lw` its place before the branch. */

@@ -1362,7 +1362,7 @@ public:
      * and turns the squad on the player past 190 (new in SOCOM II; the name ours) */
     float m_400;   // 0x400
     float m_404;   // 0x404 (zeroed by the constructor; the names from here to 0x7a4 ours)
-    unsigned char _408[0x40c - 0x408];
+    float m_408;   // 0x408: scales the anger a killer of the team raises (OnDeath; the name ours)
     float m_40c;   // 0x40c: a time on the game's clock 0x572190 measures from (the name ours)
     unsigned char _410[0x41c - 0x410];
     /* the state on top of the stack (SOCOM 1's; OVL2 0x5F5FD0, 0x5F6010, the AI-states lane's
@@ -1513,6 +1513,8 @@ public:
     virtual void OnWeaponHit(zdb::IntersectStruct *hit, CZProjectile *proj);
     /* a projectile's flight heard (SOCOM 1's; OVL2 0x5729F0, seal_ai.cpp's) */
     virtual void OnWeaponEvent(CZProjectile *proj, unsigned int event, void *data);
+    /* (OVL2 0x5714B0, slot 0x18: seal_ai.cpp's) */
+    virtual void OnDeath();
     virtual void OnMissionEnd();
     virtual void OnStateChange(SEAL_STATE from, SEAL_STATE to);
     /* the state sent to the other consoles, as a word's bits (OVL2 0x56F6C0, slot 0x6C) */
