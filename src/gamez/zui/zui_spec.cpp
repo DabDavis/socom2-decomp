@@ -9,7 +9,7 @@
  * (0x37D9B0, 0x37D910: zui.cpp's tail and the tail copies call them), the assignment pinned.
  *
  * Round 16 wrote the dialog design's loaders (SOCOM 1's CGameDlgDesign::LoadFromRdr 0x381550 and
- * LoadModels 0x3812B0, byte-exact; LoadDlgObjects 0x383360 open, below), whose requests bring the
+ * LoadModels 0x3812B0, byte-exact; LoadDlgObjects 0x383360 since round 31, below), whose requests bring the
  * CSaferStr and CDlgDesignModel instances into the tail: resize<CSaferStr> 0x383800, the model
  * vector's insert 0x384ED0 with its __fill_n 0x385370 and __copy_backward 0x385410, its __copy
  * 0x384D50, CSaferStr's assignment 0x384E00 and the model deleter's clear 0x36AE50 byte-exact.
@@ -134,18 +134,13 @@ CDlgObjSpec *GetControlSpec(_zrdr *rdr, const char *type)
 }
 
 /* the button and the object its SUBORDINATE block describes: its NAME ("unnamed" if none), TYPE,
- * XPOS, YPOS and SPEC (SOCOM 1's) *
- * OPEN, 8 instructions (two delay slots): the target leaves the spec test's slot empty and puts
- * `li a0,40` in new's, and repeats the name string's address in both arms of the inlined
- * CSaferStr assignment; here MW fills the test's slot with the li, hoists the address into the
- * name test's slot and pads before "unnamed". The design object's three inline setters are what
- * give the target's loads of m_child (written out, 34 instructions differ); an early return for
- * the spec test is 8 bytes longer. Round 30: the target never fills a slot from the FALL-THROUGH
- * block in this function, the radio strip's constructor or LoadDlgObjects (each empty slot here
- * holds the next block's first instruction, dead on the taken path), while it copies from the
- * taken target as MW does here -- not a pragma: optimization_level 2/3, optimize_for_size,
- * global_optimizer, scheduling, schedule, peephole, tailcall, conditional_move, nomacro, padloop,
- * trunc and 28 opt_* pragmas (build/scratch/ui/v_hb*.py) either change nothing or much more */
+ * XPOS, YPOS and SPEC (SOCOM 1's). The design object's three inline setters are what give the
+ * target's loads of m_child (written out, 34 instructions differ); an early return for the spec test
+ * is 8 bytes longer. Byte-exact since the UI lane's round 31 (open rounds 18-30, 8 instructions:
+ * the target filled no delay slot from a fall-through block here and padded no label before
+ * "unnamed" -- ~40 pragmas measured, none): SetName's empty test is a TERNARY (zui_spec.h) -- an
+ * `if` statement gives the then-label its alignment nop and MW then moves the next block's first
+ * instruction into the null tests' delay slots */
 CHandlerButtonSpec::CHandlerButtonSpec(_zrdr *rdr) : CButtonSpec(rdr), m_child(0)
 {
     _zrdr *sub = zrdr_findtag(rdr, "SUBORDINATE");
@@ -543,20 +538,12 @@ namespace {
  * made by the given parser (GetControlSpec or GetObjectSpec), the object added only when one is made
  * -- unnamed ones called "unnamed" -- with its CHILDOF (0x383360; SOCOM 1's @unnamed@zui_spec_cpp@
  * LoadDlgObjects, which LoadFromRdr calls twice).
- * OPEN, 0x29C against 0x2B8 (written round 16): the calls, stack slots and stores are the target's;
- * the target lays out the loop head's inlined Count() and Item() ternaries -- and the bottom test's
- * -- as then-arm, `b join`, else-arm, the else's `move ...,zero` copied into the branch's delay slot
- * and the branch retargeted past it, leaving the else block orphaned (seven words in all), where MW
- * here drops the else block and lets the then-arm fall into the join (LoadModels and LoadFromRdr,
- * the same inlines, come out the target's). getSpec's `move a1,type` goes into the jalr's delay
- * slot there, into the null test's here. Tried: the item assigned after its declaration, the spec
- * through a ternary, an `&&`, `(*getSpec)(...)`, the spec declared first; declared `inline` the
- * function is absorbed into LoadFromRdr (0x954). Round 23: LoadModels' target lays out the same
- * Count() diamond (its delay slot filled from above, so the else block stays live) and its Item()
- * as a triangle -- there the else's instruction went into the slot and the dead block and its
- * `b` were removed, as here; the target's LoadDlgObjects alone keeps the dead blocks. Measured:
- * `#pragma optimization_level 3` around it gives 0x2A4, optimize_for_size 0x28C, levels 1 and 2
- * far off. (fseek's orphaned else is a different shape: a plain if/else, its beqz not retargeted.) */
+ * Byte-exact since the UI lane's round 31 (open rounds 16-30: 0x29C against 0x2B8): with SetName's
+ * ternary (zui_spec.h) the target's layout follows -- each inlined Count() / Item() ternary as
+ * then-arm, `b join`, else-arm with the else's `move ...,zero` COPIED into the branch's delay slot
+ * and the dead else block left behind, the null tests' slots empty -- and the CHILDOF through an
+ * inline setter of its own (SetChildOf): its erase()'s tag temporary then sits at SetName's depth,
+ * below SetName's (sp+172 / sp+176; assigned directly, a level shallower, the two swap) */
 void LoadDlgObjects(std::vector<CDesignDlgObj> *objs, _zrdr *rdr, const char *tag,
                     CDlgObjSpec *(*getSpec)(_zrdr *, const char *))
 {
@@ -583,7 +570,7 @@ void LoadDlgObjects(std::vector<CDesignDlgObj> *objs, _zrdr *rdr, const char *ta
                 o.SetPos(x, y);
                 o.m_opacity = opacity;
                 o.SetName(name);
-                o.m_childOf = zrdr_findstring(item, "CHILDOF");
+                o.SetChildOf(zrdr_findstring(item, "CHILDOF"));
             }
         }
     }
@@ -676,15 +663,9 @@ C2D *CCheckBoxSpec::CreateDisplayObj(C2DFont *font, zdb::CTextureRelocMgr *mgr) 
  * written round 29; the object a local whose address the push_back takes, zeroed ahead of the spec
  * test -- its store in that test's delay slot; the counter an int against the unsigned Count(), the
  * item's i*8 recomputed each pass as LoadDlgObjects' -- `unsigned int i` strength-reduces it).
- * OPEN, 0x2C0 against 0x2D8, every call, stack slot and saved register the target's: LoadDlgObjects'
- * open layout (its note) -- the target keeps Item()'s two inlined ternaries as then-arm, `b join`,
- * else-arm with the else's instruction copied into the branch's delay slot and the dead else block
- * left behind (four words), lays out the bottom test's Count() with an empty delay slot and the
- * `sltu` at the join (here copied into both arms), and pads no label before "unnamed"; the two
- * name assignments' tag temporaries take sp+144 / sp+140 the other way round. `#pragma peephole
- * off`, `scheduling off`, `optimization_level 3`: no change (round 30: the target fills no slot from
- * a fall-through block here -- CHandlerButtonSpec's note). The unit's no-target ~vector<CDesignDlgObj
- * *>, ~__vector_imp<CDesignDlgObj *, ..., 1> and ~__vector_pod<Ui> (round 30, read in the object):
+ * Byte-exact since the UI lane's round 31 (open since round 29, 0x2C0 against 0x2D8): SetName's
+ * ternary and SetChildOf, as LoadDlgObjects. The unit's no-target ~vector<CDesignDlgObj *>,
+ * ~__vector_imp<CDesignDlgObj *, ..., 1> and ~__vector_pod<Ui> (round 30, read in the object):
  * nothing calls them -- their only relocations are their .mwcats entries -- so the link dead-strips
  * them, as zui_cleanup.cpp's same three (~CRadioStripSpec inlines the chain): nothing in the target
  * stands for them */
@@ -712,7 +693,7 @@ CRadioStripSpec::CRadioStripSpec(_zrdr *rdr) : CButtonSpec(rdr)
                 o->SetSpec(spec);
                 o->SetPos(x, y);
                 o->SetName(name);
-                o->m_childOf = zrdr_findstring(specRdr, "CHILDOF");
+                o->SetChildOf(zrdr_findstring(specRdr, "CHILDOF"));
                 m_items.push_back(o);
             }
         }
@@ -745,11 +726,9 @@ void CDesignDlgObj::operator=(const CDesignDlgObj &o)
 }
 
 /* the map's corners, its ELEMENTS (each an object spec at an offset, added to the design objects)
- * and its ANIMATIONS (SOCOM 1's; CDlgObjSpec's constructor inlined) *
- * OPEN, 14 instructions, one register pair: in the ELEMENTS loop the target gives the hoisted
- * `elements == 0` bool s0 and the element pointer s1, here the other way round (the ANIMATIONS
- * loop matches). No change from the element declared ahead of the loop, after the offsets, the
- * spec declared ahead of its test, or an inline count helper (12 bytes longer) */
+ * and its ANIMATIONS (SOCOM 1's; CDlgObjSpec's constructor inlined). Byte-exact since the MSL
+ * headers' round 6 (open from the UI's round 5, 14 instructions: the ELEMENTS loop's hoisted
+ * `elements == 0` bool and element pointer took each other's saved registers) */
 CUIMapCtrlSpec::CUIMapCtrlSpec(_zrdr *rdr) : CDlgObjSpec(rdr)
 {
     zrdr_findIPNT2D(rdr, "UPPERLEFT", &m_upperLeft);
