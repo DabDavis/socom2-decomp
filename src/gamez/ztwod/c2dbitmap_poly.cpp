@@ -344,3 +344,114 @@ void C2DBitmapPoly::GetAssetLibs(CLibList &liblist)
     }
     C2D::GetAssetLibs(liblist);
 }
+
+/* a point walk (SOCOM 1's CPtItr: hud_linemap.cpp's line walk derives from it): the step, the point,
+ * whether it is still on the line */
+class CPtItr {
+public:
+    virtual void Advance() = 0;
+    virtual PNT2D GetPt() const = 0;
+    virtual bool IsValid() const = 0;
+};
+
+namespace {
+
+/* a screen point (SOCOM 1's CPnt2D, local to the unit) */
+class CPnt2D : public PNT2D {
+public:
+    CPnt2D() {}
+    CPnt2D(const PNT2D &p) : PNT2D(p) {}
+    CPnt2D(float ax, float ay)
+    {
+        x = ax;
+        y = ay;
+    }
+    CPnt2D &operator=(const CPnt2D &o)
+    {
+        x = o.x;
+        y = o.y;
+        return *this;
+    }
+    CPnt2D operator+(const CPnt2D &b) const { return CPnt2D(x + b.x, y + b.y); }
+    CPnt2D operator-(const CPnt2D &b) const { return CPnt2D(x - b.x, y - b.y); }
+    CPnt2D operator*(float k) const { return CPnt2D(x * k, y * k); }
+};
+
+/* a line's segment and its side offset */
+class CSegment {
+public:
+    CSegment(const CPnt2D &a, const CPnt2D &b) : m_a(a), m_b(b) {}
+
+    CPnt2D m_a;
+    CPnt2D m_b;
+    CPnt2D m_side;
+};
+
+}
+
+/* the wide line: a bitmap polygon for each stretch of the point walk (SOCOM 1's SetSegments), its
+ * corners the line's points offset to either side, mitred where two segments meet */
+void C2DWidePolyline::SetSegments(CPtItr *itr, float width)
+{
+    if (!itr->IsValid())
+        return;
+    CPnt2D ptPrev(itr->GetPt());
+
+    itr->Advance();
+    if (!itr->IsValid())
+        return;
+    const CPnt2D &t = itr->GetPt();
+    CPnt2D ptCur(t);
+    float halfWidth = 0.5f * width;
+    float halfSq = 0.25f * (width * width);
+    CSegment seg(ptPrev, t);
+
+    {
+        float dx = ptCur.x - ptPrev.x;
+        float dy = ptCur.y - ptPrev.y;
+        float k = halfWidth / sqrtf(dx * dx + dy * dy);
+
+        seg.m_side.x = dy * k;
+        seg.m_side.y = dx * -k;
+    }
+    CPnt2D ptL = seg.m_a + seg.m_side;
+    CPnt2D ptR = seg.m_a - seg.m_side;
+    CPnt2D ptNextL, ptNextR;
+
+    for (;;) {
+        itr->Advance();
+        if (!itr->IsValid()) {
+            ptNextL = seg.m_b + seg.m_side;
+            ptNextR = seg.m_b - seg.m_side;
+        } else {
+            const CPnt2D &t2 = itr->GetPt();
+            CPnt2D ptNext(t2);
+            CSegment next(ptCur, t2);
+            {
+                float dx = ptNext.x - ptCur.x;
+                float dy = ptNext.y - ptCur.y;
+                float k = halfWidth / sqrtf(dx * dx + dy * dy);
+
+                next.m_side.x = dy * k;
+                next.m_side.y = dx * -k;
+            }
+            CPnt2D mid = ((next.m_a + next.m_side) + (seg.m_b + seg.m_side)) * 0.5f;
+            CPnt2D d = mid - ptCur;
+            float k = halfSq / (d.x * d.x + d.y * d.y);
+
+            ptNextL = ptCur + d * k;
+            ptNextR = ptCur - d * k;
+            ptCur = ptNext;
+            seg = next;
+        }
+        C2DBitmapPoly *poly = new C2DBitmapPoly;
+
+        poly->SetHasTexture(false);
+        push_back(poly);
+        SetCorners(poly, ptNextL, ptL, ptR, ptNextR);
+        if (!itr->IsValid())
+            return;
+        ptL = ptNextL;
+        ptR = ptNextR;
+    }
+}

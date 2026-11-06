@@ -12,7 +12,7 @@
  * (0x3635C0) and the text cursor's constructor 0x362900 -- MakePacket builds a packet writer and a
  * layout cursor on its stack and loops `while (cursor.More()) { packet.Write(&cursor);
  * cursor.Advance(); }`. Written, OPEN: the cursor's SeekGlyph 0x362350 and Advance 0x3625E0 (one
- * shared FPR spot); not yet: the writer's Write 0x361BD0. Defined in reverse of their image order
+ * shared FPR spot); round 66: the writer's Write 0x361BD0. Defined in reverse of their image order
  * (-inline deferred). */
 
 #include <stdarg.h>
@@ -830,6 +830,116 @@ void C2DStringCursor::SeekGlyph()
         }
         m_p += UTF8CharLen(p);
     }
+}
+
+/* the texture as the packet needs it: a handle's texture, and its GS registers (c2dline.cpp's views) */
+namespace zdb {
+class CTexture {
+public:
+    unsigned char _0[0x30];
+    u_long128 m_gsregs;   // 0x30
+};
+class CTexHandle {
+public:
+    unsigned char _0[0xc];
+    CTexture *m_texture;   // 0xc
+};
+}
+
+/* the scratchpad packet (zsys) */
+u_long128 *zSysSprGetPacket(u_long128 **end);
+
+/* the screen rows' sub-pixel offsets (OVL1 bss 0x49E9A0 and 0x49E9A8), the far U's (.data 0x3E0340, 15:
+ * under a whole texel) -- the names ours */
+static float s_yoffset0;
+static float s_yoffset1;
+static int s_u1offset = 15;
+
+/* the cursor's piece written: the packet closed if it draws from another font texture; a packet begun
+ * if none is open -- the new texture's GS registers first; the colour (a glyph's own, with the
+ * string's alpha), the piece's two corners in UV and screen coordinates, the drop shadow's offset when
+ * the cursor wrote its colour; the packet closed when it is full (0x361BD0) */
+void C2DStringPacket::Write(C2DStringCursor *cursor)
+{
+    if (m_start && m_texture != cursor->m_glyph.Get()->m_18)
+        Flush();
+    if (!m_start) {
+        zdb::CTexHandle *tex = 0;
+
+        if (m_texture != cursor->m_glyph.Get()->m_18) {
+            tex = m_str->m_font->GetTexture(cursor->m_glyph.Get()->m_18);
+            if (!tex)
+                return;
+            m_mgr->PreGetSprPacket(tex);
+        }
+        m_start = zSysSprGetPacket((u_long128 **)&m_1c);
+        m_end = m_start;
+        if (m_texture != cursor->m_glyph.Get()->m_18)
+            *m_end++ = tex->m_texture->m_gsregs;
+        m_tag = m_end;
+        m_end = m_tag + 2;
+    }
+    m_texture = cursor->m_glyph.Get()->m_18;
+
+    float *top = &C2D::m_topx;
+    float *pix = &C2D::m_fXPixel;
+    int *from = cursor->m_glyph.Get()->m_1a ? (int *)&cursor->m_glyph.Get()->m_20 : m_color;
+    int c[4] __attribute__((aligned(16)));
+
+    c[0] = from[0];
+    c[1] = from[1];
+    c[2] = from[2];
+    c[3] = m_color[3];
+    m_end[0] = *(u_long128 *)c;
+    ((int *)m_end)[4] = cursor->m_pieceptr->m_0 << 4;
+    ((int *)m_end)[5] = cursor->m_pieceptr->m_6 << 4;
+
+    float dx = cursor->m_pieceptr->m_place.x;
+
+    if (cursor->m_colorSet)
+        dx += (float)cursor->m_str->m_font->m_40;
+    ((short *)m_end)[16] = (int)(top[0] + pix[0] * (cursor->m_x + dx * cursor->m_str->GetFullScale())) << 4;
+
+    float yoff = s_yoffset0;
+    C2DGlyph *g = cursor->m_glyph.Get();
+    C2DGlyphPiece *piece = cursor->m_pieceptr;
+    short h = piece->m_4 - piece->m_6;
+    float dy = (float)(g->m_12 - piece->m_place.y) + ((float)-h + (float)h * piece->GetScaleY());
+
+    if (cursor->m_colorSet)
+        dy += (float)cursor->m_str->m_font->m_44;
+    float sumy = 0.5f + (cursor->m_y + dy * cursor->m_str->GetFullScale());
+
+    ((short *)m_end)[18] = (int)(top[1] + pix[1] * (sumy + yoff)) << 4;
+    m_end[3] = *(u_long128 *)c;
+    ((int *)m_end)[16] = s_u1offset + ((cursor->m_pieceptr->m_0 + cursor->m_pieceptr->m_2 - 1) << 4);
+    ((int *)m_end)[17] = cursor->m_pieceptr->m_4 << 4;
+    piece = cursor->m_pieceptr;
+
+    float prod = (float)piece->m_2 * piece->m_place.sx;
+    float dx2 = (prod + (float)piece->m_place.x) - 1.0f;
+
+    if (cursor->m_colorSet)
+        dx2 += (float)cursor->m_str->m_font->m_40;
+    ((short *)m_end)[40] = (int)(top[0] + pix[0] * (cursor->m_x + (0.5f + dx2 * cursor->m_str->GetFullScale()))) << 4;
+
+    yoff = s_yoffset1;
+    g = cursor->m_glyph.Get();
+    piece = cursor->m_pieceptr;
+    short h2 = piece->m_4 - piece->m_6;
+    int dy2 = (g->m_12 - piece->m_place.y) - h2;
+
+    if (cursor->m_colorSet)
+        dy2 += cursor->m_str->m_font->m_44;
+    float sumy2 = cursor->m_y + (float)dy2 * cursor->m_str->GetFullScale();
+
+    ((short *)m_end)[42] = (int)(top[1] + pix[1] * (sumy2 + yoff)) << 4;
+    ((int *)m_end)[22] = m_depth;
+    ((int *)m_end)[23] = 0;
+    m_end += 6;
+    m_count += 2;
+    if (!(m_end < (u_long128 *)(m_1c - 96)))
+        Flush();
 }
 
 /* ---- the string tables' global and its wrappers (SOCOM II's: the image's head of the unit,

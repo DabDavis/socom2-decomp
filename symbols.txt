@@ -6521,7 +6521,7 @@
 0x00357E10 0x78 __dt__Q23zdb11CTexManagerFv  # OVL1; the world lane r2: ztex_manager.cpp's tail -- SOCOM 1's ~CTexManager (an inline copy there too, 0x2FD120): the implicit destructor, the buffers' pointer vector's three this-tests; __sinit_ztex_manager.cpp registers it for m_texmanager
 0x00357E90 0x50 SetAA__13C2DBitmapPolyFb  # OVL1; by hand (slot 7 of C2DBitmapPoly's vtable 0x406C30: both triangles' slot 7; the inline's copy c2dbitmap_poly.cpp emits with the vtable; the name ours, as C2DBitmap's)
 0x00357EE0 0x50 SetGouraud__13C2DBitmapPolyFb  # OVL1; by hand (slot 9 of C2DBitmapPoly's vtable 0x406C30: both triangles' slot 9; the inline's copy c2dbitmap_poly.cpp emits with the vtable; the name ours, as C2DBitmap's)
-0x00357F30 0x670 func_00357F30  # OVL1
+0x00357F30 0x670 SetSegments__15C2DWidePolylineFP6CPtItrf  # OVL1
 0x003585A0 0xC8 GetAssetLibs__13C2DBitmapPolyFRQ23C2D8CLibList  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00358670 0x1C push_back__Q23std70__vector_imp<PQ23zdb9CAssetLib,Q23std28allocator<PQ23zdb9CAssetLib>,1>FRCPQ23zdb9CAssetLib  # OVL1; vector<CAssetLib *>'s out-of-line piece, the C2D GetAssetLibs' (the HUD's round 45: emitted byte-exact by the GetAssetLibs candidate on the MSL's round-24 header, `scdiff --target`)
 0x00358690 0x14 __eq__Q33std70__vector_imp<PQ23zdb9CAssetLib,Q23std28allocator<PQ23zdb9CAssetLib>,1>8iteratorCFRCQ33std70__vector_imp<PQ23zdb9CAssetLib,Q23std28allocator<PQ23zdb9CAssetLib>,1>8iterator  # OVL1; vector<CAssetLib *>'s out-of-line piece, the C2D GetAssetLibs' (the HUD's round 45: emitted byte-exact by the GetAssetLibs candidate on the MSL's round-24 header, `scdiff --target`)

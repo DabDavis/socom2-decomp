@@ -61,6 +61,8 @@ public:
 class C2DGlyphPiece {
 public:
     C2DGlyphPiece() : m_0(0), m_2(0), m_4(0), m_6(0) {}
+    /* (const: an operand through it is read first, the packet writer's FPR pair) */
+    float GetScaleY() const { return m_place.sy; }
 
     short m_0;   // 0x0
     short m_2;   // 0x2
@@ -205,5 +207,10 @@ public:
     float m_54;   // 0x54
     CSaferStr m_name;   // 0x58
 };   // 0x64 bytes
+
+inline float C2DString::GetFullScale()
+{
+    return m_scale * m_socom2_78 * m_font->GetScaleFactor();
+}
 
 #endif
