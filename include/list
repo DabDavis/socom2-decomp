@@ -939,7 +939,24 @@ public:
      * temporary, sp+44, then copies it out), CGraph::BuildRoute 0x2D14A0 and CSched_Manager::AddTask
      * 0x34E6B0 (their insert slots below the other temporaries, as now) -- the frame-by-depth model
      * holds, the two call shapes want different depths. `return base::insert(...)` converting to the
-     * wrapper's iterator is the same code as now (AddItem 6 off) */
+     * wrapper's iterator is the same code as now (AddItem 6 off).
+     * WHY, AND THE SHAPE THAT GIVES ADDITEM (the MSL headers round 37; build/p37/four.sh, untracked): MW
+     * inlines breadth first, a pass per level, and an inline's temporaries and copied by-value parameters
+     * are made when it is expanded -- the caller's own first, then pass 0's, pass 1's (mweppc's
+     * CInline_Expand / CInline_SetupArgsExpression). 0x510B90 fixes this insert's base result as its OWN
+     * temporary (pass 0 wherever it is inlined), so AddItem's target -- that result above push_back's two,
+     * the position copy below them -- needs push_back's temporaries a pass deeper (SOCOM 1's two-level
+     * push_back, `base::push_back((const void *const &)x)`: "vc" above) and the position copy deeper still:
+     * `return iterator(insert_node(position.i_.node_, (const void *const &)x));` over
+     * `typename base::iterator insert_node(typename base::node_base *n, const void *const &x) { return
+     * base::insert(typename base::iterator(n), x); }`. With both, AddItem is BYTE-EXACT (zui_2d.cpp's `int i
+     * = 0` after the iterator) and 0x510B90 and BuildRoute hold; over every hand-written unit (master
+     * 2e5dc150, 11,297) +1 (CWhosTalking::Init) / -15: AddTask (its end insert's position a pass deeper,
+     * below the loop's stand-in -- a third stand-in level does not move it) and the thirteen vc costs
+     * listed in README "Level 6, or 8?" (SetIncludeInTargetList, CreateInstance, Add2D, the HUD's Inits ...).
+     * The forwarder alone: +0 / -1 (AddTask). Through the conversion operator instead (`insert_node(typename
+     * base::iterator position, ...)`) BuildRoute is lost too: its assigned insert nests a level and the
+     * base iterator's copy constructor is cut. Not applied -- a level-6 witness for the deeper push_back */
     iterator insert(iterator position, T *const &x)
     {
         return iterator(base::insert(position, (const void *const &)x));
