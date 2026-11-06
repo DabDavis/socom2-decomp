@@ -167,8 +167,12 @@ public:
     static short BuddyCarryStand;   // OVL1 0x3DEE68 (SOCOM 1's 0x47529C: PickupBuddy's)
     static short BuddyCarriedStand;   // OVL1 0x3DEE78 (SOCOM 1's 0x4752A4)
     static short BuddyCarryBody;   // OVL1 0x3DEE80
+    /* (SOCOM 1's BuddyCarriedWalk and BuddyCarriedStep, six and twelve after BuddyCarryStand there,
+     * as here 8 bytes apart: InStateCarried 0x583AF0 pushes them where SOCOM 1's does) */
+    static short BuddyCarriedWalk;   // OVL1 0x3DEE98 (SOCOM 1's 0x4752B4)
     static short BuddyCarryPickup;   // OVL1 0x3DEEA0
     static short BuddyCarriedPickup;   // OVL1 0x3DEEB0
+    static short BuddyCarriedStep;   // OVL1 0x3DEEC8 (SOCOM 1's 0x4752CC)
 };
 
 /* how a SEAL died (SOCOM 1's DWARF, a byte) */
@@ -1927,6 +1931,9 @@ public:
     bool SmoothXZThrottles(float &x, float &z);
     /* whether the throttles leave the SEAL stopped (SOCOM 1's; OVL2 0x586F00, seal_body.cpp) */
     bool IsStopped(float x, float z, float t);
+    /* the move's quadrant taken from the throttles, turned with it (SOCOM 1's; OVL2 0x5858A0, not written
+     * yet: the carry states call it with their z and x throttles' addresses) */
+    void UpdateQuadrant(float &z, float &x, bool b);
     /* the anim after a step: a blend popped when asked and the state set from what is left, then
      * the state's own control (SOCOM 1's took three throttles; OVL2 0x5870E0, seal_body.cpp) */
     CZBodyAnimBlend *SealAnim(bool pop);
@@ -2021,7 +2028,7 @@ public:
     /* the blends popped down to a count, twelve at most; when that worked and asked, the top blend's
      * control cleared and the SEAL asked to go prone (SOCOM 1's ClearStack, after PopBlend: OVL2
      * 0x58A5E0 -- SOCOM II adds the limit; the stances inline it) */
-    void ClearStack(unsigned int count, bool clear);
+    CZBodyAnimBlend *ClearStack(unsigned int count, bool clear);
     /* the blends popped down to a base stance's (anims 1, 18 or 26 on top), twelve at most, and one
      * more when asked; the top blend's control cleared and stance 2 asked; the new top returned
      * (SOCOM 1's ClearToBase: OVL2 0x58A4D0 -- SOCOM II asks IsCurrentBlend and adds the limit) */

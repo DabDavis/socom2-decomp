@@ -1837,7 +1837,7 @@ extern "C" CZBodyAnimBlend *func_0057F880(CZSealBody *seal)
 /* the blends popped down to a count, twelve at most; when that worked and when asked, the top
  * blend's control cleared and the SEAL asked to go prone (OVL2 0x58A5E0, new in SOCOM II: 0x57F310
  * with the count and the flag its arguments) */
-void CZSealBody::ClearStack(unsigned int count, bool prone)
+CZBodyAnimBlend *CZSealBody::ClearStack(unsigned int count, bool prone)
 {
     CZBodyAnimBlend *b = (CZBodyAnimBlend *)func_00555170(&m_blends);
     int n = 12;
@@ -1846,12 +1846,13 @@ void CZSealBody::ClearStack(unsigned int count, bool prone)
     while (BlendCount(stack) > count && n > 0)
         b = PopBlend(), n--;
     if (n <= 0)
-        b = (CZBodyAnimBlend *)func_00555170((char *)this + 0x1c0);
-    else if (prone) {
+        return (CZBodyAnimBlend *)func_00555170((char *)this + 0x1c0);
+    if (prone) {
         if (b)
             b->m_ctrl = 0;
         m_desiredStance = STANCE_PRONE;
     }
+    return b;
 }
 
 /* whether a SEAL this console plays, out of the anim of 0x3DEAE0 and neither its state nor its top
@@ -2323,6 +2324,66 @@ CZBodyAnimBlend *CZSealBody::InStateClimbLadder()
 
     rep->SetPlayback(rate * rep->m_anim->m_1c);
     return b;
+}
+
+/* carried: the throttles' quadrant updated; stopped without turning, the blends popped down to one
+ * (twelve at most) and the top made whole at the move's rate; stopped and turning, the carried step
+ * pushed (state 10) unless on top, the moving flag cleared and the turning set, and the turn
+ * controlled; moving, the carried walk pushed unless on top or the throttle is still, the flags the
+ * other way round and the top made whole at the move's rate (OVL2 0x583AF0: SOCOM 1's InStateCarried,
+ * the same body, its three throttles read at 0x240, 0x244 and 0x23C; the pops twelve at most). Each
+ * push's pops are ClearStack(2, true) inlined -- the carry keeps two blends, as SOCOM 1's (`sltiu at,v1,3`)
+ * -- the first arm's top ClearStack's result: its early return for the twelve spent keeps the inline's
+ * blend in v0 (one result variable for both arms makes MW keep it in top's saved register, a fourth).
+ * OPEN, 2 instructions (round 55, unwritten before): the two playbacks' product -- the target loads the
+ * move throttle (a stack copy: UpdateQuadrant takes its address) into $f0 and the script's rate into
+ * $f1 and multiplies x first, `mul.s $f12,$f0,$f1`; `x * rep->m_anim->m_1c` takes the registers the
+ * other way round (6 off), `rep->m_anim->m_1c * x` gives the registers but multiplies the rate first (as
+ * here, 2 off); through a by-value or const-reference inline, a local anim, a local rate, `+x`, a cast,
+ * a product temporary or `r *= m` all give the 6 */
+extern "C" float data_003F3420;
+
+CZBodyAnimBlend *CZSealBody::InStateCarried()
+{
+    float x = m_240;
+    float z = m_244;
+    float t = m_23c;
+
+    UpdateQuadrant(z, x, true);
+    CZBodyAnimBlend *top = (CZBodyAnimBlend *)func_00555170(&m_blends);
+
+    if (IsStopped(x, z, t)) {
+        static float zero_t = 0.0f;
+
+        if (_close_enough(t, zero_t, data_003F3420)) {
+            top = ClearStack(2, true);
+            top->SetRepresentativeWt(1.0f);
+            ACTIVE_ANIM *rep = top->Representative();
+
+            rep->SetPlayback(rep->m_anim->m_1c * x);
+        } else {
+            if (!IsCurrentBlend((AnimType)AnimTypes::BuddyCarriedStep)) {
+                ClearStack(2, true);
+                func_00588BC0(this, (AnimType)AnimTypes::BuddyCarriedStep, stateCarried, 0, 0);
+            }
+            SetIsMoving(false);
+            SetIsTurning(true);
+            top = TurnControl(t);
+        }
+    } else {
+        if (x != 0.0f && !IsCurrentBlend((AnimType)AnimTypes::BuddyCarriedWalk)) {
+            ClearStack(2, true);
+            top = (CZBodyAnimBlend *)func_00588BC0(this, (AnimType)AnimTypes::BuddyCarriedWalk, stateCarried,
+                                                   0, 0);
+        }
+        SetIsMoving(true);
+        SetIsTurning(false);
+        top->SetRepresentativeWt(1.0f);
+        ACTIVE_ANIM *rep = top->Representative();
+
+        rep->SetPlayback(rep->m_anim->m_1c * x);
+    }
+    return top;
 }
 
 extern "C" float fabsf(float x);
