@@ -2797,6 +2797,10 @@ public:
  * and the image's size). Round 56: its texture names are a ZRDR value with a string table of its
  * own after it -- the box's destructor (0x375710) inlines the teardown: the names' children freed
  * unless packed, then the table and the value destroyed as members (-1), then the texture list */
+/* a column's textures (ours: a class over the pointer vector, ~CUIListBox's four tests) */
+class CColumnTexList : public std::vector<zdb::CTexHandle *> {
+};
+
 class ColumnData {
 public:
     ~ColumnData()
@@ -2813,7 +2817,7 @@ public:
     int m_y;   // 0x10
     unsigned char m_justify;   // 0x14: the string's 0x6A
     float m_scale;   // 0x18: the string look's scale when not 0
-    std::vector<zdb::CTexHandle *> m_textures;   // 0x1c: an image column's, prepared by the box
+    CColumnTexList m_textures;   // 0x1c: an image column's, prepared by the box
     _zrdr m_texNames;   // 0x28: their names, a ZRDR array (read as zui_2d.cpp's variable reads one)
     CSTable m_strings;   // 0x30: the names' strings
 };   // 0x50
@@ -3435,20 +3439,19 @@ void CUIListBox::RemoveAllItems()
  * kept in a register over the delete), then the box's own font under its own test (two null tests,
  * as the target's); then the members: the actions, four plain bitmaps (0x1A0-0x41F), the columns'
  * and items' lists, the plain bitmap's base.
- * OPEN, 2 instructions short (0x54C of 0x554) and one swap (round 56, written): the target tests a
- * column's texture list FOUR times before freeing it -- a class over the pointer vector (zdb::CTexList's
- * shape, round 27's rule), one level more than this plain vector's three -- and with ColumnData's
- * written destructor that chain is six high: `#pragma inline_depth(6)` gives the four tests (0x54C ->
- * the target's column teardown), at level 5 a derived list is called out of line (0x524): a "Level 6,
- * or 8?" witness. Left besides: the items' end node (this+0xC4) wants s2 and the column's erase
- * result s1 -- `igreplay --want 41=s1,42=s2` puts the end node's temporary right after the named
- * locals (35.5-37.5) and the result after it; here the end is CSE'd later than the result */
+ * Byte-exact since round 65 (open since round 56): the target tests a column's texture list FOUR times before freeing it
+ * -- a class over the pointer vector (zdb::CTexList's shape, round 27's rule), one level more than a plain vector's three --
+ * and with ColumnData's written destructor that chain is six high. A MODELLING DEVICE closes it at level 5 with no pragma
+ * (the weapons' round 40: a member's destructor called from the function's own text inlines whole): `delete col` written
+ * out, ColumnData's destructor and its members' in their order; a "Level 6, or 8?" witness, the original likely a plain
+ * `delete col`. The items' end a local iterator: scalarised ahead of the column's erase result, as the replay asked */
 CUIListBox::~CUIListBox()
 {
     std::list<ListItem *>::iterator it;
+    std::list<ListItem *>::iterator e = m_items.end();
 
     it = m_items.begin();
-    while (it != m_items.end()) {
+    while (it != e) {
         ListItem *item = *it;
         std::list<ListItem *>::iterator next;
 
@@ -3463,7 +3466,14 @@ CUIListBox::~CUIListBox()
         ColumnData *col = *c;
         std::vector<ColumnData *>::iterator next = m_columns.erase(c);
 
-        delete col;
+        if (col) {
+            if (!col->m_texNames.m_packed)
+                col->m_texNames.DeleteChildren();
+            col->m_strings.~CSTable();
+            col->m_texNames.~_zrdr();
+            col->m_textures.~CColumnTexList();
+            operator delete(col);
+        }
         c = next;
     }
     if (m_ownFont)
