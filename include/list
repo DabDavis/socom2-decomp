@@ -961,6 +961,19 @@ public:
     {
         return iterator(base::insert(position, (const void *const &)x));
     }
+    /* MODELLING DEVICES, OPT-INS BY CALL SITE (the MSL headers round 39): the deeper pair above's note measures -- SOCOM 1's two-level push_back
+     * and the insert's forwarder, +1 / -15 as push_back and insert themselves -- by other names, for the callers whose inlined temporaries
+     * want it and whose copies are never cut (a cut call would name the device). No other caller, no instance, no cost: CUIListBox::AddItem 0x373F20,
+     * CWhosTalking::Init 0x238F50. A level-6 witness each, as before */
+    void __push_back_deep(T *const &x) { base::push_back((const void *const &)x); }
+    typename base::iterator __insert_node(typename base::node_base *n, const void *const &x)
+    {
+        return base::insert(typename base::iterator(n), x);
+    }
+    iterator __insert_deep(iterator position, T *const &x)
+    {
+        return iterator(__insert_node(position.i_.node_, (const void *const &)x));
+    }
 };
 
 }

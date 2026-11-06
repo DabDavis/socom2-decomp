@@ -11,9 +11,9 @@
  * unit's name is ours. Written so far: the shapes' constructors and destructors,
  * CDIBBox::GetAltitude, SetEdgeVecsAndNorm, LoadPlaneVU0, GetBBoxCorners and (round 10) the edge
  * queries GetEdgeIntersectsY, GetEdgeIntersects and intersect2d (0x2DD690), and
- * DiIntersect::LoadTipAndTail (0x2DD210) and CDIPoly::GetIntersect (both open);
+ * DiIntersect::LoadTipAndTail (0x2DD210) and CDIPoly::GetIntersect (both byte-exact since round 27);
  * CDIPoly::GetAltitude (0x2DD8E0) and CDIBBox::GetIntersect in round 14, SetCDIBBox in round 24
- * (open, registers only) with its two statics, SOCOM 1's bbox_poly and initCDIBBoxOnce.
+ * (byte-exact since round 27) with its two statics, SOCOM 1's bbox_poly and initCDIBBoxOnce.
  * Defined in reverse of their image order (-inline deferred). */
 
 #include "node_world.h"
@@ -176,23 +176,17 @@ int CDIPoly::GetAltitude(DiIntersect *di)
  * core's round 15, build/scratch/core/p1-p7.cpp) is scheduled into the gap MW leaves between the
  * asm's sqc2 and its aliasing lwc1, ahead of the load; plain C code with no such store gives the
  * lwc1-mtc1-nop order (164 matched sites) -- likely a stand-in for whatever the original wrote.
- * OPEN, 15-16 instructions, the target's size (0xC0): the set-up's registers and order only -- the
- * target extracts the count (a3) before it forms the hit's address and keeps p in a1 and the
- * normal's address in v1, ours p a3, normal a1, count v1; all 120 declaration orders and every
- * dependency-respecting initialisation order give 15 at best (build/scratch/core/v_poly_ord*.py).
- * Round 16, the replay (tools/igreplay.py --want n=a3,p=a1,norm=v1,is=a2,last=v0): every hit numbers
- * n first of the locals (33.5) and p after the hit count's shift temporary (v40, >= 40.5) -- p
- * defined after `is`'s address is formed; the target's temporaries differ too (its Intersects load
- * v0, the flags v1), so the flags are read before the hit's address in the original. n first, p
- * late, a dead first definition, the count or the list in a local: 15-21 (build/scratch/core/v_poly3.py);
- * a goto label, a do/while(0) or a label alone between the asm and the test merges away (MW keeps
- * one block: the C zero still goes ahead of the load, v_bbt_lbl.py); round 21: p through an
- * identity inline (numbered late, the trick that fixed buildOrderedCellAtomList) -- 16, 20 with n first */
+ * Byte-exact since the engine core's round 27 (16 off since round 10), read off the colouring: the
+ * target's registers need the list's load above the flags' above p above the hit and the count above
+ * n in MW's numbering, and the pre-RA order flags, count, list, p (the flags' shifts ahead of the count's,
+ * which a count loaded first cannot give): so n is read first, and the count is a named local ahead
+ * of the hit, the list's load a code-generation register. */
 bool CDIPoly::GetIntersect(DiIntersect *di)
 {
-    IntersectStruct *is = &di->m_Intersects[di->m_Cnt];
-    CPnt3D *norm = &is->m_norm;
     int n = m_flags.m_ptcount;
+    int cnt = di->m_Cnt;
+    IntersectStruct *is = &di->m_Intersects[cnt];
+    CPnt3D *norm = &is->m_norm;
     CPnt4D *p = m_pnts;
     CPnt4D *last = p + n - 1;
     float w, z;
@@ -226,31 +220,29 @@ bool CDIPoly::GetIntersect(DiIntersect *di)
     return 1;
 }
 
+/* the back-face mask as the tail's w, through an enum-typed by-value parameter (ours -- the mask's
+ * type in no DWARF -- the engine core's round 27): enums are not propagated, so the mask stays in the
+ * inline's temporary, numbered after the asm's operands and ahead of the 1.0f constant */
+enum BackfaceMask { MASK_NONE = 0, MASK_ALL = 0x7FFFFFFF };
+static inline void SetMaskW(CPnt4D &p, BackfaceMask m)
+{
+    *(int *)&p.w = m;
+}
+
 /* the model-space tip and tail as points (w 1), the tail's w then the back-face mask's bits, loaded
  * into VU0 -- the tip in vf1, the tail in vf2 -- for the polygon queries' microprograms (SOCOM 1's,
- * which wrote the pair to VU0's data memory instead).
- * OPEN, 5 instructions (the right size, every store in the target's order): the mask's load and the
- * 1.0f constant trade v1/a1 (the target loads the mask into a1). The asm's operands listed tail
- * first fixed the address pair; tried for the rest (build/scratch/core/v_ltt*.py): the mask in a
- * const or plain local (top, middle, a dead first definition), the 1.0f in a local before or after,
- * the w through an int pointer, an int array index, unsigned, a float cast, tip built first.
- * Round 16, the replay: the target's registers need the mask's load numbered ahead of the 1.0f
- * constant (v36 below v35: every one of the 15 hits) -- the mask read before the tail's CPnt4D is
- * made; a named local is folded back into the store (README: a local read once), and a dead first
- * definition, a reference to the w or the 1.0f in a local give 6 (build/scratch/core/v_ltt3.py).
- * Round 18: the mask read in an outer inline ahead of the inner constructor (15), set through an
- * inline taking it (6), through a const reference or a pointer to the w (0xA8), from an inline
- * getter (6) (build/scratch/core/v_ltt.py). Round 22: the mask stored FIRST, the tail then given
- * the temporary's x, y and z alone (a 3-word copy through an inline taking the CPnt4D by reference)
- * gives the target's registers (the mask a1, the 1.0f v1) but schedules the mask's store ahead of
- * the this-loads (12); a comma in the constructor's w, the whole load in an inline taking the mask
- * (15) -- build/scratch/core/v_ltt22*.py */
+ * which wrote the pair to VU0's data memory instead). Byte-exact since the engine core's round 27
+ * (5 off since round 10): the mask's load and the 1.0f constant traded v1 / a1 until the mask went
+ * through SetMaskW's enum parameter -- every other mask local, const or dead first definition
+ * folded back into the store, a named enum local took the first number (a3), an `int` parameter
+ * was substituted (build/scratch/core/v_ltt1-3.py). The asm's operands listed tail first fix the
+ * address pair. */
 void DiIntersect::LoadTipAndTail()
 {
     CPnt4D tip, tail;
 
     tail = CPnt4D(m_MTail.x, m_MTail.y, m_MTail.z, 1.0f);
-    *(int *)&tail.w = CDI::m_backface_mask;
+    SetMaskW(tail, (BackfaceMask)CDI::m_backface_mask);
     tip = CPnt4D(m_MTip.x, m_MTip.y, m_MTip.z, 1.0f);
     asm __volatile__ (
         "lqc2 $vf1, 0(%1)\n"
@@ -350,17 +342,12 @@ void CDI::SetEdgeVecsAndNorm()
  * target computes the tip's address first and gives the pair t3/t2).
  * The zero is made inside the asm block, as in CDIPoly::GetIntersect (above), which gives the target's
  * lwc1-mtc1-nop order and its size.
- * OPEN, 2 instructions (the target's size, 0x280): the return 0's `move v0,zero` sits in the `b`'s
- * delay slot where the target has it in the bc1f's -- MW's filler does not hoist it across the
- * branch when the branch's block also writes or reads v0 (the normal's address here: a probe with the
- * normal in a3 hoists it, build/scratch/core/p6.cpp), yet the target's block holds the same v0 uses;
- * tried a C, GCC-style or split asm zero, `else`, a ternary, `!=` first, result locals
- * (build/scratch/core/v_bbt*.py); round 18: the flag a ternary (24), with the return as a ternary
- * or `z != w` (24, 0x278) */
-/* OPEN, 2 instructions (the core lane round 22): the last test's zero -- the target fills bc1f's
- * delay slot with `move v0,zero` (as the early return's beqz is filled), MW fills the following b's;
- * twelve return spellings (ternaries, a result local, if / else, !, != , a bool) and the 0.0f as a
- * C constant instead of the asm's mtc1 the same or longer (build/scratch/core/v_bbox*.py) */
+ * Byte-exact since the engine core's round 27 (2 off since round 14): the return 0's `move v0,zero` in
+ * the bc1f's delay slot. MW's filler does not hoist it across the branch while the branch's scheduling
+ * block also writes or reads v0 (the normal's address); the `.set reorder` after the last store splits
+ * that block off (the zdb world's round 33: a `.set` in an asm block splits MW's scheduling block at no
+ * code cost; ahead of the store or after the block's last instruction it changes nothing; `.set
+ * noreorder` is 8 bytes shorter -- it drops the mtc1's load-delay nop). */
 bool CDIBBox::GetIntersect(DiIntersect *di)
 {
     const CBBox *box = m_bbox;
@@ -399,6 +386,7 @@ bool CDIBBox::GetIntersect(DiIntersect *di)
         qmtc2.i a0, vf0
         sqc2 vf10, 0(is)
         sqc2 vf30, 0(norm)
+        .set reorder
         lwc1 w, 12(is)
         mtc1 zero, z
     }
@@ -416,22 +404,6 @@ int CDIBBox::GetAltitude(DiIntersect *di)
 /* GetBBoxCorners (0x2DCCD0): int_shapes.h's inline, its out-of-line copy generated after
  * SetCDIBBox, the function needing it (the engine core's round 26: a plain definition here before) */
 
-/* a face of the unit box: a quad of four of its corners, its normal worked out (ours, inline: its
- * tree is a level taller than the level -- SetEdgeVecsAndNorm's is five high -- so only its body is
- * inlined and SetEdgeVecsAndNorm is called, as in the target, where written in place MW inlines it;
- * the DI type stored straight, as the target's inline bit-field store, since SetDiType here would be
- * called too) */
-inline void SetFace(CDI *poly, const CPnt3D *a, const CPnt3D *b, const CPnt3D *c, const CPnt3D *d)
-{
-    poly->Allocate(4);
-    poly->m_flags.m_ditype = 2;
-    memcpy(&poly->m_pnts[0], a, 12);
-    memcpy(&poly->m_pnts[1], b, 12);
-    memcpy(&poly->m_pnts[2], c, 12);
-    memcpy(&poly->m_pnts[3], d, 12);
-    poly->SetEdgeVecsAndNorm();
-}
-
 /* a box's eight corners as a member array (ours -- the device of zparticle_source.cpp's FaceCorners
  * and node_model.cpp's BoxCorners: the target builds the corners through CPnt3D()'s out-of-line copy
  * 0x1FB3C0 in a loop, which a member array built by a constructor MW cannot expand whole gives; a
@@ -448,31 +420,24 @@ struct UnitBoxCorners {
  * GetBBoxCorners and SetEdgeVecsAndNorm): the box -0.5..0.5, its corners, and a quad newed into
  * bbox_poly for each face -- 7654, 0374, 2673, 5621, 4510 and 0123 -- each read back from the
  * array into one local (the target's s0 for all six, stored then reloaded).
- * OPEN, 32 instructions (unwritten before round 24; the target's size, 0x52C, its frame, every call
- * and every instruction but registers; build/scratch/core/v_sb*.py): the eight corner addresses'
- * saved registers -- the target gives c7, c6, c5, c4, c0, c3, c2, c1 s1, s2, s6, s7, s3, s5, s4,
- * s1, ours s5, s3, s1, s4, s7, s2, s6, s3 (igreplay --target: those eight nodes alone differ; no
- * single renumbering of one gives the target's, the eight together are past any search budget).
- * The first corner's address is a common subexpression in the target (s3 from face 2 on), but
- * `&c.m_pts[0]` is the object's own address, which MW never holds -- 0x518 in every spelling (a
- * local array, a member array, `c.m_pts + 0`, `&*c.m_pts`, by index through a member, by reference,
- * as PNT3D *, void * or float *) -- and only the no-op integer conversion below makes it a temporary
- * (a 4-byte member ahead of the array does too, but moves the frame 16 bytes: v_sb5.py). Settled on
- * the way: the poly one named local (s0 throughout; SetFace handed bbox_poly[k] straight gives each
- * face its own register), the guard a bool (li 1), the box built field by field before the corners
- * (the target's stores ahead of the loop).
- * Round 25, the numbering read: igdump's pass labels make all eight IRO_CommonSubs temporaries, made
- * at each corner's FIRST REUSE in linear order (mweppc's IroCSE.c: ReplaceCommonSub's MoveCommonSub
- * at the first ReplaceCSE-marked use) -- here c7, c4, c6, c3, c5, c2, c1, c0 (v41-v48, the faces'
- * arguments linearised left to right at their memcpys). Every permutation of the eight among their
- * slots replayed (build/scratch/core/permsb.py, 40,320 in 35 s; the GCC front's igreplay --permute
- * agrees): 8 give the target, all the order c3, c2, c0, c6, c7, c5, c4 with c1 anywhere. Moving only
- * the top ring (c4-c7) to other zones of the numbering (permsb2.py, 196k placements): 243 hits, every
- * one with the whole top ring numbered AFTER the bottom ring's (as a second CSE pass would make them:
- * pass 0 the bottom ring in its first-reuse order c3, c2, c1, c0, pass 1 the top ring as c6, c7, c5,
- * c4 -- which the face order gives only if face 0's and face 1's top-ring uses are not CSE'd in pass
- * 0). Not met by a pointer to corner 4 for the top ring (all faces or face 0 alone: 0x50C / 0x528) or
- * SOCOM 1's one-iteration point loop (its SetPnts: 0x538 / 0x544; v_sbtop.py, v_sbloop.py) */
+ * Byte-exact since the engine core's round 27 (32 off since round 24): the eight corner addresses'
+ * saved registers (c7, c6, c5, c4, c0, c3, c2, c1 in s1, s2, s6, s7, s3, s5, s4, s1) are a pure numbering
+ * -- all eight were IRO_CommonSubs temporaries, numbered by each corner's first reuse (c7, c4, c6, c3,
+ * c5, c2, c1, c0 as the faces read), and `igreplay --permute` (8 of the 40,320 orders, round 25) wants
+ * c3, c2, c0, c6, c7, c5, c4 with c1 anywhere. The source shape: each address held in an int local
+ * (ours, a marked device: a type conversion stops propagation and the common subexpression, so the
+ * local keeps its number; an enum holds it too) declared in that order and assigned at its first use.
+ * The six faces are written out so the assignments land at their memcpys; EndFace keeps
+ * SetEdgeVecsAndNorm called (its tree is a level taller than the level: only EndFace's body is
+ * inlined, where written in place MW inlines it). Settled on the way: the poly one named local (s0
+ * throughout), the guard a bool (li 1), the box built field by field before the corners (the target's
+ * stores ahead of the loop). */
+/* a face's normal worked out (ours, inline; see SetCDIBBox) */
+inline void EndFace(CDI *poly)
+{
+    poly->SetEdgeVecsAndNorm();
+}
+
 void CDIBBox::SetCDIBBox()
 {
     if (initCDIBBoxOnce)
@@ -488,26 +453,63 @@ void CDIBBox::SetCDIBBox()
     box.m_max.x = 0.5f;
     box.m_max.y = 0.5f;
     box.m_max.z = 0.5f;
+    int w3, w2, w0, w6, w7, w5, w4, w1;
     UnitBoxCorners c(&box);
 
     bbox_poly[0] = new CDIPoly;
     poly = bbox_poly[0];
-    SetFace(poly, &c.m_pts[7], &c.m_pts[6], &c.m_pts[5], &c.m_pts[4]);
+    poly->Allocate(4);
+    poly->m_flags.m_ditype = 2;
+    memcpy(&poly->m_pnts[0], (CPnt3D *)(w7 = (int)&c.m_pts[7]), 12);
+    memcpy(&poly->m_pnts[1], (CPnt3D *)(w6 = (int)&c.m_pts[6]), 12);
+    memcpy(&poly->m_pnts[2], (CPnt3D *)(w5 = (int)&c.m_pts[5]), 12);
+    memcpy(&poly->m_pnts[3], (CPnt3D *)(w4 = (int)&c.m_pts[4]), 12);
+    EndFace(poly);
     bbox_poly[1] = new CDIPoly;
     poly = bbox_poly[1];
-    SetFace(poly, (CPnt3D *)(unsigned int)&c.m_pts[0], &c.m_pts[3], &c.m_pts[7], &c.m_pts[4]);
+    poly->Allocate(4);
+    poly->m_flags.m_ditype = 2;
+    memcpy(&poly->m_pnts[0], (CPnt3D *)(w0 = (int)&c.m_pts[0]), 12);
+    memcpy(&poly->m_pnts[1], (CPnt3D *)(w3 = (int)&c.m_pts[3]), 12);
+    memcpy(&poly->m_pnts[2], (CPnt3D *)w7, 12);
+    memcpy(&poly->m_pnts[3], (CPnt3D *)w4, 12);
+    EndFace(poly);
     bbox_poly[2] = new CDIPoly;
     poly = bbox_poly[2];
-    SetFace(poly, &c.m_pts[2], &c.m_pts[6], &c.m_pts[7], &c.m_pts[3]);
+    poly->Allocate(4);
+    poly->m_flags.m_ditype = 2;
+    memcpy(&poly->m_pnts[0], (CPnt3D *)(w2 = (int)&c.m_pts[2]), 12);
+    memcpy(&poly->m_pnts[1], (CPnt3D *)w6, 12);
+    memcpy(&poly->m_pnts[2], (CPnt3D *)w7, 12);
+    memcpy(&poly->m_pnts[3], (CPnt3D *)w3, 12);
+    EndFace(poly);
     bbox_poly[3] = new CDIPoly;
     poly = bbox_poly[3];
-    SetFace(poly, &c.m_pts[5], &c.m_pts[6], &c.m_pts[2], &c.m_pts[1]);
+    poly->Allocate(4);
+    poly->m_flags.m_ditype = 2;
+    memcpy(&poly->m_pnts[0], (CPnt3D *)w5, 12);
+    memcpy(&poly->m_pnts[1], (CPnt3D *)w6, 12);
+    memcpy(&poly->m_pnts[2], (CPnt3D *)w2, 12);
+    memcpy(&poly->m_pnts[3], (CPnt3D *)(w1 = (int)&c.m_pts[1]), 12);
+    EndFace(poly);
     bbox_poly[4] = new CDIPoly;
     poly = bbox_poly[4];
-    SetFace(poly, &c.m_pts[4], &c.m_pts[5], &c.m_pts[1], (CPnt3D *)(unsigned int)&c.m_pts[0]);
+    poly->Allocate(4);
+    poly->m_flags.m_ditype = 2;
+    memcpy(&poly->m_pnts[0], (CPnt3D *)w4, 12);
+    memcpy(&poly->m_pnts[1], (CPnt3D *)w5, 12);
+    memcpy(&poly->m_pnts[2], (CPnt3D *)w1, 12);
+    memcpy(&poly->m_pnts[3], (CPnt3D *)w0, 12);
+    EndFace(poly);
     bbox_poly[5] = new CDIPoly;
     poly = bbox_poly[5];
-    SetFace(poly, (CPnt3D *)(unsigned int)&c.m_pts[0], &c.m_pts[1], &c.m_pts[2], &c.m_pts[3]);
+    poly->Allocate(4);
+    poly->m_flags.m_ditype = 2;
+    memcpy(&poly->m_pnts[0], (CPnt3D *)w0, 12);
+    memcpy(&poly->m_pnts[1], (CPnt3D *)w1, 12);
+    memcpy(&poly->m_pnts[2], (CPnt3D *)w2, 12);
+    memcpy(&poly->m_pnts[3], (CPnt3D *)w3, 12);
+    EndFace(poly);
 }
 
 }
