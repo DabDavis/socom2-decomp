@@ -44,7 +44,15 @@ const T &_max(const T &a, const T &b)
  * numbering a source gives, so its interference differs -- the walk's shape, not its order. The AI
  * core round 34 (build/scratch/ai/v_unt34.py): the count walk as an inline over a map's names --
  * returning its own count (43 off), adding into the caller's by reference (34: as it is), over a
- * const table (62), through a map pointer local (38) -- does not give it either */
+ * const table (62), through a map pointer local (38) -- does not give it either.
+ * The AI core round 36 (igdump --origins / --iro, build/scratch/ai/v_unt36.py): v41 is the push walk's
+ * iterator member made by IRO_ScalarizeClassDataMembers in PASS 0 (its scalar read by `(*n).m_15 ==
+ * k` and `nm = *n`), v42 the cursor IRO_StrengthReduction makes of `this + k * 12` in pass 0's loop
+ * passes, after the scalariser -- so the target's order (the iterator's member numbered after the
+ * cursor) wants the iterator scalarised only in pass 1, as MW does for an object some access conflicts
+ * with in pass 0 (resize<reader>'s end().m_p temporary, ai_mapio.cpp: a named iterator scalarises in
+ * pass 0, the temporary in pass 1). The push walk's iterator stepped by postfix, assigned outside its
+ * for (prefix or postfix) or direct-initialised: still pass 0, 34 off each */
 void CAiMaps::UpdateNameTables()
 {
     for (int k = 1; k < 6; k++) {
