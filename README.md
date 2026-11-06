@@ -11158,7 +11158,9 @@ GsPutIMR(imr), the old mask returned) and sceGsGetIMR 0x1A3098 (one GsGetIMR), t
 Sony's libgraph API names (`u_long` masks, the syscalls' doublewords) -- in a new `sdk/gs_imr.c`, both
 byte-exact over their drafts (libgraph 16 of 19; the last of its objects before libipu's, after
 sceGsExecStoreImage, which ends the demo's libgraph: not in SOCOM 1). 2 rows named, no row newly byte-exact
-(the drafts had them). What the opens showed:
+(the drafts had them); the lane's `src/lib` 2,826 -> 2,828 of 2,968 scored, and after merging master 64a0fa7b
+every hand-written unit (`--files '^(?!auto/)'`) 11,146 byte-exact of 11,543, no regression. What the opens
+showed:
 
 - **The fast log2 0x2517D8 is two unions, each reproduced apart** (`build/scratch/gcc/r39/v_log2*.py`, 23
   shapes, ranked by try.py's distance): the input's `mfc1; and 0xFFFFFFFF` is a float/long union in a
