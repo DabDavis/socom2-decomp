@@ -1057,7 +1057,36 @@ extern "C" {
 bool func_005D4770(CZSealBody *seal, CSealCtrlAi *ai, CTParam *cmd);
 }
 
+/* ai::STATE (SOCOM 1's CTState): an AI state pushed on the SEAL's stack -- or another SEAL's, the
+ * "ai" entity's -- or the stack popped (the layout read off Parse; the names ours but the tags') */
 struct CTState : TASK_HDR {
+    enum KIND { PUSH = 0, POPIF = 1, POPTO = 2, POP = 3 };
+
+    unsigned short m_state;   // 0x8: the AI_STATE pushed, or popped to or by
+    unsigned short m_kind;   // 0xa: a KIND
+    TASK_ENT m_ent;   // 0xc: "ai": the entity whose AI it is, none for the task's SEAL
+    unsigned int m_flags;   // 0x14: the action state's "state"; the rush's flags (4: contact)
+    unsigned char _18[0x1c - 0x18];
+    float m_timer;   // 0x1c: "timer" (the vehicle's and the rush's)
+    union {
+        PNT3D m_offset;   // 0x20: the follow's "offset"
+        float m_range;   // 0x20: the rush's "range"
+    };
+    TASK_NAME m_name;   // 0x2c: the state's entity, vehicle or action -- else the pushed state's name
+
+    /* a block of a state, sized to the name (inline: its name's length 0 for none computed at run
+     * time -- the pops' `strlen(0)` arm emitted unreached) */
+    static CTState *Create(AI_STATE state, const char *name)
+    {
+        unsigned int size = TaskAlign(TaskStrLen(name)) + 48;
+        CTState *cmd = (CTState *)_calloc(size, 1, 0, 0);
+
+        cmd->hdr.data_size = size;
+        cmd->hdr.data_type = ai_cmdid[0];
+        cmd->m_state = state;
+        cmd->m_name.Set(name);
+        return cmd;
+    }
     static _zanim_cmd_hdr *Parse(_zrdr *rdr);
     static bool Tick(_zanim_cmd_hdr *hdr, float *dT);
 };
@@ -3779,6 +3808,94 @@ void CTSound::Begin(_zanim_cmd_hdr *hdr)
     cmd->SetStarted(true);
     cmd->SetBit7(false);
     cmd->m_inst = 0;
+}
+
+/* a state push read: the state by name, and for the follow, the vehicle, the action and the rush the
+ * entity, vehicle or action named (the follow's and the rush's entity, the vehicle and the action
+ * required), the follow's offset (20 ahead unless read), the action's state, the rush's timer, range
+ * and contact (4 unless "nocontact") and the vehicle's timer (none unless read); else a pop -- to or
+ * by a state, or the top; then any of them for the "ai" entity's AI (OVL2 0x5D01F0; SOCOM 1's). The push's name tested on the call's
+ * result (`push`, v0) and copied into the name the state's entity replaces (s3, in the test's delay
+ * slot): the chained `name = push = f()` keeps get_state's argument the copy -- with the copy written
+ * as its own statement MW passes v0 (1 off); the state tested `!= AI_STATE_UNKNOWN` narrows before
+ * the branch as the target does (a plain `if (state)` tests the raw word) */
+_zanim_cmd_hdr *CTState::Parse(_zrdr *rdr)
+{
+    CTState *cmd = 0;
+    const char *push;
+    const char *name = push = zrdr_findstring(rdr, "push");
+
+    if (push) {
+        AI_STATE state = sealai::get_state(name);
+
+        if (state != AI_STATE_UNKNOWN) {
+            bool need = false;
+
+            switch (state) {
+            case AI_STATE_FOLLOW:
+                need = true;
+                name = zrdr_findstring(rdr, "entity");
+                break;
+            case AI_STATE_RUSH:
+                name = zrdr_findstring(rdr, "entity");
+                break;
+            case AI_STATE_USEVEHICLE:
+                need = true;
+                name = zrdr_findstring(rdr, "vehicle");
+                break;
+            case AI_STATE_ACTION:
+                need = true;
+                name = zrdr_findstring(rdr, "action");
+                break;
+            }
+            if (!need || name) {
+                cmd = Create(state, name);
+                cmd->m_kind = PUSH;
+                switch (state) {
+                case AI_STATE_ACTION:
+                    zrdr_finduint(rdr, "state", &cmd->m_flags, 1);
+                    break;
+                case AI_STATE_FOLLOW:
+                    cmd->m_offset.x = 0.0f;
+                    cmd->m_offset.y = 0.0f;
+                    cmd->m_offset.z = 20.0f;
+                    zrdr_findPNT3D(rdr, "offset", &cmd->m_offset);
+                    break;
+                case AI_STATE_RUSH:
+                    zrdr_findreal(rdr, "timer", &cmd->m_timer, 1);
+                    zrdr_findreal(rdr, "range", &cmd->m_range, 1);
+                    cmd->m_flags = 4;
+                    if (zrdr_findtag(rdr, "nocontact"))
+                        cmd->m_flags &= ~4;
+                    break;
+                case AI_STATE_USEVEHICLE:
+                    cmd->m_timer = -1.0f;
+                    zrdr_findreal(rdr, "timer", &cmd->m_timer, 1);
+                    break;
+                }
+            }
+        }
+    } else if (const char *s = zrdr_findstring(rdr, "popif")) {
+        cmd = Create(sealai::get_state(s), 0);
+        cmd->m_kind = POPIF;
+    } else if (const char *s = zrdr_findstring(rdr, "popto")) {
+        cmd = Create(sealai::get_state(s), 0);
+        cmd->m_kind = POPTO;
+    } else if (zrdr_findtag(rdr, "pop")) {
+        cmd = Create(AI_STATE_UNKNOWN, 0);
+        cmd->m_kind = POP;
+    }
+    if (cmd) {
+        const char *ai = zrdr_findstring(rdr, "ai");
+
+        if (ai) {
+            cmd->m_ent.m_name = 0;
+            cmd->m_ent.m_id = CEntity::invalidId;
+            cmd->m_ent.m_type = 0;
+            cmd->m_ent.SetName(ai);
+        }
+    }
+    return &cmd->hdr;
 }
 
 /* an AI valve's compare read: the SEAL valve named first (none for an unknown name), then as
