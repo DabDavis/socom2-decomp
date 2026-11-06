@@ -1,4 +1,3 @@
-/* sc: as=SkbCodeCtorRow__FPUs __ct__11CInit<Us,0>Fv */
 /* zui_hangul.cpp -- the soft keyboard's Korean input (OVL1 0x3903A0-0x3941CF, its initialiser
  * 0x403770 building two vectors and a word at 0x49ED08-0x49ED40; its template tail ends on the two
  * vectors' destructors the initialiser registers, 0x3940F0 and 0x394170, so 0x3941D0-0x39441F --
@@ -16,23 +15,20 @@
  * 0x392A30, the assignment 0x393D30, the copy 0x393D80, init 0x393F00, assign 0x393FB0), with the
  * sequences' resize and deleter, s_rules' and s_complete's destructors and the fixed array's members.
  *
- * THE LEVEL (round 39): `#pragma inline_depth(6)` at the unit's end (it acts through its end state) gives the
- * piece's destructor 0x390760 its jamo string's whole chain -- six this-tests -- with PopPiece 0x390740 and
- * RemovePiece 0x390730 pinned to call it, ~CSkbSplit 0x390690, the pieces' clear 0x3929C0, the composer's matcher,
- * the initialiser 0x403770 (CSkbCompleteVec() six high, inlined whole) and resize / insert<SKBCOMPLETE> 0x392770 /
- * 0x3931A0: 81 of the unit's 89 rows against 75 without it. A MODELLING DEVICE, one more "Level 6, or 8?" witness.
- * Under the pragma every implicit use inlines CInit<Us,0>() 0x392760 and nothing is left to emit, while the target
- * calls it out of line from resize<SKBPIECE> 0x392670 (its one caller, OPEN below): SkbCodeCtorRow, at the unit's
- * top, keeps the row (a modelling device, to go when that resize closes; the row has no draft).
- * OPEN, THE POD'S ACCESSORS: clear<SKBSEQ> 0x393C60 (0xA4 of 0xC8), clear<SKBCOMPLETE> 0x393E40 (0x9C of 0xC0),
- * erase<SKBSEQ> 0x3935F0, erase<SKBCOMPLETE> 0x393030 and resize<SKBPIECE> 0x392670 have every this-test of the
- * target and differ in one thing: the element's pod destructor there calls `alloc()` and `cap()` out of line and
- * holds the data pointer in a saved register across them (`jal 0x392750; lw s2,8(s3); jal 0x392740; jal __dl__`, for
- * the uint pod 0x2B5750 / 0x2B5740), SOCOM 1's `if (data_) alloc().deallocate(data_, cap())`. These are the only
- * callers of those four rows but one, CNodeAction::Close 0x2B55E0 (fts_action.cpp, OPEN with the same note).
- * include/vector's pod destructor has no such calls to leave out of line, at level 5 or 6, so it is the header's
- * shape (the MSL lane's) and not a level. erase and insert<SKBPIECE> 0x392AB0 / 0x392BE0 stay open with the same
- * question and ~SKBPIECE's copies.
+ * THE LEVEL AND THE DESTRUCTORS' SHAPE (the MSL headers round 40, include/vector's `__MSL_POD_DTOR_ARGS`, a modelling device,
+ * a "Level 6, or 8?" witness): `#define __MSL_POD_DTOR_ARGS` ahead of the includes with `#pragma inline_depth(7)` at the unit's end
+ * (it acts through its end state). The pods' destructors are SOCOM 1's `if (data_) alloc().deallocate(data_, cap())`: the two
+ * accessors are the arguments of a whole-statement call, so they wait a pass past deallocate, a wait the height check does not
+ * count (mweppc's CInline_ExpandStatement / CInline_EstimateSizeOfExpr); a chain with the pod's destructor at pass 5 of 7 keeps both
+ * as calls, cap() then alloc(), the data word held across them: clear<SKBSEQ> 0x393C60, clear<SKBCOMPLETE> 0x393E40, erase<SKBSEQ>
+ * 0x3935F0, erase<SKBCOMPLETE> 0x393030 and resize<SKBPIECE> 0x392670, byte-exact with the rows 0x392740 / 0x392750 and 0x2B5740 /
+ * 0x2B5750 named. A class element is destroyed through a `__destroy` level there (the element's destructor a pass deeper than in
+ * resize's temporary, which keeps it whole), so an element one level taller -- SKBPIECE, its destructor now implicit -- is too tall for
+ * clear and erase: __destroy is admitted at the last pass, its call left, `li a1,-1` (0x3929C0, 0x392AB0, PopPiece 0x390740 through the
+ * same step, RemovePiece 0x390730 pinned to call it). The pods' constructors are two levels taller there (the capacity pair's), so
+ * SKBPIECE() is eight high and cut to its own body in resize<SKBPIECE> -- CJamoStr() 0x391280 and CInit<Us,0>() 0x392760 called --
+ * while SKBCOMPLETE() (seven) stays whole in resize<SKBCOMPLETE> 0x392770. insert<SKBPIECE> 0x392BE0 too. The original's level is
+ * deeper still (eight, with the pair's own levels under alloc() and cap(): README "Level 6, or 8?"); this is its fit at seven.
  * Round 23-39, written: the split (CSkbSplit: its constructor 0x391F80, Part 0x391E50, Next 0x3903A0, Sum 0x391E70,
  * OPEN at 12: its note), a sequence's jamo read 0x391E20, the composer 0x391670 and its matcher 0x3919D0 with what
  * they call out of line (the parts' operator[] 0x391D80, rbegin 0x391D40, the reverse iterator's operator* 0x391D30,
@@ -49,6 +45,7 @@
  * pinned (its one caller calls it); SkbHangulType copies each jamo through `(char)` (a push_back
  * argument the target stores to a stack byte) off a reference to the string. */
 
+#define __MSL_POD_DTOR_ARGS
 #include <string.h>
 #include "zui.h"
 #include "zui_skb.h"
@@ -173,15 +170,6 @@ unsigned int SkbRdrCount(_zrdr *rdr);
 JAMO FindJamo(const char *name);
 _zrdr *zrdr_flat_findtag_startidx(const _zrdr *rdr, const char *tag, int start);
 char *zrdr_flat_findstring(const _zrdr *rdr, const char *tag, int start);
-
-/* the code's own constructor out of line (0x392760: THE LEVEL in the file's opening note), under the row's name
- * through the `as=` on the file's first line. A modelling device: at the unit's level every use inlines it, and a specialisation, an
- * explicit instantiation or `dont_inline` over one call emit nothing */
-unsigned short *SkbCodeCtorRow(unsigned short *p)
-{
-    *p = 0;
-    return p;
-}
 
 /* the jamo composed into pieces by the rules (0x391670; the name ours) */
 bool SkbHangulCompose(CSkbPieces *pieces, std::vector<char> *jamo);
@@ -652,17 +640,13 @@ unsigned short CSkbPieces::PrevCode()
     return (int)size() >= 2 ? (unsigned short)(*this)[size() - 2].m_code : 0;
 }
 
-/* a piece's destructor (0x390760; its jamo string's whole chain inlined here, six this-tests; every
- * caller -- PopPiece, the pieces' clear and erase -- calls it out of line: pinned) */
+/* the last piece destroyed (0x390740), through the class vector's destroy level: too tall for it, so it calls the
+ * piece's implicit destructor 0x390760 out of line, as the pieces' clear and erase do (its jamo string's whole
+ * chain inlined there, six this-tests) */
 #pragma auto_inline off
-SKBPIECE::~SKBPIECE()
-{
-}
-
-/* the last piece destroyed (0x390740) */
 void CSkbPieces::PopPiece()
 {
-    (data() + --size_)->~SKBPIECE();
+    __destroy(data() + --size_);
 }
 
 /* (0x390730) */
@@ -720,4 +704,4 @@ void CSkbSplit::Next()
 }
 
 /* a modelling device, a "Level 6, or 8?" witness: THE LEVEL in the file's opening note */
-#pragma inline_depth(6)
+#pragma inline_depth(7)

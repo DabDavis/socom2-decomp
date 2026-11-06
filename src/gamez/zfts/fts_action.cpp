@@ -4,6 +4,7 @@
  * SOCOM II's 0x4003A0 does). OVL1 0x2B4190-0x2B582F. Defined in reverse of their image order
  * (-inline deferred). */
 
+#define __MSL_POD_DTOR_ARGS
 #include <algorithm>
 
 #include "../zentity/zentity.h"
@@ -250,7 +251,7 @@ void _actionValveCallback(CValve *valve, void *data)
  * and its slot left null (std::transform's operation, inlined; the name ours) */
 static inline CNodeAction *_close_action(CNodeAction *action)
 {
-    if (action && action->m_node && action->m_node->m_nodeEx == action)
+    if (action && action->m_node && action == action->m_node->m_nodeEx)
         action->m_node->SetNodeEx(0, false);
     delete action;
     return 0;
@@ -767,3 +768,5 @@ extern "C" void func_002B4190()
 {
     ZAnim.AddCmd("EXECUTE_ACTION", func_002B4230, 0, func_002B41C0, 0);
 }
+
+#pragma inline_depth(7)

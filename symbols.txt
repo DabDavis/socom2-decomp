@@ -3987,8 +3987,8 @@
 0x002B4F40 0x5CC Open__11CNodeActionFPQ23zdb6CWorldPCc  # OVL1; s1:calls by hand (the states lane, round 24): CMission::Open calls it with the world and "actions.rdr" right after the mission cameras, where SOCOM 1's Open calls the static Open__11CNodeActionFPQ23zdb6CWorldPCc (a0 the world, a1 the name, as here)
 0x002B5510 0xC8 Reset__11CNodeActionFv  # OVL1; s1:order by hand (the states lane: after Open as in SOCOM 1; walks m_actions turning each valve off and clearing the action's anim and state)
 0x002B55E0 0x154 Close__11CNodeActionFv  # OVL1; s1:calls by hand (the states lane, round 25): SOCOM 1's CNodeAction::Close -- the action list m_actions (0x440C58) walked, each action's node let go of its NodeEx when it is this one (SetNodeEx(0, 0)), the action deleted and its slot zeroed, the list erased -- called by CMission::Close where SOCOM 1's Close calls Close__11CNodeActionFv (after CSealUnit::UnInit, before CAiMaps::Close)
-0x002B5740 0x8 func_002B5740  # OVL1
-0x002B5750 0x8 func_002B5750  # OVL1
+0x002B5740 0x8 alloc__Q23std38__vector_pod<Ui,Q23std13allocator<Ui>>Fv  # OVL1; the MSL headers round 40: the uint pod's cap(), `jr ra; move v0,a0`, called out of line by the deep destructor shape (`if (data_) alloc().deallocate(data_, cap())`) where the accessors wait a pass past the last: Close 0x2B55E0, clear<SKBCOMPLETE> 0x393E40, erase<SKBCOMPLETE> 0x393030
+0x002B5750 0x8 cap__Q23std38__vector_pod<Ui,Q23std13allocator<Ui>>Fv  # OVL1; the MSL headers round 40: the uint pod's alloc(), called first in the same three (SOCOM 1 0x1735A0)
 0x002B5760 0x70 _actionValveCallback__FP6CValvePv  # OVL1; s1:align
 0x002B57D0 0x60 __dt__Q211CNodeAction9ContainerFv  # OVL1; s1:align
 0x002B5830 0x580 Draw__12C2DMessage_QFPQ23zdb7CCamera  # OVL1; s1:vtable by hand (the states lane, round 49): slot 0xC of C2DMessage_Q's vtable 0x4063B0 (after the destructor 0x2B6EE0, before C2D's inline Draw(matrix) copy), SOCOM 1's Draw__12C2DMessage_QFPQ23zdb7CCamera in the same slot (0x1FF9A0); IsOn, the lines placed and faded, the two backgrounds SetPos'd and drawn, C2D::Draw last as SOCOM 1's; fts_message.cpp, byte-exact
@@ -7377,8 +7377,8 @@
 0x003923E0 0x220 insert__Q23std36__vector_pod<c,Q23std12allocator<c>>FPcUiRCc  # OVL1; the MSL headers round 9: include/vector's 1-byte pod insert (memmove, memset, memcpy), byte-exact as a probe (build/p9/vc1.cpp); zui_hangul.cpp's template tail, the composition's push_backs call it
 0x00392600 0x64 resize__Q23std36__vector_pod<c,Q23std12allocator<c>>FUiRCc  # OVL1; the MSL headers round 9: include/vector's 1-byte pod resize(n, c), insert or erase, byte-exact as a probe (build/p9/vc1.cpp); zui_hangul.cpp's tail
 0x00392670 0xCC resize__Q23std54__vector_imp<8SKBPIECE,Q23std20allocator<8SKBPIECE>,0>FUi  # OVL1; the UI lane round 10: zui_hangul.cpp's tail, the piece vector's resize(n) (a temporary piece inserted through 0x392BE0, else erase 0x392AB0)
-0x00392740 0x8 func_00392740  # OVL1
-0x00392750 0x8 func_00392750  # OVL1
+0x00392740 0x8 alloc__Q23std36__vector_pod<c,Q23std12allocator<c>>Fv  # OVL1; the MSL headers round 40: the char pod's cap() (zui_hangul.cpp: clear<SKBSEQ> 0x393C60, erase<SKBSEQ> 0x3935F0, resize<SKBPIECE> 0x392670)
+0x00392750 0x8 cap__Q23std36__vector_pod<c,Q23std12allocator<c>>Fv  # OVL1; the MSL headers round 40: the char pod's alloc(), called first in the same three
 0x00392760 0xC __ct__11CInit<Us,0>Fv  # OVL1; the UI lane round 10: zui_skb.h's CInit<unsigned short, 0> (SOCOM 1's CInit), the piece's code zeroed; zui_hangul.cpp's tail, the piece vector's resize builds its temporary with it
 0x00392770 0xA8 resize__Q23std62__vector_imp<11SKBCOMPLETE,Q23std24allocator<11SKBCOMPLETE>,0>FUi  # OVL1; the UI lane round 10: zui_hangul.cpp's tail, the completions' resize(n) (insert 0x3931A0, erase 0x393030)
 0x00392820 0xC0 resize__Q23std50__vector_imp<6SKBSEQ,Q23std18allocator<6SKBSEQ>,0>FUi  # OVL1; the UI lane round 10: zui_hangul.cpp's tail, a production's sequence vector resize(n) (insert 0x393790, erase 0x3935F0)

@@ -167,6 +167,9 @@ public:
      * insert (LOD, CDesignDlgObj, the turret's) and once by vector<C2DPoly>::reserve (0x361790,
      * byte-exact so); a smaller element inlines both, as the loops always did. The name ours */
     static void construct(T *p, const T &x) { new (p) T(x); }
+#ifdef __MSL_POD_DTOR_ARGS
+    static void __destroy(T *p) { p->~T(); }
+#endif
 
     __vector_capacity<Allocator> capacity_;
     unsigned int size_;
@@ -226,7 +229,11 @@ void __vector_deleter<T, Allocator>::clear()
     T *last = data_ + size_;
 
     while (first < last)
+#ifdef __MSL_POD_DTOR_ARGS
+        __destroy(--last);
+#else
         (--last)->~T();
+#endif
     size_ = 0;
 }
 
@@ -262,6 +269,16 @@ public:
      * calls the members' constructors out of line (0x3FFCE0), while CHUD's, CCell's and CVisual's
      * constructors and __sinit_compass.cpp still inline theirs whole. A level more instead (the
      * stores in a helper) cuts those four too */
+#ifdef __MSL_POD_DTOR_ARGS
+    void __zero_cap2() { capacity_ = 0; }
+    void __zero_cap() { __zero_cap2(); }
+    __vector_pod()
+    {
+        __zero_cap();
+        size_ = 0;
+        data_ = 0;
+    }
+#else
     __vector_pod()
     {
         unsigned int z = 0;
@@ -270,6 +287,7 @@ public:
         size_ = z;
         data_ = 0;
     }
+#endif
     /* n copies of value: the words zeroed, then init (CVisual's m_lodMesh(0): init called out of line) */
     __vector_pod(unsigned int n, const T &value) { capacity_ = 0; size_ = 0; data_ = 0; init(n, value); }
     __vector_pod(const __vector_pod &x);
@@ -288,6 +306,14 @@ public:
      * `deallocate(data())` checks it a level deeper and cuts 34 deeper destructor chains at level 5:
      * the round 26 measurement); a reference local (`T *&d = data_;` or `T *&d = data();`) is a
      * variable at every site and loses the resize, the test alone through data() all three */
+#ifdef __MSL_POD_DTOR_ARGS
+    ~__vector_pod()
+    {
+        if (data_)
+            alloc().deallocate(data_, cap());
+    }
+    allocator<unsigned int> &alloc() { return *(allocator<unsigned int> *)this; }
+#else
     ~__vector_pod()
     {
         T *p = data();
@@ -295,6 +321,7 @@ public:
         if (p)
             deallocate(p);
     }
+#endif
     /* the assignment, out of class as the char pod's (OVL1 0x259AF0: assign over the other's words
      * unless it is this one) -- what an implicit assignment of a class holding pointer vectors calls
      * (vector<LOD>'s insert 0x35E100, the UI variables' erase 0x2B1A40, the soft keyboard's element
@@ -463,13 +490,28 @@ inline void __pod_fill_n(unsigned short *first, unsigned int n, const unsigned s
 template <class T, class Allocator>
 class __vector_pod {
 public:
+#ifdef __MSL_POD_DTOR_ARGS
+    void __zero_cap2() { capacity_ = 0; }
+    void __zero_cap() { __zero_cap2(); }
+    __vector_pod() { __zero_cap(); size_ = 0; data_ = 0; }
+#else
     __vector_pod() { capacity_ = 0; size_ = 0; data_ = 0; }
+#endif
     __vector_pod(const __vector_pod &x);
+#ifdef __MSL_POD_DTOR_ARGS
+    ~__vector_pod()
+    {
+        if (data_)
+            alloc().deallocate(data_, cap());
+    }
+    Allocator &alloc() { return *(Allocator *)this; }
+#else
     ~__vector_pod()
     {
         if (data_)
             deallocate(data_);
     }
+#endif
     __vector_pod &operator=(const __vector_pod &x);
     static void deallocate(T *p) { operator delete(p); }
     T *&data() { return data_; }
@@ -1565,7 +1607,11 @@ T *__vector_imp<T, Allocator, IsPOD>::erase(T *first, T *last)
     if (n)
         std::copy(last, e, first);
     for (T *p = first + n; p < e; ++p)
+#ifdef __MSL_POD_DTOR_ARGS
+        this->__destroy(p);
+#else
         p->~T();
+#endif
     this->size_ -= last - first;
     return first;
 }
