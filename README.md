@@ -2065,6 +2065,26 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the UI, round 33** (zanim_menu.cpp, the integrator's unit until now, delegated and then kept: fifteen menu
+  handlers unwritten before byte-exact -- UIGetAvailableMPMissions, UIGetMUISPersonaInfo, UICharacterProfile,
+  UIDeleteMUISPersona, UILobbyConnect, UINetCnfOpen, UIGetLadderInfo, UIHardDriveOperation, UISetMPMissionSeq, UIPlayMPEG,
+  UIInitializeOptions, UIStoreOptions, UICheckForcedLaunch, UISwitchMenu, OnListSavedGames -- and the item list's byte-pod
+  insert 0x284BA0; UIDoAllSelCharsHaveEquip1/2/3 named from the UI command table's records 178-180):
+  - returning a bool call's result through a `bool` local keeps the target's `andi 0xff`, `return f();` drops it
+    (UILobbyConnect); a byte global stored from an int call and then tested `== 0` is re-read with lbu, `!x` narrows the
+    value already in the register (UIHardDriveOperation); `int x = (char)f();` sign-extends once, a `char` local
+    re-extends at every use;
+  - a member inline called through an inlined `GetMenuStack()` keeps `this` in a saved register, called on the global
+    directly every access is absolute (UISwitchMenu's Back); a string member read through a `const &` local has its
+    address held in one register -- c_str's dead-copy layout;
+  - a side-effect-free argument expression is re-substituted at each use inside an inline (UICheckForcedLaunch converts
+    its float to unsigned three times inside SetValue, as SOCOM 1's does); `when - zNetGetTime()` wrapped in an inline
+    loads `when` before the call; a local defined just before a call lands in that call's delay slot;
+  - a CSaferStr member is destroyed with a this-test and flag 0, a std::string member with flag -1 and no test;
+    include/vector maps only char and pointers to the pod base, so a vector over another 1-byte scalar (EQUIP_ITEM)
+    needed a `__vector_pod<EQUIP_ITEM>` specialisation (in zanim_menu.cpp) to emit the image's byte-pod insert -- its code
+    the char pod's (0x3923E0) with a string pool of its own; OPEN: SelCharsHaveEquip 0x281160 and
+    UIDoAllSelCharsHaveWeapon 0x2808E0, one saved register each (the word string's address register inside the loop).
 - **Tells from the SEALs, round 53** (CAiSRescued::Tick 0x559070 and CSealCtrlAi::PostMortemPreTick 0x56EE80 -- 10 and 67
   off -- byte-exact, the turret release 0x545EE0, unwritten before, and the blend-stack anim test 0x58A470, open since
   round 41; the turret boarding 0x5463C0 written, OPEN at 0x5F4 of 0x5FC):
