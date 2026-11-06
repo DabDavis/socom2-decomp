@@ -1065,21 +1065,19 @@ static inline void PlaceCaption(CSoftKeyboard *skb, float dy)
  * start to the end speed over the acceleration time and the end speed after it, plus one */
 static inline int SkbRepeats(float held)
 {
-    float frac, rest;
+    float frac, a, rest;
     float d = s_repeatSpeedEnd - s_repeatSpeedStart;
     float t = held - s_repeatDelay;
     bool past = t > 0.0f;
     float e = past ? t : 0.0f;
     bool full = e >= s_repeatAccelTime;
 
-    if (full)
-        e = s_repeatAccelTime;
+    e = full ? s_repeatAccelTime : e;
     frac = e / s_repeatAccelTime;
 
-    if (full)
-        frac = 1.0f;
+    frac = full ? 1.0f : frac;
+    a = e * (s_repeatSpeedStart + 0.5f * d * frac);
     rest = t - s_repeatAccelTime;
-    float a = e * (s_repeatSpeedStart + 0.5f * d * frac);
 
     rest = rest >= 0.0f ? rest : 0.0f;
     float b = s_repeatSpeedEnd * rest;
@@ -1091,29 +1089,23 @@ static inline int SkbRepeats(float held)
  * while bitmap 4 shows, else out and hidden, by its timer (stopped at -1 once done); then, unless
  * the keyboard is scaling, the cursor's blink stepped (bitmap 1 shown for the first half second)
  * and, while a key event is held, the number of its repeats the frame adds returned.
- * Written in the UI lane's round 32 (unwritten before). OPEN, 17 instructions at the target's size
- * (0x3D4), FPR numbering only: (1) the legend's x and width take $f1/$f0 where the target has
- * $f0/$f1 (x converted after the width) -- the in-place `x - t * w` with x an int read before the
- * `if (shown)` (the target's early `lw v1,108(s1)`) is the target's shape otherwise; a float x is
- * 0x3DC, named float or int widths, `-(t * w) + x`, a product local change nothing; (2) the second
- * repeat copy's `a` and `rest` take $f1/$f3 where the target has $f2/$f1 (rest in e's register:
- * `igreplay --movers` finds no numbering of the copy's own nodes giving it, so its graph differs;
- * computing rest after `a` breaks the first copy, 72). Measured on the way: the repeat statics load
- * up front and `end - start` is formed first only with the range computed at the inline's top
- * (start/end locals, parameters: 120); `a + b` from two locals with the clamp between keeps the
- * target's separate mul.s / add.s (one expression fuses to mula.s / madd.s); the clamp as
- * `rest >= 0.0f ? rest : 0.0f` gives the target's bc1t with the product duplicated into both arms
- * (`if (rest < 0.0f)` a bc1f, 6 short); frac and rest declared ahead of e number e after them (the
- * first copy's $f7/$f9/$f8: 29 -> 17); the held event compared as `(SKBKEY)s_keyEvent ==
- * SKBKEY_NONE` loads with lbu (the plain signed char lb). Round 35, read off the FPR replay
- * (igreplay --target, the FPR record): (1) is a NUMBERING -- the width's three code-generation
- * nodes (its lwc1, cvt.s.w and the product) numbered ahead of x's two (mtc1, cvt.s.w) give the
- * target's f1/f0 exactly (`--move 69=66.5 --move 70=66.6 --move 71=66.7`: 7 -> 2 differ), i.e. the
- * product generated before the conversion of x, as PowerPC MW's fp_binary_operator does only for a
- * right operand that holds a call; the width or the whole position through an inline with a body
- * of its own (the weapons' round-36 rule for call arguments) does not do it for a float operand
- * (SkbStartDisplay's legend, the same placement: 1 -> 4 or 1); (2) the second repeat copy's two
- * nodes: no placement of the copy's six nodes found within a 150 s search */
+ * Written in the UI lane's round 32 (unwritten before); byte-exact in round 36. Three changes, each
+ * read off MW's colouring (igdump / igreplay --target): (1) the legend's x and width, $f0/$f1 in the
+ * target, need the width's nodes numbered ahead of x's -- the product wrapped in a no-op `(float)`
+ * cast (the SEALs' round-55 lever: the cast node makes it the heavier operand; `(float)t * w` does it
+ * too), 17 -> 11; (2) the repeat inline's two clamps as ternaries, `e = full ? accel : e` and `frac =
+ * full ? 1.0f : frac` (the if form pads each then-arm with the join's nop and schedules the 0.5f
+ * constant early: if versus ternary, the UI's round 31), 11 -> 7; (3) the second copy's `rest` in
+ * e's register: no numbering gives it (igreplay: rest interfered with e), so the graph differed --
+ * `a` computed BEFORE `rest`, declared uninitialised at the inline's top between frac and rest (or
+ * first), so the first copy keeps its numbering; computed after rest, or declared at its statement
+ * or after rest, it stays 7 off (round 35: 72 with rest computed after `a` and declared there).
+ * Measured before: the repeat statics load up front and `end - start` is formed first only with the
+ * range computed at the inline's top (start/end locals, parameters: 120); `a + b` from two locals
+ * with the clamp between keeps the target's separate mul.s / add.s (one expression fuses to mula.s /
+ * madd.s); the clamp as `rest >= 0.0f ? rest : 0.0f` gives the target's bc1t with the product
+ * duplicated into both arms (`if (rest < 0.0f)` a bc1f, 6 short); the held event compared as
+ * `(SKBKEY)s_keyEvent == SKBKEY_NONE` loads with lbu (the plain signed char lb) */
 int SkbTickDisplay(CSoftKeyboard *skb, float dT)
 {
     if (s_bmp4Timer >= 0.0f) {
@@ -1131,7 +1123,7 @@ int SkbTickDisplay(CSoftKeyboard *skb, float dT)
 
         if (shown)
             t = 1.0f - t;
-        s_bmp3.m_node->SetPosition((float)x - t * (float)s_rect.m_size[0], 0.0f, 0.0f);
+        s_bmp3.m_node->SetPosition((float)x - (float)(t * (float)s_rect.m_size[0]), 0.0f, 0.0f);
     }
     if (s_scaling)
         return 0;
