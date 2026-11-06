@@ -291,6 +291,19 @@ enum LOBBY_STATE {
 class CZOnlineLobby {
 public:
     int RemovePlayerFromClan(const char *name);
+    void SetMissionSequence(unsigned char idx, unsigned char *seq);   /* 0x2F8270 */
+    void ResetMissionSequence();                                      /* 0x2F8230 */
+    void GetLadderInfo();                        /* 0x2EB2C0 (the online lane's names) */
+    void GetLadderRanking();                     /* 0x2EAFB0 */
+    void GetLadderBest(int n);                   /* 0x2EB610 */
+    void GetLadderList(int start, int n);        /* 0x2EB510 */
+    int GetLadderStart();                        /* 0x2EB790 */
+    int GetClanLadderStart();                    /* 0x2EB780 */
+    int GetLadderTotal();                        /* 0x2EB770 */
+    int GetClanLadderTotal();                    /* 0x2EB760 */
+    void GetClanLadderList(int start, int n);    /* 0x2EA5C0 */
+    void GetClanLadderLeaders(int n);            /* 0x2EA6B0 */
+    bool Open(const char *host, int port);   /* 0x2E0030 (the online lane's round 12) */
     bool OnCorrectClanTeam();
     bool GetClan();
     static void PasswordSecurity();
@@ -409,7 +422,10 @@ public:
     CValve *m_10;   // 0x10: a valve AdvanceMPMission tests (a longer wait when on)
     unsigned char _14[0x28 - 0x14];
     CValve *m_pJoinGameValve;   // 0x28 (SOCOM 1's at 0x24)
-    unsigned char _2c[0xac - 0x2c];
+    unsigned char _2c[0x30 - 0x2c];
+    CValve *m_p45SecondClockValve;   // 0x30 (SOCOM 1's at 0x2C): the seconds to the launch
+    CValve *m_pXSecondClockValve;   // 0x34 (SOCOM 1's at 0x30): the seconds of the ten-second launch
+    unsigned char _38[0xac - 0x38];
     int m_persona_object_index;   // 0xac (SOCOM 1's at 0x70)
     unsigned char _b0[0xc8 - 0xb0];
     unsigned int m_c8;   // 0xc8: when the next mission launches (AdvanceMPMission)
@@ -428,6 +444,7 @@ public:
 class CZPersonaState {
 public:
     static void ToggleReady();
+    static void UpdateLocalPersona();   /* 0x2C5360 */
 };
 
 
@@ -501,7 +518,9 @@ public:
     /* (SOCOM II's out-of-line copy at 0x1E7B50; the name ours, as fts_state.h spells it) */
     void SetDefaultMenu(const char *name) { strncpy(m_DefaultMenu, name, 64); }
 
-    unsigned char _0[0x30];
+    unsigned char _0[0x20];
+    CSaferStr BackSoundString;   // 0x20 (fts_state.h's)
+    unsigned char _2c[0x30 - 0x2c];
     char m_DefaultMenu[64];   // 0x30
     unsigned char _70[0x74 - 0x70];
 };
@@ -520,6 +539,18 @@ public:
 class CCinematicState {
 public:
     void SetMovie(const char *movie, unsigned char a, unsigned char b);   /* 0x1EDA60 */
+
+    unsigned char _0[0x29];
+    unsigned char m_29;   // 0x29: interlaced (PlayMPEG's settings, fts_state.h's names)
+    unsigned char m_2a;   // 0x2a: in game
+    unsigned char _2b;
+    int m_2c;   // 0x2c: the audio stream
+    unsigned char _30[0x3c - 0x30];
+    unsigned char m_3c;   // 0x3c: the rectangles given
+    unsigned char m_3d;   // 0x3d: bilinear
+    unsigned char _3e[0x40 - 0x3e];
+    int m_40[4];   // 0x40: the source rectangle
+    int m_50[4];   // 0x50: the destination rectangle
 };
 
 class COurGame : public CGame {
@@ -675,6 +706,31 @@ public:
         strcpy(m_entries[m_top].m_argname, argname);
         m_count++;
     }
+    /* whether there is a screen to go back to (ours: SwitchMenu's `&&` materialises it) */
+    bool CanGoBack() { return !m_history.m_used.empty(); }
+    /* the screen last gone back over, " " with none (SwitchMenu's; ours) */
+    const char *Previous()
+    {
+        return m_history.m_used.empty() ? " " : (const char *)*(m_history.m_used.PtrVec::end() - 1);
+    }
+    /* back to the screen last gone over: an entry for it put on top, its history slot given back to
+     * the pool (SOCOM 1's SwitchMenu wrote it out; SOCOM II's inlines it twice there -- ours) */
+    void Back()
+    {
+        if (!m_history.m_used.empty()) {
+            m_top++;
+            m_entries[m_top].m_id = 5;
+            strcpy(m_entries[m_top].m_argname, Previous());
+            if (!m_history.m_used.empty()) {
+                char *slot = (char *)*(m_history.m_used.PtrVec::end() - 1);
+
+                m_history.m_used.pop_back();
+                m_history.m_free.PtrVec::insert(m_history.m_free.PtrVec::end(), 1, (unsigned int &)slot);
+                strcpy(slot, MENUHISTORY_STRPOOL);
+            }
+            m_count++;
+        }
+    }
 
     CMenuEntry m_entries[40];   // 0x0 (SOCOM 1's 20)
     int m_count;   // 0x820: entries pushed (the names ours)
@@ -683,6 +739,7 @@ public:
     CPopUpDialog *m_popup;   // 0xe40 (SOCOM 1's at 0xA30)
 };
 CMenuStack *GetMenuStack();
+extern CMenuStack g_MenuStack;   /* 0x414ED0 (SOCOM 1's) */
 
 /* the video state (SOCOM 1's _zvid_public; only what the handlers read, at SOCOM II's offsets) */
 struct ZVidMenuView {
@@ -814,9 +871,16 @@ enum LANGUAGE {
     LANG_UNSET = 99
 };
 LANGUAGE LanguageFromName(const char *name);   /* 0x3A40E0 */
+/* the game's partition on the hard disk (util_sonyio.cpp's): mounted (0 or an error), its files
+ * found, and unmounted (0x39D020, not named yet) */
+int HddMountGame();                                                                  /* 0x39D050 */
+int HddFindFiles(const char *pattern, void *out, int size, unsigned int index);     /* 0x39CE80 */
+extern "C" int func_0039D020();
 void SetLanguage(LANGUAGE lang);               /* 0x3A44B0 */
 
 extern "C" int ezNetCnfGetNetcnfifData(const char *device, const char *name, void *out);   /* 0x1E8910 */
+struct NetCnfList;
+extern "C" int ezNetCnfGetCombinationList(char *fname, int type, NetCnfList *list);   /* 0x1E8740 */
 void SetFinalStatsUiVars();          /* 0x2241C0 (st_mpexit.cpp's) */
 bool DMEJoinGameServer();            /* 0x2B83E0 (SOCOM 1's, by UIJoinGameServer) */
 bool MediusInit();                   /* 0x300840 */
@@ -841,6 +905,37 @@ public:
     unsigned char _8[80 - 8];
 };
 
+/* a side's equipment saved for a mission (zNetMediusUniverse.cpp's AcctLoadout, 14 bytes: the
+ * character's skin, the five selections' values, whether it is set) */
+struct AcctLoadout {
+    AcctLoadout() { m_valid = 0; }
+
+    unsigned char m_skin;   // 0x0
+    unsigned short m_primary;   // 0x2
+    unsigned short m_secondary;   // 0x4
+    unsigned short m_equip1;   // 0x6
+    unsigned short m_equip2;   // 0x8
+    unsigned short m_equip3;   // 0xa
+    unsigned char m_valid;   // 0xc
+};
+
+/* the player's account (the online lane's AccountInfoType: only its id) */
+struct AccountInfoType {
+    int AccountID;   // 0x0
+};
+extern AccountInfoType AccountInfo;
+
+/* the lobby's save files on the server (zsav_lobby.h's CLobbySaveManager: only what CharacterProfile
+ * calls; zsav_lobby.cpp's) */
+class CLobbySaveManager {
+public:
+    bool Pending();                                     /* 0x33E7F0 */
+    bool Load(const char *name, int version);           /* 0x33E850 */
+    bool Fetch(const char *name, int a, int b);         /* 0x33EA10 */
+    bool Save(const char *name, int version, int flags);   /* 0x33EB70 */
+};
+CLobbySaveManager *GetLobbySaveManager();   /* 0x2AFBA0 */
+
 /* the account database (the online lane's CZUniversInformationServer::CAcctDB: what the handlers ask
  * of it -- the personas on a host, the patch level, the servers, the news) */
 /* an account's gender: INT-SIZED, as the online lane's (zNetMediusUniverse.cpp, round 14): the
@@ -855,6 +950,19 @@ public:
         void SetAcctInfo(const char *host, int port, const char *name, const char *password,
                          const char *hometown, ACCT_GENDER gender, bool secure);    /* 0x2FD0D0 */
         const char *GetName(const char *host, int port, int i);             /* 0x2FD510 */
+        int IndexOf(const char *host, int port, const char *name);          /* 0x2FB9F0 */
+        int GetUniverseStatus(const char *name);                            /* 0x2FD7E0 */
+        int GetUniversePort(const char *name);                              /* 0x2FD8B0 */
+        const char *GetUniverseDNS(const char *name);                       /* 0x2FD980 */
+        void Delete(const char *host, int port, int index);                 /* 0x2FBAE0 */
+        AcctLoadout *GetLoadout(const char *host, int port, const char *name, const char *mission,
+                                int side);                                  /* 0x2FB470 */
+        void SetLoadout(const char *host, int port, const char *name, const char *mission,
+                        AcctLoadout *loadout, int side);                    /* 0x2FB610 */
+        int GetGender(const char *host, int port, int index);               /* 0x2FD110 */
+        bool GetSavePassword(const char *host, int port, int index);        /* 0x2FD210 */
+        const char *GetTown(const char *host, int port, int index);         /* 0x2FD310 */
+        const char *GetPassword(const char *host, int port, int index);     /* 0x2FD410 */
         const char *GetPatchURL(const char *level);                         /* 0x2FD610 */
         bool VerifyPatchLevel(const char *level);                           /* 0x2FD6E0 */
         const char *GetUniverseDescription(unsigned int server);            /* 0x2FDA50 */
@@ -945,8 +1053,18 @@ struct MPMissionInfo {
     std::string m_name;   // 0x0
     unsigned char m_multiplayer;   // 0xc
     int m_number;   // 0x10
+    unsigned char m_kind;   // 0x14: the game's kind (GetMultiValue's byte; 5 the one with respawns)
+    unsigned char _15[0x1c - 0x15];
+    unsigned char m_on_hdd;   // 0x1c: read off the hard disk (Purge erases these)
+};
+/* a mission's description as the hard disk's files hold it (39 bytes; HddFindFiles' copy) */
+struct MissionDesc {
+    unsigned char m_data[39];
 };
 extern std::vector<MPMissionInfo *> data_00441650;
+/* whether a mission is its name's newest: the list's Find of its name gives it back (fts_missionlist's
+ * 0x2C94F0, GetRandom's pool test; not named yet) */
+bool func_002C94F0(MPMissionInfo *m);
 /* the same object as fts_missionlist.cpp's CMultiMissionList (a pointer vector of the missions,
  * OVL1 0x2C8840's this): only its random pick and the mission after a given one */
 class CMultiMissionList : public std::vector<MPMissionInfo *> {
@@ -956,6 +1074,9 @@ public:
     MPMissionView *GetNext(int id, bool multi);
     /* a mission's multiplayer kind, by its id (fts_missionlist.cpp's, 0x2C8B80) */
     signed char GetMultiValue(int id);
+    /* the hard disk's missions erased (0x2C90B0); a downloaded one entered (0x2C91A0) */
+    void Purge();
+    MPMissionInfo *Add(const MissionDesc *desc);
 };
 bool func_002F0EA0(CZOnlineLobby *lobby, C2D *list);
 bool func_002F11F0(CZOnlineLobby *lobby, C2D *list);
@@ -965,7 +1086,9 @@ bool func_002F11F0(CZOnlineLobby *lobby, C2D *list);
 struct NetCnfEntry {
     int m_type;   // 0x0
     unsigned char _4[4];
-    char m_name[0x60];   // 0x8
+    char m_name[32];   // 0x8 (Sony's ezNetCnf combination: the combination's name, then the
+    char m_ifc[32];    // 0x28   interface's and the device's)
+    char m_dev[32];    // 0x48
 };
 
 struct NetCnfList {
@@ -987,6 +1110,8 @@ extern char data_003DF360[];                                              /* (a 
 
 /* SOCOM II's: whether the player is a terrorist, whether the player was banned */
 bool func_002C31A0();
+bool func_002C3080();
+bool func_002C2FA0();
 bool func_002C3550();
 }
 
