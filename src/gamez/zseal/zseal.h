@@ -118,6 +118,10 @@ public:
     static short RifleM203Reload;   // OVL1 0x3DEBF8 (SOCOM 1's 0x47519C)
     static short Stand2Prone;   // OVL1 0x3DEC48
     static short PistolStand2Prone;   // OVL1 0x3DEC50
+    /* (SOCOM 1's MovingRifle2Pistol, 0x4751D4, three after Stand2Prone in both builds: AddBlendOverlay
+     * tests the type against it after the two moving reloads where SOCOM 1's does -- the SEALs, round 47;
+     * the spelling round 53's) */
+    static short MovingRifle2Pistol;   // OVL1 0x3DEC68
     /* (SOCOM 1's SwapRifle, six after Stand2Prone in both builds: the weapon swap's blends,
      * 0x57D5E0, are looked up again unless it is on the stack) */
     static short SwapRifle;   // OVL1 0x3DEC78
@@ -241,7 +245,12 @@ public:
     /* the items held, an item set at an index, its magazines and rounds, its ammunition set -- with a
      * count of rounds (kit.h's; OVL2 0x5BE030, 0x5BDFB0, 0x5C4970, 0x5C3C10, 0x5BDE20, 0x5BDEC0) */
     int GetNumItems() const;
+    /* the selected item's index (SOCOM 1's; OVL2 0x5BE040, kit.h's -- 0x545EE0 reads it) */
+    int GetSelectedItemNum();
     bool SetItem(unsigned int index, EQUIP_ITEM item);
+    /* a weapon set at an index with its ammunition and rounds (kit.h's; OVL2 0x5BC5D0 -- the turret's
+     * boarding 0x5463C0 hands the gunner the turret's) */
+    bool SetItem(unsigned int index, class CZWeapon *w, void *ammo, int rounds);
     int GetNumMags(int index);
     int GetAmmoTotal(int index);
     bool SetItemAmmo(unsigned int index, void *ammo);
@@ -2351,7 +2360,8 @@ public:
     /* the entity the SEAL works -- a turret when its type is 3 (0x543200-0x5433C0); 0x5A8850 tests
      * it first (the name ours) */
     CEntity *m_eb8;   // 0xeb8
-    unsigned char _ebc[0xec0 - 0xebc];
+    /* the kit's item to go back to off the turret (0x545EE0 selects it again; the name ours) */
+    int m_ebc;   // 0xebc
     CCompassAnchor *m_mpbomb_anchor;   // 0xec0 (SOCOM 1's 0xdb4)
     CCompassAnchor *m_mpbase_anchor;   // 0xec4 (SOCOM 1's 0xdb8)
     /* the SEAL's own marker on the compass ("FRIENDLY", "ABLE", "BRAVO"; 0x5434B0 makes it once --

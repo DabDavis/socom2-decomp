@@ -18,7 +18,14 @@
  *   v0 and a move into val's t0 (the decimal digit's goes straight). Its isxdigit tests an
  *   UNINITIALISED variable for the digit case -- the target computes `(u_char)(x - '0') < 10` of a
  *   register nothing sets (t5), hoisted out of the loop, which only an uninitialised local in the
- *   inline reproduces (the size is right only so). */
+ *   inline reproduces (the size is right only so). GCC round 39a: the sizes agree only by
+ *   accident -- the target is a word longer in the hex arm (`addu v0,v0,a1; move t0,v0`) and has no
+ *   alignment nop before the final loop, which this compile's shorter arm needs. Both arms compute
+ *   (val << 4) - 'a' / - 'A' in v0 and join; the target's `+ (c + 10)` was in each arm (cross-jumped
+ *   after reload into one add, its result a COND_EXPR temporary then copied to val), this one's is
+ *   after the join, combined into val. Thirteen spellings (the sum's association and casts, islower
+ *   as a macro, a char or int `c`, the shift as its own statement, the constant in a local:
+ *   build/scratch/gcc/r39/v_inet_network.py) compile to this code or further (d=11 to 67). */
 
 typedef unsigned int u_int;
 typedef unsigned short u_short;

@@ -545,7 +545,10 @@ inline int CZAnimMain::NewAnimSet(int index)
  * list and the set's offset take each other's v0 / v1 (the found path's `&list[index]` through a
  * pointer local fixed the same swap there; a pointer local after the call, 0x23C; `(list +
  * index)->`, the same 7) -- build/scratch/core/v_gasi19*.py; round 21: `(index + list)->`, `index[list]`, the same with n -- 6
- * (MW canonicalises the add: v_gasi21.py) */
+ * (MW canonicalises the add: v_gasi21.py); round 22, the replay: the list's load (v97) must be
+ * numbered after the offset's five temporaries (v98-v102: `--move 97=102.5` gives the target) --
+ * a byte-offset local, the index assigned in the subscript, the list or the store through inline
+ * wrappers: 6 or 0x23C (build/scratch/core/v_gasi22.py) */
 int CZAnimMain::GetAnimSetIndex(const char *name, bool create)
 {
     for (int i = 0; i < m_animset_count; i++) {

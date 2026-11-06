@@ -228,7 +228,11 @@ int CDIPoly::GetIntersect(DiIntersect *di)
  * definition, a reference to the w or the 1.0f in a local give 6 (build/scratch/core/v_ltt3.py).
  * Round 18: the mask read in an outer inline ahead of the inner constructor (15), set through an
  * inline taking it (6), through a const reference or a pointer to the w (0xA8), from an inline
- * getter (6) (build/scratch/core/v_ltt.py) */
+ * getter (6) (build/scratch/core/v_ltt.py). Round 22: the mask stored FIRST, the tail then given
+ * the temporary's x, y and z alone (a 3-word copy through an inline taking the CPnt4D by reference)
+ * gives the target's registers (the mask a1, the 1.0f v1) but schedules the mask's store ahead of
+ * the this-loads (12); a comma in the constructor's w, the whole load in an inline taking the mask
+ * (15) -- build/scratch/core/v_ltt22*.py */
 void DiIntersect::LoadTipAndTail()
 {
     CPnt4D tip, tail;
@@ -341,6 +345,10 @@ void CDI::SetEdgeVecsAndNorm()
  * tried a C, GCC-style or split asm zero, `else`, a ternary, `!=` first, result locals
  * (build/scratch/core/v_bbt*.py); round 18: the flag a ternary (24), with the return as a ternary
  * or `z != w` (24, 0x278) */
+/* OPEN, 2 instructions (the core lane round 22): the last test's zero -- the target fills bc1f's
+ * delay slot with `move v0,zero` (as the early return's beqz is filled), MW fills the following b's;
+ * twelve return spellings (ternaries, a result local, if / else, !, != , a bool) and the 0.0f as a
+ * C constant instead of the asm's mtc1 the same or longer (build/scratch/core/v_bbox*.py) */
 int CDIBBox::GetIntersect(DiIntersect *di)
 {
     const CBBox *box = m_bbox;

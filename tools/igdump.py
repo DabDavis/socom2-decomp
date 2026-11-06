@@ -28,7 +28,9 @@ Metrowerks build (or GCC: tools/ccdump.py reads cc1's own dumps) is refused.
 
 One record per colouring (a function is coloured once per class, again after spill code):
 `cls`, `nreal` (hard registers, indices below it), `nused`, `proc` (the function's own name, as
-`name@0xK`: the word of its Object that held it), `order` (the colouring order: the simplify
+`name@0xK`: the word of its Object that held it -- the bare identifier, `Read@0x8`, `__dt@0x8`),
+`link` (GCC round 39a: its mangled name, the Object's +0x30, `Read__Q23zdb5CGridFRQ23zdb9CSaveLoad`;
+a C function's is its name), `order` (the colouring order: the simplify
 stack popped -- reversed, the push order), `nodes` (per node `i`, `flags` and `deg0` and `nb` --
 its neighbours -- as buildinterferencegraph left them, `color` and `fl` after colouring: fl & 1 is
 spilled, flags & 4 coalesced), `names` (a virtual register's variable, where it has one: a named
@@ -43,6 +45,16 @@ variable's `name`, the `size` and `align` it was given -- a char or bool spilled
 quadword -- `before` and its `off`set, negative), `remat` (spilled nodes rematerialised: no slot).
 A function's records are written once its frame is laid out. tools/igreplay.py replays a record's
 simplify/colour offline, and its slots; tools/igvar.py compares source variants by what this records.
+
+Every record is named (GCC round 39a, the engine core's round 21): names are read in full -- the
+reader took 24 bytes and refused a name that filled them, so a function named in 24 characters or
+more had `proc` null (buildOrderedCellAtomList, SetTraversalBoundaryOrdered) and `-f '^$' -r N` was
+the only way to select it; a static initialiser's, padded with blanks in its node, was null too
+(`__sinit_zmath_pnt3d.cpp`), and zlib's inflate_blocks_sync_point (25) was named `8G%l@0x28`, bytes
+of another word the short reader took for a name. `-f` (here and in tools/igreplay.py; tools/igvar.py's PROC) is a regex
+SEARCHED in the bare name -- `proc` with its `@0xK` suffix stripped -- so `-f '^Read$'` is one function's records
+and `-f Read` every name containing it; `--link` searches the mangled name instead (two `__dt`s apart:
+`--link '^__dt__Q23zdb11CNodeVector'`).
 
 Writes build/ig/<stem>.jsonl (or -o); the scratch object is deleted.
 """
@@ -99,6 +111,35 @@ if gdb is not None:     # ------------------------------------------------------
             nodes.append(dict(i=i, reg=reg, color=color, flags=flags, degree=degree, nb=nb))
         return cls, nreal, nused, base, nodes
 
+    # A name is read in full (GCC round 39a): the reader took 24 bytes and refused a name that filled
+    # them, so every function -- or variable -- named in 24 characters or more went unnamed
+    # (buildOrderedCellAtomList, SetTraversalBoundaryOrdered: `-f '^$'` was the only way to select
+    # them). IGDUMP_NAME_MAX is the canary's negative control (24: the old reader).
+    NAME_MAX = int(os.environ.get('IGDUMP_NAME_MAX', '4096'))
+
+    def hashname(p):
+        """The name of the HashNameNode at p (NUL-terminated at +0xa), or None: unreadable, empty,
+        not printable, or NAME_MAX bytes without a NUL."""
+        z = b''
+        while len(z) < NAME_MAX:
+            n = min(64, NAME_MAX - len(z))
+            try:
+                t = mem(p + 0xa + len(z), n)
+            except Exception:
+                return None
+            cut = t.split(b'\0')[0]
+            z += cut
+            if len(cut) < n:
+                break
+        else:
+            return None
+        # a static initialiser's name is padded with spaces in its node (`__sinit_zmath_pnt3d.cpp` and
+        # some hundred blanks before the NUL), which the reader refused: those records were unnamed too
+        z = z.rstrip(b' ')
+        if z and all(32 < c < 127 for c in z):
+            return z.decode()
+        return None
+
     def objname(obj):
         # an Object's name: each word of its first 0x40 bytes tried as a HashNameNode (name at +0xa)
         if not obj:
@@ -110,13 +151,23 @@ if gdb is not None:     # ------------------------------------------------------
         for k in range(0, 0x40, 4):
             p = struct.unpack_from('<I', raw, k)[0]
             if 0x400000 <= p < 0xffffffff:
-                try:
-                    t = mem(p + 0xa, 24)
-                except Exception:
-                    continue
-                z = t.split(b'\0')[0]
-                if z and all(32 < c < 127 for c in z) and len(z) < 24:
-                    return f'{z.decode()}@{k:#x}'
+                z = hashname(p)
+                if z:
+                    return f'{z}@{k:#x}'
+        return None
+
+    def linkname(obj, proc):
+        # the function's mangled (link) name: its Object's +0x30, a HashNameNode -- the bare name for
+        # a C function, NAME__... for C++ (`buildOrderedCellAtomList__Q23zdb5CGridFPC6CPnt3D`); None
+        # when the word there is no name that spells this function's
+        try:
+            p = u32(obj + 0x30)
+        except Exception:
+            return None
+        bare = (proc or '').split('@0x')[0]
+        z = hashname(p) if 0x400000 <= p < 0xffffffff else None
+        if z and bare and (z == bare or z.startswith((bare + '__', bare + '<'))):   # a template's NAME<...>__F
+            return z
         return None
 
     def pcode():
@@ -147,7 +198,9 @@ if gdb is not None:     # ------------------------------------------------------
     class BuildBP(gdb.Breakpoint):
         def stop(self):
             esp = int(gdb.parse_and_eval('$rsp')) & 0xffffffff
-            state['proc'] = objname(u32(esp + 4))
+            fobj = u32(esp + 4)
+            state['proc'] = objname(fobj)
+            state['link'] = linkname(fobj, state['proc'])
             return False
 
     class SimplifyBP(gdb.Breakpoint):
@@ -200,6 +253,8 @@ if gdb is not None:     # ------------------------------------------------------
                                    color=n['color'], fl=n['flags']) for n in nodes],
                        names=names, code=pcode(), reserved=state.get('reserved'),
                        costs=state.get('costs'), remat=state.get('remat'), proc=state.get('proc'))
+            if state.get('link'):
+                rec['link'] = state['link']
             # held until the function's frame is laid out (or the compile ends): a colouring that
             # spilled is followed by the spilled nodes' stack slots, and the frame's top comes last
             state.setdefault('pending', []).append(rec)
@@ -363,12 +418,16 @@ else:                   # ------------------------------------------------------
         """The record's function name without igdump's `@0xK` suffix ('' for none)."""
         return (rec.get("proc") or "").split("@0x")[0]
 
-    def select(recs: list[dict], rx: str | None = None, cls: int | None = 0) -> list[tuple[int, dict]]:
-        """(index in the dump, record) of the records whose function matches `rx` (a regex on the bare
-        name), of class `cls` (None: every class)."""
+    def select(recs: list[dict], rx: str | None = None, cls: int | None = 0,
+               link: str | None = None) -> list[tuple[int, dict]]:
+        """(index in the dump, record) of the records whose function matches `rx` (a regex searched in
+        the bare name: `proc` with its `@0xK` suffix stripped) and `link` (one searched in the mangled
+        name, `link`: a record without one never matches), of class `cls` (None: every class)."""
         pat = re.compile(rx) if rx else None
+        lpat = re.compile(link) if link else None
         return [(k, r) for k, r in enumerate(recs)
-                if (cls is None or r["cls"] == cls) and (pat is None or pat.search(proc_name(r)))]
+                if (cls is None or r["cls"] == cls) and (pat is None or pat.search(proc_name(r)))
+                and (lpat is None or lpat.search(r.get("link") or "") and r.get("link"))]
 
     def reg_name(cls: int, c: int) -> str:
         if not 0 <= c < 32:
@@ -430,7 +489,9 @@ else:                   # ------------------------------------------------------
         ap.add_argument("unit", type=Path, nargs="?", help="the unit to compile (or --read a dump)")
         ap.add_argument("-o", "--out", type=Path, help="the dump (default build/ig/<stem>.jsonl)")
         ap.add_argument("--read", type=Path, help="show an earlier dump instead of compiling")
-        ap.add_argument("-f", "--func", help="show the records of the functions matching this regex")
+        ap.add_argument("-f", "--func", help="show the records of the functions matching this regex (searched in "
+                        "the bare name igdump read, its @0xK suffix stripped: `-f '^Read$'`)")
+        ap.add_argument("--link", help="only the records whose MANGLED name matches this regex (`link`: GCC round 39a)")
         ap.add_argument("--cls", type=int, default=0, help="register class: 0 GPR (default), 1 FPR, -1 every")
         ap.add_argument("-a", "--all", action="store_true", help="every virtual register, not only the telling")
         ap.add_argument("--saved", action="store_true", help="per record: the spilled and the saved registers' holders")
@@ -447,7 +508,7 @@ else:                   # ------------------------------------------------------
         else:
             ap.error("a unit, or --read DUMP")
         cls = None if a.cls < 0 else a.cls
-        sel = select(recs, a.func, cls)
+        sel = select(recs, a.func, cls, a.link)
         print(f"{out}: {len(recs)} colourings, {sum(1 for r in recs if r['cls'] == 0)} GPR; "
               f"{len(sel)} selected")
         for k, r in sel:
@@ -455,7 +516,7 @@ else:                   # ------------------------------------------------------
                 sp, own = saved(r)
                 print(f"[{k}] {proc_name(r)} cls {r['cls']}: spilled {' '.join(sp) or '-'}; "
                       + " ".join(f"{reg}={'/'.join(v)}" for reg, v in own.items()))
-            elif a.func or a.all:
+            elif a.func or a.link or a.all:
                 print("\n".join(show(k, r, a.all)))
             else:
                 print(f"[{k}] {proc_name(r) or '?'} cls {r['cls']}: {r['nused'] - r['nreal']} virtual")

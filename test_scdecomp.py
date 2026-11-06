@@ -1475,6 +1475,79 @@ def test_igdump_records_mws_colouring():
             ck(why in str(e), f"{unit.name} refused: {why} ({str(e)[:80]})")
 
 
+IG_LONG_FIXTURE = """extern "C" int ig_g(int);
+
+struct CIgProbe {
+    int buildOrderedCellAtomList(int a);
+};
+
+int CIgProbe::buildOrderedCellAtomList(int a)
+{
+    int first = ig_g(a);
+    return first + ig_g(first);
+}
+
+extern "C" int ig_a_function_named_past_24_characters(int a)
+{
+    int first = ig_g(a);
+    return first + ig_g(first);
+}
+"""
+
+
+def test_igdump_names_every_record():
+    """tools/igdump.py names every record (GCC round 39a, the engine core's round 21: igdump wrote no
+    name for buildOrderedCellAtomList, so `igreplay -f` selected it only as `-f '^$' --cls 0 -r N`):
+    names are read in full -- the reader took 24 bytes and refused a name that filled them -- and each
+    record carries the function's mangled name too (`link`, the Object's +0x30). A C++ method named in
+    exactly 24 characters and a C function in 38 are named, bare and mangled; `-f` searches the bare
+    name with igdump's `@0xK` suffix stripped, `--link` the mangled one, in igdump and igreplay alike;
+    a static initialiser (its name blank-padded in its node) is named. The negative: with the old
+    reader's 24 bytes (IGDUMP_NAME_MAX=24) both records are unnamed again and `-f` selects none."""
+    import contextlib
+    import io
+    import igdump
+    import igreplay as R
+    src = _ig_fixture("ig_long.cpp", IG_LONG_FIXTURE)
+    want = {"buildOrderedCellAtomList": "buildOrderedCellAtomList__8CIgProbeFi",
+            "ig_a_function_named_past_24_characters": "ig_a_function_named_past_24_characters"}
+    recs, out = igdump.dump(src, BUILD / "ig_long.jsonl")
+    got = {igdump.proc_name(r): r.get("link") for r in recs if r["cls"] == 0}
+    ck(got == want, f"both functions named, bare and mangled ({got})")
+    ck(all(r.get("proc") for r in recs), "every record named")
+    ck(len(igdump.select(recs, "^buildOrderedCellAtomList$", 0)) == 1
+       and len(igdump.select(recs, None, 0, link=r"^buildOrderedCellAtomList__8CIgProbeFi$")) == 1
+       and not igdump.select(recs, None, 0, link=r"^buildOrderedCellAtomList$"),
+       "-f searches the bare name, --link the mangled one")
+
+    def replay(*args):
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            rc = R.main([str(out), "--cls", "0", *args])
+        return rc, buf.getvalue()
+    rc, text = replay("-f", "^buildOrderedCellAtomList$")
+    ck(rc == 0 and "1 of 1 records replay exactly" in text and "] buildOrderedCellAtomList cls 0" in text,
+       f"igreplay -f selects it by its bare name ({text.strip()[-80:]!r})")
+    rc, text = replay("--link", "^ig_a_function_named_past_24_characters$")
+    ck(rc == 0 and "1 of 1 records replay exactly" in text, f"igreplay --link selects by the mangled name")
+    srecs, _ = igdump.dump(HERE / "src" / "gamez" / "zmath" / "zmath_pnt3d.cpp", BUILD / "ig_pnt3d.jsonl")
+    sinit = [r for r in srecs if igdump.proc_name(r).startswith("__sinit")]
+    ck(sinit and all(igdump.proc_name(r) == r.get("link") == "__sinit_zmath_pnt3d.cpp" for r in sinit)
+       and all(r.get("proc") for r in srecs), f"a static initialiser named ({len(sinit)} records)")
+    old = os.environ.get("IGDUMP_NAME_MAX")
+    os.environ["IGDUMP_NAME_MAX"] = "24"
+    try:
+        orecs, _ = igdump.dump(src, BUILD / "ig_long24.jsonl")
+    finally:
+        if old is None:
+            os.environ.pop("IGDUMP_NAME_MAX", None)
+        else:
+            os.environ["IGDUMP_NAME_MAX"] = old
+    ck(len(orecs) == len(recs) and not any(r.get("proc") for r in orecs)
+       and not igdump.select(orecs, "^buildOrderedCellAtomList$", 0),
+       "negative: the old 24-byte reader leaves both unnamed and -f selects nothing")
+
+
 def test_igreplay_replays_and_predicts():
     """tools/igreplay.py (GCC round 32a: the MSL lane's round-11 igreplay.py, the game states' round-37
     relabel.py and brute.py, the AI core's round-28 nbdeg.py): MW's simplify/colour replayed offline
@@ -1922,6 +1995,49 @@ def test_igvar_compares_variants():
     ck(res["missing"][0].startswith("(not in ig_fixture.c"), f"a missing substitution: {res['missing']}")
     ck(res["broken"][0].startswith("BUILD-FAIL"), f"a variant that does not build: {res['broken']}")
     ck(src.read_text() == IG_FIXTURE, "the unit itself untouched")
+
+
+def test_try_prints_each_variants_distance():
+    """tools/try.py prints each variant's difflib distance beside its verdict (GCC round 39a, the AI
+    core's round-34 vd.py): the words of every unequal stretch of the candidate's and the row's bodies,
+    each masked by the candidate's relocations, the longer side counted. tty.c's byte-exact sceTtyRead
+    is MATCH with no distance; its newline test made a tab's is one word away (d=1, the sizes equal);
+    returning `i + 2` for `i + 1` costs the loop's shared increment, a body two words shorter and 25
+    away (vd.py's figure for it) -- each verdict, distance and both sizes on the variant's line;
+    --no-dist prints the verdict as before, and the exit code and score_obj's verdict are unchanged."""
+    import contextlib
+    import importlib
+    import io
+    T = importlib.import_module("try")
+    unit = HERE / "src" / "lib" / "sdk" / "tty.c"
+    old = os.environ.get("SC_TRY_WORK")
+    T.WORK = BUILD / "trywork"
+
+    def run(*args):
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            rc = T.main([str(unit), "sceTtyRead", *args])
+        return rc, [l for l in buf.getvalue().splitlines() if l.strip()]
+    try:
+        rc, lines = run("--sub", "buf[i] == '\\n'", "buf[i] == '\\t'", "--sub", "return i + 1;", "return i + 2;")
+        ck(rc == 0 and len(lines) == 2 and all(l.startswith("FAIL") and " d=" in l for l in lines)
+           and lines[1].rstrip().endswith("| return i + 2;"), f"two misses: verdict, distance, label ({lines})")
+        size = E.symbols().get("sceTtyRead").size
+        ck(f"d=1 ({size:#x} vs {size:#x})" in lines[0], f"one immediate changed is one word away ({lines[0]})")
+        ck(f"d=25 ({size - 8:#x} vs {size:#x})" in lines[1] and "size" in lines[1],
+           f"two words short, 25 away ({lines[1]})")
+        rc, lines = run("--sub", "return i + 1;", "return i + 2;", "--no-dist")
+        ck(rc == 0 and lines[0].startswith("FAIL") and " d=" not in lines[0], f"--no-dist: the verdict alone ({lines})")
+        rc, lines = run()
+        ck(rc == 0 and lines == ["MATCH"], f"as it is: MATCH, no distance ({lines})")
+        T.prepare()
+        obj, _ = T.build(unit, unit, None)
+        ck(T.distance(obj, unit, "sceTtyRead") == (0, *(2 * [E.symbols().get("sceTtyRead").size // 4])),
+           "a byte-exact body is distance 0, its sizes the row's")
+        ck(T.score_obj(obj, unit, "sceTtyRead") == "MATCH" and T.distance(obj, unit, "no_such_function") is None,
+           "score_obj unchanged; a missing symbol has no distance")
+    finally:
+        T.WORK = Path(old).resolve() if old else HERE / "build" / "try"
 
 
 def test_everything_baselined_still_matches():

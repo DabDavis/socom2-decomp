@@ -48,7 +48,7 @@ and data reference resolved to the address the shipped code uses.
 | `tools/s1units.py` | SOCOM II's translation units: its static initialisers against SOCOM 1's named `__sinit_<file>`s |
 | `tools/unitscan.py` | where one hand-written unit could be two: its pinned and inlined pairs, the target's own calls, every cut that separates the first and none of the second |
 | `tools/s1vtables.py` | virtual functions named slot by slot: SOCOM II's vtables found by their RTTI's class-name string, aligned with the demo's `__vt__` tables; `--holdout` measures it on names the map already has |
-| `tools/try.py` | compile one unit with one variant at a time and score one symbol, in a scratch copy of `src/` and `include/`, built as sccheck builds it (the unit's own `sc:` directive: a GCC unit's toolchain and flags, `as=`, `overlay=`); a variant is a `--sub` and the `--and`s after it, or one of `--variants FILE.py`'s; `--target ROW` scores against another row, `--all` every function of the unit (GCC round 27a) |
+| `tools/try.py` | compile one unit with one variant at a time and score one symbol, in a scratch copy of `src/` and `include/`, built as sccheck builds it (the unit's own `sc:` directive: a GCC unit's toolchain and flags, `as=`, `overlay=`); a variant is a `--sub` and the `--and`s after it, or one of `--variants FILE.py`'s; `--target ROW` scores against another row, `--all` every function of the unit (GCC round 27a); each miss's difflib distance from its row beside the verdict, `d=N (0xCAND vs 0xTARGET)` (the AI core's vd.py: GCC round 39a; `--no-dist` the verdict alone) |
 | `tools/objcmp.py` | a header change proved code-neutral: every hand-written unit built at BASE's text and as it is, function by function, data section by section (GCC round 27a, the SEALs' round-26 harness); `--by-address` compares every name a map resolves as its map address, so a placeholder respelled by its row's name is the same (GCC round 29a); both sides are built at one scratch path, so a path the compiler writes (an unreferenced `__FILE__`) is no difference (GCC round 34a); Metrowerks' anonymous `@N` objects are compared by content and an unreferenced one (which the linker drops) left out, so a header's literal shifting every later rank is no difference (GCC round 36a; `--anon-by-rank` the old rule) |
 | `tools/scperm.py` | the permuter: EQOA's tree-sitter mutations of one function, MW-compiled and alignment-scored (needs `.venv`) |
 | `tools/ccsweep.py` | compiler identification for the GCC front: one source over every ee-gcc toolchain and flag set (and `//==` source variants), every function it defines scored |
@@ -59,7 +59,7 @@ and data reference resolved to the address the shipped code uses.
 | `tools/asmunit.py` | an assembler unit (`.s`) for a library object that was assembly: the rows transcribed (canonical instructions, labels, map names, %hi/%lo of the symbols the code addresses, the unit's own `.bss` labels), assembled by the toolchain named and scored until every function matches |
 | `tools/structdiff.py` | one function against its row with the registers and the link normalised, so only STRUCTURAL differences show (opcodes, unrelocated immediates, order, which function is called); says how many instructions differ in their registers alone -- a register-only miss -- and `--regs` keeps the registers (the game states' round-35 structdiff.py and mydiff.py, promoted in GCC round 31a) |
 | `tools/cdis.py` | the candidate's disassembly before the link, each relocation named as the scorer resolves it (`<R_MIPS_LO16 currentDir = 0x1df400>`), `--at` at its row's addresses, `--list` the object's functions (the game states' round-35 cdis.py, promoted in GCC round 31a) |
-| `tools/igdump.py` | Metrowerks' own register colouring read out of mwccps2 3.0b52 under gdb: a unit built as sccheck builds it, every colouring one JSON line (each virtual register's variable, degree, neighbours, colour, spill cost; the colouring order; the PCode); `-f` shows a function's, `--saved` who holds each saved register (the lanes' igdump.py, promoted in GCC round 32a); the spill slots each spilled node takes and the frame's top (GCC round 34a) |
+| `tools/igdump.py` | Metrowerks' own register colouring read out of mwccps2 3.0b52 under gdb: a unit built as sccheck builds it, every colouring one JSON line (each virtual register's variable, degree, neighbours, colour, spill cost; the colouring order; the PCode); `-f` shows a function's, `--saved` who holds each saved register (the lanes' igdump.py, promoted in GCC round 32a); the spill slots each spilled node takes and the frame's top (GCC round 34a); every record named, its name read in full, and its mangled name as `link` -- `-f` searches the bare name, `--link` the mangled one, here and in igreplay (GCC round 39a) |
 | `tools/igreplay.py` | MW's simplify/colour replayed offline on an igdump record (every GPR and FPR record replays exactly); `--move V=POS` renumbers a virtual register to see the registers that numbering gives, `--want`/`--movers` searches the placements, `--nb` a node's neighbours and sweeps (the MSL lane's igreplay.py, the game states' relabel.py and brute.py, the AI core's nbdeg.py: GCC round 32a); `--target` scores the colouring a `--move` gives and lists every node whose target uses disagree, and a search has a budget, `--timeout`/`--max-iters`, with progress (GCC round 33a); the spill slots a numbering gives, checked against the record and with `--target` against the target's (GCC round 34a); `--target` reads FLOAT registers (GCC round 35a) and byte and halfword loads, a memory access aligned by its displacement first (GCC round 36a) |
 | `tools/igvar.py` | source variants (try.py's `--sub`/`--and`/`--variants`) each built under igdump in a scratch tree; per variant the spilled nodes and each saved register's holders by variable, or `--all` every telling node (the AI core's and the game states' igvar.py: GCC round 32a) |
 | `symbols.txt` | **the map** — `0xADDR SIZE name  # note`, kept by hand from here on |
@@ -2065,6 +2065,71 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the zdb world, textures, rdr and sound, round 28** (zdb::CWorld::AddTextureAssetCharacter 0x31D260 and the
+  particle source's collision box 0x32AD20, both unwritten before, byte-exact with their inline copies; Particle::Source::
+  GetBBox 0x329510 written, OPEN at 0x3F8 of 0x404; CPipe::RenderVisual 24 -> 20):
+  - `new T(f())` calls operator new before f(): an original that calls f() first held the argument in a local
+    (AddTextureAssetCharacter's FindLib); an unused stack object only built and destroyed still emits its constructor and
+    destructor calls (its first CDynTexList); a constructor MW would inline into the second `new` needs `#pragma
+    auto_inline off` to stay a call;
+  - an array member of CPnt3D (inline constructor) built by a constructor too big to expand whole -- inlined one level --
+    keeps a loop calling CPnt3D() out of line; a local array in such an inline unrolls into one call per element;
+    anywhere else there is no call at all;
+  - any definition at the top of a for-loop body (a reference declared there, a pointer assigned there) turns MW's
+    guarded loop into a jump to its bottom test; a hand-rotated loop, `if (k < n) { p = ...; do ... while (++k < n); }`,
+    places a named local's definition after the entry test and keeps its named-local number -- left to loop hoisting the
+    same load becomes a temporary (RenderVisual's detail loop exact so, a marked stand-in beside its pragma);
+  - a three-float constructor reads its arguments right to left (z, y, x); `SetPosition(p.x, p.y, p.z)` on such a point
+    keeps &p.y and &p.z in saved registers, the inline `SetPosition(const CPnt3D &)` overload folds them into frame
+    offsets;
+  - zparticle.h's stand-ins grown to the real layouts (CBBox as zmath's two points, CNode's 0xC0 with its constructor,
+    m_bbox at 0x40, AddDI / SetName / SetNodeEx; CNodeEx, CDI / CDIPoly and SOCOM 1's CParticleEx), its other includers
+    unchanged; 0x312D00 looks like SOCOM 1's CNode::FindMeshTextures() with two parameters added, matched as a free
+    function taking the node first (queued for the online lobby's round 28, which holds those rows this round).
+- **Tells from the engine core, round 22** (five cameras byte-exact, all unwritten before -- camera.cpp's death camera
+  stick turn 0x294B40 and pad handler 0x295260, first person's 0x295B00, mode 1's 0x295F20, the tether's 0x296F10; the
+  tether's death points 0x297410 written, OPEN at 0x60C of 0x614):
+  - FRAME SLOTS: after the named locals come the caller's own call-result temporaries, then each inlined callee's locals
+    and temporaries grouped by callee, call sites in source order; pushing a call one inline wrapper deeper moves its
+    local into the later group (0x295B00, 0x296F10);
+  - a clamp written as an inline keeps its own join, then branches to the caller's; written in place MW merges the joins
+    (8 off on 0x294B40); an `andi 0xff` on a call's result before its test means the result went into an `unsigned char`
+    local -- a byte-returning call tested directly is not narrowed;
+  - `r = f(); r *= 2.0f; g(r)` computes into f0 and moves to f13, as the target; the product written in the argument or
+    in an initialiser lands in f13 directly with its operands swapped;
+  - OPEN, the wrap loops: when an if's then-arm runs straight into a top-level `while`, MW drops the block before the
+    loop and rebuilds the loop's constants inside it (0x297410, eight loop shapes 0x60C-0x624); camera.h's stand-ins
+    split without moving a field (CDeathCam over CAppCamera's 0xF4-0x11B, ours), objcmp over its 12 includers: only
+    camera.cpp differs.
+- **Tells from the HUD, round 59** (SetMpStatUiVars 0x224670, open since round 18, and CZPauseTest::TickOffState 0x2011F0,
+  unwritten before, byte-exact; DrawLaseTarget 0x217550 written, OPEN at 0x36C of 0x364; 12 rows named by SOCOM 1's
+  calls -- the pause menu's HudTick / Init / HandleSelectionInput / OpenPauseMenu, the reticule's ChangeReticule /
+  UpdateAccuracy / UpdateColor / HudTick / ThreatDirTick, CZNewHudMap::HudTick):
+  - an int local assigned once from an inline accessor's result is folded back into that result and takes no place of
+    its own in the numbering; read straight off the member, or converted (into an unsigned int), it keeps its
+    declaration's place -- SetMpStatUiVars' points as a named `int iPts` (SOCOM 1's name) read off m_score, found by
+    `igreplay --want / --movers`; a short local keeps the place too but sign-extends at every use (+0x10);
+  - `t = x.GetTrans() - 300.0f * dT` computes the product before the call; `t = x.GetTrans(); t -= 300.0f * dT;` gives
+    the target's order (TickOffState);
+  - a switch on a single-use local gets the local's load substituted into the switch, after the statements between --
+    a local cannot move the selector earlier, nor can an inline accessor (int, byte, enum or reference): GetRoundResult's
+    open (19); DrawLaseTarget's: the target reads the lased point through the kit's address (`addiu a0,s0,0x5E0`, then
+    0xC(a0)), MW folds the offsets in all five spellings tried.
+- **Tells from the AI core, round 35** (no new row, 565 of 577 in the lane's units; comments only, measurements):
+  - a conditional branch's delay slot is filled from the jumped-to block only when that block's first instruction writes
+    a register the not-taken arm overwrites, otherwise from the not-taken arm (an inference from GetNextEvent 0x50EA50,
+    true of both builds: the target's bit-test block opens `andi a1` and its slot takes the false arm's `move v0,zero`,
+    ours opens `srl v0` and the slot takes it -- ten spellings of the bit test give the same block, and `#pragma
+    scheduling off` changes nothing mwcps2 emits);
+  - the pod vector's resize (0x53AA50, 0x18B050, 0x28B0E0, the same 0x6C bytes) is byte-exact from include/vector's
+    `resize(n, c)` in a unit that does not generate the range erase first; once erase is generated first MW inlines it
+    into resize (0x94), whatever the header's declaration or definition order -- so a dead-stripped caller in
+    ai_maplayer.cpp (the device of src/ABSENT.txt) does not emit 0x53AA50 (build/scratch/aicore-r35/ai/podres*.cpp);
+  - in mweppc's optimiser (the PowerPC source, doldecomp/mweppc) pass 0 hoists loop invariants before common
+    subexpressions, and each use takes the first available identical expression in flowgraph order -- read from the
+    source, not proven on mwcps2 (ValidateRoutes 0x52F4A0's hoisted x with a load of its own);
+  - mwcps2 3.0 rejects the explicit instantiation of one member of a class template ("illegal explicit template
+    specialization").
 - **Tells from the game states, round 48** (CLoadState::Tick 0x1F5E70 and CMenuState::RunEventAnim 0x1F3BF0 -- both
   unwritten before -- byte-exact, UpdateLocalSeal 0x2BD640 byte-exact, C2D::Tick's and C2D::SetTrans's inline copies
   emitted and byte-exact; C2DMessage_Q::Tick 0x2B5DB0 written, OPEN at the size, 38; 0x2B7A90 named ftsNetworkSealInit__Fv):
@@ -11113,6 +11178,71 @@ rows named (the codec is not in SOCOM 1). What they showed:
   spelling made one); func_001C46D0 (sched1 hoists the 16's `li` above the port's `sh` and v0 is taken: seven
   tail spellings and four htons return types alike). Not reached: round 37a's opens (their diagnoses stand),
   and the decoder's other unwritten rows (0x254510, 0x254730, 0x254A88, 0x255028, 0x255490, 0x255E68).
+
+**The tools, round 39a** (the lanes' two requests): (1) **igdump names every record** (the engine core's round
+21: buildOrderedCellAtomList's records had `proc` null, so `igreplay -f` reached them only as `-f '^$' --cls 0
+-r N`). The reader took 24 bytes of a name and refused one that filled them, so every function named in 24
+characters or more went unnamed -- and so did every static initialiser, whose node pads `__sinit_<file>` with
+some hundred blanks before its NUL -- and zlib's inflate_blocks_sync_point (25) was named `8G%l@0x28`, bytes
+of another word of its Object the short reader took for a name. A name is now read in full (64 bytes a step to
+its NUL, trailing blanks stripped), and each record also carries the function's MANGLED name, `link` -- its
+Object's +0x30, a HashNameNode (`buildOrderedCellAtomList__Q23zdb5CGridFPC6CPnt3D`; a C function's is its
+name; kept only when it spells the bare name, `NAME__...` or a template's `NAME<...>`). `-f` is documented for
+what it always was, a regex SEARCHED in the bare name with igdump's `@0xK` suffix stripped (`Read@0x8` is
+`Read`: `-f '^Read$'` one function, `-f Read` every name holding it), in igdump, igreplay and igvar's PROC;
+`--link REGEX` selects by the mangled name (two `__dt`s apart), in igdump and igreplay; igreplay's
+`later_end` keeps a function's records together by `link` too. **Proved** (`build/scratch/gcc/r39/igproof.py`):
+master's igdump and this one over ten units -- grid_main.cpp, zmath_pnt3d.cpp, zmath_main.cpp, infblock.c,
+inflate.c, zwep_weapon.cpp, seal_tasks.cpp, c2dfont.cpp, grid_clutter.cpp and a fixture, 651 records --
+write the same records field for field but 21 names the old reader dropped (SetTraversalBoundaryOrdered and
+buildOrderedCellAtomList twice each, ten of zwep_weapon.cpp's -- RetrieveTimerRegistration ...
+SetDefaultSpecialAnimName -- four `__sinit_*`, the fixture's two) and the one it misread; all 651 carry their
+`link`; every variable name is as before. The canary's `test_igdump_names_every_record` (7 assertions): a
+method named in exactly 24 characters and a C function in 38 named bare and mangled, `-f` and `--link` each
+selecting in igdump and igreplay, zmath_pnt3d.cpp's initialiser named; its negative, the old reader's 24
+bytes (`IGDUMP_NAME_MAX=24`), leaves both unnamed -- and under master's igdump the test fails at its first
+assertion. (2) **`tools/try.py` prints each variant's distance** (the AI core's round-34 vd.py, folded in): a
+miss's verdict is followed by `d=N (0xCAND vs 0xTARGET)` -- difflib's edit distance between the candidate's
+words and its row's, both masked by the candidate's relocations, the longer side of every unequal stretch
+counted -- so variants of another size are ranked too (a verdict counts differing words at fixed offsets,
+every word after an insertion); MATCH lines are unchanged and `--no-dist` prints the verdict alone (the old
+output exactly); `distance()`/`dist_note()` sit beside `score_obj`, whose verdict the lanes' scripts import
+unchanged. Equal to vd.py's on sceTtyWrite (59) and 0x24E408 (24). The canary's
+`test_try_prints_each_variants_distance` (6 assertions: sceTtyRead MATCH with no distance; its newline test
+made a tab's d=1 at equal sizes; `return i + 2` two words short and 25 away; --no-dist; distance 0 for a
+byte-exact body, None for a missing symbol) fails under master's try.py at its first. 45 of 45 canary tests,
+320 assertions (the full check not run). No tool that scores changed: scdiff.py, sccheck.py, scdecomp.py and
+`include/` are master's, so no MW or GCC unit can score differently. **automatch** over the lane's three ranges (`--max-size 0x400 --emit --no-prune --jobs 2
+--obj-dir` the lane's private `src/lib` build): MAIN `18DB90 1C4CC0` 11 tried, 0 hits (2 m2c refusals, 9
+misses), OVL1 `1E7F58 1E8FD4` 0 tried, `243000 256FD0` 33 tried, 0 hits (2 build failures, 5 refusals, 26
+misses): 44 tried, none byte-exact (round 38a: 47, 0).
+
+**Round 39a** (2026-11-06, the tools first, then the weapons' two names and the opens): libgraph's GS
+interrupt-mask pair named and written from the SDK's own text -- sceGsPutIMR 0x1A3058 (GsGetIMR, then
+GsPutIMR(imr), the old mask returned) and sceGsGetIMR 0x1A3098 (one GsGetIMR), the weapons' round 34's reading,
+Sony's libgraph API names (`u_long` masks, the syscalls' doublewords) -- in a new `sdk/gs_imr.c`, both
+byte-exact over their drafts (libgraph 16 of 19; the last of its objects before libipu's, after
+sceGsExecStoreImage, which ends the demo's libgraph: not in SOCOM 1). 2 rows named, no row newly byte-exact
+(the drafts had them); the lane's `src/lib` 2,826 -> 2,828 of 2,968 scored, and after merging master 64a0fa7b
+every hand-written unit (`--files '^(?!auto/)'`) 11,146 byte-exact of 11,543, no regression. What the opens
+showed:
+
+- **The fast log2 0x2517D8 is two unions, each reproduced apart** (`build/scratch/gcc/r39/v_log2*.py`, 23
+  shapes, ranked by try.py's distance): the input's `mfc1; and 0xFFFFFFFF` is a float/long union in a
+  REGISTER cleared first (`x.l = 0; x.f = fX;` -- store_bit_field's OR with the undefined upper word folds
+  away and leaves the zero-extension), the output's stack word (`sw; lwc1`, then `sw; lwc1; cvt.s.w`) a
+  float/int union the compiler keeps in the frame once its FLOAT member is written (written only as an int
+  it moves through mtc1). Together: every DImode value stored to the int member is truncated here
+  (dsll32/dsra32), where the target stores the 64-bit register as it is -- d=19 of 29 words at best.
+- **inet_network's "right size" was an accident** (round 6a's open, 0x1C1698): the target is a word longer in
+  the hex digit's arm -- `addu v0,v0,a1; move t0,v0`, the `+ (c + 10)` in each arm cross-jumped after reload
+  into one add whose result is a COND_EXPR temporary copied to val -- and has no alignment nop before the
+  final loop, which this compile's arm, one word shorter, needs. Thirteen spellings (the sum's association,
+  casts, islower as a macro, char or int `c`, the shift apart) compile to this code or further.
+- **Open, unchanged**: round 38a's 0x251A98 and 0x1C46D0, round 37a's and 35a's (no new idea for their
+  register and schedule misses); not reached: 0x252FE0, dmaRefImage, sceBInetRecv/Send, sceGsResetGraph,
+  libnetb_udp_init_buffer, libquan.c's 0x24B2F8/0x24B028. `_copyRefImage` stays open on its object's layout
+  (the four functions before the interpolators unwritten: `.align 4` pads two nops only at their offset).
 
 **Next**: the libraries by hand, module by module, as their vendors wrote them (each `src/lib`
 unit's header says what it covers); GCC's scheduler moves independent stores, and which source
