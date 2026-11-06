@@ -8766,7 +8766,7 @@
 0x004D6710 0x4AC SplitUp_Finals_TreeCtx  # OVL2; s1:calls (SOCOM 1's CreateSecondPassTreeContext_ForChinese calls SplitUp_Finals_TreeCtx where ours call this row: its non-heap calls match ours call for call, 1 call site; the same position in SOCOM 1's object 0x345CD0)
 0x004D6BC0 0x400 Swap_Finals_TreeCtx  # OVL2; s1:calls (SOCOM 1's CreateSecondPassTreeContext_ForChinese calls Swap_Finals_TreeCtx where ours call this row: its non-heap calls match ours call for call, 1 call site; the same position in SOCOM 1's object 0x345CD0)
 0x004D6FC0 0x4A0 FillOut_Syntax_Statedict_And_Wordprops_ForChinese_TreeCtx  # OVL2; s1:calls (SOCOM 1's CreateSecondPassTreeContext_ForChinese calls FillOut_Syntax_Statedict_And_Wordprops_ForChinese_TreeCtx where ours call this row: its non-heap calls match ours call for call, 1 call site; the same position in SOCOM 1's object 0x345CD0)
-0x004D7460 0xDC func_004D7460  # OVL2
+0x004D7460 0xDC FreeSecondPassContext_ForChinese_TreeCtx  # OVL2; s1:calls (SOCOM 1's CreateSecondPassTreeContext_ForChinese calls FreeSecondPassContext_ForChinese_TreeCtx where ours calls this row; the body its)
 0x004D7540 0xC00 CreateSecondPassTreeContext_ForChinese  # OVL2; s1:calls (SOCOM 1's casrDoIsoWordSecondPass calls CreateSecondPassTreeContext_ForChinese where ours call this row, 1 call site; the same position in SOCOM 1's object)
 0x004D8140 0x24 Tone_Of_Final_TreeCtx  # OVL2; s1:order (SOCOM 1's object 0x345CD0: after CreateSecondPassTreeContext_ForChinese, before Calculate_NbrOfStatesInDict_ForChinese_TreeCtx, as here; Tone_Of_Final's body; uncalled in both) -- the gcc lane, round 14c
 0x004D8168 0x100 Calculate_NbrOfStatesInDict_ForChinese_TreeCtx  # OVL2 unaligned; s1:align
