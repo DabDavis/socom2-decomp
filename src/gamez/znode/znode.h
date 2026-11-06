@@ -516,6 +516,11 @@ public:
     static bool m_applyShadow;
     static bool m_applyLocalLights;
     static bool m_applyMultipass;
+    /* the visual's squared range from the camera and whether a detail layer reaches it (SOCOM 1's
+     * statics, a float and a byte -- OVL1 bss 0x4B4A98, 0x4B4A88): the pipe's RenderVisual sets both
+     * for a visual with detail layers, VuDetailMap reads the range and GetChainData the flag */
+    static float m_rangeSqdToCamera;
+    static bool m_applyDetailTexture;
     /* the scene's custom global light (-1: none; SOCOM 1's static, 4 bytes right before
      * m_applyShadow -- OVL1 0x3E1448): the lights' packet send scales the global light by it */
     static int m_customGlobalLightIdx;

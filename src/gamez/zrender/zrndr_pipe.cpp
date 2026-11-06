@@ -35,6 +35,7 @@
 #include "../zsys/zsys.h"
 #include "../znode/node_world.h"
 #include "../zcamera/zcamera.h"
+#include "../zvid/zvid.h"
 
 /* the system's packet ring (zsys_main.cpp): a packet in scratchpad, and the packet kicked */
 u_long128 *zSysSprGetPacket(u_long128 **p);
@@ -185,8 +186,8 @@ public:
     bool PushNodeOpacity(zdb::CNode *node);
     bool TestFlare(const CPnt3D *pos, CPnt4D *out, float pull);
     void RenderUiNodeRecursive(zdb::CNode *node);
-    /* SOCOM 1's RenderVisual (0x3374C0, not written) */
-    void RenderVisual(zdb::CNode *node, zdb::tag_ZVIS_FOV fov);
+    /* SOCOM 1's RenderVisual (0x3374C0): whether every visual passed its level of detail */
+    bool RenderVisual(zdb::CNode *node, zdb::tag_ZVIS_FOV fov);
     /* RenderAtom's callees (not written): SOCOM II's lighting and fog set-up (0x33B230, ours), SOCOM 1's
      * RenderMesh (0x338480) and RenderNode (0x3389C0) */
     void PrepareAtom(zdb::CNode *node);
@@ -240,12 +241,11 @@ public:
     unsigned char m_drawCharacters;   // 0x712
     unsigned char m_doFog;   // 0x713
     unsigned char m_doUI;   // 0x714
-    unsigned char m_drawDI;   // 0x715
-    unsigned char m_drawNormal;   // 0x716
-    unsigned char m_drawBBox;   // 0x717
-    unsigned char m_LODFilter;   // 0x718
-    unsigned char m_reticuleDraw;   // 0x719
-    unsigned char _71a[0x720 - 0x71a];   // 0x71a
+    /* RenderVisual reads +5, +7 and +8 as SOCOM 1's reads m_simpletrans, m_doFog and m_doUI, and
+     * clears its result by +9 where SOCOM 1's cleared it by m_LODFilter (+12): SOCOM II's flags
+     * hold none of SOCOM 1's m_drawDI, m_drawNormal and m_drawBBox there (round 27) */
+    unsigned char m_LODFilter;   // 0x715
+    unsigned char _716[0x720 - 0x716];   // 0x716
 };   // 0x720 bytes
 
 /* zvid_init.cpp's: the 21-quadword packet's word set, and the packet sent (it reads no argument;
@@ -1024,6 +1024,110 @@ CPipe::CAlpha::~CAlpha()
     _free(m_visualList, 0, 0);
 }
 #pragma auto_inline reset
+
+/* the next visual drawn is a node's first since the last walk ended: its node is set up first
+ * (SOCOM 1's global, a byte -- OVL1 .data 0x3DFF80, 1 in the image) */
+extern bool FirstVisDrawn;
+/* the local lights' set-up of a lit node (0x338FA0, below) */
+void BuildNodeLocalLightList(zdb::CNode *node);
+
+/* SOCOM 1's: a node's visuals drawn -- each one its level of detail rejects at the camera's range
+ * skipped (and, with the LOD filter on, the walk's result false), its fog switch set, its detail
+ * layers' range taken; one the frame's opacity or its flags make translucent added to the alpha
+ * pass with its textures and its material's texture, any other drawn at once, the node set up before
+ * the first; the node stamped with the frame when any was. SOCOM II drops SOCOM 1's bench counts
+ * and its bilinear-range test, tests the atom's mesh bit and the visual's bits 0 and 8, adds the
+ * material's texture, and sets the lights up with the view and the atom's opacity. Written in the
+ * world lane's round 27 (build/scratch/wld/v_rv*.py, vscore.py): the stack's top through an inline
+ * wrapper (StackTop, ours -- a local from an inline's result is numbered after the front-end
+ * temporaries, which gives m s1 and the visual s2; read as `CStack::m_top` straight into the local
+ * the two swap, 16 off), the visuals' vector and the alpha pass's texture list as references, the
+ * material index a local of its own (read twice, the target's one lbu), bit 8's test `== 0`.
+ * THE DETAIL LOOP IS NOT STRENGTH-REDUCED in the target (sll/addu of the index each pass, as SOCOM 1's
+ * loop): no loop form tried changes MW's pointer walk (an inline test by pointer or reference, an int
+ * counter, the increment in the body, a while, the layers through a local) -- only the
+ * function-scoped `#pragma opt_strength_reduction off` gives the target's size (0x3DC: a stand-in,
+ * its original spelling unknown).
+ * OPEN, at the target's size (22 by alignment): (1) the prologue's schedule -- the vector's address
+ * (s6) is placed at the top, the texture list's (s7) in the entry test's delay slot, where the target
+ * puts the vector's in the slot and the list's after the hoisted fov narrowing (orders of the two
+ * references, pointers for either, accessors, a reference in the alpha block: none moves them); (2)
+ * the detail loop's count, layers and test take a1 / v1 / a0 where the target has a0 / a1 / v1 */
+static inline CMatrix *StackTop()
+{
+    return CStack::m_top;
+}
+
+#pragma opt_strength_reduction off
+bool CPipe::RenderVisual(zdb::CNode *node, zdb::tag_ZVIS_FOV fov)
+{
+    bool drawn = true;
+    int count = 0;
+    CMatrix *m = StackTop();
+    float opacity = m_opacity_stack[m_opacity_stack_index];
+    zdb::CVisualVector &v = node->m_visual;
+    zdb::CDynTexList &dyn = m_alpha.m_dyntexlist;
+
+    for (zdb::CVisualVector::iterator i = v.begin(); i != v.end(); ++i) {
+        zdb::CVisual *vis = *i;
+
+        if (vis->m_5) {
+            float d = m_camera->GetScaledRangeSquared((CPnt3D *)m->m_matrix[3]);
+            zdb::CLOD_band *band = m_world->m_LOD_Object.GetBand(vis->m_5);
+
+            if (band && !vis->DrawLOD(band, d, &opacity)) {
+                if (m_LODFilter)
+                    drawn = false;
+                continue;
+            }
+        }
+        zdb::CVisual::m_fogEnable = m_doFog && (vis->m_flags & 2);
+        if (vis->m_numDetails) {
+            CPnt3D c;
+
+            CStack::m_top->Transform(&vis->m_centroid, &c, 1);
+            float d = m_camera->GetScaledRangeSquared(&c);
+
+            zdb::CVisual::m_rangeSqdToCamera = d;
+            zdb::CVisual::m_applyDetailTexture = false;
+            for (unsigned int k = 0; k < vis->m_numDetails; k++)
+                if (d <= vis->m_details[k].m_rangeSq) {
+                    zdb::CVisual::m_applyDetailTexture = true;
+                    break;
+                }
+        }
+        count++;
+        if (!m_node->m_hasMesh && !m_doUI &&
+            (((vis->m_flags & 1) & ((vis->m_flags & 0x100) == 0)) || opacity < 1.0f) && !m_simpletrans) {
+            if (opacity <= 1.0f / 128)
+                continue;
+            m_alpha.Add(m_node, node, vis, fov, opacity);
+            dyn.Add(&vis->m_dynTexList);
+            unsigned int mat = vis->m_7;
+
+            if (mat) {
+                zdb::CTexHandle *tex = zdb::CWorld::m_world->m_Material_Object.GetMaterial(mat)->m_tex;
+
+                if (tex)
+                    dyn.Add(tex, true);
+            }
+        } else {
+            if (FirstVisDrawn) {
+                FirstVisDrawn = false;
+                zdb::CVisual::NodeSetup(m_node, node, m);
+                if (zdb::CVisual::m_applyLocalLights)
+                    BuildNodeLocalLightList(node);
+                func_003B6B20(node, fov, m_node->m_Opacity);
+            }
+            vis->Render(m);
+        }
+    }
+    FirstVisDrawn = true;
+    if (count)
+        node->m_frameRendered = zVid.frameNumber;
+    return drawn;
+}
+#pragma opt_strength_reduction reset
 
 /* the view id in use, the stack's top -- a `break` if the stack is empty (vis_vu.cpp's inline,
  * CVisual::GetVid: six levels high, so Add inlines it one level and calls empty() and top()) */
