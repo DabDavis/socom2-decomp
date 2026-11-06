@@ -2322,7 +2322,7 @@ int func_0061D3C8(void)
     return DME_OK;
 }
 
-extern void func_00617060(int nWorld, int nClient, int bJoined, unsigned short nPort, int bFailed);
+extern void func_00617060(unsigned int nWorld, int nClient, unsigned char bConnected, unsigned short nValue, int nArg);
 
 void func_0061D4D8(int nClient, unsigned short nPort, int nError)
 {
@@ -3191,4 +3191,296 @@ int func_006195E0(char *szIp, void (*pfnCallback)(int nEvent, char *szIp, int nV
         rt_time_get_time_stamp(data_0066CF78[nSlot].tStart);
     }
     return DME_OK;
+}
+
+/* a message's fragment header (20 bytes): a message past 510 bytes goes out in pieces of 490 under DME's own
+ * fragment type (data_00686A1C), each with its type, the piece's length, the count, the index, one random id
+ * for the set, the whole length and the piece's offset */
+typedef struct DmeFragment {
+    unsigned char nType;                /* 0x00 */
+    unsigned char nSubType;             /* 0x01 */
+    unsigned short nLength;             /* 0x02 */
+    unsigned short nCount;              /* 0x04 */
+    unsigned short nIndex;              /* 0x06 */
+    unsigned char nId;                  /* 0x08 */
+    int nTotal;                         /* 0x0C */
+    int nOffset;                        /* 0x10 */
+} DmeFragment;
+
+extern unsigned char randomMT(void);
+extern unsigned int data_00686A1C;
+
+/* SOCOM 1's NetSendMessage grown (0x6158F8): the checks, the fragments, and the choice of transport: world 0xFFFF
+ * and world 0 by UDP (func_00615660), the others by TCP (func_006157E0) */
+int func_006158F8(char nMsgClass, unsigned int nWorld, int nTarget, unsigned int nType, unsigned int nSubType,
+                  int nLength, void *pData)
+{
+    DmeFragment frag;
+    struct {
+        DmeFragment hdr;
+        unsigned char abData[492];
+    } msg;
+    DmeWorld *pWorld = 0;
+    int nOffset = 0;
+    int nSend = 0;
+    int nCount;
+    unsigned int nSendType;
+    unsigned int nSendSub;
+    char nClass;
+    int i;
+    int result;
+
+    if (nType >= 6)
+        return DME_ERR_ARGUMENT;
+    if (nSubType >= 256)
+        return DME_ERR_ARGUMENT;
+    if (nLength <= 0)
+        return DME_ERR_ARGUMENT;
+    if (pData == 0)
+        return DME_ERR_ARGUMENT;
+    result = func_0061C600(nWorld, &pWorld);
+    if (result != DME_OK || pWorld == 0)
+        return result;
+    if (pWorld->field_44C == 4)
+        return 15;
+    if (nLength >= 511) {
+        if (nTarget == 0xFFFF)
+            return 31;
+        nCount = (nLength + 489) / 490u;
+        nSendSub = data_00686A1C;
+        nSendType = 0;
+        nClass = nMsgClass | 0x50;
+        frag.nId = randomMT();
+    } else {
+        nSend = nLength;
+        nClass = nMsgClass;
+        nSendType = nType;
+        nOffset = nSend;
+        nSendSub = nSubType;
+        nCount = 1;
+        memcpy(&msg, pData, nSend);
+    }
+    for (i = 0; i < nCount; i++) {
+        if (nSend != nLength) {
+            int nPiece = nLength - nOffset;
+
+            if (nPiece > 490)
+                nPiece = 490;
+            frag.nIndex = i;
+            frag.nType = nType;
+            frag.nSubType = nSubType;
+            frag.nTotal = nLength;
+            nSend = nPiece + 20;
+            frag.nCount = nCount;
+            frag.nLength = nPiece;
+            frag.nOffset = nOffset;
+            memcpy(&msg, &frag, sizeof(frag));
+            memcpy(msg.abData, (char *)pData + nOffset, nPiece);
+            nOffset += nPiece;
+        }
+        if (nWorld == 0xFFFF || nWorld == 0) {
+            result = func_00615660(nClass, nWorld, nTarget, nSendType, nSendSub, nSend, &msg);
+            if (result != 0)
+                return result;
+        } else {
+            result = func_006157E0(nClass, nWorld, nTarget, nSendType, nSendSub, nSend, &msg);
+            if (result != 0)
+                return result;
+        }
+    }
+    return DME_OK;
+}
+
+/* SOCOM 1's NetPing grown (0x6193F8): every client's slot takes the callback; 0xFFFF pings the world's server, whose
+ * slot holds world 4 and client 256 */
+/* SOCOM 1's NetPing grown (0x6193F8): every client's slot takes the callback; 0xFFFF pings the world's server, whose
+ * slot holds world 4 and client 256 */
+int func_006193F8(unsigned int nWorld, unsigned int nTarget, void (*pfnCallback)())
+{
+    struct {
+        int nTime;
+        char nSlot;
+        unsigned char bTimebase;
+    } msg;
+    DmeClientInfo *pClient = 0;
+    int nSlot;
+    int result;
+
+    if (nWorld >= DME_MAX_WORLDS)
+        return DME_ERR_ARGUMENT;
+    if (nTarget >= DME_MAX_CLIENTS && nTarget != 0xFFFF)
+        return DME_ERR_ARGUMENT;
+    if (pfnCallback == 0)
+        return DME_ERR_ARGUMENT;
+    if (nTarget == -1)
+        return DME_ERR_RANGE;
+    nSlot = FindFreePingSlot();
+    if (nSlot == DME_MAX_PING_SLOTS)
+        return 25;
+    msg.bTimebase = 1;
+    msg.nTime = 0;
+    msg.nSlot = nSlot;
+    NetSendMessage(-128, nWorld, nTarget, 0, data_00686A0C, sizeof(msg), &msg);
+    if (nTarget == 0xFFFF) {
+        result = func_006148E0(data_0067B7B8[nSlot].abIp, func_0061C8E8(nWorld));
+        if (result != 0)
+            return result;
+        data_0067B7B8[nSlot].nPort = data_0067A6E0;
+        data_0067B7B8[nSlot].nWorld = 4;
+        data_0067B7B8[nSlot].nClient = 256;
+    } else {
+        result = func_0061C720(nWorld, nTarget, &pClient);
+        if (result != 0)
+            return result;
+        if (pClient == 0)
+            return result;
+        result = func_006148E0(data_0067B7B8[nSlot].abIp, pClient->szIp);
+        if (result != 0)
+            return result;
+        data_0067B7B8[nSlot].nWorld = nWorld;
+        data_0067B7B8[nSlot].nPort = pClient->nPort;
+        data_0067B7B8[nSlot].nClient = nTarget;
+    }
+    data_0067B7B8[nSlot].pfnCallback = pfnCallback;
+    data_0067B7B8[nSlot].bTimebase = 0;
+    func_00615028(&data_0067B7B8[nSlot].nSent);
+    return DME_OK;
+}
+
+extern int data_006511C0;               /* the clock's last local reading */
+extern unsigned int data_00651184;      /* the last ping round's time */
+extern int func_006203C8(void);
+extern void func_0061BA10(void);
+extern void func_0061B6E8(void);
+extern int KM_SetLocalClientID(int nKMID, int nClient);
+extern int func_00643EF0(unsigned int nWorld, int nClient, DmeClientInfo *pClient);
+extern int func_00639A30(int nP2p, int nWhich, char *szAddress, unsigned short *pnPort);
+extern void (*data_00651190)(void *pReport);    /* the waiting caller's callback */
+extern int data_00651194;               /* and its user value */
+
+/* SOCOM 1's NetUpdate grown (0x61BEE8): the clock, the pings every three seconds, then the rest of the tick */
+int func_0061BEE8(void)
+{
+    int tStart;
+    int tNow;
+    DmeWorld *pWorld;
+    DmeClientInfo *pClient;
+    int i;
+    int result;
+
+    if (data_00651180 == 0)
+        return 17;
+    rt_time_get_local(&tStart);
+    result = func_0061D3C8();
+    if (result != DME_OK)
+        return result;
+    result = func_0061BC68(1);
+    if (result != DME_OK)
+        return result;
+    rt_time_get_local(&tNow);
+    CurrentNetTime += tNow - data_006511C0;
+    data_006511C0 = tNow;
+    if (data_00651178 < DME_MAX_WORLDS) {
+        pWorld = 0;
+        pClient = 0;
+        result = func_0061C600(data_00651178, &pWorld);
+        if (result != DME_OK || pWorld == 0)
+            return result;
+        if (data_00651184 + 3000 < CurrentNetTime && pWorld->field_438 == 1
+            && (int)pWorld->nMyClient < pWorld->field_444) {
+            i = 0;
+            if (pWorld->field_444 > 0) {
+                do {
+                    result = func_0061C720(data_00651178, i, &pClient);
+                    if (result != DME_OK)
+                        return result;
+                    if (pClient != 0 && i != pWorld->nMyClient && pClient->bConnected == 1)
+                        func_006192A0(i);
+                    i++;
+                } while (i < pWorld->field_444);
+            }
+            data_00651184 = CurrentNetTime;
+        }
+        if (pWorld->field_438 == 1 && (int)pWorld->nMyClient < pWorld->field_444 && data_0065117C == 1) {
+            func_0061BA10();
+            func_0061B6E8();
+        }
+    }
+    result = func_0061C9E8();
+    if (result != DME_OK)
+        return result;
+    result = func_0061CCA8(1);
+    if (result != DME_OK)
+        return result;
+    result = func_0061D1B0();
+    if (result != DME_OK)
+        return result;
+    result = func_006203C8();
+    return result;
+}
+
+/* the connection's result (0x617060, in SOCOM 1's MsgClientConnectCallback's place): the world marked connected and
+ * this client's record made, or the world closed; the waiting caller told through its callback, once */
+void func_00617060(unsigned int nWorld, int nClient, unsigned char bConnected, unsigned short nValue, int nArg)
+{
+    struct {
+        int nWorld;
+        int nState;
+        int nArg;
+        int nResult;
+        int nUser;
+    } report;
+    DmeWorld *pWorld = 0;
+    DmeClientInfo *pClient = 0;
+    int result;
+
+    if (nWorld >= DME_MAX_WORLDS)
+        return;
+    if (func_0061C600(nWorld, &pWorld) != DME_OK)
+        return;
+    if (pWorld == 0)
+        return;
+    if (pWorld->field_438 == 1)
+        return;
+    if (bConnected) {
+        if (func_0061D440(nClient) != 1)
+            return;
+        result = func_0061C7A8(nWorld, nClient, &pClient);
+        if (result != DME_OK)
+            return;
+        if (pClient == 0)
+            return;
+        pWorld->field_438 = 1;
+        pWorld->nMyClient = nClient;
+        pWorld->field_440 = nValue - 1;
+        pClient->nState = 2;
+        pClient->field_18 = 0;
+        pClient->field_1C = 0;
+        pClient->bConnected = 1;
+        KM_SetLocalClientID(-1, nClient);
+        if (func_00644060(nWorld) == 1) {
+            result = func_00643EF0(nWorld, nClient, pClient);
+            if (result != DME_OK)
+                return;
+        }
+        if (func_00639A30(data_006511D8, 1, pClient, &pClient->nPort) != 0)
+            return;
+    } else {
+        pWorld->nMyClient = 256;
+        result = 3;
+        pWorld->field_438 = 3;
+        if (func_00644060(nWorld) == 1)
+            func_00643E48(nWorld);
+    }
+    if (data_00651190 != 0) {
+        memset(&report, 0, sizeof(report));
+        report.nWorld = nWorld;
+        report.nState = pWorld->field_438;
+        report.nArg = nArg;
+        report.nResult = result;
+        report.nUser = data_00651194;
+        data_00651190(&report);
+        data_00651190 = 0;
+        data_00651194 = 0;
+    }
 }
