@@ -197,7 +197,10 @@ CGNode *CGraph::CreateNode()
  * (the walker then lives in a register), the base iterator's `*` through the conversion or
  * through i_; round 44: the loop as a hand-written guard around a do-while (the weapons' round 30
  * rule) rotates it as the target's but hoists the remove_if binders' frame set-up into the
- * preheader and shortens it to 0x194 */
+ * preheader and shortens it to 0x194; round 49: the zdb world's round-28 rule (a definition at the
+ * top of a for body turns the guarded loop into a jump to its bottom test) does not reach it -- the
+ * loop as a while, the two pointers declared ahead and assigned, `(void)0;` first, the first
+ * pointer in a block of its own: all 0x1AC, the same code */
 void CGraph::DeleteNode(CGNode *node)
 {
     if (node) {
