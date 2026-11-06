@@ -12,7 +12,9 @@
  * hand", round 21c); round 22c FreeDistCalc byte-exact over a marked stand-in insn; round 34c
  * DistSilProcess (0x4FFCE8, named by SOCOM 1's object order), func_004FD5C8 and LoadLanguage, with
  * the fields they read; InitDistSilProcess written (OPEN, 3 words), byte-exact in round 35c (an
- * intermediate in v: the constant's register by expand_preferences). */
+ * intermediate in v: the constant's register by expand_preferences); round 35c ControlDistSilProcess
+ * (every function written so far byte-exact; the two distance passes, 0x4FDE08 and 0x4FE6C8, and
+ * InitCalculateDistances -- named by SOCOM 1's slot and order -- not written). */
 #include "tosblk.h"
 
 /* a queue (queue.c), as far as the block reads it: the bytes of an element at +8 */
@@ -97,7 +99,7 @@ typedef struct TOSLOG {
 } TOSLOG;
 
 extern int qQueueReDimension(void *q, unsigned short size);
-extern void qDeQueueOne(void *q, unsigned short reader);
+extern int qDeQueueOne(void *q, unsigned short reader);
 
 /* the queues re-sized for n codewords: the distances' output to n shorts, the third input (when
  * the block has three) to n triples of bytes, emptied of its element; 1 when a re-sizing fails */
@@ -610,10 +612,219 @@ static void DistSilProcess(DISTSIL *d, unsigned char **in)
         d->f284 = 0;
 }
 
-/* (ControlDistSilProcess .. InitCalculateDistances, -0x500DF8, are not written but
- * ControlDistSilProcess's prototype) */
-extern int ControlDistSilProcess(DISTSIL *d, unsigned char cmd, void *arg, void *arg2);
 static void IdleDistCalcProcess(DISTSIL *d, void **in);
+static int *GetpCachedDistances(DISTSIL *d);
+static int GetDistanceOffset(DISTSIL *d);
+static short CalculateDistance(DISTSIL *d, int n);
+static short CalculateDistance4Bit(DISTSIL *d, int n);
+extern int InitCalculateDistances();         /* 0x5006E8, after this one: not written */
+extern unsigned char qQueueControl(void *q, unsigned char cmd, int arg, int n);
+
+/* the distance block's interface, handed to a caller by command 27 */
+typedef struct DSCALC {
+    DISTSIL *d;                                         /* +0 */
+    short (*dist)(DISTSIL *d, int n);                   /* +4 */
+    int (*init)();                                      /* +8 */
+    int *(*cache)(DISTSIL *d);                          /* +12 */
+    int (*offset)(DISTSIL *d);                          /* +16 */
+} DSCALC;
+
+/* the period counters and every codebook's frame counts cleared */
+static __inline__ void ClearCounts(DISTSIL *d)
+{
+    DSCODEBOOK *cb = d->f136;
+    int k, j;
+
+    d->f280 = 0;
+    d->f284 = 0;
+    for (k = 0; k < d->ncb; k++, cb++)
+        for (j = 0; j < cb->n; j++)
+            cb->f8[j] = 0;
+}
+
+/* the first input's reader commanded (5 enabled, 8 disabled): 1 when its queue refuses */
+static __inline__ int InputControl(DISTSIL *d, unsigned char cmd)
+{
+    if (d->b.ninputs != 0)
+        return qQueueControl(d->b.inputs[0].q, cmd, d->b.inputs[0].reader, 0) == 0;
+    return 0;
+}
+
+/* the block's control: 28/29 the silence flag off (the block idle) and on (processing once a frame
+ * is indexed); 23/24 the first input's reader started (7, with arg) or stopped (6); 16 a language
+ * loaded (the counts cleared, processing again when the input and the flag allow); 31 the queues
+ * sized for the language's codewords; 30 the language freed; 10/11 a session's counters and
+ * codeword bytes and counts loaded / saved at *pos (null: cleared and the bytes rebuilt / only
+ * counted); 26 the codeword bytes read out; 15/13 the two profile offsets set (the table decoded
+ * again) / read; 2/3 the +289 flag set / cleared with the first input enabled (5) / disabled (8);
+ * 22 the counts cleared; 25 the third input drained; 27 the block's distance interface; 255 the
+ * block freed. 1 when handled. SOCOM 1's LOCAL (0x9C0), written from SOCOM II's code (round 35c),
+ * byte-exact: the bodies in the image's order (GCC lays the compare tree out first, then the
+ * bodies as written: 28, 29, 23, 24, 16, ...; cross-jumping merges 23/24's call, 2/3's, and 29's
+ * test into 16's); each session case declares its own walking pointer and counters (shared ones
+ * are one pseudo across the cases: GCSE's one reaching register for every `d->ncb` load then
+ * takes t0 where the target's has t1 -- 83 words of registers; separate counters alone, 96 -> 83;
+ * the pointer too, 0), the count loops a counter of their own; 2/3's result an inline's value
+ * xored (`!` of it is `sltiu`: combine sees the 0/1 only through the xor); 27's test `==` with the
+ * 4-bit arm first. */
+static int ControlDistSilProcess(DISTSIL *d, unsigned char cmd, void *arg, int *pos)
+{
+    int ret = 1;
+
+    switch (cmd) {
+    case 28:
+        d->f290 = 0;
+        d->b.process = (TOSFUNC)IdleDistCalcProcess;
+        break;
+    case 29:
+        d->f290 = 1;
+        if (d->index != 0)
+            d->b.process = (TOSFUNC)DistSilProcess;
+        break;
+    case 23:
+        ret = qQueueControl(d->b.inputs[0].q, 7, d->b.inputs[0].reader, (int)arg);
+        break;
+    case 24:
+        ret = qQueueControl(d->b.inputs[0].q, 6, d->b.inputs[0].reader, 0);
+        break;
+    case 16:
+        d->b.process = (TOSFUNC)IdleDistCalcProcess;
+        if (LoadLanguage(d, arg) != 0)
+            break;
+        ClearCounts(d);
+        if (d->b.ninputs != 0 && d->f290 != 0)
+            d->b.process = (TOSFUNC)DistSilProcess;
+        break;
+    case 31:
+        ret = ResizeQueues(d, ((DSLANG *)arg)->f24(arg)) == 0;
+        break;
+    case 30:
+        d->b.process = (TOSFUNC)IdleDistCalcProcess;
+        FreeLanguage(d);
+        break;
+    case 10: {
+        unsigned char *p;
+        int k, j, n;
+
+        if (arg != 0) {
+            p = (unsigned char *)arg + *pos;
+            d->f280 = *(unsigned int *)p;
+            p += 4;
+            d->f284 = *(unsigned int *)p;
+            p += 4;
+            for (k = 0; k < d->ncb; k++)
+                for (j = 0; j < d->f136[k].n; j++) {
+                    d->f196[k][j] = *p++;
+                    d->f136[k].f8[j] = *p++;
+                }
+            *pos += 8;
+            for (n = 0; n < d->ncb; n++)
+                *pos += d->f136[n].n * 2;
+        } else {
+            ClearCounts(d);
+            func_004FD5C8(d);
+        }
+        break;
+    }
+    case 11: {
+        unsigned char *p;
+        int k, j, n;
+
+        if (arg != 0) {
+            p = (unsigned char *)arg + *pos;
+            *(unsigned int *)p = d->f280;
+            p += 4;
+            *(unsigned int *)p = d->f284;
+            p += 4;
+            for (k = 0; k < d->ncb; k++)
+                for (j = 0; j < d->f136[k].n; j++) {
+                    *p++ = d->f196[k][j];
+                    *p++ = d->f136[k].f8[j];
+                }
+        }
+        *pos += 8;
+        for (n = 0; n < d->ncb; n++)
+            *pos += d->f136[n].n * 2;
+        break;
+    }
+    case 26: {
+        unsigned char *p;
+        int k, j, n;
+
+        if (arg != 0) {
+            p = (unsigned char *)arg + *pos;
+            for (k = 0; k < d->ncb; k++)
+                for (j = 0; j < d->f136[k].n; j++)
+                    *p++ = d->f196[k][j];
+        }
+        *pos = 0;
+        for (n = 0; n < d->ncb; n++)
+            *pos += d->f136[n].n;
+        break;
+    }
+    case 15:
+        d->f154 = ((unsigned short *)arg)[1];
+        d->f152 = ((unsigned short *)arg)[0];
+        if (d->f184 != 0) {
+            short *s, *t, *end;
+            short v;
+            int x;
+
+            t = d->f180;
+            s = d->f184;
+            end = s + d->f172[d->f160] - d->f172[0];
+            for (; s < end; s++) {
+                v = *s;
+                x = v >> 2;
+                if (v & 1)
+                    x += d->f154;
+                if (v & 2)
+                    x += d->f152;
+                *t++ = x;
+            }
+        }
+        break;
+    case 13:
+        ((unsigned short *)arg)[1] = d->f154;
+        ((unsigned short *)arg)[0] = d->f152;
+        break;
+    case 2:
+        d->f289 = 1;
+        ret = InputControl(d, 5) ^ 1;
+        break;
+    case 3:
+        d->f289 = 0;
+        ret = InputControl(d, 8) ^ 1;
+        break;
+    case 22:
+        ClearCounts(d);
+        break;
+    case 25:
+        while (d->b.inputs[2].q != 0 && qDeQueueOne(d->b.inputs[2].q, d->b.inputs[2].reader) != 0)
+            ;
+        break;
+    case 27: {
+        DSCALC *c = arg;
+
+        c->cache = GetpCachedDistances;
+        c->offset = GetDistanceOffset;
+        c->init = InitCalculateDistances;
+        if (d->f104 == (void *)func_004FE6C8)
+            c->dist = CalculateDistance4Bit;
+        else
+            c->dist = CalculateDistance;
+        c->d = d;
+        break;
+    }
+    case 255:
+        ret = FreeDistCalc(d) == 0;
+        break;
+    default:
+        ret = 0;
+        break;
+    }
+    return ret;
+}
 
 /* the block: no queues when profile 35 is set (the distances come from elsewhere), else one output
  * and two inputs, three with profile 34's cache -- each case setting both counts, the output's
