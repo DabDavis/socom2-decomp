@@ -34,29 +34,33 @@ public:
 
 extern CZNetwork theNetwork;
 
-/* the radio's state (names ours): what the icons read of it */
-class CRadioState {
-public:
+/* the radio: the voice object CMission::Init makes and keeps at data_0045B718 -- CZNetVoice,
+ * zNetVoice.cpp's (the online lane's round 29 named its two talk tests by every caller, this unit's
+ * radio icon and who's-talking line among them; CRadioState was this unit's misreading of it) -- as
+ * the icons read it */
+struct CZNetVoice {
+    /* someone else holding the channel's slot, heard here (0x30E790), and us talking, the talk
+     * valve told so on the way (0x30E710) */
+    bool IsReceiving();
+    bool IsTalking();
+
     unsigned char _0[0x24];
-    int m_talker;   // 0x24: the slot talking
+    int m_slot;   // 0x24: the channel's slot (the one talking)
     unsigned char _28[0x2c - 0x28];
-    int m_channel;   // 0x2c: 0 team, 1 defense, 2 offense, 3 dead, 10 SOCOM II's own
+    int m_team;   // 0x2c: the channel shown: 0 team, 1 defense, 2 offense, 3 dead, 10 SOCOM II's own
     unsigned char _30[0x5c - 0x30];
-    int m_number;   // 0x5c: the channel's number shown (0-99)
+    int m_5c;   // 0x5c: the channel's number shown (0-99)
     unsigned char _60[0x70 - 0x60];
     struct {
-        int m_player;   // the player in the slot
-        int _4;
-    } m_slots[1];   // 0x70
+        int m_client;   // 0x0: the client in the slot (256, none)
+        unsigned int m_4;   // 0x4: the time it is held until
+    } m_slots[12];   // 0x70
 };
 
-/* the radio (no data row yet) and whether it is on (no name yet: it tests the state at 0x24
- * against 11) */
-extern CRadioState *data_0045B718;
-extern "C" bool func_0030E540(CRadioState *radio);
-/* whether this player may talk, and whether anyone else is talking (the radio's; no names yet) */
-extern "C" bool func_0030E710(CRadioState *radio);
-extern "C" bool func_0030E790(CRadioState *radio);
+/* the radio (no data row yet) and whether it is on (no name yet: it tests the slot at 0x24
+ * against 11, the all-hands channel) */
+extern CZNetVoice *data_0045B718;
+extern "C" bool func_0030E540(CZNetVoice *radio);
 /* the clock the listen icon's second runs on, and when it ends (bss; no rows yet) */
 extern float data_004A44A0;
 extern float data_004145F0;
@@ -172,7 +176,7 @@ void CRadioIcon_Static::Tick(float dT)
     if (!func_0030E540(data_0045B718)) {
         tex = m_pRadioOffTexture;
     } else {
-        int channel = data_0045B718->m_channel;
+        int channel = data_0045B718->m_team;
 
         if (channel == 0)
             tex = m_pRadioChannelTeamTexture;
@@ -208,11 +212,11 @@ void CRadioIcon_Dynamic::Tick(float dT)
         return;
     zdb::CTexHandle *tex = 0;
 
-    if (func_0030E790(data_0045B718))
+    if (data_0045B718->IsReceiving())
         data_004145F0 = 1.0f + data_004A44A0;
     std::string name("none");
 
-    if (func_0030E710(data_0045B718)) {
+    if (data_0045B718->IsTalking()) {
         tex = m_pRadioChannelCanTalkTexture;
         name = "talk texture";
     } else if (data_004145F0 >= data_004A44A0) {
@@ -332,8 +336,8 @@ void CWhosTalking::Tick(float dT)
     char text[64];
     const char *speaker = 0;
 
-    if (func_0030E790(data_0045B718)) {
-        int player = data_0045B718->m_slots[data_0045B718->m_talker].m_player;
+    if (data_0045B718->IsReceiving()) {
+        int player = data_0045B718->m_slots[data_0045B718->m_slot].m_client;
         const char *clan = CZPersonaState::GetPersonaClanTag(player);
         const char *name = CZPersonaState::GetPersonaName(player);
 
@@ -353,7 +357,7 @@ void CWhosTalking::Tick(float dT)
     } else {
         m_text1.Off();
     }
-    int channel = data_0045B718->m_number;
+    int channel = data_0045B718->m_5c;
 
     if (channel > -1 && channel < 100) {
         sprintf(number, "%d", channel);
