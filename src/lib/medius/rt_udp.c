@@ -253,6 +253,8 @@ int func_0063F168(RT_UDP *pUdp, unsigned int nConn);
 int func_0063F270(RT_UDP *pUdp, unsigned int nConn);
 int func_0063F2D8(RT_UDP *pUdp, RT_UDP_TARGET *pTarget, unsigned int *pnConn);
 int func_0063F3A8(RT_UDP *pUdp);
+extern unsigned char data_0065603C;
+extern int func_00642648(void *pUpnp);
 int func_0063F8A0(RT_UDP *pUdp, unsigned int *pnConn);
 int func_0063F948(RT_UDP *pUdp, RT_UDP_CONN *pConn, unsigned char nType, RT_UDP_HEADER *pHeader);
 int func_0063FA28(RT_UDP_CONN *pConn, RT_UDP_HEADER *pHeader, void *pData, unsigned int nLength);
@@ -1043,6 +1045,107 @@ int func_0063F3A8(RT_UDP *pUdp)
         }
     }
     return func_00640408(pUdp);
+}
+
+/* the endpoint's tick (0x63F4C8): the public-address resolver, the receive, then each connection's state told through the
+ * callback -- events 7 and 2 connect or fail, 8 and 4 connect stages, 6 closed, 9 lost, 1 room to send, 0 a message waits --
+ * with 30 seconds' silence closing and 10 freeing; last the unconnected socket's message */
+int func_0063F4C8(RT_UDP *pUdp)
+{
+    RT_UDP_HEADER header;
+    unsigned int nElapsed;
+    void *pMsg = 0;
+    RT_UDP_CONN *pConn;
+    unsigned int i;
+    int result;
+
+    if (pUdp == 0)
+        return 2;
+    if (pUdp->pUpnp != 0)
+        func_00642648(pUdp->pUpnp);
+    if (pUdp->nShared < 8) {
+        if (data_0065603C != 0)
+            return 0;
+    } else if (pUdp->bResolving != 0)
+        return 0;
+    result = func_0063F3A8(pUdp);
+    if (result != 0)
+        return result;
+    for (i = 0; i < pUdp->nConns; i++) {
+        pConn = &pUdp->pConns[i];
+        switch (pConn->nState) {
+        case 0:
+            break;
+        case 1:
+            pUdp->pfnCallback(pUdp, i, 7, pConn->x04, pUdp->pUser);
+            break;
+        case 2:
+            func_006314C0(&pConn->send);
+            pUdp->pfnCallback(pUdp, i, 6, pConn->x04, pUdp->pUser);
+            break;
+        case 3:
+            pUdp->pfnCallback(pUdp, i, 8, pConn->x04, pUdp->pUser);
+            break;
+        case 4:
+            rt_time_elapsed(&pConn->tLastRecv, &nElapsed);
+            if (nElapsed > 10000) {
+                func_00631460(&pConn->send);
+                func_00631460(&pConn->recv);
+                memset(pConn, 0, sizeof(RT_UDP_CONN));
+            }
+            break;
+        case 5:
+            rt_time_elapsed(&pConn->tLastRecv, &nElapsed);
+            if (nElapsed > 30000)
+                pConn->nState = 2;
+            break;
+        case 6:
+            pUdp->pfnCallback(pUdp, i, 9, pConn->x04, pUdp->pUser);
+            pConn->nState = 4;
+            break;
+        case 7:
+            pUdp->pfnCallback(pUdp, i, 2, pConn->x04, pUdp->pUser);
+            break;
+        case 8:
+        case 9:
+            rt_time_elapsed(&pConn->tLastRecv, &nElapsed);
+            if (nElapsed > 30000)
+                pConn->nState = 2;
+            break;
+        case 10:
+            break;
+        case 11:
+            pConn->nState = 12;
+            pUdp->pfnCallback(pUdp, i, 4, pConn->x04, pUdp->pUser);
+            break;
+        case 12:
+            rt_time_elapsed(&pConn->tLastRecv, &nElapsed);
+            if (nElapsed > 30000) {
+                pConn->nState = 2;
+                break;
+            }
+            if (pUdp->nMaxPacket + 32 < pConn->send.nSize - pConn->send.nUsed)
+                pUdp->pfnCallback(pUdp, i, 1, pConn->x04, pUdp->pUser);
+            func_00631B10(&pConn->recv, &pMsg);
+            while (pMsg != 0) {
+                if (func_00631E70(pMsg) != 0) {
+                    memcpy(&header, func_00631E58(pMsg), sizeof header);
+                    if (((*(unsigned int *)&header & 6) != 6 && !(header.nType & 4))
+                        || header.nSeq == pConn->nRecvSeq + 1 || pConn->nRecvSeq == 0)
+                        goto found;
+                }
+                pMsg = func_00631E88(pMsg);
+            }
+            break;
+        found:
+            pUdp->pfnCallback(pUdp, i, 0, pConn->x04, pUdp->pUser);
+            break;
+        }
+    }
+    func_00631B10(&pUdp->buf, &pMsg);
+    if (pMsg != 0 && func_00631E70(pMsg) != 0)
+        pUdp->pfnCallback(pUdp, -2, 0, 0, pUdp->pUser);
+    return 0;
 }
 
 int func_0063F8A0(RT_UDP *pUdp, unsigned int *pnConn)
