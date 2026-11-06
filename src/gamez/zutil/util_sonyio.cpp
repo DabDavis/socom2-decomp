@@ -7,7 +7,8 @@
  * through its placeholders) and a CD file opened by its sector (the DNAS client's).
  *
  * The hard disk's game partition: HddFindFiles 0x39CE80, HddMountGame 0x39D050 (the UI lane's round
- * 31), WriteHddIcon and LoadHddIconFile (OPEN, its note). Not written: 0x39D910, 0x39DDB0 and
+ * 31), WriteHddIcon and LoadHddIconFile (OPEN, its note), HddUnmountGame, HddRebootCallback and
+ * HddRegisterReboot (the UI lane's round 34). Not written: 0x39DDB0 and
  * 0x39DFC0 (byte-exact as drafts). */
 
 #include <stdio.h>
@@ -685,6 +686,46 @@ int CFileCD::Read(char *buf, int size)
     return n;
 }
 
+/* the IOP's reboot registration (util_main.cpp's CIOPManager: the callback's type and the call) */
+class CIOPManager {
+public:
+    enum RebootPhase { PreReboot = 0, PostReboot = 1 };
+    enum RebootMode { FirstBoot = 0 };
+    typedef bool (*RebootCallback)(RebootPhase phase, RebootMode mode, void *data);
+
+    int RegisterRebootCallback(RebootCallback cb, void *data);
+};
+extern CIOPManager theIOPManager;
+
+int HddMountGame();
+int HddUnmountGame();
+
+/* whether the menu opened the game's partition (0x4A37B0), and the reboot callback's id (0x3E0640,
+ * -1 until registered; both ours) */
+extern unsigned char s_hddOpen;
+extern int s_hddRebootId;
+
+/* the game's partition across an IOP reboot (0x39D910, SOCOM II's; the name ours): while the menu
+ * has it open, let go before the reboot and mounted again after; true. HddUnmountGame inlined */
+bool HddRebootCallback(CIOPManager::RebootPhase phase, CIOPManager::RebootMode mode, void *data)
+{
+    if (s_hddOpen) {
+        if (phase == CIOPManager::PreReboot)
+            HddUnmountGame();
+        else
+            HddMountGame();
+    }
+    return true;
+}
+
+/* the reboot callback registered once (0x39D8C0, SOCOM II's: CMenuState::Init calls it; the name
+ * ours) */
+void HddRegisterReboot()
+{
+    if (s_hddRebootId == -1)
+        s_hddRebootId = theIOPManager.RegisterRebootCallback(HddRebootCallback, 0);
+}
+
 /* a file read whole for the hard disk's icon (ours) */
 struct HDDICONFILE {
     void *data;
@@ -819,8 +860,9 @@ int sceDevctl(const char *devname, int cmd, const void *arg, unsigned int arglen
               unsigned int buflen);
 }
 
-/* the hard disk's modules loaded and started (zsys_init.cpp's) */
+/* the hard disk's modules loaded and started, a mount point let go (zsys_init.cpp's) */
 bool zSysHddInit();
+bool zSysHddUnmount(const char *name);
 
 /* the game's partition passwords, each byte inverted in the low byte of a word (ours: "b00mr972") */
 static const int s_hddPassword[8] = {
@@ -902,6 +944,15 @@ int HddMountGame()
             result = 2;
     }
     return result;
+}
+
+/* the installed game's partition let go: HddMountGame's pfs0: unmounted, 0 (0x39D020, SOCOM II's:
+ * UIHardDriveOperation and CIOPManager::RebootIOP call it; the name ours, after HddMountGame and the
+ * "pfs0:" it passes) */
+int HddUnmountGame()
+{
+    zSysHddUnmount("pfs0:");
+    return 0;
 }
 
 /* the files of the installed game's RUN directory whose names hold the pattern, counted; the one

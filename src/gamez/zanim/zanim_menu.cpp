@@ -266,6 +266,7 @@ public:
     static EQUIP_ITEM GetWeaponId(const char *name);   /* 0x3D19E0 */
     static bool IsPrimary(EQUIP_ITEM item);            /* 0x3D1D10 */
     static bool IsSecondary(EQUIP_ITEM item);          /* 0x3D1CE0 */
+    static bool IsLauncher(EQUIP_ITEM item);           /* 0x3D1CB0 */
     static EQUIP_ITEM GetIDType(EQUIP_ITEM item);      /* 0x3D1A60: the item's class */
     static CValve *GetEnableValve(EQUIP_ITEM item);    /* 0x3CF1F0: "Enable_<item>", none for the rest */
     static int GetMenuValue(EQUIP_ITEM item);          /* 0x3D3230: the value UiWeapon holds */
@@ -275,10 +276,20 @@ public:
     static bool IsM203Weapon(EQUIP_ITEM item);         /* 0x3C5E10 */
     bool IsM203Weapon();                               /* 0x3C5E40 */
 };
-/* the weapons' list (zweapon.h's: its lookup by item) and the list itself */
+/* a weapon as the list holds it (zweapon.h's CZWeapon: only its item, at 0x7C) */
+class CZListWeapon {
+public:
+    unsigned char m_pad[0x7c];
+    EQUIP_ITEM m_ID;   // 0x7c
+};
+/* the weapons' list (zweapon.h's, a std::list of the weapons: its size first, its lookups by item
+ * and by place) and the list itself */
 class CZWeaponList {
 public:
     CZFTSWeapon *GetWeapon(EQUIP_ITEM item);           /* 0x3C4B40 */
+    CZListWeapon *GetWeaponByIndex(int index);         /* 0x3C4B00: 0 past the end */
+
+    unsigned int m_size;   // 0x0 (the list's size_)
 };
 extern CZWeaponList m_listWeapons__8CZWeapon;
 /* a character's weapon (zchar.h's CCharacterWeap, SOCOM 1's DWARF: 12 bytes, the item first). Its
@@ -323,7 +334,13 @@ namespace {
  * found flag in either loop's condition with a break (SequenceRunning's shape: 0x118-0x134, the
  * blocks moved), the end through reference accessors on the list (the size `unsigned int &`, the
  * data's reference, a const local) -- MW hoists the end whatever its spelling, so the target's
- * loop holds something that blocks the hoist (build/scratch/core/v_iseq2.py, v_iseq3.py) */
+ * loop holds something that blocks the hoist (build/scratch/core/v_iseq2.py, v_iseq3.py). Round 34
+ * (the UI lane): the target's test is a MATERIALISED `!(i == end)` (xor, sltiu, xori before the
+ * branch), a class iterator's operator!=; an inline `!(a == b)` over the iterators by const
+ * reference gives that test (d 20, still 0x120: end() hoisted), by value 0x178; with it, `#pragma
+ * opt_common_subs off` gives the size (0x138, 34 off), opt_propagation off 0x130, opt_loop_invariants
+ * off 0x118 -- so the original iterator is a class whose comparison re-reads the vector's end
+ * (include/vector's class-vector iterator is a pointer: the MSL's; build/scratch/ui/v_oies*.py) */
 bool OnIsEquipmentSelected(C2DAnimCmdHdr *hdr, float *dT)
 {
     EQUIP_ITEM item = CZWeapon::GetWeaponId(ArgName(hdr));
@@ -560,6 +577,7 @@ namespace {
 int FindItemSlot(const CSelectedCharsItr &it, EQUIP_ITEM item, int skip);
 bool IsSlotLocked(CSelectedCharsItr it, int slot, EQUIP_ITEM item);
 bool HasSlotsForItem(const CSelectedCharsItr &it, EQUIP_ITEM item, int slot);
+bool CanTakeItem(EQUIP_ITEM item, const CSelectedCharsItr &it);
 
 #pragma auto_inline off
 /* the slot an item goes into: the first empty one past the given, else the next of the equipment
@@ -715,6 +733,148 @@ bool HasSlotsForItem(const CSelectedCharsItr &it, EQUIP_ITEM item, int slot)
         if (AnySlotLocked(s, keep))
             free--;
     return free >= need;
+}
+
+/* the items a character's picks cycle through (SOCOM II's chain, inlined in both pickers below; the
+ * name ours) */
+inline bool IsPickItem(EQUIP_ITEM item)
+{
+    bool r = false;
+
+    switch (item) {
+    case 194:
+    case 154:
+    case 152:
+    case 195:
+    case 254:
+    case 151:
+    case 255:
+    case 141:
+    case 193:
+    case 175:
+    case 171:
+    case 173:
+    case 179:
+    case 176:
+    case 178:
+    case 143:
+    case 142:
+    case 183:
+    case 181:
+    case 182:
+    case 145:
+    case 146:
+        r = true;
+        break;
+    }
+    return r;
+}
+
+/* whether a valve holds any of the bits (ours: inlined in both pickers, its own null test kept) */
+inline bool HasValveBits(CValve *v, unsigned int bits)
+{
+    return v ? bits & v->m_value : 0;
+}
+
+/* a character's pick moved on while the character carries it (SOCOM II's, 0x283E60; the name ours):
+ * a pick item it holds already gives way to the next item round the weapons' list -- not a primary,
+ * a secondary or a launcher, one the character may take and whose menu valve holds the team's bit (1
+ * for player_team 0, else 8) -- searched from the item's own place when none is given, and that one
+ * moved on again in turn; anything else stays */
+EQUIP_ITEM NextPick(const CSelectedCharsItr &it, EQUIP_ITEM item, int index)
+{
+    if (item == EQUIP_NONE)
+        return EQUIP_NONE;
+    if (FindItemSlot(it, item, -1) != -1 && IsPickItem(item)) {
+        bool team0 = false;
+        CZWeaponList *list = &m_listWeapons__8CZWeapon;
+        int count = m_listWeapons__8CZWeapon.m_size;
+        CValve *team = CValve::GetByName("player_team");
+
+        if (team && team->m_value == 0)
+            team0 = true;
+        if (index == -1) {
+            for (int i = 0; i < count; i++) {
+                if (item == list->GetWeaponByIndex(i)->m_ID) {
+                    index = i;
+                    break;
+                }
+            }
+        }
+        bool ok = false;
+        EQUIP_ITEM next;
+
+        do {
+            if (++index >= count)
+                index = 0;
+            next = list->GetWeaponByIndex(index)->m_ID;
+            if (!CZWeapon::IsPrimary(next) && !CZWeapon::IsSecondary(next) && !CZWeapon::IsLauncher(next) &&
+                CanTakeItem(next, it)) {
+                CValve *v = CZWeapon::GetEnableValve(next);
+
+                if (v) {
+                    unsigned int bits = team0 ? 1 : 8;
+
+                    ok = HasValveBits(v, bits);
+                }
+            }
+        } while (!ok);
+        item = NextPick(it, next, index);
+    }
+    return item;
+}
+
+/* a pick moved on past another (SOCOM II's, 0x283B50; the name ours): as NextPick, but an empty pick
+ * moves on too, the next item must not be the other pick or item 195, and CanTakeItem is not asked;
+ * the item found moved on again (past nothing) in turn */
+EQUIP_ITEM NextPickBesides(const CSelectedCharsItr &it, int index, EQUIP_ITEM item, EQUIP_ITEM other)
+{
+    int slot = -1;
+
+    if (IsPickItem(item))
+        slot = FindItemSlot(it, item, -1);
+    if (slot != -1 || item == EQUIP_NONE) {
+        bool team0 = false;
+        CZWeaponList *list = &m_listWeapons__8CZWeapon;
+        int count = m_listWeapons__8CZWeapon.m_size;
+        CValve *team = CValve::GetByName("player_team");
+
+        if (team && team->m_value == 0)
+            team0 = true;
+        if (index == -1) {
+            for (int i = 0; i < count; i++) {
+                if (item == list->GetWeaponByIndex(i)->m_ID && i != index) {
+                    index = i;
+                    break;
+                }
+            }
+        }
+        EQUIP_ITEM next;
+        bool ok = false;
+
+        do {
+            if (++index >= count)
+                index = 0;
+            next = list->GetWeaponByIndex(index)->m_ID;
+
+            bool can = true;
+
+            if (next == 195)
+                can = false;
+            if (!CZWeapon::IsPrimary(next) && !CZWeapon::IsSecondary(next) && !CZWeapon::IsLauncher(next) &&
+                next != other && can) {
+                CValve *v = CZWeapon::GetEnableValve(next);
+
+                if (v) {
+                    unsigned int bits = team0 ? 1 : 8;
+
+                    ok = HasValveBits(v, bits);
+                }
+            }
+        } while (!ok);
+        item = NextPickBesides(it, index, next, EQUIP_NONE);
+    }
+    return item;
 }
 
 /* a weapon put into a selected character's slot (SOCOM II's, 0x282F20; the name ours): an item taking
@@ -948,7 +1108,16 @@ public:
  * lane's round 33): the word a CSaferStr, not a std::string, gives the target's this-tested base
  * destructor with flag 0 (+8 bytes); `slot` defined ahead of the list gives the early `addiu
  * s7,s1,2` (+4); a Word() accessor, `Done()` as `== 0`, a temporary item or a copied word change
- * nothing. Next: igdump/igreplay on the word's address variables */
+ * nothing. Round 34, read off igdump's PCode: it is not a numbering -- the target has ONE MORE
+ * NODE. Its loop guard reads the position straight off the frame (`lw v0,164(sp)`, its address
+ * folded) and its c_str() takes a fresh &m_word hoisted to the preheader (s8, s6 = +8, s2 = +1),
+ * while Next() and the bottom test share the constructor's member addresses (s1, s0); ours shares
+ * the constructor's addresses everywhere (r63, r58). Tried, none closer than 111: a reference /
+ * pointer to the word in or before the loop (128-155), the c_str in a named local, a for loop,
+ * `while (m_text[m_pos])` in place, Done() const / with locals / as an if, Word() accessors (by
+ * reference or c_str), the constructor's members set in its body, `for (;;) { if (Done()) break;`
+ * (107, 0x45C), an `if (!Done()) do ... while (!Done())` (86, 0x46C: the guard then materialised);
+ * build/scratch/ui/v_sche*.py */
 bool SelCharsHaveEquip(int equip, C2DAnimCmdHdr *hdr)
 {
     const char *text = ArgText(ArgName(hdr));
@@ -2672,23 +2841,22 @@ _zanim_cmd_hdr *UIPlayMPEGParse(const char *name, _zrdr *rdr)
 /* the cinematic sub-state (theGame's, at a constant address: each access addressed absolutely) */
 inline CCinematicState *Cinematic() { return (CCinematicState *)theGame.m_cinematicSubState; }
 
-/* PlayMPEG's toggle (a function-local static in the original, as NoFade's below) */
-extern "C" bool data_00414EA0;
-
 /* the film the record names played over the menu (the player's flag permitting, as NoFade's):
  * every other run, the cinematic state given the film, how it plays, the rectangles and the audio
  * stream -- a number, a valve's value or a UI variable's -- and pushed (SOCOM 1's took the name
- * alone) */
+ * alone). The toggle a function-local static, SOCOM 1's `alt` (0x414EA0; uninitialised here, no
+ * guard) */
 bool UIPlayMPEG(C2DAnimCmdHdr *hdr, float *dT)
 {
+    static bool alt;
     UIPlayMPEGCmd *cmd = (UIPlayMPEGCmd *)hdr;
     CZSealBody *player = ftsGetPlayer();
 
     if (player && !player->m_e1_4)
         return true;
-    bool was = data_00414EA0;
+    bool was = alt;
 
-    data_00414EA0 = !was;
+    alt = !was;
     if (!was) {
         CZAnim *anim = ZAnim.m_CurAnim;
         Cinematic()->SetMovie(anim->GetName(cmd->m_argument_index), cmd->m_fade, cmd->m_by_index);
@@ -2728,19 +2896,18 @@ bool UIPlayMPEG(C2DAnimCmdHdr *hdr, float *dT)
     return was;
 }
 
-/* PlayMPEGNoFade's toggle: a function-local static in the original (SOCOM 1's UIPlayMPEG has one,
- * alt), held to its address by its placeholder -- scdiff leaves a local static's object unchecked */
-extern "C" bool data_00414EA8;
-
+/* (the toggle a function-local static, SOCOM 1's UIPlayMPEG's `alt`: 0x414EA8, its data row named
+ * so the scorer resolves it) */
 bool UIPlayMPEGNoFade(C2DAnimCmdHdr *hdr, float *dT)
 {
+    static bool alt;
     CZSealBody *player = ftsGetPlayer();
 
     if (player && !player->m_e1_4)
         return true;
-    bool was = data_00414EA8;
+    bool was = alt;
 
-    data_00414EA8 = !was;
+    alt = !was;
     if (!was) {
         ((CCinematicState *)theGame.m_cinematicSubState)->SetMovie(ArgName(hdr), 0, 0);
         theGame.Push((CGameState *)theGame.m_cinematicSubState, 0);
@@ -3275,8 +3442,8 @@ bool UIBanSelfFromGame(C2DAnimCmdHdr *hdr, float *dT)
 
 /* the hard disk operation's last result (a byte; the name ours) */
 extern "C" unsigned char data_00414EB0;
-/* whether the game runs off the hard disk (a byte of util_sonyio.cpp's; not named yet) */
-extern "C" unsigned char data_004A37B0;
+/* whether the game's partition is open (util_sonyio.cpp's byte, 0x4A37B0) */
+extern unsigned char s_hddOpen;
 
 bool UIQuitClan(C2DAnimCmdHdr *hdr, float *dT)
 {
@@ -3413,7 +3580,7 @@ bool UIHardDriveOperation(C2DAnimCmdHdr *hdr, float *dT)
             data_00414EB0 = HddMountGame();
             if (data_00414EB0 == 0) {
                 CFileIO::SetErrorHandler((void (*)(int))HardDriveOperationCallback);
-                data_004A37B0 = 1;
+                s_hddOpen = 1;
                 done = true;
             } else {
                 int code;
@@ -3450,8 +3617,8 @@ bool UIHardDriveOperation(C2DAnimCmdHdr *hdr, float *dT)
                 m->m_on_hdd = 1;
             }
         } else if (!strcasecmp(op, "CLOSE")) {
-            func_0039D020();
-            data_004A37B0 = 0;
+            HddUnmountGame();
+            s_hddOpen = 0;
             static_cast<CMultiMissionList &>(data_00441650).Purge();
         }
     }
