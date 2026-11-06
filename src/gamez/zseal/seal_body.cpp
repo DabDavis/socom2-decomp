@@ -2743,6 +2743,146 @@ extern "C" CZBodyAnimBlend *func_00585CD0(CZSealBody *seal)
     return top;
 }
 
+/* the move's quadrant from two throttles (a ahead, b to the side): none when both are still; else the
+ * last kept, and a throttle that outweighs the other (the other's share at most 0.839) names its axis --
+ * 1 or 3 by b's sign, 0 or 2 by a's -- the throttles snapped onto it when asked; a diagonal picks between
+ * its two axes by the last quadrant, and the snap puts the throttles on the one picked (OVL2 0x5858A0:
+ * SOCOM 1's UpdateQuadrant, the same body). Byte-exact (round 55, unwritten before): the still test as
+ * `!a && !b` (`c.eq.s a, 0`; `a == 0.0f` puts the zero first, as `b != 0.0f` below does) */
+void CZSealBody::UpdateQuadrant(float &a, float &b, bool snap)
+{
+    if (!a && !b) {
+        m_quadrant = -1;
+        return;
+    }
+    m_lastquadrant = m_quadrant;
+    if (b != 0.0f && fabsf(a / b) <= 0.839f) {
+        if (b > 0.0f) {
+            m_quadrant = 1;
+            if (snap) {
+                a = 0.0f;
+                b = 1.0f;
+            }
+        } else {
+            m_quadrant = 3;
+            if (snap) {
+                a = 0.0f;
+                b = -1.0f;
+            }
+        }
+        return;
+    }
+    if (a != 0.0f && fabsf(b / a) <= 0.839f) {
+        if (a > 0.0f) {
+            m_quadrant = 0;
+            if (snap) {
+                a = 1.0f;
+                b = 0.0f;
+            }
+        } else {
+            m_quadrant = 2;
+            if (snap) {
+                a = -1.0f;
+                b = 0.0f;
+            }
+        }
+        return;
+    }
+    if (a > 0.0f && b > 0.0f) {
+        switch (m_lastquadrant) {
+        case 0:
+            m_quadrant = 0;
+            break;
+        case 1:
+            m_quadrant = 1;
+            break;
+        case 2:
+            m_quadrant = 1;
+            break;
+        case 3:
+            m_quadrant = 0;
+            break;
+        default:
+            m_quadrant = 1;
+            break;
+        }
+    } else if (a < 0.0f && b > 0.0f) {
+        switch (m_lastquadrant) {
+        case 0:
+            m_quadrant = 1;
+            break;
+        case 1:
+            m_quadrant = 1;
+            break;
+        case 2:
+            m_quadrant = 2;
+            break;
+        case 3:
+            m_quadrant = 2;
+            break;
+        default:
+            m_quadrant = 1;
+            break;
+        }
+    } else if (a < 0.0f && b < 0.0f) {
+        switch (m_lastquadrant) {
+        case 0:
+            m_quadrant = 3;
+            break;
+        case 1:
+            m_quadrant = 2;
+            break;
+        case 2:
+            m_quadrant = 2;
+            break;
+        case 3:
+            m_quadrant = 3;
+            break;
+        default:
+            m_quadrant = 3;
+            break;
+        }
+    } else {
+        switch (m_lastquadrant) {
+        case 0:
+            m_quadrant = 0;
+            break;
+        case 1:
+            m_quadrant = 0;
+            break;
+        case 2:
+            m_quadrant = 3;
+            break;
+        case 3:
+            m_quadrant = 3;
+            break;
+        default:
+            m_quadrant = 3;
+            break;
+        }
+    }
+    if (snap) {
+        switch (m_quadrant) {
+        case 0:
+            a = 1.0f;
+            b = 0.0f;
+            break;
+        case 1:
+            a = 0.0f;
+            b = 1.0f;
+            break;
+        case 2:
+            a = -1.0f;
+            b = 0.0f;
+            break;
+        case 3:
+            a = 0.0f;
+            b = -1.0f;
+            break;
+        }
+    }
+}
+
 /* a move's throttles split into two blend weights: a dead zone on the second, the first's share of
  * the length turned into an angle's fraction ((2 / pi) asin, kept within 0 and 1) and the other its
  * complement, the pair's length's inverse left in a static; the length returned, at most 1 (OVL2

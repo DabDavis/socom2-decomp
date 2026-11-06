@@ -1935,8 +1935,8 @@ public:
     bool SmoothXZThrottles(float &x, float &z);
     /* whether the throttles leave the SEAL stopped (SOCOM 1's; OVL2 0x586F00, seal_body.cpp) */
     bool IsStopped(float x, float z, float t);
-    /* the move's quadrant taken from the throttles, turned with it (SOCOM 1's; OVL2 0x5858A0, not written
-     * yet: the carry states call it with their z and x throttles' addresses) */
+    /* the move's quadrant taken from the throttles, which it snaps onto the quadrant's axis when asked
+     * (SOCOM 1's; OVL2 0x5858A0, seal_body.cpp: the carry states call it with their z and x throttles) */
     void UpdateQuadrant(float &z, float &x, bool b);
     /* the anim after a step: a blend popped when asked and the state set from what is left, then
      * the state's own control (SOCOM 1's took three throttles; OVL2 0x5870E0, seal_body.cpp) */
