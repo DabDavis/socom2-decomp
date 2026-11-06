@@ -2065,6 +2065,18 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the zdb world, textures, rdr and sound, round 27** (CNode::ApplyDecal; Headset::Flush renamed Flush(bool);
+  CPipe::RenderVisual written):
+  - A MEMBER CALL LOADS `this` AFTER ITS ARGUMENTS; an extern "C" placeholder taking the object first loads it first --
+    calling the mesh's own ApplyDecal as a member closed zdb::CNode::ApplyDecal 0x3139E0 (2 -> 0); a member call's
+    argument set-up follows the parameter order across int and float registers, so it reveals the prototype (0x3C0460's
+    order measured);
+  - a loop-invariant global read through an inline wrapper is numbered after the front-end temporaries (the kit's
+    round-53 rule) -- here it gives the target's s1 / s2; a loop's base pointer held in a local declared after the counter
+    gives the target's counter, base, count and test registers;
+  - MW 3.0 turns an indexed loop with a `break` into a pointer walk in every form tried; only `#pragma
+    opt_strength_reduction off` stops it (CPipe::RenderVisual 0x3374C0, OPEN, as a stand-in); igdump's PCode is already
+    pre-scheduled.
 - **Tells from the SEALs, round 52** (CAiSRescued::SetExtractValve named; 0x5A5A80 and 0x5A5DA0, both unwritten before):
   - call arguments read into locals before the call's other call-bearing arguments stay in saved registers across those
     calls; a signed-byte enum local passed to an `unsigned char` parameter goes in raw (lb, no andi), written inline in the
