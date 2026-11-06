@@ -84,6 +84,10 @@ public:
     unsigned short m_42;
     float m_hit_percent;   // 0x44
 
+    /* the round's stats cleared (OVL2 0x545200, SOCOM 1's CSealStats::Reset -- the SEALs' round 55
+     * named the row) */
+    void Reset();
+
     /* another set added in, counter by counter (ours: an inline, its order the target's -- 0x20
      * ahead of 0x1c and 0x1e) */
     void Add(const CSealStats &o)
@@ -553,7 +557,6 @@ extern CZAnimZAR *data_0040DBC0;   /* the stats screen's anims */
 extern unsigned char data_004A4511;
 
 extern "C" {
-void func_00545200(CSealStats *stats);   /* (the SEAL lane's: the round's stats cleared) */
 bool func_002C2FA0();
 void func_00543B90(CZSealBody *seal);
 void func_00327E40(int ms);
@@ -1285,7 +1288,7 @@ void CMPExitState::UnInit()
     }
     for (CEntityItr it; it.More(); it.Advance()) {
         if (it.IsSeal())
-            func_00545200(&it.GetSeal().GetRoundStats());
+            it.GetSeal().GetRoundStats().Reset();
     }
 
     CValve *pValve = CValve::GetByName("seals_team_score");
