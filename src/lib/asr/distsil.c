@@ -9,7 +9,8 @@
  * the constructor and the three small functions after it (GetpCachedDistances, GetDistanceOffset,
  * IdleDistCalcProcess); round 21c FreeLanguage, FreeDistCalc, NormCorrection -- and the
  * object's -ffast-math, which NormCorrection's sum shows (README "The recogniser and Medius by
- * hand", round 21c); round 22c FreeDistCalc byte-exact over a marked stand-in insn. */
+ * hand", round 21c); round 22c FreeDistCalc byte-exact over a marked stand-in insn; round 34c
+ * DistSilProcess (0x4FFCE8, named by SOCOM 1's object order) and the fields it reads. */
 #include "tosblk.h"
 
 /* a queue (queue.c), as far as the block reads it: the bytes of an element at +8 */
@@ -18,46 +19,62 @@ typedef struct QUEUE {
     unsigned short elemsize;            /* +8 */
 } QUEUE;
 
+/* a codebook of the language's (12 bytes): its codeword table, the codewords' count, and a byte per
+ * codeword counting the frames that picked it */
+typedef struct DSCODEBOOK {
+    unsigned char **data;               /* +0: a byte table per codeword */
+    unsigned short n;                   /* +4 */
+    short pad6;
+    unsigned char *f8;                  /* +8: n counts */
+} DSCODEBOOK;
+
 typedef struct DISTSIL {
     TOSBLOCK b;
-    char pad40[8];
+    short *f40;                         /* +40: the third input's frame */
+    short *f44;                         /* +44: f158 shorts into it */
     unsigned short ntables;             /* +48: the codebooks' byte tables in use */
     short pad50;
     unsigned char *tables[10];          /* +52 */
     unsigned short *index;              /* +92: ntables codewords per frame */
     int f96;                            /* +96: the distances' offset (GetDistanceOffset) */
     QOUT *dist;                         /* +100: the distances' output */
-    int pad104;
+    void (*f104)(struct DISTSIL *d, void *out, int n, unsigned short sum); /* +104 */
     int *f108;                          /* +108: the cached distances (GetpCachedDistances) */
     void *f112;                         /* +112: cleared at construction */
     void *f116;                         /* +116 */
     char pad120[16];
-    void *f136;                         /* +136 */
+    DSCODEBOOK *f136;                   /* +136: the codebooks in use */
     void *f140;                         /* +140 */
     unsigned short n112;                /* +144: f112's codebooks */
     unsigned short n116;                /* +146: f116's */
-    char pad148[20];
+    unsigned short ncb;                 /* +148: f136's */
+    unsigned short f150;                /* +150 */
+    unsigned short f152;                /* +152 */
+    unsigned short f154;                /* +154 */
+    unsigned short f156;                /* +156 */
+    unsigned short f158;                /* +158 */
+    char pad160[8];
     int f168;                           /* +168 */
     int f172;                           /* +172 */
     void *f176;                         /* +176 */
     void *f180;                         /* +180 */
     int f184;                           /* +184 */
     char pad188[8];
-    void *f196[10];                     /* +196 */
-    char pad236[56];
+    unsigned char *f196[10];            /* +196: a codeword byte per codebook */
+    char pad236[44];
+    unsigned int f280;                  /* +280: silent frames, modulo f308 */
+    unsigned int f284;                  /* +284: f308-frame periods, up to 20 */
+    unsigned char f288;                 /* +288 */
+    unsigned char f289;                 /* +289: the first input read */
+    unsigned char f290;                 /* +290 */
+    char pad291;
     float *f292;                        /* +292: a float per codeword byte */
     float f296;                         /* +296 */
     float f300;                         /* +300 */
-    char pad304[8];
-    void **f312;                        /* +312: a table whose first word is a table too */
+    float f304;                         /* +304 */
+    unsigned int f308;                  /* +308: the period */
+    unsigned char **f312;               /* +312: a byte table per count */
 } DISTSIL;                              /* 316 bytes (ConstructDistCalc's) */
-
-/* a codebook of the language's (12 bytes): its two tables */
-typedef struct DSCODEBOOK {
-    void *data;                         /* +0 */
-    int f4;
-    void *f8;                           /* +8 */
-} DSCODEBOOK;
 
 /* the profile's reader, as a block: the scheduler and the block's id */
 typedef struct TOSLOG {
@@ -216,7 +233,78 @@ static void NormCorrection(DISTSIL *d, QIN *q, unsigned char *b)
     }
 }
 
-/* (DistSilProcess .. InitCalculateDistances, -0x500DF8, are not written but
+extern void *qEnQueueOne(void *q);
+
+/* a frame (the block's process): the codewords (the second input, a byte per codebook) and the
+ * third input's frame kept; with the first input read, a silent frame (its flag clear) counted
+ * unless +288 is set, every f308th starting a period; per codebook the frame's table taken and,
+ * at a period's start, its codeword counts folded into the codeword bytes and cleared (each byte
+ * renormalised once 20 periods have passed); the bytes at the frame's codewords summed and,
+ * with the third input present, sent through +104 with the output's element. SOCOM 1's LOCAL
+ * (0x280), written from SOCOM II's code (round 34c), byte-exact: the third input read once into a
+ * local (two reads through `in` reload it after the first store: no strict aliasing); the flag
+ * loaded into sil before `1 - sil` (the target's `lbu s6,0(v1)`: sil's own register); the table of
+ * tables read into a local before the fold's loop (SOCOM 1's too). */
+static void DistSilProcess(DISTSIL *d, unsigned char **in)
+{
+    unsigned char *cw;
+    unsigned char sil;
+    unsigned char norm;
+    DSCODEBOOK *cb;
+    unsigned char *b;
+    unsigned char **tbl;
+    unsigned int sum;
+    short *f;
+    int i, j;
+
+    if (in[1] == 0)
+        return;
+    cw = in[1];
+    sil = 0;
+    f = (short *)in[2];
+    d->f40 = f;
+    d->f44 = f + d->f158;
+    if (d->f289) {
+        sil = *in[0];
+        sil = 1 - sil;
+    }
+    if (d->f288)
+        sil = 0;
+    norm = 0;
+    if (sil) {
+        if (++d->f280 % d->f308 == 0) {
+            norm = 1;
+            d->f280 = 0;
+            d->f284++;
+        }
+    }
+    sum = 0;
+    cb = d->f136;
+    for (i = 0; i < d->ncb; i++) {
+        b = d->f196[i];
+        if (sil)
+            cb->f8[*cw]++;
+        d->tables[i] = cb->data[*cw];
+        if (norm) {
+            tbl = d->f312;
+            for (j = 0; j < cb->n; j++) {
+                b[j] = tbl[cb->f8[j]][b[j]];
+                cb->f8[j] = 0;
+            }
+            if (d->f284 >= 20)
+                NormCorrection(d, (QIN *)cb, b);
+        }
+        sum += b[*cw];
+        cw++;
+        cb++;
+    }
+    if (d->f40 != 0)
+        d->f104(d, qEnQueueOne(d->dist->q), i, sum);
+    if (d->f284 >= 20)
+        d->f284 = 0;
+}
+
+/* (ControlDistSilProcess .. InitCalculateDistances, -0x500DF8, are not written but
  * ControlDistSilProcess's prototype) */
 extern int InitDistSilProcess(DISTSIL *d);
 extern int ControlDistSilProcess(DISTSIL *d, unsigned char cmd, void *arg, void *arg2);
