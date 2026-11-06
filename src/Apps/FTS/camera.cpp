@@ -1268,15 +1268,15 @@ unsigned char CAppCamera::GetDeadCamPoints(CPnt3D *CamPoint, CPnt3D *CamAimPoint
     float turn_x = 0.0f;
     float turn_y = 0.0f;
 
-    if (this->m_ctrl && this->m_ctrl->IsPlayer())
-        control = (CEntityCtrl *)this->m_ctrl;
-    else if (this->m_killed)
-        control = this->m_killed->m_control;
+    if (m_ctrl && m_ctrl->IsPlayer())
+        control = (CEntityCtrl *)m_ctrl;
+    else if (m_killed)
+        control = m_killed->m_control;
     if (control) {
         turn_x = control->m_throttle[2];
         turn_y = control->m_throttle[3];
     }
-    switch (this->m_cam_death_state) {
+    switch (m_cam_death_state) {
     case 7:
         data_00416208 += 2.0f * turn_x * dT;
         data_00416210 += 2.0f * turn_y * dT;
@@ -1291,10 +1291,10 @@ unsigned char CAppCamera::GetDeadCamPoints(CPnt3D *CamPoint, CPnt3D *CamAimPoint
         sceVu0RotMatrixY(rot_mtx->m_matrix, rot_mtx->m_matrix, data_00416208);
         TransformVectors(rot_mtx, &cam_pos, &cam_pos, 1);
         rot_mtx->SetIdentity();
-        CPnt3D ent_pos = this->m_killed->m_posW;
-        CPnt3D shooter_pos = this->m_killer->m_posW;
+        CPnt3D ent_pos = m_killed->m_posW;
+        CPnt3D shooter_pos = m_killer->m_posW;
 
-        this->m_killed->GetMatrix()->Transform(&cam_pos, 1);
+        m_killed->GetMatrix()->Transform(&cam_pos, 1);
         CPnt3D cam_dir = Flat(cam_pos - ent_pos);
         CPnt3D shooter_dir = Flat(ent_pos - shooter_pos);
 
@@ -1316,7 +1316,7 @@ unsigned char CAppCamera::GetDeadCamPoints(CPnt3D *CamPoint, CPnt3D *CamAimPoint
     data_00416208 = WrapPi(data_00416208);
     float aim = WrapPi(data_00416210);
 
-    if (this->m_bc && this->m_bc->m_netlife != 1)
+    if (m_bc && m_bc->m_netlife != 1)
         aim = ClampF(aim, -1.0f, -0.2f);
     else
         aim = ClampF(aim, -1.0f, 1.0f);
@@ -1325,7 +1325,7 @@ unsigned char CAppCamera::GetDeadCamPoints(CPnt3D *CamPoint, CPnt3D *CamAimPoint
 
     rot_mtx->SetRotate(&euler);
     TransformVectors(rot_mtx, CamPoint, CamPoint, 1);
-    if (this->m_cam_death_state == 3) {
+    if (m_cam_death_state == 3) {
         CamPoint->y += (20.0f - CamPoint->y) * data_00416218;
         if (LengthXZ(CamPoint) < 56.0f) {
             CamPoint->x += 1.05f * CamPoint->x;
@@ -1352,45 +1352,45 @@ unsigned char CAppCamera::GetTetherCamPoints(CPnt3D *pos, CPnt3D *offset, CPnt3D
     unsigned char watching = 0;
     CMatrix rot;
 
-    if (!this->m_cam_death_state && this->m_bc &&
-        (TopBlend(this->m_bc)->m_state == 8 || this->m_bc->m_state == 8) && this->m_bc->IsPlayer())
+    if (!m_cam_death_state && m_bc &&
+        (TopBlend(m_bc)->m_state == 8 || m_bc->m_state == 8) && m_bc->IsPlayer())
         SetDeathState(this, 1);
-    if (this->m_cam_death_state) {
+    if (m_cam_death_state) {
         if (!theHUD->PauseGame())
             watching = GetDeadCamPoints(pos, aim, &rot, dT);
     } else {
         float turn = 0.0f;
 
-        if (this->m_bc && this->m_bc->m_state == 8)
+        if (m_bc && m_bc->m_state == 8)
             turn = -2.5132742f * dT;
         turn = WrapPi(turn);
         sceVu0RotMatrixY(rot.m_matrix, (sceVu0FVECTOR *)(unsigned int)rot.m_matrix, turn);
         TransformVectors(&rot, pos, pos, 1);
     }
-    if (theNetwork.m_9 && func_002C2FD0(ftsPlayer.m_seal) && ((CDeathCam *)&this->m_f4)->m_state == 1) {
-        func_00294B40((CDeathCam *)&this->m_f4, this->m_entity->GetMatrix(), &rot, dT);
+    if (theNetwork.m_9 && func_002C2FD0(ftsPlayer.m_seal) && ((CDeathCam *)&m_f4)->m_state == 1) {
+        func_00294B40((CDeathCam *)&m_f4, m_entity->GetMatrix(), &rot, dT);
         TransformVectors(&rot, pos, pos, 1);
     }
-    this->m_entity->GetMatrix()->Transform(pos, 1);
+    m_entity->GetMatrix()->Transform(pos, 1);
     CPnt3D look;
     CPnt3D lz(0.0f, 0.0f, -1000.0f);
 
-    if (this->m_entity == this->m_bc)
-        this->m_bc->m_fwdlook.Apply(&lz, &look, 1);
+    if (m_entity == m_bc)
+        m_bc->m_fwdlook.Apply(&lz, &look, 1);
     else
         look = lz;
     TransformVectors(&rot, &look, &look, 1);
     look.Add(offset, &look);
-    this->m_entity->GetMatrix()->Transform(&look, 1);
-    if (theNetwork.m_9 && this->m_cam_death_state == 7) {
-        if (this->m_44) {
-            this->m_44 = 0;
-            this->m_easeAim = look;
-            this->m_easePos = *pos;
+    m_entity->GetMatrix()->Transform(&look, 1);
+    if (theNetwork.m_9 && m_cam_death_state == 7) {
+        if (m_44) {
+            m_44 = 0;
+            m_easeAim = look;
+            m_easePos = *pos;
         } else {
-            this->m_45 = 1;
-            this->m_46 = 0;
-            this->m_easeT = 0.0f;
+            m_45 = 1;
+            m_46 = 0;
+            m_easeT = 0.0f;
         }
     }
     if (watching) {
@@ -1418,49 +1418,49 @@ void CAppCamera::APTeatherCam(CMatrix &cTw, float dT)
 {
     CPnt3D CamOffset;
     float tetherLen;
-    CPnt3D cam_new_pos = this->GetThirdPersonCamPos(&CamOffset, &tetherLen);
+    CPnt3D cam_new_pos = GetThirdPersonCamPos(&CamOffset, &tetherLen);
     CPnt3D cam_aim_point;
 
     /* a byte the call returns, narrowed again (andi) before the test */
     unsigned char watching = GetTetherCamPoints(&cam_new_pos, &CamOffset, &cam_aim_point, dT);
 
-    if (watching && this->m_bc) {
-        CPnt3D from = this->m_bc->m_posW;
+    if (watching && m_bc) {
+        CPnt3D from = m_bc->m_posW;
 
         from.y += 10.0f;
-        this->ClipCameraChord(dT, &from, &cam_new_pos, &cam_new_pos);
+        ClipCameraChord(dT, &from, &cam_new_pos, &cam_new_pos);
     } else {
         CPnt3D dir = DiffOf(cam_aim_point, cam_new_pos);
 
         dir.Normalize();
         EaseBy(cam_aim_point, cam_new_pos, dir, tetherLen);
-        if (this->m_bc && !theNetwork.m_9 && this->m_bc->IsPlayer() && !this->m_bc->m_isAlive &&
-            !this->m_bc->m_inwater) {
+        if (m_bc && !theNetwork.m_9 && m_bc->IsPlayer() && !m_bc->m_isAlive &&
+            !m_bc->m_inwater) {
             cam_aim_point.y -= 5.0f;
             cam_aim_point.z += 5.0f;
         }
-        if (this->m_45) {
-            if (this->m_46) {
-                this->m_easeT += dT;
-                if (!(this->m_easeT < 1.0f))
-                    this->m_45 = 0;
+        if (m_45) {
+            if (m_46) {
+                m_easeT += dT;
+                if (!(m_easeT < 1.0f))
+                    m_45 = 0;
             } else
-                this->m_easeT = 6.0f * dT;
-            if (this->m_easeT > 1.0f)
-                this->m_easeT = 1.0f;
-            float t = this->m_easeT;
+                m_easeT = 6.0f * dT;
+            if (m_easeT > 1.0f)
+                m_easeT = 1.0f;
+            float t = m_easeT;
 
-            EaseBy(cam_aim_point, this->m_easeAim, cam_aim_point - this->m_easeAim, t);
-            this->m_easeAim = cam_aim_point;
-            EaseBy(cam_new_pos, this->m_easePos, cam_new_pos - this->m_easePos, t);
-            this->m_easePos = cam_new_pos;
+            EaseBy(cam_aim_point, m_easeAim, cam_aim_point - m_easeAim, t);
+            m_easeAim = cam_aim_point;
+            EaseBy(cam_new_pos, m_easePos, cam_new_pos - m_easePos, t);
+            m_easePos = cam_new_pos;
         } else {
-            this->m_easeAim = cam_aim_point;
-            this->m_easePos = cam_new_pos;
+            m_easeAim = cam_aim_point;
+            m_easePos = cam_new_pos;
         }
-        this->ClipCameraChord(dT, &cam_aim_point, &cam_new_pos, &cam_new_pos);
+        ClipCameraChord(dT, &cam_aim_point, &cam_new_pos, &cam_new_pos);
     }
-    this->LookAt(&cam_new_pos, &cam_aim_point, cTw);
+    LookAt(&cam_new_pos, &cam_aim_point, cTw);
     UpdateRegions(this);
 }
 
@@ -1554,36 +1554,36 @@ void CAppCamera::APFirstPersonCam(CMatrix &cTw, float dT)
     CPnt3D head_point = GetFirstPersonCamPos(this);
     CPnt3D pos = head_point;
 
-    this->m_entity->GetMatrix()->Transform(&pos, 1);
+    m_entity->GetMatrix()->Transform(&pos, 1);
     CPnt3D cam_aim_point(0.0f, 0.0f, 0.0f);
     CPnt3D lz(0.0f, 0.0f, -1.0f);
 
-    if (this->m_bc && this->m_bc == this->m_entity)
-        this->m_bc->m_fwdlook.Apply(&lz, &cam_aim_point, 1);
+    if (m_bc && m_bc == m_entity)
+        m_bc->m_fwdlook.Apply(&lz, &cam_aim_point, 1);
     else
         cam_aim_point = lz;
     cam_aim_point.Add(&head_point, &cam_aim_point);
-    this->m_entity->GetMatrix()->Transform(&cam_aim_point, 1);
-    if (this->m_45) {
-        if (this->m_46) {
-            this->m_easeT += dT;
-            if (!(this->m_easeT < 1.0f))
-                this->m_45 = 0;
+    m_entity->GetMatrix()->Transform(&cam_aim_point, 1);
+    if (m_45) {
+        if (m_46) {
+            m_easeT += dT;
+            if (!(m_easeT < 1.0f))
+                m_45 = 0;
         } else
-            this->m_easeT = 6.0f * dT;
-        if (this->m_easeT > 1.0f)
-            this->m_easeT = 1.0f;
-        float t = this->m_easeT;
+            m_easeT = 6.0f * dT;
+        if (m_easeT > 1.0f)
+            m_easeT = 1.0f;
+        float t = m_easeT;
 
-        EaseBy(cam_aim_point, this->m_easeAim, cam_aim_point - this->m_easeAim, t);
-        this->m_easeAim = cam_aim_point;
-        EaseBy(pos, this->m_easePos, pos - this->m_easePos, t);
-        this->m_easePos = pos;
+        EaseBy(cam_aim_point, m_easeAim, cam_aim_point - m_easeAim, t);
+        m_easeAim = cam_aim_point;
+        EaseBy(pos, m_easePos, pos - m_easePos, t);
+        m_easePos = pos;
     } else {
-        this->m_easeAim = cam_aim_point;
-        this->m_easePos = pos;
+        m_easeAim = cam_aim_point;
+        m_easePos = pos;
     }
-    this->LookAt(&pos, &cam_aim_point, cTw);
+    LookAt(&pos, &cam_aim_point, cTw);
     UpdateRegions(this);
 }
 
