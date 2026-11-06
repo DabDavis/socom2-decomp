@@ -926,7 +926,11 @@ int tcmUpdateRadio(CZSealBody *player, int arg)
  * one placement of 37 giving the target's a3/a2 is 46.5 -- between the end() copy's list address
  * and its temporary's stack address, inside the iterators' set-up. Round 62: the unsigned count
  * that closed tcmSelectPlayer (the index hoisted as a converted invariant) leaves this one at the
- * same 7 -- the 2 (v54 then) still wants the iterators' set-up; an `(int)2` changes nothing */
+ * same 7 -- the 2 (v54 then) still wants the iterators' set-up; an `(int)2` changes nothing. Round 63:
+ * `igreplay --permute` over the three movers (v39 the sides' CSE, v47 the end copy's address, v53 the
+ * 2) -- none of their 6 orders gives the target, a single --want over v53 again only 46.5; the end
+ * iterator set up first (25), s_tcmTarget cleared before the iterators or both iterators in the for's
+ * init (16), the walk a while loop (7) */
 int tcmUpdatePlayer(CZSealBody *player, int index)
 {
     int r = 1;
