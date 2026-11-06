@@ -4206,7 +4206,7 @@
 0x002C6220 0x8 func_002C6220  # OVL1
 0x002C6230 0x48 func_002C6230  # OVL1
 0x002C6280 0x10 func_002C6280  # OVL1
-0x002C6290 0xB8 func_002C6290  # OVL1 ; size by hand (the states lane, round 18: the seed counted the two zero words padding after jr ra's delay slot to 0x2C6350)
+0x002C6290 0xB8 GetFwdBackStickPos__13CCtrlrConfigsFRC4CPad  # OVL1 ; size by hand (the states lane, round 18: the seed counted the two zero words padding after jr ra's delay slot to 0x2C6350); s1:order by hand (the states lane, round 53): SOCOM 1's GetFwdBackStickPos 0x20A520 has this body -- the hold flag, function 1's button state down, the MoveLong stick's raw y through a two-case switch; byte-exact, fts_controller.cpp
 0x002C6350 0x7C func_002C6350  # OVL1 ; size by hand (the states lane, round 26: the seed counted the zero word padding after the epilogue's delay slot)
 0x002C63D0 0x1C IsJumpAndActionShared__13CCtrlrConfigsFv  # OVL1; s1:exact shape by hand (the states lane: SOCOM 1's IsJumpAndActionShared instruction for instruction -- the current layout's buttons 0 and 5 compared -- at SOCOM II's offsets 18/23 for SOCOM 1's 10/15) ; size by hand (the states lane: the seed counted the trailing zero padding after jr ra's delay slot)
 0x002C63F0 0x40 func_002C63F0  # OVL1

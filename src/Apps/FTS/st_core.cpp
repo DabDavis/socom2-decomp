@@ -391,7 +391,7 @@ struct CMovieCue {
     char *m_text;
 };
 
-/* the film's cues (a class vector of them). OPEN, 49 instructions: its insert (OVL1 0x1EED40, the
+/* the film's cues (a class vector of them). Byte-exact now, once 49 off: its insert (OVL1 0x1EED40, the
  * tail's, from push_back's copy) is include/vector's insert to the register -- the in-place
  * branch's end pointer in v1 where the target has a2 (include/vector's open item, the 8-byte
  * element inserts); its temporary's teardown is the target's since FreeVector became own code */

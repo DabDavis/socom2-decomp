@@ -711,7 +711,7 @@ CValveSaveManager theValveSaveManager;      // 0x43FF00
  * first: CMission::Close 0x2AB3F0 does that (its FreeVector(m_objanchor_vec) copies 0x2ABA00-0x2ABAB0,
  * m_ladders' clear 0x2B1290 called from its own code), and with Close written both deleter
  * destructors (0x2B1220, 0x2B12A0) inline their clears as the target's (the states round 25).
- * OPEN, insert<CUIVariable> 0x2B1BD0 (0x510, 46 instructions, registers only): the copy loops'
+ * insert<CUIVariable> 0x2B1BD0 (0x510, byte-exact now), once 46 off, registers only: the copy loops'
  * end pointer takes s6 where the target's takes s0 (and the cursors s1/s6 against s0/s1) -- the
  * class insert's end register, as the cue vector's 0x1EED40 (include/vector's, the MSL lane's) */
 

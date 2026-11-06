@@ -741,7 +741,14 @@ extern "C" void func_001F21B0(CObjectiveCounts *counts)
  * $f3 and runs the first quotient through $f2/$f5 -- the scheduling the README's round-33 note
  * describes). An inline whose constant argument decides a `?:` (folded at inlining) or `if (Always())`
  * do not stop it. Not adopted: the flag is a reproduction's device, not a shape found in the
- * original -- whatever the original's control flow was (an assert, a mode parameter), it is the lead */
+ * original -- whatever the original's control flow was (an assert, a mode parameter), it is the lead.
+ * Round 53, the same device over every order of the percentages, the count and the first quotient as a
+ * float local (d= from 30 to 73: a, b, c, n1, d, e stays the best, 34 off), and the count's conversion
+ * written in each average (a common subexpression: 0x200 with the device, 0x1E8 without). The GPRs say
+ * the target numbers `n + 1` after `n * m_avg[0]` -- n1 is made after the first average's product --
+ * and its order (the percentages' chains between the first quotient's cvt, div and add) reads as
+ * latency-filling by MW's scheduler, so the IR order is not the instruction order. `#pragma
+ * opt_propagation off` with n1 after pa is the target's size too (62 off) */
 void CCareerStats::AddMission(float a, float b, float c, float d, float e)
 {
     int n = m_missions;

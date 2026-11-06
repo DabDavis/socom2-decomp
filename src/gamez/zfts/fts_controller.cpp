@@ -221,6 +221,7 @@ class CCtrlrConfigs {
 public:
     static void Init();
     static bool IsJumpAndActionShared();
+    static float GetFwdBackStickPos(const CPad &pad);
     static void SelectConfig(const char *name);
 
     /* the layouts read from controller.rdr (SOCOM 1's static vector of them) */
@@ -528,8 +529,8 @@ extern "C" bool func_002C61E0(const CCtrlrConfig *config, unsigned char func, co
 /* a layout's stick read out of line (OVL1 0x2C6220, a draft's: `lb v0,0(a0)`) */
 extern "C" STICK func_002C6220(const STICK *stick);
 
-/* the look's pitch: the layout's stick's raw y, unless function 1's button holds the look (OVL1
- * 0x2C6290). The test is `!A || !B` over two inline bools: the target materialises both negations
+/* the forward and back stick (SOCOM 1's GetFwdBackStickPos, the name by its body; the rdr's MoveLong):
+ * the layout's stick's raw y, unless function 1's button holds it (OVL1 0x2C6290). The test is `!A || !B` over two inline bools: the target materialises both negations
  * (sltu; xori and xori; sltiu; xori) with the true in the first branch's delay slot.
  * Byte-exact since round 53 (written in round 18, 6 off). The colouring needs config, look, button in that
  * order (v1, a1, a2): the button numbered before look's Linearize temporary, the layout after it --
@@ -540,19 +541,19 @@ extern "C" STICK func_002C6220(const STICK *stick);
  * arm, a statement besides the value's assignment, and the rebuild leaves the arm alone (the copy
  * itself costs no code). The select in an inline returning KEY_STATE keeps the load a plain copy,
  * `lb`; written straight in the compare the load is `lbu`, one off. */
-extern "C" float func_002C6290(const CPad *pad)
+float CCtrlrConfigs::GetFwdBackStickPos(const CPad &pad)
 {
-    bool look = !g_pCurrentConfig->HoldsLook() || !g_pCurrentConfig->IsDown(1, pad);
+    bool look = !g_pCurrentConfig->HoldsLook() || !g_pCurrentConfig->IsDown(1, &pad);
 
     if (look) {
         float pos = 0.0f;
 
         switch (g_pCurrentConfig->m_lookStick.m_stick) {
         case STICK_LEFT:
-            pos = pad->m_raw[0][1];
+            pos = pad.m_raw[0][1];
             break;
         case STICK_RIGHT:
-            pos = pad->m_raw[1][1];
+            pos = pad.m_raw[1][1];
             break;
         }
         return pos;
@@ -717,7 +718,7 @@ extern "C" PAD_BUTTON func_002C6430(unsigned char func)
 }
 
 /* a function's button's pressure on the pad (OVL1 0x2C63F0).
- * OPEN, 0x38 against 0x40: the target loads the button with lb and narrows it with andi 0xff (a
+ * Byte-exact now; the history, 0x38 against 0x40: the target loads the button with lb and narrows it with andi 0xff (a
  * byte enum's copy, then its compare), and leaves a nop after the 0.0f; every form here folds the
  * two into one lbu. Tried: the enum through an inline taking it (GetPressure), an enum local, a
  * signed char local converted at each use, the test inverted, a negative enumerator; round 8: a
