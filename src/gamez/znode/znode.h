@@ -484,6 +484,9 @@ public:
      * (SOCOM 1's statics; __sinit_vis_vu.cpp builds them) */
     static tag_GlobalLight m_customGlobalLight[4];
     static CPnt4D m_basefog_color;
+    /* the base fog's near distance (SOCOM 1's static, gp-relative there: CSaveLoad::Load sets it
+     * from the world's camera, as SOCOM 1's Load does) */
+    static float m_basefog_near;
     static CMatrix m_WorldToModel;
     /* new in SOCOM II (__sinit_vis_vu.cpp builds them; the names ours): the light maps' tint colours
      * now, the ones they blend to and the blend's rate per second (0x3B7170 steps them), the lens

@@ -568,7 +568,10 @@ inline const CBBox *CZNewHudMap::GetScrollBounds() const
  * (two saved FPRs, a 0x90 frame) where the target keeps it on the stack at sp+112 and reloads x
  * and z after the map lookup (frame 0x80, no FPR saved). A reference bound to a temporary (as
  * CalcNewMatrix's) keeps it in memory but holds the reference in s3 (19 off, the frame 0x90);
- * pointers to x and z, or a reference to the named facing, are further off */
+ * pointers to x and z, or a reference to the named facing, are further off. Round 61: the facing
+ * returned by value from an inline keeps the inline's local in memory at the target's sp+112 with
+ * the target's three stores, but copies it into the named local (0x3A4; a reference bound to it
+ * 0x3A8, a CPnt3D built by its constructor 0x36C) */
 CScrollBools CZNewHudMap::GetScrollPermissions() const
 {
     CScrollBools bools;

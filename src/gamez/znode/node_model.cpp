@@ -114,10 +114,16 @@ static inline void PointBox(CBBox *box, const CPnt3D &p)
  * box GetBBox gives (SOCOM 1's, the same 0x478). The first point's box through PointBox above; the
  * DIs walked through a reference to the vector (the target's a2 = this + 0x74 for the loop's end),
  * the children's box a named local (the box's field addresses in s0-s2/s6/s7 across the loop).
- * OPEN, 39 instructions (the target's size), registers only: the DI walk's temporaries -- the
+ * The children's boxes come from UpdateBBoxFromDI itself (the world lane's round 30: the target's
+ * virtual call reads slot 0x40 of __vt__Q23zdb5CNode 0x4067B0 -- UpdateBBoxFromDI; 0x3C is
+ * UpdateBBox -- one of round 29's 39).
+ * OPEN, 38 instructions (the target's size), registers only: the DI walk's temporaries -- the
  * vector reference, the iterator, the pair's addresses and the point offset (target a2, v1, t0 /
- * v0, a3; here v1, v0, a3 / t0, a2); igreplay finds the target's colouring only with the vector
- * reference and the iterator numbered ahead of `this`. From the draft: 93 off; the vector through
+ * v0, a3; here v1, v0, a3 / t0, a2); round 29's replay found the target's colouring only with the
+ * vector reference and the iterator numbered ahead of `this`; round 30's (the slot fixed) finds no
+ * two-node placement of the reference and the iterator, of the pair's two addresses, or of an
+ * address and the offset: the target colours the hoisted pair address (sp+156) v0 ahead of the
+ * deferred iterator, so the walk's temporaries are not deferred there. From the draft: 93 off; the vector through
  * a reference 47, the pair an inline's local (below the named box, as the target's frame) 39 */
 CBBox *CNode::UpdateBBoxFromDI(bool up)
 {
@@ -147,7 +153,7 @@ CBBox *CNode::UpdateBBoxFromDI(bool up)
     }
     if (up) {
         for (CNodeVector::iterator it = m_child.begin(); it != m_child.end(); ++it) {
-            CBBox box = *(*it)->UpdateBBox(true);
+            CBBox box = *(*it)->UpdateBBoxFromDI(true);
 
             TransformBBox((*it)->GetMatrix(), &box, &box, false);
             if (!found) {
