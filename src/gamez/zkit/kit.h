@@ -406,9 +406,11 @@ public:
      * SOCOM II: the name ours) */
     bool UsesAmmo(int i)
     {
-        if (!m_item[i])
+        CZWeapon *w = m_item[i];
+
+        if (!w)
             return false;
-        switch (m_item[i]->m_ID) {
+        switch (w->m_ID) {
         case 190:
         case 193:
         case 11:

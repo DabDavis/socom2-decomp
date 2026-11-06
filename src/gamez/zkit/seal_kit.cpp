@@ -2595,18 +2595,18 @@ void CZKit::SetHotSwap(bool b)
  * s1; the inlined GetPickupSlot's registers follow (GetPickupSlot's own miss, below) */
 bool CZKit::HasPickupSlot()
 {
-    int l = GetLauncherIndex();
+    bool r = GetLauncherIndex() == -1;
 
-    return l == -1 && GetPickupSlot(l) != -1;
+    if (r)
+        r = GetPickupSlot(-1) != -1;
+    return r;
 }
 
 /* the slot a picked-up item takes, of slots 2-4 but one: the count when the slot lies past it, a slot
  * whose item uses ammunition and has none, or a slot holding item 255; else -1 (OVL2 0x5BAE60, new
- * in SOCOM II: the environment's pickup code calls it; the name ours).
- * OPEN, 39 instructions, registers only (the right size, every block in place): the target keeps the
- * index in v1, the items' cursor in t9, the magazines' outer cursor in s0 and the inlined
- * ItemHasAmmo's own cursor in t8 (its count s1, its flag s2) -- here the index takes a3, the outer
- * cursors a2/v1 and the inner one s0; the ten switch constants hoisted alike, shifted by one */
+ * in SOCOM II: the environment's pickup code calls it; the name ours). UsesAmmo's weapon a named local: one more variable numbered
+ * below the strength-reduced cursors lets the simplifier push them in its first sweep (igreplay: any lower neighbour
+ * gives all 25 registers, 39 off without; a local in this body instead stops HasPickupSlot's auto-inlining) */
 int CZKit::GetPickupSlot(int skip)
 {
     for (int i = 2; i < 5; i++) {
