@@ -52,6 +52,7 @@ public:
     CZObjectiveList();
     virtual ~CZObjectiveList();
     virtual void Draw(zdb::CCamera *cam);
+    void Init();
     bool IsPlayingAnimation();
     void SelectObjective();
     void PreviousObjective();

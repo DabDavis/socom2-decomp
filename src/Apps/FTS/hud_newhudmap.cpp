@@ -385,6 +385,124 @@ float CZNewHudMap::GetZoomOut() const
     return 0.000454545458f * m_width;   /* 1/2200 */
 }
 
+/* the map's sounds: the second slot plays one (zsnd.h's PlaySound(inst, flags)) */
+class CSnd {
+public:
+    static CSnd *GetSoundByName(const char *name);
+    virtual ~CSnd();
+    virtual void *PlaySound(void *inst, unsigned int flags);
+};
+
+/* the texture's size as InitMap reads it (c2dbitmap.cpp's view: two halfwords at 0) */
+namespace zdb {
+class CTexture {
+public:
+    unsigned short m_width;   // 0x0
+    unsigned short m_height;   // 0x2
+};
+}
+
+/* the line map (hud_linemap.cpp's CZLineMap: what InitMap reaches) */
+class CZLineMap : public CZMapItem {
+public:
+    CZLineMap();
+
+    unsigned char _4[0x14be0 - 0x4];
+    zdb::CTexture *m_tex;   // 0x14be0
+    unsigned char _14be4[0x14bf0 - 0x14be4];
+};
+
+zdb::CTexture *GetTextureByName(zdb::CWorld *world, const char *name);
+/* the legend's builder (0x20C080: its nine labels and pictures; unwritten) */
+extern "C" void func_0020C080();
+
+/* the map made ready (SOCOM 1's InitMap, 0x3C5D90 there: its compass bitmap and map background gone,
+ * SOCOM II's three sounds): the sounds, the objectives, the line map as the first item, the items'
+ * textures and their UVs (the claymore's and the bomb's alike), the scroll arrows placed by their
+ * texture's size -- the two sideways ones turned, their size corrected from 480 lines to 448 -- and
+ * the grid lines; the legend last. The names SOCOM 1's DWARF's */
+void CZNewHudMap::InitMap(zdb::CWorld *world)
+{
+    static float fArrowTopY = g_fHudLayout60;
+    static float fArrowBotY = g_fHudLayout365;
+
+    m_socom2_81c = CSnd::GetSoundByName(".TCM_SELECT");
+    m_socom2_820 = CSnd::GetSoundByName(".TCM_SLIDE");
+    m_socom2_824 = CSnd::GetSoundByName(".TCM_SLIDE");
+    m_objectivelist.Init();
+    g_pFov = GetTextureByName(0, "FOV.tif");
+
+    CZLineMap *linemap = new CZLineMap;
+
+    linemap->m_tex = g_pFov;
+    CZMapItem *item = linemap;
+
+    m_itemlist.push_back(item);
+    CZPlayerMapItem::m_conetex = GetTextureByName(0, "FOV.tif");
+    CZPlayerMapItem::m_deadbliptex = CZPlayerMapItem::m_alivebliptex = GetTextureByName(0, "teammate_health.tif");
+    CZClaymoreMapItem::m_claymoretex = GetTextureByName(0, "FOV.tif");
+    CZClaymoreMapItem::m_U0 = 0.4375f;
+    CZClaymoreMapItem::m_V0 = 0.875f;
+    CZClaymoreMapItem::m_U1 = 0.53125f;
+    CZClaymoreMapItem::m_V1 = 0.96875f;
+    CZClaymoreMapItem::m_explosiontex = GetTextureByName(0, "compass_bomb_ring.tif");
+    CZClaymoreMapItem::m_explosionU0 = 0.0f;
+    CZClaymoreMapItem::m_explosionV0 = 0.0f;
+    CZClaymoreMapItem::m_explosionU1 = 1.0f;
+    CZClaymoreMapItem::m_explosionV1 = 1.0f;
+    CZMPBombMapItem::m_mpbombtex = GetTextureByName(0, "FOV.tif");
+    CZMPBombMapItem::m_U0 = 0.4375f;
+    CZMPBombMapItem::m_V0 = 0.875f;
+    CZMPBombMapItem::m_U1 = 0.53125f;
+    CZMPBombMapItem::m_V1 = 0.96875f;
+    CZMPBombMapItem::m_explosiontex = GetTextureByName(0, "compass_bomb_ring.tif");
+    CZMPBombMapItem::m_explosionU0 = 0.0f;
+    CZMPBombMapItem::m_explosionV0 = 0.0f;
+    CZMPBombMapItem::m_explosionU1 = 1.0f;
+    CZMPBombMapItem::m_explosionV1 = 1.0f;
+    CZPlayerMapItem::InitStaticItems();
+
+    zdb::CTexture *arrow = GetTextureByName(0, "hud_arrow_off2.tif");
+    float fVertArrowHeight = arrow ? (float)(int)arrow->m_height : 0.0f;
+    float fVertArrowWidth = arrow ? (float)(int)arrow->m_width : 0.0f;
+    float fVertArrowLeftX = 0.5f * (860.0f - fVertArrowWidth);
+    float fVertArrowRightX = fVertArrowLeftX + fVertArrowWidth;
+    float fUpArrowBotY = fArrowTopY + fVertArrowHeight;
+
+    g_bmpScrollUp.Load(fVertArrowLeftX, fArrowTopY, fVertArrowLeftX, fUpArrowBotY, fVertArrowRightX, fUpArrowBotY,
+                       fVertArrowRightX, fArrowTopY, arrow);
+
+    float fHorArrowWidth = 480.0f * fVertArrowHeight / 448.0f;
+    float fHorArrowHeight = 448.0f * fVertArrowWidth / 480.0f;
+    float fLeftArrowRightX = 230.0f + fHorArrowWidth;
+    float fHorArrowTopY = 0.5f * (g_fHudLayout60 + g_fHudLayout365 - fHorArrowHeight);
+    float fHorArrowBotY = fHorArrowTopY + fHorArrowHeight;
+
+    g_bmpScrollLeft.Load(230.0f, fHorArrowBotY, fLeftArrowRightX, fHorArrowBotY, fLeftArrowRightX, fHorArrowTopY,
+                         230.0f, fHorArrowTopY, arrow);
+
+    float fRightArrowLeftX = 630.0f - fHorArrowWidth - 10.0f;
+
+    g_bmpScrollRight.Load(630.0f, fHorArrowTopY, fRightArrowLeftX, fHorArrowTopY, fRightArrowLeftX, fHorArrowBotY,
+                          630.0f, fHorArrowBotY, arrow);
+
+    float fDownArrowTopY = fArrowBotY - fVertArrowHeight;
+
+    g_bmpScrollDown.Load(fVertArrowRightX, fArrowBotY, fVertArrowRightX, fDownArrowTopY, fVertArrowLeftX,
+                         fDownArrowTopY, fVertArrowLeftX, fArrowBotY, arrow);
+    for (unsigned int iHor = 0; iHor < 7; iHor++) {
+        g_arrHorGridLines[iHor].Load(0.0f, 0.0f, 0.0f, 0.0f, g_pFov);
+        g_arrHorGridLines[iHor].SetUV(0.5f, 0.9375f, 0.5f, 0.9375f);
+        g_arrHorGridLines[iHor].SetTrans(s_gridTrans);
+    }
+    for (unsigned int iVert = 0; iVert < 9; iVert++) {
+        g_arrVertGridLines[iVert].Load(0.0f, 0.0f, 0.0f, 0.0f, g_pFov);
+        g_arrVertGridLines[iVert].SetUV(0.5f, 0.9375f, 0.5f, 0.9375f);
+        g_arrVertGridLines[iVert].SetTrans(s_gridTrans);
+    }
+    func_0020C080();
+}
+
 /* an item taken off the map if it is on it, given back for the caller to delete (HudTick's dead
  * items; no SOCOM 1 counterpart, the name ours). The walk's iterator is assigned from begin(), so
  * it stays in memory; remove() takes the item by reference, so the parameter is spilled */
@@ -471,13 +589,6 @@ public:
     unsigned int _170_12 : 20;
     unsigned char _174[0x221 - 0x174];
     MENU_STATE m_menustate;   // 0x221
-};
-
-/* the map's sounds: the second slot plays one (zsnd.h's PlaySound(inst, flags)) */
-class CSnd {
-public:
-    virtual ~CSnd();
-    virtual void *PlaySound(void *inst, unsigned int flags);
 };
 
 /* the pad's button state as the game reads it (zinput.cpp's 0x2C64E0: a game function's button,
