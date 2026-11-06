@@ -2274,7 +2274,14 @@ static inline void PushOut(float &cur, float v, bool &moved)
  * delay slot's sub.s. Any shape evaluating the step first (`r * (1.3f - t)`, a literal 10.0f, an inline
  * Mul(r, depth) whose arguments go right to left) or the depth named (anywhere, even defined after the
  * push) loses the delay slot (0x308); `0.6f * ((1.3f - t) * r)`, `+r`, `-t + 1.3f`, `1.3f + -t`, a named
- * product and an assigned step all give this one (build/scratch/seal-r51/v_3d*.py) */
+ * product and an assigned step all give this one (build/scratch/seal-r51/v_3d*.py). Round 52: `r` is
+ * no variable at all in MW's FPR colouring (the front end folds it; `-r` stays a neg.s), so the
+ * step-first shapes -- `r * (1.3f - t)`, `(1.3f - t) * 10.0f` (the literal moved left), a const `r` --
+ * give the target's operand ORDER but a front-end temporary for the 10.0 numbered before the depth:
+ * the depth then takes $f1 and the sub.s cannot go in the delay slot (0x308). igreplay --movers on that
+ * dump: the step's node must sit at 93.5-96.5, among the code generator's temporaries, after the
+ * depth's -- a 10.0 materialised late, as the propagated `r` of the current shape is; `lim` a variable
+ * too, `-(t - 1.3f)`, `/ (1.0f / 0.6f)` and `(r * 0.6f)` are worse (build/scratch/seal-r52/v_3d*.py) */
 extern "C" bool func_0054A3D0(CZSealBody *seal, const CPnt3D *pos, zdb::IntersectStruct *hit)
 {
     if (!hit->m_node)
