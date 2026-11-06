@@ -1297,6 +1297,86 @@ inline void PlayCallout(CSnd *snd, CEntity *seal, float range)
     }
 }
 
+extern "C" float floorf(float);
+
+/* the callout of what the hold has seen (OVL2 0x606EC0: 0x6067A0 calls it with the SEALs counted, the first one's place and
+ * velocity; new in SOCOM II, the name unknown): how many, how far by tens of metres, then a slow one's clock direction or a
+ * moving one's heading, against the line to it or across it or by its own axes */
+/* a dot product through references (inline; the name ours) */
+static inline float HoldDot(const CPnt3D &a, const CPnt3D &b)
+{
+    return a.x * b.x + a.y * b.y + a.z * b.z;
+}
+
+/* a callout by its number (inline; the name ours) */
+enum HOLD_CALLOUT { HOLD_CALLOUT_FIRST = 0, HOLD_CALLOUT_LAST = 255 };
+static inline void HoldCallout(CSealCtrlAi *ai, HOLD_CALLOUT id)
+{
+    PlayCallout(s_callouts[id].m_snd, ai->m_entity, s_calloutRange);
+}
+
+extern "C" void func_00606EC0(CAiState *s, CSealCtrlAi *ai, const CPnt3D *from, const CPnt3D *to, CPnt3D *vel, int n)
+{
+    static const int s_lo = 0;
+    static const int s_hi = 9;
+    static float s_slow = 7.0f;
+    static float s_cone = 0.95f;
+
+    if (n <= 0)
+        return;
+    float speed = vel->Normalize();
+    CPnt3D d = *to - *from;
+    float dist = d.Normalize();
+
+    switch (n) {
+    case 1:
+        HoldCallout(ai, (HOLD_CALLOUT)3);
+        break;
+    case 2:
+        HoldCallout(ai, (HOLD_CALLOUT)4);
+        break;
+    case 3:
+        HoldCallout(ai, (HOLD_CALLOUT)5);
+        break;
+    default:
+        HoldCallout(ai, (HOLD_CALLOUT)6);
+        break;
+    }
+    int k = (int)floorf(0.01f * dist);
+
+    _saturate(&k, s_lo, s_hi);
+    CEntity *seal = ai->m_entity;
+
+    PlayCallout(s_callouts[(HOLD_CALLOUT)(k + 10)].m_snd, seal, s_calloutRange);
+    if (speed >= s_slow) {
+        float along = HoldDot(d, *vel);
+
+        if (along < -s_cone)
+            HoldCallout(ai, (HOLD_CALLOUT)32);
+        else if (!(along <= s_cone))
+            HoldCallout(ai, (HOLD_CALLOUT)33);
+        else {
+            CPnt3D r(-d.z, 0.0f, d.x);
+            float across = HoldDot(r, *vel);
+
+            if (!(across <= s_cone))
+                HoldCallout(ai, (HOLD_CALLOUT)34);
+            else if (across < -s_cone)
+                HoldCallout(ai, (HOLD_CALLOUT)35);
+            else {
+                HOLD_CALLOUT id;
+
+                if (fabsf(vel->z) > fabsf(vel->x))
+                    id = vel->z > 0.0f ? (HOLD_CALLOUT)36 : (HOLD_CALLOUT)38;
+                else
+                    id = vel->x > 0.0f ? (HOLD_CALLOUT)39 : (HOLD_CALLOUT)37;
+                HoldCallout(ai, (HOLD_CALLOUT)id);
+            }
+        }
+    } else
+        HoldCallout(ai, (HOLD_CALLOUT)(ai::get_clock_direction(&d) + 19));
+}
+
 /* a SEAL's callout on being hit, under the state's flag bit 7: "^CS_0288" when the shooter shares
  * its team, "^CS_0295" otherwise (OVL2 0x606DB0: CSealCtrlAi::OnWeaponHit calls it with the state
  * and controller 0x572880 hands back and the shooter; the name unknown) */
