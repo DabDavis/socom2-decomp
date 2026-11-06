@@ -844,6 +844,61 @@ inline void SetPathFlags(CAiSPlan *plan, unsigned int set, unsigned int clear)
     *(unsigned int *)&plan->m_path[0x1c] |= set;
 }
 
+/* the step of the search and its first distance (OVL2 data) */
+extern float data_00650BD8;
+
+/* the first by-value difference of two points (a struct copy: a double word and a word) */
+inline CPnt3D CellSearchDelta(const CPnt3D &a, const CPnt3D *b)
+{
+    CPnt3D d;
+
+    a.Sub(b, &d);
+    return d;
+}
+
+/* whether a cell is traversable (CAiMap::IsTraversable, ai_maps.cpp's, inlined with its two calls out of line, OVL2 0x511F80 and
+ * 0x511F40 -- a level cut in the target; stand-ins by their mangled names) */
+extern "C" {
+CAiCell *GetCell__6CAiMapCFRC9CAiMapLoci(CAiMap *map, const CAiMapLoc &loc, int layer);
+bool IsTraversable__7CAiCellCFv(CAiCell *cell);
+}
+
+inline bool CellSearchFree(CAiMap *map, const CAiMapLoc &loc)
+{
+    CAiCell *cell = GetCell__6CAiMapCFRC9CAiMapLoci(map, loc, 0);
+
+    return cell ? IsTraversable__7CAiCellCFv(cell) : false;
+}
+
+/* a cell for a point: the point's own, on the SEAL's map, else the first traversable cell along the line from it toward the
+ * SEAL; whether there is one (OVL2 0x5F0CD0: 0x5F0990 and 0x5F0B30 call it -- the name ours; GetLocation's inline) */
+extern "C" bool func_005F0CD0(CSealCtrlAi *ai, const CPnt3D *pos, CAiMapLoc *loc)
+{
+    CEntity *seal;
+    bool r = false;
+
+    seal = ai->m_entity;
+    CAiMap *map = AiMaps.GetMapByIndex(seal->m_mapLocValid.m_mapid);
+
+    if (map->GetLocation(pos, *loc))
+        r = true;
+    else {
+        CPnt3D dir = CellSearchDelta(seal->m_posW, pos);
+        CPnt3D p = *pos;
+        float len = dir.Normalize();
+
+        dir.Scale(data_00650BD8, &dir);
+        for (float t = data_00650BD8; t < len; t += data_00650BD8) {
+            if (map->GetLocation(&p, *loc) && CellSearchFree(map, *loc)) {
+                r = true;
+                break;
+            }
+            p.Add(&dir, &p);
+        }
+    }
+    return r;
+}
+
 /* a plan pushed on the current state's own stack, to a cell: its path's bit 5, the cell, the
  * flags `mode`, the state it covers and the kind and step to come back to; whether it was pushed
  * (OVL2 0x5F0830; the readings ours) */
