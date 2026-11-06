@@ -7052,6 +7052,7 @@
 0x00394840 SkbToggleCaption1__FP13CSoftKeyboard
 0x003948F0 SkbToggleLock2__Fv
 0x00394920 SkbToggleCaption2__FP13CSoftKeyboard
+0x003949C0 SkbTickDisplay__FP13CSoftKeyboardf
 0x00394DA0 SkbScale__FP13CSoftKeyboardf
 0x00394F60 SkbPadKeyEvent__FP4CPad
 0x00395110 SkbEmptyAllowed__Fv
@@ -7273,6 +7274,7 @@
 0x003A3490 Reload__13CStringTablesF8LANGUAGE
 0x003A36C0 GetString__13CStringTablesFiPCc
 0x003A3700 GetId__13CStringTablesFPCcPCc
+0x003A3740 Unload__13CStringTablesFPCc
 0x003A3890 __dt__Q23std48vector<P8LOCENTRY,Q23std21allocator<P8LOCENTRY>>Fv
 0x003A3900 Load__13CStringTablesFPCc8LANGUAGE
 0x003A3BC0 __ct__Q23std48vector<P8LOCENTRY,Q23std21allocator<P8LOCENTRY>>Fv

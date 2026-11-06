@@ -2104,6 +2104,23 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     user-declared iterator copy constructor changes nothing. Not met (include/vector's note);
   - the fourth group (the cut class inserts, the deque tail, cdeque<PCv>'s erase/insert, the pair, remove_if,
     resize<reader>): no new lever found, not attempted.
+- **Tells from the UI, round 36** (SkbTickDisplay 0x3949C0 -- open since round 32 -- and CStringTables::Unload 0x3A3740 --
+  open since round 8 -- byte-exact, util_loc.cpp whole; the states' respells; five data rows, four of them SOCOM 1's names):
+  - THE LOGICAL REBUILD NEEDS TWO TESTS: MW linearises `a && b` into `t = 0; if (!a) goto L; if (!b) goto L; t = 1; L:`,
+    and RebuildLogicalExpressions (IroExprRegeneration.c) folds that back into an `&&` only when nothing but the tests'
+    own expressions sits between `t = 0` and the tests -- a flag defined before an intervening statement stays a
+    materialised value (`move v1,zero ... daddiu v1,1; beqz v1`), and a single test is never rebuilt (`ok = ok && f()`
+    with ok known true leaves `move s0,zero; beqz; daddiu s0,1; andi`);
+  - the `(float)` cast lever works on a product too (casting it numbers its nodes ahead of the other operand's); a
+    colouring no numbering gives is an INTERFERENCE: change the statement order (computing a variable earlier), not the
+    declarations (SkbTickDisplay's repeat inline);
+  - a vector SUBCLASS adds one this-test to the inlined destructor and a level to the constructor; `#pragma
+    inline_depth(6)` at a unit's end restores the constructor's inlining without changing anything else in the unit
+    (util_loc.cpp -- a "Level 6, or 8?" witness, marked as such);
+  - a re-read latch end is a CSE miss: IRO's loop passes leave the end's loads in the loop, IRO_CommonSubs merges the
+    guard's end with the latch's; `igdump --iro` with a temporary's occurrences counted per phase shows which pass removes
+    it; SOCOM 1's file statics can be spelled without the data -- `namespace { extern T name; }` scores through data.txt's
+    mangled `name__N@unnamed@unit_cpp@` row.
 - **Tells from the HUD, round 62** (four long-open rows byte-exact: CTCMNode::RemoveChild 0x232030 -- since round 27 --,
   tcmSelectPlayer 0x22F5B0 -- since round 23 --, CPopUpDialog::Draw 0x370690 -- since round 58 -- and SetFinalTeamTotalsUiVar
   0x225BC0 -- since round 17, through a marked CEntityItr(int) modelling device; MW's IroSubable.c and InterferenceGraph.c
