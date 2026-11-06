@@ -1882,7 +1882,7 @@
 0x002113D0 0x20 GetAnchorImg__10MapCompassFUi  # OVL1; ours by hand (the HUD lane: a MapCompass member over its anchor tables -- m_anchor_img at 8, m_anchor_clr at 0xA0, 38 each -- that the map's legend (0x20C080), items and line map call; the compass unit's first functions in the image, defined last)
 0x002113F0 0xCC GetAnchorColor__10MapCompassFP14CCompassAnchor  # OVL1; ours by hand (the HUD lane: a MapCompass member over its anchor tables -- m_anchor_img at 8, m_anchor_clr at 0xA0, 38 each -- that the map's legend (0x20C080), items and line map call; the compass unit's first functions in the image, defined last)
 0x002114C0 0x48 GetAnchorColor__10MapCompassFUi  # OVL1; ours by hand (the HUD lane: a MapCompass member over its anchor tables -- m_anchor_img at 8, m_anchor_clr at 0xA0, 38 each -- that the map's legend (0x20C080), items and line map call; the compass unit's first functions in the image, defined last)
-0x00211510 0xC18 Tick__10MapCompassFP10CZSealBody  # OVL1; s1:order (hud_mapcompass.cpp's first, as SOCOM 1's; grown from 0xA28 to 0xC18)
+0x00211510 0xC18 Tick__10MapCompassFf  # OVL1; s1:order (hud_mapcompass.cpp's first, as SOCOM 1's; grown from 0xA28 to 0xC18); by hand (the HUD lane, round 65: SOCOM 1's body with DWARF's locals; the dT its own first float argument, the seal SOCOM 1 took now CHUD::GetHUDOwner())
 0x00212130 0x8 Draw__10MapCompassFPQ23zdb7CCamera  # OVL1; s1:order by hand (hud_mapcompass.cpp, after Tick; empty in SOCOM II)
 0x00212140 0x14 SetTrans__10MapCompassFf  # OVL1; size 0x14 (a tail call through t9; the seed ran on into the padding); s1:exact by hand (hud_mapcompass.cpp)
 0x00212160 0x40 SetTexture__10MapCompassFPQ23zdb8CTexture  # OVL1; s1:exact by hand (hud_mapcompass.cpp)
@@ -1899,7 +1899,7 @@
 0x002125F0 0xB4 __ct__10MapCompassFv  # OVL1; s1:order (hud_mapcompass.cpp, as SOCOM 1's: its anchors built 38 to a table)
 0x002126B0 0x40 __ct__17CHudCompassAnchorFv  # OVL1; by hand (an anchor's inline constructor: MapCompass's constructor builds both tables with it)
 0x002126F0 0x75C InitHUD_Compass__10MapCompassFPQ23zdb6CWorld  # OVL1; s1:order (hud_mapcompass.cpp's last, as SOCOM 1's)
-0x00212E50 0x584 func_00212E50  # OVL1
+0x00212E50 0x584 insert__Q23std62__vector_imp<11nav_package,Q23std24allocator<11nav_package>,0>FP11nav_packageUiRC11nav_package  # OVL1; by hand (the HUD lane, round 65: navpoint_vec's push_back, called only by MapCompass::Tick 0x211510 -- include/vector's class insert for nav_package, after reserve 0x2133E0)
 0x002133E0 0x1B0 reserve__Q23std62__vector_imp<11nav_package,Q23std24allocator<11nav_package>,0>FUi  # OVL1; by hand (MapCompass's constructor reserves 48)
 0x00213590 0x8 clear__Q23std64__vector_deleter<11nav_package,Q23std24allocator<11nav_package>>Fv  # OVL1; by hand (the deleter's clear, whole: vector<nav_package>::clear's copy calls it out of line)
 0x002135A0 0x68 __dt__Q23std64__vector_deleter<11nav_package,Q23std24allocator<11nav_package>>Fv  # OVL1; by hand (the vector's destructor's last level)
