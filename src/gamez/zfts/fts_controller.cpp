@@ -203,6 +203,8 @@ public:
     {
         return Button(func) != PAD_BUTTON_NONE ? pad->m_state[Button(func)] : KEY_UP;
     }
+    /* whether a function's button is in a state (the name ours: 0x2C60C0's) */
+    bool IsInState(int func, const CPad *pad, KEY_STATE state) const { return state == ButtonState(func, pad); }
     bool HoldsLook() const { return m_11.m_on; }
 
     CSaferStr m_name;   // 0x0: SelectConfig's key
@@ -558,21 +560,18 @@ extern "C" float func_002C6290(const CPad *pad)
 
 /* whether a function's button is down on the pad (OVL1 0x2C60C0: the button's lb/andi through its
  * byte temporary, KEY_DOWN's runtime narrowing -- `li a2,2` in the test's delay slot, `andi` at the
- * join -- through one of its own on the compare's right).
- * OPEN, 2 instructions: the join's two andi's in the other order (the target narrows the constant
- * first, into v1, then the state; this the state first), the xor alike. The constant's temporary on
- * the LEFT folds its narrowing away (daddiu), as a named local, a member operator== or the
- * in-place ternary do (xori); through g_pCurrentConfig without the local, 7 off. Round 41: igreplay
- * --target finds every virtual register the target's (0 differ, 10 PCode instructions unmatched):
- * the miss is which value each narrowing holds, not the colouring. The constant as an inline's
- * by-value KEY_STATE parameter (`state == ButtonState(...)`) is folded (xori, 0x48); as a by-value
- * CByteEnum<KEY_STATE> parameter it goes through the frame (0x68, 0x70); both sides as CByteEnum
- * temporaries 0x54 */
+ * join -- through one of its own).
+ * Byte-exact since round 53 (2 off from round 18). The wanted state is an inline's by-value parameter
+ * compared on the LEFT, `state == ButtonState(...)`, and its argument a conversion through
+ * CByteEnum, not a plain constant: MW substitutes a plain constant (xori), but holds this one in a
+ * temporary assigned ahead of the inline's body, in another flow node than the compare, where
+ * propagation does not forward it. Written in place the constant's temporary on the compare's right
+ * is 2 off (the andi's the other way round) and on its left it is built at the join and folds. */
 extern "C" bool func_002C60C0(unsigned char func, const CPad *pad)
 {
     const CCtrlrConfig *config = g_pCurrentConfig;
 
-    return config->ButtonState(func, pad) == CByteEnum<KEY_STATE>(KEY_DOWN);
+    return config->IsInState(func, pad, CByteEnum<KEY_STATE>(KEY_DOWN));
 }
 
 /* the strafe: the layout's stick's x when it has one, else its two buttons, left -1 and right 1
