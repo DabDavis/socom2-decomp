@@ -248,6 +248,9 @@ public:
     /* the selected item's index (SOCOM 1's; OVL2 0x5BE040, kit.h's -- 0x545EE0 reads it) */
     int GetSelectedItemNum();
     bool SetItem(unsigned int index, EQUIP_ITEM item);
+    /* a weapon set at an index with its ammunition and rounds (kit.h's; OVL2 0x5BC5D0 -- the turret's
+     * boarding 0x5463C0 hands the gunner the turret's) */
+    bool SetItem(unsigned int index, class CZWeapon *w, void *ammo, int rounds);
     int GetNumMags(int index);
     int GetAmmoTotal(int index);
     bool SetItemAmmo(unsigned int index, void *ammo);
