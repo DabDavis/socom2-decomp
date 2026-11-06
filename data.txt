@@ -1219,6 +1219,10 @@
 0x00409040 0xC s_pauseColor2  # OVL1 bss; ours (the HUD lane, round 31: hud_pausemenu.cpp's file static, a CPnt3D colour (11, 45, 64) stored by __sinit_hud_pausemenu.cpp) -- 6 references in 2 functions: func_00202520 x3, the initialiser x3
 0x00409050 0xC s_pauseColor3  # OVL1 bss; ours (the HUD lane, round 31: hud_pausemenu.cpp's file static, a CPnt3D colour (35, 51, 56) stored by __sinit_hud_pausemenu.cpp) -- 8 references in 3 functions: func_00202520 x4, func_00201690, the initialiser x3
 0x00409060 0xC s_pauseColor4  # OVL1 bss; ours (the HUD lane, round 31: hud_pausemenu.cpp's file static, a CPnt3D grey (128, 128, 128) stored by __sinit_hud_pausemenu.cpp) -- 3 references in 1 function: the initialiser x3
+0x00409070 0x1 data_00409070  # OVL1 bss; hud_pausemenu.cpp's (the HUD lane round 66; no name yet): a byte the menu sets while open, which holds the start button's open test off; 3 references, all in that unit
+0x00409078 0x4 data_00409078  # OVL1 bss; hud_pausemenu.cpp's (the HUD lane round 66; no name yet): a float zeroed by the menu and counted up by dT; 2 references, all in that unit
+0x00409080 0x1 data_00409080  # OVL1 bss; hud_pausemenu.cpp's (the HUD lane round 66; no name yet): a byte: the menu draws while open or while it holds; 5 references, all in that unit
+0x00409088 0x4 data_00409088  # OVL1 bss; hud_pausemenu.cpp's (the HUD lane round 66; no name yet): seconds since the mission's set-up: ReInit zeroes it, TickOffState counts it up to s_pauseDelay; 3 references, all in that unit
 0x00409090 0x4 data_00409090  # OVL1 bss; hud_pausemenu.cpp's (the HUD lane round 65; no name yet): the clock between pad moves; 3 references, CZPauseTest::HudTick
 0x00409098 0x1 data_00409098  # OVL1 bss; hud_pausemenu.cpp's (round 65; no name yet): whether a pad move may come; 6 references, CZPauseTest::HudTick
 0x004090A0 0x4 data_004090A0  # OVL1 bss; hud_pausemenu.cpp's (round 65; no name yet): the selected line's pulse, 0-1; 11 references, CZPauseTest::HudTick
