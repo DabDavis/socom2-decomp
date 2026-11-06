@@ -5746,7 +5746,7 @@
 0x003294B0 0x5C RenderBBox__Q28Particle6SourceFv  # OVL1; s1:order by hand (SOCOM 1's static RenderBBox, first of the source unit: Source::list walked, GetBBox on a stack box for each, as SOCOM 1's) -- the rdr lane
 0x00329510 0x404 GetBBox__Q28Particle6SourceFP5CBBox  # OVL1; s1:callee by hand (RenderBBox calls it per source with a stack CBBox, as SOCOM 1's calls GetBBox; 0x404 bytes against SOCOM 1's 0x7D4) -- the rdr lane
 0x00329920 0x118 CheckExtents__Q28Particle6SourceF6CPnt4Df  # OVL1; s1:align (0.81 on instruction skeleton, 0x118 against SOCOM 1's 0x12C; Instance::Render calls it, as SOCOM 1's does)
-0x00329A40 0x54 func_00329A40  # OVL1
+0x00329A40 0x54 SetHasBBox__Q28Particle6SourceFb  # OVL1; by hand (the world's round 29, zparticle_source.cpp: the source's collision box made when it has no node (0x32AD20), the flag at 0x120 set and the node's SetActive called with it read back; zAnimParticleSourceTick 0x266830 calls it; new in SOCOM II, the name ours)
 0x00329AA0 0x10 func_00329AA0  # OVL1
 0x00329AB0 0xC func_00329AB0  # OVL1
 0x00329AC0 0x7C SetActive__Q28Particle6SourceFb  # OVL1; the world lane r24: s1:calls by hand (SOCOM 1's Particle::Source::SetActive(bool) 0x239410: zAnimParticleSourceTick calls it twice right after GetParticleSource, as SOCOM 1's does; the same body -- the active byte at 0 compared and set, the node (0x104, SOCOM 1's 0x100) activated through its vtable when the byte at 0x120 says so (SOCOM II tests the node), then byte 0x12C or byte 1 cleared)
