@@ -5279,6 +5279,85 @@ extern "C" bool func_005B3A60(CZSealBody *seal, const CPnt3D *ends, CPnt3D *pos,
     return true;
 }
 
+extern "C" void func_005B3890(CZSealBody *seal, int drop_now);
+
+static inline void SetActionJump(CZSealBody *seal, bool on)
+{
+    seal->m_action_jump = on;
+}
+
+/* whether an edge's drop is short (an int inline: the comparison built with its 1 first, masked at the
+ * caller's test; the name ours) */
+static inline int ShortDrop(const CPnt3D &hi, const CPnt3D &lo)
+{
+    return hi.y - lo.y <= 15.0f;
+}
+
+/* (a body's controller remote, each answer its own block; the name ours) */
+static inline bool DrivenRemotely(const CZSealBody *seal)
+{
+    if (seal->m_control)
+        return ((CSealCtrl *)seal->m_control)->IsRemote();
+    return false;
+}
+
+/* the wall's hit the SEAL holds run into: refused when the jump's action is up (cleared), with no hit held,
+ * when moving off it; facing it by more than the limit -- on a climbable face (kind 2) by a small limit,
+ * either way round when the edge's drop is short -- the impact taken, the hold dropped on any other, the
+ * two throttles and the velocities zeroed; always false (OVL2 0x5B4B40, new in SOCOM II: Tick calls it
+ * twice; the name unknown) */
+extern "C" bool func_005B4B40(CZSealBody *seal, float *a, float *b)
+{
+    if (seal->m_action_jump) {
+        SetActionJump(seal, false);
+        return false;
+    }
+
+    zdb::IntersectStruct *hit = seal->m_1090.m_node ? &seal->m_1090 : 0;
+
+    if (!hit)
+        return false;
+
+    CPnt3D d = hit->m_pos;
+
+    d.Sub(&seal->m_2bc, &d);
+    d.y = 0.0f;
+
+    float len = sqrtf(d.x * d.x + d.y * d.y + d.z * d.z);
+
+    d.Scale(-1.0f, &d);
+    if ((d.x * hit->m_norm.x + d.y * hit->m_norm.y + d.z * hit->m_norm.z) / len < 0.3f)
+        return false;
+    TransformVectors(&seal->m_node->m_matrix, &CPnt3D::unit_z, &d, 1);
+
+    float dot = d.x * hit->m_norm.x + d.y * hit->m_norm.y + d.z * hit->m_norm.z;
+
+    if (((unsigned char)hit->m_poly->m_flags.m_appflags & 7) == 2) {
+        CPnt3D lo, hi;
+
+        if (!hit->GetIntersectedEdgePoints(&hi, &lo))
+            return false;
+        if ((bool)ShortDrop(hi, lo)) {
+            if (fabsf(dot) < 0.02f)
+                return false;
+        } else if (dot < 0.02f)
+            return false;
+    } else if (dot < 0.3f)
+        return false;
+    if (!DrivenRemotely(seal)) {
+        CPnt3D pos = seal->m_posW;
+
+        seal->ImpactFront(hit, &pos);
+    }
+    if (((unsigned char)hit->m_poly->m_flags.m_appflags & 7) != 2)
+        func_005B3890(seal, 1);
+    *a = 0.0f;
+    *b = 0.0f;
+    seal->m_velM = CPnt3D::zero;
+    seal->m_1350 = CPnt3D::zero;
+    return false;
+}
+
 /* the wall's hit the SEAL holds kept or dropped: dropped when asked, or when the SEAL is more than 24
  * from it on the flat, stands behind its face or faces away from it -- and, on a climbable face
  * (application flags 2), when its edge's drop is within 15 but the edge's foot above the SEAL by more

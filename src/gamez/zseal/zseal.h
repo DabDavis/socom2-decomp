@@ -2238,6 +2238,8 @@ public:
      * 0x5A0040 call it) */
     void CreateNetAmmoPickup(unsigned short count, unsigned short *items, unsigned short *rounds, int id, CPnt3D *pos);
     void DropAmmo(int rounds);
+    /* the wall ahead taken: the climb's or the impact's anim and damage (SOCOM 1's; OVL2 0x5B2620) */
+    void ImpactFront(zdb::IntersectStruct *hit, CPnt3D *pos);
     /* a weapon of the kit dropped as a pickup where its part hangs, the anim of the drop run unless asked
      * not to (SOCOM 1's DropItem; OVL2 0x59F730) */
     CPickup *DropItem(int index, bool quiet);
@@ -2407,7 +2409,10 @@ public:
     /* bit 0: cleared by 0x549C30 when a wall the weapon's points are behind faces up past the limit
      * (seal.cpp; the name ours) */
     unsigned char m_258_0 : 1;   // 0x258
-    unsigned char _259[0x2cc - 0x259];
+    unsigned char _259[0x2bc - 0x259];
+    /* a point the wall's approach is measured from (0x5B4B40; the name ours) */
+    CPnt3D m_2bc;   // 0x2bc
+    unsigned char _2c8[0x2cc - 0x2c8];
     /* the ground probe queued for the frame: its index in the pool, -999 for none (SOCOM 1's PreCheckDIDown
      * resets it at 0x25c; OVL2 0x5B0840 queues it; the name ours) */
     int m_down_di;   // 0x2cc
