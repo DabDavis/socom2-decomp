@@ -1046,19 +1046,18 @@ void BuildNodeLocalLightList(zdb::CNode *node);
  * detail layers through a local declared after the counter (the counter, layers, count and test
  * then take the target's a2 / a1 / a0 / v1).
  * THE DETAIL LOOP IS NOT STRENGTH-REDUCED in the target (sll/addu of the index each pass, as SOCOM 1's
- * loop): no loop form tried changes MW's pointer walk (an inline test by pointer or reference, an int
- * counter, the increment in the body, a while, the layers through a local) -- only the
- * function-scoped `#pragma opt_strength_reduction off` gives the target's size (0x3DC: a stand-in,
- * its original spelling unknown).
+ * loop): since the world lane's round 31 a plain `for` over an unsigned counter indexing through
+ * `[(int)k]` (the weapons' round-37 lever: a same-size signedness cast on the index blocks MW's
+ * strength reduction at no code cost), which retires round 21's function-scoped `#pragma
+ * opt_strength_reduction off` and round 28's hand-rotated `if (k < n) { det = ...; do ... while (++k
+ * < n); }` -- both stand-ins -- at the same 20 (the same diff, word for word).
  * OPEN, 20 instructions at the target's size, every register the target's -- placement only: the
  * vector's address (s6) is computed at the top and the texture list's (s7) fills the entry test's
  * delay slot, where the target computes the list's in the loop's preheader (the vector's in the
- * slot, then the fov narrowing, then the list's). THE DETAIL LOOP IS EXACT since the world lane's
- * round 28 as a hand-rotated loop (`if (k < n) { det = ...; do ... while (++k < n); }`: the layers'
- * load after the entry test, det still numbered as a named local -- A SECOND STAND-IN, the original
- * spelling unknown); left to LICM (det read in place, or assigned or declared in the body) its load
- * is a code-generation temporary and the count, layers and flag trade a0 / a1 / v1 (28). Round 28
- * also measured: any definition at the top of the visual loop's body (the list as a reference
+ * slot, then the fov narrowing, then the list's). Round 31: the vector read in place keeps its
+ * address at the top (the guard's copy of the test shares it), the list read in place is
+ * copy-propagated (0x3D4), a list pointer local changes nothing (20). Round 28 measured: any
+ * definition at the top of the visual loop's body (the list as a reference
  * declared there, or a pointer assigned there) turns MW's guarded loop into a jump to its bottom
  * test (0x3F0); assigned later in the body, or written in place, the list is copy-propagated and
  * s7 is never allocated (0x3D4); the two references in any order at the top keep 21-25. Named
@@ -1070,7 +1069,6 @@ static inline CMatrix *StackTop()
     return CStack::m_top;
 }
 
-#pragma opt_strength_reduction off
 bool CPipe::RenderVisual(zdb::CNode *node, zdb::tag_ZVIS_FOV fov)
 {
     bool drawn = true;
@@ -1102,18 +1100,11 @@ bool CPipe::RenderVisual(zdb::CNode *node, zdb::tag_ZVIS_FOV fov)
 
             zdb::CVisual::m_rangeSqdToCamera = d;
             zdb::CVisual::m_applyDetailTexture = false;
-            unsigned int k = 0;
-            zdb::CVisual::DETAIL *det;
-
-            if (k < vis->m_numDetails) {
-                det = vis->m_details;
-                do {
-                    if (d <= det[k].m_rangeSq) {
-                        zdb::CVisual::m_applyDetailTexture = true;
-                        break;
-                    }
-                } while (++k < vis->m_numDetails);
-            }
+            for (unsigned int k = 0; k < vis->m_numDetails; k++)
+                if (d <= vis->m_details[(int)k].m_rangeSq) {
+                    zdb::CVisual::m_applyDetailTexture = true;
+                    break;
+                }
         }
         count++;
         if (!m_node->m_hasMesh && !m_doUI &&
@@ -1146,7 +1137,6 @@ bool CPipe::RenderVisual(zdb::CNode *node, zdb::tag_ZVIS_FOV fov)
         node->m_frameRendered = zVid.frameNumber;
     return drawn;
 }
-#pragma opt_strength_reduction reset
 
 /* the view id in use, the stack's top -- a `break` if the stack is empty (vis_vu.cpp's inline,
  * CVisual::GetVid: six levels high, so Add inlines it one level and calls empty() and top()) */
