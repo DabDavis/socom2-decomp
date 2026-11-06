@@ -1095,8 +1095,8 @@ class __vector_imp<T *, Allocator, true> : public __vector_pod<unsigned int, all
      * waits a pass in both; only where the `!=` itself sits inside an expression (NextFile's `?:`) do the two forms agree. So no form of
      * end() tells CountKeys' `e = end()` from _countKeys' `i != end()`: an opt-in by unit, A MODELLING DEVICE: `#define __MSL_VECTOR_END_ARG`
      * ahead of zar_key.cpp's includes makes CountKeys byte-exact, 0x257C30 and the rest of the unit holding (its other walks, Write and
-     * DeleteChildren, miss either way); by name it cannot be, the fourth copy's cut call must name end(). Measured; left to the engine core,
-     * whose unit it is (a member by another name is 1 reference off for that reason) */
+     * DeleteChildren, miss either way); by name it cannot be, the fourth copy's cut call must name end() (a member by another name is 1
+     * reference off) */
 #ifdef __MSL_VECTOR_END_ARG
     iterator end() { return __iter(__raw_end()); }
 #else
