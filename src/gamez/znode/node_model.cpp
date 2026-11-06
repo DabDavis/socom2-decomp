@@ -4,9 +4,38 @@
  * order runs the same way, its template instances and CTickLightList's destructor between). The
  * unit name is ours. Defined in reverse of their image order (-inline deferred). */
 
-#include "znode.h"
+#include "node_world.h"
 
 namespace zdb {
+
+/* a model let go of: taken off its library (the library's copy of it found by name), each
+ * instance and cross-reference of it untied (SetModel(0) inlined: a cross-reference's children
+ * deleted, the model and its name cleared, the dead arm of the name's ternary left in), the list
+ * emptied (SOCOM 1's).
+ * OPEN, 0x1B4 of 0x1AC: the target calls RemoveModel and CAssetLib::GetModel out of line (their
+ * copies 0x318AE0 and 0x318C30 follow it, last call first) and inlines SetModel(0) (the dead
+ * `lw a1,144(zero)` of its name ternary); this inlines RemoveModel whole and calls SetModel. With
+ * both inlines defined after ~CModel instead (and node_io.cpp keeping its own RemoveModel) the size
+ * is the target's, but RemoveModel's body is inlined one level, GetModel whole and SetModel still
+ * called (73 off) -- MW spends ~CModel's inlining on the CAssetLib inlines first either way */
+CModel::~CModel()
+{
+    CAssetLib *lib = m_AssetLib;
+
+    if (lib) {
+        lib->RemoveModel(lib->GetModel(m_name));
+        m_AssetLib = 0;
+    }
+    if (m_list.size()) {
+        for (CRefList::iterator it = m_list.begin(); it != m_list.end(); ++it) {
+            CNode *node = *it;
+
+            node->SetModel(0);
+            node->SetModelname(0);
+        }
+    }
+    m_list.clear();
+}
 
 /* an instance let go of: off the list, and no longer the model's parent if it was -- written out
  * (through RemoveInstance the by-value copy shares the binder's frame block: 16 bytes short) */

@@ -108,10 +108,12 @@ void InitNodeParams(tag_NODE_PARAMS *to, const tag_NODE_PARAMS *from)
  * model or atoms, opaque, its parameters the defaults; then its flags, an empty box at the origin,
  * and it counted into the universe with the shared default name (SOCOM 1's, but for SOCOM II's
  * flags).
- * OPEN (0x1D4 of 0x224, unscheduled): the base's facade is cleared with a word access (lw/sw at
- * 0x5c, in SOCOM 1 too) where MW narrows every bitfield store here to a byte -- no field type,
- * width or placement probed (build/scratch/inl/t12-t14) keeps the word; and the byte at 0x5d
- * loses bit 2 by a mask alone (no OR), as `&= ~4` would, not as a bitfield store of 0 */
+ * OPEN (0x20C of 0x224): the base's facade word access is the online lane's round 28 fix --
+ * tag_NODE_PARAMS' constructor sets it in the mem-initializer list (a bitfield cleared there is
+ * read, masked and written back as a word; set in the body MW narrows it to a byte) -- and the
+ * first 68 instructions are now the target's. The tail is 6 short: the target copies
+ * CPnt3D::zero into a stack local of its own (sp+64) and makes min and max from that copy, where
+ * MW here copy-propagates the static into both, the local dropped (an 80-byte frame there, 64 here) */
 CNode::CNode()
     : m_parent(0)
 {

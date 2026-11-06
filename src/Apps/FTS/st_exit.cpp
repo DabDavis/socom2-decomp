@@ -461,8 +461,15 @@ float fabsf(float x);   /* 0x1B3620 */
  * the test written in place (`it._it != GetEntityList().end()`)  More-bt 156, begin-bt 152,
  *             Next-bt 148, More-cp 144, it 140, Next-cp 136.
  * SetRoundStatUiVars (unwritten, its walk `count < 4 && More()` tested at the top only) holds
- * begin-bt 284, More-bt 280, it 276, More-cp 272, Next-bt 268, Next-cp 264 -- C2DMessage_Q::Tick
- * (fts_message.cpp, round 48) has a named iterator below every temporary too */
+ * begin-bt 284, More-bt 280, it 276, More-cp 272, Next-bt 268, Next-cp 264.
+ * Round 49: `it` has no slot of its own (both members scalarised: _it in a1, _iIdx dead), so the
+ * slot named `it` above is begin()'s copy -- every slot is a temporary. With Next() the slots are
+ * begin-bt 156, Next-bt 152, More-bt 148, begin-cp 144, Next-cp 140, More-cp 136: by inline depth
+ * (the bt temporaries, then the cp ones), each depth in generation order (the increment before the
+ * test). The target's [begin-bt, More-bt] [begin-cp, Next-bt] [More-cp, Next-cp] fits no one depth
+ * per call: Next() through More() (0x6C0), a Step() wrapper over Next() (0x664) and More() through an
+ * inline End() (0x6A4) all change the size. (C2DMessage_Q::Tick's iterator below every temporary,
+ * round 48's pointer here, was a second web: fts_message.cpp, round 49 -- not this walk's case) */
 extern "C" float func_001F27C0(CZSealBody **seals, CSealStats **stats, int n)
 {
     int down1 = 0;

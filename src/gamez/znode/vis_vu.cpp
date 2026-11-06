@@ -1695,7 +1695,10 @@ int CVisual::ApplyDecal(unsigned int vid, float size, CPnt3D *pos, CPnt3D *norma
  * arguments and the no-op-conversion rule): the copy through CMatrix's conversion operators on
  * either or both arguments, the source cast straight from the CMatrix pointer (also through void *
  * and unsigned int), local inline copies taking (dst, src), (src, dst), references or the rows --
- * the same two (build/scratch/wep/v_adr*.py) */
+ * the same two (build/scratch/wep/v_adr*.py). Round 35: the PowerPC MW's call_function (doldecomp
+ * mweppc FunctionCalls.c) passes register arguments in argument order after IRO linearizes them last
+ * first -- ours is that order (a0 then a1, a1 in the slot); the target's a1-first is not a source
+ * order the call takes, so it is the (closed) MIPS backend's scheduling of the two set-ups */
 void CVisual::ApplyDecalRender(CMatrix *mtw, CNode *node, float size, CPnt3D *pos, CPnt3D *normal,
                                CTexHandle *tex, CMatrix *uv)
 {
