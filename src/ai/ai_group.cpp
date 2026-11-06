@@ -889,22 +889,18 @@ CAiGroup::step::STATE CAiGroup::TickStep()
 
 /* (OVL2 0x60CBD0: the state a byte-enum local (`li`); the members walked with the vector's class
  * iterators, the end re-read each pass, the test materialised).
- * OPEN, 5 instructions: the camera flag's negation. The target computes CamerasOn() into a0 in the
- * loop test's delay slot and then, in the preheader, normalises it again before flipping it (`sltu
- * v0,zero,a0; xori; andi s0,v0,0xff`); every form here flips the first normalisation directly
- * (`sltu; xori` before the test, `andi 0xff` twice after). Tried: `!CamerasOn()` into a bool local
- * before the loop, `CamerasOn() == false` (xor/sltiu), the accessor as `? true : false`, the
- * negation inside the loop (not hoisted: recomputed each pass, one saved register fewer) */
+ * The camera flag read into a bool before the loop (sltu, in the guard's delay slot) and negated in the
+ * loop, whose invariant hoist normalises it again in the preheader */
 void CAiGroup::Start()
 {
     if (m_state == NEW) {
         STATE state = DONE;
-        bool cams = !CamerasOn();
+        bool cams = CamerasOn();
 
         for (memberlist::iterator i = m_members.begin(); i != m_members.end(); ++i) {
             CSealCtrlAi *ai = *i;
 
-            ai->m_aibit19 = cams;
+            ai->m_aibit19 = !cams;
             ai->m_aibit21 = true;
             func_005F7470(&ai->m_stateStack, ai, 1);
         }
