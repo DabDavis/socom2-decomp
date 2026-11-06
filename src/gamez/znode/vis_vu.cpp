@@ -1603,7 +1603,19 @@ static inline void DecalUV(CPnt3D *uv, short *s)
  * given one (below -0.01) made three add-on points -- positioned by the vertices, projected through
  * the UV matrix -- and, when the projection lands inside the texture and within 4.8 of its plane,
  * each point's UVs and normal set and the triangle attached as a decal; the triangles attached
- * (SOCOM 1's ApplyDecal, 0x3096E0 in the demo, rewritten: the normal passed in, VU0's vertices) */
+ * (SOCOM 1's ApplyDecal, 0x3096E0 in the demo, rewritten: the normal passed in, VU0's vertices;
+ * its second part keeps the original's slip, the second vertex's UVs written into the third point).
+ * OPEN, 2 instructions long (453 + 2) -- the first part is the target's to the register: the frame by
+ * the declaration order (n, the vertex and index arrays; then count, v, nrm, nt, k: igreplay --movers
+ * put nt and k after nrm), the view walk's start `v = &vd` then SelectVertex (the target keeps &vd in
+ * v's register), the counters zeroed ahead of the call, the asm's inline taking (t, out, src) with t
+ * and out named locals of the point's inline (src v0, out v1, t a0), the second and third vertices' UVs
+ * through an inline taking the vertex by value (the first's are re-read after each store). Left: the
+ * UV part's volatile colouring -- the target gives the divide-by-3 constant a1, the first vertex v1 and
+ * the 32768 constant's lui v0 where MW here gives the constant v0 (deg 41, pushed in the second sweep),
+ * and the mult/mfhi hazard and a loop-top pad then cost two nops; no placement of the constants or the
+ * inline's vertex temporaries gives it (igreplay --want/--movers, 46,656 each), so the graph differs:
+ * the increments at the end, ++, `++nt == 1`, the index divide first or cast give 53-62 */
 int CVisual::ApplyDecal(unsigned int vid, float size, CPnt3D *pos, CPnt3D *normal, CMatrix *uv,
                         CTexHandle *tex)
 {
