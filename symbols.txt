@@ -12834,7 +12834,7 @@
 0x00642BF8 0x50 func_00642BF8  # OVL2 unaligned
 0x00642C48 0x15C func_00642C48  # OVL2 unaligned
 0x00642DA8 0xC8 func_00642DA8  # OVL2 unaligned
-0x00642E70 0x1A8 func_00642E70  # OVL2
+0x00642E70 0x1A4 func_00642E70  # OVL2; size 0x1A8 -> 0x1A4 (GCC round 23b): the row counted the 8-byte alignment nop at 0x643014 after its sibling call's delay slot
 0x00643018 0x128 func_00643018  # OVL2 unaligned; split at 0x643140 (the gcc lane)
 0x00643140 0x28 func_00643140  # OVL2; split from func_00643018: entered only by a tail call (j from 0x642E68, GCC 2.96's sibcall), unreached by its predecessor's branches
 0x00643168 0xB8 func_00643168  # OVL2 unaligned

@@ -9,8 +9,12 @@
  *
  * The init copies the initial context with memcpy -- GCC's inline block move with its run-time
  * alignment test, neither pointer's alignment known -- and tail-calls the byte-order probe, which
- * reads a two-byte .rodata constant's high byte (0x23 on this little-endian machine). Not written:
- * 0x642E70 (the update). Round 22b: the final 0x643018 -- one variable is the count, the block index and
+ * reads a two-byte .rodata constant's high byte (0x23 on this little-endian machine). Round 23b: the
+ * update 0x642E70, Steve Reid's public SHA1Update reshaped -- the carry tested against the count before
+ * the add, the buffered part's index and then its room one variable (s1 through both, the destination
+ * taken between), a short input a sibling-call memcpy, whole blocks copied in before each transform
+ * (GCC's unaligned block move); its row was 4 bytes long, counting the alignment nop after the last
+ * sibling call. Round 22b: the final 0x643018 -- one variable is the count, the block index and
  * the pad length in turn (`n = count; n = (n >> 3) & 0x3F; ... n = 63 - n`: the target's a3 holds all
  * three, the shift in v0 between), the count words stored high word first. Its callees 0x665B30,
  * 0x667AA0 and 0x667AD0 (the transform and two byte-order copies) are SHA1_platform.c's R5900 assembly,
@@ -42,6 +46,43 @@ extern void func_00665B30(unsigned int *pState, unsigned char *pBlock);
 extern void func_00667AA0(unsigned char *pBlock, int nBytes, int bLittleEndian);
 extern void func_00667AD0(unsigned char *pDigest, unsigned int *pState, unsigned int nBytes);
 extern void *memset(void *p, int c, unsigned int n);
+
+/* the update: the bit count carried into its high word, the buffered block filled and transformed,
+ * then each whole block copied in and transformed, the rest buffered (the partial copies sibling
+ * calls) */
+void func_00642E70(SHA1_CTX *pCtx, unsigned char *pData, unsigned int nLength)
+{
+    unsigned int nCount = pCtx->count[0];
+    unsigned int n;
+    unsigned char *p;
+
+    pCtx->count[0] += nLength << 3;
+    if ((unsigned int)pCtx->count[0] < nCount)
+        pCtx->count[1]++;
+    pCtx->count[1] += nLength >> 29;
+    n = (nCount >> 3) & 0x3F;
+    if (n != 0) {
+        p = &pCtx->buffer[n];
+        n = 64 - n;
+        if (nLength < n) {
+            memcpy(p, pData, nLength);
+            return;
+        }
+        memcpy(p, pData, n);
+        pData += n;
+        nLength -= n;
+        func_00667AA0(pCtx->buffer, 64, pCtx->bLittleEndian);
+        func_00665B30(pCtx->state, pCtx->buffer);
+    }
+    while (nLength >= 64) {
+        memcpy(pCtx->buffer, pData, 64);
+        nLength -= 64;
+        pData += 64;
+        func_00667AA0(pCtx->buffer, 64, pCtx->bLittleEndian);
+        func_00665B30(pCtx->state, pCtx->buffer);
+    }
+    memcpy(pCtx->buffer, pData, nLength);
+}
 
 /* the final: the 0x80 pad, a block of its own when the bit count does not fit, the count, the last
  * transform, then up to 20 digest bytes out (the rest of a longer buffer zeroed) */
