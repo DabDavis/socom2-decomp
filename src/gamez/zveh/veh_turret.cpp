@@ -1040,7 +1040,11 @@ extern "C" const float data_003E0850;
  * OPEN, 19 instructions, the target's size: the negation's schedule -- the target loads y, x, z,
  * stores y, x, z and forwards z.z to the dot (`mov.s`), reloading only z.x; here the stores end on
  * y and both are reloaded (the inline's declaration and store orders change nothing) -- and the
- * pitch half's d.y in f5 where the target has f3 */
+ * pitch half's d.y in f5 where the target has f3. Round 36 (build/scratch/wep/v_aim36*.py): the
+ * negated sine and cosine computed before the negation (before z or before AimNeg3) or AimNeg3
+ * returning its z for the dot and cross put the z store next to its first use, so z.z is no
+ * longer reloaded (the target forwards it through a `mov.s`) -- but the loads then go x, y, z and
+ * x's reload moves ahead of the z store: 29 off, the right size */
 static inline void AimNeg3(float *r, const CPnt3D &p)
 {
     float y = -p.y, x = -p.x, zz = -p.z;
