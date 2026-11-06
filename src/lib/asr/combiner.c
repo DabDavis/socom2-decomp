@@ -43,7 +43,9 @@ extern void *qEnQueueOne(void *q);
  * `addiu a1,v0,4` and `addiu a0,a0,8`: indexing them is 2 words short). OPEN (round 33c, the
  * right size, 127 words): registers only -- the target allocates p3, d, p4, p1 to a0-a3 and x, cur,
  * k, q to t1-t4, here d, p4, p3, p1 a0, a1, a3, t3 and x t4; the head's index sums are scheduled
- * h & 7 first there. Five declaration orders give the same 127. */
+ * h & 7 first there. Five declaration orders give the same 127. The target's output loops count
+ * in a1, apart from the feature loops' t3 (one k here, t1 throughout, ranks above the pointers);
+ * a counter of their own for the output loops and the empty one loses the empty loop (0x3C0). */
 static void CombinerProcess(COMBINER *c, float **in)
 {
     float *x = in[0];
