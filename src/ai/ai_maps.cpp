@@ -31,7 +31,15 @@ const T &_max(const T &a, const T &b)
  * kinds' loop is a loop invariant MW hoists into the kinds' loop's preheader (the field addresses,
  * both ends, then a jump to the `k < 6` test), and the count walk's postfix step hoists its end into
  * the walk's own (the online lane's postfix rule).
- * OPEN, right size, 12 instructions since round 36 (34 before): registers only -- the target gives the push walk's names
+ * OPEN, right size, 5 instructions since round 37 (12 in round 36, 34 before), registers only: the count walk's hoisted end and its
+ * byte, the target's v1 and a2, here a2 and v1. build/scratch/ai/ig2.py over every placement of the two: the target needs the byte
+ * numbered below the end and below the walk's cursor, so coloured after both -- and the byte is a code-generation temporary, above
+ * every variable. So the original's byte is a variable that reaches the PCode. A named one read once is expression-propagated in
+ * pass 0 (IRO_ExpressionPropagation: useCount 1, whatever other blocks do; the log's Operand count falls there), one local reused by
+ * both walks too (the compare's operands swap: 6 off), an inline accessor's return alike (build/scratch/ai/v_unt37*.py). What round
+ * 37 fixed: `i = begin()` ahead of the named end in the push walk's head (v0 stays busy with `this` through the two address
+ * temporaries: round 29's "code-generation temporaries" below, v76 / v77, 12 -> 5).
+ * Before that: the target gives the push walk's names
  * iterator s0 and the name-table cursor (m_names[k], strength-reduced) s1, this build the other way
  * round (the iterator's scalar @7178 is numbered below the cursor's @7190), and the count walk's
  * cursor and end take a0/v1 where this build's take a2/a0. A named reference to m_names[k] (0x360),
@@ -83,9 +91,10 @@ void CAiMaps::UpdateNameTables()
         if (count > 0) {
             m_names[k].reserve(count);
             unsigned int mapid = 0;
+            i = begin();
             iterator e = end();
 
-            for (i = begin(); i != e; ++i, mapid++) {
+            for (; i != e; ++i, mapid++) {
                 CAiMap::names &names = (*i)->m_namesTable;
 
                 for (CAiMap::names::iterator n = names.begin(); n != names.end(); ++n) {
