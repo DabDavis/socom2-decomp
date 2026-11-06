@@ -1401,51 +1401,44 @@ static inline CZSealBody *HoldSeen(CAiSHold *h, unsigned int i)
     return 0;
 }
 
-/* a point copied field by field through its address and its length squared through a reference (inlines; the names ours) */
-static inline void HoldCopy(CPnt3D *dst, const CPnt3D *src)
-{
-    dst->x = src->x;
-    dst->y = src->y;
-    dst->z = src->z;
-}
-
-static inline float HoldLenSq(const CPnt3D *v)
-{
-    return v->x * v->x + v->y * v->y + v->z * v->z;
-}
-
-static inline void HoldSubXZ(const CPnt3D *a, const CPnt3D *b, CPnt3D *out)
-{
-    out->x = a->x - b->x;
-    out->y = 0.0f;
-    out->z = a->z - b->z;
-}
-
+/* the walk's end test, as the vector iterator's != materialises it (inline; the name ours) */
 static inline bool HoldNe(const CTarget *a, const CTarget *b)
 {
     return !(a == b);
 }
 
+/* the AI bit next to m_aibit16, through a bool (inline; the name ours) */
 static inline void HoldBit17(CSealCtrlAi *ai, bool on)
 {
     ai->m_aibit17 = on;
 }
 
+/* MODELLING DEVICE for the watch below, a flag false when read and known so only in the optimiser's second pass (the
+ * weapons' late-folding guard: stored outside the loop, read through a reference bound at the read) */
+struct HoldGuard {
+    bool on;
+};
+
+/* no team shared, the mask's address kept (inline, its test materialised; the name ours) */
 static inline bool HoldEnemy2(unsigned int &team, CEntity *b)
 {
     return !(team & b->m_team);
 }
 
-/* no team shared (inline, its test materialised; the name ours) */
-static inline bool HoldEnemy(CEntity *a, CEntity *b)
-{
-    return !(a->m_team & b->m_team);
-}
-
 /* the hold's watch, by its step -- the frame's time added and the step kept at the end: with the player gone or too far, the
  * flags put back; the first time a callout, then the SEALs not of its team that it has seen for half a second or are near the
  * first of them are counted and called out, the wait begun anew, a callout again after a minute with none; those called out
- * dead, the watch begun again (OVL2 0x6067A0: CAiSHold::Tick calls it; the step's value before returned; the name unknown) */
+ * dead, the watch begun again (OVL2 0x6067A0: CAiSHold::Tick calls it; the step's value before returned; the name unknown).
+ * Byte-exact (the kit's round 61, unwritten before) with: the old step the unsigned byte enum -- lbu at its read, lb from its
+ * spill slot; the walk a plain cursor numbered after `e` and `team` numbered after it (the target's s0, s1, s2: `igreplay
+ * --move` named it; the class iterator's scalarised member can only come after every named local); `!=` materialised; both
+ * differences taken before the stores. MODELLING DEVICE, the first SEAL's two points: x straight to the frame and y and z
+ * through one address register recomputed before each store (`addiu v0,sp,228` ... `addiu v0,sp,232`). A field written once
+ * folds into the frame offset, and separate temporaries are all drawn up to the block's head by the scheduler, so it is one
+ * pointer with four definitions, which IRO_ExpressionPropagation only moves when a definition has one use counted and no use
+ * in another flow node, and IRO_SplitLifetimes leaves whole when an asm reads it: a no-code asm read after the last store, and
+ * a guarded read of it that lasts until the second pass's folding. func_00357F30, func_005483D0 and CAppCamera::
+ * ClipCameraChord show the same stores, unwritten: what the original spelled here is unknown */
 extern "C" CAiState::STEP func_006067A0(CAiSHold *h, CSealCtrlAi *ai)
 {
 #pragma opt_strength_reduction off
@@ -1487,11 +1480,13 @@ extern "C" CAiState::STEP func_006067A0(CAiSHold *h, CSealCtrlAi *ai)
         float &dy = d.y;
         float &dz = d.z;
         CTargetList &list = seal->m_targets;
+        HoldGuard guard;
         CEntity *e;
         CTarget *i;
         unsigned int n;
         unsigned int &team = seal->m_team;
 
+        guard.on = false;
         h->m_94 = 0;
         for (i = &*list.begin(); (n = h->m_94) < 6 && HoldNe(i, &*list.end()); ++i) {
             e = (*i).m_ent;
@@ -1504,8 +1499,28 @@ extern "C" CAiState::STEP func_006067A0(CAiSHold *h, CSealCtrlAi *ai)
                         continue;
                 }
                 if (!n) {
-                    HoldCopy(&pos, &t->m_posW);
-                    HoldCopy(&vel, &t->m_velW);
+                    float *p;
+
+                    pos.x = t->m_posW.x;
+                    p = &pos.y;
+                    *p = t->m_posW.y;
+                    p = &pos.z;
+                    *p = t->m_posW.z;
+                    vel.x = t->m_velW.x;
+                    p = &vel.y;
+                    *p = t->m_velW.y;
+                    p = &vel.z;
+                    *p = t->m_velW.z;
+                    asm {
+                        beq p, p, L1
+                    L1:
+                    }
+                    {
+                        HoldGuard &g = guard;
+
+                        if (g.on)
+                            CAiState::m_dT = *p;
+                    }
                     unsigned int k = h->m_94++;
 
                     h->m_ids[k] = HoldId(t);
