@@ -170,6 +170,97 @@ public:
  * -- EQUIP_NONE is 255: the weapon walks compare it zero-extended, andi 0xff against lbu -- and the
  * four lookups they make) */
 enum EQUIP_ITEM { EQUIP_PISTOL = 0, EQUIP_END = 254, EQUIP_NONE = 255 };
+
+/* a list of items: MSL's vector over a one-byte scalar, on the byte pod (memmove, memset, memcpy) --
+ * its insert this unit's template tail copy 0x284BA0, include/vector's char pod's code over
+ * EQUIP_ITEM (the two equipment tests' argument lists; the char pod's own copy is zui's 0x3923E0) */
+namespace std {
+
+inline void __pod_fill_n(EQUIP_ITEM *first, unsigned int n, const EQUIP_ITEM &value)
+{
+    memset(first, (unsigned char)value, n);
+}
+
+template <class Allocator>
+class __vector_pod<EQUIP_ITEM, Allocator> {
+public:
+    typedef EQUIP_ITEM T;
+
+    __vector_pod() { capacity_ = 0; size_ = 0; data_ = 0; }
+    ~__vector_pod()
+    {
+        if (data_)
+            deallocate(data_);
+    }
+    static void deallocate(T *p) { operator delete(p); }
+    T *&data() { return data_; }
+    unsigned int capacity() const { return capacity_; }
+    unsigned int size() const { return size_; }
+    static unsigned int max_size() { return (unsigned int)-1 / sizeof(T); }
+    static T *allocate(unsigned int n)
+    {
+        T *p = (T *)operator new(n * sizeof(T));
+        if (!p)
+            __msl_error("Memory allocation failure");
+        return p;
+    }
+    void insert(T *position, unsigned int n, const T &x);
+    void push_back(const T &x) { insert(data() + size_, 1, x); }
+    T &operator[](unsigned int n) { return data()[n]; }
+
+    unsigned int capacity_;
+    unsigned int size_;
+    T *data_;
+};
+
+template <class Allocator>
+void __vector_pod<EQUIP_ITEM, Allocator>::insert(T *position, unsigned int n, const T &x)
+{
+    if (n == 0)
+        return;
+    if (n > max_size() || size_ > max_size() - n)
+        __msl_error("vector::insert length error\n");
+    const T *xp = &x;
+    unsigned int newsize = size_ + n;
+
+    if (newsize <= capacity()) {
+        T *e = data_ + size_;
+        unsigned int m = e - position;
+
+        if (e - (m - n) <= xp && xp < e)
+            xp += n;
+        if (m)
+            __pod_copy_backward(position, e, e + n);
+        __pod_fill_n(position, n, *xp);
+        size_ += n;
+    } else {
+        unsigned int k = position - data_;
+        T *old = data_;
+        unsigned int newcap = capacity_ ? capacity_ : 1;
+
+        while (newsize > newcap) {
+            if (newcap < max_size() / 2)
+                newcap *= 2;
+            else
+                newcap = max_size();
+        }
+        data() = allocate(newcap);
+        __pod_fill_n(data_ + k, n, *xp);
+        if (old) {
+            __pod_copy(old, old + k, data_);
+            __pod_copy(old + k, old + size_, data_ + k + n);
+            deallocate(old);
+        }
+        size_ = newsize;
+        capacity_ = newcap;
+    }
+}
+
+template <class Allocator>
+class vector<EQUIP_ITEM, Allocator> : public __vector_pod<EQUIP_ITEM, Allocator> {
+};
+
+}
 class CZWeapon {
 public:
     static EQUIP_ITEM GetWeaponId(const char *name);   /* 0x3D19E0 */
@@ -820,6 +911,92 @@ bool SelCharsHaveLockedEquip(int equip, C2DAnimCmdHdr *hdr)
     return AnySlotLocked(slot, EQUIP_NONE);
 }
 
+/* a list's words one by one: the text, the place reached and the word there, read up to a comma
+ * or the end; spaces and commas between words skipped (the equipment tests' argument; ours) */
+class CWordList {
+public:
+    CWordList(const char *text) : m_text(text), m_pos(0) { Read(); }
+    static bool IsSeparator(char c) { return c == ' ' || c == ','; }
+    static bool InWord(char c) { return c != ',' && c != 0; }
+    void Read()
+    {
+        while (IsSeparator(m_text[m_pos]))
+            m_pos++;
+        m_word.erase();
+        for (int i = m_pos; InWord(m_text[i]); i++)
+            m_word.push_back(m_text[i]);
+    }
+    void Next()
+    {
+        while (InWord(m_text[m_pos]))
+            m_pos++;
+        Read();
+    }
+    bool Done() { return !m_text[m_pos]; }
+
+    const char *m_text;   // 0x0
+    int m_pos;   // 0x4
+    CSaferStr m_word;   // 0x8 (a derived string: its implicit destructor tests `this` before the base's)
+};
+
+/* whether every selected character's equipment slot (0 to 2: slots 2 to 4) holds one of the items
+ * the argument lists (SOCOM II's, the three DoAllSelCharsHaveEquip commands' test; the name ours).
+ * OPEN, 0x464 of 0x468, registers and one saved register short: the target numbers the word list's
+ * member addresses apart -- the position's s1, the word's s0 for the construction, then a fresh s8
+ * for the word in the loop's Next (and the read's index s2) -- where ours shares one address
+ * register for the word throughout (s2) and so needs one saved register fewer. Measured (the UI
+ * lane's round 33): the word a CSaferStr, not a std::string, gives the target's this-tested base
+ * destructor with flag 0 (+8 bytes); `slot` defined ahead of the list gives the early `addiu
+ * s7,s1,2` (+4); a Word() accessor, `Done()` as `== 0`, a temporary item or a copied word change
+ * nothing. Next: igdump/igreplay on the word's address variables */
+bool SelCharsHaveEquip(int equip, C2DAnimCmdHdr *hdr)
+{
+    const char *text = ArgText(ArgName(hdr));
+    std::vector<EQUIP_ITEM> items;
+    int slot = equip + 2;
+
+    {
+        CWordList words(text);
+
+        while (!words.Done()) {
+            items.push_back(CZWeapon::GetWeaponId(words.m_word.c_str()));
+            words.Next();
+        }
+    }
+    for (CSelectedCharsItr it("UiCharSet"); it.Valid(); it.Advance()) {
+        CCharacterWeapList *weapons = (CCharacterWeapList *)it.m_weapons;
+        EQUIP_ITEM item = slot < weapons->size() ? (*weapons)[slot].m_wepId : EQUIP_NONE;
+        bool found = false;
+
+        for (unsigned int i = 0; i < items.size(); i++) {
+            if (items[i] == item) {
+                found = true;
+                break;
+            }
+        }
+        if (!found)
+            return false;
+    }
+    return true;
+}
+
+}
+
+/* "DoAllSelCharsHaveEquip1" to "3" (SOCOM II's commands 0xB4-0xB6, the UI command table's records
+ * 178-180; the names ours, after the table's): equipment slots 0 to 2 */
+bool UIDoAllSelCharsHaveEquip1(C2DAnimCmdHdr *hdr, float *dT)
+{
+    return SelCharsHaveEquip(0, hdr);
+}
+
+bool UIDoAllSelCharsHaveEquip2(C2DAnimCmdHdr *hdr, float *dT)
+{
+    return SelCharsHaveEquip(1, hdr);
+}
+
+bool UIDoAllSelCharsHaveEquip3(C2DAnimCmdHdr *hdr, float *dT)
+{
+    return SelCharsHaveEquip(2, hdr);
 }
 
 /* "DoAllSelCharsHaveLockedEquip1" to "3" (SOCOM II's commands 0xC9-0xCB, the UI command table's
@@ -897,6 +1074,44 @@ bool UICanCharactersSelectUIWeapon(C2DAnimCmdHdr *hdr, float *dT)
     for (CSelectedCharsItr it("UiCharSet"); it.Valid(); it.Advance())
         if (!CanTakeItem(item, it))
             return false;
+    return true;
+}
+
+/* whether every selected character carries one of the items the argument lists (SOCOM II's,
+ * "DoAllSelCharsHaveWeapon"). OPEN, 0x468 of 0x47C: the slot test's (SelCharsHaveEquip above)
+ * register shape -- the target's fresh s7 for the word's address in the loop (with s6 its long
+ * pointer and s2 its short text) where ours reuses the construction's register, one saved
+ * register short; the item vector's insert this unit emits matches 0x284BA0 */
+bool UIDoAllSelCharsHaveWeapon(C2DAnimCmdHdr *hdr, float *dT)
+{
+    const char *text = ArgText(ArgName(hdr));
+    std::vector<EQUIP_ITEM> items;
+
+    {
+        CWordList words(text);
+
+        while (!words.Done()) {
+            items.push_back(CZWeapon::GetWeaponId(words.m_word.c_str()));
+            words.Next();
+        }
+    }
+    for (CSelectedCharsItr it("UiCharSet"); it.Valid(); it.Advance()) {
+        CCharacterWeapList *weapons = (CCharacterWeapList *)it.m_weapons;
+        bool found = false;
+
+        for (CCharacterWeapList::iterator w = weapons->begin(); w != weapons->end(); ++w) {
+            for (unsigned int i = 0; i < items.size(); i++) {
+                if (items[i] == (*w).m_wepId) {
+                    found = true;
+                    break;
+                }
+            }
+            if (found)
+                break;
+        }
+        if (!found)
+            return false;
+    }
     return true;
 }
 
@@ -3771,11 +3986,9 @@ void UpdatePersonaList(const char *host, int port)
 
 /* the network started: the lobby's events handed to the menu, the machine made and run until it
  * is done, the valve the argument names told how it went (SOCOM 1's built no machine).
- * OPEN, 0 instructions: every byte is right; the two calls name CSimpleStateMachine's constructor
- * and destructor, rows outside this lane (0x3A5DD0 __ct__19CSimpleStateMachineFv: the vtable
- * 0x408240 stored, the queue built, the idle state 0x3E07D8 copied in; 0x3A5CC0
- * __dt__19CSimpleStateMachineFv: the same vtable stored first, deleted when asked) -- matches once
- * the map names them (measured with both renamed) */
+ * Byte-exact since the map named CSimpleStateMachine's constructor 0x3A5DD0 and destructor
+ * 0x3A5CC0 (util_ssm.cpp's: the vtable 0x408240 stored, the queue built, the idle state 0x3E07D8
+ * copied in; the same vtable stored first, deleted when asked) */
 bool UIInitNetwork(C2DAnimCmdHdr *hdr, float *dT)
 {
     bool done = false;
