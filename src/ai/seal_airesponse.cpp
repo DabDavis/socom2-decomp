@@ -1890,12 +1890,6 @@ void func_00545180(CSealStats *s, int n);
 void func_00545160(CSealStats *s, int n);
 }
 
-/* a hostage held: once asked (the flags' bit 0) its team taken to its captor's; then down on its knees
- * (1), stopped and crouched for ten seconds; freed (3): the call, standing when a player-team squad
- * has it, else a short crouch, and its captor -- a SEAL -- credited, by the surrender's kept team when
- * the AI surrendered; moving (2), crouched; then every five seconds (three once asked to) the nearest
- * SEAL within 250 looked at: a team-mate acknowledged, an enemy called out and reported; crouched
- * again (6) (OVL2 0x601910; SOCOM 1's Tick(float, CSealCtrlAi *) 0x2DA2D0, 0x17C, much grown) */
 /* the AI's entity (inline: read through it the SEAL is a temporary, numbered after the walk's -- the
  * target's s3 under this and ai; a named local read straight is numbered after the parameters, s1) */
 static inline CEntity *HostageEntity(CSealCtrlAi *ai)
@@ -1903,6 +1897,12 @@ static inline CEntity *HostageEntity(CSealCtrlAi *ai)
     return ai->m_entity;
 }
 
+/* a hostage held: once asked (the flags' bit 0) its team taken to its captor's; then down on its knees
+ * (1), stopped and crouched for ten seconds; freed (3): the call, standing when a player-team squad
+ * has it, else a short crouch, and its captor -- a SEAL -- credited, by the surrender's kept team when
+ * the AI surrendered; moving (2), crouched; then every five seconds (three once asked to) the nearest
+ * SEAL within 250 looked at: a team-mate acknowledged, an enemy called out and reported; crouched
+ * again (6) (OVL2 0x601910; SOCOM 1's Tick(float, CSealCtrlAi *) 0x2DA2D0, 0x17C, much grown) */
 int CAiSHostage::Tick(CSealCtrlAi *ai)
 {
     CEntity *seal = HostageEntity(ai);
