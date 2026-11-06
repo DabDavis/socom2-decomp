@@ -3640,7 +3640,15 @@ bool CUIListBox::HighlightPrev()
  * result assigned or kept, insert(end(), item) for the push_back (6 each); round 56: braces round
  * the push_back, the iterator at function scope (6), the push_back through a one-level-deeper
  * inline wrapper, by reference or by value (7, 0xF4: its temporaries then sink below the position
- * copy) -- the target's order reads like SOCOM 1's two-level push_back (include/list's "vc") */
+ * copy) -- the target's order reads like SOCOM 1's two-level push_back (include/list's "vc").
+ * The MSL headers round 36 (build/p36/additem.py, untracked): with list<T *>::insert returning the
+ * BASE iterator directly (`typename base::iterator insert(...) { return base::insert(...); }`) the
+ * insert's return slot is the caller's, 68 -- the slots right -- and with `int i = 0;` declared after
+ * the iterator (or the walk a while) AddItem is BYTE-EXACT; but the header costs 0x510B90 (the
+ * wrapper's out-of-line insert, which wraps the base's result through a temporary), CGraph::
+ * BuildRoute 0x2D14A0 and CSched_Manager::AddTask 0x34E6B0 (their insert slots below the other
+ * temporaries): +1 / -3, not applied (include/list's note). Under today's header that spelling is
+ * 4 off */
 void CUIListBox::AddItem(ListItem *item, int where)
 {
     item->SetFont(m_font);
