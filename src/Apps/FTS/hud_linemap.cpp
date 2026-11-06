@@ -13,12 +13,14 @@
  * TickRegions (0x20DF70, SOCOM 1's); (round 60) Clip (0x20D5F0, SOCOM 1's: the clipper held in a local --
  * SOCOM 1's s5 too --, zdb's CCircleClip, SetClipInfo's count passed) and TickWayPoints (0x20DAC0, SOCOM
  * II's labels with SOCOM 1's names) and SetupPolygon (0x20F5C0, SOCOM 1's; the kind-to-look table made the
- * file's, TickLine reading the same one). Not yet: TickAnchors. Defined in reverse of their image order
- * (-inline deferred). */
+ * file's, TickLine reading the same one); TickAnchors (0x20E750) written, OPEN. Defined in reverse of their
+ * image order (-inline deferred). */
 
 #include "../../gamez/zmath/zmath.h"
 #include "../../ai/ai.h"
 #include "hud_newhudmap.h"
+#include "hud_mapcompass.h"
+#include "../../gamez/zentity/zentity.h"
 #include <map>
 
 /* a point iterator over a line (SOCOM 1's CPtItr: only its vtable -- the walk's step, the point,
@@ -247,8 +249,16 @@ public:
         return false;
     }
 
-    unsigned char _0[0x44];
+    /* the objective lit by the anchors of its letter (kinds 14-37 are the letters from C on: the
+     * letter's bit in the word at 0x50; the names ours) */
+    bool HasLetter(char c) const { return (m_letters & (1 << (c - 'A'))) != 0; }
+
+    unsigned char _0[0x40];
+    unsigned int _40_0 : 3;
+    unsigned int m_extract : 1;   // 0x40 bit 3: an extraction objective (kind 6's anchors pulse)
+    unsigned int _40_4 : 28;
     std::vector<int> m_lines;   // 0x44
+    unsigned int m_letters;   // 0x50
 };
 
 /* a line's or polygon's kind (0-6) to its default look (OVL1 .data 0x3E4388, seven bytes: TickLine
@@ -640,6 +650,142 @@ inline bool CZLineMap::IsObjectiveLine(const CAiMap::line &line) const
     return obj && obj->HasLine(line.m_id);
 }
 
+/* the compass anchors the map shows (OVL1 .data 0x3E4390, fifteen kinds; the name ours) and their
+ * bitmaps' UVs, a little past the texture's edges (0x3DC4D0-0x3DC4E8, after the pulse's statics; the
+ * names ours) */
+/* the HUD (hud_main.cpp's, theHUD 0x408E58), as far as the labels' font and the compass go */
+class CHUD {
+public:
+    unsigned char _0[0x498];
+    C2DFont *m_myfont;   // 0x498
+    unsigned char _49c[0x4fe0 - 0x49c];
+    MapCompass m_compass;   // 0x4fe0
+};
+
+extern CHUD *theHUD;
+
+/* a UI variable's hook (zui_uivar.h's, SOCOM 1's DWARF; the vtable pointer first) and the UI's plain
+ * bitmap (zui_2d.h's, as hud_newhudmap.cpp stands it in: TickAnchors news one for each anchor, its
+ * constructor inline) */
+class UIVarMixin {
+public:
+    UIVarMixin() { m_uivar = 0; }
+    virtual ~UIVarMixin() { DetachUIVar(0); }
+    void DetachUIVar(CUIVariable *var);
+    virtual void UpdateUIVar(CUIVariable *var);
+
+    CUIVariable *m_uivar;   // 0x4
+};   // 8 bytes
+
+class CPlainBmp : public C2DBitmap, public UIVarMixin {
+public:
+    CPlainBmp()
+    {
+        SetColor(128.0f, 128.0f, 128.0f);
+        SetTrans(128.0f);
+        SetIsTrans(true);
+        SetCanHandleInput(false);
+        m_pulsing = false;
+        m_period = 1.0f;
+    }
+    virtual void Draw(zdb::CCamera *cam) { C2DBitmap::Draw(cam); }
+    virtual void Draw(const CMatrix &m, zdb::CTextureRelocMgr *mgr);
+    virtual void Tick(float dT);
+    virtual void SetMapOffset(int x, int y);
+
+    bool m_pulsing;   // 0x88
+    float m_period;   // 0x8c
+    float m_curtrans;   // 0x90
+} __attribute__((aligned(16)));   // 0xa0 bytes
+
+/* (hud_main.cpp's layout floats, 20 and 10) */
+extern float g_fHudLayout20;
+extern float g_fHudLayout10;
+
+static const unsigned int c_arrAnchorTypes[15] = { 6, 7, 8, 12, 13, 5, 14, 15, 16, 17, 21, 29, 34, 35, 37 };
+
+namespace {
+float s_fAnchorU0 = -0.01f;
+float s_fAnchorV0 = -0.01f;
+float s_fAnchorU1 = 1.02f;
+float s_fAnchorV1 = 1.02f;
+}
+
+/* the compass anchors put on the map as bitmaps (SOCOM 1's TickAnchors, its DWARF: pObjv, bPulse,
+ * ptColor, fBotY, fRightX, ptDraw, bmp, b2nd, bPrim, bExtract, iType, pAnchor, iAnchor): of the kinds
+ * the map shows, each a new plain bitmap at its drawn point in its compass image and colour, an
+ * insertion point (kinds 7 and 8) shown once -- the others at its place left out -- and pulsing when
+ * the current objective lights it. Both walks count with SOCOM 1's int iAnchor (an unsigned counter is
+ * strength-reduced, the target indexes each pass).
+ * OPEN, 0x46C against 0x474 (round 60, written): the walks, the bitmap, its set-up and the pulse are
+ * the target's; the position test differs -- the target takes the two positions' addresses into a0 / a1
+ * (`addiu a0,s3,4`, `addiu a1,s1,4`) after reading the x's off the anchors and reads y and z through
+ * them, where zmath.h's operator== folds every offset (s3+8, s1+8 ...); reference or pointer locals,
+ * with the && or a bool chain, fold too or grow it (0x44C / 0x484) */
+void CZLineMap::TickAnchors(float fPulseTrans)
+{
+    CCompassAnchor *pExtract = 0;
+
+    for (int iAnchor = 0; iAnchor < theCompass.size(); iAnchor++) {
+        if (theCompass[iAnchor] && (theCompass[iAnchor]->m_type == 7 || theCompass[iAnchor]->m_type == 8)) {
+            pExtract = theCompass[iAnchor];
+            break;
+        }
+    }
+    for (int iAnchor = 0; iAnchor < theCompass.size(); iAnchor++) {
+        CCompassAnchor *pAnchor = theCompass[iAnchor];
+
+        if (!pAnchor)
+            continue;
+        if (pExtract && pExtract != pAnchor && pExtract->m_posW == pAnchor->m_posW)
+            continue;
+
+        unsigned int iType = pAnchor->m_type;
+        bool bShow = false;
+
+        for (int i = 0; i < 15; i++)
+            if (iType == c_arrAnchorTypes[i]) {
+                bShow = true;
+                break;
+            }
+        if (!bShow)
+            continue;
+
+        CPlainBmp *bmp = new CPlainBmp;
+
+        m_vecBitmaps.push_back(bmp);
+
+        CPnt3D ptDraw = WorldToDraw(&pAnchor->m_posW);
+        MapCompass *compass = &theHUD->m_compass;
+        zdb::CTexHandle *img = compass->GetAnchorImg(iType);
+
+        ptDraw.x -= g_fHudLayout10;
+        ptDraw.y -= g_fHudLayout10;
+        bmp->Load(ptDraw.x, ptDraw.y, ptDraw.x + g_fHudLayout20, ptDraw.y + g_fHudLayout20, img);
+        bmp->SetUV(s_fAnchorU0, s_fAnchorV0, s_fAnchorU1, s_fAnchorV1);
+
+        CPnt3D ptColor = compass->GetAnchorColor(pAnchor);
+
+        bmp->SetColor(ptColor.x, ptColor.y, ptColor.z);
+
+        bool bPulse = iType == 7 || iType == 8;
+        CMissionObjectiveCam *pObjv = m_hudmap->m_objectivelist.GetCurrentObjective();
+
+        if (pObjv) {
+            bool bPrim = iType >= 14;
+
+            if (iType == 6)
+                bPulse = pObjv->m_extract;
+            else if (bPrim && iType < 38)
+                bPulse = pObjv->HasLetter(iType + 53);
+        }
+        if (iType == 6)
+            bmp->SetTrans(fPulseTrans);
+        else
+            bmp->SetTrans(bPulse ? fPulseTrans : 128.0f);
+    }
+}
+
 /* a line drawn cell to cell in its type's look -- the type's own, or a default one -- pulsing when
  * the current objective lights it, dimmed on request; a wide line as polygons (SOCOM 1's, the
  * objective's highlight and the wide line SOCOM II's) */
@@ -749,15 +895,6 @@ void CZLineMap::TickRegions(const CAiMap &map, bool bDim)
         }
     }
 }
-
-/* the HUD (hud_main.cpp's, theHUD 0x408E58), as far as the labels' font goes */
-class CHUD {
-public:
-    unsigned char _0[0x498];
-    C2DFont *m_myfont;   // 0x498
-};
-
-extern CHUD *theHUD;
 
 /* the map's way points labelled (SOCOM II's TickWayPoints, SOCOM 1's DWARF naming its pieces --
  * StringPos, testString, i, j, singlechar, string, myString, pos, origin, nit, names): each name of
