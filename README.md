@@ -12728,6 +12728,50 @@ SplitUp_Finals_TreeCtx 0x4D6710, Swap_Finals_TreeCtx 0x4D6BC0 and
 FillOut_Syntax_Statedict_And_Wordprops_ForChinese_TreeCtx 0x4D6FC0 (s1:calls: SOCOM 1's
 CreateSecondPassTreeContext_ForChinese makes the same non-heap calls in the same order). No tool changed.
 
+**Round 33c: the FHT, the FFT block whole, the scheduler's run and queue sizes, the combiner's process.**
+
+- **Ron Mayer's FHT as published** (fht, 0x8BC): the 1988 `fht.c` -- bit reversal by `k2 ^= k`, the 4- or
+  8-point first stage, the radix-4 passes -- with its FAST_TRIG rotation (`t_c = costab[k]`, `t_s =
+  sintab[k]`, the twiddle turned from (1, 0)) is byte-exact as it stands, types `unsigned`, SQRT2 a
+  float (`(REAL)(2 * 0.7071...)`: a double constant would call the soft-float library). Its tables are
+  SOCOM 1's globals `costab` / `sintab` (data.txt, 16 entries each), defined in fht.c.
+- **The FFT block is a -ffast-math object** (fftmod.c, the twelfth): SOCOM 1's magnitude spectrum
+  (CalcAmplitudeSpec there, double sqrt) is an inline of SOCOM II's process, its sqrtf a bare sqrt.s;
+  SOCOM II's CalcAmplitudeSpec row is a power spectrum returning the band's energy. **The output
+  parameter is the walker** with a copy taken for the first-bin test (`move a3,t0`): a walker of its
+  own keeps the parameter in a2 and every register moves (64 words). **An if's arm order is the
+  registers' order**: `if (in[0] != 0) { copy } else x = 0;` gives x s1 and out s2 (the null arm first
+  swaps them and annuls one slot).
+- **A void function pointer's call takes v1 for its address** (tosRun: the block's process returns
+  nothing -- `jalr v1`; called as returning a value, v0). **A loop bound read through a struct in a loop
+  that makes calls keeps the loop rolled** (the read is no invariant); the count and the table read
+  into locals after the call unroll it as the target's. **`q++, i++`**: reorg fills a skip branch's slot
+  with the join's first insn, so the for's increments' order picks which one moves up; **`b =
+  table[*p++]`** keeps the step in an unannulled slot where `p++` in the for annuls it; two loops'
+  tables one variable across an if's arms are one pseudo (4 registers off).
+- **`if (found) { if (x != size) return 1; } else { size = x; found = 1; }`** lays the compare inline
+  with each `return 1` its own `jr ra` (SetAndControlQSizes, a frameless leaf); `if (!found) ... else if
+  (x != size) return 1;` puts the compare out of line and shares the return (13 words short).
+- **2.96 keeps an empty loop** (CombinerProcess: `for (k = 1; k < c->n; k++) ;`, unrolled by four, its
+  counter alone) -- SOCOM II's, not SOCOM 1's.
+- **ProcessVad, a data point**: with `int i;` and `i = 0` in the then-block sum's live length grows to
+  158 (6,329 against cnt's 6,315 -- one insn short of flipping the allocation); the quotient through
+  cnt flips the priority but loses the $f0 preference (24 words); a `do { } while (0)` around the copy
+  changes the size. Still OPEN.
+- **Open, diagnosed in place**: CombinerProcess (127 words, the right size: registers only -- the
+  target gives p3, d, p4, p1 a0-a3 and x, cur, k, q t1-t4); ProcessVad and SplitUp_Finals (their
+  diagnoses stand). Not reached: CreateSecondPassTreeContext, RePruneToPho, FrameDPacoust (m2c's
+  FrameDPacoust draft: 20 spilled locals, two of them the wheel pointers ExtendNodeWheel takes by
+  address), ConstructArchitecture, InitVad, ExtendNodeWheel, ConstructBlock, PitchCombinerReset /
+  InitPitchCombiner, InitViterbi@nbestdp.
+
+Hand-written in round 33c: `asr/fht.c` (fht new: the object whole, 2 of 2), `asr/fftmod.c` (CalcAmplitudeSpec and
+ProcessFFTMod new, -ffast-math: the object whole, 5 of 5), `asr/tos.c` (tosRun and SetAndControlQSizes new: 18 of
+20; the block's process typed `TOSPROCFN`, returning nothing), `asr/combiner.c` (CombinerProcess written, OPEN: 3
+of 4) -- 5 rows new to the map's byte-exact rows (6,756 bytes), no draft superseded; `src/lib/asr` 573 of 602
+(568 of 596 before). Named (2, data.txt): `costab` 0x659140 and `sintab` 0x659180 (s1:data: SOCOM 1's globals of
+those names, read by fht at the same instructions). No rows renamed (all had SOCOM 1's names). No tool changed.
+
 **Round 14b: the "toolchain" opens were SCEA's shapes; LargeInt's core is assembly.**
 
 - **LargeInt's EE primitives are hand-written assembly** (0x628B48-0x629A44, between LargeInt.c's C and
