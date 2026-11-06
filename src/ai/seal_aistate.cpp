@@ -1998,12 +1998,12 @@ void CAiSSuspended::OnSignal(SIGNAL sig, CSealCtrlAi *ai)
  * 0.75 a second, then the node shut and the fade dropped), then held out of the world -- its node
  * off (bit 0, unless it faded), its target list no longer updated (bit 1) nor holding it (bit 2)
  * (OVL2 0x5F1C70; SOCOM 1's, which faded in from below as well).
- * OPEN, 10 instructions, the fade's two arms only: the target computes the step into $f1 (over
- * the opacity it just compared) and re-reads the opacity from its frame slot in each arm, as
- * SOCOM 1's does; here MW keeps the compared value in $f1 and builds the step in $f0. Tried: the
- * step inline in each arm or as a local (before, inside, uninitialised ahead), the arms through
- * a reference or `*&o`, the compare on node->m_Opacity (reloads it). The registers, the
- * declaration order (node, seal, fading) and the early m_dT load are the target's. */
+ * Byte-exact in the kit's round 59 (10 off since round 6): the opacity read into a register local
+ * that the two tests compare and that initialises the saturated copy -- the tests share the load
+ * and the arms re-read the copy from its frame slot, the step built in $f1 over the compared value,
+ * as the target and SOCOM 1's; compared on the copy itself MW forwards the load into the arms.
+ * The registers, the declaration order (node, seal, fading) and the early m_dT load are the
+ * target's. */
 int CAiSSuspended::Tick(CSealCtrlAi *ai)
 {
     zdb::CNode *node;
@@ -2016,12 +2016,13 @@ int CAiSSuspended::Tick(CSealCtrlAi *ai)
         static float hi = 1.0f;
         float dT = m_dT;
         float target = 0.0f;
-        float o = node->m_Opacity;
+        float cur = node->m_Opacity;
+        float o = cur;
 
-        if (o != target) {
+        if (cur != target) {
             float step = 0.75f * dT;
 
-            if (target > o) {
+            if (target > cur) {
                 o += step;
                 _saturate(&o, lo, target);
             } else {
