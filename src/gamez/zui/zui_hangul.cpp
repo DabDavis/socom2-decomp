@@ -1,3 +1,4 @@
+/* sc: as=SkbCodeCtorRow__FPUs __ct__11CInit<Us,0>Fv */
 /* zui_hangul.cpp -- the soft keyboard's Korean input (OVL1 0x3903A0-0x3941CF, its initialiser
  * 0x403770 building two vectors and a word at 0x49ED08-0x49ED40; its template tail ends on the two
  * vectors' destructors the initialiser registers, 0x3940F0 and 0x394170, so 0x3941D0-0x39441F --
@@ -15,32 +16,27 @@
  * 0x392A30, the assignment 0x393D30, the copy 0x393D80, init 0x393F00, assign 0x393FB0), with the
  * sequences' resize and deleter, s_rules' and s_complete's destructors and the fixed array's members.
  *
- * THE DESTRUCTOR DEPTHS (not modelled, the MSL lane's note): the target's vector destructors here
- * test `this` once more than include/vector's (CSkbVec stands in for the level), and the piece's
- * destructor 0x390760 inlines its jamo string's whole chain -- six this-tests -- where here the chain
- * is a level too tall and is cut (~SKBPIECE calls ~CSkbVec<char>): PopPiece 0x390740, RemovePiece
- * 0x390730, the pieces' clear 0x3929C0 and deleter destructor 0x3928E0 keep their placeholders (their
- * drafts match), the pieces' and completions' inserts/erases/clears stay open with it; the
- * completions' element copies want the 4-byte pod's out-of-class operator= and assign (0x259AF0,
- * 0x259D20), which include/vector does not have.
- * OPEN, the initialiser 0x403770 (0x78 against 0x84): s_complete's type needs a level above CSkbVec
- * for its destructor 0x394170 (two this-tests, ~vector called) and none for its constructor (three
- * stores inline): CSkbCompleteVec gives the first and calls CSkbVec's constructor out of line; a
- * typedef gives the second and loses 0x394170 (a user-declared empty destructor: neither). A LEVEL
- * CUT (round 17, measured): at -inline level=6 the unit as it stands gives the initialiser and
- * resize<SKBCOMPLETE> 0x392770 byte-exact and loses CInit<Us,0>() 0x392760 (inlined everywhere, no
- * copy left) -- 44 against 43 of the unit's rows; CSkbCompleteVec() is six high here (itself,
- * CSkbVec's, vector's, __vector_imp's, the deleter's and the capacity's constructors) and the target
- * inlines it whole, while its destructor keeps the two this-tests and ~vector's call.
- * OPEN, not written yet: the composer 0x391670 and its rule matcher 0x3919D0; everything they call
- * out of line keeps its placeholder or its draft. The recursive index stepper 0x3903A0 is written
- * since round 25 (CSkbSplit::Next, OPEN on a level: its note). The
- * split's sum 0x391E70 is written since round 24 (OPEN, 12: CSkbSplit::Sum's note). Round 23 wrote the split (CSkbSplit:
- * its constructor 0x391F80, Part 0x391E50) and a sequence's jamo read 0x391E20, byte-exact; the
- * composer and matcher call the parts' operator[] 0x391D80, end() 0x391D40 (the scalar vector's
- * class end(), out of line: only the matcher's call emits it), the reverse iterator's operator*
- * 0x391D30 and the vector's constructor 0x391DA0 out of line, and keep their counters in stack
- * slots past nine saved registers.
+ * THE LEVEL (round 39): `#pragma inline_depth(6)` at the unit's end (it acts through its end state) gives the
+ * piece's destructor 0x390760 its jamo string's whole chain -- six this-tests -- with PopPiece 0x390740 and
+ * RemovePiece 0x390730 pinned to call it, ~CSkbSplit 0x390690, the pieces' clear 0x3929C0, the composer's matcher,
+ * the initialiser 0x403770 (CSkbCompleteVec() six high, inlined whole) and resize / insert<SKBCOMPLETE> 0x392770 /
+ * 0x3931A0: 81 of the unit's 89 rows against 75 without it. A MODELLING DEVICE, one more "Level 6, or 8?" witness.
+ * Under the pragma every implicit use inlines CInit<Us,0>() 0x392760 and nothing is left to emit, while the target
+ * calls it out of line from resize<SKBPIECE> 0x392670 (its one caller, OPEN below): SkbCodeCtorRow, at the unit's
+ * top, keeps the row (a modelling device, to go when that resize closes; the row has no draft).
+ * OPEN, THE POD'S ACCESSORS: clear<SKBSEQ> 0x393C60 (0xA4 of 0xC8), clear<SKBCOMPLETE> 0x393E40 (0x9C of 0xC0),
+ * erase<SKBSEQ> 0x3935F0, erase<SKBCOMPLETE> 0x393030 and resize<SKBPIECE> 0x392670 have every this-test of the
+ * target and differ in one thing: the element's pod destructor there calls `alloc()` and `cap()` out of line and
+ * holds the data pointer in a saved register across them (`jal 0x392750; lw s2,8(s3); jal 0x392740; jal __dl__`, for
+ * the uint pod 0x2B5750 / 0x2B5740), SOCOM 1's `if (data_) alloc().deallocate(data_, cap())`. These are the only
+ * callers of those four rows but one, CNodeAction::Close 0x2B55E0 (fts_action.cpp, OPEN with the same note).
+ * include/vector's pod destructor has no such calls to leave out of line, at level 5 or 6, so it is the header's
+ * shape (the MSL lane's) and not a level. erase and insert<SKBPIECE> 0x392AB0 / 0x392BE0 stay open with the same
+ * question and ~SKBPIECE's copies.
+ * Round 23-39, written: the split (CSkbSplit: its constructor 0x391F80, Part 0x391E50, Next 0x3903A0, Sum 0x391E70,
+ * OPEN at 12: its note), a sequence's jamo read 0x391E20, the composer 0x391670 and its matcher 0x3919D0 with what
+ * they call out of line (the parts' operator[] 0x391D80, rbegin 0x391D40, the reverse iterator's operator* 0x391D30,
+ * the vector's constructor 0x391DA0), byte-exact.
  * THE TWO RDR PARSERS, byte-exact since round 38 (SkbParseKoreanRules under `opt_loop_invariants off`,
  * SkbParseComplete with strength reduction off as well: their notes -- the pragma scan named the pass;
  * the unit's template tail wants the loop optimiser on, measured at the unit's end: 3 lost, 0 gained).
@@ -83,6 +79,8 @@ static const char *s_jamoNames[JAMO_COUNT] = {
 /* a production: its name and its sequences (24 bytes, new'd by the rules' parser) */
 struct SKBRULE {
     SKBSEQ *Seq(int i);
+    /* (0x391F40: the composer's out-of-line copy) */
+    int SeqCount() { return m_seqs.size(); }
     /* a sequence added and returned (an inline: the address-taken `rule` it is called on is not
      * substituted for `this`, so the parser keeps the rule in a saved register here, s0) */
     SKBSEQ &AddSeq()
@@ -107,6 +105,11 @@ struct SKBCOMPLETE {
 /* the complete characters (ours: its destructor 0x394170 calls ~vector<SKBCOMPLETE> 0x394090 out of
  * line after two this-tests, a level above CSkbVec's) */
 class CSkbCompleteVec : public CSkbVec<SKBCOMPLETE> {
+public:
+    /* (0x392110, 0x391F60, 0x391E00: the composer's out-of-line copies) */
+    int RuleCount(int i) { return (*this)[i].m_rules.size(); }
+    unsigned int Rule(int i, int r) { return (*this)[i].m_rules[r]; }
+    bool Val2(int i) { return (*this)[i].m_val2; }
 };
 
 
@@ -171,7 +174,16 @@ JAMO FindJamo(const char *name);
 _zrdr *zrdr_flat_findtag_startidx(const _zrdr *rdr, const char *tag, int start);
 char *zrdr_flat_findstring(const _zrdr *rdr, const char *tag, int start);
 
-/* the jamo composed into pieces by the rules (0x391670, not written yet: OPEN; the name ours) */
+/* the code's own constructor out of line (0x392760: THE LEVEL in the file's opening note), under the row's name
+ * through the `as=` on the file's first line. A modelling device: at the unit's level every use inlines it, and a specialisation, an
+ * explicit instantiation or `dont_inline` over one call emit nothing */
+unsigned short *SkbCodeCtorRow(unsigned short *p)
+{
+    *p = 0;
+    return p;
+}
+
+/* the jamo composed into pieces by the rules (0x391670; the name ours) */
 bool SkbHangulCompose(CSkbPieces *pieces, std::vector<char> *jamo);
 
 /* a comparison that takes nulls: a null first sorts before anything, a null second after */
@@ -225,24 +237,22 @@ void SkbParseComplete(CSkbCompleteVec *complete, _zrdr *rdr, const char *tag)
 #pragma opt_strength_reduction reset
 
 /* a split of n jamo into k consecutive parts, the composer's walk over every split (ours, 16
- * bytes: the total, then the parts). The stepper Next 0x3903A0 (recursive) is written at the unit's
- * end (OPEN, the level); not written: the destructor 0x390690 (its draft matches) and the
- * out-of-line copy of Left 0x391DF0 (only the composer calls it); the sum of the first n parts
- * 0x391E70 is written below (OPEN). */
+ * bytes: the total, then the parts). The stepper Next 0x3903A0 (recursive) is at the unit's end; the sum of the
+ * first n parts 0x391E70 is below (OPEN, 12). */
 class CSkbSplit {
 public:
     CSkbSplit() : m_n(0) {}
-    CSkbSplit(int n, int k);
-    unsigned int Sum(int n);
-    unsigned int Part(int i);
+    inline CSkbSplit(int n, int k);
+    inline unsigned int Sum(int n);
+    inline unsigned int Part(int i);
     void Next();
     /* the parts through a reference: the walks' vector address hoisted (ours) */
-    std::vector<unsigned int> &Parts() { return m_parts; }
+    CSkbVec<unsigned int> &Parts() { return m_parts; }
     /* a split is left (0x391DF0, the composer's out-of-line copy; the stepper inlines it) */
     bool Left() { return m_parts.size() != 0; }
 
-    int m_n;   // 0x0
-    std::vector<unsigned int> m_parts;   // 0x4
+    CInit<int, 0> m_n;   // 0x0
+    CSkbVec<unsigned int> m_parts;   // 0x4
 };
 
 /* the first split of n into k parts: k - 1 of one and the rest last, none when k is out of 1..n
@@ -251,13 +261,13 @@ public:
  * rbegin() over std::reverse_iterator since the MSL headers' round 23, retiring the unit's stand-in:
  * two stack temporaries and an FPR copy, as the scalar vector's class end() and __iter give; the
  * matcher 0x3919D0 calls that end() 0x391D40 and the reverse * 0x391D30 out of line) */
-CSkbSplit::CSkbSplit(int n, int k) : m_n(n)
+inline CSkbSplit::CSkbSplit(int n, int k) : m_n(n)
 {
     if (k > n || k <= 0)
         return;
-    Parts().resize(k, 0);
+    m_parts.resize(k);
     for (int i = 0; i < k - 1; i++)
-        Parts()[i] = 1;
+        m_parts[i] = 1;
     *m_parts.rbegin() = n - k + 1;
 }
 
@@ -280,26 +290,159 @@ CSkbSplit::CSkbSplit(int n, int k) : m_n(n)
  * pointer after every other temporary (50.5 on) -- the optimiser's own temporaries; `#pragma
  * opt_propagation off` in the body (the kit's round 56) 13, opt_common_subs off 0x108,
  * opt_loop_invariants off 0xB0, opt_strength_reduction / opt_lifetimes off 12 (build/scratch/ui/
- * v_sum.py). */
-unsigned int CSkbSplit::Sum(int n)
+ * v_sum.py). Round 39: `igreplay --move 40=37.5` gives all 20 registers, so the one thing wanted is the element
+ * address numbered under the bound; its CSE temporary comes after it. The late-folding guard is not unrolled
+ * (0x40), the element or the vector through an inline stays 12 (build/scratch/ui/v_sum9.py). */
+inline unsigned int CSkbSplit::Sum(int n)
 {
     unsigned int s = 0;
 
     for (int i = 0; i < n; i++)
-        s += Parts()[i];
+        s += m_parts[i];
     return s;
 }
 
 /* a split's part i (0x391E50; the composer calls it out of line; ours) */
-unsigned int CSkbSplit::Part(int i)
+inline unsigned int CSkbSplit::Part(int i)
 {
-    return m_parts[i];
+    CSkbVec<unsigned int> &p = m_parts;
+
+    return p[i];
 }
 
 /* a sequence's jamo i, sign-extended (0x391E20; the composer calls it out of line; ours) */
-char SkbSeqJamo(SKBSEQ *seq, int i)
+inline char SkbSeqJamo(SKBSEQ *seq, int i)
 {
     return seq->m_jamo[i];
+}
+
+/* the jamo of [start, end) composed into one complete character's pieces (0x3919D0; the name ours) */
+inline bool SkbMatchComplete(CSkbPieces *pieces, std::vector<char> *jamo, int start, int end)
+{
+    int n = end - start;
+    CSkbCompleteVec *complete = &s_complete;
+
+    for (int i = 0; i < (int)complete->size(); i++) {
+        int k = complete->RuleCount(i);
+        CSkbSplit split(n, k);
+
+        while (split.Left()) {
+            pieces->AddPiece();
+            int r;
+
+            for (r = 0; r < k; r++) {
+                int j;
+                SKBCOMPLETE *c = &(*complete)[i];
+                SKBRULE *rule = s_rules[c->m_rules[r]];
+                int nseq = rule->SeqCount();
+                split.Sum(r);
+                int q;
+
+                for (q = 0; q < nseq; q++) {
+                    SKBSEQ *seq = rule->Seq(q);
+
+                    if (split.Part(r) == seq->Size()) {
+                        for (j = 0; j < seq->Size(); j++) {
+                            JAMO a = *(JAMO *)&(*jamo)[start + j];
+
+                            if (a != (JAMO)SkbSeqJamo(seq, j))
+                                break;
+                        }
+                        if (j >= seq->Size()) {
+                            bool v2 = c->m_val2;
+
+                            pieces->Append(*seq, v2);
+                            break;
+                        }
+                    }
+                }
+                if (q >= nseq)
+                    break;
+            }
+            if (r >= k)
+                return true;
+            pieces->RemovePiece();
+            split.Next();
+        }
+    }
+    return false;
+}
+
+/* all the jamo composed into one complete character's pieces (0x391670's first half; the name ours) */
+inline bool SkbMatchWhole(CSkbPieces *pieces, std::vector<char> *jamo, int n)
+{
+    CSkbCompleteVec *complete = &s_complete;
+
+    for (int i = 0; i < (int)complete->size(); i++) {
+        int k = complete->RuleCount(i);
+        CSkbSplit split(n, k);
+
+        while (split.Left()) {
+            pieces->AddPiece();
+            int r;
+
+            for (r = 0; r < k; r++) {
+                SKBRULE *rule = s_rules[complete->Rule(i, r)];
+                int nseq = rule->SeqCount();
+                int sum = split.Sum(r);
+                int q;
+
+                for (q = 0; q < nseq; q++) {
+                    SKBSEQ *seq = rule->Seq(q);
+
+                    if (split.Part(r) == seq->Size()) {
+                        int j;
+
+                        for (j = 0; j < seq->Size(); j++) {
+                            if ((unsigned char)(*jamo)[sum + j] != (unsigned char)SkbSeqJamo(seq, j))
+                                break;
+                        }
+                        if (j >= seq->Size()) {
+                            bool v2 = complete->Val2(i);
+
+                            pieces->Append(*seq, v2);
+                            break;
+                        }
+                    }
+                }
+                if (q >= nseq)
+                    break;
+            }
+            if (r >= k)
+                return true;
+            pieces->RemovePiece();
+            split.Next();
+        }
+    }
+    return false;
+}
+
+/* the jamo split in two, each part one complete character */
+inline bool SkbMatchSplit(CSkbPieces *pieces, std::vector<char> *jamo)
+{
+    int n = jamo->size();
+    CSkbSplit split(n, 2);
+
+    while (split.Left()) {
+        int mid = split.Sum(1);
+
+        if (SkbMatchComplete(pieces, jamo, 0, mid)) {
+            if (SkbMatchComplete(pieces, jamo, mid, n))
+                return true;
+            pieces->RemovePiece();
+        }
+        split.Next();
+    }
+    return false;
+}
+
+/* the jamo composed into pieces by the rules: as one complete character, else split in two
+ * (0x391670; the name ours) */
+bool SkbHangulCompose(CSkbPieces *pieces, std::vector<char> *jamo)
+{
+    if (SkbMatchWhole(pieces, jamo, jamo->size()))
+        return true;
+    return SkbMatchSplit(pieces, jamo);
 }
 
 /* the jamo being composed set again from the last piece's (0x3914A0, after a composition; the name
@@ -461,7 +604,9 @@ bool CSkbRdrIter::More() const
 /* a production's sequence (0x3909A0) */
 SKBSEQ *SKBRULE::Seq(int i)
 {
-    return &m_seqs[i];
+    std::vector<SKBSEQ> &v = m_seqs;
+
+    return &v[i];
 }
 
 /* a sequence's jamo appended to the last piece, its value (or its second) added to the code
@@ -507,6 +652,13 @@ unsigned short CSkbPieces::PrevCode()
     return (int)size() >= 2 ? (unsigned short)(*this)[size() - 2].m_code : 0;
 }
 
+/* a piece's destructor (0x390760; its jamo string's whole chain inlined here, six this-tests; every
+ * caller -- PopPiece, the pieces' clear and erase -- calls it out of line: pinned) */
+#pragma auto_inline off
+SKBPIECE::~SKBPIECE()
+{
+}
+
 /* the last piece destroyed (0x390740) */
 void CSkbPieces::PopPiece()
 {
@@ -518,29 +670,21 @@ void CSkbPieces::RemovePiece()
 {
     PopPiece();
 }
+#pragma auto_inline reset
 
 /* an empty piece added (0x390720) */
 void CSkbPieces::AddPiece()
 {
-    resize(size() + 1);
+    resize(((const std::vector<SKBPIECE> *)this)->size() + 1);
 }
 
 /* the next split of the same total into as many parts, none (the parts cleared) after the last
  * (0x3903A0; the composer's walk; the name ours): the split of the rest after the first part stepped
  * by itself (recursively) and copied back, or -- that one done -- the first part grown by one with
  * the others reset to one each and the rest last, while the first part leaves room.
- * OPEN (UI round 25, written), 2 instructions short and one register pair off -- every block, call,
- * loop and saved register the target's (s0 the local's parts, s1 k, s2 this, s3 &m_parts.data_):
- *   - A LEVEL: the target's inlined destructor of the local split tests the parts' address FOUR
- *     times (as the out-of-line ~CSkbSplit 0x390690 does), the unit's CSkbVec level; with
- *     `CSkbVec<unsigned int> m_parts` the chain is six high (~CSkbSplit, ~CSkbVec, ~vector,
- *     ~__vector_imp, ~__vector_pod, deallocate) and at -inline level=5 ~CSkbVec is called out of
- *     line (0x2BC), so std::vector stays here (three tests, the rest of the unit alike either way);
- *   - the last part's rbegin() reads the data pointer through the parts' data() reference, which
- *     MW shares with the m_parts[0] reads (s3) -- the target reads it straight (`lw a2,12(s2)`) and
- *     loads it again through s3 after the iterator's FPR copy: the original scalar end() reads data_
- *     itself (include/vector's goes through the pod's end and data(), which the pointer vectors'
- *     hoisted ends need -- the MSL's to weigh).
+ * Byte-exact since round 39, under the unit's level pragma (the local split's destructor tests the parts' address
+ * four times, the CSkbVec level, as ~CSkbSplit 0x390690), the last part's rbegin() through the parts' accessor (the
+ * target reads the data pointer straight, `lw a2,12(s2)`, and loads it again through s3 after the iterator's copy).
  * The local's parts through a reference local (their address kept in s0 for the field reads, as a
  * reference to a stack object does; through sub.Parts() MW hoists sp-relative field addresses and
  * strength-reduces the copies), int counters in the copies (unsigned ones are strength-reduced), and
@@ -555,22 +699,25 @@ void CSkbSplit::Next()
         return;
     }
     CSkbSplit sub;
-    std::vector<unsigned int> &parts = sub.m_parts;
+    CSkbVec<unsigned int> &parts = sub.m_parts;
 
-    sub.m_n = m_n - m_parts[0];
-    parts.resize(k - 1, 0);
+    sub.m_n = (int)m_n - m_parts[0];
+    parts.resize(k - 1);
     for (int i = 0; i < parts.size(); i++)
         parts[i] = Parts()[i + 1];
     sub.Next();
     if (sub.Left()) {
         for (int i = 0; i < parts.size(); i++)
             Parts()[i + 1] = parts[i];
-    } else if ((int)m_parts[0] <= m_n - k) {
+    } else if ((int)m_parts[0] <= (int)m_n - k) {
         m_parts[0]++;
         for (int i = 1; i < k - 1; i++)
             Parts()[i] = 1;
-        *m_parts.rbegin() = m_n - m_parts[0] - (k - 2);
+        *Parts().rbegin() = (int)m_n - m_parts[0] - (k - 2);
     } else {
         m_parts.clear();
     }
 }
+
+/* a modelling device, a "Level 6, or 8?" witness: THE LEVEL in the file's opening note */
+#pragma inline_depth(6)

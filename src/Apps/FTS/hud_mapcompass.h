@@ -20,7 +20,7 @@ class CWorld;
  * where a POD would go as five words */
 class nav_package {
 public:
-    nav_package() {}
+    nav_package() : m_this_anchor(0), m_hud_anchor(0), m_hud_arrow(0), m_show_arrow(0), m_override_showme(0) {}
 
     int m_dist;   // 0x0
     CCompassAnchor *m_this_anchor;   // 0x4
@@ -53,7 +53,7 @@ class MapCompass {
 public:
     MapCompass();
     ~MapCompass();
-    void Tick(CZSealBody *seal);
+    void Tick(float dT);
     void Draw(zdb::CCamera *camera);
     void SetTrans(float trans);
     void SetTexture(zdb::CTexture *tex);

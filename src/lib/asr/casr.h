@@ -130,7 +130,7 @@ typedef struct CASR {
     void *f588;                         /* +588: each word's second-pass record (CreateSecondPassInfo) */
     struct UWTABLES *uw_tables;         /* +592: the user words' tables (intCreateCtxTree's) */
     void *sp_ctx;                       /* +596: the second pass's (CreateSecondPassContext) */
-    int pad600;
+    struct WORDMAP *map;                /* +600: the second pass's word ids and words (FillOut.. ) */
     TNODE *iso_ctx;                     /* +604: the iso-word context's tree, run again after a second pass */
     int f608;                           /* +608 */
     struct LANGVT *lng;                 /* +612 */
@@ -197,9 +197,9 @@ typedef struct CASR {
     char pad1100[16];
     void *uw_states;                    /* +1116: the user words' states (freed with the tree) */
     int *uw_offsets;                    /* +1120: each user-word phoneme's first state */
-    short uw_n;                         /* +1124 */
+    unsigned short uw_n;                /* +1124 */
     short pad1126;
-    int f1128;                          /* +1128 */
+    unsigned int uw_cap;                /* +1128: the states the table has room for */
 } CASR;                                 /* 1132 bytes (casrOpen's allocation) */
 
 typedef struct LANGVT LANGVT;
@@ -231,7 +231,9 @@ struct LANGVT {
     unsigned int (*GetNbrGastone)(void *cb);          /* +132, slot 33 */
     struct WARP *(*GetpWarpFactors)(LANGVT *l);       /* +136, slot 34 */
     unsigned short *(*GetpGastone)(LANGVT *l);        /* +140, slot 35 */
-    void *s36[5];
+    void *s36;
+    int (*GetSilPhenome)(LANGVT *l);                  /* +148, slot 37 */
+    void *s38[3];
     void *(*GetpCodeBook)(LANGVT *l, int n);          /* +164, slot 41 */
     int *(*GetpSpeechUnit)(LANGVT *l);                /* +168, slot 42 */
     void *s43[3];
@@ -253,6 +255,13 @@ struct LANGVT {
     void *s77;
     unsigned short *(*exevGetpBeginOfItems)(void *ev); /* +312, slot 78 */
 };
+
+/* the second-pass context's map: a word's id for the host (negative: not a word of the result)
+ * and its word in the context */
+typedef struct WORDMAP {
+    int id;                             /* +0 */
+    int word;                           /* +4 */
+} WORDMAP;
 
 /* a warp factor (the language's, _langGetpWarpFactors): the genders it serves and its value */
 typedef struct WARP {

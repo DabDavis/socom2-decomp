@@ -11,7 +11,8 @@
  * pins on each (con_ps2.cpp and ai_util.cpp are the same, README "The inlining mode, measured").
  *
  * OPEN, not written yet: the rest of the unit (0x39AE50-0x39BBB0 holds the string assign through
- * the template replace, 0x39B620, the MSL lane's request), the letter caser 0x39A8D0.
+ * the template replace, 0x39B620, the MSL lane's request). The letter caser 0x39A8D0 is byte-exact
+ * since round 39 (SkbCaseLetter's note).
  *
  * Round 21: the text's editing core byte-exact -- SkbEraseBack 0x398C40, SkbCursorForward 0x399320,
  * SkbInsertChar 0x399EC0, SkbCursorTo 0x39A1D0 with its two comparators 0x39A3E0/0x39A3F0,
@@ -70,9 +71,9 @@ struct SKBUSBKEY {
 
 /* a character typed into the keyboard's text (0x399040: the text's insertion 0x399EC0, then the
  * composition's 0x391350; the second word passed on) */
-extern "C" void func_00399040(int c, int arg);
+extern "C" void func_00399040(unsigned short c, int arg);
 /* a letter cased (0x39A8D0, its third argument 0 here: SkbTypeCased's wide) */
-extern "C" int func_0039A8D0(unsigned short c, bool upper, bool wide);
+unsigned short SkbCaseLetter(unsigned short c, bool upper, bool wide);
 /* the keyboard's text given the composed pieces (0x398AE0: the argument first; whether it took
  * them) */
 extern "C" int func_00398AE0(int arg, CSkbPieces *pieces, bool fewer);
@@ -141,7 +142,9 @@ static inline const float &StringWidth(const C2DString &s)
  * `SKBTOKEN &t = tokens[i]` loads the data first in both builds). Round 38, reasoned from the colouring,
  * not replayed: the numbering looks the target's (index chain, then data, then sum) and its first
  * shift's v1 wants the data load live before the index's addu, which here follows it (sll, addu, lw,
- * sll). What orders that block is not established */
+ * sll). What orders that block is not established. Round 39: the piece through an inline taking a reference, or
+ * through the late-folding guard (a pointer to the piece, to its start), stay at 5 (v_wt2.py); a no-code asm read
+ * of a pointer to it keeps it in a saved register, 0x268 */
 bool SkbWrapTokens(std::vector<CSaferStr> &lines, std::vector<SKBTOKEN> &tokens, C2DFont *font, float scale,
                    float width)
 {
@@ -233,7 +236,10 @@ static inline bool SkbNot(int x)
  * the igdump record: MW's pre-colouring schedule puts wordChar's zero (`dmove r43 r0`) between the
  * xori and its sltiu whatever its declaration's place (after `space`, assigned after the notEnd
  * test, a second assignment), so the xori temporary interferes with wordChar and cannot share v1;
- * inWord through an inline (`SkbIsWord`, SkbNot of the inequality) is 8-24 bytes longer */
+ * inWord through an inline (`SkbIsWord`, SkbNot of the inequality) is 8-24 bytes longer. Round 39: read from the
+ * target's registers, its pre-colour order wants `xori, sltiu, dmove wordChar` after `lb, andi, dmove notEnd`. notEnd's
+ * zero assigned after the state's test, or after every declaration (v_wrap9.py), keeps a dmove between them, 3 or
+ * 4 off: the block's zeroes fill that gap whichever comes first */
 bool SkbWrapText(std::vector<CSaferStr> &lines, const char *text, C2DFont *font, bool byWord, float scale,
                  float width)
 {
@@ -299,7 +305,7 @@ void SkbUsbLetter(const SKBUSBKEY *key, int arg, bool korean)
     if (korean)
         SkbHangulTypeJamo(arg, KeyToJamo(key->m_shift ? toupper(c) : c));
     else
-        func_00399040(func_0039A8D0(c, (key->m_shift != 0) ^ (key->m_capsLock != 0), 0), arg);
+        func_00399040(SkbCaseLetter(c, (key->m_shift != 0) ^ (key->m_capsLock != 0), 0), arg);
 }
 
 /* the dash key: an underscore shifted */
@@ -318,6 +324,198 @@ void SkbUsbPunct(const SKBUSBKEY *key, int arg)
 void SkbUsbDigit(const SKBUSBKEY *key, int arg)
 {
     func_00399040((key->m_shift ? s_shiftDigitChars : s_digitChars)[key->m_usage - 30].c, arg);
+}
+
+/* the kana's forms, hiragana and katakana alike by their place in the block: whether a letter is the
+ * full-sized one of its small / full pair, and its half-width katakana (0x3FB860; ours) */
+struct SKBKANAFORM {
+    unsigned char m_big;
+    unsigned short m_half;
+};
+
+static const SKBKANAFORM s_kanaForms[92] = {
+    {0, 0xFF67}, {1, 0xFF71}, {0, 0xFF68}, {1, 0xFF72}, {0, 0xFF69}, {1, 0xFF73},
+    {0, 0xFF6A}, {1, 0xFF74}, {0, 0xFF6B}, {1, 0xFF75}, {1, 0xFF76}, {2, 0x0000},
+    {1, 0xFF77}, {2, 0x0000}, {1, 0xFF78}, {2, 0x0000}, {1, 0xFF79}, {2, 0x0000},
+    {1, 0xFF7A}, {2, 0x0000}, {1, 0xFF7B}, {2, 0x0000}, {1, 0xFF7C}, {2, 0x0000},
+    {1, 0xFF7D}, {2, 0x0000}, {1, 0xFF7E}, {2, 0x0000}, {1, 0xFF7F}, {2, 0x0000},
+    {1, 0xFF80}, {2, 0x0000}, {1, 0xFF81}, {2, 0x0000}, {0, 0xFF6F}, {1, 0xFF82},
+    {2, 0x0000}, {1, 0xFF83}, {2, 0x0000}, {1, 0xFF84}, {2, 0x0000}, {1, 0xFF85},
+    {1, 0xFF86}, {1, 0xFF87}, {1, 0xFF88}, {1, 0xFF89}, {1, 0xFF8A}, {2, 0x0000},
+    {3, 0x0000}, {1, 0xFF8B}, {2, 0x0000}, {3, 0x0000}, {1, 0xFF8C}, {2, 0x0000},
+    {3, 0x0000}, {1, 0xFF8D}, {2, 0x0000}, {3, 0x0000}, {1, 0xFF8E}, {2, 0x0000},
+    {3, 0x0000}, {1, 0xFF8F}, {1, 0xFF90}, {1, 0xFF91}, {1, 0xFF92}, {1, 0xFF93},
+    {0, 0xFF6C}, {1, 0xFF94}, {0, 0xFF6D}, {1, 0xFF95}, {0, 0xFF6E}, {1, 0xFF96},
+    {1, 0xFF97}, {1, 0xFF98}, {1, 0xFF99}, {1, 0xFF9A}, {1, 0xFF9B}, {0, 0x0000},
+    {1, 0xFF9C}, {1, 0x0000}, {1, 0x0000}, {1, 0xFF66}, {1, 0xFF9D}, {1, 0x0000},
+    {1, 0x0000}, {1, 0x0000}, {1, 0x0000}, {1, 0x0000}, {1, 0x0000}, {0, 0x0000},
+    {0, 0x0000}, {0, 0x0000},
+};
+
+/* the punctuation of the kana block and its half-width forms (0x3FB9D0; ours) */
+struct SKBKANAPUNCT {
+    unsigned short m_full;
+    unsigned short m_half;
+};
+
+static const SKBKANAPUNCT s_kanaPunct[8] = {
+    {0x3001, 0xFF64}, {0x3002, 0xFF61}, {0x300C, 0xFF62}, {0x300D, 0xFF63},
+    {0x309B, 0xFF9E}, {0x309C, 0xFF9F}, {0x30FB, 0xFF65}, {0x30FC, 0xFF70}
+};
+
+static inline bool SkbIsAsciiUpper(unsigned short c)
+{
+    bool r = false;
+
+    if (c >= 'A' && c <= 'Z')
+        r = true;
+    return r;
+}
+#pragma bool off
+static inline int SkbIsHiraganaV(unsigned short c)
+{
+    int r = c >= 0x3041;
+
+    r = r ? c < 0x3095 : r;
+    return r;
+}
+static inline int SkbIsKatakana(unsigned short c)
+{
+    int r = c >= 0x30A1;
+
+    r = r ? c < 0x30F7 : r;
+    return r;
+}
+static inline int SkbIsLatinUpper(unsigned short c)
+{
+    int r = c >= 0xC0;
+
+    if (r)
+        r = c < 0xDF;
+    if (r)
+        r = c != 0xD7;
+    return r;
+}
+static inline int SkbIsUpper(unsigned short c)
+{
+    int r = !!SkbIsAsciiUpper(c);
+
+    if (!r)
+        r = SkbIsLatinUpper(c);
+    return r;
+}
+#pragma bool on
+
+static inline bool SkbIsHiragana(unsigned short c)
+{
+    bool r = false;
+
+    if (c >= 0x3041 && c < 0x3095)
+        r = true;
+    return r;
+}
+
+/* a kana's block: its first letter, or 0 for none (ours) */
+static inline unsigned short SkbKanaBase(unsigned short c)
+{
+    bool r;
+    unsigned short base = 0;
+
+    r = false;
+    if (c >= 0x3041 && c < 0x3095)
+        r = true;
+    if (r)
+        base = 0x3041;
+    else if (SkbIsKatakana(c))
+        base = 0x30A1;
+    return base;
+}
+
+/* a kana by its block and its place in it (ours; 0x39A8D0 builds three: two temporaries bound to the
+ * helpers' references below, whose addresses stay in a register with the objects in memory -- a local
+ * read directly is scalarised, the third's m_base in a0) */
+struct CSkbKana {
+    CSkbKana(unsigned short c) : m_base(0)
+    {
+        if (SkbIsHiraganaV(c))
+            m_base = 0x3041;
+        else if (SkbIsKatakana(c))
+            m_base = 0x30A1;
+        m_index = c - m_base;
+    }
+
+    unsigned short m_base;
+    unsigned short m_index;
+};
+
+/* a kana with a small partner before it: a full-sized letter after a small one (ours; a temporary
+ * bound to the reference -- the kana's address stays in a register, the object in memory) */
+static inline bool SkbKanaHasSmall(const CSkbKana &k)
+{
+    if (!(k.m_base && s_kanaForms[k.m_index].m_big == 1))
+        return false;
+    unsigned short p = k.m_base + k.m_index - 1;
+
+    return s_kanaForms[(unsigned short)(p - SkbKanaBase(p))].m_big == 0;
+}
+
+/* a kana's half-width form: the katakana's own, else the letter itself (ours) */
+static inline unsigned short SkbKanaHalf(const CSkbKana &k)
+{
+    const CSkbKana *p = &k;
+    bool half = p->m_base == 0x30A1 && s_kanaForms[p->m_index].m_half;
+
+    return half ? s_kanaForms[p->m_index].m_half : p->m_base + p->m_index;
+}
+
+/* a letter cased: upper, a lower-case letter's capital, a small kana's full-sized partner ...;
+ * then wide, ASCII to its full-width form, or else a kana and punctuation to half-width and a
+ * full-width form to ASCII (0x39A8D0; SkbTypeCased and SkbUsbLetter call it; the name ours).
+ * Byte-exact on writing (the UI's round 39, unwritten before). It returns the unsigned short it holds
+ * (`move v0,a0`), so SkbTypeCased's `andi a0,v0,0xffff` is its local's -- a result through a local of
+ * its own type keeps the narrowing, passed straight (SkbUsbLetter's func_00399040) it has none, the rule
+ * of the bool locals (UILobbyConnect, round 33; round 30's reading of the two callers was an int). The
+ * forms that gave the words: the block tests a ternary on their own int under `bool off`, no pad at the
+ * join (`if (r)` pads it); a flag and a base with the flag declared first and set after the base's zero,
+ * so the flag takes the later register and the base's zero the earlier slot; `!(a && b)` for the test
+ * laying its false block first, the temporaries' `this` in a register through the reference parameter
+ * and, in the half-width helper, a named pointer (a reference alone is scalarised there) */
+unsigned short SkbCaseLetter(unsigned short c, bool upper, bool wide)
+{
+    if (upper) {
+        if (SkbIsUpper(c - 32))
+            c -= 32;
+        else if (c == 0x161)
+            c = 0x160;
+        else if (c == 0xFF)
+            c = 0x178;
+        else if (SkbKanaHasSmall(c)) {
+            CSkbKana k(c);
+
+            c = k.m_base + k.m_index - 1;
+        }
+    }
+    if (wide) {
+        if (c >= 33 && c < 127) {
+            if (c == 92)
+                c = 0xFFE5;
+            else
+                c += 0xFEE0;
+        }
+    } else {
+        if (SkbKanaBase(c))
+            c = SkbKanaHalf(c);
+        else if (c >= 0x3001 && c < 0x30FD) {
+            for (unsigned int i = 0; i < 8; i++) {
+                if (c == s_kanaPunct[i].m_full) {
+                    c = s_kanaPunct[i].m_half;
+                    break;
+                }
+            }
+        } else if (c >= 0xFF01 && c < 0xFF5F)
+            c -= 0xFEE0;
+    }
+    return c;
 }
 
 /* the text set and laid out (0x39A5B0), the cursor put at a character (0x39A1D0) and after the
@@ -644,7 +842,9 @@ bool SkbInsertChar(unsigned short c, CSoftKeyboard *skb)
  * key so) */
 void SkbTypeCased(unsigned short c, bool shifted, bool wide, CSoftKeyboard *skb)
 {
-    SkbInsertChar(func_0039A8D0(c, shifted, wide), skb);
+    unsigned short cased = SkbCaseLetter(c, shifted, wide);
+
+    SkbInsertChar(cased, skb);
 }
 
 /* the text cursor put at a place (0x395120, the display unit's: its node's position) */

@@ -688,7 +688,9 @@ inline const CBBox *CZNewHudMap::GetScrollBounds() const
  * pointers to x and z, or a reference to the named facing, are further off. Round 61: the facing
  * returned by value from an inline keeps the inline's local in memory at the target's sp+112 with
  * the target's three stores, but copies it into the named local (0x3A4; a reference bound to it
- * 0x3A8, a CPnt3D built by its constructor 0x36C) */
+ * 0x3A8, a CPnt3D built by its constructor 0x36C) 
+ * Round 65's tries: `SealDir *keep = &ptDir` keeps the point in memory but holds &z in s5 (0x398); `(void)&ptDir` stays
+ * 0x36C; `#pragma opt_common_subs off` 0x3C4. */
 CScrollBools CZNewHudMap::GetScrollPermissions() const
 {
     CScrollBools bools;
@@ -958,43 +960,41 @@ static float s_fScrollSpeed = 36.0f;
  * lookup (the target's s1 = sp+72, as SOCOM 1's s0); the two early returns one `||` (they share one
  * `b` to the epilogue); the speed a static (loaded from data), the fallback box an inline's guarded
  * static (GetScrollBounds 0x20AAC0 reads the same box and guard).
- * OPEN, 2 instructions and 16 registers, one swap: `this` takes s1 and the z pointer s0 (SOCOM 1's
- * own colouring), the target the reverse. Replayed (build/scratch/hud-r48/ig: rl_hs.py), z has 25
- * neighbours -- this, the node pointer, the box, the guard's load and its 1, bMoveX -- one at K, so
- * it is deferred with `this` (27) and coloured first; any one interference fewer, or `this`
- * numbered above z, gives the target. MW hoists z's `addiu` to the block's top (right after the
- * node load) wherever it is written. Tried: z declared first / at the top / after the length / in
- * the length, through the facing inline's returned pointer, a reference (the store then goes
- * through it), the move tests without bool locals or with one bool, a copy of `this` for the
- * moves, the bounds an inline member, a dead first definition of the box pointer */
+ * Byte-exact since round 65 (open since round 48, 2 instructions and 16 registers): the replay wanted `this` numbered above z --
+ * a parameter cannot be, so a MODELLING DEVICE, a `const` copy of it (the engine core's round 27: not folded back, it keeps a
+ * named number) declared after z; and the target's `c.eq.s x,K` is a float local holding the zero, the literal gives `c.eq.s K,x`
+ * (the world's round 33) */
 void CZNewHudMap::HandleScrolling(float fStickX, float fStickY)
 {
     float fZMove;
     float fXMove;
     float fConst;
     float fDirLength;
+    float kZero = 0.0f;
+    const float *z;
+    CZNewHudMap *const self = this;
 
-    if ((fStickX == 0.0f && fStickY == 0.0f) || !m_viewer)
+    if ((fStickX == kZero && fStickY == kZero) || !self->m_viewer)
         return;
     SealDir ptDir;
 
-    GetSealDir(m_viewer, &ptDir);
-    const float *z = &ptDir.z;
+    GetSealDir(self->m_viewer, &ptDir);
+    z = &ptDir.z;
 
     fDirLength = sqrtf(ptDir.x * ptDir.x + *z * *z);
     fConst = s_fScrollSpeed / fDirLength;
-    const CBBox *box = GetScrollBounds();
+    const CBBox *box = self->GetScrollBounds();
 
     fXMove = fConst * (fStickX * *z + fStickY * ptDir.x);
-    bool bMoveX = fXMove > 0.0f ? m_centerx < box->m_max.x : m_centerx > box->m_min.x;
+    bool bMoveX = fXMove > 0.0f ? self->m_centerx < box->m_max.x : self->m_centerx > box->m_min.x;
 
     if (bMoveX)
-        m_centerx += fXMove;
+        self->m_centerx += fXMove;
     fZMove = fConst * (fStickX * -ptDir.x + fStickY * *z);
-    bool bMoveZ = fZMove > 0.0f ? m_centerz < box->m_max.z : m_centerz > box->m_min.z;
+    bool bMoveZ = fZMove > 0.0f ? self->m_centerz < box->m_max.z : self->m_centerz > box->m_min.z;
 
     if (bMoveZ)
-        m_centerz += fZMove;
+        self->m_centerz += fZMove;
 }
 
 /* the player (zfts's) and the network's flags (hud_mpinfobox.cpp's view) */
@@ -1013,14 +1013,9 @@ static inline CEntity *AsSeal(CEntity *e)
     return e && e->m_type == 2 ? e : 0;
 }
 
-static inline void ListPush(std::list<CZMapItem *> &list, CZMapItem *const &x)
-{
-    list.push_back(x);
-}
-
 inline void CZNewHudMap::AddItem(CZMapItem *item)
 {
-    ListPush(m_itemlist, item);
+    m_itemlist.__push_back_deep(item);
 }
 
 /* a seal's controller, and whether its input is on (ours: the two ternaries, inline) */
@@ -1061,7 +1056,8 @@ inline void CZNewHudMap::TickCompassMap(CPad *pad, MENU_STATE menustate)
  * versus ternary is function-wide"); a `for` lowers to init, body, increment, test, which reads the
  * frame: the temporaries of the third push_back sit between the walk's begin and its end's, so its
  * expansion is a pass deeper than the first's -- SOCOM 1's two-level push_back (include/list's vc,
- * not applied: ListPush models the level here, AddItem the third's by-value new).
+ * not applied: include/list's __push_back_deep models the level here -- the MSL headers' round 39 opt-in, by call site --,
+ * AddItem the third's by-value new).
  * OPEN, 11 instructions, all s1 against s2 (0x3F8 of 0x3F8, frame exact): the target numbers the
  * scalarised member holding &m_list + 4 (const_iterator(base::end()), IRO_ScalarizeClassDataMembers
  * in pass 1, @2417) before the common subexpression (&removelist + 4) + 4 (pass 0's IRO_CommonSubs,
@@ -1071,7 +1067,8 @@ inline void CZNewHudMap::TickCompassMap(CPad *pad, MENU_STATE menustate)
  * reference temporary pass 0 cannot forward ("Level 6, or 8?") -- or hoists &m_list + 4 in pass 0.
  * Tried: the list a local subclass; a reference or pointer local for the second walk (both reads,
  * either read); an iterator copy; five spellings of the const end(); &end_ direct or a named base
- * iterator (then &m_list + 4 is rematerialised at each use, 0x3EC) */
+ * iterator (then &m_list + 4 is rematerialised at each use, 0x3EC) 
+ * Round 65: the MSL's level-6 opt-ins (__push_back_deep) hold at 11 and retire ListPush; the D and C destructor variants are worse. */
 void CZNewHudMap::HudTick(CPad *pad, float dT)
 {
     MENU_STATE menustate = CHUD::GetHUDOwner()->m_ctrl->GetMenuState();
@@ -1094,7 +1091,7 @@ void CZNewHudMap::HudTick(CPad *pad, float dT)
         bool deleteitem = item->Tick(this, dT);
 
         if (deleteitem)
-            ListPush(removelist, item);
+            removelist.__push_back_deep(item);
     }
 
     for (it = removelist.begin(); it != removelist.end(); ++it) {
