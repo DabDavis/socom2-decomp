@@ -242,6 +242,9 @@ public:
     ~DiIntersect();
     /* the hit mask, its low bit forced on, or every bit for none (new in SOCOM II; the name ours) */
     void SetMask(unsigned int mask);
+    /* whether the mask takes a region bit, none counting as the first (new in SOCOM II, the name
+     * ours: an int, its caller, the batch walk, does not narrow it) */
+    int TestMask(unsigned int bit);
     IntersectStruct *GetHighestAltitude(const CPnt3D *p, float alt);
     IntersectStruct *GetNearestIntersect();
     /* the hits' indices sorted by their squared distance from the tail (SOCOM 1's) */

@@ -80,14 +80,14 @@ inline void SetAddColor(CPnt3D c)
  * held once more (refused at fifteen holders), put at the end when its node has the flag, else
  * after the props put in front so far; then moved down past every fading prop that fades nearer
  * (SOCOM 1's; the holders and the front insertion SOCOM II's).
- * OPEN, 13 instructions (the right size), registers only: in the front insertion the target
- * loads the index into a1 and its increment into t0, and in the sort keeps &data[i] in a1 and the
- * prop in a2 -- here each pair the other way round (both the first-made temporary in the lower
- * register there). The swap traded as words (a typed view, or a volatile read) is what makes MW
- * reload the element as the target does; a swap of the CClutter pointers reuses the tested one.
- * Tried: the insert as a member, through begin(), the index taken first; the counter's types and
- * declaration places; a local or a reference for the tested prop. Round 21, the replay: no placement of the index, &data[i]
- * and the element together (681k searched, build/scratch/core/add_want.txt) */
+ * Byte-exact since the engine core's round 27 (13 off since round 17). The front insertion's position
+ * is `begin() + n`: operator+'s in-place `t += n` keeps the data pointer and the sum in ONE virtual
+ * register, read off the target -- the sum's t0 cannot be the lowest free register unless the pointer
+ * and the sum are one node interfering with the shift (`iterator(&(*this)[n])` makes them two, and no
+ * numbering of them gives it: 681k placements in round 21). The tested prop held in a `const` pointer,
+ * numbered below the swap's arguments (a plain local is folded; the replay wants the element below
+ * the slot). The swap traded as words (a typed view, or a volatile read) is what makes MW reload the
+ * element as the target does; a swap of the CClutter pointers reuses the tested one. */
 bool CClutterList::Add(CClutter *clutter)
 {
     if (size_ == 0) {
@@ -105,11 +105,13 @@ bool CClutterList::Add(CClutter *clutter)
     if (clutter->m_node->m_reflective)
         push_back(clutter);
     else
-        ClutterInsert(this, iterator(&(*this)[m_socom2_14++]), clutter);
+        ClutterInsert(this, begin() + m_socom2_14++, clutter);
     if (size() > 1) {
         for (int i = size() - 2; i >= 0; i--) {
-            if ((*this)[i]->m_bit0) {
-                if (!clutter->m_bit0 || clutter->m_farFadeSq > (*this)[i]->m_farFadeSq)
+            CClutter *const p = (*this)[i];
+
+            if (p->m_bit0) {
+                if (!clutter->m_bit0 || clutter->m_farFadeSq > p->m_farFadeSq)
                     std::swap((unsigned int &)(*this)[i], (unsigned int &)(*this)[i + 1]);
                 else
                     return true;
