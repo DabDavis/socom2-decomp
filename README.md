@@ -2065,6 +2065,64 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the engine core, round 25** (CEntity::PurgeEntities 0x29FCB0 -- 24 off since round 24 -- byte-exact;
+  CGrid::NodeGetIntersect 0x2D2890, 0x560 and unwritten before, written at the target's size and OPEN at one instruction;
+  0x2D3030 named NodeGetIntersectBatch from SOCOM 1's call sites; zAnimMessageTick's Add_Message and GetIntersect /
+  GetAltitude's six calls respelled, SAME-BY-ADDRESS):
+  - an erase moved one inline level deeper (an `EraseRange` helper) makes its argument temporaries a pass later, below the
+    walk's begin temporary -- MW's inliner expands breadth first (the MSL's round 37); a loop end taken from a fresh `end()`
+    into a local declared before another local is copied and numbered ahead of begin's temporaries (`igreplay --move
+    51=46.5` gave the target's numbering before any source did);
+  - `asm volatile {}` turns MW's whole IR optimiser off for the function (no CSE, propagation or loop invariants); a plain
+    `asm {}` keeps it;
+  - MW sets up a call's arguments that contain a call first, right to left, then the plain ones in parameter order (mweppc's
+    evaluate_nested_function_calls) -- a one-expression inline accessor counts as a call;
+  - IRO_CommonSubs numbers its temporaries by each expression's first reuse in linear order: SetCDIBBox's eight corner
+    addresses need c3, c2, c0, c6, c7, c5, c4 with c1 anywhere (8 of the 40,320 orders; `igreplay --permute` agrees), and
+    every placement that gives it numbers the top ring after the bottom's, as a second CSE pass would -- no source shape
+    yet; DeleteAnchor's six disagreeing registers have no hit in their 720 orders: not a numbering question;
+  - a bool-returning virtual is narrowed by its caller (`andi 0xff`), and CDI::GetIntersect returns bool in both SOCOMs --
+    NodeGetIntersect's last instruction is `done = stop` narrowed where the target moves it (bool, char and int flags,
+    casts, `!!`, `!= 0` all keep it);
+  - in both SOCOMs' vector walks begin is read through the node while end() keeps the vector's address in a register: a
+    pointer or reference local for the vector reproduces it.
+- **Tells from the weapons, round 38** (no new row: CWaterRippleManager::Ripple 0x3C2CB0 from 57 to 5 instructions off and
+  CMesh::ApplyDecal 0x3B8680 from 16 bytes long to 2 off, both at the target's size):
+  - a spilled named local gets a 16-byte, 16-aligned spill slot and a spilled parameter a word -- copying a parameter into a
+    local moves the spill layout (igdump's `spills`);
+  - `x = CPnt3D(a, b, c)` makes a stack temporary among the top locals where assigning field by field copies straight;
+    CPnt4D's four-float constructor reads z, y, x; temporaries built in a call's argument list are built last argument
+    first;
+  - MW runs IRO_PullOutInvariantAssignments and IRO_DoCommonLoopTransformations on nested loops outer loop first; an
+    out-of-line guard-plus-preheader block (entered by `b`, leaving by `b` to the bottom test) is
+    IRO_PullOutInvariantAssignments' signature -- a loop rotated by IRO_RotateLoop keeps its guard inline;
+  - an assignment inside a hand-written `if` guard is the only invariant one measured that stays per iteration: Ripple's
+    per-strip `pp = &p` sits ahead of the guard in the target, and every must-reach spelling of it (a cast, `&p + 0`, an
+    inline's return, a for-init, before the select; the pragmas opt_loop_invariants, opt_strength_reduction, opt_lifetimes,
+    opt_dead_assignments, opt_common_subs off) is pulled out of the visual loop -- Flatten's per-strip `&p` is the same
+    question;
+  - insert<CTurretDef> 0x3ABD90 (26) is a pure s0 / s1 / s6 permutation in include/vector's class insert, which matches as
+    it stands for CVehicleDef 0x3AF040 -- the MSL's.
+- **Tells from the SEALs, round 56** (CSealCtrlAi::CSealCtrlAi 0x574080 -- 0x340, unwritten before -- and 0x54A6D0 -- open
+  since round 51 -- byte-exact; the stance test 0x562C80 written, OPEN at one word; ten CSealStats rows named from SOCOM 1
+  by their callers and bodies: WasHit, Shot, Kill, HeadShot, Death, Hit -- a second SEAL added --, IncrSecondaryRoundsFired,
+  IncrPrimaryRoundsFired, IncrGrenadesUsed, IncrTimesSeen):
+  - a plain local copy of a parameter is folded back into the parameter and made at the function's entry; a `(float)` cast
+    copy stays where it is written (0x54A6D0's step, copied after the null test);
+  - the nops ahead of a block reached only by a branch are 8-byte alignment pads: fix the extra or missing word and the pad
+    follows (0x57F530, 0x54A6D0, 0x562C80);
+  - assigning the `!` of an inline bool into any variable adds `andi 0xff` where a comparison does not -- 0x562C80's last
+    word over some twenty spellings (`== false` drops it for xor / sltiu); `(bool)f()` gives `sltu` when f returns int and
+    `andi` when it returns bool, so a caller's code shows the callee's declared return type (0x60A850 is int to 0x562C80,
+    the kit's units declare it bool);
+  - inside an inline `return` jumps to the inline's end, so a whole body written as an inline keeps its source block order;
+    as a plain function MW moves the shared `return false` block to the end (0x57F530: the inline form is the target word
+    for word but one andi);
+  - a constructor body written in the target's store order, one bitfield per statement, matches; `a = b = c = CPnt3D::zero`
+    gives the target's reversed chain (0x574080);
+  - unnamed on purpose: 0x544D60 (SOCOM 1's UpdateMvpScore by place, but a0 is the SEAL), SOCOM II's own stats events
+    (0x545390 hostage killed, 0x545480 rescue, 0x545530, 0x5455D0, 0x545C90 suicide and 0x545C10 team kill -- SOCOM 1's
+    DeductKill split in two) and the four new incrementers (0x5451A0 / 0x5451C0, 0x545160 / 0x545180).
 - **Tells from completing the MSL headers, round 37** (the three concrete requests measured, none applied -- comments
   only; probes build/p37/, untracked: four.sh, vprobe.py, calls.py, mkoies.py, sdiff.py; runs in build/scratch/msl-r37/):
   - MW'S INLINER EXPANDS BREADTH FIRST (mweppc's CInline_Expand: one pass per inline level, every statement in order
