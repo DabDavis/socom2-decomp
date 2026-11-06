@@ -19,13 +19,14 @@
  * resize; LoadTable passes the constant zero's address, MW's anonymous static) */
 extern "C" void func_0028B0E0(void *v, unsigned int n, const unsigned int &x);
 
-/* a UTF-16 character appended to a string as one to three UTF-8 bytes (ours).
- * OPEN, 34 instructions, nearly all registers: the target keeps the int copy in s0 and the string
- * in s1 (here the other way round), and shifts right by 6 with srl in both places (the middle byte's through a copy,
- * `move v0,s0; srl v1,v0,6`) while its shift by 12 is sra and every % 64 signed; an int, an
- * unsigned short, (unsigned int) casts, divisions and an unsigned count all give sra or change
- * the size. Everything else -- the byte truncations (andi 0xff, then the char argument's
- * sign extension), the tests, the call order -- matches. */
+/* a value shifted down by six, unsigned (ours: the append's two six-bit shifts) */
+static inline int UTF8Shr6(unsigned int x) { return x >> 6; }
+
+/* a UTF-16 character appended to a string as one to three UTF-8 bytes (ours). Byte-exact since the
+ * UI lane's round 32 (open since round 21): the six-bit shifts through an inline taking `c` as an
+ * unsigned int -- srl, the middle byte's argument a copy of the int (`move v0,s0`: c's zero
+ * extension shared with u, while c itself stays live in s2), the remainders signed on u; the shifts
+ * written in place gave sra, the inline on u coalesced the copy and freed s2 */
 void UTF8Append(std::string &s, unsigned short c)
 {
     int u = c;
@@ -33,12 +34,12 @@ void UTF8Append(std::string &s, unsigned short c)
     if (u < 0x80)
         s.push_back((unsigned char)c);
     else if (u < 0x800) {
-        s.push_back((unsigned char)((c >> 6) + 0xC0));
-        s.push_back((unsigned char)(c % 64 + 0x80));
+        s.push_back((unsigned char)(UTF8Shr6(c) + 0xC0));
+        s.push_back((unsigned char)(u % 64 + 0x80));
     } else {
         s.push_back((unsigned char)((u >> 12) + 0xE0));
-        s.push_back((unsigned char)((c >> 6) % 64 + 0x80));
-        s.push_back((unsigned char)(c % 64 + 0x80));
+        s.push_back((unsigned char)(UTF8Shr6(c) % 64 + 0x80));
+        s.push_back((unsigned char)(u % 64 + 0x80));
     }
 }
 
