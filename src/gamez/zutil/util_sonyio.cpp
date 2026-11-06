@@ -7,7 +7,7 @@
  * through its placeholders) and a CD file opened by its sector (the DNAS client's).
  *
  * The hard disk's game partition: HddFindFiles 0x39CE80, HddMountGame 0x39D050 (the UI lane's round
- * 31), WriteHddIcon and LoadHddIconFile (OPEN, its note), HddUnmountGame, HddRebootCallback and
+ * 31), WriteHddIcon and LoadHddIconFile (round 38), HddUnmountGame, HddRebootCallback and
  * HddRegisterReboot (the UI lane's round 34). Not written: 0x39DDB0 and
  * 0x39DFC0 (byte-exact as drafts). */
 
@@ -190,19 +190,18 @@ CFileIO::CFileIO()
     m_flags = 0;
 }
 
-/* a CD file is open when its reader exists (ours: the && is materialised, an inline's) */
-static inline bool CDFileOpen(int file)
-{
-    return file != -1 && file != 0;
-}
-
 bool CFileIO::IsOpen() const
 {
     bool open = false;
 
     if (m_flags) {
+        /* a CD file is open when its reader exists: the union read through both its members, the
+         * handle and the pointer -- two loads of different types share only their address, which
+         * is why LoadHddIconFile 0x39D650's inlined copy builds it (`addiu v0,sp,372`) and keeps the
+         * jump form, where this out-of-line copy (`this + 4` is not a common subexpression) folds
+         * back into the value form (nor / sltu): one source, both forms (round 38) */
         if (m_flags & 1)
-            open = CDFileOpen(m_file);
+            open = m_file != -1 && m_cd != 0;
         else
             open = m_file >= 0;
     }
@@ -748,24 +747,7 @@ int LoadHddIconFile(const char *dir, const char *name, HDDICONFILE *out);
 
 /* a file read whole into a 64-aligned buffer, rounded up to 512 bytes and zeroed past its end;
  * the buffer and its rounded size handed back, the file's size returned (SOCOM II's; the name
- * ours).
- * OPEN, 2 instructions short (0x260 of 0x268): the inlined Close's IsOpen tests the CD reader
- * through its address (`addiu v0,sp,372; lw v1,0(v0)`) and materialises `!= -1 && != 0` with two
- * branches and an assigned true (daddiu); CDFileOpen by value gives nor/sltu. Taking it by `const
- * int &` gives the target's size (8 instructions off) but costs IsOpen and Close their matches;
- * `if (...) return true; return false;` and a bool local cost them too. The rest matches.
- * Round 23, measured again: the helper by `const int &` or `const int *` gives LoadHddIconFile the
- * target's size and its jump form, 3 instructions off (the field read folded, `lw v1,372(sp)`,
- * where the target builds the address), and costs IsOpen 0x39EF80 and Close 0x39E8A0 7 each (both
- * keep the value form in the target); the reference read into a local first keeps those two and
- * changes nothing here. Everywhere else in the target the file's m_file and m_flags go through
- * saved registers (sp+372 into s0, sp+384 into s1, set up with the inlined constructor): only the
- * inlined IsOpen reads them afresh, so its copy here is not the out-of-line one's source.
- * Round 24: the CD test over the union's pointer (`CFileCD *const &`, m_cd) or through the object
- * (`CDFileOpen(const CFileIO *)` binding a reference to m_file) is 3 off the same way and reads
- * `lw v1,0(s0)` -- MW merges the reference's address with the constructor's hoisted &m_file where
- * the target builds it afresh (`addiu v0,sp,372`); a reference accessor over m_file passed to the
- * by-value test, or a by-value pointer, stays 8 off (the value form). */
+ * ours). Byte-exact since round 38 through CFileIO::IsOpen's test (its note) */
 int LoadHddIconFile(const char *dir, const char *name, HDDICONFILE *out)
 {
     CFileIO file;

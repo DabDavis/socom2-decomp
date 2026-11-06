@@ -76,9 +76,11 @@ extern "C" int func_0039A8D0(unsigned short c, bool upper, bool wide);
 /* the keyboard's text given the composed pieces (0x398AE0: the argument first; whether it took
  * them) */
 extern "C" int func_00398AE0(int arg, CSkbPieces *pieces, bool fewer);
-void SkbHangulTypeJamo(int arg, signed char jamo);
+/* (the jamo is zui_hangul.h's JAMO, a byte enum: its lb copy and its andi 0xff compare, SkbTypeJamo's, are
+ * the byte enum's signature -- README's ZAnim motion tells) */
+void SkbHangulTypeJamo(int arg, JAMO jamo);
 /* the jamo a key types, its last jamo taken back (zui_hangul.cpp's) */
-signed char KeyToJamo(char c);
+JAMO KeyToJamo(char c);
 unsigned short SkbHangulBack();
 extern "C" int toupper(int c);
 
@@ -136,7 +138,10 @@ static inline const float &StringWidth(const C2DString &s)
  * reference to the piece, a for loop, an int index; round 19: `tokens.data()[i]`, `&tokens[i]` into a
  * pointer, `(&*begin())[i]`, a reference to the vector, the const operator[] -- all 5 off (the
  * pre-colouring code has the index's sll/addu ahead of the data load in every one; the inner loop's
- * `SKBTOKEN &t = tokens[i]` loads the data first in both builds) */
+ * `SKBTOKEN &t = tokens[i]` loads the data first in both builds). Round 38, reasoned from the colouring,
+ * not replayed: the numbering looks the target's (index chain, then data, then sum) and its first
+ * shift's v1 wants the data load live before the index's addu, which here follows it (sll, addu, lw,
+ * sll). What orders that block is not established */
 bool SkbWrapTokens(std::vector<CSaferStr> &lines, std::vector<SKBTOKEN> &tokens, C2DFont *font, float scale,
                    float width)
 {
@@ -869,7 +874,7 @@ void SkbCloseText0(CSoftKeyboard *skb)
  * (0x398AE0), the composition dropped when the text does not take them (0x399200; the name ours:
  * SkbTypeJamo and SkbUsbLetter call it out of line, so pinned) */
 #pragma auto_inline off
-void SkbHangulTypeJamo(int arg, signed char jamo)
+void SkbHangulTypeJamo(int arg, JAMO jamo)
 {
     CSkbPieces pieces;
     std::pair<bool, bool> r = SkbHangulType(&pieces, jamo);
@@ -896,19 +901,20 @@ void SkbSwitchText(CSoftKeyboard *skb)
 
 /* the compound jamo a shifted key composes (0x3FB840: a jamo and its doubled form, seven pairs) */
 struct SKBJAMOPAIR {
-    unsigned char m_from;
-    signed char m_to;
+    JAMO m_from;
+    JAMO m_to;
 };
 static const SKBJAMOPAIR s_shiftJamo[7] = {
-    {0x19, 0x17}, {0x01, 0x1C}, {0x04, 0x1D}, {0x10, 0x15}, {0x0B, 0x14}, {0x12, 0x16}, {0x03, 0x13}
+    {(JAMO)0x19, (JAMO)0x17}, {(JAMO)0x01, (JAMO)0x1C}, {(JAMO)0x04, (JAMO)0x1D}, {(JAMO)0x10, (JAMO)0x15},
+    {(JAMO)0x0B, (JAMO)0x14}, {(JAMO)0x12, (JAMO)0x16}, {(JAMO)0x03, (JAMO)0x13}
 };
 
 /* a jamo typed: composed with shift when SkbShifted says so (0x399070; the name ours) */
-void SkbTypeJamo(int arg, signed char jamo, CPad *pad)
+void SkbTypeJamo(int arg, JAMO jamo, CPad *pad)
 {
     if (SkbShifted(pad)) {
         for (unsigned int i = 0; i < 7; i++) {
-            if ((unsigned char)jamo == s_shiftJamo[i].m_from) {
+            if (jamo == s_shiftJamo[i].m_from) {
                 jamo = s_shiftJamo[i].m_to;
                 break;
             }
