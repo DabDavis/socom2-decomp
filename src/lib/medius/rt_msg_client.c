@@ -60,17 +60,20 @@ extern unsigned char func_00634850(unsigned short, int);
 /* a connection's options (rt_msg_client_connect's): SOCOM 1's 64-byte block grown to 76, its
  * fields from 0x18 on eight bytes further in, the server's port (0x18) and a first word new */
 typedef struct rt_msg_client_connect_options {
-    int field_00;
-    char pad04[0x14];
+    int field_00;                       /* 0x00: the connection's kind, 0 or 1 */
+    char szIp[16];                      /* 0x04 */
+    char pad14[4];                      /* 0x14: the server's port */
     unsigned short nPort;               /* 0x18: 10075 by default */
-    char pad1A[6];
+    char pad1A[2];
+    int field_1C;                       /* 0x1C: the key */
     int field_20;                       /* 0x20: 15000 (SOCOM 1's 0x18) */
     int field_24;                       /* 0x24: 30 (SOCOM 1's 0x1C) */
     int field_28;                       /* 0x28: 0x8000 (SOCOM 1's 0x20) */
     int field_2C;                       /* 0x2C: 0x8000 (SOCOM 1's 0x24) */
     int field_30;                       /* 0x30 (SOCOM 1's 0x28) */
     unsigned short field_34;            /* 0x34 (SOCOM 1's 0x2C) */
-    char pad36[6];
+    char pad36[2];
+    int field_38;                       /* 0x38 */
     int field_3C;                       /* 0x3C (SOCOM 1's 0x34) */
     int field_40;                       /* 0x40 */
     int field_44;                       /* 0x44 */
@@ -761,6 +764,142 @@ unsigned char func_00633960(rt_msg_client_udp_options *pOptions)
     gUDPInfo.bEnabled = 1;
     return 0;
 }
+
+extern unsigned char func_00635228(unsigned short *pnConnection, unsigned int nKind, unsigned int nSendSize, unsigned int nRecvSize);
+extern unsigned char rt_msg_client_change_state(rt_msg_client_connection *pConnection, unsigned int nState);
+extern int rt_time_start(rt_msg_client_time *pStart);
+unsigned char func_00634C48(rt_msg_client_connection *pConnection);
+extern void *memcpy(void *dst, const void *src, unsigned int n);
+extern int rt_memory_allocate_init_zero(void **ppMemory, unsigned long nSize);
+extern void func_006303E0(unsigned short nConnection);
+extern int rt_circ_buf_clear(rt_circ_buf *pBuf);
+extern char *strncpy(char *dst, const char *src, unsigned int n);
+
+/* SOCOM 1's rt_msg_client_iconnect grown (0x633A08, between ienable_udp's and idisconnect's rows, its callers rt_msg_client_connect's): the
+ * connection made, its options copied in, its channels reset and the rt_comm channels created by its kind; then the connect itself. */
+/* OPEN (round 27b): SOCOM 1's rt_msg_client_iconnect grown: registers only, 80 words: the target has s0 the out pointer and the loop's offset, s1 the
+ * started flag and the channel, s2 the options; here the channel (the highest priority by far, 26 refs in the loop over 22 insns) takes s0 first.
+ * One variable for flag and channel, or three for the channel, leave it first. */
+unsigned char func_00633A08(int nConnection, int nOptions)
+{
+    unsigned short *pnConnection = (unsigned short *)nConnection;
+    rt_msg_client_connect_options *pOptions = (rt_msg_client_connect_options *)nOptions;
+    int anOptions[3];
+    unsigned short nId = 0;
+    rt_msg_client_connection *pConnection = 0;
+    rt_msg_client_comm *pComm;
+    rt_msg_client_comm *p1;
+    rt_msg_client_comm *p2;
+    unsigned char bStarted = data_00655614;
+    unsigned char result;
+    unsigned int i;
+
+    if (bStarted != 1)
+        return 5;
+    if (pnConnection == 0)
+        return 2;
+    if (pOptions == 0)
+        return 2;
+    if (*(unsigned short *)pOptions->pad14 == 0)
+        return 2;
+    if (pOptions->field_38 == 0)
+        return 2;
+    if ((unsigned int)pOptions->field_00 >= 2)
+        return 2;
+    *pnConnection = gnConnectionArraySize + 1;
+    result = func_00635228(&nId, pOptions->field_00, pOptions->field_28, pOptions->field_2C);
+    if (result != 0)
+        return result;
+    *pnConnection = nId;
+    func_006303E0(nId);
+    KM_Create(nId, 0, pOptions->field_1C);
+    result = rt_msg_client_get_connection(nId, &pConnection);
+    if (result != 0)
+        return result;
+    if (pConnection == 0)
+        return 9;
+    if (pConnection->nState != bStarted)
+        return 23;
+    result = rt_msg_client_change_state(pConnection, 0);
+    if (result != 0)
+        return result;
+    memcpy((char *)pConnection + 12, pOptions, 76);
+    if (pOptions->field_30 != 0 && pOptions->field_34 != 0) {
+        if (rt_memory_allocate_init_zero(&pConnection->pConnectData, pOptions->field_34) != 0)
+            return 8;
+        memcpy(pConnection->pConnectData, (void *)pOptions->field_30, pOptions->field_34);
+        pConnection->nConnectDataLength = pOptions->field_34;
+    } else {
+        pConnection->pConnectData = 0;
+        pConnection->nConnectDataLength = 0;
+    }
+    strcpy(pConnection->szIP, "");
+    pConnection->pfnConnect = (void *)pOptions->field_38;
+    pConnection->pfnAppMessage = (void *)pOptions->field_40;
+    pConnection->pfnClientConnect = (void *)pOptions->field_3C;
+    pConnection->pfnDisconnect = (void *)pOptions->field_44;
+    pConnection->pfnCallback = (void *)pOptions->field_48;
+    for (i = 0; i < 2; i++) {
+        pComm = pConnection->apChannels[i];
+        if (pComm != 0) {
+            pComm->pending.nLength = 0;
+            pComm->pending.nCount = 0;
+            if (rt_time_start(&pComm->tLastSend) != 0)
+                return 24;
+            if (rt_time_start(&pComm->tLastRecv) != 0)
+                return 24;
+            pComm->n3C = 0;
+            pComm->bTimeout = pOptions->field_20;
+            if (rt_time_start(&pComm->t34) != 0)
+                return 24;
+            pComm->bTargetSet = 0;
+            pComm->nValue = pOptions->field_24;
+            if (rt_circ_buf_clear(&pComm->recvBuf) != 0)
+                return 21;
+            if (rt_circ_buf_clear(&pComm->sendBuf) != 0)
+                return 21;
+        }
+    }
+    result = rt_msg_client_change_state(pConnection, 2);
+    if (result != 0)
+        return result;
+    if (pConnection->nConnectKind == 1) {
+        p1 = pConnection->apChannels[1];
+        if (p1 == 0)
+            return 9;
+        memset(anOptions, 0, sizeof(anOptions));
+        anOptions[1] = 584;
+        anOptions[0] = 1;
+        result = rt_msg_client_map_comm_error(rt_comm_create(&p1->nChannelId, 0, pOptions->nPort, anOptions));
+        if (result != 0)
+            return result;
+        p1->bKind = 0;
+    }
+    if (pConnection->nConnectKind < 2) {
+        char *szIp = (char *)pOptions + 4;
+
+        p2 = pConnection->apChannels[0];
+        if (p2 == 0)
+            return 9;
+        strncpy(p2->szAddress, szIp, 15);
+        p2->szAddress[15] = 0;
+        p2->nPort = *(unsigned short *)pOptions->pad14;
+        memset(anOptions, 0, sizeof(anOptions));
+        anOptions[0] = 0;
+        *(char *)&anOptions[2] = 1;
+        result = rt_msg_client_map_comm_error(rt_comm_create(&p2->nChannelId, szIp, *(unsigned short *)pOptions->pad14, anOptions));
+        if (result != 0)
+            return result;
+        p2->bKind = 1;
+        pConnection->pComm = p2;
+    }
+    if (pConnection->pComm == 0)
+        return 9;
+    if (pConnection->nId != pConnection->pComm->nId)
+        return 1;
+    return func_00634C48(pConnection);
+}
+
 
 unsigned char rt_msg_client_is_valid_connection_id(unsigned short nConnection);
 extern unsigned char rt_msg_client_change_state(rt_msg_client_connection *pConnection, unsigned int nState);
@@ -1458,6 +1597,116 @@ unsigned char rt_msg_client_iudp_disable_heartbeat(void)
 
 extern int rt_circ_buf_destroy(rt_circ_buf *cb);
 extern void KM_Destroy(int nKMID);
+
+extern unsigned char rt_msg_client_set_scratch_buf_min_size(unsigned int nSize);
+extern int rt_circ_buf_create(rt_circ_buf *pBuf, unsigned int nSize, void *pMemory);
+
+/* SOCOM 1's rt_msg_client_create_new_connection_index grown (0x635228, between udp_update's row and free_connection_index): the first free
+ * slot (the table ten longer when there is none), the connection and its channels by kind, their buffers at least 584 bytes each. */
+/* OPEN (round 27b): SOCOM 1's rt_msg_client_create_new_connection_index grown: the first loop's `b; addiu s4` (the table size's address in both exits)
+ * and the registers from it (s3 the index, s4 that address, s5 the new size). */
+unsigned char func_00635228(unsigned short *pnConnection, unsigned int nKind, unsigned int nSendSize, unsigned int nRecvSize)
+{
+    void *pNew = 0;
+    rt_msg_client_comm *pComm = 0;
+    unsigned short i = 0;
+    unsigned short nSize;
+    unsigned short *pSize;
+    int bKind;
+    unsigned char result;
+
+    if (data_00655614 != 1)
+        return 5;
+    if (pnConnection == 0)
+        return 2;
+    bKind = nKind < 2;
+    if (!bKind)
+        return 2;
+    if (nSendSize == 0)
+        return 2;
+    if (nRecvSize == 0)
+        return 2;
+    if (gnConnectionArraySize != 0) {
+        for (i = 0; i < gnConnectionArraySize; i++)
+            if (gapConnections[i] == 0)
+                goto found;
+    }
+found:
+    pSize = &gnConnectionArraySize;
+    if (i == *pSize) {
+        nSize = *pSize + 10;
+        pNew = 0;
+        if (rt_memory_allocate_init_zero(&pNew, (unsigned int)(nSize * 4)) != 0)
+            return 8;
+        if (gapConnections != 0) {
+            memcpy(pNew, gapConnections, *pSize * 4);
+            rt_memory_free((void **)&gapConnections);
+        }
+        *pSize = nSize;
+        gapConnections = pNew;
+    }
+    if (rt_memory_allocate_init_zero(&pNew, 152) != 0)
+        return 8;
+    gapConnections[i] = pNew;
+    gapConnections[i]->nId = i;
+    gapConnections[i]->nConnectKind = nKind;
+    result = rt_msg_client_change_state(gapConnections[i], 0);
+    if (result != 0)
+        return result;
+    if (nKind == 1) {
+        nSendSize >>= 1;
+        nRecvSize >>= 1;
+    }
+    if (nSendSize < 584)
+        nSendSize = 584;
+    if (nRecvSize < 584)
+        nRecvSize = 584;
+    if (bKind) {
+        pComm = 0;
+        if (rt_memory_allocate_init_zero((void **)&pComm, 724) != 0)
+            return 8;
+        if (pComm == 0)
+            return 9;
+        pComm->pad04 = 1;
+        pComm->nId = i;
+        pComm->nKind = 0;
+        if (rt_circ_buf_create(&pComm->sendBuf, nSendSize, 0) != 0)
+            return 21;
+        pComm->nSendBufSize = nSendSize;
+        if (rt_circ_buf_create(&pComm->recvBuf, nRecvSize, 0) != 0)
+            return 21;
+        pComm->nRecvBufSize = nRecvSize;
+        gapConnections[i]->apChannels[0] = pComm;
+    }
+    if (nKind == 1) {
+        pComm = 0;
+        if (rt_memory_allocate_init_zero((void **)&pComm, 724) != 0)
+            return 8;
+        if (pComm == 0)
+            return 9;
+        pComm->pad04 = nKind;
+        pComm->nId = i;
+        pComm->nKind = nKind;
+        if (rt_circ_buf_create(&pComm->sendBuf, nSendSize, 0) != 0)
+            return 21;
+        pComm->nSendBufSize = nSendSize;
+        if (rt_circ_buf_create(&pComm->recvBuf, nRecvSize, 0) != 0)
+            return 21;
+        pComm->nRecvBufSize = nRecvSize;
+        gapConnections[i]->apChannels[1] = pComm;
+    }
+    result = rt_msg_client_set_scratch_buf_min_size(nSendSize);
+    if (result != 0)
+        return result;
+    result = rt_msg_client_set_scratch_buf_min_size(nRecvSize);
+    if (result != 0)
+        return result;
+    result = rt_msg_client_change_state(gapConnections[i], 1);
+    if (result != 0)
+        return result;
+    *pnConnection = i;
+    return result;
+}
 
 /* SOCOM 1's free_connection_index, grown (round 16b): each of the connection's two channels has its
  * rings destroyed and is freed (SOCOM 1's one channel was in the record), then the connect data,
