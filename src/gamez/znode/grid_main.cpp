@@ -247,13 +247,17 @@ void CGrid::addOrderedCellAtom(int x, int z, bool force)
 }
 #pragma inline_intrinsics reset
 
+/* the clamped x held through the lookup (ours, a modelling device -- the engine core's round 27).
+ * The target's first lookups keep the cell count's common subexpression in the lowest register, z next,
+ * the clamped x last: x's clamp numbered below z. gridGetAtomBasePtr inlined makes z's argument
+ * copy first and x's clamp a conditional's temporary after every inline's (the replay: `--move
+ * 35=39.5`). Enums are not propagated, so an enum-typed local keeps its number and holds the
+ * clamp; no local, const, order, identity inline, dead read or by-reference z gave it */
+enum GridIndex { GRID_INDEX_NONE = 0, GRID_INDEX_MAX = 0x7FFFFFFF };
+
 /* the cell box a pair of corners spans, its first cell given back (SOCOM 1's; the corners by
- * value, the box's cells kept in the unit's statics for GetNextCell).
- * OPEN, 9 instructions (right size): registers in the inlined gridGetAtomBasePtr -- the target
- * keeps z in a1 and the clamped x in a2 (SOCOM 1's in a0/a1), here z takes a2 and x a1; not the
- * result local, its place, nor a helper taking the grid; round 14: x and z read into locals first
- * (either order, before or after the pointer) -- 9 or 10; round 21: the lookup through ThisGrid (the preheader stand-in that fixed gridAddNodeToGrids), through
- * GridAtomIndex over m_Atoms, either argument through an identity inline -- 9 each (v_scb21*.py) */
+ * value, the box's cells kept in the unit's statics for GetNextCell). Byte-exact since the engine
+ * core's round 27 (9 off since round 9): the lookup written out with GridIndex's clamp */
 CCell *CGrid::SetCellBoundary(CPnt3D min, CPnt3D max)
 {
     gridGetGridXandZIndex(&xMinCell, &zMinCell, min.x, min.z);
@@ -261,27 +265,39 @@ CCell *CGrid::SetCellBoundary(CPnt3D min, CPnt3D max)
     xCurCell = xMinCell;
     zCurCell = zMinCell;
     CCell *cell = 0;
-    CGridAtom **p = gridGetAtomBasePtr(xCurCell, zCurCell);
+    GridIndex xc;
+    int z = zCurCell;
+    int x = xCurCell;
+
+    x = MAX(0, x);
+    xc = (GridIndex)MIN(m_CellCount.cx - 1, x);
+    z = MAX(0, z);
+    z = MIN(m_CellCount.cy - 1, z);
+    CGridAtom **p = &m_Atoms[xc + z * m_CellCount.cx];
 
     if (p && *p)
         cell = (*p)->GetCell();
     return cell;
 }
 
-/* the box's next cell, row by row, or none past its last (SOCOM 1's).
- * OPEN, 9 instructions (right size): SetCellBoundary's register pair, in the first lookup only (the
- * second is the target's). MW's colouring (build/scratch/core/ig, igsteps.py): in the first lookup
- * z's load is a temporary numbered before the clamped x's (v35, v39), so x is coloured first and
- * takes a2; in the second the clamp's comes first (v43, v44), as the target wants for both. Round 9
- * tried: x and z through locals in either order or const, a pre-increment test, z read ahead of
- * the cell, the pointer ahead of the cell, a copy inside gridGetAtomBasePtr -- 9 or more each; round 21:
- * the first lookup through ThisGrid, x or z in a local first -- 9 (v_gnc21.py) */
+/* the box's next cell, row by row, or none past its last (SOCOM 1's). Byte-exact since the engine
+ * core's round 27 (9 off since round 9): the first lookup written out with GridIndex's clamp, the
+ * second gridGetAtomBasePtr's own -- there z shares the row test's load, a temporary after the
+ * clamp's */
 CCell *CGrid::GetNextCell()
 {
     xCurCell++;
     if (xCurCell <= xMaxCell) {
         CCell *cell = 0;
-        CGridAtom **p = gridGetAtomBasePtr(xCurCell, zCurCell);
+        GridIndex xc;
+        int z = zCurCell;
+        int x = xCurCell;
+
+        x = MAX(0, x);
+        xc = (GridIndex)MIN(m_CellCount.cx - 1, x);
+        z = MAX(0, z);
+        z = MIN(m_CellCount.cy - 1, z);
+        CGridAtom **p = &m_Atoms[xc + z * m_CellCount.cx];
 
         if (p && *p)
             cell = (*p)->GetCell();
