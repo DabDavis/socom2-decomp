@@ -171,7 +171,13 @@ bool CWaterRippleManager::GetOffset(const CPnt3D *p, CPnt3D *out, bool *level)
     return any;
 }
 
-/* OPEN, 0x330 bytes (57 instructions off as written, the right size): the target addresses the
+/* A MARKED DEVICE (the weapons' round 40): a flag that folds between pass 0's loop phase and pass 1 --
+ * see Ripple's note. The original's spelling of that per-strip assignment is unknown. */
+struct RipFlag {
+    int m_on;
+};
+
+/* BYTE-EXACT since the weapons' round 40. Before: OPEN, 0x330 bytes (57 instructions off as written, the right size): the target addresses the
  * vertex point through one pointer register (s3 = &p, set in SelectVertexStrips' delay slot each
  * strip, so hoisted out of the vertex loop only) and keeps this in s8; here the point's y and z
  * addresses are hoisted as well and this spills. SetLevel's shape (a float pointer to the point,
@@ -216,10 +222,22 @@ bool CWaterRippleManager::GetOffset(const CPnt3D *p, CPnt3D *out, bool *level)
  * the frame (0x338); a plain pointer kept address-taken stays in the frame to the end (only class
  * objects are scalarised in pass 1). A fold that lands between pass 0's loop phase and pass 1 is
  * the shape still wanted.
+ * Round 40 (build/scratch/wep/v_rip40*.py): THAT SHAPE, A LATE-FOLDING GUARD. A struct flag stored at
+ * the function's top and read through a reference bound at the read (`RipFlag &rf = f; if (rf.m_on)
+ * pp = &p;`): pass 0's scalariser sees f's address taken and leaves it; pass 0's first propagation
+ * folds the reference; the loop phase sees a conditional `pp = &p`, not must-reach, so it stays per
+ * strip; pass 1 scalarises f, the flag's constant folds the `if` away and nothing is left of it but
+ * the assignment, ahead of the select -- its dead-argument rule moves vis's a1 first, so vis and pp
+ * do not interfere and share s3 (v declared before pp: the target's s4). The store has to be outside
+ * the loops (inside, it is an invariant assignment and pulled with the out-of-line guard), the
+ * reference inside (bound at the top it is never folded and the flag stays in the frame).
  * a surface's vertices moved: each one's normal tilted by the offset, its height set where a
  * ripple lifts it */
 void CWaterRippleManager::Ripple(CNode *node)
 {
+    RipFlag f;
+
+    f.m_on = 1;
     Gather(node);
     if (m_active.size()) {
         for (CVisualVector::iterator it = node->m_visual.begin(); it != node->m_visual.end(); ++it) {
@@ -227,11 +245,16 @@ void CWaterRippleManager::Ripple(CNode *node)
             CVisData d;
             CPnt3D n;
             CPnt3D p;
-            CVisData *v = d.SelectVertexStrips(vis, 0, 0);
+            RipFlag &rf = f;
+            CVisData *v;
+            CPnt3D *pp;
+
+            if (rf.m_on)
+                pp = &p;
+
+            v = d.SelectVertexStrips(vis, 0, 0);
 
             if (v) {
-                CPnt3D *pp = &p;
-
                 do {
                     CPnt3D off;
                     bool level;
@@ -779,7 +802,7 @@ bool CWaterRipple::GetOffset(const CPnt3D *p, CPnt3D *out)
 }
 
 /* a surface laid flat: back to its rest height where the ripple lifted it, its normals up.
- * OPEN, 0x260 against 0x274: the up normal -- the target multiplies 32767.5 by 1.0 and by 0.0 at run
+ * Before round 40: OPEN, 0x260 against 0x274: the up normal -- the target multiplies 32767.5 by 1.0 and by 0.0 at run
  * time (both products hoisted to the function's top in f20/f21, converted to shorts once per strip,
  * stored with sh), where every spelling tried here folds them to constants (a CPnt3D local, float
  * arguments, a reference temporary, CPnt3D::unit_y, a helper per component; opt_propagation off
@@ -817,25 +840,50 @@ bool CWaterRipple::GetOffset(const CPnt3D *p, CPnt3D *out)
  * pass 1 (a reference or pointer bound to it, in the vertex body or at the function's top) leaves up
  * in the frame and the outer loop unrotated (0x2A8); Ripple's vertex loop (an `if (v)` guard around a
  * do-while, the float pointer inside the guard or at the strip's top, up in the body or at the
- * function's top) gives 0x234 / 0x260 */
+ * function's top) gives 0x234 / 0x260.
+ * Round 40 (build/scratch/wep/v_flat40*.py): BYTE-EXACT, by three shapes. (1) Ripple's late-folding
+ * guard for the per-strip pointer. (2) THE PRODUCTS: `32767.5f * (float)x` with x a float local
+ * holding 0 or 1 -- the no-op cast is what IRO leaves (propagation reaches the constant, and a
+ * monadic cast of a float constant is not folded, so the product's operand is never a constant): the
+ * multiplication stays to the back end, hoisted to the outer loop's preheader by
+ * IRO_MoveInvariantExpressions, its constants in f0 / f1 / f2. (3) THE SHORTS: named `short` locals
+ * defined at the vertex body's top and read after the `if`, so in another block -- not expression-
+ * propagated, they are the invariant assignments IRO_PullOutInvariantAssignments pulls into the
+ * out-of-line guard-plus-preheader (with the sign extension a short variable costs) -- sx read twice,
+ * x and z sharing it. A third local for z makes a third pull (0x288). What the original wrote for
+ * the 0 and the 1 is not known: the cast and the flag are marked devices */
 void CWaterRipple::Flatten(CNode *node)
 {
+    RipFlag fl;
+
+    fl.m_on = 1;
     for (CVisualVector::iterator it = node->m_visual.begin(); it != node->m_visual.end(); ++it) {
         CVisual *vis = *it;
         CVisData d;
         CPnt3D p;
-        float *f = &p.x;
+        RipFlag &rf = fl;
+        CVisData *v;
+        CPnt3D *pp;
 
-        for (CVisData *v = d.SelectVertexStrips(vis, 0, 0); v; v = v->NextVertex()) {
+        if (rf.m_on)
+            pp = &p;
+        v = d.SelectVertexStrips(vis, 0, 0);
+
+        for (; v; v = v->NextVertex()) {
+            float x = 0.0f;
+            float y = 1.0f;
+            short sx = (short)(32767.5f * (float)x);
+            short sy = (short)(32767.5f * (float)y);
+
             if (m_level) {
-                GetVertexPos(v, f);
-                f[1] = m_restY;
-                SetVertexPos(v, f);
+                GetVertexPos(v, pp);
+                pp->y = m_restY;
+                SetVertexPos(v, pp);
             }
 
-            CPnt3D up(0.0f, 1.0f, 0.0f);
-
-            SetVertexNormal(v, &up);
+            ((short *)v->m_vertex)[3] = sx;
+            ((short *)v->m_vertex)[6] = sy;
+            ((short *)v->m_vertex)[7] = sx;
         }
     }
 }
