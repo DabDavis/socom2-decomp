@@ -2065,6 +2065,18 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the HUD, round 58** (CPopUpDialog::Load named, FrameObjective -- open since round 29 --, Draw2DLine -- open
+  since round 53 --, TickSealCone and SetViewCone; hud_playermapitem.cpp whole):
+  - a temporary the replay places just below a named local can itself be made a named local declared before it
+    (Draw2DLine 0x35FCE0: the DMA tag's first word, by `igreplay --move 127=43.5` before the source); a float constant
+    multiplier in a named local keeps the target's `mul.s d,x,k` order and combines with round 53's two-armed sums
+    (CZNewHudMap::FrameObjective 0x20B800);
+  - `x == 0 ? false : ...` lays the false arm out first, `x ? ... : false` the true arm, `!x ? false :` materialises the
+    not (sltu / xori); `(seal && IsSealType(seal)) ? seal : 0` materialises both tests with no andi -- through a bool or
+    int inline or local MW masks the && (CZPlayerMapItem::TickSealCone 0x2227B0);
+  - inside an inline the matrix parameter is read first and so numbered last, rotating the transform loop's registers --
+    the same values as caller named locals with `in = out = point` give the target's; an array initialiser of constructor
+    calls builds the elements in place (SetViewCone 0x2222E0, from SOCOM 1's debug info).
 - **Tells from the AI core, round 34** (no new row; ValidateRoutes to the target's size; the opens measured):
   - the dead-assignment pass deletes a dead if-body together with its branch; with that pass off a dead load's branch to
     the next instruction is still removed, and a branch whose target is a bare `b` is still chained -- plan_legcomplete
