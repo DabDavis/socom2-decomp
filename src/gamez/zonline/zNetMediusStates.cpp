@@ -1931,11 +1931,17 @@ void func_002EFE10(int, int, int, MediusSetGameListFilterResponse *resp)
 }
 
 /* the room's player list refreshed on its page while the lobby is open, whether it was returned
- * ('RefreshRoomPlayerList' 0x27xxxx calls it on theLobby; OVL1 0x2F11F0) */
-bool func_002F11F0(CZOnlineLobby *lobby, C2D *list)
+ * ('RefreshRoomPlayerList' calls it on theLobby; OVL1 0x2F11F0). The page preset to 0 ahead of
+ * the test, as the target's `move a0,zero` before the first branch (a ternary lays it out 8 bytes
+ * longer); extern "C": a C++-mangled placeholder definition is `no-target` to the scorer */
+extern "C" bool func_002F11F0(CZOnlineLobby *lobby, C2D *list)
 {
+    C2D *page = 0;
+
     if (!lobby->m_isopen)
         return false;
-    func_002F1240(list ? list : 0);
+    if (list)
+        page = list;
+    func_002F1240(page);
     return true;
 }
