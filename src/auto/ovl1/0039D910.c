@@ -8,7 +8,7 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_ERROR(x) 0
 #define NULL 0
 #pragma mpwc_relax on
-M2C_UNK func_0039D050(void);
+M2C_UNK HddMountGame__Fv(void);
 M2C_UNK zSysHddUnmount__FPCc(char * arg0);
 extern M2C_UNK data_003FBB28;
 extern u8 data_004A37B0;
@@ -18,7 +18,7 @@ s32 func_0039D910(s32 arg0) {
         if (!(arg0 & 0xFF)) {
             zSysHddUnmount__FPCc(&data_003FBB28);
         } else {
-            func_0039D050();
+            HddMountGame__Fv();
         }
     }
     return 1;
