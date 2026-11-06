@@ -594,14 +594,12 @@ void CZWeapon::Fire(CNode *node, CZAmmo *ammo, const CPnt3D *pos, const CPnt3D *
     PlayFireSound(pos);
 }
 
-/* the sound listener: the app camera's camera node (0x48DB48, set where the mission opens) */
-extern "C" CNode *data_0048DB48;
-
-/* the fire sound of the listener's distance played at the point: past the medium distance the
- * far one, past the close distance the medium one, else the close one (new in SOCOM II) */
+/* the fire sound of the listener's distance played at the point (the listener CSnd::m_listener,
+ * 0x48DB48: the app camera's camera node, set where the mission opens): past the medium distance
+ * the far one, past the close distance the medium one, else the close one (new in SOCOM II) */
 void CZWeapon::PlayFireSound(const CPnt3D *pos)
 {
-    CPnt3D d = data_0048DB48->GetPosition();
+    CPnt3D d = CSnd::m_listener->GetPosition();
 
     d = d - *pos;
     float d2 = Dot(d, d);

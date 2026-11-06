@@ -204,6 +204,18 @@ bool CWaterRippleManager::GetOffset(const CPnt3D *p, CPnt3D *out, bool *level)
  * shape that keeps an invariant assignment in the strip body ahead of the vertex loop is the open
  * question of both. A per-strip inline taking the point (the vertex code written out: a leaf) is
  * inlined but builds n and off by calls (0x340); with the vertex inlines it is cut to one level.
+ * Round 39 (igdump --iro, build/scratch/wep/v_rip39*.py): mwccps2's log runs the loop phase
+ * (IRO_PullOutInvariantAssignments, RotateLoop, the invariants, strength reduction) in pass 0 only,
+ * after that pass's first propagation and before its common subexpressions; pass 1 moves nothing out
+ * of a loop -- so an assignment that becomes `pp = &p` only after pass 0's loop phase stays per strip.
+ * The AI core's round-36 lever was tried for it: the pointer held in a struct (scalarised in pass 1
+ * when its address, taken through a reference or pointer, is folded away) -- bound inside the strip
+ * body or the guard, pass 0's first propagation folds the reference before the loop phase and the
+ * store `r.m_p = &p` is hoisted with the out-of-line guard (0x350; 0x358 with the pointer at offset
+ * 4); bound at the function's top, through a cast or a ternary, it is never folded and r stays in
+ * the frame (0x338); a plain pointer kept address-taken stays in the frame to the end (only class
+ * objects are scalarised in pass 1). A fold that lands between pass 0's loop phase and pass 1 is
+ * the shape still wanted.
  * a surface's vertices moved: each one's normal tilted by the offset, its height set where a
  * ripple lifts it */
 void CWaterRippleManager::Ripple(CNode *node)
@@ -799,7 +811,13 @@ bool CWaterRipple::GetOffset(const CPnt3D *p, CPnt3D *out)
  * ignored) with up at the top gives run-time products but in the strip loop, the 16.0 hoisted too
  * (0x27C). AND THE TARGET'S OUTER LOOP IS ROTATED (its test copied ahead of the body, the products in
  * that preheader), ours is not -- the log rotates only the vertex loop (header 5); Ripple's target
- * rotates its outer loop too */
+ * rotates its outer loop too.
+ * Round 39 (build/scratch/wep/v_flat39*.py): the loop phase runs in pass 0 only (Ripple's note), so
+ * the products want operands that are not constants until after it -- up's scalarisation deferred to
+ * pass 1 (a reference or pointer bound to it, in the vertex body or at the function's top) leaves up
+ * in the frame and the outer loop unrotated (0x2A8); Ripple's vertex loop (an `if (v)` guard around a
+ * do-while, the float pointer inside the guard or at the strip's top, up in the body or at the
+ * function's top) gives 0x234 / 0x260 */
 void CWaterRipple::Flatten(CNode *node)
 {
     for (CVisualVector::iterator it = node->m_visual.begin(); it != node->m_visual.end(); ++it) {
