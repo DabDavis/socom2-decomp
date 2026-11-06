@@ -2065,6 +2065,19 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the engine core, round 24** (GetDeadCamPoints 0x297A30 -- the weapons' round-36 rule: the rotation's second
+  argument through a `static inline MatrixRows(CMatrix *)` that assigns a local and returns it -- and CZAnim::Copy 0x26D940,
+  unwritten before, byte-exact; zdb::CDIBBox::SetCDIBBox 0x2DC7A0 written under its name, OPEN at the size, 32):
+  - an argument made of an inline with a body of its own is set up first even when it is a register parameter; casts and
+    one-expression inlines do not change the order;
+  - `&local.member[0]` at offset 0 (the object's own address) is never a common subexpression -- only a no-op integer
+    conversion makes MW hold it in a register (SetCDIBBox's first corner, a marked stand-in);
+  - one loop counter shared by every loop of a function changes a later loop's counter / offset numbering and allows
+    strength reduction, a fresh counter per loop merges with the count or is not reduced (CZAnim::Copy);
+  - `*p++` loads and then steps the pointer; the target's step-then-load-at-minus-4 is `p++; ... p[-1]`; a member pointer
+    read into a local before a `new` stays in a saved register, read through `this` it is reloaded after the call;
+  - `struct { ctor(box) { GetBBoxCorners(m_pts, box); } CPnt3D m_pts[8]; }` gives the CPnt3D() construction loop -- the
+    device of zparticle_source.cpp's FaceCorners and node_model.cpp's BoxCorners.
 - **Tells from the zdb world, textures, rdr and sound, round 30** (zdb::CSaveLoad::Load 0x318DA0, 0x7D8 and unwritten
   before, byte-exact -- SOCOM 1's FilterMissionFolder inlined with root "/run"; UpdateBBoxFromDI's children call corrected
   to vtable slot 0x40; CVisual::m_basefog_near named, SOCOM 1's):
