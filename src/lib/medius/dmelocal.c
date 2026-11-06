@@ -27,8 +27,8 @@
  * variable: no sibling call then. */
 
 /* The `extern int dme_pad_<VA>_<i>` lines (round 27b): declarations nothing reads, above functions whose locals need the other state of the stale alias
- * word (README "Round 26b"): only text above a function changes it, so the counts were settled in file order (scratch solve.py and search.py). SCEA's file
- * had other declarations there; these stand in. */
+ * word (README "Round 26b"): only text above a function changes it, so the counts were settled in file order (scratch solve.py and search.py), then again
+ * at the build's own relative paths (README "A GCC UNIT'S CODE DEPENDED ON THE TREE'S PATH"). SCEA's file had other declarations there; these stand in. */
 
 #include "dmelocal.h"
 
@@ -4014,6 +4014,7 @@ int func_0061BEE8(void)
 
 /* the connection's result (0x617060, in SOCOM 1's MsgClientConnectCallback's place): the world marked connected and
  * this client's record made, or the world closed; the waiting caller told through its callback, once */
+extern int dme_pad_617060_0;
 void func_00617060(unsigned int nWorld, int nClient, unsigned char bConnected, unsigned short nValue, int nArg)
 {
     struct {
@@ -4532,38 +4533,6 @@ tail:
  * allocated; 21 for a client without a block, 20 for no free slot */
 /* OPEN (round 26b): d=14 with the stream in a one-member struct (a real alias set; a plain pointer's alias word did not
  * flip under pert.py): the constant -1 takes a1 in the target and a2 here, and pStream loads before pWorld. */
-extern int dme_pad_619DD8_0;
-extern int dme_pad_619DD8_1;
-extern int dme_pad_619DD8_2;
-extern int dme_pad_619DD8_3;
-extern int dme_pad_619DD8_4;
-extern int dme_pad_619DD8_5;
-extern int dme_pad_619DD8_6;
-extern int dme_pad_619DD8_7;
-extern int dme_pad_619DD8_8;
-extern int dme_pad_619DD8_9;
-extern int dme_pad_619DD8_10;
-extern int dme_pad_619DD8_11;
-extern int dme_pad_619DD8_12;
-extern int dme_pad_619DD8_13;
-extern int dme_pad_619DD8_14;
-extern int dme_pad_619DD8_15;
-extern int dme_pad_619DD8_16;
-extern int dme_pad_619DD8_17;
-extern int dme_pad_619DD8_18;
-extern int dme_pad_619DD8_19;
-extern int dme_pad_619DD8_20;
-extern int dme_pad_619DD8_21;
-extern int dme_pad_619DD8_22;
-extern int dme_pad_619DD8_23;
-extern int dme_pad_619DD8_24;
-extern int dme_pad_619DD8_25;
-extern int dme_pad_619DD8_26;
-extern int dme_pad_619DD8_27;
-extern int dme_pad_619DD8_28;
-extern int dme_pad_619DD8_29;
-extern int dme_pad_619DD8_30;
-extern int dme_pad_619DD8_31;
 int func_00619DD8(int *pnStream, int nSize, int nRate, int nType, int a4, int nTarget, int a6, unsigned short a7,
                   unsigned short a8)
 {
