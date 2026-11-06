@@ -711,7 +711,7 @@ CValveSaveManager theValveSaveManager;      // 0x43FF00
  * first: CMission::Close 0x2AB3F0 does that (its FreeVector(m_objanchor_vec) copies 0x2ABA00-0x2ABAB0,
  * m_ladders' clear 0x2B1290 called from its own code), and with Close written both deleter
  * destructors (0x2B1220, 0x2B12A0) inline their clears as the target's (the states round 25).
- * OPEN, insert<CUIVariable> 0x2B1BD0 (0x510, 46 instructions, registers only): the copy loops'
+ * insert<CUIVariable> 0x2B1BD0 (0x510, byte-exact now), once 46 off, registers only: the copy loops'
  * end pointer takes s6 where the target's takes s0 (and the cursors s1/s6 against s0/s1) -- the
  * class insert's end register, as the cue vector's 0x1EED40 (include/vector's, the MSL lane's) */
 
@@ -1428,17 +1428,13 @@ inline int ArrayCount(_zrdr *z)
  * the store), the counts through an inline (ArrayCount: the zooms' count numbered after the zoom items,
  * a1 against a2; the loops' `!list` hoisted as the target's materialised bool), the postfix copied
  * through CopyName (its test on the buffer's own address, the source read ahead of it).
- * OPEN, 10 instructions, registers only: the valves loop's type takes s1 and its item s0 where the
- * target has s0 and s1. MW's colouring (tools/igdump.py, igreplay.py --target) gives the target's
- * with `--move 42=53.5`: the type numbered after the Item() expansion's temporary (@N), the name
- * before it -- every placement of the type after the item works, none before. A named local
- * precedes every temporary, and the type through an inline (ValveType, PermType, a reference to
- * its result, the body as an inline taking the name, helpers one to three levels taller) merges into
- * an inline temporary the bottom-up inliner numbers BEFORE the item's (leaf inlines first: the zoom
- * section's items and reals, then the loops' Item()s, then ArrayCount); the item read as a named
- * local (declared between the name and the type, assigned, if-assigned, hand-expanded: the last two
- * 0x10-0x18 bytes longer), the type as an if/else or an int, Item() at every use, the arguments
- * as inline calls all fail */
+ * Byte-exact since round 53, by the valves loop's type: a named local precedes every temporary, and
+ * the target needs it numbered after the Item() expansion's (the item is the `?:`'s IRO_Linearize
+ * temporary, the colouring's `--move 42=53.5`). The PERSIST test written as a second `?:` with the
+ * type as its own else arm does that (igdump): the named `type` is gone, the first `?:`'s Linearize
+ * temporary (v53, the next one after the item's v52) holds it through both definitions, the second's
+ * is dead -- and the code is still the `beqz; nop; li s0,3` an `if` gives. An `if`, an if/else into a
+ * second local or a copy `type = t` keep a named local (10 off, as before). */
 void CMission::PreOpen(const char *database)
 {
     const char *postfix;
@@ -1477,8 +1473,7 @@ void CMission::PreOpen(const char *database)
         const char *name = zrdr_findstring(v, "NAME");
         VALVE_TYPE type = zrdr_findtag(v, "PERM") ? VALVE_PERM : VALVE_TEMP;
 
-        if (zrdr_findtag(v, "PERSIST"))
-            type = VALVE_PERSIST;
+        type = zrdr_findtag(v, "PERSIST") ? VALVE_PERSIST : type;
         int value = 0;
 
         zrdr_findint(v, "VALUE", &value, 1);
@@ -4617,7 +4612,6 @@ extern "C" {
 CZAnimSet *GetAnimSet__10CZAnimMainFPCc(CZAnimMain *main, const char *name);
 void func_00326FB0();
 void func_005781C0(CZSealBody *player);   /* (OVL2) */
-extern unsigned char data_0048DB50;
 extern int data_00488EA0;
 }
 
@@ -4638,7 +4632,7 @@ void _OnMissionComplete()
     CSndInstance::StopAllSounds();
     CSnd::Close();
     CSndJukebox::Stop();
-    data_0048DB50 = 0;
+    CSnd::m_listenerIsValid = false;
     CZSealBody *player = ftsGetPlayer();
     CSealCtrl *ctrl = player ? (CSealCtrl *)player->m_control : 0;
 

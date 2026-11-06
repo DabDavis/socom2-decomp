@@ -126,7 +126,8 @@ typedef struct CASR {
     unsigned char iso_word;             /* +577 */
     char pad578[2];
     void *run_ctx;                      /* +580: the context the engine runs (_tosControl 36) */
-    char pad584[8];
+    void *f584;                         /* +584: the spelling pass's context (_tosControl 36) */
+    void *f588;                         /* +588: each word's second-pass record (CreateSecondPassInfo) */
     struct UWTABLES *uw_tables;         /* +592: the user words' tables (intCreateCtxTree's) */
     void *sp_ctx;                       /* +596: the second pass's (CreateSecondPassContext) */
     int pad600;
@@ -218,7 +219,9 @@ struct LANGVT {
     int (*GetAnySpeechGarbagePhenome)(LANGVT *l);     /* +72, slot 18 */
     unsigned int (*GetNbrWarpFactors)(LANGVT *l);     /* +76, slot 19 */
     int (*GetNbrSpeechUnit)(LANGVT *l);               /* +80, slot 20 */
-    void *s21[4];
+    void *s21[2];
+    int (*GetUserWordSpeechUnitClass)(LANGVT *l);     /* +92, slot 23 */
+    void *s24;
     int (*GetNbrPhenUserWordTraining)(LANGVT *l);     /* +100, slot 25 */
     short (*GetRecogWTP)(LANGVT *l);                  /* +104, slot 26 */
     short (*GetSpellingWTP)(LANGVT *l);               /* +108, slot 27 */
@@ -233,12 +236,22 @@ struct LANGVT {
     int *(*GetpSpeechUnit)(LANGVT *l);                /* +168, slot 42 */
     void *s43[3];
     void *(*GetpPhenUserWordTraining)(LANGVT *l);     /* +184, slot 46 */
-    void *s47[5];
+    void *s47[3];
+    void *(*GetpExtraEventContext)(LANGVT *l);        /* +200, slot 50 */
+    void *s51;
     int (*CheckBitField)(LANGVT *l, int mask);        /* +208, slot 52 */
     void *s53[8];
     unsigned char *(*GetpProbMatrix)(void *cb);       /* +244, slot 61 */
     float *(*GetpSmoothMatrix)(LANGVT *l, void *cb);  /* +248, slot 62 */
-    void *s63[16];
+    void *s63[5];
+    int (*exevGetRejection_NBS_penalty)(void *ev);    /* +272, slot 68 */
+    int (*exevGetRejection_NBS_path_penalty)(void *ev); /* +276, slot 69 */
+    int (*exevGetExtraEventSilencePhenome)(void *ev); /* +280, slot 70 */
+    void *s71[4];
+    int (*exevGetRejection_NBS_WordIndex)(void *ev);  /* +300, slot 75 */
+    int *(*exevGetpBeginOfWords)(void *ev);           /* +304, slot 76 */
+    void *s77;
+    unsigned short *(*exevGetpBeginOfItems)(void *ev); /* +312, slot 78 */
 };
 
 /* a warp factor (the language's, _langGetpWarpFactors): the genders it serves and its value */

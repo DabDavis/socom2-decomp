@@ -1654,6 +1654,7 @@
 0x00205480 __dt__11CZPauseTestFv
 0x002057A0 __dt__10CPauseItemFv
 0x00205800 __ct__11CZPauseTestFv
+0x00205970 __ct__10CPauseItemFv
 0x00205A70 IsSelectable__11CZPauseTestFSc
 0x00205C40 __dt__15CZObjectiveListFv
 0x00205E00 RefreshStatics__15CZObjectiveListFv
@@ -1720,6 +1721,7 @@
 0x0020B0D0 UninitMap__11CZNewHudMapFv
 0x0020B1F0 ReInit__11CZNewHudMapFv
 0x0020B220 RemoveItem__11CZNewHudMapFP9CZMapItem
+0x0020B2C0 InitMap__11CZNewHudMapFPQ23zdb6CWorld
 0x0020B7E0 GetZoomOut__11CZNewHudMapCFv
 0x0020B800 FrameObjective__11CZNewHudMapFv
 0x0020BA00 __dt__11CZNewHudMapFv
@@ -1826,6 +1828,7 @@
 0x002151A0 Off__14BitmapReticuleFv
 0x002151F0 On__14BitmapReticuleFv
 0x00216760 Slot10__Q23zdb7CNodeExFf
+0x00216770 HudTick__14BitmapReticuleFf
 0x00217550 DrawLaseTarget__14BitmapReticuleFP10CZSealBody
 0x00218D50 UnInit__14BitmapReticuleFv
 0x00218DA0 Draw__14BitmapReticuleFPQ23zdb7CCamera
@@ -1967,6 +1970,7 @@
 0x00229B80 __dt__16CZHudMissionCamsFv
 0x00229C20 __ct__16CZHudMissionCamsFv
 0x00229CA0 __dt__Q228@unnamed@hud_scorepopup_cpp@11CScorePopupFv
+0x00229D00 SetupTeam__Q228@unnamed@hud_scorepopup_cpp@12CTeamDisplayFffffiM9CZNetGameFPCvPv_ib
 0x0022A8B0 Draw__Q228@unnamed@hud_scorepopup_cpp@11CScorePopupFPQ23zdb7CCamera
 0x0022AB80 Draw__Q228@unnamed@hud_scorepopup_cpp@10CHudPopupsFPQ23zdb7CCamera
 0x0022AC30 SetupSpectatorBox__28@unnamed@hud_scorepopup_cpp@Fv
@@ -3122,6 +3126,7 @@
 0x002827E0 UIChoosePrimary__FP13C2DAnimCmdHdrPf
 0x002828B0 ExecuteChooseEquipment__24@unnamed@zanim_menu_cpp@FP13C2DAnimCmdHdrPf
 0x00282980 ExecuteChooseDefaultEquipment__24@unnamed@zanim_menu_cpp@FP13C2DAnimCmdHdrPf
+0x00282A90 ChooseEquipmentForCharacter__24@unnamed@zanim_menu_cpp@FRCQ224@unnamed@zanim_menu_cpp@17CSelectedCharsItr10EQUIP_ITEM
 0x00282C20 ChooseSlotForCharacter__24@unnamed@zanim_menu_cpp@FRCQ224@unnamed@zanim_menu_cpp@17CSelectedCharsItr10EQUIP_ITEMi
 0x00282EB0 FindItemSlot__24@unnamed@zanim_menu_cpp@FRCQ224@unnamed@zanim_menu_cpp@17CSelectedCharsItr10EQUIP_ITEMi
 0x00282F20 PutInSlot__24@unnamed@zanim_menu_cpp@FRCQ224@unnamed@zanim_menu_cpp@17CSelectedCharsItrRC14CCharacterWeapi
@@ -3639,6 +3644,7 @@
 0x002AC410 Open__8CMissionFPCc
 0x002ACA30 func_002ACA30
 0x002ACAD0 CreateCompassNavPoints__8CMissionFv
+0x002ACC10 PreOpen__8CMissionFPCc
 0x002AD290 Init__8CMissionFv
 0x002AD940 __dt__8CMissionFv
 0x002ADBC0 __ct__8CMissionFv
@@ -3806,7 +3812,7 @@
 0x002B85C0 func_002B85C0
 0x002B8660 func_002B8660
 0x002B9150 GameSignalPacketHandler__FiiiPv
-0x002B97F0 SendGameSignalMessage__FiUcUcUcib
+0x002B97F0 SendGameSignalMessage__FiUc8NET_SIDEUcib
 0x002B98B0 func_002B98B0
 0x002B9910 SendBombStateRequest__FiUcPC6CPnt3D
 0x002B9A00 BombStatePacketHandler__FiiiPv
@@ -3851,13 +3857,15 @@
 0x002BB970 NetSendAiOrders__FUiUiUiPv
 0x002BBA80 PushBlendAnimPacketHandler__FiiiPv
 0x002BBAF0 func_002BBAF0
+0x002BBBD0 HitPacketHandler__FiiiPv
 0x002BBDA0 SendHitMessage__FiiiffbUc
 0x002BBF10 SaveFireMessage__FP10CZSealBodyPC6CPnt3D
 0x002BBFA0 zRemoteDelayedAction__FPQ29CZNetwork18TypeRTimeFixStruct
 0x002BC080 zDoClientLeavesCallback__Fi
 0x002BC400 zRemoteClientLeavesCallback__Fii
 0x002BC490 zRemoteClientJoinsCallback__Fii
-0x002BC530 func_002BC530
+0x002BC530 zRemoteClientDisconnectsCallback__FP17ClientConnectArgs
+0x002BC620 zRemoteClientConnectsCallback__FP17ClientConnectArgs
 0x002BD020 func_002BD020
 0x002BD060 func_002BD060
 0x002BD0A0 func_002BD0A0
@@ -3983,11 +3991,13 @@
 0x002C6040 __ct__10CCfgSticksFv
 0x002C6050 __ct__9CCfgStickFv
 0x002C6060 __ct__9CSaferStrFPCc
+0x002C60C0 func_002C60C0
 0x002C6110 func_002C6110
 0x002C61E0 func_002C61E0
 0x002C6220 func_002C6220
 0x002C6230 func_002C6230
 0x002C6280 func_002C6280
+0x002C6290 GetFwdBackStickPos__13CCtrlrConfigsFRC4CPad
 0x002C6350 func_002C6350
 0x002C63D0 IsJumpAndActionShared__13CCtrlrConfigsFv
 0x002C63F0 func_002C63F0
@@ -3998,6 +4008,7 @@
 0x002C6520 func_002C6520
 0x002C65B0 func_002C65B0
 0x002C6670 ReadBtnName__28@unnamed@fts_controller_cpp@FPCc
+0x002C67F0 func_002C67F0
 0x002C6C70 func_002C6C70
 0x002C6ED0 __dt__Q23std58vector<P12CCtrlrConfig,Q23std26allocator<P12CCtrlrConfig>>Fv
 0x002C6F40 Reset__24CMissionObjectiveCamListFv
@@ -5232,6 +5243,7 @@
 0x00315F40 AddChild__Q23zdb5CNodeFPQ23zdb5CNode
 0x003160B0 ReserveChildren__Q23zdb5CNodeFi
 0x003160C0 RemoveFromParent__Q23zdb5CNodeFv
+0x00316100 DeleteVisuals__Q23zdb5CNodeFv
 0x003162B0 DeleteVisual__Q23zdb5CNodeFPQ23zdb7CVisualb
 0x003164E0 AddVisual__Q23zdb5CNodeFPQ23zdb7CVisual
 0x00316600 ReserveVisuals__Q23zdb5CNodeFi
@@ -5277,7 +5289,9 @@
 0x00319F20 FilterAssetLibFolder__FPCcPc
 0x0031A0E0 __dt__Q23zdb9CSaveLoadFv
 0x0031A140 __ct__Q23zdb9CSaveLoadFv
+0x0031A180 Update__Q23zdb10CRenderMapFb
 0x0031A910 __dt__Q23zdb10CRenderMapFv
+0x0031A9A0 __ct__Q23zdb10CRenderMapFPQ23zdb5CNodeQ23zdb20_tag_render_map_typePCQ23zdb8CTexture
 0x0031AE30 SetMaterial__FPQ23zdb5CNodei
 0x0031AEC0 SetDIBBox__FPQ23zdb5CNodePC5CBBoxb
 0x0031AF70 CmdTickRemoveDecals__Q23zdb6CWorldFP14_zanim_cmd_hdrPf
@@ -5425,6 +5439,9 @@
 0x00325080 bufferPtrCompare__8ParticleFRCPQ28Particle13BufferElementRCPQ28Particle13BufferElement
 0x003250B0 DrawFlush__8ParticleFv
 0x003251B0 Draw__Q28Particle13BufferElementFRA4_A4_f
+0x00325580 DrawRotated__Q28Particle13BufferElementFRA4_A4_f
+0x00325CC0 DrawXZ__Q28Particle13BufferElementFRA4_A4_f
+0x00326350 DrawStreaked__Q28Particle13BufferElementFRA4_A4_f
 0x00326A00 DrawPrep__8ParticleFv
 0x00326C20 func_00326C20
 0x00326F40 __ct__Q28Particle13BufferElementFv
@@ -5480,6 +5497,7 @@
 0x00329AA0 func_00329AA0
 0x00329AB0 func_00329AB0
 0x00329AC0 SetActive__Q28Particle6SourceFb
+0x00329B40 Tick__Q28Particle6SourceFf
 0x0032A6B0 __dt__Q28Particle6SourceFv
 0x0032A800 func_0032A800
 0x0032A860 ScaleSequenceAdd__Q28Particle6SourceFff
@@ -5959,6 +5977,7 @@
 0x00348860 Stop__11CSndJukeboxFv
 0x003488E0 Start__11CSndJukeboxFv
 0x00348900 NormalizeWeights__11CSndJukeboxF10MUSIC_MODE
+0x00348B20 PlayRandom__11CSndJukeboxF10MUSIC_MODE
 0x00348CE0 SetIntensity__11CSndJukeboxFf
 0x00348DC0 Play__11CSndJukeboxF10MUSIC_MODEP4CSnd
 0x00349060 ClearQueue__11CSndJukeboxFv
@@ -6215,6 +6234,7 @@
 0x00356D20 refLoadImage__FP1UiUiPvUiUiUi
 0x00356E90 MakeChain__Q23zdb12CGSTexBufferFP1
 0x003570C0 RelocateAll__Q23zdb12CGSTexBufferFv
+0x003571D0 Hookup__Q23zdb12CGSTexBufferFPQ23zdb9CAssetLib
 0x00357470 HasMipLevel__Q23zdb8CTextureFPQ23zdb8CTexture
 0x003574C0 FindPalette__Q23zdb8CTextureFPQ23zdb11CTexPalList
 0x003575A0 Setup__Q23zdb12CGSTexBufferFUiUi
@@ -6575,6 +6595,7 @@
 0x00371A10 LoadSpec__13CHProgressBarFRC17CHProgressBarSpecPQ23zdb10CTexHandle
 0x00371BA0 UpdateUIVar__13CHProgressBarFP11CUIVariable
 0x00371C50 UpdateUIVar__10CSliderBarFP11CUIVariable
+0x00371D00 HandlePad__10CSliderBarFPC4CPadi
 0x003721E0 func_003721E0
 0x00372220 Draw__10CSliderBarFRC7CMatrixPQ23zdb16CTextureRelocMgr
 0x003723B0 Tick__9C2DButtonFf
@@ -6622,6 +6643,7 @@
 0x00379160 Draw__9CPlainBmpFRC7CMatrixPQ23zdb16CTextureRelocMgr
 0x00379260 UpdateUIVar__17CRenderableStringFP11CUIVariable
 0x003792F0 LoadSpec__17CRenderableStringFRC9CTextSpec
+0x003794B0 Draw__12CWrappedTextFRC7CMatrixPQ23zdb16CTextureRelocMgr
 0x00379970 GetZAnimCmdType__12CWrappedTextFPCc
 0x00379AB0 func_00379AB0
 0x00379B10 TickZAnimCmd__12CWrappedTextFP14_zanim_cmd_hdrPfPb
@@ -6950,6 +6972,7 @@
 0x0038CCA0 __dt__13CSoftKeyboardFv
 0x0038D130 __dt__12CSkbBgPiecesFv
 0x0038D1A0 __dt__11CSkbCapLookFv
+0x0038D200 SkbPressKey__FRC7CSkbKeyP13CSoftKeyboardP4CPadP9CGameMenu
 0x0038D4E0 ZuiUnInit__Fv
 0x0038D5C0 __dt__Q23std60vector<P13CSoftKeyboard,Q23std27allocator<P13CSoftKeyboard>>Fv
 0x0038D630 swap__Q23std60vector<P13CSoftKeyboard,Q23std27allocator<P13CSoftKeyboard>>FRQ23std60vector<P13CSoftKeyboard,Q23std27allocator<P13CSoftKeyboard>>
@@ -6960,6 +6983,7 @@
 0x0038D8F0 SkbTick__FP9CGameMenubf
 0x0038DA70 StrToSkbKey__21@unnamed@zui_skb_cpp@FPCc
 0x0038DC00 func_0038DC00
+0x0038DCB0 ParseKeyProps__13CSoftKeyboardFP5_zrdr
 0x0038DEA0 PrepSkbsForDisplay__FPQ23zdb5CNodePQ23zdb16CTextureRelocMgrP7C2DFont
 0x0038DF40 InvalidateSkbsDisplay__Fv
 0x0038DFC0 func_0038DFC0
@@ -7012,8 +7036,9 @@
 0x003909A0 Seq__7SKBRULEFi
 0x003909C0 More__11CSkbRdrIterCFv
 0x003909F0 __ct__11CSkbRdrIterFP5_zrdrPCc
-0x00390A30 SkbHangulType__FP10CSkbPiecesc
+0x00390A30 SkbHangulType__FP10CSkbPieces4JAMO
 0x00390BB0 FindJamo__FPCc
+0x00390C40 SkbParseKoreanRules__FP5_zrdr
 0x003910B0 SkbRdrCount__FP5_zrdr
 0x003910E0 SkbHangulBack__Fv
 0x00391270 SetCount__25CSkbFixedVec<8CJamoStr,1>Fi
@@ -7042,6 +7067,7 @@
 0x00391F60 func_00391F60
 0x00391F80 __ct__9CSkbSplitFii
 0x00392110 func_00392110
+0x00392130 SkbParseComplete__FP15CSkbCompleteVecP5_zrdrPCc
 0x003923E0 insert__Q23std36__vector_pod<c,Q23std12allocator<c>>FPcUiRCc
 0x00392600 resize__Q23std36__vector_pod<c,Q23std12allocator<c>>FUiRCc
 0x00392740 func_00392740
@@ -7123,10 +7149,10 @@
 0x00398EA0 func_00398EA0
 0x00398FC0 func_00398FC0
 0x00399040 func_00399040
-0x00399070 SkbTypeJamo__FiScP4CPad
+0x00399070 SkbTypeJamo__Fi4JAMOP4CPad
 0x00399100 SkbToggleTextSel__FP13CSoftKeyboard
 0x00399150 SkbSwitchText__FP13CSoftKeyboard
-0x00399200 SkbHangulTypeJamo__FiSc
+0x00399200 SkbHangulTypeJamo__Fi4JAMO
 0x00399280 SkbCloseText0__FP13CSoftKeyboard
 0x00399320 SkbCursorForward__FP13CSoftKeyboard
 0x00399530 SkbCursorBack__FP13CSoftKeyboard
@@ -7195,6 +7221,7 @@
 0x0039D020 HddUnmountGame__Fv
 0x0039D050 HddMountGame__Fv
 0x0039D480 WriteHddIcon__FPCc
+0x0039D650 LoadHddIconFile__FPCcPCcP11HDDICONFILE
 0x0039D8C0 HddRegisterReboot__Fv
 0x0039D910 HddRebootCallback__FQ211CIOPManager11RebootPhaseQ211CIOPManager10RebootModePv
 0x0039D960 Read__7CFileCDFPci
@@ -7333,12 +7360,12 @@
 0x003A62B0 end__Q210Metrowerks94cdeque<PM19CSimpleStateMachineFPCvPvUc_v,Q23std44allocator<PM19CSimpleStateMachineFPCvPvUc_v>>CFv
 0x003A6350 begin__Q210Metrowerks94cdeque<PM19CSimpleStateMachineFPCvPvUc_v,Q23std44allocator<PM19CSimpleStateMachineFPCvPvUc_v>>CFv
 0x003A63C0 __ct__Q23std43allocator<M19CSimpleStateMachineFPCvPvUc_v>FRCQ23std43allocator<M19CSimpleStateMachineFPCvPvUc_v>
-0x003A63D0 func_003A63D0
+0x003A63D0 __ct__Q210Metrowerks94cdeque<PM19CSimpleStateMachineFPCvPvUc_v,Q23std44allocator<PM19CSimpleStateMachineFPCvPvUc_v>>FRCQ23std44allocator<PM19CSimpleStateMachineFPCvPvUc_v>
 0x003A63F0 __ct<M19CSimpleStateMachineFPCvPvUc_v>__Q23std44allocator<PM19CSimpleStateMachineFPCvPvUc_v>FRCQ23std43allocator<M19CSimpleStateMachineFPCvPvUc_v>_Pv
 0x003A6400 alloc__Q23std97__deque_buf<M19CSimpleStateMachineFPCvPvUc_v,Q23std43allocator<M19CSimpleStateMachineFPCvPvUc_v>>CFv
 0x003A6410 __ct__Q23std91deque<M19CSimpleStateMachineFPCvPvUc_v,Q23std43allocator<M19CSimpleStateMachineFPCvPvUc_v>>Fv
-0x003A6440 func_003A6440
-0x003A6470 func_003A6470
+0x003A6440 __ct__Q23std97__deque_buf<M19CSimpleStateMachineFPCvPvUc_v,Q23std43allocator<M19CSimpleStateMachineFPCvPvUc_v>>Fv
+0x003A6470 __ct__Q210Metrowerks94cdeque<PM19CSimpleStateMachineFPCvPvUc_v,Q23std44allocator<PM19CSimpleStateMachineFPCvPvUc_v>>Fv
 0x003A6490 do_assign<Q210Metrowerks150__convert_iterator<Q310Metrowerks94cdeque<PM19CSimpleStateMachineFPCvPvUc_v,Q23std44allocator<PM19CSimpleStateMachineFPCvPvUc_v>>14const_iterator,PCv>>__Q210Metrowerks34cdeque<PCv,Q23std14allocator<PCv>>FQ210Metrowerks150__convert_iterator<Q310Metrowerks94cdeque<PM19CSimpleStateMachineFPCvPvUc_v,Q23std44allocator<PM19CSimpleStateMachineFPCvPvUc_v>>14const_iterator,PCv>Q210Metrowerks150__convert_iterator<Q310Metrowerks94cdeque<PM19CSimpleStateMachineFPCvPvUc_v,Q23std44allocator<PM19CSimpleStateMachineFPCvPvUc_v>>14const_iterator,PCv>_v
 0x003A6710 do_assign<Q33std97__deque_imp<M19CSimpleStateMachineFPCvPvUc_v,Q23std43allocator<M19CSimpleStateMachineFPCvPvUc_v>>14const_iterator>__Q23std97__deque_imp<M19CSimpleStateMachineFPCvPvUc_v,Q23std43allocator<M19CSimpleStateMachineFPCvPvUc_v>>FQ33std97__deque_imp<M19CSimpleStateMachineFPCvPvUc_v,Q23std43allocator<M19CSimpleStateMachineFPCvPvUc_v>>14const_iteratorQ33std97__deque_imp<M19CSimpleStateMachineFPCvPvUc_v,Q23std43allocator<M19CSimpleStateMachineFPCvPvUc_v>>14const_iterator_v
 0x003A6B00 __ct__Q33std97__deque_imp<M19CSimpleStateMachineFPCvPvUc_v,Q23std43allocator<M19CSimpleStateMachineFPCvPvUc_v>>8iteratorFRCQ33std97__deque_imp<M19CSimpleStateMachineFPCvPvUc_v,Q23std43allocator<M19CSimpleStateMachineFPCvPvUc_v>>8iterator
@@ -8123,6 +8150,7 @@
 0x003FE450 __sinit_hud_mapcompass.cpp
 0x003FE490 __sinit_hud_bitmapreticule.cpp
 0x003FE500 __sinit_hud_weaponsel.cpp
+0x003FE550 __sinit_hud_actionbitmap.cpp
 0x003FE700 __sinit_hud_teamnames.cpp
 0x003FE7F0 __sinit_hud_playermapitem.cpp
 0x003FE860 __sinit_st_mpexit.cpp
@@ -8344,6 +8372,8 @@
 0x004CCD98 ASRSPICBTS
 0x004CCDC8 ASRSPICBSTARTDET
 0x004CCDF8 ASRSPICBRESULT
+0x004CCE90 CreateSecondPassInfo
+0x004CD190 CreateExEvCtxInfo
 0x004CE258 FreeCtxInfo
 0x004CE430 CalcAccuracyCtxInfo
 0x004CE4E8 CreateMenuMasks
@@ -8369,6 +8399,7 @@
 0x004D7460 func_004D7460
 0x004D8140 Tone_Of_Final_TreeCtx
 0x004D8168 Calculate_NbrOfStatesInDict_ForChinese_TreeCtx
+0x004D9278 cbIsoWordRecognised
 0x004D98F0 cbDoSecondPassIfEnabled
 0x004D9AC8 casrEnableGenders
 0x004D9EC8 casrOpen
@@ -8390,6 +8421,7 @@
 0x004DCC58 casrAcquisition
 0x004DD070 casrStartUserWordTraining
 0x004DD1D8 cbCheckConfusion
+0x004DD608 casrCheckUserWordConfusion
 0x004DDF48 casrInitSegmentation
 0x004DE048 casrAcknowledge
 0x004DE128 casrCloseContext
@@ -8451,6 +8483,7 @@
 0x004E1B28 userwordAcknowledge
 0x004E1D08 InitUserWordTraining
 0x004E1E30 ExitUserWordTraining
+0x004E1F08 SendLabelsToEngine
 0x004E2008 CalcF2
 0x004E2240 FindBestTranscription
 0x004E25D8 DoDurationModeling
@@ -8459,6 +8492,7 @@
 0x004E37F8 RejectTrainUtters
 0x004E3A28 DoUserWordTraining
 0x004E3CC8 userwordStartUserWordTraining
+0x004E3D20 SendPartOfLabelsToEngine
 0x004E3E08 cbUserWordResultAvailable
 0x004E3ED8 cbScoreUserWordResultAvailable
 0x004E3F28 DoLabelStop
@@ -11306,6 +11340,7 @@
 0x00618158 func_00618158
 0x00618458 func_00618458
 0x006184A8 NetSetDefaultResolveAddrParams
+0x006184E8 func_006184E8
 0x00618670 func_00618670
 0x006186B0 func_006186B0
 0x006189C8 func_006189C8
@@ -11315,7 +11350,9 @@
 0x006190F0 FindFreePingSlot
 0x00619138 func_00619138
 0x006192A0 func_006192A0
+0x006195E0 func_006195E0
 0x0061A078 func_0061A078
+0x0061A118 func_0061A118
 0x0061A240 func_0061A240
 0x0061A328 func_0061A328
 0x0061A488 func_0061A488
@@ -11327,6 +11364,8 @@
 0x0061B650 func_0061B650
 0x0061BEB8 func_0061BEB8
 0x0061C0F0 func_0061C0F0
+0x0061C150 func_0061C150
+0x0061C2F0 func_0061C2F0
 0x0061C450 NetMapMsgClientError
 0x0061C510 func_0061C510
 0x0061C5A0 func_0061C5A0
@@ -11345,6 +11384,7 @@
 0x0061CEF0 func_0061CEF0
 0x0061CFF0 func_0061CFF0
 0x0061D108 func_0061D108
+0x0061D1B0 func_0061D1B0
 0x0061D320 func_0061D320
 0x0061D3C8 func_0061D3C8
 0x0061D440 func_0061D440
@@ -11363,17 +11403,24 @@
 0x0061D9F8 func_0061D9F8
 0x0061DAA8 GetFreeNetObjectBlock
 0x0061DBA0 FindFreeDataStreamBlock
+0x0061DC90 ClientConnectsPacketHandler
 0x0061DDA8 ServerVersionPacketHandler
 0x0061DE18 ClientLeavesPacketHandler
+0x0061DE60 ClientUpdatePacketHandler
 0x0061DFB0 RequestServersPacketHandler
 0x0061E0C0 ServerResponsePacketHandler
+0x0061E128 func_0061E128
+0x0061E300 func_0061E300
+0x0061E510 func_0061E510
 0x0061E6A8 func_0061E6A8
 0x0061E6D0 RequestOwnershipPacketHandler
 0x0061E7F0 func_0061E7F0
 0x0061E858 func_0061E858
+0x0061F2B8 func_0061F2B8
 0x0061F410 func_0061F410
 0x0061F8A0 func_0061F8A0
 0x0061FBC8 func_0061FBC8
+0x0061FE18 func_0061FE18
 0x00620008 func_00620008
 0x006203C8 func_006203C8
 0x006204B8 func_006204B8
@@ -11491,12 +11538,14 @@
 0x00624BE0 func_00624BE0
 0x00624C60 func_00624C60
 0x00626110 func_00626110
+0x00626140 func_00626140
 0x00626240 func_00626240
 0x00626350 func_00626350
 0x00626398 func_00626398
 0x00626410 func_00626410
 0x006264C0 func_006264C0
 0x006265F0 func_006265F0
+0x00626658 func_00626658
 0x00626788 func_00626788
 0x00626830 func_00626830
 0x00626848 func_00626848
@@ -11810,6 +11859,7 @@
 0x00634598 rt_msg_client_iget_host_by_name
 0x006345E8 rt_msg_client_iget_connection_ip
 0x00634660 func_00634660
+0x00634708 rt_msg_client_iget_metrics
 0x006347C8 func_006347C8
 0x00634850 func_00634850
 0x006348E0 rt_msg_client_iset_default_connect_options
@@ -11924,14 +11974,17 @@
 0x0063A8C0 func_0063A8C0
 0x0063A9A8 func_0063A9A8
 0x0063AA38 func_0063AA38
+0x0063AAC0 func_0063AAC0
 0x0063AC98 func_0063AC98
 0x0063B048 func_0063B048
+0x0063B0B8 func_0063B0B8
 0x0063B290 func_0063B290
 0x0063B2B0 func_0063B2B0
 0x0063B2D0 func_0063B2D0
 0x0063B2F0 func_0063B2F0
 0x0063B480 func_0063B480
 0x0063B520 func_0063B520
+0x0063BED0 func_0063BED0
 0x0063C078 func_0063C078
 0x0063C138 func_0063C138
 0x0063C328 func_0063C328
@@ -11989,6 +12042,7 @@
 0x0063E230 func_0063E230
 0x0063E390 func_0063E390
 0x0063E438 func_0063E438
+0x0063E4A0 func_0063E4A0
 0x0063E5C0 func_0063E5C0
 0x0063E830 func_0063E830
 0x0063E8E8 func_0063E8E8
@@ -11999,6 +12053,8 @@
 0x0063F3A8 func_0063F3A8
 0x0063F8A0 func_0063F8A0
 0x0063F948 func_0063F948
+0x0063FA28 func_0063FA28
+0x0063FC08 func_0063FC08
 0x0063FD68 func_0063FD68
 0x0063FDE8 func_0063FDE8
 0x0063FE48 func_0063FE48
@@ -12007,14 +12063,17 @@
 0x0063FF98 func_0063FF98
 0x00640010 func_00640010
 0x00640408 func_00640408
+0x00640B70 func_00640B70
 0x00640D38 func_00640D38
 0x006410E0 func_006410E0
 0x006411C8 func_006411C8
 0x00641230 func_00641230
+0x00641308 func_00641308
 0x00641748 func_00641748
 0x006418A0 func_006418A0
 0x00641A70 func_00641A70
 0x00641B08 func_00641B08
+0x00641BA0 func_00641BA0
 0x00641D50 func_00641D50
 0x00641E30 func_00641E30
 0x006420E8 func_006420E8

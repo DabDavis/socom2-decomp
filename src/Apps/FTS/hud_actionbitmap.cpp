@@ -12,8 +12,35 @@
 
 #include <string.h>
 
+/* the action icons' place and size and the bomb timer's bar (OVL1 .data 0x3DC628-0x3DC67C and bss
+ * 0x40C160-0x40C188): SOCOM 1's file statics, every name its symbol table's -- SOCOM II's TEXT_SCALAR
+ * gone; the half sizes, the bar's inner corners and width and the prompt's x made by the unit's
+ * initialiser 0x3FE550, in this order */
+static float ACTIONICON_CENTERX = 306.0f;
+static float ACTIONICON_YPOS = 365.0f;
+static float ACTIONICON_WIDTH = 50.0f;
+static float ACTIONICON_HEIGHT = 50.0f;
+static float ACTIONICON_HWIDTH = ACTIONICON_WIDTH * 0.5f;
+static float ACTIONICON_HHEIGHT = ACTIONICON_HEIGHT * 0.5f;
+static float BOMBTIMER_BKGRD_POSX1 = 585.0f;
+static float BOMBTIMER_BKGRD_POSY1 = 345.0f;
+static float BOMBTIMER_BKGRD_POSX2 = 635.0f;
+static float BOMBTIMER_BKGRD_POSY2 = 360.0f;
+static float BOMBTIMER_INSET_SIZE = 2.0f;
+static float BOMBTIMER_IMAGE_POSX1 = BOMBTIMER_BKGRD_POSX1 + BOMBTIMER_INSET_SIZE;
+static float BOMBTIMER_IMAGE_POSY1 = BOMBTIMER_BKGRD_POSY1 + BOMBTIMER_INSET_SIZE;
+static float BOMBTIMER_IMAGE_POSY2 = BOMBTIMER_BKGRD_POSY2 - BOMBTIMER_INSET_SIZE;
+static float BOMBTIMER_IMAGE_WIDTH = BOMBTIMER_BKGRD_POSX2 - BOMBTIMER_IMAGE_POSX1 - BOMBTIMER_INSET_SIZE;
+static float BOMBTIMER_SCALAR = 0.2f;
+static PNT2D posWeaponTakenStr = { ACTIONICON_CENTERX, 435.0f };
+
+/* the icons' colours as pulse pairs (OVL1 bss 0x40C190: four pairs of a base and a swing, which the
+ * initialiser builds -- __construct_array over eight CPnt3Ds -- and func_0021F120 sets; SOCOM 1's
+ * color_base and color_incr, one pair; the name ours) */
+static CPnt3D color_table[4][2];
+
 /* an action's name before it has one (OVL1 .data 0x3DC680, a pointer variable: the entries'
- * constructor and 0x2209C0 load it; the name ours) */
+ * constructor and 0x2209C0 load it; SOCOM 1's DEFAULT_ACTION_NAME, the name ours) */
 static const char *c_szUnknownAction = "UNKNOWN";
 
 /* an action's icon (SOCOM 1's CActionTxtr, its DWARF: 0xE0 bytes -- the texture, the action, the
@@ -167,6 +194,11 @@ public:
  * at 0x14 -- the texture machine at 0x40D550 -- and the driver, SOCOM II's at 0x1F4) */
 class CActionTxtrMachine : public std::vector<CActionTxtr *> {
 public:
+    /* room for every icon (SOCOM 1's reserve(18), its 18 icons; inline in the unit's initialiser) */
+    CActionTxtrMachine() : m_main_iconcolor(0), m_side_iconcolor(0), m_curpickup_node(0), m_driver(0)
+    {
+        reserve(22);
+    }
     void TickTransparencyFade(bool b);
     /* the prompt and the timer's bitmaps by reference (ours: the fade calls their virtuals through
      * them) */
@@ -202,6 +234,10 @@ public:
 /* the HUD's machine (SOCOM 1's ActionTxtrMachine_HUD; OVL1 bss 0x40D550): the unit's initialiser
  * builds it and registers its implicit destructor (0x220B50) */
 CActionTxtrMachine ActionTxtrMachine_HUD;
+
+/* the timer image's colour (OVL1 .data 0x3E4BA0, zero in the image: the unit's initialiser sets 100,
+ * 100, 100 last; the name ours) */
+static CPnt3D timer_color(100.0f, 100.0f, 100.0f);
 
 /* the icons faded out by 400 a second (SOCOM 1's CActionTxtrMachine::TickTransparencyFade, 0x3D7930
  * there): with b, the prompt set to 80 and every icon but the first and the active ones faded; else
@@ -271,16 +307,6 @@ void CActionTxtrMachine::TickTransparencyFade(bool b)
     }
 }
 
-/* the prompt's place and the bomb timer's bar (OVL1 .data 0x3DC670-0x3DC67C and bss 0x40C170-0x40C188,
- * the unit's file statics -- the initialiser 0x3FE550 sets the prompt's x and the bar's corners and
- * width; by address until it is written) */
-extern float data_003DC670;   /* 0.2: the bar's width per second of the timer */
-extern float data_003DC678;   /* the prompt's x */
-extern float data_003DC67C;   /* 435: its y */
-extern float data_0040C170;   /* the bar's left */
-extern float data_0040C178;   /* its top */
-extern float data_0040C180;   /* its bottom */
-extern float data_0040C188;   /* its width */
 /* the mission's own prompt text (theMission + 0x20; empty for none) */
 extern char data_00436500[];
 
@@ -289,7 +315,7 @@ const char *GetString(int id);
 
 inline void CActionTxtrMachine::PlaceActionString()
 {
-    ActionString().SetPos((int)data_003DC678, (int)data_003DC67C);
+    ActionString().SetPos((int)posWeaponTakenStr.x, (int)posWeaponTakenStr.y);
     ActionString().m_isCentered = 1;
     ActionString().On();
 }
@@ -336,9 +362,9 @@ void CActionTxtrMachine::SpecializeActionString(CNodeAction *pNodeAction)
             ActionTxtrMachine_HUD.TimerBkgrd().SetTrans(38.4f);
             ActionTxtrMachine_HUD.TimerImage().On();
             ActionTxtrMachine_HUD.TimerImage().SetTrans(100.0f);
-            ActionTxtrMachine_HUD.TimerImage().SetPos((int)data_0040C170, (int)data_0040C178,
-                                                      (int)(data_0040C170 + data_0040C188 * (t * data_003DC670)),
-                                                      (int)data_0040C180);
+            ActionTxtrMachine_HUD.TimerImage().SetPos((int)BOMBTIMER_IMAGE_POSX1, (int)BOMBTIMER_IMAGE_POSY1,
+                                                      (int)(BOMBTIMER_IMAGE_POSX1 + BOMBTIMER_IMAGE_WIDTH * (t * BOMBTIMER_SCALAR)),
+                                                      (int)BOMBTIMER_IMAGE_POSY2);
         } else {
             if (ActionTxtrMachine_HUD.TimerImage().IsOn()) {
                 float dT_by_faderate = 400.0f * zVid.frameTime;
@@ -382,21 +408,13 @@ void CActionTxtrMachine::SpecializeActionString(CNodeAction *pNodeAction)
     }
 }
 
-/* the icons' colours as pulse pairs (OVL1 bss 0x40C190: four pairs of a base and a swing, which the
- * unit's initialiser builds -- __construct_array over eight CPnt3Ds -- and sets), the pulse (0x40D750,
- * 0 to 1 and back), its direction and rate (.data 0x3DC710, 1; 0x3DC718, 5) and the colour last made
- * (bss 0x40D758); the main icon's place and size (.data 0x3DC628-0x3DC640) and its half width (bss
- * 0x40C160) -- the unit's statics, by address until its initialiser is written */
-extern CPnt3D data_0040C190[4][2];
-extern float data_0040D750;
-extern float data_003DC710;
-extern float data_003DC718;
-extern CPnt3D data_0040D758;
-extern float data_003DC628;   /* the main icon's centre x */
-extern float data_003DC630;   /* its top */
-extern float data_003DC638;   /* an icon's width (the side icons 12 further apart) */
-extern float data_003DC640;   /* its height */
-extern float data_0040C160;   /* its half width */
+/* the pulse (SOCOM 1's color_scalar, bss 0x40D750: 0 to 1 and back), its direction (.data 0x3DC710, 1;
+ * SOCOM 1's bFadeColor, a bool there; the name ours) and rate (SOCOM 1's color_scalar_rate, .data
+ * 0x3DC718, 5), and the colour last made (bss 0x40D758; the name ours) */
+static float color_scalar;
+static float color_scalar_dir = 1.0f;
+static float color_scalar_rate = 5.0f;
+static CPnt3D color_cur;
 
 /* the pop-up a texture's name triggers (hud_scorepopup.cpp's, OVL1 0x22D270) */
 struct CNamedObject;
@@ -526,21 +544,21 @@ bool CActionTxtrMachine::Render_ver_2(CZActionBitmap &bmp)
     static CPnt3D mainicon_nvg(0.0f, 128.0f, 0.0f);
     static CPnt3D sideicon_nvg(0.0f, 128.0f, 0.0f);
 
-    data_0040D750 += data_003DC718 * (zVid.frameTime * data_003DC710);
-    if (data_003DC710 == 1.0f) {
-        if (data_0040D750 > 1.0f) {
-            data_0040D750 = 1.0f;
-            data_003DC710 *= -1.0f;
+    color_scalar += color_scalar_rate * (zVid.frameTime * color_scalar_dir);
+    if (color_scalar_dir == 1.0f) {
+        if (color_scalar > 1.0f) {
+            color_scalar = 1.0f;
+            color_scalar_dir *= -1.0f;
         }
-    } else if (data_0040D750 < 0.0f) {
-        data_0040D750 = 0.0f;
-        data_003DC710 *= -1.0f;
+    } else if (color_scalar < 0.0f) {
+        color_scalar = 0.0f;
+        color_scalar_dir *= -1.0f;
     }
 
     CActionTxtr *pActionTxtr = (*this)[0];
 
-    pActionTxtr->m_2DBitmap.Load(data_003DC628 - data_0040C160, data_003DC630, data_003DC628 + data_0040C160,
-                                 data_003DC630 + data_003DC640, pActionTxtr->m_texhandle);
+    pActionTxtr->m_2DBitmap.Load(ACTIONICON_CENTERX - ACTIONICON_HWIDTH, ACTIONICON_YPOS, ACTIONICON_CENTERX + ACTIONICON_HWIDTH,
+                                 ACTIONICON_YPOS + ACTIONICON_HEIGHT, pActionTxtr->m_texhandle);
     pActionTxtr->m_2DBitmap.m_fade_dx = 28.0f;
     pActionTxtr->m_2DBitmap.m_fade_limit = 90.0f;
     pActionTxtr->m_2DBitmap.TickFade();
@@ -550,10 +568,10 @@ bool CActionTxtrMachine::Render_ver_2(CZActionBitmap &bmp)
 
     if (pNodeAction && pActionTxtr->m_action_id == 13 && !(m_driver->m_teamflags & pNodeAction->m_teammask))
         set = 3;
-    CPnt3D *pair = data_0040C190[(unsigned char)set];
+    CPnt3D *pair = color_table[(unsigned char)set];
 
-    data_0040D758 = pair[0] + pair[1] * data_0040D750;
-    pActionTxtr->m_2DBitmap.SetColor(data_0040D758.x, data_0040D758.y, data_0040D758.z);
+    color_cur = pair[0] + pair[1] * color_scalar;
+    pActionTxtr->m_2DBitmap.SetColor(color_cur.x, color_cur.y, color_cur.z);
     pActionTxtr->m_2DBitmap.On();
     SpecializeActionString(pNodeAction);
 
@@ -565,16 +583,16 @@ bool CActionTxtrMachine::Render_ver_2(CZActionBitmap &bmp)
         pActionTxtr = (*this)[ii];
         if (ii < 3) {
             if (ii & 1) {
-                float x1 = data_003DC628 + (float)(rr + 1) * (12.0f + data_003DC638);
+                float x1 = ACTIONICON_CENTERX + (float)(rr + 1) * (12.0f + ACTIONICON_WIDTH);
 
-                pActionTxtr->m_2DBitmap.Load(x1 - data_0040C160, data_003DC630, x1 + data_0040C160,
-                                             data_003DC630 + data_003DC640, pActionTxtr->m_texhandle);
+                pActionTxtr->m_2DBitmap.Load(x1 - ACTIONICON_HWIDTH, ACTIONICON_YPOS, x1 + ACTIONICON_HWIDTH,
+                                             ACTIONICON_YPOS + ACTIONICON_HEIGHT, pActionTxtr->m_texhandle);
                 rr++;
             } else {
-                float x1 = data_003DC628 - (float)(ll + 1) * (12.0f + data_003DC638);
+                float x1 = ACTIONICON_CENTERX - (float)(ll + 1) * (12.0f + ACTIONICON_WIDTH);
 
-                pActionTxtr->m_2DBitmap.Load(x1 - data_0040C160, data_003DC630, x1 + data_0040C160,
-                                             data_003DC630 + data_003DC640, pActionTxtr->m_texhandle);
+                pActionTxtr->m_2DBitmap.Load(x1 - ACTIONICON_HWIDTH, ACTIONICON_YPOS, x1 + ACTIONICON_HWIDTH,
+                                             ACTIONICON_YPOS + ACTIONICON_HEIGHT, pActionTxtr->m_texhandle);
                 ll++;
             }
             pActionTxtr->m_2DBitmap.GetTrans();
@@ -586,10 +604,10 @@ bool CActionTxtrMachine::Render_ver_2(CZActionBitmap &bmp)
 
             if (pNodeAction && pActionTxtr->m_action_id == 13 && !(m_driver->m_teamflags & pNodeAction->m_teammask))
                 set = 3;
-            CPnt3D *pair = data_0040C190[(unsigned char)set];
+            CPnt3D *pair = color_table[(unsigned char)set];
 
-            data_0040D758 = pair[0] + pair[1] * data_0040D750;
-            pActionTxtr->m_2DBitmap.SetColor(data_0040D758.x, data_0040D758.y, data_0040D758.z);
+            color_cur = pair[0] + pair[1] * color_scalar;
+            pActionTxtr->m_2DBitmap.SetColor(color_cur.x, color_cur.y, color_cur.z);
             pActionTxtr->m_2DBitmap.On();
         } else
             pActionTxtr->m_2DBitmap.Off();
@@ -665,10 +683,6 @@ unsigned int CActionTxtrMachine::Add(CActionTxtr *pActionTxtr)
     return 0;
 }
 
-/* the string the action's prompt is written in (the texture machine's at 0x40D550 + 0x14, by
- * address until the machine is written) */
-extern C2DString data_0040D564;
-
 /* the HUD's menu states (hud_missioncams.h's) */
 enum MENU_STATE {
     stateNone = 0,
@@ -707,17 +721,13 @@ public:
 
 extern CHUD *theHUD;
 
-/* the timer image's colour (OVL1 .data 0x3E4BA0, zero in the image: the unit's initialiser
- * 0x3FE550 sets 100, 100, 100 last -- by address until the initialiser is written) */
-extern CPnt3D data_003E4BA0;
-
 /* the prompt let go of, every entry's bitmap clear and off. The string through a reference: on
  * the static itself MW calls C2DString's functions directly, where the target goes through the
  * vtable; the array's elements it dispatches as they stand (a pointer local per element costs a
  * saved register the target does not have) */
 void CZActionBitmap::UnInit()
 {
-    C2DString &text = data_0040D564;
+    C2DString &text = ActionTxtrMachine_HUD.m_action_string;
 
     text.ClearAndWipe();
     for (unsigned int i = 0; i < 22; i++) {
@@ -762,7 +772,7 @@ void CZActionBitmap::HudTick(MENU_STATE menustate)
         ActionTxtrMachine_HUD.m_action_string.m_color[0] = CHUD::m_hud_textcolor.x;
         ActionTxtrMachine_HUD.m_action_string.m_color[1] = CHUD::m_hud_textcolor.y;
         ActionTxtrMachine_HUD.m_action_string.m_color[2] = CHUD::m_hud_textcolor.z;
-        ActionTxtrMachine_HUD.m_timer_IMAGE.SetColor(data_003E4BA0.x, data_003E4BA0.y, data_003E4BA0.z);
+        ActionTxtrMachine_HUD.m_timer_IMAGE.SetColor(timer_color.x, timer_color.y, timer_color.z);
     }
 
     unsigned int count = 0;   /* dead: numbers count here (see above) */
