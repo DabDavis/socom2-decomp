@@ -30,12 +30,6 @@ namespace zdb {
  * include/vector does, and the list's destructor calls the deleter's after two levels where
  * list<T *>'s inlines all three. With a vector of pointers in its place the initialiser matches */
 
-/* a mesh's decals all freed: CMesh::DereferenceDecals (0x3B8440). SOCOM 1's mesh took the view as
- * other visuals do, and the map's row carries that (FUi), but SOCOM II's one call (RemoveDecals
- * 0x3136A4) sets no a1 -- its delay slot a nop, where the CVisual call beside it passes the view --
- * so SOCOM II's takes none (`DereferenceDecals__Q23zdb5CMeshFv`, reported in round 27); called as
- * the member with the view the slot fills (`move a1,s2`). Until then, a placeholder */
-extern "C" void func_003B8440(CVisual *mesh);
 /* the world-to-texture projectors (zmath_main.cpp: SOCOM 1's CalcWorldToUV pair, given the
  * texture's width where SOCOM 1 passed the texture) */
 extern "C" void func_003079C0(const CPnt3D *eye, const CPnt3D *at, const CPnt3D *dir, float a, float b,
@@ -51,16 +45,6 @@ class CRipple {
 public:
     static void Tick(float dt);
 };
-/* a scrolling texture handed to the texture effects: theTextureFXManager's Add (0x3C0460), SOCOM 1's
- * CTextureFX::InitScrollTexture's arguments in its order -- (float u, float v, bool tick, CVisual *,
- * CNode *) -- and an index, giving an index back. Spelled as the manager's member with the map's
- * order (bool, CVisual *, CNode *, int, float, float) the set-up moves both floats after the ints (4
- * instructions off, round 27), where SOCOM 1's order -- u and v first -- gives the target's
- * interleaving: the map's row and vis_texfx.h's declaration likely want it
- * (`Add__Q23zdb17CTextureFXManagerFffbPQ23zdb7CVisualPQ23zdb5CNodei`, reported). Until then, a
- * placeholder at the manager's address */
-extern "C" int func_003C0460(CTextureFXManager *fx, float u, float v, bool b, CVisual *visual, CNode *node,
-                             int index);
 /* the mesh _Copy cloned last, which the sub-meshes after it are made over (node_main.cpp's
  * .bss, not named yet) */
 extern "C" CMesh *data_0045C2E8;
@@ -107,13 +91,15 @@ void InitNodeParams(tag_NODE_PARAMS *to, const tag_NODE_PARAMS *from)
 /* a node: no parent, children, DIs (the first intersection stops a search) or visuals, no name,
  * model or atoms, opaque, its parameters the defaults; then its flags, an empty box at the origin,
  * and it counted into the universe with the shared default name (SOCOM 1's, but for SOCOM II's
- * flags).
- * OPEN (0x20C of 0x224): the base's facade word access is the online lane's round 28 fix --
- * tag_NODE_PARAMS' constructor sets it in the mem-initializer list (a bitfield cleared there is
- * read, masked and written back as a word; set in the body MW narrows it to a byte) -- and the
- * first 68 instructions are now the target's. The tail is 6 short: the target copies
- * CPnt3D::zero into a stack local of its own (sp+64) and makes min and max from that copy, where
- * MW here copy-propagates the static into both, the local dropped (an 80-byte frame there, 64 here) */
+ * flags). The base's facade word access is the online lane's round 28 fix -- tag_NODE_PARAMS'
+ * constructor sets it in the mem-initializer list (a bitfield cleared there is read, masked and
+ * written back as a word; set in the body MW narrows it to a byte). The box (the world's round
+ * 29): the target copies CPnt3D::zero into a local of its own (sp+64), then builds a 24-byte pair
+ * from it at sp+32 -- the first point copy-constructed (ld/sd), the second copied field by field,
+ * an array initialiser's two elements -- and assigns the box from it through address registers:
+ * a two-point array assigned to m_bbox as a CBBox (a stand-in for whatever the original's box
+ * type was: separate min and max points, a CBBox local or field-wise copies through references
+ * copy-propagate or read the frame directly, 6-31 off). The byte at 0xa0 is stored as -1 */
 CNode::CNode()
     : m_parent(0)
 {
@@ -136,15 +122,12 @@ CNode::CNode()
     m_socom2_a1_bits.bit0 = 1;
     m_socom2_mode = 0;
     m_frameRendered = 0;
-    m_socom2_a0 = 0xff;
+    m_socom2_a0 = -1;
     m_region_mask = 0;
     CPnt3D zero(CPnt3D::zero);
-    CPnt3D min(zero);
-    CPnt3D max;
+    CPnt3D corners[2] = { zero, zero };
 
-    max = zero;
-    m_bbox.m_min = min;
-    m_bbox.m_max = max;
+    m_bbox = *(CBBox *)corners;
     if (NodeUniverse)
         NodeUniverse->AddNode(this);
     numNodes++;
@@ -886,7 +869,13 @@ int CNode::DeleteVisual(CVisual *visual, bool del)
  * OPEN (0x1A4 of 0x1A8): the final erase's end is the target's begin load (through &data_,
  * kept since entry) plus the size the loop's last test scaled, where here it is the loop's whole
  * end; and the insert's temporaries take the stack slots below the erase's there, above them
- * here. Not moved by begin() + size() for the end */
+ * here. Not moved by begin() + size() for the end. Round 29 (build/scratch/wld/v_dv*.py): begin()
+ * taken into a named local first shares the data load (0x1A8, the target's size, 15 off); the
+ * push_back one inline wrapper deeper (a static PushBack(list, x) around it) moves the insert's
+ * temporaries below the erase's, as the target's frame (10 off) -- an SOCOM 1-deep list push_back
+ * (through the base's) would do the same; left: the find's end compared fresh in the target (its
+ * `lui/addiu` reused by the insert), where MW here reuses the find's last (a1) -- not moved by an
+ * iterator local, `!(... != end())`, an end local or the wrapper calling insert(end(), x) */
 void CNode::DeleteVisuals()
 {
     bool drawn = m_frameRendered == zVid.frameNumber;
@@ -1029,7 +1018,7 @@ void CNode::RemoveDecals(unsigned int vid)
             CVisual *visual = *it;
 
             if (visual->GetType() == 1)
-                func_003B8440(visual);
+                ((CMesh *)visual)->DereferenceDecals();
             else
                 visual->DereferenceDecals(vid);
         }
@@ -1049,7 +1038,7 @@ int CNode::ScrollTexture(CNode *node, float u, float v, bool b, int index)
 
         if (visual->GetType() == 1)
             return index;
-        index = func_003C0460(&theTextureFXManager, u, v, b, visual, node, index);
+        index = theTextureFXManager.Add(u, v, b, visual, node, index);
     }
     if (m_child.size()) {
         for (CNodeVector::iterator i = m_child.begin(), end = m_child.end(); i != end; ++i)
@@ -1118,6 +1107,56 @@ bool CNode::SetDescendantVisuals(bool set)
         any |= (*it)->SetDescendantVisuals(true);
     m_hasVisuals = own || any;
     return own || any;
+}
+
+/* a node's mesh textures: SOCOM 1's CNode::FindMeshTextures() with two parameters added and the
+ * node passed first -- a free function (the world's round 28 lead; SOCOM 1's name). Asked to find
+ * (the custom characters' phase), the dynamic list of the node's first visual when that is a mesh;
+ * else every visual's list added to the one given, with the texture of each visual's resolved
+ * material (the world's materials; the specular map when it has none), and the same down the tree
+ * -- the list given, or the last child's answer, returned */
+CDynTexList *FindMeshTextures(CNode *node, bool find, CDynTexList *list)
+{
+    CDynTexList *found;
+
+    if (find) {
+        found = 0;
+        for (CVisualVector::iterator it = node->m_visual.begin(); it != node->m_visual.end(); ++it) {
+            CVisual *visual = *it;
+
+            if (visual->GetType() == 1)
+                found = &visual->m_dynTexList;
+            break;
+        }
+    } else {
+        found = list;
+        CVisualVector &visuals = node->m_visual;
+
+        for (CVisualVector::iterator it = visuals.begin(); it != visuals.end(); ++it) {
+            CVisual *visual = *it;
+            CDynTexList *dyn = &visual->m_dynTexList;
+
+            if (dyn)
+                list->Add(dyn);
+            unsigned int material = visual->m_7;
+
+            if (material) {
+                MATERIAL_ENTRY *mat = CWorld::m_world->m_Material_Object.GetMaterial(material);
+
+                if (mat->m_type == 2) {
+                    if (mat->m_tex)
+                        list->Add(mat->m_tex, true);
+                    else
+                        list->Add(CVisual::m_specMapTexture, true);
+                }
+            }
+        }
+        CNodeVector &children = node->m_child;
+
+        for (CNodeVector::iterator it = children.begin(); it != children.end(); ++it)
+            found = FindMeshTextures(*it, find, list);
+    }
+    return found;
 }
 
 /* a new node, named as given or "Node" (SOCOM 1's) */
@@ -1202,16 +1241,18 @@ void CNode::SetModelname(const char *name)
 
 /* the regions (a bit for the node's own) and the lights handed down the tree: a light keeps the
  * lights, anything else the regions, a type-10 node neither and nothing below it. Over a copy
- * of the child list, its size read once; how many lights below took some.
- * OPEN (4 differing): the mask and the constant 1 take each other's registers (a1, v1) -- not
- * moved by the statements' order, either spelling of the ORs, locals, inline accessors, or the
- * permuter's 21,048 candidates */
+ * of the child list, its size read once; how many lights below took some. The lights' OR first
+ * and the bitfield converted to int: MW then generates the shift amount ahead of the constant 1
+ * (igreplay: the mask's load numbered below the field's extract, the 1 above it), which gives the
+ * target's a1 / v1 -- the bare field, in either statement order, generates the 1 first (4-7 off;
+ * `1U <<`, a local one, `regions = regions | ...` alike); `(unsigned int)` and an `int` local
+ * match as well */
 int CNode::InheritRegionMasks(unsigned int regions, unsigned int lights)
 {
     if (m_type == 10)
         return 0;
-    regions |= 1 << m_region_shift;
     lights |= m_region_mask;
+    regions |= 1 << (int)m_region_shift;
     if (m_type == 8)
         m_region_mask = lights;
     else

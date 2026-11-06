@@ -5424,7 +5424,7 @@
 0x00312A70 0x24 SetActive__Q23zdb6CLightFb  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00312AA0 0x180 CopyParams__Q23zdb5CNodeCFPQ23zdb5CNode  # OVL1; the parameter copy _Copy calls twice (SOCOM 1's _Copy inlined it; the name ours)
 0x00312C20 0xE0 Create__Q23zdb5CNodeFPCc  # OVL1; s1:order (SOCOM 1's Create: a new node named as given, or "Node")
-0x00312D00 0x21C func_00312D00  # OVL1
+0x00312D00 0x21C FindMeshTextures__3zdbFPQ23zdb5CNodebPQ23zdb11CDynTexList  # OVL1; by hand (the world's round 29, node_main.cpp: SOCOM 1's CNode::FindMeshTextures() with two parameters added, the node passed first -- the first visual's dynamic list when asked to find (the custom phase), else every visual's list and its material's texture added to the list given, down the tree; CWorld::AddTextureAssetCharacter calls it; a free function, the name SOCOM 1's)
 0x00312F20 0x190 SetDescendantVisuals__Q23zdb5CNodeFb  # OVL1; s1:exact by hand (SOCOM 1's SetDescendantVisuals, after Create and FindMeshTextures as here; the answers ORed as bools)
 0x003130B0 0x190 SetDescendantDI__Q23zdb5CNodeFb  # OVL1; s1:exact by hand (SOCOM 1's SetDescendantDI, after SetDescendantVisuals as here)
 0x00313240 0x208 SetModeTree__Q23zdb5CNodeFi  # OVL1; SOCOM II's: two bits at 0x5a set through a tree (OVL2 sets 2 on loaded models); the name ours
@@ -5516,7 +5516,7 @@
 0x00317FC0 0x240 ComputeFacadeMatrix__Q23zdb5CNodeFPC7CMatrixP7CMatrix  # OVL1; s1:align
 0x00318200 0x30 UpdateBBox__Q23zdb5CNodeFb  # OVL1; s1:vtable by hand (slot 13 of CNode's table; the demo's inlines one more parent level, 2.5x the size, so the pass's size guard skipped it)
 0x00318230 0x478 UpdateBBoxFromDI__Q23zdb5CNodeFb  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x003186B0 0x214 func_003186B0  # OVL1
+0x003186B0 0x214 TransformBBox__3zdbFPC7CMatrixPC5CBBoxP5CBBoxb  # OVL1; by hand (the world's round 29, node_model.cpp: a box through a matrix -- exactly, the box about its eight transformed corners (a member array's constructor loop calling CPnt3D() and CPnt3D's assignment out of line), else its two corners transformed and each axis put back in order; UpdateBBoxFromDI 0x318230 calls it for each child's box with exact false; new in SOCOM II, the name ours)
 0x003188D0 0x60 Release__Q23zdb6CModelFPQ23zdb5CNode  # OVL1; s1:exact (SOCOM 1's CModel::Release(CNode *): the instance taken off the list, the model's 0x64 cleared if it was it; ~CNode calls it)
 0x00318930 0x1AC __dt__Q23zdb6CModelFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00318AE0 0x150 RemoveModel__Q23zdb9CAssetLibFPQ23zdb6CModel  # OVL1; the online lane r28 (node_model.cpp): ~CModel calls it with the library's own copy of the model, found by name (0x318C30) -- std::remove's find inlined, remove_copy called, the pod erase, CAssetMgr::m_assets' model cache cleared, the model's library cleared -- the code SOCOM 1's ~CModel wrote out; CModel::Create (node_io.cpp) inlines its body; an inline's out-of-line copy, the name ours
@@ -5746,7 +5746,7 @@
 0x003294B0 0x5C RenderBBox__Q28Particle6SourceFv  # OVL1; s1:order by hand (SOCOM 1's static RenderBBox, first of the source unit: Source::list walked, GetBBox on a stack box for each, as SOCOM 1's) -- the rdr lane
 0x00329510 0x404 GetBBox__Q28Particle6SourceFP5CBBox  # OVL1; s1:callee by hand (RenderBBox calls it per source with a stack CBBox, as SOCOM 1's calls GetBBox; 0x404 bytes against SOCOM 1's 0x7D4) -- the rdr lane
 0x00329920 0x118 CheckExtents__Q28Particle6SourceF6CPnt4Df  # OVL1; s1:align (0.81 on instruction skeleton, 0x118 against SOCOM 1's 0x12C; Instance::Render calls it, as SOCOM 1's does)
-0x00329A40 0x54 func_00329A40  # OVL1
+0x00329A40 0x54 SetHasBBox__Q28Particle6SourceFb  # OVL1; by hand (the world's round 29, zparticle_source.cpp: the source's collision box made when it has no node (0x32AD20), the flag at 0x120 set and the node's SetActive called with it read back; zAnimParticleSourceTick 0x266830 calls it; new in SOCOM II, the name ours)
 0x00329AA0 0x10 func_00329AA0  # OVL1
 0x00329AB0 0xC func_00329AB0  # OVL1
 0x00329AC0 0x7C SetActive__Q28Particle6SourceFb  # OVL1; the world lane r24: s1:calls by hand (SOCOM 1's Particle::Source::SetActive(bool) 0x239410: zAnimParticleSourceTick calls it twice right after GetParticleSource, as SOCOM 1's does; the same body -- the active byte at 0 compared and set, the node (0x104, SOCOM 1's 0x100) activated through its vtable when the byte at 0x120 says so (SOCOM II tests the node), then byte 0x12C or byte 1 cleared)
