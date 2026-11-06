@@ -498,6 +498,8 @@ public:
     /* how much of a line between two points the maps' cells let the eye through (ai_maps.h's, OVL2
      * 0x538E30: the visibility score 0x60AA20 asks it of the ray, flags 1) */
     float ComputeLineVisibility(const CPnt3D *from, const CPnt3D *to, unsigned int flags);
+    /* a cell to a point, raised by a height (ai_maps.h's; the kit, round 62: 0x5CAC00) */
+    float ComputeLineVisibility(const CAiMapLoc &from, const CPnt3D *to, unsigned int flags, float height);
 };
 
 extern CAiMaps AiMaps;
@@ -987,7 +989,10 @@ public:
     /* the scan's reach, scaling the yaw throttle's look in Tick (SOCOM 1's m_scan_limits, at 0x60 in
      * both builds: the scan timer ends there in each) */
     float m_scan_limits;   // 0x60
-    unsigned char _64[0x80 - 0x64];
+    unsigned char _64[0x70 - 0x64];
+    /* (the kit, round 62: the depth and the vector ContainsPoint leaves, 0x5CAC00's) */
+    float m_cone_dot;   // 0x70
+    float m_cone_vec[3];   // 0x74
     /* the view cone's sizes (SOCOM 1's CAiCone m_view_cone at 0x70 in both builds: its m_height,
      * m_radius, m_point_radius and m_inv_height, which the constructor makes 1, 1, 0 and 1 in member
      * order; the kit's seal_sensors.cpp reads the whole cone through a view of its own) */
@@ -995,7 +1000,8 @@ public:
     float m_cone_radius;   // 0x84
     float m_cone_point_radius;   // 0x88
     float m_cone_inv_height;   // 0x8c
-    unsigned char _90[0xa8 - 0x90];
+    float m_cone_pos[3];   // 0x90 (the kit, round 62: 0x5CAC00's)
+    float m_cone_dir[3];   // 0x9c
     CAiDecay m_visrange;   // 0xa8 (as SOCOM 1's)
     /* the alertness: its value and the goal it holds to (SOCOM 1's m_aware, 0xc0 there -- SOCOM II
      * has no m_vissens before it; the SetAiAware pair 0x561110/0x5612F0 set it, the bands of its value

@@ -196,8 +196,9 @@ extern "C" bool func_005CB630(CSealCtrlAi *ai, CPickup *p, CPickupAmmo *a)
     return go;
 }
 
-/* a thrown grenade's pickup seen (OVL2 0x5CAC00) -- unwritten */
-extern "C" bool func_005CAC00(CSealCtrlAi *ai, CPickup *p, CZProjectile *proj);
+/* a thrown grenade's pickup seen (OVL2 0x5CAC00), below */
+struct CSensorProjView2;
+extern "C" bool func_005CAC00(CSealCtrlAi *ai, CPickup *p, CSensorProjView2 *proj);
 
 /* a projectile's fuse (zweapon.h's CZProjectile, which zseal.h declares only by name) */
 struct CSensorProjView {
@@ -248,7 +249,7 @@ extern "C" void func_005CB870(CSealCtrlAi *ai)
                         if (thrower && (((CSensorTeamView *)seal)->m_team & thrower->m_team))
                             break;
                     }
-                    found = func_005CAC00(ai, p, proj);
+                    found = func_005CAC00(ai, p, (CSensorProjView2 *)proj);
                 }
             }
             break;
@@ -469,6 +470,220 @@ struct CSensorConeCtrl {
     CSensorCone m_view_cone;   // 0x70
     CSensorDecay m_visrange;   // 0xa8
 };
+
+/* the views the grenade's sighting needs (zweapon.h's CZProjectile, which zseal.h declares only by name) */
+struct CSensorProjView2 {
+    unsigned char _0[0x10];
+    CZAmmo *m_ammo;   // 0x10
+    unsigned char _14[0x48 - 0x14];
+    CPnt3D m_pos;   // 0x48
+    unsigned char _54[0xac - 0x54];
+    unsigned int m_shooterID;   // 0xac
+};
+
+/* the grenade state's pickup set (OVL2 0x55CCA0; seal_ai.cpp's), the tables' static floats */
+extern "C" void func_0055CCA0(CAiState *grenade, CPickup *p);
+extern float data_00650A28;
+extern float data_00650A30;
+extern float data_00650A38;
+
+/* the SEAL's squad number (CSealCtrl's unit at 0x10C, CSealUnit's m_unit_num 0x58) */
+static inline unsigned int UnitNumOf(CSealCtrlAi *ai)
+{
+    return *(unsigned int *)(*(char **)((char *)ai + 0x10c) + 0x58);
+}
+
+/* a point copied, its fields read first (inline; the name ours) */
+static inline void CopyPnt(CPnt3D *to, const CPnt3D *from)
+{
+    float x = from->x;
+    float y = from->y;
+    float z = from->z;
+
+    to->x = x;
+    to->y = y;
+    to->z = z;
+}
+
+/* a grenade in the view cone (CSensorCone::Contains on the controller's own fields: through a `this` of
+ * its own MW keeps the cone's address in a saved register; inline, the name ours) */
+static inline bool ConeContains(CSealCtrlAi *c, CSensorProjView2 *proj)
+{
+    proj->m_pos.Sub((const CPnt3D *)c->m_cone_pos, (CPnt3D *)c->m_cone_vec);
+    float dot = c->m_cone_dir[0] * c->m_cone_vec[0] + c->m_cone_dir[1] * c->m_cone_vec[1] + c->m_cone_dir[2] * c->m_cone_vec[2];
+
+    c->m_cone_dot = dot;
+    if (dot <= 0.0f || dot > c->m_cone_height)
+        return false;
+    float r = c->m_cone_point_radius + dot * c->m_cone_inv_height * c->m_cone_radius;
+
+    if (c->m_cone_vec[2] * c->m_cone_vec[2] + (c->m_cone_vec[0] * c->m_cone_vec[0] + c->m_cone_vec[1] * c->m_cone_vec[1]) - dot * dot <= r * r)
+        return true;
+    return false;
+}
+
+/* a grenade in range and in line of sight (inline; the name ours) */
+static inline bool InReach(CEntity *e, CSensorProjView2 *proj)
+{
+    CPnt3D d;
+
+    proj->m_pos.Sub(&e->m_posW, &d);
+    return !(data_00650A28 <= d.x * d.x + d.y * d.y + d.z * d.z) &&
+           !(AiMaps.ComputeLineVisibility(e->m_mapLocValid, &proj->m_pos, 0, 18.0f) <= data_00650A30);
+}
+
+/* a thrown grenade's pickup seen: marked seen by this SEAL, the squad told once if it was already known to
+ * the unit, or a Navy SEAL or the grenade state not up (whether it reacts at all); the thrower looked up
+ * and, when the SEAL is the thrower or has him as a target, whether it saw the throw -- the grenade in
+ * its view cone or within reach and in line of sight; its comrades' throws let pass; a callout when an
+ * enemy's frag is seen; the grenade state pushed when the grenade is inside its blast radius and, when it
+ * should react first, an event state ahead of it (OVL2 0x5CAC00, new in SOCOM II: 0x5CB870 calls it; the
+ * name ours). OPEN, the size right (d=101 by try.py): the three m_pos2 reads -- the target branches over a
+ * dead `move v0,zero` arm with a plain `b` each (a null-checked conversion of &CPnt3D::zero the back end
+ * folds; written the arm stays, a beqz), saw in s2 for the target's s6 (the numbering: igreplay --greedy),
+ * the unseen test's first sb one slot early; the rest aligns. Measured: a cast of a parameter at an inline's
+ * argument (ETYPCON(ai)) makes every field address subable, in saved registers -- hence the array members,
+ * the projectile view as the parameter type and CEntity's own m_index; the
+ * name ours) */
+extern "C" bool func_005CAC00(CSealCtrlAi *ai, CPickup *p, CSensorProjView2 *proj)
+{
+    bool told;
+    bool self;
+    bool saw;
+    unsigned char type;
+    CEntity *e = ai->m_entity;
+
+    type = p->m_type;
+    bool react = false;
+    bool unseen = true;
+
+    if (TestSensorBit((CBits *)p->m_bits, e->m_index)) {
+        unseen = false;
+        bool again;
+
+        if (p->GetVisibleByUnit(UnitNumOf(ai)) || ai->IsNavySeal()) {
+            if (!(ai->m_stateStack.m_10 & (1 << AI_STATE_GRENADE))) {
+                again = true;
+                unseen = false;
+                react = false;
+            } else
+                again = false;
+        } else if ((type == 1 || type == 2) && !(ai->m_stateStack.m_10 & (1 << AI_STATE_GRENADE))) {
+            again = true;
+            react = true;
+        } else
+            again = false;
+        if (!again)
+            return false;
+    }
+    p->GetPosW();
+    bool go = true;
+
+    if (unseen) {
+        CEntity *thrower = CEntity::m_list.GetEntityById(proj->m_shooterID);
+
+        if (thrower) {
+            saw = false;
+            CTarget *t = ((CEntity *)ai->m_entity)->m_targets.FindTarget(thrower);
+
+            self = thrower == e;
+            told = false;
+            bool team = (thrower->m_team & e->m_team) != 0;
+
+            if (!self && !t)
+                go = false;
+            else {
+                CZSealBody *seal = thrower && thrower->m_type == 2 ? (CZSealBody *)thrower : 0;
+                CSealCtrlAi *tai = seal ? seal->GetSealCtrlAi() : 0;
+                bool nav;
+
+                if (tai)
+                    nav = tai->IsNavySeal();
+                else
+                    nav = seal ? seal->IsPlayer() : false;
+
+                if (self || (t->m_flags & 0x200) || ai->IsNavySeal()) {
+                    p->SetVisibleByUnit(UnitNumOf(ai));
+                    saw = true;
+                    told = saw;
+                } else {
+                    if (!ConeContains(ai, proj)) {
+                        CPnt3D d;
+
+                        proj->m_pos.Sub(&e->m_posW, &d);
+                        if (data_00650A28 <= d.x * d.x + d.y * d.y + d.z * d.z)
+                            goto notseen;
+                        if (AiMaps.ComputeLineVisibility(e->m_mapLocValid, &proj->m_pos, 0, 18.0f) <= data_00650A30)
+                            goto notseen;
+                    }
+                    p->SetVisibleByUnit(UnitNumOf(ai));
+                    saw = true;
+                    told = saw;
+                notseen:;
+                }
+                if (!saw && (!team || !nav))
+                    go = false;
+                if (told && type == 1 && !team)
+                    ai->PlayAiSound((CHARACTER_SOUND)51, 1.0f, (CAiEvent::EVENT)-1);
+            }
+        }
+    }
+    if (!go)
+        return false;
+    SetSensorBit((CBits *)p->m_bits, e->m_index);
+    if (!(ai->m_stateStack.m_10 & (1 << AI_STATE_GRENADE))) {
+        CZAmmo *ammo = proj->m_ammo;
+        float r = ammo ? ammo->GetExplosionRadius() : 200.0f;
+
+        if (ai->IsNavySeal() && r < 200.0f)
+            r = 200.0f;
+        r *= r;
+        CPnt3D d;
+
+        CopyPnt(&d, &e->m_posW);
+        d.Sub(p->GetPosW(), &d);
+        if (!(r <= d.x * d.x + d.y * d.y + d.z * d.z)) {
+            ai->PopAiState(AI_STATE_SHOTAT);
+            if (ai->PushAiState(AI_STATE_GRENADE, 0)) {
+                CAiState *s = ai->GetAiState();
+                CAiState *g = s && s->m_state == AI_STATE_GRENADE ? s : 0;
+
+                func_0055CCA0(g, p);
+                g->m_active = true;
+            }
+            if (react && ai->PushAiState(AI_STATE_EVENT, 2)) {
+                float delay = 1.5f * (1.2f - ai->m_aiParams.training);
+
+                if (ai->IsNavySeal())
+                    delay = 0.2f;
+                float dist = (d.x * d.x + d.y * d.y + d.z * d.z) / r;
+                CAiState *s = ai->GetAiState();
+                CAiSEvent *ev = s && s->m_state == AI_STATE_EVENT ? (CAiSEvent *)s : 0;
+                const CPnt3D *pos = p->GetPosW();
+
+                ev->m_58 = 1;
+                ev->m_pos.x = pos->x;
+                ev->m_pos.y = pos->y;
+                ev->m_pos.z = pos->z;
+                ev->m_pos2.x = (&CPnt3D::zero ? &CPnt3D::zero : (const CPnt3D *)0)->x;
+                ev->m_pos2.y = (&CPnt3D::zero ? &CPnt3D::zero : (const CPnt3D *)0)->y;
+                ev->m_pos2.z = (&CPnt3D::zero ? &CPnt3D::zero : (const CPnt3D *)0)->z;
+                float t = delay * dist;
+                float range = 2.0f * t - t;
+
+                ev->SetFlags(4, 0);
+                if (range != 0.0f)
+                    t += range * (4.656613e-10f * (float)rand());
+                *(float *)&ev->m_88 = data_00650A38 + t;
+                ev->m_rnd_min = data_00650A38;
+                ev->m_rnd_range = 0.0f;
+                ev->m_active = true;
+            }
+        }
+    }
+    return true;
+}
+
 
 /* the AI dozing (SOCOM 1's m_snoozing, bit 9), and neither dozing nor asleep (the names ours) */
 static inline bool IsSnoozing(const CSealCtrlAi *ai)
