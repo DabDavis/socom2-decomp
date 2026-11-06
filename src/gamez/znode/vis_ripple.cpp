@@ -204,6 +204,18 @@ bool CWaterRippleManager::GetOffset(const CPnt3D *p, CPnt3D *out, bool *level)
  * shape that keeps an invariant assignment in the strip body ahead of the vertex loop is the open
  * question of both. A per-strip inline taking the point (the vertex code written out: a leaf) is
  * inlined but builds n and off by calls (0x340); with the vertex inlines it is cut to one level.
+ * Round 39 (igdump --iro, build/scratch/wep/v_rip39*.py): mwccps2's log runs the loop phase
+ * (IRO_PullOutInvariantAssignments, RotateLoop, the invariants, strength reduction) in pass 0 only,
+ * after that pass's first propagation and before its common subexpressions; pass 1 moves nothing out
+ * of a loop -- so an assignment that becomes `pp = &p` only after pass 0's loop phase stays per strip.
+ * The AI core's round-36 lever was tried for it: the pointer held in a struct (scalarised in pass 1
+ * when its address, taken through a reference or pointer, is folded away) -- bound inside the strip
+ * body or the guard, pass 0's first propagation folds the reference before the loop phase and the
+ * store `r.m_p = &p` is hoisted with the out-of-line guard (0x350; 0x358 with the pointer at offset
+ * 4); bound at the function's top, through a cast or a ternary, it is never folded and r stays in
+ * the frame (0x338); a plain pointer kept address-taken stays in the frame to the end (only class
+ * objects are scalarised in pass 1). A fold that lands between pass 0's loop phase and pass 1 is
+ * the shape still wanted.
  * a surface's vertices moved: each one's normal tilted by the offset, its height set where a
  * ripple lifts it */
 void CWaterRippleManager::Ripple(CNode *node)
