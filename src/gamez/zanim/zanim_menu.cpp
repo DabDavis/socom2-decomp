@@ -2444,13 +2444,10 @@ bool UISwitchSides(C2DAnimCmdHdr *hdr, float *dT)
     return true;
 }
 
-/* the armory's view brought up to date, whether it has an entry selected (not named yet), and a
- * persona's name and clan tag by its id (not named yet) */
+/* the armory's view brought up to date and whether it has an entry selected (not named yet) */
 extern "C" {
 void func_0030E710(COnlineArmoryView *p);
 bool func_0030E790(COnlineArmoryView *p);
-const char *func_002C3A70(int id);
-const char *func_002C3AC0(int id);
 }
 
 /* the milliseconds from the network's clock to a time (ours) */
@@ -2468,8 +2465,8 @@ bool UICheckForcedLaunch(C2DAnimCmdHdr *hdr, float *dT)
     func_0030E710(data_0045B718);
     if (func_0030E790(data_0045B718)) {
         int id = data_0045B718->m_entries[data_0045B718->m_24].m_id;
-        const char *name = func_002C3A70(id);
-        const char *tag = func_002C3AC0(id);
+        const char *name = CZPersonaState::GetPersonaName(id);
+        const char *tag = CZPersonaState::GetPersonaClanTag(id);
 
         if (name) {
             char text[256];
@@ -2670,12 +2667,18 @@ bool UISetScreenOrigin(C2DAnimCmdHdr *hdr, float *dT)
  * mode swap, auto aim, vibration, subtitles, dialog, the order responses, the first pad's stick
  * preset, the controller configuration, the whispers, the first-person bobbing and the screen's
  * origin (SOCOM 1's stored fewer) */
-extern "C" float data_003DF198;            /* the pitch's direction: inverted when not above 0 (not named yet) */
-extern "C" unsigned char data_003DD4A0;    /* the dialog option (not named yet) */
+extern float hackPitchFactor;              /* 0x3DF198 (SOCOM 1's): the pitch's direction, inverted when not above 0 */
+/* the dialog option (0x3DD4A0: SOCOM 1's bDialogIsOn, a static of this unit's anonymous namespace there,
+ * 0x474D88 -- declared, not defined: the unit's data is not written yet) */
+namespace { extern unsigned char bDialogIsOn; }
 extern unsigned char ShouldConfirmVoiceCommands;   /* 0x3DF1D0 (SOCOM 1's) */
-extern "C" unsigned char data_003DF190;    /* the first-person bobbing (not named yet) */
-extern "C" unsigned char data_0044D500;    /* the fire mode swap, as ToggleFireModeSwap last toggled it */
-extern "C" void func_002A41F0(int on);     /* (the whispers on or off) */
+/* the first-person bobbing (SOCOM 1's static member, 0x3DF190) */
+class CSealCtrl {
+public:
+    static unsigned char m_bobbing1stperson_enabled;
+};
+extern unsigned char FireModeSwapIsOn;     /* 0x44D500: the fire mode swap, as ToggleFireModeSwap last toggled it (ours) */
+void EnableExternalWhispers(bool on);      /* 0x2A41F0 (fts_mission.cpp's: the whispers on or off) */
 void ToggleFireModeSwap();                 /* 0x592050 (seal_control.cpp's: the fire mode swap toggled) */
 void SetRumbleOn(bool on);                 /* 0x592BE0 (SOCOM 1's) */
 void RefreshSystemTuners();                /* 0x389C60 (zui_tuners.cpp's) */
@@ -2698,13 +2701,13 @@ bool UIStoreOptions(C2DAnimCmdHdr *hdr, float *dT)
     CPad *pad = CInput::m_pads[0];
 
     if (whispers->m_value)
-        func_002A41F0(1);
+        EnableExternalWhispers(true);
     else
-        func_002A41F0(0);
+        EnableExternalWhispers(false);
     if (bobbing->m_value)
-        data_003DF190 = 1;
+        CSealCtrl::m_bobbing1stperson_enabled = 1;
     else
-        data_003DF190 = 0;
+        CSealCtrl::m_bobbing1stperson_enabled = 0;
     switch (stereo->m_value) {
     case 1:
         snd_SetPlaybackMode(2);
@@ -2717,20 +2720,20 @@ bool UIStoreOptions(C2DAnimCmdHdr *hdr, float *dT)
         break;
     }
     if (invert->m_value)
-        data_003DF198 = -1.0f;
+        hackPitchFactor = -1.0f;
     else
-        data_003DF198 = 1.0f;
+        hackPitchFactor = 1.0f;
     if (firemode->m_value) {
-        if (!data_0044D500)
+        if (!FireModeSwapIsOn)
             ToggleFireModeSwap();
-        data_0044D500 = 1;
+        FireModeSwapIsOn = 1;
     } else {
-        if (data_0044D500)
+        if (FireModeSwapIsOn)
             ToggleFireModeSwap();
-        data_0044D500 = 0;
+        FireModeSwapIsOn = 0;
     }
     if (autoaim)
-        data_003DF1A0 = autoaim->m_value != 0;
+        _AutoAim = autoaim->m_value != 0;
     if (vibration->m_value)
         SetRumbleOn(true);
     else
@@ -2740,9 +2743,9 @@ bool UIStoreOptions(C2DAnimCmdHdr *hdr, float *dT)
     else
         CSnd::SetSubtitles(false);
     if (dialog->m_value)
-        data_003DD4A0 = 1;
+        bDialogIsOn = 1;
     else
-        data_003DD4A0 = 0;
+        bDialogIsOn = 0;
     if (order->m_value)
         ShouldConfirmVoiceCommands = 1;
     else
@@ -2829,7 +2832,7 @@ bool UIInitializeOptions(C2DAnimCmdHdr *hdr, float *dT)
         SetValveValue(subtitle, 1);
     else
         SetValveValue(subtitle, 0);
-    SetValveValue(invert, !(data_003DF198 > 0.0f));
+    SetValveValue(invert, !(hackPitchFactor > 0.0f));
     if (IsRumbleOn())
         SetValveValue(vibration, 1);
     else
@@ -2838,7 +2841,7 @@ bool UIInitializeOptions(C2DAnimCmdHdr *hdr, float *dT)
         SetValveValue(order, 1);
     else
         SetValveValue(order, 0);
-    if (data_003DD4A0)
+    if (bDialogIsOn)
         SetValveValue(dialog, 1);
     else
         SetValveValue(dialog, 0);
@@ -3189,9 +3192,9 @@ bool UIAutoAim(C2DAnimCmdHdr *hdr, float *dT)
     const char *text = ArgText(ArgName(hdr));
 
     if (!strcmp(text, "ON"))
-        data_003DF1A0 = 1;
+        _AutoAim = 1;
     else if (!strcmp(text, "OFF"))
-        data_003DF1A0 = 0;
+        _AutoAim = 0;
     return true;
 }
 
@@ -3775,7 +3778,7 @@ bool UIHardDriveOperation(C2DAnimCmdHdr *hdr, float *dT)
                 MissionDesc desc;
 
                 HddFindFiles(".ZDB", &desc, sizeof(desc), i);
-                MPMissionInfo *m = static_cast<CMultiMissionList &>(data_00441650).Add(&desc);
+                CMultiMission *m = static_cast<CMultiMissionList &>(data_00441650).Add(&desc);
 
                 m->m_on_hdd = 1;
             }
@@ -4511,7 +4514,7 @@ bool UIGetMissionInformation(C2DAnimCmdHdr *hdr, float *dT)
         unsigned char multiplayer = cmd->m_multiplayer;
         int n = 0;
 
-        for (std::vector<MPMissionInfo *>::iterator it = data_00441650.begin(); it != data_00441650.end(); ++it) {
+        for (std::vector<CMultiMission *>::iterator it = data_00441650.begin(); it != data_00441650.end(); ++it) {
             if (multiplayer == (*it)->m_multiplayer) {
                 if (n == want) {
                     *(theUIVarManager.Add(name, 0, UIVAR_SESSION)) = (*it)->m_name.c_str();
@@ -4859,9 +4862,9 @@ bool UIUpdateServerInfo(C2DAnimCmdHdr *hdr, float *dT)
  * function object; ours) */
 struct CAddAvailableMission {
     CAddAvailableMission(CRdrEditor *rdr, bool respawn) : m_rdr(rdr), m_respawn(respawn) {}
-    bool Listed(MPMissionInfo *m) { return m->m_multiplayer && (m_respawn ? m->m_kind == 5 : true); }
-    bool Available(MPMissionInfo *m) { return Listed(m) && func_002C94F0(m); }
-    void operator()(MPMissionInfo *m)
+    bool Listed(CMultiMission *m) { return m->m_multiplayer && (m_respawn ? m->m_kind == 5 : true); }
+    bool Available(CMultiMission *m) { return Listed(m) && IsNewestVersion(m); }
+    void operator()(CMultiMission *m)
     {
         if (Available(m)) {
             m_rdr->push(0);

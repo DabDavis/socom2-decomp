@@ -446,6 +446,10 @@ class CZPersonaState {
 public:
     static void ToggleReady();
     static void UpdateLocalPersona();   /* 0x2C5360 */
+    /* a client's persona's name, none without one (0x2C3A70, SOCOM 1's), and its clan tag, "" without
+     * one (0x2C3AC0; fts_net_persona.cpp's) */
+    static const char *GetPersonaName(int client);
+    static const char *GetPersonaClanTag(int client);
 };
 
 
@@ -1019,8 +1023,9 @@ bool func_001EB070(void *core, const char *eventname, const char *argument);    
  * online lane's CZUniversInformationServer::CAcctDB, its object not named yet) */
 extern CZUniversInformationServer::CAcctDB data_0044FC60;
 
-/* the auto-aim option (a byte, on in data) */
-extern unsigned char data_003DF1A0;
+/* the auto-aim option (a byte, on in data: SOCOM 1's _AutoAim, 0x3DF1A0 -- its CheckDIShoot reads it as
+ * SOCOM II's 0x5AAB14 does) */
+extern unsigned char _AutoAim;
 
 /* CSnd::m_vagEnabled (SOCOM 1's static; zsnd.h's CSnd does not declare it yet) */
 extern unsigned char data_0048DDA0;
@@ -1051,8 +1056,9 @@ struct MPMissionView {
 };
 
 /* the missions as GetMissionInformation walks them: the same object seen as a vector of records,
- * each a name, whether it is multiplayer and its number (ours) */
-struct MPMissionInfo {
+ * each a name, whether it is multiplayer and its number (fts_missionlist.cpp's CMultiMission, only the
+ * fields the handlers read) */
+struct CMultiMission {
     std::string m_name;   // 0x0
     unsigned char m_multiplayer;   // 0xc
     int m_number;   // 0x10
@@ -1064,13 +1070,10 @@ struct MPMissionInfo {
 struct MissionDesc {
     unsigned char m_data[39];
 };
-extern std::vector<MPMissionInfo *> data_00441650;
-/* whether a mission is its name's newest: the list's Find of its name gives it back (fts_missionlist's
- * 0x2C94F0, GetRandom's pool test; not named yet) */
-bool func_002C94F0(MPMissionInfo *m);
+extern std::vector<CMultiMission *> data_00441650;
 /* the same object as fts_missionlist.cpp's CMultiMissionList (a pointer vector of the missions,
  * OVL1 0x2C8840's this): only its random pick and the mission after a given one */
-class CMultiMissionList : public std::vector<MPMissionInfo *> {
+class CMultiMissionList : public std::vector<CMultiMission *> {
 public:
     MPMissionView *GetRandom(bool multi);
     /* the mission after the one of an id and kind (fts_missionlist.cpp's, 0x2C8DB0) */
@@ -1079,7 +1082,7 @@ public:
     signed char GetMultiValue(int id);
     /* the hard disk's missions erased (0x2C90B0); a downloaded one entered (0x2C91A0) */
     void Purge();
-    MPMissionInfo *Add(const MissionDesc *desc);
+    CMultiMission *Add(const MissionDesc *desc);
 };
 bool func_002F0EA0(CZOnlineLobby *lobby, C2D *list);
 bool func_002F11F0(CZOnlineLobby *lobby, C2D *list);
@@ -1117,5 +1120,9 @@ bool func_002C3080();
 bool func_002C2FA0();
 bool func_002C3550();
 }
+
+/* whether a mission is its name's newest: the list's Find of its name gives it back (fts_missionlist.cpp's
+ * IsNewestVersion 0x2C94F0, GetRandom's pool test) */
+bool IsNewestVersion(CMultiMission *m);
 
 #endif
