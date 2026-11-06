@@ -177,7 +177,12 @@ bool CWaterRippleManager::GetOffset(const CPnt3D *p, CPnt3D *out, bool *level)
  * this and node (0x360), declared in the vertex loop it is propagated (0x340). The locals are
  * declared in the target's slot order (n 288, p 272, off 256, the bool at 303). Round 35: p and a
  * float or CPnt3D pointer to it at the strip loop's top (the pointer then used for the reads, the
- * offset and the store) are 0x358 (build/scratch/wep/v_rip.py).
+ * offset and the store) are 0x358 (build/scratch/wep/v_rip.py). Round 36: SetVertexPos and
+ * SetVertexNormal taking non-const pointers (Flatten's one-register rule), or the point through a
+ * `float *` with the non-const setter, leave it at 57 (v_rip36.py); a member Get on the point or a
+ * reference parameter hoists its field addresses as here (build/scratch/wep/t/f8-f9.cpp: only a
+ * pointer variable, `P *pp = &p` in the outer body, gives one register with offsets -- hoisted to
+ * the function's top, not set per strip as the target's s3).
  * a surface's vertices moved: each one's normal tilted by the offset, its height set where a
  * ripple lifts it */
 void CWaterRippleManager::Ripple(CNode *node)
@@ -743,7 +748,17 @@ bool CWaterRipple::GetOffset(const CPnt3D *p, CPnt3D *out)
  * (doldecomp mweppc IroEval.c), so the fold here is the propagated constants' later; `up` built at
  * the function's top, at the visual loop's top, from float locals (0.0f / 1.0f), const -- all still
  * 0x260 (build/scratch/wep/v_flat*.py): the target's products, CSE'd for x and z and hoisted to the
- * outer loop's preheader, need the normal's components to reach the backend as variables */
+ * outer loop's preheader, need the normal's components to reach the backend as variables.
+ * Round 36: IroEval.c does fold two float constants (EMUL of EFLOATCONSTs; only a monadic cast of
+ * a FLOAT constant is left), and mwcps2 folds every spelling measured -- the components through
+ * float, int-converted, inline-returned, aggregate-initialised or const-qualified locals, at the
+ * top or in either loop (build/scratch/wep/t/f1-f10.cpp); a const aggregate at the top keeps the
+ * products hoisted into saved FPRs but loads the components from the stack. The point's ONE
+ * pointer register is measured: SetVertexPos(CVisData *, const float *) makes MW hoist &p.y and
+ * &p.z as addresses of their own (here s1/s0); with a `float *` parameter every access goes
+ * through one register with offsets, as the target's s3 -- but hoisted out of both loops (0x248),
+ * where the target sets it in SelectVertexStrips' delay slot each strip (no placement of the
+ * pointer, in the strip loop, after the select or in the lift's arm, keeps it there) */
 void CWaterRipple::Flatten(CNode *node)
 {
     for (CVisualVector::iterator it = node->m_visual.begin(); it != node->m_visual.end(); ++it) {
