@@ -2896,3 +2896,56 @@ int func_0061B3E0(unsigned char *pPacket, unsigned int nStream, int nLength)
     memcpy(pPacket + sizeof(hdr), pStart, nLength);
     return nLength + sizeof(hdr);
 }
+
+extern int func_0061C5A0(void);
+extern void NetFreeAllClients(void);
+extern void NetFreeClientPointers(void);
+extern int func_0063C810(void);
+extern void func_00639808(int nConnection);
+extern void func_00643790(void);
+extern int rt_msg_client_shutdown(void);
+
+/* SOCOM 1's NetClose grown (0x61C2F0; the name is Dme.c's locked wrapper's, 0x620810): the pending peers
+ * dropped, each world in state 1 closed, the objects, clients, streams and the client tables freed, the
+ * transport and the message client shut. Round 25b, unwritten before. */
+int func_0061C2F0(void)
+{
+    DmeWorld *pWorld = 0;
+    int i;
+    int j;
+    int result;
+
+    if (data_00651180 != 1)
+        return 17;
+    func_0061CFF0();
+    for (i = 0; i < DME_MAX_WORLDS; i++) {
+        result = func_0061C600(i, &pWorld);
+        if (result != DME_OK)
+            return result;
+        if (pWorld != 0 && pWorld->field_438 == DME_WORLD_STATE_1)
+            func_0061C150(i);
+    }
+    NetFreeAllObjects();
+    NetFreeAllClients();
+    NetFreeClientPointers();
+    func_0063C810();
+    if (data_006511D0 != 0) {
+        func_0061D320();
+        func_00614888((void **)&data_006511D0);
+        data_006511D0 = 0;
+    }
+    for (j = 0; j < DME_MAX_WORLDS; j++) {
+        for (i = 0; i < DME_MAX_CLIENTS; i++)
+            func_0061C868(j, i);
+        func_0061C6C8(j);
+    }
+    func_0061C5A0();
+    if (data_006511D4 != 0) {
+        func_00639808(data_006511D8);
+        data_006511D4 = 0;
+    }
+    rt_msg_client_shutdown();
+    func_00643790();
+    data_00651180 = 0;
+    return DME_OK;
+}
