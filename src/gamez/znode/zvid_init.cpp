@@ -594,33 +594,29 @@ extern "C" void func_003B1DD0(void *arg)
 }
 
 /* the mean of the last n brightness samples: all sixteen in order, or n back from the newest (new in
- * SOCOM II, not named). OPEN, 17 instructions, the same size: the unrolled walk's index and its
- * bound (n - 8) trade v1 and a1; the single exit gave the sum $f0 and declaring i first its a2 (the
- * index declared before i, at the top, unsigned, a while loop: no better). Round 29, by
- * `tools/igreplay.py --target`: those two are the only differing nodes, idx (v35) and the unroller's
- * bound, a front-end temporary (v36, `n - 8`, defined right after idx's load) -- every placement
- * numbering the bound BEFORE idx gives the target's registers (91 of 3,481). Not found in source:
- * the step in the for, two statements, the for-init, idx unsigned, a named count, `last - i` (0x1F0),
- * a pointer walk (0x188), a while (no unrolling). Round 30: the bound is a temporary the loop pass
- * makes, so idx would have to be one too -- made after it (the remainder loop's induction pointer
- * @671 is): an inline's local or parameter, a copy of a named start, a reference or pointer to the
- * global, a dead first definition then the same load again (CSE), casts -- all still numbered ahead
- * of the bound (17); the CSE rule that closed CMaterial_Object::Read does not reach here. Round 31:
- * the kit's round-49 device -- idx through a leaf template inline returning its argument or a cast
- * (Ident<int>, Cast<int>, Cast<unsigned>, Ref<int>), the element through a template accessor, a
- * pointer through AtPtr<float> -- still 17 (the pointer forms 0x188, the accessor 0x1D0) */
+ * SOCOM II, not named). BYTE-EXACT since the weapons' round 37: ONE unsigned variable at function
+ * scope is the first loop's counter AND the second loop's walk index -- IRO_SplitLifetimes gives the
+ * later web (the walk) a temporary of its own, made after the loop unroller's bound (`n - 8`), so the
+ * walk's index is numbered after the bound and takes the target's v1 (the bound a1). Before: OPEN, 17
+ * instructions, the same size -- idx (v35) and the unroller's bound (v36) traded v1 and a1, every
+ * placement numbering the bound BEFORE idx giving the target's registers (round 29's igreplay); a
+ * declared idx (signed or unsigned, at the top or in the branch), an inline's local or parameter, a
+ * dead first definition, casts and template accessors (rounds 29-31) all kept idx a declared-local
+ * number; the loop counter i shared by both loops instead (18 off) or a dead `idx = 0` first (22) do
+ * not reach it -- the first web must be live */
 extern "C" float func_003B1BF0(unsigned int n)
 {
     float sum = 0.0f;
+    unsigned int idx;
 
     if (n == 16) {
-        for (unsigned int i = 0; i < 16; i++)
-            sum += data_004A4560[i];
+        for (idx = 0; idx < 16; idx++)
+            sum += data_004A4560[idx];
         sum /= 16.0f;
     } else {
         unsigned int i;
-        int idx = data_004A45A0;
 
+        idx = data_004A45A0;
         for (i = 0; i < n; i++)
             sum += data_004A4560[idx--];
         sum /= n;
