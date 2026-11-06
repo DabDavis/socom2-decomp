@@ -45,7 +45,7 @@ extern float expf(float x);
 typedef struct NBRWORD {
     int state;                          /* +0: the word's end state, an index into the lexicon */
     int score;                          /* +4 */
-    int word;                           /* +8: its id */
+    int end;                            /* +8: its last frame */
     int f12;                            /* +12 */
     struct NBRWORD *next;               /* +16 */
 } NBRWORD;
@@ -82,7 +82,8 @@ struct CTXVT {
 typedef struct RUNCTX {
     int pad0;
     int n;                              /* +4 */
-    char pad8[8];
+    char pad8[4];
+    unsigned short *props;              /* +12: each word's properties (0x80: a silence) */
     unsigned short *dict;               /* +16 */
     char pad20[8];
     int *tab;                           /* +28 */
@@ -171,7 +172,38 @@ typedef struct TREEWORD {
     int next;
 } TREEWORD;
 
-extern void casrCreateResult(CASR *c, RESULT **r, int frame, int how);
+/* what the N-best block sends (nbestdp.c): its results, and the garbage paths' scores per frame */
+typedef struct NBLIST {
+    NBRESULT *first;                    /* +0 */
+    int f4;
+    unsigned int *garbage1;             /* +8 */
+    unsigned int *garbage2;             /* +12 */
+} NBLIST;
+
+/* the second pass's word record (secpass.c) */
+typedef struct SPINFO {
+    int f0;
+    short nstates;                      /* +4 */
+    unsigned char first;                /* +6 */
+    unsigned char last;                 /* +7 */
+} SPINFO;
+extern int GetSecondPassInfo(CASR *c, CTXVT *ctx, SPINFO *info, int word);
+
+extern __inline__ int CalcSentenceConfidence(unsigned int frames, unsigned int score, unsigned int garbage)
+{
+    float x;
+
+    x = ((float)score - (float)garbage) / (float)frames;
+    if (x < -26.0f)
+        x = 10000.0f / (expf(x * 0.085444445f + 0.0273309787f) + 1.0f);
+    else if (x <= 78.0f)
+        x = (91.0f - x) * 76.9f;
+    else
+        x = 10000.0f / (expf(x * 0.085444445f + -4.467109f) + 1.0f);
+    return (int)x;
+}
+
+void casrCreateResult(CASR *c, RESULT **r, NBLIST *nb, unsigned char how);
 int cbIsoWordRecognised(CASR *c, unsigned char a1, unsigned char a2, int nb, int n);
 int casrGetParam(CASR *c, int id, unsigned int *value);
 int casrSetParam(CASR *c, int id, unsigned int value);
@@ -230,6 +262,356 @@ static __inline__ void casrFreeResult(CASR *c, RESULT *r)
     if (i != 0)
         heap_Free(c->heap, r->items);
     heap_Free(c->heap, r);
+}
+
+/* a word's confidence, 0-10000: its score less the garbage's over its frames, on the same three
+ * pieces as CalcSentenceConfidence. SOCOM 1's static CalcWordConfidence, inlined here. */
+static __inline__ int CalcWordConfidence(NBLIST *nb, int score, unsigned int start, unsigned int end)
+{
+    float x, y;
+
+    if (end == start)
+        return 0;
+    x = ((float)score - (float)nb->garbage1[end] + (float)nb->garbage1[start]) / (float)(end - start);
+    if (x < -26.0f)
+        y = 10000.0f / (expf(x * 0.085444445f + 0.0273309787f) + 1.0f);
+    else if (x <= 78.0f)
+        y = (91.0f - x) * 76.9f;
+    else
+        y = 10000.0f / (expf(x * 0.085444445f + -4.467109f) + 1.0f);
+    return (int)(y + 0.5);
+}
+
+/* the N best as the host's result: an item per entry, a word per lexicon state that ends one (the
+ * second-pass context's words mapped to the host's ids; -1 and -2 are not words of the result, -4
+ * neither and not even timed), each word's confidence, the sentence's over the garbage paths from
+ * the first word's end and the shortest last word, the times in ms when `how` (a frame is 11 ms);
+ * reason 2 past the timeout, 3 an abnormal end, 4 above the engine's rejection (_tosControl 99).
+ * SOCOM 1's body, the two confidences inlined (round 40c). What the target took, measured:
+ * - the spilled locals' slots are declaration order (reload's stack slots go by pseudo number);
+ * - wend above wscore in the priorities decides s0 and s1 and every arm's order: each arm's two
+ *   loads and two copies are written so that no copy directly follows its load (the rerun of CSE
+ *   would swap them: `lw s5,..; move s1,s5`), the last arm of the third test in the other order;
+ * - every arm's loads, the two stores of an empty result and the item's four are written in the
+ *   reverse of the target's order (sched1 issues the last of equal insns first);
+ * - the garbage sum read before the three scores: minend's last use is then frames' addu, which
+ *   takes its REG_DEAD and with it the scheduler's lower register weight, so it is issued before the
+ *   shift and gets s3 (the shift s2);
+ * - `a = *p++; ... a -= ...`: one pseudo set twice is global and takes a3, a2, a0 by priority.
+ * The block-local pair `f`, `k` keeps the head loop's registers off the main loop's s3 and s8. */
+void casrCreateResult(CASR *c, RESULT **out, NBLIST *nb, unsigned char how)
+{
+    CTXVT vt;
+    SPINFO info;
+    unsigned int now;
+    NBRESULT *res;
+    RESITEM *item;
+    int base;
+    WORDMAP *map;
+    unsigned short *dict;
+    int nsil;
+    unsigned int minend;
+    int minscore;
+    unsigned int minlen;
+    int lenscore;
+    unsigned int *buf;
+    int *tab;
+    int second;
+    RUNCTX *rc;
+    int bit;
+    RESULT *result;
+    int first;
+    RESWORD *rword;
+    unsigned int gframes;
+    int gscore;
+    int gextra;
+    int id;
+    int prevscore;
+    unsigned int *p;
+    NBRWORD *w, *next;
+    unsigned short *e, *e2;
+    int count, sil, n = 0;
+    unsigned int end, prev, wend, t;
+    int score, wscore, id2, d;
+    RESREC *rec;
+
+    base = *c->frame_base;
+    res = nb->first;
+    nsil = 0;
+    map = c->map;
+    rc = c->sp_ctx;
+    bit = c->lng->CheckBitField(c->lng, 8);
+    FillContextV2VirtualTable(&vt);
+    vt.data = c->ctx->data;
+    minend = -1;
+    minscore = -1;
+    minlen = -1;
+    lenscore = -1;
+    second = 1;
+    if (rc == 0) {
+        second = 0;
+        rc = c->run_ctx;
+    }
+    dict = rc->dict;
+    tab = rc->tab;
+    result = heap_Alloc(c->heap, 12);
+    *out = result;
+    if (result == 0)
+        return;
+    if (c->p420 != 0 && c->p420 < c->frames)
+        result->reason = 2;
+    else if (c->f674 != 0)
+        result->reason = 3;
+    else {
+        now = -1;
+        if (res != 0)
+            t = res->score;
+        else
+            t = -1;
+        if (_tosControl(c->event, 99, (int)&now, 0) != 0)
+            return;
+        if (now < t)
+            result->reason = 4;
+        else
+            result->reason = 0;
+    }
+    if (res == 0) {
+        result->n = 0;
+        result->items = 0;
+        return;
+    }
+    do {
+        n++;
+        res = res->next;
+    } while (res != 0);
+    item = heap_Alloc(c->heap, n * 3 * 8);
+    buf = heap_Alloc(c->heap, n * 3 * 4);
+    p = buf;
+    if (item == 0 || buf == 0) {
+        if (buf != 0)
+            heap_Free(c->heap, buf);
+        else if (item != 0)
+            heap_Free(c->heap, item);
+        result->n = 0;
+        result->items = 0;
+        return;
+    }
+    result->n = n;
+    result->items = item;
+    for (res = nb->first; res != 0; res = res->next) {
+        count = 0;
+        sil = 0;
+        end = 0;
+        first = 1;
+        score = 0;
+        gframes = 0;
+        gscore = 0;
+        gextra = 0;
+        for (w = res->words; w != 0; w = w->next) {
+            unsigned short *f = dict + w->state;
+
+            if ((unsigned short)(*f & 1) != 0) {
+                int k = f[1] + (f[2] << 16);
+
+                if (map != 0) {
+                    int v = map[k].id;
+
+                    if ((unsigned int)(v + 2) < 2 || v == -4)
+                        continue;
+                }
+                count++;
+                if (rc->props[k] & 0x80)
+                    sil++;
+            }
+        }
+        if (nsil == 0)
+            nsil = sil;
+        rword = heap_Alloc(c->heap, count * 16);
+        if (rword == 0) {
+            if (buf != 0)
+                heap_Free(c->heap, buf);
+            return;
+        }
+        item->n = count;
+        item->score = res->score - nsil * c->wtp;
+        item->words = rword;
+        item->start = -1;
+        w = next = res->words;
+        while (next != 0) {
+            prev = end;
+            prevscore = score;
+            e = dict + w->state;
+            next = w->next;
+            id = e[1] + (e[2] << 16);
+            if (next != 0 && second != 0 && bit == 0) {
+                e2 = dict + next->state;
+                if ((unsigned short)(*e2 & 1) != 0) {
+                    NBRWORD *nn = next->next;
+                    unsigned char cls;
+
+                    id2 = dict[nn->state + 1] + (dict[nn->state + 2] << 16);
+                    if (GetSecondPassInfo(c, &vt, &info, c->map[id2].word) != 0) {
+                        if (buf != 0)
+                            heap_Free(c->heap, buf);
+                        return;
+                    }
+                    cls = info.first;
+                    if (GetSecondPassInfo(c, &vt, &info, c->map[id].word) != 0) {
+                        if (buf != 0)
+                            heap_Free(c->heap, buf);
+                        return;
+                    }
+                    if (cls != 0) {
+                        wscore = w->score;
+                        wend = w->end;
+                        score = wscore;
+                        end = wend;
+                    } else if (info.last != 0) {
+                        wscore = next->score;
+                        wend = next->end;
+                        score = wscore;
+                        end = wend;
+                    } else if ((*e2 >> 2) == (*e >> 2)) {
+                        wscore = next->score;
+                        wend = next->end;
+                        score = wscore;
+                        end = wend;
+                    } else if ((*e2 >> 2) == (dict[tab[tab[id2]]] >> 2)) {
+                        wscore = w->score;
+                        wend = w->end;
+                        score = wscore;
+                        end = wend;
+                    } else {
+                        wscore = w->score;
+                        wend = w->end;
+                        score = next->score;
+                        end = next->end;
+                    }
+                    w = next->next;
+                } else {
+                    NBRWORD *nn = next->next;
+                    unsigned short *e3 = dict + nn->state;
+
+                    wscore = next->score;
+                    wend = next->end;
+                    if ((unsigned short)(*e3 & 1) != 0) {
+                        w = nn->next;
+                        score = wscore;
+                        end = wend;
+                    } else {
+                        score = nn->score;
+                        end = nn->end;
+                        w = nn->next->next;
+                    }
+                }
+            } else {
+                if (bit != 0 && map != 0) {
+                    int v = map[id].id;
+
+                    if (v == -4) {
+                        w = next;
+                        continue;
+                    }
+                    if (v == -2) {
+                        end = w->end;
+                        score = w->score;
+                        w = next;
+                        continue;
+                    }
+                }
+                wend = w->end;
+                wscore = w->score;
+                end = wend;
+                score = wscore;
+                if (next == 0 && end - prev < minlen) {
+                    minlen = end - prev;
+                    lenscore = score - prevscore;
+                }
+                w = next;
+            }
+            if (first != 0) {
+                first = 0;
+                if (wend < minend) {
+                    minend = wend;
+                    minscore = wscore;
+                }
+            }
+            if ((*e >> 2) == c->anyspeech) {
+                gframes += wend - prev;
+                gscore += wscore - prevscore;
+                gextra += nb->garbage2[wend] - nb->garbage2[prev];
+            }
+            rec = heap_Alloc(c->heap, 12);
+            if (rec == 0) {
+                if (buf != 0)
+                    heap_Free(c->heap, buf);
+                return;
+            }
+            if (item->start == -1)
+                item->start = prev;
+            d = wscore - prevscore;
+            rword->n = 1;
+            rword->start = prev;
+            rword->end = wend;
+            rword->p = rec;
+            rec->f0 = CalcWordConfidence(nb, d, prev, wend);
+            if (rc->props[id] & 0x80)
+                rec->score = d - c->wtp;
+            else
+                rec->score = d;
+            if (map != 0)
+                rec->word = map[id].id;
+            else
+                rec->word = id;
+            rword++;
+        }
+        *p++ = score - gscore - nsil * c->wtp;
+        *p++ = end - gframes;
+        *p++ = nb->garbage2[end] - gextra;
+        item->end = end;
+        item++;
+    }
+    {
+        RESITEM *it = result->items;
+        int i;
+        int m = result->n;
+
+        p = buf;
+        for (i = 0; i < m; i++) {
+            unsigned int f = it->end;
+            unsigned int d2 = nb->garbage2[minend] + (nb->garbage2[f] - nb->garbage2[f - minlen]);
+            unsigned int a = *p++;
+            unsigned int b = *p++;
+            unsigned int g = *p++;
+
+            a -= minscore + lenscore;
+            b -= minlen + minend;
+            g -= d2;
+
+            it->conf = CalcSentenceConfidence(b, a, g);
+            it++;
+        }
+    }
+    heap_Free(c->heap, buf);
+    if (how != 0) {
+        RESITEM *it = result->items;
+        int i, j;
+        int m = result->n;
+
+        for (i = 0; i < m; i++) {
+            RESWORD *rw = it->words;
+            int k = it->n;
+
+            for (j = 0; j < k; j++) {
+                rw->start = (base + rw->start) * 110;
+                rw->end = (base + rw->end) * 110;
+                rw++;
+            }
+            it->start = (base + it->start) * 110;
+            it->end = (base + it->end) * 110;
+            it++;
+        }
+    }
 }
 
 /* the iso-word block's result: an item per entry of the N best, its confidence from the score
@@ -372,7 +754,7 @@ int cbDoSecondPassIfEnabled(CASR *c, unsigned char a1, unsigned char a2, int arg
         if (c->iso_word)
             err = cbIsoWordRecognised(c, a1, a2, arg1, arg2);
         else {
-            casrCreateResult(c, &r, arg1, 1);
+            casrCreateResult(c, &r, (NBLIST *)arg1, 1);
             ret = c->cb.result_cb(r, c->info);
             if (c->last_state == 0 && ret != 0) {
                 c->last_state = ret;
@@ -1470,7 +1852,7 @@ int casrDoSpelling(CASR *c)
     ev = c->event;
     next = (*(NBRESULT **)c->sp_arg1)->next;
     (*(NBRESULT **)c->sp_arg1)->next = 0;
-    casrCreateResult(c, &r, c->sp_arg1, 0);
+    casrCreateResult(c, &r, (NBLIST *)c->sp_arg1, 0);
     (*(NBRESULT **)c->sp_arg1)->next = next;
     words = r->items->words;
     if (_tosControl(ev, 36, (int)c->f584, 0) != 0)
@@ -2498,7 +2880,7 @@ int cbTOSRecognised(CASR *c, int a1, int a2, int frame)
     RESULT *r;
     int err;
 
-    casrCreateResult(c, &r, frame, 1);
+    casrCreateResult(c, &r, (NBLIST *)frame, 1);
     err = c->cb.result_cb(r, c->info);
     if (c->last_state == 0 && err != 0) {
         c->last_state = err;

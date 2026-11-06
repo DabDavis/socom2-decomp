@@ -130,7 +130,7 @@ typedef struct CASR {
     void *f588;                         /* +588: each word's second-pass record (CreateSecondPassInfo) */
     struct UWTABLES *uw_tables;         /* +592: the user words' tables (intCreateCtxTree's) */
     void *sp_ctx;                       /* +596: the second pass's (CreateSecondPassContext) */
-    int pad600;
+    struct WORDMAP *map;                /* +600: the second pass's word ids and words (FillOut.. ) */
     TNODE *iso_ctx;                     /* +604: the iso-word context's tree, run again after a second pass */
     int f608;                           /* +608 */
     struct LANGVT *lng;                 /* +612 */
@@ -253,6 +253,13 @@ struct LANGVT {
     void *s77;
     unsigned short *(*exevGetpBeginOfItems)(void *ev); /* +312, slot 78 */
 };
+
+/* the second-pass context's map: a word's id for the host (negative: not a word of the result)
+ * and its word in the context */
+typedef struct WORDMAP {
+    int id;                             /* +0 */
+    int word;                           /* +4 */
+} WORDMAP;
 
 /* a warp factor (the language's, _langGetpWarpFactors): the genders it serves and its value */
 typedef struct WARP {
