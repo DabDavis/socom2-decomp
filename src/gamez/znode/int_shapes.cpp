@@ -174,7 +174,8 @@ int CDIPoly::GetAltitude(DiIntersect *di)
  * v0, the flags v1), so the flags are read before the hit's address in the original. n first, p
  * late, a dead first definition, the count or the list in a local: 15-21 (build/scratch/core/v_poly3.py);
  * a goto label, a do/while(0) or a label alone between the asm and the test merges away (MW keeps
- * one block: the C zero still goes ahead of the load, v_bbt_lbl.py) */
+ * one block: the C zero still goes ahead of the load, v_bbt_lbl.py); round 21: p through an
+ * identity inline (numbered late, the trick that fixed buildOrderedCellAtomList) -- 16, 20 with n first */
 int CDIPoly::GetIntersect(DiIntersect *di)
 {
     IntersectStruct *is = &di->m_Intersects[di->m_Cnt];

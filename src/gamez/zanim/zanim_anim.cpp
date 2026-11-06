@@ -1544,7 +1544,9 @@ inline int CZAnim::FindNodeRef(const char *name, int parent, int &search)
  * OPEN: one saved register too many -- MW here strength-reduces the path walk's index (an i*8
  * register beside i), the target shifts i at each Item; an unsigned i, an unsigned Item index,
  * i hoisted and the continue as an else leave it. The array's count is unsigned (the target's
- * sltu) and the search is read late (by reference). */
+ * sltu) and the search is read late (by reference). Round 21: `#pragma opt_strength_reduction off` gives the target's
+ * size (0x430) but un-reduces the inlined FindNodeRef walks the target keeps reduced (40 off): the pragma is
+ * per function, so the path walk's shape is something else */
 int CZAnim::LoadNodeNames(_zrdr *rdr, const char *name, int parent, int search)
 {
     if (!rdr && !name)
