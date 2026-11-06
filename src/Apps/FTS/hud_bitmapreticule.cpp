@@ -30,16 +30,65 @@ public:
     unsigned char _0[0xc];
     CTexture *m_texture;   // 0xc
 };
+
+
+/* the world's camera as the lased point is projected (c2dline.cpp's views: znode.h's
+ * CWorld::m_world and m_camera at 0x128, the matrix set's VU block at 0x3F0, its world-to-screen
+ * matrix at 0x20) */
+class CFrameSetup {
+public:
+    unsigned char _0[0x20];
+    sceVu0FMATRIX mtxWorldToScreen;   // 0x20
+};
+
+class CCamera {
+public:
+    unsigned char _0[0x3f0];
+    CFrameSetup *m_vu;   // 0x3f0 (m_mtxSet.m_vu)
+};
+
+class CWorld {
+public:
+    unsigned char _0[0x128];
+    CCamera *m_camera;   // 0x128
+    static CWorld *m_world;
+};
 }
+
+/* the seal's kit, as far as the lased point goes (kit.h's CZKit at the seal's 0x5E0: the lasing
+ * flag, bit 16 of its first word, and the lased point at 0xC; the names ours) */
+class CZKit {
+public:
+    /* the lased point (inline: read through the kit's own address, by value) */
+    CPnt3D GetLasePoint() const { return m_lasePoint; }
+
+    unsigned int m_bits0 : 16;
+    unsigned int m_lasing : 1;   // 0x2 bit 0
+    unsigned char _4[0xc - 0x4];
+    CPnt3D m_lasePoint;   // 0xc
+};
 
 /* the seal the reticle is ticked for (zseal.h's CZSealBody, as far as this unit reads it) */
 class CZSealBody {
 public:
     bool IsReloading();
 
-    unsigned char _0[0xeb8];
+    unsigned char _0[0x5e0];
+    CZKit m_kit;   // 0x5e0
+    unsigned char _5f8[0xeb8 - 0x5f8];
     CEntity *m_eb8;   // 0xeb8: the turret it works
 };
+
+/* the HUD (hud_main.cpp's, theHUD 0x408E58): whether it shows */
+class CHUD {
+public:
+    bool IsOn();
+};
+
+extern CHUD *theHUD;
+
+/* the 2D library's screen line (c2dline.cpp's, 0x35FCE0) */
+void Draw2DLine(CPnt4D *p0, CPnt4D *p1, CPnt4D *c0, CPnt4D *c1);
 
 /* the reticle's colours, built by the unit's initialiser (0x3FE490) in this order: SOCOM 1's
  * color_base (its symbol table; 12 bytes there too), then SOCOM II's two (the names ours: the
@@ -62,6 +111,9 @@ public:
     void TimerProgressTick(float dT);
     void ReloadTimerTick(float dT, CZSealBody *seal);
     void SetGBarVal(float val);
+    /* the lased point marked on the screen (SOCOM II's, 0x217550: HudTick's call before
+     * ThreatDirTick; the name ours) */
+    void DrawLaseTarget(CZSealBody *seal);
 
     /* SOCOM 1's DWARF names at SOCOM II's offsets (read off the constructor 0x218DE0 and the
      * destructor 0x219090); SOCOM II's own members named by offset */
@@ -263,6 +315,75 @@ void BitmapReticule::UnInit()
  * arguments evaluate right to left, so the far end, the left and the right are computed in that
  * order, as the target's; the base by reference -- read through it, its load is not merged with the
  * far end's (the target loads the y twice for each bar; by value the two loads are one) */
+/* the lased point's box: its size and its ticks' length (OVL1 .data 0x3DC568 and 0x3DC570, 10
+ * and 4, after the defuse timer's statics; the names ours) */
+namespace {
+float s_laseBoxSize = 10.0f;
+float s_laseTickSize = 4.0f;
+}
+
+/* the lased point marked (SOCOM II's; the name ours): with the HUD on and the seal's kit lasing,
+ * the kit's point projected through the world camera's world-to-screen matrix onto the screen
+ * (whole-screen coordinates less the 2048 offset, from the 640x448 frame's centre) and a red box
+ * drawn round it -- its two uprights, then a tick at each corner fading to 0.2 toward the inside.
+ * OPEN, 0x36C against 0x364 (round 59, written): the logic, the frame (the point, the 4D input, the
+ * output, the matrix, the three colours and the three corners at the target's slots) and the copies
+ * (the first corner copy a declaration -- lq / sq --, the later ones assignments, member by member)
+ * are the target's; it reads the lased point through the kit's address (`addiu a0,s0,0x5E0` in the
+ * lasing test's delay slot, then 0xC(a0)) where MW folds the offsets (0x5EC(s0)) whether the kit is
+ * reached through a pointer or a reference local, before or after the test, or the by-value
+ * GetLasePoint; and the projection's FPRs differ (the target: x f4, y f2, 2048 f3, 320 f1, 224 f0),
+ * with two alignment nops more here -- the colours declared first, 1/w first or `out` scaled in
+ * place change nothing (or grow it) */
+void BitmapReticule::DrawLaseTarget(CZSealBody *seal)
+{
+    if (!theHUD->IsOn())
+        return;
+    if (!seal->m_kit.m_lasing)
+        return;
+
+    CPnt3D pos = seal->m_kit.GetLasePoint();
+    CPnt4D in(pos.x, pos.y, pos.z, 1.0f);
+    CPnt4D out;
+    CMatrix m = *(CMatrix *)zdb::CWorld::m_world->m_camera->m_vu->mtxWorldToScreen;
+
+    m.Transform(&in, &out, 1);
+
+    float iw = 1.0f / out.w;
+    float x = out.x * iw - 2048.0f + 320.0f;
+    float y = out.y * iw - 2048.0f + 224.0f;
+    CPnt4D red(1.0f, 0.0f, 0.0f, 1.0f);
+    CPnt4D red2(1.0f, 0.0f, 0.0f, 1.0f);
+    CPnt4D fade(1.0f, 0.0f, 0.0f, 0.2f);
+    CPnt4D a(x, y, 0.0f, 1.0f);
+    CPnt4D b(x, y, 0.0f, 1.0f);
+
+    a.x -= s_laseBoxSize;
+    a.y += s_laseBoxSize;
+    b.x -= s_laseBoxSize;
+    b.y -= s_laseBoxSize;
+    Draw2DLine(&a, &b, &red, &red2);
+    a.x += 2.0f * s_laseBoxSize;
+    b.x += 2.0f * s_laseBoxSize;
+    Draw2DLine(&a, &b, &red, &red2);
+
+    CPnt4D c = a;
+
+    c.x -= s_laseTickSize;
+    Draw2DLine(&a, &c, &red, &fade);
+    c = b;
+    c.x -= s_laseTickSize;
+    Draw2DLine(&c, &b, &fade, &red2);
+    a.x -= 2.0f * s_laseBoxSize;
+    c = a;
+    c.x += s_laseTickSize;
+    Draw2DLine(&a, &c, &red, &fade);
+    b.x -= 2.0f * s_laseBoxSize;
+    c = b;
+    c.x += s_laseTickSize;
+    Draw2DLine(&c, &b, &fade, &red2);
+}
+
 static inline void LoadBar(C2DBitmapPoly &poly, float right, float left, float end, const float &base,
                            zdb::CTexture *tex)
 {
