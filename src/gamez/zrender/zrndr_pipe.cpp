@@ -1050,13 +1050,21 @@ void BuildNodeLocalLightList(zdb::CNode *node);
  * counter, the increment in the body, a while, the layers through a local) -- only the
  * function-scoped `#pragma opt_strength_reduction off` gives the target's size (0x3DC: a stand-in,
  * its original spelling unknown).
- * OPEN, 24 instructions at the target's size, every register the target's -- placement only: the
+ * OPEN, 20 instructions at the target's size, every register the target's -- placement only: the
  * vector's address (s6) is computed at the top and the texture list's (s7) fills the entry test's
- * delay slot, the layers' load precedes the detail loop's entry test, where the target computes all
- * three in the loops' preheaders as hoisted invariants (the vector's in the slot, then the fov
- * narrowing, then the list's; the layers after the test). Named locals keep their definitions'
- * place, and every form that leaves them to LICM (the vector read in place, the list or the layers
- * assigned inside the loop, accessors, pointers, other orders) loses the registers (22-36) */
+ * delay slot, where the target computes the list's in the loop's preheader (the vector's in the
+ * slot, then the fov narrowing, then the list's). THE DETAIL LOOP IS EXACT since the world lane's
+ * round 28 as a hand-rotated loop (`if (k < n) { det = ...; do ... while (++k < n); }`: the layers'
+ * load after the entry test, det still numbered as a named local -- A SECOND STAND-IN, the original
+ * spelling unknown); left to LICM (det read in place, or assigned or declared in the body) its load
+ * is a code-generation temporary and the count, layers and flag trade a0 / a1 / v1 (28). Round 28
+ * also measured: any definition at the top of the visual loop's body (the list as a reference
+ * declared there, or a pointer assigned there) turns MW's guarded loop into a jump to its bottom
+ * test (0x3F0); assigned later in the body, or written in place, the list is copy-propagated and
+ * s7 is never allocated (0x3D4); the two references in any order at the top keep 21-25. Named
+ * locals keep their definitions' place, and every form that leaves them to LICM (the vector read in
+ * place, the list or the layers assigned inside the loop, accessors, pointers, other orders) loses
+ * the registers (22-36) */
 static inline CMatrix *StackTop()
 {
     return CStack::m_top;
@@ -1094,14 +1102,18 @@ bool CPipe::RenderVisual(zdb::CNode *node, zdb::tag_ZVIS_FOV fov)
 
             zdb::CVisual::m_rangeSqdToCamera = d;
             zdb::CVisual::m_applyDetailTexture = false;
-            unsigned int k;
-            zdb::CVisual::DETAIL *det = vis->m_details;
+            unsigned int k = 0;
+            zdb::CVisual::DETAIL *det;
 
-            for (k = 0; k < vis->m_numDetails; k++)
-                if (d <= det[k].m_rangeSq) {
-                    zdb::CVisual::m_applyDetailTexture = true;
-                    break;
-                }
+            if (k < vis->m_numDetails) {
+                det = vis->m_details;
+                do {
+                    if (d <= det[k].m_rangeSq) {
+                        zdb::CVisual::m_applyDetailTexture = true;
+                        break;
+                    }
+                } while (++k < vis->m_numDetails);
+            }
         }
         count++;
         if (!m_node->m_hasMesh && !m_doUI &&
