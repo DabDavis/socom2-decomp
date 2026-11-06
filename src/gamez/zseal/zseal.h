@@ -1932,6 +1932,9 @@ public:
     void HandleBloodDrip(float dT);
     /* a footfall's sound at a point (SOCOM 1's; OVL2 0x5A39B0) */
     void HandleFootfallSound(CPnt3D *pos);
+    /* a foot's step taken: the footfall's anim on the material, its sound and print (SOCOM 1's; OVL2
+     * 0x5A3570) */
+    void HandleSealStep();
     /* the blood decals, one picked at random (SOCOM 1's static vector<CZDecalDef>; OVL1 bss
      * 0x44D568) */
     static std::vector<class CZDecalDef> m_blooddriptexhandles;

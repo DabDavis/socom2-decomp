@@ -209,6 +209,87 @@ extern "C" {
 extern void *data_0044D550;
 }
 
+/* (the footprint, below) */
+extern "C" void func_005A3280(CZSealBody *seal, CPnt3D *pos);
+
+extern "C" {
+/* the footfalls' anims by material (OVL1 bss 0x44D548: ReInitDatabaseHandles fills it) */
+extern void *data_0044D548;
+float floorf(float);
+void *func_00555170(void *stack);
+bool func_005551A0(unsigned short flags, unsigned short mask);
+}
+
+/* a step's footfall at a foot's place, when asked of the walk's phase: its anim on the material underfoot,
+ * then (out of the state 2 for the left, always for the right) its sound and print (an inline for each foot,
+ * as SOCOM 1's; the name ours) */
+void CZSealBody::HandleSealStep()
+{
+    if (!(m_animate_footsteps ? true : false))
+        return;
+    if (!m_lfoot || !m_rfoot)
+        return;
+
+    float t = ((CSealCtrl *)m_control)->m_throttle[2];
+
+    if (m_state != 0 || GetSpeedState() < 2) {
+        if (m_state == 1 && !(m_velM.x * m_velM.x + m_velM.y * m_velM.y + m_velM.z * m_velM.z <= 0.25f))
+            goto walking;
+        if (m_state == 2 && !(m_velM.x * m_velM.x + m_velM.y * m_velM.y + m_velM.z * m_velM.z <= 0.25f))
+            goto walking;
+        if (m_state == 9 && !(m_velM.x * m_velM.x + m_velM.y * m_velM.y + m_velM.z * m_velM.z <= 0.25f))
+            goto walking;
+        if (t < 0.1f && !(t <= -0.1f))
+            return;
+    }
+walking:
+    if (!func_005551A0(((CZBodyAnimBlend *)func_00555170((char *)this + 0x1c0))->m_flags, 64))
+        return;
+    t = ((CZBodyAnimBlend *)func_00555170(&m_blends))->m_tfrac;
+    t -= floorf(t);
+    if (t > 0.0f && t < 0.5f) {
+        if (!m_didlstep && !m_airborne) {
+            CPnt3D p;
+
+            PartInSpace(m_lfoot, 0, &p, 0);
+            m_quat.Apply(&p, &p, 1);
+            p = p + m_posW;
+            m_didlstep = 1;
+            if (m_onMaterial < (int)CMaterialExArray::m_materialex_list.size()) {
+                CZAnim *a = ((CZAnim **)data_0044D548)[m_onMaterial];
+
+                if (a)
+                    a->ActivateArg(1, 5, &p, 0);
+            }
+            if (m_state != 2) {
+                HandleFootfallSound(&p);
+                func_005A3280(this, &p);
+            }
+        }
+    } else if (m_didlstep)
+        m_didlstep = 0;
+    if (t > 0.5f && t < 1.0f && !m_airborne) {
+        if (!m_didrstep) {
+            CPnt3D p;
+
+            PartInSpace(m_rfoot, 0, &p, 0);
+            m_quat.Apply(&p, &p, 1);
+            p = p + m_posW;
+            m_didrstep = 1;
+            if (m_onMaterial < (int)CMaterialExArray::m_materialex_list.size()) {
+                CZAnim *a = ((CZAnim **)data_0044D548)[m_onMaterial];
+
+                if (a)
+                    a->ActivateArg(1, 5, &p, 0);
+            }
+            HandleFootfallSound(&p);
+            if (m_state != 2)
+                func_005A3280(this, &p);
+        }
+    } else if (m_didrstep)
+        m_didrstep = 0;
+}
+
 /* a footprint left at a point: on the polygon the SEAL last stood on, unless its decal node refuses
  * decals, the texture its material names, 3.5 deep, turned as the hips face (OVL2 0x5A3280, just
  * before HandleBloodDrip; new in SOCOM II, the name ours) */
