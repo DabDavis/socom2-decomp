@@ -266,6 +266,7 @@ public:
     static EQUIP_ITEM GetWeaponId(const char *name);   /* 0x3D19E0 */
     static bool IsPrimary(EQUIP_ITEM item);            /* 0x3D1D10 */
     static bool IsSecondary(EQUIP_ITEM item);          /* 0x3D1CE0 */
+    static bool IsLauncher(EQUIP_ITEM item);           /* 0x3D1CB0 */
     static EQUIP_ITEM GetIDType(EQUIP_ITEM item);      /* 0x3D1A60: the item's class */
     static CValve *GetEnableValve(EQUIP_ITEM item);    /* 0x3CF1F0: "Enable_<item>", none for the rest */
     static int GetMenuValue(EQUIP_ITEM item);          /* 0x3D3230: the value UiWeapon holds */
@@ -275,10 +276,20 @@ public:
     static bool IsM203Weapon(EQUIP_ITEM item);         /* 0x3C5E10 */
     bool IsM203Weapon();                               /* 0x3C5E40 */
 };
-/* the weapons' list (zweapon.h's: its lookup by item) and the list itself */
+/* a weapon as the list holds it (zweapon.h's CZWeapon: only its item, at 0x7C) */
+class CZListWeapon {
+public:
+    unsigned char m_pad[0x7c];
+    EQUIP_ITEM m_ID;   // 0x7c
+};
+/* the weapons' list (zweapon.h's, a std::list of the weapons: its size first, its lookups by item
+ * and by place) and the list itself */
 class CZWeaponList {
 public:
     CZFTSWeapon *GetWeapon(EQUIP_ITEM item);           /* 0x3C4B40 */
+    CZListWeapon *GetWeaponByIndex(int index);         /* 0x3C4B00: 0 past the end */
+
+    unsigned int m_size;   // 0x0 (the list's size_)
 };
 extern CZWeaponList m_listWeapons__8CZWeapon;
 /* a character's weapon (zchar.h's CCharacterWeap, SOCOM 1's DWARF: 12 bytes, the item first). Its
@@ -560,6 +571,7 @@ namespace {
 int FindItemSlot(const CSelectedCharsItr &it, EQUIP_ITEM item, int skip);
 bool IsSlotLocked(CSelectedCharsItr it, int slot, EQUIP_ITEM item);
 bool HasSlotsForItem(const CSelectedCharsItr &it, EQUIP_ITEM item, int slot);
+bool CanTakeItem(EQUIP_ITEM item, const CSelectedCharsItr &it);
 
 #pragma auto_inline off
 /* the slot an item goes into: the first empty one past the given, else the next of the equipment
@@ -715,6 +727,148 @@ bool HasSlotsForItem(const CSelectedCharsItr &it, EQUIP_ITEM item, int slot)
         if (AnySlotLocked(s, keep))
             free--;
     return free >= need;
+}
+
+/* the items a character's picks cycle through (SOCOM II's chain, inlined in both pickers below; the
+ * name ours) */
+inline bool IsPickItem(EQUIP_ITEM item)
+{
+    bool r = false;
+
+    switch (item) {
+    case 194:
+    case 154:
+    case 152:
+    case 195:
+    case 254:
+    case 151:
+    case 255:
+    case 141:
+    case 193:
+    case 175:
+    case 171:
+    case 173:
+    case 179:
+    case 176:
+    case 178:
+    case 143:
+    case 142:
+    case 183:
+    case 181:
+    case 182:
+    case 145:
+    case 146:
+        r = true;
+        break;
+    }
+    return r;
+}
+
+/* whether a valve holds any of the bits (ours: inlined in both pickers, its own null test kept) */
+inline bool HasValveBits(CValve *v, unsigned int bits)
+{
+    return v ? bits & v->m_value : 0;
+}
+
+/* a character's pick moved on while the character carries it (SOCOM II's, 0x283E60; the name ours):
+ * a pick item it holds already gives way to the next item round the weapons' list -- not a primary,
+ * a secondary or a launcher, one the character may take and whose menu valve holds the team's bit (1
+ * for player_team 0, else 8) -- searched from the item's own place when none is given, and that one
+ * moved on again in turn; anything else stays */
+EQUIP_ITEM NextPick(const CSelectedCharsItr &it, EQUIP_ITEM item, int index)
+{
+    if (item == EQUIP_NONE)
+        return EQUIP_NONE;
+    if (FindItemSlot(it, item, -1) != -1 && IsPickItem(item)) {
+        bool team0 = false;
+        CZWeaponList *list = &m_listWeapons__8CZWeapon;
+        int count = m_listWeapons__8CZWeapon.m_size;
+        CValve *team = CValve::GetByName("player_team");
+
+        if (team && team->m_value == 0)
+            team0 = true;
+        if (index == -1) {
+            for (int i = 0; i < count; i++) {
+                if (item == list->GetWeaponByIndex(i)->m_ID) {
+                    index = i;
+                    break;
+                }
+            }
+        }
+        bool ok = false;
+        EQUIP_ITEM next;
+
+        do {
+            if (++index >= count)
+                index = 0;
+            next = list->GetWeaponByIndex(index)->m_ID;
+            if (!CZWeapon::IsPrimary(next) && !CZWeapon::IsSecondary(next) && !CZWeapon::IsLauncher(next) &&
+                CanTakeItem(next, it)) {
+                CValve *v = CZWeapon::GetEnableValve(next);
+
+                if (v) {
+                    unsigned int bits = team0 ? 1 : 8;
+
+                    ok = HasValveBits(v, bits);
+                }
+            }
+        } while (!ok);
+        item = NextPick(it, next, index);
+    }
+    return item;
+}
+
+/* a pick moved on past another (SOCOM II's, 0x283B50; the name ours): as NextPick, but an empty pick
+ * moves on too, the next item must not be the other pick or item 195, and CanTakeItem is not asked;
+ * the item found moved on again (past nothing) in turn */
+EQUIP_ITEM NextPickBesides(const CSelectedCharsItr &it, int index, EQUIP_ITEM item, EQUIP_ITEM other)
+{
+    int slot = -1;
+
+    if (IsPickItem(item))
+        slot = FindItemSlot(it, item, -1);
+    if (slot != -1 || item == EQUIP_NONE) {
+        bool team0 = false;
+        CZWeaponList *list = &m_listWeapons__8CZWeapon;
+        int count = m_listWeapons__8CZWeapon.m_size;
+        CValve *team = CValve::GetByName("player_team");
+
+        if (team && team->m_value == 0)
+            team0 = true;
+        if (index == -1) {
+            for (int i = 0; i < count; i++) {
+                if (item == list->GetWeaponByIndex(i)->m_ID && i != index) {
+                    index = i;
+                    break;
+                }
+            }
+        }
+        EQUIP_ITEM next;
+        bool ok = false;
+
+        do {
+            if (++index >= count)
+                index = 0;
+            next = list->GetWeaponByIndex(index)->m_ID;
+
+            bool can = true;
+
+            if (next == 195)
+                can = false;
+            if (!CZWeapon::IsPrimary(next) && !CZWeapon::IsSecondary(next) && !CZWeapon::IsLauncher(next) &&
+                next != other && can) {
+                CValve *v = CZWeapon::GetEnableValve(next);
+
+                if (v) {
+                    unsigned int bits = team0 ? 1 : 8;
+
+                    ok = HasValveBits(v, bits);
+                }
+            }
+        } while (!ok);
+        item = NextPickBesides(it, index, next, EQUIP_NONE);
+    }
+    return item;
 }
 
 /* a weapon put into a selected character's slot (SOCOM II's, 0x282F20; the name ours): an item taking
