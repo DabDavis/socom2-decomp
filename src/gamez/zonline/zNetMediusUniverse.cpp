@@ -18,6 +18,7 @@
 #include <stdlib.h>
 #include <string>
 #include <vector>
+#include <queue>
 
 #include "../zrdr/zrdr.h"
 #include "../zsav/zsave.h"
@@ -137,13 +138,18 @@ extern unsigned int data_0049E2D4;   /* zSys's ticks per second */
 const char *GetString(int id);   /* a localised text (util_loc.cpp's) */
 
 /* a state machine whose states are member functions (zanim_menu.h's CSimpleStateMachine, declared
- * again here for the same reason: the layout and the two inline virtuals alike) */
+ * again here for the same reason: the layout and the two inline virtuals alike -- zanim_menu.h itself
+ * cannot sit beside zrdr.h, znet.h and zsave.h: its _zrdr, CZNetwork, CRdrArchive, CRdrEditor and the
+ * save managers are this unit's headers' classes again) */
 class CSimpleStateMachine;
 typedef void (CSimpleStateMachine::*SSMState)(unsigned char event);
 
-extern "C" {
-void func_002852B0(void *queue, SSMState state);    /* the state queue's push */
-}
+/* the state queue (util_ssm.cpp's, as zanim_menu.h declares it: a class of its own around std::queue
+ * over a deque of the 12-byte member pointers) -- SetState's push is the deque's push_back, called out
+ * of line (0x2852B0, zanim_menu.cpp's copy linked; spelled through the placeholder func_002852B0 until
+ * the online lane's round 29, SAME-BY-ADDRESS) */
+class CStateQueue : public std::queue<SSMState> {
+};
 
 class CSimpleStateMachine {
 public:
@@ -159,7 +165,7 @@ public:
     {
         SSMState s = state;
 
-        func_002852B0(m_queue, s);
+        m_queue.push(s);
     }
 
     void Idle(unsigned char event);
@@ -170,7 +176,7 @@ public:
 
     unsigned int m_thread;   // 0x4
     SSMState m_state;   // 0x8
-    unsigned char m_queue[0x18];   // 0x14
+    CStateQueue m_queue;   // 0x14
     unsigned char m_done;   // 0x2c
     int m_30;   // 0x30
     int m_thread_id;   // 0x34

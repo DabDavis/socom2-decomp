@@ -74,6 +74,14 @@ struct CZNetVoice {
     CZNetVoice();
     /* the radio's two message types registered with the network (0x310210) */
     void zNetRegisterVoice();
+    /* THE TWO TALK TESTS, named by every caller (the online lane's round 29): the HUD's radio icon,
+     * who's-talking line, teammate names and compass (CRadioIcon_Dynamic::Tick, CWhosTalking::Tick,
+     * CMPTeammateNames::Tick, MapCompass::Tick) and the UI's launch check (UICheckForcedLaunch: the
+     * talker's persona from m_slots[m_slot] put in PLAYERTACOVAR) all pass data_0045B718, this object
+     * -- someone else holding the channel's slot (0x30E790), and us talking, the talk valve set to
+     * match (0x30E710) */
+    bool IsReceiving();
+    bool IsTalking();
 
     unsigned char m_state;   // 0x0: 1 idle, 2 a slot asked for, 3 talking, 4 closing
     unsigned char _1[0x24 - 1];
@@ -107,7 +115,7 @@ struct CZNetVoice {
     VoiceSlot m_slots[12];   // 0x70
     unsigned char *m_tone;   // 0xd0: the open and close tone's samples (data_003DF540 at rest)
     short m_tonebuf[2000];   // 0xd4: the tone as the headset plays it
-    CValve *m_valve;   // 0x1074: the talk valve (VoiceTalk's)
+    CValve *m_valve;   // 0x1074: the talk valve (IsTalking's)
     int m_usecodec;   // 0x1078 (VoiceChat's)
     void *m_echo;   // 0x107c: the echo canceller (VoiceHeadset's)
     int m_1080;   // 0x1080
@@ -124,11 +132,6 @@ struct CZNetVoice {
     int m_ms[2];   // 0x10d4
 };   // 0x10dc: CMission::Init's operator new(4316)
 typedef CZNetVoice VoiceRadio;
-struct VoiceTalk {
-    unsigned char m_state;   // 0x0
-    unsigned char _1[0x1074 - 1];
-    CValve *m_valve;   // 0x1074
-};
 
 /* the speech encoder: its handle, then the frame it works on -- 320 bytes of samples in, the
  * packed bytes out, their count, and whether a byte carries over (the codec's; OVL1 0x24F888) */
@@ -1185,22 +1188,27 @@ void func_00310080(VoiceChat *v, int port)
     v->m_open = 1;
 }
 
-/* whether the current slot holds another client (OVL1 0x30E790) */
-bool func_0030E790(VoiceRadio *r)
-{
-    return r->m_slots[r->m_slot].m_client != 256 &&
-           r->m_slots[r->m_slot].m_client != theNetwork.zNetGetMyGameClientIndex();
 }
 
-/* talking, told to the valve (OVL1 0x30E710) */
-bool func_0030E710(VoiceTalk *t)
+/* whether the radio's current slot holds another client: someone else talking, heard here (OVL1
+ * 0x30E790; the name ours) */
+bool CZNetVoice::IsReceiving()
 {
-    bool talking = t->m_state == 3;
+    return m_slots[m_slot].m_client != 256 && m_slots[m_slot].m_client != theNetwork.zNetGetMyGameClientIndex();
+}
 
-    if (t->m_valve)
-        t->m_valve->SetValue(talking);
+/* whether we are talking (the state 3), the talk valve told so on the way (OVL1 0x30E710; the name
+ * ours) */
+bool CZNetVoice::IsTalking()
+{
+    bool talking = m_state == 3;
+
+    if (m_valve)
+        m_valve->SetValue(talking);
     return talking;
 }
+
+extern "C" {
 
 /* the voice's stream as the DME carries it: two formats, the recording's then the playback's, and
  * the record and packet callbacks (0x38 bytes; zNetDme.cpp's connects hand it to the DME) */

@@ -376,7 +376,9 @@ void CZSealBody::SetWeaponState(WEAPON_STATE state)
  * local (in one statement or two), and every declaration order of named locals for the hold, down
  * and current times (2 and 3 of them, each sum and compare way round, 36 variants): 5-7 off
  * (build/scratch/kit/v_wt.py); igreplay's float record: the colouring follows the numbering, the
- * operand order does not */
+ * operand order does not. Round 59: the test through a three-float inline taking (down, current,
+ * hold) or (hold, current, down) -- its by-value copies bound last argument first, the numbering
+ * the replay wants -- with the sum either way round, the store's sum either way: 5-6 */
 void CZSealBody::WeaponsTick(float dT)
 {
     CSealWepView *v = (CSealWepView *)this;

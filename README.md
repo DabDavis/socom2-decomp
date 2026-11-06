@@ -48,13 +48,14 @@ and data reference resolved to the address the shipped code uses.
 | `tools/s1units.py` | SOCOM II's translation units: its static initialisers against SOCOM 1's named `__sinit_<file>`s |
 | `tools/unitscan.py` | where one hand-written unit could be two: its pinned and inlined pairs, the target's own calls, every cut that separates the first and none of the second |
 | `tools/s1vtables.py` | virtual functions named slot by slot: SOCOM II's vtables found by their RTTI's class-name string, aligned with the demo's `__vt__` tables; `--holdout` measures it on names the map already has |
-| `tools/try.py` | compile one unit with one variant at a time and score one symbol, in a scratch copy of `src/` and `include/`, built as sccheck builds it (the unit's own `sc:` directive: a GCC unit's toolchain and flags, `as=`, `overlay=`); a variant is a `--sub` and the `--and`s after it, or one of `--variants FILE.py`'s; `--target ROW` scores against another row, `--all` every function of the unit (GCC round 27a); each miss's difflib distance from its row beside the verdict, `d=N (0xCAND vs 0xTARGET)` (the AI core's vd.py: GCC round 39a; `--no-dist` the verdict alone) |
+| `tools/try.py` | compile one unit with one variant at a time and score one symbol, in a scratch copy of `src/` and `include/`, built as sccheck builds it (the unit's own `sc:` directive: a GCC unit's toolchain and flags, `as=`, `overlay=`); a variant is a `--sub` and the `--and`s after it, or one of `--variants FILE.py`'s; `--target ROW` scores against another row, `--all` every function of the unit (GCC round 27a); each miss's difflib distance from its row beside the verdict, `d=N (0xCAND vs 0xTARGET)` (the AI core's vd.py: GCC round 39a; `--no-dist` the verdict alone); OLD and NEW are taken as typed (a `\n` is a backslash and an n), `-n` makes `\n`/`\t` a newline and a tab in both, `-e` decodes the usual escapes in each NEW alone (GCC round 43a) |
 | `tools/objcmp.py` | a header change proved code-neutral: every hand-written unit built at BASE's text and as it is, function by function, data section by section (GCC round 27a, the SEALs' round-26 harness); `--by-address` compares every name a map resolves as its map address, so a placeholder respelled by its row's name is the same (GCC round 29a); both sides are built at one scratch path, so a path the compiler writes (an unreferenced `__FILE__`) is no difference (GCC round 34a); Metrowerks' anonymous `@N` objects are compared by content and an unreferenced one (which the linker drops) left out, so a header's literal shifting every later rank is no difference (GCC round 36a; `--anon-by-rank` the old rule) |
 | `tools/scperm.py` | the permuter: EQOA's tree-sitter mutations of one function, MW-compiled and alignment-scored (needs `.venv`) |
 | `tools/ccsweep.py` | compiler identification for the GCC front: one source over every ee-gcc toolchain and flag set (and `//==` source variants), every function it defines scored |
 | `tools/ccperm.py` | every order of a marked block of statements, for GCC's scheduled stores: which source order gives the target's |
 | `tools/ccflags.py` | a GCC range's drafts recompiled with a flag added: a flag the vendor used loses none (how strict aliasing was told apart) |
-| `tools/ccdump.py` | a GCC unit compiled under its own `sc:` toolchain and flags with cc1's register-allocation and scheduler dumps (`-dl -dg -dS -dR -fsched-verbose=4`, the 2.9-991111 builds' spellings handled); `-f FUNC` splits one function's sections and prints its allocation order, each pseudo's final register and global-alloc's priority of each (floor_log2(refs) x refs / live, ties to the lower pseudo; checked against .greg's order: GCC round 29a) -- for register-only misses (GCC round 14c's harness, promoted in 15a) |
+| `tools/ccdump.py` | a GCC unit compiled under its own `sc:` toolchain and flags with cc1's register-allocation and scheduler dumps (`-dl -dg -dS -dR -fsched-verbose=4`, the 2.9-991111 builds' spellings handled); `-f FUNC` splits one function's sections and prints its allocation order, each pseudo's final register and global-alloc's priority of each (floor_log2(refs) x refs / live, ties to the lower pseudo; checked against .greg's order: GCC round 29a) -- for register-only misses (GCC round 14c's harness, promoted in 15a); `--dump -dL` and `--dump=-dL` alike (GCC round 43a) |
+| `tools/pragmascan.py` | every OPEN function of the hand-written Metrowerks units wrapped alone in each optimiser pragma -- `#pragma P off` the body's first line, `#pragma P reset` after its closing brace, P of opt_common_subs, opt_loop_invariants, opt_propagation, opt_strength_reduction, opt_lifetimes, opt_dead_assignments, peephole (`--pairs`: every two) -- its unit built as sccheck builds it at one path length and EVERY function scored: a HIT makes it byte-exact and loses nothing, `closer` brings it nearer (d= before -> after); bodies found by name and scope and confirmed by one probe build per unit; resumable (`--report`), a per-unit budget, 2 jobs (the kit's round-58 csescan.py, generalised: GCC round 43a) |
 | `tools/treesearch.py` | which source trees of a sum give the target's: every tree over a spec's leaves compiled under its GCC directive, each function's dataflow read back from cc1's RTL dump (2.96's fold regroups sums; the recogniser lane's round 18c, promoted in GCC round 20a) |
 | `tools/asmunit.py` | an assembler unit (`.s`) for a library object that was assembly: the rows transcribed (canonical instructions, labels, map names, %hi/%lo of the symbols the code addresses, the unit's own `.bss` labels), assembled by the toolchain named and scored until every function matches |
 | `tools/structdiff.py` | one function against its row with the registers and the link normalised, so only STRUCTURAL differences show (opcodes, unrelocated immediates, order, which function is called); says how many instructions differ in their registers alone -- a register-only miss -- and `--regs` keeps the registers (the game states' round-35 structdiff.py and mydiff.py, promoted in GCC round 31a) |
@@ -2065,6 +2066,89 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the online lobby, round 29** (the lobby's deque<LOBBY_STATE>() 0x2E0D90 -- through a marked dead-stripped
+  device, zNetMedius.cpp's LobbyQueueImp in src/ABSENT.txt -- and the chat's deque<MediusChatMessage>() 0x2F6230 byte-exact
+  from source, two of the twelve draft-held rows; 0x30E710 / 0x30E790 named CZNetVoice::IsTalking / IsReceiving by every
+  caller, three deque buffer constructors named; the state-queue push respelled `m_queue.push(s)`):
+  - AN MW OBJECT PUTS EACH FUNCTION IN ITS OWN .text SECTION IN CODE-GENERATION ORDER -- igdump's record order, the image's
+    layout; readelf's symbol order is not it (the MSL's round 38 rule, used on a unit's own tail);
+  - a dead own function defined last instantiates the out-of-class template members it names in the first walk, so a member
+    of a class walked earlier -- in a later walk -- can inline them (the device built a `__deque_imp` from an allocator: the
+    copy constructor is then generated inside the walk and `allocator<PCv>()` is instantiated in time for deque() to inline
+    it); it cannot help a member its walk defers for an unparsed implicit callee;
+  - a rename whose row MATCHED.txt held through a draft needs that draft's `sc: as=` line, or the partial check reports the
+    row lost; `try.py --all` shows only the first missed names -- compare its counts, and confirm a gain with sccheck in
+    place;
+  - zanim_menu.cpp's COnlineArmoryView and hud_mpinfobox.cpp's CRadioState declarations of 0x30E710 / 0x30E790 are
+    misreadings: every caller passes data_0045B718, the voice object CMission::Init creates (the UI's and the HUD's rounds
+    asked to respell).
+- **Tells from the weapons, round 39** (no new row; vis_vu.cpp's eight data placeholders respelled to their named CVisual
+  statics and zwep_weapon.cpp's to CSnd::m_listener, SAME-BY-ADDRESS; MW's PowerPC Scheduler.c and Peephole.c added to
+  build/scratch/mweppc/):
+  - MW SETS UP A CALL'S DEAD ARGUMENTS FIRST and the ones still read after the call last, each group in parameter order, the
+    last move filling the jal's delay slot; "read again" is a linear scan, so a goto back into the loop does not count --
+    CMesh::ApplyDecal's last 2 need `nt` read after its last call, and every no-code read tried (`nt = nt`, `+= 0`, `| 0`, a
+    cast round trip, `(void)nt`) is folded away first;
+  - MW's scheduler breaks ties by original order, so a delay slot gets the last independent instruction generated before the
+    call;
+  - the loop phase -- IRO_PullOutInvariantAssignments and the rest -- runs in pass 0 only, after that pass's first
+    propagation and before its common-subexpression step; a reference bound in the same block is folded by pass 0's first
+    propagation, i.e. before the loop phase, and a plain pointer variable kept address-taken stays in memory to the end --
+    only class objects are scalarised in pass 1 (Ripple's per-strip pointer, still 5);
+  - the pragma scan over every weapons unit, singles and pairs: no hit; 17 variants nearer, best 0x3B0A70 d 48 -> 37.
+- **Tells from the kit and AI states, round 59** (LookAt 0x60DCF0 by camera.cpp's own CAppCamera::LookAt source shape,
+  CAiGroup::act_camera::Tick 0x60DB60 -- open since round 17 -- and CAiSSuspended::Tick 0x5F1C70 -- open since round 6 --
+  byte-exact; 0x60A850 measured to return bool by its own code):
+  - WHEN TWO FUNCTIONS ARE THE SAME CODE, LOOK FOR EITHER ALREADY MATCHED ELSEWHERE AND REUSE ITS SOURCE SHAPE: camera.cpp's
+    byte-exact LookAt (CSE on, its LaRight / LaNegRow / LaSet3 reference inlines, the translation through a by-value
+    setter), minus the eye store, was the whole fix for ai_group.cpp's -- after seven of the lane's own spellings;
+  - one expression's address shared by CSE across blocks where the target recomputes it needs CSE off in the body plus
+    hand-sharing of what the target does share (a flags word in a local); an identical pair of call arguments needs a
+    per-call block local under propagation off (act_camera::Tick);
+  - variables declared uninitialised at a block's top are numbered at that declaration, ahead of an initialised local
+    declared after them -- a lever for pushing a named local later in the saved-register order (`igreplay --permute` named
+    the order first);
+  - an address-taken local re-read from its frame in each arm of a test is reproduced by testing a register copy that
+    initialises it; testing the copy itself lets MW forward the load into the arms (CAiSSuspended::Tick);
+  - a function's own code settles its return type: 0x60A850 as int adds `andi v0,s1,0xff` where the target moves s1, and an
+    int local turns `r = true` into li where the target has daddiu -- its callers' sltu is an `&&` materialising its
+    operand, which a bool return also gives.
+- **Tells from the engine core, round 26** (no new row: grid_di.cpp complete in source -- CGrid::GetIntersectBatch 0x2D3CF0,
+  0xA90, 25 off in float registers, and NodeGetIntersectBatch 0x2D3030, 0xCB4, 101 off, both at the target's size --;
+  camera.h gains the SEAL's zoom fields and CZKit's members for the states' HandleNewZoom; GetBBoxCorners' inline in a new
+  int_shapes.h for the world; the integrator then applied the world's bool CDI::GetIntersect):
+  - one loop counter declared at the top and reused by several loops: its later uses are split off and numbered after the
+    strength-reduced pointers, which gives those loops' saved registers (GetIntersectBatch 77 -> 38 -> 25);
+  - an offset-0 member of a local array read directly gets its common-subexpression temporary only in the second optimiser
+    pass; members at other offsets go through a hoisted address and get theirs in the first (`igreplay --cls 1 --move
+    64=31.5` gives the target's float colours, no source shape yet);
+  - an MSL-style `min` returning a reference selects between addresses, the target's value select comes from value
+    ternaries; an explicit `!(a < b)` inside an inline materialises the not, `a >= b` keeps it a branch;
+  - a global assigned in its own statement and then tested is stored and read back; assigned inside a call's argument (`f(g
+    = x)`) the value is passed and the store lands in the delay slot; an inline taking a vector by reference keeps the
+    vector's address in a register (`addiu a1,s5,116; lw 8(a1)`) where `node->m_di.begin()` folds the offset;
+  - the pragma scan's LoadNodeNames lead: strength reduction off is 40 off at the size, as round 21 found -- no pragma kept;
+    CSE off over all 30 written opens: no hit.
+- **Tells from the SEALs, round 57** (five rows, all unwritten before, byte-exact: CSealCtrl::CSealCtrl 0x598280 -- 0x5B8,
+  on the first compile --, the grenade stretch 0x564D20-0x5657BF complete -- the choice 0x565110, the throw test 0x565460,
+  the deploy 0x564D20 -- and the vehicle dodge 0x569550; zseal.h: CAiDecay's third word SOCOM 1's one-byte TYPE, sixteen
+  CSealCtrl members named, CSealCtrlAi::m_770 a float):
+  - a constructor matches when its members are built in declaration order (the timers as `CAiTimer(0.0f)`, the decays, the
+    parameters' inline defaults, the scalars as mem-initializers between them) and its body is written in the target's store
+    order, one bitfield per statement (round 56's rule, again on the first compile);
+  - a bool call result used as an `&&` operand converts with sltu, assigned to a bool with andi; an inline that assigns `ok`
+    in each arm and has one exit gives the target's merge, two returns add an andi at the join (0x565110);
+  - a byte-enum field read straight into a byte-enum variable loads with lb, unnormalised, even for EQUIP_ITEM's unsigned
+    values -- a signed char field cast to the enum gives lbu; MW keeps `(unsigned char)item` in one saved register across
+    inline conversions only if every compare and switch is spelled with that cast, a plain `item != EQUIP_NONE`
+    re-normalises it (0x564D20);
+  - a materialised negated test (sltu / xori / bnez) comes from an inline returning `!((a & b) != 0)` over the masks by
+    value -- written over the two entity pointers, MW hoists the second entity's field address out of the loop; an inline's
+    reference parameter bound to a named reference local keeps that address in a saved register for both of the inline's
+    calls (0x565460); a pointer local declared ahead of a float difference flips the scheduler's operand loads;
+  - 0x57F530 written as explicit gotos is laid out the same way: MW's branch optimiser, not the front end, sets its block
+    order; the pragma scan's lead for 0x57D710 (CSE and propagation off: 6 off, the SEAL / stack register swap gone) leaves
+    the hoisted stack address's placement.
 - **Tells from completing the MSL headers, round 38** (the three requests measured, none applied -- comments only in
   include/vector and include/deque; probes build/p38/, untracked: permall.py runs tools/igreplay.py --permute keeping
   every hit and prints each pair's relation, board.py / mkv.py / vrun.py / gen38.py score class-insert variants over the
@@ -2091,6 +2175,24 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
   - request (3), resize<reader> 0x51C3F0, was closed by the AI core's round 36 (its device); the deque tail, cdeque<PCv>'s
     erase / insert / pair / remove_if / AddItem / CountKeys / OnIsEquipmentSelected / the hangul pieces: no new idea, not
     attempted.
+- **Tells from the zdb world, textures, rdr and sound, round 32** (Particle::BufferElement::Draw 0x3251B0 -- 0x3CC,
+  unwritten before: SOCOM 1's billboard with SOCOM II's light tint and the VU0 altitude fog -- byte-exact; DrawXZ 0x325CC0
+  (0x68C) written at the target's size, OPEN at 2; BuildNodeLocalLightList from d=57 to d=48; data rows AppliedToNodeNum
+  0x3DFF78, CVisual::m_ModelToWorld 0x4B4E60 and BufferElement::m_spr 0x45C4B8 named, SOCOM 1's statics; CDI::GetIntersect
+  as bool measured lossless, not applied):
+  - a VU0 block written as a plain `asm {}` keeps the IR optimiser (the engine core's round 25): Draw matched only that way,
+    `asm volatile` grew it to 0x3D4;
+  - the temporaries an inline creates are numbered ahead of those the linearizer makes: reading members through one-line
+    accessors fixed DrawXZ's GPR and FPR pairs; `float scale = m_scale; 256.0f * scale` numbers the member's load ahead of
+    the constant, as a `(float)` cast on the member does;
+  - a by-value struct result should initialise its local, not be assigned to it -- assigned, it is copied through four FPRs
+    into an extra stack slot;
+  - `igreplay --permute` over BuildNodeLocalLightList's world and light pointers named the order the target wants (the light
+    first), which declaring the light at the top gives; CSE off (d=167) and propagation off (d=109) are worse there;
+  - CDI::GetIntersect returning bool, as in both SOCOMs, is lossless over every hand-written unit (objcmp, 664, 0 differ)
+    but cannot change in znode.h and node_world.h alone: int_shapes.cpp's two definitions and fts_main.cpp's CDIDummy
+    override change with it (build/scratch/world-r32/wld/getintersect_bool.patch, kept for after the engine core's round
+    26).
 - **Tells from the HUD, round 63** (hud_actionbitmap.cpp whole: CZActionBitmap::HudTick 0x21D9D0,
   CActionTxtrMachine::SpecializeActionString 0x220350, Render_ver_2 0x21F210 and Open 0x21F850 -- all four unwritten before,
   SOCOM 1's, 6,200 bytes -- byte-exact and named; nine data rows; the SEALs' and the states' respells in four units,
@@ -9444,9 +9546,11 @@ constructor -- zrdr_edit.cpp's copy is 0x30 against 0x28 since the MSL headers' 
 carries an `sc: as=` line) -- 0x1EF8C0, st_core.cpp's
 ~vector<CMovieCue> (0x60 against 0x80: generated early by FreeVector's temporary), 0x510080, OVL2's
 __list_imp destructor that seal_aistate.cpp's missing copy now reports "elsewhere", and, since the
-online lane's round 10 renamed their rows, the lobby and chat queues' 0x2E0D90, 0x2E0DC0 and 0x2F6230
-(each draft carries an `sc: as=` line; ~CLobbySaveModule's copy 0x2FD070, once listed with them, matches from source
-since the online lane's round 18), and since the UI lane's round 12 the hangul pieces' clear 0x3929C0 (its element's destructor one inline level deeper in the original; a draft with an `sc: as=` line -- the keyboard grid's clear 0x38FEF0, listed with it, matches from source since the UI's round 13), and since the integrator's renames after the MSL headers' round 14 ~__vector_imp<zrdr_sym> 0x333330 (zrdr_parse.cpp's copy inlines the deleter's destructor, 0x108 against 0x58; its draft carries an `sc: as=` line), and since the weapons lane's round 17 renamed it, the callback list's ~__list_imp<WEAPON_CALLBACK_STRUCT> 0x3C6880 (zwep_global.cpp's copy 0xB8 against 0x80: include/list's open teardown shape), since the world's round 11 ~list<CRipple *> 0x322370 (node_wave.cpp's copy 0xD4 against 0x60: the deleter destructor one level taller; matched from hand source since the MSL headers' round 36 -- the range erase's step through ++), and since the weapons' round 20 deque<void *>() 0x3B7FA0 (vis_vu.cpp's copy 0x30 against 0x28: include/deque's middle level; its draft carries an `sc: as=` line) -- THIRTEEN rows in all, TWELVE since the MSL headers' round 36 -- 0x29FF60 and
+online lane's round 10 renamed their rows, the lobby queue's 0x2E0DC0 (its draft carries an `sc: as=` line;
+~CLobbySaveModule's copy 0x2FD070, once listed with it, matches from source since the online lane's round 18, and the
+lobby's and the chat's deque() 0x2E0D90 and 0x2F6230 since its round 29 -- whose names added the lobby buffer's
+allocator constructor 0x2E0D50, 0x2C against 0x18, and the chat's __deque_buf() 0x2F6260, 0x20 against 0x30, each
+draft with an `sc: as=` line: twelve still), and since the UI lane's round 12 the hangul pieces' clear 0x3929C0 (its element's destructor one inline level deeper in the original; a draft with an `sc: as=` line -- the keyboard grid's clear 0x38FEF0, listed with it, matches from source since the UI's round 13), and since the integrator's renames after the MSL headers' round 14 ~__vector_imp<zrdr_sym> 0x333330 (zrdr_parse.cpp's copy inlines the deleter's destructor, 0x108 against 0x58; its draft carries an `sc: as=` line), and since the weapons lane's round 17 renamed it, the callback list's ~__list_imp<WEAPON_CALLBACK_STRUCT> 0x3C6880 (zwep_global.cpp's copy 0xB8 against 0x80: include/list's open teardown shape), since the world's round 11 ~list<CRipple *> 0x322370 (node_wave.cpp's copy 0xD4 against 0x60: the deleter destructor one level taller; matched from hand source since the MSL headers' round 36 -- the range erase's step through ++), and since the weapons' round 20 deque<void *>() 0x3B7FA0 (vis_vu.cpp's copy 0x30 against 0x28: include/deque's middle level; its draft carries an `sc: as=` line) -- THIRTEEN rows in all, TWELVE since the MSL headers' round 36 -- 0x29FF60 and
 0x2D02B0 match from hand source since the MSL headers' completion). Since the GCC front's round 38a
 sccheck tells such a row from a real loss itself: a row a partial check loses ONLY by inline copies is
 built and scored against its other emitters outside `--files` (its draft, and the hand-written units
@@ -12179,6 +12283,89 @@ showed:
   here: 720 orders of its six assignments, `tools/ccperm.py`, none matches, nearest 4; the vendor's field types are the
   next lever); func_001C1D40 (a loop-size local makes it worse, d=123 against 120). Not reached: round 41a's codec
   opens (their diagnoses stand), 0x2485D0 (the R5900's accumulator float ops, adda.s/madda.s/madd.s, m2c refuses it).
+
+**The tools, round 43a** (the integrator's requests). (1) **`tools/pragmascan.py`, a tree-wide pragma scan** (the
+kit's round 58: `#pragma opt_common_subs off` as the first line of a body, `reset` after its closing brace, made
+FaceXZ 0x60CAD0 and CAiDodge::Destroy 0x5FAD50 byte-exact; its csescan.py covered its own units). Every hand-written
+Metrowerks unit (no `compiler=ee-gcc*` directive) is built as sccheck builds it in a scratch copy of src/ and
+include/ laid out at ONE path length (objcmp's side_root, 160: round 38a's PATH-DEPENDENT code), every function scored
+as sccheck scores it (an inline copy missing outside the unit's span is `elsewhere`, not open); each OPEN function is
+found in the unit's own text -- the declarator's name and scope read off the mangled name (`__ct`/`__dt`/operators,
+`Q` scopes, `@unnamed@` as the text's `namespace {`) and matched against every body the text defines (namespaces,
+`extern "C"` blocks, classes' in-class bodies; a macro call before a signature is never taken for it: the declarator
+is the parenthesis group followed only by `const`/`throw()` and the body or a `:` initialiser list) -- and CONFIRMED
+by one probe build per unit: a `void (* volatile)(void)` local naming `__pragmascan_probe_<k>` opens each candidate
+body, and the function is the body whose probe its code references first (an overload set told apart, a lone name
+checked: a body read wrong is never wrapped in silence). Then, per pragma P of opt_common_subs, opt_loop_invariants,
+opt_propagation, opt_strength_reduction, opt_lifetimes, opt_dead_assignments and peephole, that body alone is wrapped
+and the unit rebuilt, every function scored: a HIT is byte-exact and loses nothing else in the unit, `closer` nearer
+its row (try.py's d=, before -> after) with nothing lost. Each pragma is checked first: Metrowerks warns `illegal
+#pragma` under `-w all` for a name it does not know -- a misspelt pragma would otherwise change nothing anywhere and
+read as "no hit" -- so a fixture is compiled under every MW toolchain the units name and a refused pragma stops the
+scan. Resumable (one JSON line per base build and variant, keyed by the unit's text, the headers' digest and the
+variant; `--report` reads it back), `--unit-budget` (900 s), `--jobs 2`, `--pairs` (every two pragmas, `P+Q`).
+**THE CANARY'S PREMISE, CORRECTED**: a3785ee6's FaceXZ (the body before the kit's round 58) is NOT byte-exact under
+CSE off -- 0x104 against 0xF4, d=14 (36 off without) -- the kit respelled the body as well (x through a no-op
+`(float)`, z assigned after it, -d.z a local, the translation by CPnt3D's three-float constructor); master's body with
+its two pragma lines taken out is 36 off and byte-exact with them, so the canary's
+`test_pragmascan_finds_the_kits_cse_off` (11 assertions) uses that: open without, found and confirmed by its probe,
+wrapped into master's text byte for byte, a HIT under opt_common_subs with nothing lost and none under
+opt_propagation, a re-run building nothing, `opt_bogus_thing` refused and the seven legal, the mangled scopes and a
+text's bodies read as the matcher needs. (2) **`tools/ccdump.py --dump -dL`** (the GCC c lane's round 38c): argparse
+reads a lone value starting with `-` as an option, so only `--dump=-dL` worked (and `--dump -fsched-verbose=4` was
+taken for `-f`); the argument after `--dump` or `--flags` (or an abbreviation naming one alone) is now joined to it
+first, `--dump=X` unchanged; canary `test_ccdump_takes_a_dump_flag_as_its_own_argument` (5: argparse alone refuses
+the separate form; tty.c's loop dump the same file from both). (3) **`tools/try.py -e/--escapes`** (the HUD's round
+63, by the integrator): `--sub OLD 'x;\n'` writes a backslash and an n -- the default, kept, since a C escape in the
+source (`'\n'`, `"%d\n"`) must match as typed (tty.c's canaries rely on it), and `-n` (both sides' `\n`/`\t`) was
+there all along; `-e` decodes the usual escapes (`\n \t \r \\ \" \'`) in each NEW alone, OLD as typed, and a variant
+that fails to build with a typed `\n`/`\t` in its NEW now says on stderr what -e and -n do; canary
+`test_try_decodes_escapes_in_new_when_asked` (5). sccheck.py, scdiff.py and scdecomp.py are master's, byte for byte
+(after merging master 1e7d3232: `--files '^(?!auto/|lib/)'` 8,479 byte-exact of 8,718, no regression; `--files
+'^lib/'` 2,882 of 3,011, none). **automatch** over the lane's ranges (`--max-size 0x400 --emit --no-prune --jobs 2
+--obj-dir` the lane's private `src/lib` build): MAIN `18DB90 1C4CC0` 11 tried, 0 hits (2 m2c refusals, 9 misses),
+`1C6200 1E7000` and OVL1 `1E7F58 1E8FD4` 0 tried, `243000 256FD0` 30 tried, 0 hits (2 build failures -- 0x24DBB8 and
+0x24B2F8 as before -- 4 refusals, 24 misses): 41 tried, none byte-exact (round 42a: 42; 0x2485D0 is hand-written now).
+
+**The scan, run** (`build/scratch/gcc/r43/ps/`, master 86dc84c8's tree, every hand-written MW unit, 2 jobs): 298
+units, 238 open functions -- 184 found in their unit's text (all confirmed by their probes, no probe build failed), 54
+skipped (header templates, MSL instances, `__sinit_*`, CNode::GetBBox: no body in the unit) -- 1,288 single
+variants and 3,864 pairs (`--pairs`), no build failure. **One HIT: zui_hangul.cpp's SkbHangulBack 0x3910E0 under
+opt_common_subs** (28 off; 53 of 68 for 52 -- the UI's, not applied here; try.py in the real tree's path agrees).
+The pairs add no new hit -- SkbHangulBack again under CSE off with loop invariants,
+strength reduction or lifetimes off -- and 265 closer variants: 44 functions in all are matched or brought nearer
+by some single or pair, 194 by none of the 28. Nearest without a loss (singles or pairs, d before -> after): AddItem__10CUIListBox 0x373F20 6 -> 4 (CSE
+off), func_0057D710 13 -> 5 (CSE and propagation off: a pair's), is_goal__14CAiHidePlanner 0x5F8570 10 -> 6 (propagation), OnIsEquipmentSelected 0x280790 20 -> 7 (dead
+assignments: 6 words at the right size), ReadArray__8CRdrFile 0x331940 9 -> 7 (peephole), func_0057D5E0 9 -> 7
+(propagation), HandleOpenPad__4CTCM 0x235D40 12 -> 8 (dead assignments), plan_legcomplete__7CAiPath 0x5273C0 22 -> 11
+(dead assignments), and far-off rows a pragma brings most of the way: LoadNodeNames__6CZAnim 0x26DEA0 213 -> 38
+(strength reduction: the right size), zAnimIfTick 0x25E7A0 116 -> 49 (propagation), SkbParseKoreanRules 0x390C40 205
+-> 70 and SkbParseComplete 0x392130 140 -> 77 (loop invariants). The scan's own base saw GetBestDir 0x5350C0 byte-exact
+(238 open there, sccheck's 239 here): in this lane's worktree -- a 71-character tree, EVERY agent worktree's length
+-- MAP_DIRCOUNT::GetBestDir compiles 31 words off, round 38a's PATH-DEPENDENT row at a new length, so any lane's
+partial check of ai_mapwalk.cpp in a worktree reported it a REGRESSION on master 86dc84c8; at 97 and 98 characters
+(try.py's scratch trees) and 160 (the scan's) it matched -- and on master 1e7d3232 (the MSL headers' round 38 and the
+world's round 32 merged) it matches at 71 again: the flip lengths move with the tree's text, as round 38a found.
+
+**Round 43a** (2026-11-06, the requests first, then the opens): 1 row newly byte-exact -- the codec's harmonic cost
+**0x2485D0** (324 bytes; open since round 18a, never written: m2c refuses its accumulator ops), an assembler unit
+`ovl1/sase_harmcost.s` by asmunit, as the dot product `sase_vdot.s` (round 16a): the spectral peaks walked in steps
+of the candidate's harmonic spacing, each harmonic's largest windowed peak (max.s) summed against the bin's magnitude
+in the FPU's ACC (adda.s seeds it with 1e-16, madda.s accumulates, madd.s reads it back through a zero) beside the
+bins' energy. **Not GCC's C**: neither the 2.9x nor the 2.96 cc1 has an adda.s or madda.s template (their strings:
+only the 3.2 builds' cc1 does, and it does not choose them for this loop in C, -ffast-math or not -- 88 off); max.s
+comes from C only under -ffast-math; and the division by (int)(fPitch * 128) carries no zero-division trap, which
+every GCC C division here gets (`break 7`; -mno-check-zero-division takes 2.96 to `div1`). Its 1e-16 literal and the
+window pointer are gp-relative through `.extern` symbols (`flags=-G8`, `.set macro` around the three loads: GNU as
+2.10 has no `%gp_rel` operator) -- 3 relocations resolved. No other open row of the lane's ranges holds an
+accumulator op (`build/scratch/gcc/r43/accscan.py`). What the opens showed:
+
+- **sceSifMUnBindRpc: the field types are not the lever either.** 576 variants (the unbind packet's pkt_addr void * or
+  u_int, client void *, u_int or the client's struct pointer, serve void * or a serve-data struct pointer -- the
+  client's too -- rpc_id u_int or int, crossed with the 24 orders of the four stores after pid and paddr): nearest
+  still 4; with serve void * the target's store order costs a branch (`bnezl` inverted, 0x120).
+- **0x24C000 (libquan.c's 2-D distance) is the unit's flags' schedule**: -fno-schedule-insns or -insns2 loses every
+  other function of the unit (14 to 118 words), so the 11 words are a priority inside sched1/sched2, as diagnosed.
 
 **Next**: the libraries by hand, module by module, as their vendors wrote them (each `src/lib`
 unit's header says what it covers); GCC's scheduler moves independent stores, and which source

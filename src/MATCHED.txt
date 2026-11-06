@@ -2327,6 +2327,7 @@
 0x00248350 libnetb_prepare_async_receive
 0x002483F8 libnetb_prepare_async_send
 0x002484A0 func_002484A0
+0x002485D0 func_002485D0
 0x00248718 func_00248718
 0x00248738 func_00248738
 0x00248760 func_00248760
@@ -4434,12 +4435,12 @@
 0x002E0CB0 begin__Q210Metrowerks56cdeque<P11LOBBY_STATE,Q23std25allocator<P11LOBBY_STATE>>CFv
 0x002E0D20 __ct__Q210Metrowerks40__cdeque_buf<PCv,Q23std14allocator<PCv>>FRCQ23std14allocator<PCv>
 0x002E0D40 __ct__Q23std24allocator<11LOBBY_STATE>FRCQ23std24allocator<11LOBBY_STATE>
-0x002E0D50 func_002E0D50
+0x002E0D50 __ct__Q210Metrowerks56cdeque<P11LOBBY_STATE,Q23std25allocator<P11LOBBY_STATE>>FRCQ23std25allocator<P11LOBBY_STATE>
 0x002E0D70 __ct<11LOBBY_STATE>__Q23std25allocator<P11LOBBY_STATE>FRCQ23std24allocator<11LOBBY_STATE>_Pv
 0x002E0D80 alloc__Q23std59__deque_buf<11LOBBY_STATE,Q23std24allocator<11LOBBY_STATE>>CFv
 0x002E0D90 __ct__Q23std53deque<11LOBBY_STATE,Q23std24allocator<11LOBBY_STATE>>Fv
 0x002E0DC0 __ct__Q23std59__deque_buf<11LOBBY_STATE,Q23std24allocator<11LOBBY_STATE>>Fv
-0x002E0DF0 func_002E0DF0
+0x002E0DF0 __ct__Q210Metrowerks56cdeque<P11LOBBY_STATE,Q23std25allocator<P11LOBBY_STATE>>Fv
 0x002E0E10 do_assign<Q210Metrowerks112__convert_iterator<Q310Metrowerks56cdeque<P11LOBBY_STATE,Q23std25allocator<P11LOBBY_STATE>>14const_iterator,PCv>>__Q210Metrowerks34cdeque<PCv,Q23std14allocator<PCv>>FQ210Metrowerks112__convert_iterator<Q310Metrowerks56cdeque<P11LOBBY_STATE,Q23std25allocator<P11LOBBY_STATE>>14const_iterator,PCv>Q210Metrowerks112__convert_iterator<Q310Metrowerks56cdeque<P11LOBBY_STATE,Q23std25allocator<P11LOBBY_STATE>>14const_iterator,PCv>_v
 0x002E1090 do_assign<Q33std59__deque_imp<11LOBBY_STATE,Q23std24allocator<11LOBBY_STATE>>14const_iterator>__Q23std59__deque_imp<11LOBBY_STATE,Q23std24allocator<11LOBBY_STATE>>FQ33std59__deque_imp<11LOBBY_STATE,Q23std24allocator<11LOBBY_STATE>>14const_iteratorQ33std59__deque_imp<11LOBBY_STATE,Q23std24allocator<11LOBBY_STATE>>14const_iterator_v
 0x002E1420 __ct__Q33std59__deque_imp<11LOBBY_STATE,Q23std24allocator<11LOBBY_STATE>>8iteratorFRCQ33std59__deque_imp<11LOBBY_STATE,Q23std24allocator<11LOBBY_STATE>>8iterator
@@ -4717,8 +4718,8 @@
 0x002F5FF0 __ct__Q23std71__deque_buf<17MediusChatMessage,Q23std30allocator<17MediusChatMessage>>FRCQ23std30allocator<17MediusChatMessage>
 0x002F6060 __ct__Q210Metrowerks146__compressed_pair_imp<Q23std30allocator<17MediusChatMessage>,Q210Metrowerks68cdeque<P17MediusChatMessage,Q23std31allocator<P17MediusChatMessage>>>FRCQ23std30allocator<17MediusChatMessage>RCQ210Metrowerks68cdeque<P17MediusChatMessage,Q23std31allocator<P17MediusChatMessage>>
 0x002F6230 __ct__Q23std65deque<17MediusChatMessage,Q23std30allocator<17MediusChatMessage>>Fv
-0x002F6260 func_002F6260
-0x002F6290 func_002F6290
+0x002F6260 __ct__Q23std71__deque_buf<17MediusChatMessage,Q23std30allocator<17MediusChatMessage>>Fv
+0x002F6290 __ct__Q210Metrowerks68cdeque<P17MediusChatMessage,Q23std31allocator<P17MediusChatMessage>>Fv
 0x002F62B0 __dt__Q23std75__deque_destroy<17MediusChatMessage,Q23std30allocator<17MediusChatMessage>>Fv
 0x002F6A50 func_002F6A50
 0x002F6A60 func_002F6A60
@@ -5091,8 +5092,8 @@
 0x0030E5A0 func_0030E5A0
 0x0030E6A0 func_0030E6A0
 0x0030E6E0 func_0030E6E0
-0x0030E710 func_0030E710
-0x0030E790 func_0030E790
+0x0030E710 IsTalking__10CZNetVoiceFv
+0x0030E790 IsReceiving__10CZNetVoiceFv
 0x0030E7F0 func_0030E7F0
 0x0030E8E0 func_0030E8E0
 0x0030EB70 func_0030EB70
@@ -5423,6 +5424,7 @@
 0x00324DB0 Draw__8ParticleFv
 0x00325080 bufferPtrCompare__8ParticleFRCPQ28Particle13BufferElementRCPQ28Particle13BufferElement
 0x003250B0 DrawFlush__8ParticleFv
+0x003251B0 Draw__Q28Particle13BufferElementFRA4_A4_f
 0x00326A00 DrawPrep__8ParticleFv
 0x00326C20 func_00326C20
 0x00326F40 __ct__Q28Particle13BufferElementFv
@@ -7013,6 +7015,7 @@
 0x00390A30 SkbHangulType__FP10CSkbPiecesc
 0x00390BB0 FindJamo__FPCc
 0x003910B0 SkbRdrCount__FP5_zrdr
+0x003910E0 SkbHangulBack__Fv
 0x00391270 SetCount__25CSkbFixedVec<8CJamoStr,1>Fi
 0x00391280 __ct__8CJamoStrFv
 0x003912A0 __dt__8CJamoStrFv
@@ -9715,6 +9718,9 @@
 0x00563BC0 func_00563BC0
 0x00563BD0 FireWhenReady__11CSealCtrlAiFR13AI_FIREPARAMSf
 0x00564CF0 func_00564CF0
+0x00564D20 func_00564D20
+0x00565110 func_00565110
+0x00565460 func_00565460
 0x005657C0 func_005657C0
 0x005658D0 func_005658D0
 0x005659E0 func_005659E0
@@ -9730,6 +9736,7 @@
 0x00567840 StopThrottles__11CSealCtrlAiFb
 0x005678F0 SetThrottle__11CSealCtrlAiFUif
 0x00569530 func_00569530
+0x00569550 func_00569550
 0x005698A0 func_005698A0
 0x00569AA0 func_00569AA0
 0x00569C50 func_00569C50
@@ -10111,6 +10118,7 @@
 0x00597FF0 OnRecycleEntity__9CSealCtrlFP7CEntity
 0x00598000 OnWeaponEvent__9CSealCtrlFP12CZProjectileUiPv
 0x00598220 __dt__9CSealCtrlFv
+0x00598280 __ct__9CSealCtrlFv
 0x00598840 SetEnabled__9CSealCtrlFb
 0x00598860 DrawFunc<11CDynGrenade>__2aiFQ22ai9LINE_TYPEffUi11CDynGrenade_v
 0x005994A0 DoRespawn__10CZSealBodyFv
@@ -10821,6 +10829,7 @@
 0x005F1AD0 OnSignal__13CAiSCQBAttackFQ28CAiState6SIGNALP11CSealCtrlAi
 0x005F1B50 Tick__11CAiSUnknownFP11CSealCtrlAi
 0x005F1BF0 OnSignal__11CAiSUnknownFQ28CAiState6SIGNALP11CSealCtrlAi
+0x005F1C70 Tick__13CAiSSuspendedFP11CSealCtrlAi
 0x005F1E40 OnSignal__13CAiSSuspendedFQ28CAiState6SIGNALP11CSealCtrlAi
 0x005F3100 func_005F3100
 0x005F3270 func_005F3270
@@ -11105,6 +11114,8 @@
 0x0060D8F0 AddAnim__8CAiGroupFisff
 0x0060D9A0 AddSound__8CAiGroupFiPCcf
 0x0060DA50 __dt__Q28CAiGroup4stepFv
+0x0060DB60 Tick__Q28CAiGroup10act_cameraFP11CSealCtrlAif
+0x0060DCF0 LookAt__FPC6CPnt3DPC6CPnt3DP7CMatrix
 0x0060DE30 Get__Q28CAiGroup8campointCFP8CAiGroupP6CPnt3D
 0x0060DF40 Tick__Q28CAiGroup9act_zanimFP11CSealCtrlAif
 0x0060DFC0 Stop__Q28CAiGroup8act_animFv

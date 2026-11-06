@@ -215,7 +215,18 @@ bool UVCompare(CPnt3D *a, CPnt3D *b, CPnt3D *c);
  * slot); (6) the product matrix through MatrixRows (vis_vu.cpp's rule: the target sets a1, a2 and
  * a0 in the slot). Left: the last flush's AddDecal sets a1 in the call's delay slot where the
  * loop's sets it first (here both set a1 before a0) -- braces with `nt = 0`, `!= 0`, an int cast
- * and `this->` change nothing */
+ * and `this->` change nothing.
+ * Round 39 (igdump --pcode / --iro, build/scratch/wep/v_mad39*.py): the order is the code generator's,
+ * fixed before colouring (the PCode already has it; both calls' IR is identical at the optimiser's
+ * end), and its rule is measured: AN ARGUMENT WHOSE VARIABLE IS NOT READ AGAIN AFTER THE CALL IS
+ * MOVED FIRST, those still read later after them, each group in parameter order -- the loop's flush
+ * is followed by `nt = 0`, so nt goes first; here every argument is dead after the last call, so
+ * this, nt, tex, size; a read of nt after it (`count += nt`) gives the target's this, tex, size, nt
+ * (a1 then fills the slot), as `m_74 = 0` after it moves this last. "Read again" is a linear scan:
+ * a goto back into the loop (whose body reads nt) does not count. Every no-code read tried folds
+ * before code generation (`nt = nt`, `nt += 0`, `nt | 0`, a cast round trip, `(void)nt`), and the
+ * loop rewritten with the flush at its top or inside its body changes the layout (0x5A8): what read
+ * nt after the target's call, at no cost, is not found */
 int CMesh::ApplyDecal(CMatrix *mtw, unsigned int index, float size, CPnt3D *normal, CTexHandle *tex,
                       CMatrix *uv)
 {

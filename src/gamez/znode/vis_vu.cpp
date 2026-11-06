@@ -216,13 +216,12 @@ public:
     _word128 *m_data;   // 0x34
 };
 
-/* the end of the scratchpad's room for a packet, the VU context count, the world-to-model matrix
- * and the model-to-world one (SOCOM 1's m_sprEndOfMP, m_WorldToModel and m_ModelToWorld by their
- * use; the count is SOCOM II's) */
+/* the end of the scratchpad's room for a packet, the VU context count and the world-to-model matrix
+ * (SOCOM 1's m_sprEndOfMP and m_WorldToModel by their use; the count is SOCOM II's); the
+ * model-to-world matrix is CVisual::m_ModelToWorld (znode.h, data.txt's 0x4B4E60: the zdb world's
+ * round 32) */
 extern "C" _word128 *data_004B4AE8;
 extern "C" unsigned int data_004B4AF0;
-extern "C" CMatrix data_004B4E70;
-extern "C" CMatrix *data_004B4E60;
 /* a command quadword for the VU program: its tag, the context count and a word, the quadword after
  * it given back (ours, inline: VuMapPasses steps its cursor through it, unreloaded; the
  * callers load the count before the first store, as an inline's arguments are) */
@@ -328,23 +327,21 @@ void CVisual::SetLightTint(PNT4D color, int i, float time)
     }
 }
 
-/* an entry of two static tables of four floats, by value (new in SOCOM II, not named: the particles'
- * Draw functions read the first, 0x4B4C70, CameraZoom::LoadLensFx the second, 0x4B4CB0). The named
+/* an entry of two static tables of four floats, by value (new in SOCOM II: CVisual::m_lightTint, which
+ * the particles' Draw functions read, and m_lightTintTarget, CameraZoom::LoadLensFx's). The named
  * local is the target's: built on the stack and copied out, where a returned temporary is built in
  * the return slot */
-extern "C" CPnt4D data_004B4C70[];
-extern "C" CPnt4D data_004B4CB0[];
 
 extern "C" CPnt4D func_003B7620(int i)
 {
-    CPnt4D t(data_004B4CB0[i].x, data_004B4CB0[i].y, data_004B4CB0[i].z, data_004B4CB0[i].w);
+    CPnt4D t(CVisual::m_lightTintTarget[i].x, CVisual::m_lightTintTarget[i].y, CVisual::m_lightTintTarget[i].z, CVisual::m_lightTintTarget[i].w);
 
     return t;
 }
 
 extern "C" CPnt4D func_003B7590(int i)
 {
-    CPnt4D t(data_004B4C70[i].x, data_004B4C70[i].y, data_004B4C70[i].z, data_004B4C70[i].w);
+    CPnt4D t(CVisual::m_lightTint[i].x, CVisual::m_lightTint[i].y, CVisual::m_lightTint[i].z, CVisual::m_lightTint[i].w);
 
     return t;
 }
@@ -475,7 +472,6 @@ extern "C" unsigned int data_004B4AD0;
 extern "C" _word128 *data_004B4EC0;
 extern "C" unsigned int data_004B4EC8;
 extern "C" unsigned int data_004B4ED0;
-extern "C" unsigned char data_004B4A88;
 
 /* whether the detail layers draw: the first layer's length cuts the chain and the first layer
  * reaching the subface cuts that (SOCOM 1's, inlined in GetChainData: the result's `true` an
@@ -486,7 +482,7 @@ static inline bool DetailChain(CVisual *v)
 
     bool r;
 
-    if (d && data_004B4A88 && (v->m_flags & 0x4000)) {
+    if (d && CVisual::m_applyDetailTexture && (v->m_flags & 0x4000)) {
         r = true;
         CVisual::DETAIL *e = d + v->m_numDetails;
 
@@ -530,15 +526,13 @@ bool CVisual::GetChainData()
  * byte at 0xA0 (negative: full), and 0x3E1458 on unless the node is clutter (SOCOM 1's NodeSetup,
  * its fourth argument gone: no SOCOM II caller sets a3). The scale's byte in a variable of its own
  * pads the else label (MW's 8-byte label padding) */
-extern "C" CMatrix *data_004B4E60;
-extern "C" CMatrix data_004B4E70;
 extern "C" unsigned char data_004B4A60;
 extern "C" float m_GlobalLightScale__Q23zdb7CVisual;
 
 void CVisual::NodeSetup(CNode *atom, CNode *node, CMatrix *m)
 {
-    data_004B4E60 = m;
-    Vu0MatrixInverseWithUniformScale(&data_004B4E70, m);
+    CVisual::m_ModelToWorld = m;
+    Vu0MatrixInverseWithUniformScale(&CVisual::m_WorldToModel, m);
     if (!data_004B4A60 && (atom->m_dynamic_motion || node->m_dynamic_light)) {
         m_lightingEnable = true;
         signed char s = atom->m_socom2_a0;
@@ -635,14 +629,14 @@ struct VU_HEAD_LIGHTS {
 extern "C" _word128 *func_003B6870(_word128 *q, CNode *node)
 {
     CVisual::m_WorldToModel.Transform((CPnt4D *)((char *)CVisual::m_camera + 0x400), (CPnt4D *)&q[4], 7);
-    sceVu0CopyMatrix((float (*)[4])q, data_004B4E60->m_matrix);
+    sceVu0CopyMatrix((float (*)[4])q, CVisual::m_ModelToWorld->m_matrix);
     if (data_004B4A68) {
         int ch = node->m_socom2_mode;
 
         if (ch < 2) {
             *(CPnt4D *)&q[12] = CVisual::m_lightTint[ch];
         } else if (data_004B4A70) {
-            float z = GetZ__Q23zdb7CCameraFP6CPnt3D(CVisual::m_camera, (CPnt3D *)data_004B4E60->m_matrix[3]);
+            float z = GetZ__Q23zdb7CCameraFP6CPnt3D(CVisual::m_camera, (CPnt3D *)CVisual::m_ModelToWorld->m_matrix[3]);
             float f;
 
             if (!(z < 800.0f))
@@ -671,7 +665,6 @@ extern "C" _word128 data_004B4D30;
 extern "C" unsigned int data_004B4E58;
 extern "C" float m_GlobalLightScale__Q23zdb7CVisual;
 extern "C" float data_003E1480;
-extern "C" unsigned char data_003E1468;
 extern "C" unsigned char data_004B4A58;
 extern "C" _word128 *data_004B4AD8;
 
@@ -710,7 +703,7 @@ _word128 *CVisual::VuObjectSetup(_word128 *p)
         p->f32[2] = data_003E1480;
     else
         p->f32[2] = 0;
-    if (data_003E1468) {
+    if (CVisual::m_fogEnable) {
         CPnt4D *fog;
 
         if (data_004B4A58)
@@ -719,7 +712,7 @@ _word128 *CVisual::VuObjectSetup(_word128 *p)
             fog = (CPnt4D *)((char *)m_camera + 1248);
         else
             fog = (CPnt4D *)&NoAltFogBottomV;
-        data_004B4E70.Transform(fog, (CPnt4D *)&p[2], 2);
+        CVisual::m_WorldToModel.Transform(fog, (CPnt4D *)&p[2], 2);
         if (data_004B4A58) {
             p[2].f32[3] = 255.0f;
             p[3].f32[3] = 0;
@@ -818,7 +811,6 @@ extern "C" unsigned char data_004B4DC0;
 extern "C" unsigned int data_004B4E40;
 extern "C" unsigned int data_004B4E18;
 extern "C" unsigned int data_004B4DF0;
-extern "C" CTexHandle *data_004B4D90;
 
 /* the specular map's pass: a command, the band's texture select (or the default specular texture's)
  * saved with the default blend, and the setup (ours, inline: 0x3B5B90 inlines both of its calls,
@@ -835,7 +827,7 @@ inline bool CVisual::VuSpecularMap(_word128 **cursor, unsigned int tag)
     _word128 *q = p + 1;
 
     if (!h)
-        h = data_004B4D90;
+        h = CVisual::m_specMapTexture;
     h->m_texture->CopyTextureSelect(q);
     SaveTextureSelect(q, h->m_texture, 0x4000000000000000);
 
@@ -988,7 +980,6 @@ done:
 
 /* the visual's squared distance to the camera and the detail textures' address offset (SOCOM 1's
  * m_rangeSqdToCamera by its use; the offset SOCOM II's) */
-extern "C" float data_004B4A98;
 extern "C" unsigned int data_004B4EB8;
 
 /* a texture select's TEX0 base pointer, the low 12 bits of its halfword (ours) */
@@ -1005,7 +996,7 @@ bool CVisual::VuDetailMap(_word128 **cursor, unsigned int tag, tag_DETAIL_PARAMS
     _word128 *q = *cursor;
 
     for (unsigned int i = 0; i < detail->m_count; i++) {
-        if (data_004B4A98 <= detail->m_rangeSq) {
+        if (CVisual::m_rangeSqdToCamera <= detail->m_rangeSq) {
             if (!(q + 9 < data_004B4AE8))
                 return false;
 
@@ -1095,8 +1086,8 @@ bool CVisual::VuProjectedMap(_word128 **cursor, unsigned int tag)
     CProjectedMap *map = (CProjectedMap *)m_projectedMapList[0];
 
     map->m_tex->CopyTextureSelect(q);
-    data_004B4E70.Transform((CPnt4D *)map->m_node->m_matrix.m_matrix[3], (CPnt4D *)&q[10], 1);
-    sceVu0MulMatrix(*(sceVu0FMATRIX *)&q[6], map->m_projection.m_matrix, data_004B4E60->m_matrix);
+    CVisual::m_WorldToModel.Transform((CPnt4D *)map->m_node->m_matrix.m_matrix[3], (CPnt4D *)&q[10], 1);
+    sceVu0MulMatrix(*(sceVu0FMATRIX *)&q[6], map->m_projection.m_matrix, CVisual::m_ModelToWorld->m_matrix);
     q[11].f32[0] = data_004B4EE0[0];
     q[11].f32[1] = data_004B4EE0[1];
     q[11].f32[2] = data_004B4EE0[2];
@@ -1125,9 +1116,9 @@ bool CVisual::VuShadowMap(_word128 **cursor, unsigned int tag)
         CLightMap *map = *it;
 
         map->m_pTex->CopyTextureSelect(q);
-        data_004B4E70.Transform((CPnt4D *)map->m_matrix.m_matrix[3], (CPnt4D *)&q[10], 1);
-        data_004B4E70.Transform(&map->m_dir, (CPnt4D *)&q[11], 1);
-        sceVu0MulMatrix(*(sceVu0FMATRIX *)&q[6], map->m_worldToUV.m_matrix, data_004B4E60->m_matrix);
+        CVisual::m_WorldToModel.Transform((CPnt4D *)map->m_matrix.m_matrix[3], (CPnt4D *)&q[10], 1);
+        CVisual::m_WorldToModel.Transform(&map->m_dir, (CPnt4D *)&q[11], 1);
+        sceVu0MulMatrix(*(sceVu0FMATRIX *)&q[6], map->m_worldToUV.m_matrix, CVisual::m_ModelToWorld->m_matrix);
         q[12].f32[2] = map->m_maxRange;
         q[12].f32[3] = map->m_invDeltaRange;
         q[13].f32[0] = map->m_diffuse.x;
@@ -1140,9 +1131,8 @@ bool CVisual::VuShadowMap(_word128 **cursor, unsigned int tag)
     return true;
 }
 
-/* the colour tables (0x3B7590/0x3B7620 read them by value) and the flag that tints the light maps
- * through them (SOCOM II's, not named) */
-extern "C" CPnt4D data_004B4C70[];
+/* the flag that tints the light maps through the colour tables (m_lightTint / m_lightTintTarget,
+ * which 0x3B7590/0x3B7620 read by value; SOCOM II's, not named) */
 extern "C" unsigned char data_004B4A68;
 
 /* the light maps' pass: per map a command (its word 1 for the first, which carries the first map's
@@ -1184,7 +1174,7 @@ bool CVisual::VuLightMap(_word128 **cursor, unsigned int tag)
         CLightMap *map = *it;
         _word128 *q = *cursor;
 
-        data_004B4E70.Transform((CPnt4D *)map->m_matrix.m_matrix[3], (CPnt4D *)q, 1);
+        CVisual::m_WorldToModel.Transform((CPnt4D *)map->m_matrix.m_matrix[3], (CPnt4D *)q, 1);
         q[1].f32[1] = map->m_invMaxRange;
         q[1].f32[2] = map->m_maxRange;
         q[1].f32[3] = map->m_invDeltaRange;
@@ -1194,7 +1184,7 @@ bool CVisual::VuLightMap(_word128 **cursor, unsigned int tag)
         q[2].f32[3] = map->m_opacity;
         if (data_004B4A68) {
             bool mesh = GetType() == 1;
-            CPnt4D *m = !mesh ? &data_004B4C70[0] : &data_004B4C70[2];
+            CPnt4D *m = !mesh ? &CVisual::m_lightTint[0] : &CVisual::m_lightTint[2];
             _word128 *c = &q[2];
 
             asm volatile {
@@ -1223,7 +1213,7 @@ void CVisual::VuSpecularSetup(_word128 *q, CPnt4D *dir, CPnt3D *rgb, float opaci
     CMatrix m;
 
     func_00307700((float *)dir, (float *)&up, look.m_matrix);
-    sceVu0MulMatrix(m.m_matrix, look.m_matrix, data_004B4E60->m_matrix);
+    sceVu0MulMatrix(m.m_matrix, look.m_matrix, CVisual::m_ModelToWorld->m_matrix);
     sceVu0CopyMatrix(*(sceVu0FMATRIX *)&q[6], m.m_matrix);
     q[10].f32[0] = data_004B4AA0->m_intensity;
     q[10].f32[1] = data_004B4AA0->m_falloff;
@@ -1232,7 +1222,7 @@ void CVisual::VuSpecularSetup(_word128 *q, CPnt4D *dir, CPnt3D *rgb, float opaci
     CPnt3D cam = *(CPnt3D *)((CNode *)(void *)m_camera)->m_matrix.m_matrix[3];
     CPnt4D p(cam.x, cam.y, cam.z, 1.0f);
 
-    sceVu0ApplyMatrix((float *)&p, data_004B4E70.m_matrix, (float *)&p);
+    sceVu0ApplyMatrix((float *)&p, CVisual::m_WorldToModel.m_matrix, (float *)&p);
     q[6].f32[3] = p.x;
     q[7].f32[3] = p.y;
     q[8].f32[3] = p.z;
