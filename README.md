@@ -2066,6 +2066,37 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the engine core, round 27** (22 rows new, five units whole -- grid_di, grid_main, grid_clutter, int_shapes,
+  zanim_anim: NodeGetIntersect 0x2D2890 and NodeGetIntersectBatch 0x2D3030 by the world's `.set noreorder`,
+  GetIntersectBatch 0x2D3CF0, SetCDIBBox 0x2DC7A0, CDIBBox and CDIPoly::GetIntersect, LoadTipAndTail, SetCellBoundary,
+  GetNextCell, ReadClutter, CClutterList::Add, zAnimIfTick, apply_script_frame, zAnimObjectMotionFromToBegin,
+  ComputeRunTime, LoadNodeNames, DeleteAnchor, CmdBeginShake, SaveNodeStates and its three vector copies; grid_di.cpp's
+  CDIHit stand-in retired with the bool GetIntersect; each rule measured on one or two functions, so leads rather than law,
+  and many of the holders below marked devices, not likely the original's source):
+  - INTERFERENCE CAN DECIDE WHAT NO NUMBERING CAN: solving colours by hand -- list the interference, derive the required
+    colouring order, then find the declaration order -- closed CDIPoly::GetIntersect, CClutterList::Add and DeleteAnchor
+    after the replay searches had found nothing; n - 1 ahead of the test keeps n live across it, `iterator + n` makes the
+    pointer and the sum one node, and a block-local declared last is coloured first and can drag another variable down with
+    it;
+  - a `const` local is not folded back and keeps a named number, an int or enum holder does the same across a type
+    conversion: pick whichever can be declared at the needed place (GetIntersectBatch, ReadClutter); SetCDIBBox's eight
+    common subexpressions closed with each address held in an int local, declared in the `igreplay --permute` order and
+    assigned at its first use;
+  - an inline's enum-typed by-value parameter keeps a temporary numbered after the asm's operands and ahead of later code
+    temporaries (LoadTipAndTail); an enum counter is not an induction variable, so it gets no strength reduction while other
+    loops in the same function keep theirs (LoadNodeNames, without a pragma);
+  - a `.set` directive splits the scheduling block: `.set reorder` after the last store lets the filler hoist the return's
+    zero, `.set noreorder` turned a narrow into a move, and alone it removes a load-delay nop -- the 8-byte difference in
+    CDIBBox::GetIntersect;
+  - a reused local's later web takes a late number, giving the other path its own local keeps one web and the name
+    (apply_script_frame); an inline's by-value argument copies were measured numbered BEFORE its own locals on
+    gridGetAtomBasePtr, against the reading of mweppc in the MSL's round 37;
+  - `inline_max_size` cuts can be modelled by a written inline padded with `(void)0;`, about 4 units each (SaveNodeStates'
+    CZAnimSetSave()) -- the pragma around a function does nothing under deferred; an unused local whose address is taken in
+    a pointer keeps its frame slot at no code cost, as an inline's local below the caller's objects; a parameter copy after
+    a global's load cannot coalesce the temporary with a0; an address taken in the block ahead of a test survives, in its
+    own block the peephole folds it into the load's displacement; a chain of `&&` levels materialises by in-place tests with
+    the pair cast to an enum and an int returned.
 - **Tells from the kit and AI states, round 60** (23 byte-exact, the most of any round: twelve long opens --
   CAiSPickup::Tick 0x5F52D0, the seen-bit tests 0x5CB450 / 0x5CB630, CZKit::GetMaxAmmoCount, GetPickupSlot, CompactItems,
   CAiSBreach::CanPushAiState, CAiSFollow::CheckMaster, CSealUnit::SetFormation, CAiGroup::TickStep and Start, 0x60AA20 --
