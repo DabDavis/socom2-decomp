@@ -148,6 +148,11 @@ public:
             m_450 = m_440 - m_438;
         }
     }
+    /* a line erased, the iterator after it given back (Tick's two erases; the name ours): an inline
+     * level between Tick and the list's erase puts the erase's result and argument temporaries in a
+     * deeper frame group than Tick's own begin() temporaries and the result's conversion, both
+     * erases at one depth -- in source order, the drop's above the walk's -- as the target has them */
+    iterator EraseLine(iterator i) { return erase(i); }
     void Init(C2DFont *font, CRdrFile *file);
 
     C2DFont *m_font;   // 0x18 (SOCOM 1's at 0x1C: Init's font)
@@ -414,25 +419,24 @@ const char *C2DMessage_Q::LastMessage()
  * once a line's fade time has passed at the top, else moving toward the scroll's end --; the
  * oldest line dropped past the queue's size, then every line whose time is up and faded out, a
  * scroll begun when the last goes (OVL1 0x2B5DB0, slot 0x38; SOCOM 1's, with SOCOM II's
- * backgrounds).
- * OPEN, 38 instructions at the target's size (the game states' round 48, unwritten before): every
- * block, call and float register is the target's down to the oldest line's drop -- the first walk's
- * iterator assigned from begin() (kept in memory) against a hoisted end, the fades through two
- * variables (the trans a temporary, the new value sharing dT's $f20), Scroll / Unscroll inlined
- * three times and once, the expiry one inline `&&` (materialised, as the target). Left: the frame
- * slots and the second walk's saved registers. The target holds the first walk's iterator at 124,
- * `next` at 120, the two begin() temporaries at 116 / 112, the erase result's copy at 108, the drop's
- * erase temporaries at 104 / 100, the walk's at 96 / 92 and `cur` LAST at 88 -- below every
- * temporary, which no named local here takes (declared at the top, in the for, or in a block, it
- * sits just under `next`); and the second walk's end hoisted into s0 with the line in s1, here the
- * line takes s0 and the end is recomputed. Tried: pop_front() for the drop (its temporaries a level
- * deeper: worse), cur declared first, the walk in an inline (cut out of line at 0x51C), `e` reused or
- * re-assigned for the second walk (0x5F8 / 0x61C) */
+ * backgrounds). Byte-exact since the game states' round 49 (written in round 48, 38 off at the
+ * size): THE SECOND WALK'S ITERATOR IS THE FIRST WALK'S `i` AGAIN -- its second web is a new object
+ * made after inlining, so it takes the frame slot below every temporary (88), where a named `cur`
+ * of its own sat just under `next` wherever it was declared (SOCOM 1's Tick, built by the older
+ * compiler that lays the frame out upwards, has it at the top, 124: allocated last there too); both
+ * erases through one inline level (EraseLine), which moves their temporaries below Tick's own
+ * begin() temporaries and the result's conversion (the engine core's round-22 frame groups); and
+ * the second walk's end a named local initialised before it, which hoists it into s0 and leaves the
+ * line s1 (recomputed each pass without one; `e` reused is 4 bytes short, re-assigned or declared
+ * at the top uninitialised it stays in memory). Round 48's: the first walk's iterator assigned from
+ * begin() (kept in memory) against a hoisted end, the fades through two variables (the trans a
+ * temporary, the new value sharing dT's $f20), Scroll / Unscroll inlined three times and once, the
+ * expiry one inline `&&` (materialised, as the target) */
 void C2DMessage_Q::Tick(float dT)
 {
     if (!IsOn())
         return;
-    iterator i, next, cur, e = end();
+    iterator i, next, e = end();
 
     for (i = begin(); i != e; ++i)
         (*i)->Tick(dT);
@@ -455,16 +459,18 @@ void C2DMessage_Q::Tick(float dT)
     if (size() > m_maxsize) {
         C2D *m = *begin();
 
-        erase(begin());
+        EraseLine(begin());
         delete m;
     }
+    iterator e2 = end();
+
     next = begin();
-    for (cur = next; cur != end(); cur = next) {
-        C2DMessageString *s = dynamic_cast<C2DMessageString *>(*cur);
+    for (i = next; i != e2; i = next) {
+        C2DMessageString *s = dynamic_cast<C2DMessageString *>(*i);
 
         ++next;
         if (s && s->Expired()) {
-            next = erase(cur);
+            next = EraseLine(i);
             delete s;
             if (!size())
                 Scroll(0.0f);
