@@ -543,7 +543,8 @@ static inline float SealLight(CZSealBody *seal)
  * numbered anywhere after the position and before &p.m_valid (43.5-46.5), or the position before ts
  * as a named variable would be (34.5-39.5). The non-SEAL copy's position is created BEFORE the SEAL
  * copy's (@6311): MW expands the inlines a level at a time, so SealLight's EntityLight comes last.
- * Tried: the test written in place, through a wrapper inline, an if/return form (0x574), ts declared
+ * Tried: the test written in place, through wrapper inlines two and three levels deep (no change: the
+ * level-at-a-time reading does not reach the ternary's temporary), an if/return form (0x574), ts declared
  * at the top or after `light`, one variable for both SEAL tests (vs and ts), the position as a
  * reference, assigned twice, after a dead first definition, or a parameter (EntityLight(e, pos): a
  * saved register lost, 0x570) */
