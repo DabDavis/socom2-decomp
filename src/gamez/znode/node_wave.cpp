@@ -83,7 +83,11 @@ void CRipple::Uninit()
  * with `float sc = 32767.5f` hoists the whole conversion and reaches the right size, 8 instructions
  * off (the two products computed y first, and the constants in f3/f2 against the target's f2/f1/f0;
  * every declaration and operand order tried keeps 8 or more); a const reference to a temporary
- * gives the target's out-of-line preheader (the entry test repeated) with the vector in memory */
+ * gives the target's out-of-line preheader (the entry test repeated) with the vector in memory.
+ * Round 26 (build/scratch/wld/v_flat_*.py): a const CPnt3D, the products written factor first,
+ * short locals in the walk (0xB8 each), a const float[3] in the walk or outside it (0x104 / 0x10C),
+ * a function-local static const float[3] (0xE8: loaded from data), short locals off a const
+ * reference to a temporary (0x118) */
 #pragma auto_inline off
 void CRipple::Flatten()
 {

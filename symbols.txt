@@ -5489,7 +5489,7 @@
 0x003160B0 0x10 ReserveChildren__Q23zdb5CNodeFi  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x003160C0 0x34 RemoveFromParent__Q23zdb5CNodeFv  # OVL1; tu: node_main.cpp~ (1.0 beta); s1:exact
 0x00316100 0x1A8 DeleteVisuals__Q23zdb5CNodeFv  # OVL1; s1:order (SOCOM 1's DeleteVisuals, a visual drawn this frame deferred to a list now)
-0x003162B0 0x22C func_003162B0  # OVL1
+0x003162B0 0x22C DeleteVisual__Q23zdb5CNodeFPQ23zdb7CVisualb  # OVL1; s1:order by hand (the weapons' round 32: SOCOM 1's hookupVisuals calls DeleteVisual where SOCOM II's vis_load.cpp calls this with (node, visual, true); right after DeleteVisuals in both builds, both grown alike 0xE8->0x1A8, 0x168->0x22C; node_main.cpp's source byte-exact)
 0x003164E0 0x114 AddVisual__Q23zdb5CNodeFPQ23zdb7CVisual  # OVL1; s1:align
 0x00316600 0x10 ReserveVisuals__Q23zdb5CNodeFi  # OVL1; s1:exact
 0x00316610 0x154 SetParentHasVisuals__Q23zdb5CNodeFv  # OVL1; s1:align
@@ -5499,7 +5499,7 @@
 0x00316E10 0x14 Copy__Q23zdb5CNodeCFv  # OVL1; size 0x14 (a tail call through t9; the seed ran on into the padding); s1:exact by hand (SOCOM 1's Copy, word for word: _Copy(0) through the vtable)
 0x00316E30 0x224 __ct__Q23zdb5CNodeFv  # OVL1; s1:callee by hand (CZAnim::GetNodes news 0xC0 bytes -- sizeof CNode -- and calls it, as SOCOM 1's CNode constructor stores __vt__Q23zdb5CNode)
 0x00317060 0x64C InitNodeParams__3zdbFPQ23zdb15tag_NODE_PARAMSPCQ23zdb15tag_NODE_PARAMS  # OVL1; s1:align
-0x003176B0 0x6C func_003176B0  # OVL1
+0x003176B0 0x6C remove_copy<Q33std66__vector_imp<PQ23zdb7CVisual,Q23std26allocator<PQ23zdb7CVisual>,1>8iterator,Q33std66__vector_imp<PQ23zdb7CVisual,Q23std26allocator<PQ23zdb7CVisual>,1>8iterator,PQ23zdb7CVisual>__3stdFQ33std66__vector_imp<PQ23zdb7CVisual,Q23std26allocator<PQ23zdb7CVisual>,1>8iteratorQ33std66__vector_imp<PQ23zdb7CVisual,Q23std26allocator<PQ23zdb7CVisual>,1>8iteratorQ33std66__vector_imp<PQ23zdb7CVisual,Q23std26allocator<PQ23zdb7CVisual>,1>8iteratorRCPQ23zdb7CVisual_Q33std66__vector_imp<PQ23zdb7CVisual,Q23std26allocator<PQ23zdb7CVisual>,1>8iterator  # OVL1; the std::remove_copy instance CNode::DeleteVisual calls (its only caller; SOCOM 1's remove_copy<CVisual **> 0x228DF0 the same call; the code of CWorld::DeleteLightMap's instance 0x320790, iterator classes by value; node_main.cpp emits it)
 0x00317720 0x78 init<Q33std42__list_deleter<PCv,Q23std14allocator<PCv>>19generic_iterator<1>>__Q23std42__list_deleter<PCv,Q23std14allocator<PCv>>FQ33std42__list_deleter<PCv,Q23std14allocator<PCv>>19generic_iterator<1>Q33std42__list_deleter<PCv,Q23std14allocator<PCv>>19generic_iterator<1>_v  # OVL1; by hand (the list copy constructor's range init over const iterators by value, homed: end() and the deleter's insert per element; CNode::SetParentHasVisuals calls it; include/list, open: the target calls end() out of line, 0x2A00A0)
 0x003177A0 0x18 __ct__Q23std42__list_deleter<PCv,Q23std14allocator<PCv>>FRCQ23std14allocator<PCv>  # OVL1; by hand (the pointer lists' deleter built from an allocator, out of line like the default one: the list copy constructor's first call -- CNode::SetParentHasVisuals hands it the model's list; include/list, the entity lane)
 0x003177C0 0x60 __dt__Q23std56list<PQ23zdb7CVisual,Q23std26allocator<PQ23zdb7CVisual>>Fv  # OVL1; s1:align; the deferred visuals' destructor (registered for 0x45C2D8 by __sinit_node_main.cpp; it calls the pointer list deleter's, 0x1EA2D0)
@@ -10158,7 +10158,7 @@
 0x0055F940 0x148 func_0055F940  # OVL2
 0x0055FA90 0x44C func_0055FA90  # OVL2
 0x0055FEE0 0x74 func_0055FEE0  # OVL2
-0x0055FF60 0x320 PlayAiSound__11CSealCtrlAiF15CHARACTER_SOUNDfi  # OVL2; slot 0x24 of __vt__11CSealCtrlAi (CSealCtrl's PlayAiSound slot); SOCOM 1's signature, unproven; the base's SOCOM II signature (slot 0x24 overridden), the same unpinned float-int order
+0x0055FF60 0x320 PlayAiSound__11CSealCtrlAiF15CHARACTER_SOUNDfQ28CAiEvent5EVENT  # OVL2; slot 0x24 of __vt__11CSealCtrlAi (CSealCtrl's PlayAiSound slot); SOCOM 1's signature, unproven; the base's SOCOM II signature (slot 0x24 overridden), the same unpinned float-int order; the event parameter CAiEvent::EVENT (the SEAL lane, round 51): the target hands the raw register to GetEventRange and sign-extends the same register for CreateAiEvent, as 0x55FEE0's own enum parameter does; byte-exact with 0x55FEE0 inlined and no device
 0x00560280 0xC0 func_00560280  # OVL2
 0x00560340 0x178 func_00560340  # OVL2
 0x005604C0 0x8 func_005604C0  # OVL2
@@ -10655,7 +10655,7 @@
 0x00597790 0x78 SetTrigger__9CSealCtrlFb  # OVL2; s1:order; m_trigger (a byte enum, now 0x118) stepped by a switch as SOCOM 1's
 0x00597810 0x78 SetTrigger__9CSealCtrlFbf  # OVL2; s1:order; m_trigger_power (0x11C) stored, then the same switch
 0x00597890 0x8 ResetToInitialState__9CSealCtrlFv  # OVL2; slot 0x58 of __vt__9CSealCtrl, and SOCOM 1's order (after SetTrigger(b, f))
-0x005978A0 0xF8 PlayAiSound__9CSealCtrlF15CHARACTER_SOUNDfi  # OVL2; slot 0x24 of __vt__9CSealCtrl, and sealctrl.cpp's order (after ResetToInitialState, before OnDeath, as SOCOM 1's); SOCOM 1's signature, unproven; SOCOM II's signature: it plays the sound (a1) only when a roll is under the float (f12) and passes an int (a2) on; OnSetHealth calls it (59, 1.0f, -1). The float-int order is not pinned: (sound, int, float) compiles the same in the caller (probe via tools/try.py)
+0x005978A0 0xF8 PlayAiSound__9CSealCtrlF15CHARACTER_SOUNDfQ28CAiEvent5EVENT  # OVL2; slot 0x24 of __vt__9CSealCtrl, and sealctrl.cpp's order (after ResetToInitialState, before OnDeath, as SOCOM 1's); SOCOM 1's signature, unproven; SOCOM II's signature: it plays the sound (a1) only when a roll is under the float (f12) and passes an int (a2) on; OnSetHealth calls it (59, 1.0f, -1). The float-int order is not pinned: (sound, int, float) compiles the same in the caller (probe via tools/try.py); the event parameter CAiEvent::EVENT, the override's (the SEAL lane, round 51)
 0x005979A0 0x160 OnDeath__9CSealCtrlFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00597B00 0xF8 OnSetHealth__9CSealCtrlFff  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00597C00 0x240 OnStunDamage__9CSealCtrlF9STUN_TYPEfPC6CPnt3D  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)

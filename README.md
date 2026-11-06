@@ -2065,6 +2065,18 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the SEALs, round 51** (CSealCtrlAi::CreepTick and PostTick, both unwritten before; PlayAiSound's event
+  parameter an enum at last):
+  - an enum-typed parameter is passed on raw: PlayAiSound's third parameter is CAiEvent::EVENT (0x55FF60 / 0x5978A0
+    re-mangled; the VoiceEvent device dropped, the kit's int-literal callers pass the enum, 23 units SAME);
+  - in a product MW moves a LITERAL operand to the left when it emits the multiply, but leaves a variable whose value is
+    a known constant where it was written; the first operand's evaluation order is unaffected (0x54A3D0: 16 -> 1, the
+    depth an unnamed temporary evaluated first, `(1.3f - t) * r * 0.6f`);
+  - calling an inline `ClearGoal(m_goal_type)` with the member itself leaves the `type == NONE` compare's dead andi and
+    no branch (CSealCtrlAi::CreepTick 0x567350); a 1-bit field tested through `b ? true : false` gives sltu then beqz --
+    testing the bit in place, a (bool) cast or a bool local each come out 4 instructions off (PostTick 0x56F970);
+  - an extern "C" helper whose callers already hold the second argument in a1 gains that parameter at no cost
+    (func_00545480: a rescue credit, not a kill).
 - **Tells from the AI core, round 33** (FreeEvents, both CAiMap::WalkLine and FindTraversable -- 7,700 bytes, three of them
   never started before):
   - two lockstep cursors deleting each element and zeroing its slot are `std::transform(b, e, b, deleter)` with a functor

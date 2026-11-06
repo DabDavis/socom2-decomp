@@ -216,6 +216,14 @@ public:
     CNode *m_model;   // 0xb4: an instance's model (znode.h's CModel *)
 };
 
+/* a view test's result (SOCOM 1's enum, zcamera.h's; one byte under -enum min) */
+enum tag_ZVIS_FOV {
+    ZVIS_FOV_CLIP = 0,
+    ZVIS_FOV_ALL_IN = 1,
+    ZVIS_FOV_ALL_OUT = 2,
+    ZVIS_FOV_NUM = 3
+};
+
 class CCamera {
 public:
     /* the eight corners' view test (zcamera.h's: 2 out of view) */
