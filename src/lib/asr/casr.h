@@ -133,7 +133,7 @@ typedef struct CASR {
     TNODE *iso_ctx;                     /* +604: the iso-word context's tree, run again after a second pass */
     int f608;                           /* +608 */
     struct LANGVT *lng;                 /* +612 */
-    char pad616[4];
+    int anyspeech;                      /* +616: the language's any-speech garbage phoneme */
     int uw_state;                       /* +620: also the sample format */
     int f624;                           /* +624 */
     void *f628;                         /* +628 */
@@ -214,7 +214,8 @@ struct LANGVT {
     void *s12[2];
     short (*GetSilencePhenome)(LANGVT *l);            /* +56, slot 14 */
     short (*GetUWSilencePhenome)(LANGVT *l);          /* +60, slot 15 */
-    void *s16[3];
+    void *s16[2];
+    int (*GetAnySpeechGarbagePhenome)(LANGVT *l);     /* +72, slot 18 */
     unsigned int (*GetNbrWarpFactors)(LANGVT *l);     /* +76, slot 19 */
     int (*GetNbrSpeechUnit)(LANGVT *l);               /* +80, slot 20 */
     void *s21[4];
@@ -236,7 +237,8 @@ struct LANGVT {
     int (*CheckBitField)(LANGVT *l, int mask);        /* +208, slot 52 */
     void *s53[8];
     unsigned char *(*GetpProbMatrix)(void *cb);       /* +244, slot 61 */
-    void *s62[17];
+    float *(*GetpSmoothMatrix)(LANGVT *l, void *cb);  /* +248, slot 62 */
+    void *s63[16];
 };
 
 /* a warp factor (the language's, _langGetpWarpFactors): the genders it serves and its value */
