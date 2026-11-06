@@ -194,6 +194,207 @@ zdb::IntersectStruct *GetNearestIntersectCamPoint(zdb::DiIntersect *diSet, CPnt3
     return Di;
 }
 
+/* a point into a VU vector, its fields read through the reference (off the frame) */
+inline void FillVec(CPnt4D &v, const CPnt3D &p)
+{
+    v.x = p.x;
+    v.y = p.y;
+    v.z = p.z;
+    v.w = 1.0f;
+}
+
+/* the chord from the aim (p0) to the goal (p1) cut against the world: the goal pulled a little out, the
+ * short tether's length eased, the hit nearest the aim given as the out point -- and then four feelers from
+ * it (right, left, up, down, 0.75 each) pushing it off the walls (SOCOM 1's; SOCOM II's the shorter tether
+ * through the entity's own check).
+ * OPEN, 0xC48 of 0xC38, RightVec's accesses only (everything else byte-exact, the saved registers and the
+ * frame included: the spill pick wants Vec's two address temporaries spilled and rematerialised, which the view
+ * vector read through a reference gives; the characters' switch is a for fully unrolled). The target keeps
+ * &RightVec + 8 in a saved register for the length's read and the right vector's alone; the normalise's read and
+ * store and the scale's store of RightVec are frame-relative (hence its z read scheduled ahead of x's store), and
+ * &RightVec + 4 has no temporary. Here IRO_CommonSubs merges them all (pass 1: y's store and read; pass 2: z).
+ * Tried: helpers by reference and pointer, a reference local before the test, a by-value and a reference assign
+ * helper (the product then sits a pass too deep). */
+void CAppCamera::ClipCameraChord(float dT, CPnt3D *p0, CPnt3D *p1, CPnt3D *pout)
+{
+    bool flag = m_cam_death_state != 0;
+    CPnt3D Vec;
+
+    Vec = *p0 - *p1;
+
+    float len = Vec.Normalize();
+
+    len += 0.75f;
+    Vec = Vec * len;
+    *p1 = *p0 - Vec;
+
+    bool flag_body = GetNode__7CEntityFv(m_entity)->SetActive(false);
+
+    if (peekCur == 0.0f)
+        zdb::SetCameraCollideFlagRequired(true);
+    else
+        zdb::SetCameraCollideFlagRequired(false);
+
+    zdb::IntersectStruct *di;
+    CZSealBody *carried = 0;
+    bool carriedWas;
+
+    if (m_bc)
+        carried = *(CZSealBody **)((char *)m_bc + 0xeac);
+    if (carried)
+        carriedWas = GetNode__7CEntityFv(carried)->SetActive(false);
+    camera_tether_intersects_something = false;
+
+    di = GetNearestIntersectCamPoint(zdb::CWorld::m_world->GetIntersects(p0, p1, flag), p0);
+
+    if (m_short_tether_timer > 0.0f)
+        m_short_tether_timer -= dT;
+    if (len > save_short_tether_length) {
+        if (m_short_tether_timer <= 0.0f || save_short_tether_length < 3.3000002f || camera_tether_intersects_something)
+            save_short_tether_length += short_tether_rate * (len - save_short_tether_length);
+    } else
+        save_short_tether_length = len;
+    if (di) {
+        CZSealBody *bc = m_bc;
+
+        if (m_entity == bc || bc != ftsGetPlayer()
+            || !GetNode__7CEntityFv(bc)->FindChild(di->m_node, true)) {
+            CPnt3D intersect(di->m_pos);
+
+            intersect.Sub(p0, &intersect);
+
+            float d = intersect.Normalize();
+
+            d -= 0.75f;
+            if (d < 0.75f)
+                d = 0.75f;
+            if (d < save_short_tether_length)
+                save_short_tether_length = d;
+            else
+                d = save_short_tether_length;
+            intersect.Scale(d, &intersect);
+            intersect.Add(p0, pout);
+            m_short_tether_timer = 1.5f;
+        }
+    } else {
+        Vec.Normalize();
+        Vec = Vec * save_short_tether_length;
+        *p1 = *p0 - Vec;
+        pout->x = p1->x;
+        pout->y = p1->y;
+        pout->z = p1->z;
+    }
+
+    CPnt3D RightVec;
+
+    Vec.ToRightXZ(&RightVec);
+
+    float rlen = sqrtf(RightVec.x * RightVec.x + RightVec.z * RightVec.z);
+
+    if (rlen != 0.0f) {
+        rlen = 1.0f / rlen;
+        RightVec.x *= rlen;
+        RightVec.z *= rlen;
+    }
+    RightVec = RightVec * 0.75f;
+
+    CPnt3D pR;
+
+    pR = *pout + RightVec;
+
+    CPnt3D pL;
+
+    pL = *pout - RightVec;
+    zdb::DiIntersect *dis[4];
+    CPnt4D up;
+    CPnt4D right;
+
+    right.x = RightVec.x;
+    right.y = RightVec.y;
+    right.z = RightVec.z;
+    right.w = 1.0f;
+
+    CPnt4D view;
+
+    FillVec(view, Vec);
+
+    sceVu0OuterProduct((float *)&up, (float *)&right, (float *)&view);
+    sceVu0Normalize((float *)&up, (float *)&up);
+
+    CPnt3D Up;
+
+    Up.x = up.x;
+    Up.y = up.y;
+    Up.z = up.z;
+    Up.Scale(0.75f, &Up);
+
+    CPnt3D Down;
+
+    Down = *pout - Up;
+    Up = *pout + Up;
+
+    unsigned int mask = m_camera->GetCameraCanSeeRegion();
+
+    dis[0] = &dilr0;
+    dis[1] = &dilr1;
+    dis[2] = &dilr2;
+    dis[3] = &dilr3;
+    dilr0.m_Type = 2;
+    dilr0.m_Tail = *pout;
+    dilr0.m_Tip = pR;
+    dilr0.SetMask(mask);
+    dilr1.m_Type = 2;
+    dilr1.m_Tail = *pout;
+    dilr1.m_Tip = pL;
+    dilr1.SetMask(mask);
+    dilr2.m_Type = 2;
+    dilr2.m_Tail = *pout;
+    dilr2.m_Tip = Up;
+    dilr2.SetMask(mask);
+    dilr3.m_Type = 2;
+    dilr3.m_Tail = *pout;
+    dilr3.m_Tip = Down;
+    dilr3.SetMask(mask);
+    for (int i = 0; i < 4; i++)
+        dis[i]->m_IntersectCharacters = !flag;
+    zdb::CWorld::m_world->GetIntersectBatch(dis, 4);
+
+    zdb::IntersectStruct *di0 = dilr0.GetNearestIntersect();
+    zdb::IntersectStruct *di1 = dilr1.GetNearestIntersect();
+
+    if (di0 && di1) {
+        *pout = di0->m_pos + (di1->m_pos - di0->m_pos) * 0.5f;
+        m_short_tether_timer = 1.5f;
+    } else if (di0) {
+        pout->x += di0->m_pos.x - pR.x;
+        pout->z += di0->m_pos.z - pR.z;
+        m_short_tether_timer = 1.5f;
+    } else if (di1) {
+        pout->x += di1->m_pos.x - pL.x;
+        pout->z += di1->m_pos.z - pL.z;
+        m_short_tether_timer = 1.5f;
+    }
+    di0 = dilr2.GetNearestIntersect();
+    di1 = dilr3.GetNearestIntersect();
+    if (di0 && di1) {
+        *pout = di0->m_pos + (di1->m_pos - di0->m_pos) * 0.5f;
+        m_short_tether_timer = 1.5f;
+    } else if (di0) {
+        *pout += di0->m_pos - Up;
+        m_short_tether_timer = 1.5f;
+    } else if (di1) {
+        *pout += di1->m_pos - Down;
+        m_short_tether_timer = 1.5f;
+    }
+    Vec = *pout - *p0;
+    if (Vec.Normalize() < 0.75f)
+        *pout = *p0 + Vec * 0.75f;
+    GetNode__7CEntityFv(m_entity)->SetActive(flag_body);
+    if (carried)
+        GetNode__7CEntityFv(carried)->SetActive(carriedWas);
+    zdb::SetCameraCollideFlagRequired(false);
+}
+
 /* the view's preset taken up: the goal position and aim, the tether's length, and -- with a SEAL
  * attached -- the camera put there, looking at the aim, both carried into the SEAL's space (the
  * name ours) */

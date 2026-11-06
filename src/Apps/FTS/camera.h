@@ -43,6 +43,9 @@ class DiIntersect {
 public:
     DiIntersect(int n);
     ~DiIntersect();
+    /* the hit mask and the nearest hit (node_world.h's real class has both) */
+    void SetMask(unsigned int mask);
+    IntersectStruct *GetNearestIntersect();
 
     unsigned int m_Type : 16;   // 0x0
     unsigned int m_IntersectCharacters : 1;
