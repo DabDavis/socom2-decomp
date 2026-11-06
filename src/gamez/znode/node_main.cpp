@@ -30,12 +30,6 @@ namespace zdb {
  * include/vector does, and the list's destructor calls the deleter's after two levels where
  * list<T *>'s inlines all three. With a vector of pointers in its place the initialiser matches */
 
-/* a mesh's decals all freed: CMesh::DereferenceDecals (0x3B8440). SOCOM 1's mesh took the view as
- * other visuals do, and the map's row carries that (FUi), but SOCOM II's one call (RemoveDecals
- * 0x3136A4) sets no a1 -- its delay slot a nop, where the CVisual call beside it passes the view --
- * so SOCOM II's takes none (`DereferenceDecals__Q23zdb5CMeshFv`, reported in round 27); called as
- * the member with the view the slot fills (`move a1,s2`). Until then, a placeholder */
-extern "C" void func_003B8440(CVisual *mesh);
 /* the world-to-texture projectors (zmath_main.cpp: SOCOM 1's CalcWorldToUV pair, given the
  * texture's width where SOCOM 1 passed the texture) */
 extern "C" void func_003079C0(const CPnt3D *eye, const CPnt3D *at, const CPnt3D *dir, float a, float b,
@@ -51,16 +45,6 @@ class CRipple {
 public:
     static void Tick(float dt);
 };
-/* a scrolling texture handed to the texture effects: theTextureFXManager's Add (0x3C0460), SOCOM 1's
- * CTextureFX::InitScrollTexture's arguments in its order -- (float u, float v, bool tick, CVisual *,
- * CNode *) -- and an index, giving an index back. Spelled as the manager's member with the map's
- * order (bool, CVisual *, CNode *, int, float, float) the set-up moves both floats after the ints (4
- * instructions off, round 27), where SOCOM 1's order -- u and v first -- gives the target's
- * interleaving: the map's row and vis_texfx.h's declaration likely want it
- * (`Add__Q23zdb17CTextureFXManagerFffbPQ23zdb7CVisualPQ23zdb5CNodei`, reported). Until then, a
- * placeholder at the manager's address */
-extern "C" int func_003C0460(CTextureFXManager *fx, float u, float v, bool b, CVisual *visual, CNode *node,
-                             int index);
 /* the mesh _Copy cloned last, which the sub-meshes after it are made over (node_main.cpp's
  * .bss, not named yet) */
 extern "C" CMesh *data_0045C2E8;
@@ -1029,7 +1013,7 @@ void CNode::RemoveDecals(unsigned int vid)
             CVisual *visual = *it;
 
             if (visual->GetType() == 1)
-                func_003B8440(visual);
+                ((CMesh *)visual)->DereferenceDecals();
             else
                 visual->DereferenceDecals(vid);
         }
@@ -1049,7 +1033,7 @@ int CNode::ScrollTexture(CNode *node, float u, float v, bool b, int index)
 
         if (visual->GetType() == 1)
             return index;
-        index = func_003C0460(&theTextureFXManager, u, v, b, visual, node, index);
+        index = theTextureFXManager.Add(u, v, b, visual, node, index);
     }
     if (m_child.size()) {
         for (CNodeVector::iterator i = m_child.begin(), end = m_child.end(); i != end; ++i)
