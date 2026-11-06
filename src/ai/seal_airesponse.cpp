@@ -337,7 +337,9 @@ int CAiSNoAmmo::Tick(CSealCtrlAi *ai)
 
 /* a team mask without the team bits 4-15 and the two top bits -- but those of `keep` -- and with bit
  * 26 (SOCOM 1's ClearTeamMask(unsigned int, unsigned int), out of line there, 0x2E9090; inlined in
- * SOCOM II, its loop unrolled six times) */
+ * SOCOM II, its loop unrolled six times). The mask cleared in place (`mask &= ~m`): the hostage's Tick
+ * ANDs into the mask's register (one `(mask & ~m) | bit` expression ANDs into ~m's); the surrender's
+ * OnSignal is the same either way */
 inline unsigned int ClearTeamMask(unsigned int mask, unsigned int keep)
 {
     unsigned int m = 0;
@@ -346,7 +348,8 @@ inline unsigned int ClearTeamMask(unsigned int mask, unsigned int keep)
         m |= 1 << i;
     m |= 0xc0000000;
     m &= ~keep;
-    return (mask & ~m) | 0x04000000;
+    mask &= ~m;
+    return mask | 0x04000000;
 }
 
 /* a surrender's events: reset; entering -- no target, the team kept and cleared to the player's (as
@@ -459,7 +462,7 @@ void func_00608050(void *body, void *userdata);
 /* whether a SEAL of a team is within a range (OVL2 0x569C60), the AI's mode 1 kept (0x570D90),
  * a state of the AI's tested (0x5F51A0) and the SEAL's stance put back (0x5A5790) -- the SEAL
  * lane's rows, unnamed */
-bool func_00569C60(CZSealBody *seal, float *range, unsigned int team, int a, int b);
+CEntity *func_00569C60(CZSealBody *seal, float *range, unsigned int team, int a, int b);
 void func_00570D90(CSealCtrlAi *ai, int mode);
 bool func_005F51A0(CSealCtrlAi *ai, int a, int b);
 void func_005A5790(CZSealBody *seal, int stance, float t);
@@ -1872,6 +1875,122 @@ bool CAiSHostage::CanPushAiState(AI_STATE state, CSealCtrlAi *ai)
         break;
     }
     return ok;
+}
+
+extern "C" {
+/* a state's delayed step running, a period of the state clock, a step taken now or after a delay
+ * (seal_aistate.cpp's OVL2 0x5F61E0, 0x5F6270, 0x5F62C0) */
+bool func_005F61E0(CAiState *s, CSealCtrlAi *ai);
+bool func_005F6270(CAiState *s, float period, CSealCtrlAi *ai);
+unsigned int func_005F62C0(CAiState *s, unsigned int phase, float delay);
+/* whether a SEAL is in a team's squad (seal_unit.cpp's OVL2 0x5EDDC0, unnamed) and a SEAL's stats
+ * stepped (seal.cpp's 0x545180 / 0x545160: the rescues and the kills of hostages, the names unknown) */
+bool func_005EDDC0(CEntity *seal, int team, int flag);
+void func_00545180(CSealStats *s, int n);
+void func_00545160(CSealStats *s, int n);
+}
+
+/* a hostage held: once asked (the flags' bit 0) its team taken to its captor's; then down on its knees
+ * (1), stopped and crouched for ten seconds; freed (3): the call, standing when a player-team squad
+ * has it, else a short crouch, and its captor -- a SEAL -- credited, by the surrender's kept team when
+ * the AI surrendered; moving (2), crouched; then every five seconds (three once asked to) the nearest
+ * SEAL within 250 looked at: a team-mate acknowledged, an enemy called out and reported; crouched
+ * again (6) (OVL2 0x601910; SOCOM 1's 0x2E6620 grown) */
+/* the AI's entity (inline: read through it the SEAL is a temporary, numbered after the walk's -- the
+ * target's s3 under this and ai; a named local read straight is numbered after the parameters, s1) */
+static inline CEntity *HostageEntity(CSealCtrlAi *ai)
+{
+    return ai->m_entity;
+}
+
+int CAiSHostage::Tick(CSealCtrlAi *ai)
+{
+    CEntity *seal = HostageEntity(ai);
+
+    if (m_flags & 1) {
+        seal->SetTeamMask(ClearTeamMask(seal->m_team, m_58));
+        SetFlags(0, 1);
+    }
+    if (func_005F61E0(this, ai))
+        return Result();
+    STEP step = (STEP)m_phase;
+
+    switch (step) {
+    case STEP_0:
+        step = (STEP)func_005F62C0(this, 2, 0.0f);
+        break;
+    case STEP_1:
+        func_005628F0(ai);
+        StopThrottles__11CSealCtrlAiFb(ai, 1);
+        SetStanceDelayed__11CSealCtrlAiF11SEAL_STANCEf(ai, 2, -1.0f);
+        func_005F62C0(this, 5, 10.0f);
+        break;
+    case STEP_3: {
+        ai->ClearGoal((GOAL_TYPE)0);
+        ai->PlayAiSound((CHARACTER_SOUND)75, 1.0f, CAiEvent::AIE_NONE);
+        if (func_005EDDC0(seal, 17, 1)) {
+            SetStance__11CSealCtrlAiF11SEAL_STANCE(ai, 0);
+            func_005F62C0(this, 2, 2.0f);
+        } else {
+            SetStanceDelayed__11CSealCtrlAiF11SEAL_STANCEf(ai, 2, 0.15f);
+            func_005F62C0(this, 4, 0.5f);
+        }
+        CEntity *e = CEntity::m_list.GetEntityById(m_5c);
+        CZSealBody *captor = e && e->m_type == 2 ? (CZSealBody *)e : 0;
+
+        if (captor) {
+            bool rescued = true;
+
+            if (ai->m_stateStack.m_10 & (1 << AI_STATE_SURRENDER)) {
+                CAiState *s = ai->FindAiState(AI_STATE_SURRENDER);
+                CAiSSurrender *sur = s && s->m_state == AI_STATE_SURRENDER ? (CAiSSurrender *)s : 0;
+
+                if (sur)
+                    rescued = (sur->m_team & captor->m_team) != 0;
+                else
+                    rescued = false;
+            }
+            if (rescued)
+                func_00545180(&captor->m_stats, 1);
+            else
+                func_00545160(&captor->m_stats, 1);
+        }
+        break;
+    }
+    case STEP_2:
+        ai->ClearGoal((GOAL_TYPE)0);
+        ai->SetAiMode((AI_MODE)1);
+        SetStanceDelayed__11CSealCtrlAiF11SEAL_STANCEf(ai, 1, -1.0f);
+        func_005F62C0(this, 5, 5.0f);
+        break;
+    case STEP_5:
+        if (func_005F6270(this, (m_flags & 2) ? 3.0f : 5.0f, ai)) {
+            float range = 250.0f;
+            CEntity *near = func_00569C60((CZSealBody *)seal, &range, 0, 0, 0);
+
+            if (near) {
+                if (ai->SetLookPosW((AI_LOOK)2, near)) {
+                    ai->ModifyLookFlags(9, 0);
+                    ai->SetLookTimer(5.0f);
+                }
+                if (near->m_team & seal->m_team) {
+                    if (m_flags & 2)
+                        ai->PlayAiSound((CHARACTER_SOUND)73, 0.15f, CAiEvent::AIE_NONE);
+                    SetFlags(0, 2);
+                } else {
+                    ai->PlayAiSound((CHARACTER_SOUND)72, 1.0f, CAiEvent::AIE_NONE);
+                    func_005F0B30(ai, &near->m_posW, 4, 5, 6);
+                }
+            }
+        }
+        break;
+    case STEP_6:
+        SetStanceDelayed__11CSealCtrlAiF11SEAL_STANCEf(ai, 1, -1.0f);
+        func_005F62C0(this, 5, 10.0f);
+        break;
+    }
+    UpdatePhase(step);
+    return Result();
 }
 
 CAiSHostage::~CAiSHostage()

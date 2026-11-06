@@ -757,6 +757,8 @@ class CAiSHostage : public CAiState {
 public:
     CAiSHostage() : CAiState(AI_STATE_HOSTAGE) {}
     virtual void OnSignal(SIGNAL sig, CSealCtrlAi *ai);
+    /* the hostage held (0x601910) */
+    virtual int Tick(CSealCtrlAi *ai);
     virtual bool CanPushAiState(AI_STATE state, CSealCtrlAi *ai);
     virtual bool CanAttack() const { return false; }
     virtual bool CanScan() const { return true; }
