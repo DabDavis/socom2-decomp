@@ -745,10 +745,10 @@ void CZSealBody::SetSnakePathUpdate(bool on, unsigned int length)
         return;
     if (on) {
         m_snake_path = true;
-        ((CAiPath *)m_snakePath)->SetSnakeLength(length);
+        m_snakePath.SetSnakeLength(length);
     } else {
         m_snake_path = false;
-        ((CAiPath *)m_snakePath)->SetSnakeLength(0);
+        m_snakePath.SetSnakeLength(0);
     }
 }
 
@@ -765,7 +765,7 @@ void CZSealBody::TeleportTo(const CPnt3D *pos, const CQuat *quat)
         m_last_altitude.m_pos = *pos;
         m_last_altitude.m_norm = CPnt3D::unit_y;
     }
-    func_00525200(m_snakePath);
+    func_00525200(&m_snakePath);
     CEntity::TeleportTo(pos, quat);
     if (IsPlayer() && zdb::CWorld::m_world) {
         zdb::CCamera *cam = ((CWorldCamera *)zdb::CWorld::m_world)->m_camera;
@@ -786,7 +786,7 @@ void CZSealBody::TeleportTo(const CMatrix *m)
     m_last_altitude.m_node = 0;
     m_last_altitude.m_pos = *(const CPnt3D *)m->m_matrix[3];
     m_last_altitude.m_norm = CPnt3D::unit_y;
-    func_00525200(m_snakePath);
+    func_00525200(&m_snakePath);
     CEntity::TeleportTo(m);
     if (IsPlayer() && zdb::CWorld::m_world) {
         zdb::CCamera *cam = ((CWorldCamera *)zdb::CWorld::m_world)->m_camera;
@@ -1361,6 +1361,210 @@ bool OKToStand(CZSealBody *seal, SEAL_STATE stance);
 static inline float Len3(float x, float y, float z)
 {
     return sqrtf(x * x + y * y + z * z);
+}
+
+extern "C" {
+/* the carried body let go (OVL2 0x545EE0, this unit's), the ladder let go (0x5B14E0, seal_env.cpp's) */
+void func_00545EE0(CZSealBody *seal, int x);
+void func_005B14E0(CZSealBody::CSealClimb *climb, CZSealBody *seal);
+void func_005781C0(CZSealBody *seal);
+void func_0059D750(CZSealBody *seal);
+extern unsigned char data_0045A0C1;
+extern int data_003DF148;
+extern int data_003DF150;
+extern int data_003DF158;
+extern int data_003DF160;
+/* (the clutter's and the world's, by their mangled names: zdb::CClutterAnimManager::UnRegisterEffector, OVL1
+ * 0x2D7EA0; zdb::CWorld::DeleteTextureAssetCharacter(char *, CNode *), OVL1 0x31D130) */
+void UnRegisterEffector__Q23zdb19CClutterAnimManagerFPCv(void *mgr, const void *effector);
+void DeleteTextureAssetCharacter__Q23zdb6CWorldFPcPQ23zdb5CNode(void *world, const char *lib, zdb::CNode *node);
+}
+
+/* the view pulled back and the zoom's lens (OVL1 0x1F1470, 0x1EFEA0: st_core.cpp's) */
+class CameraZoom {
+public:
+    static void ResetLensColors();
+    static void SetLensFx(unsigned char fx);
+};
+void SeeFarther(bool bEnable, float SeeFartherFactor);
+
+/* a SEAL's network state (SOCOM 1's CZSealState: OVL1 0x2BD380, 0x2BEF20) */
+class CZSealState {
+public:
+    static void RemoveNetSeal(int id, bool player);
+    static void SealDeleteCleanup(int id);
+};
+
+extern "C" void Clear__10CZBodyPartFv(CZBodyPart *part);
+
+/* each node deleted (an inline, the name ours: its iterators by value in the frame, end first) */
+static inline void DeleteAll(std::vector<zdb::CNode *>::iterator first, std::vector<zdb::CNode *>::iterator last)
+{
+    for (; first != last; ++first)
+        zdb::CNode::Delete(*first);
+}
+
+/* a part deleted: its Clear, zbody's in-class inline, is the real function OVL1 0x28EF30 here (the target
+ * calls it, OVL2 has no copy) */
+static inline void DeletePart(CZBodyPart *part)
+{
+    if (part) {
+        Clear__10CZBodyPartFv(part);
+        operator delete(part);
+    }
+}
+
+/* a flag through a bool (an inline, the name ours: false as `andi v0,zero,1`) */
+static inline void SetZooming(CZSealBody *seal, bool on) { seal->m_iszooming = on; }
+
+/* the SEAL taken out of the world: what it carries and holds let go, a player's view put back, its network
+ * entry and controller gone, its blends popped, its kit and anchors freed, its node, gear and parts deleted
+ * (OVL2 0x5533E0, slot 0x08 of its table; SOCOM 1's ~CZSealBody grown) */
+CZSealBody::~CZSealBody()
+{
+    if (m_eb8)
+        func_00545EE0(this, 1);
+    CBlendOverlay &ov = m_overlay;
+
+    if (ov.m_anim && ov.m_anim->m_0) {
+        m_active_anim_pool.PutBack(ov.m_anim);
+        ov.Clear();
+    }
+    func_005781C0(this);
+    if (m_carry) {
+        m_carry->m_carry = 0;
+        m_carry = 0;
+    }
+    func_0059D750(this);
+    func_005B14E0(&m_climb, this);
+    m_shock.m_1314 = CPnt3D::zero;
+    m_shock.m_1320 = 0.0f;
+    m_shock.m_1324 = 0.0f;
+    if (m_control ? ((CSealCtrl *)m_control)->IsPlayer() : false) {
+        CSealCtrl *ctrl = (CSealCtrl *)m_control;
+
+        if (ctrl) {
+            m_kit.Apply_LensEffects(false, 0);
+            m_kit.NVG_Enabled(false);
+            m_kit.Binocs_Enabled(false);
+            SeeFarther(false, 0.0f);
+            CameraZoom::SetLensFx(1);
+            StopAllHeartbeatSounds();
+            ctrl->StopRumbler();
+            CZWeapon::ClearTimer(0);
+            SetZooming(this, false);
+            SetCurZoomState(ZOOMSTATE_3RDPERSON);
+            appCamera->SetZoom(1.0f);
+        }
+    }
+    if (ftsPlayer.m_body == this)
+        ftsPlayer.m_body = 0;
+    m_zoomstate = ZOOMSTATE_3RDPERSON;
+    m_zoomstate_prev = ZOOMSTATE_UNKNOWN;
+    m_zoomstate_echo = 0;
+    m_zoom_range = 1.0f;
+    if (!m_respawning) {
+        if (data_0045A0C1) {
+            if (!(m_control ? ((CSealCtrl *)m_control)->IsRemote() : false)) {
+                CZSealState::RemoveNetSeal(m_id, m_control ? ((CSealCtrl *)m_control)->IsPlayer() : false);
+                m_id = CEntity::deletedId;
+            } else
+                CZSealState::SealDeleteCleanup(m_id);
+        }
+        delete m_control;
+        m_control = 0;
+    }
+    UnRegisterEffector__Q23zdb19CClutterAnimManagerFPCv(zdb::CWorld::m_world->m_grid.m_ClutterAnimManager, this);
+    CBodyAnimBlendStack *stack = &m_blends;
+
+    while (stack->m_top + 1 > 0)
+        CBody::PopBlend();
+    m_kit.UnInit();
+    delete m_adrenaline;
+    m_adrenaline = 0;
+    CCompass::DeleteAnchor(m_mpbomb_anchor);
+    m_mpbomb_anchor = 0;
+    CCompass::DeleteAnchor(m_mpbase_anchor);
+    m_mpbase_anchor = 0;
+    CCompass::DeleteAnchor(m_compass_anchor);
+    m_compass_anchor = 0;
+    CCompass::DeleteAnchor(m_hostile_anchor);
+    m_hostile_anchor = 0;
+    zdb::CNode *parent = m_node->m_parent;
+
+    zdb::CWorld::m_world->m_grid.gridRemoveNodeFromGrids(m_node);
+    DeleteTextureAssetCharacter__Q23zdb6CWorldFPcPQ23zdb5CNode(zdb::CWorld::m_world, "clib", m_node);
+    if (zdb::CAssetMgr::m_assets.FindLib("flib"))
+        DeleteTextureAssetCharacter__Q23zdb6CWorldFPcPQ23zdb5CNode(zdb::CWorld::m_world, "flib", m_node);
+    if (CZWeapon::m_pProjectilelist)
+        CZWeapon::m_pProjectilelist->ForgetHitNode(m_node);
+    parent->DeleteChild(m_node);
+    DeleteCameraEffectsNode();
+    if (m_node->m_model)
+        m_node->m_model->Release(m_node);
+    delete m_node;
+    m_node = 0;
+    DeletePart(m_reyeball);
+    m_reyeball = 0;
+    DeletePart(m_reyelid);
+    m_reyelid = 0;
+    DeletePart(m_leyeball);
+    m_leyeball = 0;
+    DeletePart(m_leyelid);
+    m_leyelid = 0;
+    for (unsigned int i = 0; i < 5; i++)
+        DeletePart(m_item_gear[i].m_part);
+    m_rifle = 0;
+    m_pistol = 0;
+    DeletePart(m_weapon);
+    m_weapon = 0;
+    SetBodyPart(data_003DF148, 0);
+    SetBodyPart(data_003DF150, 0);
+    SetBodyPart(data_003DF158, 0);
+    SetBodyPart(data_003DF160, 0);
+    int id = 0;
+    std::vector<CZBodyPart *> &parts = m_body_parts;
+
+    for (std::vector<CZBodyPart *>::iterator it = parts.begin(); it != parts.end(); ++it, ++id)
+        if (*it && (unsigned int)(*it)->m_id >= siNumBodyObjects)
+            SetBodyPart(id, 0);
+    m_root = 0;
+    m_lfoot = 0;
+    m_rfoot = 0;
+    m_lhand = 0;
+    m_spinelo = 0;
+    m_rhand = 0;
+    m_hips = 0;
+    m_head = 0;
+    m_neck = 0;
+    m_spinehi = 0;
+    m_lthigh = 0;
+    m_rthigh = 0;
+    m_rcalf = 0;
+    m_rbicep = 0;
+    m_rforearm = 0;
+    m_lbicep = 0;
+    m_lforearm = 0;
+    m_lscap = 0;
+    m_rscap = 0;
+    m_lshoulder_wgt = 0;
+    m_rshoulder_wgt = 0;
+    m_lcalf = 0;
+    m_aimnodes = 0;
+    m_ltoe = 0;
+    m_rtoe = 0;
+    delete m_projectiledi;
+    memset(m_item_gear, 0, sizeof(m_item_gear));
+    m_node = 0;
+    m_charType->Release();
+    if (m_select)
+        _free(m_select, 0, 0);
+    m_select = 0;
+    CAiEvent::Release(m_aiEvent);
+    m_aiEvent = 0;
+    DeleteAll(m_deallocList.begin(), m_deallocList.end());
+    m_deallocList.clear();
+    m_538 = 0;
 }
 
 /* whether the SEAL may take a state now: not out of a blend that holds it, not in state 7; to stand or
@@ -2629,7 +2833,6 @@ extern "C" {
 void func_005781C0(CZSealBody *seal);
 void func_005A5DA0(CZSealBody *seal);
 void func_0059D750(CZSealBody *seal);
-void func_005B14E0(CZSealBody::CSealClimb *climb, CZSealBody *seal);
 AnimType func_005A0950(CZSealBody *seal, DAMAGE_LOCATION loc, SEAL_STATE state);
 void *func_00588BC0(CZSealBody *seal, AnimType type, int state, int flag, int kind);
 }
@@ -3009,12 +3212,6 @@ void func_005B14E0(CZSealBody::CSealClimb *climb, CZSealBody *seal);
 }
 
 /* the camera's zoom (thezoom.cpp's) */
-class CameraZoom {
-public:
-    static void ResetLensColors();
-    static void SetLensFx(unsigned char fx);
-};
-void SeeFarther(bool bEnable, float SeeFartherFactor);
 
 /* dead: the kit told, the entity's own death, its sounds let go, whatever it worked left, its map
  * cell free; whoever followed it online forgets it; the time kept, the climb and the carried let go; a

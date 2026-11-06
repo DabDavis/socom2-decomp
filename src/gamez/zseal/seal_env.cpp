@@ -103,7 +103,7 @@ void CZSealBody::UpdateAiMapLoc()
                 if (m_snake_path) {
                     static unsigned int k_search = 5;
 
-                    ((CAiPath *)m_snakePath)->AddSnakePoint(loc, k_search, m_bit14 ? 8 : 0);
+                    m_snakePath.AddSnakePoint(loc, k_search, m_bit14 ? 8 : 0);
                 }
                 if (m_isAlive)
                     AiMaps.SetOccupied(valid, loc, m_id);

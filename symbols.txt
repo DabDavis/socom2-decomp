@@ -10046,7 +10046,7 @@
 0x00552EC0 0x3C4 func_00552EC0  # OVL2
 0x00553290 0x14C AddWeapon__10CZSealBodyF14SEAL_ITEM_BYTE  # OVL2; s1:order by hand (the SEALs, round 23): SOCOM 1's AddWeapon__10CZSealBodyF9SEAL_ITEM (0x256E90), right before ~CZSealBody in both builds and called twice by the constructor in both, the same code (a node new'd, pushed on m_deallocList through the pod insert, parented by the item's switch with the names rifle/pistol/grenade, AddBodyPart) -- SOCOM II files the part in m_item_gear and returns part != 0; the parameter is zseal.h's byte enum SEAL_ITEM_BYTE (zweapon.h's word-sized SEAL_ITEM stand-in holds SOCOM 1's enum name); seal.cpp
 0x005533E0 0x974 __dt__10CZSealBodyFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x00553D60 0x44 func_00553D60  # OVL2
+0x00553D60 0x44 __dt__8CObjAnimFv  # OVL2; by hand (the SEALs, round 60): ~CZSealBody hands it to __destroy_arr for m_item_gear; zseal.h's CObjAnim destructor zeroes both words
 0x00553DB0 0x8 GetRootPart__10CZSealBodyCFv  # OVL2; s1:order (seal.cpp, right before OnRecycleEntity, as SOCOM 1's GetRootPart__10CZSealBodyCFv: the root part, m_root at 0x2E8 -- SOCOM 1's 0x26C; CBody's slot 0x10, through the thunk 0x5552A0, and CZSealBody's 0x88) -- the SEAL lane, round 4
 0x00553DC0 0x40 func_00553DC0  # OVL2
 0x00553E00 0x14 OnRecycleEntity__10CZSealBodyFP7CEntity  # OVL2; slot 0x54 of __vt__10CZSealBody (SOCOM II's CEntity order: OnMissionStart 0x4C, OnMissionEnd 0x50, OnRecycleEntity 0x54): m_control's OnRecycleEntity tail-called, SOCOM 1's 0x14 bytes word for word; size 0x14 (the seed ran a j-less tail call on into 0x553E20, the next function, and the s1:vtable pass named the pair OnMissionEnd)

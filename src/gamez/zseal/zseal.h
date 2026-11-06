@@ -320,6 +320,9 @@ public:
     bool NVG_Enabled() const;
     /* the night vision and the binoculars put on or off, the lens's fog and colour (kit.h's: OVL2
      * 0x5C8080, 0x5B9110, 0x5C1800) */
+    /* (OVL2 0x5C8110, 0x5C7CE0: kit.h's; ~CZSealBody's member and its first call on it) */
+    ~CZKit();
+    void UnInit();
     void NVG_Enabled(bool on);
     void Binocs_Enabled(bool on);
     void Apply_LensEffects(bool on, CPnt3D *color);
@@ -1825,7 +1828,19 @@ public:
 /* a head's turn toward a direction, eased over a time (SOCOM 1's DWARF: CLook : CSequence, 0x80
  * bytes; SOCOM II's drops a quaternion: m_goal_dir and everything after it 0x10 earlier). SOCOM II's
  * SEAL holds its three looks (SOCOM 1's held pointers): seal_env.cpp's */
-class CLook : public CSequence {
+/* (a sequence member clears itself: CSequence, zbody.h's, as this unit's SEAL destroys it -- ~CZSealBody's
+ * this-tests, two for a plain sequence member, one more per derived class; the name ours) */
+class CSeqBase : public CSequence {
+public:
+    ~CSeqBase() { Clear(); }
+};
+
+class CSeqMember : public CSeqBase {
+public:
+    ~CSeqMember() {}
+};
+
+class CLook : public CSeqBase {
 public:
     CLook();
     void SetDir(const CPnt3D *dir, float rate);
@@ -1848,7 +1863,7 @@ public:
 
 /* a turn in place's timing (SOCOM 1's DWARF: CTurnInPlace : CSequence, 0x10 bytes, nothing of its
  * own) */
-class CTurnInPlace : public CSequence {
+class CTurnInPlace : public CSeqBase {
 };
 
 /* the eyelids: a look down and back up (SOCOM 1's DWARF: CBlink : CLook) */
@@ -2010,6 +2025,8 @@ public:
      * primary pointer (Destroy's state set reads +0x90) */
     virtual CZBodyPart *GetRootPart() const;                                /* +0x88 */
     virtual void Virtual8C();                                               /* +0x8C (0x547350) */
+    /* the lens node deleted (OVL2 0x599820, seal_create.cpp's) */
+    void DeleteCameraEffectsNode();
     virtual void BodySetState(int state);                                   /* +0x90 */
 
     /* whether a player drives it (an inline the code shows: m_control tested, IsPlayer called) */
@@ -2539,7 +2556,9 @@ public:
     /* bit 0: cleared by 0x549C30 when a wall the weapon's points are behind faces up past the limit
      * (seal.cpp; the name ours) */
     unsigned char m_258_0 : 1;   // 0x258
-    unsigned char _259[0x2bc - 0x259];
+    unsigned char _259[0x270 - 0x259];
+    /* (a member array of one: ~CZSealBody's __destroy_arr; the name ours) */
+    zdb::DiIntersect m_270[1];   // 0x270
     /* a point the wall's approach is measured from (0x5B4B40; the name ours) */
     CPnt3D m_2bc;   // 0x2bc
     unsigned char _2c8[0x2cc - 0x2c8];
@@ -2616,8 +2635,8 @@ public:
     unsigned char _424[0x428 - 0x424];
     CAiEvent *m_aiEvent;   // 0x428: the SEAL's own AI event (SOCOM 1's 0x380)
     unsigned char _42c[0x434 - 0x42c];
-    unsigned char m_snakePath[4];   // 0x434: a CAiPath (SOCOM 1's 0x384)
-    unsigned char _438[0x504 - 0x438];
+    CAiPath m_snakePath;   // 0x434: (SOCOM 1's 0x384)
+    unsigned char _438[0x504 - 0x434 - sizeof(CAiPath)];
     CPnt3D m_504;   // 0x504: where the SEAL last stood on a cell it can walk (UpdateAiMapLoc; the name ours)
     unsigned char _510[0x514 - 0x510];
     /* (SOCOM 1's m_follow_params_are_current and m_saved_formation_dir_is_valid, 0x458/0x459:
@@ -2839,8 +2858,9 @@ public:
     unsigned char _1120[0x1160 - 0x1120];
     /* the weapon's draw and put-away envelope (SOCOM 1's m_weapon_seq, a CSequence * at 0xf88;
      * seal_weapon.cpp's view names it so too) */
-    CSequence m_wep_seq;   // 0x1160
-    unsigned char _1170[0x1190 - 0x1170];
+    CSeqMember m_wep_seq;   // 0x1160
+    CSeqMember m_1170;   // 0x1170 (a sequence ~CZSealBody clears; the name ours)
+    unsigned char _1180[0x1190 - 0x1180];
     /* the head's look, the eyes' and the lids' blink (SOCOM 1's m_look, m_eyelook, m_blink were
      * pointers at 0xf90-0xf98; SOCOM II's are held: GetLookDir returns this + 0x11A0, SetLookDir
      * hands this + 0x1190 on, the eyes and lids align to 0x1210 and 0x1280) */
@@ -2851,15 +2871,31 @@ public:
     /* the turn in place's timing (SOCOM 1's m_turnip, a CTurnInPlace * at 0xf9c right after m_blink:
      * SOCOM II holds it, as the looks; StandTurning starts it) */
     CTurnInPlace m_turnip;   // 0x12f0
-    unsigned char _1300[0x1314 - 0x1300];
+    CSeqMember m_1300;   // 0x1300 (a sequence ~CZSealBody clears; the name ours)
+    unsigned char _1310[0x1314 - 0x1310];
     /* a point and two values 0x57ED10 sets for a SEAL this console plays, clears for a remote one
      * (the names ours) */
-    CPnt3D m_1314;   // 0x1314
-    float m_1320;   // 0x1320
-    float m_1324;   // 0x1324
+    struct CSealShock {
+        ~CSealShock()
+        {
+            m_1314 = CPnt3D::zero;
+            m_1320 = 0.0f;
+            m_1324 = 0.0f;
+        }
+
+        CPnt3D m_1314;   // 0x1314
+        float m_1320;   // 0x1320
+        float m_1324;   // 0x1324
+    } m_shock;   // 0x1314
     /* the SEAL's hold on a ladder: a flag, the ladder's index, a state (1 and 3 hold it) -- new in
      * SOCOM II (0x5B14E0 lets go of it; the names ours) */
     struct CSealClimb {
+        ~CSealClimb()
+        {
+            m_state = 0;
+            m_active = 0;
+        }
+
         unsigned char m_active;   // 0x0
         unsigned int m_ladder;   // 0x4: unsigned (the SEALs, round 34) -- passed to GetLadderByIndex's
                                  // int, the conversion puts its load after the list's (0x5B14E0, 0x5A2490)
