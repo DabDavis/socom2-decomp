@@ -289,6 +289,97 @@ const char *GetMissionTitle(const char *code)
     return "UU";
 }
 
+}
+
+/* a string translated (zui's, 0x361B60) */
+const char *TranslateString(const char *key);
+
+namespace {
+
+/* the seven save slots listed into SavedGames: each slot's number, then a real game's date and time
+ * (its text from the fifth character, cut at the space), its rank (the fourth character's digit)
+ * and its mission's title; "Corrupted Save Game" for a text that is not a mission's; dashes and
+ * crosses for an empty slot (SOCOM 1's listed the number and the text) */
+bool OnListSavedGames(C2DAnimCmdHdr *hdr, float *dT)
+{
+    CRdrEditor rdr;
+
+    rdr.push(0);
+    for (int i = 0; i < 7; i++) {
+        char number[256];
+        MemCardFileInfo info;
+
+        rdr.push(0);
+        sprintf(number, "%d", i);
+        rdr.addstringnode(number);
+        bool used = false;
+
+        memset(info.m_text, 0, 268);
+        sprintf(s_savename, "SaveGame%d", i);
+        if (theMemCard.Exists(s_savename)) {
+            sprintf(s_savename, "SaveGame%d", i);
+            theMemCard.m_configSave->GetHeader(s_savename, 12, (CSaveManager::CSaveHeader *)&info);
+            if (strcmp(info.m_text, "This game is a dummy game."))
+                used = true;
+        }
+        if (used) {
+            if (info.m_text[0] == 'm') {
+                for (unsigned int j = 4; j < strlen(info.m_text); j++) {
+                    if (info.m_text[j] == ' ') {
+                        info.m_text[j] = 0;
+                        rdr.addstringnode(&info.m_text[4]);
+                        rdr.addstringnode(&info.m_text[j + 1]);
+                        break;
+                    }
+                }
+                const char *rank;
+
+                switch (info.m_text[3]) {
+                case '0':
+                    rank = "Ensign";
+                    break;
+                case '1':
+                    rank = "Lieutenant";
+                    break;
+                case '2':
+                    rank = "Commander";
+                    break;
+                case '3':
+                    rank = "Captain";
+                    break;
+                case '4':
+                    rank = "Admiral";
+                    break;
+                default:
+                    rank = "Admiral";
+                    break;
+                }
+                rdr.addstringnode(rank);
+                char title[32] = "00";
+
+                strncpy(title, GetMissionTitle(info.m_text), 32);
+                rdr.addstringnode(title);
+            } else {
+                const char *corrupt = TranslateString("Corrupted Save Game");
+
+                rdr.addstringnode(" ");
+                rdr.addstringnode(" ");
+                rdr.addstringnode(corrupt);
+                rdr.addstringnode(" ");
+            }
+        } else {
+            rdr.addstringnode("--/--/----");
+            rdr.addstringnode("--:--:--");
+            rdr.addstringnode("X");
+            rdr.addstringnode("XX");
+        }
+        rdr.pop();
+    }
+    rdr.pop();
+    theUIVarManager.Add("SavedGames", 0, UIVAR_SESSION)->Set(&rdr);
+    return true;
+}
+
 /* the item the argument names taken from every selected character -- not a primary or a secondary,
  * which stay (SOCOM 1's) */
 bool OnRemoveEquipment(C2DAnimCmdHdr *hdr, float *dT)
@@ -1372,6 +1463,31 @@ bool UISetMission(C2DAnimCmdHdr *hdr, float *dT)
 bool UIPopUpDialog(C2DAnimCmdHdr *hdr, float *dT)
 {
     GetMenuStack()->PopUpDialog(ArgName(hdr));
+    return true;
+}
+
+/* the menu switched to the screen the argument names, by an entry pushed for it -- or back to the
+ * screen last gone over, by PREVIOUS_SCREEN (with the back sound) or by that screen's own name
+ * (SOCOM 1's, without the second) */
+bool UISwitchMenu(C2DAnimCmdHdr *hdr, float *dT)
+{
+    const char *name = ArgText(ArgName(hdr));
+
+    if (!strcmp(name, "PREVIOUS_SCREEN")) {
+        GetMenuStack()->Back();
+        const CSaferStr &back = theGame.m_menuState.BackSoundString;
+        CSnd *sound = CSnd::GetSoundByName(back.c_str());
+
+        if (sound)
+            sound->PlaySound((CSndInstance *)0, 255);
+    } else if (g_MenuStack.CanGoBack() && !strcasecmp(name, g_MenuStack.Previous())) {
+        GetMenuStack()->Back();
+    } else {
+        char text[128];
+
+        sprintf(text, "%s", name);
+        g_MenuStack.Push(2, text);
+    }
     return true;
 }
 

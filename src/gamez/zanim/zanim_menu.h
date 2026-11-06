@@ -518,7 +518,9 @@ public:
     /* (SOCOM II's out-of-line copy at 0x1E7B50; the name ours, as fts_state.h spells it) */
     void SetDefaultMenu(const char *name) { strncpy(m_DefaultMenu, name, 64); }
 
-    unsigned char _0[0x30];
+    unsigned char _0[0x20];
+    CSaferStr BackSoundString;   // 0x20 (fts_state.h's)
+    unsigned char _2c[0x30 - 0x2c];
     char m_DefaultMenu[64];   // 0x30
     unsigned char _70[0x74 - 0x70];
 };
@@ -704,6 +706,31 @@ public:
         strcpy(m_entries[m_top].m_argname, argname);
         m_count++;
     }
+    /* whether there is a screen to go back to (ours: SwitchMenu's `&&` materialises it) */
+    bool CanGoBack() { return !m_history.m_used.empty(); }
+    /* the screen last gone back over, " " with none (SwitchMenu's; ours) */
+    const char *Previous()
+    {
+        return m_history.m_used.empty() ? " " : (const char *)*(m_history.m_used.PtrVec::end() - 1);
+    }
+    /* back to the screen last gone over: an entry for it put on top, its history slot given back to
+     * the pool (SOCOM 1's SwitchMenu wrote it out; SOCOM II's inlines it twice there -- ours) */
+    void Back()
+    {
+        if (!m_history.m_used.empty()) {
+            m_top++;
+            m_entries[m_top].m_id = 5;
+            strcpy(m_entries[m_top].m_argname, Previous());
+            if (!m_history.m_used.empty()) {
+                char *slot = (char *)*(m_history.m_used.PtrVec::end() - 1);
+
+                m_history.m_used.pop_back();
+                m_history.m_free.PtrVec::insert(m_history.m_free.PtrVec::end(), 1, (unsigned int &)slot);
+                strcpy(slot, MENUHISTORY_STRPOOL);
+            }
+            m_count++;
+        }
+    }
 
     CMenuEntry m_entries[40];   // 0x0 (SOCOM 1's 20)
     int m_count;   // 0x820: entries pushed (the names ours)
@@ -712,6 +739,7 @@ public:
     CPopUpDialog *m_popup;   // 0xe40 (SOCOM 1's at 0xA30)
 };
 CMenuStack *GetMenuStack();
+extern CMenuStack g_MenuStack;   /* 0x414ED0 (SOCOM 1's) */
 
 /* the video state (SOCOM 1's _zvid_public; only what the handlers read, at SOCOM II's offsets) */
 struct ZVidMenuView {
