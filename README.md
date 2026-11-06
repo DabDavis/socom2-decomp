@@ -2065,6 +2065,22 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the UI, round 37** (cdeque<const void *>::push_back 0x2858B0 and reserve 0x285A50 byte-exact -- declared in
+  include/deque but never defined: defined out of class, additively, so zanim_menu.cpp's tail emits them and the state
+  queue's push 0x2852B0 keeps calling them, as the target does; CSnd::m_vagEnabled declared on zsnd.h's CSnd and
+  zanim_menu.cpp's placeholder retired, SAME-BY-ADDRESS):
+  - an MSL member the target calls out of line but the headers only declare can simply be defined out of class: the unit's
+    tail emits it and its callers keep the call. Watch the tail: zrdr_edit.cpp's cdeque<PPCv> copy 0x333E40 (open) went from
+    8 to 11 off -- once the unit emits __recommend, alloc() is instantiated earlier and inlined into that tail where the
+    target calls 0x285CD0; `max_size` 0x285CE0 written out of class is 0x84 of 0x50, inline it folds into reserve (both the
+    MSL's, include/deque's note);
+  - `(*this)[size_++] = x` computes the slot's address before loading x, `data_[(start_ + size_++) % capacity_] = x` loads x
+    first; a pointer local declared before an inline-built iterator puts its `move` in that inline's ternary delay slot,
+    declared after it the move lands in the loop guard's delay slot;
+  - named locals are numbered before every inline copy, so a replay that wants a caller's local between two copies of one
+    inline needs an expansion to create it there: ReleaseSlotItem 0x283170 replays exactly at `--move 45=56.5 --move
+    44=56.6`, `--permute` over its eight movers finds 60 orders, and none of eight source shapes (the flag by value and
+    returned, by-value wrappers, a helper for the first two copies, the whole case as an inline) gives one.
 - **Tells from the AI core, round 36** (resize<reader> 0x51C3F0 -- open since round 22 at 6 off -- byte-exact through a
   marked device, ai_mapio.cpp's explicit specialisation; UpdateNameTables 0x52B820 from 34 to 12 instructions off;
   GetCellRepelParams 0x5169B0 to the target's size, 0x570 -> 0x558):
