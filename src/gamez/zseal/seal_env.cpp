@@ -2681,9 +2681,9 @@ extern "C" {
 /* a location's damage taken from a projectile (OVL2 0x5A5A80, new in SOCOM II: SOCOM 1's DamageHead,
  * DamageBody and the limbs' in one, the location first), a damage and an armour pierce dealt to a
  * location (OVL2 0x5A5830), the pellets of a shot from a point that reach the SEAL (OVL2 0x5A1620)
- * and the blowback from a point (OVL2 0x57ED10, seal_body.cpp's) -- the first and third not written; the
- * names unknown */
-void func_005A5A80(CZSealBody *seal, DAMAGE_LOCATION where, CZProjectile *proj);
+ * and the blowback from a point (OVL2 0x57ED10, seal_body.cpp's) -- the third not written; the names
+ * unknown */
+bool func_005A5A80(CZSealBody *seal, DAMAGE_LOCATION where, CZProjectile *proj);
 bool func_005A5830(CZSealBody *seal, DAMAGE_LOCATION where, float damage, float pierce);
 int func_005A1620(CZSealBody *seal, const CPnt3D *from);
 bool func_0057ED10(CZSealBody *seal, const CPnt3D *p, float a, float b);
@@ -3026,6 +3026,154 @@ extern "C" int func_005A1620(CZSealBody *seal, const CPnt3D *from)
             n++;
     }
     return n;
+}
+
+extern "C" {
+/* (OVL2 0x5A60D0, below: a stance change, a kind and a flag) */
+void func_005A60D0(CZSealBody *seal, int a, int b);
+}
+
+/* a callback made, and made and cleared once (inlines, the names ours: the call's own test, through a
+ * const pointer, reloads the function the caller's test read) */
+static inline void CallBack(const ANIM_CALLBACK *cb, void *body)
+{
+    if (cb->m_func)
+        cb->m_func(body, cb->m_userdata);
+}
+
+static inline void CallOnce(ANIM_CALLBACK &cb, void *body)
+{
+    if (cb.m_func) {
+        CallBack(&cb, body);
+        cb.Clear();
+    }
+}
+
+/* a weapon change cut short: with none of the change's blends on top, the change's overlay -- the
+ * rifle to the pistol, or either way of 0x3DF0F0 / 0x3DF0F8 -- has its callback made and the stance
+ * change it was heading for (0x5A60D0) made at once, then goes back to the pool; with one on top its
+ * callback is made and the change made by the blend's flag 0x20 (OVL2 0x5A5DA0, new in SOCOM II:
+ * before a death and a weapon's drop; the name unknown). The blend's path first, ended by a `return`
+ * (its last if/else's join keeps its own branch out), the overlay's block ended by one too (the
+ * target's branch to the very next instruction); the second top fetch through &m_blends (the same
+ * address spelt `seal + 0x1c0` twice is computed once, in a third saved register) */
+extern "C" void func_005A5DA0(CZSealBody *seal)
+{
+    if (seal->IsCurrentBlend((AnimType)53) || seal->IsCurrentBlend((AnimType)54) ||
+        seal->IsCurrentBlend((AnimType)55) || seal->IsCurrentBlend((AnimType)data_003DF0E0) ||
+        seal->IsCurrentBlend((AnimType)data_003DF0E8)) {
+        CZBodyAnimBlend *top = (CZBodyAnimBlend *)func_00555170((char *)seal + 0x1c0);
+
+        CallOnce(top->m_callback, seal);
+        bool flag = func_005551A0(((CZBodyAnimBlend *)func_00555170(&seal->m_blends))->m_flags, 0x20);
+
+        if (seal->IsCurrentBlend((AnimType)data_003DF0E0) && flag) {
+            func_005A60D0(seal, 1, 4);
+            return;
+        }
+        if (seal->IsCurrentBlend((AnimType)data_003DF0E8) && flag) {
+            func_005A60D0(seal, 2, 4);
+            return;
+        }
+        if (flag)
+            func_005A60D0(seal, 1, 0);
+        else
+            func_005A60D0(seal, 2, 0);
+        return;
+    }
+    {
+        CBlendOverlay &ov = seal->m_overlay;
+
+        if (ov.m_anim && ov.m_anim->m_anim) {
+            short id = ov.m_anim->m_id;
+
+            if (id == data_003DEC68) {
+                CallOnce(ov.m_callback, seal);
+                if (ov.m_state == -1)
+                    func_005A60D0(seal, 1, 0);
+                else
+                    func_005A60D0(seal, 2, 0);
+            } else if (id == data_003DF0F0) {
+                CallOnce(ov.m_callback, seal);
+                if (ov.m_state == -1)
+                    func_005A60D0(seal, 1, 4);
+            } else if (id == data_003DF0F8) {
+                CallOnce(ov.m_callback, seal);
+                if (ov.m_state == -1)
+                    func_005A60D0(seal, 2, 4);
+            }
+            seal->m_active_anim_pool.PutBack(ov.m_anim);
+            ov.Clear();
+            return;
+        }
+    }
+}
+
+/* a projectile's first-hit bit (an inline bool accessor on a const pointer: its test reloads the byte
+ * for the bit's store, as the target's -- tested in place the load is shared) */
+static inline bool FirstHit(const CZProjectile *p)
+{
+    return p->m_isfirsthit;
+}
+
+/* a location's damage taken from a projectile, whether it took (OVL2 0x5A5A80, new in SOCOM II: SOCOM
+ * 1's DamageHead, DamageBody and the limbs' in one, the location first; the name unknown). Online
+ * the shooter's console decides: a shot from a SEAL another console drives, or from no SEAL, is not
+ * taken here; else the hit reported, the first-hit bit cleared and -- unless this SEAL is remote --
+ * the damage taken. Offline a first hit is counted for both, the damage taken and, when it killed
+ * the SEAL, the kill credited to the shooter (whether the weapon was one of the five). The report's
+ * arguments are locals read before its two calls (the weapon's id first -- `lb`, passed on raw), the
+ * report and its two returns wrapped in the shooter's test with the `return false` after it, and the
+ * offline result declared first (igreplay: it numbers just after the parameters) */
+extern "C" bool func_005A5A80(CZSealBody *seal, DAMAGE_LOCATION where, CZProjectile *proj)
+{
+    bool took;
+    bool alive = seal->m_isAlive;
+
+    if (theNetwork.m_9) {
+        int id = proj->m_shooterID;
+        CEntity *e = CEntity::m_list.GetEntityById(id);
+        CZSealBody *shooter = 0;
+
+        if (e)
+            shooter = AsSeal(e);
+        if (!id || (shooter && !shooter->IsRemote())) {
+            EQUIP_ITEM w = proj->m_weapon->m_ID;
+            int v = seal->m_id;
+            int s = proj->m_shooterID;
+
+            seal->ReportWeaponHitDamage(proj, s, v, where, proj->GetDamage(&seal->m_posW, 0.0f),
+                                        proj->m_ammo->GetArmorPierce(), proj->m_isfirsthit, w);
+            if (FirstHit(proj))
+                proj->SetIsFirstHit(false);
+            if (!seal->IsRemote())
+                return func_005A5830(seal, where, proj->GetDamage(&seal->m_posW, 0.0f), proj->m_ammo->GetArmorPierce());
+            return false;
+        }
+        return false;
+    }
+    int id = proj->m_shooterID;
+    CEntity *e = CEntity::m_list.GetEntityById(id);
+    CZSealBody *shooter = 0;
+
+    if (e)
+        shooter = AsSeal(e);
+    if (FirstHit(proj)) {
+        proj->SetIsFirstHit(false);
+        if (shooter)
+            func_005458A0(&shooter->m_stats, shooter, seal);
+        func_00544CF0(&seal->m_stats, seal);
+    }
+    took = func_005A5830(seal, where, proj->GetDamage(&seal->m_posW, 0.0f), proj->m_ammo->GetArmorPierce());
+
+    if (alive && !seal->m_isAlive) {
+        bool five = false;
+
+        if (func_003C5AC0(proj->m_weapon->m_ID))
+            five = true;
+        func_00547AA0(seal, id, five);
+    }
+    return took;
 }
 
 /* the share of a hit an empty location passes on to the body (OVL2 data, 8 bytes apart: a static

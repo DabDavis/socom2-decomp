@@ -16,7 +16,13 @@
  * and CAiMapLoc's).
  * OPEN, resize<reader> (0x51C3F0), right size, 6 instructions: registers only -- the target keeps the
  * size in s1 and the end in s2 around the reader's out-of-line constructor (0x52FD70), this build the
- * other way round; the shape is include/vector's, which serves every other instance.
+ * other way round; the shape is include/vector's, which serves every other instance. The AI core
+ * round 34 (`igreplay --target`, build/scratch/ai/v_rsz34*.py): the two are the test's size (@5239,
+ * its load CSE'd into the count and the shrink test) and the end (@5243); --movers gives the target
+ * only with the size numbered after every other node -- probed through an explicit specialisation in
+ * a scratch build (as it stands: the same 6), the size read off the field in all three places, in
+ * the test only or in the count only (0xA0 / 0xA4, 23-36 off), `size() < n` (6), a named end pointer
+ * before the test (0x9C) or in the insert's arm (6): none
  * OPEN, the routes' and the lines' (0x51C230, 0x51C070; called as members since round 18, which
  * emits them, their insert and erase here -- every one of those copies misses, so the count is
  * unchanged): the target inlines the element's two- and one-CAiMapLocVec constructor whole, six

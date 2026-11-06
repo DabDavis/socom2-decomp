@@ -71,7 +71,13 @@ const char *CExitMenu::GetReaderFileName()
  * names ours) */
 class CZSealBody {
 public:
-    unsigned char _0[0x58c];
+    unsigned char _0[0xc8];
+    unsigned int m_team;   // 0xc8 (zentity.h's CEntity's: 0x20000 the enemy)
+    unsigned char _cc[0xe0 - 0xcc];
+    unsigned int m_e0_0 : 12;   // 0xe0 (zentity.h's flags: m_blink_eyes ... m_include_in_targetlist)
+    unsigned int m_isAlive : 1;   // 0xe0, bit 12 (zentity.h's)
+    unsigned int m_e0_13 : 19;
+    unsigned char _e4[0x58c - 0xe4];
     unsigned short m_58c;   // 0x58c
     unsigned char _58e[0x590 - 0x58e];
     unsigned short m_590;   // 0x590: the shots that hit (the accuracy rating's)
@@ -87,6 +93,11 @@ public:
     unsigned short m_5b4;   // 0x5b4
     unsigned char _5b6[0x5b8 - 0x5b6];
     unsigned short m_5b8;   // 0x5b8
+    unsigned char _5ba[0x1044 - 0x5ba];
+    float m_health;   // 0x1044 (zseal.h's)
+
+    /* out of health (the name ours) */
+    bool IsDown() const { return m_health <= 0.0f; }
 };
 
 CZSealBody *ftsGetPlayer();
@@ -178,6 +189,41 @@ extern "C" void func_001F38F0(CObjectiveCounts *counts, const std::list<CMission
     else
         counts->primary.fraction = 0.0f;
 }
+
+/* a thing in the world: only its type (2, a SEAL) at 0x10 (SOCOM 1's DWARF) */
+class CEntity {
+public:
+    unsigned int _0;
+    unsigned int m_id;   // 0x4
+    unsigned int m_index;   // 0x8
+    unsigned int m_vehicle_index;   // 0xc
+    unsigned char m_type;   // 0x10
+
+    static std::list<CEntity *> m_list;
+};
+
+extern "C" bool func_002C2FD0(CZSealBody *seal);
+
+/* a walk over the world's entities, counting (SOCOM 1's DWARF: the list's iterator, an index) */
+class CEntityItr {
+public:
+    CZSealBody &GetSeal() const;
+    bool IsSeal() const;
+    bool IsLiveSeal() const;
+    void Advance();
+
+    /* the world's entities, const (CEntity::GetEntityList() returning a const reference -- SOCOM 1
+     * links its out-of-line copy, GetEntityList__7CEntityFv, 0x1EA1C0; SOCOM II's is 0x299140 --
+     * here until this unit's CEntity stub gives way to zentity.h's; the name is ours) */
+    static const std::list<CEntity *> &GetEntityList() { return CEntity::m_list; }
+
+    /* the walk begun, and whether it has ended (st_mpexit.cpp's; the teamwork rating's walk) */
+    CEntityItr() : _it(GetEntityList().begin()), _iIdx(0) {}
+    bool More() const { return _it != GetEntityList().end(); }
+
+    std::list<CEntity *>::const_iterator _it;   // 0x0
+    int _iIdx;   // 0x4
+};
 
 /* a fraction as a whole percentage, and a value rounded (the names ours) */
 static inline int Round(float f) { return (int)(0.5f + f); }
@@ -384,6 +430,114 @@ extern "C" float func_001F2E40(CSealStats **stats, int n)
     return 0.01f * pct;
 }
 
+float fabsf(float x);   /* 0x1B3620 */
+
+/* the teamwork rating (OVL1 0x1F27C0; SetRoundStatUiVars' third, on the team it gathered -- the
+ * player first -- and their stats): with fewer than three teammates down, a balance score -- 25 less
+ * the kills' imbalance between the two pairs (the player's and the other) and up to 15 for twice the
+ * player's counter 7 --, a health score -- 50 less 20 for each one down, 3 for each one hurt and 10
+ * under a fifth (5 under a half) --, and an enemy score -- 25 less 10 for each enemy dead, 4 under a
+ * fifth and 2 under a half, plus 10 for each the player captured --; none online; the wounded, the
+ * downed, the captured and the rating shown, the rating returned as a fraction (the name ours).
+ * OPEN, 0x678 against 0x680 (written in the game states' round 47; everything but the walk's advance
+ * and its temporaries is the target's): the down flags `int` locals set from a bool accessor (bool
+ * locals are narrowed again at the sum), the lag's and the balance's clamps ternaries and the health's
+ * and the penalty's ifs (an if's join takes an alignment nop the target's ternary joins do not), the
+ * health 50 in its own statement, the walk's SEAL test on `&it.GetSeal()` (IsSeal() materialises the
+ * bool). Left: the target's inlined Advance tests its SEAL materialised (`sltu; xori 1; bnez`), which
+ * `!&GetSeal()` or `!IsSeal()` in Advance gives -- but then the out-of-line Advance 0x1F1F30
+ * materialises it too (0x80 against 0x78; an inline Next() with it, `++it` over Advance and a while
+ * loop measured alike); with it the rest is the iterator temporaries' frame slots: here Advance's
+ * end() temporaries take the slots above the loop test's, in the target below them, `it` between
+ * (for, while and an inline increment give the same order) */
+extern "C" float func_001F27C0(CZSealBody **seals, CSealStats **stats, int n)
+{
+    int down1 = 0;
+    int down2 = 0;
+    int down3 = 0;
+
+    if (seals[1])
+        down1 = seals[1]->IsDown();
+    if (seals[2])
+        down2 = seals[2]->IsDown();
+    if (seals[3])
+        down3 = seals[3]->IsDown();
+    int downed = down1 + down2 + down3;
+    int wounded = 0;
+    int pct;
+
+    if (downed < 3) {
+        float a = 0.5f * (stats[0]->m_count[6] + stats[1]->m_count[6]);
+        float b = 0.5f * (stats[2]->m_count[6] + stats[3]->m_count[6]);
+        int balance = 25;
+        float sum = a + b;
+        float diff = fabsf(a - b);
+        float pen = 0.0f;
+
+        if (sum > 0.0f)
+            pen = 25.0f * ((100.0f * (diff / sum) - 25.0f) / 75.0f);
+        int lag = 2 * stats[0]->m_count[7];
+
+        lag = lag > 15 ? 15 : lag;
+        pen -= lag;
+        if (pen < 0.0f)
+            pen = 0.0f;
+        balance -= Round(pen);
+        balance = balance < 0 ? 0 : balance;
+        int health = 50;
+
+        health -= 20 * downed;
+
+        for (int i = 1; i < n; i++) {
+            float h = seals[i]->m_health;
+
+            if (h > 0.0f) {
+                if (h < 1.0f)
+                    wounded++;
+                if (h < 1.0f)
+                    health -= 3;
+                if (h < 0.2f)
+                    health -= 10;
+                else if (h < 0.5f)
+                    health -= 5;
+            }
+        }
+        if (health < 0)
+            health = 0;
+        int enemy = 25;
+
+        for (CEntityItr it; it.More(); it.Advance()) {
+            if (&it.GetSeal()) {
+                CZSealBody &seal = it.GetSeal();
+
+                if (seal.m_team & 0x20000) {
+                    if (!seal.m_isAlive)
+                        enemy -= 10;
+                    else if (seal.m_health < 0.2f)
+                        enemy -= 4;
+                    else if (seal.m_health < 0.5f)
+                        enemy -= 2;
+                }
+            }
+        }
+        enemy += 10 * stats[0]->m_count[20];
+        if (enemy < 0)
+            enemy = 0;
+        pct = enemy + (balance + health);
+        if (theMission.m_18 == 4)
+            pct = 0;
+        pct = pct > 0 ? pct : 0;
+        pct = pct < 100 ? pct : 100;
+    } else {
+        pct = 0;
+    }
+    UIVar("StatTeammembersWounded") = wounded;
+    UIVar("StatTeammembersDowned") = downed;
+    UIVar("StatEnemiesCaptured") = stats[0]->m_count[20];
+    UIVar("StatTeamworkPct") = pct;
+    return 0.01f * pct;
+}
+
 /* a mission taken into the career (OVL1 0x1F1FB0; SetRoundStatUiVars 0x1F21B0 calls it on
  * theMission +0x1950, the name ours): each percentage averaged in over the missions so far, the
  * count up one, the player's counters added.
@@ -440,37 +594,6 @@ void CCareerStats::AddMission(float a, float b, float c, float d, float e)
     m_sum[5] += player->m_594;
     m_sum[6] += player->m_58c;
 }
-
-/* a thing in the world: only its type (2, a SEAL) at 0x10 (SOCOM 1's DWARF) */
-class CEntity {
-public:
-    unsigned int _0;
-    unsigned int m_id;   // 0x4
-    unsigned int m_index;   // 0x8
-    unsigned int m_vehicle_index;   // 0xc
-    unsigned char m_type;   // 0x10
-
-    static std::list<CEntity *> m_list;
-};
-
-extern "C" bool func_002C2FD0(CZSealBody *seal);
-
-/* a walk over the world's entities, counting (SOCOM 1's DWARF: the list's iterator, an index) */
-class CEntityItr {
-public:
-    CZSealBody &GetSeal() const;
-    bool IsSeal() const;
-    bool IsLiveSeal() const;
-    void Advance();
-
-    /* the world's entities, const (CEntity::GetEntityList() returning a const reference -- SOCOM 1
-     * links its out-of-line copy, GetEntityList__7CEntityFv, 0x1EA1C0; SOCOM II's is 0x299140 --
-     * here until this unit's CEntity stub gives way to zentity.h's; the name is ours) */
-    static const std::list<CEntity *> &GetEntityList() { return CEntity::m_list; }
-
-    std::list<CEntity *>::const_iterator _it;   // 0x0
-    int _iIdx;   // 0x4
-};
 
 /* on to the next SEAL, counting every entity passed. The walk is a const_iterator and the end the
  * const list's (SOCOM 1's called list<CEntity *>::end() const, whose const_iterator is built from

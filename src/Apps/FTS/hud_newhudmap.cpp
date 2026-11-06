@@ -5,8 +5,8 @@
  * list and SOCOM 1's last three words. Defined in reverse of their image order (-inline deferred).
  * Written: the constructor, the explosives' items, CalcNewMatrix, UninitMap, RemoveItem, Draw and
  * the small ones, TickFullScreenMap (round 48), SetupNorthIndicator, SwitchToCompassMap and
- * SwitchMapToFullScreen (round 52), TickFullScreenAnims (round 57); open: FrameObjective,
- * HandleScrolling and GetScrollPermissions (round 48, SOCOM 1's names). The initialiser (__sinit_hud_newhudmap.cpp 0x3FDE80) is
+ * SwitchMapToFullScreen (round 52), TickFullScreenAnims (round 57), FrameObjective (round 58);
+ * open: HandleScrolling and GetScrollPermissions (round 48, SOCOM 1's names). The initialiser (__sinit_hud_newhudmap.cpp 0x3FDE80) is
  * code-exact once every static is defined (round 30: the legend's pictures and flag, the scroll
  * bitmaps, the three computed floats); its four __arraydtor$N references stay unresolved (scdiff
  * compares a local function by its bytes, relocation fields included). The rest by SOCOM 1's
@@ -322,18 +322,11 @@ static inline float MaxOf(float a, float b)
  * the far tactical zoom allows (no SOCOM 1 counterpart; the name ours). The larger scale through
  * `b > a ? b : a` (the false arm's copy through a temporary; `b <= a ? a : b` or a ternary into
  * scale drops it), the width's clamp `w < maxw ? w : maxw` -- zmath.h's MAX/MIN shapes.
- * OPEN, 4 instructions: the centre's average. The target sums z then x into temporaries (f2, f1),
- * then multiplies x then z into the variables with 0.5 in f0; this `+=` form gets the loads, the
- * constant and the order but adds into f20/f21 directly; `x = (x + ox) * 0.5f` (either statement
- * first, named or helper temporaries, MidPoint-style inlines taking the sums, `/ 2.0f`, `0.5f *`,
- * a PNT2D or CPnt3D local) makes the x sum first and puts 0.5 in f1 (5-8 instructions). Round
- * 53: the replay wants 0.5 numbered after both sums; the sums assigned in two arms (`if (obj) {
- * oz = z + oy; ox = x + ox; } else { the same }`, then `x = ox * 0.5f; z = oz * 0.5f;`) give every
- * register, 2 off: MW then multiplies `0.5, sum` where the target has `sum, 0.5` (a variable
- * times a constant is put constant first; `*=`, ternaries, `0.5f *` alike). Round 56: the sums copied
- * into x / z and then `*= 0.5f` (once or two-armed: the copies coalesce, the sums go back into
- * f20/f21), a named 0.5, a PNT2D of the sums, `(ox *= 0.5f)` chained, a by-value halving inline --
- * 4 to 7 */
+ * The centre's average (round 58, open since round 29): the target sums z then x into temporaries
+ * and multiplies x then z by 0.5 with the sum first -- the two sums assigned in two arms (round 53's
+ * device: a value assigned in two branches is never folded back into its use; the original's two
+ * arms unknown) and the 0.5 a named local (the world's round 26: a literal multiplier is moved
+ * first, the same constant in a named local keeps source order). Either alone stays 2 to 7 off */
 void CZNewHudMap::FrameObjective()
 {
     float x, z;
@@ -346,10 +339,18 @@ void CZNewHudMap::FrameObjective()
     if (obj && !obj->m_isCompass)
         return;
     if (obj) {
-        z += obj->m_pos.y;
-        x += obj->m_pos.x;
-        x *= 0.5f;
-        z *= 0.5f;
+        float half = 0.5f;
+        float oz, ox;
+
+        if (obj) {
+            oz = z + obj->m_pos.y;
+            ox = x + obj->m_pos.x;
+        } else {
+            oz = z + obj->m_pos.y;
+            ox = x + obj->m_pos.x;
+        }
+        x = ox * half;
+        z = oz * half;
     }
     m_centerx = x;
     m_centerz = z;

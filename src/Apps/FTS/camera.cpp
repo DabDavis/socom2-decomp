@@ -346,7 +346,8 @@ _zanim_cmd_hdr *CAppCamera::CmdParseShake(_zrdr *rdr)
  * through a leaf template (36). Round 19: the camera through a leaf template (cast or identity) or a
  * cast copy, the command a const cast copy, the level a cast local -- 36; the level read ahead of the
  * test (a named, const or inline-result local) moves the load above the branch (52):
- * build/scratch/core/v_shake19*.py */
+ * build/scratch/core/v_shake19*.py; round 21: the camera through
+ * a non-template identity inline (in the test, the call, both, over a local) -- 36 (v_shake21.py) */
 void CAppCamera::CmdBeginShake(_zanim_cmd_hdr *hdr)
 {
     if (appCamera)

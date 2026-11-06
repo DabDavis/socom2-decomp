@@ -4020,7 +4020,7 @@
 0x002B8580 0x40 DMEConnectToGameServer__Fv  # OVL1; s1:align
 0x002B85C0 0x9C func_002B85C0  # OVL1
 0x002B8660 0xAE4 func_002B8660  # OVL1
-0x002B9150 0x694 func_002B9150  # OVL1
+0x002B9150 0x694 GameSignalPacketHandler__FiiiPv  # OVL1; s1:calls (the game states' round 47: SOCOM 1's GameSignalPacketHandler -- the handler zNetRegisterMessage registers for "Game Signal" (0x2B8660, the type data_00440EB0 SendGameSignalMessage sends), the same SyncGameClock, LateJoiner, SetDatabase, AddToFixList twice, MPMajorGameState / MyMajorGameState and CRdrEditor list build in SOCOM 1's order; SOCOM II adds the refusal's reasons and the clan tag; byte-exact)
 0x002B97F0 0xC0 SendGameSignalMessage__FiUcUcUcib  # OVL1; s1:align
 0x002B98B0 0x60 func_002B98B0  # OVL1
 0x002B9910 0xF0 SendBombStateRequest__FiUcPC6CPnt3D  # OVL1; s1:callee
@@ -6857,7 +6857,7 @@
 0x00370280 0xBC Tick__11CScrollTextFf  # OVL1; s1:calls
 0x00370340 0x8 LoadSpec__11CScrollTextFRC11CScrollSpec  # OVL1; by hand (the HUD lane, round 31: zui_2d.cpp -- CScrollSpec::CreateDisplayObj's call where SOCOM 1's calls CScrollText::LoadSpec; SOCOM II's is empty)
 0x00370350 0x2BC Draw__11CScrollTextFRC7CMatrixPQ23zdb16CTextureRelocMgr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x00370610 0x74 func_00370610  # OVL1; tu: zui_2d.cpp~ (1.0 beta)
+0x00370610 0x74 Load__12CPopUpDialogFPQ23zdb16CTextureRelocMgr  # OVL1; tu: zui_2d.cpp~ (1.0 beta); s1:exact by hand (the HUD lane, round 58: zui_2d.cpp -- SOCOM 1's CPopUpDialog::Load 0x389770, the same body at SOCOM II's offsets; UiSys::LoadFromDesign calls it at the same point with (pop-up, relocator) right after the font's store at +0x300, the UI's round 31)
 0x00370690 0x28C Draw__12CPopUpDialogFRC7CMatrixPQ23zdb16CTextureRelocMgr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00370920 0x6C Tick__12CPopUpDialogFf  # OVL1; s1:vtable by hand (the HUD lane, round 20: zui_2d.cpp -- slot +0x38 of CPopUpDialog's table 0x4073A0 (Tick, as SOCOM 1's Tick__12CPopUpDialogFf, which ticks the pointer at its 0x18C alone): SOCOM II ticks two parts at 0x340 and 0x790 through their tables, then the pointer at 0x32C)
 0x00370990 0x284 HandlePad__12CPopUpDialogFPC4CPadi  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
@@ -10124,7 +10124,7 @@
 0x00558FB0 0x4C func_00558FB0  # OVL2
 0x00559000 0x6C func_00559000  # OVL2
 0x00559070 0x3F4 Tick__11CAiSRescuedFP11CSealCtrlAi  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike); the kit lane, round 6: slot 0x10 takes no frame time -- CAiStateStack::Tick (0x5F8030) never sets $f12 for it and no override reads $f12 before writing it (they read the m_dT static) -- and returns an int
-0x00559470 0x40 func_00559470  # OVL2
+0x00559470 0x40 SetExtractValve__11CAiSRescuedFP6CValve  # OVL2; s1:order by hand (the SEALs, round 52): SOCOM 1's SetExtractValve__11CAiSRescuedFP6CValve 0x259680 sits between CAiSRescued's Tick and OnSignal as this row does (0x559070 / 0x5594B0); it stores the valve at 0x60, the one the rescued Tick waits on (step 3) and opens (step 5), then sets flag 1 with one -- SOCOM II's marks the flags dirty first (0x40 against 0x34); seal_unit.cpp's func_00559470 caller
 0x005594B0 0xCC OnSignal__11CAiSRescuedFQ28CAiState6SIGNALP11CSealCtrlAi  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00559580 0x3A8 func_00559580  # OVL2
 0x00559930 0xE28 Tick__10CAiSPursueFP11CSealCtrlAi  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike); the kit lane, round 6: slot 0x10 takes no frame time -- CAiStateStack::Tick (0x5F8030) never sets $f12 for it and no override reads $f12 before writing it (they read the m_dT static) -- and returns an int

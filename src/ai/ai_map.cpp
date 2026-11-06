@@ -583,7 +583,14 @@ bool CAiMaps::GetCellRepelParams(const CAiMapLoc &loc, const CPnt3D *pos, float 
  * (0x560) but lays n out below v (n 256, v 272: declaration order), as `= CPnt3D::zero` does;
  * placement new copies member by member under a null test (0x588), as do the PNT3D-cast
  * assignments, `n = CPnt3D(zero)`, a by-value helper's result (0x588) and `*&zero` (0x570). vz / vy
- * named floats fed to the dot product: 0x568-0x570 */
+ * named floats fed to the dot product: 0x568-0x570.
+ * Round 34 (build/scratch/ai/v_gc34a-d.py): n declared in the loop with its initialiser and v (and
+ * the push) bound to const references to their temporaries: 0x558, the target's size, but 154 off --
+ * a reference-bound temporary takes its frame slot in declaration order like a named local (v at
+ * 272, above n) and its address lives in s7, so temporaries do not sink below the named locals; a
+ * cast block copy (`*(blk *)&n = ...` over float[3] or int[3]) is three lwc1/swc1 (0x568) and a
+ * long long + float one moves the frame (0x570, 70 off); memcpy stays a call (0x558, 53 off); the
+ * quadrant and loop as an inline taking v by value is not inlined (0x418) */
 bool CAiMap::GetCellRepelParams(const CAiMapLoc &loc, const CPnt3D *pos, float range, CPnt3D &dir, float &len,
                                 CAiMapLoc &cell)
 {

@@ -2065,6 +2065,77 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the SEALs, round 52** (CAiSRescued::SetExtractValve named; 0x5A5A80 and 0x5A5DA0, both unwritten before):
+  - call arguments read into locals before the call's other call-bearing arguments stay in saved registers across those
+    calls; a signed-byte enum local passed to an `unsigned char` parameter goes in raw (lb, no andi), written inline in the
+    call it loads with lbu after the calls (0x5A5A80); a local declared bare first but assigned only at the end is
+    numbered right after the parameters -- declaration order (`igreplay --movers` found it);
+  - an explicit `return;` closing a function's last block keeps a branch to the very next instruction; a `return;` after
+    an if / else keeps the join's own branch out (0x5A5DA0); a shooter test wrapping the body with `return false` after
+    it gives the target's shared late `return false`;
+  - the same address written as `(char *)seal + 0x1c0` twice is computed once into a third saved register, written as
+    `&seal->m_blends` MW recomputes it each time; a free inline taking a `const ANIM_CALLBACK *` reloads the function
+    pointer the caller just tested; `SetFlags(valve != 0, !(valve != 0))` gives the target's code, a bool local negated
+    with `!` adds an sltu.
+- **Tells from the HUD, round 58** (CPopUpDialog::Load named, FrameObjective -- open since round 29 --, Draw2DLine -- open
+  since round 53 --, TickSealCone and SetViewCone; hud_playermapitem.cpp whole):
+  - a temporary the replay places just below a named local can itself be made a named local declared before it
+    (Draw2DLine 0x35FCE0: the DMA tag's first word, by `igreplay --move 127=43.5` before the source); a float constant
+    multiplier in a named local keeps the target's `mul.s d,x,k` order and combines with round 53's two-armed sums
+    (CZNewHudMap::FrameObjective 0x20B800);
+  - `x == 0 ? false : ...` lays the false arm out first, `x ? ... : false` the true arm, `!x ? false :` materialises the
+    not (sltu / xori); `(seal && IsSealType(seal)) ? seal : 0` materialises both tests with no andi -- through a bool or
+    int inline or local MW masks the && (CZPlayerMapItem::TickSealCone 0x2227B0);
+  - inside an inline the matrix parameter is read first and so numbered last, rotating the transform loop's registers --
+    the same values as caller named locals with `in = out = point` give the target's; an array initialiser of constructor
+    calls builds the elements in place (SetViewCone 0x2222E0, from SOCOM 1's debug info).
+- **Tells from the AI core, round 34** (no new row; ValidateRoutes to the target's size; the opens measured):
+  - the dead-assignment pass deletes a dead if-body together with its branch; with that pass off a dead load's branch to
+    the next instruction is still removed, and a branch whose target is a bare `b` is still chained -- plan_legcomplete
+    0x5273C0's emptied bodies were removed later than any dead load would be (the only other MW row with an emptied
+    if-body is OVL1's 0x3B1DD0);
+  - a redundant constant store to a live variable (`v = k; if (c) v = k;`) survives the first optimiser and is dropped
+    later by CSE (`opt_common_subs off` keeps it); a temporary bound to a `const &` takes its stack slot in declaration
+    order like a named local, its address kept in a saved register;
+  - a 12-byte copy cast through a `float[3]` / `int[3]` struct is three word moves, never ld / sd, and a 12-byte memcpy
+    stays a call.
+- **Tells from the engine core, round 21** (gridAddNodeToGrids, open since round 19, and buildOrderedCellAtomList, open since
+  round 9):
+  - `#pragma opt_strength_reduction off` matches game code as well as MSL -- the target recomputes `&m_Atoms[i]` every pass
+    (zdb::CGrid::buildOrderedCellAtomList 0x2D6E40); it applies to the whole function, so a target keeping some loops
+    reduced and others not cannot use it (LoadNodeNames, OPEN);
+  - a value computed inside an inline is numbered where the inline expands, among the front-end temporaries and after
+    every named local -- a way to put a local's first web late, exactly where `igreplay --want` asks; the round-12
+    preheader rule holds for a nested pair's inner loop: an invariant inline result used only there moves that loop's
+    preheader after the function's end (gridAddNodeToGrids 0x2D7580 through ThisGrid(this)->gridGetAtomBasePtr(x, z));
+  - in the caller itself, not only inside an inline: `x = c == 0 ? 0 : x;` leaves an unpadded branch, `if (!c) x = 0;`
+    pads the join, `x = c ? x : 0` becomes a movz; loop counters declared ahead of the loop ends are numbered at the
+    declaration (the SEALs' declaration-order rule, for loop counters).
+- **Tells from the game states, round 47** (GameSignalPacketHandler 0x2B9150 byte-exact and named -- SOCOM 1's, unwritten
+  before; the teamwork rating 0x1F27C0 and UpdateLocalSeal 0x2BD640 written, OPEN at 0x678 of 0x680 and 2; two respells,
+  SAME-BY-ADDRESS -- ZAnim.m_network_activation_callback for data_00414BFC, `new CZNetVoice` for func_003102E0):
+  - a byte read into an `unsigned char` local is a promoted temporary numbered after every named local (s1 where the
+    target's s4 wanted the local's place) -- an `int` local keeps the named place (`igreplay --want` found the place,
+    the type gave it); `p->a > 1` is the fused `slti at; bnez at`, `p->a >= 2` materialises into v0;
+  - a counter of the inline index parameter's own type (`unsigned int i` into `Item(unsigned int)`) is strength-reduced
+    to an offset stepped by 8; an `int` counter keeps `sll` each pass (the chat handler's walk alike); a PNT3D's
+    aggregate initialiser block-copies from .rodata (ld/lwc1), three member stores give lui/sw;
+  - int locals set from a bool accessor sum without narrowing again, bool locals take an `andi 0xff` each at the sum; an
+    if-clamp's join takes an alignment nop where a ternary clamp's does not (the teamwork's lag and balance clamps
+    ternaries, its penalty's and health's ifs); `&it.GetSeal()` tested in place is the target's direct test, through
+    IsSeal() the bool materialises;
+  - THE TEAMWORK'S WALL: both callers' inlined CEntityItr::Advance (0x1F27C0, SetRoundStatUiVars 0x1F21B0) test the SEAL
+    materialised (`sltu; xori 1; bnez`) while the out-of-line Advance 0x1F1F30 tests it direct -- no spelling gives
+    both (`== 0`, `!`, `!(p != 0)`, a cast, `!IsSeal()`, `IsSeal() == false`, IsSeal() as `!= 0` / `!!` / ternary /
+    if-else, More() in the condition, an inline Next() with each, `++it` over Advance): a different shape of the
+    callers' walk is the lead; the iterator temporaries' slots follow it (Advance's end() temporaries above the loop
+    test's here, below them in the target, for, while and inline increments alike);
+  - `if (!a || b && !c) return;` at a function's head gives the target's shared `b end` block (separate early
+    returns or nested ifs branch to the epilogue directly); a float assigned to an `unsigned short` field converts
+    unsigned (the 2^31 test) -- `(short)` gives the target's cvt.w.s; `p.f = v = x` stores an address-taken int and the
+    field from one register (two statements reload it); a float temporary assigned after a member's clear moves its
+    conversion after the clear (UpdateLocalSeal, 12 -> 2: left, an `if (!id) id = ...;` then-arm the target ends with a
+    branch to its join -- every ternary spelling sinks the store into both arms).
 - **Tells from the kit and AI states, round 53** (CAiSSuspended::OnSignal, CAiTarget::ModifyAimDir, the reticule node
   tracker 0x5BE6F0 and CSealCtrl::OnSetTargetVisible, all four unwritten before -- 2,852 bytes):
   - a local assigned from an inline wrapper's result (`float range = GetRange()`, the wrapper returning
@@ -10821,6 +10892,87 @@ unwritten before, both OPEN; `sase_libtran.c` 8 of 11). No rows named. What they
   DFT 0x24E788 (their diagnoses stand), 0x252FE0, dmaRefImage, sceBInetRecv/Send, sceGsResetGraph,
   libnetb_udp_init_buffer, libquan.c's 0x24B2F8/0x24B028, libtran.c's radix passes 0x24DBB8/0x24DFB8,
   the codec's unwritten 0x24CD28 (a band search over a 256-point spectrum, up to 100 peaks).
+
+**The tools, round 38a** (the integrator's two requests): (1) **objcmp's verdict depended on where its work
+directory lies -- METROWERKS' CODE DEPENDS ON THE LENGTH OF THE PATHS IT IS GIVEN.** The world's round 26: a
+first `tools/objcmp.py master` in the default build/objcmp printed `DIFF ai/ai_mapwalk.cpp`, 0x5350C0, a fresh
+--work none. Nothing persists between runs (the tree is removed and recopied, every object unlinked before
+its compile, the base map rewritten): the two directories' PATHS were of different LENGTHS. Reproduced
+against d14aeea6^1 (the world's base): `--work build/objcmq` (the default's length) DIFF, `build/objcmpXYZ`
+and `build/o` none, every time. MAP_DIRCOUNT::GetBestDir compiles a word short -- the heading's direction
+masked straight into s0 (`andi s0,v0,0xff`) where the target masks it into a0 and copies v0 to s0 -- when the
+tree's path is 108, 109, 125, 126, 180 or 202 characters (of 122 lengths from 98 to 219) for the tree's text,
+89, 110, 137, 173 or 215 for d14aeea6^1's; the path's characters, the object path's length (four tried), the
+environment's size (40), the working directory, the toolchains' own path (40 and 82 characters) and twelve
+repeated builds change nothing, and GetBestDir alone in a fixture compiles one way at all 98 lengths -- the
+heap's layout, which the path strings shift, reaching a choice in the whole unit. **How wide**
+(`build/scratch/gcc/r38/census.py`, all 658 hand-written units, MW and GCC, at tree lengths 98, 103, 108, 121,
+135; again at 98, 160, 167): that one function at one length; nothing else, and nothing at 160 or 167. So a
+worktree whose path length hit a flip would see a byte-exact row miss in its own sccheck; the main tree (27
+characters) and the agents' worktrees (71) do not, today. And past ~200 characters mwccps2 breaks: at a
+220-character tree ai_mapwalk.cpp fails on `zentity.h:340`, then "declaration syntax error" at its own line
+1046. The fix: **both sides are built at a path of one FIXED length** wherever the work directory lies
+(`side_root`: `<work>/tree___...`, 160 characters; refused past 200 or when the work path is longer), and a
+unit differing there is built again, both sides, at 167 -- equal there it is `PATH-DEPENDENT ...` (the same
+source, the compiler's layout), listed and not counted (rc 0). `--path-lengths A,B` picks the lengths (`0`:
+the old unpadded `<work>/tree`, one path), `--tree REV|DIR` builds the tree's side from a revision or a
+directory (BASE may be a directory too), each side's `scdiff.shared_stems` is read again (cached per path,
+BASE's set had stood for the tree's: a stem the tree adds would have qualified its statics as BASE's), and
+BASE's tree is reverted with `git diff --no-renames` (by rename detection `--name-only` named a renamed file's
+new path alone and BASE's side lacked the old one). **Proved** (against d14aeea6^1, all 658 hand-written units):
+master's objcmp, this one with `--path-lengths 0` and this one by default print the same 17 DIFF lines (the
+merge's real changes). The canary's `test_objcmp_verdict_is_independent_of_its_work_directory` (10
+assertions): a GCC fixture whose BASE returns `sizeof(__FILE__) % 2 == 0` -- code that is a function of the
+path's length -- against a tree returning 0: from two work directories of different lengths the same
+PATH-DEPENDENT line, rc 0; unpadded, directories one character apart disagree (the negative); one length
+alone DIFF; a real change DIFF at both; the stems re-read. (2) **sccheck --files tells a row held elsewhere
+from a real loss.** zsys_init.cpp built alone lost 0x39CD40 (its inline ~vector<CIOPManager::CRegistrant> 6
+off; util_main.cpp's copy matches), as the drafts' thirteen in "Working in parallel" did. A row a partial
+check loses ONLY by inline copies (MW's binding 13, GCC's linkonce) is tried against its other emitters
+outside --files -- its draft `src/auto/<seg>/<VA>.c`, and the hand-written units whose code (or a header they
+include) names every identifier of the copy's mangled name that include/'s code does not (comments stripped:
+include/vector's notes name CRegistrant) -- built and scored, and printed `not lost -- an inline copy missed
+here, another emitter outside --files still matches: 0x39cd40 ... by gamez/zutil/util_main.cpp`, rc 0; a
+strong definition's miss is never held. **Proved**: `--files '^(?!auto/)'` -- master's sccheck 13 regressions
+(0x1EF8C0, 0x2E0D90, 0x2E0DC0, 0x2F6230, 0x322370, 0x32C5F0, 0x333330, 0x3340B0, 0x3340F0, 0x3929C0, 0x3B7FA0,
+0x3C6880, 0x510080), this one none and the same 13 `not lost`, each by its draft; every row line identical
+(11,043 byte-exact of 11,440 scored both); `--files '^auto/'` identical output (1,288 of 1,288). The canary's
+`test_partial_check_holds_a_row_another_emitter_matches` (6 assertions: a synthetic name on 0x39CDC0's real
+row in copies of the map and MATCHED.txt -- a definition loading +8, an inline copy loading +0; held by the
+definition, then a regression without it, never for a strong miss, held by the row's draft; master's sccheck
+fails its third). 43 of 43 canary tests, 306 assertions (the full check not run). **automatch** over the
+lane's three ranges (`--max-size 0x400 --emit --no-prune --jobs 2 --obj-dir` the lane's private build): MAIN
+`18DB90 1C4CC0` 11 tried, 0 hits (2 m2c refusals, 9 misses), OVL1 `1E7F58 1E8FD4` 0 tried, `243000 256FD0` 36
+tried, 0 hits (2 build failures, 5 refusals, 29 misses): 47 tried, none byte-exact (round 37a: 47, 0).
+
+**Round 38a** (2026-11-06, the tools first, then Nellymoser's decoder): 3 rows newly byte-exact (1,612 bytes)
+and one draft superseded -- **DecSC.c whole** (`ovl1/sase_decsc.c`, 9 of 9): a frame's parameters from its
+bit fields 0x253C00 and the two frame unpackers 0x253DF8 (the decoder API's) and 0x254020 (0x255028's and
+0x255490's), all unwritten before, and the block's release 0x254250 over its draft. The object is DecSC.c by
+its .rodata: the voicing (8), energy (64) and field-width (17) tables at 0x3EC2B8, 0x3EC2D8, 0x3EC3D8 end four
+bytes before the setters' "../../SaseDec/source/DecSC.c", so they are this file's statics, defined first. No
+rows named (the codec is not in SOCOM 1). What they showed:
+
+- **A table read once and stored twice is the stored copy**: `pPrm->fVoice = pPair->fVoice` keeps the
+  table's address in `lui at; addu at,at,idx; lwc1 %lo(at)`; read twice, CSE builds it apart (`addiu`) first.
+  Each clamp-then-index is its own variable (`if (i >= 64) i = 0; t[i]`): `t[i < 64 ? i : 0]` shifts before
+  the clamp, and one variable for two clamps took v1 for both.
+- **A value loaded before an if fills the first branch's slot unannulled**: the voicing read before the
+  pitch test gives `bc1f` + the load, then `bc1f` + nop -- the target's; read in the else arm, both `bc1fl`.
+- **The frame unpackers' shapes**: the PCM loop's index a variable of its own (the field loop's, live across
+  the reader's calls, gave the conversion's counter a saved register); the second history copy's source
+  computed before the first memcpy (in s0 across the call); the reader's length stored first (its andi's
+  pseudo then s0, the frame pointer s1); the envelope's energy a float parameter BEFORE the history pointer in
+  0x253510's prototype (loaded first; EABI's float registers are counted apart, so the call is the same); 16
+  frame bytes between the reader and the field byte that nothing names; both unpackers set the reader up in
+  one order. 0x254458, after the setters, is 0x253C00's pitch test exactly: an inline helper's out-of-line
+  copy, deferred to the object's end.
+- **Open, diagnosed in place**: func_00251A98 -- the target's layout is a switch with case 2 first (the
+  decision tree `< 0`, `<= 1`, `== 2`, the arms in source order, as the query 0x251A28 tests case 1 first):
+  every branch and store but the copy `move v0,a0` in the bltz's slot (a second pseudo of the mode, no
+  spelling made one); func_001C46D0 (sched1 hoists the 16's `li` above the port's `sh` and v0 is taken: seven
+  tail spellings and four htons return types alike). Not reached: round 37a's opens (their diagnoses stand),
+  and the decoder's other unwritten rows (0x254510, 0x254730, 0x254A88, 0x255028, 0x255490, 0x255E68).
 
 **Next**: the libraries by hand, module by module, as their vendors wrote them (each `src/lib`
 unit's header says what it covers); GCC's scheduler moves independent stores, and which source

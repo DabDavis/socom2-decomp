@@ -6,7 +6,7 @@
  * constructor (the UVs memcpy'd from a local's initialiser), the setters, Load, SetPos, SetUV, Draw
  * and the clip copies, the three-plane-pair clip3DLine; MakePacket and the one-plane clip3DLine
  * OPEN; Draw3DLine (SOCOM II's own body: the HUD's round 40); GetAssetLibs (the HUD's round 46);
- * Draw2DLine 0x35FCE0 written in round 53, OPEN (4 off, registers). Defined in reverse of their
+ * Draw2DLine 0x35FCE0 (written in round 53, byte-exact since round 58). Defined in reverse of their
  * image order (-inline deferred). */
 
 #include <string.h>
@@ -352,12 +352,9 @@ void Draw3DLine(CPnt4D *p0, CPnt4D *p1, CPnt4D *c0, CPnt4D *c1)
  * scaled to the GS's (as SOCOM 1's, inline) before its point. The VU0 block's four pointers
  * declared fixed-first (the target's a1/a0 for the fixed points, v1/v0 for the copies); the
  * offsets added negated (`+= -(...)`: negu/addu, where `-=` gives subu).
- * OPEN, 4 instructions (written in round 53, the size and everything else the target's): the DMA
- * tag's count takes a2 and its first word a1, the target the other way round -- igreplay: the
- * count must be numbered after the first word's OR (127.5), which no named local can be. Tried:
- * the count declared late, at the top, unsigned, assigned inside the first word's expression, a
- * two-armed ternary (not folded: 0x364), the count's expression in both words (computed twice,
- * 0x35C) and an inline tag setter taking it (its parameter forward-substituted into both: 0x35C) */
+ * The DMA tag's first word a named local declared ahead of the count (round 58, open since round 53:
+ * igreplay put the first word's OR just below the count, 43.5 -- as a temporary it was numbered after
+ * it and took a1, the count a2, the target the other way round) */
 void Draw2DLine(CPnt4D *p0, CPnt4D *p1, CPnt4D *c0, CPnt4D *c1)
 {
     unsigned int *tag;
@@ -424,9 +421,11 @@ void Draw2DLine(CPnt4D *p0, CPnt4D *p1, CPnt4D *c0, CPnt4D *c1)
     sceVu0CopyVector(*p, (float *)ib);
     p++;
 
+    unsigned int cnt;
     int qwc = p - (sceVu0FVECTOR *)tag - 1;
 
-    tag[0] = qwc | 0x10000000;
+    cnt = qwc | 0x10000000;
+    tag[0] = cnt;
     tag[1] = 0;
     tag[2] = 0x11000000;
     tag[3] = qwc | 0x50000000;
