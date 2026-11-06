@@ -1104,6 +1104,56 @@ bool CNode::SetDescendantVisuals(bool set)
     return own || any;
 }
 
+/* a node's mesh textures: SOCOM 1's CNode::FindMeshTextures() with two parameters added and the
+ * node passed first -- a free function (the world's round 28 lead; SOCOM 1's name). Asked to find
+ * (the custom characters' phase), the dynamic list of the node's first visual when that is a mesh;
+ * else every visual's list added to the one given, with the texture of each visual's resolved
+ * material (the world's materials; the specular map when it has none), and the same down the tree
+ * -- the list given, or the last child's answer, returned */
+CDynTexList *FindMeshTextures(CNode *node, bool find, CDynTexList *list)
+{
+    CDynTexList *found;
+
+    if (find) {
+        found = 0;
+        for (CVisualVector::iterator it = node->m_visual.begin(); it != node->m_visual.end(); ++it) {
+            CVisual *visual = *it;
+
+            if (visual->GetType() == 1)
+                found = &visual->m_dynTexList;
+            break;
+        }
+    } else {
+        found = list;
+        CVisualVector &visuals = node->m_visual;
+
+        for (CVisualVector::iterator it = visuals.begin(); it != visuals.end(); ++it) {
+            CVisual *visual = *it;
+            CDynTexList *dyn = &visual->m_dynTexList;
+
+            if (dyn)
+                list->Add(dyn);
+            unsigned int material = visual->m_7;
+
+            if (material) {
+                MATERIAL_ENTRY *mat = CWorld::m_world->m_Material_Object.GetMaterial(material);
+
+                if (mat->m_type == 2) {
+                    if (mat->m_tex)
+                        list->Add(mat->m_tex, true);
+                    else
+                        list->Add(CVisual::m_specMapTexture, true);
+                }
+            }
+        }
+        CNodeVector &children = node->m_child;
+
+        for (CNodeVector::iterator it = children.begin(); it != children.end(); ++it)
+            found = FindMeshTextures(*it, find, list);
+    }
+    return found;
+}
+
 /* a new node, named as given or "Node" (SOCOM 1's) */
 CNode *CNode::Create(const char *name)
 {

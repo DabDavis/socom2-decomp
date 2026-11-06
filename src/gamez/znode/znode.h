@@ -2217,6 +2217,11 @@ public:
 
 extern CNodeUniverse *NodeUniverse;
 
+/* a node's mesh textures, found or gathered into a list (node_main.cpp, 0x312D00: SOCOM 1's
+ * CNode::FindMeshTextures() with two parameters added, called with the node first --
+ * CWorld::AddTextureAssetCharacter's; the world's round 29) */
+CDynTexList *FindMeshTextures(CNode *node, bool find, CDynTexList *list);
+
 
 }
 

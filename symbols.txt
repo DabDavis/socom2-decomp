@@ -5424,7 +5424,7 @@
 0x00312A70 0x24 SetActive__Q23zdb6CLightFb  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00312AA0 0x180 CopyParams__Q23zdb5CNodeCFPQ23zdb5CNode  # OVL1; the parameter copy _Copy calls twice (SOCOM 1's _Copy inlined it; the name ours)
 0x00312C20 0xE0 Create__Q23zdb5CNodeFPCc  # OVL1; s1:order (SOCOM 1's Create: a new node named as given, or "Node")
-0x00312D00 0x21C func_00312D00  # OVL1
+0x00312D00 0x21C FindMeshTextures__3zdbFPQ23zdb5CNodebPQ23zdb11CDynTexList  # OVL1; by hand (the world's round 29, node_main.cpp: SOCOM 1's CNode::FindMeshTextures() with two parameters added, the node passed first -- the first visual's dynamic list when asked to find (the custom phase), else every visual's list and its material's texture added to the list given, down the tree; CWorld::AddTextureAssetCharacter calls it; a free function, the name SOCOM 1's)
 0x00312F20 0x190 SetDescendantVisuals__Q23zdb5CNodeFb  # OVL1; s1:exact by hand (SOCOM 1's SetDescendantVisuals, after Create and FindMeshTextures as here; the answers ORed as bools)
 0x003130B0 0x190 SetDescendantDI__Q23zdb5CNodeFb  # OVL1; s1:exact by hand (SOCOM 1's SetDescendantDI, after SetDescendantVisuals as here)
 0x00313240 0x208 SetModeTree__Q23zdb5CNodeFi  # OVL1; SOCOM II's: two bits at 0x5a set through a tree (OVL2 sets 2 on loaded models); the name ours
