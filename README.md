@@ -2065,6 +2065,20 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the HUD, round 60** (hud_linemap.cpp's CZLineMap::Clip 0x20D5F0, TickWayPoints 0x20DAC0 and SetupPolygon
+  0x20F5C0, all unwritten before, byte-exact from SOCOM 1's bodies and its debug info's local names; TickAnchors 0x20E750
+  written, OPEN at 0x46C of 0x474; 0x360260 named C2DLine::SetClipInfo):
+  - a local assigned once from an inline helper's result is folded into the helper's temporary, numbered after the
+    caller's named locals; the same code written in place with the local declared first keeps the earlier number
+    (`igreplay --want` showed the place it needed: 33.5, before `names`);
+  - an unsigned counter indexing a vector is strength-reduced, an `int` counter indexes each pass as the target does;
+    `*it++` in two successive call arguments folds both steps into the second call's delay slot;
+  - a restart (`j = -1`) after an if/else whose else arm breaks lands in the join block, as the target's; inside the then
+    arm it lands in the branch's delay slot; `a > b` with two complex operands evaluates the right operand first;
+  - a table read by two functions is a file static, not a function-local static (c_arrTypes, read by TickLine and
+    SetupPolygon); a pointer loaded once and reused after an intervening call needs a named local (Clip's clipper, as
+    SOCOM 1 keeps it in a saved register); a class the target calls by a namespaced name must sit in that namespace
+    (zdb::CCircleClip).
 - **Tells from completing the MSL headers, round 35** (the pod's resize 0x53AA50 byte-exact; WHAT DECIDES A WALKED
   MEMBER'S PLACE, read out of MW's front end -- doldecomp/mweppc CScope.c, CInline.c, CTemplateNew.c, in
   build/scratch/msl-r35/mweppc/ -- and proven on probes; build/p35/, untracked: pod/pr*.cpp, mkv*.py and the
