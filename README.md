@@ -2065,6 +2065,19 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the game states, round 49** (C2DMessage_Q::Tick 0x2B5DB0 -- 38 off since round 48 -- and C2DMessage_Q::Draw
+  0x2B5830, unwritten before and named by its vtable slot 0xC, byte-exact; CMission::UpdateLocalGame 0x2A9EE0 and
+  DestroyNetGame 0x2A9EF0 hand-written over their drafts; fts_net_persona.cpp's four lobby / clan placeholders respelled):
+  - A VARIABLE REUSED FOR A SECOND LOOP GETS A NEW FRAME SLOT BELOW EVERY TEMPORARY (Tick's second walk on the first
+    walk's `i`, where a `cur` of its own sat above them); an inline wrapper around a list's erase moves erase's
+    temporaries one frame group below the caller's own, two calls at the same depth keep source order;
+  - a loop end held in a named local declared and initialised before the loop goes in a saved register (the target's
+    s0); reusing an earlier end variable is 4 bytes short, re-assigning one keeps it in memory;
+  - include/list's rbegin() / rend() reach the end node through a call MW leaves out of line; a reverse walk written
+    `reverse_iterator(end())` / `reverse_iterator(begin())` inlines completely (Draw);
+  - `x * (int)u` with u unsigned is a different product from `x * u`: MW computes it again instead of sharing the
+    unsigned one, and converts it signed -- a cast outside the expression gets shared; reading a field through its
+    inline accessor inside a division swaps which register the field and the constant take.
 - **Tells from the weapons, round 35** (the mesh decal builder 0x3BD9E0, 0xC08 and 23 off since round 34, byte-exact by
   three shapes reasoned from MW's PowerPC optimiser source -- build/scratch/mweppc/, IroPropagate.c, IroEval.c,
   FunctionCalls.c; 0x3B8440 named CMesh::DereferenceDecals(), 0x3C0460 CTextureFXManager::Add):

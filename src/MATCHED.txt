@@ -3582,7 +3582,7 @@
 0x002A98B0 FadeToEndMissionTick__8CMissionFf
 0x002A9A70 EndMission__8CMissionFv
 0x002A9B30 OnMissionComplete__8CMissionF13MISSION_STATE
-0x002A9EE0 func_002A9EE0
+0x002A9EE0 UpdateLocalGame__8CMissionFP9CZNetGame
 0x002A9EF0 DestroyNetGame__8CMissionFv
 0x002A9F00 CreateNetGame__8CMissionFv
 0x002A9F30 TickObjectives__8CMissionFf
@@ -3742,6 +3742,8 @@
 0x002B5750 func_002B5750
 0x002B5760 _actionValveCallback__FP6CValvePv
 0x002B57D0 __dt__Q211CNodeAction9ContainerFv
+0x002B5830 Draw__12C2DMessage_QFPQ23zdb7CCamera
+0x002B5DB0 Tick__12C2DMessage_QFf
 0x002B63B0 __dt__16C2DMessageStringFv
 0x002B6430 func_002B6430
 0x002B6D00 SetBkgColor__12C2DMessage_QFfff
