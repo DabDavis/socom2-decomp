@@ -2092,6 +2092,24 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
   - request (3), resize<reader> 0x51C3F0, was closed by the AI core's round 36 (its device); the deque tail, cdeque<PCv>'s
     erase / insert / pair / remove_if / AddItem / CountKeys / OnIsEquipmentSelected / the hangul pieces: no new idea, not
     attempted.
+- **Tells from the zdb world, textures, rdr and sound, round 32** (Particle::BufferElement::Draw 0x3251B0 -- 0x3CC,
+  unwritten before: SOCOM 1's billboard with SOCOM II's light tint and the VU0 altitude fog -- byte-exact; DrawXZ 0x325CC0
+  (0x68C) written at the target's size, OPEN at 2; BuildNodeLocalLightList from d=57 to d=48; data rows AppliedToNodeNum
+  0x3DFF78, CVisual::m_ModelToWorld 0x4B4E60 and BufferElement::m_spr 0x45C4B8 named, SOCOM 1's statics; CDI::GetIntersect
+  as bool measured lossless, not applied):
+  - a VU0 block written as a plain `asm {}` keeps the IR optimiser (the engine core's round 25): Draw matched only that way,
+    `asm volatile` grew it to 0x3D4;
+  - the temporaries an inline creates are numbered ahead of those the linearizer makes: reading members through one-line
+    accessors fixed DrawXZ's GPR and FPR pairs; `float scale = m_scale; 256.0f * scale` numbers the member's load ahead of
+    the constant, as a `(float)` cast on the member does;
+  - a by-value struct result should initialise its local, not be assigned to it -- assigned, it is copied through four FPRs
+    into an extra stack slot;
+  - `igreplay --permute` over BuildNodeLocalLightList's world and light pointers named the order the target wants (the light
+    first), which declaring the light at the top gives; CSE off (d=167) and propagation off (d=109) are worse there;
+  - CDI::GetIntersect returning bool, as in both SOCOMs, is lossless over every hand-written unit (objcmp, 664, 0 differ)
+    but cannot change in znode.h and node_world.h alone: int_shapes.cpp's two definitions and fts_main.cpp's CDIDummy
+    override change with it (build/scratch/world-r32/wld/getintersect_bool.patch, kept for after the engine core's round
+    26).
 - **Tells from the HUD, round 63** (hud_actionbitmap.cpp whole: CZActionBitmap::HudTick 0x21D9D0,
   CActionTxtrMachine::SpecializeActionString 0x220350, Render_ver_2 0x21F210 and Open 0x21F850 -- all four unwritten before,
   SOCOM 1's, 6,200 bytes -- byte-exact and named; nine data rows; the SEALs' and the states' respells in four units,
