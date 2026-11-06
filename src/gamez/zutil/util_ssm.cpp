@@ -190,14 +190,3 @@ bool CSimpleStateMachine::StartThread(int stackSize, int priority)
         ::StartThread(m_thread, this);
     return true;
 }
-
-/* A MODELLING DEVICE (the online lane's round 29, zNetMedius.cpp's LobbyQueueImp; the name ours): an
- * own function building the state queue's implementation from an allocator, never called and
- * dead-stripped at link (src/ABSENT.txt). Defined last, so code-generated first, it has
- * __deque_imp(const Allocator &) parsed before the end-of-unit walk: the deque's copy constructor is
- * then generated IN the walk, its call instantiates allocator<PCv>() there, and deque() 0x3A6410 --
- * generated after the walk -- inlines it as the target's does */
-void SSMQueueImp(const std::allocator<SSMState> &a)
-{
-    std::__deque_imp<SSMState, std::allocator<SSMState> > d(a);
-}
