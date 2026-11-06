@@ -54,7 +54,8 @@ typedef struct TOSLOG {
  * block's own data after the table */
 typedef struct QREQ {
     void *q;
-    unsigned short reader;
+    unsigned short reader;              /* +4: an output's element size */
+    unsigned short size;                /* +6: an input's element size */
 } QREQ;
 
 typedef unsigned char (*TOSFUNC)();
@@ -133,6 +134,58 @@ typedef struct TOSQUEUE {
 } TOSQUEUE;
 
 void *tosGetQueuePtr(TOS *t, unsigned char id);
+
+/* each queue's element size settled: every block's inputs and outputs on it must agree, and the
+ * queue takes their size; a queue nothing reads or writes, or two sizes, is a failure (1). SOCOM
+ * 1's LOCAL (round 33c). The found test is the if's condition with the compare in its arm (`if
+ * (!found) ... else if` lays the compare out of line and merges the returns: 13 words short) */
+static unsigned char SetAndControlQSizes(TOS *t)
+{
+    unsigned int k, i, j;
+    unsigned short size;
+    unsigned char found;
+    TOSQUEUE *q;
+    TOSBLOCK *b;
+
+    for (k = 0; k < t->nqueues; k++) {
+        q = t->queues[k];
+        size = 0xFFFF;
+        if (q == 0)
+            continue;
+        found = 0;
+        for (i = 0; i < t->nblocks; i++) {
+            b = t->blocks[i];
+            if (b == 0)
+                continue;
+            for (j = 0; j < b->ninputs; j++) {
+                if (b->inputs[j].q == q) {
+                    if (found) {
+                        if (b->inputs[j].size != size)
+                            return 1;
+                    } else {
+                        size = b->inputs[j].size;
+                        found = 1;
+                    }
+                }
+            }
+            for (j = 0; j < b->noutputs; j++) {
+                if (b->outputs[j].q == q) {
+                    if (found) {
+                        if (b->outputs[j].reader != size)
+                            return 1;
+                    } else {
+                        size = b->outputs[j].reader;
+                        found = 1;
+                    }
+                }
+            }
+        }
+        if (!found)
+            return 1;
+        q->elemsize = size;
+    }
+    return 0;
+}
 
 /* a block's n-th output queue: set, the queue's element size taken from the block's when it has
  * none; the scheduler's own (the record a block id's constructor may hand back is the scheduler)
@@ -619,7 +672,6 @@ int tosBaseBlockControl(TOSBLOCK *b, unsigned char cmd, int arg, int n)
 }
 
 extern unsigned char ConstructArchitecture(TOS *t, void *a, void *b, void *c);   /* not yet written */
-extern unsigned char SetAndControlQSizes(TOS *t);                                       /* not yet written */
 extern int qQueueInit(void *q);
 extern void fastallo_Init(struct FASTALLO *fa, void *heap, unsigned short chunk_size);
 extern void fastallo_Terminate(struct FASTALLO *fa);
