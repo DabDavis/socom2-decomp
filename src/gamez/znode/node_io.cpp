@@ -307,7 +307,12 @@ bool CLight::Read(CSaveLoad &io)
  * OPEN (right size, 44 differing): the third copy converts Multiply's arguments right to left
  * (this, b, then out: 0x310C60, 0x310C60, 0x310C50), where MW converts call arguments left to
  * right (probe build/scratch/inl/t10.cpp) -- so out first here, in every form tried (explicit
- * casts, implicit conversions to row pointers under a const prototype, a local) */
+ * casts, implicit conversions to row pointers under a const prototype, a local). Round 29: 38 of the
+ * 44 are `this` and m swapped (target s1 / s0): igreplay gives the target's colouring only with m
+ * numbered ahead of `this`, or the second inlined copy's `this` temporary (@1988, deferred) numbered
+ * after every code-generation temporary; zmath.h's Multiply with its conversions held in locals
+ * (this, b, out) cuts an inline level (0x1C4); casts, `+ 0`, const_cast on the operands change
+ * nothing (build/scratch/wld/v_mul.py) */
 CMatrix *CNode::BuildMTW(CMatrix &m)
 {
     if (m_type == 6) {

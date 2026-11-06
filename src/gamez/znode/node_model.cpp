@@ -11,19 +11,17 @@ namespace zdb {
 /* a model let go of: taken off its library (the library's copy of it found by name), each
  * instance and cross-reference of it untied (SetModel(0) inlined: a cross-reference's children
  * deleted, the model and its name cleared, the dead arm of the name's ternary left in), the list
- * emptied (SOCOM 1's).
- * OPEN, 0x1B4 of 0x1AC: the target calls RemoveModel and CAssetLib::GetModel out of line (their
- * copies 0x318AE0 and 0x318C30 follow it, last call first) and inlines SetModel(0) (the dead
- * `lw a1,144(zero)` of its name ternary); this inlines RemoveModel whole and calls SetModel. With
- * both inlines defined after ~CModel instead (and node_io.cpp keeping its own RemoveModel) the size
- * is the target's, but RemoveModel's body is inlined one level, GetModel whole and SetModel still
- * called (73 off) -- MW spends ~CModel's inlining on the CAssetLib inlines first either way */
+ * emptied (SOCOM 1's). The library's copy taken off by name through RemoveModel(const char *),
+ * whose tree is taller than the level: its body inlined, RemoveModel(CModel *) and GetModel called
+ * (their copies 0x318AE0 and 0x318C30 follow, last call first) -- written out here, MW inlines
+ * RemoveModel's body (0x1B4 of 0x1AC, round 28). SetModel is this unit's own (its last function,
+ * generated first), inlined */
 CModel::~CModel()
 {
     CAssetLib *lib = m_AssetLib;
 
     if (lib) {
-        lib->RemoveModel(lib->GetModel(m_name));
+        lib->RemoveModel(m_name);
         m_AssetLib = 0;
     }
     if (m_list.size()) {
@@ -46,13 +44,138 @@ void CModel::Release(CNode *node)
         m_parent = 0;
 }
 
+/* a box's eight corners through a matrix, the box about them made (ours -- the device of
+ * zparticle_source.cpp's FaceCorners: the target builds the corners through CPnt3D()'s out-of-line
+ * copy 0x1FB3C0 in a loop and assigns the first through CPnt3D's out-of-line assignment 0x20F1F0,
+ * which a MEMBER array built by a constructor too big to expand whole gives -- MW inlines the
+ * constructor one level, its callees called) */
+struct BoxCorners {
+    BoxCorners(const CMatrix *m, const CBBox *in, CBBox *out)
+    {
+        GetBBoxCorners(m_pts, in);
+        m->Transform(m_pts, m_pts, 8);
+        out->m_min = m_pts[0];
+        out->m_max = m_pts[0];
+        for (int i = 1; i < 8; i++) {
+            out->m_min.x = m_pts[i].x <= out->m_min.x ? m_pts[i].x : out->m_min.x;
+            out->m_min.y = m_pts[i].y <= out->m_min.y ? m_pts[i].y : out->m_min.y;
+            out->m_min.z = m_pts[i].z <= out->m_min.z ? m_pts[i].z : out->m_min.z;
+            out->m_max.x = m_pts[i].x >= out->m_max.x ? m_pts[i].x : out->m_max.x;
+            out->m_max.y = m_pts[i].y >= out->m_max.y ? m_pts[i].y : out->m_max.y;
+            out->m_max.z = m_pts[i].z >= out->m_max.z ? m_pts[i].z : out->m_max.z;
+        }
+    }
+
+    CPnt3D m_pts[8];
+};
+
+/* a box through a matrix (0x3186B0, new in SOCOM II: UpdateBBoxFromDI's, the name ours): exactly,
+ * the box about its eight transformed corners; else its two corners transformed and each axis put
+ * back in order. Not auto-inlined: it holds the corners' constructor, which cannot inline whole */
+CBBox *TransformBBox(const CMatrix *m, const CBBox *in, CBBox *out, bool exact)
+{
+    if (exact) {
+        BoxCorners corners(m, in, out);
+    } else {
+        m->Transform(&in->m_min, &out->m_min, 2);
+        if (!(out->m_min.x <= out->m_max.x)) {
+            float t = out->m_min.x;
+
+            out->m_min.x = out->m_max.x;
+            out->m_max.x = t;
+        }
+        if (!(out->m_min.y <= out->m_max.y)) {
+            float t = out->m_min.y;
+
+            out->m_min.y = out->m_max.y;
+            out->m_max.y = t;
+        }
+        if (!(out->m_min.z <= out->m_max.z)) {
+            float t = out->m_min.z;
+
+            out->m_min.z = out->m_max.z;
+            out->m_max.z = t;
+        }
+    }
+    return out;
+}
+
+/* a box of one point: a two-point array of it assigned as a CBBox (ours -- the device of CNode()
+ * in node_main.cpp; inline, so the pair is a callee's local, below the caller's named box) */
+static inline void PointBox(CBBox *box, const CPnt3D &p)
+{
+    CPnt3D corners[2] = { p, p };
+
+    *box = *(CBBox *)corners;
+}
+
+/* the node's box made from its DIs' points and, going up, its children's boxes taken through
+ * their matrices -- the first point or box the box itself, each later one widening it; then the
+ * box GetBBox gives (SOCOM 1's, the same 0x478). The first point's box through PointBox above; the
+ * DIs walked through a reference to the vector (the target's a2 = this + 0x74 for the loop's end),
+ * the children's box a named local (the box's field addresses in s0-s2/s6/s7 across the loop).
+ * OPEN, 39 instructions (the target's size), registers only: the DI walk's temporaries -- the
+ * vector reference, the iterator, the pair's addresses and the point offset (target a2, v1, t0 /
+ * v0, a3; here v1, v0, a3 / t0, a2); igreplay finds the target's colouring only with the vector
+ * reference and the iterator numbered ahead of `this`. From the draft: 93 off; the vector through
+ * a reference 47, the pair an inline's local (below the named box, as the target's frame) 39 */
+CBBox *CNode::UpdateBBoxFromDI(bool up)
+{
+    bool found = false;
+
+    m_bbox.m_min = m_bbox.m_max = CPnt3D::zero;
+    CDIVector &dis = m_di;
+
+    for (CDIVector::iterator it = dis.begin(); it != dis.end(); ++it) {
+        CDI *di = *it;
+
+        for (int i = 0; i < di->m_flags.m_ptcount; i++) {
+            if (!found) {
+                found = true;
+                PointBox(&m_bbox, *(const CPnt3D *)&di->m_pnts[i]);
+            } else {
+                const CPnt3D &v = *(const CPnt3D *)&di->m_pnts[i];
+
+                m_bbox.m_min.x = v.x <= m_bbox.m_min.x ? v.x : m_bbox.m_min.x;
+                m_bbox.m_min.y = v.y <= m_bbox.m_min.y ? v.y : m_bbox.m_min.y;
+                m_bbox.m_min.z = v.z <= m_bbox.m_min.z ? v.z : m_bbox.m_min.z;
+                m_bbox.m_max.x = v.x >= m_bbox.m_max.x ? v.x : m_bbox.m_max.x;
+                m_bbox.m_max.y = v.y >= m_bbox.m_max.y ? v.y : m_bbox.m_max.y;
+                m_bbox.m_max.z = v.z >= m_bbox.m_max.z ? v.z : m_bbox.m_max.z;
+            }
+        }
+    }
+    if (up) {
+        for (CNodeVector::iterator it = m_child.begin(); it != m_child.end(); ++it) {
+            CBBox box = *(*it)->UpdateBBox(true);
+
+            TransformBBox((*it)->GetMatrix(), &box, &box, false);
+            if (!found) {
+                found = true;
+                m_bbox = box;
+            } else {
+                m_bbox.m_min.x = box.m_min.x <= m_bbox.m_min.x ? box.m_min.x : m_bbox.m_min.x;
+                m_bbox.m_min.y = box.m_min.y <= m_bbox.m_min.y ? box.m_min.y : m_bbox.m_min.y;
+                m_bbox.m_min.z = box.m_min.z <= m_bbox.m_min.z ? box.m_min.z : m_bbox.m_min.z;
+                m_bbox.m_max.x = box.m_max.x >= m_bbox.m_max.x ? box.m_max.x : m_bbox.m_max.x;
+                m_bbox.m_max.y = box.m_max.y >= m_bbox.m_max.y ? box.m_max.y : m_bbox.m_max.y;
+                m_bbox.m_max.z = box.m_max.z >= m_bbox.m_max.z ? box.m_max.z : m_bbox.m_max.z;
+            }
+        }
+    }
+    return (CBBox *)GetBBox();
+}
+
 /* a facade's rotation (a billboard): its first three rows turned to face from the viewer's
  * position to its own -- about y only (facade 1), or about y and then x (facade 2: the direction
  * turned into the yz plane to find the x angle).
  * OPEN (0x238 of 0x240): the target keeps &m(2,0) in s2 on both paths and copies the third row
  * out through it -- the address shared with facade 2's stores -- while copying each row as a
  * block (four loads, four stores). A source through the accessor shares the address but
- * copies element by element; through the array it copies by blocks and shares nothing. */
+ * copies element by element; through the array it copies by blocks and shares nothing. Round 29:
+ * the rows copied out through the accessor (`*(CPnt4D *)&m(r, 0)`) give the size, 0x240, the
+ * shared address held in s4 (not s2) and the rows copied element by element (32 off); a row-2
+ * pointer local for the stores and the copy is 0x23C */
 void CNode::ComputeFacadeMatrix(const CMatrix *view, CMatrix *out)
 {
     CMatrix m;
@@ -226,6 +349,24 @@ CNode *CNode::Delete(CNode *node)
     }
     delete node;
     return 0;
+}
+
+/* the node's model set: a cross-reference's children replaced by the model, an instance's model
+ * and model name -- only those two types (SOCOM 1's, the image's first function of the unit; its
+ * draft was 0x3178A0's). Defined last, so generated first: ~CModel inlines it, the dead `lw a1,
+ * 144(zero)` of its name's ternary left in */
+bool CNode::SetModel(CModel *model)
+{
+    if (m_type != 3 && m_type != 2)
+        return false;
+    if (m_type == 3) {
+        DeleteChildren();
+        if (model)
+            AddChild(model);
+    }
+    m_model = model;
+    SetModelname(model ? model->m_name : 0);
+    return true;
 }
 
 }

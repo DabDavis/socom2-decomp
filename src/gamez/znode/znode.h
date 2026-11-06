@@ -788,7 +788,9 @@ public:
         return was;
     }
     virtual CBBox *UpdateBBox(bool up);
-    virtual void UpdateBBoxFromDI(bool up);
+    /* the box made from the DIs' points and (up) the children's boxes, returned as GetBBox gives it
+     * (SOCOM 1's; node_model.cpp, the world's round 29: `addiu v0,s5,64` / the parent's box) */
+    virtual CBBox *UpdateBBoxFromDI(bool up);
 
     CNode();
     void SetName(const char *name);
@@ -859,7 +861,9 @@ public:
     int ReadChildren(CSaveLoad &io);
     static CNode *CreateInstance(CSaveLoad &io);
     void CopyParams(CNode *to) const;
-    void SetModel(CModel *model);
+    /* the model an instance (type 2) or a cross-reference (type 3, the model its one child) is of:
+     * false for any other node (SOCOM 1's; node_model.cpp's first row, 0x3178A0 -- `li v0,1`) */
+    bool SetModel(CModel *model);
     void RemoveFromParent();
     bool Rendered(int frames);
     void SetDynamic(bool on, bool recurse);
@@ -930,8 +934,10 @@ public:
     float m_Opacity;   // 0x9c
     /* SOCOM II's at 0xa0, where SOCOM 1's DWARF has m_Atom: CZAnim::State and CreateInstanceNode
      * test the byte at 0xa1 with a mask (4) and CreateInstanceNode sets that bit as a bitfield on
-     * an instance -- both views, names unknown */
-    unsigned char m_socom2_a0;   // 0xa0
+     * an instance -- both views, names unknown. The byte at 0xa0 is signed: CNode() stores -1 (`li
+     * v1,-1`, the world's round 29), CVisual::NodeSetup and the pipe read it as a signed light scale
+     * (negative: the default), the weapons store 127 * (1 - light) */
+    signed char m_socom2_a0;   // 0xa0
     union {
         unsigned char m_socom2_a1;   // 0xa1
         struct {
@@ -1244,6 +1250,9 @@ public:
     /* a model taken off the list again (inline, node_world.h defines it; the name ours) and a model
      * by name off the list (inline: ~CModel calls its out-of-line copy, 0x318C30; the name ours) */
     inline void RemoveModel(CModel *model);
+    /* the library's own model of that name taken off (inline, node_world.h: ~CModel's, the world's
+     * round 29; the name ours) */
+    inline void RemoveModel(const char *name);
     CModel *GetModel(const char *name) { return m_models.GetModel(name); }
     bool IsNamed(const char *name);
     char *RootName();
@@ -2211,6 +2220,11 @@ public:
 };   // 0x10 bytes
 
 extern CNodeUniverse *NodeUniverse;
+
+/* a node's mesh textures, found or gathered into a list (node_main.cpp, 0x312D00: SOCOM 1's
+ * CNode::FindMeshTextures() with two parameters added, called with the node first --
+ * CWorld::AddTextureAssetCharacter's; the world's round 29) */
+CDynTexList *FindMeshTextures(CNode *node, bool find, CDynTexList *list);
 
 
 }
