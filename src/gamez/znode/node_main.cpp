@@ -55,9 +55,10 @@ public:
  * CTextureFX::InitScrollTexture's arguments in its order -- (float u, float v, bool tick, CVisual *,
  * CNode *) -- and an index, giving an index back. Spelled as the manager's member with the map's
  * order (bool, CVisual *, CNode *, int, float, float) the set-up moves both floats after the ints (4
- * instructions off, round 27); only u and v first give the target's interleaving: the map's row and
- * vis_texfx.h's declaration want SOCOM 1's order (`Add__Q23zdb17CTextureFXManagerFffbPQ23zdb7CVisualPQ23zdb5CNodei`,
- * reported). Until then, a placeholder at the manager's address */
+ * instructions off, round 27), where SOCOM 1's order -- u and v first -- gives the target's
+ * interleaving: the map's row and vis_texfx.h's declaration likely want it
+ * (`Add__Q23zdb17CTextureFXManagerFffbPQ23zdb7CVisualPQ23zdb5CNodei`, reported). Until then, a
+ * placeholder at the manager's address */
 extern "C" int func_003C0460(CTextureFXManager *fx, float u, float v, bool b, CVisual *visual, CNode *node,
                              int index);
 /* the mesh _Copy cloned last, which the sub-meshes after it are made over (node_main.cpp's
