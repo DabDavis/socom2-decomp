@@ -10,6 +10,7 @@
 #include <string.h>
 
 #include "node_world.h"
+#include "../zcamera/zcamera.h"
 
 
 namespace zdb {
@@ -250,6 +251,153 @@ bool CSaveLoad::LoadAssetLib(CWorld *world, CAssetLib *lib, int flags)
     bool result = LoadAssetLib_PS2(world, lib, flags);
 
     return result;
+}
+
+/* a mission's archive path under the root: <root>/mp/<name> for a multiplayer map (mp...),
+ * <root>/sp/<name> for a single-player mission (m...), else <root>/<name> (SOCOM 1's
+ * FilterMissionFolder; SOCOM II inlines it into Load and keeps no out-of-line copy) */
+inline void FilterMissionFolder(const char *mission, const char *root, const char *name, char *out)
+{
+    if (!root)
+        root = "/";
+    if (!strncmp(mission, "mp", 2))
+        sprintf(out, "%s/mp/%s", root, name);
+    else if (!strncmp(mission, "m", 1))
+        sprintf(out, "%s/sp/%s", root, name);
+    else
+        sprintf(out, "%s/%s", root, name);
+}
+
+/* the world of that name loaded (SOCOM 1's; the press beta's asserts name it): its archive
+ * run/<folder>/<name>/<name>.zed opened, the world made and initialised, the archive's world
+ * settings read (the night switch, the lens effects, the world text's specs, the default material
+ * and foliage sound, the scale, the shadow's direction and weight, the global lighting), the
+ * camera's parameters, the grid, the asset libraries, the lights, the world's tree, the LOD,
+ * material and scrolling-texture tables -- each scrolling band set on its model's node, or the
+ * world model's -- and the clutter but for the UI's world; none if the archive will not open.
+ * Written in the world lane's round 30, byte-exact: the scale through a local (both divisions ahead
+ * of the stores, as SOCOM 1's), the world into a local before the material's _strdup (the target
+ * holds it in s1 across the call), the camera's parameters declared uninitialised ahead of the
+ * camera (numbered first: s2 / s1), the camera key assigned then tested (move; beqz s3) where the
+ * other keys test the call's v0, and the libraries' key a second variable declared at the top (its
+ * iterator then takes s1, the key s2) */
+CWorld *CSaveLoad::Load(const char *name)
+{
+    zar::CKey *key;
+    zar::CKey *libs;
+
+    FilterMissionFolder(name, "/run", name, m_zed_filename);
+    strcat(m_zed_filename, "/");
+    strcat(m_zed_filename, name);
+    strcat(m_zed_filename, ".zed");
+    if (!OpenZed(this))
+        return 0;
+    m_world = new CWorld(name);
+    m_world->Initalize();
+
+    float scale = 1.0f;
+    CPnt3D shadow = CPnt3D::zero;
+    float weight = 0.25f;
+    bool gridded = false;
+    char *material = 0;
+    char *sound = 0;
+    int night = 0;
+    PNT4D v;
+
+    m_zfile.Fetch("NightMission", &night);
+    m_world->m_night_mission = night != 0;
+    if (m_zfile.Fetch("LensFX_NVG", &v, 16))
+        m_world->m_lensfx_nvg = v;
+    if (m_zfile.Fetch("LensFX_StarlightScope", &v, 16))
+        m_world->m_lensfx_starlightscope = v;
+    if (m_zfile.Fetch("WorldTextSpecs", &v, 16))
+        *(PNT4D *)m_world->m_world_text_specs = v;
+    m_zfile.Fetch("DefaultMaterial", &material);
+    m_zfile.Fetch("FoliageSound", &sound);
+    m_zfile.Fetch("MetersPerUnit", &scale);
+    m_zfile.Fetch("GriddedTerrain", &gridded);
+    m_zfile.Fetch("ShadowVector", &shadow, 12);
+    m_zfile.Fetch("ShadowWeight", &weight);
+    m_zfile.Fetch("GlobalLighting", &m_world->m_gLight, 0x70);
+    float s = 1.0f / scale;
+
+    CWorld::m_scale = s;
+    CWorld::m_invscale = 1.0f / s;
+    shadow.Normalize();
+    m_world->m_shadow_vector = shadow;
+    m_world->m_shadow_weight = weight;
+    if (material) {
+        CWorld *world = m_world;
+
+        world->m_default_soiltype_name = _strdup(material, 0, 0);
+        _free(material, 0, 0);
+        material = 0;
+    }
+    if (sound) {
+        m_world->SetFoliageSound(sound);
+        _free(sound, 0, 0);
+        sound = 0;
+    } else {
+        m_world->SetFoliageSound("none");
+    }
+    key = m_zfile.OpenKey("cameras");
+    if (key) {
+        tag_CAMERA_PARAMS *params;
+        CCamera *camera = m_world->m_camera;
+
+        params = camera;
+
+        m_zfile.Fetch("camera", params, 0x90);
+        camera->m_guardBand_min[3] = camera->m_near_plane;
+        camera->m_guardBand_max[3] = camera->m_far_plane;
+        CVisual::m_basefog_color = params->GetFogColor();
+        CVisual::m_basefog_near = params->m_fog_near;
+        camera->SetHalfHorizontalFOVRadians(0.61086524f, true);
+        m_zfile.CloseKey(key);
+    }
+    m_world->m_grid.Read(*this);
+    if ((libs = m_zfile.OpenKey("assetlibs")) != 0) {
+        for (zar::CKeyRing::iterator it = libs->begin(); it != libs->end(); ++it)
+            CAssetMgr::GetLoadedLibRef((*it)->m_name);
+        m_zfile.CloseKey(libs);
+    }
+    if ((key = m_zfile.OpenKey("light_list")) != 0) {
+        for (zar::CKeyRing::iterator it = key->begin(); it != key->end(); ++it) {
+            if (m_zfile.OpenKey(*it)) {
+                CNode::Read(*this, m_world);
+                m_zfile.CloseKey(*it);
+            }
+        }
+        m_zfile.CloseKey(key);
+    }
+    m_world->Read(*this);
+    m_world->m_LOD_Object.Read(this);
+    m_world->m_Material_Object.Read(this);
+    CScrollingTexture_Object &scroll = m_world->m_ScrollingTexture_Object;
+
+    scroll.Read(this);
+    int n = scroll.size();
+
+    for (int i = 0; i < n; i++) {
+        CScrollingTexture_band *band = &scroll[i];
+        CModel *model = (CModel *)CWorld::GetModel(band->m_modelname);
+        CNode *worldmodel = CWorld::GetModel("worldmodel");
+        CNode *node = find_node(model, band->m_nodename);
+
+        if (!node && worldmodel) {
+            CNode *found = find_node(worldmodel, band->m_nodename);
+
+            if (found)
+                found->ScrollTexture(0, band->m_du, band->m_dv, true, -1);
+        } else if (model && model->m_list.size() && node) {
+            for (CRefList::iterator it = model->m_list.begin(); it != model->m_list.end(); ++it)
+                node->ScrollTexture(0, band->m_du, band->m_dv, true, -1);
+        }
+    }
+    if (strcmp(m_world->m_name, "ui"))
+        m_world->m_grid.ReadClutter(name, 0);
+    m_zfile.Close();
+    return m_world;
 }
 
 /* the world's tree: each key under world_tree read as a node of the world's (SOCOM 1's) */
