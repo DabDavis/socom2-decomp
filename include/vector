@@ -1663,7 +1663,28 @@ T *__vector_imp<T, Allocator, IsPOD>::erase(T *position)
  *    come from whether copy_backward's result temporary exists: with it inlined (AcctRecord) the
  *    object form merges e.m_p into that temporary as in the first population and the target still
  *    wants the end before m. What the five share is the one-level construct() alone (its two
- *    parameters an inliner's temporaries, placement new and the copy constructor calls) */
+ *    parameters an inliner's temporaries, placement new and the copy constructor calls).
+ *    The MSL headers round 33 (the online lane's round-25 request; build/p33/, untracked: board.py
+ *    scores all 68 class inserts against a shadow header in 4 s, vgen.py / vrun.py its variants):
+ *    THE DICHOTOMY IS EXACT over 30 spellings of the in-place end -- every one leaving a POINTER
+ *    local (declared T *, T *const, from end().m_p, through data() and +=, a named copy of the
+ *    object's member before m, an inline returning `data_ + size_` straight or through its own
+ *    named local, a static helper over data_ and size_, a function-scope T * set in both branches)
+ *    gives all five cut inserts and loses the same 29 of the 44; every OBJECT form (function or
+ *    block scope, const, copy-constructed, read through &*e or the iterator's operator-) gives the
+ *    44 and none of the five; wrapping the in-place branch in an inline member loses all 44.
+ *    `igreplay --move` on today's dumps: the five are as well served by m and the else branch's j
+ *    numbered AFTER the end (AcctRecord v37/v40 past v48, CTurretDef past v57) as by the end
+ *    before m -- the cut population wants {m, j} after the end, the inlined one m before it. Read in
+ *    doldecomp/mweppc's optimiser (the PowerPC MW's IRO, the same passes; build/scratch/msl-r33/
+ *    mweppc/): IRO_ScalarizeClassDataMembers runs at the head of each optimiser pass and skips an
+ *    object whose address is live when any call may touch memory (no pointer analysis: every call
+ *    does), so an object becomes its scalar temporary only after copy propagation folds its address
+ *    uses -- the late number; IRO_SplitLifetimes (after the passes) keeps a variable's web holding
+ *    its earliest definition and splits each later web into a new temporary (the definitions are
+ *    walked in reverse IR order, the entry definition first); copy propagation never carries a copy
+ *    into a deeper loop once IRO_FindLoops has set the depths. None of the three turns on whether
+ *    construct() is cut, so the source that numbers the two populations apart is still not found */
 template <class T, class Allocator, bool IsPOD>
 void __vector_imp<T, Allocator, IsPOD>::insert(T *position, unsigned int n, const T &x)
 {
