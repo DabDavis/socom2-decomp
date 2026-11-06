@@ -108,9 +108,8 @@ int func_0026E2D0(CZAnim *anim, _zrdr *rdr);
 void RestoreAiMode__11CSealCtrlAiFv(CSealCtrlAi *ai);
 /* the AI switched on or off, and its alarm (SOCOM 1's static CSealCtrlAi::SetAiEnabled(bool,
  * bool), which its CTStopAll::Tick calls so; OVL2 0x574830, the SEAL lane's row), and a static
- * SOCOM II added after it (OVL2 0x598840) */
+ * SOCOM II added after it, CSealCtrl::SetEnabled (OVL2 0x598840, zseal.h's) */
 void SetAiEnabled__11CSealCtrlAiFbb(bool enabled, bool alarm);
-void func_00598840(bool enabled);
 /* the AI's stance set, and set for a time (OVL2 0x5631A0, 0x5631B0: the SEAL lane's rows, where
  * SOCOM 1's CTStance::Begin called CSealCtrlAi::SetStance) */
 void SetStance__11CSealCtrlAiF11SEAL_STANCE(CSealCtrlAi *ai, SEAL_STANCE stance);
@@ -3781,7 +3780,7 @@ bool CTStopAll::Tick(_zanim_cmd_hdr *hdr, float *dT)
     bool enabled = !cmd->m_enable;
 
     SetAiEnabled__11CSealCtrlAiFbb(enabled, !cmd->m_inactive);
-    func_00598840(enabled);
+    CSealCtrl::SetEnabled(enabled);
     return true;
 }
 

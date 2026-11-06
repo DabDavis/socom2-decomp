@@ -626,37 +626,43 @@ void CAiGroup::RemoveMember(CSealCtrlAi *ai)
 
 /* the matrix at a point facing another in the ground plane: the xz direction normalised into rows 0
  * and 2, the point the translation (OVL2 0x60CAD0; Tick turns a member at its cell to the group's
- * centre with it -- the name ours; pinned: Tick calls it).
- * OPEN, 36 instructions at the right size: the same frame-address CSE as LookAt -- MW holds &d.z in
- * a2 (and keeps d.x in $f2 into the normalise) where the target reads d.x and d.z at sp offsets in
- * both blocks; the saved registers come out from/m swapped (s1/s0 against s0/s1) and the
- * translation copy is act_camera::Tick's. Tried: an inline NormalizeXZ(CPnt3D *), a reference
- * local, optimisation_level 3 / opt_common_subs off */
-static inline void NormalizeXZ(CPnt3D *v)
+ * centre with it -- the name ours; pinned: Tick calls it). Byte-exact (round 58) under `#pragma
+ * opt_common_subs off` in the body (reset after it): with CSE on MW holds &d.z in a register and keeps
+ * d.x in $f2 into the normalise, where the target reads d.x and d.z at sp offsets in both blocks (the
+ * normalise's loads repeated); with it off, the target's single loads of x and z for the length need
+ * x read through a no-op `(float)` cast (a plain `x = d.x` is propagated into both factors, d.x being
+ * the local's own offset-0 field) and z declared bare and assigned after x (numbered at its
+ * declaration: x $f1, z $f2, the length's sum into x's register); -d.z shared by a local; the
+ * translation through CPnt3D's three-float constructor (its arguments bound right to left: the
+ * loads z, y, x, then the stores x, y, z -- a struct copy pairs each load with its store) */
+#pragma auto_inline off
+static void FaceXZ(const CPnt3D *from, const CPnt3D *to, CMatrix *m)
 {
-    float len = sqrtf(v->x * v->x + v->z * v->z);
+#pragma opt_common_subs off
+    m->SetIdentity();
+    CPnt3D d = *to - *from;
+
+    float z;
+    float x = (float)d.x;
+
+    z = d.z;
+    float len = sqrtf(x * x + z * z);
 
     if (len != 0.0f) {
         float inv = 1.0f / len;
 
-        v->x *= inv;
-        v->z *= inv;
+        d.x *= inv;
+        d.z *= inv;
     }
-}
+    float nz = -d.z;
 
-#pragma auto_inline off
-static void FaceXZ(const CPnt3D *from, const CPnt3D *to, CMatrix *m)
-{
-    m->SetIdentity();
-    CPnt3D d = *to - *from;
-
-    NormalizeXZ(&d);
-    m->m_matrix[0][0] = -d.z;
+    m->m_matrix[0][0] = nz;
     m->m_matrix[0][2] = -d.x;
     m->m_matrix[2][0] = d.x;
-    m->m_matrix[2][2] = -d.z;
-    *(CPnt3D *)m->m_matrix[3] = *from;
+    m->m_matrix[2][2] = nz;
+    *(CPnt3D *)m->m_matrix[3] = CPnt3D(from->x, from->y, from->z);
 }
+#pragma opt_common_subs reset
 #pragma auto_inline reset
 
 /* (OVL2 0x60C3E0: m_ticking set for the actions; the state a byte-enum local, stored back at the
@@ -1106,14 +1112,21 @@ bool CAiGroup::campoint::Get(CAiGroup *g, CPnt3D *out) const
 /* the matrix at one point looking at another: level (its x axis in the ground plane), up from the
  * cross product, looking down -z (OVL2 0x60DCF0: CAppCamera::LookAt's body, 0x29BC90, the eye not
  * noted; the name ours).
- * OPEN, 0x154 against 0x138 -- camera.cpp's LookAt's open shape, the same code: MW keeps the
- * addresses of vView.y, vView.z and v2D.z in saved registers (as SOCOM 1's 2.4 build did for
- * vView's two) where the target reads them at sp offsets and holds -v2D.z and v2D.x in $f21/$f20
- * across sceVu0OuterProduct; and the translation copy as act_camera::Tick's. Tried: the element
- * stores in the target's order, CPnt4D(x, y, z, w) vectors, scalar rx/rz locals with initialised
- * arrays (0x15C), optimisation_level 3 (the address still CSE'd) */
+ * OPEN, 0x140 against 0x138 (0x154 before round 58), two instructions: FaceXZ's shape (CSE off in the
+ * body) gives every load, register and slot but the two struct copies' addresses -- the target's copy
+ * of the difference into vView, and of vView into v2D, stores through a0, the address Normalize gets
+ * as `this`; with CSE off MW computes the destination twice (v1 for the copy, a0 for the call). With
+ * CSE on (the old shape) MW kept the addresses of vView.y, vView.z and v2D.z in saved registers and
+ * read v2D.x once. The rest of the fit: -v2D.z and v2D.x locals ahead of the call (the target's
+ * $f21/$f20, v2D.x read a second time for right[2]), the vectors declared up, right, view (the target's
+ * slots: up highest), `view[3] = right[3] = 1.0f` (one lui), up read into locals before the matrix's
+ * stores, the translation through CPnt3D's three-float constructor. Tried for the copies (round 58):
+ * `(vView = d).Normalize()` and a reference to the assignment (0x150), a pointer to the copy (0x154),
+ * inline copy-and-normalise helpers by pointer (member-wise copies, 0x154) or by value (0x150-0x180),
+ * direct initialisation, a pointer or a reference to the copy for the call (all 0x140, the same code) */
 static void LookAt(const CPnt3D *from, const CPnt3D *to, CMatrix *m)
 {
+#pragma opt_common_subs off
     CPnt3D vView = *to - *from;
 
     vView.Normalize();
@@ -1121,30 +1134,36 @@ static void LookAt(const CPnt3D *from, const CPnt3D *to, CMatrix *m)
 
     v2D.y = 0.0f;
     v2D.Normalize();
+    float nz = -v2D.z;
+    float x = v2D.x;
+    sceVu0FVECTOR up;
     sceVu0FVECTOR right;
     sceVu0FVECTOR view;
-    sceVu0FVECTOR up;
 
-    right[3] = 1.0f;
-    view[3] = 1.0f;
+    view[3] = right[3] = 1.0f;
     right[1] = 0.0f;
     right[2] = v2D.x;
     view[0] = vView.x;
     view[1] = vView.y;
     view[2] = vView.z;
-    right[0] = -v2D.z;
+    right[0] = nz;
     sceVu0OuterProduct(up, right, view);
-    m->m_matrix[0][0] = -v2D.z;
+    float ux = up[0];
+    float uy = up[1];
+    float uz = up[2];
+
+    m->m_matrix[0][0] = nz;
     m->m_matrix[0][1] = 0.0f;
-    m->m_matrix[0][2] = v2D.x;
-    m->m_matrix[1][0] = up[0];
-    m->m_matrix[1][1] = up[1];
-    m->m_matrix[1][2] = up[2];
+    m->m_matrix[0][2] = x;
+    m->m_matrix[1][0] = ux;
+    m->m_matrix[1][1] = uy;
+    m->m_matrix[1][2] = uz;
     m->m_matrix[2][0] = -vView.x;
     m->m_matrix[2][1] = -vView.y;
     m->m_matrix[2][2] = -vView.z;
-    *(PNT3D *)m->m_matrix[3] = *from;
+    *(CPnt3D *)m->m_matrix[3] = CPnt3D(from->x, from->y, from->z);
 }
+#pragma opt_common_subs reset
 
 /* (OVL2 0x60DB60: the camera put at the start point once the step's clock reaches the move's time,
  * turned by the end point's angles or to look at it; done the tick after -- at once when the

@@ -101,7 +101,10 @@ CCompassAnchor *CCompass::CreateAnchor(const CPnt3D &pos, const char *name)
  * element a1, n - 1 a0 and the data pointer v0; MW here n a1, i t0, the offset a3, the element a2,
  * the data pointer a0, n - 1 v0. Not the declaration order (the permuter over n, i and t, 1,120
  * steps), not `int i`, a `last` local, size() read in place or a do-while (all longer or alike); round 21, the replay
- * (--want n=t0,i=a3,off=a2,elt=a1 over n, i and the two temporaries): no hit in 38 % of 2.56M placements */
+ * (--want n=t0,i=a3,off=a2,elt=a1 over n, i and the two temporaries): no hit in 38 % of 2.56M placements;
+ * round 25, igreplay --permute over the six disagreeing nodes (n, i, the i * 4 induction variable,
+ * the element's and the data's CSE temporaries, the n - 1 code temporary; 720 orders): no hit either --
+ * not a numbering among them */
 bool CCompass::DeleteAnchor(CCompassAnchor *anchor)
 {
     CCompass &compass = theCompass;

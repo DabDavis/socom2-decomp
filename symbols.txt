@@ -4478,10 +4478,10 @@
 0x002D2700 0x108 insert__Q23std62__list_deleter<11CGQueueAtom,Q23std24allocator<11CGQueueAtom>>FQ33std62__list_deleter<11CGQueueAtom,Q23std24allocator<11CGQueueAtom>>19generic_iterator<0>RC11CGQueueAtom  # OVL1; by hand (the states lane, round 15): called by CGraph::BuildTree (0x2D1790), whose inline helpers -- the graph Reset and the queue pop and update, too big to inline whole -- are inlined one level and call their pieces out of line; graph_tree.cpp emits the copy
 0x002D2810 0x18 __ct__Q23std62__list_deleter<11CGQueueAtom,Q23std24allocator<11CGQueueAtom>>Fv  # OVL1; by hand (the states lane, round 15): called by CGraph::BuildTree (0x2D1790), whose inline helpers -- the graph Reset and the queue pop and update, too big to inline whole -- are inlined one level and call their pieces out of line; graph_tree.cpp emits the copy
 0x002D2830 0x60 __dt__10CGTreePoolFv  # OVL1; by hand (the states lane, round 27): ~CGTreePool -- SOCOM 1's __sinit_graph_tree.cpp builds its file static _pool and registers ~CGTreePool, the last function of its graph_tree.cpp, as SOCOM II's __sinit_graph_tree.cpp 0x401C80 registers this one, graph_tree.cpp's last; a pointer list's implicit destructor (two this-tests, ~__list_imp<PCv> 0x1EA250 called), emitted byte-exact by graph_tree.cpp's CGTreePool
-0x002D2890 0x560 func_002D2890  # OVL1
+0x002D2890 0x560 NodeGetIntersect__Q23zdb5CGridFPQ23zdb5CNodePQ23zdb11DiIntersect  # OVL1; s1:calls by hand (the engine core round 25): CGrid::GetIntersect 0x2D4780 and GetAltitude 0x2D49C0 call it at each atom and clutter prop where SOCOM 1's called NodeGetIntersect and NodeGetAltitude (this, node, di); it recurses through the node's children, calls the polygons' GetIntersect (slot 0x14) and sits first in grid_di.cpp where SOCOM 1's pair sat -- SOCOM II's one walk (the altitude query a vertical ray); grid_di.cpp
 0x002D2DF0 0x114 InitDescendantsVisuals__Q23zdb5CGridFv  # OVL1; s1:calls by hand (the zdb-world lane: CWorld's InitDescendantsVisuals calls it where SOCOM 1's does)
 0x002D2F10 0x114 InitDescendantsDI__Q23zdb5CGridFv  # OVL1; s1:calls by hand (the zdb-world lane: CWorld's InitDescendantsDI calls it where SOCOM 1's does)
-0x002D3030 0xCB4 func_002D3030  # OVL1
+0x002D3030 0xCB4 NodeGetIntersectBatch__Q23zdb5CGridFPQ23zdb5CNodePPQ23zdb11DiIntersecti  # OVL1; s1:calls by hand (the engine core round 25): CGrid::GetIntersectBatch 0x2D3CF0 calls it three times (each clutter prop, pushed or not, then the atom's node) where SOCOM 1's GetIntersectBatch calls NodeGetIntersectBatch (0x212310 there); (this, node, DiIntersect **, int) as SOCOM 1's, it recurses, and it sits before GetIntersectBatch as SOCOM 1's does; grid_di.cpp, unwritten
 0x002D3CF0 0xA90 GetIntersectBatch__Q23zdb5CGridFPPQ23zdb11DiIntersecti  # OVL1; s1:calls by hand (the zdb-world lane: CWorld::GetIntersectBatch calls it where SOCOM 1's does)
 0x002D4780 0x23C GetIntersect__Q23zdb5CGridFPQ23zdb11DiIntersect  # OVL1; s1:calls by hand (the zdb-world lane: CWorld::GetIntersect calls it where SOCOM 1's does)
 0x002D49C0 0x254 GetAltitude__Q23zdb5CGridFPQ23zdb11DiIntersect  # OVL1; s1:calls by hand (the zdb-world lane: CWorld::GetAltitude calls it where SOCOM 1's does)
@@ -9956,19 +9956,19 @@
 0x00544C60 0x18 CompassAnchor_MPBomb__10CZSealBodyFP14CCompassAnchor  # OVL2; s1:order (after CompassAnchor_MPBase); the anchor at 0xEC0 (SOCOM 1's 0xDB4)
 0x00544C80 0x14 ActionSelectionMask__10CZSealBodyFi  # OVL2; by hand (the SEALs, round 33): SOCOM 1's CZSealBody::ActionSelectionMask (Uib, the selection word at 0xdc4 -- SOCOM II's 0xED4, after ActionAvailableMask's 0xED0, as SOCOM 1's 0xdc4 after 0xdc0) reshaped to take the action alone, its bit stored (1 << id), the HUD's round 39 reading by hud_actionbitmap.cpp's call; the byte narrowed in the callee (andi 0xff) as ActionAvailableMask's unsigned char next to it; seal.cpp; an int parameter narrowed inside (the HUD's round 42 measurement on CActionTxtrMachine::Add 0x2209C0: its call loads the byte with lb, which only an int-sized parameter gives -- an unsigned char folds into lbu; `1 << (unsigned char)id` gives this body's five instructions)
 0x00544CA0 0x50 ActionAvailableMask__10CZSealBodyFUcb  # OVL2; size 0x50 (the seed split it after its first branch: 0x544CA8 was its body): a bit (1 << id) set in or cleared from the mask at 0xED0 by a bool, SOCOM 1's ActionSelectionMask or ActionAvailableMask reshaped (which one unproven); s1:calls by hand (CSealCtrl::PerformReticleActions calls it with (14, true) and (15, true) where SOCOM 1's calls ActionAvailableMask__10CZSealBodyFUib; SOCOM II's narrows the id to a byte, andi 0xff, so an unsigned char parameter); the seed's cut (0x544ca8): jal target of OVL1's DNAS client, which calls DNAS.BIN loaded in the OVL2 slot (README)
-0x00544CF0 0x64 func_00544CF0  # OVL2
+0x00544CF0 0x64 WasHit__10CSealStatsFRC10CZSealBody  # OVL2; by hand (the SEALs, round 56, the integrator's lead): SOCOM 1's CSealStats::WasHit (0x24E5A0, 0x64 there too: m_washit stepped when it counts) -- RemoteWeaponDamageVictim and ReportWeaponHitDamage call it right after Hit, as SOCOM 1's do; first of the stats' members in both
 0x00544D60 0x260 func_00544D60  # OVL2
-0x00544FC0 0x134 func_00544FC0  # OVL2
-0x00545100 0x14 func_00545100  # OVL2
-0x00545120 0x14 func_00545120  # OVL2
-0x00545140 0x14 func_00545140  # OVL2
+0x00544FC0 0x134 Shot__10CSealStatsFRC10CZSealBody  # OVL2; by hand (the SEALs, round 56): SOCOM 1's CSealStats::Shot (0x24E6C0, after WasHit and UpdateMvpScore in both): the shots counted and the hit percentage made again; a weapon's fire (0x5BE9A0) calls it as SOCOM 1's CZKit::Fire does
+0x00545100 0x14 IncrSecondaryRoundsFired__10CSealStatsFi  # OVL2; by hand (the SEALs, round 56): SOCOM 1's IncrSecondaryRoundsFired (0x24E860, first of its four Incr* there too) -- the kit's fire 0x5C5340 calls it under IsSecondaryType, between the primary's and the grenade's, as SOCOM 1's Fire
+0x00545120 0x14 IncrPrimaryRoundsFired__10CSealStatsFi  # OVL2; by hand (the SEALs, round 56): SOCOM 1's IncrPrimaryRoundsFired (0x24E870, second there too) -- the kit's fire 0x5C5340 calls it under IsPrimaryType, first, as SOCOM 1's Fire
+0x00545140 0x14 IncrGrenadesUsed__10CSealStatsFi  # OVL2; by hand (the SEALs, round 56): SOCOM 1's IncrGrenadesUsed (0x24E880, third there too) -- the kit's fire 0x5C5340 calls it last, for item 121, as SOCOM 1's Fire
 0x00545160 0x14 func_00545160  # OVL2
 0x00545180 0x14 func_00545180  # OVL2
 0x005451A0 0x14 func_005451A0  # OVL2
 0x005451C0 0x14 func_005451C0  # OVL2
-0x005451E0 0x14 func_005451E0  # OVL2
+0x005451E0 0x14 IncrTimesSeen__10CSealStatsFi  # OVL2; by hand (the SEALs, round 56): SOCOM 1's IncrTimesSeen (0x24E890, the last Incr* before Reset in both) -- OnSetTargetVisible calls it, as SOCOM 1's; SOCOM II's four new counters sit between the grenade's and it
 0x00545200 0x90 Reset__10CSealStatsFv  # OVL2; by hand (the SEALs, round 55, the game states' round-50 lead, which took it for the constructor -- it returns nothing, no move v0,a0): SOCOM 1's Reset__10CSealStatsFv (0x24E8A0, every counter zeroed, between IncrTimesSeen and Kill as here: the eight Incr* counters 0x545100-0x5451E0 below, Kill 0x545290 above); SOCOM 1's CZSealBody constructor calls it twice and CMPExitState::Init once, as SOCOM II's constructor 0x553EA0 (its stats at 0x544 and 0x58C), SetRoundStatUiVars 0x1F21B0 and CMPExitState::UnInit 0x223390 do; seal.cpp
-0x00545290 0xF8 func_00545290  # OVL2
+0x00545290 0xF8 Kill__10CSealStatsFRC10CZSealBody  # OVL2; by hand (the SEALs, round 56): SOCOM 1's CSealStats::Kill (0x24E900, right after Reset in both): the kills counted, the score up two -- HandleKiller's enemy arm calls it in both
 0x00545390 0xE8 func_00545390  # OVL2
 0x00545480 0xA4 func_00545480  # OVL2
 0x00545530 0x9C func_00545530  # OVL2
@@ -9976,14 +9976,14 @@
 0x00545650 0xF8 func_00545650  # OVL2
 0x00545750 0x13C func_00545750  # OVL2; size 0x13C (the seed split it at 0x545800, the delay slot of its jal to 0x544D60: the rest runs on its saved s0-s3 and pops its 80-byte frame); the seed's cut (0x545800): jal target of OVL1's DNAS client, which calls DNAS.BIN loaded in the OVL2 slot (README)
 0x00545890 0x8 GetStats__10CZSealBodyFv  # OVL2; ours (seal.cpp's stats stretch): the SEAL's address plus 0x58C, CZSealBody::m_stats (SOCOM 1's m_stats, right before m_accuracy); 0x545D80 calls it through the member pointer at 0x64FD38/0x64FD58 -- the SEAL lane, round 9
-0x005458A0 0x114 func_005458A0  # OVL2
-0x005459C0 0x64 func_005459C0  # OVL2
+0x005458A0 0x114 Hit__10CSealStatsFRC10CZSealBodyRC10CZSealBody  # OVL2; by hand (the SEALs, round 56): SOCOM 1's CSealStats::Hit (0x24E9F0: the hits counted and the hit percentage made again), its callers SOCOM 1's (RemoteWeaponDamageVictim and ReportWeaponHitDamage, each right before WasHit) -- SOCOM II passes the SEAL hit as well (a team hit's second counter), so the signature is ours
+0x005459C0 0x64 HeadShot__10CSealStatsFRC10CZSealBody  # OVL2; by hand (the SEALs, round 56): SOCOM 1's CSealStats::HeadShot (0x24EB00, 0x64: m_headshots, the first counter in both, stepped when it counts) -- RemoteWeaponDamageVictim and ReportWeaponHitDamage call it as SOCOM 1's, HandleKiller for a head-shot death offline
 0x00545A30 0xDC func_00545A30  # OVL2
 0x00545B10 0x80 func_00545B10  # OVL2
 0x00545B90 0x80 func_00545B90  # OVL2
 0x00545C10 0x80 func_00545C10  # OVL2
 0x00545C90 0x80 func_00545C90  # OVL2
-0x00545D10 0x64 func_00545D10  # OVL2
+0x00545D10 0x64 Death__10CSealStatsFRC10CZSealBody  # OVL2; by hand (the SEALs, round 56): SOCOM 1's CSealStats::Death (0x24EC60, 0x64, the last of its members: a death counted when it counts) -- HandleKiller's last call and HandleDamage's, SOCOM 1's two callers
 0x00545D80 0x15C func_00545D80  # OVL2
 0x00545EE0 0x328 func_00545EE0  # OVL2
 0x00546210 0x1AC func_00546210  # OVL2

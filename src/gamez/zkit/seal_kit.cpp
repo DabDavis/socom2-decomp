@@ -534,8 +534,16 @@ bool CompassAnchor_MPBomb__10CZSealBodyFP14CCompassAnchor(CZSealBody *seal, CCom
 bool CompassAnchor_MPBase__10CZSealBodyFP14CCompassAnchor(CZSealBody *seal, CCompassAnchor *anchor);
 void DropMPBomb__10CZSealBodyFv(CZSealBody *seal);
 bool func_002C30B0(const CZSealBody *seal);
-void func_002B6530(void *queue, const char *name, int a, int b, int c, float delay);
 }
+
+/* the HUD's message list (fts_message.cpp's C2DMessage_Q, OVL1 0x2B6530 its Add_Message: SOCOM 1's
+ * Add_Message(text, r, g, b) grown) and the message kind it is coloured by (fts_state.h's MSGTYPE) */
+enum MSGTYPE { MSGTYPE_PLAYER = 0 };
+
+class C2DMessage_Q {
+public:
+    void Add_Message(const char *text, MSGTYPE type, bool centered, int time, float scale);
+};
 
 /* the mission as the bomb pickup reads it (theMission, OVL1 0x4364E0: its message queue at 0xB80
  * and the two bases' nodes at 0x18EC/0x18F0 -- the names ours) */
@@ -583,7 +591,7 @@ void CZKit::PickupMPBomb()
         AddAmmo(n, 1);
         m_currentmag[n] = 0;
         if (KitIsPlayer((CKitBody *)m_body))
-            func_002B6530(theMission.m_messages, "Satchel", 0, 0, 0, 0.0f);
+            ((C2DMessage_Q *)theMission.m_messages)->Add_Message("Satchel", MSGTYPE_PLAYER, false, 0, 0.0f);
         CSnd *snd = CSnd::GetSoundByName(".FOOTBOMB");
 
         if (snd)
