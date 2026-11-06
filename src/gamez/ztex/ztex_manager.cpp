@@ -253,22 +253,22 @@ bool CTexture::HasMipLevel(CTexture *tex)
  * list, the library's, any loaded library's (the last added to the buffer) -- and, for a mip
  * level, the textures whose MIPTBP registers point at it listed as its parents (SOCOM 1's Hookup;
  * SOCOM II's mip walk).
- * OPEN, register-only (42 instructions, the size right): the target keeps this in s2, lib s1, tex
- * s0, the walk i s4, the asset walk and the mip walk s3, the list's end s5; this gives i s0, tex s1,
- * lib s2, this s3, the walks s4 (MW's colouring, the world lane's round 14: the walk's iterator is a
- * scalariser temporary of degree 86, deferred with this, lib and tex and so coloured first of them;
- * the target colours it after this, which no numbering of a temporary gives; round 21:
- * tools/igreplay.py --want puts the walk's temporary after the asset list's end (@3613) and before
- * the asset walk's -- the scalariser numbers the iterators by first definition, so `e` declared
- * first and assigned in its block changes nothing (42), initialised at the top it lives through the
- * function and is deferred (64)). Settled on the way: FindPalette is called out of line (pinned), the
- * first find's result a bool local (andi), the second `lib && ...` a value, the asset list's end a
- * local kept in s5, the mip tests written out in the if (an inline bool helper materialises them),
- * and the pushed texture a copy made at the push (the target stores it to the stack only then; t
- * itself, or a cast of it, is stored where it is set) */
+ * Byte-exact (the world lane's round 33; open at 42 since round 14) through A MARKED MODELLING SHAPE:
+ * the walk's iterator, and the mip walk's, bound to a reference local that pass 0's propagation folds
+ * away. That defers their scalarisation to pass 1 at no code cost (the AI core's round 36), numbering
+ * them after the asset list's end (`igreplay --move 39=40.5` asked for exactly that: the target
+ * keeps this in s2, lib s1, tex s0, the walk s4, the asset and mip walks s3, the end s5). The
+ * original's spelling of the same order is unknown. Settled before: FindPalette is called out of
+ * line (pinned), the first find's result a bool local (andi), the second `lib && ...` a value, the
+ * asset list's end a local kept in s5, the mip tests written out in the if (an inline bool helper
+ * materialises them), and the pushed texture a copy made at the push (the target stores it to the
+ * stack only then; t itself, or a cast of it, is stored where it is set) */
 void CGSTexBuffer::Hookup(CAssetLib *lib)
 {
-    for (CTexList::iterator i = m_dyntex_list.m_tex_list.begin(); i != m_dyntex_list.m_tex_list.end(); ++i) {
+    CTexList::iterator i;
+    CTexList::iterator &ir = i;
+
+    for (ir = m_dyntex_list.m_tex_list.begin(); i != m_dyntex_list.m_tex_list.end(); ++i) {
         CTexture *tex = (*i)->m_texture;
 
         (*i)->m_gsAddr = tex->m_gsaddr;
@@ -292,7 +292,10 @@ void CGSTexBuffer::Hookup(CAssetLib *lib)
             }
         }
         if (tex->m_is_mip_child) {
-            for (CTexList::iterator j = m_dyntex_list.m_tex_list.begin(); j != m_dyntex_list.m_tex_list.end(); ++j) {
+            CTexList::iterator j;
+            CTexList::iterator &jr = j;
+
+            for (jr = m_dyntex_list.m_tex_list.begin(); j != m_dyntex_list.m_tex_list.end(); ++j) {
                 CTexture *t = *j ? (*j)->m_texture : 0;
                 unsigned int addr = tex->m_gsaddr;
                 bool found = false;

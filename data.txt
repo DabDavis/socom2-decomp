@@ -1600,6 +1600,7 @@
 0x0045C2A0 0x4 numNodes  # OVL1 bss; SOCOM 1 name (the node count, after NodeUniverse as in SOCOM 1; ~CNode counts it down)
 0x0045C2B8 0xC m_tick_list__Q23zdb6CLight  # OVL1 bss; s1:unit (node_main.cpp's first static, as SOCOM 1's CLight::m_tick_list: __sinit_node_main.cpp zeroes it and registers its destructor; its record at 0x45C2A8)
 0x0045C2D8 0xC m_deferred_visuals__Q23zdb5CNode  # OVL1 bss; node_main.cpp's second static, new in SOCOM II: a pointer list (the deleter's constructor builds it) of visuals let go of while drawn, which DeleteVisuals fills and 0x314E60 empties; the name ours
+0x0045C320 0x18 s_nodeBox  # OVL1 bss; ours: a file static of node_shadow.cpp, the box CRenderMap::Update resets and has the tree's box written to (2 references, Update's only)
 0x0045C338 0xC boxAdjust  # OVL1 bss; SOCOM 1's file static of node_shadow.cpp (boxAdjust, LOCAL, 12 bytes): a CPnt3D the unit's initialiser 0x402940 sets to (5, 5, 5), as SOCOM 1's __sinit_node_shadow.cpp builds it; 3 references (the initialiser's stores) -- the world lane r10
 0x0045C380 0x4 m_world__Q23zdb6CWorld  # OVL1 bss; s1:data-seq (size SOCOM 1's; via AddNewMark__10CZMarkListFPQ23zdb15IntersectStructP12CZProjectilef +4)
 0x0045C388 0x4 s_customCharacterCnt__3zdb  # OVL1 bss; node_world.cpp's static, new in SOCOM II (the name ours): AddCustomCharacters clears it and walks that many stacked nodes, FindCustomCharacters stores at the index and counts it up; 6 references in those 2 functions

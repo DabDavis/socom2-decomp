@@ -290,7 +290,11 @@ int CRdrFile::ReadToken(CRdrIO *io, _zrdr **out)
  * a goto over the call, a switch, a while with a break, an unsigned count, the count read back
  * from array->length; and the shape a block emptied only after allocation would give (an
  * explicit `array = this` arm, either way round, with `array` initialised or not; an inline helper
- * returning `this` early, or its ternary) -- each loses the this/array coalescing (47) */
+ * returning `this` early, or its ternary) -- each loses the this/array coalescing (47). Round 33
+ * (build/scratch/wld/v_ra*.py): the pragma scan's peephole off only moves the loop label's pad (10):
+ * the layout is not the peephole's; a no-op conversion in the arm (`array = (_zrdr *)(int)array`,
+ * 36), `depth && (array = ...)`, void ternaries, two gotos, a switch either way round (36), a while
+ * or for that breaks: none leaves the `b` over the allocation */
 _zrdr *CRdrFile::ReadArray(CRdrIO *io, int depth)
 {
     _zrdr *rdr = 0;
