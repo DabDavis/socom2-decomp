@@ -6,6 +6,9 @@
 
 /* a modelling device (the MSL headers round 39): include/vector's end() over __iter(__raw_end()), CountKeys' below */
 #define __MSL_VECTOR_END_ARG
+/* (the same, the engine core's round 28: include/vector's pointer pod over SOCOM 1's compressed pair, for
+ * DeleteChildren's outer FreeVector; its note has the measure) */
+#define __MSL_VECTOR_POD_PAIR
 
 #include <algorithm>
 #include <string.h>
@@ -196,3 +199,8 @@ CKey *CKey::FindKey(const char *name)
 }
 
 }
+
+/* The unit inlines to depth 8, not the flags' 5 (seal_ai.cpp's and zanim_cmd_tick.cpp's opt-in; a pragma acts through its state
+ * at the unit's end): with the pointer pod over the compressed pair FreeVector's instance 0x25B9D0 and ~CKey's four
+ * this-tests inline whole (7 or more), the outer DeleteChildren's FreeVector calling the pieces */
+#pragma inline_depth(8)
