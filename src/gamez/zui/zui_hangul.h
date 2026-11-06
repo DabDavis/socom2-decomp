@@ -53,6 +53,17 @@ template <class T>
 class CSkbVec : public std::vector<T> {
 };
 
+/* (the split's parts: its resize(n) 0x391D90, a forwarder called out of line by the matcher's
+ * one-level cut of CSkbSplit(n, k)) */
+template <>
+class CSkbVec<unsigned int> : public std::vector<unsigned int> {
+public:
+    using std::vector<unsigned int>::resize;
+    void resize(unsigned int n) { resize(n, 0); }
+    std::vector<unsigned int> &Vec() { return *this; }
+    unsigned int &operator[](unsigned int n) { return Vec()[n]; }
+};
+
 /* a syllable's jamo (ours: five tests in its destructor 0x3912A0, its constructor 0x391280) */
 class CJamoStr : public CSkbVec<char> {
 };
@@ -60,6 +71,8 @@ class CJamoStr : public CSkbVec<char> {
 /* a composed piece: its jamo and its character code (16 bytes; ours: the destructor 0x390760, six
  * tests; the code's own constructor 0x392760) */
 struct SKBPIECE {
+    ~SKBPIECE();
+
     CJamoStr m_jamo;   // 0x0
     CInit<unsigned short, 0> m_code;   // 0xc
 };
@@ -71,6 +84,8 @@ struct SKBPIECE {
  * (block copies at both, a user copy constructor still pairing the loads) do not give */
 struct SKBSEQ {
     SKBSEQ() {}
+    /* (0x391E40: the composer's out-of-line copy) */
+    int Size() { return m_jamo.size(); }
 
     std::vector<char> m_jamo;   // 0x0
     CInit<int, 0> m_val;   // 0xc

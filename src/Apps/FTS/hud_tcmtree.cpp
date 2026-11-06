@@ -238,12 +238,15 @@ void CTCM::Tick(CPad *pad, float dt)
  *    return the state -- a MODELLING DEVICE for a command type returning it (TCMFunc stays int:
  *    hud_tcmcmds.cpp's commands match as int functions);
  *  - `> 1`, not `>= 2`: the latter materialises the compare in v1 where the target branches on at.
- * OPEN, 12 instructions (code-generation temporaries only: the saved registers, the frame and the
- * schedule are the target's): the target keeps the shared constant 1 in a0, 2 in v1 and down's byte
- * in a1 (narrowed in place), here 1 in a1, 2 in a0, down in t0 and the narrowed bytes in v1. The
- * replay (igreplay --want 84=a0,117=v1,115=a1,133=a1 --movers 84,117: 153 placements) wants the
- * constant 1 numbered after the up block's narrowing temporary (~133.5) -- as if the select test's
- * constant were generated last; every order of the three locals tried (down, cross, up is best) */
+ * OPEN, 2 instructions since round 65 (12 until then), one load swap: the target's `lb a1,6(s3); lb a2,5(s3)` (down, then up,
+ * cross in the delay slot), here up, then down -- every register is the target's. The narrowings in byte-enum locals declared in
+ * their blocks (the kit's round 60: an enum holder stays numbered where written) put the constants 1 and 2 above them, as round
+ * 54's replay asked (the select test's constant "generated last"); declared cross, up, down numbers the three loads for a3, a2,
+ * a1, but they are code-generation temporaries numbered by generation order, and the scheduler keeps that order on a tie (the
+ * first generated goes to the delay slot, the others in order), so the target's order needs up numbered below down and generated
+ * after it. Tried for that: const or byte-enum locals (copy-propagated at PCode level, no node of their own), dead first
+ * definitions (dropped: 5), an inline accessor for cross and up or all three (`char` or by reference: 2-6), a local copy of down
+ * or a wider local (2) */
 void CTCM::HandleOpenPad(CPad *pad, float dt)
 {
     if (m_hold <= 0.0f) {
@@ -256,9 +259,9 @@ void CTCM::HandleOpenPad(CPad *pad, float dt)
             }
         }
         TCM_BUTTON st = func_002C64E0(11, pad);
-        char down = pad->m_state[PAD_DOWN];
         char cross = pad->m_state[PAD_CROSS];
         char up = pad->m_state[PAD_UP];
+        char down = pad->m_state[PAD_DOWN];
 
         if (pad->m_state[PAD_TRIANGLE] == KEY_RISING) {
             if (m_path.size() < 2) {
@@ -296,7 +299,9 @@ void CTCM::HandleOpenPad(CPad *pad, float dt)
             theTCM.Layout(dt);
             return;
         }
-        if ((KEY_STATE)down == KEY_DOWN || (KEY_STATE)down == KEY_FALLING) {
+        KEY_STATE kd = (KEY_STATE)down;
+
+        if (kd == KEY_DOWN || kd == KEY_FALLING) {
             CTCMNode *col = GetColumn(m_path.size() - 1);
 
             if (col && col->GetNumChildren() > 1) {
@@ -306,7 +311,10 @@ void CTCM::HandleOpenPad(CPad *pad, float dt)
                 m_sounds.Play(TCM_SND_SLIDE);
                 Hold(false, s_tcm_slidehold);
             }
-        } else if ((KEY_STATE)up == KEY_DOWN || (KEY_STATE)up == KEY_FALLING) {
+        } else {
+        KEY_STATE ku = (KEY_STATE)up;
+
+        if (ku == KEY_DOWN || ku == KEY_FALLING) {
             CTCMNode *col = GetColumn(m_path.size() - 1);
 
             if (col && col->GetNumChildren() > 1) {
@@ -316,6 +324,7 @@ void CTCM::HandleOpenPad(CPad *pad, float dt)
                 m_sounds.Play(TCM_SND_SLIDE);
                 Hold(false, s_tcm_slidehold);
             }
+        }
         }
     }
 }

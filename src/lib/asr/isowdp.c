@@ -13,8 +13,8 @@
  * lists by size; a tree node's word indexes a table of its states' offsets. Only the functions
  * written so far are here, in image order: InitIsoWordTokenDpContext (round 32c),
  * FreeIsoWordTokenDp, InitNewUtterance, ExtendNodeWheel (OPEN, diagnosed in place),
- * ExpandGarbageArrays, IsoWordTokenDpProcess (round 32c; RePruneToPho and FrameDPacoust, between
- * ExtendNodeWheel and ExpandGarbageArrays, are not written), GetNBest and ControlIsoWordTokenDp
+ * RePruneToPho (round 40c), FrameDPacoust (round 39c, OPEN), ExpandGarbageArrays,
+ * IsoWordTokenDpProcess (round 32c), GetNBest and ControlIsoWordTokenDp
  * (round 31c), ConstructIsoWordTokenDp,
  * InitIsoWordTokenDpProcess, CalcNrNodes, IdleProcess, ScoreCompare. CalcNrNodes reads the child count before its depth test (the
  * target's load in the test's delay slot) and steps its child pointer in the for (the unrolled
@@ -154,6 +154,7 @@ void *heap_Alloc(void *heap, unsigned int size);
 void heap_Free(void *heap, void *p);
 
 void *memcpy(void *dst, const void *src, unsigned int n);
+void *memset(void *dst, int c, unsigned int n);
 
 /* not written yet: the map's rows */
 int FrameDPacoust(ISOWDP *e);
@@ -430,8 +431,254 @@ int ExtendNodeWheel(ISOWDP *e, WTOKEN ***a, WTOKEN ***b)
     return 0;
 }
 
+int RePruneToPho(ISOWDP *e, WTOKEN ***out, int *count, int n, int best);
+/* the wheel pruned back when it grew past the frame's budget: each token's best score histogrammed
+ * from the best (bins of 32), the threshold found by narrowing the bin a hundredfold twice over, the
+ * tokens at or past it dropped from the ring and their nodes given back, the scores kept for the next
+ * re-prune when few enough went. SOCOM 1's body (round 40c, 870 words). Measured, each moved the
+ * allocation or the layout to the target's:
+ * - the histogram's and the scores' tables through pointers of their own (h, sc: `lw v1,4(s7)`), the
+ *   ring's base through w, never e -- e's references drop below h's and w's, and it is spilled;
+ * - the retry a `while` on the histogram's test with the `step > 1` test an inner break: the first is
+ *   the exit expand_end_loop rolls to the bottom (the entry `b`), its label keeps jump.c from copying
+ *   it above the loop, and h's, sum's and step's in-loop references count double (h: 22 refs over 490,
+ *   it passes sc and w);
+ * - `size = cnt * 2` set before the memset, inside the loop: the insn is in the same block as its
+ *   use, and far enough ahead (life >= 4) for loop.c to find it desirable, so it is hoisted (slot 32);
+ *   set before the loop PRE reuses it for the compaction's `o + cnt`, which the target recomputes;
+ * - one set of walkers s, se, o for all five loops (t0, t3, t1 throughout); `nx` once for the first
+ *   ring walk, a second for the thinning; tk shared by both walks (a2: global, not v0) but the
+ *   thinning's node a pseudo of its own;
+ * - the first double split round the three small assignments (the reorg fills the first dpmul's slot
+ *   with tos's store), the rest of the small assignments right after the second conversion;
+ * - `target = 1; flag = 1; if (t != 0) target = t;`: CSE stores flag from target's register. */
+typedef struct ISOHIST {
+    int *p;
+    unsigned int n;
+} ISOHIST;
+
+typedef struct ISOSCORES {
+    short *p;
+    unsigned int cap;
+    int n;
+} ISOSCORES;
+
+int RePruneToPho(ISOWDP *e, WTOKEN ***out, int *count, int n, int best)
+{
+    ISOTOS *tos;
+    unsigned int prev;
+    int cnt;
+    int flag;
+    ISOSCORES *sc;
+    int size;
+    unsigned int target;
+    unsigned int sum = 0;
+    double total, dn, x2;
+    unsigned int bins;
+    ISOHIST *h;
+    WHEEL *w;
+    int *hist;
+    unsigned int k, x;
+    float base, step, scale, top;
+    int thresh;
+    short *s, *se, *o;
+    WTOKEN **a, **nx;
+    NODE *nd;
+    WTOKEN *tk;
+
+    cnt = *count;
+    tos = e->tos;
+    prev = 0;
+    total = (double)e->f96;
+    total *= 0.95;
+    dn = (double)cnt;
+    flag = 0;
+    h = (ISOHIST *)&e->f108;
+    w = &e->wheel;
+    sc = (ISOSCORES *)&e->f116;
+    total = total * dn;
+    x2 = (double)n;
+    target = (unsigned int)(total / x2);
+    if ((double)target < dn * 0.5) {
+        unsigned int t = (unsigned int)(dn * 0.5);
+
+        target = 1;
+        flag = 1;
+        if (t != 0)
+            target = t;
+    }
+    bins = (unsigned int)(e->f92 - best) >> 5;
+    hist = h->p;
+    x = bins + 1;
+    if (h->n < x) {
+        int *hh;
+
+        h->n = x;
+        hh = heap_Alloc(tos->heap, x * 4);
+        if (hh == 0)
+            return 1;
+        hist = hh;
+        heap_Free(tos->heap, h->p);
+        h->p = hist;
+    }
+    memset(hist, 0, bins * 4 + 4);
+    if (sc->cap < cnt) {
+        short *s = heap_Alloc(tos->heap, cnt * 2);
+
+        if (s == 0)
+            return 1;
+        memcpy(s, sc->p, sc->cap * 2);
+        heap_Free(tos->heap, sc->p);
+        sc->p = s;
+        sc->cap = cnt;
+    }
+    {
+        if (sc->n != 0) {
+            o = sc->p + sc->n;
+            s = sc->p;
+            for (; s < o; s++)
+                hist[(*s - best) >> 5]++;
+            if (w->end - w->tail >= sc->n)
+                a = w->tail + sc->n;
+            else
+                a = w->base + sc->n - (w->end - w->tail) - 1;
+        } else {
+            a = w->tail;
+            o = sc->p;
+        }
+        while (a != *out) {
+            int min;
+
+            tk = *a;
+            nd = tk->node;
+
+            s = nd->f2;
+            min = *s;
+            se = s + nd->f0;
+            for (s = nd->f2 + 1; s <= se; s++)
+                if (*s < min)
+                    min = *s;
+            hist[(min - best) >> 5]++;
+            *o++ = min;
+            nx = a + 1;
+            if (a >= w->end)
+                nx = w->base;
+            a = nx;
+        }
+    }
+    k = 0;
+    if (target != 0) {
+        int *hh = hist;
+
+        do {
+            unsigned int y = *hh++;
+
+            k++;
+            prev = sum;
+            sum += y;
+        } while (k <= bins && sum < target);
+    }
+    base = 0.0f;
+    step = 32.0f;
+    scale = 1.0f;
+    while ((double)(unsigned int)hist[k - 1] > (double)target * 0.2) {
+        if (!(step > 1.0f))
+            break;
+        base += step * (float)(k - 1);
+        top = base + step;
+        step *= 0.01f;
+        scale *= 100.0f;
+        if (h->n < 100) {
+            int *hh = heap_Alloc(tos->heap, 400);
+
+            if (hh == 0)
+                return 1;
+            heap_Free(tos->heap, h->p);
+            h->p = hh;
+            hist = hh;
+            h->n = 100;
+        }
+        size = cnt * 2;
+        memset(hist, 0, 400);
+        {
+            se = (short *)((char *)sc->p + size);
+            o = sc->p;
+            for (; o < se; o++) {
+                float f = (float)(*o - best);
+
+                if (base <= f && f < top)
+                    hist[(short)(int)(scale * (f - base)) >> 5]++;
+            }
+        }
+        k = 0;
+        sum = prev;
+        if (prev < target) {
+            int *hh = hist;
+
+            do {
+                unsigned int y = *hh++;
+
+                k++;
+                prev = sum;
+                sum += y;
+            } while (k < 100 && sum < target);
+        }
+    }
+    thresh = best + (int)(base + step * ((float)k - (float)(sum - target) / (float)(sum - prev)));
+    if (thresh < (best < -33792 ? -33792 : best)) {
+        thresh = best + 1;
+        if (thresh < -33792)
+            thresh = -33792;
+    }
+    e->f92 = thresh;
+    {
+        WTOKEN **o2, **nx2;
+
+        o2 = a = w->tail;
+        o = sc->p;
+        while (a != *out) {
+            if (*o++ < thresh) {
+                *o2 = *a;
+                nx2 = o2 + 1;
+                if (o2 >= w->end)
+                    nx2 = w->base;
+                o2 = nx2;
+            } else {
+                int **list;
+                NODE *nd2;
+
+                tk = *a;
+                nd2 = tk->node;
+                list = (int **)((char *)tos + ((nd2->len * 2 + 7) & 0x3FC) + 104);
+                *(int **)nd2 = *list;
+                *list = (int *)tk->node;
+                tk->node = 0;
+                (*count)--;
+            }
+            nx2 = a + 1;
+            if (a >= w->end)
+                nx2 = w->base;
+            a = nx2;
+        }
+        if (w->end - w->tail >= *count)
+            *out = w->tail + *count;
+        else
+            *out = w->base + *count - (w->end - w->tail) - 1;
+    }
+    if (flag != 0 || (double)*count > (double)target * 1.0526315789473684) {
+        o = sc->p;
+        se = o + cnt;
+        for (s = o; s < se; s++)
+            if (*s < thresh)
+                *o++ = *s;
+        sc->n = *count;
+    } else
+        sc->n = 0;
+    return 0;
+}
+
+
 /* the garbage arrays grown by 150 entries (each array holds ngarbage + 1 words) */
-extern int RePruneToPho(ISOWDP *e, WTOKEN ***out, int *count, int n, int best);
 
 /* one frame over the wheel: each token's states from the last back, its followers entered from its last state,
  * a token surviving onto the ring again, its node freed when nothing beat the threshold; the threshold eased by

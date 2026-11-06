@@ -11,7 +11,7 @@
  *
  * Round 11 wrote the locks and shift test (bitmaps 0 and 5, CPad's L1), the six sounds, the cursor,
  * the pair and bitmap-4 toggles, the bitmap loader, the caps' text look and the key props' spec.
- * OPEN: the tick 0x3949C0 (written round 32, 17 off: its note), the display's scaler 0x397950. The cap look reader
+ * OPEN: the tick 0x3949C0 (written round 32, 17 off: its note). The cap look reader
  * 0x397D30 (CSkbLook::ReadCapLook) is byte-exact since round 27, its POSITION pair assigned whole
  * into the cap's m_pos (zui_skb.h's CIntPair over two CInit<int, 0>: an assignment of class-typed
  * members copies each word through $f0 off an address register, plain ints copy with lw/sw).
@@ -309,27 +309,32 @@ void SkbSetKeyTextures(zdb::CTexHandle *tex6, zdb::CTexHandle *tex7, std::vector
  * SkbScale leaves in a0). The lerp an inline: its 0.0f through a parameter is kept, `sub.s` from a
  * zero register (written in place MW folds `0 - x` to neg.s); the list indexed `m_sources[(Uc)i]`
  * (the look added first, not SkbPieces' hoisted base).
- * OPEN, 3 instructions short (0x25C of 0x268): the target keeps the key's offset j*176 as an
- * induction of its own (s1, from 0) and adds the row (s2) to it each pass, where MW here folds the
- * row into one key pointer; the members spelled out keep the inner loop's entry threaded (`slt
- * at,zero,v1`, as the target -- through the rows' nested operator[]s it is entered at its bottom,
- * 0x274). Tried: a row reference or pointer local (before or after the list), the counters at
- * function scope, a flat index, inline key accessors, a do-while with the count tested; round 29
- * (build/scratch/ui/v_ssd*.py, all 0x25C): a `CBmpWithNode *keys` local before or inside the size
- * test, `s_keyRows.m_rows[i][j]` / `s_keyRows[i].m_bmps[j]` (one accessor), a byte-offset
- * address, a function-scope `CSkbBmpRows &` to the rows, a row pointer stepped by the outer loop
- * (`row++`, through `(*row)[j]` too), the nested accessors inside a hand-written guard around a
- * do-while (the guard rotates them back to 0x25C) -- MW folds the row into the key's induction in
- * every form; the target's s1 = j*176 from 0. Round 37: the row through `&...m_bmps[0]` (the engine
- * core's offset-0 rule: never a common subexpression) -- indexed, plus j, or a row pointer before the
- * loop -- and a byte offset `j * sizeof(CBmpWithNode)` off the row: all 0x25C */
+ * Byte-exact since round 39 (0x268; rounds 22-38 had it 3 instructions short, 0x25C). The target keeps the key's
+ * offset j*176 as an induction of its own (s1, from 0) and adds the row (s2, stepped by 1760) to it each pass, where
+ * every plain spelling lets MW fold the row into one key pointer (rounds 22-37: row references and pointers, flat
+ * indices, accessors, a do-while, byte offsets). TWO THINGS GIVE IT. The row through the weapons' LATE-FOLDING
+ * GUARD (SkbFlag, vis_ripple.cpp's RipFlag): pass 0's loop phase sees a conditional `row = ...` and reduces only
+ * j*176; pass 1 folds the test away. A MODELLING DEVICE, the original's shape is not known. And the list read
+ * through an inline each time (SkbList), not held in a named reference: a named one is numbered low and coloured
+ * after j (s5), the inline's temporary high and coloured first (s0, the target's); spelled out without the
+ * inline it is 4 bytes longer, a pointer local or a reference bound inside the size test keep the rotation */
 static inline float SkbLerp(float a, float b, float t)
 {
     return a + t * (b - a);
 }
 
+struct SkbFlag { int m_on; };
+
+static inline CSkbBgPieces &SkbList(CSoftKeyboard *skb, int i)
+{
+    return skb->m_sources[(unsigned char)i];
+}
+
 void SkbScaleDisplay(CSoftKeyboard *skb, float t)
 {
+    SkbFlag f;
+
+    f.m_on = 1;
     float x = (float)-skb->m_5c;
     float y = 448.0f - (float)skb->m_60;
     float px = SkbLerp(x, 0.0f, t);
@@ -343,12 +348,15 @@ void SkbScaleDisplay(CSoftKeyboard *skb, float t)
     s_bmp6.Load(0.0f, 0.0f, (float)w, (float)h, s_bmp6.m_pTexHandle);
     s_bmp7.Load(0.0f, 0.0f, (float)w, (float)h, s_bmp7.m_pTexHandle);
     for (int i = 0; i < 4; i++) {
-        CSkbBgPieces &pieces = skb->m_sources[(unsigned char)i];
+        if ((int)SkbList(skb, i).size() < 11) {
+            for (int j = 0; j < (int)SkbList(skb, i).size(); j++) {
+                CSkbBmpRow *row;
+                SkbFlag &rf = f;
 
-        if ((int)pieces.size() < 11) {
-            for (int j = 0; j < (int)pieces.size(); j++) {
-                CBmpWithNode &bmp = s_keyRows.m_rows[i].m_bmps[j];
-                CSkbBgPiece &piece = pieces[j];
+                if (rf.m_on)
+                    row = &s_keyRows.m_rows[i];
+                CBmpWithNode &bmp = row->m_bmps[j];
+                CSkbBgPiece &piece = SkbList(skb, i)[j];
 
                 bmp.m_node->SetPosition(SkbLerp(x, (float)piece.m_display.m_pos[0], t),
                                         SkbLerp(y, (float)piece.m_display.m_pos[1], t), 0.0f);

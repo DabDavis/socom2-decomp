@@ -10,7 +10,27 @@
  * ours. Written: SplitUp_Finals_TreeCtx (round 36c, OPEN as chinese.c's), Tone_Of_Final_TreeCtx
  * and the two counting walks after it, chinese.c's three
  * under this object's names (the same bodies; Tone_Of_Final_TreeCtx inlined into the second walk
- * as there). */
+ * as there); FillOut_Syntax_Statedict_And_Wordprops_ForChinese_TreeCtx (round 40c). */
+
+#include "casr.h"
+
+extern void *heap_Alloc(void *heap, unsigned int size);
+extern void *memset(void *dst, int c, unsigned int n);
+
+/* the second pass's context (ctxinfo.c's CTXINFO) */
+typedef struct SPCTX {
+    int f0;
+    unsigned int n;                     /* +4 */
+    int nstates;                        /* +8 */
+    unsigned short *props;              /* +12 */
+    unsigned short *dict;               /* +16 */
+    unsigned short *wtp;                /* +20 */
+    int *bounds;                        /* +24 */
+    int *tab;                           /* +28 */
+    unsigned char *mask;                /* +32 */
+} SPCTX;
+
+extern unsigned char CreateMenuMasks(CASR *c, SPCTX *m, unsigned int n);
 
 /* the dictionary tree the state count walks: items of 20 bytes, each with its first link; links
  * {node, next}, 0xFFFF ending a list; each pronunciation's first state in begin[] */
@@ -236,6 +256,117 @@ unsigned char Tone_Of_Final_TreeCtx(unsigned short final, unsigned short n)
 {
     if (final != 0 && final < n)
         return 1;
+    return 0;
+}
+
+/* one word's states out of its item: a single state or the pronunciation's own, the last one
+ * marked, then the word's index in two halves */
+static __inline__ void FillOut_ItemStates_TreeCtx(DICTITEM *it, int *su, unsigned int k, int *ptotal, unsigned short **po)
+{
+    unsigned short pron = it->pron;
+    unsigned short *q = *po;
+    unsigned short cnt = 0;
+    int nw;
+
+    if (it->kind == 0) {
+        *q++ = pron << 2;
+        cnt = 1;
+    } else {
+        unsigned short *a = (unsigned short *)su + su[pron] + 2;
+        unsigned short *e = (unsigned short *)su + su[pron + 1];
+
+        for (; a < e; a++) {
+            *q++ = *a << 2;
+            cnt++;
+        }
+    }
+    *(q - 1) |= 1;
+    q[0] = k;
+    q[1] = k >> 16;
+    q += 2;
+    nw = cnt + 2;
+    *ptotal += nw;
+    *po = q;
+}
+
+/* chinese.c's body for the tree context: the word test is -4 alone (round 40c) */
+static int FillOut_Syntax_Statedict_And_Wordprops_ForChinese_TreeCtx(CASR *c, DICTITEM *items, DICTLINK *links,
+                                                             unsigned int nstates, unsigned int n, int nl,
+                                                             SPCTX *ctx)
+{
+    int total;
+    unsigned short *o;
+    int *tbase;
+    int *su;
+    int size;
+    unsigned short *props;
+    unsigned short *p, *w;
+    WORDMAP *map;
+    int *b, *t;
+    int *syn, *off;
+    unsigned int ch;
+    unsigned int i;
+    int msize;
+    int fsize;
+
+    total = 0;
+    if (CreateMenuMasks(c, ctx, n) != 0)
+        return 1;
+    size = n * 2;
+    msize = n * 8;
+    props = heap_Alloc(c->heap, size);
+    ctx->props = props;
+    p = props;
+    fsize = n * 4;
+    ctx->wtp = heap_Alloc(c->heap, size);
+    w = ctx->wtp;
+    c->map = heap_Alloc(c->heap, msize);
+    map = c->map;
+    ctx->bounds = heap_Alloc(c->heap, (n + nl) * 4 + 4);
+    b = ctx->bounds;
+    syn = (int *)((char *)b + fsize + 4);
+    ctx->tab = heap_Alloc(c->heap, msize + 8);
+    t = ctx->tab;
+    tbase = t;
+    off = (int *)((char *)t + fsize + 4);
+    su = c->lng->GetpSpeechUnit(c->lng);
+    ctx->dict = heap_Alloc(c->heap, nstates * 2);
+    o = ctx->dict;
+    if (p == 0 || w == 0 || map == 0 || b == 0 || t == 0 || o == 0)
+        return 1;
+    memset(p, 0, size);
+    for (ch = items[0].child; ch != 0xFFFF; ch = links[ch].next)
+        props[links[ch].node - 1] = 1;
+    for (i = 1; i <= n; i++) {
+        unsigned int k;
+
+        map->id = items[i].f4;
+        map->word = items[i].f8;
+        map++;
+        *b = syn - ctx->bounds;
+        b++;
+        *off = total;
+        *t = off - tbase;
+        off++;
+        t++;
+        k = i - 1;
+        FillOut_ItemStates_TreeCtx(&items[i], su, k, &total, &o);
+        ch = items[i].child;
+        if (ch != 0) {
+            if (ch == 0xFFFF)
+                *p |= 2;
+            else if (*p != 1 && items[i].f8 != -4)
+                *p |= 0x80;
+            if (*p++ & 0x80)
+                *w++ = c->wtp;
+            else
+                *w++ = 0;
+            for (; ch != 0xFFFF; ch = links[ch].next)
+                *syn++ = links[ch].node - 1;
+        }
+    }
+    *b = syn - ctx->bounds;
+    *t = off - tbase;
     return 0;
 }
 
