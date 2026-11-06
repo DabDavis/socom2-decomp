@@ -11,6 +11,44 @@
 
 extern "C" int rand(void);
 
+/* the AI's debug lines (seal_ailines.cpp's) */
+namespace ai {
+enum LINE_TYPE { LINE_ANY = 0, LINE_TYPE_LAST = 0x7fffffff };
+void SetLineOpacity(float opacity);
+float GetLineOpacity();
+void SetLineFuncOpacity(float t);
+void MoveTo(const CPnt3D &p);
+void LineTo(const CPnt3D &p);
+
+/* a function of time drawn as a line from t0 to t1 in a number of steps, its opacity blended along
+ * it and the lines' own put back after (SOCOM 1's ai::DrawFunc; seal_control.cpp's one instance,
+ * DrawFunc<CDynGrenade> -- OVL2 0x598860, the unit's template tail, as SOCOM 1's 0x2889A0 -- takes
+ * the kind and tests none, as SOCOM 1's) */
+template <class F>
+void DrawFunc(LINE_TYPE type, float t0, float t1, unsigned int steps, F f)
+{
+    if (steps && !(t1 <= t0)) {
+        float opacity = GetLineOpacity();
+        CPnt3D p = f(t0);
+
+        SetLineFuncOpacity(0.0f);
+        MoveTo(p);
+
+        float step = 1.0f / steps;
+
+        for (float s = step; s < 1.0f; s += step) {
+            SetLineFuncOpacity(s);
+            LineTo(f(t0 * (1.0f - s) + t1 * s));
+        }
+        SetLineFuncOpacity(1.0f);
+        LineTo(f(t1));
+        SetLineOpacity(opacity);
+    }
+}
+
+template void DrawFunc<CDynGrenade>(LINE_TYPE type, float t0, float t1, unsigned int steps, CDynGrenade f);
+}
+
 extern "C" {
 extern bool data_00650698;   /* the rumble switch (SOCOM 1's file static) */
 extern float data_006505E8;  /* (the weapon's raise time a closed menu restarts) */
@@ -1236,4 +1274,21 @@ void CSealCtrl::TickMPBomb(float dT)
 void CSealCtrl::MPBomb_TimerAvailable(bool on)
 {
     m_mpbomb_bTimerAvailable = on;
+}
+
+extern "C" {
+/* the edited layout's button for a function, and the setter (OVL1 0x2C6430 / 0x2C6460, fts_controller.cpp's) */
+PAD_BUTTON func_002C6430(unsigned char func);
+bool func_002C6460(unsigned char func, PAD_BUTTON btn);
+}
+
+/* the fire mode swap toggled: the edited layout's buttons for functions 3 and 12 exchanged (OVL2
+ * 0x592050, new in SOCOM II: UIStoreOptions calls it whenever the FIREMODESWAP_CONTROLLER valve
+ * disagrees with the swap it last made; the name ours) */
+void ToggleFireModeSwap()
+{
+    PAD_BUTTON b = func_002C6430(3);
+
+    func_002C6460(3, func_002C6430(12));
+    func_002C6460(12, b);
 }
