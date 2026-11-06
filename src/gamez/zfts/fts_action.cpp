@@ -434,7 +434,7 @@ CNodeAction *CNodeAction::FindActionByValve(const CValve *valve)
 }
 
 /* every action the command menu offers appended to a vector (SOCOM II's; OVL1 0x2B4CD0, the HUD's
- * tcmSetNodeActions 0x236260 calls it: the actions Open tagged `tcm`; the name ours) */
+ * CTCM::SetNodeActions 0x236260 calls it: the actions Open tagged `tcm`; the name ours) */
 void CNodeAction::GetTCMActions(std::vector<CNodeAction *> *list)
 {
     if (list) {

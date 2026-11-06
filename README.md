@@ -2066,6 +2066,37 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the HUD, round 66** (eleven rows, 34,392 bytes: BitmapReticule's ChangeReticule 0x213E20, Init 0x2178C0,
+  UpdateAccuracy 0x215250 and ThreatDirTick 0x216DE0, open since round 64; CLensFlareEntry's Tick 0x1FF8A0 and LoadFlare
+  0x1FFF40; C2DStringPacket::Write 0x361BD0; CTCM::LayoutColumn 0x230870 and Build 0x232BC0; tcmBuildCaches 0x2344E0;
+  SetupLegend 0x20C080; eight rows named, 75 data rows; scratch build/scratch/hud-r66/hud-r66/):
+  - A `?:` VALUE IS A TEMPORARY NUMBERED ABOVE NAMED LOCALS, SO IT COLOURS FIRST: assign a named local declared earlier to
+    keep it after them (UpdateColor's scale: f20 lost, every register but nine right). Three sibling records in one register
+    are one reused local: later webs number above an inlined constructor's temporary (LoadFlare). In a shared loop counter
+    the first loop keeps the name and the strength-reduced pointer colours first, later webs colour the counter first
+    (ChangeReticule, BitmapReticule::Init).
+  - FOLDING: a plain float local stops `1.0f * x` folding, where a literal, `const` or `static const` all fold; a `const
+    float` local keeps its number ahead of a product where a literal goes last (ThreatDirTick); a local holding a literal
+    keeps the add's operand order, a literal commutes first.
+  - A `const` accessor reads its operand first, and also stops a byte read's common-subexpression pass (UpdateAccuracy, the
+    lens's Tick). `const signed char t` keeps a byte above a strength-reduced pointer (CTCM::Build); an `unsigned` local
+    avoids a CSE temporary at an unsigned parameter (SetupLegend); a float parameter declared last sets up last and fills
+    the jal slot (Place); a call nested in an argument leaves earlier global reads CSE'd across it, so name its result first
+    (hudOpenPopup).
+  - `T &r = a[i]; r.m` adds the base first, `a[i].m` last. Stack objects order by size then creation, and copy-init locals
+    are allocated before assign-only ones. Nested `n = inner(); return n;` inlines keep unthreaded `b` chains (UpdateColor's
+    name arms). An unused statement label changes nothing in the output.
+  - m2c's condensed draft plus tools/structdiff.py closes table and init functions fast (ChangeReticule 0x1354,
+    BitmapReticule::Init 0x1488, CTCM::Build 0x1918).
+  - Open: UpdateColor 0x215C10 (0xB40 against 0xB50, 28 structural, 9 in registers: three nops missing between an FPR def
+    and the label it falls to, `b; nop` where this steals the mul.s, the zero copy and the op+ r in swapped frame slots, the
+    target block-copying the zero through a2), SetSegments 0x357F30 (0x638 of 0x670, near a first draft: the target's frame
+    holds more inline temporaries, so its 2D operators probably sit one level deeper and return by value), hudOpenPopup
+    0x22B4A0 (33, size equal: x needs a number above the new's inline temporary); HudTick is structurally exact, 11 in
+    registers, so the block-optimization lead does not apply to it; LineTo (0x230 against 0x228) keeps a `b` to the next
+    block and still hoists from a fall-through, at odds with the engine core's round 28 on the diff alone, not traced.
+    Unwritten: CHUD::Tick 0x1F7FF0, CHUD::Init 0x1FA360, CZPauseTest::Init 0x202520, CZActionBitmap::Init 0x21DED0,
+    0x22BE20, 0x23ECA0, TickZAnimCmd 0x36DA20, the c_str copy 0x36E860, ParseZAnimCmd 0x36E880.
 - **Tells from the zdb world, round 34** (fifteen rows by the full check, 19,652 bytes, and the two it also closed through
   the MSL's round 40, 0x3323F0 and 0x3349C0; open rows in the range 20 to 3: CPipe::RenderWorld 0x339DE0, unwritten before,
   RenderVisual 0x3374C0, CAlpha::Insert 0x336F60, BuildNodeLocalLightList 0x338FA0, CNode::BuildMTW 0x3109F0,
