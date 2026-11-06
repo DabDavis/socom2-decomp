@@ -1264,11 +1264,34 @@ inline void SetAiBit17(CSealCtrlAi *ai, bool b)
 }
 
 /* a valve command's data as a task holds it (SOCOM 1's VALVE_CMD_DATA, zvalve/valve.h's, which this
- * unit does not include): the valve set before the compare and cleared after (OVL1 0x353FD0) */
+ * unit does not include -- the same layout): the valve set before the compare and cleared after (OVL1
+ * 0x353FD0); CTValve::Parse leaves it null and reads the value as CValve::CmdParseCmp does */
 struct VALVE_CMD_DATA {
-    CValve *m_valve;   // 0x0
-    unsigned char _4[0xc - 0x4];
+    CValve *m_valve;   // 0x0: valve.h's ref
+    int value;   // 0x4: the constant, or the second valve named as an argument's or the anim's
+    unsigned char op;   // 0x8: CValve::ParseOperator's code
+    unsigned char isArg : 1;   // 0x9
+    unsigned char isAnim : 1;   // 0x9
+    unsigned char valIsArg : 1;   // 0x9
+    unsigned char valIsAnim : 1;   // 0x9
+    unsigned char valIsValve : 1;   // 0x9: value names a valve
 
+    /* (OVL1 0x353C70, valve_main.cpp's) */
+    static CValve *ParseValveName(const char *name, int &index);
+    /* the valve's two flags set (inline, ours: the target's one `andi zero,1` for both, as for the
+     * value's three) */
+    void SetRefFlags(bool arg, bool anim)
+    {
+        isArg = arg;
+        isAnim = anim;
+    }
+    /* the value's three flags set (valve.h's) */
+    void SetValueFlags(bool arg, bool anim, bool valve)
+    {
+        valIsArg = arg;
+        valIsAnim = anim;
+        valIsValve = valve;
+    }
     bool Compare();
 };
 
@@ -1278,7 +1301,7 @@ struct CTValve : TASK_HDR {
     VALVE_CMD_DATA m_data;   // 0x8
     int m_valve;   // 0x14: a SEAL_VALVE
 
-    static bool Tick(_zanim_cmd_hdr *hdr, float *dT);    /* (RegisterCommands' handlers, unwritten) */
+    static bool Tick(_zanim_cmd_hdr *hdr, float *dT);
     static _zanim_cmd_hdr *Parse(_zrdr *rdr);
 };
 
@@ -3756,6 +3779,56 @@ void CTSound::Begin(_zanim_cmd_hdr *hdr)
     cmd->SetStarted(true);
     cmd->SetBit7(false);
     cmd->m_inst = 0;
+}
+
+/* an AI valve's compare read: the SEAL valve named first (none for an unknown name), then as
+ * CValve::CmdParseCmp reads its arguments -- tested true alone, an operator, or an operator and a
+ * value, a number or a valve named as an argument's or the anim's (OVL2 0x5CE1A0; SOCOM 1's, whose
+ * reader counted its items otherwise) */
+_zanim_cmd_hdr *CTValve::Parse(_zrdr *rdr)
+{
+    unsigned int n = rdr ? rdr->Count() : 0;
+
+    if (!n)
+        return 0;
+    const char *name = rdr->Item(0)->String();
+
+    if (CSealCtrlAi::get_valve(name) == SEAL_VALVE_NONE)
+        return 0;
+    CTValve *cmd = NewTask<CTValve>();
+    VALVE_CMD_DATA *d = &cmd->m_data;
+
+    cmd->m_valve = CSealCtrlAi::get_valve(name);
+    if (n == 1) {
+        d->op = 1;
+        d->SetRefFlags(false, false);
+        d->m_valve = 0;
+        d->value = 0;
+        d->SetValueFlags(false, false, false);
+    } else if (rdr->Count() == 2) {
+        d->op = CValve::ParseOperator(rdr->Item(1)->String());
+        d->SetRefFlags(false, false);
+        d->m_valve = 0;
+        d->value = 0;
+        d->SetValueFlags(false, false, false);
+    } else if (rdr->Count() >= 3) {
+        _zrdr *v = rdr->Item(2);
+
+        d->op = CValve::ParseOperator(rdr->Item(1)->String());
+        d->SetRefFlags(false, false);
+        d->m_valve = 0;
+        if (v->type == 3) {
+            int index = -1;
+            CValve *valve = VALVE_CMD_DATA::ParseValveName(v->String(), index);
+
+            d->value = index != -1 ? index : ZAnim.m_CurAnim->AddValve(valve->m_name);
+            d->SetValueFlags(index != -1, true, true);
+        } else {
+            d->value = v->Int();
+            d->SetValueFlags(false, false, false);
+        }
+    }
+    return &cmd->hdr;
 }
 
 /* the valve the AI holds compared, done at once (OVL2 0x5CE040; SOCOM 1's the same) */
