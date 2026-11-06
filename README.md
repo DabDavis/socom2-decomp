@@ -2109,6 +2109,112 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     over four-word walkers held in memory and stepped by -- with start_ = (start_ + n) % capacity_, else
     copy(last, end(), first) over register walkers wrapping to the storage; size_ -= n; `return begin() +
     pos`.
+- **Tells from the kit and AI states, round 55** (ai_target.cpp's 0x60B470 -- the shadow and the indoor flag averaged over
+  a cell and the neighbours a step can end on -- and 0x60B120 -- the first half of SOCOM 1's ComputeVisibility, the ray's
+  hits walked near to far -- both unwritten before, byte-exact; the visibility score 0x60AA20 written, OPEN at the size,
+  14, registers only):
+  - an inline helper taking an object BY POINTER holds the addresses of its fields in saved registers across a loop;
+    taken by reference they are read off the object's own register (0x60B470: 0x394 -> 0x37C);
+  - MW folds a literal `1.0f *` on either side; a 1.0 that reaches the multiply through an inline's parameter
+    (`Blend(a, 1.0f, t)`) or through a local survives -- the target's mula.s / madd.s and its trailing multiply by 1.0
+    (0x60AA20);
+  - a 1-bit bitfield written through `x ? true : false` keeps the target's andi + sltu before the branch; a (bool) cast,
+    `!= 0`, a bool local and a bool-returning inline all drop the sltu (0x60B120); an inline's result set false before a
+    `while` loop puts `move v0,zero` in the loop's entry delay slot, a `for` with an early `return true` sets the false
+    after the loop;
+  - an inline called from inside another inline takes the frame's lower slots, and MW expands inlines one level at a
+    time, so the directly called copy's temporaries are numbered before the nested copy's; a pointer declared before an
+    out-of-line call is computed in that call's delay slot, declared after it is computed after and the next copy's
+    stores reschedule (0x60AA20);
+  - function statics lie in the unit's reverse definition order (ai_target.cpp: the light inline's at 0x651080-0x651090,
+    then 0x60B120's, 0x60AFA0's, then 0x60AA20's own at 0x6510E8).
+- **Tells from the UI, round 33** (zanim_menu.cpp, the integrator's unit until now, delegated and then kept: fifteen menu
+  handlers unwritten before byte-exact -- UIGetAvailableMPMissions, UIGetMUISPersonaInfo, UICharacterProfile,
+  UIDeleteMUISPersona, UILobbyConnect, UINetCnfOpen, UIGetLadderInfo, UIHardDriveOperation, UISetMPMissionSeq, UIPlayMPEG,
+  UIInitializeOptions, UIStoreOptions, UICheckForcedLaunch, UISwitchMenu, OnListSavedGames -- and the item list's byte-pod
+  insert 0x284BA0; UIDoAllSelCharsHaveEquip1/2/3 named from the UI command table's records 178-180):
+  - returning a bool call's result through a `bool` local keeps the target's `andi 0xff`, `return f();` drops it
+    (UILobbyConnect); a byte global stored from an int call and then tested `== 0` is re-read with lbu, `!x` narrows the
+    value already in the register (UIHardDriveOperation); `int x = (char)f();` sign-extends once, a `char` local
+    re-extends at every use;
+  - a member inline called through an inlined `GetMenuStack()` keeps `this` in a saved register, called on the global
+    directly every access is absolute (UISwitchMenu's Back); a string member read through a `const &` local has its
+    address held in one register -- c_str's dead-copy layout;
+  - a side-effect-free argument expression is re-substituted at each use inside an inline (UICheckForcedLaunch converts
+    its float to unsigned three times inside SetValue, as SOCOM 1's does); `when - zNetGetTime()` wrapped in an inline
+    loads `when` before the call; a local defined just before a call lands in that call's delay slot;
+  - a CSaferStr member is destroyed with a this-test and flag 0, a std::string member with flag -1 and no test;
+    include/vector maps only char and pointers to the pod base, so a vector over another 1-byte scalar (EQUIP_ITEM)
+    needed a `__vector_pod<EQUIP_ITEM>` specialisation (in zanim_menu.cpp) to emit the image's byte-pod insert -- its code
+    the char pod's (0x3923E0) with a string pool of its own; OPEN: SelCharsHaveEquip 0x281160 and
+    UIDoAllSelCharsHaveWeapon 0x2808E0, one saved register each (the word string's address register inside the loop).
+- **Tells from the SEALs, round 53** (CAiSRescued::Tick 0x559070 and CSealCtrlAi::PostMortemPreTick 0x56EE80 -- 10 and 67
+  off -- byte-exact, the turret release 0x545EE0, unwritten before, and the blend-stack anim test 0x58A470, open since
+  round 41; the turret boarding 0x5463C0 written, OPEN at 0x5F4 of 0x5FC):
+  - A POOLED LITERAL scdiff FLAGS AS CONTENT-MISMATCH IS A WRONG CONSTANT, NOT NOISE: FadeToward's rising arm's lower
+    bound is 0.0f (0x64FD88 holds zero), not -1.0f -- check the flag before treating a miss as a register problem;
+  - an address-taken copy is reloaded from its stack slot in each arm when the tests read a second local holding the
+    same value (`float cur = n->m_Opacity; float op = cur;`); with one variable for both MW reuses the first load in the
+    arms;
+  - locals declared bare are numbered in declaration order even when assigned later in another order (PostMortemPreTick's
+    node, table, flag, params, entity in igreplay's order); `x = a >= b` gives bc1f with `li 1` in the delay slot,
+    `x = !(a < b)` adds an xori;
+  - `#pragma opt_strength_reduction off` also renumbers temporaries (0x58A470: the hoisted type extension numbered
+    before the array load); the code generator evaluates a binary operator's heavier subtree first, ties left first --
+    `heavy * r` and `r * heavy` give identical code, a literal is moved left before numbering (0x54A3D0's open);
+  - stores through a global pointer after a call reload the global at each store, one local read after the call gives
+    a single load; an `unsigned char` field passed to a `char` parameter loads with lb, to `unsigned char` or `int` with
+    lbu; calling an inline virtual (CEntity::GetPosW) through a pointer makes the unit emit the class's out-of-line copy.
+- **Tells from the zdb world, textures, rdr and sound, round 28** (zdb::CWorld::AddTextureAssetCharacter 0x31D260 and the
+  particle source's collision box 0x32AD20, both unwritten before, byte-exact with their inline copies; Particle::Source::
+  GetBBox 0x329510 written, OPEN at 0x3F8 of 0x404; CPipe::RenderVisual 24 -> 20):
+  - `new T(f())` calls operator new before f(): an original that calls f() first held the argument in a local
+    (AddTextureAssetCharacter's FindLib); an unused stack object only built and destroyed still emits its constructor and
+    destructor calls (its first CDynTexList); a constructor MW would inline into the second `new` needs `#pragma
+    auto_inline off` to stay a call;
+  - an array member of CPnt3D (inline constructor) built by a constructor too big to expand whole -- inlined one level --
+    keeps a loop calling CPnt3D() out of line; a local array in such an inline unrolls into one call per element;
+    anywhere else there is no call at all;
+  - any definition at the top of a for-loop body (a reference declared there, a pointer assigned there) turns MW's
+    guarded loop into a jump to its bottom test; a hand-rotated loop, `if (k < n) { p = ...; do ... while (++k < n); }`,
+    places a named local's definition after the entry test and keeps its named-local number -- left to loop hoisting the
+    same load becomes a temporary (RenderVisual's detail loop exact so, a marked stand-in beside its pragma);
+  - a three-float constructor reads its arguments right to left (z, y, x); `SetPosition(p.x, p.y, p.z)` on such a point
+    keeps &p.y and &p.z in saved registers, the inline `SetPosition(const CPnt3D &)` overload folds them into frame
+    offsets;
+  - zparticle.h's stand-ins grown to the real layouts (CBBox as zmath's two points, CNode's 0xC0 with its constructor,
+    m_bbox at 0x40, AddDI / SetName / SetNodeEx; CNodeEx, CDI / CDIPoly and SOCOM 1's CParticleEx), its other includers
+    unchanged; 0x312D00 looks like SOCOM 1's CNode::FindMeshTextures() with two parameters added, matched as a free
+    function taking the node first (queued for the online lobby's round 28, which holds those rows this round).
+- **Tells from the engine core, round 22** (five cameras byte-exact, all unwritten before -- camera.cpp's death camera
+  stick turn 0x294B40 and pad handler 0x295260, first person's 0x295B00, mode 1's 0x295F20, the tether's 0x296F10; the
+  tether's death points 0x297410 written, OPEN at 0x60C of 0x614):
+  - FRAME SLOTS: after the named locals come the caller's own call-result temporaries, then each inlined callee's locals
+    and temporaries grouped by callee, call sites in source order; pushing a call one inline wrapper deeper moves its
+    local into the later group (0x295B00, 0x296F10);
+  - a clamp written as an inline keeps its own join, then branches to the caller's; written in place MW merges the joins
+    (8 off on 0x294B40); an `andi 0xff` on a call's result before its test means the result went into an `unsigned char`
+    local -- a byte-returning call tested directly is not narrowed;
+  - `r = f(); r *= 2.0f; g(r)` computes into f0 and moves to f13, as the target; the product written in the argument or
+    in an initialiser lands in f13 directly with its operands swapped;
+  - OPEN, the wrap loops: when an if's then-arm runs straight into a top-level `while`, MW drops the block before the
+    loop and rebuilds the loop's constants inside it (0x297410, eight loop shapes 0x60C-0x624); camera.h's stand-ins
+    split without moving a field (CDeathCam over CAppCamera's 0xF4-0x11B, ours), objcmp over its 12 includers: only
+    camera.cpp differs.
+- **Tells from the HUD, round 59** (SetMpStatUiVars 0x224670, open since round 18, and CZPauseTest::TickOffState 0x2011F0,
+  unwritten before, byte-exact; DrawLaseTarget 0x217550 written, OPEN at 0x36C of 0x364; 12 rows named by SOCOM 1's
+  calls -- the pause menu's HudTick / Init / HandleSelectionInput / OpenPauseMenu, the reticule's ChangeReticule /
+  UpdateAccuracy / UpdateColor / HudTick / ThreatDirTick, CZNewHudMap::HudTick):
+  - an int local assigned once from an inline accessor's result is folded back into that result and takes no place of
+    its own in the numbering; read straight off the member, or converted (into an unsigned int), it keeps its
+    declaration's place -- SetMpStatUiVars' points as a named `int iPts` (SOCOM 1's name) read off m_score, found by
+    `igreplay --want / --movers`; a short local keeps the place too but sign-extends at every use (+0x10);
+  - `t = x.GetTrans() - 300.0f * dT` computes the product before the call; `t = x.GetTrans(); t -= 300.0f * dT;` gives
+    the target's order (TickOffState);
+  - a switch on a single-use local gets the local's load substituted into the switch, after the statements between --
+    a local cannot move the selector earlier, nor can an inline accessor (int, byte, enum or reference): GetRoundResult's
+    open (19); DrawLaseTarget's: the target reads the lased point through the kit's address (`addiu a0,s0,0x5E0`, then
+    0xC(a0)), MW folds the offsets in all five spellings tried.
 - **Tells from the AI core, round 35** (no new row, 565 of 577 in the lane's units; comments only, measurements):
   - a conditional branch's delay slot is filled from the jumped-to block only when that block's first instruction writes
     a register the not-taken arm overwrites, otherwise from the not-taken arm (an inference from GetNextEvent 0x50EA50,

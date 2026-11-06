@@ -3110,19 +3110,23 @@ extern float data_00436624[5];
 void func_002BD640(CEntity *e, int n);
 }
 
-/* a node's opacity moved toward a value by 0.75 a second, held within -1..1 about it, the node shown
- * while it is not transparent (an inline, the name ours: the value a by-value parameter whose address
- * _saturate takes, the opacity a local copy) */
+/* a node's opacity moved toward a value by 0.75 a second, held within 0..value rising and value..1
+ * falling (the pooled bounds 0x64FD88 / 0x64FD90 are 0.0f and 1.0f), the node shown while it is not
+ * transparent (an inline, the name ours: the value a by-value parameter whose address _saturate takes).
+ * The tests read the opacity's own value (`cur`) and the arms a second local copied from it (`op`, the
+ * one whose address _saturate takes): MW then reloads `op` from its slot in each arm, as the target
+ * does -- one variable for both propagates the first load into the arms (the SEALs' round 53) */
 static inline void FadeToward(zdb::CNode *node, float target, float dT)
 {
-    float op = node->m_Opacity;
+    float cur = node->m_Opacity;
+    float op = cur;
 
-    if (op != target) {
+    if (cur != target) {
         float step = 0.75f * dT;
 
-        if (!(target <= op)) {
+        if (!(target <= cur)) {
             op += step;
-            _saturate(&op, -1.0f, target);
+            _saturate(&op, 0.0f, target);
         } else {
             op -= step;
             _saturate(&op, target, 1.0f);
@@ -3137,21 +3141,27 @@ static inline void FadeToward(zdb::CNode *node, float target, float dT)
  * camera's sight for the table's +0xC (or already fading) the node faded out, its AI event's kind
  * cleared, and the faded node hidden and the entity recycled; with respawns left the time run up --
  * a hidden node asks for the respawn and counts one down, a shown one fades after +0x10. Online the
- * state sent. OPEN, 77 instructions (round 51, written; the size right with the table's pointer local
- * -- without it 0x378, one saved register short): the saved registers' assignment (the target: the
- * entity s5, the node s1, the params s3, the table s0, the shown flag s4, this s2); the pointer
- * declared first, after the entity, after the node or after the flag is worse (83-98) --
- * build/scratch/seal-r51/v_pm.py; next: tools/igreplay.py --target with --movers */
+ * state sent. Byte-exact (round 53): the locals declared bare at the top in the order node, table,
+ * flag, params, entity and assigned entity first -- `igreplay --movers` put the params after the
+ * flag and the entity after the params (the target: the entity s5, the node s1, the params s3, the
+ * table s0, the shown flag s4, this s2); the camera's wait `fading = m_6f0 >= times[3]` (bc1f, where
+ * `!(m_6f0 < times[3])` materialises an xori); FadeToward's two locals (above) */
 bool CSealCtrlAi::PostMortemPreTick(float dT)
 {
-    CEntity *e = m_entity;
-    zdb::CNode *node = e->GetNode();
-    AI_PARAMS &params = m_aiParams;
-    const float *times = data_00436624;
-    bool active = node->m_active;
+    zdb::CNode *node;
+    const float *times;
+    bool active;
+    AI_PARAMS *params;
+    CEntity *e;
+
+    e = m_entity;
+    node = e->GetNode();
+    params = &m_aiParams;
+    times = data_00436624;
+    active = node->m_active;
 
     if (!m_aibit5 && aiEnabled && !InGroup()) {
-        int n = params.respawn;
+        int n = params->respawn;
 
         if (n == 0) {
             if (active) {
@@ -3160,7 +3170,7 @@ bool CSealCtrlAi::PostMortemPreTick(float dT)
 
                 if (appCamera->m_bc && !fading) {
                     m_6f0 += dT;
-                    fading = !(m_6f0 < times[3]);
+                    fading = m_6f0 >= times[3];
                     if (fading)
                         e->SetIncludeInTargetList(false);
                 }
@@ -3181,7 +3191,7 @@ bool CSealCtrlAi::PostMortemPreTick(float dT)
             m_6f0 += dT;
             if (!active) {
                 ((CZSealBody *)e)->m_needs_respawn = 1;
-                params.respawn = n - 1;
+                params->respawn = n - 1;
             } else if (!(m_6f0 < times[4])) {
                 FadeToward(node, 0.0f, dT);
                 CAiEvent *ev = ((CZSealBody *)e)->m_aiEvent;
@@ -4709,14 +4719,10 @@ void func_005623B0(CSealCtrlAi *ai, const CAiMapLoc *loc);
  * squad (a SEAL of team bit 17 not in it yet); 1 waits for flag 1 (an extraction valve given), 3 for
  * the valve to reach 2; 4 sets 3 seconds, drops the path and sends the AI to its destination's
  * cell; 5 counts the time down while the path is free, then opens the valve (3); 6 suspends the AI.
- * Step 2 fades the SEAL's node out and, offline, puts the AI to sleep once it is hidden. OPEN, 10
- * instructions (round 52, written): FadeToward's two arms only -- the target reloads the opacity copy
- * from its slot in each arm (`lwc1 $f0,84(sp)`, the step in $f1 from the branch's delay slot), ours
- * adds to the register the first load left ($f1, the step in $f0); PostMortemPreTick's two fades
- * show the same reload. The arms' order and compare are the target's with `!(target <= op)` (18 ->
- * 10 here, 77 -> 67 there); the copy through a reference or a pointer, a by-value parameter, the
- * step assigned apart, `op = op + step` and the comma `_saturate((op += step, &op), ...)` all keep
- * the register (build/scratch/seal-r52/v_fade*.py) */
+ * Step 2 fades the SEAL's node out and, offline, puts the AI to sleep once it is hidden. Byte-exact
+ * (round 53): FadeToward's tests read one local and its arms a second copied from it, and the rising
+ * arm's lower bound is 0.0f (the pooled constant 0x64FD88 is zero -- the scorer's CONTENT-MISMATCH on
+ * the -1.0f had been read as noise) */
 int CAiSRescued::Tick(CSealCtrlAi *ai)
 {
     unsigned int step = m_phase;

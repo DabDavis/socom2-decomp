@@ -15,6 +15,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <algorithm>
+
 #include "zanim_menu.h"
 #include "../zsys/zsys.h"
 
@@ -30,6 +32,7 @@ public:
     bool RefreshGameList(C2D *list);          /* 0x3042B0 */
     void Disconnect();                        /* 0x3043E0 */
     bool IsActive();                          /* 0x3045B0: whether the LAN lobby is the one in use */
+    bool Connect();                           /* 0x304420 */
     bool JoinGame(const char *game);          /* 0x3039B0 */
 };
 extern "C" {
@@ -39,13 +42,21 @@ extern int data_00441470;
 extern char data_00437E30[];               /* the career stats */
 }
 
-/* the online armory (an object at 0x45B718; only the flag VCButton tests) */
+/* the online armory (an object at 0x45B718; only the flag VCButton tests, and the selected
+ * player CheckForcedLaunch names) */
 struct COnlineArmoryView {
-    unsigned char _0[0x4a];
+    unsigned char _0[0x24];
+    int m_24;   // 0x24: the selected entry
+    unsigned char _28[0x4a - 0x28];
     unsigned char m_4a;   // 0x4a
     unsigned char _4b[0x4f - 0x4b];
     unsigned char m_4f;   // 0x4f: the scale defaulted
     unsigned char m_50;   // 0x50: the range defaulted
+    unsigned char _51[0x70 - 0x51];
+    struct {
+        int m_id;   // a persona's id
+        int m_4;
+    } m_entries[1];   // 0x70
 };
 
 /* a character type's figures the armory is told (six floats: the last three a range and a scale,
@@ -159,6 +170,97 @@ public:
  * -- EQUIP_NONE is 255: the weapon walks compare it zero-extended, andi 0xff against lbu -- and the
  * four lookups they make) */
 enum EQUIP_ITEM { EQUIP_PISTOL = 0, EQUIP_END = 254, EQUIP_NONE = 255 };
+
+/* a list of items: MSL's vector over a one-byte scalar, on the byte pod (memmove, memset, memcpy) --
+ * its insert this unit's template tail copy 0x284BA0, include/vector's char pod's code over
+ * EQUIP_ITEM (the two equipment tests' argument lists; the char pod's own copy is zui's 0x3923E0) */
+namespace std {
+
+inline void __pod_fill_n(EQUIP_ITEM *first, unsigned int n, const EQUIP_ITEM &value)
+{
+    memset(first, (unsigned char)value, n);
+}
+
+template <class Allocator>
+class __vector_pod<EQUIP_ITEM, Allocator> {
+public:
+    typedef EQUIP_ITEM T;
+
+    __vector_pod() { capacity_ = 0; size_ = 0; data_ = 0; }
+    ~__vector_pod()
+    {
+        if (data_)
+            deallocate(data_);
+    }
+    static void deallocate(T *p) { operator delete(p); }
+    T *&data() { return data_; }
+    unsigned int capacity() const { return capacity_; }
+    unsigned int size() const { return size_; }
+    static unsigned int max_size() { return (unsigned int)-1 / sizeof(T); }
+    static T *allocate(unsigned int n)
+    {
+        T *p = (T *)operator new(n * sizeof(T));
+        if (!p)
+            __msl_error("Memory allocation failure");
+        return p;
+    }
+    void insert(T *position, unsigned int n, const T &x);
+    void push_back(const T &x) { insert(data() + size_, 1, x); }
+    T &operator[](unsigned int n) { return data()[n]; }
+
+    unsigned int capacity_;
+    unsigned int size_;
+    T *data_;
+};
+
+template <class Allocator>
+void __vector_pod<EQUIP_ITEM, Allocator>::insert(T *position, unsigned int n, const T &x)
+{
+    if (n == 0)
+        return;
+    if (n > max_size() || size_ > max_size() - n)
+        __msl_error("vector::insert length error\n");
+    const T *xp = &x;
+    unsigned int newsize = size_ + n;
+
+    if (newsize <= capacity()) {
+        T *e = data_ + size_;
+        unsigned int m = e - position;
+
+        if (e - (m - n) <= xp && xp < e)
+            xp += n;
+        if (m)
+            __pod_copy_backward(position, e, e + n);
+        __pod_fill_n(position, n, *xp);
+        size_ += n;
+    } else {
+        unsigned int k = position - data_;
+        T *old = data_;
+        unsigned int newcap = capacity_ ? capacity_ : 1;
+
+        while (newsize > newcap) {
+            if (newcap < max_size() / 2)
+                newcap *= 2;
+            else
+                newcap = max_size();
+        }
+        data() = allocate(newcap);
+        __pod_fill_n(data_ + k, n, *xp);
+        if (old) {
+            __pod_copy(old, old + k, data_);
+            __pod_copy(old + k, old + size_, data_ + k + n);
+            deallocate(old);
+        }
+        size_ = newsize;
+        capacity_ = newcap;
+    }
+}
+
+template <class Allocator>
+class vector<EQUIP_ITEM, Allocator> : public __vector_pod<EQUIP_ITEM, Allocator> {
+};
+
+}
 class CZWeapon {
 public:
     static EQUIP_ITEM GetWeaponId(const char *name);   /* 0x3D19E0 */
@@ -276,6 +378,97 @@ const char *GetMissionTitle(const char *code)
     if (!strncasecmp(code, "m83", 3))
         return "Doomsday Delivery";
     return "UU";
+}
+
+}
+
+/* a string translated (zui's, 0x361B60) */
+const char *TranslateString(const char *key);
+
+namespace {
+
+/* the seven save slots listed into SavedGames: each slot's number, then a real game's date and time
+ * (its text from the fifth character, cut at the space), its rank (the fourth character's digit)
+ * and its mission's title; "Corrupted Save Game" for a text that is not a mission's; dashes and
+ * crosses for an empty slot (SOCOM 1's listed the number and the text) */
+bool OnListSavedGames(C2DAnimCmdHdr *hdr, float *dT)
+{
+    CRdrEditor rdr;
+
+    rdr.push(0);
+    for (int i = 0; i < 7; i++) {
+        char number[256];
+        MemCardFileInfo info;
+
+        rdr.push(0);
+        sprintf(number, "%d", i);
+        rdr.addstringnode(number);
+        bool used = false;
+
+        memset(info.m_text, 0, 268);
+        sprintf(s_savename, "SaveGame%d", i);
+        if (theMemCard.Exists(s_savename)) {
+            sprintf(s_savename, "SaveGame%d", i);
+            theMemCard.m_configSave->GetHeader(s_savename, 12, (CSaveManager::CSaveHeader *)&info);
+            if (strcmp(info.m_text, "This game is a dummy game."))
+                used = true;
+        }
+        if (used) {
+            if (info.m_text[0] == 'm') {
+                for (unsigned int j = 4; j < strlen(info.m_text); j++) {
+                    if (info.m_text[j] == ' ') {
+                        info.m_text[j] = 0;
+                        rdr.addstringnode(&info.m_text[4]);
+                        rdr.addstringnode(&info.m_text[j + 1]);
+                        break;
+                    }
+                }
+                const char *rank;
+
+                switch (info.m_text[3]) {
+                case '0':
+                    rank = "Ensign";
+                    break;
+                case '1':
+                    rank = "Lieutenant";
+                    break;
+                case '2':
+                    rank = "Commander";
+                    break;
+                case '3':
+                    rank = "Captain";
+                    break;
+                case '4':
+                    rank = "Admiral";
+                    break;
+                default:
+                    rank = "Admiral";
+                    break;
+                }
+                rdr.addstringnode(rank);
+                char title[32] = "00";
+
+                strncpy(title, GetMissionTitle(info.m_text), 32);
+                rdr.addstringnode(title);
+            } else {
+                const char *corrupt = TranslateString("Corrupted Save Game");
+
+                rdr.addstringnode(" ");
+                rdr.addstringnode(" ");
+                rdr.addstringnode(corrupt);
+                rdr.addstringnode(" ");
+            }
+        } else {
+            rdr.addstringnode("--/--/----");
+            rdr.addstringnode("--:--:--");
+            rdr.addstringnode("X");
+            rdr.addstringnode("XX");
+        }
+        rdr.pop();
+    }
+    rdr.pop();
+    theUIVarManager.Add("SavedGames", 0, UIVAR_SESSION)->Set(&rdr);
+    return true;
 }
 
 /* the item the argument names taken from every selected character -- not a primary or a secondary,
@@ -718,6 +911,92 @@ bool SelCharsHaveLockedEquip(int equip, C2DAnimCmdHdr *hdr)
     return AnySlotLocked(slot, EQUIP_NONE);
 }
 
+/* a list's words one by one: the text, the place reached and the word there, read up to a comma
+ * or the end; spaces and commas between words skipped (the equipment tests' argument; ours) */
+class CWordList {
+public:
+    CWordList(const char *text) : m_text(text), m_pos(0) { Read(); }
+    static bool IsSeparator(char c) { return c == ' ' || c == ','; }
+    static bool InWord(char c) { return c != ',' && c != 0; }
+    void Read()
+    {
+        while (IsSeparator(m_text[m_pos]))
+            m_pos++;
+        m_word.erase();
+        for (int i = m_pos; InWord(m_text[i]); i++)
+            m_word.push_back(m_text[i]);
+    }
+    void Next()
+    {
+        while (InWord(m_text[m_pos]))
+            m_pos++;
+        Read();
+    }
+    bool Done() { return !m_text[m_pos]; }
+
+    const char *m_text;   // 0x0
+    int m_pos;   // 0x4
+    CSaferStr m_word;   // 0x8 (a derived string: its implicit destructor tests `this` before the base's)
+};
+
+/* whether every selected character's equipment slot (0 to 2: slots 2 to 4) holds one of the items
+ * the argument lists (SOCOM II's, the three DoAllSelCharsHaveEquip commands' test; the name ours).
+ * OPEN, 0x464 of 0x468, registers and one saved register short: the target numbers the word list's
+ * member addresses apart -- the position's s1, the word's s0 for the construction, then a fresh s8
+ * for the word in the loop's Next (and the read's index s2) -- where ours shares one address
+ * register for the word throughout (s2) and so needs one saved register fewer. Measured (the UI
+ * lane's round 33): the word a CSaferStr, not a std::string, gives the target's this-tested base
+ * destructor with flag 0 (+8 bytes); `slot` defined ahead of the list gives the early `addiu
+ * s7,s1,2` (+4); a Word() accessor, `Done()` as `== 0`, a temporary item or a copied word change
+ * nothing. Next: igdump/igreplay on the word's address variables */
+bool SelCharsHaveEquip(int equip, C2DAnimCmdHdr *hdr)
+{
+    const char *text = ArgText(ArgName(hdr));
+    std::vector<EQUIP_ITEM> items;
+    int slot = equip + 2;
+
+    {
+        CWordList words(text);
+
+        while (!words.Done()) {
+            items.push_back(CZWeapon::GetWeaponId(words.m_word.c_str()));
+            words.Next();
+        }
+    }
+    for (CSelectedCharsItr it("UiCharSet"); it.Valid(); it.Advance()) {
+        CCharacterWeapList *weapons = (CCharacterWeapList *)it.m_weapons;
+        EQUIP_ITEM item = slot < weapons->size() ? (*weapons)[slot].m_wepId : EQUIP_NONE;
+        bool found = false;
+
+        for (unsigned int i = 0; i < items.size(); i++) {
+            if (items[i] == item) {
+                found = true;
+                break;
+            }
+        }
+        if (!found)
+            return false;
+    }
+    return true;
+}
+
+}
+
+/* "DoAllSelCharsHaveEquip1" to "3" (SOCOM II's commands 0xB4-0xB6, the UI command table's records
+ * 178-180; the names ours, after the table's): equipment slots 0 to 2 */
+bool UIDoAllSelCharsHaveEquip1(C2DAnimCmdHdr *hdr, float *dT)
+{
+    return SelCharsHaveEquip(0, hdr);
+}
+
+bool UIDoAllSelCharsHaveEquip2(C2DAnimCmdHdr *hdr, float *dT)
+{
+    return SelCharsHaveEquip(1, hdr);
+}
+
+bool UIDoAllSelCharsHaveEquip3(C2DAnimCmdHdr *hdr, float *dT)
+{
+    return SelCharsHaveEquip(2, hdr);
 }
 
 /* "DoAllSelCharsHaveLockedEquip1" to "3" (SOCOM II's commands 0xC9-0xCB, the UI command table's
@@ -795,6 +1074,44 @@ bool UICanCharactersSelectUIWeapon(C2DAnimCmdHdr *hdr, float *dT)
     for (CSelectedCharsItr it("UiCharSet"); it.Valid(); it.Advance())
         if (!CanTakeItem(item, it))
             return false;
+    return true;
+}
+
+/* whether every selected character carries one of the items the argument lists (SOCOM II's,
+ * "DoAllSelCharsHaveWeapon"). OPEN, 0x468 of 0x47C: the slot test's (SelCharsHaveEquip above)
+ * register shape -- the target's fresh s7 for the word's address in the loop (with s6 its long
+ * pointer and s2 its short text) where ours reuses the construction's register, one saved
+ * register short; the item vector's insert this unit emits matches 0x284BA0 */
+bool UIDoAllSelCharsHaveWeapon(C2DAnimCmdHdr *hdr, float *dT)
+{
+    const char *text = ArgText(ArgName(hdr));
+    std::vector<EQUIP_ITEM> items;
+
+    {
+        CWordList words(text);
+
+        while (!words.Done()) {
+            items.push_back(CZWeapon::GetWeaponId(words.m_word.c_str()));
+            words.Next();
+        }
+    }
+    for (CSelectedCharsItr it("UiCharSet"); it.Valid(); it.Advance()) {
+        CCharacterWeapList *weapons = (CCharacterWeapList *)it.m_weapons;
+        bool found = false;
+
+        for (CCharacterWeapList::iterator w = weapons->begin(); w != weapons->end(); ++w) {
+            for (unsigned int i = 0; i < items.size(); i++) {
+                if (items[i] == (*w).m_wepId) {
+                    found = true;
+                    break;
+                }
+            }
+            if (found)
+                break;
+        }
+        if (!found)
+            return false;
+    }
     return true;
 }
 
@@ -1364,6 +1681,31 @@ bool UIPopUpDialog(C2DAnimCmdHdr *hdr, float *dT)
     return true;
 }
 
+/* the menu switched to the screen the argument names, by an entry pushed for it -- or back to the
+ * screen last gone over, by PREVIOUS_SCREEN (with the back sound) or by that screen's own name
+ * (SOCOM 1's, without the second) */
+bool UISwitchMenu(C2DAnimCmdHdr *hdr, float *dT)
+{
+    const char *name = ArgText(ArgName(hdr));
+
+    if (!strcmp(name, "PREVIOUS_SCREEN")) {
+        GetMenuStack()->Back();
+        const CSaferStr &back = theGame.m_menuState.BackSoundString;
+        CSnd *sound = CSnd::GetSoundByName(back.c_str());
+
+        if (sound)
+            sound->PlaySound((CSndInstance *)0, 255);
+    } else if (g_MenuStack.CanGoBack() && !strcasecmp(name, g_MenuStack.Previous())) {
+        GetMenuStack()->Back();
+    } else {
+        char text[128];
+
+        sprintf(text, "%s", name);
+        g_MenuStack.Push(2, text);
+    }
+    return true;
+}
+
 bool UIIsSessionMaster(C2DAnimCmdHdr *hdr, float *dT)
 {
     if (theNetwork.m_bNetwork && theNetwork.m_bSessionMaster)
@@ -1770,6 +2112,57 @@ bool UISwitchSides(C2DAnimCmdHdr *hdr, float *dT)
     return true;
 }
 
+/* the armory's view brought up to date, whether it has an entry selected (not named yet), and a
+ * persona's name and clan tag by its id (not named yet) */
+extern "C" {
+void func_0030E710(COnlineArmoryView *p);
+bool func_0030E790(COnlineArmoryView *p);
+const char *func_002C3A70(int id);
+const char *func_002C3AC0(int id);
+}
+
+/* the milliseconds from the network's clock to a time (ours) */
+inline int TimeLeft(unsigned int when) { return when - theNetwork.zNetGetTime(); }
+
+/* the multiplayer game's launch clocks shown, in whole seconds, in their valves, and the player the
+ * armory has selected named in PLAYERTACOVAR (with the clan's tag), unless a late joiner; the
+ * session master's persona updated once the ten-second launch has run out */
+bool UICheckForcedLaunch(C2DAnimCmdHdr *hdr, float *dT)
+{
+    CZNetGame *game = theMission.m_pNetGame;
+
+    if (!game || game->m_late_joiner)
+        return true;
+    func_0030E710(data_0045B718);
+    if (func_0030E790(data_0045B718)) {
+        int id = data_0045B718->m_entries[data_0045B718->m_24].m_id;
+        const char *name = func_002C3A70(id);
+        const char *tag = func_002C3AC0(id);
+
+        if (name) {
+            char text[256];
+
+            if (tag && *tag)
+                sprintf(text, "#C\x80@ [%s] #C\x80\x80\x80%s", tag, name);
+            else
+                sprintf(text, "%s", name);
+            *theUIVarManager.Add("PLAYERTACOVAR", 0, UIVAR_SESSION) = text;
+        }
+    } else {
+        *theUIVarManager.Add("PLAYERTACOVAR", 0, UIVAR_SESSION) = " ";
+    }
+    int left = TimeLeft(game->m_c8);
+
+    SetValveValue(game->m_p45SecondClockValve, (unsigned int)(left > 0 ? 0.001f * left : 0.0f));
+    if (game->m_ten_second_launch) {
+        left = TimeLeft(game->m_launch_time);
+        SetValveValue(game->m_pXSecondClockValve, (unsigned int)(left > 0 ? 0.001f * left : 0.0f));
+        if (theNetwork.m_bSessionMaster && left <= 0)
+            CZPersonaState::UpdateLocalPersona();
+    }
+    return true;
+}
+
 bool UIForceMPLaunch(C2DAnimCmdHdr *hdr, float *dT)
 {
     CZNetGame *game = theMission.m_pNetGame;
@@ -1941,6 +2334,129 @@ bool UISetScreenOrigin(C2DAnimCmdHdr *hdr, float *dT)
     return true;
 }
 
+/* the options screen's valves stored into the options: the sound's mode, the pitch, the fire
+ * mode swap, auto aim, vibration, subtitles, dialog, the order responses, the first pad's stick
+ * preset, the controller configuration, the whispers, the first-person bobbing and the screen's
+ * origin (SOCOM 1's stored fewer) */
+extern "C" float data_003DF198;            /* the pitch's direction: inverted when not above 0 (not named yet) */
+extern "C" unsigned char data_003DD4A0;    /* the dialog option (not named yet) */
+extern unsigned char ShouldConfirmVoiceCommands;   /* 0x3DF1D0 (SOCOM 1's) */
+extern "C" unsigned char data_003DF190;    /* the first-person bobbing (not named yet) */
+extern "C" unsigned char data_0044D500;    /* the fire mode swap, as func_00592050 last toggled it */
+extern "C" void func_002A41F0(int on);     /* (the whispers on or off) */
+extern "C" void func_00592050();           /* (the fire mode swap toggled) */
+void SetRumbleOn(bool on);                 /* 0x592BE0 (SOCOM 1's) */
+void RefreshSystemTuners();                /* 0x389C60 (zui_tuners.cpp's) */
+
+bool UIStoreOptions(C2DAnimCmdHdr *hdr, float *dT)
+{
+    CValve *stereo = CValve::Create("STEREO_CONTROLLER", (VALVE_TYPE)2);
+    CValve *invert = CValve::Create("INVERT_PITCH_CONTROLLER", (VALVE_TYPE)2);
+    CValve *firemode = CValve::Create("FIREMODESWAP_CONTROLLER", (VALVE_TYPE)2);
+    CValve *vibration = CValve::Create("VIBRATION_CONTROLLER", (VALVE_TYPE)2);
+    CValve *subtitle = CValve::Create("SUBTITLE_CONTROLLER", (VALVE_TYPE)2);
+    CValve *dialog = CValve::Create("DIALOG_CONTROLLER", (VALVE_TYPE)2);
+    CValve *order = CValve::Create("ORDER_RESPONSE_CONTROLLER", (VALVE_TYPE)2);
+    CValve *bobbing = CValve::Create("BOBBING_1ST_PERSON", (VALVE_TYPE)2);
+    CValve *stickswap = CValve::Create("STICK_SWAP_CONTROLLER", (VALVE_TYPE)2);
+    CValve *video = CValve::Create("video_mode", (VALVE_TYPE)2);
+    CValve *config = CValve::Create("SelectedControllerConfig", (VALVE_TYPE)2);
+    CValve *whispers = CValve::Create("EnableExternalWhispers", (VALVE_TYPE)2);
+    CValve *autoaim = CValve::Create("AutoAim", (VALVE_TYPE)2);
+    CPad *pad = CInput::m_pads[0];
+
+    if (whispers->m_value)
+        func_002A41F0(1);
+    else
+        func_002A41F0(0);
+    if (bobbing->m_value)
+        data_003DF190 = 1;
+    else
+        data_003DF190 = 0;
+    switch (stereo->m_value) {
+    case 1:
+        snd_SetPlaybackMode(2);
+        break;
+    case 2:
+        snd_SetPlaybackMode(0);
+        break;
+    case 0:
+        snd_SetPlaybackMode(1);
+        break;
+    }
+    if (invert->m_value)
+        data_003DF198 = -1.0f;
+    else
+        data_003DF198 = 1.0f;
+    if (firemode->m_value) {
+        if (!data_0044D500)
+            func_00592050();
+        data_0044D500 = 1;
+    } else {
+        if (data_0044D500)
+            func_00592050();
+        data_0044D500 = 0;
+    }
+    if (autoaim)
+        data_003DF1A0 = autoaim->m_value != 0;
+    if (vibration->m_value)
+        SetRumbleOn(true);
+    else
+        SetRumbleOn(false);
+    if (subtitle->m_value)
+        CSnd::SetSubtitles(true);
+    else
+        CSnd::SetSubtitles(false);
+    if (dialog->m_value)
+        data_003DD4A0 = 1;
+    else
+        data_003DD4A0 = 0;
+    if (order->m_value)
+        ShouldConfirmVoiceCommands = 1;
+    else
+        ShouldConfirmVoiceCommands = 0;
+    if (pad) {
+        unsigned int preset = CValve::Create("stick_preset", (VALVE_TYPE)2)->m_value;
+
+        if (preset < 3) {
+            pad->SetPreset(1, preset);
+            CUIVariable *sensitivity = theUIVarManager.Add("STICK_SENSITIVITY", 0, UIVAR_SESSION);
+            CUIVariable *inertia = theUIVarManager.Add("STICK_INERTIA", 0, UIVAR_SESSION);
+            CUIVariable *deadzone = theUIVarManager.Add("STICK_DEADZONE", 0, UIVAR_SESSION);
+
+            sensitivity->SetReal(pad->GetAcceleration(1));
+            inertia->SetReal(1.0f - pad->m_stickType[1].m_socom2_20);
+            deadzone->SetReal(pad->GetDeadZone(1) - 0.02f);
+        }
+    }
+    switch (config->m_value) {
+    case 1:
+        CCtrlrConfigs::SelectConfig("Default");
+        break;
+    case 2:
+        CCtrlrConfigs::SelectConfig("Reverse");
+        break;
+    case 3:
+        CCtrlrConfigs::SelectConfig("Config4");
+        break;
+    case 4:
+        CCtrlrConfigs::SelectConfig("Goldeneye");
+        break;
+    default:
+        CCtrlrConfigs::SelectConfig("Default");
+        break;
+    }
+    RefreshSystemTuners();
+    int y = CValve::Create("ScreenOriginY", (VALVE_TYPE)1)->m_value;
+    int x = CValve::Create("ScreenOriginX", (VALVE_TYPE)1)->m_value;
+
+    if (zVid.videoMode == 2)
+        y += 18;
+    zVid.pcrtcOffsetX = x - 128;
+    zVid.pcrtcOffsetY = y - 128;
+    return true;
+}
+
 /* the first pad's right stick given the preset the valve picks, its figures shown in the UI
  * variables (the sensitivity, the inertia as 1 less it, the dead zone less 0.02) */
 bool UISetStickPreset(C2DAnimCmdHdr *hdr, float *dT)
@@ -1961,6 +2477,43 @@ bool UISetStickPreset(C2DAnimCmdHdr *hdr, float *dT)
             deadzone->SetReal(pad->GetDeadZone(1) - 0.02f);
         }
     }
+    return true;
+}
+
+/* the options as the options screen's valves show them (SOCOM 1's had the pitch inverted at 1.0,
+ * and asked the SEAL unit for the confirmations) */
+bool IsRumbleOn();                         /* 0x592BD0 (SOCOM 1's) */
+
+bool UIInitializeOptions(C2DAnimCmdHdr *hdr, float *dT)
+{
+    CValve *stereo = CValve::Create("STEREO_CONTROLLER", (VALVE_TYPE)2);
+    CValve *invert = CValve::Create("INVERT_PITCH_CONTROLLER", (VALVE_TYPE)2);
+    CValve *vibration = CValve::Create("VIBRATION_CONTROLLER", (VALVE_TYPE)2);
+    CValve *subtitle = CValve::Create("SUBTITLE_CONTROLLER", (VALVE_TYPE)2);
+    CValve *dialog = CValve::Create("DIALOG_CONTROLLER", (VALVE_TYPE)2);
+    CValve *order = CValve::Create("ORDER_RESPONSE_CONTROLLER", (VALVE_TYPE)2);
+
+    if (CSnd::GetSubtitles())
+        SetValveValue(subtitle, 1);
+    else
+        SetValveValue(subtitle, 0);
+    SetValveValue(invert, !(data_003DF198 > 0.0f));
+    if (IsRumbleOn())
+        SetValveValue(vibration, 1);
+    else
+        SetValveValue(vibration, 0);
+    if (ShouldConfirmVoiceCommands)
+        SetValveValue(order, 1);
+    else
+        SetValveValue(order, 0);
+    if (data_003DD4A0)
+        SetValveValue(dialog, 1);
+    else
+        SetValveValue(dialog, 0);
+    if (snd_GetPlaybackMode())
+        SetValveValue(stereo, 1);
+    else
+        SetValveValue(stereo, 0);
     return true;
 }
 
@@ -2114,6 +2667,65 @@ _zanim_cmd_hdr *UIPlayMPEGParse(const char *name, _zrdr *rdr)
     cmd->m_bilinear = false;
     zrdr_findbool(rdr, "BILINEAR", &cmd->m_bilinear);
     return (_zanim_cmd_hdr *)cmd;
+}
+
+/* the cinematic sub-state (theGame's, at a constant address: each access addressed absolutely) */
+inline CCinematicState *Cinematic() { return (CCinematicState *)theGame.m_cinematicSubState; }
+
+/* PlayMPEG's toggle (a function-local static in the original, as NoFade's below) */
+extern "C" bool data_00414EA0;
+
+/* the film the record names played over the menu (the player's flag permitting, as NoFade's):
+ * every other run, the cinematic state given the film, how it plays, the rectangles and the audio
+ * stream -- a number, a valve's value or a UI variable's -- and pushed (SOCOM 1's took the name
+ * alone) */
+bool UIPlayMPEG(C2DAnimCmdHdr *hdr, float *dT)
+{
+    UIPlayMPEGCmd *cmd = (UIPlayMPEGCmd *)hdr;
+    CZSealBody *player = ftsGetPlayer();
+
+    if (player && !player->m_e1_4)
+        return true;
+    bool was = data_00414EA0;
+
+    data_00414EA0 = !was;
+    if (!was) {
+        CZAnim *anim = ZAnim.m_CurAnim;
+        Cinematic()->SetMovie(anim->GetName(cmd->m_argument_index), cmd->m_fade, cmd->m_by_index);
+        Cinematic()->m_29 = cmd->m_interlace;
+        Cinematic()->m_3c = cmd->m_has_dest;
+        Cinematic()->m_3d = cmd->m_bilinear;
+        Cinematic()->m_40[0] = cmd->m_source[0];
+        Cinematic()->m_40[1] = cmd->m_source[1];
+        Cinematic()->m_40[2] = cmd->m_source[2];
+        Cinematic()->m_40[3] = cmd->m_source[3];
+        Cinematic()->m_50[0] = cmd->m_dest[0];
+        Cinematic()->m_50[1] = cmd->m_dest[1];
+        Cinematic()->m_50[2] = cmd->m_dest[2];
+        Cinematic()->m_50[3] = cmd->m_dest[3];
+        Cinematic()->m_2a = cmd->m_ingame;
+        switch (cmd->m_stream_type) {
+        case 0:
+            Cinematic()->m_2c = cmd->m_stream;
+            break;
+        case 1: {
+            CValve *valve = CValve::GetByName(anim->GetName(cmd->m_stream));
+
+            if (valve)
+                Cinematic()->m_2c = valve->m_value;
+            break;
+        }
+        case 2: {
+            CUIVariable *var = theUIVarManager.Find(anim->GetName(cmd->m_stream));
+
+            if (var && var->type == 1)
+                Cinematic()->m_2c = var->Int();
+            break;
+        }
+        }
+        theGame.Push((CGameState *)theGame.m_cinematicSubState, 0);
+    }
+    return was;
 }
 
 /* PlayMPEGNoFade's toggle: a function-local static in the original (SOCOM 1's UIPlayMPEG has one,
@@ -2556,6 +3168,59 @@ bool UISelectLocale(C2DAnimCmdHdr *hdr, float *dT)
     return true;
 }
 
+/* the multiplayer game's mission sequence set from the UI variable the argument names, an array of
+ * missions (each a number, or an array whose first value is): "Medley" (254) the missions from the
+ * one before in order to the sequence's end, "Random" (255) one at random; each twice in a clan
+ * game (CreateClanAffiliation 4), the sequence ended with a zero (SOCOM II's) */
+bool UISetMPMissionSeq(C2DAnimCmdHdr *hdr, float *dT)
+{
+    CUIVariable *var = theUIVarManager.Add(ArgText(ArgName(hdr)), 0, UIVAR_SESSION);
+    bool twice = false;
+    unsigned char seq[32];
+
+    if (CValve::Create("CreateClanAffiliation", (VALVE_TYPE)1)->m_value == 4)
+        twice = true;
+    if (var) {
+        if (var->type == 4) {
+            int n = 0;
+
+            for (unsigned int i = 0; i < var->Count() && n < 29; i++) {
+                _zrdr *e = var->Item(i);
+                int id;
+
+                if (e->type == 4)
+                    id = e->Item(0)->Int();
+                else
+                    id = e->Int();
+                if (id == 254) {
+                    for (n = 0; n < 29;) {
+                        id = static_cast<CMultiMissionList &>(data_00441650).GetNext(id, true)->m_index;
+                        seq[n++] = id;
+                        if (twice)
+                            seq[n++] = id;
+                    }
+                    seq[n] = 0;
+                    break;
+                } else if (id == 255) {
+                    id = static_cast<CMultiMissionList &>(data_00441650).GetRandom(true)->m_index;
+                    seq[n++] = id;
+                    if (twice)
+                        seq[n++] = id;
+                    seq[n] = 0;
+                } else {
+                    seq[n++] = id;
+                    if (twice)
+                        seq[n++] = id;
+                    seq[n] = 0;
+                }
+            }
+        }
+        theLobby.SetMissionSequence(0, seq);
+        theLobby.ResetMissionSequence();
+    }
+    return true;
+}
+
 /* the UI variable the argument names, an array of missions, cut down to the suppression maps:
  * every entry kept but an array whose first value names a mission of another multiplayer kind
  * than 5 (SOCOM II's; the name ours) */
@@ -2610,11 +3275,88 @@ bool UIBanSelfFromGame(C2DAnimCmdHdr *hdr, float *dT)
 
 /* the hard disk operation's last result (a byte; the name ours) */
 extern "C" unsigned char data_00414EB0;
+/* whether the game runs off the hard disk (a byte of util_sonyio.cpp's; not named yet) */
+extern "C" unsigned char data_004A37B0;
 
 bool UIQuitClan(C2DAnimCmdHdr *hdr, float *dT)
 {
     theLobby.QuitClan();
     return true;
+}
+
+/* the ladder's lists asked of the lobby, the player ladder's or the clan ladder's: the top ten, the
+ * player's own place with the best ten, or a page of seven up or down from the list's start -- the
+ * "press" moves only tested, not done at the list's ends (SOCOM II's; SOCOM 1's asked for the info
+ * alone) */
+bool UIGetLadderInfo(C2DAnimCmdHdr *hdr, float *dT)
+{
+    bool done = true;
+
+    switch (((UILadderCmd *)hdr)->m_op) {
+    case 1:
+        theLobby.GetLadderRanking();
+        theLobby.GetLadderBest(10);
+        break;
+    case 0:
+        theLobby.GetLadderInfo();
+        theLobby.GetLadderBest(10);
+        break;
+    case 2:
+        if (theLobby.GetLadderStart() < 2)
+            done = false;
+        break;
+    case 3:
+        if (theLobby.GetLadderStart() + 14 > theLobby.GetLadderTotal())
+            done = false;
+        break;
+    case 5:
+        theLobby.GetLadderList(theLobby.GetLadderStart() + 14, 7);
+        break;
+    case 4: {
+        int start = theLobby.GetLadderStart();
+
+        if (start > 1) {
+            start -= 14;
+            if (start <= 0)
+                start = 1;
+            theLobby.GetLadderList(start, 7);
+        }
+        break;
+    }
+    case 7:
+        theLobby.GetClanLadderLeaders(10);
+        break;
+    case 6:
+        theLobby.GetClanRanking(1);
+        theLobby.GetClanLadderLeaders(10);
+        break;
+    case 8:
+        if (theLobby.GetClanLadderStart() < 2)
+            done = false;
+        break;
+    case 9:
+        if (theLobby.GetClanLadderStart() + 14 > theLobby.GetClanLadderTotal())
+            done = false;
+        break;
+    case 11:
+        theLobby.GetClanLadderList(theLobby.GetClanLadderStart() + 14, 7);
+        break;
+    case 10: {
+        int start = theLobby.GetClanLadderStart();
+
+        if (start > 1) {
+            start -= 14;
+            if (start <= 0)
+                start = 1;
+            theLobby.GetClanLadderList(start, 7);
+        }
+        break;
+    }
+    default:
+        theLobby.GetLadderInfo();
+        break;
+    }
+    return done;
 }
 
 /* GetLadderInfo's parser: which list and which move, the clan ladder's numbered after the player
@@ -2652,6 +3394,68 @@ _zanim_cmd_hdr *UIGetLadderInfoParse(const char *name, _zrdr *rdr)
         cmd->m_op = 0;
     }
     return (_zanim_cmd_hdr *)cmd;
+}
+
+bool HardDriveOperationCallback(int result);
+
+/* the hard disk's game partition opened (the file errors then handed to the callback below; on a
+ * failure, its code told as the callback tells it and the command not done), its missions read in
+ * until one fails, or closed and its missions dropped (SOCOM II's) */
+bool UIHardDriveOperation(C2DAnimCmdHdr *hdr, float *dT)
+{
+    bool done = true;
+    const char *op = ArgText(ArgName(hdr));
+
+    if (op && *op) {
+        if (!strcasecmp(op, "OPEN")) {
+            /* (`== 0` re-reads the byte after its store, as the target does; `!` tests the
+             * call's value narrowed, andi 0xff) */
+            data_00414EB0 = HddMountGame();
+            if (data_00414EB0 == 0) {
+                CFileIO::SetErrorHandler((void (*)(int))HardDriveOperationCallback);
+                data_004A37B0 = 1;
+                done = true;
+            } else {
+                int code;
+
+                done = false;
+                switch (data_00414EB0) {
+                case 1:
+                    code = 1;
+                    break;
+                case 2:
+                    code = 2;
+                    break;
+                case 3:
+                    code = 3;
+                    break;
+                default:
+                    code = 5;
+                    break;
+                }
+                SetValveValue(CValve::Create("hard_disk_error_code", (VALVE_TYPE)1), code);
+                if (theLobby.m_event_handler)
+                    theLobby.m_event_handler("HDD_ERROR", 0);
+            }
+        } else if (!strcasecmp(op, "GET_MISSION_DATA")) {
+            data_00414EB0 = 0;
+            int n = HddFindFiles(".ZDB", 0, 0, 0);
+
+            for (int i = 0; i < n && !data_00414EB0; i++) {
+                MissionDesc desc;
+
+                HddFindFiles(".ZDB", &desc, sizeof(desc), i);
+                MPMissionInfo *m = static_cast<CMultiMissionList &>(data_00441650).Add(&desc);
+
+                m->m_on_hdd = 1;
+            }
+        } else if (!strcasecmp(op, "CLOSE")) {
+            func_0039D020();
+            data_004A37B0 = 0;
+            static_cast<CMultiMissionList &>(data_00441650).Purge();
+        }
+    }
+    return done;
 }
 
 /* the hard disk operation's result, told to the menu through a valve and the lobby's event handler
@@ -2787,6 +3591,62 @@ bool UINetCnfUninit(C2DAnimCmdHdr *hdr, float *dT)
 {
     func_0030C6A0();
     return true;
+}
+
+/* the network configurations in the file the argument names listed into NETCNF_DB, the valid ones
+ * by their number, interface (cut to 32 characters) and device; done unless the file could not be
+ * read, its error then put in NETCNF_ERRNO and NETCNF_ERROR's event run with the message (SOCOM II's:
+ * SOCOM 1's opened the file through CNetCnf) */
+bool UINetCnfOpen(C2DAnimCmdHdr *hdr, float *dT)
+{
+    bool done = false;
+    const char *file = ArgText(ArgName(hdr));
+    CRdrEditor rdr;
+
+    strncpy(data_003DF360, file, 256);
+    rdr.push(0);
+    int n = ezNetCnfGetCombinationList(data_003DF360, 0, &data_00457C40);
+
+    if (n > 0) {
+        NetCnfList *list = &data_00457C40;
+        int count = list->m_count;
+
+        for (int i = 0; i < count; i++) {
+            NetCnfEntry *e = list->Entry(i);
+            char text[48];
+
+            if (e->m_ifc && strlen(e->m_ifc) >= 31)
+                sprintf(text, "%.32s...", e->m_ifc);
+            else
+                sprintf(text, "%s", e->m_ifc);
+            if (e->m_type >= 0) {
+                rdr.push(0);
+                rdr.addintnode(i + 1);
+                rdr.addstringnode(text);
+                rdr.addstringnode(e->m_dev);
+                rdr.pop();
+            }
+        }
+        done = true;
+    } else if (n == 0) {
+        done = true;
+    } else {
+        const char *msg;
+
+        switch (n) {
+        case -15:
+            msg = "Your Network Configuration file was created on another PlayStation 2 console and cannot be used.";
+            break;
+        default:
+            msg = "An error occured while reading Your Network Configuration file.";
+            break;
+        }
+        CValve::Create("NETCNF_ERRNO", -n, (VALVE_TYPE)2);
+        theGame.m_menuState.RunEventAnim("NETCNF_ERROR", msg);
+    }
+    rdr.pop();
+    theUIVarManager.Add("NETCNF_DB", &rdr, UIVAR_SESSION);
+    return done;
 }
 
 bool UINetCnfClose(C2DAnimCmdHdr *hdr, float *dT)
@@ -3126,11 +3986,9 @@ void UpdatePersonaList(const char *host, int port)
 
 /* the network started: the lobby's events handed to the menu, the machine made and run until it
  * is done, the valve the argument names told how it went (SOCOM 1's built no machine).
- * OPEN, 0 instructions: every byte is right; the two calls name CSimpleStateMachine's constructor
- * and destructor, rows outside this lane (0x3A5DD0 __ct__19CSimpleStateMachineFv: the vtable
- * 0x408240 stored, the queue built, the idle state 0x3E07D8 copied in; 0x3A5CC0
- * __dt__19CSimpleStateMachineFv: the same vtable stored first, deleted when asked) -- matches once
- * the map names them (measured with both renamed) */
+ * Byte-exact since the map named CSimpleStateMachine's constructor 0x3A5DD0 and destructor
+ * 0x3A5CC0 (util_ssm.cpp's: the vtable 0x408240 stored, the queue built, the idle state 0x3E07D8
+ * copied in; the same vtable stored first, deleted when asked) */
 bool UIInitNetwork(C2DAnimCmdHdr *hdr, float *dT)
 {
     bool done = false;
@@ -3184,6 +4042,103 @@ bool UIMediusInit(C2DAnimCmdHdr *hdr, float *dT)
 
     SetValveValue(valve, MediusInit());
     return true;
+}
+
+/* a persona of the lobby host's deleted, the one the argument's index picks; when it was the one in
+ * use, the first persona's details put in its place (the empty string for any it lacks), then the
+ * personas listed again (SOCOM II's) */
+bool UIDeleteMUISPersona(C2DAnimCmdHdr *hdr, float *dT)
+{
+    const char *arg = ArgText(ArgName(hdr));
+
+    if (arg) {
+        bool current = false;
+        const char *host = theUIVarManager.Add("LOBBY_HOST", 0, UIVAR_PERMANENT)->String();
+        int port = theUIVarManager.Add("LOBBY_PORT", 0, UIVAR_PERMANENT)->Int();
+        int index = atoi(arg);
+        const char *name = theUIVarManager.Add("PLAYERNAMEVAR", 0, UIVAR_SESSION)->String();
+
+        if (!strcasecmp(name, data_0044FC60.GetName(host, port, index)))
+            current = true;
+        data_0044FC60.Delete(host, port, index);
+        if (current) {
+            CUIVariable *var = theUIVarManager.Add("PLAYERNAMEVAR", 0, UIVAR_SESSION);
+            const char *s = data_0044FC60.GetName(host, port, 0);
+
+            if (s)
+                *var = s;
+            else
+                *var = "";
+            var = theUIVarManager.Add("PLAYERPASSWORD", 0, UIVAR_SESSION);
+            s = data_0044FC60.GetPassword(host, port, 0);
+            if (s)
+                *var = s;
+            else
+                *var = "";
+            var = theUIVarManager.Add("PLAYERHOMETOWN", 0, UIVAR_SESSION);
+            s = data_0044FC60.GetTown(host, port, 0);
+            if (s)
+                *var = s;
+            else
+                *var = "";
+            int gender = (char)data_0044FC60.GetGender(host, port, 0);
+
+            SetValveValue(CValve::Create("PLAYERGENDER", (VALVE_TYPE)3), gender);
+            int save = data_0044FC60.GetSavePassword(host, port, 0);
+
+            SetValveValue(CValve::Create("SecurePassword", (VALVE_TYPE)1), save);
+        }
+        UpdatePersonaList(host, port);
+    }
+    return true;
+}
+
+/* the lobby connected to: the LAN lobby with the LAN player's name, else the online lobby on the
+ * server the argument names, once its status says it is up -- its host and port kept, its first
+ * persona's details put in the UI variables and valves, the personas listed (SOCOM II's) */
+bool UILobbyConnect(C2DAnimCmdHdr *hdr, float *dT)
+{
+    if (data_0044FE10.IsActive()) {
+        theUIVarManager.Add("PLAYERNAMEVAR", 0, UIVAR_SESSION)->Set(
+            theUIVarManager.Add("LANPLAYERNAMEVAR", 0, (UIVAR_LONGEVITY)3));
+        bool ok = data_0044FE10.Connect();
+
+        return ok;
+    }
+    const char *server = ArgName(hdr);
+
+    server = !strcmp(server, "INPUT_STRING") ? ZAnim.m_CurAnim->m_arg_list->GetCharP(0) : server;
+    if (data_0044FC60.GetUniverseStatus(server)) {
+        const char *host = data_0044FC60.GetUniverseDNS(server);
+        int port = data_0044FC60.GetUniversePort(server);
+
+        *theUIVarManager.Add("LOBBY_HOST", 0, UIVAR_PERMANENT) = host;
+        theUIVarManager.Add("LOBBY_PORT", 0, UIVAR_PERMANENT)->SetInt(port);
+        CUIVariable *var = theUIVarManager.Add("PLAYERNAMEVAR", 0, UIVAR_SESSION);
+        const char *s = data_0044FC60.GetName(host, port, 0);
+
+        if (s)
+            *var = s;
+        var = theUIVarManager.Add("PLAYERPASSWORD", 0, UIVAR_SESSION);
+        s = data_0044FC60.GetPassword(host, port, 0);
+        if (s)
+            *var = s;
+        var = theUIVarManager.Add("PLAYERHOMETOWN", 0, UIVAR_SESSION);
+        s = data_0044FC60.GetTown(host, port, 0);
+        if (s)
+            *var = s;
+        int gender = (char)data_0044FC60.GetGender(host, port, 0);
+
+        SetValveValue(CValve::Create("PLAYERGENDER", (VALVE_TYPE)1), gender);
+        int save = data_0044FC60.GetSavePassword(host, port, 0);
+
+        SetValveValue(CValve::Create("SecurePassword", (VALVE_TYPE)1), save);
+        UpdatePersonaList(host, port);
+        bool ok = theLobby.Open(host, port);
+
+        return ok;
+    }
+    return false;
 }
 
 /* whether the persona the argument names exists on the lobby server (its host and port the UI
@@ -3305,6 +4260,136 @@ bool UIUpdateAcctInfo(C2DAnimCmdHdr *hdr, float *dT)
                               gender->m_value ? ACCT_FEMALE : ACCT_MALE, secure);
     UpdatePersonaList(host->String(), port->Int());
     return true;
+}
+
+/* a persona of the lobby host's put in the UI variables (its name, password and home town) and the
+ * valves (its gender, whether its password is kept): the persona the argument names, by its index
+ * or by its name as the record says (SOCOM II's) */
+bool UIGetMUISPersonaInfo(C2DAnimCmdHdr *hdr, float *dT)
+{
+    UIPersonaCmd *cmd = (UIPersonaCmd *)hdr;
+    const char *arg = ArgText(ArgName(hdr));
+
+    if (arg) {
+        const char *host = theUIVarManager.Add("LOBBY_HOST", 0, UIVAR_PERMANENT)->String();
+        int port = theUIVarManager.Add("LOBBY_PORT", 0, UIVAR_PERMANENT)->Int();
+        int index;
+
+        if (cmd->m_by == 1) {
+            index = atoi(arg);
+        } else {
+            if (!strcmp(arg, "INPUT_STRING"))
+                arg = ZAnim.m_CurAnim->m_arg_list->GetCharP(0);
+            index = data_0044FC60.IndexOf(host, port, arg);
+        }
+        CUIVariable *var = theUIVarManager.Add("PLAYERNAMEVAR", 0, UIVAR_SESSION);
+        const char *s = data_0044FC60.GetName(host, port, index);
+
+        if (s)
+            *var = s;
+        var = theUIVarManager.Add("PLAYERPASSWORD", 0, UIVAR_SESSION);
+        s = data_0044FC60.GetPassword(host, port, index);
+        if (s)
+            *var = s;
+        var = theUIVarManager.Add("PLAYERHOMETOWN", 0, UIVAR_SESSION);
+        s = data_0044FC60.GetTown(host, port, index);
+        if (s)
+            *var = s;
+        int gender = (char)data_0044FC60.GetGender(host, port, index);
+
+        SetValveValue(CValve::Create("PLAYERGENDER", (VALVE_TYPE)3), gender);
+        int save = data_0044FC60.GetSavePassword(host, port, index);
+
+        SetValveValue(CValve::Create("SecurePassword", (VALVE_TYPE)1), save);
+    }
+    return true;
+}
+
+/* the player's equipment for the mission, kept with the persona on the lobby host: read into the
+ * selection valves, saved from them, tested for, cleared, or the whole profile file sent to the
+ * server or fetched from it (SOCOM II's) */
+bool UICharacterProfile(C2DAnimCmdHdr *hdr, float *dT)
+{
+    bool done = true;
+    char file[64];
+
+    sprintf(file, "WeapProfile_%d.dat", AccountInfo.AccountID);
+    const char *host = theUIVarManager.Add("LOBBY_HOST", 0, UIVAR_PERMANENT)->String();
+    int port = theUIVarManager.Add("LOBBY_PORT", 0, UIVAR_PERMANENT)->Int();
+    const char *name = theUIVarManager.Add("PLAYERNAMEVAR", 0, UIVAR_SESSION)->String();
+    AcctLoadout loadout;
+    CValve *primary = CValve::Create("primsel", (VALVE_TYPE)2);
+    CValve *secondary = CValve::Create("secsel", (VALVE_TYPE)2);
+    CValve *equip1 = CValve::Create("equip1sel", (VALVE_TYPE)2);
+    CValve *equip2 = CValve::Create("equip2sel", (VALVE_TYPE)2);
+    CValve *equip3 = CValve::Create("equip3sel", (VALVE_TYPE)2);
+    CValve *skin = CValve::Create("MpCharSet", (VALVE_TYPE)2);
+    int side;
+
+    if (func_002C31A0())
+        side = 0;
+    else if (func_002C3080())
+        side = 1;
+    else if (func_002C2FA0())
+        side = 2;
+
+    switch (((UIProfileCmd *)hdr)->m_op) {
+    case UIPROFILE_LOAD:
+        if (!data_0044FE10.IsActive()) {
+            AcctLoadout *l = data_0044FC60.GetLoadout(host, port, name, database, side);
+
+            if (l) {
+                SetValveValue(skin, l->m_skin);
+                SetValveValue(primary, l->m_primary);
+                SetValveValue(secondary, l->m_secondary);
+                SetValveValue(equip1, l->m_equip1);
+                SetValveValue(equip2, l->m_equip2);
+                SetValveValue(equip3, l->m_equip3);
+            }
+        }
+        break;
+    case UIPROFILE_SAVE:
+        if (!data_0044FE10.IsActive()) {
+            loadout.m_skin = skin->m_value;
+            loadout.m_primary = primary->m_value;
+            loadout.m_secondary = secondary->m_value;
+            loadout.m_equip1 = equip1->m_value;
+            loadout.m_equip2 = equip2->m_value;
+            loadout.m_equip3 = equip3->m_value;
+            data_0044FC60.SetLoadout(host, port, name, database, &loadout, side);
+        }
+        break;
+    case UIPROFILE_EXISTS:
+        if (data_0044FE10.IsActive())
+            done = false;
+        else
+            done = data_0044FC60.GetLoadout(host, port, name, database, side) != 0;
+        break;
+    case UIPROFILE_SAVE_TO_SERVER:
+        GetLobbySaveManager()->Save(file, 0, 0);
+        done = true;
+        break;
+    case UIPROFILE_WAIT_FOR_SERVER_SAVE:
+        done = !GetLobbySaveManager()->Pending();
+        break;
+    case UIPROFILE_LOAD_FROM_SERVER:
+        done = GetLobbySaveManager()->Fetch(file, 0, 0);
+        break;
+    case UIPROFILE_WAIT_FOR_LOAD:
+        done = GetLobbySaveManager()->Load(file, 0);
+        break;
+    case UIPROFILE_DELETE:
+        if (!data_0044FE10.IsActive()) {
+            AcctLoadout *l = data_0044FC60.GetLoadout(host, port, name, database, side);
+
+            if (l)
+                l->m_valid = 0;
+        }
+        break;
+    case UIPROFILE_NONE:
+        break;
+    }
+    return done;
 }
 
 /* GetMUISPersonaInfo's parser: the persona by INDEX or by NAME, the argument the one given (SOCOM
@@ -3436,6 +4521,52 @@ bool UIUpdateServerInfo(C2DAnimCmdHdr *hdr, float *dT)
 
     if (name)
         *name = data_0044FC60.GetUniverseName(valve->m_value);
+    return true;
+}
+
+/* the multiplayer missions one by one into the reader value: each that is multiplayer (of the
+ * kind 5 when respawns are allowed) and its name's newest, by number and name (std::for_each's
+ * function object; ours) */
+struct CAddAvailableMission {
+    CAddAvailableMission(CRdrEditor *rdr, bool respawn) : m_rdr(rdr), m_respawn(respawn) {}
+    bool Listed(MPMissionInfo *m) { return m->m_multiplayer && (m_respawn ? m->m_kind == 5 : true); }
+    bool Available(MPMissionInfo *m) { return Listed(m) && func_002C94F0(m); }
+    void operator()(MPMissionInfo *m)
+    {
+        if (Available(m)) {
+            m_rdr->push(0);
+            m_rdr->addintnode(m->m_number);
+            m_rdr->addstringnode(m->m_name.c_str());
+            m_rdr->pop();
+        }
+    }
+
+    CRdrEditor *m_rdr;
+    bool m_respawn;
+};
+
+/* the missions a multiplayer game can be set to, into the argument's UI variable: "Medley" (254)
+ * and "Random" (255) first unless respawns are allowed, then the missions (SOCOM II's) */
+bool UIGetAvailableMPMissions(C2DAnimCmdHdr *hdr, float *dT)
+{
+    CUIVariable *var = theUIVarManager.Add(ArgText(ArgName(hdr)), 0, UIVAR_SESSION);
+    bool respawn = CValve::Create("mp_allow_respawn", (VALVE_TYPE)1)->m_value == 1;
+    CRdrEditor rdr;
+
+    rdr.push(0);
+    if (!respawn) {
+        rdr.push(0);
+        rdr.addintnode(254);
+        rdr.addstringnode("Medley");
+        rdr.pop();
+        rdr.push(0);
+        rdr.addintnode(255);
+        rdr.addstringnode("Random");
+        rdr.pop();
+    }
+    std::for_each(data_00441650.begin(), data_00441650.end(), CAddAvailableMission(&rdr, respawn));
+    rdr.pop();
+    var->Set(&rdr);
     return true;
 }
 

@@ -2757,7 +2757,11 @@ extern "C" bool func_005EC230(CZSealBody *from, CZSealBody *seal, CNodeAction *n
  * nested if (0x17C), `(bool)` and `!= 0` for the bit (0x1A8), the cell read in place (0x19C), the
  * two tests as one `||` (0x1A0). Round 53: the rest inside `if (!a->m_type && !(range < minRange))`
  * (nested, or `range >= minRange`), and both tests `goto` a label on the shared `return r` (the join
- * keeps r unknown there, as the target's `b` to `move v0,s1` wants) -- all 0x190 */
+ * keeps r unknown there, as the target's `b` to `move v0,s1` wants) -- all 0x190. Round 55: r declared
+ * after the first test (0x1A8), the rest an inline bool function with its own r or with r passed in
+ * (0x1A8), r an int (0x1B0), a do/while(0) of breaks (0x190), r set through a by-reference inline
+ * setter or a pointer to it, the returns through a by-reference inline (0x1B0), the range test
+ * wrapping the rest (0x1A0) -- MW propagates r's false into each early return in every form */
 bool CanUseDoorAction(CZSealBody *seal, CNodeAction *a, float range)
 {
     bool r = false;
