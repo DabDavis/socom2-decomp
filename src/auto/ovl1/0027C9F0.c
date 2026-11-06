@@ -10,7 +10,7 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 M2C_UNK MPMajorGameState__9CZNetGameFQ29CZNetGame19MP_MAJOR_GAME_STATE(s32, M2C_UNK); /* extern */
 M2C_UNK MyMajorGameState__9CZNetGameFQ29CZNetGame19MP_MAJOR_GAME_STATE(s32, M2C_UNK); /* extern */
 M2C_UNK MyMinorGameState__9CZNetGameFQ29CZNetGame19MP_MINOR_GAME_STATE(s32, M2C_UNK); /* extern */
-M2C_UNK SendGameSignalMessage__FiUcUcUcib(s32, M2C_UNK, M2C_UNK, M2C_UNK, M2C_UNK); /* extern */
+M2C_UNK SendGameSignalMessage__FiUc8NET_SIDEUcib(s32, M2C_UNK, M2C_UNK, M2C_UNK, M2C_UNK); /* extern */
 M2C_UNK UpdateLocalGame__11CZGameStateFP9CZNetGame(s32); /* extern */
 M2C_UNK UpdateLocalPersona__14CZPersonaStateFv();   /* extern */
 M2C_UNK func_002C2C20(M2C_UNK);                     /* extern */
@@ -41,7 +41,7 @@ s32 UISetMenuState__FP13C2DAnimCmdHdrPf(void) {
         var_s0 = &data_00441580;
         do {
             if (((u64) ((s64) *var_s0 << 0x38) >> 0x3E) == 1) {
-                SendGameSignalMessage__FiUcUcUcib(var_s1, 0xD, 0, 0, 0);
+                SendGameSignalMessage__FiUc8NET_SIDEUcib(var_s1, 0xD, 0, 0, 0);
             }
             var_s1 += 1;
             var_s0 += 1;

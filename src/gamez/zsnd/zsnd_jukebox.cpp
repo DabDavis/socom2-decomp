@@ -251,14 +251,21 @@ void CSndJukebox::SetIntensity(float level)
 /* SOCOM 1's: a sequence of the mode picked at random by weight -- its weight cut to a tenth and the
  * weights normalised again -- and played in place of the instance; SOCOM II's music state is 2 for
  * a fight mode, 0 for the calm one.
- * OPEN, 11 instructions (the target's size): the playlist read inside the found block -- the target
- * builds &m_playlists[mode] and keeps &...data_ (+8 added after) in s0 for the second read, where
- * this folds the 8 into the relocation (`(base + 8) + off`); the same size, one nop moved. Tried:
- * a reference to the playlist inside the block or before the loop (both weights and playlist),
- * a pointer, the pod's data() reference, begin() + i, begin().m_p[i] (0x1A4-0x1C8). The counter
- * an int (unsigned strength-reduces the element address), `sum` declared ahead of `r` ($f21/$f20),
- * `return` (a `break` drops the block's exit, 0x1B8); round 14: the playlist through an inline
- * returning it by reference or pointer, held in a reference local or not (12) */
+ * Byte-exact (the world lane's round 33; open at 11 since round 9) through a MARKED STAND-IN: the
+ * target builds &m_playlists[mode], then &...data_ (+8) in s0 for the second read, where MW folds a
+ * plain `m_playlists[mode].data_` into `(base + 8) + off`. A no-op conversion of the element's
+ * address (PlaylistOf) stops the fold -- the original spelling is unknown (a subclass's conversion to
+ * the vector would do the same). Tried before: a reference to the playlist inside the block or
+ * before the loop, a pointer, the pod's data() reference, begin() + i, begin().m_p[i] (0x1A4-0x1C8),
+ * an inline returning it by reference or pointer (12). The counter an int (unsigned
+ * strength-reduces the element address), `sum` declared ahead of `r` ($f21/$f20), `return` (a
+ * `break` drops the block's exit, 0x1B8) */
+template <class T>
+static inline T *PlaylistOf(T *p)
+{
+    return (T *)(int)p;
+}
+
 void CSndJukebox::PlayRandom(MUSIC_MODE mode)
 {
     float sum;
@@ -272,11 +279,11 @@ void CSndJukebox::PlayRandom(MUSIC_MODE mode)
             m_weights[mode][i] *= 0.1f;
             NormalizeWeights(mode);
             if (i < m_playlists[mode].size()) {
-                m_playlists[mode][i]->Play();
+                (*PlaylistOf(&m_playlists[mode]))[i]->Play();
                 if (m_instance)
                     CSndInstance::ReleaseSoundInstance(m_instance);
                 m_instance = 0;
-                m_sequence = m_playlists[mode][i];
+                m_sequence = (*PlaylistOf(&m_playlists[mode]))[i];
                 if (mode > MUSIC_MODE_0)
                     m_currentmode = 2;
                 else if (mode == MUSIC_MODE_0)

@@ -87,7 +87,11 @@ void CRipple::Uninit()
  * Round 26 (build/scratch/wld/v_flat_*.py): a const CPnt3D, the products written factor first,
  * short locals in the walk (0xB8 each), a const float[3] in the walk or outside it (0x104 / 0x10C),
  * a function-local static const float[3] (0xE8: loaded from data), short locals off a const
- * reference to a temporary (0x118) */
+ * reference to a temporary (0x118). Round 33 (build/scratch/wld/v_fl*.py), under the same pragma with
+ * `float sc, a, b` and `int x = (short)(sc * a)`: the right size, 8 off; the constants' registers
+ * and the products' order are one interference apart (a ahead of b puts b's mtc1 and product first; b
+ * declared first gives the target's order with the two swapped, 9 off) -- no order of the three
+ * statements or the locals closes it */
 #pragma auto_inline off
 void CRipple::Flatten()
 {

@@ -7,6 +7,45 @@
 #include <vector>
 #include "zui_skb.h"
 
+/* the Korean letters (jamo), by name in alphabetical order, as the table of their names lists them
+ * (the names ours: the table's own, e.g. Kiyeok, SsangKiyeok, A_Hang) */
+enum JAMO {
+    JAMO_A,
+    JAMO_AE,
+    JAMO_CHIEUCH,
+    JAMO_CIEUC,
+    JAMO_E,
+    JAMO_EO,
+    JAMO_EU,
+    JAMO_HIEUH,
+    JAMO_I,
+    JAMO_IEUNG,
+    JAMO_KHIEUKH,
+    JAMO_KIYEOK,
+    JAMO_MIEUM,
+    JAMO_NIEUN,
+    JAMO_O,
+    JAMO_PHIEUPH,
+    JAMO_PIEUP,
+    JAMO_RIEUL,
+    JAMO_SIOS,
+    JAMO_SSANGCIEUC,
+    JAMO_SSANGKIYEOK,
+    JAMO_SSANGPIEUP,
+    JAMO_SSANGSIOS,
+    JAMO_SSANGTIKEUT,
+    JAMO_THIEUTH,
+    JAMO_TIKEUT,
+    JAMO_U,
+    JAMO_YA,
+    JAMO_YAE,
+    JAMO_YE,
+    JAMO_YEO,
+    JAMO_YO,
+    JAMO_YU,
+    JAMO_COUNT
+};
+
 /* SOCOM II's MSL vectors here test `this` once more in their destructors than include/vector's do
  * (the static rule list's 0x3940F0: four tests where a pointer vector's 0x38D5C0 has three; the
  * index vectors inside 0x390690's and the completions' elements: four) -- a stand-in level (ours) */
@@ -52,7 +91,7 @@ public:
 
 /* a jamo typed: composed with the jamo so far into pieces; whether it composed, and whether the
  * composition holds fewer jamo strings than pieces (zui_hangul.cpp's 0x390A30) */
-std::pair<bool, bool> SkbHangulType(CSkbPieces *pieces, char c);
+std::pair<bool, bool> SkbHangulType(CSkbPieces *pieces, JAMO c);
 /* the composition cleared (zui_hangul.cpp's 0x391350) */
 void SkbHangulClear();
 

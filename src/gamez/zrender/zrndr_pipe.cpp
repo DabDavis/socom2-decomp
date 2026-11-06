@@ -34,6 +34,7 @@
 #include "../zsys/zsys_public.h"
 #include "../zsys/zsys.h"
 #include "../znode/node_world.h"
+#include "../znode/int_shapes.h"
 #include "../zcamera/zcamera.h"
 #include "../zvid/zvid.h"
 
@@ -872,30 +873,8 @@ static inline void BoxCorners4(PNT4D *c, const CBBox *b)
  * the model-to-world matrix is CVisual::m_ModelToWorld, NodeSetup's, SOCOM 1's static) */
 extern unsigned int AppliedToNodeNum;
 
-/* a point set from three values (ours; int_shapes.cpp's PntSet) */
-static inline void CornerSet(CPnt3D &p, float x, float y, float z)
-{
-    p.x = x;
-    p.y = y;
-    p.z = z;
-}
-
-/* a box's eight corners: the bottom four, then the top four, each ring from the low x, high z
- * corner -- AN INLINE IN THE ORIGINAL (node_world.cpp's note: 0x2DCCD0 is int_shapes.cpp's
- * out-of-line copy of SOCOM 1's CBBox8::Build), defined here again with int_shapes.cpp's body */
-inline void zdb::GetBBoxCorners(CPnt3D *out, const CBBox *b)
-{
-    CornerSet(out[0], b->m_min.x, b->m_min.y, b->m_max.z);
-    out[1] = b->m_min;
-    CornerSet(out[2], b->m_max.x, b->m_min.y, b->m_min.z);
-    CornerSet(out[3], b->m_max.x, b->m_min.y, b->m_max.z);
-    CornerSet(out[4], b->m_min.x, b->m_max.y, b->m_max.z);
-    CornerSet(out[5], b->m_min.x, b->m_max.y, b->m_min.z);
-    CornerSet(out[6], b->m_max.x, b->m_max.y, b->m_min.z);
-    out[7] = b->m_max;
-}
-
-/* a box's eight corners as an object (SOCOM 1's class CBBox8; node_world.cpp's) */
+/* a box's eight corners as an object (SOCOM 1's class CBBox8; node_world.cpp's -- GetBBoxCorners
+ * int_shapes.h's inline, the engine core's round 26) */
 class CBBox8 {
 public:
     CBBox8(const CBBox *b) { zdb::GetBBoxCorners(m_pts, b); }
@@ -935,43 +914,57 @@ static inline bool LightTaken(zdb::CLight *light)
  * light walk's iterator ASSIGNED from begin() with the end in a local (the target keeps it in its
  * stack slot, copied in through $f0), the stamp test `stamp != field` taking its then-arm as the
  * store, the light's position a pointer local (the target's a1 ahead of the sphere test).
- * OPEN, 0x4D8 of 0x4D0 (d=57): (1) the box from the {p, p} pair -- the target copy-constructs the
- * box's first corner (ld / sd: the box itself the destination, as `CBBox b = pair` would) and reads
- * the box's first field once in the widening (its own address CSE'd), where PointBox through its
- * pointer copies field by field and MinOf's reference re-reads it (a direct ternary for that field
- * alone: d=69 against 74 before the light walk's fixes); an in-place pair assigned, a reference
- * PointBox, an inline returning the box (not inlined: 0x3D0), placement new: no better (the world
- * lane's round 32: `#pragma opt_common_subs off` in the body d=167, opt_propagation off d=109);
- * (2) &box.m_max (s1) set after SetCellBoundary's call where the target sets it ahead and passes it
- * (`move a2,s1`). The world pointer and the light took s4 / s3 (the target's s3 / s4) until the
- * round-32 `igreplay --permute` (movers world, light: the light numbered first) -- the light
- * declared at the top, its first definition still in the walk: d 57 -> 48 */
+ * OPEN, 6 instructions at the target's size (round 33; d=48 and 0x4D8 before): the box a class with
+ * SOCOM II's two-point constructor (CornerBox, below: zmath.h's CBBox has none), assigned from a
+ * temporary -- member-wise, so ld / sd at the aligned first corner and three FPRs at +12, as
+ * CRenderMap::Update's -- and widened through AddPoint (the first field's minimum a ternary in place,
+ * so it is read after the corner's x). Left: &box.m_max (s1) is hoisted to the walk's preheader,
+ * after SetCellBoundary's call, where the target sets it ahead and passes it (`move a2,s1`) -- not
+ * moved by a pointer or reference local, an accessor, a by-reference or pointer wrapper around the
+ * call, a char * offset or an index off the first corner (the by-value argument stays frame-relative).
+ * The world pointer and the light took s4 / s3 (the target's s3 / s4) until the round-32
+ * `igreplay --permute` (movers world, light: the light numbered first) -- the light declared at
+ * the top, its first definition still in the walk */
+/* a box with SOCOM II's two-point constructor (node_shadow.cpp's; zmath.h's CBBox has none) */
+class CornerBox {
+public:
+    CornerBox() {}
+    CornerBox(const CPnt3D &p, const CPnt3D &q) : m_min(p), m_max(q) {}
+
+    CPnt3D m_min;
+    CPnt3D m_max;
+};
+
+static inline void AddPoint(CornerBox &b, const CPnt3D &p)
+{
+    b.m_min.x = p.x <= b.m_min.x ? p.x : b.m_min.x;
+    b.m_min.y = MinOf(p.y, b.m_min.y);
+    b.m_min.z = MinOf(p.z, b.m_min.z);
+    b.m_max.x = MaxOf(p.x, b.m_max.x);
+    b.m_max.y = MaxOf(p.y, b.m_max.y);
+    b.m_max.z = MaxOf(p.z, b.m_max.z);
+}
+
 void BuildNodeLocalLightList(zdb::CNode *node)
 {
     zdb::CLight *light;
 
     zdb::CVisual::m_local_light_cnt = 0;
     AppliedToNodeNum++;
-    CBBox box;
+    CornerBox box;
 
     if (!Scales(zdb::CVisual::m_ModelToWorld)) {
         zdb::CVisual::m_ModelToWorld->Transform(&NodeBBox(node)->m_min, &box.m_min, 2);
-        func_002A94E0(&box);
+        func_002A94E0((CBBox *)&box);
     } else {
         CBBox8 c(node->GetBBox());
 
         zdb::CVisual::m_ModelToWorld->Transform(c.m_pts, 8);
         CPnt3D p = c.m_pts[0];
 
-        PointBox(&box, p, p);
-        for (int i = 1; i < 8; i++) {
-            box.m_min.x = MinOf(c.m_pts[i].x, box.m_min.x);
-            box.m_min.y = MinOf(c.m_pts[i].y, box.m_min.y);
-            box.m_min.z = MinOf(c.m_pts[i].z, box.m_min.z);
-            box.m_max.x = MaxOf(c.m_pts[i].x, box.m_max.x);
-            box.m_max.y = MaxOf(c.m_pts[i].y, box.m_max.y);
-            box.m_max.z = MaxOf(c.m_pts[i].z, box.m_max.z);
-        }
+        box = CornerBox(p, p);
+        for (int i = 1; i < 8; i++)
+            AddPoint(box, c.m_pts[i]);
     }
     zdb::CWorld *world = zdb::CWorld::m_world;
 
@@ -989,7 +982,7 @@ void BuildNodeLocalLightList(zdb::CNode *node)
                     if (light->m_active && !LightTaken(light) && !(light->m_region_mask & node->m_region_mask)) {
                         const CPnt3D *pos = &light->m_WorldPosition;
 
-                        if (SphereMeetsBox(pos, light->m_maxRange, &box)) {
+                        if (SphereMeetsBox(pos, light->m_maxRange, (CBBox *)&box)) {
                             CPnt3D local;
 
                             zdb::CVisual::m_WorldToModel.Transform(pos, &local, 1);

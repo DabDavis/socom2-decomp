@@ -15,6 +15,15 @@
 
 class CRdrFile;
 
+/* the entries' class insert (0x534630) takes the end as a pointer local: include/vector's device, the
+ * trait's comment there (the AI core round 37; 35 off, registers only, before it) */
+namespace std {
+template <>
+struct __insert_end_pointer<CVehicleRdrEntry> {
+    enum { value = 1 };
+};
+}
+
 _zrdr *zrdr_read(const char *name, const char *file, int line);
 int zrdr_free(CRdrFile *file);
 /* zrdr.h's readers (its _zrdr is zanim.h's, so the header itself stays out) */
