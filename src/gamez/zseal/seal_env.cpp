@@ -3361,8 +3361,9 @@ bool CZSealBody::SetLookDir(const CPnt3D *dir, float rate)
 
 /* the eyes turned by a pitch and a yaw, when an eye is drawn: the pitch's limit up or down, the yaw's
  * sideways, the goal kept within the limits off the current direction (OVL2 0x5AE4B0; SOCOM 1's, the
- * constants made globals and the yaw's two equal arms one; `dir` unread in both builds) */
-bool CZSealBody::SetEyeLookDir(float pitch, float yaw, const CPnt3D *dir, float rate)
+ * constants made globals and the yaw's two equal arms one; SOCOM 1's took the direction third and never
+ * read it, SOCOM II's has none -- its one caller, CLook::SetLookDir, sets no a1) */
+bool CZSealBody::SetEyeLookDir(float pitch, float yaw, float rate)
 {
     if (m_reyeball && m_leyeball &&
         ((m_reyeball->m_node && m_reyeball->m_node->Rendered(2)) ||
@@ -3480,6 +3481,98 @@ bool CZSealBody::CalcGoalDir(const CPnt3D *cur, const CPnt3D *dir, CPnt3D *goal,
     q.MakeYXRot(-clipped.x, clipped.y);
     q.Apply(&CPnt3D::unit_nz, goal, 1);
     return false;
+}
+
+extern "C" {
+/* the head's limits: up, down and sideways (OVL1 data 0x44C2C4-0x44C2CC), and the reach under which a
+ * look is taken whole -- the ground-plane length looking ahead or behind, and the cosine off -z (OVL1
+ * data 0x44C2FC-0x44C304; SOCOM 1's were constants) */
+extern float data_0044C2C4;
+extern float data_0044C2C8;
+extern float data_0044C2CC;
+extern float data_0044C2FC;
+extern float data_0044C300;
+extern float data_0044C304;
+}
+
+/* the head turned toward a direction (none: straight ahead, taken whole), nothing to do when it is the
+ * goal already: a direction far enough off the ground plane's ahead is taken whole, any other goes
+ * through CalcGoalDir within the head's limits from the current direction; the look set toward it at
+ * the rate and the eyes given its pitch and yaw, each as a fraction of its limit; whether it was taken
+ * whole (OVL2 0x5ADC70; SOCOM 1's, the constants made globals and the arc cosines guarded). Byte-exact
+ * (round 55, unwritten before): the reach's three globals read into locals ahead of the length (the
+ * target loads them before the sqrt, and the length takes the lowest register), the goal copy-constructed
+ * inside its if (all three loads first, stored through CalcGoalDir's fourth argument), the pitch and yaw
+ * declared bare after the head's limits (assigned where they are computed, the pitch then takes $f20
+ * below the limits' $f23-$f21; declared at their assignments it takes $f24, above the rate); SetEyeLookDir
+ * given no direction -- the target sets no a1 */
+bool CLook::SetLookDir(CZSealBody *seal, const CPnt3D *dir, float rate)
+{
+    bool r = false;
+
+    if (!dir) {
+        r = true;
+        dir = &CPnt3D::unit_nz;
+    }
+    if (*dir == m_goal_dir)
+        return true;
+    if (!r) {
+        bool ok = true;
+        float ahead = data_0044C2FC;
+        float behind = data_0044C300;
+        float cmin = data_0044C304;
+        float len = sqrtf(dir->x * dir->x + dir->z * dir->z);
+        float c;
+
+        if (len)
+            c = -dir->z / len;
+        else
+            c = 1.0f;
+        if (dir->z >= 0.0f) {
+            if (len < ahead)
+                ok = false;
+        } else if (len < behind)
+            ok = false;
+        if (c < cmin)
+            ok = false;
+        if (ok)
+            r = true;
+    }
+    float up = data_0044C2C4;
+    float down = data_0044C2C8;
+    float side = data_0044C2CC;
+    float pitch;
+    float yaw;
+
+    if (!r) {
+        CPnt3D goal = m_curr_dir;
+
+        r = seal->CalcGoalDir(&m_curr_dir, dir, &goal, up, down, -side, side);
+        dir = &goal;
+    }
+    SetDir(dir, rate);
+    float len = sqrtf(dir->x * dir->x + dir->z * dir->z);
+    float c;
+
+    if (len)
+        c = -dir->z / len;
+    else
+        c = 1.0f;
+    pitch = SafeAcos(len);
+    yaw = SafeAcos(c);
+
+    if (dir->y < 0.0f)
+        pitch = -pitch;
+    if (dir->x < 0.0f)
+        yaw = -yaw;
+    float p;
+
+    if (pitch >= 0.0f)
+        p = pitch / up;
+    else
+        p = -pitch / down;
+    seal->SetEyeLookDir(p, yaw / side, rate);
+    return r;
 }
 
 /* the blink stepped: while a look runs it is stepped, and a finished look down turns into the look
