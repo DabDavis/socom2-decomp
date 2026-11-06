@@ -1792,7 +1792,9 @@ static inline void PushOut(float &cur, float v)
  * is the target's word for word, but MW copies r into $f20 in the null test's delay slot where the
  * target copies the hit there and moves r just before its first use (`neg.s`) -- the float declared
  * first, second or third, a local copy after the test, the body an inline taking r by value, the test
- * as an if around the body or through a node local all compile the same */
+ * as an if around the body or through a node local all compile the same; so does the HUD's round-57
+ * second variable (round 52: a copy of the hit, of r, or both, defined before the null test and used
+ * by the test or the body -- build/scratch/seal-r52/v_6d0.py) */
 extern "C" bool func_0054A6D0(CZSealBody *seal, const CPnt3D *pos, zdb::IntersectStruct *hit, float r)
 {
     if (!hit->m_node)
