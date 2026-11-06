@@ -2065,6 +2065,26 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the kit and AI states, round 58** (FaceXZ 0x60CAD0 -- 36 off since round 16 -- and CAiDodge::Destroy 0x5FAD50
+  -- open since round 13 -- byte-exact by `#pragma opt_common_subs off` in the body; CAiSSurrender::Tick 0x6078A0 (0x464)
+  and CAiSHostage::Tick 0x601910 (0x538), both unwritten before, byte-exact; LookAt 0x60DCF0 from 0x154 to 0x140 of 0x138 by
+  FaceXZ's shape; the SEALs' SetEnabled and the states' Add_Message respelled, SAME-BY-ADDRESS):
+  - `#pragma opt_common_subs off` in a function body, reset after it, reproduces a target that re-reads a struct local's
+    fields or a global in each block and keeps frame addresses out of registers; what the target does share must then be
+    shared by hand -- a local, a chained assignment, an iterator local. A scan of every written open function in the lane's
+    units with CSE off matched only these two (build/scratch/kit-r58/kit/csescan.out): it is a lever for that shape, not a
+    general one;
+  - with CSE off a copy of a struct local's offset-0 field is still propagated into each use; a `(float)` cast on the read
+    stops it;
+  - `CPnt3D(x, y, z)` loads z, y, x then stores x, y, z -- an inline's arguments are bound right to left -- which is the
+    target's matrix-translation copy;
+  - when the left operand of a float sum is an inline containing a call, MW emits the operands the other way round however
+    the sum is written; assigning the inline's result to a float local first (`float t = r; m_time = t + timer;`) restores
+    the order;
+  - a local initialised through an inline accessor is numbered as a temporary at the inline's expansion, not after the
+    parameters -- a lever when a named local's saved register is too low (CAiSHostage::Tick's SEAL: `igreplay --want` placed
+    it past @6324);
+  - `mask &= ~m; return mask | bit;` puts the AND in the mask's register, `return (mask & ~m) | bit;` in `~m`'s.
 - **Tells from the engine core, round 25** (CEntity::PurgeEntities 0x29FCB0 -- 24 off since round 24 -- byte-exact;
   CGrid::NodeGetIntersect 0x2D2890, 0x560 and unwritten before, written at the target's size and OPEN at one instruction;
   0x2D3030 named NodeGetIntersectBatch from SOCOM 1's call sites; zAnimMessageTick's Add_Message and GetIntersect /
