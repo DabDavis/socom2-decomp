@@ -76,7 +76,11 @@ int libnetb_is_data_waiting(LIBNETB_RING *n, u_char type, u_char peek, u_char *w
  * v_init*.py, 14 shapes): `size -= 64`, a volatile view, byte-offset stores, a chained read-back, an
  * int subtraction, the success path first (nested or `&&`: the right size, d=28), an if-else chain
  * into a result -- every one keeps hdr's parameter pseudo in a0 (tools/ccdump.py: 84=a0, 85=a1,
- * the difference v1); the target's needs a second pseudo for hdr born in the last block. */
+ * the difference v1); the target's needs a second pseudo for hdr born in the last block. Round 41a
+ * (build/scratch/gcc/r41/v_init.py): that pseudo as an inline helper's parameter (static inline
+ * udp_hdr_init(hdr, size - 64), its size or an int, returned or not) is coalesced with hdr all the same
+ * (a0; size - 64 in v1), and the five stores are scheduled apart (used, end, size, capacity, valid;
+ * 0x3C, d=10). */
 int libnetb_udp_init_buffer(UDP_HDR *hdr, u_int size)
 {
 	if (hdr == 0)

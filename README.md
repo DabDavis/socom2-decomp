@@ -11642,7 +11642,34 @@ replacement and the split, each temporary named after its pass and the split one
 colourings are the same with the log on; negatives: `#pragma opt_common_subs off` and `opt_lifetimes off`
 make neither temporary, IGDUMP_NO_PASSES=1 (the breakpoints off) makes both but names neither; under master's
 igdump it fails at once (no `iro`). The eleven register-tool tests: 97 assertions, all pass. No tool that
-scores changed: scdiff.py, sccheck.py, scdecomp.py, tools/try.py and `include/` are master's.
+scores changed: scdiff.py, sccheck.py, scdecomp.py, tools/try.py and `include/` are master's. **automatch**
+over the lane's four ranges (`--max-size 0x400 --emit --no-prune --jobs 2 --obj-dir` the lane's private
+`src/lib` build): MAIN `18DB90 1C4CC0` 11 tried, 0 hits (2 m2c refusals, 9 misses), `1C6200 1E7000` 0 tried,
+OVL1 `1E7F58 1E8FD4` 0 tried, `243000 256FD0` 31 tried, 0 hits (2 build failures, 5 refusals, 24 misses): 42
+tried, none byte-exact (round 40a: 42, 0).
+
+**Round 41a** (2026-11-06, the tools first, then the opens): 1 row newly byte-exact (192 bytes) --
+**libnetb_get_valid_data_header_ptr 0x245A18** (`ovl1/libnetb_udp.c`, open since round 13a, 44 words then
+9 off): the ring's first unread datagram. The lane's `src/lib` 2,843 byte-exact of 2,973 scored, no
+regression. No rows named. What the opens showed:
+
+- **A store before a test lands in its branch's delay slot; a loop's entry registers follow the loop's
+  shape** (0x245A18, try.py's distance d=10 -> 0): the target's `beqz a2; sw zero,0(a1)` is `*phdr = 0`
+  written BEFORE the valid pointer's test (reorg fills the slot from above; written after it, the slot takes
+  the constant 1 instead), and its walk is an `if` around a `do`, the start copied from the position inside
+  it (`move t1,a3` after the first test, the ring's buffer moved to t2) -- a while loop, the start first,
+  gives one register fewer and the first test's slot another fill (`bne`, not `bnel`).
+- **The fast exp2's one conversion is a cross-jump** (0x251850, 17 shapes, d=33): the target converts once
+  because the two arms' common tail (`cvt.w.s; mfc1; addiu 1`, both in $f0 with fX copied there ahead of
+  the test) was cross-jumped after reload; here the jump optimiser hoists the then-arm's conversion above
+  the test (every arm order, the ternary, a goto, a float copy feeding both arms), and one conversion after
+  the merge through a float folds `(i + 1) + 126` and makes the test c.le.s (d=37).
+- **Open, unchanged**: libnetb_udp_init_buffer (an inline helper for the stores -- its parameter is
+  coalesced with hdr and the stores are scheduled apart, d=10 at 0x3C), the band function 0x251748 (10
+  shapes, every one 0x70: a nested ternary, an else-if chain, 161 through an int local or another type);
+  the rest as round 40a left them. MAIN's unwritten rows 0x1C6390-0x1C6930 are left to the boot ELF's lane:
+  0x1C6390 saves s0 with `sq` (Metrowerks'), 16-aligned like its two neighbours, which follow the boot's
+  main and loader.
 
 **Next**: the libraries by hand, module by module, as their vendors wrote them (each `src/lib`
 unit's header says what it covers); GCC's scheduler moves independent stores, and which source
