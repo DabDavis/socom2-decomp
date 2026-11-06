@@ -15,6 +15,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <algorithm>
+
 #include "zanim_menu.h"
 #include "../zsys/zsys.h"
 
@@ -30,6 +32,7 @@ public:
     bool RefreshGameList(C2D *list);          /* 0x3042B0 */
     void Disconnect();                        /* 0x3043E0 */
     bool IsActive();                          /* 0x3045B0: whether the LAN lobby is the one in use */
+    bool Connect();                           /* 0x304420 */
     bool JoinGame(const char *game);          /* 0x3039B0 */
 };
 extern "C" {
@@ -3186,6 +3189,103 @@ bool UIMediusInit(C2DAnimCmdHdr *hdr, float *dT)
     return true;
 }
 
+/* a persona of the lobby host's deleted, the one the argument's index picks; when it was the one in
+ * use, the first persona's details put in its place (the empty string for any it lacks), then the
+ * personas listed again (SOCOM II's) */
+bool UIDeleteMUISPersona(C2DAnimCmdHdr *hdr, float *dT)
+{
+    const char *arg = ArgText(ArgName(hdr));
+
+    if (arg) {
+        bool current = false;
+        const char *host = theUIVarManager.Add("LOBBY_HOST", 0, UIVAR_PERMANENT)->String();
+        int port = theUIVarManager.Add("LOBBY_PORT", 0, UIVAR_PERMANENT)->Int();
+        int index = atoi(arg);
+        const char *name = theUIVarManager.Add("PLAYERNAMEVAR", 0, UIVAR_SESSION)->String();
+
+        if (!strcasecmp(name, data_0044FC60.GetName(host, port, index)))
+            current = true;
+        data_0044FC60.Delete(host, port, index);
+        if (current) {
+            CUIVariable *var = theUIVarManager.Add("PLAYERNAMEVAR", 0, UIVAR_SESSION);
+            const char *s = data_0044FC60.GetName(host, port, 0);
+
+            if (s)
+                *var = s;
+            else
+                *var = "";
+            var = theUIVarManager.Add("PLAYERPASSWORD", 0, UIVAR_SESSION);
+            s = data_0044FC60.GetPassword(host, port, 0);
+            if (s)
+                *var = s;
+            else
+                *var = "";
+            var = theUIVarManager.Add("PLAYERHOMETOWN", 0, UIVAR_SESSION);
+            s = data_0044FC60.GetTown(host, port, 0);
+            if (s)
+                *var = s;
+            else
+                *var = "";
+            int gender = (char)data_0044FC60.GetGender(host, port, 0);
+
+            SetValveValue(CValve::Create("PLAYERGENDER", (VALVE_TYPE)3), gender);
+            int save = data_0044FC60.GetSavePassword(host, port, 0);
+
+            SetValveValue(CValve::Create("SecurePassword", (VALVE_TYPE)1), save);
+        }
+        UpdatePersonaList(host, port);
+    }
+    return true;
+}
+
+/* the lobby connected to: the LAN lobby with the LAN player's name, else the online lobby on the
+ * server the argument names, once its status says it is up -- its host and port kept, its first
+ * persona's details put in the UI variables and valves, the personas listed (SOCOM II's) */
+bool UILobbyConnect(C2DAnimCmdHdr *hdr, float *dT)
+{
+    if (data_0044FE10.IsActive()) {
+        theUIVarManager.Add("PLAYERNAMEVAR", 0, UIVAR_SESSION)->Set(
+            theUIVarManager.Add("LANPLAYERNAMEVAR", 0, (UIVAR_LONGEVITY)3));
+        bool ok = data_0044FE10.Connect();
+
+        return ok;
+    }
+    const char *server = ArgName(hdr);
+
+    server = !strcmp(server, "INPUT_STRING") ? ZAnim.m_CurAnim->m_arg_list->GetCharP(0) : server;
+    if (data_0044FC60.GetUniverseStatus(server)) {
+        const char *host = data_0044FC60.GetUniverseDNS(server);
+        int port = data_0044FC60.GetUniversePort(server);
+
+        *theUIVarManager.Add("LOBBY_HOST", 0, UIVAR_PERMANENT) = host;
+        theUIVarManager.Add("LOBBY_PORT", 0, UIVAR_PERMANENT)->SetInt(port);
+        CUIVariable *var = theUIVarManager.Add("PLAYERNAMEVAR", 0, UIVAR_SESSION);
+        const char *s = data_0044FC60.GetName(host, port, 0);
+
+        if (s)
+            *var = s;
+        var = theUIVarManager.Add("PLAYERPASSWORD", 0, UIVAR_SESSION);
+        s = data_0044FC60.GetPassword(host, port, 0);
+        if (s)
+            *var = s;
+        var = theUIVarManager.Add("PLAYERHOMETOWN", 0, UIVAR_SESSION);
+        s = data_0044FC60.GetTown(host, port, 0);
+        if (s)
+            *var = s;
+        int gender = (char)data_0044FC60.GetGender(host, port, 0);
+
+        SetValveValue(CValve::Create("PLAYERGENDER", (VALVE_TYPE)1), gender);
+        int save = data_0044FC60.GetSavePassword(host, port, 0);
+
+        SetValveValue(CValve::Create("SecurePassword", (VALVE_TYPE)1), save);
+        UpdatePersonaList(host, port);
+        bool ok = theLobby.Open(host, port);
+
+        return ok;
+    }
+    return false;
+}
+
 /* whether the persona the argument names exists on the lobby server (its host and port the UI
  * variables') */
 bool UIMUISPersonaExists(C2DAnimCmdHdr *hdr, float *dT)
@@ -3305,6 +3405,136 @@ bool UIUpdateAcctInfo(C2DAnimCmdHdr *hdr, float *dT)
                               gender->m_value ? ACCT_FEMALE : ACCT_MALE, secure);
     UpdatePersonaList(host->String(), port->Int());
     return true;
+}
+
+/* a persona of the lobby host's put in the UI variables (its name, password and home town) and the
+ * valves (its gender, whether its password is kept): the persona the argument names, by its index
+ * or by its name as the record says (SOCOM II's) */
+bool UIGetMUISPersonaInfo(C2DAnimCmdHdr *hdr, float *dT)
+{
+    UIPersonaCmd *cmd = (UIPersonaCmd *)hdr;
+    const char *arg = ArgText(ArgName(hdr));
+
+    if (arg) {
+        const char *host = theUIVarManager.Add("LOBBY_HOST", 0, UIVAR_PERMANENT)->String();
+        int port = theUIVarManager.Add("LOBBY_PORT", 0, UIVAR_PERMANENT)->Int();
+        int index;
+
+        if (cmd->m_by == 1) {
+            index = atoi(arg);
+        } else {
+            if (!strcmp(arg, "INPUT_STRING"))
+                arg = ZAnim.m_CurAnim->m_arg_list->GetCharP(0);
+            index = data_0044FC60.IndexOf(host, port, arg);
+        }
+        CUIVariable *var = theUIVarManager.Add("PLAYERNAMEVAR", 0, UIVAR_SESSION);
+        const char *s = data_0044FC60.GetName(host, port, index);
+
+        if (s)
+            *var = s;
+        var = theUIVarManager.Add("PLAYERPASSWORD", 0, UIVAR_SESSION);
+        s = data_0044FC60.GetPassword(host, port, index);
+        if (s)
+            *var = s;
+        var = theUIVarManager.Add("PLAYERHOMETOWN", 0, UIVAR_SESSION);
+        s = data_0044FC60.GetTown(host, port, index);
+        if (s)
+            *var = s;
+        int gender = (char)data_0044FC60.GetGender(host, port, index);
+
+        SetValveValue(CValve::Create("PLAYERGENDER", (VALVE_TYPE)3), gender);
+        int save = data_0044FC60.GetSavePassword(host, port, index);
+
+        SetValveValue(CValve::Create("SecurePassword", (VALVE_TYPE)1), save);
+    }
+    return true;
+}
+
+/* the player's equipment for the mission, kept with the persona on the lobby host: read into the
+ * selection valves, saved from them, tested for, cleared, or the whole profile file sent to the
+ * server or fetched from it (SOCOM II's) */
+bool UICharacterProfile(C2DAnimCmdHdr *hdr, float *dT)
+{
+    bool done = true;
+    char file[64];
+
+    sprintf(file, "WeapProfile_%d.dat", AccountInfo.AccountID);
+    const char *host = theUIVarManager.Add("LOBBY_HOST", 0, UIVAR_PERMANENT)->String();
+    int port = theUIVarManager.Add("LOBBY_PORT", 0, UIVAR_PERMANENT)->Int();
+    const char *name = theUIVarManager.Add("PLAYERNAMEVAR", 0, UIVAR_SESSION)->String();
+    AcctLoadout loadout;
+    CValve *primary = CValve::Create("primsel", (VALVE_TYPE)2);
+    CValve *secondary = CValve::Create("secsel", (VALVE_TYPE)2);
+    CValve *equip1 = CValve::Create("equip1sel", (VALVE_TYPE)2);
+    CValve *equip2 = CValve::Create("equip2sel", (VALVE_TYPE)2);
+    CValve *equip3 = CValve::Create("equip3sel", (VALVE_TYPE)2);
+    CValve *skin = CValve::Create("MpCharSet", (VALVE_TYPE)2);
+    int side;
+
+    if (func_002C31A0())
+        side = 0;
+    else if (func_002C3080())
+        side = 1;
+    else if (func_002C2FA0())
+        side = 2;
+
+    switch (((UIProfileCmd *)hdr)->m_op) {
+    case UIPROFILE_LOAD:
+        if (!data_0044FE10.IsActive()) {
+            AcctLoadout *l = data_0044FC60.GetLoadout(host, port, name, database, side);
+
+            if (l) {
+                SetValveValue(skin, l->m_skin);
+                SetValveValue(primary, l->m_primary);
+                SetValveValue(secondary, l->m_secondary);
+                SetValveValue(equip1, l->m_equip1);
+                SetValveValue(equip2, l->m_equip2);
+                SetValveValue(equip3, l->m_equip3);
+            }
+        }
+        break;
+    case UIPROFILE_SAVE:
+        if (!data_0044FE10.IsActive()) {
+            loadout.m_skin = skin->m_value;
+            loadout.m_primary = primary->m_value;
+            loadout.m_secondary = secondary->m_value;
+            loadout.m_equip1 = equip1->m_value;
+            loadout.m_equip2 = equip2->m_value;
+            loadout.m_equip3 = equip3->m_value;
+            data_0044FC60.SetLoadout(host, port, name, database, &loadout, side);
+        }
+        break;
+    case UIPROFILE_EXISTS:
+        if (data_0044FE10.IsActive())
+            done = false;
+        else
+            done = data_0044FC60.GetLoadout(host, port, name, database, side) != 0;
+        break;
+    case UIPROFILE_SAVE_TO_SERVER:
+        GetLobbySaveManager()->Save(file, 0, 0);
+        done = true;
+        break;
+    case UIPROFILE_WAIT_FOR_SERVER_SAVE:
+        done = !GetLobbySaveManager()->Pending();
+        break;
+    case UIPROFILE_LOAD_FROM_SERVER:
+        done = GetLobbySaveManager()->Fetch(file, 0, 0);
+        break;
+    case UIPROFILE_WAIT_FOR_LOAD:
+        done = GetLobbySaveManager()->Load(file, 0);
+        break;
+    case UIPROFILE_DELETE:
+        if (!data_0044FE10.IsActive()) {
+            AcctLoadout *l = data_0044FC60.GetLoadout(host, port, name, database, side);
+
+            if (l)
+                l->m_valid = 0;
+        }
+        break;
+    case UIPROFILE_NONE:
+        break;
+    }
+    return done;
 }
 
 /* GetMUISPersonaInfo's parser: the persona by INDEX or by NAME, the argument the one given (SOCOM
@@ -3436,6 +3666,52 @@ bool UIUpdateServerInfo(C2DAnimCmdHdr *hdr, float *dT)
 
     if (name)
         *name = data_0044FC60.GetUniverseName(valve->m_value);
+    return true;
+}
+
+/* the multiplayer missions one by one into the reader value: each that is multiplayer (of the
+ * kind 5 when respawns are allowed) and its name's newest, by number and name (std::for_each's
+ * function object; ours) */
+struct CAddAvailableMission {
+    CAddAvailableMission(CRdrEditor *rdr, bool respawn) : m_rdr(rdr), m_respawn(respawn) {}
+    bool Listed(MPMissionInfo *m) { return m->m_multiplayer && (m_respawn ? m->m_kind == 5 : true); }
+    bool Available(MPMissionInfo *m) { return Listed(m) && func_002C94F0(m); }
+    void operator()(MPMissionInfo *m)
+    {
+        if (Available(m)) {
+            m_rdr->push(0);
+            m_rdr->addintnode(m->m_number);
+            m_rdr->addstringnode(m->m_name.c_str());
+            m_rdr->pop();
+        }
+    }
+
+    CRdrEditor *m_rdr;
+    bool m_respawn;
+};
+
+/* the missions a multiplayer game can be set to, into the argument's UI variable: "Medley" (254)
+ * and "Random" (255) first unless respawns are allowed, then the missions (SOCOM II's) */
+bool UIGetAvailableMPMissions(C2DAnimCmdHdr *hdr, float *dT)
+{
+    CUIVariable *var = theUIVarManager.Add(ArgText(ArgName(hdr)), 0, UIVAR_SESSION);
+    bool respawn = CValve::Create("mp_allow_respawn", (VALVE_TYPE)1)->m_value == 1;
+    CRdrEditor rdr;
+
+    rdr.push(0);
+    if (!respawn) {
+        rdr.push(0);
+        rdr.addintnode(254);
+        rdr.addstringnode("Medley");
+        rdr.pop();
+        rdr.push(0);
+        rdr.addintnode(255);
+        rdr.addstringnode("Random");
+        rdr.pop();
+    }
+    std::for_each(data_00441650.begin(), data_00441650.end(), CAddAvailableMission(&rdr, respawn));
+    rdr.pop();
+    var->Set(&rdr);
     return true;
 }
 

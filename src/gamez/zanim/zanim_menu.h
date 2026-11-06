@@ -291,6 +291,7 @@ enum LOBBY_STATE {
 class CZOnlineLobby {
 public:
     int RemovePlayerFromClan(const char *name);
+    bool Open(const char *host, int port);   /* 0x2E0030 (the online lane's round 12) */
     bool OnCorrectClanTeam();
     bool GetClan();
     static void PasswordSecurity();
@@ -841,6 +842,37 @@ public:
     unsigned char _8[80 - 8];
 };
 
+/* a side's equipment saved for a mission (zNetMediusUniverse.cpp's AcctLoadout, 14 bytes: the
+ * character's skin, the five selections' values, whether it is set) */
+struct AcctLoadout {
+    AcctLoadout() { m_valid = 0; }
+
+    unsigned char m_skin;   // 0x0
+    unsigned short m_primary;   // 0x2
+    unsigned short m_secondary;   // 0x4
+    unsigned short m_equip1;   // 0x6
+    unsigned short m_equip2;   // 0x8
+    unsigned short m_equip3;   // 0xa
+    unsigned char m_valid;   // 0xc
+};
+
+/* the player's account (the online lane's AccountInfoType: only its id) */
+struct AccountInfoType {
+    int AccountID;   // 0x0
+};
+extern AccountInfoType AccountInfo;
+
+/* the lobby's save files on the server (zsav_lobby.h's CLobbySaveManager: only what CharacterProfile
+ * calls; zsav_lobby.cpp's) */
+class CLobbySaveManager {
+public:
+    bool Pending();                                     /* 0x33E7F0 */
+    bool Load(const char *name, int version);           /* 0x33E850 */
+    bool Fetch(const char *name, int a, int b);         /* 0x33EA10 */
+    bool Save(const char *name, int version, int flags);   /* 0x33EB70 */
+};
+CLobbySaveManager *GetLobbySaveManager();   /* 0x2AFBA0 */
+
 /* the account database (the online lane's CZUniversInformationServer::CAcctDB: what the handlers ask
  * of it -- the personas on a host, the patch level, the servers, the news) */
 /* an account's gender: INT-SIZED, as the online lane's (zNetMediusUniverse.cpp, round 14): the
@@ -855,6 +887,19 @@ public:
         void SetAcctInfo(const char *host, int port, const char *name, const char *password,
                          const char *hometown, ACCT_GENDER gender, bool secure);    /* 0x2FD0D0 */
         const char *GetName(const char *host, int port, int i);             /* 0x2FD510 */
+        int IndexOf(const char *host, int port, const char *name);          /* 0x2FB9F0 */
+        int GetUniverseStatus(const char *name);                            /* 0x2FD7E0 */
+        int GetUniversePort(const char *name);                              /* 0x2FD8B0 */
+        const char *GetUniverseDNS(const char *name);                       /* 0x2FD980 */
+        void Delete(const char *host, int port, int index);                 /* 0x2FBAE0 */
+        AcctLoadout *GetLoadout(const char *host, int port, const char *name, const char *mission,
+                                int side);                                  /* 0x2FB470 */
+        void SetLoadout(const char *host, int port, const char *name, const char *mission,
+                        AcctLoadout *loadout, int side);                    /* 0x2FB610 */
+        int GetGender(const char *host, int port, int index);               /* 0x2FD110 */
+        bool GetSavePassword(const char *host, int port, int index);        /* 0x2FD210 */
+        const char *GetTown(const char *host, int port, int index);         /* 0x2FD310 */
+        const char *GetPassword(const char *host, int port, int index);     /* 0x2FD410 */
         const char *GetPatchURL(const char *level);                         /* 0x2FD610 */
         bool VerifyPatchLevel(const char *level);                           /* 0x2FD6E0 */
         const char *GetUniverseDescription(unsigned int server);            /* 0x2FDA50 */
@@ -945,8 +990,12 @@ struct MPMissionInfo {
     std::string m_name;   // 0x0
     unsigned char m_multiplayer;   // 0xc
     int m_number;   // 0x10
+    unsigned char m_kind;   // 0x14: the game's kind (GetMultiValue's byte; 5 the one with respawns)
 };
 extern std::vector<MPMissionInfo *> data_00441650;
+/* whether a mission is its name's newest: the list's Find of its name gives it back (fts_missionlist's
+ * 0x2C94F0, GetRandom's pool test; not named yet) */
+bool func_002C94F0(MPMissionInfo *m);
 /* the same object as fts_missionlist.cpp's CMultiMissionList (a pointer vector of the missions,
  * OVL1 0x2C8840's this): only its random pick and the mission after a given one */
 class CMultiMissionList : public std::vector<MPMissionInfo *> {
@@ -987,6 +1036,8 @@ extern char data_003DF360[];                                              /* (a 
 
 /* SOCOM II's: whether the player is a terrorist, whether the player was banned */
 bool func_002C31A0();
+bool func_002C3080();
+bool func_002C2FA0();
 bool func_002C3550();
 }
 
