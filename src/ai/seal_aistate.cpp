@@ -1129,7 +1129,14 @@ inline int HideDist(const CAiMapLoc &a, const CAiMapLoc &b)
  * data; the distance an inline, whose x fields MW shares with operator!='s, as the target does).
  * OPEN, 0x130 against 0x138: the target leaves the m_dist test's delay slot empty (ours takes the
  * first compare of the distance) and pads the visibility block's label -- the early `return r`
- * forms, the test nested or negated and the compare in a materialised inline bool all tried */
+ * forms, the test nested or negated and the compare in a materialised inline bool all tried.
+ * Round 59 (the GCC front's round-43a pragma scan: propagation or dead assignments off, 10 -> 6):
+ * either pragma reaches 0x138 only by adding two `andi 0xffff` on the y fields, the slot still filled
+ * (24 differing) -- not the target's shape; MW's optimiser log (igdump --iro on a 3.0b52 copy, which
+ * compiles this row as b50 does) shows m_dist in one temporary and the x fields shared, nothing a
+ * source shape moves: the miss is the scheduler's slot fill (the pad follows the word). m_dist or the
+ * distance in a named local, the distance test nested with an early return, a materialised `far`
+ * flag: 0x130-0x140, 10-41 off */
 bool CAiHidePlanner::is_goal(CAiMap &map, const CAiMapLoc &a, const CAiMapLoc &b)
 {
     bool r = false;
@@ -1830,7 +1837,13 @@ extern "C" bool func_005F51A0(CSealCtrlAi *ai, int x, unsigned int flags)
  * or word or mask a local, a reference or pointer to the word, the index reused, the bare
  * expression in the caller, an index local in the caller). Round 43: SetBit's index by const
  * reference, by pointer, a reference to the word, and the bare expression reading the index twice
- * all stay at 4 (0x5CB450's seen-bit test is the same question) */
+ * all stay at 4 (0x5CB450's seen-bit test is the same question). Round 59, replayed on a 3.0b52
+ * copy of the unit (igreplay --want 37=a1,79=a2): the target's pair needs `i & 31` (the code
+ * generator's temporary v79) numbered before SetBit's index (v37: anywhere from 31.5 to 36.5, among
+ * the caller's own locals), or the index after it (79.5) -- a caller's `unsigned int bit` declared
+ * at the top in each of the four places, set in the case bare or from a block-local index, or
+ * through an inline taking it by reference, all stay at 4 (the single-use local is propagated back
+ * into the shift) */
 int CAiSPickup::Tick(CSealCtrlAi *ai)
 {
     STEP step;
