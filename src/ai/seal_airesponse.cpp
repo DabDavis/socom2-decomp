@@ -424,6 +424,159 @@ bool CAiSSurrender::CanPushAiState(AI_STATE state, CSealCtrlAi *ai)
     return ok;
 }
 
+/* a SEAL's animation set as the surrender binds one (seal_body.cpp's AnimSet: SOCOM 1's anim.cpp's
+ * class, as much as Find needs -- its iterator pieces called, OVL2 0x5788C0-0x578980, the SEALs'
+ * copies; GetName five inline levels high, as there) */
+class AnimSet {
+public:
+    std::string &Name0() { return m_name; }
+    std::string &Name1() { return Name0(); }
+    std::string &Name2() { return Name1(); }
+    std::string &Name3() { return Name2(); }
+    std::string &GetName() { return Name3(); }
+    static AnimSet *Find(const char *name)
+    {
+        std::vector<AnimSet *>::iterator i;
+
+        for (i = list.begin(); i != list.end(); i++)
+            if (!strcmp(name, (*i)->GetName().c_str()))
+                return *i;
+        return 0;
+    }
+
+    static std::vector<AnimSet *> list;
+
+    unsigned char _0[0x38];
+    std::string m_name;   // 0x38
+};
+
+extern "C" {
+/* the top blend of a SEAL's stack and a blend's flag test (seal.cpp's, OVL2 0x555170 / 0x5551A0) */
+void *func_00555170(void *stack);
+bool func_005551A0(unsigned short flags, unsigned short bits);
+/* the hands-up blend's callback (OVL2 0x608050, a tail call to 0x5A0040) */
+void func_00608050(void *body, void *userdata);
+/* whether a SEAL of a team is within a range (OVL2 0x569C60), the AI's mode 1 kept (0x570D90),
+ * a state of the AI's tested (0x5F51A0) and the SEAL's stance put back (0x5A5790) -- the SEAL
+ * lane's rows, unnamed */
+bool func_00569C60(CZSealBody *seal, float *range, unsigned int team, int a, int b);
+void func_00570D90(CSealCtrlAi *ai, int mode);
+bool func_005F51A0(CSealCtrlAi *ai, int a, int b);
+void func_005A5790(CZSealBody *seal, int stance, float t);
+/* an anim played in a state, and whether it still runs (seal_ai.cpp's 0x571150, 0x5712F0: below) */
+bool func_00571150(CSealCtrlAi *ai, short anim, SEAL_STATE stance);
+bool func_005712F0(CSealCtrlAi *ai, short anim);
+}
+
+/* the surrender's anims: the hands going up and the kneel (OVL1 data: AnimTypes statics, unnamed) */
+extern AnimType data_003DEF70, data_003DEF78;
+/* the wait before the surrender may end and the range a team-mate ends it from (OVL2 data 0x650E00,
+ * 0x650E08: 10.0 and 250.0, 8 bytes apart -- function-local statics in the original) and a flag the
+ * mission sets (OVL2 bss 0x66BBA0) */
+extern float data_00650E00, data_00650E08;
+extern unsigned char data_0066BBA0;
+
+/* a surrender played out: the AI stopped, unaware and weapon down, a random wait; the hands-up anim
+ * once nothing blends (its callback fixed); the kneel and the "No_weapon anim set" bound; the squad
+ * left -- and, for a player-team SEAL, team 17's joined --, the idle stance and restrainable; then,
+ * every ten seconds, done once no SEAL of its kept team is within 250 or the mission's flag is set
+ * (OVL2 0x6078A0; SOCOM 1's 0x2E7340 grown) */
+int CAiSSurrender::Tick(CSealCtrlAi *ai)
+{
+    unsigned int step = m_phase;
+    CZSealBody *seal = (CZSealBody *)ai->m_entity;
+
+    ai->m_aibit19 = false;
+    switch (step) {
+    case 0: {
+        ai->m_aibit16 = true;
+        ai->m_aibit17 = false;
+        StopThrottles__11CSealCtrlAiFb(ai, 0);
+        ai->SetAiMode((AI_MODE)1);
+        ai->SetAiAware(AIA_GENERAL, 0, -1.0f);
+        SetWeaponState__10CZSealBodyF12WEAPON_STATE(seal, 2);
+        Rfloat r;
+
+        r.m_min = 0.25f;
+        r.m_range = 0.25f;
+        float t = r;
+
+        m_time = t + ai->m_stateStack.m_timer;
+        step = 1;
+        m_58 = data_003DEF70;
+        m_5c = data_003DEF78;
+        break;
+    }
+    case 1:
+        if (!(ai->m_stateStack.m_timer < m_time)) {
+            CZBodyAnimBlend *b = (CZBodyAnimBlend *)func_00555170(&seal->m_blends);
+
+            if (!b || !func_005551A0(b->m_flags, 2))
+                step = 2;
+        }
+        break;
+    case 2:
+        if (func_00571150(ai, (short)m_58, (SEAL_STATE)0)) {
+            if (m_60) {
+                CZBodyAnimBlend *b = (CZBodyAnimBlend *)func_00555170(&seal->m_blends);
+
+                if (b) {
+                    b->m_callback.m_func = func_00608050;
+                    b->m_callback.m_tfrac = 0.65f;
+                    b->m_callback.m_userdata = 0;
+                }
+                m_60 = 0;
+            }
+            step = 3;
+        }
+        break;
+    case 3:
+        if (!func_005712F0(ai, (short)m_58)) {
+            AnimSet *set = AnimSet::Find("No_weapon anim set");
+
+            if (set) {
+                seal->BindAnimSet(set, false);
+                seal->m_530 = set;
+            }
+            step = 4;
+        }
+        break;
+    case 4:
+        m_unit = ai->m_unit;
+        if (m_unit)
+            CSealUnit::SealLeaveUnit(seal);
+        if (seal->m_team & 0x20000) {
+            CSealUnit *unit = CSealUnit::GetUnitByTeam(17);
+
+            if (unit)
+                SealJoinUnit__9CSealUnitFP10CZSealBody(unit, seal);
+        }
+        RefreshTeamValves__8CMissionFv(&theMission);
+        seal->SetStanceIdle((AnimType)m_5c);
+        step = 5;
+        seal->m_restrainable = true;
+        m_time = 0.0f;
+        break;
+    case 5:
+        m_time += m_dT;
+        if (!(m_time < data_00650E00)) {
+            float range = data_00650E08;
+
+            if (!func_00569C60(seal, &range, m_team, 0, 0) || data_0066BBA0) {
+                ai->PopAiState((AI_STATE)6);
+                func_00570D90(ai, 1);
+                if (!func_005F51A0(ai, 0, 2))
+                    func_005A5790(seal, 3, 0.0f);
+                return 0;
+            }
+            m_time = 0.0f;
+        }
+        break;
+    }
+    UpdatePhase(step);
+    return Result();
+}
+
 /* a target state: the AI's mode 4 on entry, its goal cleared on the way out (OVL2 0x604C60;
  * SOCOM 1's) */
 void CAiSTarget::OnSignal(SIGNAL sig, CSealCtrlAi *ai)

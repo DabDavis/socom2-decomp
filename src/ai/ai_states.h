@@ -932,6 +932,8 @@ class CAiSSurrender : public CAiState {
 public:
     CAiSSurrender() : CAiState(AI_STATE_SURRENDER) {}
     virtual void OnSignal(SIGNAL sig, CSealCtrlAi *ai);
+    /* the surrender played out (0x6078A0) */
+    virtual int Tick(CSealCtrlAi *ai);
     virtual bool CanPushAiState(AI_STATE state, CSealCtrlAi *ai);
     virtual bool CanAttack() const { return false; }
     virtual const char *GetScriptResponse() const { return "on_surrender"; }
