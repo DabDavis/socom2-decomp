@@ -1683,20 +1683,9 @@ void __deque_imp<T, Allocator>::pop_front()
 
 /* the back dropped; whole blocks behind the end freed, the slot after the last block kept null
  * (the rdr lane's 0x3349C0: the buffer popped, its new back deleted and cleared).
- * OPEN, 8 bytes short (0xCC against 0xD4): the target lays the capacity ternary's zero arm out
- * first and jumps from it to the join (start_'s load in both arms); this form, an inline
- * accessor, an if/return and `n == 0 ? 0 : ...` all if-convert the zero into beqz's delay slot.
- * The MSL headers' round 4 (probe build/m4/p/dq.cpp): the multiply after the ternary, `(size() ?
- * size() - 1 : 0) * buf_size`, keeps the zero arm a block of its own -- the right size, five
- * instructions off: the arms come in the other order (the nonzero one falls through) and the
- * zero is built in v1 before the multiply where the target puts it straight into the product's
- * a1; `== 0`, `!`, empty(), an unsigned zero, a for/break test and the multiply written first
- * change nothing. A LEAD from the MSL headers round 14: push_back's same two block counts lay their
- * zero arm out first only written `size() == 0 ? 0 : (size() - 1) * buf_size` (no hand-written unit
- * emits pop_back to test it on: 0x3349C0 is a draft's) MEASURED (round 39,
- * build/p39/vx.py, zrdr_edit.cpp's copy): that spelling is beqz with the zero in its delay slot where the target's bnez jumps over
- * `b join` (start_'s load copied into that b's delay slot): 18 off, as with a helper returning the count or the test's operands
- * swapped; written with a break, 41 */
+ * Byte-exact since the MSL headers' round 40 (build/p40/vpop.py, untracked; open from the rdr lane to round 39): the capacity's test written `size() != 0`
+ * (or `> 0`, `>= 1`) lays the zero arm out first, the target's bnez over `b join` with start_'s load copied into its delay slot. Written `size() ? ...`,
+ * `== 0`, `!`, `<= 0`, `< 1`, a bool or a cast, the zero goes into beqz's delay slot (18 off, 8 short); through `(n ? n - 1 : 0) * buf_size` 5 off. */
 template <class T, class Allocator>
 void __deque_imp<T, Allocator>::pop_back()
 {
@@ -1705,7 +1694,7 @@ void __deque_imp<T, Allocator>::pop_back()
         return;
     }
     --this->size_;
-    while ((this->buf_.second_.size() ? (this->buf_.second_.size() - 1) * buf_size : 0) - (this->start_ + this->size_) >=
+    while ((this->buf_.second_.size() != 0 ? (this->buf_.second_.size() - 1) * buf_size : 0) - (this->start_ + this->size_) >=
            2 * buf_size) {
         this->buf_.second_.pop_back();
         T *&b = this->buf_.second_.back();
