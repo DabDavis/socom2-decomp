@@ -8,11 +8,14 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
+#define M2C_BITWISE(type, expr) ({ union { __typeof__(expr) _f; type _t; } _u; _u._f = (expr); _u._t; })
+#define M2C_SYNC() __asm__ __volatile__ ("sync.l")
+typedef int s128 __attribute__((mode(TI))); typedef unsigned int u128 __attribute__((mode(TI)));
 M2C_UNK tosBaseBlockConstruct(s32 arg0, s32 arg1, s32 arg2, s32 arg3, s32 arg4, s32 arg5, s32 arg6, s32 arg7);
+extern M2C_UNK ControlNBestDynProgProcess;
 extern M2C_UNK InitNBestDynProgProcess;
 extern M2C_UNK NBestDynProgProcess;
-extern M2C_UNK func_004EFF68;
 
 void ConstructNBestDynProg(s32 arg0, s32 arg1) {
-    tosBaseBlockConstruct(arg0, arg1 & 0xFF, 2, 0, (s32) &NBestDynProgProcess, (s32) &InitNBestDynProgProcess, (s32) &func_004EFF68, 0x124);
+    tosBaseBlockConstruct(arg0, arg1 & 0xFF, 2, 0, (s32) &NBestDynProgProcess, (s32) &InitNBestDynProgProcess, (s32) &ControlNBestDynProgProcess, 0x124);
 }
