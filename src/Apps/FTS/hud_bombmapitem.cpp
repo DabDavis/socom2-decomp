@@ -1,6 +1,6 @@
 /* hud_bombmapitem.cpp -- the multiplayer bomb on the HUD's map (OVL1 0x20CF40-0x20D38F): SOCOM 1's
  * unit (its DWARF names it, Z:\dev\Apps\FTS\hud_bombmapitem.cpp): the implicit destructor, Draw,
- * Tick and the constructor in SOCOM 1's order (Tick OPEN). Defined in reverse of their image order
+ * Tick and the constructor in SOCOM 1's order. Defined in reverse of their image order
  * (-inline deferred). */
 
 #include "hud_bombmapitem.h"
@@ -70,18 +70,7 @@ CZMPBombMapItem::CZMPBombMapItem(zdb::CNode *node)
 /* the bomb shown where its node is until the network game's bomb state says it went off (or is
  * gone: true, the map drops it), then a burst grown in place, true once past 154 (SOCOM 1's Tick;
  * the game-type test SOCOM II's call).
- * OPEN, 2 instructions (claymore's Tick's: the target sums the grown size into $f0, stores it and
- * copies it to $f23 for the four CalcDrawPos calls, where MW sums straight into $f23 -- SOCOM 1's
- * own claymore Tick sums into $f23 as ours does). Round 48 tried, none moving it: `float size =
- * (m_size += k)`, a chained `size = m_size = m_size + k`, the sum first then stored, size declared
- * first / at function scope for both branches, the growth in a local, a sum local copied, a
- * reference to m_size, an inline grower returning the new size, the store after the copy. Round 56:
- * the 53 are one instruction's shift -- the target's `mov.s $f23,$f0` after the store reads as the
- * back end forwarding a RELOAD of m_size after allocation (an IR copy would have been coalesced);
- * every spelling of the reload tried is forwarded by the front end first: `m_size = m_size + k`,
- * through a pointer to the field (store, load or both), through a copy of `this`, a raw-address
- * access, size assigned before the store (chained either way), a shared drawing inline taking the
- * size by value */
+ * Byte-exact since round 65: the grown size read back through a reference local, as CZClaymoreMapItem::Tick */
 bool CZMPBombMapItem::Tick(CZNewHudMap *map, float dT)
 {
     if (!m_wasdetonated) {
@@ -99,7 +88,7 @@ bool CZMPBombMapItem::Tick(CZNewHudMap *map, float dT)
         CPnt3D pos = NodePos(m_node);
 
         map->m_matrix.Transform(&pos, 1);
-        float size = m_size;
+        const float &size = m_size;
 
         m_graphic.Load(pos.x - m_size, map->CalcDrawPos(pos.y - size), pos.x - size,
                        map->CalcDrawPos(pos.y + size), pos.x + size, map->CalcDrawPos(pos.y + size),

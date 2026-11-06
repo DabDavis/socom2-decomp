@@ -27,17 +27,9 @@ CZClaymoreMapItem::CZClaymoreMapItem(CZSealBody *owner, CZProjectile *projectile
 
 /* the claymore shown to its owner's team while it waits, where the map puts its projectile, and
  * blown up in place once detonated (a growing burst; true once it has grown past 30).
- * OPEN (2 instructions, the same in CZMPBombMapItem::Tick): the target sums the grown size into
- * $f0, stores it and copies it to $f23 for the four CalcDrawPos calls; MW sums straight into $f23
- * for every form tried -- the compound assignment, a separate sum and store, the size declared
- * outside the branch, an inline helper taking it by value -- and the one instruction it saves
- * moves the epilogue's alignment nop. Round 62: mweppc's InterferenceGraph.c coalesces a copy only
- * when one side is a hard register or BOTH are temporaries -- a copy into a NAMED local stays a
- * move -- so the target's `mov.s $f23,$f0` is a named size copied from a temporary sum (the IRO
- * keeps `m_size += 10 * dT; size = m_size;` as written: the back end makes the sum and the size);
- * tried, all 53: `m_size = m_size + k`, the sum written twice (a CSE temporary: 56), the growth in
- * the size first, `m_size = size = ...`, `size = (m_size += k)`, a pointer or reference to m_size,
- * size shared by both branches (and pos: 81) */
+ * Byte-exact since round 65 (2 instructions off since round 6): the grown size read back through a REFERENCE LOCAL (`const
+ * float &size = m_size`, its reads forwarded by the back end to the sum's register: `add.s $f0`, store, `mov.s $f23,$f0`) --
+ * as a float local MW sums straight into its register. The same in CZMPBombMapItem::Tick */
 bool CZClaymoreMapItem::Tick(CZNewHudMap *map, float dT)
 {
     CZSealBody *viewer = map->m_viewer;
@@ -60,7 +52,7 @@ bool CZClaymoreMapItem::Tick(CZNewHudMap *map, float dT)
         CPnt3D pos = m_projectile->m_frameendpos;
 
         map->m_matrix.Transform(&pos, 1);
-        float size = m_size;
+        const float &size = m_size;
 
         m_graphic.Load(pos.x - m_size, map->CalcDrawPos(pos.y - size), pos.x - size,
                        map->CalcDrawPos(pos.y + size), pos.x + size, map->CalcDrawPos(pos.y + size),
