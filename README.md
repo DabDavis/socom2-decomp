@@ -2065,6 +2065,31 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the game states, round 47** (GameSignalPacketHandler 0x2B9150 byte-exact and named -- SOCOM 1's, unwritten
+  before; the teamwork rating 0x1F27C0 and UpdateLocalSeal 0x2BD640 written, OPEN at 0x678 of 0x680 and 2; two respells,
+  SAME-BY-ADDRESS -- ZAnim.m_network_activation_callback for data_00414BFC, `new CZNetVoice` for func_003102E0):
+  - a byte read into an `unsigned char` local is a promoted temporary numbered after every named local (s1 where the
+    target's s4 wanted the local's place) -- an `int` local keeps the named place (`igreplay --want` found the place,
+    the type gave it); `p->a > 1` is the fused `slti at; bnez at`, `p->a >= 2` materialises into v0;
+  - a counter of the inline index parameter's own type (`unsigned int i` into `Item(unsigned int)`) is strength-reduced
+    to an offset stepped by 8; an `int` counter keeps `sll` each pass (the chat handler's walk alike); a PNT3D's
+    aggregate initialiser block-copies from .rodata (ld/lwc1), three member stores give lui/sw;
+  - int locals set from a bool accessor sum without narrowing again, bool locals take an `andi 0xff` each at the sum; an
+    if-clamp's join takes an alignment nop where a ternary clamp's does not (the teamwork's lag and balance clamps
+    ternaries, its penalty's and health's ifs); `&it.GetSeal()` tested in place is the target's direct test, through
+    IsSeal() the bool materialises;
+  - THE TEAMWORK'S WALL: both callers' inlined CEntityItr::Advance (0x1F27C0, SetRoundStatUiVars 0x1F21B0) test the SEAL
+    materialised (`sltu; xori 1; bnez`) while the out-of-line Advance 0x1F1F30 tests it direct -- no spelling gives
+    both (`== 0`, `!`, `!(p != 0)`, a cast, `!IsSeal()`, `IsSeal() == false`, IsSeal() as `!= 0` / `!!` / ternary /
+    if-else, More() in the condition, an inline Next() with each, `++it` over Advance): a different shape of the
+    callers' walk is the lead; the iterator temporaries' slots follow it (Advance's end() temporaries above the loop
+    test's here, below them in the target, for, while and inline increments alike);
+  - `if (!a || b && !c) return;` at a function's head gives the target's shared `b end` block (separate early
+    returns or nested ifs branch to the epilogue directly); a float assigned to an `unsigned short` field converts
+    unsigned (the 2^31 test) -- `(short)` gives the target's cvt.w.s; `p.f = v = x` stores an address-taken int and the
+    field from one register (two statements reload it); a float temporary assigned after a member's clear moves its
+    conversion after the clear (UpdateLocalSeal, 12 -> 2: left, an `if (!id) id = ...;` then-arm the target ends with a
+    branch to its join -- every ternary spelling sinks the store into both arms).
 - **Tells from the weapons, round 33** (CVisual::VuUpdate at last -- 0xCC4, unwritten for 32 rounds -- with GetVid's copy
   and three helper copies; CVisual::ApplyDecal and CMesh::ApplyDecal written; hookupVisuals / hookupMesh and node_index,
   SOCOM 1's, named):
