@@ -92,7 +92,7 @@ public:
     void Init(int count);
     void Clear(bool all);
     void Uninit();
-    int Add(bool tick, CVisual *visual, CNode *node, int id, float u, float v);
+    int Add(float u, float v, bool tick, CVisual *visual, CNode *node, int id);
     void SetSpeed(int id, float u, float v);
     void Scroll(int id, float du, float dv, bool head, bool tail);
     CTextureFX *Find(CVisual *visual);
