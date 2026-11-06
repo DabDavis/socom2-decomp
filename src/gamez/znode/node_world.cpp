@@ -93,6 +93,56 @@ static inline void SetAmbient(CWorld *w, float r, float g, float b, float a)
     w->m_gLightColUpdate = 1;
 }
 
+/* SOCOM 1's: the children deleted, the landmarks and shadow casters, the camera, the intersection
+ * and the shadow texture let go of, the assets cleared, every character set deleted, the node
+ * universe gone, the world no longer current. OPEN, 0x49C of 0x50C (the world lane's round 33,
+ * unwritten before; every statement, and each member's destructor, in the target's order): (1) THE
+ * LEVEL, as Wipeout / RemoveEmptyTextureAssetCharacters: `delete t` inlines the set's destructor and
+ * its nodes' vector whole in the target (four this-tests, the block freed), and `delete NodeUniverse`
+ * five tests, where include/vector's pointer vector makes each a call at level 5; `#pragma
+ * inline_depth(6)` at the unit's end gives those but loses GarbageCollect and
+ * AddTextureAssetCharacter, which call the same destructors out of line (README "Level 6, or 8?");
+ * (2) the registers follow from it: the target keeps this in s1, the flag in s0, the walks in s2-s4 */
+CWorld::~CWorld()
+{
+    DeleteChildren();
+    for (CNodeVector::iterator i = m_landmarks.begin(); i != m_landmarks.end(); ++i)
+        CNode::Delete(*i);
+    m_landmarks.clear();
+    for (std::vector<CShadowCaster *>::iterator c = m_shadow_casters.begin(); c != m_shadow_casters.end(); ++c)
+        delete *c;
+    m_shadow_casters.clear();
+    delete m_camera;
+    m_camera = 0;
+    delete m_diInt;
+    m_diInt = 0;
+    m_shadowTexH->SetTexture(0);
+    CTexHandle::Destroy(m_shadowTexH);
+    delete m_shadowTex[0];
+    EmptyAssetRecycleBin();
+    CAssetMgr::m_assets.Clear();
+    m_TextureCharacterCommon.clear();
+    m_TextureDecals.clear();
+    while (m_TextureAssetCharacters.size()) {
+        CTextureAssetCharacters *t = m_TextureAssetCharacters.front();
+
+        m_TextureAssetCharacters.pop_front();
+        delete t;
+    }
+    if (NodeUniverse) {
+        NodeUniverse->clear();
+        delete NodeUniverse;
+        NodeUniverse = 0;
+    }
+    m_world = 0;
+    if (m_default_soiltype_name)
+        _free(m_default_soiltype_name, 0, 0);
+    m_default_soiltype_name = 0;
+    if (m_foliage_sound)
+        _free(m_foliage_sound, 0, 0);
+    m_foliage_sound = 0;
+}
+
 /* SOCOM 1's (0x230030): the world made current, its scale set, its intersection made, a light from
  * above and the ambient set, the lens effects' colours, one shadow texture loaded at the textures'
  * base and shared by the four (SOCOM 1 loaded four), the shadow's direction and the defaults */
