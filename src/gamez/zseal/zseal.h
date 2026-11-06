@@ -167,6 +167,10 @@ public:
     static short BuddyCarryStand;   // OVL1 0x3DEE68 (SOCOM 1's 0x47529C: PickupBuddy's)
     static short BuddyCarriedStand;   // OVL1 0x3DEE78 (SOCOM 1's 0x4752A4)
     static short BuddyCarryBody;   // OVL1 0x3DEE80
+    /* (SOCOM 1's BuddyCarryWalk and BuddyCarryStep, four and ten after BuddyCarryStand there, as here 8
+     * bytes apart: InStateCarrying 0x583E70 pushes them where SOCOM 1's does) */
+    static short BuddyCarryWalk;   // OVL1 0x3DEE88 (SOCOM 1's 0x4752AC)
+    static short BuddyCarryStep;   // OVL1 0x3DEEB8 (SOCOM 1's 0x4752C4)
     /* (SOCOM 1's BuddyCarriedWalk and BuddyCarriedStep, six and twelve after BuddyCarryStand there,
      * as here 8 bytes apart: InStateCarried 0x583AF0 pushes them where SOCOM 1's does) */
     static short BuddyCarriedWalk;   // OVL1 0x3DEE98 (SOCOM 1's 0x4752B4)

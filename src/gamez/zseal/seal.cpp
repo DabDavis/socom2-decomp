@@ -2517,37 +2517,13 @@ static inline void PushOut(float &cur, float v, bool &moved)
  * (0x5B3890 asked with 1 when either moved), the weapon put in state 2 and the controller's weapon
  * timer restarted and run out (0x543F70's), the kept wall hit cleared when the push is under 0.1 or
  * none is cut off; false with no node hit (OVL2 0x54A3D0, new in SOCOM II; the name unknown).
- * OPEN, 1 instruction (round 51, from 16): the step's product's operands -- the target multiplies
- * `mul.s $f1,$f1,$f2`, the step (f1) by the depth (f2), ours the depth by the step. igreplay's FPR record
- * (round 51): the target's registers need the depth numbered AFTER the push's three loads and 0.6 after
- * the step -- the depth an unnamed temporary of the scale's expression, evaluated first: `(1.3f - t) * r
- * * 0.6f` (MW swaps the literal 0.6 to the left at the emit, not the step) gives every register and the
- * delay slot's sub.s. Any shape evaluating the step first (`r * (1.3f - t)`, a literal 10.0f, an inline
- * Mul(r, depth) whose arguments go right to left) or the depth named (anywhere, even defined after the
- * push) loses the delay slot (0x308); `0.6f * ((1.3f - t) * r)`, `+r`, `-t + 1.3f`, `1.3f + -t`, a named
- * product and an assigned step all give this one (build/scratch/seal-r51/v_3d*.py). Round 52: `r` is
- * no variable at all in MW's FPR colouring (the front end folds it; `-r` stays a neg.s), so the
- * step-first shapes -- `r * (1.3f - t)`, `(1.3f - t) * 10.0f` (the literal moved left), a const `r` --
- * give the target's operand ORDER but a front-end temporary for the 10.0 numbered before the depth:
- * the depth then takes $f1 and the sub.s cannot go in the delay slot (0x308). igreplay --movers on that
- * dump: the step's node must sit at 93.5-96.5, among the code generator's temporaries, after the
- * depth's -- a 10.0 materialised late, as the propagated `r` of the current shape is; `lim` a variable
- * too, `-(t - 1.3f)`, `/ (1.0f / 0.6f)` and `(r * 0.6f)` are worse (build/scratch/seal-r52/v_3d*.py).
- * Round 53, the code generator's order read in the PCode (build/scratch/seal-r53/v_3d*.py, igshow.py):
- * MW numbers a product's operands in evaluation order and evaluates the HEAVIER subtree first, a tie
- * left first, and emits a commutative product light operand first -- `heavy * r` and `r * heavy` give
- * the same PCode, the 10.0 numbered after the heavy side and emitted first; a literal is put on the left
- * before that (so `depth * 10.0f`, `10.0f * depth`, `r * depth` all number the 10.0 first: a tie). The
- * target -- 10.0 numbered after the depth and emitted first -- is that order with the depth HEAVIER than
- * the step: some shape where `1.3 - t` weighs more than a lone constant (the CSE'd 1.3 and a register t
- * weigh as one); the inlines `r * Under(1.3f, t)` / `UnderT(t)` / by-reference keep the tie (0x308).
- * Round 54 (build/scratch/seal-r54/v_3d*.py): making the depth heavier does flip the EMISSION --
- * `(t, 1.3f - t) * r` (a comma with a dead variable left) and `lim - t` with a variable lim used only
- * there both give the target's `mul.s step, depth` -- but they number the step before the depth too
- * (igreplay --target on the comma's dump: v59 the step, v61 the depth, the target needs v61 below
- * v59), and lose the delay slot (0x308): in every shape the first-emitted operand is the first
- * numbered, where the target emits the step first yet numbers it after; `/ 1.0f`, a copy of t, `+ -t`,
- * `r * 1.0f`, `register`/bare/early-declared r change nothing (1 off) */
+ * Byte-exact (round 55; OPEN at one instruction since round 51): the step's product is `r * (float)(1.3f
+ * - t) * 0.6f` -- the target multiplies the step first (`mul.s $f1,$f1,$f2`) yet numbers the depth
+ * first. MW numbers a binary operator's heavier operand first and emits the lighter first; a (float)
+ * cast of a float is a node of its own that costs no code, so the cast makes the depth the heavier
+ * without the named depth's or the comma's extra copy (`r * (1.3f - (float)t)` matches too). Rounds
+ * 51-54 tried the depth named, `(t, 1.3f - t) * r`, a variable limit, inlines, `-t + 1.3f`, `+r`, `/ 1.0f`
+ * and every operand order (build/scratch/seal-r51..r54/v_3d*.py, seal-r55/v_3d2.py) */
 extern "C" bool func_0054A3D0(CZSealBody *seal, const CPnt3D *pos, zdb::IntersectStruct *hit)
 {
     if (!hit->m_node)
@@ -2568,7 +2544,7 @@ extern "C" bool func_0054A3D0(CZSealBody *seal, const CPnt3D *pos, zdb::Intersec
         CPnt3D push = hit->m_norm;
         bool moved;
 
-        push.Scale((1.3f - t) * r * 0.6f, &push);
+        push.Scale(r * (float)(1.3f - t) * 0.6f, &push);
         moved = false;
         PushOut(seal->m_f44.x, push.x, moved);
         PushOut(seal->m_f44.z, push.z, moved);

@@ -2335,13 +2335,73 @@ CZBodyAnimBlend *CZSealBody::InStateClimbLadder()
  * push's pops are ClearStack(2, true) inlined -- the carry keeps two blends, as SOCOM 1's (`sltiu at,v1,3`)
  * -- the first arm's top ClearStack's result: its early return for the twelve spent keeps the inline's
  * blend in v0 (one result variable for both arms makes MW keep it in top's saved register, a fourth).
- * OPEN, 2 instructions (round 55, unwritten before): the two playbacks' product -- the target loads the
- * move throttle (a stack copy: UpdateQuadrant takes its address) into $f0 and the script's rate into
- * $f1 and multiplies x first, `mul.s $f12,$f0,$f1`; `x * rep->m_anim->m_1c` takes the registers the
- * other way round (6 off), `rep->m_anim->m_1c * x` gives the registers but multiplies the rate first (as
- * here, 2 off); through a by-value or const-reference inline, a local anim, a local rate, `+x`, a cast,
- * a product temporary or `r *= m` all give the 6 */
+ * Byte-exact (round 55, unwritten before): the two playbacks' product is `x * (float)rep->m_anim->m_1c`
+ * -- the target loads the move throttle (a stack copy: UpdateQuadrant takes its address) into $f0, the
+ * script's rate into $f1, and multiplies x first. MW numbers a product's heavier operand first and
+ * emits the lighter first: the stack copy weighs as much as the two loads (a tie, left first), and the
+ * cast -- a node of its own, no code -- makes the rate the heavier. `x * rep->m_anim->m_1c` takes the
+ * registers the other way round (6 off), `rep->m_anim->m_1c * x` multiplies the rate first (2); a
+ * by-value or const-reference inline, a local anim or rate, `+x`, `*&x`, a pointer cast alone, a product
+ * temporary and `r *= m` all give the 6 */
 extern "C" float data_003F3420;
+
+/* carrying: InStateCarried's, the carry's step pushed in state 9 with the foot kept (32 for a foot in
+ * 17-47, else 2) and its walk, the first arm the top taken again after the pops and only made whole,
+ * both flags cleared (OVL2 0x583E70: SOCOM 1's InStateCarrying, the same body, its throttles read at
+ * 0x240, 0x244 and 0x23C). Byte-exact (round 55, unwritten before): InStateCarried's product (below);
+ * the foot asked of the first top through a second variable (the target passes the call's v0,
+ * `top->ThisFoot()` passes top's s1) */
+CZBodyAnimBlend *CZSealBody::InStateCarrying()
+{
+    float x = m_240;
+    float z = m_244;
+    float t = m_23c;
+
+    UpdateQuadrant(z, x, true);
+    CZBodyAnimBlend *b = (CZBodyAnimBlend *)func_00555170(&m_blends);
+    CZBodyAnimBlend *top = b;
+    int foot = b->ThisFoot();
+
+    if (IsStopped(x, z, t)) {
+        static float zero_t = 0.0f;
+
+        if (_close_enough(t, zero_t, data_003F3420)) {
+            ClearStack(2, true);
+            top = (CZBodyAnimBlend *)func_00555170(&m_blends);
+            top->SetRepresentativeWt(1.0f);
+            SetIsMoving(false);
+            SetIsTurning(false);
+        } else {
+            if (!IsCurrentBlend((AnimType)AnimTypes::BuddyCarryStep)) {
+                ClearStack(2, true);
+                func_00588BC0(this, (AnimType)AnimTypes::BuddyCarryStep, stateCarrying, 0, 0);
+                short last;
+
+                if (foot >= 17 && foot < 48)
+                    last = 32;
+                else
+                    last = 2;
+                m_last_foot = last;
+            }
+            SetIsMoving(false);
+            SetIsTurning(true);
+            top = TurnControl(t);
+        }
+    } else {
+        if (x != 0.0f && !IsCurrentBlend((AnimType)AnimTypes::BuddyCarryWalk)) {
+            ClearStack(2, true);
+            top = (CZBodyAnimBlend *)func_00588BC0(this, (AnimType)AnimTypes::BuddyCarryWalk, stateCarrying,
+                                                   0, 0);
+        }
+        SetIsMoving(true);
+        SetIsTurning(false);
+        top->SetRepresentativeWt(1.0f);
+        ACTIVE_ANIM *rep = top->Representative();
+
+        rep->SetPlayback(x * (float)rep->m_anim->m_1c);
+    }
+    return top;
+}
 
 CZBodyAnimBlend *CZSealBody::InStateCarried()
 {
@@ -2360,7 +2420,7 @@ CZBodyAnimBlend *CZSealBody::InStateCarried()
             top->SetRepresentativeWt(1.0f);
             ACTIVE_ANIM *rep = top->Representative();
 
-            rep->SetPlayback(rep->m_anim->m_1c * x);
+            rep->SetPlayback(x * (float)rep->m_anim->m_1c);
         } else {
             if (!IsCurrentBlend((AnimType)AnimTypes::BuddyCarriedStep)) {
                 ClearStack(2, true);
@@ -2381,7 +2441,7 @@ CZBodyAnimBlend *CZSealBody::InStateCarried()
         top->SetRepresentativeWt(1.0f);
         ACTIVE_ANIM *rep = top->Representative();
 
-        rep->SetPlayback(rep->m_anim->m_1c * x);
+        rep->SetPlayback(x * (float)rep->m_anim->m_1c);
     }
     return top;
 }
