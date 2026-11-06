@@ -2643,3 +2643,106 @@ void func_0061A328(DmeTargetMask *pMask, unsigned int nIndex)
             func_00615330(pMask, i);
     }
 }
+
+/* what a field's own comparison is handed (0x61B2A0 builds it on its stack) */
+typedef struct DmeFieldCompare {
+    int nIndex;                         /* 0x00: the object */
+    int nField;                         /* 0x04 */
+    int nSize;                          /* 0x08 */
+    int nCount;                         /* 0x0C */
+    void *pNew;                         /* 0x10 */
+    void *pOld;                         /* 0x14 */
+} DmeFieldCompare;
+
+/* an object structure's field, as the update path reads it (dme.c's NetField; its bytes from 0x10 are the
+ * name there, a structure field's kind, comparison and flag here) */
+typedef struct DmeField {
+    int nOffset;                        /* 0x00 */
+    int nSize;                          /* 0x04 */
+    int nCount;                         /* 0x08 */
+    int nType;                          /* 0x0C */
+    int nInterval;                      /* 0x10: added to the time it was last sent */
+    int nKind;                          /* 0x14: 5 -- compared by its own function */
+    int pfnCompare;                     /* 0x18: its comparison, an int cast at the call */
+    unsigned char bFlags;               /* 0x1C: or'ed into the message's flags */
+} DmeField;
+
+/* an object structure (dme.c's NetStructure, 16 of them) */
+typedef struct DmeStructure {
+    int nSize;                          /* 0x000 */
+    int nFields;                        /* 0x004 */
+    char szName[32];                    /* 0x008 */
+    DmeField *apFields[64];             /* 0x028 */
+    int anOffsets[64];                  /* 0x128 */
+} DmeStructure;                         /* 0x228 */
+
+extern DmeStructure NetStructureList[16];
+
+/* a networked object's record as the update path reads it (DmeObject's head, its data after the name) */
+typedef struct DmeObjectData {
+    unsigned char nClass;               /* 0x00 */
+    unsigned char field_01;
+    unsigned char nStatus;              /* 0x02 */
+    unsigned char field_03;
+    int nOwner;                         /* 0x04 */
+    int nCreator;                       /* 0x08 */
+    char szName[16];                    /* 0x0C */
+    char *pNew;                         /* 0x1C: the object's data */
+    char *pOld;                         /* 0x20: as last sent */
+    int field_24;
+    int field_28;
+    int field_2C;
+    int field_30;
+    unsigned int *pnSent;               /* 0x34: each field's time last sent */
+} DmeObjectData;
+
+extern unsigned char func_0061ACF0(DmeField *pField, char *pNew, char *pOld);
+
+/* SOCOM 1's GlobalFieldErrorExceedsThreshold grown (0x61B2A0): whether a field has changed enough to send --
+ * each element by func_0061ACF0 (SOCOM 1's ElementErrorExceedsThreshold), or a kind-5 field by its own
+ * comparison. Measured: the comparison is an int field cast at the call -- its load then shares the int
+ * stores' alias set and sched1 keeps it after the arguments are filled, so the null test's `return 0` is
+ * the target's annulled slot (a function-pointer or void * field is hoisted above the stores: 8 bytes
+ * short); the test positive (as a guard, 7 words). */
+unsigned char func_0061B2A0(DmeObjectData *pObject, int nIndex, unsigned char nField)
+{
+    DmeFieldCompare args;
+    DmeStructure *pStruct;
+    DmeField *pField;
+    char *pNew;
+    char *pOld;
+    int i;
+
+    if (pObject == 0)
+        return 0;
+    pStruct = &NetStructureList[pObject->nClass];
+    if (pStruct == 0)
+        return 0;
+    pField = pStruct->apFields[nField];
+    if (pField == 0)
+        return 0;
+    pNew = pObject->pNew + pStruct->anOffsets[nField];
+    if (pNew == 0)
+        return 0;
+    pOld = pObject->pOld + pStruct->anOffsets[nField];
+    if (pOld == 0)
+        return 0;
+    if (pField->nKind == 5) {
+        args.nIndex = nIndex;
+        args.nField = nField;
+        args.nSize = pField->nSize;
+        args.nCount = pField->nCount;
+        args.pNew = pNew;
+        args.pOld = pOld;
+        if (pField->pfnCompare != 0)
+            return ((int (*)(DmeFieldCompare *))pField->pfnCompare)(&args);
+        return 0;
+    }
+    for (i = 0; i < pField->nCount; i++) {
+        if (func_0061ACF0(pField, pNew, pOld))
+            return 1;
+        pNew += pField->nSize;
+        pOld += pField->nSize;
+    }
+    return 0;
+}
