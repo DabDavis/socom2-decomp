@@ -22,7 +22,10 @@ extern int userwordStartUserWordTraining(CASR *c, int what, void *a, void *b);
 static int casrEnableGenders(CASR *c, int genders);
 extern int casrActivateContext(CASR *c, void *ctx, int a);
 extern int SetIsolatedWordDpActiveWords(CASR *c, unsigned int *ids, unsigned int n);
-extern int casrDoSecondPass(CASR *c);
+unsigned char casrDoSecondPass(CASR *c);
+extern void *qEnQueueOne(int queue);
+extern void *qEnQueue(int queue, void *data, int n);
+extern int tosRun(CASR *c, void *arg);
 extern int tosDestruct(CASR *c);
 extern int CreateExEvCtxInfo(CASR *c);
 extern void FreeCtxInfo(CASR *c);
@@ -1051,6 +1054,128 @@ static int casrInitSampleFormat(CASR *c, unsigned int fmt)
     return 0;
 }
 
+/* casrDoSecondPass (its row is near the object's end) inlined into casrAcquisition: an extern
+ * inline here, its definition below the redefinition (casrStop, above, calls it) */
+extern __inline__ unsigned char casrDoSecondPass(CASR *c)
+{
+    if (c->use_dp) {
+        if (casrDoSpelling(c) != 0)
+            return 1;
+    } else if (c->iso_word) {
+        if (casrDoIsoWordSecondPass(c) != 0)
+            return 1;
+    } else if (casrDoNormalSecondPass(c) != 0)
+        return 1;
+    return 0;
+}
+
+/* the host's samples: whole frames (the format's frame size, +624) queued to the engine with what a
+ * previous call left (+688, +906), each run (tosRun) and its labels read; with a format (+620) the
+ * byte-swapped flag of each frame queued beside it (format 2: the first byte's top bit, cleared);
+ * the timeout (parameter 5) or a stop the engine asked for ends the utterance, a second pass when
+ * asked; the training state back to 4 and the host told, else the part frame kept. SOCOM 1's body
+ * (0x390) */
+int casrAcquisition(CASR *c, unsigned int fmt, unsigned char *samples, unsigned int n)
+{
+    int err;
+    int swap = fmt != 0;
+    unsigned char *p;
+    unsigned int frame;
+    unsigned char *e;
+    unsigned char hi;
+    int old;
+    int r;
+    unsigned int i;
+
+    err = casrCheckHandle(c);
+    if (err)
+        return err;
+    if (samples == 0)
+        return _tosErrorLog(c->event, CASR_ERR_ARG);
+    switch (c->state) {
+    case 3:
+    case 4:
+    case 7:
+    case 8:
+    case 11:
+    case 12:
+    case 16:
+    case 17:
+        break;
+    default:
+        return _tosErrorLog(c->event, 7);
+    }
+    if (c->uw_state == 4) {
+        err = casrInitSampleFormat(c, fmt);
+        if (err != 0)
+            return err;
+    } else if (fmt != c->uw_state)
+        return _tosErrorLog(c->event, 32);
+    p = samples;
+    frame = c->f624;
+    n += c->f906;
+    c->last_error = 0;
+    c->last_state = 0;
+    while (n >= frame) {
+        e = qEnQueueOne(c->cur.cb);
+        if (e == 0)
+            return 1;
+        if (c->f906 != 0) {
+            memcpy(e, c->pending, c->f906);
+            memcpy(e + c->f906, p, frame - c->f906);
+            p += frame - c->f906;
+            c->f906 = 0;
+        } else {
+            memcpy(e, p, frame);
+            p += frame;
+        }
+        if (swap) {
+            hi = 0;
+            if (c->uw_state == 2) {
+                hi = e[0] >> 7;
+                if (hi)
+                    e[0] &= 0x7F;
+            }
+            if (qEnQueue(c->slot[1].cb, &hi, 1) == 0)
+                return 1;
+        }
+        c->frames++;
+        if (tosRun(c, c->f628) != 0)
+            return (unsigned char)c->last_error;
+        if (casrReadLabelInQueue(c, c->uw_recs_done) != 0)
+            return (unsigned char)c->last_error;
+        if (c->f672) {
+            n = 0;
+            break;
+        }
+        if ((c->p420 != 0 && c->p420 < c->frames) || c->f674) {
+            if (_tosControl(c->event, 3, 0, 0) != 0)
+                return (unsigned char)c->last_error;
+            if (casrReadLabelInQueue(c, c->uw_recs_done) != 0)
+                return (unsigned char)c->last_error;
+            n = 0;
+            break;
+        }
+        n -= frame;
+    }
+    if (c->second_pass && casrDoSecondPass(c) != 0)
+        return (unsigned char)c->last_error;
+    old = c->train_state;
+    if (old != 4) {
+        c->train_state = 4;
+        r = c->cb.train_cb(old, c->info);
+        if (c->last_state == 0 && r != 0) {
+            c->last_state = r;
+            return _tosErrorLog(c->event, 27);
+        }
+    } else {
+        for (i = c->f906; i < n; i++)
+            c->pending[i] = *p++;
+        c->f906 = n;
+    }
+    return (unsigned char)c->last_error;
+}
+
 int casrStartUserWordTraining(CASR *c, void *a, void *b)
 {
     int err;
@@ -1377,7 +1502,7 @@ int casrEnableLabelInQueue(CASR *c, unsigned char enable)
  * branch (bnez; li 1; move 0); a result assigned in the arms and tested once (?:, if/return, != 0,
  * a flag variable) is a store-flag, sltu (0x58), and the arms returning their own `!= 0` or `?:`
  * the same. */
-int casrDoSecondPass(CASR *c)
+unsigned char casrDoSecondPass(CASR *c)
 {
     if (c->use_dp) {
         if (casrDoSpelling(c) != 0)

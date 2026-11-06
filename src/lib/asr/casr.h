@@ -148,8 +148,8 @@ typedef struct CASR {
     int train_state;                    /* +676 */
     int sp_arg1;                        /* +680 */
     int sp_arg2;                        /* +684 */
-    char pad688[218];
-    unsigned short f906;
+    unsigned char pending[218];         /* +688: a partial frame's bytes (casrAcquisition) */
+    unsigned short f906;                /* +906: and their count */
     unsigned short *signal;             /* +908: the input level */
     int *frame_base;                    /* +912: the frame count the talk spurts are told from */
     unsigned char training;             /* +916: a user-word training is under way */
