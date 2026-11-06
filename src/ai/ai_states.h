@@ -744,6 +744,7 @@ public:
     /* its timer, the last member, built by hand where the member's constructor would run */
     CAiSUseVehicle() : CAiState(AI_STATE_USEVEHICLE) { __ct__8CAiTimerFf(&m_60, 0.0f); }
     virtual void OnSignal(SIGNAL sig, CSealCtrlAi *ai);
+    virtual int Tick(CSealCtrlAi *ai);
     virtual bool CanPushAiState(AI_STATE state, CSealCtrlAi *ai);
     virtual ~CAiSUseVehicle();
     void SetTimeout(float t);
