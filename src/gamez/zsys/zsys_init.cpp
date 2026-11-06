@@ -43,7 +43,6 @@ int sceCdReadClock(sceCdCLOCK *clock);
 void srand(unsigned int seed);
 int rand(void);
 int TRC_PreparePowerOff(unsigned char status);             /* trc.cpp */
-int func_0039D020(void);                                   /* SOCOM II's: zSysHddUnmount("hdd0:") */
 void func_003B1180(void);                                  /* SOCOM II's: zvid's packet kicked */
 void func_00340F90(unsigned char loaded);                  /* SOCOM II's: the headset's flag */
 void func_0034BCB0(void);                                  /* SOCOM II's: lgAudInit, a flag set */
@@ -53,6 +52,8 @@ void func_0034BCB0(void);                                  /* SOCOM II's: lgAudI
 void ParseOptions(unsigned int flags);
 /* zvid_init.cpp's */
 void zVid_Init(_zvid_mode mode);
+/* util_sonyio.cpp's: the installed game's partition let go (zSysHddUnmount("pfs0:"), 0) */
+int HddUnmountGame();
 /* util_sonyio.cpp's: the disc's table of contents read */
 class CFileCD {
 public:
@@ -337,7 +338,7 @@ void CIOPManager::RebootIOP(RebootMode mode)
              i != m_reboot_callback_vec.rend(); ++i)
             (*i).m_flag_for_deletion = !(*i).m_pcb(PreReboot, mode, (*i).m_userdata);
         zSysDropRegistrants(m_reboot_callback_vec);
-        func_0039D020();
+        HddUnmountGame();
         if (mode == Shutdown)
             return;
     }
