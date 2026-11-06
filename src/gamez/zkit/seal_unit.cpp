@@ -1869,22 +1869,11 @@ static inline CAiSFollow *GetFollowState(CSealCtrlAi *ai)
  * target's callers and its own recursion call it. The formation goes to CAiSFollow::SetFormation
  * unconverted: both take UNIT_FORMATION (round 31: with CAiSFollow's as a signed char MW
  * sign-extends it into a register of its own, 0x1E0; with this one's 0x5EB8A0 does).
- * OPEN, 6 instructions, one placement: the escortees' end taken first (numbered before the SEALs'
- * walk: s6, the target's) is computed at the top, the target's after the walk's guard. Round 43
- * (tools/igreplay.py --target): the squads' walk wanted its end numbered below the iterator --
- * `e = end(), u = begin()` in the for (12 -> 6); and the target's escortees' end is numbered first
- * (f2 < the SEALs' e < i < j: s6, s5, s4, s3) yet placed after the guard. Declared in the inner for
- * (`f2 = end(), j = begin()`) MW hoists it to the guard's far side, the target's place, but numbers it
- * after the SEALs' walk (9: f2 s4, e s6, i s5); declared uninitialised at the top and assigned in the
- * body or the `if (esc)` block the iterator goes through memory (0x1EC, 0x1E4); no f2 at all, 16.
- * Tried before: the three forms of each walk (27: best 14, the SEALs' end first), the escortees' end
- * declared at the top (12) or in the loop body (0x1E0), reassigned in the body (0x1EC), the list
- * through a reference (46), the leader kept, `esc` assigned later or by a ternary, postfix steps */
+ * The squads' walk takes its end below the iterator (`e = end(), u = begin()`, igreplay, round 43) */
 #pragma auto_inline off
 int CSealUnit::SetFormation(UNIT_FORMATION f, int index)
 {
     GetLeader();
-    slist::iterator f2 = m_escortees.end();
     bool esc = !m_escortees.empty();
 
     for (slist::iterator e = m_seals.end(), i = m_seals.begin(); i != e; ++i) {
@@ -1897,7 +1886,11 @@ int CSealUnit::SetFormation(UNIT_FORMATION f, int index)
                 fs->SetFormation(f, index++);
         }
         if (esc) {
-            for (slist::iterator j = m_escortees.begin(); j != f2; ++j) {
+            /* (the sentinel a plain pointer: a named local, so numbered below the walk's iterators -- s6 --, its
+             * definition hoisted to the walk's guard's far side) */
+            slist::node_base *f2 = &m_escortees.end_node();
+
+            for (slist::iterator j = m_escortees.begin(); j != slist::iterator(std::__list_imp<const void *, std::allocator<const void *> >::iterator(f2)); ++j) {
                 CSealCtrlAi *ai = ((CUnitSealCtrl *)((CEntity *)*j)->m_control)->GetSealCtrlAi();
 
                 if (ai) {

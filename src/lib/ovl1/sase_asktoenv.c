@@ -6,7 +6,7 @@
  * resampling by a pitch ratio (0x253920, 65 points); and after them the decoder's bit reader
  * (0x2539C0, called by the frame unpackers 0x253DF8 and 0x254020) -- no assert names its file, so
  * it may be the next object's: it is kept here until one does. Written in the GCC lane's round 26a:
- * 0x253888, 0x253920, 0x2539C0. Placeholders: the codec's names are not in SOCOM 1. Built as
+ * 0x253888, 0x253920, 0x2539C0; round 44a: 0x253510. Placeholders: the codec's names are not in SOCOM 1. Built as
  * sase_decapi.c is (ee-gcc 2.96, -O2 -G0: the decoder reaches nothing through $gp). */
 
 #define DEC_LPC_ORDER 12
@@ -25,12 +25,73 @@ static const float afLifter[NUM_CEPS] = {
 	0x1.19652ap-6F, 0x1.12dba4p-6F,
 };
 
+
+extern void (*data_001D55B0)(void *p, int c, int n);	/* the host's memset */
+#define NellyNull 0
+extern void __assert(const char *file, int line, const char *expr);
+#define assert(e) ((e) ? (void)0 : __assert(__FILE__, __LINE__, #e))
+extern void func_0024EB60(float *pfData, int iLog2N);
+extern void func_0024FBE8(float *pfLogEnv, const float *pfKS, float fGain);
+void func_00253760(float fC0, const float *pfA, float *pfC);
+void func_00253888(const float *pfk, float *pfA);
+void func_00253920(float *pfEnv, float fRatio, float *pfTmp);
+extern const float data_003EC458[];	/* the ASK table, 256 points */
+extern const float data_003EC95C;	/* its scale */
+
+/* the decoder's spectral envelope from the received arcsines: the reflection coefficients, the predictor (both copied out),
+ * its cepstrum liftered and transformed, the log envelope post-filtered and resampled to the pitch */
+void func_00253510(const float *pfASK, float fEnergy, float *pfWork, float *pfB, float *pfA, float fGain)
+{
+	float *pfEnv = pfWork + 514;
+	float *pfOut = pfWork + 579;
+	float *pfK = pfWork;
+	float *pfOut0;
+	float *pfLpc;
+	float *pfCep;
+	float *pf;
+	float *pfT;
+	int i;
+
+	data_001D55B0(pfWork, 0, 2316);
+	pfOut0 = pfEnv;
+#line 90 "../../SaseDec/source/AskToEnvInline.c"
+	assert(pfASK != NellyNull);
+	for (i = 12; i != 0; i--)
+		*pfK++ = data_003EC458[(int)(*pfASK++ * data_003EC95C + 0.5F) & 0xFF];
+	pfLpc = pfWork + 56;
+	func_00253888(pfWork, pfLpc);
+	for (i = 0; i < 12; i++) {
+		pfA[i] = pfLpc[i];
+		pfB[i] = pfWork[i];
+	}
+	pfCep = pfWork + 12;
+	func_00253760(fEnergy, pfLpc, pfCep);
+	pf = pfLpc;
+	data_001D55B0(pf, 0, 520);
+	i = 1;
+	pf[0] = pfCep[0];
+	pfT = pf + 127;
+	for (; i < 44; i++) {
+		pfLpc[i] = pfCep[i] * 0x1.b17216p+0F;
+		*pfT-- = pfCep[i] * 0x1.3a37a4p-2F;
+	}
+	func_0024EB60(pfLpc, 7);
+	i = 63;
+	do {
+		*pfEnv++ = *pf++;
+		*pfOut++ = *pf++;
+	} while (i-- > 0);
+	pfEnv = pfOut0;
+	func_0024FBE8(pfEnv, pfWork, fEnergy);
+	func_00253920(pfEnv, fGain, pfWork);
+}
+
 /* the predictor's cepstrum, 44 terms, by the LPC recursion (n c[n] form: -n a[n] less the sum of
  * a[k] c[n - k]; past the order the sum alone), then liftered (GCC round 28a). The first loop's
  * bound is a variable: its exit test is `li t2,12; slt v1,t2,t0; beqz` -- MIPS's LE of two
  * registers (operands reversed, the branch inverted), the 12 found by CSE after expansion; the
  * literal bound is `slti v1,t0,13` (2 words short, the loop head's alignment nop with them) */
-void func_00253760(const float *pfA, float *pfC, float fC0)
+void func_00253760(float fC0, const float *pfA, float *pfC)
 {
 	float fSum;
 	int n, k, iOrder = DEC_LPC_ORDER;
@@ -78,7 +139,7 @@ void func_00253888(const float *pfk, float *pfA)
  * store is the target's `swc1` in the test's delay slot and the in-range arm's reload of pfEnv[k]
  * (the store may alias it); a plain if/else, a conditional expression, a clamped index or a
  * temporary are 23-38 words off (build/scratch/gcc/v_resamp.py, GCC round 26a). */
-void func_00253920(float *pfEnv, float *pfTmp, float fRatio)
+void func_00253920(float *pfEnv, float fRatio, float *pfTmp)
 {
 	int i, k;
 

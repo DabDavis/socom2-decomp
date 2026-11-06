@@ -443,6 +443,197 @@ bool CAiSScript::CanAttack() const
     return true;
 }
 
+/* an AI's bit 6 as a bool (inline: the `? true : false` keeps the target's sltu; the name ours) */
+inline bool AiBit6(CSealCtrlAi *ai)
+{
+    return ai->m_aibit6 ? true : false;
+}
+
+/* a script's events: a reset, an entry, the anim stopped on leaving (unless it runs on past a dead SEAL), the state back on
+ * top -- the mode restored, a response sequence that held dropped, the anim resumed, the set back -- or a state pushed
+ * above it -- the mode and the set kept, the anim paused -- and its sequence paused or resumed for the anim's own signals
+ * (OVL2 0x5F3BA0; SOCOM 1's) */
+void CAiSScript::OnSignal(SIGNAL sig, CSealCtrlAi *ai)
+{
+    CZSealBody *seal = ai ? (CZSealBody *)ai->m_entity : 0;
+
+    switch (sig) {
+    case SIGNAL_4:
+        m_seqName[0] = 0;
+        SetHold(false);
+        m_held_once = true;
+        m_mode = 255;
+        m_seq = 255;
+        m_5f = 255;
+        m_mode_saved = 1;
+        m_58 = 0;
+        m_60 = 0.0f;
+        m_keep_anim = false;
+        m_78 = 0;
+        m_animset = 0;
+        m_80 = 0;
+        m_bit3 = false;
+        break;
+    case SIGNAL_0:
+        SetHold(false);
+        m_mode = 255;
+        m_seq = 255;
+        m_5f = 255;
+        m_held_once = true;
+        m_60 = 0.0f;
+        m_78 = 0;
+        m_bit3 = false;
+        break;
+    case SIGNAL_1:
+        if (m_58 && (!m_keep_anim || !seal->m_isAlive))
+            func_002707C0((CZAnim *)m_58, false);
+        if (!AiBit6(ai))
+            seal->BindAnimSet(seal->m_530, false);
+        break;
+    case SIGNAL_3:
+        ai->SetAiMode(*(AI_MODE *)&m_mode_saved);
+        if (m_58) {
+            if (m_flags & 4) {
+                if (m_seqName[0]) {
+                    ((CZAnim *)m_58)->SequenceRunning(m_seqName);
+                    const char *seq = sealai::get_aiseq(m_seq);
+
+                    m_held_once = false;
+                    ((CZAnim *)m_58)->StopSequence(m_seqName);
+                    ((CZAnim *)m_58)->ResumeSequence(seq);
+                    SetHold(false);
+                    m_seqName[0] = 0;
+                }
+                m_flags |= 0x80000000;
+                m_flags &= ~4;
+            }
+            m_held_once = true;
+            m_60 = 0.0f;
+            func_002709B0((CZAnim *)m_58, 0);
+        }
+        if (seal->m_isAlive && m_bit3)
+            func_005558A0(ai);
+        else
+            func_00555820(ai, 0);
+        if (m_78) {
+            if (seal->m_isAlive)
+                seal->BindAnimSet(m_78, false);
+            m_78 = 0;
+        }
+        break;
+    case SIGNAL_2:
+        *(AI_MODE *)&m_mode_saved = ai->m_3f4;
+        if (m_58)
+            func_00270BE0((CZAnim *)m_58, 0);
+        if (m_bit3)
+            func_005558D0(ai);
+        else
+            func_00555820(ai, 0);
+        if (!AiBit6(ai)) {
+            m_78 = seal->m_animset;
+            seal->BindAnimSet(seal->m_530, false);
+        }
+        break;
+    case 5:
+        if (m_58)
+            ((CZAnim *)m_58)->PauseSequence(sealai::get_aiseq(m_mode));
+        break;
+    case 6:
+        if (m_58)
+            ((CZAnim *)m_58)->ResumeSequence(sealai::get_aiseq(m_mode));
+        break;
+    }
+}
+
+/* the waits before a higher alertness shows (a table of floats by AI_AWARE: OVL2 data) */
+extern float data_00650B80[];
+
+/* the response sequence's progress: while it runs, false; once it has run out, the AI's own sequence resumed (the name
+ * ours; inlined) */
+inline bool ResponseRunning(CAiSScript *s)
+{
+    return s->m_seqName[0] != 0 && ((CZAnim *)s->m_58)->SequenceRunning(s->m_seqName);
+}
+
+inline bool ResponseDone(CAiSScript *s)
+{
+    if (ResponseRunning(s))
+        return false;
+    if (s->m_seqName[0] && !((CZAnim *)s->m_58)->SequenceRunning(s->m_seqName)) {
+        const char *seq = sealai::get_aiseq(s->m_seq);
+
+        s->m_held_once = false;
+        ((CZAnim *)s->m_58)->StopSequence(s->m_seqName);
+        ((CZAnim *)s->m_58)->ResumeSequence(seq);
+        s->SetHold(false);
+        s->m_seqName[0] = 0;
+    }
+    return true;
+}
+
+/* the script's frame: done without an anim or once it stops; else the response sequence first, then the sequence of the
+ * AI's alertness -- changed when the alertness has held long enough, a rise from 0 to 1 pausing the sequence (the
+ * SEAL's anim set kept), a fall from 1 to 0 resuming it (OVL2 0x5F37C0; SOCOM 1's) */
+inline CZSealBody *ScriptSeal(CSealCtrlAi *ai) { return (CZSealBody *)ai->m_entity; }
+inline const char *ScriptSeq(int i) { return sealai::get_aiseq(i); }
+int CAiSScript::Tick(CSealCtrlAi *ai)
+{
+    CZAnim *anim = (CZAnim *)m_58;
+    CZSealBody *seal = ScriptSeal(ai);
+
+    if (!anim) {
+        SetActive(false);
+        return Result();
+    }
+    anim->GetName();
+    if (!anim->Running()) {
+        SetActive(false);
+        return Result();
+    }
+    if (!ResponseDone(this))
+        return Result();
+    if (!m_held_once) {
+        int mode = m_mode;
+        int aware = (unsigned char)ai->GetAiAware();
+        float wait = mode < aware ? data_00650B80[aware] : 0.0f;
+
+        if (ai->m_5c8 > wait && mode != aware) {
+            if (!m_hold) {
+                const char *cur = sealai::get_aiseq(m_mode);
+                const char *next = sealai::get_aiseq(aware);
+
+                bool exists = anim->SequenceExists(next);
+
+                if (exists || (mode < 2 && aware > 1)) {
+                    if (mode == 0 && aware == 1) {
+                        m_animset = seal->m_animset;
+                        anim->PauseSequence(cur);
+                    } else if (aware == 0 && mode == 1) {
+                        anim->ResumeSequence(next);
+                        if (m_animset) {
+                            seal->BindAnimSet(m_animset, false);
+                            m_animset = 0;
+                        }
+                    } else {
+                        anim->StopSequence(cur);
+                        anim->ActivateSequence(next);
+                        m_bit3 = false;
+                        func_00555820(ai, 0);
+                    }
+                    m_60 = 0.0f;
+                    m_seq = aware;
+                } else
+                    m_60 = 0.5f;
+                m_mode = aware;
+            } else if (m_5f != aware)
+                m_5f = aware;
+        } else
+            m_60 += m_dT;
+    } else
+        m_held_once = false;
+    return Result();
+}
+
 /* the plan's route handed to the controller (OVL2 0x573110, the SEAL lane's row) and given back
  * to the AI maps (0x52C310, the AI core's) */
 extern "C" void func_00573110(CSealCtrlAi *ai, void *path);
@@ -501,12 +692,211 @@ extern "C" int func_005F15A0(CAiSPlan *plan, CSealCtrlAi *ai)
     return r;
 }
 
+extern "C" {
+/* the controller's hold on a route's end (OVL2 0x562790), its stop within a range (0x5621F0) and whether its route has
+ * run out (0x5629B0): the SEAL lane's rows */
+bool func_00562790(CSealCtrlAi *ai, void *path);
+void func_005621F0(CSealCtrlAi *ai, float range);
+bool func_005629B0(CSealCtrlAi *ai);
+void func_00570F90(CSealCtrlAi *ai, float t);
+float GetDistance__7CAiMapsFRC9CAiMapLocRC9CAiMapLoc(CAiMaps *maps, const CAiMapLoc *a, const CAiMapLoc *b);
+}
+
+/* the margin on a plan's tolerance and the tolerance with none (OVL2 data) */
+extern float data_00650BC8;
+extern int data_00650BD0;
+
+/* whether the plan's route arrived (inline; the name ours) */
+inline bool PlanArrived(CAiSPlan *p)
+{
+    return !(p->m_100 == 0) && p->m_pathState == 4;
+}
+
+/* the state the plan covers stepped on, to the step for success or for failure, when it has one (inline; the names ours) */
+inline void PlanSucceeded(CAiSPlan *p)
+{
+    int k;
+    CAiState *s = (CAiState *)p->m_114;
+
+    if (s) {
+        k = p->m_124;
+        if (k != -1)
+            s->UpdatePhase(k);
+    }
+}
+
+inline void PlanFailed(CAiSPlan *p)
+{
+    int k;
+    CAiState *s = (CAiState *)p->m_114;
+
+    if (s) {
+        k = p->m_128;
+        if (k != -1)
+            s->UpdatePhase(k);
+    }
+}
+
+/* whether the AI holds the route's end (inline; the name ours) */
+inline bool PlanHolds(CAiSPlan *p, CSealCtrlAi *ai)
+{
+    bool a = !(p->m_100 == 0);
+
+    if (a)
+        a = p->m_pathState == 4;
+    bool ok = a;
+
+    if (a)
+        ok = func_00562790(ai, p->m_path);
+    return ok;
+}
+
+/* the route's end taken: the plan's block freed, the state it covers stepped; 3 when the AI holds the route's end, else 4
+ * (inline; the name ours) */
+inline int PlanEnd(CAiSPlan *p, CSealCtrlAi *ai)
+{
+    int r;
+
+    if (p->m_10c) {
+        delete p->m_10c;
+        p->m_10c = 0;
+    }
+    bool ok = PlanHolds(p, ai);
+
+    r = 4;
+    if (ok) {
+        PlanSucceeded(p);
+        r = 3;
+    } else
+        PlanFailed(p);
+    return r;
+}
+
+/* the stop's range: 3 within it, else 4, the state the plan covers stepped (inline; the name ours) */
+inline int PlanInRange(CAiSPlan *p, CEntity *seal)
+{
+    const CAiMapLoc *to = PlanArrived(p) ? p->m_104 : &CAiMapLoc::invalid;
+    float d = GetDistance__7CAiMapsFRC9CAiMapLocRC9CAiMapLoc(&AiMaps, &seal->m_mapLocValid, to);
+    int tol = p->m_130;
+    int r;
+
+    tol = tol < 0 ? data_00650BD0 : tol;
+    r = 4;
+    if (d <= data_00650BC8 * (10.0f * (float)tol)) {
+        PlanSucceeded(p);
+        r = 3;
+    } else
+        PlanFailed(p);
+    return r;
+}
+
+/* a plan's frame: its route begun (step 0), then run; at its end the state it covers stepped and, flag 2, the AI stands
+ * guard there -- flag 0 and 1 its bits -- until the stop's range is left (step 2); a failed plan ends with 4 (OVL2
+ * 0x5F1160; new in SOCOM II) */
+int CAiSPlan::Tick(CSealCtrlAi *ai)
+{
+    int r;
+    STEP step = (STEP)m_phase;
+    CEntity *seal = ai->m_entity;
+
+    r = 0;
+    switch (step) {
+    case STEP_0:
+        r = func_005F15A0(this, ai);
+        if (!r)
+            step = (STEP)m_phase;
+        break;
+    case STEP_1:
+        if (m_pathState != 1 && !(m_pathState == 1 || m_pathState == 2 || m_pathState == 3)) {
+            if (PlanArrived(this)) {
+                r = PlanEnd(this, ai);
+                if (r == 3 && (m_flags & 4)) {
+                    ai->SetAiMode((AI_MODE)3);
+                    func_00570F90(ai, m_12c);
+                    ai->SetAiBit2((m_flags & 1) != 0);
+                    ai->m_aibit3 = (m_flags & 2) != 0;
+                    func_005621F0(ai, 10.0f * (float)m_130);
+                    r = 0;
+                    step = STEP_2;
+                }
+            } else
+                r = PlanEnd(this, ai);
+        }
+        break;
+    case STEP_2:
+        if (func_005629B0(ai))
+            r = PlanInRange(this, seal);
+        break;
+    case STEP_3:
+        r = 4;
+        break;
+    }
+    UpdatePhase(step);
+    m_done = r;
+    return r;
+}
+
 /* the plan's path flags (its CAiPath's word at 0x1C, the plan's 0x80) changed: `clear` cleared,
  * `set` set (inlined with constants, as the controller's own path's at 0x488; the name ours) */
 inline void SetPathFlags(CAiSPlan *plan, unsigned int set, unsigned int clear)
 {
     *(unsigned int *)&plan->m_path[0x1c] &= ~clear;
     *(unsigned int *)&plan->m_path[0x1c] |= set;
+}
+
+/* the step of the search and its first distance (OVL2 data) */
+extern float data_00650BD8;
+
+/* the first by-value difference of two points (a struct copy: a double word and a word) */
+inline CPnt3D CellSearchDelta(const CPnt3D &a, const CPnt3D *b)
+{
+    CPnt3D d;
+
+    a.Sub(b, &d);
+    return d;
+}
+
+/* whether a cell is traversable (CAiMap::IsTraversable, ai_maps.cpp's, inlined with its two calls out of line, OVL2 0x511F80 and
+ * 0x511F40 -- a level cut in the target; stand-ins by their mangled names) */
+extern "C" {
+CAiCell *GetCell__6CAiMapCFRC9CAiMapLoci(CAiMap *map, const CAiMapLoc &loc, int layer);
+bool IsTraversable__7CAiCellCFv(CAiCell *cell);
+}
+
+inline bool CellSearchFree(CAiMap *map, const CAiMapLoc &loc)
+{
+    CAiCell *cell = GetCell__6CAiMapCFRC9CAiMapLoci(map, loc, 0);
+
+    return cell ? IsTraversable__7CAiCellCFv(cell) : false;
+}
+
+/* a cell for a point: the point's own, on the SEAL's map, else the first traversable cell along the line from it toward the
+ * SEAL; whether there is one (OVL2 0x5F0CD0: 0x5F0990 and 0x5F0B30 call it -- the name ours; GetLocation's inline) */
+extern "C" bool func_005F0CD0(CSealCtrlAi *ai, const CPnt3D *pos, CAiMapLoc *loc)
+{
+    CEntity *seal;
+    bool r = false;
+
+    seal = ai->m_entity;
+    CAiMap *map = AiMaps.GetMapByIndex(seal->m_mapLocValid.m_mapid);
+
+    if (map->GetLocation(pos, *loc))
+        r = true;
+    else {
+        CPnt3D dir = CellSearchDelta(seal->m_posW, pos);
+        CPnt3D p = *pos;
+        float len = dir.Normalize();
+
+        dir.Scale(data_00650BD8, &dir);
+        for (float t = data_00650BD8; t < len; t += data_00650BD8) {
+            if (map->GetLocation(&p, *loc) && CellSearchFree(map, *loc)) {
+                r = true;
+                break;
+            }
+            p.Add(&dir, &p);
+        }
+    }
+    return r;
 }
 
 /* a plan pushed on the current state's own stack, to a cell: its path's bit 5, the cell, the
@@ -772,6 +1162,158 @@ struct CSealSignalBits {
     unsigned char m_bit0 : 1;
     unsigned char m_signalled : 1;
 };
+
+/* the AI's focus: nothing, an entity or a point (the record at 0x660 -- zseal.h keeps it as bytes, the first
+ * entity field its m_664; the view and the names ours) and where it stands, copied, or 0 (inlined; the name ours) */
+struct CAiFocusView {
+    unsigned char m_kind;   // 0x0
+    unsigned char _1[3];
+    CEntity *m_entity;   // 0x4
+    CPnt3D m_point;   // 0x8
+};
+
+inline CPnt3D *FocusPos(CAiFocusView *f, CPnt3D *out)
+{
+    switch (f->m_kind) {
+    case 1:
+        {
+            CEntity *e = f->m_entity;
+
+            if (e) {
+                out->x = e->m_posW.x;
+                out->y = e->m_posW.y;
+                out->z = e->m_posW.z;
+                return out;
+            }
+        }
+        return 0;
+    case 2:
+        out->x = f->m_point.x;
+        out->y = f->m_point.y;
+        out->z = f->m_point.z;
+        return out;
+    }
+    return 0;
+}
+
+/* the kinds a state of a kind lets be pushed on it (inlined; the name ours) */
+inline unsigned int StatePushMask(CAiState *s)
+{
+    unsigned int mask = 0;
+
+    switch (s->m_state) {
+    case 0: mask = 0x3FFFFFFE; break;
+    case 1: mask = 0x3FFFFBD6; break;
+    case 2: mask = 0x3FFFFFFA; break;
+    case 3: mask = 0x010448C2; break;
+    case 4: mask = 0x19054BC6; break;
+    case 5: mask = 0x19044AC6; break;
+    case 6: mask = 0x19874A8E; break;
+    case 7: mask = 0x188D0040; break;
+    case 8: mask = 0x3FFFFEFE; break;
+    case 9: mask = 0x1FFFFDFE; break;
+    case 10: mask = 0x0FFFFBFE; break;
+    case 11: mask = 0x1FFFF7FE; break;
+    case 12: mask = 0x3BFFE8F6; break;
+    case 13: mask = 0x17FFDFFE; break;
+    case 14: mask = 0x11040000; break;
+    case 15: mask = 0x190449C6; break;
+    case 16: mask = 0x1FFE48C6; break;
+    case 17: mask = 0x190C48C6; break;
+    case 18: mask = 0x01000000; break;
+    case 19: mask = 0x31040800; break;
+    case 20: mask = 0x390448C2; break;
+    case 21: mask = 0x390448C2; break;
+    case 22: mask = 0x390549C2; break;
+    case 23: mask = 0x190F4BC0; break;
+    case 24: mask = 0x40000; break;
+    case 25: mask = 0x399C4942; break;
+    case 26: mask = 0x390448C2; break;
+    case 27: mask = 0x310468C2; break;
+    case 28: mask = 0x21042000; break;
+    case 29: mask = 0x1BFDE9DA; break;
+    }
+    return mask;
+}
+
+/* the two slots the update hands the AI to, and takes an int from (a view of the table: ai_states.h declares them
+ * without the argument, which every override ignores, as SOCOM 1's names have it) */
+class CAiStateFlagSlots {
+public:
+    virtual void s08();
+    virtual void s0c();
+    virtual void s10();
+    virtual void s14();
+    virtual void s18();
+    virtual void s1c();
+    virtual void s20();
+    virtual int CanAttackAi(CSealCtrlAi *ai);   // +0x24
+    virtual void s28();
+    virtual void s2c();
+    virtual void s30();
+    virtual void s34();
+    virtual void s38();
+    virtual void s3c();
+    virtual int Virtual40Ai(CSealCtrlAi *ai);   // +0x40
+};
+
+/* the stack's bits brought up to date when asked or marked (bit 0): from the bottom state up, bit 1 "may attack" while
+ * every state says so, bit 4 while a state with a focus has one (a breach clears it), bit 2 for a held script; the mask
+ * of kinds that may be pushed ANDed by each state's, the kinds on the stack listed; a group with cameras allows only the
+ * target state; the SEAL (and, squad mode 2, the squad's leader) marked (OVL2 0x5F7470; the name unknown) */
+extern "C" void func_005F7470(CAiStateStack *stack, CSealCtrlAi *ai, int x)
+{
+    if (x || (stack->m_14 & 1)) {
+        stack->m_14 = 2;
+        stack->m_c = -1;
+        stack->m_10 = 0;
+        for (CAiStateStack::reverse_iterator i = stack->rbegin(); i != stack->rend(); ++i) {
+            CAiState *s = *i;
+            AI_STATE kind = s->m_state;
+
+            if (!((CAiStateFlagSlots *)s)->CanAttackAi(ai))
+                stack->m_14 &= ~2;
+            if (((CAiStateFlagSlots *)s)->Virtual40Ai(ai)) {
+                CPnt3D pos;
+                CPnt3D *out;
+                CAiFocusView *f = (CAiFocusView *)&ai->m_660;
+
+                out = &pos;
+                if (FocusPos(f, out))
+                    stack->m_14 |= 0x10;
+            }
+            switch (kind) {
+            case AI_STATE_BREACH:
+                stack->m_14 &= ~0x10;
+                break;
+            case AI_STATE_SCRIPT: {
+                CAiSScript *script = s && s->m_state == AI_STATE_SCRIPT ? (CAiSScript *)s : 0;
+
+                if (script->Held())
+                    stack->m_14 |= 4;
+                break;
+            }
+            }
+            stack->m_c &= StatePushMask(s);
+            stack->m_10 |= 1 << kind;
+        }
+        CAiGroup *group = ai->GetGroup();
+
+        if (group && (*(unsigned int *)group & 1))
+            stack->m_c = 0x100;
+        CEntity *seal = ai->m_entity;
+
+        if (seal) {
+            ((CSealSignalBits *)seal)->m_signalled = true;
+            if (ai->m_26c == 2 && ((CAiCtrl10C *)ai)->m_10c) {
+                CEntity *leader = GetSealByIndex__9CSealUnitFii(((CAiCtrl10C *)ai)->m_10c, 1, 0);
+
+                if (leader)
+                    ((CSealSignalBits *)leader)->m_signalled = true;
+            }
+        }
+    }
+}
 
 /* a state of a stack told a signal (OVL2 0x5F6FA0; SOCOM 1's CAiState::Signal, moved onto the
  * stack): entering (0) resets it to its own kind, sends it the reset (4) and starts its stack's
@@ -1701,29 +2243,40 @@ extern "C" void func_005F3100(CAiSBreach *b, CAiMapLoc *out)
 }
 
 /* what a breach lets be pushed: no avoiding in its steps 4-9, no grenade in steps 6 and 7 -- a
- * grenade allowed opens its valve (3) -- and no targeting (OVL2 0x5F3520; SOCOM 1's).
- * OPEN, 0x104 against 0xFC: the target keeps `ok`'s 1 in s0 and selects it, unfolded, as the true
- * arm of both cases (`move a1,s0`; case 3 narrows s0 at its join, case 27 copies one result into
- * `open` and `ok`), and tests steps 6 and 7 with two beqs; here MW folds `ok` to its constant --
- * `!(...)` and `c ? false : ok` both materialise with sltu/xori -- and folds 6/7 into a range test
- * (a nested switch on the step gives a compare chain, 0x10C). The valve's SetValue(3) inline and
- * the outer switch are the target's. Round 56: `#pragma opt_propagation off` in the body keeps `ok`'s
- * 1 in s0 and selects it as the target does (`daddiu s0,zero,1`, `move a1,s0`; d 43 -> 32, still
- * 0x104); over it the avoid arm as `c ? false : ok` or an if, the grenade arm as `c ? false : ok`,
- * an if, or `!= && != ? ok : false`: 0xEC-0x114, the step test still a range (build/scratch/kit/
- * v_cpas.py) */
+ * grenade allowed opens its valve (3) -- and no targeting (OVL2 0x5F3520; SOCOM 1's):
+ * `ok` passed through two inline selections taking the step as an int (andi at the call, `s > 3` branching on `slti at`
+ * where `s >= 4` computes into v0): the avoid arm's `if (c) ok = false; return ok;` narrows at its join; the grenade arm's
+ * `r = false; if (s != 6 && s != 7) r = ok;` keeps two beqs where `s == 6 || s == 7` folds into a range test, and
+ * MW materialises every `c ? false : ok` (sltu / xori). Propagation off in the body keeps `ok`'s 1 in s0 (round 56) */
+inline bool BreachAvoidOk(bool ok, int s)
+{
+    if (s > 3 && s < 10)
+        ok = false;
+    return ok;
+}
+
+inline bool BreachGrenadeOk(bool ok, int s)
+{
+    bool r = false;
+
+    if (s != 6 && s != 7)
+        r = ok;
+    return r;
+}
+
 bool CAiSBreach::CanPushAiState(AI_STATE state, CSealCtrlAi *ai)
 {
+#pragma opt_propagation off
     bool open = false;
     STEP step = (STEP)m_phase;
     bool ok = true;
 
     switch (state) {
     case AI_STATE_AVOID:
-        ok = !(step >= STEP_4 && step < 10);
+        ok = BreachAvoidOk(ok, step);
         break;
     case AI_STATE_GRENADE:
-        ok = open = !(step == STEP_6 || step == STEP_7);
+        ok = open = BreachGrenadeOk(ok, step);
         break;
     case AI_STATE_TARGET:
         ok = false;
@@ -1732,6 +2285,7 @@ bool CAiSBreach::CanPushAiState(AI_STATE state, CSealCtrlAi *ai)
     if (open && m_valve)
         m_valve->SetValue(3);
     return ok;
+#pragma opt_propagation reset
 }
 
 /* +0x34: a breach takes up only a sighting or a shot (OVL2 0x5F34D0) */
@@ -1783,12 +2337,6 @@ void CAiSGoto::OnSignal(SIGNAL sig, CSealCtrlAi *ai)
     }
 }
 
-/* a bit of a CBits set (inlined; zmath.h's CBits has Test and Clear only -- the name ours) */
-inline void SetBit(CBits *bits, unsigned int i)
-{
-    bits->m_vec[i >> 5] |= 1 << (i & 31);
-}
-
 /* the pickup gone for, its network id kept to check it still stands, and the flags (OVL2
  * 0x5F5520; the name ours) */
 void CAiSPickup::SetPickup(CPickup *p, unsigned int flags)
@@ -1825,25 +2373,16 @@ extern "C" bool func_005F51A0(CSealCtrlAi *ai, int x, unsigned int flags)
 
 /* a pickup: to a cell beside it (the goto pushed, coming back to step 6), the AI's mode 4, the
  * pickup taken (when the flag's bit 0 asks) and marked seen by this SEAL, then three seconds on
- * (OVL2 0x5F52D0; SOCOM 1's).
- * OPEN, 4 instructions, two registers in the bit's set: the target holds the SEAL's index in a1
- * and its low five bits in a2, here the other way round. Tried: the inline's parameters swapped,
- * a CBits member, a nested inline on the pickup, the mask computed first, `/ 32` and `% 32`, an
- * int index, the step assigned before, after or around it. Everything else is the target's.
- * Round 39, MW's colouring read (igdump, build/scratch/kit/ig/): SetBit's index is a variable
- * numbered right after the caller's five locals (v37), so coloured last (a2), while `i & 31` is a
- * temporary coloured earlier (a1) -- the target colours the index first, as if it were the later
- * number; still 4 in 18 more shapes (the word and bit as separate parameters either order, the bit
- * or word or mask a local, a reference or pointer to the word, the index reused, the bare
- * expression in the caller, an index local in the caller). Round 43: SetBit's index by const
- * reference, by pointer, a reference to the word, and the bare expression reading the index twice
- * all stay at 4 (0x5CB450's seen-bit test is the same question). Round 59, replayed on a 3.0b52
- * copy of the unit (igreplay --want 37=a1,79=a2): the target's pair needs `i & 31` (the code
- * generator's temporary v79) numbered before SetBit's index (v37: anywhere from 31.5 to 36.5, among
- * the caller's own locals), or the index after it (79.5) -- a caller's `unsigned int bit` declared
- * at the top in each of the four places, set in the case bare or from a block-local index, or
- * through an inline taking it by reference, all stay at 4 (the single-use local is propagated back
- * into the shift) */
+ * (OVL2 0x5F52D0; SOCOM 1's). The bit's low five bits through an enum-typed
+ * argument (a modelling device, the game states' round-53 rule: IRO's propagation leaves an enum-typed
+ * variable alone, so the argument's temporary stays where the replay of round 59 wanted it, numbered
+ * before SetBit's index -- 40 integer spellings over rounds 39-59 stayed at 4 off) */
+enum PickBit_ { PICKBIT_MAX = 0x7fffffff };
+/* a bit of a CBits set (inlined; zmath.h's CBits has Test and Clear only -- the name ours) */
+inline void SetBitE(CBits *bits, unsigned int i, PickBit_ bit)
+{
+    bits->m_vec[i >> 5] |= 1 << bit;
+}
 int CAiSPickup::Tick(CSealCtrlAi *ai)
 {
     STEP step;
@@ -1877,7 +2416,7 @@ int CAiSPickup::Tick(CSealCtrlAi *ai)
         if (m_flags & 1)
             PickupObject__10CZSealBodyFP7CPickup(seal, p);
         step = STEP_4;
-        SetBit((CBits *)p->m_bits, seal->m_index);
+        SetBitE((CBits *)p->m_bits, seal->m_index, (PickBit_)(seal->m_index & 31));
         m_time = StateTimer(ai) + 3.0f;
         break;
     case STEP_4:

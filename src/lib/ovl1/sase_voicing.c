@@ -5,7 +5,7 @@
  * correlation between two bounds (0x251348, the estimate's). The encoder's objects link in the
  * alphabetical order of their files (PostFilt.c, PtchCand.c, RefineC0.c, Voicing.c, VoicLD.c), so
  * the two after the estimate are this object's. Written in the GCC lane's round 26a: 0x251270 and
- * 0x251348; the estimate 0x250F60 is not written. The constants are the vendor's truncated
+ * 0x251348; round 44a: the estimate 0x250F60. The constants are the vendor's truncated
  * conversions (0.8 as 0x3F4CCCCC: round 12a's decimal conversion), so they are hex floats.
  * Placeholders: the codec's names are not in SOCOM 1. Built as nelly.c is (ee-gcc 2.96, -O2 -G8). */
 
@@ -51,4 +51,149 @@ float func_00251348(float fLo, float fHi, float fX)
 	else
 		fR = (fDb - fLo) / (fHi - fLo);
 	return fR;
+}
+
+#define NellyNull 0
+extern void __assert(const char *file, int line, const char *expr);
+#define assert(e) ((e) ? (void)0 : __assert(__FILE__, __LINE__, #e))
+
+extern const float data_003EADF0[];	/* the harmonic's analysis window, a bin 32 steps */
+
+/* the frame's voicing from its spectrum: per harmonic of the pitch, the energy left when the window's shape at the harmonic
+ * is subtracted over its bins, against the band's energy; one less the mean ratio. The object after this one (VoicLD.c), kept
+ * here by address. The band's end is the accumulator's expression (`(iAcc + iBnd + 0x4000) >> 15`: loop.c's giv, its start after
+ * the entry test, the target's `move t2,v0`), the bins' pair each loop's own locals (their registers the target's). OPEN (GCC
+ * round 44a: 46 words at the right size, every one a register's name): global-alloc's nH prefers a1 (.greg's `97 preferences: 5`,
+ * from its fix: nH = iEnd has none), so k, which ranks above it, avoids a1 and takes a3 and the rest shift; the target's k has a1. */
+float func_002513F0(const float *pfSW, int iEnd, float fPitch)
+{
+	const float *pfWin = data_003EADF0;
+	float fSum = 0.0F;
+	float fStep, fHRe, fHIm, fE, fD, fX;
+	int iStep, nH, iBnd, iAcc, j, h, i0, k;
+	const float *pf;
+
+#line 110 "../../SaseEncVad/source/VoicLD.c"
+	assert(pfSW != NellyNull);
+	iAcc = 0;
+	fStep = 512.0F / fPitch;
+	iStep = (int)(fStep * 32768.0F + 0.5F);
+	nH = (int)((float)iEnd / fStep);
+	iBnd = iStep >> 1;
+	j = (iBnd + 0x4000) >> 15;
+	for (h = 0; h < nH; h++) {
+		iAcc += iStep;
+		k = j;
+		i0 = k * 32 - ((iAcc + 512) >> 10);
+		pf = pfSW + 2 * ((iAcc + 0x4000) >> 15);
+		fHRe = pf[0];
+		fHIm = pf[1];
+		pf = pfSW + 2 * k;
+		j = (iAcc + iBnd + 0x4000) >> 15;
+		fE = 0x1.cd2b28p-54F;
+		for (; i0 < -111; k++) {
+			float fA = pf[0];
+			float fB = pf[1];
+
+			i0 += 32;
+			pf += 2;
+			fE += fA * fA + fB * fB;
+		}
+		fD = fE;
+		for (; i0 < 112 && k < j; k++) {
+			float fA = pf[0];
+			float fB = pf[1];
+
+			fX = pfWin[i0];
+			i0 += 32;
+			pf += 2;
+			fE += fA * fA + fB * fB;
+			fA -= fHRe * fX;
+			fB -= fHIm * fX;
+			fD += fA * fA + fB * fB;
+		}
+		for (; k < j; k++) {
+			float fA = pf[0];
+			float fB = pf[1];
+
+			pf += 2;
+			fX = fA * fA + fB * fB;
+			fD += fX;
+			fE += fX;
+		}
+		fSum += fD / fE;
+	}
+	return 1.0F - fSum / (float)nH;
+}
+
+extern void func_0024ECF8(const float *pfX, int iLength, int *piMaxIndex, float *pfXmax);
+extern void func_0024EF30(const float *pfIn, int iLength, float fNorm, float *pfOut);
+extern void func_0024D190(const float *pfMag, const float *pfFreq, int iNPeaks, float *pfAmp, float *pfDist, int *piCount, float fThresh);
+extern int func_00250CD8(float fPitch, const float *pfAmp, const float *pfFreq, int iLength, float *pfSum, float *pfPitch, float *pfGain);
+
+#define NFFT 512
+
+/* the frame's voicing estimate: the peaks below the base band normalised and weighted against the fourth root of the spectrum's
+ * envelope, their pairs fed to the pitch's refinement, and the comb's gain placed between two bounds that follow the last value.
+ * i's address is taken (its last value unused: 0x24ECF8's index): the count loop is on memory, and loop.c's load_mems shadows it
+ * in a register, its store on the loop's exit alone (the two tests that skip the loop skip the store). The two floats' places in
+ * the prototypes order the argument moves, as the target's: 0x24EF30's third, 0x250CD8's first. */
+void func_00250F60(float *pfV, const float *pfMag, float *pfPitch, float *pfOut, float *pfAmp, const float *pfFreq, int iNPeaks)
+{
+	float afNorm[256];
+	float afPairA[100], afPairD[100];
+	int i;
+	float fMax, fY;
+	int iPairs;
+	float fSum, fPitchOut, fGain;
+	float fPitch0, fSpacing, fBand, fF, fT, fV;
+	int k, iBaseBand, n, j;
+
+	fPitch0 = *pfPitch;
+	fT = fPitch0 * 0.16796875F;
+	fSpacing = 512.0F / fPitch0;
+	if (fT >= 0.0F)
+		k = (int)fT;
+	else
+		k = (int)(fT - 1.0F);
+	if (k < 5)
+		k = 5;
+	fBand = ((float)k + 0.125F) * fSpacing;
+	if (fBand > 160.0F)
+		fBand = 160.0F;
+	iBaseBand = (int)(fBand + 0.5F);
+	iBaseBand++;
+#line 139 "../../SaseEncVad/source/Voicing.c"
+	assert(iBaseBand <= NFFT);
+	for (i = 0; i < iNPeaks && !(fBand < pfFreq[i]); i++)
+		;
+	n = i;
+	if (n > 0) {
+		func_0024ECF8(pfAmp, n, &i, &fMax);
+		func_0024ECF8(pfMag, iBaseBand, &i, &fY);
+		fMax = (fY < fMax) ? fMax : fY;
+		func_0024EF30(pfAmp, n, fMax, pfAmp);
+		func_0024EF30(pfMag, iBaseBand, fMax, afNorm);
+		for (j = 0; j < n; j++) {
+			float fA, fN;
+
+			fY = pfFreq[j];
+			fN = afNorm[(int)(fY + 0.5F)];
+			fA = pfAmp[j];
+			if (fA < fN) {
+				fY = fA / fN;
+				fY *= fY;
+				pfAmp[j] = fA * (fY * fY);
+			}
+		}
+		func_0024D190(pfAmp, pfFreq, n, afPairA, afPairD, &iPairs, 0x1.b33330p+5F);
+		func_00250CD8(fPitch0, afPairA, afPairD, iPairs, &fSum, &fPitchOut, &fGain);
+	} else {
+		fPitchOut = fPitch0;
+		fGain = 0.0F;
+	}
+	fV = func_00251348(*pfV * -0.5F + 4.5F, 13.0F, fGain);
+	*pfV = fV;
+	*pfPitch = fPitchOut;
+	*pfOut = fV;
 }

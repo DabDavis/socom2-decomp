@@ -1,8 +1,7 @@
 /* sc: compiler=ee-gcc2.96; flags=-O2 -G8 */
 /* Nellymoser's encoder, libquan.c (OVL1 0x24B028-0x24C1F0): the scalar quantiser's nearest
  * codeword (0x24B720) and the 2-D squared distance (0x24C000, OPEN), asserting as the codec does
- * (file and line by `#line`, as in sase_encsc.c). The vector quantisers and the codebook readers
- * around them are not written.
+ * (file and line by `#line`, as in sase_encsc.c). The set's quantiser 0x24B028 (OPEN) and its decoder 0x24B2F8 (GCC round 44a).
  * Placeholders: the codec's names are not in SOCOM 1. Built as nelly.c is (ee-gcc 2.96, -O2 -G8). */
 
 #define NellyNull 0
@@ -279,4 +278,142 @@ int func_0024C150(const int *piIndexOfOutCell, int iNumOutCell, int iIndex)
 		}
 	}
 	return bFound;
+}
+
+extern void func_0024BE70(const float *pfIn, int iOff, const float *pfPred, float *pfOut, int iLen);
+
+typedef struct {
+	int iStage1Size;
+	const float *pfStage1CB;
+	const float *pfRotScaleCB;
+	int iStage2Size;
+	const float *pfStage2InCellCB;
+	const float *pfStage2OutCellCB;
+	int iNumOutCell;
+	const int *piIndexOfStage2OutCell;
+} QuanVQ;
+
+typedef struct {
+	int iEntries;
+	const float *pfCodeBook;
+} QuanCB;
+
+extern const QuanVQ data_003E8928, data_003E8D78, data_003E90D0, data_003E93A8, data_003E9638;
+extern const float data_003E82B8[], data_003E82E8[];
+extern const float *const data_003DCFC8[], *const data_003DCFE0[];
+extern const QuanCB *const data_001D5558[2];
+
+#define SUB_VECTORS 6
+#define SUB_DIMENSION 2
+
+/* the coefficient set's vector quantiser: the set less its mean (one of two, by the midpoint), then each of six 2-D
+ * subvectors less its prediction quantised, the first four by the two-stage search, the last two by the codebook's
+ * nearest word, and the quantised value put back. The last two's codebook pointers are an 8-byte array indexed [i - 4]: its
+ * giv's start is one `la` (no temporary), its size known. OPEN (GCC round 44a, 3 words): the walk's `move s1,v1` follows the
+ * `la` in the target; here it precedes it, whatever the order of the four initialisers. */
+void func_0024B028(float *pfCoef, int *piIndices, int iOrder, float fMid)
+{
+	float afX[SUB_VECTORS * SUB_DIMENSION];
+	float afPred[SUB_DIMENSION];
+	const QuanVQ *apVQ[4];
+	const float *const *ppPred;
+	const float *pfMean;
+	const QuanVQ *pVQ;
+	float *pfX;
+	int i, iIndex;
+	int iOff;
+	int *piInd;
+
+#line 100 "../../SaseEncVad/source/libquan.c"
+	assert(iOrder == (SUB_VECTORS*SUB_DIMENSION));
+#line 102 "../../SaseEncVad/source/libquan.c"
+	assert((pfCoef != NellyNull) && (piIndices != NellyNull));
+	if (0x1.999998p-1F < fMid) {
+		apVQ[0] = &data_003E8928;
+		pfMean = data_003E82B8;
+		ppPred = data_003DCFC8;
+	} else {
+		apVQ[0] = &data_003E8D78;
+		pfMean = data_003E82E8;
+		ppPred = data_003DCFE0;
+	}
+	apVQ[1] = &data_003E90D0;
+	apVQ[2] = &data_003E93A8;
+	apVQ[3] = &data_003E9638;
+	for (i = 0; i < iOrder; i++)
+		afX[i] = pfCoef[i] - pfMean[i];
+	piInd = piIndices;
+	iOff = 0;
+	for (i = 0, pfX = afX; i < SUB_VECTORS; i++) {
+		func_0024BE70(afX, iOff, ppPred[i], afPred, SUB_DIMENSION);
+		iOff += 2;
+		pfX[0] -= afPred[0];
+		pfX[1] -= afPred[1];
+		if (i < 4) {
+			pVQ = apVQ[i];
+			func_0024BA48(piInd, pfX, SUB_DIMENSION, pVQ->iStage1Size, pVQ->pfStage1CB, pVQ->pfRotScaleCB, pVQ->iStage2Size,
+				      pVQ->pfStage2InCellCB, pVQ->pfStage2OutCellCB, pVQ->iNumOutCell, pVQ->piIndexOfStage2OutCell);
+		} else {
+			iIndex = func_0024B8B0(pfX, data_001D5558[i - 4]->pfCodeBook, data_001D5558[i - 4]->iEntries);
+			piInd[1] = 0;
+			piInd[0] = iIndex;
+			func_0024B990(iIndex, data_001D5558[i - 4]->pfCodeBook, data_001D5558[i - 4]->iEntries, pfX);
+		}
+		piInd += 2;
+		*pfX++ += afPred[0];
+		*pfX++ += afPred[1];
+	}
+	for (i = 0; i < iOrder; i++)
+		pfCoef[i] = afX[i] + pfMean[i];
+}
+
+/* the set's decoder, the quantiser's inverse: each subvector rebuilt from its indices, its prediction added, the mean added
+ * back. OPEN (GCC round 44a, right size): the giv of i * 4 serves apVQ[i] and the table as the target's, whose address is
+ * `addu v0,sp,s3; lw v1,80(v0)` (here sp + 80 first), and three saved registers rotate (pfBase, the offset, piIndices). */
+void func_0024B2F8(const int *piIndices, float *pfCoef, int iOrder, float fMid)
+{
+	float afX[SUB_VECTORS * SUB_DIMENSION];
+	float afPred[SUB_DIMENSION];
+	const QuanVQ *apVQ[4];
+	const float *const *ppPred;
+	const float *pfMean;
+	const QuanVQ *pVQ;
+	const QuanCB *pCB;
+	float *pfX, *pfBase;
+	int i, iOff;
+
+#line 245 "../../SaseEncVad/source/libquan.c"
+	assert(iOrder == (SUB_VECTORS*SUB_DIMENSION));
+#line 247 "../../SaseEncVad/source/libquan.c"
+	assert((piIndices != NellyNull) && (pfCoef != NellyNull));
+	if (0x1.999998p-1F < fMid) {
+		apVQ[0] = &data_003E8928;
+		pfMean = data_003E82B8;
+		ppPred = data_003DCFC8;
+	} else {
+		apVQ[0] = &data_003E8D78;
+		pfMean = data_003E82E8;
+		ppPred = data_003DCFE0;
+	}
+	apVQ[1] = &data_003E90D0;
+	apVQ[2] = &data_003E93A8;
+	apVQ[3] = &data_003E9638;
+	pfBase = afX;
+	iOff = 0;
+	for (i = 0, pfX = pfBase; i < SUB_VECTORS; i++) {
+		if (i < 4) {
+			pVQ = apVQ[i];
+			func_0024BCF0(&piIndices[2 * i], &pfBase[2 * i], pVQ->iStage1Size, pVQ->pfStage1CB, pVQ->pfRotScaleCB, pVQ->iStage2Size,
+				      pVQ->pfStage2InCellCB, pVQ->pfStage2OutCellCB, pVQ->iNumOutCell, pVQ->piIndexOfStage2OutCell);
+		} else {
+			pCB = data_001D5558[i - 4];
+			func_0024B990(piIndices[2 * i], pCB->pfCodeBook, pCB->iEntries, &pfBase[2 * i]);
+		}
+		func_0024BE70(afX, iOff, ppPred[i], afPred, SUB_DIMENSION);
+		iOff += 2;
+		*pfX++ += afPred[0];
+		*pfX++ += afPred[1];
+	}
+	for (i = 0; i < iOrder; i++)
+		pfCoef[i] = pfBase[i] + pfMean[i];
 }
